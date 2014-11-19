@@ -275,7 +275,7 @@ bundle RegEx {
  				
 				select(expression->GetType()) {
 					# single character
-					label ExpressionType->CHAR: {
+					label Expression->Type->CHAR: {
 # IO.Console->Print("[### matching: expr='")->Print(expression->GetValue())->Print("', input='")->Print(@input_char)->PrintLine("' ###]");
 						if(expression->GetValue() = @input_char) {
 							NextInput();
@@ -284,14 +284,14 @@ bundle RegEx {
 					}
 	
 					# any character
-					label ExpressionType->ANY: {
+					label Expression->Type->ANY: {
 # "[### any ###]"->PrintLine();
 						NextInput();
 						return true;							
 					}
 					
 					# digit
-					label ExpressionType->DIGIT: {
+					label Expression->Type->DIGIT: {
 # "[### digit ###]"->PrintLine();
 						if(@input_char->IsDigit()) {
 							NextInput();
@@ -300,7 +300,7 @@ bundle RegEx {
 					}
 					
 					# word
-					label ExpressionType->WORD: {
+					label Expression->Type->WORD: {
 # "[### word ###]"->PrintLine();
 						if(@input_char->IsDigit() | @input_char->IsChar() | @input_char = '_') {
 							NextInput();
@@ -309,7 +309,7 @@ bundle RegEx {
 					}
 					
 					# whitespace
-					label ExpressionType->WHITESPACE: {
+					label Expression->Type->WHITESPACE: {
 # "[### whitespace ###]"->PrintLine();
 						if(@input_char = ' ' | @input_char = '\t' | @input_char = '\r' | @input_char = '\n') {
 							NextInput();
@@ -318,7 +318,7 @@ bundle RegEx {
 					}
 
 					# class of characters
-					label ExpressionType->CHAR_CLASS: {
+					label Expression->Type->CHAR_CLASS: {
 						char_class := expression->GetClass();
 # IO.Console->Print("[### matching range: expr='")->Print(expression->GetClass())->Print("', input='")->Print(@input_char)->PrintLine("' ###]");
 						if(InClass(char_class, @input_char)) {
@@ -328,7 +328,7 @@ bundle RegEx {
 					}
 
 					# range of characters
-					label ExpressionType->CHAR_CLASS_RANGE: {
+					label Expression->Type->CHAR_CLASS_RANGE: {
 # IO.Console->Print("[### matching: range='")->Print(expression->GetClass())->Print("', input='")->Print(@input_char)->PrintLine("' ###]");					
 						char_class := expression->GetClass();
 						if(InRange(char_class, @input_char)) {
@@ -338,7 +338,7 @@ bundle RegEx {
 					}
 					
 					# starts anchor
-					label ExpressionType->STARTS_ANCHOR: {
+					label Expression->Type->STARTS_ANCHOR: {
 # IO.Console->Print("[### starts anchor: pos=")->Print(@input_pos - 1)->Print(", input='")->Print(@input_char)->PrintLine("' ###]");				
 						if(@input_pos - 1 = 0 & Evaluate(expression->GetExpression())) {
 							return true;				
@@ -346,7 +346,7 @@ bundle RegEx {
 					}
 					
 					# ends anchor
-					label ExpressionType->ENDS_ANCHOR: {
+					label Expression->Type->ENDS_ANCHOR: {
 # "[### ends anchor ###]"->PrintLine();
 						if(Evaluate(expression->GetExpression()) & @input_char = '\0') {
 							return true;				
@@ -354,7 +354,7 @@ bundle RegEx {
 					}
 
 					# logical OR
-					label ExpressionType->OR: {
+					label Expression->Type->OR: {
 # "[### or ###]"->PrintLine();					
 						prev_pos := @input_pos;
 						if(Evaluate(expression->GetLeft(), 0)) {
@@ -368,17 +368,17 @@ bundle RegEx {
 					}
 	
 					# zero or more
-					label ExpressionType->ZERO_MORE: {
+					label Expression->Type->ZERO_MORE: {
 # "[### zero_or_more ###]"->PrintLine();
 						@is_backtracking := true;
-						if(expression->GetExpression()->GetType() = ExpressionType->SUB_EXPR) {
+						if(expression->GetExpression()->GetType() = Expression->Type->SUB_EXPR) {
 							do {
 								match := Evaluate(expression->GetExpression()->GetLeft(), 0);
 							} 
 							while(@input_char <> '\0' & match);
 						}
 						else {
-							if(expression->GetExpression()->GetType() = ExpressionType->ANY) {
+							if(expression->GetExpression()->GetType() = Expression->Type->ANY) {
 								@is_backtracking := true;
 							};
 							
@@ -392,9 +392,9 @@ bundle RegEx {
 					}
 
 					# one or more
-					label ExpressionType->ONE_MORE: {
+					label Expression->Type->ONE_MORE: {
 # "[### one_or_more ###]"->PrintLine();
-						if(expression->GetExpression()->GetType() = ExpressionType->SUB_EXPR) {
+						if(expression->GetExpression()->GetType() = Expression->Type->SUB_EXPR) {
 							if(Evaluate(expression->GetExpression()->GetLeft(), 0)) {
 								@is_backtracking := true;
 
@@ -421,10 +421,10 @@ bundle RegEx {
 					}
 					
 					# repeat
-					label ExpressionType->REPEAT: {
+					label Expression->Type->REPEAT: {
 # "[### repeat ###]"->PrintLine();
 						count := 0;
-						if(expression->GetExpression()->GetType() = ExpressionType->SUB_EXPR) {
+						if(expression->GetExpression()->GetType() = Expression->Type->SUB_EXPR) {
 							do {
 								match := Evaluate(expression->GetExpression()->GetLeft(), 0);
 								if(match) {
@@ -434,7 +434,7 @@ bundle RegEx {
 							while(@input_char <> '\0' & match);
 						}
 						else {
-							if(expression->GetExpression()->GetType() = ExpressionType->ANY) {
+							if(expression->GetExpression()->GetType() = Expression->Type->ANY) {
 								@is_backtracking := true;
 							};
 							
@@ -457,9 +457,9 @@ bundle RegEx {
 					}
 					
 					# single optional
-					label ExpressionType->OPTIONAL: {
+					label Expression->Type->OPTIONAL: {
 # "[### optional ###]"->PrintLine();
-						if(expression->GetExpression()->GetType() = ExpressionType->SUB_EXPR) {
+						if(expression->GetExpression()->GetType() = Expression->Type->SUB_EXPR) {
 							Evaluate(expression->GetExpression()->GetLeft(), 0);
 						}
 						else {
@@ -470,7 +470,7 @@ bundle RegEx {
 					}
 					
 					# sub-expression
-					label ExpressionType->SUB_EXPR: {
+					label Expression->Type->SUB_EXPR: {
 						return Evaluate(expression->GetLeft(), 0);						
 					}
 				};
@@ -504,7 +504,7 @@ bundle RegEx {
 			# consume starts with
 			if(@starts_anchor & @expressions->Size() > 0) {
 				expression := @expressions->RemoveBack()->As(Expression);
-				@expressions->AddBack(Expression->New(ExpressionType->STARTS_ANCHOR, expression));
+				@expressions->AddBack(Expression->New(Expression->Type->STARTS_ANCHOR, expression));
 				@starts_anchor := false;
 # IO.Console->Print("match: starts anchor; with=")->PrintLine(expression->GetType()->As(Int));	
 			};
@@ -539,7 +539,7 @@ bundle RegEx {
 			# consume starts with
 			if(@starts_anchor & @expressions->Size() > 0) {
 				expression := @expressions->RemoveBack()->As(Expression);
-				@expressions->AddBack(Expression->New(ExpressionType->STARTS_ANCHOR, expression));
+				@expressions->AddBack(Expression->New(Expression->Type->STARTS_ANCHOR, expression));
 				@starts_anchor := false;
 # IO.Console->Print("match: starts anchor; with=")->PrintLine(expression->GetType()->As(Int));	
 			};
@@ -552,7 +552,7 @@ bundle RegEx {
 			if(@token = '*') {
 				if(@expressions->Size() > 0) {
 					expression := @expressions->RemoveBack()->As(Expression);
-					@expressions->AddBack(Expression->New(ExpressionType->ZERO_MORE, expression));
+					@expressions->AddBack(Expression->New(Expression->Type->ZERO_MORE, expression));
 					NextToken();
 # IO.Console->PrintLine("match: zero_or_more");					
 				}
@@ -564,7 +564,7 @@ bundle RegEx {
 			else if(@token = '+') {
 				if(@expressions->Size() > 0) {
 					expression := @expressions->RemoveBack()->As(Expression);
-					@expressions->AddBack(Expression->New(ExpressionType->ONE_MORE, expression));
+					@expressions->AddBack(Expression->New(Expression->Type->ONE_MORE, expression));
 					NextToken();
 # IO.Console->PrintLine("match: one_or_more");					
 				}
@@ -576,7 +576,7 @@ bundle RegEx {
 			else if(@token = '?') {
 				if(@expressions->Size() > 0) {
 					expression := @expressions->RemoveBack()->As(Expression);
-					@expressions->AddBack(Expression->New(ExpressionType->OPTIONAL, expression));
+					@expressions->AddBack(Expression->New(Expression->Type->OPTIONAL, expression));
 					NextToken();
 # IO.Console->PrintLine("match: optional");					
 				}
@@ -588,7 +588,7 @@ bundle RegEx {
 			else if(@token = '$') {
 				if(@expressions->Size() > 0) {
 					expression := @expressions->RemoveBack()->As(Expression);
-					@expressions->AddBack(Expression->New(ExpressionType->ENDS_ANCHOR, expression));
+					@expressions->AddBack(Expression->New(Expression->Type->ENDS_ANCHOR, expression));
 					NextToken();
 # "match: ends anchor"->PrintLine();
 				}
@@ -661,7 +661,7 @@ bundle RegEx {
 			# consume starts with
 			if(@starts_anchor & @expressions->Size() > 0) {
 				expression := @expressions->RemoveBack()->As(Expression);
-				@expressions->AddBack(Expression->New(ExpressionType->STARTS_ANCHOR, expression));
+				@expressions->AddBack(Expression->New(Expression->Type->STARTS_ANCHOR, expression));
 				@starts_anchor := false;
 # IO.Console->Print("match: starts anchor; with=")->PrintLine(expression->GetType()->As(Int));	
 			};		
@@ -769,17 +769,17 @@ bundle RegEx {
 				}
 				
 				label 'd': {
-					@expressions->AddBack(Expression->New(ExpressionType->DIGIT));
+					@expressions->AddBack(Expression->New(Expression->Type->DIGIT));
 					NextToken();
 				}
 				
 				label 'w': {
-					@expressions->AddBack(Expression->New(ExpressionType->WORD));
+					@expressions->AddBack(Expression->New(Expression->Type->WORD));
 					NextToken();
 				}
 				
 				label 's': {
-					@expressions->AddBack(Expression->New(ExpressionType->WHITESPACE));
+					@expressions->AddBack(Expression->New(Expression->Type->WHITESPACE));
 					NextToken();
 				}
 				
@@ -834,28 +834,28 @@ bundle RegEx {
 		}
 	}
 	
-	# expression type
-	enum ExpressionType := -100 {
-		CHAR,
-		ANY,
-		OPTIONAL,
-		DIGIT,
-		WORD,
-		WHITESPACE,
-		CHAR_CLASS,
-		CHAR_CLASS_RANGE,
-		ENDS_ANCHOR,
-		STARTS_ANCHOR,
-		OR,
-		ZERO_MORE,
-		ONE_MORE,
-		REPEAT,
-		SUB_EXPR
-	}
-	
 	# ---------- subexpression value object ----------
 	class Expression {
-		@type : ExpressionType;
+		# expression type
+		enum Type := -100 {
+			CHAR,
+			ANY,
+			OPTIONAL,
+			DIGIT,
+			WORD,
+			WHITESPACE,
+			CHAR_CLASS,
+			CHAR_CLASS_RANGE,
+			ENDS_ANCHOR,
+			STARTS_ANCHOR,
+			OR,
+			ZERO_MORE,
+			ONE_MORE,
+			REPEAT,
+			SUB_EXPR
+		}
+
+		@type : Expression->Type;
 		@value : Char;
 		@char_class : String;
 		@expression : Expression;
@@ -865,16 +865,16 @@ bundle RegEx {
 		@most : Int;
 		
 		New() {
-			@type := ExpressionType->ANY;
+			@type := Expression->Type->ANY;
 		}
 
 		New(value : Char) {
-			@type := ExpressionType->CHAR;
+			@type := Expression->Type->CHAR;
 			@value := value;
 		}
 
 		New(least : Int, most : Int, expression : Expression) {
-			@type := ExpressionType->REPEAT;
+			@type := Expression->Type->REPEAT;
 			@least := least;
 			@most := most;
 			@expression := expression;
@@ -882,35 +882,35 @@ bundle RegEx {
 		
 		New(char_class : String, is_range : Bool) {
 			if(is_range) {
-				@type := ExpressionType->CHAR_CLASS_RANGE;
+				@type := Expression->Type->CHAR_CLASS_RANGE;
 			}
 			else {
-				@type := ExpressionType->CHAR_CLASS;
+				@type := Expression->Type->CHAR_CLASS;
 			};
 			@char_class := char_class;
 		}
 		
 		New(left : Vector) {
-			@type := ExpressionType->SUB_EXPR;
+			@type := Expression->Type->SUB_EXPR;
 			@left := left;
 		}
 		
-		New(type : ExpressionType) {
+		New(type : Expression->Type) {
 			@type := type;
 		}
 		
-		New(type : ExpressionType, expression : Expression) {
+		New(type : Expression->Type, expression : Expression) {
 			@type := type;
 			@expression := expression;
 		}
 
 		New(left : Vector, right : Vector) {
-			@type := ExpressionType->OR;
+			@type := Expression->Type->OR;
 			@left := left;
 			@right := right;
 		}
 
-		method : public : GetType() ~ ExpressionType {
+		method : public : GetType() ~ Expression->Type {
 			return @type;
 		}
 		
@@ -941,12 +941,5 @@ bundle RegEx {
 		method : public : GetExpression() ~ Expression {
 			return @expression;
 		}
-	}
-	
-	# ---------- match types ----------
-	enum EvalType := -200 {
-		MATCH,
-		MATCH_NEXT,
-		NO_MATCH
 	}
 }
