@@ -11,11 +11,17 @@ class HtmlMaker {
 	@css_path : String;
 	@bundle_block : BundleBlock;
 	
+	#~
+	DOC ME
+	~#
 	New(args : String[]) {
 		@css_path := args[0];
 		@parser := DocParser->New(args);
 	}
 	
+	#~
+	DOC ME
+	~#
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() > 1) {
 			maker := HtmlMaker->New(args);
@@ -23,6 +29,9 @@ class HtmlMaker {
 		};
 	}
 	
+	#~
+	DOC ME
+	~#
 	method : Make() ~ Bool {
 		if(<>@parser->Parse()) {
 			"--- Unable to parse source file ---"->ErrorLine();
@@ -38,9 +47,18 @@ class HtmlMaker {
 			return false;
 		};
 		
+		classes_css_path := String->New(@css_path);
+		classes_css_path += '/';
+		classes_css_path += "classes_header.dat";
+		classes_header := FileReader->ReadFile(classes_css_path);
+		if(classes_header = Nil) {
+			"--- Unable load classes CSS template ---"->ErrorLine();
+			return false;
+		};
+		
 		bundle_css_path := String->New(@css_path);
 		bundle_css_path += '/';
-		bundle_css_path += "bundle_header.dat";
+		bundle_css_path += "bundles_header.dat";
 		bundle_header := FileReader->ReadFile(bundle_css_path);
 		if(bundle_header = Nil) {
 			"--- Unable load bundle CSS template ---"->ErrorLine();
@@ -48,7 +66,10 @@ class HtmlMaker {
 		};
 
 		# create class list doc
-		CreateClassIndexHtml(@parser->GetBundles(), bundle_header);
+		CreateClassIndexHtml(@parser->GetBundles(), classes_header);
+		
+		# create bundle doc
+		CreateBundleIndexHtml(@parser->GetBundles(), bundle_header);
 	
 		# bundles
 		bundles := @parser->GetBundles();
@@ -71,9 +92,9 @@ class HtmlMaker {
 	#~
 	DOC ME
 	~#
-	method : CreateClassHtml(class_block : ClassBlock, class_header : String) ~ Nil {
+	method : CreateClassHtml(class_block : ClassBlock, header : String) ~ Nil {
 		# class description
-		html := String->New(class_header);
+		html := String->New(header);
 		
 		sec_b : String;
 		if(class_block->IsInterface()) {
@@ -166,6 +187,9 @@ class HtmlMaker {
 		out->Close();
 	}
 	
+	#~
+	DOC ME
+	~#
 	method : GetTypeLink(type_name : String) ~ String {
 		class_block : ClassBlock;
 		
@@ -212,6 +236,9 @@ class HtmlMaker {
 		};
 	}
 	
+	#~
+	DOC ME
+	~#
 	method : GetBundleClass(bundle_name : String, class_name : String) ~ ClassBlock {
 		lookup_bundle := @parser->GetBundles()->Find(bundle_name)->As(BundleBlock);		
 		if(lookup_bundle <> Nil) {
@@ -280,9 +307,26 @@ class HtmlMaker {
 		};
 	}
 	
-	method : CreateClassIndexHtml(bundles : StringMap, class_header : String) ~ Nil {
+	#~
+	DOC ME
+	~#
+	method : CreateBundleIndexHtml(bundles : StringMap, class_header : String) ~ Nil {
 		html := String->New(class_header);
 		html += "<h2>Bundles</h2>";
+		
+		html += "</body></html>";
+		file_name := "../html/bundles.html";
+		out := FileWriter->New(file_name);
+		out->WriteString(html);
+		out->Close();
+	}
+	
+	#~
+	DOC ME
+	~#
+	method : CreateClassIndexHtml(bundles : StringMap, header : String) ~ Nil {
+		html := String->New(header);
+		html += "<h2>Classes</h2>";
 		
 		# bundles
 		bundle_keys := bundles->GetKeys();
@@ -327,7 +371,7 @@ class HtmlMaker {
 		};
 		
 		html += "</body></html>";
-		file_name := "../html/bundles.html";
+		file_name := "../html/classes.html";
 		out := FileWriter->New(file_name);
 		out->WriteString(html);
 		out->Close();		
