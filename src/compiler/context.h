@@ -377,7 +377,7 @@ class ContextAnalyzer {
       // enum types
       if(eval_type->GetType() == CLASS_TYPE) {
         // program
-        if(program->GetEnum(eval_type->GetClassName())) {
+        if(SearchProgramEnums(eval_type->GetClassName())) {
           return true;
         }
         // library
@@ -921,7 +921,26 @@ class ContextAnalyzer {
 
     return false;
   }
-
+  
+  inline void ResolveEnumCall(LibraryEnum* lib_eenum, const wstring &item_name, MethodCall* method_call) {
+    // item_name = method_call->GetMethodCall()->GetVariableName();
+    LibraryEnumItem* lib_item = lib_eenum->GetItem(item_name);
+    if(lib_item) {
+      if(method_call->GetMethodCall()) {
+        method_call->GetMethodCall()->SetLibraryEnumItem(lib_item, lib_eenum->GetName());
+        method_call->SetEvalType(TypeFactory::Instance()->MakeType(CLASS_TYPE, lib_eenum->GetName()), false);
+        method_call->GetMethodCall()->SetEvalType(method_call->GetEvalType(), false);
+      }
+      else {
+        method_call->SetLibraryEnumItem(lib_item, lib_eenum->GetName());
+        method_call->SetEvalType(TypeFactory::Instance()->MakeType(CLASS_TYPE, lib_eenum->GetName()), false);
+      }
+    } 
+    else {
+      ProcessError(static_cast<Expression*>(method_call), L"Undefined enum item: '" + item_name + L"'");
+    }
+  }
+  
   void AnalyzeCharacterStringVariable(SymbolEntry* entry, CharacterString* char_str, int depth) {
 #ifdef _DEBUG
     Show(L"variable=|" + entry->GetName() + L"|", char_str->GetLineNumber(), depth + 1);
@@ -1050,7 +1069,10 @@ class ContextAnalyzer {
   void AnalyzeConditional(Cond* conditional, const int depth);
   void AnalyzeStaticArray(StaticArray* array, const int depth);
   void AnalyzeCast(Expression* expression, const int depth);
+  
   void AnalyzeClassCast(Type* left, Expression* expression, const int depth);
+  void AnalyzeClassCast(Type* left, Type* right, Expression* expression, const int depth);
+
   void AnalyzeAssignment(Assignment* assignment, StatementType type, const int depth);
   void AnalyzeSimpleStatement(SimpleStatement* simple, const int depth);
   void AnalyzeIf(If* if_stmt, const int depth);
