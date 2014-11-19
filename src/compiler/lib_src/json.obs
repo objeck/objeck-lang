@@ -5,7 +5,13 @@
 
 use Collection;
 
+#~
+Provides JSON parsing support
+~#
 bundle JSON {
+	#~
+	Support for JSON parsing
+	~#
 	class JSONParser {
 		@input : String;
 		@tokens : Vector;
@@ -30,7 +36,10 @@ bundle JSON {
 			return @cur_token->GetType() = token;
 		}
 
-		# parse JSON elements
+		#~
+		Parses a JSON string
+		@return root JSON element
+		~#
 		method : public : Parse() ~ JSONElement {
 			@tokens := Scan();
 			if(@tokens->Size() > 0) {
@@ -52,6 +61,10 @@ bundle JSON {
 			};
 		}
 		
+		#~
+		Parses a JSON value
+		@return JSON value element
+		~#
 		method : public : ParseValue() ~ JSONElement {
 			element : JSONElement;
 			
@@ -108,7 +121,10 @@ bundle JSON {
 			return element;
 		}
 
-		# parse JSON object
+		#~
+		Parses a JSON object
+		@return JSON object element
+		~#
 		method : public : ParseObject() ~ JSONElement {
 			elements := StringMap->New();
 			
@@ -158,7 +174,10 @@ bundle JSON {
 			return JSONElement->New(elements);
 		}
 
-		# parse JSON array
+		#~
+		Parses a JSON array
+		@return JSON array element
+		~#
 		method : public : ParseArray() ~ JSONElement {
 			elements := Vector->New();
 			
@@ -401,13 +420,19 @@ bundle JSON {
 		}
 	}
 
-	# JSON element
+	#~
+	JSON value element
+	~#
 	class JSONElement {
 		@type : JSONType;
 		@value : String;
 		@array_elems : Vector;
 		@map_elems : StringMap;
 		
+		#~
+		Constructor
+		@param type JSON element type
+		~#
 		New(type : JSONType) {
 			if(type = JSONType->TRUE) {
 				@type := type;	
@@ -426,6 +451,11 @@ bundle JSON {
 			};
 		}
 		
+		#~
+		Constructor
+		@param type JSON element type
+		@param value JSON string value
+		~#
 		New(type : JSONType, value : String) {
 			if(type = JSONType->STRING | type = JSONType->NUMBER) {
 				@type := type;	
@@ -436,35 +466,63 @@ bundle JSON {
 			};
 		}
 
+		#~
+		Constructor
+		@param value JSON string value
+		~#
 		New(value : String) {
 			@type := JSONType->STRING;	
 			@value := value;
 		}
 		
+		#~
+		Constructor
+		@param value JSON integer value
+		~#
 		New(value : Int) {
 			@type := JSONType->NUMBER;	
 			@value := value->ToString();
 		}
 
+		#~
+		Constructor
+		@param value JSON float value
+		~#
 		New(value : Float) {
 			@type := JSONType->NUMBER;	
 			@value := value->ToString();
 		}
 
+		#~
+		Constructor
+		@param value JSON array value
+		~#
 		New(array_elems : Vector) {
 			@type := JSONType->ARRAY;
 			@array_elems := array_elems;
 		}
 		
+		#~
+		Constructor
+		@param value JSON object (names/values)
+		~#
 		New(map_elems : StringMap) {
 			@type := JSONType->OBJECT;
 			@map_elems := map_elems;
 		}
 		
+		#~
+		Gets the type
+		@return type
+		~#
 		method : public : GetType() ~ JSONType {
 			return @type;
 		}
 		
+		#~
+		Gets the value
+		@return value
+		~#
 		method : public : GetValue() ~ String {
 			if(@value <> Nil) {
 				return @value;
@@ -473,6 +531,11 @@ bundle JSON {
 			return "";
 		}
 		
+		#~
+		Gets an indexed value for an array type
+		@param index index
+		@return indexed value
+		~#
 		method : public : Get(index : Int) ~ JSONElement {
 			if(@array_elems <> Nil & index < @array_elems->Size()) {
 				return @array_elems->Get(index);
@@ -481,6 +544,11 @@ bundle JSON {
 			return Nil;
 		}
 		
+		#~
+		Gets a named value for an object type
+		@param name element name
+		@return element value
+		~#
 		method : public : Get(name : String) ~ JSONElement {
 			if(@map_elems <> Nil) {
 				return @map_elems->Find(name);
@@ -489,6 +557,10 @@ bundle JSON {
 			return Nil;
 		}
 		
+		#~
+		Gets the name for an object attributes
+		@return object attributes
+		~#
 		method : public : GetKeys() ~ Vector {
 			if(@map_elems <> Nil) {
 				return @map_elems->GetKeys();
@@ -497,6 +569,10 @@ bundle JSON {
 			return Nil;
 		}
 		
+		#~
+		Gets the size of an array or object value
+		@return size of an array or object value
+		~#
 		method : public : Size() ~ Int {
 			if(@array_elems <> Nil) {
 				return @array_elems->Size();
@@ -509,6 +585,10 @@ bundle JSON {
 			return 0;
 		}
 
+		#~
+		Format the element into a JSON string
+		@return JSON string
+		~#
 		method : public : ToString() ~ String {
 			output := String->New();
 			Format(output);		
