@@ -88,6 +88,94 @@ class HtmlMaker {
 		
 		return true;
 	}
+
+	#~
+	DOC ME
+	~#
+	method : CreateBundleIndexHtml(bundles : StringMap, class_header : String) ~ Nil {
+		html := String->New(class_header);
+		html += "<h2>Bundles</h2>";
+		
+		html += "<table class='doc-table'><tr><th>Bundle</th><th>Description</th></tr>";
+
+		bundle_keys := bundles->GetKeys();
+		each(i : bundle_keys) {
+			bundle_block := bundles->Find(bundle_keys->Get(i)->As(String))->As(BundleBlock);
+			if(bundle_block->GetDesc() <> Nil) {
+				html += "<tr><td>@bundle_name</td><td>@bundle_desc</td></tr>";
+				sec_a := "<a href='#";
+				sec_a += bundle_block->GetName()->ToLower();
+				sec_a += "'>";
+				sec_a += bundle_block->GetName();
+				sec_a += "</a>";
+				html := html->ReplaceAll("@bundle_name", sec_a);
+				html := html->ReplaceAll("@bundle_desc", bundle_block->GetDesc());
+			};
+		};
+		html += "</table>";
+
+		html += "</body></html>";
+		file_name := "../html/bundles.html";
+		out := FileWriter->New(file_name);
+		out->WriteString(html);
+		out->Close();
+	}
+	
+	#~
+	DOC ME
+	~#
+	method : CreateClassIndexHtml(bundles : StringMap, header : String) ~ Nil {
+		html := String->New(header);
+		html += "<h2>Classes</h2>";
+		
+		# bundles
+		bundle_keys := bundles->GetKeys();
+		each(i : bundle_keys) {
+			bundle_block := bundles->Find(bundle_keys->Get(i)->As(String))->As(BundleBlock);
+			# class description
+			if(bundle_block->IsParsed()) {
+				html += "<strong>";
+				html += bundle_block->GetName();
+				html += "</strong>";
+				
+				sec_b := "<ul>";
+				classes := bundle_block->GetClasses();
+				class_keys := classes->GetKeys();			
+				each(j : class_keys) {
+					class_block := classes->Find(class_keys->Get(j)->As(String))->As(ClassBlock);
+					if(class_block->IsParsed()) {
+						sec_b += "<li><a href='";
+						
+						file_name := class_block->GetBundleName()->ToLower();
+						file_name += '-';
+						file_name += class_block->GetName()->ToLower();
+						link_name := String->New(file_name);
+						link_name += ".html";
+
+						sec_b->Append(link_name->ToLower());
+						sec_b += "' target='main'>";
+						if(class_block->IsInterface()) {
+							sec_b->Append("<i>");
+							sec_b->Append(class_block->GetName());
+							sec_b->Append("</i>");
+						}
+						else {
+							sec_b->Append(class_block->GetName());
+						};
+						sec_b += "</a></li>";
+					};
+				};			
+				sec_b += "</ul>";			
+				html += sec_b;
+			};
+		};
+		
+		html += "</body></html>";
+		file_name := "../html/classes.html";
+		out := FileWriter->New(file_name);
+		out->WriteString(html);
+		out->Close();		
+	}
 	
 	#~
 	DOC ME
@@ -254,7 +342,7 @@ class HtmlMaker {
 	~#
 	method : FormatFunctions(class_name : String, short_name : String, funcs : Vector, html : String) ~ Nil {
 		if(funcs <> Nil) {
-			sec_d := "<h3>@short_name</h3><a name='@short_link'></a>";
+			sec_d := "<h3>@short_name</h3><a id='@short_link'></a>";
 			link_name := String->New(class_name);
 			link_name += '-';
 			link_name += short_name;
@@ -305,75 +393,5 @@ class HtmlMaker {
 				html += sec_g;
 			};
 		};
-	}
-	
-	#~
-	DOC ME
-	~#
-	method : CreateBundleIndexHtml(bundles : StringMap, class_header : String) ~ Nil {
-		html := String->New(class_header);
-		html += "<h2>Bundles</h2>";
-		
-		html += "</body></html>";
-		file_name := "../html/bundles.html";
-		out := FileWriter->New(file_name);
-		out->WriteString(html);
-		out->Close();
-	}
-	
-	#~
-	DOC ME
-	~#
-	method : CreateClassIndexHtml(bundles : StringMap, header : String) ~ Nil {
-		html := String->New(header);
-		html += "<h2>Classes</h2>";
-		
-		# bundles
-		bundle_keys := bundles->GetKeys();
-		each(i : bundle_keys) {
-			bundle_block := bundles->Find(bundle_keys->Get(i)->As(String))->As(BundleBlock);
-			# class description
-			if(bundle_block->IsParsed()) {
-				html += "<strong>";
-				html += bundle_block->GetName();
-				html += "</strong>";
-				
-				sec_b := "<ul>";
-				classes := bundle_block->GetClasses();
-				class_keys := classes->GetKeys();			
-				each(j : class_keys) {
-					class_block := classes->Find(class_keys->Get(j)->As(String))->As(ClassBlock);
-					if(class_block->IsParsed()) {
-						sec_b += "<li><a href='";
-						
-						file_name := class_block->GetBundleName()->ToLower();
-						file_name += '-';
-						file_name += class_block->GetName()->ToLower();
-						link_name := String->New(file_name);
-						link_name += ".html";
-
-						sec_b->Append(link_name->ToLower());
-						sec_b += "' target='main'>";
-						if(class_block->IsInterface()) {
-							sec_b->Append("<i>");
-							sec_b->Append(class_block->GetName());
-							sec_b->Append("</i>");
-						}
-						else {
-							sec_b->Append(class_block->GetName());
-						};
-						sec_b += "</a></li>";
-					};
-				};			
-				sec_b += "</ul>";			
-				html += sec_b;
-			};
-		};
-		
-		html += "</body></html>";
-		file_name := "../html/classes.html";
-		out := FileWriter->New(file_name);
-		out->WriteString(html);
-		out->Close();		
 	}
 }
