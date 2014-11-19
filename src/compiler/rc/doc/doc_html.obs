@@ -270,6 +270,7 @@ class HtmlMaker {
 		file_name += '-';
 		file_name += class_block->GetName()->ToLower();
 		file_name += ".html";
+		
 		out := FileWriter->New(file_name);
 		out->WriteString(html);
 		out->Close();
@@ -299,6 +300,8 @@ class HtmlMaker {
 		if(index > -1) {
 			type_name := full_name->SubString(index);
 		};
+		
+		class_block := GetBundleClass(@bundle_block->GetName(), type_name);
 		
 		if(class_block = Nil) {		
 			class_block := GetBundleClass("System", type_name);
