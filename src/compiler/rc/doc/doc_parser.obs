@@ -480,6 +480,7 @@ class DocBlock {
 
 class BundleBlock from DocBlock {
 	@name : String;
+	@desc : String;
 	@parsed : Bool;
 	@classes : StringMap;
 	@interfaces : StringMap;
@@ -506,6 +507,10 @@ class BundleBlock from DocBlock {
 
 	method : public : GetName() ~ String {
 		return @name;
+	}
+
+	method : public : GetDesc() ~ String {
+		return @desc;
 	}
 
 	method : public : SetName(name : String) ~ Nil {
