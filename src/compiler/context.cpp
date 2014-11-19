@@ -1443,38 +1443,30 @@ bool ContextAnalyzer::Analyze()
     // enum call
     //
     else if(method_call->GetCallType() == ENUM_CALL) {
-      wstring enum_name; 
-      wstring item_name;
-      
       const wstring variable_name = method_call->GetVariableName();
       const wstring method_name = method_call->GetMethodName();
       
       //
       // check library enum reference; fully qualified name
       //
-      LibraryEnum* lib_eenum = linker->SearchEnumLibraries(variable_name + L"#" + method_name, program->GetUses(current_class->GetFileName()));
+      LibraryEnum* lib_eenum = linker->SearchEnumLibraries(variable_name + L"#" + method_name, 
+                                                           program->GetUses(current_class->GetFileName()));
+      if(!lib_eenum) {
+        lib_eenum = linker->SearchEnumLibraries(variable_name, program->GetUses(current_class->GetFileName()));
+      }
+      
       if(lib_eenum &&  method_call->GetMethodCall()) {
-        item_name = method_call->GetMethodCall()->GetVariableName();
-        LibraryEnumItem* lib_item = lib_eenum->GetItem(item_name);
-        if(lib_item) {
-          if(method_call->GetMethodCall()) {
-            method_call->GetMethodCall()->SetLibraryEnumItem(lib_item, lib_eenum->GetName());
-            method_call->SetEvalType(TypeFactory::Instance()->MakeType(CLASS_TYPE, lib_eenum->GetName()), false);
-            method_call->GetMethodCall()->SetEvalType(method_call->GetEvalType(), false);
-          }
-          else {
-            method_call->SetLibraryEnumItem(lib_item, lib_eenum->GetName());
-            method_call->SetEvalType(TypeFactory::Instance()->MakeType(CLASS_TYPE, lib_eenum->GetName()), false);
-          }
-        } 
-        else {
-          ProcessError(static_cast<Expression*>(method_call), L"Undefined enum item: '" + item_name + L"'");
-        }
+        const wstring item_name = method_call->GetMethodCall()->GetVariableName();
+        ResolveEnumCall(lib_eenum, item_name, method_call);
       } 
-      else {
+      else if(lib_eenum) {
+        ResolveEnumCall(lib_eenum, method_name, method_call);        
+      }
+      else {       
         //
         // check program enum reference
         //
+        wstring enum_name; wstring item_name;
         if(variable_name == current_class->GetName() && method_call->GetMethodCall()) {
           enum_name = method_name;
           item_name = method_call->GetMethodCall()->GetVariableName();
@@ -3515,13 +3507,13 @@ bool ContextAnalyzer::Analyze()
           ProcessError(left_expr, L"Invalid operation using classes: " +
                        ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Float");
           break;
-
+          
         case CLASS_TYPE:
-          if((SearchProgramEnums(left->GetClassName()) || linker->SearchEnumLibraries(left->GetClassName(), program->GetUses(current_class->GetFileName()))) &&
-             (SearchProgramEnums(right->GetClassName()) || linker->SearchEnumLibraries(right->GetClassName(), program->GetUses(current_class->GetFileName())))) {
-            if(left->GetClassName() != right->GetClassName()) {
-              ProcessError(left_expr, L"Invalid operation between mixed enums");
-            }
+          if((SearchProgramEnums(left->GetClassName()) || 
+              linker->SearchEnumLibraries(left->GetClassName(), program->GetUses(current_class->GetFileName()))) &&
+             (SearchProgramEnums(right->GetClassName()) || 
+              linker->SearchEnumLibraries(right->GetClassName(), program->GetUses(current_class->GetFileName())))) {
+            AnalyzeClassCast(left, right, left_expr, depth + 1);            
           }
           else if((!SearchProgramClasses(left->GetClassName()) && 
                    !linker->SearchClassLibraries(left->GetClassName(), program->GetUses(current_class->GetFileName()))) ||
@@ -4092,7 +4084,12 @@ bool ContextAnalyzer::Analyze()
     if(!right) {
       right = expression->GetEvalType();
     }
-
+    
+    AnalyzeClassCast(left, right, expression, depth + 1);
+  }
+  
+  void ContextAnalyzer::AnalyzeClassCast(Type* left, Type* right, Expression* expression, const int depth)
+  {
     //
     // program enum
     //
@@ -4204,7 +4201,8 @@ bool ContextAnalyzer::Analyze()
           const wstring right_str = ReplaceSubstring(right_lib_enum->GetName(), L"#", L"->");
           ProcessError(expression, L"Invalid cast between enums: '" + left_str + L"' and '" + right_str + L"'");
         }
-      } else {
+      } 
+      else {
         ProcessError(expression, L"Invalid cast between enum and class");
       }
     }

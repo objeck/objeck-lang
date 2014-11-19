@@ -1,3 +1,8 @@
+11/18/14
+* fixed a nested enum issue in libs
+* resoloved a method inlining bug
+* new html api docs
+
 11/4/14
 * fixed bug with compile command line options "debug"
 * fixed scope library issue with mutliple files
