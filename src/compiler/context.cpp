@@ -4266,7 +4266,7 @@ bool ContextAnalyzer::Analyze()
       }
     }
     else {
-      ProcessError(expression, L"Invalid class, enum or method call context");
+      ProcessError(expression, L"Invalid class, enum or method call context\n\tEnsure all required libraries have been included");
     } 
   }
 
