@@ -1,104 +1,46 @@
-#~
-This is a 
-test class
-~#
-class FBar from XO implements Foo, Bar {
-	#~ 
-	foo bar 
-	@return returns value
-	~#
-	function : public : Get() ~ Int {
-		return 13;
+bundle Foo {
+	class Fie {
+		@fum : Fum;	
+		@zesta : Fum->Zesta;
+
+		method : public : Blah(fum : Fum) ~ Nil {
+			@fum := fum;
+			foo := Foo->New();	
+			if(fum = foo->GetFum()) {
+				"bar foo"->PrintLine();
+			};
+		}
+
+		method : public : Bar(f : Fum->Zesta) ~ Nil {
+			@zesta := f;
+			if(@fum->GetZesta() = Fum->Zesta->B) {
+				"foo bar"->PrintLine();
+			};
+		}
 	}
 
-	#~
-	dr. dre
-	@class FBar
-	~#
-	enum Hello {
-		A, B,
-				c,
-		D}
-}
+	class Foo {
+		@fum : Fum;
 
-#~
-rrr
-~#
-enum AYo {
-	a, bba, cc,
-		dfd}
+		New() {
+		}
 
-#~
-This is a funkin
-test class
-class Test {
-}
-~#
-
-#~
-This is a funkin
-test class
-~#
-class Test {
-	#~
-	This is new
-	~#
-	New() {
-
+		method : public : GetFum() ~ Fum {
+			return @fum;
+		}
 	}
 
-	#~
-	Main function more text
-	yes more more test
-	@param a main argument
-	@return nada
-	~#
-	function : public : 
-			Main(a : String[]) ~ Nil {
-		s := "123456";
-		s->Delete(1,2);
-		s->Append('z');
-		s->PrintLine();
+	class Fum {
+		enum Zesta {
+			A, B, C
+		}
 
-		f := "cat";	
-		g := "foo";	
-		
-		f->Insert(3, g);
-		f->Append('r');
-		f->PrintLine();
-	} 
+		method : public : GetInt() ~ Int {
+			return 13;
+		}
 
-	#~
-	Hi ya 2...
-	@param f f of a function
-	@param g g of a function
-	@return nothing again
-	~#
-	method : A(f : (Int) ~ Int, g : Float, h : Int) ~ Nil {
-	}
-
-
-	#~
-	yet another test
-	@param index offset index
-	@return some string
-	~#
-	method : A(index : Float) ~ String {
-	}
-
-	method : A(f : (Int) ~ Int, g : ((Int) ~ Int) ~ Int) ~ Nil {
+		method : public : GetZesta() ~ Fum->Zesta {
+			return Fum->Zesta->B;
+		}
 	}
 }
-
-
-	#~
-   Compare interface
-  ~#
-  interface Compare {
-    #~
-     Compares two objects.
-		@param rhs object to comapre to
-     @return 1 if greater, -1 if less, otherwise 0
-    ~#
-    method : virtual : public : Compare(rhs : System.Compare) ~ Int;
-	}
