@@ -153,7 +153,7 @@ class DocParser {
 			SetBundle(bundle_block);
 		}
 		else {
-			IO.Console->Print("Unable to parse bundle block. Text='")->Print(block)->PrintLine("'");
+			IO.Console->Print("*** Unable to parse bundle block. text='")->Print(block)->PrintLine("' ***");
 		};
 
 		block := "";
@@ -170,10 +170,11 @@ class DocParser {
 		
 		enum_block := EnumBlock->New(block);
 		if(enum_block->IsParsed()) {
+IO.Console->Print("\tProcessed enum: name='")->Print(enum_block->GetName())->PrintLine("'");
 			@bundle_block->AddEnum(enum_block);
 		}
 		else {
-			IO.Console->Print("Unable to parse enum block. Text='")->Print(block)->PrintLine("'");
+			IO.Console->Print("*** Unable to parse enum block. Text='")->Print(block)->PrintLine("' ***");
 		};
 
 		block := "";
@@ -193,20 +194,22 @@ class DocParser {
 			@class_inf_block := ClassBlock->New(block, false);
 			if(@class_inf_block->IsParsed()) {
 				@class_inf_block->SetBundleName(@bundle_block->GetName());
+IO.Console->Print("\tProcessed class: name='")->Print(@class_inf_block->GetName())->PrintLine("'");
 				@bundle_block->AddClass(@class_inf_block);
 			}
 			else {
-				IO.Console->Print("Unable to parse class block. Text='")->Print(block)->PrintLine("'");
+				IO.Console->Print("*** Unable to parse class block. Text='")->Print(block)->PrintLine("' ***");
 			};
 		}
 		else if(name->Equals("interface")) {
 			@class_inf_block := ClassBlock->New(block, true);
 			if(@class_inf_block->IsParsed()) {
 				@class_inf_block->SetBundleName(@bundle_block->GetName());
+IO.Console->Print("\tProcessed interface: name='")->Print(@class_inf_block->GetName())->PrintLine("'");
 				@bundle_block->AddInterface(@class_inf_block);
 			}
 			else {
-				IO.Console->Print("Unable to parse interface block. Text='")->Print(block)->PrintLine("'");
+				IO.Console->Print("*** Unable to parse interface block. Text='")->Print(block)->PrintLine("' ***");
 			};
 		}
 		else if(@class_inf_block <> Nil & @class_inf_block->IsParsed()) {
