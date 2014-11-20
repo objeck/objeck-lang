@@ -1,36 +1,25 @@
-\title{Objeck Programmer's Guide} \author{
-  Randy Hollines \\
-  objeck@gmail.com\\
-} \date{\today}
 
-\documentclass[11pt]{article}
 
-\usepackage{aliascnt} \usepackage{hyperref} \usepackage{MnSymbol}
+\documentclass[11pt]{book}              % Book class in 11 points
+\parindent0pt  \parskip10pt             % make block paragraphs
+\raggedright                            % do not right justify
+
+\title{\bf Objeck Programming Guide}    % Supply information
+\author{Randy Hollines}              %   for the title page.
+\date{\today}  
+
+\usepackage{aliascnt} \usepackage{hyperref} 
+\usepackage{MnSymbol}
 \usepackage[pdftex]{graphicx}
 
-\begin{document}
+\begin{document}                        % End of preamble, start of text.
+\frontmatter                            % only in book class (roman page #s)
+\maketitle                              % Print title page.
+\tableofcontents                        % Print table of contents
 
-\maketitle
-\thispagestyle{empty}
-
-\vspace{\baselineskip}
-
-\begin{abstract}
-  An introduction to the Objeck programming language and it's
-  features.  This article is intended to introduce programmers and
-  compiler enthusiasts to the unique features and design of the Objeck
-  programming language.  Unless otherwise noted, this article covers
-  functionality that's part of v3.3.4  For additional information
-  please refer to the
-  \htmladdnormallink{project website}{http://www.objeck.org}.
-\end{abstract}
-
-\newpage
-\tableofcontents
-\newpage
-
+\mainmatter                             % only in book class (arabic page #s)
 \label{Introduction}
-\section{Introduction}
+\chapter{Introduction}
 The Objeck program language is an object-oriented computer language
 with functional features.  The language was designed to be an easy to
 use general purpose programming system.  The Objeck language allows
@@ -51,7 +40,7 @@ intuitive way to do things. Features include:
 \item Command line debugger
 \end{itemize}
 
-\section{Getting Started}
+\chapter{Getting Started}
 
 The Objeck distribution consists of a compiler, virtual machine,
 debugger and library inspection tool.  The compiler executable is
@@ -67,7 +56,7 @@ class Hello {
 }
 \end{verbatim}
 
-\subsection{Compiling Source}
+\section{Compiling Source}
 The example below compiles the source program \texttt{hello.obs} into
 the target binary file \texttt{hello.obe}.  The two output file types
 that the compiler supports are executables and shared libraries.
@@ -104,7 +93,7 @@ Additional compiler options are:
   \end{tabular}
 \end{center}
 
-\subsection{Executing}
+\section{Executing}
 The command-line example below executes the \texttt{hello.obe}
 executable. Note, for executables all required libraries are
 statically linked in the target output file.  When compiling shared
@@ -115,7 +104,7 @@ target output library file.
 obr hello.obe
 \end{verbatim}
 
-\section{The Basics}
+\chapter{The Basics}
 Now lets introduce the core features of the Objeck programming
 language.  \vspace{\baselineskip}
 
@@ -173,7 +162,7 @@ methods for each basic class type.  For example:
 Float->Pi()->PrintLine();
 \end{verbatim}
 
-\subsection{Alternative Syntax}
+\section{Alternative Syntax}
 The syntax of the language is based on UML which has ties with Pascal.  Given 
 the popularity of the C-style languages Objeck supports an alternative C-like 
 syntax.  In this mode, operators can be defined using a C-style syntax and 
@@ -192,7 +181,7 @@ if(13 != a) {
 }
 \end{verbatim}
 
-\subsection{Variable Declarations}
+\section{Variable Declarations}
 Variables can be declared for all of the basic types (described
 above), user defined objects and high-order functions. Variables can
 be declared anywhere in a program and are bound to traditional block
@@ -233,13 +222,13 @@ with the following default values:
   \end{tabular}
 \end{center}
 
-\subsection{Expressions}
+\section{Expressions}
 The Objeck language supports various types of expressions.  Some of
 these expressions include mathematical, logical, array and method
 calls.  The preceding sections describes some of the expressions that
 are supported in Objeck.
 
-\subsubsection{Mathematical and Logical Expressions}
+\subsection{Mathematical and Logical Expressions}
 The following code example demonstrates two ways to printing the
 number \texttt{42}.  The first way invokes the \texttt{PrintLine()}
 method for the literal \texttt{42}.  The second prints the product of
@@ -305,7 +294,7 @@ The following logical operators are supported in the Objeck language:
 \item greater--than--equal (\texttt{>=})
 \end{itemize}
 
-\subsubsection{Arrays}
+\subsection{Arrays}
 Objeck supports single and multi-dimensional arrays.  Arrays are
 allocated dynamically from the system heap.  The memory that is
 allocated for arrays is managed automatically by the garbage
@@ -346,7 +335,7 @@ class MakeWidgets {
 }
 \end{verbatim}
 
-\subsubsection{Characters and Strings}
+\subsection{Characters and Strings}
 All characters are Unicode encoded and stored internally in the format of the host operating system.  On Windows characters are stored internally as UTF-16 (2-byte) values.  On Linux and OS X characters are stored internally as UTF-32 (4-byte) values.  On all platforms characters are read and written in UTF-8, which is ASCII compatible.  
 
 Methods are provided to convert Unicode character arrays to UTF-8 bytes and vice versa.  Character array literals are allocated as \texttt{String} objects.  The \texttt{String} class provides support for advanced string operations (see below).
@@ -360,7 +349,7 @@ sizes[0]->PrintLine();
 sizes[1]->PrintLine();
 \end{verbatim}
 
-\subsubsection{Conditional Expressions}
+\subsection{Conditional Expressions}
 There's also support for ternary conditional expressions.  For example
 the following statement prints the value \texttt{false} after two
 logical comparisons.
@@ -371,7 +360,7 @@ b := 13;
 (((a < 13) ? 10 : 20) >  15)->PrintLine();
 \end{verbatim}
 
-\subsection{Statements}
+\section{Statements}
 Besides providing support for declaration statements the language has
 support for conditional and control statements.  As with other
 languages, control statements can be nested in order to provide finer
@@ -380,7 +369,7 @@ and \texttt{select} statements. Basic looping statements include
 \texttt{while}, \texttt{do/while}, \texttt{for} and \texttt{each}
 loops.  Note, all statements end with the `\texttt{;}' character.
 
-\subsubsection{If Statement}
+\subsection{If Statement}
 
 An \texttt{if} statement is a control statement that executes an
 associated block of code if it evaluates to \texttt{true}.  If the
@@ -402,7 +391,7 @@ else {
 };
 \end{verbatim}
 
-\subsubsection{Select Statement}
+\subsection{Select Statement}
 
 A \texttt{select} statement maps a value to 1 or more labels.  Labels
 are associated to statement blocks.  A label may either be a literal
@@ -430,7 +419,7 @@ select(v) {
 };
 \end{verbatim}
 
-\subsubsection{While Statement}
+\subsection{While Statement}
 
 A \texttt{while} statement is a control statement that will continue
 to execute it's main body as long as it's conditional expression
@@ -445,7 +434,7 @@ while(i > 0) {
 }
 \end{verbatim}
 
-\subsubsection{Do/While Statement}
+\subsection{Do/While Statement}
 
 A \texttt{do/while} statement is a control statement that will execute
 it's main body at least once and continue to execute it's main body as
@@ -462,7 +451,7 @@ do {
 while(i > 0);
 \end{verbatim}
 
-\subsubsection{For Statements}
+\subsection{For Statements}
 
 The \texttt{for} statement is another common looping construct.  The
 \texttt{for} loop consists of a pre-condition statement followed by an
@@ -475,7 +464,7 @@ for(i := 0; i < location->Size(); i += 1;) {
 }
 \end{verbatim}
 
-\subsubsection{Each Statements}
+\subsection{Each Statements}
 
 The \texttt{each} statement is a specialized version of a \texttt{for}
 statement.  The \texttt{each} loop consists of a counter variable and
@@ -494,9 +483,9 @@ each(i : values) {
 };
 \end{verbatim}
 
-\section{User Defined Types}
+\chapter{User Defined Types}
 
-\subsection{Enums}
+\section{Enums}
 Enums are user defined enumerated types.  The main use of an
 \texttt{enum} is to group a class of countable values, for example
 colors, into a distinct category.  Once \texttt{enum} values have been
@@ -540,7 +529,7 @@ class Token {
 }
 \end{verbatim}
 
-\subsection{Classes}
+\section{Classes}
 Classes are user defined types that allow programmers to create
 specialized data types.  Classes are made up of attributes (data) and
 operations (methods).  Classes are used to encapsulate programming
@@ -550,7 +539,7 @@ instances are created by calling an object's \texttt{New()} function.
 Note, an object instance can only be created if one or more
 \texttt{New()} functions have been defined.
 
-\subsubsection{Class Inheritance}
+\subsection{Class Inheritance}
 Classes may be derived from other classes using the \texttt{from}
 keyword.  Class inheritance allows classes to share common
 functionality.  The Objeck language supports single class inheritance,
@@ -595,7 +584,7 @@ class Bar from Foo {
 }
 \end{verbatim}
 
-\subsubsection{Class Casting and Identification}
+\subsection{Class Casting and Identification}
 An object that is inherited from another object may be either upcasted
 or downcasted.  Object casting can be performed using the
 \texttt{As()} operator.  Upcasting requires a runtime check, while
@@ -633,7 +622,7 @@ associated with that instance's class type.  This method is generally
 used to determine if two object instances are of the same or different
 classes.
 
-\subsubsection{Methods and Functions}
+\subsection{Methods and Functions}
 The Objeck language supports both methods and functions.  Functions
 are public static procedures that may be executed by any class.
 Methods are operations that may be performed on an object instance.
@@ -674,7 +663,7 @@ Below is an example of declaring a virtual method:
 method : virtual : public : GetMake() ~ String;
 \end{verbatim}
 
-\subsubsection{Guaranteed Execution of Code}
+\subsection{Guaranteed Execution of Code}
 Upon exiting a method or function a block of code may be added that is 
 guaranteed to be executed. In order to define such code use the 
 \texttt{leaving} keyword. The \texttt{leaving} code block must be 
@@ -701,7 +690,7 @@ leaving {
 "Done."->PrintLine();
 \end{verbatim}
 
-\subsection{Interfaces}
+\section{Interfaces}
 As a modern object-oriented language, Objeck supports interfaces.
 Interfaces define virtual methods that must be implemented by a given
 class.  A class may implement one or more interfaces.  Interface
@@ -731,7 +720,7 @@ class Ufo implements Vehicle, Color {
 }
 \end{verbatim}
 
-\subsubsection{Anonymous Classes}
+\subsection{Anonymous Classes}
 An anonymous class can be used to define inline interface methods.  An anonymous class must implement all virtual methods for an interface.  Variables that are within the scope of the anonymous class statement can be referenced by the anonymous class if they're passed as parameters the constructor.
 
 \begin{verbatim}
@@ -758,7 +747,7 @@ class Hello {
 
 \end{verbatim}
 
-\subsection{Higher-Order Functions}
+\section{Higher-Order Functions}
 The Objeck language supports the notion of higher-order functions such
 that a given function may be bound to a variable at runtime.
 Variables are assigned based upon functional prototypes.  Prototypes
@@ -769,7 +758,7 @@ functions/methods, returned from other functions/method or dynamically
 evoked.  Please note, methods are not treated as higher-order
 constructs only functions.
 
-\subsubsection{Assigning and Passing Functions}
+\subsection{Assigning and Passing Functions}
 The following example shows how a function is defined and assigned to
 a variable:
 \begin{verbatim}
@@ -785,7 +774,7 @@ size1 := EnvokeSize("Hello", s1);
 size2 := EnvokeSize("Hello", s2);
 \end{verbatim}
 
-\subsubsection{Envoking Functions}
+\subsection{Envoking Functions}
 The following example shows how a function variable can be assigned
 and envoked:
 \begin{verbatim}
@@ -796,7 +785,7 @@ method : public : EnvokeSize(s : String, f : (String) ~ Int) ~ Int {
 ...
 \end{verbatim}
 
-\section{Native Shared Library Support}
+\chapter{Native Shared Library Support}
 The Objeck Language has the ability to interact with native C/C++
 shared libraries via runtime extensions.  The APIs allows a programmer
 to load a shared libraries and invoke native C functions.  Data is
@@ -855,7 +844,7 @@ following:
 \item \begin{verbatim}APITools_SetFloatArrayElement\end{verbatim}
 \end{itemize}
 
-\section{Debugger}
+\chapter{Debugger}
 The Objeck compiler toolset contains a simple interactive read-only
 debugger, which allows programmers to monitor the runtime behavior of
 their programs.  The debugger allows programmers to set breakpoints
@@ -863,7 +852,7 @@ within methods based upon source line numbers.  The debugger can also
 calculate simple arithmetic expressions involving variables and
 constants. The following commands are currently supported:
 
-\subsection{Debugging Commands}
+\section{Debugging Commands}
 \begin{center}
   \begin{tabular}{| l |p{4 cm} |p{4 cm} |}
     \hline
@@ -891,7 +880,7 @@ constants. The following commands are currently supported:
   \end{tabular}
 \end{center}
 
-\subsection{Starting the Debugger}
+\section{Starting the Debugger}
 The source program must be compiled with the \texttt{-debug} set. The
 command line debugger is started up running the \texttt{odb}
 executable. The \texttt{-exe} option must be present and specify the
@@ -900,7 +889,7 @@ specifies the path to the program source.  Also note, to print
 instance level variables the path must start with
 \texttt{@self$\rightarrow$}.
 
-\section{Class Libraries}
+\chapter{Class Libraries}
 Objeck includes class libraries that provides access to system
 resources, such as files and sockets, while also providing support for
 data structures like vectors, lists, queues, etc.  As new classes are
@@ -914,11 +903,8 @@ The diagram below outlines available class bundles:
 
 Please refer to the online class library \htmladdnormallink{documentation}{http://www.objeck.org/docs/api/index.html} for additional information about bundles and classes.
 
-\newpage
-
-
-\section{Examples}
-\subsection{Prime Numbers}
+\chapter{Examples}
+\section{Prime Numbers}
 Demonstrates basic language features such as arithmetic and logical
 operations.
 \begingroup
@@ -955,7 +941,7 @@ class FindPrime {
 }
 \end{verbatim}
 \endgroup
-\subsection{Arrays}
+\section{Arrays}
 Demonstrates the use of arrays.
 \begingroup
 \fontsize{8pt}{9pt}\selectfont
@@ -994,7 +980,7 @@ class Transpose {
 \end{verbatim}
 \endgroup
 
-\subsection{Simple HTTP client}
+\section{Simple HTTP client}
 Demonstrates HTTP access.
 \begingroup
 \fontsize{8pt}{9pt}\selectfont
@@ -1020,7 +1006,7 @@ class HttpTest {
 \end{verbatim}
 \endgroup
 
-\subsection{XML Parsing and Querying}
+\section{XML Parsing and Querying}
 Demonstrates simple XML parsing.
 \begingroup
 \fontsize{8pt}{9pt}\selectfont
@@ -1084,7 +1070,7 @@ class Test {
 \end{verbatim}
 \endgroup
 
-\subsection{Echo Server}
+\section{Echo Server}
 Demonstrates usage of server sockets and threads.
 \begingroup
 \fontsize{8pt}{9pt}\selectfont
@@ -1128,11 +1114,8 @@ bundle Default {
 \end{verbatim}
 \endgroup
 
-
-\newpage
-
-\section{Appendix A: Sample Debugging Session}
-\subsection{Source for Example}
+\chapter{Appendix A: Sample Debugging Session}
+\section{Source for Example}
 \begin{verbatim}
 bundle Default {
   class Bar {
@@ -1177,7 +1160,7 @@ bundle Default {
 \end{verbatim}
 The sample file is named \texttt{debug.obs}.
 
-\subsection{Compiling the Source and Starting the Debugger}
+\section{Compiling the Source and Starting the Debugger}
 \begin{verbatim}
 obc -src test_src\debug.obs -dest a.obe -debug
 obd -exe ..\..\compiler\a.obe -src ..\..\compiler\test_src
@@ -1189,7 +1172,7 @@ loaded executable: file='../../compiler/a.obe'
 source files: path='../../compiler/test_src/'
 \end{verbatim}
 
-\subsection{Setting a Breakpoint and Running the Program}
+\section{Setting a Breakpoint and Running the Program}
 \begin{verbatim}
 > b debug.obs:31
 added break point: file='debug.obs:31'
@@ -1212,7 +1195,7 @@ break: file='debug.obs:31', method='Test->Main(..)'
 break: file='debug2.obs:32', method='Test->Main(..)'
 \end{verbatim}
 
-\subsection{Printing a Value}
+\section{Printing a Value}
 \begin{verbatim}
 > p d
 print: type=Float, value=11.12
@@ -1236,14 +1219,14 @@ print: type=Float, value=8.085
 goodbye.
 \end{verbatim}
 
-\section{Appendix B: Compiler and VM Design}
+\chapter{Appendix B: Compiler and VM Design}
 \includegraphics[scale=0.60]{../../images/compiler_data_flow.png}
 
 The following section gives a brief overview of the major
 architectural components the comprise the Objeck language compiler and
 virtual machine.
 
-\subsection{Compiler}
+\section{Compiler}
 The language compiler is written in C++ and makes heavy use of the C++
 STL for portability across platforms.  As mentioned in the
 introduction, the compiler accepts source files and shared libraries
@@ -1252,7 +1235,7 @@ the compiler has two modes of operation: \texttt{User Mode} compiles
 traditional end-user programs, while \texttt{System Mode} compiles
 system libraries and processes special system language directives.
 
-\subsubsection{Scanner and Parser}
+\subsection{Scanner and Parser}
 The scanner component reads source files and parses the text into
 tokens.  The scanner works in conjugation with the \emph{LL(k)} parser
 by providing \emph{k} lookahead tokens for parsing.  Note, the scanner
@@ -1261,7 +1244,7 @@ can only scan system language directives while in \texttt{System
 generates an abstract parser tree, which is passed to the Contextual
 Analyser for validation.
 
-\subsubsection{Contextual Analyser}
+\subsection{Contextual Analyser}
 The Contextual Analyzer is responsible for ensuring that a source
 program is valid.  In addition, the context analyzer also creates
 relationships between contextually resolved entities (i.e. methods
@@ -1270,25 +1253,25 @@ parser tree and shared libraries as input and produces a decorated
 parse tree as output.  The decorated parse tree is then passed to the
 Intermediate Code Generator for the production of VM instructions.
 
-\subsubsection{Intermediate Code Generator and Optimzier}
+\subsection{Intermediate Code Generator and Optimzier}
 The Intermediate Code Generator accpets a decorated parse and produces
 a flat list of VM stack instructions.  These instruction lists are
 then passed to the Optimizer for basic block optimizations (constant
 folding, strength reduction, instruction simplification and method
 inlining).
 
-\subsubsection{Target Emitter}
+\subsection{Target Emitter}
 Finally, the improved intermediate code is passed to code emitter
 component, which writes it to a file.
 
-\subsection{Virtual Machine}
+\section{Virtual Machine}
 The language VM is written in C/C++ and was designed to be highly
 portable.  The VM makes heavy use of operating system specific APIs
 (i.e. WIN32 and POSIX) but does so in an abstracted manner.  The JIT
 compiler is targeted to produce machine code for the IA-32 and AMD64
 hardware architectures.
 
-\subsubsection{Loader}
+\subsection{Loader}
 The loader component allows the VM to read target code structures such
 as classes, methods and VM instructions.  The loader create an
 in-memory representation of this information, which is used by the VM
@@ -1296,20 +1279,20 @@ interpreter and JIT compiler.  In addition, the loader processes
 command-line parameters that are passed into the VM prior to
 execution.
 
-\subsubsection{Interpreter}
+\subsection{Interpreter}
 The Interpreter executes stack based VM instructions (listed below)
 and manages two primary stacks: the execution stack and call stack.
 The execution stack is used to manage the data that is needed for VM
 calculations.  The call stack is used to manage function/method calls
 and the states between those calls.
 
-\subsubsection{JIT Compiler}
+\subsection{JIT Compiler}
 The JIT compiler translates stack based VM instructions into processor
 specific machine code (i.e. IA-32 and AMD64).  The JIT compiler is
 evoked by the interpreter and methods are translated into machine code
 and cached for subsequent calls.
 
-\subsubsection{Memory Manager}
+\subsection{Memory Manager}
 The Memory Manager component allows the runtime system to manage the
 user allocation/deallocation of heap memory.  The memory mangers
 implements a multi-thread ``mark and sweep'' algorithm.  The marking
