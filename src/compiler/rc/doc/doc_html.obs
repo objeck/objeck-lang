@@ -94,7 +94,7 @@ class HtmlMaker {
 	~#
 	method : CreateBundleIndexHtml(bundles : StringMap, class_header : String) ~ Nil {
 		html := String->New(class_header);
-		html += "<h2>Bundles</h2>";
+		html += "<h2><center>Objeck Class Libraries</center></h2>";
 		
 		html += "<table class='doc-table'><tr><th>Bundle</th><th>Description</th></tr>";
 
@@ -126,7 +126,7 @@ class HtmlMaker {
 	~#
 	method : CreateClassIndexHtml(bundles : StringMap, header : String) ~ Nil {
 		html := String->New(header);
-		html += "<h2>Classes</h2>";
+		html += "";
 		
 		# bundles
 		bundle_keys := bundles->GetKeys();
@@ -186,7 +186,7 @@ class HtmlMaker {
 		
 		sec_b : String;
 		if(class_block->IsInterface()) {
-			sec_b := "<h2><i>@class_name</i></h2><p>@class_desc</p>";
+			sec_b := "<h2>@class_name</h2><p>@class_desc</p>";
 		}
 		else {
 			sec_b := "<h2>@class_name</h2><p>@class_desc</p>";
@@ -198,10 +198,16 @@ class HtmlMaker {
 		sec_h := "";
 		from_name := class_block->GetFrom();
 		implemented_names := class_block->GetImplemented();
+		
+		if(class_block->IsInterface()) {
+			sec_h += "<p><i>Interface</i></p>";
+		};
+		
 		if(from_name <> Nil) {
 			sec_h += "<p>Derived from: <i>@parent_class_desc</i></p>";
-		}
-		else if(implemented_names->Size() > 0) {
+		};
+		
+		if(implemented_names->Size() > 0) {
 			sec_h += "<p>Implements: <i>";
 			each(j : implemented_names) {
 				implemented_name := implemented_names->Get(j)->As(String);
@@ -218,7 +224,7 @@ class HtmlMaker {
 		sec_c := "";					
 		func_names := class_block->GetFunctionNames();
 		if(func_names->Size() > 0) {
-			sec_c += "Operations<ul>";
+			sec_c += "<strong>Operations</strong><ul>";
 
 			each(j : func_names) {
 				short_name := func_names->Get(j)->As(String);
@@ -365,7 +371,7 @@ class HtmlMaker {
 				params := func->GetParams();
 				sec_f := "";
 				if(params->Size() > 0) {
-					sec_f := "<div style='padding: 5px 10px; font-size: 13px'>Parameters</div>";
+					sec_f := "<div style='padding: 5px 10px; font-size: 13px'><i>Parameters</i></div>";
 					sec_f += "<table class='doc-table'><tr><th>Name</th><th>Type</th><th>";
 					sec_f += "Description</th></tr>";
 			
@@ -386,7 +392,7 @@ class HtmlMaker {
 				# TODO:
 				sec_g := "";
 				if(func->GetReturnTag() <> Nil) {
-					sec_g += "<br/><div style='padding: 5px 10px; font-size: 13px'>Return</div>";
+					sec_g += "<br/><div style='padding: 5px 10px; font-size: 13px'><i>Return</i></div>";
 					sec_g += "<table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr>";
 					sec_g += "<td>@return_type</td><td>@return_desc</td></tr></table>";
 					sec_g := sec_g->ReplaceAll("@return_type", GetTypeLink(func->GetReturnType()->GetTypeName()));
