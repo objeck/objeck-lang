@@ -39,6 +39,7 @@ ul {
 
 code {
 	font-family: Monaco, Courier, monospace;
+	color: #006400;
 	display: block;
 	padding: 5px 10px;
 	font-size: 14px;
