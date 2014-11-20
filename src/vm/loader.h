@@ -187,7 +187,7 @@ public:
     return NULL;
   }
   
-  int GetConfigurationParameter(const wstring key) {
+  int GetConfigurationParameter(const wstring& key) {
     map<const wstring, const int>::iterator result = params.find(key);
     if(result != params.end()) {
       return result->second;

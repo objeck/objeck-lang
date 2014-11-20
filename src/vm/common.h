@@ -86,7 +86,7 @@ using namespace instructions;
 
 class StackClass;
 
-inline wstring IntToString(int v)
+inline const wstring IntToString(int v)
 {
   wostringstream str;
   str << v;
@@ -1091,7 +1091,7 @@ class StackProgram {
   }
 
 #ifdef _WIN32
-  static wstring GetProperty(wstring key) {
+  static wstring GetProperty(const wstring& key) {
     wstring value;
 
     EnterCriticalSection(&prop_cs);
@@ -1104,13 +1104,13 @@ class StackProgram {
     return value;
   }
 
-  static void SetProperty(wstring key, wstring value) {
+  static void SetProperty(const wstring& key, const wstring& value) {
     EnterCriticalSection(&prop_cs);
     properties_map.insert(pair<wstring, wstring>(key, value));
     LeaveCriticalSection(&prop_cs);
   }
 #else
-  static wstring GetProperty(wstring key) {
+  static wstring GetProperty(const wstring& key) {
     wstring value;
     
     pthread_mutex_lock(&prop_mutex);
@@ -1123,7 +1123,7 @@ class StackProgram {
     return value;
   }
 
-  static void SetProperty(wstring key, wstring value) {
+  static void SetProperty(const wstring& key, const wstring& value) {
     pthread_mutex_lock(&prop_mutex);
     properties_map.insert(pair<wstring, wstring>(key, value));
     pthread_mutex_unlock(&prop_mutex);
