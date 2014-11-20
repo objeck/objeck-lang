@@ -1,23 +1,25 @@
+\documentclass[]{report}   % list options between brackets
 
-
-\documentclass[11pt]{book}              % Book class in 11 points
-\parindent0pt  \parskip10pt             % make block paragraphs
-\raggedright                            % do not right justify
-
-\title{\bf Objeck Programming Guide}    % Supply information
-\author{Randy Hollines}              %   for the title page.
-\date{\today}  
-
-\usepackage{aliascnt} \usepackage{hyperref} 
+\usepackage{aliascnt} 
+\usepackage{hyperref} 
 \usepackage{MnSymbol}
 \usepackage[pdftex]{graphicx}
 
-\begin{document}                        % End of preamble, start of text.
-\frontmatter                            % only in book class (roman page #s)
-\maketitle                              % Print title page.
-\tableofcontents                        % Print table of contents
+% type user-defined commands here
 
-\mainmatter                             % only in book class (arabic page #s)
+\begin{document}
+
+\title{Objeck Programmng Language}   % type title between braces
+\author{Randy Hollines}         % type author(s) between braces
+\date{\today}    % type date between braces
+\maketitle
+
+\begin{abstract}
+Objeck is an object-oriented computer language with functional
+features. The language has ties with Java, Scheme and UML. In this 
+language all data types, except for higher-order functions, are treated as objects.
+\end{abstract}
+
 \label{Introduction}
 \chapter{Introduction}
 The Objeck program language is an object-oriented computer language
@@ -78,7 +80,7 @@ obc -src examples\xml_parser.obs -lib collect.obl,xml.obl -dest a.obe
 \end{verbatim}
 
 Additional compiler options are:
-\begin{center}
+\begin{table}
   \begin{tabular}{| l | l |}
     \hline
     \emph{Option} & \emph{Description} \\ \hline \hline
@@ -91,7 +93,7 @@ Additional compiler options are:
     \texttt{-alt} & compile code that is written using a C-like syntax \\ \hline
     \texttt{-debug} & if set, produces debug out for use by the interactive debugger (see below) \\ \hline
   \end{tabular}
-\end{center}
+\end{table}
 
 \section{Executing}
 The command-line example below executes the \texttt{hello.obe}
@@ -112,7 +114,7 @@ Let's first start with a list of keywords that exist in language.
 These words are reserved for the language and may not be used as
 identifiers.
 
-\begin{center}
+\begin{table}
   \begin{tabular}{ | c | c | c | c | c | }
     \hline
     \multicolumn{5}{|c|}{\emph{Keywords}} \\ \hline \hline
@@ -126,7 +128,7 @@ identifiers.
     return & select & --- & static & true \\ \hline
     TypeOf & use & virtual & while & xor \\ \hline
   \end{tabular}
-\end{center}
+\end{table}
 
 In Objeck, all data types (excluding higher-order functions) are
 treated as objects. Basic objects provide supports for boolean,
@@ -134,7 +136,7 @@ character, byte, integer and decimal types.  These basic objects can
 be used to create more complex user defined objects.  The listing
 below defines the basic objects that are supported in the language:
 
-\begin{center}
+\begin{table}
   \begin{tabular}{| l | l |}
     \hline
     \emph{Type} & \emph{Description} \\ \hline \hline
@@ -150,7 +152,7 @@ below defines the basic objects that are supported in the language:
     \texttt{Float[]} &  decimal array \\ \hline
     \texttt{Function} &  4--byte integer pair \\ \hline
   \end{tabular}
-\end{center}
+\end{table}
 
 As mentioned above, basic types are objects and have associated
 methods for each basic class type.  For example:
@@ -207,8 +209,7 @@ c := 7; # implicit type deceleration
 Types that are not initialized at declaration time are initialized
 with the following default values:
 
-\vspace{\baselineskip}
-\begin{center}
+\begin{table}
   \begin{tabular}{| l | c |}
     \hline
     \emph{Type} & \emph{Initialization} \\ \hline \hline
@@ -220,7 +221,7 @@ with the following default values:
     Object & \texttt{Nil} \\ \hline
     Function & \texttt{Nil} \\ \hline
   \end{tabular}
-\end{center}
+\end{table}
 
 \section{Expressions}
 The Objeck language supports various types of expressions.  Some of
@@ -853,7 +854,7 @@ calculate simple arithmetic expressions involving variables and
 constants. The following commands are currently supported:
 
 \section{Debugging Commands}
-\begin{center}
+\begin{table}
   \begin{tabular}{| l |p{4 cm} |p{4 cm} |}
     \hline
     \emph{Command} & \emph{Description} & \emph{Example} \\ \hline \hline
@@ -878,7 +879,7 @@ constants. The following commands are currently supported:
     \texttt{src} &  specifies a new source path & \texttt{src "../../"} \\ \hline
     \texttt{[q]uit} &  exits a given debugging session &  \\ \hline
   \end{tabular}
-\end{center}
+\end{table}
 
 \section{Starting the Debugger}
 The source program must be compiled with the \texttt{-debug} set. The
