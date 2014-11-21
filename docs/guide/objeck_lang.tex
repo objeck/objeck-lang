@@ -14,6 +14,8 @@
 \date{\today}    % type date between braces
 \maketitle
 
+\tableofcontents
+
 \begin{abstract}
 Objeck is an object-oriented computer language with functional
 features. The language has ties with Java, Scheme and UML. In this 
@@ -33,10 +35,10 @@ intuitive way to do things. Features include:
 \item Support for object-oriented programming (all data types are
   treated as objects)
 \item Functional support (higher-order functions)
-\item Unicode support with external UTF-8 encoding/decoding
-\item Cross platform (support for OS X, Linux and Windows)
+\item Native Unicode support with external UTF-8 encoding/decoding
+\item Cross platform support (for OS X, Linux and Windows)
 \item Concurrent runtime JIT support
-\item Multi-threaded memory garbage collector
+\item Multi-threaded memory management/garbage collector
 \item Local optimizations including method inlining
 \item Support for static libraries
 \item Command line debugger
@@ -80,7 +82,7 @@ obc -src examples\xml_parser.obs -lib collect.obl,xml.obl -dest a.obe
 \end{verbatim}
 
 Additional compiler options are:
-\begin{table}
+\begin{flushleft}
   \begin{tabular}{| l | l |}
     \hline
     \emph{Option} & \emph{Description} \\ \hline \hline
@@ -93,7 +95,7 @@ Additional compiler options are:
     \texttt{-alt} & compile code that is written using a C-like syntax \\ \hline
     \texttt{-debug} & if set, produces debug out for use by the interactive debugger (see below) \\ \hline
   \end{tabular}
-\end{table}
+\end{flushleft}
 
 \section{Executing}
 The command-line example below executes the \texttt{hello.obe}
@@ -114,7 +116,7 @@ Let's first start with a list of keywords that exist in language.
 These words are reserved for the language and may not be used as
 identifiers.
 
-\begin{table}
+\begin{flushleft}
   \begin{tabular}{ | c | c | c | c | c | }
     \hline
     \multicolumn{5}{|c|}{\emph{Keywords}} \\ \hline \hline
@@ -128,7 +130,7 @@ identifiers.
     return & select & --- & static & true \\ \hline
     TypeOf & use & virtual & while & xor \\ \hline
   \end{tabular}
-\end{table}
+\end{flushleft}
 
 In Objeck, all data types (excluding higher-order functions) are
 treated as objects. Basic objects provide supports for boolean,
@@ -136,11 +138,11 @@ character, byte, integer and decimal types.  These basic objects can
 be used to create more complex user defined objects.  The listing
 below defines the basic objects that are supported in the language:
 
-\begin{table}
+\begin{flushleft}
   \begin{tabular}{| l | l |}
     \hline
     \emph{Type} & \emph{Description} \\ \hline \hline
-    \texttt{Char} & 2 or 4 byte character \\ \hline
+    \texttt{Char} & wide character \\ \hline
     \texttt{Char[]} &  character array \\ \hline
     \texttt{Bool} &  boolean value \\ \hline
     \texttt{Bool[]} &  boolean array \\ \hline
@@ -150,9 +152,9 @@ below defines the basic objects that are supported in the language:
     \texttt{Int[]} &  integer array \\ \hline
     \texttt{Float} &  8--byte decimal \\ \hline
     \texttt{Float[]} &  decimal array \\ \hline
-    \texttt{Function} &  4--byte integer pair \\ \hline
+    \texttt{Function} &  integer pair \\ \hline
   \end{tabular}
-\end{table}
+\end{flushleft}
 
 As mentioned above, basic types are objects and have associated
 methods for each basic class type.  For example:
@@ -209,7 +211,7 @@ c := 7; # implicit type deceleration
 Types that are not initialized at declaration time are initialized
 with the following default values:
 
-\begin{table}
+\begin{flushleft}
   \begin{tabular}{| l | c |}
     \hline
     \emph{Type} & \emph{Initialization} \\ \hline \hline
@@ -221,7 +223,7 @@ with the following default values:
     Object & \texttt{Nil} \\ \hline
     Function & \texttt{Nil} \\ \hline
   \end{tabular}
-\end{table}
+\end{flushleft}
 
 \section{Expressions}
 The Objeck language supports various types of expressions.  Some of
@@ -853,8 +855,7 @@ within methods based upon source line numbers.  The debugger can also
 calculate simple arithmetic expressions involving variables and
 constants. The following commands are currently supported:
 
-\section{Debugging Commands}
-\begin{table}
+\begin{flushleft}
   \begin{tabular}{| l |p{4 cm} |p{4 cm} |}
     \hline
     \emph{Command} & \emph{Description} & \emph{Example} \\ \hline \hline
@@ -879,9 +880,8 @@ constants. The following commands are currently supported:
     \texttt{src} &  specifies a new source path & \texttt{src "../../"} \\ \hline
     \texttt{[q]uit} &  exits a given debugging session &  \\ \hline
   \end{tabular}
-\end{table}
+\end{flushleft}
 
-\section{Starting the Debugger}
 The source program must be compiled with the \texttt{-debug} set. The
 command line debugger is started up running the \texttt{odb}
 executable. The \texttt{-exe} option must be present and specify the
@@ -893,16 +893,28 @@ instance level variables the path must start with
 \chapter{Class Libraries}
 Objeck includes class libraries that provides access to system
 resources, such as files and sockets, while also providing support for
-data structures like vectors, lists, queues, etc.  As new classes are
-added they'll be documented in this section.
+data structures like vectors, lists, queues, etc. These classes are packaged
+into bundles.
 
-The diagram below outlines available class bundles:
+Bundles include:
+\begin{itemize}
+\item Collection
+\item Encryption
+\item HTTP
+\item JSON
+\item RegEx
+\item System
+\item System.API
+\item System.IO
+\item System.IO.File
+\item System.IO.Net
+\item System.Introspection
+\item System.Time
+\item XML
+\end{itemize}
 
-\begin{center}
-  \includegraphics{../../images/classes.png}
-\end{center}
-
-Please refer to the online class library \htmladdnormallink{documentation}{http://www.objeck.org/docs/api/index.html} for additional information about bundles and classes.
+Please refer to the online API \htmladdnormallink{documentation}{http://www.objeck.org/docs/api/index.html} 
+for additional information about bundles and classes.
 
 \chapter{Examples}
 \section{Prime Numbers}
@@ -1115,7 +1127,7 @@ bundle Default {
 \end{verbatim}
 \endgroup
 
-\chapter{Appendix A: Sample Debugging Session}
+\chapter{Appendix A: Debugging Session}
 \section{Source for Example}
 \begin{verbatim}
 bundle Default {
@@ -1161,7 +1173,7 @@ bundle Default {
 \end{verbatim}
 The sample file is named \texttt{debug.obs}.
 
-\section{Compiling the Source and Starting the Debugger}
+\section{Starting the Debugger}
 \begin{verbatim}
 obc -src test_src\debug.obs -dest a.obe -debug
 obd -exe ..\..\compiler\a.obe -src ..\..\compiler\test_src
@@ -1173,7 +1185,7 @@ loaded executable: file='../../compiler/a.obe'
 source files: path='../../compiler/test_src/'
 \end{verbatim}
 
-\section{Setting a Breakpoint and Running the Program}
+\section{Setting Breakpoints}
 \begin{verbatim}
 > b debug.obs:31
 added break point: file='debug.obs:31'
@@ -1220,7 +1232,7 @@ print: type=Float, value=8.085
 goodbye.
 \end{verbatim}
 
-\chapter{Appendix B: Compiler and VM Design}
+\chapter{Appendix B: High-Level Design}
 \includegraphics[scale=0.60]{../../images/compiler_data_flow.png}
 
 The following section gives a brief overview of the major
