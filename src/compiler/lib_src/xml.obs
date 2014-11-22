@@ -5,15 +5,23 @@
 
 use Collection;
 
+#~
+Provide XML parsing capabilities 
+~#
 bundle XML {
-	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-	# XML Parser class
+	#~
+	Used to programmatically build XML documents
+	~#
 	~~~~~~~~~~~~~~~~~~~~~~~~~~~~~# 
 	class XmlBuilder {
 		@root : XmlElement;
 		@version : String;
 		@encoding : String;
 		
+		#~
+		Default constructor
+		@param name root element name
+		~#
 		New(name : String) {
 			@root := XmlElement->New(XmlElementType->ELEMENT, name);
 		}
