@@ -10,6 +10,9 @@
 use Collection;
 use System.API;
 
+#~
+Provides encryption and encoding functionality
+~#
 bundle Encryption {
 	class Proxy {
 		@lib_proxy : static : DllProxy;
@@ -24,9 +27,14 @@ bundle Encryption {
 	}
 	
 	#~
-	# Hash class
+	Support for one-way hashes
 	~#
 	class Hash {
+		#~
+		Hash input using SHA-256
+		@param input bytes to hashed
+		@return hashed bytes
+		~#
 		function : SHA256(input : Byte[]) ~ Byte[] {
 			if(input <> Nil) {
 				array_args := Base->New[2];
@@ -42,6 +50,11 @@ bundle Encryption {
 			return Nil;
 		}
 		
+		#~
+		Hash input using MD5
+		@param input bytes to hashed
+		@return hashed bytes
+		~#
 		function : MD5(input : Byte[]) ~ Byte[] {
 			if(input <> Nil) {
 				array_args := Base->New[2];
@@ -57,6 +70,11 @@ bundle Encryption {
 			return Nil;
 		}
 		
+		#~
+		Hash input using RIPEMD digest
+		@param input bytes to hashed
+		@return hashed bytes
+		~#
 		function : RIPEMD160(input : Byte[]) ~ Byte[] {
 			if(input <> Nil) {
 				array_args := Base->New[2];
@@ -74,9 +92,14 @@ bundle Encryption {
 	}
 	
 	#~
-	# Encryption class
+	Encrypts data
 	~#
 	class Encrypt {
+		#~
+		Encrypt input using AES-256
+		@param input bytes to encrypted
+		@return encrypted bytes
+		~#
 		function : AES256(key : Byte[], input : Byte[]) ~ Byte[] {
 			if(key <> Nil & input <> Nil) {
 				array_args := Base->New[3];
@@ -93,6 +116,11 @@ bundle Encryption {
 			return Nil;
 		}
 
+		#~
+		Encode input using Base64
+		@param in bytes to encoded
+		@return encoded bytes
+		~#
 		function : native : Base64(in : String) ~ String {
 			lut :=  [ 
 				'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',  
@@ -146,9 +174,14 @@ bundle Encryption {
 	}
 	
 	#~
-	# Decryption class
+	Decrypts data
 	~#
 	class Decrypt {
+		#~
+		Decrypts input using AES-256
+		@param input bytes to decrypted
+		@return decrypted bytes
+		~#
 		function : AES256(key : Byte[], input : Byte[]) ~ Byte[] {
 			if(key <> Nil & input <> Nil) {
 				array_args := Base->New[3];
@@ -165,6 +198,11 @@ bundle Encryption {
 			return Nil;
 		}
 
+		#~
+		Decrypts input using Base64
+		@in input bytes to decrypted
+		@return decrypted bytes
+		~#
 		function : native : Base64(in : String) ~ String {
 			lut := [ 
 			   0,    0,    0,    0,    0,    0,    0,    0, 
