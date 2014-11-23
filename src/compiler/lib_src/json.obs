@@ -671,6 +671,9 @@ bundle JSON {
 	
 	# token class
 	class Token {
+		@type : Token->Type;
+		@value : String;
+		
 		enum Type {
 			IDENT,
 			INT_NUM,
@@ -688,10 +691,7 @@ bundle JSON {
 			COLON,
 			OTHER,
 			EOS
-		}		
-
-		@type : Token->Type;
-		@value : String;
+		}
 		
 		New(type : Token->Type, value : String) {
 			@type := type;
