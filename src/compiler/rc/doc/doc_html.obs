@@ -331,20 +331,19 @@ class HtmlMaker {
 		sec_b := sec_b->ReplaceAll("@enum_desc", enum_block->GetDesc());
 		html += sec_b;
 
-"-- 0 --"->PrintLine();		
 		sec_c := "<strong>Items</strong><ul>";		
 		items := enum_block->GetItems();
 		each(j : items) {
-"-- 1 --"->PrintLine();			
-			item := items->Get(j);
-"-- 2 --"->PrintLine();					
+			item := items->Get(j)->As(String);
 			sec_c += "<li>";
 			sec_c += item;
-"-- 3 --"->PrintLine();					
+			if(j = 0 & enum_block->GetId()) {
+				sec_c += " = ";
+				sec_c += enum_block->GetId();
+			}
 			sec_c += "</li>";
-"-- 4 --"->PrintLine();			
 		};
-		sec_c += "</ul><hr/>";
+		sec_c += "</ul>";
 		html += sec_c;
 	
 		html += "</body></html>";
@@ -354,9 +353,6 @@ class HtmlMaker {
 		file_name += '-';
 		file_name += enum_block->GetName()->ToLower();
 		file_name += ".html";
-
-# file_name->PrintLine();		
-"-- 4 --"->PrintLine();
 		
 		out := FileWriter->New(file_name);
 		out->WriteString(html);
