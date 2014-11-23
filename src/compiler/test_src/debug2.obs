@@ -1,14 +1,14 @@
-class Gee {
+use Collection;
+
+class Test {
 	function : Main(args : String[]) ~ Nil {
-		s := "<tr>";
-		g := "g";
-		if(false) {
-#			s ->Append(  "</td>" );
-			s +=  "</td>" ;
-		}
-		else if(g->Equals("New")) {
-#		else if(true) {
-			s := "<td>";
-		};
+		v := Vector->New();
+		v->AddBack("foo");
+#		s := v->Get(0)->As(String);
+		s := v->Get(0);
+
+		s2 := "*";
+		s2 += true;
+		s2->PrintLine();
 	}
 }
