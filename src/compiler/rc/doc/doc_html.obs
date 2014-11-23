@@ -115,9 +115,9 @@ class HtmlMaker {
 			bundle_block := bundles->Find(bundle_keys->Get(i)->As(String))->As(BundleBlock);
 			if(bundle_block->GetDesc() <> Nil) {
 				html += "<tr><td>@bundle_name</td><td>@bundle_desc</td></tr>";
-				sec_a := "<a href='#";
+				sec_a := "<a href='classes.html#";
 				sec_a += bundle_block->GetName()->ToLower();
-				sec_a += "'>";
+				sec_a += "' target='nav'>";
 				sec_a += bundle_block->GetName();
 				sec_a += "</a>";
 				html := html->ReplaceAll("@bundle_name", sec_a);
@@ -138,7 +138,6 @@ class HtmlMaker {
 	~#
 	method : CreateClassIndexHtml(bundles : StringMap, header : String) ~ Nil {
 		html := String->New(header);
-		html += "";
 		
 		# bundles
 		bundle_keys := bundles->GetKeys();
@@ -146,9 +145,10 @@ class HtmlMaker {
 			bundle_block := bundles->Find(bundle_keys->Get(i)->As(String))->As(BundleBlock);
 			# class description
 			if(bundle_block->IsParsed()) {
-				html += "<strong>";
-				html += bundle_block->GetName();
-				html += "</strong>";
+				sec_a := "<a id='@short_link'><strong>@bundle_name</strong>";
+				sec_a := sec_a->ReplaceAll("@bundle_name", bundle_block->GetName());
+				sec_a := sec_a->ReplaceAll("@short_link", bundle_block->GetName()->ToLower());
+				html += sec_a;
 				
 				sec_b := "<ul>";
 				classes := bundle_block->GetClasses();
@@ -169,7 +169,7 @@ class HtmlMaker {
 						sec_b += "' target='main'>";
 						if(class_block->IsInterface()) {
 							sec_b->Append(class_block->GetName());
-							sec_b->Append("*");
+							sec_b->Append('*');
 						}
 						else {
 							sec_b->Append(class_block->GetName());
@@ -194,9 +194,8 @@ class HtmlMaker {
 
 						sec_b->Append(link_name->ToLower());
 						sec_b += "' target='main'>";
-						sec_b->Append("<i>");
 						sec_b->Append(enum_block->GetName());
-						sec_b->Append("</i>");
+						sec_b->Append('#');
 						
 						sec_b += "</a></li>";
 						
@@ -337,10 +336,10 @@ class HtmlMaker {
 			item := items->Get(j)->As(String);
 			sec_c += "<li>";
 			sec_c += item;
-			if(j = 0 & enum_block->GetId()) {
+			if(j = 0 & enum_block->GetId() <> Nil) {
 				sec_c += " = ";
 				sec_c += enum_block->GetId();
-			}
+			};
 			sec_c += "</li>";
 		};
 		sec_c += "</ul>";
@@ -394,6 +393,21 @@ class HtmlMaker {
 			class_block := GetBundleClass("System.Introspection", type_name);
 		};
 		
+		if(class_block = Nil) {
+			enum_block := GetBundleEnum(@bundle_block->GetName(), type_name);
+			if(enum_block <> Nil) {
+				file_name := "<a href='";
+				file_name += enum_block->GetBundleName()->ToLower();
+				file_name += '-';
+				file_name += enum_block->GetName()->ToLower();
+				file_name += ".html' target='main'>";
+				file_name += full_name;
+				file_name += "</a>";	
+			
+				return file_name;
+			};
+		};
+		
 		if(class_block <> Nil) {
 			file_name := "<a href='";
 			file_name += class_block->GetBundleName()->ToLower();
@@ -426,6 +440,19 @@ class HtmlMaker {
 	#~
 	DOC ME
 	~#
+	method : GetBundleEnum(bundle_name : String, enum_name : String) ~ EnumBlock {
+		lookup_bundle := @parser->GetBundles()->Find(bundle_name)->As(BundleBlock);		
+		if(lookup_bundle <> Nil) {
+			return lookup_bundle->GetEnums()->Find(enum_name)->As(EnumBlock);
+		}
+		else {
+			return Nil;
+		};
+	}
+	
+	#~
+	DOC ME
+	~#
 	method : FormatFunctions(class_name : String, short_name : String, funcs : Vector, html : String) ~ Nil {
 		if(funcs <> Nil) {
 			sec_d := "<h3>@short_name</h3><a id='@short_link'></a>";
@@ -448,7 +475,7 @@ class HtmlMaker {
 				params := func->GetParams();
 				sec_f := "";
 				if(params->Size() > 0) {
-					sec_f := "<div style='padding: 5px 10px; font-size: 13px'><i>Parameters</i></div>";
+					sec_f := "<div style='padding: 5px 10px; font-size: 13px'>Parameters</div>";
 					sec_f += "<table class='doc-table'><tr><th>Name</th><th>Type</th><th>";
 					sec_f += "Description</th></tr>";
 			
@@ -474,7 +501,7 @@ class HtmlMaker {
 				};
 				
 				if(func->GetReturnTag() <> Nil) {
-					sec_g += "<div style='padding: 5px 10px; font-size: 13px'><i>Return</i></div>";
+					sec_g += "<div style='padding: 5px 10px; font-size: 13px'>Return</div>";
 					sec_g += "<table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr>";
 					sec_g += "<td>@return_type</td><td>@return_desc</td></tr></table>";
 					sec_g := sec_g->ReplaceAll("@return_type", GetTypeLink(func->GetReturnType()->GetTypeName()));

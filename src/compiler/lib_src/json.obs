@@ -6,7 +6,7 @@
 use Collection;
 
 #~
-Provides JSON parsing support
+Support for paring JSON strings and documents
 ~#
 bundle JSON {
 	#~
@@ -658,6 +658,9 @@ bundle JSON {
 		}
 	}
 	
+	#~
+	JSON element type
+	~#
 	enum JSONType {
 		STRING,
 		NUMBER,
