@@ -76,6 +76,7 @@ class HtmlMaker {
 		bundle_keys := bundles->GetKeys();
 		each(i : bundle_keys) {
 			@bundle_block := bundles->Find(bundle_keys->Get(i)->As(String))->As(BundleBlock);
+			# classes
 			classes := @bundle_block->GetClasses();
 			class_keys := classes->GetKeys();
 			each(j : class_keys) {
@@ -84,6 +85,17 @@ class HtmlMaker {
 					CreateClassHtml(class_block, class_header);
 				};
 			};
+			
+			# enums
+			enums := @bundle_block->GetEnums();
+			enum_keys := enums->GetKeys();
+			each(j : enum_keys) {
+				# enum
+				enum_block := enums->Find(enum_keys->Get(j)->As(String))->As(EnumBlock);
+				if(enum_block <> Nil) {
+					CreateEnumHtml(enum_block, class_header);
+				};
+			};			
 		};
 		
 		return true;
@@ -142,6 +154,7 @@ class HtmlMaker {
 				classes := bundle_block->GetClasses();
 				class_keys := classes->GetKeys();			
 				each(j : class_keys) {
+					# class
 					class_block := classes->Find(class_keys->Get(j)->As(String))->As(ClassBlock);
 					if(class_block->IsParsed()) {
 						sec_b += "<li><a href='";
@@ -155,16 +168,41 @@ class HtmlMaker {
 						sec_b->Append(link_name->ToLower());
 						sec_b += "' target='main'>";
 						if(class_block->IsInterface()) {
-							sec_b->Append("<i>");
 							sec_b->Append(class_block->GetName());
-							sec_b->Append("</i>");
+							sec_b->Append("*");
 						}
 						else {
 							sec_b->Append(class_block->GetName());
 						};
 						sec_b += "</a></li>";
 					};
-				};			
+				};
+				
+				enums := bundle_block->GetEnums();
+				enum_keys := enums->GetKeys();
+				each(j : enum_keys) {
+					# enum
+					enum_block := enums->Find(enum_keys->Get(j)->As(String))->As(EnumBlock);
+					if(enum_block <> Nil) {
+						sec_b += "<li><a href='";
+						
+						file_name := enum_block->GetBundleName()->ToLower();
+						file_name += '-';
+						file_name += enum_block->GetName()->ToLower();
+						link_name := String->New(file_name);
+						link_name += ".html";
+
+						sec_b->Append(link_name->ToLower());
+						sec_b += "' target='main'>";
+						sec_b->Append("<i>");
+						sec_b->Append(enum_block->GetName());
+						sec_b->Append("</i>");
+						
+						sec_b += "</a></li>";
+						
+					};
+				};
+				
 				sec_b += "</ul>";			
 				html += sec_b;
 			};
@@ -276,6 +314,49 @@ class HtmlMaker {
 		file_name += '-';
 		file_name += class_block->GetName()->ToLower();
 		file_name += ".html";
+		
+		out := FileWriter->New(file_name);
+		out->WriteString(html);
+		out->Close();
+	}
+	
+	#~
+	DOC ME
+	~#
+	method : CreateEnumHtml(enum_block : EnumBlock, header : String) ~ Nil {
+		# class description
+		html := String->New(header);
+		sec_b := "<h2>@enum_name</h2><p>@enum_desc</p>";
+		sec_b := sec_b->ReplaceAll("@enum_name", enum_block->GetName());
+		sec_b := sec_b->ReplaceAll("@enum_desc", enum_block->GetDesc());
+		html += sec_b;
+
+"-- 0 --"->PrintLine();		
+		sec_c := "<strong>Items</strong><ul>";		
+		items := enum_block->GetItems();
+		each(j : items) {
+"-- 1 --"->PrintLine();			
+			item := items->Get(j);
+"-- 2 --"->PrintLine();					
+			sec_c += "<li>";
+			sec_c += item;
+"-- 3 --"->PrintLine();					
+			sec_c += "</li>";
+"-- 4 --"->PrintLine();			
+		};
+		sec_c += "</ul><hr/>";
+		html += sec_c;
+	
+		html += "</body></html>";
+	
+		file_name := "../html/";
+		file_name += enum_block->GetBundleName()->ToLower();
+		file_name += '-';
+		file_name += enum_block->GetName()->ToLower();
+		file_name += ".html";
+
+# file_name->PrintLine();		
+"-- 4 --"->PrintLine();
 		
 		out := FileWriter->New(file_name);
 		out->WriteString(html);
