@@ -4741,7 +4741,7 @@ bundle System.Introspection {
 	}
 	
 	#~
-	Datatype type
+	Data type types
 	~#
 	enum TypeId := -1000 {
 		BOOL,
