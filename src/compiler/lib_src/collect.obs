@@ -480,7 +480,7 @@ bundle Collection {
 
 		#~
 		Gets an indexed value
-		@param i index
+		@param index index
 		@return value
 		~#
 		method : public : Get(index : Int) ~ Float {
@@ -834,7 +834,7 @@ bundle Collection {
 
 		#~
 		Gets an indexed value
-		@param i index
+		@param index index
 		@return value
 		~#
 		method : public : Get(index : Int) ~ Compare {
@@ -1117,7 +1117,7 @@ bundle Collection {
 
 		#~
 		Gets an indexed value
-		@param i index
+		@param index index
 		@return value
 		~#
 		method : public : Get(index : Int) ~ Base {

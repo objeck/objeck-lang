@@ -14,7 +14,7 @@ body {
 }
 	
 ul {
-	font-size: 14px;
+	font-size: 13px;
 	list-style-type: square;
 }
 
@@ -39,10 +39,10 @@ ul {
 
 code {
 	font-family: Monaco, Courier, monospace;
-	color: #006400;
+	color: #336E7B;
 	display: block;
 	padding: 5px 10px;
-	font-size: 14px;
+	font-size: 12px;
 	border-radius: 4px;
 	margin-bottom: 20px;
 	overflow-x: auto;

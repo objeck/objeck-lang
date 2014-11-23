@@ -391,8 +391,13 @@ class HtmlMaker {
 
 				# TODO:
 				sec_g := "";
+				
+				if(params->Size() > 0 & func->GetReturnTag() <> Nil) {
+					sec_g += "<br/>";
+				};
+				
 				if(func->GetReturnTag() <> Nil) {
-					sec_g += "<br/><div style='padding: 5px 10px; font-size: 13px'><i>Return</i></div>";
+					sec_g += "<div style='padding: 5px 10px; font-size: 13px'><i>Return</i></div>";
 					sec_g += "<table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr>";
 					sec_g += "<td>@return_type</td><td>@return_desc</td></tr></table>";
 					sec_g := sec_g->ReplaceAll("@return_type", GetTypeLink(func->GetReturnType()->GetTypeName()));
