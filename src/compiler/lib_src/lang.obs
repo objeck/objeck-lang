@@ -5,7 +5,7 @@ note: compile compiler with -D_SYSTEM flag
 ~#	
 
 #~
-System Bundle
+Core sytem classes 
 ~#
 bundle System {
 	#~
@@ -2717,7 +2717,7 @@ bundle System.API {
 }
 
 #~
-Provides time
+Provides support for dates and times
 ~#	
 bundle System.Time {	
 	#~
@@ -2866,7 +2866,7 @@ bundle System.Time {
 
 		#~
 		Add days to the date
-		@param days to add
+		@param value days to add
 		~#
 		method : public : AddDays(value : Int) ~ Nil {
 			DATE_TIME_ADD_DAYS;
@@ -2874,7 +2874,7 @@ bundle System.Time {
 
 		#~
 		Add hours to the date
-		@param hours to add
+		@param value hours to add
 		~#
 		method : public : AddHours(value : Int) ~ Nil {
 			DATE_TIME_ADD_HOURS;
@@ -2882,7 +2882,7 @@ bundle System.Time {
    
 		#~
 		Add minutes to the date
-		@param minutes to add
+		@param value minutes to add
 		~#
 		method : public : AddMinutes(value : Int) ~ Nil {
 			DATE_TIME_ADD_MINS;
@@ -2890,7 +2890,7 @@ bundle System.Time {
 
 		#~
 		Add seconds to the date
-		@param seconds to add
+		@param value seconds to add
 		~#
 		method : public : AddSeconds(value : Int) ~ Nil {
 			DATE_TIME_ADD_SECS;
@@ -2966,7 +2966,7 @@ bundle System.Time {
 }
 
 #~
-Provides concurrency
+System support for threads and runtime concurrency
 ~#
 bundle System.Concurrency {	
 	#~
@@ -4238,7 +4238,7 @@ bundle System.IO.File {
 		
 		#~
 		Checks to see if the given directory exists
-		@param directory name
+		@param n directory name
 		@return true if directory exists
 		~#
 		function : Exists(n : System.String) ~ Bool {
@@ -4247,7 +4247,7 @@ bundle System.IO.File {
 		
 		#~
 		List of directory content
-		@param directory name
+		@param n directory name
 		@return list of directory content
 		~#
 		function : List(n : System.String) ~ System.String[] {
@@ -4569,7 +4569,7 @@ bundle System.IO.Net {
 	   
 		#~
 		Default constructor
-		@param server port
+		@param port server port
 		~#
 		New(port : Int) {
 		  Parent();
@@ -4605,7 +4605,7 @@ bundle System.IO.Net {
 
 #~
 Allow programmes to introspect the 
-runtime programming elements
+runtime elements
 ~#
 bundle System.Introspection {
 	#~

@@ -281,6 +281,7 @@ bundle Collection {
 		
 		#~
 		Finds a given value in the vector via linear search
+		@param value value to search for
 		@return index of found value, -1 if not found
 		~#
 		method : public : native : Find(value : Int) ~ Int {
@@ -295,6 +296,7 @@ bundle Collection {
 
 		#~
 		Performs a binary search O(log n)
+		@param value value to search for
 		@return index of found value, -1 if not found
 		~#
 		method : public : native : BinarySearch(value : Int) ~ Int {
@@ -345,6 +347,7 @@ bundle Collection {
 		
 		#~
 		Uses the given function to filter out values
+		@param f function to use a filter
 		@return filter vector
 		~#
 		method : public : Filter(f : (Int) ~ Bool) ~ IntVector {
@@ -361,6 +364,7 @@ bundle Collection {
 		
 		#~
 		Applies the given function to each value in the vector 
+		@param f function to apply
 		@return newly calculated vector
 		~#
 		method : public : Apply(f : (Int) ~ Int) ~ IntVector {
@@ -637,6 +641,7 @@ bundle Collection {
 
 		#~
 		Finds a given value in the vector via linear search
+		@param value value to search for
 		@return index of found value, -1 if not found
 		~#
 		method : public : native : Find(value : Float) ~ Int {
@@ -651,6 +656,7 @@ bundle Collection {
 		
 		#~
 		Performs a binary search O(log n)
+		@param value value to search for
 		@return index of found value, -1 if not found
 		~#
 		method : public : native : BinarySearch(value : Float) ~ Int {
@@ -701,6 +707,7 @@ bundle Collection {
 		
 		#~
 		Uses the given function to filter out values
+		@param f function to use a filter
 		@return filter vector
 		~#
 		method : public : Filter(f : (Float) ~ Bool) ~ FloatVector {
@@ -717,6 +724,7 @@ bundle Collection {
 
 		#~
 		Applies the given function to each value in the vector 
+		@param f function to apply
 		@return newly calculated vector
 		~#
 		method : public : Apply(f : (Float) ~ Float) ~ FloatVector {
@@ -935,6 +943,7 @@ bundle Collection {
 
 		#~
 		Finds a given value in the vector via linear search
+		@param value value to search for
 		@return index of found value, -1 if not found
 		~#
 		method : public : native : Find(value : Compare) ~ Int {
@@ -949,6 +958,7 @@ bundle Collection {
 		
 		#~
 		Performs a binary search O(log n)
+		@param value value to search for
 		@return index of found value, -1 if not found
 		~#
 		method : public : native : BinarySearch(value : Compare) ~ Int {
@@ -989,6 +999,7 @@ bundle Collection {
 		
 		#~
 		Uses the given function to filter out values
+		@param f function to use a filter
 		@return filter vector
 		~#
 		method : public : Filter(f : (Compare) ~ Bool) ~ CompareVector {
@@ -1432,6 +1443,7 @@ bundle Collection {
 		
 		#~
 		Finds a value in the list and sets the pointer
+		@param value value to search for
 		@return ture if found, false otherwise
 		~#
 		method : public : Find(value : Int) ~ Bool {
@@ -1616,6 +1628,7 @@ bundle Collection {
 		
 		#~
 		Finds a value in the list and sets the pointer
+		@param value value to search for
 		@return value that's found
 		~#
 		method : public : Find(value : Float) ~ Float {
@@ -1903,6 +1916,7 @@ bundle Collection {
 		
 		#~
 		Finds a value in the list and sets the pointer
+		@param value value to search for
 		@return value that's found
 		~#
 		method : public : Find(value : Compare) ~ Compare {
@@ -2104,6 +2118,7 @@ bundle Collection {
 		
 		#~
 		Adds a value to the back of the queue
+		@param value value to add
 		~#
 		method : public: native : Add(value : Float) ~ Nil {
 			@queue->AddBack(value);
@@ -2111,6 +2126,7 @@ bundle Collection {
 		
 		#~
 		Removes a value from the front of the queue
+		@return value removed
 		~#
 		method : public : native : Remove() ~ Float {
 			if(@queue->Size() > 0) {
@@ -2173,6 +2189,7 @@ bundle Collection {
 		
 		#~
 		Adds a value to the back of the queue
+		@param value value to add
 		~#
 		method : public: native : Add(value : Int) ~ Nil {
 			@queue->AddBack(value);
@@ -2180,6 +2197,7 @@ bundle Collection {
 		
 		#~
 		Removes a value from the front of the queue
+		@return value removed
 		~#
 		method : public : native : Remove() ~ Int {
 			if(@queue->Size() > 0) {
@@ -2242,6 +2260,7 @@ bundle Collection {
 		
 		#~
 		Adds a value to the back of the queue
+		@param value value to add
 		~#
 		method : public: native : Add(value : Compare) ~ Nil {
 			@queue->AddBack(value);
@@ -2249,6 +2268,7 @@ bundle Collection {
 		
 		#~
 		Removes a value from the front of the queue
+		@return value removed
 		~#
 		method : public : native : Remove() ~ Compare {
 			if(@queue->Size() > 0) {
@@ -2320,13 +2340,13 @@ bundle Collection {
 		
 		#~
 		Removes a value from the map
-		@param value key for value to remove
+		@param key key for value to remove
 		~#
 		method : public : Remove(key : Int) ~ Nil {
 			@map->Remove(IntHolder->New(key));
 		}
     
-    	#~
+   	#~
 		Searches for a value in a map
 		@param key search key
 		@return found value, 0 if not found
@@ -2429,13 +2449,13 @@ bundle Collection {
 		
 		#~
 		Removes a value from the map
-		@param value key for value to remove
+		@param key key for value to remove
 		~#
 		method : public : Remove(key : Float) ~ Nil {
 			@map->Remove(FloatHolder->New(key));
 		}
     
-    	#~
+   	#~
 		Searches for a value in a map
 		@param key search key
 		@return found value, 0.0 if not found
@@ -2608,7 +2628,7 @@ bundle Collection {
 		
 		#~
 		Removes a value from the map
-		@param value key for value to remove
+		@param key key for value to remove
 		~#
 		method : public : Remove(key : String) ~ Nil {
 			@map->Remove(key);
@@ -2869,7 +2889,7 @@ bundle Collection {
 		
 		#~
 		Removes a value from the map
-		@param value key for value to remove
+		@param key key for value to remove
 		~#
 		method : public : Remove(key : Compare) ~ Nil {
 			@found := true;
@@ -2988,7 +3008,7 @@ bundle Collection {
 		
 		#~
 		Removes a key from the set
-		@param key value to remove
+		@param key key for value to remove
 		~#
 		method : public : Remove(key : Float) ~ Nil {
 			@map->Remove(FloatHolder->New(key));
@@ -3066,7 +3086,7 @@ bundle Collection {
 		
 		#~
 		Removes a key from the set
-		@param key value to remove
+		@param key key for value to remove
 		~#
 		method : public : Remove(key : String) ~ Nil {
 			@map->Remove(key);
@@ -3136,7 +3156,7 @@ bundle Collection {
 		
 		#~
 		Removes a key from the set
-		@param key value to remove
+		@param key key for value to remove
 		~#
 		method : public : Remove(key : Compare) ~ Nil {
 			@map->Remove(key);
@@ -3207,7 +3227,7 @@ bundle Collection {
 		
 		#~
 		Removes a value from the hash
-		@param value key for value to remove
+		@param key key for value to remove
 		~#
 		method : public : Remove(key : String) ~ Nil {
 			@hash->Remove(key);
@@ -3330,7 +3350,7 @@ bundle Collection {
 		
 		#~
 		Removes a value from the hash
-		@param value key for value to remove
+		@param key key for value to remove
 		~#
 		method : public : native : Remove(key : Compare) ~ Bool {
 			hash := (key->HashID() % @buckets->Size())->Abs();
@@ -3441,7 +3461,7 @@ bundle Collection {
 }
 
 #~
-HTTP support
+HTTP and HTTPS client support
 ~#
 bundle HTTP {
 	#~

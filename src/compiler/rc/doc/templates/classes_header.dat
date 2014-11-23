@@ -73,7 +73,7 @@ h3 {
 
 strong {
 	font-weight: bold;
-	color: DC143C;
+	color: 404040;
 } 
 
 </style>

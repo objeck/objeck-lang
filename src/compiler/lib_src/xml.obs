@@ -6,7 +6,7 @@
 use Collection;
 
 #~
-Provide XML parsing capabilities 
+Support for paring XML documents
 ~#
 bundle XML {
 	#~
@@ -65,6 +65,7 @@ bundle XML {
 		
 		#~
 		Sets the XML version
+		@param version version
 		@return XML version
 		~#
 		method : public : SetVersion(version : String) ~ Nil {
@@ -81,6 +82,7 @@ bundle XML {
 		
 		#~
 		Sets the XML encoding
+		@param version encoding
 		@return XML encoding
 		~#
 		method : public : SetEncoding(encoding : String) ~ Nil {
@@ -132,7 +134,7 @@ bundle XML {
 		
 		#~
 		Default constructor
-		@param string XML to parse
+		@param buffer XML to parse
 		~#
 		New(buffer : Char[]) {
 			@buffer := buffer;
@@ -911,7 +913,7 @@ bundle XML {
 
 		#~
 		Sets the element namespace
-		@param name element namespace
+		@param namespace element namespace
 		~#
 		method : public : SetNamespace(namespace : String) ~ Nil {
 			@namespace := namespace;
