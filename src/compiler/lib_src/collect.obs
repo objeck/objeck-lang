@@ -3584,9 +3584,9 @@ bundle HTTP {
 					
 					status_code := 500;
 					status_line := socket->ReadString();
-					if(status_line->StartsWith("HTTP/1.1")) {
-						status_line := status_line->SubString("HTTP/1.1"->Size() + 1, 
-							status_line->Size() - "HTTP/1.1"->Size() - 1);
+					if(status_line->StartsWith("HTTP/1.")) {
+						status_line := status_line->SubString("HTTP/1."->Size() + 2, 
+							status_line->Size() - "HTTP/1."->Size() - 2);
 						index := status_line->Find(' ');
 						status_code := status_line->SubString(index)->ToInt();
 					};
@@ -3715,13 +3715,14 @@ bundle HTTP {
 					
 					status_code := 500;
 					status_line := socket->ReadString();
-					if(status_line->StartsWith("HTTP/1.1")) {
-						status_line := status_line->SubString("HTTP/1.1"->Size() + 1, 
-							status_line->Size() - "HTTP/1.1"->Size() - 1);
+# status_line->PrintLine();					
+					if(status_line->StartsWith("HTTP/1.")) {
+						status_line := status_line->SubString("HTTP/1."->Size() + 2, 
+							status_line->Size() - "HTTP/1."->Size() - 2);
 						index := status_line->Find(' ');
 						status_code := status_line->SubString(index)->ToInt();
 					};
-					
+# status_code->PrintLine();					
 					if(status_code <> 500) {
 						# get @headers
 						do {
@@ -3731,7 +3732,7 @@ bundle HTTP {
 								name := line->SubString(index);
 								value := line->SubString(index + 1, line->Size() - index - 1)->Trim();
 								
-# IO.Console->Print("|")->Print(name)->Print("|, |")->Print(value)->PrintLine("|");
+IO.Console->Print("|")->Print(name)->Print("|, |")->Print(value)->PrintLine("|");
 								if(@cookies_enabled & name->Equals("Set-Cookie")) {
 									offset := value->Find(';');
 									if(offset > -1) {
@@ -3781,7 +3782,21 @@ bundle HTTP {
 								};
 								line := String->New(buffer);
 								content->AddBack(line);
-							};						
+							}
+							else {
+								count := 0;
+								do {
+									line := socket->ReadString();
+									if(line->Size() = 0) {
+										count += 1;
+									}
+									else {
+										content->AddBack(line);
+										count := 0;
+									};
+								}
+								while(count < 2);
+							};					
 						};
 					};
 					socket->Close();
@@ -3915,9 +3930,9 @@ bundle HTTP {
 					
 					status_code := 500;
 					status_line := socket->ReadString();
-					if(status_line->StartsWith("HTTP/1.1")) {
-						status_line := status_line->SubString("HTTP/1.1"->Size() + 1, 
-							status_line->Size() - "HTTP/1.1"->Size() - 1);
+					if(status_line->StartsWith("HTTP/1.")) {
+						status_line := status_line->SubString("HTTP/1."->Size() + 2, 
+							status_line->Size() - "HTTP/1."->Size() - 2);
 						index := status_line->Find(' ');
 						status_code := status_line->SubString(index)->ToInt();
 					};
@@ -4046,9 +4061,9 @@ bundle HTTP {
 					
 					status_code := 500;
 					status_line := socket->ReadString();
-					if(status_line->StartsWith("HTTP/1.1")) {
-						status_line := status_line->SubString("HTTP/1.1"->Size() + 1, 
-							status_line->Size() - "HTTP/1.1"->Size() - 1);
+					if(status_line->StartsWith("HTTP/1.")) {
+						status_line := status_line->SubString("HTTP/1."->Size() + 2, 
+							status_line->Size() - "HTTP/1."->Size() - 2);
 						index := status_line->Find(' ');
 						status_code := status_line->SubString(index)->ToInt();
 					};
@@ -4113,7 +4128,21 @@ bundle HTTP {
 								};
 								line := String->New(buffer);
 								content->AddBack(line);
-							};						
+							}
+							else {
+								count := 0;
+								do {
+									line := socket->ReadString();
+									if(line->Size() = 0) {
+										count += 1;
+									}
+									else {
+										content->AddBack(line);
+										count := 0;
+									};
+								}
+								while(count < 2);
+							};							
 						};
 					};
 					socket->Close();
