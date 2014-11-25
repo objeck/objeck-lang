@@ -39,7 +39,7 @@ ul {
 
 code {
 	font-family: Monaco, Courier, monospace;
-	color: #A68D5D;
+	color: #1F1F1F;
 	display: block;
 	padding: 5px 10px;
 	font-size: 12px;
@@ -74,7 +74,7 @@ h3 {
 
 strong {
 	font-weight: bold;
-	color: 404040;
+	color: black;
 } 
 
 </style>
