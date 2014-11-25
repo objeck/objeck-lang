@@ -82,7 +82,7 @@ bundle XML {
 		
 		#~
 		Sets the XML encoding
-		@param version encoding
+		@param encoding encoding version
 		@return XML encoding
 		~#
 		method : public : SetEncoding(encoding : String) ~ Nil {
@@ -929,7 +929,7 @@ bundle XML {
 		
 		#~
 		Sets the element type
-		@param name element type
+		@param type element type
 		~#
 		method : public : SetType(type : XmlElement->Type) ~ Nil {
 			@type := type;
@@ -945,7 +945,7 @@ bundle XML {
 		
 		#~
 		Sets the element content
-		@param name element content
+		@param content element content
 		~#
 		method : public : SetContent(content : String) ~ Nil {
 			@content := content;
@@ -1137,6 +1137,7 @@ bundle XML {
 		
 		#~
 		Get the last element that matchs the given filter
+		@param name element name
 		@return child elements
 		~#
 		method : public : native : GetLastChild(name : String) ~ Vector {

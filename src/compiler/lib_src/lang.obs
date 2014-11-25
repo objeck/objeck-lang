@@ -2217,6 +2217,7 @@ bundle System {
 
 		#~
 		Checks if the string starts with the given string
+		@param s string to check for
 		@return true if starts with string, false otherwise
 		~#
 		method : public : native : StartsWith(s : String) ~ Bool {
@@ -2235,6 +2236,7 @@ bundle System {
 
 		#~
 		Checks if the string ends with the given character
+		@param s string to check for
 		@return true if ends with character, false otherwise
 		~#
 		method : public : native : EndsWith(s : String) ~ Bool {
@@ -2570,7 +2572,7 @@ bundle System {
 		#~
 		Sets a runtime property 
 		@param key property key
-		@param key property value
+		@param value property value
 		~#
 		function : SetProperty(key : String, value : String) ~ Nil {
 			SET_SYS_PROP;
@@ -3712,7 +3714,7 @@ bundle System.IO {
 
 		#~
 		Serializes a base object
-		@param o value to serialize
+		@param b value to serialize
 		~#
 		method : public : Write(b : Bool[]) ~ Nil {
 			SERL_INT_ARY;
@@ -4030,7 +4032,7 @@ bundle System.IO.File {
 		#~
 		Renames a file
 		@param o original file name
-		@param o new file name
+		@param n new file name
 		@return true if file was renamed
 		~#
 		function : Rename(o : System.String, n : System.String) ~ Bool {
@@ -4229,7 +4231,7 @@ bundle System.IO.File {
 	class Directory {
 		#~
 		Creates a directory
-		@param directory name
+		@param n directory name
 		@return true if directory was created 
 		~#
 		function : Create(n : System.String) ~ Bool {

@@ -495,7 +495,7 @@ bundle JSON {
 
 		#~
 		Constructor
-		@param value JSON array value
+		@param array_elems JSON array value
 		~#
 		New(array_elems : Vector) {
 			@type := JSONType->ARRAY;
@@ -504,7 +504,7 @@ bundle JSON {
 		
 		#~
 		Constructor
-		@param value JSON object (names/values)
+		@param map_elems JSON object (names/values)
 		~#
 		New(map_elems : StringMap) {
 			@type := JSONType->OBJECT;

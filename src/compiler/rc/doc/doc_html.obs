@@ -487,6 +487,10 @@ class HtmlMaker {
 							sec_f := sec_f->ReplaceAll("@param_name", param_tag->GetName());
 							sec_f := sec_f->ReplaceAll("@param_type", GetTypeLink(param->GetTypeName()));
 							sec_f := sec_f->ReplaceAll("@param_desc", param_tag->GetDesc());
+						}
+						else if(param_tag = Nil) {
+							func_name := func->GetSignature();
+							"*** Missing parameter: class='{$class_name}' function='{$func_name}' ***"->PrintLine();
 						};
 					};
 					sec_f += "</table>";
