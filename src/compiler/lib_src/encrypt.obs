@@ -97,6 +97,7 @@ bundle Encryption {
 	class Encrypt {
 		#~
 		Encrypt input using AES-256
+		@param key encryption key
 		@param input bytes to encrypted
 		@return encrypted bytes
 		~#
@@ -179,6 +180,7 @@ bundle Encryption {
 	class Decrypt {
 		#~
 		Decrypts input using AES-256
+		@param key encryption key
 		@param input bytes to decrypted
 		@return decrypted bytes
 		~#
