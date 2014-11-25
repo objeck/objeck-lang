@@ -8,7 +8,11 @@ Objeck release steps
     b. update installer example/rc files
 5.  smoke test on 'clean' windows vm
 6.  upload objeck_lang.pdf to sourceforge
-5.  deploy linux (32 and 64) 
-7.  deploy osx
-8.  push binaries to soruceforge
-9.  add news items to sourceforge
+7.  deploy to linux (32-bit)
+    a. create tarball
+    b. generate text2html docs and upload to sourceforge
+8.  deploy to linux (64-bit)
+9.  deploy osx
+10. push binaries to soruceforge
+11. add news items to sourceforge
+12. update links on object.org and github 
