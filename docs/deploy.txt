@@ -1,0 +1,14 @@
+objeck release steps
+-----
+1.	update "version.h"
+2.	update the windows rc version tags
+3.	update the readme.rtf file
+4.	build on windows
+			a. update installer msi version number
+			b. update installer example/rc files
+5.	smoke test on 'clean' windows vm
+6.	upload objeck_lang.pdf to sourceforge
+5.	deploy linux (32 and 64) 
+7.	deploy osx
+8.	push binaries to soruceforge
+9.	add news items to sourceforge
