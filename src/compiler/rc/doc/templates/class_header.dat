@@ -14,7 +14,7 @@ body {
 }
 	
 ul {
-	font-size: 14px;
+	font-size: 13px;
 	list-style-type: square;
 }
 
@@ -27,22 +27,22 @@ ul {
 	padding: 4px 8px;
 }
 .doc-table th {
-	background-color: #BDBDBD;
+	background-color: #818286;
 	font-weight: em;
 	padding: 6px 10px;
 	text-align: center;
 }
 .doc-table td {
-	background-color: #E6E6E6;
+	background-color: #BCBDC1;
 	padding: 10px 15px;
 }
 
 code {
 	font-family: Monaco, Courier, monospace;
-	color: #006400;
+	color: #1F1F1F;
 	display: block;
 	padding: 5px 10px;
-	font-size: 14px;
+	font-size: 12px;
 	border-radius: 4px;
 	margin-bottom: 20px;
 	overflow-x: auto;
@@ -52,7 +52,7 @@ h2 {
 	display: block;
 	margin: 12px 0;
 	padding: 12px 20px;
-	background: #2C3E50;
+	background: #404040;
 	border: none;
 	border-radius: 8px;
 	color: #ffffff;
@@ -64,7 +64,7 @@ h3 {
 	display: block;
 	margin: 9px 0;
 	padding: 6px 10px;
-	background: #6C7A89;
+	background: #847C6A;
 	border: none;
 	border-radius: 8px;
 	color: #ececec;

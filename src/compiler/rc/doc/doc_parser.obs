@@ -173,6 +173,7 @@ class DocParser {
 		enum_block := EnumBlock->New(block);
 		if(enum_block->IsParsed()) {
 IO.Console->Print("\tProcessed enum: name='")->Print(enum_block->GetName())->PrintLine("'");
+			enum_block->SetBundleName(@bundle_block->GetName());
 			@bundle_block->AddEnum(enum_block);
 		}
 		else {
@@ -586,6 +587,7 @@ class EnumBlock from DocBlock {
 	@klass : String;
 	@items : Vector;
 	@parsed : Bool;
+	@block_name : String;
 	
 	New(buffer : String) {
 		Parent(buffer);
@@ -615,6 +617,14 @@ class EnumBlock from DocBlock {
 
 	method : public : GetDesc() ~ String {
 		return @desc;
+	}
+	
+	method : public : SetBundleName(block_name : String) ~ Nil {
+		@block_name := block_name;
+	}
+
+	method : public : GetBundleName() ~ String {
+		return @block_name;
 	}
 
 	method : native : Parse() ~ Bool {
