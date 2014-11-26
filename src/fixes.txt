@@ -1,4 +1,5 @@
 11/18/14
+* add getsockname?
 * fixed a nested enum issue in libs
 * resoloved a method inlining bug
 * new html api docs

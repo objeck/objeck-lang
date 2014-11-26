@@ -114,12 +114,13 @@ else
 	cp openssl.so ../../../objeck/deploy/bin/lib/openssl
 fi
 
-# copy guide
+# copy docs
 cd ../../../..
 cp docs/guide/objeck_lang.pdf src/objeck/deploy/doc
 cp -R docs/syntax src/objeck/deploy/doc/syntax
-
 cp docs/readme.rtf src/objeck/deploy
+unzip docs/api.zip -d src/objeck/deploy/doc
+
 # copy examples
 cp -R src/compiler/rc src/objeck/deploy/examples
 
