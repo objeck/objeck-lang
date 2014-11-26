@@ -5,50 +5,94 @@
 
 use Collection;
 
+#~
+Support for paring XML documents
+~#
 bundle XML {
-	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-	# XML Parser class
-	~~~~~~~~~~~~~~~~~~~~~~~~~~~~~# 
+	#~
+	Used to programmatically build XML documents
+	~#
 	class XmlBuilder {
 		@root : XmlElement;
 		@version : String;
 		@encoding : String;
 		
+		#~
+		Default constructor
+		@param name root element name
+		~#
 		New(name : String) {
-			@root := XmlElement->New(XmlElementType->ELEMENT, name);
+			@root := XmlElement->New(XmlElement->Type->ELEMENT, name);
 		}
 		
+		#~
+		Default constructor
+		@param name root element name
+		@param version XML version tag
+		~#
 		New(name : String, version : String) {
-			@root := XmlElement->New(XmlElementType->ELEMENT, name);
+			@root := XmlElement->New(XmlElement->Type->ELEMENT, name);
 			@version := version;
 		}
 		
+		#~
+		Default constructor
+		@param name root element name
+		@param version XML version tag
+		@param encoding XML encoding type
+		~#
 		New(name : String, version : String, encoding : String) {
-			@root := XmlElement->New(XmlElementType->ELEMENT, name);
+			@root := XmlElement->New(XmlElement->Type->ELEMENT, name);
 			@version := version;
 			@encoding := encoding;
 		}
 		
+		#~
+		Returns the root node of the XML document
+		@return root node
+		~#
 		method : public : GetRoot() ~ XmlElement {
 			return @root;
 		}
 		
+		#~
+		Gets the XML version
+		@return XML version
+		~#
 		method : public : GetVersion() ~ String {
 			return @version;
 		}
 		
+		#~
+		Sets the XML version
+		@param version version
+		@return XML version
+		~#
 		method : public : SetVersion(version : String) ~ Nil {
 			@version := version;
 		}
 		
+		#~
+		Gets the XML encoding
+		@return XML encoding
+		~#
 		method : public : GetEncoding() ~ String {
 			return @encoding;
 		}
 		
+		#~
+		Sets the XML encoding
+		@param encoding encoding version
+		@return XML encoding
+		~#
 		method : public : SetEncoding(encoding : String) ~ Nil {
 			@encoding := encoding;
 		}
 		
+		#~
+		Produces an XML string representation of the document
+		@return string representation of the document
+		~#
 		method : public : ToString() ~ String {
 			# add declaration
 			out := String->New();
@@ -68,9 +112,9 @@ bundle XML {
 		}
 	}
 	
-	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-	# XML Parser class
-	~~~~~~~~~~~~~~~~~~~~~~~~~~~~~# 
+	#~
+	Parses an XML document
+	~#
 	class XmlParser {
 		@buffer : Char[];
 		@buffer_pos : Int;
@@ -78,22 +122,38 @@ bundle XML {
 		@root : XmlElement;
 		@declarations : StringHash;
 		
+		#~
+		Default constructor
+		@param string XML to parse
+		~#
 		New(string : String) {
 			@buffer := string->ToCharArray();
 			@buffer_pos := 0;
 			@declarations := StringHash->New();
 		}
 		
+		#~
+		Default constructor
+		@param buffer XML to parse
+		~#
 		New(buffer : Char[]) {
 			@buffer := buffer;
 			@buffer_pos := 0;
 			@declarations := StringHash->New();
 		}
 		
+		#~
+		Get the current parsing error
+		@return current parsing error
+		~#
 		method : public : GetError() ~ String {
 			return @error_msg;
 		}
 		
+		#~
+		Gets XML version
+		@return XML version
+		~#
 		method : public : GetVersion() ~ String {
 			element : XmlElement := @declarations->Find("xml")->As(XmlElement);
 			if(element <> Nil) {
@@ -106,6 +166,10 @@ bundle XML {
 			return "1.0";
 		}
 		
+		#~
+		Gets the XML encoding
+		@return XML encoding
+		~#
 		method : public : GetEncoding() ~ String {
 			element : XmlElement := @declarations->Find("xml")->As(XmlElement);
 			if(element <> Nil) {
@@ -118,6 +182,10 @@ bundle XML {
 			return "iso-8859-1";
 		}
 		
+		#~
+		Produces an XML string representation of the document
+		@return string representation of the document
+		~#
 		method : public : ToString() ~ String {
 			# add declaration
 			out := String->New();
@@ -135,13 +203,19 @@ bundle XML {
 			return out;
 		}
 		
+		#~
+		Find an XML element
+		@param path search string
+		@return matching XML elements
+		~#
 		method : public : FindElements(path : String) ~ Vector {
 			return @root->FindElements(path);
 		}
 		
-		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-		# parses element tags
-		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~# 
+		#~
+		Parses the XML document
+		@return true if parsed, false otherwise
+		~# 
 		method : public : Parse() ~ Bool {
 			if(@error_msg <> Nil) {
 				return false;
@@ -154,7 +228,7 @@ bundle XML {
 			};
 
 			# parse declarations
-			while(tag->GetType() = XmlElementType->DECLARATION) {
+			while(tag->GetType() = XmlElement->Type->DECLARATION) {
 				@declarations->Insert(tag->GetName(), tag);
 				# update
 				tag := ParseElement();
@@ -164,7 +238,7 @@ bundle XML {
 			};
 			
 			# find root
-			if(tag->GetType() = XmlElementType->ELEMENT) {
+			if(tag->GetType() = XmlElement->Type->ELEMENT) {
 				@root := tag;
 			}
 			else {
@@ -175,7 +249,7 @@ bundle XML {
 			stack := Stack->New();
 			while(tag <> Nil) {
 				# update element stack
-				if(tag->GetType() = XmlElementType->ELEMENT) {
+				if(tag->GetType() = XmlElement->Type->ELEMENT) {
 					parent : XmlElement;
 					if(stack->IsEmpty() = false) {
 						parent := stack->Top()->As(XmlElement);
@@ -184,8 +258,8 @@ bundle XML {
 					};
 					stack->Push(tag);
 				}
-				else if(tag->GetType() = XmlElementType->UNARY_ELEMENT | 
-					tag->GetType() = XmlElementType->CDATA) {
+				else if(tag->GetType() = XmlElement->Type->UNARY_ELEMENT | 
+					tag->GetType() = XmlElement->Type->CDATA) {
 					parent : XmlElement;
 					if(stack->IsEmpty() = false) {
 						parent := stack->Top()->As(XmlElement);
@@ -193,9 +267,9 @@ bundle XML {
 						tag->SetParent(parent);
 					};
 				}
-				else if(tag->GetType() = XmlElementType->CLOSING_ELEMENT) {
+				else if(tag->GetType() = XmlElement->Type->CLOSING_ELEMENT) {
 					top : XmlElement := stack->Top()->As(XmlElement);
-					if(top->GetType() = XmlElementType->ELEMENT) {
+					if(top->GetType() = XmlElement->Type->ELEMENT) {
 						stack->Pop();
 					}
 					else {
@@ -394,7 +468,7 @@ bundle XML {
 		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		# parse element
 		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~# 
-		method : public : native : ParseElement() ~ XmlElement {
+		method : native : ParseElement() ~ XmlElement {
 			# are we done?
 			IgnoreWhiteSpace();
 			if(@buffer_pos = @buffer->Size()) {
@@ -555,7 +629,7 @@ bundle XML {
 					
 # Console->Print("cdata: ")->PrintLine(data);					
 						
-					return XmlElement->New(XmlElementType->CDATA, Nil->As(String), 
+					return XmlElement->New(XmlElement->Type->CDATA, Nil->As(String), 
 						Nil->As(StringHash), data);
 				}
 				else {
@@ -664,39 +738,32 @@ bundle XML {
 				};
 			};				
 	
-			type : XmlElementType;
+			type : XmlElement->Type;
 			if(is_unary_tag) {
-				type := XmlElementType->UNARY_ELEMENT;
+				type := XmlElement->Type->UNARY_ELEMENT;
 			}
 			else if(is_dclr_tag) {
-				type := XmlElementType->DECLARATION;
+				type := XmlElement->Type->DECLARATION;
 			}
 			else if(is_end_tag) {
-				type := XmlElementType->CLOSING_ELEMENT;
+				type := XmlElement->Type->CLOSING_ELEMENT;
 			}
 			else {
-				type := XmlElementType->ELEMENT;
+				type := XmlElement->Type->ELEMENT;
 			};
 			
 			return XmlElement->New(type, tag_name, attribs, tag_contents);
 		}
 			
+		#~
+		Gets the root XML element
+		@return root XML element
+		~# 
 		method : public : GetRoot() ~ XmlElement {
 			return @root;
 		}
 	}
 	
-	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-	# XmlElement types
-	~~~~~~~~~~~~~~~~~~~~~~~~~~~~~# 
-	enum XmlElementType {
-		DECLARATION,
-		CDATA,
-		ELEMENT,
-		CLOSING_ELEMENT, # control type not used for DOM creation
-		UNARY_ELEMENT
-	}
-
 	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	# XmlAttribute class
 	~~~~~~~~~~~~~~~~~~~~~~~~~~~~~# 
@@ -748,30 +815,59 @@ bundle XML {
 		}
 	}
 	
-	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-	# XmlElement class
-	~~~~~~~~~~~~~~~~~~~~~~~~~~~~~# 
+	#~
+	Represent an XML element
+	~#
 	class XmlElement {
 		@name : String;
 		@namespace : String;
-		@type : XmlElementType;
+		@type : XmlElement->Type;
 		@attribs : StringHash;
 		@content : String;
 		@elem_parent : XmlElement;
 		@children : Vector;
 		
-		New(type : XmlElementType, name : String) {
+		#~
+		XmlElement types
+		~#
+		enum Type {
+			DECLARATION,
+			CDATA,
+			ELEMENT,
+			CLOSING_ELEMENT, # control type not used for DOM creation
+			UNARY_ELEMENT
+		}
+		
+		#~
+		Constructor
+		@param type element type
+		@param name element name 
+		~#
+		New(type : XmlElement->Type, name : String) {
 			@type := type;
 			SetNames(name);
 		}
 		
-		New(type : XmlElementType, name : String, content : String) {
+		#~
+		Constructor
+		@param type element type
+		@param name element name 
+		@param content content type
+		~#
+		New(type : XmlElement->Type, name : String, content : String) {
 			@type := type;
 			@content := content;
 			SetNames(name);			
 		}
 		
-		New(type : XmlElementType, name : String, attribs : StringHash, content : String) {
+		#~
+		Constructor
+		@param type element type
+		@param name element name 
+		@param attribs element name/value pairs
+		@param content content type
+		~#
+		New(type : XmlElement->Type, name : String, attribs : StringHash, content : String) {
 			@type := type;
 			@attribs := attribs;
 			@content := content;
@@ -779,50 +875,86 @@ bundle XML {
 		}
 		
 		method : SetNames(name : String) ~ Nil {
-		 offset := name->FindLast(':');
-		 if(offset > 0) {
-		   @namespace := name->SubString(offset);
-		   offset += 1;
-		   @name := name->SubString(offset, name->Size() - offset);
-		  }
+			offset := name->FindLast(':');
+			if(offset > 0) {
+				@namespace := name->SubString(offset);
+				offset += 1;
+				@name := name->SubString(offset, name->Size() - offset);
+			}
 			else {
 				@namespace := "";
 				@name := name;
 			};
 		}
 		
+		#~
+		Gets the element name
+		@return element name
+		~#
 		method : public : GetName() ~ String {
 			return String->New(@name);
 		}
 		
+		#~
+		Sets the element name
+		@param name element name
+		~#
 		method : public : SetName(name : String) ~ Nil {
 			@name := name;
 		}
 
+		#~
+		Gets the element namespace
+		@return element namespace
+		~#
 		method : public : GetNamespace() ~ String {
 			return String->New(@namespace);
 		}
 
+		#~
+		Sets the element namespace
+		@param namespace element namespace
+		~#
 		method : public : SetNamespace(namespace : String) ~ Nil {
 			@namespace := namespace;
 		}
 		
-		method : public : GetType() ~ XmlElementType {
+		#~
+		Gets the element type
+		@return element type
+		~#
+		method : public : GetType() ~ XmlElement->Type {
 			return @type;
 		}
 		
-		method : public : SetType(type : XmlElementType) ~ Nil {
+		#~
+		Sets the element type
+		@param type element type
+		~#
+		method : public : SetType(type : XmlElement->Type) ~ Nil {
 			@type := type;
 		}
 		
+		#~
+		Gets the element content 
+		@return element content
+		~#
 		method : public : GetContent() ~ String {
 			return String->New(@content);
 		}
 		
+		#~
+		Sets the element content
+		@param content element content
+		~#
 		method : public : SetContent(content : String) ~ Nil {
 			@content := content;
 		}
 		
+		#~
+		Adds an element attribute 
+		@param attrib element attribute
+		~#
 		method : public : AddAttribute(attrib : XmlAttribute) ~ Nil {
 			if(@attribs = Nil) {
 				@attribs := StringHash->New();
@@ -830,6 +962,11 @@ bundle XML {
 			@attribs->Insert(attrib->GetName(), attrib);
 		}
 		
+		#~
+		Gets an element attribute
+		@param key attribute name 
+		@return element attribute 
+		~#
 		method : public : GetAttribute(key : String) ~ XmlAttribute {
 			if(@attribs <> Nil) {
 				return @attribs->Find(key)->As(XmlAttribute);
@@ -838,6 +975,10 @@ bundle XML {
 			return Nil;
 		}
 		
+		#~
+		Adds an XML subelement tag
+		@param tag element tag
+		~#
 		method : public : AddChild(tag : XmlElement) ~ Nil {
 			if(@children = Nil) {
 				@children := Vector->New();
@@ -845,6 +986,10 @@ bundle XML {
 			@children->AddBack(tag);
 		}
 		
+		#~
+		Get the number of child elements
+		@return number of child elements
+		~#
 		method : public : GetChildCount() ~ Int {
 			if(@children <> Nil) {
 				return @children->Size();
@@ -853,6 +998,11 @@ bundle XML {
 			return 0;
 		}
 		
+		#~
+		Gets a child element
+		@param i child index
+		@return child element, Nil if not found
+		~#
 		method : public : GetChild(i : Int) ~ XmlElement {
 			if(@children <> Nil & i < @children->Size()) {
 				return @children->Get(i)->As(XmlElement);
@@ -861,14 +1011,26 @@ bundle XML {
 			return Nil;
 		}
 		
+		#~
+		Gets a child's parent element
+		@return parent element
+		~#
 		method : public : GetParent() ~ XmlElement {
 			return @elem_parent;
 		}
 		
+		#~
+		Set a child's parent element
+		@param parent parent element
+		~#
 		method : public : SetParent(parent : XmlElement) ~ Nil {
 			@elem_parent := parent;
 		}
 		
+		#~
+		Creates a string representation of the element 
+		@return string representation of the element
+		~#
 		method : public : ToString() ~ String {
 			in := String->New();
 			ToString(in);
@@ -881,7 +1043,7 @@ bundle XML {
 		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~# 
 		method : ToString(in : String) ~ Nil {
 			# element
-			if(@name <> Nil & @type = XmlElementType->ELEMENT) {
+			if(@name <> Nil & @type = XmlElement->Type->ELEMENT) {
 				in->Append('<');
 				# name and namespace
 				if(@namespace <> Nil & @namespace->Size() > 0) {
@@ -929,7 +1091,7 @@ bundle XML {
 				in->Append('>');
 			}
 			# cdata
-			else if(@type = XmlElementType->CDATA) {
+			else if(@type = XmlElement->Type->CDATA) {
 				in->Append("<![CDATA[");
 				if(@content <> Nil) {
 					in->Append(@content);
@@ -938,10 +1100,11 @@ bundle XML {
 			};
 		}
 		
-		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-		# get all children that 
-		# match the given filter
-		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~# 
+		#~
+		Get all child elements that matchs the given filter
+		@param name element name
+		@return child elements
+		~#
 		method : public : native : GetChildren(name : String) ~ Vector {
 			filtered := Vector->New();
 			if(@children <> Nil) {
@@ -956,6 +1119,11 @@ bundle XML {
 			return filtered;
 		}
 		
+		#~
+		Get the first element that matchs the given filter
+		@param name element name
+		@return child elements
+		~#
 		method : public : native : GetFirstChild(name : String) ~ Vector {
 			first := Vector->New();
 			
@@ -967,6 +1135,11 @@ bundle XML {
 			return first;
 		}
 		
+		#~
+		Get the last element that matchs the given filter
+		@param name element name
+		@return child elements
+		~#
 		method : public : native : GetLastChild(name : String) ~ Vector {
 			first := Vector->New();
 			
@@ -978,6 +1151,12 @@ bundle XML {
 			return first;
 		}
 		
+		#~
+		Get all child elements that matchs the given filter
+		@param name element name
+		@param attrib attrib name
+		@return child elements
+		~#
 		method : public : native : GetChildren(name : String, attrib : String) ~ Vector {
 			filtered := Vector->New();
 			each(i : @children) {
@@ -990,6 +1169,12 @@ bundle XML {
 			return filtered;
 		}
 		
+		#~
+		Get all child elements that matchs the given filter
+		@param name element name
+		@param max max number of elements to return
+		@return child elements
+		~#
 		method : public : native : GetChildren(name : String, max : Int) ~ Vector {
 			filtered := Vector->New();
 			if(max > 0) {
@@ -1006,9 +1191,10 @@ bundle XML {
 			return filtered;
 		}
 		
-		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-		# get all children
-		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~# 
+		#~
+		Get all children
+		@return child elements
+		~#
 		method : public : GetChildren() ~ Vector {
 			return @children;
 		}
@@ -1016,7 +1202,7 @@ bundle XML {
 		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		# parses element name
 		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~# 
-		method : public : GetElementName(filter : String) ~ String {
+		method : GetElementName(filter : String) ~ String {
 			name := String->New();
 			
 			i := 0;
@@ -1032,7 +1218,7 @@ bundle XML {
 		# parses element expression
 		# tags
 		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~# 
-		method : public : GetElementExpression(filter : String) ~ String {
+		method : GetElementExpression(filter : String) ~ String {
 			if(filter->EndsWith("]")) {
 				end_pos := filter->Size() - 1;
 				start_pos := end_pos;
@@ -1056,7 +1242,7 @@ bundle XML {
 		# parses element expression
 		# tags
 		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~# 
-		method : public : ProcessExpression(filter : String, element : XmlElement) ~ Vector {
+		method : ProcessExpression(filter : String, element : XmlElement) ~ Vector {
 			expr := GetElementExpression(filter);
 			if(expr <> Nil) {
 				if(expr->Equals("first()")) {
@@ -1083,10 +1269,11 @@ bundle XML {
 			return element->GetChildren(filter);
 		}
 		
-		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-		# finds all elements in a
-		# given path
-		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~# 
+		#~
+		Finds all elements that match the XPath-like expression 
+		@param path element name
+		@return found elements
+		~#
 		method : public : FindElements(path : String) ~ Vector {
 			children := Vector->New();
 						
@@ -1138,9 +1325,11 @@ bundle XML {
 			return children;
 		}
 		
-		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-		# encodes an XML string
-		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~# 
+		#~
+		Encodes an XML string
+		@param in string to encode
+		@return encoded string
+		~#
 		function : EncodeString(in : String) ~ String {
 			out := String->New();
 			
@@ -1172,9 +1361,11 @@ bundle XML {
 			return out;
 		}
 		
-		#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-		# decodes an XML string
-		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~# 
+		#~
+		Decodes an XML string
+		@param in string to decode
+		@return decoded string
+		~#
 		function : DecodeString(in : String) ~ String {
 			max := in->Size();
 			i := 0;
