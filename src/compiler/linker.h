@@ -710,12 +710,12 @@ class LibraryClass {
     if(start > -1) {
       const int end = encoded_name.find(':', start + 1);
       if(end > -1) {
-	const wstring &unqualified_name = encoded_name.substr(start + 1, end - start - 1);
-	unqualified_methods.insert(pair<wstring, LibraryMethod*>(unqualified_name, method));
+        const wstring &unqualified_name = encoded_name.substr(start + 1, end - start - 1);
+        unqualified_methods.insert(pair<wstring, LibraryMethod*>(unqualified_name, method));
       }
       else {
-	delete method;
-	method = NULL;
+        delete method;
+        method = NULL;
       }
     }
     else {

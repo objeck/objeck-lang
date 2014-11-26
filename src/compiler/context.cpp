@@ -3000,7 +3000,14 @@ bool ContextAnalyzer::Analyze()
                   ProcessError(assignment, L"Internal compiler error.");
                   break;
                 }
+              
               }
+              else {
+                ProcessError(assignment, L"Invalid operation using classes: System.String and " + right);
+              }
+            }
+            else {
+              ProcessError(assignment, L"Invalid operation using classes: System.String and " + expr_type->GetClassName());
             }
           }
           // rhs 'Char', 'Byte', 'Int', 'Float' or 'Bool'

@@ -14,7 +14,7 @@ body {
 }
 	
 ul {
-	font-size: 14px;
+	font-size: 13px;
 	list-style-type: square;
 }
 
@@ -41,7 +41,7 @@ code {
 	font-family: Monaco, Courier, monospace;
 	display: block;
 	padding: 5px 10px;
-	font-size: 15px;
+	font-size: 13px;
 	border-radius: 4px;
 	margin-bottom: 20px;
 	overflow-x: auto;
@@ -73,7 +73,7 @@ h3 {
 
 strong {
 	font-weight: bold;
-	color: black;
+	color: 404040;
 } 
 
 </style>

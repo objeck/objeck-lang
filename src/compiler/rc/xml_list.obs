@@ -19,7 +19,7 @@ bundle Default {
 			root := builder->GetRoot();
 			if(names->Size() = comments->Size()) {
 				each(i : names) {
-					element := XmlElement->New(XmlElementType->ELEMENT, 
+					element := XmlElement->New(XmlElement->Type->ELEMENT,
 						names->Get(i)->As(String), 
 						comments->Get(i)->As(String));
 					root->AddChild(element);

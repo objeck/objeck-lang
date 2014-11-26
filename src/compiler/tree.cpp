@@ -139,7 +139,13 @@ wstring Method::EncodeType(Type* type, Class* klass, ParsedProgram* program, Lin
           name += prgm_klass->GetName();
         }
         else {
+          // full path resolution
           Enum* prgm_enum = program->GetEnum(type_klass_name);
+          vector<wstring> uses = program->GetUses();
+          for(size_t i = 0; !prgm_enum && i < uses.size(); ++i) {
+            prgm_enum = program->GetEnum(uses[i] + L"." + type_klass_name);
+          }
+          
           if(prgm_enum) {
             name += prgm_enum->GetName();
           }

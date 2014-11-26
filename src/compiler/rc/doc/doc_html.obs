@@ -76,6 +76,7 @@ class HtmlMaker {
 		bundle_keys := bundles->GetKeys();
 		each(i : bundle_keys) {
 			@bundle_block := bundles->Find(bundle_keys->Get(i)->As(String))->As(BundleBlock);
+			# classes
 			classes := @bundle_block->GetClasses();
 			class_keys := classes->GetKeys();
 			each(j : class_keys) {
@@ -84,6 +85,17 @@ class HtmlMaker {
 					CreateClassHtml(class_block, class_header);
 				};
 			};
+			
+			# enums
+			enums := @bundle_block->GetEnums();
+			enum_keys := enums->GetKeys();
+			each(j : enum_keys) {
+				# enum
+				enum_block := enums->Find(enum_keys->Get(j)->As(String))->As(EnumBlock);
+				if(enum_block <> Nil) {
+					CreateEnumHtml(enum_block, class_header);
+				};
+			};			
 		};
 		
 		return true;
@@ -103,9 +115,9 @@ class HtmlMaker {
 			bundle_block := bundles->Find(bundle_keys->Get(i)->As(String))->As(BundleBlock);
 			if(bundle_block->GetDesc() <> Nil) {
 				html += "<tr><td>@bundle_name</td><td>@bundle_desc</td></tr>";
-				sec_a := "<a href='#";
+				sec_a := "<a href='classes.html#";
 				sec_a += bundle_block->GetName()->ToLower();
-				sec_a += "'>";
+				sec_a += "' target='nav'>";
 				sec_a += bundle_block->GetName();
 				sec_a += "</a>";
 				html := html->ReplaceAll("@bundle_name", sec_a);
@@ -126,7 +138,6 @@ class HtmlMaker {
 	~#
 	method : CreateClassIndexHtml(bundles : StringMap, header : String) ~ Nil {
 		html := String->New(header);
-		html += "";
 		
 		# bundles
 		bundle_keys := bundles->GetKeys();
@@ -134,14 +145,16 @@ class HtmlMaker {
 			bundle_block := bundles->Find(bundle_keys->Get(i)->As(String))->As(BundleBlock);
 			# class description
 			if(bundle_block->IsParsed()) {
-				html += "<strong>";
-				html += bundle_block->GetName();
-				html += "</strong>";
+				sec_a := "<a id='@short_link'><strong>@bundle_name</strong>";
+				sec_a := sec_a->ReplaceAll("@bundle_name", bundle_block->GetName());
+				sec_a := sec_a->ReplaceAll("@short_link", bundle_block->GetName()->ToLower());
+				html += sec_a;
 				
 				sec_b := "<ul>";
 				classes := bundle_block->GetClasses();
 				class_keys := classes->GetKeys();			
 				each(j : class_keys) {
+					# class
 					class_block := classes->Find(class_keys->Get(j)->As(String))->As(ClassBlock);
 					if(class_block->IsParsed()) {
 						sec_b += "<li><a href='";
@@ -155,16 +168,40 @@ class HtmlMaker {
 						sec_b->Append(link_name->ToLower());
 						sec_b += "' target='main'>";
 						if(class_block->IsInterface()) {
-							sec_b->Append("<i>");
 							sec_b->Append(class_block->GetName());
-							sec_b->Append("</i>");
+							sec_b->Append('*');
 						}
 						else {
 							sec_b->Append(class_block->GetName());
 						};
 						sec_b += "</a></li>";
 					};
-				};			
+				};
+				
+				enums := bundle_block->GetEnums();
+				enum_keys := enums->GetKeys();
+				each(j : enum_keys) {
+					# enum
+					enum_block := enums->Find(enum_keys->Get(j)->As(String))->As(EnumBlock);
+					if(enum_block <> Nil) {
+						sec_b += "<li><a href='";
+						
+						file_name := enum_block->GetBundleName()->ToLower();
+						file_name += '-';
+						file_name += enum_block->GetName()->ToLower();
+						link_name := String->New(file_name);
+						link_name += ".html";
+
+						sec_b->Append(link_name->ToLower());
+						sec_b += "' target='main'>";
+						sec_b->Append(enum_block->GetName());
+						sec_b->Append('#');
+						
+						sec_b += "</a></li>";
+						
+					};
+				};
+				
 				sec_b += "</ul>";			
 				html += sec_b;
 			};
@@ -285,6 +322,45 @@ class HtmlMaker {
 	#~
 	DOC ME
 	~#
+	method : CreateEnumHtml(enum_block : EnumBlock, header : String) ~ Nil {
+		# class description
+		html := String->New(header);
+		sec_b := "<h2>@enum_name</h2><p>@enum_desc</p>";
+		sec_b := sec_b->ReplaceAll("@enum_name", enum_block->GetName());
+		sec_b := sec_b->ReplaceAll("@enum_desc", enum_block->GetDesc());
+		html += sec_b;
+
+		sec_c := "<strong>Items</strong><ul>";		
+		items := enum_block->GetItems();
+		each(j : items) {
+			item := items->Get(j)->As(String);
+			sec_c += "<li>";
+			sec_c += item;
+			if(j = 0 & enum_block->GetId() <> Nil) {
+				sec_c += " = ";
+				sec_c += enum_block->GetId();
+			};
+			sec_c += "</li>";
+		};
+		sec_c += "</ul>";
+		html += sec_c;
+	
+		html += "</body></html>";
+	
+		file_name := "../html/";
+		file_name += enum_block->GetBundleName()->ToLower();
+		file_name += '-';
+		file_name += enum_block->GetName()->ToLower();
+		file_name += ".html";
+		
+		out := FileWriter->New(file_name);
+		out->WriteString(html);
+		out->Close();
+	}
+	
+	#~
+	DOC ME
+	~#
 	method : GetTypeLink(type_name : String) ~ String {
 		class_block : ClassBlock;
 		
@@ -315,6 +391,21 @@ class HtmlMaker {
 		
 		if(class_block = Nil) {
 			class_block := GetBundleClass("System.Introspection", type_name);
+		};
+		
+		if(class_block = Nil) {
+			enum_block := GetBundleEnum(@bundle_block->GetName(), type_name);
+			if(enum_block <> Nil) {
+				file_name := "<a href='";
+				file_name += enum_block->GetBundleName()->ToLower();
+				file_name += '-';
+				file_name += enum_block->GetName()->ToLower();
+				file_name += ".html' target='main'>";
+				file_name += full_name;
+				file_name += "</a>";	
+			
+				return file_name;
+			};
 		};
 		
 		if(class_block <> Nil) {
@@ -349,6 +440,19 @@ class HtmlMaker {
 	#~
 	DOC ME
 	~#
+	method : GetBundleEnum(bundle_name : String, enum_name : String) ~ EnumBlock {
+		lookup_bundle := @parser->GetBundles()->Find(bundle_name)->As(BundleBlock);		
+		if(lookup_bundle <> Nil) {
+			return lookup_bundle->GetEnums()->Find(enum_name)->As(EnumBlock);
+		}
+		else {
+			return Nil;
+		};
+	}
+	
+	#~
+	DOC ME
+	~#
 	method : FormatFunctions(class_name : String, short_name : String, funcs : Vector, html : String) ~ Nil {
 		if(funcs <> Nil) {
 			sec_d := "<h3>@short_name</h3><a id='@short_link'></a>";
@@ -371,7 +475,7 @@ class HtmlMaker {
 				params := func->GetParams();
 				sec_f := "";
 				if(params->Size() > 0) {
-					sec_f := "<div style='padding: 5px 10px; font-size: 13px'><i>Parameters</i></div>";
+					sec_f := "<div style='padding: 5px 10px; font-size: 13px'>Parameters</div>";
 					sec_f += "<table class='doc-table'><tr><th>Name</th><th>Type</th><th>";
 					sec_f += "Description</th></tr>";
 			
@@ -383,6 +487,10 @@ class HtmlMaker {
 							sec_f := sec_f->ReplaceAll("@param_name", param_tag->GetName());
 							sec_f := sec_f->ReplaceAll("@param_type", GetTypeLink(param->GetTypeName()));
 							sec_f := sec_f->ReplaceAll("@param_desc", param_tag->GetDesc());
+						}
+						else if(param_tag = Nil) {
+							func_name := func->GetSignature();
+							"*** Missing parameter: class='{$class_name}' function='{$func_name}' ***"->PrintLine();
 						};
 					};
 					sec_f += "</table>";
@@ -391,8 +499,13 @@ class HtmlMaker {
 
 				# TODO:
 				sec_g := "";
+				
+				if(params->Size() > 0 & func->GetReturnTag() <> Nil) {
+					sec_g += "<br/>";
+				};
+				
 				if(func->GetReturnTag() <> Nil) {
-					sec_g += "<br/><div style='padding: 5px 10px; font-size: 13px'><i>Return</i></div>";
+					sec_g += "<div style='padding: 5px 10px; font-size: 13px'>Return</div>";
 					sec_g += "<table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr>";
 					sec_g += "<td>@return_type</td><td>@return_desc</td></tr></table>";
 					sec_g := sec_g->ReplaceAll("@return_type", GetTypeLink(func->GetReturnType()->GetTypeName()));

@@ -5,7 +5,7 @@ note: compile compiler with -D_SYSTEM flag
 ~#	
 
 #~
-System Bundle
+Core sytem classes 
 ~#
 bundle System {
 	#~
@@ -2217,6 +2217,7 @@ bundle System {
 
 		#~
 		Checks if the string starts with the given string
+		@param s string to check for
 		@return true if starts with string, false otherwise
 		~#
 		method : public : native : StartsWith(s : String) ~ Bool {
@@ -2235,6 +2236,7 @@ bundle System {
 
 		#~
 		Checks if the string ends with the given character
+		@param s string to check for
 		@return true if ends with character, false otherwise
 		~#
 		method : public : native : EndsWith(s : String) ~ Bool {
@@ -2570,7 +2572,7 @@ bundle System {
 		#~
 		Sets a runtime property 
 		@param key property key
-		@param key property value
+		@param value property value
 		~#
 		function : SetProperty(key : String, value : String) ~ Nil {
 			SET_SYS_PROP;
@@ -2717,7 +2719,7 @@ bundle System.API {
 }
 
 #~
-Provides time
+Provides support for dates and times
 ~#	
 bundle System.Time {	
 	#~
@@ -2866,7 +2868,7 @@ bundle System.Time {
 
 		#~
 		Add days to the date
-		@param days to add
+		@param value days to add
 		~#
 		method : public : AddDays(value : Int) ~ Nil {
 			DATE_TIME_ADD_DAYS;
@@ -2874,7 +2876,7 @@ bundle System.Time {
 
 		#~
 		Add hours to the date
-		@param hours to add
+		@param value hours to add
 		~#
 		method : public : AddHours(value : Int) ~ Nil {
 			DATE_TIME_ADD_HOURS;
@@ -2882,7 +2884,7 @@ bundle System.Time {
    
 		#~
 		Add minutes to the date
-		@param minutes to add
+		@param value minutes to add
 		~#
 		method : public : AddMinutes(value : Int) ~ Nil {
 			DATE_TIME_ADD_MINS;
@@ -2890,7 +2892,7 @@ bundle System.Time {
 
 		#~
 		Add seconds to the date
-		@param seconds to add
+		@param value seconds to add
 		~#
 		method : public : AddSeconds(value : Int) ~ Nil {
 			DATE_TIME_ADD_SECS;
@@ -2966,7 +2968,7 @@ bundle System.Time {
 }
 
 #~
-Provides concurrency
+System support for threads and runtime concurrency
 ~#
 bundle System.Concurrency {	
 	#~
@@ -3712,7 +3714,7 @@ bundle System.IO {
 
 		#~
 		Serializes a base object
-		@param o value to serialize
+		@param b value to serialize
 		~#
 		method : public : Write(b : Bool[]) ~ Nil {
 			SERL_INT_ARY;
@@ -4030,7 +4032,7 @@ bundle System.IO.File {
 		#~
 		Renames a file
 		@param o original file name
-		@param o new file name
+		@param n new file name
 		@return true if file was renamed
 		~#
 		function : Rename(o : System.String, n : System.String) ~ Bool {
@@ -4229,7 +4231,7 @@ bundle System.IO.File {
 	class Directory {
 		#~
 		Creates a directory
-		@param directory name
+		@param n directory name
 		@return true if directory was created 
 		~#
 		function : Create(n : System.String) ~ Bool {
@@ -4238,7 +4240,7 @@ bundle System.IO.File {
 		
 		#~
 		Checks to see if the given directory exists
-		@param directory name
+		@param n directory name
 		@return true if directory exists
 		~#
 		function : Exists(n : System.String) ~ Bool {
@@ -4247,7 +4249,7 @@ bundle System.IO.File {
 		
 		#~
 		List of directory content
-		@param directory name
+		@param n directory name
 		@return list of directory content
 		~#
 		function : List(n : System.String) ~ System.String[] {
@@ -4569,7 +4571,7 @@ bundle System.IO.Net {
 	   
 		#~
 		Default constructor
-		@param server port
+		@param port server port
 		~#
 		New(port : Int) {
 		  Parent();
@@ -4605,7 +4607,7 @@ bundle System.IO.Net {
 
 #~
 Allow programmes to introspect the 
-runtime programming elements
+runtime elements
 ~#
 bundle System.Introspection {
 	#~
@@ -4741,7 +4743,7 @@ bundle System.Introspection {
 	}
 	
 	#~
-	Datatype type
+	Data type types
 	~#
 	enum TypeId := -1000 {
 		BOOL,
