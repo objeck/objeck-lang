@@ -9,4 +9,7 @@ mkdir ..\doc\api
 xcopy /e ..\html\* ..\doc\api
 rmdir /s /q ..\html
 explorer ..\doc\api\index.html
+cd ..\doc\
+"C:\Program Files\7-Zip\7z.exe" a -tzip api "api\*.html"
+copy api.zip ..\..\..\..\docs
 cd ..\..
