@@ -33,6 +33,7 @@ copy objeck_lang.pdf ..\..\docs\guide\
 mkdir deploy\doc\syntax
 copy ..\..\docs\syntax\* deploy\doc\syntax
 copy ..\..\docs\readme.rtf deploy
+call code_doc.cmd
 REM finished
 if [%1] NEQ [deploy] goto end
 	rmdir /s /q "%HOMEDRIVE%%HOMEPATH%\Desktop\objeck-lang"

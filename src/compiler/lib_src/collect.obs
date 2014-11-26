@@ -117,7 +117,7 @@ bundle Collection {
 
 		#~
 		Gets an indexed value
-		@param i index
+		@param index index
 		@return value
 		~#
 		method : public : Get(index : Int) ~ Int {
@@ -281,6 +281,7 @@ bundle Collection {
 		
 		#~
 		Finds a given value in the vector via linear search
+		@param value value to search for
 		@return index of found value, -1 if not found
 		~#
 		method : public : native : Find(value : Int) ~ Int {
@@ -295,6 +296,7 @@ bundle Collection {
 
 		#~
 		Performs a binary search O(log n)
+		@param value value to search for
 		@return index of found value, -1 if not found
 		~#
 		method : public : native : BinarySearch(value : Int) ~ Int {
@@ -345,6 +347,7 @@ bundle Collection {
 		
 		#~
 		Uses the given function to filter out values
+		@param f function to use a filter
 		@return filter vector
 		~#
 		method : public : Filter(f : (Int) ~ Bool) ~ IntVector {
@@ -361,6 +364,7 @@ bundle Collection {
 		
 		#~
 		Applies the given function to each value in the vector 
+		@param f function to apply
 		@return newly calculated vector
 		~#
 		method : public : Apply(f : (Int) ~ Int) ~ IntVector {
@@ -480,7 +484,7 @@ bundle Collection {
 
 		#~
 		Gets an indexed value
-		@param i index
+		@param index index
 		@return value
 		~#
 		method : public : Get(index : Int) ~ Float {
@@ -637,6 +641,7 @@ bundle Collection {
 
 		#~
 		Finds a given value in the vector via linear search
+		@param value value to search for
 		@return index of found value, -1 if not found
 		~#
 		method : public : native : Find(value : Float) ~ Int {
@@ -651,6 +656,7 @@ bundle Collection {
 		
 		#~
 		Performs a binary search O(log n)
+		@param value value to search for
 		@return index of found value, -1 if not found
 		~#
 		method : public : native : BinarySearch(value : Float) ~ Int {
@@ -701,6 +707,7 @@ bundle Collection {
 		
 		#~
 		Uses the given function to filter out values
+		@param f function to use a filter
 		@return filter vector
 		~#
 		method : public : Filter(f : (Float) ~ Bool) ~ FloatVector {
@@ -717,6 +724,7 @@ bundle Collection {
 
 		#~
 		Applies the given function to each value in the vector 
+		@param f function to apply
 		@return newly calculated vector
 		~#
 		method : public : Apply(f : (Float) ~ Float) ~ FloatVector {
@@ -834,7 +842,7 @@ bundle Collection {
 
 		#~
 		Gets an indexed value
-		@param i index
+		@param index index
 		@return value
 		~#
 		method : public : Get(index : Int) ~ Compare {
@@ -935,6 +943,7 @@ bundle Collection {
 
 		#~
 		Finds a given value in the vector via linear search
+		@param value value to search for
 		@return index of found value, -1 if not found
 		~#
 		method : public : native : Find(value : Compare) ~ Int {
@@ -949,6 +958,7 @@ bundle Collection {
 		
 		#~
 		Performs a binary search O(log n)
+		@param value value to search for
 		@return index of found value, -1 if not found
 		~#
 		method : public : native : BinarySearch(value : Compare) ~ Int {
@@ -989,6 +999,7 @@ bundle Collection {
 		
 		#~
 		Uses the given function to filter out values
+		@param f function to use a filter
 		@return filter vector
 		~#
 		method : public : Filter(f : (Compare) ~ Bool) ~ CompareVector {
@@ -1117,7 +1128,7 @@ bundle Collection {
 
 		#~
 		Gets an indexed value
-		@param i index
+		@param index index
 		@return value
 		~#
 		method : public : Get(index : Int) ~ Base {
@@ -1432,6 +1443,7 @@ bundle Collection {
 		
 		#~
 		Finds a value in the list and sets the pointer
+		@param value value to search for
 		@return ture if found, false otherwise
 		~#
 		method : public : Find(value : Int) ~ Bool {
@@ -1608,6 +1620,7 @@ bundle Collection {
 		
 		#~
 		Searches for a value
+		@param value value to check for
 		@return true if value is found, false otherwise
 		~#
 		method : public : Has(value : Float) ~ Bool {
@@ -1616,6 +1629,7 @@ bundle Collection {
 		
 		#~
 		Finds a value in the list and sets the pointer
+		@param value value to search for
 		@return value that's found
 		~#
 		method : public : Find(value : Float) ~ Float {
@@ -1876,6 +1890,7 @@ bundle Collection {
 
 		#~
 		Searches for a value
+		@param value value to check for
 		@return true if value is found, false otherwise
 		~#
 		method : public : Has(value : Compare) ~ Bool {
@@ -1903,6 +1918,7 @@ bundle Collection {
 		
 		#~
 		Finds a value in the list and sets the pointer
+		@param value value to search for
 		@return value that's found
 		~#
 		method : public : Find(value : Compare) ~ Compare {
@@ -2104,6 +2120,7 @@ bundle Collection {
 		
 		#~
 		Adds a value to the back of the queue
+		@param value value to add
 		~#
 		method : public: native : Add(value : Float) ~ Nil {
 			@queue->AddBack(value);
@@ -2111,6 +2128,7 @@ bundle Collection {
 		
 		#~
 		Removes a value from the front of the queue
+		@return value removed
 		~#
 		method : public : native : Remove() ~ Float {
 			if(@queue->Size() > 0) {
@@ -2173,6 +2191,7 @@ bundle Collection {
 		
 		#~
 		Adds a value to the back of the queue
+		@param value value to add
 		~#
 		method : public: native : Add(value : Int) ~ Nil {
 			@queue->AddBack(value);
@@ -2180,6 +2199,7 @@ bundle Collection {
 		
 		#~
 		Removes a value from the front of the queue
+		@return value removed
 		~#
 		method : public : native : Remove() ~ Int {
 			if(@queue->Size() > 0) {
@@ -2242,6 +2262,7 @@ bundle Collection {
 		
 		#~
 		Adds a value to the back of the queue
+		@param value value to add
 		~#
 		method : public: native : Add(value : Compare) ~ Nil {
 			@queue->AddBack(value);
@@ -2249,6 +2270,7 @@ bundle Collection {
 		
 		#~
 		Removes a value from the front of the queue
+		@return value removed
 		~#
 		method : public : native : Remove() ~ Compare {
 			if(@queue->Size() > 0) {
@@ -2320,13 +2342,13 @@ bundle Collection {
 		
 		#~
 		Removes a value from the map
-		@param value key for value to remove
+		@param key key for value to remove
 		~#
 		method : public : Remove(key : Int) ~ Nil {
 			@map->Remove(IntHolder->New(key));
 		}
     
-    	#~
+   	#~
 		Searches for a value in a map
 		@param key search key
 		@return found value, 0 if not found
@@ -2429,13 +2451,13 @@ bundle Collection {
 		
 		#~
 		Removes a value from the map
-		@param value key for value to remove
+		@param key key for value to remove
 		~#
 		method : public : Remove(key : Float) ~ Nil {
 			@map->Remove(FloatHolder->New(key));
 		}
     
-    	#~
+   	#~
 		Searches for a value in a map
 		@param key search key
 		@return found value, 0.0 if not found
@@ -2608,7 +2630,7 @@ bundle Collection {
 		
 		#~
 		Removes a value from the map
-		@param value key for value to remove
+		@param key key for value to remove
 		~#
 		method : public : Remove(key : String) ~ Nil {
 			@map->Remove(key);
@@ -2831,6 +2853,11 @@ bundle Collection {
 			};
 		}
 		
+		#~
+		Inserts a value into the map
+		@param key key
+		@param value value
+		~#
 		method : public : native : Insert(key : Compare, value : Base) ~ Nil {
 			if(@root = Nil) {
 				@root := Insert(key, value, Nil->As( Collection.TreeNode));
@@ -2840,11 +2867,6 @@ bundle Collection {
 			};
 		}
 		
-		#~
-		Inserts a value into the map
-		@param key key
-		@param value value
-		~#
 		method : native : Insert(key : Compare, value : Base, node :  Collection.TreeNode) ~  Collection.TreeNode {
 			if(node = Nil) {
 				node := TreeNode->New(key, value, 1);
@@ -2869,7 +2891,7 @@ bundle Collection {
 		
 		#~
 		Removes a value from the map
-		@param value key for value to remove
+		@param key key for value to remove
 		~#
 		method : public : Remove(key : Compare) ~ Nil {
 			@found := true;
@@ -2988,7 +3010,7 @@ bundle Collection {
 		
 		#~
 		Removes a key from the set
-		@param key value to remove
+		@param key key for value to remove
 		~#
 		method : public : Remove(key : Float) ~ Nil {
 			@map->Remove(FloatHolder->New(key));
@@ -3066,7 +3088,7 @@ bundle Collection {
 		
 		#~
 		Removes a key from the set
-		@param key value to remove
+		@param key key for value to remove
 		~#
 		method : public : Remove(key : String) ~ Nil {
 			@map->Remove(key);
@@ -3136,7 +3158,7 @@ bundle Collection {
 		
 		#~
 		Removes a key from the set
-		@param key value to remove
+		@param key key for value to remove
 		~#
 		method : public : Remove(key : Compare) ~ Nil {
 			@map->Remove(key);
@@ -3207,7 +3229,7 @@ bundle Collection {
 		
 		#~
 		Removes a value from the hash
-		@param value key for value to remove
+		@param key key for value to remove
 		~#
 		method : public : Remove(key : String) ~ Nil {
 			@hash->Remove(key);
@@ -3330,7 +3352,7 @@ bundle Collection {
 		
 		#~
 		Removes a value from the hash
-		@param value key for value to remove
+		@param key key for value to remove
 		~#
 		method : public : native : Remove(key : Compare) ~ Bool {
 			hash := (key->HashID() % @buckets->Size())->Abs();
@@ -3441,7 +3463,7 @@ bundle Collection {
 }
 
 #~
-HTTP support
+HTTP and HTTPS client support
 ~#
 bundle HTTP {
 	#~
@@ -3564,9 +3586,9 @@ bundle HTTP {
 					
 					status_code := 500;
 					status_line := socket->ReadString();
-					if(status_line->StartsWith("HTTP/1.1")) {
-						status_line := status_line->SubString("HTTP/1.1"->Size() + 1, 
-							status_line->Size() - "HTTP/1.1"->Size() - 1);
+					if(status_line->StartsWith("HTTP/1.")) {
+						status_line := status_line->SubString("HTTP/1."->Size() + 2, 
+							status_line->Size() - "HTTP/1."->Size() - 2);
 						index := status_line->Find(' ');
 						status_code := status_line->SubString(index)->ToInt();
 					};
@@ -3695,13 +3717,14 @@ bundle HTTP {
 					
 					status_code := 500;
 					status_line := socket->ReadString();
-					if(status_line->StartsWith("HTTP/1.1")) {
-						status_line := status_line->SubString("HTTP/1.1"->Size() + 1, 
-							status_line->Size() - "HTTP/1.1"->Size() - 1);
+# status_line->PrintLine();					
+					if(status_line->StartsWith("HTTP/1.")) {
+						status_line := status_line->SubString("HTTP/1."->Size() + 2, 
+							status_line->Size() - "HTTP/1."->Size() - 2);
 						index := status_line->Find(' ');
 						status_code := status_line->SubString(index)->ToInt();
 					};
-					
+# status_code->PrintLine();					
 					if(status_code <> 500) {
 						# get @headers
 						do {
@@ -3761,7 +3784,21 @@ bundle HTTP {
 								};
 								line := String->New(buffer);
 								content->AddBack(line);
-							};						
+							}
+							else {
+								count := 0;
+								do {
+									line := socket->ReadString();
+									if(line->Size() = 0) {
+										count += 1;
+									}
+									else {
+										content->AddBack(line);
+										count := 0;
+									};
+								}
+								while(count < 2);
+							};					
 						};
 					};
 					socket->Close();
@@ -3895,9 +3932,9 @@ bundle HTTP {
 					
 					status_code := 500;
 					status_line := socket->ReadString();
-					if(status_line->StartsWith("HTTP/1.1")) {
-						status_line := status_line->SubString("HTTP/1.1"->Size() + 1, 
-							status_line->Size() - "HTTP/1.1"->Size() - 1);
+					if(status_line->StartsWith("HTTP/1.")) {
+						status_line := status_line->SubString("HTTP/1."->Size() + 2, 
+							status_line->Size() - "HTTP/1."->Size() - 2);
 						index := status_line->Find(' ');
 						status_code := status_line->SubString(index)->ToInt();
 					};
@@ -4026,9 +4063,9 @@ bundle HTTP {
 					
 					status_code := 500;
 					status_line := socket->ReadString();
-					if(status_line->StartsWith("HTTP/1.1")) {
-						status_line := status_line->SubString("HTTP/1.1"->Size() + 1, 
-							status_line->Size() - "HTTP/1.1"->Size() - 1);
+					if(status_line->StartsWith("HTTP/1.")) {
+						status_line := status_line->SubString("HTTP/1."->Size() + 2, 
+							status_line->Size() - "HTTP/1."->Size() - 2);
 						index := status_line->Find(' ');
 						status_code := status_line->SubString(index)->ToInt();
 					};
@@ -4093,7 +4130,21 @@ bundle HTTP {
 								};
 								line := String->New(buffer);
 								content->AddBack(line);
-							};						
+							}
+							else {
+								count := 0;
+								do {
+									line := socket->ReadString();
+									if(line->Size() = 0) {
+										count += 1;
+									}
+									else {
+										content->AddBack(line);
+										count := 0;
+									};
+								}
+								while(count < 2);
+							};							
 						};
 					};
 					socket->Close();
