@@ -25,8 +25,6 @@ class Anagrams {
 			each(i : lists) {
 				list := lists->Get(i)->As(Vector);
 				if(list->Size() >= count) {
-					list->PrintLine();
-#~
 					'['->Print();	
 					each(j : list) {
 						list->Get(j)->As(String)->Print();
@@ -35,7 +33,6 @@ class Anagrams {
 						};
 					};
 					']'->PrintLine();	
-~#
 				};
 			};
 		};
