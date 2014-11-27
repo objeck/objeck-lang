@@ -1408,13 +1408,13 @@ bundle Collection {
 	Stores a linked list of integer values
 	~#
 	class IntList {
-		@list : List;
+		@list : CompareList;
 		
 		#~
 		Default constructor 
 		~#
 		New() {
-			@list := List->New();
+			@list := CompareList->New();
 		}
 
 		#~
@@ -1585,13 +1585,13 @@ bundle Collection {
 	Holds a growable array of float values
 	~#
 	class FloatList {
-		@list : List;
+		@list : CompareList;
 		
 		#~
 		Default constructor 
 		~#
 		New() {
-			@list := List->New();
+			@list := CompareList->New();
 		}
 
 		#~
@@ -1793,6 +1793,259 @@ bundle Collection {
 		Adds a value to the end
 		@param value value to append 
 		~#
+		method : public : native : AddBack(value : Base) ~ Nil {
+			node := ListNode->New(value);
+			if(@head = Nil) {
+				@head := node;
+				@tail := @head;
+				@cursor := @head;
+			}
+			else {
+				@tail->SetNext(node);
+			 	node->SetPrevious(@tail);	
+				@tail := node;
+			};
+			@size += 1;
+		}
+	
+		#~
+		Removes the last value from the list
+		~#
+		method : public : RemoveBack() ~ Nil {
+			Forward();
+			Remove();
+		}
+
+		#~
+		Adds a value to the front
+		@param value value to prepend 
+		~#
+		method : public : native : AddFront(value : Base) ~ Nil {
+			node := ListNode->New(value);
+			if(@head = Nil) {
+				@head := node;
+				@tail := @head;
+				@cursor := @head;
+			}
+			else {
+				@head->SetPrevious(node);
+				node->SetNext(@head);
+				@head := node;
+				@cursor := @head;
+			};
+			@size += 1;
+		}
+		
+		#~
+		Removes the first value from the list
+		~#
+		method : public : RemoveFront() ~ Nil {
+			Rewind();
+			Remove();
+		}
+
+		#~
+		Moves the pointer to the start of the list
+		~#
+		method : public : Rewind() ~ Nil {
+			@cursor := @head;
+		}		
+
+		#~
+		Moves the pointer to the end of the list
+		~#
+		method : public : Forward() ~ Nil {
+			@cursor := @tail;
+		}		
+
+		#~
+		Advances the pointer
+		~#
+		method : public : Next() ~ Nil {
+			if(@cursor <> Nil) {
+				@cursor := @cursor->GetNext();
+			};
+		}
+
+		#~
+		Retreats the pointer
+		~#
+		method : public : Previous() ~ Nil {
+			if(@cursor <> Nil) {
+				@cursor := @cursor->GetPrevious();
+			};
+		}
+
+		#~
+		Gets the value that's currently pointed to
+		@return value value
+		~#
+		method : public : Get() ~ Base {
+			if(@cursor <> Nil) {
+				return @cursor->Get();
+			};
+
+			return Nil;
+		}
+				
+		#~
+		Inserts a value into the list based upon the pointer location
+		@param value value to insert
+		~#
+		method : public : native : Insert(value : Base) ~ Bool {
+			if(@cursor <> Nil & @head <> Nil & @tail <> Nil) {
+				node := ListNode->New(value);
+				if(@cursor = @head & @cursor = @tail) {
+			 		@head->SetNext(node);
+			 		node->SetPrevious(@head);
+			 		@tail := node;
+			 	}
+			 	else if(@cursor = @tail) {
+			 		@tail->SetNext(node);
+			 		node->SetPrevious(@tail);
+			 		@tail := node;
+			 	}
+			 	else {
+					@cursor->GetNext()->SetPrevious(node);
+					node->SetNext(@cursor->GetNext());
+			 		@cursor->SetNext(node);
+			 		node->SetPrevious(@cursor);
+			 	};
+			 	@size += 1;
+				
+				return true;
+			}
+			else if(@head = Nil & @tail = Nil) {
+				AddBack(value);
+				return true;
+			};
+			
+			return false;
+		}
+		
+		#~
+		Removes the element at the pointer position
+		~#
+		method : public : native : Remove() ~ Nil {
+			if(@cursor <> Nil) {
+				if(@cursor->GetPrevious() <> Nil) {
+					@cursor->GetPrevious()->SetNext(@cursor->GetNext());
+				};
+				if(@cursor = @head & @cursor = @tail) {
+			 		@cursor := @cursor->GetNext();
+			 		@head := @cursor;
+			 		@tail := @cursor;
+			 	}
+			 	else if(@cursor = @head) {
+			 		@cursor := @cursor->GetNext();
+			 		@head := @cursor;
+			 	}
+			 	else if(@cursor = @tail) {
+			 		@cursor := @cursor->GetNext();
+			 		@tail := @cursor;
+			 	}
+			 	else {
+			 		@cursor := @cursor->GetNext();
+			 	};
+				@size -= 1;
+			};
+		}
+
+		#~
+		Checks to see if the pointer is at the front of the list
+		@return true if pointer is at the front of the list, false otherwise
+		~#
+		method : public : IsFront() ~ Bool {
+			return @cursor = @head;
+		}		
+		
+		#~
+		Checks to see if the pointer is at the end of the list
+		@return true if pointer is at the end of the list, false otherwise
+		~#
+		method : public : IsBack() ~ Bool {
+			return @cursor = @tail;
+		}
+		
+		#~
+		Checks to see the pointer can be advanced
+		@return true if pointer can be advanced, false otherwise
+		~#
+		method : public : More() ~ Bool {
+			return @cursor <> Nil;
+		}
+
+		#~
+		Returns the first element in the list
+		@return first element in the list, 0.0 if the list is empty
+		~#
+		method : public : Front() ~ Base {
+			if(@head <> Nil) {
+				return @head->Get();
+			};
+
+			return Nil;
+		}
+
+		#~
+		Returns the last element in the list
+		@return last element in the list, 0.0 if the list is empty
+		~#
+		method : public : Back() ~ Base {
+			if(@tail <> Nil) {
+				return @tail->Get();
+			};
+
+			return Nil;
+		}
+
+		#~
+		Clears the list
+		~#
+		method : public : Empty() ~ Nil {
+			@size := 0;
+			@head := Nil;
+			@tail := Nil;
+			@cursor := Nil;
+		}
+		
+		#~
+		Checks to see if the list is empty
+		@return ture if empty, false otherwise
+		~#
+		method : public : IsEmpty() ~ Bool {
+			return @size = 0;
+		}
+		
+		#~
+		Size of list
+		@return size of list
+		~#
+		method : public : Size() ~ Int {
+			return @size;
+		}
+	}
+	
+	#~
+	Stores a linked list of comparable values
+	~#
+	class CompareList {
+		@size : Int;
+		@head : ListNode;
+		@tail : ListNode;
+		@cursor : ListNode;
+
+		#~
+		Default constructor 
+		~#
+		New() {
+			@size := 0;
+		}
+
+		#~
+		Adds a value to the end
+		@param value value to append 
+		~#
 		method : public : native : AddBack(value : Compare) ~ Nil {
 			node := ListNode->New(value);
 			if(@head = Nil) {
@@ -1898,10 +2151,10 @@ bundle Collection {
 			end := @tail;
 			
 			while(start <> end) {
-				if(value->Compare(start->Get()) = 0) {
+				if(value->Compare(start->Get()->As(Compare)) = 0) {
 					return true;
 				}
-				else if(value->Compare(end->Get()) = 0) {
+				else if(value->Compare(end->Get()->As(Compare)) = 0) {
 					return true;
 				};
 				
@@ -1909,7 +2162,7 @@ bundle Collection {
 				end := end->GetPrevious();
 			};
 			
-			if(start <> Nil & value->Compare(start->Get()) = 0) {
+			if(start <> Nil & value->Compare(start->Get()->As(Compare)) = 0) {
 				return true;
 			}; 
 
@@ -1924,7 +2177,7 @@ bundle Collection {
 		method : public : Find(value : Compare) ~ Compare {
 			@cursor := @head;
 			while(@cursor <> Nil) {
-				if(value->Compare(@cursor->Get()) = 0) {
+				if(value->Compare(@cursor->Get()->As(Compare)) = 0) {
 					return value;
 				};
 				@cursor := @cursor->GetNext();
@@ -2072,19 +2325,19 @@ bundle Collection {
 	}
 	
 	class ListNode {
-		@value : Compare;
+		@value : Base;
 		@next : ListNode;
 		@previous: ListNode;
 
-		New(value : Compare) {
+		New(value : Base) {
 			@value := value;
 		}
 		
-		method : public : Set(value : Compare) ~ Nil {
+		method : public : Set(value : Base) ~ Nil {
 			@value := value;
 		}
 	
-		method : public : Get() ~ Compare {
+		method : public : Get() ~ Base {
 			return @value;
 		}
 
@@ -2251,13 +2504,13 @@ bundle Collection {
 	Queue of objects
 	~#
 	class Queue {
-		@queue : List;
+		@queue : CompareList;
 		
 		#~
 		Default constructor 
 		~#
 		New() {
-			@queue := List->New();
+			@queue := CompareList->New();
 		}
 		
 		#~
@@ -3289,14 +3542,14 @@ bundle Collection {
 	Hash table that stores objects
 	~#
 	class Hash {
-		@buckets : List[];
+		@buckets : CompareList[];
 		@size : Int;
 		
 		#~
 		Default constructor 
 		~#
 		New() {
-			@buckets := List->New[337];
+			@buckets := CompareList->New[337];
 			@size := 0;
 		}
 		
@@ -3309,7 +3562,7 @@ bundle Collection {
 			hash := (key->HashID() % @buckets->Size())->Abs();
 			list := @buckets[hash];
 			if(list = Nil) {
-				list := List->New();
+				list := CompareList->New();
 				@buckets[hash] := list;
 			};
 			list->AddBack(HashPair->New(key, value));
@@ -3421,7 +3674,7 @@ bundle Collection {
 		Clears the map
 		~#
 		method : public : Empty() ~ Nil {
-			@buckets := List->New[337];
+			@buckets := CompareList->New[337];
 			@size := 0;
 		}
 		
