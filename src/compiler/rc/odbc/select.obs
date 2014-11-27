@@ -13,7 +13,7 @@ bundle Default {
 				if(rs <> Nil) {
 					i := 0;	
 					while(rs->Next()) {
-						rs->GetVarchar("Name")->PrintLine();
+						rs->GetVarchar(1)->PrintLine();
 					};
 					rs->Close();
 				};
