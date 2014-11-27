@@ -68,7 +68,7 @@ class LZW {
 
       entry : String;
       if (dictionary->Has(k)) {			
-        entry := dictionary->Find(k);
+        entry := dictionary->Find(k)->As(String);
       }
       else if (k = dictSize) {
         entry := String->New(w);

@@ -2,19 +2,19 @@ use Collection;
 
 class Reverselines {
 	function : Main(args : String[]) ~ Nil {
-		lines := "";
-		lines += "---------- Ice and Fire ------------";
-		lines += "";
-		lines += "fire, in end will world the say Some";
-		lines += "ice. in say Some";
-		lines += "desire of tasted I've what From";
-		lines += "fire. favor who those with hold I";
-		lines += "";
-		lines += "... elided paragraph last ...";
-		lines += "";
-		lines += "Frost Robert -----------------------";
-		
-		lines->Rewind();
+		lines := CompareList->New();
+		lines->AddBack("---------- Ice and Fire ------------");
+		lines ->AddBack("");
+		lines->AddBack("fire, in end will world the say Some");
+		lines->AddBack("ice. in say Some");
+		lines->AddBack("desire of tasted I've what From");
+		lines->AddBack("fire. favor who those with hold I");
+		lines->AddBack("");
+		lines->AddBack("... elided paragraph last ...");
+		lines->AddBack("");
+		lines->AddBack("Frost Robert -----------------------");
+	
+		lines->Rewind();	
 		each(i : lines) {
 			words := lines->Get()->As(String)->Split(" ");
 			if(words <> Nil) {			
