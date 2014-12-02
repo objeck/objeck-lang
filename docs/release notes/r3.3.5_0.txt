@@ -1,0 +1,16 @@
+Objeck v3.3.5_0
+
+--------------
+Release Notes
+--------------
+
+Refactored class libraries and created new API documentation. Resolved 
+newly identified bugs and as a result of full regression testing.
+
+Highlights of this release include the following:
+1.	Refactored and documented all class libraries (new)
+2.	Developed a new inline code documentation system (new)
+3.	Resolved inner enum issues associated with some class libraries (bug/major)
+4.	Fixed a method inlining bug that caused some programs to crash when
+compiled with aggressive optimization (bug/major)
+5.	All Windows executables are digitally sign and verified for security (new)
