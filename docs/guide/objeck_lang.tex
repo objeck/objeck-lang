@@ -84,7 +84,10 @@ obc -src examples\xml_parser.obs -lib collect.obl,xml.obl -dest a.obe
 \end{verbatim}
 
 Additional compiler options are:
+<<<<<<< HEAD
+=======
 \begin{flushleft}
+>>>>>>> a3bc6c1c21bb9d65b357c508386810c0d32fefa8
   \begin{tabular}{| l | l |}
     \hline
     \emph{Option} & \emph{Description} \\ \hline \hline
@@ -97,7 +100,10 @@ Additional compiler options are:
     \texttt{-alt} & compile code that is written using a C-like syntax \\ \hline
     \texttt{-debug} & if set, produces debug out for use by the interactive debugger (see below) \\ \hline
   \end{tabular}
+<<<<<<< HEAD
+=======
 \end{flushleft}
+>>>>>>> a3bc6c1c21bb9d65b357c508386810c0d32fefa8
 
 \section{Executing}
 The command-line example below executes the \texttt{hello.obe}
@@ -118,7 +124,10 @@ Let's first start with a list of keywords that exist in language.
 These words are reserved for the language and may not be used as
 identifiers.
 
+<<<<<<< HEAD
+=======
 \begin{flushleft}
+>>>>>>> a3bc6c1c21bb9d65b357c508386810c0d32fefa8
   \begin{tabular}{ | c | c | c | c | c | }
     \hline
     \multicolumn{5}{|c|}{\emph{Keywords}} \\ \hline \hline
@@ -132,7 +141,10 @@ identifiers.
     return & select & --- & static & true \\ \hline
     TypeOf & use & virtual & while & xor \\ \hline
   \end{tabular}
+<<<<<<< HEAD
+=======
 \end{flushleft}
+>>>>>>> a3bc6c1c21bb9d65b357c508386810c0d32fefa8
 
 In Objeck, all data types (excluding higher-order functions) are
 treated as objects. Basic objects provide supports for boolean,
@@ -140,7 +152,10 @@ character, byte, integer and decimal types.  These basic objects can
 be used to create more complex user defined objects.  The listing
 below defines the basic objects that are supported in the language:
 
+<<<<<<< HEAD
+=======
 \begin{flushleft}
+>>>>>>> a3bc6c1c21bb9d65b357c508386810c0d32fefa8
   \begin{tabular}{| l | l |}
     \hline
     \emph{Type} & \emph{Description} \\ \hline \hline
@@ -156,7 +171,10 @@ below defines the basic objects that are supported in the language:
     \texttt{Float[]} &  decimal array \\ \hline
     \texttt{Function} &  integer pair \\ \hline
   \end{tabular}
+<<<<<<< HEAD
+=======
 \end{flushleft}
+>>>>>>> a3bc6c1c21bb9d65b357c508386810c0d32fefa8
 
 As mentioned above, basic types are objects and have associated
 methods for each basic class type.  For example:
@@ -213,7 +231,11 @@ c := 7; # implicit type deceleration
 Types that are not initialized at declaration time are initialized
 with the following default values:
 
+<<<<<<< HEAD
+\vspace{\baselineskip}
+=======
 \begin{flushleft}
+>>>>>>> a3bc6c1c21bb9d65b357c508386810c0d32fefa8
   \begin{tabular}{| l | c |}
     \hline
     \emph{Type} & \emph{Initialization} \\ \hline \hline
@@ -225,7 +247,10 @@ with the following default values:
     Object & \texttt{Nil} \\ \hline
     Function & \texttt{Nil} \\ \hline
   \end{tabular}
+<<<<<<< HEAD
+=======
 \end{flushleft}
+>>>>>>> a3bc6c1c21bb9d65b357c508386810c0d32fefa8
 
 \section{Expressions}
 The Objeck language supports various types of expressions.  Some of
@@ -857,7 +882,11 @@ within methods based upon source line numbers.  The debugger can also
 calculate simple arithmetic expressions involving variables and
 constants. The following commands are currently supported:
 
+<<<<<<< HEAD
+\section{Debugging Commands}
+=======
 \begin{flushleft}
+>>>>>>> a3bc6c1c21bb9d65b357c508386810c0d32fefa8
   \begin{tabular}{| l |p{4 cm} |p{4 cm} |}
     \hline
     \emph{Command} & \emph{Description} & \emph{Example} \\ \hline \hline
@@ -882,7 +911,10 @@ constants. The following commands are currently supported:
     \texttt{src} &  specifies a new source path & \texttt{src "../../"} \\ \hline
     \texttt{[q]uit} &  exits a given debugging session &  \\ \hline
   \end{tabular}
+<<<<<<< HEAD
+=======
 \end{flushleft}
+>>>>>>> a3bc6c1c21bb9d65b357c508386810c0d32fefa8
 
 The source program must be compiled with the \texttt{-debug} set. The
 command line debugger is started up running the \texttt{odb}
