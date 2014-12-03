@@ -222,7 +222,7 @@ IO.Console->Print("\tProcessed interface: name='")->Print(@class_inf_block->GetN
 	}
 
 	method : CheckLevel() ~ Nil {
-		if(@cur_char = '"' & @nxt_char <> '\\') {
+		if(@cur_char = '\'' & @nxt_char <> '"') {
 			@in_comment := <>@in_comment;
 		}
 		else if(@cur_char = '\'' & @nxt_char <> '\\') {
