@@ -3,7 +3,7 @@ Objeck is an object-oriented computer language with functional features. The lan
 
 The language contains all of the features of a general-purpose computing language with an emphasis placed on simplicity. The programming environment consists of a compiler, virtual machine and command line debugger.
 
-### Downloads
+### Downloading
 
 Get the [latest release](https://sourceforge.net/projects/objeck-lang/).
 
@@ -23,7 +23,7 @@ Compiling: ```obc -src hello.obs -dest hello.obe```
 Running: ```obr hello.obe```
 
 ### Documentation
-Please refer to the project website for [documentation](http://www.objeck.org/documentation/) and [tutorials](http://www.objeck.org/tutorial/).
+Please refer to the project website for [documentation](http://www.objeck.org/documentation/) and [tutorial](http://www.objeck.org/tutorial/).
 
 ### Pulling the code
 ```git clone https://github.com/objeck/objeck-lang.git objeck-lang```
