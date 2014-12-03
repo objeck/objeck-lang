@@ -5,7 +5,7 @@ The language contains all of the features of a general-purpose computing languag
 
 ### Downloads
 
-Get the [latest release]{2https://sourceforge.net/projects/objeck-lang/}.
+Get the [latest release](https://sourceforge.net/projects/objeck-lang/).
 
 ### Simple example
 ```objeck
