@@ -1,10 +1,5 @@
-#                                               -*- Autoconf -*-
-# Process this file with autoconf to produce a configure script.
-
 AC_PREREQ([2.69])
 AC_INIT([Objeck], [3.3.5.1], [objeck@gmail.com])
-AC_CONFIG_SRCDIR([wip/apache/objeck/mod_objeck.c])
-AC_CONFIG_HEADERS([config.h])
 
 # Checks for programs.
 AC_PROG_CXX
@@ -16,38 +11,16 @@ AC_PROG_MAKE_SET
 AC_PROG_RANLIB
 
 # Checks for libraries.
-# FIXME: Replace `main' with a function in `-lSM':
-AC_CHECK_LIB([SM], [main])
-# FIXME: Replace `main' with a function in `-lX11':
-AC_CHECK_LIB([X11], [main])
-# FIXME: Replace `main' with a function in `-lcairo':
-AC_CHECK_LIB([cairo], [main])
 # FIXME: Replace `main' with a function in `-lcrypto':
 AC_CHECK_LIB([crypto], [main])
 # FIXME: Replace `main' with a function in `-ldl':
 AC_CHECK_LIB([dl], [main])
-# FIXME: Replace `main' with a function in `-lexpat':
-AC_CHECK_LIB([expat], [main])
-# FIXME: Replace `main' with a function in `-lfontconfig':
-AC_CHECK_LIB([fontconfig], [main])
-# FIXME: Replace `main' with a function in `-lfreetype':
-AC_CHECK_LIB([freetype], [main])
-# FIXME: Replace `main' with a function in `-liconv':
-AC_CHECK_LIB([iconv], [main])
-# FIXME: Replace `main' with a function in `-llzma':
-AC_CHECK_LIB([lzma], [main])
-# FIXME: Replace `main' with a function in `-lm':
-AC_CHECK_LIB([m], [main])
 # FIXME: Replace `main' with a function in `-lodbc':
 AC_CHECK_LIB([odbc], [main])
-# FIXME: Replace `main' with a function in `-lpng':
-AC_CHECK_LIB([png], [main])
 # FIXME: Replace `main' with a function in `-lpthread':
 AC_CHECK_LIB([pthread], [main])
 # FIXME: Replace `main' with a function in `-lssl':
 AC_CHECK_LIB([ssl], [main])
-# FIXME: Replace `main' with a function in `-lz':
-AC_CHECK_LIB([z], [main])
 
 # Checks for header files.
 AC_CHECK_HEADERS([arpa/inet.h fcntl.h inttypes.h netdb.h netinet/in.h stddef.h stdint.h stdlib.h string.h sys/socket.h sys/time.h sys/timeb.h unistd.h])
