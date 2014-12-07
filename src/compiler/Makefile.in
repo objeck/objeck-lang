@@ -1,0 +1,15 @@
+CC=g++
+ARGS=-O3 -Wall -Wno-unused-function
+SRC=types.o tree.o scanner.o parser.o linker.o context.o intermediate.o optimization.o target.o compiler.o posix_main.o
+EXE=obc
+
+all: $(EXE)
+
+$(EXE): $(SRC)
+	$(CC) @MEM@ -o $(EXE) $(SRC)
+
+%.o: %.cpp
+	$(CC) -m64 $(ARGS) -c $< 
+
+clean:
+	rm -f $(EXE) *.o *~
