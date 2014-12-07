@@ -52,7 +52,7 @@ int main(const int argc, const char* argv[])
     return Execute(argc, argv);
   } 
   else {
-    wstring usage = L"Copyright (c) 2008-2013, Randy Hollines. All rights reserved.\n";
+    wstring usage = L"Copyright (c) 2008-2015, Randy Hollines. All rights reserved.\n";
     usage += L"THIS SOFTWARE IS PROVIDED \"AS IS\" WITHOUT WARRANTY. REFER TO THE\n";
     usage += L"license.txt file or http://www.opensource.org/licenses/bsd-license.php\n";
     usage += L"FOR MORE INFORMATION.\n\n";
