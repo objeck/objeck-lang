@@ -1,7 +1,7 @@
 /***************************************************************************
  * Language scanner.
  *
- * Copyright (c) 2008-2014, Randy Hollines
+ * Copyright (c) 2008-2015, Randy Hollines
  * All rights reserved.
  *
  * Reistribution and use in source and binary forms, with or without
