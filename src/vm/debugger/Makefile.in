@@ -1,0 +1,31 @@
+ARGS=-O3 -Wall -Wno-deprecated-declarations -Wno-unused-function -pthread @MEM@ @OS@ -D_DEBUGGER
+
+CC=g++
+SRC=tree.o scanner.o parser.o debugger.o
+OBJ_LIBS=compiler.a ../@JIT_LIB@ ../memory.a
+COMPILER_PATH=..
+MEM_PATH=../os/posix
+JIT_PATH=../@JIT_DIR@
+EXE=obd
+
+all: $(EXE) 
+
+$(EXE): $(SRC) $(OBJ_LIBS)
+	$(CC) @CPU@ -pthread -o $(EXE) $(SRC) $(OBJ_LIBS) -ldl -lcrypto -lssl
+
+compiler.a:
+	cp config/Makefile ..
+	cd $(COMPILER_PATH); make	
+
+../memory.a:
+	cd $(MEM_PATH); make
+
+../@JIT_LIB@:
+	cd $(JIT_PATH); make
+	
+%.o: %.cpp
+	$(CC) @CPU@ $(ARGS) -c $< 
+
+clean:
+	cd $(COMPILER_PATH); make clean
+	rm -f $(EXE).exe $(EXE) *.exe *.o *~
