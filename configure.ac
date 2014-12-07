@@ -5,18 +5,20 @@ AC_CONFIG_SRCDIR(src/shared/version.h)
 # CPU flags
 AC_CANONICAL_TARGET
 AS_CASE([$host_cpu],
-	[i?86], [JIT_DIR=jit/ia32 MEM=-m32],
-	[x86_64], [JIT_DIR=jit/amd64 MEM=-m64],
+	[i?86], [JIT_DIR=jit/ia32 JIT_LIB==jit_amd_lp64.a CPU=-m32],
+	[x86_64], [JIT_DIR=jit/amd64 JIT_LIB=jit_amd_lp64.a CPU=-m64 MEM=-D_X64],
   [AC_MSG_ERROR("Unsupported CPU type")]
 )
 AC_SUBST([JIT_DIR])
+AC_SUBST([JIT_LIB])
+AC_SUBST([CPU])
 AC_SUBST([MEM])
 
 # platform flags
 AC_CANONICAL_HOST
 AS_CASE([$host_os],
 	[darwin*], [OS=-D_OSX],
-	[linux*], [OS=-Wno-deprecated-declarations],
+	[linux*], [OS=],
   [AC_MSG_ERROR("Unsupported OS")]
 )
 AC_SUBST([OS])
@@ -38,8 +40,11 @@ AC_CHECK_LIB([odbc], [main])
 # Checks for header files.
 AC_CHECK_HEADERS([arpa/inet.h fcntl.h inttypes.h netdb.h netinet/in.h stddef.h stdint.h stdlib.h string.h sys/socket.h sys/time.h sys/timeb.h unistd.h])
 
-AC_OUTPUT(Makefile src/compiler/Makefile src/vm/Makefile)
+AC_OUTPUT(Makefile src/compiler/Makefile src/utilities/Makefile src/vm/Makefile src/vm/os/posix/Makefile src/vm/jit/amd64/Makefile src/vm/jit/ia32/Makefile)
 
 echo $JIT_DIR
+echo $JIT_LIB
+echo $CPU
 echo $MEM
+echo $OS
 echo $OS
