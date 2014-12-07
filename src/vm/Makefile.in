@@ -7,6 +7,8 @@ MEM_PATH=os/posix
 JIT_PATH=jit/amd64
 EXE= obr
 
+all: $(EXE)
+
 $(EXE): $(SRC) $(OBJ_LIBS)
 	$(CC) @MEM@ -o $(EXE) $(SRC) $(OBJ_LIBS) -lssl -lcrypto -ldl -pthread
 
