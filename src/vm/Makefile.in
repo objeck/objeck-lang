@@ -1,0 +1,25 @@
+ARGS=-O3 -Wall -pthread -D_X64 @OS@ -Wno-unused-function
+
+CC=g++
+SRC=common.o interpreter.o loader.o vm.o posix_main.o 
+OBJ_LIBS=jit_amd_lp64.a memory.a
+MEM_PATH=os/posix
+JIT_PATH=jit/amd64
+EXE= obr
+
+$(EXE): $(SRC) $(OBJ_LIBS)
+	$(CC) @MEM@ -o $(EXE) $(SRC) $(OBJ_LIBS) -lssl -lcrypto -ldl -pthread
+
+memory.a:
+	cd $(MEM_PATH); make	
+	
+jit_amd_lp64.a:
+	cd $(JIT_PATH); make	
+	
+%.o: %.cpp
+	$(CC) @MEM@ $(ARGS) -c $< 
+
+clean:
+	cd $(MEM_PATH); make clean
+	cd $(JIT_PATH); make clean
+	rm -f $(EXE).exe $(EXE) *.exe *.o *~
