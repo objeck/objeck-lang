@@ -1,16 +1,14 @@
-ARGS=-O3 -Wall -pthread @MEM@ @OS@ -Wno-unused-function
+ARGS=-pthread -g -Wall -Wno-deprecated-declarations @OS@ @MEM@ -D_DEBUGGER
 
 CC=g++
 SRC=common.o interpreter.o loader.o vm.o posix_main.o 
 OBJ_LIBS=@JIT_LIB@ memory.a
 MEM_PATH=os/posix
 JIT_PATH=@JIT_DIR@
-EXE= obr
+LIB=debugger/compiler.a
 
-all: $(EXE)
-
-$(EXE): $(SRC) $(OBJ_LIBS)
-	$(CC) @CPU@ -pthread -o $(EXE) $(SRC) $(OBJ_LIBS) -lssl -lcrypto -ldl
+$(LIB): $(SRC) $(OBJ_LIBS)
+	$(AR) -cvq $(LIB) $(SRC)
 
 memory.a:
 	cd $(MEM_PATH); make	
@@ -24,4 +22,4 @@ memory.a:
 clean:
 	cd $(MEM_PATH); make clean
 	cd $(JIT_PATH); make clean
-	rm -f $(EXE).exe $(EXE) *.exe *.o *~
+	rm -f $(LIB).exe $(LIB) *.exe *.o *~
