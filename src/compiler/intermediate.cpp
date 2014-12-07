@@ -1972,7 +1972,7 @@ void IntermediateEmitter::EmitSelect(Select* select_stmt)
 
     // set labels
     int end_label = ++unconditional_label;
-    int other_label;
+    int other_label = 0;
     if(select_stmt->GetOther()) {
       other_label = ++conditional_label;
     }
