@@ -16,7 +16,7 @@ AC_SUBST([MEM])
 AC_CANONICAL_HOST
 AS_CASE([$host_os],
 	[darwin*], [OS=-D_OSX],
-	[linux*], [OS=],
+	[linux*], [OS=-Wno-deprecated-declarations],
   [AC_MSG_ERROR("Unsupported OS")]
 )
 AC_SUBST([OS])
@@ -32,11 +32,13 @@ AC_CHECK_LIB([crypto], [main])
 AC_CHECK_LIB([dl], [main])
 # FIXME: Replace `main' with a function in `-lcrypto':
 AC_CHECK_LIB([crypto], [main])
+# FIXME: Replace `main' with a function in `-odbc':
+AC_CHECK_LIB([odbc], [main])
 
 # Checks for header files.
 AC_CHECK_HEADERS([arpa/inet.h fcntl.h inttypes.h netdb.h netinet/in.h stddef.h stdint.h stdlib.h string.h sys/socket.h sys/time.h sys/timeb.h unistd.h])
 
-AC_OUTPUT(Makefile src/compiler/Makefile)
+AC_OUTPUT(Makefile src/compiler/Makefile src/vm/Makefile)
 
 echo $JIT_DIR
 echo $MEM
