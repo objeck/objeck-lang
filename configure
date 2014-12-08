@@ -2288,7 +2288,7 @@ test -n "$target_alias" &&
   program_prefix=${target_alias}-
 case $host_cpu in #(
   i?86) :
-    JIT_DIR=jit/ia32 JIT_LIB=jit_amd_lp64.a CPU=-m32 ;; #(
+    JIT_DIR=jit/ia32 JIT_LIB=jit_intel_lp32.a CPU=-m32 ;; #(
   x86_64) :
     JIT_DIR=jit/amd64 JIT_LIB=jit_amd_lp64.a CPU=-m64 MEM=-D_X64 ;; #(
   *) :

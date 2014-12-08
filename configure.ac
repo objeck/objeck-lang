@@ -5,7 +5,7 @@ AC_CONFIG_SRCDIR(src/shared/version.h)
 # CPU flags
 AC_CANONICAL_TARGET
 AS_CASE([$host_cpu],
-	[i?86], [JIT_DIR=jit/ia32 JIT_LIB=jit_amd_lp64.a CPU=-m32],
+	[i?86], [JIT_DIR=jit/ia32 JIT_LIB=jit_intel_lp32.a CPU=-m32],
 	[x86_64], [JIT_DIR=jit/amd64 JIT_LIB=jit_amd_lp64.a CPU=-m64 MEM=-D_X64],
 	[AC_MSG_ERROR("Unsupported CPU type")]
 )
