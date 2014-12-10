@@ -647,7 +647,7 @@ class StackMethod {
     return instrs[i];
   }
 
-  StackInstr** GetInstructions() const {
+  inline StackInstr** GetInstructions() const {
     return instrs;
   }
 
