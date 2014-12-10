@@ -1,12 +1,12 @@
 bundle Default {
 	class FindPrime {
 		function : Main(args : System.String[]) ~ Nil {
-			Run(400); 
-#			Run(1000000); 
+#			Run(400); 
+			Run(1000000); 
 		}
 
-		function : Run(topCandidate : Int) ~ Nil {
-#		function : native : Run(topCandidate : Int) ~ Nil {
+#		function : Run(topCandidate : Int) ~ Nil {
+		function : native : Run(topCandidate : Int) ~ Nil {
 			candidate : Int := 2;
 			while(candidate <= topCandidate) {
 				trialDivisor : Int := 2;
