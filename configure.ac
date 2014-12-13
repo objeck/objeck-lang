@@ -1,6 +1,7 @@
 AC_INIT(objeck, 3.3.5.1, objeck@gmail.com)
 AC_CONFIG_AUX_DIR(config)
 AC_CONFIG_SRCDIR(src/shared/version.h)
+AC_CONFIG_HEADERS([src/shared/config.h])
 
 # CPU flags
 AC_CANONICAL_TARGET
@@ -31,6 +32,7 @@ AC_SUBST([MY_DATA])
 
 MY_LIB=$prefix/$libdir
 AC_SUBST([MY_LIB])
+# AC_DEFINE_UNQUOTED([OBJK_LIB_DIR], [$prefix/$datarootdir/objeck], [Objeck libraries])
 
 AM_INIT_AUTOMAKE
 AC_PROG_CXX
