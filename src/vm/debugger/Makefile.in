@@ -26,6 +26,10 @@ compiler.a:
 %.o: %.cpp
 	$(CC) @CPU@ $(ARGS) -c $< 
 
+install:
+	cp $(EXE) @MY_BIN@
+
 clean:
 	cd $(COMPILER_PATH); make clean
 	rm -f $(EXE).exe $(EXE) *.exe *.o *~
+	rm -f @MY_BIN@/$(EXE)

@@ -11,5 +11,9 @@ $(EXE): $(SRC)
 %.o: %.cpp
 	$(CC) @CPU@ $(ARGS) -c $< 
 
+install:
+	cp $(EXE) @MY_BIN@
+
 clean:
 	rm -f $(EXE) *.o *~
+	rm -f @MY_BIN@/$(EXE)

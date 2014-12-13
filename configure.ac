@@ -23,6 +23,15 @@ AS_CASE([$host_os],
 )
 AC_SUBST([OS])
 
+MY_BIN=$bindir
+AC_SUBST([MY_BIN])
+
+MY_DATA=$datadir
+AC_SUBST([MY_DATA])
+
+MY_LIB=$libdir
+AC_SUBST([MY_LIB])
+
 AM_INIT_AUTOMAKE
 AC_PROG_CXX
 
