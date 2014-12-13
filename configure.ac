@@ -26,7 +26,7 @@ AC_SUBST([OS])
 MY_BIN=$bindir
 AC_SUBST([MY_BIN])
 
-MY_DATA=$datadir
+MY_DATA=$datarootdir/objeck
 AC_SUBST([MY_DATA])
 
 MY_LIB=$libdir
