@@ -13,7 +13,9 @@ $(EXE): $(SRC)
 
 install:
 	cp $(EXE) @MY_BIN@
+	cp *.obl @MY_DATA@
 
 clean:
 	rm -f $(EXE) *.o *~
 	rm -f @MY_BIN@/$(EXE)
+	rm -f @MY_DATA@/*.obl
