@@ -89,7 +89,9 @@ DIST_COMMON = INSTALL NEWS README AUTHORS ChangeLog \
 	$(top_srcdir)/src/vm/jit/amd64/Makefile.in \
 	$(top_srcdir)/src/vm/jit/ia32/Makefile.in \
 	$(top_srcdir)/src/vm/debugger/config/Makefile.in \
-	$(top_srcdir)/src/vm/debugger/Makefile.in COPYING \
+	$(top_srcdir)/src/vm/debugger/Makefile.in \
+	$(top_srcdir)/src/vm/lib/odbc/Makefile.in \
+	$(top_srcdir)/src/vm/lib/openssl/Makefile.in COPYING \
 	config/compile config/config.guess config/config.sub \
 	config/depcomp config/install-sh config/missing \
 	$(top_srcdir)/config/compile $(top_srcdir)/config/config.guess \
@@ -105,7 +107,8 @@ mkinstalldirs = $(install_sh) -d
 CONFIG_CLEAN_FILES = src/compiler/Makefile src/utilities/Makefile \
 	src/vm/Makefile src/vm/os/posix/Makefile \
 	src/vm/jit/amd64/Makefile src/vm/jit/ia32/Makefile \
-	src/vm/debugger/config/Makefile src/vm/debugger/Makefile
+	src/vm/debugger/config/Makefile src/vm/debugger/Makefile \
+	src/vm/lib/odbc/Makefile src/vm/lib/openssl/Makefile
 CONFIG_CLEAN_VPATH_FILES =
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
@@ -314,7 +317,7 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 ACLOCAL_AMFLAGS = -I m4
-SUBDIRS = src/compiler src/vm src/utilities src/vm/debugger
+SUBDIRS = src/compiler src/vm src/utilities src/vm/debugger src/vm/lib/odbc src/vm/lib/openssl
 EXTRA_DIST = autogen.sh
 all: all-recursive
 
@@ -368,6 +371,10 @@ src/vm/jit/ia32/Makefile: $(top_builddir)/config.status $(top_srcdir)/src/vm/jit
 src/vm/debugger/config/Makefile: $(top_builddir)/config.status $(top_srcdir)/src/vm/debugger/config/Makefile.in
 	cd $(top_builddir) && $(SHELL) ./config.status $@
 src/vm/debugger/Makefile: $(top_builddir)/config.status $(top_srcdir)/src/vm/debugger/Makefile.in
+	cd $(top_builddir) && $(SHELL) ./config.status $@
+src/vm/lib/odbc/Makefile: $(top_builddir)/config.status $(top_srcdir)/src/vm/lib/odbc/Makefile.in
+	cd $(top_builddir) && $(SHELL) ./config.status $@
+src/vm/lib/openssl/Makefile: $(top_builddir)/config.status $(top_srcdir)/src/vm/lib/openssl/Makefile.in
 	cd $(top_builddir) && $(SHELL) ./config.status $@
 
 # This directory's subdirectories are mostly independent; you can cd

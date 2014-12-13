@@ -40,7 +40,7 @@ AC_CHECK_LIB([odbc], [main])
 # Checks for header files.
 AC_CHECK_HEADERS([arpa/inet.h fcntl.h inttypes.h netdb.h netinet/in.h stddef.h stdint.h stdlib.h string.h sys/socket.h sys/time.h sys/timeb.h unistd.h])
 
-AC_OUTPUT(Makefile src/compiler/Makefile src/utilities/Makefile src/vm/Makefile src/vm/os/posix/Makefile src/vm/jit/amd64/Makefile src/vm/jit/ia32/Makefile src/vm/debugger/config/Makefile src/vm/debugger/Makefile src/vm/lib/odbc src/vm/lib/openssl)
+AC_OUTPUT(Makefile src/compiler/Makefile src/utilities/Makefile src/vm/Makefile src/vm/os/posix/Makefile src/vm/jit/amd64/Makefile src/vm/jit/ia32/Makefile src/vm/debugger/config/Makefile src/vm/debugger/Makefile src/vm/lib/odbc/Makefile src/vm/lib/openssl/Makefile)
 
 # echo $JIT_DIR
 # echo $JIT_LIB
