@@ -13,9 +13,11 @@ $(EXE): $(SRC)
 
 install:
 	cp $(EXE) @MY_BIN@
-	cp *.obl @MY_DATA@
+	mkdir @MY_DATA@
+	cp lang.obl @MY_DATA@
+	cp collect.obl @MY_DATA@
 
 clean:
 	rm -f $(EXE) *.o *~
 	rm -f @MY_BIN@/$(EXE)
-	rm -f @MY_DATA@/*.obl
+	rm -rf @MY_DATA@
