@@ -24,15 +24,14 @@ AS_CASE([$host_os],
 )
 AC_SUBST([OS])
 
-MY_BIN=$prefix/$bindir
+MY_BIN=$prefix$bindir
 AC_SUBST([MY_BIN])
 
-MY_DATA=$prefix/$datarootdir/objeck
+MY_DATA=$prefix$datarootdir/objeck
 AC_SUBST([MY_DATA])
 
-MY_LIB=$prefix/$libdir
+MY_LIB=$prefix$libdir
 AC_SUBST([MY_LIB])
-# AC_DEFINE_UNQUOTED([OBJK_LIB_DIR], [$prefix/$datarootdir/objeck], [Objeck libraries])
 
 AM_INIT_AUTOMAKE
 AC_PROG_CXX

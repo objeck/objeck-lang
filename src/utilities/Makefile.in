@@ -18,4 +18,4 @@ install:
 
 clean:
 	rm -f $(EXE).exe $(EXE) *.exe *.o *~
-	rm -f $@MY_BIN@/$(EXE)
+	rm -f @MY_BIN@/$(EXE)

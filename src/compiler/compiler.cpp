@@ -83,17 +83,7 @@ int Compile(map<const wstring, wstring> &arguments, list<wstring> &argument_opti
   argument_options.remove(L"dest");
   
   // check program libraries path
-  wstring sys_lib_path;
-  const char* sys_lib_env_path = getenv("OBJECK_LIBS");
-  if(sys_lib_env_path) {
-    string temp = sys_lib_env_path;
-    sys_lib_path.append(temp.begin(), temp.end());
-    sys_lib_path += L"/lang.obl";
-  }
-  else {
-    sys_lib_path = L"lang.obl";
-  }
-  
+  wstring sys_lib_path = L"lang.obl";
   result = arguments.find(L"lib");
   if(result != arguments.end()) {
     sys_lib_path += L"," + result->second;
