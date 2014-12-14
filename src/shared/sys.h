@@ -95,7 +95,7 @@ static map<const wstring, wstring> ParseCommnadLine(const wstring &path_string) 
       while( pos < end && path_string[pos] != L' ' && path_string[pos] != L'\t') {
         pos++;
       }
-      wstring key = path_string.substr(start, pos - start);
+      const wstring key = path_string.substr(start, pos - start);
       // parse value
       while(pos < end && (path_string[pos] == L' ' || path_string[pos] == L'\t')) {
         pos++;
@@ -121,7 +121,7 @@ static map<const wstring, wstring> ParseCommnadLine(const wstring &path_string) 
           pos++;
         }
       }
-      wstring value = path_string.substr(start, pos - start);
+      const wstring value = path_string.substr(start, pos - start);
       
       // close string and add
       if(path_string[pos] == L'\'') {

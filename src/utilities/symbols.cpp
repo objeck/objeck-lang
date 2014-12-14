@@ -71,8 +71,8 @@ int main(int argc, const char* argv[])
     // usage += L"FOR MORE INFORMATION.\n\n";
     // usage += VERSION_STRING;
     // usage += L"\n\n";
-    usage += L"Usage: obu <program>\n\n";
-    usage += L"Example: \"obu hello.obe\"\n\nVersion: ";
+    usage += L"Usage: obu <library>\n\n";
+    usage += L"Example: \"obu collect.obl\"\n\nVersion: ";
     usage += VERSION_STRING;
     wcerr << usage << endl << endl;
     
