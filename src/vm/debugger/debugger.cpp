@@ -1496,11 +1496,11 @@ int main(int argc, char** argv)
   // usage += L"license.txt file or http://www.opensource.org/licenses/bsd-license.php\n";
   // usage += L"FOR MORE INFORMATION.\n\n";
   // usage += L"\n\n";
-  usage += L"Usage: obd -exe <executable> [-src <source directory>]\n\n";
+  usage += L"Usage: obd -exe <program> [-src <source directory>]\n\n";
   usage += L"Parameters:\n";
   usage += L"  -exe: executable file\n";
   usage += L"  -src: source directory path\n\n";
-  usage += L"example: \"obd -exe test_src\\prgm1.obe -src test_src\"\n\nVersion: ";
+  usage += L"example: \"obd -exe ..\examples\\hello.obe -src ..\examples\"\n\nVersion: ";
   usage += VERSION_STRING;
   
   if(argc >= 3) {
