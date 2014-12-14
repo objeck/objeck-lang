@@ -1,6 +1,6 @@
 Objeck release steps
 -----
-1.  update "version.h"
+1.  update "version.h"; update configure.ac
 2.  update the windows rc version tags
 3.  update the readme.rtf file
 4.  build on windows
