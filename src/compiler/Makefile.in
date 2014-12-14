@@ -1,5 +1,5 @@
 CC=g++
-ARGS=-O3 -Wall -Wno-unused-function
+ARGS=-O3 -Wall -Wno-unused-function -D_OBJECK_LIB_PATH=\"@MY_DATA@\"
 SRC=types.o tree.o scanner.o parser.o linker.o context.o intermediate.o optimization.o target.o compiler.o posix_main.o
 EXE=obc
 
