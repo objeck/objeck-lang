@@ -56,9 +56,16 @@ int Compile(map<const wstring, wstring> &arguments, list<wstring> &argument_opti
   setlocale(LC_CTYPE, "UTF-8");
 #endif
   
+  // check for optimize flag
+  map<const wstring, wstring>::iterator result = arguments.find(L"version");
+  if(result != arguments.end()) {
+    wcout << VERSION_STRING << endl;
+    exit(0);
+  }
+  
   // check source input
   wstring run_string;
-  map<const wstring, wstring>::iterator result = arguments.find(L"src");
+  result = arguments.find(L"src");
   if(result == arguments.end()) {
     result = arguments.find(L"run");
     if(result == arguments.end()) {
@@ -83,7 +90,7 @@ int Compile(map<const wstring, wstring> &arguments, list<wstring> &argument_opti
   argument_options.remove(L"dest");
   
   // check program libraries path
-  wstring sys_lib_path = L"lang.obl";
+  wstring sys_lib_path = L"lang.obl";  
   result = arguments.find(L"lib");
   if(result != arguments.end()) {
     sys_lib_path += L"," + result->second;

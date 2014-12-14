@@ -52,14 +52,15 @@ int main(const int argc, const char* argv[])
     return Execute(argc, argv);
   } 
   else {
-    wstring usage = L"Copyright (c) 2008-2015, Randy Hollines. All rights reserved.\n";
-    usage += L"THIS SOFTWARE IS PROVIDED \"AS IS\" WITHOUT WARRANTY. REFER TO THE\n";
-    usage += L"license.txt file or http://www.opensource.org/licenses/bsd-license.php\n";
-    usage += L"FOR MORE INFORMATION.\n\n";
+    wstring usage;
+    // usage += L"Copyright (c) 2008-2015, Randy Hollines. All rights reserved.\n";
+    // usage += L"THIS SOFTWARE IS PROVIDED \"AS IS\" WITHOUT WARRANTY. REFER TO THE\n";
+    // usage += L"license.txt file or http://www.opensource.org/licenses/bsd-license.php\n";
+    // usage += L"FOR MORE INFORMATION.\n\n";
+    // usage += L"\n\n";
+    usage += L"Usage: obr <program>\n\n";
+    usage += L"Example: \"obr hello.obe\"\n\nVersion: ";
     usage += VERSION_STRING;
-    usage += L"\n\n";
-    usage += L"usage: obr <program>\n\n";
-    usage += L"example: \"obr hello.obe\"";
     wcerr << usage << endl << endl;
 
     return 1;
