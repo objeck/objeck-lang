@@ -49,15 +49,12 @@ using namespace std;
 int main(int argc, char* argv[])
 {
   wstring usage;
-  usage += L"Copyright (c) 2008-2015, Randy Hollines. All rights reserved.\n";
-  usage += L"THIS SOFTWARE IS PROVIDED \"AS IS\" WITHOUT WARRANTY. REFER TO THE\n";
-  usage += L"license.txt file or http://www.opensource.org/licenses/bsd-license.php\n";
-  usage += L"FOR MORE INFORMATION.\n\n";
-  usage += VERSION_STRING;
-  usage += L"\n\n";
-  usage += L"usage: obc -src <program [(',' program)...]> [-opt (s0|s1|s2|s3)] [-lib libary [(libary ',')...]] [-tar (exe|web|lib)] [-alt] [-debug] -dest <output>\n";
-  usage += L"example: \"obc -src ..\\examples\\hello.obs -dest hello.obe\"\n\n";
-  usage += L"parameters:\n";
+  // usage += L"Copyright (c) 2008-2015, Randy Hollines. All rights reserved.\n";
+  // usage += L"THIS SOFTWARE IS PROVIDED \"AS IS\" WITHOUT WARRANTY. REFER TO THE\n";
+  // usage += L"license.txt file or http://www.opensource.org/licenses/bsd-license.php\n";
+  // usage += L"FOR MORE INFORMATION.\n\n";
+  usage += L"Usage: obc -src <program [(',' program)...]> [-opt (s0|s1|s2|s3)] [-lib libary [(libary ',')...]] [-tar (exe|web|lib)] [-alt] [-debug] -dest <output>\n\n";
+  usage += L"Options:\n";
   usage += L"  -src:   [input]  source files (separated by ',')\n";
   usage += L"  -lib:   [input]  linked libraries (separated by ',')\n";
   usage += L"  -tar:   [output] target type 'lib' for linkable library or 'exe' for\n";
@@ -67,9 +64,11 @@ int main(int argc, char* argv[])
   usage += L"          default is s0\n";
   usage += L"  -alt:   [option] allows use of C++ like syntax verses the UML like default\n";
   usage += L"  -debug: [option] compile with debug symbols";
-
+  usage += L"\n\nExample: \"obc -src ..\\examples\\hello.obs -dest hello.obe\"\n\nVersion: ";
+  usage += VERSION_STRING;
+  
   int status;
-  if(argc >= 3) {
+  if(argc > 0) {
     // reconstruct command line
     string path;
     for(int i = 1; i < 32 && i < argc; i++) {
