@@ -1159,17 +1159,21 @@ class Linker {
 
     // set library path
     wstring path;
+#ifdef _OBJECK_LIB_PATH
+    const char* path_str_ptr = _OBJECK_LIB_PATH;
+#else
     const char* path_str_ptr = getenv ("OBJECK_LIB_PATH");
-    if(path_str_ptr != NULL && strlen(path_str_ptr) > 0) {
+#endif
+    if(path_str_ptr && strlen(path_str_ptr) > 0) {
       string path_str(path_str_ptr);
       path = wstring(path_str.begin(), path_str.end());
 #ifdef _WIN32
       if(path[path.size() - 1] != '\\') {
-	path += L"\\";
+        path += L"\\";
       }
 #else
       if(path[path.size() - 1] != '/') {
-	path += '/';
+        path += '/';
       }
 #endif
     }
@@ -1181,7 +1185,7 @@ class Linker {
       while(index != wstring::npos) {
         // load library
         const wstring &file = master_path.substr(offset, index - offset);
-	const wstring file_path = path + file;
+        const wstring file_path = path + file;
         Library* library = new Library(file_path);
         library->Load();
         // insert library
