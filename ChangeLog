@@ -1,0 +1,3 @@
+ 2014-12-15  Randy Hollines  <objeck@gmail.com>
+     
+             * lang.obs (ToBinaryString): fixed the conversion routine
