@@ -273,13 +273,13 @@ bundle System {
 		@ignore-params
 		@return binary string representation of the value
 		~#
-		function : native : ToBinaryString(b : Byte) ~ String {
-			out := String->New();
-			while(b > 0) {
-				v := b % 2;
-				out->Append(v);
-				b /= 2;
-			};
+		function : native : ToBinaryString(v : Byte) ~ String {
+			out := "";
+			do {
+				out->Append(v and 1 = 0 ? '0' : '1');
+				v := v >> 1;
+			} 
+			while(v <> 0);
 
 			return out->Reverse();
 		}
@@ -657,12 +657,12 @@ bundle System {
 		}
 
 		function : native : ToBinaryString(v : Int) ~ String {
-			out := String->New();
-			while(v > 0) {
-				v := v % 2;
-				out->Append(v);
-				v /= 2;
-			};
+			out := "";
+			do {
+				out->Append(v and 1 = 0 ? '0' : '1');
+				v := v >> 1;
+			} 
+			while(v <> 0);
 
 			return out->Reverse();
 		}
