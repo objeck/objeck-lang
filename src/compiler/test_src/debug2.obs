@@ -1,14 +1,5 @@
-use Collection;
-
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		v := Vector->New();
-		v->AddBack("foo");
-#		s := v->Get(0)->As(String);
-		s := v->Get(0);
-
-		s2 := "*";
-		s2 += true;
-		s2->PrintLine();
+		3056->ToHexString->PrintLine();
 	}
 }
