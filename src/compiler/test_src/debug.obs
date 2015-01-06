@@ -1,46 +1,7 @@
-bundle Foo {
-	class Fie {
-		@fum : Fum;	
-		@zesta : Fum->Zesta;
-
-		method : public : Blah(fum : Fum) ~ Nil {
-			@fum := fum;
-			foo := Foo->New();	
-			if(fum = foo->GetFum()) {
-				"bar foo"->PrintLine();
-			};
-		}
-
-		method : public : Bar(f : Fum->Zesta) ~ Nil {
-			@zesta := f;
-			if(@fum->GetZesta() = Fum->Zesta->B) {
-				"foo bar"->PrintLine();
-			};
-		}
-	}
-
-	class Foo {
-		@fum : Fum;
-
-		New() {
-		}
-
-		method : public : GetFum() ~ Fum {
-			return @fum;
-		}
-	}
-
-	class Fum {
-		enum Zesta {
-			A, B, C
-		}
-
-		method : public : GetInt() ~ Int {
-			return 13;
-		}
-
-		method : public : GetZesta() ~ Fum->Zesta {
-			return Fum->Zesta->B;
-		}
-	}
+class Hello {
+  function : Main(args : String[]) ~ Nil {
+		x := Float->New[2];
+#		x[0] := x[1];
+		x[0] := 1;
+  }
 }
