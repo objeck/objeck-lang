@@ -3053,7 +3053,7 @@ bool ContextAnalyzer::Analyze()
     }
     
     if(check_right_cast) {
-      AnalyzeRightCast(eval_type, expression, (IsScalar(variable) && IsScalar(expression)), depth + 1);
+      AnalyzeRightCast(variable, expression, (IsScalar(variable) && IsScalar(expression)), depth + 1);
     }
     
     if(expression->GetExpressionType() == METHOD_CALL_EXPR) {
@@ -3646,6 +3646,14 @@ bool ContextAnalyzer::Analyze()
    * assignment statements.  This
    * method uses execution simulation.
    ****************************/
+  void ContextAnalyzer::AnalyzeRightCast(Variable* variable, Expression* expression, bool is_scalar, const int depth)
+  {
+    AnalyzeRightCast(variable->GetEvalType(), GetExpressionType(expression, depth + 1), expression, is_scalar, depth);
+    if(!is_scalar && variable->GetIndices()) {
+      ProcessError(expression, L"Dimension size mismatch");
+    }
+  }
+
   void ContextAnalyzer::AnalyzeRightCast(Type* left, Expression* expression, bool is_scalar, const int depth)
   {
     AnalyzeRightCast(left, GetExpressionType(expression, depth + 1), expression, is_scalar, depth);
