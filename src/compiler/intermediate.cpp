@@ -2289,7 +2289,7 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
       new_char_str_count = 0;
       
       // emit call
-      EmitMethodCall(method_call, is_nested);
+      EmitMethodCall(method_call, is_nested || expression->GetExpressionType() == COND_EXPR);
       EmitCast(method_call);
       if(!method_call->GetVariable()) {
 				EmitClassCast(method_call);
