@@ -3649,7 +3649,7 @@ bool ContextAnalyzer::Analyze()
   void ContextAnalyzer::AnalyzeRightCast(Variable* variable, Expression* expression, bool is_scalar, const int depth)
   {
     AnalyzeRightCast(variable->GetEvalType(), GetExpressionType(expression, depth + 1), expression, is_scalar, depth);
-    if(!is_scalar && variable->GetIndices()) {
+    if(variable->GetIndices() && !is_scalar) {
       ProcessError(expression, L"Dimension size mismatch");
     }
   }
