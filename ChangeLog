@@ -8,8 +8,7 @@
 
 2015-01-05  Randy Hollines  <objeck@gmail.com>
      
-             * compiler/intermediate.cpp (EmitExpression): Resolved a compiler issue with directly 
-dereferencing string literals in conditional unary expressions
+             * compiler/intermediate.cpp (EmitExpression): Resolved a compiler issue with directly dereferencing string literals in conditional unary expressions
 
 2014-12-15  Randy Hollines  <objeck@gmail.com>
      
