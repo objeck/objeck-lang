@@ -274,7 +274,7 @@ namespace Runtime {
 						<< L"]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << endl;
 #endif
       // memcpy(&op_stack[(*stack_pos)], &v, sizeof(FLOAT_VALUE));
-      *((double*)(&op_stack[(*stack_pos)])) = v;
+      *((FLOAT_VALUE*)(&op_stack[(*stack_pos)])) = v;
 #ifdef _X64
       (*stack_pos)++;
 #else
@@ -303,7 +303,7 @@ namespace Runtime {
       (*stack_pos) -= 2;
 #endif
       // memcpy(&v, &op_stack[(*stack_pos)], sizeof(FLOAT_VALUE));
-      v = *((double*)(&op_stack[(*stack_pos)]));
+      v = *((FLOAT_VALUE*)(&op_stack[(*stack_pos)]));
 #ifdef _DEBUG
       wcout << L"  [pop_f: stack_pos=" << (*stack_pos) << L"; value=" << v
 						<< L"]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << endl;
@@ -340,7 +340,7 @@ namespace Runtime {
       long index = (*stack_pos) - 2;
 #endif
       // memcpy(&v, &op_stack[index], sizeof(FLOAT_VALUE));
-      v = *((double*)(&op_stack[index]));
+      v = *((FLOAT_VALUE*)(&op_stack[index]));
 #ifdef _DEBUG
       wcout << L"  [top_f: stack_pos=" << (*stack_pos) << L"; value=" << v
 						<< L"]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << endl;
