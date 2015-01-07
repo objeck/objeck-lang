@@ -295,21 +295,21 @@ namespace Runtime {
     // pops a double from the calculation stack
     //
     inline FLOAT_VALUE PopFloat(long* op_stack, long* stack_pos) {
-      FLOAT_VALUE v;
-
 #ifdef _X64
       (*stack_pos)--;
 #else
       (*stack_pos) -= 2;
 #endif
-      // memcpy(&v, &op_stack[(*stack_pos)], sizeof(FLOAT_VALUE));
-      v = *((FLOAT_VALUE*)(&op_stack[(*stack_pos)]));
+      
 #ifdef _DEBUG
+      // memcpy(&v, &op_stack[(*stack_pos)], sizeof(FLOAT_VALUE));
+      FLOAT_VALUE v = *((FLOAT_VALUE*)(&op_stack[(*stack_pos)]));
       wcout << L"  [pop_f: stack_pos=" << (*stack_pos) << L"; value=" << v
 						<< L"]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << endl;
+      return v;
 #endif
 
-      return v;
+      return *((FLOAT_VALUE*)(&op_stack[(*stack_pos)]));
     }
     
     //
@@ -332,21 +332,21 @@ namespace Runtime {
     // execution stack.
     //
     inline FLOAT_VALUE TopFloat(long* op_stack, long* stack_pos) {
-      FLOAT_VALUE v;
-
 #ifdef _X64
       long index = (*stack_pos) - 1;
 #else
       long index = (*stack_pos) - 2;
 #endif
-      // memcpy(&v, &op_stack[index], sizeof(FLOAT_VALUE));
-      v = *((FLOAT_VALUE*)(&op_stack[index]));
+      
 #ifdef _DEBUG
+      // memcpy(&v, &op_stack[index], sizeof(FLOAT_VALUE));
+      FLOAT_VALUE v = *((FLOAT_VALUE*)(&op_stack[index]));
       wcout << L"  [top_f: stack_pos=" << (*stack_pos) << L"; value=" << v
 						<< L"]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << endl;
-#endif
-
       return v;
+#endif
+      
+      return *((FLOAT_VALUE*)(&op_stack[index]));
     }
 
     //
