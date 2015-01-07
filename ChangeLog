@@ -1,3 +1,16 @@
- 2014-12-15  Randy Hollines  <objeck@gmail.com>
+2015-01-06  Randy Hollines  <objeck@gmail.com>
      
-             * lang.obs (ToBinaryString): fixed the conversion routine
+             * vm/interpreter.h (PushFloat,PopFloat,TopFloat): Optimized stack operation for floats
+
+2015-01-06  Randy Hollines  <objeck@gmail.com>
+     
+             * compiler/context.cpp (AnalyzeRightCast): Added missing check for array assignment to array element
+
+2015-01-05  Randy Hollines  <objeck@gmail.com>
+     
+             * compiler/intermediate.cpp (EmitExpression): Resolved a compiler issue with directly 
+dereferencing string literals in conditional unary expressions
+
+2014-12-15  Randy Hollines  <objeck@gmail.com>
+     
+             * lang.obs (ToBinaryString): Fixed the conversion routine
