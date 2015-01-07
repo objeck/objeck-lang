@@ -29,6 +29,9 @@ AC_SUBST([MY_BIN])
 MY_DATA=$prefix$datarootdir/objeck
 AC_SUBST([MY_DATA])
 
+MY_DOC=$prefix$datarootdir/doc/objeck
+AC_SUBST([MY_DOC])
+
 MY_LIB=$prefix$libdir
 AC_SUBST([MY_LIB])
 

@@ -17,6 +17,12 @@ install:
 	cp lang.obl @MY_DATA@
 	cp collect.obl @MY_DATA@
 	cp regex.obl @MY_DATA@
+	mkdir -p @MY_DOC@
+	cp ../../docs/readme.htm @MY_DOC@
+	cp ../../README @MY_DOC@
+	cp ../../ChangeLog @MY_DOC@
+	cp ../../LICENSE @MY_DOC@
+	cp ../../AUTHORS @MY_DOC@
 
 clean:
 	rm -f $(EXE) *.o *~
