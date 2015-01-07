@@ -1,6 +1,6 @@
 .\" Manpage for obc.
 .\" Contact objeck@gmail.com to correct errors or typos.
-.TH man 1 "13 Dec 2014" "3.3.5.1" "obc man page"
+.TH man 1 "7 Jan 2015" "3.3.5_2" "obc man page"
 .SH NAME
 obc \- compiles Objeck source files
 .SH SYNOPSIS
@@ -9,9 +9,22 @@ obc \- compiles Objeck source files
 [options]
 [\fB\-dest\fR \fIoutputfile\fR]
 .SH DESCRIPTION
-nuseradd is high level shell program for adding users to LDAP server.  On Debian, administrators should usually use nuseradd.debian(8) instead.
+obc is a source code compiler for the Objeck language.
 .SH OPTIONS
-The nuseradd does not take any options. However, you can supply username.
+.IP -src 
+Source files (separated by ',')
+.IP -lib 
+Libraries to link (separated by ',')
+.IP -tar
+Target type 'lib' for linkable library or 'exe' for executable default is 'exe'
+.IP -dest
+Output file name
+.IP -opt
+Compiler optimizations s0-s3 (s3 being the most aggressive) default is s0
+.IP -alt
+Allows use of C++ like syntax verses the UML like default
+.IP -debug
+Compile with debug symbols
 .SH SEE ALSO
 obr(1), obd(1), obu(1)
 .SH BUGS

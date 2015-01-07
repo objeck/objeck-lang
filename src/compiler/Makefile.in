@@ -16,6 +16,7 @@ install:
 	mkdir @MY_DATA@
 	cp lang.obl @MY_DATA@
 	cp collect.obl @MY_DATA@
+	cp regex.obl @MY_DATA@
 
 clean:
 	rm -f $(EXE) *.o *~
