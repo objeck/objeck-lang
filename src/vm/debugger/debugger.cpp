@@ -1500,7 +1500,7 @@ int main(int argc, char** argv)
   usage += L"Parameters:\n";
   usage += L"  -exe: executable file\n";
   usage += L"  -src: source directory path\n\n";
-  usage += L"example: \"obd -exe ..\examples\\hello.obe -src ..\examples\"\n\nVersion: ";
+  usage += L"example: \"obd -exe ..\\examples\\hello.obe -src ..\\examples\"\n\nVersion: ";
   usage += VERSION_STRING;
   
   if(argc >= 3) {
