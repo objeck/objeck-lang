@@ -132,8 +132,8 @@ void StackInterpreter::Initialize(StackProgram* p)
 void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i, 
                                StackMethod* method, long* instance, bool jit_called)
 {
-  long right, left;
-  double right_double, left_double;
+  long left, right;
+  double left_double, right_double;
   
 #ifdef _TIMING
   clock_t start = clock();
@@ -256,9 +256,9 @@ void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i,
 #ifdef _DEBUG
       wcout << L"stack oper: SHL_INT; call_pos=" << (*call_stack_pos) << endl;
 #endif
-      right = PopInt(op_stack, stack_pos);
       left = PopInt(op_stack, stack_pos);
-      PushInt(right << left, op_stack, stack_pos);
+      right = PopInt(op_stack, stack_pos);
+      PushInt(left << right, op_stack, stack_pos);
     }
       break;
       
@@ -266,9 +266,9 @@ void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i,
 #ifdef _DEBUG
       wcout << L"stack oper: SHR_INT; call_pos=" << (*call_stack_pos) << endl;
 #endif
-      right = PopInt(op_stack, stack_pos);
       left = PopInt(op_stack, stack_pos);
-      PushInt(right >> left, op_stack, stack_pos);
+      right = PopInt(op_stack, stack_pos);
+      PushInt(left >> right, op_stack, stack_pos);
     }
       break;
 
@@ -319,8 +319,8 @@ void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i,
 #ifdef _DEBUG
       wcout << L"stack oper: AND; call_pos=" << (*call_stack_pos) << endl;
 #endif
-      right = PopInt(op_stack, stack_pos);
       left = PopInt(op_stack, stack_pos);
+      right = PopInt(op_stack, stack_pos);
       PushInt(left && right, op_stack, stack_pos);
     }
       break;
@@ -329,8 +329,8 @@ void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i,
 #ifdef _DEBUG
       wcout << L"stack oper: OR; call_pos=" << (*call_stack_pos) << endl;
 #endif
-      right = PopInt(op_stack, stack_pos);
       left = PopInt(op_stack, stack_pos);
+      right = PopInt(op_stack, stack_pos);
       PushInt(left || right, op_stack, stack_pos);
     }
       break;
@@ -339,216 +339,216 @@ void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i,
 #ifdef _DEBUG
       wcout << L"stack oper: ADD; call_pos=" << (*call_stack_pos) << endl;
 #endif
-      right = PopInt(op_stack, stack_pos);
       left = PopInt(op_stack, stack_pos);
-      PushInt(right + left, op_stack, stack_pos);
+      right = PopInt(op_stack, stack_pos);
+      PushInt(left + right, op_stack, stack_pos);
       break;
 
     case ADD_FLOAT:
 #ifdef _DEBUG
       wcout << L"stack oper: ADD; call_pos=" << (*call_stack_pos) << endl;
 #endif
-      right_double = PopFloat(op_stack, stack_pos);
       left_double = PopFloat(op_stack, stack_pos);
-      PushFloat(right_double + left_double, op_stack, stack_pos);
+      right_double = PopFloat(op_stack, stack_pos);
+      PushFloat(left_double + right_double, op_stack, stack_pos);
       break;
 
     case SUB_INT:
 #ifdef _DEBUG
       wcout << L"stack oper: SUB; call_pos=" << (*call_stack_pos) << endl;
 #endif
-      right = PopInt(op_stack, stack_pos);
       left = PopInt(op_stack, stack_pos);
-      PushInt(right - left, op_stack, stack_pos);
+      right = PopInt(op_stack, stack_pos);
+      PushInt(left - right, op_stack, stack_pos);
       break;
 
     case SUB_FLOAT:
 #ifdef _DEBUG
       wcout << L"stack oper: SUB; call_pos=" << (*call_stack_pos) << endl;
 #endif
-      right_double = PopFloat(op_stack, stack_pos);
       left_double = PopFloat(op_stack, stack_pos);
-      PushFloat(right_double - left_double, op_stack, stack_pos);
+      right_double = PopFloat(op_stack, stack_pos);
+      PushFloat(left_double - right_double, op_stack, stack_pos);
       break;
 
     case MUL_INT:
 #ifdef _DEBUG
       wcout << L"stack oper: MUL; call_pos=" << (*call_stack_pos) << endl;
 #endif
-      right = PopInt(op_stack, stack_pos);
       left = PopInt(op_stack, stack_pos);
-      PushInt(right * left, op_stack, stack_pos);
+      right = PopInt(op_stack, stack_pos);
+      PushInt(left * right, op_stack, stack_pos);
       break;
 
     case DIV_INT:
 #ifdef _DEBUG
       wcout << L"stack oper: DIV; call_pos=" << (*call_stack_pos) << endl;
 #endif
-      right = PopInt(op_stack, stack_pos);
       left = PopInt(op_stack, stack_pos);
-      PushInt(right / left, op_stack, stack_pos);
+      right = PopInt(op_stack, stack_pos);
+      PushInt(left / right, op_stack, stack_pos);
       break;
 
     case MUL_FLOAT:
 #ifdef _DEBUG
       wcout << L"stack oper: MUL; call_pos=" << (*call_stack_pos) << endl;
 #endif
-      right_double = PopFloat(op_stack, stack_pos);
       left_double = PopFloat(op_stack, stack_pos);
-      PushFloat(right_double * left_double, op_stack, stack_pos);
+      right_double = PopFloat(op_stack, stack_pos);
+      PushFloat(left_double * right_double, op_stack, stack_pos);
       break;
 
     case DIV_FLOAT:
 #ifdef _DEBUG
       wcout << L"stack oper: DIV; call_pos=" << (*call_stack_pos) << endl;
 #endif
-      right_double = PopFloat(op_stack, stack_pos);
       left_double = PopFloat(op_stack, stack_pos);
-      PushFloat(right_double / left_double, op_stack, stack_pos);
+      right_double = PopFloat(op_stack, stack_pos);
+      PushFloat(left_double / right_double, op_stack, stack_pos);
       break;
 
     case MOD_INT:
 #ifdef _DEBUG
       wcout << L"stack oper: MOD; call_pos=" << (*call_stack_pos) << endl;
 #endif
-      right = PopInt(op_stack, stack_pos);
       left = PopInt(op_stack, stack_pos);
-      PushInt(right % left, op_stack, stack_pos);
+      right = PopInt(op_stack, stack_pos);
+      PushInt(left % right, op_stack, stack_pos);
       break;
 
     case BIT_AND_INT:
 #ifdef _DEBUG
       wcout << L"stack oper: BIT_AND; call_pos=" << (*call_stack_pos) << endl;
 #endif
-      right = PopInt(op_stack, stack_pos);
       left = PopInt(op_stack, stack_pos);
-      PushInt(right & left, op_stack, stack_pos);
+      right = PopInt(op_stack, stack_pos);
+      PushInt(left & right, op_stack, stack_pos);
       break;
 
     case BIT_OR_INT:
 #ifdef _DEBUG
       wcout << L"stack oper: BIT_OR; call_pos=" << (*call_stack_pos) << endl;
 #endif
-      right = PopInt(op_stack, stack_pos);
       left = PopInt(op_stack, stack_pos);
-      PushInt(right | left, op_stack, stack_pos);
+      right = PopInt(op_stack, stack_pos);
+      PushInt(left | right, op_stack, stack_pos);
       break;
 
     case BIT_XOR_INT:
 #ifdef _DEBUG
       wcout << L"stack oper: BIT_XOR; call_pos=" << (*call_stack_pos) << endl;
 #endif
-      right = PopInt(op_stack, stack_pos);
       left = PopInt(op_stack, stack_pos);
-      PushInt(right ^ left, op_stack, stack_pos);
+      right = PopInt(op_stack, stack_pos);
+      PushInt(left ^ right, op_stack, stack_pos);
       break;
 
     case LES_EQL_INT:
 #ifdef _DEBUG
       wcout << L"stack oper: LES_EQL; call_pos=" << (*call_stack_pos) << endl;
 #endif
-      right = PopInt(op_stack, stack_pos);
       left = PopInt(op_stack, stack_pos);
-      PushInt(right <= left, op_stack, stack_pos);
+      right = PopInt(op_stack, stack_pos);
+      PushInt(left <= right, op_stack, stack_pos);
       break;
 
     case GTR_EQL_INT:
 #ifdef _DEBUG
       wcout << L"stack oper: GTR_EQL; call_pos=" << (*call_stack_pos) << endl;
 #endif
-      right = PopInt(op_stack, stack_pos);
       left = PopInt(op_stack, stack_pos);
-      PushInt(right >= left, op_stack, stack_pos);
+      right = PopInt(op_stack, stack_pos);
+      PushInt(left >= right, op_stack, stack_pos);
       break;
 
     case LES_EQL_FLOAT:
 #ifdef _DEBUG
       wcout << L"stack oper: LES_EQL; call_pos=" << (*call_stack_pos) << endl;
 #endif
-      right_double = PopFloat(op_stack, stack_pos);
       left_double = PopFloat(op_stack, stack_pos);
-      PushInt(right_double <= left_double, op_stack, stack_pos);
+      right_double = PopFloat(op_stack, stack_pos);
+      PushInt(left_double <= right_double, op_stack, stack_pos);
       break;
 
     case GTR_EQL_FLOAT:
 #ifdef _DEBUG
       wcout << L"stack oper: GTR_EQL; call_pos=" << (*call_stack_pos) << endl;
 #endif
-      right_double = PopFloat(op_stack, stack_pos);
       left_double = PopFloat(op_stack, stack_pos);
-      PushInt(right_double >= left_double, op_stack, stack_pos);
+      right_double = PopFloat(op_stack, stack_pos);
+      PushInt(left_double >= right_double, op_stack, stack_pos);
       break;
 
     case EQL_INT:
 #ifdef _DEBUG
       wcout << L"stack oper: EQL; call_pos=" << (*call_stack_pos) << endl;
 #endif
-      right = PopInt(op_stack, stack_pos);
       left = PopInt(op_stack, stack_pos);
-      PushInt(right == left, op_stack, stack_pos);
+      right = PopInt(op_stack, stack_pos);
+      PushInt(left == right, op_stack, stack_pos);
       break;
 
     case NEQL_INT:
 #ifdef _DEBUG
       wcout << L"stack oper: NEQL; call_pos=" << (*call_stack_pos) << endl;
 #endif
-      right = PopInt(op_stack, stack_pos);
       left = PopInt(op_stack, stack_pos);
-      PushInt(right != left, op_stack, stack_pos);
+      right = PopInt(op_stack, stack_pos);
+      PushInt(left != right, op_stack, stack_pos);
       break;
 
     case LES_INT:
 #ifdef _DEBUG
       wcout << L"stack oper: LES; call_pos=" << (*call_stack_pos) << endl;
 #endif
-      right = PopInt(op_stack, stack_pos);
       left = PopInt(op_stack, stack_pos);
-      PushInt(right < left, op_stack, stack_pos);
+      right = PopInt(op_stack, stack_pos);
+      PushInt(left < right, op_stack, stack_pos);
       break;
 
     case GTR_INT:
 #ifdef _DEBUG
       wcout << L"stack oper: GTR; call_pos=" << (*call_stack_pos) << endl;
 #endif
-      right = PopInt(op_stack, stack_pos);
-      left = PopInt(op_stack, stack_pos);      
-      PushInt(right > left, op_stack, stack_pos);
+      left = PopInt(op_stack, stack_pos);
+      right = PopInt(op_stack, stack_pos);      
+      PushInt(left > right, op_stack, stack_pos);
       break;
 
     case EQL_FLOAT:
 #ifdef _DEBUG
       wcout << L"stack oper: EQL; call_pos=" << (*call_stack_pos) << endl;
 #endif
-      right_double = PopFloat(op_stack, stack_pos);
       left_double = PopFloat(op_stack, stack_pos);
-      PushInt(right_double == left_double, op_stack, stack_pos);
+      right_double = PopFloat(op_stack, stack_pos);
+      PushInt(left_double == right_double, op_stack, stack_pos);
       break;
 
     case NEQL_FLOAT:
 #ifdef _DEBUG
       wcout << L"stack oper: NEQL; call_pos=" << (*call_stack_pos) << endl;
 #endif
-      right_double = PopFloat(op_stack, stack_pos);
       left_double = PopFloat(op_stack, stack_pos);
-      PushInt(right_double != left_double, op_stack, stack_pos);
+      right_double = PopFloat(op_stack, stack_pos);
+      PushInt(left_double != right_double, op_stack, stack_pos);
       break;
 
     case LES_FLOAT:
 #ifdef _DEBUG
       wcout << L"stack oper: LES; call_pos=" << (*call_stack_pos) << endl;
 #endif
-      right_double = PopFloat(op_stack, stack_pos);
       left_double = PopFloat(op_stack, stack_pos);
-      PushInt(right_double < left_double, op_stack, stack_pos);
+      right_double = PopFloat(op_stack, stack_pos);
+      PushInt(left_double < right_double, op_stack, stack_pos);
       break;
 
     case GTR_FLOAT:
 #ifdef _DEBUG
       wcout << L"stack oper: GTR_FLOAT; call_pos=" << (*call_stack_pos) << endl;
 #endif
-      right_double = PopFloat(op_stack, stack_pos);
       left_double = PopFloat(op_stack, stack_pos);
-      PushInt(right_double > left_double, op_stack, stack_pos);
+      right_double = PopFloat(op_stack, stack_pos);
+      PushInt(left_double > right_double, op_stack, stack_pos);
       break;
       
     case LOAD_ARY_SIZE: {
@@ -749,11 +749,10 @@ void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i,
       PushFloat(log(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
       break;
       
-    case POW_FLOAT: {
-      FLOAT_VALUE left = PopFloat(op_stack, stack_pos);
-      FLOAT_VALUE right = PopFloat(op_stack, stack_pos);
-      PushFloat(pow(left, right), op_stack, stack_pos);
-    }
+    case POW_FLOAT:
+      right_double = PopFloat(op_stack, stack_pos);
+      left_double = PopFloat(op_stack, stack_pos);
+      PushFloat(pow(right_double, left_double), op_stack, stack_pos);
       break;
       
     case SQRT_FLOAT:
@@ -771,8 +770,8 @@ void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i,
 #ifdef _DEBUG
       wcout << L"stack oper: I2F; call_pos=" << (*call_stack_pos) << endl;
 #endif
-      right = PopInt(op_stack, stack_pos);
-      PushFloat(right, op_stack, stack_pos);
+      left = PopInt(op_stack, stack_pos);
+      PushFloat(left, op_stack, stack_pos);
       break;
 
     case F2I:
@@ -1048,11 +1047,11 @@ void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i,
 #endif
 
 #ifdef _WIN32
-      right = PopInt(op_stack, stack_pos);
-      Sleep(right);
+      left = PopInt(op_stack, stack_pos);
+      Sleep(left);
 #else
-      right = PopInt(op_stack, stack_pos);
-      usleep(right * 1000);
+      left = PopInt(op_stack, stack_pos);
+      usleep(left * 1000);
 #endif
       break;
 
