@@ -14,7 +14,7 @@ $(EXE): $(SRC) $(OBJ_LIBS)
 	$(CC) -m64 -pthread -o $(EXE) $(SRC) $(OBJ_LIBS) -ldl -lcrypto -lssl
 
 compiler.a:
-	cd $(COMPILER_PATH); make	
+	cd $(COMPILER_PATH); make	-f Makefile.obd64
 
 ../memory.a:
 	cd $(MEM_PATH); make
@@ -26,5 +26,5 @@ compiler.a:
 	$(CC) -m64 $(ARGS) -c $< 
 
 clean:
-	cd $(COMPILER_PATH); make clean
+	cd $(COMPILER_PATH); make -f Makefile.obd64 clean
 	rm -f $(EXE).exe $(EXE) *.exe *.o *~
