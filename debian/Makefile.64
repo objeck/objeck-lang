@@ -1,0 +1,22 @@
+all: clean build install
+
+build:
+	cd compiler; make
+	cd vm; make
+	cd vm; cp Makefile.obd64 Makefile
+	cd vm/debugger; make
+	cd utilities; make
+
+install:
+	mkdir -p ../bin
+	cd utilities; cp obu $DESTDIR
+	cd compiler; cp obc $DESTDIR
+	cd vm; cp obr $DESTDIR
+	cd vm/debugger; cp obd $DESTDIR
+
+clean:
+	cd compiler; cp Makefile.64 Makefile; make clean
+	cd vm; cp Makefile.64 Makefile; cp os/posix/Makefile.64 os/posix/Makefile; cp jit/amd64/Makefile.64 jit/amd64/Makefile; make clean
+	cd vm; cp Makefile.obd64 Makefile
+	cd vm/debugger; cp Makefile.64 Makefile; make clean
+	cd utilities; cp Makefile.64 Makefile; make clean
