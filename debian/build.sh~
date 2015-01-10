@@ -1,0 +1,17 @@
+#/bin/sh
+
+# clean up
+rm -rf ~/Documents/tmp
+
+# make directories
+mkdir ~/Documents/tmp
+mkdir ~/Documents/tmp/src
+mkdir ~/Documents/tmp/src/shared
+mkdir ~/Documents/tmp/src/utilities
+mkdir ~/Documents/tmp/src/compiler
+mkdir ~/Documents/tmp/src/vm
+mkdir ~/Documents/tmp/src/vm/debugger
+
+# copy files
+cp Makefile ~/Documents/tmp/src
+
