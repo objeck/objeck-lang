@@ -18,7 +18,12 @@ mkdir ~/Documents/tmp/src/vm/jit/amd64
 mkdir ~/Documents/tmp/src/vm/jit/ia32
 
 # copy shared files
-cp Makefile ~/Documents/tmp/src
+if [ ! -z "$1" ] && [ "$1" = "32" ]; then
+    cp Makefile.32 ~/Documents/tmp/src/Makefile
+else
+    cp Makefile.64 ~/Documents/tmp/src/Makefile
+fi
+
 cp ../src/shared/*.h ~/Documents/tmp/src/shared
 
 # copy utility files
@@ -58,3 +63,13 @@ cp ../src/vm/debugger/*.h ~/Documents/tmp/src/vm/debugger
 cp ../src/vm/debugger/*.cpp ~/Documents/tmp/src/vm/debugger
 cp ../src/vm/debugger/Makefile.32 ~/Documents/tmp/src/vm/debugger
 cp ../src/vm/debugger/Makefile.64 ~/Documents/tmp/src/vm/debugger
+
+# create upstream archive
+cd ~/Documents/tmp
+tar cf objeck-lang.tar *
+gzip objeck-lang.tar
+bzr dh-make objeck-lang 3.3.5-2 objeck-lang.tar.gz
+cd objeck-lang
+bzr add debian/source/format
+bzr commit -m "Initial commit of Debian packaging."
+bzr builddeb -- -us -uc
