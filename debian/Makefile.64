@@ -14,6 +14,8 @@ install:
 	cp vm/debugger/obd ${BINDIR}
 	mkdir -p ${MANDIR}
 	cp man/*.1 ${MANDIR}
+	mkdir -p ${DATADIR}
+	cp lib/*.obl ${DATADIR}
 
 clean:
 	cd compiler; make clean

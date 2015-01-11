@@ -1,5 +1,7 @@
 #/bin/sh
 
+set "LINTIAN_PROFILE=ubuntu"
+
 # clean up
 rm -rf ~/Documents/tmp
 
@@ -7,6 +9,7 @@ rm -rf ~/Documents/tmp
 mkdir ~/Documents/tmp
 mkdir ~/Documents/tmp/src
 mkdir ~/Documents/tmp/src/man
+mkdir ~/Documents/tmp/src/lib
 mkdir ~/Documents/tmp/src/shared
 mkdir ~/Documents/tmp/src/utilities
 mkdir ~/Documents/tmp/src/compiler
@@ -83,6 +86,9 @@ else
 fi
 
 # libraries
+cp ../src/compiler/lang.obl ~/Documents/tmp/src/lib
+cp ../src/compiler/collect.obl ~/Documents/tmp/src/lib
+cp ../src/compiler/regex.obl ~/Documents/tmp/src/lib
 
 # man pages
 cp ../docs/man/*1 ~/Documents/tmp/src/man
@@ -91,10 +97,9 @@ cp ../docs/man/*1 ~/Documents/tmp/src/man
 cd ~/Documents/tmp
 tar cf objeck-lang.tar *
 gzip objeck-lang.tar
-bzr dh-make objeck-lang 3.3.5-2 objeck-lang.tar.gz
+bzr dh-make objeck-lang 3.3.5-2 objeck-lang.tar.gz 
 cd objeck-lang
-# cp ~/Documents/Code/objeck-lang/debian/rules debian
-rm debian/*ex debian/*EX
+rm debian/*ex debian/*EX debian/README.Debian debian/README.source
 cp -rf ~/Documents/Code/objeck-lang/debian/files/* debian
 bzr add debian/source/format
 bzr commit -m "Initial commit of Debian packaging."
