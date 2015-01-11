@@ -1,106 +1,107 @@
 #/bin/sh
 
-set "LINTIAN_PROFILE=ubuntu"
+BUILDDIR="/tmp/objeck"
+CWD=$(pwd)
 
 # clean up
-rm -rf ~/Documents/tmp
+rm -rf $BUILDDIR
 
 # make directories
-mkdir ~/Documents/tmp
-mkdir ~/Documents/tmp/src
-mkdir ~/Documents/tmp/src/man
-mkdir ~/Documents/tmp/src/lib
-mkdir ~/Documents/tmp/src/shared
-mkdir ~/Documents/tmp/src/utilities
-mkdir ~/Documents/tmp/src/compiler
-mkdir ~/Documents/tmp/src/vm
-mkdir ~/Documents/tmp/src/vm/debugger
-mkdir ~/Documents/tmp/src/vm/os
-mkdir ~/Documents/tmp/src/vm/os/posix
-mkdir ~/Documents/tmp/src/vm/jit
-mkdir ~/Documents/tmp/src/vm/jit/amd64
-mkdir ~/Documents/tmp/src/vm/jit/ia32
+mkdir $BUILDDIR
+mkdir $BUILDDIR/src
+mkdir $BUILDDIR/src/man
+mkdir $BUILDDIR/src/lib
+mkdir $BUILDDIR/src/shared
+mkdir $BUILDDIR/src/utilities
+mkdir $BUILDDIR/src/compiler
+mkdir $BUILDDIR/src/vm
+mkdir $BUILDDIR/src/vm/debugger
+mkdir $BUILDDIR/src/vm/os
+mkdir $BUILDDIR/src/vm/os/posix
+mkdir $BUILDDIR/src/vm/jit
+mkdir $BUILDDIR/src/vm/jit/amd64
+mkdir $BUILDDIR/src/vm/jit/ia32
 
 # copy shared files
 if [ ! -z "$1" ] && [ "$1" = "32" ]; then
-    cp Makefile.32 ~/Documents/tmp/src/Makefile
+    cp Makefile.32 $BUILDDIR/src/Makefile
 else
-    cp Makefile.64 ~/Documents/tmp/src/Makefile
+    cp Makefile.64 $BUILDDIR/src/Makefile
 fi
 
-cp ../src/shared/*.h ~/Documents/tmp/src/shared
+cp ../src/shared/*.h $BUILDDIR/src/shared
 
 # copy utility files
-cp ../src/utilities/*.cpp ~/Documents/tmp/src/utilities
+cp ../src/utilities/*.cpp $BUILDDIR/src/utilities
 if [ ! -z "$1" ] && [ "$1" = "32" ]; then
-	cp ../src/utilities/Makefile.32 ~/Documents/tmp/src/utilities/Makefile
+	cp ../src/utilities/Makefile.32 $BUILDDIR/src/utilities/Makefile
 else
-	cp ../src/utilities/Makefile.64 ~/Documents/tmp/src/utilities/Makefile
+	cp ../src/utilities/Makefile.64 $BUILDDIR/src/utilities/Makefile
 fi
 
 # copy compiler files
-cp ../src/compiler/*.h ~/Documents/tmp/src/compiler
-cp ../src/compiler/*.cpp ~/Documents/tmp/src/compiler
+cp ../src/compiler/*.h $BUILDDIR/src/compiler
+cp ../src/compiler/*.cpp $BUILDDIR/src/compiler
 if [ ! -z "$1" ] && [ "$1" = "32" ]; then
-	cp ../src/compiler/Makefile.32 ~/Documents/tmp/src/compiler/Makefile
+	cp ../src/compiler/Makefile.32 $BUILDDIR/src/compiler/Makefile
 else
-	cp ../src/compiler/Makefile.64 ~/Documents/tmp/src/compiler/Makefile
+	cp ../src/compiler/Makefile.64 $BUILDDIR/src/compiler/Makefile
 fi
 
 # copy vm files
-cp ../src/vm/*.h ~/Documents/tmp/src/vm
-cp ../src/vm/*.cpp ~/Documents/tmp/src/vm
+cp ../src/vm/*.h $BUILDDIR/src/vm
+cp ../src/vm/*.cpp $BUILDDIR/src/vm
 if [ ! -z "$1" ] && [ "$1" = "32" ]; then
-	cp ../src/vm/Makefile.32 ~/Documents/tmp/src/vm/Makefile
+	cp ../src/vm/Makefile.32 $BUILDDIR/src/vm/Makefile
 else
-	cp ../src/vm/Makefile.64 ~/Documents/tmp/src/vm/Makefile
+	cp ../src/vm/Makefile.64 $BUILDDIR/src/vm/Makefile
 fi
-cp ../src/vm/Makefile.obd32 ~/Documents/tmp/src/vm
-cp ../src/vm/Makefile.obd64 ~/Documents/tmp/src/vm
+cp ../src/vm/Makefile.obd32 $BUILDDIR/src/vm
+cp ../src/vm/Makefile.obd64 $BUILDDIR/src/vm
 
-cp ../src/vm/os/posix/*.h ~/Documents/tmp/src/vm/os/posix
-cp ../src/vm/os/posix/*.cpp ~/Documents/tmp/src/vm/os/posix
+cp ../src/vm/os/posix/*.h $BUILDDIR/src/vm/os/posix
+cp ../src/vm/os/posix/*.cpp $BUILDDIR/src/vm/os/posix
 if [ ! -z "$1" ] && [ "$1" = "32" ]; then
-	cp ../src/vm/os/posix/Makefile.32 ~/Documents/tmp/src/vm/os/posix/Makefile
+	cp ../src/vm/os/posix/Makefile.32 $BUILDDIR/src/vm/os/posix/Makefile
 else
-	cp ../src/vm/os/posix/Makefile.64 ~/Documents/tmp/src/vm/os/posix/Makefile
+	cp ../src/vm/os/posix/Makefile.64 $BUILDDIR/src/vm/os/posix/Makefile
 fi
 
 if [ ! -z "$1" ] && [ "$1" = "32" ]; then
-	cp ../src/vm/jit/ia32/*.h ~/Documents/tmp/src/vm/jit/ia32
-	cp ../src/vm/jit/ia32/*.cpp ~/Documents/tmp/src/vm/jit/ia32
-	cp ../src/vm/jit/ia32/Makefile.32 ~/Documents/tmp/src/vm/jit/ia32/Makefile
+	cp ../src/vm/jit/ia32/*.h $BUILDDIR/src/vm/jit/ia32
+	cp ../src/vm/jit/ia32/*.cpp $BUILDDIR/src/vm/jit/ia32
+	cp ../src/vm/jit/ia32/Makefile.32 $BUILDDIR/src/vm/jit/ia32/Makefile
 else
-	cp ../src/vm/jit/amd64/*.h ~/Documents/tmp/src/vm/jit/amd64
-	cp ../src/vm/jit/amd64/*.cpp ~/Documents/tmp/src/vm/jit/amd64
-	cp ../src/vm/jit/amd64/Makefile.64 ~/Documents/tmp/src/vm/jit/amd64/Makefile
+	cp ../src/vm/jit/amd64/*.h $BUILDDIR/src/vm/jit/amd64
+	cp ../src/vm/jit/amd64/*.cpp $BUILDDIR/src/vm/jit/amd64
+	cp ../src/vm/jit/amd64/Makefile.64 $BUILDDIR/src/vm/jit/amd64/Makefile
 fi
 
 # copy debugger files
-cp ../src/vm/debugger/*.h ~/Documents/tmp/src/vm/debugger
-cp ../src/vm/debugger/*.cpp ~/Documents/tmp/src/vm/debugger
+cp ../src/vm/debugger/*.h $BUILDDIR/src/vm/debugger
+cp ../src/vm/debugger/*.cpp $BUILDDIR/src/vm/debugger
 if [ ! -z "$1" ] && [ "$1" = "32" ]; then
-	cp ../src/vm/debugger/Makefile.32 ~/Documents/tmp/src/vm/debugger/Makefile
+	cp ../src/vm/debugger/Makefile.32 $BUILDDIR/src/vm/debugger/Makefile
 else
-	cp ../src/vm/debugger/Makefile.64 ~/Documents/tmp/src/vm/debugger/Makefile
+	cp ../src/vm/debugger/Makefile.64 $BUILDDIR/src/vm/debugger/Makefile
 fi
 
 # libraries
-cp ../compiler/lang.obl ~/Documents/tmp/src/lib
-cp ../compiler/collect.obl ~/Documents/tmp/src/lib
-cp ../compiler/regex.obl ~/Documents/tmp/src/lib
+cp ../src/compiler/lang.obl $BUILDDIR/src/lib
+cp ../src/compiler/collect.obl $BUILDDIR/src/lib
+cp ../src/compiler/regex.obl $BUILDDIR/src/lib
 
 # man pages
-cp ../docs/man/*1 ~/Documents/tmp/src/man
+cp ../docs/man/*1 $BUILDDIR/src/man
 
 # create upstream archive
-cd ~/Documents/tmp
+cd $BUILDDIR
 tar cf objeck-lang.tar *
 gzip objeck-lang.tar
 bzr dh-make objeck-lang 3.3.5-2 objeck-lang.tar.gz 
 cd objeck-lang
 rm debian/*ex debian/*EX debian/README.Debian debian/README.source
-cp -rf ~/Documents/Code/objeck-lang/debian/files/* debian
+cp -rf $CWD/files/* debian
 bzr add debian/source/format
-bzr commit -m "Initial commit of Debian packaging."
+bzr commit -m "Initial commit"
 bzr builddeb -- -us -uc
