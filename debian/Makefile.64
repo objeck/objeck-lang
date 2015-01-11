@@ -7,11 +7,13 @@ build:
 	cd utilities; make
 
 install:
-	mkdir -p ${DESTDIR}
-	cp compiler/obc ${DESTDIR}
-	cp utilities/obu ${DESTDIR}
-	cp vm/obr ${DESTDIR}
-	cp vm/debugger/obd ${DESTDIR}
+	mkdir -p ${BINDIR}
+	cp compiler/obc ${BINDIR}
+	cp utilities/obu ${BINDIR}
+	cp vm/obr ${BINDIR}
+	cp vm/debugger/obd ${BINDIR}
+	mkdir -p ${MANDIR}
+	cp man/*.1 ${MANDIR}
 
 clean:
 	cd compiler; make clean
