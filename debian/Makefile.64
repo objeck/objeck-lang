@@ -1,4 +1,4 @@
-all: clean build install
+all: clean build 
 
 build:
 	cd compiler; make
@@ -7,11 +7,11 @@ build:
 	cd utilities; make
 
 install:
-#	mkdir -p ../bin
-	cd utilities; cp obu $DESTDIR
-	cd compiler; cp obc $DESTDIR
-	cd vm; cp obr $DESTDIR
-	cd vm/debugger; cp obd $DESTDIR
+	mkdir -p ${DESTDIR}
+	cp compiler/obc ${DESTDIR}
+	cp utilities/obu ${DESTDIR}
+	cp vm/obr ${DESTDIR}
+	cp vm/debugger/obd ${DESTDIR}
 
 clean:
 	cd compiler; make clean
