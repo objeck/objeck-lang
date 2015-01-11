@@ -87,6 +87,7 @@ tar cf objeck-lang.tar *
 gzip objeck-lang.tar
 bzr dh-make objeck-lang 3.3.5-2 objeck-lang.tar.gz
 cd objeck-lang
+cp ~/Documents/Code/objeck-lang/debian/rules debian
 bzr add debian/source/format
 bzr commit -m "Initial commit of Debian packaging."
 bzr builddeb -- -us -uc

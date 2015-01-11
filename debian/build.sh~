@@ -63,13 +63,13 @@ else
 fi
 
 if [ ! -z "$1" ] && [ "$1" = "32" ]; then
-	cp ../src/vm/jit/amd64/*.h ~/Documents/tmp/src/vm/jit/amd64
-	cp ../src/vm/jit/amd64/*.cpp ~/Documents/tmp/src/vm/jit/amd64
-	cp ../src/vm/jit/amd64/Makefile.64 ~/Documents/tmp/src/vm/jit/amd64/Makefile
-else
 	cp ../src/vm/jit/ia32/*.h ~/Documents/tmp/src/vm/jit/ia32
 	cp ../src/vm/jit/ia32/*.cpp ~/Documents/tmp/src/vm/jit/ia32
 	cp ../src/vm/jit/ia32/Makefile.32 ~/Documents/tmp/src/vm/jit/ia32/Makefile
+else
+	cp ../src/vm/jit/amd64/*.h ~/Documents/tmp/src/vm/jit/amd64
+	cp ../src/vm/jit/amd64/*.cpp ~/Documents/tmp/src/vm/jit/amd64
+	cp ../src/vm/jit/amd64/Makefile.64 ~/Documents/tmp/src/vm/jit/amd64/Makefile
 fi
 
 # copy debugger files
@@ -87,6 +87,7 @@ tar cf objeck-lang.tar *
 gzip objeck-lang.tar
 bzr dh-make objeck-lang 3.3.5-2 objeck-lang.tar.gz
 cd objeck-lang
-bzr add debian/source/format
-bzr commit -m "Initial commit of Debian packaging."
-bzr builddeb -- -us -uc
+cp ~/Documents/Code/objeck-lang/debian/rules debian
+# bzr add debian/source/format
+# bzr commit -m "Initial commit of Debian packaging."
+# bzr builddeb -- -us -uc
