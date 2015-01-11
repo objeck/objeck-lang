@@ -6,6 +6,7 @@ rm -rf ~/Documents/tmp
 # make directories
 mkdir ~/Documents/tmp
 mkdir ~/Documents/tmp/src
+mkdir ~/Documents/tmp/src/man
 mkdir ~/Documents/tmp/src/shared
 mkdir ~/Documents/tmp/src/utilities
 mkdir ~/Documents/tmp/src/compiler
@@ -81,13 +82,20 @@ else
 	cp ../src/vm/debugger/Makefile.64 ~/Documents/tmp/src/vm/debugger/Makefile
 fi
 
+# libraries
+
+# man pages
+cp ../docs/man/*1 ~/Documents/tmp/src/man
+
 # create upstream archive
 cd ~/Documents/tmp
 tar cf objeck-lang.tar *
 gzip objeck-lang.tar
 bzr dh-make objeck-lang 3.3.5-2 objeck-lang.tar.gz
 cd objeck-lang
-cp ~/Documents/Code/objeck-lang/debian/rules debian
+# cp ~/Documents/Code/objeck-lang/debian/rules debian
+rm debian/*ex debian/*EX
+cp -rf ~/Documents/Code/objeck-lang/debian/files/* debian
 bzr add debian/source/format
 bzr commit -m "Initial commit of Debian packaging."
 bzr builddeb -- -us -uc
