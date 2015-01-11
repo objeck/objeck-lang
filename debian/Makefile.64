@@ -1,7 +1,7 @@
 all: clean build 
 
 build:
-	cd compiler; make
+	cd compiler; make OBJECK_LIB_PATH=\\\"/usr/share/objec-lang\\\"
 	cd vm; make
 	cd vm/debugger; make
 	cd utilities; make
