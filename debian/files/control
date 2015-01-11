@@ -1,15 +1,14 @@
 Source: objeck-lang
-Section: unknown
+Section: devel
 Priority: optional
-Maintainer: Ubuntu 14 LTS (amd64) <objeck@unknown>
-Build-Depends: debhelper (>= 8.0.0)
-Standards-Version: 3.9.4
-Homepage: <insert the upstream URL, if relevant>
-#Vcs-Git: git://git.debian.org/collab-maint/objeck-lang.git
-#Vcs-Browser: http://git.debian.org/?p=collab-maint/objeck-lang.git;a=summary
+Maintainer: Rnady Hollines <objeck@gmail.com>
+Build-Depends: debhelper (>= 9.0.0), libssl-dev (>= 1.0.1)
+Standards-Version: 3.9.5
+Homepage: http://www.objeck.org
+Vcs-Git: https://github.com/objeck/objeck-lang.git
 
 Package: objeck-lang
-Architecture: any
+Architecture: amd64
 Depends: ${shlibs:Depends}, ${misc:Depends}
-Description: <insert up to 60 chars description>
- <insert long description, indented with spaces>
+Description: Objeck programming language
+	Objeck is an object-oriented computer language with functional features.
