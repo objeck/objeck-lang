@@ -34,7 +34,7 @@
 #include <openssl/aes.h>
 #include <openssl/md5.h>
 #include <openssl/ripemd.h>
-#include "../../../vm/lib_api.h"
+#include "../../vm/lib_api.h"
 
 using namespace std;
 
