@@ -1,0 +1,1779 @@
+------------- 0 -------------
+method : public : WidgetDestroy() ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[1];
+	array_args[0] := @self;
+	lib_proxy->CallFunction("og_gtk_widget_destroy", array_args);
+}
+
+void og_gtk_widget_destroy(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	gtk_widget_destroy(param_0);
+}
+
+------------- 1 -------------
+method : public : WidgetDestroyed(param_1 : GtkWidget) ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := @self;
+	array_args[1] := param_1;
+	lib_proxy->CallFunction("og_gtk_widget_destroyed", array_args);
+}
+
+void og_gtk_widget_destroyed(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	GtkWidget** param_1 = (GtkWidget**)APITools_GetIntValue(context, 1);
+	gtk_widget_destroyed(param_0, param_1);
+}
+
+------------- 2 -------------
+method : public : WidgetUnref() ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[1];
+	array_args[0] := @self;
+	lib_proxy->CallFunction("og_gtk_widget_unref", array_args);
+}
+
+void og_gtk_widget_unref(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	gtk_widget_unref(param_0);
+}
+
+------------- 3 -------------
+method : public : WidgetSet(param_1 : String, param_2 : Vector) ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[3];
+	array_args[0] := @self;
+	array_args[1] := param_1;
+	array_args[2] := param_2;
+	lib_proxy->CallFunction("og_gtk_widget_set", array_args);
+}
+
+void og_gtk_widget_set(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	gchar* param_1 = APITools_GetStringValue(context, 1);
+	long* param_2 = APITools_GetObjectValue(context, 2);
+	// TODO: process variadic
+	gtk_widget_set(param_0, param_1, param_2);
+}
+
+------------- 4 -------------
+method : public : WidgetHideAll() ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[1];
+	array_args[0] := @self;
+	lib_proxy->CallFunction("og_gtk_widget_hide_all", array_args);
+}
+
+void og_gtk_widget_hide_all(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	gtk_widget_hide_all(param_0);
+}
+
+------------- 5 -------------
+method : public : WidgetUnparent() ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[1];
+	array_args[0] := @self;
+	lib_proxy->CallFunction("og_gtk_widget_unparent", array_args);
+}
+
+void og_gtk_widget_unparent(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	gtk_widget_unparent(param_0);
+}
+
+------------- 6 -------------
+method : public : WidgetShow() ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[1];
+	array_args[0] := @self;
+	lib_proxy->CallFunction("og_gtk_widget_show", array_args);
+}
+
+void og_gtk_widget_show(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	gtk_widget_show(param_0);
+}
+
+------------- 7 -------------
+method : public : WidgetShowNow() ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[1];
+	array_args[0] := @self;
+	lib_proxy->CallFunction("og_gtk_widget_show_now", array_args);
+}
+
+void og_gtk_widget_show_now(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	gtk_widget_show_now(param_0);
+}
+
+------------- 8 -------------
+method : public : WidgetHide() ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[1];
+	array_args[0] := @self;
+	lib_proxy->CallFunction("og_gtk_widget_hide", array_args);
+}
+
+void og_gtk_widget_hide(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	gtk_widget_hide(param_0);
+}
+
+------------- 9 -------------
+method : public : WidgetShowAll() ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[1];
+	array_args[0] := @self;
+	lib_proxy->CallFunction("og_gtk_widget_show_all", array_args);
+}
+
+void og_gtk_widget_show_all(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	gtk_widget_show_all(param_0);
+}
+
+------------- 10 -------------
+method : public : WidgetSetNoShowAll(param_1 : Bool) ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := @self;
+	array_args[1] := IntHolder->New(param_1 = false ? 0 : 1);
+	lib_proxy->CallFunction("og_gtk_widget_set_no_show_all", array_args);
+}
+
+void og_gtk_widget_set_no_show_all(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	gboolean param_1 = APITools_GetIntValue(context, 1);
+	gtk_widget_set_no_show_all(param_0, param_1);
+}
+
+------------- 11 -------------
+method : public : WidgetMap() ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[1];
+	array_args[0] := @self;
+	lib_proxy->CallFunction("og_gtk_widget_map", array_args);
+}
+
+void og_gtk_widget_map(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	gtk_widget_map(param_0);
+}
+
+------------- 12 -------------
+method : public : WidgetUnmap() ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[1];
+	array_args[0] := @self;
+	lib_proxy->CallFunction("og_gtk_widget_unmap", array_args);
+}
+
+void og_gtk_widget_unmap(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	gtk_widget_unmap(param_0);
+}
+
+------------- 13 -------------
+method : public : WidgetRealize() ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[1];
+	array_args[0] := @self;
+	lib_proxy->CallFunction("og_gtk_widget_realize", array_args);
+}
+
+void og_gtk_widget_realize(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	gtk_widget_realize(param_0);
+}
+
+------------- 14 -------------
+method : public : WidgetUnrealize() ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[1];
+	array_args[0] := @self;
+	lib_proxy->CallFunction("og_gtk_widget_unrealize", array_args);
+}
+
+void og_gtk_widget_unrealize(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	gtk_widget_unrealize(param_0);
+}
+
+------------- 15 -------------
+method : public : WidgetQueueDraw() ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[1];
+	array_args[0] := @self;
+	lib_proxy->CallFunction("og_gtk_widget_queue_draw", array_args);
+}
+
+void og_gtk_widget_queue_draw(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	gtk_widget_queue_draw(param_0);
+}
+
+------------- 16 -------------
+method : public : WidgetQueueDrawArea(param_1 : Int, param_2 : Int, param_3 : Int, param_4 : Int) ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[5];
+	array_args[0] := @self;
+	array_args[1] := IntHolder->New(param_1);
+	array_args[2] := IntHolder->New(param_2);
+	array_args[3] := IntHolder->New(param_3);
+	array_args[4] := IntHolder->New(param_4);
+	lib_proxy->CallFunction("og_gtk_widget_queue_draw_area", array_args);
+}
+
+void og_gtk_widget_queue_draw_area(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	gint param_1 = APITools_GetIntValue(context, 1);
+	gint param_2 = APITools_GetIntValue(context, 2);
+	gint param_3 = APITools_GetIntValue(context, 3);
+	gint param_4 = APITools_GetIntValue(context, 4);
+	gtk_widget_queue_draw_area(param_0, param_1, param_2, param_3, param_4);
+}
+
+------------- 17 -------------
+method : public : WidgetQueueClearArea(param_1 : Int, param_2 : Int, param_3 : Int, param_4 : Int) ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[5];
+	array_args[0] := @self;
+	array_args[1] := IntHolder->New(param_1);
+	array_args[2] := IntHolder->New(param_2);
+	array_args[3] := IntHolder->New(param_3);
+	array_args[4] := IntHolder->New(param_4);
+	lib_proxy->CallFunction("og_gtk_widget_queue_clear_area", array_args);
+}
+
+void og_gtk_widget_queue_clear_area(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	gint param_1 = APITools_GetIntValue(context, 1);
+	gint param_2 = APITools_GetIntValue(context, 2);
+	gint param_3 = APITools_GetIntValue(context, 3);
+	gint param_4 = APITools_GetIntValue(context, 4);
+	gtk_widget_queue_clear_area(param_0, param_1, param_2, param_3, param_4);
+}
+
+------------- 18 -------------
+method : public : WidgetQueueResize() ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[1];
+	array_args[0] := @self;
+	lib_proxy->CallFunction("og_gtk_widget_queue_resize", array_args);
+}
+
+void og_gtk_widget_queue_resize(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	gtk_widget_queue_resize(param_0);
+}
+
+------------- 19 -------------
+method : public : WidgetQueueResizeNoRedraw() ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[1];
+	array_args[0] := @self;
+	lib_proxy->CallFunction("og_gtk_widget_queue_resize_no_redraw", array_args);
+}
+
+void og_gtk_widget_queue_resize_no_redraw(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	gtk_widget_queue_resize_no_redraw(param_0);
+}
+
+------------- 20 -------------
+method : public : WidgetSizeRequest(param_1 : GtkRequisition) ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := @self;
+	array_args[1] := param_1;
+	lib_proxy->CallFunction("og_gtk_widget_size_request", array_args);
+}
+
+void og_gtk_widget_size_request(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	GtkRequisition* param_1 = (GtkRequisition*)APITools_GetIntValue(context, 1);
+	gtk_widget_size_request(param_0, param_1);
+}
+
+------------- 21 -------------
+method : public : WidgetSizeAllocate(param_1 : GtkAllocation) ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := @self;
+	array_args[1] := param_1;
+	lib_proxy->CallFunction("og_gtk_widget_size_allocate", array_args);
+}
+
+void og_gtk_widget_size_allocate(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	GtkAllocation* param_1 = (GtkAllocation*)APITools_GetIntValue(context, 1);
+	gtk_widget_size_allocate(param_0, param_1);
+}
+
+------------- 22 -------------
+method : public : WidgetGetChildRequisition(param_1 : GtkRequisition) ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := @self;
+	array_args[1] := param_1;
+	lib_proxy->CallFunction("og_gtk_widget_get_child_requisition", array_args);
+}
+
+void og_gtk_widget_get_child_requisition(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	GtkRequisition* param_1 = (GtkRequisition*)APITools_GetIntValue(context, 1);
+	gtk_widget_get_child_requisition(param_0, param_1);
+}
+
+------------- 23 -------------
+method : public : WidgetAddAccelerator(param_1 : String, param_2 : GtkAccelGroup, param_3 : Int, param_4 : GdkModifierType, param_5 : GtkAccelFlags) ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[6];
+	array_args[0] := @self;
+	array_args[1] := param_1;
+	array_args[2] := param_2;
+	array_args[3] := IntHolder->New(param_3);
+	array_args[4] := param_4;
+	array_args[5] := param_5;
+	lib_proxy->CallFunction("og_gtk_widget_add_accelerator", array_args);
+}
+
+void og_gtk_widget_add_accelerator(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	gchar* param_1 = APITools_GetStringValue(context, 1);
+	GtkAccelGroup* param_2 = (GtkAccelGroup*)APITools_GetIntValue(context, 2);
+	guint param_3 = APITools_GetIntValue(context, 3);
+	GdkModifierType param_4 = (GdkModifierType)APITools_GetIntValue(context, 4);
+	GtkAccelFlags param_5 = (GtkAccelFlags)APITools_GetIntValue(context, 5);
+	gtk_widget_add_accelerator(param_0, param_1, param_2, param_3, param_4, param_5);
+}
+
+------------- 24 -------------
+method : public : WidgetSetAccelPath(param_1 : String, param_2 : GtkAccelGroup) ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[3];
+	array_args[0] := @self;
+	array_args[1] := param_1;
+	array_args[2] := param_2;
+	lib_proxy->CallFunction("og_gtk_widget_set_accel_path", array_args);
+}
+
+void og_gtk_widget_set_accel_path(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	gchar* param_1 = APITools_GetStringValue(context, 1);
+	GtkAccelGroup* param_2 = (GtkAccelGroup*)APITools_GetIntValue(context, 2);
+	gtk_widget_set_accel_path(param_0, param_1, param_2);
+}
+
+TODO: ------------- 25 -------------
+method : public : WidgetListAccelClosures() ~ GList {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := GList->New();
+	array_args[1] := @self;
+	lib_proxy->CallFunction("og_gtk_widget_list_accel_closures", array_args);
+}
+
+void og_gtk_widget_list_accel_closures(VMContext& context) {
+	GtkWidget* param_1 = (GtkWidget*)APITools_GetIntValue(context, 1);
+	gtk_widget_list_accel_closures(param_1);
+	// handle return type
+}
+
+------------- 26 -------------
+method : public : WidgetReparent(param_1 : GtkWidget) ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := @self;
+	array_args[1] := param_1;
+	lib_proxy->CallFunction("og_gtk_widget_reparent", array_args);
+}
+
+void og_gtk_widget_reparent(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	GtkWidget* param_1 = (GtkWidget*)APITools_GetIntValue(context, 1);
+	gtk_widget_reparent(param_0, param_1);
+}
+
+------------- 27 -------------
+method : public : WidgetRegionIntersect(param_2 : GdkRegion) ~ GdkRegion {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[3];
+	array_args[0] := GdkRegion->New();
+	array_args[1] := @self;
+	array_args[2] := param_2;
+	lib_proxy->CallFunction("og_gtk_widget_region_intersect", array_args);
+}
+
+void og_gtk_widget_region_intersect(VMContext& context) {
+	GtkWidget* param_1 = (GtkWidget*)APITools_GetIntValue(context, 1);
+	const GdkRegion* param_2 = (const GdkRegion*)APITools_GetIntValue(context, 2);
+	gtk_widget_region_intersect(param_1, param_2);
+	// handle return type
+}
+
+------------- 28 -------------
+method : public : WidgetFreezeChildNotify() ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[1];
+	array_args[0] := @self;
+	lib_proxy->CallFunction("og_gtk_widget_freeze_child_notify", array_args);
+}
+
+void og_gtk_widget_freeze_child_notify(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	gtk_widget_freeze_child_notify(param_0);
+}
+
+------------- 29 -------------
+method : public : WidgetChildNotify(param_1 : String) ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := @self;
+	array_args[1] := param_1;
+	lib_proxy->CallFunction("og_gtk_widget_child_notify", array_args);
+}
+
+void og_gtk_widget_child_notify(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	gchar* param_1 = APITools_GetStringValue(context, 1);
+	gtk_widget_child_notify(param_0, param_1);
+}
+
+------------- 30 -------------
+method : public : WidgetThawChildNotify() ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[1];
+	array_args[0] := @self;
+	lib_proxy->CallFunction("og_gtk_widget_thaw_child_notify", array_args);
+}
+
+void og_gtk_widget_thaw_child_notify(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	gtk_widget_thaw_child_notify(param_0);
+}
+
+------------- 31 -------------
+method : public : WidgetSetCanFocus(param_1 : Bool) ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := @self;
+	array_args[1] := IntHolder->New(param_1 = false ? 0 : 1);
+	lib_proxy->CallFunction("og_gtk_widget_set_can_focus", array_args);
+}
+
+void og_gtk_widget_set_can_focus(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	gboolean param_1 = APITools_GetIntValue(context, 1);
+	gtk_widget_set_can_focus(param_0, param_1);
+}
+
+------------- 32 -------------
+method : public : WidgetGrabFocus() ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[1];
+	array_args[0] := @self;
+	lib_proxy->CallFunction("og_gtk_widget_grab_focus", array_args);
+}
+
+void og_gtk_widget_grab_focus(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	gtk_widget_grab_focus(param_0);
+}
+
+------------- 33 -------------
+method : public : WidgetSetCanDefault(param_1 : Bool) ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := @self;
+	array_args[1] := IntHolder->New(param_1 = false ? 0 : 1);
+	lib_proxy->CallFunction("og_gtk_widget_set_can_default", array_args);
+}
+
+void og_gtk_widget_set_can_default(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	gboolean param_1 = APITools_GetIntValue(context, 1);
+	gtk_widget_set_can_default(param_0, param_1);
+}
+
+------------- 34 -------------
+method : public : WidgetGrabDefault() ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[1];
+	array_args[0] := @self;
+	lib_proxy->CallFunction("og_gtk_widget_grab_default", array_args);
+}
+
+void og_gtk_widget_grab_default(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	gtk_widget_grab_default(param_0);
+}
+
+------------- 35 -------------
+method : public : WidgetSetReceivesDefault(param_1 : Bool) ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := @self;
+	array_args[1] := IntHolder->New(param_1 = false ? 0 : 1);
+	lib_proxy->CallFunction("og_gtk_widget_set_receives_default", array_args);
+}
+
+void og_gtk_widget_set_receives_default(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	gboolean param_1 = APITools_GetIntValue(context, 1);
+	gtk_widget_set_receives_default(param_0, param_1);
+}
+
+------------- 36 -------------
+method : public : WidgetSetName(param_1 : String) ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := @self;
+	array_args[1] := param_1;
+	lib_proxy->CallFunction("og_gtk_widget_set_name", array_args);
+}
+
+void og_gtk_widget_set_name(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	gchar* param_1 = APITools_GetStringValue(context, 1);
+	gtk_widget_set_name(param_0, param_1);
+}
+
+------------- 37 -------------
+method : public : WidgetSetState(param_1 : GtkStateType) ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := @self;
+	array_args[1] := param_1;
+	lib_proxy->CallFunction("og_gtk_widget_set_state", array_args);
+}
+
+void og_gtk_widget_set_state(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	GtkStateType param_1 = (GtkStateType)APITools_GetIntValue(context, 1);
+	gtk_widget_set_state(param_0, param_1);
+}
+
+------------- 38 -------------
+method : public : WidgetGetState() ~ GtkStateType {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := GtkStateType->New();
+	array_args[1] := @self;
+	lib_proxy->CallFunction("og_gtk_widget_get_state", array_args);
+}
+
+void og_gtk_widget_get_state(VMContext& context) {
+	GtkWidget* param_1 = (GtkWidget*)APITools_GetIntValue(context, 1);
+	gtk_widget_get_state(param_1);
+	// handle return type
+}
+
+------------- 39 -------------
+method : public : WidgetSetSensitive(param_1 : Bool) ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := @self;
+	array_args[1] := IntHolder->New(param_1 = false ? 0 : 1);
+	lib_proxy->CallFunction("og_gtk_widget_set_sensitive", array_args);
+}
+
+void og_gtk_widget_set_sensitive(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	gboolean param_1 = APITools_GetIntValue(context, 1);
+	gtk_widget_set_sensitive(param_0, param_1);
+}
+
+------------- 40 -------------
+method : public : WidgetSetVisible(param_1 : Bool) ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := @self;
+	array_args[1] := IntHolder->New(param_1 = false ? 0 : 1);
+	lib_proxy->CallFunction("og_gtk_widget_set_visible", array_args);
+}
+
+void og_gtk_widget_set_visible(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	gboolean param_1 = APITools_GetIntValue(context, 1);
+	gtk_widget_set_visible(param_0, param_1);
+}
+
+------------- 41 -------------
+method : public : WidgetSetHasWindow(param_1 : Bool) ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := @self;
+	array_args[1] := IntHolder->New(param_1 = false ? 0 : 1);
+	lib_proxy->CallFunction("og_gtk_widget_set_has_window", array_args);
+}
+
+void og_gtk_widget_set_has_window(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	gboolean param_1 = APITools_GetIntValue(context, 1);
+	gtk_widget_set_has_window(param_0, param_1);
+}
+
+------------- 42 -------------
+method : public : WidgetSetRealized(param_1 : Bool) ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := @self;
+	array_args[1] := IntHolder->New(param_1 = false ? 0 : 1);
+	lib_proxy->CallFunction("og_gtk_widget_set_realized", array_args);
+}
+
+void og_gtk_widget_set_realized(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	gboolean param_1 = APITools_GetIntValue(context, 1);
+	gtk_widget_set_realized(param_0, param_1);
+}
+
+------------- 43 -------------
+method : public : WidgetSetMapped(param_1 : Bool) ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := @self;
+	array_args[1] := IntHolder->New(param_1 = false ? 0 : 1);
+	lib_proxy->CallFunction("og_gtk_widget_set_mapped", array_args);
+}
+
+void og_gtk_widget_set_mapped(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	gboolean param_1 = APITools_GetIntValue(context, 1);
+	gtk_widget_set_mapped(param_0, param_1);
+}
+
+------------- 44 -------------
+method : public : WidgetSetAppPaintable(param_1 : Bool) ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := @self;
+	array_args[1] := IntHolder->New(param_1 = false ? 0 : 1);
+	lib_proxy->CallFunction("og_gtk_widget_set_app_paintable", array_args);
+}
+
+void og_gtk_widget_set_app_paintable(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	gboolean param_1 = APITools_GetIntValue(context, 1);
+	gtk_widget_set_app_paintable(param_0, param_1);
+}
+
+------------- 45 -------------
+method : public : WidgetSetDoubleBuffered(param_1 : Bool) ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := @self;
+	array_args[1] := IntHolder->New(param_1 = false ? 0 : 1);
+	lib_proxy->CallFunction("og_gtk_widget_set_double_buffered", array_args);
+}
+
+void og_gtk_widget_set_double_buffered(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	gboolean param_1 = APITools_GetIntValue(context, 1);
+	gtk_widget_set_double_buffered(param_0, param_1);
+}
+
+------------- 46 -------------
+method : public : WidgetSetRedrawOnAllocate(param_1 : Bool) ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := @self;
+	array_args[1] := IntHolder->New(param_1 = false ? 0 : 1);
+	lib_proxy->CallFunction("og_gtk_widget_set_redraw_on_allocate", array_args);
+}
+
+void og_gtk_widget_set_redraw_on_allocate(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	gboolean param_1 = APITools_GetIntValue(context, 1);
+	gtk_widget_set_redraw_on_allocate(param_0, param_1);
+}
+
+------------- 47 -------------
+method : public : WidgetSetParent(param_1 : GtkWidget) ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := @self;
+	array_args[1] := param_1;
+	lib_proxy->CallFunction("og_gtk_widget_set_parent", array_args);
+}
+
+void og_gtk_widget_set_parent(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	GtkWidget* param_1 = (GtkWidget*)APITools_GetIntValue(context, 1);
+	gtk_widget_set_parent(param_0, param_1);
+}
+
+------------- 48 -------------
+method : public : WidgetGetParent() ~ GtkWidget {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := GtkWidget->New();
+	array_args[1] := @self;
+	lib_proxy->CallFunction("og_gtk_widget_get_parent", array_args);
+}
+
+void og_gtk_widget_get_parent(VMContext& context) {
+	GtkWidget* param_1 = (GtkWidget*)APITools_GetIntValue(context, 1);
+	gtk_widget_get_parent(param_1);
+	// handle return type
+}
+
+------------- 49 -------------
+method : public : WidgetSetParentWindow(param_1 : GdkWindow) ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := @self;
+	array_args[1] := param_1;
+	lib_proxy->CallFunction("og_gtk_widget_set_parent_window", array_args);
+}
+
+void og_gtk_widget_set_parent_window(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	GdkWindow* param_1 = (GdkWindow*)APITools_GetIntValue(context, 1);
+	gtk_widget_set_parent_window(param_0, param_1);
+}
+
+END: ------------- 50 -------------
+method : public : WidgetGetParentWindow() ~ GdkWindow {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := GdkWindow->New();
+	array_args[1] := @self;
+	lib_proxy->CallFunction("og_gtk_widget_get_parent_window", array_args);
+}
+
+void og_gtk_widget_get_parent_window(VMContext& context) {
+	GtkWidget* param_1 = (GtkWidget*)APITools_GetIntValue(context, 1);
+	gtk_widget_get_parent_window(param_1);
+	// handle return type
+}
+
+------------- 51 -------------
+method : public : WidgetSetChildVisible(param_1 : Bool) ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := @self;
+	array_args[1] := IntHolder->New(param_1 = false ? 0 : 1);
+	lib_proxy->CallFunction("og_gtk_widget_set_child_visible", array_args);
+}
+
+void og_gtk_widget_set_child_visible(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	gboolean param_1 = APITools_GetIntValue(context, 1);
+	gtk_widget_set_child_visible(param_0, param_1);
+}
+
+------------- 52 -------------
+method : public : WidgetSetWindow(param_1 : GdkWindow) ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := @self;
+	array_args[1] := param_1;
+	lib_proxy->CallFunction("og_gtk_widget_set_window", array_args);
+}
+
+void og_gtk_widget_set_window(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	GdkWindow* param_1 = (GdkWindow*)APITools_GetIntValue(context, 1);
+	gtk_widget_set_window(param_0, param_1);
+}
+
+------------- 53 -------------
+method : public : WidgetGetWindow() ~ GdkWindow {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := GdkWindow->New();
+	array_args[1] := @self;
+	lib_proxy->CallFunction("og_gtk_widget_get_window", array_args);
+}
+
+void og_gtk_widget_get_window(VMContext& context) {
+	GtkWidget* param_1 = (GtkWidget*)APITools_GetIntValue(context, 1);
+	gtk_widget_get_window(param_1);
+	// handle return type
+}
+
+------------- 54 -------------
+method : public : WidgetGetAllocation(param_1 : GtkAllocation) ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := @self;
+	array_args[1] := param_1;
+	lib_proxy->CallFunction("og_gtk_widget_get_allocation", array_args);
+}
+
+void og_gtk_widget_get_allocation(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	GtkAllocation* param_1 = (GtkAllocation*)APITools_GetIntValue(context, 1);
+	gtk_widget_get_allocation(param_0, param_1);
+}
+
+------------- 55 -------------
+method : public : WidgetSetAllocation(param_1 : GtkAllocation) ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := @self;
+	array_args[1] := param_1;
+	lib_proxy->CallFunction("og_gtk_widget_set_allocation", array_args);
+}
+
+void og_gtk_widget_set_allocation(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	const GtkAllocation* param_1 = (const GtkAllocation*)APITools_GetIntValue(context, 1);
+	gtk_widget_set_allocation(param_0, param_1);
+}
+
+------------- 56 -------------
+method : public : WidgetGetRequisition(param_1 : GtkRequisition) ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := @self;
+	array_args[1] := param_1;
+	lib_proxy->CallFunction("og_gtk_widget_get_requisition", array_args);
+}
+
+void og_gtk_widget_get_requisition(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	GtkRequisition* param_1 = (GtkRequisition*)APITools_GetIntValue(context, 1);
+	gtk_widget_get_requisition(param_0, param_1);
+}
+
+------------- 57 -------------
+method : public : WidgetErrorBell() ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[1];
+	array_args[0] := @self;
+	lib_proxy->CallFunction("og_gtk_widget_error_bell", array_args);
+}
+
+void og_gtk_widget_error_bell(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	gtk_widget_error_bell(param_0);
+}
+
+------------- 58 -------------
+method : public : WidgetSetSizeRequest(param_1 : Int, param_2 : Int) ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[3];
+	array_args[0] := @self;
+	array_args[1] := IntHolder->New(param_1);
+	array_args[2] := IntHolder->New(param_2);
+	lib_proxy->CallFunction("og_gtk_widget_set_size_request", array_args);
+}
+
+void og_gtk_widget_set_size_request(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	gint param_1 = APITools_GetIntValue(context, 1);
+	gint param_2 = APITools_GetIntValue(context, 2);
+	gtk_widget_set_size_request(param_0, param_1, param_2);
+}
+
+------------- 59 -------------
+method : public : WidgetGetSizeRequest(param_1 : Int, param_2 : Int) ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[3];
+	array_args[0] := @self;
+	array_args[1] := IntHolder->New(param_1);
+	array_args[2] := IntHolder->New(param_2);
+	lib_proxy->CallFunction("og_gtk_widget_get_size_request", array_args);
+}
+
+void og_gtk_widget_get_size_request(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	gint param_1 = APITools_GetIntValue(context, 1);
+	gint param_2 = APITools_GetIntValue(context, 2);
+	gtk_widget_get_size_request(param_0, param_1, param_2);
+}
+
+------------- 60 -------------
+method : public : WidgetSetUsize(param_1 : Int, param_2 : Int) ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[3];
+	array_args[0] := @self;
+	array_args[1] := IntHolder->New(param_1);
+	array_args[2] := IntHolder->New(param_2);
+	lib_proxy->CallFunction("og_gtk_widget_set_usize", array_args);
+}
+
+void og_gtk_widget_set_usize(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	gint param_1 = APITools_GetIntValue(context, 1);
+	gint param_2 = APITools_GetIntValue(context, 2);
+	gtk_widget_set_usize(param_0, param_1, param_2);
+}
+
+------------- 61 -------------
+method : public : WidgetSetEvents(param_1 : Int) ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := @self;
+	array_args[1] := IntHolder->New(param_1);
+	lib_proxy->CallFunction("og_gtk_widget_set_events", array_args);
+}
+
+void og_gtk_widget_set_events(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	gint param_1 = APITools_GetIntValue(context, 1);
+	gtk_widget_set_events(param_0, param_1);
+}
+
+------------- 62 -------------
+method : public : WidgetAddEvents(param_1 : Int) ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := @self;
+	array_args[1] := IntHolder->New(param_1);
+	lib_proxy->CallFunction("og_gtk_widget_add_events", array_args);
+}
+
+void og_gtk_widget_add_events(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	gint param_1 = APITools_GetIntValue(context, 1);
+	gtk_widget_add_events(param_0, param_1);
+}
+
+------------- 63 -------------
+method : public : WidgetSetExtensionEvents(param_1 : GdkExtensionMode) ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := @self;
+	array_args[1] := param_1;
+	lib_proxy->CallFunction("og_gtk_widget_set_extension_events", array_args);
+}
+
+void og_gtk_widget_set_extension_events(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	GdkExtensionMode param_1 = (GdkExtensionMode)APITools_GetIntValue(context, 1);
+	gtk_widget_set_extension_events(param_0, param_1);
+}
+
+------------- 64 -------------
+method : public : WidgetGetExtensionEvents() ~ GdkExtensionMode {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := GdkExtensionMode->New();
+	array_args[1] := @self;
+	lib_proxy->CallFunction("og_gtk_widget_get_extension_events", array_args);
+}
+
+void og_gtk_widget_get_extension_events(VMContext& context) {
+	GtkWidget* param_1 = (GtkWidget*)APITools_GetIntValue(context, 1);
+	gtk_widget_get_extension_events(param_1);
+	// handle return type
+}
+
+------------- 65 -------------
+method : public : WidgetGetToplevel() ~ GtkWidget {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := GtkWidget->New();
+	array_args[1] := @self;
+	lib_proxy->CallFunction("og_gtk_widget_get_toplevel", array_args);
+}
+
+void og_gtk_widget_get_toplevel(VMContext& context) {
+	GtkWidget* param_1 = (GtkWidget*)APITools_GetIntValue(context, 1);
+	gtk_widget_get_toplevel(param_1);
+	// handle return type
+}
+
+------------- 66 -------------
+method : public : WidgetGetAncestor(param_2 : GType) ~ GtkWidget {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[3];
+	array_args[0] := GtkWidget->New();
+	array_args[1] := @self;
+	array_args[2] := param_2;
+	lib_proxy->CallFunction("og_gtk_widget_get_ancestor", array_args);
+}
+
+void og_gtk_widget_get_ancestor(VMContext& context) {
+	GtkWidget* param_1 = (GtkWidget*)APITools_GetIntValue(context, 1);
+	GType param_2 = (GType)APITools_GetIntValue(context, 2);
+	gtk_widget_get_ancestor(param_1, param_2);
+	// handle return type
+}
+
+------------- 67 -------------
+method : public : WidgetGetColormap() ~ GdkColormap {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := GdkColormap->New();
+	array_args[1] := @self;
+	lib_proxy->CallFunction("og_gtk_widget_get_colormap", array_args);
+}
+
+void og_gtk_widget_get_colormap(VMContext& context) {
+	GtkWidget* param_1 = (GtkWidget*)APITools_GetIntValue(context, 1);
+	gtk_widget_get_colormap(param_1);
+	// handle return type
+}
+
+------------- 68 -------------
+method : public : WidgetGetVisual() ~ GdkVisual {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := GdkVisual->New();
+	array_args[1] := @self;
+	lib_proxy->CallFunction("og_gtk_widget_get_visual", array_args);
+}
+
+void og_gtk_widget_get_visual(VMContext& context) {
+	GtkWidget* param_1 = (GtkWidget*)APITools_GetIntValue(context, 1);
+	gtk_widget_get_visual(param_1);
+	// handle return type
+}
+
+------------- 69 -------------
+method : public : WidgetGetScreen() ~ GdkScreen {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := GdkScreen->New();
+	array_args[1] := @self;
+	lib_proxy->CallFunction("og_gtk_widget_get_screen", array_args);
+}
+
+void og_gtk_widget_get_screen(VMContext& context) {
+	GtkWidget* param_1 = (GtkWidget*)APITools_GetIntValue(context, 1);
+	gtk_widget_get_screen(param_1);
+	// handle return type
+}
+
+------------- 70 -------------
+method : public : WidgetGetDisplay() ~ GdkDisplay {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := GdkDisplay->New();
+	array_args[1] := @self;
+	lib_proxy->CallFunction("og_gtk_widget_get_display", array_args);
+}
+
+void og_gtk_widget_get_display(VMContext& context) {
+	GtkWidget* param_1 = (GtkWidget*)APITools_GetIntValue(context, 1);
+	gtk_widget_get_display(param_1);
+	// handle return type
+}
+
+------------- 71 -------------
+method : public : WidgetGetRootWindow() ~ GdkWindow {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := GdkWindow->New();
+	array_args[1] := @self;
+	lib_proxy->CallFunction("og_gtk_widget_get_root_window", array_args);
+}
+
+void og_gtk_widget_get_root_window(VMContext& context) {
+	GtkWidget* param_1 = (GtkWidget*)APITools_GetIntValue(context, 1);
+	gtk_widget_get_root_window(param_1);
+	// handle return type
+}
+
+------------- 72 -------------
+method : public : WidgetGetSettings() ~ GtkSettings {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := GtkSettings->New();
+	array_args[1] := @self;
+	lib_proxy->CallFunction("og_gtk_widget_get_settings", array_args);
+}
+
+void og_gtk_widget_get_settings(VMContext& context) {
+	GtkWidget* param_1 = (GtkWidget*)APITools_GetIntValue(context, 1);
+	gtk_widget_get_settings(param_1);
+	// handle return type
+}
+
+------------- 73 -------------
+method : public : WidgetGetClipboard(param_2 : GdkAtom) ~ GtkClipboard {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[3];
+	array_args[0] := GtkClipboard->New();
+	array_args[1] := @self;
+	array_args[2] := param_2;
+	lib_proxy->CallFunction("og_gtk_widget_get_clipboard", array_args);
+}
+
+void og_gtk_widget_get_clipboard(VMContext& context) {
+	GtkWidget* param_1 = (GtkWidget*)APITools_GetIntValue(context, 1);
+	GdkAtom param_2 = (GdkAtom)APITools_GetIntValue(context, 2);
+	gtk_widget_get_clipboard(param_1, param_2);
+	// handle return type
+}
+
+------------- 74 -------------
+method : public : WidgetGetSnapshot(param_2 : GdkRectangle) ~ GdkPixmap {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[3];
+	array_args[0] := GdkPixmap->New();
+	array_args[1] := @self;
+	array_args[2] := param_2;
+	lib_proxy->CallFunction("og_gtk_widget_get_snapshot", array_args);
+}
+
+void og_gtk_widget_get_snapshot(VMContext& context) {
+	GtkWidget* param_1 = (GtkWidget*)APITools_GetIntValue(context, 1);
+	GdkRectangle* param_2 = (GdkRectangle*)APITools_GetIntValue(context, 2);
+	gtk_widget_get_snapshot(param_1, param_2);
+	// handle return type
+}
+
+------------- 75 -------------
+method : public : WidgetGetAccessible() ~ AtkObject {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := AtkObject->New();
+	array_args[1] := @self;
+	lib_proxy->CallFunction("og_gtk_widget_get_accessible", array_args);
+}
+
+void og_gtk_widget_get_accessible(VMContext& context) {
+	GtkWidget* param_1 = (GtkWidget*)APITools_GetIntValue(context, 1);
+	gtk_widget_get_accessible(param_1);
+	// handle return type
+}
+
+------------- 76 -------------
+method : public : WidgetSetColormap(param_1 : GdkColormap) ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := @self;
+	array_args[1] := param_1;
+	lib_proxy->CallFunction("og_gtk_widget_set_colormap", array_args);
+}
+
+void og_gtk_widget_set_colormap(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	GdkColormap* param_1 = (GdkColormap*)APITools_GetIntValue(context, 1);
+	gtk_widget_set_colormap(param_0, param_1);
+}
+
+------------- 77 -------------
+method : public : WidgetGetPointer(param_1 : Int, param_2 : Int) ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[3];
+	array_args[0] := @self;
+	array_args[1] := IntHolder->New(param_1);
+	array_args[2] := IntHolder->New(param_2);
+	lib_proxy->CallFunction("og_gtk_widget_get_pointer", array_args);
+}
+
+void og_gtk_widget_get_pointer(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	gint param_1 = APITools_GetIntValue(context, 1);
+	gint param_2 = APITools_GetIntValue(context, 2);
+	gtk_widget_get_pointer(param_0, param_1, param_2);
+}
+
+------------- 78 -------------
+method : public : WidgetStyleAttach() ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[1];
+	array_args[0] := @self;
+	lib_proxy->CallFunction("og_gtk_widget_style_attach", array_args);
+}
+
+void og_gtk_widget_style_attach(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	gtk_widget_style_attach(param_0);
+}
+
+------------- 79 -------------
+method : public : WidgetSetStyle(param_1 : GtkStyle) ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := @self;
+	array_args[1] := param_1;
+	lib_proxy->CallFunction("og_gtk_widget_set_style", array_args);
+}
+
+void og_gtk_widget_set_style(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	GtkStyle* param_1 = (GtkStyle*)APITools_GetIntValue(context, 1);
+	gtk_widget_set_style(param_0, param_1);
+}
+
+------------- 80 -------------
+method : public : WidgetEnsureStyle() ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[1];
+	array_args[0] := @self;
+	lib_proxy->CallFunction("og_gtk_widget_ensure_style", array_args);
+}
+
+void og_gtk_widget_ensure_style(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	gtk_widget_ensure_style(param_0);
+}
+
+------------- 81 -------------
+method : public : WidgetGetStyle() ~ GtkStyle {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := GtkStyle->New();
+	array_args[1] := @self;
+	lib_proxy->CallFunction("og_gtk_widget_get_style", array_args);
+}
+
+void og_gtk_widget_get_style(VMContext& context) {
+	GtkWidget* param_1 = (GtkWidget*)APITools_GetIntValue(context, 1);
+	gtk_widget_get_style(param_1);
+	// handle return type
+}
+
+------------- 82 -------------
+method : public : WidgetModifyStyle(param_1 : GtkRcStyle) ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := @self;
+	array_args[1] := param_1;
+	lib_proxy->CallFunction("og_gtk_widget_modify_style", array_args);
+}
+
+void og_gtk_widget_modify_style(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	GtkRcStyle* param_1 = (GtkRcStyle*)APITools_GetIntValue(context, 1);
+	gtk_widget_modify_style(param_0, param_1);
+}
+
+------------- 83 -------------
+method : public : WidgetGetModifierStyle() ~ GtkRcStyle {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := GtkRcStyle->New();
+	array_args[1] := @self;
+	lib_proxy->CallFunction("og_gtk_widget_get_modifier_style", array_args);
+}
+
+void og_gtk_widget_get_modifier_style(VMContext& context) {
+	GtkWidget* param_1 = (GtkWidget*)APITools_GetIntValue(context, 1);
+	gtk_widget_get_modifier_style(param_1);
+	// handle return type
+}
+
+------------- 84 -------------
+method : public : WidgetModifyFg(param_1 : GtkStateType, param_2 : GdkColor) ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[3];
+	array_args[0] := @self;
+	array_args[1] := param_1;
+	array_args[2] := param_2;
+	lib_proxy->CallFunction("og_gtk_widget_modify_fg", array_args);
+}
+
+void og_gtk_widget_modify_fg(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	GtkStateType param_1 = (GtkStateType)APITools_GetIntValue(context, 1);
+	const GdkColor* param_2 = (const GdkColor*)APITools_GetIntValue(context, 2);
+	gtk_widget_modify_fg(param_0, param_1, param_2);
+}
+
+------------- 85 -------------
+method : public : WidgetModifyBg(param_1 : GtkStateType, param_2 : GdkColor) ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[3];
+	array_args[0] := @self;
+	array_args[1] := param_1;
+	array_args[2] := param_2;
+	lib_proxy->CallFunction("og_gtk_widget_modify_bg", array_args);
+}
+
+void og_gtk_widget_modify_bg(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	GtkStateType param_1 = (GtkStateType)APITools_GetIntValue(context, 1);
+	const GdkColor* param_2 = (const GdkColor*)APITools_GetIntValue(context, 2);
+	gtk_widget_modify_bg(param_0, param_1, param_2);
+}
+
+------------- 86 -------------
+method : public : WidgetModifyText(param_1 : GtkStateType, param_2 : GdkColor) ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[3];
+	array_args[0] := @self;
+	array_args[1] := param_1;
+	array_args[2] := param_2;
+	lib_proxy->CallFunction("og_gtk_widget_modify_text", array_args);
+}
+
+void og_gtk_widget_modify_text(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	GtkStateType param_1 = (GtkStateType)APITools_GetIntValue(context, 1);
+	const GdkColor* param_2 = (const GdkColor*)APITools_GetIntValue(context, 2);
+	gtk_widget_modify_text(param_0, param_1, param_2);
+}
+
+------------- 87 -------------
+method : public : WidgetModifyBase(param_1 : GtkStateType, param_2 : GdkColor) ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[3];
+	array_args[0] := @self;
+	array_args[1] := param_1;
+	array_args[2] := param_2;
+	lib_proxy->CallFunction("og_gtk_widget_modify_base", array_args);
+}
+
+void og_gtk_widget_modify_base(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	GtkStateType param_1 = (GtkStateType)APITools_GetIntValue(context, 1);
+	const GdkColor* param_2 = (const GdkColor*)APITools_GetIntValue(context, 2);
+	gtk_widget_modify_base(param_0, param_1, param_2);
+}
+
+------------- 88 -------------
+method : public : WidgetModifyCursor(param_1 : GdkColor, param_2 : GdkColor) ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[3];
+	array_args[0] := @self;
+	array_args[1] := param_1;
+	array_args[2] := param_2;
+	lib_proxy->CallFunction("og_gtk_widget_modify_cursor", array_args);
+}
+
+void og_gtk_widget_modify_cursor(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	const GdkColor* param_1 = (const GdkColor*)APITools_GetIntValue(context, 1);
+	const GdkColor* param_2 = (const GdkColor*)APITools_GetIntValue(context, 2);
+	gtk_widget_modify_cursor(param_0, param_1, param_2);
+}
+
+------------- 89 -------------
+method : public : WidgetModifyFont(param_1 : PangoFontDescription) ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := @self;
+	array_args[1] := param_1;
+	lib_proxy->CallFunction("og_gtk_widget_modify_font", array_args);
+}
+
+void og_gtk_widget_modify_font(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	PangoFontDescription* param_1 = (PangoFontDescription*)APITools_GetIntValue(context, 1);
+	gtk_widget_modify_font(param_0, param_1);
+}
+
+------------- 90 -------------
+method : public : WidgetCreatePangoContext() ~ PangoContext {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := PangoContext->New();
+	array_args[1] := @self;
+	lib_proxy->CallFunction("og_gtk_widget_create_pango_context", array_args);
+}
+
+void og_gtk_widget_create_pango_context(VMContext& context) {
+	GtkWidget* param_1 = (GtkWidget*)APITools_GetIntValue(context, 1);
+	gtk_widget_create_pango_context(param_1);
+	// handle return type
+}
+
+------------- 91 -------------
+method : public : WidgetGetPangoContext() ~ PangoContext {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := PangoContext->New();
+	array_args[1] := @self;
+	lib_proxy->CallFunction("og_gtk_widget_get_pango_context", array_args);
+}
+
+void og_gtk_widget_get_pango_context(VMContext& context) {
+	GtkWidget* param_1 = (GtkWidget*)APITools_GetIntValue(context, 1);
+	gtk_widget_get_pango_context(param_1);
+	// handle return type
+}
+
+------------- 92 -------------
+method : public : WidgetCreatePangoLayout(param_2 : String) ~ PangoLayout {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[3];
+	array_args[0] := PangoLayout->New();
+	array_args[1] := @self;
+	array_args[2] := param_2;
+	lib_proxy->CallFunction("og_gtk_widget_create_pango_layout", array_args);
+}
+
+void og_gtk_widget_create_pango_layout(VMContext& context) {
+	GtkWidget* param_1 = (GtkWidget*)APITools_GetIntValue(context, 1);
+	gchar* param_2 = APITools_GetStringValue(context, 2);
+	gtk_widget_create_pango_layout(param_1, param_2);
+	// handle return type
+}
+
+------------- 93 -------------
+method : public : WidgetRenderIcon(param_2 : String, param_3 : GtkIconSize, param_4 : String) ~ GdkPixbuf {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[5];
+	array_args[0] := GdkPixbuf->New();
+	array_args[1] := @self;
+	array_args[2] := param_2;
+	array_args[3] := param_3;
+	array_args[4] := param_4;
+	lib_proxy->CallFunction("og_gtk_widget_render_icon", array_args);
+}
+
+void og_gtk_widget_render_icon(VMContext& context) {
+	GtkWidget* param_1 = (GtkWidget*)APITools_GetIntValue(context, 1);
+	gchar* param_2 = APITools_GetStringValue(context, 2);
+	GtkIconSize param_3 = (GtkIconSize)APITools_GetIntValue(context, 3);
+	gchar* param_4 = APITools_GetStringValue(context, 4);
+	gtk_widget_render_icon(param_1, param_2, param_3, param_4);
+	// handle return type
+}
+
+------------- 94 -------------
+method : public : WidgetSetCompositeName(param_1 : String) ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := @self;
+	array_args[1] := param_1;
+	lib_proxy->CallFunction("og_gtk_widget_set_composite_name", array_args);
+}
+
+void og_gtk_widget_set_composite_name(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	gchar* param_1 = APITools_GetStringValue(context, 1);
+	gtk_widget_set_composite_name(param_0, param_1);
+}
+
+------------- 95 -------------
+method : public : WidgetResetRcStyles() ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[1];
+	array_args[0] := @self;
+	lib_proxy->CallFunction("og_gtk_widget_reset_rc_styles", array_args);
+}
+
+void og_gtk_widget_reset_rc_styles(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	gtk_widget_reset_rc_styles(param_0);
+}
+
+------------- 96 -------------
+method : public : WidgetStyleGetProperty(param_1 : String, param_2 : GValue) ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[3];
+	array_args[0] := @self;
+	array_args[1] := param_1;
+	array_args[2] := param_2;
+	lib_proxy->CallFunction("og_gtk_widget_style_get_property", array_args);
+}
+
+void og_gtk_widget_style_get_property(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	gchar* param_1 = APITools_GetStringValue(context, 1);
+	GValue* param_2 = (GValue*)APITools_GetIntValue(context, 2);
+	gtk_widget_style_get_property(param_0, param_1, param_2);
+}
+
+------------- 97 -------------
+method : public : WidgetStyleGetValist(param_1 : String, param_2 : va_list) ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[3];
+	array_args[0] := @self;
+	array_args[1] := param_1;
+	array_args[2] := param_2;
+	lib_proxy->CallFunction("og_gtk_widget_style_get_valist", array_args);
+}
+
+void og_gtk_widget_style_get_valist(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	gchar* param_1 = APITools_GetStringValue(context, 1);
+	va_list param_2 = (va_list)APITools_GetIntValue(context, 2);
+	gtk_widget_style_get_valist(param_0, param_1, param_2);
+}
+
+------------- 98 -------------
+method : public : WidgetStyleGet(param_1 : String, param_2 : Vector) ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[3];
+	array_args[0] := @self;
+	array_args[1] := param_1;
+	array_args[2] := param_2;
+	lib_proxy->CallFunction("og_gtk_widget_style_get", array_args);
+}
+
+void og_gtk_widget_style_get(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	gchar* param_1 = APITools_GetStringValue(context, 1);
+	long* param_2 = APITools_GetObjectValue(context, 2);
+	// TODO: process variadic
+	gtk_widget_style_get(param_0, param_1, param_2);
+}
+
+------------- 99 -------------
+method : public : WidgetSetDirection(param_1 : GtkTextDirection) ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := @self;
+	array_args[1] := param_1;
+	lib_proxy->CallFunction("og_gtk_widget_set_direction", array_args);
+}
+
+void og_gtk_widget_set_direction(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	GtkTextDirection param_1 = (GtkTextDirection)APITools_GetIntValue(context, 1);
+	gtk_widget_set_direction(param_0, param_1);
+}
+
+------------- 100 -------------
+method : public : WidgetGetDirection() ~ GtkTextDirection {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := GtkTextDirection->New();
+	array_args[1] := @self;
+	lib_proxy->CallFunction("og_gtk_widget_get_direction", array_args);
+}
+
+void og_gtk_widget_get_direction(VMContext& context) {
+	GtkWidget* param_1 = (GtkWidget*)APITools_GetIntValue(context, 1);
+	gtk_widget_get_direction(param_1);
+	// handle return type
+}
+
+------------- 101 -------------
+method : public : WidgetShapeCombineMask(param_1 : GdkBitmap, param_2 : Int, param_3 : Int) ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[4];
+	array_args[0] := @self;
+	array_args[1] := param_1;
+	array_args[2] := IntHolder->New(param_2);
+	array_args[3] := IntHolder->New(param_3);
+	lib_proxy->CallFunction("og_gtk_widget_shape_combine_mask", array_args);
+}
+
+void og_gtk_widget_shape_combine_mask(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	GdkBitmap* param_1 = (GdkBitmap*)APITools_GetIntValue(context, 1);
+	gint param_2 = APITools_GetIntValue(context, 2);
+	gint param_3 = APITools_GetIntValue(context, 3);
+	gtk_widget_shape_combine_mask(param_0, param_1, param_2, param_3);
+}
+
+------------- 102 -------------
+method : public : WidgetInputShapeCombineMask(param_1 : GdkBitmap, param_2 : Int, param_3 : Int) ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[4];
+	array_args[0] := @self;
+	array_args[1] := param_1;
+	array_args[2] := IntHolder->New(param_2);
+	array_args[3] := IntHolder->New(param_3);
+	lib_proxy->CallFunction("og_gtk_widget_input_shape_combine_mask", array_args);
+}
+
+void og_gtk_widget_input_shape_combine_mask(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	GdkBitmap* param_1 = (GdkBitmap*)APITools_GetIntValue(context, 1);
+	gint param_2 = APITools_GetIntValue(context, 2);
+	gint param_3 = APITools_GetIntValue(context, 3);
+	gtk_widget_input_shape_combine_mask(param_0, param_1, param_2, param_3);
+}
+
+------------- 103 -------------
+method : public : WidgetResetShapes() ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[1];
+	array_args[0] := @self;
+	lib_proxy->CallFunction("og_gtk_widget_reset_shapes", array_args);
+}
+
+void og_gtk_widget_reset_shapes(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	gtk_widget_reset_shapes(param_0);
+}
+
+------------- 104 -------------
+method : public : WidgetPath(param_1 : Int, param_2 : Char, param_3 : Char) ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[4];
+	array_args[0] := @self;
+	array_args[1] := IntHolder->New(param_1);
+	array_args[2] := IntHolder->New(param_2);
+	array_args[3] := IntHolder->New(param_3);
+	lib_proxy->CallFunction("og_gtk_widget_path", array_args);
+}
+
+void og_gtk_widget_path(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	guint param_1 = APITools_GetIntValue(context, 1);
+	gchar param_2 = APITools_GetIntValue(context, 2);
+	gchar param_3 = APITools_GetIntValue(context, 3);
+	gtk_widget_path(param_0, param_1, param_2, param_3);
+}
+
+------------- 105 -------------
+method : public : WidgetClassPath(param_1 : Int, param_2 : Char, param_3 : Char) ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[4];
+	array_args[0] := @self;
+	array_args[1] := IntHolder->New(param_1);
+	array_args[2] := IntHolder->New(param_2);
+	array_args[3] := IntHolder->New(param_3);
+	lib_proxy->CallFunction("og_gtk_widget_class_path", array_args);
+}
+
+void og_gtk_widget_class_path(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	guint param_1 = APITools_GetIntValue(context, 1);
+	gchar param_2 = APITools_GetIntValue(context, 2);
+	gchar param_3 = APITools_GetIntValue(context, 3);
+	gtk_widget_class_path(param_0, param_1, param_2, param_3);
+}
+
+------------- 106 -------------
+method : public : WidgetListMnemonicLabels() ~ GList {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := GList->New();
+	array_args[1] := @self;
+	lib_proxy->CallFunction("og_gtk_widget_list_mnemonic_labels", array_args);
+}
+
+void og_gtk_widget_list_mnemonic_labels(VMContext& context) {
+	GtkWidget* param_1 = (GtkWidget*)APITools_GetIntValue(context, 1);
+	gtk_widget_list_mnemonic_labels(param_1);
+	// handle return type
+}
+
+------------- 107 -------------
+method : public : WidgetAddMnemonicLabel(param_1 : GtkWidget) ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := @self;
+	array_args[1] := param_1;
+	lib_proxy->CallFunction("og_gtk_widget_add_mnemonic_label", array_args);
+}
+
+void og_gtk_widget_add_mnemonic_label(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	GtkWidget* param_1 = (GtkWidget*)APITools_GetIntValue(context, 1);
+	gtk_widget_add_mnemonic_label(param_0, param_1);
+}
+
+------------- 108 -------------
+method : public : WidgetRemoveMnemonicLabel(param_1 : GtkWidget) ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := @self;
+	array_args[1] := param_1;
+	lib_proxy->CallFunction("og_gtk_widget_remove_mnemonic_label", array_args);
+}
+
+void og_gtk_widget_remove_mnemonic_label(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	GtkWidget* param_1 = (GtkWidget*)APITools_GetIntValue(context, 1);
+	gtk_widget_remove_mnemonic_label(param_0, param_1);
+}
+
+------------- 109 -------------
+method : public : WidgetSetTooltipWindow(param_1 : GtkWindow) ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := @self;
+	array_args[1] := param_1;
+	lib_proxy->CallFunction("og_gtk_widget_set_tooltip_window", array_args);
+}
+
+void og_gtk_widget_set_tooltip_window(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	GtkWindow* param_1 = (GtkWindow*)APITools_GetIntValue(context, 1);
+	gtk_widget_set_tooltip_window(param_0, param_1);
+}
+
+------------- 110 -------------
+method : public : WidgetGetTooltipWindow() ~ GtkWindow {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := GtkWindow->New();
+	array_args[1] := @self;
+	lib_proxy->CallFunction("og_gtk_widget_get_tooltip_window", array_args);
+}
+
+void og_gtk_widget_get_tooltip_window(VMContext& context) {
+	GtkWidget* param_1 = (GtkWidget*)APITools_GetIntValue(context, 1);
+	gtk_widget_get_tooltip_window(param_1);
+	// handle return type
+}
+
+------------- 111 -------------
+method : public : WidgetTriggerTooltipQuery() ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[1];
+	array_args[0] := @self;
+	lib_proxy->CallFunction("og_gtk_widget_trigger_tooltip_query", array_args);
+}
+
+void og_gtk_widget_trigger_tooltip_query(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	gtk_widget_trigger_tooltip_query(param_0);
+}
+
+------------- 112 -------------
+method : public : WidgetSetTooltipText(param_1 : String) ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := @self;
+	array_args[1] := param_1;
+	lib_proxy->CallFunction("og_gtk_widget_set_tooltip_text", array_args);
+}
+
+void og_gtk_widget_set_tooltip_text(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	gchar* param_1 = APITools_GetStringValue(context, 1);
+	gtk_widget_set_tooltip_text(param_0, param_1);
+}
+
+------------- 113 -------------
+method : public : WidgetSetTooltipMarkup(param_1 : String) ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := @self;
+	array_args[1] := param_1;
+	lib_proxy->CallFunction("og_gtk_widget_set_tooltip_markup", array_args);
+}
+
+void og_gtk_widget_set_tooltip_markup(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	gchar* param_1 = APITools_GetStringValue(context, 1);
+	gtk_widget_set_tooltip_markup(param_0, param_1);
+}
+
+------------- 114 -------------
+method : public : WidgetSetHasTooltip(param_1 : Bool) ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := @self;
+	array_args[1] := IntHolder->New(param_1 = false ? 0 : 1);
+	lib_proxy->CallFunction("og_gtk_widget_set_has_tooltip", array_args);
+}
+
+void og_gtk_widget_set_has_tooltip(VMContext& context) {
+	GtkWidget* param_0 = (GtkWidget*)APITools_GetIntValue(context, 0);
+	gboolean param_1 = APITools_GetIntValue(context, 1);
+	gtk_widget_set_has_tooltip(param_0, param_1);
+}
+
+total functions: 115
+=================
+AtkObject
+GList
+GdkColormap
+GdkDisplay
+GdkExtensionMode
+GdkPixbuf
+GdkPixmap
+GdkRegion
+GdkScreen
+GdkVisual
+GdkWindow
+GtkClipboard
+GtkRcStyle
+GtkSettings
+GtkStateType
+GtkStyle
+GtkTextDirection
+GtkWindow
+PangoContext
+PangoLayout

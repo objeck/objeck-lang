@@ -1,0 +1,295 @@
+------------- 0 -------------
+method : public : ScreenGetDefaultColormap() ~ GdkColormap {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := GdkColormap->New();
+	array_args[1] := @self;
+	lib_proxy->CallFunction("og_gdk_screen_get_default_colormap", array_args);
+}
+
+void og_gdk_screen_get_default_colormap(VMContext& context) {
+	GdkScreen* param_1 = (GdkScreen*)APITools_GetIntValue(context, 1);
+	gdk_screen_get_default_colormap(param_1);
+	// handle return type
+}
+
+------------- 1 -------------
+method : public : ScreenSetDefaultColormap(param_1 : GdkColormap) ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := @self;
+	array_args[1] := param_1;
+	lib_proxy->CallFunction("og_gdk_screen_set_default_colormap", array_args);
+}
+
+void og_gdk_screen_set_default_colormap(VMContext& context) {
+	GdkScreen* param_0 = (GdkScreen*)APITools_GetIntValue(context, 0);
+	GdkColormap* param_1 = (GdkColormap*)APITools_GetIntValue(context, 1);
+	gdk_screen_set_default_colormap(param_0, param_1);
+}
+
+------------- 2 -------------
+method : public : ScreenGetSystemColormap() ~ GdkColormap {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := GdkColormap->New();
+	array_args[1] := @self;
+	lib_proxy->CallFunction("og_gdk_screen_get_system_colormap", array_args);
+}
+
+void og_gdk_screen_get_system_colormap(VMContext& context) {
+	GdkScreen* param_1 = (GdkScreen*)APITools_GetIntValue(context, 1);
+	gdk_screen_get_system_colormap(param_1);
+	// handle return type
+}
+
+------------- 3 -------------
+method : public : ScreenGetSystemVisual() ~ GdkVisual {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := GdkVisual->New();
+	array_args[1] := @self;
+	lib_proxy->CallFunction("og_gdk_screen_get_system_visual", array_args);
+}
+
+void og_gdk_screen_get_system_visual(VMContext& context) {
+	GdkScreen* param_1 = (GdkScreen*)APITools_GetIntValue(context, 1);
+	gdk_screen_get_system_visual(param_1);
+	// handle return type
+}
+
+------------- 4 -------------
+method : public : ScreenGetRgbColormap() ~ GdkColormap {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := GdkColormap->New();
+	array_args[1] := @self;
+	lib_proxy->CallFunction("og_gdk_screen_get_rgb_colormap", array_args);
+}
+
+void og_gdk_screen_get_rgb_colormap(VMContext& context) {
+	GdkScreen* param_1 = (GdkScreen*)APITools_GetIntValue(context, 1);
+	gdk_screen_get_rgb_colormap(param_1);
+	// handle return type
+}
+
+------------- 5 -------------
+method : public : ScreenGetRgbVisual() ~ GdkVisual {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := GdkVisual->New();
+	array_args[1] := @self;
+	lib_proxy->CallFunction("og_gdk_screen_get_rgb_visual", array_args);
+}
+
+void og_gdk_screen_get_rgb_visual(VMContext& context) {
+	GdkScreen* param_1 = (GdkScreen*)APITools_GetIntValue(context, 1);
+	gdk_screen_get_rgb_visual(param_1);
+	// handle return type
+}
+
+------------- 6 -------------
+method : public : ScreenGetRgbaColormap() ~ GdkColormap {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := GdkColormap->New();
+	array_args[1] := @self;
+	lib_proxy->CallFunction("og_gdk_screen_get_rgba_colormap", array_args);
+}
+
+void og_gdk_screen_get_rgba_colormap(VMContext& context) {
+	GdkScreen* param_1 = (GdkScreen*)APITools_GetIntValue(context, 1);
+	gdk_screen_get_rgba_colormap(param_1);
+	// handle return type
+}
+
+------------- 7 -------------
+method : public : ScreenGetRgbaVisual() ~ GdkVisual {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := GdkVisual->New();
+	array_args[1] := @self;
+	lib_proxy->CallFunction("og_gdk_screen_get_rgba_visual", array_args);
+}
+
+void og_gdk_screen_get_rgba_visual(VMContext& context) {
+	GdkScreen* param_1 = (GdkScreen*)APITools_GetIntValue(context, 1);
+	gdk_screen_get_rgba_visual(param_1);
+	// handle return type
+}
+
+------------- 8 -------------
+method : public : ScreenGetRootWindow() ~ GdkWindow {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := GdkWindow->New();
+	array_args[1] := @self;
+	lib_proxy->CallFunction("og_gdk_screen_get_root_window", array_args);
+}
+
+void og_gdk_screen_get_root_window(VMContext& context) {
+	GdkScreen* param_1 = (GdkScreen*)APITools_GetIntValue(context, 1);
+	gdk_screen_get_root_window(param_1);
+	// handle return type
+}
+
+------------- 9 -------------
+method : public : ScreenGetDisplay() ~ GdkDisplay {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := GdkDisplay->New();
+	array_args[1] := @self;
+	lib_proxy->CallFunction("og_gdk_screen_get_display", array_args);
+}
+
+void og_gdk_screen_get_display(VMContext& context) {
+	GdkScreen* param_1 = (GdkScreen*)APITools_GetIntValue(context, 1);
+	gdk_screen_get_display(param_1);
+	// handle return type
+}
+
+------------- 10 -------------
+method : public : ScreenListVisuals() ~ GList {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := GList->New();
+	array_args[1] := @self;
+	lib_proxy->CallFunction("og_gdk_screen_list_visuals", array_args);
+}
+
+void og_gdk_screen_list_visuals(VMContext& context) {
+	GdkScreen* param_1 = (GdkScreen*)APITools_GetIntValue(context, 1);
+	gdk_screen_list_visuals(param_1);
+	// handle return type
+}
+
+------------- 11 -------------
+method : public : ScreenGetToplevelWindows() ~ GList {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := GList->New();
+	array_args[1] := @self;
+	lib_proxy->CallFunction("og_gdk_screen_get_toplevel_windows", array_args);
+}
+
+void og_gdk_screen_get_toplevel_windows(VMContext& context) {
+	GdkScreen* param_1 = (GdkScreen*)APITools_GetIntValue(context, 1);
+	gdk_screen_get_toplevel_windows(param_1);
+	// handle return type
+}
+
+------------- 12 -------------
+method : public : ScreenGetMonitorGeometry(param_1 : Int, param_2 : GdkRectangle) ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[3];
+	array_args[0] := @self;
+	array_args[1] := IntHolder->New(param_1);
+	array_args[2] := param_2;
+	lib_proxy->CallFunction("og_gdk_screen_get_monitor_geometry", array_args);
+}
+
+void og_gdk_screen_get_monitor_geometry(VMContext& context) {
+	GdkScreen* param_0 = (GdkScreen*)APITools_GetIntValue(context, 0);
+	gint param_1 = APITools_GetIntValue(context, 1);
+	GdkRectangle* param_2 = (GdkRectangle*)APITools_GetIntValue(context, 2);
+	gdk_screen_get_monitor_geometry(param_0, param_1, param_2);
+}
+
+------------- 13 -------------
+method : public : ScreenBroadcastClientMessage(param_1 : GdkEvent) ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := @self;
+	array_args[1] := param_1;
+	lib_proxy->CallFunction("og_gdk_screen_broadcast_client_message", array_args);
+}
+
+void og_gdk_screen_broadcast_client_message(VMContext& context) {
+	GdkScreen* param_0 = (GdkScreen*)APITools_GetIntValue(context, 0);
+	GdkEvent* param_1 = (GdkEvent*)APITools_GetIntValue(context, 1);
+	gdk_screen_broadcast_client_message(param_0, param_1);
+}
+
+------------- 14 -------------
+method : public : ScreenSetFontOptions(param_1 : cairo_font_options_t) ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := @self;
+	array_args[1] := param_1;
+	lib_proxy->CallFunction("og_gdk_screen_set_font_options", array_args);
+}
+
+void og_gdk_screen_set_font_options(VMContext& context) {
+	GdkScreen* param_0 = (GdkScreen*)APITools_GetIntValue(context, 0);
+	const cairo_font_options_t* param_1 = (const cairo_font_options_t*)APITools_GetIntValue(context, 1);
+	gdk_screen_set_font_options(param_0, param_1);
+}
+
+------------- 15 -------------
+method : public : ScreenGetFontOptions() ~ cairo_font_options_t {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := cairo_font_options_t->New();
+	array_args[1] := @self;
+	lib_proxy->CallFunction("og_gdk_screen_get_font_options", array_args);
+}
+
+void og_gdk_screen_get_font_options(VMContext& context) {
+	GdkScreen* param_1 = (GdkScreen*)APITools_GetIntValue(context, 1);
+	gdk_screen_get_font_options(param_1);
+	// handle return type
+}
+
+------------- 16 -------------
+method : public : ScreenSetResolution(param_1 : Float) ~ Nil {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := @self;
+	array_args[1] := FloatHolder->New(param_1);
+	lib_proxy->CallFunction("og_gdk_screen_set_resolution", array_args);
+}
+
+void og_gdk_screen_set_resolution(VMContext& context) {
+	GdkScreen* param_0 = (GdkScreen*)APITools_GetIntValue(context, 0);
+	gdouble param_1 APITools_GetFloatValue(context, 1);
+	gdk_screen_set_resolution(param_0, param_1);
+}
+
+------------- 17 -------------
+method : public : ScreenGetActiveWindow() ~ GdkWindow {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := GdkWindow->New();
+	array_args[1] := @self;
+	lib_proxy->CallFunction("og_gdk_screen_get_active_window", array_args);
+}
+
+void og_gdk_screen_get_active_window(VMContext& context) {
+	GdkScreen* param_1 = (GdkScreen*)APITools_GetIntValue(context, 1);
+	gdk_screen_get_active_window(param_1);
+	// handle return type
+}
+
+------------- 18 -------------
+method : public : ScreenGetWindowStack() ~ GList {
+	lib_proxy := GetDllProxy();
+	array_args := Base->New[2];
+	array_args[0] := GList->New();
+	array_args[1] := @self;
+	lib_proxy->CallFunction("og_gdk_screen_get_window_stack", array_args);
+}
+
+void og_gdk_screen_get_window_stack(VMContext& context) {
+	GdkScreen* param_1 = (GdkScreen*)APITools_GetIntValue(context, 1);
+	gdk_screen_get_window_stack(param_1);
+	// handle return type
+}
+
+total functions: 19
+=================
+GList
+GdkColormap
+GdkDisplay
+GdkVisual
+GdkWindow
+cairo_font_options_t
