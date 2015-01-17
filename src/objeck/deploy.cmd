@@ -10,19 +10,18 @@ copy ..\compiler\*.obl deploy\bin
 del deploy\bin\fcgi.obl
 del deploy\bin\gtk2.obl
 REM openssl support
-mkdir deploy\bin\lib\openssl
-cd ..\vm\lib\openssl\openssl
+mkdir deploy\lib\openssl
+cd ..\lib\openssl\openssl
 devenv /rebuild Release openssl.sln
-copy Release\*.dll ..\..\..\..\objeck\deploy\bin\lib\openssl
-copy ..\win32\bin\*.dll ..\..\..\..\objeck\deploy\bin
-cd ..\..\..\..\objeck
-REM odbc support
-mkdir deploy\bin\lib\odbc
-cd ..\vm\lib\odbc
-devenv /rebuild Release odbc.sln
-copy Release\*.dll ..\..\..\objeck\deploy\bin\lib\odbc
+copy Release\*.dll ..\..\..\objeck\deploy\lib\openssl
 copy ..\win32\bin\*.dll ..\..\..\objeck\deploy\bin
 cd ..\..\..\objeck
+REM odbc support
+mkdir deploy\lib\odbc
+cd ..\lib\odbc
+devenv /rebuild Release odbc.sln
+copy Release\*.dll ..\..\objeck\deploy\lib\odbc
+cd ..\..\objeck
 REM copy examples
 xcopy /e ..\compiler\rc\* deploy\examples\
 REM build and update docs
