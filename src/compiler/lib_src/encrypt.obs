@@ -19,7 +19,7 @@ bundle Encryption {
 		
 		function : GetDllProxy() ~ DllProxy {
 			if(@lib_proxy = Nil) {
-				@lib_proxy := DllProxy->New("lib/openssl/openssl");
+				@lib_proxy := DllProxy->New("../lib/openssl/openssl");
 			};
 
 			return @lib_proxy;
