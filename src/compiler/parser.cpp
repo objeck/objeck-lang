@@ -1087,6 +1087,12 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       NextToken();
       break;
 
+    case VERSION:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+                                                               instructions::VERSION);
+      NextToken();
+      break;
+
     case GET_SYS_PROP:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
                                                                instructions::GET_SYS_PROP);

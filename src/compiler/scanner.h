@@ -297,6 +297,7 @@ enum ScannerTokenType {
   TIMER_END,
   // platform
   PLTFRM,
+  VERSION,
   GET_SYS_PROP,
   SET_SYS_PROP,
   EXIT

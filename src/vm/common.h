@@ -1985,6 +1985,11 @@ class TrapProcessor {
   //
   static inline void ProcessPlatform(StackProgram* program, long* &op_stack, long* &stack_pos);
 
+  // 
+  // version string
+  //
+  static inline void ProcessVersion(StackProgram* program, long* &op_stack, long* &stack_pos);
+
   //
   // creates new object and call default constructor
   //
