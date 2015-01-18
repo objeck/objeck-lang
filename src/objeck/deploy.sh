@@ -7,9 +7,9 @@ USER_HOME=C:\\Users\\rhollines
 rm -rf deploy
 mkdir deploy
 mkdir deploy/bin
-mkdir deploy/bin/lib
-mkdir deploy/bin/lib/odbc
-mkdir deploy/bin/lib/openssl
+mkdir deploy/lib
+mkdir deploy/lib/odbc
+mkdir deploy/lib/openssl
 mkdir deploy/doc
 
 # build compiler
@@ -23,10 +23,9 @@ elif [ ! -z "$1" ] && [ "$1" = "osx" ]; then
 else
 	cp Makefile.64 Makefile
 fi
-make clean; make -j3
+make clean; make -j3 OBJECK_LIB_PATH=\\\".\\\"
 cp obc ../objeck/deploy/bin
 cp *.obl ../objeck/deploy/bin
-rm ../objeck/deploy/fcgi.obl
 
 # build utilities
 cd ../utilities
@@ -89,29 +88,29 @@ make clean; make -j3
 cp obd ../../objeck/deploy/bin
 
 # build libraries
-cd ../lib/odbc
+cd ../../lib/odbc
 if [ ! -z "$1" ] && [ "$1" = "osx" ]; then
 	./build_osx_x64.sh odbc
 	cp odbc.dylib ../../../objeck/deploy/bin/lib/odbc
 elif [ ! -z "$1" ] && [ "$1" = "mingw" ]; then
 	./build_win32.sh odbc
-	cp odbc.so ../../../objeck/deploy/bin/lib/odbc
+	cp odbc.so ../../../../objeck/deploy/lib/odbc
 else
 	./build_linux.sh odbc
-	cp odbc.so ../../../objeck/deploy/bin/lib/odbc
+	cp odbc.so ../../../../objeck/deploy/lib/odbc
 fi
 
 cd ../openssl
 
 if [ ! -z "$1" ] && [ "$1" = "osx" ]; then
 	./build_osx_x64.sh openssl
-	cp openssl.dylib ../../../objeck/deploy/bin/lib/openssl
+	cp openssl.dylib ../../../../objeck/deploy/lib/openssl
 elif [ ! -z "$1" ] && [ "$1" = "mingw" ]; then
 	./build_win32.sh openssl
-	cp openssl.so ../../../objeck/deploy/bin/lib/openssl
+	cp openssl.so ../../../../objeck/deploy/lib/openssl
 else
 	./build_linux.sh openssl
-	cp openssl.so ../../../objeck/deploy/bin/lib/openssl
+	cp openssl.so ../../../../objeck/deploy/lib/openssl
 fi
 
 # copy docs
