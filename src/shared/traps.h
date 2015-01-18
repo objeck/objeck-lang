@@ -158,6 +158,7 @@ namespace instructions {
 		DESERL_CHAR_ARY,
 		// platform
     PLTFRM,
+    VERSION,
 		GET_SYS_PROP,
 		SET_SYS_PROP,
     EXIT,
