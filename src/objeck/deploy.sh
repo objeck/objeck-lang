@@ -91,30 +91,30 @@ cp obd ../../objeck/deploy/bin
 cd ../../lib/odbc
 if [ ! -z "$1" ] && [ "$1" = "osx" ]; then
 	./build_osx_x64.sh odbc
-	cp odbc.dylib ../../../objeck/deploy/bin/lib/odbc
+	cp odbc.dylib ../../objeck/deploy/lib/odbc
 elif [ ! -z "$1" ] && [ "$1" = "mingw" ]; then
 	./build_win32.sh odbc
-	cp odbc.so ../../../../objeck/deploy/lib/odbc
+	cp odbc.so ../../objeck/deploy/lib/odbc
 else
 	./build_linux.sh odbc
-	cp odbc.so ../../../../objeck/deploy/lib/odbc
+	cp odbc.so ../../objeck/deploy/lib/odbc
 fi
 
 cd ../openssl
 
 if [ ! -z "$1" ] && [ "$1" = "osx" ]; then
 	./build_osx_x64.sh openssl
-	cp openssl.dylib ../../../../objeck/deploy/lib/openssl
+	cp openssl.dylib ../../objeck/deploy/lib/openssl
 elif [ ! -z "$1" ] && [ "$1" = "mingw" ]; then
 	./build_win32.sh openssl
-	cp openssl.so ../../../../objeck/deploy/lib/openssl
+	cp openssl.so ../../objeck/deploy/lib/openssl
 else
 	./build_linux.sh openssl
-	cp openssl.so ../../../../objeck/deploy/lib/openssl
+	cp openssl.so ../../objeck/deploy/lib/openssl
 fi
 
 # copy docs
-cd ../../../..
+cd ../../..
 cp docs/guide/objeck_lang.pdf src/objeck/deploy/doc
 cp -R docs/syntax src/objeck/deploy/doc/syntax
 cp docs/readme.rtf src/objeck/deploy
