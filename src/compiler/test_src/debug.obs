@@ -1,7 +1,5 @@
 class Hello {
   function : Main(args : String[]) ~ Nil {
-		x := Float->New[2];
-		x[0] := x;
-#		x[0] := 1;
+		Runtime->GetVersion()->PrintLine();
   }
 }
