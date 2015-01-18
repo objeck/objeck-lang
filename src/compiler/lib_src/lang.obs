@@ -2559,6 +2559,14 @@ bundle System {
 		function : GetPlatform() ~ String {
 			PLTFRM;
 		}
+
+		#~
+		Returns the package version string
+		@return package version string
+		~#
+		function : GetVersion() ~ String {
+			VERSION;
+		}
 		
 		#~
 		Fetches a runtime property 
