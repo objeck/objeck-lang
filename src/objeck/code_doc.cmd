@@ -1,4 +1,4 @@
-set ZIP_BIN="C:\Program Files\7-Zip"
+set ZIP_BIN="D:\Program Files\7-Zip"
 
 cd deploy\bin
 rmdir /s /q ..\html
@@ -10,6 +10,7 @@ mkdir ..\doc\api
 copy ..\..\..\compiler\rc\doc\templates\index.html ..\doc\api
 xcopy /e ..\html\* ..\doc\api
 rmdir /s /q ..\html
-%ZIP_BIN%\7z.exe a -tzip api "..\doc\api\*.html"
-copy api.zip ..\..\..\..\docs
+cd ..\doc
+%ZIP_BIN%\7z.exe a -r -tzip api.zip api\*
+move api.zip ..\..\..\..\docs
 cd ..\..
