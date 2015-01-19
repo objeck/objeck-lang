@@ -42,7 +42,6 @@ else
 	cp ../src/utilities/Makefile.64 $BUILDDIR/src/utilities/Makefile
 fi
 
-
 # copy compiler files
 cp ../src/compiler/*.h $BUILDDIR/src/compiler
 cp ../src/compiler/*.cpp $BUILDDIR/src/compiler
@@ -116,7 +115,16 @@ gzip objeck-lang.tar
 bzr dh-make objeck-lang 3.3.5-2 objeck-lang.tar.gz 
 cd objeck-lang
 rm debian/*ex debian/*EX debian/README.Debian debian/README.source
+
 cp -rf $CWD/files/* debian
+if [ ! -z "$1" ] && [ "$1" = "32" ]; then
+	mv debian/control.32 debian/control
+	rm debian/control.64
+else
+	mv debian/control.64 debian/control
+	rm debian/control.32
+fi
+
 bzr add debian/source/format
 bzr commit -m "Initial commit"
 bzr builddeb -- -us -uc
