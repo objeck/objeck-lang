@@ -13,17 +13,17 @@ copy ..\compiler\*.obl deploy\bin
 del deploy\bin\fcgi.obl
 del deploy\bin\gtk2.obl
 REM openssl support
-mkdir deploy\lib\openssl
+mkdir deploy\lib
+mkdir deploy\lib\objeck-lang
 cd ..\lib\openssl\openssl
 devenv /rebuild Release openssl.sln
-copy Release\*.dll ..\..\..\objeck\deploy\lib\openssl
+copy Release\*.dll ..\..\..\objeck\deploy\lib\objeck-lang
 copy ..\win32\bin\*.dll ..\..\..\objeck\deploy\bin
 cd ..\..\..\objeck
 REM odbc support
-mkdir deploy\lib\odbc
 cd ..\lib\odbc
 devenv /rebuild Release odbc.sln
-copy Release\*.dll ..\..\objeck\deploy\lib\odbc
+copy Release\*.dll ..\..\objeck\deploy\lib\objeck-lang
 cd ..\..\objeck
 REM copy examples
 xcopy /e ..\compiler\rc\* deploy\examples\

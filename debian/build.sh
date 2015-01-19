@@ -118,4 +118,4 @@ bzr add debian/source/format
 bzr commit -m "Initial commit"
 bzr builddeb -- -us -uc
 cp -f ../*.deb $CWD
-echo 'test: lesspipe *.deb'
+lesspipe *.deb
