@@ -1,6 +1,4 @@
-# ARGS=-g -D_DEBUGGER -Wall -pthread
-# ARGS=-g -D_DEBUG -D_DEBUGGER -Wall -pthread
-ARGS=-O3 -D_DEBUGGER -Wall -pthread
+ARGS=-O3 -D_DEBUGGER -Wall -pthread -Wno-unused-function -D_OBJECK_NATIVE_LIB_PATH=$(OBJECK_NATIVE_LIB_PATH)
 
 CC=g++
 SRC=tree.o scanner.o parser.o debugger.o
@@ -14,7 +12,7 @@ $(EXE): $(SRC) $(OBJ_LIBS)
 	$(CC) -m32 -o $(EXE) $(SRC) $(OBJ_LIBS) -ldl -pthread -lssl -lcrypto
 
 compiler.a:
-	cd $(COMPILER_PATH); make	-f Makefile.obd32
+	cd $(COMPILER_PATH); make -f Makefile.obd32
 
 ../memory.a:
 	cd $(MEM_PATH); make
