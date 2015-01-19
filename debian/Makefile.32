@@ -1,9 +1,9 @@
 all: clean build 
 
 build:
-	cd compiler; make OBJECK_LIB_PATH=\\\"/usr/share/objeck-lang\\\"
-	cd vm; make -j2
-	cd vm/debugger; make -j2
+	cd compiler; make -j2 OBJECK_LIB_PATH=\\\"/usr/share/objeck-lang\\\"
+	cd vm; make -j2 OBJECK_NATIVE_LIB_PATH=\\\"/usr\\\"
+	cd vm/debugger; make -j2 OBJECK_NATIVE_LIB_PATH=\\\"/usr\\\"
 	cd utilities; make -j2
 	cd lib/odbc; make -j2
 	cd lib/openssl; make -j2
@@ -19,10 +19,9 @@ install:
 	mkdir -p ${DATADIR}
 	cp objk_lib/*.obl ${DATADIR}
 	mkdir -p ${LIBDIR}
-	mkdir -p ${LIBDIR}/odbc
-	mkdir -p ${LIBDIR}/openssl
-	cp lib/odbc/*.so ${LIBDIR}/odbc
-	cp lib/openssl/*.so ${LIBDIR}/openssl
+	mkdir -p ${LIBDIR}/objeck-lang
+	cp lib/odbc/*.so ${LIBDIR}/objeck-lang
+	cp lib/openssl/*.so ${LIBDIR}/objeck-lang
 
 clean:
 	cd compiler; make clean
