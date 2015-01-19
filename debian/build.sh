@@ -34,7 +34,6 @@ fi
 
 cp ../src/shared/*.h $BUILDDIR/src/shared
 
-
 # copy utility files
 cp ../src/utilities/*.cpp $BUILDDIR/src/utilities
 if [ ! -z "$1" ] && [ "$1" = "32" ]; then
