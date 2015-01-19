@@ -98,7 +98,7 @@ cp ../docs/man/*1 $BUILDDIR/src/man
 cd $BUILDDIR
 tar cf objeck-lang.tar *
 gzip objeck-lang.tar
-bzr dh-make objeck-lang 3.3.5.2 objeck-lang.tar.gz 
+bzr dh-make objeck-lang 3.3.5-2 objeck-lang.tar.gz 
 cd objeck-lang
 rm debian/*ex debian/*EX debian/README.Debian debian/README.source
 cp -rf $CWD/files/* debian
