@@ -3,7 +3,5 @@ objeck-lang (3.3.5-2-1) unstable; urgency=low
   * Initial release
   * Optimized stack operation for floats
   * Added missing check for array assignment to array element
-  * Added missing check for array assignment to array element
-  * Added missing check for array assignment to array element
 
  -- Randy Hollines <objeck@gmail.com>  Sat, 10 Jan 2015 18:38:44 -0800
