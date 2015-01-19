@@ -11,6 +11,9 @@ mkdir $BUILDDIR
 mkdir $BUILDDIR/src
 mkdir $BUILDDIR/src/man
 mkdir $BUILDDIR/src/lib
+mkdir $BUILDDIR/src/lib/odbc
+mkdir $BUILDDIR/src/lib/openssl
+mkdir $BUILDDIR/src/objk_lib
 mkdir $BUILDDIR/src/shared
 mkdir $BUILDDIR/src/utilities
 mkdir $BUILDDIR/src/compiler
@@ -86,10 +89,19 @@ else
 	cp ../src/vm/debugger/Makefile.64 $BUILDDIR/src/vm/debugger/Makefile
 fi
 
-# libraries
-cp ../src/compiler/lang.obl $BUILDDIR/src/lib
-cp ../src/compiler/collect.obl $BUILDDIR/src/lib
-cp ../src/compiler/regex.obl $BUILDDIR/src/lib
+# copy odbc library
+cp ../src/lib/odbc/*.h $BUILDDIR/src/lib/odbc
+cp ../src/lib/odbc/*.cpp $BUILDDIR/src/lib/odbc
+cp ../src/lib/odbc/Makefile $BUILDDIR/src/lib/odbc
+
+# copy openssl library
+cp ../src/lib/openssl/*.cpp $BUILDDIR/src/lib/openssl
+cp ../src/lib/openssl/Makefile $BUILDDIR/src/lib/openssl
+
+# copy language libraries
+cp ../src/compiler/lang.obl $BUILDDIR/src/objk_lib
+cp ../src/compiler/collect.obl $BUILDDIR/src/objk_lib
+cp ../src/compiler/regex.obl $BUILDDIR/src/objk_lib
 
 # man pages
 cp ../docs/man/*1 $BUILDDIR/src/man
@@ -106,3 +118,4 @@ bzr add debian/source/format
 bzr commit -m "Initial commit"
 bzr builddeb -- -us -uc
 cp -f ../*.deb $CWD
+lesspipe *.deb

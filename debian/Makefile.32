@@ -1,21 +1,31 @@
-all: build install
+all: clean build 
 
 build:
-	cd compiler; cp Makefile.32 Makefile; make
-	cd vm; cp Makefile.32 Makefile; cp os/posix/Makefile.32 os/posix/Makefile; cp jit/amd32/Makefile.32 jit/amd32/Makefile; make
-	cd vm; cp Makefile.obd32 Makefile
-	cd vm/debugger; cp Makefile.32 Makefile; make
-	cd utilities; cp Makefile.32 Makefile; make
+	cd compiler; make OBJECK_LIB_PATH=\\\"/usr/share/objeck-lang\\\"
+	cd vm; make -j2
+	cd vm/debugger; make -j2
+	cd utilities; make -j2
+	cd lib/odbc; make -j2
+	cd lib/openssl; make -j2
 
 install:
-	mkdir -p ../bin
-	cd utilities; cp obu ../../bin
-	cd compiler; cp obc ../../bin
-	cd vm; cp obr ../../bin
-	cd vm/debugger; cp obd ../../../bin
+	mkdir -p ${BINDIR}
+	cp compiler/obc ${BINDIR}
+	cp utilities/obu ${BINDIR}
+	cp vm/obr ${BINDIR}
+	cp vm/debugger/obd ${BINDIR}
+	mkdir -p ${MANDIR}
+	cp man/*.1 ${MANDIR}
+	mkdir -p ${DATADIR}
+	cp objk_lib/*.obl ${DATADIR}
+	mkdir -p ${LIBDIR}
+	mkdir -p ${LIBDIR}/odbc
+	mkdir -p ${LIBDIR}/openssl
+	cp lib/odbc/*.so ${LIBDIR}/odbc
+	cp lib/openssl/*.so ${LIBDIR}/openssl
 
 clean:
-	cd utilities; make clean
 	cd compiler; make clean
 	cd vm; make clean
 	cd vm/debugger; make clean
+	cd utilities; make clean
