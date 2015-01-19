@@ -34,7 +34,7 @@ copy objeck_lang.pdf deploy\doc
 copy objeck_lang.pdf ..\..\docs\guide\
 mkdir deploy\doc\syntax
 copy ..\..\docs\syntax\* deploy\doc\syntax
-copy ..\..\docs\readme.rtf deploy
+copy ..\..\docs\readme.htm deploy
 call code_doc.cmd
 REM finished
 if [%1] NEQ [deploy] goto end
