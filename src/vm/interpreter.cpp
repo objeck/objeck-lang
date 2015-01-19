@@ -2064,10 +2064,18 @@ void StackInterpreter::ProcessDllLoad(StackInstr* instr)
     return;
 #endif
   }
-
+    
+#ifdef _OBJECK_NATIVE_LIB_PATH
+  wstring path_str = BytesToUnicode(_OBJECK_NATIVE_LIB_PATH);
+#else
+  wstring path_str = L"..";
+#endif
+  path_str += L"/lib/objeck-lang/";
   long* array = (long*)str_obj[0];
-  wstring str((wchar_t*)(array + 3));
-  string dll_string(str.begin(), str.end());
+  const wstring post_path_str((wchar_t*)(array + 3));
+  path_str += post_path_str;
+  
+  string dll_string(path_str.begin(), path_str.end());
   if(dll_string.size() == 0) {
     wcerr << L">>> Name of runtime shared library was not specified! <<<" << endl;
 #ifdef _DEBUGGER

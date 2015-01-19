@@ -46,18 +46,18 @@ fi
 cp ../src/compiler/*.h $BUILDDIR/src/compiler
 cp ../src/compiler/*.cpp $BUILDDIR/src/compiler
 if [ ! -z "$1" ] && [ "$1" = "32" ]; then
-	cp ../src/compiler/Makefile.32 $BUILDDIR/src/compiler/Makefile
+	cp ../src/compiler/Makefile.Debian.32 $BUILDDIR/src/compiler/Makefile
 else
-	cp ../src/compiler/Makefile.64 $BUILDDIR/src/compiler/Makefile
+	cp ../src/compiler/Makefile.Debian.64 $BUILDDIR/src/compiler/Makefile
 fi
 
 # copy vm files
 cp ../src/vm/*.h $BUILDDIR/src/vm
 cp ../src/vm/*.cpp $BUILDDIR/src/vm
 if [ ! -z "$1" ] && [ "$1" = "32" ]; then
-	cp ../src/vm/Makefile.32 $BUILDDIR/src/vm/Makefile
+	cp ../src/vm/Makefile.Debian.32 $BUILDDIR/src/vm/Makefile
 else
-	cp ../src/vm/Makefile.64 $BUILDDIR/src/vm/Makefile
+	cp ../src/vm/Makefile.Debian.64 $BUILDDIR/src/vm/Makefile
 fi
 cp ../src/vm/Makefile.obd32 $BUILDDIR/src/vm
 cp ../src/vm/Makefile.obd64 $BUILDDIR/src/vm
@@ -84,24 +84,26 @@ fi
 cp ../src/vm/debugger/*.h $BUILDDIR/src/vm/debugger
 cp ../src/vm/debugger/*.cpp $BUILDDIR/src/vm/debugger
 if [ ! -z "$1" ] && [ "$1" = "32" ]; then
-	cp ../src/vm/debugger/Makefile.32 $BUILDDIR/src/vm/debugger/Makefile
+	cp ../src/vm/debugger/Makefile.Debian.32 $BUILDDIR/src/vm/debugger/Makefile
 else
-	cp ../src/vm/debugger/Makefile.64 $BUILDDIR/src/vm/debugger/Makefile
+	cp ../src/vm/debugger/Makefile.Debian.64 $BUILDDIR/src/vm/debugger/Makefile
 fi
 
 # copy odbc library
 cp ../src/lib/odbc/*.h $BUILDDIR/src/lib/odbc
 cp ../src/lib/odbc/*.cpp $BUILDDIR/src/lib/odbc
-cp ../src/lib/odbc/Makefile $BUILDDIR/src/lib/odbc
+cp ../src/lib/odbc/Makefile.Debian $BUILDDIR/src/lib/odbc/Makefile
 
 # copy openssl library
 cp ../src/lib/openssl/*.cpp $BUILDDIR/src/lib/openssl
-cp ../src/lib/openssl/Makefile $BUILDDIR/src/lib/openssl
+cp ../src/lib/openssl/Makefile.Debian $BUILDDIR/src/lib/openssl/Makefile
 
 # copy language libraries
 cp ../src/compiler/lang.obl $BUILDDIR/src/objk_lib
 cp ../src/compiler/collect.obl $BUILDDIR/src/objk_lib
 cp ../src/compiler/regex.obl $BUILDDIR/src/objk_lib
+cp ../src/compiler/encrypt.obl $BUILDDIR/src/objk_lib
+cp ../src/compiler/odbc.obl $BUILDDIR/src/objk_lib
 
 # man pages
 cp ../docs/man/*1 $BUILDDIR/src/man

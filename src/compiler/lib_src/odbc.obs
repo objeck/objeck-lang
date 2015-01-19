@@ -9,7 +9,7 @@ bundle ODBC {
 		
 		function : GetDllProxy() ~ DllProxy {
 			if(@lib_proxy = Nil) {
-				@lib_proxy := DllProxy->New("../lib/objeck-lang/libobjk_odbc");
+				@lib_proxy := DllProxy->New("libobjk_odbc");
 			};
 
 			return @lib_proxy;

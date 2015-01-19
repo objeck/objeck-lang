@@ -8,8 +8,7 @@ rm -rf deploy
 mkdir deploy
 mkdir deploy/bin
 mkdir deploy/lib
-mkdir deploy/lib/odbc
-mkdir deploy/lib/openssl
+mkdir deploy/lib/objeck-lang
 mkdir deploy/doc
 
 # build compiler
@@ -91,26 +90,26 @@ cp obd ../../objeck/deploy/bin
 cd ../../lib/odbc
 if [ ! -z "$1" ] && [ "$1" = "osx" ]; then
 	./build_osx_x64.sh odbc
-	cp odbc.dylib ../../objeck/deploy/lib/odbc
+	cp odbc.dylib ../../objeck/deploy/lib/objeck-lang/libobjk_odbc.dylib
 elif [ ! -z "$1" ] && [ "$1" = "mingw" ]; then
 	./build_win32.sh odbc
-	cp odbc.so ../../objeck/deploy/lib/odbc
+	cp odbc.so ../../objeck/deploy/lib/objeck-lang/libobjk_odbc.so
 else
 	./build_linux.sh odbc
-	cp odbc.so ../../objeck/deploy/lib/odbc
+	cp odbc.so ../../objeck/deploy/lib/objeck-lang/libobjk_odbc.so
 fi
 
 cd ../openssl
 
 if [ ! -z "$1" ] && [ "$1" = "osx" ]; then
 	./build_osx_x64.sh openssl
-	cp openssl.dylib ../../objeck/deploy/lib/openssl
+	cp openssl.dylib ../../objeck/deploy/lib/objeck-lang/libobjk_openssl.dylib
 elif [ ! -z "$1" ] && [ "$1" = "mingw" ]; then
 	./build_win32.sh openssl
-	cp openssl.so ../../objeck/deploy/lib/openssl
+	cp openssl.so ../../objeck/deploy/lib/objeck-lang/libobjk_openssl.so
 else
 	./build_linux.sh openssl
-	cp openssl.so ../../objeck/deploy/lib/openssl
+	cp openssl.so ../../objeck/deploy/lib/objeck-lang/libobjk_openssl.so
 fi
 
 # copy docs

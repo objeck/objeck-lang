@@ -1162,7 +1162,7 @@ class Linker {
 #ifdef _OBJECK_LIB_PATH
     const char* path_str_ptr = _OBJECK_LIB_PATH;
 #else
-    const char* path_str_ptr = getenv ("OBJECK_LIB_PATH");
+    const char* path_str_ptr = getenv("OBJECK_LIB_PATH");
 #endif
     if(path_str_ptr && strlen(path_str_ptr) > 0) {
       string path_str(path_str_ptr);
