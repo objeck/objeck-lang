@@ -1,7 +1,7 @@
 Source: objeck-lang
 Section: devel
 Priority: optional
-Maintainer: Rnady Hollines <objeck@gmail.com>
+Maintainer: Randy Hollines <objeck@gmail.com>
 Build-Depends: debhelper (>= 9.0.0), libssl-dev (>= 1.0.1)
 Standards-Version: 3.9.5
 Homepage: http://www.objeck.org
