@@ -2,6 +2,9 @@ set LATEX_BIN="D:\Program Files\MiKTeX 2.9\miktex\bin\x64"
 
 rmdir /s /q deploy
 mkdir deploy
+
+REM update version information
+Powershell.exe -executionpolicy remotesigned -File  update_version.ps1
 REM build binaries
 devenv /rebuild Release objeck.sln
 mkdir deploy\bin
