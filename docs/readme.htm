@@ -12,6 +12,9 @@
 @font-face
 	{font-family:"Cambria Math";
 	panose-1:2 4 5 3 5 4 6 3 2 4;}
+@font-face
+	{font-family:Calibri;
+	panose-1:2 15 5 2 2 2 4 3 2 4;}
  /* Style Definitions */
  p.MsoNormal, li.MsoNormal, div.MsoNormal
 	{margin-top:0in;
@@ -29,9 +32,42 @@ a:visited, span.MsoHyperlinkFollowed
 	{font-family:"Times New Roman",serif;
 	color:#954F72;
 	text-decoration:underline;}
-.MsoChpDefault
-	{font-size:11.0pt;
+p.MsoListParagraph, li.MsoListParagraph, div.MsoListParagraph
+	{margin-top:0in;
+	margin-right:0in;
+	margin-bottom:8.0pt;
+	margin-left:.5in;
+	line-height:107%;
+	font-size:11.0pt;
 	font-family:"Calibri",sans-serif;}
+p.MsoListParagraphCxSpFirst, li.MsoListParagraphCxSpFirst, div.MsoListParagraphCxSpFirst
+	{margin-top:0in;
+	margin-right:0in;
+	margin-bottom:0in;
+	margin-left:.5in;
+	margin-bottom:.0001pt;
+	line-height:107%;
+	font-size:11.0pt;
+	font-family:"Calibri",sans-serif;}
+p.MsoListParagraphCxSpMiddle, li.MsoListParagraphCxSpMiddle, div.MsoListParagraphCxSpMiddle
+	{margin-top:0in;
+	margin-right:0in;
+	margin-bottom:0in;
+	margin-left:.5in;
+	margin-bottom:.0001pt;
+	line-height:107%;
+	font-size:11.0pt;
+	font-family:"Calibri",sans-serif;}
+p.MsoListParagraphCxSpLast, li.MsoListParagraphCxSpLast, div.MsoListParagraphCxSpLast
+	{margin-top:0in;
+	margin-right:0in;
+	margin-bottom:8.0pt;
+	margin-left:.5in;
+	line-height:107%;
+	font-size:11.0pt;
+	font-family:"Calibri",sans-serif;}
+.MsoChpDefault
+	{font-family:"Calibri",sans-serif;}
 .MsoPapDefault
 	{margin-bottom:8.0pt;
 	line-height:107%;}
@@ -56,55 +92,52 @@ ul
 <div class=WordSection1>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
-normal;text-autospace:none'><b><span style='font-size:12.0pt;font-family:"Arial",sans-serif'>Objeck
+normal;text-autospace:none'><b><span style='font-size:12.0pt'>Objeck
 Programming Language</span></b></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
-normal;text-autospace:none'><span style='font-size:10.0pt;font-family:"Arial",sans-serif'>v3.3.5_2;
-January 18, 2015</span></p>
+normal;text-autospace:none'><span style='font-size:12.0pt'>v3.3.5_2; January
+18, 2015</span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
-normal;text-autospace:none'><span style='font-size:10.0pt;font-family:"Arial",sans-serif'>&nbsp;</span></p>
+normal;text-autospace:none'><span style='font-size:12.0pt'>&nbsp;</span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
-normal;text-autospace:none'><b><span style='font-size:10.0pt;font-family:"Arial",sans-serif'>Release
-notes</span></b></p>
+normal;text-autospace:none'><b><span style='font-size:12.0pt'>Release notes</span></b></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
-normal;text-autospace:none'><span style='font-size:10.0pt;font-family:"Arial",sans-serif'>Refactored
-class libraries and created new API documentation. Resolved newly identified
-bugs and as a result of full regression testing.</span></p>
+normal;text-autospace:none'><span style='font-size:12.0pt'>Refactored class libraries
+and created new API documentation. Resolved newly identified bugs and as a
+result of full regression testing.</span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
-normal;text-autospace:none'><span style='font-size:10.0pt;font-family:"Arial",sans-serif'>&nbsp;</span></p>
+normal;text-autospace:none'><span style='font-size:12.0pt'>&nbsp;</span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
-normal;text-autospace:none'><span style='font-size:10.0pt;font-family:"Arial",sans-serif'>Highlights
-of this release include the following:</span></p>
+normal;text-autospace:none'><span style='font-size:12.0pt'>Highlights of this
+release include the following:</span></p>
 
 <p class=MsoNormal style='margin-top:0in;margin-right:0in;margin-bottom:0in;
 margin-left:.5in;margin-bottom:.0001pt;text-indent:-.25in;line-height:normal;
-text-autospace:none'><span style='font-size:10.0pt;font-family:"Arial",sans-serif'>1.<span
-style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp; </span></span><span
-style='font-size:10.0pt;font-family:"Arial",sans-serif'>Optimized stack
-operation for floats <b>(new)</b></span></p>
+text-autospace:none'><span style='font-size:12.0pt'>1.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span></span><span style='font-size:12.0pt'>Optimized stack operation for
+floats <b>(new)</b></span></p>
 
 <p class=MsoNormal style='margin-top:0in;margin-right:0in;margin-bottom:0in;
 margin-left:.5in;margin-bottom:.0001pt;text-indent:-.25in;line-height:normal;
-text-autospace:none'><span style='font-size:10.0pt;font-family:"Arial",sans-serif'>2.<span
-style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp; </span></span><span
-style='font-size:10.0pt;font-family:"Arial",sans-serif'>Added missing check for
-array assignment to array element <b>(bug/medium)</b></span></p>
+text-autospace:none'><span style='font-size:12.0pt'>2.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span></span><span style='font-size:12.0pt'>Added missing check for array
+assignment to array element <b>(bug/medium)</b></span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
-normal;text-autospace:none'><span style='font-size:10.0pt;font-family:"Arial",sans-serif'>&nbsp;</span></p>
+normal;text-autospace:none'><span style='font-size:12.0pt'>&nbsp;</span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
-normal;text-autospace:none'><span style='font-size:10.0pt;font-family:"Arial",sans-serif'>Please
-refer to the <a href="http://www.objeck.org/"><span style='color:black'><span
-style='color:black'>project website</span></span></a> for additional information
-about the language. The Programmer’s Guide is located the “doc” directory. 
-Additional examples are available on the <a
+normal;text-autospace:none'><span style='font-size:12.0pt'>Please refer to the <a
+href="http://www.objeck.org/"><span style='color:black'><span style='color:
+black'>project website</span></span></a> for additional information about the
+language. The Programmer’s Guide is located the “doc” directory.  Additional
+examples are available on the <a
 href="http://rosettacode.org/wiki/Category:Objeck"><span style='color:black'><span
 style='color:black'>Rosetta Code website</span></span></a>.  Please submit bugs
 to <a href="mailto:objeck@gmail.com"><span style='color:black'><span
@@ -113,180 +146,169 @@ href="mailto:randy@objeck.org"></a><a href="mailto:objeck@gmail.com"></a>, bug
 reports are greatly appreciated!!</span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
-normal;text-autospace:none'><span style='font-size:10.0pt;font-family:"Arial",sans-serif'>&nbsp;</span></p>
+normal;text-autospace:none'><span style='font-size:12.0pt'>&nbsp;</span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
-normal;text-autospace:none'><b><span style='font-size:10.0pt;font-family:"Arial",sans-serif'>Package
-directories</span></b></p>
+normal;text-autospace:none'><b><span style='font-size:12.0pt'>Package directories</span></b></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
-normal;text-autospace:none'><span style='font-size:10.0pt;font-family:"Arial",sans-serif'>bin/
-– compiler, debugger and VM executables (along with supporting shared
-libraries) </span></p>
+normal;text-autospace:none'><span style='font-size:12.0pt'>bin/ – compiler,
+debugger and VM executables (along with supporting shared libraries) </span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
-normal;text-autospace:none'><span style='font-size:10.0pt;font-family:"Arial",sans-serif'>doc/
-– documentation</span></p>
+normal;text-autospace:none'><span style='font-size:12.0pt'>doc/ – documentation</span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
-normal;text-autospace:none'><span style='font-size:10.0pt;font-family:"Arial",sans-serif'>doc/syntax
-– files to enable syntax highlighting for supported editors</span></p>
+normal;text-autospace:none'><span style='font-size:12.0pt'>doc/syntax – files
+to enable syntax highlighting for supported editors</span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
-normal;text-autospace:none'><span style='font-size:10.0pt;font-family:"Arial",sans-serif'>examples/
-- source code examples</span></p>
+normal;text-autospace:none'><span style='font-size:12.0pt'>examples/ - source
+code examples</span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
-normal;text-autospace:none'><span style='font-size:10.0pt;font-family:"Arial",sans-serif'>&nbsp;</span></p>
+normal;text-autospace:none'><span style='font-size:12.0pt'>&nbsp;</span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
-normal;text-autospace:none'><b><span style='font-size:10.0pt;font-family:"Arial",sans-serif'>Compiling
-and executing Objeck programs</span></b></p>
+normal;text-autospace:none'><b><span style='font-size:12.0pt'>Compiling and
+executing Objeck programs</span></b></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
-normal;text-autospace:none'><span style='font-size:10.0pt;font-family:"Arial",sans-serif'>In
-order to compile programs outside of the “bin” directory the “OBJECK_LIB_PATH”
-environment variable must be set.  When this variable is set all library files
-must be in the directory specified.  </span></p>
+normal;text-autospace:none'><span style='font-size:12.0pt'>In order to compile
+programs outside of the “bin” directory the “OBJECK_LIB_PATH” environment variable
+must be set.  When this variable is set all library files must be in the
+directory specified.  </span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
-normal;text-autospace:none'><span style='font-size:10.0pt;font-family:"Arial",sans-serif'>&nbsp;</span></p>
+normal;text-autospace:none'><span style='font-size:12.0pt'>&nbsp;</span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
-normal;text-autospace:none'><span style='font-size:10.0pt;font-family:"Arial",sans-serif'>If
-the Windows installer was used these variables will be automatically after the
-system has been restarted.  Manually setting the environment paths in Windows:</span></p>
+normal;text-autospace:none'><span style='font-size:12.0pt'>If the Windows
+installer was used these variables will be automatically after the system has
+been restarted.  Manually setting the environment paths in Windows:</span></p>
 
 <p class=MsoNormal style='margin-top:0in;margin-right:0in;margin-bottom:0in;
 margin-left:.5in;margin-bottom:.0001pt;text-indent:-.25in;line-height:normal;
-text-autospace:none'><span style='font-size:10.0pt;font-family:"Arial",sans-serif'>1.<span
-style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp; </span></span><span
-style='font-size:10.0pt;font-family:"Arial",sans-serif'>set
-OBJECK_LIB_PATH=C:\Documents and Settings\Administrator\objeck-lang\bin</span></p>
+text-autospace:none'><span style='font-size:12.0pt'>1.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span></span><span style='font-size:12.0pt'>set OBJECK_LIB_PATH=C:\Documents
+and Settings\Administrator\objeck-lang\bin</span></p>
 
 <ol style='margin-top:0in' start=2 type=1>
  <li class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
-     normal;text-autospace:none'><span style='font-size:10.0pt;font-family:
-     "Arial",sans-serif'>set PATH=%PATH%;C:\Documents and
-     Settings\Administrator\ objeck-lang\bin</span></li>
+     normal;text-autospace:none'><span style='font-size:12.0pt'>set
+     PATH=%PATH%;C:\Documents and Settings\Administrator\ objeck-lang\bin</span></li>
 </ol>
 
 <p class=MsoNormal style='margin-top:0in;margin-right:0in;margin-bottom:0in;
 margin-left:.5in;margin-bottom:.0001pt;text-indent:-.25in;line-height:normal;
-text-autospace:none'><span style='font-size:10.0pt;font-family:"Arial",sans-serif'>&nbsp;</span></p>
+text-autospace:none'><span style='font-size:12.0pt'>&nbsp;</span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
-normal;text-autospace:none'><span style='font-size:10.0pt;font-family:"Arial",sans-serif'>Simple
+normal;text-autospace:none'><span style='font-size:12.0pt'>Simple
 compile/execute:</span></p>
 
 <p class=MsoNormal style='margin-top:0in;margin-right:0in;margin-bottom:0in;
 margin-left:.5in;margin-bottom:.0001pt;text-indent:-.25in;line-height:normal;
-text-autospace:none'><span style='font-size:10.0pt;font-family:"Arial",sans-serif'>1.<span
-style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp; </span></span><span
-style='font-size:10.0pt;font-family:"Arial",sans-serif'>obc -src
-..\examples\hello.obs -dest hello.obe </span></p>
+text-autospace:none'><span style='font-size:12.0pt'>1.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span></span><span style='font-size:12.0pt'>obc -src ..\examples\hello.obs
+-dest hello.obe </span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
-normal;text-autospace:none'><span style='font-size:10.0pt;font-family:"Arial",sans-serif'>                        –OR-
+normal;text-autospace:none'><span style='font-size:12.0pt'>                        –OR-
 </span></p>
 
 <p class=MsoNormal style='margin-top:0in;margin-right:0in;margin-bottom:0in;
 margin-left:.5in;margin-bottom:.0001pt;text-indent:-.25in;line-height:normal;
-text-autospace:none'><span style='font-size:10.0pt;font-family:"Arial",sans-serif'>1.<span
-style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp; </span></span><span
-style='font-size:10.0pt;font-family:"Arial",sans-serif'>obc -src
-&quot;C:\Program Files\Objeck\objeck-lang\examples\encrypt.obs&quot; -lib
-encrypt.obl -dest hello.obe</span></p>
-
-<p class=MsoNormal style='margin-top:0in;margin-right:0in;margin-bottom:0in;
-margin-left:.5in;margin-bottom:.0001pt;text-indent:-.25in;line-height:normal;
-text-autospace:none'><span style='font-size:10.0pt;font-family:"Arial",sans-serif'>2.   obr
+text-autospace:none'><span style='font-size:12.0pt'>1.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span></span><span style='font-size:12.0pt'>obc -src &quot;C:\Program
+Files\Objeck\objeck-lang\examples\encrypt.obs&quot; -lib encrypt.obl -dest
 hello.obe</span></p>
 
-<p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
-normal;text-autospace:none'><span style='font-size:10.0pt;font-family:"Arial",sans-serif'>&nbsp;</span></p>
+<p class=MsoNormal style='margin-top:0in;margin-right:0in;margin-bottom:0in;
+margin-left:.5in;margin-bottom:.0001pt;text-indent:-.25in;line-height:normal;
+text-autospace:none'><span style='font-size:12.0pt'>2.   obr hello.obe</span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
-normal;text-autospace:none'><span style='font-size:10.0pt;font-family:"Arial",sans-serif'>Compile/execute
-for code that has library dependencies:</span></p>
+normal;text-autospace:none'><span style='font-size:12.0pt'>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
+normal;text-autospace:none'><span style='font-size:12.0pt'>Compile/execute for
+code that has library dependencies:</span></p>
 
 <p class=MsoNormal style='margin-top:0in;margin-right:0in;margin-bottom:0in;
 margin-left:.5in;margin-bottom:.0001pt;text-indent:-.25in;line-height:normal;
-text-autospace:none'><span style='font-size:10.0pt;font-family:"Arial",sans-serif'>1.   obc
--src ..\examples\xml_path.obs -lib collect.obl,xml.obl -dest xml_path.obe</span></p>
+text-autospace:none'><span style='font-size:12.0pt'>1.   obc -src
+..\examples\xml_path.obs -lib collect.obl,xml.obl -dest xml_path.obe</span></p>
 
 <p class=MsoNormal style='margin-top:0in;margin-right:0in;margin-bottom:0in;
 margin-left:.5in;margin-bottom:.0001pt;text-indent:-.25in;line-height:normal;
-text-autospace:none'><span style='font-size:10.0pt;font-family:"Arial",sans-serif'>2.   obr
-xml.obe </span></p>
+text-autospace:none'><span style='font-size:12.0pt'>2.   obr xml.obe </span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
-normal;text-autospace:none'><span style='font-size:10.0pt;font-family:"Arial",sans-serif'>&nbsp;</span></p>
+normal;text-autospace:none'><span style='font-size:12.0pt'>&nbsp;</span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
-normal;text-autospace:none'><span style='font-size:10.0pt;font-family:"Arial",sans-serif'>For
-OS X (10.9 or greater), you’ll need to install OpenSSL in order to use
-encryption APIs as well as iODBC to enable database support. Please refer to
-the following <a href="http://mac-dev-env.patrickbougie.com/openssl"><span
-style='color:black'><span style='color:black'>link</span></span></a> for
-OpenSSL directions and this <a
+normal;text-autospace:none'><span style='font-size:12.0pt'>For OS X (10.9 or
+greater), you’ll need to install OpenSSL in order to use encryption APIs as
+well as iODBC to enable database support. Please refer to the following <a
+href="http://mac-dev-env.patrickbougie.com/openssl"><span style='color:black'><span
+style='color:black'>link</span></span></a> for OpenSSL directions and this <a
 href="http://www.iodbc.org/dataspace/iodbc/wiki/iODBC/ODBCMacOSX"><span
 style='color:black'><span style='color:black'>link</span></span></a> for about
 ODBC support. </span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
-normal;text-autospace:none'><span style='font-size:10.0pt;font-family:"Arial",sans-serif'>The
-Objeck source repository is located <a
-href="http://github.com/objeck/objeck-lang"><span style='color:black'><span
-style='color:black'>here</span></span></a> and the source can be fetch using
-the following command:</span></p>
+normal;text-autospace:none'><span style='font-size:12.0pt'>The Objeck source
+repository is located <a href="http://github.com/objeck/objeck-lang"><span
+style='color:black'><span style='color:black'>here</span></span></a> and the
+source can be fetch using the following command:</span></p>
 
-<ul style='margin-top:0in' type=disc>
- <li class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
-     normal;text-autospace:none'><span style='font-size:10.0pt;font-family:
-     "Arial",sans-serif'>svn checkout
-     svn://svn.code.sf.net/p/objeck-lang/code/main objeck-lang-code</span></li>
-</ul>
+<p class=MsoListParagraph style='text-indent:-.25in'><span style='font-size:
+12.0pt;line-height:107%;font-family:Symbol'>·<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span></span><span style='font-size:12.0pt;line-height:107%'>svn checkout
+svn://svn.code.sf.net/p/objeck-lang/code/main objeck-lang-code</span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
-normal;text-autospace:none'><span style='font-size:10.0pt;font-family:"Arial",sans-serif'>&nbsp;</span></p>
+normal;text-autospace:none'><span style='font-size:12.0pt'>&nbsp;</span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
-normal;text-autospace:none'><b><span style='font-size:10.0pt;font-family:"Arial",sans-serif'>Known
-bugs and limitations</span></b></p>
+normal;text-autospace:none'><b><span style='font-size:12.0pt'>Known bugs and
+limitations</span></b></p>
 
-<p class=MsoNormal style='margin-top:0in;margin-right:0in;margin-bottom:0in;
-margin-left:.5in;margin-bottom:.0001pt;text-indent:-.25in;line-height:normal;
-text-autospace:none'><span style='font-size:10.0pt;font-family:Symbol'>·<span
+<p class=MsoListParagraphCxSpFirst style='text-indent:-.25in'><span
+style='font-size:12.0pt;line-height:107%;font-family:Symbol'>·<span
 style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-</span></span><span style='font-size:10.0pt;font-family:"Arial",sans-serif'>On
-Windows, the ODBC driver must be a 32-bit driver for <a
+</span></span><span style='font-size:12.0pt;line-height:107%'>On Windows, the
+ODBC driver must be a 32-bit driver for <a
 href="http://stackoverflow.com/questions/1134827/how-do-i-use-a-32-bit-odbc-driver-on-64-bit-server-2008-when-the-installer-doesn"><span
 style='color:black'><span style='color:black'>compatibility</span></span></a>. </span></p>
 
-<p class=MsoNormal style='margin-top:0in;margin-right:0in;margin-bottom:0in;
-margin-left:.5in;margin-bottom:.0001pt;text-indent:-.25in;line-height:normal;
-text-autospace:none'><span style='font-size:10.0pt;font-family:Symbol'>·<span
+<p class=MsoListParagraphCxSpMiddle style='text-indent:-.25in'><span
+style='font-size:12.0pt;line-height:107%;font-family:Symbol'>·<span
 style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-</span></span><span style='font-size:10.0pt;font-family:"Arial",sans-serif'>Fedora
-Linux distributions may report errors about heap buffer execution. This is
-triggered by the JIT compiler’s execution of generated machine code. To resolve
-this issue please consult the Fedora error console.</span></p>
+</span></span><span style='font-size:12.0pt;line-height:107%'>Fedora Linux
+distributions may report errors about heap buffer execution. This is triggered
+by the JIT compiler’s execution of generated machine code. To resolve this
+issue please consult the Fedora error console.</span></p>
 
-<ul style='margin-top:0in' type=disc>
- <li class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
-     normal;text-autospace:none'><span style='font-size:10.0pt;font-family:
-     "Arial",sans-serif'>The XML parser class does not support DTDs or DOCTYPE
-     tags</span></li>
- <li class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
-     normal;text-autospace:none'><span style='font-size:10.0pt;font-family:
-     "Arial",sans-serif'>By design, the regular expression class performs greedy
-     pattern matching.</span></li>
- <li class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
-     normal;text-autospace:none'><span style='font-size:10.0pt;font-family:
-     "Arial",sans-serif'>All unit tests executed successfully but I'm sure
-     there are some bugs. Send an e-mail we’ll get them sorted.</span></li>
-</ul>
+<p class=MsoListParagraphCxSpMiddle style='text-indent:-.25in'><span
+style='font-size:12.0pt;line-height:107%;font-family:Symbol'>·<span
+style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span></span><span style='font-size:12.0pt;line-height:107%'>The XML parser
+class does not support DTDs or DOCTYPE tags</span></p>
+
+<p class=MsoListParagraphCxSpMiddle style='text-indent:-.25in'><span
+style='font-size:12.0pt;line-height:107%;font-family:Symbol'>·<span
+style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span></span><span style='font-size:12.0pt;line-height:107%'>By design, the
+regular expression class performs greedy pattern matching.</span></p>
+
+<p class=MsoListParagraphCxSpLast style='text-indent:-.25in'><span
+style='font-size:12.0pt;line-height:107%;font-family:Symbol'>·<span
+style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span></span><span style='font-size:12.0pt;line-height:107%'>All unit tests
+executed successfully but I'm sure there are some bugs. Send an e-mail we’ll
+get them sorted.</span></p>
 
 </div>
 
