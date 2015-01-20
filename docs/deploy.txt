@@ -17,3 +17,8 @@ Objeck release steps
 8.  deploy osx
 9. push binaries to soruceforge
 10. add news items to sourceforge
+
+debian
+-----
+1.	debsign objeck-lang_3.3.5-2-1_i386.changes
+2	dput objeck-lang_3.3.5-2-1_i386.changes
