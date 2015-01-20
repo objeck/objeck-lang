@@ -1,6 +1,6 @@
 #/bin/sh
 
-BUILDDIR="/tmp/objeck"
+BUILDDIR="/tmp/objeck-lang"
 CWD=$(pwd)
 
 # clean up
@@ -145,4 +145,3 @@ bzr add debian/source/format
 bzr commit -m "Initial commit"
 bzr builddeb -- -us -uc
 cp -f ../*.deb $CWD
-lesspipe *.deb
