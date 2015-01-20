@@ -4,4 +4,4 @@ objeck-lang (3.3.5-2-1) unstable; urgency=low
   * Optimized stack operations for floating point operations
   * Added missing compiler check for array assignment to array element
 
- -- Randy Hollines <objeck@gmail.com>  Sat, 20 Jan 2015 08:02:00 -0800
+ -- Randy Hollines <objeck@gmail.com>  Tue, 20 Jan 2015 08:02:13 -0800
