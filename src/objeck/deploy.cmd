@@ -4,7 +4,7 @@ rmdir /s /q deploy
 mkdir deploy
 
 REM update version information
-Powershell.exe -executionpolicy remotesigned -File  update_version.ps1
+powershell.exe -executionpolicy remotesigned -file  update_version.ps1
 REM build binaries
 devenv /rebuild Release objeck.sln
 mkdir deploy\bin
