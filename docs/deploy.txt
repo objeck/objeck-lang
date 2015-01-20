@@ -1,24 +1,30 @@
 Objeck release steps
 -----
 1.	update version in update_version.ps1
-2.  update the readme.rtf file and convert into .htm
-3.  build on windows
-    a. update installer msi version number
-    b. copy over new files
-	c. update shortcuts: Readme (AS), Code Examples (PE), Compiler and VM (PE), About (SC), Class Libraries (SC)
-4.  smoke test on 'clean' windows vm
+2.	update the readme.rtf file and convert into .htm
+3.	build on windows
+		a. update installer msi version number
+		b. copy over new files
+		c. update shortcuts: Readme (AS), Code Examples (PE), Compiler and VM (PE), About (SC), Class Libraries (SC)
+4.	smoke test on 'clean' windows vm
 5.	upload objeck_lang.pdf to sourceforge
-6.  deploy to linux (32-bit)
-    a. upload api docs
-    b. generate text2html docs and upload to sourceforge
-	c. test .deb
-7.  deploy to linux (64-bit)
-	a. test .deb
-8.  deploy osx
-9. push binaries to soruceforge
-10. add news items to sourceforge
+6.	deploy to linux (32-bit)
+		a. upload api docs
+		b. generate text2html docs and upload to sourceforge
+		c. test .deb
+7.	deploy to linux (64-bit)
+		a. test .deb
+8.	deploy osx
+9.	push binaries to soruceforge
+10.	add news items to sourceforge
 
-debian
+Debian
 -----
-1.	debsign objeck-lang_3.3.5-2-1_i386.changes
-2	dput objeck-lang_3.3.5-2-1_i386.changes
+0.	http://bad.debian.net/
+1.	key managment (https://mentors.debian.net/intro-maintainers)
+		a. gpg --output mygpgkey_pub.gpg --armor --export ABCDFE01
+		b. gpg --output mygpgkey_sec.gpg --armor --export-secret-key ABCDFE01
+		c. gpg --import ~/mygpgkey_pub.gpg
+		d. gpg --allow-secret-key-import --import ~/mygpgkey_sec.gpg 
+2.	debsign objeck-lang_3.3.5-2-1_i386.changes
+3.	dput objeck-lang_3.3.5-2-1_i386.changes
