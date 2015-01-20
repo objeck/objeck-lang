@@ -23,8 +23,11 @@ mkdir $BUILDDIR/src/vm/debugger
 mkdir $BUILDDIR/src/vm/os
 mkdir $BUILDDIR/src/vm/os/posix
 mkdir $BUILDDIR/src/vm/jit
-mkdir $BUILDDIR/src/vm/jit/amd64
-mkdir $BUILDDIR/src/vm/jit/ia32
+if [ ! -z "$1" ] && [ "$1" = "32" ]; then
+	mkdir $BUILDDIR/src/vm/jit/ia32
+else
+	mkdir $BUILDDIR/src/vm/jit/amd64
+fi
 
 # copy shared files
 if [ ! -z "$1" ] && [ "$1" = "32" ]; then
