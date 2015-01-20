@@ -9,6 +9,7 @@ rm -rf $BUILDDIR
 # make directories
 mkdir $BUILDDIR
 mkdir $BUILDDIR/src
+mkdir $BUILDDIR/src/doc
 mkdir $BUILDDIR/src/man
 mkdir $BUILDDIR/src/lib
 mkdir $BUILDDIR/src/lib/odbc
@@ -108,13 +109,28 @@ cp ../src/compiler/odbc.obl $BUILDDIR/src/objk_lib
 # man pages
 cp ../docs/man/*1 $BUILDDIR/src/man
 
+# api and examples
+unzip ../docs/api.zip -d $BUILDDIR/src/doc
+cd $BUILDDIR/src/doc
+tar cf api.tar api
+gzip api.tar
+mv api.tar.gz api.tgz
+rm -rf api
+cd $CWD
+cd ./src/compiler/rc
+tar cf examples.tar *
+mv examples.tar $BUILDDIR/src/doc
+cd $CWD
+gzip $BUILDDIR/src/doc/examples.tar
+mv $BUILDDIR/src/doc/examples.tar.gz $BUILDDIR/src/doc/examples.tgz
+
 # create upstream archive
 cd $BUILDDIR
 tar cf objeck-lang.tar *
 gzip objeck-lang.tar
 bzr dh-make objeck-lang 3.3.5-2 objeck-lang.tar.gz 
 cd objeck-lang
-rm debian/*ex debian/*EX debian/README.Debian debian/README.source
+# rm debian/*ex debian/*EX debian/README.Debian debian/README.source
 
 cp -rf $CWD/files/* debian
 if [ ! -z "$1" ] && [ "$1" = "32" ]; then
