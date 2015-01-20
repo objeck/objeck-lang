@@ -110,6 +110,7 @@ cp ../src/compiler/odbc.obl $BUILDDIR/src/objk_lib
 cp ../docs/man/*1 $BUILDDIR/src/man
 
 # api and examples
+cp ../docs/readme.htm $BUILDDIR/src/doc
 unzip ../docs/api.zip -d $BUILDDIR/src/doc
 cd $BUILDDIR/src/doc
 tar cf api.tar api
@@ -117,7 +118,7 @@ gzip api.tar
 mv api.tar.gz api.tgz
 rm -rf api
 cd $CWD
-cd ./src/compiler/rc
+cd ../src/compiler/rc
 tar cf examples.tar *
 mv examples.tar $BUILDDIR/src/doc
 cd $CWD
@@ -130,7 +131,7 @@ tar cf objeck-lang.tar *
 gzip objeck-lang.tar
 bzr dh-make objeck-lang 3.3.5-2 objeck-lang.tar.gz 
 cd objeck-lang
-# rm debian/*ex debian/*EX debian/README.Debian debian/README.source
+rm debian/README.Debian
 
 cp -rf $CWD/files/* debian
 if [ ! -z "$1" ] && [ "$1" = "32" ]; then
