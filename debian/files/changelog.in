@@ -1,0 +1,7 @@
+objeck-lang (@VERSION_LONG@) unstable; urgency=low
+
+  * Initial release
+  * Optimized stack operations for floating point operations
+  * Added missing compiler check for array assignment to array element
+
+ -- Randy Hollines <objeck@gmail.com>  Sat, 20 Jan 2015 08:02:00 -0800
