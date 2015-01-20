@@ -1,18 +1,19 @@
 Objeck release steps
 -----
-1.  update "version.h"; update configure.ac
-2.  update the windows rc version tags
-3.  update the readme.rtf file
-4.  build on windows
+1.	update version in update_version.ps1
+2.  update the readme.rtf file and convert into .htm
+3.  build on windows
     a. update installer msi version number
-    b. update installer example/rc files
-5.  smoke test on 'clean' windows vm
-6.  upload objeck_lang.pdf to sourceforge
-7.  deploy to linux (32-bit)
-    a. create tarball
+    b. copy over new files
+	c. update shortcuts: Readme (AS), Code Examples (PE), Compiler and VM (PE), About (SC), Class Libraries (SC)
+4.  smoke test on 'clean' windows vm
+5.	upload objeck_lang.pdf to sourceforge
+6.  deploy to linux (32-bit)
+    a. upload api docs
     b. generate text2html docs and upload to sourceforge
-8.  deploy to linux (64-bit)
-9.  deploy osx
-10. push binaries to soruceforge
-11. add news items to sourceforge
-12. update links on object.org and github 
+	c. test .deb
+7.  deploy to linux (64-bit)
+	a. test .deb
+8.  deploy osx
+9. push binaries to soruceforge
+10. add news items to sourceforge
