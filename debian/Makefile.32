@@ -22,7 +22,9 @@ install:
 	mkdir -p ${LIBDIR}/objeck-lang
 	cp lib/odbc/*.so ${LIBDIR}/objeck-lang
 	cp lib/openssl/*.so ${LIBDIR}/objeck-lang
-
+	mkdir -p ${DOCDIR}
+	cp doc/*.tgz ${DOCDIR}
+	
 clean:
 	cd compiler; make clean
 	cd vm; make clean
