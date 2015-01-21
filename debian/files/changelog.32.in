@@ -1,6 +1,6 @@
-objeck-lang-amd64 (3.3.5-2-1) unstable; urgency=low
+objeck-lang-i386 (@VERSION@) unstable; urgency=low
 
-  * * Closes: #775886
+  * Closes: #775887
   * Optimized stack operations for floating point operations
   * Added missing compiler check for array assignment to array element
 

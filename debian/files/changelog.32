@@ -1,6 +1,6 @@
 objeck-lang-i386 (3.3.5-2-1) unstable; urgency=low
 
-  * Initial release
+  * Closes: #775887
   * Optimized stack operations for floating point operations
   * Added missing compiler check for array assignment to array element
 
