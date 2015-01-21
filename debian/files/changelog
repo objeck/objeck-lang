@@ -1,4 +1,4 @@
-objeck-lang (3.3.5-2-1) unstable; urgency=low
+objeck-lang (3.3.5-2-2) unstable; urgency=low
 
   * Initial release
   * Optimized stack operations for floating point operations
