@@ -262,6 +262,7 @@
 		<row><td>NewBinary16</td><td/><td>&lt;ISProductFolder&gt;\Redist\Language Independent\OS Independent\InstallFirstUse.ico</td></row>
 		<row><td>NewBinary17</td><td/><td>&lt;ISProductFolder&gt;\Redist\Language Independent\OS Independent\InstallPartial.ico</td></row>
 		<row><td>NewBinary18</td><td/><td>&lt;ISProductFolder&gt;\Redist\Language Independent\OS Independent\InstallStateMenu.ico</td></row>
+		<row><td>NewBinary19</td><td/><td>&lt;ISProductFolder&gt;\redist\Language independent\i386\SerialNumCAHelper.dll</td></row>
 		<row><td>NewBinary2</td><td/><td>&lt;ISProductFolder&gt;\Redist\Language Independent\OS Independent\New.ibd</td></row>
 		<row><td>NewBinary3</td><td/><td>&lt;ISProductFolder&gt;\Redist\Language Independent\OS Independent\Up.ibd</td></row>
 		<row><td>NewBinary4</td><td/><td>&lt;ISProductFolder&gt;\Redist\Language Independent\OS Independent\WarningIcon.ibd</td></row>
@@ -339,37 +340,36 @@
 		<col def="S0">ISDotNetInstallerArgsCommit</col>
 		<col def="S0">ISDotNetInstallerArgsUninstall</col>
 		<col def="S0">ISDotNetInstallerArgsRollback</col>
-		<row><td>ISX_DEFAULTCOMPONENT</td><td>{BF29CF8B-825C-4F8E-94F7-5F595DB9499B}</td><td>INSTALLDIR</td><td>2</td><td/><td>readme.rtf</td><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
+		<row><td>ISX_DEFAULTCOMPONENT</td><td>{BF29CF8B-825C-4F8E-94F7-5F595DB9499B}</td><td>INSTALLDIR</td><td>2</td><td/><td>readme.htm</td><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
 		<row><td>ISX_DEFAULTCOMPONENT1</td><td>{F970AB6F-5557-4E8C-B76E-C33716799511}</td><td>DATABASEDIR</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
 		<row><td>ISX_DEFAULTCOMPONENT10</td><td>{9A5AA1DD-E9FB-4CA4-9928-3C183251AC31}</td><td>OBJECK</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
-		<row><td>ISX_DEFAULTCOMPONENT11</td><td>{358D053F-FC58-4C3C-80DE-B0B58733FD79}</td><td>EXAMPLES</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
-		<row><td>ISX_DEFAULTCOMPONENT12</td><td>{CF63CCC0-C185-49CF-AF47-34C983D61C41}</td><td>CLBG</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
-		<row><td>ISX_DEFAULTCOMPONENT13</td><td>{5F9BADBF-76F7-4B37-A907-F0103E1AA649}</td><td>DOC1</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
-		<row><td>ISX_DEFAULTCOMPONENT14</td><td>{81A75133-7A6D-4E07-B824-6B93803D28B1}</td><td>TEMPLATES</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
-		<row><td>ISX_DEFAULTCOMPONENT15</td><td>{4200EFF1-D5EA-4389-A237-FAB0AE23CBE1}</td><td>MISC</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
-		<row><td>ISX_DEFAULTCOMPONENT16</td><td>{77ECADBA-EA3F-48F2-802E-2EEFD986FB5B}</td><td>CLBG1</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
-		<row><td>ISX_DEFAULTCOMPONENT17</td><td>{D6E5CE74-4699-46E4-8402-3C1C6C212F3B}</td><td>DATA</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
-		<row><td>ISX_DEFAULTCOMPONENT18</td><td>{6D7E8747-BA75-41B8-A69E-74F3B32A05F2}</td><td>JSON</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
+		<row><td>ISX_DEFAULTCOMPONENT11</td><td>{D0C1A1EF-36BF-425B-A1BA-8E926D315726}</td><td>DOC1</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
+		<row><td>ISX_DEFAULTCOMPONENT12</td><td>{5484BF6F-51BE-4FEB-BF40-CF0235C4FD1F}</td><td>TEMPLATES</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
+		<row><td>ISX_DEFAULTCOMPONENT13</td><td>{CB18207F-0012-44BF-AE72-FCF7AF072631}</td><td>MISC</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
+		<row><td>ISX_DEFAULTCOMPONENT14</td><td>{5D627DB5-280D-4228-A4E1-F9EAE59FEAB1}</td><td>CLBG1</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
+		<row><td>ISX_DEFAULTCOMPONENT15</td><td>{B884EAB5-E1FF-4A50-BAF4-DB6A6F48584A}</td><td>DATA</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
+		<row><td>ISX_DEFAULTCOMPONENT16</td><td>{C89DD97C-AB09-47A2-9F6B-1785AA7F4843}</td><td>JSON</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
+		<row><td>ISX_DEFAULTCOMPONENT17</td><td>{64F2A0D5-1511-4B48-AB78-525E1E7782F6}</td><td>XML</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
+		<row><td>ISX_DEFAULTCOMPONENT18</td><td>{D70DB072-8688-4EBD-9153-CA7DDE306ECF}</td><td>ODBC</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
 		<row><td>ISX_DEFAULTCOMPONENT19</td><td>{9FDC6DF4-765D-4AEC-9E07-F3CAA0F5AC82}</td><td>ProgramFilesFolder</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
-		<row><td>ISX_DEFAULTCOMPONENT2</td><td>{AE78575A-F943-466B-A454-542DB3FADEC0}</td><td>BIN</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
-		<row><td>ISX_DEFAULTCOMPONENT20</td><td>{CEC67531-15D0-4FCC-A2E3-831B21A9AA7A}</td><td>XML</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
-		<row><td>ISX_DEFAULTCOMPONENT21</td><td>{DB08A0B2-746D-4FF1-8AF8-4FC6BB8483AF}</td><td>ODBC1</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
-		<row><td>ISX_DEFAULTCOMPONENT22</td><td>{7C97CD5A-96DC-432E-B541-1CAD64B6E5B3}</td><td>SYNTAX</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
-		<row><td>ISX_DEFAULTCOMPONENT3</td><td>{C7DC4044-D4BC-4661-A677-1CB3018EAAC5}</td><td>LIB</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
+		<row><td>ISX_DEFAULTCOMPONENT2</td><td>{B7E4E442-124D-4A9E-9CE5-E3C7994E2CF3}</td><td>BIN</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
+		<row><td>ISX_DEFAULTCOMPONENT20</td><td>{7DE7BC5A-9C53-426B-82FF-DE3FF97D2688}</td><td>LIB</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
+		<row><td>ISX_DEFAULTCOMPONENT21</td><td>{AE7F7227-2960-4FD8-A26F-8FE457BF2105}</td><td>OBJECK_LANG</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
+		<row><td>ISX_DEFAULTCOMPONENT3</td><td>{85A59DBB-6A37-417E-9D4B-C18A99DE918F}</td><td>DOC</td><td>2</td><td/><td>objeck_lang.pdf</td><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
 		<row><td>ISX_DEFAULTCOMPONENT4</td><td>{C75D36AF-C2B2-4EDB-9826-A6350CC87D04}</td><td>USERPROFILE</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
-		<row><td>ISX_DEFAULTCOMPONENT5</td><td>{7B3ABDC5-C2B9-4911-B671-17322085FDC1}</td><td>ODBC</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
-		<row><td>ISX_DEFAULTCOMPONENT6</td><td>{2F69563C-B012-4AF8-85FE-C32DF37478A6}</td><td>OPENSSL</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
-		<row><td>ISX_DEFAULTCOMPONENT7</td><td>{829E04E0-926E-43C0-84D9-AA2F5C88F308}</td><td>DOC</td><td>2</td><td/><td>objeck_lang.pdf</td><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
-		<row><td>ISX_DEFAULTCOMPONENT8</td><td>{5ED2E59D-4ABD-4FD1-AB65-6DEC92951F1D}</td><td>API</td><td>2</td><td/><td>index.html1</td><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
+		<row><td>ISX_DEFAULTCOMPONENT5</td><td>{C8F2002F-1213-4C56-ACF9-4E7694C7D15C}</td><td>API</td><td>2</td><td/><td>index.html</td><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
+		<row><td>ISX_DEFAULTCOMPONENT6</td><td>{E1B9874A-970D-4F86-B243-0FC7F91ADF11}</td><td>SYNTAX</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
+		<row><td>ISX_DEFAULTCOMPONENT7</td><td>{37E63DB2-C900-4479-9361-2FEBC3F0E277}</td><td>EXAMPLES</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
+		<row><td>ISX_DEFAULTCOMPONENT8</td><td>{6E723F2A-AC34-4D3F-8D00-C9F497868D44}</td><td>CLBG</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
 		<row><td>ISX_DEFAULTCOMPONENT9</td><td>{BF1FA39E-BAE3-45CB-8DE3-91736CE31D63}</td><td>TempFolder</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
-		<row><td>libeay32.dll</td><td>{05954D47-1FEF-48E3-B3DD-8F80F46F097F}</td><td>BIN</td><td>2</td><td/><td>libeay32.dll</td><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
-		<row><td>obc.exe</td><td>{41680DC1-59CE-47E7-BBD7-3F6BD9C2AB35}</td><td>BIN</td><td>2</td><td/><td>obc.exe</td><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
-		<row><td>obd.exe</td><td>{9B439471-A8FE-4DE2-9687-95B330DE9220}</td><td>BIN</td><td>2</td><td/><td>obd.exe</td><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
-		<row><td>obr.exe</td><td>{0061A61D-6C8B-4A4B-A04B-01FF44DDD3CF}</td><td>BIN</td><td>2</td><td/><td>obr.exe</td><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
-		<row><td>obu.exe</td><td>{296E1A84-C365-4781-AE36-B51707C56193}</td><td>BIN</td><td>2</td><td/><td>obu.exe</td><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
-		<row><td>odbc.dll</td><td>{EFE8C972-7F00-4CE1-80CF-236D8527A6AD}</td><td>ODBC</td><td>2</td><td/><td>odbc.dll</td><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
-		<row><td>openssl.dll</td><td>{A6B96140-5F7C-4AC2-9040-F75C63A4D835}</td><td>OPENSSL</td><td>2</td><td/><td>openssl.dll</td><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
-		<row><td>ssleay32.dll</td><td>{8D634F4F-279C-4022-9F7D-3E705C265775}</td><td>BIN</td><td>2</td><td/><td>ssleay32.dll</td><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
+		<row><td>libeay32.dll</td><td>{C11029F8-3A87-4B84-8DA2-2DA1C56537B0}</td><td>BIN</td><td>2</td><td/><td>libeay32.dll</td><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
+		<row><td>libobjk_odbc.dll</td><td>{8F9C5418-FC03-4A99-9D2E-E81C08A77BD0}</td><td>OBJECK_LANG</td><td>2</td><td/><td>libobjk_odbc.dll</td><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
+		<row><td>libobjk_openssl.dll</td><td>{C53481DC-75DB-4156-B93E-769A07BC45E1}</td><td>OBJECK_LANG</td><td>2</td><td/><td>libobjk_openssl.dll</td><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
+		<row><td>obc.exe</td><td>{199FB093-937C-4717-8365-EB74BD02B94A}</td><td>BIN</td><td>2</td><td/><td>obc.exe</td><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
+		<row><td>obd.exe</td><td>{ADDFE8BA-A3E1-42DC-9E2C-8177BE5C7856}</td><td>BIN</td><td>2</td><td/><td>obd.exe</td><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
+		<row><td>obr.exe</td><td>{65BB45EA-BE96-46F2-8B79-830757E9BC3F}</td><td>BIN</td><td>2</td><td/><td>obr.exe</td><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
+		<row><td>obu.exe</td><td>{BC9BCC0F-5D33-49A9-A062-F49E3439C57C}</td><td>BIN</td><td>2</td><td/><td>obu.exe</td><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
+		<row><td>ssleay32.dll</td><td>{DFE88FDD-75B7-4178-B8EE-8B56C69EEE97}</td><td>BIN</td><td>2</td><td/><td>ssleay32.dll</td><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
 	</table>
 
 	<table name="Condition">
@@ -644,7 +644,6 @@
 		<row><td>ReadmeInformation</td><td>DlgLine</td><td>Line</td><td>48</td><td>234</td><td>326</td><td>0</td><td>3</td><td/><td/><td/><td/><td>0</td><td>0</td><td/><td/></row>
 		<row><td>ReadmeInformation</td><td>DlgTitle</td><td>Text</td><td>13</td><td>6</td><td>193</td><td>13</td><td>65539</td><td/><td>##IDS__IsReadmeDlg_ReadMeInfo##</td><td>DlgDesc</td><td/><td>0</td><td/><td/><td/></row>
 		<row><td>ReadmeInformation</td><td>Next</td><td>PushButton</td><td>230</td><td>243</td><td>66</td><td>17</td><td>1048579</td><td/><td>##IDS_NEXT##</td><td>Cancel</td><td/><td>0</td><td/><td/><td/></row>
-		<row><td>ReadmeInformation</td><td>Readme</td><td>ScrollableText</td><td>10</td><td>55</td><td>353</td><td>166</td><td>3</td><td/><td/><td>Banner</td><td/><td>0</td><td/><td>C:\Users\Randy\Desktop\objeck-lang\readme.rtf</td><td/></row>
 		<row><td>ReadyToInstall</td><td>Back</td><td>PushButton</td><td>164</td><td>243</td><td>66</td><td>17</td><td>3</td><td/><td>##IDS_BACK##</td><td>GroupBox1</td><td/><td>0</td><td/><td/><td/></row>
 		<row><td>ReadyToInstall</td><td>Banner</td><td>Bitmap</td><td>0</td><td>0</td><td>374</td><td>44</td><td>1</td><td/><td/><td/><td/><td>0</td><td/><td/><td>NewBinary1</td></row>
 		<row><td>ReadyToInstall</td><td>BannerLine</td><td>Line</td><td>0</td><td>44</td><td>374</td><td>0</td><td>1</td><td/><td/><td/><td/><td>0</td><td/><td/><td/></row>
@@ -1039,8 +1038,9 @@
 		<row><td>SetupCompleteError</td><td>Finish</td><td>DoAction</td><td>ShowMsiLog</td><td>MsiLogFileLocation And (ISSHOWMSILOG="1")</td><td>3</td></row>
 		<row><td>SetupCompleteError</td><td>Finish</td><td>EndDialog</td><td>Exit</td><td>1</td><td>2</td></row>
 		<row><td>SetupCompleteSuccess</td><td>OK</td><td>DoAction</td><td>CleanUp</td><td>ISSCRIPTRUNNING="1"</td><td>1</td></row>
-		<row><td>SetupCompleteSuccess</td><td>OK</td><td>DoAction</td><td>ShowMsiLog</td><td>MsiLogFileLocation And (ISSHOWMSILOG="1") And NOT ISENABLEDWUSFINISHDIALOG</td><td>6</td></row>
-		<row><td>SetupCompleteSuccess</td><td>OK</td><td>EndDialog</td><td>Exit</td><td>1</td><td>2</td></row>
+		<row><td>SetupCompleteSuccess</td><td>OK</td><td>DoAction</td><td>LaunchReadmeFileFromSetupCompleteSuccess</td><td>LAUNCHREADME And READMEFILETOLAUNCHATEND &lt;&gt; "" And NOT Installed</td><td>2</td></row>
+		<row><td>SetupCompleteSuccess</td><td>OK</td><td>DoAction</td><td>ShowMsiLog</td><td>MsiLogFileLocation And (ISSHOWMSILOG="1") And NOT ISENABLEDWUSFINISHDIALOG</td><td>7</td></row>
+		<row><td>SetupCompleteSuccess</td><td>OK</td><td>EndDialog</td><td>Exit</td><td>1</td><td>3</td></row>
 		<row><td>SetupError</td><td>A</td><td>EndDialog</td><td>ErrorAbort</td><td>1</td><td>0</td></row>
 		<row><td>SetupError</td><td>C</td><td>EndDialog</td><td>ErrorCancel</td><td>1</td><td>0</td></row>
 		<row><td>SetupError</td><td>I</td><td>EndDialog</td><td>ErrorIgnore</td><td>1</td><td>0</td></row>
@@ -1079,11 +1079,10 @@
 		<col key="yes" def="s72">Directory_</col>
 		<col key="yes" def="s72">Component_</col>
 		<row><td>DATABASEDIR</td><td>ISX_DEFAULTCOMPONENT1</td></row>
-		<row><td>LIB</td><td>ISX_DEFAULTCOMPONENT3</td></row>
-		<row><td>MISC</td><td>ISX_DEFAULTCOMPONENT15</td></row>
+		<row><td>LIB</td><td>ISX_DEFAULTCOMPONENT20</td></row>
+		<row><td>MISC</td><td>ISX_DEFAULTCOMPONENT13</td></row>
 		<row><td>OBJECK</td><td>ISX_DEFAULTCOMPONENT10</td></row>
-		<row><td>ODBC</td><td>ISX_DEFAULTCOMPONENT5</td></row>
-		<row><td>OPENSSL</td><td>ISX_DEFAULTCOMPONENT6</td></row>
+		<row><td>OBJECK_LANG</td><td>ISX_DEFAULTCOMPONENT21</td></row>
 		<row><td>ProgramFilesFolder</td><td>ISX_DEFAULTCOMPONENT19</td></row>
 		<row><td>TempFolder</td><td>ISX_DEFAULTCOMPONENT9</td></row>
 		<row><td>USERPROFILE</td><td>ISX_DEFAULTCOMPONENT4</td></row>
@@ -1104,6 +1103,7 @@
 		<row><td>ISSelfRegisterFinalize</td><td>1</td><td>ISSELFREG.DLL</td><td>ISSelfRegisterFinalize</td><td/><td/></row>
 		<row><td>ISSetAllUsers</td><td>257</td><td>SetAllUsers.dll</td><td>SetAllUsers</td><td/><td/></row>
 		<row><td>ISUnSelfRegisterFiles</td><td>3073</td><td>ISSELFREG.DLL</td><td>ISUnSelfRegisterFiles</td><td/><td/></row>
+		<row><td>LaunchReadmeFileFromSetupCompleteSuccess</td><td>1</td><td>NewBinary19</td><td>LaunchReadMe</td><td/><td/></row>
 		<row><td>SetARPINSTALLLOCATION</td><td>51</td><td>ARPINSTALLLOCATION</td><td>[INSTALLDIR]</td><td/><td/></row>
 		<row><td>SetAllUsersProfileNT</td><td>51</td><td>ALLUSERSPROFILE</td><td>[%SystemRoot]\Profiles\All Users</td><td/><td/></row>
 		<row><td>ShowMsiLog</td><td>226</td><td>SystemFolder</td><td>[SystemFolder]notepad.exe "[MsiLogFileLocation]"</td><td/><td>Shows Property-driven MSI Log</td></row>
@@ -1189,16 +1189,15 @@
 		<row><td>ISCommonFilesFolder</td><td>CommonFilesFolder</td><td>Instal~1|InstallShield</td><td/><td>0</td><td/></row>
 		<row><td>ISYourDataBaseDir</td><td>OBJECK</td><td>Database</td><td/><td>0</td><td/></row>
 		<row><td>JSON</td><td>MISC</td><td>json</td><td/><td>0</td><td/></row>
-		<row><td>LIB</td><td>BIN</td><td>lib</td><td/><td>0</td><td/></row>
+		<row><td>LIB</td><td>INSTALLDIR</td><td>lib</td><td/><td>0</td><td/></row>
 		<row><td>LocalAppDataFolder</td><td>TARGETDIR</td><td>.:LocalA~1|LocalAppData</td><td/><td>2</td><td/></row>
 		<row><td>MISC</td><td>EXAMPLES</td><td>misc</td><td/><td>0</td><td/></row>
 		<row><td>MyPicturesFolder</td><td>TARGETDIR</td><td>.:MyPict~1|MyPictures</td><td/><td>0</td><td/></row>
 		<row><td>NetHoodFolder</td><td>TARGETDIR</td><td>.:NetHood</td><td/><td>0</td><td/></row>
 		<row><td>OBJECK</td><td>AppDataFolder</td><td>Objeck</td><td/><td>0</td><td/></row>
+		<row><td>OBJECK_LANG</td><td>LIB</td><td>OBJECK~1|objeck-lang</td><td/><td>0</td><td/></row>
 		<row><td>OBJECK_PROGRAMMING_LANGUAGE</td><td>ProgramFilesFolder</td><td>Objeck</td><td/><td>0</td><td/></row>
-		<row><td>ODBC</td><td>LIB</td><td>odbc</td><td/><td>0</td><td/></row>
-		<row><td>ODBC1</td><td>EXAMPLES</td><td>odbc</td><td/><td>0</td><td/></row>
-		<row><td>OPENSSL</td><td>LIB</td><td>openssl</td><td/><td>0</td><td/></row>
+		<row><td>ODBC</td><td>EXAMPLES</td><td>odbc</td><td/><td>0</td><td/></row>
 		<row><td>PersonalFolder</td><td>TARGETDIR</td><td>.:Personal</td><td/><td>0</td><td/></row>
 		<row><td>PrimaryVolumePath</td><td>TARGETDIR</td><td>.:Primar~1|PrimaryVolumePath</td><td/><td>0</td><td/></row>
 		<row><td>PrintHoodFolder</td><td>TARGETDIR</td><td>.:PRINTH~1|PrintHood</td><td/><td>0</td><td/></row>
@@ -1894,8 +1893,6 @@
 		<col def="S255">ProgId_</col>
 		<col def="S64">MIME_</col>
 		<col def="s38">Feature_</col>
-		<row><td>obe</td><td>obr.exe</td><td>obe.File</td><td/><td>AlwaysInstall</td></row>
-		<row><td>obl</td><td>obu.exe</td><td>obl.File</td><td/><td>AlwaysInstall</td></row>
 	</table>
 
 	<table name="Feature">
@@ -1932,7 +1929,6 @@
 		<row><td>AlwaysInstall</td><td>ISX_DEFAULTCOMPONENT2</td></row>
 		<row><td>AlwaysInstall</td><td>ISX_DEFAULTCOMPONENT20</td></row>
 		<row><td>AlwaysInstall</td><td>ISX_DEFAULTCOMPONENT21</td></row>
-		<row><td>AlwaysInstall</td><td>ISX_DEFAULTCOMPONENT22</td></row>
 		<row><td>AlwaysInstall</td><td>ISX_DEFAULTCOMPONENT3</td></row>
 		<row><td>AlwaysInstall</td><td>ISX_DEFAULTCOMPONENT4</td></row>
 		<row><td>AlwaysInstall</td><td>ISX_DEFAULTCOMPONENT5</td></row>
@@ -1941,12 +1937,12 @@
 		<row><td>AlwaysInstall</td><td>ISX_DEFAULTCOMPONENT8</td></row>
 		<row><td>AlwaysInstall</td><td>ISX_DEFAULTCOMPONENT9</td></row>
 		<row><td>AlwaysInstall</td><td>libeay32.dll</td></row>
+		<row><td>AlwaysInstall</td><td>libobjk_odbc.dll</td></row>
+		<row><td>AlwaysInstall</td><td>libobjk_openssl.dll</td></row>
 		<row><td>AlwaysInstall</td><td>obc.exe</td></row>
 		<row><td>AlwaysInstall</td><td>obd.exe</td></row>
 		<row><td>AlwaysInstall</td><td>obr.exe</td></row>
 		<row><td>AlwaysInstall</td><td>obu.exe</td></row>
-		<row><td>AlwaysInstall</td><td>odbc.dll</td></row>
-		<row><td>AlwaysInstall</td><td>openssl.dll</td></row>
 		<row><td>AlwaysInstall</td><td>ssleay32.dll</td></row>
 	</table>
 
@@ -1962,301 +1958,302 @@
 		<col def="S255">ISBuildSourcePath</col>
 		<col def="I4">ISAttributes</col>
 		<col def="S72">ISComponentSubFolder_</col>
-		<row><td>_d.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>2d.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\2d.obs</td><td>1</td><td/></row>
-		<row><td>accum.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>accum.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\accum.obs</td><td>1</td><td/></row>
-		<row><td>anagrams.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>anagrams.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\anagrams.obs</td><td>1</td><td/></row>
-		<row><td>anonymous_class.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>ANONYM~1.OBS|anonymous_class.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\anonymous_class.obs</td><td>1</td><td/></row>
-		<row><td>args.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>args.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\args.obs</td><td>1</td><td/></row>
-		<row><td>array.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>array.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\array.obs</td><td>1</td><td/></row>
-		<row><td>array_concat.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>ARRAY_~1.OBS|array_concat.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\array_concat.obs</td><td>1</td><td/></row>
-		<row><td>avg_mode.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>avg_mode.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\avg_mode.obs</td><td>1</td><td/></row>
-		<row><td>base64.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>base64.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\base64.obs</td><td>1</td><td/></row>
-		<row><td>basic.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>basic.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\basic.obs</td><td>1</td><td/></row>
-		<row><td>bin.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>bin.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\bin.obs</td><td>1</td><td/></row>
-		<row><td>binarytrees.obs</td><td>ISX_DEFAULTCOMPONENT12</td><td>BINARY~1.OBS|binarytrees.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\clbg\binarytrees.obs</td><td>1</td><td/></row>
-		<row><td>binarytrees.obs1</td><td>ISX_DEFAULTCOMPONENT16</td><td>BINARY~1.OBS|binarytrees.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\misc\clbg\binarytrees.obs</td><td>1</td><td/></row>
-		<row><td>bitwise.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>bitwise.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\bitwise.obs</td><td>1</td><td/></row>
-		<row><td>brackets.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>brackets.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\brackets.obs</td><td>1</td><td/></row>
-		<row><td>bundle_header.dat</td><td>ISX_DEFAULTCOMPONENT14</td><td>BUNDLE~1.DAT|bundle_header.dat</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\doc\templates\bundle_header.dat</td><td>1</td><td/></row>
-		<row><td>bundles.html</td><td>ISX_DEFAULTCOMPONENT8</td><td>BUNDLE~1.HTM|bundles.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\bundles.html</td><td>1</td><td/></row>
-		<row><td>bundles_header.dat</td><td>ISX_DEFAULTCOMPONENT14</td><td>BUNDLE~1.DAT|bundles_header.dat</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\doc\templates\bundles_header.dat</td><td>1</td><td/></row>
-		<row><td>caesar.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>caesar.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\caesar.obs</td><td>1</td><td/></row>
-		<row><td>calculator.wsdl</td><td>ISX_DEFAULTCOMPONENT20</td><td>CALCUL~1.WSD|calculator.wsdl</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\misc\xml\calculator.wsdl</td><td>1</td><td/></row>
-		<row><td>callback.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>callback.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\callback.obs</td><td>1</td><td/></row>
-		<row><td>cast_nines.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>CAST_N~1.OBS|cast_nines.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\cast_nines.obs</td><td>1</td><td/></row>
-		<row><td>cc_num.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>cc_num.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\cc_num.obs</td><td>1</td><td/></row>
-		<row><td>cd_catalog.xml</td><td>ISX_DEFAULTCOMPONENT20</td><td>CD_CAT~1.XML|cd_catalog.xml</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\misc\xml\cd_catalog.xml</td><td>1</td><td/></row>
-		<row><td>chars.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>chars.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\chars.obs</td><td>1</td><td/></row>
-		<row><td>chat_server.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>CHAT_S~1.OBS|chat_server.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\chat_server.obs</td><td>1</td><td/></row>
-		<row><td>chess960.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>chess960.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\chess960.obs</td><td>1</td><td/></row>
-		<row><td>cholesky_decomposition.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>CHOLES~1.OBS|cholesky_decomposition.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\cholesky_decomposition.obs</td><td>1</td><td/></row>
-		<row><td>cipher.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>cipher.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\cipher.obs</td><td>1</td><td/></row>
-		<row><td>class.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>class.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\class.obs</td><td>1</td><td/></row>
-		<row><td>class_header.dat</td><td>ISX_DEFAULTCOMPONENT14</td><td>CLASS_~1.DAT|class_header.dat</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\doc\templates\class_header.dat</td><td>1</td><td/></row>
-		<row><td>classes.html</td><td>ISX_DEFAULTCOMPONENT8</td><td>CLASSE~1.HTM|classes.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\classes.html</td><td>1</td><td/></row>
-		<row><td>classes_header.dat</td><td>ISX_DEFAULTCOMPONENT14</td><td>CLASSE~1.DAT|classes_header.dat</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\doc\templates\classes_header.dat</td><td>1</td><td/></row>
-		<row><td>cocktail_sort.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>COCKTA~1.OBS|cocktail_sort.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\cocktail_sort.obs</td><td>1</td><td/></row>
+		<row><td>_d.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>2d.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\2d.obs</td><td>1</td><td/></row>
+		<row><td>accum.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>accum.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\accum.obs</td><td>1</td><td/></row>
+		<row><td>anagrams.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>anagrams.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\anagrams.obs</td><td>1</td><td/></row>
+		<row><td>anonymous_class.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>ANONYM~1.OBS|anonymous_class.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\anonymous_class.obs</td><td>1</td><td/></row>
+		<row><td>args.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>args.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\args.obs</td><td>1</td><td/></row>
+		<row><td>array.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>array.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\array.obs</td><td>1</td><td/></row>
+		<row><td>array_concat.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>ARRAY_~1.OBS|array_concat.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\array_concat.obs</td><td>1</td><td/></row>
+		<row><td>avg_mode.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>avg_mode.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\avg_mode.obs</td><td>1</td><td/></row>
+		<row><td>base64.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>base64.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\base64.obs</td><td>1</td><td/></row>
+		<row><td>basic.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>basic.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\basic.obs</td><td>1</td><td/></row>
+		<row><td>bin.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>bin.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\bin.obs</td><td>1</td><td/></row>
+		<row><td>binarytrees.obs</td><td>ISX_DEFAULTCOMPONENT8</td><td>BINARY~1.OBS|binarytrees.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\clbg\binarytrees.obs</td><td>1</td><td/></row>
+		<row><td>binarytrees.obs1</td><td>ISX_DEFAULTCOMPONENT14</td><td>BINARY~1.OBS|binarytrees.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\misc\clbg\binarytrees.obs</td><td>1</td><td/></row>
+		<row><td>bitwise.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>bitwise.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\bitwise.obs</td><td>1</td><td/></row>
+		<row><td>brackets.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>brackets.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\brackets.obs</td><td>1</td><td/></row>
+		<row><td>bundle_header.dat</td><td>ISX_DEFAULTCOMPONENT12</td><td>BUNDLE~1.DAT|bundle_header.dat</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\doc\templates\bundle_header.dat</td><td>1</td><td/></row>
+		<row><td>bundles.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>BUNDLE~1.HTM|bundles.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\bundles.html</td><td>1</td><td/></row>
+		<row><td>bundles_header.dat</td><td>ISX_DEFAULTCOMPONENT12</td><td>BUNDLE~1.DAT|bundles_header.dat</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\doc\templates\bundles_header.dat</td><td>1</td><td/></row>
+		<row><td>caesar.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>caesar.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\caesar.obs</td><td>1</td><td/></row>
+		<row><td>calculator.wsdl</td><td>ISX_DEFAULTCOMPONENT17</td><td>CALCUL~1.WSD|calculator.wsdl</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\misc\xml\calculator.wsdl</td><td>1</td><td/></row>
+		<row><td>callback.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>callback.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\callback.obs</td><td>1</td><td/></row>
+		<row><td>carpet.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>carpet.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\carpet.obs</td><td>1</td><td/></row>
+		<row><td>cast_nines.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>CAST_N~1.OBS|cast_nines.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\cast_nines.obs</td><td>1</td><td/></row>
+		<row><td>cc_num.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>cc_num.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\cc_num.obs</td><td>1</td><td/></row>
+		<row><td>cd_catalog.xml</td><td>ISX_DEFAULTCOMPONENT17</td><td>CD_CAT~1.XML|cd_catalog.xml</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\misc\xml\cd_catalog.xml</td><td>1</td><td/></row>
+		<row><td>chars.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>chars.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\chars.obs</td><td>1</td><td/></row>
+		<row><td>chat_server.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>CHAT_S~1.OBS|chat_server.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\chat_server.obs</td><td>1</td><td/></row>
+		<row><td>chess960.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>chess960.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\chess960.obs</td><td>1</td><td/></row>
+		<row><td>cholesky_decomposition.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>CHOLES~1.OBS|cholesky_decomposition.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\cholesky_decomposition.obs</td><td>1</td><td/></row>
+		<row><td>cipher.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>cipher.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\cipher.obs</td><td>1</td><td/></row>
+		<row><td>class.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>class.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\class.obs</td><td>1</td><td/></row>
+		<row><td>class_header.dat</td><td>ISX_DEFAULTCOMPONENT12</td><td>CLASS_~1.DAT|class_header.dat</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\doc\templates\class_header.dat</td><td>1</td><td/></row>
+		<row><td>classes.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>CLASSE~1.HTM|classes.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\classes.html</td><td>1</td><td/></row>
+		<row><td>classes_header.dat</td><td>ISX_DEFAULTCOMPONENT12</td><td>CLASSE~1.DAT|classes_header.dat</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\doc\templates\classes_header.dat</td><td>1</td><td/></row>
+		<row><td>cocktail_sort.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>COCKTA~1.OBS|cocktail_sort.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\cocktail_sort.obs</td><td>1</td><td/></row>
 		<row><td>collect.obl</td><td>ISX_DEFAULTCOMPONENT2</td><td>collect.obl</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\bin\collect.obl</td><td>1</td><td/></row>
-		<row><td>collection_comparelist.html</td><td>ISX_DEFAULTCOMPONENT8</td><td>COLLEC~1.HTM|collection-comparelist.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\collection-comparelist.html</td><td>1</td><td/></row>
-		<row><td>collection_comparevector.htm</td><td>ISX_DEFAULTCOMPONENT8</td><td>COLLEC~1.HTM|collection-comparevector.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\collection-comparevector.html</td><td>1</td><td/></row>
-		<row><td>collection_floatlist.html</td><td>ISX_DEFAULTCOMPONENT8</td><td>COLLEC~1.HTM|collection-floatlist.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\collection-floatlist.html</td><td>1</td><td/></row>
-		<row><td>collection_floatmap.html</td><td>ISX_DEFAULTCOMPONENT8</td><td>COLLEC~1.HTM|collection-floatmap.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\collection-floatmap.html</td><td>1</td><td/></row>
-		<row><td>collection_floatqueue.html</td><td>ISX_DEFAULTCOMPONENT8</td><td>COLLEC~1.HTM|collection-floatqueue.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\collection-floatqueue.html</td><td>1</td><td/></row>
-		<row><td>collection_floatset.html</td><td>ISX_DEFAULTCOMPONENT8</td><td>COLLEC~1.HTM|collection-floatset.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\collection-floatset.html</td><td>1</td><td/></row>
-		<row><td>collection_floatstack.html</td><td>ISX_DEFAULTCOMPONENT8</td><td>COLLEC~1.HTM|collection-floatstack.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\collection-floatstack.html</td><td>1</td><td/></row>
-		<row><td>collection_floatvector.html</td><td>ISX_DEFAULTCOMPONENT8</td><td>COLLEC~1.HTM|collection-floatvector.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\collection-floatvector.html</td><td>1</td><td/></row>
-		<row><td>collection_hash.html</td><td>ISX_DEFAULTCOMPONENT8</td><td>COLLEC~1.HTM|collection-hash.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\collection-hash.html</td><td>1</td><td/></row>
-		<row><td>collection_intlist.html</td><td>ISX_DEFAULTCOMPONENT8</td><td>COLLEC~1.HTM|collection-intlist.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\collection-intlist.html</td><td>1</td><td/></row>
-		<row><td>collection_intmap.html</td><td>ISX_DEFAULTCOMPONENT8</td><td>COLLEC~1.HTM|collection-intmap.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\collection-intmap.html</td><td>1</td><td/></row>
-		<row><td>collection_intqueue.html</td><td>ISX_DEFAULTCOMPONENT8</td><td>COLLEC~1.HTM|collection-intqueue.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\collection-intqueue.html</td><td>1</td><td/></row>
-		<row><td>collection_intstack.html</td><td>ISX_DEFAULTCOMPONENT8</td><td>COLLEC~1.HTM|collection-intstack.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\collection-intstack.html</td><td>1</td><td/></row>
-		<row><td>collection_intvector.html</td><td>ISX_DEFAULTCOMPONENT8</td><td>COLLEC~1.HTM|collection-intvector.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\collection-intvector.html</td><td>1</td><td/></row>
-		<row><td>collection_list.html</td><td>ISX_DEFAULTCOMPONENT8</td><td>COLLEC~1.HTM|collection-list.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\collection-list.html</td><td>1</td><td/></row>
-		<row><td>collection_map.html</td><td>ISX_DEFAULTCOMPONENT8</td><td>COLLEC~1.HTM|collection-map.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\collection-map.html</td><td>1</td><td/></row>
-		<row><td>collection_queue.html</td><td>ISX_DEFAULTCOMPONENT8</td><td>COLLEC~1.HTM|collection-queue.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\collection-queue.html</td><td>1</td><td/></row>
-		<row><td>collection_set.html</td><td>ISX_DEFAULTCOMPONENT8</td><td>COLLEC~1.HTM|collection-set.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\collection-set.html</td><td>1</td><td/></row>
-		<row><td>collection_stack.html</td><td>ISX_DEFAULTCOMPONENT8</td><td>COLLEC~1.HTM|collection-stack.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\collection-stack.html</td><td>1</td><td/></row>
-		<row><td>collection_stringhash.html</td><td>ISX_DEFAULTCOMPONENT8</td><td>COLLEC~1.HTM|collection-stringhash.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\collection-stringhash.html</td><td>1</td><td/></row>
-		<row><td>collection_stringmap.html</td><td>ISX_DEFAULTCOMPONENT8</td><td>COLLEC~1.HTM|collection-stringmap.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\collection-stringmap.html</td><td>1</td><td/></row>
-		<row><td>collection_stringset.html</td><td>ISX_DEFAULTCOMPONENT8</td><td>COLLEC~1.HTM|collection-stringset.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\collection-stringset.html</td><td>1</td><td/></row>
-		<row><td>collection_vector.html</td><td>ISX_DEFAULTCOMPONENT8</td><td>COLLEC~1.HTM|collection-vector.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\collection-vector.html</td><td>1</td><td/></row>
-		<row><td>comb.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>comb.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\comb.obs</td><td>1</td><td/></row>
-		<row><td>comp_sort.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>COMP_S~1.OBS|comp_sort.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\comp_sort.obs</td><td>1</td><td/></row>
-		<row><td>compass.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>compass.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\compass.obs</td><td>1</td><td/></row>
-		<row><td>concat.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>concat.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\concat.obs</td><td>1</td><td/></row>
-		<row><td>concur.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>concur.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\concur.obs</td><td>1</td><td/></row>
-		<row><td>count_letters.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>COUNT_~1.OBS|count_letters.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\count_letters.obs</td><td>1</td><td/></row>
-		<row><td>counting_sort.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>COUNTI~1.OBS|counting_sort.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\counting_sort.obs</td><td>1</td><td/></row>
-		<row><td>countries.xml</td><td>ISX_DEFAULTCOMPONENT20</td><td>COUNTR~1.XML|countries.xml</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\misc\xml\countries.xml</td><td>1</td><td/></row>
-		<row><td>create_html.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>CREATE~1.OBS|create_html.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\create_html.obs</td><td>1</td><td/></row>
-		<row><td>cs_156.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>cs-156.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\cs-156.obs</td><td>1</td><td/></row>
-		<row><td>date.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>date.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\date.obs</td><td>1</td><td/></row>
-		<row><td>dispatch.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>dispatch.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\dispatch.obs</td><td>1</td><td/></row>
-		<row><td>doc_class.html</td><td>ISX_DEFAULTCOMPONENT13</td><td>DOC_CL~1.HTM|doc_class.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\doc\doc_class.html</td><td>1</td><td/></row>
-		<row><td>doc_html.obs</td><td>ISX_DEFAULTCOMPONENT13</td><td>doc_html.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\doc\doc_html.obs</td><td>1</td><td/></row>
-		<row><td>doc_parser.obs</td><td>ISX_DEFAULTCOMPONENT13</td><td>DOC_PA~1.OBS|doc_parser.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\doc\doc_parser.obs</td><td>1</td><td/></row>
-		<row><td>doc_printer.obs</td><td>ISX_DEFAULTCOMPONENT13</td><td>DOC_PR~1.OBS|doc_printer.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\doc\doc_printer.obs</td><td>1</td><td/></row>
-		<row><td>door.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>door.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\door.obs</td><td>1</td><td/></row>
-		<row><td>dot.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>dot.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\dot.obs</td><td>1</td><td/></row>
-		<row><td>double_list.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>DOUBLE~1.OBS|double_list.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\double_list.obs</td><td>1</td><td/></row>
-		<row><td>dparam.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>dparam.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\dparam.obs</td><td>1</td><td/></row>
-		<row><td>each.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>each.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\each.obs</td><td>1</td><td/></row>
+		<row><td>collection_comparelist.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>COLLEC~1.HTM|collection-comparelist.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\collection-comparelist.html</td><td>1</td><td/></row>
+		<row><td>collection_comparevector.htm</td><td>ISX_DEFAULTCOMPONENT5</td><td>COLLEC~1.HTM|collection-comparevector.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\collection-comparevector.html</td><td>1</td><td/></row>
+		<row><td>collection_floatlist.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>COLLEC~1.HTM|collection-floatlist.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\collection-floatlist.html</td><td>1</td><td/></row>
+		<row><td>collection_floatmap.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>COLLEC~1.HTM|collection-floatmap.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\collection-floatmap.html</td><td>1</td><td/></row>
+		<row><td>collection_floatqueue.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>COLLEC~1.HTM|collection-floatqueue.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\collection-floatqueue.html</td><td>1</td><td/></row>
+		<row><td>collection_floatset.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>COLLEC~1.HTM|collection-floatset.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\collection-floatset.html</td><td>1</td><td/></row>
+		<row><td>collection_floatstack.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>COLLEC~1.HTM|collection-floatstack.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\collection-floatstack.html</td><td>1</td><td/></row>
+		<row><td>collection_floatvector.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>COLLEC~1.HTM|collection-floatvector.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\collection-floatvector.html</td><td>1</td><td/></row>
+		<row><td>collection_hash.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>COLLEC~1.HTM|collection-hash.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\collection-hash.html</td><td>1</td><td/></row>
+		<row><td>collection_intlist.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>COLLEC~1.HTM|collection-intlist.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\collection-intlist.html</td><td>1</td><td/></row>
+		<row><td>collection_intmap.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>COLLEC~1.HTM|collection-intmap.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\collection-intmap.html</td><td>1</td><td/></row>
+		<row><td>collection_intqueue.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>COLLEC~1.HTM|collection-intqueue.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\collection-intqueue.html</td><td>1</td><td/></row>
+		<row><td>collection_intstack.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>COLLEC~1.HTM|collection-intstack.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\collection-intstack.html</td><td>1</td><td/></row>
+		<row><td>collection_intvector.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>COLLEC~1.HTM|collection-intvector.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\collection-intvector.html</td><td>1</td><td/></row>
+		<row><td>collection_list.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>COLLEC~1.HTM|collection-list.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\collection-list.html</td><td>1</td><td/></row>
+		<row><td>collection_map.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>COLLEC~1.HTM|collection-map.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\collection-map.html</td><td>1</td><td/></row>
+		<row><td>collection_queue.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>COLLEC~1.HTM|collection-queue.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\collection-queue.html</td><td>1</td><td/></row>
+		<row><td>collection_set.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>COLLEC~1.HTM|collection-set.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\collection-set.html</td><td>1</td><td/></row>
+		<row><td>collection_stack.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>COLLEC~1.HTM|collection-stack.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\collection-stack.html</td><td>1</td><td/></row>
+		<row><td>collection_stringhash.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>COLLEC~1.HTM|collection-stringhash.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\collection-stringhash.html</td><td>1</td><td/></row>
+		<row><td>collection_stringmap.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>COLLEC~1.HTM|collection-stringmap.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\collection-stringmap.html</td><td>1</td><td/></row>
+		<row><td>collection_stringset.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>COLLEC~1.HTM|collection-stringset.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\collection-stringset.html</td><td>1</td><td/></row>
+		<row><td>collection_vector.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>COLLEC~1.HTM|collection-vector.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\collection-vector.html</td><td>1</td><td/></row>
+		<row><td>comb.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>comb.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\comb.obs</td><td>1</td><td/></row>
+		<row><td>comp_sort.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>COMP_S~1.OBS|comp_sort.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\comp_sort.obs</td><td>1</td><td/></row>
+		<row><td>compass.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>compass.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\compass.obs</td><td>1</td><td/></row>
+		<row><td>concat.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>concat.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\concat.obs</td><td>1</td><td/></row>
+		<row><td>concur.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>concur.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\concur.obs</td><td>1</td><td/></row>
+		<row><td>count_letters.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>COUNT_~1.OBS|count_letters.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\count_letters.obs</td><td>1</td><td/></row>
+		<row><td>counting_sort.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>COUNTI~1.OBS|counting_sort.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\counting_sort.obs</td><td>1</td><td/></row>
+		<row><td>countries.xml</td><td>ISX_DEFAULTCOMPONENT17</td><td>COUNTR~1.XML|countries.xml</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\misc\xml\countries.xml</td><td>1</td><td/></row>
+		<row><td>create_html.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>CREATE~1.OBS|create_html.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\create_html.obs</td><td>1</td><td/></row>
+		<row><td>cs_156.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>cs-156.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\cs-156.obs</td><td>1</td><td/></row>
+		<row><td>date.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>date.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\date.obs</td><td>1</td><td/></row>
+		<row><td>dispatch.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>dispatch.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\dispatch.obs</td><td>1</td><td/></row>
+		<row><td>doc_class.html</td><td>ISX_DEFAULTCOMPONENT11</td><td>DOC_CL~1.HTM|doc_class.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\doc\doc_class.html</td><td>1</td><td/></row>
+		<row><td>doc_html.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>doc_html.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\doc\doc_html.obs</td><td>1</td><td/></row>
+		<row><td>doc_parser.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>DOC_PA~1.OBS|doc_parser.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\doc\doc_parser.obs</td><td>1</td><td/></row>
+		<row><td>doc_printer.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>DOC_PR~1.OBS|doc_printer.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\doc\doc_printer.obs</td><td>1</td><td/></row>
+		<row><td>door.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>door.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\door.obs</td><td>1</td><td/></row>
+		<row><td>dot.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>dot.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\dot.obs</td><td>1</td><td/></row>
+		<row><td>double_list.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>DOUBLE~1.OBS|double_list.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\double_list.obs</td><td>1</td><td/></row>
+		<row><td>dparam.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>dparam.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\dparam.obs</td><td>1</td><td/></row>
+		<row><td>each.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>each.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\each.obs</td><td>1</td><td/></row>
 		<row><td>encrypt.obl</td><td>ISX_DEFAULTCOMPONENT2</td><td>encrypt.obl</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\bin\encrypt.obl</td><td>1</td><td/></row>
-		<row><td>encrypt.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>encrypt.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\encrypt.obs</td><td>1</td><td/></row>
-		<row><td>encryption_decrypt.html</td><td>ISX_DEFAULTCOMPONENT8</td><td>ENCRYP~1.HTM|encryption-decrypt.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\encryption-decrypt.html</td><td>1</td><td/></row>
-		<row><td>encryption_encrypt.html</td><td>ISX_DEFAULTCOMPONENT8</td><td>ENCRYP~1.HTM|encryption-encrypt.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\encryption-encrypt.html</td><td>1</td><td/></row>
-		<row><td>encryption_hash.html</td><td>ISX_DEFAULTCOMPONENT8</td><td>ENCRYP~1.HTM|encryption-hash.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\encryption-hash.html</td><td>1</td><td/></row>
-		<row><td>ethiopian_mul.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>ETHIOP~1.OBS|ethiopian_mul.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\ethiopian_mul.obs</td><td>1</td><td/></row>
-		<row><td>euler_method.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>EULER_~1.OBS|euler_method.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\euler_method.obs</td><td>1</td><td/></row>
-		<row><td>evol.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>evol.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\evol.obs</td><td>1</td><td/></row>
-		<row><td>expo.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>expo.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\expo.obs</td><td>1</td><td/></row>
-		<row><td>fact.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>fact.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\fact.obs</td><td>1</td><td/></row>
-		<row><td>factor_counting.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>FACTOR~1.OBS|factor_counting.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\factor_counting.obs</td><td>1</td><td/></row>
-		<row><td>factors.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>factors.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\factors.obs</td><td>1</td><td/></row>
-		<row><td>fannkuchredux.obs</td><td>ISX_DEFAULTCOMPONENT12</td><td>FANNKU~1.OBS|fannkuchredux.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\clbg\fannkuchredux.obs</td><td>1</td><td/></row>
-		<row><td>fannkuchredux.obs1</td><td>ISX_DEFAULTCOMPONENT16</td><td>FANNKU~1.OBS|fannkuchredux.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\misc\clbg\fannkuchredux.obs</td><td>1</td><td/></row>
-		<row><td>fares.db</td><td>ISX_DEFAULTCOMPONENT17</td><td>fares.db</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\misc\data\fares.db</td><td>1</td><td/></row>
-		<row><td>fasta.obs</td><td>ISX_DEFAULTCOMPONENT12</td><td>fasta.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\clbg\fasta.obs</td><td>1</td><td/></row>
-		<row><td>fasta.obs1</td><td>ISX_DEFAULTCOMPONENT16</td><td>fasta.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\misc\clbg\fasta.obs</td><td>1</td><td/></row>
-		<row><td>file.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>file.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\file.obs</td><td>1</td><td/></row>
-		<row><td>filter.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>filter.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\filter.obs</td><td>1</td><td/></row>
-		<row><td>food.xml</td><td>ISX_DEFAULTCOMPONENT20</td><td>food.xml</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\misc\xml\food.xml</td><td>1</td><td/></row>
-		<row><td>for.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>for.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\for.obs</td><td>1</td><td/></row>
-		<row><td>func.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>func.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\func.obs</td><td>1</td><td/></row>
-		<row><td>gcd.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>gcd.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\gcd.obs</td><td>1</td><td/></row>
-		<row><td>geometric_mean.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>GEOMET~1.OBS|geometric_mean.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\geometric_mean.obs</td><td>1</td><td/></row>
-		<row><td>guess.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>guess.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\guess.obs</td><td>1</td><td/></row>
-		<row><td>guess_fb.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>guess_fb.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\guess_fb.obs</td><td>1</td><td/></row>
-		<row><td>happynums.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>HAPPYN~1.OBS|happynums.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\happynums.obs</td><td>1</td><td/></row>
-		<row><td>harshad.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>harshad.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\harshad.obs</td><td>1</td><td/></row>
-		<row><td>hash.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>hash.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\hash.obs</td><td>1</td><td/></row>
-		<row><td>haversine.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>HAVERS~1.OBS|haversine.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\haversine.obs</td><td>1</td><td/></row>
-		<row><td>heap.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>heap.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\heap.obs</td><td>1</td><td/></row>
-		<row><td>hello.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>hello.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\hello.obs</td><td>1</td><td/></row>
-		<row><td>hello_ext.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>HELLO_~1.OBS|hello_ext.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\hello_ext.obs</td><td>1</td><td/></row>
-		<row><td>hofcon.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>hofcon.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\hofcon.obs</td><td>1</td><td/></row>
-		<row><td>horizontal_sundial.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>HORIZO~1.OBS|horizontal_sundial.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\horizontal_sundial.obs</td><td>1</td><td/></row>
-		<row><td>horner.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>horner.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\horner.obs</td><td>1</td><td/></row>
-		<row><td>howto.rtf</td><td>ISX_DEFAULTCOMPONENT22</td><td>howto.rtf</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\syntax\howto.rtf</td><td>1</td><td/></row>
-		<row><td>http.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>http.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\http.obs</td><td>1</td><td/></row>
-		<row><td>http_httpclient.html</td><td>ISX_DEFAULTCOMPONENT8</td><td>HTTP-H~1.HTM|http-httpclient.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\http-httpclient.html</td><td>1</td><td/></row>
-		<row><td>http_httpsclient.html</td><td>ISX_DEFAULTCOMPONENT8</td><td>HTTP-H~1.HTM|http-httpsclient.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\http-httpsclient.html</td><td>1</td><td/></row>
-		<row><td>http_server.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>HTTP_S~1.OBS|http_server.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\http_server.obs</td><td>1</td><td/></row>
-		<row><td>http_urlutility.html</td><td>ISX_DEFAULTCOMPONENT8</td><td>HTTP-U~1.HTM|http-urlutility.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\http-urlutility.html</td><td>1</td><td/></row>
-		<row><td>https.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>https.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\https.obs</td><td>1</td><td/></row>
-		<row><td>i_b4_e.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>i_b4_e.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\i_b4_e.obs</td><td>1</td><td/></row>
-		<row><td>ide.ini</td><td>ISX_DEFAULTCOMPONENT11</td><td>ide.ini</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\ide.ini</td><td>1</td><td/></row>
-		<row><td>identity_matrix.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>IDENTI~1.OBS|identity_matrix.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\identity_matrix.obs</td><td>1</td><td/></row>
-		<row><td>in.xml</td><td>ISX_DEFAULTCOMPONENT20</td><td>in.xml</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\misc\xml\in.xml</td><td>1</td><td/></row>
-		<row><td>in_0.json</td><td>ISX_DEFAULTCOMPONENT18</td><td>IN_0~1.JSO|in_0.json</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\misc\json\in_0.json</td><td>1</td><td/></row>
-		<row><td>in_1.json</td><td>ISX_DEFAULTCOMPONENT18</td><td>IN_1~1.JSO|in_1.json</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\misc\json\in_1.json</td><td>1</td><td/></row>
-		<row><td>in_2.json</td><td>ISX_DEFAULTCOMPONENT18</td><td>IN_2~1.JSO|in_2.json</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\misc\json\in_2.json</td><td>1</td><td/></row>
-		<row><td>in_3.json</td><td>ISX_DEFAULTCOMPONENT18</td><td>IN_3~1.JSO|in_3.json</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\misc\json\in_3.json</td><td>1</td><td/></row>
-		<row><td>index.html</td><td>ISX_DEFAULTCOMPONENT14</td><td>INDEX~1.HTM|index.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\doc\templates\index.html</td><td>1</td><td/></row>
-		<row><td>index.html1</td><td>ISX_DEFAULTCOMPONENT8</td><td>INDEX~1.HTM|index.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\index.html</td><td>1</td><td/></row>
-		<row><td>inf.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>inf.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\inf.obs</td><td>1</td><td/></row>
-		<row><td>input_loop.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>INPUT_~1.OBS|input_loop.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\input_loop.obs</td><td>1</td><td/></row>
-		<row><td>insert_sort.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>INSERT~1.OBS|insert_sort.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\insert_sort.obs</td><td>1</td><td/></row>
-		<row><td>int.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>int.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\int.obs</td><td>1</td><td/></row>
-		<row><td>intro.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>intro.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\intro.obs</td><td>1</td><td/></row>
-		<row><td>iter.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>iter.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\iter.obs</td><td>1</td><td/></row>
-		<row><td>jensen.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>jensen.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\jensen.obs</td><td>1</td><td/></row>
-		<row><td>josephus.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>josephus.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\josephus.obs</td><td>1</td><td/></row>
+		<row><td>encrypt.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>encrypt.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\encrypt.obs</td><td>1</td><td/></row>
+		<row><td>encryption_decrypt.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>ENCRYP~1.HTM|encryption-decrypt.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\encryption-decrypt.html</td><td>1</td><td/></row>
+		<row><td>encryption_encrypt.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>ENCRYP~1.HTM|encryption-encrypt.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\encryption-encrypt.html</td><td>1</td><td/></row>
+		<row><td>encryption_hash.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>ENCRYP~1.HTM|encryption-hash.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\encryption-hash.html</td><td>1</td><td/></row>
+		<row><td>ethiopian_mul.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>ETHIOP~1.OBS|ethiopian_mul.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\ethiopian_mul.obs</td><td>1</td><td/></row>
+		<row><td>euler_method.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>EULER_~1.OBS|euler_method.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\euler_method.obs</td><td>1</td><td/></row>
+		<row><td>evol.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>evol.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\evol.obs</td><td>1</td><td/></row>
+		<row><td>expo.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>expo.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\expo.obs</td><td>1</td><td/></row>
+		<row><td>fact.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>fact.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\fact.obs</td><td>1</td><td/></row>
+		<row><td>factor_counting.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>FACTOR~1.OBS|factor_counting.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\factor_counting.obs</td><td>1</td><td/></row>
+		<row><td>factors.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>factors.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\factors.obs</td><td>1</td><td/></row>
+		<row><td>fannkuchredux.obs</td><td>ISX_DEFAULTCOMPONENT8</td><td>FANNKU~1.OBS|fannkuchredux.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\clbg\fannkuchredux.obs</td><td>1</td><td/></row>
+		<row><td>fannkuchredux.obs1</td><td>ISX_DEFAULTCOMPONENT14</td><td>FANNKU~1.OBS|fannkuchredux.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\misc\clbg\fannkuchredux.obs</td><td>1</td><td/></row>
+		<row><td>fares.db</td><td>ISX_DEFAULTCOMPONENT15</td><td>fares.db</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\misc\data\fares.db</td><td>1</td><td/></row>
+		<row><td>fasta.obs</td><td>ISX_DEFAULTCOMPONENT8</td><td>fasta.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\clbg\fasta.obs</td><td>1</td><td/></row>
+		<row><td>fasta.obs1</td><td>ISX_DEFAULTCOMPONENT14</td><td>fasta.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\misc\clbg\fasta.obs</td><td>1</td><td/></row>
+		<row><td>file.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>file.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\file.obs</td><td>1</td><td/></row>
+		<row><td>filter.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>filter.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\filter.obs</td><td>1</td><td/></row>
+		<row><td>food.xml</td><td>ISX_DEFAULTCOMPONENT17</td><td>food.xml</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\misc\xml\food.xml</td><td>1</td><td/></row>
+		<row><td>for.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>for.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\for.obs</td><td>1</td><td/></row>
+		<row><td>func.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>func.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\func.obs</td><td>1</td><td/></row>
+		<row><td>gcd.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>gcd.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\gcd.obs</td><td>1</td><td/></row>
+		<row><td>geometric_mean.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>GEOMET~1.OBS|geometric_mean.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\geometric_mean.obs</td><td>1</td><td/></row>
+		<row><td>guess.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>guess.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\guess.obs</td><td>1</td><td/></row>
+		<row><td>guess_fb.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>guess_fb.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\guess_fb.obs</td><td>1</td><td/></row>
+		<row><td>happynums.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>HAPPYN~1.OBS|happynums.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\happynums.obs</td><td>1</td><td/></row>
+		<row><td>harshad.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>harshad.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\harshad.obs</td><td>1</td><td/></row>
+		<row><td>hash.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>hash.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\hash.obs</td><td>1</td><td/></row>
+		<row><td>haversine.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>HAVERS~1.OBS|haversine.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\haversine.obs</td><td>1</td><td/></row>
+		<row><td>heap.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>heap.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\heap.obs</td><td>1</td><td/></row>
+		<row><td>hello.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>hello.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\hello.obs</td><td>1</td><td/></row>
+		<row><td>hello_ext.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>HELLO_~1.OBS|hello_ext.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\hello_ext.obs</td><td>1</td><td/></row>
+		<row><td>hofcon.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>hofcon.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\hofcon.obs</td><td>1</td><td/></row>
+		<row><td>horizontal_sundial.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>HORIZO~1.OBS|horizontal_sundial.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\horizontal_sundial.obs</td><td>1</td><td/></row>
+		<row><td>horner.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>horner.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\horner.obs</td><td>1</td><td/></row>
+		<row><td>howto.rtf</td><td>ISX_DEFAULTCOMPONENT6</td><td>howto.rtf</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\syntax\howto.rtf</td><td>1</td><td/></row>
+		<row><td>http.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>http.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\http.obs</td><td>1</td><td/></row>
+		<row><td>http_httpclient.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>HTTP-H~1.HTM|http-httpclient.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\http-httpclient.html</td><td>1</td><td/></row>
+		<row><td>http_httpsclient.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>HTTP-H~1.HTM|http-httpsclient.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\http-httpsclient.html</td><td>1</td><td/></row>
+		<row><td>http_server.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>HTTP_S~1.OBS|http_server.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\http_server.obs</td><td>1</td><td/></row>
+		<row><td>http_urlutility.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>HTTP-U~1.HTM|http-urlutility.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\http-urlutility.html</td><td>1</td><td/></row>
+		<row><td>https.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>https.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\https.obs</td><td>1</td><td/></row>
+		<row><td>i_b4_e.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>i_b4_e.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\i_b4_e.obs</td><td>1</td><td/></row>
+		<row><td>identity_matrix.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>IDENTI~1.OBS|identity_matrix.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\identity_matrix.obs</td><td>1</td><td/></row>
+		<row><td>in.xml</td><td>ISX_DEFAULTCOMPONENT17</td><td>in.xml</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\misc\xml\in.xml</td><td>1</td><td/></row>
+		<row><td>in_0.json</td><td>ISX_DEFAULTCOMPONENT16</td><td>IN_0~1.JSO|in_0.json</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\misc\json\in_0.json</td><td>1</td><td/></row>
+		<row><td>in_1.json</td><td>ISX_DEFAULTCOMPONENT16</td><td>IN_1~1.JSO|in_1.json</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\misc\json\in_1.json</td><td>1</td><td/></row>
+		<row><td>in_2.json</td><td>ISX_DEFAULTCOMPONENT16</td><td>IN_2~1.JSO|in_2.json</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\misc\json\in_2.json</td><td>1</td><td/></row>
+		<row><td>in_3.json</td><td>ISX_DEFAULTCOMPONENT16</td><td>IN_3~1.JSO|in_3.json</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\misc\json\in_3.json</td><td>1</td><td/></row>
+		<row><td>index.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>INDEX~1.HTM|index.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\index.html</td><td>1</td><td/></row>
+		<row><td>index.html1</td><td>ISX_DEFAULTCOMPONENT12</td><td>INDEX~1.HTM|index.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\doc\templates\index.html</td><td>1</td><td/></row>
+		<row><td>inf.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>inf.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\inf.obs</td><td>1</td><td/></row>
+		<row><td>input_loop.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>INPUT_~1.OBS|input_loop.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\input_loop.obs</td><td>1</td><td/></row>
+		<row><td>insert_sort.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>INSERT~1.OBS|insert_sort.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\insert_sort.obs</td><td>1</td><td/></row>
+		<row><td>int.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>int.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\int.obs</td><td>1</td><td/></row>
+		<row><td>intro.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>intro.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\intro.obs</td><td>1</td><td/></row>
+		<row><td>iter.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>iter.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\iter.obs</td><td>1</td><td/></row>
+		<row><td>jensen.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>jensen.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\jensen.obs</td><td>1</td><td/></row>
+		<row><td>josephus.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>josephus.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\josephus.obs</td><td>1</td><td/></row>
 		<row><td>json.obl</td><td>ISX_DEFAULTCOMPONENT2</td><td>json.obl</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\bin\json.obl</td><td>1</td><td/></row>
-		<row><td>json_create.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>JSON_C~1.OBS|json_create.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\json_create.obs</td><td>1</td><td/></row>
-		<row><td>json_file.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>JSON_F~1.OBS|json_file.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\json_file.obs</td><td>1</td><td/></row>
-		<row><td>json_jsonelement.html</td><td>ISX_DEFAULTCOMPONENT8</td><td>JSON-J~1.HTM|json-jsonelement.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\json-jsonelement.html</td><td>1</td><td/></row>
-		<row><td>json_jsonparser.html</td><td>ISX_DEFAULTCOMPONENT8</td><td>JSON-J~1.HTM|json-jsonparser.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\json-jsonparser.html</td><td>1</td><td/></row>
-		<row><td>json_jsontype.html</td><td>ISX_DEFAULTCOMPONENT8</td><td>JSON-J~1.HTM|json-jsontype.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\json-jsontype.html</td><td>1</td><td/></row>
-		<row><td>json_parser.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>JSON_P~1.OBS|json_parser.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\json_parser.obs</td><td>1</td><td/></row>
-		<row><td>json_web.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>json_web.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\json_web.obs</td><td>1</td><td/></row>
+		<row><td>json_create.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>JSON_C~1.OBS|json_create.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\json_create.obs</td><td>1</td><td/></row>
+		<row><td>json_file.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>JSON_F~1.OBS|json_file.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\json_file.obs</td><td>1</td><td/></row>
+		<row><td>json_jsonelement.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>JSON-J~1.HTM|json-jsonelement.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\json-jsonelement.html</td><td>1</td><td/></row>
+		<row><td>json_jsonparser.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>JSON-J~1.HTM|json-jsonparser.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\json-jsonparser.html</td><td>1</td><td/></row>
+		<row><td>json_jsontype.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>JSON-J~1.HTM|json-jsontype.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\json-jsontype.html</td><td>1</td><td/></row>
+		<row><td>json_parser.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>JSON_P~1.OBS|json_parser.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\json_parser.obs</td><td>1</td><td/></row>
+		<row><td>json_web.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>json_web.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\json_web.obs</td><td>1</td><td/></row>
 		<row><td>lang.obl</td><td>ISX_DEFAULTCOMPONENT2</td><td>lang.obl</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\bin\lang.obl</td><td>1</td><td/></row>
-		<row><td>lcm.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>lcm.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\lcm.obs</td><td>1</td><td/></row>
-		<row><td>leap.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>leap.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\leap.obs</td><td>1</td><td/></row>
-		<row><td>leaving.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>leaving.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\leaving.obs</td><td>1</td><td/></row>
-		<row><td>levenshtein.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>LEVENS~1.OBS|levenshtein.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\levenshtein.obs</td><td>1</td><td/></row>
+		<row><td>lcm.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>lcm.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\lcm.obs</td><td>1</td><td/></row>
+		<row><td>leap.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>leap.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\leap.obs</td><td>1</td><td/></row>
+		<row><td>leaving.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>leaving.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\leaving.obs</td><td>1</td><td/></row>
+		<row><td>levenshtein.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>LEVENS~1.OBS|levenshtein.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\levenshtein.obs</td><td>1</td><td/></row>
 		<row><td>libeay32.dll</td><td>libeay32.dll</td><td>libeay32.dll</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\bin\libeay32.dll</td><td>1</td><td/></row>
-		<row><td>logic.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>logic.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\logic.obs</td><td>1</td><td/></row>
-		<row><td>loop.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>loop.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\loop.obs</td><td>1</td><td/></row>
-		<row><td>lwz.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>lwz.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\lwz.obs</td><td>1</td><td/></row>
-		<row><td>man_or_boy.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>MAN_OR~1.OBS|man_or_boy.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\man_or_boy.obs</td><td>1</td><td/></row>
-		<row><td>mandelbrot.obs</td><td>ISX_DEFAULTCOMPONENT12</td><td>MANDEL~1.OBS|mandelbrot.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\clbg\mandelbrot.obs</td><td>1</td><td/></row>
-		<row><td>mandelbrot.obs1</td><td>ISX_DEFAULTCOMPONENT16</td><td>MANDEL~1.OBS|mandelbrot.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\misc\clbg\mandelbrot.obs</td><td>1</td><td/></row>
-		<row><td>matching.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>matching.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\matching.obs</td><td>1</td><td/></row>
-		<row><td>med.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>med.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\med.obs</td><td>1</td><td/></row>
-		<row><td>mov_avg.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>mov_avg.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\mov_avg.obs</td><td>1</td><td/></row>
-		<row><td>mul_array.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>MUL_AR~1.OBS|mul_array.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\mul_array.obs</td><td>1</td><td/></row>
-		<row><td>multifact.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>MULTIF~1.OBS|multifact.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\multifact.obs</td><td>1</td><td/></row>
-		<row><td>mutual_recursion.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>MUTUAL~1.OBS|mutual_recursion.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\mutual_recursion.obs</td><td>1</td><td/></row>
-		<row><td>nbody.obs</td><td>ISX_DEFAULTCOMPONENT12</td><td>nbody.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\clbg\nbody.obs</td><td>1</td><td/></row>
-		<row><td>nbody.obs1</td><td>ISX_DEFAULTCOMPONENT16</td><td>nbody.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\misc\clbg\nbody.obs</td><td>1</td><td/></row>
-		<row><td>nqueen.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>nqueen.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\nqueen.obs</td><td>1</td><td/></row>
-		<row><td>num_names.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>NUM_NA~1.OBS|num_names.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\num_names.obs</td><td>1</td><td/></row>
+		<row><td>libobjk_odbc.dll</td><td>libobjk_odbc.dll</td><td>LIBOBJ~1.DLL|libobjk_odbc.dll</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\lib\objeck-lang\libobjk_odbc.dll</td><td>1</td><td/></row>
+		<row><td>libobjk_openssl.dll</td><td>libobjk_openssl.dll</td><td>LIBOBJ~1.DLL|libobjk_openssl.dll</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\lib\objeck-lang\libobjk_openssl.dll</td><td>1</td><td/></row>
+		<row><td>logic.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>logic.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\logic.obs</td><td>1</td><td/></row>
+		<row><td>loop.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>loop.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\loop.obs</td><td>1</td><td/></row>
+		<row><td>lwz.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>lwz.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\lwz.obs</td><td>1</td><td/></row>
+		<row><td>man_or_boy.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>MAN_OR~1.OBS|man_or_boy.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\man_or_boy.obs</td><td>1</td><td/></row>
+		<row><td>mandelbrot.obs</td><td>ISX_DEFAULTCOMPONENT8</td><td>MANDEL~1.OBS|mandelbrot.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\clbg\mandelbrot.obs</td><td>1</td><td/></row>
+		<row><td>mandelbrot.obs1</td><td>ISX_DEFAULTCOMPONENT14</td><td>MANDEL~1.OBS|mandelbrot.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\misc\clbg\mandelbrot.obs</td><td>1</td><td/></row>
+		<row><td>matching.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>matching.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\matching.obs</td><td>1</td><td/></row>
+		<row><td>med.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>med.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\med.obs</td><td>1</td><td/></row>
+		<row><td>mov_avg.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>mov_avg.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\mov_avg.obs</td><td>1</td><td/></row>
+		<row><td>mul_array.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>MUL_AR~1.OBS|mul_array.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\mul_array.obs</td><td>1</td><td/></row>
+		<row><td>multifact.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>MULTIF~1.OBS|multifact.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\multifact.obs</td><td>1</td><td/></row>
+		<row><td>mutual_recursion.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>MUTUAL~1.OBS|mutual_recursion.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\mutual_recursion.obs</td><td>1</td><td/></row>
+		<row><td>nbody.obs</td><td>ISX_DEFAULTCOMPONENT8</td><td>nbody.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\clbg\nbody.obs</td><td>1</td><td/></row>
+		<row><td>nbody.obs1</td><td>ISX_DEFAULTCOMPONENT14</td><td>nbody.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\misc\clbg\nbody.obs</td><td>1</td><td/></row>
+		<row><td>nqueen.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>nqueen.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\nqueen.obs</td><td>1</td><td/></row>
+		<row><td>nth_root.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>nth_root.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\nth_root.obs</td><td>1</td><td/></row>
+		<row><td>num_names.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>NUM_NA~1.OBS|num_names.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\num_names.obs</td><td>1</td><td/></row>
 		<row><td>obc.exe</td><td>obc.exe</td><td>obc.exe</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\bin\obc.exe</td><td>1</td><td/></row>
 		<row><td>obd.exe</td><td>obd.exe</td><td>obd.exe</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\bin\obd.exe</td><td>1</td><td/></row>
-		<row><td>objeck.lang</td><td>ISX_DEFAULTCOMPONENT22</td><td>OBJECK~1.LAN|objeck.lang</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\syntax\objeck.lang</td><td>1</td><td/></row>
-		<row><td>objeck.plist</td><td>ISX_DEFAULTCOMPONENT22</td><td>OBJECK~1.PLI|objeck.plist</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\syntax\objeck.plist</td><td>1</td><td/></row>
-		<row><td>objeck.xml</td><td>ISX_DEFAULTCOMPONENT22</td><td>objeck.xml</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\syntax\objeck.xml</td><td>1</td><td/></row>
-		<row><td>objeck_lang.pdf</td><td>ISX_DEFAULTCOMPONENT7</td><td>OBJECK~1.PDF|objeck_lang.pdf</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\objeck_lang.pdf</td><td>1</td><td/></row>
-		<row><td>objeck_syntax.php</td><td>ISX_DEFAULTCOMPONENT22</td><td>OBJECK~1.PHP|objeck-syntax.php</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\syntax\objeck-syntax.php</td><td>1</td><td/></row>
+		<row><td>objeck.lang</td><td>ISX_DEFAULTCOMPONENT6</td><td>OBJECK~1.LAN|objeck.lang</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\syntax\objeck.lang</td><td>1</td><td/></row>
+		<row><td>objeck.plist</td><td>ISX_DEFAULTCOMPONENT6</td><td>OBJECK~1.PLI|objeck.plist</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\syntax\objeck.plist</td><td>1</td><td/></row>
+		<row><td>objeck.xml</td><td>ISX_DEFAULTCOMPONENT6</td><td>objeck.xml</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\syntax\objeck.xml</td><td>1</td><td/></row>
+		<row><td>objeck_lang.pdf</td><td>ISX_DEFAULTCOMPONENT3</td><td>OBJECK~1.PDF|objeck_lang.pdf</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\objeck_lang.pdf</td><td>1</td><td/></row>
+		<row><td>objeck_syntax.php</td><td>ISX_DEFAULTCOMPONENT6</td><td>OBJECK~1.PHP|objeck-syntax.php</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\syntax\objeck-syntax.php</td><td>1</td><td/></row>
 		<row><td>obr.exe</td><td>obr.exe</td><td>obr.exe</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\bin\obr.exe</td><td>1</td><td/></row>
 		<row><td>obu.exe</td><td>obu.exe</td><td>obu.exe</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\bin\obu.exe</td><td>1</td><td/></row>
-		<row><td>odbc.dll</td><td>odbc.dll</td><td>odbc.dll</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\bin\lib\odbc\odbc.dll</td><td>1</td><td/></row>
 		<row><td>odbc.obl</td><td>ISX_DEFAULTCOMPONENT2</td><td>odbc.obl</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\bin\odbc.obl</td><td>1</td><td/></row>
-		<row><td>openssl.dll</td><td>openssl.dll</td><td>openssl.dll</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\bin\lib\openssl\openssl.dll</td><td>1</td><td/></row>
-		<row><td>palindrome.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>PALIND~1.OBS|palindrome.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\palindrome.obs</td><td>1</td><td/></row>
-		<row><td>pangram.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>pangram.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\pangram.obs</td><td>1</td><td/></row>
-		<row><td>parent.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>parent.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\parent.obs</td><td>1</td><td/></row>
-		<row><td>parser.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>parser.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\parser.obs</td><td>1</td><td/></row>
-		<row><td>perfect.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>perfect.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\perfect.obs</td><td>1</td><td/></row>
-		<row><td>pig.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>pig.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\pig.obs</td><td>1</td><td/></row>
-		<row><td>plant_catalog.xml</td><td>ISX_DEFAULTCOMPONENT20</td><td>PLANT_~1.XML|plant_catalog.xml</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\misc\xml\plant_catalog.xml</td><td>1</td><td/></row>
-		<row><td>poly.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>poly.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\poly.obs</td><td>1</td><td/></row>
-		<row><td>prepare.obs</td><td>ISX_DEFAULTCOMPONENT21</td><td>prepare.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\odbc\prepare.obs</td><td>1</td><td/></row>
-		<row><td>prod_array.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>PROD_A~1.OBS|prod_array.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\prod_array.obs</td><td>1</td><td/></row>
-		<row><td>quick_sort.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>QUICK_~1.OBS|quick_sort.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\quick_sort.obs</td><td>1</td><td/></row>
-		<row><td>random.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>random.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\random.obs</td><td>1</td><td/></row>
-		<row><td>range.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>range.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\range.obs</td><td>1</td><td/></row>
-		<row><td>range_extraction.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>RANGE_~1.OBS|range_extraction.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\range_extraction.obs</td><td>1</td><td/></row>
-		<row><td>readme.rtf</td><td>ISX_DEFAULTCOMPONENT</td><td>readme.rtf</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\readme.rtf</td><td>1</td><td/></row>
+		<row><td>palindrome.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>PALIND~1.OBS|palindrome.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\palindrome.obs</td><td>1</td><td/></row>
+		<row><td>pangram.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>pangram.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\pangram.obs</td><td>1</td><td/></row>
+		<row><td>parent.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>parent.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\parent.obs</td><td>1</td><td/></row>
+		<row><td>parser.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>parser.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\parser.obs</td><td>1</td><td/></row>
+		<row><td>perfect.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>perfect.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\perfect.obs</td><td>1</td><td/></row>
+		<row><td>pig.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>pig.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\pig.obs</td><td>1</td><td/></row>
+		<row><td>plant_catalog.xml</td><td>ISX_DEFAULTCOMPONENT17</td><td>PLANT_~1.XML|plant_catalog.xml</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\misc\xml\plant_catalog.xml</td><td>1</td><td/></row>
+		<row><td>poly.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>poly.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\poly.obs</td><td>1</td><td/></row>
+		<row><td>prepare.obs</td><td>ISX_DEFAULTCOMPONENT18</td><td>prepare.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\odbc\prepare.obs</td><td>1</td><td/></row>
+		<row><td>prod_array.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>PROD_A~1.OBS|prod_array.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\prod_array.obs</td><td>1</td><td/></row>
+		<row><td>quick_sort.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>QUICK_~1.OBS|quick_sort.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\quick_sort.obs</td><td>1</td><td/></row>
+		<row><td>random.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>random.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\random.obs</td><td>1</td><td/></row>
+		<row><td>range.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>range.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\range.obs</td><td>1</td><td/></row>
+		<row><td>range_extraction.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>RANGE_~1.OBS|range_extraction.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\range_extraction.obs</td><td>1</td><td/></row>
+		<row><td>readme.htm</td><td>ISX_DEFAULTCOMPONENT</td><td>readme.htm</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\readme.htm</td><td>1</td><td/></row>
 		<row><td>regex.obl</td><td>ISX_DEFAULTCOMPONENT2</td><td>regex.obl</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\bin\regex.obl</td><td>1</td><td/></row>
-		<row><td>regex.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>regex.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\regex.obs</td><td>1</td><td/></row>
-		<row><td>regex_http.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>REGEX_~1.OBS|regex_http.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\regex_http.obs</td><td>1</td><td/></row>
-		<row><td>regex_regex.html</td><td>ISX_DEFAULTCOMPONENT8</td><td>REGEX-~1.HTM|regex-regex.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\regex-regex.html</td><td>1</td><td/></row>
-		<row><td>repeat.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>repeat.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\repeat.obs</td><td>1</td><td/></row>
-		<row><td>reverse.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>reverse.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\reverse.obs</td><td>1</td><td/></row>
-		<row><td>roman.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>roman.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\roman.obs</td><td>1</td><td/></row>
-		<row><td>root_mean.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>ROOT_M~1.OBS|root_mean.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\root_mean.obs</td><td>1</td><td/></row>
-		<row><td>roots.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>roots.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\roots.obs</td><td>1</td><td/></row>
-		<row><td>rosetta_count.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>ROSETT~1.OBS|rosetta_count.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\rosetta_count.obs</td><td>1</td><td/></row>
-		<row><td>row_echelon.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>ROW_EC~1.OBS|row_echelon.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\row_echelon.obs</td><td>1</td><td/></row>
-		<row><td>rpn_calc.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>rpn_calc.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\rpn_calc.obs</td><td>1</td><td/></row>
-		<row><td>run_length.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>RUN_LE~1.OBS|run_length.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\run_length.obs</td><td>1</td><td/></row>
-		<row><td>sample.xml</td><td>ISX_DEFAULTCOMPONENT20</td><td>sample.xml</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\misc\xml\sample.xml</td><td>1</td><td/></row>
-		<row><td>scrape.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>scrape.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\scrape.obs</td><td>1</td><td/></row>
-		<row><td>search.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>search.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\search.obs</td><td>1</td><td/></row>
-		<row><td>select.obs</td><td>ISX_DEFAULTCOMPONENT21</td><td>select.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\odbc\select.obs</td><td>1</td><td/></row>
-		<row><td>semi_prime.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>SEMI_P~1.OBS|semi_prime.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\semi_prime.obs</td><td>1</td><td/></row>
-		<row><td>serial.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>serial.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\serial.obs</td><td>1</td><td/></row>
-		<row><td>series.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>series.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\series.obs</td><td>1</td><td/></row>
-		<row><td>server.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>server.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\server.obs</td><td>1</td><td/></row>
-		<row><td>sha_hash.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>sha_hash.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\sha_hash.obs</td><td>1</td><td/></row>
-		<row><td>shell.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>shell.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\shell.obs</td><td>1</td><td/></row>
-		<row><td>shell_sort.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>SHELL_~1.OBS|shell_sort.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\shell_sort.obs</td><td>1</td><td/></row>
-		<row><td>sim_func.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>sim_func.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\sim_func.obs</td><td>1</td><td/></row>
-		<row><td>simple.xml</td><td>ISX_DEFAULTCOMPONENT20</td><td>simple.xml</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\misc\xml\simple.xml</td><td>1</td><td/></row>
-		<row><td>sleep_sort.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>SLEEP_~1.OBS|sleep_sort.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\sleep_sort.obs</td><td>1</td><td/></row>
-		<row><td>snowboard.wsdl</td><td>ISX_DEFAULTCOMPONENT20</td><td>SNOWBO~1.WSD|snowboard.wsdl</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\misc\xml\snowboard.wsdl</td><td>1</td><td/></row>
-		<row><td>soap.xml</td><td>ISX_DEFAULTCOMPONENT20</td><td>soap.xml</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\misc\xml\soap.xml</td><td>1</td><td/></row>
-		<row><td>soap2.xml</td><td>ISX_DEFAULTCOMPONENT20</td><td>soap2.xml</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\misc\xml\soap2.xml</td><td>1</td><td/></row>
-		<row><td>soap_http.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>SOAP_H~1.OBS|soap_http.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\soap_http.obs</td><td>1</td><td/></row>
-		<row><td>sock.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>sock.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\sock.obs</td><td>1</td><td/></row>
-		<row><td>spectralnorm.obs</td><td>ISX_DEFAULTCOMPONENT12</td><td>SPECTR~1.OBS|spectralnorm.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\clbg\spectralnorm.obs</td><td>1</td><td/></row>
-		<row><td>spectralnorm.obs1</td><td>ISX_DEFAULTCOMPONENT16</td><td>SPECTR~1.OBS|spectralnorm.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\misc\clbg\spectralnorm.obs</td><td>1</td><td/></row>
-		<row><td>spectralnorm.obs2</td><td>ISX_DEFAULTCOMPONENT11</td><td>SPECTR~1.OBS|spectralnorm.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\spectralnorm.obs</td><td>1</td><td/></row>
-		<row><td>sql_auth.obs</td><td>ISX_DEFAULTCOMPONENT21</td><td>sql_auth.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\odbc\sql_auth.obs</td><td>1</td><td/></row>
-		<row><td>sqrsum.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>sqrsum.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\sqrsum.obs</td><td>1</td><td/></row>
+		<row><td>regex.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>regex.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\regex.obs</td><td>1</td><td/></row>
+		<row><td>regex_http.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>REGEX_~1.OBS|regex_http.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\regex_http.obs</td><td>1</td><td/></row>
+		<row><td>regex_regex.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>REGEX-~1.HTM|regex-regex.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\regex-regex.html</td><td>1</td><td/></row>
+		<row><td>repeat.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>repeat.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\repeat.obs</td><td>1</td><td/></row>
+		<row><td>reverse.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>reverse.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\reverse.obs</td><td>1</td><td/></row>
+		<row><td>roman.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>roman.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\roman.obs</td><td>1</td><td/></row>
+		<row><td>root_mean.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>ROOT_M~1.OBS|root_mean.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\root_mean.obs</td><td>1</td><td/></row>
+		<row><td>roots.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>roots.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\roots.obs</td><td>1</td><td/></row>
+		<row><td>rosetta_count.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>ROSETT~1.OBS|rosetta_count.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\rosetta_count.obs</td><td>1</td><td/></row>
+		<row><td>row_echelon.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>ROW_EC~1.OBS|row_echelon.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\row_echelon.obs</td><td>1</td><td/></row>
+		<row><td>rpn_calc.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>rpn_calc.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\rpn_calc.obs</td><td>1</td><td/></row>
+		<row><td>run_length.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>RUN_LE~1.OBS|run_length.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\run_length.obs</td><td>1</td><td/></row>
+		<row><td>sample.xml</td><td>ISX_DEFAULTCOMPONENT17</td><td>sample.xml</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\misc\xml\sample.xml</td><td>1</td><td/></row>
+		<row><td>scrape.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>scrape.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\scrape.obs</td><td>1</td><td/></row>
+		<row><td>search.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>search.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\search.obs</td><td>1</td><td/></row>
+		<row><td>select.obs</td><td>ISX_DEFAULTCOMPONENT18</td><td>select.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\odbc\select.obs</td><td>1</td><td/></row>
+		<row><td>semi_prime.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>SEMI_P~1.OBS|semi_prime.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\semi_prime.obs</td><td>1</td><td/></row>
+		<row><td>serial.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>serial.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\serial.obs</td><td>1</td><td/></row>
+		<row><td>series.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>series.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\series.obs</td><td>1</td><td/></row>
+		<row><td>server.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>server.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\server.obs</td><td>1</td><td/></row>
+		<row><td>sha_hash.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>sha_hash.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\sha_hash.obs</td><td>1</td><td/></row>
+		<row><td>shell.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>shell.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\shell.obs</td><td>1</td><td/></row>
+		<row><td>shell_sort.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>SHELL_~1.OBS|shell_sort.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\shell_sort.obs</td><td>1</td><td/></row>
+		<row><td>sim_func.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>sim_func.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\sim_func.obs</td><td>1</td><td/></row>
+		<row><td>simple.xml</td><td>ISX_DEFAULTCOMPONENT17</td><td>simple.xml</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\misc\xml\simple.xml</td><td>1</td><td/></row>
+		<row><td>sleep_sort.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>SLEEP_~1.OBS|sleep_sort.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\sleep_sort.obs</td><td>1</td><td/></row>
+		<row><td>snowboard.wsdl</td><td>ISX_DEFAULTCOMPONENT17</td><td>SNOWBO~1.WSD|snowboard.wsdl</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\misc\xml\snowboard.wsdl</td><td>1</td><td/></row>
+		<row><td>soap.xml</td><td>ISX_DEFAULTCOMPONENT17</td><td>soap.xml</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\misc\xml\soap.xml</td><td>1</td><td/></row>
+		<row><td>soap2.xml</td><td>ISX_DEFAULTCOMPONENT17</td><td>soap2.xml</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\misc\xml\soap2.xml</td><td>1</td><td/></row>
+		<row><td>soap_http.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>SOAP_H~1.OBS|soap_http.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\soap_http.obs</td><td>1</td><td/></row>
+		<row><td>sock.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>sock.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\sock.obs</td><td>1</td><td/></row>
+		<row><td>spectralnorm.obs</td><td>ISX_DEFAULTCOMPONENT8</td><td>SPECTR~1.OBS|spectralnorm.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\clbg\spectralnorm.obs</td><td>1</td><td/></row>
+		<row><td>spectralnorm.obs1</td><td>ISX_DEFAULTCOMPONENT14</td><td>SPECTR~1.OBS|spectralnorm.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\misc\clbg\spectralnorm.obs</td><td>1</td><td/></row>
+		<row><td>spectralnorm.obs2</td><td>ISX_DEFAULTCOMPONENT7</td><td>SPECTR~1.OBS|spectralnorm.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\spectralnorm.obs</td><td>1</td><td/></row>
+		<row><td>sql_auth.obs</td><td>ISX_DEFAULTCOMPONENT18</td><td>sql_auth.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\odbc\sql_auth.obs</td><td>1</td><td/></row>
+		<row><td>sqrsum.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>sqrsum.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\sqrsum.obs</td><td>1</td><td/></row>
 		<row><td>ssleay32.dll</td><td>ssleay32.dll</td><td>ssleay32.dll</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\bin\ssleay32.dll</td><td>1</td><td/></row>
-		<row><td>std.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>std.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\std.obs</td><td>1</td><td/></row>
-		<row><td>stooge.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>stooge.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\stooge.obs</td><td>1</td><td/></row>
-		<row><td>strip_comment.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>STRIP_~1.OBS|strip_comment.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\strip_comment.obs</td><td>1</td><td/></row>
-		<row><td>substr.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>substr.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\substr.obs</td><td>1</td><td/></row>
-		<row><td>system.api_dllproxy.html</td><td>ISX_DEFAULTCOMPONENT8</td><td>SYSTEM~1.HTM|system.api-dllproxy.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system.api-dllproxy.html</td><td>1</td><td/></row>
-		<row><td>system.concurrency_thread.ht</td><td>ISX_DEFAULTCOMPONENT8</td><td>SYSTEM~1.HTM|system.concurrency-thread.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system.concurrency-thread.html</td><td>1</td><td/></row>
-		<row><td>system.concurrency_threadmut</td><td>ISX_DEFAULTCOMPONENT8</td><td>SYSTEM~1.HTM|system.concurrency-threadmutex.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system.concurrency-threadmutex.html</td><td>1</td><td/></row>
-		<row><td>system.introspection_class.h</td><td>ISX_DEFAULTCOMPONENT8</td><td>SYSTEM~1.HTM|system.introspection-class.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system.introspection-class.html</td><td>1</td><td/></row>
-		<row><td>system.introspection_datatyp</td><td>ISX_DEFAULTCOMPONENT8</td><td>SYSTEM~1.HTM|system.introspection-datatype.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system.introspection-datatype.html</td><td>1</td><td/></row>
-		<row><td>system.introspection_method.</td><td>ISX_DEFAULTCOMPONENT8</td><td>SYSTEM~1.HTM|system.introspection-method.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system.introspection-method.html</td><td>1</td><td/></row>
-		<row><td>system.introspection_typeid.</td><td>ISX_DEFAULTCOMPONENT8</td><td>SYSTEM~1.HTM|system.introspection-typeid.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system.introspection-typeid.html</td><td>1</td><td/></row>
-		<row><td>system.io.file_directory.htm</td><td>ISX_DEFAULTCOMPONENT8</td><td>SYSTEM~1.HTM|system.io.file-directory.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system.io.file-directory.html</td><td>1</td><td/></row>
-		<row><td>system.io.file_file.html</td><td>ISX_DEFAULTCOMPONENT8</td><td>SYSTEM~1.HTM|system.io.file-file.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system.io.file-file.html</td><td>1</td><td/></row>
-		<row><td>system.io.file_filereader.ht</td><td>ISX_DEFAULTCOMPONENT8</td><td>SYSTEM~1.HTM|system.io.file-filereader.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system.io.file-filereader.html</td><td>1</td><td/></row>
-		<row><td>system.io.file_filewriter.ht</td><td>ISX_DEFAULTCOMPONENT8</td><td>SYSTEM~1.HTM|system.io.file-filewriter.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system.io.file-filewriter.html</td><td>1</td><td/></row>
-		<row><td>system.io.net_tcpsecuresocke</td><td>ISX_DEFAULTCOMPONENT8</td><td>SYSTEM~1.HTM|system.io.net-tcpsecuresocket.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system.io.net-tcpsecuresocket.html</td><td>1</td><td/></row>
-		<row><td>system.io.net_tcpsocket.html</td><td>ISX_DEFAULTCOMPONENT8</td><td>SYSTEM~1.HTM|system.io.net-tcpsocket.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system.io.net-tcpsocket.html</td><td>1</td><td/></row>
-		<row><td>system.io.net_tcpsocketserve</td><td>ISX_DEFAULTCOMPONENT8</td><td>SYSTEM~1.HTM|system.io.net-tcpsocketserver.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system.io.net-tcpsocketserver.html</td><td>1</td><td/></row>
-		<row><td>system.io_console.html</td><td>ISX_DEFAULTCOMPONENT8</td><td>SYSTEM~1.HTM|system.io-console.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system.io-console.html</td><td>1</td><td/></row>
-		<row><td>system.io_deserializer.html</td><td>ISX_DEFAULTCOMPONENT8</td><td>SYSTEM~1.HTM|system.io-deserializer.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system.io-deserializer.html</td><td>1</td><td/></row>
-		<row><td>system.io_inputstream.html</td><td>ISX_DEFAULTCOMPONENT8</td><td>SYSTEM~1.HTM|system.io-inputstream.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system.io-inputstream.html</td><td>1</td><td/></row>
-		<row><td>system.io_outputstream.html</td><td>ISX_DEFAULTCOMPONENT8</td><td>SYSTEM~1.HTM|system.io-outputstream.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system.io-outputstream.html</td><td>1</td><td/></row>
-		<row><td>system.io_serializer.html</td><td>ISX_DEFAULTCOMPONENT8</td><td>SYSTEM~1.HTM|system.io-serializer.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system.io-serializer.html</td><td>1</td><td/></row>
-		<row><td>system.time_date.html</td><td>ISX_DEFAULTCOMPONENT8</td><td>SYSTEM~1.HTM|system.time-date.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system.time-date.html</td><td>1</td><td/></row>
-		<row><td>system.time_timer.html</td><td>ISX_DEFAULTCOMPONENT8</td><td>SYSTEM~1.HTM|system.time-timer.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system.time-timer.html</td><td>1</td><td/></row>
-		<row><td>system_base.html</td><td>ISX_DEFAULTCOMPONENT8</td><td>SYSTEM~1.HTM|system-base.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system-base.html</td><td>1</td><td/></row>
-		<row><td>system_basiccompare.html</td><td>ISX_DEFAULTCOMPONENT8</td><td>SYSTEM~1.HTM|system-basiccompare.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system-basiccompare.html</td><td>1</td><td/></row>
-		<row><td>system_bool.html</td><td>ISX_DEFAULTCOMPONENT8</td><td>SYSTEM~1.HTM|system-bool.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system-bool.html</td><td>1</td><td/></row>
-		<row><td>system_byte.html</td><td>ISX_DEFAULTCOMPONENT8</td><td>SYSTEM~1.HTM|system-byte.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system-byte.html</td><td>1</td><td/></row>
-		<row><td>system_bytearrayholder.html</td><td>ISX_DEFAULTCOMPONENT8</td><td>SYSTEM~1.HTM|system-bytearrayholder.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system-bytearrayholder.html</td><td>1</td><td/></row>
-		<row><td>system_char.html</td><td>ISX_DEFAULTCOMPONENT8</td><td>SYSTEM~1.HTM|system-char.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system-char.html</td><td>1</td><td/></row>
-		<row><td>system_chararrayholder.html</td><td>ISX_DEFAULTCOMPONENT8</td><td>SYSTEM~1.HTM|system-chararrayholder.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system-chararrayholder.html</td><td>1</td><td/></row>
-		<row><td>system_compare.html</td><td>ISX_DEFAULTCOMPONENT8</td><td>SYSTEM~1.HTM|system-compare.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system-compare.html</td><td>1</td><td/></row>
-		<row><td>system_float.html</td><td>ISX_DEFAULTCOMPONENT8</td><td>SYSTEM~1.HTM|system-float.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system-float.html</td><td>1</td><td/></row>
-		<row><td>system_floatarrayholder.html</td><td>ISX_DEFAULTCOMPONENT8</td><td>SYSTEM~1.HTM|system-floatarrayholder.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system-floatarrayholder.html</td><td>1</td><td/></row>
-		<row><td>system_floatholder.html</td><td>ISX_DEFAULTCOMPONENT8</td><td>SYSTEM~1.HTM|system-floatholder.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system-floatholder.html</td><td>1</td><td/></row>
-		<row><td>system_int.html</td><td>ISX_DEFAULTCOMPONENT8</td><td>SYSTEM~1.HTM|system-int.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system-int.html</td><td>1</td><td/></row>
-		<row><td>system_intarrayholder.html</td><td>ISX_DEFAULTCOMPONENT8</td><td>SYSTEM~1.HTM|system-intarrayholder.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system-intarrayholder.html</td><td>1</td><td/></row>
-		<row><td>system_intholder.html</td><td>ISX_DEFAULTCOMPONENT8</td><td>SYSTEM~1.HTM|system-intholder.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system-intholder.html</td><td>1</td><td/></row>
-		<row><td>system_runtime.html</td><td>ISX_DEFAULTCOMPONENT8</td><td>SYSTEM~1.HTM|system-runtime.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system-runtime.html</td><td>1</td><td/></row>
-		<row><td>system_string.html</td><td>ISX_DEFAULTCOMPONENT8</td><td>SYSTEM~1.HTM|system-string.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system-string.html</td><td>1</td><td/></row>
-		<row><td>temp.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>temp.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\temp.obs</td><td>1</td><td/></row>
-		<row><td>thread.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>thread.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\thread.obs</td><td>1</td><td/></row>
-		<row><td>top_tail.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>top_tail.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\top_tail.obs</td><td>1</td><td/></row>
-		<row><td>transpose.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>TRANSP~1.OBS|transpose.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\transpose.obs</td><td>1</td><td/></row>
-		<row><td>traversal.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>TRAVER~1.OBS|traversal.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\traversal.obs</td><td>1</td><td/></row>
-		<row><td>unicode_vars.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>UNICOD~1.OBS|unicode_vars.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\unicode_vars.obs</td><td>1</td><td/></row>
-		<row><td>update.obs</td><td>ISX_DEFAULTCOMPONENT21</td><td>update.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\odbc\update.obs</td><td>1</td><td/></row>
-		<row><td>url_encode_decode.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>URL_EN~1.OBS|url_encode_decode.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\url_encode_decode.obs</td><td>1</td><td/></row>
-		<row><td>vander.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>vander.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\vander.obs</td><td>1</td><td/></row>
-		<row><td>vector_products.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>VECTOR~1.OBS|vector_products.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\vector_products.obs</td><td>1</td><td/></row>
+		<row><td>std.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>std.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\std.obs</td><td>1</td><td/></row>
+		<row><td>stooge.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>stooge.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\stooge.obs</td><td>1</td><td/></row>
+		<row><td>strip_comment.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>STRIP_~1.OBS|strip_comment.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\strip_comment.obs</td><td>1</td><td/></row>
+		<row><td>substr.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>substr.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\substr.obs</td><td>1</td><td/></row>
+		<row><td>system.api_dllproxy.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>SYSTEM~1.HTM|system.api-dllproxy.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system.api-dllproxy.html</td><td>1</td><td/></row>
+		<row><td>system.concurrency_thread.ht</td><td>ISX_DEFAULTCOMPONENT5</td><td>SYSTEM~1.HTM|system.concurrency-thread.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system.concurrency-thread.html</td><td>1</td><td/></row>
+		<row><td>system.concurrency_threadmut</td><td>ISX_DEFAULTCOMPONENT5</td><td>SYSTEM~1.HTM|system.concurrency-threadmutex.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system.concurrency-threadmutex.html</td><td>1</td><td/></row>
+		<row><td>system.introspection_class.h</td><td>ISX_DEFAULTCOMPONENT5</td><td>SYSTEM~1.HTM|system.introspection-class.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system.introspection-class.html</td><td>1</td><td/></row>
+		<row><td>system.introspection_datatyp</td><td>ISX_DEFAULTCOMPONENT5</td><td>SYSTEM~1.HTM|system.introspection-datatype.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system.introspection-datatype.html</td><td>1</td><td/></row>
+		<row><td>system.introspection_method.</td><td>ISX_DEFAULTCOMPONENT5</td><td>SYSTEM~1.HTM|system.introspection-method.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system.introspection-method.html</td><td>1</td><td/></row>
+		<row><td>system.introspection_typeid.</td><td>ISX_DEFAULTCOMPONENT5</td><td>SYSTEM~1.HTM|system.introspection-typeid.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system.introspection-typeid.html</td><td>1</td><td/></row>
+		<row><td>system.io.file_directory.htm</td><td>ISX_DEFAULTCOMPONENT5</td><td>SYSTEM~1.HTM|system.io.file-directory.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system.io.file-directory.html</td><td>1</td><td/></row>
+		<row><td>system.io.file_file.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>SYSTEM~1.HTM|system.io.file-file.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system.io.file-file.html</td><td>1</td><td/></row>
+		<row><td>system.io.file_filereader.ht</td><td>ISX_DEFAULTCOMPONENT5</td><td>SYSTEM~1.HTM|system.io.file-filereader.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system.io.file-filereader.html</td><td>1</td><td/></row>
+		<row><td>system.io.file_filewriter.ht</td><td>ISX_DEFAULTCOMPONENT5</td><td>SYSTEM~1.HTM|system.io.file-filewriter.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system.io.file-filewriter.html</td><td>1</td><td/></row>
+		<row><td>system.io.net_tcpsecuresocke</td><td>ISX_DEFAULTCOMPONENT5</td><td>SYSTEM~1.HTM|system.io.net-tcpsecuresocket.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system.io.net-tcpsecuresocket.html</td><td>1</td><td/></row>
+		<row><td>system.io.net_tcpsocket.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>SYSTEM~1.HTM|system.io.net-tcpsocket.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system.io.net-tcpsocket.html</td><td>1</td><td/></row>
+		<row><td>system.io.net_tcpsocketserve</td><td>ISX_DEFAULTCOMPONENT5</td><td>SYSTEM~1.HTM|system.io.net-tcpsocketserver.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system.io.net-tcpsocketserver.html</td><td>1</td><td/></row>
+		<row><td>system.io_console.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>SYSTEM~1.HTM|system.io-console.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system.io-console.html</td><td>1</td><td/></row>
+		<row><td>system.io_deserializer.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>SYSTEM~1.HTM|system.io-deserializer.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system.io-deserializer.html</td><td>1</td><td/></row>
+		<row><td>system.io_inputstream.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>SYSTEM~1.HTM|system.io-inputstream.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system.io-inputstream.html</td><td>1</td><td/></row>
+		<row><td>system.io_outputstream.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>SYSTEM~1.HTM|system.io-outputstream.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system.io-outputstream.html</td><td>1</td><td/></row>
+		<row><td>system.io_serializer.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>SYSTEM~1.HTM|system.io-serializer.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system.io-serializer.html</td><td>1</td><td/></row>
+		<row><td>system.time_date.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>SYSTEM~1.HTM|system.time-date.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system.time-date.html</td><td>1</td><td/></row>
+		<row><td>system.time_timer.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>SYSTEM~1.HTM|system.time-timer.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system.time-timer.html</td><td>1</td><td/></row>
+		<row><td>system_base.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>SYSTEM~1.HTM|system-base.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system-base.html</td><td>1</td><td/></row>
+		<row><td>system_basiccompare.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>SYSTEM~1.HTM|system-basiccompare.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system-basiccompare.html</td><td>1</td><td/></row>
+		<row><td>system_bool.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>SYSTEM~1.HTM|system-bool.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system-bool.html</td><td>1</td><td/></row>
+		<row><td>system_byte.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>SYSTEM~1.HTM|system-byte.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system-byte.html</td><td>1</td><td/></row>
+		<row><td>system_bytearrayholder.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>SYSTEM~1.HTM|system-bytearrayholder.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system-bytearrayholder.html</td><td>1</td><td/></row>
+		<row><td>system_char.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>SYSTEM~1.HTM|system-char.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system-char.html</td><td>1</td><td/></row>
+		<row><td>system_chararrayholder.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>SYSTEM~1.HTM|system-chararrayholder.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system-chararrayholder.html</td><td>1</td><td/></row>
+		<row><td>system_compare.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>SYSTEM~1.HTM|system-compare.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system-compare.html</td><td>1</td><td/></row>
+		<row><td>system_float.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>SYSTEM~1.HTM|system-float.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system-float.html</td><td>1</td><td/></row>
+		<row><td>system_floatarrayholder.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>SYSTEM~1.HTM|system-floatarrayholder.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system-floatarrayholder.html</td><td>1</td><td/></row>
+		<row><td>system_floatholder.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>SYSTEM~1.HTM|system-floatholder.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system-floatholder.html</td><td>1</td><td/></row>
+		<row><td>system_int.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>SYSTEM~1.HTM|system-int.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system-int.html</td><td>1</td><td/></row>
+		<row><td>system_intarrayholder.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>SYSTEM~1.HTM|system-intarrayholder.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system-intarrayholder.html</td><td>1</td><td/></row>
+		<row><td>system_intholder.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>SYSTEM~1.HTM|system-intholder.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system-intholder.html</td><td>1</td><td/></row>
+		<row><td>system_runtime.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>SYSTEM~1.HTM|system-runtime.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system-runtime.html</td><td>1</td><td/></row>
+		<row><td>system_string.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>SYSTEM~1.HTM|system-string.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\system-string.html</td><td>1</td><td/></row>
+		<row><td>temp.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>temp.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\temp.obs</td><td>1</td><td/></row>
+		<row><td>thread.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>thread.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\thread.obs</td><td>1</td><td/></row>
+		<row><td>top_tail.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>top_tail.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\top_tail.obs</td><td>1</td><td/></row>
+		<row><td>transpose.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>TRANSP~1.OBS|transpose.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\transpose.obs</td><td>1</td><td/></row>
+		<row><td>traversal.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>TRAVER~1.OBS|traversal.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\traversal.obs</td><td>1</td><td/></row>
+		<row><td>unicode_vars.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>UNICOD~1.OBS|unicode_vars.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\unicode_vars.obs</td><td>1</td><td/></row>
+		<row><td>update.obs</td><td>ISX_DEFAULTCOMPONENT18</td><td>update.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\odbc\update.obs</td><td>1</td><td/></row>
+		<row><td>url_encode_decode.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>URL_EN~1.OBS|url_encode_decode.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\url_encode_decode.obs</td><td>1</td><td/></row>
+		<row><td>vander.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>vander.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\vander.obs</td><td>1</td><td/></row>
+		<row><td>vector_products.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>VECTOR~1.OBS|vector_products.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\vector_products.obs</td><td>1</td><td/></row>
 		<row><td>xml.obl</td><td>ISX_DEFAULTCOMPONENT2</td><td>xml.obl</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\bin\xml.obl</td><td>1</td><td/></row>
-		<row><td>xml_file.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>xml_file.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\xml_file.obs</td><td>1</td><td/></row>
-		<row><td>xml_in.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>xml_in.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\xml_in.obs</td><td>1</td><td/></row>
-		<row><td>xml_list.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>xml_list.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\xml_list.obs</td><td>1</td><td/></row>
-		<row><td>xml_out.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>xml_out.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\xml_out.obs</td><td>1</td><td/></row>
-		<row><td>xml_path.obs</td><td>ISX_DEFAULTCOMPONENT11</td><td>xml_path.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\xml_path.obs</td><td>1</td><td/></row>
-		<row><td>xml_xmlbuilder.html</td><td>ISX_DEFAULTCOMPONENT8</td><td>XML-XM~1.HTM|xml-xmlbuilder.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\xml-xmlbuilder.html</td><td>1</td><td/></row>
-		<row><td>xml_xmlelement.html</td><td>ISX_DEFAULTCOMPONENT8</td><td>XML-XM~1.HTM|xml-xmlelement.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\xml-xmlelement.html</td><td>1</td><td/></row>
-		<row><td>xml_xmlparser.html</td><td>ISX_DEFAULTCOMPONENT8</td><td>XML-XM~1.HTM|xml-xmlparser.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\xml-xmlparser.html</td><td>1</td><td/></row>
+		<row><td>xml_file.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>xml_file.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\xml_file.obs</td><td>1</td><td/></row>
+		<row><td>xml_in.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>xml_in.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\xml_in.obs</td><td>1</td><td/></row>
+		<row><td>xml_list.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>xml_list.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\xml_list.obs</td><td>1</td><td/></row>
+		<row><td>xml_out.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>xml_out.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\xml_out.obs</td><td>1</td><td/></row>
+		<row><td>xml_path.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>xml_path.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\xml_path.obs</td><td>1</td><td/></row>
+		<row><td>xml_xmlbuilder.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>XML-XM~1.HTM|xml-xmlbuilder.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\xml-xmlbuilder.html</td><td>1</td><td/></row>
+		<row><td>xml_xmlelement.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>XML-XM~1.HTM|xml-xmlelement.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\xml-xmlelement.html</td><td>1</td><td/></row>
+		<row><td>xml_xmlparser.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>XML-XM~1.HTM|xml-xmlparser.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\xml-xmlparser.html</td><td>1</td><td/></row>
 	</table>
 
 	<table name="FileSFPCatalog">
@@ -2403,34 +2400,33 @@
 		<row><td>ISX_DEFAULTCOMPONENT</td><td/><td/><td>_CB9E7C1B_EEDE_42D3_8844_4D48220A01E9_FILTER</td><td/><td/><td/><td/></row>
 		<row><td>ISX_DEFAULTCOMPONENT1</td><td/><td/><td>_9C569BC4_0863_4A3D_8991_D3518474C1B2_FILTER</td><td/><td/><td/><td/></row>
 		<row><td>ISX_DEFAULTCOMPONENT10</td><td/><td/><td>_19A04A31_6EFD_44AF_AED4_89C06A36188D_FILTER</td><td/><td/><td/><td/></row>
-		<row><td>ISX_DEFAULTCOMPONENT11</td><td/><td/><td>_2D21253C_84EC_4E97_9AD0_7E14522084BA_FILTER</td><td/><td/><td/><td/></row>
-		<row><td>ISX_DEFAULTCOMPONENT12</td><td/><td/><td>_077DED6C_6D96_492A_AE81_00F3B66377A6_FILTER</td><td/><td/><td/><td/></row>
-		<row><td>ISX_DEFAULTCOMPONENT13</td><td/><td/><td>_D8542359_C9E9_4469_BEC9_6CD4CECBD645_FILTER</td><td/><td/><td/><td/></row>
-		<row><td>ISX_DEFAULTCOMPONENT14</td><td/><td/><td>_96E8748A_B91E_472F_B74C_C4EA3C520CA4_FILTER</td><td/><td/><td/><td/></row>
-		<row><td>ISX_DEFAULTCOMPONENT15</td><td/><td/><td>_62622ED7_1306_4B6E_A54A_57ACBCD469C2_FILTER</td><td/><td/><td/><td/></row>
-		<row><td>ISX_DEFAULTCOMPONENT16</td><td/><td/><td>_B9FE37E8_2247_43FF_9C7C_9D27F9047ACB_FILTER</td><td/><td/><td/><td/></row>
-		<row><td>ISX_DEFAULTCOMPONENT17</td><td/><td/><td>_152D6BBD_B5F2_48B0_A147_D2A6E15ABA0D_FILTER</td><td/><td/><td/><td/></row>
-		<row><td>ISX_DEFAULTCOMPONENT18</td><td/><td/><td>_22F0B853_17AC_4332_A83C_3149C6392734_FILTER</td><td/><td/><td/><td/></row>
+		<row><td>ISX_DEFAULTCOMPONENT11</td><td/><td/><td>_14D3606C_FF4C_4C58_82BB_EA3AA5A34748_FILTER</td><td/><td/><td/><td/></row>
+		<row><td>ISX_DEFAULTCOMPONENT12</td><td/><td/><td>_A8B41632_AC8B_4931_900E_8E48AFF0386C_FILTER</td><td/><td/><td/><td/></row>
+		<row><td>ISX_DEFAULTCOMPONENT13</td><td/><td/><td>_6BF91BA4_AADD_4DD5_B8B9_56CB905502BC_FILTER</td><td/><td/><td/><td/></row>
+		<row><td>ISX_DEFAULTCOMPONENT14</td><td/><td/><td>_FA49DEA5_6685_4C77_9CEB_4E93409AC81E_FILTER</td><td/><td/><td/><td/></row>
+		<row><td>ISX_DEFAULTCOMPONENT15</td><td/><td/><td>_6E65DD8C_5080_4D51_A1EB_6DCB87822930_FILTER</td><td/><td/><td/><td/></row>
+		<row><td>ISX_DEFAULTCOMPONENT16</td><td/><td/><td>_E27327D3_AF9E_4CDA_A334_2868D4CDB8EE_FILTER</td><td/><td/><td/><td/></row>
+		<row><td>ISX_DEFAULTCOMPONENT17</td><td/><td/><td>_FF798BFB_20A1_4260_82BF_60D1F7A2C2CD_FILTER</td><td/><td/><td/><td/></row>
+		<row><td>ISX_DEFAULTCOMPONENT18</td><td/><td/><td>_739D332E_AEBA_4129_8FD8_93358416C92F_FILTER</td><td/><td/><td/><td/></row>
 		<row><td>ISX_DEFAULTCOMPONENT19</td><td/><td/><td>_008D9B4F_78FE_4CD6_996B_5D45EF445E22_FILTER</td><td/><td/><td/><td/></row>
-		<row><td>ISX_DEFAULTCOMPONENT2</td><td/><td/><td>_3F26A0A2_39A8_4485_B76F_74773DBF3A60_FILTER</td><td/><td/><td/><td/></row>
-		<row><td>ISX_DEFAULTCOMPONENT20</td><td/><td/><td>_154B9931_EB04_43C3_BC8E_91C3BE82E860_FILTER</td><td/><td/><td/><td/></row>
-		<row><td>ISX_DEFAULTCOMPONENT21</td><td/><td/><td>_49D2CD9B_3C36_4103_9AAE_2FB08CABDC94_FILTER</td><td/><td/><td/><td/></row>
-		<row><td>ISX_DEFAULTCOMPONENT22</td><td/><td/><td>_4C7515C5_5E29_48DF_819A_E5B3F2789ED9_FILTER</td><td/><td/><td/><td/></row>
-		<row><td>ISX_DEFAULTCOMPONENT3</td><td/><td/><td>_B025FC8E_84E1_441A_9F66_3AB6F65B1206_FILTER</td><td/><td/><td/><td/></row>
+		<row><td>ISX_DEFAULTCOMPONENT2</td><td/><td/><td>_9D34D556_9505_4A55_8C19_8C5D0EB1841D_FILTER</td><td/><td/><td/><td/></row>
+		<row><td>ISX_DEFAULTCOMPONENT20</td><td/><td/><td>_6ACEC5A3_5BCD_481E_A524_FF76CDF49ACA_FILTER</td><td/><td/><td/><td/></row>
+		<row><td>ISX_DEFAULTCOMPONENT21</td><td/><td/><td>_D651ED8D_01EC_450B_92A6_E059F65146E7_FILTER</td><td/><td/><td/><td/></row>
+		<row><td>ISX_DEFAULTCOMPONENT3</td><td/><td/><td>_A0F34409_BD02_4680_B907_8B64CD314536_FILTER</td><td/><td/><td/><td/></row>
 		<row><td>ISX_DEFAULTCOMPONENT4</td><td/><td/><td>_5B84DF58_7183_477E_9229_5B3AC1C3B591_FILTER</td><td/><td/><td/><td/></row>
-		<row><td>ISX_DEFAULTCOMPONENT5</td><td/><td/><td>_7AFCEE2A_605B_4AC5_BAB9_03843F82498C_FILTER</td><td/><td/><td/><td/></row>
-		<row><td>ISX_DEFAULTCOMPONENT6</td><td/><td/><td>_874646CB_49F6_4BEC_8B1D_9A9986AD1A58_FILTER</td><td/><td/><td/><td/></row>
-		<row><td>ISX_DEFAULTCOMPONENT7</td><td/><td/><td>_A281E900_15BF_4238_A4B3_42159D862D66_FILTER</td><td/><td/><td/><td/></row>
-		<row><td>ISX_DEFAULTCOMPONENT8</td><td/><td/><td>_959143FF_3688_4298_BC84_1891ECB5E0BE_FILTER</td><td/><td/><td/><td/></row>
+		<row><td>ISX_DEFAULTCOMPONENT5</td><td/><td/><td>_982F2B55_AFBA_4A29_95DC_1E88F7CC2954_FILTER</td><td/><td/><td/><td/></row>
+		<row><td>ISX_DEFAULTCOMPONENT6</td><td/><td/><td>_217CC09C_E97B_4936_A177_2D238003EB58_FILTER</td><td/><td/><td/><td/></row>
+		<row><td>ISX_DEFAULTCOMPONENT7</td><td/><td/><td>_AC13AE8E_CECB_4AF0_94EA_4CA740380519_FILTER</td><td/><td/><td/><td/></row>
+		<row><td>ISX_DEFAULTCOMPONENT8</td><td/><td/><td>_A8AD1795_BA4F_47B6_91E3_CF2930A86749_FILTER</td><td/><td/><td/><td/></row>
 		<row><td>ISX_DEFAULTCOMPONENT9</td><td/><td/><td>_058C4015_C81A_4785_BFF0_D8E9F60EB28B_FILTER</td><td/><td/><td/><td/></row>
-		<row><td>libeay32.dll</td><td/><td/><td>_455D1B74_912A_4D40_8653_7AB659733CCE_FILTER</td><td/><td/><td/><td/></row>
-		<row><td>obc.exe</td><td/><td/><td>_524599E5_C5CA_492D_80D0_38FF4BD39DF2_FILTER</td><td/><td/><td/><td/></row>
-		<row><td>obd.exe</td><td/><td/><td>_2D9E55F4_6DA8_4977_A669_B11ECCE93800_FILTER</td><td/><td/><td/><td/></row>
-		<row><td>obr.exe</td><td/><td/><td>_A28307AF_42B7_453C_989C_6BEFA585818C_FILTER</td><td/><td/><td/><td/></row>
-		<row><td>obu.exe</td><td/><td/><td>_C7FB8224_119D_45F2_A1D1_6ED073028368_FILTER</td><td/><td/><td/><td/></row>
-		<row><td>odbc.dll</td><td/><td/><td>_5E2E00E5_D511_4CAE_A8C6_4FD9D220A826_FILTER</td><td/><td/><td/><td/></row>
-		<row><td>openssl.dll</td><td/><td/><td>_7ED3EAD1_D8AD_4803_AEB8_331349DA8C5E_FILTER</td><td/><td/><td/><td/></row>
-		<row><td>ssleay32.dll</td><td/><td/><td>_BD297434_0D80_4F84_A36D_CB4B7F9D3E20_FILTER</td><td/><td/><td/><td/></row>
+		<row><td>libeay32.dll</td><td/><td/><td>_237E2A8D_44F3_4226_8C71_63CB5666110E_FILTER</td><td/><td/><td/><td/></row>
+		<row><td>libobjk_odbc.dll</td><td/><td/><td>_223F2932_960B_4506_B134_D3377F1FABE4_FILTER</td><td/><td/><td/><td/></row>
+		<row><td>libobjk_openssl.dll</td><td/><td/><td>_8E3FB6AB_4EE5_4C8F_B70C_5889800552E1_FILTER</td><td/><td/><td/><td/></row>
+		<row><td>obc.exe</td><td/><td/><td>_ED0245C9_9AD4_43DF_805A_10095E4C2D2B_FILTER</td><td/><td/><td/><td/></row>
+		<row><td>obd.exe</td><td/><td/><td>_376E6492_FE16_419D_AE25_B15EA2FD1EE7_FILTER</td><td/><td/><td/><td/></row>
+		<row><td>obr.exe</td><td/><td/><td>_1C76E286_691F_4894_8707_2F4809773D07_FILTER</td><td/><td/><td/><td/></row>
+		<row><td>obu.exe</td><td/><td/><td>_57E60BE9_FEA7_4450_9577_28A6A9892B54_FILTER</td><td/><td/><td/><td/></row>
+		<row><td>ssleay32.dll</td><td/><td/><td>_4FD8A3E8_2C3E_4E92_BB52_AF75612351EB_FILTER</td><td/><td/><td/><td/></row>
 	</table>
 
 	<table name="ISCustomActionReference">
@@ -2805,7 +2801,7 @@
 		<row><td>DVD-18</td><td>Express</td><td>&lt;ISProjectDataFolder&gt;</td><td>Default</td><td>3</td><td>1033</td><td>0</td><td>2</td><td>Intel</td><td/><td>1033</td><td>0</td><td>15.83</td><td>1</td><td>2048</td><td/><td>0</td><td/><td>MediaLocation</td><td/><td>http://</td><td/><td/><td/><td/><td>75805</td><td/><td/><td/><td>3</td></row>
 		<row><td>DVD-5</td><td>Express</td><td>&lt;ISProjectDataFolder&gt;</td><td>Default</td><td>3</td><td>1033</td><td>0</td><td>2</td><td>Intel</td><td/><td>1033</td><td>0</td><td>4.38</td><td>1</td><td>2048</td><td/><td>0</td><td/><td>MediaLocation</td><td/><td>http://</td><td/><td/><td/><td/><td>75805</td><td/><td/><td/><td>3</td></row>
 		<row><td>DVD-9</td><td>Express</td><td>&lt;ISProjectDataFolder&gt;</td><td>Default</td><td>3</td><td>1033</td><td>0</td><td>2</td><td>Intel</td><td/><td>1033</td><td>0</td><td>7.95</td><td>1</td><td>2048</td><td/><td>0</td><td/><td>MediaLocation</td><td/><td>http://</td><td/><td/><td/><td/><td>75805</td><td/><td/><td/><td>3</td></row>
-		<row><td>SingleImage</td><td>Express</td><td>&lt;ISProjectDataFolder&gt;</td><td>PackageName</td><td>1</td><td>1033</td><td>0</td><td>1</td><td>Intel</td><td/><td>1033</td><td>0</td><td>0</td><td>0</td><td>0</td><td/><td>0</td><td/><td>MediaLocation</td><td/><td>http://www.objeck.org</td><td/><td>C:\Users\Randy\Dropbox\Personal\signing keys\objeck-org.pfx</td><td/><td/><td>536979487</td><td/><td/><td/><td>3</td></row>
+		<row><td>SingleImage</td><td>Express</td><td>&lt;ISProjectDataFolder&gt;</td><td>PackageName</td><td>1</td><td>1033</td><td>0</td><td>1</td><td>Intel</td><td/><td>1033</td><td>0</td><td>0</td><td>0</td><td>0</td><td/><td>0</td><td/><td>MediaLocation</td><td/><td>http://www.objeck.org</td><td/><td>C:\Users\Randy\Dropbox\Personal\signing keys\objeck-org.pfx</td><td/><td/><td>536979484</td><td/><td/><td/><td>3</td></row>
 		<row><td>WebDeployment</td><td>Express</td><td>&lt;ISProjectDataFolder&gt;</td><td>PackageName</td><td>4</td><td>1033</td><td>2</td><td>1</td><td>Intel</td><td/><td>1033</td><td>0</td><td>0</td><td>0</td><td>0</td><td/><td>0</td><td/><td>MediaLocation</td><td/><td>http://</td><td/><td/><td/><td/><td>124941</td><td/><td/><td/><td>3</td></row>
 	</table>
 
@@ -4174,9 +4170,9 @@
 		<row><td>ID_STRING3</td><td>1033</td><td>Randy Hollines</td><td>0</td><td/><td>-2069797071</td></row>
 		<row><td>ID_STRING30</td><td>1033</td><td>PROGRA~1|Programmer's Guide</td><td>0</td><td/><td>-2095029140</td></row>
 		<row><td>ID_STRING31</td><td>1033</td><td>PROGRA~1|Programmer's Guide</td><td>0</td><td/><td>606110350</td></row>
-		<row><td>ID_STRING32</td><td>1033</td><td>Readme</td><td>0</td><td/><td>1931657363</td></row>
+		<row><td>ID_STRING32</td><td>1033</td><td>Readme</td><td>0</td><td/><td>-1599895216</td></row>
 		<row><td>ID_STRING33</td><td>1033</td><td>PROGRA~1|Programmer’s Guide</td><td>0</td><td/><td>1931659475</td></row>
-		<row><td>ID_STRING34</td><td>1033</td><td>CODEEX~1|Code Examples</td><td>0</td><td/><td>1931610355</td></row>
+		<row><td>ID_STRING34</td><td>1033</td><td>CODEEX~1|Code Examples</td><td>0</td><td/><td>-1599909520</td></row>
 		<row><td>ID_STRING35</td><td>1033</td><td>PROGRA~1|Programmer's Guide</td><td>0</td><td/><td>-165672469</td></row>
 		<row><td>ID_STRING36</td><td>1033</td><td>*=-OBJECK_LIB_PATH</td><td>0</td><td/><td>966889546</td></row>
 		<row><td>ID_STRING37</td><td>1033</td><td>[INSTALLDIR]bin</td><td>0</td><td/><td>966899241</td></row>
@@ -4195,11 +4191,13 @@
 		<row><td>ID_STRING49</td><td>1033</td><td>Programs</td><td>0</td><td/><td>-1700667534</td></row>
 		<row><td>ID_STRING5</td><td>1033</td><td>PROGRA~1|Programmer's Guide</td><td>0</td><td/><td>1000237184</td></row>
 		<row><td>ID_STRING50</td><td>1033</td><td>COMPIL~1|Compiler and VM</td><td>0</td><td/><td>-1700663438</td></row>
-		<row><td>ID_STRING51</td><td>1033</td><td>COMPIL~1|Compiler and VM</td><td>0</td><td/><td>1931641043</td></row>
+		<row><td>ID_STRING51</td><td>1033</td><td>COMPIL~1|Compiler and VM</td><td>0</td><td/><td>-1599882896</td></row>
 		<row><td>ID_STRING52</td><td>1033</td><td>CLASSL~1|Class Libraries</td><td>0</td><td/><td>371343022</td></row>
 		<row><td>ID_STRING53</td><td>1033</td><td>ABOUTO~1|About Objeck</td><td>0</td><td/><td>371345198</td></row>
 		<row><td>ID_STRING54</td><td>1033</td><td>ABOUTO~1|About Objeck</td><td>0</td><td/><td>371382288</td></row>
 		<row><td>ID_STRING55</td><td>1033</td><td>CLASSL~1|Class Libraries</td><td>0</td><td/><td>371367984</td></row>
+		<row><td>ID_STRING56</td><td>1033</td><td>PROGRA~1|Programmer's Guide</td><td>0</td><td/><td>-1599878768</td></row>
+		<row><td>ID_STRING57</td><td>1033</td><td>APIDOC~1|API Documentation</td><td>0</td><td/><td>-1599919664</td></row>
 		<row><td>ID_STRING6</td><td>1033</td><td>PROGRA~1|Programmer's Guide</td><td>0</td><td/><td>1402902288</td></row>
 		<row><td>ID_STRING7</td><td>1033</td><td>PROGRA~1|Programmer's Guide</td><td>0</td><td/><td>-736210891</td></row>
 		<row><td>ID_STRING8</td><td>1033</td><td>PROGRA~1|Programmer's Guide</td><td>0</td><td/><td>337554475</td></row>
@@ -4319,8 +4317,8 @@
 		<row><td>ARPPRODUCTICON.exe</td><td/><td>&lt;ISProductFolder&gt;\redist\Language Independent\OS Independent\setupicon.ico</td><td>0</td></row>
 		<row><td>NewShortcut1_1D5F2B2809D84A1F849EF8C211FFED3A.exe</td><td/><td>C:\Users\Randy\Documents\Code\images\adobe-blueprint-pdf-symbol.ico</td><td>0</td></row>
 		<row><td>NewShortcut1_30B9F646489D4EE4963F1C300BCA1D04.exe</td><td/><td>C:\Users\Alienware\Documents\Code\main\images\adobe-blueprint-pdf-symbol.ico</td><td>0</td></row>
-		<row><td>NewShortcut1_8B1D8ED31CC3456EBCB6AA898B01DCC9.exe</td><td/><td>C:\Users\Randy\Documents\Code\objeck-lang\images\readme.ico</td><td>0</td></row>
 		<row><td>NewShortcut1_A0956C23BB9F429482AEF5558BE9F486.exe</td><td/><td>C:\Users\Randy Hollines\Documents\Code\images\pdf.ico</td><td>0</td></row>
+		<row><td>NewShortcut1_B79F56A405914B988502AF44A439B9F4.exe</td><td/><td>C:\Users\Randy\Documents\Code\objeck-lang\images\Mimetypes-text-x-readme.ico</td><td>0</td></row>
 		<row><td>NewShortcut1_C64675E356EB410D86505CA38FB9D1E2.exe</td><td/><td>C:\Users\Randy Hollines\Documents\Code\main\images\pdf.ico</td><td>0</td></row>
 		<row><td>NewShortcut1_EC84BD5E3557466FA33EA97AE64F695D.exe</td><td/><td>C:\Users\Randy Hollines\Documents\Code\images\adobe-blueprint-pdf-symbol.ico</td><td>0</td></row>
 		<row><td>NewShortcut2_0596DA41ED7D4B35AD32B5255AD7416F.exe</td><td/><td>C:\Users\Randy Hollines\Documents\Code\v1.1\objeck-lang\images\pdf.ico</td><td>0</td></row>
@@ -4332,6 +4330,7 @@
 		<row><td>NewShortcut2_5903D763B94243DA9A5DF973B0276E50.exe</td><td/><td>C:\Users\Randy Hollines\Documents\Code\v1.1\objeck-lang\images\pdf.ico</td><td>0</td></row>
 		<row><td>NewShortcut2_5B2285C6FE204D698A4B65AAD583AF0F.exe</td><td/><td>C:\Users\Randy Hollines\Documents\Code\main\images\pdf.ico</td><td>0</td></row>
 		<row><td>NewShortcut2_7F98292683864354A96921F093353662.exe</td><td/><td>C:\Users\Randy Hollines\Documents\Code\images\pdf.ico</td><td>0</td></row>
+		<row><td>NewShortcut2_809E554DD7DA4B9A9A79BE4B49700B23.exe</td><td/><td>C:\Users\Randy\Documents\Code\objeck-lang\images\Programs.ico</td><td>0</td></row>
 		<row><td>NewShortcut2_A959DA6D846142AFB85C73BE68270CA6.exe</td><td/><td>C:\Users\Randy Hollines\Documents\Code\v1.1\objeck-lang\images\pdf.ico</td><td>0</td></row>
 		<row><td>NewShortcut2_A9AAEE654BA44650B32AA7E21D75A8A2.exe</td><td/><td>C:\Users\Randy Hollines\Documents\Code\main\images\pdf.ico</td><td>0</td></row>
 		<row><td>NewShortcut2_BE046172E5EB4B888CF2CD130859C31A.exe</td><td/><td>C:\Users\Randy Hollines\Documents\Code\v1.1\objeck-lang\images\pdf.ico</td><td>0</td></row>
@@ -4344,17 +4343,18 @@
 		<row><td>NewShortcut3_1C64B98248454613B917537486ED1B8D.exe</td><td/><td>C:\Users\Randy Desktop\Documents\Code\objeck-lang\images\pdf.ico</td><td>0</td></row>
 		<row><td>NewShortcut3_2D84039E8E9E4930875D5148D5BF6F91.exe</td><td/><td>C:\Users\Randy Hollines\Documents\Code\main\images\pdf.ico</td><td>0</td></row>
 		<row><td>NewShortcut3_6A038888799A4ABCBD2B12F71EC97FED.exe</td><td/><td>C:\Users\Randy Hollines\Documents\Code\objeck-lang\images\pdf.ico</td><td>0</td></row>
+		<row><td>NewShortcut3_7022C7273B804572B79025E6997231AC.exe</td><td/><td>C:\Users\Randy\Documents\Code\objeck-lang\images\Program-Group.ico</td><td>0</td></row>
 		<row><td>NewShortcut3_7320DA0CCC13489684FBB3EE342BB9C6.exe</td><td/><td>C:\Users\Randy Desktop\Documents\Code\objeck-lang\images\pdf.ico</td><td>0</td></row>
 		<row><td>NewShortcut3_AB4F81545B9F4635BBCA33755D366547.exe</td><td/><td>C:\Users\Randy Hollines\Documents\Code\images\pdf.ico</td><td>0</td></row>
 		<row><td>NewShortcut3_B3BFF5D23D694AA4808836E9227917CF.exe</td><td/><td>C:\Users\Randy Hollines\Documents\Code\main\images\pdf.ico</td><td>0</td></row>
 		<row><td>NewShortcut3_BDD0768BD188422FA21F2CFF785BC76A.exe</td><td/><td>C:\Users\Randy Hollines\Documents\Code\images\pdf.ico</td><td>0</td></row>
 		<row><td>NewShortcut3_C555CC5B0101427CBE1E6F1F459C5C4A.exe</td><td/><td>C:\Users\Randy Hollines\Documents\Code\images\pdf.ico</td><td>0</td></row>
-		<row><td>NewShortcut3_E210B5BF1E8B4D4D9B3CE0F4125B34D5.exe</td><td/><td>C:\Users\Randy\Documents\Code\objeck-lang\images\Programs.ico</td><td>0</td></row>
 		<row><td>NewShortcut3_EB6490E014594F0196DCC66720C54A3B.exe</td><td/><td>C:\Users\Randy Hollines\Documents\Code\images\folder-blue-open.ico</td><td>0</td></row>
 		<row><td>NewShortcut3_FB727371193C4004982838D09CDDD3A1.exe</td><td/><td>C:\Users\Randy Hollines\Documents\Code\objeck-lang\images\pdf.ico</td><td>0</td></row>
-		<row><td>NewShortcut4_7850EE9932EA4A61BF08EF566FD4707F.exe</td><td/><td>C:\Users\Randy\Documents\Code\objeck-lang\images\Program-Group.ico</td><td>0</td></row>
 		<row><td>NewShortcut4_D623D50303DF4830A2976A6072725759.exe</td><td/><td>C:\Users\Randy Hollines\Desktop\objeck_r0.9.12_win\objeck_r0.9.12_win\objeck_r0.9.12_win\objeck-lang\docs\objeck_lang.pdf</td><td>0</td></row>
+		<row><td>NewShortcut4_F09BAAEE4BEF42F793CC96EA90769CEC.exe</td><td/><td>C:\Users\Randy\Documents\Code\objeck-lang\images\adobe-blueprint-pdf-symbol.ico</td><td>0</td></row>
 		<row><td>NewShortcut5_49A65873A36847778C2B1E1B6223D754.exe</td><td/><td>C:\Users\Randy\Documents\Code\objeck-lang\images\pdf.ico</td><td>0</td></row>
+		<row><td>NewShortcut5_B08F5123D22D453B86C836B1724B300E.exe</td><td/><td>C:\Users\Randy\Documents\Code\objeck-lang\images\books.ico</td><td>0</td></row>
 		<row><td>NewShortcut5_BFEBA4AB90F74AA49BB0C94AE189DC7E.exe</td><td/><td>C:\Users\Randy\Documents\Code\objeck-lang\images\pdf.ico</td><td>0</td></row>
 		<row><td>NewShortcut6_DCA9E61D1C9946A7987CECDBFACD2CE0.exe</td><td/><td>C:\Users\Randy\Documents\Code\objeck-lang\images\books.ico</td><td>0</td></row>
 		<row><td>_2EDAE7FE_8047_4581_902C_D234BA5A39AD</td><td/><td>C:\Users\Randy\Documents\Code\objeck-lang\images\wrench.ico</td><td>0</td></row>
@@ -4793,8 +4793,6 @@ UwBpAG4AZwBsAGUASQBtAGEAZwBlAAEARQB4AHAAcgBlAHMAcwA=
 		<col def="S72">Icon_</col>
 		<col def="I2">IconIndex</col>
 		<col def="I4">ISAttributes</col>
-		<row><td>obe.File</td><td/><td/><td>Objeck Executable</td><td>_33DD2F40_C84E_484C_BE0D_654AE744734E</td><td>0</td><td/></row>
-		<row><td>obl.File</td><td/><td/><td>Objeck Library File</td><td>_2EDAE7FE_8047_4581_902C_D234BA5A39AD</td><td>0</td><td/></row>
 	</table>
 
 	<table name="Property">
@@ -4841,6 +4839,8 @@ UwBpAG4AZwBsAGUASQBtAGEAZwBlAAEARQB4AHAAcgBlAHMAcwA=
 		<row><td>IS_SQLSERVER_SERVER</td><td/><td/></row>
 		<row><td>IS_SQLSERVER_USERNAME</td><td>sa</td><td/></row>
 		<row><td>InstallChoice</td><td>AR</td><td/></row>
+		<row><td>LAUNCHPREADMECOMPCODE</td><td>{BF29CF8B-825C-4F8E-94F7-5F595DB9499B}</td><td/></row>
+		<row><td>LAUNCHPREADMEFILEKEY</td><td>readme.htm</td><td/></row>
 		<row><td>LAUNCHREADME</td><td>1</td><td/></row>
 		<row><td>Manufacturer</td><td>##COMPANY_NAME##</td><td/></row>
 		<row><td>PIDKEY</td><td/><td/></row>
@@ -4870,11 +4870,12 @@ UwBpAG4AZwBsAGUASQBtAGEAZwBlAAEARQB4AHAAcgBlAHMAcwA=
 		<row><td>PROGMSG_IIS_ROLLBACKWEBSERVICEEXTENSIONS</td><td>##IDS_PROGMSG_IIS_ROLLBACKWEBSERVICEEXTENSIONS##</td><td/></row>
 		<row><td>ProductCode</td><td>{9CF1BD0B-41F4-44B6-801F-BA06285CF577}</td><td/></row>
 		<row><td>ProductName</td><td>Objeck</td><td/></row>
-		<row><td>ProductVersion</td><td>3.3.5.0</td><td/></row>
+		<row><td>ProductVersion</td><td>3.3.5.2</td><td/></row>
 		<row><td>ProgressType0</td><td>install</td><td/></row>
 		<row><td>ProgressType1</td><td>Installing</td><td/></row>
 		<row><td>ProgressType2</td><td>installed</td><td/></row>
 		<row><td>ProgressType3</td><td>installs</td><td/></row>
+		<row><td>READMEFILETOLAUNCHATEND</td><td>[INSTALLDIR]readme.htm</td><td/></row>
 		<row><td>RebootYesNo</td><td>Yes</td><td/></row>
 		<row><td>ReinstallFileVersion</td><td>o</td><td/></row>
 		<row><td>ReinstallModeText</td><td>omus</td><td/></row>
@@ -4948,10 +4949,10 @@ UwBpAG4AZwBsAGUASQBtAGEAZwBlAAEARQB4AHAAcgBlAHMAcwA=
 		<col def="s72">DirProperty</col>
 		<col def="i2">InstallMode</col>
 		<row><td>NewShortcut1</td><td>ISX_DEFAULTCOMPONENT</td><td/><td>newfolder1</td><td>2</td></row>
+		<row><td>NewShortcut2</td><td>ISX_DEFAULTCOMPONENT</td><td/><td>newfolder1</td><td>2</td></row>
 		<row><td>NewShortcut3</td><td>ISX_DEFAULTCOMPONENT</td><td/><td>newfolder1</td><td>2</td></row>
-		<row><td>NewShortcut4</td><td>ISX_DEFAULTCOMPONENT</td><td/><td>newfolder1</td><td>2</td></row>
-		<row><td>NewShortcut5</td><td>ISX_DEFAULTCOMPONENT7</td><td/><td>newfolder1</td><td>2</td></row>
-		<row><td>NewShortcut6</td><td>ISX_DEFAULTCOMPONENT8</td><td/><td>newfolder1</td><td>2</td></row>
+		<row><td>NewShortcut4</td><td>ISX_DEFAULTCOMPONENT3</td><td/><td>newfolder1</td><td>2</td></row>
+		<row><td>NewShortcut5</td><td>ISX_DEFAULTCOMPONENT5</td><td/><td>newfolder1</td><td>2</td></row>
 	</table>
 
 	<table name="RemoveIniFile">
@@ -5037,11 +5038,11 @@ UwBpAG4AZwBsAGUASQBtAGEAZwBlAAEARQB4AHAAcgBlAHMAcwA=
 		<col def="S255">ISComments</col>
 		<col def="S255">ISShortcutName</col>
 		<col def="I4">ISAttributes</col>
-		<row><td>NewShortcut1</td><td>newfolder1</td><td>##ID_STRING32##</td><td>ISX_DEFAULTCOMPONENT</td><td>AlwaysInstall</td><td/><td/><td/><td>NewShortcut1_8B1D8ED31CC3456EBCB6AA898B01DCC9.exe</td><td>0</td><td>1</td><td/><td/><td/><td/><td/><td/><td/><td/></row>
-		<row><td>NewShortcut3</td><td>newfolder1</td><td>##ID_STRING34##</td><td>ISX_DEFAULTCOMPONENT</td><td>[EXAMPLES]</td><td/><td/><td/><td>NewShortcut3_E210B5BF1E8B4D4D9B3CE0F4125B34D5.exe</td><td>0</td><td>1</td><td/><td/><td/><td/><td/><td/><td/><td/></row>
-		<row><td>NewShortcut4</td><td>newfolder1</td><td>##ID_STRING51##</td><td>ISX_DEFAULTCOMPONENT</td><td>[BIN]</td><td/><td/><td/><td>NewShortcut4_7850EE9932EA4A61BF08EF566FD4707F.exe</td><td>0</td><td>1</td><td/><td/><td/><td/><td/><td/><td/><td/></row>
-		<row><td>NewShortcut5</td><td>newfolder1</td><td>##ID_STRING54##</td><td>ISX_DEFAULTCOMPONENT7</td><td>[INSTALLDIR]doc\objeck_lang.pdf</td><td/><td/><td/><td>NewShortcut5_BFEBA4AB90F74AA49BB0C94AE189DC7E.exe</td><td>0</td><td>1</td><td/><td/><td/><td/><td/><td/><td/><td/></row>
-		<row><td>NewShortcut6</td><td>newfolder1</td><td>##ID_STRING55##</td><td>ISX_DEFAULTCOMPONENT8</td><td>[INSTALLDIR]doc\api\index.html</td><td/><td/><td/><td>NewShortcut6_DCA9E61D1C9946A7987CECDBFACD2CE0.exe</td><td>0</td><td>1</td><td/><td/><td/><td/><td/><td/><td/><td/></row>
+		<row><td>NewShortcut1</td><td>newfolder1</td><td>##ID_STRING32##</td><td>ISX_DEFAULTCOMPONENT</td><td>AlwaysInstall</td><td/><td/><td/><td>NewShortcut1_B79F56A405914B988502AF44A439B9F4.exe</td><td>0</td><td>1</td><td/><td/><td/><td/><td/><td/><td/><td/></row>
+		<row><td>NewShortcut2</td><td>newfolder1</td><td>##ID_STRING34##</td><td>ISX_DEFAULTCOMPONENT</td><td>[EXAMPLES]</td><td/><td/><td/><td>NewShortcut2_809E554DD7DA4B9A9A79BE4B49700B23.exe</td><td>0</td><td>1</td><td/><td/><td/><td/><td/><td/><td/><td/></row>
+		<row><td>NewShortcut3</td><td>newfolder1</td><td>##ID_STRING51##</td><td>ISX_DEFAULTCOMPONENT</td><td>[BIN]</td><td/><td/><td/><td>NewShortcut3_7022C7273B804572B79025E6997231AC.exe</td><td>0</td><td>1</td><td/><td/><td/><td/><td/><td/><td/><td/></row>
+		<row><td>NewShortcut4</td><td>newfolder1</td><td>##ID_STRING56##</td><td>ISX_DEFAULTCOMPONENT3</td><td>AlwaysInstall</td><td/><td/><td/><td>NewShortcut4_F09BAAEE4BEF42F793CC96EA90769CEC.exe</td><td>0</td><td>1</td><td/><td/><td/><td/><td/><td/><td/><td/></row>
+		<row><td>NewShortcut5</td><td>newfolder1</td><td>##ID_STRING57##</td><td>ISX_DEFAULTCOMPONENT5</td><td>AlwaysInstall</td><td/><td/><td/><td>NewShortcut5_B08F5123D22D453B86C836B1724B300E.exe</td><td>0</td><td>1</td><td/><td/><td/><td/><td/><td/><td/><td/></row>
 	</table>
 
 	<table name="Signature">
@@ -5172,8 +5173,6 @@ UwBpAG4AZwBsAGUASQBtAGEAZwBlAAEARQB4AHAAcgBlAHMAcwA=
 		<col def="I2">Sequence</col>
 		<col def="L255">Command</col>
 		<col def="L255">Argument</col>
-		<row><td>obe</td><td>open</td><td/><td>&amp;Run</td><td>%1</td></row>
-		<row><td>obl</td><td>open</td><td/><td/><td/></row>
 	</table>
 
 	<table name="_Validation">
