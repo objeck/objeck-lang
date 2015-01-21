@@ -20,7 +20,8 @@ Objeck release steps
 
 Debian
 -----
-0.	http://bad.debian.net/
+0.1	http://bad.debian.net/
+0.2	default_host_main = mentors
 1.	key management (https://mentors.debian.net/intro-maintainers)
 		a. gpg --output mygpgkey_pub.gpg --armor --export ABCDFE01
 		b. gpg --output mygpgkey_sec.gpg --armor --export-secret-key ABCDFE01
