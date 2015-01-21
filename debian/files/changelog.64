@@ -1,0 +1,7 @@
+objeck-lang-amd64 (3.3.5-2-1) unstable; urgency=low
+
+  * Initial release
+  * Optimized stack operations for floating point operations
+  * Added missing compiler check for array assignment to array element
+
+ -- Randy Hollines <objeck@gmail.com>  Tue, 20 Jan 2015 08:02:00 -0800
