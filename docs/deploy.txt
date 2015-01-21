@@ -21,7 +21,7 @@ Objeck release steps
 Debian
 -----
 0.	http://bad.debian.net/
-1.	key managment (https://mentors.debian.net/intro-maintainers)
+1.	key management (https://mentors.debian.net/intro-maintainers)
 		a. gpg --output mygpgkey_pub.gpg --armor --export ABCDFE01
 		b. gpg --output mygpgkey_sec.gpg --armor --export-secret-key ABCDFE01
 		c. gpg --import ~/mygpgkey_pub.gpg
