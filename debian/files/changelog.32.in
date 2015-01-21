@@ -1,4 +1,4 @@
-objeck-lang-i386 (@VERSION@) unstable; urgency=low
+objeck-lang-i386 (@VERSION_LONG@) unstable; urgency=low
 
   * Closes: #775887
   * Optimized stack operations for floating point operations
