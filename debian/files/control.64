@@ -1,4 +1,4 @@
-Source: objeck-lang
+Source: objeck-lang_amd64
 Section: devel
 Priority: optional
 Maintainer: Randy Hollines <objeck@gmail.com>
