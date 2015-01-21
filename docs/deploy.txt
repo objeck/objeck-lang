@@ -27,4 +27,4 @@ Debian
 		c. gpg --import ~/mygpgkey_pub.gpg
 		d. gpg --allow-secret-key-import --import ~/mygpgkey_sec.gpg 
 2.	debsign objeck-lang_3.3.5-2-1_i386.changes
-3.	dput objeck-lang_3.3.5-2-1_i386.changes
+3.	dput mentors objeck-lang_3.3.5-2-1_i386.changes
