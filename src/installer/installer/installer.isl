@@ -4175,7 +4175,7 @@
 		<row><td>ID_STRING3</td><td>1033</td><td>Randy Hollines</td><td>0</td><td/><td>-2069797071</td></row>
 		<row><td>ID_STRING30</td><td>1033</td><td>PROGRA~1|Programmer's Guide</td><td>0</td><td/><td>-2095029140</td></row>
 		<row><td>ID_STRING31</td><td>1033</td><td>PROGRA~1|Programmer's Guide</td><td>0</td><td/><td>606110350</td></row>
-		<row><td>ID_STRING32</td><td>1033</td><td>Readme</td><td>0</td><td/><td>-1599895216</td></row>
+		<row><td>ID_STRING32</td><td>1033</td><td>Readme</td><td>0</td><td/><td>-1197263764</td></row>
 		<row><td>ID_STRING33</td><td>1033</td><td>PROGRA~1|Programmer’s Guide</td><td>0</td><td/><td>1931659475</td></row>
 		<row><td>ID_STRING34</td><td>1033</td><td>CODEEX~1|Code Examples</td><td>0</td><td/><td>-1599909520</td></row>
 		<row><td>ID_STRING35</td><td>1033</td><td>PROGRA~1|Programmer's Guide</td><td>0</td><td/><td>-165672469</td></row>
@@ -4203,6 +4203,8 @@
 		<row><td>ID_STRING55</td><td>1033</td><td>CLASSL~1|Class Libraries</td><td>0</td><td/><td>371367984</td></row>
 		<row><td>ID_STRING56</td><td>1033</td><td>PROGRA~1|Programmer's Guide</td><td>0</td><td/><td>-1599878768</td></row>
 		<row><td>ID_STRING57</td><td>1033</td><td>APIDOC~1|API Documentation</td><td>0</td><td/><td>-1599919664</td></row>
+		<row><td>ID_STRING58</td><td>1033</td><td>PROGRA~1|Programmer's Guide</td><td>0</td><td/><td>-1197241236</td></row>
+		<row><td>ID_STRING59</td><td>1033</td><td>APIDOC~1|API Documentation</td><td>0</td><td/><td>-1197259604</td></row>
 		<row><td>ID_STRING6</td><td>1033</td><td>PROGRA~1|Programmer's Guide</td><td>0</td><td/><td>1402902288</td></row>
 		<row><td>ID_STRING7</td><td>1033</td><td>PROGRA~1|Programmer's Guide</td><td>0</td><td/><td>-736210891</td></row>
 		<row><td>ID_STRING8</td><td>1033</td><td>PROGRA~1|Programmer's Guide</td><td>0</td><td/><td>337554475</td></row>
@@ -4322,8 +4324,8 @@
 		<row><td>ARPPRODUCTICON.exe</td><td/><td>&lt;ISProductFolder&gt;\redist\Language Independent\OS Independent\setupicon.ico</td><td>0</td></row>
 		<row><td>NewShortcut1_1D5F2B2809D84A1F849EF8C211FFED3A.exe</td><td/><td>C:\Users\Randy\Documents\Code\images\adobe-blueprint-pdf-symbol.ico</td><td>0</td></row>
 		<row><td>NewShortcut1_30B9F646489D4EE4963F1C300BCA1D04.exe</td><td/><td>C:\Users\Alienware\Documents\Code\main\images\adobe-blueprint-pdf-symbol.ico</td><td>0</td></row>
+		<row><td>NewShortcut1_9794EADD9C334CEB8FC874FE428F0101.exe</td><td/><td>C:\Users\Randy\Documents\Code\objeck-lang\images\Mimetypes-text-x-readme.ico</td><td>0</td></row>
 		<row><td>NewShortcut1_A0956C23BB9F429482AEF5558BE9F486.exe</td><td/><td>C:\Users\Randy Hollines\Documents\Code\images\pdf.ico</td><td>0</td></row>
-		<row><td>NewShortcut1_B79F56A405914B988502AF44A439B9F4.exe</td><td/><td>C:\Users\Randy\Documents\Code\objeck-lang\images\Mimetypes-text-x-readme.ico</td><td>0</td></row>
 		<row><td>NewShortcut1_C64675E356EB410D86505CA38FB9D1E2.exe</td><td/><td>C:\Users\Randy Hollines\Documents\Code\main\images\pdf.ico</td><td>0</td></row>
 		<row><td>NewShortcut1_EC84BD5E3557466FA33EA97AE64F695D.exe</td><td/><td>C:\Users\Randy Hollines\Documents\Code\images\adobe-blueprint-pdf-symbol.ico</td><td>0</td></row>
 		<row><td>NewShortcut2_0596DA41ED7D4B35AD32B5255AD7416F.exe</td><td/><td>C:\Users\Randy Hollines\Documents\Code\v1.1\objeck-lang\images\pdf.ico</td><td>0</td></row>
@@ -4358,9 +4360,11 @@
 		<row><td>NewShortcut3_FB727371193C4004982838D09CDDD3A1.exe</td><td/><td>C:\Users\Randy Hollines\Documents\Code\objeck-lang\images\pdf.ico</td><td>0</td></row>
 		<row><td>NewShortcut4_D623D50303DF4830A2976A6072725759.exe</td><td/><td>C:\Users\Randy Hollines\Desktop\objeck_r0.9.12_win\objeck_r0.9.12_win\objeck_r0.9.12_win\objeck-lang\docs\objeck_lang.pdf</td><td>0</td></row>
 		<row><td>NewShortcut4_F09BAAEE4BEF42F793CC96EA90769CEC.exe</td><td/><td>C:\Users\Randy\Documents\Code\objeck-lang\images\adobe-blueprint-pdf-symbol.ico</td><td>0</td></row>
+		<row><td>NewShortcut4_F59D4C364A69437DAEE277E6CB1B3FB2.exe</td><td/><td>C:\Users\Randy\Documents\Code\objeck-lang\images\adobe-blueprint-pdf-symbol.ico</td><td>0</td></row>
 		<row><td>NewShortcut5_49A65873A36847778C2B1E1B6223D754.exe</td><td/><td>C:\Users\Randy\Documents\Code\objeck-lang\images\pdf.ico</td><td>0</td></row>
 		<row><td>NewShortcut5_B08F5123D22D453B86C836B1724B300E.exe</td><td/><td>C:\Users\Randy\Documents\Code\objeck-lang\images\books.ico</td><td>0</td></row>
 		<row><td>NewShortcut5_BFEBA4AB90F74AA49BB0C94AE189DC7E.exe</td><td/><td>C:\Users\Randy\Documents\Code\objeck-lang\images\pdf.ico</td><td>0</td></row>
+		<row><td>NewShortcut5_DCCFFACA157F42D9BAFCACC9D7B0976F.exe</td><td/><td>C:\Users\Randy\Documents\Code\objeck-lang\images\books.ico</td><td>0</td></row>
 		<row><td>NewShortcut6_DCA9E61D1C9946A7987CECDBFACD2CE0.exe</td><td/><td>C:\Users\Randy\Documents\Code\objeck-lang\images\books.ico</td><td>0</td></row>
 		<row><td>_2EDAE7FE_8047_4581_902C_D234BA5A39AD</td><td/><td>C:\Users\Randy\Documents\Code\objeck-lang\images\wrench.ico</td><td>0</td></row>
 		<row><td>_33DD2F40_C84E_484C_BE0D_654AE744734E</td><td/><td>C:\Users\Randy\Documents\Code\objeck-lang\images\Gear_run.ico</td><td>0</td></row>
@@ -4956,6 +4960,8 @@ UwBpAG4AZwBsAGUASQBtAGEAZwBlAAEARQB4AHAAcgBlAHMAcwA=
 		<row><td>NewShortcut1</td><td>ISX_DEFAULTCOMPONENT</td><td/><td>newfolder1</td><td>2</td></row>
 		<row><td>NewShortcut2</td><td>ISX_DEFAULTCOMPONENT</td><td/><td>newfolder1</td><td>2</td></row>
 		<row><td>NewShortcut3</td><td>ISX_DEFAULTCOMPONENT</td><td/><td>newfolder1</td><td>2</td></row>
+		<row><td>NewShortcut4</td><td>ISX_DEFAULTCOMPONENT3</td><td/><td>newfolder1</td><td>2</td></row>
+		<row><td>NewShortcut5</td><td>ISX_DEFAULTCOMPONENT5</td><td/><td>newfolder1</td><td>2</td></row>
 	</table>
 
 	<table name="RemoveIniFile">
@@ -5041,9 +5047,11 @@ UwBpAG4AZwBsAGUASQBtAGEAZwBlAAEARQB4AHAAcgBlAHMAcwA=
 		<col def="S255">ISComments</col>
 		<col def="S255">ISShortcutName</col>
 		<col def="I4">ISAttributes</col>
-		<row><td>NewShortcut1</td><td>newfolder1</td><td>##ID_STRING32##</td><td>ISX_DEFAULTCOMPONENT</td><td>AlwaysInstall</td><td/><td/><td/><td>NewShortcut1_B79F56A405914B988502AF44A439B9F4.exe</td><td>0</td><td>1</td><td/><td/><td/><td/><td/><td/><td/><td/></row>
+		<row><td>NewShortcut1</td><td>newfolder1</td><td>##ID_STRING32##</td><td>ISX_DEFAULTCOMPONENT</td><td>[INSTALLDIR]readme.htm</td><td/><td/><td/><td>NewShortcut1_9794EADD9C334CEB8FC874FE428F0101.exe</td><td>0</td><td>1</td><td/><td/><td/><td/><td/><td/><td/><td/></row>
 		<row><td>NewShortcut2</td><td>newfolder1</td><td>##ID_STRING34##</td><td>ISX_DEFAULTCOMPONENT</td><td>[EXAMPLES]</td><td/><td/><td/><td>NewShortcut2_809E554DD7DA4B9A9A79BE4B49700B23.exe</td><td>0</td><td>1</td><td/><td/><td/><td/><td/><td/><td/><td/></row>
 		<row><td>NewShortcut3</td><td>newfolder1</td><td>##ID_STRING51##</td><td>ISX_DEFAULTCOMPONENT</td><td>[BIN]</td><td/><td/><td/><td>NewShortcut3_7022C7273B804572B79025E6997231AC.exe</td><td>0</td><td>1</td><td/><td/><td/><td/><td/><td/><td/><td/></row>
+		<row><td>NewShortcut4</td><td>newfolder1</td><td>##ID_STRING58##</td><td>ISX_DEFAULTCOMPONENT3</td><td>[INSTALLDIR]doc\objeck_lang.pdf</td><td/><td/><td/><td>NewShortcut4_F59D4C364A69437DAEE277E6CB1B3FB2.exe</td><td>0</td><td>1</td><td/><td/><td/><td/><td/><td/><td/><td/></row>
+		<row><td>NewShortcut5</td><td>newfolder1</td><td>##ID_STRING59##</td><td>ISX_DEFAULTCOMPONENT5</td><td>[INSTALLDIR]doc\api\index.html</td><td/><td/><td/><td>NewShortcut5_DCCFFACA157F42D9BAFCACC9D7B0976F.exe</td><td>0</td><td>1</td><td/><td/><td/><td/><td/><td/><td/><td/></row>
 	</table>
 
 	<table name="Signature">
