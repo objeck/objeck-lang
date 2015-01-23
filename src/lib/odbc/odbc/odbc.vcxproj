@@ -46,6 +46,7 @@
     <CustomBuildAfterTargets>
     </CustomBuildAfterTargets>
     <TargetName>libobjk_odbc</TargetName>
+    <OutDir>..\..\objeck-lang</OutDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
