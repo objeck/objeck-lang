@@ -200,8 +200,8 @@ extern "C" {
 #endif
   void odbc_select_statement(VMContext& context) 
   {
-    SQLHDBC conn = (SQLHDBC)APITools_GetIntValue(context, 2);
-    const wstring wsql(APITools_GetStringValue(context, 3));
+    SQLHDBC conn = (SQLHDBC)APITools_GetIntValue(context, 3);
+    const wstring wsql(APITools_GetStringValue(context, 4));
 
 #ifdef _DEBUG
     wcout << L"### select: conn=" << conn << L", stmt=" << wsql << L"  ###" << endl;
