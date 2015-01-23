@@ -927,7 +927,7 @@ bundle ODBC {
 		
 		#~
 		Sets the hours
-		@param day hours
+		@param hours hours
 		~#
 		method : public : SetHours(hours : Int) ~ Nil {
 			@hours := hours;
@@ -943,7 +943,7 @@ bundle ODBC {
 		
 		#~
 		Sets the minutes
-		@param day minutes
+		@param minutes minutes
 		~#
 		method : public : SetMinute(minute : Int) ~ Nil {
 			@minute := minute;
@@ -959,7 +959,7 @@ bundle ODBC {
 		
 		#~
 		Sets the seconds
-		@param day seconds
+		@param seconds seconds
 		~#
 		method : public : SetSeconds(second : Int) ~ Nil {
 			@second := second;
