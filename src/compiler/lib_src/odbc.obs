@@ -24,6 +24,7 @@ bundle ODBC {
 		
 		#~
 		Constructor 
+		@param ds ODBC date source
 		@param username ODBC connection name
 		@param password ODBC connection password
 		~#
@@ -943,7 +944,7 @@ bundle ODBC {
 		
 		#~
 		Sets the minutes
-		@param minutes minutes
+		@param minute minutes
 		~#
 		method : public : SetMinute(minute : Int) ~ Nil {
 			@minute := minute;
@@ -959,7 +960,7 @@ bundle ODBC {
 		
 		#~
 		Sets the seconds
-		@param seconds seconds
+		@param second seconds
 		~#
 		method : public : SetSeconds(second : Int) ~ Nil {
 			@second := second;
