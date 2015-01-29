@@ -140,9 +140,13 @@ cp -rf $CWD/files/* debian
 if [ ! -z "$1" ] && [ "$1" = "32" ]; then
 	mv debian/control.32 debian/control
 	rm debian/control.64
+	mv debian/changelog.32 debian/changelog
+	rm debian/changelog.64
 else
 	mv debian/control.64 debian/control
 	rm debian/control.32
+	mv debian/changelog.64 debian/changelog
+	rm debian/changelog.32
 fi
 
 bzr add debian/source/format
