@@ -46,7 +46,7 @@ void PrintEnv(FCGX_Stream* out, const char* label, char** envp)
 
 int main(const int argc, const char* argv[])
 {
-  const char* prgm_path = FCGX_GetParam("PROGRAM_PATH", environ);
+  const char* prgm_path; // = FCGX_GetParam("PROGRAM_PATH", environ);
   if(!prgm_path) {
     wcerr << L"Unable to find program, please ensure the 'PROGRAM_PATH' variable has been set correctly." << endl;
     exit(1);
@@ -54,7 +54,10 @@ int main(const int argc, const char* argv[])
   
   // load program
   srand(time(NULL)); rand();
-  Loader loader(prgm_path);
+
+  wchar_t* dummy;
+  Loader loader(/*prgm_path*/dummy);
+
   loader.Load();
 
   // ignore web applications
@@ -99,7 +102,7 @@ int main(const int argc, const char* argv[])
       req_obj[1] = (long)envp;
       
       // create response
-      long* res_obj = MemoryManager:AllocateObject(L"FastCgi.Response", 
+      long* res_obj = MemoryManager::AllocateObject(L"FastCgi.Response", 
                                                    op_stack, *stack_pos, false);
       if(res_obj) { 	
         res_obj[0] = (long)out;
