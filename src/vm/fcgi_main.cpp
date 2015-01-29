@@ -38,9 +38,9 @@
 
 void PrintEnv(FCGX_Stream* out, const char* label, char** envp)
 {
-  cout << endl << label << endl;
+  wcout << endl << label << endl;
   for( ; *envp != NULL; envp++) {
-    cout << "\t" << *envp << endl;
+    wcout << L"\t" << *envp << endl;
   }
 }
 
@@ -48,7 +48,7 @@ int main(const int argc, const char* argv[])
 {
   const char* prgm_path = FCGX_GetParam("PROGRAM_PATH", environ);
   if(!prgm_path) {
-    cerr << "Unable to find program, please ensure the 'PROGRAM_PATH' variable has been set correctly." << endl;
+    wcerr << L"Unable to find program, please ensure the 'PROGRAM_PATH' variable has been set correctly." << endl;
     exit(1);
   }
   
@@ -59,7 +59,7 @@ int main(const int argc, const char* argv[])
 
   // ignore web applications
   if(!loader.IsWeb()) {
-    cerr << "Please recompile the code to be a web application." << endl;
+    wcerr << L"Please recompile the code to be a web application." << endl;
     exit(1);
   }
   
@@ -70,12 +70,12 @@ int main(const int argc, const char* argv[])
   // locate starting class and method
   StackMethod* mthd = loader.GetStartMethod();
   if(!mthd) {
-    cerr << "Unable to locate the 'Request(args)' function." << endl;
+    wcerr << L"Unable to locate the 'Request(args)' function." << endl;
     exit(1);
   }
   
 #ifdef _DEBUG
-  cerr << "### Loaded method: " << mthd->GetName() << " ###" << endl;
+  wcerr << L"### Loaded method: " << mthd->GetName() << L" ###" << endl;
 #endif
   
   Runtime::StackInterpreter intpr(Loader::GetProgram());
@@ -92,44 +92,44 @@ int main(const int argc, const char* argv[])
     long* stack_pos = new long;
     
     // create request
-    long* req_obj = MemoryManager::Instance()->AllocateObject("FastCgi.Request", 
-							      op_stack, *stack_pos, false);
+    long* req_obj = MemoryManager::AllocateObject(L"FastCgi.Request", 
+                                                  op_stack, *stack_pos, false);
     if(req_obj) {
       req_obj[0] = (long)in;
       req_obj[1] = (long)envp;
       
       // create response
-      long* res_obj = MemoryManager::Instance()->AllocateObject("FastCgi.Response", 
-								op_stack, *stack_pos, false);
+      long* res_obj = MemoryManager:AllocateObject(L"FastCgi.Response", 
+                                                   op_stack, *stack_pos, false);
       if(res_obj) { 	
-	res_obj[0] = (long)out;
-	res_obj[1] = (long)err;
+        res_obj[0] = (long)out;
+        res_obj[1] = (long)err;
 	
-	// set calling parameters
-	op_stack[0] = (long)req_obj;
-	op_stack[1] = (long)res_obj;
-	*stack_pos = 2;
+        // set calling parameters
+        op_stack[0] = (long)req_obj;
+        op_stack[1] = (long)res_obj;
+        *stack_pos = 2;
  	
-	// execute method
-	intpr.Execute((long*)op_stack, (long*)stack_pos, 0, mthd, NULL, false);
+        // execute method
+        intpr.Execute((long*)op_stack, (long*)stack_pos, 0, mthd, NULL, false);
       }
       else {
-	cerr << ">>> DLL call: Unable to allocate object FastCgi.Response <<" << endl;
-	// TODO: error
-	return 1;
+        wcerr << L">>> DLL call: Unable to allocate object FastCgi.Response <<" << endl;
+        // TODO: error
+        return 1;
       }
     }
     else {
-      cerr << ">>> DLL call: Unable to allocate object FastCgi.Request <<<" << endl;
+      wcerr << L">>> DLL call: Unable to allocate object FastCgi.Request <<<" << endl;
       // TODO: error
       return 1;
     }
     
 #ifdef _DEBUG
-    cout << "# final stack: pos=" << (*stack_pos) << " #" << endl;
+    wcout << L"# final stack: pos=" << (*stack_pos) << L" #" << endl;
     if((*stack_pos) > 0) {
       for(int i = 0; i < (*stack_pos); i++) {
-	cout << "dump: value=" << (void*)(*stack_pos) << endl;
+        wcout << L"dump: value=" << (void*)(*stack_pos) << endl;
       } 
     }
 #endif
