@@ -39,11 +39,11 @@
 extern char **environ;
 #endif
 
-void PrintEnv(FCGX_Stream* out, const char* label, char** envp)
+void PrintEnv(FCGX_Stream* out, const char* label, char** envp) 
 {
   wcout << endl << label << endl;
   for( ; *envp != NULL; envp++) {
-    wcout << L"\t" << *envp << endl;
+    wcout << L"\t" << BytesToUnicode(*envp) << endl;
   }
 }
 
