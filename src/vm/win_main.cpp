@@ -53,7 +53,7 @@ int main(const int argc, const char* argv[])
     int status;
     int version = MAKEWORD(2, 2);
     if(WSAStartup(version, &data)) {
-      cerr << L"Unable to load Winsock 2.2!" << endl;
+      wcerr << L"Unable to load Winsock 2.2!" << endl;
       status = SYSTEM_ERROR;
     }
     else {

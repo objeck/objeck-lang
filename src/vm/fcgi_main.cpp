@@ -31,10 +31,14 @@
 
 #include "fcgi_config.h"
 #include "fcgiapp.h"
+#include "fcgi_stdio.h"
 #include "vm.h"
 
-#define SUCCESS 0
-#define USAGE_ERROR -1
+#ifdef _WIN32
+#include <process.h>
+#else
+extern char **environ;
+#endif
 
 void PrintEnv(FCGX_Stream* out, const char* label, char** envp)
 {
@@ -46,18 +50,38 @@ void PrintEnv(FCGX_Stream* out, const char* label, char** envp)
 
 int main(const int argc, const char* argv[])
 {
-  const char* prgm_path; // = FCGX_GetParam("PROGRAM_PATH", environ);
+  const char* prgm_path = FCGX_GetParam("PROGRAM_PATH", environ);
   if(!prgm_path) {
     wcerr << L"Unable to find program, please ensure the 'PROGRAM_PATH' variable has been set correctly." << endl;
     exit(1);
   }
   
-  // load program
-  srand(time(NULL)); rand();
+#ifdef _WIN32
+   // enable Unicode console support
+    _setmode(_fileno(stdin), _O_U16TEXT);
+    _setmode(_fileno(stdout), _O_U16TEXT);
 
-  wchar_t* dummy;
-  Loader loader(/*prgm_path*/dummy);
-
+    // initialize Winsock
+    WSADATA data;
+    int status;
+    int version = MAKEWORD(2, 2);
+    if(WSAStartup(version, &data)) {
+      wcerr << L"Unable to load Winsock 2.2!" << endl;
+      status = SYSTEM_ERROR;
+      exit(1);
+    }
+#else
+  // enable UTF-8 enviroment
+  char* locale = setlocale(LC_ALL, ""); 
+  std::locale lollocale(locale);
+  setlocale(LC_ALL, locale); 
+  std::wcout.imbue(lollocale);
+#endif
+    // Initialize OpenSSL
+    CRYPTO_malloc_init();
+    SSL_library_init();
+  
+  Loader loader(BytesToUnicode(prgm_path).c_str());
   loader.Load();
 
   // ignore web applications
