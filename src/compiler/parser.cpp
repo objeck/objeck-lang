@@ -1081,15 +1081,15 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       NextToken();
       break;
 
-    case PLTFRM:
+    case GET_PLTFRM:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
-                                                               instructions::PLTFRM);
+                                                               instructions::GET_PLTFRM);
       NextToken();
       break;
 
-    case VERSION:
+    case GET_VERSION:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
-                                                               instructions::VERSION);
+                                                               instructions::GET_VERSION);
       NextToken();
       break;
 

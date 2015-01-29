@@ -157,8 +157,8 @@ namespace instructions {
 		DESERL_CHAR,
 		DESERL_CHAR_ARY,
 		// platform
-    PLTFRM,
-    VERSION,
+    GET_PLTFRM,
+    GET_VERSION,
 		GET_SYS_PROP,
 		SET_SYS_PROP,
     EXIT,

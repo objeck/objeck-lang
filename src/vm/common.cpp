@@ -1656,11 +1656,11 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, long* inst,
     ProcessAddTime(SEC_TIME, op_stack, stack_pos);
     break;
 
-  case PLTFRM:
+  case GET_PLTFRM:
     ProcessPlatform(program, op_stack, stack_pos);
     break;
     
-  case VERSION:
+  case GET_VERSION:
     ProcessVersion(program, op_stack, stack_pos);
     break;
     
