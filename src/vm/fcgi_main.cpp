@@ -31,7 +31,6 @@
 
 #include "fcgi_config.h"
 #include "fcgiapp.h"
-#include "fcgi_stdio.h"
 #include "vm.h"
 
 #ifdef _WIN32
