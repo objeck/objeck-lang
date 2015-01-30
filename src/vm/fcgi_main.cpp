@@ -33,14 +33,17 @@
 #include "fcgiapp.h"
 #include "vm.h"
 
-#define SUCCESS 0
-#define USAGE_ERROR -1
+#ifdef _WIN32
+#include <process.h>
+#else
+extern char **environ;
+#endif
 
-void PrintEnv(FCGX_Stream* out, const char* label, char** envp)
+void PrintEnv(FCGX_Stream* out, const char* label, char** envp) 
 {
   wcout << endl << label << endl;
   for( ; *envp != NULL; envp++) {
-    wcout << L"\t" << *envp << endl;
+    wcout << L"\t" << BytesToUnicode(*envp) << endl;
   }
 }
 
@@ -52,9 +55,32 @@ int main(const int argc, const char* argv[])
     exit(1);
   }
   
-  // load program
-  srand(time(NULL)); rand();
-  Loader loader(prgm_path);
+#ifdef _WIN32
+   // enable Unicode console support
+    _setmode(_fileno(stdin), _O_U16TEXT);
+    _setmode(_fileno(stdout), _O_U16TEXT);
+
+    // initialize Winsock
+    WSADATA data;
+    int status;
+    int version = MAKEWORD(2, 2);
+    if(WSAStartup(version, &data)) {
+      wcerr << L"Unable to load Winsock 2.2!" << endl;
+      status = SYSTEM_ERROR;
+      exit(1);
+    }
+#else
+  // enable UTF-8 enviroment
+  char* locale = setlocale(LC_ALL, ""); 
+  std::locale lollocale(locale);
+  setlocale(LC_ALL, locale); 
+  std::wcout.imbue(lollocale);
+#endif
+    // Initialize OpenSSL
+    CRYPTO_malloc_init();
+    SSL_library_init();
+  
+  Loader loader(BytesToUnicode(prgm_path).c_str());
   loader.Load();
 
   // ignore web applications
@@ -99,7 +125,7 @@ int main(const int argc, const char* argv[])
       req_obj[1] = (long)envp;
       
       // create response
-      long* res_obj = MemoryManager:AllocateObject(L"FastCgi.Response", 
+      long* res_obj = MemoryManager::AllocateObject(L"FastCgi.Response", 
                                                    op_stack, *stack_pos, false);
       if(res_obj) { 	
         res_obj[0] = (long)out;
