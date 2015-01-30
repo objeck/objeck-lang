@@ -147,7 +147,7 @@ class Loader {
   void LoadConfiguration();
   
 public:
-  Loader(wchar_t* arg) {
+  Loader(const wchar_t* arg) {
     filename = arg;
     string_cls_id = -1;
     is_web = false;
