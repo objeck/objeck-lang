@@ -1,27 +1,26 @@
-# ARGS=-pthread -O3 -Wall
-ARGS=-g -D_DEBUG -Wall -pthread
+ARGS=-g -Wall -D_X64 -D_DEBUG -pthread -Wno-unused-function 
+# ARGS=-O3 -Wall -D_X64 -pthread -Wno-unused-function
 
 CC=g++
-SRC=common.o interpreter.o loader.o fcgi_main.o
-OBJ_LIBS=jit_intel_lp32.a memory.a
-MEM_PATH=os/posix
-JIT_PATH=jit/ia32
+SRC=common.o interpreter.o loader.o vm.o fcgi_main.o 
+OBJ_LIBS= jit_intel_lp32.a memory.a
+MEM_PATH= os/posix
+JIT_PATH= jit/ia32
 EXE=obr_fcgi
 
-$(EXE): $(SRC) $(OBJ_LIBS) $(FCGI)
-	$(CC) -m32 -o $(EXE) $(SRC) $(OBJ_LIBS) -lssl -lcrypto -ldl -pthread -lfcgi
+$(EXE): $(SRC) $(OBJ_LIBS)
+	$(CC) -m32 -o $(EXE) $(SRC) $(OBJ_LIBS) -lssl -lcrypto -ldl -lfcgi -pthread
 
 memory.a:
 	cd $(MEM_PATH); make	
-	
-jit_intel_lp32.a:
+
+jit_intel_lp32.a	
 	cd $(JIT_PATH); make	
 	
 %.o: %.cpp
-	$(CC) -m32 $(ARGS) -c $< 
+	$(CC) -m32 $(ARGS) -c $<
 
 clean:
 	cd $(MEM_PATH); make clean
 	cd $(JIT_PATH); make clean
 	rm -f $(EXE).exe $(EXE) *.exe *.o *~
-

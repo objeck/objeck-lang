@@ -420,16 +420,19 @@ bool IniManager::SetValue(const wstring &sec, const wstring &key, const wstring 
   return false;
 }
 
-wxArrayString IniManager::GetListValues(const wstring &sec, const wstring &key)
+vector<wstring> IniManager::GetListValues(const wstring &sec, const wstring &key)
 {
-  wxArrayString values;
   
+  vector<wstring> values;
+  
+  /*
   const wstring raw_value = GetValue(sec, key);    
   wstringTokenizer tokenizer(raw_value, L";");
   while(tokenizer.HasMoreTokens()) {
     const wstring value = tokenizer.GetNextToken();
     values.Add(value);
   }
+  */
   
   return values;
 }
@@ -437,8 +440,8 @@ wxArrayString IniManager::GetListValues(const wstring &sec, const wstring &key)
 bool IniManager::AddListValue(const wstring &sec, const wstring &key, const wstring &val)
 {
   // put values into a set
-  StringSet values_set;
-  wxArrayString list_values = GetListValues(sec, key);
+  set<wstring> values_set;
+  vector<wstring> list_values = GetListValues(sec, key);
   for(size_t i  = 0; i < list_values.size(); ++i) {
     const wstring value = list_values[i];
     if(value.size() > 0) {
@@ -447,7 +450,7 @@ bool IniManager::AddListValue(const wstring &sec, const wstring &key, const wstr
   }
 
   // check for existing entry
-  StringSet::iterator iter = values_set.find(val);
+  set<wstring>::iterator iter = values_set.find(val);
   if(iter != values_set.end()) {
     // found
     return false;
@@ -469,8 +472,8 @@ bool IniManager::AddListValue(const wstring &sec, const wstring &key, const wstr
 bool IniManager::RemoveListValue(const wstring &sec, const wstring &key, const wstring &val)
 {
   // put values into a set
-  StringSet values_set;
-  wxArrayString list_values = GetListValues(sec, key);
+  set<wstring> values_set;
+  vector<wstring> list_values = GetListValues(sec, key);
   for(size_t i  = 0; i < list_values.size(); ++i) {
     const wstring value = list_values[i];
     if(value.size() > 0) {
@@ -480,7 +483,7 @@ bool IniManager::RemoveListValue(const wstring &sec, const wstring &key, const w
   
   // rebuilt and save value
   wstring new_value;
-  for(StringSet::iterator iter = values_set.begin(); iter != values_set.end(); ++iter) {
+  for(set<wstring>::iterator iter = values_set.begin(); iter != values_set.end(); ++iter) {
     const wstring list_value = *iter;
     if(list_value != val) {
       new_value += list_value;

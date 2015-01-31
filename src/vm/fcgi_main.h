@@ -76,7 +76,7 @@ public:
   bool SetValue(const wstring &sec, const wstring &key, const wstring &value);
   
   // set/retrieve/remove list values
-  wxArrayString GetListValues(const wstring &sec, const wstring &key);
+  vector<wstring> GetListValues(const wstring &sec, const wstring &key);
   bool AddListValue(const wstring &sec, const wstring &key, const wstring &val);
   bool RemoveListValue(const wstring &sec, const wstring &key, const wstring &val);
 

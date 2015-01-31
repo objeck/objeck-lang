@@ -1,6 +1,5 @@
-# ARGS=-g -Wall -pthread -D_X64 -D_JIT_SERIAL -D_DEBUG 
-# ARGS=-g -Wall -pthread -D_X64 -D_JIT_SERIAL -D_DTIMING 
-ARGS=-O3 -Wall -pthread -D_X64
+ARGS=-g -Wall -D_X64 -D_DEBUG -pthread -Wno-unused-function 
+# ARGS=-O3 -Wall -D_X64 -pthread -Wno-unused-function
 
 CC=g++
 SRC=common.o interpreter.o loader.o vm.o fcgi_main.o 
@@ -10,7 +9,7 @@ JIT_PATH= jit/amd64
 EXE=obr_fcgi
 
 $(EXE): $(SRC) $(OBJ_LIBS)
-	$(CC) -m64 -o $(EXE) $(SRC) $(OBJ_LIBS) -ldl -lfcgi -pthread 
+	$(CC) -m64 -o $(EXE) $(SRC) $(OBJ_LIBS) -lssl -lcrypto -ldl -lfcgi -pthread
 
 memory.a:
 	cd $(MEM_PATH); make	
