@@ -36,12 +36,18 @@
  ******************************/
 int main(const int argc, const char* argv[])
 {
-  const char* prgm_path = FCGX_GetParam("PROGRAM_PATH", environ);
-  if(!prgm_path) {
-    wcerr << L"Unable to find program, please ensure the 'PROGRAM_PATH' variable has been set correctly." << endl;
+  wstring config_path = BytesToUnicode(FCGX_GetParam("FCGI_CONFIG_PATH", environ));
+  if(config_path.size() == 0) {
+    config_path = L"/obr_vm.ini";
+    /*
+    wcerr << L"Unable to find program, please ensure the 'FCGI_CONFIG_PATH' variable has been set correctly." << endl;
     exit(1);
+    */
   }
-
+  else {
+    config_path += L"/obr_vm.ini";
+  }
+  
 #ifdef _WIN32
   // enable Unicode console support
   _setmode(_fileno(stdin), _O_U16TEXT);
@@ -65,7 +71,7 @@ int main(const int argc, const char* argv[])
   CRYPTO_malloc_init();
   SSL_library_init();
 
-  Loader loader(BytesToUnicode(prgm_path).c_str());
+  Loader loader(config_path.c_str());
   loader.Load();
 
   // ignore web applications
