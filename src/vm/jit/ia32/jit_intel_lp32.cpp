@@ -183,7 +183,7 @@ void JitCompilerIA32::ProcessParameters(int32_t params) {
 		   dest_holder->GetRegister());
       
       RegisterHolder* dest_holder2 = GetRegister();
-      move_mem_reg(-sizeof(int32_t), op_stack_holder->GetRegister(), 
+      move_mem_reg(-(long)(sizeof(int32_t)), op_stack_holder->GetRegister(), 
 		   dest_holder2->GetRegister());
       
       move_mem_reg(STACK_POS, EBP, stack_pos_holder->GetRegister());

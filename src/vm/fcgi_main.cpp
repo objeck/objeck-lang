@@ -39,10 +39,10 @@
 extern char **environ;
 #endif
 
-void PrintEnv(FCGX_Stream* out, const char* label, char** envp) 
+void PrintEnv(FCGX_Stream* out, const char* label, char** envp)
 {
   wcout << endl << label << endl;
-  for( ; *envp != NULL; envp++) {
+  for(; *envp != NULL; envp++) {
     wcout << L"\t" << BytesToUnicode(*envp) << endl;
   }
 }
@@ -54,21 +54,19 @@ int main(const int argc, const char* argv[])
     wcerr << L"Unable to find program, please ensure the 'PROGRAM_PATH' variable has been set correctly." << endl;
     exit(1);
   }
-  
-#ifdef _WIN32
-   // enable Unicode console support
-    _setmode(_fileno(stdin), _O_U16TEXT);
-    _setmode(_fileno(stdout), _O_U16TEXT);
 
-    // initialize Winsock
-    WSADATA data;
-    int status;
-    int version = MAKEWORD(2, 2);
-    if(WSAStartup(version, &data)) {
-      wcerr << L"Unable to load Winsock 2.2!" << endl;
-      status = SYSTEM_ERROR;
-      exit(1);
-    }
+#ifdef _WIN32
+  // enable Unicode console support
+  _setmode(_fileno(stdin), _O_U16TEXT);
+  _setmode(_fileno(stdout), _O_U16TEXT);
+
+  // initialize Winsock
+  WSADATA data;
+  int version = MAKEWORD(2, 2);
+  if(WSAStartup(version, &data)) {
+    wcerr << L"Unable to load Winsock 2.2!" << endl;
+    exit(1);
+  }
 #else
   // enable UTF-8 enviroment
   char* locale = setlocale(LC_ALL, ""); 
@@ -76,10 +74,10 @@ int main(const int argc, const char* argv[])
   setlocale(LC_ALL, locale); 
   std::wcout.imbue(lollocale);
 #endif
-    // Initialize OpenSSL
-    CRYPTO_malloc_init();
-    SSL_library_init();
-  
+  // Initialize OpenSSL
+  CRYPTO_malloc_init();
+  SSL_library_init();
+
   Loader loader(BytesToUnicode(prgm_path).c_str());
   loader.Load();
 
@@ -88,54 +86,54 @@ int main(const int argc, const char* argv[])
     wcerr << L"Please recompile the code to be a web application." << endl;
     exit(1);
   }
-  
+
 #ifdef _TIMING
   clock_t start = clock();
 #endif
-  
+
   // locate starting class and method
   StackMethod* mthd = loader.GetStartMethod();
   if(!mthd) {
     wcerr << L"Unable to locate the 'Request(args)' function." << endl;
     exit(1);
   }
-  
+
 #ifdef _DEBUG
   wcerr << L"### Loaded method: " << mthd->GetName() << L" ###" << endl;
 #endif
-  
+
   Runtime::StackInterpreter intpr(Loader::GetProgram());
-  
+
   // go into accept loop...
   FCGX_Stream*in;
   FCGX_Stream* out;
   FCGX_Stream* err;
   FCGX_ParamArray envp;
-  
-  while(mthd && (FCGX_Accept(&in, &out, &err, &envp) >= 0)) {    
+
+  while(mthd && (FCGX_Accept(&in, &out, &err, &envp) >= 0)) {
     // execute method
     long* op_stack = new long[CALC_STACK_SIZE];
     long* stack_pos = new long;
-    
+
     // create request
-    long* req_obj = MemoryManager::AllocateObject(L"FastCgi.Request", 
+    long* req_obj = MemoryManager::AllocateObject(L"FastCgi.Request",
                                                   op_stack, *stack_pos, false);
     if(req_obj) {
       req_obj[0] = (long)in;
       req_obj[1] = (long)envp;
-      
+
       // create response
-      long* res_obj = MemoryManager::AllocateObject(L"FastCgi.Response", 
-                                                   op_stack, *stack_pos, false);
-      if(res_obj) { 	
+      long* res_obj = MemoryManager::AllocateObject(L"FastCgi.Response",
+                                                    op_stack, *stack_pos, false);
+      if(res_obj) {
         res_obj[0] = (long)out;
         res_obj[1] = (long)err;
-	
+
         // set calling parameters
         op_stack[0] = (long)req_obj;
         op_stack[1] = (long)res_obj;
         *stack_pos = 2;
- 	
+
         // execute method
         intpr.Execute((long*)op_stack, (long*)stack_pos, 0, mthd, NULL, false);
       }
@@ -150,28 +148,28 @@ int main(const int argc, const char* argv[])
       // TODO: error
       return 1;
     }
-    
+
 #ifdef _DEBUG
     wcout << L"# final stack: pos=" << (*stack_pos) << L" #" << endl;
     if((*stack_pos) > 0) {
       for(int i = 0; i < (*stack_pos); i++) {
         wcout << L"dump: value=" << (void*)(*stack_pos) << endl;
-      } 
+      }
     }
 #endif
-    
+
     // clean up
     delete[] op_stack;
     op_stack = NULL;
 
     delete stack_pos;
     stack_pos = NULL;
-    
+
 #ifdef _DEBUG
     PrintEnv(out, "Request environment", envp);
     PrintEnv(out, "Initial environment", environ);
 #endif
   }
-  
+
   return 0;
 }
