@@ -1,7 +1,7 @@
 /***************************************************************************
  * Starting point for FastCGI module
  *
- * Copyright (c) 2012 Randy Hollines
+ * Copyright (c) 2012-2015 Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -428,18 +428,11 @@ bool IniManager::SetValue(const wstring &sec, const wstring &key, const wstring 
 
 vector<wstring> IniManager::GetListValues(const wstring &sec, const wstring &key)
 {
+  vector<wstring> values;  
   
-  vector<wstring> values;
-  
-  /*
-  const wstring raw_value = GetValue(sec, key);    
-  wstringTokenizer tokenizer(raw_value, L";");
-  while(tokenizer.HasMoreTokens()) {
-    const wstring value = tokenizer.GetNextToken();
-    values.Add(value);
-  }
-  */
-  
+  const wstring raw_value = GetValue(sec, key);
+  Tokenize(raw_value, values, L";");
+
   return values;
 }
 
