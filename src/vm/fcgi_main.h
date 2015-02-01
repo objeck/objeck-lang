@@ -1,7 +1,7 @@
 /***************************************************************************
 * Starting point for FastCGI module
 *
-* Copyright (c) 2008-2013, Randy Hollines
+* Copyright (c) 2012-2015, Randy Hollines
 * All rights reserved.
 *
 * Redistribution and use in source and binary forms, with or without
@@ -63,7 +63,18 @@ class IniManager {
   void Clear();
   wstring Serialize();
   void Deserialize();
-  
+
+  void Tokenize(const wstring& value, vector<wstring>& tokens, const wstring delim) {
+    wstring::size_type lastPos = value.find_first_not_of(delim, 0);
+    wstring::size_type pos = value.find_first_of(delim, lastPos);
+    
+    while(wstring::npos != pos || wstring::npos != lastPos) {
+      tokens.push_back(value.substr(lastPos, pos - lastPos));
+      lastPos = value.find_first_not_of(delim, pos);
+      pos = value.find_first_of(delim, lastPos);
+    }
+  }
+
 public:
   IniManager(const wstring &fn);
   ~IniManager();
