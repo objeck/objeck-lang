@@ -36,18 +36,20 @@
  ******************************/
 int main(const int argc, const char* argv[])
 {
+  /*
   wstring config_path = BytesToUnicode(FCGX_GetParam("FCGI_CONFIG_PATH", environ));
   if(config_path.size() == 0) {
     config_path = L"/obr_vm.ini";
-    /*
-    wcerr << L"Unable to find program, please ensure the 'FCGI_CONFIG_PATH' variable has been set correctly." << endl;
-    exit(1);
-    */
+    // wcerr << L"Unable to find program, please ensure the 'FCGI_CONFIG_PATH' variable has been set correctly." << endl;
+    // exit(1);
   }
   else {
     config_path += L"/obr_vm.ini";
   }
+  */
   
+  const wstring config_path = L"./obr_vm.ini";
+
 #ifdef _WIN32
   // enable Unicode console support
   _setmode(_fileno(stdin), _O_U16TEXT);
