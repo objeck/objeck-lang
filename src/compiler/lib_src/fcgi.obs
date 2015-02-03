@@ -13,14 +13,7 @@ bundle FastCgi {
 		
 		function : GetDllProxy() ~ DllProxy {
 			if(@lib_proxy = Nil) {
-				lib_path := Runtime->GetProperty("fcgi-lib-path");
-				if(lib_path = Nil | lib_path->Size() = 0) {
-					lib_path := "/var/lib/apache2/fastcgi/fcgi";
-				};				
-
-				Console->Error("### FCGI lib-path=")->Error(lib_path)->ErrorLine(" ###");
-
-				@lib_proxy := DllProxy->New(lib_path);
+				@lib_proxy := DllProxy->New("fcgi_lib");
 			};
 
 			return @lib_proxy;
