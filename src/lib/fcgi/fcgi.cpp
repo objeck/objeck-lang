@@ -1,7 +1,7 @@
 /***************************************************************************
  * FastCGI support for Objeck
  *
- * Copyright (c) 2011-2012, Randy Hollines
+ * Copyright (c) 2011-2015, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -45,63 +45,63 @@ using namespace std;
 // Maximum number of bytes allowed to be read from stdin
 static const unsigned long STDIN_MAX = 1000000;
 
-#include "../../lib_api.h"
+#include "../../vm/lib_api.h"
 
 extern "C" {
-  #ifdef _WIN32
-  __declspec(dllexport) 
+#ifdef _WIN32
+  __declspec(dllexport)
 #endif
-void fcgi_get_env_value(const char* name, VMContext& context);
+    void fcgi_get_env_value(const char* name, VMContext& context);
 
   //
   // initialize fcgi environment
   //
 #ifdef _WIN32
-  __declspec(dllexport) 
+  __declspec(dllexport)
 #endif
-  void load_lib() {
+    void load_lib() {
   }
-  
+
   //
   // release fcgi resources
   //
 #ifdef _WIN32
-  __declspec(dllexport) 
+  __declspec(dllexport)
 #endif
-  void unload_lib() {
+    void unload_lib() {
   }
-  
+
   //
   // TOOD
   //
 #ifdef _WIN32
-  __declspec(dllexport) 
+  __declspec(dllexport)
 #endif
-  void fcgi_write(VMContext& context) {
+    void fcgi_write(VMContext& context) {
     FCGX_Stream* out = (FCGX_Stream*)APITools_GetIntValue(context, 0);
-    const char* value = APITools_GetStringValue(context, 1);
+    const wchar_t* value = APITools_GetStringValue(context, 1);
     if(out && value) {
-      FCGX_PutS(value, out);
+      FCGX_PutS(UnicodeToBytes(value).c_str(), out);
     }
   }
-  
+
   //
   // TOOD
   //
 #ifdef _WIN32
-  __declspec(dllexport) 
+  __declspec(dllexport)
 #endif
-  void fcgi_get_protocol(VMContext& context) {
+    void fcgi_get_protocol(VMContext& context) {
     fcgi_get_env_value("SERVER_PROTOCOL", context);
   }
-  
+
   //
   // TOOD
   //
 #ifdef _WIN32
-  __declspec(dllexport) 
+  __declspec(dllexport)
 #endif
-  void fcgi_get_query(VMContext& context) {
+    void fcgi_get_query(VMContext& context) {
     fcgi_get_env_value("QUERY_STRING", context);
   }
 
@@ -109,29 +109,29 @@ void fcgi_get_env_value(const char* name, VMContext& context);
   // TOOD
   //
 #ifdef _WIN32
-  __declspec(dllexport) 
+  __declspec(dllexport)
 #endif
-  void fcgi_get_cookie(VMContext& context) {
+    void fcgi_get_cookie(VMContext& context) {
     fcgi_get_env_value("HTTP_COOKIE", context);
   }
-  
+
   //
   // TOOD
   //
 #ifdef _WIN32
-  __declspec(dllexport) 
+  __declspec(dllexport)
 #endif
-  void fcgi_get_remote_address(VMContext& context) {
+    void fcgi_get_remote_address(VMContext& context) {
     fcgi_get_env_value("REMOTE_ADDR", context);
   }
-  
+
   //
   // TOOD
   //
 #ifdef _WIN32
-  __declspec(dllexport) 
+  __declspec(dllexport)
 #endif
-  void fcgi_get_request_method(VMContext& context) {
+    void fcgi_get_request_method(VMContext& context) {
     fcgi_get_env_value("REQUEST_METHOD", context);
   }
 
@@ -139,9 +139,9 @@ void fcgi_get_env_value(const char* name, VMContext& context);
   // TOOD
   //
 #ifdef _WIN32
-  __declspec(dllexport) 
+  __declspec(dllexport)
 #endif
-  void fcgi_get_request_uri(VMContext& context) {
+    void fcgi_get_request_uri(VMContext& context) {
     fcgi_get_env_value("REQUEST_URI", context);
   }
 
@@ -149,47 +149,47 @@ void fcgi_get_env_value(const char* name, VMContext& context);
   // TOOD
   //
 #ifdef _WIN32
-  __declspec(dllexport) 
+  __declspec(dllexport)
 #endif
-  void fcgi_get_response(VMContext& context) {
+    void fcgi_get_response(VMContext& context) {
     FCGX_Stream* in = (FCGX_Stream*)APITools_GetIntValue(context, 0);
     FCGX_ParamArray envp = (FCGX_ParamArray)APITools_GetIntValue(context, 1);
-    
+
     if(in && environ) {
       char* buff_size_str = FCGX_GetParam("CONTENT_LENGTH", envp);
       if(buff_size_str) {
-	long buff_size = atoi(buff_size_str);
-	if(buff_size > 0 && buff_size < 1024 * 8) {
-	  char* buffer = new char[buff_size + 1];
-	  long read = FCGX_GetStr(buffer, buff_size, in);
-	  buffer[read] = '\0';
-	  APITools_SetStringValue(context, 2, buffer);
-	  delete[] buffer;
-	  return;
-	}
+        long buff_size = atoi(buff_size_str);
+        if(buff_size > 0 && buff_size < 1024 * 8) {
+          char* buffer = new char[buff_size + 1];
+          long read = FCGX_GetStr(buffer, buff_size, in);
+          buffer[read] = '\0';
+          APITools_SetStringValue(context, 2, BytesToUnicode(buffer));
+          delete[] buffer;
+          return;
+        }
       }
     }
-    
-    APITools_SetStringValue(context, 1, "");
+
+    APITools_SetStringValue(context, 1, L"");
   }
-  
+
   //
   // TOOD
   //
 #ifdef _WIN32
-  __declspec(dllexport) 
+  __declspec(dllexport)
 #endif
-void fcgi_get_env_value(const char* name, VMContext& context) {
+    void fcgi_get_env_value(const char* name, VMContext& context) {
     FCGX_ParamArray envp = (FCGX_ParamArray)APITools_GetIntValue(context, 0);
     if(envp) {
       char* value = FCGX_GetParam(name, envp);
       if(value) {
-	APITools_SetStringValue(context, 1, value);
-	return;
+        APITools_SetStringValue(context, 1, BytesToUnicode(value));
+        return;
       }
     }
-    
-    APITools_SetStringValue(context, 1, "");
+
+    APITools_SetStringValue(context, 1, L"");
   }
 }
 
