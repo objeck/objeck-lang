@@ -5,16 +5,17 @@ class Bar implements FastCgi.Handler {
 	}
 	
 	function : Request(req : Request, res : Response) ~ Nil {
+		res->AddBody("<html><body>Hello</body></html>");
+#~	
 		cmd := req->GetQueryValue("cmd");
 		if(cmd <> Nil & cmd->Equals("ajax")) {
 			res->AddBody("<b>Called 1</b>");
 		}
 		else {
 			res->AddBody("<b>Called 2</b>");
-#			res->AddBody(FileReader->ReadFile("/tmp/in.html"));
+			res->AddBody(FileReader->ReadFile("/tmp/in.html"));
 		};
 		
-#~
 		res->AddBody("<html>");
 		res->AddBody("<form method=\"post\">");
 		res->AddBody("First name: <input type=\"text\" name=\"fname\" /><br />");
@@ -70,7 +71,6 @@ class Bar implements FastCgi.Handler {
 		future->AddDays(1);
 		res->AddCookie("name3", "foo", future);
 ~#
-
 		res->Submit();
 	}
 }
