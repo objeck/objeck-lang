@@ -1,13 +1,7 @@
 use FastCgi;
-use IO;
-
-class Foo implements FastCgi.Handler {
-	function : Foward(req : Request, res : Response) ~ Nil {
-	}
-}
 
 class Bar implements FastCgi.Handler {
-	function : Foward(req : Request, res : Response) ~ Nil {
+	function : Forward(req : Request, res : Response) ~ Nil {
 	}
 	
 	function : Request(req : Request, res : Response) ~ Nil {
