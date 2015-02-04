@@ -5,7 +5,8 @@ class Bar implements FastCgi.Handler {
 	}
 	
 	function : Request(req : Request, res : Response) ~ Nil {
-		res->AddBody("<html><body>Hello</body></html>");
+
+		res->AddBody("<html><title>Hello</title><body>Hello again!</body></html>");
 #~	
 		cmd := req->GetQueryValue("cmd");
 		if(cmd <> Nil & cmd->Equals("ajax")) {

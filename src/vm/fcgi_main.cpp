@@ -36,19 +36,21 @@
  ******************************/
 int main(const int argc, const char* argv[])
 {
-  /*
-  wstring program_path = BytesToUnicode(FCGX_GetParam("FCGI_CONFIG_PATH", environ));
-  if(program_path.size() == 0) {
-    program_path = L"/obr_vm.ini";
+#ifdef _DEBUG
+  Sleep(15 * 1000);
+#endif
+  wstring program_path;
+  const char* raw_program_path = FCGX_GetParam("FCGI_CONFIG_PATH", environ);
+  if(!raw_program_path) {
+    program_path = L"../a.obw";
     // wcerr << L"Unable to find program, please ensure the 'FCGI_CONFIG_PATH' variable has been set correctly." << endl;
     // exit(1);
   }
   else {
-    program_path += L"/obr_vm.ini";
+    program_path = BytesToUnicode(raw_program_path);
   }
-  */
   
-  const wstring program_path = L"../a.obw";
+  // const wstring program_path = L"../a.obw";
 
 #ifdef _WIN32
   // enable Unicode console support
@@ -105,6 +107,7 @@ int main(const int argc, const char* argv[])
   FCGX_Stream* err;
   FCGX_ParamArray envp;
 
+  int count = 0;
   while(mthd && (FCGX_Accept(&in, &out, &err, &envp) >= 0)) {
     // execute method
     long* op_stack = new long[CALC_STACK_SIZE];
