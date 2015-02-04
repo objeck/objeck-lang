@@ -36,8 +36,8 @@
  ******************************/
 int main(const int argc, const char* argv[])
 {
-#ifdef _DEBUG
-  Sleep(15 * 1000);
+#ifdef _DEBUG 
+  Sleep(15 * 1000); // mainly for remote debugging in IIS
 #endif
   wstring program_path;
   const char* raw_program_path = FCGX_GetParam("FCGI_CONFIG_PATH", environ);
@@ -99,9 +99,7 @@ int main(const int argc, const char* argv[])
   Runtime::StackInterpreter intpr(Loader::GetProgram());
 
   // go into accept loop...
-  FCGX_Stream*in;
-  FCGX_Stream* out;
-  FCGX_Stream* err;
+  FCGX_Stream*in; FCGX_Stream* out; FCGX_Stream* err;
   FCGX_ParamArray envp;
 
   int count = 0;
@@ -110,37 +108,28 @@ int main(const int argc, const char* argv[])
     long* op_stack = new long[CALC_STACK_SIZE];
     long* stack_pos = new long;
 
-    // create request
-    long* req_obj = MemoryManager::AllocateObject(L"FastCgi.Request",
-                                                  op_stack, *stack_pos, false);
-    if(req_obj) {
+    // create request and response
+    long* req_obj = MemoryManager::AllocateObject(L"FastCgi.Request",  op_stack, *stack_pos, false);
+    long* res_obj = MemoryManager::AllocateObject(L"FastCgi.Response", op_stack, *stack_pos, false);
+
+    if(req_obj && res_obj) {
       req_obj[0] = (long)in;
       req_obj[1] = (long)envp;
 
-      // create response
-      long* res_obj = MemoryManager::AllocateObject(L"FastCgi.Response",
-                                                    op_stack, *stack_pos, false);
-      if(res_obj) {
-        res_obj[0] = (long)out;
-        res_obj[1] = (long)err;
+      res_obj[0] = (long)out;
+      res_obj[1] = (long)err;
 
-        // set calling parameters
-        op_stack[0] = (long)req_obj;
-        op_stack[1] = (long)res_obj;
-        *stack_pos = 2;
+      // set method calling parameters
+      op_stack[0] = (long)req_obj;
+      op_stack[1] = (long)res_obj;
+      *stack_pos = 2;
 
-        // execute method
-        intpr.Execute((long*)op_stack, (long*)stack_pos, 0, mthd, NULL, false);
-      }
-      else {
-        wcerr << L">>> DLL call: Unable to allocate object FastCgi.Response <<" << endl;
-        // TODO: error
-        return 1;
-      }
+      // execute method
+      intpr.Execute((long*)op_stack, (long*)stack_pos, 0, mthd, NULL, false);
+      
     }
     else {
-      wcerr << L">>> DLL call: Unable to allocate object FastCgi.Request <<<" << endl;
-      // TODO: error
+      wcerr << L">>> DLL call: Unable to allocate FastCgi.Request or FastCgi.Response <<<" << endl;
       return 1;
     }
 
