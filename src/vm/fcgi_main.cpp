@@ -42,16 +42,13 @@ int main(const int argc, const char* argv[])
   wstring program_path;
   const char* raw_program_path = FCGX_GetParam("FCGI_CONFIG_PATH", environ);
   if(!raw_program_path) {
-    program_path = L"../a.obw";
-    // wcerr << L"Unable to find program, please ensure the 'FCGI_CONFIG_PATH' variable has been set correctly." << endl;
-    // exit(1);
+    wcerr << L"Unable to find program, please ensure the 'FCGI_CONFIG_PATH' variable has been set correctly." << endl;
+    exit(1);
   }
   else {
     program_path = BytesToUnicode(raw_program_path);
   }
   
-  // const wstring program_path = L"../a.obw";
-
 #ifdef _WIN32
   // enable Unicode console support
   _setmode(_fileno(stdin), _O_U16TEXT);
