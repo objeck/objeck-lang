@@ -1,5 +1,6 @@
 use System.IO.File;
 use Collection;
+use HTTP;
 
 bundle Default {
 	#~
@@ -72,63 +73,29 @@ bundle Default {
 					req_name := "req";
 				};
 			
-				output->Append("use FastCgi;");
-				output->Append("\n");
-				output->Append("\nbundle Default {");
-				output->Append("\n\tclass {$class_name} {");
-				output->Append("\n\t\tfunction : Main(args : String[]) ~ Nil {}");
-				output->Append("\n");
-				output->Append("\n\t\tfunction : Request({$req_name} : Request, {$res_name} : Response) ~ Nil {");
+				output->Append("use FastCgi;\n");
+				output->Append("use Collection;\n");
+				output->Append("use System.IO.File;\n");
+				output->Append("\nclass {$class_name} {");
+				output->Append("\n\tfunction : Request({$req_name} : Request, {$res_name} : Response) ~ Nil {");
 
 				each(i : @blocks) {
 					block := @blocks->Get(i)->As(Block);
 					if(block->GetType() = BlockType->HTML) {
-						output->Append("\nres->AddBody(\"");
-						output->Append(Sanitize(block->GetText()));
+						output->Append("\n\t\tres->AddBody(\"");
+						output->Append(UrlUtility->Encode(block->GetText()));
 						output->Append("\");");
 					}
 					else if(block->GetType() = BlockType->CODE) {
-						output->Append("\n");
+						output->Append("\n\t\t");
 						output->Append(block->GetText());
 					};
 				};
-				output->Append("\n\t\t\tres->Submit();");
-
-				output->Append("\n\t\t}");
+				output->Append("\n\t\tres->Submit();");
 				output->Append("\n\t}");
 				output->Append("\n}");
 			};
-			
-			
 			output->PrintLine();
-		}
-
-		# TODO strip and escape output
-		method : Sanitize(input : String) ~ String {
-			output := String->New();
-			each(i : input) {
-				char := input->Get(i);
-				select(char) {
-					label '\r':
-					label '\n':
-					label '\t': {
-					}
-
-					label '\\': {
-						output->Append("\\\\");
-					}
-
-					label '"': {
-						output->Append("\\\"");
-					}
-				
-					other: {
-						output->Append(char);
-					}
-				};
-			};
-			
-			return output;
 		}
 		
 		# parse page
