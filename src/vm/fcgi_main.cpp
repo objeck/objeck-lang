@@ -39,6 +39,7 @@ int main(const int argc, const char* argv[])
 #ifdef _DEBUG 
   Sleep(15 * 1000); // mainly for remote debugging in IIS
 #endif
+
   wstring program_path;
   const char* raw_program_path = FCGX_GetParam("FCGI_CONFIG_PATH", environ);
   if(!raw_program_path) {
@@ -125,7 +126,6 @@ int main(const int argc, const char* argv[])
 
       // execute method
       intpr.Execute((long*)op_stack, (long*)stack_pos, 0, mthd, NULL, false);
-      
     }
     else {
       wcerr << L">>> DLL call: Unable to allocate FastCgi.Request or FastCgi.Response <<<" << endl;
