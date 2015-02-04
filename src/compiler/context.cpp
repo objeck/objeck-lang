@@ -2195,8 +2195,16 @@ bool ContextAnalyzer::Analyze()
       klass->SetCalled(true);
       method_call->SetOriginalClass(klass);
       method_call->SetMethod(method);
+      
+      Type* eval_type = method_call->GetEvalType();
+      if(eval_type->GetType() == CLASS_TYPE && !ResolveClassEnumType(eval_type, klass)) {
+        ProcessError(static_cast<Expression*>(method_call), L"Undefined class or enum: '" + 
+                     ReplaceSubstring(eval_type->GetClassName(), L"#", L"->") + L"'");
+      }
+      
       if(method_call->GetMethodCall()) {
         method_call->GetMethodCall()->SetEvalType(method->GetReturn(), false);
+
       }
 
       // enum check
@@ -2862,12 +2870,9 @@ bool ContextAnalyzer::Analyze()
         expression = expression->GetMethodCall();
       }
 
-      AnalyzeRightCast(type, expression, (IsScalar(expression) && type->GetDimension() == 0), depth + 1);
-
-      if(type->GetType() == CLASS_TYPE) {
-        if(!ResolveClassEnumType(type)) {
-          ProcessError(rtrn, L"Undefined class or enum: '" + ReplaceSubstring(type->GetClassName(), L"#", L"->") + L"'");
-        }
+      AnalyzeRightCast(type, expression, (IsScalar(expression) && type->GetDimension() == 0), depth + 1);      
+      if(type->GetType() == CLASS_TYPE && !ResolveClassEnumType(type)) {
+        ProcessError(rtrn, L"Undefined class or enum: '" + ReplaceSubstring(type->GetClassName(), L"#", L"->") + L"'");
       }
     }
     else if(type->GetType() != NIL_TYPE) {
@@ -3228,8 +3233,7 @@ bool ContextAnalyzer::Analyze()
   {
     Expression* left_expr = expression->GetLeft();
     Expression* right_expr = expression->GetRight();
-
-
+    
     Type* left = GetExpressionType(left_expr, depth + 1);
     Type* right = GetExpressionType(right_expr, depth + 1);
 
@@ -3530,7 +3534,7 @@ bool ContextAnalyzer::Analyze()
           }
           expression->SetEvalType(TypeFactory::Instance()->MakeType(BOOLEAN_TYPE), true);
           break;
-
+          
         case BOOLEAN_TYPE:
           ProcessError(left_expr, L"Invalid operation using classes: " +
                        ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Bool");

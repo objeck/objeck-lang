@@ -306,7 +306,7 @@ class Block {
 		@text := text;
 	}
 
-	method : public : GetType() ~ Block->BlockType {
+	method : public : GetType() ~ BlockType {
 		return @block_type;
 	}
 
