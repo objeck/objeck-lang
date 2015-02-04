@@ -33,14 +33,21 @@
 #define __VM_FCGI_H__
 
 #include "fcgi_config.h"
-#include "fcgiapp.h"
-#include "vm.h"
+
+#include <stdlib.h>
+
+#ifdef HAVE_UNISTD_H
+#include <unistd.h>
+#endif
 
 #ifdef _WIN32
 #include <process.h>
 #else
 extern char **environ;
 #endif
+
+#include "fcgiapp.h"
+#include "vm.h"
 
 // support function
 void PrintEnv(FCGX_Stream* out, const char* label, char** envp);
