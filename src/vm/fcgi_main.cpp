@@ -102,7 +102,6 @@ int main(const int argc, const char* argv[])
   FCGX_Stream*in; FCGX_Stream* out; FCGX_Stream* err;
   FCGX_ParamArray envp;
 
-  int count = 0;
   while(mthd && (FCGX_Accept(&in, &out, &err, &envp) >= 0)) {
     // execute method
     long* op_stack = new long[CALC_STACK_SIZE];
