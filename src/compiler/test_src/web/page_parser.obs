@@ -1,4 +1,4 @@
-use IO;
+use System.IO.File;
 use Collection;
 
 bundle Default {
@@ -57,13 +57,28 @@ bundle Default {
 		method : public : Format() ~ Nil {
 			output := String->New();
 			if(@blocks ->Size() > 0 & @meta_values ->Size() > 0) {
+				class_name := @meta_values->Find("class")->As(String);
+				if(class_name = Nil) {
+					class_name := "FastCgiModule";
+				};
+				
+				res_name := @meta_values->Find("request")->As(String);
+				if(res_name = Nil) {
+					res_name := "res";
+				};
+				
+				req_name := @meta_values->Find("response")->As(String);
+				if(req_name = Nil) {
+					req_name := "req";
+				};
+			
 				output->Append("use FastCgi;");
 				output->Append("\n");
 				output->Append("\nbundle Default {");
-				output->Append("\n\tclass FastCgiModule {");
+				output->Append("\n\tclass {$class_name} {");
 				output->Append("\n\t\tfunction : Main(args : String[]) ~ Nil {}");
 				output->Append("\n");
-				output->Append("\n\t\tfunction : Request(req : Request, res : Response) ~ Nil {");
+				output->Append("\n\t\tfunction : Request({$req_name} : Request, {$res_name} : Response) ~ Nil {");
 
 				each(i : @blocks) {
 					block := @blocks->Get(i)->As(Block);
@@ -115,8 +130,7 @@ bundle Default {
 			
 			return output;
 		}
-
-
+		
 		# parse page
 		method : public : Parse() ~ Nil {
 			if(@page_chars = Nil) {
@@ -152,7 +166,7 @@ bundle Default {
 				};
 			};
 			@blocks->AddBack(Block->New(BlockType->HTML, html_block));
-
+			
 			if(@tag_stack->Size() = 0) {
 				each(i : @blocks) {
 					block := @blocks->Get(i)->As(Block);
@@ -168,7 +182,7 @@ bundle Default {
 							if(name_values->Size() = 2) {
 								# todo add to map
 								@meta_values->Insert(name_values[0]->Trim(), name_values[1]->Trim());
-# Console->Print("\tname=")->Print(name_values[0]->Trim())->Print(", value=")->PrintLine(name_values[1]->Trim());
+# IO.Console->Print("\tname=")->Print(name_values[0]->Trim())->Print(", value=")->PrintLine(name_values[1]->Trim());
 							};
 						};
 					}
