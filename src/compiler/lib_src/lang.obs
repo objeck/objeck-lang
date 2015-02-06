@@ -2557,7 +2557,7 @@ bundle System {
 		@return OS platform string
 		~#
 		function : GetPlatform() ~ String {
-			PLTFRM;
+			GET_PLTFRM;
 		}
 
 		#~
@@ -2565,7 +2565,7 @@ bundle System {
 		@return package version string
 		~#
 		function : GetVersion() ~ String {
-			VERSION;
+			GET_VERSION;
 		}
 		
 		#~
