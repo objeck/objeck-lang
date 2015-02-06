@@ -162,8 +162,8 @@ int main(const int argc, const char* argv[])
 ******************************/
 void PrintEnv(FCGX_Stream* out, const char* label, char** envp)
 {
-  wcout << endl << BytesToUnicode(label) << endl;
+  FCGX_FPrintF(out, "\n", label, "\r\n");
   for(; *envp != NULL; envp++) {
-    wcout << L"\t" << BytesToUnicode(*envp) << endl;
+    FCGX_FPrintF(out, "\t", *envp, "\r\n");
   }
 }
