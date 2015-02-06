@@ -61,20 +61,21 @@ class PageParser  {
 				class_name := "FastCgiModule";
 			};
 			
-			res_name := @meta_values->Find("request")->As(String);
-			if(res_name = Nil) {
-				res_name := "req";
+			req_name := @meta_values->Find("request")->As(String);
+			if(req_name = Nil) {
+				req_name := "req";
 			};
 			
-			req_name := @meta_values->Find("response")->As(String);
-			if(req_name = Nil) {
-				req_name := "res";
+			res_name := @meta_values->Find("response")->As(String);
+			if(res_name = Nil) {
+				res_name := "res";
 			};
 		
 			output += "use FastCgi;\n";
 			output += "use Collection;\n";
 			output += "use System.IO.File;\n";
-			output += "\nclass {$class_name} {";
+			output += "\nclass {$class_name} implements FastCgi.Handler {";
+			output += "\n\tfunction : Forward(req : Request, res : Response) ~ Nil {}\n";
 			output += "\n\tfunction : Request({$req_name} : Request, {$res_name} : Response) ~ Nil {";
 
 			each(i : @blocks) {
