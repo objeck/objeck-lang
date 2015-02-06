@@ -1,4 +1,4 @@
-<#meta class=Foo request=rs response=rq/>
+<#meta class=Foo request=req response=res/>
 <html>
 	<head>
 	</head> 
