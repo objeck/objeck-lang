@@ -89,7 +89,7 @@ int main(const int argc, const char* argv[])
   // locate starting class and method
   StackMethod* mthd = loader.GetStartMethod();
   if(!mthd) {
-    wcerr << L"Unable to locate the 'Request(args)' function." << endl;
+    wcerr << L"Unable to locate the 'Request(...)' function." << endl;
     exit(1);
   }
 
