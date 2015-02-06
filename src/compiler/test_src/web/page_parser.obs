@@ -63,12 +63,12 @@ class PageParser  {
 			
 			res_name := @meta_values->Find("request")->As(String);
 			if(res_name = Nil) {
-				res_name := "res";
+				res_name := "req";
 			};
 			
 			req_name := @meta_values->Find("response")->As(String);
 			if(req_name = Nil) {
-				req_name := "req";
+				req_name := "res";
 			};
 		
 			output += "use FastCgi;\n";
