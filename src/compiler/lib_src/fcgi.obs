@@ -3,9 +3,26 @@ use System.API;
 use Collection;
 use HTTP;
  
+#~
+Support for the FastCGI web server protocol 
+~#
 bundle FastCgi {
+	#~
+	Interface required to implementing handling classes
+	~#
 	interface Handler {
+		#~
+		Accepts a forwarding request from another handler instance
+		@param req request wrapper
+		@param res response wrapper
+		~#
 		function : virtual : Forward(req : Request, res : Response) ~ Nil;
+		#~
+		Handles a direct request
+		@param req request wrapper
+		@param res response wrapper
+		~#
+		function : virtual : Request(res : Request, req : Response) ~ Nil;
 	}
 
 	class Proxy {
@@ -21,7 +38,7 @@ bundle FastCgi {
 	}
 
 	#~
-	# FastCgi Request 
+	FastCGI request
 	~#
 	class Request {
 		@native_in : Int;
@@ -32,6 +49,10 @@ bundle FastCgi {
 		@data : String;
 		@data_values : StringMap;
 		
+		#~
+		Gets the request protocol
+		@return request protocol
+		~#
 		method : public : GetProtocol() ~ String {
 			if(@native_envp <> 0) {
 				array_args := Base->New[2];
@@ -46,6 +67,10 @@ bundle FastCgi {
 			return "";
 		}
 
+		#~
+		Gets the client's address IP address
+		@return client's address IP address
+		~#
 		method : public : GetClientAddress() ~ String {
 			if(@native_envp <> 0) {
 				array_args := Base->New[2];
@@ -60,6 +85,10 @@ bundle FastCgi {
 			return "";
 		}
 
+		#~
+		Gets the request method
+		@return request method
+		~#
 		method : public : GetRequestMethod() ~ String {
 			if(@native_envp <> 0) {
 				array_args := Base->New[2];
@@ -74,6 +103,10 @@ bundle FastCgi {
 			return "";
 		}
 
+		#~
+		Gets the request URI
+		@return request URI
+		~#
 		method : public : GetRequestUri() ~ String {
 			if(@native_envp <> 0) {
 				array_args := Base->New[2];
@@ -107,6 +140,11 @@ bundle FastCgi {
 			};
 		}
 		
+		#~
+		Gets a cookie
+		@param name cookie name
+		@return cookie
+		~#
 		method : public : GetCookie(name : String) ~ String {
 			if(@native_envp <> 0) {
 				array_args := Base->New[2];
@@ -125,6 +163,10 @@ bundle FastCgi {
 			return Nil;
 		}
 
+		#~
+		Gets the request query 
+		@return request query
+		~#
 		method : public : GetQuery() ~ String {
 			if(@query <> Nil) {
 				return @query;
@@ -144,6 +186,11 @@ bundle FastCgi {
 			return Nil;
 		}
 
+		#~
+		Gets a value for a query parameter
+		@param name query parameter
+		@return value for a query parameter
+		~#
 		method : public : GetQueryValue(name : String) ~ String {
 			if(@query_values = Nil) {
 				@query_values := ParseNameValues(GetQuery());
@@ -152,6 +199,10 @@ bundle FastCgi {
 			return @query_values->Find(name)->As(String);
 		}
 
+		#~
+		Gets response data
+		@return response data
+		~#
 		method : public : GetData() ~ String {
 			if(@data <> Nil) {
 				return @data;
@@ -172,6 +223,11 @@ bundle FastCgi {
 			return Nil;
 		}
 		
+		#~
+		Gets a response data parameter value
+		@param name response data parameter
+		@return response data parameter value
+		~#
 		method : public : GetDataValue(name : String) ~ String {
 			if(@data_values = Nil) {
 				@data_values := ParseNameValues(GetData());
@@ -205,7 +261,7 @@ bundle FastCgi {
 	}
 
 	#~
-	# FastCgi Response 
+	FastCgi Response 
 	~#
 	class Response {
 		@native_out : Int;
@@ -213,6 +269,10 @@ bundle FastCgi {
 		@cookies : String;
 		@body : String;
 		
+		#~
+		Adds text to response body
+		@param s body text
+		~#
 		method : public : AddBody(s : String) ~ Nil {
 			if(@body = Nil) {
 				@body := String->New();
@@ -223,6 +283,9 @@ bundle FastCgi {
 			};
 		}
 
+		#~
+		Submits a response
+		~#
 		method : public : Submit() ~ Nil {
 			WriteRaw("Content-type: text/html\r\nStatus: 200 OK\r\n");
 			if(@cookies <> Nil) {
@@ -236,10 +299,21 @@ bundle FastCgi {
 			};
 		}
 
+		#~
+		Adds a cookie
+		@param name cookie name
+		@param value cookie value
+		~#
 		method : public : AddCookie(name : String, value : String) ~ Nil {
 			AddCookie(name, value, Nil);
 		}
 		
+		#~
+		Adds a cookie
+		@param name cookie name
+		@param value cookie value
+		@param expires expiration date
+		~#
 		method : public : AddCookie(name : String, value : String, expires : Time.Date) ~ Nil {
 			if(@cookies = Nil) {
 				@cookies := String->New();
