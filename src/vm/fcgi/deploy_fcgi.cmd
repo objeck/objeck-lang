@@ -1,6 +1,6 @@
 echo off
 
-set VS_ROOT="C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC"
+set VS_ROOT="D:\Program Files (x86)\Microsoft Visual Studio 12.0\VC"
 
 rmdir /s /q deploy
 mkdir deploy
