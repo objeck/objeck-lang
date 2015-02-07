@@ -14,6 +14,8 @@ using namespace std;
 #include <uuid/uuid.h>
 #endif
 
+#define UUID_LEN 36
+
 string CreateUUID() {  
   uuid_t uuid;
   string uuid_str;
@@ -22,18 +24,18 @@ string CreateUUID() {
   RPC_CSTR buffer = NULL;
   CoCreateGuid(&uuid);
   UuidToString(&uuid, &buffer);
-  for(int i = 0; i < 36; i++) {
+  for(int i = 0; i < UUID_LEN; i++) {
     if(buffer[i] != '-') {
       uuid_str += buffer[i];
     }
   }
   RpcStringFree(&buffer);
 #else
-  char buffer[36];
-  bzero(buffer, 36);
+  char buffer[UUID_LEN];
+  bzero(buffer, UUID_LEN);
   uuid_generate(uuid);
   uuid_unparse(uuid, buffer);
-  for(int i = 0; i < 36; i++) {
+  for(int i = 0; i < UUID_LEN; i++) {
     if(buffer[i] != '-') {
       uuid_str += buffer[i];
     }
