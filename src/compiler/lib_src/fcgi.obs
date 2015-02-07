@@ -335,7 +335,7 @@ bundle FastCgi {
 		@return UUID string
 		~#
 		method : CreateUUID() ~ String {
-			if(@native_out <> Nil) {
+			if(@native_out <> 0) {
 				array_args := Base->New[2];
 				array_args[0] := IntHolder->New(@native_out);
 
@@ -474,7 +474,7 @@ bundle FastCgi {
 		}
 
 		method : WriteRaw(s : String) ~ Nil {
-			if(s <> Nil & @native_out <> Nil) {
+			if(s <> Nil & @native_out <> 0) {
 				array_args := Base->New[2];
 				array_args[0] := IntHolder->New(@native_out);
 				array_args[1] := s;
