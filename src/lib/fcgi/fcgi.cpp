@@ -171,6 +171,17 @@ extern "C" {
 
     APITools_SetStringValue(context, 1, L"");
   }
+
+  //
+  // TOOD
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void fcgi_get_uuid(VMContext& context) {
+    const string uuid = CreateUUID();
+    APITools_SetStringValue(context, 1, BytesToUnicode(uuid));
+  }
 }
 
 //
@@ -187,13 +198,6 @@ void fcgi_get_env_value(const char* name, VMContext& context) {
   }
 
   APITools_SetStringValue(context, 1, L"");
-}
-
-//
-// TOOD
-//
-void fcgi_get_uuid(const char* name, VMContext& context) {
-  APITools_SetStringValue(context, 1, BytesToUnicode(CreateUUID()));
 }
 
 //

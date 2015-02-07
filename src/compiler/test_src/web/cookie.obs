@@ -25,8 +25,6 @@ class FastCgiModule {
 		if(cookie <> Nil) {
 			res->AddBody(cookie);
 		};
-
-		res->AddBody(res->CreateUUID());
 		
 		cookie := req->GetCookie("name2");
 		if(cookie <> Nil) {
@@ -35,6 +33,8 @@ class FastCgiModule {
 		};
 		res->AddBody("</i>"); 
 
+		res->AddBody(res->CreateUUID());
+		
 		res->AddBody("<p>"); 
 		res->AddBody(req->GetClientAddress());
 		res->AddBody("</br>"); 
