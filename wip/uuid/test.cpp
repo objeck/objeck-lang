@@ -24,7 +24,7 @@ string CreateUUID() {
   RPC_CSTR buffer = NULL;
   CoCreateGuid(&uuid);
   UuidToString(&uuid, &buffer);
-  for(int i = 0; i < UUID_LEN; i++) {
+  for(int i = 0; i < UUID_LEN; ++i) {
     if(buffer[i] != '-') {
       uuid_str += buffer[i];
     }
@@ -35,7 +35,7 @@ string CreateUUID() {
   bzero(buffer, UUID_LEN);
   uuid_generate(uuid);
   uuid_unparse(uuid, buffer);
-  for(int i = 0; i < UUID_LEN; i++) {
+  for(int i = 0; i < UUID_LEN; ++i) {
     if(buffer[i] != '-') {
       uuid_str += buffer[i];
     }
