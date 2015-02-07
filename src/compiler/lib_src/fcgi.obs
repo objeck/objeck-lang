@@ -456,7 +456,7 @@ bundle FastCgi {
 		}
 
 		method : WriteRaw(s : String) ~ Nil {
-			if(s <> Nil) {
+			if(s <> Nil & @native_out <> Nil) {
 				array_args := Base->New[2];
 				array_args[0] := IntHolder->New(@native_out);
 				array_args[1] := s;
@@ -464,6 +464,20 @@ bundle FastCgi {
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("fcgi_write", array_args);
 			};
+		}
+		
+		method : CreateUUID() ~ String {
+			if(@native_out <> Nil) {
+				array_args := Base->New[2];
+				array_args[0] := IntHolder->New(@native_out);
+
+				@lib_proxy := Proxy->GetDllProxy();
+				@lib_proxy->CallFunction("fcgi_get_uuid", array_args);
+
+				return array_args[1]->As(String);
+			};
+			
+			return "";
 		}
 	}
 }
