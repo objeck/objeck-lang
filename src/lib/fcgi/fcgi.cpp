@@ -32,34 +32,33 @@
 #include <stdlib.h>
 #ifdef _WIN32
 #include <process.h>
+#include <windows.h>
+#pragma comment(lib, "Rpcrt4.lib")
 #else
 #include <unistd.h>
+#include <uuid/uuid.h>
 extern char ** environ;
 #endif
-// #include "fcgi.h"
+
 #include "fcgio.h"
-#include "fcgi_config.h"  // HAVE_IOSTREAM_WITHASSIGN_STREAMBUF
+#include "fcgi_config.h"
+#include "../../vm/lib_api.h"
 
 using namespace std;
 
-// Maximum number of bytes allowed to be read from stdin
-static const unsigned long STDIN_MAX = 1000000;
+#define UUID_LEN 36
 
-#include "../../vm/lib_api.h"
+string CreateUUID();
+void fcgi_get_env_value(const char* name, VMContext& context);
 
 extern "C" {
-#ifdef _WIN32
-  __declspec(dllexport)
-#endif
-    void fcgi_get_env_value(const char* name, VMContext& context);
-
   //
   // initialize fcgi environment
   //
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-    void load_lib() {
+  void load_lib() {
   }
 
   //
@@ -68,7 +67,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-    void unload_lib() {
+  void unload_lib() {
   }
 
   //
@@ -77,7 +76,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-    void fcgi_write(VMContext& context) {
+  void fcgi_write(VMContext& context) {
     FCGX_Stream* out = (FCGX_Stream*)APITools_GetIntValue(context, 0);
     const wchar_t* value = APITools_GetStringValue(context, 1);
     if(out && value) {
@@ -91,7 +90,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-    void fcgi_get_protocol(VMContext& context) {
+  void fcgi_get_protocol(VMContext& context) {
     fcgi_get_env_value("SERVER_PROTOCOL", context);
   }
 
@@ -101,7 +100,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-    void fcgi_get_query(VMContext& context) {
+  void fcgi_get_query(VMContext& context) {
     fcgi_get_env_value("QUERY_STRING", context);
   }
 
@@ -111,7 +110,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-    void fcgi_get_cookie(VMContext& context) {
+  void fcgi_get_cookie(VMContext& context) {
     fcgi_get_env_value("HTTP_COOKIE", context);
   }
 
@@ -121,7 +120,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-    void fcgi_get_remote_address(VMContext& context) {
+  void fcgi_get_remote_address(VMContext& context) {
     fcgi_get_env_value("REMOTE_ADDR", context);
   }
 
@@ -131,7 +130,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-    void fcgi_get_request_method(VMContext& context) {
+  void fcgi_get_request_method(VMContext& context) {
     fcgi_get_env_value("REQUEST_METHOD", context);
   }
 
@@ -141,7 +140,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-    void fcgi_get_request_uri(VMContext& context) {
+  void fcgi_get_request_uri(VMContext& context) {
     fcgi_get_env_value("REQUEST_URI", context);
   }
 
@@ -151,7 +150,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-    void fcgi_get_response(VMContext& context) {
+  void fcgi_get_response(VMContext& context) {
     FCGX_Stream* in = (FCGX_Stream*)APITools_GetIntValue(context, 0);
     FCGX_ParamArray envp = (FCGX_ParamArray)APITools_GetIntValue(context, 1);
 
@@ -172,25 +171,61 @@ extern "C" {
 
     APITools_SetStringValue(context, 1, L"");
   }
+}
 
-  //
-  // TOOD
-  //
-#ifdef _WIN32
-  __declspec(dllexport)
-#endif
-    void fcgi_get_env_value(const char* name, VMContext& context) {
-    FCGX_ParamArray envp = (FCGX_ParamArray)APITools_GetIntValue(context, 0);
-    if(envp) {
-      char* value = FCGX_GetParam(name, envp);
-      if(value) {
-        APITools_SetStringValue(context, 1, BytesToUnicode(value));
-        return;
-      }
+//
+// TOOD
+//
+void fcgi_get_env_value(const char* name, VMContext& context) {
+  FCGX_ParamArray envp = (FCGX_ParamArray)APITools_GetIntValue(context, 0);
+  if(envp) {
+    const char* value = FCGX_GetParam(name, envp);
+    if(value) {
+      APITools_SetStringValue(context, 1, BytesToUnicode(value));
+      return;
     }
-
-    APITools_SetStringValue(context, 1, L"");
   }
+
+  APITools_SetStringValue(context, 1, L"");
+}
+
+//
+// TOOD
+//
+void fcgi_get_uuid(const char* name, VMContext& context) {
+  APITools_SetStringValue(context, 1, BytesToUnicode(CreateUUID()));
+}
+
+//
+// TOOD
+//
+string CreateUUID() {
+  uuid_t uuid;
+  string uuid_str;
+
+#ifdef _WIN32
+  RPC_CSTR buffer = NULL;
+  CoCreateGuid(&uuid);
+  UuidToString(&uuid, &buffer);
+  for(int i = 0; i < UUID_LEN; ++i) {
+    if(buffer[i] != '-') {
+      uuid_str += buffer[i];
+    }
+  }
+  RpcStringFree(&buffer);
+#else
+  char buffer[UUID_LEN];
+  bzero(buffer, UUID_LEN);
+  uuid_generate(uuid);
+  uuid_unparse(uuid, buffer);
+  for(int i = 0; i < UUID_LEN; ++i) {
+    if(buffer[i] != '-') {
+      uuid_str += buffer[i];
+    }
+  }
+#endif
+
+  return uuid_str;
 }
 
 
