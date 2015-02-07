@@ -334,7 +334,7 @@ bundle FastCgi {
 		Generates a UUID
 		@return UUID string
 		~#
-		method : CreateUUID() ~ String {
+		method : public : CreateUUID() ~ String {
 			if(@native_out <> 0) {
 				array_args := Base->New[2];
 				array_args[0] := IntHolder->New(@native_out);
