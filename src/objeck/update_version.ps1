@@ -12,8 +12,8 @@ $version_windows = $version.Replace(".", ",")
 
 # update debain build files
 (Get-Content ..\..\debian\build.in) | ForEach-Object { $_ -replace "@VERSION@", $version_posix } | Set-Content ..\..\debian\build.sh
-(Get-Content ..\..\debian\files\changelog.32.in) | ForEach-Object { $_ -replace "@VERSION_LONG@", $version_posix_long } | Set-Content ..\..\debian\files\changelog.32
-(Get-Content ..\..\debian\files\changelog.64.in) | ForEach-Object { $_ -replace "@VERSION_LONG@", $version_posix_long } | Set-Content ..\..\debian\files\changelog.64
+(Get-Content ..\..\debian\files\changelog.32.in) | ForEach-Object { $_ -replace "@VERSION_LONG@", $version_posix_long } | Set-Content ..\..\debian\files\changelog
+(Get-Content ..\..\debian\files\changelog.64.in) | ForEach-Object { $_ -replace "@VERSION_LONG@", $version_posix_long } | Set-Content ..\..\debian\files\changelog
 (Get-Content ..\..\docs\man\obc.in) | ForEach-Object { $_ -replace "@VERSION@", $version_posix_long } | Set-Content ..\..\docs\man\obc.1
 (Get-Content ..\..\docs\man\obr.in) | ForEach-Object { $_ -replace "@VERSION@", $version_posix_long } | Set-Content ..\..\docs\man\obr.1
 (Get-Content ..\..\docs\man\obd.in) | ForEach-Object { $_ -replace "@VERSION@", $version_posix_long } | Set-Content ..\..\docs\man\obd.1
