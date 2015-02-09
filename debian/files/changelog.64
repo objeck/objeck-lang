@@ -1,4 +1,4 @@
-objeck-lang-amd64 (3.3.6-0-1) unstable; urgency=low
+objeck-lang-amd64 (3.3.5-4-1) unstable; urgency=low
 
   * * Closes: #775886
   * Optimized stack operations for floating point operations
