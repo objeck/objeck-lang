@@ -2269,7 +2269,7 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, long* inst,
     const long offset = PopInt(op_stack, stack_pos);
     long* instance = (long*)PopInt(op_stack, stack_pos);
     
-    if(array && instance && (long)instance[0] > -1 && offset > -1 && offset + num < array[0]) {
+    if(array && instance && (long)instance[0] > -1 && offset > -1 && offset + num <= array[0]) {
       SOCKET sock = (SOCKET)instance[0];
       char* buffer = (char*)(array + 3);
       PushInt(IPSocket::ReadBytes(buffer + offset, num, sock), op_stack, stack_pos);
@@ -2280,14 +2280,13 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, long* inst,
   }
     break;
     
-    // TODO: implement
   case SOCK_TCP_IN_CHAR_ARY: {
     long* array = (long*)PopInt(op_stack, stack_pos);
     const long num = PopInt(op_stack, stack_pos);
     const long offset = PopInt(op_stack, stack_pos);
     long* instance = (long*)PopInt(op_stack, stack_pos);
     
-    if(array && instance && (long)instance[0] > -1 && offset > -1 && offset + num < array[0]) {
+    if(array && instance && (long)instance[0] > -1 && offset > -1 && offset + num <= array[0]) {
       SOCKET sock = (SOCKET)instance[0];
       wchar_t* buffer = (wchar_t*)(array + 3);
       // allocate temporary buffer
@@ -2332,7 +2331,7 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, long* inst,
     const long offset = PopInt(op_stack, stack_pos);
     long* instance = (long*)PopInt(op_stack, stack_pos);
     
-    if(array && instance && (long)instance[0] > -1 && offset > -1 && offset + num < array[0]) {
+    if(array && instance && (long)instance[0] > -1 && offset > -1 && offset + num <= array[0]) {
       SOCKET sock = (SOCKET)instance[0];
       char* buffer = (char*)(array + 3);
       PushInt(IPSocket::WriteBytes(buffer + offset, num, sock), op_stack, stack_pos);
@@ -2343,14 +2342,13 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, long* inst,
   } 
     break;
     
-    // TODO: implement
   case SOCK_TCP_OUT_CHAR_ARY: {
     long* array = (long*)PopInt(op_stack, stack_pos);
     const long num = PopInt(op_stack, stack_pos);
     const long offset = PopInt(op_stack, stack_pos);
     long* instance = (long*)PopInt(op_stack, stack_pos);
     
-    if(array && instance && (long)instance[0] > -1 && offset > -1 && offset + num < array[0]) {
+    if(array && instance && (long)instance[0] > -1 && offset > -1 && offset + num <= array[0]) {
       SOCKET sock = (SOCKET)instance[0];
       const wchar_t* buffer = (wchar_t*)(array + 3);
       string buffer_out = UnicodeToBytes(buffer);
@@ -2383,7 +2381,7 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, long* inst,
     const long offset = PopInt(op_stack, stack_pos);
     long* instance = (long*)PopInt(op_stack, stack_pos);
     
-    if(array && instance && instance[2] && offset > -1 && offset + num < array[0]) {
+    if(array && instance && instance[2] && offset > -1 && offset + num <= array[0]) {
       SSL_CTX* ctx = (SSL_CTX*)instance[0];
       BIO* bio = (BIO*)instance[1];
       char* buffer = (char*)(array + 3);
@@ -2395,14 +2393,13 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, long* inst,
   }
     break;
     
-    // TODO: implement
   case SOCK_TCP_SSL_IN_CHAR_ARY: {
     long* array = (long*)PopInt(op_stack, stack_pos);
     const long num = PopInt(op_stack, stack_pos);
     const long offset = PopInt(op_stack, stack_pos);
     long* instance = (long*)PopInt(op_stack, stack_pos);
     
-    if(array && instance && instance[2] && offset > -1 && offset + num < array[0]) {
+    if(array && instance && instance[2] && offset > -1 && offset + num <= array[0]) {
       SSL_CTX* ctx = (SSL_CTX*)instance[0];
       BIO* bio = (BIO*)instance[1];
       wchar_t* buffer = (wchar_t*)(array + 3);
@@ -2448,7 +2445,7 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, long* inst,
     const long offset = PopInt(op_stack, stack_pos);
     long* instance = (long*)PopInt(op_stack, stack_pos);
             
-    if(array && instance && instance[2] && offset > -1 && offset + num < array[0]) {
+    if(array && instance && instance[2] && offset > -1 && offset + num <= array[0]) {
       SSL_CTX* ctx = (SSL_CTX*)instance[0];
       BIO* bio = (BIO*)instance[1];
       char* buffer = (char*)(array + 3);
@@ -2460,14 +2457,13 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, long* inst,
   } 
     break;
     
-    // TODO: implement
   case SOCK_TCP_SSL_OUT_CHAR_ARY: {
     long* array = (long*)PopInt(op_stack, stack_pos);
     const long num = PopInt(op_stack, stack_pos);
     const long offset = PopInt(op_stack, stack_pos);
     long* instance = (long*)PopInt(op_stack, stack_pos);
     
-    if(array && instance && instance[2] && offset > -1 && offset + num < array[0]) {
+    if(array && instance && instance[2] && offset > -1 && offset + num <= array[0]) {
       SSL_CTX* ctx = (SSL_CTX*)instance[0];
       BIO* bio = (BIO*)instance[1];
       wchar_t* buffer = (wchar_t*)(array + 3);
@@ -2504,7 +2500,7 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, long* inst,
     const long offset = PopInt(op_stack, stack_pos);
     const long* instance = (long*)PopInt(op_stack, stack_pos);
             
-    if(array && instance && (FILE*)instance[0] && offset > -1 && offset + num < array[0]) {
+    if(array && instance && (FILE*)instance[0] && offset > -1 && offset + num <= array[0]) {
       FILE* file = (FILE*)instance[0];
       wchar_t* out = (wchar_t*)(array + 3);
               
@@ -2535,7 +2531,7 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, long* inst,
     const long offset = PopInt(op_stack, stack_pos);
     const long* instance = (long*)PopInt(op_stack, stack_pos);
             
-    if(array && instance && (FILE*)instance[0] && offset > -1 && offset + num < array[0]) {
+    if(array && instance && (FILE*)instance[0] && offset > -1 && offset + num <= array[0]) {
       FILE* file = (FILE*)instance[0];
       char* buffer = (char*)(array + 3);
       PushInt(fread(buffer + offset, 1, num, file), op_stack, stack_pos);     
@@ -2572,7 +2568,7 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, long* inst,
     const long offset = PopInt(op_stack, stack_pos);
     const long* instance = (long*)PopInt(op_stack, stack_pos);
             
-    if(array && instance && (FILE*)instance[0] && offset > -1 && offset + num < array[0]) {
+    if(array && instance && (FILE*)instance[0] && offset > -1 && offset + num <= array[0]) {
       FILE* file = (FILE*)instance[0];
       char* buffer = (char*)(array + 3);
       PushInt(fwrite(buffer + offset, 1, num, file), op_stack, stack_pos);
@@ -2583,8 +2579,20 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, long* inst,
   }
     break;
 
-    // TODO: implement
   case FILE_OUT_CHAR_ARY: {
+    const long* array = (long*)PopInt(op_stack, stack_pos);
+    const long num = PopInt(op_stack, stack_pos);
+    const long offset = PopInt(op_stack, stack_pos);
+    const long* instance = (long*)PopInt(op_stack, stack_pos);
+
+    if(array && instance && (FILE*)instance[0] && offset > -1 && offset + num <= array[0]) {
+      FILE* file = (FILE*)instance[0];
+      char* buffer = (char*)(array + 3);
+      PushInt(fwrite(buffer + offset, 1, num, file), op_stack, stack_pos);
+    }
+    else {
+      PushInt(-1, op_stack, stack_pos);
+    }
   }
     break;
       
