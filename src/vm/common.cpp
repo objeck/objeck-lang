@@ -1474,14 +1474,14 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, long* inst,
     }
   }
     break;
-
+    
   case STD_OUT_BYTE_ARY_LEN: {
     long* array = (long*)PopInt(op_stack, stack_pos);
     const long num = PopInt(op_stack, stack_pos);
     const long offset = PopInt(op_stack, stack_pos);
 
 #ifdef _DEBUG
-    wcout << L"  STD_OUT_CHAR_ARY: addr=" << array << L"(" << long(array) << L")" << endl;
+    wcout << L"  STD_OUT_BYTE_ARY_LEN: addr=" << array << L"(" << long(array) << L")" << endl;
 #endif
 
     if(array && offset > -1 && offset + num < (long)array[0]) {
@@ -2351,8 +2351,11 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, long* inst,
     if(array && instance && (long)instance[0] > -1 && offset > -1 && offset + num <= array[0]) {
       SOCKET sock = (SOCKET)instance[0];
       const wchar_t* buffer = (wchar_t*)(array + 3);
-      string buffer_out = UnicodeToBytes(buffer);
-      PushInt(IPSocket::WriteBytes(buffer_out.c_str() + offset, num, sock), op_stack, stack_pos);
+      // copy sub buffer
+      wstring sub_buffer(buffer + offset, num);
+      // convert to bytes and write out
+      string buffer_out = UnicodeToBytes(sub_buffer);
+      PushInt(IPSocket::WriteBytes(buffer_out.c_str(), buffer_out.size(), sock), op_stack, stack_pos);
     } 
     else {
       PushInt(-1, op_stack, stack_pos);
@@ -2466,9 +2469,12 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, long* inst,
     if(array && instance && instance[2] && offset > -1 && offset + num <= array[0]) {
       SSL_CTX* ctx = (SSL_CTX*)instance[0];
       BIO* bio = (BIO*)instance[1];
-      wchar_t* buffer = (wchar_t*)(array + 3);
-      string buffer_out = UnicodeToBytes(buffer);
-      PushInt(IPSecureSocket::WriteBytes(buffer_out.c_str() + offset, num, ctx, bio), op_stack, stack_pos);
+      const wchar_t* buffer = (wchar_t*)(array + 3);
+      // copy sub buffer
+      wstring sub_buffer(buffer + offset, num);
+      // convert to bytes and write out
+      string buffer_out = UnicodeToBytes(sub_buffer);
+      PushInt(IPSecureSocket::WriteBytes(buffer_out.c_str(), buffer_out.size(), ctx, bio), op_stack, stack_pos);
     } 
     else {
       PushInt(-1, op_stack, stack_pos);
@@ -2578,17 +2584,21 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, long* inst,
     }
   }
     break;
-
+    
   case FILE_OUT_CHAR_ARY: {
     const long* array = (long*)PopInt(op_stack, stack_pos);
     const long num = PopInt(op_stack, stack_pos);
     const long offset = PopInt(op_stack, stack_pos);
     const long* instance = (long*)PopInt(op_stack, stack_pos);
-
+    
     if(array && instance && (FILE*)instance[0] && offset > -1 && offset + num <= array[0]) {
       FILE* file = (FILE*)instance[0];
-      char* buffer = (char*)(array + 3);
-      PushInt(fwrite(buffer + offset, 1, num, file), op_stack, stack_pos);
+      const wchar_t* buffer = (wchar_t*)(array + 3);
+      // copy sub buffer
+      wstring sub_buffer(buffer + offset, num);
+      // convert to bytes and write out
+      string buffer_out = UnicodeToBytes(sub_buffer);
+      PushInt(fwrite(buffer_out.c_str(), 1, buffer_out.size(), file), op_stack, stack_pos);
     }
     else {
       PushInt(-1, op_stack, stack_pos);
