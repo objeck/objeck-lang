@@ -1,5 +1,5 @@
 /***************************************************************************
- * Copyright (c) 2008-2013, Randy Hollines
+ * Copyright (c) 2008-2015, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -138,8 +138,8 @@ static map<const wstring, wstring> ParseCommnadLine(const wstring &path_string) 
 }
 
 /****************************
- * Converts a UTF-8 bytes to
- * native a unicode string
+ * Converts UTF-8 bytes to a 
+ * native Unicode string 
  ****************************/
 static bool BytesToUnicode(const string &in, wstring &out) {    
 #ifdef _WIN32
