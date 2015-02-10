@@ -3135,7 +3135,7 @@ bundle System.IO {
 		method : virtual : public : WriteByte(b : Int) ~ Bool;
 		
 		#~
-		Writes bytes from a byte buffer
+		Writes bytes from a buffer
 		@param offset destination buffer offset
 		@param num number of values to write
 		@param buffer input buffer
@@ -3144,7 +3144,7 @@ bundle System.IO {
 		method : virtual : public : WriteBuffer(offset : Int, num : Int, buffer : Byte[]) ~ Int;
 		
 		#~
-		Writes characters from a character buffer
+		Writes characters from a buffer
 		@param offset destination buffer offset
 		@param num number of values to write
 		@param buffer input buffer
@@ -4190,7 +4190,7 @@ bundle System.IO.File {
 		}
 
 		#~
-		Writes bytes from a character buffer
+		Writes bytes from a buffer
 		@param offset destination buffer offset
 		@param num number of values to write
 		@param buffer input buffer
@@ -4201,7 +4201,7 @@ bundle System.IO.File {
 		}
 		
 		#~
-		Writes characters from a character buffer
+		Writes characters from a buffer
 		@param offset destination buffer offset
 		@param num number of values to write
 		@param buffer input buffer
@@ -4212,11 +4212,20 @@ bundle System.IO.File {
 		}
 
 		#~
-		Writes characters from a byte buffer
+		Writes bytes from a buffer
 		@param buffer input buffer
 		@return number of values written
 		~#
 		method : public : WriteBuffer(buffer : Byte[]) ~ Int {
+			return WriteBuffer(0, buffer->Size(), buffer);
+		}
+		
+		#~
+		Writes characters from a buffer
+		@param buffer input buffer
+		@return number of values written
+		~#
+		method : public : WriteBuffer(buffer : Char[]) ~ Int {
 			return WriteBuffer(0, buffer->Size(), buffer);
 		}
 		
