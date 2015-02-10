@@ -1,4 +1,4 @@
-class Test {
+class FofG {
 	@f : static : (Int) ~ Int;
 	@g : static : (Int) ~ Int;
 	
