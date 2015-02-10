@@ -18,41 +18,39 @@
 
 \begin{abstract}
 Objeck is an object-oriented programming language with functional
-features. The language has ties with Java, Scheme and UML. In this 
-language all data types, except for higher-order functions, are 
-treated as objects. This guide provides an introduction for programmers 
-who'd like to learn more.
+features. Objeck is a fully featured cross-platform programming language
+that has ties with Java Scheme and UML.
 \end{abstract}
 
 \label{Introduction}
 \chapter{Introduction}
-The Objeck program language is an object-oriented computer language
-with functional features.  The language was designed to be an easy to
-use general purpose programming system.  The Objeck language allows
-programmers to quickly create solutions by leveraging existing class
-libraries and APIs.  The syntax for the language was designed with
-symmetry in mind and enforces the notion that there should one
-intuitive way to do things. Features include:
+The language was designed to be an easy to use strongly typed object oriented  
+programming language. Back in 2008, when the language was under initial 
+development, existing object-oriented and functional programming languages 
+were examined and their syntax simplified for Objeck. 
+
+Major language features include:
 \begin{itemize}
-\item Support for object-oriented programming (all data types are
-  treated as objects)
-\item Functional support (higher-order functions)
-\item Native Unicode support with external UTF-8 encoding/decoding
-\item Cross platform support (for OS X, Linux and Windows)
-\item Concurrent runtime JIT support
-\item Multi-threaded memory management/garbage collector
-\item Local optimizations including method inlining
-\item Support for static libraries
+\item Collection of rich and easy-to-use class libraries
+\item Support for functional programming
+\item Concurrency (threads and mutexes)
+\item Automatic memory management
+\item Native JIT execution (byte to machine code)
+\item Unicode support with I/O support for UTF-8
+\item Cross-platform static libraries
 \item Command line debugger
+\item Full feature support for Windows, Linux and OS X
 \end{itemize}
 
-\chapter{Getting Started}
-
-The Objeck distribution consists of a compiler, virtual machine,
+\chapter{Getting started}
+For the most recent information about obtaining binaries and source 
+please refer to the project website 
+\htmladdnormallink{objeck.org}{http://www.objeck.org}.
+The distribution consists of a compiler, virtual machine,
 debugger and library inspection tool.  The compiler executable is
-named \texttt{obc}, while the runtime virtual machine (VM) executable
+named \texttt{obc}, the virtual machine (VM) 
 is named \texttt{obr}.  Here is the world famous ``Hello World"
-program written in the Objeck language:
+program written in the Objeck:
 
 \begin{verbatim}
 class Hello {
@@ -62,28 +60,43 @@ class Hello {
 }
 \end{verbatim}
 
-\section{Compiling Source}
-The example below compiles the source program \texttt{hello.obs} into
-the target binary file \texttt{hello.obe}.  The two output file types
-that the compiler supports are executables and shared libraries.
-Shared libraries are binary files that contain all of the metadata
-needed by the compiler to relink them into executables.  Both
-executables and shared libraries contain enough metadata to support
-runtime introspection.  As a naming convention, executables must end
-in \texttt{*.obe} while shared libraries must end in \texttt{*.obl}.
+Save the above program as an ASCII or UTF-8 text file naming it  
+\texttt{hello.obs}. To compile the program into an executable 
+named \texttt{hello.obe} run the following command:  
 
-Below is an example of compiling the ``Hello World" program:
 \begin{verbatim}
-obc -src tests\hello.obs -dest hello.obe
+obc -src hello.obs -dest hello.obe
 \end{verbatim}
 
-Here's a more advanced example of linking in two required class
-libraries to an executable.
+To run the program type the following:
+
 \begin{verbatim}
-obc -src examples\xml_parser.obs -lib collect.obl,xml.obl -dest a.obe
+obr hello.obe
 \end{verbatim}
 
-Additional compiler options are:
+\section{Compiling and running code}
+The Objeck compiler will produce two types of binaries. One is an executable
+and the other is a shared library. Shared libraries can be linked into executables 
+by passing the names of libraries to the compiler. As a naming convention, 
+executables must end with \texttt{*.obe} while shared libraries must end 
+with \texttt{*.obl}.
+
+Here are a few more examples. The first example compiles a program that 
+processes XML. For this program, we link in the collections library as well 
+as the XML parsing library.
+\begin{verbatim}
+obc -src examples\xml_path.obs -lib collect.obl,xml.obl -dest xml_path.obe
+obr xml_path.obe
+\end{verbatim}
+
+The next example compiles a program that uses the encryption library.
+
+\begin{verbatim}
+obc -src examples\encryption.obs -lib encrypt.obl -dest encryption.obe
+obr encryption.obe
+\end{verbatim}
+
+Compiler options are as follows:
 \begin{flushleft}
   \begin{tabular}{| l | l |}
     \hline
@@ -99,20 +112,189 @@ Additional compiler options are:
   \end{tabular}
 \end{flushleft}
 
-\section{Executing}
-The command-line example below executes the \texttt{hello.obe}
-executable. Note, for executables all required libraries are
-statically linked in the target output file.  When compiling shared
-libraries, other shared libraries are \underline{not} linked into the
-target output library file.
+\chapter{The basics}
+Let's first of literals, variables and control flow logic.
+
+\section{Literals and variables}
+
+Literals are defined as they are in most programming languages. In Objeck literals are 
+treated as objects and thus can have methods associated with them. As you might 
+expect a character string is treated as a \texttt{String} object.
 
 \begin{verbatim}
-obr hello.obe
+'\u00BD'->PrintLine();
+13->Min(3)->PrintLine();
+3.89->Sin()->PrintLine();
+"Hello World"->Size()->PrintLine();
 \end{verbatim}
 
-\chapter{The Basics}
-Now lets introduce the core features of the Objeck programming
-language.  \vspace{\baselineskip}
+Examples of variable declaration and assignment are below. Variables can be explicitly 
+defined by specifying their type or their types inferred through assignment or cast. 
+If a variable's type is inferred it's type may cannot be redeclared.
+
+\begin{verbatim}
+a : Int;
+b : Float := 13.5;
+c := 7.25; # type inferred as Float
+d := (b * 2)->As(Int); # type inferred as Int
+\end{verbatim}
+
+The language supports the following data types:
+\begin{flushleft}
+\begin{tabular}{| l | l |}
+  \hline
+  \emph{Type} & \emph{Description} \\ \hline \hline
+  \texttt{Char} & wide character \\ \hline
+  \texttt{Char[]} &  character array \\ \hline
+  \texttt{Bool} &  boolean value \\ \hline
+  \texttt{Bool[]} &  boolean array \\ \hline
+  \texttt{Byte} &  1--byte integer \\ \hline
+  \texttt{Byte[]} &  byte array \\ \hline
+  \texttt{Int} &  4--byte integer \\ \hline
+  \texttt{Int[]} &  integer array \\ \hline
+  \texttt{Float} &  8--byte decimal \\ \hline
+  \texttt{Float[]} &  decimal array \\ \hline
+  \texttt{Function} &  integer pair \\ \hline
+\end{tabular}
+\end{flushleft}
+
+\section{Control flow and logic}
+As with most languages, Objeck supports conditional expressions and control flow logic. 
+An oddity may be that conditional statements end with semi-colons.
+
+\begin{verbatim}
+number := Console->ReadLine()->ToInt();
+if(number <> 3) {
+  "Not equal to 3"->PrintLine();
+} else if(number < 13) {
+  "Less than 13"->PrintLine();
+} else {
+  "Some other number"->PrintLine();
+};
+\end{verbatim}
+
+\texttt{Select} statements efficiently map integer and enum values to blocks of code.
+
+\begin{verbatim}
+select(c) {
+  label Color->Red: { "Red"->PrintLine(); }
+  label Color->Green: { "Green"->PrintLine(); }
+  label Color->Purple: { "Purple"->PrintLine(); }
+  other: { "Another color"->PrintLine(); }
+};
+\end{verbatim}
+
+\line(1,0){250}
+
+\begin{verbatim}
+select(n) {
+  label 9:
+  label 19: { n->PrintLine(); }   
+  label 27: { (3 * 9 = n)->PrintLine(); }
+};
+\end{verbatim}
+
+Billing which supports the following looping structures \texttt{do}, 
+\texttt{do/while}, \texttt{for} and \texttt{each} statements.   
+
+\begin{verbatim}
+i := 10;
+while(i > 0) {
+   i->PrintLine();
+   i -= 1;
+}
+\end{verbatim}
+
+\line(1,0){250}
+
+\begin{verbatim}
+i := 0;
+do { 
+   i->PrintLine();
+   i += 1;
+} 
+while(i <> 10);
+\end{verbatim}
+
+\line(1,0){250}
+
+\begin{verbatim}
+location := "East Bay";
+for(i := 0; i < location->Size(); i += 1;) {
+  location->Get(i)->PrintLine();
+}
+\end{verbatim}
+
+\line(1,0){250}
+
+\begin{verbatim}
+area_code := Int->New[3];
+area_code[0] := 5;
+area_code[1] := 1;
+area_code[2] := 0;
+
+each(i : values) {
+  area_code[i]->PrintLine();
+};
+\end{verbatim}
+
+\section{Operators}
+
+There's support for mathematical, logical and bitwise operations.
+
+Mathematical:
+\newline
+\begin{tabular}{| l | l |}
+  \hline
+  \emph{Operator} & \emph{Description} \\ \hline \hline
+  \texttt{+} & addition \\ \hline
+  \texttt{-} & subtraction \\ \hline
+  \texttt{*} & multiplication \\ \hline
+  \texttt{/} & division \\ \hline
+  \texttt{\%} & modulus (for integer values) \\ \hline
+  \texttt{<<} & shift left (for integer values) \\ \hline
+  \texttt{>>} & shift right (for integer values) \\ \hline
+\end{tabular}
+
+Logical:
+\newline
+\begin{tabular}{| l | l |}
+  \hline
+  \emph{Operator} & \emph{Description} \\ \hline \hline
+  \texttt{<>} & not--equal and unary not \\ \hline
+  \texttt{\&} & and \\ \hline
+  \texttt{|} & or \\ \hline
+  \texttt{=} & equal \\ \hline
+  \texttt{<} & less--than \\ \hline
+  \texttt{>} & greater--than \\ \hline
+  \texttt{<=} & less--than--equal \\ \hline
+  \texttt{>=} & greater--than--equal \\ \hline
+\end{tabular}
+
+Mathematical assignment operators:
+\begin{itemize}
+\item addition-equals or string concatenation (\texttt{+=})
+\item subtraction-equals (\texttt{-=})
+\item multiplication-equals (\texttt{*=})
+\item division-equals (\texttt{/=})
+\end{itemize}
+
+Bitwise operators:
+\begin{itemize}
+\item and (\texttt{and})
+\item or (\texttt{or})
+\item xor (\texttt{xor})
+\end{itemize}
+
+
+
+
+
+
+
+
+
+
 
 Let's first start with a list of keywords that exist in language.
 These words are reserved for the language and may not be used as
@@ -140,23 +322,7 @@ character, byte, integer and decimal types.  These basic objects can
 be used to create more complex user defined objects.  The listing
 below defines the basic objects that are supported in the language:
 
-\begin{flushleft}
-  \begin{tabular}{| l | l |}
-    \hline
-    \emph{Type} & \emph{Description} \\ \hline \hline
-    \texttt{Char} & wide character \\ \hline
-    \texttt{Char[]} &  character array \\ \hline
-    \texttt{Bool} &  boolean value \\ \hline
-    \texttt{Bool[]} &  boolean array \\ \hline
-    \texttt{Byte} &  1--byte integer \\ \hline
-    \texttt{Byte[]} &  byte array \\ \hline
-    \texttt{Int} &  4--byte integer \\ \hline
-    \texttt{Int[]} &  integer array \\ \hline
-    \texttt{Float} &  8--byte decimal \\ \hline
-    \texttt{Float[]} &  decimal array \\ \hline
-    \texttt{Function} &  integer pair \\ \hline
-  \end{tabular}
-\end{flushleft}
+
 
 As mentioned above, basic types are objects and have associated
 methods for each basic class type.  For example:
@@ -186,6 +352,10 @@ if(13 != a) {
   }
 }
 \end{verbatim}
+
+
+
+
 
 \section{Variable Declarations}
 Variables can be declared for all of the basic types (described
@@ -249,32 +419,7 @@ class Test {
 }
 \end{verbatim}
 
-The following mathematical operators are supported in the Objeck
-language for integers and decimal types:
-\begin{itemize}
-\item addition (\texttt{+})
-\item subtraction (\texttt{-})
-\item multiplication (\texttt{*})
-\item division (\texttt{/})
-\item modulus -- (\texttt{\%} - for integer values only)
-\item shift left -- (\texttt{<<} - for integer values only)
-\item shift right -- (\texttt{>>} - for integer values only)
-\end{itemize}
 
-In addition the following assignment operators are supported:
-\begin{itemize}
-\item addition-equals or string concatenation (\texttt{+=})
-\item subtraction-equals (\texttt{-=})
-\item multiplication-equals (\texttt{*=})
-\item division-equals (\texttt{/=})
-\end{itemize}
-
-The following bitwise operators are also supported for integer types:
-\begin{itemize}
-\item and (\texttt{and})
-\item or (\texttt{or})
-\item xor (\texttt{xor})
-\end{itemize}
 
 The [\texttt{*}, \texttt{/}, \texttt{\%}] operators have a higher
 precedence than the [\texttt{+}, \texttt{-}] operators and are
@@ -383,18 +528,7 @@ evaluation statement does not evaluate to \texttt{true} than an
 an \texttt{else} statement will be executed (if it exists).  The
 example below demonstrates an \texttt{if} statement.
 
-\begin{verbatim}
-value := Console->ReadLine()->ToInt();
-if(value <> 3) {
-  "Not equal to 3"->PrintLine();
-}
-else if(value < 13) {
-  "Less than 13"->PrintLine();
-}
-else {
-  "Some other number"->PrintLine();
-};
-\end{verbatim}
+
 
 \subsection{Select Statement}
 
@@ -403,26 +537,7 @@ are associated to statement blocks.  A label may either be a literal
 or an \texttt{enum} value.  Multiple labels can be mapped to the same
 statement block.  Below is an example of a \texttt{select} statement.
 
-\begin{verbatim}
-select(v) {
-   label Color->Red: {
-      "Red"->PrintLine();
-   }
 
-   label 9:
-   label 19: {
-      v->PrintLine();
-   }
-
-   label 27: {
-      (3 * 9)->PrintLine();
-   }
-  
-   other: {
-     "some rather another"->PrintLine();
-   }
-};
-\end{verbatim}
 
 \subsection{While Statement}
 
