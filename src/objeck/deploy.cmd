@@ -29,9 +29,9 @@ REM copy examples
 xcopy /e ..\compiler\rc\* deploy\examples\
 REM build and update docs
 mkdir deploy\doc
-%LATEX_BIN%\pdflatex ..\..\docs\guide\objeck_lang.tex
-copy objeck_lang.pdf deploy\doc 
-copy objeck_lang.pdf ..\..\docs\guide\
+REM %LATEX_BIN%\pdflatex ..\..\docs\guide\objeck_lang.tex
+REM copy objeck_lang.pdf deploy\doc 
+copy ..\..\docs\guide\objeck_lang.pdf deploy\doc 
 mkdir deploy\doc\syntax
 copy ..\..\docs\syntax\* deploy\doc\syntax
 copy ..\..\docs\readme.htm deploy
