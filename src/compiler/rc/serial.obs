@@ -1,62 +1,56 @@
 use Collection;
 
-bundle Default {
-	class Thingy {
-		@id : Int;
+class Thingy {
+	@id : Int;
 
-		New(id : Int) {
-			@id := id;
-		}
-
-		method : public : Print() ~ Nil {
-			@id->PrintLine();
-		}
+	New(id : Int) {
+		@id := id;
 	}
 
-	class Person from Thingy {
-		@name : String;
-		@values : StringMap;
+	method : public : Print() ~ Nil {
+		@id->PrintLine();
+	}
+}
 
-		New(id : Int, name : String) {
-			Parent(id);
-			@name := name;
-			@values := StringMap->New();
-			v := IntHolder->New(101);
-			@values->Insert("Jason", v);
-			v := IntHolder->New(9);
-			@values->Insert("Mark", v);
-		}
+class Person from Thingy {
+	@name : String;
+	@values : StringMap;
 
-		method : public : Print() ~ Nil {
-			@id->PrintLine();
-			@name->PrintLine();
-			v := @values->Find("Jason")->As(IntHolder);
-			v->Get()->PrintLine();	
-			v := @values->Find("Mark")->As(IntHolder);
-			v->Get()->PrintLine();	
-		}
+	New(id : Int, name : String) {
+		Parent(id);
+		@name := name;
+		@values := StringMap->New();
+		@values->Insert("Jason", IntHolder->New(101));
+		@values->Insert("Mark", IntHolder->New(9));
 	}
 
-	class Serial {
-		function : Main(args : String[]) ~ Nil {
-			t := Thingy->New(7);
-			p := Person->New(13, "Bush");
+	method : public : Print() ~ Nil {
+		@id->PrintLine();
+		@name->PrintLine();
+		@values->Find("Jason")->As(IntHolder)->Get()->PrintLine();	
+		@values->Find("Mark")->As(IntHolder)->Get()->PrintLine();	
+	}
+}
 
-			s := System.IO.Serializer->New();
-			s->Write(t);
-			s->Write(p);
+class Serial {
+	function : Main(args : String[]) ~ Nil {
+		t := Thingy->New(7);
+		p := Person->New(13, "Bush");
 
-			writer := IO.File.FileWriter->New("objects.dat");			
-			writer->WriteBuffer(s->Serialize());
-			writer->Close();
+		s := System.IO.Serializer->New();
+		s->Write(t);
+		s->Write(p);
 
-			buffer := IO.File.FileReader->ReadBinaryFile("objects.dat");			
-			d := System.IO.Deserializer->New(buffer);
+		writer := IO.File.FileWriter->New("objects.dat");			
+		writer->WriteBuffer(s->Serialize());
+		writer->Close();
 
-			t2 := d->ReadObject()->As(Thingy);
-			t2->Print();
-			p2 := d->ReadObject()->As(Person);
-			p2->Print();
-		}
+		buffer := IO.File.FileReader->ReadBinaryFile("objects.dat");			
+		d := System.IO.Deserializer->New(buffer);
+
+		t2 := d->ReadObject()->As(Thingy);
+		t2->Print();
+		p2 := d->ReadObject()->As(Person);
+		p2->Print();
 	}
 }
