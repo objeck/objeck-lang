@@ -1,7 +1,7 @@
 #~~
 # Regular expression engine
 #
-# Copyright (c) 2014 Randy Hollines
+# Copyright (c) 2014-2015 Randy Hollines
 ~~#
 
 use Collection;
@@ -11,7 +11,26 @@ Regular expression engine
 ~#
 bundle RegEx {
 	#~
-	Regular expression engine
+	Regular expression engine.
+	
+	<p>Support for following matches:<p>
+	<ul>
+		<li>. &#8208; any</li>
+		<li>? &#8208; optional</li>
+		<li>* &#8208; zero or more repetitions</li>
+		<li>+ &#8208; one or more repetitions</li>
+		<li>group &#8208; (one|two|three)</li>
+		<li>range &#8208; [start-end]</li>
+	</ul>
+	
+	<p>Support for following special patterns:<p>
+	<ul>
+		<li>word &#8208; \w</li>
+		<li>digit &#8208; \d</li>
+		<li>white space &#8208; \s</li>
+		<li>repeat &#8208; {least, most}
+	</ul>	
+	
 	~#
 	class RegEx {
 		# parsing
@@ -69,7 +88,7 @@ bundle RegEx {
 		@return matched string if found, empty string otherwise
 		~#
 		method : public : Match(input : String, offset : Int) ~ String {
-			right := Evaluate(input, 0);
+			right := Evaluate(input, offset);
 			if(right > -1) {
 				return input->SubString(offset, right - offset);
 			};
