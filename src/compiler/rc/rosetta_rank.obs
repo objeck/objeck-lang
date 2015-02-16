@@ -5,9 +5,25 @@ use Collection;
 
 class RosettaRank {
 	function : Main(args : String[]) ~ Nil {
+		langs := GetLanguages();
+		langs_counts := GetLanguageRank(langs);
+		
+		keys := langs_counts->GetKeys();
+		count := 1;
+		for(i := keys->Size() - 1; i >= 0; i -=1;) {
+			key := keys->Get(i);
+			IO.Console->Print(count)->Print(". ")->Print(key)->Print(" - ")->PrintLine(langs_counts->Find(key)->As(String));
+			count += 1;
+		};
+	}
+	
+	function : GetLanguages() ~ StringSet {
 		langs_xml := "";
 		client := HttpClient->New();
 		in := client->Get("http://rosettacode.org/mw/api.php?action=query&list=categorymembers&cmtitle=Category:Programming_Languages&cmlimit=5000&format=xml");
+		if(in = Nil) {
+			return Nil;
+		};
 		each(i : in) {
 			langs_xml += in->Get(i)->As(String);
 		};
@@ -28,6 +44,10 @@ class RosettaRank {
 			};
 		};
 		
+		return langs;
+	}
+	
+	function : GetLanguageRank(langs : StringSet) ~ IntMap {
 		langs_counts := IntMap->New();
 		client := HttpClient->New();
 		html := client->Get("http://rosettacode.org/mw/index.php?title=Special:Categories&limit=5000");
@@ -69,13 +89,7 @@ class RosettaRank {
 			};
 		};
 		
-		keys := langs_counts->GetKeys();
-		count := 1;
-		for(i := keys->Size() - 1; i >= 0; i -=1;) {
-			key := keys->Get(i);
-			IO.Console->Print(count)->Print(". ")->Print(key)->Print(" - ")->PrintLine(langs_counts->Find(key)->As(String));
-			count += 1;
-		};
+		return langs_counts;
 	}
 }
 
