@@ -3,17 +3,17 @@ use RegEx;
 use XML;
 use Collection;
 
-class LangRank {
+class RosettaRank {
 	function : Main(args : String[]) ~ Nil {
-		xml := "";
+		langs_xml := "";
 		client := HttpClient->New();
-		in := client->Get("http://rosettacode.org/mw/api.php?action=query&list=categorymembers&cmtitle=Category:Programming_Languages&cmlimit=500&format=xml");
+		in := client->Get("http://rosettacode.org/mw/api.php?action=query&list=categorymembers&cmtitle=Category:Programming_Languages&cmlimit=5000&format=xml");
 		each(i : in) {
-			xml += in->Get(i)->As(String);
+			langs_xml += in->Get(i)->As(String);
 		};
-		xml->PrintLine();
 		
-		parser := XmlParser->New(xml);
+		langs := StringSet->New();
+		parser := XmlParser->New(langs_xml);
 		if(parser->Parse()) {
 			# get first item
 			results := parser->FindElements("/api/query/categorymembers/cm");
@@ -23,19 +23,19 @@ class LangRank {
 				offset := name->Find(':');
 				if(offset > -1) {
 					lang := name->SubString(offset + 1, name->Size() - offset - 1);
-					lang->ReplaceAll("&#x20;", " ")->PrintLine();
+					langs->Insert(lang->ReplaceAll("&#x20;", " "));
 				};	
 			};
 		};
 		
-		lang_counts := IntMap->New();
+		langs_counts := IntMap->New();
 		client := HttpClient->New();
-		html := client->Get("http://rosettacode.org/mw/index.php?title=Special:Categories&limit=500");
+		html := client->Get("http://rosettacode.org/mw/index.php?title=Special:Categories&limit=5000");
 		each(i : html) {
 			lines := html->Get(i)->As(String);
-			elements := lines->Split("\n");
-			each(j : elements) {
-				element := elements[j];					
+			html_elements := lines->Split("\n");
+			each(j : html_elements) {
+				element := html_elements[j];					
 				name : String; count : String;
 				regex := RegEx->New("<li><a href=\"(\\w|\\s|/|\\?|\\&|;|:|#)+\"\\stitle=\"Category:(\\w|\\s|#)+\">");
 				found := regex->FindFirst(element);
@@ -61,19 +61,19 @@ class LangRank {
 				};
 				
 				if(name <> Nil & count <> Nil) {
-					if(name->Find("User") < 0) {
-						lang_counts->Insert(count->ToInt(), name);
+					if(langs->Has(name)) {
+						langs_counts->Insert(count->ToInt(), name);
 					};
 					name := Nil; count := Nil;
 				};	
 			};
 		};
 		
-		keys := lang_counts->GetKeys();
+		keys := langs_counts->GetKeys();
 		count := 1;
 		for(i := keys->Size() - 1; i >= 0; i -=1;) {
 			key := keys->Get(i);
-			IO.Console->Print(count)->Print(". ")->Print(key)->Print(" - ")->PrintLine(lang_counts->Find(key)->As(String));
+			IO.Console->Print(count)->Print(". ")->Print(key)->Print(" - ")->PrintLine(langs_counts->Find(key)->As(String));
 			count += 1;
 		};
 	}
