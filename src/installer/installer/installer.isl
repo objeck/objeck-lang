@@ -2055,6 +2055,9 @@
 		<row><td>fares.db</td><td>ISX_DEFAULTCOMPONENT15</td><td>fares.db</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\misc\data\fares.db</td><td>1</td><td/></row>
 		<row><td>fasta.obs</td><td>ISX_DEFAULTCOMPONENT8</td><td>fasta.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\clbg\fasta.obs</td><td>1</td><td/></row>
 		<row><td>fasta.obs1</td><td>ISX_DEFAULTCOMPONENT14</td><td>fasta.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\misc\clbg\fasta.obs</td><td>1</td><td/></row>
+		<row><td>fastcgi_handler.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>FASTCG~1.HTM|fastcgi-handler.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\fastcgi-handler.html</td><td>1</td><td/></row>
+		<row><td>fastcgi_request.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>FASTCG~1.HTM|fastcgi-request.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\fastcgi-request.html</td><td>1</td><td/></row>
+		<row><td>fastcgi_response.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>FASTCG~1.HTM|fastcgi-response.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\fastcgi-response.html</td><td>1</td><td/></row>
 		<row><td>file.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>file.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\file.obs</td><td>1</td><td/></row>
 		<row><td>filter.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>filter.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\filter.obs</td><td>1</td><td/></row>
 		<row><td>food.xml</td><td>ISX_DEFAULTCOMPONENT17</td><td>food.xml</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\misc\xml\food.xml</td><td>1</td><td/></row>
@@ -2074,6 +2077,7 @@
 		<row><td>hofcon.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>hofcon.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\hofcon.obs</td><td>1</td><td/></row>
 		<row><td>horizontal_sundial.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>HORIZO~1.OBS|horizontal_sundial.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\horizontal_sundial.obs</td><td>1</td><td/></row>
 		<row><td>horner.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>horner.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\horner.obs</td><td>1</td><td/></row>
+		<row><td>howto.htm</td><td>ISX_DEFAULTCOMPONENT6</td><td>howto.htm</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\syntax\howto.htm</td><td>1</td><td/></row>
 		<row><td>howto.rtf</td><td>ISX_DEFAULTCOMPONENT6</td><td>howto.rtf</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\syntax\howto.rtf</td><td>1</td><td/></row>
 		<row><td>http.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>http.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\http.obs</td><td>1</td><td/></row>
 		<row><td>http_httpclient.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>HTTP-H~1.HTM|http-httpclient.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\http-httpclient.html</td><td>1</td><td/></row>
@@ -2171,6 +2175,7 @@
 		<row><td>root_mean.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>ROOT_M~1.OBS|root_mean.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\root_mean.obs</td><td>1</td><td/></row>
 		<row><td>roots.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>roots.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\roots.obs</td><td>1</td><td/></row>
 		<row><td>rosetta_count.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>ROSETT~1.OBS|rosetta_count.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\rosetta_count.obs</td><td>1</td><td/></row>
+		<row><td>rosetta_rank.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>ROSETT~1.OBS|rosetta_rank.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\rosetta_rank.obs</td><td>1</td><td/></row>
 		<row><td>row_echelon.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>ROW_EC~1.OBS|row_echelon.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\row_echelon.obs</td><td>1</td><td/></row>
 		<row><td>rpn_calc.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>rpn_calc.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\rpn_calc.obs</td><td>1</td><td/></row>
 		<row><td>run_length.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>RUN_LE~1.OBS|run_length.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\run_length.obs</td><td>1</td><td/></row>
@@ -2256,6 +2261,7 @@
 		<row><td>xml_list.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>xml_list.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\xml_list.obs</td><td>1</td><td/></row>
 		<row><td>xml_out.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>xml_out.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\xml_out.obs</td><td>1</td><td/></row>
 		<row><td>xml_path.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>xml_path.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\examples\xml_path.obs</td><td>1</td><td/></row>
+		<row><td>xml_xmlattribute.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>XML-XM~1.HTM|xml-xmlattribute.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\xml-xmlattribute.html</td><td>1</td><td/></row>
 		<row><td>xml_xmlbuilder.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>XML-XM~1.HTM|xml-xmlbuilder.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\xml-xmlbuilder.html</td><td>1</td><td/></row>
 		<row><td>xml_xmlelement.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>XML-XM~1.HTM|xml-xmlelement.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\xml-xmlelement.html</td><td>1</td><td/></row>
 		<row><td>xml_xmlparser.html</td><td>ISX_DEFAULTCOMPONENT5</td><td>XML-XM~1.HTM|xml-xmlparser.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\Randy\Desktop\objeck-lang\doc\api\xml-xmlparser.html</td><td>1</td><td/></row>
@@ -4879,7 +4885,7 @@ UwBpAG4AZwBsAGUASQBtAGEAZwBlAAEARQB4AHAAcgBlAHMAcwA=
 		<row><td>PROGMSG_IIS_ROLLBACKWEBSERVICEEXTENSIONS</td><td>##IDS_PROGMSG_IIS_ROLLBACKWEBSERVICEEXTENSIONS##</td><td/></row>
 		<row><td>ProductCode</td><td>{9CF1BD0B-41F4-44B6-801F-BA06285CF577}</td><td/></row>
 		<row><td>ProductName</td><td>Objeck</td><td/></row>
-		<row><td>ProductVersion</td><td>3.3.5.4</td><td/></row>
+		<row><td>ProductVersion</td><td>3.3.6.1</td><td/></row>
 		<row><td>ProgressType0</td><td>install</td><td/></row>
 		<row><td>ProgressType1</td><td>Installing</td><td/></row>
 		<row><td>ProgressType2</td><td>installed</td><td/></row>
@@ -4894,7 +4900,7 @@ UwBpAG4AZwBsAGUASQBtAGEAZwBlAAEARQB4AHAAcgBlAHMAcwA=
 		<row><td>SERIALNUMVALSUCCESSRETVAL</td><td>1</td><td/></row>
 		<row><td>SHOWLAUNCHPROGRAM</td><td>0</td><td/></row>
 		<row><td>SHOWLAUNCHREADME</td><td>-1</td><td/></row>
-		<row><td>SecureCustomProperties</td><td>USERNAME;COMPANYNAME;ISX_SERIALNUM;SUPPORTDIR;ISACTIONPROP2</td><td/></row>
+		<row><td>SecureCustomProperties</td><td>USERNAME;COMPANYNAME;ISX_SERIALNUM;SUPPORTDIR;ISACTIONPROP2;ISACTIONPROP1</td><td/></row>
 		<row><td>SelectedSetupType</td><td>##IDS__DisplayName_Typical##</td><td/></row>
 		<row><td>SetupType</td><td>Typical</td><td/></row>
 		<row><td>UpgradeCode</td><td>{BCAF8370-9637-4F74-ADFD-CE6FBA5347A6}</td><td/></row>
@@ -5174,6 +5180,7 @@ UwBpAG4AZwBsAGUASQBtAGEAZwBlAAEARQB4AHAAcgBlAHMAcwA=
 		<col def="s72">ActionProperty</col>
 		<col def="S72">ISDisplayName</col>
 		<row><td>{BCAF8370-9637-4F74-ADFD-CE6FBA5347A6}</td><td>3.3.5.3</td><td>3.3.5.3</td><td>1033</td><td>768</td><td/><td>ISACTIONPROP2</td><td>Latest</td></row>
+		<row><td>{BCAF8370-9637-4F74-ADFD-CE6FBA5347A6}</td><td>3.3.5.4</td><td>3.3.5.4</td><td>1033</td><td>768</td><td/><td>ISACTIONPROP1</td><td>Latest 1</td></row>
 	</table>
 
 	<table name="Verb">
