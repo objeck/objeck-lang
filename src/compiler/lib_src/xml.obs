@@ -765,7 +765,7 @@ bundle XML {
 	}
 	
 	#~
-	Represent an XML attribute
+	Represents an XML attribute
 	~#
 	class XmlAttribute {
 		@name : String;
@@ -845,7 +845,7 @@ bundle XML {
 	}
 	
 	#~
-	Represent an XML element
+	Represents an XML element
 	~#
 	class XmlElement {
 		@name : String;
