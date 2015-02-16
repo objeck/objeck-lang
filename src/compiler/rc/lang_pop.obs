@@ -1,10 +1,35 @@
 ﻿use HTTP;
 use RegEx;
+use XML;
+use Collection;
 
 class LangRank {
 	function : Main(args : String[]) ~ Nil {
+		xml := "";
 		client := HttpClient->New();
-		client->CookiesEnabled(true);
+		in := client->Get("http://rosettacode.org/mw/api.php?action=query&list=categorymembers&cmtitle=Category:Programming_Languages&cmlimit=500&format=xml");
+		each(i : in) {
+			xml += in->Get(i)->As(String);
+		};
+		xml->PrintLine();
+		
+		parser := XmlParser->New(xml);
+		if(parser->Parse()) {
+			# get first item
+			results := parser->FindElements("/api/query/categorymembers/cm");
+			each(i : results) {
+				element := results->Get(i)->As(XmlElement);
+				name := element->GetAttribute("title")->GetValue();
+				offset := name->Find(':');
+				if(offset > -1) {
+					lang := name->SubString(offset + 1, name->Size() - offset - 1);
+					lang->ReplaceAll("&#x20;", " ")->PrintLine();
+				};	
+			};
+		};
+		
+		lang_counts := IntMap->New();
+		client := HttpClient->New();
 		html := client->Get("http://rosettacode.org/mw/index.php?title=Special:Categories&limit=500");
 		each(i : html) {
 			lines := html->Get(i)->As(String);
@@ -12,7 +37,7 @@ class LangRank {
 			each(j : elements) {
 				element := elements[j];					
 				name : String; count : String;
-				regex := RegEx->New("<li><a href=\"(\\w|\\d|\\s|/|:|#)+\"\\stitle=\"Category:(\\w|\\d|\\s|#)+\">");
+				regex := RegEx->New("<li><a href=\"(\\w|\\s|/|\\?|\\&|;|:|#)+\"\\stitle=\"Category:(\\w|\\s|#)+\">");
 				found := regex->FindFirst(element);
 				if(found <> Nil) {
 					group1 := found->Size();
@@ -36,11 +61,20 @@ class LangRank {
 				};
 				
 				if(name <> Nil & count <> Nil) {
-					element->PrintLine();
-					IO.Console->Print("name='")->Print(name)->Print("', count=")->PrintLine(count);
-					"---"->PrintLine();
+					if(name->Find("User") < 0) {
+						lang_counts->Insert(count->ToInt(), name);
+					};
+					name := Nil; count := Nil;
 				};	
 			};
+		};
+		
+		keys := lang_counts->GetKeys();
+		count := 1;
+		for(i := keys->Size() - 1; i >= 0; i -=1;) {
+			key := keys->Get(i);
+			IO.Console->Print(count)->Print(". ")->Print(key)->Print(" - ")->PrintLine(lang_counts->Find(key)->As(String));
+			count += 1;
 		};
 	}
 }

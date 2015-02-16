@@ -764,14 +764,19 @@ bundle XML {
 		}
 	}
 	
-	#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-	# XmlAttribute class
-	~~~~~~~~~~~~~~~~~~~~~~~~~~~~~# 
+	#~
+	Represent an XML attribute
+	~#
 	class XmlAttribute {
 		@name : String;
 		@value : String;
 		@namespace : String;
 
+		#~
+		Constructor 
+		@parma name attribute name
+		@parma value attribute value
+		~#
 		New(name : String, value : String) {
 			SetNames(name);
 			@value := value;
@@ -790,26 +795,50 @@ bundle XML {
 			};
 		}
 
+		#~
+		Gets the name of the attribute
+		@return attribute name
+		~#
 		method : public : GetName() ~ String {
 			return String->New(@name);
 		}
 
+		#~
+		Sets the attribute name
+		@param name attribute name
+		~#
 		method : public : SetName(name : String) ~ Nil {
 			@name := name;
 		}
 
+		#~
+		Gets the attribute value
+		@return attribute value
+		~#
 		method : public : GetValue() ~ String {
 			return String->New(@value);
 		}
 
+		#~
+		Sets the attribute value
+		@param value attribute value
+		~#
 		method : public : SetValue(value : String) ~ Nil {
 			@value := value;
 		}
 
+		#~
+		Gets the attribute namespace
+		@return attribute namespace
+		~#
 		method : public : GetNamespace() ~ String {
 			return String->New(@namespace);
 		}
 		
+		#~
+		Sets the attribute namespace
+		@param namespace attribute namespace
+		~#
 		method : public : SetNamespace(namespace : String) ~ Nil {
 			@namespace := namespace;
 		}
