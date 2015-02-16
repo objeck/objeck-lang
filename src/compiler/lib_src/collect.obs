@@ -2625,14 +2625,14 @@ bundle Collection {
 			return result <> Nil;
 		}
     
-    	#~
+		#~
 		Get a collection of keys
 		@return vector of keys
 		~#
 		method : public : native : GetKeys() ~ IntVector {
 			keys := IntVector->New();
 			holder_keys := @map->GetKeys();
-			for(i := 0; i < keys->Size(); i += 1;) {
+			for(i := 0; i < holder_keys->Size(); i += 1;) {
 				holder_value : IntHolder := holder_keys->Get(i)->As(IntHolder);
 				keys->AddBack(holder_value->Get());   
 			};
@@ -2640,7 +2640,7 @@ bundle Collection {
 			return keys;
 		}
     
-    	#~
+		#~
 		Gets a collection of values
 		@return vector of values
 		~#
@@ -2734,14 +2734,14 @@ bundle Collection {
 			return result <> Nil;
 		}
     
-    	#~
+ 		#~
 		Get a collection of keys
 		@return vector of keys
 		~#
 		method : public: native : GetKeys() ~ FloatVector {
 			keys := FloatVector->New();
 			holder_keys := @map->GetKeys();
-			for(i := 0; i < keys->Size(); i += 1;) {
+			for(i := 0; i < holder_keys->Size(); i += 1;) {
 				holder_value : FloatHolder := holder_keys->Get(i)->As(FloatHolder);
 				keys->AddBack(holder_value->Get());   
 			};
@@ -2749,7 +2749,7 @@ bundle Collection {
 			return keys;
 		}
     
-    	#~
+		#~
 		Gets a collection of values
 		@return vector of values
 		~#
@@ -3286,7 +3286,7 @@ bundle Collection {
 		method : public: native : GetKeys() ~ FloatVector {
 			keys := FloatVector->New();
 			holder_keys := @map->GetKeys();
-			for(i := 0; i < keys->Size(); i += 1;) {
+			for(i := 0; i < holder_keys->Size(); i += 1;) {
 				holder_value : FloatHolder := holder_keys->Get(i)->As(FloatHolder);
 				keys->AddBack(holder_value->Get());   
 			};
@@ -3506,7 +3506,7 @@ bundle Collection {
 			return @hash->Find(key) <> Nil;
 		}
     
-    	#~
+		#~
 		Get a collection of keys
 		@return vector of keys
 		~#
@@ -3514,7 +3514,7 @@ bundle Collection {
 			return @hash->GetKeys();
 		}
     
-    	#~
+		#~
 		Gets a collection of values
 		@return vector of values
 		~#
