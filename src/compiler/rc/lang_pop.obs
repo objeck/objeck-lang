@@ -1,0 +1,47 @@
+﻿use HTTP;
+use RegEx;
+
+class LangRank {
+	function : Main(args : String[]) ~ Nil {
+		client := HttpClient->New();
+		client->CookiesEnabled(true);
+		html := client->Get("http://rosettacode.org/mw/index.php?title=Special:Categories&limit=500");
+		each(i : html) {
+			lines := html->Get(i)->As(String);
+			elements := lines->Split("\n");
+			each(j : elements) {
+				element := elements[j];					
+				name : String; count : String;
+				regex := RegEx->New("<li><a href=\"(\\w|\\d|\\s|/|:|#)+\"\\stitle=\"Category:(\\w|\\d|\\s|#)+\">");
+				found := regex->FindFirst(element);
+				if(found <> Nil) {
+					group1 := found->Size();
+					regex := RegEx->New("(\\w|\\s)+");
+					found := regex->Match(element, group1);
+					if(found <> Nil & found->Size() > 0) {
+						name := found;
+						# skip over some junk characters 
+						group2 := group1 + found->Size() + 10;
+						regex := RegEx->New("\\s\\(");
+						found := regex->Match(element, group2);
+						if(found <> Nil) {
+							group3 := group2 + found->Size();
+							regex := RegEx->New("\\d+");
+							found := regex->Match(element, group3);
+							if(found <> Nil & found->Size() > 0) {
+								count := found;
+							};
+						};
+					};
+				};
+				
+				if(name <> Nil & count <> Nil) {
+					element->PrintLine();
+					IO.Console->Print("name='")->Print(name)->Print("', count=")->PrintLine(count);
+					"---"->PrintLine();
+				};	
+			};
+		};
+	}
+}
+
