@@ -16,32 +16,32 @@ class PythagMeans {
 		if(numbers->Size() = 0) { return -1.0; };
 
 		mean := 0.0;
-        each(i : numbers) {
-            mean += numbers[i];
-        };
+		each(i : numbers) {
+			mean += numbers[i];
+		};
 
-        return mean / numbers->Size();
-    }
+		return mean / numbers->Size();
+	}
 
 	function : native : GeometricMean(numbers : Float[]) ~ Float {
 		if(numbers->Size() = 0) { return -1.0; };
 
 		mean := 1.0;
-        each(i : numbers) {
-            mean *= numbers[i];
-        };
+		each(i : numbers) {
+			mean *= numbers[i];
+		};
 		
-        return mean->Power(1.0 / numbers->Size());
-    }
+		return mean->Power(1.0 / numbers->Size());
+	}
 
 	function : native : HarmonicMean(numbers : Float[]) ~ Float {
 		if(numbers->Size() = 0) { return -1.0; };
 
 		mean := 0.0;
-        each(i : numbers) {
-            mean += (1.0 / numbers[i]);
-        };
+		each(i : numbers) {
+			mean += (1.0 / numbers[i]);
+		};
 		
-        return numbers->Size() / mean;
-    }
+		return numbers->Size() / mean;
+	}
 }
