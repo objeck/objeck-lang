@@ -3415,8 +3415,8 @@ void IntermediateEmitter::EmitVariable(Variable* variable)
     case frontend::BYTE_TYPE:
     case frontend::CHAR_TYPE:
     case frontend::INT_TYPE:
-    case frontend::CLASS_TYPE:
     case frontend::FLOAT_TYPE:
+    case frontend::FUNC_TYPE:
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
       break;
 
