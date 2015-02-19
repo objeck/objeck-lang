@@ -4120,7 +4120,7 @@ bundle System.IO.File {
 		function : ReadFile(name : String) ~ String {
 			len := File->Size(name);
 			if(len > 0) {
-				buffer := Char->New[len + 1];
+				buffer := Byte->New[len + 1];
 				in := FileReader->New(name);
 				if(in->IsOpen()) {
 					in->ReadBuffer(0, len, buffer);
