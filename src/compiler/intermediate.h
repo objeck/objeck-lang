@@ -221,14 +221,20 @@ class IntermediateEmitter {
   // emits class cast checks
   void EmitClassCast(Expression* expression) {
     // class cast
-    if(expression->GetToClass()) {
+    if(expression->GetToClass() && 
+       !(expression->GetExpressionType() == METHOD_CALL_EXPR &&
+         static_cast<MethodCall*>(expression)->GetCallType() == NEW_ARRAY_CALL &&  
+         expression->GetToClass()->IsInterface())) {
       if(is_lib) {
 				imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_OBJ_INST_CAST, expression->GetToClass()->GetName()));
       } else {
 				imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, OBJ_INST_CAST, expression->GetToClass()->GetId()));
       }
     } 
-    else if(expression->GetToLibraryClass()) {
+    else if(expression->GetToLibraryClass() && 
+            !(expression->GetExpressionType() == METHOD_CALL_EXPR &&
+              static_cast<MethodCall*>(expression)->GetCallType() == NEW_ARRAY_CALL &&  
+              expression->GetToLibraryClass()->IsInterface())) {
       if(is_lib) {
 				imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_OBJ_INST_CAST, expression->GetToLibraryClass()->GetName()));
       } else {
