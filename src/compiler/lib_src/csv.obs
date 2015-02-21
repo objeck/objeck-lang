@@ -1,0 +1,35 @@
+use System.IO;
+use System.IO.File;
+use Collection;
+
+bundle CSV {
+	class CsvRow {
+		@column : String[];
+		@index : Int;
+	}
+	
+	class CsvColumn {
+		@column : String[];
+		@index : Int;
+		@name : String;		
+	}
+	
+	class CsvTable {
+		@data : String[,];
+		
+		New(data : String, delim : String) {
+		}
+		
+		method : public : GetRow(index : Int) ~ CsvRow {
+			return Nil;
+		}
+		
+		method : public : GetColumn(index : Int) ~ CsvRow {
+			return Nil;
+		}
+		
+		method : public : GetColumn(name : String) ~ CsvRow {
+			return Nil;
+		}
+	}
+}
