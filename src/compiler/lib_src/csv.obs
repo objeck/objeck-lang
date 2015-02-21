@@ -1,17 +1,51 @@
-use System.IO;
-use System.IO.File;
 use Collection;
 
 bundle CSV {
 	class CsvRow {
-		@column : String[];
+		@row : String[];
 		@index : Int;
+		
+		method : public : Get(index : Int) ~ String {
+			if(index < @row->Size()) {
+				return @row[index];
+			};
+			
+			return Nil;
+		}
+		
+		method : public : Size() ~ Int {
+			return @row->Size();
+		}
+		
+		method : public : Apply(f : (String) ~ String) ~ Bool {
+			return false;
+		}
 	}
 	
 	class CsvColumn {
 		@column : String[];
 		@index : Int;
-		@name : String;		
+		@name : String;
+		
+		method : public : GetUniqueValues() ~ String[] {
+			return Nil;
+		}
+		
+		method : public : Get(index : Int) ~ String {
+			if(index < @column->Size()) {
+				return @column[index];
+			};
+			
+			return Nil;
+		}
+		
+		method : public : Size() ~ Int {
+			return @column->Size();
+		}
+		
+		method : public : Apply(f : (String) ~ String) ~ Bool {
+			return false;
+		}
 	}
 	
 	class CsvTable {
