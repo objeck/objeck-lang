@@ -50,19 +50,62 @@ bundle CSV {
 	
 	class CsvTable {
 		@data : String[,];
+		@is_parsed : Bool;
 		
 		New(data : String, delim : String) {
+			rows := data->Split(delim);
+			if(rows->Size() > 1) {
+				@data := ParseRows(rows);
+			}
+			else {
+				@is_parsed := false;
+			};
+		}
+		
+		method : public : native : ParseRows(rows : String[]) ~ String[,] {
+			columns := CompareVector->New();
+			
+			each(i : rows) {
+				row := ParseRow(rows[i]);
+				if(row = Nil) {
+					return Nil;
+				}
+				else {
+					columns->AddBack(row);
+				};
+			};
+			
+			columns_rows := String->New[columns->Size(), rows->Size()];
+			
+			
+			return Nil;
+		}
+		
+		method : public : native : ParseRow(row : String) ~ String[] {
+			return Nil;
 		}
 		
 		method : public : GetRow(index : Int) ~ CsvRow {
+			if(<>@is_parsed) {
+				return Nil;
+			};
+			
 			return Nil;
 		}
 		
 		method : public : GetColumn(index : Int) ~ CsvRow {
+			if(<>@is_parsed) {
+				return Nil;
+			};
+			
 			return Nil;
 		}
 		
 		method : public : GetColumn(name : String) ~ CsvRow {
+			if(<>@is_parsed) {
+				return Nil;
+			};
+			
 			return Nil;
 		}
 	}

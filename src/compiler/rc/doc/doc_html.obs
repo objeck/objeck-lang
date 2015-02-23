@@ -242,6 +242,7 @@ class HtmlMaker {
 		
 		if(from_name <> Nil) {
 			sec_h += "<p>Derived from: <i>@parent_class_desc</i></p>";
+			sec_h := sec_h->ReplaceAll("@parent_class_desc", from_name);
 		};
 		
 		if(implemented_names->Size() > 0) {
