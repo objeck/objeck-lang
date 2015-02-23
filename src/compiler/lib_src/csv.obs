@@ -10,6 +10,10 @@ bundle CSV {
 			@columns := columns;
 		}
 		
+		method : public : Id() ~ Int {
+			return @id;
+		}
+		
 		method : public : Size() ~ Int {
 			return @columns->Size();
 		}
