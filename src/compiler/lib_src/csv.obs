@@ -3,11 +3,16 @@ use Collection;
 bundle CSV {
 	class CsvRow {
 		@columns : String[];
-		@index : Int;
 		
-		New(columns : String[], index : Int) {
-			@columns := columns;
-			@index := index;
+		New(columns : Vector) {
+			@columns := String->New[columns->Size()];
+			each(i : columns) {
+				@columns[i] := columns->Get(i)->As(String);
+			};
+		}
+		
+		method : public : Size() ~ Int {
+			return @columns->Size();
 		}
 		
 		method : public : Get(index : Int) ~ String {
@@ -18,52 +23,99 @@ bundle CSV {
 			return Nil;
 		}
 		
-		method : public : Size() ~ Int {
-			return @columns->Size();
-		}
-		
-		method : public : Apply(f : (String) ~ String) ~ Bool {
-			return false;
+		method : public : GetColumns() ~ String[] {
+			return @columns;
 		}
 	}
 	
 	class CsvTable {
-		@row_columns : Vector;
+		@data : String[,];
+		@column_size : Int;
 		@is_parsed : Bool;
 		
 		New(data : String, delim : String) {
 			@is_parsed := true;
 			rows := data->Split(delim);
 			if(rows->Size() > 1) {
-				@row_columns := ParseColumns(rows);
-				if(@row_columns = Nil) {
+				@data := ParseColumns(rows);
+				if(@data = Nil) {
 					@is_parsed := false;
 				};
 			}
 			else {
 				@is_parsed := false;
 			};
+			
+			if(@is_parsed) {
+@column_size->PrintLine();			
+@data->Size()->PrintLine();
+			};
 		}
 		
-		method : public : native : ParseColumns(rows : String[]) ~ Vector {
-			row_columns := Vector->New();
+		method : public : native : ParseColumns(rows : String[]) ~ String[,] {
+			parsed_rows := Vector->New();
 			
 			each(i : rows) {
-				columns := ParseRow(rows[i]->ReplaceAll("\"\"", "\\u0384"));
-				if(columns = Nil) {
+				parsed_row := ParseRow(rows[i]->ReplaceAll("\"\"", "ˑ"));
+				parsed_rows->AddBack(CsvRow->New(parsed_row));
+			};
+
+			if(rows->Size() <> parsed_rows->Size()) {
+				return Nil;
+			};
+			
+			@column_size := parsed_rows->Get(0)->As(CsvRow)->Size();
+			data := String->New[@column_size, parsed_rows->Size()];
+			each(i : parsed_rows) {
+				column_data := parsed_rows->Get(0)->As(CsvRow)->GetColumns();
+				if(column_data->Size() <> @column_size) {
 					return Nil;
-				}
-				else {
-					row_columns->AddBack(CsvRow->New(columns, i));
+				};
+				
+				each(j : column_data) {
+					data[i, j] := column_data[j];
 				};
 			};
 			
-			return row_columns;
+			return data;
 		}
 		
-		method : public : native : ParseRow(row : String) ~ String[] {
-row->PrintLine();		
-			return Nil;
+		method : public : native : ParseRow(row : String) ~ Vector {
+			columns := Vector->New();
+			
+			index := 0;
+			while(index < row->Size()) {
+				if(row->Get(index) = '"') {
+					index += 1;
+					start := index;
+					while(index < row->Size() & row->Get(index) <> '"') {
+						index += 1;
+					};
+					token := row->SubString(start, index - start);
+					index += 1;
+					if(token <> Nil) {
+						columns->AddBack(token->ReplaceAll("ˑ", "\"\""));
+					};
+# IO.Console->Print("quoted = |")->Print(token)->PrintLine("|");
+				}
+				else {
+					start := index;
+					while(index < row->Size() & row->Get(index) <> ',') {
+						index += 1;
+					};
+					token := row->SubString(start, index - start);
+					if(token <> Nil) {
+						columns->AddBack(token->ReplaceAll("ˑ", "\"\""));
+					};
+# IO.Console->Print("normal = |")->Print(token)->PrintLine("|");					
+				};
+			
+				if(row->Get(index) = ',') {
+					index += 1;
+				};
+			};
+					
+			return columns;
 		}
 		
 		method : public : GetRow(index : Int) ~ CsvRow {
