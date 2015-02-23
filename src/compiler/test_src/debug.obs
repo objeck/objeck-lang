@@ -3,6 +3,20 @@ use CSV;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		csv := CsvTable->New(System.IO.File.FileReader->ReadFile("/Users/randy/Documents/Temp/Temp/fred.csv"), "\r\n");
+		table := CsvTable->New(System.IO.File.FileReader->ReadFile("/Users/randy/Downloads/b.csv"), "\r\n");
+		r0 := table->Search(3, "4");
+		r0->Size()->PrintLine();
+		each(i : r0) {
+			r0->Get(i)->ToString()->PrintLine();
+		};
+		
+		
+		r0 := table->Search("a", "2");
+		r0->Size()->PrintLine();
+		each(i : r0) {
+			r0->Get(i)->ToString()->PrintLine();
+		};
+		
+		table->UniqueValues("c")->Size()->PrintLine();
 	}
 }
