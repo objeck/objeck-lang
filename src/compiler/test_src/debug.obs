@@ -17,6 +17,6 @@ class Test {
 			r0->Get(i)->ToString()->PrintLine();
 		};
 		
-		table->UniqueValues("c")->Size()->PrintLine();
+		table->UniqueColumnValues("c")->Size()->PrintLine();
 	}
 }
