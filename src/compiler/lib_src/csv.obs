@@ -30,7 +30,6 @@ bundle CSV {
 	
 	class CsvTable {
 		@data : String[,];
-		column_size : Int;
 		@is_parsed : Bool;
 		
 		New(data : String, delim : String) {
