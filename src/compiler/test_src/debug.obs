@@ -1,12 +1,8 @@
-class Test {
-    function : Main(args : String[]) ~ Nil {
-#			cc := String->New[3];
-			cc := Compare->New[3];
-			cc[0] := "fee";
-			cc[1] := "fie";
-			cc[2] := "fum";
+use Collection;
+use CSV;
 
-			c := cc[1]->As(String);
-			c->PrintLine();
-    }
-  }
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		csv := CsvTable->New(System.IO.File.FileReader->ReadFile("/Users/randy/Documents/Temp/Temp/fred.csv"), "\r\n");
+	}
+}
