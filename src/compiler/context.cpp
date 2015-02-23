@@ -1862,7 +1862,12 @@ bool ContextAnalyzer::Analyze()
            (!method_call->GetVariable() ||
             !method_call->GetVariable()->GetIndices())) {
           klass = program->GetClass(BASE_ARRAY_CLASS_ID);
-          encoding = L"o.System.Base*,";
+          encoding = L"o.System.Base";
+				  for(int i = 0; i < entry->GetType()->GetDimension(); i++) { 	
+            encoding += L"*";
+					}
+          encoding += L",";
+          
         } else {
           klass = SearchProgramClasses(entry->GetType()->GetClassName());
         }
@@ -1895,7 +1900,11 @@ bool ContextAnalyzer::Analyze()
           !method_call->GetVariable()->GetIndices())) {
 
         klass = linker->SearchClassLibraries(BASE_ARRAY_CLASS_ID, program->GetUses(current_class->GetFileName()));
-        encoding = L"o.System.Base*,";
+        encoding = L"o.System.Base";
+        for(int i = 0; i < entry->GetType()->GetDimension(); i++) {
+          encoding += L"*";
+        }
+        encoding += L",";				 
       } 
       // cast type
       else if(method_call->GetVariable() && method_call->GetVariable()->GetCastType() && 
