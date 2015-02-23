@@ -30,7 +30,7 @@ bundle CSV {
 	
 	class CsvTable {
 		@data : String[,];
-		@column_size : Int;
+		column_size : Int;
 		@is_parsed : Bool;
 		
 		New(data : String, delim : String) {
@@ -47,8 +47,9 @@ bundle CSV {
 			};
 			
 			if(@is_parsed) {
-@column_size->PrintLine();			
-@data->Size()->PrintLine();
+sizes := @data->Size();			
+sizes[0]->PrintLine();
+sizes[1]->PrintLine();
 			};
 		}
 		
@@ -64,11 +65,11 @@ bundle CSV {
 				return Nil;
 			};
 			
-			@column_size := parsed_rows->Get(0)->As(CsvRow)->Size();
-			data := String->New[@column_size, parsed_rows->Size()];
+			column_size := parsed_rows->Get(0)->As(CsvRow)->Size();
+			data := String->New[column_size, parsed_rows->Size()];
 			each(i : parsed_rows) {
 				column_data := parsed_rows->Get(0)->As(CsvRow)->GetColumns();
-				if(column_data->Size() <> @column_size) {
+				if(column_data->Size() <> column_size) {
 					return Nil;
 				};
 				
