@@ -40,6 +40,22 @@ bundle CSV {
 		}
 	}
 	
+	class CsvColumn {
+		@rows : CompareVector;
+		
+		New(rows : CompareVector) {
+			@rows := rows;
+		}
+		
+		method : public : Size() ~ Int {
+			return @rows->Size();
+		}
+		
+		method : public : Get(index : Int) ~ String {
+			return @rows->Get(index)->As(String);
+		}
+	}
+	
 	class CsvTable {
 		@data : Vector;
 		@is_parsed : Bool;
@@ -192,31 +208,54 @@ bundle CSV {
 			return CsvTable->New(found, GetHeaders());
 		}
 		
-		method : public : UniqueValues(name : String) ~ CompareVector {
+		method : public : UniqueColumnValues(name : String) ~ CsvColumn {
 			index := @header_names->Find(name)->As(IntHolder);
 			if(index <> Nil) {
-				return UniqueValues(index->Get());
+				return UniqueColumnValues(index->Get());
 			};
 			
 			return Nil;
 		}
 		
-		method : public : UniqueValues(index : Int) ~ CompareVector {
+		method : public : ColumnValues(index : Int) ~ CsvColumn {
 			if(index >= ColumnSize()) {
 				return Nil;
 			};
 			
-			found := CompareVector->New();
+			values := CompareVector->New();
+			for(i := 1; i < @data->Size(); i +=1;) {
+				value := @data->Get(i)->As(CsvRow)->Get(index);
+				values->AddBack(value);
+			};
+			
+			return CsvColumn->New(values);
+		}
+		
+		method : public : ColumnValues(name : String) ~ CsvColumn {
+			index := @header_names->Find(name)->As(IntHolder);
+			if(index <> Nil) {
+				return ColumnValues(index->Get());
+			};
+			
+			return Nil;
+		}
+		
+		method : public : UniqueColumnValues(index : Int) ~ CsvColumn {
+			if(index >= ColumnSize()) {
+				return Nil;
+			};
+			
+			values := CompareVector->New();
 			uniques := StringSet->New();
 			for(i := 1; i < @data->Size(); i +=1;) {
 				value := @data->Get(i)->As(CsvRow)->Get(index);
 				if(<>uniques->Has(value)) {
-					found->AddBack(value);
+					values->AddBack(value);
 					uniques->Insert(value);
 				};
 			};
 			
-			return found;
+			return CsvColumn->New(values);
 		}
 	}
 }
