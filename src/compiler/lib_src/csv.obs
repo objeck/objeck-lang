@@ -2,45 +2,24 @@ use Collection;
 
 bundle CSV {
 	class CsvRow {
-		@row : String[];
+		@columns : String[];
 		@index : Int;
 		
+		New(columns : String[], index : Int) {
+			@columns := columns;
+			@index := index;
+		}
+		
 		method : public : Get(index : Int) ~ String {
-			if(index < @row->Size()) {
-				return @row[index];
+			if(index < @columns->Size()) {
+				return @columns[index];
 			};
 			
 			return Nil;
 		}
 		
 		method : public : Size() ~ Int {
-			return @row->Size();
-		}
-		
-		method : public : Apply(f : (String) ~ String) ~ Bool {
-			return false;
-		}
-	}
-	
-	class CsvColumn {
-		@column : String[];
-		@index : Int;
-		@name : String;
-		
-		method : public : GetUniqueValues() ~ String[] {
-			return Nil;
-		}
-		
-		method : public : Get(index : Int) ~ String {
-			if(index < @column->Size()) {
-				return @column[index];
-			};
-			
-			return Nil;
-		}
-		
-		method : public : Size() ~ Int {
-			return @column->Size();
+			return @columns->Size();
 		}
 		
 		method : public : Apply(f : (String) ~ String) ~ Bool {
@@ -49,39 +28,41 @@ bundle CSV {
 	}
 	
 	class CsvTable {
-		@data : String[,];
+		@row_columns : Vector;
 		@is_parsed : Bool;
 		
 		New(data : String, delim : String) {
+			@is_parsed := true;
 			rows := data->Split(delim);
 			if(rows->Size() > 1) {
-				@data := ParseRows(rows);
+				@row_columns := ParseColumns(rows);
+				if(@row_columns = Nil) {
+					@is_parsed := false;
+				};
 			}
 			else {
 				@is_parsed := false;
 			};
 		}
 		
-		method : public : native : ParseRows(rows : String[]) ~ String[,] {
-			columns := CompareVector->New();
+		method : public : native : ParseColumns(rows : String[]) ~ Vector {
+			row_columns := Vector->New();
 			
 			each(i : rows) {
-				row := ParseRow(rows[i]);
-				if(row = Nil) {
+				columns := ParseRow(rows[i]->ReplaceAll("\"\"", "\\u0384"));
+				if(columns = Nil) {
 					return Nil;
 				}
 				else {
-					columns->AddBack(row);
+					row_columns->AddBack(CsvRow->New(columns, i));
 				};
 			};
 			
-			columns_rows := String->New[columns->Size(), rows->Size()];
-			
-			
-			return Nil;
+			return row_columns;
 		}
 		
 		method : public : native : ParseRow(row : String) ~ String[] {
+row->PrintLine();		
 			return Nil;
 		}
 		
