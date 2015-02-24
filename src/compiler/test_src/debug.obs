@@ -17,6 +17,9 @@ class Test {
 			r0->Get(i)->ToString()->PrintLine();
 		};
 		
-		table->UniqueColumnValues("c")->Size()->PrintLine();
+		c0 := table->ColumnValues("d");
+		c0->Sum()->PrintLine();
+		c0->Average()->PrintLine();
+		c0->Median()->PrintLine();
 	}
 }
