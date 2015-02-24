@@ -54,6 +54,44 @@ bundle CSV {
 		method : public : Get(index : Int) ~ String {
 			return @rows->Get(index)->As(String);
 		}
+		
+		method : public : Sum() ~ Float {
+			sum := 0.0;
+			
+			each(i : @rows) {
+				sum += @rows->Get(i)->As(String)->ToFloat();
+			};
+			
+			return sum;
+		}
+		
+		method : public : Average() ~ Float {
+			return Sum() / @rows->Size();
+		}
+		
+		method : public : Median() ~ Float {
+			if(@rows->Size() = 1) {
+				@rows->Get(0)->As(String)->ToFloat();
+			};
+			
+			# store values and sort 
+			sorted := FloatVector->New();
+			each(i : @rows) {
+				sorted->AddBack(@rows->Get(i)->As(String)->ToFloat());
+			};
+			sorted->Sort();
+			
+			# find median
+			size := sorted->Size();
+			if(size % 2 = 0) {
+				right := sorted->Get(size / 2);
+				left := sorted->Get(right - 1);
+				return (left + right) / 2;
+			}
+			else {
+				return sorted->Get(size / 2);
+			};
+		}
 	}
 	
 	class CsvTable {
