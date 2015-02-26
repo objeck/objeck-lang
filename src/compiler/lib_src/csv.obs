@@ -124,6 +124,12 @@ bundle CSV {
 		New(data : Vector, headers : StringHash) {
 			@is_parsed := true;
 			@data := data;
+			
+			@header_names := StringHash->New();
+			headers := @data->Get(0)->As(CsvRow);
+			each(i : headers) {
+				@header_names->Insert(headers->Get(i)->As(String), IntHolder->New(i));
+			};
 		}
 		
 		method : GetHeaders() ~ StringHash {
