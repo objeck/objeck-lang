@@ -121,15 +121,10 @@ bundle CSV {
 			};
 		}
 		
-		New(data : Vector, headers : StringHash) {
+		New(data : Vector, header_names : StringHash) {
 			@is_parsed := true;
 			@data := data;
-			
-			@header_names := StringHash->New();
-			headers := @data->Get(0)->As(CsvRow);
-			each(i : headers) {
-				@header_names->Insert(headers->Get(i)->As(String), IntHolder->New(i));
-			};
+			@header_names := header_names;
 		}
 		
 		method : GetHeaders() ~ StringHash {
@@ -249,7 +244,7 @@ bundle CSV {
 				};
 			};
 			
-			return CsvTable->New(found, GetHeaders());
+			return CsvTable->New(found, @header_names);
 		}
 		
 		method : public : UniqueColumnValues(name : String) ~ CsvColumn {
