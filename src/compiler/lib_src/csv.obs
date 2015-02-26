@@ -99,7 +99,15 @@ bundle CSV {
 		@is_parsed : Bool;
 		@header_names : StringHash;
 		
+		New(data : String) {
+			Init(data, "\r\n");
+		}
+
 		New(data : String, delim : String) {
+			Init(data, delim);
+		}	
+
+		method : Init(data : String, delim : String) ~ Nil {
 			@is_parsed := true;
 			rows := data->Split(delim);
 			if(rows->Size() > 1) {			
