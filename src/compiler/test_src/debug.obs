@@ -1,18 +1,31 @@
-use Collection;
-use CSV;
-
 class Test {
-
 	function : Main(args : String[]) ~ Nil {
-		table : CsvTable := CsvTable->New(System.IO.File.FileReader->ReadFile(args[0]), "\r\n");
+		table := CSV.CsvTable->New(System.IO.File.FileReader->ReadFile(args[0]), "\r\n");
 		AttachRate(table, "10/1/2013");
+		AttachRate(table, "1/1/2014");
+		AttachRate(table, "4/1/2014");
+		AttachRate(table, "7/1/2014");
+		AttachRate(table, "10/1/2014");
+		AttachRate(table, "1/1/2015");
 	}
 	
-	function : AttachRate(table : CsvTable, quarter : String) ~ Nil {
+	function : AttachRate(table : CSV.CsvTable, quarter : String) ~ Nil {
 		fiscal_quarter := table->Search("Product: Fiscal Quarter", quarter);
-		fiscal_quarter->Size()->PrintLine();
-
+		
 		contracts := fiscal_quarter->UniqueColumnValues("Contract");
-		contracts->Size()->PrintLine();
+		contract_num := contracts->Size();
+	
+		count := 0;
+		each(i : contracts) {
+			contract := fiscal_quarter->Search("Contract", contracts->Get(i));
+			quick_starts := contract->Search("Product Name", "Acme QuickStart");
+			consulting := contract->Search("Product Name", "Acme Consulting Services");
+			if(quick_starts->Size() > 1 | consulting->Size() > 1) {
+				count += 1;
+			};
+		};		
+
+		attach_rate := 1 + (count - contract_num)->As(Float) / contract_num->As(Float);
+		IO.Console->Print(quarter)->Print(',')->Print(attach_rate)->PrintLine(',');
 	}
 }
