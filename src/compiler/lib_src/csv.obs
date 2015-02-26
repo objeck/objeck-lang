@@ -1,23 +1,47 @@
 use Collection;
 
+#~
+Provides a mechanism to search and perform calculations on CSV files.
+~#
 bundle CSV {
+	#~
+	CSV row
+	~#
 	class CsvRow {
 		@id : Int;
 		@columns : CompareVector;
 		
+		#~
+		Constructor
+		@param id row id
+		@param columns column values
+		~#
 		New(id : Int, columns : CompareVector) {
 			@id := id;
 			@columns := columns;
 		}
 		
+		#~
+		Gets the row ID
+		@return id
+		~#
 		method : public : Id() ~ Int {
 			return @id;
 		}
 		
+		#~
+		Gets the row size
+		@return row size
+		~#
 		method : public : Size() ~ Int {
 			return @columns->Size();
 		}
-		
+
+		#~
+		Gets the indexed row value
+		@param index index
+		@return row value
+		~#
 		method : public : Get(index : Int) ~ String {
 			if(index < @columns->Size()) {
 				return @columns->Get(index)->As(String);
@@ -26,6 +50,10 @@ bundle CSV {
 			return Nil;
 		}
 		
+		#~
+		Formats the row into a string
+		@return string representation of the row
+		~#
 		method : public : ToString() ~ String {
 			buffer := "";
 			
@@ -40,21 +68,41 @@ bundle CSV {
 		}
 	}
 	
+	#~
+	CSV column
+	~#
 	class CsvColumn {
 		@rows : CompareVector;
 		
+		#~
+		Constructor
+		@param rows row values
+		~#
 		New(rows : CompareVector) {
 			@rows := rows;
 		}
 		
+		#~
+		Gets the row size
+		@return row size
+		~#
 		method : public : Size() ~ Int {
 			return @rows->Size();
 		}
 		
+		#~
+		Gets the indexed row value
+		@param index index
+		@return row value
+		~#
 		method : public : Get(index : Int) ~ String {
 			return @rows->Get(index)->As(String);
 		}
 		
+		#~
+		Calculates the column sum
+		@return column sum
+		~#
 		method : public : Sum() ~ Float {
 			sum := 0.0;
 			
@@ -65,10 +113,18 @@ bundle CSV {
 			return sum;
 		}
 		
+		#~
+		Calculates the column average 
+		@return column average
+		~#
 		method : public : Average() ~ Float {
 			return Sum() / @rows->Size();
 		}
 		
+		#~
+		Calculates the column median 
+		@return column median
+		~#
 		method : public : Median() ~ Float {
 			if(@rows->Size() = 1) {
 				@rows->Get(0)->As(String)->ToFloat();
@@ -94,22 +150,34 @@ bundle CSV {
 		}
 	}
 	
+	#~
+	CSV table
+	~#
 	class CsvTable {
 		@data : Vector;
 		@is_parsed : Bool;
 		@header_names : StringHash;
 		
+		#~
+		Constructor
+		@param data CSV data with CRNL line endings
+		~#
 		New(data : String) {
 			Init(data, "\r\n");
 		}
 
-		New(data : String, delim : String) {
-			Init(data, delim);
+		#~
+		Constructor
+		@param data CSV data
+		@param ending line ending
+		~#
+		New(data : String, ending : String) {
+			Init(data, ending);
 		}	
 
-		method : Init(data : String, delim : String) ~ Nil {
+		method : Init(data : String, ending : String) ~ Nil {
 			@is_parsed := true;
-			rows := data->Split(delim);
+			rows := data->Split(ending);
 			if(rows->Size() > 1) {			
 				@data := ParseColumns(rows);
 				if(@data = Nil) {
@@ -135,15 +203,19 @@ bundle CSV {
 			@header_names := header_names;
 		}
 		
-		method : GetHeaders() ~ StringHash {
-			return @header_names;
+		#~
+		Gets header names
+		@return header names
+		~#
+		method : public : GetHeaders() ~ CsvRow {
+			if(@is_parsed) {
+				return @data->Get(0)->As(CsvRow);
+			};
+			
+			return Nil;
 		}
 		
-		method : public : RowSize() ~ Int {
-			return @data->Size();
-		}
-		
-		method : public : native : ParseColumns(rows : String[]) ~ Vector {
+		method : native : ParseColumns(rows : String[]) ~ Vector {
 			parsed_rows := Vector->New();
 			each(i : rows) {
 				parsed_rows->AddBack(CsvRow->New(i, ParseRow(rows[i]->ReplaceAll("\"\"", "ˑ"))));
@@ -166,7 +238,7 @@ bundle CSV {
 			return parsed_rows;
 		}
 		
-		method : public : native : ParseRow(row : String) ~ CompareVector {
+		method : native : ParseRow(row : String) ~ CompareVector {
 			columns := CompareVector->New();
 			
 			index := 0;
@@ -208,6 +280,11 @@ bundle CSV {
 			return columns;
 		}
 		
+		#~
+		Gets an indexed row
+		@param index index
+		@return row
+		~#
 		method : public : Get(index : Int) ~ CsvRow {
 			if(<>@is_parsed) {
 				return Nil;
@@ -216,10 +293,18 @@ bundle CSV {
 			return @data->Get(index)->As(CsvRow);
 		}
 		
+		#~
+		Gets the number of rows
+		@return number of rows
+		~#
 		method : public : Size() ~ Int {
 			return @data->Size();
 		}
 		
+		#~
+		Gets the size of columns
+		@return columns size
+		~#
 		method : public : ColumnSize() ~ Int {
 			if(<>@is_parsed) {
 				return 0;
@@ -228,6 +313,12 @@ bundle CSV {
 			return @data->Get(0)->As(CsvRow)->Size();
 		}
 		
+		#~
+		Searches a given column for matching values
+		@param name column name
+		@param value value to search for
+		@return table of matching results 
+		~#
 		method : public : Search(name : String, value : String) ~ CsvTable {
 			index := @header_names->Find(name)->As(IntHolder);
 			if(index <> Nil) {
@@ -237,6 +328,12 @@ bundle CSV {
 			return Nil;
 		}
 		
+		#~
+		Searches a given column for matching values
+		@param index column index
+		@param value value to search for
+		@return table of matching results 
+		~#
 		method : public : Search(index : Int, value : String) ~ CsvTable {
 			if(index >= ColumnSize()) {
 				return Nil;
@@ -255,6 +352,11 @@ bundle CSV {
 			return CsvTable->New(found, @header_names);
 		}
 		
+		#~
+		Get unique values for a given row
+		@param name column name
+		@return unique values for the given row
+		~#
 		method : public : UniqueColumnValues(name : String) ~ CsvColumn {
 			index := @header_names->Find(name)->As(IntHolder);
 			if(index <> Nil) {
@@ -264,6 +366,11 @@ bundle CSV {
 			return Nil;
 		}
 		
+		#~
+		Get values for a given row
+		@param index column index
+		@return values for the given row
+		~#
 		method : public : ColumnValues(index : Int) ~ CsvColumn {
 			if(index >= ColumnSize()) {
 				return Nil;
@@ -278,6 +385,11 @@ bundle CSV {
 			return CsvColumn->New(values);
 		}
 		
+		#~
+		Get values for a given row
+		@param name column name
+		@return values for the given row
+		~#
 		method : public : ColumnValues(name : String) ~ CsvColumn {
 			index := @header_names->Find(name)->As(IntHolder);
 			if(index <> Nil) {
@@ -287,6 +399,11 @@ bundle CSV {
 			return Nil;
 		}
 		
+		#~
+		Get unique values for a given row
+		@param index column index
+		@return unique values for the given row
+		~#
 		method : public : UniqueColumnValues(index : Int) ~ CsvColumn {
 			if(index >= ColumnSize()) {
 				return Nil;
