@@ -2,24 +2,17 @@ use Collection;
 use CSV;
 
 class Test {
+
 	function : Main(args : String[]) ~ Nil {
-		table := CsvTable->New(System.IO.File.FileReader->ReadFile("/Users/randy/Downloads/b.csv"), "\r\n");
-		r0 := table->Search(3, "4");
-		r0->Size()->PrintLine();
-		each(i : r0) {
-			r0->Get(i)->ToString()->PrintLine();
-		};
-		
-		
-		r0 := table->Search("a", "2");
-		r0->Size()->PrintLine();
-		each(i : r0) {
-			r0->Get(i)->ToString()->PrintLine();
-		};
-		
-		c0 := table->ColumnValues("d");
-		c0->Sum()->PrintLine();
-		c0->Average()->PrintLine();
-		c0->Median()->PrintLine();
+		table : CsvTable := CsvTable->New(System.IO.File.FileReader->ReadFile(args[0]), "\r\n");
+		AttachRate(table, "10/1/2013");
+	}
+	
+	function : AttachRate(table : CsvTable, quarter : String) ~ Nil {
+		fiscal_quarter := table->Search("Product: Fiscal Quarter", quarter);
+		fiscal_quarter->Size()->PrintLine();
+
+		contracts := fiscal_quarter->UniqueColumnValues("Contract");
+		contracts->Size()->PrintLine();
 	}
 }
