@@ -23,8 +23,8 @@ class Test {
 			if(quick_starts->Size() > 1 | consulting->Size() > 1) {
 				count += 1;
 			};
-		};		
-
+		};
+		
 		attach_rate := 1 + (count - contract_num)->As(Float) / contract_num->As(Float);
 		IO.Console->Print(quarter)->Print(',')->Print(attach_rate)->PrintLine(',');
 	}
