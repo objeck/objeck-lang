@@ -221,6 +221,8 @@ class HtmlMaker {
 		# class description
 		html := String->New(header);
 		
+		html += "<a href='index.html' target='_parent'>Home</a><hr/>";
+		
 		sec_b : String;
 		if(class_block->IsInterface()) {
 			sec_b := "<h2>@class_name</h2><p>@class_desc</p>";
