@@ -254,7 +254,7 @@ bundle CSV {
 			column_size := parsed_rows->Get(0)->As(CsvRow)->Size();
 			each(i : parsed_rows) {
 				parsed_row := parsed_rows->Get(i)->As(CsvRow);
-				if(parsed_row->Size() <> column_size) {
+				if(parsed_row->Size() < column_size) {
 # IO.Console->Print("columns: parsed = ")->Print(parsed_row->Size())->Print(", size = ")->PrintLine(column_size);
 					return Nil;
 				};
