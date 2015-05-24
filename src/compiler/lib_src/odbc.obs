@@ -656,13 +656,14 @@ bundle ODBC {
 		~#
 		method : public : Close() ~ Nil {
 			if(@native_stmt <> 0 & @native_names <> 0) {
-      			array_args := Base->New[1];
+      			array_args := Base->New[2];
 				array_args[0] := IntHolder->New(@native_stmt);
+				array_args[1] := IntHolder->New(@exec_data);
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("odbc_stmt_close", array_args);
 				@params->Empty();
-      			};
-      		}
+      		};
+      	}
 	}
 	
 	#~
