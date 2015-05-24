@@ -34,6 +34,8 @@
 using namespace std;
 
 extern "C" {
+  SQLLEN sql_null = SQL_NULL_DATA;
+  
   //
   // initialize odbc environment
   //
@@ -466,6 +468,31 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport) 
 #endif
+  void odbc_stmt_set_smallint_null(VMContext& context) 
+  {
+    SQLUSMALLINT i = (SQLUSMALLINT)APITools_GetIntValue(context, 1);
+    SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 2);
+
+#ifdef _DEBUG
+    wcout << L"### set_smallint: stmt=" << stmt << L", column=" << i << L", value=<NULL> ###" << endl;
+#endif  
+
+    SQLRETURN status = SQLBindParameter(stmt, i, SQL_PARAM_INPUT, SQL_C_SSHORT, 
+                                        SQL_SMALLINT, 0, 0, NULL, 0, &sql_null);
+    if(SQL_OK) { 
+      APITools_SetIntValue(context, 0, 1);
+    }
+    else {
+      APITools_SetIntValue(context, 0, 0);
+    }
+  }
+  
+  //
+  // set a small int from a prepared statement
+  //
+#ifdef _WIN32
+  __declspec(dllexport) 
+#endif
   void odbc_stmt_set_smallint(VMContext& context) 
   {
     long* value = APITools_GetIntAddress(context, 1);
@@ -493,6 +520,31 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport) 
 #endif
+  void odbc_stmt_set_bit_null(VMContext& context) 
+  {
+    SQLUSMALLINT i = (SQLUSMALLINT)APITools_GetIntValue(context, 1);
+    SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 2);
+
+#ifdef _DEBUG
+    wcout << L"### set_bit: stmt=" << stmt << L", column=" << i << L", value=<NULL> ###" << endl;
+#endif  
+
+    SQLRETURN status = SQLBindParameter(stmt, i, SQL_PARAM_INPUT, SQL_C_BIT, 
+                                        SQL_BIT, 0, 0, NULL, 0, &sql_null);
+    if(SQL_OK) { 
+      APITools_SetIntValue(context, 0, 1);
+    }
+    else {
+      APITools_SetIntValue(context, 0, 0);
+    }
+  }
+
+  //
+  // set an int from a prepared statement
+  //
+#ifdef _WIN32
+  __declspec(dllexport) 
+#endif
   void odbc_stmt_set_bit(VMContext& context) 
   {
     long* value = APITools_GetIntAddress(context, 1);
@@ -506,6 +558,31 @@ extern "C" {
 
     SQLRETURN status = SQLBindParameter(stmt, i, SQL_PARAM_INPUT, SQL_C_BIT, 
                                         SQL_BIT, 0, 0, value, 0, NULL);
+    if(SQL_OK) { 
+      APITools_SetIntValue(context, 0, 1);
+    }
+    else {
+      APITools_SetIntValue(context, 0, 0);
+    }
+  }
+
+  //
+  // set an int from a prepared statement
+  //
+#ifdef _WIN32
+  __declspec(dllexport) 
+#endif
+  void odbc_stmt_set_int_null(VMContext& context) 
+  {
+    SQLUSMALLINT i = (SQLUSMALLINT)APITools_GetIntValue(context, 1);
+    SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 2);
+
+#ifdef _DEBUG
+    wcout << L"### set_int: stmt=" << stmt << L", column=" << i << L", value=<NULL> ###" << endl;
+#endif  
+
+    SQLRETURN status = SQLBindParameter(stmt, i, SQL_PARAM_INPUT, SQL_C_LONG, 
+                                        SQL_INTEGER, 0, 0, NULL, 0, &sql_null);
     if(SQL_OK) { 
       APITools_SetIntValue(context, 0, 1);
     }
