@@ -198,7 +198,7 @@ bundle ODBC {
 		}
 		
 		#~
-		Sets a small integer type to null
+		Sets a small integer type to NULL
 		@param pos parameter position
 		@return true if set, false otherwise
 		~#
@@ -245,7 +245,7 @@ bundle ODBC {
 		}
 		
 		#~
-		Sets a integer type to null
+		Sets a integer type to NULL
 		@param pos parameter position
 		@param value integer value
 		@return true if set, false otherwise
@@ -269,7 +269,6 @@ bundle ODBC {
 		#~
 		Sets a integer type
 		@param pos parameter position
-		@param value integer value
 		@return true if set, false otherwise
 		~#
 		method : public : SetInt(pos : Int, value : Int) ~ Bool {
@@ -292,6 +291,27 @@ bundle ODBC {
 			return false;
 		}
 		
+		#~
+		Sets a double type to NULL
+		@param pos parameter position
+		@return true if set, false otherwise
+		~#
+		method : public : SetDouble(pos : Int) ~ Bool {
+			if(@native_stmt <> 0 & @native_names <> 0) {
+				array_args := Base->New[3];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(pos);
+				array_args[2] := IntHolder->New(@native_stmt);
+				@lib_proxy := Proxy->GetDllProxy();
+				@lib_proxy->CallFunction("odbc_stmt_set_double_null", array_args);
+				
+				status := array_args[0]->As(IntHolder);
+				return status->Get() = 1;
+			};
+			
+			return false;
+		}
+
 		#~
 		Sets a double type
 		@param pos parameter position
@@ -319,6 +339,27 @@ bundle ODBC {
 		}
 		
 		#~
+		Sets a real type to NULL
+		@param pos parameter position
+		@return true if set, false otherwise
+		~#
+		method : public : SetReal(pos : Int) ~ Bool {
+			if(@native_stmt <> 0 & @native_names <> 0) {
+				array_args := Base->New[4];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(pos);
+				array_args[2] := IntHolder->New(@native_stmt);
+				@lib_proxy := Proxy->GetDllProxy();
+				@lib_proxy->CallFunction("odbc_stmt_set_real_null", array_args);
+				
+				status := array_args[0]->As(IntHolder);
+				return status->Get() = 1;
+			};
+			
+			return false;
+		}
+
+		#~
 		Sets a real type
 		@param pos parameter position
 		@param value real value
@@ -336,6 +377,27 @@ bundle ODBC {
 				array_args[3] := IntHolder->New(@native_stmt);
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("odbc_stmt_set_real", array_args);
+				
+				status := array_args[0]->As(IntHolder);
+				return status->Get() = 1;
+			};
+			
+			return false;
+		}
+
+		#~
+		Sets varchar type to NULL
+		@param pos parameter position
+		@return true if set, false otherwise
+		~#
+		method : public : SetVarchar(pos : Int) ~ Bool {		
+			if(@native_stmt <> 0 & @native_names <> 0) {
+				array_args := Base->New[3];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(pos);
+				array_args[2] := IntHolder->New(@native_stmt);
+				@lib_proxy := Proxy->GetDllProxy();
+				@lib_proxy->CallFunction("odbc_stmt_set_varchar_null", array_args);
 				
 				status := array_args[0]->As(IntHolder);
 				return status->Get() = 1;
@@ -370,6 +432,27 @@ bundle ODBC {
 			return false;
 		}
 		
+		#~
+		Sets a blob type to NULL
+		@param pos parameter position
+		@return true if set, false otherwise
+		~#
+		method : public : SetBlob(pos : Int) ~ Bool {		
+			if(@native_stmt <> 0 & @native_names <> 0) {
+				array_args := Base->New[3];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(pos);
+				array_args[2] := IntHolder->New(@native_stmt);
+				@lib_proxy := Proxy->GetDllProxy();
+				@lib_proxy->CallFunction("odbc_stmt_set_blob_null", array_args);
+				
+				status := array_args[0]->As(IntHolder);
+				return status->Get() = 1;
+			};
+			
+			return false;
+		}
+
 		#~
 		Sets a blob type
 		@param pos parameter position
@@ -435,6 +518,27 @@ bundle ODBC {
 		}
 		
 		#~
+		Sets a date type to NULL
+		@param pos parameter position
+		@return true if set, false otherwise
+		~#
+		method : public : SetDate(pos : Int) ~ Bool {		
+			if(@native_stmt <> 0 & @native_names <> 0) {
+				array_args := Base->New[3];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(pos);
+				array_args[2] := IntHolder->New(@native_stmt);
+				@lib_proxy := Proxy->GetDllProxy();
+				@lib_proxy->CallFunction("odbc_stmt_set_date_null", array_args);
+				
+				status := array_args[0]->As(IntHolder);
+				return status->Get() = 1;
+			};
+			
+			return false;
+		}
+
+		#~
 		Sets a date type
 		@param pos parameter position
 		@param value date value
@@ -459,6 +563,27 @@ bundle ODBC {
 			return false;
 		}
 		
+		#~
+		Sets a timestamp type to NULL
+		@param pos parameter position
+		@return true if set, false otherwise
+		~#
+		method : public : SetTimestamp(pos : Int) ~ Bool {		
+			if(@native_stmt <> 0 & @native_names <> 0) {
+				array_args := Base->New[3];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(pos);
+				array_args[2] := IntHolder->New(@native_stmt);
+				@lib_proxy := Proxy->GetDllProxy();
+				@lib_proxy->CallFunction("odbc_stmt_set_timestamp_null", array_args);
+				
+				status := array_args[0]->As(IntHolder);
+				return status->Get() = 1;
+			};
+			
+			return false;
+		}
+
 		#~
 		Sets a timestamp type
 		@param pos parameter position
