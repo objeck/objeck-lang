@@ -323,6 +323,10 @@ bundle CSV {
 		@return number of rows
 		~#
 		method : public : Size() ~ Int {
+			if(<>@is_parsed) {
+				return 0;
+			};
+
 			return @data->Size();
 		}
 		
