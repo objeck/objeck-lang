@@ -4114,7 +4114,7 @@ bundle System.IO.File {
 		
 		#~
 		Reads a file's contents into a string
-		@param file name
+		@param name file name
 		@return character string
 		~#
 		function : ReadFile(name : String) ~ String {
@@ -4135,7 +4135,7 @@ bundle System.IO.File {
 		
 		#~
 		Reads a file's contents into byte array
-		@param file name
+		@param name file name
 		@return byte array
 		~#
 		function : ReadBinaryFile(name : String) ~ Byte[] {
