@@ -938,7 +938,7 @@ bundle ODBC {
 		Gets the minutes
 		@return minutes
 		~#
-		method : public : GetMinute() ~ Int {
+		method : public : GetMinutes() ~ Int {
 			return @minute;
 		}
 		
@@ -946,7 +946,7 @@ bundle ODBC {
 		Sets the minutes
 		@param minute minutes
 		~#
-		method : public : SetMinute(minute : Int) ~ Nil {
+		method : public : SetMinutes(minute : Int) ~ Nil {
 			@minute := minute;
 		}
 
