@@ -808,7 +808,7 @@ extern "C" {
 #endif  
 		
     SQLRETURN status = SQLBindParameter(stmt, i, SQL_PARAM_INPUT, SQL_C_CHAR, 
-                                        SQL_CHAR, 0, 0, (SQLPOINTER)value, strlen(value), NULL);
+                                        SQL_LONGVARCHAR, 0, 0, (SQLPOINTER)value, strlen(value), NULL);
     if(SQL_OK) { 
       APITools_SetIntValue(context, 0, 1);
     }
