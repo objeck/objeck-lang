@@ -34,7 +34,7 @@
 using namespace std;
 
 extern "C" {
-  SQLLEN sql_null = SQL_NULL_DATA;
+  SQLLEN sql_null;
   
   //
   // initialize odbc environment
@@ -47,6 +47,7 @@ extern "C" {
     if(!env) {
       SQLAllocHandle(SQL_HANDLE_ENV, SQL_NULL_HANDLE, &env);
       SQLSetEnvAttr(env, SQL_ATTR_ODBC_VERSION, (void*)SQL_OV_ODBC3, 0);
+      sql_null = SQL_NULL_DATA;
     }
   }
 
