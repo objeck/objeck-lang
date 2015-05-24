@@ -28,6 +28,19 @@ bundle CSV {
 		method : public : Id() ~ Int {
 			return @id;
 		}
+
+		#~
+		Gets the indexed row value
+		@param index index
+		@return row value
+		~#
+		method : public : Get(index : Int) ~ String {
+			if(index < @columns->Size()) {
+				return @columns->Get(index)->As(String);
+			};
+			
+			return Nil;
+		}
 		
 		#~
 		Gets the row size
@@ -48,18 +61,6 @@ bundle CSV {
 			};
 			
 			return Nil;
-		}
-		
-		#~
-		Gets the size of rows
-		@return row size
-		~#
-		method : public : RowSize() ~ Int {
-			if(<>@is_parsed) {
-				return 0;
-			};
-			
-			return @data->Get(0)->As(CsvRow)->Size();
 		}
 		
 		#~
@@ -225,6 +226,18 @@ bundle CSV {
 			};
 			
 			return Nil;
+		}
+		
+		#~
+		Gets the size of rows
+		@return row size
+		~#
+		method : public : RowSize() ~ Int {
+			if(<>@is_parsed) {
+				return 0;
+			};
+			
+			return @data->Get(0)->As(CsvRow)->Size();
 		}
 		
 		method : native : ParseColumns(rows : String[]) ~ Vector {
