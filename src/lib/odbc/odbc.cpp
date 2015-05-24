@@ -1,7 +1,7 @@
 /***************************************************************************
  * ODBC support for Objeck
  *
- * Copyright (c) 2011-2013, Randy Hollines
+ * Copyright (c) 2011-2015, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -1462,6 +1462,12 @@ extern "C" {
       SQLFreeStmt(stmt, SQL_CLOSE);
     }
 		
+    map<int, pair<void*, int> >* exec_data = (map<int, pair<void*, int> >*)APITools_GetIntValue(context, 1);
+    if(exec_data) {
+      delete exec_data;
+      exec_data = NULL;
+    }
+    
 #ifdef _DEBUG
     wcout << L"### closed prepared statement ###" << endl;
 #endif
