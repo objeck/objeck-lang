@@ -268,6 +268,7 @@ bundle ODBC {
 		#~
 		Sets a integer type
 		@param pos parameter position
+		@param value integer value to set
 		@return true if set, false otherwise
 		~#
 		method : public : SetInt(pos : Int, value : Int) ~ Bool {
