@@ -2691,7 +2691,7 @@ bundle System.API {
 		#~
 		Path to the shared library. The path should not include the 
 		extension name (i.e. .dll, .so, etc.) for platform portability
-		@param shared library path
+		@param name shared library path
 		~#
 		New(name : String) {
 			Parent();
