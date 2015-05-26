@@ -412,6 +412,7 @@ extern "C" {
   {
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 1);    
     map<int, pair<void*, int> >* exec_data = (map<int, pair<void*, int> >*)APITools_GetIntValue(context, 2);
+    map<const wstring, int>* column_names = (map<const wstring, int>*)APITools_GetIntValue(context, 3);
 		
 #ifdef _DEBUG
     wcout << L"### stmt_update: stmt=" << stmt << L" ###" << endl;
@@ -445,6 +446,11 @@ extern "C" {
             delete exec_data;
             exec_data = NULL;
           }
+
+          if(column_names) {
+            delete column_names;
+            column_names = NULL;
+          }
           return;
         }
         status = SQLParamData(stmt, &param_id);
@@ -460,6 +466,11 @@ extern "C" {
         delete exec_data;
         exec_data = NULL;
       }
+
+      if(column_names) {
+        delete column_names;
+        column_names = NULL;
+      }
       return;
     }
 		
@@ -473,6 +484,11 @@ extern "C" {
         delete exec_data;
         exec_data = NULL;
       }
+
+      if(column_names) {
+        delete column_names;
+        column_names = NULL;
+      }
       return;
     }
 		
@@ -480,6 +496,11 @@ extern "C" {
     if(exec_data) {
       delete exec_data;
       exec_data = NULL;
+    }
+
+    if(column_names) {
+      delete column_names;
+      column_names = NULL;
     }
   }
 

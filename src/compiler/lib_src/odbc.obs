@@ -617,10 +617,11 @@ bundle ODBC {
 		~#
 		method : public : Update() ~ Int {
 			if(@native_stmt <> 0 & @native_names <> 0) {
-      			array_args := Base->New[3];
+      			array_args := Base->New[4];
 				array_args[0] := IntHolder->New();
 				array_args[1] := IntHolder->New(@native_stmt);
 				array_args[2] := IntHolder->New(@exec_data);
+				array_args[3] := IntHolder->New(@native_names);
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("odbc_stmt_update", array_args);
 				@params->Empty();
@@ -656,9 +657,8 @@ bundle ODBC {
 		~#
 		method : public : Close() ~ Nil {
 			if(@native_stmt <> 0 & @native_names <> 0) {
-      			array_args := Base->New[2];
+      			array_args := Base->New[1];
 				array_args[0] := IntHolder->New(@native_stmt);
-				array_args[1] := IntHolder->New(@exec_data);
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("odbc_stmt_close", array_args);
 				@params->Empty();
