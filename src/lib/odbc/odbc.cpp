@@ -430,6 +430,10 @@ extern "C" {
             // ShowError(SQL_HANDLE_STMT, stmt);
             SQLFreeStmt(stmt, SQL_CLOSE);
             APITools_SetIntValue(context, 0, -1);
+            if(exec_data) {
+              delete exec_data;
+              exec_data = NULL;
+            }
             return;
           }
         }
@@ -437,6 +441,10 @@ extern "C" {
           // ShowError(SQL_HANDLE_STMT, stmt);
           SQLFreeStmt(stmt, SQL_CLOSE);
           APITools_SetIntValue(context, 0, -1);
+          if(exec_data) {
+            delete exec_data;
+            exec_data = NULL;
+          }
           return;
         }
         status = SQLParamData(stmt, &param_id);
@@ -448,6 +456,10 @@ extern "C" {
       // ShowError(SQL_HANDLE_STMT, stmt);
       SQLFreeStmt(stmt, SQL_CLOSE);
       APITools_SetIntValue(context, 0, -1);
+      if(exec_data) {
+        delete exec_data;
+        exec_data = NULL;
+      }
       return;
     }
 		
@@ -457,10 +469,18 @@ extern "C" {
       // ShowError(SQL_HANDLE_STMT, stmt);
       SQLFreeStmt(stmt, SQL_CLOSE);
       APITools_SetIntValue(context, 0, -1);
+      if(exec_data) {
+        delete exec_data;
+        exec_data = NULL;
+      }
       return;
     }
 		
     APITools_SetIntValue(context, 0, count);
+    if(exec_data) {
+      delete exec_data;
+      exec_data = NULL;
+    }
   }
 
   //
@@ -1462,12 +1482,6 @@ extern "C" {
       SQLFreeStmt(stmt, SQL_CLOSE);
     }
 		
-    map<int, pair<void*, int> >* exec_data = (map<int, pair<void*, int> >*)APITools_GetIntValue(context, 1);
-    if(exec_data) {
-      delete exec_data;
-      exec_data = NULL;
-    }
-    
 #ifdef _DEBUG
     wcout << L"### closed prepared statement ###" << endl;
 #endif
