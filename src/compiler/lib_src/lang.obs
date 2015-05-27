@@ -2951,7 +2951,11 @@ bundle System.Time {
 				out->Append('0');
 			};
 			out->Append(@mins);
+
 			out->Append(":");
+			if(@secs < 10) {
+				out->Append('0');
+			};
 			out->Append(@secs);
 
 			if(is_am) {
