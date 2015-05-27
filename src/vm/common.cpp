@@ -946,6 +946,9 @@ void TrapProcessor::ProcessSetTime1(long* &op_stack, long* &stack_pos)
     curr_time->tm_year = year - 1900;
     curr_time->tm_mon = month - 1;
     curr_time->tm_mday = day;
+    curr_time->tm_hour = 0;
+    curr_time->tm_min = 0;
+    curr_time->tm_sec = 0;
     mktime(curr_time);
 
     // set instance values
