@@ -229,6 +229,7 @@ void Scanner::LoadKeywords()
   ident_map[L"EXIT"] = EXIT;
   ident_map[L"TIMER_START"] = TIMER_START;
   ident_map[L"TIMER_END"] =  TIMER_END;
+  ident_map[L"TIMER_ELAPSED"] =  TIMER_ELAPSED;
   ident_map[L"SOCK_TCP_CONNECT"] = SOCK_TCP_CONNECT;
   ident_map[L"SOCK_TCP_IS_CONNECTED"] = SOCK_TCP_IS_CONNECTED;
   ident_map[L"SOCK_TCP_CLOSE"] = SOCK_TCP_CLOSE;
@@ -423,6 +424,7 @@ void Scanner::CheckIdentifier(int index)
     case EXIT:
     case TIMER_START:
     case TIMER_END:
+    case TIMER_ELAPSED:
     case SOCK_TCP_CONNECT:
     case SOCK_TCP_IS_CONNECTED:
     case SOCK_TCP_CLOSE:

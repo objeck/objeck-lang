@@ -44,6 +44,7 @@
 #include <set>
 #include <map>
 #include <string>
+#include <ctime>
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -1979,7 +1980,10 @@ class TrapProcessor {
   static inline void ProcessSetTime2(long* &op_stack, long* &stack_pos);
   static inline void ProcessSetTime3(long* &op_stack, long* &stack_pos);
   static inline void ProcessAddTime(TimeInterval t, long* &op_stack, long* &stack_pos);
-
+  static inline void ProcessTimerStart(long* &op_stack, long* &stack_pos);
+  static inline void ProcessTimerEnd(long* &op_stack, long* &stack_pos);
+  static inline void ProcessTimerElapsed(long* &op_stack, long* &stack_pos);
+  
   // 
   // platform string
   //

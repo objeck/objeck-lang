@@ -295,6 +295,7 @@ enum ScannerTokenType {
   DATE_TIME_ADD_SECS,
   TIMER_START,
   TIMER_END,
+  TIMER_ELAPSED,
   // platform
   GET_PLTFRM,
   GET_VERSION,

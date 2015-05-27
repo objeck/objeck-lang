@@ -63,6 +63,7 @@ namespace instructions {
     DATE_TIME_ADD_SECS,
     TIMER_START,
     TIMER_END,
+    TIMER_ELAPSED,
     // standard i/o
     STD_IN_STRING,
     STD_OUT_BOOL,

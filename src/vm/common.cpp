@@ -839,6 +839,24 @@ void TrapProcessor::ProcessCurrentTime(StackFrame* frame, bool is_gmt)
 /********************************
  * Date/time calculations
  ********************************/
+void TrapProcessor::ProcessTimerStart(long* &op_stack, long* &stack_pos)
+{
+  long* instance = (long*)PopInt(op_stack, stack_pos);
+  instance[0] = clock();
+}
+
+void TrapProcessor::ProcessTimerEnd(long* &op_stack, long* &stack_pos)
+{
+  long* instance = (long*)PopInt(op_stack, stack_pos);
+  instance[0] = clock() - (clock_t)instance[0];
+}
+
+void TrapProcessor::ProcessTimerElapsed(long* &op_stack, long* &stack_pos)
+{
+  long* instance = (long*)PopInt(op_stack, stack_pos);
+  PushFloat((double)instance[0] / (double)CLOCKS_PER_SEC, op_stack, stack_pos);
+}
+
 void TrapProcessor::ProcessAddTime(TimeInterval t, long* &op_stack, long* &stack_pos)
 {  
   long value = PopInt(op_stack, stack_pos);
@@ -1654,6 +1672,14 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, long* inst,
 
   case DATE_TIME_ADD_SECS:
     ProcessAddTime(SEC_TIME, op_stack, stack_pos);
+    break;
+
+  case TIMER_START:
+    ProcessTimerStart(op_stack, stack_pos);
+    break;
+
+  case TIMER_END:
+    ProcessTimerEnd(op_stack, stack_pos);
     break;
 
   case GET_PLTFRM:
