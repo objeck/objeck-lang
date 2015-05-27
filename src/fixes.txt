@@ -1,3 +1,7 @@
+5/27/15
+* fixed a memory leadk in odbc library
+* updated timer code such that it works :)
+
 12/12/14
 * install of odbc and ssl
 
