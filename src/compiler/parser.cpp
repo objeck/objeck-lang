@@ -1123,6 +1123,12 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       NextToken();
       break;
 
+    case TIMER_ELAPSED:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+                                                               instructions::TIMER_ELAPSED);
+      NextToken();
+      break;
+
     case FLOR_FLOAT:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
                                                                instructions::FLOR_FLOAT);
