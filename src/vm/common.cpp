@@ -1682,6 +1682,10 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, long* inst,
     ProcessTimerEnd(op_stack, stack_pos);
     break;
 
+  case TIMER_ELAPSED:
+    ProcessTimerElapsed(op_stack, stack_pos);
+    break;
+    
   case GET_PLTFRM:
     ProcessPlatform(program, op_stack, stack_pos);
     break;

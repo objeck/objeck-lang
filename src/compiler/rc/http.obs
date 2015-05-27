@@ -3,9 +3,6 @@ use Collection;
 
 class HttpTest {
 	function : Main(args : String[]) ~ Nil {
-		t := System.Time.Timer->New();
-		t->Start();
-
 		client := HttpClient->New();
 		
 		# enable cookies
@@ -24,8 +21,5 @@ class HttpTest {
 			line := lines->Get(i)->As(String);
 			line->PrintLine();
 		};
-		t->End();
-
-#		t->GetElapsedTime()->PrintLine();
 	}
 }
