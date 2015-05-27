@@ -216,7 +216,6 @@ bundle CSV {
 			@header_names := header_names;
 		}
 		
-		
 		#~
 		Returns rather the file has been successfully parsed
 		@return true if successfully parsed, false otherwise
