@@ -7,21 +7,11 @@ bundle Default {
 		}
 
 		function : native : Run() ~ Nil {
-			conn := Connection->New("test", "root", "helloworld");
+			conn := Connection->New("udc", "", "");
 			if(conn->IsOpen()) {
-				ps := conn->CreateParameterStatement("SELECT * FROM world.city WHERE Population < ?");
-				ps->SetInt(1, IO.Console->ReadString()->ToInt());
-				result := ps->Select();
-				if(result <> Nil) {
-					i := 0;	
-					while(result->Next()) {
-						result->GetInt(1)->PrintLine();
-						result->GetVarchar(2)->PrintLine();
-						i += 1;
-					};
-					IO.Console->Print(i)->PrintLine(" row(s) selected");
-					result->Close();
-				};
+				ps := conn->CreateParameterStatement("INSERT INTO Foo(Bar) VALUES(?)");
+				ps->SetInt(1);
+				ps->Update()->PrintLine();
 				conn->Close();
 			};
 		}
