@@ -221,7 +221,7 @@ bundle CSV {
 		@return true if successfully parsed, false otherwise
 		~#
 		method : public : IsParsed() ~ Bool {
-			return @is_parsed);
+			return @is_parsed;
 		}
 		
 		#~
