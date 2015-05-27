@@ -1,4 +1,4 @@
-T#~
+#~
 Objeck system classes.
 Copyright (c) 2008-2014 Randy Hollines
 note: compile compiler with -D_SYSTEM flag
