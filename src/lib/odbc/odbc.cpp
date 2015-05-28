@@ -256,7 +256,7 @@ extern "C" {
 
     map<const wstring, int>* column_names = new map<const wstring, int>;
     map<int, pair<void*, int> >* exec_data = new map<int, pair<void*, int> >;
-    for(SQLSMALLINT i = 1; i <= columns; i++) {
+    for(SQLSMALLINT i = 1; i <= columns + 1; i++) {
       ColumnDescription description;
       status = SQLDescribeCol(stmt, i, (SQLCHAR*)&description.column_name, COL_NAME_MAX, 
                               &description.column_name_size, &description.type, 
@@ -361,7 +361,7 @@ extern "C" {
     // map execution data and get column information
     map<int, pair<void*, int> >* exec_data = new map<int, pair<void*, int> >;
     map<const wstring, int>* column_names = new map<const wstring, int>;
-    for(SQLSMALLINT i = 1; i <= columns; i++) {
+    for(SQLSMALLINT i = 1; i <= columns + 1; i++) {
       ColumnDescription description;
       status = SQLDescribeCol(stmt, i, (SQLCHAR*)&description.column_name, COL_NAME_MAX, 
                               &description.column_name_size, &description.type, 
