@@ -2784,8 +2784,8 @@ bundle System.Time {
 		@param month day of year
 		@param year year
 		@hours hours
-		@mins mins
-		@secs secs
+		@param mins minutes
+		@param secs seconds
 		@param gmt true of time is in GMT, false for system time zone
 		~#
 		New(day : Int, month : Int, year : Int, hours : Int, mins : Int, secs : Int, gmt : Bool) {
