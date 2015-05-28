@@ -2,9 +2,10 @@ use System.IO.File;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		a := FileWriter->New("foo.txt", true);
-		a->WriteString("Hello");
-		a->WriteString("World");
-		a->Close();
+		1234567->ToCommaString()->PrintLine();
+		12567->ToCommaString()->PrintLine();
+		84812567->ToCommaString()->PrintLine();
+		4321->ToCommaString()->PrintLine();
+		321->ToCommaString()->PrintLine();
 	}
 }

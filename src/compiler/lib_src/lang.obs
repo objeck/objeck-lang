@@ -2,6 +2,8 @@
 Objeck system classes.
 Copyright (c) 2008-2014 Randy Hollines
 note: compile compiler with -D_SYSTEM flag
+in the SYSTEM mode some features don't like like
+String '+=', etc.
 ~#	
 
 #~
@@ -656,6 +658,12 @@ bundle System {
 			LOAD_MULTI_ARY_SIZE;
 		}
 
+		#~
+		Returns the binary string value
+		@ignore-params l
+		@return binary string value
+		~#
+		
 		function : native : ToBinaryString(v : Int) ~ String {
 			out := "";
 			do {
@@ -667,6 +675,11 @@ bundle System {
 			return out->Reverse();
 		}
 		
+		#~
+		Returns the hex string value
+		@ignore-params l
+		@return hex string value
+		~#
 		function : native : ToHexString(v : Int) ~ String {
 			str := String->New();
 			Number->IntToHexString(v->As(Int), str);
@@ -726,10 +739,37 @@ bundle System {
 			};
 		}
 		
+		#~
+		Returns the string value
+		@ignore-params l
+		@return string value
+		~#
 		function : native : ToString(v : Int) ~ String {
 			str := String->New();
 			Number->IntToString(v->As(Int), str);
 			return str;
+		}
+
+		#~
+		Returns a comma formatted string value
+		@ignore-params l
+		@return string value
+		~#
+		function : native : ToCommaString(v : Int) ~ String {
+			str := String->New();
+			Number->IntToString(v->As(Int), str);
+
+			count := 1;
+			comma_str : String := "";
+			for(i := str->Size() - 1; i >= 0; i -= 1;) {
+				comma_str->Append(str->Get(i));
+				if(count % 3 = 0 & count + 1 <= str->Size()) {
+					comma_str->Append(',');
+				};
+				count += 1;
+			};
+
+			return comma_str->Reverse();
 		}
 		
 		#~
