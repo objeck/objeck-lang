@@ -1124,9 +1124,14 @@ bundle System {
 		#~
 		Compares two objects
 		@param rhs compare object
-		@return true if objects are equal, false otherwise
+		@return 0 if equal, -1 if right-hand side i greater, 1 if left-hand side is greater
 		~#
 		method : public : native : Compare(rhs : System.Compare) ~ Int {
+			# check class type
+			if(GetClassID() <> rhs->GetClassID()) {
+				return -1;
+			};
+			
 			right : IntHolder := rhs->As(IntHolder);
 			if(@value = right->Get()) {
 				return 0;
@@ -1205,9 +1210,14 @@ bundle System {
 		#~
 		Compares two objects
 		@param rhs compare object
-		@return true if objects are equal, false otherwise
+		@return 0 if equal, -1 if right-hand side i greater, 1 if left-hand side is greater
 		~#
 		method : public : native : Compare(rhs : System.Compare) ~ Int {
+			# check class type
+			if(GetClassID() <> rhs->GetClassID()) {
+				return -1;
+			};
+			
 			right : FloatHolder := rhs->As(FloatHolder);
 			if(@value = right->Get()) {
 				return 0;
@@ -1350,7 +1360,7 @@ bundle System {
 		#~
 		Compares two objects
 		@param rhs compare object
-		@return true if objects are equal, false otherwise
+		@return 0 if equal, -1 if right-hand side i greater, 1 if left-hand side is greater
 		~#
 		method : virtual : public : Compare(rhs : System.Compare) ~ Int;
 
@@ -1375,7 +1385,7 @@ bundle System {
 		#~
 		Compares two objects
 		@param rhs compare object
-		@return true if objects are equal, false otherwise
+		@return 0 if equal, -1 if right-hand side i greater, 1 if left-hand side is greater
 		~#
 		method : public : Compare(rhs : System.Compare) ~ Int {
 			if(GetInstanceID() = rhs->GetInstanceID()) {
@@ -2453,7 +2463,7 @@ bundle System {
 		#~
 		Compares two strings
 		@param rhs string to compare
-		@return true if strings are equal, false otherwise
+		@return 0 if equal, -1 if right-hand side i greater, 1 if left-hand side is greater
 		~#
 		method : public : Equals(rhs : String) ~ Bool {
 			return Compare(rhs->As(System.Compare)) = 0;
@@ -2476,39 +2486,38 @@ bundle System {
 		#~
 		Compares two objects
 		@param rhs compare object
-		@return true if objects are equal, false otherwise
+		@return 0 if equal, -1 if right-hand side i greater, 1 if left-hand side is greater
 		~#
 		method : public : Compare(rhs : System.Compare) ~ Int {
 			# check class type
-			if(GetClassID() = rhs->GetClassID()) {
-				right_string : String := rhs->As(String);
-				
-				# check each character
-				for(i : Int := 0; i < @pos; i += 1;) {
-					left : Char := @string[i];
-					right : Char := right_string->Get(i);
-					if(left > right) {
-						return 1;
-					}
-					else if(left < right) {
-						return -1;
-					};
-				};
-				
-				# check length
-				if(@pos > right_string->Size()) {
+			if(GetClassID() <> rhs->GetClassID()) {
+				return -1;
+			};
+						
+			# check each character
+			right_string := rhs->As(String);
+			for(i := 0; i < @pos; i += 1;) {
+				left := @string[i];
+				right := right_string->Get(i);
+				if(left > right) {
 					return 1;
-				};
-				
-				if(@pos < right_string->Size()) {
+				}
+				else if(left < right) {
 					return -1;
 				};
-				
-				# equal
-				return 0;
 			};
 			
-			return -1;
+			# check length
+			if(@pos > right_string->Size()) {
+				return 1;
+			};
+			
+			if(@pos < right_string->Size()) {
+				return -1;
+			};
+			
+			# equal
+			return 0;
 		}
 
 		#~
@@ -2767,7 +2776,7 @@ bundle System.Time {
 		}
 		
 		#~
-		Constructor 
+		Constructor, sets time to midnight of the given day
 		@param day day of month
 		@param month day of year
 		@param year year
@@ -2776,6 +2785,67 @@ bundle System.Time {
 		New(day : Int, month : Int, year : Int, gmt : Bool) {
 			Parent();
 			DATE_TIME_SET_1;
+		}
+
+		#~
+		Compares two dates
+		@param rhs compare date
+		@return 0 if equal, -1 if right-hand side i greater, 1 if left-hand side is greater
+		~#
+		method : public : Compare(rhs : System.Compare) ~ Int {
+			# check class type
+			if(GetClassID() <> rhs->GetClassID()) {
+				return -1;
+			};
+						
+			# check dates
+			right_date := rhs->As(Date);
+			if(@year > right_date->GetYear()) {
+				return 1;
+			}
+			else if(@year < right_date->GetYear()) {
+				return -1;
+			}
+			else if(@month > right_date->GetMonth()) {
+				return 1;
+			}
+			else if(@month < right_date->GetMonth()) {
+				return -1;
+			}
+			else if(@day > right_date->GetDay()) {
+				return 1;
+			}
+			else if(@day < right_date->GetDay()) {
+				return -1;
+			}
+			else if(@hours > right_date->GetHours()) {
+				return 1;
+			}
+			else if(@hours < right_date->GetHours()) {
+				return -1;
+			}
+			else if(@mins > right_date->GetMinutes()) {
+				return 1;
+			}
+			else if(@mins < right_date->GetMinutes()) {
+				return -1;
+			}
+			else if(@secs > right_date->GetSeconds()) {
+				return 1;
+			}
+			else if(@secs < right_date->GetSeconds()) {
+				return -1;
+			};
+			
+			return 0;
+		}
+
+		#~
+		Returns a hash ID for the given class
+		@return hash ID
+		~#
+		method : public : HashID() ~ Int {
+			return ToString()->HashID();
 		}
 		
 		#~
@@ -2792,13 +2862,6 @@ bundle System.Time {
 			Parent();
 			DATE_TIME_SET_2;
 		}
-
-#~ TODO
-		New(date : String, format : String) {
-			Parent();
-			DATE_TIME_SET_3;
-		}
-~#
 
 		#~
 		Returns the day
@@ -2904,14 +2967,6 @@ bundle System.Time {
 		~#
 		method : public : AddSeconds(value : Int) ~ Nil {
 			DATE_TIME_ADD_SECS;
-		}
-
-		#~
-		Checks rather the date is in daylight savings time
-		@param true if daylight savings time, false otherwise
-		~#
-		method : public : IsSavingsTime() ~ Bool {
-			return @is_savings;
 		}
 
 		#~

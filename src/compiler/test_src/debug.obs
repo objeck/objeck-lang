@@ -1,13 +1,10 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		dt := System.Time.Date->New(15, 5, 2014, false);
-#		dt->AddHours(0);
-#		dt->AddHours(0);
-#		dt->AddMinutes(0);
-#		dt->AddHours(17);
-#		dt->AddHours(24);
-#		dt->AddMinutes(27);
-		dt->AddSeconds(1);
+		# 	2014-11-29 T 02:27:31
+		dt := System.Time.Date->New(29, 11, 2014, false);
+		dt->AddHours(2);
+		dt->AddMinutes(27);
+		dt->AddSeconds(31);
 		dt->ToString()->PrintLine();
 	}
 }
