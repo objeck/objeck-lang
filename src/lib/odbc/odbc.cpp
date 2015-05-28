@@ -1686,13 +1686,13 @@ extern "C" {
     if(SQL_OK) {
       APITools_SetIntValue(context, 0, is_null == SQL_NULL_DATA);
       long* ts_obj = context.alloc_obj(L"ODBC.Timestamp", (long*)context.op_stack, *context.stack_pos, false);
-      ts_obj[0] = value.year;
-      ts_obj[1] = value.month;
-      ts_obj[2] = value.day;
-      ts_obj[3] = value.hour;
-      ts_obj[4] = value.minute;
-      ts_obj[5] = value.second;
-      ts_obj[6] = value.fraction;
+      ts_obj[1] = value.year;
+      ts_obj[2] = value.month;
+      ts_obj[3] = value.day;
+      ts_obj[4] = value.hour;
+      ts_obj[5] = value.minute;
+      ts_obj[6] = value.second;
+      ts_obj[7] = value.fraction;
 
 #ifdef _DEBUG
       wcout << L"  " << value.year << endl;
@@ -1752,13 +1752,13 @@ extern "C" {
     if(SQL_OK) {
       APITools_SetIntValue(context, 0, is_null == SQL_NULL_DATA);
       long* ts_obj = context.alloc_obj(L"ODBC.Timestamp", (long*)context.op_stack, *context.stack_pos, false);
-      ts_obj[0] = value.year;
-      ts_obj[1] = value.month;
-      ts_obj[2] = value.day;
-      ts_obj[3] = value.hour;
-      ts_obj[4] = value.minute;
-      ts_obj[5] = value.second;
-      ts_obj[6] = value.fraction;
+      ts_obj[1] = value.year;
+      ts_obj[2] = value.month;
+      ts_obj[3] = value.day;
+      ts_obj[4] = value.hour;
+      ts_obj[5] = value.minute;
+      ts_obj[6] = value.second;
+      ts_obj[7] = value.fraction;
 
 #ifdef _DEBUG
       wcout << L"  " << value.year << endl;
