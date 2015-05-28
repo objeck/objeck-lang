@@ -1363,6 +1363,12 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       NextToken();
       break;
 
+    case FILE_OPEN_APPEND:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+                                                               instructions::FILE_OPEN_APPEND);
+      NextToken();
+      break;
+      
     case FILE_CLOSE:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
                                                                instructions::FILE_CLOSE);

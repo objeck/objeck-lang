@@ -4154,7 +4154,7 @@ bundle System.IO.File {
 	~#
 	class FileReader from File implements InputStream {
 		#~
-		Default constructor
+		Default constructor.
 		@param name file name
 		~#
 		New(name : System.String) {
@@ -4259,7 +4259,7 @@ bundle System.IO.File {
 	~#
 	class FileWriter from File implements OutputStream {
 		#~
-		Default constructor
+		Opens a new file.
 		@param name file name
 		~#
 		New(name : System.String) {
@@ -4267,6 +4267,24 @@ bundle System.IO.File {
 			FILE_OPEN_WRITE;
 		}	
 		
+		#~
+		Opens a new file or appends to an existing one.
+		@param name file name
+		@param append if true, opens a file for appending otherwise creates a new file
+		~#
+		New(name : System.String, append : Bool) {
+			Parent(name);
+			if(append) {
+				FILE_OPEN_APPEND;
+			}
+			else {
+				FILE_OPEN_WRITE;
+			};
+		}	
+		
+		#~
+		Closes a file
+		~#
 		#~
 		Closes a file
 		~#

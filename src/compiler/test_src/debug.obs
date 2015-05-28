@@ -1,37 +1,10 @@
-use Collection;
+use System.IO.File;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-#		C()->As(IntHolder)->Get()->PrintLine();
-		v := Foo();
-		each(i : v) {
-			v->Get(i)->As(String)->PrintLine();
-		};
-	}
-
-	function : C() ~ Base {
-		return A();
-	}
-
-	function : A() ~ String {
-		return "Foo";
-	}
-
-	function : B() ~ IntHolder {
-		return IntHolder->New(13);
-	}
-
-	function : Foo() ~ Vector {
-		v := Vector->New();
-		v->AddBack(IntHolder->New(1));
-		v->AddBack(IntHolder->New(2));
-		return v;
-	}
-
-	function : Bar() ~ Vector {
-		v := Vector->New();
-		v->AddBack("One");
-		v->AddBack("Two");
-		return v;
+		a := FileWriter->New("foo.txt", true);
+		a->WriteString("Hello");
+		a->WriteString("World");
+		a->Close();
 	}
 }
