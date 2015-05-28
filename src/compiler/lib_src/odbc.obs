@@ -997,11 +997,13 @@ bundle ODBC {
 				is_null := array_args[0]->As(IntHolder);
 				@is_null := is_null->Get() = 1;
 				
-				value := array_args[1]->As(String);
-				return value;
+				if(@is_null) {
+					return Nil;
+				};
+				return array_args[1]->As(String);
       		};
       		
-      		return "";
+      		return Nil;
 		}
 
 		#~
@@ -1023,11 +1025,13 @@ bundle ODBC {
 				is_null := array_args[0]->As(IntHolder);
 				@is_null := is_null->Get() = 1;
 				
-				value := array_args[1]->As(String);
-				return value;
+				if(@is_null) {
+					return Nil;
+				};
+				return array_args[1]->As(String);
       		};
       		
-      		return "";
+      		return Nil;
 		}
 
 		#~
@@ -1091,8 +1095,10 @@ bundle ODBC {
 				is_null := array_args[0]->As(IntHolder);
 				@is_null := is_null->Get() = 1;
 				
-				value := array_args[1]->As(ODBC.Date);
-				return value;
+				if(@is_null) {
+					return Nil;
+				};
+				return array_args[1]->As(ODBC.Date);
       		};
       		
       		return Nil;
@@ -1117,8 +1123,10 @@ bundle ODBC {
 				is_null := array_args[0]->As(IntHolder);
 				@is_null := is_null->Get() = 1;
 				
-				value := array_args[1]->As(ODBC.Date);
-				return value;
+				if(@is_null) {
+					return Nil;
+				};
+				return array_args[1]->As(ODBC.Date);
       		};
       		
       		return Nil;
@@ -1143,8 +1151,10 @@ bundle ODBC {
 				is_null := array_args[0]->As(IntHolder);
 				@is_null := is_null->Get() = 1;
 				
-				value := array_args[1]->As(Timestamp);
-				return value;
+				if(@is_null) {
+					return Nil;
+				};
+				return array_args[1]->As(Timestamp);
       		};
       		
       		return Nil;
@@ -1169,8 +1179,10 @@ bundle ODBC {
 				is_null := array_args[0]->As(IntHolder);
 				@is_null := is_null->Get() = 1;
 				
-				value := array_args[1]->As(Timestamp);
-				return value;
+				if(@is_null) {
+					return Nil;
+				};
+				return array_args[1]->As(Timestamp);
       		};
       		
       		return Nil;
