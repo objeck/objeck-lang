@@ -7,7 +7,7 @@ class Test {
 #		dt->AddHours(17);
 #		dt->AddHours(24);
 #		dt->AddMinutes(27);
-#		dt->AddSeconds(54);
+		dt->AddSeconds(1);
 		dt->ToString()->PrintLine();
 	}
 }
