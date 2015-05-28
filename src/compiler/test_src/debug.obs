@@ -1,31 +1,13 @@
-use HTTP;
-use Collection;
-
-class HttpTest {
+class Test {
 	function : Main(args : String[]) ~ Nil {
-		t := System.Time.Timer->New();
-		t->Start();
-
-		client := HttpClient->New();
-		
-		# enable cookies
-		client->CookiesEnabled(true);
-
-		# request creates a cookie
-		lines := client->Get("http://www.rexswain.com/cgi-bin/cookie.cgi?create");
-		each(i : lines) {
-			line := lines->Get(i)->As(String);
-			line->PrintLine();
-		};
-
-		# request sends back cookie
-		lines := client->Get("http://www.rexswain.com/cgi-bin/cookie.cgi");
-		each(i : lines) {
-			line := lines->Get(i)->As(String);
-			line->PrintLine();
-		};
-
-		t->End();
-		t->GetElapsedTime()->PrintLine();
+		dt := System.Time.Date->New(15, 5, 2014, false);
+		dt->AddHours(0);
+		dt->AddHours(0);
+		dt->AddMinutes(0);
+#		dt->AddHours(17);
+#		dt->AddHours(24);
+#		dt->AddMinutes(27);
+#		dt->AddSeconds(54);
+		dt->ToString()->PrintLine();
 	}
 }
