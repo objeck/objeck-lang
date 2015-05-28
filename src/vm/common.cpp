@@ -949,6 +949,7 @@ void TrapProcessor::ProcessSetTime1(long* &op_stack, long* &stack_pos)
     curr_time->tm_hour = 0;
     curr_time->tm_min = 0;
     curr_time->tm_sec = 0;
+    curr_time->tm_isdst = 0;
     mktime(curr_time);
 
     // set instance values
@@ -997,7 +998,8 @@ void TrapProcessor::ProcessSetTime2(long* &op_stack, long* &stack_pos)
     curr_time->tm_mday = day;
     curr_time->tm_hour = hours;
     curr_time->tm_min = mins;
-    curr_time->tm_sec = secs;  
+    curr_time->tm_sec = secs;
+    curr_time->tm_isdst = 0; 
     mktime(curr_time);
 
     // set instance values
