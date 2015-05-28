@@ -1,9 +1,9 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		dt := System.Time.Date->New(15, 5, 2014, false);
-		dt->AddHours(0);
-		dt->AddHours(0);
-		dt->AddMinutes(0);
+#		dt->AddHours(0);
+#		dt->AddHours(0);
+#		dt->AddMinutes(0);
 #		dt->AddHours(17);
 #		dt->AddHours(24);
 #		dt->AddMinutes(27);
