@@ -186,6 +186,7 @@ enum ScannerTokenType {
   STD_ERR_BYTE_ARY,
   // file open/close
   FILE_OPEN_READ,
+  FILE_OPEN_APPEND,
   FILE_OPEN_WRITE,
   FILE_OPEN_READ_WRITE,
   FILE_CLOSE,

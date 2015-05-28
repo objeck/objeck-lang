@@ -2165,7 +2165,25 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, long* inst,
     }
   }
     break;
-      
+    
+  case FILE_OPEN_APPEND: {
+    long* array = (long*)PopInt(op_stack, stack_pos);
+    long* instance = (long*)PopInt(op_stack, stack_pos);
+    if(array && instance) {
+      array = (long*)array[0];
+      const wstring name((wchar_t*)(array + 3));
+      const string filename(name.begin(), name.end());
+      FILE* file = File::FileOpen(filename.c_str(), "ab");
+#ifdef _DEBUG
+      wcout << L"# file open: name='" << name << L"'; instance=" << instance << L"(" 
+            << (long)instance << L")" << L"; addr=" << file << L"(" << (long)file 
+            << L") #" << endl;
+#endif
+      instance[0] = (long)file;
+    }
+  }
+    break;
+    
   case FILE_OPEN_WRITE: {
     long* array = (long*)PopInt(op_stack, stack_pos);
     long* instance = (long*)PopInt(op_stack, stack_pos);
