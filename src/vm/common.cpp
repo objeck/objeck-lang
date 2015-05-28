@@ -946,7 +946,7 @@ void TrapProcessor::ProcessSetTime1(long* &op_stack, long* &stack_pos)
     curr_time->tm_year = year - 1900;
     curr_time->tm_mon = month - 1;
     curr_time->tm_mday = day;
-    curr_time->tm_hour = 0;
+    curr_time->tm_hour = 1;
     curr_time->tm_min = 0;
     curr_time->tm_sec = 0;
     mktime(curr_time);
@@ -995,7 +995,7 @@ void TrapProcessor::ProcessSetTime2(long* &op_stack, long* &stack_pos)
     curr_time->tm_year = year - 1900;
     curr_time->tm_mon = month - 1;
     curr_time->tm_mday = day;
-    curr_time->tm_hour = hours;
+    curr_time->tm_hour = hours + 1;
     curr_time->tm_min = mins;
     curr_time->tm_sec = secs;  
     mktime(curr_time);
