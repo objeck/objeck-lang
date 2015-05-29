@@ -906,14 +906,16 @@ void TrapProcessor::ProcessAddTime(TimeInterval t, long* &op_stack, long* &stack
     }
 
     // set instance values
-    instance[0] = curr_time->tm_mday;          // day
-    instance[1] = curr_time->tm_mon + 1;       // month
-    instance[2] = curr_time->tm_year + 1900;   // year
-    instance[3] = curr_time->tm_hour;          // hours
-    instance[4] = curr_time->tm_min;           // mins
-    instance[5] = curr_time->tm_sec;           // secs
-    instance[6] = curr_time->tm_isdst > 0;     // savings time
-    instance[7] = curr_time->tm_wday;          // day of week
+    if(curr_time) {
+      instance[0] = curr_time->tm_mday;          // day
+      instance[1] = curr_time->tm_mon + 1;       // month
+      instance[2] = curr_time->tm_year + 1900;   // year
+      instance[3] = curr_time->tm_hour;          // hours
+      instance[4] = curr_time->tm_min;           // mins
+      instance[5] = curr_time->tm_sec;           // secs
+      instance[6] = curr_time->tm_isdst > 0;     // savings time
+      instance[7] = curr_time->tm_wday;          // day of week
+    }
   }
 }
 
@@ -943,14 +945,16 @@ void TrapProcessor::ProcessSetTime1(long* &op_stack, long* &stack_pos)
     }
 
     // update time
-    curr_time->tm_year = year - 1900;
-    curr_time->tm_mon = month - 1;
-    curr_time->tm_mday = day;
-    curr_time->tm_hour = 0;
-    curr_time->tm_min = 0;
-    curr_time->tm_sec = 0;
-    curr_time->tm_isdst = 0;
-    mktime(curr_time);
+    if(curr_time) {
+      curr_time->tm_year = year - 1900;
+      curr_time->tm_mon = month - 1;
+      curr_time->tm_mday = day;
+      curr_time->tm_hour = 0;
+      curr_time->tm_min = 0;
+      curr_time->tm_sec = 0;
+      curr_time->tm_isdst = 0;
+      mktime(curr_time);
+    }
 
     // set instance values
     instance[0] = curr_time->tm_mday;          // day
