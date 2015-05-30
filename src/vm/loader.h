@@ -126,7 +126,7 @@ class Loader {
       in.close();
     }
     else {
-      wcerr << L"Unable to open source file: " << filename << endl;
+      wcerr << L"Unable to open file: " << filename << endl;
       exit(1);
     }
     
