@@ -297,7 +297,7 @@ namespace backend {
         break;
 
       case LOAD_CHAR_LIT:
-        wcout << L"LOAD_CHAR_LIT value=" << (wchar_t)operand << endl;
+        wcout << L"LOAD_CHAR_LIT value='" << (wchar_t)operand << L"'" << endl;
         break;
 
       case DYN_MTHD_CALL:

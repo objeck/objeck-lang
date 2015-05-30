@@ -3698,9 +3698,17 @@ void IntermediateEmitter::EmitStringConcat(OperationAssignment* assignment)
 #ifdef _DEBUG
     assert(string_append_method);
 #endif
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL, 
-                                                                               (INT_VALUE)string_cls->GetId(), 
-                                                                               string_append_method->GetId(), 1L));
+    if(is_lib) {
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0, 
+																																								 L"System.String",
+                                                                                 string_append_method->GetName()));
+
+    }
+    else {
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL, 
+                                                                                 (INT_VALUE)string_cls->GetId(), 
+                                                                                 string_append_method->GetId(), 1L));
+    }
   }
   // append 'Byte'  
   else if(assignment->GetExpression()->GetEvalType()->GetType() == BYTE_TYPE) {
@@ -3711,9 +3719,17 @@ void IntermediateEmitter::EmitStringConcat(OperationAssignment* assignment)
 #ifdef _DEBUG
     assert(string_append_method);
 #endif
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL, 
-                                                                               (INT_VALUE)string_cls->GetId(), 
-                                                                               string_append_method->GetId(), 1L));
+    if(is_lib) {
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0, 
+																																								 L"System.String",
+                                                                                 string_append_method->GetName()));
+
+    }
+    else {
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL, 
+                                                                                 (INT_VALUE)string_cls->GetId(), 
+                                                                                 string_append_method->GetId(), 1L));
+    }
   }
   // append 'Int'  
   else if(assignment->GetExpression()->GetEvalType()->GetType() == frontend::INT_TYPE) {
@@ -3724,9 +3740,17 @@ void IntermediateEmitter::EmitStringConcat(OperationAssignment* assignment)
 #ifdef _DEBUG
     assert(string_append_method);
 #endif
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL, 
-                                                                               (INT_VALUE)string_cls->GetId(), 
-                                                                               string_append_method->GetId(), 1L));
+    if(is_lib) {
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0, 
+																																								 L"System.String",
+                                                                                 string_append_method->GetName()));
+
+    }
+    else {
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL, 
+                                                                                 (INT_VALUE)string_cls->GetId(), 
+                                                                                 string_append_method->GetId(), 1L));
+    }
   }
   // append 'Float'  
   else if(assignment->GetExpression()->GetEvalType()->GetType() == frontend::FLOAT_TYPE) {
@@ -3737,9 +3761,17 @@ void IntermediateEmitter::EmitStringConcat(OperationAssignment* assignment)
 #ifdef _DEBUG
     assert(string_append_method);
 #endif
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL, 
-                                                                               (INT_VALUE)string_cls->GetId(), 
-                                                                               string_append_method->GetId(), 1L));
+    if(is_lib) {
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0, 
+																																								 L"System.String",
+                                                                                 string_append_method->GetName()));
+
+    }
+    else {
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL, 
+                                                                                 (INT_VALUE)string_cls->GetId(), 
+                                                                                 string_append_method->GetId(), 1L));
+    }
   }
   // append 'Bool'  
   else if(assignment->GetExpression()->GetEvalType()->GetType() == BOOLEAN_TYPE) {
@@ -3750,9 +3782,17 @@ void IntermediateEmitter::EmitStringConcat(OperationAssignment* assignment)
 #ifdef _DEBUG
     assert(string_append_method);
 #endif
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL, 
-                                                                               (INT_VALUE)string_cls->GetId(), 
-                                                                               string_append_method->GetId(), 1L));
+    if(is_lib) {
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0, 
+																																								 L"System.String",
+                                                                                 string_append_method->GetName()));
+
+    }
+    else {
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL, 
+                                                                                 (INT_VALUE)string_cls->GetId(), 
+                                                                                 string_append_method->GetId(), 1L));
+    }
   }
   // append string
   else {
@@ -3764,9 +3804,17 @@ void IntermediateEmitter::EmitStringConcat(OperationAssignment* assignment)
 #ifdef _DEBUG
     assert(string_append_method);
 #endif
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL, 
-                                                                               (INT_VALUE)string_cls->GetId(), 
-                                                                               string_append_method->GetId(), 1L));
+    if(is_lib) {
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0, 
+																																								 L"System.String",
+                                                                                 string_append_method->GetName()));
+      
+    }
+    else {
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL, 
+                                                                                 (INT_VALUE)string_cls->GetId(), 
+                                                                                 string_append_method->GetId(), 1L));
+    }
     is_str_array = false;
   }
 }
