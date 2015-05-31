@@ -806,6 +806,27 @@ long* TrapProcessor::CreateStringObject(const wstring &value_str, StackProgram* 
 }
 
 /********************************
+* Date/time calculations
+********************************/
+void TrapProcessor::ProcessTimerStart(long* &op_stack, long* &stack_pos)
+{
+  long* instance = (long*)PopInt(op_stack, stack_pos);
+  instance[0] = clock();
+}
+
+void TrapProcessor::ProcessTimerEnd(long* &op_stack, long* &stack_pos)
+{
+  long* instance = (long*)PopInt(op_stack, stack_pos);
+  instance[0] = clock() - (clock_t)instance[0];
+}
+
+void TrapProcessor::ProcessTimerElapsed(long* &op_stack, long* &stack_pos)
+{
+  long* instance = (long*)PopInt(op_stack, stack_pos);
+  PushFloat((double)instance[0] / (double)CLOCKS_PER_SEC, op_stack, stack_pos);
+}
+
+/********************************
  * Creates a Date object with
  * current time
  ********************************/
@@ -830,31 +851,116 @@ void TrapProcessor::ProcessCurrentTime(StackFrame* frame, bool is_gmt)
     instance[3] = curr_time->tm_hour;          // hours
     instance[4] = curr_time->tm_min;           // mins
     instance[5] = curr_time->tm_sec;           // secs
-    instance[6] = curr_time->tm_isdst > 0;     // savings time
+    instance[6] = curr_time->tm_isdst;         // savings time
     instance[7] = curr_time->tm_wday;          // day of week
     instance[8] = is_gmt;                      // is GMT
   }
 }
 
 /********************************
- * Date/time calculations
- ********************************/
-void TrapProcessor::ProcessTimerStart(long* &op_stack, long* &stack_pos)
+* Set a time instance
+********************************/
+void TrapProcessor::ProcessSetTime1(long* &op_stack, long* &stack_pos)
 {
+  // get time values
+  long is_gmt = PopInt(op_stack, stack_pos);
+  long year = PopInt(op_stack, stack_pos);
+  long month = PopInt(op_stack, stack_pos);
+  long day = PopInt(op_stack, stack_pos);
   long* instance = (long*)PopInt(op_stack, stack_pos);
-  instance[0] = clock();
+
+  if(instance) {
+    // get current time
+    time_t raw_time;
+    time(&raw_time);
+    struct tm* curr_time;
+    if(is_gmt) {
+      curr_time = gmtime(&raw_time);
+    }
+    else {
+      curr_time = localtime(&raw_time);
+    }
+
+    // update time
+    if(curr_time) {
+      curr_time->tm_year = year - 1900;
+      curr_time->tm_mon = month - 1;
+      curr_time->tm_mday = day;
+      curr_time->tm_hour = 0;
+      curr_time->tm_min = 0;
+      curr_time->tm_sec = 0;
+      curr_time->tm_isdst = -1;
+      mktime(curr_time);
+    }
+
+    // set instance values
+    instance[0] = curr_time->tm_mday;          // day
+    instance[1] = curr_time->tm_mon + 1;       // month
+    instance[2] = curr_time->tm_year + 1900;   // year
+    instance[3] = curr_time->tm_hour;          // hours
+    instance[4] = curr_time->tm_min;           // mins
+    instance[5] = curr_time->tm_sec;           // secs
+    instance[6] = curr_time->tm_isdst;         // savings time
+    instance[7] = curr_time->tm_wday;          // day of week
+    instance[8] = is_gmt;                      // is GMT
+  }
 }
 
-void TrapProcessor::ProcessTimerEnd(long* &op_stack, long* &stack_pos)
+/********************************
+* Sets a time instance
+********************************/
+void TrapProcessor::ProcessSetTime2(long* &op_stack, long* &stack_pos)
 {
+  // get time values
+  long is_gmt = PopInt(op_stack, stack_pos);
+  long secs = PopInt(op_stack, stack_pos);
+  long mins = PopInt(op_stack, stack_pos);
+  long hours = PopInt(op_stack, stack_pos);
+  long year = PopInt(op_stack, stack_pos);
+  long month = PopInt(op_stack, stack_pos);
+  long day = PopInt(op_stack, stack_pos);
   long* instance = (long*)PopInt(op_stack, stack_pos);
-  instance[0] = clock() - (clock_t)instance[0];
+
+  if(instance) {
+    // get current time
+    time_t raw_time;
+    time(&raw_time);
+    struct tm* curr_time;
+    if(is_gmt) {
+      curr_time = gmtime(&raw_time);
+    }
+    else {
+      curr_time = localtime(&raw_time);
+    }
+
+    // update time
+    curr_time->tm_year = year - 1900;
+    curr_time->tm_mon = month - 1;
+    curr_time->tm_mday = day;
+    curr_time->tm_hour = hours;
+    curr_time->tm_min = mins;
+    curr_time->tm_sec = secs;
+    curr_time->tm_isdst = -1;
+    mktime(curr_time);
+
+    // set instance values
+    instance[0] = curr_time->tm_mday;          // day
+    instance[1] = curr_time->tm_mon + 1;       // month
+    instance[2] = curr_time->tm_year + 1900;   // year
+    instance[3] = curr_time->tm_hour;          // hours
+    instance[4] = curr_time->tm_min;           // mins
+    instance[5] = curr_time->tm_sec;           // secs
+    instance[6] = curr_time->tm_isdst;         // savings time
+    instance[7] = curr_time->tm_wday;          // day of week
+    instance[8] = is_gmt;                      // is GMT
+  }
 }
 
-void TrapProcessor::ProcessTimerElapsed(long* &op_stack, long* &stack_pos)
+/********************************
+* Set a time instance
+********************************/
+void TrapProcessor::ProcessSetTime3(long* &op_stack, long* &stack_pos)
 {
-  long* instance = (long*)PopInt(op_stack, stack_pos);
-  PushFloat((double)instance[0] / (double)CLOCKS_PER_SEC, op_stack, stack_pos);
 }
 
 void TrapProcessor::ProcessAddTime(TimeInterval t, long* &op_stack, long* &stack_pos)
@@ -891,7 +997,7 @@ void TrapProcessor::ProcessAddTime(TimeInterval t, long* &op_stack, long* &stack
     set_time.tm_hour = instance[3];          // hours
     set_time.tm_min = instance[4];           // mins
     set_time.tm_sec = instance[5];           // secs
-    set_time.tm_isdst = instance[6] > 0;     // savings time
+    set_time.tm_isdst = instance[6];         // savings time
 
     // calculate difference
     time_t raw_time = mktime(&set_time);
@@ -913,117 +1019,10 @@ void TrapProcessor::ProcessAddTime(TimeInterval t, long* &op_stack, long* &stack
       instance[3] = curr_time->tm_hour;          // hours
       instance[4] = curr_time->tm_min;           // mins
       instance[5] = curr_time->tm_sec;           // secs
-      instance[6] = curr_time->tm_isdst > 0;     // savings time
+      instance[6] = curr_time->tm_isdst;         // savings time
       instance[7] = curr_time->tm_wday;          // day of week
     }
   }
-}
-
-/********************************
- * Creates a Date object with 
- * specified time
- ********************************/
-void TrapProcessor::ProcessSetTime1(long* &op_stack, long* &stack_pos) 
-{
-  // get time values
-  long is_gmt = PopInt(op_stack, stack_pos);
-  long year = PopInt(op_stack, stack_pos);
-  long month = PopInt(op_stack, stack_pos);
-  long day = PopInt(op_stack, stack_pos);
-  long* instance = (long*)PopInt(op_stack, stack_pos);
-
-  if(instance) {
-    // get current time
-    time_t raw_time;
-    time(&raw_time);  
-    struct tm* curr_time;
-    if(is_gmt) {
-      curr_time = gmtime(&raw_time);
-    }
-    else {
-      curr_time = localtime(&raw_time);
-    }
-
-    // update time
-    if(curr_time) {
-      curr_time->tm_year = year - 1900;
-      curr_time->tm_mon = month - 1;
-      curr_time->tm_mday = day;
-      curr_time->tm_hour = 0;
-      curr_time->tm_min = 0;
-      curr_time->tm_sec = 0;
-      curr_time->tm_isdst = 0;
-      mktime(curr_time);
-    }
-
-    // set instance values
-    instance[0] = curr_time->tm_mday;          // day
-    instance[1] = curr_time->tm_mon + 1;       // month
-    instance[2] = curr_time->tm_year + 1900;   // year
-    instance[3] = curr_time->tm_hour;          // hours
-    instance[4] = curr_time->tm_min;           // mins
-    instance[5] = curr_time->tm_sec;           // secs
-    instance[6] = curr_time->tm_isdst > 0;     // savings time
-    instance[7] = curr_time->tm_wday;          // day of week
-    instance[8] = is_gmt;                      // is GMT
-  }
-}
-
-/********************************
- * Sets a time instance
- ********************************/
-void TrapProcessor::ProcessSetTime2(long* &op_stack, long* &stack_pos)
-{
-  // get time values
-  long is_gmt = PopInt(op_stack, stack_pos);
-  long secs = PopInt(op_stack, stack_pos);
-  long mins = PopInt(op_stack, stack_pos);
-  long hours = PopInt(op_stack, stack_pos);
-  long year = PopInt(op_stack, stack_pos);
-  long month = PopInt(op_stack, stack_pos);
-  long day = PopInt(op_stack, stack_pos);
-  long* instance = (long*)PopInt(op_stack, stack_pos);
-
-  if(instance) {
-    // get current time
-    time_t raw_time;
-    time(&raw_time);  
-    struct tm* curr_time;
-    if(is_gmt) {
-      curr_time = gmtime(&raw_time);
-    }
-    else {
-      curr_time = localtime(&raw_time);
-    }
-
-    // update time
-    curr_time->tm_year = year - 1900;
-    curr_time->tm_mon = month - 1;
-    curr_time->tm_mday = day;
-    curr_time->tm_hour = hours;
-    curr_time->tm_min = mins;
-    curr_time->tm_sec = secs;
-    curr_time->tm_isdst = 0; 
-    mktime(curr_time);
-
-    // set instance values
-    instance[0] = curr_time->tm_mday;          // day
-    instance[1] = curr_time->tm_mon + 1;       // month
-    instance[2] = curr_time->tm_year + 1900;   // year
-    instance[3] = curr_time->tm_hour;          // hours
-    instance[4] = curr_time->tm_min;           // mins
-    instance[5] = curr_time->tm_sec;           // secs
-    instance[6] = curr_time->tm_isdst > 0;     // savings time
-    instance[7] = curr_time->tm_wday;          // day of week
-    instance[8] = is_gmt;                      // is GMT
-  }
-}
-
-/********************************
- * Set a time instance
- ********************************/
-void TrapProcessor::ProcessSetTime3(long* &op_stack, long* &stack_pos)
-{
 }
 
 /********************************
