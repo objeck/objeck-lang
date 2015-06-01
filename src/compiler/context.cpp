@@ -1882,7 +1882,8 @@ bool ContextAnalyzer::Analyze()
     wstring variable_name = method_call->GetVariableName();
     if(method_call->GetMethodName().size() == 0) {
       klass = SearchProgramClasses(current_class->GetName());
-    } else {
+    } 
+    else {
       // external method
       SymbolEntry* entry = GetEntry(method_call, variable_name, depth);
       if(entry && entry->GetType() && entry->GetType()->GetType() == CLASS_TYPE) {
@@ -1905,7 +1906,16 @@ bool ContextAnalyzer::Analyze()
         klass = SearchProgramClasses(variable_name);
       }
     }
-
+    
+    if(method_call->GetVariable() && method_call->GetVariable()->GetCastType() && 
+       method_call->GetVariable()->GetCastType()->GetType() == CLASS_TYPE) {
+      AnalyzeClassCast(method_call->GetVariable()->GetCastType(), method_call, depth + 1);
+    }
+    // intermediate cast type
+    else if(method_call->GetCastType() && method_call->GetCastType()->GetType() == CLASS_TYPE) {
+      AnalyzeVariableCast(method_call->GetCastType(), method_call);
+    }
+    
     return klass;
   }
 
@@ -1939,9 +1949,7 @@ bool ContextAnalyzer::Analyze()
               method_call->GetVariable()->GetCastType()->GetType() == CLASS_TYPE) {
         klass = linker->SearchClassLibraries(method_call->GetVariable()->GetCastType()->GetClassName(), program->GetUses(current_class->GetFileName()));	
         method_call->SetTypes(entry->GetType());
-        AnalyzeClassCast(method_call->GetVariable()->GetCastType(), method_call, depth + 1);
       }
-      // base type
       else {
         klass = linker->SearchClassLibraries(entry->GetType()->GetClassName(), program->GetUses(current_class->GetFileName()));
       }
@@ -1950,7 +1958,17 @@ bool ContextAnalyzer::Analyze()
     if(!klass) {
       klass = linker->SearchClassLibraries(variable_name, program->GetUses(current_class->GetFileName()));
     }
-
+    
+    // cast type
+    if(method_call->GetVariable() && method_call->GetVariable()->GetCastType() && 
+       method_call->GetVariable()->GetCastType()->GetType() == CLASS_TYPE) {
+      AnalyzeClassCast(method_call->GetVariable()->GetCastType(), method_call, depth + 1);
+    }
+    // intermediate cast type
+    else if(method_call->GetCastType() && method_call->GetCastType()->GetType() == CLASS_TYPE) {
+      AnalyzeVariableCast(method_call->GetCastType(), method_call);
+    }
+    
     return klass;
   }
 
