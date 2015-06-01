@@ -391,10 +391,13 @@ class ContextAnalyzer {
   }
 
   // returns true if entry static cotext is not valid
+  inline bool DuplicateParent(SymbolEntry* entry);
+
+  // returns true if this entry is duplicated in parent classes
   inline bool InvalidStatic(SymbolEntry* entry) {
     return current_method->IsStatic() && !entry->IsLocal() && !entry->IsStatic();
   }
-
+  
   // returns true if a duplicate value is found in the list
   inline bool DuplicateCaseItem(map<int, StatementList*>label_statements, int value) {
     map<int, StatementList*>::iterator result = label_statements.find(value);
