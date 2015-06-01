@@ -186,8 +186,9 @@ bool ContextAnalyzer::Analyze()
       for(size_t j = 0; j < classes.size(); j++) {
         AnalyzeClass(classes[j], class_id++, 0);
       }
+      // check for duplicate instance and class level variables
+      AnalyzeDuplicateEntries(classes, 0);
       // process class methods
-      classes = bundle->GetClasses();
       for(size_t j = 0; j < classes.size(); j++) {
         AnalyzeMethods(classes[j], 0);
       }
@@ -248,6 +249,31 @@ bool ContextAnalyzer::Analyze()
        linker->SearchEnumLibraries(eenum->GetName(), program->GetUses(eenum->GetFileName()))) {
       ProcessError(eenum, L"Enum '" + ReplaceSubstring(eenum->GetName(), L"#", L"->") + 
                    L"' defined in program and shared libraries");
+    }
+  }
+  
+  /****************************
+   * Checks for duplicate instance 
+   * and class level variables
+   ****************************/
+  void ContextAnalyzer::AnalyzeDuplicateEntries(vector<Class*>& classes, const int depth)
+  {
+    for(size_t i = 0; i < classes.size(); ++i) {
+      // declarations
+      vector<Statement*> statements = classes[i]->GetStatements();
+      for(size_t j = 0; j < statements.size(); ++j) {
+        Declaration* declaration = static_cast<Declaration*>(statements[j]);
+        SymbolEntry* entry = declaration->GetEntry();
+        if(entry) {
+          // duplicate parent
+          if(DuplicateParentEntries(entry)) {
+            size_t offset = entry->GetName().find(L':');
+            ++offset;
+            const wstring short_name = entry->GetName().substr(offset, entry->GetName().size() - offset);
+            ProcessError(declaration, L"Declaration name '" + short_name + L"' used in a parent class");
+          }
+        }
+      }
     }
   }
 
@@ -1421,31 +1447,7 @@ bool ContextAnalyzer::Analyze()
       ProcessError(variable, L"Undefined variable: '" +  variable->GetName() + L"'");
     }
   }
-
-  // returns true if entry static cotext is not valid
-  inline bool ContextAnalyzer::DuplicateParent(SymbolEntry* entry) {
-    if(current_class->GetParent() && (!entry->IsLocal() || entry->IsStatic())) {
-      Class* parent = current_class->GetParent();
-      do {
-        size_t offset = entry->GetName().find(L':');
-        if(offset != wstring::npos) {
-          ++offset; 
-          const wstring short_name = entry->GetName().substr(offset, entry->GetName().size() - offset); 
-          const wstring lookup = parent->GetName() + L":" + short_name;
-          SymbolEntry* parent_entry = parent->GetSymbolTable()->GetEntry(lookup);
-          if(parent_entry) {
-            return true;
-          }
-          // update
-          parent = parent->GetParent();
-        }
-      }
-      while(parent);
-    }
-    
-    return false;
-  }
-
+  
   /****************************
    * Analyzes a method call
    ****************************/
@@ -4347,16 +4349,6 @@ bool ContextAnalyzer::Analyze()
 #endif
         type->SetClassName(encoded_name);
       }
-
-#ifndef _SYSTEM
-      // duplicate parent
-      if(DuplicateParent(entry)) {
-        size_t offset = entry->GetName().find(L':');
-        ++offset;
-        const wstring short_name = entry->GetName().substr(offset, entry->GetName().size() - offset); 
-        ProcessError(declaration, L"Declaration name '" + short_name + L"' used in a parent class");
-      }
-#endif
       
       Statement* statement = declaration->GetAssignment();
       if(statement) {

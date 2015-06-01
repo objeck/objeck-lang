@@ -391,7 +391,27 @@ class ContextAnalyzer {
   }
 
   // returns true if entry static cotext is not valid
-  inline bool DuplicateParent(SymbolEntry* entry);
+  inline bool DuplicateParentEntries(SymbolEntry* entry) {
+    if(current_class->GetParent() && (!entry->IsLocal() || entry->IsStatic())) {
+      Class* parent = current_class->GetParent();
+      do {
+        size_t offset = entry->GetName().find(L':');
+        if(offset != wstring::npos) {
+          ++offset;
+          const wstring short_name = entry->GetName().substr(offset, entry->GetName().size() - offset);
+          const wstring lookup = parent->GetName() + L":" + short_name;
+          SymbolEntry* parent_entry = parent->GetSymbolTable()->GetEntry(lookup);
+          if(parent_entry) {
+            return true;
+          }
+        }
+        // update
+        parent = parent->GetParent();
+      } while(parent);
+    }
+
+    return false;
+  }
 
   // returns true if this entry is duplicated in parent classes
   inline bool InvalidStatic(SymbolEntry* entry) {
@@ -1047,6 +1067,9 @@ class ContextAnalyzer {
   // context operations
   void AnalyzeEnum(Enum* eenum, const int depth);
   void AnalyzeClass(Class* klass, const int id, const int depth);
+
+  void AnalyzeDuplicateEntries(vector<Class*>& classes, const int depth);
+
   void AddDefaultParameterMethods(ParsedBundle* bundle, Class* klass, Method* method);
   int GenerateParameterMethods(ParsedBundle* bundle, Class* klass, Method* method, const int offset);
   void AnalyzeMethods(Class* klass, const int depth);
