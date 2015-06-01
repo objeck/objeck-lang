@@ -407,7 +407,8 @@ class ContextAnalyzer {
         }
         // update
         parent = parent->GetParent();
-      } while(parent);
+      } 
+      while(parent);
     }
 
     return false;
