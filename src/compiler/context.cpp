@@ -260,17 +260,18 @@ bool ContextAnalyzer::Analyze()
   {
     for(size_t i = 0; i < classes.size(); ++i) {
       // declarations
-      vector<Statement*> statements = classes[i]->GetStatements();
+      Class* klass = classes[i];
+      vector<Statement*> statements = klass->GetStatements();
       for(size_t j = 0; j < statements.size(); ++j) {
         Declaration* declaration = static_cast<Declaration*>(statements[j]);
         SymbolEntry* entry = declaration->GetEntry();
         if(entry) {
           // duplicate parent
-          if(DuplicateParentEntries(entry)) {
+          if(DuplicateParentEntries(entry, klass)) {
             size_t offset = entry->GetName().find(L':');
             ++offset;
             const wstring short_name = entry->GetName().substr(offset, entry->GetName().size() - offset);
-            ProcessError(declaration, L"Declaration name '" + short_name + L"' used in a parent class");
+            ProcessError(declaration, L"Declaration name '" + short_name + L"' defined in a parent class");
           }
         }
       }
