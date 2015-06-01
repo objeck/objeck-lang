@@ -7,7 +7,7 @@ class Foo {
 }
 
 class Bar from Foo {
-	@value : Int;
+	@value1 : Int;
 
 	New() {
 		Parent();

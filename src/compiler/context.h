@@ -391,9 +391,9 @@ class ContextAnalyzer {
   }
 
   // returns true if entry static cotext is not valid
-  inline bool DuplicateParentEntries(SymbolEntry* entry) {
-    if(current_class->GetParent() && (!entry->IsLocal() || entry->IsStatic())) {
-      Class* parent = current_class->GetParent();
+  inline bool DuplicateParentEntries(SymbolEntry* entry, Class* klass) {
+    if(klass->GetParent() && (!entry->IsLocal() || entry->IsStatic())) {
+      Class* parent = klass->GetParent();
       do {
         size_t offset = entry->GetName().find(L':');
         if(offset != wstring::npos) {
