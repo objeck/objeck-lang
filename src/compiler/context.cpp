@@ -4348,6 +4348,7 @@ bool ContextAnalyzer::Analyze()
         type->SetClassName(encoded_name);
       }
 
+#ifndef _SYSTEM
       // duplicate parent
       if(DuplicateParent(entry)) {
         size_t offset = entry->GetName().find(L':');
@@ -4355,6 +4356,7 @@ bool ContextAnalyzer::Analyze()
         const wstring short_name = entry->GetName().substr(offset, entry->GetName().size() - offset); 
         ProcessError(declaration, L"Declaration name '" + short_name + L"' used in a parent class");
       }
+#endif
       
       Statement* statement = declaration->GetAssignment();
       if(statement) {
