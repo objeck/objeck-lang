@@ -1395,6 +1395,7 @@ bool ContextAnalyzer::Analyze()
           ProcessError(variable, L"Dimension size mismatch or uninitialized type");
         }
       }
+      
       // static check
       if(InvalidStatic(entry)) {
         ProcessError(variable, L"Cannot reference an instance variable from this context");
@@ -1419,6 +1420,30 @@ bool ContextAnalyzer::Analyze()
     else {
       ProcessError(variable, L"Undefined variable: '" +  variable->GetName() + L"'");
     }
+  }
+
+  // returns true if entry static cotext is not valid
+  inline bool ContextAnalyzer::DuplicateParent(SymbolEntry* entry) {
+    if(current_class->GetParent() && (!entry->IsLocal() || entry->IsStatic())) {
+      Class* parent = current_class->GetParent();
+      do {
+        size_t offset = entry->GetName().find(L':');
+        if(offset != wstring::npos) {
+          ++offset; 
+          const wstring short_name = entry->GetName().substr(offset, entry->GetName().size() - offset); 
+          const wstring lookup = parent->GetName() + L":" + short_name;
+          SymbolEntry* parent_entry = parent->GetSymbolTable()->GetEntry(lookup);
+          if(parent_entry) {
+            return true;
+          }
+          // update
+          parent = parent->GetParent();
+        }
+      }
+      while(parent);
+    }
+    
+    return false;
   }
 
   /****************************
@@ -4323,6 +4348,14 @@ bool ContextAnalyzer::Analyze()
         type->SetClassName(encoded_name);
       }
 
+      // duplicate parent
+      if(DuplicateParent(entry)) {
+        size_t offset = entry->GetName().find(L':');
+        ++offset;
+        const wstring short_name = entry->GetName().substr(offset, entry->GetName().size() - offset); 
+        ProcessError(declaration, L"Declaration name '" + short_name + L"' used in a parent class");
+      }
+      
       Statement* statement = declaration->GetAssignment();
       if(statement) {
         AnalyzeStatement(statement, depth);
