@@ -98,7 +98,7 @@ extern "C" {
     status = SQLConnect(conn, (SQLCHAR*)ds.c_str(), SQL_NTS, (SQLCHAR*)username.c_str(), 
                         SQL_NTS, (SQLCHAR*)password.c_str(), SQL_NTS);     
     if(SQL_FAIL) {
-      // ShowError(SQL_HANDLE_DBC, conn);
+      SQLFreeHandle(SQL_HANDLE_DBC, conn);
       conn = NULL;
       APITools_SetIntValue(context, 0, (long)conn);
       return;
@@ -150,7 +150,8 @@ extern "C" {
     SQLRETURN status = SQLAllocHandle(SQL_HANDLE_STMT, conn, &stmt);
     if(SQL_FAIL) {
       // ShowError(SQL_HANDLE_STMT, stmt);
-      SQLFreeStmt(stmt, SQL_CLOSE);
+      SQLFreeStmt(stmt, SQL_UNBIND);
+      SQLFreeHandle(SQL_HANDLE_STMT, stmt);
       APITools_SetIntValue(context, 0, -1);
       return;
     }
@@ -159,7 +160,8 @@ extern "C" {
     status = SQLExecDirect(stmt, (SQLCHAR*)sql.c_str(), SQL_NTS);
     if(SQL_FAIL) {
       // ShowError(SQL_HANDLE_STMT, stmt);
-      SQLFreeStmt(stmt, SQL_CLOSE);
+      SQLFreeStmt(stmt, SQL_UNBIND);
+      SQLFreeHandle(SQL_HANDLE_STMT, stmt);
       APITools_SetIntValue(context, 0, -1);
       return;
     }
@@ -168,12 +170,13 @@ extern "C" {
     status = SQLRowCount(stmt, &count);
     if(SQL_FAIL) {
       // ShowError(SQL_HANDLE_STMT, stmt);
-      SQLFreeStmt(stmt, SQL_CLOSE);
+      SQLFreeStmt(stmt, SQL_UNBIND);
       APITools_SetIntValue(context, 0, -1);
       return;
     }
 		
-    SQLFreeStmt(stmt, SQL_CLOSE);
+    SQLFreeStmt(stmt, SQL_UNBIND);
+    SQLFreeHandle(SQL_HANDLE_STMT, stmt);
     APITools_SetIntValue(context, 0, count);
   }
 	
@@ -219,7 +222,8 @@ extern "C" {
     SQLRETURN status = SQLAllocHandle(SQL_HANDLE_STMT, conn, &stmt);
     if(SQL_FAIL) {
       // ShowError(SQL_HANDLE_STMT, stmt);
-      SQLFreeStmt(stmt, SQL_CLOSE);
+      SQLFreeStmt(stmt, SQL_UNBIND);
+      SQLFreeHandle(SQL_HANDLE_STMT, stmt);
       APITools_SetIntValue(context, 0, 0);
       APITools_SetIntValue(context, 1, 0);
       APITools_SetIntValue(context, 2, 0);
@@ -230,7 +234,8 @@ extern "C" {
     status = SQLPrepare(stmt, (SQLCHAR*)sql.c_str(), SQL_NTS);
     if(SQL_FAIL) {
       // ShowError(SQL_HANDLE_STMT, stmt);
-      SQLFreeStmt(stmt, SQL_CLOSE);
+      SQLFreeStmt(stmt, SQL_UNBIND);
+      SQLFreeHandle(SQL_HANDLE_STMT, stmt);
       APITools_SetIntValue(context, 0, 0);
       APITools_SetIntValue(context, 1, 0);
       APITools_SetIntValue(context, 2, 0);
@@ -241,7 +246,8 @@ extern "C" {
     status = SQLNumResultCols(stmt, &columns);
     if(SQL_FAIL) {
       // ShowError(SQL_HANDLE_STMT, stmt);
-      SQLFreeStmt(stmt, SQL_CLOSE);
+      SQLFreeStmt(stmt, SQL_UNBIND);
+      SQLFreeHandle(SQL_HANDLE_STMT, stmt);
       APITools_SetIntValue(context, 0, 0);
       APITools_SetIntValue(context, 1, 0);
       APITools_SetIntValue(context, 2, 0);
@@ -258,7 +264,8 @@ extern "C" {
                               &description.nullable);
       if(SQL_FAIL) {
         // ShowError(SQL_HANDLE_STMT, stmt);
-        SQLFreeStmt(stmt, SQL_CLOSE);
+        SQLFreeStmt(stmt, SQL_UNBIND);
+        SQLFreeHandle(SQL_HANDLE_STMT, stmt);
         APITools_SetIntValue(context, 0, 0);
         APITools_SetIntValue(context, 1, 0);
         APITools_SetIntValue(context, 2, 0);
@@ -277,7 +284,8 @@ extern "C" {
     status = SQLExecute(stmt); 
     if(SQL_FAIL) {
       // ShowError(SQL_HANDLE_STMT, stmt);
-      SQLFreeStmt(stmt, SQL_CLOSE);
+      SQLFreeStmt(stmt, SQL_UNBIND);
+      SQLFreeHandle(SQL_HANDLE_STMT, stmt);
       APITools_SetIntValue(context, 0, 0);
       APITools_SetIntValue(context, 1, 0);
       APITools_SetIntValue(context, 2, 0);
@@ -318,7 +326,8 @@ extern "C" {
     SQLRETURN status = SQLAllocHandle(SQL_HANDLE_STMT, conn, &stmt);
     if(SQL_FAIL) {
       // ShowError(SQL_HANDLE_STMT, stmt);
-      SQLFreeStmt(stmt, SQL_CLOSE);
+      SQLFreeStmt(stmt, SQL_UNBIND);
+      SQLFreeHandle(SQL_HANDLE_STMT, stmt);
       APITools_SetIntValue(context, 0, 0);
       APITools_SetIntValue(context, 1, 0);
       APITools_SetIntValue(context, 2, 0);
@@ -329,7 +338,8 @@ extern "C" {
     status = SQLPrepare(stmt, (SQLCHAR*)sql.c_str(), SQL_NTS);
     if(SQL_FAIL) {
       // ShowError(SQL_HANDLE_STMT, stmt);
-      SQLFreeStmt(stmt, SQL_CLOSE);
+      SQLFreeStmt(stmt, SQL_UNBIND);
+      SQLFreeHandle(SQL_HANDLE_STMT, stmt);
       APITools_SetIntValue(context, 0, 0);
       APITools_SetIntValue(context, 1, 0);
       APITools_SetIntValue(context, 2, 0);
@@ -340,7 +350,8 @@ extern "C" {
     status = SQLNumResultCols(stmt, &columns);
     if(SQL_FAIL) {
       // ShowError(SQL_HANDLE_STMT, stmt);
-      SQLFreeStmt(stmt, SQL_CLOSE);
+      SQLFreeStmt(stmt, SQL_UNBIND);
+      SQLFreeHandle(SQL_HANDLE_STMT, stmt);
       APITools_SetIntValue(context, 0, 0);
       APITools_SetIntValue(context, 1, 0);
       APITools_SetIntValue(context, 2, 0);
@@ -358,7 +369,8 @@ extern "C" {
                               &description.nullable);
       if(SQL_FAIL) {
         // ShowError(SQL_HANDLE_STMT, stmt);
-        SQLFreeStmt(stmt, SQL_CLOSE);
+        SQLFreeStmt(stmt, SQL_UNBIND);
+        SQLFreeHandle(SQL_HANDLE_STMT, stmt);
         APITools_SetIntValue(context, 0, 0);
         APITools_SetIntValue(context, 1, 0);
         APITools_SetIntValue(context, 2, 0);
@@ -429,7 +441,8 @@ extern "C" {
           status = SQLPutData(stmt, found->second.first, found->second.second);
           if(SQL_FAIL) {
             // ShowError(SQL_HANDLE_STMT, stmt);
-            SQLFreeStmt(stmt, SQL_CLOSE);
+            SQLFreeStmt(stmt, SQL_UNBIND);
+            SQLFreeHandle(SQL_HANDLE_STMT, stmt);
             APITools_SetIntValue(context, 0, -1);
             if(exec_data) {
               delete exec_data;
@@ -440,7 +453,8 @@ extern "C" {
         }
         else {
           // ShowError(SQL_HANDLE_STMT, stmt);
-          SQLFreeStmt(stmt, SQL_CLOSE);
+          SQLFreeStmt(stmt, SQL_UNBIND);
+          SQLFreeHandle(SQL_HANDLE_STMT, stmt);
           APITools_SetIntValue(context, 0, -1);
           if(exec_data) {
             delete exec_data;
@@ -460,7 +474,8 @@ extern "C" {
     
     if(SQL_FAIL) {
       // ShowError(SQL_HANDLE_STMT, stmt);
-      SQLFreeStmt(stmt, SQL_CLOSE);
+      SQLFreeStmt(stmt, SQL_UNBIND);
+      SQLFreeHandle(SQL_HANDLE_STMT, stmt);
       APITools_SetIntValue(context, 0, -1);
       if(exec_data) {
         delete exec_data;
@@ -478,7 +493,8 @@ extern "C" {
     status = SQLRowCount(stmt, &count);
     if(SQL_FAIL) {
       // ShowError(SQL_HANDLE_STMT, stmt);
-      SQLFreeStmt(stmt, SQL_CLOSE);
+      SQLFreeStmt(stmt, SQL_UNBIND);
+      SQLFreeHandle(SQL_HANDLE_STMT, stmt);
       APITools_SetIntValue(context, 0, -1);
       if(exec_data) {
         delete exec_data;
@@ -1500,7 +1516,8 @@ extern "C" {
   {
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 0);
     if(stmt) {
-      SQLFreeStmt(stmt, SQL_CLOSE);
+      SQLFreeStmt(stmt, SQL_UNBIND);
+      SQLFreeHandle(SQL_HANDLE_STMT, stmt);
     }
 		
 #ifdef _DEBUG
