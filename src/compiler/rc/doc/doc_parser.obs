@@ -498,7 +498,6 @@ class DocBlock {
 class BundleBlock from DocBlock {
 	@name : String;
 	@desc : String;
-	@parsed : Bool;
 	@classes : StringMap;
 	@interfaces : StringMap;
 	@enums : StringMap;
@@ -586,7 +585,6 @@ class EnumBlock from DocBlock {
 	@desc : String;
 	@klass : String;
 	@items : Vector;
-	@parsed : Bool;
 	@block_name : String;
 	
 	New(buffer : String) {
@@ -704,7 +702,6 @@ class ClassBlock from DocBlock {
 	@funcs : StringMap;
 	@implemented : Vector;
 	@is_inf : Bool;
-	@parsed : Bool;
 	
 	New(buffer : String, is_inf : Bool) {
 		Parent(buffer);
@@ -855,7 +852,6 @@ class FuncBlock from DocBlock {
 	@is_virtual : Bool;
 	@is_new : Bool;
 	@types : static : StringMap;
-	@parsed : Bool;
 	@ignore_params : Bool;
 	
 	New(buffer : String) {
