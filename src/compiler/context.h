@@ -1013,17 +1013,23 @@ class ContextAnalyzer {
   void AnalyzeVariableCast(Type* to_type, Expression* expression) {
     if(to_type && to_type->GetType() == CLASS_TYPE && expression->GetCastType() && to_type->GetDimension() < 1 && 
        to_type->GetClassName() != L"System.Base" &&  to_type->GetClassName() != L"Base") {
-      Class* to_class = SearchProgramClasses(to_type->GetClassName());
+      const wstring to_class_name = to_type->GetClassName();
+      if(SearchProgramEnums(to_class_name) || 
+         linker->SearchEnumLibraries(to_class_name, program->GetUses(current_class->GetFileName()))) {
+        return;
+      }
+
+      Class* to_class = SearchProgramClasses(to_class_name);
       if(to_class) {
         expression->SetToClass(to_class);
       }
       else {
-        LibraryClass* to_lib_class = linker->SearchClassLibraries(to_type->GetClassName(), program->GetUses());
+        LibraryClass* to_lib_class = linker->SearchClassLibraries(to_class_name, program->GetUses());
         if(to_lib_class) {
           expression->SetToLibraryClass(to_lib_class);
         }
         else {
-          ProcessError(expression, L"Undefined class: '" + to_type->GetClassName() + L"'");
+          ProcessError(expression, L"Undefined class: '" + to_class_name + L"'");
         }
       }
     }
