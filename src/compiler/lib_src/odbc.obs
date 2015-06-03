@@ -59,6 +59,7 @@ bundle ODBC {
 				array_args[0] := IntHolder->New(@native_connection);
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("odbc_disconnect", array_args);
+				@native_connection := 0;
 			};
 		}
 		
@@ -662,8 +663,9 @@ bundle ODBC {
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("odbc_stmt_close", array_args);
 				@params->Empty();
-      		};
-      	}
+				@native_stmt := 0;
+	      		};
+	      	}
 	}
 	
 	#~
@@ -970,8 +972,10 @@ bundle ODBC {
 				array_args[1] := IntHolder->New(@exec_data);
 				@lib_proxy := Proxy->GetDllProxy();
 				@lib_proxy->CallFunction("odbc_result_close", array_args);
-      		};
-      	}
+				@native_names := 0;
+				@exec_data := 0;
+	      		};
+	      	}
 	}
 	
 	#~
