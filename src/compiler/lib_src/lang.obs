@@ -1745,7 +1745,7 @@ bundle System {
 		@param char character to search for
 		@return true of found, false otherwise
 		~#
-		method : public : Has(offset : Int, char : Char) ~ Int {
+		method : public : Has(offset : Int, char : Char) ~ Bool {
 			return Find(offset, char) > -1;
 		}
 			
