@@ -628,7 +628,13 @@ bundle ODBC {
 				@params->Empty();
 
 				value := array_args[0]->As(IntHolder);
-				return value->Get();
+				status := value->Get();
+				if(status < 0) {
+					@native_stmt := 0;
+					@exec_data := 0;
+					@native_names := 0;
+				};
+				return status;
       		};
       		
       		return -1;
