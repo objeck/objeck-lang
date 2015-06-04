@@ -149,9 +149,10 @@ extern "C" {
     SQLHSTMT stmt = NULL;
     SQLRETURN status = SQLAllocHandle(SQL_HANDLE_STMT, conn, &stmt);
     if(SQL_FAIL) {
-      // ShowError(SQL_HANDLE_STMT, stmt);
-      SQLFreeStmt(stmt, SQL_UNBIND);
-      SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+      if(stmt) {
+        SQLFreeStmt(stmt, SQL_UNBIND);
+        SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+      };
       APITools_SetIntValue(context, 0, -1);
       return;
     }
@@ -448,6 +449,10 @@ extern "C" {
               delete exec_data;
               exec_data = NULL;
             }
+            if(column_names) {
+              delete column_names;
+              column_names = NULL;
+            }            
             return;
           }
         }
@@ -460,7 +465,6 @@ extern "C" {
             delete exec_data;
             exec_data = NULL;
           }
-
           if(column_names) {
             delete column_names;
             column_names = NULL;
@@ -481,7 +485,6 @@ extern "C" {
         delete exec_data;
         exec_data = NULL;
       }
-
       if(column_names) {
         delete column_names;
         column_names = NULL;
@@ -500,7 +503,6 @@ extern "C" {
         delete exec_data;
         exec_data = NULL;
       }
-
       if(column_names) {
         delete column_names;
         column_names = NULL;
@@ -513,7 +515,6 @@ extern "C" {
       delete exec_data;
       exec_data = NULL;
     }
-
     if(column_names) {
       delete column_names;
       column_names = NULL;
