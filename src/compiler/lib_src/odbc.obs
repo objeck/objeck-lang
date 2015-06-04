@@ -1,7 +1,8 @@
 use Collection;
 use System.API;
+
 #~
-Provides basic data access support
+Provides basic data access support via ODBC. 
 ~#
 bundle ODBC {
 	class Proxy {
@@ -612,7 +613,7 @@ bundle ODBC {
 		}
 		
 		#~
-		Executes a SQL update statement
+		Executes a SQL update statement. Statement is closed after calling.
 		@param sql SQL statement
 		@return result code
 		~#
