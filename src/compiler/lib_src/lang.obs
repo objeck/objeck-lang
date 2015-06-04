@@ -1729,7 +1729,26 @@ bundle System {
 		method : public : Find(char : Char) ~ Int {
 			return Find(0, char);
 		}
-		
+	
+		#~
+		Searches for the first occurrence of a character
+		@param char character to search for
+		@return true of found, false otherwise
+		~#
+		method : public : Has(char : Char) ~ Bool {
+			return Find(0, char) > -1;
+		}
+
+		#~
+		Searches for the first occurrence of a character
+		@param offset search offset
+		@param char character to search for
+		@return true of found, false otherwise
+		~#
+		method : public : Has(offset : Int, char : Char) ~ Int {
+			return Find(offset, char) > -1;
+		}
+			
 		#~
 		Searches for the first occurrence of a character
 		@param offset search offset
