@@ -89,8 +89,7 @@ extern "C" {
 		
     SQLRETURN status = SQLAllocHandle(SQL_HANDLE_DBC, env, &conn);
     if(SQL_FAIL) {
-      // ShowError(SQL_HANDLE_DBC, conn);
-      conn = NULL;
+      SQLFreeHandle(SQL_HANDLE_DBC, conn);
       APITools_SetIntValue(context, 0, 0);
       return;
     }
@@ -100,7 +99,7 @@ extern "C" {
     if(SQL_FAIL) {
       SQLFreeHandle(SQL_HANDLE_DBC, conn);
       conn = NULL;
-      APITools_SetIntValue(context, 0, (long)conn);
+      APITools_SetIntValue(context, 0, 0);
       return;
     }
 		
