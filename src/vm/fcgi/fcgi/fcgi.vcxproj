@@ -92,6 +92,7 @@
     <ClInclude Include="..\..\os\windows\memory.h" />
     <ClInclude Include="..\..\os\windows\windows.h" />
     <ClInclude Include="..\..\vm.h" />
+    <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\common.cpp" />
@@ -100,6 +101,12 @@
     <ClCompile Include="..\..\jit\ia32\jit_intel_lp32.cpp" />
     <ClCompile Include="..\..\loader.cpp" />
     <ClCompile Include="..\..\os\windows\memory.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="objeck.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="..\..\..\..\images\Gear.ico" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

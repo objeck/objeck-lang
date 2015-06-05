@@ -1,6 +1,8 @@
 ﻿
-Microsoft Visual Studio Solution File, Format Version 11.00
-# Visual Studio 2010
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2013
+VisualStudioVersion = 12.0.31101.0
+MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "compiler", "..\compiler\compiler\compiler.vcxproj", "{E53C042C-C8B4-4C41-99A8-72A2B273FFC0}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "vm", "..\vm\vm\vm.vcxproj", "{3131D7AE-8AB8-46C1-872F-0F949C5CD05D}"
@@ -8,6 +10,10 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "utilities", "..\utilities\utilities\utilities.vcxproj", "{2D853992-96F9-482B-92F2-700367E27AB1}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "debugger", "..\vm\debugger\debugger\debugger.vcxproj", "{02EEE1DA-3D5E-48BA-996A-4DAB376B5291}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "fcgi", "..\vm\fcgi\fcgi\fcgi.vcxproj", "{6CE51B05-1C90-440D-B8C0-4E68A3172748}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "fcgi_lib", "..\lib\fcgi\fcgi_lib.vcxproj", "{8BB5281F-7310-4B87-AD20-C45D73AEC306}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -75,6 +81,30 @@ Global
 		{02EEE1DA-3D5E-48BA-996A-4DAB376B5291}.System Build|Win32.ActiveCfg = Release|Win32
 		{02EEE1DA-3D5E-48BA-996A-4DAB376B5291}.System Build|Win32.Build.0 = Release|Win32
 		{02EEE1DA-3D5E-48BA-996A-4DAB376B5291}.System Build|x64.ActiveCfg = Release|Win32
+		{6CE51B05-1C90-440D-B8C0-4E68A3172748}.Debug|Win32.ActiveCfg = Debug|Win32
+		{6CE51B05-1C90-440D-B8C0-4E68A3172748}.Debug|Win32.Build.0 = Debug|Win32
+		{6CE51B05-1C90-440D-B8C0-4E68A3172748}.Debug|x64.ActiveCfg = Debug|Win32
+		{6CE51B05-1C90-440D-B8C0-4E68A3172748}.Release|Win32.ActiveCfg = Release|Win32
+		{6CE51B05-1C90-440D-B8C0-4E68A3172748}.Release|Win32.Build.0 = Release|Win32
+		{6CE51B05-1C90-440D-B8C0-4E68A3172748}.Release|x64.ActiveCfg = Release|Win32
+		{6CE51B05-1C90-440D-B8C0-4E68A3172748}.Structure Build|Win32.ActiveCfg = Release|Win32
+		{6CE51B05-1C90-440D-B8C0-4E68A3172748}.Structure Build|Win32.Build.0 = Release|Win32
+		{6CE51B05-1C90-440D-B8C0-4E68A3172748}.Structure Build|x64.ActiveCfg = Release|Win32
+		{6CE51B05-1C90-440D-B8C0-4E68A3172748}.System Build|Win32.ActiveCfg = Release|Win32
+		{6CE51B05-1C90-440D-B8C0-4E68A3172748}.System Build|Win32.Build.0 = Release|Win32
+		{6CE51B05-1C90-440D-B8C0-4E68A3172748}.System Build|x64.ActiveCfg = Release|Win32
+		{8BB5281F-7310-4B87-AD20-C45D73AEC306}.Debug|Win32.ActiveCfg = Debug|Win32
+		{8BB5281F-7310-4B87-AD20-C45D73AEC306}.Debug|Win32.Build.0 = Debug|Win32
+		{8BB5281F-7310-4B87-AD20-C45D73AEC306}.Debug|x64.ActiveCfg = Debug|Win32
+		{8BB5281F-7310-4B87-AD20-C45D73AEC306}.Release|Win32.ActiveCfg = Release|Win32
+		{8BB5281F-7310-4B87-AD20-C45D73AEC306}.Release|Win32.Build.0 = Release|Win32
+		{8BB5281F-7310-4B87-AD20-C45D73AEC306}.Release|x64.ActiveCfg = Release|Win32
+		{8BB5281F-7310-4B87-AD20-C45D73AEC306}.Structure Build|Win32.ActiveCfg = Release|Win32
+		{8BB5281F-7310-4B87-AD20-C45D73AEC306}.Structure Build|Win32.Build.0 = Release|Win32
+		{8BB5281F-7310-4B87-AD20-C45D73AEC306}.Structure Build|x64.ActiveCfg = Release|Win32
+		{8BB5281F-7310-4B87-AD20-C45D73AEC306}.System Build|Win32.ActiveCfg = Release|Win32
+		{8BB5281F-7310-4B87-AD20-C45D73AEC306}.System Build|Win32.Build.0 = Release|Win32
+		{8BB5281F-7310-4B87-AD20-C45D73AEC306}.System Build|x64.ActiveCfg = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
