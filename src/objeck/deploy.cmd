@@ -1,10 +1,10 @@
 set LATEX_BIN="D:\Program Files\MiKTeX 2.9\miktex\bin\x64"
 
 rmdir /s /q deploy
-rmdir /s /q fcgi_deploy
+rmdir /s /q deploy_fcgi
 
 mkdir deploy
-mkdir fcgi_deploy
+mkdir deploy_fcgi
 
 REM update version information
 powershell.exe -executionpolicy remotesigned -file  update_version.ps1
@@ -42,17 +42,18 @@ copy ..\..\docs\syntax\* deploy\doc\syntax
 copy ..\..\docs\readme.htm deploy
 call code_doc.cmd
 REM create and build fcgi
-xcopy /e deploy\* fcgi_deploy
-del fcgi_deploy\bin\obr.exe
-del fcgi_deploy\bin\obd.exe
-rmdir fcgi_deploy\binrmdir /s /q fcgi_deploy\doc
-rmdir fcgi_deploy\binrmdir /s /q fcgi_deploy\examples
-copy Release\obr_fcgi.exe fcgi_deploy\bin
-copy ..\lib\fcgi\windows\lib\*.dll fcgi_deploy\bin
-copy redistrib\*.dll fcgi_deploy\bin
-mkdir fcgi_deploy\examples
-copy ..\compiler\web\* fcgi_deploy\examples
-copy /y ..\..\docs\fcgi_readme.htm fcgi_deploy\readme.htm
+xcopy /e deploy\* deploy_fcgi
+del deploy_fcgi\bin\obr.exe
+del deploy_fcgi\bin\obd.exe
+rmdir deploy_fcgi\binrmdir /s /q deploy_fcgi\doc
+rmdir deploy_fcgi\binrmdir /s /q deploy_fcgi\examples
+copy Release\obr_fcgi.exe deploy_fcgi\bin
+copy ..\compiler\fcgi.obl deploy_fcgi\bin
+copy ..\lib\fcgi\windows\lib\*.dll deploy_fcgi\bin
+copy redistrib\*.dll deploy_fcgi\bin
+mkdir deploy_fcgi\examples
+copy ..\compiler\web\* deploy_fcgi\examples
+copy /y ..\..\docs\fcgi_readme.htm deploy_fcgi\readme.htm
 
 REM finished
 if [%1] NEQ [deploy] goto end

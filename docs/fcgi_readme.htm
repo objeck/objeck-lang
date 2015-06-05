@@ -158,8 +158,8 @@ ul
 <h1><span style='font-size:24.0pt;line-height:107%;font-family:"AR BERKLEY"'>Objeck
 Programming Language</span></h1>
 
-<p class=MsoSubtitle><span style='font-size:10.0pt;line-height:107%'>v3.3.8-1; June
-5, 2015</span></p>
+<p class=MsoSubtitle><span style='font-size:10.0pt;line-height:107%'>v3.3.8-1
+(FastCGI); June 5, 2015</span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
 normal;text-autospace:none'><span style='font-family:"Calibri",sans-serif'>&nbsp;</span></p>
@@ -248,15 +248,6 @@ must be in the directory specified. </span></p>
 normal;text-autospace:none'><span style='font-family:"Calibri",sans-serif'>&nbsp;</span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
-normal;text-autospace:none'><span style='font-family:"Calibri",sans-serif'>If
-the Windows installer is used these variables will be automatically set after
-the system is restarted. For Debian and Ubuntu the location of the files is
-fixed by the installer so no variables are needed.</span></p>
-
-<p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
-normal;text-autospace:none'><span style='font-family:"Calibri",sans-serif'>&nbsp;</span></p>
-
-<p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
 normal;text-autospace:none'><span style='font-family:"Calibri",sans-serif'>To manually
 setting the environment paths in Windows:</span></p>
 
@@ -278,49 +269,51 @@ margin-left:.5in;margin-bottom:.0001pt;text-indent:-.25in;line-height:normal;
 text-autospace:none'><span style='font-family:"Calibri",sans-serif'>&nbsp;</span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
-normal;text-autospace:none'><span style='font-family:"Calibri",sans-serif'>Simple
-compile/execute:</span></p>
+normal;text-autospace:none'><span style='font-family:"Calibri",sans-serif'>Comping
+a simple web program:</span></p>
 
 <p class=MsoNormal style='margin-top:0in;margin-right:0in;margin-bottom:0in;
 margin-left:.5in;margin-bottom:.0001pt;text-indent:-.25in;line-height:normal;
 text-autospace:none'><span style='font-family:"Calibri",sans-serif'>1.<span
 style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span></span><span
-style='font-family:"Calibri",sans-serif'>obc -src ..\examples\hello.obs -dest
-hello.obe </span></p>
-
-<p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
-normal;text-autospace:none'><span style='font-family:"Calibri",sans-serif'>                                –OR-
-</span></p>
+style='font-family:"Calibri",sans-serif'>obc -src ..\examples\hello_fcgi.obs -lib
+fcgi.obl,collect.obl -tar web -dest ..\hello_fcgi.obw</span></p>
 
 <p class=MsoNormal style='margin-top:0in;margin-right:0in;margin-bottom:0in;
 margin-left:.5in;margin-bottom:.0001pt;text-indent:-.25in;line-height:normal;
-text-autospace:none'><span style='font-family:"Calibri",sans-serif'>1.<span
+text-autospace:none'><span style='font-family:"Calibri",sans-serif'>2.<span
 style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span></span><span
-style='font-family:"Calibri",sans-serif'>obc -src &quot;C:\Program
-Files\Objeck\objeck-lang\examples\encrypt.obs&quot; -lib encrypt.obl -dest
-hello.obe</span></p>
-
-<p class=MsoNormal style='margin-top:0in;margin-right:0in;margin-bottom:0in;
-margin-left:.5in;margin-bottom:.0001pt;text-indent:-.25in;line-height:normal;
-text-autospace:none'><span style='font-family:"Calibri",sans-serif'>2.    obr
-hello.obe</span></p>
+style='font-family:"Calibri",sans-serif'>&lt;copy obw&gt;</span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
-normal;text-autospace:none'><span style='font-family:"Calibri",sans-serif'>&nbsp;</span></p>
+normal;text-autospace:none'><span style='font-family:"Calibri",sans-serif'>                </span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
-normal;text-autospace:none'><span style='font-family:"Calibri",sans-serif'>Compile/execute
-for code that has library dependencies:</span></p>
+normal;text-autospace:none'><span style='font-family:"Calibri",sans-serif'>Configurong
+Objeck FastCGI runtime for IIS:</span></p>
 
-<p class=MsoNormal style='margin-top:0in;margin-right:0in;margin-bottom:0in;
-margin-left:.5in;margin-bottom:.0001pt;text-indent:-.25in;line-height:normal;
-text-autospace:none'><span style='font-family:"Calibri",sans-serif'>1.    obc
--src ..\examples\xml_path.obs -lib collect.obl,xml.obl -dest xml_path.obe</span></p>
+<p class=MsoListParagraphCxSpFirst style='margin-bottom:0in;margin-bottom:.0001pt;
+text-indent:-.25in;line-height:normal;text-autospace:none'><span
+style='font-family:"Calibri",sans-serif'>1.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span></span><span style='font-family:"Calibri",sans-serif'>&lt;what to
+install&gt;</span></p>
 
-<p class=MsoNormal style='margin-top:0in;margin-right:0in;margin-bottom:0in;
-margin-left:.5in;margin-bottom:.0001pt;text-indent:-.25in;line-height:normal;
-text-autospace:none'><span style='font-family:"Calibri",sans-serif'>2.    obr
-xml.obe </span></p>
+<p class=MsoListParagraphCxSpMiddle style='margin-bottom:0in;margin-bottom:
+.0001pt;text-indent:-.25in;line-height:normal;text-autospace:none'><span
+style='font-family:"Calibri",sans-serif'>2.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span></span><span style='font-family:"Calibri",sans-serif'>&lt;map
+executable&gt;</span></p>
+
+<p class=MsoListParagraphCxSpMiddle style='margin-bottom:0in;margin-bottom:
+.0001pt;text-indent:-.25in;line-height:normal;text-autospace:none'><span
+style='font-family:"Calibri",sans-serif'>3.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span></span><span style='font-family:"Calibri",sans-serif'>Set FCGI_CONFIG_PATH
+property</span></p>
+
+<p class=MsoListParagraphCxSpLast style='margin-bottom:0in;margin-bottom:.0001pt;
+text-indent:-.25in;line-height:normal;text-autospace:none'><span
+style='font-family:"Calibri",sans-serif'>4.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+</span></span><span style='font-family:"Calibri",sans-serif'>Restart IIS</span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
 normal;text-autospace:none'><span style='font-family:"Calibri",sans-serif'>&nbsp;</span></p>
