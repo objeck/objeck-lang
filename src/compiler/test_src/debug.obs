@@ -3,6 +3,7 @@ use System.IO.File;
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		1234567->ToCommaString()->PrintLine();
+System.Runtime->Exit(101);
 		12567->ToCommaString()->PrintLine();
 		84812567->ToCommaString()->PrintLine();
 		4321->ToCommaString()->PrintLine();
