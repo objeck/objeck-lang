@@ -1059,6 +1059,12 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
   cur_line_num = statement->GetLineNumber();
   
   switch(statement->GetId()) {
+  case EXIT:
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 0, LOCL));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)instructions::EXIT));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, TRAP, 2));
+    break;
+    
     //----------- copy instructions -----------
   case CPY_BYTE_ARY:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 0, LOCL));
