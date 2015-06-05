@@ -30,7 +30,7 @@ bundle FastCgi {
 		
 		function : GetDllProxy() ~ DllProxy {
 			if(@lib_proxy = Nil) {
-				@lib_proxy := DllProxy->New("fcgi_lib");
+				@lib_proxy := DllProxy->New("libobjk_fcgi");
 			};
 
 			return @lib_proxy;
