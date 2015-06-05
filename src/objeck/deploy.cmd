@@ -48,6 +48,7 @@ del fcgi_deploy\bin\obd.exe
 rmdir fcgi_deploy\binrmdir /s /q fcgi_deploy\doc
 rmdir fcgi_deploy\binrmdir /s /q fcgi_deploy\examples
 copy Release\obr_fcgi.exe fcgi_deploy\bin
+copy ..\lib\fcgi\windows\lib\*.dll fcgi_deploy\bin
 copy redistrib\*.dll fcgi_deploy\bin
 mkdir fcgi_deploy\examples
 copy ..\compiler\web\* fcgi_deploy\examples
