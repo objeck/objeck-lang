@@ -820,7 +820,55 @@ extern "C" {
       APITools_SetIntValue(context, 1, 0);
     }
   }
-	
+
+
+  //
+  // gets an int from a result set
+  //
+#ifdef _WIN32
+  __declspec(dllexport) 
+#endif
+  void odbc_result_get_int_by_nam(VMContext& context) 
+  {
+    const wchar_t* name = APITools_GetStringValue(context, 2);
+    SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
+    map<const wstring, int>* names = (map<const wstring, int>*)APITools_GetIntValue(context, 4);
+
+    map<const wstring, int>::iterator result = names->find(name);
+    if(result == names->end()) {
+      APITools_SetIntValue(context, 0, 0);
+      APITools_SetObjectValue(context, 1, 0);
+      return;
+    }
+    SQLUSMALLINT i = (SQLUSMALLINT)result->second;
+    
+#ifdef _DEBUG
+    wcout << L"### get_int_by_name: stmt=" << stmt << L", column=" << i 
+          << L", max=" << (long)names->size() << L" ###" << endl;
+#endif  
+
+    if(!stmt || !names || i < 1 || i > (long)names->size()) {
+      APITools_SetIntValue(context, 0, 0);
+      APITools_SetIntValue(context, 1, 0);
+      return;
+    }
+
+    SQLLEN is_null;
+    int value;
+    SQLRETURN status = SQLGetData(stmt, i, SQL_C_LONG, &value, 0, &is_null);
+    if(SQL_OK) {
+      APITools_SetIntValue(context, 0, is_null == SQL_NULL_DATA);
+      APITools_SetIntValue(context, 1, value);
+#ifdef _DEBUG
+      wcout << L"  " << value << endl;
+#endif
+    }
+    else {
+      APITools_SetIntValue(context, 0, 0);
+      APITools_SetIntValue(context, 1, 0);
+    }
+  }
+  
   //
   // gets an int from a result set
   //
@@ -859,6 +907,53 @@ extern "C" {
     }
   }
 
+  
+  //
+  // gets an int from a result set
+  //
+#ifdef _WIN32
+  __declspec(dllexport) 
+#endif
+  void odbc_result_get_smallint_by_name(VMContext& context) 
+  {
+    const wchar_t* name = APITools_GetStringValue(context, 2);
+    SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
+    map<const wstring, int>* names = (map<const wstring, int>*)APITools_GetIntValue(context, 4);
+    
+    map<const wstring, int>::iterator result = names->find(name);
+    if(result == names->end()) {
+      APITools_SetIntValue(context, 0, 0);
+      APITools_SetObjectValue(context, 1, 0);
+      return;
+    }
+    SQLUSMALLINT i = (SQLUSMALLINT)result->second;
+
+#ifdef _DEBUG
+    wcout << L"### get_smallint_by_name: stmt=" << stmt << L", column=" << i << L", max=" << (long)names->size() << L" ###" << endl;
+#endif  
+
+    if(!stmt || !names || i < 1 || i > (long)names->size()) {
+      APITools_SetIntValue(context, 0, 0);
+      APITools_SetIntValue(context, 1, 0);
+      return;
+    }
+
+    SQLLEN is_null;
+    short value;
+    SQLRETURN status = SQLGetData(stmt, i, SQL_C_SSHORT, &value, 0, &is_null);
+    if(SQL_OK) {
+      APITools_SetIntValue(context, 0, is_null == SQL_NULL_DATA);
+      APITools_SetIntValue(context, 1, value);
+#ifdef _DEBUG
+      wcout << L"  " << value << endl;
+#endif
+    }
+    else {
+      APITools_SetIntValue(context, 0, 0);
+      APITools_SetIntValue(context, 1, 0);
+    }
+  }
+  
   //
   // gets a bit from a result set
   //
@@ -899,7 +994,54 @@ extern "C" {
   }
 
   //
-  // gets an double from a result set
+  // gets a bit from a result set
+  //
+#ifdef _WIN32
+  __declspec(dllexport) 
+#endif
+  void odbc_result_get_bit_by_name(VMContext& context) 
+  {
+    const wchar_t* name = APITools_GetStringValue(context, 2);
+    SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
+    map<const wstring, int>* names = (map<const wstring, int>*)APITools_GetIntValue(context, 4);
+
+    map<const wstring, int>::iterator result = names->find(name);
+    if(result == names->end()) {
+      APITools_SetIntValue(context, 0, 0);
+      APITools_SetObjectValue(context, 1, 0);
+      return;
+    }
+    SQLUSMALLINT i = (SQLUSMALLINT)result->second;
+    
+#ifdef _DEBUG
+    wcout << L"### get_bit_by_name: stmt=" << stmt << L", column=" << i 
+          << L", max=" << (long)names->size() << L" ###" << endl;
+#endif  
+
+    if(!stmt || !names || i < 1 || i > (long)names->size()) {
+      APITools_SetIntValue(context, 0, 0);
+      APITools_SetIntValue(context, 1, 0);
+      return;
+    }
+
+    SQLLEN is_null;
+    unsigned char value;
+    SQLRETURN status = SQLGetData(stmt, i, SQL_C_BIT, &value, 0, &is_null);
+    if(SQL_OK) {
+      APITools_SetIntValue(context, 0, is_null == SQL_NULL_DATA);
+      APITools_SetIntValue(context, 1, value);
+#ifdef _DEBUG
+      wcout << L"  " << value << endl;
+#endif
+    }
+    else {
+      APITools_SetIntValue(context, 0, 0);
+      APITools_SetIntValue(context, 1, 0);
+    }
+  }
+  
+  //
+  // gets a double from a result set
   //
 #ifdef _WIN32
   __declspec(dllexport)  
@@ -938,7 +1080,54 @@ extern "C" {
   }
 
   //
-  // gets an double from a result set
+  // gets a double from a result set
+  //
+#ifdef _WIN32
+  __declspec(dllexport)  
+#endif
+  void odbc_result_get_double_by_name(VMContext& context) 
+  {
+    const wchar_t* name = APITools_GetStringValue(context, 2);
+    SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
+    map<const wstring, int>* names = (map<const wstring, int>*)APITools_GetIntValue(context, 4);
+
+    map<const wstring, int>::iterator result = names->find(name);
+    if(result == names->end()) {
+      APITools_SetIntValue(context, 0, 0);
+      APITools_SetObjectValue(context, 1, 0);
+      return;
+    }
+    SQLUSMALLINT i = (SQLUSMALLINT)result->second;
+    
+#ifdef _DEBUG
+    wcout << L"### get_double_by_name: stmt=" << stmt << L", column=" << i << L", max=" 
+          << (long)names->size() << L" ###" << endl;
+#endif  
+
+    if(!stmt || !names || i < 1 || i > (long)names->size()) {
+      APITools_SetIntValue(context, 0, 0);
+      APITools_SetFloatValue(context, 1, 0.0);
+      return;
+    }
+
+    SQLLEN is_null;
+    double value;
+    SQLRETURN status = SQLGetData(stmt, i, SQL_C_DOUBLE, &value, 0, &is_null);
+    if(SQL_OK) {
+      APITools_SetIntValue(context, 0, is_null == SQL_NULL_DATA);
+      APITools_SetFloatValue(context, 1, value);
+#ifdef _DEBUG
+      wcout << L"  " << value << endl;
+#endif
+    }
+    else {
+      APITools_SetIntValue(context, 0, 0);
+      APITools_SetFloatValue(context, 1, 0.0);
+    }
+  }
+  
+  //
+  // gets a real from a result set
   //
 #ifdef _WIN32
   __declspec(dllexport)  
@@ -976,6 +1165,55 @@ extern "C" {
     }
   }
 
+
+
+  //
+  // gets a real from a result set
+  //
+#ifdef _WIN32
+  __declspec(dllexport)  
+#endif
+  void odbc_result_get_real_by_name(VMContext& context) 
+  {
+    const wchar_t* name = APITools_GetStringValue(context, 2);
+    SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
+    map<const wstring, int>* names = (map<const wstring, int>*)APITools_GetIntValue(context, 4);
+    
+    map<const wstring, int>::iterator result = names->find(name);
+    if(result == names->end()) {
+      APITools_SetIntValue(context, 0, 0);
+      APITools_SetObjectValue(context, 1, 0);
+      return;
+    }
+    SQLUSMALLINT i = (SQLUSMALLINT)result->second;
+    
+#ifdef _DEBUG
+    wcout << L"### get_real_by_name: stmt=" << stmt << L", column=" << i << L", max=" 
+          << (long)names->size() << L" ###" << endl;
+#endif  
+
+    if(!stmt || !names || i < 1 || i > (long)names->size()) {
+      APITools_SetIntValue(context, 0, 0);
+      APITools_SetFloatValue(context, 1, 0.0);
+      return;
+    }
+
+    SQLLEN is_null;
+    float value;
+    SQLRETURN status = SQLGetData(stmt, i, SQL_C_FLOAT, &value, 0, &is_null);
+    if(SQL_OK) {
+      APITools_SetIntValue(context, 0, is_null == SQL_NULL_DATA);
+      APITools_SetFloatValue(context, 1, value);
+#ifdef _DEBUG
+      wcout << L"  " << value << endl;
+#endif
+    }
+    else {
+      APITools_SetIntValue(context, 0, 0);
+      APITools_SetFloatValue(context, 1, 0.0);
+    }
+  }
+  
   //
   // set a string for a prepared statement to null
   //
@@ -1323,7 +1561,54 @@ extern "C" {
       APITools_SetIntValue(context, 0, 0);
     }
   }
-	
+
+
+
+  //
+  // gets a blob from a result set
+  //
+#ifdef _WIN32
+  __declspec(dllexport) 
+#endif
+  void odbc_result_get_blob_by_name(VMContext& context) 
+  {
+
+    long* byte_array = (long*)APITools_GetIntValue(context, 1);
+    char* buffer = (char*)APITools_GetByteArray(byte_array);
+    int buffer_size = APITools_GetArraySize(byte_array);
+
+    const wchar_t* name = APITools_GetStringValue(context, 2);		
+    SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
+    map<const wstring, int>* names = (map<const wstring, int>*)APITools_GetIntValue(context, 4);
+    
+    map<const wstring, int>::iterator result = names->find(name);
+    if(result == names->end()) {
+      APITools_SetIntValue(context, 0, 0);
+      APITools_SetObjectValue(context, 1, 0);
+      return;
+    }
+    SQLUSMALLINT i = (SQLUSMALLINT)result->second;
+    
+#ifdef _DEBUG
+    wcout << L"### get_blob_by_name: stmt=" << stmt << L", column=" << i 
+          << L", max=" << buffer_size << L" ###" << endl;
+#endif  
+
+    if(!stmt || !names || i < 1 || i > (long)names->size()) {
+      APITools_SetIntValue(context, 0, 0);
+      return;
+    }
+
+    SQLLEN is_null;
+    SQLRETURN status = SQLGetData(stmt, i, SQL_C_BINARY, buffer, buffer_size, &is_null);
+    if(SQL_OK) {
+      APITools_SetIntValue(context, 0, is_null == SQL_NULL_DATA);
+    }
+    else {
+      APITools_SetIntValue(context, 0, 0);
+    }
+  }
+  
   //
   // gets a string from a result set
   //
@@ -1345,7 +1630,7 @@ extern "C" {
     SQLUSMALLINT i = (SQLUSMALLINT)result->second;
 
 #ifdef _DEBUG
-    wcout << L"### get_varchar_by_id: stmt=" << stmt << L", column=" << i 
+    wcout << L"### get_varchar_by_name: stmt=" << stmt << L", column=" << i 
           << L", max=" << (long)names->size() << L" ###" << endl;
 #endif  
 
@@ -1430,7 +1715,73 @@ extern "C" {
       APITools_SetObjectValue(context, 1, 0);
     }
   }
+  
+  //
+  // gets a timestamp from a result set
+  //  
+#ifdef _WIN32
+  __declspec(dllexport) 
+#endif
+  void odbc_result_get_timestamp_by_name(VMContext& context) 
+  {
+    const wchar_t* name = APITools_GetStringValue(context, 2);
+    SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
+    map<const wstring, int>* names = (map<const wstring, int>*)APITools_GetIntValue(context, 4);
+    
+    map<const wstring, int>::iterator result = names->find(name);
+    if(result == names->end()) {
+      APITools_SetIntValue(context, 0, 0);
+      APITools_SetObjectValue(context, 1, 0);
+      return;
+    }
+    SQLUSMALLINT i = (SQLUSMALLINT)result->second;
+    
+#ifdef _DEBUG
+    wcout << L"### get_timestamp_by_name: stmt=" << stmt << L", column=" 
+          << i << L", max=" << (long)names->size() << L" ###" << endl;
+#endif  
 
+    if(!stmt || !names || i < 1 || i > (long)names->size()) {
+      APITools_SetIntValue(context, 0, 0);
+      APITools_SetObjectValue(context, 1, 0);
+      return;
+    }
+
+    SQLLEN is_null;
+    TIMESTAMP_STRUCT value;
+    SQLRETURN status = SQLGetData(stmt, i, SQL_C_TYPE_TIMESTAMP, &value, 
+                                  sizeof(TIMESTAMP_STRUCT), &is_null);
+    if(SQL_OK) {
+      APITools_SetIntValue(context, 0, is_null == SQL_NULL_DATA);
+      long* ts_obj = context.alloc_obj(L"ODBC.Timestamp", (long*)context.op_stack, *context.stack_pos, false);
+      ts_obj[0] = value.year;
+      ts_obj[1] = value.month;
+      ts_obj[2] = value.day;
+      ts_obj[3] = value.hour;
+      ts_obj[4] = value.minute;
+      ts_obj[5] = value.second;
+      ts_obj[6] = value.fraction;
+
+#ifdef _DEBUG
+      wcout << L"  " << value.year << endl;
+      wcout << L"  " << value.month << endl;
+      wcout << L"  " << value.day << endl;
+      wcout << L"  " << value.hour << endl;
+      wcout << L"  " << value.minute << endl;
+      wcout << L"  " << value.second << endl;
+      wcout << L"  " << value.fraction << endl;
+#endif
+
+      // set values
+      APITools_SetIntValue(context, 0, 0);
+      APITools_SetObjectValue(context, 1, ts_obj);
+    }
+    else {
+      APITools_SetIntValue(context, 0, 0);
+      APITools_SetObjectValue(context, 1, 0);
+    }
+  }
+  
   //
   // gets a date from a result set
   //  
@@ -1456,8 +1807,7 @@ extern "C" {
 
     SQLLEN is_null;
     DATE_STRUCT value;
-    SQLRETURN status = SQLGetData(stmt, i, SQL_C_TYPE_DATE, &value, 
-                                  sizeof(DATE_STRUCT), &is_null);
+    SQLRETURN status = SQLGetData(stmt, i, SQL_C_TYPE_DATE, &value, sizeof(DATE_STRUCT), &is_null);
     if(SQL_OK) {
       APITools_SetIntValue(context, 0, is_null == SQL_NULL_DATA);
       long* ts_obj = context.alloc_obj(L"ODBC.Date", (long*)context.op_stack, *context.stack_pos, false);
@@ -1480,6 +1830,64 @@ extern "C" {
       APITools_SetObjectValue(context, 1, 0);
     }
   }
+
+  //
+  // gets a date from a result set
+  //  
+#ifdef _WIN32
+  __declspec(dllexport) 
+#endif
+  void odbc_result_get_date_by_name(VMContext& context) 
+  {
+    const wchar_t* name = APITools_GetStringValue(context, 2);
+    SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
+    map<const wstring, int>* names = (map<const wstring, int>*)APITools_GetIntValue(context, 4);
+
+    map<const wstring, int>::iterator result = names->find(name);
+    if(result == names->end()) {
+      APITools_SetIntValue(context, 0, 0);
+      APITools_SetObjectValue(context, 1, 0);
+      return;
+    }
+    SQLUSMALLINT i = (SQLUSMALLINT)result->second;
+    
+#ifdef _DEBUG
+    wcout << L"### get_date_by_name: stmt=" << stmt << L", column=" << i 
+          << L", max=" << (long)names->size() << L" ###" << endl;
+#endif  
+
+    if(!stmt || !names || i < 1 || i > (long)names->size()) {
+      APITools_SetIntValue(context, 0, 0);
+      APITools_SetObjectValue(context, 1, 0);
+      return;
+    }
+
+    SQLLEN is_null;
+    DATE_STRUCT value;
+    SQLRETURN status = SQLGetData(stmt, i, SQL_C_TYPE_DATE, &value, sizeof(DATE_STRUCT), &is_null);
+    if(SQL_OK) {
+      APITools_SetIntValue(context, 0, is_null == SQL_NULL_DATA);
+      long* ts_obj = context.alloc_obj(L"ODBC.Date", (long*)context.op_stack, *context.stack_pos, false);
+      ts_obj[0] = value.year;
+      ts_obj[1] = value.month;
+      ts_obj[2] = value.day;
+
+#ifdef _DEBUG
+      wcout << L"  " << value.year << endl;
+      wcout << L"  " << value.month << endl;
+      wcout << L"  " << value.day << endl;
+#endif
+
+      // set values
+      APITools_SetIntValue(context, 0, 0);
+      APITools_SetObjectValue(context, 1, ts_obj);
+    }
+    else {
+      APITools_SetIntValue(context, 0, 0);
+      APITools_SetObjectValue(context, 1, 0);
+    }
+  }
+
 
   //
   // closes a result set
