@@ -51,6 +51,7 @@ copy Release\obr_fcgi.exe deploy_fcgi\bin
 copy ..\compiler\fcgi.obl deploy_fcgi\bin
 copy ..\lib\fcgi\windows\lib\*.dll deploy_fcgi\bin
 copy redistrib\*.dll deploy_fcgi\bin
+copy Release\libobjk_fcgi.dll deploy_fcgi\lib\objeck-lang
 mkdir deploy_fcgi\examples
 copy ..\compiler\web\* deploy_fcgi\examples
 copy /y ..\..\docs\fcgi_readme.htm deploy_fcgi\readme.htm
