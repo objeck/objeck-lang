@@ -1813,7 +1813,7 @@ bundle System {
 		@return index of last occurrence, -1 otherwise
 		~#
 		method : public : FindLast(char : Char) ~ Int {
-			return FindLast(0, char);
+			return FindLast(@pos - 1, char);
 		}
 		
 		#~
@@ -1824,7 +1824,7 @@ bundle System {
 		~#
 		method : public : native : FindLast(offset : Int, char : Char) ~ Int {
 			if(offset < @pos & offset > -1) {
-				for(i := @pos - 1; i > -1; i -= 1;) {
+				for(i := offset; i > -1; i -= 1;) {
 					if(@string[i] = char) {
 						return i;
 					};
