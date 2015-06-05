@@ -828,7 +828,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport) 
 #endif
-  void odbc_result_get_int_by_nam(VMContext& context) 
+  void odbc_result_get_int_by_name(VMContext& context) 
   {
     const wchar_t* name = APITools_GetStringValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
