@@ -22,8 +22,6 @@ $version_windows = $version.Replace(".", ",")
 # update window resource files
 (Get-Content ..\compiler\compiler\objeck.in) | ForEach-Object { $_ -replace "@VERSION@", $version } | ForEach-Object { $_ -replace "@VERSION_WINDOWS@", $version_windows } | Set-Content ..\compiler\compiler\objeck.rc
 (Get-Content ..\vm\vm\objeck.in) | ForEach-Object { $_ -replace "@VERSION@", $version } | ForEach-Object { $_ -replace "@VERSION_WINDOWS@", $version_windows } | Set-Content ..\vm\vm\objeck.rc
-
 (Get-Content ..\vm\fcgi\fcgi\objeck.in) | ForEach-Object { $_ -replace "@VERSION@", $version } | ForEach-Object { $_ -replace "@VERSION_WINDOWS@", $version_windows } | Set-Content ..\vm\fcgi\fcgi\objeck.rc
-
 (Get-Content ..\vm\debugger\debugger\objeck.in) | ForEach-Object { $_ -replace "@VERSION@", $version } | ForEach-Object { $_ -replace "@VERSION_WINDOWS@", $version_windows } | Set-Content ..\vm\debugger\debugger\objeck.rc
 (Get-Content ..\utilities\utilities\objeck.in) | ForEach-Object { $_ -replace "@VERSION@", $version } | ForEach-Object { $_ -replace "@VERSION_WINDOWS@", $version_windows } | Set-Content ..\utilities\utilities\objeck.rc
