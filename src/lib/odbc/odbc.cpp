@@ -820,8 +820,7 @@ extern "C" {
       APITools_SetIntValue(context, 1, 0);
     }
   }
-
-
+  
   //
   // gets an int from a result set
   //
@@ -906,7 +905,6 @@ extern "C" {
       APITools_SetIntValue(context, 1, 0);
     }
   }
-
   
   //
   // gets an int from a result set
@@ -1164,8 +1162,6 @@ extern "C" {
       APITools_SetFloatValue(context, 1, 0.0);
     }
   }
-
-
 
   //
   // gets a real from a result set
@@ -1561,8 +1557,6 @@ extern "C" {
     }
   }
 
-
-
   //
   // gets a blob from a result set
   //
@@ -1684,7 +1678,6 @@ extern "C" {
     SQLRETURN status = SQLGetData(stmt, i, SQL_C_TYPE_TIMESTAMP, &value, 
                                   sizeof(TIMESTAMP_STRUCT), &is_null);
     if(SQL_OK) {
-      APITools_SetIntValue(context, 0, is_null == SQL_NULL_DATA);
       long* ts_obj = context.alloc_obj(L"ODBC.Timestamp", (long*)context.op_stack, *context.stack_pos, false);
       ts_obj[1] = value.year;
       ts_obj[2] = value.month;
@@ -1702,14 +1695,14 @@ extern "C" {
       wcout << L"  " << value.minute << endl;
       wcout << L"  " << value.second << endl;
       wcout << L"  " << value.fraction << endl;
+      wcout << L"  is_null=" << (is_null == SQL_NULL_DATA) << endl;
 #endif
-
       // set values
-      APITools_SetIntValue(context, 0, 0);
+      APITools_SetIntValue(context, 0, (is_null == SQL_NULL_DATA) ? 1 : 0);
       APITools_SetObjectValue(context, 1, ts_obj);
     }
     else {
-      APITools_SetIntValue(context, 0, 0);
+      APITools_SetObjectValue(context, 0, 0);
       APITools_SetObjectValue(context, 1, 0);
     }
   }
@@ -1750,7 +1743,6 @@ extern "C" {
     SQLRETURN status = SQLGetData(stmt, i, SQL_C_TYPE_TIMESTAMP, &value, 
                                   sizeof(TIMESTAMP_STRUCT), &is_null);
     if(SQL_OK) {
-      APITools_SetIntValue(context, 0, is_null == SQL_NULL_DATA);
       long* ts_obj = context.alloc_obj(L"ODBC.Timestamp", (long*)context.op_stack, *context.stack_pos, false);
       ts_obj[1] = value.year;
       ts_obj[2] = value.month;
@@ -1768,10 +1760,10 @@ extern "C" {
       wcout << L"  " << value.minute << endl;
       wcout << L"  " << value.second << endl;
       wcout << L"  " << value.fraction << endl;
+      wcout << L"  is_null=" << (is_null == SQL_NULL_DATA) << endl;
 #endif
-
       // set values
-      APITools_SetIntValue(context, 0, 0);
+      APITools_SetIntValue(context, 0, (is_null == SQL_NULL_DATA) ? 1 : 0);
       APITools_SetObjectValue(context, 1, ts_obj);
     }
     else {
@@ -1807,7 +1799,6 @@ extern "C" {
     DATE_STRUCT value;
     SQLRETURN status = SQLGetData(stmt, i, SQL_C_TYPE_DATE, &value, sizeof(DATE_STRUCT), &is_null);
     if(SQL_OK) {
-      APITools_SetIntValue(context, 0, is_null == SQL_NULL_DATA);
       long* ts_obj = context.alloc_obj(L"ODBC.Date", (long*)context.op_stack, *context.stack_pos, false);
       ts_obj[1] = value.year;
       ts_obj[2] = value.month;
@@ -1820,7 +1811,7 @@ extern "C" {
 #endif
 
       // set values
-      APITools_SetIntValue(context, 0, 0);
+      APITools_SetIntValue(context, 0, (is_null == SQL_NULL_DATA) ? 1 : 0);
       APITools_SetObjectValue(context, 1, ts_obj);
     }
     else {
@@ -1864,7 +1855,6 @@ extern "C" {
     DATE_STRUCT value;
     SQLRETURN status = SQLGetData(stmt, i, SQL_C_TYPE_DATE, &value, sizeof(DATE_STRUCT), &is_null);
     if(SQL_OK) {
-      APITools_SetIntValue(context, 0, is_null == SQL_NULL_DATA);
       long* ts_obj = context.alloc_obj(L"ODBC.Date", (long*)context.op_stack, *context.stack_pos, false);
       ts_obj[1] = value.year;
       ts_obj[2] = value.month;
@@ -1877,7 +1867,7 @@ extern "C" {
 #endif
 
       // set values
-      APITools_SetIntValue(context, 0, 0);
+      APITools_SetIntValue(context, 0, (is_null == SQL_NULL_DATA) ? 1 : 0);
       APITools_SetObjectValue(context, 1, ts_obj);
     }
     else {
