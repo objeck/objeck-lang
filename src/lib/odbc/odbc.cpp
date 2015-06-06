@@ -837,7 +837,7 @@ extern "C" {
     map<const wstring, int>::iterator result = names->find(name);
     if(result == names->end()) {
       APITools_SetIntValue(context, 0, 0);
-      APITools_SetObjectValue(context, 1, 0);
+      APITools_SetIntValue(context, 1, 0);
       return;
     }
     SQLUSMALLINT i = (SQLUSMALLINT)result->second;
@@ -923,7 +923,7 @@ extern "C" {
     map<const wstring, int>::iterator result = names->find(name);
     if(result == names->end()) {
       APITools_SetIntValue(context, 0, 0);
-      APITools_SetObjectValue(context, 1, 0);
+      APITools_SetIntValue(context, 1, 0);
       return;
     }
     SQLUSMALLINT i = (SQLUSMALLINT)result->second;
@@ -1008,7 +1008,7 @@ extern "C" {
     map<const wstring, int>::iterator result = names->find(name);
     if(result == names->end()) {
       APITools_SetIntValue(context, 0, 0);
-      APITools_SetObjectValue(context, 1, 0);
+      APITools_SetIntValue(context, 1, 0);
       return;
     }
     SQLUSMALLINT i = (SQLUSMALLINT)result->second;
@@ -1094,7 +1094,7 @@ extern "C" {
     map<const wstring, int>::iterator result = names->find(name);
     if(result == names->end()) {
       APITools_SetIntValue(context, 0, 0);
-      APITools_SetObjectValue(context, 1, 0);
+      APITools_SetFloatValue(context, 1, 0.0);
       return;
     }
     SQLUSMALLINT i = (SQLUSMALLINT)result->second;
@@ -1182,7 +1182,7 @@ extern "C" {
     map<const wstring, int>::iterator result = names->find(name);
     if(result == names->end()) {
       APITools_SetIntValue(context, 0, 0);
-      APITools_SetObjectValue(context, 1, 0);
+      APITools_SetFloatValue(context, 1, 0.0);
       return;
     }
     SQLUSMALLINT i = (SQLUSMALLINT)result->second;
@@ -1510,8 +1510,7 @@ extern "C" {
 
     SQLLEN is_null;
     char value[VARCHAR_MAX];
-    SQLRETURN status = SQLGetData(stmt, i, SQL_C_CHAR, &value, 
-                                  VARCHAR_MAX, &is_null);
+    SQLRETURN status = SQLGetData(stmt, i, SQL_C_CHAR, &value, VARCHAR_MAX, &is_null);
     if(SQL_OK) {
       APITools_SetIntValue(context, 0, is_null == SQL_NULL_DATA);
       const wstring out = BytesToUnicode(value);
@@ -1584,7 +1583,6 @@ extern "C" {
     map<const wstring, int>::iterator result = names->find(name);
     if(result == names->end()) {
       APITools_SetIntValue(context, 0, 0);
-      APITools_SetObjectValue(context, 1, 0);
       return;
     }
     SQLUSMALLINT i = (SQLUSMALLINT)result->second;
