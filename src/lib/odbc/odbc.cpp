@@ -256,7 +256,7 @@ extern "C" {
 
     map<const wstring, int>* column_names = new map<const wstring, int>;
     map<int, pair<void*, int> >* exec_data = new map<int, pair<void*, int> >;
-    for(SQLSMALLINT i = 1; i <= columns + 1; i++) {
+    for(SQLSMALLINT i = 1; i <= columns; i++) {
       ColumnDescription description;
       status = SQLDescribeCol(stmt, i, (SQLCHAR*)&description.column_name, COL_NAME_MAX, 
                               &description.column_name_size, &description.type, 
@@ -276,7 +276,7 @@ extern "C" {
       const wstring wcolumn_name(column_name.begin(), column_name.end());
       column_names->insert(pair<wstring, int>(wcolumn_name, i));
 #ifdef _DEBUG
-      wcout << L"  name=" << wcolumn_name << L", type=" << description.type << endl;
+      wcout << L"  name=" << wcolumn_name << L", type=" << description.type << L", index=" << i << endl;
 #endif
     }
 		
@@ -361,7 +361,7 @@ extern "C" {
     // map execution data and get column information
     map<int, pair<void*, int> >* exec_data = new map<int, pair<void*, int> >;
     map<const wstring, int>* column_names = new map<const wstring, int>;
-    for(SQLSMALLINT i = 1; i <= columns + 1; i++) {
+    for(SQLSMALLINT i = 1; i <= columns; i++) {
       ColumnDescription description;
       status = SQLDescribeCol(stmt, i, (SQLCHAR*)&description.column_name, COL_NAME_MAX, 
                               &description.column_name_size, &description.type, 
@@ -381,7 +381,7 @@ extern "C" {
       const wstring wcolumn_name(column_name.begin(), column_name.end());
       column_names->insert(pair<wstring, int>(wcolumn_name, i));
 #ifdef _DEBUG
-      wcout << L"  name=" << wcolumn_name << L", type=" << description.type << endl;
+      wcout << L"  name=" << wcolumn_name << L", type=" << description.type << L", index=" << i << endl;
 #endif
     }
 		
@@ -796,10 +796,10 @@ extern "C" {
 
 #ifdef _DEBUG
     wcout << L"### get_int_by_id: stmt=" << stmt << L", column=" << i 
-          << L", max=" << (long)names->size() << L" ###" << endl;
+          << L", max=" << (long)(names->size() + 1) << L" ###" << endl;
 #endif  
 
-    if(!stmt || !names || i < 1 || i > (long)names->size()) {
+    if(!stmt || !names || i < 1 || i > (long)(names->size() + 1)) {
       APITools_SetIntValue(context, 0, 0);
       APITools_SetIntValue(context, 1, 0);
       return;
@@ -844,10 +844,10 @@ extern "C" {
     
 #ifdef _DEBUG
     wcout << L"### get_int_by_name: stmt=" << stmt << L", column=" << i 
-          << L", max=" << (long)names->size() << L" ###" << endl;
+          << L", max=" << (long)(names->size() + 1) << L" ###" << endl;
 #endif  
 
-    if(!stmt || !names || i < 1 || i > (long)names->size()) {
+    if(!stmt || !names || i < 1 || i > (long)(names->size() + 1)) {
       APITools_SetIntValue(context, 0, 0);
       APITools_SetIntValue(context, 1, 0);
       return;
@@ -882,10 +882,10 @@ extern "C" {
     map<const wstring, int>* names = (map<const wstring, int>*)APITools_GetIntValue(context, 4);
 
 #ifdef _DEBUG
-    wcout << L"### get_smallint_by_id: stmt=" << stmt << L", column=" << i << L", max=" << (long)names->size() << L" ###" << endl;
+    wcout << L"### get_smallint_by_id: stmt=" << stmt << L", column=" << i << L", max=" << (long)(names->size() + 1) << L" ###" << endl;
 #endif  
 
-    if(!stmt || !names || i < 1 || i > (long)names->size()) {
+    if(!stmt || !names || i < 1 || i > (long)(names->size() + 1)) {
       APITools_SetIntValue(context, 0, 0);
       APITools_SetIntValue(context, 1, 0);
       return;
@@ -929,10 +929,10 @@ extern "C" {
     SQLUSMALLINT i = (SQLUSMALLINT)result->second;
 
 #ifdef _DEBUG
-    wcout << L"### get_smallint_by_name: stmt=" << stmt << L", column=" << i << L", max=" << (long)names->size() << L" ###" << endl;
+    wcout << L"### get_smallint_by_name: stmt=" << stmt << L", column=" << i << L", max=" << (long)(names->size() + 1) << L" ###" << endl;
 #endif  
 
-    if(!stmt || !names || i < 1 || i > (long)names->size()) {
+    if(!stmt || !names || i < 1 || i > (long)(names->size() + 1)) {
       APITools_SetIntValue(context, 0, 0);
       APITools_SetIntValue(context, 1, 0);
       return;
@@ -968,10 +968,10 @@ extern "C" {
 
 #ifdef _DEBUG
     wcout << L"### get_bit_by_id: stmt=" << stmt << L", column=" << i 
-          << L", max=" << (long)names->size() << L" ###" << endl;
+          << L", max=" << (long)(names->size() + 1) << L" ###" << endl;
 #endif  
 
-    if(!stmt || !names || i < 1 || i > (long)names->size()) {
+    if(!stmt || !names || i < 1 || i > (long)(names->size() + 1)) {
       APITools_SetIntValue(context, 0, 0);
       APITools_SetIntValue(context, 1, 0);
       return;
@@ -1015,10 +1015,10 @@ extern "C" {
     
 #ifdef _DEBUG
     wcout << L"### get_bit_by_name: stmt=" << stmt << L", column=" << i 
-          << L", max=" << (long)names->size() << L" ###" << endl;
+          << L", max=" << (long)(names->size() + 1) << L" ###" << endl;
 #endif  
 
-    if(!stmt || !names || i < 1 || i > (long)names->size()) {
+    if(!stmt || !names || i < 1 || i > (long)(names->size() + 1)) {
       APITools_SetIntValue(context, 0, 0);
       APITools_SetIntValue(context, 1, 0);
       return;
@@ -1054,10 +1054,10 @@ extern "C" {
 
 #ifdef _DEBUG
     wcout << L"### get_double_by_id: stmt=" << stmt << L", column=" << i << L", max=" 
-          << (long)names->size() << L" ###" << endl;
+          << (long)(names->size() + 1) << L" ###" << endl;
 #endif  
 
-    if(!stmt || !names || i < 1 || i > (long)names->size()) {
+    if(!stmt || !names || i < 1 || i > (long)(names->size() + 1)) {
       APITools_SetIntValue(context, 0, 0);
       APITools_SetFloatValue(context, 1, 0.0);
       return;
@@ -1101,10 +1101,10 @@ extern "C" {
     
 #ifdef _DEBUG
     wcout << L"### get_double_by_name: stmt=" << stmt << L", column=" << i << L", max=" 
-          << (long)names->size() << L" ###" << endl;
+          << (long)(names->size() + 1) << L" ###" << endl;
 #endif  
 
-    if(!stmt || !names || i < 1 || i > (long)names->size()) {
+    if(!stmt || !names || i < 1 || i > (long)(names->size() + 1)) {
       APITools_SetIntValue(context, 0, 0);
       APITools_SetFloatValue(context, 1, 0.0);
       return;
@@ -1140,10 +1140,10 @@ extern "C" {
 
 #ifdef _DEBUG
     wcout << L"### get_real_by_id: stmt=" << stmt << L", column=" << i << L", max=" 
-          << (long)names->size() << L" ###" << endl;
+          << (long)(names->size() + 1) << L" ###" << endl;
 #endif  
 
-    if(!stmt || !names || i < 1 || i > (long)names->size()) {
+    if(!stmt || !names || i < 1 || i > (long)(names->size() + 1)) {
       APITools_SetIntValue(context, 0, 0);
       APITools_SetFloatValue(context, 1, 0.0);
       return;
@@ -1189,10 +1189,10 @@ extern "C" {
     
 #ifdef _DEBUG
     wcout << L"### get_real_by_name: stmt=" << stmt << L", column=" << i << L", max=" 
-          << (long)names->size() << L" ###" << endl;
+          << (long)(names->size() + 1) << L" ###" << endl;
 #endif  
 
-    if(!stmt || !names || i < 1 || i > (long)names->size()) {
+    if(!stmt || !names || i < 1 || i > (long)(names->size() + 1)) {
       APITools_SetIntValue(context, 0, 0);
       APITools_SetFloatValue(context, 1, 0.0);
       return;
@@ -1499,10 +1499,10 @@ extern "C" {
 
 #ifdef _DEBUG
     wcout << L"### get_varchar_by_id: stmt=" << stmt << L", column=" << i 
-          << L", max=" << (long)names->size() << L" ###" << endl;
+          << L", max=" << (long)(names->size() + 1) << L" ###" << endl;
 #endif  
 
-    if(!stmt || !names || i < 1 || i > (long)names->size()) {
+    if(!stmt || !names || i < 1 || i > (long)(names->size() + 1)) {
       APITools_SetIntValue(context, 0, 0);
       APITools_SetObjectValue(context, 1, 0);
       return;
@@ -1546,7 +1546,7 @@ extern "C" {
           << L", max=" << buffer_size << L" ###" << endl;
 #endif  
 
-    if(!stmt || !names || i < 1 || i > (long)names->size()) {
+    if(!stmt || !names || i < 1 || i > (long)(names->size() + 1)) {
       APITools_SetIntValue(context, 0, 0);
       return;
     }
@@ -1592,7 +1592,7 @@ extern "C" {
           << L", max=" << buffer_size << L" ###" << endl;
 #endif  
 
-    if(!stmt || !names || i < 1 || i > (long)names->size()) {
+    if(!stmt || !names || i < 1 || i > (long)(names->size() + 1)) {
       APITools_SetIntValue(context, 0, 0);
       return;
     }
@@ -1629,10 +1629,10 @@ extern "C" {
 
 #ifdef _DEBUG
     wcout << L"### get_varchar_by_name: stmt=" << stmt << L", column=" << i 
-          << L", max=" << (long)names->size() << L" ###" << endl;
+          << L", max=" << (long)(names->size() + 1) << L" ###" << endl;
 #endif  
 
-    if(!stmt || !names || i < 1 || i > (long)names->size()) {
+    if(!stmt || !names || i < 1 || i > (long)(names->size() + 1)) {
       APITools_SetIntValue(context, 0, 0);
       APITools_SetObjectValue(context, 1, 0);
       return;
@@ -1670,10 +1670,10 @@ extern "C" {
 
 #ifdef _DEBUG
     wcout << L"### get_timestamp_by_id: stmt=" << stmt << L", column=" 
-          << i << L", max=" << (long)names->size() << L" ###" << endl;
+          << i << L", max=" << (long)(names->size() + 1) << L" ###" << endl;
 #endif  
 
-    if(!stmt || !names || i < 1 || i > (long)names->size()) {
+    if(!stmt || !names || i < 1 || i > (long)(names->size() + 1)) {
       APITools_SetIntValue(context, 0, 0);
       APITools_SetObjectValue(context, 1, 0);
       return;
@@ -1736,10 +1736,10 @@ extern "C" {
     
 #ifdef _DEBUG
     wcout << L"### get_timestamp_by_name: stmt=" << stmt << L", column=" 
-          << i << L", max=" << (long)names->size() << L" ###" << endl;
+          << i << L", max=" << (long)(names->size() + 1) << L" ###" << endl;
 #endif  
 
-    if(!stmt || !names || i < 1 || i > (long)names->size()) {
+    if(!stmt || !names || i < 1 || i > (long)(names->size() + 1)) {
       APITools_SetIntValue(context, 0, 0);
       APITools_SetObjectValue(context, 1, 0);
       return;
@@ -1794,10 +1794,10 @@ extern "C" {
 
 #ifdef _DEBUG
     wcout << L"### get_date_by_id: stmt=" << stmt << L", column=" << i 
-          << L", max=" << (long)names->size() << L" ###" << endl;
+          << L", max=" << (long)(names->size() + 1) << L" ###" << endl;
 #endif  
 
-    if(!stmt || !names || i < 1 || i > (long)names->size()) {
+    if(!stmt || !names || i < 1 || i > (long)(names->size() + 1)) {
       APITools_SetIntValue(context, 0, 0);
       APITools_SetObjectValue(context, 1, 0);
       return;
@@ -1851,10 +1851,10 @@ extern "C" {
     
 #ifdef _DEBUG
     wcout << L"### get_date_by_name: stmt=" << stmt << L", column=" << i 
-          << L", max=" << (long)names->size() << L" ###" << endl;
+          << L", max=" << (long)(names->size() + 1) << L" ###" << endl;
 #endif  
 
-    if(!stmt || !names || i < 1 || i > (long)names->size()) {
+    if(!stmt || !names || i < 1 || i > (long)(names->size() + 1)) {
       APITools_SetIntValue(context, 0, 0);
       APITools_SetObjectValue(context, 1, 0);
       return;
