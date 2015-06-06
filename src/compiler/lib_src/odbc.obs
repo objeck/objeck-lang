@@ -1268,6 +1268,23 @@ bundle ODBC {
 		method : public : SetDay(day : Int) ~ Nil {
 			@day := day;
 		}
+
+		
+		#~
+		Creates a string representation of the date
+		@return string representation of the date
+		~#
+		method : public : ToString() ~ String {
+			out := String->New();
+
+			out->Append(@month);
+			out->Append('/');
+			out->Append(@day);
+			out->Append('/');
+			out->Append(@year);
+
+			return out;
+		}
 	}
 	
 	#~
