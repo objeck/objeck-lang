@@ -8,7 +8,8 @@ class Test {
 		x->FindLast(5,'-')->PrintLine();
 		x->FindLast(6,'-')->PrintLine();
 
-		1234567->ToCommaString()->PrintLine();
+a := 3+3; #~		1234567 ~# 9999->ToCommaString()->PrintLine();
+a->PrintLine();
 System.Runtime->Exit(101);
 		12567->ToCommaString()->PrintLine();
 		84812567->ToCommaString()->PrintLine();
