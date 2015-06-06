@@ -1123,7 +1123,6 @@ bundle ODBC {
       		
       		return Nil;
 		}
-
 		
 		#~
 		Gets a timestamp value
