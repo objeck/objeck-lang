@@ -896,6 +896,22 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
                                                                    DIV_ASSIGN_STMT);
       break;
 
+    case TOKEN_ADD_ADD:
+      NextToken();
+      statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num,
+                                                                   ParseVariable(ident, depth + 1),
+                                                                   TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, 1),
+                                                                   ADD_ASSIGN_STMT);
+      break;
+
+    case TOKEN_SUB_SUB:
+      NextToken();
+      statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num,
+                                                                   ParseVariable(ident, depth + 1),
+                                                                   TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, 1),
+                                                                   SUB_ASSIGN_STMT);
+      break;
+
     default:
       ProcessError(L"Expected statement", TOKEN_SEMI_COLON);
       NextToken();
@@ -904,7 +920,35 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
   }
   // other
   else {
-    switch(GetToken()) { 
+    switch(GetToken()) {
+    case TOKEN_ADD_ADD: {
+      NextToken();
+      if(Match(TOKEN_IDENT)) {
+        Variable* variable = ParseVariable(ParseBundleName(), depth + 1);
+        statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, variable,
+                                                                     TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, 1),
+                                                                     ADD_ASSIGN_STMT);
+      }
+      else {
+        ProcessError(L"Expected identifier", TOKEN_SEMI_COLON);
+      }
+    }
+      break;
+
+    case TOKEN_SUB_SUB: {
+      NextToken();
+      if(Match(TOKEN_IDENT)) {
+        Variable* variable = ParseVariable(ParseBundleName(), depth + 1);
+        statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, variable,
+                                                                     TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, 1),
+                                                                     SUB_ASSIGN_STMT);
+      }
+      else {
+        ProcessError(L"Expected identifier", TOKEN_SEMI_COLON);
+      }
+    }
+      break;
+
     case TOKEN_SEMI_COLON:
       statement = TreeFactory::Instance()->MakeEmptyStatement(file_name, line_num);
       break;
