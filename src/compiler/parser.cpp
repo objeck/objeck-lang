@@ -840,6 +840,20 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
                                                                      DIV_ASSIGN_STMT);
         break;
 
+      case TOKEN_ADD_ADD:
+        NextToken();
+        statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, variable,
+                                                                     TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, 1),
+                                                                     ADD_ASSIGN_STMT);
+        break;
+
+      case TOKEN_SUB_SUB:
+        NextToken();
+        statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, variable,
+                                                                     TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, 1),
+                                                                     SUB_ASSIGN_STMT);
+        break;
+
       case TOKEN_ASSESSOR:
         // subsequent method
         if(Match(TOKEN_ASSESSOR) && !Match(TOKEN_AS_ID, SECOND_INDEX) && 
