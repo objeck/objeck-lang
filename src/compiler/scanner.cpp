@@ -940,6 +940,13 @@ void Scanner::ParseToken(int index)
           tokens[index]->SetFileName(filename);
           NextChar();
         } 
+        else if(nxt_char == L'-') {
+          NextChar();
+          tokens[index]->SetType(TOKEN_SUB_SUB);
+          tokens[index]->SetLineNbr(line_nbr);
+          tokens[index]->SetFileName(filename);
+          NextChar();
+        }
         else if(nxt_char == L'=') {
           NextChar();
           tokens[index]->SetType(TOKEN_SUB_ASSIGN);
@@ -1175,6 +1182,13 @@ void Scanner::ParseToken(int index)
         if(nxt_char == L'=') {
           NextChar();
           tokens[index]->SetType(TOKEN_ADD_ASSIGN);
+          tokens[index]->SetLineNbr(line_nbr);
+          tokens[index]->SetFileName(filename);
+          NextChar();
+        }
+        else if(nxt_char == L'+') {
+          NextChar();
+          tokens[index]->SetType(TOKEN_ADD_ADD);
           tokens[index]->SetLineNbr(line_nbr);
           tokens[index]->SetFileName(filename);
           NextChar();

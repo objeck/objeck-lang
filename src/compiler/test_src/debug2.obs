@@ -1,5 +1,15 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		3056->ToHexString->PrintLine();
+		i := 0;
+		++i;		
+		i++;
+#~		
+		a : Int[];
+		
+		a[i]++;
+		++a[i];
+		
+		a[i++] = 13;
+		a[++i] = 7; ~#
 	}
 }
