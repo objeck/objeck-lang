@@ -2633,10 +2633,10 @@ Expression* Parser::ParseSimpleExpression(int depth)
       }
       break;
 
-    default: {
       // variable
+    default: {
       Variable* variable = ParseVariable(ident, depth + 1);
-      
+      // pre operation
       if(pre_inc) {
         variable->SetPreStatement(TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, variable,
           TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, 1), ADD_ASSIGN_STMT));
@@ -2645,7 +2645,6 @@ Expression* Parser::ParseSimpleExpression(int depth)
         variable->SetPreStatement(TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, variable,
           TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, 1), SUB_ASSIGN_STMT));
       }
-      
       // post operation
       if(Match(TOKEN_ADD_ADD)) {
         NextToken();
