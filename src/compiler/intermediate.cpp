@@ -3345,6 +3345,13 @@ void IntermediateEmitter::EmitVariable(Variable* variable)
     return;
   }
   
+  // pre-statement
+  OperationAssignment* pre_stmt = variable->GetPreStatement();
+  if(pre_stmt) {
+    EmitAssignment(pre_stmt);
+    variable->SetPreStatement(NULL);
+  }
+  
   // indices
   ExpressionList* indices = variable->GetIndices();
 
@@ -3458,6 +3465,12 @@ void IntermediateEmitter::EmitVariable(Variable* variable)
       tail = tail->GetMethodCall();
     }
     variable->SetEvalType(tail->GetCastType() ? tail->GetCastType() : tail->GetEvalType(), false);
+  }
+
+  OperationAssignment* post_stmt = variable->GetPostStatement();
+  if(post_stmt) {
+    EmitAssignment(post_stmt);
+    variable->SetPostStatement(NULL);
   }
 }
 

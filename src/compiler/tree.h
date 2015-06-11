@@ -995,7 +995,9 @@ namespace frontend {
     ExpressionList* indices;
     SymbolEntry* entry;
     OperationAssignment* pre_operation;
+    bool checked_pre_operation;
     OperationAssignment* post_operation;
+    bool checked_post_operation;
 
   Variable(const wstring &f, int l, const wstring &n) : Expression(f, l) {
       name = n;
@@ -1003,6 +1005,7 @@ namespace frontend {
       entry = NULL;
       id = -1;
       pre_operation = post_operation = NULL;
+      checked_pre_operation = checked_post_operation = true;
     }
 
     ~Variable() {
@@ -1042,7 +1045,16 @@ namespace frontend {
     }
 
     void SetPreStatement(OperationAssignment* pre) {
+      checked_pre_operation = false;
       pre_operation = pre;
+    }
+
+    void PreStatementChecked() {
+      checked_pre_operation = true;
+    }
+
+    bool IsPreStatementChecked() {
+      return checked_pre_operation;
     }
 
     OperationAssignment* GetPreStatement() {
@@ -1050,7 +1062,16 @@ namespace frontend {
     }
 
     void SetPostStatement(OperationAssignment* post) {
+      checked_post_operation = false;
       post_operation = post;
+    }
+
+    void PostStatementChecked() {
+      checked_post_operation = true;
+    }
+
+    bool IsPostStatementChecked() {
+      return checked_post_operation;
     }
 
     OperationAssignment* GetPostStatement() {

@@ -1447,6 +1447,20 @@ bool ContextAnalyzer::Analyze()
     else {
       ProcessError(variable, L"Undefined variable: '" +  variable->GetName() + L"'");
     }
+
+    if(variable->GetPreStatement() && variable->GetPostStatement()) {
+      ProcessError(variable, L"Variable cannot have associated pre and pos operations");
+    }
+    else if(variable->GetPreStatement() && !variable->IsPreStatementChecked()) {
+      OperationAssignment* pre_stmt = variable->GetPreStatement();
+      variable->PreStatementChecked();
+      AnalyzeAssignment(pre_stmt, pre_stmt->GetStatementType(), depth + 1);
+    }
+    else if(variable->GetPostStatement() && !variable->IsPostStatementChecked()) {
+      OperationAssignment* post_stmt = variable->GetPostStatement();
+      variable->PostStatementChecked();
+      AnalyzeAssignment(post_stmt, post_stmt->GetStatementType(), depth + 1);
+    }
   }
   
   /****************************
