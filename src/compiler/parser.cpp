@@ -2564,8 +2564,11 @@ Expression* Parser::ParseSimpleExpression(int depth)
 #endif
 
   Expression* expression = NULL;
-  if(Match(TOKEN_IDENT) || IsBasicType(GetToken())) {
+  if(Match(TOKEN_IDENT) || Match(TOKEN_ADD_ADD) || Match(TOKEN_SUB_SUB) || IsBasicType(GetToken())) {
     wstring ident;
+    bool pre_inc = false;
+    bool pre_dec = false;
+
     switch(GetToken()) {
     case TOKEN_BOOLEAN_ID:
       ident = BOOL_CLASS_ID;
@@ -2592,6 +2595,26 @@ Expression* Parser::ParseSimpleExpression(int depth)
       NextToken();
       break;
 
+    case TOKEN_ADD_ADD:
+      NextToken();
+      if(!Match(TOKEN_IDENT)) {
+        ProcessError(L"Expected identifier", TOKEN_SEMI_COLON);
+        return NULL;
+      }
+      pre_inc = true;
+      ident = ParseBundleName();
+      break;
+
+    case TOKEN_SUB_SUB:
+      NextToken();
+      if(!Match(TOKEN_IDENT)) {
+        ProcessError(L"Expected identifier", TOKEN_SEMI_COLON);
+        return NULL;
+      }
+      pre_dec = true;
+      ident = ParseBundleName();
+      break;
+
     default:
       ident = ParseBundleName();
       break;
@@ -2613,6 +2636,17 @@ Expression* Parser::ParseSimpleExpression(int depth)
     default: {
       // variable
       Variable* variable = ParseVariable(ident, depth + 1);
+      
+      if(pre_inc) {
+        variable->SetPreStatement(TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, variable,
+          TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, 1), ADD_ASSIGN_STMT));
+      }
+      else if(pre_dec) {
+        variable->SetPreStatement(TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, variable,
+          TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, 1), SUB_ASSIGN_STMT));
+      }
+      
+      // post operation
       if(Match(TOKEN_ADD_ADD)) {
         NextToken();
         variable->SetPostStatement(TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, variable,
