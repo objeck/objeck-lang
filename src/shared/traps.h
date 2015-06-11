@@ -54,6 +54,7 @@ namespace instructions {
     FILE_CREATE_TIME,
     FILE_MODIFIED_TIME,
     FILE_ACCESSED_TIME,
+    FILE_LOGGER_DIR,
     DATE_TIME_SET_1,
     DATE_TIME_SET_2,
     DATE_TIME_SET_3,

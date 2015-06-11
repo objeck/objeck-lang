@@ -4400,6 +4400,36 @@ bundle System.IO.File {
 	}
 	
 	#~
+	Logs messages to a file
+	~#
+	class Logger {
+		@instance : static : Logger;
+		@directory : String;
+		
+		enum Type {
+			INFO,
+			WARNING,
+			ERROR
+		}
+
+		New : private () {
+			FILE_LOGGER_DIR;
+		}
+
+		function : Instance() ~ Logger {
+			if(@instance <> Nil) {
+				@instance := Logger->New();
+			};
+
+			return @instance;
+		}
+
+		method : public : Log(type : Type, message : String) ~ Bool {
+			return false;
+		}
+	}
+
+	#~
 	Provide file directory operations
 	~#
 	class Directory {
