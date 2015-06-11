@@ -1,9 +1,5 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		Run();
-	}
-	
-	function : Run() ~ Nil {
 #~	
 		i := 0;	
 		++i;		
@@ -11,12 +7,18 @@ class Test {
 		
 		a[i]++;
 		++a[i];
-~#		
+		
 		i := 0;
 		a := Int->New[2];
-		a[i++] := 13;
-		i->PrintLine();
+~#
+		i := 0;
+		a := Int->New[2];
+		a[++i] := 7; 	
 		a[0]->PrintLine();
-#		a[++i] := 7; 	
+		a[1]->PrintLine();
+		i->PrintLine();
+
+	#		a[0]->PrintLine();
+#		a[i++] := 13;
 	}
 }
