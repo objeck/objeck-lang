@@ -2610,9 +2610,21 @@ Expression* Parser::ParseSimpleExpression(int depth)
       }
       break;
 
-    default:
+    default: {
       // variable
-      expression = ParseVariable(ident, depth + 1);
+      Variable* variable = ParseVariable(ident, depth + 1);
+      if(Match(TOKEN_ADD_ADD)) {
+        NextToken();
+        variable->SetPostStatement(TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, variable,
+          TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, 1), ADD_ASSIGN_STMT));
+      }
+      else if(Match(TOKEN_SUB_SUB)) {
+        NextToken();
+        variable->SetPostStatement(TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, variable,
+          TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, 1), SUB_ASSIGN_STMT));
+      }
+      expression = variable;
+    }
       break;
     }
   } 
