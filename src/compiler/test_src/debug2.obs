@@ -1,15 +1,16 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
+#~	
 		i := 0;	
 		++i;		
-		i++;
-
-		a := Int->New[1];	
+		i++;		
+		
 		a[i]++;
 		++a[i];
-#~				
-		a[i++] = 13;
-		a[++i] = 7; 
 ~#		
+		i := 0;
+		a := Int->New[1];
+		a[i++] := 13;
+#		a[++i] := 7; 	
 	}
 }

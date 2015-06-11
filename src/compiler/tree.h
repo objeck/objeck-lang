@@ -72,6 +72,7 @@ namespace frontend {
   class Class;
   class Method;
   class Enum;
+  class OperationAssignment;
   class ParsedProgram;
 
   /****************************
@@ -993,12 +994,15 @@ namespace frontend {
     wstring name;
     ExpressionList* indices;
     SymbolEntry* entry;
+    OperationAssignment* pre_operation;
+    OperationAssignment* post_operation;
 
   Variable(const wstring &f, int l, const wstring &n) : Expression(f, l) {
       name = n;
       indices = NULL;
       entry = NULL;
       id = -1;
+      pre_operation = post_operation = NULL;
     }
 
     ~Variable() {
@@ -1035,6 +1039,22 @@ namespace frontend {
 
     ExpressionList* GetIndices() {
       return indices;
+    }
+
+    void SetPreStatement(OperationAssignment* pre) {
+      pre_operation = pre;
+    }
+
+    OperationAssignment* GetPreStatement() {
+      return pre_operation;
+    }
+
+    void SetPostStatement(OperationAssignment* post) {
+      post_operation = post;
+    }
+
+    OperationAssignment* GetPostStatement() {
+      return post_operation;
     }
 
     Variable* Copy();
