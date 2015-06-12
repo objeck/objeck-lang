@@ -1750,7 +1750,7 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr, StackInstr** &instrs
  ********************************/
 void StackInterpreter::ProcessJitMethodCall(StackMethod* called, long* instance, StackInstr** &instrs, long &ip, long* &op_stack, long* &stack_pos)
 {
-#ifdef _DEBUGGER
+#if defined(_DEBUGGER) || defined(_NO_JIT)
   ProcessInterpretedMethodCall(called, instance, instrs, ip);
 #else
   if(called->GetNativeCode()) {
