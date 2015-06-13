@@ -1449,7 +1449,7 @@ bool ContextAnalyzer::Analyze()
     }
 
     if(variable->GetPreStatement() && variable->GetPostStatement()) {
-      ProcessError(variable, L"Variable cannot have associated pre and pos operations");
+      ProcessError(variable, L"Variable cannot have pre and pos operations");
     }
     else if(variable->GetPreStatement() && !variable->IsPreStatementChecked()) {
       OperationAssignment* pre_stmt = variable->GetPreStatement();
