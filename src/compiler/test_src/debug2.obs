@@ -1,24 +1,9 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-#~	
-		i := 0;	
-		++i;		
-		i++;		
-		
-		a[i]++;
-		++a[i];
-		
-		i := 0;
-		a := Int->New[2];
-~#
-		i := 0;
-		a := Int->New[2];
-		a[++i] := 7; 	
-		a[0]->PrintLine();
-		a[1]->PrintLine();
-		i->PrintLine();
 
-	#		a[0]->PrintLine();
-#		a[i++] := 13;
+		a := Int->New[2];
+		b := a[0]--;
+		a[0]->PrintLine();
+		b->PrintLine();
 	}
 }
