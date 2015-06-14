@@ -801,6 +801,11 @@ void IntermediateEmitter::EmitStatement(Statement* statement)
     exit(1);
     break;
   }
+
+  if(post_statements.size()) {
+    EmitAssignment(post_statements.top());
+    post_statements.pop();
+  }
 }
 
 /****************************
@@ -3467,9 +3472,10 @@ void IntermediateEmitter::EmitVariable(Variable* variable)
     variable->SetEvalType(tail->GetCastType() ? tail->GetCastType() : tail->GetEvalType(), false);
   }
 
+  // set post statement
   OperationAssignment* post_stmt = variable->GetPostStatement();
   if(post_stmt) {
-    EmitAssignment(post_stmt);
+    post_statements.push(post_stmt);
     variable->SetPostStatement(NULL);
   }
 }

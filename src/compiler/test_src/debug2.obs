@@ -1,9 +1,20 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
+		Run();
+	}
 
-		a := Int->New[2];
-		b := a[0]--;
-		a[0]->PrintLine();
+#	function : Run() ~ Nil {
+	function : native : Run() ~ Nil {
+		aa := Int->New[2];
+		i := 0;
+		aa[i++] := 13;
+		aa[0]->PrintLine();
+
+		a := 1;
+		b := 2;
+
+		(a++ + ++b)->PrintLine();
+		a->PrintLine();
 		b->PrintLine();
 	}
 }
