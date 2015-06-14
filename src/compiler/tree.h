@@ -42,6 +42,7 @@
 #include <list>
 #include <vector>
 #include <stack>
+#include <queue>
 #include <map>
 #include <exception>
 #include <stdlib.h>

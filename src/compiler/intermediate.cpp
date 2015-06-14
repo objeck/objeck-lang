@@ -803,7 +803,7 @@ void IntermediateEmitter::EmitStatement(Statement* statement)
   }
 
   if(post_statements.size()) {
-    EmitAssignment(post_statements.top());
+    EmitAssignment(post_statements.front());
     post_statements.pop();
   }
 }
