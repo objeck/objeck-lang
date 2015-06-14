@@ -178,7 +178,8 @@ class IntermediateEmitter {
   int string_cls_id;
   stack<int> break_labels;
   bool is_str_array;
-
+  stack <OperationAssignment*>post_statements;
+  
   // emit operations
   void EmitStrings();
   void EmitLibraries(Linker* linker);
