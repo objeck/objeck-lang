@@ -68,9 +68,11 @@ using namespace stdext;
 #include <pthread.h>
 #include <stdint.h>
 #include <dlfcn.h>
+#include <pwd.h>
 #else
 #include <tr1/unordered_map>
 #include <pthread.h>
+#include <pwd.h>
 #include <stdint.h>
 namespace std {
   using namespace tr1;
