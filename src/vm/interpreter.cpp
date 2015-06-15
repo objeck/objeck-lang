@@ -74,7 +74,10 @@ void StackInterpreter::Initialize(StackProgram* p)
 
   // add system proprieties
 #ifdef _WIN32  
-  program->SetProperty(L"user_dir", L"");
+  char user_dir[MAX_PATH];
+  if(System::GetUserDirectory(user_dir, MAX_PATH)) {
+    program->SetProperty(L"user_dir", BytesToUnicode(user_dir));
+  }
   
   char tmp_dir[MAX_PATH];
   if(GetTempPath(MAX_PATH, tmp_dir)) { 

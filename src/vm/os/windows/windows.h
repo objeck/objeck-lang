@@ -37,14 +37,14 @@
 #include "../../common.h"
 #include <windows.h>
 #include <tchar.h>
+#include <userenv.h>
 #include <sys/stat.h>
 #include <stdio.h>
 #include <strsafe.h>
 
-#ifndef _MINGW
 #pragma comment(lib, "Ws2_32.lib")
 #pragma comment(lib, "User32.lib")
-#endif
+#pragma comment(lib, "UserEnv.lib")
 
 typedef void (WINAPI *PGNSI)(LPSYSTEM_INFO);
 typedef BOOL (WINAPI *PGPI)(DWORD, DWORD, DWORD, DWORD, PDWORD);
@@ -375,6 +375,23 @@ class IPSecureSocket {
  ****************************/
 class System {
  public:
+
+  static BOOL GetUserDirectory(char* buf, DWORD buflen) {
+    BOOL ret;
+    HANDLE hToken;
+
+    if(!OpenProcessToken(GetCurrentProcess(), TOKEN_READ, &hToken)) {
+      return FALSE;
+    }
+
+    if(!GetUserProfileDirectory(hToken, buf, &buflen)) {
+      return FALSE;
+    }
+
+    CloseHandle(hToken);
+    return TRUE;
+  }
+
   static string GetPlatform() {
     string platform;
 
