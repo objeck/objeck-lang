@@ -2,18 +2,10 @@ use System.IO.File;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		x := "a-bc-d";
-		x->FindLast('-')->PrintLine();
-		x->FindLast(3, '-')->PrintLine();
-		x->FindLast(5,'-')->PrintLine();
-		x->FindLast(6,'-')->PrintLine();
+		user_dir := Runtime->GetProperty("user_dir");
+		user_dir->PrintLine();
 
-a := 3+3; #~		1234567 ~# 9999->ToCommaString()->PrintLine();
-a->PrintLine();
-System.Runtime->Exit(101);
-		12567->ToCommaString()->PrintLine();
-		84812567->ToCommaString()->PrintLine();
-		4321->ToCommaString()->PrintLine();
-		321->ToCommaString()->PrintLine();
+		tmp_dir := Runtime->GetProperty("tmp_dir");
+		tmp_dir->PrintLine();
 	}
 }

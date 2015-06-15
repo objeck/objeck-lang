@@ -71,7 +71,28 @@ pthread_mutex_t StackInterpreter::intpr_threads_mutex = PTHREAD_MUTEX_INITIALIZE
 void StackInterpreter::Initialize(StackProgram* p)
 {
   program = p;
+
+  // add system proprieties
+#ifdef _WIN32  
+  program->SetProperty(L"user_dir", L"");
   
+  char tmp_dir[MAX_PATH];
+  if(GetTempPath(MAX_PATH, tmp_dir)) { 
+    program->SetProperty(L"tmp_dir", BytesToUnicode(tmp_dir));
+  }
+#else
+  struct passwd* user = getpwuid(getuid());
+  if(user) {
+    program->SetProperty(L"user_dir", BytesToUnicode(user->pw_dir));
+  }
+  
+  const char* tmp_dir = P_tmpdir;
+  if(tmp_dir) {
+    program->SetProperty(L"tmp_dir", BytesToUnicode(tmp_dir));
+  }
+#endif
+
+  // read configuration properties
   const int line_max = 80;
   char buffer[line_max + 1];
   fstream config("config.prop", fstream::in);
@@ -95,7 +116,6 @@ void StackInterpreter::Initialize(StackProgram* p)
   }
   config.close();
   
-
 #ifdef _WIN32
   InitializeCriticalSection(&cached_frames_cs);
   InitializeCriticalSection(&intpr_threads_cs);

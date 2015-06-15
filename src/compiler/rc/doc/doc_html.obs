@@ -243,6 +243,7 @@ class HtmlMaker {
 		};
 		
 		if(from_name <> Nil) {
+			from_name := GetTypeLink(from_name);
 			sec_h += "<p>Derived from: <i>@parent_class_desc</i></p>";
 			sec_h := sec_h->ReplaceAll("@parent_class_desc", from_name);
 		};
@@ -250,7 +251,7 @@ class HtmlMaker {
 		if(implemented_names->Size() > 0) {
 			sec_h += "<p>Implements: <i>";
 			each(j : implemented_names) {
-				implemented_name := implemented_names->Get(j)->As(String);
+				implemented_name := GetTypeLink(implemented_names->Get(j)->As(String));
 				sec_h += implemented_name;
 				if(j + 1 < implemented_names->Size()) {
 					sec_h += ", ";

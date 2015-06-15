@@ -4413,7 +4413,8 @@ bundle System.IO.File {
 		}
 
 		New : private () {
-			FILE_LOGGER_DIR;
+			Parent();
+			@directory := Runtime->GetProperty("tmp_dir");
 		}
 
 		function : Instance() ~ Logger {
