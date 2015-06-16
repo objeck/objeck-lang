@@ -3337,7 +3337,7 @@ bundle System.IO {
 		#~
 		Writes a byte
 		@param b byte to write
-		@return ture if byte was written, false otherwise
+		@return true if byte was written, false otherwise
 		~#
 		method : virtual : public : WriteByte(b : Int) ~ Bool;
 		
@@ -4103,7 +4103,7 @@ bundle System.IO.File {
 		
 		#~
 		Checks of the file is open
-		@return ture if the file was opened, false otherwise
+		@return true if the file was opened, false otherwise
 		~#
 		method : public : IsOpen() ~ Bool {
 			FILE_IS_OPEN;
@@ -4112,7 +4112,7 @@ bundle System.IO.File {
 		#~
 		Seeks to a point in the file
 		@param p seek offset
-		@return ture if operation was successful, false otherwise
+		@return true if operation was successful, false otherwise
 		~#
 		method : public : Seek(p : Int) ~ Bool {
 			FILE_SEEK;
@@ -4154,7 +4154,7 @@ bundle System.IO.File {
 		#~
 		Returns the time in which the file was created
 		@param n file name
-		@param gmt ture if GMT
+		@param gmt true if GMT
 		@return create date
 		~#
 		function : CreateTime(n : System.String, gmt : Bool) ~ Date {
@@ -4182,7 +4182,7 @@ bundle System.IO.File {
 		#~
 		Returns the time in which the file was modified 
 		@param n file name
-		@param gmt ture if GMT
+		@param gmt true if GMT
 		@return modified date
 		~#
 		function : ModifiedTime(n : System.String, gmt : Bool) ~ Date {
@@ -4210,7 +4210,7 @@ bundle System.IO.File {
 		#~
 		Returns the time in which the file was accessed 
 		@param n file name
-		@param gmt ture if GMT
+		@param gmt true if GMT
 		@return accessed date
 		~#
 		function : AccessedTime(n : System.String, gmt : Bool) ~ Date {
@@ -4408,7 +4408,7 @@ bundle System.IO.File {
 		#~
 		Writes a byte
 		@param b byte to write
-		@return ture if byte was written, false otherwise
+		@return true if byte was written, false otherwise
 		~#
 		method : public : WriteByte(b : Int) ~ Bool {
 			FILE_OUT_BYTE;
@@ -4517,7 +4517,8 @@ bundle System.IO.File {
 
 		#~
 		Logs an informational message
-		@return ture if message is logged, false otherwise
+		@param message message to log
+		@return true if message is logged, false otherwise
 		~#
 		method : public : Info(message : String) ~ Bool {
 			critical(@info_mutex) {
@@ -4540,7 +4541,8 @@ bundle System.IO.File {
 
 		#~
 		Logs a warning message
-		@return ture if message is logged, false otherwise
+		@param message message to log
+		@return true if message is logged, false otherwise
 		~#
 		method : public : Warn(message : String) ~ Bool {
 			critical(@warn_mutex) {
@@ -4563,7 +4565,8 @@ bundle System.IO.File {
 
 		#~
 		Logs an error message
-		@return ture if message is logged, false otherwise
+		@param message message to log
+		@return true if message is logged, false otherwise
 		~#
 		method : public : Error(message : String) ~ Bool {
 			critical(@err_mutex) {
@@ -4586,7 +4589,7 @@ bundle System.IO.File {
 
 		#~
 		Clears the info log file
-		@return ture if message is logged, false otherwise
+		@return true if message is logged, false otherwise
 		~#
 		method : public : ClearInfo() ~ Nil {
 			critical(@info_mutex) {
@@ -4596,7 +4599,7 @@ bundle System.IO.File {
 
 		#~
 		Clears the warning log file
-		@return ture if message is logged, false otherwise
+		@return true if message is logged, false otherwise
 		~#
 		method : public : ClearWarn() ~ Nil {
 			critical(@warn_mutex) {
@@ -4606,12 +4609,20 @@ bundle System.IO.File {
 
 		#~
 		Clears the error log file
-		@return ture if message is logged, false otherwise
+		@return true if message is logged, false otherwise
 		~#
 		method : public : ClearError() ~ Nil {
 			critical(@err_mutex) {
 				File->Delete(@err_dir);
 			};
+		}
+
+		#~
+		Gets the logging directory
+		@return logging directory
+		~#
+		method : public : GetDirectory() ~ String {
+			return Runtime->GetTempDir();
 		}
 	}
 
@@ -4699,7 +4710,7 @@ bundle System.IO.Net {
 		#~
 		Writes a byte
 		@param b byte to write
-		@return ture if byte was written, false otherwise
+		@return true if byte was written, false otherwise
 		~#
 		method : public : WriteByte(b : Int) ~ Bool {
 			SOCK_TCP_OUT_BYTE;
@@ -4854,7 +4865,7 @@ bundle System.IO.Net {
 		#~
 		Writes a byte
 		@param b byte to write
-		@return ture if byte was written, false otherwise
+		@return true if byte was written, false otherwise
 		~#
 		method : public : WriteByte(b : Int) ~ Bool {
 			SOCK_TCP_SSL_OUT_BYTE;
