@@ -376,7 +376,7 @@ class IPSecureSocket {
 class System {
  public:
 
-  static BOOL GetUserDirectory(char* buf, int len) {
+   static BOOL GetUserDirectory(char* buf, DWORD len) {
     HANDLE handle;
 
     if(!OpenProcessToken(GetCurrentProcess(), TOKEN_READ, &handle)) {
