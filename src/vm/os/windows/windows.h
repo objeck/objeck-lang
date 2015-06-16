@@ -376,19 +376,18 @@ class IPSecureSocket {
 class System {
  public:
 
-  static BOOL GetUserDirectory(char* buf, DWORD buflen) {
-    BOOL ret;
-    HANDLE hToken;
+  static BOOL GetUserDirectory(char* buf, int len) {
+    HANDLE handle;
 
-    if(!OpenProcessToken(GetCurrentProcess(), TOKEN_READ, &hToken)) {
+    if(!OpenProcessToken(GetCurrentProcess(), TOKEN_READ, &handle)) {
       return FALSE;
     }
 
-    if(!GetUserProfileDirectory(hToken, buf, &buflen)) {
+    if(!GetUserProfileDirectory(handle, buf, &len)) {
       return FALSE;
     }
 
-    CloseHandle(hToken);
+    CloseHandle(handle);
     return TRUE;
   }
 
