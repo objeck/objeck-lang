@@ -2633,6 +2633,22 @@ bundle System {
 		function : GetVersion() ~ String {
 			GET_VERSION;
 		}
+
+		#~
+		Returns the system's temporary directory
+		@return system's temporary directory
+		~#
+		function : GetTempDir() ~ String {
+			return GetProperty("tmp_dir");
+		}
+
+		#~
+		Returns the current user's working directory
+		@return current user's working directory
+		~#
+		function : GetUserDir() ~ String {
+			return GetProperty("user_dir");
+		}
 		
 		#~
 		Fetches a runtime property 
@@ -3039,6 +3055,58 @@ bundle System.Time {
 			out->Append(" ");
 			out->Append(@day);
 			out->Append(", ");
+			out->Append(@year);
+			out->Append(" ");
+
+			is_am := true;
+			if(@hours = 0) {
+				out->Append(12);
+			}
+			else if(@hours = 12) {
+				out->Append(12);
+				is_am := false;
+			}
+			else if(@hours > 12) {
+				out->Append(@hours - 12);
+				is_am := false;
+			}
+			else {
+				out->Append(@hours);
+			};
+
+			out->Append(":");
+			if(@mins < 10) {
+				out->Append('0');
+			};
+			out->Append(@mins);
+
+			out->Append(":");
+			if(@secs < 10) {
+				out->Append('0');
+			};
+			out->Append(@secs);
+
+			if(is_am) {
+				out->Append(" AM");
+			}
+			else {
+				out->Append(" PM");
+			};
+
+			return out;
+		}
+
+		#~
+		Creates a shortened string representation of the date
+		@return shortened string representation of the date
+		~#
+		method : public : ToShortString() ~ String {
+			out := String->New();
+
+			out->Append(@month);
+			out->Append('/');
+			out->Append(@day);
+			out->Append('/');
 			out->Append(@year);
 			out->Append(" ");
 
@@ -4400,33 +4468,150 @@ bundle System.IO.File {
 	}
 	
 	#~
-	Logs messages to a file
+	Logs messages to temporary files
 	~#
 	class Logger {
 		@instance : static : Logger;
-		@directory : String;
 		
-		enum Type {
-			INFO,
-			WARNING,
-			ERROR
-		}
+		@info_mutex : ThreadMutex;
+		@info_dir : String;
 
+		@warn_mutex : ThreadMutex;
+		@warn_dir : String;
+
+		@err_mutex : ThreadMutex;
+		@err_dir : String;
+		
 		New : private () {
-			Parent();
+			Parent();		
 			@directory := Runtime->GetProperty("tmp_dir");
+
+			@info_dir := "";
+			@info_dir->Append(Runtime->GetTempDir());
+			@info_dir->Append("/info-objk.txt");
+			@info_mutex := ThreadMutex->New("info-log");
+
+			@warn_dir := "";
+			@warn_dir->Append(Runtime->GetTempDir());
+			@warn_dir->Append("/warn-objk.txt");
+			@warn_mutex := ThreadMutex->New("warn-log");
+
+			@err_dir := "";
+			@err_dir->Append(Runtime->GetTempDir());
+			@err_dir->Append("/err-objk.txt");
+			@warn_mutex := ThreadMutex->New("warn-log");
+			@err_mutex := ThreadMutex->New("err-log");
 		}
 
+		#~
+		Gets an instance of the logger
+		@return logger instance
+		~#
 		function : Instance() ~ Logger {
-			if(@instance <> Nil) {
+			if(@instance = Nil) {
 				@instance := Logger->New();
 			};
 
 			return @instance;
 		}
 
-		method : public : Log(type : Type, message : String) ~ Bool {
-			return false;
+		#~
+		Logs an informational message
+		@return ture if message is logged, false otherwise
+		~#
+		method : public : Info(message : String) ~ Bool {
+			critical(@info_mutex) {
+				out := FileWriter->New(@info_dir, true);
+				if(out <> Nil) {
+					header := "[";
+					header->Append(Date->New()->ToShortString());
+					header->Append("]: ");
+					header->Append(message);
+					out->WriteString(header);
+				}
+				else {
+					return false;
+				};
+				out->Close();
+			};			
+			
+			return true;
+		}
+
+		#~
+		Logs a warning message
+		@return ture if message is logged, false otherwise
+		~#
+		method : public : Warn(message : String) ~ Bool {
+			critical(@warn_mutex) {
+				out := FileWriter->New(@warn_dir, true);
+				if(out <> Nil) {
+					header := "[";
+					header->Append(Date->New()->ToShortString());
+					header->Append("]: ");
+					header->Append(message);
+					out->WriteString(header);
+				}
+				else {
+					return false;
+				};
+				out->Close();
+			};			
+			
+			return true;
+		}
+
+		#~
+		Logs an error message
+		@return ture if message is logged, false otherwise
+		~#
+		method : public : Error(message : String) ~ Bool {
+			critical(@err_mutex) {
+				out := FileWriter->New(@err_dir, true);
+				if(out <> Nil) {
+					header := "[";
+					header->Append(Date->New()->ToShortString());
+					header->Append("]: ");
+					header->Append(message);
+					out->WriteString(header);
+				}
+				else {
+					return false;
+				};
+				out->Close();
+			};			
+			
+			return true;
+		}
+
+		#~
+		Clears the info log file
+		@return ture if message is logged, false otherwise
+		~#
+		method : public : ClearInfo() ~ Nil {
+			critical(@info_mutex) {
+				File->Delete(@info_dir);
+			};
+		}
+
+		#~
+		Clears the warning log file
+		@return ture if message is logged, false otherwise
+		~#
+		method : public : ClearWarn() ~ Nil {
+			critical(@warn_mutex) {
+				File->Delete(@warn_dir);
+			};
+		}
+
+		#~
+		Clears the error log file
+		@return ture if message is logged, false otherwise
+		~#
+		method : public : ClearError() ~ Nil {
+			critical(@err_mutex) {
+				File->Delete(@err_dir);
+			};
 		}
 	}
 
