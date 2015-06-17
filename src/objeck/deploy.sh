@@ -11,6 +11,13 @@ mkdir deploy/lib
 mkdir deploy/lib/objeck-lang
 mkdir deploy/doc
 
+rm -rf deploy_fcgi
+mkdir deploy_fcgi
+mkdir deploy_fcgi/bin
+mkdir deploy_fcgi/lib
+mkdir deploy_fcgi/lib/objeck-lang
+mkdir deploy_fcgi/doc
+
 # build compiler
 cd ../compiler
 if [ ! -z "$1" ] && [ "$1" = "32" ]; then
@@ -61,6 +68,13 @@ else
 fi
 make clean; make -j3
 cp obr ../objeck/deploy/bin
+
+if [ ! -z "$1" ] && [ "$1" = "32" ]; then
+	cp Makefile.FCGI32 Makefile
+elif [ ! -z "$1" ] && [ "$1" = "64" ]; then	
+	cp Makefile.FCGI64 Makefile
+fi
+make clean; make -j3
 
 # build debugger
 if [ ! -z "$1" ] && [ "$1" = "32" ]; then
@@ -121,6 +135,20 @@ unzip docs/api.zip -d src/objeck/deploy/doc
 
 # copy examples
 cp -R src/compiler/rc src/objeck/deploy/examples
+
+# create and build fcgi
+cd src/objeck
+cp ../compiler/fcgi.obl deploy/bin
+cp -Rfu deploy/* deploy_fcgi
+rm deploy_fcgi/bin/obc
+rm deploy_fcgi/bin/obd
+rm -rf deploy_fcgi/doc
+rm -rf deploy_fcgi/examples
+cp ../vm/obr_fcgi deploy_fcgi/bin
+cp ../lib/fcgi/*.so deploy_fcgi/lib/objeck-lang
+mkdir deploy_fcgi/examples
+cp -R ../compiler/web/* deploy_fcgi/examples
+cp ../../docs/fcgi_readme.htm deploy/readme.htm
 
 # deploy
 if [ ! -z "$2" ] && [ "$2" = "deploy" ]; then

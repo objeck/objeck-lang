@@ -46,8 +46,8 @@ copy ..\compiler\fcgi.obl deploy\bin
 xcopy /e deploy\* deploy_fcgi
 del deploy_fcgi\bin\obc.exe
 del deploy_fcgi\bin\obd.exe
-rmdir deploy_fcgi\binrmdir /s /q deploy_fcgi\doc
-rmdir deploy_fcgi\binrmdir /s /q deploy_fcgi\examples
+rmdir /s /q deploy_fcgi\doc
+rmdir /s /q deploy_fcgi\examples
 copy Release\obr_fcgi.exe deploy_fcgi\bin
 copy ..\lib\fcgi\windows\lib\*.dll deploy_fcgi\bin
 copy redistrib\*.dll deploy_fcgi\bin
