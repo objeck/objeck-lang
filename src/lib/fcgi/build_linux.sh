@@ -1,9 +1,7 @@
 #/bin/sh
 rm -rf *.o
 rm -rf *.so
-g++ -g -D_DEBUG -Wall -fPIC -c *$1.cpp 
-g++ -g -shared -D_DEBUG -luuid -lfcgi -Wl,-soname,$1.so.1 -o $1.so *.o 
-# g++ -shared -fPIC $1.o $1.cpp 
-# g++ -fPIC -O3 -c -Wno-deprecated -Wall -D_X64 $1.cpp -o $1.so
-# g++ -shared -fPIC -O3 -c -Wno-deprecated -Wall $1.cpp -o $1.so
-# g++ -g -shared -fPIC `pkg-config -Wl,-soname,$1.so.1 -D_DEBUG -D_X64 -o $1.so.1.0.1 $1.cpp -lc
+g++ -O3 -Wno-unused-function -Wall -fPIC -c *$1.cpp 
+g++ -O3 -shared -luuid -Wl,-soname,libobjk_fcgi.so.1 -o libobjk_fcgi.so *.o -lfcgi
+# g++ -g -D_DEBUG -Wno-unused-function -Wall -fPIC -c *$1.cpp 
+# g++ -g -D_DEBUG -shared -luuid -Wl,-soname,libobjk_fcgi.so.1 -o libobjk_fcgi.so *.o -lfcgi
