@@ -148,7 +148,7 @@ cp ../vm/obr_fcgi deploy_fcgi/bin
 cp ../lib/fcgi/*.so deploy_fcgi/lib/objeck-lang
 mkdir deploy_fcgi/examples
 cp -R ../compiler/web/* deploy_fcgi/examples
-cp ../../docs/fcgi_readme.htm deploy/readme.htm
+cp ../../docs/fcgi_readme.htm deploy_fcgi/readme.htm
 
 # deploy
 if [ ! -z "$2" ] && [ "$2" = "deploy" ]; then
