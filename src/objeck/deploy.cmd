@@ -55,6 +55,8 @@ copy Release\libobjk_fcgi.dll deploy_fcgi\lib\objeck-lang
 mkdir deploy_fcgi\examples
 copy ..\compiler\web\* deploy_fcgi\examples
 copy /y ..\..\docs\fcgi_readme.htm deploy_fcgi\readme.htm
+mkdir deploy_fcgi\fcgi_readme_files
+copy ..\..\docs\fcgi_readme_files\* deploy_fcgi\fcgi_readme_files
 
 REM finished
 if [%1] NEQ [deploy] goto end
