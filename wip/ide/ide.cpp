@@ -64,14 +64,6 @@ EVT_MENU(myID_OPEN_FILE, MyFrame::OnFileOpen)
 EVT_MENU(wxID_SAVE, MyFrame::OnFileSave)
 EVT_MENU(wxID_SAVEAS, MyFrame::OnFileSaveAs)
 EVT_MENU(wxID_CLOSE, MyFrame::OnFileClose)
-// project
-EVT_MENU(myID_NEW_PROJECT, MyFrame::OnProjectNew)
-EVT_MENU(myID_OPEN_PROJECT, MyFrame::OnProjectOpen)
-EVT_MENU(myID_CLOSE_PROJECT, MyFrame::OnProjectClose)
-EVT_MENU(myID_BUILD_PROJECT, MyFrame::OnProjectBuild)
-EVT_MENU(myID_RUN_PROJECT, MyFrame::OnProjectRun)
-EVT_MENU(myID_PROJECT_ADD_FILE, MyFrame::OnAddProjectFile)
-EVT_MENU(myID_PROJECT_REMOVE_FILE, MyFrame::OnRemoveProjectFile)
 // find/replace
 EVT_MENU(myID_DLG_FIND_TEXT, MyFrame::OnEdit)
 EVT_MENU(myID_FINDNEXT, MyFrame::OnEdit)
@@ -153,16 +145,6 @@ void MyFrame::OnClose(wxCloseEvent &WXUNUSED(event))
   Destroy();
 }
 
-// file event handlers
-void MyFrame::OnProjectOpen(wxCommandEvent &event)
-{
-   wxFileDialog fileDialog(this, L"Open Objeck Project", L"", L"", L"Project Files (*.obp)|*.obp", 
-                           wxFD_OPEN|wxFD_FILE_MUST_EXIST);
-   if(fileDialog.ShowModal() == wxID_OK) {
-     m_projectManager = new ProjectManager(this, m_tree, fileDialog.GetPath());
-   }
-}
-
 void MyFrame::OnAddProjectFile(wxCommandEvent &event)
 {
   wxFileDialog fileDialog(this, L"Add Source File...", L"", L"", L"Source Files (*.obs)|*.obs", 
@@ -185,166 +167,6 @@ void MyFrame::AddProjectSource(const wxString &full_path)
   const wxString file_name = source_file.GetFullName();
   if(m_projectManager) {
     m_projectManager->AddFile(file_name, full_path, true);
-  }
-}
-
-void MyFrame::OnProjectClose(wxCommandEvent &event)
-{
-  if(m_projectManager) {
-    delete m_projectManager;
-    m_projectManager = NULL;
-  }
-}
-
-void MyFrame::OnProjectRun(wxCommandEvent &event)
-{
-  wxFileName foo(wxT("a.obe"));
-  if(foo.FileExists()) {
-    // build path to compiler exe
-    wstring obr_exe = wxT("obr");
-    wxPlatformInfo platform;
-    if((platform.GetOperatingSystemId() & wxOS_WINDOWS) != 0) {
-      obr_exe += wxT(".exe");
-    }
-    wxString obr_path_exe = wxT("bin");
-    obr_path_exe += wxFileName::GetPathSeparator();
-    obr_path_exe += obr_exe;
-
-    wxString objeck_base_path = m_optionsManager->GetObjeckPath();
-    if(objeck_base_path.Last() != wxFileName::GetPathSeparator()) {
-      objeck_base_path += wxFileName::GetPathSeparator();
-    }
-    
-    const wxString obr_full_path = objeck_base_path + obr_path_exe;
-    wxString cmd = obr_full_path;
-    cmd += wxT(" ");
-    cmd += wxT("a.obe");
-
-    // wxExecute(cmd, wxEXEC_ASYNC | wxEXEC_SHOW_CONSOLE);
-
-    BuildProcess process;
-    int code = wxExecute(cmd.mb_str(), wxEXEC_SYNC | wxEXEC_HIDE_CONSOLE, &process);
-    if(code < 0) {
-      wxMessageDialog fileOverWrite(this, wxT("Unable to invoke compiler executable, please check file paths."), wxT("Build Project"));
-      fileOverWrite.ShowModal();
-      return;
-    }
-    
-    wxString output = ReadInputStream(process.GetErrorStream());
-    output += ReadInputStream(process.GetInputStream());
-    
-    m_executeOutput->Clear();
-    m_executeOutput->AppendText(output);
-    m_executeOutput->SetFocus();
-  }
-}
-
-void MyFrame::OnProjectBuild(wxCommandEvent &event)
-{
-  // TODO: prompt to save files before build...
-
-  if(!m_projectManager) {
-    wxMessageDialog fileOverWrite(this, wxT("There is no project loaded."), wxT("Build Project"));
-    fileOverWrite.ShowModal();
-    return;
-  }
-
-  wxString objeck_base_path = m_optionsManager->GetObjeckPath();
-  if(objeck_base_path.Last() != wxFileName::GetPathSeparator()) {
-    objeck_base_path += wxFileName::GetPathSeparator();
-  }
-
-  // build path to compiler exe
-  wstring obc_exe = wxT("obc");
-  wxPlatformInfo platform;
-  if((platform.GetOperatingSystemId() & wxOS_WINDOWS) != 0) {
-    obc_exe += wxT(".exe");
-  }
-  wxString obc_path_exe = wxT("bin");
-  obc_path_exe += wxFileName::GetPathSeparator();
-  obc_path_exe += obc_exe;
-
-  const wxString obc_full_path = objeck_base_path + obc_path_exe;
-  wxFileName objeck_compiler_file(obc_full_path);
-  // ensure compiler exists
-  if(!objeck_compiler_file.FileExists()) {
-    wxMessageDialog fileOverWrite(this, wxT("Unable to find compiler executable, please check path."), wxT("Build Project"));
-    fileOverWrite.ShowModal();
-    return;
-  }
-
-  BuildProcess process; 
-  wxExecuteEnv env;
-  env.env[wxT("OBJECK_LIB_PATH")] = objeck_base_path + wxT("bin");
-  env.env[wxT("LANG")] = wxT("en_US.UTF-8");
-
-  wxString cmd = wxT("\"");
-  cmd += obc_full_path;
-  cmd += wxT("\" -src ");
-
-  wxArrayString source_files = m_projectManager->GetFiles();
-  for(size_t i = 0; i < source_files.size(); ++i) {
-    cmd += wxT("'");
-    cmd += source_files[i];
-    cmd += wxT("'");
-
-    if(i + 1 < source_files.size()) {
-      cmd += wxT(",");
-    }
-  }
-
-  // TODO: add libs (from PM)
-
-
-  // TODO: add dest (from PM)
-  cmd += wxT(" -dest \"a.obe\"");
-
-  int code = wxExecute(cmd.mb_str(), wxEXEC_SYNC | wxEXEC_HIDE_CONSOLE, &process, &env);
-  if(code < 0) {
-    wxMessageDialog fileOverWrite(this, wxT("Unable to invoke compiler executable, please check file paths."), wxT("Build Project"));
-    fileOverWrite.ShowModal();
-    return;
-  }
-
-  wxString output = ReadInputStream(process.GetErrorStream());
-  output += ReadInputStream(process.GetInputStream());
-
-  switch(code) {
-  case 0:
-    m_buildOutput->BuildSuccess(output);
-    GetStatusBar()->SetStatusText(wxT("Build successful"));
-    break;
-
-  case 2:
-  case 3: {
-    int error_num = m_buildOutput->ShowErrors(output);
-    m_infoNotebook->SetSelection(1);
-    wxString build_status = wxString::Format(wxT("%d build error(s)"), error_num);
-    GetStatusBar()->SetStatusText(build_status);
-  }
-    break;
-  }
-}
-
-void MyFrame::OnProjectNew(wxCommandEvent &WXUNUSED(event))
-{
-  NewProject project_dialog(this);
-  if(project_dialog.ShowModal() == wxID_OK) {
-    const wxString name = project_dialog.GetName();
-    const wxString path = project_dialog.GetPath();
-    
-    wxFileName full_name(path + wxFileName::GetPathSeparator() + name + wxT(".obp"));
-    if(full_name.FileExists()) {
-      wxMessageDialog fileOverWrite(this, wxT("File ") + full_name.GetFullName() + 
-                                    wxT(" already exists.\nWould you like to overwrite it?"),
-                                    "Overwrite File", wxCENTER | wxNO_DEFAULT | wxYES_NO | wxICON_INFORMATION);
-      if(fileOverWrite.ShowModal() == wxID_YES) {
-        m_projectManager = new ProjectManager(this, m_tree, name, full_name.GetFullPath());
-      }
-    }
-    else {
-      m_projectManager = new ProjectManager(this, m_tree, name, full_name.GetFullPath());
-    }
   }
 }
 
@@ -432,12 +254,10 @@ wxMenuBar* MyFrame::CreateMenuBar()
   // new
   wxMenu* menuFileNew = new wxMenu;
   menuFileNew->Append(myID_NEW_FILE, _("&File\tCtrl+N"));
-  menuFileNew->Append(myID_NEW_PROJECT, _("&Project\tCtrl+Shift+N"));
   menuFile->Append(wxID_ANY, _("New..."), menuFileNew);
   // open
   wxMenu* menuFileOpen = new wxMenu;
   menuFileOpen->Append(myID_OPEN_FILE, _("&File\tCtrl+O"));
-  menuFileOpen->Append(myID_OPEN_PROJECT, _("&Project\tCtrl+Shift+O"));
   menuFile->Append(wxID_ANY, _("Open..."), menuFileOpen);
   
   menuFile->Append(wxID_SAVE, _("&Save\tCtrl+S"));
@@ -446,7 +266,6 @@ wxMenuBar* MyFrame::CreateMenuBar()
   // close
   wxMenu* menuFileClose = new wxMenu;
   menuFileClose->Append(myID_CLOSE_FILE, _("&File\tCtrl+W"));
-  menuFileClose->Append(myID_CLOSE_PROJECT, _("&Project\tCtrl+Shift+W"));  
   menuFile->Append(wxID_ANY, _("Close..."), menuFileClose);
   
   menuFile->AppendSeparator();
@@ -486,22 +305,10 @@ wxMenuBar* MyFrame::CreateMenuBar()
   menuView->AppendCheckItem(myID_LONGLINEON, _("Show &long line marker"));
   menuView->AppendCheckItem(myID_WHITESPACE, _("Show white&space"));
 
-  // project menu
-  m_projectView = new wxMenu;
-  m_projectView->Append(myID_BUILD_PROJECT, _("Build\tCtrl+Shift+B"));
-  m_projectView->Append(myID_RUN_PROJECT, _("Run...\tCtrl+Shift+E"));
-  m_projectView->AppendSeparator();
-  m_projectView->Append(myID_ADD_FILE_PROJECT, _("&Add file...\tCtrl+Shift+A"));
-  m_projectView->Append(myID_REMOVE_FILE_PROJECT, _("&Remove file"));
-  m_projectView->AppendSeparator();
-  m_projectView->Append(myID_PROJECT_OPTIONS, _("Project options...\tALT+Shift+O"));
-  DisableProjectMenu();
-
   // menu bar
   wxMenuBar* menuBar = new wxMenuBar;
   menuBar->Append(menuFile, wxT("&File"));
   menuBar->Append(menuEdit, wxT("&Edit"));
-  menuBar->Append(m_projectView, wxT("&Project"));
   menuBar->Append(menuView, wxT("&View"));
   menuBar->Append(new wxMenu, wxT("&Help"));
   
@@ -529,8 +336,6 @@ wxAuiToolBar* MyFrame::DoCreateToolBar()
   toolbar->AddTool(ID_SampleItem + 23, wxT("Undo"), wxArtProvider::GetBitmap(wxART_UNDO, wxART_OTHER, wxSize(16, 16)), wxT("Undo"), wxITEM_RADIO);
   toolbar->AddTool(ID_SampleItem + 24, wxT("Redo"), wxArtProvider::GetBitmap(wxART_REDO, wxART_OTHER, wxSize(16, 16)), wxT("Redo"), wxITEM_RADIO);
   toolbar->AddSeparator();
-  toolbar->AddTool(ID_SampleItem + 25, wxT("Build Project"), wxArtProvider::GetBitmap(wxART_GO_HOME, wxART_OTHER, wxSize(16, 16)), wxT("Build Project"), wxITEM_RADIO);toolbar->AddSeparator();
-  toolbar->AddTool(ID_SampleItem + 26, wxT("Project Options"), wxArtProvider::GetBitmap(wxART_HELP_SETTINGS, wxART_OTHER, wxSize(16, 16)), wxT("Project Options"), wxITEM_RADIO);
   // toolbar->SetCustomOverflowItems(prepend_items, append_items);
   toolbar->Realize();
 
@@ -739,18 +544,10 @@ void ProjectTreeCtrl::OnItemMenu(wxTreeEvent& event)
   if(m_frame->GetProjectManager()) {
     if(m_frame->GetProjectManager()->HitProject(itemId)) {
       wxMenu menu;
-      menu.Append(myID_BUILD_PROJECT, _("&Build"));
-      menu.Append(myID_RUN_PROJECT, _("&Run..."));
       menu.AppendSeparator();
       menu.Append(myID_PROJECT_ADD_FILE, _("&Add source..."));
-      menu.Append(myID_PROJECT_ADD_LIB, _("&Add library..."));
       menu.AppendSeparator();
       menu.Append(wxID_ANY, wxT("&Project options"));
-      PopupMenu(&menu, event.GetPoint());
-    }
-    else if(m_frame->GetProjectManager()->HitLibrary(itemId)) {
-      wxMenu menu;
-      menu.Append(myID_PROJECT_ADD_LIB, _("&Add library..."));
       PopupMenu(&menu, event.GetPoint());
     }
     else if(m_frame->GetProjectManager()->HitSource(itemId)) {

@@ -412,9 +412,6 @@ ProjectManager::ProjectManager(MyFrame* parent, wxTreeCtrl* tree, const wxString
 	IniManager::WriteFile(filename, project_string);
   iniManager = new IniManager(filename);
   BuildTree(name);
-
-  // enable project menu
-  m_parent->EnableProjectMenu();
 }
 
 ProjectManager::ProjectManager(MyFrame* parent, wxTreeCtrl* tree, const wxString &filename)
@@ -435,15 +432,11 @@ ProjectManager::ProjectManager(MyFrame* parent, wxTreeCtrl* tree, const wxString
   }
   m_parent->EnableProjectNode(m_sourceTreeItemId);
   m_tree->Thaw();
-
-  // enable project menu
-  m_parent->EnableProjectMenu();
 }
 
 ProjectManager::~ProjectManager()
 {
   m_tree->DeleteAllItems();
-  m_parent->DisableProjectMenu();
   delete iniManager;
 }
 

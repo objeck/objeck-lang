@@ -110,7 +110,6 @@ class MyFrame : public wxFrame {
   size_t m_newPageCount;
   GeneralOptionsManager* m_optionsManager;
   ProjectManager* m_projectManager;
-  wxMenu* m_projectView;
   ProjectTreeCtrl* m_tree;
   
   void DoUpdate();
@@ -190,20 +189,6 @@ public:
     return m_projectManager;
   }
 
-  void EnableProjectMenu() {
-    m_projectView->Enable(myID_BUILD_PROJECT, true);
-    m_projectView->Enable(myID_ADD_FILE_PROJECT, true);
-    m_projectView->Enable(myID_REMOVE_FILE_PROJECT, true);
-    m_projectView->Enable(myID_PROJECT_OPTIONS, true);
-  }
-
-  void DisableProjectMenu() {
-    m_projectView->Enable(myID_BUILD_PROJECT, false);
-    m_projectView->Enable(myID_ADD_FILE_PROJECT, false);
-    m_projectView->Enable(myID_REMOVE_FILE_PROJECT, false);
-    m_projectView->Enable(myID_PROJECT_OPTIONS, false);
-  }
-
   void EnableProjectNode(wxTreeItemId id) {
     if(m_tree) {
       m_tree->Expand(id);
@@ -215,7 +200,6 @@ public:
   // common
   void OnClose(wxCloseEvent &event);
   // project
-  void OnProjectNew(wxCommandEvent &event);
   void OnProjectOpen(wxCommandEvent &event);
   void OnProjectClose(wxCommandEvent &event);
   void OnProjectRun(wxCommandEvent &event);
