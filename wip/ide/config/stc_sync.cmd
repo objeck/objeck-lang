@@ -1,5 +1,5 @@
 set CONFIG_DIR="C:\Users\Randy\Documents\Code\objeck-lang\wip\ide\config"
-set WXWIDGETS_ROOT="D:\Code\wxWidgets-3.0.1"
+set WXWIDGETS_ROOT="C:\Users\Randy\Documents\Code\wxWidgets-3.0.2"
 
 IF [%1] EQU [] goto COMMIT
 IF %1 NEQ deploy goto COMMIT
