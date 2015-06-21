@@ -781,7 +781,7 @@ bundle System {
 				str := String->New();
 				Number->IntToString(v[i]->As(Int), str);
 				out->Append(str);
-				if(i + i < v->Size()) {
+				if(i + 1 < v->Size()) {
 					out->Append(',');
 				};
 			};
