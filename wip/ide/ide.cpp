@@ -90,8 +90,6 @@ MyFrame::MyFrame(wxWindow* parent, wxWindowID id, const wxString& title, const w
   m_auiManager.AddPane(CreateTreeCtrl(), wxAuiPaneInfo().Left().PaneBorder(false));
   m_notebook = CreateNotebook(), 
   m_auiManager.AddPane(m_notebook, wxAuiPaneInfo().CenterPane().PaneBorder(false));
-  m_infoNotebook = CreateInfoCtrl();
-  m_auiManager.AddPane(m_infoNotebook, wxAuiPaneInfo().Bottom().PaneBorder(false));
   
   // set menu and status bars
   SetMenuBar(CreateMenuBar());
@@ -371,33 +369,6 @@ Notebook* MyFrame::CreateNotebook()
   notebook_ctrl->Thaw();
 
   return notebook_ctrl;
-}
-
-wxAuiNotebook* MyFrame::CreateInfoCtrl()
-{
-#ifdef __WXOSX_COCOA__
-  wxFont font(11, wxMODERN, wxNORMAL, wxNORMAL);
-#else
-  wxFont font(9, wxMODERN, wxNORMAL, wxNORMAL);
-#endif
-  // build output
-  m_buildOutput = new wxBuildErrorList(this, m_notebook, myID_BUILD_CTRL, wxDefaultPosition, wxSize(-1, 125), wxLC_REPORT | wxLC_SINGLE_SEL | wxBORDER_THEME);
-  m_buildOutput->AppendColumn(wxT("#"));
-  m_buildOutput->AppendColumn(wxT("File"));
-  m_buildOutput->AppendColumn(wxT("Line"));
-  m_buildOutput->AppendColumn(wxT("Message"));
-
-  // runtime output
-  m_executeOutput = new ExecuteTextCtrl(this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxSize(-1, 125), wxNO_BORDER | wxTE_MULTILINE | wxTE_RICH);
-  m_executeOutput->SetFont(font);
-  
-  wxAuiNotebook* info_ctrl = new wxAuiNotebook(this, wxID_ANY, wxDefaultPosition, wxSize(-1, 125),
-    wxAUI_NB_BOTTOM | wxAUI_NB_TAB_SPLIT | wxAUI_NB_TAB_MOVE | wxAUI_NB_SCROLL_BUTTONS | wxAUI_NB_MIDDLE_CLICK_CLOSE);    
-
-  info_ctrl->AddPage(m_executeOutput, wxT("Output"));
-  info_ctrl->AddPage(m_buildOutput, wxT("Build"));
-
-  return info_ctrl;
 }
 
 //----------------------------------------------------------------------------

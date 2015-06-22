@@ -106,7 +106,6 @@ class MyFrame : public wxFrame {
   wxBuildErrorList* m_buildOutput;
   ExecuteTextCtrl* m_executeOutput;
   Notebook* m_notebook;
-  wxAuiNotebook* m_infoNotebook;
   size_t m_newPageCount;
   GeneralOptionsManager* m_optionsManager;
   ProjectManager* m_projectManager;
@@ -121,7 +120,6 @@ class MyFrame : public wxFrame {
   wxAuiToolBar* DoCreateToolBar();
   // tabbed editor
   Notebook* CreateNotebook();
-  wxAuiNotebook* CreateInfoCtrl();
 
   bool IsProjectLoaded() {
     return m_tree != NULL;
