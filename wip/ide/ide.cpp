@@ -340,9 +340,9 @@ wxAuiToolBar* MyFrame::DoCreateToolBar()
   return toolbar;
 }
 
-ProjectTreeCtrl* MyFrame::CreateTreeCtrl() 
+FileTreeCtrl* MyFrame::CreateTreeCtrl() 
 {
-  m_tree = new ProjectTreeCtrl(this, myID_PROJECT_TREE, wxPoint(0, 0), wxSize(160, 250), wxTR_DEFAULT_STYLE | wxNO_BORDER);
+  m_tree = new FileTreeCtrl(this, myID_PROJECT_TREE, wxPoint(0, 0), wxSize(160, 250), wxTR_DEFAULT_STYLE | wxNO_BORDER);
 
   wxImageList* imglist = new wxImageList(16, 16, true, 2);
   imglist->Add(wxArtProvider::GetBitmap(wxART_GO_HOME, wxART_OTHER, wxSize(16, 16)));
@@ -495,19 +495,19 @@ ExecuteTextCtrl::~ExecuteTextCtrl()
 }
 
 //----------------------------------------------------------------------------
-//! ProjectTreeCtrl
-wxBEGIN_EVENT_TABLE(ProjectTreeCtrl, wxTreeCtrl)
-EVT_TREE_ITEM_MENU(myID_PROJECT_TREE, ProjectTreeCtrl::OnItemMenu)
-EVT_TREE_ITEM_ACTIVATED(myID_PROJECT_TREE, ProjectTreeCtrl::OnItemActivated)
+//! FileTreeCtrl
+wxBEGIN_EVENT_TABLE(FileTreeCtrl, wxTreeCtrl)
+EVT_TREE_ITEM_MENU(myID_PROJECT_TREE, FileTreeCtrl::OnItemMenu)
+EVT_TREE_ITEM_ACTIVATED(myID_PROJECT_TREE, FileTreeCtrl::OnItemActivated)
 wxEND_EVENT_TABLE()
 
-ProjectTreeCtrl::ProjectTreeCtrl(MyFrame* parent, const wxWindowID id, const wxPoint& pos, const wxSize& size, long style)
+FileTreeCtrl::FileTreeCtrl(MyFrame* parent, const wxWindowID id, const wxPoint& pos, const wxSize& size, long style)
   : wxTreeCtrl(parent, id, pos, size, style)
 {
   m_frame = parent;
 }
 
-void ProjectTreeCtrl::OnItemMenu(wxTreeEvent& event)
+void FileTreeCtrl::OnItemMenu(wxTreeEvent& event)
 {
   wxTreeItemId itemId = event.GetItem();
   TreeData* data = (TreeData*)GetItemData(itemId);
@@ -540,7 +540,7 @@ void ProjectTreeCtrl::OnItemMenu(wxTreeEvent& event)
   event.Skip();
 }
 
-void ProjectTreeCtrl::OnItemActivated(wxTreeEvent& event)
+void FileTreeCtrl::OnItemActivated(wxTreeEvent& event)
 {
   wxTreeItemId itemId = event.GetItem();
   TreeData* item = (TreeData*)GetItemData(itemId);
