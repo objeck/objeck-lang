@@ -48,8 +48,8 @@ public:
 };
 
 //----------------------------------------------------------------------------
-//! ProjectTreeCtrl
-class ProjectTreeCtrl : public wxTreeCtrl {
+//! FileTreeCtrl
+class FileTreeCtrl : public wxTreeCtrl {
   MyFrame* m_frame;
   TreeData* item_data;
 
@@ -57,8 +57,8 @@ class ProjectTreeCtrl : public wxTreeCtrl {
   void OnItemActivated(wxTreeEvent& event);
 
 public:
-  ProjectTreeCtrl(MyFrame* parent, const wxWindowID id, const wxPoint& pos, const wxSize& size, long style);
-  ~ProjectTreeCtrl() {}
+  FileTreeCtrl(MyFrame* parent, const wxWindowID id, const wxPoint& pos, const wxSize& size, long style);
+  ~FileTreeCtrl() {}
 
   TreeData* GetData() {
     return item_data;
@@ -109,12 +109,12 @@ class MyFrame : public wxFrame {
   size_t m_newPageCount;
   GeneralOptionsManager* m_optionsManager;
   ProjectManager* m_projectManager;
-  ProjectTreeCtrl* m_tree;
+  FileTreeCtrl* m_tree;
   
   void DoUpdate();
   
   // tree
-  ProjectTreeCtrl* CreateTreeCtrl();
+  FileTreeCtrl* CreateTreeCtrl();
   // menu and toolbar
   wxMenuBar* CreateMenuBar();
   wxAuiToolBar* DoCreateToolBar();
