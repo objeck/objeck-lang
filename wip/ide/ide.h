@@ -108,7 +108,7 @@ class MyFrame : public wxFrame {
   Notebook* m_notebook;
   size_t m_newPageCount;
   GeneralOptionsManager* m_optionsManager;
-  ProjectManager* m_projectManager;
+  FileManager* m_fileManager;
   FileTreeCtrl* m_tree;
   
   void DoUpdate();
@@ -182,28 +182,25 @@ public:
     }
   }
 
-  // project operations
-  ProjectManager* GetProjectManager() {
-    return m_projectManager;
+  // file operations
+  FileManager* GetFileManager() {
+    return m_fileManager;
   }
 
-  void EnableProjectNode(wxTreeItemId id) {
+  void EnableFilesNode(wxTreeItemId id) {
     if(m_tree) {
       m_tree->Expand(id);
     }
   }
 
-  void AddProjectSource(const wxString &source);
+  void AddFile(const wxString &source);
   
   // common
   void OnClose(wxCloseEvent &event);
-  // project
-  void OnProjectOpen(wxCommandEvent &event);
-  void OnProjectClose(wxCommandEvent &event);
-  void OnProjectRun(wxCommandEvent &event);
-  void OnProjectBuild(wxCommandEvent &event);
-  void OnAddProjectFile(wxCommandEvent &event);
-  void OnRemoveProjectFile(wxCommandEvent &event);
+  // file
+  void OnAddFile(wxCommandEvent &event);
+  void OnRemoveFile(wxCommandEvent &event);
+
   // file
   void OnFileNew(wxCommandEvent &event);
   void OnFileNewFrame(wxCommandEvent &event);

@@ -146,14 +146,12 @@ class GeneralOptionsManager {
 
 //----------------------------------------------------------------------------
 //! IniManager
-class ProjectManager {
+class FileManager {
   MyFrame* m_parent;
   wxTreeCtrl* m_tree;
   IniManager* iniManager;
   wxTreeItemId m_root;
-  wxTreeItemId m_sourceTreeItemId;
-  wxTreeItemId m_libraryTreeItemId;
-    
+      
   void Load() {
 	  iniManager->Load();
   }
@@ -161,26 +159,18 @@ class ProjectManager {
   void BuildTree(const wxString &name);
 
  public:
-  // creates a new project
-   ProjectManager(MyFrame* parent, wxTreeCtrl* tree, const wxString &name, const wxString &filename);
-  // loads an existing project
-   ProjectManager(MyFrame* parent, wxTreeCtrl* tree, const wxString &filename);
-  ~ProjectManager();
+  // creates a new file
+   FileManager(MyFrame* parent, wxTreeCtrl* tree, const wxString &name, const wxString &filename);
+  // loads an existing file
+   FileManager(MyFrame* parent, wxTreeCtrl* tree, const wxString &filename);
+  ~FileManager();
 
   // hit traget
-  bool HitProject(wxTreeItemId &hit) {
+  bool HitFile(wxTreeItemId &hit) {
     return m_root == hit;
   }
 
-  bool HitLibrary(wxTreeItemId &hit) {
-    return m_libraryTreeItemId == hit;
-  }
-
-  bool HitSource(wxTreeItemId &hit) {
-    return m_sourceTreeItemId == hit;
-  }
-
-  // save and close project
+  // save and close file
   void Save() {
     iniManager->Save();
   }
@@ -195,14 +185,6 @@ class ProjectManager {
   void AddFile(const wxString &filename, const wxString &full_path, bool save = false);
   void RemoveFile(TreeData* data);
   wxArrayString GetFiles(); 
-
-  // library operations
-  bool AddLibrary(const wxString &name);
-  bool RemoveLibrary(const wxString &name);
-  wxArrayString GetLibraries();
-
-  bool Compile();
-
 };
 
 #endif
