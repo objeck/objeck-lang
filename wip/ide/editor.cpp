@@ -101,9 +101,9 @@ void Notebook::OpenFile(const wxString& fn)
 
   // set page focus
   Pages::iterator found = pages.find(filename);
-  if (found != pages.end()) {
+  if(found != pages.end()) {
     int page_index = GetPageIndex(found->second);
-    if (page_index != wxNOT_FOUND) {
+    if(page_index != wxNOT_FOUND) {
       SetSelection(page_index);
     }
   }
@@ -120,7 +120,7 @@ void Notebook::OpenFile(const wxString& fn)
     pages[filename] = edit;
 
     int page_index = GetPageIndex(edit);
-    if (page_index != wxNOT_FOUND) {
+    if(page_index != wxNOT_FOUND) {
       SetSelection(page_index);
     }
   }
