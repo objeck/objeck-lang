@@ -396,14 +396,14 @@ void GeneralOptionsManager::ShowOptionsDialog(wxWindow* parent)
 }
 
 //----------------------------------------------------------------------------
-// ProjectManager
+// FileManager
 //----------------------------------------------------------------------------
-ProjectManager::ProjectManager(MyFrame* parent, wxTreeCtrl* tree, const wxString &name, const wxString &filename)
+FileManager::FileManager(MyFrame* parent, wxTreeCtrl* tree, const wxString &name, const wxString &filename)
 {
   m_parent = parent;
   m_tree = tree;
   
-  // create project file
+  // create file file
 	wxString project_string = wxT("name=" + name + "\r\n");
 	project_string += wxT("source=\r\n");
 	project_string += wxT("libraries=\r\n");
@@ -414,14 +414,14 @@ ProjectManager::ProjectManager(MyFrame* parent, wxTreeCtrl* tree, const wxString
   BuildTree(name);
 }
 
-ProjectManager::ProjectManager(MyFrame* parent, wxTreeCtrl* tree, const wxString &filename)
+FileManager::FileManager(MyFrame* parent, wxTreeCtrl* tree, const wxString &filename)
 {
   m_parent = parent;
   m_tree = tree;
   iniManager = new IniManager(filename);
-  BuildTree(iniManager->GetValue(L"Project", L"name"));
+  BuildTree(iniManager->GetValue(L"file", L"name"));
 
-  // add project files
+  // add file files
   m_tree->Freeze();
   wxArrayString src_files = GetFiles();
   for(size_t i = 0; i < src_files.size(); ++i) {
@@ -430,20 +430,20 @@ ProjectManager::ProjectManager(MyFrame* parent, wxTreeCtrl* tree, const wxString
     const wxString file_name = source_file.GetFullName();
     AddFile(file_name, full_path);    
   }
-  m_parent->EnableProjectNode(m_sourceTreeItemId);
   m_tree->Thaw();
 }
 
-ProjectManager::~ProjectManager()
+FileManager::~FileManager()
 {
   m_tree->DeleteAllItems();
   delete iniManager;
 }
 
-void ProjectManager::BuildTree(const wxString &name)
+void FileManager::BuildTree(const wxString &name)
 {
   m_tree->Freeze();
 
+  /*
   // clear tree
   m_tree->DeleteAllItems();
   // root
@@ -457,33 +457,34 @@ void ProjectManager::BuildTree(const wxString &name)
   // expand nodes
   m_tree->Expand(m_root);
   m_tree->Expand(m_libraryTreeItemId);
+  */
 
   m_tree->Thaw();
 }
 
-void ProjectManager::AddFile(const wxString &filename, const wxString &full_path, bool save)
+void FileManager::AddFile(const wxString &filename, const wxString &full_path, bool save)
 {
-  m_tree->AppendItem(m_sourceTreeItemId, filename, 2, -1, new TreeData(filename, full_path));
+  m_tree->AppendItem(m_root, filename, 2, -1, new TreeData(filename, full_path));
   if(save) {
-    iniManager->AddListValue(L"Project", L"source", full_path);
+    iniManager->AddListValue(L"file", L"source", full_path);
     iniManager->Save();
   }
 }
  
-void ProjectManager::RemoveFile(TreeData* data)
+void FileManager::RemoveFile(TreeData* data)
 {
   if(data) {
-    iniManager->RemoveListValue(L"Project", L"source", data->GetFullPath());
+    iniManager->RemoveListValue(L"file", L"source", data->GetFullPath());
     iniManager->Save();
     m_tree->Delete(data->GetId());
   }
 }
 
-wxArrayString ProjectManager::GetFiles() 
+wxArrayString FileManager::GetFiles() 
 {
   wxArrayString source_files;
   
-  const wxString source_string = iniManager->GetValue(L"Project", L"source");
+  const wxString source_string = iniManager->GetValue(L"file", L"source");
   wxStringTokenizer tokenizer(source_string, L";");
   while (tokenizer.HasMoreTokens()) {
     const wxString source = tokenizer.GetNextToken();
@@ -493,31 +494,7 @@ wxArrayString ProjectManager::GetFiles()
   return source_files;
 }
 
-bool ProjectManager::AddLibrary(const wxString &name)
-{
-  return false;
-}
-
-bool ProjectManager::RemoveLibrary(const wxString &name)
-{
-  return false;
-}
-
-wxArrayString ProjectManager::GetLibraries()
-{
-	wxArrayString lib_files;
-
-	// TODO: do stuff
-
-	return lib_files;
-}
-
-bool ProjectManager::Compile()
-{
-  return false;
-}
-
-bool ProjectManager::Close()
+bool FileManager::Close()
 {
 	return false;
 }

@@ -82,7 +82,7 @@ MyFrame::MyFrame(wxWindow* parent, wxWindowID id, const wxString& title, const w
     wxFrame(parent, id, title, pos, size, style) 
 {
   m_optionsManager = new GeneralOptionsManager(wxT("ide.ini"));
-  m_projectManager = NULL;
+  m_fileManager = NULL;
   m_newPageCount = 1;
   
   // setup window manager
@@ -115,9 +115,9 @@ MyFrame::~MyFrame()
     m_optionsManager = NULL;
   }
 
-  if(m_projectManager) {
-    delete m_projectManager;
-    m_projectManager = NULL;
+  if(m_fileManager) {
+    delete m_fileManager;
+    m_fileManager = NULL;
   }
 
   m_auiManager.UnInit();
@@ -143,28 +143,28 @@ void MyFrame::OnClose(wxCloseEvent &WXUNUSED(event))
   Destroy();
 }
 
-void MyFrame::OnAddProjectFile(wxCommandEvent &event)
+void MyFrame::OnAddFile(wxCommandEvent &event)
 {
   wxFileDialog fileDialog(this, L"Add Source File...", L"", L"", L"Source Files (*.obs)|*.obs", 
                           wxFD_OPEN|wxFD_FILE_MUST_EXIST);
   if(fileDialog.ShowModal() == wxID_OK) {
-    AddProjectSource(fileDialog.GetPath());
+    AddFile(fileDialog.GetPath());
   }
 }
 
-void MyFrame::OnRemoveProjectFile(wxCommandEvent &event)
+void MyFrame::OnRemoveFile(wxCommandEvent &event)
 {
-  if(m_projectManager) {
-    m_projectManager->RemoveFile(m_tree->GetData());
+  if(m_fileManager) {
+    m_fileManager->RemoveFile(m_tree->GetData());
   }
 }
 
-void MyFrame::AddProjectSource(const wxString &full_path) 
+void MyFrame::AddFile(const wxString &full_path) 
 {
   wxFileName source_file(full_path);
   const wxString file_name = source_file.GetFullName();
-  if(m_projectManager) {
-    m_projectManager->AddFile(file_name, full_path, true);
+  if(m_fileManager) {
+    m_fileManager->AddFile(file_name, full_path, true);
   }
 }
 
@@ -191,9 +191,11 @@ void MyFrame::OnFileOpen(wxCommandEvent &WXUNUSED(event))
 
 void MyFrame::OnFileSave(wxCommandEvent &WXUNUSED(event)) 
 {
-  if (!m_notebook->GetEdit()) return;
+  if(!m_notebook->GetEdit()) {
+    return;
+  }
 
-  if (m_notebook->GetEdit()->Modified()) {
+  if(m_notebook->GetEdit()->Modified()) {
     m_notebook->GetEdit()->SaveFile();
   }
 }
@@ -204,25 +206,28 @@ void MyFrame::OnFileSaveAs(wxCommandEvent &WXUNUSED(event))
 
   wxString filename = wxEmptyString;
   wxFileDialog dlg(this, wxT("Save file"), wxEmptyString, wxEmptyString, 
-    wxT("Objeck files (*.obs)|*.obs;*.obw|All types (*.*)|*.*"), 
-    wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
-  if (dlg.ShowModal() != wxID_OK) return;
+                   wxT("Objeck files (*.obs)|*.obs;*.obw|All types (*.*)|*.*"), 
+                   wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
+  if(dlg.ShowModal() != wxID_OK) {
+    return;
+  }
+
   filename = dlg.GetPath();
   m_notebook->GetEdit()->SaveFile(filename);
 }
 
 void MyFrame::OnFileClose(wxCommandEvent &WXUNUSED(event)) 
 {
-  if (!m_notebook->GetEdit()) return;
+  if(!m_notebook->GetEdit()) {
+    return;
+  }
 
   // check to see if file has been modified
-  if (m_notebook->GetEdit()->Modified()) {
-    if (wxMessageBox(_("Text is not saved, save before closing?"), _("Close"),
-      wxYES_NO | wxICON_QUESTION) == wxYES) {
+  if(m_notebook->GetEdit()->Modified()) {
+    if(wxMessageBox(_("Text is not saved, save before closing?"), _("Close"), wxYES_NO | wxICON_QUESTION) == wxYES) {
       m_notebook->GetEdit()->SaveFile();
-      if (m_notebook->GetEdit()->Modified()) {
-        wxMessageBox(_("Text could not be saved!"), _("Close abort"),
-          wxOK | wxICON_EXCLAMATION);
+      if(m_notebook->GetEdit()->Modified()) {
+        wxMessageBox(_("Text could not be saved!"), _("Close abort"), wxOK | wxICON_EXCLAMATION);
         return;
       }
     }
@@ -351,7 +356,7 @@ FileTreeCtrl* MyFrame::CreateTreeCtrl()
   imglist->Add(wxArtProvider::GetBitmap(wxART_EXECUTABLE_FILE, wxART_OTHER, wxSize(16, 16)));
   m_tree->AssignImageList(imglist);
 
-  m_tree->AddRoot(wxT("<empty>"), 0);
+  m_tree->AddRoot(wxT("Files"), 0);
   
   return m_tree;
 }
@@ -512,16 +517,16 @@ void FileTreeCtrl::OnItemMenu(wxTreeEvent& event)
   wxTreeItemId itemId = event.GetItem();
   TreeData* data = (TreeData*)GetItemData(itemId);
 
-  if(m_frame->GetProjectManager()) {
-    if(m_frame->GetProjectManager()->HitProject(itemId)) {
+  if(m_frame->GetFileManager()) {
+    if(m_frame->GetFileManager()->HitFile(itemId)) {
       wxMenu menu;
       menu.AppendSeparator();
       menu.Append(myID_PROJECT_ADD_FILE, _("&Add source..."));
       menu.AppendSeparator();
-      menu.Append(wxID_ANY, wxT("&Project options"));
+      menu.Append(wxID_ANY, wxT("&file options"));
       PopupMenu(&menu, event.GetPoint());
     }
-    else if(m_frame->GetProjectManager()->HitSource(itemId)) {
+    else if(m_frame->GetFileManager()->HitFile(itemId)) {
       wxMenu menu;
       menu.Append(myID_PROJECT_ADD_FILE, _("&Add source..."));
       PopupMenu(&menu, event.GetPoint());
@@ -580,7 +585,7 @@ wxThread::ExitCode MyThread::Entry()
     BuildProcess process;
     int code = wxExecute(m_cmd.mb_str(), wxEXEC_SYNC | wxEXEC_HIDE_CONSOLE, &process);
     if(code < 0) {
-      wxMessageDialog fileOverWrite(m_pHandler, wxT("Unable to invoke compiler executable, please check file paths."), wxT("Build Project"));
+      wxMessageDialog fileOverWrite(m_pHandler, wxT("Unable to invoke compiler executable, please check file paths."), wxT("Build file"));
       fileOverWrite.ShowModal();
       return (wxThread::ExitCode)1;
     }
