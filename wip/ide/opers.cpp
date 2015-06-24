@@ -443,11 +443,11 @@ void FileManager::BuildTree(const wxString &name)
 {
   m_tree->Freeze();
 
-  /*
   // clear tree
   m_tree->DeleteAllItems();
   // root
   m_root = m_tree->AddRoot(name, 0);
+  /*
   // source
   m_sourceTreeItemId = m_tree->AppendItem(m_root, wxT("Source"), 1);
   // libraries
