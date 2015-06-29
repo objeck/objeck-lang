@@ -254,7 +254,7 @@ IO.Console->Print("\tProcessed interface: name='")->Print(@class_inf_block->GetN
 	}
 	
 	method : public : native : Parse() ~ Bool {
-		for(i := 1; i < @files->Size(); i += 1;) {
+		for(i := 2; i < @files->Size(); i += 1;) {
 			file := @files[i];
 			
 			if(<>file->EndsWith(".obs")) {
