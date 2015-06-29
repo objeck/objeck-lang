@@ -188,7 +188,7 @@ void MyFrame::OnFileOpen(wxCommandEvent &WXUNUSED(event))
 	const wxString path = dlg.GetPath();
   m_notebook->OpenFile(path);
 
-  m_fileManager->AddFile(wxT("Foo"), path);
+  // m_fileManager->AddFile(wxT("Foo"), path);
 }
 
 void MyFrame::OnFileSave(wxCommandEvent &WXUNUSED(event)) 
