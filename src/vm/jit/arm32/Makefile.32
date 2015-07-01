@@ -1,0 +1,16 @@
+ARGS=-g -D_DEBUG  -Wunused -Wall -Wno-unused-function
+# ARGS=-O3 -Wall -Wno-unused-function -Wno-unused-function
+
+CC=g++
+AR=ar
+SRC= jit_arm_a32.o
+LIB= ../../jit_arm_a32.a
+
+$(LIB): $(SRC)
+	$(AR) -cvq $(LIB) $(SRC)
+
+%.o: %.cpp
+	$(CC) $(ARGS) -c $< 
+
+clean:
+	rm -f *.o *~ $(LIB)
