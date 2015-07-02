@@ -1,7 +1,7 @@
 /***************************************************************************
-* JIT compiler for the x86 architecture.
+* JIT compiler for the ARM32 architecture.
 *
-* Copyright (c) 2008-2013, Randy Hollines
+* Copyright (c) 2008-2015, Randy Hollines
 * All rights reserved.
 *
 * Redistribution and use in source and binary forms, with or without 
