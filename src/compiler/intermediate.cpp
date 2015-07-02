@@ -2248,7 +2248,7 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
     break;
 
   case CHAR_LIT_EXPR:
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_CHAR_LIT, static_cast<CharacterLiteral*>(expression)->GetValue()));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_CHAR_LIT, (int)static_cast<CharacterLiteral*>(expression)->GetValue()));
     EmitCast(expression);
     break;
 
