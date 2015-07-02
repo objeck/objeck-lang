@@ -1,6 +1,6 @@
+# export OPENSSL_armcap=0 
 # ARGS=-g -D_SANITIZE -pthread -Wall -Wno-unused-function
-# ARGS=-O3 -pthread -Wall -D_NO_JIT -Wno-unused-function
-# ARGS=-pg -O3 -pthread -Wall -Wno-unused-function
+# ARGS=-O3 -D_ARM -pthread -Wall -D_NO_JIT -Wno-unused-function
 ARGS=-g -D_DEBUG -D_ARM32 -D_NO_JIT -Wall -pthread -Wall -Wno-unused-function
 
 CC=g++
