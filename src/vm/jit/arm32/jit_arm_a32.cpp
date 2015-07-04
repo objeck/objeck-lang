@@ -54,6 +54,10 @@ void JitCompilerIA32::Prolog() {
 
   unsigned char setup_code[] = {
     // setup stack frame
+    0xe5, 0x2d, 0xb0, 0x04,
+		0xe2, 0x8d, 0xb0, 0x00,
+
+/*
     0x55,                                                        // push %ebp
     0x89, 0xe5,                                                  // mov  %esp, %ebp
     0x81, 0xec, buffer[0], buffer[1], buffer[2], buffer[3],      // sub  $imm, %esp
@@ -63,6 +67,7 @@ void JitCompilerIA32::Prolog() {
     0x52,                                                        // push edx
     0x57,                                                        // push edi
     0x56                                                         // push esi
+*/
   };
   const int32_t setup_size = sizeof(setup_code);
   // copy setup
