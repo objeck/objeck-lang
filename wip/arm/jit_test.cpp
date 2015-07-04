@@ -23,25 +23,25 @@ enum Reg {
 };
 
 uint32_t add_reg_reg(Reg dest, Reg left, Reg right) {
-	uint32_t op_code = 0xe0800000;
+  uint32_t op_code = 0xe0800000;
+  
+  uint32_t op_left = left << 16;
+  op_code |= op_left;
+  
+  uint32_t op_dest = dest << 12;
+  op_code |= op_dest;
 	
-	uint32_t op_left = left << 16;
-	op_code += op_left;
+  op_code |= right;
 	
-	uint32_t op_dest = dest << 12;
-	op_code += op_dest;
-	
-	op_code += right;
-	
-	return op_code;
+  return op_code;
 }
 
 uint32_t mov_imm(Reg reg, int32_t value) {
   uint32_t op_code = 0xe3a00000;
 
-  uint32_t op_reg = reg << 12;
-  op_code += op_reg;
-  op_code += value;
+  uint32_t op_dest = reg << 12;
+  op_code |= op_dest;
+  op_code |= value;
 
   return op_code;
 }
