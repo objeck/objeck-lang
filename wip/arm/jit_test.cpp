@@ -1,3 +1,8 @@
+/*********************************************** 
+ * R. Hollines
+ * Simple JIT code for ARM-A32 (Raspberry Pi v2)
+ ***********************************************/
+
 #include <stdlib.h>
 #include <stdint.h>
 #include <sys/mman.h>
@@ -10,6 +15,23 @@ using namespace std;
 
 typedef int32_t (*jit_fun_ptr)();
 
+enum Reg {
+	R0,
+	R1,
+	R2,
+	R3,
+};
+
+uint32_t mov_imm(Reg reg, int32_t value) {
+	uint32_t op_code = 0xe3a00000;
+
+	uint32_t op_reg = reg << 12;
+	op_code += op_reg;
+	op_code += value;
+
+	return op_code;
+}
+
 bool MakeCode(INSTR* code) {
 	int code_index = 0;
 	
@@ -19,7 +41,8 @@ bool MakeCode(INSTR* code) {
 	// add fp, sp, #0
 	code[code_index++] = 0xe28db000;
 	
-	// ....
+	// mov r0, 13
+	code[code_index++] = mov_imm(R0, 13);
 	
 	// add sp, fp, #0
 	code[code_index++] = 0xe28bd000;
@@ -48,7 +71,8 @@ int main() {
 	
 	if(MakeCode(code)) {
 		jit_fun_ptr jit_fun = (jit_fun_ptr)code;
-		jit_fun();
+		int value = jit_fun();
+		cout << value << endl;
 	}
 	else {
 		cerr << "Unable to make code!" << endl;
