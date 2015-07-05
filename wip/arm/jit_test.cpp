@@ -36,6 +36,20 @@ uint32_t add_reg_reg(Reg dest, Reg left, Reg right) {
   return op_code;
 }
 
+uint32_t sub_reg_reg(Reg dest, Reg left, Reg right) {
+  uint32_t op_code = 0xe0400000;
+  
+  uint32_t op_left = left << 16;
+  op_code |= op_left;
+  
+  uint32_t op_dest = dest << 12;
+  op_code |= op_dest;
+	
+  op_code |= right;
+	
+  return op_code;
+}
+
 uint32_t mov_imm(Reg reg, int32_t value) {
   uint32_t op_code = 0xe3a00000;
 
@@ -56,9 +70,9 @@ bool MakeCode(INSTR* code) {
   code[code_index++] = 0xe28db000;
 	
   // add 2 values
-  code[code_index++] = mov_imm(R0, 18);
-  code[code_index++] = mov_imm(R1, 2);
-  code[code_index++] = add_reg_reg(R0, R0, R1);
+  code[code_index++] = mov_imm(R0, 50);
+  code[code_index++] = mov_imm(R1, 1);
+  code[code_index++] = sub_reg_reg(R0, R0, R1);
 	
   // add sp, fp, #0
   code[code_index++] = 0xe28bd000;
