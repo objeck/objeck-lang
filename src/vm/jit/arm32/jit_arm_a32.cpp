@@ -70,7 +70,7 @@ void JitCompilerIA32::Prolog() {
     0x56                                                         // push esi
 */
   };
-  const int32_t setup_size = sizeof(setup_code);
+  const int32_t setup_size = sizeof(setup_code) / sizeof(int32_t);
   // copy setup
   for(int32_t i = 0; i < setup_size; i++) {
     AddMachineCode(setup_code[i]);
@@ -102,8 +102,9 @@ void JitCompilerIA32::Epilog(int32_t imm) {
     0xc3              // rtn
     */
   };
-  const int32_t teardown_size = sizeof(teardown_code);
+
   // copy teardown
+  const int32_t teardown_size = sizeof(teardown_code) / sizeof(int32_t);
   for(int32_t i = 0; i < teardown_size; i++) {
     AddMachineCode(teardown_code[i]);
   }
@@ -3833,7 +3834,7 @@ void JitExecutorIA32::Initialize(StackProgram* p) {
 }
 
 int32_t JitExecutorIA32::ExecuteMachineCode(int32_t cls_id, int32_t mthd_id, int32_t* inst, 
-					    unsigned char* code, const int32_t code_size, int32_t* op_stack, int32_t *stack_pos,
+					    uint32_t* code, const int32_t code_size, int32_t* op_stack, int32_t *stack_pos,
               StackFrame** call_stack, long* call_stack_pos) {
   // create function
   jit_fun_ptr jit_fun = (jit_fun_ptr)code;
