@@ -12,7 +12,7 @@
 * - Redistributions in binary form must reproduce the above copyright 
 * notice, this list of conditions and the following disclaimer in 
 * the documentation and/or other materials provided with the distribution.
-* - Neither the name of the StackVM Team nor the names of its 
+* - Neither the name of the Objeck Team nor the names of its 
 * contributors may be used to endorse or promote products derived 
 * from this software without specific prior written permission.
 *
@@ -278,7 +278,7 @@ namespace Runtime {
     void ProcessFloatCalculation(StackInstr* instruction);
     void ProcessReturn(int32_t params = -1);
     void ProcessStackCallback(int32_t instr_id, StackInstr* instr, 
-      int32_t &instr_index, int32_t params);
+			      int32_t &instr_index, int32_t params);
     void ProcessIntCallParameter();
     void ProcessFloatCallParameter(); 
     void ProcessFunctionCallParameter();
@@ -299,7 +299,7 @@ namespace Runtime {
     void ProcessIntToFloat(StackInstr* instr);
 
     // Add byte code to buffer
-    inline void AddMachineCode(unsigned char b) {
+    inline void AddMachineCode(uint32_t i) {
       if(code_index == code_buf_max) {
 #ifdef _WIN32
         code = (unsigned char*)realloc(code, code_buf_max * 2); 
@@ -319,7 +319,8 @@ namespace Runtime {
 #endif	
         code_buf_max *= 2;
       }
-      code[code_index++] = b;
+      memcpy(&code[code_index], &i, sizeof(int32_t));
+      i += sizeof(int32_t);
     }
 
     // Encodes and writes out a 32-bit integer value
