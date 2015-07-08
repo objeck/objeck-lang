@@ -47,7 +47,7 @@
 using namespace std;
 
 namespace Runtime {
-  // offsets for Intel (IA-32) addresses
+  // offsets for ARM-A32 addresses
 #define CLS_ID -8
 #define MTHD_ID -12
 #define CLASS_MEM -16
@@ -57,19 +57,19 @@ namespace Runtime {
 #define CALL_STACK -32
 #define CALL_STACK_POS -36
   // float temps
-#define TMP_XMM_0 -8
-#define TMP_XMM_1 -16
-#define TMP_XMM_2 -24
+#define TMP_XMM_0 -40
+#define TMP_XMM_1 -48
+#define TMP_XMM_2 -56
   // integer temps
-#define TMP_REG_0 -28
-#define TMP_REG_1 -32
-#define TMP_REG_2 -36
-#define TMP_REG_3 -40
-#define TMP_REG_4 -44
-#define TMP_REG_5 -48
+#define TMP_REG_0 -64
+#define TMP_REG_1 -68
+#define TMP_REG_2 -72
+#define TMP_REG_3 -76
+#define TMP_REG_4 -80
+#define TMP_REG_5 -84
   
 #define MAX_DBLS 64
-#define OUR_PAGE_SIZE 4096
+#define PAGE_SIZE 4096
   
   // register type
   typedef enum _RegType { 
@@ -99,7 +99,7 @@ namespace Runtime {
     SP,
     R14,
     R15,
-	XMM0, 
+    XMM0, 
     XMM1,
     XMM2,
     XMM3,
@@ -317,7 +317,7 @@ namespace Runtime {
         }
 #else
         uint32_t* tmp;	
-        if(posix_memalign((void**)&tmp, OUR_PAGE_SIZE, code_buf_max * sizeof(uint32_t) * 2)) {
+        if(posix_memalign((void**)&tmp, PAGE_SIZE, code_buf_max * sizeof(uint32_t) * 2)) {
           wcerr << L"Unable to reallocate JIT memory!" << endl;
           exit(1);
         }
@@ -1427,17 +1427,17 @@ namespace Runtime {
           << method->GetParamCount() << L" ----------" << endl;
 #endif
 	
-        code_buf_max = OUR_PAGE_SIZE / sizeof(uint32_t);
+        code_buf_max = PAGE_SIZE / sizeof(uint32_t);
 #ifdef _WIN32
         code = (uint32_t*)malloc(code_buf_max);
         floats = new double[MAX_DBLS];
 #else
-        if(posix_memalign((void**)&code, OUR_PAGE_SIZE, code_buf_max * sizeof(uint32_t))) {
+        if(posix_memalign((void**)&code, PAGE_SIZE, code_buf_max * sizeof(uint32_t))) {
           wcerr << L"Unable to allocate JIT memory!" << endl;
           exit(1);
         }
 	
-        if(posix_memalign((void**)&floats, OUR_PAGE_SIZE, sizeof(double) * MAX_DBLS)) {
+        if(posix_memalign((void**)&floats, PAGE_SIZE, sizeof(double) * MAX_DBLS)) {
           wcerr << L"Unable to allocate JIT memory!" << endl;
           exit(1);
         }

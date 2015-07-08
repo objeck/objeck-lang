@@ -55,6 +55,7 @@ void JitCompilerIA32::Prolog() {
   */
   
   uint32_t setup_code[] = {
+    0xe92d100e, // push {r1, r2, r3, r12}
     0xe52db004, // push {fp}
     0xe28db000, // add fp, sp, #0
     0xe24dd000 + local_space, // sub sp, sp, #20
@@ -2231,6 +2232,9 @@ void JitCompilerIA32::move_imm_mem16(int32_t imm, int32_t offset, Register dest)
   AddImm16(imm);
 }
 
+
+// ====== TODO ========
+
 void JitCompilerIA32::move_imm_mem(int32_t imm, int32_t offset, Register dest) {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [movl $" << imm << L", " << offset 
@@ -2258,6 +2262,8 @@ void JitCompilerIA32::move_imm_reg(int32_t imm, Register reg) {
   // write value
   AddImm(imm);
 }
+
+// ======== TODO ===========
 
 void JitCompilerIA32::move_imm_xreg(RegInstr* instr, Register reg) {
   // copy address of imm value
