@@ -12,7 +12,7 @@
  * - Redistributions in binary form must reproduce the above copjyright 
  * notice, this list of conditions and the following disclaimer in 
  * the documentation and/or other materials provided with the distribution.
- * - Neither the name of the StackVM Team nor the names of its 
+ * - Neither the name of the Objeck Team nor the names of its 
  * contributors may be used to endorse or promote products derived 
  * from this software without specific prior written permission.
  *
@@ -48,15 +48,16 @@ void JitCompilerIA32::Prolog() {
   wcout << L"  " << (++instr_count) << L": [<prolog>]" << endl;
 #endif
 
+  /*
   local_space += 8;
   unsigned char buffer[4];
   ByteEncode32(buffer, local_space);
-
-  unsigned char setup_code[] = {
-    // setup stack frame
-    0xe5, 0x2d, 0xb0, 0x04,
-		0xe2, 0x8d, 0xb0, 0x00,
-
+  */
+  
+  uint32_t setup_code[] = {
+    0xe52db004, // push {fp}
+    0xe28db000, // add fp, sp, #0
+        
 /*
     0x55,                                                        // push %ebp
     0x89, 0xe5,                                                  // mov  %esp, %ebp
@@ -69,7 +70,7 @@ void JitCompilerIA32::Prolog() {
     0x56                                                         // push esi
 */
   };
-  const int32_t setup_size = sizeof(setup_code);
+  const int32_t setup_size = sizeof(setup_code) / sizeof(int32_t);
   // copy setup
   for(int32_t i = 0; i < setup_size; i++) {
     AddMachineCode(setup_code[i]);
@@ -83,7 +84,12 @@ void JitCompilerIA32::Epilog(int32_t imm) {
 #endif
   
   move_imm_reg(imm, EAX);
-  unsigned char teardown_code[] = {
+  uint32_t teardown_code[] = {
+    0xe28bd000, // add sp, fp, #0
+    0xe8bd0800, // ldmfd sp!, {fp}
+    0xe12fff1e, // bx lr
+    
+    /*
     // restore registers
     0x5e,             // pop esi
     0x5f,             // pop edi
@@ -94,9 +100,11 @@ void JitCompilerIA32::Epilog(int32_t imm) {
     0x89, 0xec,       // mov  %ebp, %esp
     0x5d,             // pop %ebp
     0xc3              // rtn
+    */
   };
-  const int32_t teardown_size = sizeof(teardown_code);
+
   // copy teardown
+  const int32_t teardown_size = sizeof(teardown_code) / sizeof(int32_t);
   for(int32_t i = 0; i < teardown_size; i++) {
     AddMachineCode(teardown_code[i]);
   }
@@ -3826,7 +3834,7 @@ void JitExecutorIA32::Initialize(StackProgram* p) {
 }
 
 int32_t JitExecutorIA32::ExecuteMachineCode(int32_t cls_id, int32_t mthd_id, int32_t* inst, 
-					    unsigned char* code, const int32_t code_size, int32_t* op_stack, int32_t *stack_pos,
+					    uint32_t* code, const int32_t code_size, int32_t* op_stack, int32_t *stack_pos,
               StackFrame** call_stack, long* call_stack_pos) {
   // create function
   jit_fun_ptr jit_fun = (jit_fun_ptr)code;

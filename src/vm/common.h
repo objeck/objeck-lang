@@ -214,17 +214,26 @@ class StackInstr
  ********************************/
 class NativeCode 
 {
+#ifdef _ARM32
+  uint32_t* code;
+#else
   unsigned char* code;
+#endif  
   long size;
   FLOAT_VALUE* floats;
-
+  
  public:
-  NativeCode(unsigned char* c, long s, FLOAT_VALUE* f) {
+#ifdef _ARM32
+  NativeCode(uint32_t* c, long s, FLOAT_VALUE* f)
+#else
+  NativeCode(unsigned char* c, long s, FLOAT_VALUE* f)
+#endif
+  {
     code = c;
     size = s;
     floats = f;
   }
-
+  
   ~NativeCode() {
 #ifdef _WIN32
     free(code);
@@ -244,10 +253,15 @@ class NativeCode
     floats = NULL;
   }
 
-  unsigned char* GetCode() const {
+#ifdef _ARM32
+  uint32_t* GetCode() const
+#else
+  unsigned char* GetCode() const
+#endif
+  {
     return code;
   }
-
+  
   long GetSize() {
     return size;
   }

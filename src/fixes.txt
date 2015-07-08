@@ -1,3 +1,6 @@
+7/7/15
+* export OPENSSL_armcap=0
+
 5/27/15
 * fixed a memory leadk in odbc library
 * updated timer code such that it works :)

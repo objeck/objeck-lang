@@ -12,7 +12,7 @@
 * - Redistributions in binary form must reproduce the above copyright 
 * notice, this list of conditions and the following disclaimer in 
 * the documentation and/or other materials provided with the distribution.
-* - Neither the name of the StackVM Team nor the names of its 
+* - Neither the name of the Objeck Team nor the names of its 
 * contributors may be used to endorse or promote products derived 
 * from this software without specific prior written permission.
 *
@@ -250,7 +250,7 @@ namespace Runtime {
     int32_t local_space;
     StackMethod* method;
     int32_t instr_count;
-    unsigned char* code;
+    uint32_t* code;
     int32_t code_index;   
     double* floats;     
     int32_t floats_index;
@@ -278,7 +278,7 @@ namespace Runtime {
     void ProcessFloatCalculation(StackInstr* instruction);
     void ProcessReturn(int32_t params = -1);
     void ProcessStackCallback(int32_t instr_id, StackInstr* instr, 
-      int32_t &instr_index, int32_t params);
+			      int32_t &instr_index, int32_t params);
     void ProcessIntCallParameter();
     void ProcessFloatCallParameter(); 
     void ProcessFunctionCallParameter();
@@ -299,17 +299,17 @@ namespace Runtime {
     void ProcessIntToFloat(StackInstr* instr);
 
     // Add byte code to buffer
-    inline void AddMachineCode(unsigned char b) {
+    inline void AddMachineCode(uint32_t i) {
       if(code_index == code_buf_max) {
 #ifdef _WIN32
-        code = (unsigned char*)realloc(code, code_buf_max * 2); 
+        code = (uint32_t*)realloc(code, code_buf_max * 2); 
         if(!code) {
           wcerr << L"Unable to allocate memory!" << endl;
           exit(1);
         }
 #else
-        unsigned char* tmp;	
-        if(posix_memalign((void**)&tmp, OUR_PAGE_SIZE, code_buf_max * 2)) {
+        uint32_t* tmp;	
+        if(posix_memalign((void**)&tmp, OUR_PAGE_SIZE, code_buf_max * sizeof(uint32_t) * 2)) {
           wcerr << L"Unable to reallocate JIT memory!" << endl;
           exit(1);
         }
@@ -319,7 +319,7 @@ namespace Runtime {
 #endif	
         code_buf_max *= 2;
       }
-      code[code_index++] = b;
+      memcpy(&code[code_index++], &i, sizeof(int32_t));
     }
 
     // Encodes and writes out a 32-bit integer value
@@ -1551,17 +1551,17 @@ namespace Runtime {
           << mthd_id << L"; mthd_name='" << method->GetName() << L"'; params=" 
           << method->GetParamCount() << L" ----------" << endl;
 #endif
-
-        code_buf_max = OUR_PAGE_SIZE;
+	
+        code_buf_max = OUR_PAGE_SIZE / sizeof(uint32_t);
 #ifdef _WIN32
-        code = (unsigned char*)malloc(code_buf_max);
+        code = (uint32_t*)malloc(code_buf_max);
         floats = new double[MAX_DBLS];
 #else
-        if(posix_memalign((void**)&code, OUR_PAGE_SIZE, code_buf_max)) {
+        if(posix_memalign((void**)&code, OUR_PAGE_SIZE, code_buf_max * sizeof(uint32_t))) {
           wcerr << L"Unable to allocate JIT memory!" << endl;
           exit(1);
         }
-
+	
         if(posix_memalign((void**)&floats, OUR_PAGE_SIZE, sizeof(double) * MAX_DBLS)) {
           wcerr << L"Unable to allocate JIT memory!" << endl;
           exit(1);
@@ -1623,7 +1623,7 @@ namespace Runtime {
         }
 #ifdef _DEBUG
         wcout << L"Caching JIT code: actual=" << code_index 
-          << L", buffer=" << code_buf_max << L" byte(s)" << endl;
+               << L", buffer=" << code_buf_max << L" byte(s)" << endl;
 #endif
         // store compiled code
 #ifndef _WIN32
@@ -1656,11 +1656,11 @@ namespace Runtime {
   class JitExecutorIA32 {
     static StackProgram* program;
     StackMethod* method;
-    unsigned char* code;
+    uint32_t* code;
     int32_t code_index; 
     double* floats;
 
-    int32_t ExecuteMachineCode(int32_t cls_id, int32_t mthd_id, int32_t* inst, unsigned char* code, 
+    int32_t ExecuteMachineCode(int32_t cls_id, int32_t mthd_id, int32_t* inst, uint32_t* code, 
 			       const int32_t code_size, int32_t* op_stack, int32_t *stack_pos,
 			       StackFrame** call_stack, long* call_stack_pos);
 
