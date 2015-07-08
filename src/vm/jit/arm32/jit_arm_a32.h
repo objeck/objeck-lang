@@ -83,15 +83,23 @@ namespace Runtime {
 
   // general and SSE (x86) registers
   typedef enum _Register { 
-    EAX = -5000, 
-    EBX, 
-    ECX, 
-    EDX, 
-    EDI,
-    ESI,
-    EBP,
-    ESP,
-    XMM0, 
+    R0 = -5000, 
+    R1, 
+    R2, 
+    R3, 
+    R4, 
+    R5, 
+    R6, 
+    FP, 
+    R8, 
+    R9, 
+    R10, 
+    R11, 
+    R12,
+    SP,
+    R14,
+    R15,
+	XMM0, 
     XMM1,
     XMM2,
     XMM3,
@@ -346,78 +354,76 @@ namespace Runtime {
       unsigned byte = 0;
 
       switch(mod_rm) {
-      case ESP:
+      case SP:
       case XMM4:
         byte = 0xa0;
         break;
 
-      case EAX:
+      case R0:
       case XMM0:
         byte = 0x80;
         break;
 
-      case EBX:
+      case R1:
       case XMM3:
         byte = 0x98;
         break;
 
-      case ECX:
+      case R2:
       case XMM1:
         byte = 0x88;
         break;
 
-      case EDX:
+      case R3:
       case XMM2:
         byte = 0x90;
         break;
 
-      case EDI:
+      case R12:
       case XMM7:
         byte = 0xb8;
         break;
 
-      case ESI:
       case XMM6:
         byte = 0xb0;
         break;
 
-      case EBP:
+      case FP:
       case XMM5:
         byte = 0xa8;
         break;
       }
 
       switch(eff_adr) {
-      case EAX:
+      case R0:
       case XMM0:
         break;
 
-      case EBX:
+      case R1:
       case XMM3:
         byte += 3;
         break;
 
-      case ECX:
+      case R2:
       case XMM1:
         byte += 1;
         break;
 
-      case EDX:
+      case R3:
       case XMM2:
         byte += 2;
         break;
 
-      case EDI:
+      case R12:
       case XMM7:
         byte += 7;
         break;
 
-      case ESI:
       case XMM6:
         byte += 6;
         break;
 
-      case EBP:
+      case FP:
       case XMM5:
         byte += 5;
         break;
@@ -426,8 +432,8 @@ namespace Runtime {
         byte += 4;
         break;
 
-        // should never happen for esp
-      case ESP:
+        // should never happen for SP
+      case SP:
         wcerr << L">>> invalid register reference <<<" << endl;
         exit(1);
         break;
@@ -439,29 +445,26 @@ namespace Runtime {
     // Returns the name of a register
     wstring GetRegisterName(Register reg) {
       switch(reg) {
-      case EAX:
-        return L"eax";
+      case R0:
+        return L"R0";
 
-      case EBX:
-        return L"ebx";
+      case R1:
+        return L"R1";
 
-      case ECX:
-        return L"ecx";
+      case R2:
+        return L"R2";
 
-      case EDX:
-        return L"edx";
+      case R3:
+        return L"R3";
 
-      case EDI:
-        return L"edi";
+      case R12:
+        return L"R12";
 
-      case ESI:
-        return L"esi";
+      case FP:
+        return L"FP";
 
-      case EBP:
-        return L"ebp";
-
-      case ESP:
-        return L"esp";
+      case SP:
+        return L"SP";
 
       case XMM0:
         return L"xmm0";
@@ -510,42 +513,41 @@ namespace Runtime {
 
       unsigned char reg_id;
       switch(reg) {
-      case EAX:
+      case R0:
       case XMM0:
         reg_id = 0x0;
         break;
 
-      case EBX:
+      case R1:
       case XMM3:
         reg_id = 0x3;     
         break;
 
-      case ECX:
+      case R2:
       case XMM1:
         reg_id = 0x1;
         break;
 
-      case EDX:
+      case R3:
       case XMM2:
         reg_id = 0x2;
         break;
 
-      case EDI:
+      case R12:
       case XMM7:
         reg_id = 0x7;
         break;
 
-      case ESI:
       case XMM6:
         reg_id = 0x6;
         break;
 
-      case ESP:
+      case SP:
       case XMM4:
         reg_id = 0x4;
         break;
 
-      case EBP:
+      case FP:
       case XMM5:
         reg_id = 0x5;
         break;
@@ -622,7 +624,7 @@ namespace Runtime {
 #ifdef _DEBUG
           wcout << L">>> No general registers avaiable! <<<" << endl;
 #endif
-          aux_regs.push(new RegisterHolder(EAX));
+          aux_regs.push(new RegisterHolder(R0));
           holder = aux_regs.top();
           aux_regs.pop();
         }
@@ -654,7 +656,7 @@ namespace Runtime {
       }
 #endif
 
-      if(h->GetRegister() == EDI || h->GetRegister() == ESI) {
+      if(h->GetRegister() == R12) {
         aux_regs.push(h);
       }
       else {
@@ -709,7 +711,7 @@ namespace Runtime {
 
     RegisterHolder* GetStackPosRegister() {
       RegisterHolder* op_stack_holder = GetRegister();
-      move_mem_reg(OP_STACK, EBP, op_stack_holder->GetRegister());
+      move_mem_reg(OP_STACK, FP, op_stack_holder->GetRegister());
       return op_stack_holder;
     }
 
@@ -1252,7 +1254,7 @@ namespace Runtime {
 
       case MEM_INT:
         array_holder = GetRegister();
-        move_mem_reg(holder->GetOperand(), EBP, array_holder->GetRegister());
+        move_mem_reg(holder->GetOperand(), FP, array_holder->GetRegister());
         break;
 
       default:
@@ -1291,7 +1293,7 @@ namespace Runtime {
 
       case MEM_INT:
         index_holder = GetRegister();
-        move_mem_reg(holder->GetOperand(), EBP, index_holder->GetRegister());
+        move_mem_reg(holder->GetOperand(), FP, index_holder->GetRegister());
         break;
 
       default:
@@ -1323,7 +1325,7 @@ namespace Runtime {
           break;
 
         case MEM_INT:
-          add_mem_reg(holder->GetOperand(), EBP, index_holder->GetRegister());
+          add_mem_reg(holder->GetOperand(), FP, index_holder->GetRegister());
           break;
 
         default:
@@ -1570,13 +1572,12 @@ namespace Runtime {
 
         floats_index = instr_index = code_index = instr_count = 0;
         // general use registers
-        aval_regs.push_back(new RegisterHolder(EDX));
-        aval_regs.push_back(new RegisterHolder(ECX));
-        aval_regs.push_back(new RegisterHolder(EBX));
-        aval_regs.push_back(new RegisterHolder(EAX));
+        aval_regs.push_back(new RegisterHolder(R3));
+        aval_regs.push_back(new RegisterHolder(R2));
+        aval_regs.push_back(new RegisterHolder(R1));
+        aval_regs.push_back(new RegisterHolder(R0));
         // aux general use registers
-        aux_regs.push(new RegisterHolder(EDI));
-        aux_regs.push(new RegisterHolder(ESI));
+        aux_regs.push(new RegisterHolder(R12));
         // floating point registers
         aval_xregs.push_back(new RegisterHolder(XMM7));
         aval_xregs.push_back(new RegisterHolder(XMM6));
@@ -1595,8 +1596,8 @@ namespace Runtime {
         // setup
         Prolog();
         // method information
-        move_imm_mem(cls_id, CLS_ID, EBP);
-        move_imm_mem(mthd_id, MTHD_ID, EBP);
+        move_imm_mem(cls_id, CLS_ID, FP);
+        move_imm_mem(mthd_id, MTHD_ID, FP);
         // register root
         RegisterRoot();
         // translate parameters
