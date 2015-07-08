@@ -1,5 +1,5 @@
 /***************************************************************************
-* JIT compiler for the ARM32 architecture.
+* JIT compiler for the ARM-A32 architecture.
 *
 * Copyright (c) 2008-2015, Randy Hollines
 * All rights reserved.
@@ -48,14 +48,14 @@ using namespace std;
 
 namespace Runtime {
   // offsets for Intel (IA-32) addresses
-#define CLS_ID 8
-#define MTHD_ID 12
-#define CLASS_MEM 16
-#define INSTANCE_MEM 20
-#define OP_STACK 24
-#define STACK_POS 28
-#define CALL_STACK 32
-#define CALL_STACK_POS 36
+#define CLS_ID -8
+#define MTHD_ID -12
+#define CLASS_MEM -16
+#define INSTANCE_MEM -20
+#define OP_STACK -24
+#define STACK_POS -28
+#define CALL_STACK -32
+#define CALL_STACK_POS -36
   // float temps
 #define TMP_XMM_0 -8
 #define TMP_XMM_1 -16
@@ -67,10 +67,10 @@ namespace Runtime {
 #define TMP_REG_3 -40
 #define TMP_REG_4 -44
 #define TMP_REG_5 -48
-
+  
 #define MAX_DBLS 64
 #define OUR_PAGE_SIZE 4096
-
+  
   // register type
   typedef enum _RegType { 
     IMM_INT = -4000,
@@ -81,7 +81,7 @@ namespace Runtime {
     MEM_FLOAT,
   } RegType;
 
-  // general and SSE (x86) registers
+  // registers
   typedef enum _Register { 
     R0 = -5000, 
     R1, 
@@ -347,101 +347,7 @@ namespace Runtime {
         AddMachineCode(buffer[i]);
       }
     }
-
-    // Caculates the IA-32 MOD R/M
-    // offset
-    inline unsigned ModRM(Register eff_adr, Register mod_rm) {
-      unsigned byte = 0;
-
-      switch(mod_rm) {
-      case SP:
-      case XMM4:
-        byte = 0xa0;
-        break;
-
-      case R0:
-      case XMM0:
-        byte = 0x80;
-        break;
-
-      case R1:
-      case XMM3:
-        byte = 0x98;
-        break;
-
-      case R2:
-      case XMM1:
-        byte = 0x88;
-        break;
-
-      case R3:
-      case XMM2:
-        byte = 0x90;
-        break;
-
-      case R12:
-      case XMM7:
-        byte = 0xb8;
-        break;
-
-      case XMM6:
-        byte = 0xb0;
-        break;
-
-      case FP:
-      case XMM5:
-        byte = 0xa8;
-        break;
-      }
-
-      switch(eff_adr) {
-      case R0:
-      case XMM0:
-        break;
-
-      case R1:
-      case XMM3:
-        byte += 3;
-        break;
-
-      case R2:
-      case XMM1:
-        byte += 1;
-        break;
-
-      case R3:
-      case XMM2:
-        byte += 2;
-        break;
-
-      case R12:
-      case XMM7:
-        byte += 7;
-        break;
-
-      case XMM6:
-        byte += 6;
-        break;
-
-      case FP:
-      case XMM5:
-        byte += 5;
-        break;
-
-      case XMM4:
-        byte += 4;
-        break;
-
-        // should never happen for SP
-      case SP:
-        wcerr << L">>> invalid register reference <<<" << endl;
-        exit(1);
-        break;
-      }
-
-      return byte;
-    }
-
+    
     // Returns the name of a register
     wstring GetRegisterName(Register reg) {
       switch(reg) {
@@ -456,16 +362,43 @@ namespace Runtime {
 
       case R3:
         return L"R3";
-
+		
+      case R4:
+        return L"R4";
+	
+      case R5:
+        return L"R5";
+		
+      case R6:
+        return L"R6";
+		
+      case SP:
+        return L"SP";	
+		
+      case R8:
+        return L"R8";
+		
+      case R9:
+        return L"R9";
+				
+      case R10:
+        return L"R10";
+			
+      case R11:
+        return L"R11";
+		
       case R12:
         return L"R12";
 
       case FP:
         return L"FP";
 
-      case SP:
-        return L"SP";
+      case R14:
+        return L"R14";
 
+      case R15:
+        return L"R15";
+		
       case XMM0:
         return L"xmm0";
 
@@ -493,7 +426,7 @@ namespace Runtime {
 
       return L"unknown";
     }
-
+    
     // Encodes a byte array with a 32-bit value
     inline void ByteEncode32(unsigned char buffer[], int32_t value) {
       memcpy(buffer, &value, sizeof(int32_t));
@@ -503,67 +436,7 @@ namespace Runtime {
     inline void ByteEncode16(unsigned char buffer[], int16_t value) {
       memcpy(buffer, &value, sizeof(int16_t));
     }
-
-    // Encodes an array with the 
-    // binary ID of a register
-    inline void RegisterEncode3(unsigned char& code, int32_t offset, Register reg) {
-#ifdef _DEBUG
-      assert(offset == 2 || offset == 5);
-#endif
-
-      unsigned char reg_id;
-      switch(reg) {
-      case R0:
-      case XMM0:
-        reg_id = 0x0;
-        break;
-
-      case R1:
-      case XMM3:
-        reg_id = 0x3;     
-        break;
-
-      case R2:
-      case XMM1:
-        reg_id = 0x1;
-        break;
-
-      case R3:
-      case XMM2:
-        reg_id = 0x2;
-        break;
-
-      case R12:
-      case XMM7:
-        reg_id = 0x7;
-        break;
-
-      case XMM6:
-        reg_id = 0x6;
-        break;
-
-      case SP:
-      case XMM4:
-        reg_id = 0x4;
-        break;
-
-      case FP:
-      case XMM5:
-        reg_id = 0x5;
-        break;
-
-      default:
-        wcerr << L"internal error" << endl;
-        exit(1);
-        break;
-      }
-
-      if(offset == 2) {
-        reg_id = reg_id << 3;
-      }
-      code = code | reg_id;
-    }
-
+	
     /***********************************
     * Check for 'Nil' dereferencing
     **********************************/
@@ -1599,7 +1472,7 @@ namespace Runtime {
         move_imm_mem(cls_id, CLS_ID, FP);
         move_imm_mem(mthd_id, MTHD_ID, FP);
         // register root
-        RegisterRoot();
+// RegisterRoot();
         // translate parameters
         ProcessParameters(method->GetParamCount());
         // tranlsate program

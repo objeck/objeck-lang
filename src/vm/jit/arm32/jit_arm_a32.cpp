@@ -1,5 +1,5 @@
 /***************************************************************************
- * JIT compiler for the x86 architecture.
+ * JIT compiler for the ARM-A32 architecture.
  *
  * Copyright (c) 2008-2015, Randy Hollines
  * All rights reserved.
@@ -48,8 +48,8 @@ void JitCompilerIA32::Prolog() {
   wcout << L"  " << (++instr_count) << L": [<prolog>]" << endl;
 #endif
 
-  /*
   local_space += 8;
+  /*
   unsigned char buffer[4];
   ByteEncode32(buffer, local_space);
   */
@@ -57,7 +57,7 @@ void JitCompilerIA32::Prolog() {
   uint32_t setup_code[] = {
     0xe52db004, // push {fp}
     0xe28db000, // add fp, sp, #0
-        
+    0xe24dd000 + local_space, // sub sp, sp, #20
 /*
     0x55,                                                        // push %FP
     0x89, 0xe5,                                                  // mov  %SP, %FP
@@ -449,7 +449,7 @@ void JitCompilerIA32::ProcessInstructions() {
 #endif
       ProcessReturn();
       // unregister root
-      UnregisterRoot();
+// UnregisterRoot();
       // teardown
       Epilog(0);
       break;
@@ -2101,8 +2101,8 @@ void JitCompilerIA32::move_reg_reg(Register src, Register dest) {
     AddMachineCode(0x89);
     unsigned char code = 0xc0;
     // write value
-    RegisterEncode3(code, 2, src);
-    RegisterEncode3(code, 5, dest);
+    // RegisterEncode3(code, 2, src);
+    // RegisterEncode3(code, 5, dest);
     AddMachineCode(code);
   }
 }
@@ -2116,7 +2116,7 @@ void JitCompilerIA32::move_reg_mem16(Register src, int32_t offset, Register dest
   // encode
   AddMachineCode(0x66);
   AddMachineCode(0x89);
-  AddMachineCode(ModRM(dest, src));
+  // AddMachineCode(ModRM(dest, src));
   // write value
   AddImm(offset);
 }
@@ -2129,7 +2129,7 @@ void JitCompilerIA32::move_reg_mem8(Register src, int32_t offset, Register dest)
 #endif
   // encode
   AddMachineCode(0x88);
-  AddMachineCode(ModRM(dest, src));
+  // AddMachineCode(ModRM(dest, src));
   // write value
   AddImm(offset);
 }
@@ -2142,7 +2142,7 @@ void JitCompilerIA32::move_reg_mem(Register src, int32_t offset, Register dest) 
 #endif
   // encode
   AddMachineCode(0x89);
-  AddMachineCode(ModRM(dest, src));
+  // AddMachineCode(ModRM(dest, src));
   // write value
   AddImm(offset);
 }
@@ -2156,7 +2156,7 @@ void JitCompilerIA32::move_mem8_reg(int32_t offset, Register src, Register dest)
   // encode
   AddMachineCode(0x0f);
   AddMachineCode(0xb6);
-  AddMachineCode(ModRM(src, dest));
+  // AddMachineCode(ModRM(src, dest));
   // write value
   AddImm(offset);
 }
@@ -2170,7 +2170,7 @@ void JitCompilerIA32::move_mem16_reg(int32_t offset, Register src, Register dest
   // encode
   AddMachineCode(0x0f);
   AddMachineCode(0xb7);
-  AddMachineCode(ModRM(src, dest));
+  // AddMachineCode(ModRM(src, dest));
   // write value
   AddImm(offset);
 }
@@ -2183,7 +2183,7 @@ void JitCompilerIA32::move_mem_reg(int32_t offset, Register src, Register dest) 
 #endif
   // encode
   AddMachineCode(0x8b);
-  AddMachineCode(ModRM(src, dest));
+  // AddMachineCode(ModRM(src, dest));
   // write value
   AddImm(offset);
 }
@@ -2203,7 +2203,7 @@ void JitCompilerIA32::move_imm_mem8(int32_t imm, int32_t offset, Register dest) 
   // encode
   AddMachineCode(0xc6);
   unsigned char code = 0x80;
-  RegisterEncode3(code, 5, dest);
+  // RegisterEncode3(code, 5, dest);
   AddMachineCode(code);
   // write value
   AddImm(offset);
@@ -2224,7 +2224,7 @@ void JitCompilerIA32::move_imm_mem16(int32_t imm, int32_t offset, Register dest)
   AddMachineCode(0x66);    
   AddMachineCode(0xc7);    
   unsigned char code = 0x80;
-  RegisterEncode3(code, 5, dest);
+  // RegisterEncode3(code, 5, dest);
   AddMachineCode(code);
   // write value
   AddImm(offset);
@@ -2239,7 +2239,7 @@ void JitCompilerIA32::move_imm_mem(int32_t imm, int32_t offset, Register dest) {
   // encode
   AddMachineCode(0xc7);    
   unsigned char code = 0x80;
-  RegisterEncode3(code, 5, dest);
+  // RegisterEncode3(code, 5, dest);
   AddMachineCode(code);
   // write value
   AddImm(offset);
@@ -2253,7 +2253,7 @@ void JitCompilerIA32::move_imm_reg(int32_t imm, Register reg) {
 #endif
   // encode
   unsigned char code = 0xb8;
-  RegisterEncode3(code, 5, reg);
+  // RegisterEncode3(code, 5, reg);
   AddMachineCode(code);
   // write value
   AddImm(imm);
@@ -2277,7 +2277,7 @@ void JitCompilerIA32::move_mem_xreg(int32_t offset, Register src, Register dest)
   AddMachineCode(0xf2);
   AddMachineCode(0x0f);
   AddMachineCode(0x10);
-  AddMachineCode(ModRM(src, dest));
+  // AddMachineCode(ModRM(src, dest));
   // write value
   AddImm(offset);
 }
@@ -2292,7 +2292,7 @@ void JitCompilerIA32::move_xreg_mem(Register src, int32_t offset, Register dest)
   AddMachineCode(0xf2);
   AddMachineCode(0x0f);
   AddMachineCode(0x11);
-  AddMachineCode(ModRM(dest, src));
+  // AddMachineCode(ModRM(dest, src));
   // write value
   AddImm(offset);
 }
@@ -2309,8 +2309,8 @@ void JitCompilerIA32::move_xreg_xreg(Register src, Register dest) {
     AddMachineCode(0x11);
     unsigned char code = 0xc0;
     // write value
-    RegisterEncode3(code, 2, src);
-    RegisterEncode3(code, 5, dest);
+    // RegisterEncode3(code, 2, src);
+    // RegisterEncode3(code, 5, dest);
     AddMachineCode(code);
   }
 }
@@ -2376,24 +2376,24 @@ bool JitCompilerIA32::cond_jmp(InstructionType type) {
         AddMachineCode(0x8d);
         break;
 
-			case LES_FLOAT:
-				AddMachineCode(0x87);
-				break;
+      case LES_FLOAT:
+	AddMachineCode(0x87);
+	break;
 				
-			case GTR_FLOAT:
-				AddMachineCode(0x87);
-				break;
+      case GTR_FLOAT:
+	AddMachineCode(0x87);
+	break;
 
-			case LES_EQL_FLOAT:
-				AddMachineCode(0x83);
-				break;
+      case LES_EQL_FLOAT:
+	AddMachineCode(0x83);
+	break;
 				
-			case GTR_EQL_FLOAT:
-				AddMachineCode(0x83);
-				break;
+      case GTR_EQL_FLOAT:
+	AddMachineCode(0x83);
+	break;
 				
       default:
-				break;
+	break;
       }  
     }
     //
@@ -2416,7 +2416,7 @@ bool JitCompilerIA32::cond_jmp(InstructionType type) {
         break;
 
       case EQL_INT:
-			case EQL_FLOAT:
+      case EQL_FLOAT:
 #ifdef _DEBUG
         std::wcout << L"  " << (++instr_count) << L": [jne]" << std::endl;
 #endif
@@ -2424,7 +2424,7 @@ bool JitCompilerIA32::cond_jmp(InstructionType type) {
         break;
 
       case NEQL_INT:
-			case NEQL_FLOAT:
+      case NEQL_FLOAT:
 #ifdef _DEBUG
         std::wcout << L"  " << (++instr_count) << L": [je]" << std::endl;
 #endif
@@ -2445,36 +2445,36 @@ bool JitCompilerIA32::cond_jmp(InstructionType type) {
         AddMachineCode(0x8c);
         break;
 
-			case LES_FLOAT:
+      case LES_FLOAT:
 #ifdef _DEBUG
         std::wcout << L"  " << (++instr_count) << L": [ja]" << std::endl;
 #endif
-				AddMachineCode(0x86);
-				break;
+	AddMachineCode(0x86);
+	break;
 				
-			case GTR_FLOAT:
+      case GTR_FLOAT:
 #ifdef _DEBUG
         std::wcout << L"  " << (++instr_count) << L": [ja]" << std::endl;
 #endif
-				AddMachineCode(0x86);
-				break;
+	AddMachineCode(0x86);
+	break;
 
-			case LES_EQL_FLOAT:
+      case LES_EQL_FLOAT:
 #ifdef _DEBUG
         std::wcout << L"  " << (++instr_count) << L": [jae]" << std::endl;
 #endif
-				AddMachineCode(0x82);
-				break;
+	AddMachineCode(0x82);
+	break;
 				
-			case GTR_EQL_FLOAT:
+      case GTR_EQL_FLOAT:
 #ifdef _DEBUG
         std::wcout << L"  " << (++instr_count) << L": [jae]" << std::endl;
 #endif
-				AddMachineCode(0x82);
-				break;
+	AddMachineCode(0x82);
+	break;
 				
       default:
-				break;
+	break;
       }  
     }    
     // store update index
@@ -2776,8 +2776,8 @@ void JitCompilerIA32::cmp_reg_reg(Register src, Register dest) {
   AddMachineCode(0x39);
   unsigned char code = 0xc0;
   // write value
-  RegisterEncode3(code, 2, src);
-  RegisterEncode3(code, 5, dest);
+  // RegisterEncode3(code, 2, src);
+  // RegisterEncode3(code, 5, dest);
   AddMachineCode(code);
 }
 
@@ -2789,7 +2789,7 @@ void JitCompilerIA32::cmp_mem_reg(int32_t offset, Register src, Register dest) {
 #endif
   // encode
   AddMachineCode(0x3b);
-  AddMachineCode(ModRM(src, dest));
+  // AddMachineCode(ModRM(src, dest));
   // write value
   AddImm(offset);
 }
@@ -2802,7 +2802,7 @@ void JitCompilerIA32::cmp_imm_reg(int32_t imm, Register reg) {
   // encode
   AddMachineCode(0x81);
   unsigned char code = 0xf8;
-  RegisterEncode3(code, 5, reg);
+  // RegisterEncode3(code, 5, reg);
   AddMachineCode(code);
   // write value
   AddImm(imm);
@@ -2869,8 +2869,8 @@ void JitCompilerIA32::cmov_reg(Register reg, InstructionType oper) {
   }
   unsigned char code = 0xc0;
   // write value
-  RegisterEncode3(code, 2, reg);
-  RegisterEncode3(code, 5, true_holder->GetRegister());
+  // RegisterEncode3(code, 2, reg);
+  // RegisterEncode3(code, 5, true_holder->GetRegister());
   AddMachineCode(code);
   ReleaseRegister(true_holder);
 }
@@ -2882,7 +2882,7 @@ void JitCompilerIA32::add_imm_mem(int32_t imm, int32_t offset, Register dest) {
 #endif
   // encode
   AddMachineCode(0x81);
-  AddMachineCode(ModRM(dest, R0));
+  // AddMachineCode(ModRM(dest, R0));
   // write value
   AddImm(offset);
   AddImm(imm);
@@ -2896,7 +2896,7 @@ void JitCompilerIA32::add_imm_reg(int32_t imm, Register reg) {
   // encode
   AddMachineCode(0x81);
   unsigned char code = 0xc0;
-  RegisterEncode3(code, 5, reg);
+  // RegisterEncode3(code, 5, reg);
   AddMachineCode(code);
   // write value
   AddImm(imm);
@@ -2943,8 +2943,8 @@ void JitCompilerIA32::add_reg_reg(Register src, Register dest) {
   AddMachineCode(0x01);
   unsigned char code = 0xc0;
   // write value
-  RegisterEncode3(code, 2, src);
-  RegisterEncode3(code, 5, dest);
+  // RegisterEncode3(code, 2, src);
+  // RegisterEncode3(code, 5, dest);
   AddMachineCode(code);
 }
 
@@ -2959,8 +2959,8 @@ void JitCompilerIA32::sub_xreg_xreg(Register src, Register dest) {
   AddMachineCode(0x5c);
   unsigned char code = 0xc0;
   // write value
-  RegisterEncode3(code, 2, dest);
-  RegisterEncode3(code, 5, src);
+  // RegisterEncode3(code, 2, dest);
+  // RegisterEncode3(code, 5, src);
   AddMachineCode(code);	     
 }
 
@@ -2975,8 +2975,8 @@ void JitCompilerIA32::mul_xreg_xreg(Register src, Register dest) {
   AddMachineCode(0x59);
   unsigned char code = 0xc0;
   // write value
-  RegisterEncode3(code, 2, dest);
-  RegisterEncode3(code, 5, src);
+  // RegisterEncode3(code, 2, dest);
+  // RegisterEncode3(code, 5, src);
   AddMachineCode(code);
 }
 
@@ -2991,8 +2991,8 @@ void JitCompilerIA32::div_xreg_xreg(Register src, Register dest) {
   AddMachineCode(0x5e);
   unsigned char code = 0xc0;
   // write value
-  RegisterEncode3(code, 2, dest);
-  RegisterEncode3(code, 5, src);
+  // RegisterEncode3(code, 2, dest);
+  // RegisterEncode3(code, 5, src);
   AddMachineCode(code);
 }
 
@@ -3007,8 +3007,8 @@ void JitCompilerIA32::add_xreg_xreg(Register src, Register dest) {
   AddMachineCode(0x58);
   unsigned char code = 0xc0;
   // write value
-  RegisterEncode3(code, 2, dest);
-  RegisterEncode3(code, 5, src);
+  // RegisterEncode3(code, 2, dest);
+  // RegisterEncode3(code, 5, src);
   AddMachineCode(code);
 }
     
@@ -3020,7 +3020,7 @@ void JitCompilerIA32::add_mem_reg(int32_t offset, Register src, Register dest) {
 #endif
   // encode
   AddMachineCode(0x03);
-  AddMachineCode(ModRM(src, dest));
+  // AddMachineCode(ModRM(src, dest));
   // write value
   AddImm(offset);
 }
@@ -3035,7 +3035,7 @@ void JitCompilerIA32::add_mem_xreg(int32_t offset, Register src, Register dest) 
   AddMachineCode(0xf2);
   AddMachineCode(0x0f);
   AddMachineCode(0x58);
-  AddMachineCode(ModRM(src, dest));
+  // AddMachineCode(ModRM(src, dest));
   // write value
   AddImm(offset);  
 }
@@ -3058,7 +3058,7 @@ void JitCompilerIA32::mul_mem_xreg(int32_t offset, Register src, Register dest) 
   AddMachineCode(0xf2);
   AddMachineCode(0x0f);
   AddMachineCode(0x59);
-  AddMachineCode(ModRM(src, dest));
+  // AddMachineCode(ModRM(src, dest));
   AddImm(offset);
 }
 
@@ -3078,7 +3078,7 @@ void JitCompilerIA32::sub_imm_reg(int32_t imm, Register reg) {
   // encode
   AddMachineCode(0x81);
   unsigned char code = 0xe8;
-  RegisterEncode3(code, 5, reg);
+  // RegisterEncode3(code, 5, reg);
   AddMachineCode(code);
   AddImm(imm);
 }
@@ -3090,7 +3090,7 @@ void JitCompilerIA32::sub_imm_mem(int32_t imm, int32_t offset, Register dest) {
 #endif
   // encode
   AddMachineCode(0x81);
-  AddMachineCode(ModRM(dest, FP));
+  // AddMachineCode(ModRM(dest, FP));
   // write value
   AddImm(offset);
   AddImm(imm);
@@ -3105,8 +3105,8 @@ void JitCompilerIA32::sub_reg_reg(Register src, Register dest) {
   AddMachineCode(0x29);
   unsigned char code = 0xc0;
   // write value
-  RegisterEncode3(code, 2, src);
-  RegisterEncode3(code, 5, dest);
+  // RegisterEncode3(code, 2, src);
+  // RegisterEncode3(code, 5, dest);
   AddMachineCode(code);
 }
 
@@ -3119,7 +3119,7 @@ void JitCompilerIA32::sub_mem_reg(int32_t offset, Register src, Register dest) {
 
   // encode
   AddMachineCode(0x2b);
-  AddMachineCode(ModRM(src, dest));
+  // AddMachineCode(ModRM(src, dest));
   // write value
   AddImm(offset);
 }
@@ -3133,8 +3133,8 @@ void JitCompilerIA32::mul_imm_reg(int32_t imm, Register reg) {
   AddMachineCode(0x69);
   unsigned char code = 0xc0;
   // write value
-  RegisterEncode3(code, 2, reg);
-  RegisterEncode3(code, 5, reg);
+  // RegisterEncode3(code, 2, reg);
+  // RegisterEncode3(code, 5, reg);
   AddMachineCode(code);
   // write value
   AddImm(imm);
@@ -3151,8 +3151,8 @@ void JitCompilerIA32::mul_reg_reg(Register src, Register dest) {
   AddMachineCode(0xaf);
   unsigned char code = 0xc0;
   // write value
-  RegisterEncode3(code, 2, src);
-  RegisterEncode3(code, 5, dest);
+  // RegisterEncode3(code, 2, src);
+  // RegisterEncode3(code, 5, dest);
   AddMachineCode(code);
 }
 
@@ -3165,7 +3165,7 @@ void JitCompilerIA32::mul_mem_reg(int32_t offset, Register src, Register dest) {
   // encode
   AddMachineCode(0x0f);
   AddMachineCode(0xaf);
-  AddMachineCode(ModRM(src, dest));
+  // AddMachineCode(ModRM(src, dest));
   // write value
   AddImm(offset);
 }
@@ -3198,7 +3198,7 @@ void JitCompilerIA32::div_mem_reg(int32_t offset, Register src,
   
   // encode
   AddMachineCode(0xf7);
-  AddMachineCode(ModRM(src, R12));
+  // AddMachineCode(ModRM(src, R12));
   // write value
   AddImm(offset);
   
@@ -3259,7 +3259,7 @@ void JitCompilerIA32::div_reg_reg(Register src, Register dest, bool is_mod) {
     AddMachineCode(0xf7);
     unsigned char code = 0xf8;
     // write value
-    RegisterEncode3(code, 5, src);
+    // RegisterEncode3(code, 5, src);
     AddMachineCode(code);
     
 #ifdef _DEBUG
@@ -3276,7 +3276,7 @@ void JitCompilerIA32::div_reg_reg(Register src, Register dest, bool is_mod) {
   else {
     // encode
     AddMachineCode(0xf7);
-    AddMachineCode(ModRM(FP, R12));
+    // AddMachineCode(ModRM(FP, R12));
     // write value
     if(src == R0) {
       AddImm(TMP_REG_0);
@@ -3322,7 +3322,7 @@ void JitCompilerIA32::div_reg_reg(Register src, Register dest, bool is_mod) {
 
 void JitCompilerIA32::dec_reg(Register dest) {
   unsigned char code = 0x48;
-  RegisterEncode3(code, 5, dest);
+  // RegisterEncode3(code, 5, dest);
   AddMachineCode(code);
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [decl %" 
@@ -3333,7 +3333,7 @@ void JitCompilerIA32::dec_reg(Register dest) {
 void JitCompilerIA32::dec_mem(int32_t offset, Register dest) {
   AddMachineCode(0xff);
   unsigned char code = 0x88;
-  RegisterEncode3(code, 5, dest);
+  // RegisterEncode3(code, 5, dest);
   AddMachineCode(code);
   AddImm(offset);
 #ifdef _DEBUG
@@ -3345,7 +3345,7 @@ void JitCompilerIA32::dec_mem(int32_t offset, Register dest) {
 void JitCompilerIA32::inc_mem(int32_t offset, Register dest) {
   AddMachineCode(0xff);
   unsigned char code = 0x80;
-  RegisterEncode3(code, 5, dest);
+  // RegisterEncode3(code, 5, dest);
   AddMachineCode(code);
   AddImm(offset);
 #ifdef _DEBUG
@@ -3357,7 +3357,7 @@ void JitCompilerIA32::inc_mem(int32_t offset, Register dest) {
 void JitCompilerIA32::shl_imm_reg(int32_t value, Register dest) {
   AddMachineCode(0xc1);
   unsigned char code = 0xe0;
-  RegisterEncode3(code, 5, dest);
+  // RegisterEncode3(code, 5, dest);
   AddMachineCode(code);
   AddMachineCode(value);
 #ifdef _DEBUG
@@ -3388,8 +3388,8 @@ void JitCompilerIA32::shl_reg_reg(Register src, Register dest)
   AddMachineCode(0xd3);
   unsigned char code = 0xc0;
   // write value
-  RegisterEncode3(code, 2, SP);
-  RegisterEncode3(code, 5, dest);
+  // RegisterEncode3(code, 2, SP);
+  // RegisterEncode3(code, 5, dest);
   AddMachineCode(code);
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [shl %" << GetRegisterName(src) 
@@ -3419,7 +3419,7 @@ void JitCompilerIA32::shl_mem_reg(int32_t offset, Register src, Register dest)
 void JitCompilerIA32::shr_imm_reg(int32_t value, Register dest) {
   AddMachineCode(0xc1);
   unsigned char code = 0xe8;
-  RegisterEncode3(code, 5, dest);
+  // RegisterEncode3(code, 5, dest);
   AddMachineCode(code);
   AddMachineCode(value);
 #ifdef _DEBUG
@@ -3450,8 +3450,8 @@ void JitCompilerIA32::shr_reg_reg(Register src, Register dest)
   AddMachineCode(0xd3);
   unsigned char code = 0xc0;
   // write value
-  RegisterEncode3(code, 2, FP);
-  RegisterEncode3(code, 5, dest);
+  // RegisterEncode3(code, 2, FP);
+  // RegisterEncode3(code, 5, dest);
   AddMachineCode(code);
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [shr %" << GetRegisterName(R2) 
@@ -3481,7 +3481,7 @@ void JitCompilerIA32::shr_mem_reg(int32_t offset, Register src, Register dest)
 void JitCompilerIA32::push_mem(int32_t offset, Register dest) {
   AddMachineCode(0xff);
   unsigned char code = 0xb0;
-  RegisterEncode3(code, 5, dest);
+  // RegisterEncode3(code, 5, dest);
   AddMachineCode(code);
   AddImm(offset);
 #ifdef _DEBUG
@@ -3492,7 +3492,7 @@ void JitCompilerIA32::push_mem(int32_t offset, Register dest) {
 
 void JitCompilerIA32::push_reg(Register reg) {
   unsigned char code = 0x50;
-  RegisterEncode3(code, 5, reg);
+  // RegisterEncode3(code, 5, reg);
   AddMachineCode(code);
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [pushl %" << GetRegisterName(reg) 
@@ -3510,7 +3510,7 @@ void JitCompilerIA32::push_imm(int32_t value) {
 
 void JitCompilerIA32::pop_reg(Register reg) {
   unsigned char code = 0x58;
-  RegisterEncode3(code, 5, reg);
+  // RegisterEncode3(code, 5, reg);
   AddMachineCode(code);
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [popl %" << GetRegisterName(reg) 
@@ -3521,7 +3521,7 @@ void JitCompilerIA32::pop_reg(Register reg) {
 void JitCompilerIA32::call_reg(Register reg) {
   AddMachineCode(0xff);
   unsigned char code = 0xd0;
-  RegisterEncode3(code, 5, reg);
+  // RegisterEncode3(code, 5, reg);
   AddMachineCode(code);
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [call %" << GetRegisterName(reg)
@@ -3540,8 +3540,8 @@ void JitCompilerIA32::cmp_xreg_xreg(Register src, Register dest) {
   AddMachineCode(0x2e);
   unsigned char code = 0xc0;
   // write value
-  RegisterEncode3(code, 2, dest);
-  RegisterEncode3(code, 5, src);
+  // RegisterEncode3(code, 2, dest);
+  // RegisterEncode3(code, 5, src);
   AddMachineCode(code);
 }
 
@@ -3555,7 +3555,7 @@ void JitCompilerIA32::cmp_mem_xreg(int32_t offset, Register src, Register dest) 
   AddMachineCode(0x66);
   AddMachineCode(0x0f);
   AddMachineCode(0x2e);
-  AddMachineCode(ModRM(src, dest));
+  // AddMachineCode(ModRM(src, dest));
   // write value
   AddImm(offset);
 }
@@ -3579,8 +3579,8 @@ void JitCompilerIA32::cvt_xreg_reg(Register src, Register dest) {
   AddMachineCode(0x2c);
   unsigned char code = 0xc0;
   // write value
-  RegisterEncode3(code, 2, dest);
-  RegisterEncode3(code, 5, src);
+  // RegisterEncode3(code, 2, dest);
+  // RegisterEncode3(code, 5, src);
   AddMachineCode(code);
 }
 
@@ -3604,7 +3604,7 @@ void JitCompilerIA32::round_mem_xreg(int32_t offset, Register src, Register dest
   AddMachineCode(0x3a);
   AddMachineCode(0x0b);
   // memory
-  AddMachineCode(ModRM(src, dest));
+  // AddMachineCode(ModRM(src, dest));
   AddImm(offset);
   // mode
   if(is_floor) {
@@ -3628,8 +3628,8 @@ void JitCompilerIA32::round_xreg_xreg(Register src, Register dest, bool is_floor
   // registers
   unsigned char code = 0xc0;
   // write value
-  RegisterEncode3(code, 2, dest);
-  RegisterEncode3(code, 5, src);
+  // RegisterEncode3(code, 2, dest);
+  // RegisterEncode3(code, 5, src);
   // mode
   if(is_floor) {
     AddMachineCode(0x03);
@@ -3657,7 +3657,7 @@ void JitCompilerIA32::cvt_mem_reg(int32_t offset, Register src, Register dest) {
   AddMachineCode(0xf2);
   AddMachineCode(0x0f);
   AddMachineCode(0x2c);
-  AddMachineCode(ModRM(src, dest));
+  // AddMachineCode(ModRM(src, dest));
   // write value
   AddImm(offset);
 }
@@ -3673,8 +3673,8 @@ void JitCompilerIA32::cvt_reg_xreg(Register src, Register dest) {
   AddMachineCode(0x2a);
   unsigned char code = 0xc0;
   // write value
-  RegisterEncode3(code, 2, dest);
-  RegisterEncode3(code, 5, src);
+  // RegisterEncode3(code, 2, dest);
+  // RegisterEncode3(code, 5, src);
   AddMachineCode(code);
 }
 
@@ -3696,7 +3696,7 @@ void JitCompilerIA32::cvt_mem_xreg(int32_t offset, Register src, Register dest) 
   AddMachineCode(0xf2);
   AddMachineCode(0x0f);
   AddMachineCode(0x2a);
-  AddMachineCode(ModRM(src, dest));
+  // AddMachineCode(ModRM(src, dest));
   // write value
   AddImm(offset);
 }
@@ -3709,7 +3709,7 @@ void JitCompilerIA32::and_imm_reg(int32_t imm, Register reg) {
   // encode
   AddMachineCode(0x81);
   unsigned char code = 0xe0;
-  RegisterEncode3(code, 5, reg);
+  // RegisterEncode3(code, 5, reg);
   AddMachineCode(code);
   // write value
   AddImm(imm);
@@ -3724,8 +3724,8 @@ void JitCompilerIA32::and_reg_reg(Register src, Register dest) {
   AddMachineCode(0x21);
   unsigned char code = 0xc0;
   // write value
-  RegisterEncode3(code, 2, src);
-  RegisterEncode3(code, 5, dest);
+  // RegisterEncode3(code, 2, src);
+  // RegisterEncode3(code, 5, dest);
   AddMachineCode(code);
 }
 
@@ -3737,7 +3737,7 @@ void JitCompilerIA32::and_mem_reg(int32_t offset, Register src, Register dest) {
 #endif
   // encode
   AddMachineCode(0x23);
-  AddMachineCode(ModRM(src, dest));
+  // AddMachineCode(ModRM(src, dest));
   // write value
   AddImm(offset);
 }
@@ -3750,7 +3750,7 @@ void JitCompilerIA32::or_imm_reg(int32_t imm, Register reg) {
   // encode
   AddMachineCode(0x81);
   unsigned char code = 0xc8;
-  RegisterEncode3(code, 5, reg);
+  // RegisterEncode3(code, 5, reg);
   AddMachineCode(code);
   // write value
   AddImm(imm);
@@ -3766,8 +3766,8 @@ void JitCompilerIA32::or_reg_reg(Register src, Register dest) {
   AddMachineCode(0x09);
   unsigned char code = 0xc0;
   // write value
-  RegisterEncode3(code, 2, src);
-  RegisterEncode3(code, 5, dest);
+  // RegisterEncode3(code, 2, src);
+  // RegisterEncode3(code, 5, dest);
   AddMachineCode(code);
 }
 
@@ -3779,7 +3779,7 @@ void JitCompilerIA32::or_mem_reg(int32_t offset, Register src, Register dest) {
 #endif
   // encode
   AddMachineCode(0x0b);
-  AddMachineCode(ModRM(src, dest));
+  // AddMachineCode(ModRM(src, dest));
   // write value
   AddImm(offset);
 }
@@ -3792,7 +3792,7 @@ void JitCompilerIA32::xor_imm_reg(int32_t imm, Register reg) {
   // encode
   AddMachineCode(0x81);
   unsigned char code = 0xf0;
-  RegisterEncode3(code, 5, reg);
+  // RegisterEncode3(code, 5, reg);
   AddMachineCode(code);
   // write value
   AddImm(imm);
@@ -3807,8 +3807,8 @@ void JitCompilerIA32::xor_reg_reg(Register src, Register dest) {
   AddMachineCode(0x31);
   unsigned char code = 0xc0;
   // write value
-  RegisterEncode3(code, 2, src);
-  RegisterEncode3(code, 5, dest);
+  // RegisterEncode3(code, 2, src);
+  // RegisterEncode3(code, 5, dest);
   AddMachineCode(code);
 }
 
@@ -3820,7 +3820,7 @@ void JitCompilerIA32::xor_mem_reg(int32_t offset, Register src, Register dest) {
 #endif
   // encode
   AddMachineCode(0x33);
-  AddMachineCode(ModRM(src, dest));
+  // AddMachineCode(ModRM(src, dest));
   // write value
   AddImm(offset);
 }
