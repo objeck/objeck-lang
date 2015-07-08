@@ -1623,7 +1623,7 @@ namespace Runtime {
         }
 #ifdef _DEBUG
         wcout << L"Caching JIT code: actual=" << code_index 
-          << L", buffer=" << code_buf_max << L" byte(s)" << endl;
+               << L", buffer=" << code_buf_max << L" byte(s)" << endl;
 #endif
         // store compiled code
 #ifndef _WIN32
