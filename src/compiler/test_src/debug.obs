@@ -4,6 +4,12 @@ class Test {
 		do {
 			i->PrintLine();
 		}
-		while(i-- <> 0);
+#		while(i-- <> 0);
+		while(--i <> 0);
+		
+		i := 5;
+		while(i-- <> 0) {
+			i->PrintLine();
+		};
 	}
 }
