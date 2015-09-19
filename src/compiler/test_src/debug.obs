@@ -1,19 +1,9 @@
-use System.IO.File;
-
 class Test {
 	function : Main(args : String[]) ~ Nil {
-#~
-		user_dir := Runtime->GetProperty("user_dir");
-		user_dir->PrintLine();
-
-		tmp_dir := Runtime->GetProperty("tmp_dir");
-		tmp_dir->PrintLine();
-~#
-		Runtime->GetUserDir()->PrintLine();
-		Runtime->GetTempDir()->PrintLine();
-
-		l := System.IO.File.Logger->Instance();
-		l->ClearInfo();
-		l->Info("foo bar ++");
+		i := 5;
+		do {
+			i->PrintLine();
+		}
+		while(i-- <> 0);
 	}
 }
