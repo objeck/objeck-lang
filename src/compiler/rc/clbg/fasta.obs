@@ -58,7 +58,7 @@ bundle Default {
 			HomoSapiens[2] := Frequency->New('g', 0.1975473066391d);
 			HomoSapiens[3] := Frequency->New('t', 0.3015094502008d);
 
-			BUFFER_SIZE := 1024;
+			BUFFER_SIZE := 32768;
 			index := 0;
 			bbuffer := Char->New[BUFFER_SIZE];
 		}
