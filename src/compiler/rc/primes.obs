@@ -1,10 +1,8 @@
-# http://rosettacode.org/wiki/AKS_test_for_primes#Java
-
 class AksTest {
-	c : static : Int[];
+	@c : static : Int[];
  	
 	function : Main(args : String[]) ~ Nil {
-		c := Int->New[100];
+		@c := Int->New[100];
 		
 		for(n := 0; n < 10; n++;) {
 			Coef(n);
@@ -13,53 +11,47 @@ class AksTest {
 			'\n'->Print();
 		};
  
-		"Primes:"->PrintLine();
+		"\nPrimes:"->PrintLine();
 		for(n := 1; n <= 63; n++;) {
 			if(IsPrime(n)) {
-				" {$n}"->PrintLine();
+				" {$n}"->Print();
 			};
 		};
-		'\n'->PrintLine();
+		'\n'->Print();
 	}
 
-  	function : Coef(n : Int) ~ Nil {
+  	function : native : Coef(n : Int) ~ Nil {
   		i := 0; j := 0;
  		
 		if (n < 0 | n > 63) {
 			Runtime->Exit(0);
 		};
  
- 		for(c[0] := 1; i < n; i++;) {
- 			c[0] := c[0] * -1;
+ 		for(@c[0] := 1; i < n; i++;) {
  			j := i;
-			for(c[1 + j] := 1; j > 0; j--;) {
-				c[j] := c[j-1] - c[j];
+			for(@c[1 + j] := 1; j > 0; j--;) {
+				@c[j] := @c[j-1] - @c[j];
 			};
+			@c[0] := @c[0] * -1;
 		};
   	}
   	
-  	function : IsPrime(n : Int) ~ Bool {
-  		i := 0;
+  	function : native : IsPrime(n : Int) ~ Bool {
+  		Coef(n);
+		@c[0] += 1; @c[n] -= 1;
  
-		Coef(n);
-		c[0] += 1;
-		i := n;
-		c[i] -= 1;
- 
-		while (i <> 0 & (c[i] % n) = 0) {
+		i:=n;
+		while (i <> 0 & (@c[i] % n) = 0) {
 			i--;
 		};
- 		
-		return i < 0;
+		
+		return i = 0;
   	}
   	
   	function : Show(n : Int) ~ Nil {
   		do {
-  			value := c[n];
+  			value := @c[n];
   			"+{$value}x^{$n}"->Print();
-  			n--;
-		}
-#		while (n-- <> 0);
-		while(n <> -1);
+		} while (n-- <> 0);
   	}
 }
