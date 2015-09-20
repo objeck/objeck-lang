@@ -3245,10 +3245,17 @@ While* Parser::ParseWhile(int depth)
     ProcessError(L"Expected ')'", TOKEN_CLOSED_PAREN);
   }
   NextToken();
+  
+  StatementList* statements;
   symbol_table->CurrentParseScope()->NewParseScope();
-  StatementList* statements =  ParseStatementList(depth + 1);
+  if(!Match(TOKEN_OPEN_PAREN)) {
+    statements = TreeFactory::Instance()->MakeStatementList();
+  }
+  else {
+    statements =  ParseStatementList(depth + 1);
+  }
   symbol_table->CurrentParseScope()->PreviousParseScope();
-
+  
   return TreeFactory::Instance()->MakeWhile(file_name, line_num, expression, statements);
 }
 
