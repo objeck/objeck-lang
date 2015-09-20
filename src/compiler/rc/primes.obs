@@ -1,6 +1,6 @@
 class AksTest {
 	@c : static : Int[];
- 	
+	
 	function : Main(args : String[]) ~ Nil {
 		@c := Int->New[100];
 		
@@ -20,24 +20,24 @@ class AksTest {
 		'\n'->Print();
 	}
 
-  	function : native : Coef(n : Int) ~ Nil {
-  		i := 0; j := 0;
- 		
+	function : native : Coef(n : Int) ~ Nil {
+		i := 0; j := 0;
+		
 		if (n < 0 | n > 63) {
 			Runtime->Exit(0);
 		};
  
- 		for(@c[0] := 1; i < n; i++;) {
- 			j := i;
+		for(@c[0] := 1; i < n; i++;) {
+			j := i;
 			for(@c[1 + j] := 1; j > 0; j--;) {
 				@c[j] := @c[j-1] - @c[j];
 			};
 			@c[0] := @c[0] * -1;
 		};
-  	}
-  	
-  	function : native : IsPrime(n : Int) ~ Bool {
-  		Coef(n);
+	}
+		
+	function : native : IsPrime(n : Int) ~ Bool {
+		Coef(n);
 		@c[0] += 1; @c[n] -= 1;
  
 		i:=n;
@@ -46,12 +46,12 @@ class AksTest {
 		};
 		
 		return i = 0;
-  	}
-  	
-  	function : Show(n : Int) ~ Nil {
-  		do {
-  			value := @c[n];
-  			"+{$value}x^{$n}"->Print();
+	}
+	
+	function : Show(n : Int) ~ Nil {
+		do {
+			value := @c[n];
+			"+{$value}x^{$n}"->Print();
 		} while (n-- <> 0);
-  	}
+	}
 }
