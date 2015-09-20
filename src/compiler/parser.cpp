@@ -3245,14 +3245,20 @@ While* Parser::ParseWhile(int depth)
     ProcessError(L"Expected ')'", TOKEN_CLOSED_PAREN);
   }
   NextToken();
-  
+
+/* 
+  symbol_table->CurrentParseScope()->NewParseScope();
+  StatementList* statements = ParseStatementList(depth + 1);
+  symbol_table->CurrentParseScope()->PreviousParseScope();
+*/
+
   StatementList* statements;
   symbol_table->CurrentParseScope()->NewParseScope();
-  if(!Match(TOKEN_OPEN_PAREN)) {
+  if(!Match(TOKEN_OPEN_BRACE)) {
     statements = TreeFactory::Instance()->MakeStatementList();
   }
   else {
-    statements =  ParseStatementList(depth + 1);
+    statements = ParseStatementList(depth + 1);
   }
   symbol_table->CurrentParseScope()->PreviousParseScope();
   
