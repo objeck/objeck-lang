@@ -163,7 +163,7 @@ if [ ! -z "$2" ] && [ "$2" = "deploy" ]; then
 		cd "$USER_HOME\Desktop"
 	else
 		rm -rf ~/Desktop/objeck-lang
-		cp -rf src/objeck/deploy ~/Desktop/objeck-lang
+		cp -rf ../objeck/deploy ~/Desktop/objeck-lang
 		cd ~/Desktop
 	fi;
 
