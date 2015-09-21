@@ -126,6 +126,9 @@ else
 	cp openssl.so ../../objeck/deploy/lib/objeck-lang/libobjk_openssl.so
 fi
 
+cd ../fcgi
+./build_linux.sh
+
 # copy docs
 cd ../../..
 cp docs/guide/objeck_lang.pdf src/objeck/deploy/doc
