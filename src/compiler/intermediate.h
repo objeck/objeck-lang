@@ -226,6 +226,13 @@ class IntermediateEmitter {
        !(expression->GetExpressionType() == METHOD_CALL_EXPR &&
          static_cast<MethodCall*>(expression)->GetCallType() == NEW_ARRAY_CALL &&  
          expression->GetToClass()->IsInterface())) {
+
+      if(static_cast<MethodCall*>(expression)->GetMethod() && 
+          static_cast<MethodCall*>(expression)->GetMethod()->GetReturn() && 
+          static_cast<MethodCall*>(expression)->GetMethod()->GetReturn()->GetDimension() != 0) {
+        return;
+      }
+      
       if(is_lib) {
 				imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_OBJ_INST_CAST, expression->GetToClass()->GetName()));
       } else {
