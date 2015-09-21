@@ -1,6 +1,9 @@
 use Collection;
 
 class Test {
+	v : static : Compare[];	
+	s : static : Int;
+
 	function : Main(args : String[]) ~ Nil {
 		values := CompareVector->New();
 		Foo(values);

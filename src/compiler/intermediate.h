@@ -221,28 +221,36 @@ class IntermediateEmitter {
   
   // emits class cast checks
   void EmitClassCast(Expression* expression) {
-    // class cast
-    if(expression->GetToClass() && 
-       !(expression->GetExpressionType() == METHOD_CALL_EXPR &&
-         static_cast<MethodCall*>(expression)->GetCallType() == NEW_ARRAY_CALL &&  
-         expression->GetToClass()->IsInterface())) {
-
-      if(static_cast<MethodCall*>(expression)->GetMethod() && 
-          static_cast<MethodCall*>(expression)->GetMethod()->GetReturn() && 
-          static_cast<MethodCall*>(expression)->GetMethod()->GetReturn()->GetDimension() != 0) {
+    if(expression->GetExpressionType() == METHOD_CALL_EXPR) {
+      if(static_cast<MethodCall*>(expression)->GetLibraryMethod()) {
+        if(static_cast<MethodCall*>(expression)->GetLibraryMethod()->GetReturn()->GetDimension() > 0) {
+          return;
+        }
+      }
+      else if(static_cast<MethodCall*>(expression)->GetMethod()) {
+        if(static_cast<MethodCall*>(expression)->GetMethod()->GetReturn()->GetDimension() > 0) {
+          return;
+        }
+      }
+    }
+    else if(expression->GetExpressionType() == VAR_EXPR) {
+      if(static_cast<Variable*>(expression)->GetEntry()->GetType()->GetDimension() > 0 && 
+         !static_cast<Variable*>(expression)->GetIndices()) {
         return;
       }
-      
+    }
+    
+    // class cast
+    if(expression->GetToClass() && !(expression->GetExpressionType() == METHOD_CALL_EXPR &&
+                                     static_cast<MethodCall*>(expression)->GetCallType() == NEW_ARRAY_CALL)) {
       if(is_lib) {
 				imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_OBJ_INST_CAST, expression->GetToClass()->GetName()));
       } else {
 				imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, OBJ_INST_CAST, expression->GetToClass()->GetId()));
       }
     } 
-    else if(expression->GetToLibraryClass() && 
-            !(expression->GetExpressionType() == METHOD_CALL_EXPR &&
-              static_cast<MethodCall*>(expression)->GetCallType() == NEW_ARRAY_CALL &&  
-              expression->GetToLibraryClass()->IsInterface())) {
+    else if(expression->GetToLibraryClass() && !(expression->GetExpressionType() == METHOD_CALL_EXPR &&
+                                                 static_cast<MethodCall*>(expression)->GetCallType() == NEW_ARRAY_CALL)) {
       if(is_lib) {
 				imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_OBJ_INST_CAST, expression->GetToLibraryClass()->GetName()));
       } else {
