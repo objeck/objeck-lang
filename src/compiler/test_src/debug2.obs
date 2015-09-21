@@ -19,8 +19,7 @@ class JortSort {
 	
 	function : JortSort(vector : CompareVector) ~ Bool {
 		sorted_vector := CompareVector->New(vector);
-		vector->Sort();
-#		sorted_vector->Sort();
+		sorted_vector->Sort();
 		
 		each(i : sorted_vector) {
 			if(sorted_vector->Get(i) <> vector->Get(i)){
