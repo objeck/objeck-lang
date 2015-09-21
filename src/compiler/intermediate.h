@@ -221,6 +221,7 @@ class IntermediateEmitter {
   
   // emits class cast checks
   void EmitClassCast(Expression* expression) {
+    // ensure scalar cast
     if(expression->GetExpressionType() == METHOD_CALL_EXPR) {
       if(static_cast<MethodCall*>(expression)->GetLibraryMethod()) {
         if(static_cast<MethodCall*>(expression)->GetLibraryMethod()->GetReturn()->GetDimension() > 0) {
@@ -245,15 +246,18 @@ class IntermediateEmitter {
                                      static_cast<MethodCall*>(expression)->GetCallType() == NEW_ARRAY_CALL)) {
       if(is_lib) {
 				imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_OBJ_INST_CAST, expression->GetToClass()->GetName()));
-      } else {
+      } 
+      else {
 				imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, OBJ_INST_CAST, expression->GetToClass()->GetId()));
       }
     } 
+    // class library cast
     else if(expression->GetToLibraryClass() && !(expression->GetExpressionType() == METHOD_CALL_EXPR &&
                                                  static_cast<MethodCall*>(expression)->GetCallType() == NEW_ARRAY_CALL)) {
       if(is_lib) {
 				imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_OBJ_INST_CAST, expression->GetToLibraryClass()->GetName()));
-      } else {
+      } 
+      else {
 				imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, OBJ_INST_CAST, expression->GetToLibraryClass()->GetId()));
       }
     }
