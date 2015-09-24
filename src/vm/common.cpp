@@ -1881,7 +1881,7 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, long* inst,
     long* array = (long*)PopInt(op_stack, stack_pos);
     long* instance = (long*)PopInt(op_stack, stack_pos);
     if(array && instance && (long)instance[0] > -1) {
-      char buffer[SMALL_BUFFER_MAX + 1];
+      char buffer[LARGE_BUFFER_MAX + 1];
       SOCKET sock = (SOCKET)instance[0];	
       int status;
       
@@ -1891,7 +1891,7 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, long* inst,
         bool end_line = false;
         do {
           value = IPSocket::ReadByte(sock, status);
-          if(value != '\r' && value != '\n' && index < SMALL_BUFFER_MAX && status > 0) {
+          if(value != '\r' && value != '\n' && index < LARGE_BUFFER_MAX && status > 0) {
             buffer[index++] = value;
           }
           else {
@@ -1972,7 +1972,7 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, long* inst,
     long* array = (long*)PopInt(op_stack, stack_pos);
     long* instance = (long*)PopInt(op_stack, stack_pos);
     if(array && instance) {
-      char buffer[SMALL_BUFFER_MAX + 1];
+      char buffer[LARGE_BUFFER_MAX + 1];
       SSL_CTX* ctx = (SSL_CTX*)instance[0];
       BIO* bio = (BIO*)instance[1]; 
       int status;
@@ -1982,7 +1982,7 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, long* inst,
         bool end_line = false;
         do {
           value = IPSecureSocket::ReadByte(ctx, bio, status);
-          if(value != '\r' && value != '\n' && index < SMALL_BUFFER_MAX && status > 0) {
+          if(value != '\r' && value != '\n' && index < LARGE_BUFFER_MAX && status > 0) {
             buffer[index++] = value;
           }
           else {
