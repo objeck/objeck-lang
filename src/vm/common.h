@@ -81,7 +81,8 @@ namespace std {
 #endif
 
 
-#define SMALL_BUFFER_MAX 255
+#define SMALL_BUFFER_MAX 511
+#define LARGE_BUFFER_MAX 4095
 #define CALC_STACK_SIZE 512
 
 using namespace std;
