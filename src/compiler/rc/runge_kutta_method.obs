@@ -6,7 +6,7 @@ class RungeKuttaMethod {
 		
 #		n : Int := 1.0 + (x1 - x0)/dx;
 		n := 1.0 + (x1 - x0)/dx;
-		y := Float->New[n];
+		y := Float->New[n->As(Int)];
 		
 		y[0] := 1;
 		for(i := 1; i < n; i++;) {
