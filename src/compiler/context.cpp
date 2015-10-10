@@ -1810,16 +1810,18 @@ bool ContextAnalyzer::Analyze()
     }
     // validate array parameters
     for(size_t i = 0; i < expressions.size(); ++i) {
-      Type* eval_type = expressions[i]->GetEvalType();
-      if(eval_type) {
-        switch(eval_type->GetType()) {
+      Expression* expression = expressions[i];
+      AnalyzeExpression(expression, depth + 1);
+      Type* type = GetExpressionType(expression, depth + 1);
+      if(type) {
+        switch(type->GetType()) {
         case BYTE_TYPE:
         case CHAR_TYPE:
         case INT_TYPE:
           break;
 
         default:
-          ProcessError(expressions[i], L"Invalid array index type");
+          ProcessError(expressions[i], L"Array index type must be an Integer, Char or Byte");
           break;
         }
       }
