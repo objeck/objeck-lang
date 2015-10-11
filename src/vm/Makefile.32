@@ -1,7 +1,7 @@
-# ARGS=-g -D_SANITIZE -pthread -Wall -Wno-unused-function
-ARGS=-O3 -pthread -Wall -Wno-unused-function
-# ARGS=-pg -O3 -pthread -Wall -Wno-unused-function
-# ARGS=-g -D_DEBUG -Wall -pthread -Wall -Wno-unused-function
+# ARGS=-g -D_SANITIZE -pthread -Wall -Wno-unused-function -std=c++11
+ARGS=-O3 -pthread -Wall -Wno-unused-function -std=c++11
+# ARGS=-pg -O3 -pthread -Wall -Wno-unused-function -std=c++11
+# ARGS=-g -D_DEBUG -Wall -pthread -Wall -Wno-unused-function -std=c++11
 
 CC=g++
 SRC=common.o interpreter.o loader.o vm.o posix_main.o 
