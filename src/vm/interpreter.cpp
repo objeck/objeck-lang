@@ -784,11 +784,10 @@ void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i,
       PushFloat(sqrt(PopFloat(op_stack, stack_pos)), op_stack, stack_pos);
       break;
 
-    case RAND_FLOAT: {
-      FLOAT_VALUE value = (FLOAT_VALUE)rand();
-      PushFloat(value / (FLOAT_VALUE)RAND_MAX, op_stack, stack_pos);
+    case RAND_FLOAT:
+     PushFloat(GetRandomValue(), op_stack, stack_pos);
       break;
-    }
+
       // Note: no supported via JIT -- *end*
 
     case I2F:

@@ -33,6 +33,7 @@
 #define __STACK_INTPR_H__
 
 #include "common.h"
+#include <random>
 #include <string.h>
 
 #ifdef _WIN32
@@ -46,6 +47,7 @@
 #endif
 
 using namespace std;
+#undef max
 
 namespace Runtime {
 #ifdef _DEBUGGER
@@ -427,6 +429,11 @@ namespace Runtime {
       str_obj[2] = char_array_size;
       
       return str_obj;
+    }
+
+    inline FLOAT_VALUE GetRandomValue() {
+      random_device gen;
+      return (FLOAT_VALUE)gen() / (FLOAT_VALUE)gen.max();
     }
     
     inline void ProcessNewArray(StackInstr* instr, long* &op_stack, long* &stack_pos, bool is_float = false);
