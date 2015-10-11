@@ -1,4 +1,4 @@
-ARGS=-O3 -Wall -pthread -D_X64 -D_UTILS -Wno-unused-function
+ARGS=-O3 -Wall -pthread -D_X64 -D_UTILS -Wno-unused-function -std=c++11
 
 CC=g++
 SRC=../compiler/types.o ../compiler/linker.o ../vm/loader.o symbols.o
