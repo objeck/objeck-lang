@@ -777,7 +777,7 @@ void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i,
     case POW_FLOAT:
       right_double = PopFloat(op_stack, stack_pos);
       left_double = PopFloat(op_stack, stack_pos);
-      PushFloat(pow(right_double, left_double), op_stack, stack_pos);
+      PushFloat(pow(left_double, right_double), op_stack, stack_pos);
       break;
       
     case SQRT_FLOAT:
