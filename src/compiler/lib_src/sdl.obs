@@ -1,0 +1,33 @@
+use Collection;
+use System.API;
+
+#~
+Provides support for SDL
+~#
+bundle SDL {
+	class Proxy {
+		@lib_proxy : static : DllProxy;
+		
+		function : GetDllProxy() ~ DllProxy {
+			if(@lib_proxy = Nil) {
+				@lib_proxy := DllProxy->New("libobjk_odbc");
+			};
+
+			return @lib_proxy;
+		}
+	}
+	
+	class SDL {
+		method : public : Init(flag : Int) ~ Int {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(flag);
+			@lib_proxy := Proxy->GetDllProxy();
+			@lib_proxy->CallFunction("sdl_init", array_args);
+			
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+	}
+}
+
