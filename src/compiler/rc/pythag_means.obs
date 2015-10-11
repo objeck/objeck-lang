@@ -31,7 +31,7 @@ class PythagMeans {
 			mean *= numbers[i];
 		};
 		
-		return mean->Power(1.0 / numbers->Size());
+		return (1.0 / numbers->Size())->Power(mean);
 	}
 
 	function : native : HarmonicMean(numbers : Float[]) ~ Float {
