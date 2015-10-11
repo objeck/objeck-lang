@@ -1,5 +1,5 @@
-ARGS=-g -D_DEBUG  -Wunused -Wall -Wno-unused-function
-# ARGS=-O3 -Wall -Wno-unused-function
+ARGS=-g -D_DEBUG  -Wunused -Wall -Wno-unused-function -std=c++11 -std=c++11
+# ARGS=-O3 -Wall -Wno-unused-function -std=c++11 -std=c++11
 
 CC=C:/SysGCC/Raspberry/bin/arm-linux-gnueabihf-g++
 AR=C:/SysGCC/Raspberry/bin/arm-linux-gnueabihf-ar

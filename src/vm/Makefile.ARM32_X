@@ -1,8 +1,8 @@
 # export OPENSSL_armcap=0 
-# ARGS=-g -D_SANITIZE -pthread -Wall -Wno-unused-function
+# ARGS=-g -D_SANITIZE -pthread -Wall -Wno-unused-function -std=c++11
 # ARGS=-O3 -D_ARM -pthread -Wall -D_NO_JIT -Wno-unused-function
-# ARGS=-g -D_DEBUG -D_ARM32 -D_NO_JIT -Wall -pthread -Wall -Wno-unused-function
-ARGS=-g -D_DEBUG -D_ARM32 -Wall -pthread -Wall -Wno-unused-function
+# ARGS=-g -D_DEBUG -D_ARM32 -D_NO_JIT -Wall -pthread -Wall -Wno-unused-function -std=c++11
+ARGS=-g -D_DEBUG -D_ARM32 -Wall -pthread -Wall -Wno-unused-function -std=c++11
 
 CC=C:/SysGCC/Raspberry/bin/arm-linux-gnueabihf-g++
 SRC=common.o interpreter.o loader.o vm.o posix_main.o 
