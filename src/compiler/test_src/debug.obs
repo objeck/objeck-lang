@@ -1,19 +1,8 @@
-use Collection;
-
 class Test {
-	v : static : Compare[];	
-	s : static : Int;
-
 	function : Main(args : String[]) ~ Nil {
-		values := CompareVector->New();
-		Foo(values);
-	}
-
-	function : Foo(values : CompareVector) ~ Nil {
-		v := values->ToArray();
-		s := values->Size();
-	
-		v->Size()->PrintLine();
-		s->PrintLine();
+		i := 3;
+#		i++;
+		i+=1;
+		i->PrintLine();
 	}
 }
