@@ -5,7 +5,7 @@ use System.API;
 Provides support for SDL
 ~#
 bundle SDL {
-	class Proxy {
+	class Core {
 		@lib_proxy : static : DllProxy;
 		
 		function : GetDllProxy() ~ DllProxy {
@@ -47,6 +47,22 @@ bundle SDL {
 			
 			value := array_args[0]->As(IntHolder);
 			@window := value->Get();
+		}
+	}
+	
+	class Surface {
+		@surface : Int;
+		
+		New(window : Window) {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := window;
+			
+			@lib_proxy := Proxy->GetDllProxy();
+			@lib_proxy->CallFunction("sdl_get_window_surface", array_args);
+			
+			value := array_args[0]->As(IntHolder);
+			@surface := value->Get();
 		}
 	}
 }
