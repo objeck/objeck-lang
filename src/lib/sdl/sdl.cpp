@@ -60,4 +60,21 @@ extern "C" {
     const int flag = APITools_GetIntValue(context, 1);
     APITools_SetIntValue(context, 0, SDL_Init(flag));
   }
+
+  void sdl_create_window(VMContext& context) {
+    const wstring wtitle(APITools_GetStringValue(context, 1));
+    int x = APITools_GetIntValue(context, 2);
+    int y = APITools_GetIntValue(context, 3);
+    int w = APITools_GetIntValue(context, 4);
+    int h = APITools_GetIntValue(context, 5);
+    Uint32 flags = (Uint32)APITools_GetIntValue(context, 6);
+
+    const string title(wtitle.begin(), wtitle.end());
+    SDL_Window* window = SDL_CreateWindow(title.c_str(), x, y, w, h, flags);
+
+    APITools_SetIntValue(context, 0, (int)window);
+  }
+
+
+  
 }
