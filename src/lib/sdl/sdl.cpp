@@ -72,6 +72,11 @@ extern "C" {
     const string title(wtitle.begin(), wtitle.end());
     SDL_Window* window = SDL_CreateWindow(title.c_str(), x, y, w, h, flags);
 
-    APITools_SetIntValue(context, 0, (int)window);
+    APITools_SetIntValue(context, 0, (long)window);
   }  
+
+  void sdl_get_window_surface(VMContext& context) {
+    SDL_Window* window = (SDL_Window*)APITools_GetObjectValue(context, 1);
+    APITools_SetIntValue(context, 0, (long)SDL_GetWindowSurface(window));
+  }
 }
