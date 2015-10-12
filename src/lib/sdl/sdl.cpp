@@ -73,8 +73,5 @@ extern "C" {
     SDL_Window* window = SDL_CreateWindow(title.c_str(), x, y, w, h, flags);
 
     APITools_SetIntValue(context, 0, (int)window);
-  }
-
-
-  
+  }  
 }
