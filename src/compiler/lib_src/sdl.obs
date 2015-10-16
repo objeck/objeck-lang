@@ -5,7 +5,7 @@ use System.API;
 Provides support for SDL
 ~#
 bundle SDL {
-	class Core {
+	class Proxy {
 		@lib_proxy : static : DllProxy;
 		
 		function : GetDllProxy() ~ DllProxy {
@@ -17,7 +17,7 @@ bundle SDL {
 		}
 	}
 	
-	class SDL {
+	class Core {
 		function : Init(flag : Int) ~ Int {
 			array_args := Base->New[2];
 			array_args[0] := IntHolder->New();
@@ -27,6 +27,42 @@ bundle SDL {
 			
 			value := array_args[0]->As(IntHolder);
 			return value->Get();
+		}
+		
+		function : LoadBmp(name : String) ~ Surface {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := name;
+			@lib_proxy := Proxy->GetDllProxy();
+			@lib_proxy->CallFunction("sdl_load_bmp", array_args);
+			
+			value := array_args[0]->As(IntHolder);
+			return Surface->New(value->Get());
+		}
+		
+		function : PollEvent(event : Event) ~ Bool {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := event;
+			@lib_proxy := Proxy->GetDllProxy();
+			@lib_proxy->CallFunction("sdl_poll_event", array_args);
+			
+			value := array_args[0]->As(IntHolder);
+			return value <> 0;
+		}
+		
+		function : Quit() ~ Nil {
+			@lib_proxy->CallFunction("sdl_quit", Nil);
+		}
+	}
+	
+	class Event {
+		New() {
+			@lib_proxy := Proxy->GetDllProxy();
+			@lib_proxy->CallFunction("sdl_poll_event", array_args);
+			
+			value := array_args[0]->As(IntHolder);
+			return value <> 0;
 		}
 	}
 	
@@ -48,10 +84,21 @@ bundle SDL {
 			value := array_args[0]->As(IntHolder);
 			@window := value->Get();
 		}
+		
+		method : public : Destroy() ~ Nil {
+			array_args := Base->New[1];
+			array_args[0] := IntHolder->New(@window);
+			@lib_proxy := Proxy->GetDllProxy();
+			@lib_proxy->CallFunction("sdl_destroy_window", array_args);
+		}
 	}
 	
 	class Surface {
 		@surface : Int;
+		
+		New(surface : Int) {
+			@surface := surface;
+		}
 		
 		New(window : Window) {
 			array_args := Base->New[2];
@@ -63,6 +110,13 @@ bundle SDL {
 			
 			value := array_args[0]->As(IntHolder);
 			@surface := value->Get();
+		}
+		
+		method : public : Free() ~ Nil {
+			array_args := Base->New[1];
+			array_args[0] := IntHolder->New(@surface);
+			@lib_proxy := Proxy->GetDllProxy();
+			@lib_proxy->CallFunction("sdl_free_surface", array_args);
 		}
 	}
 }

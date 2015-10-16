@@ -56,11 +56,23 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport) 
 #endif
+  // core
   void sdl_init(VMContext& context) {
     const int flag = APITools_GetIntValue(context, 1);
     APITools_SetIntValue(context, 0, SDL_Init(flag));
   }
 
+  void sdl_quit(VMContext& context) {
+    SDL_Quit();
+  }
+
+  void sdl_poll_event(VMContext& context) {
+    long* value = APITools_GetObjectValue(context, 1);
+    SDL_Event* event = (SDL_Event*)value[1];
+    APITools_SetIntValue(context, 0, SDL_PollEvent(event));
+  }
+  
+  // window
   void sdl_create_window(VMContext& context) {
     const wstring wtitle(APITools_GetStringValue(context, 1));
     int x = APITools_GetIntValue(context, 2);
@@ -73,10 +85,26 @@ extern "C" {
     SDL_Window* window = SDL_CreateWindow(title.c_str(), x, y, w, h, flags);
 
     APITools_SetIntValue(context, 0, (long)window);
-  }  
+  }
 
+  void sdl_destroy_window(VMContext& context) {
+    SDL_Window* window = (SDL_Window*)APITools_GetIntValue(context, 0);
+    SDL_DestroyWindow(window);
+  }
+
+  // surface
   void sdl_get_window_surface(VMContext& context) {
     SDL_Window* window = (SDL_Window*)APITools_GetObjectValue(context, 1);
     APITools_SetIntValue(context, 0, (long)SDL_GetWindowSurface(window));
+  }
+
+  void sdl_load_bmp(VMContext& context) {
+    const wstring wname = APITools_GetStringValue(context, 1);
+    APITools_SetIntValue(context, 0, (long)SDL_LoadBMP(UnicodeToBytes(wname).c_str()));
+  }
+
+  void sdl_free_surface(VMContext& context) {
+    SDL_Surface* surface = (SDL_Surface*)APITools_GetIntValue(context, 0);
+    SDL_FreeSurface(surface);
   }
 }
