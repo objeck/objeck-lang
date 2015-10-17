@@ -48,21 +48,26 @@ bundle SDL {
 			@lib_proxy->CallFunction("sdl_poll_event", array_args);
 			
 			value := array_args[0]->As(IntHolder);
-			return value <> 0;
+			return value->Get() <> 0;
 		}
 		
 		function : Quit() ~ Nil {
-			@lib_proxy->CallFunction("sdl_quit", Nil);
+			@lib_proxy := Proxy->GetDllProxy();
+			@lib_proxy->CallFunction("sdl_quit", Nil->As(Base[]));
 		}
 	}
 	
 	class Event {
+		@event : Int;
+		
 		New() {
+			array_args := Base->New[1];
+			array_args[0] := IntHolder->New();
 			@lib_proxy := Proxy->GetDllProxy();
-			@lib_proxy->CallFunction("sdl_poll_event", array_args);
+			@lib_proxy->CallFunction("sdl_event_new", array_args);			
 			
 			value := array_args[0]->As(IntHolder);
-			return value <> 0;
+			@event := value->Get();
 		}
 	}
 	
