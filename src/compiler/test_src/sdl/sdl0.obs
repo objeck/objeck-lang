@@ -26,7 +26,8 @@ class Test {
 		else {
 		
 			# Create window
-			gWindow := Window->New( "SDL Tutorial", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 800, 640, SDL_WINDOW_SHOWN );
+			gWindow := Window->New( "SDL Tutorial", SDL_WINDOWPOS_UNDEFINED, 
+				SDL_WINDOWPOS_UNDEFINED, 800, 640, SDL_WINDOW_SHOWN );
 #~			
 			if( gWindow == NULL )
 			{
