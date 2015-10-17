@@ -1,0 +1,38 @@
+use SDL;
+
+class Test {
+	gWindow : static : Window;
+	
+	function : Main(args : String[]) ~ Nil {
+		
+	}
+	
+	function : Init() ~ Bool {
+		# Initialization flag
+		success := true;
+		
+		# Initialize SDL
+		if(Core->Init(0x20) < 0) {
+			"SDL could not initialize!"->ErrorLine();
+			success := false;
+		}
+		else {
+#~		
+			# Create window
+			gWindow = SDL_CreateWindow( "SDL Tutorial", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN );
+			if( gWindow == NULL )
+			{
+				printf( "Window could not be created! SDL_Error: %s\n", SDL_GetError() );
+				success = false;
+			}
+			else
+			{
+				//Get window surface
+				gScreenSurface = SDL_GetWindowSurface( gWindow );
+			}
+~#			
+		};
+		
+		return success;
+	}
+}
