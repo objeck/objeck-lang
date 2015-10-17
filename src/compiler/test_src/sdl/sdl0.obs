@@ -2,9 +2,16 @@ use SDL;
 
 class Test {
 	gWindow : static : Window;
+	gScreenSurface : static : Surface;
+	
+	SDL_WINDOWPOS_UNDEFINED : static : Int;
+	SDL_WINDOW_SHOWN : static : Int;
 	
 	function : Main(args : String[]) ~ Nil {
+		SDL_WINDOWPOS_UNDEFINED := 0x1FFF0000;
+		SDL_WINDOW_SHOWN := 0x00000004;
 		
+		SDL_WINDOWPOS_UNDEFINED->PrintLine();
 	}
 	
 	function : Init() ~ Bool {
@@ -17,9 +24,10 @@ class Test {
 			success := false;
 		}
 		else {
-#~		
+		
 			# Create window
-			gWindow = SDL_CreateWindow( "SDL Tutorial", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN );
+			gWindow := Window->New( "SDL Tutorial", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 800, 640, SDL_WINDOW_SHOWN );
+#~			
 			if( gWindow == NULL )
 			{
 				printf( "Window could not be created! SDL_Error: %s\n", SDL_GetError() );
@@ -31,6 +39,7 @@ class Test {
 				gScreenSurface = SDL_GetWindowSurface( gWindow );
 			}
 ~#			
+			gScreenSurface := gWindow->GetSurface();
 		};
 		
 		return success;
