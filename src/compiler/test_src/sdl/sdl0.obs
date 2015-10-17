@@ -11,7 +11,7 @@ class Test {
 		SDL_WINDOWPOS_UNDEFINED := 0x1FFF0000;
 		SDL_WINDOW_SHOWN := 0x00000004;
 		
-		SDL_WINDOWPOS_UNDEFINED->PrintLine();
+#		SDL_WINDOWPOS_UNDEFINED->PrintLine();
 	}
 	
 	function : Init() ~ Bool {
