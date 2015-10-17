@@ -10,7 +10,7 @@ bundle SDL {
 		
 		function : GetDllProxy() ~ DllProxy {
 			if(@lib_proxy = Nil) {
-				@lib_proxy := DllProxy->New("libobjk_odbc");
+				@lib_proxy := DllProxy->New("libobjk_sdl");
 			};
 
 			return @lib_proxy;
@@ -127,7 +127,7 @@ bundle SDL {
 			array_args[0] := IntHolder->New();
 			array_args[1] := IntHolder->New(@window);
 			@lib_proxy := Proxy->GetDllProxy();
-			@lib_proxy->CallFunction("sdl_create_window", array_args);
+			@lib_proxy->CallFunction("sdl_get_window_surface", array_args);
 			
 			value := array_args[0]->As(IntHolder);
 			return Surface->New(value->Get());
