@@ -39,7 +39,7 @@ class Test {
 				gScreenSurface = SDL_GetWindowSurface( gWindow );
 			}
 ~#			
-			gScreenSurface := gWindow->GetSurface();
+			gScreenSurface := Surface->New(gWindow);
 		};
 		
 		return success;
