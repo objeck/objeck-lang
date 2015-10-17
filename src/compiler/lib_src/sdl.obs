@@ -51,9 +51,41 @@ bundle SDL {
 			return value->Get() <> 0;
 		}
 		
+		function : BlitSurface(src : Surface, srcrect : Rect, dst : Surface, dstrect : Rect) ~ Int {
+			array_args := Base->New[5];
+			array_args[0] := IntHolder->New();
+			array_args[1] := src;
+			array_args[2] := srcrect;
+			array_args[3] := dst;
+			array_args[4] := dstrect;
+			@lib_proxy := Proxy->GetDllProxy();
+			@lib_proxy->CallFunction("sdl_poll_event", array_args);
+			
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+		
+		function : UpdateWindowSurface(window : Window) ~ Int {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := window;
+			@lib_proxy := Proxy->GetDllProxy();
+			@lib_proxy->CallFunction("update_window_surface", array_args);
+			
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+		
 		function : Quit() ~ Nil {
 			@lib_proxy := Proxy->GetDllProxy();
 			@lib_proxy->CallFunction("sdl_quit", Nil->As(Base[]));
+		}
+	}
+	
+	class Rect {
+		@rect : Int;
+		
+		New() {
 		}
 	}
 	

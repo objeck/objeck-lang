@@ -66,12 +66,30 @@ extern "C" {
     SDL_Quit();
   }
 
+  void update_window_surface(VMContext& context) {
+    long* src_window = APITools_GetObjectValue(context, 1);
+    APITools_SetIntValue(context, 0, SDL_UpdateWindowSurface((SDL_Window*)src_window[1]));
+  }
+
+  // window
+  void blit_surface(VMContext& context) {
+    long* src_obj = APITools_GetObjectValue(context, 1);
+    long* srcrect_obj = APITools_GetObjectValue(context, 2);
+    long* dst_obj = APITools_GetObjectValue(context, 3);
+    long* dstrect_obj = APITools_GetObjectValue(context, 4);
+
+    const int value = SDL_BlitSurface((SDL_Surface*)src_obj[1], (SDL_Rect*)srcrect_obj[1],
+                                      (SDL_Surface*)dst_obj[1], (SDL_Rect*)dstrect_obj[1]);
+
+    APITools_SetIntValue(context, 0, value);
+  }
+
   void sdl_poll_event(VMContext& context) {
     long* value = APITools_GetObjectValue(context, 1);
     SDL_Event* event = (SDL_Event*)value[1];
     APITools_SetIntValue(context, 0, SDL_PollEvent(event));
   }
-  
+
   // window
   void sdl_create_window(VMContext& context) {
     const wstring wtitle(APITools_GetStringValue(context, 1));
@@ -106,5 +124,11 @@ extern "C" {
   void sdl_free_surface(VMContext& context) {
     SDL_Surface* surface = (SDL_Surface*)APITools_GetIntValue(context, 0);
     SDL_FreeSurface(surface);
+  }
+
+  // event
+  void sdl_event_new(VMContext& context) {
+    const wstring wname = APITools_GetStringValue(context, 1);
+    APITools_SetIntValue(context, 0, (long)calloc(1, sizeof(SDL_Event)));
   }
 }
