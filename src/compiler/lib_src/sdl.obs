@@ -17,6 +17,24 @@ bundle SDL {
 		}
 	}
 	
+	class Flags {
+		function : SdlInitVideo() ~ Int {
+			return 0x00000020;
+		}
+		
+		function : SdlWindowposUndefined() ~ Int {
+			return 0x1FFF0000;
+		}
+		
+		function : SdlWindowShown() ~ Int {
+			return 0x00000004;
+		}
+		
+		function : SdlQuit() ~ Int {
+			return 0x100;
+		}
+	}
+	
 	class Core {
 		function : Init(flag : Int) ~ Int {
 			array_args := Base->New[2];
