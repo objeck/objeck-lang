@@ -73,7 +73,7 @@ extern "C" {
   __declspec(dllexport)
 #endif
   void update_window_surface(VMContext& context) {
-    long* src_window = APITools_GetObjectValue(context, 1);
+    const long* src_window = APITools_GetObjectValue(context, 1);
     APITools_SetIntValue(context, 0, SDL_UpdateWindowSurface((SDL_Window*)src_window[0]));
   }
 
@@ -82,10 +82,10 @@ extern "C" {
 #endif
   // window
   void blit_surface(VMContext& context) {
-    long* src_obj = APITools_GetObjectValue(context, 1);
-    long* srcrect_obj = APITools_GetObjectValue(context, 2);
-    long* dst_obj = APITools_GetObjectValue(context, 3);
-    long* dstrect_obj = APITools_GetObjectValue(context, 4);
+    const long* src_obj = APITools_GetObjectValue(context, 1);
+    const long* srcrect_obj = APITools_GetObjectValue(context, 2);
+    const long* dst_obj = APITools_GetObjectValue(context, 3);
+    const long* dstrect_obj = APITools_GetObjectValue(context, 4);
 
     const int value = SDL_BlitSurface((SDL_Surface*)src_obj[0], srcrect_obj ? (SDL_Rect*)srcrect_obj[0] : NULL,
                                       (SDL_Surface*)dst_obj[0], dstrect_obj ? (SDL_Rect*)dstrect_obj[0] : NULL);
@@ -93,20 +93,28 @@ extern "C" {
     APITools_SetIntValue(context, 0, value);
   }
 
+  // event
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
   void sdl_poll_event(VMContext& context) {
-    long* value = APITools_GetObjectValue(context, 1);
+    const long* value = APITools_GetObjectValue(context, 1);
     SDL_Event* event = (SDL_Event*)value[0];
-    const int foo = SDL_PollEvent(event);
-    APITools_SetIntValue(context, 0, foo);
+    APITools_SetIntValue(context, 0, SDL_PollEvent(event));
   }
 
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
+  void sdl_event_type(VMContext& context) {
+    SDL_Event* event = (SDL_Event*)APITools_GetIntValue(context, 1);
+    APITools_SetIntValue(context, 0, event->type);
+  }
+
   // window
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
   void sdl_create_window(VMContext& context) {
     const wstring wtitle(APITools_GetStringValue(context, 1));
     int x = APITools_GetIntValue(context, 2);
@@ -134,7 +142,7 @@ extern "C" {
   __declspec(dllexport)
 #endif
   void sdl_get_window_surface(VMContext& context) {
-    long* window_obj = (long*)APITools_GetObjectValue(context, 1);
+    const long* window_obj = (long*)APITools_GetObjectValue(context, 1);
     APITools_SetIntValue(context, 0, (long)SDL_GetWindowSurface((SDL_Window*)window_obj[0]));
   }
 
@@ -143,8 +151,8 @@ extern "C" {
 #endif
   void sdl_load_bmp(VMContext& context) {
     const wstring wname = APITools_GetStringValue(context, 1);
-    SDL_Surface* foo = SDL_LoadBMP(UnicodeToBytes(wname).c_str());
-    APITools_SetIntValue(context, 0, (long)foo);
+    const SDL_Surface* surface = SDL_LoadBMP(UnicodeToBytes(wname).c_str());
+    APITools_SetIntValue(context, 0, (long)surface);
   }
 
 #ifdef _WIN32
@@ -160,7 +168,7 @@ extern "C" {
   __declspec(dllexport)
 #endif
   void sdl_event_new(VMContext& context) {
-    void* foo = calloc(1, sizeof(SDL_Event));
-    APITools_SetIntValue(context, 0, (long)foo);
+    const void* obj = calloc(1, sizeof(SDL_Event));
+    APITools_SetIntValue(context, 0, (long)obj);
   }
 }
