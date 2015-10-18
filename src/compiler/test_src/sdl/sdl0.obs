@@ -3,6 +3,7 @@ use SDL;
 class Test {
 	gWindow : static : Window;
 	gScreenSurface : static : Surface;
+	gXOut : static : Surface;
 	
 	SDL_WINDOWPOS_UNDEFINED : static : Int;
 	SDL_WINDOW_SHOWN : static : Int;
@@ -11,7 +12,46 @@ class Test {
 		SDL_WINDOWPOS_UNDEFINED := 0x1FFF0000;
 		SDL_WINDOW_SHOWN := 0x00000004;
 		
-#		SDL_WINDOWPOS_UNDEFINED->PrintLine();
+		# Start up SDL and create window
+		if( <>Init() ) {
+			"Failed to initialize!"->ErrorLine();
+		}
+		else {
+			# Load media
+			if( <>LoadMedia() ) {
+				"Failed to load media!"->PrintLine();
+			}
+			else {			
+				# Main loop flag
+				quit := false;
+				
+				# Event handler
+				e := Event->New();
+
+				# While application is running
+				while( <>quit )
+				{
+					# Handle events on queue
+					while( Core->PollEvent( e ) <> 0 ) {
+#~					
+						# User requests quit
+						if( e.type == SDL_QUIT )
+						{
+							quit = true;
+						}
+~#						
+					};
+
+					# Apply the image
+					gXOut->Blit( Nil, gScreenSurface, Nil );
+				
+					# Update the surface
+					gWindow->UpdateSurface();
+				};
+			};
+		};
+		
+		Close();
 	}
 	
 	function : Init() ~ Bool {
@@ -24,25 +64,47 @@ class Test {
 			success := false;
 		}
 		else {
-		
 			# Create window
 			gWindow := Window->New( "SDL Tutorial", SDL_WINDOWPOS_UNDEFINED, 
-				SDL_WINDOWPOS_UNDEFINED, 800, 640, SDL_WINDOW_SHOWN );
-#~			
-			if( gWindow == NULL )
-			{
-				printf( "Window could not be created! SDL_Error: %s\n", SDL_GetError() );
-				success = false;
-			}
-			else
-			{
-				//Get window surface
-				gScreenSurface = SDL_GetWindowSurface( gWindow );
-			}
-~#			
-			gScreenSurface := Surface->New(gWindow);
+				SDL_WINDOWPOS_UNDEFINED, 480, 640, SDL_WINDOW_SHOWN );
+			if(<>gWindow->Ok())	{
+				"Window could not be created!"->ErrorLine();
+				success := false;
+			} 
+			else {
+				# Get window surface
+				gScreenSurface := Surface->New(gWindow);
+			};
 		};
 		
 		return success;
+	}
+	
+	function : LoadMedia() ~ Bool {
+		# Loading success flag
+		success := true;
+
+		# Load splash image
+		image := "x.bmp";
+		gXOut := Core->LoadBmp( image );
+		if( <>gXOut->Ok() ) {
+			"Unable to load image {$image}"->PrintLine();
+			success := false;
+		};
+		
+		return success;
+	}
+	
+	function : Close() ~ Nil {
+		# Deallocate surface
+		gXOut->Free();
+		gXOut := Nil;
+
+		# Destroy window
+		gWindow->Destroy();
+		gWindow := Nil;
+
+		# Quit SDL subsystems
+		Core->Quit();
 	}
 }
