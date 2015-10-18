@@ -8,8 +8,10 @@ class Test {
 	SDL_WINDOWPOS_UNDEFINED : static : Int;
 	SDL_WINDOW_SHOWN : static : Int;
 	SDL_QUIT : static : Int;
+	SDL_INIT_VIDEO : static : Int;
 	
 	function : Main(args : String[]) ~ Nil {
+		SDL_INIT_VIDEO := 0x00000020;
 		SDL_WINDOWPOS_UNDEFINED := 0x1FFF0000;
 		SDL_WINDOW_SHOWN := 0x00000004;
 		SDL_QUIT := 0x100;
@@ -58,7 +60,7 @@ class Test {
 		success := true;
 		
 		# Initialize SDL
-		if(Core->Init(0x20) < 0) {
+		if(Core->Init(SDL_INIT_VIDEO) < 0) {
 			"SDL could not initialize!"->ErrorLine();
 			success := false;
 		}
