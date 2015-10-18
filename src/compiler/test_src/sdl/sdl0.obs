@@ -1,16 +1,18 @@
 use SDL;
 
 class Test {
-	gWindow : static : Window;
-	gScreenSurface : static : Surface;
-	gXOut : static : Surface;
+	@window : static : Window;
+	@screen_surface : static : Surface;
+	@x_out : static : Surface;
 	
 	SDL_WINDOWPOS_UNDEFINED : static : Int;
 	SDL_WINDOW_SHOWN : static : Int;
+	SDL_QUIT : static : Int;
 	
 	function : Main(args : String[]) ~ Nil {
 		SDL_WINDOWPOS_UNDEFINED := 0x1FFF0000;
 		SDL_WINDOW_SHOWN := 0x00000004;
+		SDL_QUIT := 0x100;
 		
 		# Start up SDL and create window
 		if( <>Init() ) {
@@ -33,20 +35,17 @@ class Test {
 				{
 					# Handle events on queue
 					while( Core->PollEvent( e ) <> 0 ) {
-#~					
 						# User requests quit
-						if( e.type == SDL_QUIT )
-						{
-							quit = true;
-						}
-~#						
+						if( e->Type() = SDL_QUIT ) {
+							quit := true;
+						};
 					};
 
 					# Apply the image
-					gXOut->Blit( Nil, gScreenSurface, Nil );
+					@x_out->Blit( Nil, @screen_surface, Nil );
 				
 					# Update the surface
-					gWindow->UpdateSurface();
+					@window->UpdateSurface();
 				};
 			};
 		};
@@ -65,15 +64,15 @@ class Test {
 		}
 		else {
 			# Create window
-			gWindow := Window->New( "SDL Tutorial", SDL_WINDOWPOS_UNDEFINED, 
-				SDL_WINDOWPOS_UNDEFINED, 480, 640, SDL_WINDOW_SHOWN );
-			if(<>gWindow->Ok())	{
+			@window := Window->New( "SDL Tutorial", SDL_WINDOWPOS_UNDEFINED, 
+				SDL_WINDOWPOS_UNDEFINED, 640, 480, SDL_WINDOW_SHOWN );
+			if(<>@window->Ok())	{
 				"Window could not be created!"->ErrorLine();
 				success := false;
 			} 
 			else {
 				# Get window surface
-				gScreenSurface := Surface->New(gWindow);
+				@screen_surface := Surface->New(@window);
 			};
 		};
 		
@@ -86,8 +85,8 @@ class Test {
 
 		# Load splash image
 		image := "x.bmp";
-		gXOut := Core->LoadBmp( image );
-		if( <>gXOut->Ok() ) {
+		@x_out := Core->LoadBmp( image );
+		if( <>@x_out->Ok() ) {
 			"Unable to load image {$image}"->PrintLine();
 			success := false;
 		};
@@ -97,12 +96,12 @@ class Test {
 	
 	function : Close() ~ Nil {
 		# Deallocate surface
-		gXOut->Free();
-		gXOut := Nil;
+		@x_out->Free();
+		@x_out := Nil;
 
 		# Destroy window
-		gWindow->Destroy();
-		gWindow := Nil;
+		@window->Destroy();
+		@window := Nil;
 
 		# Quit SDL subsystems
 		Core->Quit();
