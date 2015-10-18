@@ -379,9 +379,6 @@ long* APITools_GetObjectValue(VMContext &context, int index) {
     data_array += ARRAY_HEADER_OFFSET;
     long* object_holder = (long*)data_array[index];
     
-#ifdef _DEBUG
-    assert(object_holder);
-#endif
     return object_holder;
   }
   

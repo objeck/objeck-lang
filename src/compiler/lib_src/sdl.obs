@@ -40,37 +40,12 @@ bundle SDL {
 			return Surface->New(value->Get());
 		}
 		
-		function : PollEvent(event : Event) ~ Bool {
+		function : PollEvent(event : Event) ~ Int {
 			array_args := Base->New[2];
 			array_args[0] := IntHolder->New();
 			array_args[1] := event;
 			@lib_proxy := Proxy->GetDllProxy();
 			@lib_proxy->CallFunction("sdl_poll_event", array_args);
-			
-			value := array_args[0]->As(IntHolder);
-			return value->Get() <> 0;
-		}
-		
-		function : BlitSurface(src : Surface, srcrect : Rect, dst : Surface, dstrect : Rect) ~ Int {
-			array_args := Base->New[5];
-			array_args[0] := IntHolder->New();
-			array_args[1] := src;
-			array_args[2] := srcrect;
-			array_args[3] := dst;
-			array_args[4] := dstrect;
-			@lib_proxy := Proxy->GetDllProxy();
-			@lib_proxy->CallFunction("sdl_poll_event", array_args);
-			
-			value := array_args[0]->As(IntHolder);
-			return value->Get();
-		}
-		
-		function : UpdateWindowSurface(window : Window) ~ Int {
-			array_args := Base->New[2];
-			array_args[0] := IntHolder->New();
-			array_args[1] := window;
-			@lib_proxy := Proxy->GetDllProxy();
-			@lib_proxy->CallFunction("update_window_surface", array_args);
 			
 			value := array_args[0]->As(IntHolder);
 			return value->Get();
@@ -87,6 +62,10 @@ bundle SDL {
 		
 		New() {
 		}
+		
+		method : public : Ok() ~ Bool {
+			return @rect <> 0;
+		}
 	}
 	
 	class Event {
@@ -101,6 +80,10 @@ bundle SDL {
 			value := array_args[0]->As(IntHolder);
 			@event := value->Get();
 		}
+		
+		method : public : Ok() ~ Bool {
+			return @event <> 0;
+		}
 	}
 	
 	class Window {
@@ -110,16 +93,20 @@ bundle SDL {
 			array_args := Base->New[7];
 			array_args[0] := IntHolder->New();
 			array_args[1] := title;
-			array_args[3] := IntHolder->New(x);
-			array_args[4] := IntHolder->New(y);
-			array_args[5] := IntHolder->New(h);
-			array_args[6] := IntHolder->New(w);
-			array_args[7] := IntHolder->New(flags);
+			array_args[2] := IntHolder->New(x);
+			array_args[3] := IntHolder->New(y);
+			array_args[4] := IntHolder->New(h);
+			array_args[5] := IntHolder->New(w);
+			array_args[6] := IntHolder->New(flags);
 			@lib_proxy := Proxy->GetDllProxy();
 			@lib_proxy->CallFunction("sdl_create_window", array_args);
 			
 			value := array_args[0]->As(IntHolder);
 			@window := value->Get();
+		}
+		
+		method : public : Ok() ~ Bool {
+			return @window <> 0;
 		}
 		
 		method : public : GetSurface() ~ Surface {
@@ -131,6 +118,17 @@ bundle SDL {
 			
 			value := array_args[0]->As(IntHolder);
 			return Surface->New(value->Get());
+		}
+		
+		method : public : UpdateSurface() ~ Int {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := @self;
+			@lib_proxy := Proxy->GetDllProxy();
+			@lib_proxy->CallFunction("update_window_surface", array_args);
+			
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
 		}
 		
 		method : public : Destroy() ~ Nil {
@@ -158,6 +156,24 @@ bundle SDL {
 			
 			value := array_args[0]->As(IntHolder);
 			@surface := value->Get();
+		}
+		
+		method : public : Ok() ~ Bool {
+			return @surface <> 0;
+		}
+		
+		method : public : Blit(srcrect : Rect, dst : Surface, dstrect : Rect) ~ Int {
+			array_args := Base->New[5];
+			array_args[0] := IntHolder->New();
+			array_args[1] := @self;
+			array_args[2] := srcrect;
+			array_args[3] := dst;
+			array_args[4] := dstrect;
+			@lib_proxy := Proxy->GetDllProxy();
+			@lib_proxy->CallFunction("blit_surface", array_args);
+			
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
 		}
 		
 		method : public : Free() ~ Nil {
