@@ -181,4 +181,27 @@ extern "C" {
     const void* obj = calloc(1, sizeof(SDL_Event));
     APITools_SetIntValue(context, 0, (long)obj);
   }
+
+  // keyboard event
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_keyboard_event_new(VMContext& context) {
+    SDL_Event* event = (SDL_Event*)APITools_GetIntValue(context, 0);
+
+    // SDL_KeyboardEvent
+    APITools_SetIntValue(context, 1, (long)event->key.type);
+    APITools_SetIntValue(context, 2, (long)event->key.timestamp);
+    APITools_SetIntValue(context, 3, (long)event->key.windowID);
+    APITools_SetIntValue(context, 4, (long)event->key.state);
+    APITools_SetIntValue(context, 5, (long)event->key.repeat);
+    APITools_SetIntValue(context, 6, (long)event->key.padding2);
+    APITools_SetIntValue(context, 7, (long)event->key.padding3);
+
+    // SDL_KeyboardEvent.SDL_Keysym
+    APITools_SetIntValue(context, 8, (long)event->key.keysym.scancode);
+    APITools_SetIntValue(context, 9, (long)event->key.keysym.sym);
+    APITools_SetIntValue(context, 10, (long)event->key.keysym.mod);
+    APITools_SetIntValue(context, 11, (long)event->key.keysym.unused);
+  }
 }
