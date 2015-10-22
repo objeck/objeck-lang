@@ -1362,16 +1362,15 @@ namespace frontend {
     int id;
     Enum* eenum;
 
-  EnumItem(const wstring &f, const int l, const wstring &n, Enum* e) :
-    ParseNode(f, l) {
+    EnumItem(const wstring &f, const int l, const wstring &n, Enum* e) : ParseNode(f, l) {
       name = n;
       id = -1;
       eenum = e;
     }
-
+    
     ~EnumItem() {
     }
-
+    
   public:
     const wstring& GetName() const {
       return name;
@@ -1400,21 +1399,40 @@ namespace frontend {
     int index;
     map<const wstring, EnumItem*> items;
 
-  Enum(const wstring &f, const int l, const wstring &n, int o) :
-    ParseNode(f, l) {
+    Enum(const wstring &f, const int l, const wstring &n, int o) : ParseNode(f, l) {
       name = n;
       index = offset = o;
     }
 
+    Enum(const wstring &f, const int l, const wstring &n) : ParseNode(f, l) {
+      name = n;
+      index = offset = -1;
+    }
+    
     ~Enum() {
     }
 
   public:
-    void AddItem(EnumItem* e) {
+    bool AddItem(EnumItem* e) {
+      if(GetItem(e->GetName())) {
+        return false;
+      }
+      
       e->SetId(index++);
       items.insert(pair<const wstring, EnumItem*>(e->GetName(), e));
+      return true;
     }
+    
+    bool AddItem(EnumItem* e, int value) {
+      if(GetItem(e->GetName())) {
+        return false;
+      }
 
+      e->SetId(value);
+      items.insert(pair<const wstring, EnumItem*>(e->GetName(), e));
+      return true;
+    }
+    
     EnumItem* GetItem(const wstring &i) {
       map<const wstring, EnumItem*>::iterator result = items.find(i);
       if(result != items.end()) {
@@ -1434,6 +1452,10 @@ namespace frontend {
 
     map<const wstring, EnumItem*> GetItems() {
       return items;
+    }
+    
+    bool IsConsts() {
+      return offset < 0;
     }
   };
 
@@ -2694,6 +2716,12 @@ namespace frontend {
       return tmp;
     }
 
+    Enum* MakeEnum(const wstring &file_name, const int line_num, const wstring &name) {
+      Enum* tmp = new Enum(file_name, line_num, name);
+      nodes.push_back(tmp);
+      return tmp;
+    }
+    
     EnumItem* MakeEnumItem(const wstring &file_name, const int line_num, const wstring &name, Enum* e) {
       EnumItem* tmp = new EnumItem(file_name, line_num, name, e);
       nodes.push_back(tmp);

@@ -189,6 +189,7 @@ class Parser {
   While* ParseWhile(int depth);
   Select* ParseSelect(int depth);
   Enum* ParseEnum(int depth);
+  Enum* ParseConsts(int depth);
   For* ParseFor(int depth);
   For* ParseEach(int depth);
   CriticalSection* ParseCritical(int depth);
