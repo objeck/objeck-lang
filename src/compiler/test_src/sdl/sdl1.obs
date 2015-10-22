@@ -49,14 +49,15 @@ class Test {
 						}
 						# User presses a key
 						else if( e->Type() = Flags->SdlKeyDown() ) {
-#~						
 							# Select surfaces based on key press
-							switch( e.key.keysym.sym )
+							select( e->GetKeyboardEvent()->GetKeySymbol() )
 							{
-								case SDLK_UP:
-								gCurrentSurface = gKeyPressSurfaces[ KEY_PRESS_SURFACE_UP ];
-								break;
-
+							
+#								label SDLK_UP: {
+								label 101: {
+									gCurrentSurface := gKeyPressSurfaces[ KeyPressSurfaces->KEY_PRESS_SURFACE_UP ];
+								}
+#~
 								case SDLK_DOWN:
 								gCurrentSurface = gKeyPressSurfaces[ KEY_PRESS_SURFACE_DOWN ];
 								break;
@@ -72,8 +73,8 @@ class Test {
 								default:
 								gCurrentSurface = gKeyPressSurfaces[ KEY_PRESS_SURFACE_DEFAULT ];
 								break;
-							}
-~#							
+~#															
+							};							
 						};
 					};
 

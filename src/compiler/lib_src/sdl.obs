@@ -53,7 +53,7 @@ bundle SDL {
 		
 		function : GetError() ~ String {
 			array_args := Base->New[1];
-			array_args[0] := Nil;
+			array_args[0] := IntHolder->New();
 			@lib_proxy := Proxy->GetDllProxy();
 			@lib_proxy->CallFunction("sdl_get_error", array_args);
 			
@@ -133,19 +133,76 @@ bundle SDL {
 	}
 	
 	class KeyboardEvent {
-#~
-		int32 type;        /**< ::SDL_KEYDOWN or ::SDL_KEYUP */
-		Uint32 timestamp;
-		Uint32 windowID;    /**< The window with keyboard focus, if any */
-		Uint8 state;        /**< ::SDL_PRESSED or ::SDL_RELEASED */
-		Uint8 repeat;       /**< Non-zero if this is a key repeat */
-		Uint8 padding2;
-		Uint8 padding3;
-		SDL_Keysym keysym;  /**< The key that was pressed or released */
-~#
+		# keyboard
+		@type : Int;
+		@timestamp : Int;
+		@window_id : Int;
+		@state : Int;
+		@repeat : Int;
+		@padding2 : Int;
+		@padding3 : Int;
+		
+		# keycode
+		@keysym_scancode : Int;
+		@keysym_sym : Int;
+		@keysym_mod : Int;
+		@keysym_unused : Int;
 		
 		New(event : Int) {
-			# TODO load KeyboardEvent struct values
+			array_args := Base->New[12];
+			array_args[0] := IntHolder->New(event);
+			array_args[1] := IntHolder->New();
+			array_args[2] := IntHolder->New();
+			array_args[3] := IntHolder->New();
+			array_args[4] := IntHolder->New();
+			array_args[5] := IntHolder->New();
+			array_args[6] := IntHolder->New();
+			array_args[7] := IntHolder->New();
+			
+ 			array_args[8] := IntHolder->New();
+			array_args[9] := IntHolder->New();
+			array_args[10] := IntHolder->New();
+			array_args[11] := IntHolder->New();
+			
+			@lib_proxy := Proxy->GetDllProxy();
+			@lib_proxy->CallFunction("sdl_keyboard_event_new", array_args);			
+			
+			value := array_args[1]->As(IntHolder);
+			@type := value->Get();
+			
+			value := array_args[2]->As(IntHolder);
+			@timestamp := value->Get();
+			
+			value := array_args[3]->As(IntHolder);
+			@window_id := value->Get();
+			
+			value := array_args[4]->As(IntHolder);
+			@state := value->Get();
+			
+			value := array_args[5]->As(IntHolder);
+			@repeat := value->Get();
+			
+			value := array_args[6]->As(IntHolder);
+			@padding2 := value->Get();
+			
+			value := array_args[7]->As(IntHolder);
+			@padding3 := value->Get();
+			
+			value := array_args[8]->As(IntHolder);
+			@keysym_scancode := value->Get();
+			
+			value := array_args[9]->As(IntHolder);
+			@keysym_sym := value->Get();
+			
+			value := array_args[10]->As(IntHolder);
+			@keysym_mod := value->Get();
+			
+			value := array_args[11]->As(IntHolder);
+			@keysym_unused := value->Get();
+		}
+		
+		method : public : GetKeySymbol() ~ Int {
+			return @keysym_sym;
 		}
 	}
 	
