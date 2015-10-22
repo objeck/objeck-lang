@@ -33,6 +33,10 @@ bundle SDL {
 		function : SdlQuit() ~ Int {
 			return 0x00000100;
 		}
+		
+		function : SdlKeyDown() ~ Int {
+			return 0x00000300;
+		}
 	}
 	
 	class Core {

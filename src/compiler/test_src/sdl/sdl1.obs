@@ -34,6 +34,9 @@ class Test {
 				
 				# Event handler
 				e := Event->New();
+				
+				# Set default current surface
+				gCurrentSurface := gKeyPressSurfaces[ KeyPressSurfaces->KEY_PRESS_SURFACE_DEFAULT ];
 
 				# While application is running
 				while( <>quit )
@@ -43,6 +46,34 @@ class Test {
 						# User requests quit
 						if( e->Type() = Flags->SdlQuit() ) {
 							quit := true;
+						}
+						# User presses a key
+						else if( e->Type() = Flags->SdlKeyDown() ) {
+#~						
+							# Select surfaces based on key press
+							switch( e.key.keysym.sym )
+							{
+								case SDLK_UP:
+								gCurrentSurface = gKeyPressSurfaces[ KEY_PRESS_SURFACE_UP ];
+								break;
+
+								case SDLK_DOWN:
+								gCurrentSurface = gKeyPressSurfaces[ KEY_PRESS_SURFACE_DOWN ];
+								break;
+
+								case SDLK_LEFT:
+								gCurrentSurface = gKeyPressSurfaces[ KEY_PRESS_SURFACE_LEFT ];
+								break;
+
+								case SDLK_RIGHT:
+								gCurrentSurface = gKeyPressSurfaces[ KEY_PRESS_SURFACE_RIGHT ];
+								break;
+
+								default:
+								gCurrentSurface = gKeyPressSurfaces[ KEY_PRESS_SURFACE_DEFAULT ];
+								break;
+							}
+~#							
 						};
 					};
 
@@ -138,14 +169,14 @@ class Test {
 	
 	function : Close() ~ Nil {
 		# Deallocate surfaces
-		for( i := 0; i < KeyPressSurfaces->KEY_PRESS_SURFACE_TOTAL; i++; ) {
-			gKeyPressSurfaces[ i ]->FreeSurface();
+		for( i := 0; i < KeyPressSurfaces->KEY_PRESS_SURFACE_TOTAL->As(Int); i++; ) {
+			gKeyPressSurfaces[ i ]->Free();
 			gKeyPressSurfaces[ i ] := Nil;
 		};
 
 		# Destroy window
-		gWindow->Destroy();
-		gWindow := Nil;
+		@window->Destroy();
+		@window := Nil;
 
 		# Quit SDL subsystems
 		Core->Quit();
