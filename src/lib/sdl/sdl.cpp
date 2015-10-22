@@ -65,6 +65,16 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
+  // core
+  void sdl_get_error(VMContext& context) {
+    const char* value = SDL_GetError();
+    const wstring out = BytesToUnicode(value);
+    APITools_SetStringValue(context, 0, out);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
   void sdl_quit(VMContext& context) {
     SDL_Quit();
   }
