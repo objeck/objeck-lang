@@ -1,18 +1,17 @@
-enum Foo {
-	A,
-	B,
-	C,
-	TOTAL
+consts Foo {
+	A := 3,
+	B := 7,
+	C := 3,
+	Z := 13
 }
 
-class Test {
+enum Bar := 'X' {
+	A, B, c }
 
+class Test {
 	function : Main(args : String[]) ~ Nil {
-		
-		
-		aa := Int->New[Foo->TOTAL];
-		aa[1] := 13;
-		a := aa[Foo->B];
-		a->PrintLine();
+		Foo->A->PrintLine();
+		Foo->C->PrintLine();
+		Bar->c->PrintLine();
 	}
 }

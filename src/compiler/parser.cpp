@@ -247,21 +247,30 @@ void Parser::ParseBundle(int depth)
 
       // parse classes, interfaces and enums
       while(!Match(TOKEN_CLOSED_BRACE) && !Match(TOKEN_END_OF_STREAM)) {
-        if(Match(TOKEN_ENUM_ID)) {
+        switch(GetToken()) {
+        case TOKEN_ENUM_ID:
           bundle->AddEnum(ParseEnum(depth + 1));
-        } 
-        else if(Match(TOKEN_CLASS_ID)) {
+          break;
+
+        case TOKEN_CONSTS_ID:
+          bundle->AddEnum(ParseConsts(depth + 1));
+          break;
+
+        case TOKEN_CLASS_ID:
           bundle->AddClass(ParseClass(bundle_name, depth + 1));
-        }
-        else if(Match(TOKEN_INTERFACE_ID)) {
+          break;
+
+        case TOKEN_INTERFACE_ID:
           bundle->AddClass(ParseInterface(bundle_name, depth + 1));
-        }
-        else {
+          break;
+        
+        default:
           ProcessError(L"Expected 'class', 'interface' or 'enum'", TOKEN_SEMI_COLON);
           NextToken();
+          break;
         }
       }
-
+      
       if(!Match(TOKEN_CLOSED_BRACE)) {
         ProcessError(L"Expected '}'", TOKEN_CLOSED_BRACE);
       }
@@ -277,7 +286,7 @@ void Parser::ParseBundle(int depth)
     program->AddUses(uses, file_name);
   }
   // parse class
-  else if(Match(TOKEN_CLASS_ID) || Match(TOKEN_ENUM_ID) || Match(TOKEN_INTERFACE_ID)) {
+  else if(Match(TOKEN_CLASS_ID) || Match(TOKEN_ENUM_ID) || Match(TOKEN_CONSTS_ID) || Match(TOKEN_INTERFACE_ID)) {
     wstring bundle_name = L"";
     symbol_table = new SymbolTableManager;
     ParsedBundle* bundle = new ParsedBundle(bundle_name, symbol_table);
@@ -289,18 +298,28 @@ void Parser::ParseBundle(int depth)
 
     // parse classes, interfaces and enums
     while(!Match(TOKEN_CLOSED_BRACE) && !Match(TOKEN_END_OF_STREAM)) {
-      if(Match(TOKEN_ENUM_ID)) {
+      switch(GetToken()) {
+      case TOKEN_ENUM_ID:
         bundle->AddEnum(ParseEnum(depth + 1));
-      } 
-      else if(Match(TOKEN_CLASS_ID)) {
+        break;
+        
+      case TOKEN_CONSTS_ID:
+        bundle->AddEnum(ParseConsts(depth + 1));
+        break;
+
+
+      case TOKEN_CLASS_ID:
         bundle->AddClass(ParseClass(bundle_name, depth + 1));
-      }
-      else if(Match(TOKEN_INTERFACE_ID)) {
+        break;
+
+      case TOKEN_INTERFACE_ID:
         bundle->AddClass(ParseInterface(bundle_name, depth + 1));
-      }
-      else {
+        break;
+
+      default:
         ProcessError(L"Expected 'class', 'interface' or 'enum'", TOKEN_SEMI_COLON);
         NextToken();
+        break;
       }
     }
     program->AddBundle(bundle);
@@ -346,10 +365,15 @@ Enum* Parser::ParseEnum(int depth)
     NextToken();
     Expression* label = ParseSimpleExpression(depth + 1);
     if(label) {
-      if(label->GetExpressionType() != INT_LIT_EXPR) {
-        ProcessError(L"Expected integer", TOKEN_CLOSED_PAREN);
+      if(label->GetExpressionType() == INT_LIT_EXPR) {
+        offset = static_cast<IntegerLiteral*>(label)->GetValue();
       }
-      offset = static_cast<IntegerLiteral*>(label)->GetValue();
+      else if(label->GetExpressionType() == CHAR_LIT_EXPR) {
+        offset = static_cast<CharacterLiteral*>(label)->GetValue();
+      }
+      else {
+        ProcessError(L"Expected integer or character literal", TOKEN_CLOSED_PAREN);
+      }
     }
   }
 
@@ -366,7 +390,84 @@ Enum* Parser::ParseEnum(int depth)
     // identifier
     wstring label_name = scanner->GetToken()->GetIdentifier();
     NextToken();
-    eenum->AddItem(TreeFactory::Instance()->MakeEnumItem(file_name, line_num, label_name, eenum));
+    if(!eenum->AddItem(TreeFactory::Instance()->MakeEnumItem(file_name, line_num, label_name, eenum))) {
+      ProcessError(L"Duplicate enum label name", TOKEN_CLOSED_BRACE);
+    }
+    
+    if(Match(TOKEN_COMMA)) {
+      NextToken();
+      if(!Match(TOKEN_IDENT)) {
+        ProcessError(TOKEN_IDENT);
+      }
+    } 
+    else if(!Match(TOKEN_CLOSED_BRACE)) {
+      ProcessError(L"Expected ',' or ')'", TOKEN_CLOSED_BRACE);
+      NextToken();
+    }
+  }
+  if(!Match(TOKEN_CLOSED_BRACE)) {
+    ProcessError(L"Expected '}'", TOKEN_CLOSED_BRACE);
+  }
+  NextToken();
+
+  return eenum;
+}
+
+/****************************
+ * Parses a const (i.e. mixed enum)
+ ****************************/
+Enum* Parser::ParseConsts(int depth)
+{
+  const int line_num = GetLineNumber();
+  const wstring &file_name = GetFileName();
+
+  NextToken();
+  if(!Match(TOKEN_IDENT)) {
+    ProcessError(TOKEN_IDENT);
+  }
+  // identifier
+  const wstring enum_name = scanner->GetToken()->GetIdentifier();
+  if(current_bundle->GetClass(enum_name) || current_bundle->GetEnum(enum_name)) {
+    ProcessError(L"Class, interface or enum already defined in this bundle");
+  }
+  NextToken();
+  const wstring enum_scope_name = GetEnumScopeName(enum_name);
+  
+  if(!Match(TOKEN_OPEN_BRACE)) {
+    ProcessError(L"Expected '{'", TOKEN_OPEN_BRACE);
+  }
+  NextToken();
+
+  Enum* eenum = TreeFactory::Instance()->MakeEnum(file_name, line_num, enum_scope_name);
+  while(!Match(TOKEN_CLOSED_BRACE) && !Match(TOKEN_END_OF_STREAM)) {
+    if(!Match(TOKEN_IDENT)) {
+      ProcessError(TOKEN_IDENT);
+    }
+    // identifier
+    wstring label_name = scanner->GetToken()->GetIdentifier();
+    NextToken();
+    
+    if(!Match(TOKEN_ASSIGN)) {
+      ProcessError(L"Expected ':='", TOKEN_CLOSED_BRACE);
+    }
+
+    NextToken();
+    int value = -1;
+    Expression* label = ParseSimpleExpression(depth + 1);
+    if(label) {
+      if(label->GetExpressionType() == INT_LIT_EXPR) {
+        value = static_cast<IntegerLiteral*>(label)->GetValue();
+      }
+      else if(label->GetExpressionType() == CHAR_LIT_EXPR) {
+        value = static_cast<CharacterLiteral*>(label)->GetValue();
+      }
+      else {
+        ProcessError(L"Expected integer or character literal", TOKEN_CLOSED_PAREN);
+      }
+    }
+    if(!eenum->AddItem(TreeFactory::Instance()->MakeEnumItem(file_name, line_num, label_name, eenum), value)) {
+      ProcessError(L"Duplicate consts label name", TOKEN_CLOSED_BRACE);
+    }
 
     if(Match(TOKEN_COMMA)) {
       NextToken();
@@ -502,8 +603,10 @@ Class* Parser::ParseClass(const wstring &bundle_name, int depth)
       }
       NextToken();
     }
-    // TODO: add enum to bundle
     else if(Match(TOKEN_ENUM_ID)) {
+      current_bundle->AddEnum(ParseEnum(depth + 1));
+    }
+    else if(Match(TOKEN_CONSTS_ID)) {
       current_bundle->AddEnum(ParseEnum(depth + 1));
     }
     else {
