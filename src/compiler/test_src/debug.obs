@@ -1,8 +1,18 @@
+enum Foo {
+	A,
+	B,
+	C,
+	TOTAL
+}
+
 class Test {
+
 	function : Main(args : String[]) ~ Nil {
-		i := 3;
-#		i++;
-		i+=1;
-		i->PrintLine();
+		
+		
+		aa := Int->New[Foo->TOTAL];
+		aa[1] := 13;
+		a := aa[Foo->B];
+		a->PrintLine();
 	}
 }
