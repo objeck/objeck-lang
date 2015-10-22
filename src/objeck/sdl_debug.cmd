@@ -4,8 +4,9 @@ rmdir /s /q ..\vm\lib
 del ..\vm\*.dll
 
 cd deploy\bin
-obc -src '..\..\..\compiler\lib_src\sdl.obs' -lib collect.obl -tar lib -dest sdl.obl
-obc -src '..\..\..\compiler\test_src\sdl\sdl0.obs' -lib sdl.obl,collect.obl -dest ..\sdl0.obe
+obc -src '..\..\..\compiler\lib_src\sdl.obs' -opt s3 -lib collect.obl -tar lib -dest sdl.obl
+obc -src '..\..\..\compiler\test_src\sdl\sdl0.obs' -opt s3 -lib sdl.obl,collect.obl -dest ..\sdl0.obe
+obc -src '..\..\..\compiler\test_src\sdl\sdl1.obs' -opt s3 -lib sdl.obl,collect.obl -dest ..\sdl1.obe
 cd ..\..
 
 copy ..\lib\sdl\lib\x86\SDL2.dll deploy\bin

@@ -1805,8 +1805,7 @@ bool ContextAnalyzer::Analyze()
     // check indexes
     vector<Expression*> expressions = call_params->GetExpressions();
     if(expressions.size() == 0) {
-      ProcessError(static_cast<Expression*>(method_call),
-                   L"Empty array index");
+      ProcessError(static_cast<Expression*>(method_call), L"Empty array index");
     }
     // validate array parameters
     for(size_t i = 0; i < expressions.size(); ++i) {
@@ -1820,8 +1819,14 @@ bool ContextAnalyzer::Analyze()
         case INT_TYPE:
           break;
 
+        case CLASS_TYPE:
+          if(!IsEnumExpression(expression)) {
+            ProcessError(expression, L"Array index type must be an Integer, Char, Byte or Enum");
+          }
+          break;
+
         default:
-          ProcessError(expressions[i], L"Array index type must be an Integer, Char or Byte");
+          ProcessError(expression, L"Array index type must be an Integer, Char, Byte or Enum");
           break;
         }
       }
@@ -2695,8 +2700,14 @@ bool ContextAnalyzer::Analyze()
         case INT_TYPE:
           break;
 
+        case CLASS_TYPE:
+          if(!IsEnumExpression(expression)) {
+            ProcessError(expression, L"Expected Byte, Char, Int or Enum class");
+          }
+          break;
+
         default:
-          ProcessError(expression, L"Expected Byte, Char or Int class");
+          ProcessError(expression, L"Expected Byte, Char, Int or Enum class");
           break;
         }
       }

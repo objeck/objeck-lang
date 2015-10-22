@@ -1,0 +1,143 @@
+use SDL;
+
+class Test {
+	# Key press surfaces constants
+	enum KeyPressSurfaces {
+		KEY_PRESS_SURFACE_DEFAULT,
+		KEY_PRESS_SURFACE_UP,
+		KEY_PRESS_SURFACE_DOWN,
+		KEY_PRESS_SURFACE_LEFT,
+		KEY_PRESS_SURFACE_RIGHT
+	}
+
+	@window : static : Window;
+	@screen_surface : static : Surface;
+	@x_out : static : Surface;
+	gKeyPressSurfaces : static : Surface[];
+	
+	function : Main(args : String[]) ~ Nil {
+		gKeyPressSurfaces := Surface->New[5]; 
+	
+		# Start up SDL and create window
+		if( <>Init() ) {
+			"Failed to initialize!"->ErrorLine();
+		}
+		else {
+			# Load media
+			if( <>LoadMedia() ) {
+				"Failed to load media!"->PrintLine();
+			}
+			else {			
+				# Main loop flag
+				quit := false;
+				
+				# Event handler
+				e := Event->New();
+
+				# While application is running
+				while( <>quit )
+				{
+					# Handle events on queue
+					while( Core->PollEvent( e ) <> 0 ) {
+						# User requests quit
+						if( e->Type() = Flags->SdlQuit() ) {
+							quit := true;
+						};
+					};
+
+					# Apply the image
+					@x_out->Blit( Nil, @screen_surface, Nil );
+				
+					# Update the surface
+					@window->UpdateSurface();
+				};
+			};
+		};
+		
+		Close();
+	}
+	
+	function : Init() ~ Bool {
+		# Initialization flag
+		success := true;
+		
+		# Initialize SDL
+		if(Core->Init(Flags->SdlInitVideo()) < 0) {
+			"SDL could not initialize!"->ErrorLine();
+			success := false;
+		}
+		else {
+			# Create window
+			@window := Window->New( "SDL Tutorial", Flags->SdlWindowposUndefined(), 
+				Flags->SdlWindowposUndefined(), 640, 480, Flags->SdlWindowShown());
+			if(<>@window->Ok())	{
+				"Window could not be created!"->ErrorLine();
+				success := false;
+			} 
+			else {
+				# Get window surface
+				@screen_surface := Surface->New(@window);
+			};
+		};
+		
+		return success;
+	}
+	
+	function : LoadMedia() ~ Bool {
+		success := true;
+		
+		# Load default surface
+		gKeyPressSurfaces[ KeyPressSurfaces->KEY_PRESS_SURFACE_DEFAULT ] := loadSurface( "04_key_presses/press.bmp" );
+		if( gKeyPressSurfaces[ KeyPressSurfaces->KEY_PRESS_SURFACE_DEFAULT ] = Nil ) {
+			"Failed to load default image!"->ErrorLine();
+			success := false;
+		};
+		
+		# Load up surface
+		gKeyPressSurfaces[ KeyPressSurfaces->KEY_PRESS_SURFACE_UP ] := loadSurface( "04_key_presses/up.bmp" );
+		if( gKeyPressSurfaces[ KeyPressSurfaces->KEY_PRESS_SURFACE_UP ] = Nil ) {
+			"Failed to load up image!"->ErrorLine();
+			success := false;
+		};
+		
+		# Load down surface
+		gKeyPressSurfaces[ KeyPressSurfaces->KEY_PRESS_SURFACE_DOWN ] := loadSurface( "04_key_presses/down.bmp" );
+		if( gKeyPressSurfaces[ KeyPressSurfaces->KEY_PRESS_SURFACE_DOWN ] = Nil ) {
+			"Failed to load down image!"->ErrorLine();
+			success := false;
+		};
+		
+		# Load left surface
+		gKeyPressSurfaces[ KeyPressSurfaces->KEY_PRESS_SURFACE_LEFT ] := loadSurface( "04_key_presses/left.bmp" );
+		if( gKeyPressSurfaces[ KeyPressSurfaces->KEY_PRESS_SURFACE_LEFT ] = Nil ) {
+			"Failed to load left image!"->ErrorLine();
+			success := false;
+		};
+		
+		# Load right surface
+		gKeyPressSurfaces[ KeyPressSurfaces->KEY_PRESS_SURFACE_RIGHT ] := loadSurface( "04_key_presses/right.bmp" );
+		if( gKeyPressSurfaces[ KeyPressSurfaces->KEY_PRESS_SURFACE_RIGHT ] = Nil ) {
+			"Failed to load right image!"->ErrorLine();
+			success := false;
+		};
+		
+		return success;
+	}
+	
+	function : loadSurface(path : String) ~ Surface {
+		return Nil;
+	}
+	
+	function : Close() ~ Nil {
+		# Deallocate surface
+		@x_out->Free();
+		@x_out := Nil;
+
+		# Destroy window
+		@window->Destroy();
+		@window := Nil;
+
+		# Quit SDL subsystems
+		Core->Quit();
+	}
+}
