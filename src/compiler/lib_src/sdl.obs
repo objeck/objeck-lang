@@ -31,7 +31,7 @@ bundle SDL {
 		}
 		
 		function : SdlQuit() ~ Int {
-			return 0x100;
+			return 0x00000100;
 		}
 	}
 	
@@ -45,6 +45,15 @@ bundle SDL {
 			
 			value := array_args[0]->As(IntHolder);
 			return value->Get();
+		}
+		
+		function : GetError() ~ String {
+			array_args := Base->New[1];
+			array_args[0] := Nil;
+			@lib_proxy := Proxy->GetDllProxy();
+			@lib_proxy->CallFunction("sdl_get_error", array_args);
+			
+			return array_args[0]->As(String);
 		}
 		
 		function : LoadBmp(name : String) ~ Surface {
