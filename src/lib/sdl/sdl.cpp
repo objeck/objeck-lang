@@ -84,7 +84,12 @@ extern "C" {
 #endif
   void update_window_surface(VMContext& context) {
     const long* src_window = APITools_GetObjectValue(context, 1);
-    APITools_SetIntValue(context, 0, SDL_UpdateWindowSurface((SDL_Window*)src_window[0]));
+    if(!src_window) {
+      APITools_SetIntValue(context, 0, -1);
+    }
+    else {
+      APITools_SetIntValue(context, 0, SDL_UpdateWindowSurface((SDL_Window*)src_window[0]));
+    }
   }
 
 #ifdef _WIN32
@@ -97,10 +102,14 @@ extern "C" {
     const long* dst_obj = APITools_GetObjectValue(context, 3);
     const long* dstrect_obj = APITools_GetObjectValue(context, 4);
 
-    const int value = SDL_BlitSurface((SDL_Surface*)src_obj[0], srcrect_obj ? (SDL_Rect*)srcrect_obj[0] : NULL,
-                                      (SDL_Surface*)dst_obj[0], dstrect_obj ? (SDL_Rect*)dstrect_obj[0] : NULL);
-
-    APITools_SetIntValue(context, 0, value);
+    if(!src_obj || !dst_obj) {
+      APITools_SetIntValue(context, 0, -1);
+    }
+    else {
+      const int value = SDL_BlitSurface((SDL_Surface*)src_obj[0], srcrect_obj ? (SDL_Rect*)srcrect_obj[0] : NULL,
+                                        (SDL_Surface*)dst_obj[0], dstrect_obj ? (SDL_Rect*)dstrect_obj[0] : NULL);
+      APITools_SetIntValue(context, 0, value);
+    }
   }
 
   // event
@@ -109,8 +118,13 @@ extern "C" {
 #endif
   void sdl_poll_event(VMContext& context) {
     const long* value = APITools_GetObjectValue(context, 1);
-    SDL_Event* event = (SDL_Event*)value[0];
-    APITools_SetIntValue(context, 0, SDL_PollEvent(event));
+    if(!value) {
+      APITools_SetIntValue(context, 0, -1);
+    }
+    else {
+      SDL_Event* event = (SDL_Event*)value[0];
+      APITools_SetIntValue(context, 0, SDL_PollEvent(event));
+    }
   }
 
 #ifdef _WIN32
@@ -153,7 +167,12 @@ extern "C" {
 #endif
   void sdl_get_window_surface(VMContext& context) {
     const long* window_obj = (long*)APITools_GetObjectValue(context, 1);
-    APITools_SetIntValue(context, 0, (long)SDL_GetWindowSurface((SDL_Window*)window_obj[0]));
+    if(!window_obj) {
+      APITools_SetIntValue(context, 0, -1);
+    }
+    else {
+      APITools_SetIntValue(context, 0, (long)SDL_GetWindowSurface((SDL_Window*)window_obj[0]));
+    }
   }
 
 #ifdef _WIN32

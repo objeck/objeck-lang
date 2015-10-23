@@ -206,6 +206,13 @@ bundle SDL {
 		}
 	}
 	
+	consts SDLK {
+		UP := 1073741906,
+		DOWN := 1073741905,
+		LEFT := 1073741904,
+		RIGHT := 1073741903
+	}
+	
 	class Window {
 		@window : Int;
 		
