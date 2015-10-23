@@ -13,12 +13,11 @@ class Test {
 
 	@window : static : Window;
 	@screen_surface : static : Surface;
-	@x_out : static : Surface;
-	gKeyPressSurfaces : static : Surface[];
+	@key_press_surfaces : static : Surface[];
 	
 	function : Main(args : String[]) ~ Nil {
-		gKeyPressSurfaces := Surface->New[KeyPressSurfaces->KEY_PRESS_SURFACE_TOTAL]; 
-	
+		@key_press_surfaces := Surface->New[KeyPressSurfaces->KEY_PRESS_SURFACE_TOTAL]; 
+		
 		# Start up SDL and create window
 		if( <>Init() ) {
 			"Failed to initialize!"->ErrorLine();
@@ -36,7 +35,7 @@ class Test {
 				e := Event->New();
 				
 				# Set default current surface
-				gCurrentSurface := gKeyPressSurfaces[ KeyPressSurfaces->KEY_PRESS_SURFACE_DEFAULT ];
+				@current_surface := @key_press_surfaces[ KeyPressSurfaces->KEY_PRESS_SURFACE_DEFAULT ];
 
 				# While application is running
 				while( <>quit )
@@ -51,35 +50,32 @@ class Test {
 						else if( e->Type() = Flags->SdlKeyDown() ) {
 							# Select surfaces based on key press
 							select( e->GetKeyboardEvent()->GetKeySymbol() )
-							{
-							
-#								label SDLK_UP: {
-								label 101: {
-									gCurrentSurface := gKeyPressSurfaces[ KeyPressSurfaces->KEY_PRESS_SURFACE_UP ];
+							{							
+								label SDLK->UP: {
+									@current_surface := @key_press_surfaces[ KeyPressSurfaces->KEY_PRESS_SURFACE_UP ];
 								}
-#~
-								case SDLK_DOWN:
-								gCurrentSurface = gKeyPressSurfaces[ KEY_PRESS_SURFACE_DOWN ];
-								break;
 
-								case SDLK_LEFT:
-								gCurrentSurface = gKeyPressSurfaces[ KEY_PRESS_SURFACE_LEFT ];
-								break;
+								label SDLK->DOWN: {
+									@current_surface := @key_press_surfaces[ KeyPressSurfaces->KEY_PRESS_SURFACE_DOWN ];
+								}
 
-								case SDLK_RIGHT:
-								gCurrentSurface = gKeyPressSurfaces[ KEY_PRESS_SURFACE_RIGHT ];
-								break;
+								label SDLK->LEFT: {
+									@current_surface := @key_press_surfaces[ KeyPressSurfaces->KEY_PRESS_SURFACE_LEFT ];
+								}
 
-								default:
-								gCurrentSurface = gKeyPressSurfaces[ KEY_PRESS_SURFACE_DEFAULT ];
-								break;
-~#															
+								label SDLK->RIGHT: {
+									@current_surface := @key_press_surfaces[ KeyPressSurfaces->KEY_PRESS_SURFACE_RIGHT ];
+								}
+
+								other: {
+									@current_surface := @key_press_surfaces[ KeyPressSurfaces->KEY_PRESS_SURFACE_DEFAULT ];
+								}							
 							};							
 						};
 					};
 
 					# Apply the image
-					@x_out->Blit( Nil, @screen_surface, Nil );
+					@current_surface->Blit( Nil, @screen_surface, Nil );
 				
 					# Update the surface
 					@window->UpdateSurface();
@@ -120,36 +116,36 @@ class Test {
 		success := true;
 		
 		# Load default surface
-		gKeyPressSurfaces[ KeyPressSurfaces->KEY_PRESS_SURFACE_DEFAULT ] := loadSurface( "images/press.bmp" );
-		if( gKeyPressSurfaces[ KeyPressSurfaces->KEY_PRESS_SURFACE_DEFAULT ] = Nil ) {
+		@key_press_surfaces[ KeyPressSurfaces->KEY_PRESS_SURFACE_DEFAULT ] := loadSurface( "images/press.bmp" );
+		if( @key_press_surfaces[ KeyPressSurfaces->KEY_PRESS_SURFACE_DEFAULT ] = Nil ) {
 			"Failed to load default image!"->ErrorLine();
 			success := false;
 		};
 		
 		# Load up surface
-		gKeyPressSurfaces[ KeyPressSurfaces->KEY_PRESS_SURFACE_UP ] := loadSurface( "images/up.bmp" );
-		if( gKeyPressSurfaces[ KeyPressSurfaces->KEY_PRESS_SURFACE_UP ] = Nil ) {
+		@key_press_surfaces[ KeyPressSurfaces->KEY_PRESS_SURFACE_UP ] := loadSurface( "images/up.bmp" );
+		if( @key_press_surfaces[ KeyPressSurfaces->KEY_PRESS_SURFACE_UP ] = Nil ) {
 			"Failed to load up image!"->ErrorLine();
 			success := false;
 		};
 		
 		# Load down surface
-		gKeyPressSurfaces[ KeyPressSurfaces->KEY_PRESS_SURFACE_DOWN ] := loadSurface( "images/down.bmp" );
-		if( gKeyPressSurfaces[ KeyPressSurfaces->KEY_PRESS_SURFACE_DOWN ] = Nil ) {
+		@key_press_surfaces[ KeyPressSurfaces->KEY_PRESS_SURFACE_DOWN ] := loadSurface( "images/down.bmp" );
+		if( @key_press_surfaces[ KeyPressSurfaces->KEY_PRESS_SURFACE_DOWN ] = Nil ) {
 			"Failed to load down image!"->ErrorLine();
 			success := false;
 		};
 		
 		# Load left surface
-		gKeyPressSurfaces[ KeyPressSurfaces->KEY_PRESS_SURFACE_LEFT ] := loadSurface( "images/left.bmp" );
-		if( gKeyPressSurfaces[ KeyPressSurfaces->KEY_PRESS_SURFACE_LEFT ] = Nil ) {
+		@key_press_surfaces[ KeyPressSurfaces->KEY_PRESS_SURFACE_LEFT ] := loadSurface( "images/left.bmp" );
+		if( @key_press_surfaces[ KeyPressSurfaces->KEY_PRESS_SURFACE_LEFT ] = Nil ) {
 			"Failed to load left image!"->ErrorLine();
 			success := false;
 		};
 		
 		# Load right surface
-		gKeyPressSurfaces[ KeyPressSurfaces->KEY_PRESS_SURFACE_RIGHT ] := loadSurface( "images/right.bmp" );
-		if( gKeyPressSurfaces[ KeyPressSurfaces->KEY_PRESS_SURFACE_RIGHT ] = Nil ) {
+		@key_press_surfaces[ KeyPressSurfaces->KEY_PRESS_SURFACE_RIGHT ] := loadSurface( "images/right.bmp" );
+		if( @key_press_surfaces[ KeyPressSurfaces->KEY_PRESS_SURFACE_RIGHT ] = Nil ) {
 			"Failed to load right image!"->ErrorLine();
 			success := false;
 		};
@@ -171,8 +167,8 @@ class Test {
 	function : Close() ~ Nil {
 		# Deallocate surfaces
 		for( i := 0; i < KeyPressSurfaces->KEY_PRESS_SURFACE_TOTAL->As(Int); i++; ) {
-			gKeyPressSurfaces[ i ]->Free();
-			gKeyPressSurfaces[ i ] := Nil;
+			@key_press_surfaces[ i ]->Free();
+			@key_press_surfaces[ i ] := Nil;
 		};
 
 		# Destroy window
