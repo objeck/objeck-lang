@@ -1,17 +1,16 @@
-consts Foo {
-	A := 3,
-	B := 7,
-	C := 3,
-	Z := 13
-}
-
-enum Bar := 'X' {
-	A, B, c }
+enum Bar := 'X' { A, B, c }
 
 class Test {
+	consts Foo {
+		A := 3,
+		B := 7,
+		C := 3,
+		Z := 13
+	}
+
 	function : Main(args : String[]) ~ Nil {
-		Foo->A->PrintLine();
-		Foo->C->PrintLine();
+		Test->Foo->A->PrintLine();
+		Test->Foo->C->PrintLine();
 		Bar->c->PrintLine();
 	}
 }
