@@ -1,0 +1,77 @@
+use Collection;
+
+bundle CodeGen {
+	class Parser {
+		@tokens : Vector;
+		@pos : Int;
+		
+		New(tokens : Vector) {
+			@tokens := tokens;
+			@pos := 0;
+		}
+		
+		method : Match(type : Type) ~ Bool {
+			return Match(type, 0);
+		}
+		
+		method : Match(type : Type, offset : Int) ~ Bool {
+			pos := @pos + offset;
+			if(pos < @tokens->Size()) {
+				return @tokens->Get(pos)->As(Token)->GetType() = type;
+			};
+			
+			return false;
+		}
+		
+		method : Next() ~ Nil {
+			if(@pos < @tokens->Size()) {
+				@pos += 1;
+			};
+		}
+		
+		method : Token() ~ Token {
+			if(@pos < @tokens->Size()) {
+				return @tokens->Get(@pos);
+			};
+			
+			return @tokens->Get(@tokens->Size() - 1);
+		}
+		
+		method : public : Parse() ~ Nil {
+			while(<>Match(Type->EOS)) {
+				if(Match(Type->EXTERN_ID)) {
+					"Found"->PrintLine();
+				};
+			
+				Next();
+			
+#~		
+				select(Token()->GetType()) {
+					label Type->CHAR_ID:
+					label Type->INT_ID: 
+					label Type->FLOAT_ID:
+					label Type->BOOL_ID: {
+						Next();
+					}
+					
+					other: {
+						"expected type"->PrintLine();
+						Runtime->Exit(1);
+					}	
+				};
+				
+				IO.Console->Print("mapping: name=")->PrintLine(name);
+			};
+		
+			Next();
+			
+			if(Match(Type->CLASSES_ID) = false) {
+				"expected ''CLASSES'"->PrintLine();
+				Runtime->Exit(1);
+			};
+			Next();
+~#
+			};
+		}
+	}
+}	

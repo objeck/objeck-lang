@@ -1,0 +1,164 @@
+use System.IO.File;
+use Collection;
+
+bundle CodeGen {
+	# Token class
+	class Token {
+		@type : Type;
+		@value : String;
+
+		New(type : Type) {
+			@type := type;
+		}
+		
+		New(type : Type, value : String) {
+			@type := type;
+			@value := value;
+		}
+
+		method : public : GetType() ~ Type {
+			return @type;
+		}
+		
+		method : public : GetValue() ~ String {
+			return @value;
+		}
+	}
+	
+	# token type
+	enum Type := -100 {
+		EXTERN_ID,
+		DECLSPEC_ID,
+		INT_ID,
+		OPRN,
+		CPRN,
+		OBR,
+		CBR,
+		COMMA,
+		SCOLON,
+		STAR,
+		NUM,
+		IDENT,
+		UNKWN,
+		EOS
+	}
+
+	# Scanner class
+	class Scanner {
+		@filename : String;
+		@tokens : Vector;
+
+		New(filename : String) {
+			@filename := filename;
+			@tokens := Vector->New();
+		}
+
+		function : Main(args : String[]) ~ Nil {
+			if(args->Size() = 1) {
+				tokens := Scanner->New(args[0])->Scan();
+				Parser->New(tokens)->Parse();
+			};
+		}
+
+		method : Scan() ~ Vector {
+			reserved := StringMap->New();
+			# c keywords
+			reserved->Insert("extern", Token->New(Type->EXTERN_ID, "extern"));
+			reserved->Insert("DECLSPEC", Token->New(Type->DECLSPEC_ID, "DECLSPEC"));
+			# c types
+			reserved->Insert("int", Token->New(Type->INT_ID, "int"));
+			
+			reader := FileReader->New(@filename);
+			line_num := 0;
+			while(reader->IsEOF() <> true) {
+				line := reader->ReadString();
+				line_num := line_num + 1;
+
+				i := 0;
+				while(i < line->Size()) {
+					# skip whitespace
+					c := line->Get(i);
+					while((c = ' ' | c = '\t' | c = '\r'| c = '\n') & i < line->Size()) {
+						i += 1;
+						c := line->Get(i);
+					};
+
+					# parse
+					if(i < line->Size()) {
+						# keyword
+						if(line->Get(i)->IsChar()) {
+							ident := "";
+							c := line->Get(i);
+							while(c->IsChar() | c->IsDigit() | c = '_') {
+								ident->Append(line->Get(i));
+								i += 1;
+								c := line->Get(i);
+							};
+							
+							result := reserved->Find(ident)->As(Token);
+							if(result <> Nil) {
+								@tokens->AddBack(result);
+							}
+							else {
+								@tokens->AddBack(Token->New(Type->IDENT, ident));
+							};
+						}
+						# number
+						else if(line->Get(i)->IsDigit()) {
+							number := "";
+							c := line->Get(i);
+							while(c->IsDigit()) {
+								number->Append(line->Get(i));
+								i += 1;
+								c := line->Get(i);
+							};
+							@tokens->AddBack(Token->New(Type->NUM, number));
+						}
+						# other
+						else {
+							select(line->Get(i)) {
+								label '(': {
+									@tokens->AddBack(Token->New(Type->OPRN, "("));
+								}
+								
+								label ')': {
+									@tokens->AddBack(Token->New(Type->CPRN, ")"));
+								}
+
+								label '[': {
+									@tokens->AddBack(Token->New(Type->OBR, "["));
+								}
+
+								label ']': {
+									@tokens->AddBack(Token->New(Type->CBR, "]"));
+								}
+
+								label ',': {
+									@tokens->AddBack(Token->New(Type->COMMA, ","));
+								}
+								
+								label ';': {
+									@tokens->AddBack(Token->New(Type->SCOLON, ";"));
+								}
+
+								label '*': {
+									@tokens->AddBack(Token->New(Type->STAR, "*"));
+								}
+								
+								other: {
+									@tokens->AddBack(Token->New(Type->UNKWN, "?"));
+								}
+							};
+							# update
+							i += 1;
+						};
+					};
+				};
+			};
+			reader->Close();
+			
+			@tokens->AddBack(Token->New(Type->EOS));
+			return @tokens;
+		}
+	}
+}
