@@ -307,7 +307,6 @@ void Parser::ParseBundle(int depth)
         bundle->AddEnum(ParseConsts(depth + 1));
         break;
 
-
       case TOKEN_CLASS_ID:
         bundle->AddClass(ParseClass(bundle_name, depth + 1));
         break;
@@ -607,7 +606,7 @@ Class* Parser::ParseClass(const wstring &bundle_name, int depth)
       current_bundle->AddEnum(ParseEnum(depth + 1));
     }
     else if(Match(TOKEN_CONSTS_ID)) {
-      current_bundle->AddEnum(ParseEnum(depth + 1));
+      current_bundle->AddEnum(ParseConsts(depth + 1));
     }
     else {
       ProcessError(L"Expected declaration", TOKEN_SEMI_COLON);
