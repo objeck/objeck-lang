@@ -2342,16 +2342,7 @@ Expression* Parser::ParseExpression(int depth)
 
   Expression* expression = NULL;
   if(Match(TOKEN_NEQL) || (alt_syntax && Match(TOKEN_NOT))) {
-    //
-    // parses a unary 'not' conditional
-    //
-    NextToken();        
-    Expression* right = ParseLogic(depth + 1);    
-    if(right) {
-      expression = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, NEQL_EXPR);
-      static_cast<CalculatedExpression*>(expression)->SetLeft(TreeFactory::Instance()->MakeBooleanLiteral(file_name, line_num, true));
-      static_cast<CalculatedExpression*>(expression)->SetRight(right);
-    }
+    return ParseLogic(depth + 1);
   }
   else {
     expression = ParseLogic(depth + 1);
