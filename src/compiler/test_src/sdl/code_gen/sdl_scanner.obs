@@ -2,7 +2,9 @@ use System.IO.File;
 use Collection;
 
 bundle CodeGen {
-	# Token class
+	#~
+	Scanned token
+	~#
 	class Token {
 		@type : Type;
 		@value : String;
@@ -25,12 +27,15 @@ bundle CodeGen {
 		}
 	}
 	
-	# token type
+	#~
+	Scanned token type
+	~#
 	enum Type := -100 {
 		EXTERN_ID,
 		DECLSPEC_ID,
 		SDLCALL_ID,
 		INT_ID,
+		CONST_ID,
 		OPRN,
 		CPRN,
 		OBR,
@@ -45,7 +50,9 @@ bundle CodeGen {
 		EOS
 	}
 
-	# Scanner class
+	#~
+	Token scanner
+	~#
 	class Scanner {
 		@filename : String;
 		@tokens : Vector;
@@ -71,6 +78,7 @@ bundle CodeGen {
 			
 			# c types
 			reserved->Insert("int", Token->New(Type->INT_ID, "int"));
+			reserved->Insert("const", Token->New(Type->CONST_ID, "const"));
 			
 			reader := FileReader->New(@filename);
 			line_num := 0;

@@ -1,9 +1,50 @@
 use Collection;
 
 bundle CodeGen {
+	#~
+	Parsed function
+	~#
 	class ParsedFunction {
+		@parameters : ParsedParameters;
+		@name : String;
+		
+		New(parameters : ParsedParameters, name : String) {
+			@parameters := parameters;
+			@name := name;
+		}
+		
+		method : public : ToString() ~ String {
+			return "TODO";
+		}
 	}
 	
+	#~
+	Parsed function parameters
+	~#
+	class ParsedParameters {
+		@parameters : Vector;
+		
+		New(parameters : Vector) {
+			@parameters := parameters;
+		}
+	}
+	
+	#~
+	Parsed function parameter
+	~#
+	class ParseParameter {
+		@type : ParsedType;
+		@name : String;
+		
+		New(type : ParsedType, name : String) {
+			@type := type;
+			@name := name;
+		}
+	}
+	
+	#~
+	Parsed type
+	~#
 	class ParsedType {
 		enum Type {
 			INT,
@@ -29,6 +70,9 @@ bundle CodeGen {
 		}
 	}
 	
+	#~
+	Source code parser
+	~#
 	class Parser {
 		@tokens : Vector;
 		@pos : Int;
@@ -67,73 +111,71 @@ bundle CodeGen {
 		
 		method : public : Parse() ~ Nil {
 			while(<>Match(Type->EOS)) {
-				if(Match(Type->EXTERN_ID) & Match(Type->DECLSPEC_ID, 1)) {
-					Next(); Next();
-					rtrn_type := ParseType();
-					if(rtrn_type = Nil) {
-						return;
-					};
-					
-					if(<>Match(Type->SDLCALL_ID)) {
-						return;
-					};
-					Next();
-					
-					if(<>Match(Type->IDENT)) {
-						return;
-					};
-Token()->GetValue()->PrintLine();					
-					Next();
-							
-"Okay"->PrintLine();
-"---"->PrintLine();
+				parsed_function := ParseFunction();
+				if(parsed_function <> Nil) {
+					parsed_function->ToString()->PrintLine();
 				};
 				Next();
-				
-				
-			
-#~		
-				select(Token()->GetType()) {
-					label Type->CHAR_ID:
-					label Type->INT_ID: 
-					label Type->FLOAT_ID:
-					label Type->BOOL_ID: {
-						Next();
-					}
-					
-					other: {
-						"expected type"->PrintLine();
-						Runtime->Exit(1);
-					}	
-				};
-				
-				IO.Console->Print("mapping: name=")->PrintLine(name);
-			};
-		
-			Next();
-			
-			if(Match(Type->CLASSES_ID) = false) {
-				"expected ''CLASSES'"->PrintLine();
-				Runtime->Exit(1);
-			};
-			Next();
-~#
 			};
 		}
 		
-		# handle * and & c types
+		method : public : ParseParameters () ~ ParsedParameters {
+			parsed_parameters : ParsedParameters;
+			
+			if(<>Match(Type->OPRN)) {
+				return Nil;
+			};
+			Next();
+
+			parameters := Vector->New();
+			while(Match(Type->EOS) = false & Match(Type->CPRN) = false) {
+				parameter_type := ParseType();
+				if(parameter_type = Nil) {
+					return Nil;
+				};
+				
+				## function name
+				if(<>Match(Type->IDENT)) {
+					return Nil;
+				};
+				parameter_name := Token()->GetValue();					
+"\t\tname='{$parameter_name}'"->PrintLine();				
+				Next();
+				
+				parameters->AddBack(ParseParameter->New(parameter_type, parameter_name));
+				
+				if(Match(Type->COMMA)) {
+					Next();
+				};
+"\t\t---"->PrintLine();				
+			};
+
+			if(<>Match(Type->CPRN)) {
+				return Nil;
+			};
+			Next();
+			
+			return ParsedParameters->New(parameters);
+		}
+		
+		## handle * and & c types
 		method : public : ParseType() ~ ParsedType {
 			type : ParsedType;
-		
+			
+			if(Match(Type->CONST_ID)) {
+				Next();
+			};
+			
 			select(Token()->GetType()) {
 				label Type->INT_ID: {
 					type := ParsedType->New(ParsedType->Type->INT);
-"int"->PrintLine();
+"\t\ttype: int"->PrintLine();
 				}
 				
 				label Type->IDENT: {
 					type := ParsedType->New(ParsedType->Type->CLASS);
-Token()->GetValue()->PrintLine();
+					class_name := Token()->GetValue();
+"\t\ttype: {$class_name}"->PrintLine();					
 				}
 				
 				other: {
@@ -151,13 +193,51 @@ Token()->GetValue()->PrintLine();
 				type->SetReference(true);
 				Next();
 			};
-			
+
 			return type;			
 		}
 		
-		# 
 		method : public : ParseFunction() ~ ParsedFunction {
-			return Nil;
+			parsed_function : ParsedFunction;
+			
+			if(Match(Type->EXTERN_ID) & Match(Type->DECLSPEC_ID, 1)) {
+"=== Start Function ==="->PrintLine();			
+				Next(); 
+				Next();
+				
+				## return type
+				parsed_return := ParseType();
+				if(parsed_return = Nil) {
+					return Nil;
+				};
+				
+				if(<>Match(Type->SDLCALL_ID)) {
+					return Nil;
+				};
+				Next();
+				
+				## function name
+				if(<>Match(Type->IDENT)) {
+					return Nil;
+				};
+				parsed_function_name := Token()->GetValue();
+"\tfunction: name='{$parsed_function_name}'"->PrintLine();				
+				Next();
+				
+				## parameters
+				parsed_parameters := ParseParameters();
+				if(parsed_parameters = Nil) {
+					return Nil;
+				};
+				
+				if(<>Match(Type->SCOLON)) {
+					return Nil;
+				};
+				Next();
+"=== End Function ===\n"->PrintLine();
+			};
+			
+			return parsed_function;
 		}
 	}
 }	
