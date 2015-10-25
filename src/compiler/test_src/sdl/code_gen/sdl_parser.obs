@@ -138,6 +138,14 @@ bundle CodeGen {
 			Next();
 
 			parameters := Vector->New();
+			
+			if(Match(Type->VOID_ID) & Match(Type->CPRN, 1)) {
+				Next();
+				Next();
+				
+				return ParsedParameters->New(parameters);
+			};
+			
 			while(<>Match(Type->EOS) & <>Match(Type->CPRN)) {
 				parameter_type := ParseType();
 				if(parameter_type = Nil) {
