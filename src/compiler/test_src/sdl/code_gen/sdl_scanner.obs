@@ -29,6 +29,7 @@ bundle CodeGen {
 	enum Type := -100 {
 		EXTERN_ID,
 		DECLSPEC_ID,
+		SDLCALL_ID,
 		INT_ID,
 		OPRN,
 		CPRN,
@@ -37,6 +38,7 @@ bundle CodeGen {
 		COMMA,
 		SCOLON,
 		STAR,
+		AND,
 		NUM,
 		IDENT,
 		UNKWN,
@@ -65,6 +67,8 @@ bundle CodeGen {
 			# c keywords
 			reserved->Insert("extern", Token->New(Type->EXTERN_ID, "extern"));
 			reserved->Insert("DECLSPEC", Token->New(Type->DECLSPEC_ID, "DECLSPEC"));
+			reserved->Insert("SDLCALL", Token->New(Type->SDLCALL_ID, "SDLCALL"));
+			
 			# c types
 			reserved->Insert("int", Token->New(Type->INT_ID, "int"));
 			
@@ -143,6 +147,10 @@ bundle CodeGen {
 
 								label '*': {
 									@tokens->AddBack(Token->New(Type->STAR, "*"));
+								}
+								
+								label '&': {
+									@tokens->AddBack(Token->New(Type->AND, "*"));
 								}
 								
 								other: {
