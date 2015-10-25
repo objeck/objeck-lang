@@ -1,6 +1,34 @@
 use Collection;
 
 bundle CodeGen {
+	class ParsedFunction {
+	}
+	
+	class ParsedType {
+		enum Type {
+			INT,
+			BOOL,
+			CLASS
+		}
+		
+		@type : ParsedType->Type;
+		@name : String;
+		@is_pointer : Bool;
+		@is_reference : Bool;
+		
+		New(type : ParsedType->Type) {
+			@type := type;
+		}
+		
+		method : public : SetPointer(is_pointer : Bool) ~ Nil {
+			@is_pointer := is_pointer;
+		}
+		
+		method : public : SetReference(is_reference : Bool) ~ Nil {
+			@is_reference := is_reference;
+		}
+	}
+	
 	class Parser {
 		@tokens : Vector;
 		@pos : Int;
@@ -39,11 +67,30 @@ bundle CodeGen {
 		
 		method : public : Parse() ~ Nil {
 			while(<>Match(Type->EOS)) {
-				if(Match(Type->EXTERN_ID)) {
-					"Found"->PrintLine();
+				if(Match(Type->EXTERN_ID) & Match(Type->DECLSPEC_ID, 1)) {
+					Next(); Next();
+					rtrn_type := ParseType();
+					if(rtrn_type = Nil) {
+						return;
+					};
+					
+					if(<>Match(Type->SDLCALL_ID)) {
+						return;
+					};
+					Next();
+					
+					if(<>Match(Type->IDENT)) {
+						return;
+					};
+Token()->GetValue()->PrintLine();					
+					Next();
+							
+"Okay"->PrintLine();
+"---"->PrintLine();
 				};
-			
 				Next();
+				
+				
 			
 #~		
 				select(Token()->GetType()) {
@@ -72,6 +119,45 @@ bundle CodeGen {
 			Next();
 ~#
 			};
+		}
+		
+		# handle * and & c types
+		method : public : ParseType() ~ ParsedType {
+			type : ParsedType;
+		
+			select(Token()->GetType()) {
+				label Type->INT_ID: {
+					type := ParsedType->New(ParsedType->Type->INT);
+"int"->PrintLine();
+				}
+				
+				label Type->IDENT: {
+					type := ParsedType->New(ParsedType->Type->CLASS);
+Token()->GetValue()->PrintLine();
+				}
+				
+				other: {
+					"expected type"->PrintLine();
+					Runtime->Exit(1);
+				}
+			};
+			Next();
+			
+			if(Match(Type->STAR)) {
+				type->SetPointer(true);
+				Next();
+			}
+			else if(Match(Type->AND)) {
+				type->SetReference(true);
+				Next();
+			};
+			
+			return type;			
+		}
+		
+		# 
+		method : public : ParseFunction() ~ ParsedFunction {
+			return Nil;
 		}
 	}
 }	
