@@ -379,7 +379,7 @@ bundle System {
 		@ignore-params
 		@return true if upper-case, false otherwise
 		~#
-		function : native : IsUpper(c : Char) ~ Char {
+		function : native : IsUpper(c : Char) ~ Bool {
 			if(c >= 'A' & c <= 'Z') {
 				return true;
 			};
