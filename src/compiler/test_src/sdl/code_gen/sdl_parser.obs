@@ -49,7 +49,9 @@ bundle CodeGen {
 		enum Type {
 			INT,
 			BOOL,
-			CLASS
+			CLASS,
+			VOID_STAR,
+			VOID
 		}
 		
 		@type : ParsedType->Type;
@@ -58,6 +60,14 @@ bundle CodeGen {
 		@is_reference : Bool;
 		
 		New(type : ParsedType->Type) {
+			@type := type;
+		}
+		
+		method : public : GetType() ~ ParsedType->Type {
+			return @type;
+		}
+		
+		method : public : SetType(type : ParsedType->Type) ~ Nil {
 			@type := type;
 		}
 		
@@ -128,7 +138,7 @@ bundle CodeGen {
 			Next();
 
 			parameters := Vector->New();
-			while(Match(Type->EOS) = false & Match(Type->CPRN) = false) {
+			while(<>Match(Type->EOS) & <>Match(Type->CPRN)) {
 				parameter_type := ParseType();
 				if(parameter_type = Nil) {
 					return Nil;
@@ -167,15 +177,23 @@ bundle CodeGen {
 			};
 			
 			select(Token()->GetType()) {
+				label Type->UINT8_ID:
+				label Type->UINT16_ID:
+				label Type->UINT32_ID:
 				label Type->INT_ID: {
 					type := ParsedType->New(ParsedType->Type->INT);
 "\t\ttype: int"->PrintLine();
 				}
 				
+				label Type->VOID_ID: {
+					type := ParsedType->New(ParsedType->Type->VOID);
+"\t\ttype: void"->PrintLine();
+				}
+				
 				label Type->IDENT: {
 					type := ParsedType->New(ParsedType->Type->CLASS);
 					class_name := Token()->GetValue();
-"\t\ttype: {$class_name}"->PrintLine();					
+"\t\ttype: class='{$class_name}'"->PrintLine();					
 				}
 				
 				other: {
@@ -187,6 +205,9 @@ bundle CodeGen {
 			
 			if(Match(Type->STAR)) {
 				type->SetPointer(true);
+				if(type->GetType() = ParsedType->Type->VOID) {
+					type->SetType(ParsedType->Type->VOID_STAR);
+				};
 				Next();
 			}
 			else if(Match(Type->AND)) {

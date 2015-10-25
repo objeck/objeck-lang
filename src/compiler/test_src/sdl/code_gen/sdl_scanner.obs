@@ -35,6 +35,10 @@ bundle CodeGen {
 		DECLSPEC_ID,
 		SDLCALL_ID,
 		INT_ID,
+		UINT8_ID,
+		UINT16_ID,
+		UINT32_ID,
+		VOID_ID,
 		CONST_ID,
 		OPRN,
 		CPRN,
@@ -78,7 +82,10 @@ bundle CodeGen {
 			
 			# c types
 			reserved->Insert("int", Token->New(Type->INT_ID, "int"));
-			reserved->Insert("const", Token->New(Type->CONST_ID, "const"));
+			reserved->Insert("void", Token->New(Type->VOID_ID, "void"));
+			reserved->Insert("Uint8", Token->New(Type->UINT8_ID, "Uint8"));
+			reserved->Insert("Uint16", Token->New(Type->UINT16_ID, "Uint16"));
+			reserved->Insert("Uint32", Token->New(Type->UINT32_ID, "Uint32"));
 			
 			reader := FileReader->New(@filename);
 			line_num := 0;
