@@ -3,58 +3,6 @@ use Collection;
 
 bundle CodeGen {
 	#~
-	Scanned token
-	~#
-	class Token {
-		@type : Type;
-		@value : String;
-
-		New(type : Type) {
-			@type := type;
-		}
-		
-		New(type : Type, value : String) {
-			@type := type;
-			@value := value;
-		}
-
-		method : public : GetType() ~ Type {
-			return @type;
-		}
-		
-		method : public : GetValue() ~ String {
-			return @value;
-		}
-	}
-	
-	#~
-	Scanned token type
-	~#
-	enum Type := -100 {
-		EXTERN_ID,
-		DECLSPEC_ID,
-		SDLCALL_ID,
-		INT_ID,
-		UINT8_ID,
-		UINT16_ID,
-		UINT32_ID,
-		VOID_ID,
-		CONST_ID,
-		OPRN,
-		CPRN,
-		OBR,
-		CBR,
-		COMMA,
-		SCOLON,
-		STAR,
-		AND,
-		NUM,
-		IDENT,
-		UNKWN,
-		EOS
-	}
-
-	#~
 	Token scanner
 	~#
 	class Scanner {
@@ -76,17 +24,17 @@ bundle CodeGen {
 		method : Scan() ~ Vector {
 			reserved := StringMap->New();
 			# c keywords
-			reserved->Insert("extern", Token->New(Type->EXTERN_ID, "extern"));
-			reserved->Insert("DECLSPEC", Token->New(Type->DECLSPEC_ID, "DECLSPEC"));
-			reserved->Insert("SDLCALL", Token->New(Type->SDLCALL_ID, "SDLCALL"));
+			reserved->Insert("extern", Token->New(Token->Type->EXTERN_ID, "extern"));
+			reserved->Insert("DECLSPEC", Token->New(Token->Type->DECLSPEC_ID, "DECLSPEC"));
+			reserved->Insert("SDLCALL", Token->New(Token->Type->SDLCALL_ID, "SDLCALL"));
 			
 			# c types
-			reserved->Insert("const", Token->New(Type->CONST_ID, "const"));
-			reserved->Insert("int", Token->New(Type->INT_ID, "int"));
-			reserved->Insert("void", Token->New(Type->VOID_ID, "void"));
-			reserved->Insert("Uint8", Token->New(Type->UINT8_ID, "Uint8"));
-			reserved->Insert("Uint16", Token->New(Type->UINT16_ID, "Uint16"));
-			reserved->Insert("Uint32", Token->New(Type->UINT32_ID, "Uint32"));
+			reserved->Insert("const", Token->New(Token->Type->CONST_ID, "const"));
+			reserved->Insert("int", Token->New(Token->Type->INT_ID, "int"));
+			reserved->Insert("void", Token->New(Token->Type->VOID_ID, "void"));
+			reserved->Insert("Uint8", Token->New(Token->Type->UINT8_ID, "Uint8"));
+			reserved->Insert("Uint16", Token->New(Token->Type->UINT16_ID, "Uint16"));
+			reserved->Insert("Uint32", Token->New(Token->Type->UINT32_ID, "Uint32"));
 			
 			reader := FileReader->New(@filename);
 			line_num := 0;
@@ -120,7 +68,7 @@ bundle CodeGen {
 								@tokens->AddBack(result);
 							}
 							else {
-								@tokens->AddBack(Token->New(Type->IDENT, ident));
+								@tokens->AddBack(Token->New(Token->Type->IDENT, ident));
 							};
 						}
 						# number
@@ -132,45 +80,45 @@ bundle CodeGen {
 								i += 1;
 								c := line->Get(i);
 							};
-							@tokens->AddBack(Token->New(Type->NUM, number));
+							@tokens->AddBack(Token->New(Token->Type->NUM, number));
 						}
 						# other
 						else {
 							select(line->Get(i)) {
 								label '(': {
-									@tokens->AddBack(Token->New(Type->OPRN, "("));
+									@tokens->AddBack(Token->New(Token->Type->OPRN, "("));
 								}
 								
 								label ')': {
-									@tokens->AddBack(Token->New(Type->CPRN, ")"));
+									@tokens->AddBack(Token->New(Token->Type->CPRN, ")"));
 								}
 
 								label '[': {
-									@tokens->AddBack(Token->New(Type->OBR, "["));
+									@tokens->AddBack(Token->New(Token->Type->OBR, "["));
 								}
 
 								label ']': {
-									@tokens->AddBack(Token->New(Type->CBR, "]"));
+									@tokens->AddBack(Token->New(Token->Type->CBR, "]"));
 								}
 
 								label ',': {
-									@tokens->AddBack(Token->New(Type->COMMA, ","));
+									@tokens->AddBack(Token->New(Token->Type->COMMA, ","));
 								}
 								
 								label ';': {
-									@tokens->AddBack(Token->New(Type->SCOLON, ";"));
+									@tokens->AddBack(Token->New(Token->Type->SCOLON, ";"));
 								}
 
 								label '*': {
-									@tokens->AddBack(Token->New(Type->STAR, "*"));
+									@tokens->AddBack(Token->New(Token->Type->STAR, "*"));
 								}
 								
 								label '&': {
-									@tokens->AddBack(Token->New(Type->AND, "*"));
+									@tokens->AddBack(Token->New(Token->Type->AND, "*"));
 								}
 								
 								other: {
-									@tokens->AddBack(Token->New(Type->UNKWN, "?"));
+									@tokens->AddBack(Token->New(Token->Type->UNKWN, "?"));
 								}
 							};
 							# update
@@ -181,8 +129,57 @@ bundle CodeGen {
 			};
 			reader->Close();
 			
-			@tokens->AddBack(Token->New(Type->EOS));
+			@tokens->AddBack(Token->New(Token->Type->EOS));
 			return @tokens;
+		}
+	}
+	
+	#~
+	Scanned token
+	~#
+	class Token {
+		enum Type := -100 {
+			EXTERN_ID,
+			DECLSPEC_ID,
+			SDLCALL_ID,
+			INT_ID,
+			UINT8_ID,
+			UINT16_ID,
+			UINT32_ID,
+			VOID_ID,
+			CONST_ID,
+			OPRN,
+			CPRN,
+			OBR,
+			CBR,
+			COMMA,
+			SCOLON,
+			STAR,
+			AND,
+			NUM,
+			IDENT,
+			UNKWN,
+			EOS
+		}
+		
+		@type : Type;
+		@value : String;
+
+		New(type : Type) {
+			@type := type;
+		}
+		
+		New(type : Type, value : String) {
+			@type := type;
+			@value := value;
+		}
+
+		method : public : GetType() ~ Type {
+			return @type;
+		}
+		
+		method : public : GetValue() ~ String {
+			return @value;
 		}
 	}
 }
