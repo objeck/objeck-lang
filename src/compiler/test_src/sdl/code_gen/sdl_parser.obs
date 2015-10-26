@@ -5,16 +5,29 @@ bundle CodeGen {
 	Parsed function
 	~#
 	class ParsedFunction {
-		@parameters : ParsedParameters;
 		@name : String;
+		@parameters : ParsedParameters;
+		@rtrn_type : ParsedType;
 		
-		New(parameters : ParsedParameters, name : String) {
-			@parameters := parameters;
+		New(name : String, parameters : ParsedParameters, rtrn_type : ParsedType) {
 			@name := name;
+			@parameters := parameters;
+			@rtrn_type := rtrn_type;
 		}
 		
 		method : public : ToString() ~ String {
-			return "TODO";
+			if(@name <> Nil & @parameters <> Nil & @rtrn_type <> Nil) {
+				param_count := @parameters->GetSize();
+				parameters_string := "<none>";
+				if(@parameters <> Nil) {
+					parameters_string := @parameters->ToString();
+				};
+				rtrn_string := @rtrn_type->ToString();
+				
+				return "function: name='{$@name}', params={$param_count}\n{$parameters_string}\nreturn\n\t{$rtrn_string}";
+			};
+			
+			return "<empty>";
 		}
 	}
 	
@@ -27,18 +40,58 @@ bundle CodeGen {
 		New(parameters : Vector) {
 			@parameters := parameters;
 		}
+		
+		method : public : GetSize() ~ Int {
+			return @parameters->Size();
+		}
+		
+		method : public : ToString() ~ String {
+			buffer := "";
+			
+			each(i : @parameters) {
+				parameter := @parameters->Get(i)->As(ParseParameter);
+				buffer->Append(parameter->ToString());
+				buffer->Append('\n');
+			};
+			
+			return buffer;
+		}
 	}
 	
 	#~
 	Parsed function parameter
 	~#
 	class ParseParameter {
-		@type : ParsedType;
 		@name : String;
+		@type : ParsedType;
 		
 		New(type : ParsedType, name : String) {
 			@type := type;
 			@name := name;
+		}
+		
+		method : public : GetName() ~ String {
+			return @name;
+		}
+		
+		method : public : GetType() ~ ParsedType {
+			return @type;
+		}
+		
+		method : public : ToString() ~ String {
+			buffer := "parameters:\n";
+			
+			if(@name <> Nil) {
+				buffer->Append("\tname='{$@name}'\n");
+			};
+			
+			if(@type <> Nil) {
+				buffer->Append('\t');
+				buffer->Append(@type->ToString());
+				buffer->Append('\n');
+			};
+			
+			return buffer;
 		}
 	}
 	
@@ -75,8 +128,24 @@ bundle CodeGen {
 			@is_pointer := is_pointer;
 		}
 		
+		method : public : IsPointer() ~ Bool {
+			return @is_pointer;
+		}
+		
 		method : public : SetReference(is_reference : Bool) ~ Nil {
 			@is_reference := is_reference;
+		}
+		
+		method : public : IsReference() ~ Bool {
+			return @is_reference;
+		}
+		
+		method : public : ToString() ~ String {
+			if(@name <> Nil) {
+				return @name;;
+			};
+			
+			return "";
 		}
 	}
 	
@@ -157,7 +226,6 @@ bundle CodeGen {
 					return Nil;
 				};
 				parameter_name := Token()->GetValue();					
-"\t\tname='{$parameter_name}'"->PrintLine();				
 				Next();
 				
 				parameters->AddBack(ParseParameter->New(parameter_type, parameter_name));
@@ -165,7 +233,6 @@ bundle CodeGen {
 				if(Match(Type->COMMA)) {
 					Next();
 				};
-"\t\t---"->PrintLine();				
 			};
 
 			if(<>Match(Type->CPRN)) {
@@ -190,18 +257,15 @@ bundle CodeGen {
 				label Type->UINT32_ID:
 				label Type->INT_ID: {
 					type := ParsedType->New(ParsedType->Type->INT);
-"\t\ttype: int"->PrintLine();
 				}
 				
 				label Type->VOID_ID: {
 					type := ParsedType->New(ParsedType->Type->VOID);
-"\t\ttype: void"->PrintLine();
 				}
 				
 				label Type->IDENT: {
 					type := ParsedType->New(ParsedType->Type->CLASS);
 					class_name := Token()->GetValue();
-"\t\ttype: class='{$class_name}'"->PrintLine();					
 				}
 				
 				other: {
@@ -230,7 +294,6 @@ bundle CodeGen {
 			parsed_function : ParsedFunction;
 			
 			if(Match(Type->EXTERN_ID) & Match(Type->DECLSPEC_ID, 1)) {
-"=== Start Function ==="->PrintLine();			
 				Next(); 
 				Next();
 				
@@ -250,7 +313,6 @@ bundle CodeGen {
 					return Nil;
 				};
 				parsed_function_name := Token()->GetValue();
-"\tfunction: name='{$parsed_function_name}'"->PrintLine();				
 				Next();
 				
 				## parameters
@@ -263,7 +325,8 @@ bundle CodeGen {
 					return Nil;
 				};
 				Next();
-"=== End Function ===\n"->PrintLine();
+				
+				parsed_function := ParsedFunction->New(parsed_function_name, parsed_parameters, parsed_return);
 			};
 			
 			return parsed_function;
