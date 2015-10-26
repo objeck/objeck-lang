@@ -44,7 +44,8 @@ bundle CodeGen {
 			while(<>Match(Token->Type->EOS)) {
 				parsed_function := ParseFunction();
 				if(parsed_function <> Nil) {
-					parsed_function->ToString()->PrintLine();
+#					parsed_function->ToString()->PrintLine();
+parsed_function->GetObjeckName();
 				};
 				Next();
 			};
@@ -197,6 +198,18 @@ bundle CodeGen {
 			@name := name;
 			@parameters := parameters;
 			@rtrn_type := rtrn_type;
+		}
+		
+		method : public : GetObjeckName() ~ String {
+			buffer := "";
+			
+			if(@name->StartsWith("SDL_")) {
+				objk_name := @name->SubString(4, @name->Size() - 4);
+				objk_name := objk_name->Replace("Window", "");
+objk_name->PrintLine();
+			};
+			
+			return buffer;
 		}
 		
 		method : public : ToString() ~ String {
