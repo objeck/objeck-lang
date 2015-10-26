@@ -2,6 +2,190 @@ use Collection;
 
 bundle CodeGen {
 	#~
+	Source code parser
+	~#
+	class Parser {
+		@tokens : Vector;
+		@pos : Int;
+		
+		New(tokens : Vector) {
+			@tokens := tokens;
+			@pos := 0;
+		}
+		
+		method : Match(type : Token->Type) ~ Bool {
+			return Match(type, 0);
+		}
+		
+		method : Match(type : Token->Type, offset : Int) ~ Bool {
+			pos := @pos + offset;
+			if(pos < @tokens->Size()) {
+				return @tokens->Get(pos)->As(Token)->GetType() = type;
+			};
+			
+			return false;
+		}
+		
+		method : Next() ~ Nil {
+			if(@pos < @tokens->Size()) {
+				@pos += 1;
+			};
+		}
+		
+		method : Token() ~ Token {
+			if(@pos < @tokens->Size()) {
+				return @tokens->Get(@pos);
+			};
+			
+			return @tokens->Get(@tokens->Size() - 1);
+		}
+		
+		method : public : Parse() ~ Nil {
+			while(<>Match(Token->Type->EOS)) {
+				parsed_function := ParseFunction();
+				if(parsed_function <> Nil) {
+					parsed_function->ToString()->PrintLine();
+				};
+				Next();
+			};
+		}
+		
+		method : public : ParseParameters () ~ ParsedParameters {
+			parsed_parameters : ParsedParameters;
+			
+			if(<>Match(Token->Type->OPRN)) {
+				return Nil;
+			};
+			Next();
+
+			parameters := Vector->New();
+			
+			if(Match(Token->Type->VOID_ID) & Match(Token->Type->CPRN, 1)) {
+				Next();
+				Next();
+				
+				return ParsedParameters->New(parameters);
+			};
+			
+			while(<>Match(Token->Type->EOS) & <>Match(Token->Type->CPRN)) {
+				parameter_type := ParseType();
+				if(parameter_type = Nil) {
+					return Nil;
+				};
+				
+				## function name
+				if(<>Match(Token->Type->IDENT)) {
+					return Nil;
+				};
+				parameter_name := Token()->GetValue();					
+				Next();
+				
+				parameters->AddBack(ParseParameter->New(parameter_type, parameter_name));
+				
+				if(Match(Token->Type->COMMA)) {
+					Next();
+				};
+			};
+
+			if(<>Match(Token->Type->CPRN)) {
+				return Nil;
+			};
+			Next();
+			
+			return ParsedParameters->New(parameters);
+		}
+		
+		## handle * and & c types
+		method : public : ParseType() ~ ParsedType {
+			type : ParsedType;
+			
+			if(Match(Token->Type->CONST_ID)) {
+				Next();
+			};
+			
+			select(Token()->GetType()) {
+				label Token->Type->UINT8_ID:
+				label Token->Type->UINT16_ID:
+				label Token->Type->UINT32_ID:
+				label Token->Type->INT_ID: {
+					type := ParsedType->New(ParsedType->Type->INT);
+				}
+				
+				label Token->Type->VOID_ID: {
+					type := ParsedType->New(ParsedType->Type->VOID);
+				}
+				
+				label Token->Type->IDENT: {
+					class_name := Token()->GetValue();
+					type := ParsedType->New(ParsedType->Type->CLASS, class_name);
+				}
+				
+				other: {
+					"expected type"->PrintLine();
+					Runtime->Exit(1);
+				}
+			};
+			Next();
+			
+			if(Match(Token->Type->STAR)) {
+				type->SetPointer(true);
+				if(type->GetType() = ParsedType->Type->VOID) {
+					type->SetType(ParsedType->Type->VOID_STAR);
+				};
+				Next();
+			}
+			else if(Match(Token->Type->AND)) {
+				type->SetReference(true);
+				Next();
+			};
+
+			return type;			
+		}
+		
+		method : public : ParseFunction() ~ ParsedFunction {
+			parsed_function : ParsedFunction;
+			
+			if(Match(Token->Type->EXTERN_ID) & Match(Token->Type->DECLSPEC_ID, 1)) {
+				Next(); 
+				Next();
+				
+				## return type
+				parsed_return := ParseType();
+				if(parsed_return = Nil) {
+					return Nil;
+				};
+				
+				if(<>Match(Token->Type->SDLCALL_ID)) {
+					return Nil;
+				};
+				Next();
+				
+				## function name
+				if(<>Match(Token->Type->IDENT)) {
+					return Nil;
+				};
+				parsed_function_name := Token()->GetValue();
+				Next();
+				
+				## parameters
+				parsed_parameters := ParseParameters();
+				if(parsed_parameters = Nil) {
+					return Nil;
+				};
+				
+				if(<>Match(Token->Type->SCOLON)) {
+					return Nil;
+				};
+				Next();
+				
+				parsed_function := ParsedFunction->New(parsed_function_name, parsed_parameters, parsed_return);
+			};
+			
+			return parsed_function;
+		}
+	}
+	
+	#~
 	Parsed function
 	~#
 	class ParsedFunction {
@@ -177,190 +361,6 @@ bundle CodeGen {
 			};
 			
 			return buffer;
-		}
-	}
-	
-	#~
-	Source code parser
-	~#
-	class Parser {
-		@tokens : Vector;
-		@pos : Int;
-		
-		New(tokens : Vector) {
-			@tokens := tokens;
-			@pos := 0;
-		}
-		
-		method : Match(type : Type) ~ Bool {
-			return Match(type, 0);
-		}
-		
-		method : Match(type : Type, offset : Int) ~ Bool {
-			pos := @pos + offset;
-			if(pos < @tokens->Size()) {
-				return @tokens->Get(pos)->As(Token)->GetType() = type;
-			};
-			
-			return false;
-		}
-		
-		method : Next() ~ Nil {
-			if(@pos < @tokens->Size()) {
-				@pos += 1;
-			};
-		}
-		
-		method : Token() ~ Token {
-			if(@pos < @tokens->Size()) {
-				return @tokens->Get(@pos);
-			};
-			
-			return @tokens->Get(@tokens->Size() - 1);
-		}
-		
-		method : public : Parse() ~ Nil {
-			while(<>Match(Type->EOS)) {
-				parsed_function := ParseFunction();
-				if(parsed_function <> Nil) {
-					parsed_function->ToString()->PrintLine();
-				};
-				Next();
-			};
-		}
-		
-		method : public : ParseParameters () ~ ParsedParameters {
-			parsed_parameters : ParsedParameters;
-			
-			if(<>Match(Type->OPRN)) {
-				return Nil;
-			};
-			Next();
-
-			parameters := Vector->New();
-			
-			if(Match(Type->VOID_ID) & Match(Type->CPRN, 1)) {
-				Next();
-				Next();
-				
-				return ParsedParameters->New(parameters);
-			};
-			
-			while(<>Match(Type->EOS) & <>Match(Type->CPRN)) {
-				parameter_type := ParseType();
-				if(parameter_type = Nil) {
-					return Nil;
-				};
-				
-				## function name
-				if(<>Match(Type->IDENT)) {
-					return Nil;
-				};
-				parameter_name := Token()->GetValue();					
-				Next();
-				
-				parameters->AddBack(ParseParameter->New(parameter_type, parameter_name));
-				
-				if(Match(Type->COMMA)) {
-					Next();
-				};
-			};
-
-			if(<>Match(Type->CPRN)) {
-				return Nil;
-			};
-			Next();
-			
-			return ParsedParameters->New(parameters);
-		}
-		
-		## handle * and & c types
-		method : public : ParseType() ~ ParsedType {
-			type : ParsedType;
-			
-			if(Match(Type->CONST_ID)) {
-				Next();
-			};
-			
-			select(Token()->GetType()) {
-				label Type->UINT8_ID:
-				label Type->UINT16_ID:
-				label Type->UINT32_ID:
-				label Type->INT_ID: {
-					type := ParsedType->New(ParsedType->Type->INT);
-				}
-				
-				label Type->VOID_ID: {
-					type := ParsedType->New(ParsedType->Type->VOID);
-				}
-				
-				label Type->IDENT: {
-					class_name := Token()->GetValue();
-					type := ParsedType->New(ParsedType->Type->CLASS, class_name);
-				}
-				
-				other: {
-					"expected type"->PrintLine();
-					Runtime->Exit(1);
-				}
-			};
-			Next();
-			
-			if(Match(Type->STAR)) {
-				type->SetPointer(true);
-				if(type->GetType() = ParsedType->Type->VOID) {
-					type->SetType(ParsedType->Type->VOID_STAR);
-				};
-				Next();
-			}
-			else if(Match(Type->AND)) {
-				type->SetReference(true);
-				Next();
-			};
-
-			return type;			
-		}
-		
-		method : public : ParseFunction() ~ ParsedFunction {
-			parsed_function : ParsedFunction;
-			
-			if(Match(Type->EXTERN_ID) & Match(Type->DECLSPEC_ID, 1)) {
-				Next(); 
-				Next();
-				
-				## return type
-				parsed_return := ParseType();
-				if(parsed_return = Nil) {
-					return Nil;
-				};
-				
-				if(<>Match(Type->SDLCALL_ID)) {
-					return Nil;
-				};
-				Next();
-				
-				## function name
-				if(<>Match(Type->IDENT)) {
-					return Nil;
-				};
-				parsed_function_name := Token()->GetValue();
-				Next();
-				
-				## parameters
-				parsed_parameters := ParseParameters();
-				if(parsed_parameters = Nil) {
-					return Nil;
-				};
-				
-				if(<>Match(Type->SCOLON)) {
-					return Nil;
-				};
-				Next();
-				
-				parsed_function := ParsedFunction->New(parsed_function_name, parsed_parameters, parsed_return);
-			};
-			
-			return parsed_function;
 		}
 	}
 }	
