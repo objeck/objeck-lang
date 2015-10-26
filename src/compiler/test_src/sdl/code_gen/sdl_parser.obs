@@ -24,7 +24,7 @@ bundle CodeGen {
 				};
 				rtrn_string := @rtrn_type->ToString();
 				
-				return "function: name='{$@name}', params={$param_count}\n{$parameters_string}\nreturn\n\t{$rtrn_string}";
+				return "\n============\nfunction: name='{$@name}', params={$param_count}\n{$parameters_string}return:\n\t{$rtrn_string}";
 			};
 			
 			return "<empty>";
@@ -48,9 +48,15 @@ bundle CodeGen {
 		method : public : ToString() ~ String {
 			buffer := "";
 			
-			each(i : @parameters) {
-				parameter := @parameters->Get(i)->As(ParseParameter);
-				buffer->Append(parameter->ToString());
+			if(@parameters->Size() > 0) {
+				buffer->Append("parameters:\n");
+				each(i : @parameters) {
+					parameter := @parameters->Get(i)->As(ParseParameter);
+					buffer->Append(parameter->ToString());
+					if(i + 1 < @parameters->Size()) {
+						buffer->Append("\n\t---\n");
+					};
+				};
 				buffer->Append('\n');
 			};
 			
@@ -79,16 +85,12 @@ bundle CodeGen {
 		}
 		
 		method : public : ToString() ~ String {
-			buffer := "parameters:\n";
+			buffer := "";
 			
-			if(@name <> Nil) {
+			if(@name <> Nil & @type <> Nil) {
 				buffer->Append("\tname='{$@name}'\n");
-			};
-			
-			if(@type <> Nil) {
 				buffer->Append('\t');
 				buffer->Append(@type->ToString());
-				buffer->Append('\n');
 			};
 			
 			return buffer;
@@ -116,8 +118,17 @@ bundle CodeGen {
 			@type := type;
 		}
 		
+		New(type : ParsedType->Type, name : String) {
+			@type := type;
+			@name := name;
+		}
+		
 		method : public : GetType() ~ ParsedType->Type {
 			return @type;
+		}
+		
+		method : public : GetName() ~ String {
+			return @name;
 		}
 		
 		method : public : SetType(type : ParsedType->Type) ~ Nil {
@@ -141,11 +152,31 @@ bundle CodeGen {
 		}
 		
 		method : public : ToString() ~ String {
-			if(@name <> Nil) {
-				return @name;;
+			buffer := "";
+			
+			select(@type) {
+				label Type->INT: {
+					buffer->Append("type=int");
+				}
+				
+				label Type->BOOL: {
+					buffer->Append("type=bool");
+				}
+				
+				label Type->CLASS: {
+					buffer->Append("type=class, name='{$@name}'");
+				}
+				
+				label Type->VOID_STAR: {
+					buffer->Append("type=nil");
+				}
+				
+				label Type->VOID: {
+					buffer->Append("type=pointer/int");
+				}
 			};
 			
-			return "";
+			return buffer;
 		}
 	}
 	
@@ -264,8 +295,8 @@ bundle CodeGen {
 				}
 				
 				label Type->IDENT: {
-					type := ParsedType->New(ParsedType->Type->CLASS);
 					class_name := Token()->GetValue();
+					type := ParsedType->New(ParsedType->Type->CLASS, class_name);
 				}
 				
 				other: {
