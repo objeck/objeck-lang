@@ -45,7 +45,9 @@ bundle CodeGen {
 				parsed_function := ParseFunction();
 				if(parsed_function <> Nil) {
 #					parsed_function->ToString()->PrintLine();
-parsed_function->GetObjeckName();
+parsed_function->GetObjeckName()->PrintLine();
+parsed_function->GetCName()->PrintLine();
+"---"->PrintLine();
 				};
 				Next();
 			};
@@ -179,7 +181,7 @@ parsed_function->GetObjeckName();
 				};
 				Next();
 				
-				parsed_function := ParsedFunction->New(parsed_function_name, parsed_parameters, parsed_return);
+				parsed_function := ParsedFunction->New(parsed_function_name, parsed_parameters, parsed_return, "Window");
 			};
 			
 			return parsed_function;
@@ -191,25 +193,54 @@ parsed_function->GetObjeckName();
 	~#
 	class ParsedFunction {
 		@name : String;
+		@this_name : String;
+		@objk_name : String;
+		@c_name : String;
 		@parameters : ParsedParameters;
 		@rtrn_type : ParsedType;
 		
-		New(name : String, parameters : ParsedParameters, rtrn_type : ParsedType) {
+		New(name : String, parameters : ParsedParameters, rtrn_type : ParsedType, this_name : String) {
 			@name := name;
 			@parameters := parameters;
 			@rtrn_type := rtrn_type;
+			@this_name := this_name;
 		}
 		
 		method : public : GetObjeckName() ~ String {
-			buffer := "";
-			
-			if(@name->StartsWith("SDL_")) {
-				objk_name := @name->SubString(4, @name->Size() - 4);
-				objk_name := objk_name->Replace("Window", "");
-objk_name->PrintLine();
+			if(@objk_name = Nil & @name->StartsWith("SDL_")) {
+				@objk_name := @name->SubString(4, @name->Size() - 4);
+				@objk_name := @objk_name->Replace(@this_name, "");
 			};
 			
-			return buffer;
+			return @objk_name;
+		}
+		
+		method : public : GetCName() ~ String {
+			if(@c_name = Nil) {
+				@c_name := "sdl_";
+				@c_name->Append(@this_name->ToLower());
+				@c_name->Append('_');
+				objeck_name := GetObjeckName();
+				each(i : objeck_name) {
+					c := objeck_name->Get(i);
+					n := '\0';
+					if(i + 1 < objeck_name->Size()) {
+						n := objeck_name->Get(i + 1);
+					};
+
+					if(i > 0 & c->IsUpper() & n->IsLower()) {
+						@c_name->Append('_');						
+						@c_name->Append(c->ToLower());
+					}
+					else {
+						@c_name->Append(c->ToLower());
+					};
+				};
+				
+				@c_name := @c_name->Replace("__", "_");
+			};
+			
+			return @c_name;
 		}
 		
 		method : public : ToString() ~ String {
