@@ -6,9 +6,10 @@ bundle CodeGen {
 	~#
 	class Emitter {
 		function : Main(args : String[]) ~ Nil {
-			if(args->Size() = 2) {
+			if(args->Size() = 3) {
 				this_name := ParseThisName(args[0]);
-				tokens := Scanner->New(args[1])->Scan();
+				template := EmitterTemplate->New();
+				tokens := Scanner->New(args[2])->Scan();
 				functions := Parser->New(tokens, this_name)->Parse();
 				
 				this_name->PrintLine();
@@ -28,6 +29,14 @@ bundle CodeGen {
 			};
 			
 			return name;
+		}
+	}
+	
+	class EmitterTemplate {
+		@name : String;
+		
+		New(name : String) {
+			@name := name;
 		}
 	}
 }
