@@ -210,6 +210,7 @@ parsed_function->GetCName()->PrintLine();
 			if(@objk_name = Nil & @name->StartsWith("SDL_")) {
 				@objk_name := @name->SubString(4, @name->Size() - 4);
 				@objk_name := @objk_name->Replace(@this_name, "");
+				@objk_name := @objk_name->Replace("_", "");
 			};
 			
 			return @objk_name;
