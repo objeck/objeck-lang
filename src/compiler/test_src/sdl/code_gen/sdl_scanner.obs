@@ -13,15 +13,8 @@ bundle CodeGen {
 			@filename := filename;
 			@tokens := Vector->New();
 		}
-
-		function : Main(args : String[]) ~ Nil {
-			if(args->Size() = 1) {
-				tokens := Scanner->New(args[0])->Scan();
-				Parser->New(tokens)->Parse();
-			};
-		}
-
-		method : Scan() ~ Vector {
+		
+		method : public : Scan() ~ Vector {
 			reserved := StringMap->New();
 			# c keywords
 			reserved->Insert("extern", Token->New(Token->Type->EXTERN_ID, "extern"));

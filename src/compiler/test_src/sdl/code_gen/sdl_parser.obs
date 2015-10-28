@@ -7,10 +7,12 @@ bundle CodeGen {
 	class Parser {
 		@tokens : Vector;
 		@pos : Int;
+		@this_name : String;
 		
-		New(tokens : Vector) {
+		New(tokens : Vector, this_name : String) {
 			@tokens := tokens;
 			@pos := 0;
+			@this_name := this_name;
 		}
 		
 		method : Match(type : Token->Type) ~ Bool {
@@ -40,17 +42,18 @@ bundle CodeGen {
 			return @tokens->Get(@tokens->Size() - 1);
 		}
 		
-		method : public : Parse() ~ Nil {
+		method : public : Parse() ~ Vector {
+			functions := Vector->New();
+			
 			while(<>Match(Token->Type->EOS)) {
 				parsed_function := ParseFunction();
 				if(parsed_function <> Nil) {
-#					parsed_function->ToString()->PrintLine();
-parsed_function->GetObjeckName()->PrintLine();
-parsed_function->GetCName()->PrintLine();
-"---"->PrintLine();
+					functions->AddBack(parsed_function);
 				};
 				Next();
 			};
+			
+			return functions;
 		}
 		
 		method : public : ParseParameters () ~ ParsedParameters {
@@ -181,7 +184,7 @@ parsed_function->GetCName()->PrintLine();
 				};
 				Next();
 				
-				parsed_function := ParsedFunction->New(parsed_function_name, parsed_parameters, parsed_return, "Window");
+				parsed_function := ParsedFunction->New(parsed_function_name, parsed_parameters, parsed_return, @this_name);
 			};
 			
 			return parsed_function;

@@ -1,0 +1,33 @@
+use Collection;
+
+bundle CodeGen {
+	#~
+	Source emitter
+	~#
+	class Emitter {
+		function : Main(args : String[]) ~ Nil {
+			if(args->Size() = 2) {
+				this_name := ParseThisName(args[0]);
+				tokens := Scanner->New(args[1])->Scan();
+				functions := Parser->New(tokens, this_name)->Parse();
+				
+				this_name->PrintLine();
+				functions->Size()->PrintLine();
+				each(i : functions) {
+					parsed_function := functions->Get(i)->As(ParsedFunction);
+					parsed_function->GetObjeckName()->PrintLine();
+					parsed_function->GetCName()->PrintLine();
+					"---"->PrintLine();
+				};
+			};
+		}
+		
+		function : ParseThisName(name : String) ~ String {
+			if(name->StartsWith("SDL_")) {
+				name := name->SubString(4, name->Size() - 4);
+			};
+			
+			return name;
+		}
+	}
+}
