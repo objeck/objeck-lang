@@ -118,7 +118,7 @@ bundle CodeGen {
 				
 				if(i = 0) {
 					buffer += "\tarray_args[";
-					buffer += i + 1;
+					buffer += offset;
 					buffer += "] := IntHolder->New(@";
 					buffer += parameter->GetName();
 					buffer += ");\n";
@@ -127,7 +127,7 @@ bundle CodeGen {
 					select(type->GetType()) {
 						label ParsedType->Type->INT: {
 							buffer += "\tarray_args[";
-							buffer += i + 1;
+							buffer += offset;
 							buffer += "] := IntHolder->New(";
 							buffer += parameter->GetName();
 							buffer += ");\n";
@@ -135,7 +135,7 @@ bundle CodeGen {
 						
 						label ParsedType->Type->BOOL: {
 							buffer += "\tarray_args[";
-							buffer += i + 1;
+							buffer += offset;
 							buffer += "] := IntHolder->New(";
 							buffer += parameter->GetName();
 							buffer += " ? 0 : 1);\n";
@@ -144,7 +144,7 @@ bundle CodeGen {
 						label ParsedType->Type->CLASS:
 						label ParsedType->Type->CHAR_STAR: {
 							buffer += "\tarray_args[";
-							buffer += i + 1;
+							buffer += offset;
 							buffer += "] := ";
 							buffer += parameter->GetName();
 							buffer += ";\n";
@@ -154,7 +154,17 @@ bundle CodeGen {
 						}
 					};
 				};
+				offset += 1;
 			};
+			
+			
+			buffer += "\n\t@lib_proxy := Proxy->GetDllProxy();\n";
+			buffer += "\t@lib_proxy->CallFunction(\"";
+			buffer += parsed_function->GetCName();
+			buffer += "\", array_args);\n\n";
+			
+			buffer += "\tvalue := array_args[0]->As(IntHolder);\n";
+			buffer += "\treturn value->Get();\n";
 		
 			buffer += "}\n";
 			
