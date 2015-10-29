@@ -117,6 +117,14 @@ bundle CodeGen {
 					type := ParsedType->New(ParsedType->Type->INT);
 				}
 				
+				label Token->Type->SDL_BOOL_ID: {
+					type := ParsedType->New(ParsedType->Type->BOOL);
+				}
+				
+				label Token->Type->CHAR_ID: {
+					type := ParsedType->New(ParsedType->Type->CHAR);
+				}
+				
 				label Token->Type->VOID_ID: {
 					type := ParsedType->New(ParsedType->Type->VOID);
 				}
@@ -137,6 +145,9 @@ bundle CodeGen {
 				type->SetPointer(true);
 				if(type->GetType() = ParsedType->Type->VOID) {
 					type->SetType(ParsedType->Type->VOID_STAR);
+				}
+				else if(type->GetType() = ParsedType->Type->CHAR) {
+					type->SetType(ParsedType->Type->CHAR_STAR);
 				};
 				Next();
 			}
@@ -347,6 +358,8 @@ bundle CodeGen {
 	class ParsedType {
 		enum Type {
 			INT,
+			CHAR,
+			CHAR_STAR,
 			BOOL,
 			CLASS,
 			VOID_STAR,
@@ -403,6 +416,14 @@ bundle CodeGen {
 					buffer->Append("type=int");
 				}
 				
+				label Type->CHAR: {
+					buffer->Append("type=char");
+				}
+				
+				label Type->CHAR_STAR: {
+					buffer->Append("type=char array");
+				}
+				
 				label Type->BOOL: {
 					buffer->Append("type=bool");
 				}
@@ -411,12 +432,12 @@ bundle CodeGen {
 					buffer->Append("type=class, name='{$@name}'");
 				}
 				
-				label Type->VOID_STAR: {
-					buffer->Append("type=nil");
+				label Type->VOID: {
+					buffer->Append("type=pointer");
 				}
 				
-				label Type->VOID: {
-					buffer->Append("type=pointer/int");
+				label Type->VOID_STAR: {
+					buffer->Append("type=int");
 				}
 			};
 			
