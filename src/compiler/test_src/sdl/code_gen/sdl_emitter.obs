@@ -50,6 +50,10 @@ bundle CodeGen {
 					buffer->Append("Int");
 				}
 				
+				label ParsedType->Type->CHAR_STAR: {
+					buffer->Append("String");
+				}
+				
 				label ParsedType->Type->VOID: {
 					buffer->Append("Nil");
 				}
