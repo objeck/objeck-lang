@@ -16,9 +16,7 @@ bundle CodeGen {
 				functions->Size()->PrintLine();
 				each(i : functions) {
 					parsed_function := functions->Get(i)->As(ParsedFunction);
-					parsed_function->GetObjeckName()->PrintLine();
-					parsed_function->GetCName()->PrintLine();
-					"---"->PrintLine();
+					EmitObjeckCode(parsed_function);
 				};
 			};
 		}
@@ -29,6 +27,61 @@ bundle CodeGen {
 			};
 			
 			return name;
+		}
+		
+		
+		function : GetTypeString(type : ParsedType) ~ String{
+			buffer := "";
+			
+			select(type->GetType()) {
+				label ParsedType->Type->INT: {
+					buffer->Append("Int");
+				}
+				
+				label ParsedType->Type->BOOL: {
+					buffer->Append("Bool");
+				}
+				
+				label ParsedType->Type->CLASS: {
+					buffer->Append(type->GetName());
+				}
+				
+				label ParsedType->Type->VOID_STAR: {
+					buffer->Append("Int");
+				}
+				
+				label ParsedType->Type->VOID: {
+					buffer->Append("Nil");
+				}
+			};
+			
+			return buffer;
+		}
+		
+		function : GetParametersString(parameters : ParsedParameters) ~ String {
+			buffer := "(";
+			
+			buffer += ")";
+			
+			return buffer;
+		}
+		
+		function : EmitObjeckCode(parsed_function : ParsedFunction) ~ Nil {
+			buffer := "method : public : ";
+			buffer += parsed_function->GetObjeckName();
+			buffer += GetParametersString(parsed_function->GetParameters());
+			buffer += " ~ ";
+			buffer += GetTypeString(parsed_function->GetReturnType());
+			buffer += " {\n\t";
+			
+			parameters := parsed_function->GetParameters();
+			buffer += "array_args := Base->New[";
+			buffer += parameters->Size() + 1;
+			buffer += "];\n";
+			
+			buffer += "}\n";
+			
+			buffer->PrintLine();
 		}
 	}
 	

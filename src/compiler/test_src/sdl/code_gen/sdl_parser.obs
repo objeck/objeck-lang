@@ -219,6 +219,14 @@ bundle CodeGen {
 			return @objk_name;
 		}
 		
+		method : public : GetReturnType() ~ ParsedType {
+			return @rtrn_type;
+		}
+		
+		method : public : GetParameters() ~ ParsedParameters {
+			return @parameters;
+		}
+		
 		method : public : GetCName() ~ String {
 			if(@c_name = Nil) {
 				@c_name := "sdl_";
@@ -249,7 +257,7 @@ bundle CodeGen {
 		
 		method : public : ToString() ~ String {
 			if(@name <> Nil & @parameters <> Nil & @rtrn_type <> Nil) {
-				param_count := @parameters->GetSize();
+				param_count := @parameters->Size();
 				parameters_string := "<none>";
 				if(@parameters <> Nil) {
 					parameters_string := @parameters->ToString();
@@ -273,8 +281,12 @@ bundle CodeGen {
 			@parameters := parameters;
 		}
 		
-		method : public : GetSize() ~ Int {
+		method : public : Size() ~ Int {
 			return @parameters->Size();
+		}
+		
+		method : public : Get(i : Int) ~ ParseParameter {
+			return @parameters->Get(i)->As(ParseParameter);
 		}
 		
 		method : public : ToString() ~ String {
