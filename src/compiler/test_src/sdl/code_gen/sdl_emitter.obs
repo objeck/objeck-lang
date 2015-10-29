@@ -61,6 +61,24 @@ bundle CodeGen {
 		function : GetParametersString(parameters : ParsedParameters) ~ String {
 			buffer := "(";
 			
+			i := 0;
+			if(parameters->Size() > 0) {
+				first_parameter := parameters->Get(0);
+				if(first_parameter->GetType()->GetType() = ParsedType->Type->CLASS & ParseThisName(GetTypeString(first_parameter->GetType()))->Equals("Window")) {
+					i := 1;
+				};
+			};
+			
+			for(i := i; i < parameters->Size(); i += 1;) {
+				parameter := parameters->Get(i);
+				buffer += parameter->GetName();
+				buffer += " : ";
+				buffer += ParseThisName(GetTypeString(parameter->GetType()));
+				
+				if(i + 1 < parameters->Size()) {
+					buffer += ", ";
+				};
+			};
 			buffer += ")";
 			
 			return buffer;
