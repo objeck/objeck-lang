@@ -97,10 +97,65 @@ bundle CodeGen {
 			buffer += " {\n\t";
 			
 			parameters := parsed_function->GetParameters();
-			buffer += "array_args := Base->New[";
-			buffer += parameters->Size() + 1;
-			buffer += "];\n";
 			
+			offset := 0;
+			if(parsed_function->GetReturnType()->GetType() = ParsedType->Type->VOID) {
+				buffer += "array_args := Base->New[";
+				buffer += parameters->Size();
+				buffer += "];\n";
+			}
+			else {
+				offset := 1;
+				buffer += "array_args := Base->New[";
+				buffer += parameters->Size() + 1;
+				buffer += "];\n\t";
+				buffer += "array_args[0] := IntHolder->New()\n";
+			};
+			
+			each(i : parameters) {
+				parameter := parameters->Get(i);
+				type := parameter->GetType();
+				
+				if(i = 0) {
+					buffer += "\tarray_args[";
+					buffer += i + 1;
+					buffer += "] := IntHolder->New(@";
+					buffer += parameter->GetName();
+					buffer += ");\n";
+				}
+				else {
+					select(type->GetType()) {
+						label ParsedType->Type->INT: {
+							buffer += "\tarray_args[";
+							buffer += i + 1;
+							buffer += "] := IntHolder->New(";
+							buffer += parameter->GetName();
+							buffer += ");\n";
+						}
+						
+						label ParsedType->Type->BOOL: {
+							buffer += "\tarray_args[";
+							buffer += i + 1;
+							buffer += "] := IntHolder->New(";
+							buffer += parameter->GetName();
+							buffer += " ? 0 : 1);\n";
+						}
+						
+						label ParsedType->Type->CLASS:
+						label ParsedType->Type->CHAR_STAR: {
+							buffer += "\tarray_args[";
+							buffer += i + 1;
+							buffer += "] := ";
+							buffer += parameter->GetName();
+							buffer += ";\n";
+						}
+						
+						label ParsedType->Type->VOID_STAR: {
+						}
+					};
+				};
+			};
+		
 			buffer += "}\n";
 			
 			buffer->PrintLine();
