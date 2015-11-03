@@ -6,10 +6,10 @@ bundle CodeGen {
 	~#
 	class Emitter {
 		function : Main(args : String[]) ~ Nil {
-			if(args->Size() = 3) {
+			if(args->Size() = 2) {
 				this_name := ParseThisName(args[0]);
 				template := EmitterTemplate->New();
-				tokens := Scanner->New(args[2])->Scan();
+				tokens := Scanner->New(args[1])->Scan();
 				functions := Parser->New(tokens, this_name)->Parse();
 				
 				this_name->PrintLine();
@@ -17,6 +17,8 @@ bundle CodeGen {
 				each(i : functions) {
 					parsed_function := functions->Get(i)->As(ParsedFunction);
 					EmitObjeckCode(parsed_function);
+					EmitCxxCode(parsed_function);
+"---"->PrintLine();
 				};
 			};
 		}
@@ -88,6 +90,112 @@ bundle CodeGen {
 			return buffer;
 		}
 		
+		function : GetCallingString(parameters : ParsedParameters) ~ String {
+			buffer := "(";
+			
+			for(i := 0; i < parameters->Size(); i += 1;) {
+				parameter := parameters->Get(i);
+				buffer += parameter->GetName();
+				
+				if(i + 1 < parameters->Size()) {
+					buffer += ", ";
+				};
+			};
+			buffer += ");\n";
+			
+			return buffer;
+		}
+		
+		function : EmitCxxCode(parsed_function : ParsedFunction) ~ Nil {
+			buffer := "#ifdef _WIN32\n";
+			buffer += "\t__declspec(dllexport)\n";
+			buffer += "#endif\n";
+			buffer += "\tvoid ";
+			buffer += parsed_function->GetCxxName();
+			buffer += "(VMContext& context) {\n";
+			
+			
+			
+			
+			
+			
+			offset := 0;
+			has_return := <>parsed_function->GetReturnType()->GetType() = ParsedType->Type->VOID;
+			parameters := parsed_function->GetParameters();
+			if(has_return) {
+				offset += 1;
+			};
+			
+			each(i : parameters) {
+				parameter := parameters->Get(i);
+				select(parameter->GetType()->GetType()) {
+					label ParsedType->Type->INT:
+					label ParsedType->Type->BOOL: {
+						buffer += "\t\tconst int ";
+						buffer += parameter->GetName();
+						buffer += " = APITools_GetIntValue(context, ";
+						buffer += offset;
+						buffer += ");\n";
+					}
+	
+					label ParsedType->Type->CLASS: {
+						buffer += "\t\tconst long* ";
+						buffer += parameter->GetName();
+						buffer += " = (long*)APITools_GetObjectValue(context, ";
+						buffer += offset;
+						buffer += ");\n";
+					}
+					
+					label ParsedType->Type->CHAR_STAR: {
+						buffer += "\t\tconst wstring ";
+						buffer += parameter->GetName();
+						buffer += " = APITools_GetStringValue(context, ";
+						buffer += offset;
+						buffer += ");\n";
+					}
+					
+#~					
+					label ParsedType->Type->VOID_STAR: {
+					}
+~#					
+				};
+				## update
+				offset++;
+			};
+			
+			parameter := parsed_function->GetReturnType();
+			select(parameter->GetType()) {
+				label ParsedType->Type->INT:
+				label ParsedType->Type->BOOL: {
+					buffer += "\t\tint return_value = ";
+					buffer += parsed_function->GetName();
+					buffer += GetCallingString(parameters);
+					buffer += "\t\tAPITools_SetIntValue(context, 0, return_value);\n";
+				}
+
+				label ParsedType->Type->CLASS: {
+					buffer += "\t\tAPITools_SetObjectValue(context, 0, return_value);\n";
+				}
+				
+				label ParsedType->Type->CHAR_STAR: {
+					buffer += "\t\tAPITools_SetStringValue(context, 0, return_value);\n";
+				}
+				
+#~					
+				label ParsedType->Type->VOID_STAR: {
+				}
+~#					
+			};
+			
+			
+			
+			
+			
+			
+			buffer += "\t}\n";
+			buffer->PrintLine();
+		}
+		
 		function : EmitObjeckCode(parsed_function : ParsedFunction) ~ Nil {
 			buffer := "method : public : ";
 			buffer += parsed_function->GetObjeckName();
@@ -96,9 +204,8 @@ bundle CodeGen {
 			buffer += GetTypeString(parsed_function->GetReturnType());
 			buffer += " {\n\t";
 			
-			parameters := parsed_function->GetParameters();
-			
 			offset := 0;
+			parameters := parsed_function->GetParameters();
 			if(parsed_function->GetReturnType()->GetType() = ParsedType->Type->VOID) {
 				buffer += "array_args := Base->New[";
 				buffer += parameters->Size();
@@ -114,8 +221,6 @@ bundle CodeGen {
 			
 			each(i : parameters) {
 				parameter := parameters->Get(i);
-				type := parameter->GetType();
-				
 				if(i = 0) {
 					buffer += "\tarray_args[";
 					buffer += offset;
@@ -124,7 +229,7 @@ bundle CodeGen {
 					buffer += ");\n";
 				}
 				else {
-					select(type->GetType()) {
+					select(parameter->GetType()->GetType()) {
 						label ParsedType->Type->INT: {
 							buffer += "\tarray_args[";
 							buffer += offset;
@@ -157,15 +262,13 @@ bundle CodeGen {
 				offset += 1;
 			};
 			
-			
 			buffer += "\n\t@lib_proxy := Proxy->GetDllProxy();\n";
 			buffer += "\t@lib_proxy->CallFunction(\"";
-			buffer += parsed_function->GetCName();
+			buffer += parsed_function->GetCxxName();
 			buffer += "\", array_args);\n\n";
 			
 			buffer += "\tvalue := array_args[0]->As(IntHolder);\n";
-			buffer += "\treturn value->Get();\n";
-		
+			buffer += "\treturn value->Get();\n";		
 			buffer += "}\n";
 			
 			buffer->PrintLine();

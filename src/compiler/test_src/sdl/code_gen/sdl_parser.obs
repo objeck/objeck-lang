@@ -238,7 +238,11 @@ bundle CodeGen {
 			return @parameters;
 		}
 		
-		method : public : GetCName() ~ String {
+		method : public : GetName() ~ String {
+			return @name;
+		}
+		
+		method : public : GetCxxName() ~ String {
 			if(@c_name = Nil) {
 				@c_name := "sdl_";
 				@c_name->Append(@this_name->ToLower());
