@@ -365,6 +365,10 @@ bundle SDL {
 	
 	class Palette {
 		@palette : Int;
+		
+		method : public : Ok() ~ Bool {
+			return @palette <> 0;
+		}
 	}
 }
 
