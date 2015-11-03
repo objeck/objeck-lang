@@ -304,6 +304,19 @@ bundle SDL {
 			@surface := value->Get();
 		}
 		
+		New(src : RWops, freesrc : Int) ~ SDL_Surface {
+			array_args := Base->New[3];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@src);
+			array_args[2] := IntHolder->New(freesrc);
+
+			@lib_proxy := Proxy->GetDllProxy();
+			@lib_proxy->CallFunction("sdl_surface_load_bmp_rw", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			@surface := value->Get();
+		}
+		
 		method : public : Ok() ~ Bool {
 			return @surface <> 0;
 		}
@@ -363,11 +376,21 @@ bundle SDL {
 		}
 	}
 	
+	## TODO
 	class Palette {
 		@palette : Int;
 		
 		method : public : Ok() ~ Bool {
 			return @palette <> 0;
+		}
+	}
+	
+	## TODO
+	class RWops {
+		@rwops : Int;
+		
+		method : public : Ok() ~ Bool {
+			return @rwops <> 0;
 		}
 	}
 }
