@@ -285,8 +285,60 @@ bundle SDL {
 			@surface := value->Get();
 		}
 		
+		New(flags : Int, width : Int, height : Int, depth : Int, Rmask : Int, Gmask : Int, Bmask : Int, Amask : Int) {
+			array_args := Base->New[9];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(flags);
+			array_args[2] := IntHolder->New(width);
+			array_args[3] := IntHolder->New(height);
+			array_args[4] := IntHolder->New(depth);
+			array_args[5] := IntHolder->New(Rmask);
+			array_args[6] := IntHolder->New(Gmask);
+			array_args[7] := IntHolder->New(Bmask);
+			array_args[8] := IntHolder->New(Amask);
+			
+			@lib_proxy := Proxy->GetDllProxy();
+			@lib_proxy->CallFunction("sdl_surface_create_rgb", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			@surface := value->Get();
+		}
+		
 		method : public : Ok() ~ Bool {
 			return @surface <> 0;
+		}
+		
+		method : public : SetPalette(surface : Surface, palette : Palette) ~ Int {
+			array_args := Base->New[3];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@surface);
+			array_args[2] := palette;
+
+			@lib_proxy := Proxy->GetDllProxy();
+			@lib_proxy->CallFunction("sdl_surface_set_palette", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+		
+		method : public : Lock(surface : Surface) ~ Int {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@surface);
+
+			@lib_proxy := Proxy->GetDllProxy();
+			@lib_proxy->CallFunction("sdl_surface_lock", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+		
+		method : public : Unlock(surface : Surface) ~ Nil {
+			array_args := Base->New[1];
+			array_args[0] := IntHolder->New(@surface);
+
+			@lib_proxy := Proxy->GetDllProxy();
+			@lib_proxy->CallFunction("sdl_surface_unlock", array_args);
 		}
 		
 		method : public : Blit(srcrect : Rect, dst : Surface, dstrect : Rect) ~ Int {
@@ -309,6 +361,10 @@ bundle SDL {
 			@lib_proxy := Proxy->GetDllProxy();
 			@lib_proxy->CallFunction("sdl_free_surface", array_args);
 		}
+	}
+	
+	class Palette {
+		@palette : Int;
 	}
 }
 

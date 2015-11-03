@@ -167,24 +167,32 @@ bundle CodeGen {
 			select(parameter->GetType()) {
 				label ParsedType->Type->INT:
 				label ParsedType->Type->BOOL: {
-					buffer += "\t\tint return_value = ";
+					buffer += "\t\tconst int return_value = ";
 					buffer += parsed_function->GetName();
 					buffer += GetCallingString(parameters);
 					buffer += "\t\tAPITools_SetIntValue(context, 0, return_value);\n";
 				}
 
+				label ParsedType->Type->VOID_STAR:
 				label ParsedType->Type->CLASS: {
-					buffer += "\t\tAPITools_SetObjectValue(context, 0, return_value);\n";
+					buffer += "\t\tconst long* return_value = ";
+					buffer += parsed_function->GetName();
+					buffer += GetCallingString(parameters);
+					buffer += "\t\tAPITools_SetObjectValue(context, 0, (CAST*)return_value);\n";
 				}
 				
 				label ParsedType->Type->CHAR_STAR: {
+					buffer += "\t\tconst wstring return_value = ";
+					buffer += parsed_function->GetName();
+					buffer += GetCallingString(parameters);
 					buffer += "\t\tAPITools_SetStringValue(context, 0, return_value);\n";
 				}
-				
-#~					
-				label ParsedType->Type->VOID_STAR: {
-				}
-~#					
+							
+				label ParsedType->Type->VOID: {
+					buffer += "\t\t";
+					buffer += parsed_function->GetName();
+					buffer += GetCallingString(parameters);
+				}	
 			};
 			
 			
@@ -216,7 +224,7 @@ bundle CodeGen {
 				buffer += "array_args := Base->New[";
 				buffer += parameters->Size() + 1;
 				buffer += "];\n\t";
-				buffer += "array_args[0] := IntHolder->New()\n";
+				buffer += "array_args[0] := IntHolder->New();\n";
 			};
 			
 			each(i : parameters) {
