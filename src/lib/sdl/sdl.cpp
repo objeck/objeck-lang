@@ -165,6 +165,49 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
+  void sdl_surface_create_rgb(VMContext& context) {
+    const int flags = APITools_GetIntValue(context, 1);
+    const int width = APITools_GetIntValue(context, 2);
+    const int height = APITools_GetIntValue(context, 3);
+    const int depth = APITools_GetIntValue(context, 4);
+    const int Rmask = APITools_GetIntValue(context, 5);
+    const int Gmask = APITools_GetIntValue(context, 6);
+    const int Bmask = APITools_GetIntValue(context, 7);
+    const int Amask = APITools_GetIntValue(context, 8);
+    SDL_Surface* return_value = SDL_CreateRGBSurface(flags, width, height, depth, Rmask, Gmask, Bmask, Amask);
+    APITools_SetIntValue(context, 0, (long)return_value);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_surface_set_palette(VMContext& context) {
+    SDL_Surface* surface = (SDL_Surface*)APITools_GetIntValue(context, 1);
+    const long* palette = (long*)APITools_GetObjectValue(context, 2);
+    const int return_value = SDL_SetSurfacePalette(surface, (SDL_Palette*)palette[0]);
+    APITools_SetIntValue(context, 0, return_value);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_surface_lock(VMContext& context) {
+    SDL_Surface* surface = (SDL_Surface*)APITools_GetIntValue(context, 1);
+    const int return_value = SDL_LockSurface(surface);
+    APITools_SetIntValue(context, 0, return_value);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_surface_unlock(VMContext& context) {
+    SDL_Surface* surface = (SDL_Surface*)APITools_GetIntValue(context, 1);
+    SDL_UnlockSurface(surface);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
   void sdl_get_window_surface(VMContext& context) {
     const long* window_obj = (long*)APITools_GetObjectValue(context, 1);
     if(!window_obj) {
