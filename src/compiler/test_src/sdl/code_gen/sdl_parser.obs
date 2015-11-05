@@ -101,6 +101,14 @@ bundle CodeGen {
 			return ParsedParameters->New(parameters);
 		}
 		
+		method : ParseCxxName(name : String) ~ String {
+			if(name->StartsWith("SDL_")) {
+				name := name->SubString(4, name->Size() - 4);
+			};
+			
+			return name;
+		}
+		
 		## handle * and & c types
 		method : public : ParseType() ~ ParsedType {
 			type : ParsedType;
@@ -131,7 +139,7 @@ bundle CodeGen {
 				
 				label Token->Type->IDENT: {
 					class_name := Token()->GetValue();
-					type := ParsedType->New(ParsedType->Type->CLASS, class_name);
+					type := ParsedType->New(ParsedType->Type->CLASS, ParseCxxName(class_name));
 				}
 				
 				other: {
@@ -206,23 +214,27 @@ bundle CodeGen {
 	Parsed function
 	~#
 	class ParsedFunction {
-		@name : String;
+		@func_name : String;
 		@this_name : String;
 		@objk_name : String;
-		@c_name : String;
+		@cxx_name : String;
 		@parameters : ParsedParameters;
 		@rtrn_type : ParsedType;
 		
 		New(name : String, parameters : ParsedParameters, rtrn_type : ParsedType, this_name : String) {
-			@name := name;
+			@func_name := name;
 			@parameters := parameters;
 			@rtrn_type := rtrn_type;
 			@this_name := this_name;
 		}
 		
+		method : public : HasReturn() ~ Bool {
+			return @rtrn_type->GetType() = ParsedType->Type->VOID;
+		}
+		
 		method : public : GetObjeckName() ~ String {
-			if(@objk_name = Nil & @name->StartsWith("SDL_")) {
-				@objk_name := @name->SubString(4, @name->Size() - 4);
+			if(@objk_name = Nil & @func_name->StartsWith("SDL_")) {
+				@objk_name := @func_name->SubString(4, @func_name->Size() - 4);
 				@objk_name := @objk_name->Replace(@this_name, "");
 				@objk_name := @objk_name->Replace("_", "");
 			};
@@ -238,15 +250,15 @@ bundle CodeGen {
 			return @parameters;
 		}
 		
-		method : public : GetName() ~ String {
-			return @name;
+		method : public : GetFunctionName() ~ String {
+			return @func_name;
 		}
 		
 		method : public : GetCxxName() ~ String {
-			if(@c_name = Nil) {
-				@c_name := "sdl_";
-				@c_name->Append(@this_name->ToLower());
-				@c_name->Append('_');
+			if(@cxx_name = Nil) {
+				@cxx_name := "sdl_";
+				@cxx_name->Append(@this_name->ToLower());
+				@cxx_name->Append('_');
 				objeck_name := GetObjeckName();
 				each(i : objeck_name) {
 					c := objeck_name->Get(i);
@@ -256,22 +268,22 @@ bundle CodeGen {
 					};
 
 					if(i > 0 & c->IsUpper() & n->IsLower()) {
-						@c_name->Append('_');						
-						@c_name->Append(c->ToLower());
+						@cxx_name->Append('_');						
+						@cxx_name->Append(c->ToLower());
 					}
 					else {
-						@c_name->Append(c->ToLower());
+						@cxx_name->Append(c->ToLower());
 					};
 				};
 				
-				@c_name := @c_name->Replace("__", "_");
+				@cxx_name := @cxx_name->Replace("__", "_");
 			};
 			
-			return @c_name;
+			return @cxx_name;
 		}
 		
 		method : public : ToString() ~ String {
-			if(@name <> Nil & @parameters <> Nil & @rtrn_type <> Nil) {
+			if(@func_name <> Nil & @parameters <> Nil & @rtrn_type <> Nil) {
 				param_count := @parameters->Size();
 				parameters_string := "<none>";
 				if(@parameters <> Nil) {
@@ -279,7 +291,7 @@ bundle CodeGen {
 				};
 				rtrn_string := @rtrn_type->ToString();
 				
-				return "\n============\nfunction: name='{$@name}', params={$param_count}\n{$parameters_string}return:\n\t{$rtrn_string}";
+				return "\n============\nfunction: name='{$@func_name}', params={$param_count}\n{$parameters_string}return:\n\t{$rtrn_string}";
 			};
 			
 			return "<empty>";

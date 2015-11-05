@@ -208,6 +208,16 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
+  void sdl_surface_load_bmp_rw(VMContext& context) {
+    const long* src = (long*)APITools_GetObjectValue(context, 1);
+    const int freesrc = APITools_GetIntValue(context, 2);
+    SDL_Surface* surface = SDL_LoadBMP_RW((SDL_RWops*)src[0], freesrc);
+    APITools_SetIntValue(context, 0, (long)surface);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
   void sdl_get_window_surface(VMContext& context) {
     const long* window_obj = (long*)APITools_GetObjectValue(context, 1);
     if(!window_obj) {
