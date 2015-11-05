@@ -116,11 +116,6 @@ bundle CodeGen {
 			buffer += parsed_method->GetCxxName();
 			buffer += "(VMContext& context) {\n";
 			
-			
-			
-			
-			
-			
 			offset := 0;
 			has_return := <>parsed_method->GetReturnType()->GetType() = ParsedType->Type->VOID;
 			parameters := parsed_method->GetParameters();
@@ -156,10 +151,7 @@ bundle CodeGen {
 						buffer += ");\n";
 					}
 					
-#~					
-					label ParsedType->Type->VOID_STAR: {
-					}
-~#					
+##					label ParsedType->Type->VOID_STAR:
 				};
 				## update
 				offset++;
@@ -175,7 +167,6 @@ bundle CodeGen {
 					buffer += "\t\tAPITools_SetIntValue(context, 0, return_value);\n";
 				}
 
-				label ParsedType->Type->VOID_STAR:
 				label ParsedType->Type->CLASS: {
 					buffer += "\t\tconst long* return_value = ";
 					buffer += parsed_method->GetFunctionName();
@@ -195,12 +186,9 @@ bundle CodeGen {
 					buffer += parsed_method->GetFunctionName();
 					buffer += GetCallingString(parameters);
 				}	
+				
+##				label ParsedType->Type->VOID_STAR:
 			};
-			
-			
-			
-			
-			
 			
 			buffer += "\t}\n";
 			buffer->PrintLine();
@@ -283,10 +271,29 @@ bundle CodeGen {
 			buffer += parsed_method->GetCxxName();
 			buffer += "\", array_args);\n\n";
 			
-			buffer += "\tvalue := array_args[0]->As(IntHolder);\n";
-			buffer += "\treturn value->Get();\n";		
+			select(parsed_method->GetReturnType()->GetType()) {
+				label ParsedType->Type->INT: {
+					buffer += "\tvalue := array_args[0]->As(IntHolder);\n";
+					buffer += "\treturn value->Get();\n";
+				}
+				
+				label ParsedType->Type->BOOL: {
+					buffer += "\tvalue := array_args[0]->As(IntHolder);\n";
+					buffer += "\treturn value->Get() = 0 ? false : true;\n";
+				}
+				
+				label ParsedType->Type->CLASS:
+				label ParsedType->Type->CHAR_STAR: {
+					buffer += "\treturn array_args[0];\n";
+				}
+							
+				label ParsedType->Type->VOID: {
+				}	
+				
+##				label ParsedType->Type->VOID_STAR:
+			};
+						
 			buffer += "}\n";
-			
 			buffer->PrintLine();
 		}
 	}
