@@ -125,7 +125,7 @@ bundle CodeGen {
 				
 				if(i = 0 & parameters->Get(0)->GetType()->GetType() = ParsedType->Type->CLASS & 
 						GetTypeString(parameters->Get(0)->GetType())->Equals(@this_name)) {
-					buffer += "\t\t";
+					buffer += "\t\tSDL_";
 					buffer += @this_name;
 					buffer += "* ";
 					buffer += parameter->GetName();
@@ -280,7 +280,7 @@ bundle CodeGen {
 			};
 			
 			buffer += "\n\t@lib_proxy := Proxy->GetDllProxy();\n";
-			buffer += "\t@lib_proxy->Callmethod(\"";
+			buffer += "\t@lib_proxy->CallFunction(\"";
 			buffer += parsed_method->GetCxxName();
 			buffer += "\", array_args);\n\n";
 			

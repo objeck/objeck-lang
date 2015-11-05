@@ -218,6 +218,62 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
+  void sdl_surface_set_rle(VMContext& context) {
+    SDL_Surface* surface = (SDL_Surface*)APITools_GetIntValue(context, 1);
+    const int flag = APITools_GetIntValue(context, 2);
+    const int return_value = SDL_SetSurfaceRLE(surface, flag);
+    APITools_SetIntValue(context, 0, return_value);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_surface_set_color_key(VMContext& context) {
+    SDL_Surface* surface = (SDL_Surface*)APITools_GetIntValue(context, 1);
+    const int flag = APITools_GetIntValue(context, 2);
+    const int key = APITools_GetIntValue(context, 3);
+    const int return_value = SDL_SetColorKey(surface, flag, key);
+    APITools_SetIntValue(context, 0, return_value);
+  }
+
+/*
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+    void sdl_surface_get_color_key(VMContext& context) {
+    SDL_Surface* surface = (SDL_Surface*)APITools_GetIntValue(context, 1);
+    Uint32 key = APITools_GetIntValue(context, 2);
+    const int return_value = SDL_GetColorKey(surface, &key);
+    APITools_SetIntValue(context, 0, return_value);
+  }
+*/
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_surface_set_color_mod(VMContext& context) {
+    SDL_Surface* surface = (SDL_Surface*)APITools_GetIntValue(context, 1);
+    const int r = APITools_GetIntValue(context, 2);
+    const int g = APITools_GetIntValue(context, 3);
+    const int b = APITools_GetIntValue(context, 4);
+    const int return_value = SDL_SetSurfaceColorMod(surface, r, g, b);
+    APITools_SetIntValue(context, 0, return_value);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_surface_save_bmp_rw(VMContext& context) {
+    SDL_Surface* surface = (SDL_Surface*)APITools_GetIntValue(context, 1);
+    const long* dst = (long*)APITools_GetObjectValue(context, 2);
+    const int freedst = APITools_GetIntValue(context, 3);
+    const int return_value = SDL_SaveBMP_RW(surface, (SDL_RWops*)dst[0], freedst);
+    APITools_SetIntValue(context, 0, return_value);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
   void sdl_get_window_surface(VMContext& context) {
     const long* window_obj = (long*)APITools_GetObjectValue(context, 1);
     if(!window_obj) {
