@@ -17,26 +17,12 @@ bundle SDL {
 		}
 	}
 	
-	class Flags {
-		function : SdlInitVideo() ~ Int {
-			return 0x00000020;
-		}
-		
-		function : SdlWindowposUndefined() ~ Int {
-			return 0x1FFF0000;
-		}
-		
-		function : SdlWindowShown() ~ Int {
-			return 0x00000004;
-		}
-		
-		function : SdlQuit() ~ Int {
-			return 0x00000100;
-		}
-		
-		function : SdlKeyDown() ~ Int {
-			return 0x00000300;
-		}
+	consts Flags {
+		SDL_INIT_VIDEO := 0x00000020,
+		SDL_WINDOW_POS_UNDEFINED := 0x1FFF0000,
+		SDL_WINDOW_SHOWN := 0x00000004,
+		SDL_QUIT := 0x00000100,
+		SDL_KEY_DOWN := 0x00000300
 	}
 	
 	class Core {
