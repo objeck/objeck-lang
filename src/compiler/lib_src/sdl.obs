@@ -363,19 +363,28 @@ bundle SDL {
 		}
 ~#
 		
-		method : public : SetColorMod(r : Int, g : Int, b : Int) ~ Int {
-			array_args := Base->New[5];
+		method : public : SetColorMod(rgb : RGB) ~ Int {
+			array_args := Base->New[3];
 			array_args[0] := IntHolder->New();
 			array_args[1] := IntHolder->New(@surface);
-			array_args[2] := IntHolder->New(r);
-			array_args[3] := IntHolder->New(g);
-			array_args[4] := IntHolder->New(b);
+			array_args[2] := rgb;
 
 			@lib_proxy := Proxy->GetDllProxy();
 			@lib_proxy->CallFunction("sdl_surface_set_color_mod", array_args);
 
 			value := array_args[0]->As(IntHolder);
 			return value->Get();
+		}
+		
+		method : public : GetColorMod() ~ RGB {
+			array_args := Base->New[2];
+			array_args[0] := RGB->New(0, 0, 0);
+			array_args[1] := IntHolder->New(@surface);
+
+			@lib_proxy := Proxy->GetDllProxy();
+			@lib_proxy->CallFunction("sdl_surface_get_color_mod", array_args);
+			
+			return array_args[0]->As(RGB);
 		}
 		
 		method : public : SetPalette(surface : Surface, palette : Palette) ~ Int {
@@ -450,5 +459,17 @@ bundle SDL {
 			return @rwops <> 0;
 		}
 	}
+	
+	## TODO
+	class RGB {
+		@r : Int;
+		@g : Int;
+		@b : Int;
+		
+		New(r : Int, g : Int, b : Int) {
+			@r := r;
+			@g := g;
+			@b := b;
+		}
+	}
 }
-
