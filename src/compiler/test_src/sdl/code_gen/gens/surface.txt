@@ -46,7 +46,7 @@ method : public : Free() ~ Nil {
 	__declspec(dllexport)
 #endif
 	void sdl_surface_free(VMContext& context) {
-		const long* surface = (long*)APITools_GetObjectValue(context, 0);
+		Surface* surface = (Surface*)APITools_GetIntValue(context, 0);
 		SDL_FreeSurface(surface);
 	}
 
@@ -68,7 +68,7 @@ method : public : SetPalette(palette : Palette) ~ Int {
 	__declspec(dllexport)
 #endif
 	void sdl_surface_set_palette(VMContext& context) {
-		const long* surface = (long*)APITools_GetObjectValue(context, 1);
+		Surface* surface = (Surface*)APITools_GetIntValue(context, 1);
 		const long* palette = (long*)APITools_GetObjectValue(context, 2);
 		const int return_value = SDL_SetSurfacePalette(surface, palette);
 		APITools_SetIntValue(context, 0, return_value);
@@ -91,7 +91,7 @@ method : public : Lock() ~ Int {
 	__declspec(dllexport)
 #endif
 	void sdl_surface_lock(VMContext& context) {
-		const long* surface = (long*)APITools_GetObjectValue(context, 1);
+		Surface* surface = (Surface*)APITools_GetIntValue(context, 1);
 		const int return_value = SDL_LockSurface(surface);
 		APITools_SetIntValue(context, 0, return_value);
 	}
@@ -110,7 +110,7 @@ method : public : Unlock() ~ Nil {
 	__declspec(dllexport)
 #endif
 	void sdl_surface_unlock(VMContext& context) {
-		const long* surface = (long*)APITools_GetObjectValue(context, 0);
+		Surface* surface = (Surface*)APITools_GetIntValue(context, 0);
 		SDL_UnlockSurface(surface);
 	}
 
@@ -137,7 +137,7 @@ method : public : LoadBMPRW(src : RWops, freesrc : Int) ~ Surface {
 		APITools_SetObjectValue(context, 0, (CAST*)return_value);
 	}
 
-=================
+===
 method : public : SaveBMPRW(dst : RWops, freedst : Int) ~ Int {
 	array_args := Base->New[4];
 	array_args[0] := IntHolder->New();
@@ -156,7 +156,7 @@ method : public : SaveBMPRW(dst : RWops, freedst : Int) ~ Int {
 	__declspec(dllexport)
 #endif
 	void sdl_surface_savebmprw(VMContext& context) {
-		const long* surface = (long*)APITools_GetObjectValue(context, 1);
+		Surface* surface = (Surface*)APITools_GetIntValue(context, 1);
 		const long* dst = (long*)APITools_GetObjectValue(context, 2);
 		const int freedst = APITools_GetIntValue(context, 3);
 		const int return_value = SDL_SaveBMP_RW(surface, dst, freedst);
@@ -181,7 +181,7 @@ method : public : SetRLE(flag : Int) ~ Int {
 	__declspec(dllexport)
 #endif
 	void sdl_surface_setrle(VMContext& context) {
-		const long* surface = (long*)APITools_GetObjectValue(context, 1);
+		Surface* surface = (Surface*)APITools_GetIntValue(context, 1);
 		const int flag = APITools_GetIntValue(context, 2);
 		const int return_value = SDL_SetSurfaceRLE(surface, flag);
 		APITools_SetIntValue(context, 0, return_value);
@@ -206,7 +206,7 @@ method : public : SetColorKey(flag : Int, key : Int) ~ Int {
 	__declspec(dllexport)
 #endif
 	void sdl_surface_set_color_key(VMContext& context) {
-		const long* surface = (long*)APITools_GetObjectValue(context, 1);
+		Surface* surface = (Surface*)APITools_GetIntValue(context, 1);
 		const int flag = APITools_GetIntValue(context, 2);
 		const int key = APITools_GetIntValue(context, 3);
 		const int return_value = SDL_SetColorKey(surface, flag, key);
@@ -231,7 +231,7 @@ method : public : GetColorKey(key : Int) ~ Int {
 	__declspec(dllexport)
 #endif
 	void sdl_surface_get_color_key(VMContext& context) {
-		const long* surface = (long*)APITools_GetObjectValue(context, 1);
+		Surface* surface = (Surface*)APITools_GetIntValue(context, 1);
 		const int key = APITools_GetIntValue(context, 2);
 		const int return_value = SDL_GetColorKey(surface, key);
 		APITools_SetIntValue(context, 0, return_value);
@@ -257,7 +257,7 @@ method : public : SetColorMod(r : Int, g : Int, b : Int) ~ Int {
 	__declspec(dllexport)
 #endif
 	void sdl_surface_set_color_mod(VMContext& context) {
-		const long* surface = (long*)APITools_GetObjectValue(context, 1);
+		Surface* surface = (Surface*)APITools_GetIntValue(context, 1);
 		const int r = APITools_GetIntValue(context, 2);
 		const int g = APITools_GetIntValue(context, 3);
 		const int b = APITools_GetIntValue(context, 4);
@@ -285,7 +285,7 @@ method : public : GetColorMod(r : Int, g : Int, b : Int) ~ Int {
 	__declspec(dllexport)
 #endif
 	void sdl_surface_get_color_mod(VMContext& context) {
-		const long* surface = (long*)APITools_GetObjectValue(context, 1);
+		Surface* surface = (Surface*)APITools_GetIntValue(context, 1);
 		const int r = APITools_GetIntValue(context, 2);
 		const int g = APITools_GetIntValue(context, 3);
 		const int b = APITools_GetIntValue(context, 4);
@@ -311,7 +311,7 @@ method : public : SetAlphaMod(alpha : Int) ~ Int {
 	__declspec(dllexport)
 #endif
 	void sdl_surface_set_alpha_mod(VMContext& context) {
-		const long* surface = (long*)APITools_GetObjectValue(context, 1);
+		Surface* surface = (Surface*)APITools_GetIntValue(context, 1);
 		const int alpha = APITools_GetIntValue(context, 2);
 		const int return_value = SDL_SetSurfaceAlphaMod(surface, alpha);
 		APITools_SetIntValue(context, 0, return_value);
@@ -335,7 +335,7 @@ method : public : GetAlphaMod(alpha : Int) ~ Int {
 	__declspec(dllexport)
 #endif
 	void sdl_surface_get_alpha_mod(VMContext& context) {
-		const long* surface = (long*)APITools_GetObjectValue(context, 1);
+		Surface* surface = (Surface*)APITools_GetIntValue(context, 1);
 		const int alpha = APITools_GetIntValue(context, 2);
 		const int return_value = SDL_GetSurfaceAlphaMod(surface, alpha);
 		APITools_SetIntValue(context, 0, return_value);
@@ -359,7 +359,7 @@ method : public : SetBlendMode(blendMode : BlendMode) ~ Int {
 	__declspec(dllexport)
 #endif
 	void sdl_surface_set_blend_mode(VMContext& context) {
-		const long* surface = (long*)APITools_GetObjectValue(context, 1);
+		Surface* surface = (Surface*)APITools_GetIntValue(context, 1);
 		const long* blendMode = (long*)APITools_GetObjectValue(context, 2);
 		const int return_value = SDL_SetSurfaceBlendMode(surface, blendMode);
 		APITools_SetIntValue(context, 0, return_value);
@@ -383,7 +383,7 @@ method : public : GetBlendMode(blendMode : BlendMode) ~ Int {
 	__declspec(dllexport)
 #endif
 	void sdl_surface_get_blend_mode(VMContext& context) {
-		const long* surface = (long*)APITools_GetObjectValue(context, 1);
+		Surface* surface = (Surface*)APITools_GetIntValue(context, 1);
 		const long* blendMode = (long*)APITools_GetObjectValue(context, 2);
 		const int return_value = SDL_GetSurfaceBlendMode(surface, blendMode);
 		APITools_SetIntValue(context, 0, return_value);
@@ -407,7 +407,7 @@ method : public : SetClipRect(rect : Rect) ~ Bool {
 	__declspec(dllexport)
 #endif
 	void sdl_surface_set_clip_rect(VMContext& context) {
-		const long* surface = (long*)APITools_GetObjectValue(context, 1);
+		Surface* surface = (Surface*)APITools_GetIntValue(context, 1);
 		const long* rect = (long*)APITools_GetObjectValue(context, 2);
 		const int return_value = SDL_SetClipRect(surface, rect);
 		APITools_SetIntValue(context, 0, return_value);
@@ -428,7 +428,7 @@ method : public : GetClipRect(rect : Rect) ~ Nil {
 	__declspec(dllexport)
 #endif
 	void sdl_surface_get_clip_rect(VMContext& context) {
-		const long* surface = (long*)APITools_GetObjectValue(context, 0);
+		Surface* surface = (Surface*)APITools_GetIntValue(context, 0);
 		const long* rect = (long*)APITools_GetObjectValue(context, 1);
 		SDL_GetClipRect(surface, rect);
 	}
@@ -451,7 +451,7 @@ method : public : Convert(fmt : PixelFormat, flags : Int) ~ Surface {
 	__declspec(dllexport)
 #endif
 	void sdl_surface_convert(VMContext& context) {
-		const long* src = (long*)APITools_GetObjectValue(context, 1);
+		Surface* src = (Surface*)APITools_GetIntValue(context, 1);
 		const long* fmt = (long*)APITools_GetObjectValue(context, 2);
 		const int flags = APITools_GetIntValue(context, 3);
 		const long* return_value = SDL_ConvertSurface(src, fmt, flags);
@@ -509,7 +509,7 @@ method : public : FillRect(rect : Rect, color : Int) ~ Int {
 	__declspec(dllexport)
 #endif
 	void sdl_surface_fill_rect(VMContext& context) {
-		const long* dst = (long*)APITools_GetObjectValue(context, 1);
+		Surface* dst = (Surface*)APITools_GetIntValue(context, 1);
 		const long* rect = (long*)APITools_GetObjectValue(context, 2);
 		const int color = APITools_GetIntValue(context, 3);
 		const int return_value = SDL_FillRect(dst, rect, color);
@@ -536,7 +536,7 @@ method : public : UpperBlit(srcrect : Rect, dst : Surface, dstrect : Rect) ~ Int
 	__declspec(dllexport)
 #endif
 	void sdl_surface_upper_blit(VMContext& context) {
-		const long* src = (long*)APITools_GetObjectValue(context, 1);
+		Surface* src = (Surface*)APITools_GetIntValue(context, 1);
 		const long* srcrect = (long*)APITools_GetObjectValue(context, 2);
 		const long* dst = (long*)APITools_GetObjectValue(context, 3);
 		const long* dstrect = (long*)APITools_GetObjectValue(context, 4);
@@ -564,7 +564,7 @@ method : public : LowerBlit(srcrect : Rect, dst : Surface, dstrect : Rect) ~ Int
 	__declspec(dllexport)
 #endif
 	void sdl_surface_lower_blit(VMContext& context) {
-		const long* src = (long*)APITools_GetObjectValue(context, 1);
+		Surface* src = (Surface*)APITools_GetIntValue(context, 1);
 		const long* srcrect = (long*)APITools_GetObjectValue(context, 2);
 		const long* dst = (long*)APITools_GetObjectValue(context, 3);
 		const long* dstrect = (long*)APITools_GetObjectValue(context, 4);
@@ -592,7 +592,7 @@ method : public : SoftStretch(srcrect : Rect, dst : Surface, dstrect : Rect) ~ I
 	__declspec(dllexport)
 #endif
 	void sdl_surface_soft_stretch(VMContext& context) {
-		const long* src = (long*)APITools_GetObjectValue(context, 1);
+		Surface* src = (Surface*)APITools_GetIntValue(context, 1);
 		const long* srcrect = (long*)APITools_GetObjectValue(context, 2);
 		const long* dst = (long*)APITools_GetObjectValue(context, 3);
 		const long* dstrect = (long*)APITools_GetObjectValue(context, 4);
@@ -620,7 +620,7 @@ method : public : UpperBlitScaled(srcrect : Rect, dst : Surface, dstrect : Rect)
 	__declspec(dllexport)
 #endif
 	void sdl_surface_upper_blit_scaled(VMContext& context) {
-		const long* src = (long*)APITools_GetObjectValue(context, 1);
+		Surface* src = (Surface*)APITools_GetIntValue(context, 1);
 		const long* srcrect = (long*)APITools_GetObjectValue(context, 2);
 		const long* dst = (long*)APITools_GetObjectValue(context, 3);
 		const long* dstrect = (long*)APITools_GetObjectValue(context, 4);
@@ -648,7 +648,7 @@ method : public : LowerBlitScaled(srcrect : Rect, dst : Surface, dstrect : Rect)
 	__declspec(dllexport)
 #endif
 	void sdl_surface_lower_blit_scaled(VMContext& context) {
-		const long* src = (long*)APITools_GetObjectValue(context, 1);
+		Surface* src = (Surface*)APITools_GetIntValue(context, 1);
 		const long* srcrect = (long*)APITools_GetObjectValue(context, 2);
 		const long* dst = (long*)APITools_GetObjectValue(context, 3);
 		const long* dstrect = (long*)APITools_GetObjectValue(context, 4);

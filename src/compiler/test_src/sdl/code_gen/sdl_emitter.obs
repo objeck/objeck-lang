@@ -11,17 +11,13 @@ bundle CodeGen {
 		New(file_name : String, this_name : String) {
 			@file_name := file_name;
 			@this_name := this_name;
-			
-			
-			
-
 		}
 		
 		method : public : Emit() ~ Nil {
 			methods := Parser->New(Scanner->New(@file_name)->Scan(), @this_name)->Parse();
 			each(i : methods) {
 				parsed_method := methods->Get(i)->As(ParsedFunction);
-				EmitObjeckCode(parsed_method, @this_name);
+				EmitObjeckCode(parsed_method);
 				EmitCxxCode(parsed_method);
 				"---"->PrintLine();
 			};
@@ -66,13 +62,14 @@ bundle CodeGen {
 			return buffer;
 		}
 		
-		method : GetParametersString(parameters : ParsedParameters, native_name : String) ~ String {
+		method : GetParametersString(parameters : ParsedParameters) ~ String {
 			buffer := "(";
 			
 			i := 0;
 			if(parameters->Size() > 0) {
 				first_parameter := parameters->Get(0);
-				if(first_parameter->GetType()->GetType() = ParsedType->Type->CLASS & GetTypeString(first_parameter->GetType())->Equals(native_name)) {
+				if(first_parameter->GetType()->GetType() = ParsedType->Type->CLASS & 
+						GetTypeString(first_parameter->GetType())->Equals(@this_name)) {
 					i := 1;
 				};
 			};
@@ -125,33 +122,48 @@ bundle CodeGen {
 			
 			each(i : parameters) {
 				parameter := parameters->Get(i);
-				select(parameter->GetType()->GetType()) {
-					label ParsedType->Type->INT:
-					label ParsedType->Type->BOOL: {
-						buffer += "\t\tconst int ";
-						buffer += parameter->GetName();
-						buffer += " = APITools_GetIntValue(context, ";
-						buffer += offset;
-						buffer += ");\n";
-					}
-	
-					label ParsedType->Type->CLASS: {
-						buffer += "\t\tconst long* ";
-						buffer += parameter->GetName();
-						buffer += " = (long*)APITools_GetObjectValue(context, ";
-						buffer += offset;
-						buffer += ");\n";
-					}
-					
-					label ParsedType->Type->CHAR_STAR: {
-						buffer += "\t\tconst wstring ";
-						buffer += parameter->GetName();
-						buffer += " = APITools_GetStringValue(context, ";
-						buffer += offset;
-						buffer += ");\n";
-					}
-					
+				
+				if(i = 0 & parameters->Get(0)->GetType()->GetType() = ParsedType->Type->CLASS & 
+						GetTypeString(parameters->Get(0)->GetType())->Equals(@this_name)) {
+					buffer += "\t\t";
+					buffer += @this_name;
+					buffer += "* ";
+					buffer += parameter->GetName();
+					buffer += " = (";
+					buffer += @this_name;
+					buffer += "*)APITools_GetIntValue(context, ";
+					buffer += offset;
+					buffer += ");\n";
+				}
+				else {
+					select(parameter->GetType()->GetType()) {
+						label ParsedType->Type->INT:
+						label ParsedType->Type->BOOL: {
+							buffer += "\t\tconst int ";
+							buffer += parameter->GetName();
+							buffer += " = APITools_GetIntValue(context, ";
+							buffer += offset;
+							buffer += ");\n";
+						}
+		
+						label ParsedType->Type->CLASS: {
+							buffer += "\t\tconst long* ";
+							buffer += parameter->GetName();
+							buffer += " = (long*)APITools_GetObjectValue(context, ";
+							buffer += offset;
+							buffer += ");\n";
+						}
+						
+						label ParsedType->Type->CHAR_STAR: {
+							buffer += "\t\tconst wstring ";
+							buffer += parameter->GetName();
+							buffer += " = APITools_GetStringValue(context, ";
+							buffer += offset;
+							buffer += ");\n";
+						}
+						
 ##					label ParsedType->Type->VOID_STAR:
+					};
 				};
 				## update
 				offset++;
@@ -194,10 +206,10 @@ bundle CodeGen {
 			buffer->PrintLine();
 		}
 		
-		method : EmitObjeckCode(parsed_method : ParsedFunction, native_name : String) ~ Nil {
+		method : EmitObjeckCode(parsed_method : ParsedFunction) ~ Nil {
 			buffer := "method : public : ";
 			buffer += parsed_method->GetObjeckName();
-			buffer += GetParametersString(parsed_method->GetParameters(), native_name);
+			buffer += GetParametersString(parsed_method->GetParameters());
 			buffer += " ~ ";
 			buffer += GetTypeString(parsed_method->GetReturnType());
 			buffer += " {\n\t";
@@ -223,7 +235,8 @@ bundle CodeGen {
 					buffer += "\tarray_args[";
 					buffer += offset;
 					first_parameter := parameters->Get(0);
-					if(first_parameter->GetType()->GetType() = ParsedType->Type->CLASS & GetTypeString(first_parameter->GetType())->Equals(native_name)) {
+					if(first_parameter->GetType()->GetType() = ParsedType->Type->CLASS & 
+							GetTypeString(first_parameter->GetType())->Equals(@this_name)) {
 						buffer += "] := IntHolder->New(@";
 					}
 					else {
