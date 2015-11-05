@@ -6,32 +6,22 @@ bundle CodeGen {
 	~#
 	class Emitter {
 		function : Main(args : String[]) ~ Nil {
-			if(args->Size() = 2) {
-				this_name := ParseThisName(args[0]);
-				template := EmitterTemplate->New();
-				tokens := Scanner->New(args[1])->Scan();
+			if(args->Size() = 3) {
+				this_name := args[0];
+				tokens := Scanner->New(args[2])->Scan();
 				functions := Parser->New(tokens, this_name)->Parse();
 				
 				this_name->PrintLine();
 				functions->Size()->PrintLine();
 				each(i : functions) {
 					parsed_function := functions->Get(i)->As(ParsedFunction);
-					EmitObjeckCode(parsed_function);
+					EmitObjeckCode(parsed_function, args[1]);
 					EmitCxxCode(parsed_function);
 "---"->PrintLine();
 				};
 			};
 		}
-		
-		function : ParseThisName(name : String) ~ String {
-			if(name->StartsWith("SDL_")) {
-				name := name->SubString(4, name->Size() - 4);
-			};
-			
-			return name;
-		}
-		
-		
+				
 		function : GetTypeString(type : ParsedType) ~ String{
 			buffer := "";
 			
@@ -64,13 +54,13 @@ bundle CodeGen {
 			return buffer;
 		}
 		
-		function : GetParametersString(parameters : ParsedParameters) ~ String {
+		function : GetParametersString(parameters : ParsedParameters, native_name : String) ~ String {
 			buffer := "(";
 			
 			i := 0;
 			if(parameters->Size() > 0) {
 				first_parameter := parameters->Get(0);
-				if(first_parameter->GetType()->GetType() = ParsedType->Type->CLASS & ParseThisName(GetTypeString(first_parameter->GetType()))->Equals("Window")) {
+				if(first_parameter->GetType()->GetType() = ParsedType->Type->CLASS & GetTypeString(first_parameter->GetType())->Equals("Window")) {
 					i := 1;
 				};
 			};
@@ -79,7 +69,7 @@ bundle CodeGen {
 				parameter := parameters->Get(i);
 				buffer += parameter->GetName();
 				buffer += " : ";
-				buffer += ParseThisName(GetTypeString(parameter->GetType()));
+				buffer += GetTypeString(parameter->GetType());
 				
 				if(i + 1 < parameters->Size()) {
 					buffer += ", ";
@@ -168,7 +158,7 @@ bundle CodeGen {
 				label ParsedType->Type->INT:
 				label ParsedType->Type->BOOL: {
 					buffer += "\t\tconst int return_value = ";
-					buffer += parsed_function->GetName();
+					buffer += parsed_function->GetFunctionName();
 					buffer += GetCallingString(parameters);
 					buffer += "\t\tAPITools_SetIntValue(context, 0, return_value);\n";
 				}
@@ -176,21 +166,21 @@ bundle CodeGen {
 				label ParsedType->Type->VOID_STAR:
 				label ParsedType->Type->CLASS: {
 					buffer += "\t\tconst long* return_value = ";
-					buffer += parsed_function->GetName();
+					buffer += parsed_function->GetFunctionName();
 					buffer += GetCallingString(parameters);
 					buffer += "\t\tAPITools_SetObjectValue(context, 0, (CAST*)return_value);\n";
 				}
 				
 				label ParsedType->Type->CHAR_STAR: {
 					buffer += "\t\tconst wstring return_value = ";
-					buffer += parsed_function->GetName();
+					buffer += parsed_function->GetFunctionName();
 					buffer += GetCallingString(parameters);
 					buffer += "\t\tAPITools_SetStringValue(context, 0, return_value);\n";
 				}
 							
 				label ParsedType->Type->VOID: {
 					buffer += "\t\t";
-					buffer += parsed_function->GetName();
+					buffer += parsed_function->GetFunctionName();
 					buffer += GetCallingString(parameters);
 				}	
 			};
@@ -204,17 +194,17 @@ bundle CodeGen {
 			buffer->PrintLine();
 		}
 		
-		function : EmitObjeckCode(parsed_function : ParsedFunction) ~ Nil {
+		function : EmitObjeckCode(parsed_function : ParsedFunction, native_name : String) ~ Nil {
 			buffer := "method : public : ";
 			buffer += parsed_function->GetObjeckName();
-			buffer += GetParametersString(parsed_function->GetParameters());
+			buffer += GetParametersString(parsed_function->GetParameters(), native_name);
 			buffer += " ~ ";
 			buffer += GetTypeString(parsed_function->GetReturnType());
 			buffer += " {\n\t";
 			
 			offset := 0;
 			parameters := parsed_function->GetParameters();
-			if(parsed_function->GetReturnType()->GetType() = ParsedType->Type->VOID) {
+			if(parsed_function->HasReturn()) {
 				buffer += "array_args := Base->New[";
 				buffer += parameters->Size();
 				buffer += "];\n";
@@ -280,14 +270,6 @@ bundle CodeGen {
 			buffer += "}\n";
 			
 			buffer->PrintLine();
-		}
-	}
-	
-	class EmitterTemplate {
-		@name : String;
-		
-		New(name : String) {
-			@name := name;
 		}
 	}
 }
