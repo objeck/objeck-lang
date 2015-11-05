@@ -290,10 +290,10 @@ bundle SDL {
 			@surface := value->Get();
 		}
 		
-		New(src : RWops, freesrc : Int) ~ SDL_Surface {
+		New(src : RWops, freesrc : Int) {
 			array_args := Base->New[3];
 			array_args[0] := IntHolder->New();
-			array_args[1] := IntHolder->New(@src);
+			array_args[1] := src;
 			array_args[2] := IntHolder->New(freesrc);
 
 			@lib_proxy := Proxy->GetDllProxy();
@@ -305,6 +305,77 @@ bundle SDL {
 		
 		method : public : Ok() ~ Bool {
 			return @surface <> 0;
+		}
+		
+		method : public : SaveBmpRW(dst : RWops, freedst : Int) ~ Int {
+			array_args := Base->New[4];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@surface);
+			array_args[2] := dst;
+			array_args[3] := IntHolder->New(freedst);
+
+			@lib_proxy := Proxy->GetDllProxy();
+			@lib_proxy->CallFunction("sdl_surface_save_bmp_rw", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+		
+		method : public : SetRLE(flag : Int) ~ Int {
+			array_args := Base->New[3];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@surface);
+			array_args[2] := IntHolder->New(flag);
+
+			@lib_proxy := Proxy->GetDllProxy();
+			@lib_proxy->CallFunction("sdl_surface_set_rle", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+		
+		method : public : SetColorKey(flag : Int, key : Int) ~ Int {
+			array_args := Base->New[4];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@surface);
+			array_args[2] := IntHolder->New(flag);
+			array_args[3] := IntHolder->New(key);
+
+			@lib_proxy := Proxy->GetDllProxy();
+			@lib_proxy->CallFunction("sdl_surface_set_color_key", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+		
+#~ Need a pointer		
+		method : public : GetColorKey(key : Int) ~ Int {
+			array_args := Base->New[3];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@surface);
+			array_args[2] := IntHolder->New(key);
+
+			@lib_proxy := Proxy->GetDllProxy();
+			@lib_proxy->CallFunction("sdl_surface_get_color_key", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+~#
+		
+		method : public : SetColorMod(r : Int, g : Int, b : Int) ~ Int {
+			array_args := Base->New[5];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@surface);
+			array_args[2] := IntHolder->New(r);
+			array_args[3] := IntHolder->New(g);
+			array_args[4] := IntHolder->New(b);
+
+			@lib_proxy := Proxy->GetDllProxy();
+			@lib_proxy->CallFunction("sdl_surface_set_color_mod", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
 		}
 		
 		method : public : SetPalette(surface : Surface, palette : Palette) ~ Int {
