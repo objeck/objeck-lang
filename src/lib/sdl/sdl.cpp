@@ -263,6 +263,18 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
+  void sdl_surface_get_color_mod(VMContext& context) {
+    SDL_Surface* surface = (SDL_Surface*)APITools_GetIntValue(context, 1);
+    const int r = APITools_GetIntValue(context, 2);
+    const int g = APITools_GetIntValue(context, 3);
+    const int b = APITools_GetIntValue(context, 4);
+    const int return_value = SDL_GetSurfaceColorMod(surface, r, g, b);
+    APITools_SetIntValue(context, 0, return_value);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
   void sdl_surface_save_bmp_rw(VMContext& context) {
     SDL_Surface* surface = (SDL_Surface*)APITools_GetIntValue(context, 1);
     const long* dst = (long*)APITools_GetObjectValue(context, 2);
