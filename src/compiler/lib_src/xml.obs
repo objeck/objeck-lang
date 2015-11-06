@@ -6,7 +6,7 @@
 use Collection;
 
 #~
-Support for paring XML documents
+Support for parsing XML documents
 ~#
 bundle XML {
 	#~
