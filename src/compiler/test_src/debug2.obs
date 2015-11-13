@@ -1,33 +1,9 @@
-use Collection;
-
-class JortSort {
+class Test {
 	function : Main(args : String[]) ~ Nil {
-		values := CompareVector->New();
-		values->AddBack(IntHolder->New(10));
-		values->AddBack(IntHolder->New(13));
-		values->AddBack(IntHolder->New(25));
-		
-		JortSort(values)->PrintLine();
-		
-		values := CompareVector->New();
-		values->AddBack(IntHolder->New(13));
-		values->AddBack(IntHolder->New(25));
-		values->AddBack(IntHolder->New(2));
-		
-		JortSort(values)->PrintLine();
-	}
-	
-	function : JortSort(vector : CompareVector) ~ Bool {
-		sorted_vector := CompareVector->New(vector);
-		sorted_vector->Sort();
-		
-		each(i : sorted_vector) {
-			if(sorted_vector->Get(i) <> vector->Get(i)){
-				return false;
-			};
-		};
-		
-		return true;
+		a := "foo";
+		b := 2.2;
+		c := a->As(Int) % b->As(Int);
+		c->PrintLine();
 	}
 }
 
