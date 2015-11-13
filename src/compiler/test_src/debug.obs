@@ -9,7 +9,7 @@ class Test {
 		};
 	}
 	
-	function : SumProp(num : Float) ~ Int {
+	function : SumProp(num : Float) ~ Float {
 		if (num < 2) {
 			return 0;
 		};
@@ -23,7 +23,7 @@ class Test {
 			};
 		};
 		
-		if(num % root = 0) {
+		if(num->As(Int) % root->As(Int) = 0) {
 			sum := sum + root;
 		};
 		
