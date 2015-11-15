@@ -2,7 +2,7 @@ class Test {
 	function : Main(args : String[]) ~ Nil {
 		a := "foo";
 		b := "bar";
-		c := a / b;
+		c := a->As(Int) + b->As(Int);
 		c->PrintLine();
 	}
 }

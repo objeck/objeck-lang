@@ -3220,11 +3220,11 @@ bool ContextAnalyzer::Analyze()
     AnalyzeCalculationCast(expression, depth);
 
     if(left->GetEvalType()) {
-      AnalyzeRightCast(left->GetEvalType(), GetExpressionType(expression, depth + 1), expression, IsScalar(expression), depth);
+      AnalyzeRightCast(left->GetEvalType(), GetExpressionType(left, depth + 1), left, IsScalar(left), depth);
     }
 
     if(right->GetEvalType()) {
-      AnalyzeRightCast(right->GetEvalType(), GetExpressionType(expression, depth + 1), expression, IsScalar(expression), depth);
+      AnalyzeRightCast(right->GetEvalType(), GetExpressionType(right, depth + 1), right, IsScalar(right), depth);
     }
 
     switch(expression->GetExpressionType()) {
