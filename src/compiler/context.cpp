@@ -3218,17 +3218,17 @@ bool ContextAnalyzer::Analyze()
 
     // check operations
     AnalyzeCalculationCast(expression, depth);
-
-    /*
-    if(left->GetEvalType()) {
-      AnalyzeRightCast(left->GetEvalType(), GetExpressionType(left, depth + 1), left, IsScalar(left), depth);
+    
+    // check for valid operation cast
+    if(left->GetCastType() && left->GetEvalType()) {
+      AnalyzeRightCast(left->GetCastType(), left->GetEvalType(), left, IsScalar(left), depth);
     }
 
-    if(right->GetEvalType()) {
-      AnalyzeRightCast(right->GetEvalType(), GetExpressionType(right, depth + 1), right, IsScalar(right), depth);
+    // check for valid operation cast
+    if(right->GetCastType() && right->GetEvalType()) {
+      AnalyzeRightCast(right->GetCastType(), right->GetEvalType(), right, IsScalar(right), depth);
     }
-    */
-
+    
     switch(expression->GetExpressionType()) {
     case AND_EXPR:
     case OR_EXPR:
