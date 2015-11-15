@@ -3218,6 +3218,15 @@ bool ContextAnalyzer::Analyze()
 
     // check operations
     AnalyzeCalculationCast(expression, depth);
+
+    if(left->GetEvalType()) {
+      AnalyzeRightCast(left->GetEvalType(), GetExpressionType(expression, depth + 1), expression, IsScalar(expression), depth);
+    }
+
+    if(right->GetEvalType()) {
+      AnalyzeRightCast(right->GetEvalType(), GetExpressionType(expression, depth + 1), expression, IsScalar(expression), depth);
+    }
+
     switch(expression->GetExpressionType()) {
     case AND_EXPR:
     case OR_EXPR:
@@ -3269,39 +3278,39 @@ bool ContextAnalyzer::Analyze()
               ((cls_type = GetExpressionType(right, depth + 1)) && cls_type->GetType() == CLASS_TYPE)) {
         ProcessError(expression, L"Invalid mathematical operation");
       }
-      
+
       if(left->GetEvalType() && left->GetEvalType()->GetType() == FLOAT_TYPE) {
-	if(left->GetCastType()) {
-	  switch(left->GetCastType()->GetType()) {
-	  case BYTE_TYPE:
-	  case INT_TYPE:
-	  case CHAR_TYPE:
-	    break;
-	  default:
-	    ProcessError(expression, L"Expected Byte, Char or Int class");
-	    break;
-	  }
-	}
-	else {
-	  ProcessError(expression, L"Expected Byte, Char or Int class");
-	}
+        if(left->GetCastType()) {
+          switch(left->GetCastType()->GetType()) {
+          case BYTE_TYPE:
+          case INT_TYPE:
+          case CHAR_TYPE:
+            break;
+          default:
+            ProcessError(expression, L"Expected Byte, Char or Int class");
+            break;
+          }
+        }
+        else {
+          ProcessError(expression, L"Expected Byte, Char or Int class");
+        }
       }
-      
+
       if(right->GetEvalType() && right->GetEvalType()->GetType() == FLOAT_TYPE) {
-	if(right->GetCastType()) {
-	  switch(right->GetCastType()->GetType()) {
-	  case BYTE_TYPE:
-	  case INT_TYPE:
-	  case CHAR_TYPE:
-	    break;
-	  default:
-	    ProcessError(expression, L"Expected Byte, Char or Int class");
-	    break;
-	  }
-	}
-	else {
-	  ProcessError(expression, L"Expected Byte, Char or Int class");
-	}
+        if(right->GetCastType()) {
+          switch(right->GetCastType()->GetType()) {
+          case BYTE_TYPE:
+          case INT_TYPE:
+          case CHAR_TYPE:
+            break;
+          default:
+            ProcessError(expression, L"Expected Byte, Char or Int class");
+            break;
+          }
+        }
+        else {
+          ProcessError(expression, L"Expected Byte, Char or Int class");
+        }
       }
       break;
 
