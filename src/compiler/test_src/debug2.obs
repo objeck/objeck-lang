@@ -1,8 +1,8 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		a := "foo";
-		b := 2.2;
-		c := a->As(Int) % b->As(Int);
+		b := "bar";
+		c := a / b;
 		c->PrintLine();
 	}
 }
