@@ -19,7 +19,7 @@ jit_amd_lp64.a:
 	cd $(JIT_PATH); make	
 	
 %.o: %.cpp
-	$(CC) -m64 $(ARGS) -c $< 
+	$(CC) -m64 $(ARGS) -c $< -I/usr/local/openssl/include
 
 clean:
 	cd $(MEM_PATH); make clean
