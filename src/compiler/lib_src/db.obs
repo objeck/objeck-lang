@@ -1,0 +1,146 @@
+use Collection;
+
+bundle DB {
+	enum Match {
+		LESS,
+		GREATER,
+		LESS_EQUAL,
+		GREATER_EQUAL,
+		EQUAL,
+		NOT_EQUAL,
+		LIKE
+	}
+	
+	class Table {
+		@column_names : StringMap;
+		@rows : List;
+		@index_keys : Hash;
+		@index : Int;
+		
+		New(column_names : String[]) {
+			@column_names := StringMap->New();
+			@rows := List->New();
+			@index_keys := Hash->New();
+			@index := -1;
+			
+			each(i : column_names) {
+				@column_names->Insert(column_names[i], IntHolder->New(i));
+			};
+		}
+		
+		method : public : AddRow(values : Compare[]) ~ Bool {
+			@rows->AddBack(Row->New(values));
+			return true;
+		}
+		
+		method : public : Size() ~ Int {
+			return @rows->Size();
+		}
+		
+		method : public : Find(value : Compare, match : Match, column : String) ~ Vector {
+			return Nil;
+		}
+		
+		method : public : Find(value : Compare, type : Match, index : Int) ~ Vector {
+			if(index < 0 | index > @column_names->Size()) {
+				return Nil;
+			};
+			
+			if(@index = index) {
+			}
+			else {
+				matches := Vector->New();
+				
+				@rows->Rewind();
+				while(@rows->More()) {
+					row := @rows->Get()->As(Row);
+					if(row->Match(value, type, index)) {
+						matches->AddBack(row);
+					};
+					@rows->Next();
+				};
+				
+				return matches;
+			};
+			
+			return Nil;
+		}
+		
+		function : Main(args : String[]) ~ Nil {
+			v0 := Compare->New[3];
+			v0[0] := "Randy";
+			v0[1] := IntHolder->New(101);
+			v0[2] := FloatHolder->New(3.33);
+			
+			v1 := Compare->New[3];
+			v1[0] := "Jason";
+			v1[1] := IntHolder->New(101);
+			v1[2] := FloatHolder->New(2.75);
+			
+			v2 := Compare->New[3];
+			v2[0] := "Joe";
+			v2[1] := IntHolder->New(320);
+			v2[2] := FloatHolder->New(3.9);
+			
+			table := Table->New(["name","class","grade"]);
+			table->AddRow(v0);
+			table->AddRow(v1);
+			table->AddRow(v2);
+			table->Size()->PrintLine();
+		}
+	}
+
+	class Row {
+		@values : Compare[];
+		
+		New(values : Compare[]) {
+			@values := values;
+		}
+		
+		method : public : Size() ~ Int {
+			return @values->Size();
+		}
+		
+		method : public : Match(right : Compare, type : Match, index : Int) ~ Bool {
+			left := @values[index];
+			select(type) {
+				label Match->LESS: {
+					return left->Compare(right) < 0;
+				}
+				
+				label Match->GREATER: {
+					return left->Compare(right) > 0;
+				}
+				
+				label Match->LESS_EQUAL: {
+					return left->Compare(right) < 0 | left->Compare(right) = 0;
+				}
+				
+				label Match->GREATER_EQUAL: {
+					return left->Compare(right) > 0 | left->Compare(right) = 0;
+				}
+				
+				label Match->EQUAL: {
+					return left->Compare(right) = 0;
+				}
+				
+				label Match->NOT_EQUAL: {
+					return left->Compare(right) <> 0;
+				}
+				
+				label Match->LIKE: {
+				}
+			};
+			
+			return false;
+		}
+		
+		method : public : Get(index : Int) ~ Compare {
+			return Nil;
+		}
+		
+		method : public : Set(value : Compare, index : Int) ~ Bool {
+			return false;
+		}
+	}
+}
