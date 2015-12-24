@@ -1,0 +1,17 @@
+use System.IO.File;
+use CSV;
+
+class CsvData {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() > 0) {
+			csv := CsvTable->New(FileReader->ReadFile(args[0]));
+			csv->AppendColumn("sum");
+			each(i : csv) {
+				row := csv->Get(i);
+				row->Set("128", 2);
+				row->Set(row->Sum()->As(Int)->ToString(), 5);
+			};
+			FileWriter->New("new_csv.csv")->WriteString(csv->ToString());
+		};
+	}
+}
