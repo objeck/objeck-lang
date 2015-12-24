@@ -10,14 +10,16 @@ bundle CSV {
 	class CsvRow {
 		@id : Int;
 		@columns : CompareVector;
+		@read_only : Bool;
 		
 		#~
 		Constructor
 		@param id row id
 		@param columns column values
 		~#
-		New(id : Int, columns : CompareVector) {
+		New(id : Int, read_only : Bool, columns : CompareVector) {
 			@id := id;
+			@read_only := read_only;
 			@columns := columns;
 		}
 		
@@ -43,24 +45,82 @@ bundle CSV {
 		}
 		
 		#~
+		Sets the indexed row value
+		@param index index
+		@return row value
+		~#
+		method : public : Set(value : String, index : Int) ~ Bool {
+			if(@read_only = false & index < @columns->Size()) {
+				return @columns->Set(value->ReplaceAll("\"\"", "ˑ"), index);
+			};
+			
+			return false;
+		}	
+		
+		#~
+		Appends value to the end of the row
+		@value value to append
+		~#
+		method : public : Append(value : String) ~ Nil {
+			@columns->AddBack(value);
+		}
+		
+		#~
 		Gets the row size
 		@return row size
 		~#
 		method : public : Size() ~ Int {
 			return @columns->Size();
 		}
-
+		
 		#~
-		Gets the indexed row value
-		@param index index
-		@return row value
+		Calculates the row sum
+		@return row sum
 		~#
-		method : public : RowValues(index : Int) ~ String {
-			if(index < @columns->Size()) {
-				return @columns->Get(index)->As(String);
+		method : public : Sum() ~ Float {
+			sum := 0.0;
+			
+			each(i : @columns) {
+				sum += @columns->Get(i)->As(String)->ToFloat();
 			};
 			
-			return Nil;
+			return sum;
+		}
+		
+		#~
+		Calculates the row average 
+		@return row average
+		~#
+		method : public : Average() ~ Float {
+			return Sum() / @columns->Size();
+		}
+		
+		#~
+		Calculates the row median 
+		@return row median
+		~#
+		method : public : Median() ~ Float {
+			if(@columns->Size() = 1) {
+				@columns->Get(0)->As(String)->ToFloat();
+			};
+			
+			# store values and sort 
+			sorted := FloatVector->New();
+			each(i : @columns) {
+				sorted->AddBack(@columns->Get(i)->As(String)->ToFloat());
+			};
+			sorted->Sort();
+			
+			# find median
+			size := sorted->Size();
+			if(size % 2 = 0) {
+				right := sorted->Get(size / 2);
+				left := sorted->Get(right - 1);
+				return (left + right) / 2;
+			}
+			else {
+				return sorted->Get(size / 2);
+			};
 		}
 		
 		#~
@@ -235,6 +295,24 @@ bundle CSV {
 			
 			return Nil;
 		}
+
+		#~
+		Appends a column to the end of the table
+		@return ture if column was added, false otherwise
+		~#
+		method : public : AppendColumn(name : String) ~ Bool {
+			if(@header_names->Has(name) = false & @is_parsed) {
+				@data->Get(0)->As(CsvRow)->Append(name);
+				for(i := 1; i < @data->Size(); i+=1;) {
+					@data->Get(i)->As(CsvRow)->Append("");
+				};
+				@header_names->Insert(name, IntHolder->New(RowSize() - 1));
+				
+				return true;
+			};
+			
+			return false;
+		}
 		
 		#~
 		Gets the size of rows
@@ -251,7 +329,7 @@ bundle CSV {
 		method : native : ParseColumns(rows : String[]) ~ Vector {
 			parsed_rows := Vector->New();
 			each(i : rows) {
-				parsed_rows->AddBack(CsvRow->New(i, ParseRow(rows[i]->ReplaceAll("\"\"", "ˑ"))));
+				parsed_rows->AddBack(CsvRow->New(i, i = 0, ParseRow(rows[i]->ReplaceAll("\"\"", "ˑ"))));
 			};
 
 			if(rows->Size() <> parsed_rows->Size()) {		
@@ -376,10 +454,7 @@ bundle CSV {
 			
 			return CsvTable->New(found, @header_names);
 		}
-
-
-
-
+		
 		#~
 		Searches a given column for a string that contains a given 
 		@param name column name
