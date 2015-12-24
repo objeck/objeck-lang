@@ -15,6 +15,7 @@ bundle CSV {
 		#~
 		Constructor
 		@param id row id
+		@param read_only true if readonly, false otherwise
 		@param columns column values
 		~#
 		New(id : Int, read_only : Bool, columns : CompareVector) {
@@ -46,8 +47,9 @@ bundle CSV {
 		
 		#~
 		Sets the indexed row value
+		@param value value to set
 		@param index index
-		@return row value
+		@return true of value was set, false otherwise
 		~#
 		method : public : Set(value : String, index : Int) ~ Bool {
 			if(@read_only = false & index < @columns->Size()) {
@@ -300,6 +302,7 @@ bundle CSV {
 
 		#~
 		Appends a column to the end of the table
+		@param name name of column to add
 		@return ture if column was added, false otherwise
 		~#
 		method : public : AppendColumn(name : String) ~ Bool {
