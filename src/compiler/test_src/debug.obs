@@ -18,13 +18,10 @@ class Test {
 			row := csv->Get(i);
 	s := row->Sum();	
 			row->Set(s->As(Int)->ToString(), 5);
-			each(j : row) {
-				row->Get(j)->Trim()->Print();
-				","->Print();
-			};
-			"\n"->Print();
 		};
 		f := csv->ColumnValues("sum");
 		f->Sum()->PrintLine();
+
+		csv->ToString()->PrintLine();
 	}
 }

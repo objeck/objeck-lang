@@ -131,9 +131,9 @@ bundle CSV {
 			buffer := "";
 			
 			each(i : @columns) {
-				buffer->Append(@columns->Get(i)->As(String));
+				buffer->Append(@columns->Get(i)->As(String)->ReplaceAll("ˑ", "\"\""));
 				if(i + 1 < @columns->Size()) {
-					buffer->Append("|");
+					buffer->Append(",");
 				};
 			};
 			
@@ -230,6 +230,7 @@ bundle CSV {
 		@data : Vector;
 		@is_parsed : Bool;
 		@header_names : StringHash;
+		@ending : String;
 		
 		#~
 		Constructor
@@ -249,8 +250,9 @@ bundle CSV {
 		}	
 		
 		method : Init(data : String, ending : String) ~ Nil {
+			@ending := ending;
 			@is_parsed := true;
-			rows := data->Split(ending);
+			rows := data->Split(@ending);
 			if(rows->Size() > 1) {			
 				@data := ParseColumns(rows);
 				if(@data = Nil) {
@@ -494,8 +496,21 @@ bundle CSV {
 			return CsvTable->New(found, @header_names);
 		}
 
+		#~
+		Formats the table into a string
+		@return string representation of the table
+		~#
+		method : public : ToString() ~ String {
+			buffer := "";
 
-
+			each(i : @data) {
+				row := @data->Get(i)->As(CsvRow);
+				buffer->Append(row->ToString());
+				buffer->Append(@ending);
+			};
+		
+			return buffer;
+		}
 		
 		#~
 		Get unique values for a given row
