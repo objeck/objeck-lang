@@ -1,32 +1,30 @@
+use CSV;
+
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		limit := 2000;
-		for(n := 1; n < limit+1; n++;) {
-			m := SumProp(n);
-			if(n = SumProp(m) & n <> m) {
-				IO.Console->Print(n)->Print(' ')->PrintLine(m);
+		data := 
+"C1,C2,C3,C4,C5
+31,73,16,5,9
+4,8,12,16,20";
+
+		csv := CsvTable->New(data, "\n");
+		csv->AppendColumn("sum");
+		csv->Size()->PrintLine();
+		csv->RowSize()->PrintLine();
+
+		(csv->ColumnValues("C6") <> Nil)->PrintLine();
+
+		each(i : csv) {
+			row := csv->Get(i);
+	s := row->Sum();	
+			row->Set(s->As(Int)->ToString(), 5);
+			each(j : row) {
+				row->Get(j)->Trim()->Print();
+				","->Print();
 			};
+			"\n"->Print();
 		};
-	}
-	
-	function : SumProp(num : Float) ~ Float {
-		if (num < 2) {
-			return 0;
-		};
-		
-		sum := 1;
-		root := num->As(Float)->SquareRoot();
-		
-		for(i:= 2; i < root; i++;) {
-			if(num->As(Int) % i = 0) { 
-				sum := sum + i + num/i;
-			};
-		};
-		
-		if(num->As(Int) % root->As(Int) = 0) {
-			sum := sum + root;
-		};
-		
-		return sum;
+		f := csv->ColumnValues("sum");
+		f->Sum()->PrintLine();
 	}
 }
