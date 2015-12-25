@@ -49,14 +49,11 @@ using namespace std;
 int main(int argc, char* argv[])
 {
   wstring usage;
-  // usage += L"Copyright (c) 2008-2015, Randy Hollines. All rights reserved.\n";
-  // usage += L"THIS SOFTWARE IS PROVIDED \"AS IS\" WITHOUT WARRANTY. REFER TO THE\n";
-  // usage += L"license.txt file or http://www.opensource.org/licenses/bsd-license.php\n";
-  // usage += L"FOR MORE INFORMATION.\n\n";
   usage += L"Usage: obc -src <source files> <options> -dest <output file>\n\n";
   usage += L"Options:\n";
   usage += L"  -src:   [input]  source files (separated by ',')\n";
   usage += L"  -lib:   [input]  linked libraries (separated by ',')\n";
+  usage += L"  -ver:   [input]  displays the compiler version number\n";
   usage += L"  -tar:   [output] target type 'lib' for linkable library or 'exe' for\n";
   usage += L"          executable default is 'exe'\n";
   usage += L"  -dest:  [output] file name\n";
