@@ -1,0 +1,49 @@
+class Test {	
+	function : Main(args : String[]) ~ Nil {
+		v0 := Compare->New[4];
+		v0[0] := "Randy";
+		v0[1] := IntHolder->New(101);
+		v0[2] := FloatHolder->New(3.33);
+		v0[3] := IntHolder->New(0);
+		
+		v1 := Compare->New[4];
+		v1[0] := "Jason";
+		v1[1] := IntHolder->New(101);
+		v1[2] := FloatHolder->New(2.75);
+		v1[3] := IntHolder->New(1);
+		
+		v2 := Compare->New[4];
+		v2[0] := "Joe";
+		v2[1] := IntHolder->New(320);
+		v2[2] := FloatHolder->New(3.9);
+		v2[3] := IntHolder->New(2);
+		
+		v3 := Compare->New[4];
+		v3[0] := "Henderson";
+		v3[1] := IntHolder->New(121);
+		v3[2] := FloatHolder->New(1.11);
+		v3[3] := IntHolder->New(3);
+		
+		table := Table->New(["name","class","grade","pk"], 3);
+		table->AddRow(v0);
+		table->AddRow(v1);
+		table->AddRow(v2);
+		table->AddRow(v3);
+		table->Size()->PrintLine();
+		
+#~			
+		## n1
+		r0 := table->Find("Foo", Match->EQUAL, "name");
+		r1 := table->Find(FloatHolder->New(2.75), Match->EQUAL, "grade");
+		if(r0->Size() > 0 | r1->Size() > 0) {
+			"Or - Match!"->PrintLine();
+		};
+~#
+		
+		## n2
+		r0 := table->Find(IntHolder->New(1), Match->EQUAL, "pk");
+		if(r0->Size() > 0) {
+			"Pk - Match!"->PrintLine();
+		};
+	}
+}

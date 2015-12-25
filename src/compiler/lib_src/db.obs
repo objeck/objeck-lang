@@ -17,11 +17,11 @@ bundle DB {
 		@index_keys : Hash;
 		@index : Int;
 		
-		New(column_names : String[]) {
+		New(column_names : String[], index : Int) {
 			@column_names := StringMap->New();
 			@rows := List->New();
 			@index_keys := Hash->New();
-			@index := -1;
+			@index := index;
 			
 			each(i : column_names) {
 				@column_names->Insert(column_names[i], IntHolder->New(i));
@@ -29,7 +29,20 @@ bundle DB {
 		}
 		
 		method : public : AddRow(values : Compare[]) ~ Bool {
-			@rows->AddBack(Row->New(values));
+			if(@column_names->Size() <> values->Size()) {
+				## TODO: error
+				return false;
+			};
+			
+			if(@index_keys->Has(values[@index])) {
+				## TODO: error
+				return false;
+			};
+			
+			row := Row->New(values);
+			@index_keys->Insert(values[@index], row);
+			@rows->AddBack(row);
+			
 			return true;
 		}
 		
@@ -51,9 +64,13 @@ bundle DB {
 			
 			if(index < 0 | index >= @column_names->Size()) {
 				return Nil;
-			};
-			
+			};		
+					
 			if(@index = index) {
+				row := @index_keys->Find(value)->As(Row);
+				if(row <> Nil) {
+					matches->AddBack(row);
+				};
 			}
 			else {
 				@rows->Rewind();
@@ -67,36 +84,6 @@ bundle DB {
 			};
 			
 			return matches;
-		}
-		
-		function : Main(args : String[]) ~ Nil {
-			v0 := Compare->New[3];
-			v0[0] := "Randy";
-			v0[1] := IntHolder->New(101);
-			v0[2] := FloatHolder->New(3.33);
-			
-			v1 := Compare->New[3];
-			v1[0] := "Jason";
-			v1[1] := IntHolder->New(101);
-			v1[2] := FloatHolder->New(2.75);
-			
-			v2 := Compare->New[3];
-			v2[0] := "Joe";
-			v2[1] := IntHolder->New(320);
-			v2[2] := FloatHolder->New(3.9);
-			
-			table := Table->New(["name","class","grade"]);
-			table->AddRow(v0);
-			table->AddRow(v1);
-			table->AddRow(v2);
-			table->Size()->PrintLine();
-			
-			## simple and or
-			r0 := table->Find("Foo", Match->EQUAL, "name");
-			r1 := table->Find(FloatHolder->New(2.75), Match->EQUAL, "grade");
-			if(r0->Size() > 0 | r1->Size() > 0) {
-				"Match!"->PrintLine();
-			};
 		}
 	}
 
