@@ -37,12 +37,12 @@ bundle DB {
 			return @rows->Size();
 		}
 		
-		method : public : Find(value : Compare, match : Match, column : String) ~ Vector {
+		method : public : Find(value : Compare, type : Match, column : String) ~ Vector {
 			return Nil;
 		}
 		
 		method : public : Find(value : Compare, type : Match, index : Int) ~ Vector {
-			if(index < 0 | index > @column_names->Size()) {
+			if(index < 0 | index >= @column_names->Size()) {
 				return Nil;
 			};
 			
@@ -87,6 +87,13 @@ bundle DB {
 			table->AddRow(v1);
 			table->AddRow(v2);
 			table->Size()->PrintLine();
+			
+			result := table->Find("Jason", Match->EQUAL, 0);
+			if(result <> Nil) {
+				row := result->Get(0)->As(Row);
+				value := row->Get(1)->As(IntHolder);
+				value->Get()->PrintLine();
+			};
 		}
 	}
 
@@ -136,7 +143,11 @@ bundle DB {
 		}
 		
 		method : public : Get(index : Int) ~ Compare {
-			return Nil;
+			if(index < 0 | index >= @values->Size()) {
+				return Nil;
+			};
+			
+			return @values[index];
 		}
 		
 		method : public : Set(value : Compare, index : Int) ~ Bool {
