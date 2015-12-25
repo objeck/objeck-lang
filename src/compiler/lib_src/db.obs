@@ -42,6 +42,8 @@ bundle DB {
 		}
 		
 		method : public : Find(value : Compare, type : Match, index : Int) ~ Vector {
+			matches := Vector->New();
+			
 			if(index < 0 | index >= @column_names->Size()) {
 				return Nil;
 			};
@@ -49,7 +51,7 @@ bundle DB {
 			if(@index = index) {
 			}
 			else {
-				matches := Vector->New();
+				
 				
 				@rows->Rewind();
 				while(@rows->More()) {
@@ -59,11 +61,9 @@ bundle DB {
 					};
 					@rows->Next();
 				};
-				
-				return matches;
 			};
 			
-			return Nil;
+			return matches;
 		}
 		
 		function : Main(args : String[]) ~ Nil {
@@ -88,11 +88,10 @@ bundle DB {
 			table->AddRow(v2);
 			table->Size()->PrintLine();
 			
-			result := table->Find("Jason", Match->EQUAL, 0);
-			if(result <> Nil) {
-				row := result->Get(0)->As(Row);
-				value := row->Get(1)->As(IntHolder);
-				value->Get()->PrintLine();
+			r0 := table->Find("Foo", Match->EQUAL, 0);
+			r1 := table->Find(FloatHolder->New(2.75), Match->EQUAL, 2);
+			if(r0->Size() > 0 | r1->Size() > 0) {
+				"Match!"->PrintLine();
 			};
 		}
 	}
