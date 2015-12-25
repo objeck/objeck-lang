@@ -59,7 +59,7 @@ bundle DB {
 			return Vector->New();
 		}
 		
-		method : public : Find(value : Compare, type : Match, index : Int) ~ Vector {
+		method : public : native : Find(value : Compare, type : Match, index : Int) ~ Vector {
 			matches := Vector->New();
 			
 			if(index < 0 | index >= @column_names->Size()) {
@@ -98,7 +98,7 @@ bundle DB {
 			return @values->Size();
 		}
 		
-		method : public : Match(right : Compare, type : Match, index : Int) ~ Bool {
+		method : public : native : Match(right : Compare, type : Match, index : Int) ~ Bool {
 			left := @values[index];
 			select(type) {
 				label Match->LESS: {
