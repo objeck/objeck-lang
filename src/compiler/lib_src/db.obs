@@ -38,7 +38,12 @@ bundle DB {
 		}
 		
 		method : public : Find(value : Compare, type : Match, column : String) ~ Vector {
-			return Nil;
+			index := @column_names->Find(column)->As(IntHolder);
+			if(index <> Nil) {
+				return Find(value, type, index->Get());
+			};
+			
+			return Vector->New();
 		}
 		
 		method : public : Find(value : Compare, type : Match, index : Int) ~ Vector {
@@ -51,8 +56,6 @@ bundle DB {
 			if(@index = index) {
 			}
 			else {
-				
-				
 				@rows->Rewind();
 				while(@rows->More()) {
 					row := @rows->Get()->As(Row);
@@ -88,8 +91,9 @@ bundle DB {
 			table->AddRow(v2);
 			table->Size()->PrintLine();
 			
-			r0 := table->Find("Foo", Match->EQUAL, 0);
-			r1 := table->Find(FloatHolder->New(2.75), Match->EQUAL, 2);
+			## simple and or
+			r0 := table->Find("Foo", Match->EQUAL, "name");
+			r1 := table->Find(FloatHolder->New(2.75), Match->EQUAL, "grade");
 			if(r0->Size() > 0 | r1->Size() > 0) {
 				"Match!"->PrintLine();
 			};
