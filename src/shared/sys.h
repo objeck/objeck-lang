@@ -89,7 +89,7 @@ static map<const wstring, wstring> ParseCommnadLine(const wstring &path_string) 
     while( pos < end && (path_string[pos] == L' ' || path_string[pos] == L'\t')) {
       pos++;
     }
-    if(path_string[pos] == '-') {
+    if(path_string[pos] == L'-') {
       // parse key
       int start =  ++pos;
       while( pos < end && path_string[pos] != L' ' && path_string[pos] != L'\t') {
@@ -111,23 +111,29 @@ static map<const wstring, wstring> ParseCommnadLine(const wstring &path_string) 
       while(pos < end && not_end) {
         // check for end
         if(is_string) {
-          not_end = path_string[pos] != L'\'';
+			not_end = path_string[pos] != L'\'';
         }
         else {
-          not_end = !(path_string[pos] == L' ' || path_string[pos] == L'\t' || path_string[pos] == L'-');
+			not_end = !(path_string[pos] == L' ' || path_string[pos] == L'\t' || path_string[pos] == L'-');
         }
         // update position
         if(not_end) {
           pos++;
         }
       }
-      const wstring value = path_string.substr(start, pos - start);
+      wstring value = path_string.substr(start, pos - start);
       
       // close string and add
       if(path_string[pos] == L'\'') {
         pos++;
       }
-      arguments.insert(pair<wstring, wstring>(key, value));
+
+	  map<wstring, wstring>::iterator found = arguments.find(key);
+	  if(found != arguments.end()) {
+		  value += L',';
+		  value += found->second;
+	  }
+      arguments[key] = value;
     }
     else {
       pos++;

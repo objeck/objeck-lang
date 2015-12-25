@@ -57,10 +57,9 @@ int Compile(map<const wstring, wstring> &arguments, list<wstring> &argument_opti
 #endif
   
   // check for optimize flag
-  map<const wstring, wstring>::iterator result = arguments.find(L"version");
+  map<const wstring, wstring>::iterator result = arguments.find(L"ver");
   if(result != arguments.end()) {
-    wcout << VERSION_STRING << endl;
-    exit(0);
+    wcout << L"Version " << VERSION_STRING << endl;
   }
   
   // check source input
