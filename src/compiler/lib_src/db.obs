@@ -17,6 +17,14 @@ bundle DB {
 		@index_keys : Hash;
 		@index : Int;
 		
+		New(column_names : StringMap, index : Int, rows : List) {
+			@column_names := column_names;
+			@rows := List->New();
+			@index_keys := Hash->New();
+			@index := index;
+			@rows := rows;
+		}
+		
 		New(column_names : String[], index : Int) {
 			@column_names := StringMap->New();
 			@rows := List->New();
@@ -50,17 +58,17 @@ bundle DB {
 			return @rows->Size();
 		}
 		
-		method : public : Find(value : Compare, type : Match, column : String) ~ Vector {
+		method : public : Find(value : Compare, type : Match, column : String) ~ Table {
 			index := @column_names->Find(column)->As(IntHolder);
 			if(index <> Nil) {
 				return Find(value, type, index->Get());
 			};
 			
-			return Vector->New();
+			return Table->New(@column_names, @index, List->New());
 		}
 		
-		method : public : native : Find(value : Compare, type : Match, index : Int) ~ Vector {
-			matches := Vector->New();
+		method : public : native : Find(value : Compare, type : Match, index : Int) ~ Table {
+			matches := List->New();
 			
 			if(index < 0 | index >= @column_names->Size()) {
 				return Nil;
@@ -83,14 +91,15 @@ bundle DB {
 				};
 			};
 			
-			return matches;
+			return Table->New(@column_names, @index, matches);
 		}
 	}
 
-	class Row {
+	class Row from BasicCompare {
 		@values : Compare[];
 		
 		New(values : Compare[]) {
+			Parent();
 			@values := values;
 		}
 		

@@ -60,6 +60,7 @@ int Compile(map<const wstring, wstring> &arguments, list<wstring> &argument_opti
   map<const wstring, wstring>::iterator result = arguments.find(L"ver");
   if(result != arguments.end()) {
     wcout << L"Version " << VERSION_STRING << endl;
+	argument_options.remove(L"ver");
   }
   
   // check source input
