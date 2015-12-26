@@ -15,7 +15,7 @@ class Test {
 		v2 := Compare->New[4];
 		v2[0] := "Joe";
 		v2[1] := IntHolder->New(320);
-		v2[2] := FloatHolder->New(3.9);
+		v2[2] := FloatHolder->New(13.9);
 		v2[3] := IntHolder->New(2);
 		
 		v3 := Compare->New[4];
@@ -27,7 +27,7 @@ class Test {
 		v4 := Compare->New[4];
 		v4[0] := "Andrew";
 		v4[1] := IntHolder->New(101);
-		v4[2] := FloatHolder->New(2.75);
+		v4[2] := FloatHolder->New(1.75);
 		v4[3] := IntHolder->New(4);
 		
 		table := Table->New(["name","class","grade","pk"], 3);
@@ -43,7 +43,7 @@ class Test {
 		found := r0->Size();
 		"total={$size}, found={$found}"->PrintLine();
 		
-		r1 := r0->Find(FloatHolder->New(2.75), Match->EQUAL, "grade");
+		r1 := r0->Find(FloatHolder->New(3), Match->LESS, "grade");
 		found := r1->Size();
 		"total={$size}, found={$found}"->PrintLine();
 		
