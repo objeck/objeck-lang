@@ -31,11 +31,11 @@ class Test {
 		v4[3] := IntHolder->New(4);
 		
 		table := Table->New(["name","class","grade","pk"], 3);
-		table->AddRow(v0);
-		table->AddRow(v1);
-		table->AddRow(v2);
-		table->AddRow(v3);
-		table->AddRow(v4);
+		table->AddRow(Row->New(v0));
+		table->AddRow(Row->New(v1));
+		table->AddRow(Row->New(v2));
+		table->AddRow(Row->New(v3));
+		table->AddRow(Row->New(v4));
 		
 		## find class
 		size := table->Size();
@@ -46,5 +46,12 @@ class Test {
 		r1 := r0->Find(FloatHolder->New(2.75), Match->EQUAL, "grade");
 		found := r1->Size();
 		"total={$size}, found={$found}"->PrintLine();
+		
+		while(r1->More()) {
+			row := r1->Get();
+			name := row->Get("name")->As(String);
+			"name={$name}"->PrintLine();
+			r1->Next();
+		};
 	}
 }
