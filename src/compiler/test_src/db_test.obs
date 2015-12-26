@@ -24,26 +24,27 @@ class Test {
 		v3[2] := FloatHolder->New(1.11);
 		v3[3] := IntHolder->New(3);
 		
+		v4 := Compare->New[4];
+		v4[0] := "Andrew";
+		v4[1] := IntHolder->New(101);
+		v4[2] := FloatHolder->New(2.75);
+		v4[3] := IntHolder->New(4);
+		
 		table := Table->New(["name","class","grade","pk"], 3);
 		table->AddRow(v0);
 		table->AddRow(v1);
 		table->AddRow(v2);
 		table->AddRow(v3);
-		table->Size()->PrintLine();
+		table->AddRow(v4);
 		
-#~			
-		## n1
-		r0 := table->Find("Foo", Match->EQUAL, "name");
-		r1 := table->Find(FloatHolder->New(2.75), Match->EQUAL, "grade");
-		if(r0->Size() > 0 | r1->Size() > 0) {
-			"Or - Match!"->PrintLine();
-		};
-~#
+		## find class
+		size := table->Size();
+		r0 := table->Find(IntHolder->New(101), Match->EQUAL, "class");
+		found := r0->Size();
+		"total={$size}, found={$found}"->PrintLine();
 		
-		## n2
-		r0 := table->Find(IntHolder->New(1), Match->EQUAL, "pk");
-		if(r0->Size() > 0) {
-			"Pk - Match!"->PrintLine();
-		};
+		r1 := r0->Find(FloatHolder->New(2.75), Match->EQUAL, "grade");
+		found := r1->Size();
+		"total={$size}, found={$found}"->PrintLine();
 	}
 }
