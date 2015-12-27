@@ -72,7 +72,7 @@ bundle DB {
 			if(index < 0 | index >= @column_names->Size()) {
 				return Nil;
 			};		
-					
+			
 			if(@index = index) {
 				row := @index_keys->Find(value)->As(Row);
 				if(row <> Nil) {
@@ -91,6 +91,14 @@ bundle DB {
 			};
 			
 			return matches;
+		}
+		
+		method : public : Delete(index : Int) ~ Bool {
+			return false;
+		}
+		
+		method : public : Delete(column : String) ~ Bool {
+			return false;
 		}
 		
 		method : public : More() ~ Bool {
