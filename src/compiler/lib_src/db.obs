@@ -57,16 +57,16 @@ bundle DB {
 			return @rows->Size();
 		}
 		
-		method : public : Find(value : Compare, type : Match, column : String) ~ Table {
+		method : public : Select(value : Compare, type : Match, column : String) ~ Table {
 			index := @column_names->Find(column)->As(IntHolder);
 			if(index <> Nil) {
-				return Find(value, type, index->Get());
+				return Select(value, type, index->Get());
 			};
 			
 			return Table->New(@column_names, @index);
 		}
 		
-		method : public : native : Find(value : Compare, type : Match, index : Int) ~ Table {
+		method : public : native : Select(value : Compare, type : Match, index : Int) ~ Table {
 			matches := Table->New(@column_names, @index);
 			
 			if(index < 0 | index >= @column_names->Size()) {
@@ -179,6 +179,20 @@ bundle DB {
 		}
 		
 		method : public : Set(value : Compare, index : Int) ~ Bool {
+			if(index < 0 | index >= @values->Size()) {
+				return false;
+			};
+			
+			@values[index] := value;
+			return true;
+		}
+		
+		method : public : Set(value : Compare, column : String) ~ Bool {
+			index := @column_names->Find(column)->As(IntHolder);
+			if(index <> Nil) {
+				return Set(column, index->Get());
+			};
+			
 			return false;
 		}
 	}
