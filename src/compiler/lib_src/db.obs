@@ -62,6 +62,9 @@ bundle TinyDB {
 					row->Next(Nil);
 					row->Prev(Nil);					
 				};
+				
+				@keys->Remove(pk);
+				return true;
 			};
 			
 			return false;
