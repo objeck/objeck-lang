@@ -1,57 +1,49 @@
 class Test {	
 	function : Main(args : String[]) ~ Nil {
-		v0 := Compare->New[4];
-		v0[0] := "Randy";
-		v0[1] := IntHolder->New(101);
-		v0[2] := FloatHolder->New(3.33);
-		v0[3] := IntHolder->New(0);
+		table := Table->New("Student", ["pk","last","first","year","gpa"], 0);
 		
-		v1 := Compare->New[4];
-		v1[0] := "Jason";
-		v1[1] := IntHolder->New(101);
-		v1[2] := FloatHolder->New(2.75);
-		v1[3] := IntHolder->New(1);
+		v0 := Compare->New[5];
+		v0[0] := IntHolder->New(0);
+		v0[1] := "Hollines";
+		v0[2] := "Randy";
+		v0[3] := IntHolder->New(3);
+		v0[4] := FloatHolder->New(2.75);
+		table->Insert(Row->New(v0, 0));
 		
-		v2 := Compare->New[4];
-		v2[0] := "Joe";
-		v2[1] := IntHolder->New(320);
-		v2[2] := FloatHolder->New(13.9);
-		v2[3] := IntHolder->New(2);
+		v1 := Compare->New[5];
+		v1[0] := IntHolder->New(1);
+		v1[1] := "Andrews";
+		v1[2] := "Mark";
+		v1[3] := IntHolder->New(2);
+		v1[4] := FloatHolder->New(2.33);
+		table->Insert(Row->New(v1, 0));
 		
-		v3 := Compare->New[4];
-		v3[0] := "Henderson";
-		v3[1] := IntHolder->New(121);
-		v3[2] := FloatHolder->New(1.11);
-		v3[3] := IntHolder->New(3);
+		v2 := Compare->New[5];
+		v2[0] := IntHolder->New(2);
+		v2[1] := "Marie";
+		v2[2] := "Anna";
+		v2[3] := IntHolder->New(4);
+		v2[4] := FloatHolder->New(3.90);
+		table->Insert(Row->New(v2, 0));
 		
-		v4 := Compare->New[4];
-		v4[0] := "Andrew";
-		v4[1] := IntHolder->New(101);
-		v4[2] := FloatHolder->New(1.75);
-		v4[3] := IntHolder->New(4);
+		v3 := Compare->New[5];
+		v3[0] := IntHolder->New(3);
+		v3[1] := "Hollines";
+		v3[2] := "Jason";
+		v3[3] := IntHolder->New(1);
+		v3[4] := FloatHolder->New(3.12);
+		table->Insert(Row->New(v3, 0));
 		
-		table := Table->New(["name","class","grade","pk"], 3);
-		table->AddRow(Row->New(v0));
-		table->AddRow(Row->New(v1));
-		table->AddRow(Row->New(v2));
-		table->AddRow(Row->New(v3));
-		table->AddRow(Row->New(v4));
+		table->Show();
 		
-		## ---
-		size := table->Size();
-		r0 := table->Select(IntHolder->New(101), Match->EQUAL, "class");
-		found := r0->Size();
-		"total={$size}, found={$found}"->PrintLine();
+		"---"->PrintLine();
+		table->Delete(0);
+		table->Show();
 		
-		## ---
-		r1 := r0->Select(FloatHolder->New(3), Match->LESS, "grade");
-		found := r1->Size();
-		"total={$size}, found={$found}"->PrintLine();
+		"---"->PrintLine();
+		table->Delete(3);
+		table->Show();
 		
-		while(r1->More()) {
-			name := r1->Get()->Get("name")->As(String);
-			"name={$name}"->PrintLine();
-			r1->Next();
-		};
+		
 	}
 }

@@ -1,208 +1,171 @@
 use Collection;
 
-bundle DB {
-	enum Match {
-		LESS,
-		GREATER,
-		LESS_EQUAL,
-		GREATER_EQUAL,
-		EQUAL,
-		NOT_EQUAL,
-		LIKE
-	}
-	
+bundle TinyDB {
 	class Table {
-		@column_names : StringMap;
-		@rows : List;
-		@index_keys : Hash;
+		@name : String;
 		@index : Int;
+		@keys : IntMap;
+		@column_names : String[];
+		@head : Row;
+		@tail : Row;
+		@count : Int;
 		
-		New(column_names : StringMap, index : Int) {
+		New(name : String, column_names : String[], index : Int) {
+			@name := name;
+			@index := index;
 			@column_names := column_names;
-			@rows := List->New();
-			@index_keys := Hash->New();
-			@index := index;
+			@keys := IntMap->New();
 		}
 		
-		New(column_names : String[], index : Int) {
-			@column_names := StringMap->New();
-			@rows := List->New();
-			@index_keys := Hash->New();
-			@index := index;
-			
-			each(i : column_names) {
-				@column_names->Insert(column_names[i], IntHolder->New(i));
-			};
+		method : public : Where(conds : Vector) ~ Table {
+			return Nil;
 		}
 		
-		method : public : native : AddRow(row : Row) ~ Bool {
-			if(@column_names->Size() <> row->Size()) {
-				## TODO: error
-				return false;
+		method : public : Insert(row : Row) ~ Int {
+			if(row->Size() <> @column_names->Size() | @index < 0 | @index >= @column_names->Size()) {
+				return -1;
 			};
 			
-			if(@index_keys->Has(row->Get(@index))) {
-				## TODO: error
-				return false;
-			};
+			pk := row->Get(@index)->As(IntHolder);
+			@keys->Insert(pk->Get(), row);
 			
-			row->SetColumnNames(@column_names);
-			@index_keys->Insert(row->Get(@index), row);
-			@rows->AddBack(row);
-			
-			return true;
-		}
-		
-		method : public : Size() ~ Int {
-			return @rows->Size();
-		}
-		
-		method : public : Select(value : Compare, type : Match, column : String) ~ Table {
-			index := @column_names->Find(column)->As(IntHolder);
-			if(index <> Nil) {
-				return Select(value, type, index->Get());
-			};
-			
-			return Table->New(@column_names, @index);
-		}
-		
-		method : public : native : Select(value : Compare, type : Match, index : Int) ~ Table {
-			matches := Table->New(@column_names, @index);
-			
-			if(index < 0 | index >= @column_names->Size()) {
-				return Nil;
-			};		
-			
-			if(@index = index) {
-				row := @index_keys->Find(value)->As(Row);
-				if(row <> Nil) {
-					matches->AddRow(row);
-				};
+			if(@head = Nil) {
+				@head := row;
+				@tail := row;
 			}
 			else {
-				@rows->Rewind();
-				while(@rows->More()) {
-					row := @rows->Get()->As(Row);
-					if(row->Match(value, type, index)) {
-						matches->AddRow(row);
-					};
-					@rows->Next();
+				@tail->Next(row);
+				row->Prev(@tail);
+				@tail := row;
+			};
+			
+			@count += 1;
+			return @count;
+		}
+		
+		method : public : Delete(pk : Int) ~ Bool {
+			row := @keys->Find(pk)->As(Row);
+			if(row <> Nil) {
+				if(row = @head) {
+					@head := row->Next();
+					row->Next(Nil);
+					@head->Prev(Nil);
+				}
+				else if(row = @tail) {
+					@tail := row->Prev();
+					row->Prev(Nil);
+					@tail->Next(Nil);
+				}
+				else {
 				};
 			};
 			
-			return matches;
-		}
-		
-		method : public : Delete(index : Int) ~ Bool {
 			return false;
 		}
 		
-		method : public : Delete(column : String) ~ Bool {
-			return false;
+		method : public : Count() ~ Int {
+			return @count;
 		}
 		
-		method : public : More() ~ Bool {
-			return @rows->More();
-		}
-		
-		method : public : Next() ~ Nil {
-			@rows->Next();
-		}
-		
-		method : public : Get() ~ Row {
-			return @rows->Get()->As(Row);
-		}
-		
-		method : public : Rewind() ~ Nil {
-			@rows->Rewind();
+		method : public : Show() ~ Nil {
+			temp := @head;
+			while(temp <> Nil) {
+				temp->Show();
+				temp := temp->Next();
+			};
+#~		
+			temp := @tail;
+			while(temp <> Nil) {
+				temp->Show();
+				temp := temp->Prev();
+			};
+~#			
 		}
 	}
-
-	class Row from BasicCompare {
+	
+	class Condition {
+		enum Qualifier {
+			EQUAL,
+			NOT_EQUAL,
+			GREATER,
+			LESS,
+			GREATER_EQUAL,
+			LESS_EQUAL,
+			LIKE
+		}
+		
+		New() {
+		}
+	}
+	
+	class Row {
 		@values : Compare[];
-		@column_names : StringMap;
-
-		New(values : Compare[]) {
-			Parent();
+		@next : Row;
+		@prev : Row;
+		
+		New(values : Compare[], index : Int) {
 			@values := values;
 		}
 		
-		method : public : SetColumnNames(column_names : StringMap) ~ Nil {
-			@column_names := column_names;
+		method : public : Get(i : Int) ~ Compare {
+			if(i < 0 | i >= @values->Size()) {
+				return Nil;
+			};
+			
+			return @values[i];
+		}
+		
+		method : public : Set(value : Compare, i : Int) ~ Bool {
+			if(i < 0 | i >= @values->Size()) {
+				return false;
+			};
+			
+			@values[i] := value;
+			return true;
+		}
+		
+		method : public : Next() ~ Row {
+			return @next;
+		}
+		
+		method : public : Next(next : Row) ~ Nil {
+			@next := next;
+		}
+		
+		method : public : Prev() ~ Row {
+			return @prev;
+		}
+		
+		method : public : Prev(prev : Row) ~ Nil {
+			@prev := prev;
 		}
 		
 		method : public : Size() ~ Int {
 			return @values->Size();
 		}
 		
-		method : public : native : Match(right : Compare, type : Match, index : Int) ~ Bool {
-			left := @values[index];
-			select(type) {
-				label Match->LESS: {
-					return left->Compare(right) < 0;
-				}
+		method : public : Show() ~ Nil {
+			buffer := "";
+			
+			each(i : @values) {
+				value := @values[i];
 				
-				label Match->GREATER: {
-					return left->Compare(right) > 0;
+				if(value->TypeOf(IntHolder)) {
+					buffer += value->As(IntHolder)->Get()->ToString();
 				}
+				else if(value->TypeOf(FloatHolder)) {
+					buffer += value->As(FloatHolder)->Get()->ToString();
+				}
+				else if(value->TypeOf(String)) {
+					buffer += value->As(String);
+				};
 				
-				label Match->LESS_EQUAL: {
-					return left->Compare(right) < 0 | left->Compare(right) = 0;
-				}
-				
-				label Match->GREATER_EQUAL: {
-					return left->Compare(right) > 0 | left->Compare(right) = 0;
-				}
-				
-				label Match->EQUAL: {
-					return left->Compare(right) = 0;
-				}
-				
-				label Match->NOT_EQUAL: {
-					return left->Compare(right) <> 0;
-				}
-				
-				## TODO
-				label Match->LIKE: {
-				}
+				if(i + 1 < @values->Size()) {
+					buffer += ", ";
+				};
 			};
 			
-			return false;
-		}
-		
-		method : public : Get(column : String) ~ Compare {
-			index := @column_names->Find(column)->As(IntHolder);
-			if(index <> Nil) {
-				return Get(index->Get());
-			};
-			
-			return Nil;
-		}
-		
-		method : public : Get(index : Int) ~ Compare {
-			if(index < 0 | index >= @values->Size()) {
-				return Nil;
-			};
-			
-			return @values[index];
-		}
-		
-		method : public : Set(value : Compare, index : Int) ~ Bool {
-			if(index < 0 | index >= @values->Size()) {
-				return false;
-			};
-			
-			@values[index] := value;
-			return true;
-		}
-		
-		method : public : Set(value : Compare, column : String) ~ Bool {
-			index := @column_names->Find(column)->As(IntHolder);
-			if(index <> Nil) {
-				return Set(column, index->Get());
-			};
-			
-			return false;
+			buffer->PrintLine();
 		}
 	}
 }
