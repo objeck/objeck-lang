@@ -36,12 +36,18 @@ class Test {
 		
 		table->Show();
 		
+#~		
 		"---"->PrintLine();
 		table->Delete(0);
 		table->Show();
 		
 		"---"->PrintLine();
 		table->Delete(3);
+		table->Show();
+~#		
+		
+		"---"->PrintLine();
+		table->Delete(1);
 		table->Show();
 		
 		
