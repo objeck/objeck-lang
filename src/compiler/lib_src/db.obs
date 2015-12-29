@@ -57,6 +57,10 @@ bundle TinyDB {
 					@tail->Next(Nil);
 				}
 				else {
+					row->Prev()->Next(row->Next());
+					row->Next()->Prev(row->Prev());
+					row->Next(Nil);
+					row->Prev(Nil);					
 				};
 			};
 			
@@ -68,18 +72,18 @@ bundle TinyDB {
 		}
 		
 		method : public : Show() ~ Nil {
+#~		
 			temp := @head;
 			while(temp <> Nil) {
 				temp->Show();
 				temp := temp->Next();
 			};
-#~		
+~#
 			temp := @tail;
 			while(temp <> Nil) {
 				temp->Show();
 				temp := temp->Prev();
 			};
-~#			
 		}
 	}
 	
