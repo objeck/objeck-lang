@@ -1,3 +1,5 @@
+use Collection;
+
 class Test {	
 	function : Main(args : String[]) ~ Nil {
 		table := Table->New("Student", ["pk","last","first","year","gpa"], 0);
@@ -15,7 +17,7 @@ class Test {
 		v1[1] := "Andrews";
 		v1[2] := "Mark";
 		v1[3] := IntHolder->New(2);
-		v1[4] := FloatHolder->New(2.33);
+		v1[4] := FloatHolder->New(3.03);
 		table->Insert(Row->New(v1, 0));
 		
 		v2 := Compare->New[5];
@@ -50,6 +52,9 @@ class Test {
 		table->Delete(1);
 		table->Show();
 		
-		
+		conds := Vector->New();
+		conds->AddBack(Conditional->New(4, Conditional->Qualifier->GREATER, FloatHolder->New(3)));
+		where := table->Where(conds);
+		where->Size()->PrintLine();
 	}
 }

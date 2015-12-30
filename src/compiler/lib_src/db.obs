@@ -17,8 +17,62 @@ bundle TinyDB {
 			@keys := IntMap->New();
 		}
 		
-		method : public : Where(conds : Vector) ~ Table {
-			return Nil;
+		method : public : Where(conds : Vector) ~ Vector {
+			matches := Vector->New();
+			
+			row := @head;
+			while(row <> Nil) {
+				each(j : conds) {
+					cond := conds->Get(j)->As(Conditional);
+					left := row->Get(cond->GetIndex());
+					if(left <> Nil) {
+						right := cond->GetValue();
+						select(cond->GetQualifier()) {
+							label Conditional->Qualifier->EQUAL: {
+								if(left->Compare(right) = 0) {
+									matches->AddBack(row);
+								};			
+							}
+							
+							label Conditional->Qualifier->NOT_EQUAL: {
+								if(left->Compare(right) <> 0) {
+									matches->AddBack(row);
+								};
+							}
+							
+							label Conditional->Qualifier->GREATER: {
+								if(left->Compare(right) > 0) {
+									matches->AddBack(row);
+								};
+							}
+							
+							label Conditional->Qualifier->LESS: {
+								if(left->Compare(right) < 0) {
+									matches->AddBack(row);
+								};
+							}
+							
+							label Conditional->Qualifier->GREATER_EQUAL: {
+								if(left->Compare(right) >= 0) {
+									matches->AddBack(row);
+								};
+							}
+							
+							label Conditional->Qualifier->LESS_EQUAL: {
+								if(left->Compare(right) <= 0) {
+									matches->AddBack(row);
+								};
+							}
+							
+							label Conditional->Qualifier->LIKE: {
+							}
+						};
+					};
+				};
+				row := row->Next();
+			};
+			
+			return matches;
 		}
 		
 		method : public : Insert(row : Row) ~ Int {
@@ -74,23 +128,30 @@ bundle TinyDB {
 			return @count;
 		}
 		
-		method : public : Show() ~ Nil {
-#~		
-			temp := @head;
-			while(temp <> Nil) {
-				temp->Show();
-				temp := temp->Next();
+		method : public : Show() ~ Nil {		
+			row := @head;
+			while(row <> Nil) {
+				row->Show();
+				row := row->Next();
 			};
-~#
-			temp := @tail;
-			while(temp <> Nil) {
-				temp->Show();
-				temp := temp->Prev();
+#~
+			row := @tail;
+			while(row <> Nil) {
+				row->Show();
+				row := row->Prev();
 			};
+~#			
 		}
 	}
 	
-	class Condition {
+	class Logical {
+	}
+	
+	class Conditional {
+		@index : Int;
+		@qualifier : Conditional->Qualifier;
+		@value : Compare;
+		
 		enum Qualifier {
 			EQUAL,
 			NOT_EQUAL,
@@ -101,7 +162,22 @@ bundle TinyDB {
 			LIKE
 		}
 		
-		New() {
+		New(index : Int, qualifier : Conditional->Qualifier, value : Compare) {
+			@index := index;
+			@qualifier := qualifier;
+			@value := value;
+		}
+		
+		method : public : GetQualifier() ~ Qualifier {
+			return @qualifier;
+		}
+		
+		method : public : GetValue() ~ Compare {
+			return @value;
+		}
+		
+		method : public : GetIndex() ~ Int {
+			return @index;
 		}
 	}
 	
