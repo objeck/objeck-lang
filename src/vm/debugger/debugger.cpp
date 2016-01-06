@@ -131,19 +131,12 @@ void Runtime::Debugger::ProcessArgs(Load* load) {
   const wstring temp = load->GetFileName();
   wchar_t* buffer = (wchar_t*)calloc(sizeof(wchar_t), temp.size() + 1);
   wcsncpy(buffer, temp.c_str(), temp.size());
-#ifdef WIN32
-  wchar_t* token = wcstok(buffer, L" ");
-#else
+
   wchar_t *state;
   wchar_t* token = wcstok(buffer, L" ", &state);
-#endif
   while(token) {
     arguments.push_back(token);
-#ifdef WIN32
-    token = wcstok(NULL, L" ");
-#else
     token = wcstok(NULL, L" ", &state);
-#endif
   }
   wcout << L"program arguments sets." << endl;
 
