@@ -2506,9 +2506,11 @@ bool JitCompilerIA64::cond_jmp(InstructionType type) {
       default:
         break;
       }  
-    }    
-		// store update index
+    }
+    
+    // store update index
     jump_table.insert(pair<long, StackInstr*>(code_index, next_instr));
+    
     // temp offset
     AddImm(0);
     skip_jump = true;
@@ -2548,7 +2550,7 @@ void JitCompilerIA64::math_imm_reg(long imm, Register reg, InstructionType type)
   case MOD_INT:
     div_imm_reg(imm, reg, true);
     break;
-
+    
   case SHL_INT:
     shl_imm_reg(imm, reg);
     break;
@@ -2665,7 +2667,7 @@ void JitCompilerIA64::math_mem_reg(long offset, Register reg, InstructionType ty
   case AND_INT:
     and_mem_reg(offset, RBP, reg);
     break;
-
+    
   case OR_INT:
     or_mem_reg(offset, RBP, reg);
     break;
@@ -2673,11 +2675,11 @@ void JitCompilerIA64::math_mem_reg(long offset, Register reg, InstructionType ty
   case ADD_INT:
     add_mem_reg(offset, RBP, reg);
     break;
-
+    
   case SUB_INT:
     sub_mem_reg(offset, RBP, reg);
     break;
-
+    
   case MUL_INT:
     mul_mem_reg(offset, RBP, reg);
     break;
