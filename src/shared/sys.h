@@ -127,12 +127,12 @@ static map<const wstring, wstring> ParseCommnadLine(const wstring &path_string) 
       if(path_string[pos] == L'\'') {
         pos++;
       }
-
-	  map<wstring, wstring>::iterator found = arguments.find(key);
-	  if(found != arguments.end()) {
-		  value += L',';
-		  value += found->second;
-	  }
+      
+      map<const wstring, wstring>::iterator found = arguments.find(key);
+      if(found != arguments.end()) {
+	value += L',';
+	value += found->second;
+      }
       arguments[key] = value;
     }
     else {
