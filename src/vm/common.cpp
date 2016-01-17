@@ -1555,14 +1555,8 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, long* inst,
       // read input
       const long max = array[2];
       wchar_t* buffer = new wchar_t[max + 1];
-      
       wcin.getline(buffer, max);
-#ifdef _WIN32
-      if(wcin.peek() == L'\n') {
-        wcin.get();
-      }
-#endif
-      
+      // copy to dest
       wchar_t* dest = (wchar_t*)(array + 3);
       wcsncpy(dest, buffer, max);
       // clean up
