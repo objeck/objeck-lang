@@ -152,7 +152,7 @@ bundle Collection {
 		
 		#~
 		Checks to see if the vector is empty
-		@return ture if empty, false otherwise
+		@return true if empty, false otherwise
 		~#
 		method : public : IsEmpty() ~ Bool {
 			return @size = 0;
@@ -519,7 +519,7 @@ bundle Collection {
 
 		#~
 		Checks to see if the vector is empty
-		@return ture if empty, false otherwise
+		@return true if empty, false otherwise
 		~#
 		method : public : Empty() ~ Nil {
 			@values := Float->New[8];
@@ -885,7 +885,7 @@ bundle Collection {
 		
 		#~
 		Checks to see if the vector is empty
-		@return ture if empty, false otherwise
+		@return true if empty, false otherwise
 		~#
 		method : public : IsEmpty() ~ Bool {
 			return @size = 0;
@@ -1163,7 +1163,7 @@ bundle Collection {
 		
 		#~
 		Checks to see if the vector is empty
-		@return ture if empty, false otherwise
+		@return true if empty, false otherwise
 		~#
 		method : public : IsEmpty() ~ Bool {
 			return @size = 0;
@@ -1245,7 +1245,7 @@ bundle Collection {
 		
 		#~
 		Checks to see if the vector is empty
-		@return ture if empty, false otherwise
+		@return true if empty, false otherwise
 		~#
 		method : public: IsEmpty() ~ Bool {
 			return @values->Size() = 0;
@@ -1325,7 +1325,7 @@ bundle Collection {
 		
 		#~
 		Checks to see if the vector is empty
-		@return ture if empty, false otherwise
+		@return true if empty, false otherwise
 		~#
 		method : public: IsEmpty() ~ Bool {
 			return @values->Size() = 0;
@@ -1389,7 +1389,7 @@ bundle Collection {
 		
 		#~
 		Checks to see if the vector is empty
-		@return ture if empty, false otherwise
+		@return true if empty, false otherwise
 		~#
 		method : public: IsEmpty() ~ Bool {
 			return @values->Size() = 0;
@@ -1444,7 +1444,7 @@ bundle Collection {
 		#~
 		Finds a value in the list and sets the pointer
 		@param value value to search for
-		@return ture if found, false otherwise
+		@return true if found, false otherwise
 		~#
 		method : public : Find(value : Int) ~ Bool {
 			return @list->Find(IntHolder->New(value)) <> Nil;
@@ -1566,7 +1566,7 @@ bundle Collection {
 		
 		#~
 		Checks to see if the list is empty
-		@return ture if empty, false otherwise
+		@return true if empty, false otherwise
 		~#
 		method : public : IsEmpty() ~ Bool {
 			return @list->IsEmpty();
@@ -1758,7 +1758,7 @@ bundle Collection {
 		
 		#~
 		Checks to see if the list is empty
-		@return ture if empty, false otherwise
+		@return true if empty, false otherwise
 		~#
 		method : public : IsEmpty() ~ Bool {
 			return @list->IsEmpty();
@@ -2011,7 +2011,7 @@ bundle Collection {
 		
 		#~
 		Checks to see if the list is empty
-		@return ture if empty, false otherwise
+		@return true if empty, false otherwise
 		~#
 		method : public : IsEmpty() ~ Bool {
 			return @size = 0;
@@ -2309,7 +2309,7 @@ bundle Collection {
 		
 		#~
 		Checks to see if the list is empty
-		@return ture if empty, false otherwise
+		@return true if empty, false otherwise
 		~#
 		method : public : IsEmpty() ~ Bool {
 			return @size = 0;
@@ -2414,7 +2414,7 @@ bundle Collection {
 		
 		#~
 		Checks to see if the queue is empty
-		@return ture if empty, false otherwise
+		@return true if empty, false otherwise
 		~#
 		method : public : IsEmpty() ~ Bool {
 			return @queue->IsEmpty();
@@ -2485,7 +2485,7 @@ bundle Collection {
 		
 		#~
 		Checks to see if the queue is empty
-		@return ture if empty, false otherwise
+		@return true if empty, false otherwise
 		~#
 		method : public : IsEmpty() ~ Bool {
 			return @queue->IsEmpty();
@@ -2556,7 +2556,7 @@ bundle Collection {
 		
 		#~
 		Checks to see if the queue is empty
-		@return ture if empty, false otherwise
+		@return true if empty, false otherwise
 		~#
 		method : public : IsEmpty() ~ Bool {
 			return @queue->IsEmpty();
@@ -2657,7 +2657,7 @@ bundle Collection {
 		
 		#~
 		Checks to see if the map is empty
-		@return ture if empty, false otherwise
+		@return true if empty, false otherwise
 		~#
 		method : public : IsEmpty() ~ Bool {
 			return @map->IsEmpty();
@@ -2766,7 +2766,7 @@ bundle Collection {
 		
 		#~
 		Checks to see if the map is empty
-		@return ture if empty, false otherwise
+		@return true if empty, false otherwise
 		~#
 		method : public : IsEmpty() ~ Bool {
 			return @map->IsEmpty();
@@ -2933,7 +2933,7 @@ bundle Collection {
 
 		#~
 		Checks to see if the map is empty
-		@return ture if empty, false otherwise
+		@return true if empty, false otherwise
 		~#
 		method : public : native : IsEmpty() ~ Bool {
 			return @map->IsEmpty();
@@ -2991,7 +2991,7 @@ bundle Collection {
 		
 		#~
 		Checks to see if the queue is empty
-		@return ture if empty, false otherwise
+		@return true if empty, false otherwise
 		~#
 		method : public : native : IsEmpty() ~ Bool {
 			return @size = 0;
@@ -3303,7 +3303,7 @@ bundle Collection {
 		
 		#~
 		Checks to see if the map is empty
-		@return ture if empty, false otherwise
+		@return true if empty, false otherwise
 		~#
 		method : public : native : IsEmpty() ~ Bool {
 			return @map->IsEmpty();
@@ -3373,7 +3373,7 @@ bundle Collection {
 
 		#~
 		Checks to see if the map is empty
-		@return ture if empty, false otherwise
+		@return true if empty, false otherwise
 		~#
 		method : public : native : IsEmpty() ~ Bool {
 			return @map->IsEmpty();
@@ -3443,7 +3443,7 @@ bundle Collection {
 
 		#~
 		Checks to see if the map is empty
-		@return ture if empty, false otherwise
+		@return true if empty, false otherwise
 		~#
 		method : public : native : IsEmpty() ~ Bool {
 			return @map->IsEmpty();
