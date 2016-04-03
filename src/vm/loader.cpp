@@ -1,7 +1,7 @@
 /***************************************************************************
  * Program loader.
  *
- * Copyright (c) 2008-2015, Randy Hollines
+ * Copyright (c) 2008-2016, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -141,11 +141,14 @@ void Loader::Load()
     const wstring value = ReadString();
     wchar_t* char_string = new wchar_t[value.size() + 1];
     // copy string
+    /*   
     size_t j = 0;
     for(; j < value.size(); j++) {
       char_string[j] = value[j];
     }
     char_string[j] = L'\0';
+    */
+    wcscpy(char_string, value.c_str());
 #ifdef _DEBUG
     wcout << L"Loaded static character string[" << i << L"]: '" << char_string << L"'" << endl;
 #endif
