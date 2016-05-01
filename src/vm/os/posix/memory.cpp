@@ -30,7 +30,6 @@
  ***************************************************************************/
 
 #include "memory.h"
-#include <iomanip>
 
 bool MemoryManager::initialized;
 StackProgram* MemoryManager::prgm;
