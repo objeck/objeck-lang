@@ -1,8 +1,8 @@
-ARGS=-g -D_DEBUG  -Wunused -Wall -Wno-unused-function -std=c++11 -std=c++11
+ARGS=-g -D_DEBUG  -Wunused -Wall -Wno-unused-function -std=c++11
 # ARGS=-O3 -Wall -Wno-unused-function -std=c++11 -std=c++11
 
-CC=C:/SysGCC/Raspberry/bin/arm-linux-gnueabihf-g++
-AR=C:/SysGCC/Raspberry/bin/arm-linux-gnueabihf-ar
+CC=D:/SysGCC/Raspberry/bin/arm-linux-gnueabihf-g++
+AR=D:/SysGCC/Raspberry/bin/arm-linux-gnueabihf-ar
 SRC= memory.o
 LIB= ../../memory.a
 
