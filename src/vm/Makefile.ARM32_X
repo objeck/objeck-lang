@@ -18,16 +18,16 @@ $(EXE): $(SRC) $(OBJ_LIBS)
 
 
 memory.a:
-	make -f $(MEM_PATH)/Makefile
+	cd $(MEM_PATH) && make
 	
 jit_arm_a32.a:
-	make -f $(JIT_PATH)/Makefile
+	cd $(JIT_PATH) && make
 	
 %.o: %.cpp
 	$(CC) $(ARGS) -c $< 
 
 clean:
-	make -f $(MEM_PATH)/Makefile clean
-	make -f $(JIT_PATH)/Makefile clean
+	cd $(MEM_PATH) && make clean
+	cd $(JIT_PATH) && make clean
 	rm -f $(EXE).exe $(EXE) *.exe *.o *~
 

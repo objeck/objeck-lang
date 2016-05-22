@@ -55,11 +55,16 @@ void JitCompilerIA32::Prolog() {
   */
   
   uint32_t setup_code[] = {
-    0xe92d100e, // push {r1, r2, r3, r12}
+    0xe92d4800,
+    0xe28db004,
+    0xe24dd028
+    
+    /*
+    0XE92D100E, // PUSH {R1, R2, r3, r12}
     0xe52db004, // push {fp}
     0xe28db000, // add fp, sp, #0
     0xe24dd000 + local_space, // sub sp, sp, #20
-/*
+
     0x55,                                                        // push %FP
     0x89, 0xe5,                                                  // mov  %SP, %FP
     0x81, 0xec, buffer[0], buffer[1], buffer[2], buffer[3],      // sub  $imm, %SP
