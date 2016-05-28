@@ -4,7 +4,7 @@
 # ARGS=-g -D_DEBUG -D_ARM32 -D_NO_JIT -Wall -pthread -Wall -Wno-unused-function -std=c++11
 ARGS=-g -D_DEBUG -D_ARM32 -Wall -pthread -Wall -Wno-unused-function -std=c++11
 
-CC=D:/SysGCC/Raspberry/bin/arm-linux-gnueabihf-g++
+CC=arm-linux-gnueabihf-g++
 SRC=common.o interpreter.o loader.o vm.o posix_main.o 
 OBJ_LIBS=jit_arm_a32.a memory.a
 MEM_PATH=os/posix
