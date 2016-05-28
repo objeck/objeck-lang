@@ -1,4 +1,4 @@
-CC=C:/SysGCC/Raspberry/bin/arm-linux-gnueabihf-g++
+CC=arm-linux-gnueabihf-g++
 # ARGS=-g -D_SYSTEM -D_DEBUG -Wall -Wno-unused-function
 ARGS=-g -D_DEBUG -Wall -Wno-unused-function
 # ARGS=-O3 -Wall -Wno-unused-function
