@@ -94,9 +94,9 @@ namespace Runtime {
     R8, 
     R9, 
     R10, 
-    FP, 
+    SP, 
     R12,
-    SP,
+    FP,
     R14,
     R15,
     XMM0, 
@@ -372,8 +372,8 @@ namespace Runtime {
       case R6:
         return L"R6";
 		
-      case SP:
-        return L"SP";	
+      case R7:
+        return L"R7";	
 		
       case R8:
         return L"R8";
@@ -384,8 +384,8 @@ namespace Runtime {
       case R10:
         return L"R10";
 			
-      case R11:
-        return L"R11";
+      case SP:
+        return L"SP";
 		
       case R12:
         return L"R12";
