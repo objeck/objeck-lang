@@ -83,7 +83,7 @@ namespace Runtime {
 
   // registers
   typedef enum _Register { 
-    R0 = -5000, 
+    R0 = 0, 
     R1, 
     R2, 
     R3, 
@@ -1281,7 +1281,7 @@ namespace Runtime {
         }
       }
 
-      int32_t index = TMP_REG_5;
+      int32_t index = CALL_STACK_POS;
       int32_t last_id = -1;
       multimap<int32_t, StackInstr*>::iterator value;
       for(value = values.begin(); value != values.end(); ++value) {
@@ -1328,10 +1328,10 @@ namespace Runtime {
         }
 #endif
       }
-      local_space = -(index + TMP_REG_5);
+      local_space = (-index + CALL_STACK_POS);
 
 #ifdef _DEBUG
-      wcout << L"Local space required: " << (local_space + 8) << L" byte(s)" << endl;
+      wcout << L"Local space required: " << local_space << L" byte(s)" << endl;
 #endif
     }
 

@@ -2,5 +2,6 @@ export OPENSSL_armcap=0
 ---
 target remote 192.168.1.156:1234
 set args ../compiler/a.obe
-b jit_arm_a32.cpp:3847
+b jit_arm_a32.cpp:3858
 c
+disas jit_fun, jit_fun+128
