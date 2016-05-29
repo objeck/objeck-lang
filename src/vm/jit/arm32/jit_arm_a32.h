@@ -626,23 +626,23 @@ namespace Runtime {
     void xor_mem_reg(int32_t offset, Register src, Register dest);
 
     // add instructions
+    void add_reg_reg(Register src, Register dest);
     void add_imm_mem(int32_t imm, int32_t offset, Register dest);    
-    void add_imm_reg(int32_t imm, Register reg);    
+    void add_imm_reg(int32_t imm, Register reg);
+    void add_mem_reg(int32_t offset, Register src, Register dest);
     void add_imm_xreg(RegInstr* instr, Register reg);
     void add_xreg_xreg(Register src, Register dest);
-    void add_mem_reg(int32_t offset, Register src, Register dest);
     void add_mem_xreg(int32_t offset, Register src, Register dest);
-    void add_reg_reg(Register src, Register dest);
-
+    
     // sub instructions
-    void sub_imm_xreg(RegInstr* instr, Register reg);
-    void sub_xreg_xreg(Register src, Register dest);
-    void sub_mem_xreg(int32_t offset, Register src, Register dest);
     void sub_imm_reg(int32_t imm, Register reg);
     void sub_imm_mem(int32_t imm, int32_t offset, Register dest);
     void sub_reg_reg(Register src, Register dest);
     void sub_mem_reg(int32_t offset, Register src, Register dest);
-
+    void sub_imm_xreg(RegInstr* instr, Register reg);
+    void sub_xreg_xreg(Register src, Register dest);
+    void sub_mem_xreg(int32_t offset, Register src, Register dest);
+    
     // mul instructions
     void mul_imm_xreg(RegInstr* instr, Register reg);
     void mul_xreg_xreg(Register src, Register dest);
