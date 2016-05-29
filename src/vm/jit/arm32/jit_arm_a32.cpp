@@ -94,9 +94,9 @@ void JitCompilerIA32::Epilog(int32_t imm) {
   
   move_imm_reg(imm, R0);
   uint32_t teardown_code[] = {
-    0xe28bd000, // add sp, fp, #0
-    0xe8bd0800, // ldmfd sp!, {fp}
-    0xe12fff1e, // bx lr
+    0xe24bd000, //  sub sp, fp, #0
+    0xe49db004, //  pop {fp}    ; (ldr fp, [sp], #4)
+    0xe12fff1e  //  bx  lr
     
     /*
     // restore registers
@@ -2973,16 +2973,20 @@ void JitCompilerIA32::mul_imm_xreg(RegInstr* instr, Register reg) {
 
 void JitCompilerIA32::add_reg_reg(Register src, Register dest) {
 #ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << L": [addl %" << GetRegisterName(src) 
+  wcout << L"  " << (++instr_count) << L": [add %" << GetRegisterName(src) 
        << L", %" << GetRegisterName(dest) << L"]" << endl;
 #endif
-  // encode
-  AddMachineCode(0x01);
-  unsigned char code = 0xc0;
-  // write value
-  // RegisterEncode3(code, 2, src);
-  // RegisterEncode3(code, 5, dest);
-  AddMachineCode(code);
+  uint32_t op_code = 0xe0800000;
+  
+  uint32_t op_src = src << 16;
+  op_code |= op_src;
+  
+  uint32_t op_dest = dest << 12;
+  op_code |= op_dest;
+	
+  op_code |= dest;
+
+  AddMachineCode(op_code);
 }
 
 void JitCompilerIA32::sub_xreg_xreg(Register src, Register dest) {
@@ -3051,16 +3055,10 @@ void JitCompilerIA32::add_xreg_xreg(Register src, Register dest) {
     
 // TODO...
 void JitCompilerIA32::add_mem_reg(int32_t offset, Register src, Register dest) {
-#ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << L": [addl " << offset << L"(%" 
-       << GetRegisterName(src) << L"), %" << GetRegisterName(dest) 
-       << L"]" << endl;
-#endif
-  // encode
-  AddMachineCode(0x03);
-  // AddMachineCode(ModRM(src, dest));
-  // write value
-  AddImm(offset);
+  RegisterHolder* mem_holder = GetRegister();
+  move_mem_reg(offset, src, mem_holder->GetRegister());
+  add_reg_reg(mem_holder->GetRegister(), dest);
+  ReleaseRegister(mem_holder); 
 }
 
 void JitCompilerIA32::add_mem_xreg(int32_t offset, Register src, Register dest) {
