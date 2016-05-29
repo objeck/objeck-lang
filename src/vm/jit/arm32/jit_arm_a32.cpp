@@ -2142,15 +2142,21 @@ void JitCompilerIA32::move_reg_mem8(Register src, int32_t offset, Register dest)
   // write value
   AddImm(offset);
 }
-    
+
 void JitCompilerIA32::move_reg_mem(Register src, int32_t offset, Register dest) { 
 #ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << L": [mov %" << GetRegisterName(src) 
+  wcout << L"  " << (++instr_count) << L": [str %" << GetRegisterName(src) 
        << L", " << offset << L"(%" << GetRegisterName(dest) << L")" << L"]" 
        << endl;
 #endif
 
-  uint32_t op_code = 0xe5000000;
+  uint32_t op_code;
+  if(offset < 0) {
+    op_code = 0xe5000000;
+  }
+  else {
+    op_code = 0xe4000000;	  
+  }
   
   uint32_t op_dest = dest << 16;
   op_code |= op_dest;
@@ -2195,15 +2201,30 @@ void JitCompilerIA32::move_mem16_reg(int32_t offset, Register src, Register dest
 
 void JitCompilerIA32::move_mem_reg(int32_t offset, Register src, Register dest) {
 #ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << L": [movl " << offset << L"(%" 
-       << GetRegisterName(src) << L"), %" << GetRegisterName(dest)
-       << L"]" << endl;
+  wcout << L"  " << (++instr_count) << L": [ldr %" << GetRegisterName(src) 
+       << L", " << offset << L"(%" << GetRegisterName(dest) << L")" << L"]" 
+       << endl;
 #endif
+
+  uint32_t op_code;
+  if(offset < 0) {
+    op_code = 0xe5100000;
+  }
+  else {
+    op_code = 0xe4100000;	  
+  }
+  
+  uint32_t op_src = src << 16;
+  op_code |= op_src;
+  
+  uint32_t op_dest = dest << 12;
+  op_code |= op_dest;
+  
+  int32_t op_offset = -offset;
+  op_code |= op_offset;
+  
   // encode
-  AddMachineCode(0x8b);
-  // AddMachineCode(ModRM(src, dest));
-  // write value
-  AddImm(offset);
+  AddMachineCode(op_code);
 }
     
 void JitCompilerIA32::move_imm_memx(RegInstr* instr, int32_t offset, Register dest) {
@@ -3028,6 +3049,7 @@ void JitCompilerIA32::add_xreg_xreg(Register src, Register dest) {
   AddMachineCode(code);
 }
     
+// TODO...
 void JitCompilerIA32::add_mem_reg(int32_t offset, Register src, Register dest) {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [addl " << offset << L"(%" 
