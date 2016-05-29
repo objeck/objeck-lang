@@ -627,8 +627,8 @@ namespace Runtime {
 
     // add instructions
     void add_reg_reg(Register src, Register dest);
-    void add_imm_mem(int32_t imm, int32_t offset, Register dest);    
-    void add_imm_reg(int32_t imm, Register reg);
+    void add_imm_mem(int32_t imm, int32_t offset, Register dest); // TODO
+    void add_imm_reg(int32_t imm, Register reg); // TODO
     void add_mem_reg(int32_t offset, Register src, Register dest);
     void add_imm_xreg(RegInstr* instr, Register reg);
     void add_xreg_xreg(Register src, Register dest);
@@ -1290,7 +1290,7 @@ namespace Runtime {
         // instance reference
         if(instr->GetOperand2() == INST || instr->GetOperand2() == CLS) {
           // note: all instance variables are allocted in 4-byte blocks,
-          // for floats the assembler allocates 2 4-byte blocks
+          // for floats the assembler allocates 2*4-byte blocks
           instr->SetOperand3(instr->GetOperand() * sizeof(int32_t));
         }
         // local reference
