@@ -2066,7 +2066,7 @@ void JitCompilerIA32::ProcessFloatCalculation(StackInstr* instruction) {
 }
 
 //====================================================================
-//=============================== NEW ================================
+//============================== NEW WIP =============================
 //====================================================================
 
 void JitCompilerIA32::move_reg_mem(Register src, int32_t offset, Register dest) { 
@@ -2076,11 +2076,13 @@ void JitCompilerIA32::move_reg_mem(Register src, int32_t offset, Register dest) 
   #endif
   
   uint32_t op_code;
-  if(offset < 0) {
-    op_code = 0xe5000000;
+  if(offset >= 0) {
+    // forward
+    op_code = 0xe5800000;
   }
   else {
-    op_code = 0xe4000000;	  
+    // backward
+    op_code = 0xe5000000;
   }
   
   uint32_t op_dest = dest << 16;
@@ -2089,7 +2091,7 @@ void JitCompilerIA32::move_reg_mem(Register src, int32_t offset, Register dest) 
   uint32_t op_src = src << 12;
   op_code |= op_src;
   
-  uint32_t op_offset = -offset;
+  uint32_t op_offset = abs(offset);
   op_code |= op_offset;
   
   // encode
@@ -2103,11 +2105,13 @@ void JitCompilerIA32::move_mem_reg(int32_t offset, Register src, Register dest) 
 #endif
   
   uint32_t op_code;
-  if(offset < 0) {
-    op_code = 0xe5100000;
+  if(offset >= 0) {
+    // forward
+    op_code = 0xe5180000;
   }
   else {
-    op_code = 0xe4100000;	  
+    // backward
+    op_code = 0xe5100000;    
   }
   
   uint32_t op_src = src << 16;
@@ -2116,7 +2120,7 @@ void JitCompilerIA32::move_mem_reg(int32_t offset, Register src, Register dest) 
   uint32_t op_dest = dest << 12;
   op_code |= op_dest;
   
-  uint32_t op_offset = -offset;
+  uint32_t op_offset = abs(offset);
   op_code |= op_offset;
   
   // encode
