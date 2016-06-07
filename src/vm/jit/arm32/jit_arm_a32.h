@@ -52,10 +52,10 @@ namespace Runtime {
 #define MTHD_ID -12
 #define CLASS_MEM -16
 #define INSTANCE_MEM -20
-#define OP_STACK -24
-#define STACK_POS -28
-#define CALL_STACK -32
-#define CALL_STACK_POS -36
+#define OP_STACK 4
+#define STACK_POS 8
+#define CALL_STACK 12
+#define CALL_STACK_POS 16
   // float temps
 #define TMP_XMM_0 -40
 #define TMP_XMM_1 -48
