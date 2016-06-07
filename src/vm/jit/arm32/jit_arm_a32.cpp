@@ -2107,7 +2107,7 @@ void JitCompilerIA32::move_mem_reg(int32_t offset, Register src, Register dest) 
   uint32_t op_code;
   if(offset >= 0) {
     // forward
-    op_code = 0xe5180000;
+    op_code = 0xe5900000;
   }
   else {
     // backward
