@@ -50,6 +50,7 @@ void JitCompilerIA32::Prolog() {
   
   uint32_t setup_code[] = {
     0xe52db004,                // push  {fp}
+    0xe92d00f0,                // push {r4-r7} ‬
     0xe28db000,                // add fp, sp, #0
     0xe24dd024 + local_space,  // sub sp, sp, #local_space
     0xe50b0008,                // str r0, [fp, #-8]
@@ -72,9 +73,10 @@ void JitCompilerIA32::Epilog(int32_t imm) {
   
   move_imm_reg(imm, R0);
   uint32_t teardown_code[] = {
-    0xe24bd000, //  sub sp, fp, #0
-    0xe49db004, //  pop {fp}
-    0xe12fff1e  //  bx  lr
+    0xe24bd000, // sub sp, fp, #0
+    0xe8bd00f0, // pop {r4-r7}‬
+    0xe49db004, // pop {fp}
+    0xe12fff1e  // bx  lr
   };
 
   // copy teardown
@@ -89,11 +91,11 @@ void JitCompilerIA32::RegisterRoot() {
   RegisterHolder* holder = GetRegister();
   // note: -8 is the offset requried to 
   // get to the first local variale
-  const int32_t offset = local_space + TMP_REG_5 - 8;
+  const int32_t offset = local_space + TMP_REG_3 - 8;
   move_reg_reg(FP, holder->GetRegister());
   sub_imm_reg(offset, holder->GetRegister());
   // push call values
-  push_imm(offset + TMP_REG_5);
+  push_imm(offset + TMP_REG_3);
   push_reg(holder->GetRegister());
   push_mem(INSTANCE_MEM, FP);
   push_mem(MTHD_ID, FP);
@@ -114,7 +116,7 @@ void JitCompilerIA32::UnregisterRoot() {
   move_reg_reg(FP, holder->GetRegister());
   // note: -8 is the offset requried to 
   // get to the memory root
-  sub_imm_reg(local_space + TMP_REG_5 - 8, 
+  sub_imm_reg(local_space + TMP_REG_3 - 8, 
 	      holder->GetRegister());
   // push call value
   push_reg(holder->GetRegister());
@@ -1513,7 +1515,7 @@ void JitCompilerIA32::ProcessStackCallback(int32_t instr_id, StackInstr* instr,
   }
 
 #ifdef _DEBUG
-  assert(reg_offset >= TMP_REG_5);
+  assert(reg_offset >= TMP_REG_3);
   assert(xmm_offset >= TMP_XMM_2);
 #endif
 
@@ -2100,8 +2102,8 @@ void JitCompilerIA32::move_reg_mem(Register src, int32_t offset, Register dest) 
 
 void JitCompilerIA32::move_mem_reg(int32_t offset, Register src, Register dest) {
 #ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << L": [ldr " << GetRegisterName(src) 
-	<< L", (" << GetRegisterName(dest) << L", #" << offset << L")]" << endl;
+  wcout << L"  " << (++instr_count) << L": [ldr " << GetRegisterName(dest) 
+	<< L", (" << GetRegisterName(src) << L", #" << offset << L")]" << endl;
 #endif
   
   uint32_t op_code;
@@ -2196,9 +2198,9 @@ void JitCompilerIA32::add_imm_reg(int32_t imm, Register reg) {
 
 void JitCompilerIA32::add_imm_mem(int32_t imm, int32_t offset, Register dest) {
   RegisterHolder* mem_holder = GetRegister();
-  move_mem_reg(offset, FP, mem_holder->GetRegister());
+  move_mem_reg(offset, dest, mem_holder->GetRegister());
   add_imm_reg(imm, mem_holder->GetRegister());
-  move_reg_mem(mem_holder->GetRegister(), FP, mem_holder->GetRegister());
+  move_reg_mem(mem_holder->GetRegister(), offset, dest);
   ReleaseRegister(mem_holder); 
 }
 
@@ -2255,9 +2257,11 @@ void JitCompilerIA32::sub_imm_reg(int32_t imm, Register reg) {
 
 void JitCompilerIA32::sub_imm_mem(int32_t imm, int32_t offset, Register dest) {
   RegisterHolder* mem_holder = GetRegister();
-  move_mem_reg(offset, FP, mem_holder->GetRegister());
+  
+  move_mem_reg(offset, dest, mem_holder->GetRegister());
   sub_imm_reg(imm, mem_holder->GetRegister());
-  move_reg_mem(mem_holder->GetRegister(), FP, mem_holder->GetRegister());
+  move_reg_mem(mem_holder->GetRegister(), offset, dest);
+  
   ReleaseRegister(mem_holder); 
 }
 
@@ -2267,21 +2271,22 @@ void JitCompilerIA32::dec_mem(int32_t offset, Register dest) {
 
 void JitCompilerIA32::shl_imm_reg(int32_t value, Register dest) {
 #ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << L": [shl " << GetRegisterName(dest) << L", "
-	<< GetRegisterName(dest) << L", #" value << L"]" << endl;
+  wcout << L"  " << (++instr_count) << L": [lsl " << GetRegisterName(dest) << L", "
+	<< GetRegisterName(dest) << L", #" << value << L"]" << endl;
 #endif
                                  
   uint32_t op_code = op_code = 0xe1a00000;
-    
-  uint32_t op_dest = dest << 16;
+      
+  uint32_t op_dest = dest << 12;
   op_code |= op_dest;
+
   
-  uint32_t op_imm = imm << 12;
+  uint32_t op_imm = value << 7;
   op_code |= op_imm;
   
   uint32_t op_src = dest;
   op_code |= op_src;
-  
+
   // encode
   AddMachineCode(op_code);
 }

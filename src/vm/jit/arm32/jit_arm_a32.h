@@ -52,10 +52,10 @@ namespace Runtime {
 #define MTHD_ID -12
 #define CLASS_MEM -16
 #define INSTANCE_MEM -20
-#define OP_STACK 4
-#define STACK_POS 8
-#define CALL_STACK 12
-#define CALL_STACK_POS 16
+#define OP_STACK 20
+#define STACK_POS 24
+#define CALL_STACK 28
+#define CALL_STACK_POS 32
   // float temps
 #define TMP_XMM_0 -40
 #define TMP_XMM_1 -48
@@ -65,8 +65,8 @@ namespace Runtime {
 #define TMP_REG_1 -68
 #define TMP_REG_2 -72
 #define TMP_REG_3 -76
-#define TMP_REG_4 -80
-#define TMP_REG_5 -84
+  // #define TMP_REG_4 -80
+  // #define TMP_REG_5 -84
   
 #define MAX_DBLS 64
 #define PAGE_SIZE 4096
@@ -1304,14 +1304,14 @@ namespace Runtime {
               instr->GetType() == STOR_CLS_INST_INT_VAR ||
               instr->GetType() == COPY_LOCL_INT_VAR ||
               instr->GetType() == COPY_CLS_INST_INT_VAR) {
-                index -= sizeof(int32_t);
+                index += sizeof(int32_t);
             }
             else if(instr->GetType() == LOAD_FUNC_VAR || 
               instr->GetType() == STOR_FUNC_VAR) {
-                index -= sizeof(int32_t) * 2;
+                index += sizeof(int32_t) * 2;
             }
             else {
-              index -= sizeof(double);
+              index += sizeof(double);
             }
           }
           instr->SetOperand3(index);
@@ -1450,7 +1450,10 @@ namespace Runtime {
         aval_regs.push_back(new RegisterHolder(R1));
         aval_regs.push_back(new RegisterHolder(R0));
         // aux general use registers
-        aux_regs.push(new RegisterHolder(R12));
+        aux_regs.push(new RegisterHolder(R7));
+	aux_regs.push(new RegisterHolder(R6));	
+	aux_regs.push(new RegisterHolder(R5));
+	aux_regs.push(new RegisterHolder(R4));
         // floating point registers
         aval_xregs.push_back(new RegisterHolder(XMM7));
         aval_xregs.push_back(new RegisterHolder(XMM6));
