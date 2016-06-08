@@ -1,19 +1,25 @@
-bundle Default {
-	#~~~
-	Hello
-	World!
-	~~~#
-	class Test {
-		function : Main(args : System.String[]) ~ Nil {
-			Run(args);
-		}
+#~~~
+ Hello
+ World!
+~~~#
+class Test {
+	function : Main(args : System.String[]) ~ Nil {
+		f := Run(9);
+		Run(f*3)->PrintLine();
+	}
 
-		function : native : Run(args : String[]) ~ Nil {		
-#		function : Run(args : String[]) ~ Nil {		
-			a := 7;
-			b := 13;
-			(a+b)->PrintLine();
+
+	function : native : Run(x:Int) ~ Int {
+#	function : Run(args : String[]) ~ Nil {
+		a := 7 + x;
+		b := 13;
+		c := b - a + 10;
+		return c;
+							  
 #~
+							  
+			(a+b)->PrintLine();
+
 			b := 13;
 			(b-9.33)->PrintLine();
 
