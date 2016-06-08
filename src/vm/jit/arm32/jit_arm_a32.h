@@ -352,52 +352,52 @@ namespace Runtime {
     wstring GetRegisterName(Register reg) {
       switch(reg) {
       case R0:
-        return L"R0";
+        return L"r0";
 
       case R1:
-        return L"R1";
+        return L"r1";
 
       case R2:
-        return L"R2";
+        return L"r2";
 
       case R3:
-        return L"R3";
+        return L"r3";
 		
       case R4:
-        return L"R4";
+        return L"r4";
 	
       case R5:
-        return L"R5";
+        return L"r5";
 		
       case R6:
-        return L"R6";
+        return L"r6";
 		
       case R7:
-        return L"R7";	
+        return L"r7";	
 		
       case R8:
-        return L"R8";
+        return L"r8";
 		
       case R9:
-        return L"R9";
+        return L"r9";
 				
       case R10:
-        return L"R10";
+        return L"r10";
 			
       case SP:
-        return L"SP";
+        return L"sp";
 		
       case R12:
-        return L"R12";
+        return L"r12";
 
       case FP:
-        return L"FP";
+        return L"fp";
 
       case R14:
-        return L"R14";
+        return L"r14";
 
       case R15:
-        return L"R15";
+        return L"r15";
 		
       case XMM0:
         return L"xmm0";
@@ -1331,7 +1331,7 @@ namespace Runtime {
       local_space = (-index + CALL_STACK_POS);
 
 #ifdef _DEBUG
-      wcout << L"Local space required: " << local_space << L" byte(s)" << endl;
+      wcout << L"Local space required: " << abs(local_space) << L" byte(s)" << endl;
 #endif
     }
 

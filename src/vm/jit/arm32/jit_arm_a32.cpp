@@ -2217,8 +2217,8 @@ void JitCompilerIA32::sub_mem_reg(int32_t offset, Register src, Register dest) {
 
 void JitCompilerIA32::sub_reg_reg(Register src, Register dest) {
 #ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << L": [sub %" << GetRegisterName(src) 
-	<< L", %" << GetRegisterName(dest) << L"]" << endl;
+  wcout << L"  " << (++instr_count) << L": [rsb " << GetRegisterName(dest) << L", "
+	<< GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
 #endif
   uint32_t op_code = 0xe0600000;
   
