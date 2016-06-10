@@ -142,6 +142,8 @@ void StackInterpreter::Initialize(StackProgram* p)
 #ifndef _NO_JIT
 #ifdef _X64
   JitCompilerIA64::Initialize(program);
+#elif _ARM32
+  JitCompilerA32::Initialize(program);
 #else
   JitCompilerIA32::Initialize(program);
 #endif
@@ -1755,7 +1757,7 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, long* instance,
   ProcessInterpretedMethodCall(called, instance, instrs, ip);
 #else
   if(called->GetNativeCode()) {
-    JitExecutorIA32 jit_executor;
+    JitExecutor jit_executor;
     long status = jit_executor.Execute(called, (long*)instance, op_stack, stack_pos, call_stack, call_stack_pos);
     if(status < 0) {
       switch(status) {
@@ -1784,6 +1786,8 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, long* instance,
     // compile
 #ifdef _X64
     JitCompilerIA64 jit_compiler;
+#elif _ARM32
+    JitCompilerA32 jit_compiler;
 #else
     JitCompilerIA32 jit_compiler;
 #endif
@@ -1795,7 +1799,7 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, long* instance,
       return;
     }
     // execute
-    JitExecutorIA32 jit_executor;
+    JitExecutor jit_executor;
     long status = jit_executor.Execute(called, (long*)instance, op_stack, stack_pos, call_stack, call_stack_pos);
     if(status < 0) {
       switch(status) {
