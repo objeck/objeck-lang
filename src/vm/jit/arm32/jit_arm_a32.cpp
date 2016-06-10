@@ -35,15 +35,15 @@
 using namespace Runtime;
 
 /********************************
- * JitCompilerIA32 class
+ * JitCompilerA32 class
  ********************************/
-StackProgram* JitCompilerIA32::program;
-void JitCompilerIA32::Initialize(StackProgram* p) {
+StackProgram* JitCompilerA32::program;
+void JitCompilerA32::Initialize(StackProgram* p) {
   program = p;
 }
 
 // setup of stackframe
-void JitCompilerIA32::Prolog() {
+void JitCompilerA32::Prolog() {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [<prolog>]" << endl;
 #endif
@@ -66,7 +66,7 @@ void JitCompilerIA32::Prolog() {
 }
 
 // teardown of stackframe
-void JitCompilerIA32::Epilog(int32_t imm) {
+void JitCompilerA32::Epilog(int32_t imm) {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [<epilog>]" << endl;
 #endif
@@ -86,7 +86,7 @@ void JitCompilerIA32::Epilog(int32_t imm) {
   }
 }
 
-void JitCompilerIA32::RegisterRoot() {
+void JitCompilerA32::RegisterRoot() {
   // caculate root address
   RegisterHolder* holder = GetRegister();
   // note: -8 is the offset requried to 
@@ -110,7 +110,7 @@ void JitCompilerIA32::RegisterRoot() {
   ReleaseRegister(call_holder);
 }
 
-void JitCompilerIA32::UnregisterRoot() {
+void JitCompilerA32::UnregisterRoot() {
   // caculate root address
   RegisterHolder* holder = GetRegister();
   move_reg_reg(FP, holder->GetRegister());
@@ -130,7 +130,7 @@ void JitCompilerIA32::UnregisterRoot() {
   ReleaseRegister(call_holder);
 }
 
-void JitCompilerIA32::ProcessParameters(int32_t params) {
+void JitCompilerA32::ProcessParameters(int32_t params) {
 #ifdef _DEBUG
   wcout << L"CALLED_PARMS: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
@@ -204,7 +204,7 @@ void JitCompilerIA32::ProcessParameters(int32_t params) {
   }
 }
 
-void JitCompilerIA32::ProcessIntCallParameter() {
+void JitCompilerA32::ProcessIntCallParameter() {
 #ifdef _DEBUG
   wcout << L"INT_CALL: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
@@ -225,7 +225,7 @@ void JitCompilerIA32::ProcessIntCallParameter() {
   ReleaseRegister(stack_pos_holder);
 }
 
-void JitCompilerIA32::ProcessFunctionCallParameter() {
+void JitCompilerA32::ProcessFunctionCallParameter() {
 #ifdef _DEBUG
   wcout << L"FUNC_CALL: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
@@ -254,7 +254,7 @@ void JitCompilerIA32::ProcessFunctionCallParameter() {
   ReleaseRegister(stack_pos_holder);
 }
 
-void JitCompilerIA32::ProcessFloatCallParameter() {
+void JitCompilerA32::ProcessFloatCallParameter() {
 #ifdef _DEBUG
   wcout << L"FLOAT_CALL: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
@@ -277,7 +277,38 @@ void JitCompilerIA32::ProcessFloatCallParameter() {
   ReleaseRegister(stack_pos_holder);
 }
 
-void JitCompilerIA32::ProcessInstructions() {
+void JitCompilerA32::ProcessDivMod() {
+  // input r0 => num, r1 => deno, div => r0, mod => r1
+  uint32_t div_code[] = {
+    0xe52db004, //  push  {fp}
+    0xe28db000, //  add fp, sp, #0
+    0xe92d000c, //  push r3
+    0xe3a02000, //  mov r2, 0
+
+    0xe1a03fa3, // lsr r3, r3, #31
+    0xe6ef0073, // uxtb  r0, r3
+    0xe6ef1073, // uxtb  r1, r3
+    
+    0xe0600001, //  rsb r0, r0, r1
+    0xe3520000, //  cmp r3, #0
+    0xaa000001, //  bge +1
+    0xe2822001, //  add r3, r3, #1
+    0xe0600001, //  rsb r0, r0, r1
+    0xeafffffa, //  b -2
+    0xe1a00002, //  mov r0, r3
+    0xe8bd000c, //  push r3
+    0xe24bd000, //  sub sp, fp, #0
+    0xe49db004, //  pop {fp}
+    0xe12fff1e  //  bx  lr
+  };
+  const int32_t setup_size = sizeof(div_code) / sizeof(int32_t);
+  // copy setup
+  for(int32_t i = 0; i < setup_size; i++) {
+    AddMachineCode(div_code[i]);
+  }
+}
+
+void JitCompilerA32::ProcessInstructions() {
   while(instr_index < method->GetInstructionCount() && compile_success) {
     StackInstr* instr = method->GetInstruction(instr_index++);
     instr->SetOffset(code_index);
@@ -750,7 +781,7 @@ void JitCompilerIA32::ProcessInstructions() {
   }
 }
 
-void JitCompilerIA32::ProcessLoad(StackInstr* instr) {
+void JitCompilerA32::ProcessLoad(StackInstr* instr) {
   // method/function memory
   if(instr->GetOperand2() == LOCL) {
     if(instr->GetType() == LOAD_FUNC_VAR) {
@@ -809,7 +840,7 @@ void JitCompilerIA32::ProcessLoad(StackInstr* instr) {
   }
 }
 
-void JitCompilerIA32::ProcessJump(StackInstr* instr) {
+void JitCompilerA32::ProcessJump(StackInstr* instr) {
   if(!skip_jump) {
 #ifdef _DEBUG
     wcout << L"JMP: id=" << instr->GetOperand() << L", regs=" << aval_regs.size() 
@@ -879,7 +910,7 @@ void JitCompilerIA32::ProcessJump(StackInstr* instr) {
   }
 }
 
-void JitCompilerIA32::ProcessReturnParameters(MemoryType type) {
+void JitCompilerA32::ProcessReturnParameters(MemoryType type) {
   switch(type) {
   case INT_TYPE:
     ProcessIntCallParameter();
@@ -898,7 +929,7 @@ void JitCompilerIA32::ProcessReturnParameters(MemoryType type) {
   }
 }
 
-void JitCompilerIA32::ProcessLoadByteElement(StackInstr* instr) {
+void JitCompilerA32::ProcessLoadByteElement(StackInstr* instr) {
   RegisterHolder* holder = GetRegister();
   RegisterHolder* elem_holder = ArrayIndex(instr, BYTE_ARY_TYPE);
   xor_reg_reg(holder->GetRegister(), holder->GetRegister());
@@ -907,7 +938,7 @@ void JitCompilerIA32::ProcessLoadByteElement(StackInstr* instr) {
   working_stack.push_front(new RegInstr(holder));
 }
 
-void JitCompilerIA32::ProcessLoadCharElement(StackInstr* instr) {
+void JitCompilerA32::ProcessLoadCharElement(StackInstr* instr) {
   RegisterHolder* holder = GetRegister();
   RegisterHolder* elem_holder = ArrayIndex(instr, CHAR_ARY_TYPE);
   xor_reg_reg(holder->GetRegister(), holder->GetRegister());
@@ -922,13 +953,13 @@ void JitCompilerIA32::ProcessLoadCharElement(StackInstr* instr) {
   working_stack.push_front(new RegInstr(holder));
 }
 
-void JitCompilerIA32::ProcessLoadIntElement(StackInstr* instr) {
+void JitCompilerA32::ProcessLoadIntElement(StackInstr* instr) {
   RegisterHolder* elem_holder = ArrayIndex(instr, INT_TYPE);
   move_mem_reg(0, elem_holder->GetRegister(), elem_holder->GetRegister());
   working_stack.push_front(new RegInstr(elem_holder));
 }
 
-void JitCompilerIA32::ProcessLoadFloatElement(StackInstr* instr) {
+void JitCompilerA32::ProcessLoadFloatElement(StackInstr* instr) {
   RegisterHolder* elem_holder = ArrayIndex(instr, FLOAT_TYPE);
   RegisterHolder* holder = GetXmmRegister();
   move_mem_xreg(0, elem_holder->GetRegister(), holder->GetRegister());
@@ -936,7 +967,7 @@ void JitCompilerIA32::ProcessLoadFloatElement(StackInstr* instr) {
   ReleaseRegister(elem_holder);
 }
 
-void JitCompilerIA32::ProcessStoreByteElement(StackInstr* instr) {
+void JitCompilerA32::ProcessStoreByteElement(StackInstr* instr) {
   RegisterHolder* elem_holder = ArrayIndex(instr, BYTE_ARY_TYPE);
   RegInstr* left = working_stack.front();
   working_stack.pop_front();
@@ -982,7 +1013,7 @@ void JitCompilerIA32::ProcessStoreByteElement(StackInstr* instr) {
   left = NULL;
 }
 
-void JitCompilerIA32::ProcessStoreCharElement(StackInstr* instr) {
+void JitCompilerA32::ProcessStoreCharElement(StackInstr* instr) {
   RegisterHolder* elem_holder = ArrayIndex(instr, CHAR_ARY_TYPE);
   RegInstr* left = working_stack.front();
   working_stack.pop_front();
@@ -1044,7 +1075,7 @@ void JitCompilerIA32::ProcessStoreCharElement(StackInstr* instr) {
   left = NULL;
 }
 
-void JitCompilerIA32::ProcessStoreIntElement(StackInstr* instr) {
+void JitCompilerA32::ProcessStoreIntElement(StackInstr* instr) {
   RegisterHolder* elem_holder = ArrayIndex(instr, INT_TYPE);
   RegInstr* left = working_stack.front();
   working_stack.pop_front();
@@ -1078,7 +1109,7 @@ void JitCompilerIA32::ProcessStoreIntElement(StackInstr* instr) {
   left = NULL;
 }
 
-void JitCompilerIA32::ProcessStoreFloatElement(StackInstr* instr) {
+void JitCompilerA32::ProcessStoreFloatElement(StackInstr* instr) {
   RegisterHolder* elem_holder = ArrayIndex(instr, FLOAT_TYPE);
   RegInstr* left = working_stack.front();
   working_stack.pop_front();
@@ -1114,7 +1145,7 @@ void JitCompilerIA32::ProcessStoreFloatElement(StackInstr* instr) {
   left = NULL;
 }
 
-void JitCompilerIA32::ProcessFloor(StackInstr* instr) {
+void JitCompilerA32::ProcessFloor(StackInstr* instr) {
   RegInstr* left = working_stack.front();
   working_stack.pop_front();
   
@@ -1149,7 +1180,7 @@ void JitCompilerIA32::ProcessFloor(StackInstr* instr) {
   }
 }
 
-void JitCompilerIA32::ProcessCeiling(StackInstr* instr) {
+void JitCompilerA32::ProcessCeiling(StackInstr* instr) {
   RegInstr* left = working_stack.front();
   working_stack.pop_front();
   
@@ -1184,7 +1215,7 @@ void JitCompilerIA32::ProcessCeiling(StackInstr* instr) {
   }
 }
 
-void JitCompilerIA32::ProcessFloatToInt(StackInstr* instr) {
+void JitCompilerA32::ProcessFloatToInt(StackInstr* instr) {
   RegInstr* left = working_stack.front();
   working_stack.pop_front();
   
@@ -1215,7 +1246,7 @@ void JitCompilerIA32::ProcessFloatToInt(StackInstr* instr) {
   left = NULL;
 }
 
-void JitCompilerIA32::ProcessIntToFloat(StackInstr* instr) {
+void JitCompilerA32::ProcessIntToFloat(StackInstr* instr) {
   RegInstr* left = working_stack.front();
   working_stack.pop_front();
   
@@ -1245,7 +1276,7 @@ void JitCompilerIA32::ProcessIntToFloat(StackInstr* instr) {
   left = NULL;
 }
 
-void JitCompilerIA32::ProcessStore(StackInstr* instr) {
+void JitCompilerA32::ProcessStore(StackInstr* instr) {
   Register dest;
   RegisterHolder* addr_holder = NULL;
 
@@ -1375,7 +1406,7 @@ void JitCompilerIA32::ProcessStore(StackInstr* instr) {
   left = NULL;
 }
 
-void JitCompilerIA32::ProcessCopy(StackInstr* instr) {
+void JitCompilerA32::ProcessCopy(StackInstr* instr) {
   Register dest;
   // instance/method memory
   if(instr->GetOperand2() == LOCL) {
@@ -1464,7 +1495,7 @@ void JitCompilerIA32::ProcessCopy(StackInstr* instr) {
   }
 }
 
-void JitCompilerIA32::ProcessStackCallback(int32_t instr_id, StackInstr* instr,
+void JitCompilerA32::ProcessStackCallback(int32_t instr_id, StackInstr* instr,
 					   int32_t &instr_index, int32_t params) {
   int32_t non_params;
   if(params < 0) {
@@ -1537,7 +1568,7 @@ void JitCompilerIA32::ProcessStackCallback(int32_t instr_id, StackInstr* instr,
   push_imm(instr_id);
   // call function
   RegisterHolder* call_holder = GetRegister();
-  move_imm_reg((int32_t)JitCompilerIA32::StackCallback, call_holder->GetRegister());
+  move_imm_reg((int32_t)JitCompilerA32::StackCallback, call_holder->GetRegister());
   call_reg(call_holder->GetRegister());
   add_imm_reg(40, SP);
   ReleaseRegister(call_holder);
@@ -1560,7 +1591,7 @@ void JitCompilerIA32::ProcessStackCallback(int32_t instr_id, StackInstr* instr,
   }
 }
 
-void JitCompilerIA32::ProcessReturn(int32_t params) {
+void JitCompilerA32::ProcessReturn(int32_t params) {
   if(!working_stack.empty()) {
     RegisterHolder* op_stack_holder = GetRegister();
     move_mem_reg(OP_STACK, FP, op_stack_holder->GetRegister());
@@ -1670,7 +1701,7 @@ void JitCompilerIA32::ProcessReturn(int32_t params) {
   }
 }
 
-RegInstr* JitCompilerIA32::ProcessIntFold(long left_imm, long right_imm, InstructionType type) {
+RegInstr* JitCompilerA32::ProcessIntFold(long left_imm, long right_imm, InstructionType type) {
   switch(type) {
   case AND_INT:
     return new RegInstr(IMM_INT, left_imm && right_imm);
@@ -1731,7 +1762,7 @@ RegInstr* JitCompilerIA32::ProcessIntFold(long left_imm, long right_imm, Instruc
   }
 }
 
-void JitCompilerIA32::ProcessIntCalculation(StackInstr* instruction) {
+void JitCompilerA32::ProcessIntCalculation(StackInstr* instruction) {
   RegInstr* left = working_stack.front();
   working_stack.pop_front();
 
@@ -1857,7 +1888,7 @@ void JitCompilerIA32::ProcessIntCalculation(StackInstr* instruction) {
   right = NULL;
 }
 
-void JitCompilerIA32::ProcessFloatCalculation(StackInstr* instruction) {
+void JitCompilerA32::ProcessFloatCalculation(StackInstr* instruction) {
   RegInstr* left = working_stack.front();
   working_stack.pop_front();
   
@@ -2071,7 +2102,7 @@ void JitCompilerIA32::ProcessFloatCalculation(StackInstr* instruction) {
 //============================== NEW WIP =============================
 //====================================================================
 
-void JitCompilerIA32::move_reg_mem(Register src, int32_t offset, Register dest) { 
+void JitCompilerA32::move_reg_mem(Register src, int32_t offset, Register dest) { 
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [str " << GetRegisterName(src) 
 	<< L", (" << GetRegisterName(dest) << L", #" << offset << L")]" << endl;
@@ -2100,7 +2131,7 @@ void JitCompilerIA32::move_reg_mem(Register src, int32_t offset, Register dest) 
   AddMachineCode(op_code);
 }
 
-void JitCompilerIA32::move_mem_reg(int32_t offset, Register src, Register dest) {
+void JitCompilerA32::move_mem_reg(int32_t offset, Register src, Register dest) {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [ldr " << GetRegisterName(dest) 
 	<< L", (" << GetRegisterName(src) << L", #" << offset << L")]" << endl;
@@ -2129,14 +2160,14 @@ void JitCompilerIA32::move_mem_reg(int32_t offset, Register src, Register dest) 
   AddMachineCode(op_code);
 }
 
-void JitCompilerIA32::move_imm_mem(int32_t imm, int32_t offset, Register dest) { 
+void JitCompilerA32::move_imm_mem(int32_t imm, int32_t offset, Register dest) { 
   RegisterHolder* imm_holder = GetRegister();
   move_imm_reg(imm, imm_holder->GetRegister());
   move_reg_mem(imm_holder->GetRegister(), offset, dest);
   ReleaseRegister(imm_holder); 
 }
 
-void JitCompilerIA32::move_imm_reg(int32_t imm, Register reg) {
+void JitCompilerA32::move_imm_reg(int32_t imm, Register reg) {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [mov " << GetRegisterName(reg)
 	<< L", #" << imm << L"]" << endl;
@@ -2150,14 +2181,14 @@ void JitCompilerIA32::move_imm_reg(int32_t imm, Register reg) {
   AddMachineCode(op_code);
 }
 
-void JitCompilerIA32::add_mem_reg(int32_t offset, Register src, Register dest) {
+void JitCompilerA32::add_mem_reg(int32_t offset, Register src, Register dest) {
   RegisterHolder* mem_holder = GetRegister();
   move_mem_reg(offset, src, mem_holder->GetRegister());
   add_reg_reg(mem_holder->GetRegister(), dest);
   ReleaseRegister(mem_holder); 
 }
 
-void JitCompilerIA32::add_reg_reg(Register src, Register dest) {
+void JitCompilerA32::add_reg_reg(Register src, Register dest) {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [add " << GetRegisterName(src) 
 	<< L", " << GetRegisterName(dest) << L", " << GetRegisterName(dest) << L"]" << endl;
@@ -2175,7 +2206,7 @@ void JitCompilerIA32::add_reg_reg(Register src, Register dest) {
   AddMachineCode(op_code);
 }
 
-void JitCompilerIA32::add_imm_reg(int32_t imm, Register reg) {
+void JitCompilerA32::add_imm_reg(int32_t imm, Register reg) {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [add " << GetRegisterName(reg) << L", "
 	<< GetRegisterName(reg)	<< L", #" << imm << L"]" << endl;
@@ -2196,7 +2227,7 @@ void JitCompilerIA32::add_imm_reg(int32_t imm, Register reg) {
   AddMachineCode(op_code);
 }
 
-void JitCompilerIA32::add_imm_mem(int32_t imm, int32_t offset, Register dest) {
+void JitCompilerA32::add_imm_mem(int32_t imm, int32_t offset, Register dest) {
   RegisterHolder* mem_holder = GetRegister();
   move_mem_reg(offset, dest, mem_holder->GetRegister());
   add_imm_reg(imm, mem_holder->GetRegister());
@@ -2204,18 +2235,18 @@ void JitCompilerIA32::add_imm_mem(int32_t imm, int32_t offset, Register dest) {
   ReleaseRegister(mem_holder); 
 }
 
-void JitCompilerIA32::inc_mem(int32_t offset, Register dest) {
+void JitCompilerA32::inc_mem(int32_t offset, Register dest) {
   add_imm_mem(1, offset, dest);
 }
 
-void JitCompilerIA32::sub_mem_reg(int32_t offset, Register src, Register dest) {
+void JitCompilerA32::sub_mem_reg(int32_t offset, Register src, Register dest) {
   RegisterHolder* mem_holder = GetRegister();
   move_mem_reg(offset, src, mem_holder->GetRegister());
   sub_reg_reg(mem_holder->GetRegister(), dest);
   ReleaseRegister(mem_holder); 
 }
 
-void JitCompilerIA32::sub_reg_reg(Register src, Register dest) {
+void JitCompilerA32::sub_reg_reg(Register src, Register dest) {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [rsb " << GetRegisterName(dest) << L", "
 	<< GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
@@ -2234,7 +2265,7 @@ void JitCompilerIA32::sub_reg_reg(Register src, Register dest) {
   AddMachineCode(op_code);
 }
 
-void JitCompilerIA32::sub_imm_reg(int32_t imm, Register reg) {
+void JitCompilerA32::sub_imm_reg(int32_t imm, Register reg) {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [sub " << GetRegisterName(reg) << L", "
 	<< GetRegisterName(reg)	<< L", #" << imm << L"]" << endl;
@@ -2255,7 +2286,7 @@ void JitCompilerIA32::sub_imm_reg(int32_t imm, Register reg) {
   AddMachineCode(op_code);
 }
 
-void JitCompilerIA32::sub_imm_mem(int32_t imm, int32_t offset, Register dest) {
+void JitCompilerA32::sub_imm_mem(int32_t imm, int32_t offset, Register dest) {
   RegisterHolder* mem_holder = GetRegister();
   
   move_mem_reg(offset, dest, mem_holder->GetRegister());
@@ -2265,11 +2296,11 @@ void JitCompilerIA32::sub_imm_mem(int32_t imm, int32_t offset, Register dest) {
   ReleaseRegister(mem_holder); 
 }
 
-void JitCompilerIA32::dec_mem(int32_t offset, Register dest) {
+void JitCompilerA32::dec_mem(int32_t offset, Register dest) {
   sub_imm_mem(1, offset, dest);
 }
 
-void JitCompilerIA32::shl_imm_reg(int32_t value, Register dest) {
+void JitCompilerA32::shl_imm_reg(int32_t value, Register dest) {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [lsl " << GetRegisterName(dest) << L", "
 	<< GetRegisterName(dest) << L", #" << value << L"]" << endl;
@@ -2291,11 +2322,40 @@ void JitCompilerIA32::shl_imm_reg(int32_t value, Register dest) {
   AddMachineCode(op_code);
 }
 
+void JitCompilerA32::div_mem_reg(int32_t offset, Register src,
+				 Register dest, bool is_mod) {
+  RegisterHolder* mem_holder = GetRegister();
+  move_mem_reg(offset, src, mem_holder->GetRegister());
+  div_reg_reg(mem_holder->GetRegister(), dest, is_mod);
+  ReleaseRegister(mem_holder);   
+}
+
+void JitCompilerA32::div_reg_reg(Register src, Register dest, bool is_mod) {
+  if(src != R0) {
+    move_reg_mem(R0, TMP_REG_0, FP);
+    move_reg_reg(src, R0);
+  }
+
+  if(dest != R1) {
+    move_reg_mem(R1, TMP_REG_1, FP);
+    move_reg_reg(dest, R1);
+  }
+  
+  // do stuff
+  
+
+  if(src != R0) {
+  }
+
+  if(dest != R1) {
+  }
+}
+
 //====================================================================
 //=============================== OLD ================================
 //====================================================================
 
-void JitCompilerIA32::move_reg_reg(Register src, Register dest) {
+void JitCompilerA32::move_reg_reg(Register src, Register dest) {
   if(src != dest) {
 #ifdef _DEBUG
     wcout << L"  " << (++instr_count) << L": [movl %" << GetRegisterName(src) 
@@ -2311,7 +2371,7 @@ void JitCompilerIA32::move_reg_reg(Register src, Register dest) {
   }
 }
 
-void JitCompilerIA32::move_reg_mem16(Register src, int32_t offset, Register dest) { 
+void JitCompilerA32::move_reg_mem16(Register src, int32_t offset, Register dest) { 
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [movw %" << GetRegisterName(src) 
        << L", " << offset << L"(%" << GetRegisterName(dest) << L")" << L"]" 
@@ -2325,7 +2385,7 @@ void JitCompilerIA32::move_reg_mem16(Register src, int32_t offset, Register dest
   AddImm(offset);
 }
 
-void JitCompilerIA32::move_reg_mem8(Register src, int32_t offset, Register dest) { 
+void JitCompilerA32::move_reg_mem8(Register src, int32_t offset, Register dest) { 
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [movb %" << GetRegisterName(src) 
        << L", " << offset << L"(%" << GetRegisterName(dest) << L")" << L"]" 
@@ -2338,7 +2398,7 @@ void JitCompilerIA32::move_reg_mem8(Register src, int32_t offset, Register dest)
   AddImm(offset);
 }
 
-void JitCompilerIA32::move_mem8_reg(int32_t offset, Register src, Register dest) {
+void JitCompilerA32::move_mem8_reg(int32_t offset, Register src, Register dest) {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [movb " << offset << L"(%" 
        << GetRegisterName(src) << L"), %" << GetRegisterName(dest)
@@ -2352,7 +2412,7 @@ void JitCompilerIA32::move_mem8_reg(int32_t offset, Register src, Register dest)
   AddImm(offset);
 }
 
-void JitCompilerIA32::move_mem16_reg(int32_t offset, Register src, Register dest) {
+void JitCompilerA32::move_mem16_reg(int32_t offset, Register src, Register dest) {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [movw " << offset << L"(%" 
        << GetRegisterName(src) << L"), %" << GetRegisterName(dest)
@@ -2367,14 +2427,14 @@ void JitCompilerIA32::move_mem16_reg(int32_t offset, Register src, Register dest
 }
 
     
-void JitCompilerIA32::move_imm_memx(RegInstr* instr, int32_t offset, Register dest) {
+void JitCompilerA32::move_imm_memx(RegInstr* instr, int32_t offset, Register dest) {
   RegisterHolder* tmp_holder = GetXmmRegister();
   move_imm_xreg(instr, tmp_holder->GetRegister());
   move_xreg_mem(tmp_holder->GetRegister(), offset, dest);
   ReleaseXmmRegister(tmp_holder);
 }
 
-void JitCompilerIA32::move_imm_mem8(int32_t imm, int32_t offset, Register dest) {
+void JitCompilerA32::move_imm_mem8(int32_t imm, int32_t offset, Register dest) {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [movb $" << imm << L", " << offset 
        << L"(%" << GetRegisterName(dest) << L")" << L"]" << endl;
@@ -2389,7 +2449,7 @@ void JitCompilerIA32::move_imm_mem8(int32_t imm, int32_t offset, Register dest) 
   AddMachineCode(imm);
 }
 
-void JitCompilerIA32::move_imm_mem16(int32_t imm, int32_t offset, Register dest) {
+void JitCompilerA32::move_imm_mem16(int32_t imm, int32_t offset, Register dest) {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [movw $" << imm << L", " << offset 
        << L"(%" << GetRegisterName(dest) << L")" << L"]" << endl;
@@ -2410,7 +2470,7 @@ void JitCompilerIA32::move_imm_mem16(int32_t imm, int32_t offset, Register dest)
   AddImm16(imm);
 }
 
-void JitCompilerIA32::move_imm_xreg(RegInstr* instr, Register reg) {
+void JitCompilerA32::move_imm_xreg(RegInstr* instr, Register reg) {
   // copy address of imm value
   RegisterHolder* imm_holder = GetRegister();
   move_imm_reg(instr->GetOperand(), imm_holder->GetRegister());  
@@ -2418,7 +2478,7 @@ void JitCompilerIA32::move_imm_xreg(RegInstr* instr, Register reg) {
   ReleaseRegister(imm_holder);
 }
     
-void JitCompilerIA32::move_mem_xreg(int32_t offset, Register src, Register dest) {
+void JitCompilerA32::move_mem_xreg(int32_t offset, Register src, Register dest) {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [movsd " << offset << L"(%" 
        << GetRegisterName(src) << L"), %" << GetRegisterName(dest)
@@ -2433,7 +2493,7 @@ void JitCompilerIA32::move_mem_xreg(int32_t offset, Register src, Register dest)
   AddImm(offset);
 }
     
-void JitCompilerIA32::move_xreg_mem(Register src, int32_t offset, Register dest) {
+void JitCompilerA32::move_xreg_mem(Register src, int32_t offset, Register dest) {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [movsd %" << GetRegisterName(src) 
        << L", " << offset << L"(%" << GetRegisterName(dest) << L")" << L"]" 
@@ -2448,7 +2508,7 @@ void JitCompilerIA32::move_xreg_mem(Register src, int32_t offset, Register dest)
   AddImm(offset);
 }
 
-void JitCompilerIA32::move_xreg_xreg(Register src, Register dest) {
+void JitCompilerA32::move_xreg_xreg(Register src, Register dest) {
   if(src != dest) {
 #ifdef _DEBUG
     wcout << L"  " << (++instr_count) << L": [movsd %" << GetRegisterName(src) 
@@ -2466,7 +2526,7 @@ void JitCompilerIA32::move_xreg_xreg(Register src, Register dest) {
   }
 }
 
-bool JitCompilerIA32::cond_jmp(InstructionType type) {
+bool JitCompilerA32::cond_jmp(InstructionType type) {
   if(instr_index >= method->GetInstructionCount()) {
     return false;
   }
@@ -2640,7 +2700,7 @@ bool JitCompilerIA32::cond_jmp(InstructionType type) {
   return false;
 }
 
-void JitCompilerIA32::math_imm_reg(int32_t imm, Register reg, InstructionType type) {
+void JitCompilerA32::math_imm_reg(int32_t imm, Register reg, InstructionType type) {
   switch(type) {
   case AND_INT:
     and_imm_reg(imm, reg);
@@ -2707,7 +2767,7 @@ void JitCompilerIA32::math_imm_reg(int32_t imm, Register reg, InstructionType ty
   }
 }
 
-void JitCompilerIA32::math_reg_reg(Register src, Register dest, InstructionType type) {
+void JitCompilerA32::math_reg_reg(Register src, Register dest, InstructionType type) {
   switch(type) {
   case SHL_INT:
     shl_reg_reg(src, dest);
@@ -2774,7 +2834,7 @@ void JitCompilerIA32::math_reg_reg(Register src, Register dest, InstructionType 
   }
 }
 
-void JitCompilerIA32::math_mem_reg(int32_t offset, Register reg, InstructionType type) {
+void JitCompilerA32::math_mem_reg(int32_t offset, Register reg, InstructionType type) {
   switch(type) {
   case SHL_INT:
     shl_mem_reg(offset, FP, reg);
@@ -2841,7 +2901,7 @@ void JitCompilerIA32::math_mem_reg(int32_t offset, Register reg, InstructionType
   }
 }
 
-void JitCompilerIA32::math_imm_xreg(RegInstr* instr, Register reg, InstructionType type) {
+void JitCompilerA32::math_imm_xreg(RegInstr* instr, Register reg, InstructionType type) {
   switch(type) {
   case ADD_FLOAT:
     add_imm_xreg(instr, reg);
@@ -2876,14 +2936,14 @@ void JitCompilerIA32::math_imm_xreg(RegInstr* instr, Register reg, InstructionTy
   }
 }
 
-void JitCompilerIA32::math_mem_xreg(int32_t offset, Register dest, InstructionType type) {
+void JitCompilerA32::math_mem_xreg(int32_t offset, Register dest, InstructionType type) {
   RegisterHolder* holder = GetXmmRegister();
   move_mem_xreg(offset, FP, holder->GetRegister());
   math_xreg_xreg(holder->GetRegister(), dest, type);
   ReleaseXmmRegister(holder);
 }
 
-void JitCompilerIA32::math_xreg_xreg(Register src, Register dest, InstructionType type) {
+void JitCompilerA32::math_xreg_xreg(Register src, Register dest, InstructionType type) {
   switch(type) {
   case ADD_FLOAT:
     add_xreg_xreg(src, dest);
@@ -2918,7 +2978,7 @@ void JitCompilerIA32::math_xreg_xreg(Register src, Register dest, InstructionTyp
   }
 }    
 
-void JitCompilerIA32::cmp_reg_reg(Register src, Register dest) {
+void JitCompilerA32::cmp_reg_reg(Register src, Register dest) {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [cmpll %" << GetRegisterName(src) 
        << L", %" << GetRegisterName(dest) << L"]" << endl;
@@ -2932,7 +2992,7 @@ void JitCompilerIA32::cmp_reg_reg(Register src, Register dest) {
   AddMachineCode(code);
 }
 
-void JitCompilerIA32::cmp_mem_reg(int32_t offset, Register src, Register dest) {
+void JitCompilerA32::cmp_mem_reg(int32_t offset, Register src, Register dest) {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [cmpl " << offset << L"(%" 
        << GetRegisterName(src) << L"), %" << GetRegisterName(dest) 
@@ -2945,7 +3005,7 @@ void JitCompilerIA32::cmp_mem_reg(int32_t offset, Register src, Register dest) {
   AddImm(offset);
 }
     
-void JitCompilerIA32::cmp_imm_reg(int32_t imm, Register reg) {
+void JitCompilerA32::cmp_imm_reg(int32_t imm, Register reg) {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [cmpl $" << imm << L", %"
        << GetRegisterName(reg) << L"]" << endl;
@@ -2959,7 +3019,7 @@ void JitCompilerIA32::cmp_imm_reg(int32_t imm, Register reg) {
   AddImm(imm);
 }
 
-void JitCompilerIA32::cmov_reg(Register reg, InstructionType oper) {
+void JitCompilerA32::cmov_reg(Register reg, InstructionType oper) {
   // set register to 0; if eflag than set to 1
   move_imm_reg(0, reg);
   RegisterHolder* true_holder = GetRegister();
@@ -3026,7 +3086,7 @@ void JitCompilerIA32::cmov_reg(Register reg, InstructionType oper) {
   ReleaseRegister(true_holder);
 }
 
-void JitCompilerIA32::add_imm_xreg(RegInstr* instr, Register reg) {
+void JitCompilerA32::add_imm_xreg(RegInstr* instr, Register reg) {
   // copy address of imm value
   RegisterHolder* imm_holder = GetRegister();
   move_imm_reg(instr->GetOperand(), imm_holder->GetRegister());
@@ -3034,7 +3094,7 @@ void JitCompilerIA32::add_imm_xreg(RegInstr* instr, Register reg) {
   ReleaseRegister(imm_holder);
 }
 
-void JitCompilerIA32::sub_imm_xreg(RegInstr* instr, Register reg) {
+void JitCompilerA32::sub_imm_xreg(RegInstr* instr, Register reg) {
   // copy address of imm value
   RegisterHolder* imm_holder = GetRegister();
   move_imm_reg(instr->GetOperand(), imm_holder->GetRegister());
@@ -3042,7 +3102,7 @@ void JitCompilerIA32::sub_imm_xreg(RegInstr* instr, Register reg) {
   ReleaseRegister(imm_holder);
 }
 
-void JitCompilerIA32::div_imm_xreg(RegInstr* instr, Register reg) {
+void JitCompilerA32::div_imm_xreg(RegInstr* instr, Register reg) {
   // copy address of imm value
   RegisterHolder* imm_holder = GetRegister();
   move_imm_reg(instr->GetOperand(), imm_holder->GetRegister());
@@ -3050,7 +3110,7 @@ void JitCompilerIA32::div_imm_xreg(RegInstr* instr, Register reg) {
   ReleaseRegister(imm_holder);
 }
 
-void JitCompilerIA32::mul_imm_xreg(RegInstr* instr, Register reg) {
+void JitCompilerA32::mul_imm_xreg(RegInstr* instr, Register reg) {
   // copy address of imm value
   RegisterHolder* imm_holder = GetRegister();
   move_imm_reg(instr->GetOperand(), imm_holder->GetRegister());
@@ -3058,7 +3118,7 @@ void JitCompilerIA32::mul_imm_xreg(RegInstr* instr, Register reg) {
   ReleaseRegister(imm_holder);
 }
 
-void JitCompilerIA32::sub_xreg_xreg(Register src, Register dest) {
+void JitCompilerA32::sub_xreg_xreg(Register src, Register dest) {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [subsd %" << GetRegisterName(src) 
        << L", %" << GetRegisterName(dest) << L"]" << endl;
@@ -3074,7 +3134,7 @@ void JitCompilerIA32::sub_xreg_xreg(Register src, Register dest) {
   AddMachineCode(code);	     
 }
 
-void JitCompilerIA32::mul_xreg_xreg(Register src, Register dest) {
+void JitCompilerA32::mul_xreg_xreg(Register src, Register dest) {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [mulsd %" << GetRegisterName(src) 
        << L", %" << GetRegisterName(dest) << L"]" << endl;
@@ -3090,7 +3150,7 @@ void JitCompilerIA32::mul_xreg_xreg(Register src, Register dest) {
   AddMachineCode(code);
 }
 
-void JitCompilerIA32::div_xreg_xreg(Register src, Register dest) {
+void JitCompilerA32::div_xreg_xreg(Register src, Register dest) {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [divsd %" << GetRegisterName(src) 
        << L", %" << GetRegisterName(dest) << L"]" << endl;
@@ -3106,7 +3166,7 @@ void JitCompilerIA32::div_xreg_xreg(Register src, Register dest) {
   AddMachineCode(code);
 }
 
-void JitCompilerIA32::add_xreg_xreg(Register src, Register dest) {
+void JitCompilerA32::add_xreg_xreg(Register src, Register dest) {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [addsd %" << GetRegisterName(src) 
        << L", %" << GetRegisterName(dest) << L"]" << endl;
@@ -3122,7 +3182,7 @@ void JitCompilerIA32::add_xreg_xreg(Register src, Register dest) {
   AddMachineCode(code);
 }
 
-void JitCompilerIA32::add_mem_xreg(int32_t offset, Register src, Register dest) {
+void JitCompilerA32::add_mem_xreg(int32_t offset, Register src, Register dest) {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [addsd " << offset << L"(%" 
        << GetRegisterName(src) << L"), %" << GetRegisterName(dest) 
@@ -3137,7 +3197,7 @@ void JitCompilerIA32::add_mem_xreg(int32_t offset, Register src, Register dest) 
   AddImm(offset);  
 }
 
-void JitCompilerIA32::sub_mem_xreg(int32_t offset, Register src, Register dest) {
+void JitCompilerA32::sub_mem_xreg(int32_t offset, Register src, Register dest) {
   RegisterHolder* holder = GetXmmRegister();
   move_mem_xreg(offset, src, holder->GetRegister());
   sub_xreg_xreg(dest, holder->GetRegister());
@@ -3145,7 +3205,7 @@ void JitCompilerIA32::sub_mem_xreg(int32_t offset, Register src, Register dest) 
   ReleaseXmmRegister(holder);
 }
 
-void JitCompilerIA32::mul_mem_xreg(int32_t offset, Register src, Register dest) {
+void JitCompilerA32::mul_mem_xreg(int32_t offset, Register src, Register dest) {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [mulsd " << offset << L"(%" 
        << GetRegisterName(src) << L"), %" << GetRegisterName(dest) 
@@ -3159,7 +3219,7 @@ void JitCompilerIA32::mul_mem_xreg(int32_t offset, Register src, Register dest) 
   AddImm(offset);
 }
 
-void JitCompilerIA32::div_mem_xreg(int32_t offset, Register src, Register dest) {
+void JitCompilerA32::div_mem_xreg(int32_t offset, Register src, Register dest) {
   RegisterHolder* holder = GetXmmRegister();
   move_mem_xreg(offset, src, holder->GetRegister());
   div_xreg_xreg(dest, holder->GetRegister());
@@ -3167,7 +3227,7 @@ void JitCompilerIA32::div_mem_xreg(int32_t offset, Register src, Register dest) 
   ReleaseXmmRegister(holder);
 }
 
-void JitCompilerIA32::mul_imm_reg(int32_t imm, Register reg) {
+void JitCompilerA32::mul_imm_reg(int32_t imm, Register reg) {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [imul $" << imm 
        << L", %"<< GetRegisterName(reg) << L"]" << endl;
@@ -3183,7 +3243,7 @@ void JitCompilerIA32::mul_imm_reg(int32_t imm, Register reg) {
   AddImm(imm);
 }
 
-void JitCompilerIA32::mul_reg_reg(Register src, Register dest) {
+void JitCompilerA32::mul_reg_reg(Register src, Register dest) {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [imul %" 
        << GetRegisterName(src) << L", %"<< GetRegisterName(dest) 
@@ -3199,7 +3259,7 @@ void JitCompilerIA32::mul_reg_reg(Register src, Register dest) {
   AddMachineCode(code);
 }
 
-void JitCompilerIA32::mul_mem_reg(int32_t offset, Register src, Register dest) {
+void JitCompilerA32::mul_mem_reg(int32_t offset, Register src, Register dest) {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [imul " << offset << L"(%" 
        << GetRegisterName(src) << L"), %" << GetRegisterName(dest) 
@@ -3213,157 +3273,14 @@ void JitCompilerIA32::mul_mem_reg(int32_t offset, Register src, Register dest) {
   AddImm(offset);
 }
 
-void JitCompilerIA32::div_imm_reg(int32_t imm, Register reg, bool is_mod) {
+void JitCompilerA32::div_imm_reg(int32_t imm, Register reg, bool is_mod) {
   RegisterHolder* imm_holder = GetRegister();
   move_imm_reg(imm, imm_holder->GetRegister());
   div_reg_reg(imm_holder->GetRegister(), reg, is_mod);
   ReleaseRegister(imm_holder);
 }
 
-void JitCompilerIA32::div_mem_reg(int32_t offset, Register src,
-				  Register dest, bool is_mod) {
-  if(is_mod) {
-    if(dest != R3) {
-      move_reg_mem(R3, TMP_REG_1, FP);
-    }
-    move_reg_mem(R0, TMP_REG_0, FP);
-  }
-  else {
-    if(dest != R0) {
-      move_reg_mem(R0, TMP_REG_0, FP);
-    }
-    move_reg_mem(R3, TMP_REG_1, FP);
-  }
-
-  // ============
-  move_reg_reg(dest, R0);
-  AddMachineCode(0x99); // cdq
-  
-  // encode
-  AddMachineCode(0xf7);
-  // AddMachineCode(ModRM(src, R12));
-  // write value
-  AddImm(offset);
-  
-#ifdef _DEBUG
-  if(is_mod) {
-    wcout << L"  " << (++instr_count) << L": [imod " << offset << L"(%" 
-	 << GetRegisterName(src) << L")]" << endl;
-  }
-  else {
-    wcout << L"  " << (++instr_count) << L": [idiv " << offset << L"(%" 
-	 << GetRegisterName(src) << L")]" << endl;
-  }
-#endif
-  // ============
-
-  if(is_mod) {
-    if(dest != R3) {
-      move_reg_reg(R3, dest);
-      move_mem_reg(TMP_REG_1, FP, R3);
-    }
-
-    if(dest != R0) {
-      move_mem_reg(TMP_REG_0, FP, R0);
-    }
-  }
-  else {
-    if(dest != R0) {
-      move_reg_reg(R0, dest);
-      move_mem_reg(TMP_REG_0, FP, R0);
-    }
-    
-    if(dest != R3) {
-      move_mem_reg(TMP_REG_1, FP, R3);
-    }
-  }
-}
-
-void JitCompilerIA32::div_reg_reg(Register src, Register dest, bool is_mod) {
-  if(is_mod) {
-    if(dest != R3) {
-      move_reg_mem(R3, TMP_REG_1, FP);
-    }
-    move_reg_mem(R0, TMP_REG_0, FP);
-  }
-  else {
-    if(dest != R0) {
-      move_reg_mem(R0, TMP_REG_0, FP);
-    }
-    move_reg_mem(R3, TMP_REG_1, FP);
-  }
-  
-  // ============
-  move_reg_reg(dest, R0);
-  AddMachineCode(0x99); // cdq
-
-  if(src != R0 && src != R3) {
-    // encode
-    AddMachineCode(0xf7);
-    unsigned char code = 0xf8;
-    // write value
-    // RegisterEncode3(code, 5, src);
-    AddMachineCode(code);
-    
-#ifdef _DEBUG
-    if(is_mod) {
-      wcout << L"  " << (++instr_count) << L": [imod %" 
-	   << GetRegisterName(src) << L"]" << endl;
-    }
-    else {
-      wcout << L"  " << (++instr_count) << L": [idiv %" 
-	   << GetRegisterName(src) << L"]" << endl;
-    }
-#endif
-  }
-  else {
-    // encode
-    AddMachineCode(0xf7);
-    // AddMachineCode(ModRM(FP, R12));
-    // write value
-    if(src == R0) {
-      AddImm(TMP_REG_0);
-    }
-    else {
-      AddImm(TMP_REG_1);
-    }
-    
-#ifdef _DEBUG
-    if(is_mod) {
-      wcout << L"  " << (++instr_count) << L": [imod " << TMP_REG_0 << L"(%" 
-	   << GetRegisterName(FP) << L")]" << endl;
-    }
-    else {
-      wcout << L"  " << (++instr_count) << L": [idiv " << TMP_REG_0 << L"(%" 
-	   << GetRegisterName(FP) << L")]" << endl;
-    }
-#endif
-  }
-  // ============
-  
-  if(is_mod) {
-    if(dest != R3) {
-      move_reg_reg(R3, dest);
-      move_mem_reg(TMP_REG_1, FP, R3);
-    }
-
-    if(dest != R0) {
-      move_mem_reg(TMP_REG_0, FP, R0);
-    }
-  }
-  else {
-    if(dest != R0) {
-      move_reg_reg(R0, dest);
-      move_mem_reg(TMP_REG_0, FP, R0);
-    }
-    
-    if(dest != R3) {
-      move_mem_reg(TMP_REG_1, FP, R3);
-    }
-  }
-}
-
-void JitCompilerIA32::dec_reg(Register dest) {
+void JitCompilerA32::dec_reg(Register dest) {
   unsigned char code = 0x48;
   // RegisterEncode3(code, 5, dest);
   AddMachineCode(code);
@@ -3373,7 +3290,7 @@ void JitCompilerIA32::dec_reg(Register dest) {
 #endif
 }
 
-void JitCompilerIA32::shl_reg_reg(Register src, Register dest)
+void JitCompilerA32::shl_reg_reg(Register src, Register dest)
 {
   Register old_dest;
   RegisterHolder* reg_holder = NULL;
@@ -3415,7 +3332,7 @@ void JitCompilerIA32::shl_reg_reg(Register src, Register dest)
   }
 }
 
-void JitCompilerIA32::shl_mem_reg(int32_t offset, Register src, Register dest) 
+void JitCompilerA32::shl_mem_reg(int32_t offset, Register src, Register dest) 
 {
   RegisterHolder* mem_holder = GetRegister();
   move_mem_reg(offset, src, mem_holder->GetRegister());
@@ -3423,7 +3340,7 @@ void JitCompilerIA32::shl_mem_reg(int32_t offset, Register src, Register dest)
   ReleaseRegister(mem_holder);
 }
 
-void JitCompilerIA32::shr_imm_reg(int32_t value, Register dest) {
+void JitCompilerA32::shr_imm_reg(int32_t value, Register dest) {
   AddMachineCode(0xc1);
   unsigned char code = 0xe8;
   // RegisterEncode3(code, 5, dest);
@@ -3435,7 +3352,7 @@ void JitCompilerIA32::shr_imm_reg(int32_t value, Register dest) {
 #endif
 }
 
-void JitCompilerIA32::shr_reg_reg(Register src, Register dest)
+void JitCompilerA32::shr_reg_reg(Register src, Register dest)
 {
   Register old_dest;
   RegisterHolder* reg_holder = NULL;
@@ -3477,7 +3394,7 @@ void JitCompilerIA32::shr_reg_reg(Register src, Register dest)
   }
 }
 
-void JitCompilerIA32::shr_mem_reg(int32_t offset, Register src, Register dest) 
+void JitCompilerA32::shr_mem_reg(int32_t offset, Register src, Register dest) 
 {
   RegisterHolder* mem_holder = GetRegister();
   move_mem_reg(offset, src, mem_holder->GetRegister());
@@ -3485,7 +3402,7 @@ void JitCompilerIA32::shr_mem_reg(int32_t offset, Register src, Register dest)
   ReleaseRegister(mem_holder);
 }
 
-void JitCompilerIA32::push_mem(int32_t offset, Register dest) {
+void JitCompilerA32::push_mem(int32_t offset, Register dest) {
   AddMachineCode(0xff);
   unsigned char code = 0xb0;
   // RegisterEncode3(code, 5, dest);
@@ -3497,7 +3414,7 @@ void JitCompilerIA32::push_mem(int32_t offset, Register dest) {
 #endif
 }
 
-void JitCompilerIA32::push_reg(Register reg) {
+void JitCompilerA32::push_reg(Register reg) {
   unsigned char code = 0x50;
   // RegisterEncode3(code, 5, reg);
   AddMachineCode(code);
@@ -3507,7 +3424,7 @@ void JitCompilerIA32::push_reg(Register reg) {
 #endif
 }
 
-void JitCompilerIA32::push_imm(int32_t value) {
+void JitCompilerA32::push_imm(int32_t value) {
   AddMachineCode(0x68);
   AddImm(value);
 #ifdef _DEBUG
@@ -3515,7 +3432,7 @@ void JitCompilerIA32::push_imm(int32_t value) {
 #endif
 }
 
-void JitCompilerIA32::pop_reg(Register reg) {
+void JitCompilerA32::pop_reg(Register reg) {
   unsigned char code = 0x58;
   // RegisterEncode3(code, 5, reg);
   AddMachineCode(code);
@@ -3525,7 +3442,7 @@ void JitCompilerIA32::pop_reg(Register reg) {
 #endif
 }
 
-void JitCompilerIA32::call_reg(Register reg) {
+void JitCompilerA32::call_reg(Register reg) {
   AddMachineCode(0xff);
   unsigned char code = 0xd0;
   // RegisterEncode3(code, 5, reg);
@@ -3536,7 +3453,7 @@ void JitCompilerIA32::call_reg(Register reg) {
 #endif
 }
 
-void JitCompilerIA32::cmp_xreg_xreg(Register src, Register dest) {
+void JitCompilerA32::cmp_xreg_xreg(Register src, Register dest) {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [ucomisd %" << GetRegisterName(src) 
        << L", %" << GetRegisterName(dest) << L"]" << endl;
@@ -3552,7 +3469,7 @@ void JitCompilerIA32::cmp_xreg_xreg(Register src, Register dest) {
   AddMachineCode(code);
 }
 
-void JitCompilerIA32::cmp_mem_xreg(int32_t offset, Register src, Register dest) {
+void JitCompilerA32::cmp_mem_xreg(int32_t offset, Register src, Register dest) {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [ucomisd " << offset << L"(%" 
        << GetRegisterName(src) << L"), %" << GetRegisterName(dest) 
@@ -3567,7 +3484,7 @@ void JitCompilerIA32::cmp_mem_xreg(int32_t offset, Register src, Register dest) 
   AddImm(offset);
 }
 
-void JitCompilerIA32::cmp_imm_xreg(RegInstr* instr, Register reg) {
+void JitCompilerA32::cmp_imm_xreg(RegInstr* instr, Register reg) {
   // copy address of imm value
   RegisterHolder* imm_holder = GetRegister();
   move_imm_reg(instr->GetOperand(), imm_holder->GetRegister());
@@ -3575,7 +3492,7 @@ void JitCompilerIA32::cmp_imm_xreg(RegInstr* instr, Register reg) {
   ReleaseRegister(imm_holder);
 }
 
-void JitCompilerIA32::cvt_xreg_reg(Register src, Register dest) {
+void JitCompilerA32::cvt_xreg_reg(Register src, Register dest) {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [cvtsd2si %" << GetRegisterName(src) 
        << L", %" << GetRegisterName(dest) << L"]" << endl;
@@ -3591,7 +3508,7 @@ void JitCompilerIA32::cvt_xreg_reg(Register src, Register dest) {
   AddMachineCode(code);
 }
 
-void JitCompilerIA32::round_imm_xreg(RegInstr* instr, Register reg, bool is_floor) {
+void JitCompilerA32::round_imm_xreg(RegInstr* instr, Register reg, bool is_floor) {
   // copy address of imm value
   RegisterHolder* imm_holder = GetRegister();
   move_imm_reg(instr->GetOperand(), imm_holder->GetRegister());
@@ -3599,7 +3516,7 @@ void JitCompilerIA32::round_imm_xreg(RegInstr* instr, Register reg, bool is_floo
   ReleaseRegister(imm_holder);
 }
 
-void JitCompilerIA32::round_mem_xreg(int32_t offset, Register src, Register dest, bool is_floor) {
+void JitCompilerA32::round_mem_xreg(int32_t offset, Register src, Register dest, bool is_floor) {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << (is_floor ? ": [floor " : ": [ceil ") 
        << offset << L"(%" << GetRegisterName(src) << L"), %" << GetRegisterName(dest) 
@@ -3622,7 +3539,7 @@ void JitCompilerIA32::round_mem_xreg(int32_t offset, Register src, Register dest
   }
 }
 
-void JitCompilerIA32::round_xreg_xreg(Register src, Register dest, bool is_floor) {
+void JitCompilerA32::round_xreg_xreg(Register src, Register dest, bool is_floor) {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << (is_floor ? ": [floor %" : ": [ceil %") 
        << GetRegisterName(src) << L", %" << GetRegisterName(dest) << L"]" << endl;
@@ -3646,7 +3563,7 @@ void JitCompilerIA32::round_xreg_xreg(Register src, Register dest, bool is_floor
   }
 }
 
-void JitCompilerIA32::cvt_imm_reg(RegInstr* instr, Register reg) {
+void JitCompilerA32::cvt_imm_reg(RegInstr* instr, Register reg) {
   // copy address of imm value
   RegisterHolder* imm_holder = GetRegister();
   move_imm_reg(instr->GetOperand(), imm_holder->GetRegister());
@@ -3654,7 +3571,7 @@ void JitCompilerIA32::cvt_imm_reg(RegInstr* instr, Register reg) {
   ReleaseRegister(imm_holder);
 }
 
-void JitCompilerIA32::cvt_mem_reg(int32_t offset, Register src, Register dest) {
+void JitCompilerA32::cvt_mem_reg(int32_t offset, Register src, Register dest) {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [cvtsd2si " << offset << L"(%" 
        << GetRegisterName(src) << L"), %" << GetRegisterName(dest) 
@@ -3669,7 +3586,7 @@ void JitCompilerIA32::cvt_mem_reg(int32_t offset, Register src, Register dest) {
   AddImm(offset);
 }
 
-void JitCompilerIA32::cvt_reg_xreg(Register src, Register dest) {
+void JitCompilerA32::cvt_reg_xreg(Register src, Register dest) {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [cvtsi2sd %" << GetRegisterName(src) 
        << L", %" << GetRegisterName(dest) << L"]" << endl;
@@ -3685,7 +3602,7 @@ void JitCompilerIA32::cvt_reg_xreg(Register src, Register dest) {
   AddMachineCode(code);
 }
 
-void JitCompilerIA32::cvt_imm_xreg(RegInstr* instr, Register reg) {
+void JitCompilerA32::cvt_imm_xreg(RegInstr* instr, Register reg) {
   // copy address of imm value
   RegisterHolder* imm_holder = GetRegister();
   move_imm_reg(instr->GetOperand(), imm_holder->GetRegister());
@@ -3693,7 +3610,7 @@ void JitCompilerIA32::cvt_imm_xreg(RegInstr* instr, Register reg) {
   ReleaseRegister(imm_holder);
 }
 
-void JitCompilerIA32::cvt_mem_xreg(int32_t offset, Register src, Register dest) {
+void JitCompilerA32::cvt_mem_xreg(int32_t offset, Register src, Register dest) {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [cvtsi2sd " << offset << L"(%" 
        << GetRegisterName(src) << L"), %" << GetRegisterName(dest) 
@@ -3708,7 +3625,7 @@ void JitCompilerIA32::cvt_mem_xreg(int32_t offset, Register src, Register dest) 
   AddImm(offset);
 }
 
-void JitCompilerIA32::and_imm_reg(int32_t imm, Register reg) {
+void JitCompilerA32::and_imm_reg(int32_t imm, Register reg) {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [andl $" << imm << L", %"
        << GetRegisterName(reg) << L"]" << endl;
@@ -3722,7 +3639,7 @@ void JitCompilerIA32::and_imm_reg(int32_t imm, Register reg) {
   AddImm(imm);
 }
 
-void JitCompilerIA32::and_reg_reg(Register src, Register dest) {
+void JitCompilerA32::and_reg_reg(Register src, Register dest) {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [andl %" << GetRegisterName(src) 
        << L", %" << GetRegisterName(dest) << L"]" << endl;
@@ -3736,7 +3653,7 @@ void JitCompilerIA32::and_reg_reg(Register src, Register dest) {
   AddMachineCode(code);
 }
 
-void JitCompilerIA32::and_mem_reg(int32_t offset, Register src, Register dest) {
+void JitCompilerA32::and_mem_reg(int32_t offset, Register src, Register dest) {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [andl " << offset << L"(%" 
        << GetRegisterName(src) << L"), %" << GetRegisterName(dest) 
@@ -3749,7 +3666,7 @@ void JitCompilerIA32::and_mem_reg(int32_t offset, Register src, Register dest) {
   AddImm(offset);
 }
 
-void JitCompilerIA32::or_imm_reg(int32_t imm, Register reg) {
+void JitCompilerA32::or_imm_reg(int32_t imm, Register reg) {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [orl $" << imm << L", %"
        << GetRegisterName(reg) << L"]" << endl;
@@ -3764,7 +3681,7 @@ void JitCompilerIA32::or_imm_reg(int32_t imm, Register reg) {
 }
 
 
-void JitCompilerIA32::or_reg_reg(Register src, Register dest) {
+void JitCompilerA32::or_reg_reg(Register src, Register dest) {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [orl %" << GetRegisterName(src) 
        << L", %" << GetRegisterName(dest) << L"]" << endl;
@@ -3778,7 +3695,7 @@ void JitCompilerIA32::or_reg_reg(Register src, Register dest) {
   AddMachineCode(code);
 }
 
-void JitCompilerIA32::or_mem_reg(int32_t offset, Register src, Register dest) {
+void JitCompilerA32::or_mem_reg(int32_t offset, Register src, Register dest) {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [orl " << offset << L"(%" 
        << GetRegisterName(src) << L"), %" << GetRegisterName(dest) 
@@ -3791,7 +3708,7 @@ void JitCompilerIA32::or_mem_reg(int32_t offset, Register src, Register dest) {
   AddImm(offset);
 }
 
-void JitCompilerIA32::xor_imm_reg(int32_t imm, Register reg) {
+void JitCompilerA32::xor_imm_reg(int32_t imm, Register reg) {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [xorl $" << imm << L", %"
        << GetRegisterName(reg) << L"]" << endl;
@@ -3805,7 +3722,7 @@ void JitCompilerIA32::xor_imm_reg(int32_t imm, Register reg) {
   AddImm(imm);
 }
 
-void JitCompilerIA32::xor_reg_reg(Register src, Register dest) {
+void JitCompilerA32::xor_reg_reg(Register src, Register dest) {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [xor %" << GetRegisterName(src) 
        << L", %" << GetRegisterName(dest) << L"]" << endl;
@@ -3819,7 +3736,7 @@ void JitCompilerIA32::xor_reg_reg(Register src, Register dest) {
   AddMachineCode(code);
 }
 
-void JitCompilerIA32::xor_mem_reg(int32_t offset, Register src, Register dest) {
+void JitCompilerA32::xor_mem_reg(int32_t offset, Register src, Register dest) {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [xorl " << offset << L"(%" 
        << GetRegisterName(src) << L"), %" << GetRegisterName(dest) 
@@ -3833,14 +3750,14 @@ void JitCompilerIA32::xor_mem_reg(int32_t offset, Register src, Register dest) {
 }
 
 /********************************
- * JitExecutorIA32 class
+ * JitExecutor class
  ********************************/
-StackProgram* JitExecutorIA32::program;
-void JitExecutorIA32::Initialize(StackProgram* p) {
+StackProgram* JitExecutor::program;
+void JitExecutor::Initialize(StackProgram* p) {
   program = p;
 }
 
-int32_t JitExecutorIA32::ExecuteMachineCode(int32_t cls_id, int32_t mthd_id, int32_t* inst, 
+int32_t JitExecutor::ExecuteMachineCode(int32_t cls_id, int32_t mthd_id, int32_t* inst, 
 					    uint32_t* code, const int32_t code_size, int32_t* op_stack, int32_t *stack_pos,
               StackFrame** call_stack, long* call_stack_pos) {
   // create function

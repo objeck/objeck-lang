@@ -57,16 +57,14 @@ namespace Runtime {
 #define CALL_STACK 28
 #define CALL_STACK_POS 32
   // float temps
-#define TMP_XMM_0 -40
-#define TMP_XMM_1 -48
-#define TMP_XMM_2 -56
+#define TMP_XMM_0 -28
+#define TMP_XMM_1 -36
+#define TMP_XMM_2 -44
   // integer temps
-#define TMP_REG_0 -64
-#define TMP_REG_1 -68
-#define TMP_REG_2 -72
-#define TMP_REG_3 -76
-  // #define TMP_REG_4 -80
-  // #define TMP_REG_5 -84
+#define TMP_REG_0 -48
+#define TMP_REG_1 -52
+#define TMP_REG_2 -56
+#define TMP_REG_3 -60
   
 #define MAX_DBLS 64
 #define PAGE_SIZE 4096
@@ -244,9 +242,9 @@ namespace Runtime {
 				 StackFrame** call_stack, long* call_stack_pos);
 
   /********************************
-  * JitCompilerIA32 class
+  * JitCompilerA32 class
   ********************************/
-  class JitCompilerIA32 {
+  class JitCompilerA32 {
     static StackProgram* program;
     deque<RegInstr*> working_stack;
     vector<RegisterHolder*> aval_regs;
@@ -259,7 +257,9 @@ namespace Runtime {
     StackMethod* method;
     int32_t instr_count;
     uint32_t* code;
-    int32_t code_index;   
+    int32_t code_index;
+    int32_t div_index;
+    int32_t mod_index;    
     double* floats;     
     int32_t floats_index;
     int32_t instr_index;
@@ -276,6 +276,7 @@ namespace Runtime {
     void RegisterRoot();
     void UnregisterRoot();
     void ProcessInstructions();
+    void ProcessDivMod();
     void ProcessLiteral(StackInstr* instruction) ;
     void ProcessVariable(StackInstr* instruction);
     void ProcessLoad(StackInstr* instr);
@@ -529,7 +530,7 @@ namespace Runtime {
       }
 #endif
 
-      if(h->GetRegister() == R12) {
+      if(h->GetRegister() >= R4 && h->GetRegister() <= R7) {
         aux_regs.push(h);
       }
       else {
@@ -1338,10 +1339,10 @@ namespace Runtime {
   public: 
     static void Initialize(StackProgram* p);
 
-    JitCompilerIA32() {
+    JitCompilerA32() {
     }
 
-    ~JitCompilerIA32() {
+    ~JitCompilerA32() {
       while(!working_stack.empty()) {
         RegInstr* instr = working_stack.front();
         working_stack.pop_front();
@@ -1484,6 +1485,12 @@ namespace Runtime {
           return false;
         }
 
+	div_index = code_index;
+	ProcessDivMod();
+	if(!compile_success) {
+          return false;
+        }
+	
         // show content
         unordered_map<int32_t, StackInstr*>::iterator iter;
         for(iter = jump_table.begin(); iter != jump_table.end(); ++iter) {
@@ -1528,9 +1535,9 @@ namespace Runtime {
   };    
 
   /********************************
-  * JitExecutorIA32 class
+  * JitExecutor class
   ********************************/
-  class JitExecutorIA32 {
+  class JitExecutor {
     static StackProgram* program;
     StackMethod* method;
     uint32_t* code;
@@ -1544,10 +1551,10 @@ namespace Runtime {
   public:
     static void Initialize(StackProgram* p);
 
-    JitExecutorIA32() {
+    JitExecutor() {
     }
 
-    ~JitExecutorIA32() {
+    ~JitExecutor() {
     }    
     
     // Executes machine code

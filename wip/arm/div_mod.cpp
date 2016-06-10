@@ -2,21 +2,19 @@
 
 using namespace std;
 
-int div_mod(int num, int deno) {
-	if(deno == 0) {
-		return deno;
+int r3_mod(int r0, int r1) {
+	if(r1 == 0) {
+		return r1;
 	}
 	
-	int div = 0;
-	num = num - deno;
-	while(num > -1) {
-		div = div + 1;
-		num = num - deno;
-	}
-	
-	cout << "div=" << div << ", remainder=" << (deno + num) << endl;
+	int r3 = 0;
+	r0 = r0 - r1;
+	while(r0 > -1) {
+		r3 = r3 + 1;
+		r0 = r0 - r1;
+	}	
 }
 
 int main() {
-	div_mod(50, 3);
+	r3_mod(50, 3);
 }
