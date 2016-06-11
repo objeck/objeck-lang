@@ -2,7 +2,7 @@
 
 using namespace std;
 
-enum Register {
+enum Reg {
 	r0,
 	r1,
 	r2,
@@ -13,67 +13,60 @@ enum Register {
 	r7
 };
 
-// src => r0; dest => r1
-void div(Register src, Register dest) {
-	cout << "src=r" << src << ", dest=r" << dest << endl << endl;
+enum Mem {
+	TMP_0,
+	TMP_1
+};
 
-	cout << "r0 -> tmp0" << endl;
-	cout << "r1 -> tmp1" << endl;
-
-	if(src == r0 && dest == r1) {
-		cout << "call <div>" << endl;
-		cout << "r0 -> dest" << endl;
-	}
-	else {
-		// swap
-		if(src == r1 && dest == r0) {
-			cout << "tmp1 -> r0" << endl;
-			cout << "tmp0 -> r1" << endl;
-			// call and save result
-			cout << "call <div>" << endl;
-			cout << "r0 -> dest" << endl;
-		}
-
-		if(src == r1) {
-			cout << "tmp1 -> r0" << endl;
-			if(dest != r1) {
-				cout << "dest -> r1" << endl;
-			}
-			// call and save result
-			cout << "call <div>" << endl;
-			cout << "r0 -> dest" << endl;
-		}
-		
-		if(dest == r0) {
-			if(src != r0) {
-				cout << "src -> r0" << endl;
-			}
-			cout << "tmp0 -> r1" << endl;
-			// call and save result
-			cout << "call <div>" << endl;
-			cout << "r0 -> dest" << endl;
-		}
-
-	}
-
-	if(dest != r0) {
-		cout << "tmp0 -> r0" << endl;
+class RegSim {
+	int registers[8];
+	int memory[2];
+	
+public:
+	void stor_reg_mem(Reg src, Mem offset) {
+		memory[offset] = registers[src];
 	}
 	
-	if(dest != r1) {
-		cout << "tmp1 -> r1" << endl;
+	void load_reg_mem(Reg src, Mem offset) {
+		registers[src] = memory[offset];
 	}
-}
+	
+	void move_reg_reg(Reg dest, Reg src) {
+		registers[dest] = registers[src];
+	}
+	
+	void move_imm_reg(Reg dest, int imm) {
+		registers[dest] = imm;
+	}
+	
+	void add_reg_reg(Reg dest, Reg left, Reg right) {
+		registers[dest] = registers[left] + registers[right];
+	}
+	
+	void sub_reg_reg(Reg dest, Reg left, Reg right) {
+		registers[dest] = registers[left] - registers[right];
+	}
+	
+	void div_reg_reg(Reg dest, Reg left, Reg right) {
+		registers[r0] = registers[r0] / registers[r1];
+	}
+	
+	void ShowReg(Reg reg) {
+		cout << "r" << reg << "=" << registers[reg] << endl;
+	}
+	
+	void ShowMem(Mem mem) {
+		cout << "m" << mem << "=" << memory[mem] << endl;
+	}
+};
 
 int main() {
-	div(r1, r0);
-	cout << "---" << endl;
-	div(r0, r1);
-	cout << "---" << endl;
-	div(r2, r3);
-	cout << "---" << endl;
-	div(r0, r3);
-	cout << "---" << endl;
-	div(r3, r1);
+	RegSim sim;
+	sim.move_imm_reg(r0, 13);
+	sim.move_imm_reg(r1, 7);
+	sim.add_reg_reg(r0, r0, r1);
+	
+	sim.ShowReg(r0);
+	sim.ShowReg(r1);
 }
 
