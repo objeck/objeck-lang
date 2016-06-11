@@ -2102,11 +2102,31 @@ void JitCompilerA32::ProcessFloatCalculation(StackInstr* instruction) {
 //============================== NEW WIP =============================
 //====================================================================
 
+void JitCompilerA32::move_reg_reg(Register src, Register dest) {
+  if(src != dest) {
+#ifdef _DEBUG
+    wcout << L"  " << (++instr_count) << L": [mov " << GetRegisterName(dest) 
+	  << L", " << GetRegisterName(src) << L"]" << endl;
+#endif    
+    
+    uint32_t op_code = 0xe1a00000;
+    
+    uint32_t op_dest = dest << 12;
+    op_code |= op_dest;
+    
+    uint32_t op_offset = src;
+    op_code |= op_offset;
+    
+    // encode
+    AddMachineCode(op_code);
+  }
+}
+
 void JitCompilerA32::move_reg_mem(Register src, int32_t offset, Register dest) { 
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [str " << GetRegisterName(src) 
 	<< L", (" << GetRegisterName(dest) << L", #" << offset << L")]" << endl;
-  #endif
+#endif
   
   uint32_t op_code;
   if(offset >= 0) {
@@ -2333,43 +2353,38 @@ void JitCompilerA32::div_mem_reg(int32_t offset, Register src,
 void JitCompilerA32::div_reg_reg(Register src, Register dest, bool is_mod) {
   if(src != R0) {
     move_reg_mem(R0, TMP_REG_0, FP);
-    move_reg_reg(src, R0);
+    if(dest != R0) {
+      move_reg_reg(src, R0);
+    }
+    else {
+      
+    }
   }
-
+  
   if(dest != R1) {
     move_reg_mem(R1, TMP_REG_1, FP);
     move_reg_reg(dest, R1);
   }
   
   // do stuff
-  
-
+#ifdef _DEBUG
+  wcout << L"  " << (++instr_count) << L": [bl <div>]" << endl;
+#endif
+							  // AddMachineCode(0xeb000000);
+							  AddMachineCode(0xeb001000);
+  		 
   if(src != R0) {
+    move_mem_reg(TMP_REG_0, FP, src);
   }
-
+  
   if(dest != R1) {
+    move_reg_reg(R0, dest);
   }
 }
 
 //====================================================================
 //=============================== OLD ================================
 //====================================================================
-
-void JitCompilerA32::move_reg_reg(Register src, Register dest) {
-  if(src != dest) {
-#ifdef _DEBUG
-    wcout << L"  " << (++instr_count) << L": [movl %" << GetRegisterName(src) 
-	 << L", %" << GetRegisterName(dest) << L"]" << endl;
-#endif
-    // encode
-    AddMachineCode(0x89);
-    unsigned char code = 0xc0;
-    // write value
-    // RegisterEncode3(code, 2, src);
-    // RegisterEncode3(code, 5, dest);
-    AddMachineCode(code);
-  }
-}
 
 void JitCompilerA32::move_reg_mem16(Register src, int32_t offset, Register dest) { 
 #ifdef _DEBUG
