@@ -2,6 +2,9 @@
 
 using namespace std;
 
+#define REG_MEX 8
+#define MEM_MEX 2
+
 enum Reg {
 	r0,
 	r1,
@@ -19,35 +22,79 @@ enum Mem {
 };
 
 class RegSim {
-	int registers[8];
-	int memory[2];
+	int registers[REG_MEX];
+	int memory[MEM_MEX];
 	
 public:
+	RegSim() {
+		for(int i = 0; i < REG_MEX; ++i) {
+			registers[i] = -1;
+		}
+		
+		for(int i = 0; i < MEM_MEX; ++i) {
+			memory[i] = -1;
+		}
+	}
+	
+	~RegSim() {
+	}
+
 	void stor_reg_mem(Reg src, Mem offset) {
+		cout << "stor\tr" << src << ", #" << offset << "[fp]" << endl;
 		memory[offset] = registers[src];
 	}
 	
 	void load_reg_mem(Reg src, Mem offset) {
+		cout << "load\tr" << src << ", #" << offset << "[fp]" << endl;
 		registers[src] = memory[offset];
 	}
 	
-	void move_reg_reg(Reg dest, Reg src) {
+	void mov_reg_reg(Reg dest, Reg src) {
+		cout << "mov\tr" << dest << ", r" << src << endl;
 		registers[dest] = registers[src];
 	}
 	
-	void move_imm_reg(Reg dest, int imm) {
+	void mov_imm_reg(Reg dest, int imm) {
+		cout << "mov\tr" << dest << ", #" << imm << endl;
 		registers[dest] = imm;
 	}
 	
-	void add_reg_reg(Reg dest, Reg left, Reg right) {
-		registers[dest] = registers[left] + registers[right];
+	void add_reg_reg(Reg dest, Reg src) {
+		registers[dest] = registers[dest] + registers[src];
+	}
+
+	void sub_reg_reg(Reg dest, Reg src) {
+		cout << "add\tr" << dest << ", r" << dest  << ", r" << src << endl;
+		registers[dest] = registers[dest] - registers[src];
 	}
 	
-	void sub_reg_reg(Reg dest, Reg left, Reg right) {
-		registers[dest] = registers[left] - registers[right];
+	void div_reg_reg(Reg dest, Reg src) {
+		if(src != r0) {
+			stor_reg_mem(src, TMP_0);
+			if(src == r1 && dest == r0) {
+				mov_reg_reg(r1, dest);
+				load_reg_mem(r0, TMP_0);
+			}
+			else {
+				mov_reg_reg(r0, src);
+			}
+		}
+		
+		if(dest != r1 && dest != r0) {
+			mov_reg_reg(r1, dest);
+		}
+		
+		div_reg_reg();
+		
+		if(dest != r0) {
+			mov_reg_reg(dest, r0);
+		}
+		load_reg_mem(src, TMP_0);
 	}
 	
-	void div_reg_reg(Reg dest, Reg left, Reg right) {
+	void div_reg_reg() {
+		cout << "div\tr0, r0, r1 (r" << r0 << " = "  << registers[r0] 
+			<< "/" << registers[r1] << ")" << endl;
 		registers[r0] = registers[r0] / registers[r1];
 	}
 	
@@ -62,11 +109,9 @@ public:
 
 int main() {
 	RegSim sim;
-	sim.move_imm_reg(r0, 13);
-	sim.move_imm_reg(r1, 7);
-	sim.add_reg_reg(r0, r0, r1);
-	
-	sim.ShowReg(r0);
+	sim.mov_imm_reg(r1, 4);
+	sim.mov_imm_reg(r3, 20);
+	sim.div_reg_reg(r1, r3);
 	sim.ShowReg(r1);
 }
 
