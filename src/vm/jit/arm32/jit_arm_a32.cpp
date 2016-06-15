@@ -282,7 +282,7 @@ void JitCompilerA32::ProcessDivMod() {
   uint32_t div_code[] = {
     // __aeabi_idivmod
     0xe3510000, //  cmp r1, #0
-    0x0afffff9, //  beq 210 <.divsi3_skip_div0_test+0x208>
+    0x0a000087, // fffff9,  beq 210 <.divsi3_skip_div0_test+0x208> (D)
     0xe92d4003, //  push  {r0, r1, lr}
     0xebffff75, //  bl  8 <.divsi3_skip_div0_test> (A)
     0xe8bd4006, //  pop {r1, r2, lr}
@@ -421,7 +421,7 @@ void JitCompilerA32::ProcessDivMod() {
     0xe262201f, //  rsb r2, r2, #31                               1fc: 
     0xe35c0000, //  cmp ip, #0                                    200: 
     0xe1a00233, //  lsr r0, r3, r2                                204: 
-    0x42600000, //  rsbmi r0, r0, #0                              208: 
+    0x42600000, //  rsbmi r0, r0, #0                              208: (D) 
     0xe12fff1e, //  bx  lr                                        20c: 
     0xe3500000, //  cmp r0, #0                                    210: 
     0xc3e00102, //  mvngt r0, #-2147483648  ; 0x80000000          214: 
@@ -2503,7 +2503,7 @@ void JitCompilerA32::div_reg_reg(Register src, Register dest, bool is_mod) {
   wcout << L"  " << (++instr_count) << L": [bl <div>]" << endl;
 #endif
 							  // AddMachineCode(0xeb000000);
-							  AddMachineCode(0xeb001000);
+							  AddMachineCode(0xeb000010);
   		 
   if(src != R0) {
     move_mem_reg(TMP_REG_0, FP, src);
