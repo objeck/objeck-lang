@@ -284,7 +284,7 @@ void JitCompilerA32::ProcessDivMod() {
     0xe3510000, //  cmp r1, #0
     0x0a000087, // fffff9,  beq 210 <.divsi3_skip_div0_test+0x208> (D)
     0xe92d4003, //  push  {r0, r1, lr}
-    0xebffff75, //  bl  8 <.divsi3_skip_div0_test> (A)
+    0xeb000006, //  bl  8 <.divsi3_skip_div0_test> (A)
     0xe8bd4006, //  pop {r1, r2, lr}
     0xe0030092, //  mul r3, r2, r0
     0xe0411003, //  sub r1, r1, r3
