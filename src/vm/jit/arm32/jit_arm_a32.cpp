@@ -296,7 +296,7 @@ void JitCompilerA32::ProcessDivMod() {
     0xe020c001, //  eor ip, r0, r1                                  8: (A)
     0x42611000, //  rsbmi r1, r1, #0                                c: 
     0xe2512001, //  subs  r2, r1, #1                               10: 
-    0x0a000070, //  beq 1dc <.divsi3_skip_div0_test+0x1d4>         14: 
+    0x0a00006e, //  beq 1dc <.divsi3_skip_div0_test+0x1d4>         14: 
     0xe1b03000, //  movs  r3, r0                                   18: 
     0x42603000, //  rsbmi r3, r0, #0                               1c: 
     0xe1530001, //  cmp r3, r1                                     20: 
