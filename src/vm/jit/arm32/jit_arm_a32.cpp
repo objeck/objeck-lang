@@ -300,9 +300,9 @@ void JitCompilerA32::ProcessDivMod() {
     0xe1b03000, //  movs  r3, r0                                   18: 
     0x42603000, //  rsbmi r3, r0, #0                               1c: 
     0xe1530001, //  cmp r3, r1                                     20: 
-    0x9a00006f, //  bls 1e8 <.divsi3_skip_div0_test+0x1e0> (B)     24:  
+    0x9a00006d, //  bls 1e8 <.divsi3_skip_div0_test+0x1e0> (B)     24:  
     0xe1110002, //  tst r1, r2                                     28: 
-    0x0a000071, //  beq 1f8 <.divsi3_skip_div0_test+0x1f0> (C)     2c: 
+    0x0a000070, //  beq 1f8 <.divsi3_skip_div0_test+0x1f0> (C)     2c: 
     0xe16f2f13, //  clz r2, r3                                     30: 
     0xe16f0f11, //  clz r0, r1                                     34: 
     0xe0402002, //  sub r2, r0, r2                                 38: 
