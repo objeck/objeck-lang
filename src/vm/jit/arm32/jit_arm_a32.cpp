@@ -2242,10 +2242,10 @@ void JitCompilerA32::sub_reg_reg(Register src, Register dest) {
 #endif
   uint32_t op_code = 0xe0600000;
   
-  uint32_t op_src = src << 16;
+  uint32_t op_src = dest<< 16;
   op_code |= op_src;
   
-  uint32_t op_dest = dest << 12;
+  uint32_t op_dest = src  << 12;
   op_code |= op_dest;
 
   op_dest = dest << 8;
