@@ -277,169 +277,6 @@ void JitCompilerA32::ProcessFloatCallParameter() {
   ReleaseRegister(stack_pos_holder);
 }
 
-void JitCompilerA32::ProcessDivMod() {
-  // input r0 => num, r1 => deno, div => r0, mod => r1
-  uint32_t div_code[] = {
-    // __aeabi_idivmod
-    0xe3510000, //  cmp r1, #0
-    0x0a000087, // fffff9,  beq 210 <.divsi3_skip_div0_test+0x208> (D)
-    0xe92d4003, //  push  {r0, r1, lr}
-    0xeb000005, //  bl  8 <.divsi3_skip_div0_test> (A)
-    0xe8bd4006, //  pop {r1, r2, lr}
-    0xe0030092, //  mul r3, r2, r0
-    0xe0411003, //  sub r1, r1, r3
-    0xe12fff1e, //  bx  lr
-    // __aeabi_idiv
-    0xe3510000, //  cmp r1, #0
-    0x0a000081, //  beq 210 <.divsi3_skip_div0_test+0x208>
-    // .divsi3_skip_div0_test
-    0xe020c001, //  eor ip, r0, r1                                  8: (A)
-    0x42611000, //  rsbmi r1, r1, #0                                c: 
-    0xe2512001, //  subs  r2, r1, #1                               10: 
-    0x0a00006e, //  beq 1dc <.divsi3_skip_div0_test+0x1d4>         14: 
-    0xe1b03000, //  movs  r3, r0                                   18: 
-    0x42603000, //  rsbmi r3, r0, #0                               1c: 
-    0xe1530001, //  cmp r3, r1                                     20: 
-    0x9a00006d, //  bls 1e8 <.divsi3_skip_div0_test+0x1e0> (B)     24:  
-    0xe1110002, //  tst r1, r2                                     28: 
-    0x0a000070, //  beq 1f8 <.divsi3_skip_div0_test+0x1f0> (C)     2c: 
-    0xe16f2f13, //  clz r2, r3                                     30: 
-    0xe16f0f11, //  clz r0, r1                                     34: 
-    0xe0402002, //  sub r2, r0, r2                                 38: 
-    0xe272201f, //  rsbs  r2, r2, #31                              3c: 
-    0x10822082, //  addne r2, r2, r2, lsl #1                       40: 
-    0xe3a00000, //  mov r0, #0                                     44: 
-    0x108ff102, //  addne pc, pc, r2, lsl #2                       48: 
-    0xe1a00000, //  nop     ; (mov r0, r0)                         4c: 
-    0xe1530f81, //  cmp r3, r1, lsl #31                            50: 
-    0xe0a00000, //  adc r0, r0, r0                                 54: 
-    0x20433f81, //  subcs r3, r3, r1, lsl #31                      58: 
-    0xe1530f01, //  cmp r3, r1, lsl #30                            5c: 
-    0xe0a00000, //  adc r0, r0, r0                                 60: 
-    0x20433f01, //  subcs r3, r3, r1, lsl #30                      64: 
-    0xe1530e81, //  cmp r3, r1, lsl #29                            68: 
-    0xe0a00000, //  adc r0, r0, r0                                 6c: 
-    0x20433e81, //  subcs r3, r3, r1, lsl #29                      70: 
-    0xe1530e01, //  cmp r3, r1, lsl #28                            74: 
-    0xe0a00000, //  adc r0, r0, r0                                 78: 
-    0x20433e01, //  subcs r3, r3, r1, lsl #28                      7c: 
-    0xe1530d81, //  cmp r3, r1, lsl #27                            80: 
-    0xe0a00000, //  adc r0, r0, r0                                 84: 
-    0x20433d81, //  subcs r3, r3, r1, lsl #27                      88: 
-    0xe1530d01, //  cmp r3, r1, lsl #26                            8c: 
-    0xe0a00000, //  adc r0, r0, r0                                 90: 
-    0x20433d01, //  subcs r3, r3, r1, lsl #26                      94: 
-    0xe1530c81, //  cmp r3, r1, lsl #25                            98: 
-    0xe0a00000, //  adc r0, r0, r0                                 9c: 
-    0x20433c81, //  subcs r3, r3, r1, lsl #25                      a0: 
-    0xe1530c01, //  cmp r3, r1, lsl #24                            a4: 
-    0xe0a00000, //  adc r0, r0, r0                                 a8: 
-    0x20433c01, //  subcs r3, r3, r1, lsl #24                      ac: 
-    0xe1530b81, //  cmp r3, r1, lsl #23                            b0: 
-    0xe0a00000, //  adc r0, r0, r0                                 b4: 
-    0x20433b81, //  subcs r3, r3, r1, lsl #23                      b8: 
-    0xe1530b01, //  cmp r3, r1, lsl #22                            bc: 
-    0xe0a00000, //  adc r0, r0, r0                                 c0: 
-    0x20433b01, //  subcs r3, r3, r1, lsl #22                      c4: 
-    0xe1530a81, //  cmp r3, r1, lsl #21                            c8: 
-    0xe0a00000, //  adc r0, r0, r0                                 cc: 
-    0x20433a81, //  subcs r3, r3, r1, lsl #21                      d0: 
-    0xe1530a01, //  cmp r3, r1, lsl #20                            d4: 
-    0xe0a00000, //  adc r0, r0, r0                                 d8: 
-    0x20433a01, //  subcs r3, r3, r1, lsl #20                      dc: 
-    0xe1530981, //  cmp r3, r1, lsl #19                            e0: 
-    0xe0a00000, //  adc r0, r0, r0                                 e4: 
-    0x20433981, //  subcs r3, r3, r1, lsl #19                      e8: 
-    0xe1530901, //  cmp r3, r1, lsl #18                            ec: 
-    0xe0a00000, //  adc r0, r0, r0                                 f0: 
-    0x20433901, //  subcs r3, r3, r1, lsl #18                      f4: 
-    0xe1530881, //  cmp r3, r1, lsl #17                            f8: 
-    0xe0a00000, //  adc r0, r0, r0                                 fc: 
-    0x20433881, //  subcs r3, r3, r1, lsl #17                     100: 
-    0xe1530801, //  cmp r3, r1, lsl #16                           104: 
-    0xe0a00000, //  adc r0, r0, r0                                108: 
-    0x20433801, //  subcs r3, r3, r1, lsl #16                     10c: 
-    0xe1530781, //  cmp r3, r1, lsl #15                           110: 
-    0xe0a00000, //  adc r0, r0, r0                                114: 
-    0x20433781, //  subcs r3, r3, r1, lsl #15                     118: 
-    0xe1530701, //  cmp r3, r1, lsl #14                           11c: 
-    0xe0a00000, //  adc r0, r0, r0                                120: 
-    0x20433701, //  subcs r3, r3, r1, lsl #14                     124: 
-    0xe1530681, //  cmp r3, r1, lsl #13                           128: 
-    0xe0a00000, //  adc r0, r0, r0                                12c: 
-    0x20433681, //  subcs r3, r3, r1, lsl #13                     130: 
-    0xe1530601, //  cmp r3, r1, lsl #12                           134: 
-    0xe0a00000, //  adc r0, r0, r0                                138: 
-    0x20433601, //  subcs r3, r3, r1, lsl #12                     13c: 
-    0xe1530581, //  cmp r3, r1, lsl #11                           140: 
-    0xe0a00000, //  adc r0, r0, r0                                144: 
-    0x20433581, //  subcs r3, r3, r1, lsl #11                     148: 
-    0xe1530501, //  cmp r3, r1, lsl #10                           14c: 
-    0xe0a00000, //  adc r0, r0, r0                                150: 
-    0x20433501, //  subcs r3, r3, r1, lsl #10                     154: 
-    0xe1530481, //  cmp r3, r1, lsl #9                            158: 
-    0xe0a00000, //  adc r0, r0, r0                                15c: 
-    0x20433481, //  subcs r3, r3, r1, lsl #9                      160: 
-    0xe1530401, //  cmp r3, r1, lsl #8                            164: 
-    0xe0a00000, //  adc r0, r0, r0                                168: 
-    0x20433401, //  subcs r3, r3, r1, lsl #8                      16c: 
-    0xe1530381, //  cmp r3, r1, lsl #7                            170: 
-    0xe0a00000, //  adc r0, r0, r0                                174: 
-    0x20433381, //  subcs r3, r3, r1, lsl #7                      178: 
-    0xe1530301, //  cmp r3, r1, lsl #6                            17c: 
-    0xe0a00000, //  adc r0, r0, r0                                180: 
-    0x20433301, //  subcs r3, r3, r1, lsl #6                      184: 
-    0xe1530281, //  cmp r3, r1, lsl #5                            188: 
-    0xe0a00000, //  adc r0, r0, r0                                18c: 
-    0x20433281, //  subcs r3, r3, r1, lsl #5                      190: 
-    0xe1530201, //  cmp r3, r1, lsl #4                            194: 
-    0xe0a00000, //  adc r0, r0, r0                                198: 
-    0x20433201, //  subcs r3, r3, r1, lsl #4                      19c: 
-    0xe1530181, //  cmp r3, r1, lsl #3                            1a0: 
-    0xe0a00000, //  adc r0, r0, r0                                1a4: 
-    0x20433181, //  subcs r3, r3, r1, lsl #3                      1a8: 
-    0xe1530101, //  cmp r3, r1, lsl #2                            1ac: 
-    0xe0a00000, //  adc r0, r0, r0                                1b0: 
-    0x20433101, //  subcs r3, r3, r1, lsl #2                      1b4: 
-    0xe1530081, //  cmp r3, r1, lsl #1                            1b8: 
-    0xe0a00000, //  adc r0, r0, r0                                1bc: 
-    0x20433081, //  subcs r3, r3, r1, lsl #1                      1c0: 
-    0xe1530001, //  cmp r3, r1                                    1c4: 
-    0xe0a00000, //  adc r0, r0, r0                                1c8: 
-    0x20433001, //  subcs r3, r3, r1                              1cc: 
-    0xe35c0000, //  cmp ip, #0                                    1d0: 
-    0x42600000, //  rsbmi r0, r0, #0                              1d4: 
-    0xe12fff1e, //  bx  lr                                        1d8: 
-    0xe13c0000, //  teq ip, r0                                    1dc: 
-    0x42600000, //  rsbmi r0, r0, #0                              1e0: (B) 
-    0xe12fff1e, //  bx  lr                                        1e4: 
-    0x33a00000, //  movcc r0, #0                                  1e8: 
-    0x01a00fcc, //  asreq r0, ip, #31                             1ec: 
-    0x0380000,  //  orreq r0, r0, #1                              1f0: (C)
-    0xe12fff1e, //  bx  lr                                        1f4: 
-    0xe16f2f11, //  clz r2, r1                                    1f8: 
-    0xe262201f, //  rsb r2, r2, #31                               1fc: 
-    0xe35c0000, //  cmp ip, #0                                    200: 
-    0xe1a00233, //  lsr r0, r3, r2                                204: 
-    0x42600000, //  rsbmi r0, r0, #0                              208: (D) 
-    0xe12fff1e, //  bx  lr                                        20c: 
-    0xe3500000, //  cmp r0, #0                                    210: 
-    0xc3e00102, //  mvngt r0, #-2147483648  ; 0x80000000          214: 
-    0xb3a00102, //  movlt r0, #-2147483648  ; 0x80000000          218: 
-    // 0xeafffffe b 0 <__aeabi_idiv0>                             21c:
-    // __aeabi_idiv0
-    0xe92d4002, //  push  {r1, lr}
-    0xe3a00008, //  mov r0, #8
-    0xebfffffe, //  bl  0 <raise>
-    0xe8bd8002  //  pop {r1, pc}
-  };
-  const int32_t setup_size = sizeof(div_code) / sizeof(int32_t);
-  // copy setup
-  for(int32_t i = 0; i < setup_size; i++) {
-    AddMachineCode(div_code[i]);
-  }
-}
-
 void JitCompilerA32::ProcessInstructions() {
   while(instr_index < method->GetInstructionCount() && compile_success) {
     StackInstr* instr = method->GetInstruction(instr_index++);
@@ -2342,8 +2179,8 @@ void JitCompilerA32::add_mem_reg(int32_t offset, Register src, Register dest) {
 
 void JitCompilerA32::add_reg_reg(Register src, Register dest) {
 #ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << L": [add " << GetRegisterName(src) 
-	<< L", " << GetRegisterName(dest) << L", " << GetRegisterName(dest) << L"]" << endl;
+  wcout << L"  " << (++instr_count) << L": [add " << GetRegisterName(dest) 
+	<< L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
 #endif
   uint32_t op_code = 0xe0800000;
   
@@ -2474,44 +2311,31 @@ void JitCompilerA32::shl_imm_reg(int32_t value, Register dest) {
   AddMachineCode(op_code);
 }
 
-void JitCompilerA32::div_mem_reg(int32_t offset, Register src,
-				 Register dest, bool is_mod) {
-  RegisterHolder* mem_holder = GetRegister();
-  move_mem_reg(offset, src, mem_holder->GetRegister());
-  div_reg_reg(mem_holder->GetRegister(), dest, is_mod);
-  ReleaseRegister(mem_holder);   
+void JitCompilerA32::div_mem_reg(int32_t offset, Register src, Register dest, bool is_mod) {
+  RegisterHolder* src_holder = GetRegister();
+  move_mem_reg(offset, src, src_holder->GetRegister());
+  div_reg_reg(src_holder->GetRegister(), dest, is_mod);
+  ReleaseRegister(src_holder);   
 }
 
 void JitCompilerA32::div_reg_reg(Register src, Register dest, bool is_mod) {
-  if(src != R0) {
-    move_reg_mem(R0, TMP_REG_0, FP);
-    if(dest != R0) {
-      move_reg_reg(src, R0);
-    }
-    else {
-      
-    }
-  }
+  // 1110 0111 0001 dddd 1111 mmmm 0001 nnnn
   
-  if(dest != R1) {
-    move_reg_mem(R1, TMP_REG_1, FP);
-    move_reg_reg(dest, R1);
-  }
-  
-  // do stuff
 #ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << L": [bl <div>]" << endl;
+  wcout << L"  " << (++instr_count) << L": [sdiv " << GetRegisterName(dest) 
+	<< L", " << GetRegisterName(dest) << L", " << GetRegisterName(src) << L"]" << endl;
 #endif
-							  // AddMachineCode(0xeb000000);
-							  AddMachineCode(0xeb000010);
-  		 
-  if(src != R0) {
-    move_mem_reg(TMP_REG_0, FP, src);
-  }
+  uint32_t op_code = 0xe710f010;
   
-  if(dest != R1) {
-    move_reg_reg(R0, dest);
-  }
+  uint32_t op_src = dest << 16;
+  op_code |= op_src;
+  
+  uint32_t op_dest = src << 8;
+  op_code |= op_dest;
+	
+  op_code |= dest;
+
+  AddMachineCode(op_code);
 }
 
 //====================================================================

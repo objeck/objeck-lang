@@ -258,7 +258,6 @@ namespace Runtime {
     int32_t instr_count;
     uint32_t* code;
     int32_t code_index;
-    int32_t div_index;
     int32_t mod_index;    
     double* floats;     
     int32_t floats_index;
@@ -276,7 +275,6 @@ namespace Runtime {
     void RegisterRoot();
     void UnregisterRoot();
     void ProcessInstructions();
-    void ProcessDivMod();
     void ProcessLiteral(StackInstr* instruction) ;
     void ProcessVariable(StackInstr* instruction);
     void ProcessLoad(StackInstr* instr);
@@ -306,7 +304,102 @@ namespace Runtime {
     void ProcessCeiling(StackInstr* instr);
     void ProcessFloatToInt(StackInstr* instr);
     void ProcessIntToFloat(StackInstr* instr);
+    
+    /*
+      GCC is free software; you can redistribute it and/or modify it
+      under the terms of the GNU General Public License as published
+      by the Free Software Foundation; either version 3, or (at your
+      option) any later version.
+     
+      GCC is distributed in the hope that it will be useful, but WITHOUT
+      ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+      or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public
+      License for more details.
+     
+      Under Section 7 of GPL version 3, you are granted additional
+      permissions described in the GCC Runtime Library Exception, version
+      3.1, as published by the Free Software Foundation.
 
+      You should have received a copy of the GNU General Public License and
+      a copy of the GCC Runtime Library Exception along with this program;
+      see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
+      <http://www.gnu.org/licenses/>.  
+    */
+    
+    long udivmodsi4 (long num, long den, bool modwanted) {
+      long bit = 1;
+      long res = 0;
+
+      while (den < num && bit && !(den & (1L << 31)))
+	{
+	  den <<= 1;
+	  bit <<= 1;
+	}
+      while (bit)
+	{
+	  if (num >= den)
+	    {
+	      num -= den;
+	      res |= bit;
+	    }
+	  bit >>= 1;
+	  den >>= 1;
+	}
+      if (modwanted)
+	return num;
+	
+      return res;
+    }
+
+    long __divsi3 (long a, long b) {
+      bool neg = 0;
+      long res;
+
+      if (a < 0)
+	{
+	  a = -a;
+	  neg = !neg;
+	}
+
+      if (b < 0)
+	{
+	  b = -b;
+	  neg = !neg;
+	}
+
+      res = udivmodsi4 (a, b, false);
+
+      if (neg)
+	res = -res;
+
+      return res;
+    }
+
+    long __modsi3 (long a, long b) {
+      bool neg = 0;
+      long res;
+
+      if (a < 0)
+	{
+	  a = -a;
+	  neg = 1;
+	}
+
+      if (b < 0)
+	b = -b;
+
+      res = udivmodsi4 (a, b, true);
+
+      if (neg)
+	res = -res;
+
+      return res;
+    }
+
+    //
+    // END GPL
+    //
+    
     // Add byte code to buffer
     inline void AddMachineCode(uint32_t i) {
       if(code_index == code_buf_max) {
@@ -1485,12 +1578,6 @@ namespace Runtime {
           return false;
         }
 
-	div_index = code_index;
-	ProcessDivMod();
-	if(!compile_success) {
-          return false;
-        }
-	
         // show content
         unordered_map<int32_t, StackInstr*>::iterator iter;
         for(iter = jump_table.begin(); iter != jump_table.end(); ++iter) {
