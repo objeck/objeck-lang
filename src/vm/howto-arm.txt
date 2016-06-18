@@ -4,6 +4,6 @@ chmod +x obr; gdbserver :1234 obr ../compiler/a.obe
 arm-linux-gnueabihf-gdb.exe obr
 target remote 192.168.1.33:1234
 set args ../compiler/a.obe
-b jit_arm_a32.cpp:3913
+b jit_arm_a32.cpp:3738
 c
 disas jit_fun, jit_fun+740
