@@ -2336,6 +2336,24 @@ void JitCompilerA32::div_reg_reg(Register src, Register dest, bool is_mod) {
   op_code |= dest;
 
   AddMachineCode(op_code);
+
+  /*
+   mod = x - (x/y) * y;
+
+  if(is_mod) {
+    op_code = 0xe0600090;
+    
+    uint32_t op_src = dest << 16;
+    op_code |= op_src;
+  
+    uint32_t op_dest = src << 8;
+    op_code |= op_dest;
+	
+    op_code |= dest;
+
+    AddMachineCode(op_code);
+  }
+  */
 }
 
 //====================================================================
