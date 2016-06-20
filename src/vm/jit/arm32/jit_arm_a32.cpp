@@ -2237,18 +2237,18 @@ void JitCompilerA32::sub_mem_reg(int32_t offset, Register src, Register dest) {
 
 void JitCompilerA32::sub_reg_reg(Register src, Register dest) {
 #ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << L": [rsb " << GetRegisterName(dest) << L", "
+  wcout << L"  " << (++instr_count) << L": [sub " << GetRegisterName(dest) << L", "
 	<< GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
 #endif
   uint32_t op_code = 0xe0600000;
   
-  uint32_t op_src = dest<< 16;
+  uint32_t op_src = src << 16;
   op_code |= op_src;
   
-  uint32_t op_dest = src  << 12;
+  uint32_t op_dest = dest << 12;
   op_code |= op_dest;
 
-  op_dest = dest << 8;
+  op_dest = dest;
   op_code |= op_dest;
 
   AddMachineCode(op_code);
