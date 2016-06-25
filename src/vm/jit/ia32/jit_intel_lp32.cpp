@@ -3813,14 +3813,14 @@ void JitCompilerIA32::xor_mem_reg(int32_t offset, Register src, Register dest) {
 }
 
 /********************************
- * JitExecutorIA32 class
+ * JitExecutor class
  ********************************/
-StackProgram* JitExecutorIA32::program;
-void JitExecutorIA32::Initialize(StackProgram* p) {
+StackProgram* JitExecutor::program;
+void JitExecutor::Initialize(StackProgram* p) {
   program = p;
 }
 
-int32_t JitExecutorIA32::ExecuteMachineCode(int32_t cls_id, int32_t mthd_id, int32_t* inst, 
+int32_t JitExecutor::ExecuteMachineCode(int32_t cls_id, int32_t mthd_id, int32_t* inst, 
 					    unsigned char* code, const int32_t code_size, int32_t* op_stack, int32_t *stack_pos,
               StackFrame** call_stack, long* call_stack_pos) {
   // create function

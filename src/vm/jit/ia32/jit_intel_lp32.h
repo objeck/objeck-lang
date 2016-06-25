@@ -1651,9 +1651,9 @@ namespace Runtime {
   };    
 
   /********************************
-  * JitExecutorIA32 class
+  * JitExecutor class
   ********************************/
-  class JitExecutorIA32 {
+  class JitExecutor {
     static StackProgram* program;
     StackMethod* method;
     unsigned char* code;
@@ -1667,10 +1667,10 @@ namespace Runtime {
   public:
     static void Initialize(StackProgram* p);
 
-    JitExecutorIA32() {
+    JitExecutor() {
     }
 
-    ~JitExecutorIA32() {
+    ~JitExecutor() {
     }    
     
     // Executes machine code
