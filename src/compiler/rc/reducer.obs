@@ -1,0 +1,28 @@
+class Reducer {
+	function : native : Reduce(func : (Int, Int) ~ Int, size : Int, elems : Int[]) ~ Int {
+		val := 0;
+		
+		if(elems->Size() > 0) {
+			val := elems[0];
+			for(i := 1; i < size; i++;) {
+				val := func(val, elems[i]);
+			};
+		};
+		
+		return val;
+	}
+	
+	function : Add(a : Int, b : Int) ~ Int {
+		return a + b;
+	}
+	
+	function : Mul(a : Int, b : Int) ~ Int {
+		return a * b;
+	}
+	
+	function : Main(args : String[]) ~ Nil {
+		elems := [1, 2, 3, 4, 5];
+		Reduce(Add(Int, Int) ~ Int, 5, elems)->PrintLine();
+		Reduce(Mul(Int, Int) ~ Int, 5, elems)->PrintLine();
+	}
+}
