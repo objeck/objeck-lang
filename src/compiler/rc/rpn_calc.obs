@@ -4,7 +4,8 @@ use Collection;
 bundle Default {
   class RpnCalc {
     function : Main(args : String[]) ~ Nil {
-      Caculate("3 4 2 * 1 5 - 2 3 ^ ^ / +");
+  #    Caculate("3 4 2 * 1 5 - 2 3 ^ ^ / +");
+      Caculate("2 3 ^ 5 +");
     }
     
     function : native : Caculate(rpn : String) ~ Nil {
@@ -39,7 +40,7 @@ bundle Default {
               }
 
               label '^': {
-                stack->AddBack(right->Power(left));
+                stack->AddBack(Float->Power(left, right));
               }
             };
           };  
@@ -53,7 +54,7 @@ bundle Default {
       "  ["->Print();
       each(i : stack) {
         stack->Get(i)->Print();
-        if(i + 1< stack->Size()) {
+        if(i + 1 < stack->Size()) {
           ", "->Print();
         };
       };
