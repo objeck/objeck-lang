@@ -379,6 +379,34 @@ bundle Collection {
       
 			return IntVector->New(array);
 		}
+		
+		#~
+		Reduces elements in the vector
+		@param f function to apply
+		@return reduced value
+		~#
+		method : public : Reduce(f : (Int, Int) ~ Int) ~ Int {
+			return Reduce(f, @size);
+		}
+		
+		#~
+		Reduces elements in the vector
+		@param f function to apply
+		@param num number of elements to reduce
+		@return reduced value
+		~#
+		method : public : Reduce(f : (Int, Int) ~ Int, num : Int) ~ Int {
+			val := 0;
+
+			if(@size > 0 & @size <= num) {
+				val := @values[0];
+				for(i := 1; i < num; i++;) {
+					val := f(val, @values[i]);
+				};
+			};
+
+			return val;
+		}
 	}
 	
 	#~
@@ -736,6 +764,34 @@ bundle Collection {
 			};
       
 			return FloatVector->New(array);
+		}
+		
+		#~
+		Reduces elements in the vector
+		@param f function to apply
+		@return reduced value
+		~#
+		method : public : Reduce(f : (Float, Float) ~ Float) ~ Float {
+			return Reduce(f, @size);
+		}
+		
+		#~
+		Reduces elements in the vector
+		@param f function to apply
+		@param num number of elements to reduce
+		@return reduced value
+		~#
+		method : public : Reduce(f : (Float, Float) ~ Float, num : Int) ~ Float {
+			val := 0.0;
+
+			if(@size > 0 & @size <= num) {
+				val := @values[0];
+				for(i := 1; i < num; i++;) {
+					val := f(val, @values[i]);
+				};
+			};
+
+			return val;
 		}
 	}
 	
