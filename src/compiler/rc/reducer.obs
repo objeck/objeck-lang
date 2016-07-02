@@ -1,17 +1,17 @@
 use Collection;
 
 class Reducer {
-	function : Add(a : Int, b : Int) ~ Int {
+	function : Main(args : String[]) ~ Nil {
+		values := FloatVector->New([1.2, 2.3, 3.4, 4.5, 5.6]);
+		values->Reduce(Add(Float, Float) ~ Float)->PrintLine();
+		values->Reduce(Mul(Float, Float) ~ Float)->PrintLine();
+	}
+
+	function : Add(a : Float, b : Float) ~ Float {
 		return a + b;
 	}
 	
-	function : Mul(a : Int, b : Int) ~ Int {
+	function : Mul(a : Float, b : Float) ~ Float {
 		return a * b;
-	}
-	
-	function : Main(args : String[]) ~ Nil {
-		values := IntVector->New([1, 2, 3, 4, 5]);
-		values->Reduce(Add(Int, Int) ~ Int)->PrintLine();
-		values->Reduce(Mul(Int, Int) ~ Int)->PrintLine();
 	}
 }
