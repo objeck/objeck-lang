@@ -35,7 +35,9 @@ class Person from Thingy {
 class Serial {
 	function : Main(args : String[]) ~ Nil {
 		t := Thingy->New(7);
+		t->Print();
 		p := Person->New(13, "Bush");
+		p->Print();
 
 		s := System.IO.Serializer->New();
 		s->Write(t);
