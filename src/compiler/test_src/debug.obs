@@ -1,27 +1,14 @@
-use CSV;
-
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		data := 
-"C1,C2,C3,C4,C5
-31,73,16,5,9
-4,8,12,16,20";
-
-		csv := CsvTable->New(data, "\n");
-		csv->AppendColumn("sum");
-		csv->Size()->PrintLine();
-		csv->RowSize()->PrintLine();
-
-		(csv->ColumnValues("C6") <> Nil)->PrintLine();
-
-		each(i : csv) {
-			row := csv->Get(i);
-	s := row->Sum();	
-			row->Set(s->As(Int)->ToString(), 5);
+		Run();
+	}
+	function : native : Run() ~ Nil {
+		a := 13;
+		if(a = 4) {
+			a := 7;
+		}
+		else {
+			a += 10;
 		};
-		f := csv->ColumnValues("sum");
-		f->Sum()->PrintLine();
-
-		csv->ToString()->PrintLine();
 	}
 }
