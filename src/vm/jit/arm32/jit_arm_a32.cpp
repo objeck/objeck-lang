@@ -812,11 +812,12 @@ void JitCompilerA32::ProcessLoad(StackInstr* instr) {
 void JitCompilerA32::ProcessJump(StackInstr* instr) {
   if(!skip_jump) {
 #ifdef _DEBUG
-    wcout << L"JMP: id=" << instr->GetOperand() << L", regs=" << aval_regs.size() 
+    wcout << L"b <imm>: id=" << instr->GetOperand() << L", regs=" << aval_regs.size() 
 	 << L"," << aux_regs.size() << endl;
 #endif
     if(instr->GetOperand2() < 0) {
-      AddMachineCode(0xe9);
+      // AddMachineCode(0xe9);
+      AddMachineCode(0xea000002);
     }
     else {
       RegInstr* left = working_stack.front();
@@ -2386,6 +2387,22 @@ void JitCompilerA32::div_reg_reg(Register src, Register dest, bool is_mod) {
   }
 }
 
+void JitCompilerA32::cmp_imm_reg(int32_t imm, Register reg) {
+#ifdef _DEBUG
+  wcout << L"  " << (++instr_count) << L": [cmp "
+	<< GetRegisterName(reg) << L", " << imm << L"]" << endl;
+#endif
+  
+  uint32_t op_code = 0xe3500000;
+  
+  uint32_t op_dest = reg << 20;
+  op_code |= op_dest;
+  
+  op_code |= imm;
+  
+  AddMachineCode(op_code);
+}
+
 //====================================================================
 //=============================== OLD ================================
 //====================================================================
@@ -3022,20 +3039,6 @@ void JitCompilerA32::cmp_mem_reg(int32_t offset, Register src, Register dest) {
   // AddMachineCode(ModRM(src, dest));
   // write value
   AddImm(offset);
-}
-    
-void JitCompilerA32::cmp_imm_reg(int32_t imm, Register reg) {
-#ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << L": [cmpl $" << imm << L", %"
-       << GetRegisterName(reg) << L"]" << endl;
-#endif
-  // encode
-  AddMachineCode(0x81);
-  unsigned char code = 0xf8;
-  // RegisterEncode3(code, 5, reg);
-  AddMachineCode(code);
-  // write value
-  AddImm(imm);
 }
 
 void JitCompilerA32::cmov_reg(Register reg, InstructionType oper) {
