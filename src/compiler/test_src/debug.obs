@@ -5,10 +5,10 @@ class Test {
 
 	function : native : Run() ~ Nil {
 		count := 0;
-		i := 0;
-		while(i < 10) {
+		i := 13;
+		while(i > 5) {
 			count += 2;
-			i++;
+			i--;
 		};
 		
 #~	
