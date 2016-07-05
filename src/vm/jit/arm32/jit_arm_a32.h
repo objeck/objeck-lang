@@ -1582,16 +1582,14 @@ namespace Runtime {
         unordered_map<int32_t, StackInstr*>::iterator iter;
         for(iter = jump_table.begin(); iter != jump_table.end(); ++iter) {
           StackInstr* instr = iter->second;
-          int32_t src_offset = iter->first;
-          int32_t dest_index = method->GetLabelIndex(instr->GetOperand());
-          int32_t dest_offset = method->GetInstruction(dest_index)->GetOffset();
-          int32_t offset = dest_offset - src_offset - 2;
-	  // TODO: FIX
-	  code[src_offset] |= offset;
+          const int32_t src_offset = iter->first;
+          const int32_t dest_index = method->GetLabelIndex(instr->GetOperand());
+          const int32_t dest_offset = method->GetInstruction(dest_index)->GetOffset();
+          const int32_t offset = dest_offset - src_offset - 2;
+	  memcpy(&code[src_offset], &offset, 3);
 	  
 #ifdef _DEBUG
-          wcout << L"jump update: src=" << src_offset 
-            << L"; dest=" << dest_offset << endl;
+          wcout << L"jump update: src=" << src_offset << L"; dest=" << dest_offset << endl;
 #endif
         }
 #ifdef _DEBUG

@@ -4,6 +4,14 @@ class Test {
 	}
 
 	function : native : Run() ~ Nil {
+		count := 0;
+		i := 0;
+		while(i < 10) {
+			count += 2;
+			i++;
+		};
+		
+#~	
 		a := 13;
 		if(a = 4) {
 			a := 7;
@@ -11,5 +19,6 @@ class Test {
 		else {
 			a += 10;
 		};
+~#			
 	}
 }
