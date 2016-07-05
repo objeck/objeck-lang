@@ -2609,24 +2609,24 @@ bool JitCompilerA32::cond_jmp(InstructionType type) {
       switch(type) {
       case LES_INT:	
 #ifdef _DEBUG
-        std::wcout << L"  " << (++instr_count) << L": [jl]" << std::endl;
+        std::wcout << L"  " << (++instr_count) << L": [blt]" << std::endl;
 #endif
-        AddMachineCode(0x8c);
+	AddMachineCode(0xba000000);
         break;
-
+	
       case GTR_INT:
 #ifdef _DEBUG
-        std::wcout << L"  " << (++instr_count) << L": [jg]" << std::endl;
+        std::wcout << L"  " << (++instr_count) << L": [bgt]" << std::endl;
 #endif
-        AddMachineCode(0x8f);
+	AddMachineCode(0xca000000);
         break;
-
+	
       case EQL_INT:
       case EQL_FLOAT:
 #ifdef _DEBUG
-        std::wcout << L"  " << (++instr_count) << L": [je]" << std::endl;
+        std::wcout << L"  " << (++instr_count) << L": [beq]" << std::endl;
 #endif
-        AddMachineCode(0x84);
+	AddMachineCode(0x0a000000);
         break;
 
       case NEQL_INT:
@@ -2639,18 +2639,19 @@ bool JitCompilerA32::cond_jmp(InstructionType type) {
 
       case LES_EQL_INT:
 #ifdef _DEBUG
-        std::wcout << L"  " << (++instr_count) << L": [jle]" << std::endl;
+        std::wcout << L"  " << (++instr_count) << L": [ble]" << std::endl;
 #endif
-        AddMachineCode(0x8e);
+	AddMachineCode(0xda000000);
         break;
         
       case GTR_EQL_INT:
 #ifdef _DEBUG
-        std::wcout << L"  " << (++instr_count) << L": [jge]" << std::endl;
+        std::wcout << L"  " << (++instr_count) << L": [bge]" << std::endl;
 #endif
-        AddMachineCode(0x8d);
+	AddMachineCode(0xaa000000);
         break;
 
+	// TODO
       case LES_FLOAT:
 	AddMachineCode(0x87);
 	break;
@@ -2676,20 +2677,20 @@ bool JitCompilerA32::cond_jmp(InstructionType type) {
     //
     else {
       switch(type) {
-      case LES_INT:	
+      case LES_INT:
 #ifdef _DEBUG
-        std::wcout << L"  " << (++instr_count) << L": [jge]" << std::endl;
+        std::wcout << L"  " << (++instr_count) << L": [bge]" << std::endl;
 #endif
-        AddMachineCode(0x8d);
+	AddMachineCode(0xaa000000);
         break;
-
+	
       case GTR_INT:
 #ifdef _DEBUG
-        std::wcout << L"  " << (++instr_count) << L": [jle]" << std::endl;
+        std::wcout << L"  " << (++instr_count) << L": [ble]" << std::endl;
 #endif
-        AddMachineCode(0x8e);
+	AddMachineCode(0xda000000);
         break;
-
+	
       case EQL_INT:
       case EQL_FLOAT:
 #ifdef _DEBUG
@@ -2697,29 +2698,30 @@ bool JitCompilerA32::cond_jmp(InstructionType type) {
 #endif
 	AddMachineCode(0x1a000000);
         break;
-
+	
       case NEQL_INT:
       case NEQL_FLOAT:
 #ifdef _DEBUG
-        std::wcout << L"  " << (++instr_count) << L": [je]" << std::endl;
+        std::wcout << L"  " << (++instr_count) << L": [beq]" << std::endl;
 #endif
-        AddMachineCode(0x84);
+	AddMachineCode(0x0a000000);
         break;
-
+	
       case LES_EQL_INT:
 #ifdef _DEBUG
-        std::wcout << L"  " << (++instr_count) << L": [jg]" << std::endl;
+        std::wcout << L"  " << (++instr_count) << L": [bgt]" << std::endl;
 #endif
-        AddMachineCode(0x8f);
+	AddMachineCode(0xca000000);
         break;
         
       case GTR_EQL_INT:
 #ifdef _DEBUG
-        std::wcout << L"  " << (++instr_count) << L": [jl]" << std::endl;
+        std::wcout << L"  " << (++instr_count) << L": [blt]" << std::endl;
 #endif
-        AddMachineCode(0x8c);
+	AddMachineCode(0xba000000);
         break;
 
+	// TODO
       case LES_FLOAT:
 #ifdef _DEBUG
         std::wcout << L"  " << (++instr_count) << L": [ja]" << std::endl;
