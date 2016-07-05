@@ -2,6 +2,7 @@ class Test {
 	function : Main(args : String[]) ~ Nil {
 		Run();
 	}
+
 	function : native : Run() ~ Nil {
 		a := 13;
 		if(a = 4) {
