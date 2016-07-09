@@ -1505,18 +1505,38 @@ void JitCompilerA32::ProcessStackCallback(int32_t instr_id, StackInstr* instr,
     compile_success = false;
   }
 
+  // copy values to execution stack
   ProcessReturn(params);
-  // push values
-  push_imm(instr_index - 1);
-  push_mem(CALL_STACK_POS, FP);
-  push_mem(CALL_STACK, FP);
-  push_mem(STACK_POS, FP);
-  push_mem(OP_STACK, FP);
-  push_mem(INSTANCE_MEM, FP);
-  push_mem(MTHD_ID, FP);
-  push_mem(CLS_ID, FP);
-  push_imm((int32_t)instr);
-  push_imm(instr_id);
+
+  // TODO: save r4-r7
+  
+  // set parameters
+  move_imm_mem(instr_index - 1, 16, SP);
+  
+  RegisterHolder* reg_holder = GetRegister();
+  
+  move_mem_reg(CALL_STACK_POS, FP, reg_holder->GetRegister());
+  move_reg_mem(reg_holder->GetRegister(), 16, SP);
+  
+  move_mem_reg(CALL_STACK, FP, reg_holder->GetRegister());
+  move_reg_mem(reg_holder->GetRegister(), 12, SP);
+  
+  move_mem_reg(STACK_POS, FP, reg_holder->GetRegister());
+  move_reg_mem(reg_holder->GetRegister(), 8, SP);
+  
+  move_mem_reg(OP_STACK, FP, reg_holder->GetRegister());
+  move_reg_mem(reg_holder->GetRegister(), 4, SP);
+  
+  move_mem_reg(INSTANCE_MEM, FP, reg_holder->GetRegister());
+  move_reg_mem(reg_holder->GetRegister(), 0, SP);
+
+  ReleaseRegister(reg_holder);
+  
+  move_mem_reg(MTHD_ID, FP, R3);
+  move_mem_reg(CLS_ID, FP, R2);
+  move_imm_reg((int32_t)instr, R1);
+  move_imm_reg(instr_id, R0);
+  
   // call function
   RegisterHolder* call_holder = GetRegister();
   move_imm_reg((int32_t)JitCompilerA32::StackCallback, call_holder->GetRegister());

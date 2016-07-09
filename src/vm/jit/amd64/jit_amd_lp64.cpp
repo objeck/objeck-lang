@@ -1569,15 +1569,16 @@ void JitCompilerIA64::ProcessStackCallback(long instr_id, StackInstr* instr,
     compile_success = false;
   }
 
+  // copy values to execution stack
   ProcessReturn(params);
   
-  // save registers
+  // save other registers
   push_reg(R15);
   push_reg(R14);
   push_reg(R13);
   push_reg(R8);
   
-  // function values
+  // set parameters
   move_mem_reg(OP_STACK, RBP, R9);
   move_mem_reg(INSTANCE_MEM, RBP, R8);
   move_mem_reg(MTHD_ID, RBP, RCX);
