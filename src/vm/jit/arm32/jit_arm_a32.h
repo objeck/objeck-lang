@@ -32,14 +32,10 @@
 #ifndef __REG_ALLOC_H__
 #define __REG_ALLOC_H__
 
-#ifndef _WIN32
 #include "../../os/posix/memory.h"
 #include "../../os/posix/posix.h"
 #include <sys/mman.h>
 #include <errno.h>
-#else
-#include "../../os/windows/windows.h"
-#endif
 
 #include "../../common.h"
 #include "../../interpreter.h"
@@ -65,6 +61,8 @@ namespace Runtime {
 #define TMP_REG_1 -52
 #define TMP_REG_2 -56
 #define TMP_REG_3 -60
+#define TMP_REG_4 -64
+#define TMP_REG_5 -68
   
 #define MAX_DBLS 64
 #define PAGE_SIZE 4096
@@ -403,13 +401,6 @@ namespace Runtime {
     // Add byte code to buffer
     inline void AddMachineCode(uint32_t i) {
       if(code_index == code_buf_max) {
-#ifdef _WIN32
-        code = (uint32_t*)realloc(code, code_buf_max * 2); 
-        if(!code) {
-          wcerr << L"Unable to allocate memory!" << endl;
-          exit(1);
-        }
-#else
         uint32_t* tmp;	
         if(posix_memalign((void**)&tmp, PAGE_SIZE, code_buf_max * sizeof(uint32_t) * 2)) {
           wcerr << L"Unable to reallocate JIT memory!" << endl;
@@ -418,7 +409,6 @@ namespace Runtime {
         memcpy(tmp, code, code_index);
         free(code);
         code = tmp;
-#endif	
         code_buf_max *= 2;
       }
       memcpy(&code[code_index++], &i, sizeof(int32_t));
@@ -995,32 +985,21 @@ namespace Runtime {
 	int32_t* instance = inst;
 	if(!instance) {
 	  wcerr << L"Atempting to dereference a 'Nil' memory instance" << endl;
-	  wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
+	  wcerr << L"  native method: name="
+		<< program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
 	  exit(1);
 	}
-#ifdef _WIN32
-	HANDLE vm_thread = (HANDLE)instance[0];
-	if(WaitForSingleObject(vm_thread, INFINITE) != WAIT_OBJECT_0) {
-	  wcerr << L"Unable to join thread!" << endl;
-	  exit(-1);
-	}
-#else
 	void* status;
 	pthread_t vm_thread = (pthread_t)instance[0];      
 	if(pthread_join(vm_thread, &status)) {
 	  wcerr << L"Unable to join thread!" << endl;
 	  exit(-1);
 	}
-#endif
       }
 	break;
 
       case THREAD_SLEEP:
-#ifdef _WIN32
-	Sleep(PopInt(op_stack, stack_pos));
-#else
 	usleep(PopInt(op_stack, stack_pos)* 1000);
-#endif
 	break;
 
       case THREAD_MUTEX: {
@@ -1030,11 +1009,7 @@ namespace Runtime {
 	  wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
 	  exit(1);
 	}
-#ifdef _WIN32
-	InitializeCriticalSection((CRITICAL_SECTION*)&instance[1]);
-#else
 	pthread_mutex_init((pthread_mutex_t*)&instance[1], NULL);
-#endif
       }
 	break;
 
@@ -1045,11 +1020,7 @@ namespace Runtime {
 	  wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
 	  exit(1);
 	}
-#ifdef _WIN32
-	EnterCriticalSection((CRITICAL_SECTION*)&instance[1]);
-#else     
 	pthread_mutex_lock((pthread_mutex_t*)&instance[1]);
-#endif
       }
 	break;
 
@@ -1060,11 +1031,7 @@ namespace Runtime {
 	  wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
 	  exit(1);
 	}
-#ifdef _WIN32
-	LeaveCriticalSection((CRITICAL_SECTION*)&instance[1]);
-#else     
 	pthread_mutex_unlock((pthread_mutex_t*)&instance[1]);
-#endif
       }
 	break;
 
@@ -1311,14 +1278,7 @@ namespace Runtime {
       case BYTE_ARY_TYPE:
         break;
 
-#ifdef _WIN32
       case CHAR_ARY_TYPE:
-        shl_imm_reg(1, index_holder->GetRegister());
-        shl_imm_reg(1, bounds_holder->GetRegister());
-        break;
-#else
-      case CHAR_ARY_TYPE:
-#endif
       case INT_TYPE:
         shl_imm_reg(2, index_holder->GetRegister());
         shl_imm_reg(2, bounds_holder->GetRegister());
@@ -1502,11 +1462,7 @@ namespace Runtime {
       compile_success = true;
 
       /*
-#ifdef _WIN32
-      EnterCriticalSection(&cm->jit_cs);
-#else
       pthread_mutex_lock(&cm->jit_mutex);
-#endif
       */
 
       if(!cm->GetNativeCode()) {
@@ -1522,10 +1478,6 @@ namespace Runtime {
 #endif
 	
         code_buf_max = PAGE_SIZE / sizeof(uint32_t);
-#ifdef _WIN32
-        code = (uint32_t*)malloc(code_buf_max);
-        floats = new double[MAX_DBLS];
-#else
         if(posix_memalign((void**)&code, PAGE_SIZE, code_buf_max * sizeof(uint32_t))) {
           wcerr << L"Unable to allocate JIT memory!" << endl;
           exit(1);
@@ -1535,7 +1487,6 @@ namespace Runtime {
           wcerr << L"Unable to allocate JIT memory!" << endl;
           exit(1);
         }
-#endif
 
         floats_index = instr_index = code_index = instr_count = 0;
         // general use registers
@@ -1597,12 +1548,10 @@ namespace Runtime {
                << L", buffer=" << code_buf_max << L" byte(s)" << endl;
 #endif
         // store compiled code
-#ifndef _WIN32
         if(mprotect(code, code_index, PROT_EXEC)) {
           perror("Couldn't mprotect");
           exit(errno);
         }
-#endif
         method->SetNativeCode(new NativeCode(code, code_index, floats));
         compile_success = true;
 
@@ -1610,11 +1559,7 @@ namespace Runtime {
       }
 
       /*
-#ifdef _WIN32
-      LeaveCriticalSection(&cm->jit_cs);
-#else
       pthread_mutex_unlock(&cm->jit_mutex);
-#endif
       */
 
       return compile_success;
