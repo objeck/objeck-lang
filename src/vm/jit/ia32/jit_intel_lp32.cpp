@@ -1534,8 +1534,10 @@ void JitCompilerIA32::ProcessStackCallback(int32_t instr_id, StackInstr* instr,
     compile_success = false;
   }
 
+  // copy values to execution stack
   ProcessReturn(params);
-  // push values
+  
+  // set parameters
   push_imm(instr_index - 1);
   push_mem(CALL_STACK_POS, EBP);
   push_mem(CALL_STACK, EBP);
@@ -1546,6 +1548,7 @@ void JitCompilerIA32::ProcessStackCallback(int32_t instr_id, StackInstr* instr,
   push_mem(CLS_ID, EBP);
   push_imm((int32_t)instr);
   push_imm(instr_id);
+  
   // call function
   RegisterHolder* call_holder = GetRegister();
   move_imm_reg((int32_t)JitCompilerIA32::StackCallback, call_holder->GetRegister());
