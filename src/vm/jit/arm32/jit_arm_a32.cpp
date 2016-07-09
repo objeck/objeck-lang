@@ -1511,7 +1511,7 @@ void JitCompilerA32::ProcessStackCallback(int32_t instr_id, StackInstr* instr,
   // TODO: save r4-r7
   
   // set parameters
-  move_imm_mem(instr_index - 1, 16, SP);
+  move_imm_mem(instr_index - 1, 20, SP);
   
   RegisterHolder* reg_holder = GetRegister();
   
