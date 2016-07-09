@@ -91,11 +91,11 @@ void JitCompilerA32::RegisterRoot() {
   RegisterHolder* holder = GetRegister();
   // note: -8 is the offset requried to 
   // get to the first local variale
-  const int32_t offset = local_space + TMP_REG_3 - 8;
+  const int32_t offset = local_space + TMP_REG_5 - 8;
   move_reg_reg(FP, holder->GetRegister());
   sub_imm_reg(offset, holder->GetRegister());
   // push call values
-  push_imm(offset + TMP_REG_3);
+  push_imm(offset + TMP_REG_5);
   push_reg(holder->GetRegister());
   push_mem(INSTANCE_MEM, FP);
   push_mem(MTHD_ID, FP);
@@ -116,7 +116,7 @@ void JitCompilerA32::UnregisterRoot() {
   move_reg_reg(FP, holder->GetRegister());
   // note: -8 is the offset requried to 
   // get to the memory root
-  sub_imm_reg(local_space + TMP_REG_3 - 8, 
+  sub_imm_reg(local_space + TMP_REG_5 - 8, 
 	      holder->GetRegister());
   // push call value
   push_reg(holder->GetRegister());
@@ -914,12 +914,7 @@ void JitCompilerA32::ProcessLoadCharElement(StackInstr* instr) {
   RegisterHolder* holder = GetRegister();
   RegisterHolder* elem_holder = ArrayIndex(instr, CHAR_ARY_TYPE);
   xor_reg_reg(holder->GetRegister(), holder->GetRegister());
-
-#ifdef _WIN32
-  move_mem16_reg(0, elem_holder->GetRegister(), holder->GetRegister());
-#else
   move_mem_reg(0, elem_holder->GetRegister(), holder->GetRegister());
-#endif
 
   ReleaseRegister(elem_holder);
   working_stack.push_front(new RegInstr(holder));
@@ -992,11 +987,7 @@ void JitCompilerA32::ProcessStoreCharElement(StackInstr* instr) {
   
   switch(left->GetType()) {
   case IMM_INT:
-#ifdef _WIN32
-    move_imm_mem16(left->GetOperand(), 0, elem_holder->GetRegister());
-#else
     move_imm_mem(left->GetOperand(), 0, elem_holder->GetRegister());
-#endif
     ReleaseRegister(elem_holder);
     break;
 
@@ -1004,11 +995,7 @@ void JitCompilerA32::ProcessStoreCharElement(StackInstr* instr) {
     // movb can only use al, bl, cl and dl registers
     RegisterHolder* holder = GetRegister(false);
     move_mem_reg(left->GetOperand(), FP, holder->GetRegister());
-#ifdef _WIN32
-    move_reg_mem16(holder->GetRegister(), 0, elem_holder->GetRegister());
-#else
     move_reg_mem(holder->GetRegister(), 0, elem_holder->GetRegister());
-#endif
     ReleaseRegister(holder);
     ReleaseRegister(elem_holder);
   }
@@ -1020,19 +1007,11 @@ void JitCompilerA32::ProcessStoreCharElement(StackInstr* instr) {
     if(holder->GetRegister() == R12) {
       RegisterHolder* tmp_holder = GetRegister(false);
       move_reg_reg(holder->GetRegister(), tmp_holder->GetRegister());
-#ifdef _WIN32
-      move_reg_mem16(tmp_holder->GetRegister(), 0, elem_holder->GetRegister());      
-#else
       move_reg_mem(tmp_holder->GetRegister(), 0, elem_holder->GetRegister());      
-#endif
       ReleaseRegister(tmp_holder);
     }
     else {
-#ifdef _WIN32
-      move_reg_mem16(holder->GetRegister(), 0, elem_holder->GetRegister());   
-#else   
       move_reg_mem(holder->GetRegister(), 0, elem_holder->GetRegister());   
-#endif
     }
     ReleaseRegister(holder);
     ReleaseRegister(elem_holder);
@@ -1468,7 +1447,7 @@ void JitCompilerA32::ProcessCopy(StackInstr* instr) {
 }
 
 void JitCompilerA32::ProcessStackCallback(int32_t instr_id, StackInstr* instr,
-					   int32_t &instr_index, int32_t params) {
+					  int32_t &instr_index, int32_t params) {
   int32_t non_params;
   if(params < 0) {
     non_params = 0;
@@ -1518,7 +1497,7 @@ void JitCompilerA32::ProcessStackCallback(int32_t instr_id, StackInstr* instr,
   }
 
 #ifdef _DEBUG
-  assert(reg_offset >= TMP_REG_3);
+  assert(reg_offset >= TMP_REG_5);
   assert(xmm_offset >= TMP_XMM_2);
 #endif
 
