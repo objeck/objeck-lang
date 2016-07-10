@@ -2426,7 +2426,22 @@ void JitCompilerA32::cmp_reg_reg(Register src, Register dest) {
   AddMachineCode(op_code);
 }
 
+void JitCompilerA32::call_reg(Register reg) {
+#ifdef _DEBUG
+  wcout << L"  " << (++instr_count) << L": [bl %" << GetRegisterName(reg) << L"]" << endl;
+#endif
 
+  uint32_t op_code = 0xeb000000;
+
+  /*
+  uint32_t op_dest = dest << 20;
+  op_code |= op_dest;
+  
+  op_code |= src;
+  */
+  
+  AddMachineCode(op_code);
+}
 
 //====================================================================
 //=============================== OLD ================================
@@ -3410,17 +3425,6 @@ void JitCompilerA32::pop_reg(Register reg) {
 #endif
 }
 
-void JitCompilerA32::call_reg(Register reg) {
-  AddMachineCode(0xff);
-  unsigned char code = 0xd0;
-  // RegisterEncode3(code, 5, reg);
-  AddMachineCode(code);
-#ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << L": [call %" << GetRegisterName(reg)
-       << L"]" << endl;
-#endif
-}
-
 void JitCompilerA32::cmp_xreg_xreg(Register src, Register dest) {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [ucomisd %" << GetRegisterName(src) 
@@ -3730,6 +3734,7 @@ int32_t JitExecutor::ExecuteMachineCode(int32_t cls_id, int32_t mthd_id, int32_t
               StackFrame** call_stack, long* call_stack_pos) {
   // create function
   jit_fun_ptr jit_fun = (jit_fun_ptr)code;
+  
   // execute
   int32_t rtrn_value = jit_fun(cls_id, mthd_id, (int32_t*)method->GetClass()->GetClassMemory(), 
 			       inst, op_stack, stack_pos, call_stack, call_stack_pos);
