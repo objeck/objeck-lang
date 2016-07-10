@@ -1534,7 +1534,7 @@ void JitCompilerA32::ProcessStackCallback(int32_t instr_id, StackInstr* instr,
   
   move_mem_reg(MTHD_ID, FP, R3);
   move_mem_reg(CLS_ID, FP, R2);
-  move_imm_reg(/*(int32_t)instr*/-99, R1);
+  move_imm_reg((int32_t)instr, R1);
   move_imm_reg(instr_id, R0);
   
   // call function
@@ -2183,6 +2183,21 @@ void JitCompilerA32::move_imm_reg(int32_t imm, Register reg) {
     op_code |= op_dest;
     op_code |= abs(imm);
 
+    AddMachineCode(op_code);
+  }
+  else {
+#ifdef _DEBUG
+    wcout << L"  " << (++instr_count) << L": [ldr " << GetRegisterName(reg)
+	  << L", #" << imm << L"]" << endl;
+#endif
+    uint32_t op_code = e59f0000; // e59f1018
+
+    /*
+    uint32_t op_dest = reg << 12;
+    op_code |= op_dest;
+    op_code |= abs(imm);
+    */
+    
     AddMachineCode(op_code);
   }
 }
