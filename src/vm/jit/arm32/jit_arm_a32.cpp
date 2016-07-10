@@ -2159,7 +2159,7 @@ void JitCompilerA32::move_imm_mem(int32_t imm, int32_t offset, Register dest) {
 }
 
 void JitCompilerA32::move_imm_reg(int32_t imm, Register reg) {
-  if(imm < 0) {
+  if(imm < 0 && imm >= -4096) {
 #ifdef _DEBUG
     wcout << L"  " << (++instr_count) << L": [mvn " << GetRegisterName(reg)
 	  << L", #" << imm << L"]" << endl;
@@ -2172,7 +2172,7 @@ void JitCompilerA32::move_imm_reg(int32_t imm, Register reg) {
 
     AddMachineCode(op_code);
   }
-  else {
+  else if(imm <= 4096) {
 #ifdef _DEBUG
     wcout << L"  " << (++instr_count) << L": [mov " << GetRegisterName(reg)
 	  << L", #" << imm << L"]" << endl;
