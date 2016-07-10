@@ -2190,7 +2190,7 @@ void JitCompilerA32::move_imm_reg(int32_t imm, Register reg) {
     wcout << L"  " << (++instr_count) << L": [ldr " << GetRegisterName(reg)
 	  << L", #" << imm << L"]" << endl;
 #endif
-    uint32_t op_code = e59f0000; // e59f1018
+    uint32_t op_code = 0xe59f0000; // e59f1018
 
     /*
     uint32_t op_dest = reg << 12;
