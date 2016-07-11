@@ -1453,7 +1453,8 @@ namespace Runtime {
         }
 #endif
       }
-      local_space = -(index + TMP_REG_5);
+      local_space = -(index + 
+);
 
 #ifdef _DEBUG
       wcout << L"Local space required: " << (local_space + 8) << L" byte(s)" << endl;
