@@ -70,23 +70,23 @@ void MemoryManager::Initialize(StackProgram* p)
   InitializeCriticalSection(&marked_cs);
   InitializeCriticalSection(&marked_sweep_cs);
 
-  for(int i = 0; i < POOL_SIZE; i++) {
+  for(int i = 0; i < POOL_SIZE; ++i) {
     cache_pool_16.push((char*)calloc(16, sizeof(char)));
   }
 
-  for(int i = 0; i < POOL_SIZE; i++) {
+  for(int i = 0; i < POOL_SIZE; ++i) {
     cache_pool_32.push((char*)calloc(32, sizeof(char)));
   }
 
-  for(int i = 0; i < POOL_SIZE; i++) {
+  for(int i = 0; i < POOL_SIZE; ++i) {
     cache_pool_64.push((char*)calloc(64, sizeof(char)));
   }
 
-  for(int i = 0; i < POOL_SIZE; i++) {
+  for(int i = 0; i < POOL_SIZE; ++i) {
     cache_pool_256.push((char*)calloc(256, sizeof(char)));
   }
 
-  for(int i = 0; i < POOL_SIZE; i++) {
+  for(int i = 0; i < POOL_SIZE; ++i) {
     cache_pool_512.push((char*)calloc(512, sizeof(char)));
   }
 
@@ -598,7 +598,7 @@ uintptr_t WINAPI MemoryManager::CollectMemory(void* arg)
     exit(-1);
   }
 
-  for(int i=0; i < num_threads; i++) {
+  for(int i=0; i < num_threads; ++i) {
     CloseHandle(thread_ids[i]);
   }
 #else
@@ -784,7 +784,7 @@ size_t WINAPI MemoryManager::CheckStatic(void* arg)
   StackClass** clss = prgm->GetClasses();
   int cls_num = prgm->GetClassNumber();
 
-  for(int i = 0; i < cls_num; i++) {
+  for(int i = 0; i < cls_num; ++i) {
     StackClass* cls = clss[i];
     CheckMemory(cls->GetClassMemory(), cls->GetClassDeclarations(), 
       cls->GetNumberClassDeclarations(), 0);
@@ -967,7 +967,7 @@ uintptr_t WINAPI MemoryManager::CheckJitRoots(void* arg)
 
     // NOTE: this marks temporary variables that are stored in JIT memory
     // during some method calls. there are 3 integer temp addresses
-    for(int i = 0; i < 8; i++) {
+    for(int i = 0; i < 8; ++i) {
       CheckObject((long*)mem[i], false, 1);
     }
   }
@@ -1080,9 +1080,9 @@ uintptr_t WINAPI MemoryManager::CheckPdaRoots(void* arg)
 void MemoryManager::CheckMemory(long* mem, StackDclr** dclrs, const long dcls_size, long depth)
 {
   // check method
-  for(long i = 0; i < dcls_size; i++) {
+  for(long i = 0; i < dcls_size; ++i) {
 #ifdef _DEBUG
-    for(int j = 0; j < depth; j++) {
+    for(int j = 0; j < depth; ++j) {
       wcout << L"\t";
     }
 #endif
@@ -1223,7 +1223,7 @@ void MemoryManager::CheckObject(long* mem, bool is_obj, long depth)
 
     if(cls) {
 #ifdef _DEBUG
-      for(int i = 0; i < depth; i++) {
+      for(int i = 0; i < depth; ++i) {
         wcout << L"\t";
       }
       wcout << L"\t----- object: addr=" << mem << L"(" << (long)mem << L"), num="
@@ -1240,7 +1240,7 @@ void MemoryManager::CheckObject(long* mem, bool is_obj, long depth)
       // segments. these segments may be parts of that stack or temp for
       // register variables
 #ifdef _DEBUG
-      for(int i = 0; i < depth; i++) {
+      for(int i = 0; i < depth; ++i) {
         wcout << L"\t";
       }
       wcout <<"$: addr/value=" << mem << endl;
