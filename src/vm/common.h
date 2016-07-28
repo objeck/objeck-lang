@@ -522,7 +522,7 @@ class StackMethod {
   ~StackMethod() {
     // clean up
     if(dclrs) {
-      for(int i = 0; i < num_dclrs; i++) {
+      for(int i = 0; i < num_dclrs; ++i) {
         StackDclr* tmp = dclrs[i];
         delete tmp;
         tmp = NULL;
@@ -542,7 +542,7 @@ class StackMethod {
     }
 
     // clean up
-    for(int i = 0; i < instr_count; i++) {
+    for(int i = 0; i < instr_count; ++i) {
       StackInstr* tmp = instrs[i];
       delete tmp;
       tmp = NULL;
@@ -811,7 +811,7 @@ class StackClass {
   ~StackClass() {
     // clean up
     if(cls_dclrs) {
-      for(int i = 0; i < cls_num_dclrs; i++) {
+      for(int i = 0; i < cls_num_dclrs; ++i) {
         StackDclr* tmp = cls_dclrs[i];
         delete tmp;
         tmp = NULL;
@@ -821,7 +821,7 @@ class StackClass {
     }
 
     if(inst_dclrs) {
-      for(int i = 0; i < inst_num_dclrs; i++) {
+      for(int i = 0; i < inst_num_dclrs; ++i) {
         StackDclr* tmp = inst_dclrs[i];
         delete tmp;
         tmp = NULL;
@@ -830,7 +830,7 @@ class StackClass {
       inst_dclrs = NULL;
     }
 
-    for(int i = 0; i < method_num; i++) {
+    for(int i = 0; i < method_num; ++i) {
       StackMethod* method = methods[i];
       delete method;
       method = NULL;
@@ -896,7 +896,7 @@ class StackClass {
     methods = mthds;
     method_num = num;
     // add method names to map for virutal calls
-    for(int i = 0; i < num; i++) {
+    for(int i = 0; i < num; ++i) {
       method_name_map.insert(make_pair(mthds[i]->GetName(), mthds[i]));
     }
   }
@@ -910,7 +910,7 @@ class StackClass {
 
   vector<StackMethod*> GetMethods(const wstring &n) {
     vector<StackMethod*> found;
-    for(int i = 0; i < method_num; i++) {
+    for(int i = 0; i < method_num; ++i) {
       if(methods[i]->GetName().find(n) != wstring::npos) {
         found.push_back(methods[i]);
       }
@@ -1044,7 +1044,7 @@ class StackProgram {
 
   ~StackProgram() {
     if(classes) {
-      for(int i = 0; i < class_num; i++) {
+      for(int i = 0; i < class_num; ++i) {
         StackClass* klass = classes[i];
         delete klass;
         klass = NULL;
@@ -1059,7 +1059,7 @@ class StackProgram {
     }
 
     if(cls_interfaces) {
-      for(int i = 0; i < class_num; i++) {
+      for(int i = 0; i < class_num; ++i) {
         delete[] cls_interfaces[i];
         cls_interfaces[i] = NULL;
       }
@@ -1068,7 +1068,7 @@ class StackProgram {
     }
 
     if(float_strings) {
-      for(int i = 0; i < num_float_strings; i++) {
+      for(int i = 0; i < num_float_strings; ++i) {
         FLOAT_VALUE* tmp = float_strings[i];
         delete[] tmp;
         tmp = NULL;
@@ -1078,7 +1078,7 @@ class StackProgram {
     }
 
     if(int_strings) {
-      for(int i = 0; i < num_int_strings; i++) {
+      for(int i = 0; i < num_int_strings; ++i) {
         INT_VALUE* tmp = int_strings[i];
         delete[] tmp;
         tmp = NULL;
@@ -1088,7 +1088,7 @@ class StackProgram {
     }
 
     if(char_strings) {
-      for(int i = 0; i < num_char_strings; i++) {
+      for(int i = 0; i < num_char_strings; ++i) {
         wchar_t* tmp = char_strings[i];
         delete [] tmp;
         tmp = NULL;
@@ -1247,7 +1247,7 @@ class StackProgram {
     classes = clss;
     class_num = num;
 
-    for(int i = 0; i < num; i++) {
+    for(int i = 0; i < num; ++i) {
       const wstring &name = clss[i]->GetName();
       if(name.size() > 0) {	
         cls_map.insert(pair<wstring, StackClass*>(name, clss[i]));
@@ -1313,7 +1313,7 @@ class StackProgram {
 
 #ifdef _DEBUGGER
   bool HasFile(const wstring &fn) {
-    for(int i = 0; i < class_num; i++) {
+    for(int i = 0; i < class_num; ++i) {
       if(classes[i]->GetFileName() == fn) {
         return true;
       }
@@ -1414,7 +1414,7 @@ class ObjectSerializer
 
   inline void SerializeByte(const char v) {
     char* bp = (char*)&v;
-    for(size_t i = 0; i < sizeof(v); i++) {
+    for(size_t i = 0; i < sizeof(v); ++i) {
       values.push_back(*(bp + i));
     }
   }
@@ -1424,28 +1424,28 @@ class ObjectSerializer
     string out;
     CharacterToBytes(v, out);
     SerializeInt(out.size());
-    for(size_t i = 0; i < out.size(); i++) {
+    for(size_t i = 0; i < out.size(); ++i) {
       values.push_back(out[i]); 
     }
   }
 
   inline void SerializeInt(const INT_VALUE v) {
     char* bp = (char*)&v;
-    for(size_t i = 0; i < sizeof(v); i++) {
+    for(size_t i = 0; i < sizeof(v); ++i) {
       values.push_back(*(bp + i));
     }
   }
 
   inline void SerializeFloat(const FLOAT_VALUE v) {
     char* bp = (char*)&v;
-    for(size_t i = 0; i < sizeof(v); i++) {
+    for(size_t i = 0; i < sizeof(v); ++i) {
       values.push_back(*(bp + i));
     }
   }
 
   inline void SerializeBytes(const void* array, const long len) {
     char* bp = (char*)array;
-    for(long i = 0; i < len; i++) {
+    for(long i = 0; i < len; ++i) {
       values.push_back(*(bp + i));
     }
   }
