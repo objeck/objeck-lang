@@ -64,7 +64,7 @@ int Execute(const int argc, const char* argv[])
 #ifdef _DEBUG
     wcout << L"# final stack: pos=" << (*stack_pos) << L" #" << endl;
     if((*stack_pos) > 0) {
-      for(int i = 0; i < (*stack_pos); i++) {
+      for(int i = 0; i < (*stack_pos); ++i) {
         wcout << L"dump: value=" << (void*)(*stack_pos) << endl;
       } 
     }
@@ -86,7 +86,7 @@ int Execute(const int argc, const char* argv[])
 #ifdef _SANITIZE
     wcout << L"# final stack: pos=" << (*stack_pos) << L" #" << endl;
     if((*stack_pos) > 0) {
-      for(int i = 0; i < (*stack_pos); i++) {
+      for(int i = 0; i < (*stack_pos); ++i) {
         wcout << L"dump: value=" << (void*)(*stack_pos) << endl;
       } 
     }
