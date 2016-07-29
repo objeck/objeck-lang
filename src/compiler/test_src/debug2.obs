@@ -1,9 +1,16 @@
+use Collection;
+use TinyDB;
+use System.IO.File;
+use System.IO;
+
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		a := "foo";
-		b := "bar";
-		c := a->As(Int) + b->As(Int);
-		c->PrintLine();
+		data := FileReader->ReadBinaryFile("out.dat");
+		
+		deserializer := Deserializer->New(data);
+		table := deserializer->ReadObject()->As(Row);
+		
+		count := table->Size();
+		"total count={$count}"->PrintLine();
 	}
 }
-
