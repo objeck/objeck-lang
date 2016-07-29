@@ -124,23 +124,21 @@ bundle TinyDB {
 			return false;
 		}
 		
-		method : public : Count() ~ Int {
+		method : public : Size() ~ Int {
 			return @count;
 		}
 		
-		method : public : Show() ~ Nil {		
+		method : public : ToString() ~ String {
+			buffer := "";
+			
 			row := @head;
 			while(row <> Nil) {
-				row->Show();
+				buffer += row->ToString();
+				buffer += "\r\n";
 				row := row->Next();
 			};
-#~
-			row := @tail;
-			while(row <> Nil) {
-				row->Show();
-				row := row->Prev();
-			};
-~#			
+			
+			return buffer;
 		}
 	}
 	
@@ -224,7 +222,11 @@ bundle TinyDB {
 			return @values->Size();
 		}
 		
-		method : public : Show() ~ Nil {
+		method : public : Select(indices : Vector) ~ Vector {
+			return Nil;
+		}
+		
+		method : public : ToString() ~ String {
 			buffer := "";
 			
 			each(i : @values) {
@@ -245,7 +247,7 @@ bundle TinyDB {
 				};
 			};
 			
-			buffer->PrintLine();
+			return buffer;
 		}
 	}
 }
