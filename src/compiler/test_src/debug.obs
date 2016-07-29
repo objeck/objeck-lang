@@ -1,24 +1,38 @@
+use Collection;
+use TinyDB;
+
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		Run();
-	}
-
-	function : native : Run() ~ Nil {
-		count := 0;
-		i := 13;
-		while(i > 5) {
-			count += 2;
-			i--;
-		};
+		columns := ["id","name", "age"];
+		table := Table->New("Person", columns, 0);
 		
-#~	
-		a := 13;
-		if(a = 4) {
-			a := 7;
-		}
-		else {
-			a += 10;
-		};
-~#			
+		values := Compare->New[3];
+		values[0] := IntHolder->New(0);
+		values[1] := "Randy"; 
+		values[2] := IntHolder->New(41);
+		row := Row->New(values);
+		table->Insert(row);
+		
+		values := Compare->New[3];
+		values[0] := IntHolder->New(1);
+		values[1] := "John"; 
+		values[2] := IntHolder->New(12);
+		row := Row->New(values);
+		table->Insert(row);
+		
+		values := Compare->New[3];
+		values[0] := IntHolder->New(2);
+		values[1] := "Sally"; 
+		values[2] := IntHolder->New(25);
+		row := Row->New(values);
+		table->Insert(row);
+		
+		count := table->Count();
+		"count={$count}"->PrintLine();
+
+		conds := Vector->New();
+		conds->AddBack(Conditional->New(2, Conditional->Qualifier->GREATER, IntHolder->New(20)));
+		found := table->Where(conds)->Size();
+		"found={$found}"->PrintLine();
 	}
 }

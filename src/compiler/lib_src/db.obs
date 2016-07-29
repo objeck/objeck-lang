@@ -144,9 +144,6 @@ bundle TinyDB {
 		}
 	}
 	
-	class Logical {
-	}
-	
 	class Conditional {
 		@index : Int;
 		@qualifier : Conditional->Qualifier;
@@ -186,7 +183,7 @@ bundle TinyDB {
 		@next : Row;
 		@prev : Row;
 		
-		New(values : Compare[], index : Int) {
+		New(values : Compare[]) {
 			@values := values;
 		}
 		
