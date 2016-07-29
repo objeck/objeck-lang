@@ -240,6 +240,9 @@ bundle TinyDB {
 				}
 				else if(value->TypeOf(String)) {
 					buffer += value->As(String);
+				}
+				else {
+					buffer += value->GetClass()->GetName();
 				};
 				
 				if(i + 1 < @values->Size()) {
