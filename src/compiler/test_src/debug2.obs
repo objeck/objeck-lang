@@ -6,11 +6,11 @@ use System.IO;
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		data := FileReader->ReadBinaryFile("out.dat");
-		
-		deserializer := Deserializer->New(data);
-		table := deserializer->ReadObject()->As(Row);
-		
-		count := table->Size();
-		"total count={$count}"->PrintLine();
+#		if(data <> Nil) {
+			deserializer := Deserializer->New(data);
+			table := deserializer->ReadObject()->As(Row);
+			count := table->Size();
+			"total count={$count}"->PrintLine();
+#		};
 	}
 }
