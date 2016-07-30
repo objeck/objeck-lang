@@ -3319,7 +3319,7 @@ void IntermediateEmitter::EmitCast(Expression* expression)
 #endif
     if(SearchProgramClasses(type_of->GetClassName())) {
       if(is_lib) {
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_TYPE_OF, type_of->GetClassName()));
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_OBJ_TYPE_OF, type_of->GetClassName()));
       }
       else {
 	int id = SearchProgramClasses(type_of->GetClassName())->GetId();
@@ -3328,7 +3328,7 @@ void IntermediateEmitter::EmitCast(Expression* expression)
     }
     else {
       if(is_lib) {
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_TYPE_OF, type_of->GetClassName()));
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_OBJ_TYPE_OF, type_of->GetClassName()));
       }
       else {
 	int id = parsed_program->GetLinker()->SearchClassLibraries(type_of->GetClassName(), parsed_program->GetUses())->GetId();
