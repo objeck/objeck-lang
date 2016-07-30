@@ -3318,13 +3318,22 @@ void IntermediateEmitter::EmitCast(Expression* expression)
     assert(type_of->GetType() == frontend::CLASS_TYPE);
 #endif
     if(SearchProgramClasses(type_of->GetClassName())) {
-      int id = SearchProgramClasses(type_of->GetClassName())->GetId();
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, OBJ_TYPE_OF, id));
+      if(is_lib) {
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_TYPE_OF, type_of->GetClassName()));
+      }
+      else {
+	int id = SearchProgramClasses(type_of->GetClassName())->GetId();
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, OBJ_TYPE_OF, id));
+      }
     }
     else {
-      int id = parsed_program->GetLinker()->SearchClassLibraries(type_of->GetClassName(), 
-                                                                 parsed_program->GetUses())->GetId();
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, OBJ_TYPE_OF, id));  
+      if(is_lib) {
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_TYPE_OF, type_of->GetClassName()));
+      }
+      else {
+	int id = parsed_program->GetLinker()->SearchClassLibraries(type_of->GetClassName(), parsed_program->GetUses())->GetId();
+	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, OBJ_TYPE_OF, id));  
+      }
     }
   }
 }

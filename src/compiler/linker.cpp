@@ -123,6 +123,19 @@ void Linker::ResolveExternalMethodCalls()
             }
           }
             break;
+	    
+	  case LIB_TYPE_OF: {
+	    LibraryClass* lib_klass = SearchClassLibraries(instr->GetOperand5());
+            if(lib_klass) {
+              instr->SetType(instructions::OBJ_TYPE_OF);
+              instr->SetOperand(lib_klass->GetId());
+            } else {
+              wcerr << L"Error: Unable to resolve external library class: '"
+                    << instr->GetOperand5() << L"'; check library path" << endl;
+              exit(1);
+            }
+	  }
+	    break;
 
           case LIB_OBJ_INST_CAST: {
             LibraryClass* lib_klass = SearchClassLibraries(instr->GetOperand5());
@@ -620,7 +633,17 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
       instrs.push_back(new LibraryInstr(line_num, LIB_NEW_OBJ_INST, cls_name));
     }
       break;
-
+      
+    case LIB_TYPE_OF: {
+      const wstring& cls_name = ReadString();
+#ifdef _DEBUG
+      const wstring &msg = L"LIB_TYPE_OF: class=" + cls_name;
+      Linker::Show(msg, 0, 3);
+#endif
+      instrs.push_back(new LibraryInstr(line_num, LIB_TYPE_OF, cls_name));
+    }
+      break;
+      
     case LIB_MTHD_CALL: {
       int is_native = ReadInt();
       const wstring& cls_name = ReadString();

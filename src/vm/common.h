@@ -74,6 +74,7 @@ using namespace stdext;
 #include <pthread.h>
 #include <pwd.h>
 #include <stdint.h>
+#include <iomanip>
 namespace std {
   using namespace tr1;
 }
