@@ -48,7 +48,6 @@ class Test {
 			found->Get(i)->As(Row)->ToString()->PrintLine();
 		};
 
-#~		
 		serializer := Serializer->New();
 		serializer->Write(row);
 		data := serializer->Serialize();
@@ -56,6 +55,5 @@ class Test {
 		out := FileWriter->New("out.dat");
 		out->WriteBuffer(data);
 		out->Close();
-~#		
 	}
 }
