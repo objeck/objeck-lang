@@ -228,7 +228,7 @@ namespace backend {
 
       case LIB_NEW_OBJ_INST:
       case LIB_OBJ_INST_CAST:
-      case LIB_TYPE_OF:
+      case LIB_OBJ_TYPE_OF:
         WriteString(operand5, file_out);
         break;
 
@@ -641,8 +641,8 @@ namespace backend {
         wcout << L"LIB_NEW_OBJ_INST: class='" << operand5 << L"'" << endl;
         break;
 
-      case LIB_TYPE_OF:
-        wcout << L"LIB_TYPE_OF: class='" << operand5 << L"'" << endl;
+      case LIB_OBJ_TYPE_OF:
+        wcout << L"LIB_OBJ_TYPE_OF: class='" << operand5 << L"'" << endl;
         break;
 	
       case LIB_OBJ_INST_CAST:

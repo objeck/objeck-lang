@@ -124,7 +124,7 @@ void Linker::ResolveExternalMethodCalls()
           }
             break;
 	    
-	  case LIB_TYPE_OF: {
+	  case LIB_OBJ_TYPE_OF: {
 	    LibraryClass* lib_klass = SearchClassLibraries(instr->GetOperand5());
             if(lib_klass) {
               instr->SetType(instructions::OBJ_TYPE_OF);
@@ -634,13 +634,13 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
     }
       break;
       
-    case LIB_TYPE_OF: {
+    case LIB_OBJ_TYPE_OF: {
       const wstring& cls_name = ReadString();
 #ifdef _DEBUG
-      const wstring &msg = L"LIB_TYPE_OF: class=" + cls_name;
+      const wstring &msg = L"LIB_OBJ_TYPE_OF: class=" + cls_name;
       Linker::Show(msg, 0, 3);
 #endif
-      instrs.push_back(new LibraryInstr(line_num, LIB_TYPE_OF, cls_name));
+      instrs.push_back(new LibraryInstr(line_num, LIB_OBJ_TYPE_OF, cls_name));
     }
       break;
       
