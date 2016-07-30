@@ -223,8 +223,9 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
       mem++;
     }
       break;
-
-    case INT_ARY_PARM: {
+      
+    case INT_ARY_PARM: 
+    case OBJ_ARY_PARM:{
       long* array = (long*)(*mem);
       if(array) {
         SerializeByte(1);
@@ -445,7 +446,8 @@ long* ObjectDeserializer::DeserializeObject() {
     }
       break;                          
       
-    case INT_ARY_PARM: {
+    case INT_ARY_PARM:
+    case OBJ_ARY_PARM: {
       if(!DeserializeByte()) {
         instance[instance_pos++] = 0;
       }
@@ -1128,7 +1130,7 @@ inline long* TrapProcessor::DeserializeArray(ParamType type, long* inst,
                                                        op_stack, *stack_pos,
                                                        false);
     }
-    else if(type == INT_ARY_PARM) {
+    else if(type == INT_ARY_PARM || type == OBJ_ARY_PARM) {
       dest_array = (long*)MemoryManager::AllocateArray(dest_array_size + dest_array_dim + 2, 
                                                        INT_TYPE, op_stack, *stack_pos,
                                                        false);
@@ -2051,7 +2053,14 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, long* inst,
     SerializeInt(INT_ARY_PARM, inst, op_stack, stack_pos);
     SerializeArray((long*)frame->mem[1], INT_ARY_PARM, inst, op_stack, stack_pos);
     break;
-
+    
+    /*
+  case SERL_OBJ_ARY:
+    SerializeInt(INT_ARY_PARM, inst, op_stack, stack_pos);
+    SerializeArray((long*)frame->mem[1], OBJ_ARY_PARM, inst, op_stack, stack_pos);
+    break;
+    */
+    
   case SERL_FLOAT_ARY:
     SerializeInt(FLOAT_ARY_PARM, inst, op_stack, stack_pos);
     SerializeArray((long*)frame->mem[1], FLOAT_ARY_PARM, inst, op_stack, stack_pos);

@@ -1769,50 +1769,48 @@ class TrapProcessor {
   // 
   static inline void ReadSerializedBytes(long* dest_array, const long* src_array, 
 					 ParamType type, long* inst) {
-    if(!dest_array || !src_array) {
-      return;
-    }
-    
-    const long dest_pos = inst[1];
-    const long src_array_size = src_array[0];
-    long dest_array_size = dest_array[0];
+    if(dest_array && src_array) {
+      const long dest_pos = inst[1];
+      const long src_array_size = src_array[0];
+      long dest_array_size = dest_array[0];
 
-    if(dest_pos < src_array_size) {
-      const char* src_array_ptr = (char*)(src_array + 3);	
-      char* dest_array_ptr = (char*)(dest_array + 3);
+      if(dest_pos < src_array_size) {
+	const char* src_array_ptr = (char*)(src_array + 3);	
+	char* dest_array_ptr = (char*)(dest_array + 3);
 
-      switch(type) {
-      case BYTE_ARY_PARM:
-	memcpy(dest_array_ptr, src_array_ptr + dest_pos, dest_array_size);
-	break;
+	switch(type) {
+	case BYTE_ARY_PARM:
+	  memcpy(dest_array_ptr, src_array_ptr + dest_pos, dest_array_size);
+	  break;
 
-      case CHAR_ARY_PARM: {
-	// convert
-	const string in((const char*)src_array_ptr + dest_pos, dest_array_size);
-	const wstring out = BytesToUnicode(in);	
-	// copy
-	dest_array[0] = out.size();
-	dest_array[2] = out.size();
-	dest_array_size *= sizeof(wchar_t);
-	memcpy(dest_array_ptr, out.c_str(), out.size() * sizeof(wchar_t));
+	case CHAR_ARY_PARM: {
+	  // convert
+	  const string in((const char*)src_array_ptr + dest_pos, dest_array_size);
+	  const wstring out = BytesToUnicode(in);	
+	  // copy
+	  dest_array[0] = out.size();
+	  dest_array[2] = out.size();
+	  dest_array_size *= sizeof(wchar_t);
+	  memcpy(dest_array_ptr, out.c_str(), out.size() * sizeof(wchar_t));
+	}
+	  break;
+
+	case INT_ARY_PARM:
+	  dest_array_size *= sizeof(INT_VALUE);
+	  memcpy(dest_array_ptr, src_array_ptr + dest_pos, dest_array_size);
+	  break;
+
+	case FLOAT_ARY_PARM:
+	  dest_array_size *= sizeof(FLOAT_VALUE);
+	  memcpy(dest_array_ptr, src_array_ptr + dest_pos, dest_array_size);
+	  break;
+
+	default:
+	  break;
+	}
+
+	inst[1] = dest_pos + dest_array_size;
       }
-	break;
-
-      case INT_ARY_PARM:
-	dest_array_size *= sizeof(INT_VALUE);
-	memcpy(dest_array_ptr, src_array_ptr + dest_pos, dest_array_size);
-	break;
-
-      case FLOAT_ARY_PARM:
-	dest_array_size *= sizeof(FLOAT_VALUE);
-	memcpy(dest_array_ptr, src_array_ptr + dest_pos, dest_array_size);
-	break;
-
-      default:
-	break;
-      }
-
-      inst[1] = dest_pos + dest_array_size;
     }
   }
 
