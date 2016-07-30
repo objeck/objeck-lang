@@ -149,6 +149,7 @@ namespace instructions {
     CRITICAL_START,
     CRITICAL_END,
     // library directives
+    LIB_TYPE_OF,
     LIB_NEW_OBJ_INST,
     LIB_MTHD_CALL,
     LIB_OBJ_INST_CAST,
