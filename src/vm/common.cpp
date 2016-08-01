@@ -1221,12 +1221,12 @@ inline long* TrapProcessor::DeserializeArray(ParamType type, long* inst,
     dest_array[2] = dest_array_dim_size;	
     
     if(type == OBJ_ARY_PARM) {
-      /* TODO
+      /*
       // copy content
       long* array_ptr = dest_array + 3;
       for(int i = 0; i < dest_array_size; i++) {
-	ObjectDeserializer deserializer(buffer, buffer_offset, mem_cache,
-					buffer_array_size, op_stack, stack_pos);
+	ObjectDeserializer deserializer(src_array, 0, mem_cache,
+					dest_array_size, op_stack, stack_pos);
 	array_ptr[i] = (long)deserializer.DeserializeObject();
 	buffer_offset = deserializer.GetOffset();
 	mem_cache = deserializer.GetMemoryCache();
