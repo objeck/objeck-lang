@@ -118,7 +118,13 @@ void ObjectSerializer::CheckObject(long* mem, bool is_obj, long depth) {
     }
   }
   else {
-    SerializeByte(0);
+#ifdef _DEBUG
+	  for (int i = 0; i < depth; i++) {
+		  wcout << L"\t";
+	  }
+	  wcout << L"\t----- SERIALIZING object: value=Nil -----" << endl;
+#endif
+	  SerializeByte(0);
   }
 }
 
@@ -223,9 +229,8 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
       mem++;
     }
       break;
-      
-    case INT_ARY_PARM: 
-    case OBJ_ARY_PARM:{
+    
+    case INT_ARY_PARM: {
       long* array = (long*)(*mem);
       if(array) {
         SerializeByte(1);
@@ -283,6 +288,37 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
     }
       break;
 
+    case OBJ_ARY_PARM: {
+      long* array = (long*)(*mem);
+      if (array) {
+        SerializeByte(1);
+        // mark data
+        if (!WasSerialized((long*)(*mem))) {
+          const long array_size = array[0];
+#ifdef _DEBUG
+          wcout << L"\t" << i << L": ----- serializing objeck array: mem_id=" << cur_id << L", size="
+            << array_size << L" byte(s) -----" << endl;
+#endif
+          // write metadata
+          SerializeInt(array[0]);
+          SerializeInt(array[1]);
+          SerializeInt(array[2]);
+          long* array_ptr = array + 3;
+
+          // TODO: write each object
+          for (int i = 0; i < array_size; i++) {
+            CheckObject((long*)(array_ptr[i]), true, depth + 1);
+          }
+        }
+      }
+      else {
+        SerializeByte(0);
+      }
+      // update
+      mem++;
+    }
+      break;
+
     case OBJ_PARM: {
       // check object
       CheckObject((long*)(*mem), true, depth + 1);
@@ -311,8 +347,8 @@ long* ObjectDeserializer::DeserializeObject() {
   if(cls) {
     INT_VALUE mem_id = DeserializeInt();
     if(mem_id < 0) {
-      instance = MemoryManager::AllocateObject(cls->GetId(), (long*)op_stack, *stack_pos, false);
-      mem_cache[-mem_id] = instance;
+		  instance = MemoryManager::AllocateObject(cls->GetId(), (long*)op_stack, *stack_pos, false);
+			mem_cache[-mem_id] = instance;
     }
     else {
       map<INT_VALUE, long*>::iterator found = mem_cache.find(mem_id);
@@ -446,8 +482,7 @@ long* ObjectDeserializer::DeserializeObject() {
     }
       break;                          
       
-    case INT_ARY_PARM:
-    case OBJ_ARY_PARM: {
+    case INT_ARY_PARM: {
       if(!DeserializeByte()) {
         instance[instance_pos++] = 0;
       }
@@ -523,8 +558,50 @@ long* ObjectDeserializer::DeserializeObject() {
     }
       break;
 
+    case OBJ_ARY_PARM: {
+      if (!DeserializeByte()) {
+        instance[instance_pos++] = 0;
+      }
+      else {
+        INT_VALUE mem_id = DeserializeInt();
+        if (mem_id < 0) {
+          const long array_size = DeserializeInt();
+          const long array_dim = DeserializeInt();
+          const long array_size_dim = DeserializeInt();
+          long* array = (long*)MemoryManager::AllocateArray(array_size + array_dim + 2, INT_TYPE,
+            op_stack, *stack_pos, false);
+          array[0] = array_size;
+          array[1] = array_dim;
+          array[2] = array_size_dim;
+          long* array_ptr = array + 3;
+
+          // copy content
+          for (int i = 0; i < array_size; i++) {
+            ObjectDeserializer deserializer(buffer, buffer_offset, mem_cache, buffer_array_size, op_stack, stack_pos);
+            array_ptr[i] = (long)deserializer.DeserializeObject();
+            buffer_offset = deserializer.GetOffset();
+            mem_cache = deserializer.GetMemoryCache();
+          }
+#ifdef _DEBUG
+          wcout << L"--- deserialization: object array; value=" << array << ",  size=" << array_size << L" ---" << endl;
+#endif
+          // update cache
+          mem_cache[-mem_id] = array;
+          instance[instance_pos++] = (long)array;
+        }
+        else {
+          map<INT_VALUE, long*>::iterator found = mem_cache.find(mem_id);
+          if (found == mem_cache.end()) {
+            return NULL;
+          }
+          instance[instance_pos++] = (long)found->second;
+        }
+      }
+    }
+      break;
+
     case OBJ_PARM: {
-      if(!DeserializeByte()) {
+      if (!DeserializeByte()) {
         instance[instance_pos++] = 0;
       }
       else {
