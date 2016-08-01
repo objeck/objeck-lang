@@ -55,13 +55,13 @@ class Test {
 		out := FileWriter->New("out.dat");
 		out->WriteBuffer(data);
 		out->Close();
-#~		
+
+
+		
 		data := FileReader->ReadBinaryFile("out.dat");
-#		if(data <> Nil) {
-			deserializer := Deserializer->New(data);
-			r := deserializer->ReadObject()->As(Row);
-			r->ToString()->PrintLine();
-#		};
-~#
+		deserializer := Deserializer->New(data);
+		r := deserializer->ReadObject()->As(Row);
+		r->Size()->PrintLine();
+
 	}
 }

@@ -577,10 +577,15 @@ long* ObjectDeserializer::DeserializeObject() {
 
           // copy content
           for (int i = 0; i < array_size; i++) {
-            ObjectDeserializer deserializer(buffer, buffer_offset, mem_cache, buffer_array_size, op_stack, stack_pos);
-            array_ptr[i] = (long)deserializer.DeserializeObject();
-            buffer_offset = deserializer.GetOffset();
-            mem_cache = deserializer.GetMemoryCache();
+            if (!DeserializeByte()) {
+              instance[instance_pos++] = 0;
+            }
+            else {
+              ObjectDeserializer deserializer(buffer, buffer_offset, mem_cache, buffer_array_size, op_stack, stack_pos);
+              array_ptr[i] = (long)deserializer.DeserializeObject();
+              buffer_offset = deserializer.GetOffset();
+              mem_cache = deserializer.GetMemoryCache();
+            }
           }
 #ifdef _DEBUG
           wcout << L"--- deserialization: object array; value=" << array << ",  size=" << array_size << L" ---" << endl;
