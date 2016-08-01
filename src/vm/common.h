@@ -1744,6 +1744,11 @@ class TrapProcessor {
       }
 	break;
 
+	// TODO:
+      case OBJ_ARY_PARM: {
+      }
+	break;
+
       case FLOAT_ARY_PARM: {
 	// write metadata
 	char* array_ptr = (char*)(array + 3);

@@ -1882,7 +1882,13 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
                                                                instructions::SERL_INT_ARY);
       NextToken();
       break;
-
+      
+    case SERL_OBJ_ARY:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+                                                               instructions::SERL_OBJ_ARY);
+      NextToken();
+      break;
+      
     case SERL_FLOAT_ARY:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
                                                                instructions::SERL_FLOAT_ARY);
@@ -1928,6 +1934,12 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
     case DESERL_INT_ARY:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
                                                                instructions::DESERL_INT_ARY);
+      NextToken();
+      break;
+
+    case DESERL_OBJ_ARY:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+                                                               instructions::DESERL_OBJ_ARY);
       NextToken();
       break;
 
