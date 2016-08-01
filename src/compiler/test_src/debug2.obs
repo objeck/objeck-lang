@@ -8,8 +8,8 @@ class Test {
 		data := FileReader->ReadBinaryFile("out.dat");
 #		if(data <> Nil) {
 			deserializer := Deserializer->New(data);
-			table := deserializer->ReadObject()->As(Row);
-			count := table->Size();
+			r := deserializer->ReadObject()->As(Row);
+			count := r->Size();
 			"total count={$count}"->PrintLine();
 #		};
 	}
