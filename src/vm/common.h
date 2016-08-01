@@ -1743,11 +1743,35 @@ class TrapProcessor {
 	WriteSerializedBytes(array_ptr, array_size * sizeof(INT_VALUE), inst, op_stack, stack_pos);
       }
 	break;
+	
+	case OBJ_ARY_PARM: {
+	  long* array_ptr = (long*)(array + 3);
+	  SerializeInt(array[0], inst, op_stack, stack_pos);
+	  SerializeInt(array[1], inst, op_stack, stack_pos);
+	  SerializeInt(array[2], inst, op_stack, stack_pos);
+	  /*
+	  	TODO: write each object
+	  	
+	  	long* obj = (long*)frame->mem[1];
+		ObjectSerializer serializer(obj);
+		vector<char> src_buffer = serializer.GetValues();
+		const long src_buffer_size = src_buffer.size();
+		long* dest_buffer = (long*)inst[0];
+		long dest_pos = inst[1];
 
-	// TODO:
-      case OBJ_ARY_PARM: {
-      }
-	break;
+		// expand buffer, if needed
+		dest_buffer = ExpandSerialBuffer(src_buffer_size, dest_buffer, inst, op_stack, stack_pos);
+		inst[0] = (long)dest_buffer;
+
+		// copy content
+		char* dest_buffer_ptr = ((char*)(dest_buffer + 3) + dest_pos);
+		for(int i = 0; i < src_buffer_size; i++, dest_pos++) {
+		dest_buffer_ptr[i] = src_buffer[i];
+		}
+		inst[1] = dest_pos;
+	  */
+	}
+	  break;
 
       case FLOAT_ARY_PARM: {
 	// write metadata
