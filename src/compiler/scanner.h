@@ -262,6 +262,7 @@ enum ScannerTokenType {
   SERL_BYTE_ARY,
   SERL_CHAR_ARY,
   SERL_INT_ARY,
+  SERL_OBJ_ARY,
   SERL_FLOAT_ARY,
   DESERL_INT,
   DESERL_CHAR,
@@ -270,6 +271,7 @@ enum ScannerTokenType {
   DESERL_BYTE_ARY,
   DESERL_CHAR_ARY,
   DESERL_INT_ARY,
+  DESERL_OBJ_ARY,
   DESERL_FLOAT_ARY,
   // shared library support
   DLL_LOAD,

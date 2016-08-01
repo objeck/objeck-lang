@@ -268,6 +268,7 @@ void Scanner::LoadKeywords()
   ident_map[L"SERL_CHAR_ARY"] = SERL_CHAR_ARY;
   ident_map[L"SERL_CHAR"] = SERL_CHAR;
   ident_map[L"SERL_INT_ARY"] = SERL_INT_ARY;
+  ident_map[L"SERL_OBJ_ARY"] = SERL_OBJ_ARY;  
   ident_map[L"SERL_FLOAT_ARY"] = SERL_FLOAT_ARY;
   ident_map[L"DESERL_INT"] = DESERL_INT;
   ident_map[L"DESERL_FLOAT"] = DESERL_FLOAT;
@@ -276,6 +277,7 @@ void Scanner::LoadKeywords()
   ident_map[L"DESERL_CHAR_ARY"] = DESERL_CHAR_ARY;
   ident_map[L"DESERL_CHAR"] = DESERL_CHAR;
   ident_map[L"DESERL_INT_ARY"] = DESERL_INT_ARY;
+  ident_map[L"DESERL_OBJ_ARY"] = DESERL_OBJ_ARY;
   ident_map[L"DESERL_FLOAT_ARY"] = DESERL_FLOAT_ARY;
 #endif
 }
@@ -465,6 +467,7 @@ void Scanner::CheckIdentifier(int index)
     case SERL_CHAR_ARY:
     case SERL_CHAR:
     case SERL_INT_ARY:
+    case SERL_OBJ_ARY:
     case SERL_FLOAT_ARY:
     case DESERL_INT:
     case DESERL_FLOAT:
@@ -473,6 +476,7 @@ void Scanner::CheckIdentifier(int index)
     case DESERL_CHAR_ARY:
     case DESERL_CHAR:
     case DESERL_INT_ARY:
+    case DESERL_OBJ_ARY:      
     case DESERL_FLOAT_ARY:
 #endif
       tokens[index]->SetType(ident_type);

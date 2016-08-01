@@ -287,17 +287,17 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
       mem++;
     }
       break;
-
+      
     case OBJ_ARY_PARM: {
       long* array = (long*)(*mem);
-      if (array) {
+      if(array) {
         SerializeByte(1);
         // mark data
-        if (!WasSerialized((long*)(*mem))) {
+        if(!WasSerialized((long*)(*mem))) {
           const long array_size = array[0];
 #ifdef _DEBUG
           wcout << L"\t" << i << L": ----- serializing objeck array: mem_id=" << cur_id << L", size="
-            << array_size << L" byte(s) -----" << endl;
+		<< array_size << L" byte(s) -----" << endl;
 #endif
           // write metadata
           SerializeInt(array[0]);
@@ -569,26 +569,28 @@ long* ObjectDeserializer::DeserializeObject() {
           const long array_dim = DeserializeInt();
           const long array_size_dim = DeserializeInt();
           long* array = (long*)MemoryManager::AllocateArray(array_size + array_dim + 2, INT_TYPE,
-            op_stack, *stack_pos, false);
+							    op_stack, *stack_pos, false);
           array[0] = array_size;
           array[1] = array_dim;
           array[2] = array_size_dim;
           long* array_ptr = array + 3;
 
           // copy content
-          for (int i = 0; i < array_size; i++) {
-            if (!DeserializeByte()) {
+          for(int i = 0; i < array_size; i++) {
+            if(!DeserializeByte()) {
               instance[instance_pos++] = 0;
             }
             else {
-              ObjectDeserializer deserializer(buffer, buffer_offset, mem_cache, buffer_array_size, op_stack, stack_pos);
+              ObjectDeserializer deserializer(buffer, buffer_offset, mem_cache,
+					      buffer_array_size, op_stack, stack_pos);
               array_ptr[i] = (long)deserializer.DeserializeObject();
               buffer_offset = deserializer.GetOffset();
               mem_cache = deserializer.GetMemoryCache();
             }
           }
 #ifdef _DEBUG
-          wcout << L"--- deserialization: object array; value=" << array << ",  size=" << array_size << L" ---" << endl;
+          wcout << L"--- deserialization: object array; value=" << array << ",  size="
+		<< array_size << L" ---" << endl;
 #endif
           // update cache
           mem_cache[-mem_id] = array;
@@ -1190,43 +1192,58 @@ inline long* TrapProcessor::DeserializeArray(ParamType type, long* inst,
   long dest_pos = inst[1];
       
   if(dest_pos < src_array[0]) {
-    // TOOD: detect bad read?
     const long dest_array_size = DeserializeInt(inst);
     const long dest_array_dim = DeserializeInt(inst);
     const long dest_array_dim_size = DeserializeInt(inst);
-
+    
     long* dest_array;
     if(type == BYTE_ARY_PARM) {
-      dest_array = (long*)MemoryManager::AllocateArray(dest_array_size +
-                                                       ((dest_array_dim + 2) *
-                                                        sizeof(long)),
-                                                       BYTE_ARY_TYPE,
-                                                       op_stack, *stack_pos,
-                                                       false);
+      dest_array = (long*)MemoryManager::AllocateArray(dest_array_size + ((dest_array_dim + 2) *
+									  sizeof(long)),
+						       BYTE_ARY_TYPE, op_stack, *stack_pos, false);
     }
     else if(type == CHAR_ARY_PARM) {
-      dest_array = (long*)MemoryManager::AllocateArray(dest_array_size +
-                                                       ((dest_array_dim + 2) *
-                                                        sizeof(long)),
-                                                       CHAR_ARY_TYPE,
-                                                       op_stack, *stack_pos,
-                                                       false);
+      dest_array = (long*)MemoryManager::AllocateArray(dest_array_size + ((dest_array_dim + 2) *
+									  sizeof(long)),
+						       CHAR_ARY_TYPE, op_stack, *stack_pos, false);
     }
-    else if(type == INT_ARY_PARM || type == OBJ_ARY_PARM) {
+    else if(type == INT_ARY_PARM || type == OBJ_ARY_PARM)  {
       dest_array = (long*)MemoryManager::AllocateArray(dest_array_size + dest_array_dim + 2, 
-                                                       INT_TYPE, op_stack, *stack_pos,
-                                                       false);
+                                                       INT_TYPE, op_stack, *stack_pos, false);
     }
     else {
-      dest_array = (long*)MemoryManager::AllocateArray(dest_array_size * 2 + dest_array_dim + 2, 
-                                                       INT_TYPE, op_stack, *stack_pos, false);
+      dest_array = (long*)MemoryManager::AllocateArray(dest_array_size + dest_array_dim + 2, 
+                                                       FLOAT_TYPE, op_stack, *stack_pos, false);
     }
     
     dest_array[0] = dest_array_size;
     dest_array[1] = dest_array_dim;
     dest_array[2] = dest_array_dim_size;	
-	
-    ReadSerializedBytes(dest_array, src_array, type, inst);	
+    
+    if(type == OBJ_ARY_PARM) {
+      /* TODO
+      // copy content
+      long* array_ptr = dest_array + 3;
+      for(int i = 0; i < dest_array_size; i++) {
+	ObjectDeserializer deserializer(buffer, buffer_offset, mem_cache,
+					buffer_array_size, op_stack, stack_pos);
+	array_ptr[i] = (long)deserializer.DeserializeObject();
+	buffer_offset = deserializer.GetOffset();
+	mem_cache = deserializer.GetMemoryCache();
+      }
+#ifdef _DEBUG
+      wcout << L"--- deserialization: object array; value=" << array << ",  size="
+	    << array_size << L" ---" << endl;
+#endif
+      // update cache
+      mem_cache[-mem_id] = array;
+      instance[instance_pos++] = (long)array;
+      */
+    }
+    else {
+      ReadSerializedBytes(dest_array, src_array, type, inst);
+    }
+    
     return dest_array;
   }
       
@@ -2136,12 +2153,10 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, long* inst,
     SerializeArray((long*)frame->mem[1], INT_ARY_PARM, inst, op_stack, stack_pos);
     break;
     
-    /*
   case SERL_OBJ_ARY:
-    SerializeInt(INT_ARY_PARM, inst, op_stack, stack_pos);
+    SerializeInt(OBJ_ARY_PARM, inst, op_stack, stack_pos);
     SerializeArray((long*)frame->mem[1], OBJ_ARY_PARM, inst, op_stack, stack_pos);
     break;
-    */
     
   case SERL_FLOAT_ARY:
     SerializeInt(FLOAT_ARY_PARM, inst, op_stack, stack_pos);
