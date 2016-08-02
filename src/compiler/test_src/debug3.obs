@@ -1,8 +1,25 @@
+use System.IO.File;
+use System.IO;
+
 class Test {
   function : Main(args : String[]) ~ Nil {
-		for(count := 1; count <= 10; count+=1;) {
-			sum := count + 2;
-			"Hi Kayin the count is {$sum}."->PrintLine();
-		};
+		cc := Base->New[5];
+		cc[0] := IntHolder->New(13);
+		cc[1] := IntHolder->New(-1);
+		cc[2] := "Objeck";
+		cc[3] := IntHolder->New(7);
+		cc[4] := FloatHolder->New(13.13);
+
+		serializer := Serializer->New();
+    serializer->Write(cc);
+    out := FileWriter->New("out.dat");
+    out->WriteBuffer(serializer->Serialize());
+    out->Close();
+
+
+		data := FileReader->ReadBinaryFile("out.dat");
+    deserializer := Deserializer->New(data);
+    cc2 := deserializer->ReadObjectArray();
+    cc2->Size()->PrintLine();
   }
 }

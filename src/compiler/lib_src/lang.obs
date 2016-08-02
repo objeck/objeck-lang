@@ -3967,6 +3967,14 @@ bundle System.IO {
 		}
 
 		#~
+		Serializes base objects
+		@param s value to serialize
+		~#
+		method : public : Write(o : Base[]) ~ Nil {
+			SERL_OBJ_ARY;
+		}
+
+		#~
 		Serializes a value
 		@param b value to serialize
 		~#
@@ -4068,6 +4076,14 @@ bundle System.IO {
 		~#
 		method : public : ReadObject() ~ Base {
 			DESERL_OBJ_INST;
+		}
+
+		#~
+		Reads an object array
+		@return value read
+		~#
+		method : public : ReadObjectArray() ~ Base[] {
+			DESERL_OBJ_ARY;
 		}
 
 		#~
