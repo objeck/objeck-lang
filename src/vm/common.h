@@ -1745,31 +1745,30 @@ class TrapProcessor {
 	break;
 	
 	case OBJ_ARY_PARM: {
-	  long* array_ptr = (long*)(array + 3);
 	  SerializeInt(array[0], inst, op_stack, stack_pos);
 	  SerializeInt(array[1], inst, op_stack, stack_pos);
 	  SerializeInt(array[2], inst, op_stack, stack_pos);
-	  /*
-	  	TODO: write each object
-	  	
-	  	long* obj = (long*)frame->mem[1];
-		ObjectSerializer serializer(obj);
-		vector<char> src_buffer = serializer.GetValues();
-		const long src_buffer_size = src_buffer.size();
-		long* dest_buffer = (long*)inst[0];
-		long dest_pos = inst[1];
 
-		// expand buffer, if needed
-		dest_buffer = ExpandSerialBuffer(src_buffer_size, dest_buffer, inst, op_stack, stack_pos);
-		inst[0] = (long)dest_buffer;
+	  long* array_ptr = (long*)(array + 3);
+	  for(int i = 0; i < array_size; ++i) {
+	    long* obj = (long*)array_ptr[i];
+	    ObjectSerializer serializer(obj);
+	    vector<char> src_buffer = serializer.GetValues();
+	    const long src_buffer_size = src_buffer.size();
+	    long* dest_buffer = (long*)inst[0];
+	    long dest_pos = inst[1];
 
-		// copy content
-		char* dest_buffer_ptr = ((char*)(dest_buffer + 3) + dest_pos);
-		for(int i = 0; i < src_buffer_size; i++, dest_pos++) {
-		dest_buffer_ptr[i] = src_buffer[i];
-		}
-		inst[1] = dest_pos;
-	  */
+	    // expand buffer, if needed
+	    dest_buffer = ExpandSerialBuffer(src_buffer_size, dest_buffer, inst, op_stack, stack_pos);
+	    inst[0] = (long)dest_buffer;
+
+	    // copy content
+	    char* dest_buffer_ptr = ((char*)(dest_buffer + 3) + dest_pos);
+	    for(int j = 0; j < src_buffer_size; ++j, dest_pos++) {
+	      dest_buffer_ptr[j] = src_buffer[j];
+	    }
+	    inst[1] = dest_pos;
+	  }
 	}
 	  break;
 
