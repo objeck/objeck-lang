@@ -559,7 +559,7 @@ long* ObjectDeserializer::DeserializeObject() {
       break;
 
     case OBJ_ARY_PARM: {
-      if (!DeserializeByte()) {
+      if(!DeserializeByte()) {
         instance[instance_pos++] = 0;
       }
       else {
@@ -1221,7 +1221,9 @@ inline long* TrapProcessor::DeserializeArray(ParamType type, long* inst,
     dest_array[2] = dest_array_dim_size;	
     
     if(type == OBJ_ARY_PARM) {
-      // TODO
+      long* array_ptr = (long*)(src_array + 3);
+      int flag = DeserializeByte(src_array);
+      int d = DeserializeInt(src_array);
     }
     else {
       ReadSerializedBytes(dest_array, src_array, type, inst);
@@ -2197,7 +2199,7 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, long* inst,
       PushInt(0, op_stack, stack_pos);
     }
     break;
-	  
+    
   case DESERL_CHAR_ARY:
 #ifdef _DEBUG
     wcout << L"# deserializing char array #" << endl;
@@ -2221,7 +2223,19 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, long* inst,
       PushInt(0, op_stack, stack_pos);
     }
     break;
-
+    
+  case DESERL_OBJ_ARY:
+#ifdef _DEBUG
+    wcout << L"# deserializing an object array #" << endl;
+#endif
+    if(OBJ_ARY_PARM == (ParamType)DeserializeInt(inst)) {
+      PushInt((long)DeserializeArray(OBJ_ARY_PARM, inst, op_stack, stack_pos), op_stack, stack_pos);
+    }
+    else {
+      PushInt(0, op_stack, stack_pos);
+    }
+    break;
+    
   case DESERL_FLOAT_ARY:
 #ifdef _DEBUG
     wcout << L"# deserializing float array #" << endl;
