@@ -3313,7 +3313,7 @@ void IntermediateEmitter::EmitCast(Expression* expression)
       break;
 
     case frontend::FLOAT_TYPE:
-      if(cast_type->GetType() != frontend::FLOAT_TYPE) {
+      if(cast_type->GetType() != CLASS_TYPE && cast_type->GetType() != frontend::FLOAT_TYPE) {
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, F2I));
       }
       break;
