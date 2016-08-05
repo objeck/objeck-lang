@@ -84,7 +84,7 @@ void ObjectSerializer::CheckObject(long* mem, bool is_obj, long depth) {
         wcout << L"\t----- SERIALIZING object: cls_id=" << cls->GetId() << L", mem_id=" 
               << cur_id << L", size=" << mem_size << L" byte(s) -----" << endl;
 #endif
-        CheckMemory(mem, cls->GetInstanceDeclarations(), cls->GetNumberInstanceDeclarations(), depth + 1);
+        CheckMemory(mem, cls->GetInstanceDeclarations(), cls->GetNumberInstanceDeclarations(), depth);
       } 
     }
     else {
@@ -608,7 +608,7 @@ long* ObjectDeserializer::DeserializeObject() {
       break;
 
     case OBJ_PARM: {
-      if (!DeserializeByte()) {
+      if(!DeserializeByte()) {
         instance[instance_pos++] = 0;
       }
       else {
@@ -1221,9 +1221,22 @@ inline long* TrapProcessor::DeserializeArray(ParamType type, long* inst,
     dest_array[2] = dest_array_dim_size;	
     
     if(type == OBJ_ARY_PARM) {
-      long* array_ptr = (long*)(src_array + 3);
-      int flag = DeserializeByte(src_array);
-      int d = DeserializeInt(src_array);
+      long* array_ptr = dest_array + 3;      
+      for(int i = 0; i < dest_array_size; ++i) {		  
+	if(!DeserializeByte(inst)) {
+	  array_ptr[i] = 0;
+	}
+	else {
+	  long* byte_array = (long*)inst[0];
+	  const long dest_pos = inst[1];
+	  const long byte_array_dim_size = byte_array[2];  
+	  const char* byte_array_ptr = ((char*)(byte_array + 3) + dest_pos);
+	  
+	  ObjectDeserializer deserializer(byte_array_ptr, byte_array_dim_size, op_stack, stack_pos);
+	  array_ptr[i] = (long)deserializer.DeserializeObject();
+	  inst[1] = dest_pos + deserializer.GetOffset();
+	}
+      }
     }
     else {
       ReadSerializedBytes(dest_array, src_array, type, inst);
