@@ -1,16 +1,14 @@
-use Collection;
-use TinyDB;
-use System.IO.File;
-use System.IO;
-
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		data := FileReader->ReadBinaryFile("out.dat");
-#		if(data <> Nil) {
-			deserializer := Deserializer->New(data);
-			r := deserializer->ReadObject()->As(Row);
-			count := r->Size();
-			"total count={$count}"->PrintLine();
-#		};
+		aa := Base->New[1];
+    aa[0] := FloatHolder->New(13.13);
+
+#~		
+		v := aa[0]->As(FloatHolder);
+		v->Get()->PrintLine();
+~#
+
+		v := aa[0];
+		v->As(FloatHolder)->Get()->PrintLine();
 	}
 }
