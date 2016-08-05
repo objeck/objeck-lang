@@ -20,7 +20,15 @@ class Test {
     deserializer := Deserializer->New(data);
     cc2 := deserializer->ReadObjectArray();
     cc2->Size()->PrintLine();
-		c := cc2[1];
-		c->As(String)->PrintLine();
+	c := cc2[1];
+	c->As(String)->PrintLine();
+		
+#~
+	v := cc2[3]->As(FloatHolder);
+	v->Get()->PrintLine();
+~#	
+
+	v := cc2[3];
+	v->As(FloatHolder)->Get()->PrintLine();
   }
 }
