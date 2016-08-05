@@ -1216,24 +1216,24 @@ inline long* TrapProcessor::DeserializeArray(ParamType type, long* inst,
                                                        FLOAT_TYPE, op_stack, *stack_pos, false);
     }
     
+    // read array meta data
     dest_array[0] = dest_array_size;
     dest_array[1] = dest_array_dim;
     dest_array[2] = dest_array_dim_size;	
     
     if(type == OBJ_ARY_PARM) {
-      long* array_ptr = dest_array + 3;      
+      long* dest_array_ptr = dest_array + 3;
       for(int i = 0; i < dest_array_size; ++i) {		  
 	if(!DeserializeByte(inst)) {
-	  array_ptr[i] = 0;
+	  dest_array_ptr[i] = 0;
 	}
 	else {
-	  long* byte_array = (long*)inst[0];
 	  const long dest_pos = inst[1];
-	  const long byte_array_dim_size = byte_array[2];  
-	  const char* byte_array_ptr = ((char*)(byte_array + 3) + dest_pos);
+	  const long byte_array_dim_size = src_array[2];  
+	  const char* byte_array_ptr = ((char*)(src_array + 3) + dest_pos);
 	  
 	  ObjectDeserializer deserializer(byte_array_ptr, byte_array_dim_size, op_stack, stack_pos);
-	  array_ptr[i] = (long)deserializer.DeserializeObject();
+	  dest_array_ptr[i] = (long)deserializer.DeserializeObject();
 	  inst[1] = dest_pos + deserializer.GetOffset();
 	}
       }
@@ -1274,7 +1274,7 @@ long* TrapProcessor::ExpandSerialBuffer(const long src_buffer_size, long* dest_b
     byte_array[0] = byte_array_size + 1;
     byte_array[1] = byte_array_dim;
     byte_array[2] = byte_array_size;
-	
+    
     // copy content
     char* byte_array_ptr = (char*)(byte_array + 3);
     const char* dest_buffer_ptr = (char*)(dest_buffer + 3);	
