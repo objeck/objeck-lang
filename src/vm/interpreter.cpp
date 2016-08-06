@@ -830,14 +830,21 @@ void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i,
 
     case OBJ_TYPE_OF: {
       long* mem = (long*)PopInt(op_stack, stack_pos);
-      long* result = MemoryManager::ValidObjectCast(mem, instr->GetOperand(),
-						    program->GetHierarchy(),
-						    program->GetInterfaces());
-      if(result) {
-        PushInt(1, op_stack, stack_pos);
+      if(mem) {
+        long* result = MemoryManager::ValidObjectCast(mem, instr->GetOperand(),
+                                                      program->GetHierarchy(),
+                                                      program->GetInterfaces());
+        if(result) {
+          PushInt(1, op_stack, stack_pos);
+        }
+        else {
+          PushInt(0, op_stack, stack_pos);
+        }
       }
       else {
-        PushInt(0, op_stack, stack_pos);
+        wcerr << L">>> TypeOf(..) check on Nil value <<<" << endl;
+        StackErrorUnwind();
+        exit(1);
       }
     }
       break;
@@ -853,7 +860,7 @@ void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i,
       if(!result && mem) {
         StackClass* to_cls = MemoryManager::GetClass((long*)mem);
         wcerr << L">>> Invalid object cast: '" << (to_cls ? to_cls->GetName() : L"?")
-	      << "' to '" << program->GetClass(instr->GetOperand())->GetName() << "' <<<" << endl;
+          << "' to '" << program->GetClass(instr->GetOperand())->GetName() << "' <<<" << endl;
         StackErrorUnwind();
 #ifdef _DEBUGGER
   halt = true;

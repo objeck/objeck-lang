@@ -3,17 +3,19 @@ use Collection;
 bundle TinyDB {
 	class Table {
 		@name : String;
-		@index : Int;
 		@keys : IntMap;
 		@column_names : String[];
 		@head : Row;
 		@tail : Row;
 		@count : Int;
 		
-		New(name : String, column_names : String[], index : Int) {
+		New(name : String, column_names : String[]) {
 			@name := name;
-			@index := index;
-			@column_names := column_names;
+			@column_names := String->New[column_names->Size() + 1];
+			@column_names[0] := "pk";
+			each(i : column_names) {
+				@column_names[i + 1] := column_names[i];
+			};
 			@keys := IntMap->New();
 		}
 		
@@ -75,13 +77,13 @@ bundle TinyDB {
 			return matches;
 		}
 		
-		method : public : Insert(row : Row) ~ Int {
-			if(row->Size() <> @column_names->Size() | @index < 0 | @index >= @column_names->Size()) {
-				return -1;
-			};
-			
-			pk := row->Get(@index)->As(IntHolder);
+		method : public : Insert() ~ Row {
+			pk := IntHolder->New(@count);
+			values := Compare->New[@column_names->Size()];
+			values[0] := pk;
+			row := Row->New(values);
 			@keys->Insert(pk->Get(), row);
+			@count += 1;
 			
 			if(@head = Nil) {
 				@head := row;
@@ -93,8 +95,7 @@ bundle TinyDB {
 				@tail := row;
 			};
 			
-			@count += 1;
-			return @count;
+			return row;
 		}
 		
 		method : public : Delete(pk : Int) ~ Bool {
@@ -193,7 +194,7 @@ bundle TinyDB {
 			return @values[i];
 		}
 		
-		method : public : Set(value : Compare, i : Int) ~ Bool {
+		method : public : Set(i : Int, value : Compare) ~ Bool {
 			if(i < 0 | i >= @values->Size()) {
 				return false;
 			};
@@ -228,23 +229,27 @@ bundle TinyDB {
 		
 		method : public : ToString() ~ String {
 			buffer := "";
-			
+
 			each(i : @values) {
 				value := @values[i];
-				
-				if(value->TypeOf(IntHolder)) {
-					buffer += value->As(IntHolder)->Get()->ToString();
-				}
-				else if(value->TypeOf(FloatHolder)) {
-					buffer += value->As(FloatHolder)->Get()->ToString();
-				}
-				else if(value->TypeOf(String)) {
-					buffer += value->As(String);
+				if(value <> Nil) {
+					if(value->TypeOf(IntHolder)) {
+						buffer += value->As(IntHolder)->Get()->ToString();
+					}
+					else if(value->TypeOf(FloatHolder)) {
+						buffer += value->As(FloatHolder)->Get()->ToString();
+					}
+					else if(value->TypeOf(String)) {
+						buffer += value->As(String);
+					}
+					else {
+						buffer += value->GetClass()->GetName();
+					};
 				}
 				else {
-					buffer += value->GetClass()->GetName();
-				};
-				
+						buffer += "<Nil>";
+				};	
+					
 				if(i + 1 < @values->Size()) {
 					buffer += ", ";
 				};

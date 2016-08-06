@@ -5,36 +5,24 @@ use System.IO;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		columns := ["id","name", "age"];
-		table := Table->New("Person", columns, 0);
+		columns := ["name", "age"];
+		table := Table->New("Person", columns);
 		
-		values := Compare->New[3];
-		values[0] := IntHolder->New(0);
-		values[1] := "Randy"; 
-		values[2] := IntHolder->New(41);
-		row := Row->New(values);
-		table->Insert(row);
+		row := table->Insert();
+		row->Set(1, "Randy");
+		row->Set(2, IntHolder->New(41));
 		
-		values := Compare->New[3];
-		values[0] := IntHolder->New(1);
-		values[1] := "John"; 
-		values[2] := IntHolder->New(12);
-		row := Row->New(values);
-		table->Insert(row);
+		row := table->Insert();
+		row->Set(1, "John");
+		row->Set(2, IntHolder->New(12));
 		
-		values := Compare->New[3];
-		values[0] := IntHolder->New(2);
-		values[1] := "Sally"; 
-		values[2] := IntHolder->New(25);
-		row := Row->New(values);
-		table->Insert(row);
+		row := table->Insert();
+		row->Set(1, "Sally");
+		row->Set(2, IntHolder->New(25));
 		
-		values := Compare->New[3];
-		values[0] := IntHolder->New(3);
-		values[1] := "Harry"; 
-		values[2] := IntHolder->New(55);
-		row := Row->New(values);
-		table->Insert(row);
+		row := table->Insert();
+		row->Set(1, "Harry");
+		row->Set(2, IntHolder->New(55));
 		
 		count := table->Size();
 		"total count={$count}"->PrintLine();
@@ -48,20 +36,28 @@ class Test {
 			found->Get(i)->As(Row)->ToString()->PrintLine();
 		};
 
+#~		
 		serializer := Serializer->New();
-		serializer->Write(row);
+		serializer->Write(table);
 		data := serializer->Serialize();
 		
 		out := FileWriter->New("out.dat");
 		out->WriteBuffer(data);
 		out->Close();
-
-
 		
 		data := FileReader->ReadBinaryFile("out.dat");
 		deserializer := Deserializer->New(data);
-		r := deserializer->ReadObject()->As(Row);
-		r->Size()->PrintLine();
-
+		x := deserializer->ReadObject()->As(Table);
+		x->Size()->PrintLine();
+			
+		conds := Vector->New();
+		conds->AddBack(Conditional->New(2, Conditional->Qualifier->LESS, IntHolder->New(20)));
+		found := x->Where(conds);
+		
+		"---"->PrintLine();
+		each(i : found) {
+			found->Get(i)->As(Row)->ToString()->PrintLine();
+		};
+~#		
 	}
 }
