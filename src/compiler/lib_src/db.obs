@@ -77,11 +77,11 @@ bundle TinyDB {
 			return matches;
 		}
 		
-		method : public : Insert() ~ Row {
+		method : native : public : Insert() ~ Row {
 			pk := IntHolder->New(@count);
 			values := Compare->New[@column_names->Size()];
 			values[0] := pk;
-			row := Row->New(values);
+			row := Row->New(@self, values);
 			@keys->Insert(pk->Get(), row);
 			@count += 1;
 			
@@ -179,10 +179,12 @@ bundle TinyDB {
 	
 	class Row {
 		@values : Compare[];
+		@table : Table;
 		@next : Row;
 		@prev : Row;
 		
-		New(values : Compare[]) {
+		New(table : Table, values : Compare[]) {
+			@table := table;
 			@values := values;
 		}
 		
@@ -232,6 +234,7 @@ bundle TinyDB {
 
 			each(i : @values) {
 				value := @values[i];
+				
 				if(value <> Nil) {
 					if(value->TypeOf(IntHolder)) {
 						buffer += value->As(IntHolder)->Get()->ToString();
