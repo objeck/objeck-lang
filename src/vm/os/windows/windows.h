@@ -52,6 +52,69 @@ typedef void (WINAPI *PGNSI)(LPSYSTEM_INFO);
 typedef BOOL (WINAPI *PGPI)(DWORD, DWORD, DWORD, DWORD, PDWORD);
 
 class File {
+  static bool GetAccountGroupOwner(const char* name, wstring &account, wstring &group) {
+    wstring value;
+
+    PSID sid_owner = NULL;
+    PSECURITY_DESCRIPTOR security = NULL;
+
+    HANDLE handle = CreateFile(name, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    if(handle == INVALID_HANDLE_VALUE) {
+      CloseHandle(handle);
+      return false;
+    }
+
+    DWORD flag = GetSecurityInfo(handle, SE_FILE_OBJECT, OWNER_SECURITY_INFORMATION,
+                                 &sid_owner, NULL, NULL, NULL, &security);
+    if (flag != ERROR_SUCCESS) {
+      CloseHandle(handle);
+      return false;
+    }
+
+    DWORD owner_size = 1;
+    LPTSTR account_name = NULL;
+
+    DWORD domain_size = 1;
+    LPTSTR domain_name = NULL;
+
+    SID_NAME_USE use;
+
+    LookupAccountSid(NULL, sid_owner, account_name, (LPDWORD)&owner_size,
+                     domain_name, (LPDWORD)&domain_size, &use);
+
+    account_name = new char[owner_size];
+    domain_name = new char[domain_size];
+
+    flag = LookupAccountSid(NULL, sid_owner, account_name, (LPDWORD)&owner_size,
+                            domain_name, (LPDWORD)&domain_size, &use);
+    if (flag != ERROR_SUCCESS) {
+      // clean up
+      CloseHandle(handle);
+      
+      delete[] account_name;
+      account_name = NULL;
+
+      delete[] domain_name;
+      domain_name = NULL;
+
+      return false;
+    }
+
+    account = BytesToUnicode(account_name);
+    group = BytesToUnicode(domain_name);
+
+    // clean up
+    CloseHandle(handle);
+
+    delete[] account_name;
+    account_name = NULL;
+
+    delete[] domain_name;
+    domain_name = NULL;
+
+    return true;
+  }
+
  public:
   static long FileSize(const char* name) {
     struct _stat buf;
@@ -120,57 +183,18 @@ class File {
     return true;
   }
 
-  static wstring& FileOwner(const char* name) {
-    wstring value;
-    /*
-    DWORD dwRtnCode = 0;
-    BOOL bRtnBool = TRUE;
-    LPTSTR AcctName = NULL;
-    LPTSTR DomainName = NULL;
-    DWORD dwAcctName = 1, dwDomainName = 1;
-    SID_NAME_USE eUse = SidTypeUnknown;
-    HANDLE hFile;
-    
-    */
+  static wstring FileOwner(const char* name, bool is_account) {
+    wstring account;  wstring group;
 
-    PSID sid_owner = NULL;
-    PSECURITY_DESCRIPTOR security = NULL;
-
-    HANDLE file = CreateFile(name, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-    if(file == INVALID_HANDLE_VALUE) {
-      value = L"";
-      return value;
+    if(GetAccountGroupOwner(name, account, group)) {
+      if (is_account) {
+        return account;
+      }
+      
+      return group;
     }
 
-    DWORD flag = GetSecurityInfo(file, SE_FILE_OBJECT, OWNER_SECURITY_INFORMATION, 
-                                 &sid_owner, NULL, NULL, NULL, &security);
-    if(flag != ERROR_SUCCESS) {
-      value = L"";
-      return value;
-    }
-
-    DWORD owner_size = 1;
-    LPTSTR owner_name = NULL;
-
-    DWORD domain_size = 1;
-    LPTSTR domain_name = NULL;
-
-    SID_NAME_USE use;
-
-    flag = LookupAccountSid(NULL, sid_owner, owner_name, (LPDWORD)&owner_size, 
-                            domain_name, (LPDWORD)&domain_size, &use);
-    if(flag != ERROR_SUCCESS) {
-      value = L"";
-      return value;
-    }
-
-    /*
-    AcctName = (LPTSTR)GlobalAlloc(
-    GMEM_FIXED,
-    dwAcctName);
-    */
-
-    return value;
+    return L"";
   }
 
   static wstring& FileGroup(const char* name) {
