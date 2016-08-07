@@ -41,6 +41,8 @@
 #include <sys/stat.h>
 #include <stdio.h>
 #include <strsafe.h>
+#include <accctrl.h>
+#include <aclapi.h>
 
 #pragma comment(lib, "Ws2_32.lib")
 #pragma comment(lib, "User32.lib")
@@ -116,6 +118,64 @@ class File {
     }
 
     return true;
+  }
+
+  static wstring& FileOwner(const char* name) {
+    wstring value;
+    /*
+    DWORD dwRtnCode = 0;
+    BOOL bRtnBool = TRUE;
+    LPTSTR AcctName = NULL;
+    LPTSTR DomainName = NULL;
+    DWORD dwAcctName = 1, dwDomainName = 1;
+    SID_NAME_USE eUse = SidTypeUnknown;
+    HANDLE hFile;
+    
+    */
+
+    PSID sid_owner = NULL;
+    PSECURITY_DESCRIPTOR security = NULL;
+
+    HANDLE file = CreateFile(name, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    if(file == INVALID_HANDLE_VALUE) {
+      value = L"";
+      return value;
+    }
+
+    DWORD flag = GetSecurityInfo(file, SE_FILE_OBJECT, OWNER_SECURITY_INFORMATION, 
+                                 &sid_owner, NULL, NULL, NULL, &security);
+    if(flag != ERROR_SUCCESS) {
+      value = L"";
+      return value;
+    }
+
+    DWORD owner_size = 1;
+    LPTSTR owner_name = NULL;
+
+    DWORD domain_size = 1;
+    LPTSTR domain_name = NULL;
+
+    SID_NAME_USE use;
+
+    flag = LookupAccountSid(NULL, sid_owner, owner_name, (LPDWORD)&owner_size, 
+                            domain_name, (LPDWORD)&domain_size, &use);
+    if(flag != ERROR_SUCCESS) {
+      value = L"";
+      return value;
+    }
+
+    /*
+    AcctName = (LPTSTR)GlobalAlloc(
+    GMEM_FIXED,
+    dwAcctName);
+    */
+
+    return value;
+  }
+
+  static wstring& FileGroup(const char* name) {
+    wstring value = L"";
+    return value;
   }
 
   static bool IsDir(const char* name) {
