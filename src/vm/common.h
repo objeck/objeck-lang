@@ -2051,6 +2051,12 @@ class TrapProcessor {
   static inline void ProcessPlatform(StackProgram* program, long* &op_stack, long* &stack_pos);
 
   // 
+  // platform string
+  //
+  static inline void ProcessFileOwner(const char* name, bool is_account,
+				      StackProgram* program, long* &op_stack, long* &stack_pos);
+  
+  // 
   // version string
   //
   static inline void ProcessVersion(StackProgram* program, long* &op_stack, long* &stack_pos);

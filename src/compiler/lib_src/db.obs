@@ -77,7 +77,7 @@ bundle TinyDB {
 			return matches;
 		}
 		
-		method : native : public : Insert() ~ Row {
+		method : public : native : Insert() ~ Row {
 			pk := IntHolder->New(@count);
 			values := Compare->New[@column_names->Size()];
 			values[0] := pk;
