@@ -187,7 +187,7 @@ class File {
     wstring account;  wstring group;
 
     if(GetAccountGroupOwner(name, account, group)) {
-      if (is_account) {
+      if(is_account) {
         return account;
       }
       
