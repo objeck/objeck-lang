@@ -87,7 +87,7 @@ class File {
 
     flag = LookupAccountSid(NULL, sid_owner, account_name, (LPDWORD)&owner_size,
                             domain_name, (LPDWORD)&domain_size, &use);
-    if (flag != ERROR_SUCCESS) {
+    if (flag == ERROR_SUCCESS) {
       // clean up
       CloseHandle(handle);
       
