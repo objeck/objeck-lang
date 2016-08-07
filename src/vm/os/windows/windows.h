@@ -197,11 +197,6 @@ class File {
     return L"";
   }
 
-  static wstring& FileGroup(const char* name) {
-    wstring value = L"";
-    return value;
-  }
-
   static bool IsDir(const char* name) {
     WIN32_FIND_DATA data;
     HANDLE find = FindFirstFile(name, &data);
