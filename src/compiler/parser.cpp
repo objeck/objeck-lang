@@ -1187,6 +1187,19 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       NextToken();
       break;
 
+
+    case FILE_ACCOUNT_OWNER:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+                                                               instructions::FILE_ACCOUNT_OWNER);
+      NextToken();
+      break;
+      
+    case FILE_GROUP_OWNER:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+                                                               instructions::FILE_GROUP_OWNER);
+      NextToken();
+      break;
+      
     case FILE_MODIFIED_TIME:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
                                                                instructions::FILE_MODIFIED_TIME);

@@ -7,3 +7,4 @@
 ./obc -src lib_src/regex.obs -lib collect.obl -tar lib -opt s3 -dest regex.obl
 ./obc -src lib_src/fcgi.obs -lib collect.obl,json.obl -tar lib -opt s3 -dest fcgi.obl
 ./obc -src lib_src/csv.obs -tar lib -lib collect.obl -opt s3 -dest csv.obl
+./obc -src lib_src/db.obs -tar lib -lib collect.obl -opt s3 -dest db.obl

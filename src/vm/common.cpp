@@ -1148,6 +1148,43 @@ void TrapProcessor::ProcessPlatform(StackProgram* program, long* &op_stack, long
 }
 
 /********************************
+ * Get file owner string
+ ********************************/
+void TrapProcessor::ProcessFileOwner(const char* name, bool is_account,
+				     StackProgram* program, long* &op_stack, long* &stack_pos) {
+  const wstring value_str = File::FileOwner(name, is_account);
+  
+  if(value_str.size() > 0) {
+    // create character array
+    const long char_array_size = value_str.size();
+    const long char_array_dim = 1;
+    long* char_array = (long*)MemoryManager::AllocateArray(char_array_size + 1 +
+							   ((char_array_dim + 2) *
+							    sizeof(long)),
+							   CHAR_ARY_TYPE,
+							   op_stack, *stack_pos, false);
+    char_array[0] = char_array_size + 1;
+    char_array[1] = char_array_dim;
+    char_array[2] = char_array_size;
+  
+    // copy wstring
+    wchar_t* char_array_ptr = (wchar_t*)(char_array + 3);
+    wcsncpy(char_array_ptr, value_str.c_str(), char_array_size);
+
+    // create 'System.String' object instance
+    long* str_obj = MemoryManager::AllocateObject(program->GetStringObjectId(),
+						  (long*)op_stack, *stack_pos, false);
+    str_obj[0] = (long)char_array;
+    str_obj[1] = char_array_size;
+  
+    PushInt((long)str_obj, op_stack, stack_pos);
+  }
+  else {
+    PushInt(0, op_stack, stack_pos);
+  }
+}
+
+/********************************
  * Get version string
  ********************************/
 void TrapProcessor::ProcessVersion(StackProgram* program, long* &op_stack, long* &stack_pos) 
@@ -2845,7 +2882,35 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, long* inst,
     }
   }
     break;
-      
+    
+  case FILE_ACCOUNT_OWNER: {
+    long* array = (long*)PopInt(op_stack, stack_pos);
+    if(array) {
+      array = (long*)array[0];
+      const wstring wname((wchar_t*)(array + 3));
+      const string name(wname.begin(), wname.end());
+      ProcessFileOwner(name.c_str(), true, program, op_stack, stack_pos);
+    }
+    else {
+      PushInt(0, op_stack, stack_pos);
+    }
+  }
+    break;
+    
+  case FILE_GROUP_OWNER: {
+    long* array = (long*)PopInt(op_stack, stack_pos);
+    if(array) {
+      array = (long*)array[0];
+      const wstring wname((wchar_t*)(array + 3));
+      const string name(wname.begin(), wname.end());
+      ProcessFileOwner(name.c_str(), false, program, op_stack, stack_pos);
+    }
+    else {
+      PushInt(0, op_stack, stack_pos);
+    }
+  }
+    break;
+    
   case FILE_DELETE: {
     long* array = (long*)PopInt(op_stack, stack_pos);
     if(array) {

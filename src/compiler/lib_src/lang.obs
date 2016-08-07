@@ -4283,6 +4283,24 @@ bundle System.IO.File {
 		}
 		
 		#~
+		Gets the file owner name
+		@param n file name
+		@return file owner name
+		~#
+		function : Owner(n : System.String) ~ System.String {
+			FILE_ACCOUNT_OWNER;
+		}
+
+		#~
+		Gets the file group name
+		@param n file name
+		@return file group name
+		~#
+		function : Group(n : System.String) ~ System.String {
+			FILE_GROUP_OWNER;
+		}
+		
+		#~
 		Check to see if a file exists
 		@param n file name
 		@return true if file exists
