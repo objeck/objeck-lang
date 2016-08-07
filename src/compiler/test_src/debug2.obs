@@ -1,14 +1,8 @@
+use System.IO.File;
+
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		aa := Base->New[1];
-    aa[0] := FloatHolder->New(13.13);
-
-#~		
-		v := aa[0]->As(FloatHolder);
-		v->Get()->PrintLine();
-~#
-
-		v := aa[0];
-		v->As(FloatHolder)->Get()->PrintLine();
+		File->Owner("vm.cpp")->PrintLine();
+#		File->Exists("vm.cpp")->PrintLine();
 	}
 }
