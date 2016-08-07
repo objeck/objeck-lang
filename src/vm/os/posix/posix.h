@@ -45,6 +45,8 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <netdb.h>
+#include <pwd.h>
+#include <grp.h>
 
 #define SOCKET int
 
@@ -102,6 +104,21 @@ class File {
     return fopen(name, mode);
   }
 
+  static wstring FileOwner(const char* name, bool is_account) {
+    struct stat info;
+    if(stat(name, &info)) {
+      return L"";
+    }
+
+    if(is_account) {
+      struct passwd* account = getpwuid(info.st_uid);
+      return BytesToUnicode(account->pw_name);
+    }
+        
+    struct group * group = getgrgid(info.st_gid);
+    return BytesToUnicode(group->gr_name);
+  }
+  
   static bool MakeDir(const char* name) {
     if(mkdir(name, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) < 0) {
       return false;
