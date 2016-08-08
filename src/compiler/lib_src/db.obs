@@ -261,4 +261,102 @@ bundle TinyDB {
 			return buffer;
 		}
 	}
+	
+	class Query {
+		method : public : native : Parse(line : String) ~ Nil {
+      reserved := StringMap->New();
+      reserved->Insert("select", "keyword: select");
+      reserved->Insert("from", "keyword: from");
+      reserved->Insert("where", "keyword: where");
+      reserved->Insert("insert", "keyword: insert");
+      reserved->Insert("into", "keyword: into");
+      reserved->Insert("values", "keyword: values");
+      reserved->Insert("like", "keyword: like");
+			
+			i := 0;
+			while(i < line->Size()) {    
+				# skip whitespace
+				while((line->Get(i) = ' ' | line->Get(i) = '\t') & i < line->Size()) {
+					i += 1;
+				};
+				
+				# parse the line
+				if(i < line->Size()) {
+					# word
+					if(line->Get(i)->IsChar() = true) {
+						string := "";
+						while(line->Get(i)->IsChar() = true | line->Get(i) = '.') {
+							string->Append(line->Get(i));
+							i += 1;
+						};
+					
+						result := reserved->Find(string)->As(String);
+						if(result <> Nil) {
+							result->PrintLine();
+						}
+						else {
+							"string/var:'{$string}'"->PrintLine();
+						};
+					}
+					# number
+					else if(line->Get(i)->IsDigit() = true) {
+						number := "";
+						is_dec := false;
+						while(line->Get(i)->IsDigit() = true | line->Get(i) = '.') {
+							if(line->Get(i) = '.') {
+								is_dec := true;
+							};
+							number->Append(line->Get(i));
+							i += 1;
+						};
+
+						if(is_dec) {
+							"decimal '{$number}'"->PrintLine();
+						}
+						else {
+							"integer '{$number}'"->PrintLine();
+						};
+					}
+					# other
+					else {
+						select(line->Get(i)) {
+							label '(': {
+								"opren"->PrintLine();
+							}
+							
+							label ')': {
+								"cpren"->PrintLine();
+							}
+
+							label '/': {
+								"div"->PrintLine();
+							}
+
+							label '*': {
+								"mul"->PrintLine();
+							}
+
+							label '+': {
+								"add"->PrintLine();
+							}
+
+							label '-': {
+								"sub"->PrintLine();
+							}
+							
+							label ',': {
+								"comma"->PrintLine();
+							}
+	#~              
+							other: {
+								Console->Print("char='")->Print(line->Get(i))->PrintLine("'");
+							}
+	~#
+						};
+						i += 1;
+					};
+				};
+			};
+		}
+	}
 }
