@@ -33,9 +33,7 @@
 #define __MEM_MGR_H__
 
 #include "../../common.h"
-#ifdef _ARM32
 #include <iomanip>
-#endif
 
 // basic vm tuning parameters
 // define MEM_MAX 1024
