@@ -263,15 +263,20 @@ bundle TinyDB {
 	}
 	
 	class Query {
-		method : public : native : Parse(line : String) ~ Nil {
+		function : native : Parse(line : String) ~ Nil {
       reserved := StringMap->New();
       reserved->Insert("select", "keyword: select");
+			reserved->Insert("update", "keyword: update");
       reserved->Insert("from", "keyword: from");
       reserved->Insert("where", "keyword: where");
       reserved->Insert("insert", "keyword: insert");
       reserved->Insert("into", "keyword: into");
       reserved->Insert("values", "keyword: values");
       reserved->Insert("like", "keyword: like");
+      reserved->Insert("between", "keyword: between");
+      reserved->Insert("in", "keyword: in");
+			reserved->Insert("and", "keyword: and");
+			reserved->Insert("or", "keyword: or");
 			
 			i := 0;
 			while(i < line->Size()) {    
@@ -295,7 +300,7 @@ bundle TinyDB {
 							result->PrintLine();
 						}
 						else {
-							"string/var:'{$string}'"->PrintLine();
+							"ref: {$string}"->PrintLine();
 						};
 					}
 					# number
@@ -321,31 +326,55 @@ bundle TinyDB {
 					else {
 						select(line->Get(i)) {
 							label '(': {
-								"opren"->PrintLine();
+								"fopen"->PrintLine();
 							}
 							
 							label ')': {
-								"cpren"->PrintLine();
-							}
-
-							label '/': {
-								"div"->PrintLine();
+								"fclose"->PrintLine();
 							}
 
 							label '*': {
-								"mul"->PrintLine();
+								"star"->PrintLine();
 							}
 
-							label '+': {
-								"add"->PrintLine();
-							}
-
-							label '-': {
-								"sub"->PrintLine();
-							}
-							
 							label ',': {
 								"comma"->PrintLine();
+							}
+							
+							label ';': {
+								"semi-colon"->PrintLine();
+							}
+							
+							label '=': {
+								"equal"->PrintLine();
+							}
+							
+							label '\'': {
+								"quote"->PrintLine();
+							}
+							
+							label '<': {
+								if(line->Get(i + 1) = '>') {
+									i += 1;
+									"not-equal"->PrintLine();
+								}
+								else if(line->Get(i + 1) = '=') {
+									i += 1;
+									"less-equal"->PrintLine();
+								}
+								else {
+									"less"->PrintLine();
+								};
+							}
+							
+							label '>': {
+								if(line->Get(i + 1) = '=') {
+									i += 1;
+									"greater-equal"->PrintLine();
+								}
+								else {
+									"greater"->PrintLine();
+								};
 							}
 	#~              
 							other: {
