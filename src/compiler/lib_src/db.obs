@@ -263,22 +263,23 @@ bundle TinyDB {
 	}
 	
 	class Query {
-		function : native : Parse(line : String) ~ Nil {
+		function : native : Parse(line : String) ~ Vector {		
       reserved := StringMap->New();
-      reserved->Insert("select", "keyword: select");
-			reserved->Insert("update", "keyword: update");
-      reserved->Insert("from", "keyword: from");
-      reserved->Insert("where", "keyword: where");
-      reserved->Insert("insert", "keyword: insert");
-      reserved->Insert("into", "keyword: into");
-      reserved->Insert("values", "keyword: values");
-      reserved->Insert("like", "keyword: like");
-      reserved->Insert("between", "keyword: between");
-      reserved->Insert("in", "keyword: in");
-			reserved->Insert("and", "keyword: and");
-			reserved->Insert("or", "keyword: or");
+      reserved->Insert("select", Token->New(Token->Type->SELECT));
+			reserved->Insert("update", Token->New(Token->Type->UPDATE));
+      reserved->Insert("from", Token->New(Token->Type->FROM));
+      reserved->Insert("where", Token->New(Token->Type->WHERE));
+      reserved->Insert("insert", Token->New(Token->Type->INSERT));
+      reserved->Insert("into", Token->New(Token->Type->INTO));
+      reserved->Insert("values", Token->New(Token->Type->VALUES));
+      reserved->Insert("like", Token->New(Token->Type->LIKE));
+      reserved->Insert("between", Token->New(Token->Type->BETWEEN));
+      reserved->Insert("in", Token->New(Token->Type->IN));
+			reserved->Insert("and", Token->New(Token->Type->AND));
+			reserved->Insert("or", Token->New(Token->Type->OR));
 			
 			i := 0;
+			tokens := Vector->New();
 			while(i < line->Size()) {    
 				# skip whitespace
 				while((line->Get(i) = ' ' | line->Get(i) = '\t') & i < line->Size()) {
@@ -295,9 +296,9 @@ bundle TinyDB {
 							i += 1;
 						};
 					
-						result := reserved->Find(string)->As(String);
+						result := reserved->Find(string);
 						if(result <> Nil) {
-							result->PrintLine();
+							tokens->AddBack(result);
 						}
 						else {
 							"ref: {$string}"->PrintLine();
@@ -376,16 +377,67 @@ bundle TinyDB {
 									"greater"->PrintLine();
 								};
 							}
-	#~              
+              
 							other: {
-								Console->Print("char='")->Print(line->Get(i))->PrintLine("'");
+								"<unknown>"->PrintLine();
 							}
-	~#
 						};
 						i += 1;
 					};
 				};
 			};
+			
+			return tokens;
+		}
+	}
+	
+	class Token {
+		@type : Type;
+		@value : String;
+		
+		enum Type {
+			SELECT,
+			UPDATE,
+      FROM,
+      WHERE,
+      INSERT,
+      INTO,
+      VALUES,
+      LIKE,
+      BETWEEN,
+      IN,
+			AND,
+			OR,
+			FOPEN,
+			FCLOSE,
+			STAR,
+			COMMA,
+			SEMI_COLON,
+			EQUAL,
+			QUOTE,
+			NOT_EQUAL,
+			LESS_EQUAL,
+			LESS,
+			GREATER_EQUAL,
+			GREATER
+		}
+		
+		New(type : Type) {
+			@type := type;
+			@value := "";
+		}
+		
+		New(type : Type, value : String) {
+			@type := type;
+			@value := value;
+		}
+		
+		method : public : GetType() ~ Type {
+			return @type;
+		}
+		
+		method : public : GetValue() ~ String {
+			return @value;
 		}
 	}
 }
