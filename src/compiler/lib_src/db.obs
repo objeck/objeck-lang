@@ -433,10 +433,10 @@ bundle TinyDB {
 		}
 	}
 	
-	class Instruction {
+	class Term {
 		@type : Token->Type;
-		@left : Instruction;
-		@right : Instruction;
+		@left : Term;
+		@right : Term;
 		@values : Vector;
 		
 		New(type : Token->Type) {
@@ -455,19 +455,19 @@ bundle TinyDB {
 			return @values;
 		}
 		
-		method : public : SetLeft(left : Instruction) ~ Nil {
+		method : public : SetLeft(left : Term) ~ Nil {
 			@left := left;
 		}
 		
-		method : public : GetLeft() ~ Instruction {
+		method : public : GetLeft() ~ Term {
 			return @left;
 		}
 		
-		method : public : SetRight(right : Instruction) ~ Nil {
+		method : public : SetRight(right : Term) ~ Nil {
 			@right := right;
 		}
 		
-		method : public : GetRight() ~ Instruction {
+		method : public : GetRight() ~ Term {
 			return @right;
 		}
 	}
