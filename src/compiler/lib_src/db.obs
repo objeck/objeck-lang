@@ -337,12 +337,12 @@ bundle TinyDB {
 							i += 1;
 						};
 					
-						result := reserved->Find(string);
+						result := reserved->Find(string)->As(Token);
 						if(result <> Nil) {
 							tokens->AddBack(result);
 						}
 						else {
-							tokens->AddBack(string);
+							tokens->AddBack(Token->New(string));
 						};
 					}
 					# number
@@ -359,10 +359,10 @@ bundle TinyDB {
 						};
 
 						if(is_dec) {
-							tokens->AddBack(number->ToFloat());
+							tokens->AddBack(Token->New(number->ToFloat()));
 						}
 						else {
-							tokens->AddBack(number->ToInt());
+							tokens->AddBack(Token->New(number->ToInt()));
 						};
 					}
 					# other
@@ -433,6 +433,45 @@ bundle TinyDB {
 		}
 	}
 	
+	class Instruction {
+		@type : Token->Type;
+		@left : Instruction;
+		@right : Instruction;
+		@values : Vector;
+		
+		New(type : Token->Type) {
+			@type := type;
+		}
+		
+		method : public : GetType() ~ Token->Type {
+			return @type;
+		}
+		
+		method : public : AddValue(value : String) ~ Nil {
+			@values->AddBack(value);
+		}
+		
+		method : public : GetValues() ~ Vector {
+			return @values;
+		}
+		
+		method : public : SetLeft(left : Instruction) ~ Nil {
+			@left := left;
+		}
+		
+		method : public : GetLeft() ~ Instruction {
+			return @left;
+		}
+		
+		method : public : SetRight(right : Instruction) ~ Nil {
+			@right := right;
+		}
+		
+		method : public : GetRight() ~ Instruction {
+			return @right;
+		}
+	}
+	
 	class Token {
 		@type : Type;
 		@value : Compare;
@@ -463,6 +502,8 @@ bundle TinyDB {
 			GREATER_EQUAL,
 			GREATER,
 			REF,
+			INT,
+			FLOAT,
 			EOS
 		}
 		
@@ -476,13 +517,13 @@ bundle TinyDB {
 			@value := "";
 		}
 		
-		New(type : Type, value : Int) {
-			@type := type;
+		New(value : Int) {
+			@type := Type->INT;
 			@value := IntHolder->New(value);
 		}
 		
-		New(type : Type, value : Float) {
-			@type := type;
+		New(value : Float) {
+			@type := Type->FLOAT;
 			@value := FloatHolder->New(value);
 		}
 		
