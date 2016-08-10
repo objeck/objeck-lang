@@ -272,34 +272,74 @@ bundle TinyDB {
 			@line := line;
 		}
 		
-		method : public : Process() ~ Bool {
-"-0-"->PrintLine();
+		method : public : Process() ~ Term {
 			@tokens := Scan();
-"-1-"->PrintLine();
 			if(@tokens = Nil) {
-				return false;
+				return Nil;
 			};
 			
-"-2-"->PrintLine();
-			#TODO: dump
-			each(i : @tokens) {
-				@tokens->Get(i)->As(Token)->ToString()->PrintLine();
-			};
-"-3-"->PrintLine();
-
+			NextToken();
 			return Parse();
 		}
 		
-		method : Parse() ~ Bool {
+		method : Parse() ~ Term {
+			term := Term->New(Token->Type->EOS);
+
 			if(TokenType() = Token->Type->SELECT) {
+				NextToken();
+				left := ParseSelect();
+				if(left = Nil) {
+					return Nil;
+				};
+				term->SetLeft(left);
 			};
 			
-			return false;	
+			if(TokenType() = Token->Type->FROM) {
+				NextToken();
+				right := ParseFrom();
+				if(right = Nil) {
+					return Nil;
+				};
+				term->SetRight(right);
+			};
+			
+			return term;	
+		}
+
+		method : ParseSelect() ~ Term {
+"Select"->PrintLine();
+			term := Term->New(Token->Type->SELECT);
+			while(TokenType() = Token->Type->REF) {
+				term->AddValue(TokenValue());
+				NextToken();
+
+				if(TokenType() = Token->Type->COMMA) {
+					NextToken();
+				};
+			};
+						
+			return term;
+		}
+
+		method : ParseFrom() ~ Term {
+"From"->PrintLine();
+			term := Term->New(Token->Type->FROM);
+			while(TokenType() = Token->Type->REF) {
+				term->AddValue(TokenValue());
+				NextToken();
+
+				if(TokenType() = Token->Type->COMMA) {
+					NextToken();
+				};
+			};
+						
+			return term;
 		}
 		
 		method : NextToken() ~ Bool {
 			if(@tokens_index < @tokens->Size()) {
 				@cur_token := @tokens->Get(@tokens_index);
+				@tokens_index += 1;
 				return true;
 			};
 			
@@ -313,6 +353,14 @@ bundle TinyDB {
 			};
 			
 			return Token->Type->EOS;
+		}
+		
+		method : TokenValue() ~ Compare {
+			if(@cur_token <> Nil) {
+				return @cur_token->GetValue();
+			};
+			
+			return "";
 		}
 		
 		method : native : Scan() ~ Vector {		
@@ -358,7 +406,6 @@ bundle TinyDB {
 					}
 					# number
 					else if(@line->Get(i)->IsDigit() = true) {
-						# TODO: two decimals
 						number := "";
 						is_dec := 0;
 						while(@line->Get(i)->IsDigit() = true | @line->Get(i) = '.') {
@@ -441,8 +488,9 @@ bundle TinyDB {
 						i += 1;
 					};
 				};
-			};
-			
+			};			
+			tokens->AddBack(Token->New(Token->Type->EOS));
+
 			return tokens;
 		}
 	}
@@ -455,13 +503,14 @@ bundle TinyDB {
 		
 		New(type : Token->Type) {
 			@type := type;
+			@values := Vector->New();
 		}
 		
 		method : public : GetType() ~ Token->Type {
 			return @type;
 		}
 		
-		method : public : AddValue(value : String) ~ Nil {
+		method : public : AddValue(value : Compare) ~ Nil {
 			@values->AddBack(value);
 		}
 		
