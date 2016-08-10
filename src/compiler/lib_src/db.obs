@@ -268,14 +268,25 @@ bundle TinyDB {
 		@tokens_index : Int;
 		@cur_token : Token;
 		
-		New() {}
+		New(line : String) {
+			@line := line;
+		}
 		
-		method : public : Process(@line : String) ~ Bool {
+		method : public : Process() ~ Bool {
+"-0-"->PrintLine();
 			@tokens := Scan();
+"-1-"->PrintLine();
 			if(@tokens = Nil) {
 				return false;
 			};
 			
+"-2-"->PrintLine();
+			#TODO: dump
+			each(i : @tokens) {
+				@tokens->Get(i)->As(Token)->ToString()->PrintLine();
+			};
+"-3-"->PrintLine();
+
 			return Parse();
 		}
 		
@@ -536,6 +547,133 @@ bundle TinyDB {
 		
 		method : public : GetValue() ~ Compare {
 			return @value;
+		}
+
+		method : public : ToString() ~ String {
+			buffer := "";
+
+			select(@type) {
+				label Type->SELECT: {
+					buffer += "SELECT";
+				}
+
+				label Type->UPDATE: {
+					buffer += "UPDATE";
+				}
+
+				label Type->FROM: {
+					buffer += "FROM";
+				}
+
+				label Type->WHERE: {
+					buffer += "WHERE";
+				}
+
+				label Type->INSERT: {
+					buffer += "INSERT";
+				}
+
+				label Type->INTO: {
+					buffer += "INTO";
+				}
+
+				label Type->VALUES: {
+					buffer += "VALUES";
+				}
+
+				label Type->LIKE: {
+					buffer += "LIKE";
+				}
+
+				label Type->BETWEEN: {
+					buffer += "BETWEEN";
+				}
+
+				label Type->IN: {
+					buffer += "IN";
+				}
+
+				label Type->AND: {
+					buffer += "AND";
+				}
+
+				label Type->OR: {
+					buffer += "OR";
+				}
+
+				label Type->FOPEN: {
+					buffer += "FOPEN";
+				}
+
+				label Type->FCLOSE: {
+					buffer += "FCLOSE";
+				}
+
+				label Type->STAR: {
+					buffer += "STAR";
+				}
+
+				label Type->COMMA: {
+					buffer += "COMMA";
+				}
+
+				label Type->SEMI_COLON: {
+					buffer += "SEMI_COLON";
+				}
+
+				label Type->EQUAL: {
+					buffer += "EQUAL";
+				}
+
+				label Type->QUOTE: {
+					buffer += "QUOTE";
+				}
+
+				label Type->NOT_EQUAL: {
+					buffer += "NOT_EQUAL";
+				}
+
+				label Type->LESS_EQUAL: {
+					buffer += "LESS_EQUAL";
+				}
+
+				label Type->LESS: {
+					buffer += "LESS";
+				}
+
+				label Type->GREATER_EQUAL: {
+					buffer += "GREATER_EQUAL";
+				}
+
+				label Type->GREATER: {
+					buffer += "GREATER";
+				}
+
+				label Type->REF: {
+					buffer += "REF, value='";
+					buffer += @value->As(String);
+					buffer += '"';
+				}
+
+				label Type->INT: {
+					buffer += "INT, value=";
+					buffer += @value->As(IntHolder)->Get();
+				}
+
+				label Type->FLOAT: {
+					buffer += "FLOAT, value=";
+#TODO: fix this
+#					buffer += @value->As(FloatHolder)->Get();
+					f := @value->As(FloatHolder);
+					buffer += f->Get();
+				}
+
+				label Type->EOS: {
+					buffer += "EOS";
+				}
+			};
+
+			return buffer;
 		}
 	}
 }
