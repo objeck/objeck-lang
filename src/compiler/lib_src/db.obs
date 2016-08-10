@@ -342,7 +342,7 @@ bundle TinyDB {
 							tokens->AddBack(result);
 						}
 						else {
-							"ref: {$string}"->PrintLine();
+							tokens->AddBack(string);
 						};
 					}
 					# number
@@ -434,7 +434,7 @@ bundle TinyDB {
 	
 	class Token {
 		@type : Type;
-		@value : String;
+		@value : Compare;
 		
 		enum Type {
 			SELECT,
@@ -461,7 +461,13 @@ bundle TinyDB {
 			LESS,
 			GREATER_EQUAL,
 			GREATER,
+			REF,
 			EOS
+		}
+		
+		New(value : String) {
+			@type := Type->REF;
+			@value := value;
 		}
 		
 		New(type : Type) {
@@ -469,16 +475,21 @@ bundle TinyDB {
 			@value := "";
 		}
 		
-		New(type : Type, value : String) {
+		New(type : Type, value : Int) {
 			@type := type;
-			@value := value;
+			@value := IntHolder->New(value);
+		}
+		
+		New(type : Type, value : Float) {
+			@type := type;
+			@value := FloatHolder->New(value);
 		}
 		
 		method : public : GetType() ~ Type {
 			return @type;
 		}
 		
-		method : public : GetValue() ~ String {
+		method : public : GetValue() ~ Compare {
 			return @value;
 		}
 	}
