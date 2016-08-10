@@ -304,7 +304,7 @@ bundle TinyDB {
 			return Token->Type->EOS;
 		}
 		
-		method : Scan() ~ Vector {		
+		method : native : Scan() ~ Vector {		
 			reserved := StringMap->New();
 			reserved->Insert("select", Token->New(Token->Type->SELECT));
 			reserved->Insert("update", Token->New(Token->Type->UPDATE));
