@@ -263,36 +263,52 @@ bundle TinyDB {
 	}
 	
 	class Query {
-		function : native : Parse(line : String) ~ Vector {		
-      reserved := StringMap->New();
-      reserved->Insert("select", Token->New(Token->Type->SELECT));
+		@line : String;
+		@tokens : Vector;
+		
+		method : public : Process(@line : String) ~ Bool {
+			@tokens := Scan();
+			if(@tokens = Nil) {
+				return false;
+			};
+			
+			return Parse();
+		}
+		
+		method : Parse() ~ Bool {
+			return false;	
+		}
+		
+		method : Scan() ~ Vector {		
+			reserved := StringMap->New();
+			reserved->Insert("select", Token->New(Token->Type->SELECT));
 			reserved->Insert("update", Token->New(Token->Type->UPDATE));
-      reserved->Insert("from", Token->New(Token->Type->FROM));
-      reserved->Insert("where", Token->New(Token->Type->WHERE));
-      reserved->Insert("insert", Token->New(Token->Type->INSERT));
-      reserved->Insert("into", Token->New(Token->Type->INTO));
-      reserved->Insert("values", Token->New(Token->Type->VALUES));
-      reserved->Insert("like", Token->New(Token->Type->LIKE));
-      reserved->Insert("between", Token->New(Token->Type->BETWEEN));
-      reserved->Insert("in", Token->New(Token->Type->IN));
+			reserved->Insert("from", Token->New(Token->Type->FROM));
+			reserved->Insert("where", Token->New(Token->Type->WHERE));
+			reserved->Insert("insert", Token->New(Token->Type->INSERT));
+			reserved->Insert("into", Token->New(Token->Type->INTO));
+			reserved->Insert("values", Token->New(Token->Type->VALUES));
+			reserved->Insert("like", Token->New(Token->Type->LIKE));
+			reserved->Insert("between", Token->New(Token->Type->BETWEEN));
+			reserved->Insert("in", Token->New(Token->Type->IN));
 			reserved->Insert("and", Token->New(Token->Type->AND));
 			reserved->Insert("or", Token->New(Token->Type->OR));
 			
 			i := 0;
 			tokens := Vector->New();
-			while(i < line->Size()) {    
+			while(i < @line->Size()) {    
 				# skip whitespace
-				while((line->Get(i) = ' ' | line->Get(i) = '\t') & i < line->Size()) {
+				while((@line->Get(i) = ' ' | @line->Get(i) = '\t') & i < @line->Size()) {
 					i += 1;
 				};
 				
-				# parse the line
-				if(i < line->Size()) {
+				# parse the @line
+				if(i < @line->Size()) {
 					# word
-					if(line->Get(i)->IsChar() = true) {
+					if(@line->Get(i)->IsChar() = true) {
 						string := "";
-						while(line->Get(i)->IsChar() = true | line->Get(i) = '.') {
-							string->Append(line->Get(i));
+						while(@line->Get(i)->IsChar() = true | @line->Get(i) = '.') {
+							string->Append(@line->Get(i));
 							i += 1;
 						};
 					
@@ -305,14 +321,14 @@ bundle TinyDB {
 						};
 					}
 					# number
-					else if(line->Get(i)->IsDigit() = true) {
+					else if(@line->Get(i)->IsDigit() = true) {
 						number := "";
 						is_dec := false;
-						while(line->Get(i)->IsDigit() = true | line->Get(i) = '.') {
-							if(line->Get(i) = '.') {
+						while(@line->Get(i)->IsDigit() = true | @line->Get(i) = '.') {
+							if(@line->Get(i) = '.') {
 								is_dec := true;
 							};
-							number->Append(line->Get(i));
+							number->Append(@line->Get(i));
 							i += 1;
 						};
 
@@ -325,7 +341,7 @@ bundle TinyDB {
 					}
 					# other
 					else {
-						select(line->Get(i)) {
+						select(@line->Get(i)) {
 							label '(': {
 								"fopen"->PrintLine();
 							}
@@ -355,11 +371,11 @@ bundle TinyDB {
 							}
 							
 							label '<': {
-								if(line->Get(i + 1) = '>') {
+								if(@line->Get(i + 1) = '>') {
 									i += 1;
 									"not-equal"->PrintLine();
 								}
-								else if(line->Get(i + 1) = '=') {
+								else if(@line->Get(i + 1) = '=') {
 									i += 1;
 									"less-equal"->PrintLine();
 								}
@@ -369,7 +385,7 @@ bundle TinyDB {
 							}
 							
 							label '>': {
-								if(line->Get(i + 1) = '=') {
+								if(@line->Get(i + 1) = '=') {
 									i += 1;
 									"greater-equal"->PrintLine();
 								}
@@ -379,7 +395,7 @@ bundle TinyDB {
 							}
               
 							other: {
-								"<unknown>"->PrintLine();
+								return Nil;
 							}
 						};
 						i += 1;
@@ -398,14 +414,14 @@ bundle TinyDB {
 		enum Type {
 			SELECT,
 			UPDATE,
-      FROM,
-      WHERE,
-      INSERT,
-      INTO,
-      VALUES,
-      LIKE,
-      BETWEEN,
-      IN,
+			FROM,
+			WHERE,
+			INSERT,
+			INTO,
+			VALUES,
+			LIKE,
+			BETWEEN,
+			IN,
 			AND,
 			OR,
 			FOPEN,
