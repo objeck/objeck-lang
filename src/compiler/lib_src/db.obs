@@ -19,7 +19,7 @@ bundle TinyDB {
 			@keys := IntMap->New();
 		}
 		
-		method : public : Where(conds : Vector) ~ Vector {
+		method : public : native : Where(conds : Vector) ~ Vector {
 			matches := Vector->New();
 			
 			row := @head;
@@ -98,7 +98,7 @@ bundle TinyDB {
 			return row;
 		}
 		
-		method : public : Delete(pk : Int) ~ Bool {
+		method : public : native : Delete(pk : Int) ~ Bool {
 			row := @keys->Find(pk)->As(Row);
 			if(row <> Nil) {
 				if(row = @head) {
