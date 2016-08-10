@@ -265,6 +265,8 @@ bundle TinyDB {
 	class Query {
 		@line : String;
 		@tokens : Vector;
+		@tokens_index : Int;
+		@cur_token : Token;
 		
 		method : public : Process(@line : String) ~ Bool {
 			@tokens := Scan();
@@ -277,6 +279,24 @@ bundle TinyDB {
 		
 		method : Parse() ~ Bool {
 			return false;	
+		}
+		
+		method : NextToken() ~ Bool {
+			if(@tokens_index < @tokens->Size()) {
+				@cur_token := tokens[@tokens_index];
+				return true;
+			};
+			
+			@cur_token := Nil;
+			return false;
+		}
+		
+		method : TokenType() ~ Token->Type {
+			if(@cur_token <> Nil) {
+				return @cur_token->GetType();
+			};
+			
+			return false;
 		}
 		
 		method : Scan() ~ Vector {		
@@ -435,7 +455,8 @@ bundle TinyDB {
 			LESS_EQUAL,
 			LESS,
 			GREATER_EQUAL,
-			GREATER
+			GREATER,
+			EOS
 		}
 		
 		New(type : Type) {
