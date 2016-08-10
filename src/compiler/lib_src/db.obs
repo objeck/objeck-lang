@@ -347,6 +347,7 @@ bundle TinyDB {
 					}
 					# number
 					else if(@line->Get(i)->IsDigit() = true) {
+						# TODO: two decimals
 						number := "";
 						is_dec := false;
 						while(@line->Get(i)->IsDigit() = true | @line->Get(i) = '.') {
@@ -358,10 +359,10 @@ bundle TinyDB {
 						};
 
 						if(is_dec) {
-							"decimal '{$number}'"->PrintLine();
+							tokens->AddBack(number->ToFloat());
 						}
 						else {
-							"integer '{$number}'"->PrintLine();
+							tokens->AddBack(number->ToInt());
 						};
 					}
 					# other
