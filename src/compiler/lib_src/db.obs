@@ -337,7 +337,7 @@ bundle TinyDB {
 							i += 1;
 						};
 					
-						result := reserved->Find(string)->As(Token);
+						result := reserved->Find(string->ToLower())->As(Token);
 						if(result <> Nil) {
 							tokens->AddBack(result);
 						}
