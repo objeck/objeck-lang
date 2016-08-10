@@ -2,7 +2,11 @@ use System.IO.File;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		File->Owner("vm.cpp")->PrintLine();
-#		File->Exists("vm.cpp")->PrintLine();
+		buffer := "";
+		c : Compare := FloatHolder->New(13.13);
+#		f := c->As(FloatHolder)->Get();
+#		buffer += f;
+		buffer += c->As(FloatHolder)->Get();
+		buffer->PrintLine();
 	}
 }

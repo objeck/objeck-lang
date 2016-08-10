@@ -662,8 +662,6 @@ bundle TinyDB {
 
 				label Type->FLOAT: {
 					buffer += "FLOAT, value=";
-#TODO: fix this
-#					buffer += @value->As(FloatHolder)->Get();
 					f := @value->As(FloatHolder);
 					buffer += f->Get();
 				}

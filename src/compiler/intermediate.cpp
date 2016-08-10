@@ -3764,11 +3764,11 @@ void IntermediateEmitter::EmitAssignment(Assignment* assignment)
  ****************************/
 void IntermediateEmitter::EmitStringConcat(OperationAssignment* assignment)
 {
+  EmitExpression(assignment->GetExpression());
+  EmitVariable(assignment->GetVariable());
+  
   // append 'Char'  
   if(assignment->GetExpression()->GetEvalType()->GetType() == CHAR_TYPE) {
-    EmitExpression(assignment->GetExpression());
-    EmitVariable(assignment->GetVariable());
-    
     LibraryMethod* string_append_method = string_cls->GetMethod(L"System.String:Append:c,");
 #ifdef _DEBUG
     assert(string_append_method);
@@ -3787,9 +3787,6 @@ void IntermediateEmitter::EmitStringConcat(OperationAssignment* assignment)
   }
   // append 'Byte'  
   else if(assignment->GetExpression()->GetEvalType()->GetType() == BYTE_TYPE) {
-    EmitExpression(assignment->GetExpression());
-    EmitVariable(assignment->GetVariable());
-    
     LibraryMethod* string_append_method = string_cls->GetMethod(L"System.String:Append:b,");
 #ifdef _DEBUG
     assert(string_append_method);
@@ -3808,9 +3805,6 @@ void IntermediateEmitter::EmitStringConcat(OperationAssignment* assignment)
   }
   // append 'Int'  
   else if(assignment->GetExpression()->GetEvalType()->GetType() == frontend::INT_TYPE) {
-    EmitExpression(assignment->GetExpression());
-    EmitVariable(assignment->GetVariable());
-    
     LibraryMethod* string_append_method = string_cls->GetMethod(L"System.String:Append:i,");
 #ifdef _DEBUG
     assert(string_append_method);
@@ -3829,9 +3823,6 @@ void IntermediateEmitter::EmitStringConcat(OperationAssignment* assignment)
   }
   // append 'Float'  
   else if(assignment->GetExpression()->GetEvalType()->GetType() == frontend::FLOAT_TYPE) {
-    EmitExpression(assignment->GetExpression());
-    EmitVariable(assignment->GetVariable());
-    
     LibraryMethod* string_append_method = string_cls->GetMethod(L"System.String:Append:f,");
 #ifdef _DEBUG
     assert(string_append_method);
@@ -3850,9 +3841,6 @@ void IntermediateEmitter::EmitStringConcat(OperationAssignment* assignment)
   }
   // append 'Bool'  
   else if(assignment->GetExpression()->GetEvalType()->GetType() == BOOLEAN_TYPE) {
-    EmitExpression(assignment->GetExpression());
-    EmitVariable(assignment->GetVariable());
-    
     LibraryMethod* string_append_method = string_cls->GetMethod(L"System.String:Append:l,");
 #ifdef _DEBUG
     assert(string_append_method);
@@ -3872,8 +3860,6 @@ void IntermediateEmitter::EmitStringConcat(OperationAssignment* assignment)
   // append string
   else {
     is_str_array = true;
-    EmitExpression(assignment->GetExpression());
-    EmitVariable(assignment->GetVariable());
     
     LibraryMethod* string_append_method = string_cls->GetMethod(L"System.String:Append:o.System.String,");
 #ifdef _DEBUG
