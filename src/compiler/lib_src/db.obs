@@ -268,6 +268,8 @@ bundle TinyDB {
 		@tokens_index : Int;
 		@cur_token : Token;
 		
+		New() {}
+		
 		method : public : Process(@line : String) ~ Bool {
 			@tokens := Scan();
 			if(@tokens = Nil) {
@@ -278,12 +280,15 @@ bundle TinyDB {
 		}
 		
 		method : Parse() ~ Bool {
+			if(TokenType() = Token->Type->SELECT) {
+			};
+			
 			return false;	
 		}
 		
 		method : NextToken() ~ Bool {
 			if(@tokens_index < @tokens->Size()) {
-				@cur_token := tokens[@tokens_index];
+				@cur_token := @tokens->Get(@tokens_index);
 				return true;
 			};
 			
@@ -296,7 +301,7 @@ bundle TinyDB {
 				return @cur_token->GetType();
 			};
 			
-			return false;
+			return Token->Type->EOS;
 		}
 		
 		method : Scan() ~ Vector {		
