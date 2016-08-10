@@ -349,74 +349,77 @@ bundle TinyDB {
 					else if(@line->Get(i)->IsDigit() = true) {
 						# TODO: two decimals
 						number := "";
-						is_dec := false;
+						is_dec := 0;
 						while(@line->Get(i)->IsDigit() = true | @line->Get(i) = '.') {
 							if(@line->Get(i) = '.') {
-								is_dec := true;
+								is_dec += 1;
 							};
 							number->Append(@line->Get(i));
 							i += 1;
 						};
 
-						if(is_dec) {
+						if(is_dec = 1) {
 							tokens->AddBack(Token->New(number->ToFloat()));
 						}
-						else {
+						else if(is_dec = 0) {
 							tokens->AddBack(Token->New(number->ToInt()));
+						}
+						else {
+							return Nil;
 						};
 					}
 					# other
 					else {
 						select(@line->Get(i)) {
 							label '(': {
-								"fopen"->PrintLine();
+								tokens->AddBack(Token->New(Token->Type->FOPEN));
 							}
 							
 							label ')': {
-								"fclose"->PrintLine();
+								tokens->AddBack(Token->New(Token->Type->FCLOSE));
 							}
 
 							label '*': {
-								"star"->PrintLine();
+								tokens->AddBack(Token->New(Token->Type->STAR));
 							}
 
 							label ',': {
-								"comma"->PrintLine();
+								tokens->AddBack(Token->New(Token->Type->COMMA));
 							}
 							
 							label ';': {
-								"semi-colon"->PrintLine();
+								tokens->AddBack(Token->New(Token->Type->SEMI_COLON));
 							}
 							
 							label '=': {
-								"equal"->PrintLine();
+								tokens->AddBack(Token->New(Token->Type->EQUAL));
 							}
 							
 							label '\'': {
-								"quote"->PrintLine();
+								tokens->AddBack(Token->New(Token->Type->QUOTE));
 							}
 							
 							label '<': {
 								if(@line->Get(i + 1) = '>') {
 									i += 1;
-									"not-equal"->PrintLine();
+									tokens->AddBack(Token->New(Token->Type->NOT_EQUAL));
 								}
 								else if(@line->Get(i + 1) = '=') {
 									i += 1;
-									"less-equal"->PrintLine();
+									tokens->AddBack(Token->New(Token->Type->LESS_EQUAL));
 								}
 								else {
-									"less"->PrintLine();
+									tokens->AddBack(Token->New(Token->Type->LESS));
 								};
 							}
 							
 							label '>': {
 								if(@line->Get(i + 1) = '=') {
 									i += 1;
-									"greater-equal"->PrintLine();
+									tokens->AddBack(Token->New(Token->Type->GREATER_EQUAL));
 								}
 								else {
-									"greater"->PrintLine();
+									tokens->AddBack(Token->New(Token->Type->GREATER));
 								};
 							}
               
