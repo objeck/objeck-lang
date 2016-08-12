@@ -33,7 +33,7 @@ bundle TinyDB {
 							label Conditional->Qualifier->EQUAL: {
 								if(left->Compare(right) = 0) {
 									matches->AddBack(row);
-								};			
+								};
 							}
 							
 							label Conditional->Qualifier->NOT_EQUAL: {
@@ -307,22 +307,34 @@ bundle TinyDB {
 		}
 
 		method : ParseSelect() ~ Term {
-"Select"->PrintLine();
+"oper=select"->PrintLine();
 			term := Term->New(Token->Type->SELECT);
-			while(TokenType() = Token->Type->REF) {
-				term->AddValue(TokenValue());
-				NextToken();
 
-				if(TokenType() = Token->Type->COMMA) {
+			if(TokenType() = Token->Type->STAR) {
+"value=<all>"->PrintLine();
+				NextToken();
+			}
+			else if(TokenType() = Token->Type->REF) {
+				while(TokenType() = Token->Type->REF) {
+					value := TokenValue()->As(String);
+"value={$value}"->PrintLine();
+					term->AddValue(value);
 					NextToken();
+
+					if(TokenType() = Token->Type->COMMA) {
+						NextToken();
+					};
 				};
+			}
+			else {
+				return Nil;
 			};
-						
+			
 			return term;
 		}
 
 		method : ParseFrom() ~ Term {
-"From"->PrintLine();
+"oper=from"->PrintLine();
 			term := Term->New(Token->Type->FROM);
 			while(TokenType() = Token->Type->REF) {
 				term->AddValue(TokenValue());
@@ -332,7 +344,144 @@ bundle TinyDB {
 					NextToken();
 				};
 			};
-						
+
+			right : Term;
+			if(TokenType() = Token->Type->WHERE) {
+				NextToken();
+				right := ParseWhere();
+				if(right = Nil) {
+					return Nil;
+				};
+				term->SetRight(right);
+			};
+			
+			return term;
+		}
+		
+		method : ParseWhere() ~ Term {
+"oper=where"->PrintLine();
+			term := Term->New(Token->Type->WHERE);
+			
+			right := ParseLogic();
+			if(right = Nil) {
+				return Nil;
+			};
+			term->SetRight(right);
+
+			return term;
+		}
+		
+		method : ParseLogic() ~ Term {
+			term := Term->New(Token->Type->REF);
+
+			left : Term; 			
+			if(TokenType() = Token->Type->REF | 
+					TokenType() = Token->Type->INT | 
+					TokenType() = Token->Type->FLOAT) {
+				left := ParseTerm();
+				if(left = Nil) {
+					return Nil;
+				};
+				term->SetLeft(left);
+			};
+
+			select(TokenType()) {
+				label Token->Type->AND: {
+"logic=and"->PrintLine();
+					NextToken();
+				}
+
+				label Token->Type->OR: {
+"logic=or"->PrintLine();
+					NextToken();
+				}
+			};
+
+			right : Term;			
+			if(TokenType() = Token->Type->REF | 
+					TokenType() = Token->Type->INT | 
+					TokenType() = Token->Type->FLOAT) {
+				right := ParseTerm();
+				if(right = Nil) {
+					return Nil;
+				};
+				term->SetRight(right);
+			};
+				
+			return Nil;
+		}
+		
+		method : ParseTerm() ~ Term {
+			term := Term->New(Token->Type->REF);
+
+			left : Term; 			
+			if(TokenType() = Token->Type->REF) {
+				value := TokenValue()->As(String);
+"ref={$value}"->PrintLine();
+				NextToken();
+			}
+			else if(TokenType() = Token->Type->INT) {
+TokenValue()->As(IntHolder)->Get()->PrintLine();
+			}
+			else if(TokenType() = Token->Type->FLOAT) {
+TokenValue()->As(FloatHolder)->Get()->PrintLine();
+			}
+			else {
+				return Nil;
+			};
+
+			select(TokenType()) {
+				label Token->Type->EQUAL: {
+"="->PrintLine();
+					NextToken();
+				}
+
+				label Token->Type->NOT_EQUAL: {
+"<>"->PrintLine();
+					NextToken();
+				}
+
+				label Token->Type->LESS_EQUAL: {
+"<="->PrintLine();
+					NextToken();
+				}
+
+				label Token->Type->LESS: {
+"<"->PrintLine();
+					NextToken();
+				}
+
+				label Token->Type->GREATER_EQUAL: {
+">="->PrintLine();
+					NextToken();
+				}
+
+				label Token->Type->GREATER: {
+">"->PrintLine();
+					NextToken();
+				}
+
+				other: {
+					return left;
+				}
+			};
+
+			right : Term;			
+			if(TokenType() = Token->Type->REF) {
+				value := TokenValue()->As(String);
+"ref={$value}"->PrintLine();
+				NextToken();
+			}
+			else if(TokenType() = Token->Type->INT) {
+TokenValue()->As(IntHolder)->Get()->PrintLine();
+			}
+			else if(TokenType() = Token->Type->FLOAT) {
+TokenValue()->As(FloatHolder)->Get()->PrintLine();
+			}
+			else {
+				return Nil;
+			};
+			
 			return term;
 		}
 		
