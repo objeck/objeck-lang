@@ -18,6 +18,10 @@ class Test {
 		row->Set(2, IntHolder->New(12));
 		
 		row := table->Insert();
+		row->Set(1, "Andrew");
+		row->Set(2, IntHolder->New(18));
+		
+		row := table->Insert();
 		row->Set(1, "Sally");
 		row->Set(2, IntHolder->New(25));
 		
@@ -28,7 +32,7 @@ class Test {
 		count := table->Size();
 		"total count={$count}"->PrintLine();
 
-		query := Query->New("from car", table);
+		query := Query->New("from Person car where age < 21", table);
 		query->Query();
 		
 #~		

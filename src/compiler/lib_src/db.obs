@@ -23,6 +23,10 @@ bundle TinyDB {
 			};
 		}
 		
+		method : public : GetName() ~ String {
+			return @name;
+		}
+		
 		method : public : native : GetIndex(n : String) ~ Int {
 			found := @column_map->Find(n);
 			if(found <> Nil) {
@@ -298,6 +302,7 @@ bundle TinyDB {
 	class Query {
 		@parser : Parser;
 		@terms : Term;
+		@table : Table;
 		
 		New(line : String, table : Table) {
 			@table := table;
@@ -317,14 +322,20 @@ bundle TinyDB {
 			values := term->GetValues();
 			if(values->Size() > 0) {
 				name := values->Get(0)->As(String);
+				if(@table->GetName()->Equals(name)) {
 name->PrintLine();
-				if(term->GetLeft() <> Nil) {
+					if(term->GetLeft() <> Nil) {
 "-- select --"->PrintLine();
-				}
-				else {
-"-- select all <default> --"->PrintLine();				
+					}
+					else {
+						ProcessWhere(term->GetRight());			
+					};
 				};
 			};
+		}
+		
+		method : public : ProcessWhere(term : Term) ~ Nil {
+"Where"	-> PrintLine();
 		}
 	}
 	
@@ -408,7 +419,7 @@ name->PrintLine();
 			while(TokenType() = Token->Type->REF) {
 				value := TokenValue()->As(String);
 "value={$value}"->PrintLine();
-					term->AddValue(value);
+				term->AddValue(value);
 				NextToken();
 
 				if(TokenType() = Token->Type->COMMA) {
@@ -466,6 +477,10 @@ name->PrintLine();
 "logic=or"->PrintLine();
 					NextToken();
 				}
+				
+				other: {
+					return term;
+				}
 			};
 
 			right : Term;			
@@ -479,7 +494,7 @@ name->PrintLine();
 				term->SetRight(right);
 			};
 				
-			return Nil;
+			return term;
 		}
 		
 		method : ParseTerm() ~ Term {
@@ -492,10 +507,12 @@ name->PrintLine();
 				NextToken();
 			}
 			else if(TokenType() = Token->Type->INT) {
-TokenValue()->As(IntHolder)->Get()->PrintLine();
+				value := TokenValue()->As(IntHolder)->Get();
+"int={$value}"->PrintLine();
 			}
 			else if(TokenType() = Token->Type->FLOAT) {
-TokenValue()->As(FloatHolder)->Get()->PrintLine();
+				value := TokenValue()->As(FloatHolder)->Get();
+"float={$value}"->PrintLine();
 			}
 			else {
 				return Nil;
@@ -503,32 +520,32 @@ TokenValue()->As(FloatHolder)->Get()->PrintLine();
 
 			select(TokenType()) {
 				label Token->Type->EQUAL: {
-"="->PrintLine();
+"qual=="->PrintLine();
 					NextToken();
 				}
 
 				label Token->Type->NOT_EQUAL: {
-"<>"->PrintLine();
+"qual=<>"->PrintLine();
 					NextToken();
 				}
 
 				label Token->Type->LESS_EQUAL: {
-"<="->PrintLine();
+"qual=<="->PrintLine();
 					NextToken();
 				}
 
 				label Token->Type->LESS: {
-"<"->PrintLine();
+"qual=<"->PrintLine();
 					NextToken();
 				}
 
 				label Token->Type->GREATER_EQUAL: {
-">="->PrintLine();
+"qual=>="->PrintLine();
 					NextToken();
 				}
 
 				label Token->Type->GREATER: {
-">"->PrintLine();
+"qual=>"->PrintLine();
 					NextToken();
 				}
 
@@ -544,10 +561,12 @@ TokenValue()->As(FloatHolder)->Get()->PrintLine();
 				NextToken();
 			}
 			else if(TokenType() = Token->Type->INT) {
-TokenValue()->As(IntHolder)->Get()->PrintLine();
+				value := TokenValue()->As(IntHolder)->Get();
+"int={$value}"->PrintLine();
 			}
 			else if(TokenType() = Token->Type->FLOAT) {
-TokenValue()->As(FloatHolder)->Get()->PrintLine();
+				value := TokenValue()->As(FloatHolder)->Get();
+"float={$value}"->PrintLine();
 			}
 			else {
 				return Nil;
