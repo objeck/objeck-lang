@@ -5,11 +5,7 @@ use System.IO;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-##		query := Query->New("select year, color from car where model<>ford and pk>133.13");
-		query := Query->New("from car");
-		query->Query();
-		
-	#~
+
 		columns := ["name", "age"];
 		table := Table->New("Person", columns);
 		
@@ -32,6 +28,10 @@ class Test {
 		count := table->Size();
 		"total count={$count}"->PrintLine();
 
+		query := Query->New("from car", table);
+		query->Query();
+		
+#~		
 		conds := Vector->New();
 		conds->AddBack(Conditional->New(2, Conditional->Qualifier->GREATER, IntHolder->New(20)));
 		found := table->Where(conds);

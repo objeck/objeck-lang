@@ -5,18 +5,31 @@ bundle TinyDB {
 		@name : String;
 		@keys : IntMap;
 		@column_names : String[];
+		@column_map : StringMap;
 		@head : Row;
 		@tail : Row;
 		@count : Int;
 		
 		New(name : String, column_names : String[]) {
+			@column_map := StringMap->New();
+			@keys := IntMap->New();
+		
 			@name := name;
 			@column_names := String->New[column_names->Size() + 1];
 			@column_names[0] := "pk";
 			each(i : column_names) {
 				@column_names[i + 1] := column_names[i];
+				@column_map->Insert(@column_names[i + 1], IntHolder->New(i + 1));
 			};
-			@keys := IntMap->New();
+		}
+		
+		method : public : native : GetIndex(n : String) ~ Int {
+			found := @column_map->Find(n);
+			if(found <> Nil) {
+				return found->As(IntHolder)->Get();
+			};
+			
+			return -1;
 		}
 		
 		method : public : native : All() ~ Vector {
@@ -200,6 +213,14 @@ bundle TinyDB {
 			@values := values;
 		}
 		
+		method : public : Get(n : String) ~ Compare {
+			return Get(@table->GetIndex(n));
+		}
+		
+		method : public : Set(n : String, value : Compare) ~ Bool {
+			return Set(@table->GetIndex(n), value);
+		}
+		
 		method : public : Get(i : Int) ~ Compare {
 			if(i < 0 | i >= @values->Size()) {
 				return Nil;
@@ -278,7 +299,8 @@ bundle TinyDB {
 		@parser : Parser;
 		@terms : Term;
 		
-		New(line : String) {
+		New(line : String, table : Table) {
+			@table := table;
 			@parser := Parser->New(line);
 		}
 		
@@ -286,13 +308,23 @@ bundle TinyDB {
 			@terms := @parser->Parse();
 			if(@terms <> Nil) {
 				if(@terms->GetType() = Token->Type->FROM) {
-					ProcessFrom(@terms->GetLeft());
+					ProcessFrom(@terms);
 				};
-	"Good"->PrintLine();
 			};
 		}
 		
 		method : public : ProcessFrom(term : Term) ~ Nil {
+			values := term->GetValues();
+			if(values->Size() > 0) {
+				name := values->Get(0)->As(String);
+name->PrintLine();
+				if(term->GetLeft() <> Nil) {
+"-- select --"->PrintLine();
+				}
+				else {
+"-- select all <default> --"->PrintLine();				
+				};
+			};
 		}
 	}
 	
@@ -317,24 +349,27 @@ bundle TinyDB {
 		}
 		
 		method : ParseTerms() ~ Term {
-			term := Term->New(Token->Type->EOS);
-
+			term : Term;
+			left : Term;
+			
 			if(TokenType() = Token->Type->SELECT) {
 				NextToken();
 				left := ParseSelect();
 				if(left = Nil) {
 					return Nil;
 				};
-				term->SetLeft(left);
 			};
 			
 			if(TokenType() = Token->Type->FROM) {
 				NextToken();
-				right := ParseFrom();
-				if(right = Nil) {
+				term := ParseFrom();
+				if(term = Nil) {
 					return Nil;
 				};
-				term->SetRight(right);
+				
+				if(left <> Nil) {
+					term->SetLeft(left);
+				};
 			};
 			
 			return term;	
