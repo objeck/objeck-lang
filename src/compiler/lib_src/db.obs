@@ -356,10 +356,10 @@ name->PrintLine();
 			};
 			
 			NextToken();
-			return ParseTerms();
+			return ParseStatement();
 		}
 		
-		method : ParseTerms() ~ Term {
+		method : ParseStatement() ~ Term {
 			term : Term;
 			left : Term;
 			
@@ -454,7 +454,7 @@ name->PrintLine();
 		}
 		
 		method : ParseLogic() ~ Term {
-			term := Term->New(Token->Type->REF);
+			term := Term->New(Token->Type->OPER);
 
 			left : Term; 			
 			if(TokenType() = Token->Type->REF | 
@@ -498,7 +498,7 @@ name->PrintLine();
 		}
 		
 		method : ParseTerm() ~ Term {
-			term := Term->New(Token->Type->REF);
+			term := Term->New(Token->Type->OPER);
 
 			left : Term; 			
 			if(TokenType() = Token->Type->REF) {
@@ -521,11 +521,13 @@ name->PrintLine();
 			select(TokenType()) {
 				label Token->Type->EQUAL: {
 "qual=="->PrintLine();
+					term->SetOperator(Conditional->Qualifier->EQUAL);
 					NextToken();
 				}
 
 				label Token->Type->NOT_EQUAL: {
 "qual=<>"->PrintLine();
+					term->SetOperator(Conditional->Qualifier->NOT_EQUAL);
 					NextToken();
 				}
 
@@ -536,19 +538,22 @@ name->PrintLine();
 
 				label Token->Type->LESS: {
 "qual=<"->PrintLine();
+					term->SetOperator(Conditional->Qualifier->LESS_EQUAL);
 					NextToken();
 				}
 
 				label Token->Type->GREATER_EQUAL: {
 "qual=>="->PrintLine();
+					term->SetOperator(Conditional->Qualifier->GREATER_EQUAL);
 					NextToken();
 				}
 
 				label Token->Type->GREATER: {
 "qual=>"->PrintLine();
+					term->SetOperator(Conditional->Qualifier->GREATER);
 					NextToken();
 				}
-
+				
 				other: {
 					return left;
 				}
@@ -736,20 +741,32 @@ name->PrintLine();
 	
 	class Term {
 		@type : Token->Type;
+		@oper : Conditional->Qualifier;
 		@left : Term;
 		@right : Term;
 		@values : Vector;
 		
 		New(type : Token->Type) {
 			@type := type;
-			@values := Vector->New();
 		}
 		
 		method : public : GetType() ~ Token->Type {
 			return @type;
 		}
 		
+		method : public : GetOperator() ~ Conditional->Qualifier {
+			return @oper;
+		}
+		
+		method : public : SetOperator(oper : Conditional->Qualifier) ~ Nil {
+			@oper := oper;
+		}
+		
 		method : public : AddValue(value : Compare) ~ Nil {
+			if(@values = Nil) {			
+				@values := Vector->New();
+			};
+			
 			@values->AddBack(value);
 		}
 		
@@ -804,6 +821,7 @@ name->PrintLine();
 			GREATER_EQUAL,
 			GREATER,
 			REF,
+			OPER,
 			INT,
 			FLOAT,
 			EOS
