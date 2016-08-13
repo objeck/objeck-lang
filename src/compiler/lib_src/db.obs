@@ -19,6 +19,18 @@ bundle TinyDB {
 			@keys := IntMap->New();
 		}
 		
+		method : public : native : All() ~ Vector {
+			matches := Vector->New();
+			
+			row := @head;
+			while(row <> Nil) {
+				matches->AddBack(row);
+				row := row->Next();
+			};
+			
+			return matches;
+		}
+		
 		method : public : native : Where(conds : Vector) ~ Vector {
 			matches := Vector->New();
 			
@@ -263,6 +275,28 @@ bundle TinyDB {
 	}
 	
 	class Query {
+		@parser : Parser;
+		@terms : Term;
+		
+		New(line : String) {
+			@parser := Parser->New(line);
+		}
+		
+		method : public : Query() ~ Nil {
+			@terms := @parser->Parse();
+			if(@terms <> Nil) {
+				if(@terms->GetType() = Token->Type->FROM) {
+					ProcessFrom(@terms->GetLeft());
+				};
+	"Good"->PrintLine();
+			};
+		}
+		
+		method : public : ProcessFrom(term : Term) ~ Nil {
+		}
+	}
+	
+	class Parser {
 		@line : String;
 		@tokens : Vector;
 		@tokens_index : Int;
@@ -272,17 +306,17 @@ bundle TinyDB {
 			@line := line;
 		}
 		
-		method : public : Process() ~ Term {
+		method : public : Parse() ~ Term {
 			@tokens := Scan();
 			if(@tokens = Nil) {
 				return Nil;
 			};
 			
 			NextToken();
-			return Parse();
+			return ParseTerms();
 		}
 		
-		method : Parse() ~ Term {
+		method : ParseTerms() ~ Term {
 			term := Term->New(Token->Type->EOS);
 
 			if(TokenType() = Token->Type->SELECT) {
@@ -337,7 +371,9 @@ bundle TinyDB {
 "oper=from"->PrintLine();
 			term := Term->New(Token->Type->FROM);
 			while(TokenType() = Token->Type->REF) {
-				term->AddValue(TokenValue());
+				value := TokenValue()->As(String);
+"value={$value}"->PrintLine();
+					term->AddValue(value);
 				NextToken();
 
 				if(TokenType() = Token->Type->COMMA) {
