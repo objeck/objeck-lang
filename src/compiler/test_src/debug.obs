@@ -5,8 +5,9 @@ use System.IO;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		query := Query->New("select year, color from car where model<>ford and pk>133.13");
-		query->Process();
+##		query := Query->New("select year, color from car where model<>ford and pk>133.13");
+		query := Query->New("from car");
+		query->Query();
 		
 	#~
 		columns := ["name", "age"];
