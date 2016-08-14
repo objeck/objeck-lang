@@ -199,6 +199,7 @@ bundle TinyDB {
 			@left := left;
 			@right := right;
 			@qualifier := qualifier;
+			@value := Nil;
 		}
 		
 		method : public : GetQualifier() ~ Qualifier {
