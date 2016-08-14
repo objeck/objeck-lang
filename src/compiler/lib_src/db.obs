@@ -55,7 +55,7 @@ bundle TinyDB {
 			while(row <> Nil) {
 				each(j : conds) {
 					cond := conds->Get(j)->As(Conditional);
-					left := row->Get(cond->GetIndex());
+					left := row->Get(cond->GetLeft());
 					if(left <> Nil) {
 						right := cond->GetValue();
 						select(cond->GetQualifier()) {
@@ -173,7 +173,8 @@ bundle TinyDB {
 	}
 	
 	class Conditional {
-		@index : Int;
+		@left : Int;
+		@right : Int;
 		@qualifier : Conditional->Qualifier;
 		@value : Compare;
 		
@@ -187,10 +188,17 @@ bundle TinyDB {
 			LIKE
 		}
 		
-		New(index : Int, qualifier : Conditional->Qualifier, value : Compare) {
-			@index := index;
+		New(left : Int, qualifier : Conditional->Qualifier, value : Compare) {
+			@left := left;
+			@right := -1;
 			@qualifier := qualifier;
 			@value := value;
+		}
+		
+		New(left : Int, qualifier : Conditional->Qualifier, right : Int) {
+			@left := left;
+			@right := right;
+			@qualifier := qualifier;
 		}
 		
 		method : public : GetQualifier() ~ Qualifier {
@@ -201,8 +209,12 @@ bundle TinyDB {
 			return @value;
 		}
 		
-		method : public : GetIndex() ~ Int {
-			return @index;
+		method : public : GetLeft() ~ Int {
+			return @left;
+		}
+		
+		method : public : GetRight() ~ Int {
+			return @right;
 		}
 	}
 	
