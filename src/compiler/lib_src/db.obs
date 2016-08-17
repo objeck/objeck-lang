@@ -58,6 +58,9 @@ bundle TinyDB {
 					left := row->Get(cond->GetLeft());
 					if(left <> Nil) {
 						right := cond->GetValue();
+						if(right = Nil) {
+							right := row->Get(cond->GetRight());
+						};
 						select(cond->GetQualifier()) {
 							label Conditional->Qualifier->EQUAL: {
 								if(left->Compare(right) = 0) {
@@ -348,7 +351,11 @@ name->PrintLine();
 		}
 		
 		method : public : ProcessWhere(term : Term) ~ Nil {
+			term := term->GetRight();
+			left := term->GetLeft();
+			if(left <> Nil) {
 "Where"	-> PrintLine();
+			};
 		}
 	}
 	
