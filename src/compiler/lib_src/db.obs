@@ -360,6 +360,8 @@ name->PrintLine();
 		}
 		
 		method : public : ProcessTerm(term : Term) ~ Nil {
+			left := term->GetLeft();
+			right := term->GetRight();			
 "Term"->PrintLine();
 		}
 	}
