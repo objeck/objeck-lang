@@ -351,11 +351,16 @@ name->PrintLine();
 		}
 		
 		method : public : ProcessWhere(term : Term) ~ Nil {
+"Where"	-> PrintLine();		
 			term := term->GetRight();
 			left := term->GetLeft();
 			if(left <> Nil) {
-"Where"	-> PrintLine();
+				ProcessTerm(left);
 			};
+		}
+		
+		method : public : ProcessTerm(term : Term) ~ Nil {
+"Term"->PrintLine();
 		}
 	}
 	
@@ -523,16 +528,19 @@ name->PrintLine();
 			left : Term; 			
 			if(TokenType() = Token->Type->REF) {
 				value := TokenValue()->As(String);
-"ref={$value}"->PrintLine();
+				left := Term->New(Token->Type->REF);
+				left->AddValue(value);
 				NextToken();
 			}
 			else if(TokenType() = Token->Type->INT) {
-				value := TokenValue()->As(IntHolder)->Get();
-"int={$value}"->PrintLine();
+				value := TokenValue()->As(IntHolder);
+				left := Term->New(Token->Type->INT);
+				left->AddValue(value);
 			}
 			else if(TokenType() = Token->Type->FLOAT) {
-				value := TokenValue()->As(FloatHolder)->Get();
-"float={$value}"->PrintLine();
+				value := TokenValue()->As(FloatHolder);
+				left := Term->New(Token->Type->FLOAT);
+				left->AddValue(value);
 			}
 			else {
 				return Nil;
@@ -582,20 +590,26 @@ name->PrintLine();
 			right : Term;			
 			if(TokenType() = Token->Type->REF) {
 				value := TokenValue()->As(String);
-"ref={$value}"->PrintLine();
+				right := Term->New(Token->Type->REF);
+				right->AddValue(value);
 				NextToken();
 			}
 			else if(TokenType() = Token->Type->INT) {
-				value := TokenValue()->As(IntHolder)->Get();
-"int={$value}"->PrintLine();
+				value := TokenValue()->As(IntHolder);
+				right := Term->New(Token->Type->INT);
+				right->AddValue(value);
 			}
 			else if(TokenType() = Token->Type->FLOAT) {
-				value := TokenValue()->As(FloatHolder)->Get();
-"float={$value}"->PrintLine();
+				value := TokenValue()->As(FloatHolder);
+				right := Term->New(Token->Type->FLOAT);
+				right->AddValue(value);
 			}
 			else {
 				return Nil;
 			};
+			
+			term->SetLeft(left);
+			term->SetRight(right);
 			
 			return term;
 		}
