@@ -325,9 +325,10 @@ bundle TinyDB {
 			@parser := Parser->New(line);
 		}
 		
-		method : public : Query() ~ Nil {
+		method : public : Query() ~ Nil {		
 			@terms := @parser->Parse();
 			if(@terms <> Nil) {
+"---"->PrintLine();			
 				if(@terms->GetType() = Token->Type->FROM) {
 					ProcessFrom(@terms);
 				};
@@ -360,9 +361,20 @@ name->PrintLine();
 		}
 		
 		method : public : ProcessTerm(term : Term) ~ Nil {
-			left := term->GetLeft();
-			right := term->GetRight();			
+			left := term->GetLeft()->GetValue();
+			right := term->GetRight()->GetValue();
+
 "Term"->PrintLine();
+			
+			if(left->TypeOf(String)) {
+				left_value := left->As(String);
+"\t{$left_value}"->PrintLine();
+			};
+			
+			if(right->TypeOf(IntHolder)) {
+				right_value := right->As(IntHolder)->Get();
+"\t{$right_value}"->PrintLine();
+			};			
 		}
 	}
 	
@@ -808,6 +820,14 @@ name->PrintLine();
 		
 		method : public : GetValues() ~ Vector {
 			return @values;
+		}
+		
+		method : public : GetValue() ~ Compare {
+			if(@values->Size() > 0) {
+				return @values->Get(0)->As(Compare);
+			};
+			
+			return Nil;
 		}
 		
 		method : public : SetLeft(left : Term) ~ Nil {
