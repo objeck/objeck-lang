@@ -319,9 +319,11 @@ bundle TinyDB {
 		@parser : Parser;
 		@terms : Term;
 		@table : Table;
+		@conds : Vector;
 		
 		New(line : String, table : Table) {
 			@table := table;
+			@conds := Vector->New();
 			@parser := Parser->New(line);
 		}
 		
@@ -366,6 +368,9 @@ name->PrintLine();
 
 "Term"->PrintLine();
 			
+			left : Compare;
+			right : Compare;
+			
 			if(left->TypeOf(String)) {
 				left_value := left->As(String);
 "\t{$left_value}"->PrintLine();
@@ -375,6 +380,11 @@ name->PrintLine();
 				right_value := right->As(IntHolder)->Get();
 "\t{$right_value}"->PrintLine();
 			};			
+			
+			if(left <> Nil & right <> Nil) {
+				@conds->AddBack(Conditional->New(1, term->GetOperator(), right->As(IntHolder)));
+"blah"->PrintLine();				
+			};
 		}
 	}
 	
