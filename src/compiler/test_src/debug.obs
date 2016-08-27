@@ -34,6 +34,8 @@ class Test {
 		query := Query->New("from Person car where age < 21", table);
 		query->Query();
 		
+		"Done!"->PrintLine();
+		
 #~		
 		conds := Vector->New();
 		conds->AddBack(Conditional->New(2, Conditional->Qualifier->GREATER, IntHolder->New(20)));

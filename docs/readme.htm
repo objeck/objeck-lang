@@ -158,8 +158,8 @@ ul
 <h1><span style='font-size:24.0pt;line-height:107%;font-family:"Agency FB",sans-serif'>Objeck
 Programming Language</span></h1>
 
-<p class=MsoSubtitle><span style='font-size:10.0pt;line-height:107%'>v3.3.13; January
-21, 2016</span></p>
+<p class=MsoSubtitle><span style='font-size:10.0pt;line-height:107%'>v3.4.0; August
+27, 2016</span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
 normal;text-autospace:none'><span style='font-family:"Calibri",sans-serif'>&nbsp;</span></p>
@@ -180,26 +180,20 @@ of this release include the following:</span></p>
 <p class=MsoListParagraphCxSpFirst style='margin-bottom:0in;margin-bottom:.0001pt;
 text-indent:-.25in;line-height:normal'><span style='font-family:"Calibri",sans-serif'>1.<span
 style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span></span><span
-style='font-family:"Calibri",sans-serif'>Fixed missing Windows DLL issue from
-VS2015 upgrade <b>(bug/major)</b></span></p>
+style='font-family:"Calibri",sans-serif'>Added get “group” and get “owner”
+functions to the File class <b>(new)</b></span></p>
 
 <p class=MsoListParagraphCxSpMiddle style='margin-bottom:0in;margin-bottom:
 .0001pt;text-indent:-.25in;line-height:normal'><span style='font-family:"Calibri",sans-serif'>2.<span
 style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span></span><span
-style='font-family:"Calibri",sans-serif'>Made a fix to the “Console-&gt;ReadString()”
-function on Windows <b>(bug/minor)</b></span></p>
-
-<p class=MsoListParagraphCxSpMiddle style='margin-bottom:0in;margin-bottom:
-.0001pt;text-indent:-.25in;line-height:normal'><span style='font-family:"Calibri",sans-serif'>3.<span
-style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span></span><span
-style='font-family:"Calibri",sans-serif'>Faster code execution with on Windows
-and OS X <b>(new)</b></span></p>
+style='font-family:"Calibri",sans-serif'>Windows installer supports upgrades
+from previous versions <b>(new)</b></span></p>
 
 <p class=MsoListParagraphCxSpLast style='margin-bottom:0in;margin-bottom:.0001pt;
-text-indent:-.25in;line-height:normal'><span style='font-family:"Calibri",sans-serif'>4.<span
+text-indent:-.25in;line-height:normal'><span style='font-family:"Calibri",sans-serif'>3.<span
 style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span></span><span
-style='font-family:"Calibri",sans-serif'>Minor command line interface
-enhancements <b>(new)</b></span></p>
+style='font-family:"Calibri",sans-serif'>Fixed object serialization issues and
+enhanced overall functionality <b>(bug/medium)</b></span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
 normal;text-autospace:none'><span style='font-family:"Calibri",sans-serif'>&nbsp;</span></p>
@@ -278,7 +272,8 @@ setting the environment paths in Windows:</span></p>
 margin-left:.5in;margin-bottom:.0001pt;text-indent:-.25in;line-height:normal;
 text-autospace:none'><span style='font-family:"Calibri",sans-serif'>1.<span
 style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span></span><span
-style='font-family:"Calibri",sans-serif'>set OBJECK_LIB_PATH=C:\Documents and Settings\Administrator\objeck-lang\bin</span></p>
+style='font-family:"Calibri",sans-serif'>set OBJECK_LIB_PATH=C:\Documents and
+Settings\Administrator\objeck-lang\bin</span></p>
 
 <ol style='margin-top:0in' start=2 type=1>
  <li class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
@@ -309,8 +304,8 @@ normal;text-autospace:none'><span style='font-family:"Calibri",sans-serif'>     
 margin-left:.5in;margin-bottom:.0001pt;text-indent:-.25in;line-height:normal;
 text-autospace:none'><span style='font-family:"Calibri",sans-serif'>1.<span
 style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span></span><span
-style='font-family:"Calibri",sans-serif'>obc -src 'C:\Program Files\Objeck\objeck-lang\examples\encrypt.obs'
--lib encrypt.obl -dest hello.obe</span></p>
+style='font-family:"Calibri",sans-serif'>obc -src 'C:\Program
+Files\Objeck\objeck-lang\examples\encrypt.obs' -lib encrypt.obl -dest hello.obe</span></p>
 
 <p class=MsoNormal style='margin-top:0in;margin-right:0in;margin-bottom:0in;
 margin-left:.5in;margin-bottom:.0001pt;text-indent:-.25in;line-height:normal;
@@ -338,10 +333,10 @@ xml.obe </span></p>
 normal;text-autospace:none'><span style='font-family:"Calibri",sans-serif'>&nbsp;</span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
-normal;text-autospace:none'><span style='font-family:"Calibri",sans-serif'>For OS
-X (10.9 or greater), you’ll need to install OpenSSL in order to use encryption
-APIs as well as iODBC to enable database support. Please refer to the following
-</span><a href="http://mac-dev-env.patrickbougie.com/openssl"><span
+normal;text-autospace:none'><span style='font-family:"Calibri",sans-serif'>For
+OS X (10.9 or greater), you’ll need to install OpenSSL in order to use
+encryption APIs as well as iODBC to enable database support. Please refer to
+the following </span><a href="http://mac-dev-env.patrickbougie.com/openssl"><span
 style='font-family:"Calibri",sans-serif'>link</span></a><span style='font-family:
 "Calibri",sans-serif'> for OpenSSL directions and this </span><a
 href="http://www.iodbc.org/dataspace/iodbc/wiki/iODBC/ODBCMacOSX"><span
