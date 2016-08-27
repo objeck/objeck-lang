@@ -32,6 +32,9 @@ fi
 make clean; make -j3 OBJECK_LIB_PATH=\\\".\\\"
 cp obc ../objeck/deploy/bin
 cp *.obl ../objeck/deploy/bin
+rm ../objeck/deploy/bin/gtk2.obl
+rm ../objeck/deploy/bin/sdl.obl
+rm ../objeck/deploy/bin/db.obl
 
 # build utilities
 cd ../utilities
