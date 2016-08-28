@@ -68,12 +68,12 @@ namespace Runtime {
     // program
     static StackProgram* program;
     static set<StackInterpreter*> intpr_threads;
-		static stack<StackFrame*> cached_frames;
+    static stack<StackFrame*> cached_frames;
 #ifdef _WIN32
-		static CRITICAL_SECTION cached_frames_cs;
+    static CRITICAL_SECTION cached_frames_cs;
     static CRITICAL_SECTION intpr_threads_cs;
 #else
-		static pthread_mutex_t cached_frames_mutex;
+    static pthread_mutex_t cached_frames_mutex;
     static pthread_mutex_t intpr_threads_mutex;
 #endif
 
@@ -88,47 +88,47 @@ namespace Runtime {
     Debugger* debugger;
 #endif
     
-		//
-		// get stack frame
-		//
-		static inline StackFrame* GetStackFrame(StackMethod* method, long* instance) {
+    //
+    // get stack frame
+    //
+    static inline StackFrame* GetStackFrame(StackMethod* method, long* instance) {
 #ifdef _WIN32
-			EnterCriticalSection(&cached_frames_cs);
+      EnterCriticalSection(&cached_frames_cs);
 #else
-			pthread_mutex_lock(&cached_frames_mutex);
+      pthread_mutex_lock(&cached_frames_mutex);
 #endif
       if(cached_frames.empty()) {
-				// load cache
-				for(int i = 0; i < CALL_STACK_SIZE; i++) {
-					StackFrame* frame = new StackFrame();
-					frame->mem = (long*)calloc(LOCAL_SIZE, sizeof(long));
-					cached_frames.push(frame);
-				}
+	// load cache
+	for(int i = 0; i < CALL_STACK_SIZE; i++) {
+	  StackFrame* frame = new StackFrame();
+	  frame->mem = (long*)calloc(LOCAL_SIZE, sizeof(long));
+	  cached_frames.push(frame);
+	}
       }
-			StackFrame* frame = cached_frames.top();
-			cached_frames.pop();
+      StackFrame* frame = cached_frames.top();
+      cached_frames.pop();
       
-			frame->method = method;
+      frame->method = method;
       memset(frame->mem, 0, LOCAL_SIZE * sizeof(long));
-			frame->mem[0] = (long)instance;
-			frame->ip = -1;
-			frame->jit_called = false;
+      frame->mem[0] = (long)instance;
+      frame->ip = -1;
+      frame->jit_called = false;
 #ifdef _DEBUG
-			wcout << L"fetching frame=" << frame << endl;
+      wcout << L"fetching frame=" << frame << endl;
 #endif
 
 #ifdef _WIN32
-			LeaveCriticalSection(&cached_frames_cs);
+      LeaveCriticalSection(&cached_frames_cs);
 #else
-			pthread_mutex_unlock(&cached_frames_mutex);
+      pthread_mutex_unlock(&cached_frames_mutex);
 #endif
       return frame;
-		}
+    }
 		
-		//
-		// release stack frame
-		//
-		static inline void ReleaseStackFrame(StackFrame* frame) {
+    //
+    // release stack frame
+    //
+    static inline void ReleaseStackFrame(StackFrame* frame) {
 #ifdef _WIN32
       EnterCriticalSection(&cached_frames_cs);
 #else
@@ -147,7 +147,7 @@ namespace Runtime {
 #else
       pthread_mutex_unlock(&cached_frames_mutex);
 #endif
-		}
+    }
 		
     //
     // push call frame
@@ -182,35 +182,35 @@ namespace Runtime {
       wcerr << L"Unwinding local stack (" << this << L"):" << endl;
       StackMethod* method =  (*frame)->method;
       if((*frame)->ip > 0 && pos > -1 && 
-				 method->GetInstruction((*frame)->ip)->GetLineNumber() > 0) {
-				wcerr << L"  method: pos=" << pos << L", file="
-							<< (*frame)->method->GetClass()->GetFileName() << L", name='" 
-							<< (*frame)->method->GetName() << L"', line=" 
-							<< method->GetInstruction((*frame)->ip)->GetLineNumber() << endl;
+	 method->GetInstruction((*frame)->ip)->GetLineNumber() > 0) {
+	wcerr << L"  method: pos=" << pos << L", file="
+	      << (*frame)->method->GetClass()->GetFileName() << L", name='" 
+	      << (*frame)->method->GetName() << L"', line=" 
+	      << method->GetInstruction((*frame)->ip)->GetLineNumber() << endl;
       }
       if(pos != 0) {
-				while(--pos) {
-					StackMethod* method =  call_stack[pos]->method;
-					if(call_stack[pos]->ip > 0 && pos > -1 && 
-						 method->GetInstruction(call_stack[pos]->ip)->GetLineNumber() > 0) {
-						wcerr << L"  method: pos=" << pos << L", file=" 
-									<< call_stack[pos]->method->GetClass()->GetFileName() << L", name='"
-									<< call_stack[pos]->method->GetName() << L"', line=" 
-									<< method->GetInstruction(call_stack[pos]->ip)->GetLineNumber() << endl;
-					}
-				}
-				pos = 0;
+	while(--pos) {
+	  StackMethod* method =  call_stack[pos]->method;
+	  if(call_stack[pos]->ip > 0 && pos > -1 && 
+	     method->GetInstruction(call_stack[pos]->ip)->GetLineNumber() > 0) {
+	    wcerr << L"  method: pos=" << pos << L", file=" 
+		  << call_stack[pos]->method->GetClass()->GetFileName() << L", name='"
+		  << call_stack[pos]->method->GetName() << L"', line=" 
+		  << method->GetInstruction(call_stack[pos]->ip)->GetLineNumber() << endl;
+	  }
+	}
+	pos = 0;
       }
       wcerr << L"  ..." << endl;
 #else
       wcerr << L"Unwinding local stack (" << this << L"):" << endl;
       wcerr << L"  method: pos=" << pos << L", name=" 
-						<< (*frame)->method->GetName() << endl;
+	    << (*frame)->method->GetName() << endl;
       if(pos != 0) {
-				while(--pos && pos > -1) {
-					wcerr << L"  method: pos=" << pos << L", name="
-								<< call_stack[pos]->method->GetName() << endl;
-				}
+	while(--pos && pos > -1) {
+	  wcerr << L"  method: pos=" << pos << L", name="
+		<< call_stack[pos]->method->GetName() << endl;
+	}
       }
       wcerr << L"  ..." << endl;
 #endif
@@ -223,12 +223,12 @@ namespace Runtime {
       long pos = (*call_stack_pos);
       wcerr << L"Unwinding local stack (" << this << L"):" << endl;
       wcerr << L"  method: pos=" << pos << L", name="
-						<< method->GetName() << endl;
+	    << method->GetName() << endl;
       while(--pos) {
-				if(pos > - 1) {
-					wcerr << L"  method: pos=" << pos << L", name="
-								<< call_stack[pos]->method->GetName() << endl;
-				}
+	if(pos > - 1) {
+	  wcerr << L"  method: pos=" << pos << L", name="
+		<< call_stack[pos]->method->GetName() << endl;
+	}
       }
       wcerr << L"  ..." << endl;
     }
@@ -273,7 +273,7 @@ namespace Runtime {
     inline void PushFloat(FLOAT_VALUE v, long* op_stack, long* stack_pos) {
 #ifdef _DEBUG
       wcout << L"  [push_f: stack_pos=" << (*stack_pos) << L"; value=" << v
-						<< L"]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << endl;
+	    << L"]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << endl;
 #endif
       // memcpy(&op_stack[(*stack_pos)], &v, sizeof(FLOAT_VALUE));
       *((FLOAT_VALUE*)(&op_stack[(*stack_pos)])) = v;
@@ -307,7 +307,7 @@ namespace Runtime {
       // memcpy(&v, &op_stack[(*stack_pos)], sizeof(FLOAT_VALUE));
       FLOAT_VALUE v = *((FLOAT_VALUE*)(&op_stack[(*stack_pos)]));
       wcout << L"  [pop_f: stack_pos=" << (*stack_pos) << L"; value=" << v
-						<< L"]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << endl;
+	    << L"]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << endl;
       return v;
 #endif
 
@@ -322,7 +322,7 @@ namespace Runtime {
 #ifdef _DEBUG
       long v = op_stack[(*stack_pos) - 1];
       wcout << L"  [top_i: stack_pos=" << (*stack_pos) << L"; value=" << v << L"(" << (void*)v
-						<< L")]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << endl;
+	    << L")]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << endl;
       return v;
 #else
       return op_stack[(*stack_pos) - 1];
@@ -344,7 +344,7 @@ namespace Runtime {
       // memcpy(&v, &op_stack[index], sizeof(FLOAT_VALUE));
       FLOAT_VALUE v = *((FLOAT_VALUE*)(&op_stack[index]));
       wcout << L"  [top_f: stack_pos=" << (*stack_pos) << L"; value=" << v
-						<< L"]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << endl;
+	    << L"]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << endl;
       return v;
 #endif
       
@@ -407,11 +407,11 @@ namespace Runtime {
       const long char_array_size = value_str.size();
       const long char_array_dim = 1;
       long* char_array = (long*)MemoryManager::AllocateArray(char_array_size + 1 +
-																														 ((char_array_dim + 2) *
-																															sizeof(long)),
-																														 CHAR_ARY_TYPE,
-																														 op_stack, *stack_pos,
-																														 false);
+							     ((char_array_dim + 2) *
+							      sizeof(long)),
+							     CHAR_ARY_TYPE,
+							     op_stack, *stack_pos,
+							     false);
       char_array[0] = char_array_size + 1;
       char_array[1] = char_array_dim;
       char_array[2] = char_array_size;
@@ -422,8 +422,8 @@ namespace Runtime {
       
       // create 'System.String' object instance
       long* str_obj = MemoryManager::AllocateObject(program->GetStringObjectId(),
-																										(long*)op_stack, *stack_pos,
-																										false);
+						    (long*)op_stack, *stack_pos,
+						    false);
       str_obj[0] = (long)char_array;
       str_obj[1] = char_array_size;
       str_obj[2] = char_array_size;
@@ -473,41 +473,41 @@ namespace Runtime {
 
     static void AddThread(StackInterpreter* i) {
 #ifdef _WIN32
-			EnterCriticalSection(&intpr_threads_cs);
+      EnterCriticalSection(&intpr_threads_cs);
 #else
-			pthread_mutex_lock(&intpr_threads_mutex);
+      pthread_mutex_lock(&intpr_threads_mutex);
 #endif
       
       intpr_threads.insert(i);
       
 #ifdef _WIN32
-			LeaveCriticalSection(&intpr_threads_cs);
+      LeaveCriticalSection(&intpr_threads_cs);
 #else
-			pthread_mutex_unlock(&intpr_threads_mutex);
+      pthread_mutex_unlock(&intpr_threads_mutex);
 #endif
     }
 
     static void RemoveThread(StackInterpreter* i) {
 #ifdef _WIN32
-			EnterCriticalSection(&intpr_threads_cs);
+      EnterCriticalSection(&intpr_threads_cs);
 #else
-			pthread_mutex_lock(&intpr_threads_mutex);
+      pthread_mutex_lock(&intpr_threads_mutex);
 #endif
       
       intpr_threads.erase(i);
       
 #ifdef _WIN32
-			LeaveCriticalSection(&intpr_threads_cs);
+      LeaveCriticalSection(&intpr_threads_cs);
 #else
-			pthread_mutex_unlock(&intpr_threads_mutex);
+      pthread_mutex_unlock(&intpr_threads_mutex);
 #endif
     }
 		
     static void HaltAll() {
 #ifdef _WIN32
-			EnterCriticalSection(&intpr_threads_cs);
+      EnterCriticalSection(&intpr_threads_cs);
 #else
-			pthread_mutex_lock(&intpr_threads_mutex);
+      pthread_mutex_lock(&intpr_threads_mutex);
 #endif
       
       set<StackInterpreter*>::iterator iter;
@@ -516,9 +516,9 @@ namespace Runtime {
       }
 
 #ifdef _WIN32
-			LeaveCriticalSection(&intpr_threads_cs);
+      LeaveCriticalSection(&intpr_threads_cs);
 #else
-			pthread_mutex_unlock(&intpr_threads_mutex);
+      pthread_mutex_unlock(&intpr_threads_mutex);
 #endif
     }
 
