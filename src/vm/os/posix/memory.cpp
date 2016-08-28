@@ -1051,33 +1051,35 @@ void* MemoryManager::CheckPdaRoots(void* arg)
   
 #ifdef _DEBUG
   wcout << L"----- PDA frames(s): num=" << pda_frames.size() 
-        << L"; thread=" << pthread_self()<< L" -----" << endl;
+        << L"; thread=" << pthread_self() << L" -----" << endl;
   wcout << L"memory types:" <<  endl;
 #endif
   
   set<StackFrame**, StackFrame**>::iterator iter;
   for(iter = pda_frames.begin(); iter != pda_frames.end(); ++iter) {
     StackFrame** frame = *iter;
-    StackMethod* mthd = (*frame)->method;
-    long* mem = (*frame)->mem;
+    if(*frame) {
+      StackMethod* mthd = (*frame)->method;
+      long* mem = (*frame)->mem;
     
 #ifdef _DEBUG
-    wcout << L"\t===== PDA method: name=" << mthd->GetName() << L", addr="
-          << mthd << L", num=" << mthd->GetNumberDeclarations() << L" =====" << endl;
+      wcout << L"\t===== PDA method: name=" << mthd->GetName() << L", addr="
+	    << mthd << L", num=" << mthd->GetNumberDeclarations() << L" =====" << endl;
 #endif
     
-    // mark self
-    CheckObject((long*)(*mem), true, 1);
+      // mark self
+      CheckObject((long*)(*mem), true, 1);
     
-    if(mthd->HasAndOr()) {
-      mem += 2;
-    } 
-    else {
-      mem++;
+      if(mthd->HasAndOr()) {
+	mem += 2;
+      } 
+      else {
+	mem++;
+      }
+    
+      // mark rest of memory
+      CheckMemory(mem, mthd->GetDeclarations(), mthd->GetNumberDeclarations(), 0);
     }
-    
-    // mark rest of memory
-    CheckMemory(mem, mthd->GetDeclarations(), mthd->GetNumberDeclarations(), 0);
   }
 #ifndef _GC_SERIAL
   pthread_mutex_unlock(&pda_frame_mutex);
