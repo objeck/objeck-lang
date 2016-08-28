@@ -994,26 +994,28 @@ uintptr_t WINAPI MemoryManager::CheckPdaRoots(void* arg)
   set<StackFrame**, StackFrame**>::iterator iter;
   for(iter = pda_frames.begin(); iter != pda_frames.end(); ++iter) {
     StackFrame** frame = *iter;
-    StackMethod* mthd = (*frame)->method;
-    long* mem = (*frame)->mem;
-    
+    if(*frame) {
+      StackMethod* mthd = (*frame)->method;
+      long* mem = (*frame)->mem;
+
 #ifdef _DEBUG
-    wcout << L"\t===== PDA method: name=" << mthd->GetName() << L", addr="
-          << mthd << L", num=" << mthd->GetNumberDeclarations() << L" =====" << endl;
+      wcout << L"\t===== PDA method: name=" << mthd->GetName() << L", addr="
+        << mthd << L", num=" << mthd->GetNumberDeclarations() << L" =====" << endl;
 #endif
-    
-    // mark self
-    CheckObject((long*)(*mem), true, 1);
-    
-    if(mthd->HasAndOr()) {
-      mem += 2;
-    } 
-    else {
-      mem++;
+
+      // mark self
+      CheckObject((long*)(*mem), true, 1);
+
+      if (mthd->HasAndOr()) {
+        mem += 2;
+      }
+      else {
+        mem++;
+      }
+
+      // mark rest of memory
+      CheckMemory(mem, mthd->GetDeclarations(), mthd->GetNumberDeclarations(), 0);
     }
-    
-    // mark rest of memory
-    CheckMemory(mem, mthd->GetDeclarations(), mthd->GetNumberDeclarations(), 0);
   }
 #ifndef _GC_SERIAL
   LeaveCriticalSection(&pda_frame_cs);
