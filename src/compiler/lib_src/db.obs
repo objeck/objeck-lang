@@ -351,6 +351,9 @@ name->PrintLine();
 					};
 				};
 			};
+			
+			foo := @table->Where(@conds);
+foo->Size()->PrintLine();
 		}
 		
 		method : public : ProcessWhere(term : Term) ~ Nil {
@@ -371,8 +374,10 @@ name->PrintLine();
 			left : Compare;
 			right : Compare;
 			
+			index := -1;
 			if(left->TypeOf(String)) {
 				left_value := left->As(String);
+				index := @table->GetIndex(left_value);
 "\t{$left_value}"->PrintLine();
 			};
 			
@@ -382,7 +387,9 @@ name->PrintLine();
 			};			
 			
 			if(left <> Nil & right <> Nil) {
-				@conds->AddBack(Conditional->New(1, term->GetOperator(), right->As(IntHolder)));
+				if(index > -1) {
+					@conds->AddBack(Conditional->New(index, term->GetOperator(), right->As(IntHolder)));
+				};
 "blah"->PrintLine();				
 			};
 		}
