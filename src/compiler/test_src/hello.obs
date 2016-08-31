@@ -1,40 +1,17 @@
-﻿use Collection;
+﻿class Hello {
+  function : Main(args : String[]) ~ Nil {
+    i := Foo();
+    f : FloatHolder := i->As(Compare);
+		f->Get()->PrintLine();
+#   t : FloatHolder := Bar();
+  }
 
-class Test {
-	function : Main(args : String[]) ~ Nil {
-		values := IntVector->New();
-		values->AddBack(84);
-		values->AddBack(79);
-		values->AddBack(66);
-		values->AddBack(69);
-		values->AddBack(79);
-		values->AddBack(82);
-		values->AddBack(78);
-		values->AddBack(79);
-#~
-		values->AddBack(84);
-		values->AddBack(256);
-		values->AddBack(258);
-		values->AddBack(260);
-		values->AddBack(265);
-		values->AddBack(259);
-		values->AddBack(261);
-		values->AddBack(2631);
-~#		
-		values->Remove(2)->PrintLine();
-		values->Size()->PrintLine();
+  function : Foo() ~ String {
+    return "Hello";
+  }
 
-		Show(values);	
+  function : Bar() ~ Compare {
+		return Nil;
 	}
-
-	function : Show(values : IntVector) ~ Nil {
-		"["->Print();
-		each(i : values) {
-			values->Get(i)->Print();
-			if(i + 1 < values->Size()) {
-				", "->Print();
-			};
-		};
-		"]"->PrintLine();
-	}			
 }
+

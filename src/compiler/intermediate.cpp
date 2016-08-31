@@ -2302,7 +2302,8 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
 
   case VAR_EXPR:
     EmitVariable(static_cast<Variable*>(expression));
-    //  EmitCast(expression);
+    // catch dynamic class casting
+    EmitClassCast(expression);
     break;
 
   case AND_EXPR:
