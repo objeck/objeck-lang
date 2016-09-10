@@ -84,7 +84,7 @@ class MemoryManager {
   
   // reference containers
   static unordered_map<long*, ClassMethodId*> jit_roots;
-  static set<StackFrame**> pda_frames;
+  static unordered_set<StackFrame**> pda_frames;
   static unordered_map<StackFrameMonitor*, StackFrameMonitor*> pda_monitors; // deleted elsewhere
   static vector<long*> allocated_memory;
 

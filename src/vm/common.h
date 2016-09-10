@@ -62,6 +62,7 @@
 #include <windows.h>
 #include <process.h>
 #include <unordered_map>
+#include <unordered_set>
 using namespace stdext;
 #elif _OSX
 #include <unordered_map>
@@ -71,6 +72,7 @@ using namespace stdext;
 #include <pwd.h>
 #else
 #include <tr1/unordered_map>
+#include <tr1/unordered_set>
 #include <pthread.h>
 #include <pwd.h>
 #include <stdint.h>
