@@ -34,7 +34,7 @@
 
 StackProgram* MemoryManager::prgm;
 unordered_map<long*, ClassMethodId*> MemoryManager::jit_roots;
-set<StackFrame**> MemoryManager::pda_frames;
+unordered_set<StackFrame**> MemoryManager::pda_frames;
 unordered_map<StackFrameMonitor*, StackFrameMonitor*> MemoryManager::pda_monitors;
 stack<char*> MemoryManager::cache_pool_16;
 stack<char*> MemoryManager::cache_pool_32;
@@ -987,7 +987,7 @@ uintptr_t WINAPI MemoryManager::CheckPdaRoots(void* arg)
   wcout << L"memory types:" <<  endl;
 #endif
   
-  set<StackFrame**, StackFrame**>::iterator iter;
+  unordered_set<StackFrame**, StackFrame**>::iterator iter;
   for(iter = pda_frames.begin(); iter != pda_frames.end(); ++iter) {
     StackFrame** frame = *iter;
     if(*frame) {
