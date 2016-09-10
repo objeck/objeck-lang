@@ -87,7 +87,6 @@ class MemoryManager {
   static set<StackFrame**> pda_frames;
   static unordered_map<StackFrameMonitor*, StackFrameMonitor*> pda_monitors; // deleted elsewhere
   static vector<long*> allocated_memory;
-  static vector<long*> marked_memory;
 
   // memory caches
   static stack<char*> cache_pool_16;
