@@ -42,7 +42,6 @@ stack<char*> MemoryManager::cache_pool_64;
 stack<char*> MemoryManager::cache_pool_256;
 stack<char*> MemoryManager::cache_pool_512;
 vector<long*> MemoryManager::allocated_memory;
-vector<long*> MemoryManager::marked_memory;
 long MemoryManager::allocation_size;
 long MemoryManager::mem_max_size;
 long MemoryManager::uncollected_count;
@@ -101,7 +100,6 @@ inline bool MemoryManager::MarkMemory(long* mem)
     pthread_mutex_lock(&marked_mutex);
 #endif
     mem[MARKED_FLAG] = 1L;
-    marked_memory.push_back(mem);
 #ifndef _GC_SERIAL
     pthread_mutex_unlock(&marked_mutex);      
 #endif
@@ -133,7 +131,6 @@ inline bool MemoryManager::MarkValidMemory(long* mem)
       pthread_mutex_lock(&marked_mutex);
 #endif
       mem[MARKED_FLAG] = 1L;
-      marked_memory.push_back(mem);
 #ifndef _GC_SERIAL
       pthread_mutex_unlock(&marked_mutex);      
       pthread_mutex_unlock(&allocated_mutex);
@@ -665,11 +662,9 @@ void* MemoryManager::CollectMemory(void* arg)
   
 #ifdef _DEBUG
   wcout << L"-----------------------------------------" << endl;
-  wcout << L"Marked " << marked_memory.size() << L" of " 
-        << allocated_memory.size() << L" items." << endl;
+  wcout << L"Sweeping..." << endl;
   wcout << L"-----------------------------------------" << endl;
 #endif
-  std::sort(marked_memory.begin(), marked_memory.end());
   
 #ifndef _GC_SERIAL
   pthread_mutex_lock(&allocated_mutex);
@@ -681,9 +676,8 @@ void* MemoryManager::CollectMemory(void* arg)
     
     // check dynamic memory
     bool found = false;
-    if(std::binary_search(marked_memory.begin(), marked_memory.end(), mem)) {
-      long* tmp = mem;
-      tmp[MARKED_FLAG] = 0L;
+    if(mem[MARKED_FLAG]) {
+      mem[MARKED_FLAG] = 0L;
       found = true;
     }
     
@@ -784,7 +778,7 @@ void* MemoryManager::CollectMemory(void* arg)
       }
     }
   }
-  marked_memory.clear();
+  
 #ifndef _GC_SERIAL
   pthread_mutex_unlock(&marked_mutex);
 #endif  
