@@ -42,7 +42,6 @@ stack<char*> MemoryManager::cache_pool_64;
 stack<char*> MemoryManager::cache_pool_256;
 stack<char*> MemoryManager::cache_pool_512;
 vector<long*> MemoryManager::allocated_memory;
-vector<long*> MemoryManager::marked_memory;
 
 bool MemoryManager::initialized;
 long MemoryManager::allocation_size;
@@ -107,7 +106,6 @@ inline bool MemoryManager::MarkMemory(long* mem)
     EnterCriticalSection(&marked_cs);
 #endif
     mem[MARKED_FLAG] = 1L;
-    marked_memory.push_back(mem);
 #ifndef GC_SERIAL
     LeaveCriticalSection(&marked_cs);     
 #endif
@@ -139,7 +137,6 @@ inline bool MemoryManager::MarkValidMemory(long* mem)
       EnterCriticalSection(&marked_cs);
 #endif
       mem[-1] = 1L;
-      marked_memory.push_back(mem);
 #ifndef GC_SERIAL
       LeaveCriticalSection(&marked_cs);      
       LeaveCriticalSection(&allocated_cs);
@@ -621,10 +618,10 @@ uintptr_t WINAPI MemoryManager::CollectMemory(void* arg)
 
 #ifdef _DEBUG
   wcout << L"-----------------------------------------" << endl;
-  wcout << L"Marked " << marked_memory.size() << L" items." << endl;
+  wcout << L"Sweeping..." << endl;
   wcout << L"-----------------------------------------" << endl;
 #endif
-  std::sort(marked_memory.begin(), marked_memory.end());
+
 #ifndef GC_SERIAL
 
 #endif
@@ -635,9 +632,8 @@ uintptr_t WINAPI MemoryManager::CollectMemory(void* arg)
 
     // check dynamic memory
     bool found = false;
-    if(std::binary_search(marked_memory.begin(), marked_memory.end(), mem)) {
-      long* tmp = mem;
-      tmp[MARKED_FLAG] = 0L;
+    if(mem[MARKED_FLAG]) {
+      mem[MARKED_FLAG] = 0L;
       found = true;
     }
 
@@ -737,7 +733,7 @@ uintptr_t WINAPI MemoryManager::CollectMemory(void* arg)
       }
     }
   }
-  marked_memory.clear();
+
 #ifndef GC_SERIAL
   LeaveCriticalSection(&marked_cs);
 #endif  
