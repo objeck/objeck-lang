@@ -10,7 +10,7 @@ JIT_PATH= jit/amd64
 EXE= obr
 
 $(EXE): $(SRC) $(OBJ_LIBS)
-	$(CC) -m64 -o $(EXE) $(SRC) $(OBJ_LIBS) -lssl -lcrypto -ldl
+	$(CC) -m64 -o $(EXE) $(SRC) -L/usr/local/ssl/lib $(OBJ_LIBS) -lssl -lcrypto -ldl
 
 memory.a:
 	cd $(MEM_PATH); make	
@@ -19,7 +19,7 @@ jit_amd_lp64.a:
 	cd $(JIT_PATH); make	
 	
 %.o: %.cpp
-	$(CC) -m64 $(ARGS) -c $< -I/usr/local/openssl/include
+	$(CC) -m64 $(ARGS) -c $< -I/usr/local/ssl/include
 
 clean:
 	cd $(MEM_PATH); make clean

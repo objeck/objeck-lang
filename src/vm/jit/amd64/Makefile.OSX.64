@@ -11,7 +11,7 @@ $(LIB): $(SRC)
 	$(AR) -cvq $(LIB) $(SRC)
 
 %.o: %.cpp
-	$(CC) -m64 $(ARGS) -c $< -I/usr/local/openssl/include 
+	$(CC) -m64 $(ARGS) -c $< -I/usr/local/ssl/include 
 
 clean:
 	rm -f *.o *~ $(LIB)
