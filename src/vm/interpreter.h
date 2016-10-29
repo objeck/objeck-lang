@@ -155,7 +155,7 @@ namespace Runtime {
     inline void PushFrame(StackFrame* f) {
       if((*call_stack_pos) >= CALL_STACK_SIZE) {
         wcerr << L">>> call stack bounds have been exceeded! <<<" << endl;
-        exit(1);
+        ::exit(1);
       }
       
       call_stack[(*call_stack_pos)++] = f;
@@ -167,7 +167,7 @@ namespace Runtime {
     inline StackFrame* PopFrame() {
       if((*call_stack_pos) <= 0) {
         wcerr << L">>> call stack bounds have been exceeded! <<<" << endl;
-        exit(1);
+        ::exit(1);
       }
       
       return call_stack[--(*call_stack_pos)];
@@ -275,7 +275,7 @@ namespace Runtime {
       wcout << L"  [push_f: stack_pos=" << (*stack_pos) << L"; value=" << v
 	    << L"]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << endl;
 #endif
-      // memcpy(&op_stack[(*stack_pos)], &v, sizeof(FLOAT_VALUE));
+      // ::memcpy(&op_stack[(*stack_pos)], &v, sizeof(FLOAT_VALUE));
       *((FLOAT_VALUE*)(&op_stack[(*stack_pos)])) = v;
 #ifdef _X64
       (*stack_pos)++;
@@ -304,7 +304,7 @@ namespace Runtime {
 #endif
       
 #ifdef _DEBUG
-      // memcpy(&v, &op_stack[(*stack_pos)], sizeof(FLOAT_VALUE));
+      // ::memcpy(&v, &op_stack[(*stack_pos)], sizeof(FLOAT_VALUE));
       FLOAT_VALUE v = *((FLOAT_VALUE*)(&op_stack[(*stack_pos)]));
       wcout << L"  [pop_f: stack_pos=" << (*stack_pos) << L"; value=" << v
 	    << L"]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << endl;
@@ -341,7 +341,7 @@ namespace Runtime {
 #endif
       
 #ifdef _DEBUG
-      // memcpy(&v, &op_stack[index], sizeof(FLOAT_VALUE));
+      // ::memcpy(&v, &op_stack[index], sizeof(FLOAT_VALUE));
       FLOAT_VALUE v = *((FLOAT_VALUE*)(&op_stack[index]));
       wcout << L"  [top_f: stack_pos=" << (*stack_pos) << L"; value=" << v
 	    << L"]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << endl;
@@ -373,7 +373,7 @@ namespace Runtime {
       if(index < 0 || index >= size) {
         wcerr << L">>> Index out of bounds: " << index << L"," << size << L" <<<" << endl;
         StackErrorUnwind();
-        exit(1);
+        ::exit(1);
       }
 #else
       // 32-bit bounds check
@@ -383,7 +383,7 @@ namespace Runtime {
         if(index < 0 || index >= size * 2) {
           wcerr << L">>> Index out of bounds: " << index << L"," << (size * 2) << L" <<<" << endl;
           StackErrorUnwind();
-          exit(1);
+          ::exit(1);
         }
       } 
       else {
@@ -391,7 +391,7 @@ namespace Runtime {
         if(index < 0 || index >= size) {
           wcerr << L">>> Index out of bounds: " << index << L"," << size << L" <<<" << endl;
           StackErrorUnwind();
-          exit(1);
+          ::exit(1);
         }
       }
 #endif
@@ -436,6 +436,53 @@ namespace Runtime {
       return (FLOAT_VALUE)gen() / (FLOAT_VALUE)gen.max();
     }
     
+    void inline StorLoclIntVar(StackInstr* instr, long* &op_stack, long* &stack_pos);
+    void inline StorClsInstIntVar(StackInstr* instr, long* &op_stack, long* &stack_pos);
+    void inline CopyLoclIntVar(StackInstr* instr, long* &op_stack, long* &stack_pos);
+    void inline CopyClsInstIntVar(StackInstr* instr, long* &op_stack, long* &stack_pos);
+    void inline ShlInt(StackInstr* instr, long* &op_stack, long* &stack_pos);
+    void inline ShrInt(StackInstr* instr, long* &op_stack, long* &stack_pos);
+    void inline LoadLoclIntVar(StackInstr* instr, long* &op_stack, long* &stack_pos);
+    void inline LoadClsInstIntVar(StackInstr* instr, long* &op_stack, long* &stack_pos);
+    void inline AndInt(StackInstr* instr, long* &op_stack, long* &stack_pos);
+    void inline OrInt(StackInstr* instr, long* &op_stack, long* &stack_pos);
+    void inline AddInt(StackInstr* instr, long* &op_stack, long* &stack_pos);
+    void inline AddFloat(StackInstr* instr, long* &op_stack, long* &stack_pos);
+    void inline SubInt(StackInstr* instr, long* &op_stack, long* &stack_pos);
+    void inline SubFloat(StackInstr* instr, long* &op_stack, long* &stack_pos);
+    void inline MulInt(StackInstr* instr, long* &op_stack, long* &stack_pos);
+    void inline DivInt(StackInstr* instr, long* &op_stack, long* &stack_pos);
+    void inline MulFloat(StackInstr* instr, long* &op_stack, long* &stack_pos);
+    void inline DivFloat(StackInstr* instr, long* &op_stack, long* &stack_pos);
+    void inline ModInt(StackInstr* instr, long* &op_stack, long* &stack_pos);
+    void inline BitAndInt(StackInstr* instr, long* &op_stack, long* &stack_pos);
+    void inline BitOrInt(StackInstr* instr, long* &op_stack, long* &stack_pos);
+    void inline BitXorInt(StackInstr* instr, long* &op_stack, long* &stack_pos);
+    void inline LesEqlInt(StackInstr* instr, long* &op_stack, long* &stack_pos);
+    void inline GtrEqlInt(StackInstr* instr, long* &op_stack, long* &stack_pos);
+    void inline LesEqlFloat(StackInstr* instr, long* &op_stack, long* &stack_pos);
+    void inline GtrEqlFloat(StackInstr* instr, long* &op_stack, long* &stack_pos);
+    void inline EqlInt(StackInstr* instr, long* &op_stack, long* &stack_pos);
+    void inline NeqlInt(StackInstr* instr, long* &op_stack, long* &stack_pos);
+    void inline LesInt(StackInstr* instr, long* &op_stack, long* &stack_pos);
+    void inline GtrInt(StackInstr* instr, long* &op_stack, long* &stack_pos);
+    void inline EqlFloat(StackInstr* instr, long* &op_stack, long* &stack_pos);
+    void inline NeqlFloat(StackInstr* instr, long* &op_stack, long* &stack_pos);
+    void inline LesFloat(StackInstr* instr, long* &op_stack, long* &stack_pos);
+    void inline GtrFloat(StackInstr* instr, long* &op_stack, long* &stack_pos);
+    void inline LoadArySize(StackInstr* instr, long* &op_stack, long* &stack_pos);
+    void inline CpyByteAry(StackInstr* instr, long* &op_stack, long* &stack_pos);
+    void inline CpyCharAry(StackInstr* instr, long* &op_stack, long* &stack_pos);
+    void inline CpyIntAry(StackInstr* instr, long* &op_stack, long* &stack_pos);
+    void inline CpyFloatAry(StackInstr* instr, long* &op_stack, long* &stack_pos);
+    void inline ObjTypeOf(StackInstr* instr, long* &op_stack, long* &stack_pos);
+    void inline ObjInstCast(StackInstr* instr, long* &op_stack, long* &stack_pos);
+    void inline AsyncMthdCall(StackInstr* instr, long* &op_stack, long* &stack_pos);
+    void inline ThreadJoin(StackInstr* instr, long* &op_stack, long* &stack_pos);
+    void inline ThreadMutex(StackInstr* instr, long* &op_stack, long* &stack_pos);
+    void inline CriticalStart(StackInstr* instr, long* &op_stack, long* &stack_pos);
+    void inline CriticalEnd(StackInstr* instr, long* &op_stack, long* &stack_pos);
+
     inline void ProcessNewArray(StackInstr* instr, long* &op_stack, long* &stack_pos, bool is_float = false);
     inline void ProcessNewByteArray(StackInstr* instr, long* &op_stack, long* &stack_pos);
     inline void ProcessNewCharArray(StackInstr* instr, long* &op_stack, long* &stack_pos);
@@ -461,8 +508,6 @@ namespace Runtime {
     inline void ProcessStoreFloat(StackInstr* instr, long* &op_stack, long* &stack_pos);
     inline void ProcessLoadFloat(StackInstr* instr, long* &op_stack, long* &stack_pos);
     inline void ProcessCopyFloat(StackInstr* instr, long* &op_stack, long* &stack_pos);
-    inline void SerializeObject(long* &op_stack, long* &stack_pos);
-    inline void DeserializeObject(long* &op_stack, long* &stack_pos);
     inline void ProcessDllLoad(StackInstr* instr);
     inline void ProcessDllUnload(StackInstr* instr);
     inline void ProcessDllCall(StackInstr* instr, long* &op_stack, long* &stack_pos);
