@@ -439,7 +439,7 @@ void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i,
       break;
 
     case RAND_FLOAT:
-     PushFloat(GetRandomValue(), op_stack, stack_pos);
+      PushFloat(GetRandomValue(), op_stack, stack_pos);
       break;
 
       // Note: no supported via JIT -- *end*
@@ -561,9 +561,9 @@ void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i,
       CriticalEnd(instr, op_stack, stack_pos);
       break;
 
-    //
-    // End: Thread support
-    // 
+      //
+      // End: Thread support
+      // 
 
     case NEW_BYTE_ARY:
       ProcessNewByteArray(instr, op_stack, stack_pos);
@@ -1251,7 +1251,7 @@ void StackInterpreter::ObjInstCast(StackInstr* instr, long* &op_stack, long* &st
   if(!result && mem) {
     StackClass* to_cls = MemoryManager::GetClass((long*)mem);
     wcerr << L">>> Invalid object cast: '" << (to_cls ? to_cls->GetName() : L"?")
-      << "' to '" << program->GetClass(instr->GetOperand())->GetName() << "' <<<" << endl;
+	  << "' to '" << program->GetClass(instr->GetOperand())->GetName() << "' <<<" << endl;
     StackErrorUnwind();
 #ifdef _DEBUGGER
     halt = true;
@@ -1285,8 +1285,8 @@ void StackInterpreter::AsyncMthdCall(StackInstr* instr, long* &op_stack, long* &
 #ifdef _DEBUG
   assert(called);
   wcout << L"=== ASYNC_MTHD_CALL: id=" << called->GetClass()->GetId() << ","
-    << called->GetId() << "; name='" << called->GetName()
-    << "'; param=" << param << " ===" << endl;
+	<< called->GetId() << "; name='" << called->GetName()
+	<< "'; param=" << param << " ===" << endl;
 #endif
 
   // create and execute the new thread
