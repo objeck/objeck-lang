@@ -842,8 +842,8 @@ void StackInterpreter::SubInt(StackInstr* instr, long* &op_stack, long* &stack_p
 #ifdef _DEBUG
   wcout << L"stack oper: SUB; call_pos=" << (*call_stack_pos) << endl;
 #endif
-  int left = PopInt(op_stack, stack_pos);
-  int right = PopInt(op_stack, stack_pos);
+  long left = PopInt(op_stack, stack_pos);
+  long right = PopInt(op_stack, stack_pos);
   PushInt(left - right, op_stack, stack_pos);
 }
 
@@ -862,8 +862,8 @@ void StackInterpreter::MulInt(StackInstr* instr, long* &op_stack, long* &stack_p
 #ifdef _DEBUG
   wcout << L"stack oper: MUL; call_pos=" << (*call_stack_pos) << endl;
 #endif
-  int left = PopInt(op_stack, stack_pos);
-  int right = PopInt(op_stack, stack_pos);
+  long left = PopInt(op_stack, stack_pos);
+  long right = PopInt(op_stack, stack_pos);
   PushInt(left * right, op_stack, stack_pos);
 }
 
@@ -872,8 +872,8 @@ void StackInterpreter::DivInt(StackInstr* instr, long* &op_stack, long* &stack_p
 #ifdef _DEBUG
   wcout << L"stack oper: DIV; call_pos=" << (*call_stack_pos) << endl;
 #endif
-  int left = PopInt(op_stack, stack_pos);
-  int right = PopInt(op_stack, stack_pos);
+  long left = PopInt(op_stack, stack_pos);
+  long right = PopInt(op_stack, stack_pos);
   PushInt(left / right, op_stack, stack_pos);
 }
 
@@ -902,8 +902,8 @@ void StackInterpreter::ModInt(StackInstr* instr, long* &op_stack, long* &stack_p
 #ifdef _DEBUG
   wcout << L"stack oper: MOD; call_pos=" << (*call_stack_pos) << endl;
 #endif
-  int left = PopInt(op_stack, stack_pos);
-  int right = PopInt(op_stack, stack_pos);
+  long left = PopInt(op_stack, stack_pos);
+  long right = PopInt(op_stack, stack_pos);
   PushInt(left % right, op_stack, stack_pos);
 }
 
@@ -912,8 +912,8 @@ void StackInterpreter::BitAndInt(StackInstr* instr, long* &op_stack, long* &stac
 #ifdef _DEBUG
   wcout << L"stack oper: BIT_AND; call_pos=" << (*call_stack_pos) << endl;
 #endif
-  int left = PopInt(op_stack, stack_pos);
-  int right = PopInt(op_stack, stack_pos);
+  long left = PopInt(op_stack, stack_pos);
+  long right = PopInt(op_stack, stack_pos);
   PushInt(left & right, op_stack, stack_pos);
 }
 
@@ -922,8 +922,8 @@ void StackInterpreter::BitOrInt(StackInstr* instr, long* &op_stack, long* &stack
 #ifdef _DEBUG
   wcout << L"stack oper: BIT_OR; call_pos=" << (*call_stack_pos) << endl;
 #endif
-  int left = PopInt(op_stack, stack_pos);
-  int right = PopInt(op_stack, stack_pos);
+  long left = PopInt(op_stack, stack_pos);
+  long right = PopInt(op_stack, stack_pos);
   PushInt(left | right, op_stack, stack_pos);
 }
 
@@ -932,8 +932,8 @@ void StackInterpreter::BitXorInt(StackInstr* instr, long* &op_stack, long* &stac
 #ifdef _DEBUG
   wcout << L"stack oper: BIT_XOR; call_pos=" << (*call_stack_pos) << endl;
 #endif
-  int left = PopInt(op_stack, stack_pos);
-  int right = PopInt(op_stack, stack_pos);
+  long left = PopInt(op_stack, stack_pos);
+  long right = PopInt(op_stack, stack_pos);
   PushInt(left ^ right, op_stack, stack_pos);
 }
 
@@ -942,8 +942,8 @@ void StackInterpreter::LesEqlInt(StackInstr* instr, long* &op_stack, long* &stac
 #ifdef _DEBUG
   wcout << L"stack oper: LES_EQL; call_pos=" << (*call_stack_pos) << endl;
 #endif
-  int left = PopInt(op_stack, stack_pos);
-  int right = PopInt(op_stack, stack_pos);
+  long left = PopInt(op_stack, stack_pos);
+  long right = PopInt(op_stack, stack_pos);
   PushInt(left <= right, op_stack, stack_pos);
 }
 
@@ -952,8 +952,8 @@ void StackInterpreter::GtrEqlInt(StackInstr* instr, long* &op_stack, long* &stac
 #ifdef _DEBUG
   wcout << L"stack oper: GTR_EQL; call_pos=" << (*call_stack_pos) << endl;
 #endif
-  int left = PopInt(op_stack, stack_pos);
-  int right = PopInt(op_stack, stack_pos);
+  long left = PopInt(op_stack, stack_pos);
+  long right = PopInt(op_stack, stack_pos);
   PushInt(left >= right, op_stack, stack_pos);
 }
 
@@ -982,8 +982,8 @@ void StackInterpreter::EqlInt(StackInstr* instr, long* &op_stack, long* &stack_p
 #ifdef _DEBUG
   wcout << L"stack oper: EQL; call_pos=" << (*call_stack_pos) << endl;
 #endif
-  int left = PopInt(op_stack, stack_pos);
-  int right = PopInt(op_stack, stack_pos);
+  long left = PopInt(op_stack, stack_pos);
+  long right = PopInt(op_stack, stack_pos);
   PushInt(left == right, op_stack, stack_pos);
 }
 
@@ -992,8 +992,8 @@ void StackInterpreter::NeqlInt(StackInstr* instr, long* &op_stack, long* &stack_
 #ifdef _DEBUG
   wcout << L"stack oper: NEQL; call_pos=" << (*call_stack_pos) << endl;
 #endif
-  int left = PopInt(op_stack, stack_pos);
-  int right = PopInt(op_stack, stack_pos);
+  long left = PopInt(op_stack, stack_pos);
+  long right = PopInt(op_stack, stack_pos);
   PushInt(left != right, op_stack, stack_pos);
 }
 
@@ -1002,8 +1002,8 @@ void StackInterpreter::LesInt(StackInstr* instr, long* &op_stack, long* &stack_p
 #ifdef _DEBUG
   wcout << L"stack oper: LES; call_pos=" << (*call_stack_pos) << endl;
 #endif
-  int left = PopInt(op_stack, stack_pos);
-  int right = PopInt(op_stack, stack_pos);
+  long left = PopInt(op_stack, stack_pos);
+  long right = PopInt(op_stack, stack_pos);
   PushInt(left < right, op_stack, stack_pos);
 }
 
@@ -1012,8 +1012,8 @@ void StackInterpreter::GtrInt(StackInstr* instr, long* &op_stack, long* &stack_p
 #ifdef _DEBUG
   wcout << L"stack oper: GTR; call_pos=" << (*call_stack_pos) << endl;
 #endif
-  int left = PopInt(op_stack, stack_pos);
-  int right = PopInt(op_stack, stack_pos);
+  long left = PopInt(op_stack, stack_pos);
+  long right = PopInt(op_stack, stack_pos);
   PushInt(left > right, op_stack, stack_pos);
 }
 
