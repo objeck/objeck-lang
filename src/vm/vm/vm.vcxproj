@@ -142,6 +142,7 @@
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <PreprocessorDefinitions>%(PreprocessorDefinitions);_MBCS;_CRT_SECURE_NO_WARNINGS;_NO_JIT</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\..\lib\openssl\win32\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AssemblerOutput>NoListing</AssemblerOutput>
     </ClCompile>
     <Link>
       <OutputFile>$(OutDir)obr.exe</OutputFile>

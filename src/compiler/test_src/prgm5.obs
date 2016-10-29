@@ -2,7 +2,7 @@ bundle Default {
 	class FindPrime {
 		function : Main(args : System.String[]) ~ Nil {
 #			Run(400); 
-			Run(1000000); 
+			Run(4000000); 
 		}
 
 		function : Run(topCandidate : Int) ~ Nil {
