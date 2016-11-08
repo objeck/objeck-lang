@@ -96,10 +96,6 @@ class ItermediateOptimizer {
                               IntermediateBlock* outputs);
 
 
-  //
-  // TOOD: need final method identifier
-  //
-  // TODO: ensure we don't have duplicate labels, including the label we're adding
   bool CanInlineMethod(IntermediateMethod* mthd_called, set<IntermediateMethod*> &inlined_mthds, set<int> &lbl_jmp_offsets) {
     // don't inline the same method more then once, since you'll have label/jump conflicts
     set<IntermediateMethod*>::iterator found = inlined_mthds.find(mthd_called);
@@ -112,13 +108,6 @@ class ItermediateOptimizer {
       return false;
     }
 
-    /*
-    // same class
-    if(mthd_called->GetClass() == current_method->GetClass()) {
-      return false;
-    }
-    */
-    
     // don't inline method calls for primitive objects
     const wstring called_cls_name = mthd_called->GetClass()->GetName();
     if(called_cls_name.find(L'$') != wstring::npos) {
@@ -223,10 +212,6 @@ class ItermediateOptimizer {
     return true;
   }
   
-  //
-  // TODO: have final classes for hidden local fields
-  // calculate the local offset for inlined variables
-  // 
   int GetLastLocalOffset(IntermediateMethod* mthd, IntermediateBlock* outputs) {
     vector<IntermediateBlock*> blocks = mthd->GetBlocks();
     vector<IntermediateInstruction*> instrs = blocks[0]->GetInstructions();
@@ -364,7 +349,7 @@ class ItermediateOptimizer {
       optimization_level = 3;
     } 
     else {
-      optimization_level = 0;
+      optimization_level = 3;
     }
   }
   
