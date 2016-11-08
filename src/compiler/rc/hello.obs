@@ -1,5 +1,7 @@
 class Hello {
   function : Main(args : String[]) ~ Nil {
-		Runtime->GetUserDir()->PrintLine();
+    "Hello World"-&gt;PrintLine();
+    "Καλημέρα κόσμε"-&gt;PrintLine();
+    "こんにちは 世界"-&gt;PrintLine();
   }
 }
