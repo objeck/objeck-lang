@@ -2,11 +2,13 @@ use System.IO.File;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		buffer := "";
-		c : Compare := FloatHolder->New(13.13);
-#		f := c->As(FloatHolder)->Get();
-#		buffer += f;
-		buffer += c->As(FloatHolder)->Get();
-		buffer->PrintLine();
+		IsEmptyDirectory(args[0])->PrintLine();
+	}
+	
+	function : IsEmptyDirectory(dir : String) ~ Bool {
+#	dir->PrintLine();
+		return Directory->List(dir)->Size() = 0;
+#		foo := Directory->List(dir);
+#		return foo->Size() = 0;
 	}
 }
