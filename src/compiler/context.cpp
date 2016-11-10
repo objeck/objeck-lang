@@ -2378,7 +2378,7 @@ bool ContextAnalyzer::Analyze()
     if(!lib_method) {
       wstring encoded_name = klass->GetName() + L":" + method_call->GetMethodName() + L":" + 
         encoding + EncodeMethodCall(method_call->GetCallingParameters(), depth);
-      if(encoded_name.back() == L'*') {
+      if(*encoded_name.rbegin() == L'*') {
         encoded_name.push_back(L',');
       }
       lib_method = klass->GetMethod(encoded_name);
