@@ -4178,6 +4178,10 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
         else if(method_call->IsEnumCall()) {
           imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
         }
+        // TODO: hack to handle a side-case validate!!!!!
+        else if(is_nested && lib_method->GetLibraryClass()->GetName() == L"System.$BaseArray") {
+          imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
+        }
       } 
       else if((current_method->GetMethodType() == NEW_PUBLIC_METHOD || current_method->GetMethodType() == NEW_PRIVATE_METHOD) && 
               (lib_method->GetMethodType() == NEW_PUBLIC_METHOD || lib_method->GetMethodType() == NEW_PRIVATE_METHOD) && !is_new_inst) {        
