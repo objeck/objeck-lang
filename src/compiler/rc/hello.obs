@@ -1,7 +1,7 @@
 class Hello {
   function : Main(args : String[]) ~ Nil {
-    "Hello World"-&gt;PrintLine();
-    "Καλημέρα κόσμε"-&gt;PrintLine();
-    "こんにちは 世界"-&gt;PrintLine();
+    "Hello World"->PrintLine();
+    "Καλημέρα κόσμε"->PrintLine();
+    "こんにちは 世界"->PrintLine();
   }
 }
