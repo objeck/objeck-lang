@@ -2376,8 +2376,11 @@ bool ContextAnalyzer::Analyze()
 
     // note: last resort to find system based methods i.e. $Int, $Float, etc.
     if(!lib_method) {
-      wstring encoded_name = klass->GetName() + L":" + method_call->GetMethodName() + L":" +
+      wstring encoded_name = klass->GetName() + L":" + method_call->GetMethodName() + L":" + 
         encoding + EncodeMethodCall(method_call->GetCallingParameters(), depth);
+      if(encoded_name.back() == L'*') {
+        encoded_name.push_back(L',');
+      }
       lib_method = klass->GetMethod(encoded_name);
     }
 
