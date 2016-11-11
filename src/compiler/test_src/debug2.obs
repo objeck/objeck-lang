@@ -2,7 +2,7 @@ use System.IO.Net;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		ips := TCPSocket->Resolve("www.google.com");
+		ips := TCPSocket->Resolve("kompute");
 		each(i : ips) {
 			ips[i]->PrintLine();
 		};
