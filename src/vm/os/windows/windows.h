@@ -243,6 +243,24 @@ class File {
  ****************************/
 class IPSocket {
  public:
+  static vector<string>& Resolve(const char* address) {
+    vector<string> addresses;
+
+    struct hostent* host_info = gethostbyname(address);
+    if(!host_info) {
+      return addresses;
+    }
+
+    struct in_addr host_addr;
+    for(int i = 0; !host_info->h_addr_list[i]; ++i) {
+      memcpy(&host_addr, host_info->h_addr_list[i], host_info->h_length);
+      const string dot_name(inet_ntoa(host_addr));
+      addresses.push_back(dot_name);
+    }
+
+    return addresses;
+  }
+
   static SOCKET Open(const char* address, int port) {
     SOCKET sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if(sock == INVALID_SOCKET) {
