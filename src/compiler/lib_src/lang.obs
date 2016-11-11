@@ -4863,8 +4863,17 @@ bundle System.IO.Net {
 		Reads the host name
 		@return socket host name
 		~#
-		function : HostName() ~ String {
+		function : HostName() ~  System.String {
 			SOCK_TCP_HOST_NAME;
+		}
+
+		#~
+		List of resolved IP addresses
+		@param n address name
+		@return list of IP addresses
+		~#
+		function : Resolve(n : System.String) ~ System.String[] {
+			SOCK_TCP_RESOLVE_NAME;
 		}
 	
 		#~
