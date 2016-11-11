@@ -333,23 +333,28 @@ class ItermediateOptimizer {
   }
   
  public:
-  ItermediateOptimizer(IntermediateProgram* p, int u, wstring o) {
+  ItermediateOptimizer(IntermediateProgram* p, int u, wstring o, bool d) {
     program = p;
     cur_line_num = -1;
     merge_blocks = false;
     unconditional_label = u; 
 
-    if(o == L"s1") {
-      optimization_level = 1;
-    } 
-    else if(o == L"s2") {
-      optimization_level = 2;
-    } 
-    else if(o == L"s3") {
-      optimization_level = 3;
-    } 
+    if(d) {
+      optimization_level = 0;
+    }
     else {
-      optimization_level = 3;
+      if(o == L"s1") {
+        optimization_level = 1;
+      } 
+      else if(o == L"s2") {
+        optimization_level = 2;
+      } 
+      else if(o == L"s3") {
+        optimization_level = 3;
+      } 
+      else {
+        optimization_level = 3;
+      }
     }
   }
   

@@ -163,7 +163,7 @@ int Compile(map<const wstring, wstring> &arguments, list<wstring> &argument_opti
       IntermediateEmitter intermediate(program, is_lib, is_debug);
       intermediate.Translate();
       // intermediate optimizer
-      ItermediateOptimizer optimizer(intermediate.GetProgram(), intermediate.GetUnconditionalLabel(), arguments[L"opt"]);
+      ItermediateOptimizer optimizer(intermediate.GetProgram(), intermediate.GetUnconditionalLabel(), arguments[L"opt"], is_debug);
       optimizer.Optimize();
       // emit target code
       TargetEmitter target(optimizer.GetProgram(), is_lib, is_debug, is_web, arguments[L"dest"]);;
