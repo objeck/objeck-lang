@@ -1,14 +1,10 @@
-use System.IO.File;
+use System.IO.Net;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		IsEmptyDirectory(args[0])->PrintLine();
-	}
-	
-	function : IsEmptyDirectory(dir : String) ~ Bool {
-#	dir->PrintLine();
-		return Directory->List(dir)->Size() = 0;
-#		foo := Directory->List(dir);
-#		return foo->Size() = 0;
+		ips := TCPSocket->Resolve("www.google.com");
+		each(i : ips) {
+			ips[i]->PrintLine();
+		};
 	}
 }
