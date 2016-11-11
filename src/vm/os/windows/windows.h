@@ -252,7 +252,7 @@ class IPSocket {
     }
 
     struct in_addr host_addr;
-    for(int i = 0; !host_info->h_addr_list[i]; ++i) {
+    for(int i = 0; host_info->h_addr_list[i] != NULL; ++i) {
       memcpy(&host_addr, host_info->h_addr_list[i], host_info->h_length);
       const string dot_name(inet_ntoa(host_addr));
       addresses.push_back(dot_name);
