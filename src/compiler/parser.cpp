@@ -1770,6 +1770,12 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       NextToken();
       break;
 
+    case SOCK_TCP_RESOLVE_NAME:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+                                                               instructions::SOCK_TCP_RESOLVE_NAME);
+      NextToken();
+      break;
+
     case SOCK_TCP_SSL_CONNECT:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
                                                                instructions::SOCK_TCP_SSL_CONNECT);

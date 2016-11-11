@@ -2085,6 +2085,7 @@ class TrapProcessor {
   //
   static inline long* CreateStringObject(const wstring &value_str, StackProgram* program, 
 					 long* &op_stack, long* &stack_pos);
+
  public:
 
   static bool ProcessTrap(StackProgram* program, long* inst, 
