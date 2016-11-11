@@ -1878,7 +1878,7 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, long* inst,
       if(!gethostname(buffer, SMALL_BUFFER_MAX)) {
         // copy name   
         long i = 0;
-        for(; buffer[i] != L'\0' && i < size; i++) {
+        for(; buffer[i] != L'\0' && i < size; ++i) {
           str[i] = buffer[i];
         }
         str[i] = L'\0';
