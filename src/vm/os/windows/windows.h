@@ -243,7 +243,7 @@ class File {
  ****************************/
 class IPSocket {
  public:
-  static vector<string>& Resolve(const char* address) {
+  static vector<string> Resolve(const char* address) {
     vector<string> addresses;
 
     struct hostent* host_info = gethostbyname(address);
