@@ -1867,6 +1867,38 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, long* inst,
     break;
     
     // ---------------- ip socket i/o ----------------
+  case SOCK_TCP_RESOLVE_NAME: {
+    long* array = (long*)PopInt(op_stack, stack_pos);
+    array = (long*)array[0];
+    if(array) {
+      const wstring wname((wchar_t*)(array + 3));
+      const string name(wname.begin(), wname.end());
+      vector<string> addrs = IPSocket::Resolve(name.c_str());
+
+      // create 'System.String' object array
+      const long str_obj_array_size = addrs.size();
+      const long str_obj_array_dim = 1;
+      long* str_obj_array = (long*)MemoryManager::AllocateArray(str_obj_array_size + str_obj_array_dim + 2,
+                                                                INT_TYPE, op_stack, *stack_pos, false);
+      str_obj_array[0] = str_obj_array_size;
+      str_obj_array[1] = str_obj_array_dim;
+      str_obj_array[2] = str_obj_array_size;
+      long* str_obj_array_ptr = str_obj_array + 3;
+
+      // create and assign 'System.String' instances to array
+      for(size_t i = 0; i < addrs.size(); ++i) {
+        const wstring waddr(addrs[i].begin(), addrs[i].end());
+        str_obj_array_ptr[i] = (long)CreateStringObject(waddr, program, op_stack, stack_pos);
+      }
+
+      PushInt((long)str_obj_array, op_stack, stack_pos);
+    }
+    else {
+      PushInt(0, op_stack, stack_pos);
+    }
+  }
+    break;
+
   case SOCK_TCP_HOST_NAME: {
     long* array = (long*)PopInt(op_stack, stack_pos);
     if(array) {    
@@ -3098,10 +3130,8 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, long* inst,
       // create 'System.String' object array
       const long str_obj_array_size = files.size();
       const long str_obj_array_dim = 1;
-      long* str_obj_array = (long*)MemoryManager::AllocateArray(str_obj_array_size +
-                                                                str_obj_array_dim + 2,
-                                                                INT_TYPE, op_stack,
-                                                                *stack_pos, false);
+      long* str_obj_array = (long*)MemoryManager::AllocateArray(str_obj_array_size + str_obj_array_dim + 2,
+                                                                INT_TYPE, op_stack, *stack_pos, false);
       str_obj_array[0] = str_obj_array_size;
       str_obj_array[1] = str_obj_array_dim;
       str_obj_array[2] = str_obj_array_size;
