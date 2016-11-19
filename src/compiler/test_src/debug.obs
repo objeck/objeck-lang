@@ -1,72 +1,12 @@
-use TinyDB;
 use System.IO.File;
-use System.IO;
 
-class Test {
-	function : Main(args : String[]) ~ Nil {
+class Hello {
+  function : Main(args : String[]) ~ Nil {
+		IsEmptyDirectory(args[0])->PrintLine();
+  }
 
-		columns := ["name", "age"];
-		table := Table->New("Person", columns);
-		
-		row := table->Insert();
-		row->Set(1, "Randy");
-		row->Set(2, IntHolder->New(41));
-		
-		row := table->Insert();
-		row->Set(1, "John");
-		row->Set(2, IntHolder->New(12));
-		
-		row := table->Insert();
-		row->Set(1, "Andrew");
-		row->Set(2, IntHolder->New(18));
-		
-		row := table->Insert();
-		row->Set(1, "Sally");
-		row->Set(2, IntHolder->New(25));
-		
-		row := table->Insert();
-		row->Set(1, "Harry");
-		row->Set(2, IntHolder->New(55));
-		
-		count := table->Size();
-		"total count={$count}"->PrintLine();
-
-		query := Query->New("from Person car where age < 21", table);
-		query->Query();
-		
-		"Done!"->PrintLine();
-		
-#~		
-		conds := Vector->New();
-		conds->AddBack(Conditional->New(2, Conditional->Qualifier->GREATER, IntHolder->New(20)));
-		found := table->Where(conds);
-		
-		"---"->PrintLine();
-		each(i : found) {
-			found->Get(i)->As(Row)->ToString()->PrintLine();
-		};
-		
-		serializer := Serializer->New();
-		serializer->Write(table);
-		data := serializer->Serialize();
-		
-		out := FileWriter->New("out.dat");
-		out->WriteBuffer(data);
-		out->Close();
-		
-		data := FileReader->ReadBinaryFile("out.dat");
-		deserializer := Deserializer->New(data);
-		x := deserializer->ReadObject()->As(Table);
-		x->Size()->PrintLine();
-			
-		conds := Vector->New();
-		conds->AddBack(Conditional->New(2, Conditional->Qualifier->LESS, IntHolder->New(20)));
-		found := x->Where(conds);
-		
-		"---"->PrintLine();
-		each(i : found) {
-			found->Get(i)->As(Row)->ToString()->PrintLine();
-		};
-~#		
+  function : IsEmptyDirectory(dir : String) ~ Bool {
+		contents := Directory->List(dir);
+		return contents->Size() = 0;
 	}
 }
