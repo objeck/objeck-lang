@@ -322,7 +322,7 @@ class IPSecureSocket {
       SSL_CTX_free(ctx);
       return false;
     }
-
+    
     X509* cert = SSL_get_peer_certificate(ssl); 
     if(!cert) {
       BIO_free_all(bio);
@@ -336,8 +336,8 @@ class IPSecureSocket {
       X509_free(cert);
       return false;
     }
+    X509_free(cert);
     
-    X509_free(cert);   
     return true;
   }
   
