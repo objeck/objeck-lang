@@ -397,6 +397,12 @@ class IPSecureSocket {
       SSL_CTX_free(ctx);
       return false;
     }
+
+    if(!SSL_CTX_load_verify_locations(ctx, "cacert-2016-11-02.pem", NULL)) {
+      BIO_free_all(bio);
+      SSL_CTX_free(ctx);
+      return false;
+    }
     
     SSL* ssl;
     BIO_get_ssl(bio, &ssl);
@@ -418,6 +424,12 @@ class IPSecureSocket {
     }
 
     if(BIO_do_handshake(bio) <= 0) {
+      BIO_free_all(bio);
+      SSL_CTX_free(ctx);
+      return false;
+    }
+    
+    if(SSL_get_verify_result(ssl) != X509_V_OK) {
       BIO_free_all(bio);
       SSL_CTX_free(ctx);
       return false;
