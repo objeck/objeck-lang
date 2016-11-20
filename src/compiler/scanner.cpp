@@ -236,6 +236,9 @@ void Scanner::LoadKeywords()
   ident_map[L"TIMER_ELAPSED"] =  TIMER_ELAPSED;
   ident_map[L"SOCK_TCP_CONNECT"] = SOCK_TCP_CONNECT;
   ident_map[L"SOCK_TCP_IS_CONNECTED"] = SOCK_TCP_IS_CONNECTED;
+  ident_map[L"SOCK_TCP_BIND"] = SOCK_TCP_BIND;
+  ident_map[L"SOCK_TCP_LISTEN"] = SOCK_TCP_LISTEN;
+  ident_map[L"SOCK_TCP_ACCEPT"] = SOCK_TCP_ACCEPT;
   ident_map[L"SOCK_TCP_CLOSE"] = SOCK_TCP_CLOSE;
   ident_map[L"SOCK_TCP_IN_BYTE"] = SOCK_TCP_IN_BYTE;
   ident_map[L"SOCK_TCP_IN_BYTE_ARY"] = SOCK_TCP_IN_BYTE_ARY;
@@ -258,9 +261,6 @@ void Scanner::LoadKeywords()
   ident_map[L"SOCK_TCP_SSL_OUT_BYTE"] = SOCK_TCP_SSL_OUT_BYTE;
   ident_map[L"SOCK_TCP_SSL_OUT_BYTE_ARY"] = SOCK_TCP_SSL_OUT_BYTE_ARY;
   ident_map[L"SOCK_TCP_SSL_OUT_CHAR_ARY"] = SOCK_TCP_SSL_OUT_CHAR_ARY;
-  ident_map[L"SOCK_TCP_SSL_BIND"] = SOCK_TCP_SSL_BIND;
-  ident_map[L"SOCK_TCP_SSL_LISTEN"] = SOCK_TCP_SSL_LISTEN;
-  ident_map[L"SOCK_TCP_SSL_ACCEPT"] = SOCK_TCP_SSL_ACCEPT;
   ident_map[L"SERL_INT"] = SERL_INT;
   ident_map[L"SERL_FLOAT"] = SERL_FLOAT;
   ident_map[L"SERL_OBJ_INST"] = SERL_OBJ_INST;
@@ -434,6 +434,9 @@ void Scanner::CheckIdentifier(int index)
     case TIMER_END:
     case TIMER_ELAPSED:
     case SOCK_TCP_CONNECT:
+    case SOCK_TCP_BIND:
+    case SOCK_TCP_LISTEN:
+    case SOCK_TCP_ACCEPT:
     case SOCK_TCP_IS_CONNECTED:
     case SOCK_TCP_CLOSE:
     case SOCK_TCP_IN_BYTE:
