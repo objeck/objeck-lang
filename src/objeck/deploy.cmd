@@ -18,6 +18,7 @@ del deploy\bin\gtk2.obl
 del deploy\bin\sdl.obl
 del deploy\bin\db.obl
 del /q deploy\bin\a.*
+copy ..\vm\*.pem deploy\bin
 REM openssl support
 mkdir deploy\lib
 mkdir deploy\lib\objeck-lang
