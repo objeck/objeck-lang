@@ -2110,11 +2110,18 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, long* inst,
 
   case SOCK_TCP_SSL_CERT: {
     long* instance = (long*)PopInt(op_stack, stack_pos);    
-    SSL_CTX* ctx = (SSL_CTX*)instance[0];
-    BIO* bio = (BIO*)instance[1];
     X509* cert = (X509*)instance[2];
-
     
+    X509_NAME* name = X509_get_subject_name(cert);
+    if(name) {
+      char buffer[LARGE_BUFFER_MAX + 1];
+      X509_NAME_oneline(name, buffer, LARGE_BUFFER_MAX);    
+      const wstring in = BytesToUnicode(buffer);
+      PushInt((long)CreateStringObject(in, program, op_stack, stack_pos), op_stack, stack_pos);
+    }
+    else {
+      PushInt(0, op_stack, stack_pos);
+    }
   }
     break;
     

@@ -4139,6 +4139,7 @@ bundle HTTP {
 		@headers : Hash;
 		@cookies_enabled : Bool;
 		@cookies: Vector;
+		@cert : String;
 		
 		#~
 		Default constructor 
@@ -4325,6 +4326,14 @@ bundle HTTP {
 		method : public : Get(url : String) ~ Vector {
 			return Get(url, "text/plain");
 		}
+
+		#~
+		TODO
+		@return TODO
+		~#
+		method : public : GetCert() ~ String {
+			return @cert;
+		}
 		
 		#~
 		Performs a HTTP GET
@@ -4477,6 +4486,7 @@ bundle HTTP {
 								while(count < 2);
 							};							
 						};
+						@cert := socket->GetCert();
 					};
 					socket->Close();
 				}

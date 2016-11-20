@@ -4920,6 +4920,14 @@ bundle System.IO.Net {
 		method : public : GetAddress() ~ String {
 			return @address;
 		}
+
+		#~
+		TODO
+		@return TODO
+		~#
+		method : public : GetCert() ~ String {
+			SOCK_TCP_SSL_CERT;
+		}
 		
 		#~
 		Returns the connected network port
