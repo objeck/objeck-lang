@@ -323,20 +323,11 @@ class IPSecureSocket {
       return false;
     }
     
-    X509* cert = SSL_get_peer_certificate(ssl); 
-    if(!cert) {
-      BIO_free_all(bio);
-      SSL_CTX_free(ctx);
-      return false;
-    }
-    
     if(SSL_get_verify_result(ssl) != X509_V_OK) {
       BIO_free_all(bio);
       SSL_CTX_free(ctx);
-      X509_free(cert);
       return false;
     }
-    X509_free(cert);
     
     return true;
   }
