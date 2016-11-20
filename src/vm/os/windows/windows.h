@@ -398,7 +398,11 @@ class IPSecureSocket {
       return false;
     }
 
-    if(!SSL_CTX_load_verify_locations(ctx, "cacert-2016-11-02.pem", NULL)) {
+    wstring path = GetLibraryPath();
+    string cert_path(path.begin(), path.end());
+    cert_path += "cacert-2016-11-02.pem";
+
+    if(!SSL_CTX_load_verify_locations(ctx, cert_path.c_str(), NULL)) {
       BIO_free_all(bio);
       SSL_CTX_free(ctx);
       return false;

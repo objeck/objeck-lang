@@ -1158,25 +1158,7 @@ class Linker {
 #endif
 
     // set library path
-    wstring path;
-#ifdef _OBJECK_LIB_PATH
-    const char* path_str_ptr = _OBJECK_LIB_PATH;
-#else
-    const char* path_str_ptr = getenv("OBJECK_LIB_PATH");
-#endif
-    if(path_str_ptr && strlen(path_str_ptr) > 0) {
-      string path_str(path_str_ptr);
-      path = wstring(path_str.begin(), path_str.end());
-#ifdef _WIN32
-      if(path[path.size() - 1] != '\\') {
-        path += L"\\";
-      }
-#else
-      if(path[path.size() - 1] != '/') {
-        path += '/';
-      }
-#endif
-    }
+    wstring path = GetLibraryPath();
 
     // parses library path
     if(master_path.size() > 0) {
