@@ -376,9 +376,17 @@ class IPSecureSocket {
   }
   
   static void Close(SSL_CTX* ctx, BIO* bio, X509* cert) {
-    BIO_free_all(bio);
-    SSL_CTX_free(ctx);
-    X509_free(cert);
+    if(bio) {
+      BIO_free_all(bio);
+    }
+
+    if(ctx) {
+      SSL_CTX_free(ctx);
+    }
+
+    if(cert) {
+      X509_free(cert);
+    }
   }
 };
 
