@@ -1782,27 +1782,9 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       NextToken();
       break;
 
-    case SOCK_TCP_SSL_BIND:
+    case SOCK_TCP_SSL_CERT:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
-                                                               instructions::SOCK_TCP_SSL_BIND);
-      NextToken();
-      break;
-
-    case SOCK_TCP_SSL_LISTEN:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
-                                                               instructions::SOCK_TCP_SSL_LISTEN);
-      NextToken();
-      break;
-
-    case SOCK_TCP_SSL_ACCEPT:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
-                                                               instructions::SOCK_TCP_SSL_ACCEPT);
-      NextToken();
-      break;      
-
-    case SOCK_TCP_SSL_IS_CONNECTED:
-      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
-                                                               instructions::SOCK_TCP_SSL_IS_CONNECTED);
+                                                               instructions::SOCK_TCP_SSL_CERT);
       NextToken();
       break;
 

@@ -239,7 +239,7 @@ enum ScannerTokenType {
   SOCK_TCP_RESOLVE_NAME,
   // secure socket operations
   SOCK_TCP_SSL_CONNECT,
-  SOCK_TCP_SSL_IS_CONNECTED,
+  SOCK_TCP_SSL_CERT,
   SOCK_TCP_SSL_CLOSE,
   // secure socket server operations
   SOCK_TCP_SSL_BIND,

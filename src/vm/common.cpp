@@ -2092,10 +2092,13 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, long* inst,
       const wstring waddr((wchar_t*)(array + 3));
       const string addr(waddr.begin(), waddr.end());
       
-      SSL_CTX* ctx; BIO* bio;
-      instance[2] = IPSecureSocket::Open(addr.c_str(), port, ctx, bio);
+      SSL_CTX* ctx; BIO* bio; X509* cert;
+      bool is_open = IPSecureSocket::Open(addr.c_str(), port, ctx, bio, cert);
       instance[0] = (long)ctx;
       instance[1] = (long)bio;
+      instance[2] = (long)cert;
+      instance[3] = is_open;
+      
 #ifdef _DEBUG
       wcout << L"# socket connect: addr='" << waddr << L":" << port << L"'; instance="
             << instance << L"(" << (long)instance << L")" << L"; addr=" << ctx << L"|" << bio << L"(" 
@@ -2109,13 +2112,14 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, long* inst,
     long* instance = (long*)PopInt(op_stack, stack_pos);    
     SSL_CTX* ctx = (SSL_CTX*)instance[0];
     BIO* bio = (BIO*)instance[1];
+    X509* cert = (X509*)instance[2];
     
 #ifdef _DEBUG
     wcout << L"# socket close: addr=" << ctx << L"|" << bio << L"(" 
           << (long)ctx << L"|"  << (long)bio << L") #" << endl;
 #endif      
-    IPSecureSocket::Close(ctx, bio);    
-    instance[0] = instance[1] = instance[2] = 0;      
+    IPSecureSocket::Close(ctx, bio, cert);
+    instance[0] = instance[1] = instance[2] = instance[3] = 0;
   }
     break;
     
@@ -2126,7 +2130,7 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, long* inst,
       SSL_CTX* ctx = (SSL_CTX*)instance[0];
       BIO* bio = (BIO*)instance[1];      
       const wstring data((wchar_t*)(array + 3));
-      if(instance[2]) {
+      if(instance[3]) {
         const string out = UnicodeToBytes(data);
         IPSecureSocket::WriteBytes(out.c_str(), out.size(), ctx, bio);
       }
@@ -2142,7 +2146,7 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, long* inst,
       SSL_CTX* ctx = (SSL_CTX*)instance[0];
       BIO* bio = (BIO*)instance[1]; 
       int status;
-      if(instance[2]) {
+      if(instance[3]) {
         int index = 0;
         char value;
         bool end_line = false;
@@ -2171,9 +2175,9 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, long* inst,
       }
     }
   }
-          break;
+    break;
 	  
-          // ---------------- serialization ----------------
+    // ---------------- serialization ----------------
   case SERL_CHAR:
 #ifdef _DEBUG
     wcout << L"# serializing char #" << endl;

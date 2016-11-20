@@ -247,11 +247,8 @@ void Scanner::LoadKeywords()
   ident_map[L"SOCK_TCP_OUT_CHAR_ARY"] = SOCK_TCP_OUT_CHAR_ARY;
   ident_map[L"SOCK_TCP_HOST_NAME"] = SOCK_TCP_HOST_NAME;
   ident_map[L"SOCK_TCP_RESOLVE_NAME"] = SOCK_TCP_RESOLVE_NAME;
-  ident_map[L"SOCK_TCP_BIND"] = SOCK_TCP_BIND;
-  ident_map[L"SOCK_TCP_LISTEN"] = SOCK_TCP_LISTEN;
-  ident_map[L"SOCK_TCP_ACCEPT"] = SOCK_TCP_ACCEPT;
   ident_map[L"SOCK_TCP_SSL_CONNECT"] = SOCK_TCP_SSL_CONNECT;
-  ident_map[L"SOCK_TCP_SSL_IS_CONNECTED"] = SOCK_TCP_SSL_IS_CONNECTED;
+  ident_map[L"SOCK_TCP_SSL_CERT"] = SOCK_TCP_SSL_CERT;
   ident_map[L"SOCK_TCP_SSL_CLOSE"] = SOCK_TCP_SSL_CLOSE;
   ident_map[L"SOCK_TCP_SSL_IN_BYTE"] = SOCK_TCP_SSL_IN_BYTE;
   ident_map[L"SOCK_TCP_SSL_IN_BYTE_ARY"] = SOCK_TCP_SSL_IN_BYTE_ARY;
@@ -449,11 +446,8 @@ void Scanner::CheckIdentifier(int index)
     case SOCK_TCP_OUT_CHAR_ARY:
     case SOCK_TCP_HOST_NAME:
     case SOCK_TCP_RESOLVE_NAME:
-    case SOCK_TCP_BIND:
-    case SOCK_TCP_LISTEN:
-    case SOCK_TCP_ACCEPT:
     case SOCK_TCP_SSL_CONNECT:
-    case SOCK_TCP_SSL_IS_CONNECTED:
+    case SOCK_TCP_SSL_CERT:
     case SOCK_TCP_SSL_CLOSE:
     case SOCK_TCP_SSL_IN_BYTE:
     case SOCK_TCP_SSL_IN_BYTE_ARY:
@@ -463,9 +457,6 @@ void Scanner::CheckIdentifier(int index)
     case SOCK_TCP_SSL_OUT_BYTE:
     case SOCK_TCP_SSL_OUT_BYTE_ARY:
     case SOCK_TCP_SSL_OUT_CHAR_ARY:
-    case SOCK_TCP_SSL_BIND:
-    case SOCK_TCP_SSL_LISTEN:
-    case SOCK_TCP_SSL_ACCEPT:
     case SERL_INT:
     case SERL_FLOAT:
     case SERL_OBJ_INST:
