@@ -143,6 +143,31 @@ static map<const wstring, wstring> ParseCommnadLine(const wstring &path_string) 
   return arguments;
 }
 
+static wstring GetLibraryPath() {
+  wstring path;
+
+#ifdef _OBJECK_LIB_PATH
+  const char* path_str_ptr = _OBJECK_LIB_PATH;
+#else
+  const char* path_str_ptr = getenv("OBJECK_LIB_PATH");
+#endif
+  if(path_str_ptr && strlen(path_str_ptr) > 0) {
+    string path_str(path_str_ptr);
+    path = wstring(path_str.begin(), path_str.end());
+#ifdef _WIN32
+    if(path[path.size() - 1] != '\\') {
+      path += L"\\";
+    }
+#else
+    if(path[path.size() - 1] != '/') {
+      path += '/';
+    }
+#endif
+  }
+
+  return path;
+}
+
 /****************************
  * Converts UTF-8 bytes to a 
  * native Unicode string 
