@@ -2092,6 +2092,8 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, long* inst,
       const wstring waddr((wchar_t*)(array + 3));
       const string addr(waddr.begin(), waddr.end());
       
+      IPSecureSocket::Close((SSL_CTX*)instance[0], (BIO*)instance[1], (X509*)instance[2]);
+
       SSL_CTX* ctx; BIO* bio; X509* cert;
       bool is_open = IPSecureSocket::Open(addr.c_str(), port, ctx, bio, cert);
       instance[0] = (long)ctx;
