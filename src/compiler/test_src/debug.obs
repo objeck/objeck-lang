@@ -1,12 +1,11 @@
-use System.IO.File;
+use HTTP;
 
-class Hello {
-  function : Main(args : String[]) ~ Nil {
-		IsEmptyDirectory(args[0])->PrintLine();
-  }
-
-  function : IsEmptyDirectory(dir : String) ~ Bool {
-		contents := Directory->List(dir);
-		return contents->Size() = 0;
+class HttpsTest {
+	function : Main(args : String[]) ~ Nil {
+		client := HttpsClient->New();
+		lines := client->Get("https://www.google.com");
+		each(i : lines) {
+			lines->Get(i)->As(String)->Print();
+		};
 	}
 }
