@@ -4922,8 +4922,8 @@ bundle System.IO.Net {
 		}
 
 		#~
-		TODO
-		@return TODO
+		Gets the X.509 certificate's subject name
+		@return certificate subject name
 		~#
 		method : public : GetCert() ~ String {
 			SOCK_TCP_SSL_CERT;

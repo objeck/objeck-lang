@@ -4328,8 +4328,8 @@ bundle HTTP {
 		}
 
 		#~
-		TODO
-		@return TODO
+		Gets the socket's X.509 certificate subject name
+		@return certificate subject name
 		~#
 		method : public : GetCert() ~ String {
 			return @cert;
