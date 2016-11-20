@@ -4896,6 +4896,7 @@ bundle System.IO.Net {
 	class TCPSecureSocket implements InputStream, OutputStream {
 		@ctx : Int;
 		@bio : Int;
+		@cert : Int;
 		@is_open : Bool;
 		@address : System.String;
 		@port : Int;
