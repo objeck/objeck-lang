@@ -284,7 +284,7 @@ class IPSocket {
  ****************************/
 class IPSecureSocket {
  public:
-  static bool Open(const char* address, int port, SSL_CTX* &ctx, BIO* &bio) {
+  static bool Open(const char* address, int port, SSL_CTX* &ctx, BIO* &bio, X509* &cert) {
     ctx = SSL_CTX_new(SSLv23_client_method());
     bio = BIO_new_ssl_connect(ctx);
     if(!bio) {
@@ -323,9 +323,17 @@ class IPSecureSocket {
       return false;
     }
     
+    cert = SSL_get_peer_certificate(ssl);
+    if(!cert) {
+      BIO_free_all(bio);
+      SSL_CTX_free(ctx);
+      return false;
+    }
+
     if(SSL_get_verify_result(ssl) != X509_V_OK) {
       BIO_free_all(bio);
       SSL_CTX_free(ctx);
+      X509_free(cert);
       return false;
     }
     
@@ -367,9 +375,10 @@ class IPSecureSocket {
     return status;
   }
   
-  static void Close(SSL_CTX* ctx, BIO* bio) {
+  static void Close(SSL_CTX* ctx, BIO* bio, X509* cert) {
     BIO_free_all(bio);
     SSL_CTX_free(ctx);
+    X509_free(cert);
   }
 };
 

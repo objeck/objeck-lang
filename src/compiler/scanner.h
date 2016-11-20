@@ -240,11 +240,7 @@ enum ScannerTokenType {
   // secure socket operations
   SOCK_TCP_SSL_CONNECT,
   SOCK_TCP_SSL_CERT,
-  SOCK_TCP_SSL_CLOSE,
-  // secure socket server operations
-  SOCK_TCP_SSL_BIND,
-  SOCK_TCP_SSL_LISTEN,
-  SOCK_TCP_SSL_ACCEPT,
+  SOCK_TCP_SSL_CLOSE,  
   // secure socket-in
   SOCK_TCP_SSL_IN_BYTE,
   SOCK_TCP_SSL_IN_BYTE_ARY,

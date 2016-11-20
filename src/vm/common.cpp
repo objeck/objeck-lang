@@ -2107,6 +2107,16 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, long* inst,
     }
   }
     break;  
+
+  case SOCK_TCP_SSL_CERT: {
+    long* instance = (long*)PopInt(op_stack, stack_pos);    
+    SSL_CTX* ctx = (SSL_CTX*)instance[0];
+    BIO* bio = (BIO*)instance[1];
+    X509* cert = (X509*)instance[2];
+
+    
+  }
+    break;
     
   case SOCK_TCP_SSL_CLOSE: {
     long* instance = (long*)PopInt(op_stack, stack_pos);    
