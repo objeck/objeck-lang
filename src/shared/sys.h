@@ -36,6 +36,7 @@
 #include <stdint.h>
 #endif
 #include <string>
+#include <string.h>
 #include <map>
 
 // memory size for local stack frames
