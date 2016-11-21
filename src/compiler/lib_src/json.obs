@@ -567,7 +567,7 @@ bundle JSON {
 			matches := path->Split(",");
 			if(matches->Size() > 0) {
 				return Query(@self, matches, 0);
-			}
+			};
 			
 			matches := String->New[1];
 			matches[0] := path;
