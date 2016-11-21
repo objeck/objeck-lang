@@ -4,17 +4,45 @@ use Collection;
 
 class HttpTest {
 	function : Main(args : String[]) ~ Nil {
+		Run1();
+	}
+	
+	function : Run2() ~ Nil {
 		parser := JSONParser->New(GetStatic());			
 		root := parser->Parse();
-		if(root <> Nil & root->GetType() = JSONType->OBJECT) {
+		if(JSONElement->MatchType(root, JSONType->OBJECT)) {
+			elem := root->Query("query");
+			if(JSONElement->MatchType(elem, JSONType->OBJECT)) {
+				"okay"->PrintLine();
+			};
+		};
+	}
+	
+	function : Run1() ~ Nil {
+		parser := JSONParser->New(GetStatic());			
+		root := parser->Parse();
+		if(JSONElement->MatchType(root, JSONType->OBJECT)) {
+			elem := root->Query("query, results , channel, item, condition ");
+			if(JSONElement->MatchType(elem, JSONType->OBJECT)) {
+				date := elem->Get("date");								
+				temp := elem->Get("temp");
+				"date={$date}, temp={$temp}"->PrintLine();
+			};	
+		};
+	}
+	
+	function : Run() ~ Nil {
+		parser := JSONParser->New(GetStatic());			
+		root := parser->Parse();
+		if(JSONElement->MatchType(root, JSONType->OBJECT)) {
 			query := root->Get("query");
-			if(query <> Nil & query->GetType() = JSONType->OBJECT) {
+			if(JSONElement->MatchType(query, JSONType->OBJECT)) {
 				results := query->Get("results");
-				if(results <> Nil & results->GetType() = JSONType->OBJECT) {
+				if(JSONElement->MatchType(results, JSONType->OBJECT)) {
 					channel := results->Get("channel");
-					if(channel <> Nil & channel->GetType() = JSONType->OBJECT) {
+					if(JSONElement->MatchType(channel, JSONType->OBJECT)) {
 						item := channel->Get("item");
-						if(item <> Nil & item->GetType() = JSONType->OBJECT) {
+						if(JSONElement->MatchType(item, JSONType->OBJECT)) {
 							condition := item->Get("condition");
 							if(condition <> Nil & condition->GetType() = JSONType->OBJECT) {
 								date := condition->Get("date");								
