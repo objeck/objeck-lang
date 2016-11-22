@@ -22,22 +22,20 @@ document->PrintLine();
 			if(root <> Nil & root->GetType() = JSONType->OBJECT) {
 				geonames := root->Get("geonames");
 				if(geonames <> Nil & geonames->GetType() = JSONType->ARRAY) {
-					if(geonames <> Nil & geonames->GetType() = JSONType->ARRAY) {
-						each(i : geonames) {
-							geoname := geonames->Get(i);
-							if(geoname <> Nil & geoname->GetType() = JSONType->OBJECT) {
-								toponymName := geoname->Get("toponymName");
-								lng := geoname->Get("lng");
-								lat := geoname->Get("lat");								
-								if(toponymName <> Nil & lng <> Nil & lat <> Nil) {
-									toponymName->GetValue()->PrintLine();
-									"name={$toponymName}, lat={$lat}, lon={$lng}"->PrintLine();									
-								};
-								"-------------"->PrintLine();
+					each(i : geonames) {
+						geoname := geonames->Get(i);
+						if(geoname <> Nil & geoname->GetType() = JSONType->OBJECT) {
+							toponymName := geoname->Get("toponymName");
+							lng := geoname->Get("lng");
+							lat := geoname->Get("lat");								
+							if(toponymName <> Nil & lng <> Nil & lat <> Nil) {
+								toponymName->GetValue()->PrintLine();
+								"name={$toponymName}, lat={$lat}, lon={$lng}"->PrintLine();									
 							};
+							"-------------"->PrintLine();
 						};
 					};
-				};			
+				};						
 			}
 			else {
 				document->PrintLine();
