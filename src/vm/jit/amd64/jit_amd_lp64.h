@@ -1127,7 +1127,7 @@ namespace Runtime {
 	}
 	size++;
 	long* mem = (long*)MemoryManager::AllocateArray(size + ((dim + 2) * sizeof(long)), 
-							CHAR_ARY_TYPE, (long*)op_stack, *stack_pos);
+							CHAR_ARY_TYPE, (long*)op_stack, *stack_pos, false);
 	mem[0] = size - 1;
 	mem[1] = dim;
 	memcpy(mem + 2, indices, dim * sizeof(long));

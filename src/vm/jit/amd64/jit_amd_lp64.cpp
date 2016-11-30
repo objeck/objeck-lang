@@ -149,9 +149,8 @@ void JitCompilerIA64::RegisterRoot() {
   move_mem_reg(CLS_ID, RBP, RDI);
   
   // call method
-  RegisterHolder* call_holder = GetRegister();
-  move_imm_reg((long)MemoryManager::AddJitMethodRoot, call_holder->GetRegister());
-  call_reg(call_holder->GetRegister());
+  move_imm_reg((long)MemoryManager::AddJitMethodRoot, R15);
+  call_reg(R15);
 
   /*
   // restore registers
@@ -163,7 +162,6 @@ void JitCompilerIA64::RegisterRoot() {
 
   // clean up
   ReleaseRegister(holder);
-  ReleaseRegister(call_holder);
 }
 
 void JitCompilerIA64::UnregisterRoot() {
@@ -176,27 +174,25 @@ void JitCompilerIA64::UnregisterRoot() {
   sub_imm_reg(offset, holder->GetRegister());
   // push call value
   move_reg_reg(holder->GetRegister(), RDI);
-  // call method
-  RegisterHolder* call_holder = GetRegister();
-  move_imm_reg((long)MemoryManager::RemoveJitMethodRoot, call_holder->GetRegister());
-
+  
   /*
     push_reg(R15);
     push_reg(R14);
     push_reg(R13);
   */
-
-  call_reg(call_holder->GetRegister());
-
+  
+  // call method
+  move_imm_reg((long)MemoryManager::RemoveJitMethodRoot, R15);
+  call_reg(R15);
+    
   /*
     pop_reg(R13);
     pop_reg(R14);
     pop_reg(R15);
   */
-
+  
   // clean up
   ReleaseRegister(holder);
-  ReleaseRegister(call_holder);
 }
 
 void JitCompilerIA64::ProcessParameters(long params) {
@@ -1589,10 +1585,9 @@ void JitCompilerIA64::ProcessStackCallback(long instr_id, StackInstr* instr,
   push_mem(STACK_POS, RBP);
   
   // call function
-  RegisterHolder* call_holder = GetRegister();
-  move_imm_reg((long)JitCompilerIA64::StackCallback, call_holder->GetRegister());
+  move_imm_reg((long)JitCompilerIA64::StackCallback, R15);
+  call_reg(R15);
   
-  call_reg(call_holder->GetRegister());
   add_imm_reg(16, RSP);
   
   // restore registers
@@ -1601,7 +1596,7 @@ void JitCompilerIA64::ProcessStackCallback(long instr_id, StackInstr* instr,
   pop_reg(R14);
   pop_reg(R15);
 
-  ReleaseRegister(call_holder);
+
   
   // restore register values
   while(!dirty_regs.empty()) {
