@@ -958,6 +958,10 @@ namespace backend {
       return instr_count;
     }
 
+    bool HasAndOr() {
+      return has_and_or;
+    }
+
     int GetNumParams() {
       return params;
     }
@@ -999,7 +1003,7 @@ namespace backend {
         << L"';\n  blocks=" << blocks.size() << L"; is_function=" << is_function << L"; num_params="
         << params << L"; mem_size=" << space << endl;
       wcout << L"---------------------------------------------------------" << endl;
-      entries->Debug();
+      entries->Debug(has_and_or);
       wcout << L"---------------------------------------------------------" << endl;
       for(size_t i = 0; i < blocks.size(); ++i) {
         blocks[i]->Debug();
@@ -1211,9 +1215,9 @@ namespace backend {
         wcout << L"\t" << interface_names[i] << endl;
       }      
       wcout << L"=========================================================" << endl;
-      cls_entries->Debug();
+      cls_entries->Debug(false);
       wcout << L"---------------------------------------------------------" << endl;
-      inst_entries->Debug();
+      inst_entries->Debug(false);
       wcout << L"=========================================================" << endl;
       for(size_t i = 0; i < blocks.size(); ++i) {
         blocks[i]->Debug();
