@@ -4,22 +4,28 @@ use Collection;
 
 class HttpTest {
 	function : Main(args : String[]) ~ Nil {
-		Run1();
+		ParseHolidays();
+		ParseWeather();
 	}
 	
-	function : Run2() ~ Nil {
-		parser := JSONParser->New(GetStatic());			
+	function : ParseHolidays() ~ Nil {
+		parser := JSONParser->New(GetHolidays());			
 		root := parser->Parse();
 		if(JSONElement->MatchType(root, JSONType->OBJECT)) {
-			elem := root->Query("query");
-			if(JSONElement->MatchType(elem, JSONType->OBJECT)) {
-				"okay"->PrintLine();
+			elem := root->Query("holidays, 2016-09-20");
+			if(JSONElement->MatchType(elem, JSONType->ARRAY)) {
+				each(i : elem) {
+					holiday := elem->Get(i);
+					name := holiday->Get("name");
+					date := holiday->Get("date");								
+					"name={$name}, date={$date}"->PrintLine();				
+				};
 			};
 		};
 	}
 	
-	function : Run1() ~ Nil {
-		parser := JSONParser->New(GetStatic());			
+	function : ParseWeather() ~ Nil {
+		parser := JSONParser->New(GetStaticWeather());			
 		root := parser->Parse();
 		if(JSONElement->MatchType(root, JSONType->OBJECT)) {
 			elem := root->Query("query, results , channel, item, condition ");
@@ -31,40 +37,27 @@ class HttpTest {
 		};
 	}
 	
-	function : Run() ~ Nil {
-		parser := JSONParser->New(GetStatic());			
-		root := parser->Parse();
-		if(JSONElement->MatchType(root, JSONType->OBJECT)) {
-			query := root->Get("query");
-			if(JSONElement->MatchType(query, JSONType->OBJECT)) {
-				results := query->Get("results");
-				if(JSONElement->MatchType(results, JSONType->OBJECT)) {
-					channel := results->Get("channel");
-					if(JSONElement->MatchType(channel, JSONType->OBJECT)) {
-						item := channel->Get("item");
-						if(JSONElement->MatchType(item, JSONType->OBJECT)) {
-							condition := item->Get("condition");
-							if(condition <> Nil & condition->GetType() = JSONType->OBJECT) {
-								date := condition->Get("date");								
-								temp := condition->Get("temp");
-								"date={$date}, temp={$temp}"->PrintLine();
-							};		
-						};
-					};
-				};
-			};
-		};		
-	}
-	
-	function : GetStatic() ~ String {
+	function : GetStaticWeather() ~ String {
 		return "{\"query\":{\"count\":1,\"created\":\"2016-11-21T09:49:06Z\",\"lang\":\"en-US\",\"results\":{\"channel\":{\"units\":{\"distance\":\"mi\",\"pressure\":\"in\",\"speed\":\"mph\",\"temperature\":\"F\"},\"title\":\"Yahoo! Weather - San Pablo, CA, US\",\"link\":\"http://us.rd.yahoo.com/dailynews/rss/weather/Country__Country/*https://weather.yahoo.com/country/state/city-2488171/\",\"description\":\"Yahoo! Weather for San Pablo, CA, US\",\"language\":\"en-us\",\"lastBuildDate\":\"Mon, 21 Nov 2016 01:49 AM PST\",\"ttl\":\"60\",\"location\":{\"city\":\"San Pablo\",\"country\":\"United States\",\"region\":\" CA\"},\"wind\":{\"chill\":\"50\",\"direction\":\"315\",\"speed\":\"7\"},\"atmosphere\":{\"humidity\":\"94\",\"pressure\":\"1006.0\",\"rising\":\"0\",\"visibility\":\"11.9\"},\"astronomy\":{\"sunrise\":\"6:57 am\",\"sunset\":\"4:53 pm\"},\"image\":{\"title\":\"Yahoo! Weather\",\"width\":\"142\",\"height\":\"18\",\"link\":\"http://weather.yahoo.com\",\"url\":\"http://l.yimg.com/a/i/brand/purplelogo//uh/us/news-wea.gif\"},\"item\":{\"title\":\"Conditions for San Pablo, CA, US at 01:00 AM PST\",\"lat\":\"37.962811\",\"long\":\"-122.342598\",\"link\":\"http://us.rd.yahoo.com/dailynews/rss/weather/Country__Country/*https://weather.yahoo.com/country/state/city-2488171/\",\"pubDate\":\"Mon, 21 Nov 2016 01:00 AM PST\",\"condition\":{\"code\":\"27\",\"date\":\"Mon, 21 Nov 2016 01:00 AM PST\",\"temp\":\"51\",\"text\":\"Mostly Cloudy\"},\"forecast\":[{\"code\":\"30\",\"date\":\"21 Nov 2016\",\"day\":\"Mon\",\"high\":\"62\",\"low\":\"52\",\"text\":\"Partly Cloudy\"},{\"code\":\"11\",\"date\":\"22 Nov 2016\",\"day\":\"Tue\",\"high\":\"60\",\"low\":\"51\",\"text\":\"Showers\"},{\"code\":\"39\",\"date\":\"23 Nov 2016\",\"day\":\"Wed\",\"high\":\"60\",\"low\":\"53\",\"text\":\"Scattered Showers\"},{\"code\":\"28\",\"date\":\"24 Nov 2016\",\"day\":\"Thu\",\"high\":\"58\",\"low\":\"51\",\"text\":\"Mostly Cloudy\"},{\"code\":\"12\",\"date\":\"25 Nov 2016\",\"day\":\"Fri\",\"high\":\"60\",\"low\":\"53\",\"text\":\"Rain\"},{\"code\":\"28\",\"date\":\"26 Nov 2016\",\"day\":\"Sat\",\"high\":\"59\",\"low\":\"51\",\"text\":\"Mostly Cloudy\"},{\"code\":\"30\",\"date\":\"27 Nov 2016\",\"day\":\"Sun\",\"high\":\"58\",\"low\":\"51\",\"text\":\"Partly Cloudy\"},{\"code\":\"30\",\"date\":\"28 Nov 2016\",\"day\":\"Mon\",\"high\":\"60\",\"low\":\"51\",\"text\":\"Partly Cloudy\"},{\"code\":\"30\",\"date\":\"29 Nov 2016\",\"day\":\"Tue\",\"high\":\"58\",\"low\":\"49\",\"text\":\"Partly Cloudy\"},{\"code\":\"30\",\"date\":\"30 Nov 2016\",\"day\":\"Wed\",\"high\":\"57\",\"low\":\"48\",\"text\":\"Partly Cloudy\"}],\"description\":\"<![CDATA[]>\",\"guid\":{\"isPermaLink\":\"false\"}}}}}}";
 	}
 	
-	function : GetWeb() ~ String {
+	function : GetWeather() ~ String {
 		client := HttpsClient->New();
 		
 		document := "";
 		lines := client->Get("https://query.yahooapis.com/v1/public/yql?q=select%20*%20from%20weather.forecast%20where%20woeid%20in%20(select%20woeid%20from%20geo.places(1)%20where%20text%3D%22san%20pablo%2C%20ca%22)&format=json&env=store%3A%2F%2Fdatatables.org%2Falltableswithkeys");
+		each(i : lines) {
+			document->Append(lines->Get(i)->As(String));
+		};
+		
+		return document;
+	}
+	
+	function : GetHolidays() ~ String {
+		client := HttpsClient->New();
+		
+		document := "";
+		lines := client->Get("https://holidayapi.com/v1/holidays?key=c7f57ee4-1536-47a7-bc16-62140e599113&country=us&year=2016");
 		each(i : lines) {
 			document->Append(lines->Get(i)->As(String));
 		};
