@@ -312,7 +312,6 @@ class StackMethod {
 #ifdef _DEBUG
         ParamType param;
 #endif
-
         switch(params_name[index]) {
           // bool
         case 'l':
@@ -1335,57 +1334,6 @@ struct StackFrame {
 };
 
 /********************************
- * StackFrame class
- ******************************
-class StackFrame {
-  StackMethod* method;
-  long* mem;
-  long ip;
-  bool jit_called;
-
- public:
- // StackFrame() { mem = (long*)calloc(512, 1); };
-
-  StackFrame(StackMethod* md, long* inst) {
-    mem = md->NewMemory(); 
-    method = md;
-    mem[0] = (long)inst;
-    ip = -1;
-    jit_called = false;
-  }
-
-  ~StackFrame() {
-    delete[] mem;
-    mem = NULL;
-  }
-
-  inline StackMethod* GetMethod() const {
-    return method;
-  }
-
-  inline long* GetMemory() const {
-    return mem;
-  }
-
-  inline void SetIp(long i) {
-    ip = i;
-  }
-
-  inline long GetIp() {
-    return ip;
-  }
-
-  inline void SetJitCalled(bool j) {
-    jit_called = j;
-  }
-
-  inline bool IsJitCalled() {
-    return jit_called;
-  }
-};
-**/
-
-/********************************
  * ObjectSerializer class
  ********************************/
 class ObjectSerializer 
@@ -1865,33 +1813,33 @@ class TrapProcessor {
       }
 	break;
 	
-	case OBJ_ARY_PARM: {
-	  SerializeInt(array[0], inst, op_stack, stack_pos);
-	  SerializeInt(array[1], inst, op_stack, stack_pos);
-	  SerializeInt(array[2], inst, op_stack, stack_pos);
+      case OBJ_ARY_PARM: {
+	SerializeInt(array[0], inst, op_stack, stack_pos);
+	SerializeInt(array[1], inst, op_stack, stack_pos);
+	SerializeInt(array[2], inst, op_stack, stack_pos);
 
-	  long* array_ptr = (long*)(array + 3);
-	  for(int i = 0; i < array_size; ++i) {
-	    long* obj = (long*)array_ptr[i];
-	    ObjectSerializer serializer(obj);
-	    vector<char> src_buffer = serializer.GetValues();
-	    const long src_buffer_size = src_buffer.size();
-	    long* dest_buffer = (long*)inst[0];
-	    long dest_pos = inst[1];
+	long* array_ptr = (long*)(array + 3);
+	for(int i = 0; i < array_size; ++i) {
+	  long* obj = (long*)array_ptr[i];
+	  ObjectSerializer serializer(obj);
+	  vector<char> src_buffer = serializer.GetValues();
+	  const long src_buffer_size = src_buffer.size();
+	  long* dest_buffer = (long*)inst[0];
+	  long dest_pos = inst[1];
 
-	    // expand buffer, if needed
-	    dest_buffer = ExpandSerialBuffer(src_buffer_size, dest_buffer, inst, op_stack, stack_pos);
-	    inst[0] = (long)dest_buffer;
+	  // expand buffer, if needed
+	  dest_buffer = ExpandSerialBuffer(src_buffer_size, dest_buffer, inst, op_stack, stack_pos);
+	  inst[0] = (long)dest_buffer;
 
-	    // copy content
-	    char* dest_buffer_ptr = ((char*)(dest_buffer + 3) + dest_pos);
-	    for(int j = 0; j < src_buffer_size; ++j, dest_pos++) {
-	      dest_buffer_ptr[j] = src_buffer[j];
-	    }
-	    inst[1] = dest_pos;
+	  // copy content
+	  char* dest_buffer_ptr = ((char*)(dest_buffer + 3) + dest_pos);
+	  for(int j = 0; j < src_buffer_size; ++j, dest_pos++) {
+	    dest_buffer_ptr[j] = src_buffer[j];
 	  }
+	  inst[1] = dest_pos;
 	}
-	  break;
+      }
+	break;
 
       case FLOAT_ARY_PARM: {
 	// write metadata

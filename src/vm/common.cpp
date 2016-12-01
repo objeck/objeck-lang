@@ -1,7 +1,7 @@
 /***************************************************************************
  * VM common.
  *
- * Copyright (c) 2008-2015, Randy Hollines
+ * Copyright (c) 2008-2016, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -119,12 +119,12 @@ void ObjectSerializer::CheckObject(long* mem, bool is_obj, long depth) {
   }
   else {
 #ifdef _DEBUG
-	  for (int i = 0; i < depth; i++) {
-		  wcout << L"\t";
-	  }
-	  wcout << L"\t----- SERIALIZING object: value=Nil -----" << endl;
+    for (int i = 0; i < depth; i++) {
+      wcout << L"\t";
+    }
+    wcout << L"\t----- SERIALIZING object: value=Nil -----" << endl;
 #endif
-	  SerializeByte(0);
+    SerializeByte(0);
   }
 }
 
@@ -347,8 +347,8 @@ long* ObjectDeserializer::DeserializeObject() {
   if(cls) {
     INT_VALUE mem_id = DeserializeInt();
     if(mem_id < 0) {
-		  instance = MemoryManager::AllocateObject(cls->GetId(), (long*)op_stack, *stack_pos, false);
-			mem_cache[-mem_id] = instance;
+      instance = MemoryManager::AllocateObject(cls->GetId(), (long*)op_stack, *stack_pos, false);
+      mem_cache[-mem_id] = instance;
     }
     else {
       map<INT_VALUE, long*>::iterator found = mem_cache.find(mem_id);
@@ -896,8 +896,8 @@ long* TrapProcessor::CreateStringObject(const wstring &value_str, StackProgram* 
 }
 
 /********************************
-* Date/time calculations
-********************************/
+ * Date/time calculations
+ ********************************/
 void TrapProcessor::ProcessTimerStart(long* &op_stack, long* &stack_pos)
 {
   long* instance = (long*)PopInt(op_stack, stack_pos);
@@ -948,8 +948,8 @@ void TrapProcessor::ProcessCurrentTime(StackFrame* frame, bool is_gmt)
 }
 
 /********************************
-* Set a time instance
-********************************/
+ * Set a time instance
+ ********************************/
 void TrapProcessor::ProcessSetTime1(long* &op_stack, long* &stack_pos)
 {
   // get time values
@@ -997,8 +997,8 @@ void TrapProcessor::ProcessSetTime1(long* &op_stack, long* &stack_pos)
 }
 
 /********************************
-* Sets a time instance
-********************************/
+ * Sets a time instance
+ ********************************/
 void TrapProcessor::ProcessSetTime2(long* &op_stack, long* &stack_pos)
 {
   // get time values
@@ -1047,8 +1047,8 @@ void TrapProcessor::ProcessSetTime2(long* &op_stack, long* &stack_pos)
 }
 
 /********************************
-* Set a time instance
-********************************/
+ * Set a time instance
+ ********************************/
 void TrapProcessor::ProcessSetTime3(long* &op_stack, long* &stack_pos)
 {
 }
@@ -1768,7 +1768,7 @@ bool TrapProcessor::LoadClsByInst(StackProgram* program, long* inst, long* &op_s
   }
   // set name and create 'Class' instance
   long* cls_obj = MemoryManager::AllocateObject(program->GetClassObjectId(),
-    (long*)op_stack, *stack_pos, false);
+						(long*)op_stack, *stack_pos, false);
   cls_obj[0] = (long)CreateStringObject(cls->GetName(), program, op_stack, stack_pos);
   frame->mem[1] = (long)cls_obj;
   CreateClassObject(cls, cls_obj, op_stack, stack_pos, program);
@@ -1789,8 +1789,8 @@ bool TrapProcessor::ConvertBytesToUnicode(StackProgram* program, long* inst, lon
   const long char_array_size = out.size();
   const long char_array_dim = 1;
   long* char_array = (long*)MemoryManager::AllocateArray(char_array_size + 1 +
-    ((char_array_dim + 2) *
-     sizeof(long)),
+							 ((char_array_dim + 2) *
+							  sizeof(long)),
                                                          CHAR_ARY_TYPE,
                                                          op_stack, *stack_pos,
                                                          false);
@@ -1821,8 +1821,8 @@ bool TrapProcessor::ConvertUnicodeToBytes(StackProgram* program, long* inst, lon
   const long byte_array_size = out.size();
   const long byte_array_dim = 1;
   long* byte_array = (long*)MemoryManager::AllocateArray(byte_array_size + 1 +
-    ((byte_array_dim + 2) *
-     sizeof(long)),
+							 ((byte_array_dim + 2) *
+							  sizeof(long)),
                                                          BYTE_ARY_TYPE,
                                                          op_stack, *stack_pos,
                                                          false);
@@ -2376,8 +2376,8 @@ bool TrapProcessor::SockTcpConnect(StackProgram* program, long* inst, long* &op_
     SOCKET sock = IPSocket::Open(addr.c_str(), port);
 #ifdef _DEBUG
     wcout << L"# socket connect: addr='" << waddr << L":" << port << L"'; instance="
-      << instance << L"(" << (long)instance << L")" << L"; addr=" << sock << L"("
-      << (long)sock << L") #" << endl;
+	  << instance << L"(" << (long)instance << L")" << L"; addr=" << sock << L"("
+	  << (long)sock << L") #" << endl;
 #endif
     instance[0] = (long)sock;
   }
@@ -2393,8 +2393,8 @@ bool TrapProcessor::SockTcpBind(StackProgram* program, long* inst, long* &op_sta
     SOCKET server = IPSocket::Bind(port);
 #ifdef _DEBUG
     wcout << L"# socket bind: port=" << port << L"; instance=" << instance << L"("
-      << (long)instance << L")" << L"; addr=" << server << L"(" << (long)server
-      << L") #" << endl;
+	  << (long)instance << L")" << L"; addr=" << server << L"(" << (long)server
+	  << L") #" << endl;
 #endif
     instance[0] = (long)server;
   }
@@ -2411,8 +2411,8 @@ bool TrapProcessor::SockTcpListen(StackProgram* program, long* inst, long* &op_s
     SOCKET server = (SOCKET)instance[0];
 #ifdef _DEBUG
     wcout << L"# socket listen: backlog=" << backlog << L"'; instance=" << instance
-      << L"(" << (long)instance << L")" << L"; addr=" << server << L"("
-      << (long)server << L") #" << endl;
+	  << L"(" << (long)instance << L")" << L"; addr=" << server << L"("
+	  << (long)server << L") #" << endl;
 #endif
     if(IPSocket::Listen(server, backlog)) {
       PushInt(1, op_stack, stack_pos);
@@ -2438,12 +2438,12 @@ bool TrapProcessor::SockTcpAccept(StackProgram* program, long* inst, long* &op_s
     SOCKET client = IPSocket::Accept(server, client_address, client_port);
 #ifdef _DEBUG
     wcout << L"# socket accept: instance=" << instance << L"(" << (long)instance << L")" << L"; ip="
-      << BytesToUnicode(client_address) << L"; port=" << client_port << L"; addr=" << server << L"("
-      << (long)server << L") #" << endl;
+	  << BytesToUnicode(client_address) << L"; port=" << client_port << L"; addr=" << server << L"("
+	  << (long)server << L") #" << endl;
 #endif
     const wstring wclient_address = BytesToUnicode(client_address);
     long* sock_obj = MemoryManager::AllocateObject(program->GetSocketObjectId(),
-      (long*)op_stack, *stack_pos, false);
+						   (long*)op_stack, *stack_pos, false);
     sock_obj[0] = client;
     sock_obj[1] = (long)CreateStringObject(wclient_address, program, op_stack, stack_pos);
     sock_obj[2] = client_port;
@@ -2479,7 +2479,7 @@ bool TrapProcessor::SockTcpOutString(StackProgram* program, long* inst, long* &o
 
 #ifdef _DEBUG
     wcout << L"# socket write string: instance=" << instance << L"(" << (long)instance << L")"
-      << L"; array=" << array << L"(" << (long)array << L")" << L"; data=" << wdata << endl;
+	  << L"; array=" << array << L"(" << (long)array << L")" << L"; data=" << wdata << endl;
 #endif	      
     if((long)sock > -1) {
       const string data = UnicodeToBytes(wdata);
@@ -2551,8 +2551,8 @@ bool TrapProcessor::SockTcpSslConnect(StackProgram* program, long* inst, long* &
 
 #ifdef _DEBUG
     wcout << L"# socket connect: addr='" << waddr << L":" << port << L"'; instance="
-      << instance << L"(" << (long)instance << L")" << L"; addr=" << ctx << L"|" << bio << L"("
-      << (long)ctx << L"|" << (long)bio << L") #" << endl;
+	  << instance << L"(" << (long)instance << L")" << L"; addr=" << ctx << L"|" << bio << L"("
+	  << (long)ctx << L"|" << (long)bio << L") #" << endl;
 #endif
   }
 
@@ -2585,7 +2585,7 @@ bool TrapProcessor::SockTcpSslClose(StackProgram* program, long* inst, long* &op
 
 #ifdef _DEBUG
   wcout << L"# socket close: addr=" << ctx << L"|" << bio << L"("
-    << (long)ctx << L"|" << (long)bio << L") #" << endl;
+	<< (long)ctx << L"|" << (long)bio << L") #" << endl;
 #endif      
   IPSecureSocket::Close(ctx, bio, cert);
   instance[0] = instance[1] = instance[2] = instance[3] = 0;
@@ -2856,8 +2856,8 @@ bool TrapProcessor::FileOpenRead(StackProgram* program, long* inst, long* &op_st
     FILE* file = File::FileOpen(filename.c_str(), "rb");
 #ifdef _DEBUG
     wcout << L"# file open: name='" << name << L"'; instance=" << instance << L"("
-      << (long)instance << L")" << L"; addr=" << file << L"(" << (long)file
-      << L") #" << endl;
+	  << (long)instance << L")" << L"; addr=" << file << L"(" << (long)file
+	  << L") #" << endl;
 #endif
     instance[0] = (long)file;
   }
@@ -2876,8 +2876,8 @@ bool TrapProcessor::FileOpenAppend(StackProgram* program, long* inst, long* &op_
     FILE* file = File::FileOpen(filename.c_str(), "ab");
 #ifdef _DEBUG
     wcout << L"# file open: name='" << name << L"'; instance=" << instance << L"("
-      << (long)instance << L")" << L"; addr=" << file << L"(" << (long)file
-      << L") #" << endl;
+	  << (long)instance << L")" << L"; addr=" << file << L"(" << (long)file
+	  << L") #" << endl;
 #endif
     instance[0] = (long)file;
   }
@@ -2896,8 +2896,8 @@ bool TrapProcessor::FileOpenWrite(StackProgram* program, long* inst, long* &op_s
     FILE* file = File::FileOpen(filename.c_str(), "wb");
 #ifdef _DEBUG
     wcout << L"# file open: name='" << name << L"'; instance=" << instance << L"("
-      << (long)instance << L")" << L"; addr=" << file << L"(" << (long)file
-      << L") #" << endl;
+	  << (long)instance << L")" << L"; addr=" << file << L"(" << (long)file
+	  << L") #" << endl;
 #endif
     instance[0] = (long)file;
   }
@@ -2916,8 +2916,8 @@ bool TrapProcessor::FileOpenReadWrite(StackProgram* program, long* inst, long* &
     FILE* file = File::FileOpen(filename.c_str(), "w+b");
 #ifdef _DEBUG
     wcout << L"# file open: name='" << name << L"'; instance=" << instance << L"("
-      << (long)instance << L")" << L"; addr=" << file << L"(" << (long)file
-      << L") #" << endl;
+	  << (long)instance << L")" << L"; addr=" << file << L"(" << (long)file
+	  << L") #" << endl;
 #endif
     instance[0] = (long)file;
   }
