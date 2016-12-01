@@ -344,51 +344,56 @@ namespace backend {
       return declarations;
     }
     
-    void Debug() {
-      if(declarations.size() > 0) {	 
-        wcout << L"memory types:" << endl;	 
-        for(size_t i = 0; i < declarations.size(); ++i) {	 
+    void Debug(bool has_and_or) {
+      if(declarations.size() > 0) {
+	int index = has_and_or ? 1 : 0;
+	wcout << L"memory types:" << endl;	
+	if(has_and_or) {
+	  wcout << L"  0: INT_PARM" << endl;
+	}
+	
+        for(size_t i = 0; i < declarations.size(); ++i, ++index) {	 
           IntermediateDeclaration* entry = declarations[i];	 
  	 
           switch(entry->GetType()) {	
           case instructions::CHAR_PARM:	 
-            wcout << L"  " << i << L": CHAR_PARM" << endl;	 
+            wcout << L"  " << index << L": CHAR_PARM" << endl;	 
             break;
 	    
           case instructions::INT_PARM:	 
-            wcout << L"  " << i << L": INT_PARM" << endl;	 
+            wcout << L"  " << index << L": INT_PARM" << endl;	 
             break;	 
  	 
           case instructions::FLOAT_PARM:	 
-            wcout << L"  " << i << L": FLOAT_PARM" << endl;	 
+            wcout << L"  " << index << L": FLOAT_PARM" << endl;	 
             break;	 
  	 
           case instructions::BYTE_ARY_PARM:	 
-            wcout << L"  " << i << L": BYTE_ARY_PARM" << endl;	 
+            wcout << L"  " << index << L": BYTE_ARY_PARM" << endl;	 
             break;	 
  	 
           case instructions::CHAR_ARY_PARM:	 
-            wcout << L"  " << i << L": CHAR_ARY_PARM" << endl;	 
+            wcout << L"  " << index << L": CHAR_ARY_PARM" << endl;	 
             break;
 
           case instructions::INT_ARY_PARM:	 
-            wcout << L"  " << i << L": INT_ARY_PARM" << endl;	 
+            wcout << L"  " << index << L": INT_ARY_PARM" << endl;	 
             break;	 
  	 
           case instructions::FLOAT_ARY_PARM:	 
-            wcout << L"  " << i << L": FLOAT_ARY_PARM" << endl;	 
+            wcout << L"  " << index << L": FLOAT_ARY_PARM" << endl;	 
             break;	 
  	 
           case instructions::OBJ_PARM:	 
-            wcout << L"  " << i << L": OBJ_PARM" << endl;	 
+            wcout << L"  " << index << L": OBJ_PARM" << endl;	 
             break;
 	     
           case instructions::OBJ_ARY_PARM:	 
-            wcout << L"  " << i << L": OBJ_ARY_PARM" << endl;	 
+            wcout << L"  " << index << L": OBJ_ARY_PARM" << endl;	 
             break;
 	    
           case instructions::FUNC_PARM:	 
-            wcout << L"  " << i << L": FUNC_PARM" << endl;	 
+            wcout << L"  " << index << L": FUNC_PARM" << endl;	 
             break;
  	 
           default:	 
