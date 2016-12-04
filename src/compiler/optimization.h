@@ -263,6 +263,10 @@ class ItermediateOptimizer {
   // atempts to inline a method
   //
   inline int CanInlineSetterGetter(IntermediateMethod* mthd_called) {
+    if (current_method == mthd_called) {
+      return -1;
+    };
+
     // ignore interfaces
     vector<IntermediateBlock*> blocks = mthd_called->GetBlocks();
     if(blocks.size() < 1) {
