@@ -263,7 +263,7 @@ class ItermediateOptimizer {
   // atempts to inline a method
   //
   inline int CanInlineSetterGetter(IntermediateMethod* mthd_called) {
-    if (current_method == mthd_called) {
+    if(current_method == mthd_called) {
       return -1;
     };
 
