@@ -8,6 +8,7 @@ bundle CSV {
 	CSV row
 	~#
 	class CsvRow {
+		@table : CsvTable;
 		@id : Int;
 		@columns : CompareVector;
 		@read_only : Bool;
@@ -18,7 +19,8 @@ bundle CSV {
 		@param read_only true if readonly, false otherwise
 		@param columns column values
 		~#
-		New(id : Int, read_only : Bool, columns : CompareVector) {
+		New(table : CsvTable, id : Int, read_only : Bool, columns : CompareVector) {
+			@table := table;
 			@id := id;
 			@read_only := read_only;
 			@columns := columns;
@@ -38,6 +40,20 @@ bundle CSV {
 		@return row value
 		~#
 		method : public : Get(index : Int) ~ String {
+			if(index < @columns->Size()) {
+				return @columns->Get(index)->As(String);
+			};
+			
+			return Nil;
+		}
+
+		#~
+		Gets the indexed row value
+		@param index name
+		@return row value
+		~#
+		method : public : Get(name : String) ~ String {
+			index := @table->GetRowId(name);
 			if(index < @columns->Size()) {
 				return @columns->Get(index)->As(String);
 			};
@@ -289,6 +305,19 @@ bundle CSV {
 		}
 		
 		#~
+		Gets row name
+		@return row name
+		~#
+		method : public : GetRowId(name : String) ~ Int {
+			index := @header_names->Find(name)->As(IntHolder);
+			if(index <> Nil) {
+				return index->Get();
+			};
+			
+			return -1;
+		}
+
+		#~
 		Gets header names
 		@return header names
 		~#
@@ -334,7 +363,7 @@ bundle CSV {
 		method : native : ParseColumns(rows : String[]) ~ Vector {
 			parsed_rows := Vector->New();
 			each(i : rows) {
-				parsed_rows->AddBack(CsvRow->New(i, i = 0, ParseRow(rows[i]->ReplaceAll("\"\"", "ˑ"))));
+				parsed_rows->AddBack(CsvRow->New(@self, i, i = 0, ParseRow(rows[i]->ReplaceAll("\"\"", "ˑ"))));
 			};
 
 			if(rows->Size() <> parsed_rows->Size()) {		
