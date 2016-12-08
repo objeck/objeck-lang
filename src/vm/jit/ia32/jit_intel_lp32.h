@@ -1,33 +1,33 @@
 /***************************************************************************
-* JIT compiler for the x86 architecture.
-*
-* Copyright (c) 2008-2013, Randy Hollines
-* All rights reserved.
-*
-* Redistribution and use in source and binary forms, with or without 
-* modification, are permitted provided that the following conditions are met:
-*
-* - Redistributions of source code must retain the above copyright 
-* notice, this list of conditions and the following disclaimer.
-* - Redistributions in binary form must reproduce the above copyright 
-* notice, this list of conditions and the following disclaimer in 
-* the documentation and/or other materials provided with the distribution.
-* - Neither the name of the StackVM Team nor the names of its 
-* contributors may be used to endorse or promote products derived 
-* from this software without specific prior written permission.
-*
-* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS 
-* "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT 
-* LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR 
-* A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
-* OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, 
-* SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED 
-* TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-*  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF 
-* LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING 
-* NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS 
-* SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-***************************************************************************/
+ * JIT compiler for the x86 architecture.
+ *
+ * Copyright (c) 2008-2013, Randy Hollines
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without 
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * - Redistributions of source code must retain the above copyright 
+ * notice, this list of conditions and the following disclaimer.
+ * - Redistributions in binary form must reproduce the above copyright 
+ * notice, this list of conditions and the following disclaimer in 
+ * the documentation and/or other materials provided with the distribution.
+ * - Neither the name of the StackVM Team nor the names of its 
+ * contributors may be used to endorse or promote products derived 
+ * from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS 
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT 
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR 
+ * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, 
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED 
+ * TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ *  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF 
+ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING 
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS 
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ ***************************************************************************/
 
 #ifndef __REG_ALLOC_H__
 #define __REG_ALLOC_H__
@@ -102,8 +102,8 @@ namespace Runtime {
   } Register;
 
   /********************************
-  * RegisterHolder class
-  ********************************/
+   * RegisterHolder class
+   ********************************/
   class RegisterHolder {
     Register reg;
 
@@ -121,8 +121,8 @@ namespace Runtime {
   };
 
   /********************************
-  * RegInstr class
-  ********************************/
+   * RegInstr class
+   ********************************/
   class RegInstr {
     RegType type;
     long operand;
@@ -229,15 +229,15 @@ namespace Runtime {
   };
 
   /********************************
-  * prototype for jit function
-  ********************************/
+   * prototype for jit function
+   ********************************/
   typedef int32_t (*jit_fun_ptr)(int32_t cls_id, int32_t mthd_id, int32_t* cls_mem, 
 				 int32_t* inst, int32_t* op_stack, int32_t *stack_pos, 
 				 StackFrame** call_stack, long* call_stack_pos);
 
   /********************************
-  * JitCompilerIA32 class
-  ********************************/
+   * JitCompilerIA32 class
+   ********************************/
   class JitCompilerIA32 {
     static StackProgram* program;
     deque<RegInstr*> working_stack;
@@ -278,7 +278,7 @@ namespace Runtime {
     void ProcessFloatCalculation(StackInstr* instruction);
     void ProcessReturn(int32_t params = -1);
     void ProcessStackCallback(int32_t instr_id, StackInstr* instr, 
-      int32_t &instr_index, int32_t params);
+			      int32_t &instr_index, int32_t params);
     void ProcessIntCallParameter();
     void ProcessFloatCallParameter(); 
     void ProcessFunctionCallParameter();
@@ -563,8 +563,8 @@ namespace Runtime {
     }
 
     /***********************************
-    * Check for 'Nil' dereferencing
-    **********************************/
+     * Check for 'Nil' dereferencing
+     **********************************/
     inline void CheckNilDereference(Register reg) {
       const int32_t offset = 14;
       cmp_imm_reg(0, reg);
@@ -579,8 +579,8 @@ namespace Runtime {
     }
 
     /***********************************
-    * Checks array bounds
-    **********************************/
+     * Checks array bounds
+     **********************************/
     inline void CheckArrayBounds(Register reg, Register max_reg) {
       const int32_t offset = 14;
 
@@ -608,8 +608,8 @@ namespace Runtime {
     }
 
     /***********************************
-    * Gets an avaiable register from
-    ***********************************/
+     * Gets an avaiable register from
+     ***********************************/
     RegisterHolder* GetRegister(bool use_aux = true) {
       RegisterHolder* holder;
       if(aval_regs.empty()) {
@@ -634,7 +634,7 @@ namespace Runtime {
       }
 #ifdef _VERBOSE
       wcout << L"\t * allocating " << GetRegisterName(holder->GetRegister())
-        << L" *" << endl;
+	    << L" *" << endl;
 #endif
 
       return holder;
@@ -644,7 +644,7 @@ namespace Runtime {
     void ReleaseRegister(RegisterHolder* h) {
 #ifdef _VERBOSE
       wcout << L"\t * releasing " << GetRegisterName(h->GetRegister())
-        << L" *" << endl;
+	    << L" *" << endl;
 #endif
 
 #ifdef _DEBUG
@@ -684,7 +684,7 @@ namespace Runtime {
       }
 #ifdef _VERBOSE
       wcout << L"\t * allocating " << GetRegisterName(holder->GetRegister())
-        << L" *" << endl;
+	    << L" *" << endl;
 #endif
 
       return holder;
@@ -701,7 +701,7 @@ namespace Runtime {
 
 #ifdef _VERBOSE
       wcout << L"\t * releasing: " << GetRegisterName(h->GetRegister())
-        << L" * " << endl;
+	    << L" * " << endl;
 #endif
       aval_xregs.push_back(h);
       used_xregs.remove(h);
@@ -848,8 +848,8 @@ namespace Runtime {
 
     // Process call backs from ASM code
     static void StackCallback(const int32_t instr_id, StackInstr* instr, const int32_t cls_id, 
-      const int32_t mthd_id, int32_t* inst, int32_t* op_stack, int32_t *stack_pos, 
-      StackFrame** call_stack, long* call_stack_pos, const int32_t ip) {
+			      const int32_t mthd_id, int32_t* inst, int32_t* op_stack, int32_t *stack_pos, 
+			      StackFrame** call_stack, long* call_stack_pos, const int32_t ip) {
 #ifdef _DEBUG
       wcout << L"Stack Call: instr=" << instr_id
 	    << L", oper_1=" << instr->GetOperand() << L", oper_2=" << instr->GetOperand2() 
@@ -990,8 +990,8 @@ namespace Runtime {
       case OBJ_TYPE_OF: {
 	long* mem = (long*)PopInt(op_stack, stack_pos);
 	long* result = MemoryManager::ValidObjectCast(mem, instr->GetOperand(),
-								  program->GetHierarchy(),
-								  program->GetInterfaces());
+						      program->GetHierarchy(),
+						      program->GetInterfaces());
 	if(result) {
 	  PushInt(op_stack, stack_pos, 1);
 	}
@@ -1008,7 +1008,7 @@ namespace Runtime {
 	wcout << L"jit oper: OBJ_INST_CAST: from=" << mem << L", to=" << to_id << endl; 
 #endif	
 	int32_t result = (int32_t)MemoryManager::ValidObjectCast((long*)mem, to_id, 
-									     program->GetHierarchy(), program->GetInterfaces());
+								 program->GetHierarchy(), program->GetInterfaces());
 	if(!result && mem) {
 	  StackClass* to_cls = MemoryManager::GetClass((long*)mem);	  
 	  wcerr << L">>> Invalid object cast: '" << (to_cls ? to_cls->GetName() : L"?" )  
@@ -1263,13 +1263,13 @@ namespace Runtime {
       CheckNilDereference(array_holder->GetRegister());
 
       /* Algorithm:
-      int32_t index = PopInt();
-      const int32_t dim = instr->GetOperand();
+	 int32_t index = PopInt();
+	 const int32_t dim = instr->GetOperand();
 
-      for(int i = 1; i < dim; i++) {
-      index *= array[i];
-      index += PopInt();
-      }
+	 for(int i = 1; i < dim; i++) {
+	 index *= array[i];
+	 index += PopInt();
+	 }
       */
 
       delete holder;
@@ -1304,7 +1304,7 @@ namespace Runtime {
       for(int i = 1; i < dim; i++) {
         // index *= array[i];
         mul_mem_reg((i + 2) * sizeof(int32_t), array_holder->GetRegister(), 
-          index_holder->GetRegister());
+		    index_holder->GetRegister());
         if(holder) {
           delete holder;
           holder = NULL;
@@ -1319,7 +1319,7 @@ namespace Runtime {
 
         case REG_INT:
           add_reg_reg(holder->GetRegister()->GetRegister(), 
-            index_holder->GetRegister());
+		      index_holder->GetRegister());
           break;
 
         case MEM_INT:
@@ -1424,16 +1424,16 @@ namespace Runtime {
           // blocks depending upon type
           if(last_id != id) {
             if(instr->GetType() == LOAD_LOCL_INT_VAR || 
-              instr->GetType() == LOAD_CLS_INST_INT_VAR || 
-              instr->GetType() == STOR_LOCL_INT_VAR ||
-              instr->GetType() == STOR_CLS_INST_INT_VAR ||
-              instr->GetType() == COPY_LOCL_INT_VAR ||
-              instr->GetType() == COPY_CLS_INST_INT_VAR) {
-                index -= sizeof(int32_t);
+	       instr->GetType() == LOAD_CLS_INST_INT_VAR || 
+	       instr->GetType() == STOR_LOCL_INT_VAR ||
+	       instr->GetType() == STOR_CLS_INST_INT_VAR ||
+	       instr->GetType() == COPY_LOCL_INT_VAR ||
+	       instr->GetType() == COPY_CLS_INST_INT_VAR) {
+	      index -= sizeof(int32_t);
             }
             else if(instr->GetType() == LOAD_FUNC_VAR || 
-              instr->GetType() == STOR_FUNC_VAR) {
-                index -= sizeof(int32_t) * 2;
+		    instr->GetType() == STOR_FUNC_VAR) {
+	      index -= sizeof(int32_t) * 2;
             }
             else {
               index -= sizeof(double);
@@ -1445,11 +1445,11 @@ namespace Runtime {
 #ifdef _DEBUG
         if(instr->GetOperand2() == INST || instr->GetOperand2() == CLS) {
           wcout << L"native memory: index=" << instr->GetOperand() << L"; jit index="
-            << instr->GetOperand3() << endl;
+		<< instr->GetOperand3() << endl;
         }
         else {
           wcout << L"native stack: index=" << instr->GetOperand() << L"; jit index="
-            << instr->GetOperand3() << endl;
+		<< instr->GetOperand3() << endl;
         }
 #endif
       }
@@ -1533,11 +1533,11 @@ namespace Runtime {
       compile_success = true;
 
       /*
-#ifdef _WIN32
-      EnterCriticalSection(&cm->jit_cs);
-#else
-      pthread_mutex_lock(&cm->jit_mutex);
-#endif
+	#ifdef _WIN32
+	EnterCriticalSection(&cm->jit_cs);
+	#else
+	pthread_mutex_lock(&cm->jit_mutex);
+	#endif
       */
 
       if(!cm->GetNativeCode()) {
@@ -1548,8 +1548,8 @@ namespace Runtime {
         int32_t mthd_id = method->GetId();
 #ifdef _DEBUG
         wcout << L"---------- Compiling Native Code: method_id=" << cls_id << L"," 
-          << mthd_id << L"; mthd_name='" << method->GetName() << L"'; params=" 
-          << method->GetParamCount() << L" ----------" << endl;
+	      << mthd_id << L"; mthd_name='" << method->GetName() << L"'; params=" 
+	      << method->GetParamCount() << L" ----------" << endl;
 #endif
 
         code_buf_max = OUR_PAGE_SIZE;
@@ -1612,18 +1612,18 @@ namespace Runtime {
         for(iter = jump_table.begin(); iter != jump_table.end(); ++iter) {
           StackInstr* instr = iter->second;
           const int32_t src_offset = iter->first;
-		  const int32_t dest_index = method->GetLabelIndex(instr->GetOperand()) + 1;
-		  const int32_t dest_offset = method->GetInstruction(dest_index)->GetOffset();
-		  const int32_t offset = dest_offset - src_offset - 4;
+	  const int32_t dest_index = method->GetLabelIndex(instr->GetOperand()) + 1;
+	  const int32_t dest_offset = method->GetInstruction(dest_index)->GetOffset();
+	  const int32_t offset = dest_offset - src_offset - 4;
           memcpy(&code[src_offset], &offset, 4); 
 #ifdef _DEBUG
           wcout << L"jump update: src=" << src_offset 
-            << L"; dest=" << dest_offset << endl;
+		<< L"; dest=" << dest_offset << endl;
 #endif
         }
 #ifdef _DEBUG
         wcout << L"Caching JIT code: actual=" << code_index 
-          << L", buffer=" << code_buf_max << L" byte(s)" << endl;
+	      << L", buffer=" << code_buf_max << L" byte(s)" << endl;
 #endif
         // store compiled code
 #ifndef _WIN32
@@ -1639,11 +1639,11 @@ namespace Runtime {
       }
 
       /*
-#ifdef _WIN32
-      LeaveCriticalSection(&cm->jit_cs);
-#else
-      pthread_mutex_unlock(&cm->jit_mutex);
-#endif
+	#ifdef _WIN32
+	LeaveCriticalSection(&cm->jit_cs);
+	#else
+	pthread_mutex_unlock(&cm->jit_mutex);
+	#endif
       */
 
       return compile_success;
@@ -1651,8 +1651,8 @@ namespace Runtime {
   };    
 
   /********************************
-  * JitExecutor class
-  ********************************/
+   * JitExecutor class
+   ********************************/
   class JitExecutor {
     static StackProgram* program;
     StackMethod* method;
@@ -1682,9 +1682,9 @@ namespace Runtime {
 
 #ifdef _DEBUG
       wcout << L"=== MTHD_CALL (native): id=" << cls_id << L"," << mthd_id 
-        << L"; name='" << method->GetName() << L"'; self=" << inst << L"(" << (long)inst 
-        << L"); stack=" << op_stack << L"; stack_pos=" << (*stack_pos) << L"; params=" 
-        << method->GetParamCount() << L" ===" << endl;
+	    << L"; name='" << method->GetName() << L"'; self=" << inst << L"(" << (long)inst 
+	    << L"); stack=" << op_stack << L"; stack_pos=" << (*stack_pos) << L"; params=" 
+	    << method->GetParamCount() << L" ===" << endl;
       assert((*stack_pos) >= method->GetParamCount());
 #endif
       
