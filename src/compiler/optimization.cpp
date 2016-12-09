@@ -643,7 +643,6 @@ IntermediateBlock* ItermediateOptimizer::InlineMethod(IntermediateBlock* inputs)
       IntermediateMethod* mthd_called = program->GetClass(instr->GetOperand())->GetMethod(instr->GetOperand2());
       // checked called method to determine if it can be inlined
       if(CanInlineMethod(mthd_called, inlined_mthds, lbl_jmp_offsets)) {
-        // calculate local offset, +2 in case last variable is a double (for 32-bit) 
         int local_instr_offset = GetLastLocalOffset(current_method, outputs) + 1;
 	if(current_method->HasAndOr() || mthd_called->HasAndOr()) {
 	  local_instr_offset++;
