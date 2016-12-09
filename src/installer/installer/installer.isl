@@ -4975,9 +4975,9 @@ UwBpAG4AZwBsAGUASQBtAGEAZwBlAAEARQB4AHAAcgBlAHMAcwA=
 		<row><td>PROGMSG_IIS_ROLLBACKAPPPOOLS</td><td>##IDS_PROGMSG_IIS_ROLLBACKAPPPOOLS##</td><td/></row>
 		<row><td>PROGMSG_IIS_ROLLBACKVROOTS</td><td>##IDS_PROGMSG_IIS_ROLLBACKVROOTS##</td><td/></row>
 		<row><td>PROGMSG_IIS_ROLLBACKWEBSERVICEEXTENSIONS</td><td>##IDS_PROGMSG_IIS_ROLLBACKWEBSERVICEEXTENSIONS##</td><td/></row>
-		<row><td>ProductCode</td><td>{AD65B90C-70CE-44E5-B2B7-F0EF3174C00A}</td><td/></row>
+		<row><td>ProductCode</td><td>{FB24E664-6DA7-4824-ACCF-263A9DBD7782}</td><td/></row>
 		<row><td>ProductName</td><td>Objeck</td><td/></row>
-		<row><td>ProductVersion</td><td>3.5.3</td><td/></row>
+		<row><td>ProductVersion</td><td>3.5.5</td><td/></row>
 		<row><td>ProgressType0</td><td>install</td><td/></row>
 		<row><td>ProgressType1</td><td>Installing</td><td/></row>
 		<row><td>ProgressType2</td><td>installed</td><td/></row>
