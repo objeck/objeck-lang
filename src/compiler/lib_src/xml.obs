@@ -1411,6 +1411,7 @@ bundle XML {
 						if(i < max & in->Get(i) = 't') {
 							i += 1;
 							if(i < max & in->Get(i) = ';') {
+								i += 1;
 								out->Append('<');
 							}
 							else {
@@ -1433,6 +1434,7 @@ bundle XML {
 						if(i < max & in->Get(i) = 't') {
 							i += 1;
 							if(i < max & in->Get(i) = ';') {
+								i += 1;
 								out->Append('>');
 							}
 							else {
@@ -1457,6 +1459,7 @@ bundle XML {
 							if(i < max & in->Get(i) = 'p') {
 								i += 1;
 								if(i < max & in->Get(i) = ';') {
+									i += 1;
 									out->Append('&');
 								}
 								else {
@@ -1514,6 +1517,7 @@ bundle XML {
 								if(i < max & in->Get(i) = 't') {
 									i += 1;
 									if(i < max & in->Get(i) = ';') {
+										i += 1;
 										out->Append('"');
 									}
 									else {
@@ -1544,7 +1548,7 @@ bundle XML {
 							out->Append(c);
 						};
 					}
-					# &quot;
+					# other
 					else if(i < max & in->Get(i) = '#') {
 						i += 1;
 						if(i < max & in->Get(i) = 'x') {

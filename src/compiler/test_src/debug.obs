@@ -1,12 +1,8 @@
-use HTTP;
+use XML;
 
 class HttpsTest {
 	function : Main(args : String[]) ~ Nil {
-		client := HttpsClient->New();
-		lines := client->Get("https://www.google.com");
-		each(i : lines) {
-			lines->Get(i)->As(String)->Print();
-		};
-		client->GetCert()->PrintLine();
+		in := "Rockstar Games-Platform-RDR,Social &lt;&gt; Club Svcs,Vortex&amp;Americas-Carlsbad-Renewal 2016";
+		XmlElement->DecodeString(in)->PrintLine();
 	}
 }
