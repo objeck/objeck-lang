@@ -3968,7 +3968,7 @@ bundle System.IO {
 
 		#~
 		Serializes base objects
-		@param s value to serialize
+		@param o value to serialize
 		~#
 		method : public : Write(o : Base[]) ~ Nil {
 			SERL_OBJ_ARY;

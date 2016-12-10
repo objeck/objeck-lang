@@ -15,6 +15,7 @@ bundle CSV {
 		
 		#~
 		Constructor
+		@param table table that has row
 		@param id row id
 		@param read_only true if readonly, false otherwise
 		@param columns column values
@@ -49,7 +50,7 @@ bundle CSV {
 
 		#~
 		Gets the indexed row value
-		@param index name
+		@param name name
 		@return row value
 		~#
 		method : public : Get(name : String) ~ String {
@@ -306,7 +307,8 @@ bundle CSV {
 		
 		#~
 		Gets row name
-		@return row name
+		@param name name
+		@return row index
 		~#
 		method : public : GetRowId(name : String) ~ Int {
 			index := @header_names->Find(name)->As(IntHolder);
