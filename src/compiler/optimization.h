@@ -156,13 +156,13 @@ class ItermediateOptimizer {
       case instructions::LOAD_FLOAT_VAR:
       case instructions::STOR_FLOAT_VAR:
       case instructions::COPY_FLOAT_VAR:
-	// if the method/function is in another class it must only have local references
-	if(mthd_called_instr->GetOperand2() != LOCL) {
-	  return false;
-	}
-	break;
+        // if the method/function is in another class it must only have local references
+        if(mthd_called_instr->GetOperand2() != LOCL) {
+          return false;
+        }
+        break;
 
-	// ignore special instructions
+        // ignore special instructions
       case instructions::TRAP:
       case instructions::TRAP_RTRN:
       case instructions::CPY_BYTE_ARY:
@@ -181,31 +181,31 @@ class ItermediateOptimizer {
       case instructions::LIB_MTHD_CALL:
       case instructions::LIB_OBJ_INST_CAST:
       case instructions::LIB_FUNC_DEF:
-	return false;
+        return false;
 
       case instructions::LOAD_CLS_MEM:
-	if(mthd_called->GetClass() != current_method->GetClass()) {
-	  return false;
-	}
-	break;
+        if(mthd_called->GetClass() != current_method->GetClass()) {
+          return false;
+        }
+        break;
 	
-	// look for conflicting jump offsets
+        // look for conflicting jump offsets
       case instructions::LBL:
       case instructions::JMP:
-	if(lbl_jmp_offsets.find(mthd_called_instr->GetOperand()) != lbl_jmp_offsets.end()) {
-	  return false;
-	}
-	break;
+        if(lbl_jmp_offsets.find(mthd_called_instr->GetOperand()) != lbl_jmp_offsets.end()) {
+          return false;
+        }
+        break;
 
       case instructions::RTRN:
-	if(found_rtrn) {
-	  return false;
-	}
-	found_rtrn = true;
-	break;
+        if(found_rtrn) {
+          return false;
+        }
+        found_rtrn = true;
+        break;
 	
       default:
-	break;
+        break;
       }
     }
     
@@ -279,57 +279,57 @@ class ItermediateOptimizer {
       // getter instance pattern
       //
       if(instrs.size() == 3) {
-	if(instrs[0]->GetType() == LOAD_INST_MEM &&
-	   instrs[1]->GetOperand2() == INST && (instrs[1]->GetType() == LOAD_INT_VAR || 
-						instrs[1]->GetType() == LOAD_FLOAT_VAR) &&
-	   instrs[2]->GetType() == RTRN) {
-	  return 0;
-	}	
-	return -1;
+        if(instrs[0]->GetType() == LOAD_INST_MEM &&
+           instrs[1]->GetOperand2() == INST && (instrs[1]->GetType() == LOAD_INT_VAR || 
+                                                instrs[1]->GetType() == LOAD_FLOAT_VAR) &&
+           instrs[2]->GetType() == RTRN) {
+          return 0;
+        }	
+        return -1;
       }
       //
       // getter literal pattern
       //
       else if(instrs.size() == 2) {
-	if((instrs[0]->GetType() == LOAD_INT_LIT || instrs[0]->GetType() == LOAD_FLOAT_LIT) &&
-	   instrs[1]->GetType() == RTRN) {
-	  return 1;
-	}	
-	return -1;
+        if((instrs[0]->GetType() == LOAD_INT_LIT || instrs[0]->GetType() == LOAD_FLOAT_LIT) &&
+           instrs[1]->GetType() == RTRN) {
+          return 1;
+        }	
+        return -1;
       }
     }
     else if(mthd_called->GetNumParams() == 1) {
       vector<IntermediateInstruction*> instrs = blocks[0]->GetInstructions();      
       if(instrs.size() == 5) {
-	//
-	// character print pattern
-	//
+        //
+        // character print pattern
+        //
       	if(instrs[0]->GetType() == STOR_INT_VAR && instrs[0]->GetOperand() == 0 && instrs[0]->GetOperand2() == LOCL &&
-	   instrs[1]->GetType() == LOAD_INT_VAR && instrs[1]->GetOperand() == 0 && instrs[1]->GetOperand2() == LOCL &&
-	   instrs[2]->GetType() == LOAD_INT_LIT && instrs[2]->GetOperand() == -3984 &&
-	   instrs[3]->GetType() == TRAP && instrs[3]->GetOperand() == 2  &&
-	   instrs[4]->GetType() == RTRN) {
-	  return 2;
-	}
-	//
-	// setter instance pattern
-	//
-	else if(instrs[0]->GetType() == STOR_INT_VAR && instrs[0]->GetOperand() == 0 && instrs[0]->GetOperand2() == LOCL &&
-		instrs[1]->GetType() == LOAD_INT_VAR && instrs[1]->GetOperand() == 0 && instrs[1]->GetOperand2() == LOCL &&
-		instrs[2]->GetType() == LOAD_INST_MEM &&
-		instrs[3]->GetType() == STOR_INT_VAR && instrs[3]->GetOperand2() == INST &&
-		instrs[4]->GetType() == RTRN) {
-	  return 3;
-	}
-	else if(instrs[0]->GetType() == STOR_FLOAT_VAR && instrs[0]->GetOperand() == 0 && instrs[0]->GetOperand2() == LOCL &&
-		instrs[1]->GetType() == LOAD_FLOAT_VAR && instrs[1]->GetOperand() == 0 && instrs[1]->GetOperand2() == LOCL &&
-		instrs[2]->GetType() == LOAD_INST_MEM &&
-		instrs[3]->GetType() == STOR_FLOAT_VAR && instrs[3]->GetOperand2() == INST &&
-		instrs[4]->GetType() == RTRN) {
-	  return 3;
-	}
+           instrs[1]->GetType() == LOAD_INT_VAR && instrs[1]->GetOperand() == 0 && instrs[1]->GetOperand2() == LOCL &&
+           instrs[2]->GetType() == LOAD_INT_LIT && instrs[2]->GetOperand() == -3984 &&
+           instrs[3]->GetType() == TRAP && instrs[3]->GetOperand() == 2  &&
+           instrs[4]->GetType() == RTRN) {
+          return 2;
+        }
+        //
+        // setter instance pattern
+        //
+        else if(instrs[0]->GetType() == STOR_INT_VAR && instrs[0]->GetOperand() == 0 && instrs[0]->GetOperand2() == LOCL &&
+                instrs[1]->GetType() == LOAD_INT_VAR && instrs[1]->GetOperand() == 0 && instrs[1]->GetOperand2() == LOCL &&
+                instrs[2]->GetType() == LOAD_INST_MEM &&
+                instrs[3]->GetType() == STOR_INT_VAR && instrs[3]->GetOperand2() == INST &&
+                instrs[4]->GetType() == RTRN) {
+          return 3;
+        }
+        else if(instrs[0]->GetType() == STOR_FLOAT_VAR && instrs[0]->GetOperand() == 0 && instrs[0]->GetOperand2() == LOCL &&
+                instrs[1]->GetType() == LOAD_FLOAT_VAR && instrs[1]->GetOperand() == 0 && instrs[1]->GetOperand2() == LOCL &&
+                instrs[2]->GetType() == LOAD_INST_MEM &&
+                instrs[3]->GetType() == STOR_FLOAT_VAR && instrs[3]->GetOperand2() == INST &&
+                instrs[4]->GetType() == RTRN) {
+          return 3;
+        }
 
-	return -1;
+        return -1;
       }
     }
     
