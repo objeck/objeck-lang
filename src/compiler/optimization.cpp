@@ -644,9 +644,9 @@ IntermediateBlock* ItermediateOptimizer::InlineMethod(IntermediateBlock* inputs)
       // checked called method to determine if it can be inlined
       if(CanInlineMethod(mthd_called, inlined_mthds, lbl_jmp_offsets)) {
         int local_instr_offset = GetLastLocalOffset(current_method, outputs) + 1;
-	if(current_method->HasAndOr() || mthd_called->HasAndOr()) {
-	  local_instr_offset++;
-	}
+        if(current_method->HasAndOr() || mthd_called->HasAndOr()) {
+          local_instr_offset++;
+        }
         
         // ajust local space
         current_method->SetSpace(current_method->GetSpace() + sizeof(INT_VALUE) * 2 + mthd_called->GetSpace());
@@ -659,10 +659,10 @@ IntermediateBlock* ItermediateOptimizer::InlineMethod(IntermediateBlock* inputs)
         outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, STOR_INT_VAR,
                                                                                  local_instr_offset - 1, LOCL));
 
-	current_method->GetEntries()->AddParameter(new IntermediateDeclaration(L"", OBJ_PARM));
-	if(mthd_called->HasAndOr()) {
-	  current_method->GetEntries()->AddParameter(new IntermediateDeclaration(L"", INT_PARM));
-	}
+        current_method->GetEntries()->AddParameter(new IntermediateDeclaration(L"", OBJ_PARM));
+        if(mthd_called->HasAndOr()) {
+          current_method->GetEntries()->AddParameter(new IntermediateDeclaration(L"", INT_PARM));
+        }
 	
         vector<IntermediateDeclaration*> entries = mthd_called->GetEntries()->GetParameters();
         for(size_t j = 0; j < entries.size(); ++j) {
@@ -681,8 +681,8 @@ IntermediateBlock* ItermediateOptimizer::InlineMethod(IntermediateBlock* inputs)
           case STOR_FLOAT_VAR:
           case COPY_FLOAT_VAR:
             if(mthd_called_instr->GetOperand2() == LOCL) {	      
-	      outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, mthd_called_instr->GetType(),
-										       mthd_called_instr->GetOperand() + local_instr_offset, LOCL));	
+              outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, mthd_called_instr->GetType(),
+                                                                                       mthd_called_instr->GetOperand() + local_instr_offset, LOCL));	
             }
             else if(mthd_called_instr->GetOperand2() == INST) {
               outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, mthd_called_instr->GetType(),
