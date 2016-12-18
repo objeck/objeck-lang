@@ -43,11 +43,11 @@ class Test {
 					# Handle events on queue
 					while( Core->PollEvent( e ) <> 0 ) {
 						# User requests quit
-						if( e->Type() = Flags->SdlQuit() ) {
+						if( e->Type() = Flags->SDL_QUIT->As(Int) ) {
 							quit := true;
 						}
 						# User presses a key
-						else if( e->Type() = Flags->SdlKeyDown() ) {
+						else if( e->Type() = Flags->SDL_KEY_DOWN->As(Int) ) {
 							# Select surfaces based on key press
 							select( e->GetKeyboardEvent()->GetKeySymbol() )
 							{							
@@ -91,14 +91,14 @@ class Test {
 		success := true;
 		
 		# Initialize SDL
-		if(Core->Init(Flags->SdlInitVideo()) < 0) {
+		if(Core->Init(Flags->SDL_INIT_VIDEO->As(Int)) < 0) {
 			"SDL could not initialize!"->ErrorLine();
 			success := false;
 		}
 		else {
 			# Create window
-			@window := Window->New( "SDL Tutorial", Flags->SdlWindowposUndefined(), 
-				Flags->SdlWindowposUndefined(), 640, 480, Flags->SdlWindowShown());
+			@window := Window->New( "SDL Tutorial", Flags->SDL_WINDOW_POS_UNDEFINED->As(Int), 
+				Flags->SDL_WINDOW_POS_UNDEFINED->As(Int), 640, 480, Flags->SDL_WINDOW_SHOWN->As(Int));
 			if(<>@window->Ok())	{
 				"Window could not be created!"->ErrorLine();
 				success := false;

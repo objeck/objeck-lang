@@ -212,53 +212,6 @@ class ItermediateOptimizer {
     return true;
   }
   
-  int GetLastLocalOffset(IntermediateMethod* mthd, IntermediateBlock* outputs) {
-    vector<IntermediateBlock*> blocks = mthd->GetBlocks();
-    vector<IntermediateInstruction*> instrs = blocks[0]->GetInstructions();
-    
-    int offset = 0;
-    for(size_t i = 0; i < instrs.size(); ++i) {
-      IntermediateInstruction* instr = instrs[i];
-      switch(instr->GetType()) {
-      case LOAD_INT_VAR:
-      case STOR_INT_VAR:
-      case COPY_INT_VAR:
-      case LOAD_FLOAT_VAR:
-      case STOR_FLOAT_VAR:
-      case COPY_FLOAT_VAR:
-        if(instr->GetOperand2() == LOCL && instr->GetOperand() > offset) {
-          offset = instr->GetOperand();
-        }
-        break;
-
-      default:
-        break;
-      }
-    }
-    
-    instrs = outputs->GetInstructions();    
-    for(size_t i = 0; i < instrs.size(); ++i) {
-      IntermediateInstruction* instr = instrs[i];
-      switch(instr->GetType()) {
-      case LOAD_INT_VAR:
-      case STOR_INT_VAR:
-      case COPY_INT_VAR:
-      case LOAD_FLOAT_VAR:
-      case STOR_FLOAT_VAR:
-      case COPY_FLOAT_VAR:
-        if(instr->GetOperand2() == LOCL && instr->GetOperand() > offset) {
-          offset = instr->GetOperand();
-        }
-        break;
-
-      default:
-        break;
-      }
-    }
-
-    return offset;
-  }
-  
   //
   // atempts to inline a method
   //

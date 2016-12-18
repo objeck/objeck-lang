@@ -236,7 +236,6 @@ extern "C" {
     APITools_SetIntValue(context, 0, return_value);
   }
 
-/*
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
@@ -246,7 +245,6 @@ extern "C" {
     const int return_value = SDL_GetColorKey(surface, &key);
     APITools_SetIntValue(context, 0, return_value);
   }
-*/
 
 #ifdef _WIN32
   __declspec(dllexport)
@@ -265,10 +263,10 @@ extern "C" {
 #endif
   void sdl_surface_get_color_mod(VMContext& context) {
     SDL_Surface* surface = (SDL_Surface*)APITools_GetIntValue(context, 1);
-    const int r = APITools_GetIntValue(context, 2);
-    const int g = APITools_GetIntValue(context, 3);
-    const int b = APITools_GetIntValue(context, 4);
-    const int return_value = SDL_GetSurfaceColorMod(surface, r, g, b);
+    int r = APITools_GetIntValue(context, 2);
+    int g = APITools_GetIntValue(context, 3);
+    int b = APITools_GetIntValue(context, 4);
+    int return_value = SDL_GetSurfaceColorMod(surface, (Uint8)r, (Uint8)g, (Uint8)b);
     APITools_SetIntValue(context, 0, return_value);
   }
 

@@ -643,11 +643,11 @@ IntermediateBlock* ItermediateOptimizer::InlineMethod(IntermediateBlock* inputs)
       IntermediateMethod* mthd_called = program->GetClass(instr->GetOperand())->GetMethod(instr->GetOperand2());
       // checked called method to determine if it can be inlined
       if(CanInlineMethod(mthd_called, inlined_mthds, lbl_jmp_offsets)) {
-        int local_instr_offset = GetLastLocalOffset(current_method, outputs) + 1;
+        int local_instr_offset = current_method->GetEntries()->GetParameters().size() + 1; // GetLastLocalOffset(current_method, outputs) + 2;
         if(current_method->HasAndOr() || mthd_called->HasAndOr()) {
           local_instr_offset++;
         }
-        
+
         // ajust local space
         current_method->SetSpace(current_method->GetSpace() + sizeof(INT_VALUE) * 2 + mthd_called->GetSpace());
 	
