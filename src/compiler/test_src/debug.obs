@@ -1,8 +1,25 @@
-use XML;
-
-class HttpsTest {
+class Test {
 	function : Main(args : String[]) ~ Nil {
-		in := "Rockstar Games-Platform-RDR,Social &lt;&gt; Club Svcs,Vortex&amp;Americas-Carlsbad-Renewal 2016";
-		XmlElement->DecodeString(in)->PrintLine();
+		t := Test->New();
+		t->Go();
+	}
+	
+	New() {
+	}
+	
+	method : public : Go() ~ Nil {
+		value := F0(2, 3);
+		value->PrintLine();
+	}
+	
+	method : F0(a : Int, b : Int) ~ Int {
+		c0 := false;
+		c1 := false;
+		
+		if(c0 | c1) {
+			return a + b;
+		};
+		
+		return 7;
 	}
 }

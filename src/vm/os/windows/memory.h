@@ -43,7 +43,7 @@
 // when this limit is met the garbage collect threshold
 // is lowered
 #define COLLECTED_COUNT 8
-#define POOL_SIZE 1024
+#define POOL_SIZE 512
 
 // memory meta data tags
 #define EXTRA_BUF_SIZE 4
