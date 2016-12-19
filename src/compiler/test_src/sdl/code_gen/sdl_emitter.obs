@@ -203,7 +203,7 @@ bundle CodeGen {
 			};
 			
 			buffer += "\t}\n";
-##			buffer->PrintLine();
+			buffer->PrintLine();
 		}
 		
 		method : EmitObjeckCode(parsed_method : ParsedFunction) ~ Nil {
@@ -307,7 +307,7 @@ bundle CodeGen {
 			};
 						
 			buffer += "}\n";
-##			buffer->PrintLine();
+			buffer->PrintLine();
 		}
 	}
 }

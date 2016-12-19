@@ -47,8 +47,6 @@ bundle CodeGen {
 			
 			while(<>Match(Token->Type->EOS)) {
 				parsed_function := ParseFunction();
-foo := Token()->GetType()->ToString();
-"@@@ {$foo} @@@"->PrintLine();
 				if(parsed_function <> Nil) {
 					functions->AddBack(parsed_function);
 				};
@@ -192,7 +190,6 @@ foo := Token()->GetType()->ToString();
 					return Nil;
 				};
 				parsed_function_name := Token()->GetValue();
-"### {$parsed_function_name} ###"->PrintLine();
 				Next();
 				
 				## parameters

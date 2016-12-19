@@ -53,293 +53,93 @@ extern "C" {
   void unload_lib() {
   }
   
+  //
+  // SDL Core
+  //
 #ifdef _WIN32
-  __declspec(dllexport) 
+  __declspec(dllexport)
 #endif
-  // core
-  void sdl_init(VMContext& context) {
-    const int flag = APITools_GetIntValue(context, 1);
-    APITools_SetIntValue(context, 0, SDL_Init(flag));
+  void sdl_core_init(VMContext& context) {
+    const int flags = APITools_GetIntValue(context, 1);
+    const int return_value = SDL_Init(flags);
+    APITools_SetIntValue(context, 0, return_value);
   }
 
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  // core
-  void sdl_get_error(VMContext& context) {
-    const char* value = SDL_GetError();
-    const wstring out = BytesToUnicode(value);
-    APITools_SetStringValue(context, 0, out);
+  void sdl_core_init_sub_system(VMContext& context) {
+    const int flags = APITools_GetIntValue(context, 1);
+    const int return_value = SDL_InitSubSystem(flags);
+    APITools_SetIntValue(context, 0, return_value);
   }
 
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void sdl_quit(VMContext& context) {
+  void sdl_core_quit_sub_system(VMContext& context) {
+    const int flags = APITools_GetIntValue(context, 0);
+    SDL_QuitSubSystem(flags);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_core_was_init(VMContext& context) {
+    const int flags = APITools_GetIntValue(context, 1);
+    const int return_value = SDL_WasInit(flags);
+    APITools_SetIntValue(context, 0, return_value);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_core_quit(VMContext& context) {
     SDL_Quit();
   }
 
+  //
+  // Hints
+  //
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void update_window_surface(VMContext& context) {
-    const long* src_window = APITools_GetObjectValue(context, 1);
-    if(!src_window) {
-      APITools_SetIntValue(context, 0, -1);
-    }
-    else {
-      APITools_SetIntValue(context, 0, SDL_UpdateWindowSurface((SDL_Window*)src_window[0]));
-    }
-  }
+  void sdl_hints_set_hint_with_priority(VMContext& context) {
+    const wstring w_name = APITools_GetStringValue(context, 1);
+    const string name(w_name.begin(), w_name.end());
 
-#ifdef _WIN32
-  __declspec(dllexport)
-#endif
-  // window
-  void blit_surface(VMContext& context) {
-    const long* src_obj = APITools_GetObjectValue(context, 1);
-    const long* srcrect_obj = APITools_GetObjectValue(context, 2);
-    const long* dst_obj = APITools_GetObjectValue(context, 3);
-    const long* dstrect_obj = APITools_GetObjectValue(context, 4);
+    const wstring w_value = APITools_GetStringValue(context, 2);
+    const string value(w_value.begin(), w_value.end());
 
-    if(!src_obj || !dst_obj) {
-      APITools_SetIntValue(context, 0, -1);
-    }
-    else {
-      const int value = SDL_BlitSurface((SDL_Surface*)src_obj[0], srcrect_obj ? (SDL_Rect*)srcrect_obj[0] : NULL,
-                                        (SDL_Surface*)dst_obj[0], dstrect_obj ? (SDL_Rect*)dstrect_obj[0] : NULL);
-      APITools_SetIntValue(context, 0, value);
-    }
-  }
-
-  // event
-#ifdef _WIN32
-  __declspec(dllexport)
-#endif
-  void sdl_poll_event(VMContext& context) {
-    const long* value = APITools_GetObjectValue(context, 1);
-    if(!value) {
-      APITools_SetIntValue(context, 0, -1);
-    }
-    else {
-      SDL_Event* event = (SDL_Event*)value[0];
-      APITools_SetIntValue(context, 0, SDL_PollEvent(event));
-    }
-  }
-
-#ifdef _WIN32
-  __declspec(dllexport)
-#endif
-  void sdl_event_type(VMContext& context) {
-    SDL_Event* event = (SDL_Event*)APITools_GetIntValue(context, 1);
-    APITools_SetIntValue(context, 0, event->type);
-  }
-
-  // window
-#ifdef _WIN32
-  __declspec(dllexport)
-#endif
-  void sdl_create_window(VMContext& context) {
-    const wstring wtitle(APITools_GetStringValue(context, 1));
-    int x = APITools_GetIntValue(context, 2);
-    int y = APITools_GetIntValue(context, 3);
-    int w = APITools_GetIntValue(context, 4);
-    int h = APITools_GetIntValue(context, 5);
-    Uint32 flags = (Uint32)APITools_GetIntValue(context, 6);
-
-    const string title(wtitle.begin(), wtitle.end());
-    SDL_Window* window = SDL_CreateWindow(title.c_str(), x, y, w, h, flags);
-
-    APITools_SetIntValue(context, 0, (long)window);
-  }
-
-#ifdef _WIN32
-  __declspec(dllexport)
-#endif
-  void sdl_destroy_window(VMContext& context) {
-    SDL_Window* window = (SDL_Window*)APITools_GetIntValue(context, 0);
-    SDL_DestroyWindow(window);
-  }
-
-  // surface
-#ifdef _WIN32
-  __declspec(dllexport)
-#endif
-  void sdl_surface_create_rgb(VMContext& context) {
-    const int flags = APITools_GetIntValue(context, 1);
-    const int width = APITools_GetIntValue(context, 2);
-    const int height = APITools_GetIntValue(context, 3);
-    const int depth = APITools_GetIntValue(context, 4);
-    const int Rmask = APITools_GetIntValue(context, 5);
-    const int Gmask = APITools_GetIntValue(context, 6);
-    const int Bmask = APITools_GetIntValue(context, 7);
-    const int Amask = APITools_GetIntValue(context, 8);
-    SDL_Surface* return_value = SDL_CreateRGBSurface(flags, width, height, depth, Rmask, Gmask, Bmask, Amask);
-    APITools_SetIntValue(context, 0, (long)return_value);
-  }
-
-#ifdef _WIN32
-  __declspec(dllexport)
-#endif
-  void sdl_surface_set_palette(VMContext& context) {
-    SDL_Surface* surface = (SDL_Surface*)APITools_GetIntValue(context, 1);
-    const long* palette = (long*)APITools_GetObjectValue(context, 2);
-    const int return_value = SDL_SetSurfacePalette(surface, (SDL_Palette*)palette[0]);
+    const int priority = APITools_GetIntValue(context, 3);
+    
+    const int return_value = SDL_SetHintWithPriority(name.c_str(), value.c_str(), (SDL_HintPriority)priority);    
     APITools_SetIntValue(context, 0, return_value);
   }
 
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void sdl_surface_lock(VMContext& context) {
-    SDL_Surface* surface = (SDL_Surface*)APITools_GetIntValue(context, 1);
-    const int return_value = SDL_LockSurface(surface);
+  void sdl_hints_set_hint(VMContext& context) {
+    const wstring w_name = APITools_GetStringValue(context, 1);
+    const string name(w_name.begin(), w_name.end());
+
+    const wstring w_value = APITools_GetStringValue(context, 2);
+    const string value(w_value.begin(), w_value.end());
+
+    const int return_value = SDL_SetHint(name.c_str(), value.c_str());
     APITools_SetIntValue(context, 0, return_value);
   }
 
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void sdl_surface_unlock(VMContext& context) {
-    SDL_Surface* surface = (SDL_Surface*)APITools_GetIntValue(context, 1);
-    SDL_UnlockSurface(surface);
-  }
+  void sdl_hints_get_hint(VMContext& context) {
+    const wstring w_name = APITools_GetStringValue(context, 1);
+    const string name(w_name.begin(), w_name.end());
+    const string return_value = SDL_GetHint(name.c_str());
 
-#ifdef _WIN32
-  __declspec(dllexport)
-#endif
-  void sdl_surface_load_bmp_rw(VMContext& context) {
-    const long* src = (long*)APITools_GetObjectValue(context, 1);
-    const int freesrc = APITools_GetIntValue(context, 2);
-    SDL_Surface* surface = SDL_LoadBMP_RW((SDL_RWops*)src[0], freesrc);
-    APITools_SetIntValue(context, 0, (long)surface);
-  }
-
-#ifdef _WIN32
-  __declspec(dllexport)
-#endif
-  void sdl_surface_set_rle(VMContext& context) {
-    SDL_Surface* surface = (SDL_Surface*)APITools_GetIntValue(context, 1);
-    const int flag = APITools_GetIntValue(context, 2);
-    const int return_value = SDL_SetSurfaceRLE(surface, flag);
-    APITools_SetIntValue(context, 0, return_value);
-  }
-
-#ifdef _WIN32
-  __declspec(dllexport)
-#endif
-  void sdl_surface_set_color_key(VMContext& context) {
-    SDL_Surface* surface = (SDL_Surface*)APITools_GetIntValue(context, 1);
-    const int flag = APITools_GetIntValue(context, 2);
-    const int key = APITools_GetIntValue(context, 3);
-    const int return_value = SDL_SetColorKey(surface, flag, key);
-    APITools_SetIntValue(context, 0, return_value);
-  }
-
-#ifdef _WIN32
-  __declspec(dllexport)
-#endif
-    void sdl_surface_get_color_key(VMContext& context) {
-    SDL_Surface* surface = (SDL_Surface*)APITools_GetIntValue(context, 1);
-    Uint32 key = APITools_GetIntValue(context, 2);
-    const int return_value = SDL_GetColorKey(surface, &key);
-    APITools_SetIntValue(context, 0, return_value);
-  }
-
-#ifdef _WIN32
-  __declspec(dllexport)
-#endif
-  void sdl_surface_set_color_mod(VMContext& context) {
-    SDL_Surface* surface = (SDL_Surface*)APITools_GetIntValue(context, 1);
-    const int r = APITools_GetIntValue(context, 2);
-    const int g = APITools_GetIntValue(context, 3);
-    const int b = APITools_GetIntValue(context, 4);
-    const int return_value = SDL_SetSurfaceColorMod(surface, r, g, b);
-    APITools_SetIntValue(context, 0, return_value);
-  }
-
-#ifdef _WIN32
-  __declspec(dllexport)
-#endif
-  void sdl_surface_get_color_mod(VMContext& context) {
-    SDL_Surface* surface = (SDL_Surface*)APITools_GetIntValue(context, 1);
-    int r = APITools_GetIntValue(context, 2);
-    int g = APITools_GetIntValue(context, 3);
-    int b = APITools_GetIntValue(context, 4);
-    int return_value = SDL_GetSurfaceColorMod(surface, (Uint8)r, (Uint8)g, (Uint8)b);
-    APITools_SetIntValue(context, 0, return_value);
-  }
-
-#ifdef _WIN32
-  __declspec(dllexport)
-#endif
-  void sdl_surface_save_bmp_rw(VMContext& context) {
-    SDL_Surface* surface = (SDL_Surface*)APITools_GetIntValue(context, 1);
-    const long* dst = (long*)APITools_GetObjectValue(context, 2);
-    const int freedst = APITools_GetIntValue(context, 3);
-    const int return_value = SDL_SaveBMP_RW(surface, (SDL_RWops*)dst[0], freedst);
-    APITools_SetIntValue(context, 0, return_value);
-  }
-
-#ifdef _WIN32
-  __declspec(dllexport)
-#endif
-  void sdl_get_window_surface(VMContext& context) {
-    const long* window_obj = (long*)APITools_GetObjectValue(context, 1);
-    if(!window_obj) {
-      APITools_SetIntValue(context, 0, -1);
-    }
-    else {
-      APITools_SetIntValue(context, 0, (long)SDL_GetWindowSurface((SDL_Window*)window_obj[0]));
-    }
-  }
-
-#ifdef _WIN32
-  __declspec(dllexport)
-#endif
-  void sdl_load_bmp(VMContext& context) {
-    const wstring wname = APITools_GetStringValue(context, 1);
-    const SDL_Surface* surface = SDL_LoadBMP(UnicodeToBytes(wname).c_str());
-    APITools_SetIntValue(context, 0, (long)surface);
-  }
-
-#ifdef _WIN32
-  __declspec(dllexport)
-#endif
-    void sdl_free_surface(VMContext& context) {
-    SDL_Surface* surface = (SDL_Surface*)APITools_GetIntValue(context, 0);
-    SDL_FreeSurface(surface);
-  }
-
-  // event
-#ifdef _WIN32
-  __declspec(dllexport)
-#endif
-  void sdl_event_new(VMContext& context) {
-    const void* obj = calloc(1, sizeof(SDL_Event));
-    APITools_SetIntValue(context, 0, (long)obj);
-  }
-
-  // keyboard event
-#ifdef _WIN32
-  __declspec(dllexport)
-#endif
-  void sdl_keyboard_event_new(VMContext& context) {
-    SDL_Event* event = (SDL_Event*)APITools_GetIntValue(context, 0);
-
-    // SDL_KeyboardEvent
-    APITools_SetIntValue(context, 1, (long)event->key.type);
-    APITools_SetIntValue(context, 2, (long)event->key.timestamp);
-    APITools_SetIntValue(context, 3, (long)event->key.windowID);
-    APITools_SetIntValue(context, 4, (long)event->key.state);
-    APITools_SetIntValue(context, 5, (long)event->key.repeat);
-    APITools_SetIntValue(context, 6, (long)event->key.padding2);
-    APITools_SetIntValue(context, 7, (long)event->key.padding3);
-
-    // SDL_KeyboardEvent.SDL_Keysym
-    APITools_SetIntValue(context, 8, (long)event->key.keysym.scancode);
-    APITools_SetIntValue(context, 9, (long)event->key.keysym.sym);
-    APITools_SetIntValue(context, 10, (long)event->key.keysym.mod);
-    APITools_SetIntValue(context, 11, (long)event->key.keysym.unused);
+    const wstring w_return_value(return_value.begin(), return_value.end());
+    APITools_SetStringValue(context, 0, w_return_value);
   }
 }
