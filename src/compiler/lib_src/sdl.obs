@@ -17,6 +17,7 @@ bundle SDL {
 		}
 	}
 	
+#~	
 	consts Flags {
 		SDL_INIT_VIDEO := 0x00000020,
 		SDL_WINDOW_POS_UNDEFINED := 0x1FFF0000,
@@ -24,452 +25,93 @@ bundle SDL {
 		SDL_QUIT := 0x00000100,
 		SDL_KEY_DOWN := 0x00000300
 	}
+~#	
 	
 	class Core {
-		function : Init(flag : Int) ~ Int {
+		function : Init(flags : Int) ~ Int {
 			array_args := Base->New[2];
-			array_args[0] := IntHolder->New();
-			array_args[1] := IntHolder->New(flag);
-			@lib_proxy := Proxy->GetDllProxy();
-			@lib_proxy->CallFunction("sdl_init", array_args);
-			
-			value := array_args[0]->As(IntHolder);
-			return value->Get();
-		}
-		
-		function : GetError() ~ String {
-			array_args := Base->New[1];
-			array_args[0] := IntHolder->New();
-			@lib_proxy := Proxy->GetDllProxy();
-			@lib_proxy->CallFunction("sdl_get_error", array_args);
-			
-			return array_args[0]->As(String);
-		}
-		
-		function : LoadBmp(name : String) ~ Surface {
-			array_args := Base->New[2];
-			array_args[0] := IntHolder->New();
-			array_args[1] := name;
-			@lib_proxy := Proxy->GetDllProxy();
-			@lib_proxy->CallFunction("sdl_load_bmp", array_args);
-			
-			value := array_args[0]->As(IntHolder);
-			return Surface->New(value->Get());
-		}
-		
-		function : PollEvent(event : Event) ~ Int {
-			array_args := Base->New[2];
-			array_args[0] := IntHolder->New();
-			array_args[1] := event;
-			@lib_proxy := Proxy->GetDllProxy();
-			@lib_proxy->CallFunction("sdl_poll_event", array_args);
-			
-			value := array_args[0]->As(IntHolder);
-			return value->Get();
-		}
-		
-		function : Quit() ~ Nil {
-			@lib_proxy := Proxy->GetDllProxy();
-			@lib_proxy->CallFunction("sdl_quit", Nil->As(Base[]));
-		}
-	}
-	
-	class Rect {
-		@rect : Int;
-		
-		New() {
-		}
-		
-		method : public : Ok() ~ Bool {
-			return @rect <> 0;
-		}
-	}
-	
-	class Event {
-		@event : Int;
-		
-		New() {
-			array_args := Base->New[1];
-			array_args[0] := IntHolder->New();
-			@lib_proxy := Proxy->GetDllProxy();
-			@lib_proxy->CallFunction("sdl_event_new", array_args);			
-			
-			value := array_args[0]->As(IntHolder);
-			@event := value->Get();
-		}
-		
-		method : public : Type() ~ Int {
-			array_args := Base->New[2];
-			array_args[0] := IntHolder->New();
-			array_args[1] := IntHolder->New(@event);
-			@lib_proxy := Proxy->GetDllProxy();
-			@lib_proxy->CallFunction("sdl_event_type", array_args);			
-			
-			value := array_args[0]->As(IntHolder);
-			return value->Get();
-		}
-		
-		method : public : GetKeyboardEvent() ~ KeyboardEvent {
-			return KeyboardEvent->New(@event);
-		}
-		
-		method : public : Ok() ~ Bool {
-			return @event <> 0;
-		}
-	}
-	
-	class KeyboardEvent {
-		# keyboard
-		@type : Int;
-		@timestamp : Int;
-		@window_id : Int;
-		@state : Int;
-		@repeat : Int;
-		@padding2 : Int;
-		@padding3 : Int;
-		
-		# keycode
-		@keysym_scancode : Int;
-		@keysym_sym : Int;
-		@keysym_mod : Int;
-		@keysym_unused : Int;
-		
-		New(event : Int) {
-			array_args := Base->New[12];
-			array_args[0] := IntHolder->New(event);
-			array_args[1] := IntHolder->New();
-			array_args[2] := IntHolder->New();
-			array_args[3] := IntHolder->New();
-			array_args[4] := IntHolder->New();
-			array_args[5] := IntHolder->New();
-			array_args[6] := IntHolder->New();
-			array_args[7] := IntHolder->New();
-			
- 			array_args[8] := IntHolder->New();
-			array_args[9] := IntHolder->New();
-			array_args[10] := IntHolder->New();
-			array_args[11] := IntHolder->New();
-			
-			@lib_proxy := Proxy->GetDllProxy();
-			@lib_proxy->CallFunction("sdl_keyboard_event_new", array_args);			
-			
-			value := array_args[1]->As(IntHolder);
-			@type := value->Get();
-			
-			value := array_args[2]->As(IntHolder);
-			@timestamp := value->Get();
-			
-			value := array_args[3]->As(IntHolder);
-			@window_id := value->Get();
-			
-			value := array_args[4]->As(IntHolder);
-			@state := value->Get();
-			
-			value := array_args[5]->As(IntHolder);
-			@repeat := value->Get();
-			
-			value := array_args[6]->As(IntHolder);
-			@padding2 := value->Get();
-			
-			value := array_args[7]->As(IntHolder);
-			@padding3 := value->Get();
-			
-			value := array_args[8]->As(IntHolder);
-			@keysym_scancode := value->Get();
-			
-			value := array_args[9]->As(IntHolder);
-			@keysym_sym := value->Get();
-			
-			value := array_args[10]->As(IntHolder);
-			@keysym_mod := value->Get();
-			
-			value := array_args[11]->As(IntHolder);
-			@keysym_unused := value->Get();
-		}
-		
-		method : public : GetKeySymbol() ~ Int {
-			return @keysym_sym;
-		}
-	}
-	
-	consts SDLK {
-		UP := 1073741906,
-		DOWN := 1073741905,
-		LEFT := 1073741904,
-		RIGHT := 1073741903
-	}
-	
-	class Window {
-		@window : Int;
-		
-		New(title : String, x : Int, y : Int, w : Int, h : Int, flags : Int) {
-			array_args := Base->New[7];
-			array_args[0] := IntHolder->New();
-			array_args[1] := title;
-			array_args[2] := IntHolder->New(x);
-			array_args[3] := IntHolder->New(y);
-			array_args[4] := IntHolder->New(w);
-			array_args[5] := IntHolder->New(h);
-			array_args[6] := IntHolder->New(flags);
-			@lib_proxy := Proxy->GetDllProxy();
-			@lib_proxy->CallFunction("sdl_create_window", array_args);
-			
-			value := array_args[0]->As(IntHolder);
-			@window := value->Get();
-		}
-		
-		method : public : Ok() ~ Bool {
-			return @window <> 0;
-		}
-		
-		method : public : GetSurface() ~ Surface {
-			array_args := Base->New[2];
-			array_args[0] := IntHolder->New();
-			array_args[1] := IntHolder->New(@window);
-			@lib_proxy := Proxy->GetDllProxy();
-			@lib_proxy->CallFunction("sdl_get_window_surface", array_args);
-			
-			value := array_args[0]->As(IntHolder);
-			return Surface->New(value->Get());
-		}
-		
-		method : public : UpdateSurface() ~ Int {
-			array_args := Base->New[2];
-			array_args[0] := IntHolder->New();
-			array_args[1] := @self;
-			@lib_proxy := Proxy->GetDllProxy();
-			@lib_proxy->CallFunction("update_window_surface", array_args);
-			
-			value := array_args[0]->As(IntHolder);
-			return value->Get();
-		}
-		
-		method : public : Destroy() ~ Nil {
-			array_args := Base->New[1];
-			array_args[0] := IntHolder->New(@window);
-			@lib_proxy := Proxy->GetDllProxy();
-			@lib_proxy->CallFunction("sdl_destroy_window", array_args);
-		}
-	}
-	
-	class Surface {
-		@surface : Int;
-		
-		New(surface : Int) {
-			@surface := surface;
-		}
-		
-		New(window : Window) {
-			array_args := Base->New[2];
-			array_args[0] := IntHolder->New();
-			array_args[1] := window;
-			
-			@lib_proxy := Proxy->GetDllProxy();
-			@lib_proxy->CallFunction("sdl_get_window_surface", array_args);
-			
-			value := array_args[0]->As(IntHolder);
-			@surface := value->Get();
-		}
-		
-		New(flags : Int, width : Int, height : Int, depth : Int, Rmask : Int, Gmask : Int, Bmask : Int, Amask : Int) {
-			array_args := Base->New[9];
 			array_args[0] := IntHolder->New();
 			array_args[1] := IntHolder->New(flags);
-			array_args[2] := IntHolder->New(width);
-			array_args[3] := IntHolder->New(height);
-			array_args[4] := IntHolder->New(depth);
-			array_args[5] := IntHolder->New(Rmask);
-			array_args[6] := IntHolder->New(Gmask);
-			array_args[7] := IntHolder->New(Bmask);
-			array_args[8] := IntHolder->New(Amask);
 			
-			@lib_proxy := Proxy->GetDllProxy();
-			@lib_proxy->CallFunction("sdl_surface_create_rgb", array_args);
-
-			value := array_args[0]->As(IntHolder);
-			@surface := value->Get();
-		}
-		
-		New(src : RWops, freesrc : Int) {
-			array_args := Base->New[3];
-			array_args[0] := IntHolder->New();
-			array_args[1] := src;
-			array_args[2] := IntHolder->New(freesrc);
-
-			@lib_proxy := Proxy->GetDllProxy();
-			@lib_proxy->CallFunction("sdl_surface_load_bmp_rw", array_args);
-
-			value := array_args[0]->As(IntHolder);
-			@surface := value->Get();
-		}
-		
-		method : public : Ok() ~ Bool {
-			return @surface <> 0;
-		}
-		
-		method : public : SaveBmpRW(dst : RWops, freedst : Int) ~ Int {
-			array_args := Base->New[4];
-			array_args[0] := IntHolder->New();
-			array_args[1] := IntHolder->New(@surface);
-			array_args[2] := dst;
-			array_args[3] := IntHolder->New(freedst);
-
-			@lib_proxy := Proxy->GetDllProxy();
-			@lib_proxy->CallFunction("sdl_surface_save_bmp_rw", array_args);
-
+			Proxy->GetDllProxy()->CallFunction("sdl_surface_init", array_args);
 			value := array_args[0]->As(IntHolder);
 			return value->Get();
 		}
 		
-		method : public : SetRLE(flag : Int) ~ Int {
-			array_args := Base->New[3];
-			array_args[0] := IntHolder->New();
-			array_args[1] := IntHolder->New(@surface);
-			array_args[2] := IntHolder->New(flag);
-
-			@lib_proxy := Proxy->GetDllProxy();
-			@lib_proxy->CallFunction("sdl_surface_set_rle", array_args);
-
-			value := array_args[0]->As(IntHolder);
-			return value->Get();
-		}
-		
-		method : public : SetColorKey(flag : Int, key : Int) ~ Int {
-			array_args := Base->New[4];
-			array_args[0] := IntHolder->New();
-			array_args[1] := IntHolder->New(@surface);
-			array_args[2] := IntHolder->New(flag);
-			array_args[3] := IntHolder->New(key);
-
-			@lib_proxy := Proxy->GetDllProxy();
-			@lib_proxy->CallFunction("sdl_surface_set_color_key", array_args);
-
-			value := array_args[0]->As(IntHolder);
-			return value->Get();
-		}
-		
-#~ Need a pointer		
-		method : public : GetColorKey(key : Int) ~ Int {
-			array_args := Base->New[3];
-			array_args[0] := IntHolder->New();
-			array_args[1] := IntHolder->New(@surface);
-			array_args[2] := IntHolder->New(key);
-
-			@lib_proxy := Proxy->GetDllProxy();
-			@lib_proxy->CallFunction("sdl_surface_get_color_key", array_args);
-
-			value := array_args[0]->As(IntHolder);
-			return value->Get();
-		}
-~#
-		
-		method : public : SetColorMod(rgb : RGB) ~ Int {
-			array_args := Base->New[3];
-			array_args[0] := IntHolder->New();
-			array_args[1] := IntHolder->New(@surface);
-			array_args[2] := rgb;
-
-			@lib_proxy := Proxy->GetDllProxy();
-			@lib_proxy->CallFunction("sdl_surface_set_color_mod", array_args);
-
-			value := array_args[0]->As(IntHolder);
-			return value->Get();
-		}
-		
-		method : public : GetColorMod() ~ RGB {
-			array_args := Base->New[2];
-			array_args[0] := RGB->New(0, 0, 0);
-			array_args[1] := IntHolder->New(@surface);
-
-			@lib_proxy := Proxy->GetDllProxy();
-			@lib_proxy->CallFunction("sdl_surface_get_color_mod", array_args);
-			
-			return array_args[0]->As(RGB);
-		}
-		
-		method : public : SetPalette(surface : Surface, palette : Palette) ~ Int {
-			array_args := Base->New[3];
-			array_args[0] := IntHolder->New();
-			array_args[1] := IntHolder->New(@surface);
-			array_args[2] := palette;
-
-			@lib_proxy := Proxy->GetDllProxy();
-			@lib_proxy->CallFunction("sdl_surface_set_palette", array_args);
-
-			value := array_args[0]->As(IntHolder);
-			return value->Get();
-		}
-		
-		method : public : Lock(surface : Surface) ~ Int {
+		function : InitSubSystem(flags : Int) ~ Int {
 			array_args := Base->New[2];
 			array_args[0] := IntHolder->New();
-			array_args[1] := IntHolder->New(@surface);
-
-			@lib_proxy := Proxy->GetDllProxy();
-			@lib_proxy->CallFunction("sdl_surface_lock", array_args);
-
-			value := array_args[0]->As(IntHolder);
-			return value->Get();
-		}
-		
-		method : public : Unlock(surface : Surface) ~ Nil {
-			array_args := Base->New[1];
-			array_args[0] := IntHolder->New(@surface);
-
-			@lib_proxy := Proxy->GetDllProxy();
-			@lib_proxy->CallFunction("sdl_surface_unlock", array_args);
-		}
-		
-		method : public : Blit(srcrect : Rect, dst : Surface, dstrect : Rect) ~ Int {
-			array_args := Base->New[5];
-			array_args[0] := IntHolder->New();
-			array_args[1] := @self;
-			array_args[2] := srcrect;
-			array_args[3] := dst;
-			array_args[4] := dstrect;
-			@lib_proxy := Proxy->GetDllProxy();
-			@lib_proxy->CallFunction("blit_surface", array_args);
+			array_args[1] := IntHolder->New(flags);
 			
+			Proxy->GetDllProxy()->CallFunction("sdl_core_init_sub_system", array_args);
 			value := array_args[0]->As(IntHolder);
 			return value->Get();
 		}
 		
-		method : public : Free() ~ Nil {
+		function : QuitSubSystem(flags : Int) ~ Nil {
 			array_args := Base->New[1];
-			array_args[0] := IntHolder->New(@surface);
-			@lib_proxy := Proxy->GetDllProxy();
-			@lib_proxy->CallFunction("sdl_free_surface", array_args);
+			array_args[0] := IntHolder->New(flags);
+			
+			Proxy->GetDllProxy()->CallFunction("sdl_core_quit_sub_system", array_args);
+		}
+		
+		method : public : WasInit(flags : Int) ~ Int {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(flags);
+			
+			Proxy->GetDllProxy()->CallFunction("sdl_core_was_init", array_args);
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+		
+		method : public : Quit() ~ Nil {
+			array_args := Base->New[0];
+			Proxy->GetDllProxy()->CallFunction("sdl_core_quit", array_args);
 		}
 	}
 	
-	## TODO
-	class Palette {
-		@palette : Int;
+	#~
+	Hints
+	~#
+	class Hints {
+		method : public : SetHintWithPriority(name : String, value : String, priority : HintPriority) ~ Bool {
+			array_args := Base->New[4];
+			array_args[0] := IntHolder->New();
+			array_args[1] := name;
+			array_args[2] := value;
+			array_args[3] := IntHolder->New(priority->As(Int));
+			Proxy->GetDllProxy()->CallFunction("sdl_hints_set_hint_with_priority", array_args);
+			
+			rvalue := array_args[0]->As(IntHolder);
+			return rvalue->Get() = 0 ? false : true;
+		}
 		
-		method : public : Ok() ~ Bool {
-			return @palette <> 0;
+		method : public : SetHint(name : String, value : String) ~ Bool {
+			array_args := Base->New[3];
+			array_args[0] := IntHolder->New();
+			array_args[1] := name;
+			array_args[2] := value;
+
+			Proxy->GetDllProxy()->CallFunction("sdl_hints_set_hint", array_args);
+
+			rvalue := array_args[0]->As(IntHolder);
+			return rvalue->Get() = 0 ? false : true;
+		}
+		
+		method : public : GetHint(name : String) ~ String {
+			array_args := Base->New[2];
+			array_args[0] := Nil;
+			array_args[1] := name;
+			
+			Proxy->GetDllProxy()->CallFunction("sdl_hints_get_hint", array_args);
+			return array_args[0]->As(String);
 		}
 	}
 	
-	## TODO
-	class RWops {
-		@rwops : Int;
-		
-		method : public : Ok() ~ Bool {
-			return @rwops <> 0;
-		}
-	}
-	
-	## TODO
-	class RGB {
-		@r : Int;
-		@g : Int;
-		@b : Int;
-		
-		New(r : Int, g : Int, b : Int) {
-			@r := r;
-			@g := g;
-			@b := b;
-		}
+	consts HintPriority {
+		SDL_HINT_DEFAULT := 0,
+		SDL_HINT_NORMAL := 1,
+		SDL_HINT_OVERRIDE := 2
 	}
 }
