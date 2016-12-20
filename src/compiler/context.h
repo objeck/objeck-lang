@@ -433,10 +433,9 @@ class ContextAnalyzer {
   inline bool InvalidStatic(MethodCall* method_call, Method* method) {
     // same class, calling method static and called method not static,
     // called method not new, called method not from a varaible
-    if(current_class == method->GetClass() && current_method->IsStatic() &&
+    if(current_method->IsStatic() &&
        !method->IsStatic() && method->GetMethodType() != NEW_PUBLIC_METHOD &&
-       method->GetMethodType() != NEW_PRIVATE_METHOD) {
-
+       method->GetMethodType() != NEW_PRIVATE_METHOD) {      
       SymbolEntry* entry = GetEntry(method_call->GetVariableName());
       if(entry && (entry->IsLocal()  || entry->IsStatic())) {
         return false;
