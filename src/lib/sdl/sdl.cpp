@@ -142,4 +142,11 @@ extern "C" {
     const wstring w_return_value(return_value.begin(), return_value.end());
     APITools_SetStringValue(context, 0, w_return_value);
   }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_hints_clear(VMContext& context) {
+    SDL_ClearHints();
+  }
 }

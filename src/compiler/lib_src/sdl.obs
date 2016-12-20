@@ -55,7 +55,7 @@ bundle SDL {
 			Proxy->GetDllProxy()->CallFunction("sdl_core_quit_sub_system", array_args);
 		}
 		
-		method : public : WasInit(flags : Int) ~ Int {
+		function : WasInit(flags : Int) ~ Int {
 			array_args := Base->New[2];
 			array_args[0] := IntHolder->New();
 			array_args[1] := IntHolder->New(flags);
@@ -65,7 +65,7 @@ bundle SDL {
 			return value->Get();
 		}
 		
-		method : public : Quit() ~ Nil {
+		function : Quit() ~ Nil {
 			array_args := Base->New[0];
 			Proxy->GetDllProxy()->CallFunction("sdl_core_quit", array_args);
 		}
@@ -87,7 +87,7 @@ bundle SDL {
 			return rvalue->Get() = 0 ? false : true;
 		}
 		
-		method : public : SetHint(name : String, value : String) ~ Bool {
+		function : SetHint(name : String, value : String) ~ Bool {
 			array_args := Base->New[3];
 			array_args[0] := IntHolder->New();
 			array_args[1] := name;
@@ -99,13 +99,20 @@ bundle SDL {
 			return rvalue->Get() = 0 ? false : true;
 		}
 		
-		method : public : GetHint(name : String) ~ String {
+		function : GetHint(name : String) ~ String {
 			array_args := Base->New[2];
 			array_args[0] := Nil;
 			array_args[1] := name;
 			
 			Proxy->GetDllProxy()->CallFunction("sdl_hints_get_hint", array_args);
 			return array_args[0]->As(String);
+		}
+		
+		function : Clear() ~ Nil {
+			array_args := Base->New[0];
+			@lib_proxy := Proxy->GetDllProxy();
+			@lib_proxy->CallFunction("sdl_hints_clear", array_args);
+
 		}
 	}
 	
