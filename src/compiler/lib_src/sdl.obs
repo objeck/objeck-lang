@@ -26,7 +26,9 @@ bundle SDL {
 		SDL_KEY_DOWN := 0x00000300
 	}
 ~#	
-	
+	#~
+	Core class
+	~#
 	class Core {
 		function : Init(flags : Int) ~ Int {
 			array_args := Base->New[2];
@@ -120,5 +122,236 @@ bundle SDL {
 		SDL_HINT_DEFAULT := 0,
 		SDL_HINT_NORMAL := 1,
 		SDL_HINT_OVERRIDE := 2
+	}
+	
+	##  
+	## TODO: sdl\include\SDL_pixels.h; SDL_AllocPalette
+	##
+	class Palette {
+		@palette : Int;
+		New() {}
+	}
+	
+	#~
+	Core class
+	~#
+	class Surface {
+		@surface : Int;
+		
+		New(surface : Int) {
+			@surface := surface;
+		}
+		
+		New(flags : Int, width : Int, height : Int, depth : Int, Rmask : Int, Gmask : Int, Bmask : Int, Amask : Int) {
+			array_args := Base->New[9];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(flags);
+			array_args[2] := IntHolder->New(width);
+			array_args[3] := IntHolder->New(height);
+			array_args[4] := IntHolder->New(depth);
+			array_args[5] := IntHolder->New(Rmask);
+			array_args[6] := IntHolder->New(Gmask);
+			array_args[7] := IntHolder->New(Bmask);
+			array_args[8] := IntHolder->New(Amask);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_surface_creatergb", array_args);
+			value := array_args[0]->As(IntHolder);
+			@surface := value->Get();
+		}
+		
+		method : public : Free() ~ Nil {
+			if(@surface <> 0) {
+				array_args := Base->New[1];
+				array_args[0] := IntHolder->New(@surface);
+
+				Proxy->GetDllProxy()->CallFunction("sdl_surface_free", array_args);
+			};
+		}
+		
+		method : public : SetPalette(palette : Palette) ~ Int {
+			if(@surface <> 0) {
+				array_args := Base->New[3];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@surface);
+				array_args[2] := palette;
+
+				Proxy->GetDllProxy()->CallFunction("sdl_surface_set_palette", array_args);
+
+				value := array_args[0]->As(IntHolder);
+				return value->Get();
+			};
+			
+			return 0;
+		}
+		
+		method : public : Lock() ~ Int {
+			if(@surface <> 0) {
+				array_args := Base->New[2];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@surface);
+
+				Proxy->GetDllProxy()->CallFunction("sdl_surface_lock", array_args);
+				value := array_args[0]->As(IntHolder);
+				return value->Get();
+			};
+			
+			return 0;
+		}
+		
+		method : public : Unlock() ~ Nil {
+			if(@surface <> 0) {
+				array_args := Base->New[1];
+				array_args[0] := IntHolder->New(@surface);
+				Proxy->GetDllProxy()->CallFunction("sdl_surface_unlock", array_args);
+			};
+		}
+		
+		function : LoadBMP(file : String) ~ Surface {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := file;
+
+			Proxy->GetDllProxy()->CallFunction("sdl_surface_loadbmp", array_args);
+			value := array_args[0]->As(IntHolder);
+			return Surface->New(value->Get());
+		}
+		
+		function : SaveBMP(surface : Surface, file : String) ~ Int {
+			array_args := Base->New[3];
+			array_args[0] := IntHolder->New();
+			array_args[1] := surface;
+			array_args[2] := file;
+
+			@lib_proxy := Proxy->GetDllProxy();
+			@lib_proxy->CallFunction("sdl_surface_savebmp", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+		
+		method : public : SetRLE(flag : Int) ~ Int {
+			if(@surface <> 0) {
+				array_args := Base->New[3];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@surface);
+				array_args[2] := IntHolder->New(flag);
+
+				Proxy->GetDllProxy()->CallFunction("sdl_surface_setrle", array_args);
+
+				value := array_args[0]->As(IntHolder);
+				return value->Get();
+			};
+			
+			return 0;
+		}
+		
+		method : public : SetColorKey(flag : Int, key : Int) ~ Int {
+			if(@surface <> 0) {
+				array_args := Base->New[4];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@surface);
+				array_args[2] := IntHolder->New(flag);
+				array_args[3] := IntHolder->New(key);
+
+				Proxy->GetDllProxy()->CallFunction("sdl_surface_set_color_key", array_args);
+
+				value := array_args[0]->As(IntHolder);
+				return value->Get();
+			};
+			
+			return 0;
+		}
+		
+		method : public : GetColorKey(key : Int) ~ Int {
+			if(@surface <> 0) {
+				array_args := Base->New[3];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@surface);
+				array_args[2] := IntHolder->New(key);
+
+				Proxy->GetDllProxy()->CallFunction("sdl_surface_get_color_key", array_args);
+
+				value := array_args[0]->As(IntHolder);
+				return value->Get();
+			};
+			
+			return 0;
+		}
+		
+		method : public : SetColorMod(r : Int, g : Int, b : Int) ~ Int {
+			if(@surface <> 0) {
+				array_args := Base->New[5];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@surface);
+				array_args[2] := IntHolder->New(r);
+				array_args[3] := IntHolder->New(g);
+				array_args[4] := IntHolder->New(b);
+
+				Proxy->GetDllProxy()->CallFunction("sdl_surface_set_color_mod", array_args);
+
+				value := array_args[0]->As(IntHolder);
+				return value->Get();
+			};
+			
+			return 0;
+		}
+		
+		method : public : GetColorMod(r : IntHolder, g : IntHolder, b : IntHolder) ~ Int {
+			if(@surface <> 0) {		
+				array_args := Base->New[5];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@surface);
+				array_args[2] := r;
+				array_args[3] := g;
+				array_args[4] := b;
+
+				@lib_proxy := Proxy->GetDllProxy();
+				@lib_proxy->CallFunction("sdl_surface_get_color_mod", array_args);
+
+				value := array_args[0]->As(IntHolder);
+				return value->Get();
+			};
+			
+			return 0;
+		}
+		
+		method : public : SetAlphaMod(alpha : Int) ~ Int {
+			if(@surface <> 0) {
+				array_args := Base->New[3];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@surface);
+				array_args[2] := IntHolder->New(alpha);
+
+				Proxy->GetDllProxy()->CallFunction("sdl_surface_set_alpha_mod", array_args);
+
+				value := array_args[0]->As(IntHolder);
+				return value->Get();
+			};
+			
+			return 0;
+		}
+		
+		method : public : GetAlphaMod(alpha : Int) ~ Int {
+			if(@surface <> 0) {
+				array_args := Base->New[3];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@surface);
+				array_args[2] := IntHolder->New(alpha);
+
+				Proxy->GetDllProxy()->CallFunction("sdl_surface_get_alpha_mod", array_args);
+
+				value := array_args[0]->As(IntHolder);
+				return value->Get();
+			};
+			
+			return 0;
+		}
+	}
+	
+	consts SDL_BlendMode {
+		SDL_BLENDMODE_NONE := 0x00000000,
+		SDL_BLENDMODE_BLEND := 0x00000001,
+		SDL_BLENDMODE_ADD := 0x00000002,
+		SDL_BLENDMODE_MOD := 0x00000004 
 	}
 }
