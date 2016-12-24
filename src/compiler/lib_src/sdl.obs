@@ -135,11 +135,20 @@ bundle SDL {
 	}
 	
 	##
-	## sdl\include\SDL_rect.h
+	## TODO: sdl\include\SDL_rect.h
 	## new the struct
 	## 
 	class Rect {
 		@rect : Int;
+		New() {}
+	}
+	
+	##
+	## TODO: sdl\include\SDL_pixels.h
+	## new the struct
+	## 
+	class PixelFormat {
+		@pixel_format : Int;
 		New() {}
 	}
 	
@@ -401,15 +410,120 @@ bundle SDL {
 		}
 		
 		method : public : SetClipRect(rect : Rect) ~ Bool {
-			array_args := Base->New[3];
-			array_args[0] := IntHolder->New();
-			array_args[1] := IntHolder->New(@surface);
-			array_args[2] := rect;
+			if(@surface <> 0) {
+				array_args := Base->New[3];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@surface);
+				array_args[2] := rect;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_surface_set_clip_rect", array_args);
+				Proxy->GetDllProxy()->CallFunction("sdl_surface_set_clip_rect", array_args);
+
+				value := array_args[0]->As(IntHolder);
+				return value->Get() = 0 ? false : true;
+			};
+			
+			return false;
+		}
+		
+		function : Convert(src : Surface, fmt : PixelFormat, flags : Int) ~ Surface {
+			array_args := Base->New[4];
+			array_args[0] := IntHolder->New();
+			array_args[1] := src;
+			array_args[2] := fmt;
+			array_args[3] := IntHolder->New(flags);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_surface_convert", array_args);
 
 			value := array_args[0]->As(IntHolder);
-			return value->Get() = 0 ? false : true;
+			return Surface->New(value->Get());
+		}
+		
+		method : public : FillRect(rect : Rect, color : Int) ~ Int {
+			if(@surface <> 0) {
+				array_args := Base->New[4];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@surface);
+				array_args[2] := rect;
+				array_args[3] := IntHolder->New(color);
+
+				Proxy->GetDllProxy()->CallFunction("sdl_surface_fill_rect", array_args);
+
+				value := array_args[0]->As(IntHolder);
+				return value->Get();
+			};
+			
+			return 0;
+		}
+		
+		function : UpperBlit(src : Surface, srcrect : Rect, dst : Surface, dstrect : Rect) ~ Int {
+			array_args := Base->New[5];
+			array_args[0] := IntHolder->New();
+			array_args[1] := src;
+			array_args[2] := srcrect;
+			array_args[3] := dst;
+			array_args[4] := dstrect;
+
+			Proxy->GetDllProxy()->CallFunction("sdl_surface_upper_blit", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+		
+		function : LowerBlit(src : Surface, srcrect : Rect, dst : Surface, dstrect : Rect) ~ Int {
+			array_args := Base->New[5];
+			array_args[0] := IntHolder->New();
+			array_args[1] := src;
+			array_args[2] := srcrect;
+			array_args[3] := dst;
+			array_args[4] := dstrect;
+
+			Proxy->GetDllProxy()->CallFunction("sdl_surface_lower_blit", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+		
+		function : SoftStretch(src : Surface, srcrect : Rect, dst : Surface, dstrect : Rect) ~ Int {
+			array_args := Base->New[5];
+			array_args[0] := IntHolder->New();
+			array_args[1] := src;
+			array_args[2] := srcrect;
+			array_args[3] := dst;
+			array_args[4] := dstrect;
+
+			@lib_proxy := Proxy->GetDllProxy();
+			@lib_proxy->CallFunction("sdl_surface_soft_stretch", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+		
+		function : UpperBlitScaled(src : Surface, srcrect : Rect, dst : Surface, dstrect : Rect) ~ Int {
+			array_args := Base->New[5];
+			array_args[0] := IntHolder->New();
+			array_args[1] := src;
+			array_args[2] := srcrect;
+			array_args[3] := dst;
+			array_args[4] := dstrect;
+
+			Proxy->GetDllProxy()->CallFunction("sdl_surface_upper_blit_scaled", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+		
+		function : LowerBlitScaled(src : Surface, srcrect : Rect, dst : Surface, dstrect : Rect) ~ Int {
+			array_args := Base->New[5];
+			array_args[0] := IntHolder->New();
+			array_args[1] := src;
+			array_args[2] := srcrect;
+			array_args[3] := dst;
+			array_args[4] := dstrect;
+
+			Proxy->GetDllProxy()->CallFunction("sdl_surface_lower_blit_scaled", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
 		}
 	}
 	
