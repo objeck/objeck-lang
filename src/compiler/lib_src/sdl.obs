@@ -136,11 +136,38 @@ bundle SDL {
 	
 	##
 	## TODO: sdl\include\SDL_rect.h
-	## new the struct
+	## new the struct; delete native struct
 	## 
 	class Rect {
 		@rect : Int;
-		New() {}
+		
+		New(rect : Int) {
+			@rect := rect;
+		}
+		
+		function : HasIntersection(A : Rect, B : Rect) ~ Bool {
+			array_args := Base->New[3];
+			array_args[0] := IntHolder->New();
+			array_args[1] := A;
+			array_args[2] := B;
+
+			Proxy->GetDllProxy()->CallFunction("sdl_rect_has_intersection", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get() = 0 ? false : true;
+		}
+		
+		function : Intersect(A : Rect, B : Rect) ~ Rect {
+			array_args := Base->New[4];
+			array_args[0] := IntHolder->New();
+			array_args[1] := A;
+			array_args[2] := B;
+
+			Proxy->GetDllProxy()->CallFunction("sdl_rect_intersect", array_args);
+			
+			value := array_args[0]->As(IntHolder);
+			return Rect->New(value->Get());
+		}
 	}
 	
 	##
