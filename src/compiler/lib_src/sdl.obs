@@ -26,6 +26,12 @@ bundle SDL {
 		SDL_KEY_DOWN := 0x00000300
 	}
 ~#	
+	#~
+	Windows class
+	~#
+	class Window {
+		
+	}
 	
 	#~
 	Core class

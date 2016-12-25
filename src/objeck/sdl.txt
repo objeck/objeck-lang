@@ -1,8 +1,10 @@
-method : public : GetNumVideoDrivers() ~ Int {
+DISPLAY
+----
+function : GetNumVideoDrivers() ~ Int {
 	array_args := Base->New[1];
 	array_args[0] := IntHolder->New();
 
-	Proxy->GetDllProxy()->CallFunction("sdl_window_get_num_video_drivers", array_args);
+	Proxy->GetDllProxy()->CallFunction("sdl_display_get_num_video_drivers", array_args);
 
 	value := array_args[0]->As(IntHolder);
 	return value->Get();
@@ -17,12 +19,12 @@ method : public : GetNumVideoDrivers() ~ Int {
 	}
 
 ---
-method : public : GetVideoDriver(index : Int) ~ String {
+function : GetVideoDriver(index : Int) ~ String {
 	array_args := Base->New[2];
 	array_args[0] := IntHolder->New();
 	array_args[1] := IntHolder->New(index);
 
-	Proxy->GetDllProxy()->CallFunction("sdl_window_get_video_driver", array_args);
+	Proxy->GetDllProxy()->CallFunction("sdl_display_get_video_driver", array_args);
 
 	return array_args[0];
 }
@@ -37,12 +39,12 @@ method : public : GetVideoDriver(index : Int) ~ String {
 	}
 
 ---
-method : public : VideoInit(driver_name : String) ~ Int {
+function : VideoInit(driver_name : String) ~ Int {
 	array_args := Base->New[2];
 	array_args[0] := IntHolder->New();
 	array_args[1] := IntHolder->New(driver_name);
 
-	Proxy->GetDllProxy()->CallFunction("sdl_window_video_init", array_args);
+	Proxy->GetDllProxy()->CallFunction("sdl_display_video_init", array_args);
 
 	value := array_args[0]->As(IntHolder);
 	return value->Get();
@@ -58,10 +60,10 @@ method : public : VideoInit(driver_name : String) ~ Int {
 	}
 
 ---
-method : public : VideoQuit() ~ Nil {
+function : VideoQuit() ~ Nil {
 	array_args := Base->New[0];
 
-	Proxy->GetDllProxy()->CallFunction("sdl_window_video_quit", array_args);
+	Proxy->GetDllProxy()->CallFunction("sdl_display_video_quit", array_args);
 
 }
 
@@ -73,11 +75,11 @@ method : public : VideoQuit() ~ Nil {
 	}
 
 ---
-method : public : GetCurrentVideoDriver() ~ String {
+function : GetCurrentVideoDriver() ~ String {
 	array_args := Base->New[1];
 	array_args[0] := IntHolder->New();
 
-	Proxy->GetDllProxy()->CallFunction("sdl_window_get_current_video_driver", array_args);
+	Proxy->GetDllProxy()->CallFunction("sdl_display_get_current_video_driver", array_args);
 
 	return array_args[0];
 }
@@ -91,11 +93,11 @@ method : public : GetCurrentVideoDriver() ~ String {
 	}
 
 ---
-method : public : GetNumVideoDisplays() ~ Int {
+function : GetNumVideoDisplays() ~ Int {
 	array_args := Base->New[1];
 	array_args[0] := IntHolder->New();
 
-	Proxy->GetDllProxy()->CallFunction("sdl_window_get_num_video_displays", array_args);
+	Proxy->GetDllProxy()->CallFunction("sdl_display_get_num_video_displays", array_args);
 
 	value := array_args[0]->As(IntHolder);
 	return value->Get();
@@ -110,12 +112,12 @@ method : public : GetNumVideoDisplays() ~ Int {
 	}
 
 ---
-method : public : GetDisplayName(displayIndex : Int) ~ String {
+function : GetDisplayName(displayIndex : Int) ~ String {
 	array_args := Base->New[2];
 	array_args[0] := IntHolder->New();
 	array_args[1] := IntHolder->New(displayIndex);
 
-	Proxy->GetDllProxy()->CallFunction("sdl_window_get_display_name", array_args);
+	Proxy->GetDllProxy()->CallFunction("sdl_display_get_display_name", array_args);
 
 	return array_args[0];
 }
@@ -130,13 +132,13 @@ method : public : GetDisplayName(displayIndex : Int) ~ String {
 	}
 
 ---
-method : public : GetDisplayBounds(displayIndex : Int, rect : Rect) ~ Int {
+function : GetDisplayBounds(displayIndex : Int, rect : Rect) ~ Int {
 	array_args := Base->New[3];
 	array_args[0] := IntHolder->New();
 	array_args[1] := IntHolder->New(displayIndex);
 	array_args[2] := rect;
 
-	Proxy->GetDllProxy()->CallFunction("sdl_window_get_display_bounds", array_args);
+	Proxy->GetDllProxy()->CallFunction("sdl_display_get_display_bounds", array_args);
 
 	value := array_args[0]->As(IntHolder);
 	return value->Get();
@@ -153,12 +155,12 @@ method : public : GetDisplayBounds(displayIndex : Int, rect : Rect) ~ Int {
 	}
 
 ---
-method : public : GetNumDisplayModes(displayIndex : Int) ~ Int {
+function : GetNumDisplayModes(displayIndex : Int) ~ Int {
 	array_args := Base->New[2];
 	array_args[0] := IntHolder->New();
 	array_args[1] := IntHolder->New(displayIndex);
 
-	Proxy->GetDllProxy()->CallFunction("sdl_window_get_num_display_modes", array_args);
+	Proxy->GetDllProxy()->CallFunction("sdl_display_get_num_display_modes", array_args);
 
 	value := array_args[0]->As(IntHolder);
 	return value->Get();
@@ -174,14 +176,14 @@ method : public : GetNumDisplayModes(displayIndex : Int) ~ Int {
 	}
 
 ---
-method : public : GetDisplayMode(displayIndex : Int, modeIndex : Int, mode : DisplayMode) ~ Int {
+function : GetDisplayMode(displayIndex : Int, modeIndex : Int, mode : DisplayMode) ~ Int {
 	array_args := Base->New[4];
 	array_args[0] := IntHolder->New();
 	array_args[1] := IntHolder->New(displayIndex);
 	array_args[2] := IntHolder->New(modeIndex);
 	array_args[3] := mode;
 
-	Proxy->GetDllProxy()->CallFunction("sdl_window_get_display_mode", array_args);
+	Proxy->GetDllProxy()->CallFunction("sdl_display_get_display_mode", array_args);
 
 	value := array_args[0]->As(IntHolder);
 	return value->Get();
@@ -199,13 +201,13 @@ method : public : GetDisplayMode(displayIndex : Int, modeIndex : Int, mode : Dis
 	}
 
 ---
-method : public : GetDesktopDisplayMode(displayIndex : Int, mode : DisplayMode) ~ Int {
+function : GetDesktopDisplayMode(displayIndex : Int, mode : DisplayMode) ~ Int {
 	array_args := Base->New[3];
 	array_args[0] := IntHolder->New();
 	array_args[1] := IntHolder->New(displayIndex);
 	array_args[2] := mode;
 
-	Proxy->GetDllProxy()->CallFunction("sdl_window_get_desktop_display_mode", array_args);
+	Proxy->GetDllProxy()->CallFunction("sdl_display_get_desktop_display_mode", array_args);
 
 	value := array_args[0]->As(IntHolder);
 	return value->Get();
@@ -222,13 +224,13 @@ method : public : GetDesktopDisplayMode(displayIndex : Int, mode : DisplayMode) 
 	}
 
 ---
-method : public : GetCurrentDisplayMode(displayIndex : Int, mode : DisplayMode) ~ Int {
+function : GetCurrentDisplayMode(displayIndex : Int, mode : DisplayMode) ~ Int {
 	array_args := Base->New[3];
 	array_args[0] := IntHolder->New();
 	array_args[1] := IntHolder->New(displayIndex);
 	array_args[2] := mode;
 
-	Proxy->GetDllProxy()->CallFunction("sdl_window_get_current_display_mode", array_args);
+	Proxy->GetDllProxy()->CallFunction("sdl_display_get_current_display_mode", array_args);
 
 	value := array_args[0]->As(IntHolder);
 	return value->Get();
@@ -245,14 +247,14 @@ method : public : GetCurrentDisplayMode(displayIndex : Int, mode : DisplayMode) 
 	}
 
 ---
-method : public : GetClosestDisplayMode(displayIndex : Int, mode : DisplayMode, closest : DisplayMode) ~ DisplayMode {
+function : GetClosestDisplayMode(displayIndex : Int, mode : DisplayMode, closest : DisplayMode) ~ DisplayMode {
 	array_args := Base->New[4];
 	array_args[0] := IntHolder->New();
 	array_args[1] := IntHolder->New(displayIndex);
 	array_args[2] := mode;
 	array_args[3] := closest;
 
-	Proxy->GetDllProxy()->CallFunction("sdl_window_get_closest_display_mode", array_args);
+	Proxy->GetDllProxy()->CallFunction("sdl_display_get_closest_display_mode", array_args);
 
 	return array_args[0];
 }
@@ -269,6 +271,38 @@ method : public : GetClosestDisplayMode(displayIndex : Int, mode : DisplayMode, 
 	}
 
 ---
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 method : public : GetDisplayIndex() ~ Int {
 	array_args := Base->New[2];
 	array_args[0] := IntHolder->New();
