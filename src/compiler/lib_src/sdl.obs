@@ -138,6 +138,18 @@ bundle SDL {
 	## TODO: sdl\include\SDL_rect.h
 	## new the struct; delete native struct
 	## 
+	class Point {
+		@point : Int;
+		
+		New(point : Int) {
+			@point := point;
+		}
+	}
+
+	##
+	## TODO: sdl\include\SDL_rect.h
+	## new the struct; delete native struct
+	## 
 	class Rect {
 		@rect : Int;
 		
@@ -165,6 +177,32 @@ bundle SDL {
 
 			Proxy->GetDllProxy()->CallFunction("sdl_rect_intersect", array_args);
 			
+			value := array_args[0]->As(IntHolder);
+			return Rect->New(value->Get());
+		}
+		
+		function : Union(A : Rect, B : Rect) ~ Rect {
+			array_args := Base->New[4];
+			array_args[0] := IntHolder->New();
+			array_args[1] := A;
+			array_args[2] := B;
+
+			Proxy->GetDllProxy()->CallFunction("sdl_rect_union", array_args);
+			
+			value := array_args[0]->As(IntHolder);
+			return Rect->New(value->Get());
+		}
+		
+		function : EnclosePoints(points : Point, count : Int, clip : Rect) ~ Rect {
+			array_args := Base->New[4];
+			array_args[0] := IntHolder->New();
+			array_args[1] := points;
+			array_args[2] := IntHolder->New(count);
+			array_args[3] := clip;
+
+			@lib_proxy := Proxy->GetDllProxy();
+			@lib_proxy->CallFunction("sdl_rect_enclose_points", array_args);
+
 			value := array_args[0]->As(IntHolder);
 			return Rect->New(value->Get());
 		}

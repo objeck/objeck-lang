@@ -98,6 +98,7 @@ method : public : EnclosePoints(points : Point, count : Int, clip : Rect, result
 	}
 
 ---
+================
 method : public : IntersectAndLine(X1 : Int, Y1 : Int, X2 : Int, Y2 : Int) ~ Bool {
 	array_args := Base->New[6];
 	array_args[0] := IntHolder->New();
