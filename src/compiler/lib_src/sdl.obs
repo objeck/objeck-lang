@@ -126,18 +126,29 @@ bundle SDL {
 	}
 	
 	##  
-	## TODO: sdl\include\SDL_pixels.h; 
+	## TODO: SDL_pixels.h; 
 	## use SDL_AllocPalette
 	##
 	class Palette {
 		@palette : Int;
-		New() {}
+		
+		New : private (palette : Int) {
+			@palette := palette;
+		}
 	}
 	
 	##
-	## TODO: sdl\include\SDL_rect.h
-	## new the struct; delete native struct
-	## 
+	## TODO: SDL_video.h
+	## use new, delete
+	##
+	class DisplayMode {
+		@display_mode : Int;
+		
+		New : private (display_mode : Int) {
+			@display_mode := display_mode;
+		}
+	}
+	
 	class Point {
 		@point : Int;
 		
