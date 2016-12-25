@@ -157,10 +157,10 @@ bundle SDL {
 			@rect := rect;
 		}
 		
-		function : HasIntersection(A : Rect, B : Rect) ~ Bool {
+		method : public : HasIntersection(B : Rect) ~ Bool {
 			array_args := Base->New[3];
 			array_args[0] := IntHolder->New();
-			array_args[1] := A;
+			array_args[1] := IntHolder->New(@rect);
 			array_args[2] := B;
 
 			Proxy->GetDllProxy()->CallFunction("sdl_rect_has_intersection", array_args);
@@ -169,10 +169,10 @@ bundle SDL {
 			return value->Get() = 0 ? false : true;
 		}
 		
-		function : Intersect(A : Rect, B : Rect) ~ Rect {
+		method : public : Intersect(B : Rect) ~ Rect {
 			array_args := Base->New[4];
 			array_args[0] := IntHolder->New();
-			array_args[1] := A;
+			array_args[1] := IntHolder->New(@rect);
 			array_args[2] := B;
 
 			Proxy->GetDllProxy()->CallFunction("sdl_rect_intersect", array_args);
@@ -181,10 +181,10 @@ bundle SDL {
 			return Rect->New(value->Get());
 		}
 		
-		function : Union(A : Rect, B : Rect) ~ Rect {
+		method : public : Union(B : Rect) ~ Rect {
 			array_args := Base->New[4];
 			array_args[0] := IntHolder->New();
-			array_args[1] := A;
+			array_args[1] := IntHolder->New(@rect);
 			array_args[2] := B;
 
 			Proxy->GetDllProxy()->CallFunction("sdl_rect_union", array_args);
