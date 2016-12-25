@@ -200,11 +200,25 @@ bundle SDL {
 			array_args[2] := IntHolder->New(count);
 			array_args[3] := clip;
 
-			@lib_proxy := Proxy->GetDllProxy();
-			@lib_proxy->CallFunction("sdl_rect_enclose_points", array_args);
+			Proxy->GetDllProxy()->CallFunction("sdl_rect_enclose_points", array_args);
 
 			value := array_args[0]->As(IntHolder);
 			return Rect->New(value->Get());
+		}
+		
+		method : public : IntersectAndLine(X1 : IntHolder, Y1 :IntHolder, X2 : IntHolder, Y2 : IntHolder) ~ Bool {
+			array_args := Base->New[6];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@rect);
+			array_args[2] := X1;
+			array_args[3] := Y1;
+			array_args[4] := X2;
+			array_args[5] := Y2;
+
+			Proxy->GetDllProxy()->CallFunction("sdl_rect_intersect_and_line", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get() = 0 ? false : true;
 		}
 	}
 	
