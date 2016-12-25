@@ -247,7 +247,6 @@ function : GetCurrentDisplayMode(displayIndex : Int, mode : DisplayMode) ~ Int {
 	}
 
 ---
-===========
 function : GetClosestDisplayMode(displayIndex : Int, mode : DisplayMode, closest : DisplayMode) ~ DisplayMode {
 	array_args := Base->New[4];
 	array_args[0] := IntHolder->New();

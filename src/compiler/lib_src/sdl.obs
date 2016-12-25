@@ -143,6 +143,19 @@ bundle SDL {
 			value := array_args[0]->As(IntHolder);
 			return value->Get();
 		}
+		
+		function : GetClosestDisplayMode(displayIndex : Int, mode : DisplayMode, closest : DisplayMode) ~ DisplayMode {
+			array_args := Base->New[4];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(displayIndex);
+			array_args[2] := mode;
+			array_args[3] := closest;
+
+			Proxy->GetDllProxy()->CallFunction("sdl_display_get_closest_display_mode", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return DisplayMode->New(value->Get());
+		}
 	}
 	
 	#~
@@ -269,7 +282,7 @@ bundle SDL {
 	class DisplayMode {
 		@display_mode : Int;
 		
-		New : private (display_mode : Int) {
+		New(display_mode : Int) {
 			@display_mode := display_mode;
 		}
 	}
