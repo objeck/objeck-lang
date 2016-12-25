@@ -141,56 +141,160 @@ bundle SDL {
 	class Point {
 		@point : Int;
 		
-		New(point : Int) {
+		New() {
+			array_args := Base->New[1];
+			array_args[0] := IntHolder->New();
+			Proxy->GetDllProxy()->CallFunction("sdl_point_new", array_args);
+			value := array_args[0]->As(IntHolder);
+			@point := value->Get();
+		}
+		
+		New : private (point : Int) {
 			@point := point;
+		}
+		
+		method : public : Free() ~ Nil {
+			if(@point <> 0) {
+				array_args := Base->New[1];
+				array_args[0] := IntHolder->New(@point);
+
+				Proxy->GetDllProxy()->CallFunction("sdl_point_free", array_args);
+				@point := 0;
+			};
+		}
+		
+		method : public : GetX() ~ Int {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@point);
+			Proxy->GetDllProxy()->CallFunction("sdl_point_x", array_args);
+			value := array_args[0]->As(IntHolder);
+			
+			return value->Get();
+		}
+		
+		method : public : GetY() ~ Int {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@point);
+			Proxy->GetDllProxy()->CallFunction("sdl_point_y", array_args);
+			value := array_args[0]->As(IntHolder);
+			
+			return value->Get();
 		}
 	}
 
-	##
-	## TODO: sdl\include\SDL_rect.h
-	## new the struct; delete native struct
-	## 
 	class Rect {
 		@rect : Int;
 		
-		New(rect : Int) {
+		New() {
+			array_args := Base->New[1];
+			array_args[0] := IntHolder->New();
+			Proxy->GetDllProxy()->CallFunction("sdl_rect_new", array_args);
+			value := array_args[0]->As(IntHolder);
+			@rect := value->Get();
+		}
+		
+		New : private (rect : Int) {
 			@rect := rect;
 		}
 		
-		method : public : HasIntersection(B : Rect) ~ Bool {
-			array_args := Base->New[3];
+		method : public : Free() ~ Nil {
+			if(@rect <> 0) {
+				array_args := Base->New[1];
+				array_args[0] := IntHolder->New(@rect);
+
+				Proxy->GetDllProxy()->CallFunction("sdl_rect_free", array_args);
+				@rect := 0;
+			};
+		}
+		
+		method : public : GetX() ~ Int {
+			array_args := Base->New[2];
 			array_args[0] := IntHolder->New();
 			array_args[1] := IntHolder->New(@rect);
-			array_args[2] := B;
-
-			Proxy->GetDllProxy()->CallFunction("sdl_rect_has_intersection", array_args);
-
+			Proxy->GetDllProxy()->CallFunction("sdl_rect_x", array_args);
 			value := array_args[0]->As(IntHolder);
-			return value->Get() = 0 ? false : true;
+			
+			return value->Get();
+		}
+		
+		method : public : GetY() ~ Int {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@rect);
+			Proxy->GetDllProxy()->CallFunction("sdl_rect_y", array_args);
+			value := array_args[0]->As(IntHolder);
+			
+			return value->Get();
+		}
+		
+		method : public : GetH() ~ Int {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@rect);
+			Proxy->GetDllProxy()->CallFunction("sdl_rect_h", array_args);
+			value := array_args[0]->As(IntHolder);
+			
+			return value->Get();
+		}
+		
+		method : public : GetW() ~ Int {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@rect);
+			Proxy->GetDllProxy()->CallFunction("sdl_rect_w", array_args);
+			value := array_args[0]->As(IntHolder);
+			
+			return value->Get();
+		}
+		
+		method : public : HasIntersection(B : Rect) ~ Bool {
+			if(@rect <> 0) {
+				array_args := Base->New[3];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@rect);
+				array_args[2] := B;
+
+				Proxy->GetDllProxy()->CallFunction("sdl_rect_has_intersection", array_args);
+
+				value := array_args[0]->As(IntHolder);
+				return value->Get() = 0 ? false : true;
+			};
+			
+			return false;
 		}
 		
 		method : public : Intersect(B : Rect) ~ Rect {
-			array_args := Base->New[4];
-			array_args[0] := IntHolder->New();
-			array_args[1] := IntHolder->New(@rect);
-			array_args[2] := B;
+			if(@rect <> 0) {
+				array_args := Base->New[4];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@rect);
+				array_args[2] := B;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_rect_intersect", array_args);
+				Proxy->GetDllProxy()->CallFunction("sdl_rect_intersect", array_args);
+				
+				value := array_args[0]->As(IntHolder);
+				return Rect->New(value->Get());
+			};
 			
-			value := array_args[0]->As(IntHolder);
-			return Rect->New(value->Get());
+			return Nil;
 		}
 		
 		method : public : Union(B : Rect) ~ Rect {
-			array_args := Base->New[4];
-			array_args[0] := IntHolder->New();
-			array_args[1] := IntHolder->New(@rect);
-			array_args[2] := B;
+			if(@rect <> 0) {
+				array_args := Base->New[4];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@rect);
+				array_args[2] := B;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_rect_union", array_args);
+				Proxy->GetDllProxy()->CallFunction("sdl_rect_union", array_args);
+				
+				value := array_args[0]->As(IntHolder);
+				return Rect->New(value->Get());
+			};
 			
-			value := array_args[0]->As(IntHolder);
-			return Rect->New(value->Get());
+			return Nil;
 		}
 		
 		function : EnclosePoints(points : Point, count : Int, clip : Rect) ~ Rect {
@@ -207,18 +311,22 @@ bundle SDL {
 		}
 		
 		method : public : IntersectAndLine(X1 : IntHolder, Y1 :IntHolder, X2 : IntHolder, Y2 : IntHolder) ~ Bool {
-			array_args := Base->New[6];
-			array_args[0] := IntHolder->New();
-			array_args[1] := IntHolder->New(@rect);
-			array_args[2] := X1;
-			array_args[3] := Y1;
-			array_args[4] := X2;
-			array_args[5] := Y2;
+			if(@rect <> 0) {		
+				array_args := Base->New[6];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@rect);
+				array_args[2] := X1;
+				array_args[3] := Y1;
+				array_args[4] := X2;
+				array_args[5] := Y2;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_rect_intersect_and_line", array_args);
+				Proxy->GetDllProxy()->CallFunction("sdl_rect_intersect_and_line", array_args);
 
-			value := array_args[0]->As(IntHolder);
-			return value->Get() = 0 ? false : true;
+				value := array_args[0]->As(IntHolder);
+				return value->Get() = 0 ? false : true;
+			};
+			
+			return false;
 		}
 	}
 	
@@ -237,7 +345,7 @@ bundle SDL {
 	class Surface {
 		@surface : Int;
 		
-		New(surface : Int) {
+		New : private (surface : Int) {
 			@surface := surface;
 		}
 		
@@ -264,6 +372,7 @@ bundle SDL {
 				array_args[0] := IntHolder->New(@surface);
 
 				Proxy->GetDllProxy()->CallFunction("sdl_surface_free", array_args);
+				@surface := 0;
 			};
 		}
 		
