@@ -381,6 +381,116 @@ bundle SDL {
 				Proxy->GetDllProxy()->CallFunction("sdl_window_get_maximum_size", array_args);
 			};
 		}
+		
+		method : public : SetBordered(bordered : Bool) ~ Nil {
+			if(@window <> 0) {
+				array_args := Base->New[2];
+				array_args[0] := IntHolder->New(@window);
+				array_args[1] := IntHolder->New(bordered ? 0 : 1);
+
+				Proxy->GetDllProxy()->CallFunction("sdl_window_set_bordered", array_args);
+			};
+		}
+		
+		method : public : Show() ~ Nil {
+			if(@window <> 0) {
+				array_args := Base->New[1];
+				array_args[0] := IntHolder->New(@window);
+
+				Proxy->GetDllProxy()->CallFunction("sdl_window_show", array_args);
+			};
+		}
+		
+		method : public : Hide() ~ Nil {
+			if(@window <> 0) {
+				array_args := Base->New[1];
+				array_args[0] := IntHolder->New(@window);
+
+				Proxy->GetDllProxy()->CallFunction("sdl_window_hide", array_args);
+			};
+		}
+		
+		method : public : Raise() ~ Nil {
+			if(@window <> 0) {
+				array_args := Base->New[1];
+				array_args[0] := IntHolder->New(@window);
+
+				Proxy->GetDllProxy()->CallFunction("sdl_window_raise", array_args);
+			};
+		}
+		
+		method : public : Maximize() ~ Nil {
+			if(@window <> 0) {
+				array_args := Base->New[1];
+				array_args[0] := IntHolder->New(@window);
+
+				Proxy->GetDllProxy()->CallFunction("sdl_window_maximize", array_args);
+			};
+		}
+		
+		method : public : Minimize() ~ Nil {
+			if(@window <> 0) {
+				array_args := Base->New[1];
+				array_args[0] := IntHolder->New(@window);
+
+				Proxy->GetDllProxy()->CallFunction("sdl_window_minimize", array_args);
+			};
+		}
+		
+		method : public : Restore() ~ Nil {
+			if(@window <> 0) {
+				array_args := Base->New[1];
+				array_args[0] := IntHolder->New(@window);
+
+				Proxy->GetDllProxy()->CallFunction("sdl_window_restore", array_args);
+
+			};
+		}
+		
+		method : public : SetFullscreen(flags : Int) ~ Int {
+			if(@window <> 0) {
+				array_args := Base->New[3];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@window);
+				array_args[2] := IntHolder->New(flags);
+
+				Proxy->GetDllProxy()->CallFunction("sdl_window_set_fullscreen", array_args);
+
+				value := array_args[0]->As(IntHolder);
+				return value->Get();
+			};
+			
+			return 0;
+		}
+		
+		method : public : GetSurface() ~ Surface {
+			if(@window <> 0) {
+				array_args := Base->New[2];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@window);
+
+				Proxy->GetDllProxy()->CallFunction("sdl_window_get_surface", array_args);
+
+				return array_args[0];
+			};
+			
+			return Nil;
+		}
+		
+		method : public : UpdateSurface() ~ Int {
+			if(@window <> 0) {
+				array_args := Base->New[2];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@window);
+
+				Proxy->GetDllProxy()->CallFunction("sdl_window_update_surface", array_args);
+
+				value := array_args[0]->As(IntHolder);
+				return value->Get();
+			};
+		
+			return 0;
+		}
 	}
 	
 	#~

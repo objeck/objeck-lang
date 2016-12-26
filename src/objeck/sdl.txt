@@ -708,7 +708,6 @@ method : public : GetMaximumSize(w : Int, h : Int) ~ Nil {
 	}
 
 ---
-======================
 method : public : SetBordered(bordered : Bool) ~ Nil {
 	array_args := Base->New[2];
 	array_args[0] := IntHolder->New(@window);
@@ -894,6 +893,7 @@ method : public : UpdateSurface() ~ Int {
 	}
 
 ---
+=============
 method : public : UpdateSurfaceRects(rects : Rect, numrects : Int) ~ Int {
 	array_args := Base->New[4];
 	array_args[0] := IntHolder->New();
