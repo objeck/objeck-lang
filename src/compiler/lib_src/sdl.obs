@@ -471,7 +471,8 @@ bundle SDL {
 
 				Proxy->GetDllProxy()->CallFunction("sdl_window_get_surface", array_args);
 
-				return array_args[0];
+				value := array_args[0]->As(IntHolder);
+				return Surface->New(value->Get());
 			};
 			
 			return Nil;
@@ -606,11 +607,184 @@ bundle SDL {
 			if(@window <> 0) {
 				array_args := Base->New[1];
 				array_args[0] := IntHolder->New(@window);
-
 				Proxy->GetDllProxy()->CallFunction("sdl_window_destroy", array_args);
-
+				@window := 0;
 			};
 		}
+	}
+	
+	#~
+	Event class
+	~#
+	class Event {
+		@events : Int;
+		
+		New() {
+			array_args := Base->New[1];
+			array_args[0] := IntHolder->New();
+			Proxy->GetDllProxy()->CallFunction("sdl_event_new", array_args);
+			value := array_args[0]->As(IntHolder);
+			@events := value->Get();
+		}
+		
+		New : private (events : Int) {
+			@events := events;
+		}
+		
+		method : public : Free() ~ Nil {
+			if(@events <> 0) {
+				array_args := Base->New[1];
+				array_args[0] := IntHolder->New(@events);
+				Proxy->GetDllProxy()->CallFunction("sdl_event_free", array_args);
+				@events := 0;
+			};
+		}
+		
+		method : public : GetType() ~ Int {
+			if(@events <> 0) {
+				array_args := Base->New[2];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@events);
+				
+				Proxy->GetDllProxy()->CallFunction("sdl_event_type", array_args);
+
+				value := array_args[0]->As(IntHolder);
+				return value->Get();
+			};
+			
+			return 0;
+		}
+				
+		function : Pumps() ~ Nil {
+			array_args := Base->New[0];
+			Proxy->GetDllProxy()->CallFunction("sdl_event_pumps", array_args);
+		}
+		
+		method : public : Peeps(numevents : Int, action : EventAction, minType : Int, maxType : Int) ~ Int {
+			if(@events <> 0) {
+				array_args := Base->New[6];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@events);
+				array_args[2] := IntHolder->New(numevents);
+				array_args[3] := IntHolder->New(action->As(Int));
+				array_args[4] := IntHolder->New(minType);
+				array_args[5] := IntHolder->New(maxType);
+
+				Proxy->GetDllProxy()->CallFunction("sdl_event_peeps", array_args);
+
+				value := array_args[0]->As(IntHolder);
+				return value->Get();
+			};
+			
+			return 0;
+		}
+		
+		function : Has(type : Int) ~ Bool {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(type);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_event_has", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get() = 0 ? false : true;
+		}
+		
+		function : Flush(type : Int) ~ Nil {
+			array_args := Base->New[1];
+			array_args[0] := IntHolder->New(type);
+			Proxy->GetDllProxy()->CallFunction("sdl_event_flush", array_args);
+		}
+		
+		method : public : Poll() ~ Int {
+			if(@events <> 0) {
+				array_args := Base->New[2];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@events);
+
+				Proxy->GetDllProxy()->CallFunction("sdl_event_poll", array_args);
+
+				value := array_args[0]->As(IntHolder);
+				return value->Get();
+			};
+		
+			return 0;
+		}
+		
+		method : public : Wait() ~ Int {
+			if(@events <> 0) {
+				array_args := Base->New[2];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@events);
+
+				Proxy->GetDllProxy()->CallFunction("sdl_event_wait", array_args);
+
+				value := array_args[0]->As(IntHolder);
+				return value->Get();
+			};
+			
+			return 0;
+		}
+		
+		method : public : WaitTimeout(timeout : Int) ~ Int {
+			if(@events <> 0) {
+				array_args := Base->New[3];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@events);
+				array_args[2] := IntHolder->New(timeout);
+
+				Proxy->GetDllProxy()->CallFunction("sdl_event_wait_timeout", array_args);
+
+				value := array_args[0]->As(IntHolder);
+				return value->Get();
+			};
+			
+			return 0;
+		}
+		
+		method : public : Push() ~ Int {
+			if(@events <> 0) {
+				array_args := Base->New[2];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@events);
+
+				Proxy->GetDllProxy()->CallFunction("sdl_event_push", array_args);
+
+				value := array_args[0]->As(IntHolder);
+				return value->Get();
+			};
+			
+			return 0;
+		}
+		
+		function : State(type : Int, state : Int) ~ Int {
+			array_args := Base->New[3];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(type);
+			array_args[2] := IntHolder->New(state);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_event_state", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+		
+		function : Registers(numevents : Int) ~ Int {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(numevents);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_event_registers", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+	}
+	
+	enum EventAction {
+		SDL_ADDEVENT,
+		SDL_PEEKEVENT,
+		SDL_GETEVENT
 	}
 	
 	#~
@@ -622,7 +796,7 @@ bundle SDL {
 			array_args[0] := IntHolder->New();
 			array_args[1] := IntHolder->New(flags);
 			
-			Proxy->GetDllProxy()->CallFunction("sdl_surface_init", array_args);
+			Proxy->GetDllProxy()->CallFunction("sdl_core_init", array_args);
 			value := array_args[0]->As(IntHolder);
 			return value->Get();
 		}
@@ -942,7 +1116,7 @@ bundle SDL {
 	class Surface {
 		@surface : Int;
 		
-		New : private (surface : Int) {
+		New(surface : Int) {
 			@surface := surface;
 		}
 		
