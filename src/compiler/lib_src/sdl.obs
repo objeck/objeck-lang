@@ -17,7 +17,6 @@ bundle SDL {
 		}
 	}
 	
-#~	
 	consts Flags {
 		SDL_INIT_VIDEO := 0x00000020,
 		SDL_WINDOW_POS_UNDEFINED := 0x1FFF0000,
@@ -25,7 +24,6 @@ bundle SDL {
 		SDL_QUIT := 0x00000100,
 		SDL_KEY_DOWN := 0x00000300
 	}
-~#	
 	
 	#~
 	Display class
@@ -162,7 +160,227 @@ bundle SDL {
 	Windows class
 	~#
 	class Window {
+		@window : Int;
 		
+		New(window : Int) {
+			@window := window;
+		}
+		
+		New(title : String, x : Int, y : Int, w : Int, h : Int, flags : Int) {
+			array_args := Base->New[7];
+			array_args[0] := IntHolder->New();
+			array_args[1] := title;
+			array_args[2] := IntHolder->New(x);
+			array_args[3] := IntHolder->New(y);
+			array_args[4] := IntHolder->New(w);
+			array_args[5] := IntHolder->New(h);
+			array_args[6] := IntHolder->New(flags);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_window_create", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			@window := value->Get();
+		}
+		
+		method : public : GetDisplayIndex() ~ Int {
+			if(@window <> 0) {
+				array_args := Base->New[2];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@window);
+
+				Proxy->GetDllProxy()->CallFunction("sdl_window_get_display_index", array_args);
+
+				value := array_args[0]->As(IntHolder);
+				return value->Get();
+			};
+			
+			return 0;
+		}
+		
+		method : public : SetDisplayMode(mode : DisplayMode) ~ Int {
+			if(@window <> 0) {
+				array_args := Base->New[3];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@window);
+				array_args[2] := mode;
+
+				Proxy->GetDllProxy()->CallFunction("sdl_window_set_display_mode", array_args);
+
+				value := array_args[0]->As(IntHolder);
+				return value->Get();
+			};
+			
+			return 0;
+		}
+		
+		method : public : GetPixelFormat() ~ Int {
+			if(@window <> 0) {
+				array_args := Base->New[2];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@window);
+
+				Proxy->GetDllProxy()->CallFunction("sdl_window_get_pixel_format", array_args);
+
+				value := array_args[0]->As(IntHolder);
+				return value->Get();
+			};
+			
+			return 0;
+		}
+		
+		method : public : GetID() ~ Int {
+			if(@window <> 0) {
+				array_args := Base->New[2];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@window);
+
+				Proxy->GetDllProxy()->CallFunction("sdl_window_getid", array_args);
+
+				value := array_args[0]->As(IntHolder);
+				return value->Get();
+			};
+			
+			return 0;
+		}
+		
+		method : public : GetFromID(id : Int) ~ Window {
+			if(@window <> 0) {
+				array_args := Base->New[2];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(id);
+
+				Proxy->GetDllProxy()->CallFunction("sdl_window_get_fromid", array_args);
+
+				value := array_args[0]->As(IntHolder);
+				return Window->New(value->Get());
+			};
+			
+			return Nil;
+		}
+		
+		method : public : GetFlags() ~ Int {
+			if(@window <> 0) {
+				array_args := Base->New[2];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@window);
+
+				Proxy->GetDllProxy()->CallFunction("sdl_window_get_flags", array_args);
+
+				value := array_args[0]->As(IntHolder);
+				return value->Get();
+			};
+			
+			return 0;
+		}
+		
+		method : public : SetTitle(title : String) ~ Nil {
+			if(@window <> 0) {
+				array_args := Base->New[2];
+				array_args[0] := IntHolder->New(@window);
+				array_args[1] := title;
+
+				Proxy->GetDllProxy()->CallFunction("sdl_window_set_title", array_args);
+			};	
+		}
+		
+		method : public : SetIcon(icon : Surface) ~ Nil {
+			if(@window <> 0) {
+				array_args := Base->New[2];
+				array_args[0] := IntHolder->New(@window);
+				array_args[1] := icon;
+
+				Proxy->GetDllProxy()->CallFunction("sdl_window_set_icon", array_args);
+			};
+		}
+		
+		method : public : SetPosition(x : Int, y : Int) ~ Nil {
+			if(@window <> 0) {
+				array_args := Base->New[3];
+				array_args[0] := IntHolder->New(@window);
+				array_args[1] := IntHolder->New(x);
+				array_args[2] := IntHolder->New(y);
+
+				Proxy->GetDllProxy()->CallFunction("sdl_window_set_position", array_args);
+			};
+		}
+		
+		method : public : GetPosition(x : IntHolder, y : IntHolder) ~ Nil {
+			if(@window <> 0) {
+				array_args := Base->New[3];
+				array_args[0] := IntHolder->New(@window);
+				array_args[1] := x;
+				array_args[2] := y;
+
+				Proxy->GetDllProxy()->CallFunction("sdl_window_get_position", array_args);
+			};
+		}
+		
+		method : public : SetSize(w : Int, h : Int) ~ Nil {
+			if(@window <> 0) {
+				array_args := Base->New[3];
+				array_args[0] := IntHolder->New(@window);
+				array_args[1] := IntHolder->New(w);
+				array_args[2] := IntHolder->New(h);
+
+				Proxy->GetDllProxy()->CallFunction("sdl_window_set_size", array_args);
+
+			};
+		}
+		
+		method : public : GetSize(w : IntHolder, h : IntHolder) ~ Nil {
+			if(@window <> 0) {
+				array_args := Base->New[3];
+				array_args[0] := IntHolder->New(@window);
+				array_args[1] := w;
+				array_args[2] := h;
+
+				Proxy->GetDllProxy()->CallFunction("sdl_window_get_size", array_args);
+			};
+		}
+		
+		method : public : SetMinimumSize(min_w : Int, min_h : Int) ~ Nil {
+			if(@window <> 0) {
+				array_args := Base->New[3];
+				array_args[0] := IntHolder->New(@window);
+				array_args[1] := IntHolder->New(min_w);
+				array_args[2] := IntHolder->New(min_h);
+
+				Proxy->GetDllProxy()->CallFunction("sdl_window_set_minimum_size", array_args);
+			};
+		}
+		
+		method : public : GetMinimumSize(w : IntHolder, h : IntHolder) ~ Nil {
+			if(@window <> 0) {
+				array_args := Base->New[3];
+				array_args[0] := IntHolder->New(@window);
+				array_args[1] := w;
+				array_args[2] := h;
+
+				Proxy->GetDllProxy()->CallFunction("sdl_window_get_minimum_size", array_args);
+			};
+		}
+		
+		method : public : SetMaximumSize(max_w : Int, max_h : Int) ~ Nil {
+			if(@window <> 0) {
+				array_args := Base->New[3];
+				array_args[0] := IntHolder->New(@window);
+				array_args[1] := IntHolder->New(max_w);
+				array_args[2] := IntHolder->New(max_h);
+
+				Proxy->GetDllProxy()->CallFunction("sdl_window_set_maximum_size", array_args);
+			};
+		}
+		
+		method : public : GetMaximumSize(w : IntHolder, h : IntHolder) ~ Nil {
+			if(@window <> 0) {
+				array_args := Base->New[3];
+				array_args[0] := IntHolder->New(@window);
+				array_args[1] := w;
+				array_args[2] := h;
+
+				Proxy->GetDllProxy()->CallFunction("sdl_window_get_maximum_size", array_args);
+			};
+		}
 	}
 	
 	#~
@@ -762,17 +980,21 @@ bundle SDL {
 			return false;
 		}
 		
-		function : Convert(src : Surface, fmt : PixelFormat, flags : Int) ~ Surface {
-			array_args := Base->New[4];
-			array_args[0] := IntHolder->New();
-			array_args[1] := src;
-			array_args[2] := fmt;
-			array_args[3] := IntHolder->New(flags);
+		method : public : Convert(fmt : PixelFormat, flags : Int) ~ Surface {
+			if(@surface <> 0) {
+				array_args := Base->New[4];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@surface);
+				array_args[2] := fmt;
+				array_args[3] := IntHolder->New(flags);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_surface_convert", array_args);
+				Proxy->GetDllProxy()->CallFunction("sdl_surface_convert", array_args);
 
-			value := array_args[0]->As(IntHolder);
-			return Surface->New(value->Get());
+				value := array_args[0]->As(IntHolder);
+				return Surface->New(value->Get());
+			};
+			
+			return Nil;
 		}
 		
 		method : public : FillRect(rect : Rect, color : Int) ~ Int {
@@ -792,10 +1014,10 @@ bundle SDL {
 			return 0;
 		}
 		
-		function : UpperBlit(src : Surface, srcrect : Rect, dst : Surface, dstrect : Rect) ~ Int {
+		method : public : UpperBlit(srcrect : Rect, dst : Surface, dstrect : Rect) ~ Int {
 			array_args := Base->New[5];
 			array_args[0] := IntHolder->New();
-			array_args[1] := src;
+			array_args[1] := IntHolder->New(@surface);
 			array_args[2] := srcrect;
 			array_args[3] := dst;
 			array_args[4] := dstrect;
@@ -806,10 +1028,10 @@ bundle SDL {
 			return value->Get();
 		}
 		
-		function : LowerBlit(src : Surface, srcrect : Rect, dst : Surface, dstrect : Rect) ~ Int {
+		method : public : LowerBlit(srcrect : Rect, dst : Surface, dstrect : Rect) ~ Int {
 			array_args := Base->New[5];
 			array_args[0] := IntHolder->New();
-			array_args[1] := src;
+			array_args[1] := IntHolder->New(@surface);
 			array_args[2] := srcrect;
 			array_args[3] := dst;
 			array_args[4] := dstrect;
@@ -820,10 +1042,10 @@ bundle SDL {
 			return value->Get();
 		}
 		
-		function : SoftStretch(src : Surface, srcrect : Rect, dst : Surface, dstrect : Rect) ~ Int {
+		method : public : SoftStretch(srcrect : Rect, dst : Surface, dstrect : Rect) ~ Int {
 			array_args := Base->New[5];
 			array_args[0] := IntHolder->New();
-			array_args[1] := src;
+			array_args[1] := IntHolder->New(@surface);
 			array_args[2] := srcrect;
 			array_args[3] := dst;
 			array_args[4] := dstrect;
@@ -835,10 +1057,10 @@ bundle SDL {
 			return value->Get();
 		}
 		
-		function : UpperBlitScaled(src : Surface, srcrect : Rect, dst : Surface, dstrect : Rect) ~ Int {
+		method : public : UpperBlitScaled(srcrect : Rect, dst : Surface, dstrect : Rect) ~ Int {
 			array_args := Base->New[5];
 			array_args[0] := IntHolder->New();
-			array_args[1] := src;
+			array_args[1] := IntHolder->New(@surface);
 			array_args[2] := srcrect;
 			array_args[3] := dst;
 			array_args[4] := dstrect;
@@ -849,10 +1071,10 @@ bundle SDL {
 			return value->Get();
 		}
 		
-		function : LowerBlitScaled(src : Surface, srcrect : Rect, dst : Surface, dstrect : Rect) ~ Int {
+		method : public : LowerBlitScaled(srcrect : Rect, dst : Surface, dstrect : Rect) ~ Int {
 			array_args := Base->New[5];
 			array_args[0] := IntHolder->New();
-			array_args[1] := src;
+			array_args[1] := IntHolder->New(@surface);
 			array_args[2] := srcrect;
 			array_args[3] := dst;
 			array_args[4] := dstrect;

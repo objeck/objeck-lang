@@ -301,95 +301,6 @@ function : GetClosestDisplayMode(displayIndex : Int, mode : DisplayMode, closest
 
 
 
-
-
-method : public : GetDisplayIndex() ~ Int {
-	array_args := Base->New[2];
-	array_args[0] := IntHolder->New();
-	array_args[1] := IntHolder->New(@window);
-
-	Proxy->GetDllProxy()->CallFunction("sdl_window_get_display_index", array_args);
-
-	value := array_args[0]->As(IntHolder);
-	return value->Get();
-}
-
-#ifdef _WIN32
-	__declspec(dllexport)
-#endif
-	void sdl_window_get_display_index(VMContext& context) {
-		SDL_Window* window = (Window*)APITools_GetIntValue(context, 1);
-		const int return_value = SDL_GetWindowDisplayIndex(window);
-		APITools_SetIntValue(context, 0, return_value);
-	}
-
----
-method : public : SetDisplayMode(mode : DisplayMode) ~ Int {
-	array_args := Base->New[3];
-	array_args[0] := IntHolder->New();
-	array_args[1] := IntHolder->New(@window);
-	array_args[2] := mode;
-
-	Proxy->GetDllProxy()->CallFunction("sdl_window_set_display_mode", array_args);
-
-	value := array_args[0]->As(IntHolder);
-	return value->Get();
-}
-
-#ifdef _WIN32
-	__declspec(dllexport)
-#endif
-	void sdl_window_set_display_mode(VMContext& context) {
-		SDL_Window* window = (Window*)APITools_GetIntValue(context, 1);
-		const long* mode = (long*)APITools_GetObjectValue(context, 2);
-		const int return_value = SDL_SetWindowDisplayMode(window, mode);
-		APITools_SetIntValue(context, 0, return_value);
-	}
-
----
-method : public : GetDisplayMode(mode : DisplayMode) ~ Int {
-	array_args := Base->New[3];
-	array_args[0] := IntHolder->New();
-	array_args[1] := IntHolder->New(@window);
-	array_args[2] := mode;
-
-	Proxy->GetDllProxy()->CallFunction("sdl_window_get_display_mode", array_args);
-
-	value := array_args[0]->As(IntHolder);
-	return value->Get();
-}
-
-#ifdef _WIN32
-	__declspec(dllexport)
-#endif
-	void sdl_window_get_display_mode(VMContext& context) {
-		SDL_Window* window = (Window*)APITools_GetIntValue(context, 1);
-		const long* mode = (long*)APITools_GetObjectValue(context, 2);
-		const int return_value = SDL_GetWindowDisplayMode(window, mode);
-		APITools_SetIntValue(context, 0, return_value);
-	}
-
----
-method : public : GetPixelFormat() ~ Int {
-	array_args := Base->New[2];
-	array_args[0] := IntHolder->New();
-	array_args[1] := IntHolder->New(@window);
-
-	Proxy->GetDllProxy()->CallFunction("sdl_window_get_pixel_format", array_args);
-
-	value := array_args[0]->As(IntHolder);
-	return value->Get();
-}
-
-#ifdef _WIN32
-	__declspec(dllexport)
-#endif
-	void sdl_window_get_pixel_format(VMContext& context) {
-		SDL_Window* window = (Window*)APITools_GetIntValue(context, 1);
-		const int return_value = SDL_GetWindowPixelFormat(window);
-		APITools_SetIntValue(context, 0, return_value);
-	}
-
 ---
 method : public : Create(title : String, x : Int, y : Int, w : Int, h : Int, flags : Int) ~ Window {
 	array_args := Base->New[7];
@@ -421,22 +332,91 @@ method : public : Create(title : String, x : Int, y : Int, w : Int, h : Int, fla
 	}
 
 ---
-method : public : CreateFrom(data : Int) ~ Window {
+method : public : GetDisplayIndex() ~ Int {
 	array_args := Base->New[2];
 	array_args[0] := IntHolder->New();
-	array_args[1] := IntHolder->New(data);
+	array_args[1] := IntHolder->New(@window);
 
-	Proxy->GetDllProxy()->CallFunction("sdl_window_create_from", array_args);
+	Proxy->GetDllProxy()->CallFunction("sdl_window_get_display_index", array_args);
 
-	return array_args[0];
+	value := array_args[0]->As(IntHolder);
+	return value->Get();
 }
 
 #ifdef _WIN32
 	__declspec(dllexport)
 #endif
-	void sdl_window_create_from(VMContext& context) {
-		const long* return_value = SDL_CreateWindowFrom(data);
-		APITools_SetObjectValue(context, 0, (CAST*)return_value);
+	void sdl_window_get_display_index(VMContext& context) {
+		SDL_Window* window = (SDL_Window*)APITools_GetIntValue(context, 1);
+		const int return_value = SDL_GetWindowDisplayIndex(window);
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+method : public : SetDisplayMode(mode : DisplayMode) ~ Int {
+	array_args := Base->New[3];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@window);
+	array_args[2] := mode;
+
+	Proxy->GetDllProxy()->CallFunction("sdl_window_set_display_mode", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get();
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_window_set_display_mode(VMContext& context) {
+		SDL_Window* window = (SDL_Window*)APITools_GetIntValue(context, 1);
+		const long* mode = (long*)APITools_GetObjectValue(context, 2);
+		const int return_value = SDL_SetWindowDisplayMode(window, mode);
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+method : public : GetDisplayMode(mode : DisplayMode) ~ Int {
+	array_args := Base->New[3];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@window);
+	array_args[2] := mode;
+
+	Proxy->GetDllProxy()->CallFunction("sdl_window_get_display_mode", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get();
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_window_get_display_mode(VMContext& context) {
+		SDL_Window* window = (SDL_Window*)APITools_GetIntValue(context, 1);
+		const long* mode = (long*)APITools_GetObjectValue(context, 2);
+		const int return_value = SDL_GetWindowDisplayMode(window, mode);
+		APITools_SetIntValue(context, 0, return_value);
+	}
+
+---
+method : public : GetPixelFormat() ~ Int {
+	array_args := Base->New[2];
+	array_args[0] := IntHolder->New();
+	array_args[1] := IntHolder->New(@window);
+
+	Proxy->GetDllProxy()->CallFunction("sdl_window_get_pixel_format", array_args);
+
+	value := array_args[0]->As(IntHolder);
+	return value->Get();
+}
+
+#ifdef _WIN32
+	__declspec(dllexport)
+#endif
+	void sdl_window_get_pixel_format(VMContext& context) {
+		SDL_Window* window = (SDL_Window*)APITools_GetIntValue(context, 1);
+		const int return_value = SDL_GetWindowPixelFormat(window);
+		APITools_SetIntValue(context, 0, return_value);
 	}
 
 ---
@@ -455,7 +435,7 @@ method : public : GetID() ~ Int {
 	__declspec(dllexport)
 #endif
 	void sdl_window_getid(VMContext& context) {
-		SDL_Window* window = (Window*)APITools_GetIntValue(context, 1);
+		SDL_Window* window = (SDL_Window*)APITools_GetIntValue(context, 1);
 		const int return_value = SDL_GetWindowID(window);
 		APITools_SetIntValue(context, 0, return_value);
 	}
@@ -496,7 +476,7 @@ method : public : GetFlags() ~ Int {
 	__declspec(dllexport)
 #endif
 	void sdl_window_get_flags(VMContext& context) {
-		SDL_Window* window = (Window*)APITools_GetIntValue(context, 1);
+		SDL_Window* window = (SDL_Window*)APITools_GetIntValue(context, 1);
 		const int return_value = SDL_GetWindowFlags(window);
 		APITools_SetIntValue(context, 0, return_value);
 	}
@@ -515,7 +495,7 @@ method : public : SetTitle(title : String) ~ Nil {
 	__declspec(dllexport)
 #endif
 	void sdl_window_set_title(VMContext& context) {
-		SDL_Window* window = (Window*)APITools_GetIntValue(context, 0);
+		SDL_Window* window = (SDL_Window*)APITools_GetIntValue(context, 0);
 		const wstring title = APITools_GetStringValue(context, 1);
 		SDL_SetWindowTitle(window, title);
 	}
@@ -535,7 +515,7 @@ method : public : GetTitle() ~ String {
 	__declspec(dllexport)
 #endif
 	void sdl_window_get_title(VMContext& context) {
-		SDL_Window* window = (Window*)APITools_GetIntValue(context, 1);
+		SDL_Window* window = (SDL_Window*)APITools_GetIntValue(context, 1);
 		const wstring return_value = SDL_GetWindowTitle(window);
 		APITools_SetStringValue(context, 0, return_value);
 	}
@@ -554,47 +534,9 @@ method : public : SetIcon(icon : Surface) ~ Nil {
 	__declspec(dllexport)
 #endif
 	void sdl_window_set_icon(VMContext& context) {
-		SDL_Window* window = (Window*)APITools_GetIntValue(context, 0);
+		SDL_Window* window = (SDL_Window*)APITools_GetIntValue(context, 0);
 		const long* icon = (long*)APITools_GetObjectValue(context, 1);
 		SDL_SetWindowIcon(window, icon);
-	}
-
----
-method : public : SetData(name : String, userdata : Int) ~ Int {
-	array_args := Base->New[4];
-	array_args[0] := IntHolder->New();
-	array_args[1] := IntHolder->New(@window);
-	array_args[2] := name;
-
-	Proxy->GetDllProxy()->CallFunction("sdl_window_set_data", array_args);
-
-}
-
-#ifdef _WIN32
-	__declspec(dllexport)
-#endif
-	void sdl_window_set_data(VMContext& context) {
-		SDL_Window* window = (Window*)APITools_GetIntValue(context, 1);
-		const wstring name = APITools_GetStringValue(context, 2);
-	}
-
----
-method : public : GetData(name : String) ~ Int {
-	array_args := Base->New[3];
-	array_args[0] := IntHolder->New();
-	array_args[1] := IntHolder->New(@window);
-	array_args[2] := name;
-
-	Proxy->GetDllProxy()->CallFunction("sdl_window_get_data", array_args);
-
-}
-
-#ifdef _WIN32
-	__declspec(dllexport)
-#endif
-	void sdl_window_get_data(VMContext& context) {
-		SDL_Window* window = (Window*)APITools_GetIntValue(context, 1);
-		const wstring name = APITools_GetStringValue(context, 2);
 	}
 
 ---
@@ -612,7 +554,7 @@ method : public : SetPosition(x : Int, y : Int) ~ Nil {
 	__declspec(dllexport)
 #endif
 	void sdl_window_set_position(VMContext& context) {
-		SDL_Window* window = (Window*)APITools_GetIntValue(context, 0);
+		SDL_Window* window = (SDL_Window*)APITools_GetIntValue(context, 0);
 		const int x = APITools_GetIntValue(context, 1);
 		const int y = APITools_GetIntValue(context, 2);
 		SDL_SetWindowPosition(window, x, y);
@@ -633,7 +575,7 @@ method : public : GetPosition(x : Int, y : Int) ~ Nil {
 	__declspec(dllexport)
 #endif
 	void sdl_window_get_position(VMContext& context) {
-		SDL_Window* window = (Window*)APITools_GetIntValue(context, 0);
+		SDL_Window* window = (SDL_Window*)APITools_GetIntValue(context, 0);
 		const int x = APITools_GetIntValue(context, 1);
 		const int y = APITools_GetIntValue(context, 2);
 		SDL_GetWindowPosition(window, x, y);
@@ -654,7 +596,7 @@ method : public : SetSize(w : Int, h : Int) ~ Nil {
 	__declspec(dllexport)
 #endif
 	void sdl_window_set_size(VMContext& context) {
-		SDL_Window* window = (Window*)APITools_GetIntValue(context, 0);
+		SDL_Window* window = (SDL_Window*)APITools_GetIntValue(context, 0);
 		const int w = APITools_GetIntValue(context, 1);
 		const int h = APITools_GetIntValue(context, 2);
 		SDL_SetWindowSize(window, w, h);
@@ -675,7 +617,7 @@ method : public : GetSize(w : Int, h : Int) ~ Nil {
 	__declspec(dllexport)
 #endif
 	void sdl_window_get_size(VMContext& context) {
-		SDL_Window* window = (Window*)APITools_GetIntValue(context, 0);
+		SDL_Window* window = (SDL_Window*)APITools_GetIntValue(context, 0);
 		const int w = APITools_GetIntValue(context, 1);
 		const int h = APITools_GetIntValue(context, 2);
 		SDL_GetWindowSize(window, w, h);
@@ -696,7 +638,7 @@ method : public : SetMinimumSize(min_w : Int, min_h : Int) ~ Nil {
 	__declspec(dllexport)
 #endif
 	void sdl_window_set_minimum_size(VMContext& context) {
-		SDL_Window* window = (Window*)APITools_GetIntValue(context, 0);
+		SDL_Window* window = (SDL_Window*)APITools_GetIntValue(context, 0);
 		const int min_w = APITools_GetIntValue(context, 1);
 		const int min_h = APITools_GetIntValue(context, 2);
 		SDL_SetWindowMinimumSize(window, min_w, min_h);
@@ -717,7 +659,7 @@ method : public : GetMinimumSize(w : Int, h : Int) ~ Nil {
 	__declspec(dllexport)
 #endif
 	void sdl_window_get_minimum_size(VMContext& context) {
-		SDL_Window* window = (Window*)APITools_GetIntValue(context, 0);
+		SDL_Window* window = (SDL_Window*)APITools_GetIntValue(context, 0);
 		const int w = APITools_GetIntValue(context, 1);
 		const int h = APITools_GetIntValue(context, 2);
 		SDL_GetWindowMinimumSize(window, w, h);
@@ -738,7 +680,7 @@ method : public : SetMaximumSize(max_w : Int, max_h : Int) ~ Nil {
 	__declspec(dllexport)
 #endif
 	void sdl_window_set_maximum_size(VMContext& context) {
-		SDL_Window* window = (Window*)APITools_GetIntValue(context, 0);
+		SDL_Window* window = (SDL_Window*)APITools_GetIntValue(context, 0);
 		const int max_w = APITools_GetIntValue(context, 1);
 		const int max_h = APITools_GetIntValue(context, 2);
 		SDL_SetWindowMaximumSize(window, max_w, max_h);
@@ -759,13 +701,14 @@ method : public : GetMaximumSize(w : Int, h : Int) ~ Nil {
 	__declspec(dllexport)
 #endif
 	void sdl_window_get_maximum_size(VMContext& context) {
-		SDL_Window* window = (Window*)APITools_GetIntValue(context, 0);
+		SDL_Window* window = (SDL_Window*)APITools_GetIntValue(context, 0);
 		const int w = APITools_GetIntValue(context, 1);
 		const int h = APITools_GetIntValue(context, 2);
 		SDL_GetWindowMaximumSize(window, w, h);
 	}
 
 ---
+======================
 method : public : SetBordered(bordered : Bool) ~ Nil {
 	array_args := Base->New[2];
 	array_args[0] := IntHolder->New(@window);
@@ -779,7 +722,7 @@ method : public : SetBordered(bordered : Bool) ~ Nil {
 	__declspec(dllexport)
 #endif
 	void sdl_window_set_bordered(VMContext& context) {
-		SDL_Window* window = (Window*)APITools_GetIntValue(context, 0);
+		SDL_Window* window = (SDL_Window*)APITools_GetIntValue(context, 0);
 		const int bordered = APITools_GetIntValue(context, 1);
 		SDL_SetWindowBordered(window, bordered);
 	}
@@ -797,7 +740,7 @@ method : public : Show() ~ Nil {
 	__declspec(dllexport)
 #endif
 	void sdl_window_show(VMContext& context) {
-		SDL_Window* window = (Window*)APITools_GetIntValue(context, 0);
+		SDL_Window* window = (SDL_Window*)APITools_GetIntValue(context, 0);
 		SDL_ShowWindow(window);
 	}
 
@@ -814,7 +757,7 @@ method : public : Hide() ~ Nil {
 	__declspec(dllexport)
 #endif
 	void sdl_window_hide(VMContext& context) {
-		SDL_Window* window = (Window*)APITools_GetIntValue(context, 0);
+		SDL_Window* window = (SDL_Window*)APITools_GetIntValue(context, 0);
 		SDL_HideWindow(window);
 	}
 
@@ -831,7 +774,7 @@ method : public : Raise() ~ Nil {
 	__declspec(dllexport)
 #endif
 	void sdl_window_raise(VMContext& context) {
-		SDL_Window* window = (Window*)APITools_GetIntValue(context, 0);
+		SDL_Window* window = (SDL_Window*)APITools_GetIntValue(context, 0);
 		SDL_RaiseWindow(window);
 	}
 
@@ -848,7 +791,7 @@ method : public : Maximize() ~ Nil {
 	__declspec(dllexport)
 #endif
 	void sdl_window_maximize(VMContext& context) {
-		SDL_Window* window = (Window*)APITools_GetIntValue(context, 0);
+		SDL_Window* window = (SDL_Window*)APITools_GetIntValue(context, 0);
 		SDL_MaximizeWindow(window);
 	}
 
@@ -865,7 +808,7 @@ method : public : Minimize() ~ Nil {
 	__declspec(dllexport)
 #endif
 	void sdl_window_minimize(VMContext& context) {
-		SDL_Window* window = (Window*)APITools_GetIntValue(context, 0);
+		SDL_Window* window = (SDL_Window*)APITools_GetIntValue(context, 0);
 		SDL_MinimizeWindow(window);
 	}
 
@@ -882,7 +825,7 @@ method : public : Restore() ~ Nil {
 	__declspec(dllexport)
 #endif
 	void sdl_window_restore(VMContext& context) {
-		SDL_Window* window = (Window*)APITools_GetIntValue(context, 0);
+		SDL_Window* window = (SDL_Window*)APITools_GetIntValue(context, 0);
 		SDL_RestoreWindow(window);
 	}
 
@@ -903,7 +846,7 @@ method : public : SetFullscreen(flags : Int) ~ Int {
 	__declspec(dllexport)
 #endif
 	void sdl_window_set_fullscreen(VMContext& context) {
-		SDL_Window* window = (Window*)APITools_GetIntValue(context, 1);
+		SDL_Window* window = (SDL_Window*)APITools_GetIntValue(context, 1);
 		const int flags = APITools_GetIntValue(context, 2);
 		const int return_value = SDL_SetWindowFullscreen(window, flags);
 		APITools_SetIntValue(context, 0, return_value);
@@ -924,7 +867,7 @@ method : public : GetSurface() ~ Surface {
 	__declspec(dllexport)
 #endif
 	void sdl_window_get_surface(VMContext& context) {
-		SDL_Window* window = (Window*)APITools_GetIntValue(context, 1);
+		SDL_Window* window = (SDL_Window*)APITools_GetIntValue(context, 1);
 		const long* return_value = SDL_GetWindowSurface(window);
 		APITools_SetObjectValue(context, 0, (CAST*)return_value);
 	}
@@ -945,7 +888,7 @@ method : public : UpdateSurface() ~ Int {
 	__declspec(dllexport)
 #endif
 	void sdl_window_update_surface(VMContext& context) {
-		SDL_Window* window = (Window*)APITools_GetIntValue(context, 1);
+		SDL_Window* window = (SDL_Window*)APITools_GetIntValue(context, 1);
 		const int return_value = SDL_UpdateWindowSurface(window);
 		APITools_SetIntValue(context, 0, return_value);
 	}
@@ -968,7 +911,7 @@ method : public : UpdateSurfaceRects(rects : Rect, numrects : Int) ~ Int {
 	__declspec(dllexport)
 #endif
 	void sdl_window_update_surface_rects(VMContext& context) {
-		SDL_Window* window = (Window*)APITools_GetIntValue(context, 1);
+		SDL_Window* window = (SDL_Window*)APITools_GetIntValue(context, 1);
 		const long* rects = (long*)APITools_GetObjectValue(context, 2);
 		const int numrects = APITools_GetIntValue(context, 3);
 		const int return_value = SDL_UpdateWindowSurfaceRects(window, rects, numrects);
@@ -989,7 +932,7 @@ method : public : SetGrab(grabbed : Bool) ~ Nil {
 	__declspec(dllexport)
 #endif
 	void sdl_window_set_grab(VMContext& context) {
-		SDL_Window* window = (Window*)APITools_GetIntValue(context, 0);
+		SDL_Window* window = (SDL_Window*)APITools_GetIntValue(context, 0);
 		const int grabbed = APITools_GetIntValue(context, 1);
 		SDL_SetWindowGrab(window, grabbed);
 	}
@@ -1010,7 +953,7 @@ method : public : GetGrab() ~ Bool {
 	__declspec(dllexport)
 #endif
 	void sdl_window_get_grab(VMContext& context) {
-		SDL_Window* window = (Window*)APITools_GetIntValue(context, 1);
+		SDL_Window* window = (SDL_Window*)APITools_GetIntValue(context, 1);
 		const int return_value = SDL_GetWindowGrab(window);
 		APITools_SetIntValue(context, 0, return_value);
 	}
@@ -1032,7 +975,7 @@ method : public : SetBrightness(brightness : float) ~ Int {
 	__declspec(dllexport)
 #endif
 	void sdl_window_set_brightness(VMContext& context) {
-		SDL_Window* window = (Window*)APITools_GetIntValue(context, 1);
+		SDL_Window* window = (SDL_Window*)APITools_GetIntValue(context, 1);
 		const long* brightness = (long*)APITools_GetObjectValue(context, 2);
 		const int return_value = SDL_SetWindowBrightness(window, brightness);
 		APITools_SetIntValue(context, 0, return_value);
@@ -1053,7 +996,7 @@ method : public : GetBrightness() ~ float {
 	__declspec(dllexport)
 #endif
 	void sdl_window_get_brightness(VMContext& context) {
-		SDL_Window* window = (Window*)APITools_GetIntValue(context, 1);
+		SDL_Window* window = (SDL_Window*)APITools_GetIntValue(context, 1);
 		const long* return_value = SDL_GetWindowBrightness(window);
 		APITools_SetObjectValue(context, 0, (CAST*)return_value);
 	}
@@ -1077,7 +1020,7 @@ method : public : SetGammaRamp(red : Int, green : Int, blue : Int) ~ Int {
 	__declspec(dllexport)
 #endif
 	void sdl_window_set_gamma_ramp(VMContext& context) {
-		SDL_Window* window = (Window*)APITools_GetIntValue(context, 1);
+		SDL_Window* window = (SDL_Window*)APITools_GetIntValue(context, 1);
 		const int red = APITools_GetIntValue(context, 2);
 		const int green = APITools_GetIntValue(context, 3);
 		const int blue = APITools_GetIntValue(context, 4);
@@ -1104,7 +1047,7 @@ method : public : GetGammaRamp(red : Int, green : Int, blue : Int) ~ Int {
 	__declspec(dllexport)
 #endif
 	void sdl_window_get_gamma_ramp(VMContext& context) {
-		SDL_Window* window = (Window*)APITools_GetIntValue(context, 1);
+		SDL_Window* window = (SDL_Window*)APITools_GetIntValue(context, 1);
 		const int red = APITools_GetIntValue(context, 2);
 		const int green = APITools_GetIntValue(context, 3);
 		const int blue = APITools_GetIntValue(context, 4);
@@ -1125,7 +1068,7 @@ method : public : Destroy() ~ Nil {
 	__declspec(dllexport)
 #endif
 	void sdl_window_destroy(VMContext& context) {
-		SDL_Window* window = (Window*)APITools_GetIntValue(context, 0);
+		SDL_Window* window = (SDL_Window*)APITools_GetIntValue(context, 0);
 		SDL_DestroyWindow(window);
 	}
 
@@ -1328,7 +1271,7 @@ method : public : GLCreateContext() ~ GLContext {
 	__declspec(dllexport)
 #endif
 	void sdl_window_gl_create_context(VMContext& context) {
-		SDL_Window* window = (Window*)APITools_GetIntValue(context, 1);
+		SDL_Window* window = (SDL_Window*)APITools_GetIntValue(context, 1);
 		const long* return_value = SDL_GL_CreateContext(window);
 		APITools_SetObjectValue(context, 0, (CAST*)return_value);
 	}
@@ -1350,7 +1293,7 @@ method : public : GLMakeCurrent(context : GLContext) ~ Int {
 	__declspec(dllexport)
 #endif
 	void sdl_window_gl_make_current(VMContext& context) {
-		SDL_Window* window = (Window*)APITools_GetIntValue(context, 1);
+		SDL_Window* window = (SDL_Window*)APITools_GetIntValue(context, 1);
 		const long* context = (long*)APITools_GetObjectValue(context, 2);
 		const int return_value = SDL_GL_MakeCurrent(window, context);
 		APITools_SetIntValue(context, 0, return_value);
@@ -1407,7 +1350,7 @@ method : public : GLGetDrawableSize(w : Int, h : Int) ~ Nil {
 	__declspec(dllexport)
 #endif
 	void sdl_window_gl_get_drawable_size(VMContext& context) {
-		SDL_Window* window = (Window*)APITools_GetIntValue(context, 0);
+		SDL_Window* window = (SDL_Window*)APITools_GetIntValue(context, 0);
 		const int w = APITools_GetIntValue(context, 1);
 		const int h = APITools_GetIntValue(context, 2);
 		SDL_GL_GetDrawableSize(window, w, h);
@@ -1466,7 +1409,7 @@ method : public : GLSwap() ~ Nil {
 	__declspec(dllexport)
 #endif
 	void sdl_window_gl_swap(VMContext& context) {
-		SDL_Window* window = (Window*)APITools_GetIntValue(context, 0);
+		SDL_Window* window = (SDL_Window*)APITools_GetIntValue(context, 0);
 		SDL_GL_SwapWindow(window);
 	}
 
