@@ -491,6 +491,126 @@ bundle SDL {
 		
 			return 0;
 		}
+		
+		method : public : UpdateSurfaceRects(rects : Rect, numrects : Int) ~ Int {
+			if(@window <> 0) {
+				array_args := Base->New[4];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@window);
+				array_args[2] := rects;
+				array_args[3] := IntHolder->New(numrects);
+
+				Proxy->GetDllProxy()->CallFunction("sdl_window_update_surface_rects", array_args);
+
+				value := array_args[0]->As(IntHolder);
+				return value->Get();
+			};
+			
+			return 0;
+		}
+		
+		method : public : SetGrab(grabbed : Bool) ~ Nil {
+			if(@window <> 0) {
+				array_args := Base->New[2];
+				array_args[0] := IntHolder->New(@window);
+				array_args[1] := IntHolder->New(grabbed ? 0 : 1);
+
+				Proxy->GetDllProxy()->CallFunction("sdl_window_set_grab", array_args);
+
+			};
+		}
+		
+		method : public : GetGrab() ~ Bool {
+			if(@window <> 0) {
+				array_args := Base->New[2];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@window);
+
+				Proxy->GetDllProxy()->CallFunction("sdl_window_get_grab", array_args);
+
+				value := array_args[0]->As(IntHolder);
+				return value->Get() = 0 ? false : true;
+			};
+			
+			return false;
+		}
+		
+		method : public : SetBrightness(brightness : Float) ~ Int {
+			if(@window <> 0) {
+				array_args := Base->New[3];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@window);
+				array_args[2] := FloatHolder->New(brightness);
+
+				Proxy->GetDllProxy()->CallFunction("sdl_window_set_brightness", array_args);
+
+				value := array_args[0]->As(IntHolder);
+				return value->Get();
+			};
+			
+			return 0;
+		}
+		
+		method : public : GetBrightness() ~ Float {
+			if(@window <> 0) {
+				array_args := Base->New[2];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@window);
+
+				Proxy->GetDllProxy()->CallFunction("sdl_window_get_brightness", array_args);
+
+				value := array_args[0]->As(FloatHolder);
+				return value->Get();
+			};
+			
+			return 0.0;
+		}
+		
+		method : public : SetGammaRamp(red : IntHolder, green : IntHolder, blue : IntHolder) ~ Int {
+			if(@window <> 0) {
+				array_args := Base->New[5];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@window);
+				array_args[2] := red;
+				array_args[3] := green;
+				array_args[4] := blue;
+
+				Proxy->GetDllProxy()->CallFunction("sdl_window_set_gamma_ramp", array_args);
+
+				value := array_args[0]->As(IntHolder);
+				return value->Get();
+			};
+			
+			return 0;
+		}
+		
+		method : public : GetGammaRamp(red : IntHolder, green : IntHolder, blue : IntHolder) ~ Int {
+			if(@window <> 0) {
+				array_args := Base->New[5];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@window);
+				array_args[2] := red;
+				array_args[3] := green;
+				array_args[4] := blue;
+
+				Proxy->GetDllProxy()->CallFunction("sdl_window_get_gamma_ramp", array_args);
+
+				value := array_args[0]->As(IntHolder);
+				return value->Get();
+			};
+			
+			return 0;
+		}
+		
+		method : public : Destroy() ~ Nil {
+			if(@window <> 0) {
+				array_args := Base->New[1];
+				array_args[0] := IntHolder->New(@window);
+
+				Proxy->GetDllProxy()->CallFunction("sdl_window_destroy", array_args);
+
+			};
+		}
 	}
 	
 	#~
