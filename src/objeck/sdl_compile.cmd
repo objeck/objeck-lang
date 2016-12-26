@@ -1,3 +1,4 @@
+@echo off
 cd deploy\bin
 obc -src '..\..\..\compiler\lib_src\sdl.obs' -lib collect.obl -tar lib -dest sdl.obl
 copy sdl.obl ..\..\..\compiler
