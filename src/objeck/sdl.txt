@@ -893,7 +893,6 @@ method : public : UpdateSurface() ~ Int {
 	}
 
 ---
-=============
 method : public : UpdateSurfaceRects(rects : Rect, numrects : Int) ~ Int {
 	array_args := Base->New[4];
 	array_args[0] := IntHolder->New();
@@ -1073,6 +1072,7 @@ method : public : Destroy() ~ Nil {
 	}
 
 ---
+==============
 method : public : IsScreenSaverEnabled() ~ Bool {
 	array_args := Base->New[1];
 	array_args[0] := IntHolder->New();
