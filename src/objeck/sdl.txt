@@ -1300,6 +1300,7 @@ method : public : GLMakeCurrent(context : GLContext) ~ Int {
 	}
 
 ---
+############### 0
 method : public : GLGetCurrent() ~ Window {
 	array_args := Base->New[1];
 	array_args[0] := IntHolder->New();
@@ -1336,6 +1337,7 @@ method : public : GLGetCurrentContext() ~ GLContext {
 	}
 
 ---
+###############
 method : public : GLGetDrawableSize(w : Int, h : Int) ~ Nil {
 	array_args := Base->New[3];
 	array_args[0] := IntHolder->New(@window);
@@ -1357,6 +1359,7 @@ method : public : GLGetDrawableSize(w : Int, h : Int) ~ Nil {
 	}
 
 ---
+###############
 method : public : GLSetSwapInterval(interval : Int) ~ Int {
 	array_args := Base->New[2];
 	array_args[0] := IntHolder->New();
@@ -1378,6 +1381,7 @@ method : public : GLSetSwapInterval(interval : Int) ~ Int {
 	}
 
 ---
+###############
 method : public : GLGetSwapInterval() ~ Int {
 	array_args := Base->New[1];
 	array_args[0] := IntHolder->New();
@@ -1397,6 +1401,7 @@ method : public : GLGetSwapInterval() ~ Int {
 	}
 
 ---
+###############
 method : public : GLSwap() ~ Nil {
 	array_args := Base->New[1];
 	array_args[0] := IntHolder->New(@window);
