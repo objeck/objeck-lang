@@ -613,11 +613,61 @@ bundle SDL {
 		}
 	}
 	
+	consts Scancode {
+		RIGHT := 79,
+		LEFT := 80,
+		DOWN := 81,
+		UP := 82
+	}
+	
+	class Keysym {
+		@scancode : Scancode;
+		@sym : Int;
+		@mod : Int;
+		
+		New() {
+		}
+		
+		method : public : GetScancode() ~ Int {
+			return @scancode;
+		}
+		
+		method : public : GetSym() ~ Int {
+			return @sym;
+		}
+		
+		method : public : GetMod() ~ Int {
+			return @mod;
+		}
+	}
+	
+	class KeyboardEvent {
+		@type : Int;
+		@timestamp : Int;
+		@windowID : Int;
+		@state : Int;
+		@repeat : Int;
+		@keysym : Keysym;
+
+		New() {
+			@keysym := Keysym->New();
+		}
+		
+		method : public : GetType() ~ Int {
+			return @type;
+		}
+		
+		method : public : GetKeysym() ~ Keysym {
+			return @keysym;
+		}
+	}
+	
 	#~
 	Event class
 	~#
 	class Event {
 		@events : Int;
+		@key : KeyboardEvent;
 		
 		New() {
 			array_args := Base->New[1];
@@ -653,6 +703,25 @@ bundle SDL {
 			};
 			
 			return 0;
+		}
+		
+		method : public : GetKey() ~ KeyboardEvent {
+			if(@events <> 0) {
+				if(@key = Nil) {
+					@key := KeyboardEvent->New();
+				};
+				
+				array_args := Base->New[3];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@events);
+				array_args[2] := @key;
+				
+				Proxy->GetDllProxy()->CallFunction("sdl_event_key", array_args);
+
+				return @key;
+			};
+			
+			return Nil;
 		}
 				
 		function : Pumps() ~ Nil {
@@ -909,30 +978,6 @@ bundle SDL {
 		}
 	}
 	
-	class KeyboardEvent {
-		@type : Int;
-		@timestamp : Int;
-		@windowID : Int;
-		@state : Int;
-		@repeat : Int;
-##		@keysym : Keysym
-
-#~
-		New(type : Int,	timestamp : Int, windowID : Int, state : Int, repeat : Int) {
-			@type := type;
-			@timestamp := timestamp;
-			@windowID := windowID;
-			@state := state;
-			@repeat := repeat;
-		}
-~#	
-		method : Read() ~ Nil {
-		}
-		
-		method : Write() ~ Nil {
-		}
-	}
-	
 	#~
 	TODO: load X and Y with 'New'
 	~#
@@ -970,7 +1015,7 @@ bundle SDL {
 				array_args[0] := IntHolder->New(@point);
 				array_args[0] := @self;
 
-				Proxy->GetDllProxy()->CallFunction("sdl_point_read", array_args);
+				Proxy->GetDllProxy()->CallFunction("sdl_point_write", array_args);
 			};
 		}
 		
@@ -1075,6 +1120,7 @@ bundle SDL {
 		}
 		
 		method : public : SetX(x : Int) ~ Nil {
+		
 			@x := x;
 			Write();
 		}
