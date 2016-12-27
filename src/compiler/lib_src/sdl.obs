@@ -711,10 +711,9 @@ bundle SDL {
 					@key := KeyboardEvent->New();
 				};
 				
-				array_args := Base->New[3];
-				array_args[0] := IntHolder->New();
-				array_args[1] := IntHolder->New(@events);
-				array_args[2] := @key;
+				array_args := Base->New[2];
+				array_args[0] := IntHolder->New(@events);
+				array_args[1] := @key;
 				
 				Proxy->GetDllProxy()->CallFunction("sdl_event_key", array_args);
 
