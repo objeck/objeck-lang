@@ -909,8 +909,37 @@ bundle SDL {
 		}
 	}
 	
+	class KeyboardEvent {
+		@type : Int;
+		@timestamp : Int;
+		@windowID : Int;
+		@state : Int;
+		@repeat : Int;
+##		@keysym : Keysym
+
+#~
+		New(type : Int,	timestamp : Int, windowID : Int, state : Int, repeat : Int) {
+			@type := type;
+			@timestamp := timestamp;
+			@windowID := windowID;
+			@state := state;
+			@repeat := repeat;
+		}
+~#	
+		method : Read() ~ Nil {
+		}
+		
+		method : Write() ~ Nil {
+		}
+	}
+	
+	#~
+	TODO: load X and Y with 'New'
+	~#
 	class Point {
 		@point : Int;
+		@x : Int;
+		@y : Int;
 		
 		New() {
 			array_args := Base->New[1];
@@ -922,6 +951,27 @@ bundle SDL {
 		
 		New : private (point : Int) {
 			@point := point;
+			Read();
+		}
+		
+		method : Read() ~ Nil {
+			if(@point <> 0) {
+				array_args := Base->New[2];
+				array_args[0] := IntHolder->New(@point);
+				array_args[0] := @self;
+
+				Proxy->GetDllProxy()->CallFunction("sdl_point_read", array_args);
+			};
+		}
+		
+		method : Write() ~ Nil {
+			if(@point <> 0) {
+				array_args := Base->New[2];
+				array_args[0] := IntHolder->New(@point);
+				array_args[0] := @self;
+
+				Proxy->GetDllProxy()->CallFunction("sdl_point_read", array_args);
+			};
 		}
 		
 		method : public : Free() ~ Nil {
@@ -935,28 +985,32 @@ bundle SDL {
 		}
 		
 		method : public : GetX() ~ Int {
-			array_args := Base->New[2];
-			array_args[0] := IntHolder->New();
-			array_args[1] := IntHolder->New(@point);
-			Proxy->GetDllProxy()->CallFunction("sdl_point_x", array_args);
-			value := array_args[0]->As(IntHolder);
-			
-			return value->Get();
+			Read();
+			return @x;
 		}
 		
 		method : public : GetY() ~ Int {
-			array_args := Base->New[2];
-			array_args[0] := IntHolder->New();
-			array_args[1] := IntHolder->New(@point);
-			Proxy->GetDllProxy()->CallFunction("sdl_point_y", array_args);
-			value := array_args[0]->As(IntHolder);
-			
-			return value->Get();
+			Read();
+			return @y;
+		}
+		
+		method : public : SetX(x : Int) ~ Nil {
+			@x := x;
+			Write();
+		}
+		
+		method : public : SetY(y : Int) ~ Nil {
+			@y := y;
+			Write();
 		}
 	}
 
 	class Rect {
 		@rect : Int;
+		@x : Int;
+		@y : Int;
+		@w : Int;
+		@h : Int;
 		
 		New() {
 			array_args := Base->New[1];
@@ -980,44 +1034,64 @@ bundle SDL {
 			};
 		}
 		
+		method : Read() ~ Nil {
+			if(@rect <> 0) {
+				array_args := Base->New[2];
+				array_args[0] := IntHolder->New(@rect);
+				array_args[0] := @self;
+
+				Proxy->GetDllProxy()->CallFunction("sdl_rect_read", array_args);
+			};
+		}
+		
+		method : Write() ~ Nil {
+			if(@rect <> 0) {
+				array_args := Base->New[2];
+				array_args[0] := IntHolder->New(@rect);
+				array_args[0] := @self;
+
+				Proxy->GetDllProxy()->CallFunction("sdl_rect_write", array_args);
+			};
+		}
+		
 		method : public : GetX() ~ Int {
-			array_args := Base->New[2];
-			array_args[0] := IntHolder->New();
-			array_args[1] := IntHolder->New(@rect);
-			Proxy->GetDllProxy()->CallFunction("sdl_rect_x", array_args);
-			value := array_args[0]->As(IntHolder);
-			
-			return value->Get();
+			Read();
+			return @x;
 		}
 		
 		method : public : GetY() ~ Int {
-			array_args := Base->New[2];
-			array_args[0] := IntHolder->New();
-			array_args[1] := IntHolder->New(@rect);
-			Proxy->GetDllProxy()->CallFunction("sdl_rect_y", array_args);
-			value := array_args[0]->As(IntHolder);
-			
-			return value->Get();
+			Read();
+			return @y;
 		}
 		
 		method : public : GetH() ~ Int {
-			array_args := Base->New[2];
-			array_args[0] := IntHolder->New();
-			array_args[1] := IntHolder->New(@rect);
-			Proxy->GetDllProxy()->CallFunction("sdl_rect_h", array_args);
-			value := array_args[0]->As(IntHolder);
-			
-			return value->Get();
+			Read();
+			return @h;
 		}
 		
 		method : public : GetW() ~ Int {
-			array_args := Base->New[2];
-			array_args[0] := IntHolder->New();
-			array_args[1] := IntHolder->New(@rect);
-			Proxy->GetDllProxy()->CallFunction("sdl_rect_w", array_args);
-			value := array_args[0]->As(IntHolder);
-			
-			return value->Get();
+			Read();
+			return @w;
+		}
+		
+		method : public : SetX(x : Int) ~ Nil {
+			@x := x;
+			Write();
+		}
+		
+		method : public : SetY(y : Int) ~ Nil {
+			@y := y;
+			Write();
+		}
+		
+		method : public : SetH(h : Int) ~ Nil {
+			@h := h;
+			Write();
+		}
+		
+		method : public : SetW(w : Int) ~ Nil {
+			@w := w;
+			Write();
 		}
 		
 		method : public : HasIntersection(B : Rect) ~ Bool {
