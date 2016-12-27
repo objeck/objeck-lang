@@ -1,4 +1,3 @@
-use Collection;
 use System.API;
 
 #~
@@ -17,6 +16,7 @@ bundle SDL {
 		}
 	}
 	
+	## TODO: add values
 	consts Flags {
 		SDL_INIT_VIDEO := 0x00000020,
 		SDL_WINDOW_POS_UNDEFINED := 0x1FFF0000,
@@ -611,8 +611,30 @@ bundle SDL {
 				@window := 0;
 			};
 		}
+		
+		function : IsScreenSaverEnabled() ~ Bool {
+			array_args := Base->New[1];
+			array_args[0] := IntHolder->New();
+
+			Proxy->GetDllProxy()->CallFunction("sdl_window_is_screen_saver_enabled", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get() = 0 ? false : true;
+		}
+		
+		function : EnableScreenSaver() ~ Nil {
+			array_args := Base->New[0];
+			Proxy->GetDllProxy()->CallFunction("sdl_window_enable_screen_saver", array_args);
+
+		}
+		
+		function : DisableScreenSaver() ~ Nil {
+			array_args := Base->New[0];
+			Proxy->GetDllProxy()->CallFunction("sdl_window_disable_screen_saver", array_args);
+		}
 	}
 	
+	## TODO: add values
 	consts Scancode {
 		RIGHT := 79,
 		LEFT := 80,
@@ -900,6 +922,65 @@ bundle SDL {
 			array_args := Base->New[0];
 			Proxy->GetDllProxy()->CallFunction("sdl_core_quit", array_args);
 		}
+		
+		function : GLLoadLibrary(path : String) ~ Int {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := path;
+
+			Proxy->GetDllProxy()->CallFunction("sdl_core_gl_load_library", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+		
+		function : GLUnloadLibrary() ~ Nil {
+			array_args := Base->New[0];
+			Proxy->GetDllProxy()->CallFunction("sdl_core_gl_unload_library", array_args);
+		}
+		
+		function : GLExtensionSupported(extension : String) ~ Bool {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := extension;
+
+			Proxy->GetDllProxy()->CallFunction("sdl_core_gl_extension_supported", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get() = 0 ? false : true;
+		}
+		
+		function : GLResetAttributes() ~ Nil {
+			array_args := Base->New[0];
+			Proxy->GetDllProxy()->CallFunction("sdl_core_gl_reset_attributes", array_args);
+		}
+		
+		function : GLSetAttribute(attr : GLattr, value : Int) ~ Int {
+			array_args := Base->New[3];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(attr->As(Int));
+			array_args[2] := IntHolder->New(value);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_core_gl_set_attribute", array_args);
+
+			rtrn_value := array_args[0]->As(IntHolder);
+			return rtrn_value->Get();
+		}
+		
+		function : GLGetAttribute(attr : GLattr) ~ Int {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(attr->As(Int));
+
+			Proxy->GetDllProxy()->CallFunction("sdl_core_gl_get_attribute", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+	}
+	
+	## TODO: add values
+	consts GLattr {
 	}
 	
 	#~
