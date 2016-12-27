@@ -181,6 +181,21 @@ bundle SDL {
 			value := array_args[0]->As(IntHolder);
 			@window := value->Get();
 		}
+				
+		method : public : GLGetDrawableSize(w : IntHolder, h : IntHolder) ~ Nil {
+			array_args := Base->New[3];
+			array_args[0] := IntHolder->New(@window);
+			array_args[1] := w;
+			array_args[2] := h;
+
+			Proxy->GetDllProxy()->CallFunction("sdl_window_gl_get_drawable_size", array_args);
+		}
+		
+		method : public : GLSwap() ~ Nil {
+			array_args := Base->New[1];
+			array_args[0] := IntHolder->New(@window);
+			Proxy->GetDllProxy()->CallFunction("sdl_window_gl_swap", array_args);
+		}
 		
 		method : public : GetDisplayIndex() ~ Int {
 			if(@window <> 0) {
@@ -973,6 +988,37 @@ bundle SDL {
 			array_args[1] := IntHolder->New(attr->As(Int));
 
 			Proxy->GetDllProxy()->CallFunction("sdl_core_gl_get_attribute", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+		
+		function : GLGetCurrent() ~ Window {
+			array_args := Base->New[1];
+			array_args[0] := IntHolder->New();
+
+			Proxy->GetDllProxy()->CallFunction("sdl_core_gl_get_current", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return Window->New(value->Get());
+		}
+		
+		function : GLSetSwapInterval(interval : Int) ~ Int {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(interval);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_core_gl_set_swap_interval", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+		
+		function : GLGetSwapInterval() ~ Int {
+			array_args := Base->New[1];
+			array_args[0] := IntHolder->New();
+
+			Proxy->GetDllProxy()->CallFunction("sdl_core_gl_get_swap_interval", array_args);
 
 			value := array_args[0]->As(IntHolder);
 			return value->Get();
