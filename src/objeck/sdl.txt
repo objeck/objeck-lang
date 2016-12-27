@@ -1072,7 +1072,6 @@ method : public : Destroy() ~ Nil {
 	}
 
 ---
-==============
 method : public : IsScreenSaverEnabled() ~ Bool {
 	array_args := Base->New[1];
 	array_args[0] := IntHolder->New();
@@ -1180,7 +1179,7 @@ method : public : GLExtensionSupported(extension : String) ~ Bool {
 	array_args[0] := IntHolder->New();
 	array_args[1] := IntHolder->New(extension);
 
-	Proxy->GetDllProxy()->CallFunction("sdl_window_gl_extension_supported", array_args);
+	Proxy->GetDllProxy()->CallFunction("sdl_core_gl_extension_supported", array_args);
 
 	value := array_args[0]->As(IntHolder);
 	return value->Get() = 0 ? false : true;
@@ -1189,7 +1188,7 @@ method : public : GLExtensionSupported(extension : String) ~ Bool {
 #ifdef _WIN32
 	__declspec(dllexport)
 #endif
-	void sdl_window_gl_extension_supported(VMContext& context) {
+	void sdl_core_gl_extension_supported(VMContext& context) {
 		const wstring extension = APITools_GetStringValue(context, 1);
 		const int return_value = SDL_GL_ExtensionSupported(extension);
 		APITools_SetIntValue(context, 0, return_value);
@@ -1217,7 +1216,7 @@ method : public : GLSetAttribute(attr : GLattr, value : Int) ~ Int {
 	array_args[1] := IntHolder->New(attr);
 	array_args[2] := IntHolder->New(value);
 
-	Proxy->GetDllProxy()->CallFunction("sdl_window_gl_set_attribute", array_args);
+	Proxy->GetDllProxy()->CallFunction("sdl_core_gl_set_attribute", array_args);
 
 	value := array_args[0]->As(IntHolder);
 	return value->Get();
@@ -1226,7 +1225,7 @@ method : public : GLSetAttribute(attr : GLattr, value : Int) ~ Int {
 #ifdef _WIN32
 	__declspec(dllexport)
 #endif
-	void sdl_window_gl_set_attribute(VMContext& context) {
+	void sdl_core_gl_set_attribute(VMContext& context) {
 		const long* attr = (long*)APITools_GetObjectValue(context, 1);
 		const int value = APITools_GetIntValue(context, 2);
 		const int return_value = SDL_GL_SetAttribute(attr, value);
@@ -1240,7 +1239,7 @@ method : public : GLGetAttribute(attr : GLattr, value : Int) ~ Int {
 	array_args[1] := IntHolder->New(attr);
 	array_args[2] := IntHolder->New(value);
 
-	Proxy->GetDllProxy()->CallFunction("sdl_window_gl_get_attribute", array_args);
+	Proxy->GetDllProxy()->CallFunction("sdl_core_gl_get_attribute", array_args);
 
 	value := array_args[0]->As(IntHolder);
 	return value->Get();
@@ -1249,7 +1248,7 @@ method : public : GLGetAttribute(attr : GLattr, value : Int) ~ Int {
 #ifdef _WIN32
 	__declspec(dllexport)
 #endif
-	void sdl_window_gl_get_attribute(VMContext& context) {
+	void sdl_core_gl_get_attribute(VMContext& context) {
 		const long* attr = (long*)APITools_GetObjectValue(context, 1);
 		const int value = APITools_GetIntValue(context, 2);
 		const int return_value = SDL_GL_GetAttribute(attr, value);
@@ -1257,12 +1256,13 @@ method : public : GLGetAttribute(attr : GLattr, value : Int) ~ Int {
 	}
 
 ---
+====================
 method : public : GLCreateContext() ~ GLContext {
 	array_args := Base->New[2];
 	array_args[0] := IntHolder->New();
 	array_args[1] := IntHolder->New(@window);
 
-	Proxy->GetDllProxy()->CallFunction("sdl_window_gl_create_context", array_args);
+	Proxy->GetDllProxy()->CallFunction("sdl_core_gl_create_context", array_args);
 
 	return array_args[0];
 }
@@ -1270,7 +1270,7 @@ method : public : GLCreateContext() ~ GLContext {
 #ifdef _WIN32
 	__declspec(dllexport)
 #endif
-	void sdl_window_gl_create_context(VMContext& context) {
+	void sdl_core_gl_create_context(VMContext& context) {
 		SDL_Window* window = (SDL_Window*)APITools_GetIntValue(context, 1);
 		const long* return_value = SDL_GL_CreateContext(window);
 		APITools_SetObjectValue(context, 0, (CAST*)return_value);
@@ -1283,7 +1283,7 @@ method : public : GLMakeCurrent(context : GLContext) ~ Int {
 	array_args[1] := IntHolder->New(@window);
 	array_args[2] := context;
 
-	Proxy->GetDllProxy()->CallFunction("sdl_window_gl_make_current", array_args);
+	Proxy->GetDllProxy()->CallFunction("sdl_core_gl_make_current", array_args);
 
 	value := array_args[0]->As(IntHolder);
 	return value->Get();
@@ -1292,7 +1292,7 @@ method : public : GLMakeCurrent(context : GLContext) ~ Int {
 #ifdef _WIN32
 	__declspec(dllexport)
 #endif
-	void sdl_window_gl_make_current(VMContext& context) {
+	void sdl_core_gl_make_current(VMContext& context) {
 		SDL_Window* window = (SDL_Window*)APITools_GetIntValue(context, 1);
 		const long* context = (long*)APITools_GetObjectValue(context, 2);
 		const int return_value = SDL_GL_MakeCurrent(window, context);
@@ -1304,7 +1304,7 @@ method : public : GLGetCurrent() ~ Window {
 	array_args := Base->New[1];
 	array_args[0] := IntHolder->New();
 
-	Proxy->GetDllProxy()->CallFunction("sdl_window_gl_get_current", array_args);
+	Proxy->GetDllProxy()->CallFunction("sdl_core_gl_get_current", array_args);
 
 	return array_args[0];
 }
@@ -1312,7 +1312,7 @@ method : public : GLGetCurrent() ~ Window {
 #ifdef _WIN32
 	__declspec(dllexport)
 #endif
-	void sdl_window_gl_get_current(VMContext& context) {
+	void sdl_core_gl_get_current(VMContext& context) {
 		const long* return_value = SDL_GL_GetCurrentWindow();
 		APITools_SetObjectValue(context, 0, (CAST*)return_value);
 	}
@@ -1322,7 +1322,7 @@ method : public : GLGetCurrentContext() ~ GLContext {
 	array_args := Base->New[1];
 	array_args[0] := IntHolder->New();
 
-	Proxy->GetDllProxy()->CallFunction("sdl_window_gl_get_current_context", array_args);
+	Proxy->GetDllProxy()->CallFunction("sdl_core_gl_get_current_context", array_args);
 
 	return array_args[0];
 }
@@ -1330,7 +1330,7 @@ method : public : GLGetCurrentContext() ~ GLContext {
 #ifdef _WIN32
 	__declspec(dllexport)
 #endif
-	void sdl_window_gl_get_current_context(VMContext& context) {
+	void sdl_core_gl_get_current_context(VMContext& context) {
 		const long* return_value = SDL_GL_GetCurrentContext();
 		APITools_SetObjectValue(context, 0, (CAST*)return_value);
 	}
@@ -1342,14 +1342,14 @@ method : public : GLGetDrawableSize(w : Int, h : Int) ~ Nil {
 	array_args[1] := IntHolder->New(w);
 	array_args[2] := IntHolder->New(h);
 
-	Proxy->GetDllProxy()->CallFunction("sdl_window_gl_get_drawable_size", array_args);
+	Proxy->GetDllProxy()->CallFunction("sdl_core_gl_get_drawable_size", array_args);
 
 }
 
 #ifdef _WIN32
 	__declspec(dllexport)
 #endif
-	void sdl_window_gl_get_drawable_size(VMContext& context) {
+	void sdl_core_gl_get_drawable_size(VMContext& context) {
 		SDL_Window* window = (SDL_Window*)APITools_GetIntValue(context, 0);
 		const int w = APITools_GetIntValue(context, 1);
 		const int h = APITools_GetIntValue(context, 2);
@@ -1362,7 +1362,7 @@ method : public : GLSetSwapInterval(interval : Int) ~ Int {
 	array_args[0] := IntHolder->New();
 	array_args[1] := IntHolder->New(interval);
 
-	Proxy->GetDllProxy()->CallFunction("sdl_window_gl_set_swap_interval", array_args);
+	Proxy->GetDllProxy()->CallFunction("sdl_core_gl_set_swap_interval", array_args);
 
 	value := array_args[0]->As(IntHolder);
 	return value->Get();
@@ -1371,7 +1371,7 @@ method : public : GLSetSwapInterval(interval : Int) ~ Int {
 #ifdef _WIN32
 	__declspec(dllexport)
 #endif
-	void sdl_window_gl_set_swap_interval(VMContext& context) {
+	void sdl_core_gl_set_swap_interval(VMContext& context) {
 		const int interval = APITools_GetIntValue(context, 1);
 		const int return_value = SDL_GL_SetSwapInterval(interval);
 		APITools_SetIntValue(context, 0, return_value);
@@ -1382,7 +1382,7 @@ method : public : GLGetSwapInterval() ~ Int {
 	array_args := Base->New[1];
 	array_args[0] := IntHolder->New();
 
-	Proxy->GetDllProxy()->CallFunction("sdl_window_gl_get_swap_interval", array_args);
+	Proxy->GetDllProxy()->CallFunction("sdl_core_gl_get_swap_interval", array_args);
 
 	value := array_args[0]->As(IntHolder);
 	return value->Get();
@@ -1391,7 +1391,7 @@ method : public : GLGetSwapInterval() ~ Int {
 #ifdef _WIN32
 	__declspec(dllexport)
 #endif
-	void sdl_window_gl_get_swap_interval(VMContext& context) {
+	void sdl_core_gl_get_swap_interval(VMContext& context) {
 		const int return_value = SDL_GL_GetSwapInterval();
 		APITools_SetIntValue(context, 0, return_value);
 	}
@@ -1401,14 +1401,14 @@ method : public : GLSwap() ~ Nil {
 	array_args := Base->New[1];
 	array_args[0] := IntHolder->New(@window);
 
-	Proxy->GetDllProxy()->CallFunction("sdl_window_gl_swap", array_args);
+	Proxy->GetDllProxy()->CallFunction("sdl_core_gl_swap", array_args);
 
 }
 
 #ifdef _WIN32
 	__declspec(dllexport)
 #endif
-	void sdl_window_gl_swap(VMContext& context) {
+	void sdl_core_gl_swap(VMContext& context) {
 		SDL_Window* window = (SDL_Window*)APITools_GetIntValue(context, 0);
 		SDL_GL_SwapWindow(window);
 	}
@@ -1418,14 +1418,14 @@ method : public : GLDeleteContext(context : GLContext) ~ Nil {
 	array_args := Base->New[1];
 	array_args[0] := IntHolder->New(context);
 
-	Proxy->GetDllProxy()->CallFunction("sdl_window_gl_delete_context", array_args);
+	Proxy->GetDllProxy()->CallFunction("sdl_core_gl_delete_context", array_args);
 
 }
 
 #ifdef _WIN32
 	__declspec(dllexport)
 #endif
-	void sdl_window_gl_delete_context(VMContext& context) {
+	void sdl_core_gl_delete_context(VMContext& context) {
 		const long* context = (long*)APITools_GetObjectValue(context, 0);
 		SDL_GL_DeleteContext(context);
 	}

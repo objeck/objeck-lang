@@ -1,6 +1,7 @@
 @echo off
+
 cd deploy\bin
-obc -src '..\..\..\compiler\lib_src\sdl.obs' -lib collect.obl -tar lib -dest sdl.obl
+obc -src '..\..\..\compiler\lib_src\sdl.obs' -tar lib -dest sdl.obl
 copy sdl.obl ..\..\..\compiler
 copy ..\..\..\lib\sdl\lib\x86\sdl2.dll .
 REM devenv /rebuild Debug ..\..\..\lib\sdl\sdl\sdl.sln
