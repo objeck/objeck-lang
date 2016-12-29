@@ -895,6 +895,9 @@ bundle SDL {
 		NUM_SCANCODES := 512
 	}
 	
+	#~
+	Keysym associated with a keyboard event
+	~#
 	class Keysym {
 		@scancode : Scancode;
 		@sym : Int;
@@ -916,6 +919,9 @@ bundle SDL {
 		}
 	}
 	
+	#~
+	KeyboardEvent associated with an Event
+	~#
 	class KeyboardEvent {
 		@type : Int;
 		@timestamp : Int;
@@ -923,13 +929,29 @@ bundle SDL {
 		@state : Int;
 		@repeat : Int;
 		@keysym : Keysym;
-
+		
 		New() {
 			@keysym := Keysym->New();
 		}
 		
 		method : public : GetType() ~ Int {
 			return @type;
+		}
+		
+		method : public : GetTimestamp() ~ Int {
+			return @timestamp;
+		}
+		
+		method : public : GetWindowID() ~ Int {
+			return @windowID;
+		}
+		
+		method : public : GetState() ~ Int {
+			return @state;
+		}
+		
+		method : public : GetRepeat() ~ Int {
+			return @repeat;
 		}
 		
 		method : public : GetKeysym() ~ Keysym {
@@ -1318,12 +1340,42 @@ bundle SDL {
 		SDL_HINT_OVERRIDE := 2
 	}
 	
-	##  
-	## TODO: 
-	##
+	#~
+	Color class may be used independently 
+	~#
 	class Color {
-		New : private (palette : Int) {
-			@palette := palette;
+		@color : Int;
+		@r : Int;
+		@g : Int;
+		@b : Int;
+		@a : Int;
+		
+		New() {
+			
+		}
+		
+		New() {
+			@color := color;
+		}
+		
+		method : Read() ~ Nil {
+			if(@color <> 0) {
+				array_args := Base->New[2];
+				array_args[0] := IntHolder->New(@color);
+				array_args[1] := @self;
+
+				Proxy->GetDllProxy()->CallFunction("sdl_color_read", array_args);
+			};
+		}
+		
+		method : Write() ~ Nil {
+			if(@color <> 0) {
+				array_args := Base->New[2];
+				array_args[0] := IntHolder->New(@color);
+				array_args[1] := @self;
+
+				Proxy->GetDllProxy()->CallFunction("sdl_color_write", array_args);
+			};
 		}
 	}
 	
