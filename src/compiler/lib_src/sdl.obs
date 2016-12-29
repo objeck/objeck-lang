@@ -1351,10 +1351,14 @@ bundle SDL {
 		@a : Int;
 		
 		New() {
-			
+			array_args := Base->New[1];
+			array_args[0] := IntHolder->New();
+			Proxy->GetDllProxy()->CallFunction("sdl_color_new", array_args);
+			value := array_args[0]->As(IntHolder);
+			@color := value->Get();
 		}
 		
-		New() {
+		New(color : Int) {
 			@color := color;
 		}
 		
@@ -1379,37 +1383,14 @@ bundle SDL {
 		}
 	}
 	
-	##  
-	## TODO: 
-	##
+	#~
+	Palette	class
+	~#
 	class Palette {
 		@palette : Int;
-		@ncolors : Int;
-		@colors : Color;
-		version : Int;
-		
+
 		New : private (palette : Int) {
 			@palette := palette;
-		}
-		
-		method : Read() ~ Nil {
-			if(@palette <> 0) {
-				array_args := Base->New[2];
-				array_args[0] := IntHolder->New(@palette);
-				array_args[1] := @self;
-
-				Proxy->GetDllProxy()->CallFunction("sdl_palette_read", array_args);
-			};
-		}
-		
-		method : Write() ~ Nil {
-			if(@palette <> 0) {
-				array_args := Base->New[2];
-				array_args[0] := IntHolder->New(@palette);
-				array_args[1] := @self;
-
-				Proxy->GetDllProxy()->CallFunction("sdl_palette_write", array_args);
-			};
 		}
 	}
 	
@@ -1446,6 +1427,16 @@ bundle SDL {
 			Read();
 		}
 		
+		method : public : Free() ~ Nil {
+			if(@point <> 0) {
+				array_args := Base->New[1];
+				array_args[0] := IntHolder->New(@point);
+
+				Proxy->GetDllProxy()->CallFunction("sdl_point_free", array_args);
+				@point := 0;
+			};
+		}
+		
 		method : Read() ~ Nil {
 			if(@point <> 0) {
 				array_args := Base->New[2];
@@ -1463,16 +1454,6 @@ bundle SDL {
 				array_args[1] := @self;
 
 				Proxy->GetDllProxy()->CallFunction("sdl_point_write", array_args);
-			};
-		}
-		
-		method : public : Free() ~ Nil {
-			if(@point <> 0) {
-				array_args := Base->New[1];
-				array_args[0] := IntHolder->New(@point);
-
-				Proxy->GetDllProxy()->CallFunction("sdl_point_free", array_args);
-				@point := 0;
 			};
 		}
 		
@@ -1497,6 +1478,10 @@ bundle SDL {
 		}
 	}
 
+	#~
+	Rect class
+	TODO: add SDL_RectEmpty, SDL_RectEquals (SDL_rect.h)
+	~#
 	class Rect {
 		@rect : Int;
 		@x : Int;
@@ -1505,6 +1490,20 @@ bundle SDL {
 		@h : Int;
 		
 		New() {
+			array_args := Base->New[1];
+			array_args[0] := IntHolder->New();
+			Proxy->GetDllProxy()->CallFunction("sdl_rect_new", array_args);
+			value := array_args[0]->As(IntHolder);
+			@rect := value->Get();
+		}
+		
+		method : public : Free() ~ Nil {
+			if(@rect <> 0) {
+				array_args := Base->New[1];
+				array_args[0] := IntHolder->New(@rect);
+				Proxy->GetDllProxy()->CallFunction("sdl_rect_free", array_args);
+				@rect := 0;
+			};
 		}
 		
 		New : private (rect : Int) {
@@ -1553,7 +1552,6 @@ bundle SDL {
 		}
 		
 		method : public : SetX(x : Int) ~ Nil {
-		
 			@x := x;
 			Write();
 		}
@@ -1654,12 +1652,11 @@ bundle SDL {
 		}
 	}
 	
-	##
-	## TODO: sdl\include\SDL_pixels.h
-	## new the struct
-	## 
+	#~
+	PixelFormat class
+	TODO: add get methods
+	~#
 	class PixelFormat {
-		@pixel_format : Int;
 		@format : Int;
 		@palette : Palette;
 		@BitsPerPixel : Int;
@@ -1679,31 +1676,6 @@ bundle SDL {
 		
 		New() {
 		}
-		
-		New(pixel_format : Int) {
-			@pixel_format := pixel_format;
-			Read();
-		}
-		
-		method : Read() ~ Nil {
-			if(@pixel_format <> 0) {
-				array_args := Base->New[2];
-				array_args[0] := IntHolder->New(@pixel_format);
-				array_args[1] := @self;
-
-				Proxy->GetDllProxy()->CallFunction("sdl_pixel_format_read", array_args);
-			};
-		}
-		
-		method : Write() ~ Nil {
-			if(@pixel_format <> 0) {
-				array_args := Base->New[2];
-				array_args[0] := IntHolder->New(@pixel_format);
-				array_args[1] := @self;
-
-				Proxy->GetDllProxy()->CallFunction("sdl_pixel_format_write", array_args);
-			};
-		}
 	}
 	
 	#~
@@ -1711,13 +1683,6 @@ bundle SDL {
 	~#
 	class Surface {
 		@surface : Int;
-		@flags : Int;
-		@format : PixelFormat;
-		@w : Int;
-		@h : Int;               
-		@pitch : Int;            
-		@locked : Int;        
-		@clip_rect : Rect;     
 		
 		New(surface : Int) {
 			@surface := surface;
@@ -1750,31 +1715,6 @@ bundle SDL {
 				Proxy->GetDllProxy()->CallFunction("sdl_surface_free", array_args);
 				@surface := 0;
 			};
-		}
-		
-		method : Read() ~ Nil {
-			if(@surface <> 0) {
-				array_args := Base->New[2];
-				array_args[0] := IntHolder->New(@surface);
-				array_args[1] := @self;
-
-				Proxy->GetDllProxy()->CallFunction("sdl_surface_read", array_args);
-			};
-		}
-		
-		method : Write() ~ Nil {
-			if(@surface <> 0) {
-				array_args := Base->New[2];
-				array_args[0] := IntHolder->New(@surface);
-				array_args[1] := @self;
-
-				Proxy->GetDllProxy()->CallFunction("sdl_surface_write", array_args);
-			};
-		}
-		
-		method : public : GetFlags() ~ Int {
-			Read();
-			return @flags;
 		}
 		
 		method : public : SetPalette(palette : Palette) ~ Int {
