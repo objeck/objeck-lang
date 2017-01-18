@@ -3,13 +3,21 @@ use System.IO.File;
 use Collection;
 
 class Parser {
+	@file : String;
+	
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
-			Parse(args[0]);
+			parser := Parser->New(args[0]);
+			parser->Parse();
+			## TODO: get tokens and string count
 		};
 	}
 
-	function : native : Parse(file : String) ~ Vector {
+	New(file : String) {
+		@file := file;
+	}
+	
+	method : native : Parse() ~ Vector {
 		tokens := Vector->New();
 	
 		reserved := StringMap->New();
@@ -21,7 +29,7 @@ class Parser {
 
 		string_count := 0;
 		line_num := 0;
-		reader := FileReader->New(file);
+		reader := FileReader->New(@file);
 		while(reader->IsEOF() <> true) {
 			line := reader->ReadString();
 			line_num += 1;
@@ -76,55 +84,56 @@ class Parser {
 					else {
 						select(line->Get(i)) {
 							label '(': {
-								"opren"->PrintLine();
+								tokens->AddBack(Token->New(Token->Type->OPREN, "opren"));
 							}
 						
 							label ')': {
-								"cpren"->PrintLine();
+								tokens->AddBack(Token->New(Token->Type->CPREN, "cpren"));
 							}
 				
 							label '{': {
-								"ocbrace"->PrintLine();
+								
+								tokens->AddBack(Token->New(Token->Type->OCBRACE, "ocbrace"));
 							}
 				
 							label '}': {
-								"ccbrace"->PrintLine();
+								tokens->AddBack(Token->New(Token->Type->CCBRACE, "ccbrace"));
 							}
 						
 							label '/': {
-								"div"->PrintLine();
+								tokens->AddBack(Token->New(Token->Type->DIV, "div"));
 							}
 
 							label '*': {
-								"mul"->PrintLine();
+								tokens->AddBack(Token->New(Token->Type->MUL, "mul"));
 							}
 
 							label '+': {
-								"add"->PrintLine();
+								tokens->AddBack(Token->New(Token->Type->ADD, "add"));
 							}
 
 							label '-': {
-								"sub"->PrintLine();
+								tokens->AddBack(Token->New(Token->Type->SUB, "sub"));
 							}
 						
 							label ',': {
-								"comma"->PrintLine();
+								tokens->AddBack(Token->New(Token->Type->CPREN, "comma"));
 							}
 							
 							label ';': {
-								"semi-colon"->PrintLine();
+								tokens->AddBack(Token->New(Token->Type->SEMI, "semi-colon"));
 							}
 							
 							label '<': {
-								"less"->PrintLine();
+								tokens->AddBack(Token->New(Token->Type->LESS, "less"));
 							}
 							
 							label '=': {
-								"equal"->PrintLine();
+								tokens->AddBack(Token->New(Token->Type->EQUAL, "equal"));
 							}
 							
 							label '>': {
-								"greater"->PrintLine();
+								tokens->AddBack(Token->New(Token->Type->GREATER, "greater"));
 							}
 							
 							label '\r':
@@ -162,7 +171,19 @@ class Token {
 		PUTC,
 		NUM,
 		STR,
-		VAR
+		VAR,
+		OPREN,
+		CPREN,
+		OCBRACE,
+		CCBRACE,
+		DIV,
+		MUL,
+		ADD,
+		SUB,
+		SEMI,
+		LESS,
+		EQUAL,
+		GREATER
 	}
 	
 	New(type : Type, name : String) {
