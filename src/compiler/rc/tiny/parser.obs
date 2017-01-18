@@ -1,211 +1,25 @@
-use System.IO;
-use System.IO.File;
 use Collection;
 
 class Parser {
-	@file : String;
+	@tokens : Vector;
 	
-	function : Main(args : String[]) ~ Nil {
-		if(args->Size() = 1) {
-			parser := Parser->New(args[0]);
-			parser->Parse();
-			## TODO: get tokens and string count
-		};
-	}
-
-	New(file : String) {
-		@file := file;
+	New(tokens : Vector) {
+		@tokens := tokens;
 	}
 	
-	method : native : Parse() ~ Vector {
-		tokens := Vector->New();
-	
-		reserved := StringMap->New();
-		reserved->Insert("while", Token->New(Token->Type->WHILE, "while"));
-		reserved->Insert("if", Token->New(Token->Type->IF, "if"));
-		reserved->Insert("else", Token->New(Token->Type->ELSE, "else"));
-		reserved->Insert("print", Token->New(Token->Type->PRINT, "print"));
-		reserved->Insert("putc", Token->New(Token->Type->PUTC, "putc"));
-
-		string_count := 0;
-		line_num := 0;
-		reader := FileReader->New(@file);
-		while(reader->IsEOF() <> true) {
-			line := reader->ReadString();
-			line_num += 1;
-					  
-			i := 0;  
-			while(i < line->Size()) {  
-				line->Trim();
-				## skip whitespace
-				while((line->Get(i) = ' ' | line->Get(i) = '\t') & i < line->Size()) {
-					i += 1;
-				};
-				
-				## parse the line
-				if(i < line->Size()) {
-					## word
-					if(line->Get(i)->IsChar()) {
-						string := "";
-						while(line->Get(i)->IsChar()) {
-							string->Append(line->Get(i));
-							i += 1;
-						};
-					
-						token := reserved->Find(string)->As(Token);
-						if(token <> Nil) {
-							tokens->AddBack(token);
-						}
-						else {
-							tokens->AddBack(Token->New(Token->Type->VAR, string));
-						};
-					}
-					## number
-					else if(line->Get(i)->IsDigit()) {
-						number := "";
-						while(line->Get(i)->IsDigit()) {
-							number->Append(line->Get(i));
-						};
-						tokens->AddBack(Token->New(number->ToInt()));
-					}
-					## string
-					else if(line->Get(i) = '"') {
-						i += 1;
-						string := "";
-						while(line->Get(i) <> '"') {
-							string->Append(line->Get(i));
-							i += 1;
-						};	
-						tokens->AddBack(Token->New(Token->Type->STR, string));						
-						string_count += 1;
-						i += 1;
-					}
-					## other
-					else {
-						select(line->Get(i)) {
-							label '(': {
-								tokens->AddBack(Token->New(Token->Type->OPREN, "opren"));
-							}
-						
-							label ')': {
-								tokens->AddBack(Token->New(Token->Type->CPREN, "cpren"));
-							}
-				
-							label '{': {
-								
-								tokens->AddBack(Token->New(Token->Type->OCBRACE, "ocbrace"));
-							}
-				
-							label '}': {
-								tokens->AddBack(Token->New(Token->Type->CCBRACE, "ccbrace"));
-							}
-						
-							label '/': {
-								tokens->AddBack(Token->New(Token->Type->DIV, "div"));
-							}
-
-							label '*': {
-								tokens->AddBack(Token->New(Token->Type->MUL, "mul"));
-							}
-
-							label '+': {
-								tokens->AddBack(Token->New(Token->Type->ADD, "add"));
-							}
-
-							label '-': {
-								tokens->AddBack(Token->New(Token->Type->SUB, "sub"));
-							}
-						
-							label ',': {
-								tokens->AddBack(Token->New(Token->Type->CPREN, "comma"));
-							}
-							
-							label ';': {
-								tokens->AddBack(Token->New(Token->Type->SEMI, "semi-colon"));
-							}
-							
-							label '<': {
-								tokens->AddBack(Token->New(Token->Type->LESS, "less"));
-							}
-							
-							label '=': {
-								tokens->AddBack(Token->New(Token->Type->EQUAL, "equal"));
-							}
-							
-							label '>': {
-								tokens->AddBack(Token->New(Token->Type->GREATER, "greater"));
-							}
-							
-							label '\r':
-							label '\n': {
-							}
-              
-							other: {
-								Console->Print("*** char='")->Print(line->Get(i))->PrintLine("' ***");
-							}
-						};
-						i += 1;
-					};  
-				};
-			};
-		};
-		reader->Close();
-		"---"->PrintLine();
-		"string count: {$string_count}"->PrintLine();
-		
-		return tokens;
-	}
-}
-
-class Token {
-	@type : Type;
-	@name : String;
-	@value : Int;
-
-	enum Type := -32 {
-		INT,
-		WHILE,
-		ELSE,
-		IF,
-		PRINT,
-		PUTC,
-		NUM,
-		STR,
-		VAR,
-		OPREN,
-		CPREN,
-		OCBRACE,
-		CCBRACE,
-		DIV,
-		MUL,
-		ADD,
-		SUB,
-		SEMI,
-		LESS,
-		EQUAL,
-		GREATER
+	method : native : GetToken() ~ Token {
+		return Nil;
 	}
 	
-	New(type : Type, name : String) {
-		@type := type;
-		@name := name;
+	method : native : GetToken(index : Int) ~ Token {
+		return Nil;
 	}
 	
-	New(value : Int) {
-		@type := Type->INT;
-		@value := value;
-		@name := "INT";
-	}
-		
-	method : public : GetType() ~ Type {
-		return @type;
+	method : native : GetStrings() ~ Vector {
+		return Nil;
 	}
 	
-	method : public : GetName() ~ String {
-		return @name;
-	}
-	
-	method : public : GetValue() ~ Int {
-		return @value;
+	method : public : native : Parse() ~ Bool {
+		return false;
 	}
 }
