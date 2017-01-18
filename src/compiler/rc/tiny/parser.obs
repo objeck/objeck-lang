@@ -1,0 +1,190 @@
+use System.IO;
+use System.IO.File;
+use Collection;
+
+class Parser {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() = 1) {
+			Parse(args[0]);
+		};
+	}
+
+	function : native : Parse(file : String) ~ Vector {
+		tokens := Vector->New();
+	
+		reserved := StringMap->New();
+		reserved->Insert("while", Token->New(Token->Type->WHILE, "while"));
+		reserved->Insert("if", Token->New(Token->Type->IF, "if"));
+		reserved->Insert("else", Token->New(Token->Type->ELSE, "else"));
+		reserved->Insert("print", Token->New(Token->Type->PRINT, "print"));
+		reserved->Insert("putc", Token->New(Token->Type->PUTC, "putc"));
+
+		string_count := 0;
+		line_num := 0;
+		reader := FileReader->New(file);
+		while(reader->IsEOF() <> true) {
+			line := reader->ReadString();
+			line_num += 1;
+					  
+			i := 0;  
+			while(i < line->Size()) {  
+				line->Trim();
+				## skip whitespace
+				while((line->Get(i) = ' ' | line->Get(i) = '\t') & i < line->Size()) {
+					i += 1;
+				};
+				
+				## parse the line
+				if(i < line->Size()) {
+					## word
+					if(line->Get(i)->IsChar()) {
+						string := "";
+						while(line->Get(i)->IsChar()) {
+							string->Append(line->Get(i));
+							i += 1;
+						};
+					
+						token := reserved->Find(string)->As(Token);
+						if(token <> Nil) {
+							tokens->AddBack(token);
+						}
+						else {
+							tokens->AddBack(Token->New(Token->Type->VAR, string));
+						};
+					}
+					## number
+					else if(line->Get(i)->IsDigit()) {
+						number := "";
+						while(line->Get(i)->IsDigit()) {
+							number->Append(line->Get(i));
+						};
+						tokens->AddBack(Token->New(number->ToInt()));
+					}
+					## string
+					else if(line->Get(i) = '"') {
+						i += 1;
+						string := "";
+						while(line->Get(i) <> '"') {
+							string->Append(line->Get(i));
+							i += 1;
+						};	
+						tokens->AddBack(Token->New(Token->Type->STR, string));						
+						string_count += 1;
+						i += 1;
+					}
+					## other
+					else {
+						select(line->Get(i)) {
+							label '(': {
+								"opren"->PrintLine();
+							}
+						
+							label ')': {
+								"cpren"->PrintLine();
+							}
+				
+							label '{': {
+								"ocbrace"->PrintLine();
+							}
+				
+							label '}': {
+								"ccbrace"->PrintLine();
+							}
+						
+							label '/': {
+								"div"->PrintLine();
+							}
+
+							label '*': {
+								"mul"->PrintLine();
+							}
+
+							label '+': {
+								"add"->PrintLine();
+							}
+
+							label '-': {
+								"sub"->PrintLine();
+							}
+						
+							label ',': {
+								"comma"->PrintLine();
+							}
+							
+							label ';': {
+								"semi-colon"->PrintLine();
+							}
+							
+							label '<': {
+								"less"->PrintLine();
+							}
+							
+							label '=': {
+								"equal"->PrintLine();
+							}
+							
+							label '>': {
+								"greater"->PrintLine();
+							}
+							
+							label '\r':
+							label '\n': {
+							}
+              
+							other: {
+								Console->Print("*** char='")->Print(line->Get(i))->PrintLine("' ***");
+							}
+						};
+						i += 1;
+					};  
+				};
+			};
+		};
+		reader->Close();
+		"---"->PrintLine();
+		"string count: {$string_count}"->PrintLine();
+		
+		return tokens;
+	}
+}
+
+class Token {
+	@type : Type;
+	@name : String;
+	@value : Int;
+
+	enum Type := -32 {
+		INT,
+		WHILE,
+		ELSE,
+		IF,
+		PRINT,
+		PUTC,
+		NUM,
+		STR,
+		VAR
+	}
+	
+	New(type : Type, name : String) {
+		@type := type;
+		@name := name;
+	}
+	
+	New(value : Int) {
+		@type := Type->INT;
+		@value := value;
+		@name := "INT";
+	}
+		
+	method : public : GetType() ~ Type {
+		return @type;
+	}
+	
+	method : public : GetName() ~ String {
+		return @name;
+	}
+	
+	method : public : GetValue() ~ Int {
+		return @value;
+	}
+}
