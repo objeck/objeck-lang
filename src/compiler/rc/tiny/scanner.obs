@@ -1,0 +1,260 @@
+use System.IO;
+use System.IO.File;
+use Collection;
+
+class Scanner {
+	@file : String;
+	@tokens : Vector;
+	@strings : Vector;
+	
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() = 1) {
+			scanner := Scanner->New(args[0]);
+			if(scanner->Scan()) {
+				tokens := scanner->GetTokens();
+				each(i : tokens) {
+					token := tokens->Get(i)->As(Token);
+					name := token->GetName();
+					
+					select(token->GetType()) {
+						label Token->Type->VAR: {
+							"var: name={$name}"->PrintLine();
+						}
+						
+						label Token->Type->STR_REF: {
+							value := token->GetValue();
+							"str_ref: id={$value}"->PrintLine();
+						}
+						
+						label Token->Type->NUM: {
+							value := token->GetValue();
+							"num: value={$value}"->PrintLine();
+						}
+						
+						other : {
+							name->PrintLine();
+						}
+					};
+				};
+			};
+		};
+	}
+
+	New(file : String) {
+		@file := file;
+		@tokens := Vector->New();
+		@strings := Vector->New();
+	}
+	
+	method : native : GetTokens() ~ Vector {
+		return @tokens;
+	}
+	
+	method : native : GetStrings() ~ Vector {
+		return @strings;
+	}
+	
+	method : public : native : Scan() ~ Bool {
+		reserved := StringMap->New();
+		reserved->Insert("while", Token->New(Token->Type->WHILE, "while"));
+		reserved->Insert("if", Token->New(Token->Type->IF, "if"));
+		reserved->Insert("else", Token->New(Token->Type->ELSE, "else"));
+		reserved->Insert("print", Token->New(Token->Type->PRINT, "print"));
+		reserved->Insert("putc", Token->New(Token->Type->PUTC, "putc"));
+
+## "-0-"->PrintLine();
+
+		string_count := 0;
+		line_num := 0;
+		reader := FileReader->New(@file);
+		while(reader->IsEOF() <> true) {
+			line := reader->ReadString();
+			line_num += 1;
+					  
+			i := 0;  
+			while(i < line->Size()) {  
+				line->Trim();
+				## skip whitespace
+				while((line->Get(i) = ' ' | line->Get(i) = '\t') & i < line->Size()) {
+					i += 1;
+				};
+				
+				## parse the line
+				if(i < line->Size()) {
+					## word
+					if(line->Get(i)->IsChar()) {
+## "-1-"->PrintLine();
+						string := "";
+						while(line->Get(i)->IsChar()) {
+							string->Append(line->Get(i));
+							i += 1;
+						};
+					
+						token := reserved->Find(string)->As(Token);
+						if(token <> Nil) {
+							@tokens->AddBack(token);
+						}
+						else {
+							@tokens->AddBack(Token->New(Token->Type->VAR, string));
+						};
+					}
+					## number
+					else if(line->Get(i)->IsDigit()) {
+## "-2-"->PrintLine();
+						number := "";
+						while(line->Get(i)->IsDigit()) {
+							number->Append(line->Get(i));
+							i += 1;
+						};						
+						@tokens->AddBack(Token->New(Token->Type->NUM, "num", number->ToInt()));
+					}
+					## string
+					else if(line->Get(i) = '"') {
+## "-3-"->PrintLine();
+						i += 1;
+						string := "";
+						while(line->Get(i) <> '"') {
+							string->Append(line->Get(i));
+							i += 1;
+						};
+						@strings->AddBack(string);
+						
+						@tokens->AddBack(Token->New(Token->Type->STR_REF, "str_ref", string_count));						
+						string_count += 1;
+						i += 1;
+					}
+					## other
+					else {
+## "-4-"->PrintLine();				
+						select(line->Get(i)) {
+							label '(': {
+								@tokens->AddBack(Token->New(Token->Type->OPREN, "opren"));
+							}
+						
+							label ')': {
+								@tokens->AddBack(Token->New(Token->Type->CPREN, "cpren"));
+							}
+				
+							label '{': {
+								
+								@tokens->AddBack(Token->New(Token->Type->OCBRACE, "ocbrace"));
+							}
+				
+							label '}': {
+								@tokens->AddBack(Token->New(Token->Type->CCBRACE, "ccbrace"));
+							}
+						
+							label '/': {
+								@tokens->AddBack(Token->New(Token->Type->DIV, "div"));
+							}
+
+							label '*': {
+								@tokens->AddBack(Token->New(Token->Type->MUL, "mul"));
+							}
+
+							label '+': {
+								@tokens->AddBack(Token->New(Token->Type->ADD, "add"));
+							}
+
+							label '-': {
+								@tokens->AddBack(Token->New(Token->Type->SUB, "sub"));
+							}
+						
+							label ',': {
+								@tokens->AddBack(Token->New(Token->Type->CPREN, "comma"));
+							}
+							
+							label ';': {
+								@tokens->AddBack(Token->New(Token->Type->SEMI, "semi-colon"));
+							}
+							
+							label '<': {
+								@tokens->AddBack(Token->New(Token->Type->LESS, "less"));
+							}
+							
+							label '=': {
+								if(i + 1 < line->Size() & line->Get(i + 1) = '=') {
+									@tokens->AddBack(Token->New(Token->Type->EQUAL, "equal"));
+									i += 1;
+								}
+								else {
+									@tokens->AddBack(Token->New(Token->Type->ASGN, "asgn"));
+								};
+							}
+							
+							label '>': {
+								@tokens->AddBack(Token->New(Token->Type->GREATER, "greater"));
+							}
+							
+							label '\r':
+							label '\n': {
+							}
+              
+							other: {
+								Console->Print("*** char='")->Print(line->Get(i))->PrintLine("' ***");
+							}
+						};
+						i += 1;
+					};  
+				};
+			};
+		};
+		reader->Close();
+		
+		return true;
+	}
+}
+
+class Token {
+	@type : Type;
+	@name : String;
+	@value : Int;
+
+	enum Type := -32 {
+		ASGN,
+		WHILE,
+		ELSE,
+		IF,
+		PRINT,
+		PUTC,
+		NUM,
+		STR_REF,
+		VAR,
+		OPREN,
+		CPREN,
+		OCBRACE,
+		CCBRACE,
+		DIV,
+		MUL,
+		ADD,
+		SUB,
+		SEMI,
+		LESS,
+		EQUAL,
+		GREATER,
+		OTHER
+	}
+	
+	New(type : Type, name : String) {
+		@type := type;
+		@name := name;
+	}
+	
+	New(type : Type, name : String, value : Int) {
+		@type := type;
+		@value := value;
+		@name := name;
+	}
+		
+	method : public : GetType() ~ Type {
+		return @type;
+	}
+	
+	method : public : GetName() ~ String {
+		return @name;
+	}
+	
+	method : public : GetValue() ~ Int {
+		return @value;
+	}
+}
