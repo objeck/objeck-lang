@@ -1,4 +1,3 @@
-use System.IO;
 use System.IO.File;
 use Collection;
 
@@ -7,50 +6,17 @@ class Scanner {
 	@tokens : Vector;
 	@strings : Vector;
 	
-	function : Main(args : String[]) ~ Nil {
-		if(args->Size() = 1) {
-			scanner := Scanner->New(args[0]);
-			if(scanner->Scan()) {
-				tokens := scanner->GetTokens();
-				each(i : tokens) {
-					token := tokens->Get(i)->As(Token);
-					name := token->GetName();
-					
-					select(token->GetType()) {
-						label Token->Type->VAR: {
-							"var: name={$name}"->PrintLine();
-						}
-						
-						label Token->Type->STR_REF: {
-							value := token->GetValue();
-							"str_ref: id={$value}"->PrintLine();
-						}
-						
-						label Token->Type->NUM: {
-							value := token->GetValue();
-							"num: value={$value}"->PrintLine();
-						}
-						
-						other : {
-							name->PrintLine();
-						}
-					};
-				};
-			};
-		};
-	}
-
 	New(file : String) {
 		@file := file;
 		@tokens := Vector->New();
 		@strings := Vector->New();
 	}
 	
-	method : native : GetTokens() ~ Vector {
+	method : public : GetTokens() ~ Vector {
 		return @tokens;
 	}
 	
-	method : native : GetStrings() ~ Vector {
+	method : public : GetStrings() ~ Vector {
 		return @strings;
 	}
 	
@@ -182,6 +148,26 @@ class Scanner {
 								};
 							}
 							
+							label '&': {
+								if(i + 1 < line->Size() & line->Get(i + 1) = '&') {
+									@tokens->AddBack(Token->New(Token->Type->AND, "and"));
+									i += 1;
+								}
+								else {
+									@tokens->AddBack(Token->New(Token->Type->OTHER, "OTHER"));
+								};
+							}
+							
+							label '|': {
+								if(i + 1 < line->Size() & line->Get(i + 1) = '|') {
+									@tokens->AddBack(Token->New(Token->Type->OR, "or"));
+									i += 1;
+								}
+								else {
+									@tokens->AddBack(Token->New(Token->Type->OTHER, "OTHER"));
+								};
+							}
+							
 							label '>': {
 								@tokens->AddBack(Token->New(Token->Type->GREATER, "greater"));
 							}
@@ -191,7 +177,7 @@ class Scanner {
 							}
               
 							other: {
-								Console->Print("*** char='")->Print(line->Get(i))->PrintLine("' ***");
+								System.IO.Console->Print("*** Invalid token: char='")->Print(line->Get(i))->PrintLine("' ***");
 							}
 						};
 						i += 1;
@@ -200,6 +186,7 @@ class Scanner {
 			};
 		};
 		reader->Close();
+		@tokens->AddBack(Token->New(Token->Type->EOS, "eos"));
 		
 		return true;
 	}
@@ -224,6 +211,8 @@ class Token {
 		CPREN,
 		OCBRACE,
 		CCBRACE,
+		AND,
+		OR,
 		DIV,
 		MUL,
 		ADD,
@@ -232,6 +221,7 @@ class Token {
 		LESS,
 		EQUAL,
 		GREATER,
+		EOS,
 		OTHER
 	}
 	

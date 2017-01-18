@@ -1,0 +1,42 @@
+use Collection;
+
+class Compiler {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() = 1) {
+			scanner := Scanner->New(args[0]);
+			if(scanner->Scan()) {
+				tokens := scanner->GetTokens();
+DumpTokens(tokens);
+				parser := Parser->New(tokens);
+				parser->Parse();
+			};
+		};
+	}
+	
+	function : DumpTokens(tokens : Vector) ~ Nil {
+		each(i : tokens) {
+			token := tokens->Get(i)->As(Token);
+			name := token->GetName();
+			
+			select(token->GetType()) {
+				label Token->Type->VAR: {
+					"var: name={$name}"->PrintLine();
+				}
+				
+				label Token->Type->STR_REF: {
+					value := token->GetValue();
+					"str_ref: id={$value}"->PrintLine();
+				}
+				
+				label Token->Type->NUM: {
+					value := token->GetValue();
+					"num: value={$value}"->PrintLine();
+				}
+				
+				other : {
+					name->PrintLine();
+				}
+			};
+		};
+	}
+}	

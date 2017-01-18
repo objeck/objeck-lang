@@ -2,17 +2,44 @@ use Collection;
 
 class Parser {
 	@tokens : Vector;
+	@statements : Vector;
+	@sym_table : StringMap;
+	@var_index : Int;
 	
 	New(tokens : Vector) {
 		@tokens := tokens;
+		@statements := Vector->New();
+		@sym_table := StringMap->New();
+		@var_index := 0;
 	}
 	
 	method : native : GetToken() ~ Token {
-		return Nil;
+		return GetToken(@var_index);
 	}
 	
 	method : native : GetToken(index : Int) ~ Token {
-		return Nil;
+		if(index < @tokens->Size()) {
+			return @tokens->Get(index)->As(Token);
+		};
+		
+		return Token->New(Token->Type->EOS, "eos");
+	}
+	
+	method : NextToken() ~ Nil {
+		@var_index += 1;
+	}
+	
+	method : Match(index : Int, type : Token->Type) ~ Bool {
+#~	
+left := GetToken(index)->GetType()->As(Int);
+right := type->As(Int);
+"checking: index={$index}; left={$left}, right={$right}"->PrintLine();
+~#	
+		return GetToken(index)->GetType() = type;
+	}
+	
+	method : Match(type : Token->Type) ~ Bool {
+		return Match(@var_index, type);
 	}
 	
 	method : native : GetStrings() ~ Vector {
@@ -20,6 +47,140 @@ class Parser {
 	}
 	
 	method : public : native : Parse() ~ Bool {
+		while(GetToken()->GetType() <> Token->Type->EOS) {
+			node := Statement();
+			if(node <> Nil) {
+				@statements->AddBack(node);
+			};
+		};
+		
 		return false;
+	}
+	
+	method : native : Statement() ~ ParseNode {
+		node : ParseNode;
+		
+		select(GetToken()->GetType()) {
+			label Token->Type->VAR: {
+				left := Variable();
+"-0-"->PrintLine();				
+				if(<>Match(Token->Type->ASGN)) {
+					"*** Expected '=' ***"->PrintLine();
+					return Nil;
+				};
+				NextToken();
+				
+"-1-"->PrintLine();				
+				right := Expression();
+				if(right = Nil) {
+					return Nil;
+				};
+				
+"-2-"->PrintLine();				
+				node := ParseNode->New(ParseNode->Type->ASGN, left, right);
+			}
+			
+			label Token->Type->WHILE: {
+			}
+			
+			label Token->Type->IF: {
+			}
+			
+			label Token->Type->PRINT: {
+			}
+			
+			label Token->Type->PUTC: {
+			}
+			
+			other: {
+				"*** Invalid statement ***"->PrintLine();
+				return Nil;
+			}
+		};	
+
+		if(<>Match(Token->Type->SEMI)) {
+			"*** Expected ';' ***"->PrintLine();
+			return Nil;
+		};
+		NextToken();
+		
+"-5-"->PrintLine();
+	
+		return node;
+	}
+	
+	method : Variable() ~ ParseNode {
+		left : ParseNode;
+		index := @sym_table->Find(GetToken()->GetName())->As(IntHolder);
+		if(index <> Nil) {
+			left := ParseNode->New(ParseNode->Type->VAR, index->Get());
+		}
+		else {
+			left := ParseNode->New(ParseNode->Type->VAR, @var_index);
+			@sym_table->Insert(GetToken()->GetName(), IntHolder->New(@var_index));
+		};
+		NextToken();
+
+"-3-"->PrintLine();			
+		return left;
+	}
+	
+	method : native : Expression() ~ ParseNode {
+		node : ParseNode;
+		
+		select(GetToken()->GetType()) {
+			label Token->Type->VAR: {
+				node := Variable();
+			}
+			
+			label Token->Type->NUM: {
+"-4-"->PrintLine();			
+				node := ParseNode->New(ParseNode->Type->NUM, GetToken()->GetValue());
+				NextToken();
+			}
+			
+			other: {
+				"*** Invalid expression ***"->PrintLine();
+				return Nil;
+			}
+		};
+		
+		return node;
+	}
+}
+
+class ParseNode {
+	@type : Type;
+	@value : Int;
+	@left : ParseNode;
+	@right : ParseNode;
+	
+	enum Type {
+		VAR,
+		NUM,
+		ASGN
+	}
+	
+	New(type : Type) {
+		@type := type;
+	}
+	
+	New(type : Type, left : ParseNode, right : ParseNode) {
+		@type := type;
+		@left := left;
+		@right := right;
+	}
+	
+	New(type : Type, value : Int) {
+		@type := type;
+		@value := value;
+	}
+	
+	method : public : GetType() ~ ParseNode->Type {
+		return @type;
+	}
+	
+	method : public : GetValue() ~ Int {
+		return @value;
 	}
 }
