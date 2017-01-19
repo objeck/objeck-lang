@@ -30,6 +30,36 @@ class Emitter {
 				"push {$value}"->PrintLine();
 			}
 			
+			label ParseNode->Type->LESS: {
+				Expression(node->GetLeft());
+				Expression(node->GetRight());
+				"less"->PrintLine();
+			}
+			
+			label ParseNode->Type->GTR: {
+				Expression(node->GetLeft());
+				Expression(node->GetRight());
+				"gtr"->PrintLine();
+			}
+			
+			label ParseNode->Type->LESS_EQL: {
+				Expression(node->GetLeft());
+				Expression(node->GetRight());
+				"less_eql"->PrintLine();
+			}
+			
+			label ParseNode->Type->GTR_EQL: {
+				Expression(node->GetLeft());
+				Expression(node->GetRight());
+				"gtr_eql"->PrintLine();
+			}
+			
+			label ParseNode->Type->EQL: {
+				Expression(node->GetLeft());
+				Expression(node->GetRight());
+				"eql"->PrintLine();
+			}
+			
 			label ParseNode->Type->ADD: {
 				Expression(node->GetLeft());
 				Expression(node->GetRight());

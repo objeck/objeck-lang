@@ -50,12 +50,10 @@ class Parser {
 	method : public : native : Parse() ~ Bool {
 		while(GetToken()->GetType() <> Token->Type->EOS) {
 			node := Statement();
-			if(node <> Nil) {
-				@statements->AddBack(node);
-			}
-			else {
+			if(node = Nil) {
 				return false;
 			};
+			@statements->AddBack(node);
 		};
 		
 		return true;
@@ -116,6 +114,15 @@ class Parser {
 					return Nil;
 				};
 				NextToken();
+				
+				statements := Vector->New();
+				while(GetToken()->GetType() <> Token->Type->EOS & GetToken()->GetType() <> Token->Type->CCBRACE) {
+					node := Statement();
+					if(node = Nil) {
+						return Nil;
+					};
+					statements->AddBack(node);
+				};
 				
 				if(<>Match(Token->Type->CCBRACE)) {
 					"*** Expected '}' ***"->PrintLine();
@@ -188,7 +195,7 @@ class Parser {
 			
 			return ParseNode->New(ParseNode->Type->LESS, left, right);
 		}
-		else if(Match(Token->Type->GRTR)) {
+		else if(Match(Token->Type->GTR)) {
 			NextToken();
 			
 			right := Expression();
@@ -196,7 +203,37 @@ class Parser {
 				return Nil;
 			};
 			
-			return ParseNode->New(ParseNode->Type->GRTR, left, right);
+			return ParseNode->New(ParseNode->Type->GTR, left, right);
+		}
+		else if(Match(Token->Type->LESS_EQL)) {
+			NextToken();
+			
+			right := Expression();
+			if(right = Nil) {
+				return Nil;
+			};
+			
+			return ParseNode->New(ParseNode->Type->LESS_EQL, left, right);
+		}
+		else if(Match(Token->Type->GTR_EQL)) {
+			NextToken();
+			
+			right := Expression();
+			if(right = Nil) {
+				return Nil;
+			};
+			
+			return ParseNode->New(ParseNode->Type->GTR_EQL, left, right);
+		}
+		else if(Match(Token->Type->EQL)) {
+			NextToken();
+			
+			right := Expression();
+			if(right = Nil) {
+				return Nil;
+			};
+			
+			return ParseNode->New(ParseNode->Type->EQL, left, right);
 		};
 	
 		return left;
@@ -332,6 +369,7 @@ class ParseNode {
 	@value : Int;
 	@left : ParseNode;
 	@right : ParseNode;
+	@statements : Vector;
 	
 	enum Type {
 		VAR,
@@ -341,12 +379,20 @@ class ParseNode {
 		OR,
 		AND,
 		LESS,
-		GRTR,
+		LESS_EQL,
+		GTR,
+		GTR_EQL,
+		EQL,
 		ADD,
 		SUB,
 		MUL,
 		DIV,
 		MOD
+	}
+	
+	New(type : Type, statements : Vector) {
+		@type := type;
+		@statements := statements;
 	}
 	
 	New(type : Type) {
