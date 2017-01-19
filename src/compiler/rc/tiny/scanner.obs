@@ -139,16 +139,28 @@ class Scanner {
 							}
 							
 							label '<': {
-								@tokens->AddBack(Token->New(Token->Type->LESS, "less"));
+								if(i + 1 < line->Size() & line->Get(i + 1) = '=') {
+									@tokens->AddBack(Token->New(Token->Type->LESS_EQL, "equal"));
+									i += 1;
+								}
+								else {
+									@tokens->AddBack(Token->New(Token->Type->LESS, "less"));
+								};
 							}
 							
 							label '>': {
-								@tokens->AddBack(Token->New(Token->Type->GRTR, "less"));
+								if(i + 1 < line->Size() & line->Get(i + 1) = '=') {
+									@tokens->AddBack(Token->New(Token->Type->GTR_EQL, "equal"));
+									i += 1;
+								}
+								else {
+									@tokens->AddBack(Token->New(Token->Type->GTR, "asgn"));
+								};
 							}
 							
 							label '=': {
 								if(i + 1 < line->Size() & line->Get(i + 1) = '=') {
-									@tokens->AddBack(Token->New(Token->Type->EQUAL, "equal"));
+									@tokens->AddBack(Token->New(Token->Type->EQL, "equal"));
 									i += 1;
 								}
 								else {
@@ -224,9 +236,10 @@ class Token {
 		SUB,
 		SEMI,
 		LESS,
-		GRTR,
-		EQUAL,
-		GREATER,
+		LESS_EQL,
+		GTR,
+		GTR_EQL,
+		EQL,
 		EOS,
 		OTHER
 	}
