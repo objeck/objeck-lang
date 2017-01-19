@@ -132,6 +132,7 @@ class Parser {
 		if(left = Nil) {
 			return false;
 		};
+		node->SetLeft(left);
 		
 		if(<>Match(Token->Type->CPREN)) {
 			"*** Expected ')' ***"->PrintLine();
@@ -147,18 +148,19 @@ class Parser {
 		
 		statements := Vector->New();
 		while(GetToken()->GetType() <> Token->Type->EOS & GetToken()->GetType() <> Token->Type->CCBRACE) {
-			node := Statement();
-			if(node = Nil) {
+			statement := Statement();
+			if(statement = Nil) {
 				return false;
 			};
-			statements->AddBack(node);
+			statements->AddBack(statement);
 		};
 		
 		if(<>Match(Token->Type->CCBRACE)) {
 			"*** Expected '}' ***"->PrintLine();
 			return false;
 		};
-		NextToken();
+		NextToken();	
+		node->SetStatements(statements);	
 	
 		return true;
 	}
@@ -439,5 +441,21 @@ class ParseNode {
 	
 	method : public : GetRight() ~ ParseNode {
 		return @right;
+	}
+
+	method : public : SetLeft(left : ParseNode) ~ Nil {
+		@left := left;
+	}
+	
+	method : public : SetRight(right : ParseNode) ~ Nil {
+		@right := right;
+	}
+	
+	method : public : SetStatements(statements : Vector) ~ Nil {
+		@statements := statements;
+	}
+	
+	method : public : GetStatements() ~ Vector {
+		return @statements;
 	}
 }
