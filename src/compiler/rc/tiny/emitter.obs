@@ -14,6 +14,14 @@ class Emitter {
 					id := node->GetLeft()->GetValue();
 					"store [{$id}]"->PrintLine();
 				}
+				
+				label ParseNode->Type->IF: {
+"IF: TODO"->PrintLine();				
+				}
+				
+				label ParseNode->Type->WHILE: {
+"WHILE: TODO"->PrintLine();				
+				}
 			};
 		};
 	}
