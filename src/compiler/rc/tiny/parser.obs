@@ -92,46 +92,18 @@ class Parser {
 				node := ParseNode->New(ParseNode->Type->WHILE);
 				NextToken();
 				
-				if(<>Match(Token->Type->OPREN)) {
-					"*** Expected '(' ***"->PrintLine();
+				if(<>ConditionalStatement(node)) {
 					return Nil;
 				};
-				NextToken();
-				
-				left := Expression();
-				if(left = Nil) {
-					return Nil;
-				};
-				
-				if(<>Match(Token->Type->CPREN)) {
-					"*** Expected ')' ***"->PrintLine();
-					return Nil;
-				};
-				NextToken();
-				
-				if(<>Match(Token->Type->OCBRACE)) {
-					"*** Expected '{' ***"->PrintLine();
-					return Nil;
-				};
-				NextToken();
-				
-				statements := Vector->New();
-				while(GetToken()->GetType() <> Token->Type->EOS & GetToken()->GetType() <> Token->Type->CCBRACE) {
-					node := Statement();
-					if(node = Nil) {
-						return Nil;
-					};
-					statements->AddBack(node);
-				};
-				
-				if(<>Match(Token->Type->CCBRACE)) {
-					"*** Expected '}' ***"->PrintLine();
-					return Nil;
-				};
-				NextToken();
 			}
 			
 			label Token->Type->IF: {
+				node := ParseNode->New(ParseNode->Type->IF);
+				NextToken();
+				
+				if(<>ConditionalStatement(node)) {
+					return Nil;
+				};
 			}
 			
 			label Token->Type->PRINT: {
@@ -147,6 +119,48 @@ class Parser {
 		};	
 		
 		return node;
+	}
+	
+	method : native : ConditionalStatement(node : ParseNode) ~ Bool {
+		if(<>Match(Token->Type->OPREN)) {
+			"*** Expected '(' ***"->PrintLine();
+			return false;
+		};
+		NextToken();
+		
+		left := Expression();
+		if(left = Nil) {
+			return false;
+		};
+		
+		if(<>Match(Token->Type->CPREN)) {
+			"*** Expected ')' ***"->PrintLine();
+			return false;
+		};
+		NextToken();
+		
+		if(<>Match(Token->Type->OCBRACE)) {
+			"*** Expected '{' ***"->PrintLine();
+			return false;
+		};
+		NextToken();
+		
+		statements := Vector->New();
+		while(GetToken()->GetType() <> Token->Type->EOS & GetToken()->GetType() <> Token->Type->CCBRACE) {
+			node := Statement();
+			if(node = Nil) {
+				return false;
+			};
+			statements->AddBack(node);
+		};
+		
+		if(<>Match(Token->Type->CCBRACE)) {
+			"*** Expected '}' ***"->PrintLine();
+			return false;
+		};
+		NextToken();
+	
+		return true;
 	}
 	
 	method : native : Expression() ~ ParseNode {
@@ -376,6 +390,7 @@ class ParseNode {
 		NUM,
 		ASGN,
 		WHILE,
+		IF,
 		OR,
 		AND,
 		LESS,
