@@ -113,6 +113,10 @@ class Scanner {
 							label '/': {
 								@tokens->AddBack(Token->New(Token->Type->DIV, "div"));
 							}
+							
+							label '%': {
+								@tokens->AddBack(Token->New(Token->Type->MOD, "mod"));
+							}
 
 							label '*': {
 								@tokens->AddBack(Token->New(Token->Type->MUL, "mul"));
@@ -136,6 +140,10 @@ class Scanner {
 							
 							label '<': {
 								@tokens->AddBack(Token->New(Token->Type->LESS, "less"));
+							}
+							
+							label '>': {
+								@tokens->AddBack(Token->New(Token->Type->GRTR, "less"));
 							}
 							
 							label '=': {
@@ -166,10 +174,6 @@ class Scanner {
 								else {
 									@tokens->AddBack(Token->New(Token->Type->OTHER, "OTHER"));
 								};
-							}
-							
-							label '>': {
-								@tokens->AddBack(Token->New(Token->Type->GREATER, "greater"));
 							}
 							
 							label '\r':
@@ -214,11 +218,13 @@ class Token {
 		AND,
 		OR,
 		DIV,
+		MOD,
 		MUL,
 		ADD,
 		SUB,
 		SEMI,
 		LESS,
+		GRTR,
 		EQUAL,
 		GREATER,
 		EOS,

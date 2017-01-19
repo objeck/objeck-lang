@@ -6,9 +6,12 @@ class Compiler {
 			scanner := Scanner->New(args[0]);
 			if(scanner->Scan()) {
 				tokens := scanner->GetTokens();
-DumpTokens(tokens);
+## DumpTokens(tokens);
 				parser := Parser->New(tokens);
-				parser->Parse();
+				if(parser->Parse()) {
+					emitter := Emitter->New(parser->GetStatements());
+					emitter->Emit();
+				};
 			};
 		};
 	}

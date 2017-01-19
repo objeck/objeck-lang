@@ -5,16 +5,18 @@ class Parser {
 	@statements : Vector;
 	@sym_table : StringMap;
 	@var_index : Int;
+	@token_index : Int;
 	
 	New(tokens : Vector) {
 		@tokens := tokens;
 		@statements := Vector->New();
 		@sym_table := StringMap->New();
+		@token_index := 0;
 		@var_index := 0;
 	}
 	
 	method : native : GetToken() ~ Token {
-		return GetToken(@var_index);
+		return GetToken(@token_index);
 	}
 	
 	method : native : GetToken(index : Int) ~ Token {
@@ -26,24 +28,23 @@ class Parser {
 	}
 	
 	method : NextToken() ~ Nil {
-		@var_index += 1;
+		@token_index += 1;
 	}
 	
 	method : Match(index : Int, type : Token->Type) ~ Bool {
-#~	
-left := GetToken(index)->GetType()->As(Int);
-right := type->As(Int);
-"checking: index={$index}; left={$left}, right={$right}"->PrintLine();
-~#	
 		return GetToken(index)->GetType() = type;
 	}
 	
 	method : Match(type : Token->Type) ~ Bool {
-		return Match(@var_index, type);
+		return Match(@token_index, type);
 	}
 	
-	method : native : GetStrings() ~ Vector {
+	method : public : GetStrings() ~ Vector {
 		return Nil;
+	}
+	
+	method : public : GetStatements() ~ Vector {
+		return @statements;
 	}
 	
 	method : public : native : Parse() ~ Bool {
@@ -51,10 +52,13 @@ right := type->As(Int);
 			node := Statement();
 			if(node <> Nil) {
 				@statements->AddBack(node);
+			}
+			else {
+				return false;
 			};
 		};
 		
-		return false;
+		return true;
 	}
 	
 	method : native : Statement() ~ ParseNode {
@@ -63,24 +67,61 @@ right := type->As(Int);
 		select(GetToken()->GetType()) {
 			label Token->Type->VAR: {
 				left := Variable();
-"-0-"->PrintLine();				
+				if(left = Nil) {
+					return Nil;
+				};
+				
 				if(<>Match(Token->Type->ASGN)) {
 					"*** Expected '=' ***"->PrintLine();
 					return Nil;
 				};
 				NextToken();
 				
-"-1-"->PrintLine();				
 				right := Expression();
 				if(right = Nil) {
 					return Nil;
 				};
 				
-"-2-"->PrintLine();				
 				node := ParseNode->New(ParseNode->Type->ASGN, left, right);
+				if(<>Match(Token->Type->SEMI)) {
+					"*** Expected ';' ***"->PrintLine();
+					return Nil;
+				};
+				NextToken();
 			}
 			
 			label Token->Type->WHILE: {
+				node := ParseNode->New(ParseNode->Type->WHILE);
+				NextToken();
+				
+				if(<>Match(Token->Type->OPREN)) {
+					"*** Expected '(' ***"->PrintLine();
+					return Nil;
+				};
+				NextToken();
+				
+				left := Expression();
+				if(left = Nil) {
+					return Nil;
+				};
+				
+				if(<>Match(Token->Type->CPREN)) {
+					"*** Expected ')' ***"->PrintLine();
+					return Nil;
+				};
+				NextToken();
+				
+				if(<>Match(Token->Type->OCBRACE)) {
+					"*** Expected '{' ***"->PrintLine();
+					return Nil;
+				};
+				NextToken();
+				
+				if(<>Match(Token->Type->CCBRACE)) {
+					"*** Expected '}' ***"->PrintLine();
+					return Nil;
+				};
+				NextToken();
 			}
 			
 			label Token->Type->IF: {
@@ -97,44 +138,167 @@ right := type->As(Int);
 				return Nil;
 			}
 		};	
-
-		if(<>Match(Token->Type->SEMI)) {
-			"*** Expected ';' ***"->PrintLine();
-			return Nil;
-		};
-		NextToken();
 		
-"-5-"->PrintLine();
-	
 		return node;
 	}
 	
-	method : Variable() ~ ParseNode {
-		left : ParseNode;
-		index := @sym_table->Find(GetToken()->GetName())->As(IntHolder);
-		if(index <> Nil) {
-			left := ParseNode->New(ParseNode->Type->VAR, index->Get());
-		}
-		else {
-			left := ParseNode->New(ParseNode->Type->VAR, @var_index);
-			@sym_table->Insert(GetToken()->GetName(), IntHolder->New(@var_index));
+	method : native : Expression() ~ ParseNode {
+		left := Logic();
+		if(left = Nil) {
+			return Nil;
 		};
-		NextToken();
-
-"-3-"->PrintLine();			
+		
+		if(Match(Token->Type->OR)) {
+			NextToken();
+			
+			right := Expression();
+			if(right = Nil) {
+				return Nil;
+			};
+			
+			return ParseNode->New(ParseNode->Type->OR, left, right);
+		}
+		else if(Match(Token->Type->AND)) {
+			NextToken();
+			
+			right := Expression();
+			if(right = Nil) {
+				return Nil;
+			};
+			
+			return ParseNode->New(ParseNode->Type->AND, left, right);
+		};
+		
 		return left;
 	}
 	
-	method : native : Expression() ~ ParseNode {
+	method : native : Logic() ~ ParseNode {
+		left := Term();
+		if(left = Nil) {
+			return Nil;
+		};
+		
+		if(Match(Token->Type->LESS)) {
+			NextToken();
+			
+			right := Expression();
+			if(right = Nil) {
+				return Nil;
+			};
+			
+			return ParseNode->New(ParseNode->Type->LESS, left, right);
+		}
+		else if(Match(Token->Type->GRTR)) {
+			NextToken();
+			
+			right := Expression();
+			if(right = Nil) {
+				return Nil;
+			};
+			
+			return ParseNode->New(ParseNode->Type->GRTR, left, right);
+		};
+	
+		return left;
+	}
+	
+	method : native : Term() ~ ParseNode {
+		left := Factor();
+		if(left = Nil) {
+			return Nil;
+		};
+		
+		if(Match(Token->Type->ADD)) {
+			NextToken();
+			
+			right := Expression();
+			if(right = Nil) {
+				return Nil;
+			};
+			
+			return ParseNode->New(ParseNode->Type->ADD, left, right);
+		}
+		else if(Match(Token->Type->SUB)) {
+			NextToken();
+			
+			right := Expression();
+			if(right = Nil) {
+				return Nil;
+			};
+			
+			return ParseNode->New(ParseNode->Type->SUB, left, right);
+		};
+		
+		return left;
+	}
+	
+	method : native : Factor() ~ ParseNode {
+		left := Primary();
+		if(left = Nil) {
+			return Nil;
+		};
+	
+		if(Match(Token->Type->MUL)) {
+			NextToken();
+			
+			right := Expression();
+			if(right = Nil) {
+				return Nil;
+			};
+			
+			return ParseNode->New(ParseNode->Type->MUL, left, right);
+		}
+		else if(Match(Token->Type->DIV)) {
+			NextToken();
+			
+			right := Expression();
+			if(right = Nil) {
+				return Nil;
+			};
+			
+			return ParseNode->New(ParseNode->Type->DIV, left, right);
+		}
+		else if(Match(Token->Type->MOD)) {
+			NextToken();
+			
+			right := Expression();
+			if(right = Nil) {
+				return Nil;
+			};
+			
+			return ParseNode->New(ParseNode->Type->MOD, left, right);
+		};
+	
+		return left;
+	}
+	
+	method : native : Primary() ~ ParseNode {
 		node : ParseNode;
 		
 		select(GetToken()->GetType()) {
+			label Token->Type->OPREN: {
+				NextToken();
+				
+				node := Expression();
+				if(node = Nil) {
+					return Nil;
+				};
+				
+				if(<>Match(Token->Type->CPREN)) {
+					"*** Expected ')' ***"->PrintLine();
+					return Nil;
+				};
+				NextToken();	
+			}
+			
 			label Token->Type->VAR: {
 				node := Variable();
+				if(node = Nil) {
+					return Nil;
+				};
 			}
 			
 			label Token->Type->NUM: {
-"-4-"->PrintLine();			
 				node := ParseNode->New(ParseNode->Type->NUM, GetToken()->GetValue());
 				NextToken();
 			}
@@ -145,6 +309,20 @@ right := type->As(Int);
 			}
 		};
 		
+		return node;
+	}
+	
+	method : Variable() ~ ParseNode {
+		node : ParseNode;
+		
+		node := @sym_table->Find(GetToken()->GetName())->As(ParseNode);
+		if(node = Nil) {
+			node := ParseNode->New(ParseNode->Type->VAR, @var_index);
+			@sym_table->Insert(GetToken()->GetName(), node);
+			@var_index += 1;
+		};
+		NextToken();
+
 		return node;
 	}
 }
@@ -158,7 +336,17 @@ class ParseNode {
 	enum Type {
 		VAR,
 		NUM,
-		ASGN
+		ASGN,
+		WHILE,
+		OR,
+		AND,
+		LESS,
+		GRTR,
+		ADD,
+		SUB,
+		MUL,
+		DIV,
+		MOD
 	}
 	
 	New(type : Type) {
@@ -182,5 +370,13 @@ class ParseNode {
 	
 	method : public : GetValue() ~ Int {
 		return @value;
+	}
+	
+	method : public : GetLeft() ~ ParseNode {
+		return @left;
+	}
+	
+	method : public : GetRight() ~ ParseNode {
+		return @right;
 	}
 }

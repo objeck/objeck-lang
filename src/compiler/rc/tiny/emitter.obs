@@ -1,0 +1,64 @@
+class Emitter {
+	@statements : Vector;
+	
+	New(statements : Vector) {
+		@statements := statements;
+	}
+	
+	method : public : Emit() ~ Nil {
+		each(i : @statements) {
+			node := @statements->Get(i)->As(ParseNode);
+			select(node->GetType()) {
+				label ParseNode->Type->ASGN: {
+					Expression(node->GetRight());
+					id := node->GetLeft()->GetValue();
+					"store [{$id}]"->PrintLine();
+				}
+			};
+		};
+	}
+	
+	method : Expression(node : ParseNode) ~ Nil {
+		select(node->GetType()) {
+			label ParseNode->Type->VAR: {
+				id := node->GetValue();
+				"fetch [{$id}]"->PrintLine();
+			}
+			
+			label ParseNode->Type->NUM: {
+				value := node->GetValue();
+				"push {$value}"->PrintLine();
+			}
+			
+			label ParseNode->Type->ADD: {
+				Expression(node->GetLeft());
+				Expression(node->GetRight());
+				"add"->PrintLine();
+			}
+			
+			label ParseNode->Type->SUB: {
+				Expression(node->GetLeft());
+				Expression(node->GetRight());
+				"sub"->PrintLine();
+			}
+			
+			label ParseNode->Type->MUL: {
+				Expression(node->GetLeft());
+				Expression(node->GetRight());
+				"mul"->PrintLine();
+			}
+			
+			label ParseNode->Type->DIV: {
+				Expression(node->GetLeft());
+				Expression(node->GetRight());
+				"div"->PrintLine();
+			}
+			
+			label ParseNode->Type->MOD: {
+				Expression(node->GetLeft());
+				Expression(node->GetRight());
+				"mod"->PrintLine();
+			}
+		};
+	}
+}
