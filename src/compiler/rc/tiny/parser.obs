@@ -366,8 +366,6 @@ class Parser {
 	}
 	
 	method : Variable() ~ ParseNode {
-		node : ParseNode;
-		
 		node := @sym_table->Find(GetToken()->GetName())->As(ParseNode);
 		if(node = Nil) {
 			node := ParseNode->New(ParseNode->Type->VAR, @var_index);
@@ -387,7 +385,7 @@ class ParseNode {
 	@right : ParseNode;
 	@statements : Vector;
 	
-	enum Type {
+	enum Type := -64 {
 		VAR,
 		NUM,
 		ASGN,

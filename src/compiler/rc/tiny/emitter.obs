@@ -2,23 +2,100 @@ use Collection;
 
 class Emitter {
 	@statements : Vector;
+	@instructions : Vector;
+	@code_index : Int;
 	
 	New(statements : Vector) {
 		@statements := statements;
+		@instructions := Vector->New();
+		@code_index := 0;
 	}
 	
 	method : public : Emit() ~ Nil {
 		Statements(@statements);
+		
+		each(i : @instructions) {
+			instruction := @instructions->Get(i)->As(Instruction);
+			select(instruction->GetType()) {
+				label Instruction->Type->ST: {
+					index := instruction->GetValue();
+					"{$i}: st {$index}"->PrintLine();
+				}
+				
+				label Instruction->Type->LD: {
+					index := instruction->GetValue();
+					"{$i}: ld {$index}"->PrintLine();
+				}
+				
+				label Instruction->Type->JZ: {
+					index := instruction->GetValue();
+					"{$i}: jz {$index}"->PrintLine();
+				}
+				
+				label Instruction->Type->JP: {
+					index := instruction->GetValue();
+					"{$i}: jp {$index}"->PrintLine();
+				}
+				
+				label Instruction->Type->PUSH: {
+					value := instruction->GetValue();
+					"{$i}: push {$value}"->PrintLine();
+				}
+				
+				label Instruction->Type->LT: {
+					"{$i}: lt"->PrintLine();
+				}
+				
+				label Instruction->Type->GT: {
+					"{$i}: gt"->PrintLine();
+				}
+				
+				label Instruction->Type->LE: {
+					"{$i}: le"->PrintLine();
+				}
+				
+				label Instruction->Type->GE: {
+					"{$i}: ge"->PrintLine();
+				}
+				
+				label Instruction->Type->EQ: {
+					"{$i}: eq"->PrintLine();
+				}
+				
+				label Instruction->Type->ADD: {
+					"{$i}: add"->PrintLine();
+				}
+				
+				label Instruction->Type->SUB: {
+					"{$i}: sub"->PrintLine();
+				}
+				
+				label Instruction->Type->MUL: {
+					"{$i}: mul"->PrintLine();
+				}
+				
+				label Instruction->Type->DIV: {
+					"{$i}: div"->PrintLine();
+				}
+				
+				label Instruction->Type->MOD: {
+					"{$i}: mod"->PrintLine();
+				}
+			};
+		};
 	}
 	
 	method : Statements(statements : Vector) ~ Nil {
+		temp : Instruction;
+		
 		each(i : statements) {
 			node := statements->Get(i)->As(ParseNode);
 			select(node->GetType()) {
 				label ParseNode->Type->ASGN: {
 					Expression(node->GetRight());
-					id := node->GetLeft()->GetValue();
-					"store [{$id}]"->PrintLine();
+#					"{$@code_index}	st [{$id}]"->PrintLine();
+					@instructions->AddBack(Instruction->New(Instruction->Type->ST, node->GetLeft()->GetValue()));
+					@code_index += 1;
 				}
 				
 				label ParseNode->Type->IF: {
@@ -26,11 +103,21 @@ class Emitter {
 				}
 				
 				label ParseNode->Type->WHILE: {
+					start := @code_index;
 					Expression(node->GetLeft());
-					statements := node->GetStatements();
-					"jz (n) addr"->PrintLine();					
-					Statements(statements);
-					"jmp (n) addr"->PrintLine();		
+#					"{$@code_index}	jz (n)"->PrintLine();
+					temp := Instruction->New(Instruction->Type->JZ);
+					@instructions->AddBack(temp);
+					@code_index += 1;				
+					Statements(node->GetStatements());
+#					"{$@code_index}	jp ({$start})"->PrintLine();
+					@instructions->AddBack(Instruction->New(Instruction->Type->JP, start));
+					@code_index += 1;
+					temp->SetValue(@code_index);
+				}
+				
+				other: {
+"### ERROR ###"->PrintLine();				
 				}
 			};
 		};
@@ -39,74 +126,140 @@ class Emitter {
 	method : Expression(node : ParseNode) ~ Nil {
 		select(node->GetType()) {
 			label ParseNode->Type->VAR: {
-				id := node->GetValue();
-				"fetch [{$id}]"->PrintLine();
+#				"{$@code_index}	ld [{$id}]"->PrintLine();
+				@instructions->AddBack(Instruction->New(Instruction->Type->LD, node->GetValue()));
+				@code_index += 1;
 			}
 			
 			label ParseNode->Type->NUM: {
-				value := node->GetValue();
-				"push {$value}"->PrintLine();
+#				"{$@code_index}	push {$value}"->PrintLine();
+				@instructions->AddBack(Instruction->New(Instruction->Type->PUSH, node->GetValue()));
+				@code_index += 1;
 			}
 			
 			label ParseNode->Type->LESS: {
 				Expression(node->GetLeft());
 				Expression(node->GetRight());
-				"lt"->PrintLine();
+#				"{$@code_index}	lt"->PrintLine();
+				@instructions->AddBack(Instruction->New(Instruction->Type->LT));
+				@code_index += 1;
 			}
 			
 			label ParseNode->Type->GTR: {
 				Expression(node->GetLeft());
 				Expression(node->GetRight());
-				"gt"->PrintLine();
+#				"{$@code_index}	gt"->PrintLine();
+				@instructions->AddBack(Instruction->New(Instruction->Type->GT));
+				@code_index += 1;
 			}
 			
 			label ParseNode->Type->LESS_EQL: {
 				Expression(node->GetLeft());
 				Expression(node->GetRight());
-				"le"->PrintLine();
+#				"{$@code_index}	le"->PrintLine();
+				@instructions->AddBack(Instruction->New(Instruction->Type->LE));
+				@code_index += 1;
 			}
 			
 			label ParseNode->Type->GTR_EQL: {
 				Expression(node->GetLeft());
 				Expression(node->GetRight());
-				"ge"->PrintLine();
+#				"{$@code_index}	ge"->PrintLine();
+				@instructions->AddBack(Instruction->New(Instruction->Type->GE));
+				@code_index += 1;
 			}
 			
 			label ParseNode->Type->EQL: {
 				Expression(node->GetLeft());
 				Expression(node->GetRight());
-				"eq"->PrintLine();
+#				"{$@code_index}	eq"->PrintLine();
+				@instructions->AddBack(Instruction->New(Instruction->Type->EQ));
+				@code_index += 1;
 			}
 			
 			label ParseNode->Type->ADD: {
 				Expression(node->GetLeft());
 				Expression(node->GetRight());
-				"add"->PrintLine();
+#				"{$@code_index}	add"->PrintLine();
+				@instructions->AddBack(Instruction->New(Instruction->Type->ADD));
+				@code_index += 1;
 			}
 			
 			label ParseNode->Type->SUB: {
 				Expression(node->GetLeft());
 				Expression(node->GetRight());
-				"sub"->PrintLine();
+#				"{$@code_index}	sub"->PrintLine();
+				@instructions->AddBack(Instruction->New(Instruction->Type->SUB));
+				@code_index += 1;
 			}
 			
 			label ParseNode->Type->MUL: {
 				Expression(node->GetLeft());
 				Expression(node->GetRight());
-				"mul"->PrintLine();
+#				"{$@code_index}	mul"->PrintLine();
+				@instructions->AddBack(Instruction->New(Instruction->Type->MUL));
+				@code_index += 1;
 			}
 			
 			label ParseNode->Type->DIV: {
 				Expression(node->GetLeft());
 				Expression(node->GetRight());
-				"div"->PrintLine();
+#				"{$@code_index}	div"->PrintLine();
+				@instructions->AddBack(Instruction->New(Instruction->Type->DIV));
+				@code_index += 1;
 			}
 			
 			label ParseNode->Type->MOD: {
 				Expression(node->GetLeft());
 				Expression(node->GetRight());
-				"mod"->PrintLine();
+#				"{$@code_index}	mod"->PrintLine();
+				@instructions->AddBack(Instruction->New(Instruction->Type->MOD));
+				@code_index += 1;
 			}
 		};
+	}
+}
+
+class Instruction {
+	@type : Type;
+	@value : Int;
+	
+	enum Type {
+		ST,
+		LD,
+		JZ,
+		JP,
+		PUSH,
+		LT,
+		GT,
+		LE,
+		GE,
+		EQ,
+		ADD,
+		SUB,
+		MUL,
+		DIV,
+		MOD
+	}
+	
+	New(type : Type) {
+		@type := type;
+	}
+	
+	New(type : Type, value : Int) {
+		@type := type;
+		@value := value;
+	}
+	
+	method : public : GetType() ~ Type {
+		return @type;
+	}
+	
+	method : public : GetValue() ~ Int {
+		return @value;
+	}
+	
+	method : public : SetValue(value : Int) ~ Nil {
+		@value := value;
 	}
 }
