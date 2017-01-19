@@ -1,3 +1,5 @@
+use Collection;
+
 class Emitter {
 	@statements : Vector;
 	
@@ -6,8 +8,12 @@ class Emitter {
 	}
 	
 	method : public : Emit() ~ Nil {
-		each(i : @statements) {
-			node := @statements->Get(i)->As(ParseNode);
+		Statements(@statements);
+	}
+	
+	method : Statements(statements : Vector) ~ Nil {
+		each(i : statements) {
+			node := statements->Get(i)->As(ParseNode);
 			select(node->GetType()) {
 				label ParseNode->Type->ASGN: {
 					Expression(node->GetRight());
@@ -20,7 +26,11 @@ class Emitter {
 				}
 				
 				label ParseNode->Type->WHILE: {
-"WHILE: TODO"->PrintLine();				
+					Expression(node->GetLeft());
+					statements := node->GetStatements();
+					"jz (n) addr"->PrintLine();					
+					Statements(statements);
+					"jmp (n) addr"->PrintLine();		
 				}
 			};
 		};
@@ -41,31 +51,31 @@ class Emitter {
 			label ParseNode->Type->LESS: {
 				Expression(node->GetLeft());
 				Expression(node->GetRight());
-				"less"->PrintLine();
+				"lt"->PrintLine();
 			}
 			
 			label ParseNode->Type->GTR: {
 				Expression(node->GetLeft());
 				Expression(node->GetRight());
-				"gtr"->PrintLine();
+				"gt"->PrintLine();
 			}
 			
 			label ParseNode->Type->LESS_EQL: {
 				Expression(node->GetLeft());
 				Expression(node->GetRight());
-				"less_eql"->PrintLine();
+				"le"->PrintLine();
 			}
 			
 			label ParseNode->Type->GTR_EQL: {
 				Expression(node->GetLeft());
 				Expression(node->GetRight());
-				"gtr_eql"->PrintLine();
+				"ge"->PrintLine();
 			}
 			
 			label ParseNode->Type->EQL: {
 				Expression(node->GetLeft());
 				Expression(node->GetRight());
-				"eql"->PrintLine();
+				"eq"->PrintLine();
 			}
 			
 			label ParseNode->Type->ADD: {
