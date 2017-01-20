@@ -80,7 +80,7 @@ class Scanner {
 						};
 						@strings->AddBack(string);
 						
-						@tokens->AddBack(Token->New(Token->Type->STR_REF, "str_ref", string_count));						
+						@tokens->AddBack(Token->New(Token->Type->STR_REF, "string", string_count));						
 						string_count += 1;
 						i += 1;
 					}
@@ -148,7 +148,7 @@ class Scanner {
 									i += 1;
 								}
 								else {
-									@tokens->AddBack(Token->New(Token->Type->GTR, "asgn"));
+									@tokens->AddBack(Token->New(Token->Type->GTR, "gtr"));
 								};
 							}
 							
