@@ -170,7 +170,7 @@ class Parser {
 	method : native : Print() ~ ParseNode {
 		node : ParseNode;
 	
-		if(Match(Token->Type->NUM)) {
+		if(Match(Token->Type->NUM) & Match(@token_index + 1, Token->Type->SEMI)) {
 			node := ParseNode->New(ParseNode->Type->PUTI, GetToken()->GetValue());
 			NextToken();
 		}
