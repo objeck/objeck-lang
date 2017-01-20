@@ -87,6 +87,10 @@ class Scanner {
 					## other
 					else {
 						select(line->Get(i)) {
+							label ',': {
+								@tokens->AddBack(Token->New(Token->Type->COMMA, "comma"));
+							}
+							
 							label '(': {
 								@tokens->AddBack(Token->New(Token->Type->OPREN, "opren"));
 							}
@@ -124,10 +128,6 @@ class Scanner {
 								@tokens->AddBack(Token->New(Token->Type->SUB, "sub"));
 							}
 						
-							label ',': {
-								@tokens->AddBack(Token->New(Token->Type->CPREN, "comma"));
-							}
-							
 							label ';': {
 								@tokens->AddBack(Token->New(Token->Type->SEMI, "semi-colon"));
 							}
@@ -266,6 +266,7 @@ class Token {
 		ADD,
 		SUB,
 		SEMI,
+		COMMA,
 		LESS,
 		LESS_EQL,
 		GTR,

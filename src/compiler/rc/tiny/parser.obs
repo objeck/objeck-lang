@@ -107,34 +107,48 @@ class Parser {
 			}
 			
 			label Token->Type->PRINT: {
+				NextToken();
+				
+				if(<>Match(Token->Type->OPREN)) {
+					"*** Expected '(' ***"->PrintLine();
+					return Nil;
+				};
+				NextToken();
+				
+				expressions := Vector->New();
+				node := ParseNode->New(ParseNode->Type->PRINT);
+				while(GetToken()->GetType() <> Token->Type->EOS & GetToken()->GetType() <> Token->Type->CPREN) {
+					expression := Print();
+					if(expression = Nil) {
+						return Nil;
+					};
+
+					expressions->AddBack(expression);
+					if(Match(Token->Type->COMMA) & <>Match(@token_index + 1, Token->Type->CPREN)) {
+						NextToken();
+					};
+				};
+				node->SetStatements(expressions);
+				
+				if(<>Match(Token->Type->CPREN)) {
+					"*** Expected ')' ***"->PrintLine();
+					return Nil;
+				};
+				NextToken();
+				
+				if(<>Match(Token->Type->SEMI)) {
+					"*** Expected ';' ***"->PrintLine();
+					return Nil;
+				};
+				NextToken();
 			}
 			
 			label Token->Type->PUT: {
 				NextToken();
 				
-				if(Match(Token->Type->NUM)) {
-					node := ParseNode->New(ParseNode->Type->PUTI, GetToken()->GetValue());
-					NextToken();
-				}
-				else if(Match(Token->Type->STR_REF)) {
-					node := ParseNode->New(ParseNode->Type->PUTS, GetToken()->GetValue());
-					NextToken();
-				}
-				else if(Match(Token->Type->VAR)) {
-					left := Variable();
-					if(left = Nil) {
-						return Nil;
-					};
-					node := ParseNode->New(ParseNode->Type->PUTV, GetToken()->GetValue());
-					node->SetLeft(left);
-				}
-				else {
-					left := Expression();
-					if(left = Nil) {
-						return Nil;
-					};
-					node := ParseNode->New(ParseNode->Type->PUTC);
-					node->SetLeft(left);
+				node := Print();
+				if(node = Nil) {
+					return Nil;
 				};
 				
 				if(<>Match(Token->Type->SEMI)) {
@@ -149,6 +163,37 @@ class Parser {
 				return Nil;
 			}
 		};	
+		
+		return node;
+	}
+	
+	method : native : Print() ~ ParseNode {
+		node : ParseNode;
+	
+		if(Match(Token->Type->NUM)) {
+			node := ParseNode->New(ParseNode->Type->PUTI, GetToken()->GetValue());
+			NextToken();
+		}
+		else if(Match(Token->Type->STR_REF)) {
+			node := ParseNode->New(ParseNode->Type->PUTS, GetToken()->GetValue());
+			NextToken();
+		}
+		else if(Match(Token->Type->VAR) & Match(@token_index + 1, Token->Type->SEMI)) {
+			left := Variable();
+			if(left = Nil) {
+				return Nil;
+			};
+			node := ParseNode->New(ParseNode->Type->PUTV, GetToken()->GetValue());
+			node->SetLeft(left);
+		}
+		else {
+			left := Expression();
+			if(left = Nil) {
+				return Nil;
+			};
+			node := ParseNode->New(ParseNode->Type->PUTC);
+			node->SetLeft(left);
+		};
 		
 		return node;
 	}

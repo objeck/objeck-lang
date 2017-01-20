@@ -166,34 +166,18 @@ class Emitter {
 					cond_jmp->SetValue(@code_index);
 				}
 				
-				label ParseNode->Type->PUTS: {
-					@instructions->AddBack(Instruction->New(Instruction->Type->PUSH, node->GetValue()));
-					@code_index += 1;
-					
-					@instructions->AddBack(Instruction->New(Instruction->Type->PUTS));
-					@code_index += 1;
+				label ParseNode->Type->PRINT: {
+					expressions := node->GetStatements();
+					each(j : expressions) {
+						Expression(expressions->Get(j)->As(ParseNode));
+					};
 				}
 				
-				label ParseNode->Type->PUTI: {
-					@instructions->AddBack(Instruction->New(Instruction->Type->PUSH, node->GetValue()));
-					@code_index += 1;
-					
-					@instructions->AddBack(Instruction->New(Instruction->Type->PUTI));
-					@code_index += 1;
-				}
-				
-				label ParseNode->Type->PUTC: {
-					Expression(node->GetLeft());
-					@instructions->AddBack(Instruction->New(Instruction->Type->PUTC));
-					@code_index += 1;
-				}
-				
+				label ParseNode->Type->PUTS:
+				label ParseNode->Type->PUTI:
+				label ParseNode->Type->PUTC:
 				label ParseNode->Type->PUTV: {
-					@instructions->AddBack(Instruction->New(Instruction->Type->LD, node->GetLeft()->GetValue()));
-					@code_index += 1;
-				
-					@instructions->AddBack(Instruction->New(Instruction->Type->PUTV));
-					@code_index += 1;
+					Expression(node);
 				}
 				
 				other: {
@@ -208,6 +192,36 @@ class Emitter {
 	
 	method : Expression(node : ParseNode) ~ Bool {
 		select(node->GetType()) {
+			label ParseNode->Type->PUTS: {
+				@instructions->AddBack(Instruction->New(Instruction->Type->PUSH, node->GetValue()));
+				@code_index += 1;
+				
+				@instructions->AddBack(Instruction->New(Instruction->Type->PUTS));
+				@code_index += 1;
+			}
+			
+			label ParseNode->Type->PUTI: {
+				@instructions->AddBack(Instruction->New(Instruction->Type->PUSH, node->GetValue()));
+				@code_index += 1;
+				
+				@instructions->AddBack(Instruction->New(Instruction->Type->PUTI));
+				@code_index += 1;
+			}
+			
+			label ParseNode->Type->PUTC: {
+				Expression(node->GetLeft());
+				@instructions->AddBack(Instruction->New(Instruction->Type->PUTC));
+				@code_index += 1;
+			}
+			
+			label ParseNode->Type->PUTV: {
+				@instructions->AddBack(Instruction->New(Instruction->Type->LD, node->GetLeft()->GetValue()));
+				@code_index += 1;
+			
+				@instructions->AddBack(Instruction->New(Instruction->Type->PUTV));
+				@code_index += 1;
+			}
+			
 			label ParseNode->Type->VAR: {
 				@instructions->AddBack(Instruction->New(Instruction->Type->LD, node->GetValue()));
 				@code_index += 1;
