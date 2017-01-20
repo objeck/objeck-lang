@@ -24,7 +24,7 @@ class Scanner {
 		reserved := StringMap->New();
 		reserved->Insert("while", Token->New(Token->Type->WHILE, "while"));
 		reserved->Insert("if", Token->New(Token->Type->IF, "if"));
-		reserved->Insert("else", Token->New(Token->Type->ELSE, "else"));
+		reserved->Insert("else", Token->New(Token->Type->ELSE, "else")); # TODO
 		reserved->Insert("print", Token->New(Token->Type->PRINT, "print"));
 		reserved->Insert("put", Token->New(Token->Type->PUT, "put"));
 		
