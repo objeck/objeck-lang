@@ -27,6 +27,8 @@ class Scanner {
 		reserved->Insert("else", Token->New(Token->Type->ELSE, "else"));
 		reserved->Insert("print", Token->New(Token->Type->PRINT, "print"));
 		reserved->Insert("putc", Token->New(Token->Type->PUTC, "putc"));
+		reserved->Insert("puts", Token->New(Token->Type->PUTS, "puts"));
+		reserved->Insert("puti", Token->New(Token->Type->PUTI, "puti"));
 
 ## "-0-"->PrintLine();
 
@@ -188,6 +190,16 @@ class Scanner {
 								};
 							}
 							
+							label '!': {
+								if(i + 1 < line->Size() & line->Get(i + 1) = '=') {
+									@tokens->AddBack(Token->New(Token->Type->NEQL, "neql"));
+									i += 1;
+								}
+								else {
+									@tokens->AddBack(Token->New(Token->Type->NOT, "not"));
+								};
+							}
+							
 							label '\r':
 							label '\n': {
 							}
@@ -220,6 +232,8 @@ class Token {
 		IF,
 		PRINT,
 		PUTC,
+		PUTI,
+		PUTS,
 		NUM,
 		STR_REF,
 		VAR,
@@ -240,6 +254,8 @@ class Token {
 		GTR,
 		GTR_EQL,
 		EQL,
+		NEQL,
+		NOT,
 		EOS,
 		OTHER
 	}
