@@ -16,7 +16,7 @@
             startingLineNumber = "3963"
             endingLineNumber = "3963"
             landmarkName = "ContextAnalyzer::Analyze()"
-            landmarkType = "5">
+            landmarkType = "7">
             <Locations>
                <Location
                   shouldBeEnabled = "No"
@@ -24,6 +24,7 @@
                   continueAfterRunningActions = "No"
                   symbolName = "ContextAnalyzer::AnalyzeClassCast(frontend::Type*, frontend::Expression*, int)"
                   moduleName = "Xcode-Compiler"
+                  usesParentBreakpointCondition = "Yes"
                   urlString = "file://localhost/Users/randy/Documents/Code/objeck/main/src/compiler/context.cpp"
                   timestampString = "401500155.846915"
                   startingColumnNumber = "9223372036854775807"
@@ -38,6 +39,7 @@
                   continueAfterRunningActions = "No"
                   symbolName = "ContextAnalyzer::AnalyzeClassCast(frontend::Type*, frontend::Expression*, int)"
                   moduleName = "Xcode-Compiler"
+                  usesParentBreakpointCondition = "Yes"
                   urlString = "file://localhost/Users/randy/Documents/Code/objeck/main/src/compiler/context.cpp"
                   timestampString = "401500155.847219"
                   startingColumnNumber = "9223372036854775807"
@@ -52,6 +54,7 @@
                   continueAfterRunningActions = "No"
                   symbolName = "ContextAnalyzer::AnalyzeClassCast(frontend::Type*, frontend::Expression*, int)"
                   moduleName = "Xcode-Compiler"
+                  usesParentBreakpointCondition = "Yes"
                   urlString = "file://localhost/Users/randy/Documents/Code/objeck/main/src/compiler/context.cpp"
                   timestampString = "401500155.847504"
                   startingColumnNumber = "9223372036854775807"
@@ -76,23 +79,7 @@
             startingLineNumber = "3800"
             endingLineNumber = "3800"
             landmarkName = "ContextAnalyzer::Analyze()"
-            landmarkType = "5">
-         </BreakpointContent>
-      </BreakpointProxy>
-      <BreakpointProxy
-         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
-         <BreakpointContent
-            shouldBeEnabled = "Yes"
-            ignoreCount = "0"
-            continueAfterRunningActions = "No"
-            filePath = "../context.cpp"
-            timestampString = "401500239.865387"
-            startingColumnNumber = "9223372036854775807"
-            endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "387"
-            endingLineNumber = "387"
-            landmarkName = "ContextAnalyzer::Analyze()"
-            landmarkType = "5">
+            landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
@@ -108,7 +95,7 @@
             startingLineNumber = "1461"
             endingLineNumber = "1461"
             landmarkName = "ContextAnalyzer::Analyze()"
-            landmarkType = "5">
+            landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
@@ -124,7 +111,7 @@
             startingLineNumber = "1466"
             endingLineNumber = "1466"
             landmarkName = "ContextAnalyzer::Analyze()"
-            landmarkType = "5">
+            landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
@@ -172,7 +159,7 @@
             startingLineNumber = "1806"
             endingLineNumber = "1806"
             landmarkName = "ContextAnalyzer::Analyze()"
-            landmarkType = "5">
+            landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
@@ -188,7 +175,7 @@
             startingLineNumber = "1562"
             endingLineNumber = "1562"
             landmarkName = "ContextAnalyzer::Analyze()"
-            landmarkType = "5">
+            landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
@@ -204,7 +191,7 @@
             startingLineNumber = "1566"
             endingLineNumber = "1566"
             landmarkName = "ContextAnalyzer::Analyze()"
-            landmarkType = "5">
+            landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
@@ -214,13 +201,29 @@
             ignoreCount = "0"
             continueAfterRunningActions = "No"
             filePath = "../context.cpp"
-            timestampString = "436203756.139577"
+            timestampString = "506578651.995166"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "382"
-            endingLineNumber = "382"
+            startingLineNumber = "2404"
+            endingLineNumber = "2404"
             landmarkName = "ContextAnalyzer::Analyze()"
-            landmarkType = "5">
+            landmarkType = "7">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            shouldBeEnabled = "Yes"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "../context.cpp"
+            timestampString = "506578660.799577"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "2254"
+            endingLineNumber = "2254"
+            landmarkName = "ContextAnalyzer::Analyze()"
+            landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
    </Breakpoints>

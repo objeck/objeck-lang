@@ -70,7 +70,7 @@ class Parser {
 				};
 				
 				if(<>Match(Token->Type->ASGN)) {
-					"*** Expected '=' ***"->PrintLine();
+					"*** Expected '=' ***"->ErrorLine();
 					return Nil;
 				};
 				NextToken();
@@ -82,7 +82,7 @@ class Parser {
 				
 				node := ParseNode->New(ParseNode->Type->ASGN, left, right);
 				if(<>Match(Token->Type->SEMI)) {
-					"*** Expected ';' ***"->PrintLine();
+					"*** Expected ';' ***"->ErrorLine();
 					return Nil;
 				};
 				NextToken();
@@ -110,7 +110,7 @@ class Parser {
 				NextToken();
 				
 				if(<>Match(Token->Type->OPREN)) {
-					"*** Expected '(' ***"->PrintLine();
+					"*** Expected '(' ***"->ErrorLine();
 					return Nil;
 				};
 				NextToken();
@@ -131,13 +131,13 @@ class Parser {
 				node->SetStatements(expressions);
 				
 				if(<>Match(Token->Type->CPREN)) {
-					"*** Expected ')' ***"->PrintLine();
+					"*** Expected ')' ***"->ErrorLine();
 					return Nil;
 				};
 				NextToken();
 				
 				if(<>Match(Token->Type->SEMI)) {
-					"*** Expected ';' ***"->PrintLine();
+					"*** Expected ';' ***"->ErrorLine();
 					return Nil;
 				};
 				NextToken();
@@ -152,14 +152,14 @@ class Parser {
 				};
 				
 				if(<>Match(Token->Type->SEMI)) {
-					"*** Expected ';' ***"->PrintLine();
+					"*** Expected ';' ***"->ErrorLine();
 					return Nil;
 				};
 				NextToken();
 			}
 			
 			other: {
-				"*** Invalid statement ***"->PrintLine();
+				"*** Invalid statement ***"->ErrorLine();
 				return Nil;
 			}
 		};	
@@ -200,7 +200,7 @@ class Parser {
 	
 	method : native : ConditionalStatement(node : ParseNode) ~ Bool {
 		if(<>Match(Token->Type->OPREN)) {
-			"*** Expected '(' ***"->PrintLine();
+			"*** Expected '(' ***"->ErrorLine();
 			return false;
 		};
 		NextToken();
@@ -212,13 +212,13 @@ class Parser {
 		node->SetLeft(left);
 		
 		if(<>Match(Token->Type->CPREN)) {
-			"*** Expected ')' ***"->PrintLine();
+			"*** Expected ')' ***"->ErrorLine();
 			return false;
 		};
 		NextToken();
 		
 		if(<>Match(Token->Type->OCBRACE)) {
-			"*** Expected '{' ***"->PrintLine();
+			"*** Expected '{' ***"->ErrorLine();
 			return false;
 		};
 		NextToken();
@@ -233,7 +233,7 @@ class Parser {
 		};
 		
 		if(<>Match(Token->Type->CCBRACE)) {
-			"*** Expected '}' ***"->PrintLine();
+			"*** Expected '}' ***"->ErrorLine();
 			return false;
 		};
 		NextToken();	
@@ -425,7 +425,7 @@ class Parser {
 				};
 				
 				if(<>Match(Token->Type->CPREN)) {
-					"*** Expected ')' ***"->PrintLine();
+					"*** Expected ')' ***"->ErrorLine();
 					return Nil;
 				};
 				NextToken();	
@@ -444,7 +444,7 @@ class Parser {
 			}
 			
 			other: {
-				"*** Invalid expression ***"->PrintLine();
+				"*** Invalid expression ***"->ErrorLine();
 				return Nil;
 			}
 		};
