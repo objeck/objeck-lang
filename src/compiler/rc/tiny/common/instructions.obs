@@ -2,7 +2,7 @@ class Instruction {
 	@type : Type;
 	@value : Int;
 	
-	enum Type {
+	enum Type := -96 {
 		PUTS,
 		PUTI,
 		PUTC,

@@ -27,10 +27,14 @@ class Scanner {
 		reserved->Insert("else", Token->New(Token->Type->ELSE, "else"));
 		reserved->Insert("print", Token->New(Token->Type->PRINT, "print"));
 		reserved->Insert("put", Token->New(Token->Type->PUT, "put"));
-
+		
+		reader := FileReader->New(@file);
+		leaving {
+			reader->Close();
+		};
+		
 		string_count := 0;
 		line_num := 0;
-		reader := FileReader->New(@file);
 		while(reader->IsEOF() <> true) {
 			line := reader->ReadString();
 			line_num += 1;
@@ -205,7 +209,6 @@ class Scanner {
 				};
 			};
 		};
-		reader->Close();
 		@tokens->AddBack(Token->New(Token->Type->EOS, "eos"));
 		
 		return true;

@@ -136,6 +136,9 @@ class Interpreter {
 	
 	method : native : Load() ~ Nil {
 		reader := FileReader->New(@file);
+		leaving {
+			reader->Close();
+		};
 		
 		string_count := reader->ReadString()->ToInt();
 		@strings := String->New[string_count];
@@ -221,6 +224,7 @@ class Interpreter {
 					}
 					else {
 						"### Unknown instruction: {$name} ####"->ErrorLine();
+						System.Runtime->Exit(1);
 					};
 				}
 				else if(opers->Size() = 3) {
@@ -246,10 +250,14 @@ class Interpreter {
 					}
 					else {
 						"### Unknown instruction: {$name} ####"->ErrorLine();
+						System.Runtime->Exit(1);
 					};
+				}
+				else {
+					"### Invalid instruction ####"->ErrorLine();
+					System.Runtime->Exit(1);
 				};
 			};
 		};
-		reader->Close();
 	}
 }
