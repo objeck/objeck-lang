@@ -26,9 +26,7 @@ class Scanner {
 		reserved->Insert("if", Token->New(Token->Type->IF, "if"));
 		reserved->Insert("else", Token->New(Token->Type->ELSE, "else"));
 		reserved->Insert("print", Token->New(Token->Type->PRINT, "print"));
-		reserved->Insert("putc", Token->New(Token->Type->PUTC, "putc"));
-		reserved->Insert("puts", Token->New(Token->Type->PUTS, "puts"));
-		reserved->Insert("puti", Token->New(Token->Type->PUTI, "puti"));
+		reserved->Insert("put", Token->New(Token->Type->PUT, "put"));
 
 		string_count := 0;
 		line_num := 0;
@@ -212,6 +210,33 @@ class Scanner {
 		
 		return true;
 	}
+	
+	function : DumpTokens(tokens : Vector) ~ Nil {
+		each(i : tokens) {
+			token := tokens->Get(i)->As(Token);
+			name := token->GetName();
+			
+			select(token->GetType()) {
+				label Token->Type->VAR: {
+					"var: name={$name}"->PrintLine();
+				}
+				
+				label Token->Type->STR_REF: {
+					value := token->GetValue();
+					"str_ref: id={$value}"->PrintLine();
+				}
+				
+				label Token->Type->NUM: {
+					value := token->GetValue();
+					"num: value={$value}"->PrintLine();
+				}
+				
+				other : {
+					name->PrintLine();
+				}
+			};
+		};
+	}
 }
 
 class Token {
@@ -225,9 +250,7 @@ class Token {
 		ELSE,
 		IF,
 		PRINT,
-		PUTC,
-		PUTI,
-		PUTS,
+		PUT,
 		NUM,
 		STR_REF,
 		VAR,

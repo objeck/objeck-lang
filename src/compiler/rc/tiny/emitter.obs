@@ -3,15 +3,18 @@ use Collection;
 class Emitter {
 	@statements : Vector;
 	@instructions : Vector;
+	@strings : Vector;
 	@code_index : Int;
 	
-	New(statements : Vector) {
+	New(statements : Vector, strings : Vector) {
 		@statements := statements;
+		@strings := strings;
 		@instructions := Vector->New();
 		@code_index := 0;
 	}
 	
 	method : public : Emit() ~ Nil {
+		Strings();
 		Statements(@statements);
 		
 		each(i : @instructions) {
@@ -27,6 +30,11 @@ class Emitter {
 				
 				label Instruction->Type->PUTC: {
 					"{$i}\tputc"->PrintLine();
+				}
+				
+				label Instruction->Type->PUTV: {
+					index := instruction->GetValue();
+					"{$i}\tputv\t{$index}"->PrintLine();
 				}
 				
 				label Instruction->Type->ST: {
@@ -105,6 +113,15 @@ class Emitter {
 		};
 	}
 	
+	method : Strings() ~ Nil {
+		@strings->Size()->PrintLine();
+		
+		each(i : @strings) {
+			string := @strings->Get(i)->As(String);
+			string->PrintLine();
+		};
+	}
+	
 	method : Statements(statements : Vector) ~ Bool {
 		temp : Instruction;
 		
@@ -168,6 +185,14 @@ class Emitter {
 				label ParseNode->Type->PUTC: {
 					Expression(node->GetLeft());
 					@instructions->AddBack(Instruction->New(Instruction->Type->PUTC));
+					@code_index += 1;
+				}
+				
+				label ParseNode->Type->PUTV: {
+					@instructions->AddBack(Instruction->New(Instruction->Type->LD, node->GetLeft()->GetValue()));
+					@code_index += 1;
+				
+					@instructions->AddBack(Instruction->New(Instruction->Type->PUTV));
 					@code_index += 1;
 				}
 				
