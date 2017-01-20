@@ -6,6 +6,7 @@ class Instruction {
 		PUTS,
 		PUTI,
 		PUTC,
+		PUTV,
 		PRINT,
 		ST,
 		LD,
