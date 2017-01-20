@@ -197,8 +197,7 @@ class Scanner {
 							}
 							
 							label '\r':
-							label '\n': {
-							}
+							label '\n': {}
               
 							other: {
 								System.IO.Console->Print("*** Invalid token: char='")->Print(line->Get(i))->PrintLine("' ***");
