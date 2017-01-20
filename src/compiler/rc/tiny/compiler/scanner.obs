@@ -38,17 +38,17 @@ class Scanner {
 			i := 0;  
 			while(i < line->Size()) {  
 				line->Trim();
-				## skip whitespace
+				# skip whitespace
 				while((line->Get(i) = ' ' | line->Get(i) = '\t') & i < line->Size()) {
 					i += 1;
 				};
 				
-				## parse the line
+				# parse the line
 				if(i < line->Size()) {
-					## word
-					if(line->Get(i)->IsChar()) {
+					# variable
+					if(line->Get(i)->IsChar() | line->Get(i) = '_') {
 						string := "";
-						while(line->Get(i)->IsChar()) {
+						while(line->Get(i)->IsChar() | line->Get(i) = '_') {
 							string->Append(line->Get(i));
 							i += 1;
 						};
@@ -61,7 +61,7 @@ class Scanner {
 							@tokens->AddBack(Token->New(Token->Type->VAR, string));
 						};
 					}
-					## number
+					# number
 					else if(line->Get(i)->IsDigit()) {
 						number := "";
 						while(line->Get(i)->IsDigit()) {
@@ -70,7 +70,7 @@ class Scanner {
 						};						
 						@tokens->AddBack(Token->New(Token->Type->NUM, "num", number->ToInt()));
 					}
-					## string
+					# string
 					else if(line->Get(i) = '"') {
 						i += 1;
 						string := "";
@@ -84,7 +84,7 @@ class Scanner {
 						string_count += 1;
 						i += 1;
 					}
-					## other
+					# other
 					else {
 						select(line->Get(i)) {
 							label ',': {
