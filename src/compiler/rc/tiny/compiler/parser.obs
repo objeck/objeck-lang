@@ -443,6 +443,18 @@ class Parser {
 				NextToken();
 			}
 			
+			label Token->Type->SUB: {
+				NextToken();
+				
+				if(<>Match(Token->Type->NUM)) {
+					"*** Expected number ***"->ErrorLine();
+					return Nil;
+				};
+				
+				node := ParseNode->New(ParseNode->Type->NUM, GetToken()->GetValue() * -1);
+				NextToken();
+			}
+			
 			other: {
 				"*** Invalid expression ***"->ErrorLine();
 				return Nil;
