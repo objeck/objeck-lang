@@ -62,6 +62,10 @@ class Emitter {
 					"{$i}: eq"->PrintLine();
 				}
 				
+				label Instruction->Type->NEQ: {
+					"{$i}: neq"->PrintLine();
+				}
+				
 				label Instruction->Type->ADD: {
 					"{$i}: add"->PrintLine();
 				}
@@ -81,58 +85,66 @@ class Emitter {
 				label Instruction->Type->MOD: {
 					"{$i}: mod"->PrintLine();
 				}
+				
+				other: {
+					"*** Invalid instruction ***"->PrintLine();
+				}
 			};
 		};
 	}
 	
-	method : Statements(statements : Vector) ~ Nil {
+	method : Statements(statements : Vector) ~ Bool {
 		temp : Instruction;
 		
 		each(i : statements) {
 			node := statements->Get(i)->As(ParseNode);
 			select(node->GetType()) {
 				label ParseNode->Type->ASGN: {
-					Expression(node->GetRight());
-#					"{$@code_index}	st [{$id}]"->PrintLine();
+					if(<>Expression(node->GetRight())) {
+						return false;
+					};
 					@instructions->AddBack(Instruction->New(Instruction->Type->ST, node->GetLeft()->GetValue()));
 					@code_index += 1;
 				}
 				
 				label ParseNode->Type->IF: {
-"IF: TODO"->PrintLine();				
+"TODO: IF"->PrintLine();				
 				}
 				
 				label ParseNode->Type->WHILE: {
 					start := @code_index;
-					Expression(node->GetLeft());
-#					"{$@code_index}	jz (n)"->PrintLine();
+					if(<>Expression(node->GetLeft())) {
+						return false;
+					};
 					temp := Instruction->New(Instruction->Type->JZ);
 					@instructions->AddBack(temp);
 					@code_index += 1;				
-					Statements(node->GetStatements());
-#					"{$@code_index}	jp ({$start})"->PrintLine();
+					if(<>Statements(node->GetStatements())) {
+						return false;
+					};
 					@instructions->AddBack(Instruction->New(Instruction->Type->JP, start));
 					@code_index += 1;
 					temp->SetValue(@code_index);
 				}
 				
 				other: {
-"### ERROR ###"->PrintLine();				
+					"*** Invalid statement ***"->PrintLine();
+					return false;
 				}
 			};
 		};
+		
+		return true;
 	}
 	
-	method : Expression(node : ParseNode) ~ Nil {
+	method : Expression(node : ParseNode) ~ Bool {
 		select(node->GetType()) {
 			label ParseNode->Type->VAR: {
-#				"{$@code_index}	ld [{$id}]"->PrintLine();
 				@instructions->AddBack(Instruction->New(Instruction->Type->LD, node->GetValue()));
 				@code_index += 1;
 			}
 			
 			label ParseNode->Type->NUM: {
-#				"{$@code_index}	push {$value}"->PrintLine();
 				@instructions->AddBack(Instruction->New(Instruction->Type->PUSH, node->GetValue()));
 				@code_index += 1;
 			}
@@ -140,7 +152,6 @@ class Emitter {
 			label ParseNode->Type->LESS: {
 				Expression(node->GetLeft());
 				Expression(node->GetRight());
-#				"{$@code_index}	lt"->PrintLine();
 				@instructions->AddBack(Instruction->New(Instruction->Type->LT));
 				@code_index += 1;
 			}
@@ -148,7 +159,6 @@ class Emitter {
 			label ParseNode->Type->GTR: {
 				Expression(node->GetLeft());
 				Expression(node->GetRight());
-#				"{$@code_index}	gt"->PrintLine();
 				@instructions->AddBack(Instruction->New(Instruction->Type->GT));
 				@code_index += 1;
 			}
@@ -156,7 +166,6 @@ class Emitter {
 			label ParseNode->Type->LESS_EQL: {
 				Expression(node->GetLeft());
 				Expression(node->GetRight());
-#				"{$@code_index}	le"->PrintLine();
 				@instructions->AddBack(Instruction->New(Instruction->Type->LE));
 				@code_index += 1;
 			}
@@ -164,7 +173,6 @@ class Emitter {
 			label ParseNode->Type->GTR_EQL: {
 				Expression(node->GetLeft());
 				Expression(node->GetRight());
-#				"{$@code_index}	ge"->PrintLine();
 				@instructions->AddBack(Instruction->New(Instruction->Type->GE));
 				@code_index += 1;
 			}
@@ -172,15 +180,20 @@ class Emitter {
 			label ParseNode->Type->EQL: {
 				Expression(node->GetLeft());
 				Expression(node->GetRight());
-#				"{$@code_index}	eq"->PrintLine();
 				@instructions->AddBack(Instruction->New(Instruction->Type->EQ));
+				@code_index += 1;
+			}
+			
+			label ParseNode->Type->NEQL: {
+				Expression(node->GetLeft());
+				Expression(node->GetRight());
+				@instructions->AddBack(Instruction->New(Instruction->Type->NEQ));
 				@code_index += 1;
 			}
 			
 			label ParseNode->Type->ADD: {
 				Expression(node->GetLeft());
 				Expression(node->GetRight());
-#				"{$@code_index}	add"->PrintLine();
 				@instructions->AddBack(Instruction->New(Instruction->Type->ADD));
 				@code_index += 1;
 			}
@@ -188,7 +201,6 @@ class Emitter {
 			label ParseNode->Type->SUB: {
 				Expression(node->GetLeft());
 				Expression(node->GetRight());
-#				"{$@code_index}	sub"->PrintLine();
 				@instructions->AddBack(Instruction->New(Instruction->Type->SUB));
 				@code_index += 1;
 			}
@@ -204,7 +216,6 @@ class Emitter {
 			label ParseNode->Type->DIV: {
 				Expression(node->GetLeft());
 				Expression(node->GetRight());
-#				"{$@code_index}	div"->PrintLine();
 				@instructions->AddBack(Instruction->New(Instruction->Type->DIV));
 				@code_index += 1;
 			}
@@ -212,11 +223,12 @@ class Emitter {
 			label ParseNode->Type->MOD: {
 				Expression(node->GetLeft());
 				Expression(node->GetRight());
-#				"{$@code_index}	mod"->PrintLine();
 				@instructions->AddBack(Instruction->New(Instruction->Type->MOD));
 				@code_index += 1;
 			}
 		};
+		
+		return true;
 	}
 }
 
@@ -235,6 +247,7 @@ class Instruction {
 		LE,
 		GE,
 		EQ,
+		NEQ,
 		ADD,
 		SUB,
 		MUL,

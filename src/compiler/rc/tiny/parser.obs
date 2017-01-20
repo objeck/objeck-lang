@@ -112,6 +112,12 @@ class Parser {
 			label Token->Type->PUTC: {
 			}
 			
+			label Token->Type->PUTI: {
+			}
+			
+			label Token->Type->PUTS: {
+			}
+			
 			other: {
 				"*** Invalid statement ***"->PrintLine();
 				return Nil;
@@ -250,6 +256,16 @@ class Parser {
 			};
 			
 			return ParseNode->New(ParseNode->Type->EQL, left, right);
+		}
+		else if(Match(Token->Type->NEQL)) {
+			NextToken();
+			
+			right := Expression();
+			if(right = Nil) {
+				return Nil;
+			};
+			
+			return ParseNode->New(ParseNode->Type->NEQL, left, right);
 		};
 	
 		return left;
@@ -386,11 +402,13 @@ class ParseNode {
 	@statements : Vector;
 	
 	enum Type := -64 {
-		VAR,
-		NUM,
 		ASGN,
 		WHILE,
 		IF,
+		PRINT,
+		PUTC,
+		PUTI,
+		PUTS,
 		OR,
 		AND,
 		LESS,
@@ -398,11 +416,15 @@ class ParseNode {
 		GTR,
 		GTR_EQL,
 		EQL,
+		NEQL,
+		NOT, # TODO
 		ADD,
 		SUB,
 		MUL,
 		DIV,
-		MOD
+		MOD,
+		VAR,
+		NUM
 	}
 	
 	New(type : Type, statements : Vector) {
