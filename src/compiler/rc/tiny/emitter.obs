@@ -17,73 +17,85 @@ class Emitter {
 		each(i : @instructions) {
 			instruction := @instructions->Get(i)->As(Instruction);
 			select(instruction->GetType()) {
+				label Instruction->Type->PUTS: {
+					"{$i}\tputs"->PrintLine();
+				}
+				
+				label Instruction->Type->PUTI: {
+					"{$i}\tputi"->PrintLine();
+				}
+				
+				label Instruction->Type->PUTC: {
+					"{$i}\tputc"->PrintLine();
+				}
+				
 				label Instruction->Type->ST: {
 					index := instruction->GetValue();
-					"{$i}: st {$index}"->PrintLine();
+					"{$i}\tst\t{$index}"->PrintLine();
 				}
 				
 				label Instruction->Type->LD: {
 					index := instruction->GetValue();
-					"{$i}: ld {$index}"->PrintLine();
+					"{$i}\tld\t{$index}"->PrintLine();
 				}
 				
 				label Instruction->Type->JZ: {
 					index := instruction->GetValue();
-					"{$i}: jz {$index}"->PrintLine();
+					"{$i}\tjz\t{$index}"->PrintLine();
 				}
 				
 				label Instruction->Type->JP: {
 					index := instruction->GetValue();
-					"{$i}: jp {$index}"->PrintLine();
+					"{$i}\tjp\t{$index}"->PrintLine();
 				}
 				
 				label Instruction->Type->PUSH: {
 					value := instruction->GetValue();
-					"{$i}: push {$value}"->PrintLine();
+					"{$i}\tpush\t{$value}"->PrintLine();
 				}
 				
 				label Instruction->Type->LT: {
-					"{$i}: lt"->PrintLine();
+					"{$i}\tlt"->PrintLine();
 				}
 				
 				label Instruction->Type->GT: {
-					"{$i}: gt"->PrintLine();
+					"{$i}\tgt"->PrintLine();
 				}
 				
 				label Instruction->Type->LE: {
-					"{$i}: le"->PrintLine();
+					"{$i}\tle"->PrintLine();
 				}
 				
 				label Instruction->Type->GE: {
-					"{$i}: ge"->PrintLine();
+					"{$i}\tge"->PrintLine();
 				}
 				
 				label Instruction->Type->EQ: {
-					"{$i}: eq"->PrintLine();
+					"{$i}\teq"->PrintLine();
 				}
 				
 				label Instruction->Type->NEQ: {
-					"{$i}: neq"->PrintLine();
+					"{$i}\tneq"->PrintLine();
 				}
 				
 				label Instruction->Type->ADD: {
-					"{$i}: add"->PrintLine();
+					"{$i}\tadd"->PrintLine();
 				}
 				
 				label Instruction->Type->SUB: {
-					"{$i}: sub"->PrintLine();
+					"{$i}\tsub"->PrintLine();
 				}
 				
 				label Instruction->Type->MUL: {
-					"{$i}: mul"->PrintLine();
+					"{$i}\tmul"->PrintLine();
 				}
 				
 				label Instruction->Type->DIV: {
-					"{$i}: div"->PrintLine();
+					"{$i}\tdiv"->PrintLine();
 				}
 				
 				label Instruction->Type->MOD: {
-					"{$i}: mod"->PrintLine();
+					"{$i}\tmod"->PrintLine();
 				}
 				
 				other: {
@@ -108,7 +120,17 @@ class Emitter {
 				}
 				
 				label ParseNode->Type->IF: {
-"TODO: IF"->PrintLine();				
+					start := @code_index;
+					if(<>Expression(node->GetLeft())) {
+						return false;
+					};
+					cond_jmp := Instruction->New(Instruction->Type->JZ);
+					@instructions->AddBack(cond_jmp);
+					@code_index += 1;				
+					if(<>Statements(node->GetStatements())) {
+						return false;
+					};
+					cond_jmp->SetValue(@code_index);				
 				}
 				
 				label ParseNode->Type->WHILE: {
@@ -116,15 +138,37 @@ class Emitter {
 					if(<>Expression(node->GetLeft())) {
 						return false;
 					};
-					temp := Instruction->New(Instruction->Type->JZ);
-					@instructions->AddBack(temp);
+					cond_jmp := Instruction->New(Instruction->Type->JZ);
+					@instructions->AddBack(cond_jmp);
 					@code_index += 1;				
 					if(<>Statements(node->GetStatements())) {
 						return false;
 					};
 					@instructions->AddBack(Instruction->New(Instruction->Type->JP, start));
 					@code_index += 1;
-					temp->SetValue(@code_index);
+					cond_jmp->SetValue(@code_index);
+				}
+				
+				label ParseNode->Type->PUTS: {
+					@instructions->AddBack(Instruction->New(Instruction->Type->PUSH, node->GetValue()));
+					@code_index += 1;
+					
+					@instructions->AddBack(Instruction->New(Instruction->Type->PUTS));
+					@code_index += 1;
+				}
+				
+				label ParseNode->Type->PUTI: {
+					@instructions->AddBack(Instruction->New(Instruction->Type->PUSH, node->GetValue()));
+					@code_index += 1;
+					
+					@instructions->AddBack(Instruction->New(Instruction->Type->PUTI));
+					@code_index += 1;
+				}
+				
+				label ParseNode->Type->PUTC: {
+					Expression(node->GetLeft());
+					@instructions->AddBack(Instruction->New(Instruction->Type->PUTC));
+					@code_index += 1;
 				}
 				
 				other: {
@@ -208,7 +252,6 @@ class Emitter {
 			label ParseNode->Type->MUL: {
 				Expression(node->GetLeft());
 				Expression(node->GetRight());
-#				"{$@code_index}	mul"->PrintLine();
 				@instructions->AddBack(Instruction->New(Instruction->Type->MUL));
 				@code_index += 1;
 			}
@@ -229,50 +272,5 @@ class Emitter {
 		};
 		
 		return true;
-	}
-}
-
-class Instruction {
-	@type : Type;
-	@value : Int;
-	
-	enum Type {
-		ST,
-		LD,
-		JZ,
-		JP,
-		PUSH,
-		LT,
-		GT,
-		LE,
-		GE,
-		EQ,
-		NEQ,
-		ADD,
-		SUB,
-		MUL,
-		DIV,
-		MOD
-	}
-	
-	New(type : Type) {
-		@type := type;
-	}
-	
-	New(type : Type, value : Int) {
-		@type := type;
-		@value := value;
-	}
-	
-	method : public : GetType() ~ Type {
-		return @type;
-	}
-	
-	method : public : GetValue() ~ Int {
-		return @value;
-	}
-	
-	method : public : SetValue(value : Int) ~ Nil {
-		@value := value;
 	}
 }

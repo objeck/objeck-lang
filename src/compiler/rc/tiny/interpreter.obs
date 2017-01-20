@@ -1,0 +1,184 @@
+use System.IO.File;
+use Collection;
+
+class Interpreter {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() = 1) {
+			instructions := LoadInstructions(args[0]);	
+			Run(instructions);
+		};
+	}
+	
+	function : native : Run(instructions : Vector) ~ Nil  {
+		varibles := Int->New[16];
+		calc_stack := IntStack->New();
+		
+		each(i : instructions) {
+			instruction := instructions->Get(i)->As(Instruction);
+			select(instruction->GetType()) {
+				label Instruction->Type->PUTS: {
+					"{$i}\tputs"->PrintLine();
+				}
+				
+				label Instruction->Type->PUTI: {
+					calc_stack->Pop()->PrintLine();
+				}
+				
+				label Instruction->Type->PUTC: {
+					"{$i}\tputc"->PrintLine();
+				}
+				
+				label Instruction->Type->ST: {
+					index := instruction->GetValue();
+					varibles[index] := calc_stack->Pop();
+				}
+				
+				label Instruction->Type->LD: {
+					index := instruction->GetValue();
+					calc_stack->Push(varibles[index]);
+				}
+				
+				label Instruction->Type->JZ: {
+					index := instruction->GetValue();
+					"{$i}\tjz\t{$index}"->PrintLine();
+				}
+				
+				label Instruction->Type->JP: {
+					index := instruction->GetValue();
+					"{$i}\tjp\t{$index}"->PrintLine();
+				}
+				
+				label Instruction->Type->PUSH: {
+					calc_stack->Push(instruction->GetValue());
+				}
+				
+				label Instruction->Type->LT: {
+					"{$i}\tlt"->PrintLine();
+				}
+				
+				label Instruction->Type->GT: {
+					"{$i}\tgt"->PrintLine();
+				}
+				
+				label Instruction->Type->LE: {
+					"{$i}\tle"->PrintLine();
+				}
+				
+				label Instruction->Type->GE: {
+					"{$i}\tge"->PrintLine();
+				}
+				
+				label Instruction->Type->EQ: {
+					"{$i}\teq"->PrintLine();
+				}
+				
+				label Instruction->Type->NEQ: {
+					"{$i}\tneq"->PrintLine();
+				}
+				
+				label Instruction->Type->ADD: {
+					"{$i}\tadd"->PrintLine();
+				}
+				
+				label Instruction->Type->SUB: {
+					"{$i}\tsub"->PrintLine();
+				}
+				
+				label Instruction->Type->MUL: {
+					"{$i}\tmul"->PrintLine();
+				}
+				
+				label Instruction->Type->DIV: {
+					"{$i}\tdiv"->PrintLine();
+				}
+				
+				label Instruction->Type->MOD: {
+					"{$i}\tmod"->PrintLine();
+				}
+			};
+		};
+	}
+	
+	function : native : LoadInstructions(file : String) ~ Vector {
+		instructions := Vector->New();
+		
+		reader := FileReader->New(file);
+		while(reader->IsEOF() <> true) {
+			line := reader->ReadString();
+			opers := line->Split("\t");
+			if(opers <> Nil) {
+				if(opers->Size() = 2) {
+					name := opers[1];
+					if(name->Equals("lt")) {
+						instructions->AddBack(Instruction->New(Instruction->Type->LT));
+					} 
+					else if(name->Equals("gt")) {
+						instructions->AddBack(Instruction->New(Instruction->Type->GT));
+					}
+					else if(name->Equals("le")) {
+						instructions->AddBack(Instruction->New(Instruction->Type->LE));
+					}
+					else if(name->Equals("eq")) {
+						instructions->AddBack(Instruction->New(Instruction->Type->EQ));
+					}
+					else if(name->Equals("neq")) {
+						instructions->AddBack(Instruction->New(Instruction->Type->NEQ));
+					}
+					else if(name->Equals("add")) {
+						instructions->AddBack(Instruction->New(Instruction->Type->ADD));
+					}
+					else if(name->Equals("sub")) {
+						instructions->AddBack(Instruction->New(Instruction->Type->SUB));
+					} 
+					else if(name->Equals("mul")) {
+						instructions->AddBack(Instruction->New(Instruction->Type->MUL));
+					} 
+					else if(name->Equals("div")) {
+						instructions->AddBack(Instruction->New(Instruction->Type->DIV));
+					} 
+					else if(name->Equals("mod")) {
+						instructions->AddBack(Instruction->New(Instruction->Type->MOD));
+					}
+					else if(name->Equals("putc")) {
+						instructions->AddBack(Instruction->New(Instruction->Type->PUTC));
+					}
+					else if(name->Equals("puts")) {
+						instructions->AddBack(Instruction->New(Instruction->Type->PUTS));
+					}
+					else if(name->Equals("puti")) {
+						instructions->AddBack(Instruction->New(Instruction->Type->PUTI));
+					}
+					else {
+						"### ERROR {$name} ####"->ErrorLine();
+					};
+				}
+				else if(opers->Size() = 3) {
+# TODO: PRINT
+					name := opers[1];
+					value := opers[2]->ToInt();
+					if(name->Equals("st")) {
+						instructions->AddBack(Instruction->New(Instruction->Type->ST, value));
+					}
+					else if(name->Equals("ld")) {
+						instructions->AddBack(Instruction->New(Instruction->Type->LD, value));
+					}
+					else if(name->Equals("jz")) {
+						instructions->AddBack(Instruction->New(Instruction->Type->JZ, value));
+					}
+					else if(name->Equals("jp")) {
+						instructions->AddBack(Instruction->New(Instruction->Type->JP, value));
+					}
+					else if(name->Equals("push")) {
+						instructions->AddBack(Instruction->New(Instruction->Type->PUSH, value));
+					}
+					else {
+						"### ERROR {$name} ####"->ErrorLine();
+					};
+				};
+			};
+		};
+		reader->Close();
+		
+		return instructions;
+	}
+}
