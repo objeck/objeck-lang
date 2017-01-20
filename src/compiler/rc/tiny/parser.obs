@@ -110,12 +110,51 @@ class Parser {
 			}
 			
 			label Token->Type->PUTC: {
+				NextToken();
+				left := Expression();
+				if(left = Nil) {
+					return Nil;
+				};
+				node := ParseNode->New(ParseNode->Type->PUTC);
+				node->SetLeft(left);
+				
+				if(<>Match(Token->Type->SEMI)) {
+					"*** Expected ';' ***"->PrintLine();
+					return Nil;
+				};
+				NextToken();
 			}
 			
 			label Token->Type->PUTI: {
+				NextToken();
+				if(<>Match(Token->Type->NUM)) {
+					"*** Expected number ***"->PrintLine();
+					return Nil;
+				};
+				node := ParseNode->New(ParseNode->Type->PUTI, GetToken()->GetValue());
+				NextToken();
+				
+				if(<>Match(Token->Type->SEMI)) {
+					"*** Expected ';' ***"->PrintLine();
+					return Nil;
+				};
+				NextToken();
 			}
 			
 			label Token->Type->PUTS: {
+				NextToken();
+				if(<>Match(Token->Type->STR_REF)) {
+					"*** Expected string ***"->PrintLine();
+					return Nil;
+				};
+				node := ParseNode->New(ParseNode->Type->PUTS, GetToken()->GetValue());
+				NextToken();
+				
+				if(<>Match(Token->Type->SEMI)) {
+					"*** Expected ';' ***"->PrintLine();
+					return Nil;
+				};
+				NextToken();
 			}
 			
 			other: {
