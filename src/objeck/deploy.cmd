@@ -33,8 +33,10 @@ devenv /rebuild Release odbc.sln
 copy Release\*.dll ..\..\objeck\deploy\lib\native
 cd ..\..\objeck
 REM copy examples
-xcopy /e ..\compiler\prgms\rc\* deploy\examples\
-xcopy /e ..\compiler\prgms\doc\* deploy\examples\
+mkdir deploy\examples\
+mkdir deploy\examples\doc\
+xcopy /e ..\compiler\prgms\deploy\* deploy\examples\
+xcopy /e ..\compiler\prgms\doc\* deploy\examples\doc\
 REM build and update docs
 mkdir deploy\doc 
 copy ..\..\docs\guide\objeck_lang.pdf deploy\doc 
