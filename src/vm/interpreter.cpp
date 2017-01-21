@@ -2307,7 +2307,7 @@ void StackInterpreter::ProcessDllLoad(StackInstr* instr)
 #else
   wstring path_str = L"..";
 #endif
-  path_str += L"/lib/objeck-lang/";
+  path_str += L"/lib/native/";
   long* array = (long*)str_obj[0];
   const wstring post_path_str((wchar_t*)(array + 3));
   path_str += post_path_str;
