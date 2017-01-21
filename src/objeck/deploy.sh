@@ -31,7 +31,7 @@ else
 fi
 make clean; make -j3 OBJECK_LIB_PATH=\\\".\\\"
 cp obc ../objeck/deploy/bin
-cp *.obl ../objeck/deploy/lib
+cp ../lib/*.obl ../objeck/deploy/lib
 cp ../vm/*.pem ../objeck/deploy/bin
 rm ../objeck/deploy/lib/gtk2.obl
 rm ../objeck/deploy/lib/sdl.obl
