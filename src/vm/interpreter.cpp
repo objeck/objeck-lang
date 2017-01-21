@@ -754,8 +754,8 @@ void StackInterpreter::ShlInt(long* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   wcout << L"stack oper: SHL_INT; call_pos=" << (*call_stack_pos) << endl;
 #endif
-  long left = PopInt(op_stack, stack_pos);
-  long right = PopInt(op_stack, stack_pos);
+  const long left = PopInt(op_stack, stack_pos);
+  const long right = PopInt(op_stack, stack_pos);
   PushInt(left << right, op_stack, stack_pos);
 }
 
@@ -764,8 +764,8 @@ void StackInterpreter::ShrInt(long* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   wcout << L"stack oper: SHR_INT; call_pos=" << (*call_stack_pos) << endl;
 #endif
-  long left = PopInt(op_stack, stack_pos);
-  long right = PopInt(op_stack, stack_pos);
+  const long left = PopInt(op_stack, stack_pos);
+  const long right = PopInt(op_stack, stack_pos);
   PushInt(left >> right, op_stack, stack_pos);
 }
 
