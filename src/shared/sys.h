@@ -165,6 +165,13 @@ static wstring GetLibraryPath() {
     }
 #endif
   }
+  else {
+#ifdef _WIN32
+    path += L"..\\lib\\";
+#else
+    path += '../lib/';
+#endif
+  }
 
   return path;
 }
