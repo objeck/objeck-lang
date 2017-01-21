@@ -8,14 +8,14 @@ rm -rf deploy
 mkdir deploy
 mkdir deploy/bin
 mkdir deploy/lib
-mkdir deploy/lib/objeck-lang
+mkdir deploy/lib/native
 mkdir deploy/doc
 
 rm -rf deploy_fcgi
 mkdir deploy_fcgi
 mkdir deploy_fcgi/bin
 mkdir deploy_fcgi/lib
-mkdir deploy_fcgi/lib/objeck-lang
+mkdir deploy_fcgi/lib/native
 mkdir deploy_fcgi/doc
 
 # build compiler
@@ -31,11 +31,11 @@ else
 fi
 make clean; make -j3 OBJECK_LIB_PATH=\\\".\\\"
 cp obc ../objeck/deploy/bin
-cp *.obl ../objeck/deploy/bin
+cp *.obl ../objeck/deploy/lib
 cp ../vm/*.pem ../objeck/deploy/bin
-rm ../objeck/deploy/bin/gtk2.obl
-rm ../objeck/deploy/bin/sdl.obl
-rm ../objeck/deploy/bin/db.obl
+rm ../objeck/deploy/lib/gtk2.obl
+rm ../objeck/deploy/lib/sdl.obl
+rm ../objeck/deploy/lib/db.obl
 
 # build utilities
 cd ../utilities
@@ -108,26 +108,26 @@ cp obd ../../objeck/deploy/bin
 cd ../../lib/odbc
 if [ ! -z "$1" ] && [ "$1" = "osx" ]; then
 	./build_osx_x64.sh odbc
-	cp odbc.dylib ../../objeck/deploy/lib/objeck-lang/libobjk_odbc.dylib
+	cp odbc.dylib ../../objeck/deploy/lib/native/libobjk_odbc.dylib
 elif [ ! -z "$1" ] && [ "$1" = "mingw" ]; then
 	./build_win32.sh odbc
-	cp odbc.so ../../objeck/deploy/lib/objeck-lang/libobjk_odbc.so
+	cp odbc.so ../../objeck/deploy/lib/native/libobjk_odbc.so
 else
 	./build_linux.sh odbc
-	cp odbc.so ../../objeck/deploy/lib/objeck-lang/libobjk_odbc.so
+	cp odbc.so ../../objeck/deploy/lib/native/libobjk_odbc.so
 fi
 
 cd ../openssl
 
 if [ ! -z "$1" ] && [ "$1" = "osx" ]; then
 	./build_osx_x64.sh openssl
-	cp openssl.dylib ../../objeck/deploy/lib/objeck-lang/libobjk_openssl.dylib
+	cp openssl.dylib ../../objeck/deploy/lib/native/libobjk_openssl.dylib
 elif [ ! -z "$1" ] && [ "$1" = "mingw" ]; then
 	./build_win32.sh openssl
-	cp openssl.so ../../objeck/deploy/lib/objeck-lang/libobjk_openssl.so
+	cp openssl.so ../../objeck/deploy/lib/native/libobjk_openssl.so
 else
 	./build_linux.sh openssl
-	cp openssl.so ../../objeck/deploy/lib/objeck-lang/libobjk_openssl.so
+	cp openssl.so ../../objeck/deploy/lib/native/libobjk_openssl.so
 fi
 
 cd ../fcgi
@@ -145,14 +145,14 @@ cp -R src/compiler/rc src/objeck/deploy/examples
 
 # create and build fcgi
 cd src/objeck
-cp ../compiler/fcgi.obl deploy/bin
+cp ../lib/fcgi.obl deploy/lib
 cp -Rfu deploy/* deploy_fcgi
 rm deploy_fcgi/bin/obc
 rm deploy_fcgi/bin/obd
 rm -rf deploy_fcgi/doc
 rm -rf deploy_fcgi/examples
 cp ../vm/obr_fcgi deploy_fcgi/bin
-cp ../lib/fcgi/*.so deploy_fcgi/lib/objeck-lang
+cp ../lib/fcgi/*.so deploy_fcgi/lib/native
 mkdir deploy_fcgi/examples
 cp -R ../compiler/web/* deploy_fcgi/examples
 cp ../../docs/fcgi_readme.htm deploy_fcgi/readme.htm

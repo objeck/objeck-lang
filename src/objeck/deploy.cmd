@@ -13,24 +13,24 @@ devenv /rebuild Release objeck.sln
 mkdir deploy\bin
 copy Release\*.exe deploy\bin
 del deploy\bin\obr_fcgi.exe
-copy ..\compiler\*.obl deploy\bin
-del deploy\bin\gtk2.obl
-del deploy\bin\sdl.obl
-del deploy\bin\db.obl
+mkdir deploy\lib
+copy ..\lib\*.obl deploy\lib
+del deploy\lib\gtk2.obl
+del deploy\lib\sdl.obl
+del deploy\lib\db.obl
 del /q deploy\bin\a.*
 copy ..\vm\*.pem deploy\bin
 REM openssl support
-mkdir deploy\lib
-mkdir deploy\lib\objeck-lang
+mkdir deploy\lib\native
 cd ..\lib\openssl\openssl
 devenv /rebuild Release openssl.sln
-copy Release\*.dll ..\..\..\objeck\deploy\lib\objeck-lang
+copy Release\*.dll ..\..\..\objeck\deploy\lib\native
 copy ..\win32\bin\*.dll ..\..\..\objeck\deploy\bin
 cd ..\..\..\objeck
 REM odbc support
 cd ..\lib\odbc
 devenv /rebuild Release odbc.sln
-copy Release\*.dll ..\..\objeck\deploy\lib\objeck-lang
+copy Release\*.dll ..\..\objeck\deploy\lib\native
 cd ..\..\objeck
 REM copy examples
 xcopy /e ..\compiler\rc\* deploy\examples\
@@ -44,7 +44,7 @@ copy ..\..\docs\syntax\* deploy\doc\syntax
 copy ..\..\docs\readme.htm deploy
 call code_doc.cmd
 REM create and build fcgi
-copy ..\compiler\fcgi.obl deploy\bin
+copy ..\lib\fcgi.obl deploy\lib
 xcopy /e deploy\* deploy_fcgi
 del deploy_fcgi\bin\obc.exe
 del deploy_fcgi\bin\obd.exe
@@ -53,7 +53,7 @@ rmdir /s /q deploy_fcgi\examples
 copy Release\obr_fcgi.exe deploy_fcgi\bin
 copy ..\lib\fcgi\windows\lib\*.dll deploy_fcgi\bin
 copy redistrib\*.dll deploy_fcgi\bin
-copy Release\libobjk_fcgi.dll deploy_fcgi\lib\objeck-lang
+copy Release\libobjk_fcgi.dll deploy_fcgi\lib\native
 mkdir deploy_fcgi\examples
 copy ..\compiler\web\* deploy_fcgi\examples
 copy /y ..\..\docs\fcgi_readme.htm deploy_fcgi\readme.htm
