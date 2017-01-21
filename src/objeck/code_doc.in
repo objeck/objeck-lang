@@ -7,7 +7,7 @@ obc -src ..\examples\doc\doc_html.obs,..\examples\doc\doc_parser.obs -lib collec
 obr ..\..\code_doc.obe ..\examples\doc\templates @VERSION@ ..\..\..\compiler\lib_src\lang.obs ..\..\..\compiler\lib_src\collect.obs ..\..\..\compiler\lib_src\regex.obs ..\..\..\compiler\lib_src\json.obs ..\..\..\compiler\lib_src\xml.obs ..\..\..\compiler\lib_src\encrypt.obs ..\..\..\compiler\lib_src\odbc.obs ..\..\..\compiler\lib_src\fcgi.obs ..\..\..\compiler\lib_src\odbc.obs ..\..\..\compiler\lib_src\csv.obs
 rmdir /s /q ..\doc\api
 mkdir ..\doc\api
-copy ..\..\..\compiler\rc\doc\templates\index.html ..\doc\api
+copy ..\..\..\compiler\prgms\doc\templates\index.html ..\doc\api
 xcopy /e ..\html\* ..\doc\api
 rmdir /s /q ..\html
 cd ..\doc
