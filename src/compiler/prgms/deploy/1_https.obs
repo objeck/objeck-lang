@@ -1,3 +1,8 @@
+#~
+# compile: obc -src 1_https.obs -lib collect.obl -dest https.obe
+# run: obr https.obe
+~#
+
 use HTTP;
 
 class HttpsTest {

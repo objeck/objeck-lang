@@ -1,3 +1,8 @@
+#~
+# compile: obc -src 5_functions.obs -dest func.obe
+# run: obr func.obe
+~#
+
 class FofG {
 	@f : static : (Int) ~ Int;
 	@g : static : (Int) ~ Int;
