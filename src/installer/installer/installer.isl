@@ -340,34 +340,34 @@
 		<col def="S0">ISDotNetInstallerArgsCommit</col>
 		<col def="S0">ISDotNetInstallerArgsUninstall</col>
 		<col def="S0">ISDotNetInstallerArgsRollback</col>
-		<row><td>ISX_DEFAULTCOMPONENT</td><td>{BF29CF8B-825C-4F8E-94F7-5F595DB9499B}</td><td>INSTALLDIR</td><td>2</td><td/><td>readme.htm</td><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
+		<row><td>ISX_DEFAULTCOMPONENT</td><td>{BF29CF8B-825C-4F8E-94F7-5F595DB9499B}</td><td>INSTALLDIR</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
 		<row><td>ISX_DEFAULTCOMPONENT1</td><td>{F970AB6F-5557-4E8C-B76E-C33716799511}</td><td>DATABASEDIR</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
 		<row><td>ISX_DEFAULTCOMPONENT10</td><td>{9A5AA1DD-E9FB-4CA4-9928-3C183251AC31}</td><td>OBJECK</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
-		<row><td>ISX_DEFAULTCOMPONENT11</td><td>{E6193C84-DABC-4761-AFF0-3DB4DA1D7AF4}</td><td>TINY</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
-		<row><td>ISX_DEFAULTCOMPONENT12</td><td>{8A937405-5C31-4E3A-89A0-A02F752FA0DA}</td><td>COMMON</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
-		<row><td>ISX_DEFAULTCOMPONENT13</td><td>{AE9EC3D9-869F-443F-91B7-82E37FC4EB6A}</td><td>COMPILER</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
-		<row><td>ISX_DEFAULTCOMPONENT14</td><td>{976AD808-EA18-4F09-8B69-4CD87B4F42F2}</td><td>PROGRAMS</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
-		<row><td>ISX_DEFAULTCOMPONENT15</td><td>{D31A53DE-BB11-45BA-8A66-9713058C748F}</td><td>VM</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
-		<row><td>ISX_DEFAULTCOMPONENT16</td><td>{A0CF5DB7-C4FD-4C13-B283-DE789F2791F2}</td><td>LIB</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
-		<row><td>ISX_DEFAULTCOMPONENT17</td><td>{685E6AD6-8186-473C-815D-849BE63C8885}</td><td>NATIVE</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
-		<row><td>ISX_DEFAULTCOMPONENT18</td><td>{01A57C11-57A5-49AE-ACB9-7FEBAA0570D6}</td><td>BIN</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
+		<row><td>ISX_DEFAULTCOMPONENT11</td><td>{405058A7-1034-4E39-B360-5B50945F5310}</td><td>TINY</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
+		<row><td>ISX_DEFAULTCOMPONENT12</td><td>{3EF0FEFD-8334-46D5-9CB4-A4303DA41115}</td><td>COMMON</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
+		<row><td>ISX_DEFAULTCOMPONENT13</td><td>{C7E41606-DD0D-4661-B16D-CFDF596980FB}</td><td>COMPILER</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
+		<row><td>ISX_DEFAULTCOMPONENT14</td><td>{56E3B462-1A55-4BA7-8144-13C684B26D65}</td><td>PROGRAMS</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
+		<row><td>ISX_DEFAULTCOMPONENT15</td><td>{BAB728E8-E4CE-4152-A8F1-3E1D93F58ED3}</td><td>VM</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
+		<row><td>ISX_DEFAULTCOMPONENT16</td><td>{F4ABBE3C-E150-444D-862C-BA574817D548}</td><td>LIB</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
+		<row><td>ISX_DEFAULTCOMPONENT17</td><td>{43A6B414-A9FC-4DEF-BD79-9EF5FC6D7621}</td><td>NATIVE</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
+		<row><td>ISX_DEFAULTCOMPONENT18</td><td>{FA375877-91E4-4B5C-9943-2523146E2664}</td><td>BIN</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
 		<row><td>ISX_DEFAULTCOMPONENT19</td><td>{9FDC6DF4-765D-4AEC-9E07-F3CAA0F5AC82}</td><td>ProgramFilesFolder</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
-		<row><td>ISX_DEFAULTCOMPONENT2</td><td>{18347F14-38B9-4936-9B0F-3533E886E936}</td><td>DOC</td><td>2</td><td/><td>objeck_lang.pdf</td><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
-		<row><td>ISX_DEFAULTCOMPONENT3</td><td>{1120E0EA-785C-44BB-A64C-22581850CC53}</td><td>API</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
+		<row><td>ISX_DEFAULTCOMPONENT2</td><td>{E421EAFF-0A45-4B67-A1A1-977D899A4F1E}</td><td>DOC</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
+		<row><td>ISX_DEFAULTCOMPONENT3</td><td>{A872893A-ADC6-405E-980A-7B225B458E8A}</td><td>API</td><td>2</td><td/><td>index.html</td><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
 		<row><td>ISX_DEFAULTCOMPONENT4</td><td>{C75D36AF-C2B2-4EDB-9826-A6350CC87D04}</td><td>USERPROFILE</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
-		<row><td>ISX_DEFAULTCOMPONENT5</td><td>{685F2BBC-9F97-4AE6-838C-61774578E9CD}</td><td>SYNTAX</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
-		<row><td>ISX_DEFAULTCOMPONENT6</td><td>{28738F0F-C062-48C1-A1D9-04F108412D7F}</td><td>EXAMPLES</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
-		<row><td>ISX_DEFAULTCOMPONENT7</td><td>{7E78C54C-3F14-41C4-83B7-A07953BBD281}</td><td>DOC1</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
-		<row><td>ISX_DEFAULTCOMPONENT8</td><td>{525B136D-326B-4C35-B300-7919782ACF79}</td><td>TEMPLATES</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
+		<row><td>ISX_DEFAULTCOMPONENT5</td><td>{290BF4B4-11DA-4FC0-ABEA-08FEB010B8DE}</td><td>SYNTAX</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
+		<row><td>ISX_DEFAULTCOMPONENT6</td><td>{F0372AB9-C08F-4599-8DAB-ED30684C83B8}</td><td>EXAMPLES</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
+		<row><td>ISX_DEFAULTCOMPONENT7</td><td>{367F0DF3-B072-42E7-ADFD-9FAED5516921}</td><td>DOC1</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
+		<row><td>ISX_DEFAULTCOMPONENT8</td><td>{D253EF8B-AA0F-4592-B8A8-2B0D2FB29325}</td><td>TEMPLATES</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
 		<row><td>ISX_DEFAULTCOMPONENT9</td><td>{BF1FA39E-BAE3-45CB-8DE3-91736CE31D63}</td><td>TempFolder</td><td>2</td><td/><td/><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
-		<row><td>libeay32.dll</td><td>{FECE0010-62EE-430B-9DB7-42089B9A013B}</td><td>BIN</td><td>2</td><td/><td>libeay32.dll</td><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
-		<row><td>libobjk_odbc.dll</td><td>{A971F68A-74A7-4307-AFB9-C740652BAA0D}</td><td>NATIVE</td><td>2</td><td/><td>libobjk_odbc.dll</td><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
-		<row><td>libobjk_openssl.dll</td><td>{2BA3DBF6-D6C0-44AD-A51A-35F6536F127B}</td><td>NATIVE</td><td>2</td><td/><td>libobjk_openssl.dll</td><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
-		<row><td>obc.exe</td><td>{79A352EF-745C-4774-ABBB-172E5942A6F6}</td><td>BIN</td><td>2</td><td/><td>obc.exe</td><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
-		<row><td>obd.exe</td><td>{4140B4F8-F5E5-4E55-BC82-4CFDE246D508}</td><td>BIN</td><td>2</td><td/><td>obd.exe</td><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
-		<row><td>obr.exe</td><td>{37C5C6B6-3B85-469A-B234-E6D44426F57F}</td><td>BIN</td><td>2</td><td/><td>obr.exe</td><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
-		<row><td>obu.exe</td><td>{9C7760E8-1456-4689-8B6D-A0A447E3A260}</td><td>BIN</td><td>2</td><td/><td>obu.exe</td><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
-		<row><td>ssleay32.dll</td><td>{CA4B48FB-A410-4C97-9703-06378591674C}</td><td>BIN</td><td>2</td><td/><td>ssleay32.dll</td><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
+		<row><td>libeay32.dll</td><td>{CA6CFB90-0533-43CC-A30C-960400AEBC73}</td><td>BIN</td><td>2</td><td/><td>libeay32.dll</td><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
+		<row><td>libobjk_odbc.dll</td><td>{93198BD7-D4CE-4FAB-9790-E20CD7C7DAB2}</td><td>NATIVE</td><td>2</td><td/><td>libobjk_odbc.dll</td><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
+		<row><td>libobjk_openssl.dll</td><td>{A7C0928F-A2FB-404F-A27C-89F6953DB006}</td><td>NATIVE</td><td>2</td><td/><td>libobjk_openssl.dll</td><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
+		<row><td>obc.exe</td><td>{F18C38F1-A238-4133-9B5B-2E4E4E2EEFF3}</td><td>BIN</td><td>2</td><td/><td>obc.exe</td><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
+		<row><td>obd.exe</td><td>{2B3AA0F0-51C8-4280-AE0E-47CA5BC2DB54}</td><td>BIN</td><td>2</td><td/><td>obd.exe</td><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
+		<row><td>obr.exe</td><td>{8D2CFBD9-486F-4A00-A90E-4C216B76D58D}</td><td>BIN</td><td>2</td><td/><td>obr.exe</td><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
+		<row><td>obu.exe</td><td>{AD6E0ADF-DA94-48BC-AD91-E6F2EC206DF6}</td><td>BIN</td><td>2</td><td/><td>obu.exe</td><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
+		<row><td>ssleay32.dll</td><td>{A97DE8E3-155F-4CC1-A91A-804F3924DC7A}</td><td>BIN</td><td>2</td><td/><td>ssleay32.dll</td><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
 	</table>
 
 	<table name="Condition">
@@ -2008,20 +2008,67 @@
 		<row><td>__xml.obs</td><td>ISX_DEFAULTCOMPONENT6</td><td>2_xml.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\examples\2_xml.obs</td><td>1</td><td/></row>
 		<row><td>build.cmd</td><td>ISX_DEFAULTCOMPONENT11</td><td>build.cmd</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\examples\tiny\build.cmd</td><td>1</td><td/></row>
 		<row><td>build.sh</td><td>ISX_DEFAULTCOMPONENT11</td><td>build.sh</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\examples\tiny\build.sh</td><td>1</td><td/></row>
+		<row><td>bundle_header.dat</td><td>ISX_DEFAULTCOMPONENT8</td><td>BUNDLE~1.DAT|bundle_header.dat</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\examples\doc\templates\bundle_header.dat</td><td>1</td><td/></row>
+		<row><td>bundles.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>BUNDLE~1.HTM|bundles.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\bundles.html</td><td>1</td><td/></row>
+		<row><td>bundles_header.dat</td><td>ISX_DEFAULTCOMPONENT8</td><td>BUNDLE~1.DAT|bundles_header.dat</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\examples\doc\templates\bundles_header.dat</td><td>1</td><td/></row>
 		<row><td>cacert.pem</td><td>ISX_DEFAULTCOMPONENT16</td><td>cacert.pem</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\lib\cacert.pem</td><td>1</td><td/></row>
+		<row><td>class_header.dat</td><td>ISX_DEFAULTCOMPONENT8</td><td>CLASS_~1.DAT|class_header.dat</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\examples\doc\templates\class_header.dat</td><td>1</td><td/></row>
+		<row><td>classes.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>CLASSE~1.HTM|classes.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\classes.html</td><td>1</td><td/></row>
+		<row><td>classes_header.dat</td><td>ISX_DEFAULTCOMPONENT8</td><td>CLASSE~1.DAT|classes_header.dat</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\examples\doc\templates\classes_header.dat</td><td>1</td><td/></row>
 		<row><td>collect.obl</td><td>ISX_DEFAULTCOMPONENT16</td><td>collect.obl</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\lib\collect.obl</td><td>1</td><td/></row>
+		<row><td>collection_comparelist.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>COLLEC~1.HTM|collection-comparelist.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\collection-comparelist.html</td><td>1</td><td/></row>
+		<row><td>collection_comparevector.htm</td><td>ISX_DEFAULTCOMPONENT3</td><td>COLLEC~1.HTM|collection-comparevector.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\collection-comparevector.html</td><td>1</td><td/></row>
+		<row><td>collection_floatlist.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>COLLEC~1.HTM|collection-floatlist.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\collection-floatlist.html</td><td>1</td><td/></row>
+		<row><td>collection_floatmap.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>COLLEC~1.HTM|collection-floatmap.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\collection-floatmap.html</td><td>1</td><td/></row>
+		<row><td>collection_floatqueue.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>COLLEC~1.HTM|collection-floatqueue.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\collection-floatqueue.html</td><td>1</td><td/></row>
+		<row><td>collection_floatset.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>COLLEC~1.HTM|collection-floatset.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\collection-floatset.html</td><td>1</td><td/></row>
+		<row><td>collection_floatstack.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>COLLEC~1.HTM|collection-floatstack.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\collection-floatstack.html</td><td>1</td><td/></row>
+		<row><td>collection_floatvector.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>COLLEC~1.HTM|collection-floatvector.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\collection-floatvector.html</td><td>1</td><td/></row>
+		<row><td>collection_hash.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>COLLEC~1.HTM|collection-hash.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\collection-hash.html</td><td>1</td><td/></row>
+		<row><td>collection_intlist.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>COLLEC~1.HTM|collection-intlist.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\collection-intlist.html</td><td>1</td><td/></row>
+		<row><td>collection_intmap.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>COLLEC~1.HTM|collection-intmap.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\collection-intmap.html</td><td>1</td><td/></row>
+		<row><td>collection_intqueue.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>COLLEC~1.HTM|collection-intqueue.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\collection-intqueue.html</td><td>1</td><td/></row>
+		<row><td>collection_intstack.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>COLLEC~1.HTM|collection-intstack.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\collection-intstack.html</td><td>1</td><td/></row>
+		<row><td>collection_intvector.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>COLLEC~1.HTM|collection-intvector.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\collection-intvector.html</td><td>1</td><td/></row>
+		<row><td>collection_list.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>COLLEC~1.HTM|collection-list.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\collection-list.html</td><td>1</td><td/></row>
+		<row><td>collection_map.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>COLLEC~1.HTM|collection-map.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\collection-map.html</td><td>1</td><td/></row>
+		<row><td>collection_queue.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>COLLEC~1.HTM|collection-queue.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\collection-queue.html</td><td>1</td><td/></row>
+		<row><td>collection_set.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>COLLEC~1.HTM|collection-set.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\collection-set.html</td><td>1</td><td/></row>
+		<row><td>collection_stack.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>COLLEC~1.HTM|collection-stack.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\collection-stack.html</td><td>1</td><td/></row>
+		<row><td>collection_stringhash.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>COLLEC~1.HTM|collection-stringhash.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\collection-stringhash.html</td><td>1</td><td/></row>
+		<row><td>collection_stringmap.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>COLLEC~1.HTM|collection-stringmap.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\collection-stringmap.html</td><td>1</td><td/></row>
+		<row><td>collection_stringset.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>COLLEC~1.HTM|collection-stringset.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\collection-stringset.html</td><td>1</td><td/></row>
+		<row><td>collection_vector.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>COLLEC~1.HTM|collection-vector.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\collection-vector.html</td><td>1</td><td/></row>
 		<row><td>compiler.obs</td><td>ISX_DEFAULTCOMPONENT13</td><td>compiler.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\examples\tiny\compiler\compiler.obs</td><td>1</td><td/></row>
 		<row><td>csv.obl</td><td>ISX_DEFAULTCOMPONENT16</td><td>csv.obl</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\lib\csv.obl</td><td>1</td><td/></row>
+		<row><td>csv_csvcolumn.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>CSV-CS~1.HTM|csv-csvcolumn.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\csv-csvcolumn.html</td><td>1</td><td/></row>
+		<row><td>csv_csvrow.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>CSV-CS~1.HTM|csv-csvrow.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\csv-csvrow.html</td><td>1</td><td/></row>
+		<row><td>csv_csvtable.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>CSV-CS~1.HTM|csv-csvtable.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\csv-csvtable.html</td><td>1</td><td/></row>
+		<row><td>doc_class.html</td><td>ISX_DEFAULTCOMPONENT7</td><td>DOC_CL~1.HTM|doc_class.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\examples\doc\doc_class.html</td><td>1</td><td/></row>
 		<row><td>doc_html.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>doc_html.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\examples\doc\doc_html.obs</td><td>1</td><td/></row>
 		<row><td>doc_parser.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>DOC_PA~1.OBS|doc_parser.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\examples\doc\doc_parser.obs</td><td>1</td><td/></row>
 		<row><td>doc_printer.obs</td><td>ISX_DEFAULTCOMPONENT7</td><td>DOC_PR~1.OBS|doc_printer.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\examples\doc\doc_printer.obs</td><td>1</td><td/></row>
 		<row><td>emitter.obs</td><td>ISX_DEFAULTCOMPONENT13</td><td>emitter.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\examples\tiny\compiler\emitter.obs</td><td>1</td><td/></row>
 		<row><td>encrypt.obl</td><td>ISX_DEFAULTCOMPONENT16</td><td>encrypt.obl</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\lib\encrypt.obl</td><td>1</td><td/></row>
+		<row><td>encryption_decrypt.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>ENCRYP~1.HTM|encryption-decrypt.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\encryption-decrypt.html</td><td>1</td><td/></row>
+		<row><td>encryption_encrypt.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>ENCRYP~1.HTM|encryption-encrypt.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\encryption-encrypt.html</td><td>1</td><td/></row>
+		<row><td>encryption_hash.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>ENCRYP~1.HTM|encryption-hash.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\encryption-hash.html</td><td>1</td><td/></row>
+		<row><td>fastcgi_handler.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>FASTCG~1.HTM|fastcgi-handler.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\fastcgi-handler.html</td><td>1</td><td/></row>
+		<row><td>fastcgi_request.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>FASTCG~1.HTM|fastcgi-request.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\fastcgi-request.html</td><td>1</td><td/></row>
+		<row><td>fastcgi_response.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>FASTCG~1.HTM|fastcgi-response.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\fastcgi-response.html</td><td>1</td><td/></row>
 		<row><td>fcgi.obl</td><td>ISX_DEFAULTCOMPONENT16</td><td>fcgi.obl</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\lib\fcgi.obl</td><td>1</td><td/></row>
 		<row><td>howto.rtf</td><td>ISX_DEFAULTCOMPONENT5</td><td>howto.rtf</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\syntax\howto.rtf</td><td>1</td><td/></row>
+		<row><td>http_httpclient.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>HTTP-H~1.HTM|http-httpclient.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\http-httpclient.html</td><td>1</td><td/></row>
+		<row><td>http_httpsclient.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>HTTP-H~1.HTM|http-httpsclient.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\http-httpsclient.html</td><td>1</td><td/></row>
+		<row><td>http_urlutility.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>HTTP-U~1.HTM|http-urlutility.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\http-urlutility.html</td><td>1</td><td/></row>
+		<row><td>index.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>INDEX~1.HTM|index.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\index.html</td><td>1</td><td/></row>
+		<row><td>index.html1</td><td>ISX_DEFAULTCOMPONENT8</td><td>INDEX~1.HTM|index.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\examples\doc\templates\index.html</td><td>1</td><td/></row>
 		<row><td>instructions.obs</td><td>ISX_DEFAULTCOMPONENT12</td><td>INSTRU~1.OBS|instructions.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\examples\tiny\common\instructions.obs</td><td>1</td><td/></row>
 		<row><td>interpreter.obs</td><td>ISX_DEFAULTCOMPONENT15</td><td>INTERP~1.OBS|interpreter.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\examples\tiny\vm\interpreter.obs</td><td>1</td><td/></row>
 		<row><td>json.obl</td><td>ISX_DEFAULTCOMPONENT16</td><td>json.obl</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\lib\json.obl</td><td>1</td><td/></row>
+		<row><td>json_jsonelement.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>JSON-J~1.HTM|json-jsonelement.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\json-jsonelement.html</td><td>1</td><td/></row>
+		<row><td>json_jsonparser.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>JSON-J~1.HTM|json-jsonparser.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\json-jsonparser.html</td><td>1</td><td/></row>
+		<row><td>json_jsontype.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>JSON-J~1.HTM|json-jsontype.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\json-jsontype.html</td><td>1</td><td/></row>
 		<row><td>lang.obl</td><td>ISX_DEFAULTCOMPONENT16</td><td>lang.obl</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\lib\lang.obl</td><td>1</td><td/></row>
 		<row><td>libeay32.dll</td><td>libeay32.dll</td><td>libeay32.dll</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\bin\libeay32.dll</td><td>1</td><td/></row>
 		<row><td>libobjk_odbc.dll</td><td>libobjk_odbc.dll</td><td>LIBOBJ~1.DLL|libobjk_odbc.dll</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\lib\native\libobjk_odbc.dll</td><td>1</td><td/></row>
@@ -2036,15 +2083,63 @@
 		<row><td>obr.exe</td><td>obr.exe</td><td>obr.exe</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\bin\obr.exe</td><td>1</td><td/></row>
 		<row><td>obu.exe</td><td>obu.exe</td><td>obu.exe</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\bin\obu.exe</td><td>1</td><td/></row>
 		<row><td>odbc.obl</td><td>ISX_DEFAULTCOMPONENT16</td><td>odbc.obl</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\lib\odbc.obl</td><td>1</td><td/></row>
+		<row><td>odbc_connection.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>ODBC-C~1.HTM|odbc-connection.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\odbc-connection.html</td><td>1</td><td/></row>
+		<row><td>odbc_date.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>ODBC-D~1.HTM|odbc-date.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\odbc-date.html</td><td>1</td><td/></row>
+		<row><td>odbc_parameterstatement.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>ODBC-P~1.HTM|odbc-parameterstatement.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\odbc-parameterstatement.html</td><td>1</td><td/></row>
+		<row><td>odbc_resultset.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>ODBC-R~1.HTM|odbc-resultset.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\odbc-resultset.html</td><td>1</td><td/></row>
+		<row><td>odbc_timestamp.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>ODBC-T~1.HTM|odbc-timestamp.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\odbc-timestamp.html</td><td>1</td><td/></row>
 		<row><td>parser.obs</td><td>ISX_DEFAULTCOMPONENT13</td><td>parser.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\examples\tiny\compiler\parser.obs</td><td>1</td><td/></row>
 		<row><td>readme.htm</td><td>ISX_DEFAULTCOMPONENT</td><td>readme.htm</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\readme.htm</td><td>1</td><td/></row>
 		<row><td>regex.obl</td><td>ISX_DEFAULTCOMPONENT16</td><td>regex.obl</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\lib\regex.obl</td><td>1</td><td/></row>
+		<row><td>regex_regex.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>REGEX-~1.HTM|regex-regex.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\regex-regex.html</td><td>1</td><td/></row>
 		<row><td>scanner.obs</td><td>ISX_DEFAULTCOMPONENT13</td><td>scanner.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\examples\tiny\compiler\scanner.obs</td><td>1</td><td/></row>
 		<row><td>ssleay32.dll</td><td>ssleay32.dll</td><td>ssleay32.dll</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\bin\ssleay32.dll</td><td>1</td><td/></row>
 		<row><td>syntax.txt</td><td>ISX_DEFAULTCOMPONENT11</td><td>syntax.txt</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\examples\tiny\syntax.txt</td><td>1</td><td/></row>
+		<row><td>system.api_dllproxy.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>SYSTEM~1.HTM|system.api-dllproxy.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\system.api-dllproxy.html</td><td>1</td><td/></row>
+		<row><td>system.concurrency_thread.ht</td><td>ISX_DEFAULTCOMPONENT3</td><td>SYSTEM~1.HTM|system.concurrency-thread.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\system.concurrency-thread.html</td><td>1</td><td/></row>
+		<row><td>system.concurrency_threadmut</td><td>ISX_DEFAULTCOMPONENT3</td><td>SYSTEM~1.HTM|system.concurrency-threadmutex.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\system.concurrency-threadmutex.html</td><td>1</td><td/></row>
+		<row><td>system.introspection_class.h</td><td>ISX_DEFAULTCOMPONENT3</td><td>SYSTEM~1.HTM|system.introspection-class.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\system.introspection-class.html</td><td>1</td><td/></row>
+		<row><td>system.introspection_datatyp</td><td>ISX_DEFAULTCOMPONENT3</td><td>SYSTEM~1.HTM|system.introspection-datatype.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\system.introspection-datatype.html</td><td>1</td><td/></row>
+		<row><td>system.introspection_method.</td><td>ISX_DEFAULTCOMPONENT3</td><td>SYSTEM~1.HTM|system.introspection-method.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\system.introspection-method.html</td><td>1</td><td/></row>
+		<row><td>system.introspection_typeid.</td><td>ISX_DEFAULTCOMPONENT3</td><td>SYSTEM~1.HTM|system.introspection-typeid.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\system.introspection-typeid.html</td><td>1</td><td/></row>
+		<row><td>system.io.file_directory.htm</td><td>ISX_DEFAULTCOMPONENT3</td><td>SYSTEM~1.HTM|system.io.file-directory.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\system.io.file-directory.html</td><td>1</td><td/></row>
+		<row><td>system.io.file_file.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>SYSTEM~1.HTM|system.io.file-file.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\system.io.file-file.html</td><td>1</td><td/></row>
+		<row><td>system.io.file_filereader.ht</td><td>ISX_DEFAULTCOMPONENT3</td><td>SYSTEM~1.HTM|system.io.file-filereader.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\system.io.file-filereader.html</td><td>1</td><td/></row>
+		<row><td>system.io.file_filewriter.ht</td><td>ISX_DEFAULTCOMPONENT3</td><td>SYSTEM~1.HTM|system.io.file-filewriter.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\system.io.file-filewriter.html</td><td>1</td><td/></row>
+		<row><td>system.io.file_logger.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>SYSTEM~1.HTM|system.io.file-logger.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\system.io.file-logger.html</td><td>1</td><td/></row>
+		<row><td>system.io.net_tcpsecuresocke</td><td>ISX_DEFAULTCOMPONENT3</td><td>SYSTEM~1.HTM|system.io.net-tcpsecuresocket.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\system.io.net-tcpsecuresocket.html</td><td>1</td><td/></row>
+		<row><td>system.io.net_tcpsocket.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>SYSTEM~1.HTM|system.io.net-tcpsocket.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\system.io.net-tcpsocket.html</td><td>1</td><td/></row>
+		<row><td>system.io.net_tcpsocketserve</td><td>ISX_DEFAULTCOMPONENT3</td><td>SYSTEM~1.HTM|system.io.net-tcpsocketserver.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\system.io.net-tcpsocketserver.html</td><td>1</td><td/></row>
+		<row><td>system.io_console.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>SYSTEM~1.HTM|system.io-console.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\system.io-console.html</td><td>1</td><td/></row>
+		<row><td>system.io_deserializer.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>SYSTEM~1.HTM|system.io-deserializer.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\system.io-deserializer.html</td><td>1</td><td/></row>
+		<row><td>system.io_inputstream.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>SYSTEM~1.HTM|system.io-inputstream.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\system.io-inputstream.html</td><td>1</td><td/></row>
+		<row><td>system.io_outputstream.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>SYSTEM~1.HTM|system.io-outputstream.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\system.io-outputstream.html</td><td>1</td><td/></row>
+		<row><td>system.io_serializer.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>SYSTEM~1.HTM|system.io-serializer.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\system.io-serializer.html</td><td>1</td><td/></row>
+		<row><td>system.time_date.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>SYSTEM~1.HTM|system.time-date.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\system.time-date.html</td><td>1</td><td/></row>
+		<row><td>system.time_timer.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>SYSTEM~1.HTM|system.time-timer.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\system.time-timer.html</td><td>1</td><td/></row>
+		<row><td>system_base.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>SYSTEM~1.HTM|system-base.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\system-base.html</td><td>1</td><td/></row>
+		<row><td>system_basiccompare.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>SYSTEM~1.HTM|system-basiccompare.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\system-basiccompare.html</td><td>1</td><td/></row>
+		<row><td>system_bool.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>SYSTEM~1.HTM|system-bool.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\system-bool.html</td><td>1</td><td/></row>
+		<row><td>system_byte.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>SYSTEM~1.HTM|system-byte.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\system-byte.html</td><td>1</td><td/></row>
+		<row><td>system_bytearrayholder.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>SYSTEM~1.HTM|system-bytearrayholder.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\system-bytearrayholder.html</td><td>1</td><td/></row>
+		<row><td>system_char.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>SYSTEM~1.HTM|system-char.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\system-char.html</td><td>1</td><td/></row>
+		<row><td>system_chararrayholder.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>SYSTEM~1.HTM|system-chararrayholder.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\system-chararrayholder.html</td><td>1</td><td/></row>
+		<row><td>system_compare.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>SYSTEM~1.HTM|system-compare.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\system-compare.html</td><td>1</td><td/></row>
+		<row><td>system_float.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>SYSTEM~1.HTM|system-float.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\system-float.html</td><td>1</td><td/></row>
+		<row><td>system_floatarrayholder.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>SYSTEM~1.HTM|system-floatarrayholder.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\system-floatarrayholder.html</td><td>1</td><td/></row>
+		<row><td>system_floatholder.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>SYSTEM~1.HTM|system-floatholder.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\system-floatholder.html</td><td>1</td><td/></row>
+		<row><td>system_int.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>SYSTEM~1.HTM|system-int.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\system-int.html</td><td>1</td><td/></row>
+		<row><td>system_intarrayholder.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>SYSTEM~1.HTM|system-intarrayholder.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\system-intarrayholder.html</td><td>1</td><td/></row>
+		<row><td>system_intholder.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>SYSTEM~1.HTM|system-intholder.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\system-intholder.html</td><td>1</td><td/></row>
+		<row><td>system_runtime.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>SYSTEM~1.HTM|system-runtime.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\system-runtime.html</td><td>1</td><td/></row>
+		<row><td>system_string.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>SYSTEM~1.HTM|system-string.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\system-string.html</td><td>1</td><td/></row>
 		<row><td>test.t</td><td>ISX_DEFAULTCOMPONENT14</td><td>test.t</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\examples\tiny\programs\test.t</td><td>1</td><td/></row>
 		<row><td>while.t</td><td>ISX_DEFAULTCOMPONENT14</td><td>while.t</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\examples\tiny\programs\while.t</td><td>1</td><td/></row>
 		<row><td>xml.obl</td><td>ISX_DEFAULTCOMPONENT16</td><td>xml.obl</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\lib\xml.obl</td><td>1</td><td/></row>
+		<row><td>xml_xmlattribute.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>XML-XM~1.HTM|xml-xmlattribute.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\xml-xmlattribute.html</td><td>1</td><td/></row>
+		<row><td>xml_xmlbuilder.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>XML-XM~1.HTM|xml-xmlbuilder.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\xml-xmlbuilder.html</td><td>1</td><td/></row>
+		<row><td>xml_xmlelement.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>XML-XM~1.HTM|xml-xmlelement.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\xml-xmlelement.html</td><td>1</td><td/></row>
+		<row><td>xml_xmlparser.html</td><td>ISX_DEFAULTCOMPONENT3</td><td>XML-XM~1.HTM|xml-xmlparser.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\xml-xmlparser.html</td><td>1</td><td/></row>
 	</table>
 
 	<table name="FileSFPCatalog">
@@ -2191,31 +2286,31 @@
 		<row><td>ISX_DEFAULTCOMPONENT</td><td/><td/><td>_CB9E7C1B_EEDE_42D3_8844_4D48220A01E9_FILTER</td><td/><td/><td/><td/></row>
 		<row><td>ISX_DEFAULTCOMPONENT1</td><td/><td/><td>_9C569BC4_0863_4A3D_8991_D3518474C1B2_FILTER</td><td/><td/><td/><td/></row>
 		<row><td>ISX_DEFAULTCOMPONENT10</td><td/><td/><td>_19A04A31_6EFD_44AF_AED4_89C06A36188D_FILTER</td><td/><td/><td/><td/></row>
-		<row><td>ISX_DEFAULTCOMPONENT11</td><td/><td/><td>_E58D1849_A5B5_4E98_883F_4574D349D5B1_FILTER</td><td/><td/><td/><td/></row>
-		<row><td>ISX_DEFAULTCOMPONENT12</td><td/><td/><td>_6761D39F_840D_46EE_9EC5_FCC25E9847AA_FILTER</td><td/><td/><td/><td/></row>
-		<row><td>ISX_DEFAULTCOMPONENT13</td><td/><td/><td>_B15DAC2E_74A0_4397_955A_AE04B52768B9_FILTER</td><td/><td/><td/><td/></row>
-		<row><td>ISX_DEFAULTCOMPONENT14</td><td/><td/><td>_8D7F569E_C522_4CF1_93BB_BFB69F00948F_FILTER</td><td/><td/><td/><td/></row>
-		<row><td>ISX_DEFAULTCOMPONENT15</td><td/><td/><td>_02E6455E_6A1B_418B_B302_CB7AE58E5C7D_FILTER</td><td/><td/><td/><td/></row>
-		<row><td>ISX_DEFAULTCOMPONENT16</td><td/><td/><td>_509B4878_978B_4F62_B143_5125F3B99D5C_FILTER</td><td/><td/><td/><td/></row>
-		<row><td>ISX_DEFAULTCOMPONENT17</td><td/><td/><td>_965C8BDF_67C7_4A25_A18D_048FD8499844_FILTER</td><td/><td/><td/><td/></row>
-		<row><td>ISX_DEFAULTCOMPONENT18</td><td/><td/><td>_2BEEB775_B328_4A7C_A101_800EA5029673_FILTER</td><td/><td/><td/><td/></row>
+		<row><td>ISX_DEFAULTCOMPONENT11</td><td/><td/><td>_74E0A9F7_FDB1_4AE6_AA5F_AB479F252D38_FILTER</td><td/><td/><td/><td/></row>
+		<row><td>ISX_DEFAULTCOMPONENT12</td><td/><td/><td>_7C0C9832_C583_4F8D_A93C_BC10315DA071_FILTER</td><td/><td/><td/><td/></row>
+		<row><td>ISX_DEFAULTCOMPONENT13</td><td/><td/><td>_DF27E2F9_A2AB_41E9_88E9_56438AD62FB1_FILTER</td><td/><td/><td/><td/></row>
+		<row><td>ISX_DEFAULTCOMPONENT14</td><td/><td/><td>_EC70AB51_7C78_4C95_AD7B_CDC32E498599_FILTER</td><td/><td/><td/><td/></row>
+		<row><td>ISX_DEFAULTCOMPONENT15</td><td/><td/><td>_26D6B658_AE75_41F4_A49D_4D8BBD8B906D_FILTER</td><td/><td/><td/><td/></row>
+		<row><td>ISX_DEFAULTCOMPONENT16</td><td/><td/><td>_4AAA88F2_AD18_41C4_832E_4D3A4279AE00_FILTER</td><td/><td/><td/><td/></row>
+		<row><td>ISX_DEFAULTCOMPONENT17</td><td/><td/><td>_7049730B_9148_4BAB_98BD_CA91B630AEDF_FILTER</td><td/><td/><td/><td/></row>
+		<row><td>ISX_DEFAULTCOMPONENT18</td><td/><td/><td>_11666A72_9DFA_4EC7_BC91_018AECEB69AE_FILTER</td><td/><td/><td/><td/></row>
 		<row><td>ISX_DEFAULTCOMPONENT19</td><td/><td/><td>_008D9B4F_78FE_4CD6_996B_5D45EF445E22_FILTER</td><td/><td/><td/><td/></row>
-		<row><td>ISX_DEFAULTCOMPONENT2</td><td/><td/><td>_78B9EF75_CBD3_4B2F_8705_C5138778F441_FILTER</td><td/><td/><td/><td/></row>
-		<row><td>ISX_DEFAULTCOMPONENT3</td><td/><td/><td>_4106800B_BA7B_479D_BAF9_212EE3DAE5B4_FILTER</td><td/><td/><td/><td/></row>
+		<row><td>ISX_DEFAULTCOMPONENT2</td><td/><td/><td>_916394A7_9299_47E1_AB67_F613A1347FE9_FILTER</td><td/><td/><td/><td/></row>
+		<row><td>ISX_DEFAULTCOMPONENT3</td><td/><td/><td>_BBE01416_5CA4_473D_8F17_8499D550F999_FILTER</td><td/><td/><td/><td/></row>
 		<row><td>ISX_DEFAULTCOMPONENT4</td><td/><td/><td>_5B84DF58_7183_477E_9229_5B3AC1C3B591_FILTER</td><td/><td/><td/><td/></row>
-		<row><td>ISX_DEFAULTCOMPONENT5</td><td/><td/><td>_187D8156_08ED_45EC_BFB0_F536BD2784F5_FILTER</td><td/><td/><td/><td/></row>
-		<row><td>ISX_DEFAULTCOMPONENT6</td><td/><td/><td>_207F7A9A_8603_453C_A8D9_52277C2F8AD1_FILTER</td><td/><td/><td/><td/></row>
-		<row><td>ISX_DEFAULTCOMPONENT7</td><td/><td/><td>_72CADB1F_AB4C_4A90_B993_01DC8B2831D9_FILTER</td><td/><td/><td/><td/></row>
-		<row><td>ISX_DEFAULTCOMPONENT8</td><td/><td/><td>_6BB67FC2_5E8A_4B69_B8B6_891D8EAFD395_FILTER</td><td/><td/><td/><td/></row>
+		<row><td>ISX_DEFAULTCOMPONENT5</td><td/><td/><td>_AE68C0C7_2FD9_48EC_93F4_D933939690BE_FILTER</td><td/><td/><td/><td/></row>
+		<row><td>ISX_DEFAULTCOMPONENT6</td><td/><td/><td>_F96884D6_B76D_4355_BCAC_C3E46ACE0178_FILTER</td><td/><td/><td/><td/></row>
+		<row><td>ISX_DEFAULTCOMPONENT7</td><td/><td/><td>_C4F7B60A_3978_4F1F_A84E_1AC693EF4643_FILTER</td><td/><td/><td/><td/></row>
+		<row><td>ISX_DEFAULTCOMPONENT8</td><td/><td/><td>_E263944C_6F7F_433B_9CDA_CE46C3A2AE36_FILTER</td><td/><td/><td/><td/></row>
 		<row><td>ISX_DEFAULTCOMPONENT9</td><td/><td/><td>_058C4015_C81A_4785_BFF0_D8E9F60EB28B_FILTER</td><td/><td/><td/><td/></row>
-		<row><td>libeay32.dll</td><td/><td/><td>_E979097F_AFA8_478C_BB09_2BF2889BC3A4_FILTER</td><td/><td/><td/><td/></row>
-		<row><td>libobjk_odbc.dll</td><td/><td/><td>_438438D5_BB27_4A22_8B40_5516725E21A9_FILTER</td><td/><td/><td/><td/></row>
-		<row><td>libobjk_openssl.dll</td><td/><td/><td>_20F18148_1729_4D5C_98C1_180BBA94F0D3_FILTER</td><td/><td/><td/><td/></row>
-		<row><td>obc.exe</td><td/><td/><td>_ACBFE371_47AA_49B8_A712_0F4D5376126C_FILTER</td><td/><td/><td/><td/></row>
-		<row><td>obd.exe</td><td/><td/><td>_D451CF40_6F98_4E4B_BE5C_FB0A9166AC1B_FILTER</td><td/><td/><td/><td/></row>
-		<row><td>obr.exe</td><td/><td/><td>_C76CCA7C_2B12_4CA5_817A_032B7AB58FD8_FILTER</td><td/><td/><td/><td/></row>
-		<row><td>obu.exe</td><td/><td/><td>_99930FB1_D13F_49F5_B7A0_E7029F6D26BF_FILTER</td><td/><td/><td/><td/></row>
-		<row><td>ssleay32.dll</td><td/><td/><td>_A2A6DEAE_801F_4F26_A334_21BF930762DA_FILTER</td><td/><td/><td/><td/></row>
+		<row><td>libeay32.dll</td><td/><td/><td>_98C3FAFE_0221_4A80_95BD_FD73719D7C40_FILTER</td><td/><td/><td/><td/></row>
+		<row><td>libobjk_odbc.dll</td><td/><td/><td>_5FC6853D_7BC6_4EF7_8D45_053198179DA5_FILTER</td><td/><td/><td/><td/></row>
+		<row><td>libobjk_openssl.dll</td><td/><td/><td>_BB667FD2_D47A_4419_91C9_22269CBEC605_FILTER</td><td/><td/><td/><td/></row>
+		<row><td>obc.exe</td><td/><td/><td>_934480D8_52F0_4D5E_A6F2_0F5CFF80937E_FILTER</td><td/><td/><td/><td/></row>
+		<row><td>obd.exe</td><td/><td/><td>_A0D33AC2_E09C_425B_9A59_52B2BF77D936_FILTER</td><td/><td/><td/><td/></row>
+		<row><td>obr.exe</td><td/><td/><td>_06A149B2_C389_45FE_9FC2_FF69272F73EE_FILTER</td><td/><td/><td/><td/></row>
+		<row><td>obu.exe</td><td/><td/><td>_FB71C924_86C6_4EDA_BCFB_B095661135F2_FILTER</td><td/><td/><td/><td/></row>
+		<row><td>ssleay32.dll</td><td/><td/><td>_B959F0F7_7359_4205_8E9A_5633A36F1E71_FILTER</td><td/><td/><td/><td/></row>
 	</table>
 
 	<table name="ISCustomActionReference">
@@ -3955,7 +4050,7 @@
 		<row><td>ID_STRING31</td><td>1033</td><td>PROGRA~1|Programmer's Guide</td><td>0</td><td/><td>606110350</td></row>
 		<row><td>ID_STRING32</td><td>1033</td><td>Readme</td><td>0</td><td/><td>-1197263764</td></row>
 		<row><td>ID_STRING33</td><td>1033</td><td>PROGRA~1|Programmer’s Guide</td><td>0</td><td/><td>1931659475</td></row>
-		<row><td>ID_STRING34</td><td>1033</td><td>Readme</td><td>0</td><td/><td>-1465578101</td></row>
+		<row><td>ID_STRING34</td><td>1033</td><td>APIDOC~1|API Documentation</td><td>0</td><td/><td>-1465532404</td></row>
 		<row><td>ID_STRING35</td><td>1033</td><td>PROGRA~1|Programmer's Guide</td><td>0</td><td/><td>-165672469</td></row>
 		<row><td>ID_STRING36</td><td>1033</td><td>*=-OBJECK_LIB_PATH</td><td>0</td><td/><td>966889546</td></row>
 		<row><td>ID_STRING37</td><td>1033</td><td>[INSTALLDIR]lib</td><td>0</td><td/><td>-1465545397</td></row>
@@ -3985,8 +4080,6 @@
 		<row><td>ID_STRING59</td><td>1033</td><td>APIDOC~1|API Documentation</td><td>0</td><td/><td>-1197259604</td></row>
 		<row><td>ID_STRING6</td><td>1033</td><td>PROGRA~1|Programmer's Guide</td><td>0</td><td/><td>1402902288</td></row>
 		<row><td>ID_STRING60</td><td>1033</td><td>APIDOC~1|API Documentation</td><td>0</td><td/><td>1831027860</td></row>
-		<row><td>ID_STRING61</td><td>1033</td><td>CODEEX~1|Code Examples</td><td>0</td><td/><td>-1465543285</td></row>
-		<row><td>ID_STRING62</td><td>1033</td><td>COMPIL~1|Compiler and VM</td><td>0</td><td/><td>-1465520757</td></row>
 		<row><td>ID_STRING63</td><td>1033</td><td>PROGRA~1|Programmer's Guide</td><td>0</td><td/><td>-2002508025</td></row>
 		<row><td>ID_STRING64</td><td>1033</td><td>APIDOC~1|API Documentation</td><td>0</td><td/><td>-2002471161</td></row>
 		<row><td>ID_STRING65</td><td>1033</td><td>PROGRA~1|Programmer's Guide</td><td>0</td><td/><td>-601590870</td></row>
@@ -4004,7 +4097,6 @@
 		<row><td>ID_STRING76</td><td>1033</td><td>APIDOC~1|API Documentation</td><td>0</td><td/><td>1445246060</td></row>
 		<row><td>ID_STRING77</td><td>1033</td><td>PROGRA~1|Programmer's Guide</td><td>0</td><td/><td>-1775992266</td></row>
 		<row><td>ID_STRING78</td><td>1033</td><td>APIDOC~1|API Documentation</td><td>0</td><td/><td>-1776000426</td></row>
-		<row><td>ID_STRING79</td><td>1033</td><td>PROGRA~1|Programmer's Guide</td><td>0</td><td/><td>-1465553493</td></row>
 		<row><td>ID_STRING8</td><td>1033</td><td>PROGRA~1|Programmer's Guide</td><td>0</td><td/><td>337554475</td></row>
 		<row><td>ID_STRING9</td><td>1033</td><td>PROGRA~1|Programmer's Guide</td><td>0</td><td/><td>874439083</td></row>
 		<row><td>IIDS_UITEXT_FeatureUninstalled</td><td>1033</td><td>This feature will remain uninstalled.</td><td>0</td><td/><td>-350325556</td></row>
@@ -4146,14 +4238,12 @@
 		<row><td>NewShortcut2_BE046172E5EB4B888CF2CD130859C31A.exe</td><td/><td>C:\Users\Randy Hollines\Documents\Code\v1.1\objeck-lang\images\pdf.ico</td><td>0</td></row>
 		<row><td>NewShortcut2_C062DEFF8A1E436C8CDEBD48A1692113.exe</td><td/><td>C:\Users\Randy Hollines\Documents\Code\images\pdf.ico</td><td>0</td></row>
 		<row><td>NewShortcut2_D42816D3B861491CACEBD31D5592E083.exe</td><td/><td>C:\Users\Randy Hollines (AW)\Documents\Code\main\images\adobe-blueprint-pdf-symbol.ico</td><td>0</td></row>
-		<row><td>NewShortcut2_DB045C3BB8E547028F227C7722E1F086.exe</td><td/><td>D:\Code\objeck-lang\images\readme.ico</td><td>0</td></row>
 		<row><td>NewShortcut2_DD1F65AF36A24BEEA5E119876CA2B75E.exe</td><td/><td>C:\Users\Randy Hollines\Documents\Code\images\pdf.ico</td><td>0</td></row>
 		<row><td>NewShortcut2_E252366C91B148CE95ECA1EF507BFE00.exe</td><td/><td>C:\Users\Randy Hollines\Documents\Code\images\pdf.ico</td><td>0</td></row>
 		<row><td>NewShortcut2_F04637068C7F45D28DEBAC3399FF1362.exe</td><td/><td>C:\Users\Randy\Documents\Code\objeck-lang\images\adobe-blueprint-pdf-symbol.ico</td><td>0</td></row>
 		<row><td>NewShortcut3_07D8E84551F044D592D3F01CF18ADF1E.exe</td><td/><td>D:\Code\objeck-lang\images\adobe-blueprint-pdf-symbol.ico</td><td>0</td></row>
 		<row><td>NewShortcut3_08FC9DFE3B354FCE951EC8D806343E09.exe</td><td/><td>C:\Users\Randy Hollines\Desktop\objeck_r0.9.12_win\objeck_r0.9.12_win\objeck_r0.9.12_win\objeck-lang\README.rtf</td><td>0</td></row>
 		<row><td>NewShortcut3_1C64B98248454613B917537486ED1B8D.exe</td><td/><td>C:\Users\Randy Desktop\Documents\Code\objeck-lang\images\pdf.ico</td><td>0</td></row>
-		<row><td>NewShortcut3_1D171E426C044F6CB9ED8D53C9C85AB9.exe</td><td/><td>D:\Code\objeck-lang\images\Programs.ico</td><td>0</td></row>
 		<row><td>NewShortcut3_2D84039E8E9E4930875D5148D5BF6F91.exe</td><td/><td>C:\Users\Randy Hollines\Documents\Code\main\images\pdf.ico</td><td>0</td></row>
 		<row><td>NewShortcut3_6A038888799A4ABCBD2B12F71EC97FED.exe</td><td/><td>C:\Users\Randy Hollines\Documents\Code\objeck-lang\images\pdf.ico</td><td>0</td></row>
 		<row><td>NewShortcut3_7320DA0CCC13489684FBB3EE342BB9C6.exe</td><td/><td>C:\Users\Randy Desktop\Documents\Code\objeck-lang\images\pdf.ico</td><td>0</td></row>
@@ -4163,7 +4253,6 @@
 		<row><td>NewShortcut3_C555CC5B0101427CBE1E6F1F459C5C4A.exe</td><td/><td>C:\Users\Randy Hollines\Documents\Code\images\pdf.ico</td><td>0</td></row>
 		<row><td>NewShortcut3_EB6490E014594F0196DCC66720C54A3B.exe</td><td/><td>C:\Users\Randy Hollines\Documents\Code\images\folder-blue-open.ico</td><td>0</td></row>
 		<row><td>NewShortcut3_FB727371193C4004982838D09CDDD3A1.exe</td><td/><td>C:\Users\Randy Hollines\Documents\Code\objeck-lang\images\pdf.ico</td><td>0</td></row>
-		<row><td>NewShortcut4_15606A80DAC04907809890C63F547903.exe</td><td/><td>D:\Code\objeck-lang\images\Program-Group.ico</td><td>0</td></row>
 		<row><td>NewShortcut4_8BD206FCD79F41FA897A171A3E7FD2A0.exe</td><td/><td>D:\Code\objeck-lang\images\adobe-blueprint-pdf-symbol.ico</td><td>0</td></row>
 		<row><td>NewShortcut4_D0903C397EEB451284058A3C45113D9F.exe</td><td/><td>D:\Code\objeck-lang\images\books.ico</td><td>0</td></row>
 		<row><td>NewShortcut4_D623D50303DF4830A2976A6072725759.exe</td><td/><td>C:\Users\Randy Hollines\Desktop\objeck_r0.9.12_win\objeck_r0.9.12_win\objeck_r0.9.12_win\objeck-lang\docs\objeck_lang.pdf</td><td>0</td></row>
@@ -4171,7 +4260,6 @@
 		<row><td>NewShortcut5_0F8EB8BCCB4B4F80AD25DCC812CA0B58.exe</td><td/><td>D:\Code\objeck-lang\images\pdf.ico</td><td>0</td></row>
 		<row><td>NewShortcut5_18D3CBFB527041DF9431B1DB3268D58F.exe</td><td/><td>D:\Code\objeck-lang\images\books.ico</td><td>0</td></row>
 		<row><td>NewShortcut5_49A65873A36847778C2B1E1B6223D754.exe</td><td/><td>C:\Users\Randy\Documents\Code\objeck-lang\images\pdf.ico</td><td>0</td></row>
-		<row><td>NewShortcut5_582C85622959425187124CEC7671E4E7.exe</td><td/><td>D:\Code\objeck-lang\images\pdf.ico</td><td>0</td></row>
 		<row><td>NewShortcut5_5C2EF14E3BFD49849ED9D24054074171.exe</td><td/><td>D:\Code\objeck-lang\images\pdf.ico</td><td>0</td></row>
 		<row><td>NewShortcut5_9E2E5B05EE3441A4BF162BF685FFDE79.exe</td><td/><td>D:\Code\objeck-lang\images\adobe-blueprint-pdf-symbol.ico</td><td>0</td></row>
 		<row><td>NewShortcut5_B08F5123D22D453B86C836B1724B300E.exe</td><td/><td>C:\Users\Randy\Documents\Code\objeck-lang\images\books.ico</td><td>0</td></row>
@@ -4185,6 +4273,7 @@
 		<row><td>NewShortcut6_525355E062CE45319B305D4FE7987069.exe</td><td/><td>D:\Code\objeck-lang\images\books.ico</td><td>0</td></row>
 		<row><td>NewShortcut6_5F0A7F028CE1440CB1D0AA4695B2A70E.exe</td><td/><td>D:\Code\objeck-lang\images\books.ico</td><td>0</td></row>
 		<row><td>NewShortcut6_6BDEC59AF81F4464B546CF1F30F54504.exe</td><td/><td>D:\Code\objeck-lang\images\books.ico</td><td>0</td></row>
+		<row><td>NewShortcut6_828A378FE11B42C9A755F2FA54902135.exe</td><td/><td>D:\Code\objeck-lang\images\books.ico</td><td>0</td></row>
 		<row><td>NewShortcut6_D2DB1A06F0504EB184979302DF2A9FEC.exe</td><td/><td>D:\Code\objeck-lang\images\books.ico</td><td>0</td></row>
 		<row><td>NewShortcut6_DCA9E61D1C9946A7987CECDBFACD2CE0.exe</td><td/><td>C:\Users\Randy\Documents\Code\objeck-lang\images\books.ico</td><td>0</td></row>
 		<row><td>NewShortcut6_F14DB2CB898F4897AFDFD9626E849803.exe</td><td/><td>D:\Code\objeck-lang\images\books.ico</td><td>0</td></row>
@@ -4703,7 +4792,7 @@ UwBpAG4AZwBsAGUASQBtAGEAZwBlAAEARQB4AHAAcgBlAHMAcwA=
 		<row><td>PROGMSG_IIS_ROLLBACKWEBSERVICEEXTENSIONS</td><td>##IDS_PROGMSG_IIS_ROLLBACKWEBSERVICEEXTENSIONS##</td><td/></row>
 		<row><td>ProductCode</td><td>{9E21FB04-07B1-4195-A9FE-82B92F3C1A5D}</td><td/></row>
 		<row><td>ProductName</td><td>Objeck</td><td/></row>
-		<row><td>ProductVersion</td><td>3.5.6</td><td/></row>
+		<row><td>ProductVersion</td><td>3.5.7</td><td/></row>
 		<row><td>ProgressType0</td><td>install</td><td/></row>
 		<row><td>ProgressType1</td><td>Installing</td><td/></row>
 		<row><td>ProgressType2</td><td>installed</td><td/></row>
@@ -4721,7 +4810,7 @@ UwBpAG4AZwBsAGUASQBtAGEAZwBlAAEARQB4AHAAcgBlAHMAcwA=
 		<row><td>SecureCustomProperties</td><td>USERNAME;COMPANYNAME;ISX_SERIALNUM;SUPPORTDIR;ISFOUNDNEWERPRODUCTVERSION;ISACTIONPROP1</td><td/></row>
 		<row><td>SelectedSetupType</td><td>##IDS__DisplayName_Typical##</td><td/></row>
 		<row><td>SetupType</td><td>Typical</td><td/></row>
-		<row><td>UpgradeCode</td><td>{BCAF8370-9637-4F74-ADFD-CE6FBA5347A6}</td><td/></row>
+		<row><td>UpgradeCode</td><td>{C58C7804-FABF-45EC-B716-49A279B6ACE9}</td><td/></row>
 		<row><td>_IsMaintenance</td><td>Change</td><td/></row>
 		<row><td>_IsSetupTypeMin</td><td>Typical</td><td/></row>
 	</table>
@@ -4782,10 +4871,7 @@ UwBpAG4AZwBsAGUASQBtAGEAZwBlAAEARQB4AHAAcgBlAHMAcwA=
 		<col def="s72">DirProperty</col>
 		<col def="i2">InstallMode</col>
 		<row><td>NewShortcut1</td><td>ISX_DEFAULTCOMPONENT</td><td/><td>newfolder1</td><td>2</td></row>
-		<row><td>NewShortcut2</td><td>ISX_DEFAULTCOMPONENT</td><td/><td>newfolder1</td><td>2</td></row>
-		<row><td>NewShortcut3</td><td>ISX_DEFAULTCOMPONENT</td><td/><td>newfolder1</td><td>2</td></row>
-		<row><td>NewShortcut4</td><td>ISX_DEFAULTCOMPONENT</td><td/><td>newfolder1</td><td>2</td></row>
-		<row><td>NewShortcut5</td><td>ISX_DEFAULTCOMPONENT2</td><td/><td>newfolder1</td><td>2</td></row>
+		<row><td>NewShortcut6</td><td>ISX_DEFAULTCOMPONENT3</td><td/><td>newfolder1</td><td>2</td></row>
 	</table>
 
 	<table name="RemoveIniFile">
@@ -4871,10 +4957,7 @@ UwBpAG4AZwBsAGUASQBtAGEAZwBlAAEARQB4AHAAcgBlAHMAcwA=
 		<col def="S255">ISComments</col>
 		<col def="S255">ISShortcutName</col>
 		<col def="I4">ISAttributes</col>
-		<row><td>NewShortcut2</td><td>newfolder1</td><td>##ID_STRING34##</td><td>ISX_DEFAULTCOMPONENT</td><td>AlwaysInstall</td><td/><td/><td/><td>NewShortcut2_DB045C3BB8E547028F227C7722E1F086.exe</td><td>0</td><td>1</td><td/><td/><td/><td/><td/><td/><td/><td/></row>
-		<row><td>NewShortcut3</td><td>newfolder1</td><td>##ID_STRING61##</td><td>ISX_DEFAULTCOMPONENT</td><td>[EXAMPLES]</td><td/><td/><td/><td>NewShortcut3_1D171E426C044F6CB9ED8D53C9C85AB9.exe</td><td>0</td><td>1</td><td/><td/><td/><td/><td/><td/><td/><td/></row>
-		<row><td>NewShortcut4</td><td>newfolder1</td><td>##ID_STRING62##</td><td>ISX_DEFAULTCOMPONENT</td><td>[BIN]</td><td/><td/><td/><td>NewShortcut4_15606A80DAC04907809890C63F547903.exe</td><td>0</td><td>1</td><td/><td/><td/><td/><td/><td/><td/><td/></row>
-		<row><td>NewShortcut5</td><td>newfolder1</td><td>##ID_STRING79##</td><td>ISX_DEFAULTCOMPONENT2</td><td>AlwaysInstall</td><td/><td/><td/><td>NewShortcut5_582C85622959425187124CEC7671E4E7.exe</td><td>0</td><td>1</td><td/><td/><td/><td/><td/><td/><td/><td/></row>
+		<row><td>NewShortcut6</td><td>newfolder1</td><td>##ID_STRING34##</td><td>ISX_DEFAULTCOMPONENT3</td><td>AlwaysInstall</td><td/><td/><td/><td>NewShortcut6_828A378FE11B42C9A755F2FA54902135.exe</td><td>0</td><td>1</td><td/><td/><td/><td/><td/><td/><td/><td/></row>
 	</table>
 
 	<table name="Signature">
