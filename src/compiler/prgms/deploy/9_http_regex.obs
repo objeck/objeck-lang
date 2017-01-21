@@ -1,0 +1,23 @@
+use HTTP;
+use RegEx;
+
+class RegExUrls {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() <> 1) { return; };
+		
+		lines := HttpClient->New()->Get(args[0]);
+		input := "";
+		each(i : lines) {
+			input->Append(lines->Get(i)->As(String));
+		};
+		
+		input->PrintLine();
+		expr := "(href|HREF|src|SRC)=(\"|')(http://|https://|/)?((\\w|\\d|-|_)+(\\.|/)?)+(\\?(\\w|\\d|-|_)+=(\\w|\\d|-|_)+)?(&(\\w|\\d|-|_)+=(\\w|\\d|-|_)+)?(\"|')";
+		
+		found := RegEx->New(expr)->Find(input);
+		"---"->PrintLine();
+		each(i : found) {
+			found->Get(i)->As(String)->PrintLine();
+		};
+	}
+}

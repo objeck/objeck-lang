@@ -33,11 +33,10 @@ devenv /rebuild Release odbc.sln
 copy Release\*.dll ..\..\objeck\deploy\lib\native
 cd ..\..\objeck
 REM copy examples
-xcopy /e ..\compiler\rc\* deploy\examples\
+xcopy /e ..\compiler\prgms\rc\* deploy\examples\
+xcopy /e ..\compiler\prgms\doc\* deploy\examples\
 REM build and update docs
-mkdir deploy\doc
-REM %LATEX_BIN%\pdflatex ..\..\docs\guide\objeck_lang.tex
-REM copy objeck_lang.pdf deploy\doc 
+mkdir deploy\doc 
 copy ..\..\docs\guide\objeck_lang.pdf deploy\doc 
 mkdir deploy\doc\syntax
 copy ..\..\docs\syntax\* deploy\doc\syntax
@@ -55,7 +54,7 @@ copy ..\lib\fcgi\windows\lib\*.dll deploy_fcgi\bin
 copy redistrib\*.dll deploy_fcgi\bin
 copy Release\libobjk_fcgi.dll deploy_fcgi\lib\native
 mkdir deploy_fcgi\examples
-copy ..\compiler\web\* deploy_fcgi\examples
+copy ..\compiler\prgms\web\* deploy_fcgi\examples
 copy /y ..\..\docs\fcgi_readme.htm deploy_fcgi\readme.htm
 mkdir deploy_fcgi\fcgi_readme_files
 copy ..\..\docs\fcgi_readme_files\* deploy_fcgi\fcgi_readme_files
