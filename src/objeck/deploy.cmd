@@ -19,7 +19,7 @@ del deploy\lib\gtk2.obl
 del deploy\lib\sdl.obl
 del deploy\lib\db.obl
 del /q deploy\bin\a.*
-copy ..\vm\*.pem deploy\bin
+copy ..\vm\*.pem deploy\lib
 REM openssl support
 mkdir deploy\lib\native
 cd ..\lib\openssl\openssl
