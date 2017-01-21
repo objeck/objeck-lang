@@ -1,3 +1,8 @@
+#~
+# compile: obc -src 0_hello.obs -dest hello.obe
+# run: obr hello.obe
+~#
+
 class Hello {
   function : Main(args : String[]) ~ Nil {
     "Hello World"->PrintLine();

@@ -1,4 +1,10 @@
-﻿use HTTP;
+﻿#~
+# compile: obc -src 8_http_xml.obs -lib xml.obl,regex.obl,collect.obl -dest lang_rank.obe
+# run: obr lang_rank.obe
+# note: takes a few seconds to run
+~#
+
+use HTTP;
 use RegEx;
 use XML;
 use Collection;
