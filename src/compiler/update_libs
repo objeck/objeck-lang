@@ -1,11 +1,12 @@
 #!/bin/sh
+mv lang.obl ../lib
 ./obc -src lib_src/collect.obs -tar lib -opt s3 -dest collect.obl
 ./obc -src lib_src/xml.obs -lib collect.obl -tar lib -opt s3 -dest xml.obl
 ./obc -src lib_src/json.obs -lib collect.obl -tar lib -opt s3 -dest json.obl
 ./obc -src lib_src/encrypt.obs -lib collect.obl -tar lib -opt s3 -dest encrypt.obl
 ./obc -src lib_src/odbc.obs -lib collect.obl -tar lib -opt s3 -dest odbc.obl
 ./obc -src lib_src/regex.obs -lib collect.obl -tar lib -opt s3 -dest regex.obl
-./obc -src lib_src/fcgi.obs -lib collect.obl,json.obl -tar lib -opt s3 -dest fcgi.obl
+# ./obc -src lib_src/fcgi.obs -lib collect.obl,json.obl -tar lib -opt s3 -dest fcgi.obl
 ./obc -src lib_src/csv.obs -tar lib -lib collect.obl -opt s3 -dest csv.obl
 ./obc -src lib_src/db.obs -tar lib -lib collect.obl -opt s3 -dest db.obl
 mv *.obl ../lib
