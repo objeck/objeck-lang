@@ -143,8 +143,8 @@ unzip docs/api.zip -d src/objeck/deploy/doc
 # copy examples
 mkdir src/objeck/deploy/examples
 cp src/compiler/prgms/deploy/*.obs src/objeck/deploy/examples
-cp -ar src/compiler/prgms/doc src/objeck/deploy/examples
-cp -ar src/compiler/prgms/tiny src/objeck/deploy/examples
+cp -aR src/compiler/prgms/doc src/objeck/deploy/examples
+cp -aR src/compiler/prgms/tiny src/objeck/deploy/examples
 
 # create and build fcgi
 cd src/objeck
