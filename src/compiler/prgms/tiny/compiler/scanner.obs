@@ -41,7 +41,6 @@ class Scanner {
 					  
 			i := 0;  
 			while(i < line->Size()) {  
-				line->Trim();
 				# skip whitespace
 				while((line->Get(i) = ' ' | line->Get(i) = '\t') & i < line->Size()) {
 					i += 1;
@@ -196,9 +195,6 @@ class Scanner {
 								};
 							}
 							
-							label '\r':
-							label '\n': {}
-              
 							other: {
 								System.IO.Console->Print("*** Invalid token: char='")->Print(line->Get(i))->PrintLine("' ***");
 							}
