@@ -2996,7 +2996,11 @@ bool TrapProcessor::FileInString(StackProgram* program, long* inst, long* &op_st
     if(file && fgets(buffer, SMALL_BUFFER_MAX, file)) {
       long end_index = strlen(buffer) - 1;
       if(end_index > -1) {
-        if(buffer[end_index] == '\n') {
+        if(buffer[end_index] == '\n' || buffer[end_index] == '\r') {
+          buffer[end_index] = '\0';
+        }
+
+        if(--end_index > -1 && buffer[end_index] == '\r') {
           buffer[end_index] = '\0';
         }
       }

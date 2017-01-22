@@ -179,7 +179,7 @@ class Interpreter {
 		};
 
 		while(<>reader->IsEOF()) {
-			line := reader->ReadString()->Trim();
+			line := reader->ReadString();
 			opers := line->Split("\t");
 			if(opers <> Nil) {
 				if(opers->Size() = 2) {
