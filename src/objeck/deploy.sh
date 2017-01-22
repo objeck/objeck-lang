@@ -141,7 +141,9 @@ cp docs/readme.htm src/objeck/deploy
 unzip docs/api.zip -d src/objeck/deploy/doc
 
 # copy examples
-cp -R src/compiler/rc src/objeck/deploy/examples
+cp -R src/compiler/prgms/deploy/*.obs src/objeck/deploy/examples/
+cp -R src/compiler/prgms/doc src/objeck/deploy/examples/
+cp -R src/compiler/prgms/tiny src/objeck/deploy/examples/
 
 # create and build fcgi
 cd src/objeck

@@ -135,16 +135,17 @@ class Interpreter {
 	}
 	
 	method : native : Load() ~ Nil {
-		reader := FileReader->New(@file);
+		reader := FileReader->New(@file);	
 		leaving {
 			reader->Close();
 		};
 		
-		string_count := reader->ReadString()->ToInt();
+		line := reader->ReadString()->Trim();
+		string_count := line->ToInt();		
 		@strings := String->New[string_count];
 		for(i := 0; i < string_count; i += 1;) {
 			string := "";
-			line := reader->ReadString();
+			line := reader->ReadString()->Trim();
 			each(j : line) {
 				c := line->Get(j);
 				if(c = '\\' & j + 1 < line->Size()) {
@@ -176,9 +177,9 @@ class Interpreter {
 			};
 			@strings[i] := string;
 		};
-		
+
 		while(<>reader->IsEOF()) {
-			line := reader->ReadString();
+			line := reader->ReadString()->Trim();
 			opers := line->Split("\t");
 			if(opers <> Nil) {
 				if(opers->Size() = 2) {

@@ -40,6 +40,7 @@ xcopy /e ..\compiler\prgms\deploy\*.obs deploy\examples\
 xcopy /e ..\compiler\prgms\doc\* deploy\examples\doc\
 xcopy /e ..\compiler\prgms\tiny\* deploy\examples\tiny\
 del  /s /q ..\compiler\prgms\tiny\*.obe
+del  /s /q ..\compiler\prgms\tiny\*.e
 REM build and update docs
 mkdir deploy\doc 
 copy ..\..\docs\guide\objeck_lang.pdf deploy\doc 
