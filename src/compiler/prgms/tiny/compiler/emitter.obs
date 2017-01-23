@@ -19,11 +19,9 @@ class Emitter {
 		leaving {
 			out->Close();
 		};
-	
+		
 		Strings(out);
 		Statements(@statements);
-		
-		
 		
 		each(i : @instructions) {
 			instruction := @instructions->Get(i)->As(Instruction);
@@ -146,7 +144,6 @@ class Emitter {
 				}
 				
 				label ParseNode->Type->IF: {
-					start := @code_index;
 					if(<>Expression(node->GetLeft())) {
 						return false;
 					};
@@ -156,7 +153,20 @@ class Emitter {
 					if(<>Statements(node->GetStatements())) {
 						return false;
 					};
-					cond_jmp->SetValue(@code_index);				
+					
+					if(node->GetRight() = Nil) {
+						cond_jmp->SetValue(@code_index);
+					};
+					
+					if(node->GetRight() <> Nil) {
+							cond_jmp->SetValue(@code_index + 1);
+						cond_jmp := Instruction->New(Instruction->Type->JP);
+						@instructions->AddBack(cond_jmp);
+						if(<>Statements(node->GetRight()->GetStatements())) {
+							return false;
+						};
+						cond_jmp->SetValue(@code_index + 1);
+					};
 				}
 				
 				label ParseNode->Type->WHILE: {

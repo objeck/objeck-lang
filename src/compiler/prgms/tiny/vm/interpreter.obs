@@ -145,7 +145,7 @@ class Interpreter {
 		@strings := String->New[string_count];
 		for(i := 0; i < string_count; i += 1;) {
 			string := "";
-			line := reader->ReadString()->Trim();
+			line := reader->ReadString();
 			each(j : line) {
 				c := line->Get(j);
 				if(c = '\\' & j + 1 < line->Size()) {
