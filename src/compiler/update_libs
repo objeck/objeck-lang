@@ -1,4 +1,5 @@
 #!/bin/sh
+make clean; make Makefile.SYS.32
 mv lang.obl ../lib
 ./obc -src lib_src/collect.obs -tar lib -opt s3 -dest collect.obl
 ./obc -src lib_src/xml.obs -lib collect.obl -tar lib -opt s3 -dest xml.obl
