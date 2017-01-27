@@ -392,7 +392,7 @@ class ContextAnalyzer {
 
   // returns true if entry static cotext is not valid
   inline bool DuplicateParentEntries(SymbolEntry* entry, Class* klass) {
-    if(klass->GetParent() && (!entry->IsLocal() || entry->IsStatic())) {
+    if(klass->GetParent() && klass->GetParent()->GetSymbolTable() && (!entry->IsLocal() || entry->IsStatic())) {
       Class* parent = klass->GetParent();
       do {
         size_t offset = entry->GetName().find(L':');
@@ -400,11 +400,6 @@ class ContextAnalyzer {
           ++offset;
           const wstring short_name = entry->GetName().substr(offset, entry->GetName().size() - offset);
           const wstring lookup = parent->GetName() + L":" + short_name;
-          if(!parent->GetSymbolTable()) {
-            // false postive... other things have gone wrong
-            return false;
-          }
-
           SymbolEntry* parent_entry = parent->GetSymbolTable()->GetEntry(lookup);
           if(parent_entry) {
             return true;
