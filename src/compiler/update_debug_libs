@@ -1,5 +1,0 @@
-#!/bin/sh
-./obc -src lib_src/struct.obs -tar lib -opt s3 -dest debug/struct.obl -debug
-./obc -src lib_src/xml.obs -lib struct.obl -tar lib -opt s3 -dest debug/xml.obl -debug
-./obc -src lib_src/odbc.obs -lib struct.obl -tar lib -opt s3 -dest debug/odbc.obl -debug
-./obc -src lib_src/regex.obs -lib struct.obl -tar lib -opt s3 -dest regex.obl -debug
