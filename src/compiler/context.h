@@ -400,6 +400,10 @@ class ContextAnalyzer {
           ++offset;
           const wstring short_name = entry->GetName().substr(offset, entry->GetName().size() - offset);
           const wstring lookup = parent->GetName() + L":" + short_name;
+          if(!parent->GetSymbolTable()) {
+            return true;
+          }
+
           SymbolEntry* parent_entry = parent->GetSymbolTable()->GetEntry(lookup);
           if(parent_entry) {
             return true;
