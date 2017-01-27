@@ -2131,6 +2131,7 @@ namespace frontend {
       is_virtual = false;
       was_called = false;
       anonymous_call = NULL;
+      symbol_table = NULL;
     }
 
     ~Class() {
