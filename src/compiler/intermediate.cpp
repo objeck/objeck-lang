@@ -2,7 +2,7 @@
  * Translates a parse tree into an intermediate format.  This format
  * is used for optimizations and target output.
  *
- * Copyright (c) 2008-2015, Randy Hollines
+ * Copyright (c) 2008-2017, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -2317,9 +2317,6 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
     EmitCalculation(static_cast<CalculatedExpression*>(expression));
     break;
   }
-  
-  // class cast
-  // EmitClassCast(expression);
   
   // note: all nested method calls of type METHOD_CALL_EXPR
   // are processed above
