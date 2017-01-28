@@ -4416,12 +4416,18 @@ int IntermediateEmitter::CalculateEntrySpace(IntermediateDeclarations* declarati
   // class
   if(!current_method) {
     SymbolTableManager* symbol_table = parsed_bundle->GetSymbolTableManager();
-
     // inspect parent classes
     Class* parent = current_class->GetParent();
     if(parent) {
       while(parent) {
         SymbolTable* table = symbol_table->GetSymbolTable(parent->GetName());
+        // parent may be defined in another file
+        if(!table) {
+          Class* prgm_cls = SearchProgramClasses(parent->GetName());
+          if(prgm_cls) {
+            table = prgm_cls->GetSymbolTable();
+          }
+        }
         size += CalculateEntrySpace(table, index, declarations, is_static);
         Class* tmp = SearchProgramClasses(parent->GetParentName());
         if(tmp == parent) {
@@ -4453,7 +4459,6 @@ int IntermediateEmitter::CalculateEntrySpace(IntermediateDeclarations* declarati
     if(current_method->HasAndOr()) {
       size = index = 1;
     }
-
     size = CalculateEntrySpace(current_table, index, declarations, false);
   }
 
