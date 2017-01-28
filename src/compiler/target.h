@@ -1527,7 +1527,7 @@ namespace backend {
     void Debug() {
       wcout << L"Strings:" << endl;
       for(size_t i = 0; i < char_strings.size(); ++i) {
-        wcout << L"wstring id=" << i << L", size='" << ToString(char_strings[i].size()) << L"'" << endl;
+        wcout << L"wstring id=" << i << L", size='" << ToString(char_strings[i].size()) << L"': '" << char_strings[i] << L"'" << endl;
       }
       wcout << endl;
 

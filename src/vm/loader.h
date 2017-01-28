@@ -76,8 +76,10 @@ class Loader {
    
     wstring out;
     if(!BytesToUnicode(in, out)) {
-      wcerr << L">>> Unable to read unicode string <<<" << endl;
-      exit(1);
+      wstring dummy(size, L' ');
+      return dummy;
+      //      wcerr << L">>> Unable to read unicode string <<<" << endl;
+      //      exit(1);
     }
     
     return out;
