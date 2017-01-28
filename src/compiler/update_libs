@@ -6,8 +6,10 @@ mv lang.obl ../lib
 make -f Makefile.32 clean
 make -f Makefile.32
 ./obc -src lib_src/collect.obs -tar lib -opt s3 -dest collect.obl
+mv collect.obl ../lib
 ./obc -src lib_src/xml.obs -lib collect.obl -tar lib -opt s3 -dest xml.obl
 ./obc -src lib_src/json.obs -lib collect.obl -tar lib -opt s3 -dest json.obl
+mv json.obl ../lib
 ./obc -src lib_src/encrypt.obs -lib collect.obl -tar lib -opt s3 -dest encrypt.obl
 ./obc -src lib_src/odbc.obs -lib collect.obl -tar lib -opt s3 -dest odbc.obl
 ./obc -src lib_src/regex.obs -lib collect.obl -tar lib -opt s3 -dest regex.obl
