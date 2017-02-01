@@ -1,19 +1,15 @@
 #!/bin/sh
 make -f Makefile.SYS.32 clean
 make -f Makefile.SYS.32
-./obc -src lib_src/lang.obs -tar lib -opt s2 -dest lang.obl 
-mv lang.obl ../lib
+./obc -src lib_src/lang.obs -tar lib -opt s2 -dest ../lib/lang.obl 
 make -f Makefile.32 clean
 make -f Makefile.32
-./obc -src lib_src/collect.obs -tar lib -opt s3 -dest collect.obl
-mv collect.obl ../lib
-./obc -src lib_src/xml.obs -lib collect.obl -tar lib -opt s3 -dest xml.obl
-./obc -src lib_src/json.obs -lib collect.obl -tar lib -opt s3 -dest json.obl
-mv json.obl ../lib
-./obc -src lib_src/encrypt.obs -lib collect.obl -tar lib -opt s3 -dest encrypt.obl
-./obc -src lib_src/odbc.obs -lib collect.obl -tar lib -opt s3 -dest odbc.obl
-./obc -src lib_src/regex.obs -lib collect.obl -tar lib -opt s3 -dest regex.obl
-# ./obc -src lib_src/fcgi.obs -lib collect.obl,json.obl -tar lib -opt s3 -dest fcgi.obl
-./obc -src lib_src/csv.obs -tar lib -lib collect.obl -opt s3 -dest csv.obl
-./obc -src lib_src/db.obs -tar lib -lib collect.obl -opt s3 -dest db.obl
-mv *.obl ../lib
+./obc -src lib_src/collect.obs -tar lib -opt s3 -dest ../lib/collect.obl
+./obc -src lib_src/xml.obs -lib collect.obl -tar lib -opt s3 -dest ../lib/xml.obl
+./obc -src lib_src/json.obs -lib collect.obl -tar lib -opt s3 -dest ../lib/json.obl
+./obc -src lib_src/encrypt.obs -lib collect.obl -tar lib -opt s3 -dest ../lib/encrypt.obl
+./obc -src lib_src/odbc.obs -lib collect.obl -tar lib -opt s3 -dest ../lib/odbc.obl
+./obc -src lib_src/regex.obs -lib collect.obl -tar lib -opt s3 -dest ../lib/regex.obl
+# ./obc -src lib_src/fcgi.obs -lib collect.obl,json.obl -tar lib -opt s3 -dest ../lib/fcgi.obl
+./obc -src lib_src/csv.obs -tar lib -lib collect.obl -opt s3 -dest ../lib/csv.obl
+./obc -src lib_src/db.obs -tar lib -lib collect.obl -opt s3 -dest ../lib/db.obl

@@ -22,11 +22,11 @@ class Scanner {
 	
 	method : public : native : Scan() ~ Bool {
 		reserved := StringMap->New();
-		reserved->Insert("while", Token->New(Token->Type->WHILE, "while"));
-		reserved->Insert("if", Token->New(Token->Type->IF, "if"));
-		reserved->Insert("else", Token->New(Token->Type->ELSE, "else"));
-		reserved->Insert("print", Token->New(Token->Type->PRINT, "print"));
-		reserved->Insert("put", Token->New(Token->Type->PUT, "put"));
+		reserved->Insert("while", IntHolder->New(Token->Type->WHILE->As(Int)));
+		reserved->Insert("if", IntHolder->New(Token->Type->IF->As(Int)));
+		reserved->Insert("else", IntHolder->New(Token->Type->ELSE->As(Int)));
+		reserved->Insert("print", IntHolder->New(Token->Type->PRINT->As(Int)));
+		reserved->Insert("put", IntHolder->New(Token->Type->PUT->As(Int)));
 		
 		reader := FileReader->New(@file);
 		leaving {
@@ -56,12 +56,13 @@ class Scanner {
 							i += 1;
 						};
 					
-						token := reserved->Find(string)->As(Token);
+						token := reserved->Find(string)->As(IntHolder);
 						if(token <> Nil) {
-							@tokens->AddBack(token);
+							type := token->Get()->As(Token->Type);
+							@tokens->AddBack(Token->New(line_num, type, string));
 						}
 						else {
-							@tokens->AddBack(Token->New(Token->Type->VAR, string));
+							@tokens->AddBack(Token->New(line_num, Token->Type->VAR, string));
 						};
 					}
 					# number
@@ -71,19 +72,19 @@ class Scanner {
 							number->Append(line->Get(i));
 							i += 1;
 						};						
-						@tokens->AddBack(Token->New(Token->Type->NUM, "num", number->ToInt()));
+						@tokens->AddBack(Token->New(line_num, Token->Type->NUM, "num", number->ToInt()));
 					}
 					# string
 					else if(line->Get(i) = '"') {
 						i += 1;
 						string := "";
-						while(line->Get(i) <> '"') {
+						while(line->Get(i) <> '"' & line->Get(i) <> '\0') {
 							string->Append(line->Get(i));
 							i += 1;
 						};
 						@strings->AddBack(string);
 						
-						@tokens->AddBack(Token->New(Token->Type->STR_REF, "string", string_count));						
+						@tokens->AddBack(Token->New(line_num, Token->Type->STR_REF, "string", string_count));						
 						string_count += 1;
 						i += 1;
 					}
@@ -91,107 +92,107 @@ class Scanner {
 					else {
 						select(line->Get(i)) {
 							label ',': {
-								@tokens->AddBack(Token->New(Token->Type->COMMA, "comma"));
+								@tokens->AddBack(Token->New(line_num, Token->Type->COMMA, "comma"));
 							}
 							
 							label '(': {
-								@tokens->AddBack(Token->New(Token->Type->OPREN, "opren"));
+								@tokens->AddBack(Token->New(line_num, Token->Type->OPREN, "opren"));
 							}
 						
 							label ')': {
-								@tokens->AddBack(Token->New(Token->Type->CPREN, "cpren"));
+								@tokens->AddBack(Token->New(line_num, Token->Type->CPREN, "cpren"));
 							}
 				
 							label '{': {
 								
-								@tokens->AddBack(Token->New(Token->Type->OCBRACE, "ocbrace"));
+								@tokens->AddBack(Token->New(line_num, Token->Type->OCBRACE, "ocbrace"));
 							}
 				
 							label '}': {
-								@tokens->AddBack(Token->New(Token->Type->CCBRACE, "ccbrace"));
+								@tokens->AddBack(Token->New(line_num, Token->Type->CCBRACE, "ccbrace"));
 							}
 						
 							label '/': {
-								@tokens->AddBack(Token->New(Token->Type->DIV, "div"));
+								@tokens->AddBack(Token->New(line_num, Token->Type->DIV, "div"));
 							}
 							
 							label '%': {
-								@tokens->AddBack(Token->New(Token->Type->MOD, "mod"));
+								@tokens->AddBack(Token->New(line_num, Token->Type->MOD, "mod"));
 							}
 
 							label '*': {
-								@tokens->AddBack(Token->New(Token->Type->MUL, "mul"));
+								@tokens->AddBack(Token->New(line_num, Token->Type->MUL, "mul"));
 							}
 
 							label '+': {
-								@tokens->AddBack(Token->New(Token->Type->ADD, "add"));
+								@tokens->AddBack(Token->New(line_num, Token->Type->ADD, "add"));
 							}
 
 							label '-': {
-								@tokens->AddBack(Token->New(Token->Type->SUB, "sub"));
+								@tokens->AddBack(Token->New(line_num, Token->Type->SUB, "sub"));
 							}
 						
 							label ';': {
-								@tokens->AddBack(Token->New(Token->Type->SEMI, "semi-colon"));
+								@tokens->AddBack(Token->New(line_num, Token->Type->SEMI, "semi-colon"));
 							}
 							
 							label '<': {
 								if(i + 1 < line->Size() & line->Get(i + 1) = '=') {
-									@tokens->AddBack(Token->New(Token->Type->LESS_EQL, "equal"));
+									@tokens->AddBack(Token->New(line_num, Token->Type->LESS_EQL, "equal"));
 									i += 1;
 								}
 								else {
-									@tokens->AddBack(Token->New(Token->Type->LESS, "less"));
+									@tokens->AddBack(Token->New(line_num, Token->Type->LESS, "less"));
 								};
 							}
 							
 							label '>': {
 								if(i + 1 < line->Size() & line->Get(i + 1) = '=') {
-									@tokens->AddBack(Token->New(Token->Type->GTR_EQL, "equal"));
+									@tokens->AddBack(Token->New(line_num, Token->Type->GTR_EQL, "equal"));
 									i += 1;
 								}
 								else {
-									@tokens->AddBack(Token->New(Token->Type->GTR, "gtr"));
+									@tokens->AddBack(Token->New(line_num, Token->Type->GTR, "gtr"));
 								};
 							}
 							
 							label '=': {
 								if(i + 1 < line->Size() & line->Get(i + 1) = '=') {
-									@tokens->AddBack(Token->New(Token->Type->EQL, "equal"));
+									@tokens->AddBack(Token->New(line_num, Token->Type->EQL, "equal"));
 									i += 1;
 								}
 								else {
-									@tokens->AddBack(Token->New(Token->Type->ASGN, "asgn"));
+									@tokens->AddBack(Token->New(line_num, Token->Type->ASGN, "asgn"));
 								};
 							}
 							
 							label '&': {
 								if(i + 1 < line->Size() & line->Get(i + 1) = '&') {
-									@tokens->AddBack(Token->New(Token->Type->AND, "and"));
+									@tokens->AddBack(Token->New(line_num, Token->Type->AND, "and"));
 									i += 1;
 								}
 								else {
-									@tokens->AddBack(Token->New(Token->Type->OTHER, "OTHER"));
+									@tokens->AddBack(Token->New(line_num, Token->Type->OTHER, "OTHER"));
 								};
 							}
 							
 							label '|': {
 								if(i + 1 < line->Size() & line->Get(i + 1) = '|') {
-									@tokens->AddBack(Token->New(Token->Type->OR, "or"));
+									@tokens->AddBack(Token->New(line_num, Token->Type->OR, "or"));
 									i += 1;
 								}
 								else {
-									@tokens->AddBack(Token->New(Token->Type->OTHER, "OTHER"));
+									@tokens->AddBack(Token->New(line_num, Token->Type->OTHER, "OTHER"));
 								};
 							}
 							
 							label '!': {
 								if(i + 1 < line->Size() & line->Get(i + 1) = '=') {
-									@tokens->AddBack(Token->New(Token->Type->NEQL, "neql"));
+									@tokens->AddBack(Token->New(line_num, Token->Type->NEQL, "neql"));
 									i += 1;
 								}
 								else {
-									@tokens->AddBack(Token->New(Token->Type->NOT, "not"));
+									@tokens->AddBack(Token->New(line_num, Token->Type->NOT, "not"));
 								};
 							}
 							
@@ -205,7 +206,7 @@ class Scanner {
 				};
 			};
 		};
-		@tokens->AddBack(Token->New(Token->Type->EOS, "eos"));
+		@tokens->AddBack(Token->New(line_num, Token->Type->EOS, "eos"));
 		
 		return true;
 	}
@@ -239,6 +240,7 @@ class Scanner {
 }
 
 class Token {
+	@line_num : Int;
 	@type : Type;
 	@name : String;
 	@value : Int;
@@ -277,17 +279,23 @@ class Token {
 		OTHER
 	}
 	
-	New(type : Type, name : String) {
+	New(line_num : Int, type : Type, name : String) {
+		@line_num := line_num;
 		@type := type;
 		@name := name;
 	}
 	
-	New(type : Type, name : String, value : Int) {
+	New(line_num : Int, type : Type, name : String, value : Int) {
+		@line_num := line_num;
 		@type := type;
 		@value := value;
 		@name := name;
 	}
-		
+	
+	method : public : GetLine() ~ Int {
+		return @line_num;
+	}
+	
 	method : public : GetType() ~ Type {
 		return @type;
 	}

@@ -4504,7 +4504,7 @@ bundle HTTP {
 	~#
 	class UrlUtility {
 		#~
-		Encodes a HTTP or XML string
+		General encoding for HTML or XML strings
 		@param str string to encode 
 		@return encoded string 
 		~#
@@ -4514,7 +4514,7 @@ bundle HTTP {
 				c := str->Get(i);
 				select(c) {
 					label ' ': {
-						buffer->Append('+');
+						buffer->Append("%20");
 					}
 
 					label ';': {
@@ -4623,7 +4623,7 @@ bundle HTTP {
 		}
 
 		#~
-		Decodes a HTML or XML string		
+		General decoding for HTML or XML strings		
 		@param str encoded string
 		@return decoded string
 		~#
@@ -4631,10 +4631,7 @@ bundle HTTP {
 			buffer := String->New();
 			each(i : str) {
 				c := str->Get(i);
-				if(c = '+') {
-					buffer->Append(' ');
-				}
-				else if(c = '%' & i + 2 < str->Size()) {
+				if(c = '%' & i + 2 < str->Size()) {
 					value := "0x";
 					value->Append(str->Get(i + 1));
 					value->Append(str->Get(i + 2));
