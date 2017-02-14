@@ -41,29 +41,29 @@ class Test {
 				while( <>quit )
 				{
 					# Handle events on queue
-					while( Core->PollEvent( e ) <> 0 ) {
+					while( e->Poll() <> 0 ) {
 						# User requests quit
-						if( e->Type() = Flags->SDL_QUIT->As(Int) ) {
+						if( e->GetType() = Flags->SDL_QUIT->As(Int) ) {
 							quit := true;
 						}
 						# User presses a key
-						else if( e->Type() = Flags->SDL_KEY_DOWN->As(Int) ) {
+						else if( e->GetType() = Flags->SDL_KEY_DOWN->As(Int) ) {
 							# Select surfaces based on key press
-							select( e->GetKeyboardEvent()->GetKeySymbol() )
+							select( e->GetKey()->GetKeysym()->GetScancode() )
 							{							
-								label SDLK->UP: {
+								label Scancode->SCANCODE_UP: {
 									@current_surface := @key_press_surfaces[ KeyPressSurfaces->KEY_PRESS_SURFACE_UP ];
 								}
 
-								label SDLK->DOWN: {
+								label Scancode->SCANCODE_DOWN: {
 									@current_surface := @key_press_surfaces[ KeyPressSurfaces->KEY_PRESS_SURFACE_DOWN ];
 								}
 
-								label SDLK->LEFT: {
+								label Scancode->SCANCODE_LEFT: {
 									@current_surface := @key_press_surfaces[ KeyPressSurfaces->KEY_PRESS_SURFACE_LEFT ];
 								}
 
-								label SDLK->RIGHT: {
+								label Scancode->SCANCODE_RIGHT: {
 									@current_surface := @key_press_surfaces[ KeyPressSurfaces->KEY_PRESS_SURFACE_RIGHT ];
 								}
 
@@ -75,7 +75,7 @@ class Test {
 					};
 
 					# Apply the image
-					@current_surface->Blit( Nil, @screen_surface, Nil );
+					@current_surface->UpperBlitScaled( Nil, @screen_surface, Nil );
 				
 					# Update the surface
 					@window->UpdateSurface();
@@ -99,14 +99,8 @@ class Test {
 			# Create window
 			@window := Window->New( "SDL Tutorial", Flags->SDL_WINDOW_POS_UNDEFINED->As(Int), 
 				Flags->SDL_WINDOW_POS_UNDEFINED->As(Int), 640, 480, Flags->SDL_WINDOW_SHOWN->As(Int));
-			if(<>@window->Ok())	{
-				"Window could not be created!"->ErrorLine();
-				success := false;
-			} 
-			else {
-				# Get window surface
-				@screen_surface := Surface->New(@window);
-			};
+			# Get window surface
+			@screen_surface := @window->GetSurface();
 		};
 		
 		return success;
@@ -155,11 +149,7 @@ class Test {
 	
 	function : loadSurface(path : String) ~ Surface {
 		# Load image at specified path
-		loadedSurface := Core->LoadBmp( path );
-		if( loadedSurface = Nil ) {
-			error := Core->GetError();
-			"Unable to load image %s! SDL Error: {$error}"->PrintLine();
-		};
+		loadedSurface := Surface->LoadBMP( path );
 		
 		return loadedSurface;
 	}
