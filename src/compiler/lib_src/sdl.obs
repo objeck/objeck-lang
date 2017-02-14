@@ -1665,15 +1665,7 @@ bundle SDL {
 		@Gmask : Int;
 		@Bmask : Int;
 		@Amask : Int;
-		@Rloss : Int;
-		@Gloss : Int;
-		@Bloss : Int;
-		@Aloss : Int;
-		@Rshift : Int;
-		@Gshift : Int;
-		@Bshift : Int;
-		@Ashift : Int;
-		
+				
 		New() {
 		}
 	}
@@ -1715,6 +1707,17 @@ bundle SDL {
 				Proxy->GetDllProxy()->CallFunction("sdl_surface_free", array_args);
 				@surface := 0;
 			};
+		}
+		
+		method : public : GetPixelFormat() ~ PixelFormat {
+			array_args := Base->New[5];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@surface);
+	
+			Proxy->GetDllProxy()->CallFunction("sdl_surface_get_pixel_format", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return Nil;
 		}
 		
 		method : public : SetPalette(palette : Palette) ~ Int {
@@ -2029,6 +2032,10 @@ bundle SDL {
 
 			value := array_args[0]->As(IntHolder);
 			return value->Get();
+		}
+		
+		method : public : BlitScaled(srcrect : Rect, dst : Surface, dstrect : Rect) ~ Int {
+			return UpperBlitScaled(srcrect, dst, dstrect);
 		}
 		
 		method : public : UpperBlitScaled(srcrect : Rect, dst : Surface, dstrect : Rect) ~ Int {
