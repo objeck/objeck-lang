@@ -2070,9 +2070,9 @@ void StackInterpreter::ProcessLoadIntArrayElement(StackInstr* instr, long* &op_s
     StackErrorUnwind();
 #ifdef _DEBUGGER
     halt = true;
-    ::exit(1);
-#else
     return;
+#else
+    ::exit(1);
 #endif
   }
   const long size = array[0];
@@ -2097,9 +2097,9 @@ void StackInterpreter::ProcessStoreIntArrayElement(StackInstr* instr, long* &op_
     StackErrorUnwind();
 #ifdef _DEBUGGER
     halt = true;
-    ::exit(1);
-#else
     return;
+#else
+    ::exit(1);
 #endif
   }
   
@@ -2124,9 +2124,9 @@ void StackInterpreter::ProcessLoadByteArrayElement(StackInstr* instr, long* &op_
     StackErrorUnwind();
 #ifdef _DEBUGGER
     halt = true;
-    ::exit(1);
-#else
     return;
+#else
+    ::exit(1);
 #endif
   }
   const long size = array[0];
@@ -2151,9 +2151,9 @@ void StackInterpreter::ProcessLoadCharArrayElement(StackInstr* instr, long* &op_
     StackErrorUnwind();
 #ifdef _DEBUGGER
     halt = true;
-    ::exit(1);
-#else
     return;
+#else
+    ::exit(1);
 #endif
   }
   const long size = array[0];
@@ -2178,9 +2178,9 @@ void StackInterpreter::ProcessStoreByteArrayElement(StackInstr* instr, long* &op
     StackErrorUnwind();
 #ifdef _DEBUGGER
     halt = true;
-    ::exit(1);
-#else
     return;
+#else
+    ::exit(1);
 #endif
   }
   const long size = array[0];
@@ -2205,9 +2205,9 @@ void StackInterpreter::ProcessStoreCharArrayElement(StackInstr* instr, long* &op
     StackErrorUnwind();
 #ifdef _DEBUGGER
     halt = true;
-    ::exit(1);
-#else
     return;
+#else
+    ::exit(1);
 #endif
   }
   const long size = array[0];
@@ -2232,9 +2232,9 @@ void StackInterpreter::ProcessLoadFloatArrayElement(StackInstr* instr, long* &op
     StackErrorUnwind();
 #ifdef _DEBUGGER
     halt = true;
-    ::exit(1);
-#else
     return;
+#else
+    ::exit(1);
 #endif
   }
   const long size = array[0];
@@ -2260,9 +2260,9 @@ void StackInterpreter::ProcessStoreFloatArrayElement(StackInstr* instr, long* &o
     StackErrorUnwind();
 #ifdef _DEBUGGER
     halt = true;
-    ::exit(1);
-#else
     return;
+#else
+    ::exit(1);
 #endif
   }
   const long size = array[0];
@@ -2296,9 +2296,9 @@ void StackInterpreter::ProcessDllLoad(StackInstr* instr)
   if(!str_obj || !(long*)str_obj[0]) {
     wcerr << L">>> Name of runtime shared library was not specified! <<<" << endl;
 #ifdef _DEBUGGER
-    ::exit(1);
-#else
     return;
+#else
+    ::exit(1);
 #endif
   }
     
@@ -2316,9 +2316,9 @@ void StackInterpreter::ProcessDllLoad(StackInstr* instr)
   if(dll_string.size() == 0) {
     wcerr << L">>> Name of runtime shared library was not specified! <<<" << endl;
 #ifdef _DEBUGGER
-    ::exit(1);
-#else
     return;
+#else
+    ::exit(1);
 #endif
   }
 
@@ -2337,9 +2337,9 @@ void StackInterpreter::ProcessDllLoad(StackInstr* instr)
   if(!dll_handle) {
     wcerr << L">>> Runtime error loading shared library: " << dll_string.c_str() << " <<<" << endl;
 #ifdef _DEBUGGER
-    ::exit(1);
-#else
     return;
+#else
+    ::exit(1);
 #endif
   }
   instance[1] = (long)dll_handle;
@@ -2350,9 +2350,9 @@ void StackInterpreter::ProcessDllLoad(StackInstr* instr)
     wcerr << L">>> Runtime error calling function: load_lib <<<" << endl;
     FreeLibrary(dll_handle);
 #ifdef _DEBUGGER
-    ::exit(1);
-#else
     return;
+#else
+    ::exit(1);
 #endif
   }
   (*ext_load)();
@@ -2361,9 +2361,9 @@ void StackInterpreter::ProcessDllLoad(StackInstr* instr)
   if(!dll_handle) {
     wcerr << L">>> Runtime error loading shared library: " << dlerror() << " <<<" << endl;
 #ifdef _DEBUGGER
-    ::exit(1);
-#else
     return;
+#else
+    ::exit(1);
 #endif
   }
   instance[1] = (long)dll_handle;
@@ -2374,9 +2374,9 @@ void StackInterpreter::ProcessDllLoad(StackInstr* instr)
   if((error = dlerror()) != NULL)  {
     wcerr << L">>> Runtime error calling function: " << error << " <<<" << endl;
 #ifdef _DEBUGGER
-    ::exit(1);
-#else
     return;
+#else
+    ::exit(1);
 #endif
   }
   // call function
@@ -2444,9 +2444,9 @@ void StackInterpreter::ProcessDllCall(StackInstr* instr, long* &op_stack, long* 
   if(!array) {
     wcerr << L">>> Runtime error calling function <<<" << endl;
 #ifdef _DEBUGGER
-    ::exit(1);
-#else
     return;
+#else
+    ::exit(1);
 #endif
   }
 
