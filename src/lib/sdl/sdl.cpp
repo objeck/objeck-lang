@@ -36,8 +36,6 @@
 using namespace std;
 
 extern "C" {
-  void sdl_surface_raw_read(SDL_Surface* surface, long* surface_obj);
-  void sdl_surface_raw_write(SDL_Surface* surface, long* surface_obj);
   void sdl_point_raw_read(SDL_Point* point, long* point_obj);
   void sdl_point_raw_write(SDL_Point* point, long* point_obj);
   void sdl_rect_raw_read(SDL_Rect* rect, long* rect_obj);
