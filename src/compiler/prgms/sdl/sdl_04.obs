@@ -1,3 +1,10 @@
+#~
+Lesson 04
+Key Presses
+
+http://lazyfoo.net/tutorials/SDL/04_key_presses/index.php
+~#
+
 use SDL;
 
 class Test {
@@ -75,7 +82,7 @@ class Test {
 					};
 
 					# Apply the image
-					@current_surface->UpperBlitScaled( Nil, @screen_surface, Nil );
+					@current_surface->BlitScaled( Nil, @screen_surface, Nil );
 				
 					# Update the surface
 					@window->UpdateSurface();
