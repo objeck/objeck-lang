@@ -41,6 +41,7 @@ extern "C" {
   void sdl_rect_raw_read(SDL_Rect* rect, long* rect_obj);
   void sdl_rect_raw_write(SDL_Rect* rect, long* rect_obj);
   void sdl_pixel_format_raw_read(SDL_PixelFormat* pixel_format, long* pixel_format_obj);
+  void sdl_pixel_format_raw_write(SDL_PixelFormat* pixel_format, long* pixel_format_obj);
   void sdl_palette_raw_read(SDL_Palette* palette_format, long* palette_format_obj);
   void sdl_palette_raw_write(SDL_Palette* palette_format, long* palette_format_obj);
 
@@ -551,6 +552,77 @@ extern "C" {
     SDL_Rect* dstrect = dstrect_obj ? (SDL_Rect*)dstrect_obj[0] : NULL;
 
     APITools_SetIntValue(context, 0, SDL_LowerBlitScaled(surface, srcrect, dst, dstrect));
+  }
+
+  //
+  // SDL_PixelFormat
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_pixel_format_new(VMContext& context) {
+    SDL_PixelFormat* pixel_format = new SDL_PixelFormat;
+    APITools_SetIntValue(context, 0, (long)pixel_format);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_pixel_format_free(VMContext& context) {
+    SDL_PixelFormat* pixel_format = (SDL_PixelFormat*)APITools_GetIntValue(context, 0);
+    delete pixel_format;
+  }
+
+  void sdl_pixel_format_raw_read(SDL_PixelFormat* pixel_format, long* pixel_format_obj) {
+    if(pixel_format_obj) {
+      pixel_format_obj[0] = pixel_format->format;
+      if(pixel_format->palette) {
+        long* palette_obj = (long*)pixel_format_obj[1];
+        sdl_palette_raw_read(pixel_format->palette, palette_obj);
+      }
+      pixel_format_obj[2] = pixel_format->BitsPerPixel;
+      pixel_format_obj[3] = pixel_format->BytesPerPixel;
+      pixel_format_obj[4] = pixel_format->Rmask;
+      pixel_format_obj[5] = pixel_format->Gmask;
+      pixel_format_obj[6] = pixel_format->Bmask;
+      pixel_format_obj[7] = pixel_format->Amask;
+    }
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_pixel_format_read(VMContext& context) {
+    SDL_PixelFormat* pixel_format = (SDL_PixelFormat*)APITools_GetIntValue(context, 0);
+    long* pixel_format_obj = (long*)APITools_GetObjectValue(context, 1);
+    sdl_pixel_format_raw_read(pixel_format, pixel_format_obj);
+  }
+
+  void sdl_pixel_format_raw_write(SDL_PixelFormat* pixel_format, long* pixel_format_obj) {
+    if(pixel_format_obj) {
+      if(pixel_format_obj) {
+        pixel_format_obj[0] = pixel_format->format;
+        if(pixel_format->palette) {
+          long* palette_obj = (long*)pixel_format_obj[1];
+          sdl_palette_raw_write(pixel_format->palette, palette_obj);
+        }
+        pixel_format->BitsPerPixel = (Uint8)pixel_format_obj[2];
+        pixel_format->BytesPerPixel = (Uint8)pixel_format_obj[3];
+        pixel_format->Rmask = pixel_format_obj[4];
+        pixel_format->Gmask = pixel_format_obj[5];
+        pixel_format->Bmask = pixel_format_obj[6];
+        pixel_format->Amask = pixel_format_obj[7];
+      }
+    }
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_pixel_format_write(VMContext& context) {
+    SDL_PixelFormat* pixel_format = (SDL_PixelFormat*)APITools_GetIntValue(context, 0);
+    long* pixel_format_obj = (long*)APITools_GetObjectValue(context, 1);
+    sdl_pixel_format_raw_write(pixel_format, pixel_format_obj);
   }
 
   //
@@ -1412,33 +1484,6 @@ extern "C" {
     APITools_SetIntValue(context, 0, SDL_RegisterEvents(numevents));
   }
 
-  //
-  // PixelFormat
-  //
-  void sdl_pixel_format_raw_read(SDL_PixelFormat* pixel_format, long* pixel_format_obj) {
-    if(pixel_format_obj) {
-      pixel_format_obj[0] = pixel_format->format;
-      if(pixel_format->palette) {
-        long* palette_obj = (long*)pixel_format_obj[1];
-        sdl_palette_raw_read(pixel_format->palette, palette_obj);
-      }
-      pixel_format_obj[2] = pixel_format->BitsPerPixel;
-      pixel_format_obj[3] = pixel_format->BytesPerPixel;
-      pixel_format_obj[4] = pixel_format->Rmask;
-      pixel_format_obj[5] = pixel_format->Gmask;
-      pixel_format_obj[6] = pixel_format->Bmask;
-      pixel_format_obj[7] = pixel_format->Amask;
-      pixel_format_obj[8] = pixel_format->Rloss;
-      pixel_format_obj[9] = pixel_format->Gloss;
-      pixel_format_obj[10] = pixel_format->Bloss;
-      pixel_format_obj[11] = pixel_format->Aloss;
-      pixel_format_obj[12] = pixel_format->Rshift;
-      pixel_format_obj[13] = pixel_format->Gshift;
-      pixel_format_obj[14] = pixel_format->Bshift;
-      pixel_format_obj[15] = pixel_format->Ashift;
-    }
-  }
-  
   //
   // Palette
   //

@@ -1422,11 +1422,6 @@ bundle SDL {
 			@point := value->Get();
 		}
 		
-		New : private (point : Int) {
-			@point := point;
-			Read();
-		}
-		
 		method : public : Free() ~ Nil {
 			if(@point <> 0) {
 				array_args := Base->New[1];
@@ -1657,17 +1652,94 @@ bundle SDL {
 	TODO: add get methods
 	~#
 	class PixelFormat {
+		@pixel_format : Int;
 		@format : Int;
-		@palette : Palette;
-		@BitsPerPixel : Int;
-		@BytesPerPixel : Int;
-		@Rmask : Int;
-		@Gmask : Int;
-		@Bmask : Int;
-		@Amask : Int;
-				
+		@palette : Palette; ## TODO
+		@bits_per_pixel : Int;
+		@bytes_per_pixel : Int;
+		@r_mask : Int;
+		@g_mask : Int;
+		@b_mask : Int;
+		@a_mask : Int;
+		
 		New() {
+			array_args := Base->New[1];
+			array_args[0] := IntHolder->New();
+			Proxy->GetDllProxy()->CallFunction("sdl_pixel_format_new", array_args);
+			value := array_args[0]->As(IntHolder);
+			@point := value->Get();
 		}
+		
+		New(pixel_format : Int) {
+			@pixel_format := pixel_format;
+			Read();
+		}
+		
+		method : Read() ~ Nil {
+			if(@pixel_format <> 0) {
+				array_args := Base->New[2];
+				array_args[0] := IntHolder->New(@pixel_format);
+				array_args[1] := @self;
+
+				Proxy->GetDllProxy()->CallFunction("sdl_pixel_format_read", array_args);
+			};
+		}
+		
+		method : public : Free() ~ Nil {
+			if(@pixel_format <> 0) {
+				array_args := Base->New[1];
+				array_args[0] := IntHolder->New(@pixel_format);
+
+				Proxy->GetDllProxy()->CallFunction("sdl_pixel_format_free", array_args);
+				@point := 0;
+			};
+		}
+		
+		method : Write() ~ Nil {
+			if(@pixel_format <> 0) {
+				array_args := Base->New[2];
+				array_args[0] := IntHolder->New(@pixel_format);
+				array_args[1] := @self;
+
+				Proxy->GetDllProxy()->CallFunction("sdl_pixel_format_write", array_args);
+			};
+		}
+		
+		method : public : GetFormat() ~ Int {
+			Read();
+			return @format;
+		}
+		
+		method : public : SetFormat(format : Int) ~ Nil {
+			@format := format;
+			Write();
+		}
+		
+		method : public : GetBitsPerPixel() ~ Int {
+			Read();
+			return @bits_per_pixel;
+		}
+		
+		method : public : SetBitsPerPixel(bits_per_pixel : Int) ~ Nil {
+			@bits_per_pixel := bits_per_pixel;
+			Write();
+		}
+		
+		method : public : GetBytesPerPixel() ~ Int {
+			Read();
+			return @bytes_per_pixel;
+		}
+		
+		method : public : GetBytesPerPixel(bytes_per_pixel : Int) ~ Nil {
+			@bytes_per_pixel := bytes_per_pixel;
+			Write();
+		}
+		
+		#~		
+		@r_mask : Int;
+		@g_mask : Int;
+		@b_mask : Int;
+		@a_mask : Int; ~#
 	}
 	
 	#~
@@ -1717,7 +1789,7 @@ bundle SDL {
 			Proxy->GetDllProxy()->CallFunction("sdl_surface_get_pixel_format", array_args);
 
 			value := array_args[0]->As(IntHolder);
-			return Nil;
+			return PixelFormat->New(value->Get());
 		}
 		
 		method : public : SetPalette(palette : Palette) ~ Int {
