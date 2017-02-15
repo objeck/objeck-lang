@@ -1649,7 +1649,6 @@ bundle SDL {
 	
 	#~
 	PixelFormat class
-	TODO: add get methods
 	~#
 	class PixelFormat {
 		@pixel_format : Int;
@@ -1730,16 +1729,50 @@ bundle SDL {
 			return @bytes_per_pixel;
 		}
 		
-		method : public : GetBytesPerPixel(bytes_per_pixel : Int) ~ Nil {
+		method : public : SetBytesPerPixel(bytes_per_pixel : Int) ~ Nil {
 			@bytes_per_pixel := bytes_per_pixel;
 			Write();
 		}
 		
-		#~		
-		@r_mask : Int;
-		@g_mask : Int;
-		@b_mask : Int;
-		@a_mask : Int; ~#
+		method : public : GetRmask() ~ Int {
+			Read();
+			return @r_mask;
+		}
+		
+		method : public : SetRmask(r_mask : Int) ~ Nil {
+			@r_mask := r_mask;
+			Write();
+		}
+		
+		method : public : GetGmask() ~ Int {
+			Read();
+			return @g_mask;
+		}
+		
+		method : public : SetGmask(g_mask : Int) ~ Nil {
+			@g_mask := g_mask;
+			Write();
+		}
+		
+		method : public : GetBmask() ~ Int {
+			Read();
+			return @b_mask;
+		}
+		
+		method : public : SetBmask(b_mask : Int) ~ Nil {
+			@b_mask := b_mask;
+			Write();
+		}
+		
+		method : public : GetAmask() ~ Int {
+			Read();
+			return @a_mask;
+		}
+		
+		method : public : SetAmask(a_mask : Int) ~ Nil {
+			@a_mask := a_mask;
+			Write();
+		}
 	}
 	
 	#~
