@@ -1388,9 +1388,23 @@ bundle SDL {
 	~#
 	class Palette {
 		@palette : Int;
-
-		New : private (palette : Int) {
-			@palette := palette;
+		@ncolors : Int;
+		@colors : Color[];
+		
+		New() {
+		}
+	}
+	
+	#~
+	Palette	class
+	~#
+	class Color {
+		@r : Int;
+		@g : Int;
+		@b : Int;
+		@a : Int;
+		
+		New() {
 		}
 	}
 	

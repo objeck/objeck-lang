@@ -269,6 +269,14 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
+  void sdl_surface_get_pixel_format(VMContext& context) {
+    SDL_Surface* surface = (SDL_Surface*)APITools_GetIntValue(context, 1);
+    APITools_SetIntValue(context, 0, (long)surface->pixels);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
   void sdl_surface_set_palette(VMContext& context) {
     SDL_Surface* surface = (SDL_Surface*)APITools_GetIntValue(context, 1);
 
