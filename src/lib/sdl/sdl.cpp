@@ -591,17 +591,17 @@ extern "C" {
 
   void sdl_pixel_format_raw_read(SDL_PixelFormat* pixel_format, long* pixel_format_obj) {
     if(pixel_format_obj) {
-      pixel_format_obj[0] = pixel_format->format;
+      pixel_format_obj[1] = pixel_format->format;
       if(pixel_format->palette) {
-        long* palette_obj = (long*)pixel_format_obj[1];
+        long* palette_obj = (long*)pixel_format_obj[2];
         sdl_palette_raw_read(pixel_format->palette, palette_obj);
       }
-      pixel_format_obj[2] = pixel_format->BitsPerPixel;
-      pixel_format_obj[3] = pixel_format->BytesPerPixel;
-      pixel_format_obj[4] = pixel_format->Rmask;
-      pixel_format_obj[5] = pixel_format->Gmask;
-      pixel_format_obj[6] = pixel_format->Bmask;
-      pixel_format_obj[7] = pixel_format->Amask;
+      pixel_format_obj[3] = pixel_format->BitsPerPixel;
+      pixel_format_obj[4] = pixel_format->BytesPerPixel;
+      pixel_format_obj[5] = pixel_format->Rmask;
+      pixel_format_obj[6] = pixel_format->Gmask;
+      pixel_format_obj[7] = pixel_format->Bmask;
+      pixel_format_obj[8] = pixel_format->Amask;
     }
   }
 
@@ -617,17 +617,17 @@ extern "C" {
   void sdl_pixel_format_raw_write(SDL_PixelFormat* pixel_format, long* pixel_format_obj) {
     if(pixel_format_obj) {
       if(pixel_format_obj) {
-        pixel_format_obj[0] = pixel_format->format;
+        pixel_format_obj[1] = pixel_format->format;
         if(pixel_format->palette) {
-          long* palette_obj = (long*)pixel_format_obj[1];
+          long* palette_obj = (long*)pixel_format_obj[2];
           sdl_palette_raw_write(pixel_format->palette, palette_obj);
         }
-        pixel_format->BitsPerPixel = (Uint8)pixel_format_obj[2];
-        pixel_format->BytesPerPixel = (Uint8)pixel_format_obj[3];
-        pixel_format->Rmask = pixel_format_obj[4];
-        pixel_format->Gmask = pixel_format_obj[5];
-        pixel_format->Bmask = pixel_format_obj[6];
-        pixel_format->Amask = pixel_format_obj[7];
+        pixel_format->BitsPerPixel = (Uint8)pixel_format_obj[3];
+        pixel_format->BytesPerPixel = (Uint8)pixel_format_obj[4];
+        pixel_format->Rmask = pixel_format_obj[5];
+        pixel_format->Gmask = pixel_format_obj[6];
+        pixel_format->Bmask = pixel_format_obj[7];
+        pixel_format->Amask = pixel_format_obj[8];
       }
     }
   }
