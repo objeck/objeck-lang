@@ -1395,19 +1395,6 @@ bundle SDL {
 		}
 	}
 	
-	#~
-	Palette	class
-	~#
-	class Color {
-		@r : Int;
-		@g : Int;
-		@b : Int;
-		@a : Int;
-		
-		New() {
-		}
-	}
-	
 	##
 	## TODO: SDL_video.h
 	## use new, delete

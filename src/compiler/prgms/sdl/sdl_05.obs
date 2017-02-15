@@ -82,7 +82,13 @@ class Test {
 					};
 
 					# Apply the image
-					@current_surface->UpperBlitScaled( Nil, @screen_surface, Nil );
+					
+					stretchRect := Rect->New();
+					stretchRect->SetX(0);
+					stretchRect->SetY(0);
+					stretchRect->SetW(640);
+					stretchRect->SetH(480);
+					@current_surface->BlitScaled( Nil, @screen_surface, stretchRect );
 				
 					# Update the surface
 					@window->UpdateSurface();
@@ -157,6 +163,8 @@ class Test {
 	function : loadSurface(path : String) ~ Surface {
 		# Load image at specified path
 		loadedSurface := Surface->LoadBMP( path );
+		
+		optimizedSurface := loadedSurface->Convert( @screen_surface->GetPixelFormat(), 0 );
 		
 		return loadedSurface;
 	}
