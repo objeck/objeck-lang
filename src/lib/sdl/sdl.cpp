@@ -271,7 +271,12 @@ extern "C" {
 #endif
   void sdl_surface_get_pixel_format(VMContext& context) {
     SDL_Surface* surface = (SDL_Surface*)APITools_GetIntValue(context, 1);
-    APITools_SetIntValue(context, 0, (long)surface->format);
+    if(surface) {
+      APITools_SetIntValue(context, 0, (long)surface->format);
+    }
+    else {
+      APITools_SetIntValue(context, 0, 0);
+    }
   }
 
 #ifdef _WIN32
