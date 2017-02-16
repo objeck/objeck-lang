@@ -8,23 +8,11 @@ http://lazyfoo.net/tutorials/SDL/05_optimized_surface_loading_and_soft_stretchin
 use SDL;
 
 class Test {
-	# Key press surfaces constants
-	enum KeyPressSurfaces {
-		KEY_PRESS_SURFACE_DEFAULT,
-		KEY_PRESS_SURFACE_UP,
-		KEY_PRESS_SURFACE_DOWN,
-		KEY_PRESS_SURFACE_LEFT,
-		KEY_PRESS_SURFACE_RIGHT,
-		KEY_PRESS_SURFACE_TOTAL
-	}
-
 	@window : static : Window;
 	@screen_surface : static : Surface;
-	@key_press_surfaces : static : Surface[];
+	@stretched_surface : static : Surface;
 	
 	function : Main(args : String[]) ~ Nil {
-		@key_press_surfaces := Surface->New[KeyPressSurfaces->KEY_PRESS_SURFACE_TOTAL]; 
-		
 		# Start up SDL and create window
 		if( <>Init() ) {
 			"Failed to initialize!"->ErrorLine();
@@ -41,9 +29,6 @@ class Test {
 				# Event handler
 				e := Event->New();
 				
-				# Set default current surface
-				@current_surface := @key_press_surfaces[ KeyPressSurfaces->KEY_PRESS_SURFACE_DEFAULT ];
-
 				# While application is running
 				while( <>quit )
 				{
@@ -52,43 +37,16 @@ class Test {
 						# User requests quit
 						if( e->GetType() = Flags->SDL_QUIT->As(Int) ) {
 							quit := true;
-						}
-						# User presses a key
-						else if( e->GetType() = Flags->SDL_KEY_DOWN->As(Int) ) {
-							# Select surfaces based on key press
-							select( e->GetKey()->GetKeysym()->GetScancode() )
-							{							
-								label Scancode->SCANCODE_UP: {
-									@current_surface := @key_press_surfaces[ KeyPressSurfaces->KEY_PRESS_SURFACE_UP ];
-								}
-
-								label Scancode->SCANCODE_DOWN: {
-									@current_surface := @key_press_surfaces[ KeyPressSurfaces->KEY_PRESS_SURFACE_DOWN ];
-								}
-
-								label Scancode->SCANCODE_LEFT: {
-									@current_surface := @key_press_surfaces[ KeyPressSurfaces->KEY_PRESS_SURFACE_LEFT ];
-								}
-
-								label Scancode->SCANCODE_RIGHT: {
-									@current_surface := @key_press_surfaces[ KeyPressSurfaces->KEY_PRESS_SURFACE_RIGHT ];
-								}
-
-								other: {
-									@current_surface := @key_press_surfaces[ KeyPressSurfaces->KEY_PRESS_SURFACE_DEFAULT ];
-								}							
-							};							
 						};
 					};
 
 					# Apply the image
-					
 					stretchRect := Rect->New();
 					stretchRect->SetX(0);
 					stretchRect->SetY(0);
 					stretchRect->SetW(640);
 					stretchRect->SetH(480);
-					@current_surface->BlitScaled( Nil, @screen_surface, stretchRect );
+					@stretched_surface->BlitScaled( Nil, @screen_surface, stretchRect );
 				
 					# Update the surface
 					@window->UpdateSurface();
@@ -120,44 +78,8 @@ class Test {
 	}
 	
 	function : LoadMedia() ~ Bool {
-		success := true;
-		
-		# Load default surface
-		@key_press_surfaces[ KeyPressSurfaces->KEY_PRESS_SURFACE_DEFAULT ] := loadSurface( "images/press.bmp" );
-		if( @key_press_surfaces[ KeyPressSurfaces->KEY_PRESS_SURFACE_DEFAULT ] = Nil ) {
-			"Failed to load default image!"->ErrorLine();
-			success := false;
-		};
-		
-		# Load up surface
-		@key_press_surfaces[ KeyPressSurfaces->KEY_PRESS_SURFACE_UP ] := loadSurface( "images/up.bmp" );
-		if( @key_press_surfaces[ KeyPressSurfaces->KEY_PRESS_SURFACE_UP ] = Nil ) {
-			"Failed to load up image!"->ErrorLine();
-			success := false;
-		};
-		
-		# Load down surface
-		@key_press_surfaces[ KeyPressSurfaces->KEY_PRESS_SURFACE_DOWN ] := loadSurface( "images/down.bmp" );
-		if( @key_press_surfaces[ KeyPressSurfaces->KEY_PRESS_SURFACE_DOWN ] = Nil ) {
-			"Failed to load down image!"->ErrorLine();
-			success := false;
-		};
-		
-		# Load left surface
-		@key_press_surfaces[ KeyPressSurfaces->KEY_PRESS_SURFACE_LEFT ] := loadSurface( "images/left.bmp" );
-		if( @key_press_surfaces[ KeyPressSurfaces->KEY_PRESS_SURFACE_LEFT ] = Nil ) {
-			"Failed to load left image!"->ErrorLine();
-			success := false;
-		};
-		
-		# Load right surface
-		@key_press_surfaces[ KeyPressSurfaces->KEY_PRESS_SURFACE_RIGHT ] := loadSurface( "images/right.bmp" );
-		if( @key_press_surfaces[ KeyPressSurfaces->KEY_PRESS_SURFACE_RIGHT ] = Nil ) {
-			"Failed to load right image!"->ErrorLine();
-			success := false;
-		};
-		
-		return success;
+		@stretched_surface := loadSurface( "images/stretch.bmp" );		
+		return true;
 	}
 	
 	function : loadSurface(path : String) ~ Surface {
@@ -165,17 +87,14 @@ class Test {
 		loadedSurface := Surface->LoadBMP( path );
 		
 		optimizedSurface := loadedSurface->Convert( @screen_surface->GetPixelFormat(), 0 );
+		loadedSurface->Free();
 		
-		return loadedSurface;
+		return optimizedSurface;
 	}
 	
 	function : Close() ~ Nil {
-		# Deallocate surfaces
-		for( i := 0; i < KeyPressSurfaces->KEY_PRESS_SURFACE_TOTAL->As(Int); i++; ) {
-			@key_press_surfaces[ i ]->Free();
-			@key_press_surfaces[ i ] := Nil;
-		};
-
+		@stretched_surface->Free();
+	
 		# Destroy window
 		@window->Destroy();
 		@window := Nil;
