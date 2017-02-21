@@ -2006,6 +2006,15 @@ namespace frontend {
 
       return name;
     }
+
+    wstring ReplaceSubstring(wstring s, const wstring& f, const wstring &r) {
+      const size_t index = s.find(f);
+      if(index != string::npos) {
+        s.replace(index, f.size(), r);
+      }
+
+      return s;
+    }
     
   public:
     void SetId(int i) {
@@ -2052,7 +2061,7 @@ namespace frontend {
       }
       
       // name
-      user_name += name;
+      user_name += ReplaceSubstring(name, L":", L"->");
       
       // params
       user_name += L'(';
@@ -2068,6 +2077,7 @@ namespace frontend {
 
       user_name += EncodeUserType(return_type);
     }
+
     void EncodeSignature(Class* klass, ParsedProgram* program, Linker* linker) {
       encoded_return = EncodeType(return_type, klass, program, linker);
 
