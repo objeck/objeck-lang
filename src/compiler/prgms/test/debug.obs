@@ -1,25 +1,11 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		t := Test->New();
-		t->Go();
+		Foo("Bar");
 	}
 	
-	New() {
+	function : Foo(i : Int) ~ Nil {
 	}
 	
-	method : public : Go() ~ Nil {
-		value := F0(2, 3);
-		value->PrintLine();
-	}
-	
-	method : F0(a : Int, b : Int) ~ Int {
-		c0 := false;
-		c1 := false;
-		
-		if(c0 | c1) {
-			return a + b;
-		};
-		
-		return 7;
+	function : Foo() ~ Nil {
 	}
 }

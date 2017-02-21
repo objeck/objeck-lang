@@ -1846,6 +1846,7 @@ namespace frontend {
     int id;
     wstring name;
     wstring parsed_name;
+    wstring user_name;
     wstring encoded_name;
     wstring encoded_return;
     wstring parsed_return;
@@ -1955,6 +1956,57 @@ namespace frontend {
       return name;
     }
 
+    wstring EncodeUserType(Type* type) {
+      wstring name;
+      if(type) {
+        // type
+        switch(type->GetType()) {
+        case BOOLEAN_TYPE:
+          name = L"Bool";
+          break;
+
+        case BYTE_TYPE:
+          name = L"Byte";
+          break;
+
+        case INT_TYPE:
+          name = L"Int";
+          break;
+
+        case FLOAT_TYPE:
+          name = L"Float";
+          break;
+
+        case CHAR_TYPE:
+          name = L"Char";
+          break;
+
+        case NIL_TYPE:
+          name = L"Nil";
+          break;
+
+        case VAR_TYPE:
+          name = L"Var";
+          break;
+
+        case CLASS_TYPE:
+          name = type->GetClassName();
+          break;
+
+        case FUNC_TYPE:
+          name = L"<function>";
+          break;
+        }
+
+        // dimension
+        for(int i = 0; i < type->GetDimension(); ++i) {
+          name += L"[]";
+        }
+      }
+
+      return name;
+    }
+    
   public:
     void SetId(int i) {
       id = i;
@@ -1987,6 +2039,35 @@ namespace frontend {
       }
     }
 
+    void EncodeUserName() {
+      if(is_static) {
+        user_name = L"function : ";
+      }
+      else {
+        user_name = L"method : ";
+      }
+
+      if(is_native) {
+        user_name += L"native : ";
+      }
+      
+      // name
+      user_name += name;
+      
+      // params
+      user_name += L'(';
+
+      vector<Declaration*> declaration_list = declarations->GetDeclarations();
+      for(size_t i = 0; i < declaration_list.size(); ++i) {
+        SymbolEntry* entry = declaration_list[i]->GetEntry();
+        if(entry) {
+          user_name += EncodeUserType(entry->GetType());
+        }
+      }
+      user_name += L") ~ ";
+
+      user_name += EncodeUserType(return_type);
+    }
     void EncodeSignature(Class* klass, ParsedProgram* program, Linker* linker) {
       encoded_return = EncodeType(return_type, klass, program, linker);
 
@@ -2048,6 +2129,14 @@ namespace frontend {
       }
 
       return parsed_name;
+    }
+
+    const wstring& GetUserName() {
+      if(user_name.size() == 0) {
+        EncodeUserName();
+      }
+
+      return user_name;
     }
 
     const wstring& GetEncodedName() const {
