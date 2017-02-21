@@ -601,6 +601,9 @@ extern "C" {
         long* palette_obj = (long*)pixel_format_obj[2];
         sdl_palette_raw_read(pixel_format->palette, palette_obj);
       }
+      else {
+        pixel_format_obj[2] = 0;
+      }
       pixel_format_obj[3] = pixel_format->BitsPerPixel;
       pixel_format_obj[4] = pixel_format->BytesPerPixel;
       pixel_format_obj[5] = pixel_format->Rmask;
@@ -1511,7 +1514,7 @@ extern "C" {
   void sdl_palette_raw_read(SDL_Palette* palette, long* palette_obj) {
     if(palette_obj) {
       palette_obj[0] = palette->ncolors;
-//      palette_obj[1] = palette->format;
+//       palette_obj[1] = palette->format;
       palette_obj[2] = palette->version;
     }
   }

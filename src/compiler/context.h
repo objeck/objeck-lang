@@ -194,9 +194,12 @@ class MethodCallSelector {
   MethodCallSelector(MethodCall* c, vector<MethodCallSelection*> &m) {
     method_call = c;
     matches = m;
+
     // weed out invalid matches
     for(size_t i = 0; i < matches.size(); ++i) {
-      // matches[i]->Dump();
+      wstring bar = matches[i]->GetMethod()->GetUserName();
+wcout << bar << endl;
+
       if(matches[i]->IsValid()) {
         valid_matches.push_back(matches[i]);
       }
