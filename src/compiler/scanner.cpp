@@ -1246,6 +1246,14 @@ void Scanner::ParseToken(int index)
         NextChar();
         break;
 
+        // L'←':
+      case 0x2190:
+        tokens[index]->SetType(TOKEN_ASSIGN);
+        tokens[index]->SetLineNbr(line_nbr);
+        tokens[index]->SetFileName(filename);
+        NextChar();
+        break;
+
       // L'→':
       case 0x2192:
         tokens[index]->SetType(TOKEN_ASSESSOR);
