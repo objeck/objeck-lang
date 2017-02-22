@@ -1996,6 +1996,7 @@
 		<col def="I4">ISAttributes</col>
 		<col def="S72">ISComponentSubFolder_</col>
 		<row><td>_0_calc_life.obs</td><td>ISX_DEFAULTCOMPONENT2</td><td>10_CAL~1.OBS|10_calc_life.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\examples\10_calc_life.obs</td><td>1</td><td/></row>
+		<row><td>_1_odbc_select.obs</td><td>ISX_DEFAULTCOMPONENT2</td><td>11_ODB~1.OBS|11_odbc_select.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\examples\11_odbc_select.obs</td><td>1</td><td/></row>
 		<row><td>__encrypt.obs</td><td>ISX_DEFAULTCOMPONENT2</td><td>7_ENCR~1.OBS|7_encrypt.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\examples\7_encrypt.obs</td><td>1</td><td/></row>
 		<row><td>__functions.obs</td><td>ISX_DEFAULTCOMPONENT2</td><td>5_FUNC~1.OBS|5_functions.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\examples\5_functions.obs</td><td>1</td><td/></row>
 		<row><td>__hello.obs</td><td>ISX_DEFAULTCOMPONENT2</td><td>0_hello.obs</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\examples\0_hello.obs</td><td>1</td><td/></row>
@@ -4803,7 +4804,7 @@ UwBpAG4AZwBsAGUASQBtAGEAZwBlAAEARQB4AHAAcgBlAHMAcwA=
 		<row><td>PROGMSG_IIS_ROLLBACKWEBSERVICEEXTENSIONS</td><td>##IDS_PROGMSG_IIS_ROLLBACKWEBSERVICEEXTENSIONS##</td><td/></row>
 		<row><td>ProductCode</td><td>{9E21FB04-07B1-4195-A9FE-82B92F3C1A5D}</td><td/></row>
 		<row><td>ProductName</td><td>Objeck</td><td/></row>
-		<row><td>ProductVersion</td><td>3.5.9</td><td/></row>
+		<row><td>ProductVersion</td><td>3.5.10</td><td/></row>
 		<row><td>ProgressType0</td><td>install</td><td/></row>
 		<row><td>ProgressType1</td><td>Installing</td><td/></row>
 		<row><td>ProgressType2</td><td>installed</td><td/></row>
@@ -4821,7 +4822,7 @@ UwBpAG4AZwBsAGUASQBtAGEAZwBlAAEARQB4AHAAcgBlAHMAcwA=
 		<row><td>SecureCustomProperties</td><td>USERNAME;COMPANYNAME;ISX_SERIALNUM;SUPPORTDIR;ISFOUNDNEWERPRODUCTVERSION;ISACTIONPROP1</td><td/></row>
 		<row><td>SelectedSetupType</td><td>##IDS__DisplayName_Typical##</td><td/></row>
 		<row><td>SetupType</td><td>Typical</td><td/></row>
-		<row><td>UpgradeCode</td><td>{06953B3A-B893-4865-ADF6-1CCCC783B79A}</td><td/></row>
+		<row><td>UpgradeCode</td><td>{6E7060C2-B41F-4BD8-89A6-C211E8DFB1CB}</td><td/></row>
 		<row><td>_IsMaintenance</td><td>Change</td><td/></row>
 		<row><td>_IsSetupTypeMin</td><td>Typical</td><td/></row>
 	</table>
@@ -5099,7 +5100,7 @@ UwBpAG4AZwBsAGUASQBtAGEAZwBlAAEARQB4AHAAcgBlAHMAcwA=
 		<col def="s72">ActionProperty</col>
 		<col def="S72">ISDisplayName</col>
 		<row><td>{00000000-0000-0000-0000-000000000000}</td><td>***ALL_VERSIONS***</td><td></td><td></td><td>2</td><td/><td>ISFOUNDNEWERPRODUCTVERSION</td><td>ISPreventDowngrade</td></row>
-		<row><td>{9E21FB04-07B1-4195-A9FE-82B92F3C1A5D}</td><td>3.1</td><td>3.5.7</td><td>1033</td><td>768</td><td/><td>ISACTIONPROP1</td><td>NewUpgradeEntry1</td></row>
+		<row><td>{9E21FB04-07B1-4195-A9FE-82B92F3C1A5D}</td><td>3.1</td><td>3.5.10</td><td>1033</td><td>768</td><td/><td>ISACTIONPROP1</td><td>NewUpgradeEntry1</td></row>
 	</table>
 
 	<table name="Verb">
