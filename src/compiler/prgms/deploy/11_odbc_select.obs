@@ -1,0 +1,26 @@
+#~
+# compile: obc -src 11_odbc_select.obs -lib collect.obl,odbc.obl -dest select.obe
+# run: obr select.obe
+# odbc datasource: foo
+~#
+
+use ODBC;
+
+bundle Default {
+	class SqlTest {
+		function : Main(args : String[]) ~ Nil {
+			conn := Connection->New("foo", "", "");
+			if(conn->IsOpen()) {
+				rs := conn->Select("SELECT lat, lon FROM City;");
+				if(rs <> Nil) {
+					i := 0;	
+					while(rs->Next()) {
+						rs->GetDouble("lat")->PrintLine();
+					};
+					rs->Close();
+				};
+				conn->Close();
+			};
+		}
+	}
+}
