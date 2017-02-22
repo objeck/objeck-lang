@@ -55,7 +55,7 @@ void ContextAnalyzer::ProcessErrorAlternativeMethods(wstring &message)
 {
   if(alt_error_method_names.size() > 0) {
     message += L"\n\tPossible alternative(s):\n";
-    for(int i = 0; i < alt_error_method_names.size(); ++i) {
+    for(size_t i = 0; i < alt_error_method_names.size(); ++i) {
       message += L"\t\t" + alt_error_method_names[i] + L'\n';
     }
     alt_error_method_names.clear();
