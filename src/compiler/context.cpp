@@ -48,6 +48,21 @@ void ContextAnalyzer::ProcessError(ParseNode* node, const wstring &msg)
 }
 
 /****************************
+ * Formats possible alternative
+ * methods
+ ****************************/
+void ContextAnalyzer::ProcessErrorAlternativeMethods(wstring &message)
+{
+  if(alt_error_method_names.size() > 0) {
+    message += L"\n\tPossible alternative(s):\n";
+    for(int i = 0; i < alt_error_method_names.size(); ++i) {
+      message += L"\t\t" + alt_error_method_names[i] + L'\n';
+    }
+    alt_error_method_names.clear();
+  }
+}
+
+/****************************
  * Emits an error
  ****************************/
 void ContextAnalyzer::ProcessError(const wstring &msg)
@@ -2151,6 +2166,12 @@ bool ContextAnalyzer::Analyze()
                          IsScalar(expression), depth + 1);
       }
     }
+    else {
+      vector<wstring> alt_methods = selector.GetAlternativeMethodNames();
+      if(alt_methods.size() > 0) {
+        alt_error_method_names = selector.GetAlternativeMethodNames();
+      }
+    }
 
     return method;
   }
@@ -2296,12 +2317,16 @@ bool ContextAnalyzer::Analyze()
       const wstring &var_name = method_call->GetVariableName();
 
       if(mthd_name.size() > 0) {
-        ProcessError(static_cast<Expression*>(method_call), L"Undefined function/method call: '" +
-                     mthd_name + L"(..)'\n\tEnsure the object and it's calling parameters are properly casted");
+        wstring message = L"Undefined function/method call: '" +
+          mthd_name + L"(..)'\n\tEnsure the object and it's calling parameters are properly casted";
+        ProcessErrorAlternativeMethods(message);
+        ProcessError(static_cast<Expression*>(method_call), message);
       }
       else {
-        ProcessError(static_cast<Expression*>(method_call), L"Undefined function/method call: '" +
-                     var_name + L"(..)'\n\tEnsure the object and it's calling parameters are properly casted");
+        wstring message = L"Undefined function/method call: '" +
+          var_name + L"(..)'\n\tEnsure the object and it's calling parameters are properly casted";
+        ProcessErrorAlternativeMethods(message);
+        ProcessError(static_cast<Expression*>(method_call), message);
       }
     }
   }
@@ -2344,6 +2369,12 @@ bool ContextAnalyzer::Analyze()
           expression = expression->GetMethodCall();
         }
         AnalyzeRightCast(method_parms[j], expression, IsScalar(expression), depth + 1);
+      }
+    }
+    else {
+      vector<wstring> alt_methods = selector.GetAlternativeMethodNames();
+      if(alt_methods.size() > 0) {
+        alt_error_method_names = selector.GetAlternativeMethodNames();
       }
     }
 
@@ -2490,14 +2521,16 @@ bool ContextAnalyzer::Analyze()
       const wstring &var_name = method_call->GetVariableName();
 
       if(mthd_name.size() > 0) {
-        ProcessError(static_cast<Expression*>(method_call),
-                     L"Undefined function/method call: '" + mthd_name +
-                     L"(..)'\n\tEnsure the object and it's calling parameters are properly casted");
+        wstring message = L"Undefined function/method call: '" + mthd_name +
+          L"(..)'\n\tEnsure the object and it's calling parameters are properly casted";
+        ProcessErrorAlternativeMethods(message);
+        ProcessError(static_cast<Expression*>(method_call), message);
       }
       else {
-        ProcessError(static_cast<Expression*>(method_call),
-                     L"Undefined function/method call: '" + var_name +
-                     L"(..)'\n\tEnsure the object and it's calling parameters are properly casted");
+        wstring message = L"Undefined function/method call: '" + var_name +
+          L"(..)'\n\tEnsure the object and it's calling parameters are properly casted";
+        ProcessErrorAlternativeMethods(message);
+        ProcessError(static_cast<Expression*>(method_call), message);
       }
     }
   }

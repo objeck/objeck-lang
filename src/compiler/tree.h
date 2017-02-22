@@ -1993,8 +1993,15 @@ namespace frontend {
           name = type->GetClassName();
           break;
 
-        case FUNC_TYPE:
-          name = L"<function>";
+        case FUNC_TYPE: {
+          name = L'(';
+          vector<Type*> func_params = type->GetFunctionParameters();
+          for(int i = 0; i < func_params.size(); ++i) {
+            name += EncodeUserType(func_params[i]);
+          }
+          name += L") ~ ";
+          name += EncodeUserType(type->GetFunctionReturn());
+        }
           break;
         }
 
@@ -2049,11 +2056,27 @@ namespace frontend {
     }
 
     void EncodeUserName() {
+      bool is_new_private = false;
       if(is_static) {
         user_name = L"function : ";
       }
       else {
-        user_name = L"method : ";
+        switch(method_type) {
+        case NEW_PUBLIC_METHOD:
+          break;
+
+        case NEW_PRIVATE_METHOD:
+          is_new_private = true;
+          break;
+
+        case PUBLIC_METHOD:
+          user_name = L"method : public : ";
+          break;
+
+        case PRIVATE_METHOD:
+          user_name = L"method : private : ";
+          break;
+        }        
       }
 
       if(is_native) {
@@ -2063,6 +2086,11 @@ namespace frontend {
       // name
       user_name += ReplaceSubstring(name, L":", L"->");
       
+      // private new
+      if(is_new_private) {
+        user_name += L" : private ";
+      }
+
       // params
       user_name += L'(';
 

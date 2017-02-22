@@ -106,6 +106,15 @@ class LibraryMethodCallSelector {
     }
   }
 
+  vector<wstring> GetAlternativeMethodNames() {
+    vector<wstring> alt_names;
+    for(size_t i = 0; i < matches.size(); ++i) {
+      alt_names.push_back(matches[i]->GetLibraryMethod()->GetUserName());
+    }
+
+    return alt_names;
+  }
+
   LibraryMethod* GetSelection() {
     // no match
     if(valid_matches.size() == 0) {
@@ -197,9 +206,6 @@ class MethodCallSelector {
 
     // weed out invalid matches
     for(size_t i = 0; i < matches.size(); ++i) {
-      wstring bar = matches[i]->GetMethod()->GetUserName();
-wcout << bar << endl;
-
       if(matches[i]->IsValid()) {
         valid_matches.push_back(matches[i]);
       }
@@ -214,6 +220,15 @@ wcout << bar << endl;
       delete tmp;
       tmp = NULL;
     }
+  }
+
+  vector<wstring> GetAlternativeMethodNames() {
+    vector<wstring> alt_names;
+    for(size_t i = 0; i < matches.size(); ++i) {
+      alt_names.push_back(matches[i]->GetMethod()->GetUserName());
+    }
+
+    return alt_names;
   }
 
   Method* GetSelection() {
@@ -268,6 +283,7 @@ class ContextAnalyzer {
   SymbolTable* current_table;
   SymbolTableManager* symbol_table;
   map<int, wstring> errors;
+  vector<wstring> alt_error_method_names;
   map<const wstring, EntryType> type_map;
   bool main_found;
   bool web_found;
@@ -1070,6 +1086,7 @@ class ContextAnalyzer {
 
   // error processing
   void ProcessError(ParseNode* n, const wstring &msg);
+  void ProcessErrorAlternativeMethods(wstring &message);
   void ProcessError(const wstring &msg);
   bool CheckErrors();
 
