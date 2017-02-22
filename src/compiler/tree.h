@@ -1,7 +1,7 @@
 /***************************************************************************
  * Language parse tree.
  *
- * Copyright (c) 2008-2015, Randy Hollines
+ * Copyright (c) 2008-201, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and uses in source and binary forms, with or without
@@ -147,7 +147,7 @@ namespace frontend {
       return is_local;
     }
 
-    const wstring& GetName() const {
+    const wstring GetName() const {
       return name;
     }
 
@@ -845,7 +845,7 @@ namespace frontend {
       return concat;
     }
 
-    const wstring& GetString() const {
+    const wstring GetString() const {
       return char_string;
     }
 
@@ -1013,7 +1013,7 @@ namespace frontend {
     }
 
   public:
-    const wstring& GetName() const {
+    const wstring GetName() const {
       return name;
     }
 
@@ -1372,7 +1372,7 @@ namespace frontend {
     }
     
   public:
-    const wstring& GetName() const {
+    const wstring GetName() const {
       return name;
     }
 
@@ -1442,7 +1442,7 @@ namespace frontend {
       return NULL;
     }
 
-    const wstring& GetName() const {
+    const wstring GetName() const {
       return name;
     }
 
@@ -2014,7 +2014,7 @@ namespace frontend {
       return name;
     }
 
-    wstring ReplaceSubstring(wstring s, const wstring& f, const wstring &r) {
+    wstring ReplaceSubstring(wstring s, const wstring f, const wstring &r) {
       const size_t index = s.find(f);
       if(index != string::npos) {
         s.replace(index, f.size(), r);
@@ -2159,11 +2159,11 @@ namespace frontend {
       return symbol_table;
     }
 
-    const wstring& GetName() const {
+    const wstring GetName() const {
       return name;
     }
 
-    const wstring& GetParsedName() {
+    const wstring GetParsedName() {
       if(parsed_name.size() == 0) {
         EncodeSignature();
       }
@@ -2171,7 +2171,7 @@ namespace frontend {
       return parsed_name;
     }
 
-    const wstring& GetUserName() {
+    const wstring GetUserName() {
       if(user_name.size() == 0) {
         EncodeUserName();
       }
@@ -2179,15 +2179,15 @@ namespace frontend {
       return user_name;
     }
 
-    const wstring& GetEncodedName() const {
+    const wstring GetEncodedName() const {
       return encoded_name;
     }
 
-    const wstring& GetParsedReturn() const {
+    const wstring GetParsedReturn() const {
       return parsed_return;
     }
 
-    const wstring& GetEncodedReturn() {
+    const wstring GetEncodedReturn() {
       if(encoded_return.size() == 0) {
         EncodeSignature();
       }
@@ -2287,11 +2287,11 @@ namespace frontend {
       return interface_strings;
     }
 
-    const wstring& GetName() const {
+    const wstring GetName() const {
       return name;
     }
 
-    const wstring& GetParentName() const {
+    const wstring GetParentName() const {
       return parent_name;
     }
 
@@ -2634,7 +2634,7 @@ namespace frontend {
       return array_type;
     }
 
-    const wstring& GetVariableName() const {
+    const wstring GetVariableName() const {
       return variable_name;
     }
 
@@ -2658,7 +2658,7 @@ namespace frontend {
       return entry;
     }
 
-    const wstring& GetMethodName() const {
+    const wstring GetMethodName() const {
       return method_name;
     }
 
@@ -3118,7 +3118,7 @@ namespace frontend {
       symbol_table = NULL;
     }
 
-    const wstring& GetName() const {
+    const wstring GetName() const {
       return name;
     }
 
