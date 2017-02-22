@@ -8,8 +8,8 @@ class Scanner {
 	
 	New(file : String) {
 		@file := file;
-		@tokens := Vector->New();
-		@strings := Vector->New();
+		@tokens := Vector→New();
+		@strings := Vector→New();
 	}
 	
 	method : public : GetTokens() ~ Vector {
@@ -21,184 +21,184 @@ class Scanner {
 	}
 	
 	method : public : native : Scan() ~ Bool {
-		reserved := StringMap->New();
-		reserved->Insert("while", IntHolder->New(Token->Type->WHILE->As(Int)));
-		reserved->Insert("if", IntHolder->New(Token->Type->IF->As(Int)));
-		reserved->Insert("else", IntHolder->New(Token->Type->ELSE->As(Int)));
-		reserved->Insert("print", IntHolder->New(Token->Type->PRINT->As(Int)));
-		reserved->Insert("put", IntHolder->New(Token->Type->PUT->As(Int)));
+		reserved := StringMap→New();
+		reserved→Insert("while", IntHolder→New(Token→Type→WHILE→As(Int)));
+		reserved→Insert("if", IntHolder→New(Token→Type→IF→As(Int)));
+		reserved→Insert("else", IntHolder→New(Token→Type→ELSE→As(Int)));
+		reserved→Insert("print", IntHolder→New(Token→Type→PRINT→As(Int)));
+		reserved→Insert("put", IntHolder→New(Token→Type→PUT→As(Int)));
 		
-		reader := FileReader->New(@file);
+		reader := FileReader→New(@file);
 		leaving {
-			reader->Close();
+			reader→Close();
 		};
 		
 		string_count := 0;
 		line_num := 0;
-		while(reader->IsEOF() <> true) {
-			line := reader->ReadString();
+		while(reader→IsEOF() <> true) {
+			line := reader→ReadString();
 			line_num += 1;
 					  
 			i := 0;  
-			while(i < line->Size()) {  
+			while(i < line→Size()) {  
 				# skip whitespace
-				while((line->Get(i) = ' ' | line->Get(i) = '\t') & i < line->Size()) {
+				while((line→Get(i) = ' ' | line→Get(i) = '\t') & i < line→Size()) {
 					i += 1;
 				};
 				
 				# parse the line
-				if(i < line->Size()) {
+				if(i < line→Size()) {
 					# variable
-					if(line->Get(i)->IsChar() | line->Get(i) = '_') {
+					if(line→Get(i)→IsChar() | line→Get(i) = '_') {
 						string := "";
-						while(line->Get(i)->IsChar() | line->Get(i) = '_') {
-							string->Append(line->Get(i));
+						while(line→Get(i)→IsChar() | line→Get(i) = '_') {
+							string→Append(line→Get(i));
 							i += 1;
 						};
 					
-						token := reserved->Find(string)->As(IntHolder);
+						token := reserved→Find(string)→As(IntHolder);
 						if(token <> Nil) {
-							type := token->Get()->As(Token->Type);
-							@tokens->AddBack(Token->New(line_num, type, string));
+							type := token→Get()→As(Token→Type);
+							@tokens→AddBack(Token→New(line_num, type, string));
 						}
 						else {
-							@tokens->AddBack(Token->New(line_num, Token->Type->VAR, string));
+							@tokens→AddBack(Token→New(line_num, Token→Type→VAR, string));
 						};
 					}
 					# number
-					else if(line->Get(i)->IsDigit()) {
+					else if(line→Get(i)→IsDigit()) {
 						number := "";
-						while(line->Get(i)->IsDigit()) {
-							number->Append(line->Get(i));
+						while(line→Get(i)→IsDigit()) {
+							number→Append(line→Get(i));
 							i += 1;
 						};						
-						@tokens->AddBack(Token->New(line_num, Token->Type->NUM, "num", number->ToInt()));
+						@tokens→AddBack(Token→New(line_num, Token→Type→NUM, "num", number→ToInt()));
 					}
 					# string
-					else if(line->Get(i) = '"') {
+					else if(line→Get(i) = '"') {
 						i += 1;
 						string := "";
-						while(line->Get(i) <> '"' & line->Get(i) <> '\0') {
-							string->Append(line->Get(i));
+						while(line→Get(i) <> '"' & line→Get(i) <> '\0') {
+							string→Append(line→Get(i));
 							i += 1;
 						};
-						@strings->AddBack(string);
+						@strings→AddBack(string);
 						
-						@tokens->AddBack(Token->New(line_num, Token->Type->STR_REF, "string", string_count));						
+						@tokens→AddBack(Token→New(line_num, Token→Type→STR_REF, "string", string_count));						
 						string_count += 1;
 						i += 1;
 					}
 					# other
 					else {
-						select(line->Get(i)) {
+						select(line→Get(i)) {
 							label ',': {
-								@tokens->AddBack(Token->New(line_num, Token->Type->COMMA, "comma"));
+								@tokens→AddBack(Token→New(line_num, Token→Type→COMMA, "comma"));
 							}
 							
 							label '(': {
-								@tokens->AddBack(Token->New(line_num, Token->Type->OPREN, "opren"));
+								@tokens→AddBack(Token→New(line_num, Token→Type→OPREN, "opren"));
 							}
 						
 							label ')': {
-								@tokens->AddBack(Token->New(line_num, Token->Type->CPREN, "cpren"));
+								@tokens→AddBack(Token→New(line_num, Token→Type→CPREN, "cpren"));
 							}
 				
 							label '{': {
 								
-								@tokens->AddBack(Token->New(line_num, Token->Type->OCBRACE, "ocbrace"));
+								@tokens→AddBack(Token→New(line_num, Token→Type→OCBRACE, "ocbrace"));
 							}
 				
 							label '}': {
-								@tokens->AddBack(Token->New(line_num, Token->Type->CCBRACE, "ccbrace"));
+								@tokens→AddBack(Token→New(line_num, Token→Type→CCBRACE, "ccbrace"));
 							}
 						
 							label '/': {
-								@tokens->AddBack(Token->New(line_num, Token->Type->DIV, "div"));
+								@tokens→AddBack(Token→New(line_num, Token→Type→DIV, "div"));
 							}
 							
 							label '%': {
-								@tokens->AddBack(Token->New(line_num, Token->Type->MOD, "mod"));
+								@tokens→AddBack(Token→New(line_num, Token→Type→MOD, "mod"));
 							}
 
 							label '*': {
-								@tokens->AddBack(Token->New(line_num, Token->Type->MUL, "mul"));
+								@tokens→AddBack(Token→New(line_num, Token→Type→MUL, "mul"));
 							}
 
 							label '+': {
-								@tokens->AddBack(Token->New(line_num, Token->Type->ADD, "add"));
+								@tokens→AddBack(Token→New(line_num, Token→Type→ADD, "add"));
 							}
 
 							label '-': {
-								@tokens->AddBack(Token->New(line_num, Token->Type->SUB, "sub"));
+								@tokens→AddBack(Token→New(line_num, Token→Type→SUB, "sub"));
 							}
 						
 							label ';': {
-								@tokens->AddBack(Token->New(line_num, Token->Type->SEMI, "semi-colon"));
+								@tokens→AddBack(Token→New(line_num, Token→Type→SEMI, "semi-colon"));
 							}
 							
 							label '<': {
-								if(i + 1 < line->Size() & line->Get(i + 1) = '=') {
-									@tokens->AddBack(Token->New(line_num, Token->Type->LESS_EQL, "equal"));
+								if(i + 1 < line→Size() & line→Get(i + 1) = '=') {
+									@tokens→AddBack(Token→New(line_num, Token→Type→LESS_EQL, "equal"));
 									i += 1;
 								}
 								else {
-									@tokens->AddBack(Token->New(line_num, Token->Type->LESS, "less"));
+									@tokens→AddBack(Token→New(line_num, Token→Type→LESS, "less"));
 								};
 							}
 							
 							label '>': {
-								if(i + 1 < line->Size() & line->Get(i + 1) = '=') {
-									@tokens->AddBack(Token->New(line_num, Token->Type->GTR_EQL, "equal"));
+								if(i + 1 < line→Size() & line→Get(i + 1) = '=') {
+									@tokens→AddBack(Token→New(line_num, Token→Type→GTR_EQL, "equal"));
 									i += 1;
 								}
 								else {
-									@tokens->AddBack(Token->New(line_num, Token->Type->GTR, "gtr"));
+									@tokens→AddBack(Token→New(line_num, Token→Type→GTR, "gtr"));
 								};
 							}
 							
 							label '=': {
-								if(i + 1 < line->Size() & line->Get(i + 1) = '=') {
-									@tokens->AddBack(Token->New(line_num, Token->Type->EQL, "equal"));
+								if(i + 1 < line→Size() & line→Get(i + 1) = '=') {
+									@tokens→AddBack(Token→New(line_num, Token→Type→EQL, "equal"));
 									i += 1;
 								}
 								else {
-									@tokens->AddBack(Token->New(line_num, Token->Type->ASGN, "asgn"));
+									@tokens→AddBack(Token→New(line_num, Token→Type→ASGN, "asgn"));
 								};
 							}
 							
 							label '&': {
-								if(i + 1 < line->Size() & line->Get(i + 1) = '&') {
-									@tokens->AddBack(Token->New(line_num, Token->Type->AND, "and"));
+								if(i + 1 < line→Size() & line→Get(i + 1) = '&') {
+									@tokens→AddBack(Token→New(line_num, Token→Type→AND, "and"));
 									i += 1;
 								}
 								else {
-									@tokens->AddBack(Token->New(line_num, Token->Type->OTHER, "OTHER"));
+									@tokens→AddBack(Token→New(line_num, Token→Type→OTHER, "OTHER"));
 								};
 							}
 							
 							label '|': {
-								if(i + 1 < line->Size() & line->Get(i + 1) = '|') {
-									@tokens->AddBack(Token->New(line_num, Token->Type->OR, "or"));
+								if(i + 1 < line→Size() & line→Get(i + 1) = '|') {
+									@tokens→AddBack(Token→New(line_num, Token→Type→OR, "or"));
 									i += 1;
 								}
 								else {
-									@tokens->AddBack(Token->New(line_num, Token->Type->OTHER, "OTHER"));
+									@tokens→AddBack(Token→New(line_num, Token→Type→OTHER, "OTHER"));
 								};
 							}
 							
 							label '!': {
-								if(i + 1 < line->Size() & line->Get(i + 1) = '=') {
-									@tokens->AddBack(Token->New(line_num, Token->Type->NEQL, "neql"));
+								if(i + 1 < line→Size() & line→Get(i + 1) = '=') {
+									@tokens→AddBack(Token→New(line_num, Token→Type→NEQL, "neql"));
 									i += 1;
 								}
 								else {
-									@tokens->AddBack(Token->New(line_num, Token->Type->NOT, "not"));
+									@tokens→AddBack(Token→New(line_num, Token→Type→NOT, "not"));
 								};
 							}
 							
 							other: {
-								System.IO.Console->Print("*** Invalid token: char='")->Print(line->Get(i))->PrintLine("' ***");
-								System.Runtime->Exit(1);
+								System.IO.Console→Print("*** Invalid token: char='")→Print(line→Get(i))→PrintLine("' ***");
+								System.Runtime→Exit(1);
 							}
 						};
 						i += 1;
@@ -206,33 +206,33 @@ class Scanner {
 				};
 			};
 		};
-		@tokens->AddBack(Token->New(line_num, Token->Type->EOS, "eos"));
+		@tokens→AddBack(Token→New(line_num, Token→Type→EOS, "eos"));
 		
 		return true;
 	}
 	
 	function : DumpTokens(tokens : Vector) ~ Nil {
 		each(i : tokens) {
-			token := tokens->Get(i)->As(Token);
-			name := token->GetName();
+			token := tokens→Get(i)→As(Token);
+			name := token→GetName();
 			
-			select(token->GetType()) {
-				label Token->Type->VAR: {
-					"var: name={$name}"->PrintLine();
+			select(token→GetType()) {
+				label Token→Type→VAR: {
+					"var: name={$name}"→PrintLine();
 				}
 				
-				label Token->Type->STR_REF: {
-					value := token->GetValue();
-					"str_ref: id={$value}"->PrintLine();
+				label Token→Type→STR_REF: {
+					value := token→GetValue();
+					"str_ref: id={$value}"→PrintLine();
 				}
 				
-				label Token->Type->NUM: {
-					value := token->GetValue();
-					"num: value={$value}"->PrintLine();
+				label Token→Type→NUM: {
+					value := token→GetValue();
+					"num: value={$value}"→PrintLine();
 				}
 				
 				other : {
-					name->PrintLine();
+					name→PrintLine();
 				}
 			};
 		};
