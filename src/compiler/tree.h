@@ -1996,7 +1996,7 @@ namespace frontend {
         case FUNC_TYPE: {
           name = L'(';
           vector<Type*> func_params = type->GetFunctionParameters();
-          for(int i = 0; i < func_params.size(); ++i) {
+          for(size_t i = 0; i < func_params.size(); ++i) {
             name += EncodeUserType(func_params[i]);
           }
           name += L") ~ ";
