@@ -88,6 +88,7 @@ class LibraryMethodCallSelector {
   LibraryMethodCallSelector(MethodCall* c, vector<LibraryMethodCallSelection*> &m) {
     method_call = c;
     matches = m;
+
     // weed out invalid matches     
     for(size_t i = 0; i < matches.size(); ++i) {
       if(matches[i]->IsValid()) {
