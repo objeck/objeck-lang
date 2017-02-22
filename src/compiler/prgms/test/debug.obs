@@ -1,11 +1,38 @@
+use Collection;
+
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		Foo("Bar");
+		b := Bar->New(13);
+		b→Foo(13.3);
+		
+		v := Vector->New();
+		v->AddBack(f);
 	}
 	
 	function : Foo(i : Int) ~ Nil {
 	}
 	
 	function : Foo() ~ Nil {
+	}
+}
+
+class Bar {
+	New : private (t : Test) {
+	}
+	
+	New(i : Int) {
+	}
+	
+	method : public : Foo(b : Int) ~ Nil {
+	}
+	
+	method : Foo(b : (Float) ~ Bool) ~ Nil {
+	}
+	
+	method : Bar(f : Float) ~ Bool {
+		return false;
+	}
+	
+	method : Foo(ff: Float[]) ~ Nil {
 	}
 }

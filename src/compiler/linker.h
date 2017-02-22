@@ -173,6 +173,7 @@ class LibraryInstr {
 class LibraryMethod {
   int id;
   wstring name;
+  wstring user_name;
   wstring rtrn_name;
   frontend::Type* rtrn_type;
   vector<LibraryInstr*> instrs;
@@ -193,12 +194,6 @@ class LibraryMethod {
     if(start != wstring::npos) {
       const wstring &parameters = method_name.substr(start + 1);
       size_t index = 0;
-
-/*
-#ifdef _DEBUG
-      wcout << L"### parsing: |" << parameters << L"| ###" << endl;
-#endif
-*/
 
       while(index < parameters.size()) {
 	frontend::Type* type = NULL;
@@ -343,6 +338,121 @@ class LibraryMethod {
     }
     rtrn_type->SetDimension(dimension);
   }
+
+  wstring ReplaceSubstring(wstring s, const wstring& f, const wstring &r) {
+    const size_t index = s.find(f);
+    if(index != string::npos) {
+      s.replace(index, f.size(), r);
+    }
+
+    return s;
+  }
+
+  wstring EncodeUserType(frontend::Type* type) {
+    wstring name;
+    if(type) {
+      // type
+      switch(type->GetType()) {
+      case frontend::BOOLEAN_TYPE:
+        name = L"Bool";
+        break;
+
+      case frontend::BYTE_TYPE:
+        name = L"Byte";
+        break;
+
+      case frontend::INT_TYPE:
+        name = L"Int";
+        break;
+
+      case frontend::FLOAT_TYPE:
+        name = L"Float";
+        break;
+
+      case frontend::CHAR_TYPE:
+        name = L"Char";
+        break;
+
+      case frontend::NIL_TYPE:
+        name = L"Nil";
+        break;
+
+      case frontend::VAR_TYPE:
+        name = L"Var";
+        break;
+
+      case frontend::CLASS_TYPE:
+        name = type->GetClassName();
+        break;
+
+      case frontend::FUNC_TYPE: {
+        name = L'(';
+        vector<frontend::Type*> func_params = type->GetFunctionParameters();
+        for(int i = 0; i < func_params.size(); ++i) {
+          name += EncodeUserType(func_params[i]);
+        }
+        name += L") ~ ";
+        name += EncodeUserType(type->GetFunctionReturn());
+      }
+                                break;
+      }
+
+      // dimension
+      for(int i = 0; i < type->GetDimension(); ++i) {
+        name += L"[]";
+      }
+    }
+
+    return name;
+  }
+
+  void EncodeUserName() {
+    bool is_new_private = false;
+    if(is_static) {
+      user_name = L"function : ";
+    }
+    else {
+      switch(type) {
+      case frontend::NEW_PUBLIC_METHOD:
+        break;
+
+      case frontend::NEW_PRIVATE_METHOD:
+        is_new_private = true;
+        break;
+
+      case frontend::PUBLIC_METHOD:
+        user_name = L"method : public : ";
+        break;
+
+      case frontend::PRIVATE_METHOD:
+        user_name = L"method : private : ";
+        break;
+      }
+    }
+
+    if(is_native) {
+      user_name += L"native : ";
+    }
+
+    // name
+    wstring method_name = name.substr(0, name.find_last_of(':'));
+    user_name += ReplaceSubstring(method_name, L":", L"->");
+
+    // private new
+    if(is_new_private) {
+      user_name += L" : private ";
+    }
+
+    // params
+    user_name += L'(';
+
+    for(size_t i = 0; i < declarations.size(); ++i) {
+      user_name += EncodeUserType(declarations[i]);
+    }
+    user_name += L") ~ ";
+
+    user_name += EncodeUserType(rtrn_type);
+  }
   
  public:
   LibraryMethod(int i, const wstring &n, const wstring &r, frontend::MethodType t, bool v,  bool h,
@@ -390,6 +500,14 @@ class LibraryMethod {
 
   const wstring& GetName() const {
     return name;
+  }
+
+  const wstring& GetUserName() {
+    if(user_name.size() == 0) {
+      EncodeUserName();
+    }
+
+    return user_name;
   }
 
   const wstring& GetEncodedReturn() const {

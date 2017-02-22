@@ -1,4 +1,4 @@
-/**************************************************************************
+﻿/**************************************************************************
  * Language scanner.
  *
  * Copyright (c) 2008-2015, Randy Hollines
@@ -1241,6 +1241,14 @@ void Scanner::ParseToken(int index)
 
       case L'%':
         tokens[index]->SetType(TOKEN_MOD);
+        tokens[index]->SetLineNbr(line_nbr);
+        tokens[index]->SetFileName(filename);
+        NextChar();
+        break;
+
+      // L'→':
+      case 0x2192:
+        tokens[index]->SetType(TOKEN_ASSESSOR);
         tokens[index]->SetLineNbr(line_nbr);
         tokens[index]->SetFileName(filename);
         NextChar();
