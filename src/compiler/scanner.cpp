@@ -1245,6 +1245,14 @@ void Scanner::ParseToken(int index)
         tokens[index]->SetFileName(filename);
         NextChar();
         break;
+        
+        // L'≠':
+      case 0x2260:
+        tokens[index]->SetType(TOKEN_NEQL);
+        tokens[index]->SetLineNbr(line_nbr);
+        tokens[index]->SetFileName(filename);
+        NextChar();
+        break;
 
         // L'←':
       case 0x2190:
@@ -1257,6 +1265,22 @@ void Scanner::ParseToken(int index)
       // L'→':
       case 0x2192:
         tokens[index]->SetType(TOKEN_ASSESSOR);
+        tokens[index]->SetLineNbr(line_nbr);
+        tokens[index]->SetFileName(filename);
+        NextChar();
+        break;
+
+        // L'≤':
+      case 0x2264:
+        tokens[index]->SetType(TOKEN_LEQL);
+        tokens[index]->SetLineNbr(line_nbr);
+        tokens[index]->SetFileName(filename);
+        NextChar();
+        break;
+
+        // L'≥':
+      case 0x2265:
+        tokens[index]->SetType(TOKEN_GEQL);
         tokens[index]->SetLineNbr(line_nbr);
         tokens[index]->SetFileName(filename);
         NextChar();
