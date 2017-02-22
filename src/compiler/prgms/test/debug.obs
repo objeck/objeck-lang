@@ -4,21 +4,20 @@ bundle abc {
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		b := abc.Bar->New(13);
-		b→Foo(13);
+			b := abc.Bar->New(13);
+			b→Foo(13);
+			
+			v := Vector->New();
+			v->AddBack("fhllo");
+		}
 		
-		v := Vector->New();
-		v->AddBack("fhllo");
+		function : Foo(i : Int) ~ Nil {
+		}
+		
+		function : Foo() ~ Nil {
+		}
 	}
 	
-	function : Foo(i : Int) ~ Nil {
-	}
-	
-	function : Foo() ~ Nil {
-	}
-}
-
-
 	class Bar {
 		New : private (t : Test) {
 		}
