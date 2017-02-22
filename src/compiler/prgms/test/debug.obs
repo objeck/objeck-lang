@@ -1,9 +1,11 @@
 use Collection;
 
+bundle abc {
+
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		b := Bar->New(13);
-		b→Foo(13.3);
+		b := abc.Bar->New(13);
+		b→Foo("13.3");
 		
 		v := Vector->New();
 		v->AddBack(f);
@@ -16,23 +18,25 @@ class Test {
 	}
 }
 
-class Bar {
-	New : private (t : Test) {
+
+	class Bar {
+		New : private (t : Test) {
+		}
+		
+		New(i : Int) {
+		}
+		
+		method : public : Foo(b : Int) ~ Nil {
+		}
+		
+		method : Foo(b : (Float) ~ Bool) ~ Nil {
+		}
+		
+		method : Bar(f : Float) ~ Bool {
+			return false;
+		}
+		
+		method : Foo(ff: Float[]) ~ Nil {
+		}
 	}
-	
-	New(i : Int) {
-	}
-	
-	method : public : Foo(b : Int) ~ Nil {
-	}
-	
-	method : Foo(b : (Float) ~ Bool) ~ Nil {
-	}
-	
-	method : Bar(f : Float) ~ Bool {
-		return false;
-	}
-	
-	method : Foo(ff: Float[]) ~ Nil {
-	}
-}
+}	

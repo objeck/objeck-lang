@@ -2045,6 +2045,7 @@ namespace frontend {
 
       // name
       parsed_name = name + L':';
+
       // params
       vector<Declaration*> declaration_list = declarations->GetDeclarations();
       for(size_t i = 0; i < declaration_list.size(); ++i) {
@@ -2111,6 +2112,7 @@ namespace frontend {
 
       // name
       encoded_name = name + L':';
+
       // params
       vector<Declaration*> declaration_list = declarations->GetDeclarations();
       for(size_t i = 0; i < declaration_list.size(); ++i) {
