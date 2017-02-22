@@ -7,9 +7,9 @@ class Scanner {
 	@strings : Vector;
 	
 	New(file : String) {
-		@file := file;
-		@tokens := Vector→New();
-		@strings := Vector→New();
+		@file ← file;
+		@tokens ← Vector→New();
+		@strings ← Vector→New();
 	}
 	
 	method : public : GetTokens() ~ Vector {
@@ -21,25 +21,25 @@ class Scanner {
 	}
 	
 	method : public : native : Scan() ~ Bool {
-		reserved := StringMap→New();
+		reserved ← StringMap→New();
 		reserved→Insert("while", IntHolder→New(Token→Type→WHILE→As(Int)));
 		reserved→Insert("if", IntHolder→New(Token→Type→IF→As(Int)));
 		reserved→Insert("else", IntHolder→New(Token→Type→ELSE→As(Int)));
 		reserved→Insert("print", IntHolder→New(Token→Type→PRINT→As(Int)));
 		reserved→Insert("put", IntHolder→New(Token→Type→PUT→As(Int)));
 		
-		reader := FileReader→New(@file);
+		reader ← FileReader→New(@file);
 		leaving {
 			reader→Close();
 		};
 		
-		string_count := 0;
-		line_num := 0;
+		string_count ← 0;
+		line_num ← 0;
 		while(reader→IsEOF() <> true) {
-			line := reader→ReadString();
+			line ← reader→ReadString();
 			line_num += 1;
 					  
-			i := 0;  
+			i ← 0;  
 			while(i < line→Size()) {  
 				# skip whitespace
 				while((line→Get(i) = ' ' | line→Get(i) = '\t') & i < line→Size()) {
@@ -50,15 +50,15 @@ class Scanner {
 				if(i < line→Size()) {
 					# variable
 					if(line→Get(i)→IsChar() | line→Get(i) = '_') {
-						string := "";
+						string ← "";
 						while(line→Get(i)→IsChar() | line→Get(i) = '_') {
 							string→Append(line→Get(i));
 							i += 1;
 						};
 					
-						token := reserved→Find(string)→As(IntHolder);
+						token ← reserved→Find(string)→As(IntHolder);
 						if(token <> Nil) {
-							type := token→Get()→As(Token→Type);
+							type ← token→Get()→As(Token→Type);
 							@tokens→AddBack(Token→New(line_num, type, string));
 						}
 						else {
@@ -67,7 +67,7 @@ class Scanner {
 					}
 					# number
 					else if(line→Get(i)→IsDigit()) {
-						number := "";
+						number ← "";
 						while(line→Get(i)→IsDigit()) {
 							number→Append(line→Get(i));
 							i += 1;
@@ -77,7 +77,7 @@ class Scanner {
 					# string
 					else if(line→Get(i) = '"') {
 						i += 1;
-						string := "";
+						string ← "";
 						while(line→Get(i) <> '"' & line→Get(i) <> '\0') {
 							string→Append(line→Get(i));
 							i += 1;
@@ -213,8 +213,8 @@ class Scanner {
 	
 	function : DumpTokens(tokens : Vector) ~ Nil {
 		each(i : tokens) {
-			token := tokens→Get(i)→As(Token);
-			name := token→GetName();
+			token ← tokens→Get(i)→As(Token);
+			name ← token→GetName();
 			
 			select(token→GetType()) {
 				label Token→Type→VAR: {
@@ -222,12 +222,12 @@ class Scanner {
 				}
 				
 				label Token→Type→STR_REF: {
-					value := token→GetValue();
+					value ← token→GetValue();
 					"str_ref: id={$value}"→PrintLine();
 				}
 				
 				label Token→Type→NUM: {
-					value := token→GetValue();
+					value ← token→GetValue();
 					"num: value={$value}"→PrintLine();
 				}
 				
@@ -245,7 +245,7 @@ class Token {
 	@name : String;
 	@value : Int;
 
-	enum Type := -32 {
+	enum Type ← -32 {
 		ASGN,
 		WHILE,
 		ELSE,
@@ -280,16 +280,16 @@ class Token {
 	}
 	
 	New(line_num : Int, type : Type, name : String) {
-		@line_num := line_num;
-		@type := type;
-		@name := name;
+		@line_num ← line_num;
+		@type ← type;
+		@name ← name;
 	}
 	
 	New(line_num : Int, type : Type, name : String, value : Int) {
-		@line_num := line_num;
-		@type := type;
-		@value := value;
-		@name := name;
+		@line_num ← line_num;
+		@type ← type;
+		@value ← value;
+		@name ← name;
 	}
 	
 	method : public : GetLine() ~ Int {

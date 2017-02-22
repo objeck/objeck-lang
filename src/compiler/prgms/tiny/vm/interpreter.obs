@@ -8,24 +8,24 @@ class Interpreter {
 	
 	function : Main(args : String[]) ~ Nil {
 		if(args→Size() = 1) {
-			interpreter := Interpreter→New(args[0]);
+			interpreter ← Interpreter→New(args[0]);
 			interpreter→Load();	
 			interpreter→Run();
 		};
 	}
 	
 	New(file : String) {
-		@file := file;
-		@instructions := Vector→New();
+		@file ← file;
+		@instructions ← Vector→New();
 	}
 	
 	method : native : Run() ~ Nil  {
-		varibles := Int→New[16];
-		calc_stack := IntStack→New();
+		varibles ← Int→New[16];
+		calc_stack ← IntStack→New();
 		
-		pc := 0;
+		pc ← 0;
 		while(pc < @instructions→Size()) {
-			instruction := @instructions→Get(pc)→As(Instruction);
+			instruction ← @instructions→Get(pc)→As(Instruction);
 			select(instruction→GetType()) {
 				label Instruction→Type→PUTS: {
 					@strings[calc_stack→Pop()]→Print();
@@ -44,20 +44,20 @@ class Interpreter {
 				}
 				
 				label Instruction→Type→ST: {
-					index := instruction→GetValue();
-					varibles[index] := calc_stack→Pop();
+					index ← instruction→GetValue();
+					varibles[index] ← calc_stack→Pop();
 					pc += 1;
 				}
 				
 				label Instruction→Type→LD: {
-					index := instruction→GetValue();
+					index ← instruction→GetValue();
 					calc_stack→Push(varibles[index]);
 					pc += 1;
 				}
 				
 				label Instruction→Type→JZ: {
 					if(calc_stack→Pop() = 0) {
-						pc := instruction→GetValue();
+						pc ← instruction→GetValue();
 					}
 					else {
 						pc += 1;
@@ -65,7 +65,7 @@ class Interpreter {
 				}
 				
 				label Instruction→Type→JP: {
-					pc := instruction→GetValue();
+					pc ← instruction→GetValue();
 				}
 				
 				label Instruction→Type→PUSH: {
@@ -135,21 +135,21 @@ class Interpreter {
 	}
 	
 	method : native : Load() ~ Nil {
-		reader := FileReader→New(@file);	
+		reader ← FileReader→New(@file);	
 		leaving {
 			reader→Close();
 		};
 		
-		line := reader→ReadString()→Trim();
-		string_count := line→ToInt();		
-		@strings := String→New[string_count];
-		for(i := 0; i < string_count; i += 1;) {
-			string := "";
-			line := reader→ReadString();
+		line ← reader→ReadString()→Trim();
+		string_count ← line→ToInt();		
+		@strings ← String→New[string_count];
+		for(i ← 0; i < string_count; i += 1;) {
+			string ← "";
+			line ← reader→ReadString();
 			each(j : line) {
-				c := line→Get(j);
+				c ← line→Get(j);
 				if(c = '\\' & j + 1 < line→Size()) {
-					n := line→Get(j + 1);
+					n ← line→Get(j + 1);
 					select(n) {
 						label 'n': {
 							string += '\n';
@@ -175,15 +175,15 @@ class Interpreter {
 					string += c;
 				};
 			};
-			@strings[i] := string;
+			@strings[i] ← string;
 		};
 
 		while(<>reader→IsEOF()) {
-			line := reader→ReadString();
-			opers := line→Split("\t");
+			line ← reader→ReadString();
+			opers ← line→Split("\t");
 			if(opers <> Nil) {
 				if(opers→Size() = 2) {
-					name := opers[1];
+					name ← opers[1];
 					if(name→Equals("lt")) {
 						@instructions→AddBack(Instruction→New(Instruction→Type→LT));
 					} 
@@ -229,8 +229,8 @@ class Interpreter {
 					};
 				}
 				else if(opers→Size() = 3) {
-					name := opers[1];
-					value := opers[2]→ToInt();
+					name ← opers[1];
+					value ← opers[2]→ToInt();
 					if(name→Equals("st")) {
 						@instructions→AddBack(Instruction→New(Instruction→Type→ST, value));
 					}

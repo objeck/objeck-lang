@@ -8,14 +8,14 @@ class Emitter {
 	@code_index : Int;
 	
 	New(statements : Vector, strings : Vector) {
-		@statements := statements;
-		@strings := strings;
-		@instructions := Vector→New();
-		@code_index := 0;
+		@statements ← statements;
+		@strings ← strings;
+		@instructions ← Vector→New();
+		@code_index ← 0;
 	}
 	
 	method : public : Emit() ~ Nil {
-		out := FileWriter→New("instrs.e");
+		out ← FileWriter→New("instrs.e");
 		leaving {
 			out→Close();
 		};
@@ -24,7 +24,7 @@ class Emitter {
 		Statements(@statements);
 		
 		each(i : @instructions) {
-			instruction := @instructions→Get(i)→As(Instruction);
+			instruction ← @instructions→Get(i)→As(Instruction);
 			select(instruction→GetType()) {
 				label Instruction→Type→PUTS: {
 					out→WriteString("{$i}\tputs\r\n");
@@ -39,32 +39,32 @@ class Emitter {
 				}
 				
 				label Instruction→Type→PUTV: {
-					index := instruction→GetValue();
+					index ← instruction→GetValue();
 					out→WriteString("{$i}\tputv\t{$index}\r\n");
 				}
 				
 				label Instruction→Type→ST: {
-					index := instruction→GetValue();
+					index ← instruction→GetValue();
 					out→WriteString("{$i}\tst\t{$index}\r\n");
 				}
 				
 				label Instruction→Type→LD: {
-					index := instruction→GetValue();
+					index ← instruction→GetValue();
 					out→WriteString("{$i}\tld\t{$index}\r\n");
 				}
 				
 				label Instruction→Type→JZ: {
-					index := instruction→GetValue();
+					index ← instruction→GetValue();
 					out→WriteString("{$i}\tjz\t{$index}\r\n");
 				}
 				
 				label Instruction→Type→JP: {
-					index := instruction→GetValue();
+					index ← instruction→GetValue();
 					out→WriteString("{$i}\tjp\t{$index}\r\n");
 				}
 				
 				label Instruction→Type→PUSH: {
-					value := instruction→GetValue();
+					value ← instruction→GetValue();
 					out→WriteString("{$i}\tpush\t{$value}\r\n");
 				}
 				
@@ -120,11 +120,11 @@ class Emitter {
 	}
 	
 	method : Strings(out : FileWriter) ~ Nil {
-		size := @strings→Size();
+		size ← @strings→Size();
 		out→WriteString("{$size}\r\n");
 		
 		each(i : @strings) {
-			string := @strings→Get(i)→As(String);
+			string ← @strings→Get(i)→As(String);
 			out→WriteString("{$string}\r\n");
 		};
 	}
@@ -133,7 +133,7 @@ class Emitter {
 		temp : Instruction;
 		
 		each(i : statements) {
-			node := statements→Get(i)→As(ParseNode);
+			node ← statements→Get(i)→As(ParseNode);
 			select(node→GetType()) {
 				label ParseNode→Type→ASGN: {
 					if(<>Expression(node→GetRight())) {
@@ -147,7 +147,7 @@ class Emitter {
 					if(<>Expression(node→GetLeft())) {
 						return false;
 					};
-					cond_jmp := Instruction→New(Instruction→Type→JZ);
+					cond_jmp ← Instruction→New(Instruction→Type→JZ);
 					@instructions→AddBack(cond_jmp);
 					@code_index += 1;				
 					if(<>Statements(node→GetStatements())) {
@@ -160,7 +160,7 @@ class Emitter {
 					
 					if(node→GetRight() <> Nil) {
 							cond_jmp→SetValue(@code_index + 1);
-						cond_jmp := Instruction→New(Instruction→Type→JP);
+						cond_jmp ← Instruction→New(Instruction→Type→JP);
 						@instructions→AddBack(cond_jmp);
 						if(<>Statements(node→GetRight()→GetStatements())) {
 							return false;
@@ -170,11 +170,11 @@ class Emitter {
 				}
 				
 				label ParseNode→Type→WHILE: {
-					start := @code_index;
+					start ← @code_index;
 					if(<>Expression(node→GetLeft())) {
 						return false;
 					};
-					cond_jmp := Instruction→New(Instruction→Type→JZ);
+					cond_jmp ← Instruction→New(Instruction→Type→JZ);
 					@instructions→AddBack(cond_jmp);
 					@code_index += 1;				
 					if(<>Statements(node→GetStatements())) {
@@ -186,7 +186,7 @@ class Emitter {
 				}
 				
 				label ParseNode→Type→PRINT: {
-					expressions := node→GetStatements();
+					expressions ← node→GetStatements();
 					each(j : expressions) {
 						Expression(expressions→Get(j)→As(ParseNode));
 					};
