@@ -5,7 +5,7 @@ ARGS=-O3 -D_X64 -Wall -Wno-unused-function -std=c++11 -Wno-deprecated-declaratio
 CC=g++
 AR=ar
 SRC= jit_amd_lp64.o
-LIB= ../../jit_amd_lp64.a
+LIB=../../../jit_amd_lp64.a
 
 $(LIB): $(SRC)
 	$(AR) -cvq $(LIB) $(SRC)

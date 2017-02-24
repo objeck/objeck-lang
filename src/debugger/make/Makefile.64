@@ -4,27 +4,27 @@ ARGS=-O3 -Wall -Wall -Wno-unused-function -std=c++11 -Wno-strict-overflow -pthre
 
 CC=g++
 SRC=tree.o scanner.o parser.o debugger.o
-OBJ_LIBS=compiler.a ../jit_amd_lp64.a ../memory.a
-COMPILER_PATH=..
-MEM_PATH=../os/posix
-JIT_PATH=../jit/amd64
+OBJ_LIBS=../vm/compiler.a ../vm/jit_amd_lp64.a ../vm/memory.a
+VM_PATH=../vm
+MEM_PATH=../vm/arch/posix
+JIT_PATH=../vm/arch/jit/amd64
 EXE=obd
 
 $(EXE): $(SRC) $(OBJ_LIBS)
 	$(CC) -m64 -pthread -o $(EXE) $(SRC) $(OBJ_LIBS) -Wunused-function -ldl -lcrypto -lssl
 
-compiler.a:
-	cd $(COMPILER_PATH); make	-f Makefile.obd64
+../vm/compiler.a:
+	cd $(VM_PATH); make -f make/Makefile.obd64
 
-../memory.a:
-	cd $(MEM_PATH); make
+../vm/memory.a:
+	cd $(MEM_PATH); make -f Makefile.64
 
-../jit_amd_lp64.a:
-	cd $(JIT_PATH); make
+../vm/jit_amd_lp64.a:
+	cd $(JIT_PATH); make -f Makefile.64
 	
 %.o: %.cpp
 	$(CC) -m64 $(ARGS) -c $< 
 
 clean:
-	cd $(COMPILER_PATH); make -f Makefile.obd64 clean
-	rm -f $(EXE).exe $(EXE) *.exe *.o *~
+	cd $(VM_PATH); make -f make/Makefile.obd64 clean
+	rm -f $(EXE) *.o *~
