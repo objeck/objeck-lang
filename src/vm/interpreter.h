@@ -43,7 +43,7 @@
 #endif
 
 #ifdef _DEBUGGER
-#include "debugger/debugger.h"
+#include "../debugger/debugger.h"
 #endif
 
 using namespace std;

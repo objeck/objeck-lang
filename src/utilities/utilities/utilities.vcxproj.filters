@@ -30,7 +30,7 @@
     <ClCompile Include="..\..\vm\common.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\vm\os\windows\memory.cpp">
+    <ClCompile Include="..\..\vm\arch\win32\memory.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -47,10 +47,10 @@
     <ClInclude Include="resource.h">
       <Filter>Resource Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\vm\os\windows\memory.h">
+    <ClInclude Include="..\..\vm\common.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\vm\common.h">
+    <ClInclude Include="..\..\vm\arch\win32\memory.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
