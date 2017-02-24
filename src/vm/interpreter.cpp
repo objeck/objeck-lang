@@ -45,7 +45,7 @@
 #ifdef _WIN32
 #include "arch/win32/windows.h"
 #else
-#include "arch/os/posix/posix.h"
+#include "arch/posix/posix.h"
 #endif
 
 #ifdef _DEBUGGER

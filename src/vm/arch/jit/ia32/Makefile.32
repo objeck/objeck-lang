@@ -4,7 +4,7 @@ ARGS=-O3 -Wall -Wno-unused-function -std=c++11 -std=c++11 -Wno-unused-function
 CC=g++
 AR=ar
 SRC= jit_intel_lp32.o
-LIB= ../../jit_intel_lp32.a
+LIB=../../../jit_intel_lp32.a
 
 $(LIB): $(SRC)
 	$(AR) -cvq $(LIB) $(SRC)
