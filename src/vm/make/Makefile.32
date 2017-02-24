@@ -6,27 +6,25 @@ ARGS=-O3 -pthread -Wall -Wno-unused-function -std=c++11
 CC=g++
 SRC=common.o interpreter.o loader.o vm.o posix_main.o 
 OBJ_LIBS= jit_intel_lp32.a memory.a
-MEM_PATH=os/posix
-JIT_PATH=jit/ia32
+MEM_PATH=arch/posix
+JIT_PATH=arch/jit/ia32
 EXE=obr
 
 $(EXE): $(SRC) $(OBJ_LIBS)
 	$(CC) -m32 -o $(EXE) $(SRC) $(OBJ_LIBS) -lssl -lcrypto -ldl -pthread
 #	$(CC) -m32 -o $(EXE) $(SRC) $(OBJ_LIBS) -lssl -lcrypto -ldl -pthread -pg
 
-
-
 memory.a:
-	cd $(MEM_PATH); make	
+	cd $(MEM_PATH); make -f Makefile.32	
 	
 jit_intel_lp32.a:
-	cd $(JIT_PATH); make	
+	cd $(JIT_PATH); make -f Makefile.32	
 	
 %.o: %.cpp
 	$(CC) -m32 $(ARGS) -c $< 
 
 clean:
-	cd $(MEM_PATH); make clean
-	cd $(JIT_PATH); make clean
+	cd $(MEM_PATH); make -f Makefile.32 clean
+	cd $(JIT_PATH); make -f Makefile.32 clean
 	rm -f $(EXE).exe $(EXE) *.exe *.o *~
 

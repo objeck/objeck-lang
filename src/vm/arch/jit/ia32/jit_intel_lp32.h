@@ -33,8 +33,8 @@
 #define __REG_ALLOC_H__
 
 #ifndef _WIN32
-#include "../../os/posix/memory.h"
-#include "../../os/posix/posix.h"
+#include "../../../arch/posix/memory.h"
+#include "../../../arch/posix/posix.h"
 #include <sys/mman.h>
 #include <errno.h>
 #else
