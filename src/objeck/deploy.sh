@@ -1,8 +1,5 @@
 #!/bin/sh
 
-USER_HOME=C:\\Users\\rhollines
-# set USER_HOME=C:\\Documents and Settings\\Administrator
-
 # setup directories
 rm -rf deploy
 mkdir deploy
@@ -21,13 +18,11 @@ mkdir deploy_fcgi/doc
 # build compiler
 cd ../compiler
 if [ ! -z "$1" ] && [ "$1" = "32" ]; then
-	cp Makefile.32 Makefile
-elif [ ! -z "$1" ] && [ "$1" = "mingw" ]; then
-	cp Makefile.MINGW Makefile
+	cp make/Makefile.32 Makefile
 elif [ ! -z "$1" ] && [ "$1" = "osx" ]; then
-	cp Makefile.OSX.64 Makefile
+	cp make/Makefile.OSX.64 Makefile
 else
-	cp Makefile.64 Makefile
+	cp make/Makefile.64 Makefile
 fi
 make clean; make -j3 OBJECK_LIB_PATH=\\\".\\\"
 cp obc ../objeck/deploy/bin
@@ -41,8 +36,6 @@ rm ../objeck/deploy/lib/db.obl
 cd ../utilities
 if [ ! -z "$1" ] && [ "$1" = "32" ]; then
 	cp Makefile.32 Makefile
-elif [ ! -z "$1" ] && [ "$1" = "mingw" ]; then
-	cp Makefile.MINGW Makefile
 elif [ ! -z "$1" ] && [ "$1" = "osx" ]; then
 	cp Makefile.OSX.64 Makefile
 else
@@ -61,10 +54,6 @@ elif [ ! -z "$1" ] && [ "$1" = "osx" ]; then
 	cp Makefile.OSX.64 Makefile
 	cp os/posix/Makefile.OSX.64 os/posix/Makefile
 	cp jit/amd64/Makefile.OSX.64 jit/amd64/Makefile
-elif [ ! -z "$1" ] && [ "$1" = "mingw" ]; then
-	cp Makefile.MINGW Makefile
-	cp os/windows/Makefile.MINGW os/posix/Makefile
-	cp jit/ia32/Makefile.MINGW jit/ia32/Makefile
 else 
 	cp Makefile.64 Makefile
 	cp os/posix/Makefile.64 os/posix/Makefile
@@ -85,8 +74,6 @@ if [ ! -z "$1" ] && [ "$1" = "32" ]; then
 	cp Makefile.obd32 Makefile
 elif [ ! -z "$1" ] && [ "$1" = "osx" ]; then
 	cp Makefile.OSX.obd64 Makefile	
-elif [ ! -z "$1" ] && [ "$1" = "mingw" ]; then
-	cp Makefile.obd.MINGW Makefile
 else
 	cp Makefile.obd64 Makefile
 fi
@@ -96,8 +83,6 @@ if [ ! -z "$1" ] && [ "$1" = "32" ]; then
 	cp Makefile.32 Makefile
 elif [ ! -z "$1" ] && [ "$1" = "osx" ]; then
 	cp Makefile.OSX.64 Makefile
-elif [ ! -z "$1" ] && [ "$1" = "mingw" ]; then
-	cp Makefile.MINGW Makefile
 else
 	cp Makefile.64 Makefile
 fi
@@ -109,9 +94,6 @@ cd ../../lib/odbc
 if [ ! -z "$1" ] && [ "$1" = "osx" ]; then
 	./build_osx_x64.sh odbc
 	cp odbc.dylib ../../objeck/deploy/lib/native/libobjk_odbc.dylib
-elif [ ! -z "$1" ] && [ "$1" = "mingw" ]; then
-	./build_win32.sh odbc
-	cp odbc.so ../../objeck/deploy/lib/native/libobjk_odbc.so
 else
 	./build_linux.sh odbc
 	cp odbc.so ../../objeck/deploy/lib/native/libobjk_odbc.so
@@ -122,9 +104,6 @@ cd ../openssl
 if [ ! -z "$1" ] && [ "$1" = "osx" ]; then
 	./build_osx_x64.sh openssl
 	cp openssl.dylib ../../objeck/deploy/lib/native/libobjk_openssl.dylib
-elif [ ! -z "$1" ] && [ "$1" = "mingw" ]; then
-	./build_win32.sh openssl
-	cp openssl.so ../../objeck/deploy/lib/native/libobjk_openssl.so
 else
 	./build_linux.sh openssl
 	cp openssl.so ../../objeck/deploy/lib/native/libobjk_openssl.so
@@ -164,23 +143,12 @@ cp ../../docs/fcgi_readme_files/* deploy_fcgi/fcgi_readme_files
 
 # deploy
 if [ ! -z "$2" ] && [ "$2" = "deploy" ]; then
-	if [ ! -z "$1" ] && [ "$1" = "mingw" ]; then
-		rm -rf "$USER_HOME\Desktop\objeck-lang"
-		cp -rf src/objeck/deploy "$USER_HOME\Desktop\objeck-lang"
-		cd "$USER_HOME\Desktop"
-	else
-		rm -rf ~/Desktop/objeck-lang
-		cp -rf ../objeck/deploy ~/Desktop/objeck-lang
-		cd ~/Desktop
-	fi;
-
-	if [ ! -z "$1" ] && [ "$1" = "mingw" ]; then
-		rm -f objeck.zip
-		"C:\Program Files\7-Zip\7z.exe" a -tzip objeck-lang
-	else 
-		rm -f objeck.tar objeck.tgz
-		tar cf objeck.tar objeck-lang
-		gzip objeck.tar
-		mv objeck.tar.gz objeck.tgz
-	fi;
+	rm -rf ~/Desktop/objeck-lang
+	cp -rf ../objeck/deploy ~/Desktop/objeck-lang
+	cd ~/Desktop
+	
+	rm -f objeck.tar objeck.tgz
+	tar cf objeck.tar objeck-lang
+	gzip objeck.tar
+	mv objeck.tar.gz objeck.tgz	
 fi;
