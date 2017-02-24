@@ -49,7 +49,7 @@
 #endif
 
 #ifdef _DEBUGGER
-#include "debugger/debugger.h"
+#include "../debugger/debugger.h"
 #endif
 
 #include <math.h>
