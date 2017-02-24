@@ -1,9 +1,9 @@
 #!/bin/sh
-make -f Makefile.SYS.32 clean
-make -f Makefile.SYS.32
+make -f make/Makefile.SYS.32 clean
+make -f make/Makefile.SYS.32
 ./obc -src lib_src/lang.obs -tar lib -opt s2 -dest ../lib/lang.obl 
-make -f Makefile.32 clean
-make -f Makefile.32
+make -f make/Makefile.32 clean
+make -f make/Makefile.32
 ./obc -src lib_src/collect.obs -tar lib -opt s3 -dest ../lib/collect.obl
 ./obc -src lib_src/xml.obs -lib collect.obl -tar lib -opt s3 -dest ../lib/xml.obl
 ./obc -src lib_src/json.obs -lib collect.obl -tar lib -opt s3 -dest ../lib/json.obl
