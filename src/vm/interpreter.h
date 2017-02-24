@@ -37,9 +37,9 @@
 #include <string.h>
 
 #ifdef _WIN32
-#include "os/windows/memory.h"
+#include "arch/win32/memory.h"
 #else
-#include "os/posix/memory.h"
+#include "arch/posix/memory.h"
 #endif
 
 #ifdef _DEBUGGER

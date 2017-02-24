@@ -187,11 +187,11 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\arch\jit\ia32\jit_intel_lp32.cpp" />
+    <ClCompile Include="..\arch\win32\memory.cpp" />
     <ClCompile Include="..\common.cpp" />
     <ClCompile Include="..\interpreter.cpp" />
-    <ClCompile Include="..\jit\ia32\jit_intel_lp32.cpp" />
     <ClCompile Include="..\loader.cpp" />
-    <ClCompile Include="..\os\windows\memory.cpp" />
     <ClCompile Include="..\vm.cpp" />
     <ClCompile Include="..\win_main.cpp" />
   </ItemGroup>
@@ -199,12 +199,13 @@
     <ClInclude Include="..\..\shared\instrs.h" />
     <ClInclude Include="..\..\shared\sys.h" />
     <ClInclude Include="..\..\shared\traps.h" />
+    <ClInclude Include="..\arch\jit\ia32\jit_intel_lp32.h" />
+    <ClInclude Include="..\arch\win32\memory.h" />
+    <ClInclude Include="..\arch\win32\windows.h" />
     <ClInclude Include="..\common.h" />
     <ClInclude Include="..\interpreter.h" />
-    <ClInclude Include="..\jit\ia32\jit_intel_lp32.h" />
     <ClInclude Include="..\lib_api.h" />
     <ClInclude Include="..\loader.h" />
-    <ClInclude Include="..\os\windows\memory.h" />
     <ClInclude Include="..\os\windows\windows.h" />
     <ClInclude Include="..\vm.h" />
   </ItemGroup>

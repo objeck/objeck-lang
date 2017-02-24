@@ -36,12 +36,12 @@
 
 #ifdef _WIN32
 #ifndef _UTILS
-#include "os/windows/windows.h"
+#include "arch/win32/windows.h"
 #endif
-#include "os/windows/memory.h"
+#include "arch/win32/memory.h"
 #else
-#include "os/posix/posix.h"
-#include "os/posix/memory.h"
+#include "arch/posix/posix.h"
+#include "arch/posix/memory.h"
 #endif
 
 #ifdef _WIN32

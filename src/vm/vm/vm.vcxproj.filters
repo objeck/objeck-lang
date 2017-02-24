@@ -16,10 +16,10 @@
     <ClCompile Include="..\interpreter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\os\windows\memory.cpp">
+    <ClCompile Include="..\arch\jit\ia32\jit_intel_lp32.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\jit\ia32\jit_intel_lp32.cpp">
+    <ClCompile Include="..\arch\win32\memory.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -39,12 +39,6 @@
     <ClInclude Include="..\interpreter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\os\windows\memory.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\jit\ia32\jit_intel_lp32.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\shared\instrs.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -55,6 +49,15 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\lib_api.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\arch\jit\ia32\jit_intel_lp32.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\arch\win32\memory.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\arch\win32\windows.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
