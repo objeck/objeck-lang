@@ -32,65 +32,39 @@ rm ../objeck/deploy/lib/gtk2.obl
 rm ../objeck/deploy/lib/sdl.obl
 rm ../objeck/deploy/lib/db.obl
 
-# build utilities
-cd ../utilities
-if [ ! -z "$1" ] && [ "$1" = "32" ]; then
-	cp Makefile.32 Makefile
-elif [ ! -z "$1" ] && [ "$1" = "osx" ]; then
-	cp Makefile.OSX.64 Makefile
-else
-	cp Makefile.64 Makefile
-fi
-make clean; make -j3
-cp obu ../objeck/deploy/bin
-
 # build VM
 cd ../vm
 if [ ! -z "$1" ] && [ "$1" = "32" ]; then
-	cp Makefile.32 Makefile
-	cp os/posix/Makefile.32 os/posix/Makefile
-	cp jit/ia32/Makefile.32 jit/ia32/Makefile
+	cp Makefile.32 make/Makefile
 elif [ ! -z "$1" ] && [ "$1" = "osx" ]; then
-	cp Makefile.OSX.64 Makefile
-	cp os/posix/Makefile.OSX.64 os/posix/Makefile
-	cp jit/amd64/Makefile.OSX.64 jit/amd64/Makefile
+	cp Makefile.OSX.64 make/Makefile
 else 
-	cp Makefile.64 Makefile
-	cp os/posix/Makefile.64 os/posix/Makefile
-	cp jit/amd64/Makefile.64 jit/amd64/Makefile
+	cp Makefile.64 make/Makefile
 fi
 make clean; make -j3
 cp obr ../objeck/deploy/bin
 
 if [ ! -z "$1" ] && [ "$1" = "32" ]; then
-	cp Makefile.FCGI32 Makefile
+	cp make/Makefile.FCGI32 Makefile
 elif [ ! -z "$1" ] && [ "$1" = "64" ]; then	
-	cp Makefile.FCGI64 Makefile
+	cp make/Makefile.FCGI64 Makefile
 fi
 make clean; make -j3
 
 # build debugger
+cd ../debugger
 if [ ! -z "$1" ] && [ "$1" = "32" ]; then
-	cp Makefile.obd32 Makefile
+	cp make/Makefile.32 Makefile
 elif [ ! -z "$1" ] && [ "$1" = "osx" ]; then
-	cp Makefile.OSX.obd64 Makefile	
+	cp make/Makefile.OSX.64 Makefile
 else
-	cp Makefile.obd64 Makefile
-fi
-
-cd debugger
-if [ ! -z "$1" ] && [ "$1" = "32" ]; then
-	cp Makefile.32 Makefile
-elif [ ! -z "$1" ] && [ "$1" = "osx" ]; then
-	cp Makefile.OSX.64 Makefile
-else
-	cp Makefile.64 Makefile
+	cp make/Makefile.64 Makefile
 fi
 make clean; make -j3
-cp obd ../../objeck/deploy/bin
+cp obd ../objeck/deploy/bin
 
 # build libraries
-cd ../../lib/odbc
+cd ../lib/odbc
 if [ ! -z "$1" ] && [ "$1" = "osx" ]; then
 	./build_osx_x64.sh odbc
 	cp odbc.dylib ../../objeck/deploy/lib/native/libobjk_odbc.dylib
@@ -136,7 +110,7 @@ rm -rf deploy_fcgi/examples
 cp ../vm/obr_fcgi deploy_fcgi/bin
 cp ../lib/fcgi/*.so deploy_fcgi/lib/native
 mkdir deploy_fcgi/examples
-cp -R ../compiler/prgm/web/* deploy_fcgi/examples
+cp -R ../compiler/programs/web/* deploy_fcgi/examples
 cp ../../docs/fcgi_readme.htm deploy_fcgi/readme.htm
 mkdir deploy_fcgi/fcgi_readme_files
 cp ../../docs/fcgi_readme_files/* deploy_fcgi/fcgi_readme_files
