@@ -8,7 +8,7 @@ The language contains all of the features of a general-purpose computing languag
 Get the [latest release](https://sourceforge.net/projects/objeck-lang/).
 
 ### Simple example
-```pascal
+```ruby
 class Hello {
   function : Main(args : String[]) ~ Nil {
     "Hello World"->PrintLine();
