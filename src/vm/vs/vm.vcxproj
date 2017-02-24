@@ -206,7 +206,6 @@
     <ClInclude Include="..\interpreter.h" />
     <ClInclude Include="..\lib_api.h" />
     <ClInclude Include="..\loader.h" />
-    <ClInclude Include="..\os\windows\windows.h" />
     <ClInclude Include="..\vm.h" />
   </ItemGroup>
   <ItemGroup>

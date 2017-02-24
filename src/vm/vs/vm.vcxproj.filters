@@ -30,9 +30,6 @@
     <ClInclude Include="..\loader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\os\windows\windows.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\shared\sys.h">
       <Filter>Header Files</Filter>
     </ClInclude>
