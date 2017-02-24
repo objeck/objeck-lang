@@ -366,7 +366,6 @@
 		<row><td>obc.exe</td><td>{00B9A638-23D9-480D-BFE5-CF8E0D89729F}</td><td>BIN</td><td>2</td><td/><td>obc.exe</td><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
 		<row><td>obd.exe</td><td>{DFA8E74F-FB07-4AFF-A459-30A1E63C51D5}</td><td>BIN</td><td>2</td><td/><td>obd.exe</td><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
 		<row><td>obr.exe</td><td>{02B44E38-CDD9-4FFA-82AB-6DB2B4CDB5FB}</td><td>BIN</td><td>2</td><td/><td>obr.exe</td><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
-		<row><td>obu.exe</td><td>{4B782FB4-F069-4502-9413-FC0CA81A6D77}</td><td>BIN</td><td>2</td><td/><td>obu.exe</td><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
 		<row><td>ssleay32.dll</td><td>{12942F7B-F94F-4143-941E-5CC54E7DEF26}</td><td>BIN</td><td>2</td><td/><td>ssleay32.dll</td><td>17</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
 	</table>
 
@@ -1082,7 +1081,6 @@
 		<row><td>BIN</td><td>obc.exe</td></row>
 		<row><td>BIN</td><td>obd.exe</td></row>
 		<row><td>BIN</td><td>obr.exe</td></row>
-		<row><td>BIN</td><td>obu.exe</td></row>
 		<row><td>BIN</td><td>ssleay32.dll</td></row>
 		<row><td>COMMON</td><td>ISX_DEFAULTCOMPONENT7</td></row>
 		<row><td>COMPILER</td><td>ISX_DEFAULTCOMPONENT8</td></row>
@@ -1111,7 +1109,6 @@
 		<row><td>INSTALLDIR</td><td>obc.exe</td></row>
 		<row><td>INSTALLDIR</td><td>obd.exe</td></row>
 		<row><td>INSTALLDIR</td><td>obr.exe</td></row>
-		<row><td>INSTALLDIR</td><td>obu.exe</td></row>
 		<row><td>INSTALLDIR</td><td>ssleay32.dll</td></row>
 		<row><td>LIB</td><td>ISX_DEFAULTCOMPONENT13</td></row>
 		<row><td>NATIVE</td><td>ISX_DEFAULTCOMPONENT14</td></row>
@@ -1979,7 +1976,6 @@
 		<row><td>AlwaysInstall</td><td>obc.exe</td></row>
 		<row><td>AlwaysInstall</td><td>obd.exe</td></row>
 		<row><td>AlwaysInstall</td><td>obr.exe</td></row>
-		<row><td>AlwaysInstall</td><td>obu.exe</td></row>
 		<row><td>AlwaysInstall</td><td>ssleay32.dll</td></row>
 	</table>
 
@@ -2082,7 +2078,6 @@
 		<row><td>objeck_lang.pdf</td><td>ISX_DEFAULTCOMPONENT16</td><td>OBJECK~1.PDF|objeck_lang.pdf</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\objeck_lang.pdf</td><td>1</td><td/></row>
 		<row><td>objeck_syntax.php</td><td>ISX_DEFAULTCOMPONENT18</td><td>OBJECK~1.PHP|objeck-syntax.php</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\syntax\objeck-syntax.php</td><td>1</td><td/></row>
 		<row><td>obr.exe</td><td>obr.exe</td><td>obr.exe</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\bin\obr.exe</td><td>1</td><td/></row>
-		<row><td>obu.exe</td><td>obu.exe</td><td>obu.exe</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\bin\obu.exe</td><td>1</td><td/></row>
 		<row><td>odbc.obl</td><td>ISX_DEFAULTCOMPONENT13</td><td>odbc.obl</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\lib\odbc.obl</td><td>1</td><td/></row>
 		<row><td>odbc_connection.html</td><td>ISX_DEFAULTCOMPONENT17</td><td>ODBC-C~1.HTM|odbc-connection.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\odbc-connection.html</td><td>1</td><td/></row>
 		<row><td>odbc_date.html</td><td>ISX_DEFAULTCOMPONENT17</td><td>ODBC-D~1.HTM|odbc-date.html</td><td>0</td><td/><td/><td/><td>1</td><td>C:\Users\objec\Desktop\objeck-lang\doc\api\odbc-date.html</td><td>1</td><td/></row>
@@ -2313,7 +2308,6 @@
 		<row><td>obc.exe</td><td/><td/><td>_C27EC487_A029_476D_82D3_562F2F8B6CFA_FILTER</td><td/><td/><td/><td/></row>
 		<row><td>obd.exe</td><td/><td/><td>_A96BA79B_377C_481C_9738_AFC40B7D0E6C_FILTER</td><td/><td/><td/><td/></row>
 		<row><td>obr.exe</td><td/><td/><td>_5CC46EDD_770F_44C6_AEB9_77162242691A_FILTER</td><td/><td/><td/><td/></row>
-		<row><td>obu.exe</td><td/><td/><td>_5AABDA99_3ABD_4359_9E24_37D686FF32B5_FILTER</td><td/><td/><td/><td/></row>
 		<row><td>ssleay32.dll</td><td/><td/><td>_0F7748CB_BF78_4C0D_997F_73B8095DFE18_FILTER</td><td/><td/><td/><td/></row>
 	</table>
 
