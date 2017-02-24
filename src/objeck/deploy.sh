@@ -27,7 +27,7 @@ fi
 make clean; make -j3 OBJECK_LIB_PATH=\\\".\\\"
 cp obc ../objeck/deploy/bin
 cp ../lib/*.obl ../objeck/deploy/lib
-cp ../vm/*.pem ../objeck/deploy/lib
+cp ../vm/misc/*.pem ../objeck/deploy/lib
 rm ../objeck/deploy/lib/gtk2.obl
 rm ../objeck/deploy/lib/sdl.obl
 rm ../objeck/deploy/lib/db.obl
@@ -121,9 +121,9 @@ unzip docs/api.zip -d src/objeck/deploy/doc
 
 # copy examples
 mkdir src/objeck/deploy/examples
-cp src/compiler/prgms/deploy/*.obs src/objeck/deploy/examples
-cp -aR src/compiler/prgms/doc src/objeck/deploy/examples
-cp -aR src/compiler/prgms/tiny src/objeck/deploy/examples
+cp src/compiler/programs/deploy/*.obs src/objeck/deploy/examples
+cp -aR src/compiler/programs/doc src/objeck/deploy/examples
+cp -aR src/compiler/programs/tiny src/objeck/deploy/examples
 
 # create and build fcgi
 cd src/objeck
