@@ -14,7 +14,7 @@ $(EXE): $(SRC) $(OBJ_LIBS)
 	$(CC) -m32 -o $(EXE) $(SRC) $(OBJ_LIBS) -Wno-unused-function -ldl -pthread -lssl -lcrypto
 
 ../vm/compiler.a:
-	cd $(VM_PATH); make	-f make/Makefile.obd32
+	cd $(VM_PATH); make -f make/Makefile.obd32
 
 ../vm/memory.a:
 	cd $(MEM_PATH); make -f Makefile.32

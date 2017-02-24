@@ -35,11 +35,11 @@ rm ../objeck/deploy/lib/db.obl
 # build VM
 cd ../vm
 if [ ! -z "$1" ] && [ "$1" = "32" ]; then
-	cp Makefile.32 make/Makefile
+	cp make/Makefile.32 Makefile
 elif [ ! -z "$1" ] && [ "$1" = "osx" ]; then
-	cp Makefile.OSX.64 make/Makefile
+	cp make/Makefile.OSX.64 Makefile
 else 
-	cp Makefile.64 make/Makefile
+	cp make/Makefile.64 Makefile
 fi
 make clean; make -j3
 cp obr ../objeck/deploy/bin

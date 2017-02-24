@@ -31,13 +31,13 @@
 #ifndef __REG_ALLOC_H__
 #define __REG_ALLOC_H__
 
-#include "../../os/posix/memory.h"
-#include "../../os/posix/posix.h"
+#include "../../posix/memory.h"
+#include "../../posix/posix.h"
 #include <sys/mman.h>
 #include <errno.h>
 
-#include "../../common.h"
-#include "../../interpreter.h"
+#include "../../../common.h"
+#include "../../../interpreter.h"
 
 using namespace std;
 
