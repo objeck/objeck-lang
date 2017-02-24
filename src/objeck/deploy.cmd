@@ -19,7 +19,7 @@ del deploy\lib\gtk2.obl
 del deploy\lib\sdl.obl
 del deploy\lib\db.obl
 del /q deploy\bin\a.*
-copy ..\vm\*.pem deploy\lib
+copy ..\vm\misc\*.pem deploy\lib
 REM openssl support
 mkdir deploy\lib\native
 cd ..\lib\openssl\openssl
@@ -36,11 +36,11 @@ REM copy examples
 mkdir deploy\examples\
 mkdir deploy\examples\doc\
 mkdir deploy\examples\tiny\
-xcopy /e ..\compiler\prgms\deploy\*.obs deploy\examples\
-xcopy /e ..\compiler\prgms\doc\* deploy\examples\doc\
-xcopy /e ..\compiler\prgms\tiny\* deploy\examples\tiny\
-del  /s /q ..\compiler\prgms\tiny\*.obe
-del  /s /q ..\compiler\prgms\tiny\*.e
+xcopy /e ..\compiler\programs\deploy\*.obs deploy\examples\
+xcopy /e ..\compiler\programs\doc\* deploy\examples\doc\
+xcopy /e ..\compiler\programs\tiny\* deploy\examples\tiny\
+del  /s /q ..\compiler\programs\tiny\*.obe
+del  /s /q ..\compiler\programs\tiny\*.e
 REM build and update docs
 mkdir deploy\doc 
 copy ..\..\docs\guide\objeck_lang.pdf deploy\doc 
@@ -60,7 +60,7 @@ copy ..\lib\fcgi\windows\lib\*.dll deploy_fcgi\bin
 copy redistrib\*.dll deploy_fcgi\bin
 copy Release\libobjk_fcgi.dll deploy_fcgi\lib\native
 mkdir deploy_fcgi\examples
-copy ..\compiler\prgms\web\* deploy_fcgi\examples
+copy ..\compiler\programs\web\* deploy_fcgi\examples
 copy /y ..\..\docs\fcgi_readme.htm deploy_fcgi\readme.htm
 mkdir deploy_fcgi\fcgi_readme_files
 copy ..\..\docs\fcgi_readme_files\* deploy_fcgi\fcgi_readme_files
