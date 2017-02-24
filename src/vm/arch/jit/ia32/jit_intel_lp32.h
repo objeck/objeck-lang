@@ -38,11 +38,11 @@
 #include <sys/mman.h>
 #include <errno.h>
 #else
-#include "../../os/windows/windows.h"
+#include "../../../arch/win32/windows.h"
 #endif
 
-#include "../../common.h"
-#include "../../interpreter.h"
+#include "../../../common.h"
+#include "../../../interpreter.h"
 
 using namespace std;
 

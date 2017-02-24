@@ -34,18 +34,18 @@
 
 #ifndef _NO_JIT
 #ifdef _X64
-#include "jit/amd64/jit_amd_lp64.h"
+#include "arch/jit/amd64/jit_amd_lp64.h"
 #elif _ARM32
-#include "jit/arm32/jit_arm_a32.h"
+#include "arch/jit/arm32/jit_arm_a32.h"
 #else
-#include "jit/ia32/jit_intel_lp32.h"
+#include "arch/jit/ia32/jit_intel_lp32.h"
 #endif
 #endif
 
 #ifdef _WIN32
-#include "os/windows/windows.h"
+#include "arch/win32/windows.h"
 #else
-#include "os/posix/posix.h"
+#include "arch/os/posix/posix.h"
 #endif
 
 #ifdef _DEBUGGER
