@@ -19,6 +19,8 @@ See more on [Rosetta Code] (http://rosettacode.org/wiki/Category:Objeck) and che
 Please refer to the project website for [documentation](http://www.objeck.org/documentation/) and a [tutorial](http://www.objeck.org/tutorial/).
 
 ## Deployment
+![alt text](images/design1.png "Compiler & VM")
+
 Build and deployment [instructions](http://www.objeck.org/developers/) for Windows, Linux and OS X. 
 
 ## Binaries
