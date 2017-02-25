@@ -1,5 +1,3 @@
-set LATEX_BIN="D:\Program Files\MiKTeX 2.9\miktex\bin\x64"
-
 rmdir /s /q deploy
 rmdir /s /q deploy_fcgi
 
@@ -24,23 +22,23 @@ REM openssl support
 mkdir deploy\lib\native
 cd ..\lib\openssl\openssl
 devenv /rebuild Release openssl.sln
-copy Release\*.dll ..\..\..\objeck\deploy\lib\native
-copy ..\win32\bin\*.dll ..\..\..\objeck\deploy\bin
-cd ..\..\..\objeck
+copy Release\*.dll ..\..\..\release\deploy\lib\native
+copy ..\win32\bin\*.dll ..\..\..\release\deploy\bin
+cd ..\..\..\release
 REM odbc support
 cd ..\lib\odbc
 devenv /rebuild Release odbc.sln
-copy Release\*.dll ..\..\objeck\deploy\lib\native
-cd ..\..\objeck
+copy Release\*.dll ..\..\release\deploy\lib\native
+cd ..\..\release
 REM copy examples
 mkdir deploy\examples\
 mkdir deploy\examples\doc\
 mkdir deploy\examples\tiny\
-xcopy /e ..\compiler\programs\deploy\*.obs deploy\examples\
-xcopy /e ..\compiler\programs\doc\* deploy\examples\doc\
-xcopy /e ..\compiler\programs\tiny\* deploy\examples\tiny\
-del  /s /q ..\compiler\programs\tiny\*.obe
-del  /s /q ..\compiler\programs\tiny\*.e
+xcopy /e ..\..\programs\deploy\*.obs deploy\examples\
+xcopy /e ..\..\programs\doc\* deploy\examples\doc\
+xcopy /e ..\..\programs\tiny\* deploy\examples\tiny\
+del  /s /q ..\..\programs\tiny\*.obe
+del  /s /q ..\..\programs\tiny\*.e
 REM build and update docs
 mkdir deploy\doc 
 copy ..\..\docs\guide\objeck_lang.pdf deploy\doc 
@@ -60,7 +58,7 @@ copy ..\lib\fcgi\windows\lib\*.dll deploy_fcgi\bin
 copy redistrib\*.dll deploy_fcgi\bin
 copy Release\libobjk_fcgi.dll deploy_fcgi\lib\native
 mkdir deploy_fcgi\examples
-copy ..\compiler\programs\web\* deploy_fcgi\examples
+copy ..\..\programs\web\* deploy_fcgi\examples
 copy /y ..\..\docs\fcgi_readme.htm deploy_fcgi\readme.htm
 mkdir deploy_fcgi\fcgi_readme_files
 copy ..\..\docs\fcgi_readme_files\* deploy_fcgi\fcgi_readme_files

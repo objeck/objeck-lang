@@ -25,12 +25,12 @@ else
 	cp make/Makefile.64 Makefile
 fi
 make clean; make -j3 OBJECK_LIB_PATH=\\\".\\\"
-cp obc ../objeck/deploy/bin
-cp ../lib/*.obl ../objeck/deploy/lib
-cp ../vm/misc/*.pem ../objeck/deploy/lib
-rm ../objeck/deploy/lib/gtk2.obl
-rm ../objeck/deploy/lib/sdl.obl
-rm ../objeck/deploy/lib/db.obl
+cp obc ../release/deploy/bin
+cp ../lib/*.obl ../release/deploy/lib
+cp ../vm/misc/*.pem ../release/deploy/lib
+rm ../release/deploy/lib/gtk2.obl
+rm ../release/deploy/lib/sdl.obl
+rm ../release/deploy/lib/db.obl
 
 # build VM
 cd ../vm
@@ -42,7 +42,7 @@ else
 	cp make/Makefile.64 Makefile
 fi
 make clean; make -j3
-cp obr ../objeck/deploy/bin
+cp obr ../release/deploy/bin
 
 if [ ! -z "$1" ] && [ "$1" = "32" ]; then
 	cp make/Makefile.FCGI32 Makefile
@@ -61,26 +61,26 @@ else
 	cp make/Makefile.64 Makefile
 fi
 make clean; make -j3
-cp obd ../objeck/deploy/bin
+cp obd ../release/deploy/bin
 
 # build libraries
 cd ../lib/odbc
 if [ ! -z "$1" ] && [ "$1" = "osx" ]; then
 	./build_osx_x64.sh odbc
-	cp odbc.dylib ../../objeck/deploy/lib/native/libobjk_odbc.dylib
+	cp odbc.dylib ../../release/deploy/lib/native/libobjk_odbc.dylib
 else
 	./build_linux.sh odbc
-	cp odbc.so ../../objeck/deploy/lib/native/libobjk_odbc.so
+	cp odbc.so ../../release/deploy/lib/native/libobjk_odbc.so
 fi
 
 cd ../openssl
 
 if [ ! -z "$1" ] && [ "$1" = "osx" ]; then
 	./build_osx_x64.sh openssl
-	cp openssl.dylib ../../objeck/deploy/lib/native/libobjk_openssl.dylib
+	cp openssl.dylib ../../release/deploy/lib/native/libobjk_openssl.dylib
 else
 	./build_linux.sh openssl
-	cp openssl.so ../../objeck/deploy/lib/native/libobjk_openssl.so
+	cp openssl.so ../../release/deploy/lib/native/libobjk_openssl.so
 fi
 
 cd ../fcgi
@@ -88,19 +88,19 @@ cd ../fcgi
 
 # copy docs
 cd ../../..
-cp docs/guide/objeck_lang.pdf src/objeck/deploy/doc
-cp -R docs/syntax src/objeck/deploy/doc/syntax
-cp docs/readme.htm src/objeck/deploy
-unzip docs/api.zip -d src/objeck/deploy/doc
+cp docs/guide/objeck_lang.pdf src/release/deploy/doc
+cp -R docs/syntax src/release/deploy/doc/syntax
+cp docs/readme.htm src/release/deploy
+unzip docs/api.zip -d src/release/deploy/doc
 
 # copy examples
-mkdir src/objeck/deploy/examples
-cp src/compiler/programs/deploy/*.obs src/objeck/deploy/examples
-cp -aR src/compiler/programs/doc src/objeck/deploy/examples
-cp -aR src/compiler/programs/tiny src/objeck/deploy/examples
+mkdir src/release/deploy/examples
+cp programs/deploy/*.obs src/release/deploy/examples
+cp -aR programs/doc src/release/deploy/examples
+cp -aR programs/tiny src/release/deploy/examples
 
 # create and build fcgi
-cd src/objeck
+cd src/release
 cp ../lib/fcgi.obl deploy/lib
 cp -Rfu deploy/* deploy_fcgi
 rm deploy_fcgi/bin/obc
@@ -110,7 +110,7 @@ rm -rf deploy_fcgi/examples
 cp ../vm/obr_fcgi deploy_fcgi/bin
 cp ../lib/fcgi/*.so deploy_fcgi/lib/native
 mkdir deploy_fcgi/examples
-cp -R ../compiler/programs/web/* deploy_fcgi/examples
+cp -R ../../programs/web/* deploy_fcgi/examples
 cp ../../docs/fcgi_readme.htm deploy_fcgi/readme.htm
 mkdir deploy_fcgi/fcgi_readme_files
 cp ../../docs/fcgi_readme_files/* deploy_fcgi/fcgi_readme_files
@@ -118,7 +118,7 @@ cp ../../docs/fcgi_readme_files/* deploy_fcgi/fcgi_readme_files
 # deploy
 if [ ! -z "$2" ] && [ "$2" = "deploy" ]; then
 	rm -rf ~/Desktop/objeck-lang
-	cp -rf ../objeck/deploy ~/Desktop/objeck-lang
+	cp -rf ../release/deploy ~/Desktop/objeck-lang
 	cd ~/Desktop
 	
 	rm -f objeck.tar objeck.tgz
