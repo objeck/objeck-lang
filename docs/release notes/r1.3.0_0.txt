@@ -1,5 +1,0 @@
-Objeck v1.3.0_0
-
-This release added support for class interfaces.  In addition, a minor parsing bug was fixed that was related to casts within nested method calls.
-
-The Objeck programming language is a light-weight object-oriented programming language with functional features. The programming system consists of a compiler, virtual machine (with garbage collector and JIT compiler) along with a command line debugger.
