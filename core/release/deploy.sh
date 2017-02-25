@@ -83,8 +83,10 @@ else
 	cp openssl.so ../../release/deploy/lib/native/libobjk_openssl.so
 fi
 
-cd ../fcgi
-./build_linux.sh
+if [ ! -z "$1" ] && [ "$1" != "osx" ]; then
+	cd ../fcgi
+	./build_linux.sh
+fi
 
 # copy docs
 cd ../../..
@@ -99,21 +101,23 @@ cp programs/deploy/*.obs core/release/deploy/examples
 cp -aR programs/doc core/release/deploy/examples
 cp -aR programs/tiny core/release/deploy/examples
 
-# create and build fcgi
-cd core/release
-cp ../lib/fcgi.obl deploy/lib
-cp -Rfu deploy/* deploy_fcgi
-rm deploy_fcgi/bin/obc
-rm deploy_fcgi/bin/obd
-rm -rf deploy_fcgi/doc
-rm -rf deploy_fcgi/examples
-cp ../vm/obr_fcgi deploy_fcgi/bin
-cp ../lib/fcgi/*.so deploy_fcgi/lib/native
-mkdir deploy_fcgi/examples
-cp -R ../../programs/web/* deploy_fcgi/examples
-cp ../../docs/fcgi_readme.htm deploy_fcgi/readme.htm
-mkdir deploy_fcgi/fcgi_readme_files
-cp ../../docs/fcgi_readme_files/* deploy_fcgi/fcgi_readme_files
+if [ ! -z "$1" ] && [ "$1" != "osx" ]; then
+	# create and build fcgi
+	cd core/release
+	cp ../lib/fcgi.obl deploy/lib
+	cp -Rfu deploy/* deploy_fcgi
+	rm deploy_fcgi/bin/obc
+	rm deploy_fcgi/bin/obd
+	rm -rf deploy_fcgi/doc
+	rm -rf deploy_fcgi/examples
+	cp ../vm/obr_fcgi deploy_fcgi/bin
+	cp ../lib/fcgi/*.so deploy_fcgi/lib/native
+	mkdir deploy_fcgi/examples
+	cp -R ../../programs/web/* deploy_fcgi/examples
+	cp ../../docs/fcgi_readme.htm deploy_fcgi/readme.htm
+	mkdir deploy_fcgi/fcgi_readme_files
+	cp ../../docs/fcgi_readme_files/* deploy_fcgi/fcgi_readme_files
+fi
 
 # deploy
 if [ ! -z "$2" ] && [ "$2" = "deploy" ]; then
