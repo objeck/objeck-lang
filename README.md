@@ -7,9 +7,9 @@ Objeck contains all of the features of a general-purpose programming language wi
 ```ruby
 class Hello {
   function : Main(args : String[]) ~ Nil {
-    "Hello World"->PrintLine();
-    "Καλημέρα κόσμε"->PrintLine();
-    "こんにちは 世界"->PrintLine();
+    "Hello World"→PrintLine();
+    "Καλημέρα κόσμε"→PrintLine();
+    "こんにちは 世界"→PrintLine();
   }
 }
 ```
@@ -21,7 +21,7 @@ Check out the [Rosetta Code](http://rosettacode.org/wiki/Category:Objeck) and fo
 Get the [latest release](https://sourceforge.net/projects/objeck-lang/).
 
 ## Documentation
-Please refer to the project website for [documentation](http://www.objeck.org/documentation/) and [tutorial](http://www.objeck.org/tutorial/).
+Please refer to the project website for [documentation](http://www.objeck.org/documentation/) and a [tutorial](http://www.objeck.org/tutorial/).
 
 ## Hacking the Compiler and VM
 [Build instructions](http://www.objeck.org/developers/) for Windows, Linux and OS X. 
