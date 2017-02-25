@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xl="http://www.w3.org/1999/xlink" version="1.1" viewBox="0 0 425 350" width="425pt" height="350pt" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <metadata> Produced by OmniGraffle 7.2.2 
+    <dc:date>2017-02-25 20:05:58 +0000</dc:date>
+  </metadata>
+  <defs>
+    <font-face font-family="Helvetica Neue" font-size="16" panose-1="2 0 5 3 0 0 0 2 0 4" units-per-em="1000" underline-position="-100" underline-thickness="50" slope="0" x-height="517" cap-height="714" ascent="951.9958" descent="-212.99744" font-weight="500">
+      <font-face-src>
+        <font-face-name name="HelveticaNeue"/>
+      </font-face-src>
+    </font-face>
+    <marker orient="auto" overflow="visible" markerUnits="strokeWidth" id="FilledArrow_Marker" viewBox="-1 -4 10 8" markerWidth="10" markerHeight="8" color="black">
+      <g>
+        <path d="M 8 0 L 0 -3 L 0 3 Z" fill="currentColor" stroke="currentColor" stroke-width="1"/>
+      </g>
+    </marker>
+    <marker orient="auto" overflow="visible" markerUnits="strokeWidth" id="FilledArrow_Marker_2" viewBox="-9 -4 10 8" markerWidth="10" markerHeight="8" color="black">
+      <g>
+        <path d="M -8 0 L 0 3 L 0 -3 Z" fill="currentColor" stroke="currentColor" stroke-width="1"/>
+      </g>
+    </marker>
+  </defs>
+  <g stroke="none" stroke-opacity="1" stroke-dasharray="none" fill="none" fill-opacity="1">
+    <title>Canvas 2</title>
+    <g>
+      <title>Layer 1</title>
+      <rect x="19" y="145.5" width="73" height="116.5" fill="white"/>
+      <rect x="19" y="145.5" width="73" height="116.5" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <text transform="translate(24 185.302)" fill="black">
+        <tspan font-family="Helvetica Neue" font-size="16" font-weight="500" fill="black" x="11.052" y="15" textLength="45.344">Stack </tspan>
+        <tspan font-family="Helvetica Neue" font-size="16" font-weight="500" fill="black" x="8.828" y="33.448" textLength="45.344">Frame</tspan>
+      </text>
+      <rect x="19" y="101.5" width="73" height="44" fill="white"/>
+      <rect x="19" y="101.5" width="73" height="44" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <text transform="translate(24 105.052)" fill="black">
+        <tspan font-family="Helvetica Neue" font-size="16" font-weight="500" x="9.428" y="15" textLength="48.592">Active </tspan>
+        <tspan font-family="Helvetica Neue" font-size="16" font-weight="500" x="8.828" y="33.448" textLength="45.344">Frame</tspan>
+      </text>
+      <rect x="145" y="83" width="100" height="79" fill="white"/>
+      <rect x="145" y="83" width="100" height="79" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <text transform="translate(150 113.276)" fill="black">
+        <tspan font-family="Helvetica Neue" font-size="16" font-weight="500" x="7.96" y="15" textLength="46.816">Interpr</tspan>
+        <tspan font-family="Helvetica Neue" font-size="16" font-weight="500" x="54.488" y="15" textLength="27.552">eter</tspan>
+      </text>
+      <rect x="145" y="259" width="100" height="79" fill="white"/>
+      <rect x="145" y="259" width="100" height="79" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <text transform="translate(150 280.052)" fill="black">
+        <tspan font-family="Helvetica Neue" font-size="16" font-weight="500" x="14.472" y="15" textLength="65.504">Machine </tspan>
+        <tspan font-family="Helvetica Neue" font-size="16" font-weight="500" x="25.592" y="33.448" textLength="43.264">Code </tspan>
+      </text>
+      <line x1="92" y1="123.23835" x2="135.10025" y2="122.92939" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <rect x="299" y="259" width="100" height="79" fill="white"/>
+      <rect x="299" y="259" width="100" height="79" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <text transform="translate(304 280.052)" fill="black">
+        <tspan font-family="Helvetica Neue" font-size="16" font-weight="500" x="15.656" y="15" textLength="63.136">Memory </tspan>
+        <tspan font-family="Helvetica Neue" font-size="16" font-weight="500" x="13.44" y="33.448" textLength="63.12">Manager</tspan>
+      </text>
+      <rect x="299" y="84" width="100" height="79" fill="white"/>
+      <rect x="299" y="84" width="100" height="79" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <text transform="translate(304 105.052)" fill="black">
+        <tspan font-family="Helvetica Neue" font-size="16" font-weight="500" x="14.624" y="15" textLength="65.2">Host OS </tspan>
+        <tspan font-family="Helvetica Neue" font-size="16" font-weight="500" x="28.56" y="33.448" textLength="32.88">APIs</tspan>
+      </text>
+      <line x1="229.76" y1="259" x2="307.6998" y2="170.43206" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <line x1="245" y1="298.5" x2="289.1" y2="298.5" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 229.5625 162 L 268.5976 206.61154 C 272.73677 202.98977 279.98032 211.2681 275.84115 214.88988 L 307.9183 251.5495" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <line x1="245" y1="122.82468" x2="289.1002" y2="123.11104" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <rect x="145" y="16" width="100" height="34" fill="white"/>
+      <rect x="145" y="16" width="100" height="34" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <text transform="translate(150 23.776)" fill="black">
+        <tspan font-family="Helvetica Neue" font-size="16" font-weight="500" x="14.328" y="15" textLength="15.696">Pr</tspan>
+        <tspan font-family="Helvetica Neue" font-size="16" font-weight="500" x="29.736" y="15" textLength="45.936">ogram</tspan>
+      </text>
+      <rect x="299" y="16" width="100" height="34" fill="white"/>
+      <rect x="299" y="16" width="100" height="34" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <text transform="translate(304 23.776)" fill="black">
+        <tspan font-family="Helvetica Neue" font-size="16" font-weight="500" x="9.296" y="15" textLength="71.408">Native I/O</tspan>
+      </text>
+      <line x1="195" y1="50" x2="195" y2="73.1" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <line x1="349" y1="59.9" x2="349" y2="74.1" marker-end="url(#FilledArrow_Marker)" marker-start="url(#FilledArrow_Marker_2)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <rect x="145" y="188.5" width="100" height="44" fill="white"/>
+      <rect x="145" y="188.5" width="100" height="44" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <text transform="translate(150 192.052)" fill="black">
+        <tspan font-family="Helvetica Neue" font-size="16" font-weight="500" x="34.184" y="15" textLength="26.08">JIT </tspan>
+        <tspan font-family="Helvetica Neue" font-size="16" font-weight="500" x="12.552" y="33.448" textLength="64.896">Compiler</tspan>
+      </text>
+      <line x1="195" y1="162" x2="195" y2="178.6" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <line x1="195" y1="232.5" x2="195" y2="249.1" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      <path d="M 138.34077 266.2451 C 114.11976 237.09896 103.18344 193.3907 137.7942 157.465" marker-end="url(#FilledArrow_Marker)" marker-start="url(#FilledArrow_Marker_2)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+    </g>
+  </g>
+</svg>
