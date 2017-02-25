@@ -101,9 +101,9 @@ cp programs/deploy/*.obs core/release/deploy/examples
 cp -aR programs/doc core/release/deploy/examples
 cp -aR programs/tiny core/release/deploy/examples
 
+cd core/release
 if [ ! -z "$1" ] && [ "$1" != "osx" ]; then
 	# create and build fcgi
-	cd core/release
 	cp ../lib/fcgi.obl deploy/lib
 	cp -Rfu deploy/* deploy_fcgi
 	rm deploy_fcgi/bin/obc
