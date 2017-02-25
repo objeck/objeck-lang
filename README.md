@@ -19,11 +19,7 @@ class Hello {
 ```
 
 ### More examples
-Rosetta Code [programs](programs/rc).
-
-Compiling: ```obc -src hello.obs -dest hello.obe```
-
-Running: ```obr hello.obe```
+Check out the [Rosetta Code](http://rosettacode.org/wiki/Category:Objeck) and follow programming [tasks](programs/rc).
 
 ### Documentation
 Please refer to the project website for [documentation](http://www.objeck.org/documentation/) and [tutorial](http://www.objeck.org/tutorial/).
