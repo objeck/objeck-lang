@@ -6,7 +6,7 @@ Both the *scanner* and the *parser* were handwritten. As such, the *parser* was 
 
 The lists of code blocks are passed to the *optimizer* which performs to following optimizations in list order:
 
-1. Cleanup unneeded jumps and useless instructions (always happens)
+1. Clean up of unneeded jumps and useless instructions
 2. Constant folding
 3. Inline setters and getters 
 4. Inline more complex methods
