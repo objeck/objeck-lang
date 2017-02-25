@@ -88,19 +88,19 @@ cd ../fcgi
 
 # copy docs
 cd ../../..
-cp docs/guide/objeck_lang.pdf src/release/deploy/doc
-cp -R docs/syntax src/release/deploy/doc/syntax
-cp docs/readme.htm src/release/deploy
-unzip docs/api.zip -d src/release/deploy/doc
+cp docs/guide/objeck_lang.pdf core/release/deploy/doc
+cp -R docs/syntax core/release/deploy/doc/syntax
+cp docs/readme.htm core/release/deploy
+unzip docs/api.zip -d core/release/deploy/doc
 
 # copy examples
-mkdir src/release/deploy/examples
-cp programs/deploy/*.obs src/release/deploy/examples
-cp -aR programs/doc src/release/deploy/examples
-cp -aR programs/tiny src/release/deploy/examples
+mkdir core/release/deploy/examples
+cp programs/deploy/*.obs core/release/deploy/examples
+cp -aR programs/doc core/release/deploy/examples
+cp -aR programs/tiny core/release/deploy/examples
 
 # create and build fcgi
-cd src/release
+cd core/release
 cp ../lib/fcgi.obl deploy/lib
 cp -Rfu deploy/* deploy_fcgi
 rm deploy_fcgi/bin/obc
