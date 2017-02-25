@@ -8,8 +8,8 @@ The major components of the VM are the interpreter, JIT compiler and memory mana
 
 The VM supports the following platforms:
 
-1. Windows 7 and later (win32, IA-32)
-2. macOS 10.11 and later (POSIX, AMD64)
+1. Windows (win32, IA-32)
+2. macOS (POSIX, AMD64)
 3. Linux 64-bit (POSIX, AMD64)
 4. Linux 32-bit (POSIX, IA-32)
 
