@@ -1,5 +1,0 @@
-Objeck v1.2.1_1
-
-This point release was primarily focused on bug fixes and code cleanup.  Two significant bugs where resolved.  The first fix was related to the collection of static memory that went out of scope.  The second fix was related to the way the memory manager swept floating point values that were mapped by the x86_64 JIT compiler.  Additionally, there was some minor code clean up in the compiler.
-
-The Objeck programming language is a light-weight object-oriented programming language with functional features. The programming system consists of a compiler, virtual machine (with garbage collector and JIT compiler) along with a command line debugger.

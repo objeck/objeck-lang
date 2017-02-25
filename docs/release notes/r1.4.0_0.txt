@@ -1,5 +1,0 @@
-Objeck v1.4.0_0
-
-This release contains initial API support for C shared libraries (i.e. DLLs) on all supported platforms.  In addition, minor bug fixes where made to improve stability.
-
-The Objeck programming language is a light-weight object-oriented programming language with functional features. The programming system consists of a compiler, virtual machine (with garbage collector and JIT compiler) along with a command line debugger.
