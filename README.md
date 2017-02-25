@@ -17,6 +17,16 @@ class Hello {
 
 See more on [Rosetta Code] (http://rosettacode.org/wiki/Category:Objeck) and checkout the following [programming tasks](programs/rc).
 
+Notable features:
+
+* Support for both classes and interfaces
+* Anonymous classes
+* Type inference
+* Object serialization
+* Support for RegEx, JSON and XML (the parsers were written in the language)
+* Garbage collection
+* JIT support (IA-32 and AMD64)
+
 ## Documentation
 Please refer to the programmer's guide [documentation](http://www.objeck.org/documentation/) and [online tutorial](http://www.objeck.org/tutorial/). Also checkout [Rosetta Code](http://rosettacode.org/wiki/Category:Objeck) [examples](programs/rc).
 
