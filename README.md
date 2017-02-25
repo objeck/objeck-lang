@@ -15,7 +15,7 @@ class Hello {
 }
 ```
 
-See more on [Rosetta Code] (http://rosettacode.org/wiki/Category:Objeck) and checkout the following programming [tasks](programs/rc).
+See more on [Rosetta Code] (http://rosettacode.org/wiki/Category:Objeck) and checkout the following [programming tasks](programs/rc).
 
 ## Documentation
 Please refer to the project website for [documentation](http://www.objeck.org/documentation/) and a [tutorial](http://www.objeck.org/tutorial/). Also checkout [Rosetta Code](http://rosettacode.org/wiki/Category:Objeck) [examples](programs/rc).
