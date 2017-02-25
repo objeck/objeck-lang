@@ -14,16 +14,13 @@ class Hello {
 }
 ```
 
-## More Examples
-Check out the [Rosetta Code](http://rosettacode.org/wiki/Category:Objeck) and follow programming [tasks](programs/rc).
-
-## Download
-Get the [latest release](https://sourceforge.net/projects/objeck-lang/).
+See more on [Rosetta Code] (http://rosettacode.org/wiki/Category:Objeck) and checkout the following programming [tasks](programs/rc).
 
 ## Documentation
 Please refer to the project website for [documentation](http://www.objeck.org/documentation/) and a [tutorial](http://www.objeck.org/tutorial/).
 
-## Hacking the Compiler and VM
-[Build instructions](http://www.objeck.org/developers/) for Windows, Linux and OS X. 
+## Installing
+[Build and deployment instructions](http://www.objeck.org/developers/) for Windows, Linux and OS X. 
 
-
+## Pre-build Binaries
+Get the [latest release](https://sourceforge.net/projects/objeck-lang/).
