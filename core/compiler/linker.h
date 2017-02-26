@@ -705,15 +705,6 @@ class LibraryClass {
         
     lib_children.clear();
   }
-
-#ifdef _UTILS
-  void List() {
-    map<const wstring, LibraryMethod*>::iterator iter;
-    for(iter = methods.begin(); iter != methods.end(); ++iter) {
-      wcout << L"  method='" << iter->second->GetName() << L"'" << endl;
-    }
-  }
-#endif
   
   void SetId(int i) {
     id = i;
@@ -1051,18 +1042,6 @@ class Library {
       alloc_buffer = NULL;
     }
   }
-
-#ifdef _UTILS
-  void List() {
-    map<const wstring, LibraryClass*>::iterator cls_iter;
-    for(cls_iter = named_classes.begin(); cls_iter != named_classes.end(); ++cls_iter) {
-      wcout << L"==================================" << endl;
-      wcout << L"class='" << cls_iter->second->GetName() << L"'" << endl;
-      wcout << L"==================================" << endl;
-      cls_iter->second->List();
-    }
-  }
-#endif
   
   bool HasBundleName(const wstring& name) {
     vector<wstring>::iterator found = find(bundle_names.begin(), bundle_names.end(), name);

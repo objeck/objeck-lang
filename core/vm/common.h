@@ -1333,6 +1333,25 @@ struct StackFrame {
   bool jit_called;
 };
 
+#ifdef _SCRIPTER
+/********************************
+* Scripting specific classes
+********************************/
+class Scripter {
+  static StackProgram* program;
+  vector<wstring> arguments;
+
+public:
+  Scripter() {
+  }
+
+  ~Scripter() {
+  }
+
+  static StackProgram* GetProgram();
+};
+#endif
+
 /********************************
  * ObjectSerializer class
  ********************************/

@@ -117,7 +117,7 @@ class MemoryManager {
       EnterCriticalSection(&allocated_cs);
 #endif
     if(mem && std::binary_search(allocated_memory.begin(), allocated_memory.end(), mem) && 
-       mem[TYPE] == NIL_TYPE) {
+       mem[TYPE] == MemoryType::NIL_TYPE) {
 #ifndef _GC_SERIAL
       LeaveCriticalSection(&allocated_cs);
 #endif
@@ -246,7 +246,7 @@ public:
   // returns the class reference for an object instance
   //
   static inline StackClass* GetClass(long* mem) {
-    if(mem && mem[TYPE] == NIL_TYPE) {
+    if(mem && mem[TYPE] == MemoryType::NIL_TYPE) {
       return (StackClass*)mem[SIZE_OR_CLS];
     }
     

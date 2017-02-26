@@ -19,11 +19,18 @@ See more on [Rosetta Code] (http://rosettacode.org/wiki/Category:Objeck) and che
 
 Notable features:
 
-* Support for both classes and interfaces
-* Anonymous classes
-* Type inference
-* Object serialization
-* Support for RegEx, JSON and XML (the parsers were written in the language)
+* Object-oriented featuring support
+  *  Classes, interfaces, 
+  * Anonymous classes 
+  * Reflection 
+  * Object serialization 
+  * Type inference
+* Support for threads, sockets, files, dates, etc.
+* Libraries for 
+  *  Encryption
+  *  RegEx
+  *  JSON and XML 
+  *  ODBC
 * Garbage collection
 * JIT support (IA-32 and AMD64)
 

@@ -59,6 +59,7 @@ namespace backend {
     }
 
   protected:
+#ifdef _SCRIPTER
     void WriteString(const wstring &in, ofstream* file_out) {
       string out;
       if(!UnicodeToBytes(in, out)) {
@@ -97,6 +98,46 @@ namespace backend {
     void WriteDouble(FLOAT_VALUE value, ofstream* file_out) {
       file_out->write((char*)&value, sizeof(value));
     }
+#else
+    void WriteString(const wstring &in, ofstream* file_out) {
+      string out;
+      if(!UnicodeToBytes(in, out)) {
+        wcerr << L">>> Unable to write unicode string <<<" << endl;
+        exit(1);
+      }
+      WriteInt(out.size(), file_out);
+      file_out->write(out.c_str(), out.size());
+    }
+
+    void WriteByte(char value, ofstream* file_out) {
+      file_out->write(&value, sizeof(value));
+    }
+
+    void WriteInt(int value, ofstream* file_out) {
+      file_out->write((char*)&value, sizeof(value));
+    }
+
+    void WriteChar(wchar_t value, ofstream* file_out) {
+      string buffer;
+      if(!CharacterToBytes(value, buffer)) {
+        wcerr << L">>> Unable to write character <<<" << endl;
+        exit(1);
+      }
+
+      // write bytes
+      if(buffer.size()) {
+        WriteInt(buffer.size(), file_out);
+        file_out->write(buffer.c_str(), buffer.size());
+      }
+      else {
+        WriteInt(0, file_out);
+      }
+    }
+
+    void WriteDouble(FLOAT_VALUE value, ofstream* file_out) {
+      file_out->write((char*)&value, sizeof(value));
+    }
+#endif
   };
 
   /****************************

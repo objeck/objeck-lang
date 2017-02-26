@@ -30,7 +30,9 @@
  ***************************************************************************/
 
 #include "common.h"
+#ifndef _SCRIPTER
 #include "loader.h"
+#endif
 #include "interpreter.h"
 #include "../shared/version.h"
 
@@ -57,8 +59,20 @@ pthread_mutex_t StackProgram::program_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t StackMethod::virtual_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t StackProgram::prop_mutex = PTHREAD_MUTEX_INITIALIZER;
 #endif
+
 unordered_map<wstring, StackMethod*> StackMethod::virutal_cache;
 map<wstring, wstring> StackProgram::properties_map;
+
+#ifdef _SCRIPTER
+StackProgram* Scripter::program;
+
+/****************************
+* Scripter class
+****************************/
+StackProgram* Scripter::GetProgram() {
+  return program;
+}
+#endif
 
 /********************************
  * ObjectSerializer struct
@@ -343,7 +357,11 @@ void ObjectSerializer::Serialize(long* inst) {
  ********************************/
 long* ObjectDeserializer::DeserializeObject() {
   INT_VALUE obj_id = DeserializeInt();
+#ifdef _SCRIPTER
+  cls = Scripter::GetProgram()->GetClass(obj_id);
+#else
   cls = Loader::GetProgram()->GetClass(obj_id);
+#endif
   if(cls) {
     INT_VALUE mem_id = DeserializeInt();
     if(mem_id < 0) {
@@ -633,7 +651,12 @@ long* ObjectDeserializer::DeserializeObject() {
  ********************************/
 #ifndef _UTILS
 void APITools_MethodCall(long* op_stack, long *stack_pos, long *instance, int cls_id, int mthd_id) {
+#ifdef _SCRIPTER
+  StackClass* cls = Scripter::GetProgram()->GetClass(cls_id);
+#else
   StackClass* cls = Loader::GetProgram()->GetClass(cls_id);
+#endif
+  
   if(cls) {
     StackMethod* mthd = cls->GetMethod(mthd_id);
     if(mthd) {
@@ -654,7 +677,11 @@ void APITools_MethodCall(long* op_stack, long *stack_pos, long *instance, int cl
 void APITools_MethodCall(long* op_stack, long *stack_pos, long *instance, 
                          const wchar_t* cls_id, const wchar_t* mthd_id) 
 {
+#ifdef _SCRIPTER
+  StackClass* cls = Scripter::GetProgram()->GetClass(cls_id);
+#else
   StackClass* cls = Loader::GetProgram()->GetClass(cls_id);
+#endif
   if(cls) {
     StackMethod* mthd = cls->GetMethod(mthd_id);
     if(mthd) {
@@ -675,7 +702,11 @@ void APITools_MethodCall(long* op_stack, long *stack_pos, long *instance,
 void APITools_MethodCallId(long* op_stack, long *stack_pos, long *instance, 
                            const int cls_id, const int mthd_id) 
 {
+#ifdef _SCRIPTER
+  StackClass* cls = Scripter::GetProgram()->GetClass(cls_id);
+#else
   StackClass* cls = Loader::GetProgram()->GetClass(cls_id);
+#endif
   if(cls) {
     StackMethod* mthd = cls->GetMethod(mthd_id);
     if(mthd) {
