@@ -1,7 +1,7 @@
 ## Compiler
 Coverts source code into Objeck executables (.obe) or Objeck libraries (.obl). The compiler produces bytecode for the Objeck VM a stack-based runtime system. The compiler also performs local optimizations including method inlining and optional debug symbols for the debugger.
 
-![alt text](../../images/compiling.png "Objeck Compiler")
+![alt text](../../images/compiling2.png "Objeck Compiler")
 
 ###Design
 Both the *scanner* and the *parser* were handwritten. As such, the *parser* was implemented using recursive-decent algorithm. Some of the more complex code is in the *contextual analyzer* which implements a few tricks in order to have primitives ask as objects. This code also links in references to external libraries. The code emitter separates the frontend for the backend of the compiler turning the forest of trees into blocks of referenceable code. 
