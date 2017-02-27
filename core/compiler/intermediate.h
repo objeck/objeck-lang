@@ -34,7 +34,11 @@
 #define __INTERMEDIATE_H__
 
 #include "tree.h"
+#ifdef _SCRIPTER
+#include "../scripter/loader.h"
+#else
 #include "target.h"
+#endif
 
 using namespace frontend;
 using namespace backend;

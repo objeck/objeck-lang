@@ -1,7 +1,7 @@
 /***************************************************************************
 * Defines how the intermediate code is written to output files
 *
-* Copyright (c) 2008-2015, Randy Hollines
+* Copyright (c) 2008-2017, Randy Hollines
 * All rights reserved.
 *
 * Redistribution and use in source and binary forms, with or without
@@ -29,8 +29,8 @@
 * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ***************************************************************************/
 
-#ifndef __TARGET_H__
-#define __TARGET_H__
+#ifndef __FILE_TARGET_H__
+#define __FILE_TARGET_H__
 
 #include "types.h"
 #include "linker.h"
@@ -59,26 +59,25 @@ namespace backend {
     }
 
   protected:
-#ifdef _SCRIPTER
-    void WriteString(const wstring &in, ofstream* file_out) {
+    void WriteString(const wstring &in, ofstream &file_out) {
       string out;
       if(!UnicodeToBytes(in, out)) {
         wcerr << L">>> Unable to write unicode string <<<" << endl;
         exit(1);
       }
       WriteInt(out.size(), file_out);
-      file_out->write(out.c_str(), out.size());
+      file_out.write(out.c_str(), out.size());
     }
 
-    void WriteByte(char value, ofstream* file_out) {
-      file_out->write(&value, sizeof(value));
+    void WriteByte(char value, ofstream &file_out) {
+      file_out.write(&value, sizeof(value));
     }
 
-    void WriteInt(int value, ofstream* file_out) {
-      file_out->write((char*)&value, sizeof(value));
+    void WriteInt(int value, ofstream &file_out) {
+      file_out.write((char*)&value, sizeof(value));
     }
 
-    void WriteChar(wchar_t value, ofstream* file_out) {
+    void WriteChar(wchar_t value, ofstream &file_out) {
       string buffer;
       if(!CharacterToBytes(value, buffer)) {
         wcerr << L">>> Unable to write character <<<" << endl;
@@ -88,56 +87,16 @@ namespace backend {
       // write bytes
       if(buffer.size()) {
         WriteInt(buffer.size(), file_out);
-        file_out->write(buffer.c_str(), buffer.size());
+        file_out.write(buffer.c_str(), buffer.size());
       }
       else {
         WriteInt(0, file_out);
       }
     }
 
-    void WriteDouble(FLOAT_VALUE value, ofstream* file_out) {
-      file_out->write((char*)&value, sizeof(value));
+    void WriteDouble(FLOAT_VALUE value, ofstream &file_out) {
+      file_out.write((char*)&value, sizeof(value));
     }
-#else
-    void WriteString(const wstring &in, ofstream* file_out) {
-      string out;
-      if(!UnicodeToBytes(in, out)) {
-        wcerr << L">>> Unable to write unicode string <<<" << endl;
-        exit(1);
-      }
-      WriteInt(out.size(), file_out);
-      file_out->write(out.c_str(), out.size());
-    }
-
-    void WriteByte(char value, ofstream* file_out) {
-      file_out->write(&value, sizeof(value));
-    }
-
-    void WriteInt(int value, ofstream* file_out) {
-      file_out->write((char*)&value, sizeof(value));
-    }
-
-    void WriteChar(wchar_t value, ofstream* file_out) {
-      string buffer;
-      if(!CharacterToBytes(value, buffer)) {
-        wcerr << L">>> Unable to write character <<<" << endl;
-        exit(1);
-      }
-
-      // write bytes
-      if(buffer.size()) {
-        WriteInt(buffer.size(), file_out);
-        file_out->write(buffer.c_str(), buffer.size());
-      }
-      else {
-        WriteInt(0, file_out);
-      }
-    }
-
-    void WriteDouble(FLOAT_VALUE value, ofstream* file_out) {
-      file_out->write((char*)&value, sizeof(value));
-    }
-#endif
   };
 
   /****************************
@@ -236,7 +195,7 @@ namespace backend {
       operand3 = o3;
     }
 
-    void Write(bool is_debug, ofstream* file_out) {
+    void Write(bool is_debug, ofstream &file_out) {
       WriteByte((int)type, file_out);
       if(is_debug) {
         WriteInt(line_num, file_out);
@@ -861,7 +820,7 @@ namespace backend {
       return instructions.size() == 0;
     }
 
-    void Write(bool is_debug, ofstream* file_out) {
+    void Write(bool is_debug, ofstream &file_out) {
       for(size_t i = 0; i < instructions.size(); ++i) {
         instructions[i]->Write(is_debug, file_out);
       }
@@ -1015,7 +974,7 @@ namespace backend {
       blocks = b;
     }
 
-    void Write(bool is_debug, ofstream* file_out) {
+    void Write(bool is_debug, ofstream &file_out) {
       // write attributes
       WriteInt(id, file_out);
       WriteInt(type, file_out);
@@ -1205,7 +1164,7 @@ namespace backend {
       return methods;
     }
 
-    void Write(ofstream* file_out) {
+    void Write(ofstream &file_out) {
       // write id and name
       WriteInt(id, file_out);
       WriteString(name, file_out);
@@ -1288,7 +1247,7 @@ namespace backend {
       id = i->GetId();
     }
 
-    void Write(ofstream* file_out) {
+    void Write(ofstream &file_out) {
       WriteString(name, file_out);
       WriteInt(id, file_out);
     }
@@ -1339,7 +1298,7 @@ namespace backend {
       items.push_back(i);
     }
 
-    void Write(ofstream* file_out) {
+    void Write(ofstream &file_out) {
       WriteString(name, file_out);
       WriteInt(offset, file_out);
       // write items
@@ -1478,7 +1437,7 @@ namespace backend {
       string_cls_id = i;
     }
 
-    void Write(ofstream* file_out, bool is_lib, bool is_debug, bool is_web) {
+    void Write(ofstream &file_out, bool is_lib, bool is_debug, bool is_web) {
       // version
       WriteInt(VER_NUM, file_out);
 
@@ -1592,9 +1551,9 @@ namespace backend {
   };
 
   /****************************
-  * TargetEmitter class
+  * FileEmitter class
   ****************************/
-  class TargetEmitter {
+  class FileEmitter {
     IntermediateProgram* program;
     wstring file_name;
     bool is_lib;
@@ -1610,7 +1569,7 @@ namespace backend {
     }
 
   public:
-    TargetEmitter(IntermediateProgram* p, bool l, bool d, bool w, const wstring &n) {
+    FileEmitter(IntermediateProgram* p, bool l, bool d, bool w, const wstring &n) {
       program = p;
       is_lib = l;
       is_debug = d;
@@ -1618,7 +1577,7 @@ namespace backend {
       file_name = n;
     }
 
-    ~TargetEmitter() {
+    ~FileEmitter() {
       delete program;
       program = NULL;
     }

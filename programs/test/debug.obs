@@ -1,41 +1,7 @@
-use Collection;
-
-bundle abc {
-
 class Test {
 	function : Main(args : String[]) ~ Nil {
-			b := abc.Bar->New(13);
-			b→Foo(13);
-			
-			v := Vector->New();
-			v->AddBack("fhllo");
-		}
-		
-		function : Foo(i : Int) ~ Nil {
-		}
-		
-		function : Foo() ~ Nil {
-		}
-	}
-	
-	class Bar {
-		New : private (t : Test) {
-		}
-		
-		New(i : Int) {
-		}
-		
-		method : public : Foo(b : Int) ~ Nil {
-		}
-		
-		method : Foo(b : (Float) ~ Bool) ~ Nil {
-		}
-		
-		method : Bar(f : Float) ~ Bool {
-			return false;
-		}
-		
-		method : Foo(ff: Float[]) ~ Nil {
-		}
+		a := 3;
+		b := 2;
+		(a + b)->PrintLine();
 	}
 }	

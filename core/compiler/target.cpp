@@ -1,7 +1,7 @@
 /***************************************************************************
  * Defines how the intermediate code is written to output files
  *
- * Copyright (c) 2008-2015, Randy Hollines
+ * Copyright (c) 2008-2017, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -60,7 +60,7 @@ IntermediateFactory* IntermediateFactory::Instance()
  * Writes target code to an
  * output file.
  ****************************/
-void TargetEmitter::Emit()
+void FileEmitter::Emit()
 {
 #ifdef _DEBUG
   wcout << L"\n--------- Emitting Target Code ---------" << endl;
@@ -90,16 +90,13 @@ void TargetEmitter::Emit()
   }
   
   string open_filename(file_name.begin(), file_name.end());
-  ofstream* file_out = new ofstream(open_filename.c_str(), ofstream::binary);
-  if(file_out && file_out->is_open()) {
+  ofstream file_out(open_filename.c_str(), ofstream::binary);
+  if(file_out && file_out.is_open()) {
     program->Write(file_out, is_lib, is_debug, is_web);
-    file_out->close();
+    file_out.close();
     wcout << L"Wrote target file: '" << file_name << L"'" << endl;
   }
   else {
     wcerr << L"Unable to write file: '" << file_name << L"'" << endl;
   }
-  
-  delete file_out;
-  file_out = NULL;
 }

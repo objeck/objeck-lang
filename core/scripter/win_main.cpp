@@ -88,10 +88,10 @@ int main(int argc, char* argv[])
     for(map<const wstring, wstring>::iterator intr = arguments.begin(); intr != arguments.end(); ++intr) {
       argument_options.push_back(intr->first);
     }
+
     // compile source
     status = Compile(arguments, argument_options, usage);
-
-    if(SUCCESS) {
+    if(status == SUCCESS) {
       // enable Unicode console support
       _setmode(_fileno(stdin), _O_U16TEXT);
       _setmode(_fileno(stdout), _O_U16TEXT);
@@ -109,8 +109,9 @@ int main(int argc, char* argv[])
         CRYPTO_malloc_init();
         SSL_library_init();
 
+        // TODO: wire me up!
         // execute program
-//TODO:        status = Execute(argc, argv);
+        // status = Execute(argc, argv);
       }
 
       // release Winsock

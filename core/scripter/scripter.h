@@ -39,7 +39,7 @@
 #include "../compiler/context.h"
 #include "../compiler/intermediate.h"
 #include "../compiler/optimization.h"
-//TODO: #include "../compiler/target.h"
+#include "loader.h"
 
 #include "../vm/common.h"
 
