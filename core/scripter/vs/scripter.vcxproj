@@ -27,13 +27,13 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v140</PlatformToolset>
+    <PlatformToolset>v140_xp</PlatformToolset>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v140</PlatformToolset>
+    <PlatformToolset>v140_xp</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
@@ -84,6 +84,7 @@
     </ClCompile>
     <Link>
       <AdditionalDependencies>..\..\lib\openssl\win32\lib\libeay32.lib;..\..\lib\openssl\win32\lib\ssleay32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;</AdditionalDependencies>
+      <SubSystem>Console</SubSystem>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -107,6 +108,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalDependencies>..\..\lib\openssl\win32\lib\libeay32.lib;..\..\lib\openssl\win32\lib\ssleay32.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;</AdditionalDependencies>
+      <SubSystem>Console</SubSystem>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -129,13 +131,13 @@
     <ClCompile Include="..\..\compiler\optimization.cpp" />
     <ClCompile Include="..\..\compiler\parser.cpp" />
     <ClCompile Include="..\..\compiler\scanner.cpp" />
-    <ClCompile Include="..\..\compiler\target.cpp" />
     <ClCompile Include="..\..\compiler\tree.cpp" />
     <ClCompile Include="..\..\compiler\types.cpp" />
     <ClCompile Include="..\..\vm\arch\jit\ia32\jit_intel_lp32.cpp" />
     <ClCompile Include="..\..\vm\arch\win32\memory.cpp" />
     <ClCompile Include="..\..\vm\common.cpp" />
     <ClCompile Include="..\..\vm\interpreter.cpp" />
+    <ClCompile Include="..\loader.cpp" />
     <ClCompile Include="..\scripter.cpp" />
     <ClCompile Include="..\win_main.cpp" />
   </ItemGroup>
@@ -146,7 +148,6 @@
     <ClInclude Include="..\..\compiler\optimization.h" />
     <ClInclude Include="..\..\compiler\parser.h" />
     <ClInclude Include="..\..\compiler\scanner.h" />
-    <ClInclude Include="..\..\compiler\target.h" />
     <ClInclude Include="..\..\compiler\tree.h" />
     <ClInclude Include="..\..\compiler\types.h" />
     <ClInclude Include="..\..\shared\instrs.h" />
@@ -159,6 +160,7 @@
     <ClInclude Include="..\..\vm\common.h" />
     <ClInclude Include="..\..\vm\interpreter.h" />
     <ClInclude Include="..\..\vm\lib_api.h" />
+    <ClInclude Include="..\loader.h" />
     <ClInclude Include="..\scripter.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

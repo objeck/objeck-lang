@@ -157,15 +157,15 @@ int Compile(map<const wstring, wstring> &arguments, list<wstring> &argument_opti
       // emit intermediate code
       IntermediateEmitter intermediate(program, is_lib, is_debug);
       intermediate.Translate();
+
       // intermediate optimizer
       ItermediateOptimizer optimizer(intermediate.GetProgram(), intermediate.GetUnconditionalLabel(), arguments[L"opt"], is_debug);
       optimizer.Optimize();
 
-/* TODO: emit directly into VM model
       // emit target code
-      TargetEmitter target(optimizer.GetProgram(), is_lib, is_debug, is_web, arguments[L"dest"]);;
-      target.Emit();
-*/
+      RuntimeLoader target(optimizer.GetProgram(), is_lib, is_debug, is_web, arguments[L"dest"]);;
+      StackProgram* vm_program = target.Load();
+
       return SUCCESS;
     }
     else {

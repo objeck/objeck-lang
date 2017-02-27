@@ -32,7 +32,12 @@
 #ifndef __OPTIMIZE_H__
 #define __OPTIMIZE_H__
 
+#ifdef _SCRIPTER
+#include "../scripter/loader.h"
+#else
 #include "target.h"
+#endif
+
 #include <deque>
 
 using namespace backend;
