@@ -235,11 +235,11 @@ void Loader::LoadClasses()
     const int interface_size = ReadInt();
     if(interface_size > 0) {
       int* interfaces = new int[interface_size + 1];
-      int i = 0;
-      while(i < interface_size) {
-        interfaces[i++] = ReadInt();
+      int j = 0;
+      while(j < interface_size) {
+        interfaces[j++] = ReadInt();
       }
-      interfaces[i] = -1;
+      interfaces[j] = -1;
       cls_interfaces[id] = interfaces;
     }
     else {
@@ -248,7 +248,7 @@ void Loader::LoadClasses()
 
     // read interface names
     const int interface_names_size = ReadInt();
-    for(int i = 0; i < interface_names_size; i++) {
+    for(int j = 0; j < interface_names_size; j++) {
       ReadString();
     }
 
