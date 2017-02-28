@@ -1165,7 +1165,112 @@ namespace backend {
       return methods;
     }
 
-    void Write(ofstream &file_out) {
+    StackClass* Load(int* vm_cls_hierarchy, int** vm_cls_interfaces, StackClass** vm_classes, int i) {
+      // read id and pid
+      const int vm_id = id;
+      wstring vm_name = name;
+      const int vm_pid = pid;
+      wstring vm_parent_name = parent_name;
+
+        // read interface ids
+        const int interface_size = interface_ids.size();
+        if(interface_size > 0) {
+          int* interfaces = new int[interface_size + 1];
+          int j = 0;
+          while(j < interface_size) {
+            interfaces[j] = interface_ids[j];
+            j++;
+          }
+          interfaces[j] = -1;
+          vm_cls_interfaces[vm_id] = interfaces;
+        }
+        else {
+          vm_cls_interfaces[vm_id] = NULL;
+        }
+
+/*
+        // read interface names
+        const int interface_names_size = ReadInt();
+        for(int i = 0; i < interface_names_size; i++) {
+          ReadString();
+        }
+*/
+
+/*
+        // is interface (covered by is virtual)
+        ReadInt();
+
+        const bool is_virtual = ReadInt() != 0;
+        const bool is_debug = ReadInt() != 0;
+        wstring file_name;
+        if(is_debug) {
+          file_name = ReadString();
+        }
+
+        // space
+        const int cls_space = ReadInt();
+        const int inst_space = ReadInt();
+*/
+
+
+
+/* --- END ---
+        // read class types
+        const int cls_num_dclrs = ReadInt();
+        StackDclr** cls_dclrs = new StackDclr*[cls_num_dclrs];
+        for(int i = 0; i < cls_num_dclrs; i++) {
+          // set type
+          int type = ReadInt();
+          // set name
+          wstring name;
+          if(is_debug) {
+            name = ReadString();
+          }
+          cls_dclrs[i] = new StackDclr;
+          cls_dclrs[i]->name = name;
+          cls_dclrs[i]->type = (ParamType)type;
+        }
+
+        // read instance types
+        const int inst_num_dclrs = ReadInt();
+        StackDclr** inst_dclrs = new StackDclr*[inst_num_dclrs];
+        for(int i = 0; i < inst_num_dclrs; i++) {
+          // set type
+          int type = ReadInt();
+          // set name
+          wstring name;
+          if(is_debug) {
+            name = ReadString();
+          }
+          inst_dclrs[i] = new StackDclr;
+          inst_dclrs[i]->name = name;
+          inst_dclrs[i]->type = (ParamType)type;
+        }
+
+        cls_hierarchy[id] = pid;
+        StackClass* cls = new StackClass(id, name, file_name, pid, is_virtual,
+                                         cls_dclrs, cls_num_dclrs, inst_dclrs,
+                                         inst_num_dclrs, cls_space, inst_space, is_debug);
+
+#ifdef _DEBUG
+        wcout << L"Class(" << cls << L"): id=" << id << L"; name='" << name << L"'; parent='"
+          << parent_name << L"'; class_bytes=" << cls_space << L"'; instance_bytes="
+          << inst_space << endl;
+#endif
+
+        // load methods
+//        LoadMethods(cls, is_debug);
+        // add class
+#ifdef _DEBUG
+        assert(id < number);
+#endif
+        classes[id] = cls;
+
+      
+*/
+
+
+/*
       // write id and name
       WriteInt(id, file_out);
       WriteString(name, file_out);
@@ -1202,6 +1307,8 @@ namespace backend {
       for(size_t i = 0; i < methods.size(); ++i) {
         methods[i]->Write(is_debug, file_out);
       }
+*/
+      return NULL;
     }
 
     void Debug() {
@@ -1546,22 +1653,41 @@ namespace backend {
         WriteInt(class_id, file_out);
         WriteInt(method_id, file_out);
       }
+*/
+      
+
+/*
       // program enums
       WriteInt((int)enums.size(), file_out);
       for(size_t i = 0; i < enums.size(); ++i) {
         enums[i]->Write(file_out);
       }
+*/
+  
+      const int cls_number = (int)classes.size();
+      int* vm_cls_hierarchy = new int[cls_number];
+      int** vm_cls_interfaces = new int*[cls_number];
+      StackClass** vm_classes = new StackClass*[cls_number];
+
+#ifdef _DEBUG
+      wcout << L"Reading " << cls_number << L" classe(s)..." << endl;
+#endif
       // program classes
-      WriteInt((int)classes.size(), file_out);
-      for(size_t i = 0; i < classes.size(); ++i) {
+      for(int i = 0; i < cls_number; ++i) {
         if(classes[i]->IsLibrary()) {
           num_lib_classes++;
         } else {
           num_src_classes++;
         }
-        classes[i]->Write(file_out);
+        StackClass* vm_klass = classes[i]->Load(vm_cls_hierarchy, vm_cls_interfaces, vm_classes, i);
       }
 
+      // set class hierarchy and interfaces
+      vm_program->SetClasses(vm_classes, cls_number);
+      vm_program->SetHierarchy(vm_cls_hierarchy);
+      vm_program->SetInterfaces(vm_cls_interfaces);
+
+/*
       wcout << L"Compiled " << num_src_classes
         << (num_src_classes > 1 ? " source classes" : " source class");
       if(is_debug) {
