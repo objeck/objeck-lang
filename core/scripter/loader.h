@@ -975,31 +975,69 @@ namespace backend {
       blocks = b;
     }
 
-    StackMethod* Load(IntermediateClass* cls, bool is_debug) {
+    StackMethod* Load(StackClass* vm_cls, bool is_debug) {
+      // parse return
+      MemoryType rtrn_type;
+      switch(rtrn_name[0]) {
+      case L'l': // bool
+      case L'b': // byte
+      case L'c': // character
+      case L'i': // int
+      case L'o': // object
+        rtrn_type = MemoryType::INT_TYPE;
+        break;
+
+      case L'f': // float
+        if(rtrn_name.size() > 1) {
+          rtrn_type = MemoryType::INT_TYPE;
+        }
+        else {
+          rtrn_type = MemoryType::FLOAT_TYPE;
+        }
+        break;
+
+      case L'n': // nil
+        rtrn_type = MemoryType::NIL_TYPE;
+        break;
+
+      case L'm': // function
+        rtrn_type = MemoryType::FUNC_TYPE;
+        break;
+
+      default:
+        wcerr << L">>> unknown type <<<" << endl;
+        exit(1);
+        break;
+      }
+
+      // read instance types
+      vector<IntermediateDeclaration*> vm_params = entries->GetParameters();
+      StackDclr** dclrs = new StackDclr*[vm_params.size()];
+      for(size_t i = 0; i < vm_params.size(); ++i) {
+        IntermediateDeclaration* entry = vm_params[i];
+        dclrs[i] = new StackDclr;
+        dclrs[i]->type = entry->GetType();
+        if(is_debug) {
+          dclrs[i]->name = entry->GetName();
+        }
+      }
+
+      StackMethod* vm_mthd = new StackMethod(id, name, is_virtual, has_and_or, dclrs,
+                                             vm_params.size(), space, params , rtrn_type, vm_cls);
+
 /*
-      // write attributes
-      WriteInt(id, file_out);
-      WriteInt(type, file_out);
-      WriteInt(is_virtual, file_out);
-      WriteInt(has_and_or, file_out);
-      WriteInt(is_native, file_out);
-      WriteInt(is_function, file_out);
-      WriteString(name, file_out);
-      WriteString(rtrn_name, file_out);
-
-      // write local space size
-      WriteInt(params, file_out);
-      WriteInt(space, file_out);
-      entries->Write(is_debug, file_out);
-
-      // write statements
+      // TARGET
       for(size_t i = 0; i < blocks.size(); ++i) {
         blocks[i]->Write(is_debug, file_out);
       }
       WriteByte(END_STMTS, file_out);
+
+      // LOADER
+      LoadStatements(mthd, is_debug);
+      methods[id] = mthd;
 */
 
-      return NULL;
+      return vm_mthd;
     }
 
     void Debug() {
@@ -1236,7 +1274,7 @@ namespace backend {
       // load methods
       StackMethod** vm_methods = new StackMethod*[methods.size()];
       for(size_t i = 0; i < methods.size(); ++i) {
-        vm_methods[i] = methods[i]->Load(this, is_debug);
+        vm_methods[i] = methods[i]->Load(vm_cls, is_debug);
       }
 
       return vm_cls;
