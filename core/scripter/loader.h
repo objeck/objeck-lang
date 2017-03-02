@@ -975,7 +975,8 @@ namespace backend {
       blocks = b;
     }
 
-    void Write(bool is_debug, ofstream &file_out) {
+    StackMethod* Load(IntermediateClass* cls, bool is_debug) {
+/*
       // write attributes
       WriteInt(id, file_out);
       WriteInt(type, file_out);
@@ -996,6 +997,9 @@ namespace backend {
         blocks[i]->Write(is_debug, file_out);
       }
       WriteByte(END_STMTS, file_out);
+*/
+
+      return NULL;
     }
 
     void Debug() {
@@ -1165,7 +1169,7 @@ namespace backend {
       return methods;
     }
 
-    StackClass* Load(int* vm_cls_hierarchy, int** vm_cls_interfaces, StackClass** vm_classes, int i) {
+    StackClass* Load(int* vm_cls_hierarchy, int** vm_cls_interfaces) {
       // read id and pid
       const int vm_id = id;
       wstring vm_name = name;
@@ -1188,28 +1192,10 @@ namespace backend {
         vm_cls_interfaces[vm_id] = NULL;
       }
 
-/* NOP
-      // read interface names
-      const int interface_names_size = ReadInt();
-      for(int i = 0; i < interface_names_size; i++) {
-        ReadString();
-      }
-*/
-
-/* NOP
-      // is interface (covered by is virtual)
-      ReadInt();
-
-      const bool is_virtual = ReadInt() != 0;
-      const bool is_debug = ReadInt() != 0;
-      wstring file_name;
+/*
       if(is_debug) {
         file_name = ReadString();
       }
-
-      // space
-      const int cls_space = ReadInt();
-      const int inst_space = ReadInt();
 */
       
       // read class types
@@ -1224,7 +1210,7 @@ namespace backend {
         }
       }
 
-      // read class types
+      // read instance types
       vector<IntermediateDeclaration*> inst_params = inst_entries->GetParameters();
       StackDclr** inst_dclrs = new StackDclr*[inst_params.size()];
       for(size_t i = 0; i < inst_params.size(); ++i) {
@@ -1237,9 +1223,8 @@ namespace backend {
       }
 
       StackClass* vm_cls = new StackClass(id, name, file_name, pid, is_virtual,
-                                       cls_dclrs, cls_params.size(), inst_dclrs,
-                                       inst_params.size(), cls_space, inst_space, is_debug);      
-      vm_classes[id] = vm_cls;
+                                          cls_dclrs, cls_params.size(), inst_dclrs,
+                                          inst_params.size(), cls_space, inst_space, is_debug);      
       vm_cls_hierarchy[id] = pid;
 
 #ifdef _DEBUG
@@ -1247,54 +1232,14 @@ namespace backend {
         << parent_name << L"'; class_bytes=" << cls_space << L"'; instance_bytes="
         << inst_space << endl;
 #endif
-
-
+      
       // load methods
-//        LoadMethods(cls, is_debug);
-      // add class
-#ifdef _DEBUG
-//      assert(vm_id < number);
-#endif
-
-/*
-      // write id and name
-      WriteInt(id, file_out);
-      WriteString(name, file_out);
-      WriteInt(pid, file_out);
-      WriteString(parent_name, file_out);
-
-      // interface ids
-      WriteInt(interface_ids.size(), file_out);
-      for(size_t i = 0; i < interface_ids.size(); ++i) {
-        WriteInt(interface_ids[i], file_out);
-      }
-
-      // interface names
-      WriteInt(interface_names.size(), file_out);
-      for(size_t i = 0; i < interface_names.size(); ++i) {
-        WriteString(interface_names[i], file_out);
-      }
-
-      WriteInt(is_interface, file_out);
-      WriteInt(is_virtual, file_out);
-      WriteInt(is_debug, file_out);
-      if(is_debug) {
-        WriteString(file_name, file_out);
-      }
-
-      // write local space size
-      WriteInt(cls_space, file_out);
-      WriteInt(inst_space, file_out);
-      cls_entries->Write(is_debug, file_out);
-      inst_entries->Write(is_debug, file_out);
-
-      // write methods
-      WriteInt((int)methods.size(), file_out);
+      StackMethod** vm_methods = new StackMethod*[methods.size()];
       for(size_t i = 0; i < methods.size(); ++i) {
-        methods[i]->Write(is_debug, file_out);
+        vm_methods[i] = methods[i]->Load(this, is_debug);
       }
-*/
-      return NULL;
+
+      return vm_cls;
     }
 
     void Debug() {
@@ -1532,22 +1477,6 @@ namespace backend {
     }
 
     void Write(StackProgram* vm_program, bool is_lib, bool is_debug, bool is_web) {
-
-/*
-      // version
-      WriteInt(VER_NUM, file_out);
-
-      // magic number
-      if(is_lib) {
-        WriteInt(MAGIC_NUM_LIB, file_out);
-      } 
-      else if(is_web) {
-        WriteInt(MAGIC_NUM_WEB, file_out);
-      } 
-      else {
-        WriteInt(MAGIC_NUM_EXE, file_out);
-      }    
-*/
       // write wstring id
       if(!is_lib) {
 #ifdef _DEBUG
@@ -1616,8 +1545,8 @@ namespace backend {
         char_strings[i] = char_string;
       }
 
+/* TODO: COMMAND LINE
       // copy command line params
-/* TODO
       for(size_t j = 0; j < arguments.size(); i++, j++) {
 #ifdef _WIN32
         char_strings[i] = _wcsdup((arguments[j]).c_str());
@@ -1631,24 +1560,8 @@ namespace backend {
       }
 */
       vm_program->SetCharStrings(vm_char_strings, char_strings.size());
-
-/* NOP 
-      // program start
-      if(!is_lib) {
-        WriteInt(class_id, file_out);
-        WriteInt(method_id, file_out);
-      }
-*/
-      
-
-/* NOP
-      // program enums
-      WriteInt((int)enums.size(), file_out);
-      for(size_t i = 0; i < enums.size(); ++i) {
-        enums[i]->Write(file_out);
-      }
-*/
   
+      // program classes
       const int cls_number = (int)classes.size();
       int* vm_cls_hierarchy = new int[cls_number];
       int** vm_cls_interfaces = new int*[cls_number];
@@ -1657,14 +1570,14 @@ namespace backend {
 #ifdef _DEBUG
       wcout << L"Reading " << cls_number << L" classe(s)..." << endl;
 #endif
-      // program classes
+     
       for(int i = 0; i < cls_number; ++i) {
         if(classes[i]->IsLibrary()) {
           num_lib_classes++;
         } else {
           num_src_classes++;
         }
-        StackClass* vm_klass = classes[i]->Load(vm_cls_hierarchy, vm_cls_interfaces, vm_classes, i);
+        vm_classes[i] = classes[i]->Load(vm_cls_hierarchy, vm_cls_interfaces);
       }
 
       // set class hierarchy and interfaces
