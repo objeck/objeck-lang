@@ -1,7 +1,7 @@
 /***************************************************************************
  * Program loader.
  *
- * Copyright (c) 2008-2015, Randy Hollines
+ * Copyright (c) 2008-2017, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -56,15 +56,17 @@ class Loader {
   map<const wstring, const int> params;
 
   int ReadInt() {
-    int32_t value;
-    memcpy(&value, buffer, sizeof(value));
+    // int32_t value;
+    // memcpy(&value, buffer, sizeof(value));
+    int32_t value = *((int32_t*)buffer);
     buffer += sizeof(value);
     return value;
   }
   
   int ReadByte() {
-    char value;
-    memcpy(&value, buffer, sizeof(value));
+    // char value;
+    // memcpy(&value, buffer, sizeof(value));
+    char value = *((char*)buffer);
     buffer += sizeof(value);
     return value;
   }
@@ -74,12 +76,11 @@ class Loader {
     string in(buffer, size);
     buffer += size;    
    
+    // kludge!
     wstring out;
     if(!BytesToUnicode(in, out)) {
       wstring dummy(size, L' ');
       return dummy;
-      //      wcerr << L">>> Unable to read unicode string <<<" << endl;
-      //      exit(1);
     }
     
     return out;
@@ -105,8 +106,9 @@ class Loader {
   }
 
   FLOAT_VALUE ReadDouble() {
-    FLOAT_VALUE value;
-    memcpy(&value, buffer, sizeof(value));
+    // FLOAT_VALUE value;
+    // memcpy(&value, buffer, sizeof(value));
+    FLOAT_VALUE value = *((FLOAT_VALUE*)buffer);
     buffer += sizeof(value);
     return value;
   }
