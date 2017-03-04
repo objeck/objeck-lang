@@ -56,16 +56,12 @@ class Loader {
   map<const wstring, const int> params;
 
   inline int ReadInt() {
-    // int32_t value;
-    // memcpy(&value, buffer, sizeof(value));
     int32_t value = *((int32_t*)buffer);
     buffer += sizeof(value);
     return value;
   }
 
   inline uint32_t ReadUnsigned() {
-    // uint32_t value;
-    // memcpy(&value, buffer, sizeof(value));
     uint32_t value = *((uint32_t*)buffer);
     buffer += sizeof(value);
     return value;
@@ -76,8 +72,6 @@ class Loader {
   }
   
   inline int ReadByte() {
-    // char value;
-    // memcpy(&value, buffer, sizeof(value));
     char value = *((char*)buffer);
     buffer += sizeof(value);
     return value;
@@ -91,8 +85,8 @@ class Loader {
     // kludge!
     wstring out;
     if(!BytesToUnicode(in, out)) {
-      wstring dummy(size, L' ');
-      return dummy;
+      wcerr << L">>> Unable to read unicode string <<<" << endl;
+      exit(1);
     }
     
     return out;
