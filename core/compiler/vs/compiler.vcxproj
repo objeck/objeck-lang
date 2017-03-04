@@ -245,13 +245,13 @@
   <ItemGroup>
     <ClCompile Include="..\compiler.cpp" />
     <ClCompile Include="..\context.cpp" />
+    <ClCompile Include="..\emit.cpp" />
     <ClCompile Include="..\intermediate.cpp" />
     <ClCompile Include="..\linker.cpp" />
     <ClCompile Include="..\optimization.cpp" />
     <ClCompile Include="..\parser.cpp" />
     <ClCompile Include="..\posix_main.cpp" />
     <ClCompile Include="..\scanner.cpp" />
-    <ClCompile Include="..\target.cpp" />
     <ClCompile Include="..\tree.cpp" />
     <ClCompile Include="..\types.cpp" />
   </ItemGroup>
@@ -263,7 +263,6 @@
     <ClInclude Include="..\linker.h" />
     <ClInclude Include="..\optimization.h" />
     <ClInclude Include="..\parser.h" />
-    <ClInclude Include="..\target.h" />
     <ClInclude Include="..\tree.h" />
     <ClInclude Include="..\types.h" />
     <ClInclude Include="resource.h" />

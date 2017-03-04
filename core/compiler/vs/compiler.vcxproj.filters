@@ -28,10 +28,10 @@
     <ClCompile Include="..\intermediate.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\target.cpp">
+    <ClCompile Include="..\optimization.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\optimization.cpp">
+    <ClCompile Include="..\emit.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -61,9 +61,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\intermediate.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\target.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\optimization.h">
