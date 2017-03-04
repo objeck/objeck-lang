@@ -195,19 +195,19 @@ void Loader::LoadEnums()
   for(int i = 0; i < number; ++i) {
     // read enum
     // const string &enum_name = ReadString();
-    ReadString();
+    ReadDummyString();
 
     // const long enum_offset = ReadInt();
-    ReadInt();
+    ReadDummyInt();
 
     // read enum items
     const long num_items = ReadInt();
     for(int i = 0; i < num_items; ++i) {
       // const string &item_name = ReadString();
-      ReadString();
+      ReadDummyString();
 
       // const long item_id = ReadInt();
-      ReadInt();
+      ReadDummyInt();
     }
   }
 }
@@ -248,11 +248,11 @@ void Loader::LoadClasses()
     // read interface names
     const int interface_names_size = ReadInt();
     for(int j = 0; j < interface_names_size; j++) {
-      ReadString();
+      ReadDummyString();
     }
 
     // is interface (covered by is virtual)
-    ReadInt();
+    ReadDummyInt();
 
     const bool is_virtual = ReadInt() != 0;
     const bool is_debug = ReadInt() != 0;
@@ -335,15 +335,15 @@ void Loader::LoadMethods(StackClass* cls, bool is_debug)
     // id
     const int id = ReadInt();
     // method type
-    ReadInt();
+    ReadDummyInt();
     // virtual
     const bool is_virtual = ReadInt() != 0;
     // has and/or
     const bool has_and_or = ReadInt() != 0;
     // is native
-    ReadInt();
+    ReadDummyInt();
     // is static
-    ReadInt();
+    ReadDummyInt();
     // name
     const wstring name = ReadString();
     // return
