@@ -196,7 +196,507 @@ namespace backend {
       operand3 = o3;
     }
 
-    StackInstr* Load(bool is_debug) {
+    void Load(StackMethod* vm_method, vector<StackInstr*>& instrs, int index, bool is_debug) {
+      switch(type) {
+      case LOAD_INT_LIT:
+        instrs.push_back(new StackInstr(line_num, LOAD_INT_LIT, (long)operand));
+        break;
+
+      case LOAD_CHAR_LIT:
+        instrs.push_back(new StackInstr(line_num, LOAD_CHAR_LIT, (long)operand));
+        break;
+
+      case SHL_INT:
+        instrs.push_back(new StackInstr(line_num, SHL_INT));
+        break;
+
+      case SHR_INT:
+        instrs.push_back(new StackInstr(line_num, SHR_INT));
+        break;
+
+      case LOAD_INT_VAR: {
+        long id = operand;
+        MemoryContext mem_context = (MemoryContext)operand2;
+        instrs.push_back(new StackInstr(line_num,
+                         mem_context == LOCL ? LOAD_LOCL_INT_VAR : LOAD_CLS_INST_INT_VAR,
+                         id, mem_context));
+      }
+        break;
+
+      case LOAD_FUNC_VAR: {
+        long id = operand;
+        MemoryContext mem_context = (MemoryContext)operand2;
+        instrs.push_back(new StackInstr(line_num, LOAD_FUNC_VAR, id, mem_context));
+      }
+         break;
+
+      case LOAD_FLOAT_VAR: {
+        long id = operand;
+        MemoryContext mem_context = (MemoryContext)operand2;
+        instrs.push_back(new StackInstr(line_num, LOAD_FLOAT_VAR, id, mem_context));
+      }
+          break;
+
+      case STOR_INT_VAR: {
+        long id = operand;
+        MemoryContext mem_context = (MemoryContext)operand2;
+        instrs.push_back(new StackInstr(line_num,
+                         mem_context == LOCL ? STOR_LOCL_INT_VAR : STOR_CLS_INST_INT_VAR,
+                         id, mem_context));
+      }
+        break;
+
+      case STOR_FUNC_VAR: {
+        long id = operand;
+        MemoryContext mem_context = (MemoryContext)operand2;
+        instrs.push_back(new StackInstr(line_num, STOR_FUNC_VAR, id, mem_context));
+      }
+         break;
+
+      case STOR_FLOAT_VAR: {
+        long id = operand;
+        long mem_context = operand2;
+        instrs.push_back(new StackInstr(line_num, STOR_FLOAT_VAR, id, mem_context));
+      }
+          break;
+
+      case COPY_INT_VAR: {
+        long id = operand;
+        MemoryContext mem_context = (MemoryContext)operand2;
+        instrs.push_back(new StackInstr(line_num,
+                         mem_context == LOCL ? COPY_LOCL_INT_VAR : COPY_CLS_INST_INT_VAR,
+                         id, mem_context));
+      }
+        break;
+
+      case COPY_FLOAT_VAR: {
+        long id = operand;
+        MemoryContext mem_context = (MemoryContext)operand2;
+        instrs.push_back(new StackInstr(line_num, COPY_FLOAT_VAR, id, mem_context));
+      }
+          break;
+
+      case LOAD_BYTE_ARY_ELM: {
+        long dim = operand;
+        MemoryContext mem_context = (MemoryContext)operand2;
+        instrs.push_back(new StackInstr(line_num, LOAD_BYTE_ARY_ELM, dim, mem_context));
+      }
+             break;
+
+      case LOAD_CHAR_ARY_ELM: {
+        long dim = operand;
+        MemoryContext mem_context = (MemoryContext)operand2;
+        instrs.push_back(new StackInstr(line_num, LOAD_CHAR_ARY_ELM, dim, mem_context));
+      }
+             break;
+
+      case LOAD_INT_ARY_ELM: {
+        long dim = operand;
+        MemoryContext mem_context = (MemoryContext)operand2;
+        instrs.push_back(new StackInstr(line_num, LOAD_INT_ARY_ELM, dim, mem_context));
+      }
+            break;
+
+      case LOAD_FLOAT_ARY_ELM: {
+        long dim = operand;
+        MemoryContext mem_context = (MemoryContext)operand2;
+        instrs.push_back(new StackInstr(line_num, LOAD_FLOAT_ARY_ELM, dim, mem_context));
+      }
+              break;
+
+      case STOR_BYTE_ARY_ELM: {
+        long dim = operand;
+        MemoryContext mem_context = (MemoryContext)operand2;
+        instrs.push_back(new StackInstr(line_num, STOR_BYTE_ARY_ELM, dim, mem_context));
+      }
+             break;
+
+      case STOR_CHAR_ARY_ELM: {
+        long dim = operand;
+        MemoryContext mem_context = (MemoryContext)operand2;
+        instrs.push_back(new StackInstr(line_num, STOR_CHAR_ARY_ELM, dim, mem_context));
+      }
+             break;
+
+      case STOR_INT_ARY_ELM: {
+        long dim = operand;
+        MemoryContext mem_context = (MemoryContext)operand2;
+        instrs.push_back(new StackInstr(line_num, STOR_INT_ARY_ELM, dim, mem_context));
+      }
+            break;
+
+      case STOR_FLOAT_ARY_ELM: {
+        long dim = operand;
+        long mem_context = operand2;
+        instrs.push_back(new StackInstr(line_num, STOR_FLOAT_ARY_ELM, dim, mem_context));
+      }
+              break;
+
+      case NEW_FLOAT_ARY: {
+        long dim = operand;
+        instrs.push_back(new StackInstr(line_num, NEW_FLOAT_ARY, dim));
+      }
+         break;
+
+      case NEW_INT_ARY: {
+        long dim = operand;
+        instrs.push_back(new StackInstr(line_num, NEW_INT_ARY, dim));
+      }
+          break;
+
+      case NEW_BYTE_ARY: {
+        long dim = operand;
+        instrs.push_back(new StackInstr(line_num, NEW_BYTE_ARY, dim));
+
+      }
+        break;
+
+      case NEW_CHAR_ARY: {
+        long dim = operand;
+        instrs.push_back(new StackInstr(line_num, NEW_CHAR_ARY, dim));
+
+      }
+        break;
+
+      case NEW_OBJ_INST: {
+        long obj_id = operand;
+        instrs.push_back(new StackInstr(line_num, NEW_OBJ_INST, obj_id));
+      }
+        break;
+
+      case DYN_MTHD_CALL: {
+        long num_params = operand;
+        long rtrn_type = operand2;
+        instrs.push_back(new StackInstr(line_num, DYN_MTHD_CALL, num_params, rtrn_type));
+      }
+         break;
+
+      case MTHD_CALL: {
+        long cls_id = operand;
+        long mthd_id = operand2;
+        long is_native = operand3;
+        instrs.push_back(new StackInstr(line_num, MTHD_CALL, cls_id, mthd_id, is_native));
+      }
+        break;
+
+      case ASYNC_MTHD_CALL: {
+        long cls_id = operand;
+        long mthd_id = operand2;
+        long is_native = operand3;
+        instrs.push_back(new StackInstr(line_num, ASYNC_MTHD_CALL, cls_id, mthd_id, is_native));
+      }
+           break;
+
+      case LIB_OBJ_INST_CAST:
+        wcerr << L">>> unsupported instruction for executable: LIB_OBJ_INST_CAST <<<" << endl;
+        exit(1);
+
+      case LIB_NEW_OBJ_INST:
+        wcerr << L">>> unsupported instruction for executable: LIB_NEW_OBJ_INST <<<" << endl;
+        exit(1);
+
+      case LIB_MTHD_CALL:
+        wcerr << L">>> unsupported instruction for executable: LIB_MTHD_CALL <<<" << endl;
+        exit(1);
+
+      case JMP: {
+        long label = operand;
+        long cond = operand2;
+        instrs.push_back(new StackInstr(line_num, JMP, label, cond));
+      }
+             break;
+
+      case LBL: {
+        long id = operand;
+        instrs.push_back(new StackInstr(line_num, LBL, id));
+        vm_method->AddLabel(id, index);
+      }
+             break;
+
+      case OBJ_INST_CAST: {
+        long to = operand;
+        instrs.push_back(new StackInstr(line_num, OBJ_INST_CAST, to));
+      }
+         break;
+
+      case OBJ_TYPE_OF: {
+        long check = operand;
+        instrs.push_back(new StackInstr(line_num, OBJ_TYPE_OF, check));
+      }
+          break;
+
+      case OR_INT:
+        instrs.push_back(new StackInstr(line_num, OR_INT));
+        break;
+
+      case AND_INT:
+        instrs.push_back(new StackInstr(line_num, AND_INT));
+        break;
+
+      case ADD_INT:
+        instrs.push_back(new StackInstr(line_num, ADD_INT));
+        break;
+
+      case CEIL_FLOAT:
+        instrs.push_back(new StackInstr(line_num, CEIL_FLOAT));
+        break;
+
+      case CPY_BYTE_ARY:
+        instrs.push_back(new StackInstr(line_num, CPY_BYTE_ARY));
+        break;
+
+      case CPY_CHAR_ARY:
+        instrs.push_back(new StackInstr(line_num, CPY_CHAR_ARY));
+        break;
+
+      case CPY_INT_ARY:
+        instrs.push_back(new StackInstr(line_num, CPY_INT_ARY));
+        break;
+
+      case CPY_FLOAT_ARY:
+        instrs.push_back(new StackInstr(line_num, CPY_FLOAT_ARY));
+        break;
+
+      case FLOR_FLOAT:
+        instrs.push_back(new StackInstr(line_num, FLOR_FLOAT));
+        break;
+
+      case SIN_FLOAT:
+        instrs.push_back(new StackInstr(line_num, SIN_FLOAT));
+        break;
+
+      case COS_FLOAT:
+        instrs.push_back(new StackInstr(line_num, COS_FLOAT));
+        break;
+
+      case TAN_FLOAT:
+        instrs.push_back(new StackInstr(line_num, TAN_FLOAT));
+        break;
+
+      case ASIN_FLOAT:
+        instrs.push_back(new StackInstr(line_num, ASIN_FLOAT));
+        break;
+
+      case ACOS_FLOAT:
+        instrs.push_back(new StackInstr(line_num, ACOS_FLOAT));
+        break;
+
+      case ATAN_FLOAT:
+        instrs.push_back(new StackInstr(line_num, ATAN_FLOAT));
+        break;
+
+      case LOG_FLOAT:
+        instrs.push_back(new StackInstr(line_num, LOG_FLOAT));
+        break;
+
+      case POW_FLOAT:
+        instrs.push_back(new StackInstr(line_num, POW_FLOAT));
+        break;
+
+      case SQRT_FLOAT:
+        instrs.push_back(new StackInstr(line_num, SQRT_FLOAT));
+        break;
+
+      case RAND_FLOAT:
+        instrs.push_back(new StackInstr(line_num, RAND_FLOAT));
+        break;
+
+      case F2I:
+        instrs.push_back(new StackInstr(line_num, F2I));
+        break;
+
+      case I2F:
+        instrs.push_back(new StackInstr(line_num, I2F));
+        break;
+
+      case SWAP_INT:
+        instrs.push_back(new StackInstr(line_num, SWAP_INT));
+        break;
+
+      case POP_INT:
+        instrs.push_back(new StackInstr(line_num, POP_INT));
+        break;
+
+      case POP_FLOAT:
+        instrs.push_back(new StackInstr(line_num, POP_FLOAT));
+        break;
+
+      case LOAD_CLS_MEM:
+        instrs.push_back(new StackInstr(line_num, LOAD_CLS_MEM));
+        break;
+
+      case LOAD_INST_MEM:
+        instrs.push_back(new StackInstr(line_num, LOAD_INST_MEM));
+        break;
+
+      case LOAD_ARY_SIZE:
+        instrs.push_back(new StackInstr(line_num, LOAD_ARY_SIZE));
+        break;
+
+      case SUB_INT:
+        instrs.push_back(new StackInstr(line_num, SUB_INT));
+        break;
+
+      case MUL_INT:
+        instrs.push_back(new StackInstr(line_num, MUL_INT));
+        break;
+
+      case DIV_INT:
+        instrs.push_back(new StackInstr(line_num, DIV_INT));
+        break;
+
+      case MOD_INT:
+        instrs.push_back(new StackInstr(line_num, MOD_INT));
+        break;
+
+      case BIT_AND_INT:
+        instrs.push_back(new StackInstr(line_num, BIT_AND_INT));
+        break;
+
+      case BIT_OR_INT:
+        instrs.push_back(new StackInstr(line_num, BIT_OR_INT));
+        break;
+
+      case BIT_XOR_INT:
+        instrs.push_back(new StackInstr(line_num, BIT_XOR_INT));
+        break;
+
+      case EQL_INT:
+        instrs.push_back(new StackInstr(line_num, EQL_INT));
+        break;
+
+      case NEQL_INT:
+        instrs.push_back(new StackInstr(line_num, NEQL_INT));
+        break;
+
+      case LES_INT:
+        instrs.push_back(new StackInstr(line_num, LES_INT));
+        break;
+
+      case GTR_INT:
+        instrs.push_back(new StackInstr(line_num, GTR_INT));
+        break;
+
+      case LES_EQL_INT:
+        instrs.push_back(new StackInstr(line_num, LES_EQL_INT));
+        break;
+
+      case LES_EQL_FLOAT:
+        instrs.push_back(new StackInstr(line_num, LES_EQL_FLOAT));
+        break;
+
+      case GTR_EQL_INT:
+        instrs.push_back(new StackInstr(line_num, GTR_EQL_INT));
+        break;
+
+      case GTR_EQL_FLOAT:
+        instrs.push_back(new StackInstr(line_num, GTR_EQL_FLOAT));
+        break;
+
+      case ADD_FLOAT:
+        instrs.push_back(new StackInstr(line_num, ADD_FLOAT));
+        break;
+
+      case SUB_FLOAT:
+        instrs.push_back(new StackInstr(line_num, SUB_FLOAT));
+        break;
+
+      case MUL_FLOAT:
+        instrs.push_back(new StackInstr(line_num, MUL_FLOAT));
+        break;
+
+      case DIV_FLOAT:
+        instrs.push_back(new StackInstr(line_num, DIV_FLOAT));
+        break;
+
+      case EQL_FLOAT:
+        instrs.push_back(new StackInstr(line_num, EQL_FLOAT));
+        break;
+
+      case NEQL_FLOAT:
+        instrs.push_back(new StackInstr(line_num, NEQL_FLOAT));
+        break;
+
+      case LES_FLOAT:
+        instrs.push_back(new StackInstr(line_num, LES_FLOAT));
+        break;
+
+      case GTR_FLOAT:
+        instrs.push_back(new StackInstr(line_num, GTR_FLOAT));
+        break;
+
+      case LOAD_FLOAT_LIT:
+        instrs.push_back(new StackInstr(line_num, LOAD_FLOAT_LIT, operand4));
+        break;
+
+      case RTRN:
+        if(is_debug) {
+          instrs.push_back(new StackInstr(line_num + 1, RTRN));
+        }
+        else {
+          instrs.push_back(new StackInstr(line_num, RTRN));
+        }
+        break;
+
+      case DLL_LOAD:
+        instrs.push_back(new StackInstr(line_num, DLL_LOAD));
+        break;
+
+      case DLL_UNLOAD:
+        instrs.push_back(new StackInstr(line_num, DLL_UNLOAD));
+        break;
+
+      case DLL_FUNC_CALL:
+        instrs.push_back(new StackInstr(line_num, DLL_FUNC_CALL));
+        break;
+
+      case THREAD_JOIN:
+        instrs.push_back(new StackInstr(line_num, THREAD_JOIN));
+        break;
+
+      case THREAD_SLEEP:
+        instrs.push_back(new StackInstr(line_num, THREAD_SLEEP));
+        break;
+
+      case THREAD_MUTEX:
+        instrs.push_back(new StackInstr(line_num, THREAD_MUTEX));
+        break;
+
+      case CRITICAL_START:
+        instrs.push_back(new StackInstr(line_num, CRITICAL_START));
+        break;
+
+      case CRITICAL_END:
+        instrs.push_back(new StackInstr(line_num, CRITICAL_END));
+        break;
+
+      case TRAP: {
+        long args = operand;
+        instrs.push_back(new StackInstr(line_num, TRAP, args));
+      }
+              break;
+
+      case TRAP_RTRN: {
+        long args = operand;
+        instrs.push_back(new StackInstr(line_num, TRAP_RTRN, args));
+      }
+        break;
+
+      default: {
+#ifdef _DEBUG
+        InstructionType instr = (InstructionType)type;
+        wcout << L">>> unknown instruction: id=" << instr << L" <<<" << endl;
+#endif
+        exit(1);
+      }
+        break;
+
+      }
+
+
+
+
+
       /*
       WriteByte((int)type, file_out);
       if(is_debug) {
@@ -280,8 +780,6 @@ namespace backend {
         break;
       }
       */
-
-      return NULL;
     }
 
     void Debug() {
@@ -825,9 +1323,9 @@ namespace backend {
       return instructions.size() == 0;
     }
 
-    void Load(bool is_debug, vector<StackInstr*>& instrs) {
+    void Load(StackMethod* vm_method, vector<StackInstr*>& instrs, bool is_debug) {
       for(size_t i = 0; i < instructions.size(); ++i) {
-        instrs.push_back(instructions[i]->Load(is_debug));
+        instructions[i]->Load(vm_method, instrs, i, is_debug);
       }
     }
 
@@ -1026,16 +1524,16 @@ namespace backend {
         }
       }
 
-      StackMethod* vm_mthd = new StackMethod(id, name, is_virtual, has_and_or, dclrs,
+      StackMethod* vm_method = new StackMethod(id, name, is_virtual, has_and_or, dclrs,
                                              vm_params.size(), space, params , rtrn_type, vm_cls);
 
       // load blocks
       vector<StackInstr*> instrs;
       for(size_t i = 0; i < blocks.size(); ++i) {
-        blocks[i]->Load(is_debug, instrs);
+        blocks[i]->Load(vm_method, instrs, is_debug);
       }
       
-      return vm_mthd;
+      return vm_method;
     }
 
     void Debug() {
@@ -1514,6 +2012,44 @@ namespace backend {
       string_cls_id = i;
     }
 
+    void LoadInitializationCode(StackMethod* method)
+    {
+      /*
+      vector<StackInstr*> instrs;
+
+      instrs.push_back(new StackInstr(-1, LOAD_INT_LIT, (long)arguments.size()));
+      instrs.push_back(new StackInstr(-1, NEW_INT_ARY, (long)1));
+      instrs.push_back(new StackInstr(-1, STOR_LOCL_INT_VAR, 0L, LOCL));
+
+      for(size_t i = 0; i < arguments.size(); ++i) {
+        instrs.push_back(new StackInstr(-1, LOAD_INT_LIT, (long)arguments[i].size()));
+        instrs.push_back(new StackInstr(-1, NEW_CHAR_ARY, 1L));
+        instrs.push_back(new StackInstr(-1, LOAD_INT_LIT, (long)(num_char_strings + i)));
+        instrs.push_back(new StackInstr(-1, LOAD_INT_LIT, (long)instructions::CPY_CHAR_STR_ARY));
+        instrs.push_back(new StackInstr(-1, TRAP_RTRN, 3L));
+
+        instrs.push_back(new StackInstr(-1, NEW_OBJ_INST, (long)string_cls_id));
+        // note: method ID is position dependant
+        instrs.push_back(new StackInstr(-1, MTHD_CALL, (long)string_cls_id, 2L, 0L));
+
+        instrs.push_back(new StackInstr(-1, LOAD_INT_LIT, (long)i));
+        instrs.push_back(new StackInstr(-1, LOAD_LOCL_INT_VAR, 0L, LOCL));
+        instrs.push_back(new StackInstr(-1, STOR_INT_ARY_ELM, 1L, LOCL));
+      }
+
+      instrs.push_back(new StackInstr(-1, LOAD_LOCL_INT_VAR, 0L, LOCL));
+      instrs.push_back(new StackInstr(-1, LOAD_INST_MEM));
+      instrs.push_back(new StackInstr(-1, MTHD_CALL, (long)start_class_id,
+        (long)start_method_id, 0L));
+      instrs.push_back(new StackInstr(-1, RTRN));
+
+      // copy and set instructions
+      StackInstr** mthd_instrs = new StackInstr*[instrs.size()];
+      copy(instrs.begin(), instrs.end(), mthd_instrs);
+      method->SetInstructions(mthd_instrs, instrs.size());
+      */
+    }
+
     void Write(StackProgram* vm_program, bool is_lib, bool is_debug, bool is_web) {
       // write wstring id
       if(!is_lib) {
@@ -1609,14 +2145,27 @@ namespace backend {
       wcout << L"Reading " << cls_number << L" classe(s)..." << endl;
 #endif
      
+      // load classes
       for(int i = 0; i < cls_number; ++i) {
         if(classes[i]->IsLibrary()) {
           num_lib_classes++;
-        } else {
+        } 
+        else {
           num_src_classes++;
         }
         vm_classes[i] = classes[i]->Load(vm_cls_hierarchy, vm_cls_interfaces);
       }
+
+      wstring name = L"$Initialization$:";
+      StackDclr** dclrs = new StackDclr*[1];
+      dclrs[0] = new StackDclr;
+      dclrs[0]->name = L"args";
+      dclrs[0]->type = OBJ_ARY_PARM;
+      StackMethod* init_method = new StackMethod(-1, name, false, false, dclrs, 1, 0, 1, MemoryType::NIL_TYPE, NULL);
+
+      LoadInitializationCode(init_method);
+      vm_program->SetInitializationMethod(init_method);
+      vm_program->SetStringObjectId(string_cls_id);
 
       // set class hierarchy and interfaces
       vm_program->SetClasses(vm_classes, cls_number);
