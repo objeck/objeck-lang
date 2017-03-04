@@ -475,7 +475,7 @@ void Library::LoadMethods(LibraryClass* cls, bool is_debug)
 void Library::LoadStatements(LibraryMethod* method, bool is_debug)
 {
   vector<LibraryInstr*> instrs;
-  int type = ReadByte();
+  
   int line_num = -1;
 
   const uint32_t num_instrs = ReadUnsigned();
@@ -483,6 +483,8 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
     if(is_debug) {
       line_num = ReadInt();
     }    
+
+    int type = ReadByte();
     switch(type) {
     case LOAD_INT_LIT:
       instrs.push_back(new LibraryInstr(line_num, LOAD_INT_LIT, (INT_VALUE)ReadInt()));
@@ -1019,9 +1021,7 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
       exit(1);
     }
       break;
-    }
-    // update    
-    type = ReadByte();
+    }    
   }
   method->AddInstructions(instrs);
 }
