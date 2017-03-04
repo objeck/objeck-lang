@@ -283,7 +283,6 @@ void IntermediateInstruction::Write(bool is_debug, ofstream &file_out) {
 * IntermediateBlock class
 ****************************/
 void IntermediateBlock::Write(bool is_debug, ofstream &file_out) {
-  WriteUnsigned(instructions.size(), file_out);
   for(size_t i = 0; i < instructions.size(); ++i) {
     instructions[i]->Write(is_debug, file_out);
   }
@@ -309,7 +308,11 @@ void IntermediateMethod::Write(bool is_debug, ofstream &file_out) {
   entries->Write(is_debug, file_out);
 
   // write statements
-  assert(blocks.size() == 1);
+  uint32_t num_instrs = 0;
+  for(size_t i = 0; i < blocks.size(); ++i) {
+    num_instrs += blocks[i]->GetInstructions().size();
+  }
+  WriteUnsigned(num_instrs, file_out);
 
   for(size_t i = 0; i < blocks.size(); ++i) {
     blocks[i]->Write(is_debug, file_out);
