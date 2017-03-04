@@ -910,7 +910,7 @@ class Library {
   }
   
   inline wstring ReadString() {
-    int size = ReadInt(); 
+    const int size = ReadInt(); 
     string in(buffer, size);
     buffer += size;    
    
