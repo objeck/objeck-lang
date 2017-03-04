@@ -55,15 +55,19 @@ class Loader {
   bool is_web;
   map<const wstring, const int> params;
 
-  int ReadInt() {
+  inline int ReadInt() {
     // int32_t value;
     // memcpy(&value, buffer, sizeof(value));
     int32_t value = *((int32_t*)buffer);
     buffer += sizeof(value);
     return value;
   }
+
+  inline void ReadDummyInt() {
+    buffer += sizeof(int32_t);
+  }
   
-  int ReadByte() {
+  inline int ReadByte() {
     // char value;
     // memcpy(&value, buffer, sizeof(value));
     char value = *((char*)buffer);
@@ -71,8 +75,8 @@ class Loader {
     return value;
   }
 
-  wstring ReadString() {
-    int size = ReadInt();
+  inline wstring ReadString() {
+    const int size = ReadInt();
     string in(buffer, size);
     buffer += size;    
    
@@ -86,16 +90,20 @@ class Loader {
     return out;
   }
 
+  inline void ReadDummyString() {
+    buffer += ReadInt();
+  }
+
   wchar_t ReadChar() {
     wchar_t out;
     
-    int size = ReadInt(); 
+    const int size = ReadInt(); 
     if(size) {
       string in(buffer, size);
       buffer += size;
       if(!BytesToCharacter(in, out)) {
-	wcerr << L">>> Unable to read character <<<" << endl;
-	exit(1);
+        wcerr << L">>> Unable to read character <<<" << endl;
+        exit(1);
       }
     }
     else {
@@ -105,7 +113,7 @@ class Loader {
     return out;
   }
 
-  FLOAT_VALUE ReadDouble() {
+  inline FLOAT_VALUE ReadDouble() {
     // FLOAT_VALUE value;
     // memcpy(&value, buffer, sizeof(value));
     FLOAT_VALUE value = *((FLOAT_VALUE*)buffer);
