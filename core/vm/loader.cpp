@@ -91,7 +91,7 @@ void Loader::Load()
   // read float strings
   num_float_strings = ReadInt();
   FLOAT_VALUE** float_strings = new FLOAT_VALUE*[num_float_strings];
-  for(i = 0; i < num_float_strings; i++) {
+  for(i = 0; i < num_float_strings; ++i) {
     const int float_string_length = ReadInt();
     FLOAT_VALUE* float_string = new FLOAT_VALUE[float_string_length];
     // copy string    
@@ -114,15 +114,14 @@ void Loader::Load()
   // read int strings
   num_int_strings = ReadInt();
   INT_VALUE** int_strings = new INT_VALUE*[num_int_strings];
-  for(i = 0; i < -
-      +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++; i++) {
+  for(i = 0; i < num_int_strings; ++i) {
     const int int_string_length = ReadInt();
     INT_VALUE* int_string = new INT_VALUE[int_string_length];
     // copy string    
 #ifdef _DEBUG
     wcout << L"Loaded static int string[" << i << L"]: '";
 #endif
-    for(int j = 0; j < int_string_length; j++) {
+    for(int j = 0; j < int_string_length; ++j) {
       int_string[j] = ReadInt();
 #ifdef _DEBUG
       wcout << int_string[j] << L",";
@@ -138,7 +137,7 @@ void Loader::Load()
   // read char strings
   num_char_strings = ReadInt();
   wchar_t** char_strings = new wchar_t*[num_char_strings + arguments.size()];
-  for(i = 0; i < num_char_strings; i++) {
+  for(i = 0; i < num_char_strings; ++i) {
     const wstring value = ReadString();
     wchar_t* char_string = new wchar_t[value.size() + 1];
     // copy string
@@ -150,7 +149,7 @@ void Loader::Load()
   }
 
   // copy command line params
-  for(size_t j = 0; j < arguments.size(); i++, j++) {
+  for(size_t j = 0; j < arguments.size(); ++i, ++j) {
 #ifdef _WIN32
     char_strings[i] = _wcsdup((arguments[j]).c_str());
 #else
@@ -193,7 +192,7 @@ void Loader::Load()
 void Loader::LoadEnums()
 {
   const int number = ReadInt();
-  for(int i = 0; i < number; i++) {
+  for(int i = 0; i < number; ++i) {
     // read enum
     // const string &enum_name = ReadString();
     ReadString();
@@ -203,7 +202,7 @@ void Loader::LoadEnums()
 
     // read enum items
     const long num_items = ReadInt();
-    for(int i = 0; i < num_items; i++) {
+    for(int i = 0; i < num_items; ++i) {
       // const string &item_name = ReadString();
       ReadString();
 
@@ -224,7 +223,7 @@ void Loader::LoadClasses()
   wcout << L"Reading " << number << L" classe(s)..." << endl;
 #endif
 
-  for(int i = 0; i < number; i++) {
+  for(int i = 0; i < number; ++i) {
     // read id and pid
     const int id = ReadInt();
     wstring name = ReadString();
@@ -269,7 +268,7 @@ void Loader::LoadClasses()
     // read class types
     const int cls_num_dclrs = ReadInt();
     StackDclr** cls_dclrs = new StackDclr*[cls_num_dclrs];
-    for(int i = 0; i < cls_num_dclrs; i++) {
+    for(int i = 0; i < cls_num_dclrs; ++i) {
       // set type
       int type = ReadInt();
       // set name
@@ -285,7 +284,7 @@ void Loader::LoadClasses()
     // read instance types
     const int inst_num_dclrs = ReadInt();
     StackDclr** inst_dclrs = new StackDclr*[inst_num_dclrs];
-    for(int i = 0; i < inst_num_dclrs; i++) {
+    for(int i = 0; i < inst_num_dclrs; ++i) {
       // set type
       int type = ReadInt();
       // set name
@@ -332,7 +331,7 @@ void Loader::LoadMethods(StackClass* cls, bool is_debug)
 #endif
 
   StackMethod** methods = new StackMethod*[number];
-  for(int i = 0; i < number; i++) {
+  for(int i = 0; i < number; ++i) {
     // id
     const int id = ReadInt();
     // method type
@@ -430,7 +429,7 @@ void Loader::LoadInitializationCode(StackMethod* method)
   instrs.push_back(new StackInstr(-1, NEW_INT_ARY, (long)1));
   instrs.push_back(new StackInstr(-1, STOR_LOCL_INT_VAR, 0L, LOCL));
 
-  for(size_t i = 0; i < arguments.size(); i++) {
+  for(size_t i = 0; i < arguments.size(); ++i) {
     instrs.push_back(new StackInstr(-1, LOAD_INT_LIT, (long)arguments[i].size()));
     instrs.push_back(new StackInstr(-1, NEW_CHAR_ARY, 1L));
     instrs.push_back(new StackInstr(-1, LOAD_INT_LIT, (long)(num_char_strings + i)));
