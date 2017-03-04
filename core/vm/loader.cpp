@@ -468,7 +468,7 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       line_num = ReadInt();
     }
 
-    int type = ReadByte();
+    const int type = ReadByte();
     switch(type) {
     case LOAD_INT_LIT:
       mthd_instrs[i] = new StackInstr(line_num, LOAD_INT_LIT, (long)ReadInt());
