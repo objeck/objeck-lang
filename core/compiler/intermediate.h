@@ -37,7 +37,7 @@
 #ifdef _SCRIPTER
 #include "../scripter/loader.h"
 #else
-#include "target.h"
+#include "emit.h"
 #endif
 
 using namespace frontend;

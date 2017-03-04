@@ -59,7 +59,7 @@ namespace backend {
     }
 
   protected:
-    void WriteString(const wstring &in, ofstream &file_out) {
+    inline void WriteString(const wstring &in, ofstream &file_out) {
       string out;
       if(!UnicodeToBytes(in, out)) {
         wcerr << L">>> Unable to write unicode string <<<" << endl;
@@ -69,15 +69,19 @@ namespace backend {
       file_out.write(out.c_str(), out.size());
     }
 
-    void WriteByte(char value, ofstream &file_out) {
+    inline void WriteByte(char value, ofstream &file_out) {
       file_out.write(&value, sizeof(value));
     }
 
-    void WriteInt(int value, ofstream &file_out) {
+    inline void WriteInt(uint32_t value, ofstream &file_out) {
       file_out.write((char*)&value, sizeof(value));
     }
 
-    void WriteChar(wchar_t value, ofstream &file_out) {
+    inline void WriteUnsigned(int value, ofstream &file_out) {
+      file_out.write((char*)&value, sizeof(value));
+    }
+
+    inline void WriteChar(wchar_t value, ofstream &file_out) {
       string buffer;
       if(!CharacterToBytes(value, buffer)) {
         wcerr << L">>> Unable to write character <<<" << endl;
@@ -94,14 +98,13 @@ namespace backend {
       }
     }
 
-    void WriteDouble(FLOAT_VALUE value, ofstream &file_out) {
+    inline void WriteDouble(FLOAT_VALUE value, ofstream &file_out) {
       file_out.write((char*)&value, sizeof(value));
     }
   };
 
   /****************************
-  * IntermediateInstruction
-  * class
+  * IntermediateInstruction class
   ****************************/
   class IntermediateInstruction : public Intermediate {
     friend class IntermediateFactory;
@@ -195,89 +198,7 @@ namespace backend {
       operand3 = o3;
     }
 
-    void Write(bool is_debug, ofstream &file_out) {
-      WriteByte((int)type, file_out);
-      if(is_debug) {
-        WriteInt(line_num, file_out);
-      }
-      switch(type) {
-      case LOAD_INT_LIT:
-
-      case NEW_FLOAT_ARY:
-      case NEW_INT_ARY:
-      case NEW_BYTE_ARY:
-      case NEW_CHAR_ARY:
-      case NEW_OBJ_INST:
-      case OBJ_INST_CAST:
-      case OBJ_TYPE_OF:
-      case TRAP:
-      case TRAP_RTRN:
-        WriteInt(operand, file_out);
-        break;
-
-      case LOAD_CHAR_LIT:
-        WriteChar(operand, file_out);
-        break;
-
-      case instructions::ASYNC_MTHD_CALL:
-      case MTHD_CALL:
-        WriteInt(operand, file_out);
-        WriteInt(operand2, file_out);
-        WriteInt(operand3, file_out);
-        break;
-
-      case LIB_NEW_OBJ_INST:
-      case LIB_OBJ_INST_CAST:
-      case LIB_OBJ_TYPE_OF:
-        WriteString(operand5, file_out);
-        break;
-
-      case LIB_MTHD_CALL:
-        WriteInt(operand3, file_out);
-        WriteString(operand5, file_out);
-        WriteString(operand6, file_out);
-        break;
-
-      case LIB_FUNC_DEF:
-        WriteString(operand5, file_out);
-        WriteString(operand6, file_out);
-        break;
-
-      case JMP:
-      case DYN_MTHD_CALL:
-      case LOAD_INT_VAR:
-      case LOAD_FLOAT_VAR:
-      case LOAD_FUNC_VAR:
-      case STOR_INT_VAR:
-      case STOR_FLOAT_VAR:
-      case STOR_FUNC_VAR:
-      case COPY_INT_VAR:
-      case COPY_FLOAT_VAR:
-      case COPY_FUNC_VAR:
-      case LOAD_BYTE_ARY_ELM:
-      case LOAD_CHAR_ARY_ELM:
-      case LOAD_INT_ARY_ELM:
-      case LOAD_FLOAT_ARY_ELM:
-      case STOR_BYTE_ARY_ELM:
-      case STOR_CHAR_ARY_ELM:
-      case STOR_INT_ARY_ELM:
-      case STOR_FLOAT_ARY_ELM:
-        WriteInt(operand, file_out);
-        WriteInt(operand2, file_out);
-        break;
-
-      case LOAD_FLOAT_LIT:
-        WriteDouble(operand4, file_out);
-        break;
-
-      case LBL:
-        WriteInt(operand, file_out);
-        break;
-
-      default:
-        break;
-      }
-    }
+    void Write(bool is_debug, ofstream &file_out);
 
     void Debug() {
       switch(type) {
@@ -820,11 +741,7 @@ namespace backend {
       return instructions.size() == 0;
     }
 
-    void Write(bool is_debug, ofstream &file_out) {
-      for(size_t i = 0; i < instructions.size(); ++i) {
-        instructions[i]->Write(is_debug, file_out);
-      }
-    }
+    void Write(bool is_debug, ofstream &file_out);
 
     void Debug() {
       if(instructions.size() > 0) {
@@ -974,28 +891,7 @@ namespace backend {
       blocks = b;
     }
 
-    void Write(bool is_debug, ofstream &file_out) {
-      // write attributes
-      WriteInt(id, file_out);
-      WriteInt(type, file_out);
-      WriteInt(is_virtual, file_out);
-      WriteInt(has_and_or, file_out);
-      WriteInt(is_native, file_out);
-      WriteInt(is_function, file_out);
-      WriteString(name, file_out);
-      WriteString(rtrn_name, file_out);
-
-      // write local space size
-      WriteInt(params, file_out);
-      WriteInt(space, file_out);
-      entries->Write(is_debug, file_out);
-
-      // write statements
-      for(size_t i = 0; i < blocks.size(); ++i) {
-        blocks[i]->Write(is_debug, file_out);
-      }
-      WriteByte(END_STMTS, file_out);
-    }
+    void Write(bool is_debug, ofstream &file_out);
 
     void Debug() {
       wcout << L"---------------------------------------------------------" << endl;
@@ -1164,44 +1060,7 @@ namespace backend {
       return methods;
     }
 
-    void Write(ofstream &file_out) {
-      // write id and name
-      WriteInt(id, file_out);
-      WriteString(name, file_out);
-      WriteInt(pid, file_out);
-      WriteString(parent_name, file_out);
-
-      // interface ids
-      WriteInt(interface_ids.size(), file_out);
-      for(size_t i = 0; i < interface_ids.size(); ++i) {
-        WriteInt(interface_ids[i], file_out);
-      }
-
-      // interface names
-      WriteInt(interface_names.size(), file_out);
-      for(size_t i = 0; i < interface_names.size(); ++i) {
-        WriteString(interface_names[i], file_out);
-      }
-
-      WriteInt(is_interface, file_out);
-      WriteInt(is_virtual, file_out);
-      WriteInt(is_debug, file_out);
-      if(is_debug) {
-        WriteString(file_name, file_out);
-      }
-
-      // write local space size
-      WriteInt(cls_space, file_out);
-      WriteInt(inst_space, file_out);
-      cls_entries->Write(is_debug, file_out);
-      inst_entries->Write(is_debug, file_out);
-
-      // write methods
-      WriteInt((int)methods.size(), file_out);
-      for(size_t i = 0; i < methods.size(); ++i) {
-        methods[i]->Write(is_debug, file_out);
-      }
-    }
+    void Write(ofstream &file_out);
 
     void Debug() {
       wcout << L"=========================================================" << endl;
@@ -1247,10 +1106,7 @@ namespace backend {
       id = i->GetId();
     }
 
-    void Write(ofstream &file_out) {
-      WriteString(name, file_out);
-      WriteInt(id, file_out);
-    }
+    void Write(ofstream &file_out);
 
     void Debug() {
       wcout << L"Item: name='" << name << L"'; id='" << id << endl;
@@ -1298,15 +1154,7 @@ namespace backend {
       items.push_back(i);
     }
 
-    void Write(ofstream &file_out) {
-      WriteString(name, file_out);
-      WriteInt(offset, file_out);
-      // write items
-      WriteInt((int)items.size(), file_out);
-      for(size_t i = 0; i < items.size(); ++i) {
-        items[i]->Write(file_out);
-      }
-    }
+    void Write(ofstream &file_out);
 
     void Debug() {
       wcout << L"=========================================================" << endl;
@@ -1437,92 +1285,7 @@ namespace backend {
       string_cls_id = i;
     }
 
-    void Write(ofstream &file_out, bool is_lib, bool is_debug, bool is_web) {
-      // version
-      WriteInt(VER_NUM, file_out);
-
-      // magic number
-      if(is_lib) {
-        WriteInt(MAGIC_NUM_LIB, file_out);
-      } 
-      else if(is_web) {
-        WriteInt(MAGIC_NUM_WEB, file_out);
-      } 
-      else {
-        WriteInt(MAGIC_NUM_EXE, file_out);
-      }    
-
-      // write wstring id
-      if(!is_lib) {
-#ifdef _DEBUG
-        assert(string_cls_id > 0);
-#endif
-        WriteInt(string_cls_id, file_out);
-      }
-
-      // write float strings
-      WriteInt((int)float_strings.size(), file_out);
-      for(size_t i = 0; i < float_strings.size(); ++i) {
-        frontend::FloatStringHolder* holder = float_strings[i];
-        WriteInt(holder->length, file_out);
-        for(int j = 0; j < holder->length; j++) {
-          WriteDouble(holder->value[j], file_out);
-        }
-      }
-      // write int strings
-      WriteInt((int)int_strings.size(), file_out);
-      for(size_t i = 0; i < int_strings.size(); ++i) {
-        frontend::IntStringHolder* holder = int_strings[i];
-        WriteInt(holder->length, file_out);
-        for(int j = 0; j < holder->length; j++) {
-          WriteInt(holder->value[j], file_out);
-        }
-      }
-      // write char strings
-      WriteInt((int)char_strings.size(), file_out);
-      for(size_t i = 0; i < char_strings.size(); ++i) {
-        WriteString(char_strings[i], file_out);
-      }
-
-      // write bundle names
-      if(is_lib) {
-        WriteInt((int)bundle_names.size(), file_out);
-        for(size_t i = 0; i < bundle_names.size(); ++i) {
-          WriteString(bundle_names[i], file_out);
-        }
-      }
-
-      // program start
-      if(!is_lib) {
-        WriteInt(class_id, file_out);
-        WriteInt(method_id, file_out);
-      }
-      // program enums
-      WriteInt((int)enums.size(), file_out);
-      for(size_t i = 0; i < enums.size(); ++i) {
-        enums[i]->Write(file_out);
-      }
-      // program classes
-      WriteInt((int)classes.size(), file_out);
-      for(size_t i = 0; i < classes.size(); ++i) {
-        if(classes[i]->IsLibrary()) {
-          num_lib_classes++;
-        } else {
-          num_src_classes++;
-        }
-        classes[i]->Write(file_out);
-      }
-
-      wcout << L"Compiled " << num_src_classes
-        << (num_src_classes > 1 ? " source classes" : " source class");
-      if(is_debug) {
-        wcout << " with debug symbols";
-      }
-      wcout << L'.' << endl;
-
-      wcout << L"Linked " << num_lib_classes
-        << (num_lib_classes > 1 ? " library classes." : " library class.")  << endl;
-    }
+    void Write(ofstream &file_out, bool is_lib, bool is_debug, bool is_web);
 
     void Debug() {
       wcout << L"Strings:" << endl;
