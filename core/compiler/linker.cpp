@@ -477,7 +477,9 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
   vector<LibraryInstr*> instrs;
   int type = ReadByte();
   int line_num = -1;
-  while(type != END_STMTS) {
+
+  const uint32_t num_instrs = ReadUnsigned();
+  for(uint32_t i = 0; i < num_instrs; ++i) {
     if(is_debug) {
       line_num = ReadInt();
     }    
