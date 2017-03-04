@@ -868,21 +868,29 @@ class Library {
   vector<FloatStringInstruction*> float_strings;
   vector<wstring> bundle_names;
   
-  int ReadInt() {
-    int value;
-    memcpy(&value, buffer, sizeof(value));
+  inline int ReadInt() {
+    int32_t value = *((int32_t*)buffer);
     buffer += sizeof(value);
     return value;
   }
 
-  int ReadByte() {
-    char value;
-    memcpy(&value, buffer, sizeof(value));
+  inline void ReadDummyInt() {
+    buffer += sizeof(int32_t);
+  }
+
+  inline uint32_t ReadUnsigned() {
+    uint32_t value = *((uint32_t*)buffer);
     buffer += sizeof(value);
     return value;
   }
 
-  wchar_t ReadChar() {
+  inline int ReadByte() {
+    char value = *((char*)buffer);
+    buffer += sizeof(value);
+    return value;
+  }
+
+  inline wchar_t ReadChar() {
     wchar_t out;
     
     int size = ReadInt(); 
@@ -890,8 +898,8 @@ class Library {
       string in(buffer, size);
       buffer += size;
       if(!BytesToCharacter(in, out)) {
-	wcerr << L">>> Unable to read character <<<" << endl;
-	exit(1);
+	      wcerr << L">>> Unable to read character <<<" << endl;
+	      exit(1);
       }
     }
     else {
@@ -901,7 +909,7 @@ class Library {
     return out;
   }
   
-  wstring ReadString() {
+  inline wstring ReadString() {
     int size = ReadInt(); 
     string in(buffer, size);
     buffer += size;    
@@ -915,9 +923,12 @@ class Library {
     return out;
   }
 
+  inline void ReadDummyString() {
+    buffer += ReadInt();
+  }
+
   double ReadDouble() {
-    double value;
-    memcpy(&value, buffer, sizeof(value));
+    FLOAT_VALUE value = *((FLOAT_VALUE*)buffer);
     buffer += sizeof(value);
     return value;
   }
