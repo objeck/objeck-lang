@@ -63,6 +63,14 @@ class Loader {
     return value;
   }
 
+  inline uint32_t ReadUnsigned() {
+    // uint32_t value;
+    // memcpy(&value, buffer, sizeof(value));
+    uint32_t value = *((uint32_t*)buffer);
+    buffer += sizeof(value);
+    return value;
+  }
+
   inline void ReadDummyInt() {
     buffer += sizeof(int32_t);
   }

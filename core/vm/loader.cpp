@@ -464,181 +464,184 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
   int index = 0;
   int type = ReadByte();
   int line_num = -1;
-  while(type != END_STMTS) {
+
+  const uint32_t num_instrs = ReadUnsigned();
+  StackInstr** mthd_instrs = new StackInstr*[num_instrs];
+  for(uint32_t i = 0; i < num_instrs; ++i) {
     if(is_debug) {
       line_num = ReadInt();
     }
     switch(type) {
     case LOAD_INT_LIT:
-      instrs.push_back(new StackInstr(line_num, LOAD_INT_LIT, (long)ReadInt()));
+      mthd_instrs[i] = new StackInstr(line_num, LOAD_INT_LIT, (long)ReadInt());
       break;
 
     case LOAD_CHAR_LIT:
-      instrs.push_back(new StackInstr(line_num, LOAD_CHAR_LIT, (long)ReadChar()));
+      mthd_instrs[i] = new StackInstr(line_num, LOAD_CHAR_LIT, (long)ReadChar());
       break;
 
     case SHL_INT:
-      instrs.push_back(new StackInstr(line_num, SHL_INT));
+      mthd_instrs[i] = new StackInstr(line_num, SHL_INT);
       break;
 
     case SHR_INT:
-      instrs.push_back(new StackInstr(line_num, SHR_INT));
+      mthd_instrs[i] = new StackInstr(line_num, SHR_INT);
       break;
 
     case LOAD_INT_VAR: {
       long id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
-      instrs.push_back(new StackInstr(line_num, 
+      mthd_instrs[i] = new StackInstr(line_num, 
 				      mem_context == LOCL ? LOAD_LOCL_INT_VAR : LOAD_CLS_INST_INT_VAR, 
-				      id, mem_context));
+				      id, mem_context);
     }
       break;
 
     case LOAD_FUNC_VAR: {
       long id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
-      instrs.push_back(new StackInstr(line_num, LOAD_FUNC_VAR, id, mem_context));
+      mthd_instrs[i] = new StackInstr(line_num, LOAD_FUNC_VAR, id, mem_context);
     }
       break;
 
     case LOAD_FLOAT_VAR: {
       long id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
-      instrs.push_back(new StackInstr(line_num, LOAD_FLOAT_VAR, id, mem_context));
+      mthd_instrs[i] = new StackInstr(line_num, LOAD_FLOAT_VAR, id, mem_context);
     }
       break;
 
     case STOR_INT_VAR: {
       long id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
-      instrs.push_back(new StackInstr(line_num, 
+      mthd_instrs[i] = new StackInstr(line_num, 
 				      mem_context == LOCL ? STOR_LOCL_INT_VAR : STOR_CLS_INST_INT_VAR, 
-				      id, mem_context));
+				      id, mem_context);
     }
       break;
 
     case STOR_FUNC_VAR: {
       long id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
-      instrs.push_back(new StackInstr(line_num, STOR_FUNC_VAR, id, mem_context));
+      mthd_instrs[i] = new StackInstr(line_num, STOR_FUNC_VAR, id, mem_context);
     }
       break;
 
     case STOR_FLOAT_VAR: {
       long id = ReadInt();
       long mem_context = ReadInt();
-      instrs.push_back(new StackInstr(line_num, STOR_FLOAT_VAR, id, mem_context));
+      mthd_instrs[i] = new StackInstr(line_num, STOR_FLOAT_VAR, id, mem_context);
     }
       break;
 
     case COPY_INT_VAR: {
       long id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
-      instrs.push_back(new StackInstr(line_num, 
+      mthd_instrs[i] = new StackInstr(line_num, 
 				      mem_context == LOCL ? COPY_LOCL_INT_VAR : COPY_CLS_INST_INT_VAR, 
-				      id, mem_context));
+				      id, mem_context);
     }
       break;
 
     case COPY_FLOAT_VAR: {
       long id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
-      instrs.push_back(new StackInstr(line_num, COPY_FLOAT_VAR, id, mem_context));
+      mthd_instrs[i] = new StackInstr(line_num, COPY_FLOAT_VAR, id, mem_context);
     }
       break;
 
     case LOAD_BYTE_ARY_ELM: {
       long dim = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
-      instrs.push_back(new StackInstr(line_num, LOAD_BYTE_ARY_ELM, dim, mem_context));
+      mthd_instrs[i] = new StackInstr(line_num, LOAD_BYTE_ARY_ELM, dim, mem_context);
     }
       break;
 
     case LOAD_CHAR_ARY_ELM: {
       long dim = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
-      instrs.push_back(new StackInstr(line_num, LOAD_CHAR_ARY_ELM, dim, mem_context));
+      mthd_instrs[i] = new StackInstr(line_num, LOAD_CHAR_ARY_ELM, dim, mem_context);
     }
       break;
       
     case LOAD_INT_ARY_ELM: {
       long dim = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
-      instrs.push_back(new StackInstr(line_num, LOAD_INT_ARY_ELM, dim, mem_context));
+      mthd_instrs[i] = new StackInstr(line_num, LOAD_INT_ARY_ELM, dim, mem_context);
     }
       break;
 
     case LOAD_FLOAT_ARY_ELM: {
       long dim = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
-      instrs.push_back(new StackInstr(line_num, LOAD_FLOAT_ARY_ELM, dim, mem_context));
+      mthd_instrs[i] = new StackInstr(line_num, LOAD_FLOAT_ARY_ELM, dim, mem_context);
     }
       break;
 
     case STOR_BYTE_ARY_ELM: {
       long dim = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
-      instrs.push_back(new StackInstr(line_num, STOR_BYTE_ARY_ELM, dim, mem_context));
+      mthd_instrs[i] = new StackInstr(line_num, STOR_BYTE_ARY_ELM, dim, mem_context);
     }
       break;
 
     case STOR_CHAR_ARY_ELM: {
       long dim = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
-      instrs.push_back(new StackInstr(line_num, STOR_CHAR_ARY_ELM, dim, mem_context));
+      mthd_instrs[i] = new StackInstr(line_num, STOR_CHAR_ARY_ELM, dim, mem_context);
     }
       break;
 
     case STOR_INT_ARY_ELM: {
       long dim = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
-      instrs.push_back(new StackInstr(line_num, STOR_INT_ARY_ELM, dim, mem_context));
+      mthd_instrs[i] = new StackInstr(line_num, STOR_INT_ARY_ELM, dim, mem_context);
     }
       break;
 
     case STOR_FLOAT_ARY_ELM: {
       long dim = ReadInt();
       long mem_context = ReadInt();
-      instrs.push_back(new StackInstr(line_num, STOR_FLOAT_ARY_ELM, dim, mem_context));
+      mthd_instrs[i] = new StackInstr(line_num, STOR_FLOAT_ARY_ELM, dim, mem_context);
     }
       break;
 
     case NEW_FLOAT_ARY: {
       long dim = ReadInt();
-      instrs.push_back(new StackInstr(line_num, NEW_FLOAT_ARY, dim));
+      mthd_instrs[i] = new StackInstr(line_num, NEW_FLOAT_ARY, dim);
     }
       break;
 
     case NEW_INT_ARY: {
       long dim = ReadInt();
-      instrs.push_back(new StackInstr(line_num, NEW_INT_ARY, dim));
+      mthd_instrs[i] = new StackInstr(line_num, NEW_INT_ARY, dim);
     }
       break;
 
     case NEW_BYTE_ARY: {
       long dim = ReadInt();
-      instrs.push_back(new StackInstr(line_num, NEW_BYTE_ARY, dim));
+      mthd_instrs[i] = new StackInstr(line_num, NEW_BYTE_ARY, dim);
 
     }
       break;
 
     case NEW_CHAR_ARY: {
       long dim = ReadInt();
-      instrs.push_back(new StackInstr(line_num, NEW_CHAR_ARY, dim));
+      mthd_instrs[i] = new StackInstr(line_num, NEW_CHAR_ARY, dim);
 
     }
       break;
 
     case NEW_OBJ_INST: {
       long obj_id = ReadInt();
-      instrs.push_back(new StackInstr(line_num, NEW_OBJ_INST, obj_id));
+      mthd_instrs[i] = new StackInstr(line_num, NEW_OBJ_INST, obj_id);
     }
       break;
 
     case DYN_MTHD_CALL: {
       long num_params = ReadInt();
       long rtrn_type = ReadInt();
-      instrs.push_back(new StackInstr(line_num, DYN_MTHD_CALL, num_params, rtrn_type));
+      mthd_instrs[i] = new StackInstr(line_num, DYN_MTHD_CALL, num_params, rtrn_type);
     }
       break;
 
@@ -646,7 +649,7 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       long cls_id = ReadInt();
       long mthd_id = ReadInt();
       long is_native = ReadInt();
-      instrs.push_back(new StackInstr(line_num, MTHD_CALL, cls_id, mthd_id, is_native));
+      mthd_instrs[i] = new StackInstr(line_num, MTHD_CALL, cls_id, mthd_id, is_native);
     }
       break;
 
@@ -654,7 +657,7 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       long cls_id = ReadInt();
       long mthd_id = ReadInt();
       long is_native = ReadInt();
-      instrs.push_back(new StackInstr(line_num, ASYNC_MTHD_CALL, cls_id, mthd_id, is_native));
+      mthd_instrs[i] = new StackInstr(line_num, ASYNC_MTHD_CALL, cls_id, mthd_id, is_native);
     }
       break;
 
@@ -673,284 +676,284 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     case JMP: {
       long label = ReadInt();
       long cond = ReadInt();
-      instrs.push_back(new StackInstr(line_num, JMP, label, cond));
+      mthd_instrs[i] = new StackInstr(line_num, JMP, label, cond);
     }
       break;
 
     case LBL: {
       long id = ReadInt();
-      instrs.push_back(new StackInstr(line_num, LBL, id));
+      mthd_instrs[i] = new StackInstr(line_num, LBL, id);
       method->AddLabel(id, index);
     }
       break;
 
     case OBJ_INST_CAST: {
       long to = ReadInt();
-      instrs.push_back(new StackInstr(line_num, OBJ_INST_CAST, to));
+      mthd_instrs[i] = new StackInstr(line_num, OBJ_INST_CAST, to);
     }
       break;
 
     case OBJ_TYPE_OF: {
       long check = ReadInt();
-      instrs.push_back(new StackInstr(line_num, OBJ_TYPE_OF, check));
+      mthd_instrs[i] = new StackInstr(line_num, OBJ_TYPE_OF, check);
     }
       break;
 
     case OR_INT:
-      instrs.push_back(new StackInstr(line_num, OR_INT));
+      mthd_instrs[i] = new StackInstr(line_num, OR_INT);
       break;
 
     case AND_INT:
-      instrs.push_back(new StackInstr(line_num, AND_INT));
+      mthd_instrs[i] = new StackInstr(line_num, AND_INT);
       break;
 
     case ADD_INT:
-      instrs.push_back(new StackInstr(line_num, ADD_INT));
+      mthd_instrs[i] = new StackInstr(line_num, ADD_INT);
       break;
 
     case CEIL_FLOAT:
-      instrs.push_back(new StackInstr(line_num, CEIL_FLOAT));
+      mthd_instrs[i] = new StackInstr(line_num, CEIL_FLOAT);
       break;
 
     case CPY_BYTE_ARY:
-      instrs.push_back(new StackInstr(line_num, CPY_BYTE_ARY));
+      mthd_instrs[i] = new StackInstr(line_num, CPY_BYTE_ARY);
       break;
       
     case CPY_CHAR_ARY:
-      instrs.push_back(new StackInstr(line_num, CPY_CHAR_ARY));
+      mthd_instrs[i] = new StackInstr(line_num, CPY_CHAR_ARY);
       break;
       
     case CPY_INT_ARY:
-      instrs.push_back(new StackInstr(line_num, CPY_INT_ARY));
+      mthd_instrs[i] = new StackInstr(line_num, CPY_INT_ARY);
       break;
 
     case CPY_FLOAT_ARY:
-      instrs.push_back(new StackInstr(line_num, CPY_FLOAT_ARY));
+      mthd_instrs[i] = new StackInstr(line_num, CPY_FLOAT_ARY);
       break;
 
     case FLOR_FLOAT:
-      instrs.push_back(new StackInstr(line_num, FLOR_FLOAT));
+      mthd_instrs[i] = new StackInstr(line_num, FLOR_FLOAT);
       break;
 
     case SIN_FLOAT:
-      instrs.push_back(new StackInstr(line_num, SIN_FLOAT));
+      mthd_instrs[i] = new StackInstr(line_num, SIN_FLOAT);
       break;
 
     case COS_FLOAT:
-      instrs.push_back(new StackInstr(line_num, COS_FLOAT));
+      mthd_instrs[i] = new StackInstr(line_num, COS_FLOAT);
       break;
 
     case TAN_FLOAT:
-      instrs.push_back(new StackInstr(line_num, TAN_FLOAT));
+      mthd_instrs[i] = new StackInstr(line_num, TAN_FLOAT);
       break;
 
     case ASIN_FLOAT:
-      instrs.push_back(new StackInstr(line_num, ASIN_FLOAT));
+      mthd_instrs[i] = new StackInstr(line_num, ASIN_FLOAT);
       break;
 
     case ACOS_FLOAT:
-      instrs.push_back(new StackInstr(line_num, ACOS_FLOAT));
+      mthd_instrs[i] = new StackInstr(line_num, ACOS_FLOAT);
       break;
 
     case ATAN_FLOAT:
-      instrs.push_back(new StackInstr(line_num, ATAN_FLOAT));
+      mthd_instrs[i] = new StackInstr(line_num, ATAN_FLOAT);
       break;
 
     case LOG_FLOAT:
-      instrs.push_back(new StackInstr(line_num, LOG_FLOAT));
+      mthd_instrs[i] = new StackInstr(line_num, LOG_FLOAT);
       break;
 
     case POW_FLOAT:
-      instrs.push_back(new StackInstr(line_num, POW_FLOAT));
+      mthd_instrs[i] = new StackInstr(line_num, POW_FLOAT);
       break;
 
     case SQRT_FLOAT:
-      instrs.push_back(new StackInstr(line_num, SQRT_FLOAT));
+      mthd_instrs[i] = new StackInstr(line_num, SQRT_FLOAT);
       break;
 
     case RAND_FLOAT:
-      instrs.push_back(new StackInstr(line_num, RAND_FLOAT));
+      mthd_instrs[i] = new StackInstr(line_num, RAND_FLOAT);
       break;
 
     case F2I:
-      instrs.push_back(new StackInstr(line_num, F2I));
+      mthd_instrs[i] = new StackInstr(line_num, F2I);
       break;
 
     case I2F:
-      instrs.push_back(new StackInstr(line_num, I2F));
+      mthd_instrs[i] = new StackInstr(line_num, I2F);
       break;
 
     case SWAP_INT:
-      instrs.push_back(new StackInstr(line_num, SWAP_INT));
+      mthd_instrs[i] = new StackInstr(line_num, SWAP_INT);
       break;
 
     case POP_INT:
-      instrs.push_back(new StackInstr(line_num, POP_INT));
+      mthd_instrs[i] = new StackInstr(line_num, POP_INT);
       break;
 
     case POP_FLOAT:
-      instrs.push_back(new StackInstr(line_num, POP_FLOAT));
+      mthd_instrs[i] = new StackInstr(line_num, POP_FLOAT);
       break;
 
     case LOAD_CLS_MEM:
-      instrs.push_back(new StackInstr(line_num, LOAD_CLS_MEM));
+      mthd_instrs[i] = new StackInstr(line_num, LOAD_CLS_MEM);
       break;
 
     case LOAD_INST_MEM:
-      instrs.push_back(new StackInstr(line_num, LOAD_INST_MEM));
+      mthd_instrs[i] = new StackInstr(line_num, LOAD_INST_MEM);
       break;
 
     case LOAD_ARY_SIZE:
-      instrs.push_back(new StackInstr(line_num, LOAD_ARY_SIZE));
+      mthd_instrs[i] = new StackInstr(line_num, LOAD_ARY_SIZE);
       break;
 
     case SUB_INT:
-      instrs.push_back(new StackInstr(line_num, SUB_INT));
+      mthd_instrs[i] = new StackInstr(line_num, SUB_INT);
       break;
 
     case MUL_INT:
-      instrs.push_back(new StackInstr(line_num, MUL_INT));
+      mthd_instrs[i] = new StackInstr(line_num, MUL_INT);
       break;
 
     case DIV_INT:
-      instrs.push_back(new StackInstr(line_num, DIV_INT));
+      mthd_instrs[i] = new StackInstr(line_num, DIV_INT);
       break;
 
     case MOD_INT:
-      instrs.push_back(new StackInstr(line_num, MOD_INT));
+      mthd_instrs[i] = new StackInstr(line_num, MOD_INT);
       break;
 
     case BIT_AND_INT:
-      instrs.push_back(new StackInstr(line_num, BIT_AND_INT));
+      mthd_instrs[i] = new StackInstr(line_num, BIT_AND_INT);
       break;
 
     case BIT_OR_INT:
-      instrs.push_back(new StackInstr(line_num, BIT_OR_INT));
+      mthd_instrs[i] = new StackInstr(line_num, BIT_OR_INT);
       break;
 
     case BIT_XOR_INT:
-      instrs.push_back(new StackInstr(line_num, BIT_XOR_INT));
+      mthd_instrs[i] = new StackInstr(line_num, BIT_XOR_INT);
       break;
 
     case EQL_INT:
-      instrs.push_back(new StackInstr(line_num, EQL_INT));
+      mthd_instrs[i] = new StackInstr(line_num, EQL_INT);
       break;
 
     case NEQL_INT:
-      instrs.push_back(new StackInstr(line_num, NEQL_INT));
+      mthd_instrs[i] = new StackInstr(line_num, NEQL_INT);
       break;
 
     case LES_INT:
-      instrs.push_back(new StackInstr(line_num, LES_INT));
+      mthd_instrs[i] = new StackInstr(line_num, LES_INT);
       break;
 
     case GTR_INT:
-      instrs.push_back(new StackInstr(line_num, GTR_INT));
+      mthd_instrs[i] = new StackInstr(line_num, GTR_INT);
       break;
 
     case LES_EQL_INT:
-      instrs.push_back(new StackInstr(line_num, LES_EQL_INT));
+      mthd_instrs[i] = new StackInstr(line_num, LES_EQL_INT);
       break;
 
     case LES_EQL_FLOAT:
-      instrs.push_back(new StackInstr(line_num, LES_EQL_FLOAT));
+      mthd_instrs[i] = new StackInstr(line_num, LES_EQL_FLOAT);
       break;
 
     case GTR_EQL_INT:
-      instrs.push_back(new StackInstr(line_num, GTR_EQL_INT));
+      mthd_instrs[i] = new StackInstr(line_num, GTR_EQL_INT);
       break;
 
     case GTR_EQL_FLOAT:
-      instrs.push_back(new StackInstr(line_num, GTR_EQL_FLOAT));
+      mthd_instrs[i] = new StackInstr(line_num, GTR_EQL_FLOAT);
       break;
 
     case ADD_FLOAT:
-      instrs.push_back(new StackInstr(line_num, ADD_FLOAT));
+      mthd_instrs[i] = new StackInstr(line_num, ADD_FLOAT);
       break;
 
     case SUB_FLOAT:
-      instrs.push_back(new StackInstr(line_num, SUB_FLOAT));
+      mthd_instrs[i] = new StackInstr(line_num, SUB_FLOAT);
       break;
 
     case MUL_FLOAT:
-      instrs.push_back(new StackInstr(line_num, MUL_FLOAT));
+      mthd_instrs[i] = new StackInstr(line_num, MUL_FLOAT);
       break;
 
     case DIV_FLOAT:
-      instrs.push_back(new StackInstr(line_num, DIV_FLOAT));
+      mthd_instrs[i] = new StackInstr(line_num, DIV_FLOAT);
       break;
 
     case EQL_FLOAT:
-      instrs.push_back(new StackInstr(line_num, EQL_FLOAT));
+      mthd_instrs[i] = new StackInstr(line_num, EQL_FLOAT);
       break;
 
     case NEQL_FLOAT:
-      instrs.push_back(new StackInstr(line_num, NEQL_FLOAT));
+      mthd_instrs[i] = new StackInstr(line_num, NEQL_FLOAT);
       break;
 
     case LES_FLOAT:
-      instrs.push_back(new StackInstr(line_num, LES_FLOAT));
+      mthd_instrs[i] = new StackInstr(line_num, LES_FLOAT);
       break;
 
     case GTR_FLOAT:
-      instrs.push_back(new StackInstr(line_num, GTR_FLOAT));
+      mthd_instrs[i] = new StackInstr(line_num, GTR_FLOAT);
       break;
 
     case LOAD_FLOAT_LIT:
-      instrs.push_back(new StackInstr(line_num, LOAD_FLOAT_LIT,
-				      ReadDouble()));
+      mthd_instrs[i] = new StackInstr(line_num, LOAD_FLOAT_LIT,
+				      ReadDouble());
       break;
 
     case RTRN:
       if(is_debug) {
-        instrs.push_back(new StackInstr(line_num + 1, RTRN));
+        mthd_instrs[i] = new StackInstr(line_num + 1, RTRN);
       }
       else {
-        instrs.push_back(new StackInstr(line_num, RTRN));
+        mthd_instrs[i] = new StackInstr(line_num, RTRN);
       }
       break;
 
     case DLL_LOAD:
-      instrs.push_back(new StackInstr(line_num, DLL_LOAD));
+      mthd_instrs[i] = new StackInstr(line_num, DLL_LOAD);
       break;
 
     case DLL_UNLOAD:
-      instrs.push_back(new StackInstr(line_num, DLL_UNLOAD));
+      mthd_instrs[i] = new StackInstr(line_num, DLL_UNLOAD);
       break;
 
     case DLL_FUNC_CALL:
-      instrs.push_back(new StackInstr(line_num, DLL_FUNC_CALL));
+      mthd_instrs[i] = new StackInstr(line_num, DLL_FUNC_CALL);
       break;
 
     case THREAD_JOIN:
-      instrs.push_back(new StackInstr(line_num, THREAD_JOIN));
+      mthd_instrs[i] = new StackInstr(line_num, THREAD_JOIN);
       break;
 
     case THREAD_SLEEP:
-      instrs.push_back(new StackInstr(line_num, THREAD_SLEEP));
+      mthd_instrs[i] = new StackInstr(line_num, THREAD_SLEEP);
       break;
 
     case THREAD_MUTEX:
-      instrs.push_back(new StackInstr(line_num, THREAD_MUTEX));
+      mthd_instrs[i] = new StackInstr(line_num, THREAD_MUTEX);
       break;
 
     case CRITICAL_START:
-      instrs.push_back(new StackInstr(line_num, CRITICAL_START));
+      mthd_instrs[i] = new StackInstr(line_num, CRITICAL_START);
       break;
 
     case CRITICAL_END:
-      instrs.push_back(new StackInstr(line_num, CRITICAL_END));
+      mthd_instrs[i] = new StackInstr(line_num, CRITICAL_END);
       break;
 
     case TRAP: {
       long args = ReadInt();
-      instrs.push_back(new StackInstr(line_num, TRAP, args));
+      mthd_instrs[i] = new StackInstr(line_num, TRAP, args);
     }
       break;
 
     case TRAP_RTRN: {
       long args = ReadInt();
-      instrs.push_back(new StackInstr(line_num, TRAP_RTRN, args));
+      mthd_instrs[i] = new StackInstr(line_num, TRAP_RTRN, args);
     }
       break;
 
@@ -970,7 +973,5 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
   }
 
   // copy and set instructions
-  StackInstr** mthd_instrs = new StackInstr*[instrs.size()];
-  copy(instrs.begin(), instrs.end(), mthd_instrs);
   method->SetInstructions(mthd_instrs, instrs.size());
 }
