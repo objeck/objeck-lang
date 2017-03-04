@@ -459,18 +459,16 @@ void Loader::LoadInitializationCode(StackMethod* method)
 
 void Loader::LoadStatements(StackMethod* method, bool is_debug)
 {
-  vector<StackInstr*> instrs;
-
-  int index = 0;
-  int type = ReadByte();
   int line_num = -1;
-
   const uint32_t num_instrs = ReadUnsigned();
   StackInstr** mthd_instrs = new StackInstr*[num_instrs];
+
   for(uint32_t i = 0; i < num_instrs; ++i) {
     if(is_debug) {
       line_num = ReadInt();
     }
+
+    int type = ReadByte();
     switch(type) {
     case LOAD_INT_LIT:
       mthd_instrs[i] = new StackInstr(line_num, LOAD_INT_LIT, (long)ReadInt());
@@ -683,7 +681,7 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
     case LBL: {
       long id = ReadInt();
       mthd_instrs[i] = new StackInstr(line_num, LBL, id);
-      method->AddLabel(id, index);
+      method->AddLabel(id, i);
     }
       break;
 
@@ -967,11 +965,8 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       break;
 
     }
-    // update
-    type = ReadByte();
-    index++;
   }
 
   // copy and set instructions
-  method->SetInstructions(mthd_instrs, instrs.size());
+  method->SetInstructions(mthd_instrs, num_instrs);
 }
