@@ -196,7 +196,8 @@ namespace backend {
       operand3 = o3;
     }
 
-    void Write(bool is_debug, ofstream &file_out) {
+    StackInstr* Load(bool is_debug) {
+      /*
       WriteByte((int)type, file_out);
       if(is_debug) {
         WriteInt(line_num, file_out);
@@ -278,6 +279,9 @@ namespace backend {
       default:
         break;
       }
+      */
+
+      return NULL;
     }
 
     void Debug() {
@@ -821,9 +825,9 @@ namespace backend {
       return instructions.size() == 0;
     }
 
-    void Write(bool is_debug, ofstream &file_out) {
+    void Load(bool is_debug, vector<StackInstr*>& instrs) {
       for(size_t i = 0; i < instructions.size(); ++i) {
-        instructions[i]->Write(is_debug, file_out);
+        instrs.push_back(instructions[i]->Load(is_debug));
       }
     }
 
@@ -1025,18 +1029,12 @@ namespace backend {
       StackMethod* vm_mthd = new StackMethod(id, name, is_virtual, has_and_or, dclrs,
                                              vm_params.size(), space, params , rtrn_type, vm_cls);
 
-/*
-      // TARGET
+      // load blocks
+      vector<StackInstr*> instrs;
       for(size_t i = 0; i < blocks.size(); ++i) {
-        blocks[i]->Write(is_debug, file_out);
+        blocks[i]->Load(is_debug, instrs);
       }
-      WriteByte(END_STMTS, file_out);
-
-      // LOADER
-      LoadStatements(mthd, is_debug);
-      methods[id] = mthd;
-*/
-
+      
       return vm_mthd;
     }
 
@@ -1274,8 +1272,10 @@ namespace backend {
       // load methods
       StackMethod** vm_methods = new StackMethod*[methods.size()];
       for(size_t i = 0; i < methods.size(); ++i) {
-        vm_methods[i] = methods[i]->Load(vm_cls, is_debug);
+        StackMethod * vm_method = methods[i]->Load(vm_cls, is_debug);
+        vm_methods[vm_method->GetId()] = vm_method;
       }
+      vm_cls->SetMethods(vm_methods, methods.size());
 
       return vm_cls;
     }

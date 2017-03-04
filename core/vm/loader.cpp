@@ -357,7 +357,7 @@ void Loader::LoadMethods(StackClass* cls, bool is_debug)
     const int num_dclrs = ReadInt();
 
     StackDclr** dclrs = new StackDclr*[num_dclrs];
-    for(int i = 0; i < num_dclrs; i++) {
+    for(int j = 0; j < num_dclrs; ++j) {
       // set type
       const int type = ReadInt();
       // set name
@@ -365,9 +365,9 @@ void Loader::LoadMethods(StackClass* cls, bool is_debug)
       if(is_debug) {
         name = ReadString();
       }
-      dclrs[i] = new StackDclr;
-      dclrs[i]->name = name;
-      dclrs[i]->type = (ParamType)type;
+      dclrs[j] = new StackDclr;
+      dclrs[j]->name = name;
+      dclrs[j]->type = (ParamType)type;
     }
 
     // parse return
