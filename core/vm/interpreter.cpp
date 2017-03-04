@@ -1449,7 +1449,9 @@ void StackInterpreter::ProcessLoadFloat(StackInstr* instr, long* &op_stack, long
   FLOAT_VALUE value;
   if(instr->GetOperand2() == LOCL) {
     long* mem = (*frame)->mem;
-    ::memcpy(&value, &mem[instr->GetOperand() + 1], sizeof(FLOAT_VALUE));
+    // ::memcpy(&value, &mem[instr->GetOperand() + 1], sizeof(FLOAT_VALUE));
+    value = *((FLOAT_VALUE*)(&mem[instr->GetOperand() + 1]));
+
   } else {
     long* cls_inst_mem = (long*)PopInt(op_stack, stack_pos);
     if(!cls_inst_mem) {
@@ -1462,7 +1464,8 @@ void StackInterpreter::ProcessLoadFloat(StackInstr* instr, long* &op_stack, long
       ::exit(1);
 #endif
     }
-    ::memcpy(&value, &cls_inst_mem[instr->GetOperand()], sizeof(FLOAT_VALUE));
+    // ::memcpy(&value, &cls_inst_mem[instr->GetOperand()], sizeof(FLOAT_VALUE));
+    value = *((FLOAT_VALUE*)(&cls_inst_mem[instr->GetOperand()]));
   }
   PushFloat(value, op_stack, stack_pos);
 }
@@ -1510,10 +1513,12 @@ void StackInterpreter::ProcessStoreFloat(StackInstr* instr, long* &op_stack, lon
 	<< "; local=" << ((instr->GetOperand2() == LOCL) ? "true" : "false") << endl;
 #endif
   if(instr->GetOperand2() == LOCL) {
-    FLOAT_VALUE value = PopFloat(op_stack, stack_pos);
+    const FLOAT_VALUE value = PopFloat(op_stack, stack_pos);
     long* mem = (*frame)->mem;
-    ::memcpy(&mem[instr->GetOperand() + 1], &value, sizeof(FLOAT_VALUE));
-  } else {
+    // ::memcpy(&mem[instr->GetOperand() + 1], &value, sizeof(FLOAT_VALUE));
+    *((FLOAT_VALUE*)(&mem[instr->GetOperand() + 1])) = value;
+  } 
+  else {
     long* cls_inst_mem = (long*)PopInt(op_stack, stack_pos);
     if(!cls_inst_mem) {
       wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
@@ -1525,8 +1530,9 @@ void StackInterpreter::ProcessStoreFloat(StackInstr* instr, long* &op_stack, lon
       ::exit(1);
 #endif
     }
-    FLOAT_VALUE value = PopFloat(op_stack, stack_pos);
-    ::memcpy(&cls_inst_mem[instr->GetOperand()], &value, sizeof(FLOAT_VALUE));
+    const FLOAT_VALUE value = PopFloat(op_stack, stack_pos);
+    // ::memcpy(&cls_inst_mem[instr->GetOperand()], &value, sizeof(FLOAT_VALUE));
+    *((FLOAT_VALUE*)(&cls_inst_mem[instr->GetOperand()])) = value;
   }
 }
 
@@ -1543,7 +1549,8 @@ void StackInterpreter::ProcessCopyFloat(StackInstr* instr, long* &op_stack, long
   if(instr->GetOperand2() == LOCL) {
     FLOAT_VALUE value = TopFloat(op_stack, stack_pos);
     long* mem = (*frame)->mem;
-    ::memcpy(&mem[instr->GetOperand() + 1], &value, sizeof(FLOAT_VALUE));
+    // ::memcpy(&mem[instr->GetOperand() + 1], &value, sizeof(FLOAT_VALUE));
+    *((FLOAT_VALUE*)(&mem[instr->GetOperand() + 1])) = value;
   } else {
     long* cls_inst_mem = (long*)PopInt(op_stack, stack_pos);
     if(!cls_inst_mem) {
@@ -1557,7 +1564,8 @@ void StackInterpreter::ProcessCopyFloat(StackInstr* instr, long* &op_stack, long
 #endif
     }
     FLOAT_VALUE value = TopFloat(op_stack, stack_pos);
-    ::memcpy(&cls_inst_mem[instr->GetOperand()], &value, sizeof(FLOAT_VALUE));
+    // ::memcpy(&cls_inst_mem[instr->GetOperand()], &value, sizeof(FLOAT_VALUE));
+    *((FLOAT_VALUE*)(&cls_inst_mem[instr->GetOperand()])) = value;
   }
 }
 
