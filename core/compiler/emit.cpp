@@ -132,7 +132,7 @@ void IntermediateProgram::Write(ofstream &file_out, bool is_lib, bool is_debug, 
   for(size_t i = 0; i < float_strings.size(); ++i) {
     frontend::FloatStringHolder* holder = float_strings[i];
     WriteInt(holder->length, file_out);
-    for(int j = 0; j < holder->length; j++) {
+    for(int j = 0; j < holder->length; ++j) {
       WriteDouble(holder->value[j], file_out);
     }
   }
@@ -141,7 +141,7 @@ void IntermediateProgram::Write(ofstream &file_out, bool is_lib, bool is_debug, 
   for(size_t i = 0; i < int_strings.size(); ++i) {
     frontend::IntStringHolder* holder = int_strings[i];
     WriteInt(holder->length, file_out);
-    for(int j = 0; j < holder->length; j++) {
+    for(int j = 0; j < holder->length; ++j) {
       WriteInt(holder->value[j], file_out);
     }
   }
