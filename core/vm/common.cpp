@@ -202,6 +202,7 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
           SerializeInt(array[1]);
           SerializeInt(array[2]);
           char* array_ptr = (char*)(array + 3);
+
           // values
           SerializeBytes(array_ptr, array_size);
         }
@@ -259,7 +260,8 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
           SerializeInt(array[0]);
           SerializeInt(array[1]);
           SerializeInt(array[2]);
-          long* array_ptr = array + 3;	
+          long* array_ptr = array + 3;
+
           // values
           for(int i = 0; i < array_size; i++) {
             SerializeInt(array_ptr[i]);
@@ -290,6 +292,7 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
           SerializeInt(array[1]);
           SerializeInt(array[2]);
           FLOAT_VALUE* array_ptr = (FLOAT_VALUE*)(array + 3);
+
           // write values
           SerializeBytes(array_ptr, array_size * sizeof(FLOAT_VALUE));
         }
@@ -319,6 +322,7 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
           SerializeInt(array[2]);
           long* array_ptr = array + 3;
 
+          // write values
           for (int i = 0; i < array_size; i++) {
             CheckObject((long*)(array_ptr[i]), true, depth + 1);
           }
@@ -1155,11 +1159,8 @@ void TrapProcessor::ProcessPlatform(StackProgram* program, long* &op_stack, long
   // create character array
   const long char_array_size = value_str.size();
   const long char_array_dim = 1;
-  long* char_array = (long*)MemoryManager::AllocateArray(char_array_size + 1 +
-                                                         ((char_array_dim + 2) *
-                                                          sizeof(long)),
-                                                         CHAR_ARY_TYPE,
-                                                         op_stack, *stack_pos, false);
+  long* char_array = (long*)MemoryManager::AllocateArray(char_array_size + 1 + ((char_array_dim + 2) * sizeof(long)),
+                                                         CHAR_ARY_TYPE, op_stack, *stack_pos, false);
   char_array[0] = char_array_size + 1;
   char_array[1] = char_array_dim;
   char_array[2] = char_array_size;
@@ -1169,8 +1170,7 @@ void TrapProcessor::ProcessPlatform(StackProgram* program, long* &op_stack, long
   wcsncpy(char_array_ptr, value_str.c_str(), char_array_size);
 
   // create 'System.String' object instance
-  long* str_obj = MemoryManager::AllocateObject(program->GetStringObjectId(),
-                                                (long*)op_stack, *stack_pos, false);
+  long* str_obj = MemoryManager::AllocateObject(program->GetStringObjectId(), (long*)op_stack, *stack_pos, false);
   str_obj[0] = (long)char_array;
   str_obj[1] = char_array_size;
 
@@ -1188,11 +1188,8 @@ void TrapProcessor::ProcessFileOwner(const char* name, bool is_account,
     // create character array
     const long char_array_size = value_str.size();
     const long char_array_dim = 1;
-    long* char_array = (long*)MemoryManager::AllocateArray(char_array_size + 1 +
-							   ((char_array_dim + 2) *
-							    sizeof(long)),
-							   CHAR_ARY_TYPE,
-							   op_stack, *stack_pos, false);
+    long* char_array = (long*)MemoryManager::AllocateArray(char_array_size + 1 + ((char_array_dim + 2) * sizeof(long)),
+                                                           CHAR_ARY_TYPE, op_stack, *stack_pos, false);
     char_array[0] = char_array_size + 1;
     char_array[1] = char_array_dim;
     char_array[2] = char_array_size;
@@ -1224,11 +1221,8 @@ void TrapProcessor::ProcessVersion(StackProgram* program, long* &op_stack, long*
   // create character array
   const long char_array_size = value_str.size();
   const long char_array_dim = 1;
-  long* char_array = (long*)MemoryManager::AllocateArray(char_array_size + 1 +
-                                                         ((char_array_dim + 2) *
-                                                          sizeof(long)),
-                                                         CHAR_ARY_TYPE,
-                                                         op_stack, *stack_pos, false);
+  long* char_array = (long*)MemoryManager::AllocateArray(char_array_size + 1 + ((char_array_dim + 2) * sizeof(long)),
+                                                         CHAR_ARY_TYPE, op_stack, *stack_pos, false);
   char_array[0] = char_array_size + 1;
   char_array[1] = char_array_dim;
   char_array[2] = char_array_size;
@@ -1238,8 +1232,7 @@ void TrapProcessor::ProcessVersion(StackProgram* program, long* &op_stack, long*
   wcsncpy(char_array_ptr, value_str.c_str(), char_array_size);
 
   // create 'System.String' object instance
-  long* str_obj = MemoryManager::AllocateObject(program->GetStringObjectId(),
-                                                (long*)op_stack, *stack_pos, false);
+  long* str_obj = MemoryManager::AllocateObject(program->GetStringObjectId(), (long*)op_stack, *stack_pos, false);
   str_obj[0] = (long)char_array;
   str_obj[1] = char_array_size;
 
@@ -1249,77 +1242,74 @@ void TrapProcessor::ProcessVersion(StackProgram* program, long* &op_stack, long*
 //
 // deserializes an array of objects
 // 
-inline long* TrapProcessor::DeserializeArray(ParamType type, long* inst, 
-                                             long* &op_stack, long* &stack_pos) {
+inline long* TrapProcessor::DeserializeArray(ParamType type, long* inst, long* &op_stack, long* &stack_pos) {
   if(!DeserializeByte(inst)) {
     return NULL;
   }
-      
+
   long* src_array = (long*)inst[0];
   long dest_pos = inst[1];
-      
+
   if(dest_pos < src_array[0]) {
     const long dest_array_size = DeserializeInt(inst);
     const long dest_array_dim = DeserializeInt(inst);
     const long dest_array_dim_size = DeserializeInt(inst);
-    
+
     long* dest_array;
     if(type == BYTE_ARY_PARM) {
-      dest_array = (long*)MemoryManager::AllocateArray(dest_array_size + ((dest_array_dim + 2) *
-									  sizeof(long)),
-						       BYTE_ARY_TYPE, op_stack, *stack_pos, false);
+      dest_array = (long*)MemoryManager::AllocateArray(dest_array_size + ((dest_array_dim + 2) * sizeof(long)),
+                                                       BYTE_ARY_TYPE, op_stack, *stack_pos, false);
     }
     else if(type == CHAR_ARY_PARM) {
-      dest_array = (long*)MemoryManager::AllocateArray(dest_array_size + ((dest_array_dim + 2) *
-									  sizeof(long)),
-						       CHAR_ARY_TYPE, op_stack, *stack_pos, false);
+      dest_array = (long*)MemoryManager::AllocateArray(dest_array_size + ((dest_array_dim + 2) * sizeof(long)),
+                                                       CHAR_ARY_TYPE, op_stack, *stack_pos, false);
     }
-    else if(type == INT_ARY_PARM || type == OBJ_ARY_PARM)  {
-      dest_array = (long*)MemoryManager::AllocateArray(dest_array_size + dest_array_dim + 2, 
+    else if(type == INT_ARY_PARM || type == OBJ_ARY_PARM) {
+      dest_array = (long*)MemoryManager::AllocateArray(dest_array_size + dest_array_dim + 2,
                                                        INT_TYPE, op_stack, *stack_pos, false);
     }
     else {
-      dest_array = (long*)MemoryManager::AllocateArray(dest_array_size + dest_array_dim + 2, 
+      dest_array = (long*)MemoryManager::AllocateArray(dest_array_size + dest_array_dim + 2,
                                                        FLOAT_TYPE, op_stack, *stack_pos, false);
     }
-    
+
     // read array meta data
     dest_array[0] = dest_array_size;
     dest_array[1] = dest_array_dim;
-    dest_array[2] = dest_array_dim_size;	
-    
+    dest_array[2] = dest_array_dim_size;
+
     if(type == OBJ_ARY_PARM) {
       long* dest_array_ptr = dest_array + 3;
-      for(int i = 0; i < dest_array_size; ++i) {		  
-	if(!DeserializeByte(inst)) {
-	  dest_array_ptr[i] = 0;
-	}
-	else {
-	  const long dest_pos = inst[1];
-	  const long byte_array_dim_size = src_array[2];  
-	  const char* byte_array_ptr = ((char*)(src_array + 3) + dest_pos);
-	  
-	  ObjectDeserializer deserializer(byte_array_ptr, byte_array_dim_size, op_stack, stack_pos);
-	  dest_array_ptr[i] = (long)deserializer.DeserializeObject();
-	  inst[1] = dest_pos + deserializer.GetOffset();
-	}
+      for(int i = 0; i < dest_array_size; ++i) {
+        if(!DeserializeByte(inst)) {
+          dest_array_ptr[i] = 0;
+        }
+        else {
+          const long dest_pos = inst[1];
+          const long byte_array_dim_size = src_array[2];
+          const char* byte_array_ptr = ((char*)(src_array + 3) + dest_pos);
+
+          ObjectDeserializer deserializer(byte_array_ptr, byte_array_dim_size, op_stack, stack_pos);
+          dest_array_ptr[i] = (long)deserializer.DeserializeObject();
+          inst[1] = dest_pos + deserializer.GetOffset();
+        }
       }
     }
     else {
       ReadSerializedBytes(dest_array, src_array, type, inst);
     }
-    
+
     return dest_array;
   }
-      
+
   return NULL;
 }
 
 //
 // expand buffer
 //
-long* TrapProcessor::ExpandSerialBuffer(const long src_buffer_size, long* dest_buffer, long* inst, 
-                                        long* &op_stack, long* &stack_pos) {
+long* TrapProcessor::ExpandSerialBuffer(const long src_buffer_size, long* dest_buffer, 
+                                        long* inst, long* &op_stack, long* &stack_pos) {
   long dest_buffer_size = dest_buffer[2];
   const long dest_pos = inst[1];      
   const long calc_offset = src_buffer_size + dest_pos;
@@ -1332,12 +1322,8 @@ long* TrapProcessor::ExpandSerialBuffer(const long src_buffer_size, long* dest_b
     // create byte array
     const long byte_array_size = dest_buffer_size;
     const long byte_array_dim = 1;
-    long* byte_array = (long*)MemoryManager::AllocateArray(byte_array_size + 1 +
-                                                           ((byte_array_dim + 2) *
-                                                            sizeof(long)),
-                                                           BYTE_ARY_TYPE,
-                                                           op_stack, *stack_pos,
-                                                           false);
+    long* byte_array = (long*)MemoryManager::AllocateArray(byte_array_size + 1 + ((byte_array_dim + 2) * sizeof(long)),
+                                                           BYTE_ARY_TYPE, op_stack, *stack_pos, false);
     byte_array[0] = byte_array_size + 1;
     byte_array[1] = byte_array_dim;
     byte_array[2] = byte_array_size;
