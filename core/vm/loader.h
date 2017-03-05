@@ -171,7 +171,7 @@ public:
 
   Loader(const int argc, wchar_t** argv) {
     filename = argv[1];
-    for(int i = 2; i < argc; i++) {
+    for(int i = 2; i < argc; ++i) {
       arguments.push_back(argv[i]);
     }
     string_cls_id = -1;
