@@ -159,15 +159,14 @@ void Linker::ResolveExternalMethodCalls()
                 instr->SetType(instructions::MTHD_CALL);
                 instr->SetOperand(lib_klass->GetId());
                 instr->SetOperand2(lib_method->GetId());
-              } else {
-                // TODO: better error handling
-                wcerr << L"Error: Unable to resolve external library method: '"
-                      << instr->GetOperand6() << L"'; check library path" << endl;
+              } 
+              else {
+                wcerr << L"Error: Unable to resolve external library method: '" << instr->GetOperand6() << L"'; check library path" << endl;
                 exit(1);
               }
-            } else {
-              wcerr << L"Error: Unable to resolve external library class: '"
-                    << instr->GetOperand5() << L"'; check library path" << endl;
+            } 
+            else {
+              wcerr << L"Error: Unable to resolve external library class: '" << instr->GetOperand5() << L"'; check library path" << endl;
               exit(1);
             }
           }
@@ -184,20 +183,18 @@ void Linker::ResolveExternalMethodCalls()
                 // set class
                 instrs[j + 1]->SetType(instructions::LOAD_INT_LIT);
                 instrs[j + 1]->SetOperand(lib_klass->GetId());
-              } else {
-                // TODO: better error handling
-                wcerr << L"Error: Unable to resolve external library method: '"
-                      << instr->GetOperand6() << L"'; check library path" << endl;
+              } 
+              else {
+                wcerr << L"Error: Unable to resolve external library method: '" << instr->GetOperand6() << L"'; check library path" << endl;
                 exit(1);
               }
-            } else {
-              wcerr << L"Error: Unable to resolve external library class: '"
-                    << instr->GetOperand5() << L"'; check library path" << endl;
+            } 
+            else {
+              wcerr << L"Error: Unable to resolve external library class: '" << instr->GetOperand5() << L"'; check library path" << endl;
               exit(1);
             }
           }
             break;
-
 
           default:
             break;

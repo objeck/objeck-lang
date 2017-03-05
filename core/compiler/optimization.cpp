@@ -670,7 +670,6 @@ IntermediateBlock* ItermediateOptimizer::InlineMethod(IntermediateBlock* inputs)
         }
 
         // inline instructions
-        // TODO: inline methods with multiple return values        
         for(size_t j = 0; j < mthd_called_instrs.size() - 1; j++) {
           IntermediateInstruction* mthd_called_instr = mthd_called_instrs[j];
           switch(mthd_called_instr->GetType()) {

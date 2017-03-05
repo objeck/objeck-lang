@@ -242,7 +242,7 @@ class LibraryMethod {
 	  size_t end = index;
 	  const wstring &name = parameters.substr(start, end - start);
 	  // TODO: convenient alternative/kludge to paring the function types. This
-	  // works because the contextual analyzer does sting encoding and then 
+	  // works because the contextual analyzer does string encoding and then 
 	  // checking of function types.
 	  type = frontend::TypeFactory::Instance()->MakeType(frontend::FUNC_TYPE, name); 
 	}

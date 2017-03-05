@@ -1389,7 +1389,6 @@ class ObjectSerializer
     }
   }
 
-  // TODO: unicode 
   inline void SerializeChar(const wchar_t v) {
     string out;
     CharacterToBytes(v, out);
@@ -1456,7 +1455,6 @@ class ObjectDeserializer
     return value;
   }
 
-  // TODO: unicode
   wchar_t DeserializeChar() {
     // read
     const int num = DeserializeInt();

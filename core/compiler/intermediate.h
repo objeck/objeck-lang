@@ -478,7 +478,6 @@ class IntermediateEmitter {
     parsed_program = p;
     is_lib = l;
     is_debug = d;
-    // TODO: use an size_t
     // note: negative numbers are used
     // for method inlining in VM
     imm_program = new IntermediateProgram;

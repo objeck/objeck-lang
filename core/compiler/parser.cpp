@@ -3054,10 +3054,8 @@ MethodCall* Parser::ParseMethodCall(const wstring &ident, int depth)
       method_call->SetFunctionReturn(ParseType(depth + 1));
     }
   }
-  // TODO: find class enum
   else {
     method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, ident, L"");
-    // ProcessError(L"Expected identifier", TOKEN_SEMI_COLON);
   }
 
   // subsequent method calls
