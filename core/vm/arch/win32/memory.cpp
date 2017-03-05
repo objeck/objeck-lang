@@ -812,7 +812,7 @@ uintptr_t WINAPI MemoryManager::CheckJitRoots(void* arg)
 #endif  
 
 #ifdef _DEBUG
-  wcout << L"---- Marking JIT method root(s): num=" << jit_roots.size() 
+  wcout << L"---- Marking JIT method root(s): num=" << jit_roots.size()
     << L"; thread=" << GetCurrentThread() << L" ------" << endl;
   wcout << L"memory types: " << endl;
 #endif
@@ -825,8 +825,8 @@ uintptr_t WINAPI MemoryManager::CheckJitRoots(void* arg)
     const long dclrs_num = mthd->GetNumberDeclarations();
 
 #ifdef _DEBUG
-    wcout << L"\t===== JIT method: name=" << mthd->GetName() << L", id=" << id->cls_id << L"," 
-      << id->mthd_id << L"; addr=" << mthd << L"; num=" << mthd->GetNumberDeclarations() 
+    wcout << L"\t===== JIT method: name=" << mthd->GetName() << L", id=" << id->cls_id << L","
+      << id->mthd_id << L"; addr=" << mthd << L"; num=" << mthd->GetNumberDeclarations()
       << L" =====" << endl;
 #endif
 
@@ -839,14 +839,14 @@ uintptr_t WINAPI MemoryManager::CheckJitRoots(void* arg)
       switch(dclrs[j]->type) {
       case FUNC_PARM:
 #ifdef _DEBUG
-        wcout << L"\t" << j << L": FUNC_PARM: value=" << (*mem) 
+        wcout << L"\t" << j << L": FUNC_PARM: value=" << (*mem)
           << L"," << *(mem + 1) << endl;
 #endif
         // update
         mem += 2;
         break;
 
-	  case CHAR_PARM:
+      case CHAR_PARM:
       case INT_PARM:
 #ifdef _DEBUG
         wcout << L"\t" << j << L": CHAR_PARM/INT_PARM: value=" << (*mem) << endl;
@@ -863,13 +863,13 @@ uintptr_t WINAPI MemoryManager::CheckJitRoots(void* arg)
 #endif
         // update
         mem += 2;
-                       }
+      }
                        break;
 
       case BYTE_ARY_PARM:
 #ifdef _DEBUG
-        wcout << L"\t" << j << L": BYTE_ARY_PARM: addr=" 
-          << (long*)(*mem) << L"(" << (long)(*mem) 
+        wcout << L"\t" << j << L": BYTE_ARY_PARM: addr="
+          << (long*)(*mem) << L"(" << (long)(*mem)
           << L"), size=" << ((*mem) ? ((long*)(*mem))[SIZE_OR_CLS] : 0)
           << L" byte(s)" << endl;
 #endif
@@ -881,7 +881,7 @@ uintptr_t WINAPI MemoryManager::CheckJitRoots(void* arg)
 
       case CHAR_ARY_PARM:
 #ifdef _DEBUG
-        wcout << L"\t" << j << L": CHAR_ARY_PARM: addr=" << (long*)(*mem) << L"(" << (long)(*mem) 
+        wcout << L"\t" << j << L": CHAR_ARY_PARM: addr=" << (long*)(*mem) << L"(" << (long)(*mem)
           << L"), size=" << ((*mem) ? ((long*)(*mem))[SIZE_OR_CLS] : 0)
           << L" byte(s)" << endl;
 #endif
@@ -894,8 +894,8 @@ uintptr_t WINAPI MemoryManager::CheckJitRoots(void* arg)
       case INT_ARY_PARM:
 #ifdef _DEBUG
         wcout << L"\t" << j << L": INT_ARY_PARM: addr=" << (long*)(*mem)
-          << L"(" << (long)(*mem) << L"), size=" 
-          << ((*mem) ? ((long*)(*mem))[SIZE_OR_CLS] : 0) 
+          << L"(" << (long)(*mem) << L"), size="
+          << ((*mem) ? ((long*)(*mem))[SIZE_OR_CLS] : 0)
           << L" byte(s)" << endl;
 #endif
         // mark data
@@ -907,7 +907,7 @@ uintptr_t WINAPI MemoryManager::CheckJitRoots(void* arg)
       case FLOAT_ARY_PARM:
 #ifdef _DEBUG
         wcout << L"\t" << j << L": FLOAT_ARY_PARM: addr=" << (long*)(*mem)
-          << L"(" << (long)(*mem) << L"), size=" << L" byte(s)" 
+          << L"(" << (long)(*mem) << L"), size=" << L" byte(s)"
           << ((*mem) ? ((long*)(*mem))[SIZE_OR_CLS] : 0) << endl;
 #endif
         // mark data
@@ -932,14 +932,13 @@ uintptr_t WINAPI MemoryManager::CheckJitRoots(void* arg)
         CheckObject((long*)(*mem), true, 1);
         // update
         mem++;
-                     }
+      }
                      break;
 
-                     // TODO: test the code below
       case OBJ_ARY_PARM:
 #ifdef _DEBUG
         wcout << L"\t" << j << L": OBJ_ARY_PARM: addr=" << (long*)(*mem) << L"("
-          << (long)(*mem) << L"), size=" << ((*mem) ? ((long*)(*mem))[SIZE_OR_CLS] : 0) 
+          << (long)(*mem) << L"), size=" << ((*mem) ? ((long*)(*mem))[SIZE_OR_CLS] : 0)
           << L" byte(s)" << endl;
 #endif
         // mark data

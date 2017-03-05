@@ -319,7 +319,6 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
           SerializeInt(array[2]);
           long* array_ptr = array + 3;
 
-          // TODO: write each object
           for (int i = 0; i < array_size; i++) {
             CheckObject((long*)(array_ptr[i]), true, depth + 1);
           }
