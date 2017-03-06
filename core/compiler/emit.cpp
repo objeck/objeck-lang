@@ -247,11 +247,19 @@ void IntermediateClass::Write(bool emit_lib, ofstream &file_out) {
 void IntermediateMethod::Write(bool emit_lib, bool is_debug, ofstream &file_out) {
   // write attributes
   WriteInt(id, file_out);
-  WriteInt(type, file_out);
+  
+  if(emit_lib) {
+    WriteInt(type, file_out);
+  }
+  
   WriteInt(is_virtual, file_out);
   WriteInt(has_and_or, file_out);
-  WriteInt(is_native, file_out);
-  WriteInt(is_function, file_out);
+  
+  if(emit_lib) {
+    WriteInt(is_native, file_out);
+    WriteInt(is_function, file_out);
+  }
+  
   WriteString(name, file_out);
   WriteString(rtrn_name, file_out);
 
