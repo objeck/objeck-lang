@@ -50,7 +50,7 @@
       <Optimization>Disabled</Optimization>
       <UndefinePreprocessorDefinitions>
       </UndefinePreprocessorDefinitions>
-      <PreprocessorDefinitions>_MBCS;%(PreprocessorDefinitions);_CRT_SECURE_NO_WARNINGS;_DEBUGGER;_NO_JIT</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUGGER;_MBCS;_NO_JIT;%(PreprocessorDefinitions);_CRT_SECURE_NO_WARNINGS;_DEBUGGER;_NO_JIT</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\..\lib\openssl\win32\include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
@@ -65,7 +65,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>_MBCS; _DEBUGGER;_NO_JIT;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_DEBUGGER;_MBCS;_NO_JIT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <AdditionalIncludeDirectories>..\..\lib\openssl\win32\include</AdditionalIncludeDirectories>
     </ClCompile>
