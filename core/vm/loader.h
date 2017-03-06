@@ -153,7 +153,6 @@ class Loader {
   }
 
   // loading functions
-  void LoadEnums();
   void LoadClasses();
   void LoadMethods(StackClass* cls, bool is_debug);
   void LoadInitializationCode(StackMethod* mthd);
