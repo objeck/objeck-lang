@@ -38,8 +38,11 @@ using namespace Runtime;
  * JitCompilerIA32 class
  ********************************/
 StackProgram* JitCompilerIA32::program;
+BufferManager* JitCompilerIA32::buffer_manager;
+
 void JitCompilerIA32::Initialize(StackProgram* p) {
   program = p;
+  buffer_manager = new BufferManager;
 }
 
 // setup of stackframe
