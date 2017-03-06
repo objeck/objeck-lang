@@ -57,8 +57,7 @@ IntermediateFactory* IntermediateFactory::Instance()
 }
 
 /****************************
- * Writes target code to an
- * output file.
+ * Writes target code to an output file.
  ****************************/
 void FileEmitter::Emit()
 {
@@ -68,7 +67,7 @@ void FileEmitter::Emit()
 #endif
 
   // library target
-  if(is_lib) {
+  if(emit_lib) {
     if(!EndsWith(file_name, L".obl")) {
       wcerr << L"Error: Libraries must end in '.obl'" << endl;
       exit(1);
@@ -92,7 +91,7 @@ void FileEmitter::Emit()
   string open_filename(file_name.begin(), file_name.end());
   ofstream file_out(open_filename.c_str(), ofstream::binary);
   if(file_out && file_out.is_open()) {
-    program->Write(file_out, is_lib, is_debug, is_web);
+    program->Write(file_out, emit_lib, is_debug, is_web);
     file_out.close();
     wcout << L"Wrote target file: '" << file_name << L"'" << endl;
   }
@@ -102,14 +101,14 @@ void FileEmitter::Emit()
 }
 
 /****************************
-* IntermediateProgram class
-****************************/
-void IntermediateProgram::Write(ofstream &file_out, bool is_lib, bool is_debug, bool is_web) {
+ * IntermediateProgram class
+ ****************************/
+void IntermediateProgram::Write(ofstream &file_out, bool emit_lib, bool is_debug, bool is_web) {
   // version
   WriteInt(VER_NUM, file_out);
 
   // magic number
-  if(is_lib) {
+  if(emit_lib) {
     WriteInt(MAGIC_NUM_LIB, file_out);
   }
   else if(is_web) {
@@ -120,7 +119,7 @@ void IntermediateProgram::Write(ofstream &file_out, bool is_lib, bool is_debug, 
   }
 
   // write wstring id
-  if(!is_lib) {
+  if(!emit_lib) {
 #ifdef _DEBUG
     assert(string_cls_id > 0);
 #endif
@@ -152,7 +151,7 @@ void IntermediateProgram::Write(ofstream &file_out, bool is_lib, bool is_debug, 
   }
 
   // write bundle names
-  if(is_lib) {
+  if(emit_lib) {
     WriteInt((int)bundle_names.size(), file_out);
     for(size_t i = 0; i < bundle_names.size(); ++i) {
       WriteString(bundle_names[i], file_out);
@@ -160,7 +159,7 @@ void IntermediateProgram::Write(ofstream &file_out, bool is_lib, bool is_debug, 
   }
 
   // program start
-  if(!is_lib) {
+  if(!emit_lib) {
     WriteInt(class_id, file_out);
     WriteInt(method_id, file_out);
   }
@@ -193,8 +192,90 @@ void IntermediateProgram::Write(ofstream &file_out, bool is_lib, bool is_debug, 
 }
 
 /****************************
-* IntermediateInstruction class
+ * Class class
+ ****************************/
+void IntermediateClass::Write(ofstream &file_out) {
+  // write id and name
+  WriteInt(id, file_out);
+  WriteString(name, file_out);
+  WriteInt(pid, file_out);
+  WriteString(parent_name, file_out);
+
+  // interface ids
+  WriteInt(interface_ids.size(), file_out);
+  for(size_t i = 0; i < interface_ids.size(); ++i) {
+    WriteInt(interface_ids[i], file_out);
+  }
+
+  // interface names
+  WriteInt(interface_names.size(), file_out);
+  for(size_t i = 0; i < interface_names.size(); ++i) {
+    WriteString(interface_names[i], file_out);
+  }
+
+  WriteInt(is_interface, file_out);
+  WriteInt(is_virtual, file_out);
+  WriteInt(is_debug, file_out);
+  if(is_debug) {
+    WriteString(file_name, file_out);
+  }
+
+  // write local space size
+  WriteInt(cls_space, file_out);
+  WriteInt(inst_space, file_out);
+  cls_entries->Write(is_debug, file_out);
+  inst_entries->Write(is_debug, file_out);
+
+  // write methods
+  WriteInt((int)methods.size(), file_out);
+  for(size_t i = 0; i < methods.size(); ++i) {
+    methods[i]->Write(is_debug, file_out);
+  }
+}
+
+/****************************
+ * Method class
+ **************************/
+void IntermediateMethod::Write(bool is_debug, ofstream &file_out) {
+  // write attributes
+  WriteInt(id, file_out);
+  WriteInt(type, file_out);
+  WriteInt(is_virtual, file_out);
+  WriteInt(has_and_or, file_out);
+  WriteInt(is_native, file_out);
+  WriteInt(is_function, file_out);
+  WriteString(name, file_out);
+  WriteString(rtrn_name, file_out);
+
+  // write local space size
+  WriteInt(params, file_out);
+  WriteInt(space, file_out);
+  entries->Write(is_debug, file_out);
+
+  // write statements
+  uint32_t num_instrs = 0;
+  for(size_t i = 0; i < blocks.size(); ++i) {
+    num_instrs += blocks[i]->GetInstructions().size();
+  }
+  WriteUnsigned(num_instrs, file_out);
+
+  for(size_t i = 0; i < blocks.size(); ++i) {
+    blocks[i]->Write(is_debug, file_out);
+  }
+}
+
+/****************************
+* IntermediateBlock class
 ****************************/
+void IntermediateBlock::Write(bool is_debug, ofstream &file_out) {
+  for(size_t i = 0; i < instructions.size(); ++i) {
+    instructions[i]->Write(is_debug, file_out);
+  }
+}
+
+/****************************
+ * Instruction class
+ ****************************/
 void IntermediateInstruction::Write(bool is_debug, ofstream &file_out) {
   WriteByte((int)type, file_out);
   if(is_debug) {
@@ -280,98 +361,16 @@ void IntermediateInstruction::Write(bool is_debug, ofstream &file_out) {
 }
 
 /****************************
-* IntermediateBlock class
-****************************/
-void IntermediateBlock::Write(bool is_debug, ofstream &file_out) {
-  for(size_t i = 0; i < instructions.size(); ++i) {
-    instructions[i]->Write(is_debug, file_out);
-  }
-}
-
-/****************************
-* IntermediateMethod class
-**************************/
-void IntermediateMethod::Write(bool is_debug, ofstream &file_out) {
-  // write attributes
-  WriteInt(id, file_out);
-  WriteInt(type, file_out);
-  WriteInt(is_virtual, file_out);
-  WriteInt(has_and_or, file_out);
-  WriteInt(is_native, file_out);
-  WriteInt(is_function, file_out);
-  WriteString(name, file_out);
-  WriteString(rtrn_name, file_out);
-
-  // write local space size
-  WriteInt(params, file_out);
-  WriteInt(space, file_out);
-  entries->Write(is_debug, file_out);
-
-  // write statements
-  uint32_t num_instrs = 0;
-  for(size_t i = 0; i < blocks.size(); ++i) {
-    num_instrs += blocks[i]->GetInstructions().size();
-  }
-  WriteUnsigned(num_instrs, file_out);
-
-  for(size_t i = 0; i < blocks.size(); ++i) {
-    blocks[i]->Write(is_debug, file_out);
-  }
-}
-
-/****************************
-* IntermediateClass class
-****************************/
-void IntermediateClass::Write(ofstream &file_out) {
-  // write id and name
-  WriteInt(id, file_out);
-  WriteString(name, file_out);
-  WriteInt(pid, file_out);
-  WriteString(parent_name, file_out);
-
-  // interface ids
-  WriteInt(interface_ids.size(), file_out);
-  for(size_t i = 0; i < interface_ids.size(); ++i) {
-    WriteInt(interface_ids[i], file_out);
-  }
-
-  // interface names
-  WriteInt(interface_names.size(), file_out);
-  for(size_t i = 0; i < interface_names.size(); ++i) {
-    WriteString(interface_names[i], file_out);
-  }
-
-  WriteInt(is_interface, file_out);
-  WriteInt(is_virtual, file_out);
-  WriteInt(is_debug, file_out);
-  if(is_debug) {
-    WriteString(file_name, file_out);
-  }
-
-  // write local space size
-  WriteInt(cls_space, file_out);
-  WriteInt(inst_space, file_out);
-  cls_entries->Write(is_debug, file_out);
-  inst_entries->Write(is_debug, file_out);
-
-  // write methods
-  WriteInt((int)methods.size(), file_out);
-  for(size_t i = 0; i < methods.size(); ++i) {
-    methods[i]->Write(is_debug, file_out);
-  }
-}
-
-/****************************
-* IntermediateEnumItem class
-****************************/
+ * IntermediateEnumItem class
+ ****************************/
 void IntermediateEnumItem::Write(ofstream &file_out) {
   WriteString(name, file_out);
   WriteInt(id, file_out);
 }
 
 /****************************
-* IntermediateEnum class
-****************************/
+ * Enum class
+ ****************************/
 void IntermediateEnum::Write(ofstream &file_out) {
   WriteString(name, file_out);
   WriteInt(offset, file_out);
