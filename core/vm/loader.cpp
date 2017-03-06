@@ -296,21 +296,15 @@ void Loader::LoadMethods(StackClass* cls, bool is_debug)
 #ifdef _DEBUG
   wcout << L"Reading " << number << L" method(s)..." << endl;
 #endif
-
+  
   StackMethod** methods = new StackMethod*[number];
   for(int i = 0; i < number; ++i) {
     // id
     const int id = ReadInt();
     // method type
-    ReadDummyInt();
-    // virtual
     const bool is_virtual = ReadInt() != 0;
     // has and/or
     const bool has_and_or = ReadInt() != 0;
-    // is native
-    ReadDummyInt();
-    // is static
-    ReadDummyInt();
     // name
     const wstring name = ReadString();
     // return

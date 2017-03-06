@@ -66,10 +66,6 @@ class Loader {
     buffer += sizeof(value);
     return value;
   }
-
-  inline void ReadDummyInt() {
-    buffer += sizeof(int32_t);
-  }
   
   inline int ReadByte() {
     char value = *((char*)buffer);
@@ -92,11 +88,7 @@ class Loader {
     return out;
   }
 
-  inline void ReadDummyString() {
-    buffer += ReadInt();
-  }
-
-  wchar_t ReadChar() {
+  inline wchar_t ReadChar() {
     wchar_t out;
     
     const int size = ReadInt(); 

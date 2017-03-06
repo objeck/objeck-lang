@@ -774,22 +774,22 @@ namespace backend {
 
   public:
     IntermediateMethod(int i, const wstring &n, bool v, bool h, const wstring &r,
-      frontend::MethodType t, bool nt, bool f, int c, int p,
-      IntermediateDeclarations* e, IntermediateClass* k) {
-        id = i;
-        name = n;
-        is_virtual = v;
-        has_and_or = h;
-        rtrn_name = r;
-        type = t;
-        is_native = nt;
-        is_function = f;
-        space = c;
-        params = p;
-        entries = e;
-        is_lib = false;
-        klass = k;
-        instr_count = 0;
+                       frontend::MethodType t, bool nt, bool f, int c, int p,
+                       IntermediateDeclarations* e, IntermediateClass* k) {
+      id = i;
+      name = n;
+      is_virtual = v;
+      has_and_or = h;
+      rtrn_name = r;
+      type = t;
+      is_native = nt;
+      is_function = f;
+      space = c;
+      params = p;
+      entries = e;
+      is_lib = false;
+      klass = k;
+      instr_count = 0;
     }
 
     IntermediateMethod(LibraryMethod* lib_method, IntermediateClass* k) {
@@ -808,6 +808,7 @@ namespace backend {
       is_lib = true;
       instr_count = 0;
       klass = k;
+      
       // process instructions
       IntermediateBlock* block = new IntermediateBlock;
       vector<LibraryInstr*> lib_instructions = lib_method->GetInstructions();
@@ -931,26 +932,26 @@ namespace backend {
     
   public:
     IntermediateClass(int i, const wstring &n, int pi, const wstring &p, 
-		      vector<int> infs, vector<wstring> in, bool is_inf, 
-		      bool is_vrtl, int cs, int is, IntermediateDeclarations* ce, 
-		      IntermediateDeclarations* ie, const wstring &fn, bool d) {
-        id = i;
-        name = n;
-        pid = pi;
-        parent_name = p;
-        interface_ids = infs;
-        interface_names = in;
-        is_interface = is_inf;
-        is_virtual = is_vrtl;
-        cls_space = cs;
-        inst_space = is;
-        cls_entries = ce;
-        inst_entries = ie;
-        is_lib = false;
-        is_debug = d;
-        file_name = fn;
+                      vector<int> infs, vector<wstring> in, bool is_inf, 
+                      bool is_vrtl, int cs, int is, IntermediateDeclarations* ce, 
+                      IntermediateDeclarations* ie, const wstring &fn, bool d) {
+      id = i;
+      name = n;
+      pid = pi;
+      parent_name = p;
+      interface_ids = infs;
+      interface_names = in;
+      is_interface = is_inf;
+      is_virtual = is_vrtl;
+      cls_space = cs;
+      inst_space = is;
+      cls_entries = ce;
+      inst_entries = ie;
+      is_lib = false;
+      is_debug = d;
+      file_name = fn;
     }
-
+    
     IntermediateClass(LibraryClass* lib_klass) {
       // set attributes
       id = lib_klass->GetId();
@@ -989,6 +990,7 @@ namespace backend {
         delete tmp;
         tmp = NULL;
       }
+      
       // clean up
       while(!methods.empty()) {
         IntermediateMethod* tmp = methods.front();
@@ -1037,7 +1039,7 @@ namespace backend {
     void SetClassSpace(int s) {
       cls_space = s;
     }
-
+    
     void AddMethod(IntermediateMethod* m) {
       methods.push_back(m);
       method_map.insert(pair<int, IntermediateMethod*>(m->GetId(), m));
