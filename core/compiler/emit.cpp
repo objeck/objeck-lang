@@ -135,6 +135,7 @@ void IntermediateProgram::Write(bool emit_lib, bool is_debug, bool is_web, ofstr
       WriteDouble(holder->value[j], file_out);
     }
   }
+  
   // write int strings
   WriteInt((int)int_strings.size(), file_out);
   for(size_t i = 0; i < int_strings.size(); ++i) {
@@ -144,6 +145,7 @@ void IntermediateProgram::Write(bool emit_lib, bool is_debug, bool is_web, ofstr
       WriteInt(holder->value[j], file_out);
     }
   }
+  
   // write char strings
   WriteInt((int)char_strings.size(), file_out);
   for(size_t i = 0; i < char_strings.size(); ++i) {
@@ -163,11 +165,15 @@ void IntermediateProgram::Write(bool emit_lib, bool is_debug, bool is_web, ofstr
     WriteInt(class_id, file_out);
     WriteInt(method_id, file_out);
   }
+  
   // program enums
-  WriteInt((int)enums.size(), file_out);
-  for(size_t i = 0; i < enums.size(); ++i) {
-    enums[i]->Write(file_out);
+  if(emit_lib) {
+    WriteInt((int)enums.size(), file_out);
+    for(size_t i = 0; i < enums.size(); ++i) {
+      enums[i]->Write(file_out);
+    }
   }
+  
   // program classes
   WriteInt((int)classes.size(), file_out);
   for(size_t i = 0; i < classes.size(); ++i) {
@@ -179,14 +185,14 @@ void IntermediateProgram::Write(bool emit_lib, bool is_debug, bool is_web, ofstr
     }
     classes[i]->Write(emit_lib, file_out);
   }
-
+  
   wcout << L"Compiled " << num_src_classes
         << (num_src_classes > 1 ? " source classes" : " source class");
   if(is_debug) {
     wcout << " with debug symbols";
   }
   wcout << L'.' << endl;
-
+  
   wcout << L"Linked " << num_lib_classes
         << (num_lib_classes > 1 ? " library classes." : " library class.") << endl;
 }
@@ -208,12 +214,14 @@ void IntermediateClass::Write(bool emit_lib, ofstream &file_out) {
   }
 
   // interface names
-  WriteInt(interface_names.size(), file_out);
-  for(size_t i = 0; i < interface_names.size(); ++i) {
-    WriteString(interface_names[i], file_out);
+  if(emit_lib) {
+    WriteInt(interface_names.size(), file_out);
+    for(size_t i = 0; i < interface_names.size(); ++i) {
+      WriteString(interface_names[i], file_out);
+    }
+    WriteInt(is_interface, file_out);
   }
-
-  WriteInt(is_interface, file_out);
+  
   WriteInt(is_virtual, file_out);
   WriteInt(is_debug, file_out);
   if(is_debug) {
