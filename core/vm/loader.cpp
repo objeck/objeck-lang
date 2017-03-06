@@ -174,9 +174,8 @@ void Loader::Load()
 	<< start_method_id << endl;
 #endif
 
-  LoadEnums();
   LoadClasses();
-
+  
   wstring name = L"$Initialization$:";
   StackDclr** dclrs = new StackDclr*[1];
   dclrs[0] = new StackDclr;
@@ -187,31 +186,6 @@ void Loader::Load()
   LoadInitializationCode(init_method);
   program->SetInitializationMethod(init_method);
   program->SetStringObjectId(string_cls_id);
-}
-
-void Loader::LoadEnums()
-{
-  /*
-  const int number = ReadInt();
-  for(int i = 0; i < number; ++i) {
-    // read enum
-    // const string &enum_name = ReadString();
-    ReadDummyString();
-
-    // const long enum_offset = ReadInt();
-    ReadDummyInt();
-
-    // read enum items
-    const long num_items = ReadInt();
-    for(int i = 0; i < num_items; ++i) {
-      // const string &item_name = ReadString();
-      ReadDummyString();
-
-      // const long item_id = ReadInt();
-      ReadDummyInt();
-    }
-  }
-  */
 }
 
 void Loader::LoadClasses()
