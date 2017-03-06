@@ -191,6 +191,7 @@ void Loader::Load()
 
 void Loader::LoadEnums()
 {
+  /*
   const int number = ReadInt();
   for(int i = 0; i < number; ++i) {
     // read enum
@@ -210,6 +211,7 @@ void Loader::LoadEnums()
       ReadDummyInt();
     }
   }
+  */
 }
 
 void Loader::LoadClasses()
@@ -245,6 +247,7 @@ void Loader::LoadClasses()
       cls_interfaces[id] = NULL;
     }
 
+    /*
     // read interface names
     const int interface_names_size = ReadInt();
     for(int j = 0; j < interface_names_size; j++) {
@@ -253,6 +256,7 @@ void Loader::LoadClasses()
 
     // is interface (covered by is virtual)
     ReadDummyInt();
+    */
 
     const bool is_virtual = ReadInt() != 0;
     const bool is_debug = ReadInt() != 0;
