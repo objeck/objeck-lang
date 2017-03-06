@@ -34,6 +34,65 @@
 
 using namespace Runtime;
 
+
+
+
+
+
+
+BufferHolder::BufferHolder(int32_t size) {
+  index = 0;
+
+  int factor = 1;
+  if(size > PAGE_SIZE) {
+    factor = size / PAGE_SIZE + 1;
+  }
+  available = factor *  PAGE_SIZE;
+#ifdef _WIN32
+  buffer = (unsigned char*)malloc(available);
+#else
+  if(posix_memalign((void**)&buffer, PAGE_SIZE, available)) {
+    wcerr << L"Unable to allocate JIT memory!" << endl;
+    exit(1);
+  }
+
+  if(mprotect(buffer, available, PROT_READ | PROT_WRITE | PROT_EXEC) < 0) {
+	  wcerr << L"Unable to mprotect" << endl;
+	  exit(1);
+  }
+#endif
+}
+
+BufferHolder::BufferHolder() {
+  index = 0;
+  available = PAGE_SIZE;
+#ifdef _WIN32
+  buffer = (unsigned char*)malloc(PAGE_SIZE);
+#else
+  if(posix_memalign((void**)&buffer, PAGE_SIZE, PAGE_SIZE)) {
+    wcerr << L"Unable to allocate JIT memory!" << endl;
+    exit(1);
+  }
+  
+  if(mprotect(buffer, PAGE_SIZE, PROT_READ | PROT_WRITE | PROT_EXEC) < 0) {
+	  wcerr << L"Unable to mprotect" << endl;
+	  exit(1);
+  }
+#endif
+}
+    
+BufferHolder::~BufferHolder() {
+#ifdef _WIN32
+  free(buffer);
+  buffer = NULL;
+#endif
+
+#ifdef _X64
+  free(buffer);
+  buffer = NULL;
+#endif
+}
+
 /********************************
  * JitCompilerIA32 class
  ********************************/

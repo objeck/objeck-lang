@@ -1,7 +1,7 @@
 /***************************************************************************
  * JIT compiler for the x86 architecture.
  *
- * Copyright (c) 2008-2013, Randy Hollines
+ * Copyright (c) 2008-2017, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without 
@@ -242,48 +242,9 @@ namespace Runtime {
     int32_t available, index;
 
   public:
-    BufferHolder(int32_t size) {
-      index = 0;
-
-      int factor = 1;
-      if(size > PAGE_SIZE) {
-        factor = size / PAGE_SIZE + 1;
-      }
-      available = PAGE_SIZE * factor;
-#ifdef _WIN32
-      buffer = (unsigned char*)malloc(available);
-#else
-      if(posix_memalign((void**)&buffer, PAGE_SIZE, available)) {
-        wcerr << L"Unable to allocate JIT memory!" << endl;
-        exit(1);
-      }
-#endif
-    }
-
-    BufferHolder() {
-      index = 0;
-      available = PAGE_SIZE;
-#ifdef _WIN32
-      buffer = (unsigned char*)malloc(PAGE_SIZE);
-#else
-      if(posix_memalign((void**)&buffer, PAGE_SIZE, PAGE_SIZE)) {
-        wcerr << L"Unable to allocate JIT memory!" << endl;
-        exit(1);
-      }
-#endif
-    }
-    
-    ~BufferHolder() {
-#ifdef _WIN32
-      free(buffer);
-      buffer = NULL;
-#endif
-
-#ifdef _X64
-      free(buffer);
-      buffer = NULL;
-#endif
-    }
+    BufferHolder(int32_t size);
+    BufferHolder();
+    ~BufferHolder();
     
     inline bool CanAddCode(int32_t size) {
       if(available - size >= 0) {
@@ -417,22 +378,11 @@ namespace Runtime {
     // Add byte code to buffer
     inline void AddMachineCode(unsigned char b) {
       if(code_index == code_buf_max) {
-#ifdef _WIN32
         code = (unsigned char*)realloc(code, code_buf_max * 2); 
         if(!code) {
           wcerr << L"Unable to allocate memory!" << endl;
           exit(1);
         }
-#else
-        unsigned char* tmp;	
-        if(posix_memalign((void**)&tmp, PAGE_SIZE, code_buf_max * 2)) {
-          wcerr << L"Unable to reallocate JIT memory!" << endl;
-          exit(1);
-        }
-        memcpy(tmp, code, code_index);
-        free(code);
-        code = tmp;
-#endif	
         code_buf_max *= 2;
       }
       code[code_index++] = b;
@@ -1715,13 +1665,13 @@ namespace Runtime {
         for(iter = jump_table.begin(); iter != jump_table.end(); ++iter) {
           StackInstr* instr = iter->second;
           const int32_t src_offset = iter->first;
-	  const int32_t dest_index = method->GetLabelIndex(instr->GetOperand()) + 1;
-	  const int32_t dest_offset = method->GetInstruction(dest_index)->GetOffset();
-	  const int32_t offset = dest_offset - src_offset - 4;
+          const int32_t dest_index = method->GetLabelIndex(instr->GetOperand()) + 1;
+          const int32_t dest_offset = method->GetInstruction(dest_index)->GetOffset();
+          const int32_t offset = dest_offset - src_offset - 4;
           memcpy(&code[src_offset], &offset, 4); 
 #ifdef _DEBUG
           wcout << L"jump update: src=" << src_offset 
-		<< L"; dest=" << dest_offset << endl;
+                << L"; dest=" << dest_offset << endl;
 #endif
         }
 #ifdef _DEBUG
@@ -1729,12 +1679,6 @@ namespace Runtime {
 	      << L", buffer=" << code_buf_max << L" byte(s)" << endl;
 #endif
         // store compiled code
-#ifndef _WIN32
-        if(mprotect(code, code_index, PROT_EXEC)) {
-          perror("Couldn't mprotect");
-          exit(errno);
-        }
-#endif
         method->SetNativeCode(new NativeCode(buffer_manager->GetBuffer(code, code_index), code_index, floats));
         free(code);
         code = NULL;
