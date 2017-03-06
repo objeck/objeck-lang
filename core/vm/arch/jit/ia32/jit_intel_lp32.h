@@ -230,22 +230,64 @@ namespace Runtime {
   };
 
   /********************************
-   * prototype for jit function
+   * Manage executable buffers of memory
    ********************************/
-  typedef int32_t (*jit_fun_ptr)(int32_t cls_id, int32_t mthd_id, int32_t* cls_mem, 
-				 int32_t* inst, int32_t* op_stack, int32_t *stack_pos, 
-				 StackFrame** call_stack, long* call_stack_pos);
-
-  // WTF
   class BufferHolder {
     unsigned char* buffer;
     int32_t available, index;
 
   public:
-    BufferHolder(int32_t size);
-    BufferHolder();
-    ~BufferHolder();
-    
+    BufferHolder(int32_t size) {
+      index = 0;
+      int factor = 1;
+      if(size > PAGE_SIZE) {
+        factor = size / PAGE_SIZE + 1;
+      }
+      available = factor *  PAGE_SIZE;
+#ifdef _WIN32
+      buffer = (unsigned char*)malloc(available);
+#else
+      if(posix_memalign((void**)&buffer, PAGE_SIZE, available)) {
+        wcerr << L"Unable to allocate JIT memory!" << endl;
+        exit(1);
+      }
+      if(mprotect(buffer, available, PROT_READ | PROT_WRITE | PROT_EXEC) < 0) {
+        wcerr << L"Unable to mprotect" << endl;
+        exit(1);
+      }
+#endif
+    }
+
+    BufferHolder() {
+      index = 0;
+      available = PAGE_SIZE;
+#ifdef _WIN32
+      buffer = (unsigned char*)malloc(PAGE_SIZE);
+#else
+      if(posix_memalign((void**)&buffer, PAGE_SIZE, PAGE_SIZE)) {
+        wcerr << L"Unable to allocate JIT memory!" << endl;
+        exit(1);
+      }
+
+      if(mprotect(buffer, PAGE_SIZE, PROT_READ | PROT_WRITE | PROT_EXEC) < 0) {
+        wcerr << L"Unable to mprotect" << endl;
+        exit(1);
+      }
+#endif
+    }
+
+    ~BufferHolder() {
+#ifdef _WIN32
+      free(buffer);
+      buffer = NULL;
+#endif
+
+#ifdef _X64
+      free(buffer);
+      buffer = NULL;
+#endif
+    }
+
     inline bool CanAddCode(int32_t size) {
       if(available - size >= 0) {
         return true;
@@ -254,11 +296,7 @@ namespace Runtime {
       return false;
     }
 
-    unsigned char* AddCode(unsigned char* code, int32_t size) {
-      if(!CanAddCode(size)) {
-        return NULL;
-      }
-
+    inline unsigned char* AddCode(unsigned char* code, int32_t size) {
       unsigned char* temp = buffer + index;
       memcpy(temp, code, size);
       index += size;
@@ -273,9 +311,7 @@ namespace Runtime {
 
   public:
     BufferManager() {
-      for(int i = 0; i < 4; ++i) {
-        holders.push_back(new BufferHolder);
-      }
+      holders.push_back(new BufferHolder);
     }
 
     ~BufferManager() {
@@ -310,6 +346,13 @@ namespace Runtime {
     }
   };
 
+  /********************************
+   * Prototype for jit function
+   ********************************/
+  typedef int32_t (*jit_fun_ptr)(int32_t cls_id, int32_t mthd_id, int32_t* cls_mem, 
+				 int32_t* inst, int32_t* op_stack, int32_t *stack_pos, 
+				 StackFrame** call_stack, long* call_stack_pos);
+  
   /********************************
    * JitCompilerIA32 class
    ********************************/
