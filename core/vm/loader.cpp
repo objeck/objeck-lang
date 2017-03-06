@@ -220,18 +220,7 @@ void Loader::LoadClasses()
     else {
       cls_interfaces[id] = NULL;
     }
-
-    /*
-    // read interface names
-    const int interface_names_size = ReadInt();
-    for(int j = 0; j < interface_names_size; j++) {
-      ReadDummyString();
-    }
-
-    // is interface (covered by is virtual)
-    ReadDummyInt();
-    */
-
+    
     const bool is_virtual = ReadInt() != 0;
     const bool is_debug = ReadInt() != 0;
     wstring file_name;
