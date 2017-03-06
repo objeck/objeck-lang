@@ -308,10 +308,12 @@ namespace Runtime {
 
   class BufferManager {
     vector<BufferHolder*> holders;
-
+    
   public:
     BufferManager() {
-      holders.push_back(new BufferHolder);
+      for(int i = 0; i < 4; ++i) {
+        holders.push_back(new BufferHolder(PAGE_SIZE * (i + 1)));
+      }
     }
 
     ~BufferManager() {
@@ -335,7 +337,7 @@ namespace Runtime {
           placed = true;
         }
       }
-
+      
       if(!placed) {
         BufferHolder* buffer = new BufferHolder(size);
         temp = buffer->AddCode(code, size);
