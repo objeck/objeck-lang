@@ -867,6 +867,7 @@ class StackClass {
     return methods[id];
   }
 
+#ifdef _DEBUGGER
   vector<StackMethod*> GetMethods(const wstring &n) {
     vector<StackMethod*> found;
     for(int i = 0; i < method_num; ++i) {
@@ -877,6 +878,7 @@ class StackClass {
 
     return found;
   }
+#endif
 
 #ifdef _UTILS
   void List() {
