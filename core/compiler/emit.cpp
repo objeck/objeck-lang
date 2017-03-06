@@ -91,7 +91,7 @@ void FileEmitter::Emit()
   string open_filename(file_name.begin(), file_name.end());
   ofstream file_out(open_filename.c_str(), ofstream::binary);
   if(file_out && file_out.is_open()) {
-    program->Write(file_out, emit_lib, is_debug, is_web);
+    program->Write(emit_lib, is_debug, is_web, file_out);
     file_out.close();
     wcout << L"Wrote target file: '" << file_name << L"'" << endl;
   }
@@ -103,7 +103,7 @@ void FileEmitter::Emit()
 /****************************
  * IntermediateProgram class
  ****************************/
-void IntermediateProgram::Write(ofstream &file_out, bool emit_lib, bool is_debug, bool is_web) {
+void IntermediateProgram::Write(bool emit_lib, bool is_debug, bool is_web, ofstream &file_out) {
   // version
   WriteInt(VER_NUM, file_out);
 
@@ -177,24 +177,24 @@ void IntermediateProgram::Write(ofstream &file_out, bool emit_lib, bool is_debug
     else {
       num_src_classes++;
     }
-    classes[i]->Write(file_out);
+    classes[i]->Write(emit_lib, file_out);
   }
 
   wcout << L"Compiled " << num_src_classes
-    << (num_src_classes > 1 ? " source classes" : " source class");
+        << (num_src_classes > 1 ? " source classes" : " source class");
   if(is_debug) {
     wcout << " with debug symbols";
   }
   wcout << L'.' << endl;
 
   wcout << L"Linked " << num_lib_classes
-    << (num_lib_classes > 1 ? " library classes." : " library class.") << endl;
+        << (num_lib_classes > 1 ? " library classes." : " library class.") << endl;
 }
 
 /****************************
  * Class class
  ****************************/
-void IntermediateClass::Write(ofstream &file_out) {
+void IntermediateClass::Write(bool emit_lib, ofstream &file_out) {
   // write id and name
   WriteInt(id, file_out);
   WriteString(name, file_out);
@@ -229,14 +229,14 @@ void IntermediateClass::Write(ofstream &file_out) {
   // write methods
   WriteInt((int)methods.size(), file_out);
   for(size_t i = 0; i < methods.size(); ++i) {
-    methods[i]->Write(is_debug, file_out);
+    methods[i]->Write(emit_lib, is_debug, file_out);
   }
 }
 
 /****************************
  * Method class
  **************************/
-void IntermediateMethod::Write(bool is_debug, ofstream &file_out) {
+void IntermediateMethod::Write(bool emit_lib, bool is_debug, ofstream &file_out) {
   // write attributes
   WriteInt(id, file_out);
   WriteInt(type, file_out);

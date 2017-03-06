@@ -133,7 +133,7 @@ void Loader::Load()
     int_strings[i] = int_string;
   }
   program->SetIntStrings(int_strings, num_int_strings);
-
+  
   // read char strings
   num_char_strings = ReadInt();
   wchar_t** char_strings = new wchar_t*[num_char_strings + arguments.size()];
@@ -147,7 +147,7 @@ void Loader::Load()
 #endif
     char_strings[i] = char_string;
   }
-
+  
   // copy command line params
   for(size_t j = 0; j < arguments.size(); ++i, ++j) {
 #ifdef _WIN32
