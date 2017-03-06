@@ -239,6 +239,7 @@ class NativeCode
     }
   
   ~NativeCode() {
+/*
 #ifdef _WIN32
     free(code);
     code = NULL;
@@ -248,7 +249,7 @@ class NativeCode
     free(code);
     code = NULL;
 #endif
-
+*/
 #ifndef _WIN32
     free(floats);
 #else

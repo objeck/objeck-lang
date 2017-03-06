@@ -69,7 +69,8 @@ namespace Runtime {
 #define TMP_REG_5 -48
 
 #define MAX_DBLS 64
-#define OUR_PAGE_SIZE 4096
+#define BUFFER_SIZE 512
+#define PAGE_SIZE 4096
 
   // register type
   typedef enum _RegType { 
@@ -235,11 +236,126 @@ namespace Runtime {
 				 int32_t* inst, int32_t* op_stack, int32_t *stack_pos, 
 				 StackFrame** call_stack, long* call_stack_pos);
 
+  // WTF
+  class BufferHolder {
+    unsigned char* buffer;
+    int32_t available, index;
+
+  public:
+    BufferHolder(int32_t size) {
+      index = 0;
+
+      int factor = 1;
+      if(size > PAGE_SIZE) {
+        factor = size / PAGE_SIZE + 1;
+      }
+      available = PAGE_SIZE * factor;
+#ifdef _WIN32
+      buffer = (unsigned char*)malloc(available);
+#else
+      if(posix_memalign((void**)&buffer, PAGE_SIZE, available)) {
+        wcerr << L"Unable to allocate JIT memory!" << endl;
+        exit(1);
+      }
+#endif
+    }
+
+    BufferHolder() {
+      index = 0;
+      available = PAGE_SIZE;
+#ifdef _WIN32
+      buffer = (unsigned char*)malloc(PAGE_SIZE);
+#else
+      if(posix_memalign((void**)&buffer, PAGE_SIZE, PAGE_SIZE)) {
+        wcerr << L"Unable to allocate JIT memory!" << endl;
+        exit(1);
+      }
+#endif
+    }
+    
+    ~BufferHolder() {
+#ifdef _WIN32
+      free(buffer);
+      buffer = NULL;
+#endif
+
+#ifdef _X64
+      free(buffer);
+      buffer = NULL;
+#endif
+    }
+    
+    inline bool CanAddCode(int32_t size) {
+      if(available - size >= 0) {
+        return true;
+      }
+
+      return false;
+    }
+
+    unsigned char* AddCode(unsigned char* code, int32_t size) {
+      if(!CanAddCode(size)) {
+        return NULL;
+      }
+
+      unsigned char* temp = buffer + index;
+      memcpy(temp, code, size);
+      index += size;
+      available -= size;
+
+      return temp;
+    }
+  };
+
+  class BufferManager {
+    vector<BufferHolder*> holders;
+
+  public:
+    BufferManager() {
+      for(int i = 0; i < 4; ++i) {
+        holders.push_back(new BufferHolder);
+      }
+    }
+
+    ~BufferManager() {
+      while(!holders.empty()) {
+        BufferHolder* tmp = holders.front();
+        holders.erase(holders.begin());
+        // delete
+        delete tmp;
+        tmp = NULL;
+      }
+    }
+
+    unsigned char* GetBuffer(unsigned char* code, int32_t size) {
+      bool placed = false;
+
+      unsigned char* temp;
+      for(size_t i = 0; !placed && i < holders.size(); ++i) {
+        BufferHolder* holder = holders[i];
+        if(holder->CanAddCode(size)) {
+          temp = holder->AddCode(code, size);
+          placed = true;
+        }
+      }
+
+      if(!placed) {
+        BufferHolder* buffer = new BufferHolder(size);
+        temp = buffer->AddCode(code, size);
+        holders.push_back(buffer);
+      }
+
+      return temp;
+    }
+  };
+
   /********************************
    * JitCompilerIA32 class
    ********************************/
   class JitCompilerIA32 {
     static StackProgram* program;
+    static BufferManager* buffer_manager;
+
     deque<RegInstr*> working_stack;
     vector<RegisterHolder*> aval_regs;
     list<RegisterHolder*> used_regs;
@@ -268,8 +384,6 @@ namespace Runtime {
     void RegisterRoot();
     void UnregisterRoot();
     void ProcessInstructions();
-    void ProcessLiteral(StackInstr* instruction) ;
-    void ProcessVariable(StackInstr* instruction);
     void ProcessLoad(StackInstr* instr);
     void ProcessStore(StackInstr* instruction);
     void ProcessCopy(StackInstr* instr);
@@ -277,8 +391,7 @@ namespace Runtime {
     void ProcessIntCalculation(StackInstr* instruction);
     void ProcessFloatCalculation(StackInstr* instruction);
     void ProcessReturn(int32_t params = -1);
-    void ProcessStackCallback(int32_t instr_id, StackInstr* instr, 
-			      int32_t &instr_index, int32_t params);
+    void ProcessStackCallback(int32_t instr_id, StackInstr* instr, int32_t &instr_index, int32_t params);
     void ProcessIntCallParameter();
     void ProcessFloatCallParameter(); 
     void ProcessFunctionCallParameter();
@@ -292,11 +405,14 @@ namespace Runtime {
     void ProcessLoadFloatElement(StackInstr* instr);
     void ProcessStoreFloatElement(StackInstr* instr);
     void ProcessJump(StackInstr* instr);
-    void ProcessLogic(StackInstr* instr);
     void ProcessFloor(StackInstr* instr);
     void ProcessCeiling(StackInstr* instr);
     void ProcessFloatToInt(StackInstr* instr);
     void ProcessIntToFloat(StackInstr* instr);
+
+    static inline unsigned char* GetCodeBuffer(unsigned char* buffer, int32_t size) {
+      return NULL;
+    }
 
     // Add byte code to buffer
     inline void AddMachineCode(unsigned char b) {
@@ -309,7 +425,7 @@ namespace Runtime {
         }
 #else
         unsigned char* tmp;	
-        if(posix_memalign((void**)&tmp, OUR_PAGE_SIZE, code_buf_max * 2)) {
+        if(posix_memalign((void**)&tmp, PAGE_SIZE, code_buf_max * 2)) {
           wcerr << L"Unable to reallocate JIT memory!" << endl;
           exit(1);
         }
@@ -1532,14 +1648,6 @@ namespace Runtime {
     inline bool Compile(StackMethod* cm) {
       compile_success = true;
 
-      /*
-	#ifdef _WIN32
-	EnterCriticalSection(&cm->jit_cs);
-	#else
-	pthread_mutex_lock(&cm->jit_mutex);
-	#endif
-      */
-
       if(!cm->GetNativeCode()) {
         skip_jump = false;
         method = cm;
@@ -1552,17 +1660,12 @@ namespace Runtime {
 	      << method->GetParamCount() << L" ----------" << endl;
 #endif
 
-        code_buf_max = OUR_PAGE_SIZE;
-#ifdef _WIN32
+        code_buf_max = BUFFER_SIZE;
         code = (unsigned char*)malloc(code_buf_max);
+#ifdef _WIN32
         floats = new double[MAX_DBLS];
 #else
-        if(posix_memalign((void**)&code, OUR_PAGE_SIZE, code_buf_max)) {
-          wcerr << L"Unable to allocate JIT memory!" << endl;
-          exit(1);
-        }
-
-        if(posix_memalign((void**)&floats, OUR_PAGE_SIZE, sizeof(double) * MAX_DBLS)) {
+        if(posix_memalign((void**)&floats, PAGE_SIZE, sizeof(double) * MAX_DBLS)) {
           wcerr << L"Unable to allocate JIT memory!" << endl;
           exit(1);
         }
@@ -1632,19 +1735,12 @@ namespace Runtime {
           exit(errno);
         }
 #endif
-        method->SetNativeCode(new NativeCode(code, code_index, floats));
+        method->SetNativeCode(new NativeCode(buffer_manager->GetBuffer(code, code_index), code_index, floats));
+        free(code);
+        code = NULL;
+
         compile_success = true;
-
-        // release our lock, native code has been compiled and set
       }
-
-      /*
-	#ifdef _WIN32
-	LeaveCriticalSection(&cm->jit_cs);
-	#else
-	pthread_mutex_unlock(&cm->jit_mutex);
-	#endif
-      */
 
       return compile_success;
     }
