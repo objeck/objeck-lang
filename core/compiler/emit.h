@@ -1285,12 +1285,13 @@ namespace backend {
       string_cls_id = i;
     }
 
-    void Write(ofstream &file_out, bool is_lib, bool is_debug, bool is_web);
+    void Write(ofstream &file_out, bool emit_lib, bool is_debug, bool is_web);
 
     void Debug() {
       wcout << L"Strings:" << endl;
       for(size_t i = 0; i < char_strings.size(); ++i) {
-        wcout << L"wstring id=" << i << L", size='" << ToString(char_strings[i].size()) << L"': '" << char_strings[i] << L"'" << endl;
+        wcout << L"wstring id=" << i << L", size='" << ToString(char_strings[i].size())
+              << L"': '" << char_strings[i] << L"'" << endl;
       }
       wcout << endl;
 
@@ -1319,7 +1320,7 @@ namespace backend {
   class FileEmitter {
     IntermediateProgram* program;
     wstring file_name;
-    bool is_lib;
+    bool emit_lib;
     bool is_debug;
     bool is_web;
 
@@ -1334,7 +1335,7 @@ namespace backend {
   public:
     FileEmitter(IntermediateProgram* p, bool l, bool d, bool w, const wstring &n) {
       program = p;
-      is_lib = l;
+      emit_lib = l;
       is_debug = d;
       is_web = w;
       file_name = n;
