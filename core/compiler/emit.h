@@ -47,8 +47,8 @@ namespace backend {
   wstring ReplaceSubstring(wstring s, const wstring& f, const wstring &r);
   
   /****************************
-  * Intermediate class
-  ****************************/
+   * Intermediate class
+   ****************************/
   class Intermediate {
 
   public:
@@ -636,9 +636,8 @@ namespace backend {
   };
 
   /****************************
-  * IntermediateFactory
-  * class
-  ****************************/
+   * IntermediateFactory class
+   ****************************/
   class IntermediateFactory {
     static IntermediateFactory* instance;
     vector<IntermediateInstruction*> instructions;
@@ -709,8 +708,8 @@ namespace backend {
   };
 
   /****************************
-  * IntermediateBlock class
-  ****************************/
+   * Block class
+   ****************************/
   class IntermediateBlock : public Intermediate {
     vector<IntermediateInstruction*> instructions;
 
@@ -754,8 +753,8 @@ namespace backend {
   };
 
   /****************************
-  * IntermediateMethod class
-  **************************/
+   * Method class
+   **************************/
   class IntermediateMethod : public Intermediate {
     int id;
     wstring name;
@@ -891,7 +890,7 @@ namespace backend {
       blocks = b;
     }
 
-    void Write(bool is_debug, ofstream &file_out);
+    void Write(bool emit_lib, bool is_debug, ofstream &file_out);
 
     void Debug() {
       wcout << L"---------------------------------------------------------" << endl;
@@ -908,8 +907,8 @@ namespace backend {
   };
 
   /****************************
-  * IntermediateClass class
-  ****************************/
+   * Class class
+   ****************************/
   class IntermediateClass : public Intermediate {
     int id;
     wstring name;
@@ -1060,7 +1059,7 @@ namespace backend {
       return methods;
     }
 
-    void Write(ofstream &file_out);
+    void Write(bool emit_lib, ofstream &file_out);
 
     void Debug() {
       wcout << L"=========================================================" << endl;
@@ -1089,8 +1088,8 @@ namespace backend {
   };
 
   /****************************
-  * IntermediateEnumItem class
-  ****************************/
+   * EnumItem class
+   ****************************/
   class IntermediateEnumItem : public Intermediate {
     wstring name;
     INT_VALUE id;
@@ -1114,8 +1113,8 @@ namespace backend {
   };
 
   /****************************
-  * IntermediateEnum class
-  ****************************/
+   * Enum class
+   ****************************/
   class IntermediateEnum : public Intermediate {
     wstring name;
     INT_VALUE offset;
@@ -1168,8 +1167,8 @@ namespace backend {
   };
 
   /****************************
-  * IntermediateProgram class
-  ****************************/
+   * Program class
+   ****************************/
   class IntermediateProgram : public Intermediate {
     int class_id;
     int method_id;
@@ -1285,7 +1284,7 @@ namespace backend {
       string_cls_id = i;
     }
 
-    void Write(ofstream &file_out, bool emit_lib, bool is_debug, bool is_web);
+    void Write(bool emit_lib, bool is_debug, bool is_web, ofstream &file_out);
 
     void Debug() {
       wcout << L"Strings:" << endl;
@@ -1296,7 +1295,7 @@ namespace backend {
       wcout << endl;
 
       wcout << L"Program: enums=" << enums.size() << L", classes="
-        << classes.size() << L"; start=" << class_id << L"," << method_id << endl;
+            << classes.size() << L"; start=" << class_id << L"," << method_id << endl;
       // enums
       for(size_t i = 0; i < enums.size(); ++i) {
         enums[i]->Debug();
@@ -1315,8 +1314,8 @@ namespace backend {
   };
 
   /****************************
-  * FileEmitter class
-  ****************************/
+   * FileEmitter class
+   ****************************/
   class FileEmitter {
     IntermediateProgram* program;
     wstring file_name;
