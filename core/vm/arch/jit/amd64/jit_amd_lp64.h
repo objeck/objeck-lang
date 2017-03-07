@@ -60,9 +60,10 @@ namespace Runtime {
 #define TMP_REG_3 -112
 #define TMP_REG_4 -120
 #define TMP_REG_5 -128
-
 #define RED_ZONE -128  
+
 #define MAX_DBLS 64
+#define BUFFER_SIZE 512
 #define PAGE_SIZE 4096
 
   // register type
@@ -239,7 +240,112 @@ namespace Runtime {
   };
   
   /********************************
-   * prototype for jit function
+   * Manage executable buffers of memory
+   ********************************/
+  class PageHolder {
+    unsigned char* buffer;
+    int32_t available, index;
+
+  public:
+    PageHolder(int32_t size) {
+      index = 0;
+      int factor = 1;
+      if(size > PAGE_SIZE) {
+        factor = size / PAGE_SIZE + 1;
+      }
+      available = factor *  PAGE_SIZE;
+      
+      if(posix_memalign((void**)&buffer, PAGE_SIZE, available)) {
+        wcerr << L"Unable to allocate JIT memory!" << endl;
+        exit(1);
+      }
+      if(mprotect(buffer, available, PROT_READ | PROT_WRITE | PROT_EXEC) < 0) {
+        wcerr << L"Unable to mprotect" << endl;
+        exit(1);
+      }
+    }
+
+    PageHolder() {
+      index = 0;
+      available = PAGE_SIZE;
+      if(posix_memalign((void**)&buffer, PAGE_SIZE, PAGE_SIZE)) {
+        wcerr << L"Unable to allocate JIT memory!" << endl;
+        exit(1);
+      }
+
+      if(mprotect(buffer, PAGE_SIZE, PROT_READ | PROT_WRITE | PROT_EXEC) < 0) {
+        wcerr << L"Unable to mprotect" << endl;
+        exit(1);
+      }
+    }
+    
+    ~PageHolder() {
+      free(buffer);
+      buffer = NULL;
+    }
+
+    inline bool CanAddCode(int32_t size) {
+      if(available - size >= 0) {
+        return true;
+      }
+
+      return false;
+    }
+
+    inline unsigned char* AddCode(unsigned char* code, int32_t size) {
+      unsigned char* temp = buffer + index;
+      memcpy(temp, code, size);
+      index += size;
+      available -= size;
+
+      return temp;
+    }
+  };
+
+  class PageManager {
+    vector<PageHolder*> holders;
+    
+  public:
+    PageManager() {
+      for(int i = 0; i < 4; ++i) {
+        holders.push_back(new PageHolder(PAGE_SIZE * (i + 1)));
+      }
+    }
+
+    ~PageManager() {
+      while(!holders.empty()) {
+        PageHolder* tmp = holders.front();
+        holders.erase(holders.begin());
+        // delete
+        delete tmp;
+        tmp = NULL;
+      }
+    }
+
+    unsigned char* GetPage(unsigned char* code, int32_t size) {
+      bool placed = false;
+
+      unsigned char* temp;
+      for(size_t i = 0; !placed && i < holders.size(); ++i) {
+        PageHolder* holder = holders[i];
+        if(holder->CanAddCode(size)) {
+          temp = holder->AddCode(code, size);
+          placed = true;
+        }
+      }
+      
+      if(!placed) {
+        PageHolder* buffer = new PageHolder(size);
+        temp = buffer->AddCode(code, size);
+        holders.push_back(buffer);
+      }
+
+      return temp;
+    }
+  };
+  
+  /********************************
+   * Prototype for jit function
    ********************************/
   typedef long (*jit_fun_ptr)(long cls_id, long mthd_id, long* cls_mem, long* inst, long* op_stack, 
 			      long *stack_pos, StackFrame** call_stack, long* call_stack_pos);
@@ -249,6 +355,8 @@ namespace Runtime {
    ********************************/
   class JitCompilerIA64 {
     static StackProgram* program;
+    static PageManager* page_manager;
+    
     deque<RegInstr*> working_stack;
     vector<RegisterHolder*> aval_regs;
     list<RegisterHolder*> used_regs;
@@ -312,19 +420,12 @@ namespace Runtime {
      ********************************/
     void AddMachineCode(unsigned char b) {
       if(code_index == code_buf_max) {
-	unsigned char* tmp;	
-	if(posix_memalign((void**)&tmp, PAGE_SIZE, code_buf_max * 2)) {
-	  wcerr << L"Unable to reallocate JIT memory!" << endl;
-	  exit(1);
-	}
-	memcpy(tmp, code, code_index);
-	free(code);
-	code = tmp;
-	code_buf_max *= 2;
-	if(mprotect(code, code_buf_max, PROT_READ | PROT_WRITE | PROT_EXEC) < 0) {
-	  wcerr << L"Unable to mprotect" << endl;
-	  exit(1);
-	}
+        code = (unsigned char*)realloc(code, code_buf_max * 2); 
+        if(!code) {
+          wcerr << L"Unable to allocate memory!" << endl;
+          exit(1);
+        }
+        code_buf_max *= 2;
       }
       code[code_index++] = b;
     }
@@ -1724,21 +1825,16 @@ namespace Runtime {
 	      << method->GetParamCount() << L" ----------" << endl;
 #endif	
 	// code buffer memory
-	code_buf_max = PAGE_SIZE;
-	if(posix_memalign((void**)&code, PAGE_SIZE, PAGE_SIZE)) {
-	  wcerr << L"Unable to reallocate JIT memory!" << endl;
-	  exit(1);
-	}
-	if(mprotect(code, code_buf_max, PROT_READ | PROT_WRITE | PROT_EXEC) < 0) {
-	  wcerr << L"Unable to mprotect" << endl;
-	  exit(1);
-	}
+	code_buf_max = BUFFER_SIZE;
+        code = (unsigned char*)malloc(code_buf_max);
+	
 	// floats memory
 	if(posix_memalign((void**)&floats, PAGE_SIZE, sizeof(double) * MAX_DBLS)) {
 	  wcerr << L"Unable to reallocate JIT memory!" << endl;
 	  exit(1);
 	}
 	floats_index = instr_index = code_index = instr_count = 0;
+	
 	// general use registers
 	//	aval_regs.push_back(new RegisterHolder(RDX));
 	//	aval_regs.push_back(new RegisterHolder(RCX));
@@ -1768,10 +1864,11 @@ namespace Runtime {
 	
 	// process offsets
 	ProcessIndices();
+	
 	// setup
 	Prolog();
+	
 	// method information
-
 	move_reg_mem(RDI, CLS_ID, RBP);
 	move_reg_mem(RSI, MTHD_ID, RBP);
 	move_reg_mem(RDX, CLASS_MEM, RBP);
@@ -1779,7 +1876,6 @@ namespace Runtime {
 	move_reg_mem(R8, OP_STACK, RBP);
 	move_reg_mem(R9, STACK_POS, RBP);
 	
-
 	// register root
 	RegisterRoot();
 	// translate parameters
@@ -1809,7 +1905,7 @@ namespace Runtime {
 	      << L", buffer=" << code_buf_max << L" byte(s)" << endl;
 #endif
 	// store compiled code
-	method->SetNativeCode(new NativeCode(code, code_index, floats));
+	method->SetNativeCode(new NativeCode(page_manager->GetPage(code, code_index), code_index, floats));
 	compile_success = true;
 	
 #ifndef _JIT_SERIAL
