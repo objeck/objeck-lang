@@ -39,14 +39,9 @@ using namespace std;
 int main(const int argc, const char* argv[])
 {
   if(argc > 1) {
-#ifndef _DEBUG
     // enable UTF-8 enviroment
-    char* locale = setlocale(LC_ALL, ""); 
-    std::locale lollocale(locale);
-    setlocale(LC_ALL, locale); 
-    std::wcout.imbue(lollocale);
-#endif
-
+    setlocale(LC_ALL, "en_US.utf8"); 
+    
     // Initialize OpenSSL
     CRYPTO_malloc_init();
     SSL_library_init();
@@ -55,11 +50,6 @@ int main(const int argc, const char* argv[])
   } 
   else {
     wstring usage;
-    // usage += L"Copyright (c) 2008-2015, Randy Hollines. All rights reserved.\n";
-    // usage += L"THIS SOFTWARE IS PROVIDED \"AS IS\" WITHOUT WARRANTY. REFER TO THE\n";
-    // usage += L"license.txt file or http://www.opensource.org/licenses/bsd-license.php\n";
-    // usage += L"FOR MORE INFORMATION.\n\n";
-    // usage += L"\n\n";
     usage += L"Usage: obr <program>\n\n";
     usage += L"Example: \"obr hello.obe\"\n\nVersion: ";
     usage += VERSION_STRING;
