@@ -38,7 +38,7 @@ using namespace Runtime;
  * JitCompilerIA32 class
  ********************************/
 StackProgram* JitCompilerIA32::program;
-PageManager* JitCompilerIA32::buffer_manager;
+PageManager* JitCompilerIA32::page_manager;
 
 void JitCompilerIA32::Initialize(StackProgram* p) {
   program = p;
