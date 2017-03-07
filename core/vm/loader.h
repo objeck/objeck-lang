@@ -77,14 +77,11 @@ class Loader {
     const int size = ReadInt();
     string in(buffer, size);
     buffer += size;    
-   
-    // kludge!
+    
     wstring out;
     if(!BytesToUnicode(in, out)) {
-      wstring dummy(size, L' ');
-      return dummy;
-      // wcerr << L">>> Unable to read unicode string <<<" << endl;
-      // exit(1);
+      wcerr << L">>> Unable to read unicode string <<<" << endl;
+      exit(1);
     }
     
     return out;
