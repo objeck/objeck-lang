@@ -38,8 +38,11 @@ using namespace Runtime;
  * JitCompilerIA64 class
  ********************************/
 StackProgram* JitCompilerIA64::program;
+PageManager* JitCompilerIA64::page_manager;
+
 void JitCompilerIA64::Initialize(StackProgram* p) {
   program = p;
+  page_manager = new PageManager;
 }
 
 void JitCompilerIA64::Prolog() {

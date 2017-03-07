@@ -232,12 +232,12 @@ namespace Runtime {
   /********************************
    * Manage executable buffers of memory
    ********************************/
-  class BufferHolder {
+  class PageHolder {
     unsigned char* buffer;
     int32_t available, index;
 
   public:
-    BufferHolder(int32_t size) {
+    PageHolder(int32_t size) {
       index = 0;
       int factor = 1;
       if(size > PAGE_SIZE) {
@@ -258,7 +258,7 @@ namespace Runtime {
 #endif
     }
 
-    BufferHolder() {
+    PageHolder() {
       index = 0;
       available = PAGE_SIZE;
 #ifdef _WIN32
@@ -276,16 +276,9 @@ namespace Runtime {
 #endif
     }
 
-    ~BufferHolder() {
-#ifdef _WIN32
+    ~PageHolder() {
       free(buffer);
       buffer = NULL;
-#endif
-
-#ifdef _X64
-      free(buffer);
-      buffer = NULL;
-#endif
     }
 
     inline bool CanAddCode(int32_t size) {
@@ -306,19 +299,19 @@ namespace Runtime {
     }
   };
 
-  class BufferManager {
-    vector<BufferHolder*> holders;
+  class PageManager {
+    vector<PageHolder*> holders;
     
   public:
-    BufferManager() {
+    PageManager() {
       for(int i = 0; i < 4; ++i) {
-        holders.push_back(new BufferHolder(PAGE_SIZE * (i + 1)));
+        holders.push_back(new PageHolder(PAGE_SIZE * (i + 1)));
       }
     }
 
-    ~BufferManager() {
+    ~PageManager() {
       while(!holders.empty()) {
-        BufferHolder* tmp = holders.front();
+        PageHolder* tmp = holders.front();
         holders.erase(holders.begin());
         // delete
         delete tmp;
@@ -326,12 +319,12 @@ namespace Runtime {
       }
     }
 
-    unsigned char* GetBuffer(unsigned char* code, int32_t size) {
+    unsigned char* GetPage(unsigned char* code, int32_t size) {
       bool placed = false;
 
       unsigned char* temp;
       for(size_t i = 0; !placed && i < holders.size(); ++i) {
-        BufferHolder* holder = holders[i];
+        PageHolder* holder = holders[i];
         if(holder->CanAddCode(size)) {
           temp = holder->AddCode(code, size);
           placed = true;
@@ -339,7 +332,7 @@ namespace Runtime {
       }
       
       if(!placed) {
-        BufferHolder* buffer = new BufferHolder(size);
+        PageHolder* buffer = new PageHolder(size);
         temp = buffer->AddCode(code, size);
         holders.push_back(buffer);
       }
@@ -360,7 +353,7 @@ namespace Runtime {
    ********************************/
   class JitCompilerIA32 {
     static StackProgram* program;
-    static BufferManager* buffer_manager;
+    static PageManager* page_manager;
 
     deque<RegInstr*> working_stack;
     vector<RegisterHolder*> aval_regs;
@@ -415,11 +408,7 @@ namespace Runtime {
     void ProcessCeiling(StackInstr* instr);
     void ProcessFloatToInt(StackInstr* instr);
     void ProcessIntToFloat(StackInstr* instr);
-
-    static inline unsigned char* GetCodeBuffer(unsigned char* buffer, int32_t size) {
-      return NULL;
-    }
-
+    
     // Add byte code to buffer
     inline void AddMachineCode(unsigned char b) {
       if(code_index == code_buf_max) {
@@ -1724,7 +1713,7 @@ namespace Runtime {
 	      << L", buffer=" << code_buf_max << L" byte(s)" << endl;
 #endif
         // store compiled code
-        method->SetNativeCode(new NativeCode(buffer_manager->GetBuffer(code, code_index), code_index, floats));
+        method->SetNativeCode(new NativeCode(page_manager->GetPage(code, code_index), code_index, floats));
         free(code);
         code = NULL;
 
