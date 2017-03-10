@@ -54,7 +54,7 @@ namespace Runtime {
   class Debugger;
 #endif
   
-#define CALL_STACK_SIZE 1024
+#define CALL_STACK_SIZE 768
 #define OP_STACK_SIZE 256
 
   // holds the calling context for async
@@ -110,7 +110,6 @@ namespace Runtime {
       cached_frames.pop();
 
       frame->method = method;
-      // memset(frame->mem, 0, LOCAL_SIZE * sizeof(long));
       frame->mem[0] = (long)instance;
       frame->ip = -1;
       frame->jit_called = false;
