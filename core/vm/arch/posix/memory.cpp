@@ -787,8 +787,9 @@ void* MemoryManager::CollectMemory(void* arg)
   if(live_memory.size() == allocated_memory.size()) {
     if(uncollected_count < UNCOLLECTED_COUNT) {
       uncollected_count++;
-    } else {
-      mem_max_size <<= 2;
+    } 
+    else {
+      mem_max_size <<= 3;
       uncollected_count = 0;
     }
   }
@@ -796,7 +797,8 @@ void* MemoryManager::CollectMemory(void* arg)
   else if(mem_max_size != MEM_MAX) {
     if(collected_count < COLLECTED_COUNT) {
       collected_count++;
-    } else {
+    } 
+    else {
       mem_max_size >>= 1;
       collected_count = 0;
     }
