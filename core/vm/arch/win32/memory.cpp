@@ -510,13 +510,16 @@ long* MemoryManager::ValidObjectCast(long* mem, long to_id, int* cls_hierarchy, 
 
 void MemoryManager::CollectAllMemory(long* op_stack, long stack_pos)
 {
+#ifdef _TIMING
+  clock_t start = clock();
+#endif
+
 #ifndef GC_SERIAL
   // only one thread at a time can invoke the gargabe collector
   if(!TryEnterCriticalSection(&marked_sweep_cs)) {
     return;
   }
 #endif
-
   CollectionInfo* info = new CollectionInfo;
   info->op_stack = op_stack; 
   info->stack_pos = stack_pos;
@@ -538,6 +541,12 @@ void MemoryManager::CollectAllMemory(long* op_stack, long stack_pos)
   }
   CloseHandle(collect_thread_id);
   LeaveCriticalSection(&marked_sweep_cs);
+#endif
+
+#ifdef _TIMING
+  clock_t end = clock();
+  wcout << L"---------------------------" << endl;
+  wcout << L"Collection: size=" << mem_max_size << L", time=" << (double)(end - start) / CLOCKS_PER_SEC << " second(s)." << endl;
 #endif
 }
 
@@ -742,8 +751,9 @@ uintptr_t WINAPI MemoryManager::CollectMemory(void* arg)
   if(live_memory.size() == allocated_memory.size()) {
     if(uncollected_count < UNCOLLECTED_COUNT) {
       uncollected_count++;
-    } else {
-      mem_max_size <<= 2;
+    } 
+    else {
+      mem_max_size <<= 4;
       uncollected_count = 0;
     }
   }
@@ -751,8 +761,9 @@ uintptr_t WINAPI MemoryManager::CollectMemory(void* arg)
   else if(mem_max_size != MEM_MAX) {
     if(collected_count < COLLECTED_COUNT) {
       collected_count++;
-    } else {
-      mem_max_size >>= 1;
+    } 
+    else {
+      mem_max_size >>= 2;
       collected_count = 0;
     }
   }
