@@ -753,7 +753,7 @@ uintptr_t WINAPI MemoryManager::CollectMemory(void* arg)
       uncollected_count++;
     } 
     else {
-      mem_max_size <<= 4;
+      mem_max_size <<= 3;
       uncollected_count = 0;
     }
   }
@@ -763,7 +763,7 @@ uintptr_t WINAPI MemoryManager::CollectMemory(void* arg)
       collected_count++;
     } 
     else {
-      mem_max_size >>= 2;
+      mem_max_size >>= 1;
       collected_count = 0;
     }
   }
