@@ -789,7 +789,7 @@ void* MemoryManager::CollectMemory(void* arg)
       uncollected_count++;
     } 
     else {
-      mem_max_size <<= 3;
+      mem_max_size <<= 4;
       uncollected_count = 0;
     }
   }
