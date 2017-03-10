@@ -55,7 +55,7 @@ class TreeNode {
 		@item := item;
 	}
 	
-	function : native : BottomUpTree(item : Int, depth : Int) ~ TreeNode {
+	function : BottomUpTree(item : Int, depth : Int) ~ TreeNode {
 		if(depth > 0) {
 			return TreeNode->New(BottomUpTree(2*item-1, depth-1), BottomUpTree(2*item, depth-1), item);
 		};
@@ -63,7 +63,7 @@ class TreeNode {
 		return TreeNode->New(item);
 	}
 
-	method : public : native : ItemCheck() ~ Int {
+	method : public : ItemCheck() ~ Int {
 		if(@left = Nil) {
 			return @item;
 		};

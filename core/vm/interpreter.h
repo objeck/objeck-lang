@@ -100,9 +100,9 @@ namespace Runtime {
 #endif
       if(cached_frames.empty()) {
         // load cache
-        for(int i = 0; i < CALL_STACK_SIZE; i++) {
+        for(int i = 0; i < CALL_STACK_SIZE; ++i) {
           StackFrame* frame = new StackFrame();
-          frame->mem = (long*)calloc(LOCAL_SIZE, sizeof(long));
+          frame->mem = (long*)malloc(LOCAL_SIZE * sizeof(long));
           cached_frames.push(frame);
         }
       }
@@ -110,7 +110,7 @@ namespace Runtime {
       cached_frames.pop();
 
       frame->method = method;
-      memset(frame->mem, 0, LOCAL_SIZE * sizeof(long));
+      // memset(frame->mem, 0, LOCAL_SIZE * sizeof(long));
       frame->mem[0] = (long)instance;
       frame->ip = -1;
       frame->jit_called = false;
