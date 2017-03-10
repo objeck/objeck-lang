@@ -55,7 +55,8 @@ namespace Runtime {
 #endif
   
 #define CALL_STACK_SIZE 1024
-	
+#define OP_STACK_SIZE 256
+
   // holds the calling context for async
   // method calls
   struct ThreadHolder {
@@ -98,16 +99,16 @@ namespace Runtime {
       pthread_mutex_lock(&cached_frames_mutex);
 #endif
       if(cached_frames.empty()) {
-	// load cache
-	for(int i = 0; i < CALL_STACK_SIZE; i++) {
-	  StackFrame* frame = new StackFrame();
-	  frame->mem = (long*)calloc(LOCAL_SIZE, sizeof(long));
-	  cached_frames.push(frame);
-	}
+        // load cache
+        for(int i = 0; i < CALL_STACK_SIZE; i++) {
+          StackFrame* frame = new StackFrame();
+          frame->mem = (long*)calloc(LOCAL_SIZE, sizeof(long));
+          cached_frames.push(frame);
+        }
       }
       StackFrame* frame = cached_frames.top();
       cached_frames.pop();
-      
+
       frame->method = method;
       memset(frame->mem, 0, LOCAL_SIZE * sizeof(long));
       frame->mem[0] = (long)instance;

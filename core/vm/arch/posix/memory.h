@@ -36,9 +36,9 @@
 #include <iomanip>
 
 // basic vm tuning parameters
-#define MEM_MAX 1048576 * 2
-#define UNCOLLECTED_COUNT 7
-#define COLLECTED_COUNT 37
+#define MEM_MAX 2097152
+#define UNCOLLECTED_COUNT 5
+#define COLLECTED_COUNT 13
 #define POOL_SIZE 128
 
 #define EXTRA_BUF_SIZE 4

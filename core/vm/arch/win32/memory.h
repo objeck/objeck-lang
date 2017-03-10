@@ -35,14 +35,13 @@
 #include "../../common.h"
 
 // initial threshold
-// #define MEM_MAX 1024
-#define MEM_MAX 1048576 * 2
+#define MEM_MAX 2097152
 // when this limit is met the garbage collect threshold
 // is increased
-#define UNCOLLECTED_COUNT 7
+#define UNCOLLECTED_COUNT 5
 // when this limit is met the garbage collect threshold
 // is lowered
-#define COLLECTED_COUNT 37
+#define COLLECTED_COUNT 13
 #define POOL_SIZE 128
 
 // memory meta data tags
