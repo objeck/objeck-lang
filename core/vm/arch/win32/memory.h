@@ -39,11 +39,11 @@
 #define MEM_MAX 1048576 * 2
 // when this limit is met the garbage collect threshold
 // is increased
-#define UNCOLLECTED_COUNT 4
+#define UNCOLLECTED_COUNT 7
 // when this limit is met the garbage collect threshold
 // is lowered
-#define COLLECTED_COUNT 8
-#define POOL_SIZE 512
+#define COLLECTED_COUNT 37
+#define POOL_SIZE 128
 
 // memory meta data tags
 #define EXTRA_BUF_SIZE 4
