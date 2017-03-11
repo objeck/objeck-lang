@@ -10,7 +10,7 @@
 			bodies := NBodySystem->New();
 			bodies->Energy()->PrintLine();
 			for(i:=0; i<n; i+=1;) {
-           bodies->Advance(0.01);
+				bodies->Advance(0.01);
 			};
 			bodies->Energy()->PrintLine();
 		}
@@ -28,12 +28,13 @@
 			@bodies[4] := Body->Neptune();
 
 			px := 0.0;
-      	py := 0.0;
+			py := 0.0;
 			pz := 0.0;
 			for(i:=0; i < @bodies->Size(); i += 1;) {
-				px += @bodies[i]->GetVx() * @bodies[i]->GetMass();
-				py += @bodies[i]->GetVy() * @bodies[i]->GetMass();
-				pz += @bodies[i]->GetVz() * @bodies[i]->GetMass();
+				body := @bodies[i];
+				px += body->GetVx() * body->GetMass();
+				py += body->GetVy() * body->GetMass();
+				pz += body->GetVz() * body->GetMass();
 			};
 			@bodies[0]->OffsetMomentum(px, py, pz);
 		}
@@ -42,21 +43,22 @@
 			for(i:=0; i < @bodies->Size(); i+=1;) {
 				iBody := @bodies[i];
 				for(j:=i+1; j < @bodies->Size(); j+=1;) {
-					dx := iBody->GetX() - @bodies[j]->GetX();
-					dy := iBody->GetY() - @bodies[j]->GetY();
-					dz := iBody->GetZ() - @bodies[j]->GetZ();
+					jBody := @bodies[j];
+					dx := iBody->GetX() - jBody->GetX();
+					dy := iBody->GetY() - jBody->GetY();
+					dz := iBody->GetZ() - jBody->GetZ();
 
 					dSquared := dx * dx + dy * dy + dz * dz;
 					distance := dSquared->SquareRoot();
 					mag := dt / (dSquared * distance);
 
-					iBody->SetVx(iBody->GetVx() - dx * @bodies[j]->GetMass() * mag);
-					iBody->SetVy(iBody->GetVy() - dy * @bodies[j]->GetMass() * mag);
-					iBody->SetVz(iBody->GetVz() - dz * @bodies[j]->GetMass() * mag);
+					iBody->SetVx(iBody->GetVx() - dx * jBody->GetMass() * mag);
+					iBody->SetVy(iBody->GetVy() - dy * jBody->GetMass() * mag);
+					iBody->SetVz(iBody->GetVz() - dz * jBody->GetMass() * mag);
 			
-					@bodies[j]->SetVx(@bodies[j]->GetVx() + dx * iBody->GetMass() * mag);
-					@bodies[j]->SetVy(@bodies[j]->GetVy() + dy * iBody->GetMass() * mag);
-					@bodies[j]->SetVz(@bodies[j]->GetVz() + dz * iBody->GetMass() * mag);
+					jBody->SetVx(jBody->GetVx() + dx * iBody->GetMass() * mag);
+					jBody->SetVy(jBody->GetVy() + dy * iBody->GetMass() * mag);
+					jBody->SetVz(jBody->GetVz() + dz * iBody->GetMass() * mag);
 					
 				};
 			};
