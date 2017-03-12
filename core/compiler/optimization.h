@@ -305,9 +305,12 @@ class ItermediateOptimizer {
       optimization_level = 0;
     }
     else {
-      if(o == L"s1") {
-        optimization_level = 1;
+      if(o == L"s0") {
+        optimization_level = 0;
       } 
+      else if(o == L"s1") {
+        optimization_level = 1;
+      }
       else if(o == L"s2") {
         optimization_level = 2;
       } 

@@ -58,10 +58,10 @@ int main(int argc, char* argv[])
   usage += L"          executable default is 'exe'\n";
   usage += L"  -dest:  [output] file name\n";
   usage += L"  -opt:   [option] compiler optimizations s0-s3 (s3 being the most aggressive)\n";
-  usage += L"          default is s0\n";
+  usage += L"          default is s3\n";
   usage += L"  -alt:   [option] allows use of C++ like syntax verses the UML like default\n";
   usage += L"  -debug: [option] compile with debug symbols";
-  usage += L"\n\nExample: \"obc -src ..\\examples\\hello.obs -dest hello.obe\"\n\nVersion: ";
+  usage += L"\n\nExample: \"obc -src ../examples/hello.obs -dest hello.obe\"\n\nVersion: ";
   usage += VERSION_STRING;
   
   int status;
