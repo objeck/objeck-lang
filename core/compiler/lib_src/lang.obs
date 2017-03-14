@@ -2701,10 +2701,11 @@ bundle System {
 		
 		#~
 		Returns the current time
+		@param gmt true of time is in GMT, false for system time zone
 		@return current time
 		~#
-		function : GetTime() ~ Time.Date {
-			return Time.Date->New();
+		function : GetTime(gmt : Bool) ~ Time.Date {
+			return Time.Date->New(gmt);
 		}
 		
 		#~

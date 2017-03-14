@@ -30,7 +30,7 @@ bundle Default {
 		}
 
 		function : Main(args : String[]) ~ Nil {
-			N := 2000;
+			N := 5500;
 			if (args->Size() > 0) {
 				N := args[0]->ToInt();
 			};	
