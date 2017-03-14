@@ -351,6 +351,18 @@ bundle CSV {
 		}
 		
 		#~
+		Removes a row from the table
+		@return true if deleted false otherwise
+		~#
+		method : public : Delete(id : Int) ~ Bool {
+			if(id = 0) {
+				return false;
+			};
+			
+			return @data->Remove(id) <> Nil;
+		}
+		
+		#~
 		Gets the size of rows
 		@return row size
 		~#
