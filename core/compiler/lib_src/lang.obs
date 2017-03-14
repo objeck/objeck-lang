@@ -2846,7 +2846,7 @@ bundle System.Time {
 	#~
 	Provides date and time functionality 
 	~#	
-	class Date {
+	class Date implements System.Compare {
 		@day : Int;
 		@month : Int;
 		@year : Int;
