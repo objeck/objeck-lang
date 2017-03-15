@@ -7,7 +7,10 @@ class DatePart {
 	enum Type {
 		Month,
 		Day,
-		Year
+		Year,
+		Hour,
+		Min,
+		Sec
 	}
 
 	New(index : Int, type : Type) {
@@ -36,16 +39,19 @@ class Test {
 
 		parts := IntMap->New();
 		
+		# month
 		month := format->Find("MM");
 		if(month > -1) {
 			parts->Insert(month, DatePart->New(month, DatePart->Type->Month));
 		};
 
+		# day
 		day := format->Find("dd");
 		if(day > -1) {
 			parts->Insert(day, DatePart->New(day, DatePart->Type->Day));
 		};
 
+		# year
 		long_year_format := true;
 		year := format->Find("yyyy");
 		if(year > -1) {
@@ -59,8 +65,25 @@ class Test {
 			};
 		};
 	
+		# hour
+		hours := format->Find("hh");
+		if(hours > -1) {
+			parts->Insert(hours, DatePart->New(hours, DatePart->Type->Hour));
+		};
+
+		# mins
+		mins := format->Find("mm");
+		if(mins > -1) {
+			parts->Insert(mins, DatePart->New(mins, DatePart->Type->Min));
+		};
+
+		# secs
+		secs := format->Find("ss");
+		if(secs > -1) {
+			parts->Insert(secs, DatePart->New(secs, DatePart->Type->Sec));
+		};
+
 		offset := 0;
-		
 		values := parts->GetValues();
 		each(i : values) {
 			part := values->Get(i)->As(DatePart);
@@ -70,7 +93,7 @@ class Test {
 			select(type) {
 				label DatePart->Type->Month: {
 					pos := month + offset + 1;
-					if(pos > -1) { 
+					if(pos > -1 & pos < date_str->Size()) { 
 						if(date_str->Get(pos)->IsDigit()) {
 							date_str->SubString(month + offset, 2)->PrintLine();
 						}
@@ -83,7 +106,7 @@ class Test {
 
 				label DatePart->Type->Day: {
 					pos := day + offset + 1;
-					if(pos > -1) { 
+					if(pos > -1 & pos < date_str->Size()) { 
 						if(date_str->Get(pos)->IsDigit()) {
 							date_str->SubString(day + offset, 2)->PrintLine();
 						}
@@ -96,7 +119,7 @@ class Test {
 				
 				label DatePart->Type->Year: {
 					pos := year + offset;
-					if(pos > -1) {
+					if(pos > -1 & pos < date_str->Size()) {
 						if(long_year_format) {
 							date_str->SubString(year + offset, 4)->PrintLine();
 						}	
@@ -105,23 +128,46 @@ class Test {
 						};
 					};
 				}
-				
-				other: {
+
+				label DatePart->Type->Hour: {
+					pos := hours + offset + 1;
+					if(pos > -1 & pos < date_str->Size()) { 
+						if(date_str->Get(pos)->IsDigit()) {
+							date_str->SubString(hours + offset, 2)->PrintLine();
+						}
+						else {
+							date_str->SubString(hours + offset, 1)->PrintLine();
+							offset -= 1;
+						};
+					};
+				}
+
+				label DatePart->Type->Min: {
+					pos := mins + offset + 1;
+					if(pos > -1 & pos < date_str->Size()) { 
+						if(date_str->Get(pos)->IsDigit()) {
+							date_str->SubString(mins + offset, 2)->PrintLine();
+						}
+						else {
+							date_str->SubString(mins + offset, 1)->PrintLine();
+							offset -= 1;
+						};
+					};
+				}
+
+				label DatePart->Type->Sec: {
+					pos := secs + offset + 1;
+					if(pos > -1 & pos < date_str->Size()) { 
+						if(date_str->Get(pos)->IsDigit()) {
+							date_str->SubString(secs + offset, 2)->PrintLine();
+						}
+						else {
+							date_str->SubString(secs + offset, 1)->PrintLine();
+							offset -= 1;
+						};
+					};
 				}
 			};
 		};
-		
-#~
-		# month
-month->PrintLine();
-		if(month > -1) {
-			if(date_str->Get(month + 1)->IsDigit()) {
-				date_str->SubString(month, 2)->PrintLine();
-			}
-			else {
-				date_str->SubString(month, 1)->PrintLine();
-			};
-		};
-~#
 	}
 }	
