@@ -16,11 +16,11 @@ Provides support for dates and times
 ~#	
 bundle System.Time {
 	#~
-	Utilities for handling dates
+	Utilities for handling dates. Located in the 'collect.obl' library.
 	~#
 	class DateUtility {
 		#~
-		Parses a date from a String. Format <b>MM: </b>month, <b>dd: </b>day, <b>yy<yy>: </b>year, <b>hh: </b>hour, <b>mm: </b>minutes and <b>ss: </b>seconds. 
+		Parses a date from a String. Format <i>MM: </i>month, <i>dd: </i>day, <i>yy(yy): </i>year, <i>hh: </i>hour, <i>mm: </i>minutes and <i>ss: </i>seconds. 
 		@param format date string format 
 		@param date_str date
 		@return Date instance
