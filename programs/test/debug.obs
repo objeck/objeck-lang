@@ -1,7 +1,127 @@
+use Collection;
+
+class DatePart {
+	@index : Int;
+	@type : Type;
+
+	enum Type {
+		Month,
+		Day,
+		Year
+	}
+
+	New(index : Int, type : Type) {
+		@index := index;
+		@type := type;
+	}
+
+	method : public : GetType() ~ Type {
+		return @type;
+	}
+
+	method : public : GetIndex() ~ Int {
+		return @index;
+	}
+}
+
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		a := 3;
-		b := 2;
-		(a + b)->PrintLine();
+		if(args->Size() <> 2) {
+			return;
+		};
+		
+		format := args[0];
+		date_str := args[1];
+		format->PrintLine();
+
+		parts := IntMap->New();
+		
+		month := format->Find("MM");
+		if(month > -1) {
+			parts->Insert(month, DatePart->New(month, DatePart->Type->Month));
+		};
+
+		day := format->Find("dd");
+		if(day > -1) {
+			parts->Insert(day, DatePart->New(day, DatePart->Type->Day));
+		};
+
+		long_year_format := true;
+		year := format->Find("yyyy");
+		if(year > -1) {
+			parts->Insert(year, DatePart->New(year, DatePart->Type->Year));
+		}
+		else {
+			year := format->Find("yy");
+			if(year > -1) {
+				parts->Insert(year, DatePart->New(year, DatePart->Type->Year));
+				long_year_format := false;
+			};
+		};
+	
+		offset := 0;
+		
+		values := parts->GetValues();
+		each(i : values) {
+			part := values->Get(i)->As(DatePart);
+			index := part->GetIndex();
+			type := part->GetType();
+
+			select(type) {
+				label DatePart->Type->Month: {
+					pos := month + offset + 1;
+					if(pos > -1) { 
+						if(date_str->Get(pos)->IsDigit()) {
+							date_str->SubString(month + offset, 2)->PrintLine();
+						}
+						else {
+							date_str->SubString(month + offset, 1)->PrintLine();
+							offset -= 1;
+						};
+					};
+				}
+
+				label DatePart->Type->Day: {
+					pos := day + offset + 1;
+					if(pos > -1) { 
+						if(date_str->Get(pos)->IsDigit()) {
+							date_str->SubString(day + offset, 2)->PrintLine();
+						}
+						else {
+							date_str->SubString(day + offset, 1)->PrintLine();
+							offset -= 1;
+						};
+					};
+				}
+				
+				label DatePart->Type->Year: {
+					pos := year + offset;
+					if(pos > -1) {
+						if(long_year_format) {
+							date_str->SubString(year + offset, 4)->PrintLine();
+						}	
+						else {
+							date_str->SubString(year + offset, 2)->PrintLine();
+						};
+					};
+				}
+				
+				other: {
+				}
+			};
+		};
+		
+#~
+		# month
+month->PrintLine();
+		if(month > -1) {
+			if(date_str->Get(month + 1)->IsDigit()) {
+				date_str->SubString(month, 2)->PrintLine();
+			}
+			else {
+				date_str->SubString(month, 1)->PrintLine();
+			};
+		};
+~#
 	}
 }	
