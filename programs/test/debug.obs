@@ -1,42 +1,17 @@
 use Collection;
-
-class DatePart {
-	@index : Int;
-	@type : Type;
-
-	enum Type {
-		Month,
-		Day,
-		Year,
-		Hour,
-		Min,
-		Sec
-	}
-
-	New(index : Int, type : Type) {
-		@index := index;
-		@type := type;
-	}
-
-	method : public : GetType() ~ Type {
-		return @type;
-	}
-
-	method : public : GetIndex() ~ Int {
-		return @index;
-	}
-}
+use System.Time;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() <> 2) {
 			return;
 		};
-		
-		format := args[0];
-		date_str := args[1];
-		format->PrintLine();
 
+		date := ParseDate(args[1], args[0], false);
+		date->ToString()->PrintLine();
+	}
+
+	function : ParseDate(date_str : String, format : String, gmt : Bool) ~ Date {
 		parts := IntMap->New();
 		
 		# month
@@ -83,6 +58,9 @@ class Test {
 			parts->Insert(secs, DatePart->New(secs, DatePart->Type->Sec));
 		};
 
+		date_month := 0; date_day := 0; date_year := 0;
+		date_hours := 0; date_mins := 0; date_secs := 0;
+		
 		offset := 0;
 		values := parts->GetValues();
 		each(i : values) {
@@ -95,10 +73,12 @@ class Test {
 					pos := month + offset + 1;
 					if(pos > -1 & pos < date_str->Size()) { 
 						if(date_str->Get(pos)->IsDigit()) {
-							date_str->SubString(month + offset, 2)->PrintLine();
+#							date_str->SubString(month + offset, 2)->PrintLine();
+							date_month := date_str->SubString(month + offset, 2)->ToInt();
 						}
 						else {
-							date_str->SubString(month + offset, 1)->PrintLine();
+#							date_str->SubString(month + offset, 1)->PrintLine();
+							date_month := date_str->SubString(month + offset, 1)->ToInt();
 							offset -= 1;
 						};
 					};
@@ -108,10 +88,12 @@ class Test {
 					pos := day + offset + 1;
 					if(pos > -1 & pos < date_str->Size()) { 
 						if(date_str->Get(pos)->IsDigit()) {
-							date_str->SubString(day + offset, 2)->PrintLine();
+#							date_str->SubString(day + offset, 2)->PrintLine();
+							date_day := date_str->SubString(day + offset, 2)->ToInt();
 						}
 						else {
-							date_str->SubString(day + offset, 1)->PrintLine();
+#							date_str->SubString(day + offset, 1)->PrintLine();
+							date_day := date_str->SubString(day + offset, 1)->ToInt();
 							offset -= 1;
 						};
 					};
@@ -121,10 +103,12 @@ class Test {
 					pos := year + offset;
 					if(pos > -1 & pos < date_str->Size()) {
 						if(long_year_format) {
-							date_str->SubString(year + offset, 4)->PrintLine();
+#							date_str->SubString(year + offset, 4)->PrintLine();
+							date_year := date_str->SubString(year + offset, 4)->ToInt();
 						}	
 						else {
-							date_str->SubString(year + offset, 2)->PrintLine();
+#							date_str->SubString(year + offset, 2)->PrintLine();
+							date_year := date_str->SubString(year + offset, 2)->ToInt();
 						};
 					};
 				}
@@ -133,10 +117,12 @@ class Test {
 					pos := hours + offset + 1;
 					if(pos > -1 & pos < date_str->Size()) { 
 						if(date_str->Get(pos)->IsDigit()) {
-							date_str->SubString(hours + offset, 2)->PrintLine();
+#							date_str->SubString(hours + offset, 2)->PrintLine();
+							date_hours := date_str->SubString(hours + offset, 2)->ToInt();
 						}
 						else {
-							date_str->SubString(hours + offset, 1)->PrintLine();
+#							date_str->SubString(hours + offset, 1)->PrintLine();
+							date_hours := date_str->SubString(hours + offset, 1)->ToInt();
 							offset -= 1;
 						};
 					};
@@ -146,10 +132,12 @@ class Test {
 					pos := mins + offset + 1;
 					if(pos > -1 & pos < date_str->Size()) { 
 						if(date_str->Get(pos)->IsDigit()) {
-							date_str->SubString(mins + offset, 2)->PrintLine();
+#							date_str->SubString(mins + offset, 2)->PrintLine();
+							date_mins := date_str->SubString(mins + offset, 2)->ToInt();
 						}
 						else {
-							date_str->SubString(mins + offset, 1)->PrintLine();
+#							date_str->SubString(mins + offset, 1)->PrintLine();
+							date_mins := date_str->SubString(mins + offset, 1)->ToInt();
 							offset -= 1;
 						};
 					};
@@ -159,15 +147,55 @@ class Test {
 					pos := secs + offset + 1;
 					if(pos > -1 & pos < date_str->Size()) { 
 						if(date_str->Get(pos)->IsDigit()) {
-							date_str->SubString(secs + offset, 2)->PrintLine();
+#							date_str->SubString(secs + offset, 2)->PrintLine();
+							date_secs := date_str->SubString(mins + offset, 2)->ToInt();
 						}
 						else {
-							date_str->SubString(secs + offset, 1)->PrintLine();
+#							date_str->SubString(secs + offset, 1)->PrintLine();
+							date_secs := date_str->SubString(secs + offset, 1)->ToInt();
 							offset -= 1;
 						};
 					};
 				}
 			};
 		};
+
+date_month->PrintLine();
+date_year->PrintLine();
+date_day->PrintLine();
+
+		date := Date->New(date_day, date_month, date_year, gmt);
+		date->AddHours(date_hours);
+		date->AddMinutes(date_mins);
+		date->AddSeconds(date_secs);
+
+		return date;
 	}
-}	
+}
+
+class DatePart {
+	@index : Int;
+	@type : Type;
+
+	enum Type {
+		Month,
+		Day,
+		Year,
+		Hour,
+		Min,
+		Sec
+	}
+
+	New(index : Int, type : Type) {
+		@index := index;
+		@type := type;
+	}
+
+	method : public : GetType() ~ Type {
+		return @type;
+	}
+
+	method : public : GetIndex() ~ Int {
+		return @index;
+	}
+}
