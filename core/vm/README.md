@@ -3,7 +3,7 @@ The Objeck virtual machine is a stack-based VM that can convert bytecode into ma
 
 ![alt text](../../images/design3.png "Objeck VM")
 
-###Design
+### Design
 The major components of the VM are the interpreter, JIT compiler and memory manager. All 3 components interop with one another. For portability, OS functions for Windows and POSIX environments are abstracted.
 
 The VM supports the following targets:
@@ -13,5 +13,5 @@ The VM supports the following targets:
 3. Linux 64-bit (POSIX, AMD64)
 4. Linux 32-bit (POSIX, IA-32)
 
-###Implementation
+### Implementation
 C++ with STL and machine code
