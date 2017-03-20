@@ -59,8 +59,20 @@ int Compile(map<const wstring, wstring> &arguments, list<wstring> &argument_opti
   // check for optimize flag
   map<const wstring, wstring>::iterator result = arguments.find(L"ver");
   if(result != arguments.end()) {
-    wcout << L"Version " << VERSION_STRING << endl;
-	argument_options.remove(L"ver");
+#ifdef _WIN32
+    wcout << L"Objeck (x86-win32) " << VERSION_STRING << endl;
+#elif _OSX
+    wcout << L"Objeck (x86_64-macOS) " << VERSION_STRING << endl;
+#elif _X64
+    wcout << L"Objeck (x86_64-Linux) " << VERSION_STRING << endl;
+#else
+    wcout << L"Objeck (x86-Linux) " << VERSION_STRING << endl;
+#endif 
+    wcout << L"Copyright(c) 2008-2017, Randy Hollines\n";
+    wcout << L"This is free software; see the source for copying conditions.There is NO\n";
+    wcout << L"warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n";
+    argument_options.remove(L"ver");
+    exit(0);
   }
   
   // check source input
