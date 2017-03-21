@@ -12,9 +12,9 @@ use System.IO.File;
 use System.Time;
 
 #~
-Provides support for dates and times
+Provides support for conversions
 ~#	
-bundle System.Time {
+bundle System.Utility {
 	#~
 	Utilities for handling dates. Located in the 'collect.obl' library.
 	~#
