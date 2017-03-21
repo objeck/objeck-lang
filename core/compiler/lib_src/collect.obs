@@ -87,11 +87,9 @@ bundle System.Time {
 						pos := month + offset + 1;
 						if(pos > -1 & pos < date_str->Size()) { 
 							if(date_str->Get(pos)->IsDigit()) {
-	#							date_str->SubString(month + offset, 2)->PrintLine();
 								date_month := date_str->SubString(month + offset, 2)->ToInt();
 							}
 							else {
-	#							date_str->SubString(month + offset, 1)->PrintLine();
 								date_month := date_str->SubString(month + offset, 1)->ToInt();
 								offset -= 1;
 							};
@@ -102,11 +100,9 @@ bundle System.Time {
 						pos := day + offset + 1;
 						if(pos > -1 & pos < date_str->Size()) { 
 							if(date_str->Get(pos)->IsDigit()) {
-	#							date_str->SubString(day + offset, 2)->PrintLine();
 								date_day := date_str->SubString(day + offset, 2)->ToInt();
 							}
 							else {
-	#							date_str->SubString(day + offset, 1)->PrintLine();
 								date_day := date_str->SubString(day + offset, 1)->ToInt();
 								offset -= 1;
 							};
@@ -117,11 +113,9 @@ bundle System.Time {
 						pos := year + offset;
 						if(pos > -1 & pos < date_str->Size()) {
 							if(long_year_format) {
-	#							date_str->SubString(year + offset, 4)->PrintLine();
 								date_year := date_str->SubString(year + offset, 4)->ToInt();
 							}	
 							else {
-	#							date_str->SubString(year + offset, 2)->PrintLine();
 								date_year := date_str->SubString(year + offset, 2)->ToInt();
 							};
 						};
@@ -131,11 +125,9 @@ bundle System.Time {
 						pos := hours + offset + 1;
 						if(pos > -1 & pos < date_str->Size()) { 
 							if(date_str->Get(pos)->IsDigit()) {
-	#							date_str->SubString(hours + offset, 2)->PrintLine();
 								date_hours := date_str->SubString(hours + offset, 2)->ToInt();
 							}
 							else {
-	#							date_str->SubString(hours + offset, 1)->PrintLine();
 								date_hours := date_str->SubString(hours + offset, 1)->ToInt();
 								offset -= 1;
 							};
@@ -146,11 +138,9 @@ bundle System.Time {
 						pos := mins + offset + 1;
 						if(pos > -1 & pos < date_str->Size()) { 
 							if(date_str->Get(pos)->IsDigit()) {
-	#							date_str->SubString(mins + offset, 2)->PrintLine();
 								date_mins := date_str->SubString(mins + offset, 2)->ToInt();
 							}
 							else {
-	#							date_str->SubString(mins + offset, 1)->PrintLine();
 								date_mins := date_str->SubString(mins + offset, 1)->ToInt();
 								offset -= 1;
 							};
@@ -161,11 +151,9 @@ bundle System.Time {
 						pos := secs + offset + 1;
 						if(pos > -1 & pos < date_str->Size()) { 
 							if(date_str->Get(pos)->IsDigit()) {
-	#							date_str->SubString(secs + offset, 2)->PrintLine();
 								date_secs := date_str->SubString(mins + offset, 2)->ToInt();
 							}
 							else {
-	#							date_str->SubString(secs + offset, 1)->PrintLine();
 								date_secs := date_str->SubString(secs + offset, 1)->ToInt();
 								offset -= 1;
 							};
@@ -548,7 +536,7 @@ bundle Collection {
 		
 		#~
 		Uses the given function to filter out values
-		@param f function to use a filter
+		@param f function to use a filter. If the function evaluates to true the value is added to the collection.
 		@return filter vector
 		~#
 		method : public : Filter(f : (Int) ~ Bool) ~ IntVector {
@@ -936,7 +924,7 @@ bundle Collection {
 		
 		#~
 		Uses the given function to filter out values
-		@param f function to use a filter
+		@param f function to use a filter. If the function evaluates to true the value is added to the collection.
 		@return filter vector
 		~#
 		method : public : Filter(f : (Float) ~ Bool) ~ FloatVector {
@@ -1256,7 +1244,7 @@ bundle Collection {
 		
 		#~
 		Uses the given function to filter out values
-		@param f function to use a filter
+		@param f function to use a filter. If the function evaluates to true the value is added to the collection.
 		@return filter vector
 		~#
 		method : public : Filter(f : (Compare) ~ Bool) ~ CompareVector {
