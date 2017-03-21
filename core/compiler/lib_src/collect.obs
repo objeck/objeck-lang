@@ -14,7 +14,7 @@ use System.Time;
 #~
 Provides support for conversions
 ~#	
-bundle System.Utility {
+bundle System.Time {
 	#~
 	Utilities for handling dates. Located in the 'collect.obl' library.
 	~#
@@ -23,6 +23,7 @@ bundle System.Utility {
 		Parses a date from a String. Format <i>MM: </i>month, <i>dd: </i>day, <i>yy(yy): </i>year, <i>hh: </i>hour, <i>mm: </i>minutes and <i>ss: </i>seconds. 
 		@param format date string format 
 		@param date_str date
+		@param gmt true is GMT, false otherwise
 		@return Date instance
 		~#
 		function : Parse(date_str : String, format : String, gmt : Bool) ~ Date {
