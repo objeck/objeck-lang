@@ -2100,6 +2100,9 @@ namespace frontend {
         SymbolEntry* entry = declaration_list[i]->GetEntry();
         if(entry) {
           user_name += EncodeUserType(entry->GetType());
+          if(i + 1 < declaration_list.size()) {
+            user_name += L", "; 
+          }
         }
       }
       user_name += L") ~ ";
