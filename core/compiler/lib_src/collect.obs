@@ -2917,8 +2917,8 @@ bundle Collection {
 		}
 		
 		#~
-		Gets the backing Compre map
-		@return backing Compre map
+		Gets the backing Compare map
+		@return backing Compare map
 		~#
 		method : public : GetMap() ~ Map {
 			return @map;
@@ -3026,8 +3026,8 @@ bundle Collection {
 		}
 
 		#~
-		Gets the backing Compre map
-		@return backing Compre map
+		Gets the backing Compare map
+		@return backing Compare map
 		~#
 		method : public : GetMap() ~ Map {
 			return @map;
@@ -3482,6 +3482,26 @@ bundle Collection {
 			};
 			
 			return node;
+		}
+		
+		#~
+		Uses the given function to filter out values
+		@param f function to use a filter. If the function evaluates to true the value is added to the collection.
+		@return filter vector
+		~#
+		method : public : Filter(f : (Int) ~ Bool) ~ Map {
+			filtered := Map->New();
+			
+			keys := GetKeys();
+			each(i : keys) {
+				key := keys->Get(i)->As(Compare);
+				if(f(key)) {
+					value := Find(key);
+					filtered->Insert(key, value);
+				};
+			};
+			
+			return filtered;
 		}
 	}
 	
