@@ -2846,18 +2846,13 @@ bundle Collection {
 			@map->Remove(IntHolder->New(key));
 		}
     
-   	#~
+		#~
 		Searches for a value in a map
 		@param key search key
 		@return found value, 0 if not found
 		~#
 		method : public : Find(key : Int) ~ Base {
-			result : Base := @map->Find(IntHolder->New(key));
-			if(result <> Nil) {
-				return result;
-			};
-
-			return Nil;
+			return @map->Find(IntHolder->New(key));
 		}
 		
 		#~
@@ -2915,6 +2910,26 @@ bundle Collection {
 		method : public : Size() ~ Int {
 			return @map->Size();
 		}
+
+		#~
+		Uses the given function to filter out values
+		@param f function to use a filter. If the function evaluates to true the value is added to the collection.
+		@return filter vector
+		~#
+		method : public : Filter(f : (Int) ~ Bool) ~ IntMap {
+			filtered := IntMap->New();
+			
+			keys := GetKeys();
+			each(i : keys) {
+				key := keys->Get(i);
+				if(f(key)) {
+					value := Find(key);
+					filtered->Insert(key, value);
+				};
+			};
+			
+			return filtered;
+		}
 		
 		#~
 		Gets the backing Compare map
@@ -2955,18 +2970,13 @@ bundle Collection {
 			@map->Remove(FloatHolder->New(key));
 		}
     
-   	#~
+	   	#~
 		Searches for a value in a map
 		@param key search key
-		@return found value, 0.0 if not found
+		@return found value, Nil otherwise
 		~#
-		method : public : Find(key : Float) ~ Float {
-			result : FloatHolder := @map->Find(FloatHolder->New(key))->As(FloatHolder);
-			if(result <> Nil) {
-				return result->Get();
-			};
-
-			return 0.0;
+		method : public : Find(key : Float) ~ Base {
+			return @map->Find(FloatHolder->New(key));
 		}
 		
 		#~
@@ -3023,6 +3033,26 @@ bundle Collection {
 		~#
 		method : public : Size() ~ Int {
 			return @map->Size();
+		}
+
+		#~
+		Uses the given function to filter out values
+		@param f function to use a filter. If the function evaluates to true the value is added to the collection.
+		@return filter vector
+		~#
+		method : public : Filter(f : (Float) ~ Bool) ~ FloatMap {
+			filtered := FloatMap->New();
+			
+			keys := GetKeys();
+			each(i : keys) {
+				key := keys->Get(i);
+				if(f(key)) {
+					value := Find(key);
+					filtered->Insert(key, value);
+				};
+			};
+			
+			return filtered;
 		}
 
 		#~
@@ -3182,6 +3212,26 @@ bundle Collection {
 		~#
 		method : public : native : IsEmpty() ~ Bool {
 			return @map->IsEmpty();
+		}
+
+		#~
+		Uses the given function to filter out values
+		@param f function to use a filter. If the function evaluates to true the value is added to the collection.
+		@return filter vector
+		~#
+		method : public : Filter(f : (String) ~ Bool) ~ StringMap {
+			filtered := StringMap->New();
+			
+			keys := GetKeys();
+			each(i : keys) {
+				key := keys->Get(i)->As(String);
+				if(f(key)) {
+					value := Find(key);
+					filtered->Insert(key, value);
+				};
+			};
+			
+			return filtered;
 		}
 		
 		#~
@@ -3489,7 +3539,7 @@ bundle Collection {
 		@param f function to use a filter. If the function evaluates to true the value is added to the collection.
 		@return filter vector
 		~#
-		method : public : Filter(f : (Int) ~ Bool) ~ Map {
+		method : public : Filter(f : (Compare) ~ Bool) ~ Map {
 			filtered := Map->New();
 			
 			keys := GetKeys();
@@ -3502,6 +3552,103 @@ bundle Collection {
 			};
 			
 			return filtered;
+		}
+	}
+	
+	#~
+	Set of int values
+	~#
+	class IntSet {
+		@map : Map;
+
+		#~
+		Default constructor 
+		~#
+		New() {
+			@map := Map->New();
+		}
+
+		#~
+		Inserts a key into the set
+		@param key key
+		~#
+		method : public : Insert(key : Int) ~ Nil {
+			@map->Insert(IntHolder->New(key), Base->New());
+		}
+		
+		#~
+		Removes a key from the set
+		@param key key for value to remove
+		~#
+		method : public : Remove(key : Int) ~ Nil {
+			@map->Remove(IntHolder->New(key));
+		}
+    
+    	#~
+		Checks for key in set
+		@param key search key
+		@return true if found, false otherwise
+		~#
+		method : public : Has(key : Int) ~ Bool {
+			result := @map->Find(IntHolder->New(key))->As(IntHolder);
+			return result <> Nil;
+		}
+    
+    	#~
+		Get a collection of keys
+		@return vector of keys
+		~#
+		method : public: native : GetKeys() ~ IntVector {
+			keys := IntVector->New();
+			holder_keys := @map->GetKeys();
+			for(i := 0; i < holder_keys->Size(); i += 1;) {
+				holder_value : IntHolder := holder_keys->Get(i)->As(IntHolder);
+				keys->AddBack(holder_value->Get());   
+			};
+
+			return keys;
+		}
+
+		#~
+		Clears the set
+		~#
+		method : public : Empty() ~ Nil {
+			@map->Empty();
+		}
+		
+		#~
+		Checks to see if the map is empty
+		@return true if empty, false otherwise
+		~#
+		method : public : native : IsEmpty() ~ Bool {
+			return @map->IsEmpty();
+		}
+
+		#~
+		Uses the given function to filter out values
+		@param f function to use a filter. If the function evaluates to true the value is added to the collection.
+		@return filter vector
+		~#
+		method : public : Filter(f : (Int) ~ Bool) ~ IntSet {
+			filtered := IntSet->New();
+			
+			keys := GetKeys();
+			each(i : keys) {
+				key := keys->Get(i);
+				if(f(key)) {
+					filtered->Insert(key);
+				};
+			};
+			
+			return filtered;
+		}
+
+		#~
+		Size of map
+		@return size of queue
+		~#
+		method : public : native : Size() ~ Int {
+			return @map->Size();
 		}
 	}
 	
@@ -3575,6 +3722,25 @@ bundle Collection {
 		}
 
 		#~
+		Uses the given function to filter out values
+		@param f function to use a filter. If the function evaluates to true the value is added to the collection.
+		@return filter vector
+		~#
+		method : public : Filter(f : (Float) ~ Bool) ~ FloatSet {
+			filtered := FloatSet->New();
+			
+			keys := GetKeys();
+			each(i : keys) {
+				key := keys->Get(i);
+				if(f(key)) {
+					filtered->Insert(key);
+				};
+			};
+			
+			return filtered;
+		}
+
+		#~
 		Size of map
 		@return size of queue
 		~#
@@ -3642,6 +3808,25 @@ bundle Collection {
 		~#
 		method : public : native : IsEmpty() ~ Bool {
 			return @map->IsEmpty();
+		}
+
+		#~
+		Uses the given function to filter out values
+		@param f function to use a filter. If the function evaluates to true the value is added to the collection.
+		@return filter vector
+		~#
+		method : public : Filter(f : (String) ~ Bool) ~ StringSet {
+			filtered := StringSet->New();
+			
+			keys := GetKeys();
+			each(i : keys) {
+				key := keys->Get(i)->As(String);
+				if(f(key)) {
+					filtered->Insert(key);
+				};
+			};
+			
+			return filtered;
 		}
 		
 		#~

@@ -1,10 +1,28 @@
-use System.IO.Net;
+use Collection;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		ips := TCPSocket->Resolve("www.objeck.org");
-		each(i : ips) {
-			ips[i]->PrintLine();
+		m := Map->New();
+		m->Insert(IntHolder->New(3), "Three");
+		m->Insert(IntHolder->New(1), "One");
+		m->Insert(IntHolder->New(5), "Five");
+		m->Insert(IntHolder->New(0), "Five");
+		m->Insert(IntHolder->New(10), "Ten");
+		m->Insert(IntHolder->New(-13), "Ten");
+		m->Size()->PrintLine();
+
+		f := m->Filter(Filter(Compare) ~ Bool);
+		f->Size()->PrintLine();
+	}
+
+	function : Filter(c : Compare) ~ Bool {
+		if(c->TypeOf(IntHolder)) {
+			i := c->As(IntHolder);
+			if(i->Get() < 5) {
+				return true;
+			};
 		};
+
+		return false;
 	}
 }
