@@ -448,6 +448,9 @@ class LibraryMethod {
 
     for(size_t i = 0; i < declarations.size(); ++i) {
       user_name += EncodeUserType(declarations[i]);
+      if(i + 1 < declarations.size()) {
+        user_name += L", "; 
+      }
     }
     user_name += L") ~ ";
 
