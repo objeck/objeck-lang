@@ -1222,6 +1222,19 @@ bundle ODBC {
 		}
 		
 		#~
+		Copy constructor for System.Time.Date
+		@param date System.Time.Date
+		~#
+		New(date : System.Time.Date) {
+			# size of c struct
+			@buffer := Byte->New[6];
+			
+			@year := date->GetYear();
+			@month := date->GetMonth();
+			@day := date->GetDay();
+		}
+		
+		#~
 		Gets the year
 		@return year
 		~#
@@ -1306,6 +1319,22 @@ bundle ODBC {
 		New() {
 			# size of c struct
 			@buffer := Byte->New[16];
+		}
+		
+		#~
+		Copy constructor for System.Time.Date
+		@param date System.Time.Date
+		~#
+		New(date : System.Time.Date) {
+			# size of c struct
+			@buffer := Byte->New[16];
+			
+			@year := date->GetYear();
+			@month := date->GetMonth();
+			@day := date->GetDay();
+			@hours := date->GetHours();
+			@minute := date->GetMinutes();
+			@second := date->GetSeconds();
 		}
 		
 		#~
