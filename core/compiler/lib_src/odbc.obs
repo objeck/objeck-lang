@@ -1454,7 +1454,7 @@ bundle ODBC {
 		~#
 		method : public : ToDate() ~ System.Time.Date {
 			date := System.Time.Date->New(@day, @month, @year, false);
-			date->HoursAdd(@hours);
+			date->AddHours(@hours);
 			date->AddMinutes(@minute);
 			date->AddSeconds(@second);
 			
