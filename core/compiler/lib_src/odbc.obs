@@ -1282,6 +1282,13 @@ bundle ODBC {
 			@day := day;
 		}
 
+		#~
+		Converts a ODBC date into a system date
+		@return system date
+		~#
+		method : public : ToDate() ~ System.Time.Date {
+			return System.Time.Date->New(@day, @month, @year, false);
+		}
 		
 		#~
 		Creates a string representation of the date
@@ -1441,6 +1448,19 @@ bundle ODBC {
 			return @fraction;
 		}
 
+		#~
+		Converts a timestamp into a system date
+		@return system date
+		~#
+		method : public : ToDate() ~ System.Time.Date {
+			date := System.Time.Date->New(@day, @month, @year, false);
+			date->HoursAdd(@hours);
+			date->AddMinutes(@minute);
+			date->AddSeconds(@second);
+			
+			return date;
+		}
+		
 		#~
 		Creates a string representation of the timestamp
 		@return string representation of the timestamp
