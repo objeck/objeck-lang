@@ -102,7 +102,7 @@ namespace Runtime {
         // load cache
         for(int i = 0; i < CALL_STACK_SIZE; ++i) {
           StackFrame* frame = new StackFrame();
-          frame->mem = (long*)malloc(LOCAL_SIZE * sizeof(long));
+          frame->mem = (long*)calloc(LOCAL_SIZE, sizeof(long));
           cached_frames.push(frame);
         }
       }
