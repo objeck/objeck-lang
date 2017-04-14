@@ -3,10 +3,9 @@ use Collection;
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		v := CreateHolders(["Here", "are", "some", "sample", "strings", "to", "be", "sorted"]);
-		Show(v);
-		
+		"unsorted: "->Print(); Show(v);
 		v->Sort();
-		Show(v);
+		"sorted: "->Print(); Show(v);
 	}
 	
 	function : CreateHolders(strings : String[]) ~ CompareVector {
