@@ -71,12 +71,12 @@ BEGIN
     BEGIN
         BLOCK "040904b0"
         BEGIN
-            VALUE "Comments", "Objeck Language Compiler"
+            VALUE "Comments", "Objeck Compiler"
             VALUE "CompanyName", "Randy Hollines"
-            VALUE "FileDescription", "Objeck Language Compiler"
+            VALUE "FileDescription", "Objeck Compiler"
             VALUE "FileVersion", "3.6.3"
             VALUE "InternalName", "obc"
-            VALUE "LegalCopyright", "Copyright (C) 2008-2015"
+            VALUE "LegalCopyright", "Copyright (C) 2008-2017"
             VALUE "OriginalFilename", "obc.exe"
             VALUE "ProductName", "Objeck Compiler"
             VALUE "ProductVersion", "3.6.3"
