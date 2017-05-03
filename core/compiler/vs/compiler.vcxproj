@@ -148,6 +148,7 @@
     <ClInclude Include="..\scanner.h" />
     <ClInclude Include="..\tree.h" />
     <ClInclude Include="..\types.h" />
+    <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\compiler.cpp" />
@@ -161,6 +162,9 @@
     <ClCompile Include="..\scanner.cpp" />
     <ClCompile Include="..\tree.cpp" />
     <ClCompile Include="..\types.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="objeck.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
