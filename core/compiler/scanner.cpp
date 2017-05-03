@@ -55,7 +55,11 @@ Scanner::Scanner(wstring f, bool j, bool p)
     is_first_token = true;
     buffer_size = f.size();
     buffer = new wchar_t[buffer_size + 1];
+#ifdef _WIN32
+	wcscpy_s(buffer, f.size(), f.c_str());
+#else
     wcscpy(buffer, f.c_str());
+#endif
     
 #ifdef _DEBUG
     wcout << L"---------- Source (inline) ---------" << endl;
