@@ -1,8 +1,6 @@
 #include "windows.h"
 #include "resource.h"
 
-#define APSTUDIO_READONLY_SYMBOLS
-
 /////////////////////////////////////////////////////////////////////////////
 #undef APSTUDIO_READONLY_SYMBOLS
 
@@ -60,7 +58,7 @@ BEGIN
             VALUE "FileDescription", "Objeck Virtual Machine"
             VALUE "FileVersion", "3.6.3"
             VALUE "InternalName", "obr"
-            VALUE "LegalCopyright", "Copyright (C) 2008-2015"
+            VALUE "LegalCopyright", "Copyright (C) 2008-2017"
             VALUE "OriginalFilename", "obr.exe"
             VALUE "ProductName", "Objeck Runtime"
             VALUE "ProductVersion", "3.6.3"
