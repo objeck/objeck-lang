@@ -117,7 +117,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
-      <Optimization>MaxSpeed</Optimization>
+      <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;_SCL_SECURE_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -160,6 +160,7 @@
     <ClInclude Include="..\lib_api.h" />
     <ClInclude Include="..\loader.h" />
     <ClInclude Include="..\vm.h" />
+    <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\arch\jit\ia32\jit_intel_lp32.cpp" />
@@ -169,6 +170,9 @@
     <ClCompile Include="..\loader.cpp" />
     <ClCompile Include="..\vm.cpp" />
     <ClCompile Include="..\win_main.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="objeck.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
