@@ -100,8 +100,6 @@ typedef int ASN1_BOOLEAN;
 typedef int ASN1_NULL;
 # endif
 
-typedef struct asn1_object_st ASN1_OBJECT;
-
 typedef struct ASN1_ITEM_st ASN1_ITEM;
 typedef struct asn1_pctx_st ASN1_PCTX;
 
@@ -177,8 +175,6 @@ typedef struct st_ERR_FNS ERR_FNS;
 typedef struct engine_st ENGINE;
 typedef struct ssl_st SSL;
 typedef struct ssl_ctx_st SSL_CTX;
-
-typedef struct comp_method_st COMP_METHOD;
 
 typedef struct X509_POLICY_NODE_st X509_POLICY_NODE;
 typedef struct X509_POLICY_LEVEL_st X509_POLICY_LEVEL;

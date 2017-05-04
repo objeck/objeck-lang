@@ -14,7 +14,7 @@ extern "C" {
 
 typedef struct comp_ctx_st COMP_CTX;
 
-struct comp_method_st {
+typedef struct comp_method_st {
     int type;                   /* NID for compression library */
     const char *name;           /* A text string to identify the library */
     int (*init) (COMP_CTX *ctx);
@@ -30,7 +30,7 @@ struct comp_method_st {
      */
     long (*ctrl) (void);
     long (*callback_ctrl) (void);
-};
+} COMP_METHOD;
 
 struct comp_ctx_st {
     COMP_METHOD *meth;
