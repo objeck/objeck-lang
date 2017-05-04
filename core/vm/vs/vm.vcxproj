@@ -145,9 +145,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <Text Include="ReadMe.txt" />
-  </ItemGroup>
-  <ItemGroup>
     <ClInclude Include="..\..\shared\instrs.h" />
     <ClInclude Include="..\..\shared\sys.h" />
     <ClInclude Include="..\..\shared\traps.h" />
