@@ -7,7 +7,10 @@ powershell.exe -executionpolicy remotesigned -file  update_version.ps1
 REM build binaries
 devenv /rebuild Release objeck.sln
 mkdir deploy\bin
-copy Release\*.exe deploy\bin
+copy ..\compiler\Release\*.exe deploy\bin
+copy ..\vm\Release\*.exe deploy\bin
+copy ..\debugger\Release\*.exe deploy\bin
+
 mkdir deploy\lib
 copy ..\lib\*.obl deploy\lib
 del deploy\lib\gtk2.obl
