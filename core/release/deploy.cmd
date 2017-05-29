@@ -60,6 +60,7 @@ if [%1] NEQ [deploy] goto end
 	xcopy /e deploy "%HOMEDRIVE%%HOMEPATH%\Desktop\objeck-lang"
 	mkdir "%HOMEDRIVE%%HOMEPATH%\Desktop\objeck-lang\doc\icons"
 	copy ..\..\images\setup_icons\*.ico "%HOMEDRIVE%%HOMEPATH%\Desktop\objeck-lang\doc\icons"
+	copy ..\..\images\setup_icons\*.jpg "%HOMEDRIVE%%HOMEPATH%\Desktop\objeck-lang\doc\icons"
 	copy ..\..\docs\eula.rtf "%HOMEDRIVE%%HOMEPATH%\Desktop\objeck-lang\doc"
 	copy ..\setup
 	devenv /rebuild Release setup.sln

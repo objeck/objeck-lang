@@ -411,6 +411,12 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_5E6484BF03BE4219951C30DABFE03A64"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_607E23E7785047BDAF0DFE1A579D4E22"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -2336,6 +2342,26 @@
             "TargetName" = "8:system.concurrency-threadmutex.html"
             "Tag" = "8:"
             "Folder" = "8:_2A8AE7B55CE342BF9464ACD4F53264E4"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_5E6484BF03BE4219951C30DABFE03A64"
+            {
+            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang\\doc\\icons\\banner.jpg"
+            "TargetName" = "8:banner.jpg"
+            "Tag" = "8:"
+            "Folder" = "8:_E71AA59365BD4EC389E9B4DA13B547A4"
             "Condition" = "8:"
             "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
@@ -4363,7 +4389,7 @@
         "Name" = "8:Microsoft Visual Studio"
         "ProductName" = "8:Objeck"
         "ProductCode" = "8:{78A29BEE-1A8E-429E-8D61-0BCC370EBC97}"
-        "PackageCode" = "8:{BA09214E-6D21-42F5-BCEF-77303A579D8E}"
+        "PackageCode" = "8:{DA9A58A2-8746-4728-BF44-8D11363A0F05}"
         "UpgradeCode" = "8:{78409B5C-055E-4300-A802-2F5807B86273}"
         "AspNetVersion" = "8:"
         "RestartWWWService" = "11:FALSE"
@@ -4610,7 +4636,8 @@
                             "Type" = "3:8"
                             "ContextData" = "8:Bitmap"
                             "Attributes" = "3:4"
-                            "Setting" = "3:1"
+                            "Setting" = "3:2"
+                            "Value" = "8:_5E6484BF03BE4219951C30DABFE03A64"
                             "UsePlugInResources" = "11:TRUE"
                             }
                         }
@@ -4647,7 +4674,8 @@
                             "Type" = "3:8"
                             "ContextData" = "8:Bitmap"
                             "Attributes" = "3:4"
-                            "Setting" = "3:0"
+                            "Setting" = "3:2"
+                            "Value" = "8:_5E6484BF03BE4219951C30DABFE03A64"
                             "UsePlugInResources" = "11:TRUE"
                             }
                             "CopyrightWarning"
@@ -4659,7 +4687,7 @@
                             "ContextData" = "8:"
                             "Attributes" = "3:0"
                             "Setting" = "3:2"
-                            "Value" = "8:Copyright © 2008-2017 Randy Hollines"
+                            "Value" = "8:All rights reserved © 2008-2017 Randy Hollines"
                             "DefaultValue" = "8:#1202"
                             "UsePlugInResources" = "11:TRUE"
                             }
@@ -4695,7 +4723,8 @@
                             "Type" = "3:8"
                             "ContextData" = "8:Bitmap"
                             "Attributes" = "3:4"
-                            "Setting" = "3:1"
+                            "Setting" = "3:2"
+                            "Value" = "8:_5E6484BF03BE4219951C30DABFE03A64"
                             "UsePlugInResources" = "11:TRUE"
                             }
                             "InstallAllUsersVisible"
@@ -4730,7 +4759,8 @@
                             "Type" = "3:8"
                             "ContextData" = "8:Bitmap"
                             "Attributes" = "3:4"
-                            "Setting" = "3:1"
+                            "Setting" = "3:2"
+                            "Value" = "8:_5E6484BF03BE4219951C30DABFE03A64"
                             "UsePlugInResources" = "11:TRUE"
                             }
                         }
@@ -4752,7 +4782,8 @@
                             "Type" = "3:8"
                             "ContextData" = "8:Bitmap"
                             "Attributes" = "3:4"
-                            "Setting" = "3:1"
+                            "Setting" = "3:2"
+                            "Value" = "8:_5E6484BF03BE4219951C30DABFE03A64"
                             "UsePlugInResources" = "11:TRUE"
                             }
                             "EulaText"
@@ -4808,7 +4839,8 @@
                             "Type" = "3:8"
                             "ContextData" = "8:Bitmap"
                             "Attributes" = "3:4"
-                            "Setting" = "3:1"
+                            "Setting" = "3:2"
+                            "Value" = "8:_5E6484BF03BE4219951C30DABFE03A64"
                             "UsePlugInResources" = "11:TRUE"
                             }
                             "ShowProgress"
@@ -4852,7 +4884,8 @@
                             "Type" = "3:8"
                             "ContextData" = "8:Bitmap"
                             "Attributes" = "3:4"
-                            "Setting" = "3:0"
+                            "Setting" = "3:2"
+                            "Value" = "8:_5E6484BF03BE4219951C30DABFE03A64"
                             "UsePlugInResources" = "11:TRUE"
                             }
                             "CopyrightWarning"
@@ -4864,7 +4897,7 @@
                             "ContextData" = "8:"
                             "Attributes" = "3:0"
                             "Setting" = "3:2"
-                            "Value" = "8:Copyright © 2008-2017 Randy Hollines"
+                            "Value" = "8:All rights reserved © 2008-2017 Randy Hollines"
                             "DefaultValue" = "8:#1202"
                             "UsePlugInResources" = "11:TRUE"
                             }
@@ -4900,7 +4933,8 @@
                             "Type" = "3:8"
                             "ContextData" = "8:Bitmap"
                             "Attributes" = "3:4"
-                            "Setting" = "3:1"
+                            "Setting" = "3:2"
+                            "Value" = "8:_5E6484BF03BE4219951C30DABFE03A64"
                             "UsePlugInResources" = "11:TRUE"
                             }
                         }
@@ -4922,7 +4956,8 @@
                             "Type" = "3:8"
                             "ContextData" = "8:Bitmap"
                             "Attributes" = "3:4"
-                            "Setting" = "3:1"
+                            "Setting" = "3:2"
+                            "Value" = "8:_5E6484BF03BE4219951C30DABFE03A64"
                             "UsePlugInResources" = "11:TRUE"
                             }
                             "EulaText"
@@ -4969,7 +5004,8 @@
                             "Type" = "3:8"
                             "ContextData" = "8:Bitmap"
                             "Attributes" = "3:4"
-                            "Setting" = "3:1"
+                            "Setting" = "3:2"
+                            "Value" = "8:_5E6484BF03BE4219951C30DABFE03A64"
                             "UsePlugInResources" = "11:TRUE"
                             }
                         }
@@ -5006,7 +5042,8 @@
                             "Type" = "3:8"
                             "ContextData" = "8:Bitmap"
                             "Attributes" = "3:4"
-                            "Setting" = "3:1"
+                            "Setting" = "3:2"
+                            "Value" = "8:_5E6484BF03BE4219951C30DABFE03A64"
                             "UsePlugInResources" = "11:TRUE"
                             }
                             "ShowProgress"
@@ -5050,7 +5087,8 @@
                             "Type" = "3:8"
                             "ContextData" = "8:Bitmap"
                             "Attributes" = "3:4"
-                            "Setting" = "3:1"
+                            "Setting" = "3:2"
+                            "Value" = "8:_5E6484BF03BE4219951C30DABFE03A64"
                             "UsePlugInResources" = "11:TRUE"
                             }
                             "UpdateText"
