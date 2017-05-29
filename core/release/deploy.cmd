@@ -58,4 +58,7 @@ if [%1] NEQ [deploy] goto end
 	rmdir /s /q "%HOMEDRIVE%%HOMEPATH%\Desktop\objeck-lang"
 	mkdir "%HOMEDRIVE%%HOMEPATH%\Desktop\objeck-lang"
 	xcopy /e deploy "%HOMEDRIVE%%HOMEPATH%\Desktop\objeck-lang"
+	mkdir "%HOMEDRIVE%%HOMEPATH%\Desktop\objeck-lang\doc\icons"
+	copy ..\..\images\setup_icons\*.ico "%HOMEDRIVE%%HOMEPATH%\Desktop\objeck-lang\doc\icons"
+	copy ..\..\docs\eula.rtf "%HOMEDRIVE%%HOMEPATH%\Desktop\objeck-lang\doc"
 :end
