@@ -62,6 +62,7 @@ if [%1] NEQ [deploy] goto end
 	copy ..\..\images\setup_icons\*.ico "%HOMEDRIVE%%HOMEPATH%\Desktop\objeck-lang\doc\icons"
 	copy ..\..\images\setup_icons\*.jpg "%HOMEDRIVE%%HOMEPATH%\Desktop\objeck-lang\doc\icons"
 	copy ..\..\docs\eula.rtf "%HOMEDRIVE%%HOMEPATH%\Desktop\objeck-lang\doc"
+	copy ..\..\docs\uninstall.vbs "%HOMEDRIVE%%HOMEPATH%\Desktop\objeck-lang\doc"
 	copy ..\setup
 	devenv /rebuild Release setup.sln
 	signtool sign /f "D:\Dropbox\Personal\signing keys\2016\randy_hollines.pfx" /p %2 /d "Objeck Toolchain" /t http://timestamp.verisign.com/scripts/timstamp.dll Release\setup.msi
