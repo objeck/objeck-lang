@@ -51,7 +51,7 @@ class Scanner {
 					# variable
 					if(line→Get(i)→IsChar() | line→Get(i) = '_') {
 						string ← "";
-						while(line→Get(i)→IsChar() | line→Get(i) = '_') {
+						while(line→Get(i)→IsChar() | line→Get(i)→IsDigit() | line→Get(i) = '_') {
 							string→Append(line→Get(i));
 							i += 1;
 						};
@@ -73,6 +73,44 @@ class Scanner {
 							i += 1;
 						};						
 						@tokens→AddBack(Token→New(line_num, Token→Type→NUM, "num", number→ToInt()));
+					}
+					# char
+					else if(line→Get(i) = '\'') {
+						i += 1;
+						if(line→Get(i) = '\\') {
+							i += 1;
+							select(line→Get(i)) {
+								label 'r': {
+									@tokens→AddBack(Token→New(line_num, Token→Type→CHAR, "char", '\r'));
+									i += 1;
+								}
+								
+								label 'n': {
+									@tokens→AddBack(Token→New(line_num, Token→Type→CHAR, "char", '\n'));
+									i += 1;
+								}
+								
+								label 't': {
+									@tokens→AddBack(Token→New(line_num, Token→Type→CHAR, "char", '\t'));
+									i += 1;
+								}
+								
+								label '\\': {
+									@tokens→AddBack(Token→New(line_num, Token→Type→CHAR, "char", '\\'));
+									i += 1;
+								}
+							};
+						}
+						else {
+							@tokens→AddBack(Token→New(line_num, Token→Type→CHAR, "char", line→Get(i)));
+							i += 1;
+						};
+						
+						if(line→Get(i) <> '\'') {
+							System.IO.Console→Print("{$line_num}: *** Invalid token: char='")→Print(line→Get(i))→PrintLine("' ***");
+							System.Runtime→Exit(1);
+						};
+						i += 1;
 					}
 					# string
 					else if(line→Get(i) = '"') {
@@ -253,6 +291,7 @@ class Token {
 		PRINT,
 		PUT,
 		NUM,
+		CHAR,
 		STR_REF,
 		VAR,
 		OPREN,
