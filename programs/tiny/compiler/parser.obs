@@ -109,16 +109,27 @@ class Parser {
 
 				if(Match(Token→Type→ELSE)) {
 					NextToken();
-					
-					if(<>Match(Token→Type→OCBRACE)) {
-						line ← GetToken()→GetLine();
-						"{$line}: *** Expected '{' ***"→ErrorLine();
-						return Nil;
-					};
-					NextToken();
 
-					statements ← Vector→New();
-					while(GetToken()→GetType() <> Token→Type→EOS & GetToken()→GetType() <> Token→Type→CCBRACE) {
+					statements ← Vector→New();					
+					if(Match(Token→Type→OCBRACE)) {
+						NextToken();
+
+						while(GetToken()→GetType() <> Token→Type→EOS & GetToken()→GetType() <> Token→Type→CCBRACE) {
+							statement ← Statement();
+							if(statement = Nil) {
+								return Nil;
+							};
+							statements→AddBack(statement);
+						};
+		
+						if(<>Match(Token→Type→CCBRACE)) {
+							line ← GetToken()→GetLine();
+							"{$line}: *** Expected '}' ***"→ErrorLine();
+							return Nil;
+						};
+						NextToken();
+					}
+					else {
 						statement ← Statement();
 						if(statement = Nil) {
 							return Nil;
@@ -126,16 +137,14 @@ class Parser {
 						statements→AddBack(statement);
 					};
 	
-					if(<>Match(Token→Type→CCBRACE)) {
-						line ← GetToken()→GetLine();
-						"{$line}: *** Expected '}' ***"→ErrorLine();
-						return Nil;
-					};
-					NextToken();	
-	
 					right ← ParseNode→New(ParseNode→Type→IF);
 					right→SetStatements(statements);
 					node→SetRight(right);
+				}
+				else {
+					line ← GetToken()→GetLine();
+					"{$line}: *** Expected 'else' ***"→ErrorLine();
+					return Nil;
 				};
 			}
 			
@@ -257,28 +266,32 @@ class Parser {
 		};
 		NextToken();
 		
-		if(<>Match(Token→Type→OCBRACE)) {
-			line ← GetToken()→GetLine();
-			"{$line}: *** Expected '{' ***"→ErrorLine();
-			return false;
-		};
-		NextToken();
-		
 		statements ← Vector→New();
-		while(GetToken()→GetType() <> Token→Type→EOS & GetToken()→GetType() <> Token→Type→CCBRACE) {
+		if(Match(Token→Type→OCBRACE)) {
+			NextToken();
+		
+			while(GetToken()→GetType() <> Token→Type→EOS & GetToken()→GetType() <> Token→Type→CCBRACE) {
+				statement ← Statement();
+				if(statement = Nil) {
+					return false;
+				};
+				statements→AddBack(statement);
+			};
+			
+			if(<>Match(Token→Type→CCBRACE)) {
+				line ← GetToken()→GetLine();
+				"{$line}: *** Expected '}' ***"→ErrorLine();
+				return false;
+			};
+			NextToken();
+		}
+		else {
 			statement ← Statement();
 			if(statement = Nil) {
 				return false;
 			};
 			statements→AddBack(statement);
 		};
-		
-		if(<>Match(Token→Type→CCBRACE)) {
-			line ← GetToken()→GetLine();
-			"{$line}: *** Expected '}' ***"→ErrorLine();
-			return false;
-		};
-		NextToken();	
 		node→SetStatements(statements);
 		
 		return true;
@@ -502,6 +515,18 @@ class Parser {
 			label Token→Type→NUM: {
 				node ← ParseNode→New(ParseNode→Type→NUM, GetToken()→GetValue());
 				NextToken();
+			}
+			
+			label Token→Type→NOT: {
+				NextToken();
+			
+				left ← Logic();
+				if(left = Nil) {
+					return Nil;
+				};
+				
+				node ← ParseNode→New(ParseNode→Type→NOT);
+				node->SetLeft(left);
 			}
 			
 			label Token→Type→SUB: {

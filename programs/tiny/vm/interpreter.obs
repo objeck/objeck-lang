@@ -113,6 +113,11 @@ class Interpreter {
 					pc += 1;
 				}
 				
+				label Instruction→Type→NOT: {
+					calc_stack→Push((calc_stack→Pop() = 0)→As(Int));
+					pc += 1;
+				}
+				
 				label Instruction→Type→NEG: {
 					calc_stack→Push(calc_stack→Pop() * -1);
 					pc += 1;
@@ -216,6 +221,9 @@ class Interpreter {
 					}
 					else if(name→Equals("neg")) {
 						@instructions→AddBack(Instruction→New(Instruction→Type→NEG));
+					}
+					else if(name→Equals("not")) {
+						@instructions→AddBack(Instruction→New(Instruction→Type→NOT));
 					}
 					else if(name→Equals("and")) {
 						@instructions→AddBack(Instruction→New(Instruction→Type→AND));
