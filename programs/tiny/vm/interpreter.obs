@@ -73,6 +73,16 @@ class Interpreter {
 					pc += 1;
 				}
 				
+				label Instruction→Type→AND: {
+					calc_stack→Push(((calc_stack→Pop() <> 0) & (calc_stack→Pop() <> 0))→As(Int));
+					pc += 1;
+				}
+				
+				label Instruction→Type→OR: {
+					calc_stack→Push(((calc_stack→Pop() <> 0) | (calc_stack→Pop() <> 0))→As(Int));
+					pc += 1;
+				}
+				
 				label Instruction→Type→LT: {
 					calc_stack→Push((calc_stack→Pop() < calc_stack→Pop())→As(Int));
 					pc += 1;
@@ -198,6 +208,12 @@ class Interpreter {
 					}
 					else if(name→Equals("neq")) {
 						@instructions→AddBack(Instruction→New(Instruction→Type→NEQ));
+					}
+					else if(name→Equals("and")) {
+						@instructions→AddBack(Instruction→New(Instruction→Type→AND));
+					}
+					else if(name→Equals("or")) {
+						@instructions→AddBack(Instruction→New(Instruction→Type→OR));
 					}
 					else if(name→Equals("add")) {
 						@instructions→AddBack(Instruction→New(Instruction→Type→ADD));

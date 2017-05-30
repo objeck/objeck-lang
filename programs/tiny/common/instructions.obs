@@ -13,6 +13,8 @@ class Instruction {
 		JZ,
 		JP,
 		PUSH,
+		AND,
+		OR,
 		LT,
 		GT,
 		LE,
