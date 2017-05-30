@@ -511,19 +511,14 @@ class Parser {
 					node ← ParseNode→New(ParseNode→Type→NUM, GetToken()→GetValue() * -1);
 					NextToken();
 				}
-				else if(Match(Token→Type→VAR)) {
-					left ← Variable();
+				else {
+					left ← Term();
 					if(left = Nil) {
 						return Nil;
 					};
 					
 					node ← ParseNode→New(ParseNode→Type→NEG);
 					node->SetLeft(left);
-				}
-				else {
-					line ← GetToken()→GetLine();
-					"{$line}: *** Expected number ***"→ErrorLine();
-					return Nil;
 				};
 			}
 			
