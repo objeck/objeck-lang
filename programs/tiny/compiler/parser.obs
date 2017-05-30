@@ -197,7 +197,7 @@ class Parser {
 			
 			other: {
 				line ← GetToken()→GetLine();
-				"*** Invalid statement ***"→ErrorLine();
+				"{$line}: *** Invalid statement ***"→ErrorLine();
 				return Nil;
 			}
 		};	
@@ -522,10 +522,19 @@ class Parser {
 				};
 			}
 			
+			label Token→Type→ADD: {
+				NextToken();
+				
+				node ← Term();
+				if(node = Nil) {
+					return Nil;
+				};
+			}
+			
 			other: {
 				code ← GetToken()→GetType()→As(Int);
 				line ← GetToken()→GetLine();
-				"*** Invalid expression: {$code} ***"→ErrorLine();
+				"{$line}: *** Invalid expression ***"→ErrorLine();
 				return Nil;
 			}
 		};
