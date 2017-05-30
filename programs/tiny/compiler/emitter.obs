@@ -68,6 +68,14 @@ class Emitter {
 					out→WriteString("{$i}\tpush\t{$value}\r\n");
 				}
 				
+				label Instruction→Type→AND: {
+					out→WriteString("{$i}\tand\r\n");
+				}
+				
+				label Instruction→Type→OR: {
+					out→WriteString("{$i}\tor\r\n");
+				}
+				
 				label Instruction→Type→LT: {
 					out→WriteString("{$i}\tlt\r\n");
 				}
@@ -251,6 +259,20 @@ class Emitter {
 				@code_index += 1;
 			}
 			
+			label ParseNode→Type→AND: {
+				Expression(node→GetLeft());
+				Expression(node→GetRight());
+				@instructions→AddBack(Instruction→New(Instruction→Type→AND));
+				@code_index += 1;
+			}
+			
+			label ParseNode→Type→OR: {
+				Expression(node→GetLeft());
+				Expression(node→GetRight());
+				@instructions→AddBack(Instruction→New(Instruction→Type→OR));
+				@code_index += 1;
+			}
+						
 			label ParseNode→Type→LESS: {
 				Expression(node→GetLeft());
 				Expression(node→GetRight());

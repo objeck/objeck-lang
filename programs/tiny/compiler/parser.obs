@@ -393,7 +393,7 @@ class Parser {
 		if(Match(Token→Type→ADD)) {
 			NextToken();
 			
-			right ← Expression();
+			right ← Term();
 			if(right = Nil) {
 				return Nil;
 			};
@@ -403,7 +403,7 @@ class Parser {
 		else if(Match(Token→Type→SUB)) {
 			NextToken();
 			
-			right ← Expression();
+			right ← Term();
 			if(right = Nil) {
 				return Nil;
 			};
@@ -423,32 +423,50 @@ class Parser {
 		if(Match(Token→Type→MUL)) {
 			NextToken();
 			
-			right ← Expression();
+			right ← Factor();
 			if(right = Nil) {
 				return Nil;
 			};
 			
-			return ParseNode→New(ParseNode→Type→MUL, left, right);
+			if(right->GetType() = ParseNode→Type→MUL | right->GetType() = ParseNode→Type→DIV | right->GetType() = ParseNode→Type→MOD) {
+				temp := ParseNode→New(ParseNode→Type→MUL, left, right->GetLeft());
+				return ParseNode→New(right->GetType(), temp, right->GetRight());
+			}
+			else {
+				return ParseNode→New(ParseNode→Type→MUL, left, right);
+			};
 		}
 		else if(Match(Token→Type→DIV)) {
 			NextToken();
 			
-			right ← Expression();
+			right ← Factor();
 			if(right = Nil) {
 				return Nil;
 			};
 			
-			return ParseNode→New(ParseNode→Type→DIV, left, right);
+			if(right->GetType() = ParseNode→Type→MUL | right->GetType() = ParseNode→Type→DIV | right->GetType() = ParseNode→Type→MOD) {
+				temp := ParseNode→New(ParseNode→Type→DIV, left, right->GetLeft());
+				return ParseNode→New(right->GetType(), temp, right->GetRight());
+			}
+			else {
+				return ParseNode→New(ParseNode→Type→DIV, left, right);
+			};
 		}
 		else if(Match(Token→Type→MOD)) {
 			NextToken();
 			
-			right ← Expression();
+			right ← Factor();
 			if(right = Nil) {
 				return Nil;
 			};
 			
-			return ParseNode→New(ParseNode→Type→MOD, left, right);
+			if(right->GetType() = ParseNode→Type→MUL | right->GetType() = ParseNode→Type→DIV | right->GetType() = ParseNode→Type→MOD) {
+				temp := ParseNode→New(ParseNode→Type→MOD, left, right->GetLeft());
+				return ParseNode→New(right->GetType(), temp, right->GetRight());
+			}
+			else {
+				return ParseNode→New(ParseNode→Type→MOD, left, right);
+			};
 		};
 	
 		return left;
@@ -460,7 +478,7 @@ class Parser {
 		select(GetToken()→GetType()) {
 			label Token→Type→OPREN: {
 				NextToken();
-				
+"-Ok-"->PrintLine();
 				node ← Expression();
 				if(node = Nil) {
 					return Nil;
