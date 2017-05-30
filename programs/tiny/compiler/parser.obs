@@ -106,7 +106,18 @@ class Parser {
 				if(<>ConditionalStatement(node)) {
 					return Nil;
 				};
-
+				
+				temp := node;
+				while(Match(Token→Type→ELSE) & Match(@token_index + 1, Token→Type→IF)) {
+					NextToken(); NextToken();
+					right ← ParseNode→New(ParseNode→Type→IF);
+					if(<>ConditionalStatement(right)) {
+						return Nil;
+					};
+					temp→SetRight(right);
+					temp := right;
+				};
+				
 				if(Match(Token→Type→ELSE)) {
 					NextToken();
 
@@ -139,12 +150,7 @@ class Parser {
 	
 					right ← ParseNode→New(ParseNode→Type→IF);
 					right→SetStatements(statements);
-					node→SetRight(right);
-				}
-				else {
-					line ← GetToken()→GetLine();
-					"{$line}: *** Expected 'else' ***"→ErrorLine();
-					return Nil;
+					temp→SetRight(right);
 				};
 			}
 			
@@ -221,6 +227,10 @@ class Parser {
 			node ← ParseNode→New(ParseNode→Type→PUTI, GetToken()→GetValue());
 			NextToken();
 		}
+		else if(Match(Token→Type→CHAR) & Match(@token_index + 1, Token→Type→SEMI)) {
+			node ← ParseNode→New(ParseNode→Type→PUTC, GetToken()→GetValue());
+			NextToken();
+		}
 		else if(Match(Token→Type→STR_REF)) {
 			node ← ParseNode→New(ParseNode→Type→PUTS, GetToken()→GetValue());
 			NextToken();
@@ -238,7 +248,7 @@ class Parser {
 			if(left = Nil) {
 				return Nil;
 			};
-			node ← ParseNode→New(ParseNode→Type→PUTC);
+			node ← ParseNode→New(ParseNode→Type→PUTI);
 			node→SetLeft(left);
 		};
 		
@@ -512,7 +522,8 @@ class Parser {
 				};
 			}
 			
-			label Token→Type→NUM: {
+			label Token→Type→NUM:
+			label Token→Type→CHAR: {
 				node ← ParseNode→New(ParseNode→Type→NUM, GetToken()→GetValue());
 				NextToken();
 			}

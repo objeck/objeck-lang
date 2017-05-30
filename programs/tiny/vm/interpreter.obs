@@ -32,9 +32,13 @@ class Interpreter {
 					pc += 1;
 				}
 				
-				label Instruction→Type→PUTI:
-				label Instruction→Type→PUTC: {
+				label Instruction→Type→PUTI: {
 					calc_stack→Pop()→Print();
+					pc += 1;
+				}
+				
+				label Instruction→Type→PUTC: {
+					calc_stack→Pop()→As(Char)→Print();
 					pc += 1;
 				}
 				

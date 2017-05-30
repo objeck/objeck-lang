@@ -165,24 +165,41 @@ class Emitter {
 					};
 					cond_jmp ← Instruction→New(Instruction→Type→JZ);
 					@instructions→AddBack(cond_jmp);
-					@code_index += 1;				
+					@code_index += 1;
+					
 					if(<>Statements(node→GetStatements())) {
 						return false;
 					};
+					end ← Instruction→New(Instruction→Type→JP);
+					@instructions→AddBack(end);
+					@code_index += 1;
 					
-					if(node→GetRight() = Nil) {
+					right := node→GetRight();
+					if(right = Nil) {
 						cond_jmp→SetValue(@code_index);
-					};
-					
-					if(node→GetRight() <> Nil) {
-							cond_jmp→SetValue(@code_index + 1);
-						cond_jmp ← Instruction→New(Instruction→Type→JP);
-						@instructions→AddBack(cond_jmp);
-						if(<>Statements(node→GetRight()→GetStatements())) {
-							return false;
+					}
+					else {
+						while(right <> Nil) {
+							cond_jmp→SetValue(@code_index);
+							if(right→GetLeft() <> Nil) {
+								if(<>Expression(right→GetLeft())) {
+									return false;
+								};
+								cond_jmp ← Instruction→New(Instruction→Type→JZ);
+								@instructions→AddBack(cond_jmp);
+								@code_index += 1;
+							};
+							
+							if(<>Statements(right→GetStatements())) {
+								return false;
+							};
+							@instructions→AddBack(end);
+							@code_index += 1;
+							
+							right := right→GetRight();
 						};
-						cond_jmp→SetValue(@code_index + 1);
 					};
+					end→SetValue(@code_index);
 				}
 				
 				label ParseNode→Type→WHILE: {
