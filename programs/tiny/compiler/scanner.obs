@@ -197,7 +197,7 @@ class Scanner {
 							}
 							
 							other: {
-								System.IO.Console→Print("*** Invalid token: char='")→Print(line→Get(i))→PrintLine("' ***");
+								System.IO.Console→Print("{$line_num}: *** Invalid token: char='")→Print(line→Get(i))→PrintLine("' ***");
 								System.Runtime→Exit(1);
 							}
 						};
