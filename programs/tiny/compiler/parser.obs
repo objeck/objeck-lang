@@ -478,7 +478,7 @@ class Parser {
 		select(GetToken()→GetType()) {
 			label Token→Type→OPREN: {
 				NextToken();
-"-Ok-"->PrintLine();
+
 				node ← Expression();
 				if(node = Nil) {
 					return Nil;
