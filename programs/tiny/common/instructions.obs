@@ -21,6 +21,7 @@ class Instruction {
 		GE,
 		EQ,
 		NEQ,
+		NEG,
 		ADD,
 		SUB,
 		MUL,

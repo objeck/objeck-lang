@@ -100,6 +100,10 @@ class Emitter {
 					out→WriteString("{$i}\tneq\r\n");
 				}
 				
+				label Instruction→Type→NEG: {
+					out→WriteString("{$i}\tneg\r\n");
+				}
+				
 				label Instruction→Type→ADD: {
 					out→WriteString("{$i}\tadd\r\n");
 				}
@@ -312,6 +316,12 @@ class Emitter {
 				Expression(node→GetLeft());
 				Expression(node→GetRight());
 				@instructions→AddBack(Instruction→New(Instruction→Type→NEQ));
+				@code_index += 1;
+			}
+			
+			label ParseNode→Type→NEG: {
+				Expression(node→GetLeft());
+				@instructions→AddBack(Instruction→New(Instruction→Type→NEG));
 				@code_index += 1;
 			}
 			
