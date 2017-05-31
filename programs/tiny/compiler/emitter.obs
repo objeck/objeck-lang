@@ -38,11 +38,6 @@ class Emitter {
 					out→WriteString("{$i}\tputc\r\n");
 				}
 				
-				label Instruction→Type→PUTV: {
-					index ← instruction→GetValue();
-					out→WriteString("{$i}\tputv\t{$index}\r\n");
-				}
-				
 				label Instruction→Type→ST: {
 					index ← instruction→GetValue();
 					out→WriteString("{$i}\tst\t{$index}\r\n");
@@ -261,7 +256,9 @@ class Emitter {
 			}
 			
 			label ParseNode→Type→PUTC: {
-				Expression(node→GetLeft());
+				@instructions→AddBack(Instruction→New(Instruction→Type→PUSH, node→GetValue()));
+				@code_index += 1;
+				
 				@instructions→AddBack(Instruction→New(Instruction→Type→PUTC));
 				@code_index += 1;
 			}
@@ -270,7 +267,7 @@ class Emitter {
 				@instructions→AddBack(Instruction→New(Instruction→Type→LD, node→GetLeft()→GetValue()));
 				@code_index += 1;
 			
-				@instructions→AddBack(Instruction→New(Instruction→Type→PUTV));
+				@instructions→AddBack(Instruction→New(Instruction→Type→PUTI));
 				@code_index += 1;
 			}
 			

@@ -42,11 +42,6 @@ class Interpreter {
 					pc += 1;
 				}
 				
-				label Instruction→Type→PUTV: {
-					calc_stack→Pop()→Print();
-					pc += 1;
-				}
-				
 				label Instruction→Type→ST: {
 					index ← instruction→GetValue();
 					varibles[index] ← calc_stack→Pop();
@@ -281,9 +276,6 @@ class Interpreter {
 					}
 					else if(name→Equals("push")) {
 						@instructions→AddBack(Instruction→New(Instruction→Type→PUSH, value));
-					}
-					else if(name→Equals("putv")) {
-						@instructions→AddBack(Instruction→New(Instruction→Type→PUTV, value));
 					}
 					else {
 						"### Unknown instruction: {$name} ####"→ErrorLine();
