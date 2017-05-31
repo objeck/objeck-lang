@@ -216,15 +216,32 @@ class Emitter {
 				label ParseNode→Type→PRINT: {
 					expressions ← node→GetStatements();
 					each(j : expressions) {
-						Expression(expressions→Get(j)→As(ParseNode));
+						left := expressions→Get(j)→As(ParseNode);
+						select(left->GetType()) {
+							label ParseNode→Type→PUTS:
+							label ParseNode→Type→PUTI:
+							label ParseNode→Type→PUTC: {
+								Expression(left);
+							}
+							
+							label ParseNode→Type→PUTVI:
+							label ParseNode→Type→PUTVC: {
+								Expression(left->GetLeft());
+								Expression(left);
+							}
+						};
 					};
 				}
 				
 				label ParseNode→Type→PUTS:
 				label ParseNode→Type→PUTI:
-				label ParseNode→Type→PUTC:
+				label ParseNode→Type→PUTC: {
+					Expression(node);
+				}
+				
 				label ParseNode→Type→PUTVI:
 				label ParseNode→Type→PUTVC: {
+					Expression(node->GetLeft());
 					Expression(node);
 				}
 				
@@ -265,17 +282,11 @@ class Emitter {
 			}
 			
 			label ParseNode→Type→PUTVI: {
-				@instructions→AddBack(Instruction→New(Instruction→Type→LD, node→GetLeft()→GetValue()));
-				@code_index += 1;
-			
 				@instructions→AddBack(Instruction→New(Instruction→Type→PUTI));
 				@code_index += 1;
 			}
 			
 			label ParseNode→Type→PUTVC: {
-				@instructions→AddBack(Instruction→New(Instruction→Type→LD, node→GetLeft()→GetValue()));
-				@code_index += 1;
-			
 				@instructions→AddBack(Instruction→New(Instruction→Type→PUTC));
 				@code_index += 1;
 			}
