@@ -313,7 +313,7 @@ class Parser {
 			if(left = Nil) {
 				return Nil;
 			};
-			node ← ParseNode→New(ParseNode→Type→PUTV, GetToken()→GetValue());
+			node ← ParseNode→New(ParseNode→Type→PUTVI, GetToken()→GetValue());
 			node→SetLeft(left);
 		}
 		else {
@@ -323,7 +323,7 @@ class Parser {
 			};
 
 			if(left→GetType() = ParseNode→Type→VAR) {
-				node ← ParseNode→New(ParseNode→Type→PUTV);
+				node ← ParseNode→New(ParseNode→Type→PUTVI);
 				node→SetLeft(left);
 			}
 			else {
@@ -336,8 +336,6 @@ class Parser {
 	
 	method : native : PrintChar() ~ ParseNode {
 		node : ParseNode;
-		
-"-1-"->PrintLine();		
 		
 		if(Match(Token→Type→NUM)) {
 			node ← ParseNode→New(ParseNode→Type→PUTC, GetToken()→GetValue());
@@ -352,7 +350,7 @@ class Parser {
 			if(left = Nil) {
 				return Nil;
 			};
-			node ← ParseNode→New(ParseNode→Type→PUTV, GetToken()→GetValue());
+			node ← ParseNode→New(ParseNode→Type→PUTVC, GetToken()→GetValue());
 			node→SetLeft(left);
 		}
 		else {
@@ -362,7 +360,7 @@ class Parser {
 			};
 
 			if(left→GetType() = ParseNode→Type→VAR) {
-				node ← ParseNode→New(ParseNode→Type→PUTV);
+				node ← ParseNode→New(ParseNode→Type→PUTVC);
 				node→SetLeft(left);
 			}
 			else {
@@ -724,7 +722,8 @@ class ParseNode {
 		PUTC,
 		PUTI,
 		PUTS,
-		PUTV,
+		PUTVI,
+		PUTVC,
 		OR,
 		AND,
 		LESS,
