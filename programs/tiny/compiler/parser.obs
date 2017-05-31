@@ -9,8 +9,8 @@ class Parser {
 	
 	New(tokens : Vector) {
 		@tokens ← tokens;
-		@statements ← Vector→New();
-		@sym_table ← StringMap→New();
+		@statements ← Vector → New();
+		@sym_table ← StringMap → New();
 		@token_index ← 0;
 		@var_index ← 0;
 	}
@@ -20,22 +20,22 @@ class Parser {
 	}
 	
 	method : native : GetToken(index : Int) ~ Token {
-		if(index < @tokens→Size()) {
-			return @tokens→Get(index)→As(Token);
+		if(index < @tokens → Size()) {
+			return @tokens → Get(index) → As(Token);
 		};
 		
-		return Token→New(-1, Token→Type→EOS, "eos");
+		return Token → New(-1, Token → Type → EOS, "eos");
 	}
 	
 	method : NextToken() ~ Nil {
 		@token_index += 1;
 	}
 	
-	method : Match(index : Int, type : Token→Type) ~ Bool {
-		return GetToken(index)→GetType() = type;
+	method : Match(index : Int, type : Token → Type) ~ Bool {
+		return GetToken(index) → GetType() = type;
 	}
 	
-	method : Match(type : Token→Type) ~ Bool {
+	method : Match(type : Token → Type) ~ Bool {
 		return Match(@token_index, type);
 	}
 	
@@ -48,12 +48,12 @@ class Parser {
 	}
 	
 	method : public : native : Parse() ~ Bool {
-		while(GetToken()→GetType() <> Token→Type→EOS) {
+		while(GetToken() → GetType() <> Token → Type → EOS) {
 			node ← Statement();
 			if(node = Nil) {
 				return false;
 			};
-			@statements→AddBack(node);
+			@statements → AddBack(node);
 		};
 		
 		return true;
@@ -62,16 +62,16 @@ class Parser {
 	method : native : Statement() ~ ParseNode {
 		node : ParseNode;
 		
-		select(GetToken()→GetType()) {
-			label Token→Type→VAR: {
+		select(GetToken() → GetType()) {
+			label Token → Type → VAR: {
 				left ← Variable();
 				if(left = Nil) {
 					return Nil;
 				};
 				
-				if(<>Match(Token→Type→ASGN)) {
-					line ← GetToken()→GetLine();
-					"{$line}: *** Expected '=' or statement ***"→ErrorLine();
+				if(<>Match(Token → Type → ASGN)) {
+					line ← GetToken() → GetLine();
+					"{$line}: *** Expected '=' or statement ***" → ErrorLine();
 					return Nil;
 				};
 				NextToken();
@@ -81,17 +81,17 @@ class Parser {
 					return Nil;
 				};
 				
-				node ← ParseNode→New(ParseNode→Type→ASGN, left, right);
-				if(<>Match(Token→Type→SEMI)) {
-					line ← GetToken()→GetLine();
-					"{$line}: *** Expected ';' ***"→ErrorLine();
+				node ← ParseNode → New(ParseNode → Type → ASGN, left, right);
+				if(<>Match(Token → Type → SEMI)) {
+					line ← GetToken() → GetLine();
+					"{$line}: *** Expected ';' ***" → ErrorLine();
 					return Nil;
 				};
 				NextToken();
 			}
 			
-			label Token→Type→WHILE: {
-				node ← ParseNode→New(ParseNode→Type→WHILE);
+			label Token → Type → WHILE: {
+				node ← ParseNode → New(ParseNode → Type → WHILE);
 				NextToken();
 				
 				if(<>ConditionalStatement(node)) {
@@ -99,8 +99,8 @@ class Parser {
 				};
 			}
 			
-			label Token→Type→IF: {
-				node ← ParseNode→New(ParseNode→Type→IF);
+			label Token → Type → IF: {
+				node ← ParseNode → New(ParseNode → Type → IF);
 				NextToken();
 
 				if(<>ConditionalStatement(node)) {
@@ -108,34 +108,34 @@ class Parser {
 				};
 				
 				temp := node;
-				while(Match(Token→Type→ELSE) & Match(@token_index + 1, Token→Type→IF)) {
+				while(Match(Token → Type → ELSE) & Match(@token_index + 1, Token → Type → IF)) {
 					NextToken(); NextToken();
-					right ← ParseNode→New(ParseNode→Type→IF);
+					right ← ParseNode → New(ParseNode → Type → IF);
 					if(<>ConditionalStatement(right)) {
 						return Nil;
 					};
-					temp→SetRight(right);
+					temp → SetRight(right);
 					temp := right;
 				};
 				
-				if(Match(Token→Type→ELSE)) {
+				if(Match(Token → Type → ELSE)) {
 					NextToken();
 
-					statements ← Vector→New();					
-					if(Match(Token→Type→OCBRACE)) {
+					statements ← Vector → New();					
+					if(Match(Token → Type → OCBRACE)) {
 						NextToken();
 
-						while(GetToken()→GetType() <> Token→Type→EOS & GetToken()→GetType() <> Token→Type→CCBRACE) {
+						while(GetToken() → GetType() <> Token → Type → EOS & GetToken() → GetType() <> Token → Type → CCBRACE) {
 							statement ← Statement();
 							if(statement = Nil) {
 								return Nil;
 							};
-							statements→AddBack(statement);
+							statements → AddBack(statement);
 						};
 		
-						if(<>Match(Token→Type→CCBRACE)) {
-							line ← GetToken()→GetLine();
-							"{$line}: *** Expected '}' ***"→ErrorLine();
+						if(<>Match(Token → Type → CCBRACE)) {
+							line ← GetToken() → GetLine();
+							"{$line}: *** Expected '}' ***" → ErrorLine();
 							return Nil;
 						};
 						NextToken();
@@ -145,61 +145,61 @@ class Parser {
 						if(statement = Nil) {
 							return Nil;
 						};
-						statements→AddBack(statement);
+						statements → AddBack(statement);
 					};
 	
-					right ← ParseNode→New(ParseNode→Type→IF);
-					right→SetStatements(statements);
-					temp→SetRight(right);
+					right ← ParseNode → New(ParseNode → Type → IF);
+					right → SetStatements(statements);
+					temp → SetRight(right);
 				};
 			}
 			
-			label Token→Type→PRINT: {
+			label Token → Type → PRINT: {
 				NextToken();
 				
-				if(<>Match(Token→Type→OPREN)) {
-					line ← GetToken()→GetLine();
-					"{$line}: *** Expected '(' ***"→ErrorLine();
+				if(<>Match(Token → Type → OPREN)) {
+					line ← GetToken() → GetLine();
+					"{$line}: *** Expected '(' ***" → ErrorLine();
 					return Nil;
 				};
 				NextToken();
 				
-				expressions ← Vector→New();
-				node ← ParseNode→New(ParseNode→Type→PRINT);
-				while(GetToken()→GetType() <> Token→Type→EOS & GetToken()→GetType() <> Token→Type→CPREN) {
+				expressions ← Vector → New();
+				node ← ParseNode → New(ParseNode → Type → PRINT);
+				while(GetToken() → GetType() <> Token → Type → EOS & GetToken() → GetType() <> Token → Type → CPREN) {
 					expression ← PrintInt();
 					if(expression = Nil) {
 						return Nil;
 					};
 
-					expressions→AddBack(expression);
-					if(Match(Token→Type→COMMA) & <>Match(@token_index + 1, Token→Type→CPREN)) {
+					expressions → AddBack(expression);
+					if(Match(Token → Type → COMMA) & <>Match(@token_index + 1, Token → Type → CPREN)) {
 						NextToken();
 					};
 				};
-				node→SetStatements(expressions);
+				node → SetStatements(expressions);
 				
-				if(<>Match(Token→Type→CPREN)) {
-					line ← GetToken()→GetLine();
-					"{$line}: *** Expected ')' ***"→ErrorLine();
+				if(<>Match(Token → Type → CPREN)) {
+					line ← GetToken() → GetLine();
+					"{$line}: *** Expected ')' ***" → ErrorLine();
 					return Nil;
 				};
 				NextToken();
 				
-				if(<>Match(Token→Type→SEMI)) {
-					line ← GetToken()→GetLine();
-					"{$line}: *** Expected ';' ***"→ErrorLine();
+				if(<>Match(Token → Type → SEMI)) {
+					line ← GetToken() → GetLine();
+					"{$line}: *** Expected ';' ***" → ErrorLine();
 					return Nil;
 				};
 				NextToken();
 			}
 			
-			label Token→Type→PUTI: {
+			label Token → Type → PUTI: {
 				NextToken();
 				
-				if(<>Match(Token→Type→OPREN)) {
-					line ← GetToken()→GetLine();
-					"{$line}: *** Expected '(' ***"→ErrorLine();
+				if(<>Match(Token → Type → OPREN)) {
+					line ← GetToken() → GetLine();
+					"{$line}: *** Expected '(' ***" → ErrorLine();
 					return Nil;
 				};
 				NextToken();
@@ -209,27 +209,27 @@ class Parser {
 					return Nil;
 				};
 				
-				if(<>Match(Token→Type→CPREN)) {
-					line ← GetToken()→GetLine();
-					"{$line}: *** Expected ')' ***"→ErrorLine();
+				if(<>Match(Token → Type → CPREN)) {
+					line ← GetToken() → GetLine();
+					"{$line}: *** Expected ')' ***" → ErrorLine();
 					return Nil;
 				};
 				NextToken();
 				
-				if(<>Match(Token→Type→SEMI)) {
-					line ← GetToken()→GetLine();
-					"{$line}: *** Expected ';' ***"→ErrorLine();
+				if(<>Match(Token → Type → SEMI)) {
+					line ← GetToken() → GetLine();
+					"{$line}: *** Expected ';' ***" → ErrorLine();
 					return Nil;
 				};
 				NextToken();
 			}
 			
-			label Token→Type→PUTC: {
+			label Token → Type → PUTC: {
 				NextToken();
 				
-				if(<>Match(Token→Type→OPREN)) {
-					line ← GetToken()→GetLine();
-					"{$line}: *** Expected '(' ***"→ErrorLine();
+				if(<>Match(Token → Type → OPREN)) {
+					line ← GetToken() → GetLine();
+					"{$line}: *** Expected '(' ***" → ErrorLine();
 					return Nil;
 				};
 				NextToken();
@@ -239,57 +239,57 @@ class Parser {
 					return Nil;
 				};
 				
-				if(<>Match(Token→Type→CPREN)) {
-					line ← GetToken()→GetLine();
-					"{$line}: *** Expected ')' ***"→ErrorLine();
+				if(<>Match(Token → Type → CPREN)) {
+					line ← GetToken() → GetLine();
+					"{$line}: *** Expected ')' ***" → ErrorLine();
 					return Nil;
 				};
 				NextToken();
 				
-				if(<>Match(Token→Type→SEMI)) {
-					line ← GetToken()→GetLine();
-					"{$line}: *** Expected ';' ***"→ErrorLine();
+				if(<>Match(Token → Type → SEMI)) {
+					line ← GetToken() → GetLine();
+					"{$line}: *** Expected ';' ***" → ErrorLine();
 					return Nil;
 				};
 				NextToken();
 			}
 			
-			label Token→Type→PUTS: {
+			label Token → Type → PUTS: {
 				NextToken();
 				
-				if(<>Match(Token→Type→OPREN)) {
-					line ← GetToken()→GetLine();
-					"{$line}: *** Expected '(' ***"→ErrorLine();
+				if(<>Match(Token → Type → OPREN)) {
+					line ← GetToken() → GetLine();
+					"{$line}: *** Expected '(' ***" → ErrorLine();
 					return Nil;
 				};
 				NextToken();
 				
-				if(<>Match(Token→Type→STR_REF)) {
-					line ← GetToken()→GetLine();
-					"{$line}: *** Expected string ***"→ErrorLine();
+				if(<>Match(Token → Type → STR_REF)) {
+					line ← GetToken() → GetLine();
+					"{$line}: *** Expected string ***" → ErrorLine();
 					return Nil;
 				};
-				node ← ParseNode→New(ParseNode→Type→PUTS, GetToken()→GetValue());
+				node ← ParseNode → New(ParseNode → Type → PUTS, GetToken() → GetValue());
 				NextToken();
 		
-				if(<>Match(Token→Type→CPREN)) {
-					line ← GetToken()→GetLine();
-					"{$line}: *** Expected ')' ***"→ErrorLine();
+				if(<>Match(Token → Type → CPREN)) {
+					line ← GetToken() → GetLine();
+					"{$line}: *** Expected ')' ***" → ErrorLine();
 					return Nil;
 				};
 				NextToken();
 				
-				if(<>Match(Token→Type→SEMI)) {
-					line ← GetToken()→GetLine();
-					"{$line}: *** Expected ';' ***"→ErrorLine();
+				if(<>Match(Token → Type → SEMI)) {
+					line ← GetToken() → GetLine();
+					"{$line}: *** Expected ';' ***" → ErrorLine();
 					return Nil;
 				};
 				NextToken();
 			}
 			
 			other: {
-				line ← GetToken()→GetLine();
-				"{$line}: *** Invalid statement ***"→ErrorLine();
+				line ← GetToken() → GetLine();
+				"{$line}: *** Invalid statement ***" → ErrorLine();
 				return Nil;
 			}
 		};	
@@ -300,8 +300,8 @@ class Parser {
 	method : native : PrintInt() ~ ParseNode {
 		node : ParseNode;
 		
-		if(Match(Token→Type→STR_REF)) {
-			node ← ParseNode→New(ParseNode→Type→PUTS, GetToken()→GetValue());
+		if(Match(Token → Type → STR_REF)) {
+			node ← ParseNode → New(ParseNode → Type → PUTS, GetToken() → GetValue());
 			NextToken();
 		}
 		else {
@@ -310,18 +310,18 @@ class Parser {
 				return Nil;
 			};
 			
-			select(left→GetType()) {
-				label Token→Type→NUM: {
-					node ← ParseNode→New(ParseNode→Type→PUTI, left→GetValue());
+			select(left → GetType()) {
+				label Token → Type → NUM: {
+					node ← ParseNode → New(ParseNode → Type → PUTI, left → GetValue());
 				}
 				
-				label Token→Type→STR_REF: {
-					node ← ParseNode→New(ParseNode→Type→PUTS, left→GetValue());
+				label Token → Type → STR_REF: {
+					node ← ParseNode → New(ParseNode → Type → PUTS, left → GetValue());
 				}
 				
 				other: {
-					node ← ParseNode→New(ParseNode→Type→PUTVI);
-					node→SetLeft(left);
+					node ← ParseNode → New(ParseNode → Type → PUTVI);
+					node → SetLeft(left);
 				}
 			};
 		};
@@ -332,8 +332,8 @@ class Parser {
 	method : native : PrintChar() ~ ParseNode {
 		node : ParseNode;
 		
-		if(Match(Token→Type→STR_REF)) {
-			node ← ParseNode→New(ParseNode→Type→PUTS, GetToken()→GetValue());
+		if(Match(Token → Type → STR_REF)) {
+			node ← ParseNode → New(ParseNode → Type → PUTS, GetToken() → GetValue());
 			NextToken();
 		}
 		else {
@@ -342,18 +342,18 @@ class Parser {
 				return Nil;
 			};
 			
-			select(left→GetType()) {
-				label Token→Type→NUM: {
-					node ← ParseNode→New(ParseNode→Type→PUTC, left→GetValue());
+			select(left → GetType()) {
+				label Token → Type → NUM: {
+					node ← ParseNode → New(ParseNode → Type → PUTC, left → GetValue());
 				}
 				
-				label Token→Type→STR_REF: {
-					node ← ParseNode→New(ParseNode→Type→PUTS, left→GetValue());
+				label Token → Type → STR_REF: {
+					node ← ParseNode → New(ParseNode → Type → PUTS, left → GetValue());
 				}
 				
 				other: {
-					node ← ParseNode→New(ParseNode→Type→PUTVC);
-					node→SetLeft(left);
+					node ← ParseNode → New(ParseNode → Type → PUTVC);
+					node → SetLeft(left);
 				}
 			};
 		};
@@ -362,9 +362,9 @@ class Parser {
 	}
 	
 	method : native : ConditionalStatement(node : ParseNode) ~ Bool {
-		if(<>Match(Token→Type→OPREN)) {
-			line ← GetToken()→GetLine();
-			"{$line}: *** Expected '(' ***"→ErrorLine();
+		if(<>Match(Token → Type → OPREN)) {
+			line ← GetToken() → GetLine();
+			"{$line}: *** Expected '(' ***" → ErrorLine();
 			return false;
 		};
 		NextToken();
@@ -373,30 +373,30 @@ class Parser {
 		if(left = Nil) {
 			return false;
 		};
-		node→SetLeft(left);
+		node → SetLeft(left);
 		
-		if(<>Match(Token→Type→CPREN)) {
-			line ← GetToken()→GetLine();
-			"{$line}: *** Expected ')' ***"→ErrorLine();
+		if(<>Match(Token → Type → CPREN)) {
+			line ← GetToken() → GetLine();
+			"{$line}: *** Expected ')' ***" → ErrorLine();
 			return false;
 		};
 		NextToken();
 		
-		statements ← Vector→New();
-		if(Match(Token→Type→OCBRACE)) {
+		statements ← Vector → New();
+		if(Match(Token → Type → OCBRACE)) {
 			NextToken();
 		
-			while(GetToken()→GetType() <> Token→Type→EOS & GetToken()→GetType() <> Token→Type→CCBRACE) {
+			while(GetToken() → GetType() <> Token → Type → EOS & GetToken() → GetType() <> Token → Type → CCBRACE) {
 				statement ← Statement();
 				if(statement = Nil) {
 					return false;
 				};
-				statements→AddBack(statement);
+				statements → AddBack(statement);
 			};
 			
-			if(<>Match(Token→Type→CCBRACE)) {
-				line ← GetToken()→GetLine();
-				"{$line}: *** Expected '}' ***"→ErrorLine();
+			if(<>Match(Token → Type → CCBRACE)) {
+				line ← GetToken() → GetLine();
+				"{$line}: *** Expected '}' ***" → ErrorLine();
 				return false;
 			};
 			NextToken();
@@ -406,9 +406,9 @@ class Parser {
 			if(statement = Nil) {
 				return false;
 			};
-			statements→AddBack(statement);
+			statements → AddBack(statement);
 		};
-		node→SetStatements(statements);
+		node → SetStatements(statements);
 		
 		return true;
 	}
@@ -419,7 +419,7 @@ class Parser {
 			return Nil;
 		};
 		
-		if(Match(Token→Type→OR)) {
+		if(Match(Token → Type → OR)) {
 			NextToken();
 			
 			right ← Expression();
@@ -427,9 +427,9 @@ class Parser {
 				return Nil;
 			};
 			
-			return ParseNode→New(ParseNode→Type→OR, left, right);
+			return ParseNode → New(ParseNode → Type → OR, left, right);
 		}
-		else if(Match(Token→Type→AND)) {
+		else if(Match(Token → Type → AND)) {
 			NextToken();
 			
 			right ← Expression();
@@ -437,7 +437,7 @@ class Parser {
 				return Nil;
 			};
 			
-			return ParseNode→New(ParseNode→Type→AND, left, right);
+			return ParseNode → New(ParseNode → Type → AND, left, right);
 		};
 		
 		return left;
@@ -449,7 +449,7 @@ class Parser {
 			return Nil;
 		};
 		
-		if(Match(Token→Type→LESS)) {
+		if(Match(Token → Type → LESS)) {
 			NextToken();
 			
 			right ← Expression();
@@ -457,9 +457,9 @@ class Parser {
 				return Nil;
 			};
 			
-			return ParseNode→New(ParseNode→Type→LESS, left, right);
+			return ParseNode → New(ParseNode → Type → LESS, left, right);
 		}
-		else if(Match(Token→Type→GTR)) {
+		else if(Match(Token → Type → GTR)) {
 			NextToken();
 			
 			right ← Expression();
@@ -467,9 +467,9 @@ class Parser {
 				return Nil;
 			};
 			
-			return ParseNode→New(ParseNode→Type→GTR, left, right);
+			return ParseNode → New(ParseNode → Type → GTR, left, right);
 		}
-		else if(Match(Token→Type→LESS_EQL)) {
+		else if(Match(Token → Type → LESS_EQL)) {
 			NextToken();
 			
 			right ← Expression();
@@ -477,9 +477,9 @@ class Parser {
 				return Nil;
 			};
 			
-			return ParseNode→New(ParseNode→Type→LESS_EQL, left, right);
+			return ParseNode → New(ParseNode → Type → LESS_EQL, left, right);
 		}
-		else if(Match(Token→Type→GTR_EQL)) {
+		else if(Match(Token → Type → GTR_EQL)) {
 			NextToken();
 			
 			right ← Expression();
@@ -487,9 +487,9 @@ class Parser {
 				return Nil;
 			};
 			
-			return ParseNode→New(ParseNode→Type→GTR_EQL, left, right);
+			return ParseNode → New(ParseNode → Type → GTR_EQL, left, right);
 		}
-		else if(Match(Token→Type→EQL)) {
+		else if(Match(Token → Type → EQL)) {
 			NextToken();
 	
 			right ← Expression();
@@ -497,9 +497,9 @@ class Parser {
 				return Nil;
 			};
 
-			return ParseNode→New(ParseNode→Type→EQL, left, right);
+			return ParseNode → New(ParseNode → Type → EQL, left, right);
 		}
-		else if(Match(Token→Type→NEQL)) {
+		else if(Match(Token → Type → NEQL)) {
 			NextToken();
 			
 			right ← Expression();
@@ -507,7 +507,7 @@ class Parser {
 				return Nil;
 			};
 			
-			return ParseNode→New(ParseNode→Type→NEQL, left, right);
+			return ParseNode → New(ParseNode → Type → NEQL, left, right);
 		};
 	
 		return left;
@@ -519,7 +519,7 @@ class Parser {
 			return Nil;
 		};
 		
-		if(Match(Token→Type→ADD)) {
+		if(Match(Token → Type → ADD)) {
 			NextToken();
 			
 			right ← Term();
@@ -527,9 +527,9 @@ class Parser {
 				return Nil;
 			};
 			
-			return ParseNode→New(ParseNode→Type→ADD, left, right);
+			return ParseNode → New(ParseNode → Type → ADD, left, right);
 		}
-		else if(Match(Token→Type→SUB)) {
+		else if(Match(Token → Type → SUB)) {
 			NextToken();
 			
 			right ← Term();
@@ -537,7 +537,7 @@ class Parser {
 				return Nil;
 			};
 			
-			return ParseNode→New(ParseNode→Type→SUB, left, right);
+			return ParseNode → New(ParseNode → Type → SUB, left, right);
 		};
 		
 		return left;
@@ -549,7 +549,7 @@ class Parser {
 			return Nil;
 		};
 	
-		if(Match(Token→Type→MUL)) {
+		if(Match(Token → Type → MUL)) {
 			NextToken();
 			
 			right ← Factor();
@@ -557,15 +557,15 @@ class Parser {
 				return Nil;
 			};
 			
-			if(right->GetType() = ParseNode→Type→MUL | right->GetType() = ParseNode→Type→DIV | right->GetType() = ParseNode→Type→MOD) {
-				temp := ParseNode→New(ParseNode→Type→MUL, left, right->GetLeft());
-				return ParseNode→New(right->GetType(), temp, right->GetRight());
+			if(right->GetType() = ParseNode → Type → MUL | right->GetType() = ParseNode → Type → DIV | right->GetType() = ParseNode → Type → MOD) {
+				temp := ParseNode → New(ParseNode → Type → MUL, left, right->GetLeft());
+				return ParseNode → New(right->GetType(), temp, right->GetRight());
 			}
 			else {
-				return ParseNode→New(ParseNode→Type→MUL, left, right);
+				return ParseNode → New(ParseNode → Type → MUL, left, right);
 			};
 		}
-		else if(Match(Token→Type→DIV)) {
+		else if(Match(Token → Type → DIV)) {
 			NextToken();
 			
 			right ← Factor();
@@ -573,15 +573,15 @@ class Parser {
 				return Nil;
 			};
 			
-			if(right->GetType() = ParseNode→Type→MUL | right->GetType() = ParseNode→Type→DIV | right->GetType() = ParseNode→Type→MOD) {
-				temp := ParseNode→New(ParseNode→Type→DIV, left, right->GetLeft());
-				return ParseNode→New(right->GetType(), temp, right->GetRight());
+			if(right->GetType() = ParseNode → Type → MUL | right->GetType() = ParseNode → Type → DIV | right->GetType() = ParseNode → Type → MOD) {
+				temp := ParseNode → New(ParseNode → Type → DIV, left, right->GetLeft());
+				return ParseNode → New(right->GetType(), temp, right->GetRight());
 			}
 			else {
-				return ParseNode→New(ParseNode→Type→DIV, left, right);
+				return ParseNode → New(ParseNode → Type → DIV, left, right);
 			};
 		}
-		else if(Match(Token→Type→MOD)) {
+		else if(Match(Token → Type → MOD)) {
 			NextToken();
 			
 			right ← Factor();
@@ -589,12 +589,12 @@ class Parser {
 				return Nil;
 			};
 			
-			if(right->GetType() = ParseNode→Type→MUL | right->GetType() = ParseNode→Type→DIV | right->GetType() = ParseNode→Type→MOD) {
-				temp := ParseNode→New(ParseNode→Type→MOD, left, right->GetLeft());
-				return ParseNode→New(right->GetType(), temp, right->GetRight());
+			if(right->GetType() = ParseNode → Type → MUL | right->GetType() = ParseNode → Type → DIV | right->GetType() = ParseNode → Type → MOD) {
+				temp := ParseNode → New(ParseNode → Type → MOD, left, right->GetLeft());
+				return ParseNode → New(right->GetType(), temp, right->GetRight());
 			}
 			else {
-				return ParseNode→New(ParseNode→Type→MOD, left, right);
+				return ParseNode → New(ParseNode → Type → MOD, left, right);
 			};
 		};
 	
@@ -604,8 +604,8 @@ class Parser {
 	method : native : Primary() ~ ParseNode {
 		node : ParseNode;
 		
-		select(GetToken()→GetType()) {
-			label Token→Type→OPREN: {
+		select(GetToken() → GetType()) {
+			label Token → Type → OPREN: {
 				NextToken();
 				
 				node ← Expression();
@@ -613,28 +613,28 @@ class Parser {
 					return Nil;
 				};
 				
-				if(<>Match(Token→Type→CPREN)) {
-					line ← GetToken()→GetLine();
-					"{$line}: *** Expected ')' ***"→ErrorLine();
+				if(<>Match(Token → Type → CPREN)) {
+					line ← GetToken() → GetLine();
+					"{$line}: *** Expected ')' ***" → ErrorLine();
 					return Nil;
 				};
 				NextToken();	
 			}
 			
-			label Token→Type→VAR: {
+			label Token → Type → VAR: {
 				node ← Variable();
 				if(node = Nil) {
 					return Nil;
 				};
 			}
 			
-			label Token→Type→NUM:
-			label Token→Type→CHAR: {
-				node ← ParseNode→New(ParseNode→Type→NUM, GetToken()→GetValue());
+			label Token → Type → NUM:
+			label Token → Type → CHAR: {
+				node ← ParseNode → New(ParseNode → Type → NUM, GetToken() → GetValue());
 				NextToken();
 			}
 			
-			label Token→Type→NOT: {
+			label Token → Type → NOT: {
 				NextToken();
 			
 				left ← Logic();
@@ -642,15 +642,15 @@ class Parser {
 					return Nil;
 				};
 				
-				node ← ParseNode→New(ParseNode→Type→NOT);
+				node ← ParseNode → New(ParseNode → Type → NOT);
 				node->SetLeft(left);
 			}
 			
-			label Token→Type→SUB: {
+			label Token → Type → SUB: {
 				NextToken();
 				
-				if(Match(Token→Type→NUM)) {
-					node ← ParseNode→New(ParseNode→Type→NUM, GetToken()→GetValue() * -1);
+				if(Match(Token → Type → NUM)) {
+					node ← ParseNode → New(ParseNode → Type → NUM, GetToken() → GetValue() * -1);
 					NextToken();
 				}
 				else {
@@ -659,12 +659,12 @@ class Parser {
 						return Nil;
 					};
 					
-					node ← ParseNode→New(ParseNode→Type→NEG);
+					node ← ParseNode → New(ParseNode → Type → NEG);
 					node->SetLeft(left);
 				};
 			}
 			
-			label Token→Type→ADD: {
+			label Token → Type → ADD: {
 				NextToken();
 				
 				node ← Term();
@@ -674,9 +674,9 @@ class Parser {
 			}
 			
 			other: {
-				code ← GetToken()→GetType()→As(Int);
-				line ← GetToken()→GetLine();
-				"{$line}: *** Invalid expression ***"→ErrorLine();
+				code ← GetToken() → GetType() → As(Int);
+				line ← GetToken() → GetLine();
+				"{$line}: *** Invalid expression ***" → ErrorLine();
 				return Nil;
 			}
 		};
@@ -685,10 +685,10 @@ class Parser {
 	}
 	
 	method : Variable() ~ ParseNode {
-		node ← @sym_table→Find(GetToken()→GetName())→As(ParseNode);
+		node ← @sym_table → Find(GetToken() → GetName()) → As(ParseNode);
 		if(node = Nil) {
-			node ← ParseNode→New(ParseNode→Type→VAR, @var_index);
-			@sym_table→Insert(GetToken()→GetName(), node);
+			node ← ParseNode → New(ParseNode → Type → VAR, @var_index);
+			@sym_table → Insert(GetToken() → GetName(), node);
 			@var_index += 1;
 		};
 		NextToken();
@@ -753,7 +753,7 @@ class ParseNode {
 		@value ← value;
 	}
 	
-	method : public : GetType() ~ ParseNode→Type {
+	method : public : GetType() ~ ParseNode → Type {
 		return @type;
 	}
 	
