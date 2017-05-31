@@ -223,7 +223,8 @@ class Emitter {
 				label ParseNode→Type→PUTS:
 				label ParseNode→Type→PUTI:
 				label ParseNode→Type→PUTC:
-				label ParseNode→Type→PUTV: {
+				label ParseNode→Type→PUTVI:
+				label ParseNode→Type→PUTVC: {
 					Expression(node);
 				}
 				
@@ -263,11 +264,19 @@ class Emitter {
 				@code_index += 1;
 			}
 			
-			label ParseNode→Type→PUTV: {
+			label ParseNode→Type→PUTVI: {
 				@instructions→AddBack(Instruction→New(Instruction→Type→LD, node→GetLeft()→GetValue()));
 				@code_index += 1;
 			
 				@instructions→AddBack(Instruction→New(Instruction→Type→PUTI));
+				@code_index += 1;
+			}
+			
+			label ParseNode→Type→PUTVC: {
+				@instructions→AddBack(Instruction→New(Instruction→Type→LD, node→GetLeft()→GetValue()));
+				@code_index += 1;
+			
+				@instructions→AddBack(Instruction→New(Instruction→Type→PUTC));
 				@code_index += 1;
 			}
 			
