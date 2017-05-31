@@ -167,7 +167,7 @@ class Parser {
 				expressions ← Vector→New();
 				node ← ParseNode→New(ParseNode→Type→PRINT);
 				while(GetToken()→GetType() <> Token→Type→EOS & GetToken()→GetType() <> Token→Type→CPREN) {
-					expression ← Print();
+					expression ← PrintInt();
 					if(expression = Nil) {
 						return Nil;
 					};
@@ -194,13 +194,90 @@ class Parser {
 				NextToken();
 			}
 			
-			label Token→Type→PUT: {
+			label Token→Type→PUTI: {
 				NextToken();
 				
-				node ← Print();
+				if(<>Match(Token→Type→OPREN)) {
+					line ← GetToken()→GetLine();
+					"{$line}: *** Expected '(' ***"→ErrorLine();
+					return Nil;
+				};
+				NextToken();
+				
+				node ← PrintInt();
 				if(node = Nil) {
 					return Nil;
 				};
+				
+				if(<>Match(Token→Type→CPREN)) {
+					line ← GetToken()→GetLine();
+					"{$line}: *** Expected ')' ***"→ErrorLine();
+					return Nil;
+				};
+				NextToken();
+				
+				if(<>Match(Token→Type→SEMI)) {
+					line ← GetToken()→GetLine();
+					"{$line}: *** Expected ';' ***"→ErrorLine();
+					return Nil;
+				};
+				NextToken();
+			}
+			
+			label Token→Type→PUTC: {
+				NextToken();
+				
+				if(<>Match(Token→Type→OPREN)) {
+					line ← GetToken()→GetLine();
+					"{$line}: *** Expected '(' ***"→ErrorLine();
+					return Nil;
+				};
+				NextToken();
+				
+				node ← PrintChar();
+				if(node = Nil) {
+					return Nil;
+				};
+				
+				if(<>Match(Token→Type→CPREN)) {
+					line ← GetToken()→GetLine();
+					"{$line}: *** Expected ')' ***"→ErrorLine();
+					return Nil;
+				};
+				NextToken();
+				
+				if(<>Match(Token→Type→SEMI)) {
+					line ← GetToken()→GetLine();
+					"{$line}: *** Expected ';' ***"→ErrorLine();
+					return Nil;
+				};
+				NextToken();
+			}
+			
+			label Token→Type→PUTS: {
+				NextToken();
+				
+				if(<>Match(Token→Type→OPREN)) {
+					line ← GetToken()→GetLine();
+					"{$line}: *** Expected '(' ***"→ErrorLine();
+					return Nil;
+				};
+				NextToken();
+				
+				if(<>Match(Token→Type→STR_REF)) {
+					line ← GetToken()→GetLine();
+					"{$line}: *** Expected string ***"→ErrorLine();
+					return Nil;
+				};
+				node ← ParseNode→New(ParseNode→Type→PUTS, GetToken()→GetValue());
+				NextToken();
+		
+				if(<>Match(Token→Type→CPREN)) {
+					line ← GetToken()→GetLine();
+					"{$line}: *** Expected ')' ***"→ErrorLine();
+					return Nil;
+				};
+				NextToken();
 				
 				if(<>Match(Token→Type→SEMI)) {
 					line ← GetToken()→GetLine();
@@ -220,22 +297,18 @@ class Parser {
 		return node;
 	}
 	
-	method : native : Print() ~ ParseNode {
+	method : native : PrintInt() ~ ParseNode {
 		node : ParseNode;
-	
-		if(Match(Token→Type→NUM) & Match(@token_index + 1, Token→Type→SEMI)) {
+		
+		if(Match(Token→Type→NUM)) {
 			node ← ParseNode→New(ParseNode→Type→PUTI, GetToken()→GetValue());
-			NextToken();
-		}
-		else if(Match(Token→Type→CHAR) & Match(@token_index + 1, Token→Type→SEMI)) {
-			node ← ParseNode→New(ParseNode→Type→PUTC, GetToken()→GetValue());
 			NextToken();
 		}
 		else if(Match(Token→Type→STR_REF)) {
 			node ← ParseNode→New(ParseNode→Type→PUTS, GetToken()→GetValue());
 			NextToken();
 		}
-		else if(Match(Token→Type→VAR) & Match(@token_index + 1, Token→Type→SEMI)) {
+		else if(Match(Token→Type→VAR)) {
 			left ← Variable();
 			if(left = Nil) {
 				return Nil;
@@ -248,8 +321,53 @@ class Parser {
 			if(left = Nil) {
 				return Nil;
 			};
-			node ← ParseNode→New(ParseNode→Type→PUTI);
+
+			if(left→GetType() = ParseNode→Type→VAR) {
+				node ← ParseNode→New(ParseNode→Type→PUTV);
+				node→SetLeft(left);
+			}
+			else {
+				node ← ParseNode→New(ParseNode→Type→PUTI, left→GetValue());
+			};
+		};
+		
+		return node;
+	}
+	
+	method : native : PrintChar() ~ ParseNode {
+		node : ParseNode;
+		
+"-1-"->PrintLine();		
+		
+		if(Match(Token→Type→NUM)) {
+			node ← ParseNode→New(ParseNode→Type→PUTC, GetToken()→GetValue());
+			NextToken();
+		}
+		else if(Match(Token→Type→STR_REF)) {
+			node ← ParseNode→New(ParseNode→Type→PUTS, GetToken()→GetValue());
+			NextToken();
+		}
+		else if(Match(Token→Type→VAR)) {
+			left ← Variable();
+			if(left = Nil) {
+				return Nil;
+			};
+			node ← ParseNode→New(ParseNode→Type→PUTV, GetToken()→GetValue());
 			node→SetLeft(left);
+		}
+		else {
+			left ← Expression();
+			if(left = Nil) {
+				return Nil;
+			};
+
+			if(left→GetType() = ParseNode→Type→VAR) {
+				node ← ParseNode→New(ParseNode→Type→PUTV);
+				node→SetLeft(left);
+			}
+			else {
+				node ← ParseNode→New(ParseNode→Type→PUTC, left→GetValue());
+			};
 		};
 		
 		return node;

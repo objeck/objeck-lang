@@ -26,7 +26,9 @@ class Scanner {
 		reserved→Insert("if", IntHolder→New(Token→Type→IF→As(Int)));
 		reserved→Insert("else", IntHolder→New(Token→Type→ELSE→As(Int)));
 		reserved→Insert("print", IntHolder→New(Token→Type→PRINT→As(Int)));
-		reserved→Insert("put", IntHolder→New(Token→Type→PUT→As(Int)));
+		reserved→Insert("puti", IntHolder→New(Token→Type→PUTI→As(Int)));
+		reserved→Insert("putc", IntHolder→New(Token→Type→PUTC→As(Int)));
+		reserved→Insert("puts", IntHolder→New(Token→Type→PUTS→As(Int)));
 		
 		reader ← FileReader→New(@file);
 		leaving {
@@ -289,7 +291,9 @@ class Token {
 		ELSE,
 		IF,
 		PRINT,
-		PUT,
+		PUTC,
+		PUTI,
+		PUTS,
 		NUM,
 		CHAR,
 		STR_REF,
