@@ -35,7 +35,7 @@ class Scanner {
 		};
 	}
 	
-	method : Comments(reader : FileReader) ~ Nil {
+	method : Comments(reader : FileReader) ~ Bool {
 		if(@index + 1 < @line → Size()) {
 			if(@line → Get(@index) = '/') {
 				if(@line → Get(@index + 1) = '/') {
@@ -47,9 +47,36 @@ class Scanner {
 					};										
 				}
 				else if(@line → Get(@index + 1) = '*') {
+					@index += 2;
+					
+					comment_end := false;
+					while(<>comment_end) {
+						while(@index < @line → Size() & <>comment_end) {
+							if(@index + 1 < @line → Size() & (@line → Get(@index) = '*' | @line → Get(@index + 1) = '/')) {
+								comment_end := true;
+								@index += 1;
+							};
+							@index += 1;
+						};
+						
+						if(@index = @line → Size()) {
+							NextLine(reader);
+						};						
+					};
+					Whitespace();
+					
+					if(@index = @line → Size() & <>reader → IsEOF()) {
+						NextLine(reader);
+						Whitespace();
+					};
+					Comments(reader);
+					
+					return reader → IsEOF();
 				};
-			};
+			};			
 		};
+		
+		return false;
 	}
 	
 	method : public : native : Scan() ~ Bool {
@@ -78,10 +105,7 @@ class Scanner {
 				Whitespace();
 				
 				# parse the @line
-				if(@index < @line → Size()) {
-					# comments
-					Comments(reader);
-					
+				if(@index < @line → Size() & <>Comments(reader)) {
 					# variable
 					if(@line → Get(@index) → IsChar() | @line → Get(@index) = '_') {
 						string ← "";
