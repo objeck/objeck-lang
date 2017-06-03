@@ -2456,6 +2456,10 @@ bool ContextAnalyzer::Analyze()
       if(method_call->GetMethodCall() && method_call->GetMethodCall()->GetCallType() == ENUM_CALL) {
         ProcessError(static_cast<Expression*>(method_call), L"Invalid enum reference");
       }
+
+	  if (lib_method->GetReturn()->GetType() == NIL_TYPE && method_call->GetCastType()) {
+		  ProcessError(static_cast<Expression*>(method_call), L"Cannot cast a Nil return value");
+	  }
       
       // next call
       AnalyzeExpressionMethodCall(method_call, depth + 1);
