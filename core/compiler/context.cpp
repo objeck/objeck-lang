@@ -4257,7 +4257,7 @@ bool ContextAnalyzer::Analyze()
    ****************************/
   void ContextAnalyzer::AnalyzeClassCast(Type* left, Expression* expression, const int depth)
   {
-    AnalyzeCast(expression, depth + 1);
+    // AnalyzeCast(expression, depth + 1);
 
     Type* right = expression->GetCastType();
     if(!right) {
