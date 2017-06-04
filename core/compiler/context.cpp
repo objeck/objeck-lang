@@ -4257,7 +4257,10 @@ bool ContextAnalyzer::Analyze()
    ****************************/
   void ContextAnalyzer::AnalyzeClassCast(Type* left, Expression* expression, const int depth)
   {
-    // AnalyzeCast(expression, depth + 1);
+    if(expression->GetCastType() && expression->GetEvalType() && (expression->GetCastType()->GetType() != CLASS_TYPE ||
+                                                                  expression->GetEvalType()->GetType() != CLASS_TYPE)) {
+      AnalyzeRightCast(expression->GetCastType(), expression->GetEvalType(), expression, IsScalar(expression), depth + 1);
+    }
     
     Type* right = expression->GetCastType();
     if(!right) {
