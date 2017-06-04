@@ -4357,7 +4357,8 @@ bool ContextAnalyzer::Analyze()
                        ReplaceSubstring(left->GetClassName(), L"#", L"->") + L"' and '" +
                        ReplaceSubstring(right->GetClassName(), L"#", L"->") + L"'");
         }
-      } else {
+      } 
+      else {
         ProcessError(expression, L"Invalid cast between class, enum or Nil");
       }
     }
