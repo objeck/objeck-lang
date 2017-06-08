@@ -8,9 +8,9 @@ Objeck contains all of the features of a general-purpose programming language wi
 ```ruby
 class Hello {
   function : Main(args : String[]) ~ Nil {
-    "Hello World"→PrintLine();
-    "Καλημέρα κόσμε"→PrintLine();
-    "こんにちは 世界"→PrintLine();
+    "Hello World" → PrintLine();
+    "Καλημέρα κόσμε" → PrintLine();
+    "こんにちは 世界" → PrintLine();
   }
 }
 ```
