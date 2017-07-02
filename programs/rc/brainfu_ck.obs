@@ -9,7 +9,7 @@ class Brainf__k {
 	
 	New(program : String, size : Int) {
 		@program := program;
-		@mem := Int → New[size];		
+		@mem := Int → New[size];	
 	}
 	
 	function : Main(args : String[]) ~ Nil {
@@ -48,24 +48,24 @@ class Brainf__k {
 				else if(instr = '[') { depth += 1; };
 				@ip += 1;
 			};
-			"*** Unbalanced jump ***" → PrintLine();
+			"*** Unbalanced jump ***" → ErrorLine();
 			Runtime → Exit(1);
 		};
 	}
 	
 	method : JumpBack() ~ Nil {		
-		depth := 0;
+		depth := 1;
 		if(@mem[@dp] <> 0) {
-			while(@ip > -1) {
+			while(@ip > 0) {
+				@ip -= 1;
 				instr := @program → Get(@ip);
 				if(instr = '[') {
 					depth -= 1;
 					if(depth = 0) { return; };
 				}
 				else if(instr = ']') { depth += 1; };
-				@ip -= 1;
 			};
-			"*** Unbalanced jump ***" → PrintLine();
+			"*** Unbalanced jump ***" → ErrorLine();
 			Runtime → Exit(1);
 		};
 	}
