@@ -1,3 +1,5 @@
+use System.IO.File;
+
 class Brainfu_k {
 	@program : String; @mem : Int[];
 	@ip : Int;	@dp : Int;
@@ -9,8 +11,29 @@ class Brainfu_k {
 	
 	function : Main(args : String[]) ~ Nil {
 		if(args → Size() = 2) {
-			Brainfu_k → New(args[0], args[1] → ToInt()) → Execute();
+			Brainfu_k → New(Scan(args[0]), args[1] → ToInt()) → Execute();
 		};
+	}
+	
+	function : Scan(file : String) ~ String {
+		buffer := "";
+		reader := FileReader->New(file);
+		while(<>reader->IsEOF()) {
+			line := reader->ReadString();
+			each(i : line) {
+				char := line->Get(i);
+				select(char) {
+					label '>': label '<': label '+':
+				    label '-': label '.': label ',':
+				    label '[': label ']': label 'd': {
+						buffer += char;
+					}
+					label '#': { i := line->Size();	}
+				};
+			};
+		};
+		
+		return buffer;
 	}
 	
 	method : Execute() ~ Nil {
@@ -25,6 +48,7 @@ class Brainfu_k {
 				label ',': { @mem[@dp] := Read(); }
 				label '[': { JumpForward(); }
 				label ']': { JumpBack(); }
+				label 'd': { Dump(); }
 			};
 			@ip += 1;
 		};
@@ -62,9 +86,19 @@ class Brainfu_k {
 		};
 	}
 	
-	method : Read() ~ Char {		
+	method : Read() ~ Int {		
 		in := IO.Console → ReadString();
 		if(in → Size() > 0) { return in → ToInt(); };
-		return '\0';
+		return 0;
+	}
+	
+	method : Dump() ~ Nil {	
+		"=> {"->Print();
+		each(i : @mem) {
+			value := @mem[i];
+			"{$i}:[{$value}]"->Print();
+			if(i + 1 < @mem->Size()) { ", "->Print(); };
+		};
+		'}'->PrintLine();
 	}
 }
