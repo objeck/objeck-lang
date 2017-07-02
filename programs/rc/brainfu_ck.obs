@@ -1,8 +1,6 @@
 class Brainfu_k {
-	@program : String; 
-	@mem : Int[];
-	@ip : Int;
-	@dp : Int;
+	@program : String; @mem : Int[];
+	@ip : Int;	@dp : Int;
 	
 	New(program : String, size : Int) {
 		@program := program;
@@ -38,8 +36,7 @@ class Brainfu_k {
 			while(@ip < @program → Size()) {
 				instr := @program → Get(@ip);
 				if(instr = ']') {
-					depth -= 1;
-					if(depth = 0) { return;	};	
+					depth -= 1;	if(depth = 0) { return;	};	
 				}
 				else if(instr = '[') { depth += 1; };
 				@ip += 1;
@@ -56,8 +53,7 @@ class Brainfu_k {
 				@ip -= 1;
 				instr := @program → Get(@ip);
 				if(instr = '[') {
-					depth -= 1;
-					if(depth = 0) { return; };
+					depth -= 1;	if(depth = 0) { return; };
 				}
 				else if(instr = ']') { depth += 1; };
 			};
