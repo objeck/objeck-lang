@@ -1,7 +1,7 @@
-class Test {
-	function : Main(args : String[]) ~ Nil {
-##		"Hello"->PrintLine()->As(Int);
-		a := "Hello"->Size()->As(String);
-		a->PrintLine();
-	}
+ss Hello {
+  function : Main(args : String[]) ~ Nil {
+    "Hello World" → PrintLine();
+    "Καλημέρα κόσμε" → PrintLine();
+    "こんにちは 世界" → PrintLine();
+  }
 }

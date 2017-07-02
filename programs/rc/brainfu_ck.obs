@@ -1,0 +1,75 @@
+class Brainf__k {
+	@program : String; 
+	@mem : Int[];
+	@ip : Int;
+	@dp : Int;
+	
+	New(program : String, size : Int) {
+		@program := program;
+		@mem := Int → New[size];		
+	}
+	
+	function : Main(args : String[]) ~ Nil {
+		if(args → Size() = 2) {
+			brain := Brainf__k → New(args[0], args[1] → ToInt());
+			brain → Execute();
+		};
+	}
+	
+	method : Execute() ~ Nil {
+		while(@ip < @program → Size()) {
+			instr := @program → Get(@ip);
+			select(instr) {
+				label '>': { @dp += 1; }
+				label '<': { @dp -= 1; }
+				label '+': { @mem[@dp] := @mem[@dp] + 1; }
+				label '-': { @mem[@dp] := @mem[@dp] - 1; }
+				label '.': { value := @mem[@dp] → As(Char); value → Print(); }				
+				label ',': { Read(); }
+				label '[': { JumpForward(); }
+				label ']': { JumpBack(); }
+			};
+			@ip += 1;
+		};
+	}
+	
+	method : JumpForward() ~ Nil {	
+		depth := 1;
+		if(@mem[@dp] = 0) {
+			while(@ip < @program → Size()) {
+				instr := @program → Get(@ip);
+				if(instr = ']') {
+					depth -= 1;
+					if(depth = 0) { return;	};	
+				}
+				else if(instr = '[') { depth += 1; };
+				@ip += 1;
+			};
+			"*** Unbalanced jump ***" → PrintLine();
+			Runtime → Exit(1);
+		};
+	}
+	
+	method : JumpBack() ~ Nil {		
+		depth := 0;
+		if(@mem[@dp] <> 0) {
+			while(@ip > -1) {
+				instr := @program → Get(@ip);
+				if(instr = '[') {
+					depth -= 1;
+					if(depth = 0) { return; };
+				}
+				else if(instr = ']') { depth += 1; };
+				@ip -= 1;
+			};
+			"*** Unbalanced jump ***" → PrintLine();
+			Runtime → Exit(1);
+		};
+	}
+	
+	method : Read() ~ Char {		
+		in := IO.Console → ReadString();
+		if(in <> Nil & in → Size() > 0) {	return in → Get(0); };
+		return '\0';
+	}
+}
