@@ -2587,29 +2587,38 @@ Expression* Parser::ParseFactor(int depth)
         !Match(TOKEN_END_OF_STREAM)) {
     if(expression) {
       CalculatedExpression* right;
-      if(Match(TOKEN_MUL)) {
+      switch(GetToken()) {
+      case TOKEN_MUL:
         right = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, MUL_EXPR);
-      } 
-      else if(Match(TOKEN_MOD)) {
+        break;
+
+      case TOKEN_MOD:
         right = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, MOD_EXPR);
-      } 
-      else if(Match(TOKEN_SHL)) {
+        break;
+
+      case TOKEN_SHL:
         right = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, SHL_EXPR);
-      } 
-      else if(Match(TOKEN_SHR)) {
+        break;
+
+      case TOKEN_SHR:
         right = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, SHR_EXPR);
-      } 
-      else if(Match(TOKEN_AND_ID)) {
+        break;
+
+      case TOKEN_AND_ID:
         right = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, BIT_AND_EXPR);
-      }
-      else if(Match(TOKEN_OR_ID)) {
+        break;
+
+      case TOKEN_OR_ID:
         right = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, BIT_OR_EXPR);
-      }
-      else if(Match(TOKEN_XOR_ID)) {
+        break;
+
+      case TOKEN_XOR_ID:
         right = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, BIT_XOR_EXPR);
-      }
-      else {
+        break;
+
+      case TOKEN_DIV:
         right = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, DIV_EXPR);
+        break;
       }
       NextToken();
 
@@ -2620,29 +2629,37 @@ Expression* Parser::ParseFactor(int depth)
     }
     // first time in loop
     else {
-      if(Match(TOKEN_MUL)) {
+      switch(GetToken()) {
         expression = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, MUL_EXPR);
-      } 
-      else if(Match(TOKEN_MOD)) {
+        break;
+
+      case TOKEN_MOD:
         expression = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, MOD_EXPR);
-      }
-      else if(Match(TOKEN_SHL)) {
+        break;
+
+      case TOKEN_SHL:
         expression = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, SHL_EXPR);
-      }
-      else if(Match(TOKEN_SHR)) {
+        break;
+
+      case TOKEN_SHR:
         expression = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, SHR_EXPR);
-      }
-      else if(Match(TOKEN_AND_ID)) {
+        break;
+
+      case TOKEN_AND_ID:
         expression = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, BIT_AND_EXPR);
-      }
-      else if(Match(TOKEN_OR_ID)) {
+        break;
+
+      case TOKEN_OR_ID:
         expression = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, BIT_OR_EXPR);
-      }
-      else if(Match(TOKEN_XOR_ID)) {
+        break;
+
+      case TOKEN_XOR_ID:
         expression = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, BIT_XOR_EXPR);
-      }
-      else {
+        break;
+
+      case TOKEN_DIV:
         expression = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, DIV_EXPR);
+        break;
       }
       NextToken();
 
