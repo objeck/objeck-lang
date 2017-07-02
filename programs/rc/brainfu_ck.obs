@@ -1,7 +1,4 @@
-# ++++++++++[>+++++++>++++++++++>+++>+<<<<-]>++.>+.+++++++..+++.>++.<<+++++++++++++++.>.+++.------.--------.>+.>
-# Hello World!
-
-class Brainf__k {
+class Brainfu_k {
 	@program : String; 
 	@mem : Int[];
 	@ip : Int;
@@ -14,8 +11,7 @@ class Brainf__k {
 	
 	function : Main(args : String[]) ~ Nil {
 		if(args → Size() = 2) {
-			brain := Brainf__k → New(args[0], args[1] → ToInt());
-			brain → Execute();
+			Brainfu_k → New(args[0], args[1] → ToInt()) → Execute();
 		};
 	}
 	
@@ -28,7 +24,7 @@ class Brainf__k {
 				label '+': { @mem[@dp] := @mem[@dp] + 1; }
 				label '-': { @mem[@dp] := @mem[@dp] - 1; }
 				label '.': { value := @mem[@dp] → As(Char); value → Print(); }				
-				label ',': { Read(); }
+				label ',': { @mem[@dp] := Read(); }
 				label '[': { JumpForward(); }
 				label ']': { JumpBack(); }
 			};
@@ -72,7 +68,7 @@ class Brainf__k {
 	
 	method : Read() ~ Char {		
 		in := IO.Console → ReadString();
-		if(in <> Nil & in → Size() > 0) {	return in → Get(0); };
+		if(in → Size() > 0) { return in → ToInt(); };
 		return '\0';
 	}
 }
