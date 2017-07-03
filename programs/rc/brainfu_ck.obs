@@ -18,18 +18,18 @@ class Brainfu_k {
 	
 	function : Scan(file : String) ~ String {
 		buffer := "";
-		reader := FileReader->New(file);
-		while(<>reader->IsEOF()) {
-			line := reader->ReadString();
+		reader := FileReader → New(file);
+		while(<>reader → IsEOF()) {
+			line := reader → ReadString();
 			each(i : line) {
-				char := line->Get(i);
+				char := line → Get(i);
 				select(char) {
 					label '>': label '<': label '+':
 					label '-': label '.': label ',':
-					label '[': label ']': label 'd': {
+					label '[': label ']': {
 						buffer += char;
 					}
-					label '#': { i := line->Size();	}
+					label '#': { i := line → Size();	}
 				};
 			};
 		};
@@ -47,19 +47,18 @@ class Brainfu_k {
 				label '<': { @dp -= 1; }
 				label '+': { @mem[@dp] := @mem[@dp] + 1; }
 				label '-': { @mem[@dp] := @mem[@dp] - 1; }
-				label '.': { value := @mem[@dp]->As(Char); value → Print(); }				
+				label '.': { value := @mem[@dp] → As(Char); value → Print(); }				
 				label ',': { 
 					in := Read(); 
 					if(in <> 0) {
 						@mem[@dp] := in;
 					}
 					else {
-						Runtime->Exit(0);
+						## Runtime → Exit(0);
 					};
 				}
 				label '[': { Forward(); }
 				label ']': { Backward(); }
-				label 'd': { Dump(); }
 			};
 			@instr_ptr += 1;
 		};
@@ -80,7 +79,7 @@ class Brainfu_k {
 				@instr_ptr += 1;
 			}
 			while(@instr_ptr < @program → Size());
-			"*** Fu_k ***"->PrintLine();
+			"*** Fu_k ***" → PrintLine();
 		};
 	}
 	
@@ -99,7 +98,7 @@ class Brainfu_k {
 				@instr_ptr -= 1;
 			}
 			while(@instr_ptr < @program → Size());
-			"*** Fu_k ***"->PrintLine();
+			"*** Fu_k ***" → PrintLine();
 		};
 	}
 	
@@ -108,22 +107,12 @@ class Brainfu_k {
 			@input := IO.Console → ReadString();
 		};
 		
-		if(@input_ptr < @input->Size()) {
-			in := @input->Get(@input_ptr);
+		if(@input_ptr < @input → Size()) {
+			in := @input → Get(@input_ptr);
 			@input_ptr += 1;
 			return in;
 		};
 		
 		return 0;
-	}
-	
-	method : Dump() ~ Nil {	
-		"=> {"->Print();
-		each(i : @mem) {
-			value := @mem[i];
-			"{$i}:[{$value}]"->Print();
-			if(i + 1 < @mem->Size()) { ", "->Print(); };
-		};
-		'}'->PrintLine();
 	}
 }
