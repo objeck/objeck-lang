@@ -1,17 +1,18 @@
 use System.IO.File;
 
 class Brainfu_k {
-	@program : String; @mem : Int[];
-	@ip : Int;	@dp : Int;
+	@program : String; 
+	@input : String; @input_ptr : Int;
+	@mem : Byte[];	@instr_ptr : Int;	@dp : Int;
 	
 	New(program : String, size : Int) {
 		@program := program;
-		@mem := Int → New[size];	
+		@mem := Byte → New[size];	
 	}
 	
 	function : Main(args : String[]) ~ Nil {
-		if(args → Size() = 2) {
-			Brainfu_k → New(Scan(args[0]), args[1] → ToInt()) → Execute();
+		if(args → Size() = 1) {
+			Brainfu_k → New(Scan(args[0]), 32768) → Execute();
 		};
 	}
 	
@@ -37,62 +38,84 @@ class Brainfu_k {
 	}
 	
 	method : Execute() ~ Nil {
-		while(@ip < @program → Size()) {
-			instr := @program → Get(@ip);
+		@program → PrintLine();
+	
+		while(@instr_ptr < @program → Size()) {
+			instr := @program → Get(@instr_ptr);
 			select(instr) {
 				label '>': { @dp += 1; }
 				label '<': { @dp -= 1; }
 				label '+': { @mem[@dp] := @mem[@dp] + 1; }
 				label '-': { @mem[@dp] := @mem[@dp] - 1; }
-				label '.': { value := @mem[@dp] → As(Char); value → Print(); }				
-				label ',': { @mem[@dp] := Read(); }
-				label '[': { JumpForward(); }
-				label ']': { JumpBack(); }
-				label 'd': { DumpMemory(); }
+				label '.': { value := @mem[@dp]->As(Char); value → Print(); }				
+				label ',': { 
+					in := Read(); 
+					if(in <> 0) {
+						@mem[@dp] := in;
+					}
+					else {
+						Runtime->Exit(0);
+					};
+				}
+				label '[': { Forward(); }
+				label ']': { Backward(); }
+				label 'd': { Dump(); }
 			};
-			@ip += 1;
+			@instr_ptr += 1;
 		};
 	}
 	
-	method : JumpForward() ~ Nil {	
-		depth := 1;
+	method : Forward() ~ Nil {
+		depth := 0;
 		if(@mem[@dp] = 0) {
-			while(@ip < @program → Size()) {
-				instr := @program → Get(@ip);
-				if(instr = ']') {
-					depth -= 1;	if(depth = 0) { return;	};	
-				}
-				else if(instr = '[') { depth += 1; };
-				@ip += 1;
-			};
-			"*** Unbalanced jump ***" → ErrorLine();
-			Runtime → Exit(1);
-		};
-	}
-	
-	method : JumpBack() ~ Nil {		
-		depth := 1;
-		if(@mem[@dp] <> 0) {
-			while(@ip > 0) {
-				@ip -= 1;
-				instr := @program → Get(@ip);
+			do {
+				instr := @program → Get(@instr_ptr);
 				if(instr = '[') {
-					depth -= 1;	if(depth = 0) { return; };
+					depth += 1;
 				}
-				else if(instr = ']') { depth += 1; };
-			};
-			"*** Unbalanced jump ***" → ErrorLine();
-			Runtime → Exit(1);
+				else if(instr = ']') {
+					depth -= 1;
+					if(depth = 0) { return; };
+				};
+				@instr_ptr += 1;
+			}
+			while(@instr_ptr < @program → Size());
 		};
 	}
 	
-	method : Read() ~ Int {		
-		in := IO.Console → ReadString();
-		if(in → Size() > 0) { return in → ToInt(); };
+	method : Backward() ~ Nil {		
+		depth := 0;
+		if(@mem[@dp] <> 0) {
+			do {
+				instr := @program → Get(@instr_ptr);
+				if(instr = ']') {
+					depth += 1;
+				}
+				else if(instr = '[') {
+					depth -= 1;
+					if(depth = 0) { return; };
+				};
+				@instr_ptr -= 1;
+			}
+			while(@instr_ptr < @program → Size());
+		};
+	}
+	
+	method : Read() ~ Char {		
+		if(@input = Nil) {
+			@input := IO.Console → ReadString();
+		};
+		
+		if(@input_ptr < @input->Size()) {
+			in := @input->Get(@input_ptr);
+			@input_ptr += 1;
+			return in;
+		};
+		
 		return 0;
 	}
 	
-	method : DumpMemory() ~ Nil {	
+	method : Dump() ~ Nil {	
 		"=> {"->Print();
 		each(i : @mem) {
 			value := @mem[i];
