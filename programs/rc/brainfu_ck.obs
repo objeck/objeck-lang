@@ -79,7 +79,7 @@ class Brainfu_k {
 				@instr_ptr += 1;
 			}
 			while(@instr_ptr < @program → Size());
-			"*** Fu_k ***" → PrintLine();
+			"*** Fu_k!! ***" → PrintLine();
 		};
 	}
 	
@@ -98,7 +98,7 @@ class Brainfu_k {
 				@instr_ptr -= 1;
 			}
 			while(@instr_ptr < @program → Size());
-			"*** Fu_k ***" → PrintLine();
+			"*** Fu_k!! ***" → PrintLine();
 		};
 	}
 	
