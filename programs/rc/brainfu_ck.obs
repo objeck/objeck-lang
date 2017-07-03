@@ -3,7 +3,7 @@ use System.IO.File;
 class Brainfu_k {
 	@program : String; 
 	@input : String; @input_ptr : Int;
-	@mem : Byte[];	@instr_ptr : Int;	@dp : Int;
+	@mem : Byte[];	@instr_ptr : Int; @dp : Int;
 	
 	New(program : String, size : Int) {
 		@program := program;
@@ -80,6 +80,7 @@ class Brainfu_k {
 				@instr_ptr += 1;
 			}
 			while(@instr_ptr < @program → Size());
+			"*** Fu_k ***"->PrintLine();
 		};
 	}
 	
@@ -98,6 +99,7 @@ class Brainfu_k {
 				@instr_ptr -= 1;
 			}
 			while(@instr_ptr < @program → Size());
+			"*** Fu_k ***"->PrintLine();
 		};
 	}
 	
