@@ -24,8 +24,8 @@ class Brainfu_k {
 				char := line->Get(i);
 				select(char) {
 					label '>': label '<': label '+':
-				    label '-': label '.': label ',':
-				    label '[': label ']': label 'd': {
+					label '-': label '.': label ',':
+					label '[': label ']': label 'd': {
 						buffer += char;
 					}
 					label '#': { i := line->Size();	}
@@ -48,7 +48,7 @@ class Brainfu_k {
 				label ',': { @mem[@dp] := Read(); }
 				label '[': { JumpForward(); }
 				label ']': { JumpBack(); }
-				label 'd': { Dump(); }
+				label 'd': { DumpMemory(); }
 			};
 			@ip += 1;
 		};
@@ -92,7 +92,7 @@ class Brainfu_k {
 		return 0;
 	}
 	
-	method : Dump() ~ Nil {	
+	method : DumpMemory() ~ Nil {	
 		"=> {"->Print();
 		each(i : @mem) {
 			value := @mem[i];
