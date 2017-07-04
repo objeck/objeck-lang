@@ -2,8 +2,11 @@ use System.IO.File;
 
 class Brainfu_k {
 	@program : String; 
-	@input : String; @input_ptr : Int;
-	@mem : Byte[];	@instr_ptr : Int; @dp : Int;
+	@input : String; 
+	@input_ptr : Int;
+	@mem : Byte[];	
+	@instr_ptr : Int; 
+	@dp : Int;
 	
 	New(program : String, size : Int) {
 		@program := program;
@@ -50,12 +53,8 @@ class Brainfu_k {
 				label '.': { value := @mem[@dp] → As(Char); value → Print(); }				
 				label ',': { 
 					in := Read(); 
-					if(in <> 0) {
-						@mem[@dp] := in;
-					}
-					else {
-						## Runtime → Exit(0);
-					};
+					if(in <> 0) { @mem[@dp] := in; }
+					else { Runtime → Exit(0); };
 				}
 				label '[': { Forward(); }
 				label ']': { Backward(); }
@@ -79,7 +78,7 @@ class Brainfu_k {
 				@instr_ptr += 1;
 			}
 			while(@instr_ptr < @program → Size());
-			"*** Fu_k!! ***" → PrintLine();
+			"*** Fu_ked ***" → PrintLine();
 		};
 	}
 	
@@ -98,11 +97,11 @@ class Brainfu_k {
 				@instr_ptr -= 1;
 			}
 			while(@instr_ptr < @program → Size());
-			"*** Fu_k!! ***" → PrintLine();
+			"*** Fu_ked ***" → PrintLine();
 		};
 	}
 	
-	method : Read() ~ Char {		
+	method : Read() ~ Byte {		
 		if(@input = Nil) {
 			@input := IO.Console → ReadString();
 		};
