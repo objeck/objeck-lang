@@ -1,12 +1,9 @@
 use System.IO.File;
 
 class Brainfu_k {
-	@program : String; 
-	@input : String; 
-	@input_ptr : Int;
-	@mem : Byte[];	
-	@instr_ptr : Int; 
-	@dp : Int;
+	@program : String; @instr_ptr : Int; 
+	@mem : Byte[]; @dp : Int;
+	@input : String; @input_ptr : Int;
 	
 	New(program : String, size : Int) {
 		@program := program;
