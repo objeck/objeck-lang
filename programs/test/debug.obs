@@ -1,7 +1,9 @@
-ss Hello {
-  function : Main(args : String[]) ~ Nil {
-    "Hello World" → PrintLine();
-    "Καλημέρα κόσμε" → PrintLine();
-    "こんにちは 世界" → PrintLine();
-  }
+class Hello {
+	function : Main(args : String[]) ~ Nil {
+		Go(3*4);
+	}
+  
+	function : Go(i : Int) ~ Nil {
+		i->PrintLine();
+	}
 }

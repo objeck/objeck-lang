@@ -2630,6 +2630,7 @@ Expression* Parser::ParseFactor(int depth)
     // first time in loop
     else {
       switch(GetToken()) {
+      case TOKEN_MUL:
         expression = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, MUL_EXPR);
         break;
 
