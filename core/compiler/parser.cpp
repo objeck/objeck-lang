@@ -2619,6 +2619,10 @@ Expression* Parser::ParseFactor(int depth)
       case TOKEN_DIV:
         right = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, DIV_EXPR);
         break;
+
+      default:
+        right = NULL;
+        break;
       }
       NextToken();
 
@@ -2660,6 +2664,10 @@ Expression* Parser::ParseFactor(int depth)
 
       case TOKEN_DIV:
         expression = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, DIV_EXPR);
+        break;
+
+      default:
+        expression = NULL;
         break;
       }
       NextToken();
