@@ -1,12 +1,12 @@
 use System.IO.File;
 
 class Brainfu_k {
-	@program : String; @instr_ptr : Int; 
-	@mem : Byte[]; @dp : Int;
+	@instrs : String; @instr_ptr : Int; 
+	@mem : Byte[]; @mem_ptr : Int;
 	@input : String; @input_ptr : Int;
 	
 	New(program : String, size : Int) {
-		@program := program;
+		@instrs := program;
 		@mem := Byte → New[size];	
 	}
 	
@@ -38,19 +38,19 @@ class Brainfu_k {
 	}
 	
 	method : Execute() ~ Nil {
-		@program → PrintLine();
+		@instrs → PrintLine();
 	
-		while(@instr_ptr < @program → Size()) {
-			instr := @program → Get(@instr_ptr);
+		while(@instr_ptr < @instrs → Size()) {
+			instr := @instrs → Get(@instr_ptr);
 			select(instr) {
-				label '>': { @dp += 1; }
-				label '<': { @dp -= 1; }
-				label '+': { @mem[@dp] := @mem[@dp] + 1; }
-				label '-': { @mem[@dp] := @mem[@dp] - 1; }
-				label '.': { value := @mem[@dp] → As(Char); value → Print(); }				
+				label '>': { @mem_ptr += 1; }
+				label '<': { @mem_ptr -= 1; }
+				label '+': { @mem[@mem_ptr] := @mem[@mem_ptr] + 1; }
+				label '-': { @mem[@mem_ptr] := @mem[@mem_ptr] - 1; }
+				label '.': { value := @mem[@mem_ptr] → As(Char); value → Print(); }				
 				label ',': { 
 					in := Read(); 
-					if(in <> 0) { @mem[@dp] := in; }
+					if(in <> 0) { @mem[@mem_ptr] := in; }
 					else { Runtime → Exit(0); };
 				}
 				label '[': { Forward(); }
@@ -62,9 +62,9 @@ class Brainfu_k {
 	
 	method : Forward() ~ Nil {
 		depth := 0;
-		if(@mem[@dp] = 0) {
+		if(@mem[@mem_ptr] = 0) {
 			do {
-				instr := @program → Get(@instr_ptr);
+				instr := @instrs → Get(@instr_ptr);
 				if(instr = '[') {
 					depth += 1;
 				}
@@ -74,16 +74,16 @@ class Brainfu_k {
 				};
 				@instr_ptr += 1;
 			}
-			while(@instr_ptr < @program → Size());
+			while(@instr_ptr < @instrs → Size());
 			"*** Fu_ked ***" → PrintLine();
 		};
 	}
 	
 	method : Backward() ~ Nil {		
 		depth := 0;
-		if(@mem[@dp] <> 0) {
+		if(@mem[@mem_ptr] <> 0) {
 			do {
-				instr := @program → Get(@instr_ptr);
+				instr := @instrs → Get(@instr_ptr);
 				if(instr = ']') {
 					depth += 1;
 				}
@@ -93,7 +93,7 @@ class Brainfu_k {
 				};
 				@instr_ptr -= 1;
 			}
-			while(@instr_ptr < @program → Size());
+			while(@instr_ptr < @instrs → Size());
 			"*** Fu_ked ***" → PrintLine();
 		};
 	}
