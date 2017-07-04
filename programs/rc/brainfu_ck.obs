@@ -15,7 +15,7 @@ class Brainfu_k {
 	
 	function : Main(args : String[]) ~ Nil {
 		if(args → Size() = 1) {
-			Brainfu_k → New(Scan(args[0]), 1024 * 32) → Execute();
+			Brainfu_k → New(Scan(args[0]), 32 * 1024) → Execute();
 		};
 	}
 	
