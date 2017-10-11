@@ -88,7 +88,7 @@ void FileEmitter::Emit()
     }
   }
   
-  string open_filename(file_name.begin(), file_name.end());
+  const string open_filename(file_name.begin(), file_name.end());
   ofstream file_out(open_filename.c_str(), ofstream::binary);
   if(file_out && file_out.is_open()) {
     program->Write(emit_lib, is_debug, is_web, file_out);

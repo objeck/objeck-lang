@@ -558,50 +558,6 @@ bundle JSON {
 		}
 		
 		#~
-		Queries an object graph.
-		@param path comma separated list of values
-		@return element value
-		~#
-		method : public : Query(path : String) ~ JSONElement {
-			# we assume only objects have attributes
-			matches := path->Split(",");
-			if(matches->Size() > 0) {
-				return Query(@self, matches, 0);
-			};
-			
-			matches := String->New[1];
-			matches[0] := path;
-			return Query(@self, matches, 0);
-		}
-		
-		method : Query(elem : JSONElement, matches : String[], index : Int) ~ JSONElement {
-			if(index < matches->Size()) {
-				match := matches[index]->Trim();								
-				attrib_names := elem->GetNames();
-				if(attrib_names <> Nil) {
-					each(i : attrib_names) {
-						attrib_name := attrib_names->Get(i)->As(String);
-						if(attrib_name->Equals(match)) {						
-							match_elem := elem->Get(match);
-							next_match_elem := Query(match_elem, matches, index + 1);
-							if(next_match_elem <> Nil) {						
-								return next_match_elem;
-							}
-							else {
-								if(index = matches->Size() - 1) {
-									return match_elem;
-								};
-								return Nil;
-							};						
-						};
-					};
-				};
-			};
-			
-			return Nil;
-		}
-		
-		#~
 		Gets the names of object attributes
 		@return object attribute names
 		~#
@@ -727,6 +683,54 @@ bundle JSON {
 					};
 				}
 			};
+		}
+		
+		#~
+		Queries the object graph. Object attributes referenced by '/' while array elements are referenced by '[index]'. Example "cars/[last]/make".
+		@param path query path
+		@return matching element
+		~#
+		method : public : FindElements(path : String) ~ JSONElement {					
+			filters := path->Split("/");
+			if(filters->Size() > 0) { 
+				element := @self;
+				for(i := 0; i < filters->Size() & element <> Nil; i += 1;) {
+					element := FindElement(filters[i]->As(String), element);
+				};
+				
+				return element;
+			};
+			
+			return Nil;
+		}
+		
+		method : FindElement(filter : String, node : JSONElement) ~ JSONElement {
+			# array
+			if(filter->StartsWith('[') & filter->EndsWith(']') & node->GetType() = JSONType->ARRAY) {
+				end := filter->Find(']');
+				index := filter->SubString(1, end - 1);
+				
+				offset : Int;
+				if(index->Equals("first")) {
+					offset := 0;
+				}
+				else if(index->Equals("last")) {
+					offset := node->Size() - 1;
+				}
+				else {
+					offset := index->ToInt();
+				};
+				
+				if(offset > -1 & offset < node->Size()) {
+					return node->Get(offset);
+				};
+			}
+			# object
+			else if(node->GetType() = JSONType->OBJECT) {
+				return node->Get(filter);
+			};
+			
+			return Nil;
 		}
 	}
 	
