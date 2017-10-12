@@ -1307,20 +1307,9 @@ bundle XML {
 			children := Vector->New();
 						
 			# tokenize path into filters
-			start := 0;
-			filters := Vector->New();
-			each(i : path) {
-				if(path->Get(i) = '/') {
-					if(i - start > 0) {
-						filter := path->SubString(start, i - start);
-						filters->AddBack(filter);
-					};
-					start := i + 1;
-				};
-			};
-			if(start < path->Size() & path->Size() - start > 0) {
-				filter := path->SubString(start, path->Size() - start);
-				filters->AddBack(filter);
+			filters := path->Split("/");
+			if(filters->Size() = 0) {
+				return children;
 			};
 			
 			# process query
