@@ -566,7 +566,8 @@ class ContextAnalyzer {
 
   // returns a type expression
   Type* GetExpressionType(Expression* expression, int depth) {
-    Type* type;
+    Type* type = NULL;
+
     MethodCall* mthd_call = expression->GetMethodCall();
 
     if(expression->GetExpressionType() == METHOD_CALL_EXPR && 
