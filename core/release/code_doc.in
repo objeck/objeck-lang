@@ -1,4 +1,4 @@
-set ZIP_BIN="C:\Program Files\7-Zip"
+set ZIP_BIN="D:\Program Files\7-Zip"
 
 cd deploy\bin
 rmdir /s /q ..\html 
