@@ -19,8 +19,8 @@ See more on [Rosetta Code](http://rosettacode.org/wiki/Category:Objeck) and chec
 
 Notable features:
 
-* Object-oriented
-  *  Classes and interfaces
+* Object-oriented and functional
+  * Classes, interfaces and higher-order functions
   * Anonymous classes 
   * Reflection 
   * Object serialization 
