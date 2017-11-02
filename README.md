@@ -3,7 +3,7 @@ Objeck is an object-oriented computer language with functional features. The lan
 
 ![alt text](images/design2.png "Compiler & VM")
 
-Objeck contains all of the features of a general-purpose programming language with an emphasis placed on simplicity. The programming environment consists of a compiler, virtual machine and command line debugger.
+Objeck is a general-purpose programming language with an emphasis placed on simplicity. The programming environment consists of a compiler, virtual machine and command line debugger.
 
 ```ruby
 class Hello {
