@@ -28,9 +28,9 @@ Notable features:
 * Native support for threads, sockets, files, date/time, etc.
 * Libraries 
   *  Collections (vectors, queues, trees, hashes, etc.)
-  *  Clients for HTTP and HTTPS
+  *  HTTP and HTTPS clients
   *  RegEx
-  *  JSON and XML 
+  *  JSON and XML parsers
   *  Encryption
   *  ODBC
 * Garbage collection
