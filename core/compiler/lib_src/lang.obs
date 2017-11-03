@@ -1189,6 +1189,14 @@ bundle System {
 		method : public : Get() ~ Int {
 			return @value;
 		}
+		
+		#~
+		Set integer value
+		@param value integer value		
+		~#
+		method : public : Set(value : Int) ~ Nil {
+			@value := value;
+		}
 
 		#~
 		Compares two objects
@@ -1229,7 +1237,7 @@ bundle System {
 
 		#~
 		Copy constructor 
-		@param values integer array
+		@param integer array values
 		~#
 		New(values : Int[]) {
 			Parent();
@@ -1237,11 +1245,19 @@ bundle System {
 		}
 
 		#~
-		Gets the value
-		@return value
+		Get values
+		@return values
 		~#
 		method : public : Get() ~ Int[] {
 			return @values;
+		}
+		
+		#~
+		Set values
+		@param integer array values
+		~#
+		method : public : Set(values : Int[]) ~ Nil {
+			@values := values;
 		}
 	}
 
@@ -1269,11 +1285,19 @@ bundle System {
 		}
 
 		#~
-		Gets the value
+		Get value
 		@return value
 		~#
 		method : public : Get() ~ Float {
 			return @value;
+		}
+		
+		#~
+		Set value
+		@param value float value
+		~#
+		method : public : Set(value : Float) ~ Nil {
+			@value := value;
 		}
 
 		#~
@@ -1315,7 +1339,7 @@ bundle System {
 
 		#~
 		Copy constructor 
-		@param values float array
+		@param float array values
 		~#
 		New(values : Float[]) {
 			Parent();
@@ -1323,11 +1347,19 @@ bundle System {
 		}
 
 		#~
-		Gets the value
+		Gets values
 		@return value
 		~#
 		method : public : Get() ~ Float[] {
 			return @values;
+		}
+		
+		#~
+		Sets values
+		@param float array values
+		~#
+		method : public : Set(values : Float[]) ~ Nil {
+			@values := values
 		}
 	}
 
@@ -1339,7 +1371,7 @@ bundle System {
 
 		#~
 		Copy constructor 
-		@param values byte array
+		@param byte array values
 		~#
 		New(values : Byte[]) {
 			Parent();
@@ -1347,11 +1379,19 @@ bundle System {
 		}
 
 		#~
-		Gets the value
-		@return value
+		Get values
+		@return values
 		~#
 		method : public : Get() ~ Byte[] {
 			return @values;
+		}
+		
+		#~
+		Sets values
+		@param byte array values
+		~#
+		method : public : Set() ~ Nil {
+			@values := values;
 		}
 	}
 
@@ -1363,7 +1403,7 @@ bundle System {
 
 		#~
 		Copy constructor 
-		@param values character array
+		@param character array values
 		~#
 		New(values : Char[]) {
 			Parent();
@@ -1371,11 +1411,19 @@ bundle System {
 		}
 
 		#~
-		Gets the value
+		Get value
 		@return value
 		~#
 		method : public : Get() ~ Char[] {
 			return @values;
+		}
+		
+		#~
+		Set value
+		@param character array values
+		~#
+		method : public : Set(values : Char[]) ~ Nil {
+			@values := values;
 		}
 	}
 
