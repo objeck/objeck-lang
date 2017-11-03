@@ -1237,7 +1237,7 @@ bundle System {
 
 		#~
 		Copy constructor 
-		@param integer array values
+		@param values integer array 
 		~#
 		New(values : Int[]) {
 			Parent();
@@ -1254,7 +1254,7 @@ bundle System {
 		
 		#~
 		Set values
-		@param integer array values
+		@param values integer array 
 		~#
 		method : public : Set(values : Int[]) ~ Nil {
 			@values := values;
@@ -1339,7 +1339,7 @@ bundle System {
 
 		#~
 		Copy constructor 
-		@param float array values
+		@param values float array 
 		~#
 		New(values : Float[]) {
 			Parent();
@@ -1356,7 +1356,7 @@ bundle System {
 		
 		#~
 		Sets values
-		@param float array values
+		@param values float array 
 		~#
 		method : public : Set(values : Float[]) ~ Nil {
 			@values := values;
@@ -1371,7 +1371,7 @@ bundle System {
 
 		#~
 		Copy constructor 
-		@param byte array values
+		@param values byte array 
 		~#
 		New(values : Byte[]) {
 			Parent();
@@ -1388,7 +1388,7 @@ bundle System {
 		
 		#~
 		Sets values
-		@param byte array values
+		@param values byte array 
 		~#
 		method : public : Set(values : Byte[]) ~ Nil {
 			@values := values;
@@ -1403,7 +1403,7 @@ bundle System {
 
 		#~
 		Copy constructor 
-		@param character array values
+		@param values character array 
 		~#
 		New(values : Char[]) {
 			Parent();
@@ -1420,7 +1420,7 @@ bundle System {
 		
 		#~
 		Set value
-		@param character array values
+		@param values character array 
 		~#
 		method : public : Set(values : Char[]) ~ Nil {
 			@values := values;

@@ -352,6 +352,7 @@ bundle CSV {
 		
 		#~
 		Removes a row from the table
+		@param id row to delete
 		@return true if deleted false otherwise
 		~#
 		method : public : Delete(id : Int) ~ Bool {
