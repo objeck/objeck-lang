@@ -1307,26 +1307,37 @@ bundle XML {
 			children := Vector->New();
 						
 			# tokenize path into filters
-			filters := path->Split("/");
-			if(filters->Size() = 0) {
-				return children;
+			start := 0;
+			filters := Vector->New();
+			each(i : path) {
+				if(path->Get(i) = '/') {
+					if(i - start > 0) {
+						filter := path->SubString(start, i - start);
+						filters->AddBack(filter);
+					};
+					start := i + 1;
+				};
+			};
+			if(start < path->Size() & path->Size() - start > 0) {
+				filter := path->SubString(start, path->Size() - start);
+				filters->AddBack(filter);
 			};
 			
 			# process query
-			first_filter := filters[0];
+			first_filter := filters->Get(0)->As(String);
 			if(filters->Size() > 0 & first_filter->Equals(@self->GetName())) {
 				if(filters->Size() = 1) {
 					children->AddBack(@self);
 				}
 				else {
 					# process root query
-					filter := filters[1];
+					filter := filters->Get(1)->As(String);
 					children := ProcessExpression(filter, @self);
 											
 					# process children
 					for(i := 2; i < filters->Size(); i += 1;) {
 						# get filter
-						filter := filters[i];
+						filter := filters->Get(i)->As(String);
 						# filter children
 						all_filtered := Vector->New();
 						each(j : children) {
