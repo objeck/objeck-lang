@@ -1313,20 +1313,20 @@ bundle XML {
 			};
 			
 			# process query
-			first_filter := filters->Get(0)->As(String);
+			first_filter := filters[0];
 			if(filters->Size() > 0 & first_filter->Equals(@self->GetName())) {
 				if(filters->Size() = 1) {
 					children->AddBack(@self);
 				}
 				else {
 					# process root query
-					filter := filters->Get(1)->As(String);
+					filter := filters[1];
 					children := ProcessExpression(filter, @self);
 											
 					# process children
 					for(i := 2; i < filters->Size(); i += 1;) {
 						# get filter
-						filter := filters->Get(i)->As(String);
+						filter := filters[i];
 						# filter children
 						all_filtered := Vector->New();
 						each(j : children) {

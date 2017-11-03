@@ -1359,7 +1359,7 @@ bundle System {
 		@param float array values
 		~#
 		method : public : Set(values : Float[]) ~ Nil {
-			@values := values
+			@values := values;
 		}
 	}
 
@@ -1390,7 +1390,7 @@ bundle System {
 		Sets values
 		@param byte array values
 		~#
-		method : public : Set() ~ Nil {
+		method : public : Set(values : Byte[]) ~ Nil {
 			@values := values;
 		}
 	}
