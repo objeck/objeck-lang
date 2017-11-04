@@ -200,7 +200,7 @@ class File {
   }
 
   static bool IsDir(const char* name) {
-    return PathFileExists(name) && PathIsDirectory(name);
+    return PathIsDirectory(name);
   }
 
   static vector<string> ListDir(const char* p) {
