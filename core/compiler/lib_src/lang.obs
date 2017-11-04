@@ -4754,6 +4754,54 @@ bundle System.IO.File {
 		}
 		
 		#~
+		Creates a directory path
+		@param n directory path name
+		@return true if directory path was created 
+		~#
+		function : CreatePath(n : String) ~ Bool {	
+			sub_dirs := n->Split("/");
+			if(sub_dirs->Size() = 0) {
+				sub_dirs := n->Split("\\");
+			};		
+			
+			if(sub_dirs->Size() > 0) {
+				is_okay := true;
+				
+				i := 0;
+				path := "";
+				if(sub_dirs->Size() > 1 & (sub_dirs[0]->Has(':') | sub_dirs[0]->IsEmpty())) {
+					sub_dir := sub_dirs[0];
+					sub_dir->Append('/');
+					sub_dir->Append(sub_dirs[1]);
+					
+					is_okay := System.IO.File.Directory->Exists(sub_dir);
+					if(<>is_okay) {
+						is_okay := System.IO.File.Directory->Create(sub_dir);
+					};
+					path->Append(sub_dir);
+					path->Append('/');
+					i := 2;
+## "root: '{$path}'"->PrintLine();
+				};
+				
+				for(j := i; j < sub_dirs->Size() & is_okay; j += 1;) {
+					path->Append(sub_dirs[j]);
+					path->Append('/');
+## "relative: '{$path}'"->PrintLine();
+					
+					is_okay := System.IO.File.Directory->Exists(path);
+					if(<>is_okay) {
+						is_okay := System.IO.File.Directory->Create(path);
+					};
+				};
+				
+				return is_okay;
+			};
+			
+			return false;
+		}
+		
+		#~
 		Checks to see if the given directory exists
 		@param n directory name
 		@return true if directory exists
