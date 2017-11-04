@@ -4774,24 +4774,22 @@ bundle System.IO.File {
 					sub_dir->Append('/');
 					sub_dir->Append(sub_dirs[1]);
 					
-					is_okay := System.IO.File.Directory->Exists(sub_dir);
+					is_okay := Exists(sub_dir);
 					if(<>is_okay) {
-						is_okay := System.IO.File.Directory->Create(sub_dir);
+						is_okay := Create(sub_dir);
 					};
 					path->Append(sub_dir);
 					path->Append('/');
 					i := 2;
-## "root: '{$path}'"->PrintLine();
 				};
 				
 				for(j := i; j < sub_dirs->Size() & is_okay; j += 1;) {
 					path->Append(sub_dirs[j]);
 					path->Append('/');
-## "relative: '{$path}'"->PrintLine();
 					
-					is_okay := System.IO.File.Directory->Exists(path);
+					is_okay := Exists(path);
 					if(<>is_okay) {
-						is_okay := System.IO.File.Directory->Create(path);
+						is_okay := Create(path);
 					};
 				};
 				
