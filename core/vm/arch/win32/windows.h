@@ -43,10 +43,12 @@
 #include <strsafe.h>
 #include <accctrl.h>
 #include <aclapi.h>
+#include <shlwapi.h>
 
 #pragma comment(lib, "Ws2_32.lib")
 #pragma comment(lib, "User32.lib")
 #pragma comment(lib, "UserEnv.lib")
+#pragma comment(lib, "shlwapi.lib")
 
 typedef void (WINAPI *PGNSI)(LPSYSTEM_INFO);
 typedef BOOL (WINAPI *PGPI)(DWORD, DWORD, DWORD, DWORD, PDWORD);
@@ -198,14 +200,7 @@ class File {
   }
 
   static bool IsDir(const char* name) {
-    WIN32_FIND_DATA data;
-    HANDLE find = FindFirstFile(name, &data);
-    if(find == INVALID_HANDLE_VALUE) {
-      return false;
-    }
-    FindClose(find);
-
-    return true;
+    return PathFileExists(name) && PathIsDirectory(name);
   }
 
   static vector<string> ListDir(const char* p) {
