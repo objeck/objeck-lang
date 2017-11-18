@@ -4424,6 +4424,10 @@ bundle System.IO.File {
 		@return character string
 		~#
 		method : public : ReadString() ~ System.String {
+			if(IsEOF()) {
+				return Nil;
+			};
+
 			buffer : Char[] := Char->New[1024];
 			ReadString(buffer);
 			return System.String->New(buffer);
@@ -4945,6 +4949,10 @@ bundle System.IO.Net {
 		@return character string
 		~#
 		method : public : ReadString() ~ System.String {
+			if(<>IsOpen()) {
+				return Nil;
+			};
+
 			buffer : Char[] := Char->New[1024];
 			ReadString(buffer);
 			return System.String->New(buffer);
@@ -5118,6 +5126,10 @@ bundle System.IO.Net {
 		@return character string
 		~#
 		method : public : native : ReadString() ~ System.String {
+			if(<>IsOpen()) {
+				return Nil;
+			};
+
 			buffer : Char[] := Char->New[1024];
 			ReadString(buffer);
 			return System.String->New(buffer);
