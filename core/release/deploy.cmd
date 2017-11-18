@@ -55,16 +55,17 @@ call code_doc.cmd
 
 REM finished
 if [%1] NEQ [deploy] goto end
-	rmdir /s /q "%HOMEDRIVE%%HOMEPATH%\Desktop\objeck-lang"
-	mkdir "%HOMEDRIVE%%HOMEPATH%\Desktop\objeck-lang"
-	xcopy /e deploy "%HOMEDRIVE%%HOMEPATH%\Desktop\objeck-lang"
-	mkdir "%HOMEDRIVE%%HOMEPATH%\Desktop\objeck-lang\doc\icons"
-	copy ..\..\images\setup_icons\*.ico "%HOMEDRIVE%%HOMEPATH%\Desktop\objeck-lang\doc\icons"
-	copy ..\..\images\setup_icons\*.jpg "%HOMEDRIVE%%HOMEPATH%\Desktop\objeck-lang\doc\icons"
-	copy ..\..\docs\eula.rtf "%HOMEDRIVE%%HOMEPATH%\Desktop\objeck-lang\doc"
-	copy ..\..\docs\uninstall.vbs "%HOMEDRIVE%%HOMEPATH%\Desktop\objeck-lang\doc"
+	rmdir /s /q "%USERPROFILE%\Desktop\Release"
+	mkdir "%USERPROFILE%\Desktop\Release"
+	mkdir "%USERPROFILE%\Desktop\Release\objeck-lang"
+	xcopy /e deploy "%USERPROFILE%\Desktop\Release\objeck-lang"
+	mkdir "%USERPROFILE%\Desktop\Release\objeck-lang\doc\icons"
+	copy ..\..\images\setup_icons\*.ico "%USERPROFILE%\Desktop\Release\objeck-lang\doc\icons"
+	copy ..\..\images\setup_icons\*.jpg "%USERPROFILE%\Desktop\Release\objeck-lang\doc\icons"
+	copy ..\..\docs\eula.rtf "%USERPROFILE%\Desktop\Release\objeck-lang\doc"
+	copy ..\..\docs\uninstall.vbs "%USERPROFILE%\Desktop\Release\objeck-lang\doc"
 	copy ..\setup
 	devenv /rebuild Release setup.sln
 	signtool sign /f "D:\Dropbox\Personal\signing keys\2016\randy_hollines.pfx" /p %2 /d "Objeck Toolchain" /t http://timestamp.verisign.com/scripts/timstamp.dll Release\setup.msi
-	copy Release\setup.msi "%HOMEDRIVE%%HOMEPATH%\Desktop\objeck-lang.msi"
+	copy Release\setup.msi "%USERPROFILE%\Desktop\Release\objeck-lang.msi"
 :end
