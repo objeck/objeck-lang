@@ -1,7 +1,7 @@
 /***************************************************************************
  * VM common.
  *
- * Copyright (c) 2008-2016, Randy Hollines
+ * Copyright (c) 2008-2018, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without

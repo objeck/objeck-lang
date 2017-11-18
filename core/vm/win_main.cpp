@@ -71,7 +71,7 @@ int main(const int argc, const char* argv[])
   }
   else {
     wstring usage;
-    // usage += L"Copyright (c) 2008-2015, Randy Hollines. All rights reserved.\n";
+    // usage += L"Copyright (c) 2008-2018, Randy Hollines. All rights reserved.\n";
     // usage += L"THIS SOFTWARE IS PROVIDED \"AS IS\" WITHOUT WARRANTY. REFER TO THE\n";
     // usage += L"license.txt file or http://www.opensource.org/licenses/bsd-license.php\n";
     // usage += L"FOR MORE INFORMATION.\n\n";
