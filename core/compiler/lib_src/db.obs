@@ -360,6 +360,7 @@ foo->Size()->PrintLine();
 "Where"	-> PrintLine();		
 			term := term->GetRight();
 			left := term->GetLeft();
+			
 			if(left <> Nil) {
 				ProcessTerm(left);
 			};
@@ -470,11 +471,12 @@ foo->Size()->PrintLine();
 		}
 
 		method : ParseFrom() ~ Term {
-"oper=from"->PrintLine();
+"-- From --"->PrintLine();			
+
 			term := Term->New(Token->Type->FROM);
 			while(TokenType() = Token->Type->REF) {
 				value := TokenValue()->As(String);
-"value={$value}"->PrintLine();
+"\ttable={$value}"->PrintLine();
 				term->AddValue(value);
 				NextToken();
 
@@ -497,7 +499,7 @@ foo->Size()->PrintLine();
 		}
 		
 		method : ParseWhere() ~ Term {
-"oper=where"->PrintLine();
+"-- Where --"->PrintLine();			
 			term := Term->New(Token->Type->WHERE);
 			
 			right := ParseLogic();
@@ -510,6 +512,7 @@ foo->Size()->PrintLine();
 		}
 		
 		method : ParseLogic() ~ Term {
+"-- Logic --"->PrintLine();			
 			term := Term->New(Token->Type->OPER);
 
 			left : Term; 			
@@ -525,12 +528,12 @@ foo->Size()->PrintLine();
 
 			select(TokenType()) {
 				label Token->Type->AND: {
-"logic=and"->PrintLine();
+"\tlogic='and'"->PrintLine();
 					NextToken();
 				}
 
 				label Token->Type->OR: {
-"logic=or"->PrintLine();
+"\tlogic='or'"->PrintLine();
 					NextToken();
 				}
 				
@@ -554,11 +557,13 @@ foo->Size()->PrintLine();
 		}
 		
 		method : ParseTerm() ~ Term {
+"-- Term --"->PrintLine();		
 			term := Term->New(Token->Type->OPER);
 
 			left : Term; 			
 			if(TokenType() = Token->Type->REF) {
 				value := TokenValue()->As(String);
+"\tleft_ref={$value}"->PrintLine();							
 				left := Term->New(Token->Type->REF);
 				left->AddValue(value);
 				NextToken();
@@ -579,36 +584,36 @@ foo->Size()->PrintLine();
 
 			select(TokenType()) {
 				label Token->Type->EQUAL: {
-"qual=="->PrintLine();
+"\tqual='='"->PrintLine();
 					term->SetOperator(Conditional->Qualifier->EQUAL);
 					NextToken();
 				}
 
 				label Token->Type->NOT_EQUAL: {
-"qual=<>"->PrintLine();
+"\tqual='<>'"->PrintLine();
 					term->SetOperator(Conditional->Qualifier->NOT_EQUAL);
 					NextToken();
 				}
 
 				label Token->Type->LESS_EQUAL: {
-"qual=<="->PrintLine();
+"\tqual='<='"->PrintLine();
 					NextToken();
 				}
 
 				label Token->Type->LESS: {
-"qual=<"->PrintLine();
+"\tqual='<'"->PrintLine();
 					term->SetOperator(Conditional->Qualifier->LESS_EQUAL);
 					NextToken();
 				}
 
 				label Token->Type->GREATER_EQUAL: {
-"qual=>="->PrintLine();
+"\tqual='>='"->PrintLine();
 					term->SetOperator(Conditional->Qualifier->GREATER_EQUAL);
 					NextToken();
 				}
 
 				label Token->Type->GREATER: {
-"qual=>"->PrintLine();
+"\tqual='>'"->PrintLine();
 					term->SetOperator(Conditional->Qualifier->GREATER);
 					NextToken();
 				}
@@ -621,6 +626,7 @@ foo->Size()->PrintLine();
 			right : Term;			
 			if(TokenType() = Token->Type->REF) {
 				value := TokenValue()->As(String);
+"\trhs_ref={$value}"->PrintLine();				
 				right := Term->New(Token->Type->REF);
 				right->AddValue(value);
 				NextToken();
