@@ -472,20 +472,22 @@ foo->Size()->PrintLine();
 		}
 
 		method : ParseFrom() ~ Term {
-"-- From --"->PrintLine();			
+"-- From --"->PrintLine();
 
-			term := Term->New(Token->Type->FROM);
-			while(TokenType() = Token->Type->REF) {
-				value := TokenValue()->As(String);
-"\ttable={$value}"->PrintLine();
-				term->SetValue(value);
-				NextToken();
-
-				if(TokenType() = Token->Type->COMMA) {
-					NextToken();
-				};
+			if(TokenType() <> Token->Type->REF) {
+				return Nil;
 			};
+			
+			value := TokenValue()->As(String);
+			term := Term->New(Token->Type->FROM);			
+			term->SetValue(value);
+			NextToken();
+"\ttable={$value}"->PrintLine();
 
+			if(TokenType() = Token->Type->COMMA) {
+				NextToken();
+			};
+			
 			right : Term;
 			if(TokenType() = Token->Type->WHERE) {
 				NextToken();
