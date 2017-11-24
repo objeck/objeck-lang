@@ -6,7 +6,7 @@ class Rosetta {
 		t := MakeTable();
 		t->Size()->PrintLine();
 	
-		q := Query->New("from game where name=doom and system=wii", t);
+		q := Query->New("from game where name=doom and system=wii and f=b", t);
 		q-> Query() ;
 	}
 	
