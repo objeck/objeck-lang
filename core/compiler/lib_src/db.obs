@@ -330,7 +330,7 @@ bundle TinyDB {
 		method : public : Query() ~ Nil {		
 			@terms := @parser->Parse();
 			if(@terms <> Nil) {
-"---"->PrintLine();			
+"-- Query --"->PrintLine();			
 				if(@terms->GetType() = Token->Type->FROM) {
 					ProcessFrom(@terms);
 				};
@@ -338,9 +338,8 @@ bundle TinyDB {
 		}
 		
 		method : public : ProcessFrom(term : Term) ~ Nil {
-			values := term->GetValues();
-			if(values->Size() > 0) {
-				name := values->Get(0)->As(String);
+			name := term->GetValue()->As(String);
+			if(name <> Nil) {
 				if(@table->GetName()->Equals(name)) {
 name->PrintLine();
 					if(term->GetLeft() <> Nil) {
@@ -357,24 +356,24 @@ foo->Size()->PrintLine();
 		}
 		
 		method : public : ProcessWhere(term : Term) ~ Nil {
-"Where"	-> PrintLine();		
+"Where"	-> PrintLine();
+#~
 			term := term->GetRight();
 			left := term->GetLeft();
 			
 			if(left <> Nil) {
 				ProcessTerm(left);
 			};
+~#			
 		}
 		
 		method : public : ProcessTerm(term : Term) ~ Nil {
+"Term"->PrintLine();
+
+#~			
 			left := term->GetLeft()->GetValue();
 			right := term->GetRight()->GetValue();
 
-"Term"->PrintLine();
-			
-			left : Compare;
-			right : Compare;
-			
 			index := -1;
 			if(left->TypeOf(String)) {
 				left_value := left->As(String);
@@ -393,6 +392,8 @@ foo->Size()->PrintLine();
 				};
 "blah"->PrintLine();				
 			};
+~#		
+		
 		}
 	}
 	
@@ -455,7 +456,7 @@ foo->Size()->PrintLine();
 				while(TokenType() = Token->Type->REF) {
 					value := TokenValue()->As(String);
 "value={$value}"->PrintLine();
-					term->AddValue(value);
+					term->SetValue(value);
 					NextToken();
 
 					if(TokenType() = Token->Type->COMMA) {
@@ -477,7 +478,7 @@ foo->Size()->PrintLine();
 			while(TokenType() = Token->Type->REF) {
 				value := TokenValue()->As(String);
 "\ttable={$value}"->PrintLine();
-				term->AddValue(value);
+				term->SetValue(value);
 				NextToken();
 
 				if(TokenType() = Token->Type->COMMA) {
@@ -506,7 +507,7 @@ foo->Size()->PrintLine();
 			do {
 				right := ParseLogic();
 				if(right = Nil) {
-					return Nil;
+					return term->GetTerms()->Size() > 0 ? term : Nil->As(Term);
 				};
 				term->AddTerm(right);
 			}
@@ -572,18 +573,18 @@ foo->Size()->PrintLine();
 				value := TokenValue()->As(String);
 "\tleft_ref={$value}"->PrintLine();							
 				left := Term->New(Token->Type->REF);
-				left->AddValue(value);
+				left->SetValue(value);
 				NextToken();
 			}
 			else if(TokenType() = Token->Type->INT) {
 				value := TokenValue()->As(IntHolder);
 				left := Term->New(Token->Type->INT);
-				left->AddValue(value);
+				left->SetValue(value);
 			}
 			else if(TokenType() = Token->Type->FLOAT) {
 				value := TokenValue()->As(FloatHolder);
 				left := Term->New(Token->Type->FLOAT);
-				left->AddValue(value);
+				left->SetValue(value);
 			}
 			else {
 				return Nil;
@@ -635,18 +636,18 @@ foo->Size()->PrintLine();
 				value := TokenValue()->As(String);
 "\trhs_ref={$value}"->PrintLine();				
 				right := Term->New(Token->Type->REF);
-				right->AddValue(value);
+				right->SetValue(value);
 				NextToken();
 			}
 			else if(TokenType() = Token->Type->INT) {
 				value := TokenValue()->As(IntHolder);
 				right := Term->New(Token->Type->INT);
-				right->AddValue(value);
+				right->SetValue(value);
 			}
 			else if(TokenType() = Token->Type->FLOAT) {
 				value := TokenValue()->As(FloatHolder);
 				right := Term->New(Token->Type->FLOAT);
-				right->AddValue(value);
+				right->SetValue(value);
 			}
 			else {
 				return Nil;
@@ -822,7 +823,7 @@ foo->Size()->PrintLine();
 		@oper : Conditional->Qualifier;
 		@left : Term;
 		@right : Term;
-		@values : Vector;
+		@value : Compare;
 		@terms : Vector;
 		
 		New(type : Token->Type) {
@@ -845,24 +846,12 @@ foo->Size()->PrintLine();
 			@oper := oper;
 		}
 		
-		method : public : AddValue(value : Compare) ~ Nil {
-			if(@values = Nil) {			
-				@values := Vector->New();
-			};
-			
-			@values->AddBack(value);
-		}
-		
-		method : public : GetValues() ~ Vector {
-			return @values;
+		method : public : SetValue(value : Compare) ~ Nil {
+			@value := value;
 		}
 		
 		method : public : GetValue() ~ Compare {
-			if(@values->Size() > 0) {
-				return @values->Get(0)->As(Compare);
-			};
-			
-			return Nil;
+			return @value;
 		}
 		
 		method : public : AddTerm(term : Term) ~ Nil {
