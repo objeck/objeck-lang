@@ -502,19 +502,21 @@ foo->Size()->PrintLine();
 "-- Where --"->PrintLine();			
 			term := Term->New(Token->Type->WHERE);
 			
-			right := ParseLogic();
-			if(right = Nil) {
-				return Nil;
-			};
-			term->SetRight(right);
+			# TODO: handle nested logic
+			do {
+				right := ParseLogic();
+				if(right = Nil) {
+					return Nil;
+				};
+				term->AddTerm(right);
+			}
+			while(right->GetType() = Token->Type->AND | right->GetType() = Token->Type->OR);
 
 			return term;
 		}
 		
 		method : ParseLogic() ~ Term {
 "-- Logic --"->PrintLine();			
-			term := Term->New(Token->Type->OPER);
-
 			left : Term; 			
 			if(TokenType() = Token->Type->REF | 
 					TokenType() = Token->Type->INT | 
@@ -523,22 +525,27 @@ foo->Size()->PrintLine();
 				if(left = Nil) {
 					return Nil;
 				};
-				term->SetLeft(left);
+				
 			};
-
+			
+			term : Term;
 			select(TokenType()) {
 				label Token->Type->AND: {
 "\tlogic='and'"->PrintLine();
+					term := Term->New(Token->Type->AND);
+					term->SetLeft(left);
 					NextToken();
 				}
 
 				label Token->Type->OR: {
 "\tlogic='or'"->PrintLine();
+					term := Term->New(Token->Type->OR);
+					term->SetLeft(left);
 					NextToken();
 				}
 				
 				other: {
-					return term;
+					return left;
 				}
 			};
 
@@ -816,6 +823,7 @@ foo->Size()->PrintLine();
 		@left : Term;
 		@right : Term;
 		@values : Vector;
+		@terms : Vector;
 		
 		New(type : Token->Type) {
 			@type := type;
@@ -823,6 +831,10 @@ foo->Size()->PrintLine();
 		
 		method : public : GetType() ~ Token->Type {
 			return @type;
+		}
+		
+		method : public : SetType(type : Token->Type) ~ Nil {
+			@type := type;
 		}
 		
 		method : public : GetOperator() ~ Conditional->Qualifier {
@@ -848,6 +860,26 @@ foo->Size()->PrintLine();
 		method : public : GetValue() ~ Compare {
 			if(@values->Size() > 0) {
 				return @values->Get(0)->As(Compare);
+			};
+			
+			return Nil;
+		}
+		
+		method : public : AddTerm(term : Term) ~ Nil {
+			if(@terms = Nil) {			
+				@terms := Vector->New();
+			};
+			
+			@terms->AddBack(term);
+		}
+		
+		method : public : GetTerms() ~ Vector {
+			return @terms;
+		}
+		
+		method : public : GetTerm() ~ Term {
+			if(@terms->Size() > 0) {
+				return @terms->Get(0)->As(Term);
 			};
 			
 			return Nil;
