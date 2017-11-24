@@ -330,7 +330,7 @@ bundle TinyDB {
 		method : public : Query() ~ Nil {		
 			@terms := @parser->Parse();
 			if(@terms <> Nil) {
-"-- Query --"->PrintLine();			
+"** Query **"->PrintLine();			
 				if(@terms->GetType() = Token->Type->FROM) {
 					ProcessFrom(@terms);
 				};
@@ -343,7 +343,7 @@ bundle TinyDB {
 				if(@table->GetName()->Equals(name)) {
 name->PrintLine();
 					if(term->GetLeft() <> Nil) {
-"-- select --"->PrintLine();
+"** Select **"->PrintLine();
 					}
 					else {
 						ProcessWhere(term->GetRight());			
@@ -356,19 +356,15 @@ foo->Size()->PrintLine();
 		}
 		
 		method : public : ProcessWhere(term : Term) ~ Nil {
-"Where"	-> PrintLine();
-#~
-			term := term->GetRight();
-			left := term->GetLeft();
-			
-			if(left <> Nil) {
-				ProcessTerm(left);
+"** Where **"->PrintLine();
+			terms := term->GetTerms();
+			each(i : terms) {
+				ProcessTerm(terms->Get(i)->As(Term));
 			};
-~#			
 		}
 		
 		method : public : ProcessTerm(term : Term) ~ Nil {
-"Term"->PrintLine();
+"** Term **"->PrintLine();
 
 #~			
 			left := term->GetLeft()->GetValue();
