@@ -366,7 +366,6 @@ foo->Size()->PrintLine();
 		method : public : ProcessTerm(term : Term) ~ Nil {
 "** Term **"->PrintLine();
 
-#~			
 			left := term->GetLeft()->GetValue();
 			right := term->GetRight()->GetValue();
 
@@ -386,10 +385,7 @@ foo->Size()->PrintLine();
 				if(index > -1) {
 					@conds->AddBack(Conditional->New(index, term->GetOperator(), right->As(IntHolder)));
 				};
-"blah"->PrintLine();				
 			};
-~#		
-		
 		}
 	}
 	
