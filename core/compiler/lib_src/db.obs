@@ -328,64 +328,7 @@ bundle TinyDB {
 		}
 		
 		method : public : Query() ~ Nil {		
-			@terms := @parser->Parse();
-			if(@terms <> Nil) {
-"** Query **"->PrintLine();			
-				if(@terms->GetType() = Token->Type->FROM) {
-					ProcessFrom(@terms);
-				};
-			};
-		}
-		
-		method : public : ProcessFrom(term : Term) ~ Nil {
-			name := term->GetValue()->As(String);
-			if(name <> Nil) {
-				if(@table->GetName()->Equals(name)) {
-name->PrintLine();
-					if(term->GetLeft() <> Nil) {
-"** Select **"->PrintLine();
-					}
-					else {
-						ProcessWhere(term->GetRight());			
-					};
-				};
-			};
-			
-			foo := @table->Where(@conds);
-foo->Size()->PrintLine();
-		}
-		
-		method : public : ProcessWhere(term : Term) ~ Nil {
-"** Where **"->PrintLine();
-			terms := term->GetTerms();
-			each(i : terms) {
-				ProcessTerm(terms->Get(i)->As(Term));
-			};
-		}
-		
-		method : public : ProcessTerm(term : Term) ~ Nil {
-"** Term **"->PrintLine();
-
-			left := term->GetLeft()->GetValue();
-			right := term->GetRight()->GetValue();
-
-			index := -1;
-			if(left->TypeOf(String)) {
-				left_value := left->As(String);
-				index := @table->GetIndex(left_value);
-"\t{$left_value}"->PrintLine();
-			};
-			
-			if(right->TypeOf(IntHolder)) {
-				right_value := right->As(IntHolder)->Get();
-"\t{$right_value}"->PrintLine();
-			};			
-			
-			if(left <> Nil & right <> Nil) {
-				if(index > -1) {
-					@conds->AddBack(Conditional->New(index, term->GetOperator(), right->As(IntHolder)));
-				};
-			};
+			@parser->Parse();
 		}
 	}
 	
@@ -397,260 +340,64 @@ foo->Size()->PrintLine();
 		
 		New(line : String) {
 			@line := line;
+			@tokens := Scan();
 		}
 		
 		method : public : Parse() ~ Term {
-			@tokens := Scan();
-			if(@tokens = Nil) {
-				return Nil;
-			};
-			
 			NextToken();
-			return ParseStatement();
-		}
-		
-		method : ParseStatement() ~ Term {
-			term : Term;
-			left : Term;
 			
 			if(TokenType() = Token->Type->SELECT) {
 				NextToken();
-				left := ParseSelect();
-				if(left = Nil) {
-					return Nil;
-				};
-			};
-			
-			if(TokenType() = Token->Type->FROM) {
+				return ParseSelect();
+			}
+			else if(TokenType() = Token->Type->FROM) {
 				NextToken();
-				term := ParseFrom();
-				if(term = Nil) {
-					return Nil;
-				};
-				
-				if(left <> Nil) {
-					term->SetLeft(left);
-				};
+				return ParseFrom();
 			};
 			
-			return term;	
+			return Nil;
 		}
 
 		method : ParseSelect() ~ Term {
-"oper=select"->PrintLine();
-			term := Term->New(Token->Type->SELECT);
+"--- Select ---"->PrintLine();		
 
-			if(TokenType() = Token->Type->STAR) {
-"value=<all>"->PrintLine();
-				NextToken();
-			}
-			else if(TokenType() = Token->Type->REF) {
-				while(TokenType() = Token->Type->REF) {
-					value := TokenValue()->As(String);
-"value={$value}"->PrintLine();
-					term->SetValue(value);
-					NextToken();
-
-					if(TokenType() = Token->Type->COMMA) {
-						NextToken();
-					};
-				};
-			}
-			else {
-				return Nil;
-			};
-			
-			return term;
+			return Nil;
 		}
 
 		method : ParseFrom() ~ Term {
-"-- From --"->PrintLine();
+"--- From ---"->PrintLine();
 
 			if(TokenType() <> Token->Type->REF) {
 				return Nil;
 			};
 			
-			value := TokenValue()->As(String);
-			term := Term->New(Token->Type->FROM);			
-			term->SetValue(value);
+			term := Term->New(Token->Type->FROM);
+			term->SetValue(TokenValue());
 			NextToken();
-"\ttable={$value}"->PrintLine();
-
-			if(TokenType() = Token->Type->COMMA) {
-				NextToken();
-			};
 			
-			right : Term;
 			if(TokenType() = Token->Type->WHERE) {
-				NextToken();
-				right := ParseWhere();
-				if(right = Nil) {
+				left := ParseWhere();
+				if(left = Nil) {
 					return Nil;
 				};
-				term->SetRight(right);
+				term->SetLeft(left);
 			};
 			
 			return term;
 		}
 		
 		method : ParseWhere() ~ Term {
-"-- Where --"->PrintLine();			
-			term := Term->New(Token->Type->WHERE);
-			
-			# TODO: handle nested logic
-			do {
-				right := ParseLogic();
-				if(right = Nil) {
-					return term->GetTerms()->Size() > 0 ? term : Nil->As(Term);
-				};
-				term->AddTerm(right);
-			}
-			while(right->GetType() = Token->Type->AND | right->GetType() = Token->Type->OR);
+"--- Where ---"->PrintLine();
 
-			return term;
+			return Nil;
 		}
 		
 		method : ParseLogic() ~ Term {
-"-- Logic --"->PrintLine();			
-			left : Term; 			
-			if(TokenType() = Token->Type->REF | 
-					TokenType() = Token->Type->INT | 
-					TokenType() = Token->Type->FLOAT) {
-				left := ParseTerm();
-				if(left = Nil) {
-					return Nil;
-				};
-				
-			};
-			
-			term : Term;
-			select(TokenType()) {
-				label Token->Type->AND: {
-"\tlogic='and'"->PrintLine();
-					term := Term->New(Token->Type->AND);
-					term->SetLeft(left);
-					NextToken();
-				}
-
-				label Token->Type->OR: {
-"\tlogic='or'"->PrintLine();
-					term := Term->New(Token->Type->OR);
-					term->SetLeft(left);
-					NextToken();
-				}
-				
-				other: {
-					return left;
-				}
-			};
-
-			right : Term;			
-			if(TokenType() = Token->Type->REF | 
-					TokenType() = Token->Type->INT | 
-					TokenType() = Token->Type->FLOAT) {
-				right := ParseTerm();
-				if(right = Nil) {
-					return Nil;
-				};
-				term->SetRight(right);
-			};
-				
-			return term;
+			return Nil;
 		}
 		
 		method : ParseTerm() ~ Term {
-"-- Term --"->PrintLine();		
-			term := Term->New(Token->Type->OPER);
-
-			left : Term; 			
-			if(TokenType() = Token->Type->REF) {
-				value := TokenValue()->As(String);
-"\tleft_ref={$value}"->PrintLine();							
-				left := Term->New(Token->Type->REF);
-				left->SetValue(value);
-				NextToken();
-			}
-			else if(TokenType() = Token->Type->INT) {
-				value := TokenValue()->As(IntHolder);
-				left := Term->New(Token->Type->INT);
-				left->SetValue(value);
-			}
-			else if(TokenType() = Token->Type->FLOAT) {
-				value := TokenValue()->As(FloatHolder);
-				left := Term->New(Token->Type->FLOAT);
-				left->SetValue(value);
-			}
-			else {
-				return Nil;
-			};
-
-			select(TokenType()) {
-				label Token->Type->EQUAL: {
-"\tqual='='"->PrintLine();
-					term->SetOperator(Conditional->Qualifier->EQUAL);
-					NextToken();
-				}
-
-				label Token->Type->NOT_EQUAL: {
-"\tqual='<>'"->PrintLine();
-					term->SetOperator(Conditional->Qualifier->NOT_EQUAL);
-					NextToken();
-				}
-
-				label Token->Type->LESS_EQUAL: {
-"\tqual='<='"->PrintLine();
-					NextToken();
-				}
-
-				label Token->Type->LESS: {
-"\tqual='<'"->PrintLine();
-					term->SetOperator(Conditional->Qualifier->LESS_EQUAL);
-					NextToken();
-				}
-
-				label Token->Type->GREATER_EQUAL: {
-"\tqual='>='"->PrintLine();
-					term->SetOperator(Conditional->Qualifier->GREATER_EQUAL);
-					NextToken();
-				}
-
-				label Token->Type->GREATER: {
-"\tqual='>'"->PrintLine();
-					term->SetOperator(Conditional->Qualifier->GREATER);
-					NextToken();
-				}
-				
-				other: {
-					return left;
-				}
-			};
-
-			right : Term;			
-			if(TokenType() = Token->Type->REF) {
-				value := TokenValue()->As(String);
-"\trhs_ref={$value}"->PrintLine();				
-				right := Term->New(Token->Type->REF);
-				right->SetValue(value);
-				NextToken();
-			}
-			else if(TokenType() = Token->Type->INT) {
-				value := TokenValue()->As(IntHolder);
-				right := Term->New(Token->Type->INT);
-				right->SetValue(value);
-			}
-			else if(TokenType() = Token->Type->FLOAT) {
-				value := TokenValue()->As(FloatHolder);
-				right := Term->New(Token->Type->FLOAT);
-				right->SetValue(value);
-			}
-			else {
-				return Nil;
-			};
-			
-			term->SetLeft(left);
-			term->SetRight(right);
-			
-			return term;
+			return Nil;
 		}
 		
 		method : NextToken() ~ Bool {
@@ -746,14 +493,6 @@ foo->Size()->PrintLine();
 					# other
 					else {
 						select(@line->Get(i)) {
-							label '(': {
-								tokens->AddBack(Token->New(Token->Type->FOPEN));
-							}
-							
-							label ')': {
-								tokens->AddBack(Token->New(Token->Type->FCLOSE));
-							}
-
 							label '*': {
 								tokens->AddBack(Token->New(Token->Type->STAR));
 							}
@@ -902,8 +641,6 @@ foo->Size()->PrintLine();
 			IN,
 			AND,
 			OR,
-			FOPEN,
-			FCLOSE,
 			STAR,
 			COMMA,
 			SEMI_COLON,
@@ -999,14 +736,6 @@ foo->Size()->PrintLine();
 
 				label Type->OR: {
 					buffer += "OR";
-				}
-
-				label Type->FOPEN: {
-					buffer += "FOPEN";
-				}
-
-				label Type->FCLOSE: {
-					buffer += "FCLOSE";
 				}
 
 				label Type->STAR: {

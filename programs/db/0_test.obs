@@ -7,7 +7,7 @@ class Rosetta {
 		t->Size()->PrintLine();
 	
 		q := Query->New("from game where name=doom and system=wii", t);
-		q-> Query() ;
+		q->Query() ;
 	}
 	
 	function : MakeTable() ~ Table {
