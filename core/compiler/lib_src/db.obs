@@ -327,8 +327,81 @@ bundle TinyDB {
 			@parser := Parser->New(line);
 		}
 		
-		method : public : Query() ~ Nil {		
-			@parser->Parse();
+		method : public : Query() ~ String {
+			expr := @parser->Parse();
+			if(expr = Nil) {
+				return "** ERROR **";
+			};
+			
+			
+			if(expr->GetType() = Token->Type->SELECT) {
+				expr := ProcessSelect(expr);
+				if(expr = Nil) {
+					return  "** ERROR **";
+				};
+				
+				## TODO
+			}
+			else if(expr->GetType() = Token->Type->FROM) {
+				expr := ProcessFrom(expr);
+				if(expr = Nil) {
+					return  "** ERROR **";
+				};
+			}
+			else {
+				return "** ERROR **";
+			};
+			
+			return "-> Boom <-";
+		}
+		
+		method : ProcessSelect(expr : Term) ~ Term {
+			return Nil;
+		}
+		
+		method : ProcessFrom(expr : Term) ~ Term {
+			name := expr->GetValue()->As(String);
+			if(<>name->Equals(@table->GetName())) {
+				return Nil;
+			};
+			
+			expr := expr->GetLeft();
+			if(expr = Nil | expr->GetType() <> Token->Type->WHERE) {
+				return Nil;
+			};
+			
+			terms := expr->GetTerms();
+			each(i : terms) {
+				ProcessTerm(terms->Get(i)->As(Term));
+			};
+			
+
+"-0-"->PrintLine();
+terms->Size()->PrintLine();
+			
+			return Nil;
+		}
+		
+		method : ProcessTerm(expr : Term) ~ Term {
+			select(TokenType()) {
+				label Token->Type->AND: {
+				}
+				
+				label Token->Type->OR: {
+				}
+				
+				label Token->Type->EQUAL: {
+				}
+				
+				label Token->Type->NOT_EQUAL: {
+				
+				}
+				
+				other: {
+				}
+			};
+			
+			return Nil;
 		}
 	}
 	
@@ -376,6 +449,7 @@ bundle TinyDB {
 			NextToken();
 			
 			if(TokenType() = Token->Type->WHERE) {
+				NextToken();
 				left := ParseWhere();
 				if(left = Nil) {
 					return Nil;
@@ -388,16 +462,98 @@ bundle TinyDB {
 		
 		method : ParseWhere() ~ Term {
 "--- Where ---"->PrintLine();
-
-			return Nil;
+			
+			term := Term->New(Token->Type->WHERE);
+			left := ParseLogic();
+			while(left <> Nil & left->GetType() <> Token->Type->EOS) {
+				term->AddTerm(left);
+				left := ParseLogic();
+			};
+			
+			return term;
 		}
 		
 		method : ParseLogic() ~ Term {
-			return Nil;
+			left := ParseTerm();
+			if(left = Nil) {
+				return Nil;
+			};
+			
+			term : Term;
+			select(TokenType()) {
+				label Token->Type->REF:
+				label Token->Type->INT:
+				label Token->Type->FLOAT: {
+					term := Term->New(TokenType());
+					term->SetValue(TokenValue());
+					NextToken();
+				}
+				
+				other: {
+					return left;
+				}
+			};
+			
+			right := ParseTerm();
+			if(right = Nil) {
+				return Nil;
+			};
+			
+			term->SetLeft(left);
+			term->SetRight(right);
+			return term;
 		}
 		
 		method : ParseTerm() ~ Term {
-			return Nil;
+"--- Term ---"->PrintLine();
+		
+			left : Term;
+			select(TokenType()) {
+				label Token->Type->REF:
+				label Token->Type->INT:
+				label Token->Type->FLOAT: {
+					left := Term->New(TokenType());
+					left->SetValue(TokenValue());
+					NextToken();
+				}
+				
+				other: {
+					return Nil;
+				}
+			};
+			
+			term : Term;
+			select(TokenType()) {
+				label Token->Type->EQUAL:
+				label Token->Type->NOT_EQUAL: {
+					term := Term->New(TokenType());
+					term->SetValue(TokenValue());
+					NextToken();
+				}
+				
+				other: {
+					return Nil;
+				}
+			};
+			
+			right : Term;			
+			select(TokenType()) {
+				label Token->Type->REF:
+				label Token->Type->INT:
+				label Token->Type->FLOAT: {
+					right := Term->New(TokenType());
+					term->SetValue(TokenValue());
+					NextToken();
+				}
+				
+				other: {
+					return Nil;
+				}
+			};
+		
+			term->SetLeft(left);
+			term->SetRight(right);
+			return term;
 		}
 		
 		method : NextToken() ~ Bool {
