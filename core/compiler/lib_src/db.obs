@@ -383,22 +383,35 @@ terms->Size()->PrintLine();
 		}
 		
 		method : ProcessTerm(expr : Term) ~ Term {
-			select(expr->GetType()) {
-				label Token->Type->AND: {
-				}
-				
-				label Token->Type->OR: {
-				}
-				
-				label Token->Type->EQUAL: {
-				}
-				
-				label Token->Type->NOT_EQUAL: {
-				
-				}
-				
-				other: {
-				}
+			left := expr->GetLeft();
+			right := expr->GetRight();
+			
+			if(left <> Nil & right <> Nil) {
+				select(expr->GetType()) {
+					label Token->Type->AND: {
+					}
+					
+					label Token->Type->OR: {
+					}
+					
+					label Token->Type->EQUAL: {					
+						index := @table->GetIndex(right->GetValue()->As(String));
+						if(index > -1) {
+							@conds->AddBack(Conditional->New(index, Conditional->Qualifier->EQUAL, left->GetValue()));
+						};
+					}
+					
+					label Token->Type->NOT_EQUAL: {
+						index := @table->GetIndex(right->GetValue()->As(String));
+						if(index > -1) {
+							@conds->AddBack(Conditional->New(index, Conditional->Qualifier->NOT_EQUAL, left->GetValue()));
+						};
+					}
+					
+					other: {
+						return Nil;
+					}
+				};
 			};
 			
 			return Nil;
