@@ -555,7 +555,7 @@ terms->Size()->PrintLine();
 				label Token->Type->INT:
 				label Token->Type->FLOAT: {
 					right := Term->New(TokenType());
-					term->SetValue(TokenValue());
+					right->SetValue(TokenValue());
 					NextToken();
 				}
 				
