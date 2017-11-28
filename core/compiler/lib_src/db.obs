@@ -383,7 +383,7 @@ terms->Size()->PrintLine();
 		}
 		
 		method : ProcessTerm(expr : Term) ~ Term {
-			select(TokenType()) {
+			select(expr->GetType()) {
 				label Token->Type->AND: {
 				}
 				
