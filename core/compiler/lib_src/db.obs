@@ -452,19 +452,18 @@ name->PrintLine();
 		method : Merge(results : Vector) ~ Nil {
 			if(results <> Nil) {
 				if(@is_and) {
-					@temp := Vector->New();
-"---"->PrintLine();				
+					temp := Vector->New();
 					each(i : results) {
 						left := results->Get(i);
 						each(j : @results) {
 							right := @results->Get(j);
 							if(left = right) {
-								@temp->AddBack(right);
+								temp->AddBack(right);
 							};
 						};
 					};
 					
-					@results := @temp;
+					@results := temp;
 					@is_and := false;
 				}
 				else {
