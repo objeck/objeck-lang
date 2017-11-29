@@ -6,7 +6,7 @@ class Rosetta {
 		table := MakeTable();
 		table->Size()->PrintLine();
 	
-		query := Query->New("from game where name=doom and system=wii", table);
+		query := Query->New("from game where name=doom or system=wii", table);
 ##		query := Query->New("from game where name=doom", table);
 		results := query->Query();
 		each(i : results) {
@@ -37,6 +37,11 @@ class Rosetta {
 		r->Set("name", "doom");
 		r->Set("system", "wii");
 		r->Set("date", "9/10/17");
+		
+		r := t->Insert();
+		r->Set("name", "doom");
+		r->Set("system", "xbox");
+		r->Set("date", "10/16/12");
 		
 		return t;
 	}
