@@ -401,10 +401,18 @@ name->PrintLine();
 
 			if(left = Nil | right = Nil) {
 				return false;
-			};
-			
+			};			
+expr->GetType()->PrintLine();
+	
 			select(expr->GetType()) {
 				label Token->Type->AND: {
+					if(<>ProcessTerm(left)) {
+						return false;
+					};
+					
+					if(<>ProcessTerm(right)) {
+						return false;
+					};
 				}
 				
 				label Token->Type->OR: {
@@ -412,7 +420,9 @@ name->PrintLine();
 				
 				label Token->Type->EQUAL: {					
 					index := @table->GetIndex(left->GetValue()->As(String));
-					if(index > -1) {					
+					if(index > -1) {
+"== Equal =="->PrintLine();
+right->GetValue()->As(String)->PrintLine();
 						@conds->AddBack(Conditional->New(index, Conditional->Qualifier->EQUAL, right->GetValue()));
 					};
 				}
@@ -425,7 +435,7 @@ name->PrintLine();
 				}
 				
 				other: {
-					return true;
+					return false;
 				}
 			};
 			
@@ -510,9 +520,8 @@ name->PrintLine();
 			
 			term : Term;
 			select(TokenType()) {
-				label Token->Type->REF:
-				label Token->Type->INT:
-				label Token->Type->FLOAT: {
+				label Token->Type->AND:
+				label Token->Type->OR: {
 					term := Term->New(TokenType());
 					term->SetValue(TokenValue());
 					NextToken();
