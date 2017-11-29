@@ -327,17 +327,19 @@ bundle TinyDB {
 			@parser := Parser->New(line);
 		}
 		
-		method : public : Query() ~ String {
+		method : public : Query() ~ Vector {
 			expr := @parser->Parse();
 			if(expr = Nil) {
-				return "** ERROR **";
+"** ERROR 0 **"->PrintLine();
+				return Nil;
 			};
 			
 			
 			if(expr->GetType() = Token->Type->SELECT) {
 				expr := ProcessSelect(expr);
 				if(expr = Nil) {
-					return  "** ERROR **";
+"** ERROR 1 **"->PrintLine();
+					return Nil;
 				};
 				
 				## TODO
@@ -345,14 +347,22 @@ bundle TinyDB {
 			else if(expr->GetType() = Token->Type->FROM) {
 				expr := ProcessFrom(expr);
 				if(expr = Nil) {
-					return  "** ERROR **";
+"** ERROR 2 **"->PrintLine();
+					return Nil;
 				};
 			}
 			else {
-				return "** ERROR **";
+"** ERROR 3 **"->PrintLine();
+				return Nil;
 			};
 			
-			return "-> Boom <-";
+			if(expr->GetType() = Token->Type->EOS) {
+				return @table->Where(@conds);
+			}
+			else {
+"** ERROR 4 **"->PrintLine();
+					return Nil;
+			};
 		}
 		
 		method : ProcessSelect(expr : Term) ~ Term {
@@ -360,61 +370,66 @@ bundle TinyDB {
 		}
 		
 		method : ProcessFrom(expr : Term) ~ Term {
+"== From =="->PrintLine();
+		
 			name := expr->GetValue()->As(String);
 			if(<>name->Equals(@table->GetName())) {
 				return Nil;
 			};
+name->PrintLine();			
 			
-			expr := expr->GetLeft();
-			if(expr = Nil | expr->GetType() <> Token->Type->WHERE) {
+			left := expr->GetLeft();
+			if(left = Nil | left->GetType() <> Token->Type->WHERE) {
 				return Nil;
 			};
-			
-			terms := expr->GetTerms();
-			each(i : terms) {
-				ProcessTerm(terms->Get(i)->As(Term));
-			};
-			
 
-"-0-"->PrintLine();
-terms->Size()->PrintLine();
+			terms := left->GetTerms();
+			each(i : terms) {
 			
-			return Nil;
-		}
-		
-		method : ProcessTerm(expr : Term) ~ Term {
-			left := expr->GetLeft();
-			right := expr->GetRight();
-			
-			if(left <> Nil & right <> Nil) {
-				select(expr->GetType()) {
-					label Token->Type->AND: {
-					}
-					
-					label Token->Type->OR: {
-					}
-					
-					label Token->Type->EQUAL: {					
-						index := @table->GetIndex(right->GetValue()->As(String));
-						if(index > -1) {
-							@conds->AddBack(Conditional->New(index, Conditional->Qualifier->EQUAL, left->GetValue()));
-						};
-					}
-					
-					label Token->Type->NOT_EQUAL: {
-						index := @table->GetIndex(right->GetValue()->As(String));
-						if(index > -1) {
-							@conds->AddBack(Conditional->New(index, Conditional->Qualifier->NOT_EQUAL, left->GetValue()));
-						};
-					}
-					
-					other: {
-						return Nil;
-					}
+				if(<>ProcessTerm(terms->Get(i)->As(Term))) {
+					return Nil;
 				};
 			};
 			
-			return Nil;
+			return expr->GetRight();
+		}
+		
+		method : ProcessTerm(expr : Term) ~ Bool {
+"== Term =="->PrintLine();
+			left := expr->GetLeft();
+			right := expr->GetRight();
+
+			if(left = Nil | right = Nil) {
+				return false;
+			};
+			
+			select(expr->GetType()) {
+				label Token->Type->AND: {
+				}
+				
+				label Token->Type->OR: {
+				}
+				
+				label Token->Type->EQUAL: {					
+					index := @table->GetIndex(left->GetValue()->As(String));
+					if(index > -1) {					
+						@conds->AddBack(Conditional->New(index, Conditional->Qualifier->EQUAL, right->GetValue()));
+					};
+				}
+				
+				label Token->Type->NOT_EQUAL: {
+					index := @table->GetIndex(left->GetValue()->As(String));
+					if(index > -1) {
+						@conds->AddBack(Conditional->New(index, Conditional->Qualifier->NOT_EQUAL, right->GetValue()));
+					};
+				}
+				
+				other: {
+					return true;
+				}
+			};
+			
+			return true;
 		}
 	}
 	
@@ -470,6 +485,7 @@ terms->Size()->PrintLine();
 				term->SetLeft(left);
 			};
 			
+			term->SetRight(Term->New(Token->Type->EOS));
 			return term;
 		}
 		
@@ -524,7 +540,7 @@ terms->Size()->PrintLine();
 			select(TokenType()) {
 				label Token->Type->REF:
 				label Token->Type->INT:
-				label Token->Type->FLOAT: {
+				label Token->Type->FLOAT: {				
 					left := Term->New(TokenType());
 					left->SetValue(TokenValue());
 					NextToken();
@@ -538,7 +554,7 @@ terms->Size()->PrintLine();
 			term : Term;
 			select(TokenType()) {
 				label Token->Type->EQUAL:
-				label Token->Type->NOT_EQUAL: {
+				label Token->Type->NOT_EQUAL: {				
 					term := Term->New(TokenType());
 					term->SetValue(TokenValue());
 					NextToken();
@@ -553,7 +569,7 @@ terms->Size()->PrintLine();
 			select(TokenType()) {
 				label Token->Type->REF:
 				label Token->Type->INT:
-				label Token->Type->FLOAT: {
+				label Token->Type->FLOAT: {			
 					right := Term->New(TokenType());
 					right->SetValue(TokenValue());
 					NextToken();
