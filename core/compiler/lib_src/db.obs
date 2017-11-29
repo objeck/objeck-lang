@@ -318,11 +318,14 @@ bundle TinyDB {
 		@table : Table;
 		@conds : Vector;
 		@results : Vector;
+		@is_and : Bool;
+		
 		
 		New(line : String, table : Table) {
 			@table := table;
 			@conds := Vector->New();
 			@results := Vector->New();
+			@is_and := false;
 			
 			@parser := Parser->New(line);
 		}
@@ -385,7 +388,6 @@ name->PrintLine();
 
 			terms := left->GetTerms();
 			each(i : terms) {
-			
 				if(<>ProcessTerm(terms->Get(i)->As(Term))) {
 					return Nil;
 				};
@@ -405,7 +407,14 @@ name->PrintLine();
 	
 			select(expr->GetType()) {
 				label Token->Type->AND: {
+					if(<>ProcessTerm(left)) {
+						return false;
+					};
 					
+					@is_and := true;
+					if(<>ProcessTerm(right)) {
+						return false;
+					};
 				}
 				
 				label Token->Type->OR: {
@@ -442,16 +451,34 @@ name->PrintLine();
 		
 		method : Merge(results : Vector) ~ Nil {
 			if(results <> Nil) {
-				each(i : results) {
-					left := results->Get(i);
-					each(j : @results) {
-						right := @results->Get(j);
-						if(left = right) {
-							return;
-							
+				if(@is_and) {
+					@temp := Vector->New();
+"---"->PrintLine();				
+					each(i : results) {
+						left := results->Get(i);
+						each(j : @results) {
+							right := @results->Get(j);
+							if(left = right) {
+								@temp->AddBack(right);
+							};
 						};
 					};
-					@results->AddBack(left);
+					
+					@results := @temp;
+					@is_and := false;
+				}
+				else {
+					each(i : results) {
+						left := results->Get(i);
+						each(j : @results) {
+							right := @results->Get(j);
+							if(left = right) {
+								return;
+								
+							};
+						};
+						@results->AddBack(left);
+					};
 				};
 			};
 		}
