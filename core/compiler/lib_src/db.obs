@@ -48,59 +48,56 @@ bundle TinyDB {
 			return matches;
 		}
 		
-		method : public : native : Where(conds : Vector) ~ Vector {
+		method : public : native : Where(cond : Conditional) ~ Vector {
 			matches := Vector->New();
 			
 			row := @head;
 			while(row <> Nil) {
-				each(j : conds) {
-					cond := conds->Get(j)->As(Conditional);
-					left := row->Get(cond->GetLeft());
-					if(left <> Nil) {
-						right := cond->GetValue();
-						if(right = Nil) {
-							right := row->Get(cond->GetRight());
-						};
-						select(cond->GetQualifier()) {
-							label Conditional->Qualifier->EQUAL: {
-								if(left->Compare(right) = 0) {
-									matches->AddBack(row);
-								};
-							}
-							
-							label Conditional->Qualifier->NOT_EQUAL: {
-								if(left->Compare(right) <> 0) {
-									matches->AddBack(row);
-								};
-							}
-							
-							label Conditional->Qualifier->GREATER: {
-								if(left->Compare(right) > 0) {
-									matches->AddBack(row);
-								};
-							}
-							
-							label Conditional->Qualifier->LESS: {
-								if(left->Compare(right) < 0) {
-									matches->AddBack(row);
-								};
-							}
-							
-							label Conditional->Qualifier->GREATER_EQUAL: {
-								if(left->Compare(right) >= 0) {
-									matches->AddBack(row);
-								};
-							}
-							
-							label Conditional->Qualifier->LESS_EQUAL: {
-								if(left->Compare(right) <= 0) {
-									matches->AddBack(row);
-								};
-							}
-							
-							label Conditional->Qualifier->LIKE: {
-							}
-						};
+				left := row->Get(cond->GetLeft());
+				if(left <> Nil) {
+					right := cond->GetValue();
+					if(right = Nil) {
+						right := row->Get(cond->GetRight());
+					};
+					select(cond->GetQualifier()) {
+						label Conditional->Qualifier->EQUAL: {
+							if(left->Compare(right) = 0) {
+								matches->AddBack(row);
+							};
+						}
+						
+						label Conditional->Qualifier->NOT_EQUAL: {
+							if(left->Compare(right) <> 0) {
+								matches->AddBack(row);
+							};
+						}
+						
+						label Conditional->Qualifier->GREATER: {
+							if(left->Compare(right) > 0) {
+								matches->AddBack(row);
+							};
+						}
+						
+						label Conditional->Qualifier->LESS: {
+							if(left->Compare(right) < 0) {
+								matches->AddBack(row);
+							};
+						}
+						
+						label Conditional->Qualifier->GREATER_EQUAL: {
+							if(left->Compare(right) >= 0) {
+								matches->AddBack(row);
+							};
+						}
+						
+						label Conditional->Qualifier->LESS_EQUAL: {
+							if(left->Compare(right) <= 0) {
+								matches->AddBack(row);
+							};
+						}
+						
+						label Conditional->Qualifier->LIKE: {
+						}
 					};
 				};
 				row := row->Next();
@@ -320,10 +317,13 @@ bundle TinyDB {
 		@terms : Term;
 		@table : Table;
 		@conds : Vector;
+		@results : Vector;
 		
 		New(line : String, table : Table) {
 			@table := table;
 			@conds := Vector->New();
+			@results := Vector->New();
+			
 			@parser := Parser->New(line);
 		}
 		
@@ -357,7 +357,7 @@ bundle TinyDB {
 			};
 			
 			if(expr->GetType() = Token->Type->EOS) {
-				return @table->Where(@conds);
+				return @results;
 			}
 			else {
 "** ERROR 4 **"->PrintLine();
@@ -402,10 +402,13 @@ name->PrintLine();
 			if(left = Nil | right = Nil) {
 				return false;
 			};			
-expr->GetType()->PrintLine();
 	
 			select(expr->GetType()) {
 				label Token->Type->AND: {
+					
+				}
+				
+				label Token->Type->OR: {
 					if(<>ProcessTerm(left)) {
 						return false;
 					};
@@ -415,22 +418,17 @@ expr->GetType()->PrintLine();
 					};
 				}
 				
-				label Token->Type->OR: {
-				}
-				
 				label Token->Type->EQUAL: {					
 					index := @table->GetIndex(left->GetValue()->As(String));
 					if(index > -1) {
-"== Equal =="->PrintLine();
-right->GetValue()->As(String)->PrintLine();
-						@conds->AddBack(Conditional->New(index, Conditional->Qualifier->EQUAL, right->GetValue()));
+						Merge(@table->Where(Conditional->New(index, Conditional->Qualifier->EQUAL, right->GetValue())));
 					};
 				}
 				
 				label Token->Type->NOT_EQUAL: {
 					index := @table->GetIndex(left->GetValue()->As(String));
 					if(index > -1) {
-						@conds->AddBack(Conditional->New(index, Conditional->Qualifier->NOT_EQUAL, right->GetValue()));
+						Merge(@table->Where(Conditional->New(index, Conditional->Qualifier->NOT_EQUAL, right->GetValue())));
 					};
 				}
 				
@@ -440,6 +438,22 @@ right->GetValue()->As(String)->PrintLine();
 			};
 			
 			return true;
+		}
+		
+		method : Merge(results : Vector) ~ Nil {
+			if(results <> Nil) {
+				each(i : results) {
+					left := results->Get(i);
+					each(j : @results) {
+						right := @results->Get(j);
+						if(left = right) {
+							return;
+							
+						};
+					};
+					@results->AddBack(left);
+				};
+			};
 		}
 	}
 	
