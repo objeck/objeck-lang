@@ -3,11 +3,16 @@ use TinyDB;
 
 class Rosetta {
 	function : Main(args : String[]) ~ Nil {
-		t := MakeTable();
-		t->Size()->PrintLine();
+		table := MakeTable();
+		table->Size()->PrintLine();
 	
-		q := Query->New("from game where name=doom and system=wii", t);
-		q->Query()->PrintLine();
+##		query := Query->New("from game where name=doom and system=wii", t);
+		query := Query->New("from game where name=doom", table);
+		results := query->Query();
+		each(i : results) {
+			row := results->Get(i)->As(Row);
+			row->ToString()->PrintLine();
+		};
 	}
 	
 	function : MakeTable() ~ Table {
