@@ -332,7 +332,8 @@ bundle TinyDB {
 		
 		method : public : Query() ~ Vector {
 			expr := @parser->Parse();
-			if(expr = Nil) {
+#~					
+			 if(expr = Nil) {
 "** ERROR 0 **"->PrintLine();
 				return Nil;
 			};
@@ -366,6 +367,8 @@ bundle TinyDB {
 "** ERROR 4 **"->PrintLine();
 					return Nil;
 			};
+~#
+			return Nil;
 		}
 		
 		method : ProcessSelect(expr : Term) ~ Term {
@@ -397,56 +400,7 @@ name->PrintLine();
 		}
 		
 		method : ProcessTerm(expr : Term) ~ Bool {
-"== Term =="->PrintLine();
-			left := expr->GetLeft();
-			right := expr->GetRight();
-
-			if(left = Nil | right = Nil) {
-				return false;
-			};			
-	
-			select(expr->GetType()) {
-				label Token->Type->AND: {
-					if(<>ProcessTerm(left)) {
-						return false;
-					};
-					
-					@is_and := true;
-					if(<>ProcessTerm(right)) {
-						return false;
-					};
-				}
-				
-				label Token->Type->OR: {
-					if(<>ProcessTerm(left)) {
-						return false;
-					};
-					
-					if(<>ProcessTerm(right)) {
-						return false;
-					};
-				}
-				
-				label Token->Type->EQUAL: {					
-					index := @table->GetIndex(left->GetValue()->As(String));
-					if(index > -1) {
-						Merge(@table->Where(Conditional->New(index, Conditional->Qualifier->EQUAL, right->GetValue())));
-					};
-				}
-				
-				label Token->Type->NOT_EQUAL: {
-					index := @table->GetIndex(left->GetValue()->As(String));
-					if(index > -1) {
-						Merge(@table->Where(Conditional->New(index, Conditional->Qualifier->NOT_EQUAL, right->GetValue())));
-					};
-				}
-				
-				other: {
-					return false;
-				}
-			};
-			
-			return true;
+			return false;
 		}
 		
 		method : Merge(results : Vector) ~ Nil {
@@ -542,14 +496,35 @@ name->PrintLine();
 		method : ParseWhere() ~ Term {
 "--- Where ---"->PrintLine();
 			
-			term := Term->New(Token->Type->WHERE);
-			left := ParseLogic();
-			while(left <> Nil & left->GetType() <> Token->Type->EOS) {
-				term->AddTerm(left);
-				left := ParseLogic();
-			};
+			where := Term->New(Token->Type->WHERE);
 			
-			return term;
+			term : Term;
+			do {
+				left := ParseLogic();
+				
+				type := TokenType();
+				if(type = Token->Type->AND | type = Token->Type->OR) {
+					term := Term->New(type);
+					term->SetValue(TokenValue());
+					NextToken();
+					
+					right := ParseTerm();
+					if(right = Nil) {
+						return Nil;
+					};
+					
+					term->SetLeft(left);
+					term->SetRight(right);
+				}
+				else {
+					term := left;
+				};
+			}
+			while(TokenType() <> Token->Type->EOS);
+			
+term->GetType()->PrintLine();			
+			where->SetLeft(term);
+			return where;
 		}
 		
 		method : ParseLogic() ~ Term {
@@ -558,33 +533,30 @@ name->PrintLine();
 				return Nil;
 			};
 			
-			term : Term;
-			select(TokenType()) {
-				label Token->Type->AND:
-				label Token->Type->OR: {
-					term := Term->New(TokenType());
-					term->SetValue(TokenValue());
-					NextToken();
-				}
+			type := TokenType();
+			if(type = Token->Type->AND | type = Token->Type->OR) {
+"--- Logic ---"->PrintLine();
+			
+				term := Term->New(type);
+				term->SetValue(TokenValue());
+				NextToken();
 				
-				other: {
-					return left;
-				}
+				right := ParseTerm();
+				if(right = Nil) {
+					return Nil;
+				};
+				
+				term->SetLeft(left);
+				term->SetRight(right);
+				return term;
 			};
 			
-			right := ParseTerm();
-			if(right = Nil) {
-				return Nil;
-			};
-			
-			term->SetLeft(left);
-			term->SetRight(right);
-			return term;
+			return left;
 		}
 		
 		method : ParseTerm() ~ Term {
 "--- Term ---"->PrintLine();
-		
+			
 			left : Term;
 			select(TokenType()) {
 				label Token->Type->REF:
@@ -619,7 +591,7 @@ name->PrintLine();
 				label Token->Type->REF:
 				label Token->Type->INT:
 				label Token->Type->FLOAT: {			
-					right := Term->New(TokenType());
+					right := Term->New(TokenType());					
 					right->SetValue(TokenValue());
 					NextToken();
 				}
@@ -632,6 +604,8 @@ name->PrintLine();
 			term->SetLeft(left);
 			term->SetRight(right);
 			return term;
+			
+			return Nil;
 		}
 		
 		method : NextToken() ~ Bool {
