@@ -562,8 +562,8 @@ interm->Size()->PrintLine();
 			do {
 				type := TokenType();
 				if(type = Token->Type->AND | type = Token->Type->OR) {
-					right := Term->New(type);
-					right->SetValue(TokenValue());
+					term := Term->New(type);
+					term->SetValue(TokenValue());
 					NextToken();
 					
 					right := ParseTerm();
@@ -571,9 +571,9 @@ interm->Size()->PrintLine();
 						return Nil;
 					};
 					
-					right->SetLeft(left);
-					right->SetRight(right);
-					left := right;
+					term->SetLeft(left);
+					term->SetRight(right);
+					left := term;
 				};
 			}
 			while(TokenType() <> Token->Type->EOS);
@@ -715,6 +715,8 @@ left->GetRight()->GetType()->PrintLine();
 			reserved->Insert("and", Token->New(Token->Type->AND));
 			reserved->Insert("or", Token->New(Token->Type->OR));
 			
+			
+## ADD BOUNDS CHECKS			
 			i := 0;
 			tokens := Vector->New();
 			while(i < @line->Size()) {    
@@ -725,10 +727,22 @@ left->GetRight()->GetType()->PrintLine();
 				
 				# parse the @line
 				if(i < @line->Size()) {
-					# word
-					if(@line->Get(i)->IsChar() = true) {
+					# string
+					if(@line->Get(i) = '\'') {
 						string := "";
-						while(@line->Get(i)->IsChar() = true | @line->Get(i) = '.') {
+						i += 1;
+						while(@line->Get(i) <> '\'') {
+							string->Append(@line->Get(i));
+							i += 1;
+						};
+						i += 1;
+						tokens->AddBack(Token->New(string));
+string->PrintLine();						
+					}
+					# word
+					else if(@line->Get(i)->IsChar() = true) {
+						string := "";
+						while(@line->Get(i)->IsChar() | @line->Get(i) = '_') {
 							string->Append(@line->Get(i));
 							i += 1;
 						};
@@ -830,7 +844,6 @@ left->GetRight()->GetType()->PrintLine();
 		@left : Term;
 		@right : Term;
 		@value : Compare;
-		@terms : Vector;
 		
 		New(type : Token->Type) {
 			@type := type;
@@ -858,26 +871,6 @@ left->GetRight()->GetType()->PrintLine();
 		
 		method : public : GetValue() ~ Compare {
 			return @value;
-		}
-		
-		method : public : AddTerm(term : Term) ~ Nil {
-			if(@terms = Nil) {			
-				@terms := Vector->New();
-			};
-			
-			@terms->AddBack(term);
-		}
-		
-		method : public : GetTerms() ~ Vector {
-			return @terms;
-		}
-		
-		method : public : GetTerm() ~ Term {
-			if(@terms->Size() > 0) {
-				return @terms->Get(0)->As(Term);
-			};
-			
-			return Nil;
 		}
 		
 		method : public : SetLeft(left : Term) ~ Nil {
