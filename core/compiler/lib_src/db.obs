@@ -632,6 +632,17 @@ left->GetRight()->GetType()->PrintLine();
 					NextToken();
 				}
 				
+				label Token->Type->OPRN: {
+					NextToken();
+					left := ParseTerm();
+					if(left = Nil | TokenType() <> Token->Type->CPRN) {
+						return Nil;
+					};
+					NextToken();
+					
+					return left;
+				}
+				
 				other: {
 					return Nil;
 				}
@@ -669,8 +680,6 @@ left->GetRight()->GetType()->PrintLine();
 			term->SetLeft(left);
 			term->SetRight(right);
 			return term;
-			
-			return Nil;
 		}
 		
 		method : NextToken() ~ Bool {
@@ -786,16 +795,16 @@ string->PrintLine();
 								tokens->AddBack(Token->New(Token->Type->COMMA));
 							}
 							
-							label ';': {
-								tokens->AddBack(Token->New(Token->Type->SEMI_COLON));
+							label '(': {
+								tokens->AddBack(Token->New(Token->Type->OPRN));
+							}
+							
+							label ')': {
+								tokens->AddBack(Token->New(Token->Type->CPRN));
 							}
 							
 							label '=': {
 								tokens->AddBack(Token->New(Token->Type->EQUAL));
-							}
-							
-							label '\'': {
-								tokens->AddBack(Token->New(Token->Type->QUOTE));
 							}
 							
 							label '<': {
@@ -907,9 +916,9 @@ string->PrintLine();
 			OR,
 			STAR,
 			COMMA,
-			SEMI_COLON,
+			OPRN,
+			CPRN,
 			EQUAL,
-			QUOTE,
 			NOT_EQUAL,
 			LESS_EQUAL,
 			LESS,
@@ -1010,16 +1019,16 @@ string->PrintLine();
 					buffer += "COMMA";
 				}
 
-				label Type->SEMI_COLON: {
-					buffer += "SEMI_COLON";
+				label Type->OPRN: {
+					buffer += "OPRN";
+				}
+				
+				label Type->CPRN: {
+					buffer += "CPRN";
 				}
 
 				label Type->EQUAL: {
 					buffer += "EQUAL";
-				}
-
-				label Type->QUOTE: {
-					buffer += "QUOTE";
 				}
 
 				label Type->NOT_EQUAL: {
