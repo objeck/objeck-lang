@@ -48,7 +48,7 @@ bundle TinyDB {
 			return matches;
 		}
 		
-		method : public : native : Where(cond : Conditional) ~ Vector {
+		method : public : native : Filter(cond : Conditional) ~ Vector {
 			matches := Vector->New();
 			
 			row := @head;
@@ -431,7 +431,7 @@ interm->Size()->PrintLine();
 left->GetValue()->As(String)->PrintLine();
 					index := @table->GetIndex(left->GetValue()->As(String));
  					if(index > -1) {
-						interm := @table->Where(Conditional->New(index, Conditional->Qualifier->EQUAL, right->GetValue()));
+						interm := @table->Filter(Conditional->New(index, Conditional->Qualifier->EQUAL, right->GetValue()));
 interm->Size()->PrintLine();
 "---"->PrintLine();									
 						return interm;
@@ -443,7 +443,7 @@ interm->Size()->PrintLine();
 left->GetValue()->As(String)->PrintLine();
 					index := @table->GetIndex(left->GetValue()->As(String));
  					if(index > -1) {
-						interm := @table->Where(Conditional->New(index, Conditional->Qualifier->NOT_EQUAL, right->GetValue()));
+						interm := @table->Filter(Conditional->New(index, Conditional->Qualifier->NOT_EQUAL, right->GetValue()));
 interm->Size()->PrintLine();
 "---"->PrintLine();					
 						return interm;
@@ -620,6 +620,7 @@ left->GetRight()->GetType()->PrintLine();
 		}
 		
 		method : ParseTerm() ~ Term {
+		
 "--- Term ---"->PrintLine();
 			
 			left : Term;
@@ -634,12 +635,13 @@ left->GetRight()->GetType()->PrintLine();
 				
 				label Token->Type->OPRN: {
 					NextToken();
-					left := ParseTerm();
+					
+					left := ParseLogic();
 					if(left = Nil | TokenType() <> Token->Type->CPRN) {
 						return Nil;
 					};
 					NextToken();
-					
+										
 					return left;
 				}
 				
