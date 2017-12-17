@@ -498,10 +498,8 @@ name->PrintLine();
 			
 			where := Term->New(Token->Type->WHERE);
 			
-			term : Term;
+			left := ParseLogic();
 			do {
-				left := ParseLogic();
-				
 				type := TokenType();
 				if(type = Token->Type->AND | type = Token->Type->OR) {
 					term := Term->New(type);
@@ -515,15 +513,20 @@ name->PrintLine();
 					
 					term->SetLeft(left);
 					term->SetRight(right);
-				}
-				else {
-					term := left;
+					left := term;
 				};
 			}
 			while(TokenType() <> Token->Type->EOS);
 			
-term->GetType()->PrintLine();			
-			where->SetLeft(term);
+left->GetType()->PrintLine();
+"-- L --"->PrintLine();
+left->GetLeft()->GetType()->PrintLine();
+left->GetLeft()->GetLeft()->GetType()->PrintLine();
+left->GetLeft()->GetRight()->GetType()->PrintLine();
+"-- R --"->PrintLine();
+left->GetRight()->GetType()->PrintLine();
+			
+			where->SetLeft(left);
 			return where;
 		}
 		
