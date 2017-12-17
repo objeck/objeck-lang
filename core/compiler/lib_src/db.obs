@@ -715,13 +715,11 @@ left->GetRight()->GetType()->PrintLine();
 			reserved->Insert("and", Token->New(Token->Type->AND));
 			reserved->Insert("or", Token->New(Token->Type->OR));
 			
-			
-## ADD BOUNDS CHECKS			
 			i := 0;
 			tokens := Vector->New();
 			while(i < @line->Size()) {    
 				# skip whitespace
-				while((@line->Get(i) = ' ' | @line->Get(i) = '\t') & i < @line->Size()) {
+				while(i < @line->Size() & (@line->Get(i) = ' ' | @line->Get(i) = '\t')) {
 					i += 1;
 				};
 				
@@ -731,7 +729,7 @@ left->GetRight()->GetType()->PrintLine();
 					if(@line->Get(i) = '\'') {
 						string := "";
 						i += 1;
-						while(@line->Get(i) <> '\'') {
+						while(i < @line->Size() & @line->Get(i) <> '\'') {
 							string->Append(@line->Get(i));
 							i += 1;
 						};
@@ -742,7 +740,7 @@ string->PrintLine();
 					# word
 					else if(@line->Get(i)->IsChar() = true) {
 						string := "";
-						while(@line->Get(i)->IsChar() | @line->Get(i) = '_') {
+						while(i < @line->Size() & @line->Get(i)->IsChar() | @line->Get(i) = '_') {
 							string->Append(@line->Get(i));
 							i += 1;
 						};
@@ -759,7 +757,7 @@ string->PrintLine();
 					else if(@line->Get(i)->IsDigit() = true) {
 						number := "";
 						is_dec := 0;
-						while(@line->Get(i)->IsDigit() = true | @line->Get(i) = '.') {
+						while(i < @line->Size() & @line->Get(i)->IsDigit() = true | @line->Get(i) = '.') {
 							if(@line->Get(i) = '.') {
 								is_dec += 1;
 							};
