@@ -332,7 +332,6 @@ bundle TinyDB {
 		
 		method : public : Query() ~ Vector {
 			expr := @parser->Parse();
-#~					
 			 if(expr = Nil) {
 "** ERROR 0 **"->PrintLine();
 				return Nil;
@@ -340,8 +339,7 @@ bundle TinyDB {
 			
 			
 			if(expr->GetType() = Token->Type->SELECT) {
-				expr := ProcessSelect(expr);
-				if(expr = Nil) {
+				if(<>ProcessSelect(expr)) {
 "** ERROR 1 **"->PrintLine();
 					return Nil;
 				};
@@ -349,58 +347,67 @@ bundle TinyDB {
 				## TODO
 			}
 			else if(expr->GetType() = Token->Type->FROM) {
-				expr := ProcessFrom(expr);
-				if(expr = Nil) {
+				if(<>ProcessFrom(expr)) {
 "** ERROR 2 **"->PrintLine();
 					return Nil;
 				};
+				
+				## TODO
 			}
 			else {
 "** ERROR 3 **"->PrintLine();
 				return Nil;
 			};
 			
-			if(expr->GetType() = Token->Type->EOS) {
-				return @results;
-			}
-			else {
-"** ERROR 4 **"->PrintLine();
-					return Nil;
-			};
-~#
 			return Nil;
 		}
 		
-		method : ProcessSelect(expr : Term) ~ Term {
-			return Nil;
+		method : ProcessSelect(expr : Term) ~ Bool {
+			return false;
 		}
 		
-		method : ProcessFrom(expr : Term) ~ Term {
+		method : ProcessFrom(expr : Term) ~ Bool {
 "== From =="->PrintLine();
 		
 			name := expr->GetValue()->As(String);
 			if(<>name->Equals(@table->GetName())) {
-				return Nil;
+				return false;
 			};
 name->PrintLine();			
 			
+			## where
 			left := expr->GetLeft();
-			if(left = Nil | left->GetType() <> Token->Type->WHERE) {
-				return Nil;
+			if(left <> Nil & left->GetType() = Token->Type->WHERE) {
+				return ProcessTerm(left->GetLeft());
+			}
+			## from
+			else {
+				return false;
 			};
-
-			terms := left->GetTerms();
-			each(i : terms) {
-				if(<>ProcessTerm(terms->Get(i)->As(Term))) {
-					return Nil;
-				};
-			};
-			
-			return expr->GetRight();
 		}
 		
 		method : ProcessTerm(expr : Term) ~ Bool {
-			return false;
+expr->GetType()->PrintLine();
+			
+			select(expr->GetType()) {
+				label Token->Type->AND: {
+					## lhs (and) right result
+				}
+				
+				label Token->Type->OR: {
+					## lhs (or) right result
+				}
+				
+				label Token->Type->EQUAL: {
+					## lhs result
+				}
+				
+				label Token->Type->NOT_EQUAL: {
+					## lhs result
+				}
+			};
+			
+			return true;
 		}
 		
 		method : Merge(results : Vector) ~ Nil {
@@ -502,8 +509,8 @@ name->PrintLine();
 			do {
 				type := TokenType();
 				if(type = Token->Type->AND | type = Token->Type->OR) {
-					term := Term->New(type);
-					term->SetValue(TokenValue());
+					right := Term->New(type);
+					right->SetValue(TokenValue());
 					NextToken();
 					
 					right := ParseTerm();
@@ -511,9 +518,9 @@ name->PrintLine();
 						return Nil;
 					};
 					
-					term->SetLeft(left);
-					term->SetRight(right);
-					left := term;
+					right->SetLeft(left);
+					right->SetRight(right);
+					left := right;
 				};
 			}
 			while(TokenType() <> Token->Type->EOS);
