@@ -324,7 +324,6 @@ bundle TinyDB {
 		New(line : String, table : Table) {
 			@table := table;
 			@conds := Vector->New();
-			@results := Vector->New();
 			@is_and := false;
 			
 			@parser := Parser->New(line);
@@ -378,7 +377,9 @@ name->PrintLine();
 			## where
 			left := expr->GetLeft();
 			if(left <> Nil & left->GetType() = Token->Type->WHERE) {
-				return ProcessTerm(left->GetLeft());
+				@results := ProcessTerm(left->GetLeft());
+Dump(@results);
+				return true;
 			}
 			## from
 			else {
@@ -386,61 +387,113 @@ name->PrintLine();
 			};
 		}
 		
-		method : ProcessTerm(expr : Term) ~ Bool {
-expr->GetType()->PrintLine();
+		method : Dump(results : Vector) ~ Nil {
+			"## DUMP ##"->PrintLine();
+			count := results->Size();
+			"count={$count}"->PrintLine();
+			each(i : results) {
+				row := results->Get(i)->As(Row);
+				row->ToString()->PrintLine();
+			};
+		}
+
+		
+		method : ProcessTerm(expr : Term) ~ Vector {
+			left := expr->GetLeft();
+			right := expr->GetRight();
+			if(left = Nil | right = Nil) {
+ 				return Nil;
+ 			};
 			
 			select(expr->GetType()) {
 				label Token->Type->AND: {
-					## lhs (and) right result
+"== And =="->PrintLine();		
+					left_result := ProcessTerm(left);
+					right_result := ProcessTerm(right);
+					interm := MergeAnd(left_result, right_result);
+interm->Size()->PrintLine();
+"---"->PrintLine();				
+						return interm;					
 				}
 				
 				label Token->Type->OR: {
-					## lhs (or) right result
+"== Or =="->PrintLine();		
+					left_result := ProcessTerm(left);
+					right_result := ProcessTerm(right);
+					interm := MergeOr(left_result, right_result);
+interm->Size()->PrintLine();
+"---"->PrintLine();									
+						return interm;
 				}
 				
-				label Token->Type->EQUAL: {
-					## lhs result
+				label Token->Type->EQUAL: {					
+"== Equal =="->PrintLine();
+left->GetValue()->As(String)->PrintLine();
+					index := @table->GetIndex(left->GetValue()->As(String));
+ 					if(index > -1) {
+						interm := @table->Where(Conditional->New(index, Conditional->Qualifier->EQUAL, right->GetValue()));
+interm->Size()->PrintLine();
+"---"->PrintLine();									
+						return interm;
+ 					};
 				}
 				
 				label Token->Type->NOT_EQUAL: {
-					## lhs result
+"== Not equal =="->PrintLine();
+left->GetValue()->As(String)->PrintLine();
+					index := @table->GetIndex(left->GetValue()->As(String));
+ 					if(index > -1) {
+						interm := @table->Where(Conditional->New(index, Conditional->Qualifier->NOT_EQUAL, right->GetValue()));
+interm->Size()->PrintLine();
+"---"->PrintLine();					
+						return interm;
+					};
 				}
 			};
 			
-			return true;
+			return Nil;
 		}
 		
-		method : Merge(results : Vector) ~ Nil {
-			if(results <> Nil) {
-				if(@is_and) {
-					temp := Vector->New();
-					each(i : results) {
-						left := results->Get(i);
-						each(j : @results) {
-							right := @results->Get(j);
-							if(left = right) {
-								temp->AddBack(right);
-							};
-						};
-					};
-					
-					@results := temp;
-					@is_and := false;
-				}
-				else {
-					each(i : results) {
-						left := results->Get(i);
-						each(j : @results) {
-							right := @results->Get(j);
-							if(left = right) {
-								return;
-								
-							};
-						};
-						@results->AddBack(left);
+		method : MergeAnd(left : Vector, right : Vector) ~ Vector {
+			merged := Vector->New();
+			
+			each(i : right) {
+				right_value := right->Get(i);
+				
+				found := false;
+				each(j : left) {
+					left_value := left->Get(j);
+					if(left_value = right_value) {
+						found := true;
 					};
 				};
+				
+				if(found) {
+					merged->AddBack(right_value);
+				};
 			};
+			
+			return merged;
+		}
+		
+		method : MergeOr(left : Vector, right : Vector) ~ Vector {			
+			each(i : right) {
+				right_value := right->Get(i);
+				
+				not_found := false;
+				each(j : left) {
+					left_value := left->Get(j);
+					if(left_value <> right_value) {
+						not_found := true;
+					};
+				};
+				
+				if(not_found) {
+					left->AddBack(right_value);
+				};
+			};
+			
+			return left;
 		}
 	}
 	
@@ -524,15 +577,17 @@ expr->GetType()->PrintLine();
 				};
 			}
 			while(TokenType() <> Token->Type->EOS);
-			
+		
+"-- R --"->PrintLine();
 left->GetType()->PrintLine();
+#~
 "-- L --"->PrintLine();
 left->GetLeft()->GetType()->PrintLine();
 left->GetLeft()->GetLeft()->GetType()->PrintLine();
 left->GetLeft()->GetRight()->GetType()->PrintLine();
 "-- R --"->PrintLine();
 left->GetRight()->GetType()->PrintLine();
-			
+~#			
 			where->SetLeft(left);
 			return where;
 		}
