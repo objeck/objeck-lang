@@ -331,7 +331,7 @@ bundle TinyDB {
 		
 		method : public : Query() ~ Vector {
 			expr := @parser->Parse();
-			 if(expr = Nil) {
+			if(expr = Nil) {
 "** ERROR PARSE **"->PrintLine();
 				return Nil;
 			};
