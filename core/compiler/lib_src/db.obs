@@ -332,18 +332,14 @@ bundle Query {
 		@table : Table;
 		@conds : Vector;
 		@from_results : Vector;
-		@is_and : Bool;
-		
 		
 		New(line : String, table : Table) {
 			@table := table;
 			@conds := Vector->New();
-			@is_and := false;
-			
 			@parser := Parser->New(line);
 		}
 		
-		method : public : Query() ~ Vector {
+		method : public : Query() ~ Table {
 			expr := @parser->Parse();
 			if(expr = Nil) {
 "** ERROR PARSE **"->PrintLine();
@@ -351,15 +347,17 @@ bundle Query {
 			};
 			
 			if(expr->GetType() = Token->Type->SELECT) {
-				if(<>ProcessSelect(expr)) {
+				results := ProcessSelect(expr);
+				if(results = Nil) {
 "** ERROR SELECT **"->PrintLine();
 					return Nil;
 				};
 				
-				## TODO
+				return results;
 			}
 			else if(expr->GetType() = Token->Type->FROM) {
-				if(<>ProcessFrom(expr)) {
+				results := ProcessFrom(expr);
+				if(results = Nil) {
 "** ERROR FROM **"->PrintLine();
 					return Nil;
 				};
@@ -369,7 +367,8 @@ bundle Query {
 				each(i : column_names) {
 					column_names[i] := names[i + 1];
 				};
-				BuildTable("<rs>", column_names);				
+				
+				return BuildTable("<rs>", column_names, results);				
 			}
 			else {
 "** ERROR OTHER **"->PrintLine();
@@ -379,10 +378,11 @@ bundle Query {
 			return Nil;
 		}
 		
-		method : ProcessSelect(expr : Term) ~ Bool {
+		method : ProcessSelect(expr : Term) ~ Table {
 ## "== Select =="->PrintLine();
-			if(<>ProcessFrom(expr->GetLeft())) {
-				return false;
+			results := ProcessFrom(expr->GetLeft());
+			if(results = Nil) {
+				return Nil;
 			};
 			columns := expr->GetTerms();
 			
@@ -390,46 +390,40 @@ bundle Query {
 			each(i : columns) {
 				column_names[i] := columns->Get(i)->As(Term)->GetValue()->As(String);
 			};
-			BuildTable("<rs>", column_names);
 			
-			return true;
+			return BuildTable("<rs>", column_names, results);
 		}
 		
-		method : BuildTable(name : String, column_names : String[]) ~ Table {
+		method : BuildTable(name : String, column_names : String[], from_results : Vector) ~ Table {
 			table := Table->New(name, column_names);
-			each(i : @from_results) {
-				row := @from_results->Get(i)->As(Row);
+			each(i : from_results) {
+				row := from_results->Get(i)->As(Row);
 				result_row := table->Insert();
 				each(j : column_names) {
 					column_name := column_names[j];
 					result_row->Set(column_name, row->Get(column_name));
 				};
 			};
-"---"->PrintLine();
-table->ToString()->PrintLine();
 
 			return table;
 		}
 		
-		method : ProcessFrom(expr : Term) ~ Bool {
+		method : ProcessFrom(expr : Term) ~ Vector {
 ## "== From =="->PrintLine();
 		
 			name := expr->GetValue()->As(String);
 			if(<>name->Equals(@table->GetName())) {
-				return false;
+				return Nil;
 			};
 ## name->PrintLine();			
 			
 			## where
 			left := expr->GetLeft();
 			if(left <> Nil & left->GetType() = Token->Type->WHERE) {
-				@from_results := ProcessTerm(left->GetLeft());
-				return true;
-			}
-			## from
-			else {
-				return false;
+				return ProcessTerm(left->GetLeft());
 			};
+			
+			return Nil;
 		}
 		
 		method : Dump(results : Vector) ~ Nil {
