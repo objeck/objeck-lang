@@ -13,12 +13,7 @@ class Rosetta {
 ##		query := Query->New("select date, system from game where name='wolfenstein 2' and (system=wii or date='10/27/17')", table);
 		query := Query->New("select system from game where name=doom", table);
 		results := query->Query();
-		if(results <> Nil) {
-			each(i : results) {
-				row := results->Get(i)->As(Row);
-				row->ToString()->PrintLine();
-			};
-		};
+		results->ToString()->PrintLine();
 	}
 	
 	function : MakeTable() ~ Table {
