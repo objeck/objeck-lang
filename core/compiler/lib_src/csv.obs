@@ -1,3 +1,7 @@
+#~~
+# CSV library
+# Copyright (c) 2016-2017 Randy Hollines
+~~#
 use Collection;
 
 #~
