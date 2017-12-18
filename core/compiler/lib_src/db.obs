@@ -332,14 +332,14 @@ bundle TinyDB {
 		method : public : Query() ~ Vector {
 			expr := @parser->Parse();
 			 if(expr = Nil) {
-"** ERROR 0 **"->PrintLine();
+"** ERROR PARSE **"->PrintLine();
 				return Nil;
 			};
 			
 			
 			if(expr->GetType() = Token->Type->SELECT) {
 				if(<>ProcessSelect(expr)) {
-"** ERROR 1 **"->PrintLine();
+"** ERROR SELECT **"->PrintLine();
 					return Nil;
 				};
 				
@@ -347,7 +347,7 @@ bundle TinyDB {
 			}
 			else if(expr->GetType() = Token->Type->FROM) {
 				if(<>ProcessFrom(expr)) {
-"** ERROR 2 **"->PrintLine();
+"** ERROR FROM **"->PrintLine();
 					return Nil;
 				};
 				
@@ -361,7 +361,7 @@ bundle TinyDB {
 				## TODO
 			}
 			else {
-"** ERROR 3 **"->PrintLine();
+"** ERROR OTHER **"->PrintLine();
 				return Nil;
 			};
 			
@@ -369,7 +369,7 @@ bundle TinyDB {
 		}
 		
 		method : ProcessSelect(expr : Term) ~ Bool {
-"== Select =="->PrintLine();
+## "== Select =="->PrintLine();
 			if(<>ProcessFrom(expr->GetLeft())) {
 				return false;
 			};
@@ -394,19 +394,20 @@ bundle TinyDB {
 					result_row->Set(column_name, row->Get(column_name));
 				};
 			};
+"---"->PrintLine();
 table->ToString()->PrintLine();
 
 			return table;
 		}
 		
 		method : ProcessFrom(expr : Term) ~ Bool {
-"== From =="->PrintLine();
+## "== From =="->PrintLine();
 		
 			name := expr->GetValue()->As(String);
 			if(<>name->Equals(@table->GetName())) {
 				return false;
 			};
-name->PrintLine();			
+## name->PrintLine();			
 			
 			## where
 			left := expr->GetLeft();
@@ -440,45 +441,45 @@ name->PrintLine();
 			
 			select(expr->GetType()) {
 				label Token->Type->AND: {
-"== And =="->PrintLine();		
+## "== And =="->PrintLine();		
 					left_result := ProcessTerm(left);
 					right_result := ProcessTerm(right);
 					interm := MergeAnd(left_result, right_result);
-interm->Size()->PrintLine();
-"---"->PrintLine();				
+## interm->Size()->PrintLine();
+## "---"->PrintLine();				
 						return interm;					
 				}
 				
 				label Token->Type->OR: {
-"== Or =="->PrintLine();		
+## "== Or =="->PrintLine();		
 					left_result := ProcessTerm(left);
 					right_result := ProcessTerm(right);
 					interm := MergeOr(left_result, right_result);
-interm->Size()->PrintLine();
-"---"->PrintLine();									
+## interm->Size()->PrintLine();
+## "---"->PrintLine();									
 						return interm;
 				}
 				
 				label Token->Type->EQUAL: {					
-"== Equal =="->PrintLine();
-left->GetValue()->As(String)->PrintLine();
+## "== Equal =="->PrintLine();
+## left->GetValue()->As(String)->PrintLine();
 					index := @table->GetIndex(left->GetValue()->As(String));
  					if(index > -1) {
 						interm := @table->Filter(Conditional->New(index, Conditional->Qualifier->EQUAL, right->GetValue()));
-interm->Size()->PrintLine();
-"---"->PrintLine();									
+## interm->Size()->PrintLine();
+## "---"->PrintLine();									
 						return interm;
  					};
 				}
 				
 				label Token->Type->NOT_EQUAL: {
-"== Not equal =="->PrintLine();
-left->GetValue()->As(String)->PrintLine();
+## "== Not equal =="->PrintLine();
+## left->GetValue()->As(String)->PrintLine();
 					index := @table->GetIndex(left->GetValue()->As(String));
  					if(index > -1) {
 						interm := @table->Filter(Conditional->New(index, Conditional->Qualifier->NOT_EQUAL, right->GetValue()));
-interm->Size()->PrintLine();
-"---"->PrintLine();					
+## interm->Size()->PrintLine();
+## "---"->PrintLine();					
 						return interm;
 					};
 				}
@@ -557,7 +558,7 @@ interm->Size()->PrintLine();
 		}
 
 		method : ParseSelect() ~ Term {
-"--- Select ---"->PrintLine();		
+## "--- Select ---"->PrintLine();		
 			term := Term->New(Token->Type->SELECT);
 			term->SetValue(TokenValue());
 			
@@ -591,7 +592,7 @@ interm->Size()->PrintLine();
 		}
 
 		method : ParseFrom() ~ Term {
-"--- From ---"->PrintLine();
+## "--- From ---"->PrintLine();
 
 			if(TokenType() <> Token->Type->REF) {
 				return Nil;
@@ -614,7 +615,7 @@ interm->Size()->PrintLine();
 		}
 		
 		method : ParseWhere() ~ Term {
-"--- Where ---"->PrintLine();
+## "--- Where ---"->PrintLine();
 			
 			where := Term->New(Token->Type->WHERE);
 			
@@ -638,8 +639,8 @@ interm->Size()->PrintLine();
 			}
 			while(TokenType() <> Token->Type->EOS);
 		
-"-- R --"->PrintLine();
-left->GetType()->PrintLine();
+## "-- R --"->PrintLine();
+## left->GetType()->PrintLine();
 #~
 "-- L --"->PrintLine();
 left->GetLeft()->GetType()->PrintLine();
@@ -660,7 +661,7 @@ left->GetRight()->GetType()->PrintLine();
 			
 			type := TokenType();
 			if(type = Token->Type->AND | type = Token->Type->OR) {
-"--- Logic ---"->PrintLine();
+## "--- Logic ---"->PrintLine();
 			
 				term := Term->New(type);
 				term->SetValue(TokenValue());
@@ -681,7 +682,7 @@ left->GetRight()->GetType()->PrintLine();
 		
 		method : ParseTerm() ~ Term {
 		
-"--- Term ---"->PrintLine();
+## "--- Term ---"->PrintLine();
 			
 			left : Term;
 			select(TokenType()) {
@@ -806,7 +807,7 @@ left->GetRight()->GetType()->PrintLine();
 						};
 						i += 1;
 						tokens->AddBack(Token->New(string));
-string->PrintLine();						
+## string->PrintLine();						
 					}
 					# word
 					else if(@line->Get(i)->IsChar() = true) {
