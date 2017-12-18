@@ -1,6 +1,11 @@
+#~~
+# Simple tabular query library
+# Copyright (c) 2017-2018 Randy Hollines
+~~#
+
 use Collection;
 
-bundle TinyDB {
+bundle Query {
 	class Table {
 		@name : String;
 		@keys : IntMap;
@@ -48,7 +53,7 @@ bundle TinyDB {
 			return matches;
 		}
 		
-		method : public : GetColumnNames() ~ String[] {
+		method : public : GetColumns() ~ String[] {
 			return @column_names;
 		}
 		
@@ -129,6 +134,15 @@ bundle TinyDB {
 			};
 			
 			return row;
+		}
+		
+		method : public : Delete(n : String) ~ Bool {
+			pk := GetIndex(n);
+			if(pk < 0) {
+				return false;
+			};
+			
+			return Delete(pk);
 		}
 		
 		method : public : native : Delete(pk : Int) ~ Bool {
@@ -350,7 +364,7 @@ bundle TinyDB {
 					return Nil;
 				};
 				
-				names := @table->GetColumnNames();
+				names := @table->GetColumns();
 				column_names := String->New[names->Size() - 1];
 				each(i : column_names) {
 					column_names[i] := names[i + 1];
