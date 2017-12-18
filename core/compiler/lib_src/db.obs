@@ -48,6 +48,10 @@ bundle TinyDB {
 			return matches;
 		}
 		
+		method : public : GetColumnNames() ~ String[] {
+			return @column_names;
+		}
+		
 		method : public : native : Filter(cond : Conditional) ~ Vector {
 			matches := Vector->New();
 			
@@ -347,6 +351,13 @@ bundle TinyDB {
 					return Nil;
 				};
 				
+				names := @table->GetColumnNames();
+				column_names := String->New[names->Size() - 1];
+				each(i : column_names) {
+					column_names[i] := names[i + 1];
+				};
+				BuildTable("<rs>", column_names);
+				
 				## TODO
 			}
 			else {
@@ -368,19 +379,24 @@ bundle TinyDB {
 			each(i : columns) {
 				column_names[i] := columns->Get(i)->As(Term)->GetValue()->As(String);
 			};
+			BuildTable("<rs>", column_names);
 			
-			result_table := Table->New("<rs>", column_names);
+			return true;
+		}
+		
+		method : BuildTable(name : String, column_names : String[]) ~ Table {
+			table := Table->New(name, column_names);
 			each(i : @from_results) {
 				row := @from_results->Get(i)->As(Row);
-				result_row := result_table->Insert();
+				result_row := table->Insert();
 				each(j : column_names) {
 					column_name := column_names[j];
 					result_row->Set(column_name, row->Get(column_name));
 				};
 			};
-result_table->ToString()->PrintLine();
-			
-			return true;
+table->ToString()->PrintLine();
+
+			return table;
 		}
 		
 		method : ProcessFrom(expr : Term) ~ Bool {
