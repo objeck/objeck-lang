@@ -336,7 +336,6 @@ bundle TinyDB {
 				return Nil;
 			};
 			
-			
 			if(expr->GetType() = Token->Type->SELECT) {
 				if(<>ProcessSelect(expr)) {
 "** ERROR SELECT **"->PrintLine();
@@ -356,9 +355,7 @@ bundle TinyDB {
 				each(i : column_names) {
 					column_names[i] := names[i + 1];
 				};
-				BuildTable("<rs>", column_names);
-				
-				## TODO
+				BuildTable("<rs>", column_names);				
 			}
 			else {
 "** ERROR OTHER **"->PrintLine();
