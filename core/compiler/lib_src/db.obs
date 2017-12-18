@@ -275,10 +275,6 @@ bundle TinyDB {
 			return @values->Size();
 		}
 		
-		method : public : Select(indices : Vector) ~ Vector {
-			return Nil;
-		}
-		
 		method : public : ToString() ~ String {
 			buffer := "";
 
@@ -317,7 +313,7 @@ bundle TinyDB {
 		@terms : Term;
 		@table : Table;
 		@conds : Vector;
-		@results : Vector;
+		@from_results : Vector;
 		@is_and : Bool;
 		
 		
@@ -362,7 +358,29 @@ bundle TinyDB {
 		}
 		
 		method : ProcessSelect(expr : Term) ~ Bool {
-			return false;
+"== Select =="->PrintLine();
+			if(<>ProcessFrom(expr->GetLeft())) {
+				return false;
+			};
+			columns := expr->GetTerms();
+			
+			column_names := String->New[columns->Size()];
+			each(i : columns) {
+				column_names[i] := columns->Get(i)->As(Term)->GetValue()->As(String);
+			};
+			
+			result_table := Table->New("<rs>", column_names);
+			each(i : @from_results) {
+				row := @from_results->Get(i)->As(Row);
+				result_row := result_table->Insert();
+				each(j : column_names) {
+					column_name := column_names[j];
+					result_row->Set(column_name, row->Get(column_name));
+				};
+			};
+result_table->ToString()->PrintLine();
+			
+			return true;
 		}
 		
 		method : ProcessFrom(expr : Term) ~ Bool {
@@ -377,8 +395,7 @@ name->PrintLine();
 			## where
 			left := expr->GetLeft();
 			if(left <> Nil & left->GetType() = Token->Type->WHERE) {
-				@results := ProcessTerm(left->GetLeft());
-Dump(@results);
+				@from_results := ProcessTerm(left->GetLeft());
 				return true;
 			}
 			## from
@@ -525,8 +542,36 @@ interm->Size()->PrintLine();
 
 		method : ParseSelect() ~ Term {
 "--- Select ---"->PrintLine();		
+			term := Term->New(Token->Type->SELECT);
+			term->SetValue(TokenValue());
+			
+			do {
+				if(TokenType() <> Token->Type->REF) {
+					return Nil;
+				};
+				name := Term->New(Token->Type->REF);
+				name->SetValue(TokenValue());
+				term->AddTerm(name);
+				NextToken();
+				
+				if(TokenType() = Token->Type->COMMA) {
+					NextToken();
+				};
+			}
+			while(TokenType() <> Token->Type->EOS & TokenType() <> Token->Type->FROM);
 
-			return Nil;
+			if(TokenType() <> Token->Type->FROM) {
+				return Nil;
+			};
+			
+			NextToken();
+			left := ParseFrom();
+			if(left = Nil) {			
+				return Nil;
+			};
+			term->SetLeft(left);
+			
+			return term;
 		}
 
 		method : ParseFrom() ~ Term {
@@ -535,7 +580,6 @@ interm->Size()->PrintLine();
 			if(TokenType() <> Token->Type->REF) {
 				return Nil;
 			};
-			
 			term := Term->New(Token->Type->FROM);
 			term->SetValue(TokenValue());
 			NextToken();
@@ -852,6 +896,7 @@ string->PrintLine();
 		@oper : Conditional->Qualifier;
 		@left : Term;
 		@right : Term;
+		@terms : Vector;
 		@value : Compare;
 		
 		New(type : Token->Type) {
@@ -896,6 +941,18 @@ string->PrintLine();
 		
 		method : public : GetRight() ~ Term {
 			return @right;
+		}
+		
+		method : public : AddTerm(term : Term) ~ Nil {
+			if(@terms = Nil) {
+				@terms := Vector->New();
+			};
+			
+			@terms->AddBack(term);
+		}
+		
+		method : public : GetTerms() ~ Vector {
+			return @terms;
 		}
 	}
 	

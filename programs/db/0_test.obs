@@ -6,11 +6,10 @@ class Rosetta {
 		table := MakeTable();
 		table->Size()->PrintLine();
 	
-##		query := Query->New("from game where name=doom and system=wii or a=z and y=z", table);
-##		query := Query->New("from game where name=doom or system=wii and a=z", table);
 ##		query := Query->New("from game where name=doom or system=wii", table);
-		query := Query->New("from game where name='wolfenstein 2' and (system=wii or date='10/27/17')", table);
-##		query := Query->New("from game where name=doom", table);
+##		query := Query->New("from game where name='wolfenstein 2' and (system=wii or date='10/27/17')", table);
+##		query := Query->New("select date, system from game where name='wolfenstein 2' and (system=wii or date='10/27/17')", table);
+		query := Query->New("select system from game where name=doom", table);
 		results := query->Query();
 		if(results <> Nil) {
 			each(i : results) {
