@@ -3,7 +3,7 @@ use Query;
 
 class Rosetta {
 	function : Main(args : String[]) ~ Nil {
-		table := MakeTable();
+		table := MakeTable2();
 		name := table->GetName();
 		rows := table->Size();
 		"table: name='{$name}', rows={$rows}"->PrintLine();
@@ -11,9 +11,23 @@ class Rosetta {
 ##		query := Query->New("from game where name=doom or system=wii", table);
 ##		query := Query->New("from game where name='wolfenstein 2' and (system=wii or date='10/27/17')", table);
 ##		query := Query->New("select date, system from game where name='wolfenstein 2' and (system=wii or date='10/27/17')", table);
-		query := Query->New("select system from game where name=doom", table);
+		query := Query->New("select name from events where date=#10/27/2017", table);
 		results := query->Query();
 		results->ToString()->PrintLine();
+	}
+	
+	function : MakeTable2() ~ Table {
+		t := Table->New("events", ["name", "date"]);
+		
+		r := t->Insert();
+		r->Set("name", "volleyball");
+		r->Set("date", System.Time.Date->New(10, 27, 2017, false));
+		
+		r := t->Insert();
+		r->Set("name", "tennis");
+		r->Set("date", System.Time.Date->New(5, 6, 1912, false));
+	
+		return t;	
 	}
 	
 	function : MakeTable() ~ Table {

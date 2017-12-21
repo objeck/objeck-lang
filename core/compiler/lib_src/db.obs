@@ -307,6 +307,9 @@ bundle Query {
 					else if(value->TypeOf(FloatHolder)) {
 						buffer += value->As(FloatHolder)->Get()->ToString();
 					}
+					else if(value->TypeOf(Date)) {
+						buffer += value->As(Date)->ToString();
+					}
 					else if(value->TypeOf(String)) {
 						buffer += value->As(String);
 					}
@@ -436,8 +439,7 @@ bundle Query {
 				row->ToString()->PrintLine();
 			};
 		}
-
-		
+				
 		method : ProcessTerm(expr : Term) ~ Vector {
 			left := expr->GetLeft();
 			right := expr->GetRight();
@@ -545,10 +547,13 @@ bundle Query {
 		
 		New(line : String) {
 			@line := line;
-			@tokens := Scan();
 		}
 		
 		method : public : Parse() ~ Term {
+			@tokens := Scan();
+			if(@tokens = Nil)	{
+				return Nil;
+			};			
 			NextToken();
 			
 			if(TokenType() = Token->Type->SELECT) {
@@ -644,17 +649,7 @@ bundle Query {
 				};
 			}
 			while(TokenType() <> Token->Type->EOS);
-		
-## "-- R --"->PrintLine();
-## left->GetType()->PrintLine();
-#~
-"-- L --"->PrintLine();
-left->GetLeft()->GetType()->PrintLine();
-left->GetLeft()->GetLeft()->GetType()->PrintLine();
-left->GetLeft()->GetRight()->GetType()->PrintLine();
-"-- R --"->PrintLine();
-left->GetRight()->GetType()->PrintLine();
-~#			
+			
 			where->SetLeft(left);
 			return where;
 		}
@@ -687,12 +682,12 @@ left->GetRight()->GetType()->PrintLine();
 		}
 		
 		method : ParseTerm() ~ Term {
-		
 ## "--- Term ---"->PrintLine();
 			
 			left : Term;
 			select(TokenType()) {
 				label Token->Type->REF:
+				label Token->Type->DATE:
 				label Token->Type->INT:
 				label Token->Type->FLOAT: {				
 					left := Term->New(TokenType());
@@ -734,6 +729,7 @@ left->GetRight()->GetType()->PrintLine();
 			right : Term;			
 			select(TokenType()) {
 				label Token->Type->REF:
+				label Token->Type->DATE:
 				label Token->Type->INT:
 				label Token->Type->FLOAT: {			
 					right := Term->New(TokenType());					
@@ -795,10 +791,10 @@ left->GetRight()->GetType()->PrintLine();
 			
 			i := 0;
 			tokens := Vector->New();
-			while(i < @line->Size()) {    
+			while(i < @line->Size()) {  			  
 				# skip whitespace
 				while(i < @line->Size() & (@line->Get(i) = ' ' | @line->Get(i) = '\t')) {
-					i += 1;
+					i += 1;					
 				};
 				
 				# parse the @line
@@ -818,19 +814,21 @@ left->GetRight()->GetType()->PrintLine();
 					
 					# date
 					else if(@line->Get(i) = '#') {
+						i += 1;					
 						string := "";
 						while(i < @line->Size() & @line->Get(i)->IsDigit() | @line->Get(i) = '/') {
 							string->Append(@line->Get(i));
 							i += 1;
 						};
 					
-						if(string->Size() = 11) {
-							month := string->SubString(1, 2)->ToInt();
-							day := string->SubString(4, 2)->ToInt();
-							year := string->SubString(7, 4)->ToInt();
+						if(string->Size() = 10) {
+							month := string->SubString(0, 2)->ToInt();
+							day := string->SubString(3, 2)->ToInt();
+							year := string->SubString(6, 4)->ToInt();
 							
-							date := Date->New(day, month, year, false);
+							date := Date->New(month, day, year, false);
 							tokens->AddBack(Token->New(date));
+## "date: {$month}/{$day}/{$year}"->PrintLine();													
 						}
 						else {
 							return Nil;
@@ -928,7 +926,7 @@ left->GetRight()->GetType()->PrintLine();
 						};
 						i += 1;
 					};
-				};
+				};			
 			};			
 			tokens->AddBack(Token->New(Token->Type->EOS));
 
