@@ -11,7 +11,7 @@ class Rosetta {
 ##		query := Query->New("from game where name=doom or system=wii", table);
 ##		query := Query->New("from game where name='wolfenstein 2' and (system=wii or date='10/27/17')", table);
 ##		query := Query->New("select date, system from game where name='wolfenstein 2' and (system=wii or date='10/27/17')", table);
-		query := Query->New("select name from events where date=#10/27/2017", table);
+		query := Query->New("select name from events where date < #10/27/2017", table);
 		results := query->Query();
 		results->ToString()->PrintLine();
 	}
