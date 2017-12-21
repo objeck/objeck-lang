@@ -419,7 +419,6 @@ bundle Query {
 			if(<>name->Equals(@table->GetName())) {
 				return Nil;
 			};
-## name->PrintLine();			
 			
 			## where
 			left := expr->GetLeft();
@@ -452,43 +451,61 @@ bundle Query {
 ## "== And =="->PrintLine();		
 					left_result := ProcessTerm(left);
 					right_result := ProcessTerm(right);
-					interm := MergeAnd(left_result, right_result);
-## interm->Size()->PrintLine();
-## "---"->PrintLine();				
-						return interm;					
+					return MergeAnd(left_result, right_result);
 				}
 				
 				label Token->Type->OR: {
 ## "== Or =="->PrintLine();		
 					left_result := ProcessTerm(left);
 					right_result := ProcessTerm(right);
-					interm := MergeOr(left_result, right_result);
-## interm->Size()->PrintLine();
-## "---"->PrintLine();									
-						return interm;
+					return MergeOr(left_result, right_result);
 				}
 				
 				label Token->Type->EQUAL: {					
 ## "== Equal =="->PrintLine();
-## left->GetValue()->As(String)->PrintLine();
 					index := @table->GetIndex(left->GetValue()->As(String));
  					if(index > -1) {
-						interm := @table->Filter(Conditional->New(index, Conditional->Qualifier->EQUAL, right->GetValue()));
-## interm->Size()->PrintLine();
-## "---"->PrintLine();									
-						return interm;
+						return @table->Filter(Conditional->New(index, Conditional->Qualifier->EQUAL, right->GetValue()));
  					};
 				}
 				
 				label Token->Type->NOT_EQUAL: {
 ## "== Not equal =="->PrintLine();
-## left->GetValue()->As(String)->PrintLine();
 					index := @table->GetIndex(left->GetValue()->As(String));
  					if(index > -1) {
-						interm := @table->Filter(Conditional->New(index, Conditional->Qualifier->NOT_EQUAL, right->GetValue()));
-## interm->Size()->PrintLine();
-## "---"->PrintLine();					
-						return interm;
+						return @table->Filter(Conditional->New(index, Conditional->Qualifier->NOT_EQUAL, right->GetValue()));
+					};
+				}
+				
+				label Token->Type->GREATER: {
+## "== Greater =="->PrintLine();
+					index := @table->GetIndex(left->GetValue()->As(String));
+ 					if(index > -1) {
+						return @table->Filter(Conditional->New(index, Conditional->Qualifier->GREATER, right->GetValue()));
+					};
+				}
+				
+				label Token->Type->LESS: {
+## "== Less =="->PrintLine();
+					index := @table->GetIndex(left->GetValue()->As(String));
+ 					if(index > -1) {
+						return @table->Filter(Conditional->New(index, Conditional->Qualifier->LESS, right->GetValue()));
+					};
+				}
+				
+				label Token->Type->GREATER_EQUAL: {
+## "== Greater =="->PrintLine();
+					index := @table->GetIndex(left->GetValue()->As(String));
+ 					if(index > -1) {
+						return @table->Filter(Conditional->New(index, Conditional->Qualifier->GREATER_EQUAL, right->GetValue()));
+					};
+				}
+				
+				label Token->Type->LESS_EQUAL: {
+## "== Less =="->PrintLine();
+					index := @table->GetIndex(left->GetValue()->As(String));
+ 					if(index > -1) {
+						return @table->Filter(Conditional->New(index, Conditional->Qualifier->LESS_EQUAL, right->GetValue()));
 					};
 				}
 			};
@@ -715,7 +732,11 @@ bundle Query {
 			term : Term;
 			select(TokenType()) {
 				label Token->Type->EQUAL:
-				label Token->Type->NOT_EQUAL: {				
+				label Token->Type->NOT_EQUAL:
+				label Token->Type->LESS:
+				label Token->Type->GREATER:
+				label Token->Type->LESS_EQUAL:
+				label Token->Type->GREATER_EQUAL: {				
 					term := Term->New(TokenType());
 					term->SetValue(TokenValue());
 					NextToken();
