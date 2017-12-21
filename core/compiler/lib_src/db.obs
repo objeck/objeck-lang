@@ -4,6 +4,7 @@
 ~~#
 
 use Collection;
+use System.Time;
 
 bundle Query {
 	class Table {
@@ -814,6 +815,28 @@ left->GetRight()->GetType()->PrintLine();
 						tokens->AddBack(Token->New(string));
 ## string->PrintLine();						
 					}
+					
+					# date
+					else if(@line->Get(i) = '#') {
+						string := "";
+						while(i < @line->Size() & @line->Get(i)->IsDigit() | @line->Get(i) = '/') {
+							string->Append(@line->Get(i));
+							i += 1;
+						};
+					
+						if(string->Size() = 11) {
+							month := string->SubString(1, 2)->ToInt();
+							day := string->SubString(4, 2)->ToInt();
+							year := string->SubString(7, 4)->ToInt();
+							
+							date := Date->New(day, month, year, false);
+							tokens->AddBack(Token->New(date));
+						}
+						else {
+							return Nil;
+						};						
+					}
+					
 					# word
 					else if(@line->Get(i)->IsChar() = true) {
 						string := "";
@@ -1009,11 +1032,17 @@ left->GetRight()->GetType()->PrintLine();
 			OPER,
 			INT,
 			FLOAT,
+			DATE,
 			EOS
 		}
 		
 		New(value : String) {
 			@type := Type->REF;
+			@value := value;
+		}
+		
+		New(value : Date) {
+			@type := Type->DATE;
 			@value := value;
 		}
 		
