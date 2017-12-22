@@ -241,6 +241,8 @@ bundle Query {
 	class Row {
 		@values : Compare[];
 		@table : Table;
+		@true_token : static : IntHolder;
+		@false_token : static : IntHolder;
 		@next : Row;
 		@prev : Row;
 		
@@ -274,6 +276,21 @@ bundle Query {
 			return true;
 		}
 		
+		function : True() ~ IntHolder {
+			if(@true_token = Nil) {
+				@true_token := IntHolder->New(1);
+			};
+			
+			return @true_token;
+		}
+		
+		function : False() ~ IntHolder {
+			if(@false_token = Nil) {
+				@false_token := IntHolder->New(0);
+			};
+			
+			return @false_token;
+		}		
 		method : public : Next() ~ Row {
 			return @next;
 		}
@@ -809,6 +826,8 @@ bundle Query {
 			reserved->Insert("in", Token->New(Token->Type->IN));
 			reserved->Insert("and", Token->New(Token->Type->AND));
 			reserved->Insert("or", Token->New(Token->Type->OR));
+			reserved->Insert("true", Token->New(1));
+			reserved->Insert("false", Token->New(0));
 			
 			i := 0;
 			tokens := Vector->New();
@@ -1052,6 +1071,8 @@ bundle Query {
 			INT,
 			FLOAT,
 			DATE,
+			TRUE,
+			FASLE,
 			EOS
 		}
 		
