@@ -1155,25 +1155,7 @@ void TrapProcessor::ProcessAddTime(TimeInterval t, long* &op_stack, long* &stack
 void TrapProcessor::ProcessPlatform(StackProgram* program, long* &op_stack, long* &stack_pos) 
 {
   const wstring value_str = BytesToUnicode(System::GetPlatform());
-
-  // create character array
-  const long char_array_size = value_str.size();
-  const long char_array_dim = 1;
-  long* char_array = (long*)MemoryManager::AllocateArray(char_array_size + 1 + ((char_array_dim + 2) * sizeof(long)),
-                                                         CHAR_ARY_TYPE, op_stack, *stack_pos, false);
-  char_array[0] = char_array_size + 1;
-  char_array[1] = char_array_dim;
-  char_array[2] = char_array_size;
-
-  // copy wstring
-  wchar_t* char_array_ptr = (wchar_t*)(char_array + 3);
-  wcsncpy(char_array_ptr, value_str.c_str(), char_array_size);
-
-  // create 'System.String' object instance
-  long* str_obj = MemoryManager::AllocateObject(program->GetStringObjectId(), (long*)op_stack, *stack_pos, false);
-  str_obj[0] = (long)char_array;
-  str_obj[1] = char_array_size;
-
+  long* str_obj = CreateStringObject(value_str, program, op_stack, stack_pos);
   PushInt((long)str_obj, op_stack, stack_pos);
 }
 
@@ -1183,27 +1165,8 @@ void TrapProcessor::ProcessPlatform(StackProgram* program, long* &op_stack, long
 void TrapProcessor::ProcessFileOwner(const char* name, bool is_account,
 				     StackProgram* program, long* &op_stack, long* &stack_pos) {
   const wstring value_str = File::FileOwner(name, is_account);
-  
   if(value_str.size() > 0) {
-    // create character array
-    const long char_array_size = value_str.size();
-    const long char_array_dim = 1;
-    long* char_array = (long*)MemoryManager::AllocateArray(char_array_size + 1 + ((char_array_dim + 2) * sizeof(long)),
-                                                           CHAR_ARY_TYPE, op_stack, *stack_pos, false);
-    char_array[0] = char_array_size + 1;
-    char_array[1] = char_array_dim;
-    char_array[2] = char_array_size;
-  
-    // copy wstring
-    wchar_t* char_array_ptr = (wchar_t*)(char_array + 3);
-    wcsncpy(char_array_ptr, value_str.c_str(), char_array_size);
-
-    // create 'System.String' object instance
-    long* str_obj = MemoryManager::AllocateObject(program->GetStringObjectId(),
-						  (long*)op_stack, *stack_pos, false);
-    str_obj[0] = (long)char_array;
-    str_obj[1] = char_array_size;
-  
+    long* str_obj = CreateStringObject(value_str, program, op_stack, stack_pos);
     PushInt((long)str_obj, op_stack, stack_pos);
   }
   else {
@@ -1216,26 +1179,7 @@ void TrapProcessor::ProcessFileOwner(const char* name, bool is_account,
  ********************************/
 void TrapProcessor::ProcessVersion(StackProgram* program, long* &op_stack, long* &stack_pos) 
 {
-  const wstring value_str = VERSION_STRING;
-
-  // create character array
-  const long char_array_size = value_str.size();
-  const long char_array_dim = 1;
-  long* char_array = (long*)MemoryManager::AllocateArray(char_array_size + 1 + ((char_array_dim + 2) * sizeof(long)),
-                                                         CHAR_ARY_TYPE, op_stack, *stack_pos, false);
-  char_array[0] = char_array_size + 1;
-  char_array[1] = char_array_dim;
-  char_array[2] = char_array_size;
-
-  // copy wstring
-  wchar_t* char_array_ptr = (wchar_t*)(char_array + 3);
-  wcsncpy(char_array_ptr, value_str.c_str(), char_array_size);
-
-  // create 'System.String' object instance
-  long* str_obj = MemoryManager::AllocateObject(program->GetStringObjectId(), (long*)op_stack, *stack_pos, false);
-  str_obj[0] = (long)char_array;
-  str_obj[1] = char_array_size;
-
+  long* str_obj = CreateStringObject(VERSION_STRING, program, op_stack, stack_pos);
   PushInt((long)str_obj, op_stack, stack_pos);
 }
 
