@@ -117,7 +117,8 @@ bundle System.Time {
 								date_year := date_str->SubString(year + offset, 4)->ToInt();
 							}	
 							else {
-								date_year := date_str->SubString(year + offset, 2)->ToInt();
+								date_year := 2000;
+								date_year += date_str->SubString(year + offset, 2)->ToInt();
 							};
 						};
 					}
