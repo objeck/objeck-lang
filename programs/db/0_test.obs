@@ -14,6 +14,7 @@ class Rosetta {
 		query := Query->New("select name from events where date = #10/27/17#", table);
 		results := query->Query();
 		"---"->PrintLine();
+		
 		results->ToString()->PrintLine();
 	}
 	
