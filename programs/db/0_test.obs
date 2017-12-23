@@ -4,7 +4,13 @@ use Query;
 
 class Rosetta {
 	function : Main(args : String[]) ~ Nil {
-		Dir("/Users/randy/Documents/Code/objeck-lang/core/release/build_db.cmd");
+		root := "/Users/randy/Documents/Code/objeck-lang/core/release/";
+		files := Directory->List(root);
+		each(i : files) {
+			pre := String->New(root);
+			pre += files[i];
+			Dir(pre);
+		};
 	
 		table := MakeTable2();
 		name := table->GetName();
@@ -22,10 +28,19 @@ class Rosetta {
 	}
 	
 	function : Dir(file : String) ~ Nil {
+		short_name := "";
+		index := file->FindLast('/');
+		if(index > 0) {
+			index += 1;
+			short_name := file->SubString(index, file->Size() - index);
+		}
+		else {
+			short_name := file;
+		};
+		
 		owner := File->Owner(file);
 		create := File->CreateTime(file);
-		
-		"file={$file}: owner='{$owner}', create='{$create}''"->PrintLine();
+		"*** short_name='{$short_name}', long_name='{$file}', owner='{$owner}', create='{$create}' ***"->PrintLine();
 	}
 	
 	function : MakeTable2() ~ Table {
