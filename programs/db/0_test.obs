@@ -1,8 +1,11 @@
+use System.IO.File;
 use Collection;
 use Query;
 
 class Rosetta {
 	function : Main(args : String[]) ~ Nil {
+		Dir();
+	
 		table := MakeTable2();
 		name := table->GetName();
 		rows := table->Size();
@@ -16,6 +19,13 @@ class Rosetta {
 		"---"->PrintLine();
 		
 		results->ToString()->PrintLine();
+	}
+	
+	function : Dir() ~ Nil {
+		owner := File->Owner("/Users/randy/Documents/Code/objeck-lang/core/release/build_db.cmd");
+owner->Size()->PrintLine();
+owner->PrintLine();
+		"owner='{$owner}'"->PrintLine();
 	}
 	
 	function : MakeTable2() ~ Table {
