@@ -153,7 +153,7 @@ bundle System.Time {
 						pos := secs + offset + 1;
 						if(pos > -1 & pos < date_str->Size()) { 
 							if(date_str->Get(pos)->IsDigit()) {
-								date_secs := date_str->SubString(mins + offset, 2)->ToInt();
+								date_secs := date_str->SubString(secs + offset, 2)->ToInt();
 							}
 							else {
 								date_secs := date_str->SubString(secs + offset, 1)->ToInt();
