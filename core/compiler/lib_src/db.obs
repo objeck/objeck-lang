@@ -865,30 +865,21 @@ bundle Query {
 							return Nil;
 						};
 						i += 1;
-							
-						if(string->Size() = 8) {
+						
+						str_size := string->Size();
+						if(str_size = 8) {
 							date := DateUtility->Parse(string, "MM/dd/yy", false);	
 							tokens->AddBack(Token->New(date));
-"'{$string}'"->PrintLine();							
-date->ToString()->PrintLine();
 						}
-						else {
-							return Nil;
-						};
-#~						
-						if(string->Size() = 10) {
-							month := string->SubString(0, 2)->ToInt();
-							day := string->SubString(3, 2)->ToInt();
-							year := string->SubString(6, 4)->ToInt();
-							
-							date := Date->New(month, day, year, false);
+						else if(str_size = 17) {
+							date := DateUtility->Parse(string, "MM/dd/yy hh:mm:ss", false);
+string->Size()->PrintLine();
+date->ToString()->PrintLine();							
 							tokens->AddBack(Token->New(date));
-## "date: {$month}/{$day}/{$year}"->PrintLine();													
 						}
 						else {
 							return Nil;
-						};
-~#												
+						};				
 					}
 					
 					# word
