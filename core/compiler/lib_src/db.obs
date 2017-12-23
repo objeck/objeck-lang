@@ -856,11 +856,26 @@ bundle Query {
 					else if(@line->Get(i) = '#') {
 						i += 1;					
 						string := "";
-						while(i < @line->Size() & @line->Get(i)->IsDigit() | @line->Get(i) = '/') {
+						while(i < @line->Size() & @line->Get(i) <> '#') {
 							string->Append(@line->Get(i));
 							i += 1;
 						};
 					
+						if(@line->Get(i) <> '#') {
+							return Nil;
+						};
+						i += 1;
+							
+						if(string->Size() = 8) {
+							date := DateUtility->Parse(string, "MM/dd/yy", false);	
+							tokens->AddBack(Token->New(date));
+"'{$string}'"->PrintLine();							
+date->ToString()->PrintLine();
+						}
+						else {
+							return Nil;
+						};
+#~						
 						if(string->Size() = 10) {
 							month := string->SubString(0, 2)->ToInt();
 							day := string->SubString(3, 2)->ToInt();
@@ -872,7 +887,8 @@ bundle Query {
 						}
 						else {
 							return Nil;
-						};						
+						};
+~#												
 					}
 					
 					# word
