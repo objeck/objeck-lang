@@ -4,7 +4,7 @@ use Query;
 
 class Rosetta {
 	function : Main(args : String[]) ~ Nil {
-		Dir();
+		Dir("/Users/randy/Documents/Code/objeck-lang/core/release/build_db.cmd");
 	
 		table := MakeTable2();
 		name := table->GetName();
@@ -21,11 +21,11 @@ class Rosetta {
 		results->ToString()->PrintLine();
 	}
 	
-	function : Dir() ~ Nil {
-		owner := File->Owner("/Users/randy/Documents/Code/objeck-lang/core/release/build_db.cmd");
-owner->Size()->PrintLine();
-owner->PrintLine();
-		"owner='{$owner}'"->PrintLine();
+	function : Dir(file : String) ~ Nil {
+		owner := File->Owner(file);
+		create := File->CreateTime(file);
+		
+		"file={$file}: owner='{$owner}', create='{$create}''"->PrintLine();
 	}
 	
 	function : MakeTable2() ~ Table {
