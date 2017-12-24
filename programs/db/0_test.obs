@@ -1,9 +1,13 @@
 use System.IO.File;
 use Collection;
+use RegEx;
 use Query;
 
 class Rosetta {
 	function : Main(args : String[]) ~ Nil {
+		Rex("a%p%");
+		
+#~	
 		root := "/Users/randy/Documents/Code/objeck-lang/core/release/";
 		files := Directory->List(root);
 		each(i : files) {
@@ -25,6 +29,27 @@ class Rosetta {
 		"---"->PrintLine();
 		
 		results->ToString()->PrintLine();
+~#		
+	}
+	
+	function : Rex(pattern : String) ~ Nil {
+		out := "";
+		
+		each(i : pattern) {
+			c := pattern->Get(i);
+			if(c = '%') {
+				out += ".*";
+			}
+			else if(c = '_') {
+				out += '.';
+			}
+			else {
+				out += c;
+			};
+		};
+		
+		rex := RegEx->New(out);
+		rex->Match("appl")->PrintLine();
 	}
 	
 	function : Dir(file : String) ~ Nil {
