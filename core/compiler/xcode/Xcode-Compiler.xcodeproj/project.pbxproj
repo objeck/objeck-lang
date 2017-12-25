@@ -16,9 +16,9 @@
 		2517DFC517EE61410098D0DE /* parser.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2517DFB117EE61410098D0DE /* parser.cpp */; };
 		2517DFC617EE61410098D0DE /* posix_main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2517DFB317EE61410098D0DE /* posix_main.cpp */; };
 		2517DFC717EE61410098D0DE /* scanner.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2517DFB417EE61410098D0DE /* scanner.cpp */; };
-		2517DFC817EE61410098D0DE /* target.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2517DFB617EE61410098D0DE /* target.cpp */; };
 		2517DFC917EE61410098D0DE /* tree.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2517DFB817EE61410098D0DE /* tree.cpp */; };
 		2517DFCB17EE622E0098D0DE /* types.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2517DFCA17EE622E0098D0DE /* types.cpp */; };
+		253FF1E41FF1A1140039C622 /* emit.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 253FF1E21FF1A1130039C622 /* emit.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -52,13 +52,13 @@
 		2517DFB317EE61410098D0DE /* posix_main.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = posix_main.cpp; path = ../../posix_main.cpp; sourceTree = "<group>"; };
 		2517DFB417EE61410098D0DE /* scanner.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = scanner.cpp; path = ../../scanner.cpp; sourceTree = "<group>"; };
 		2517DFB517EE61410098D0DE /* scanner.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = scanner.h; path = ../../scanner.h; sourceTree = "<group>"; };
-		2517DFB617EE61410098D0DE /* target.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = target.cpp; path = ../../target.cpp; sourceTree = "<group>"; };
-		2517DFB717EE61410098D0DE /* target.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = target.h; path = ../../target.h; sourceTree = "<group>"; };
 		2517DFB817EE61410098D0DE /* tree.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = tree.cpp; path = ../../tree.cpp; sourceTree = "<group>"; };
 		2517DFB917EE61410098D0DE /* tree.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = tree.h; path = ../../tree.h; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.cpp; };
 		2517DFBC17EE61410098D0DE /* Xcode_Compiler.1 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.man; path = Xcode_Compiler.1; sourceTree = "<group>"; };
 		2517DFBD17EE61410098D0DE /* Xcode-Compiler.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = "Xcode-Compiler.xcodeproj"; sourceTree = "<group>"; };
 		2517DFCA17EE622E0098D0DE /* types.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = types.cpp; path = ../../types.cpp; sourceTree = "<group>"; };
+		253FF1E21FF1A1130039C622 /* emit.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = emit.cpp; path = ../../emit.cpp; sourceTree = "<group>"; };
+		253FF1E31FF1A1140039C622 /* emit.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = emit.h; path = ../../emit.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -91,6 +91,8 @@
 		2517DF9D17EE60CC0098D0DE /* Xcode-Compiler */ = {
 			isa = PBXGroup;
 			children = (
+				253FF1E21FF1A1130039C622 /* emit.cpp */,
+				253FF1E31FF1A1140039C622 /* emit.h */,
 				2517DFCA17EE622E0098D0DE /* types.cpp */,
 				2517DFA717EE61410098D0DE /* compiler.cpp */,
 				2517DFA817EE61410098D0DE /* compiler.h */,
@@ -107,8 +109,6 @@
 				2517DFB317EE61410098D0DE /* posix_main.cpp */,
 				2517DFB417EE61410098D0DE /* scanner.cpp */,
 				2517DFB517EE61410098D0DE /* scanner.h */,
-				2517DFB617EE61410098D0DE /* target.cpp */,
-				2517DFB717EE61410098D0DE /* target.h */,
 				2517DFB817EE61410098D0DE /* tree.cpp */,
 				2517DFB917EE61410098D0DE /* tree.h */,
 				2517DFBA17EE61410098D0DE /* Xcode-Compiler */,
@@ -165,7 +165,7 @@
 		2517DF9317EE60CC0098D0DE /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 0500;
+				LastUpgradeCheck = 0920;
 				ORGANIZATIONNAME = "Randy Hollines";
 			};
 			buildConfigurationList = 2517DF9617EE60CC0098D0DE /* Build configuration list for PBXProject "Xcode-Compiler" */;
@@ -202,8 +202,8 @@
 				2517DFC217EE61410098D0DE /* intermediate.cpp in Sources */,
 				2517DFC917EE61410098D0DE /* tree.cpp in Sources */,
 				2517DFC117EE61410098D0DE /* context.cpp in Sources */,
+				253FF1E41FF1A1140039C622 /* emit.cpp in Sources */,
 				2517DFC517EE61410098D0DE /* parser.cpp in Sources */,
-				2517DFC817EE61410098D0DE /* target.cpp in Sources */,
 				2517DFC417EE61410098D0DE /* optimization.cpp in Sources */,
 				2517DFC717EE61410098D0DE /* scanner.cpp in Sources */,
 				2517DFC617EE61410098D0DE /* posix_main.cpp in Sources */,
@@ -220,18 +220,30 @@
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
 				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
 				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
 				CLANG_WARN_CONSTANT_CONVERSION = YES;
 				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
 				CLANG_WARN_EMPTY_BODY = YES;
 				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
 				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
 				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu99;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
+				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"DEBUG=1",
@@ -257,19 +269,30 @@
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
 				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
 				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
 				CLANG_WARN_CONSTANT_CONVERSION = YES;
 				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
 				CLANG_WARN_EMPTY_BODY = YES;
 				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
 				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
 				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu99;
 				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
+				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
 				GCC_WARN_UNDECLARED_SELECTOR = YES;

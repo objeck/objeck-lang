@@ -127,7 +127,7 @@
             startingLineNumber = "247"
             endingLineNumber = "247"
             landmarkName = "Parser::ParseBundle(int depth)"
-            landmarkType = "5">
+            landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
@@ -142,8 +142,8 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "2823"
             endingLineNumber = "2823"
-            landmarkName = "Parser::ParseMethodCall(Expression* expression, int depth)"
-            landmarkType = "5">
+            landmarkName = "Parser::ParseSimpleExpression(int depth)"
+            landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
