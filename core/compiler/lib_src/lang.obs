@@ -4348,6 +4348,24 @@ bundle System.IO.File {
 		function : Group(n : System.String) ~ System.String {
 			FILE_GROUP_OWNER;
 		}
+
+		#~
+		Check to see if a file can be read
+		@param n file name
+		@return true if file can be read
+		~#
+		function : CanRead(n : System.String) ~ Bool {
+			FILE_CAN_READ;
+		}
+		
+		#~
+		Check to see if a file can be written
+		@param n file name
+		@return true if file can be written
+		~#
+		function : CanWrite(n : System.String) ~ Bool {
+			FILE_CAN_WRITE;
+		}
 		
 		#~
 		Check to see if a file exists

@@ -103,6 +103,8 @@ namespace instructions {
     // file operations
     FILE_IS_OPEN,
     FILE_EXISTS,
+    FILE_CAN_WRITE,
+    FILE_CAN_READ,
     FILE_SIZE,
     FILE_REWIND,
     FILE_SEEK,

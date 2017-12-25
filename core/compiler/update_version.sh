@@ -12,4 +12,4 @@ make -f make/Makefile.32
 ./obc -src lib_src/regex.obs -lib collect.obl -tar lib -opt s3 -dest ../lib/regex.obl
 ./obc -src lib_src/fcgi.obs -lib collect.obl,json.obl -tar lib -opt s3 -dest ../lib/fcgi.obl
 ./obc -src lib_src/csv.obs -tar lib -lib collect.obl -opt s3 -dest ../lib/csv.obl
-./obc -src lib_src/db.obs -tar lib -lib collect.obl -opt s3 -dest ../lib/db.obl
+./obc -src lib_src/db.obs -tar lib -lib regex.obl,collect.obl -opt s3 -dest ../lib/db.obl

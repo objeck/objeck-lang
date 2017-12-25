@@ -207,7 +207,7 @@ enum ScannerTokenType {
   // file-operations
   FILE_EXISTS,
   FILE_CAN_READ,
-  FILE_WRITE_READ,
+  FILE_CAN_WRITE,
   FILE_IS_OPEN,
   FILE_SIZE,
   FILE_SEEK,
