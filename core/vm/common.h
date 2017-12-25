@@ -1700,6 +1700,8 @@ class TrapProcessor {
   static bool FileSeek(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
   static bool FileEof(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
   static bool FileIsOpen(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool FileCanWrite(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool FileCanRead(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
   static bool FileExists(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
   static bool FileSize(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
   static bool FileAccountOwner(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
