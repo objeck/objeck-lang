@@ -11,8 +11,13 @@ class Rosetta {
 			TableMeta(table);
 			query := Query->New("select name from files where is_dir=true", table);
 			results := query->Query();
-			results->ToString()->PrintLine();
-			"---"->PrintLine();			
+			if(results <> Nil) {
+				results->ToString()->PrintLine();
+				"---"->PrintLine();
+			}
+			else {
+				query->GetError()->PrintLine();
+			};			
 		};
 	}
 	
