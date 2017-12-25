@@ -7,45 +7,27 @@ class Rosetta {
 	function : Main(args : String[]) ~ Nil {		
 		table := MakeTable3("/Users/randy/Documents/Code/objeck-lang/core/release/");
 		if(table <> Nil) {
-			name := table->GetName();
-			rows := table->Size();
-			"table: name='{$name}', rows={$rows}"->PrintLine();
-	
-			query := Query->New("from files where name = 'a.out'", table);
-			results := query->Query();
 			"---"->PrintLine();
-		
+			TableMeta(table);
+			query := Query->New("select name from files where is_dir=true", table);
+			results := query->Query();
 			results->ToString()->PrintLine();
+			"---"->PrintLine();			
 		};
 	}
-
+	
 ##	query := Query->New("from game where name=doom or system=wii", table);
 ##	query := Query->New("from game where name='wolfenstein 2' and (system=wii or date='10/27/17')", table);
 ## query := Query->New("select date, system from game where name='wolfenstein 2' and (system=wii or date='10/27/17')", table);
 	
-	function : Rex(pattern : String, input : String) ~ Nil {
-		out := "";
-		
-		each(i : pattern) {
-			c := pattern->Get(i);
-			
-			if(c = '%') {
-				out += ".*";
-			}
-			else if(c = '_') {
-				out += '.';
-			}
-			else {
-				out += c;
-			};
-		};
-		
-		rex := RegEx->New(out);
-		rex->Match(input)->PrintLine();
+	function : TableMeta(table : Table) ~ Nil {
+		name := table->GetName();
+		rows := table->Size();
+		"*** table: name='{$name}', rows={$rows} ***"->PrintLine();
 	}
 	
 	function : MakeTable3(root : String) ~ Table {
-		table := Table->New("files", ["name", "full_name", "create_date", "owner"]);
+		table := Table->New("files", ["name", "full_name", "create_date", "owner", "is_dir"]);
 		
 		files := Directory->List(root);
 		each(i : files) {
@@ -54,12 +36,14 @@ class Rosetta {
 			long_name += short_name;
 			file_owner := File->Owner(long_name);
 			create_date := File->CreateTime(long_name);
+			is_dir := Directory->Exists(long_name);
 			
 			row := table->Insert();
 			row->Set("name", short_name);
 			row->Set("full_name", long_name);
 			row->Set("create_date", create_date);
 			row->Set("owner", file_owner);
+			row->Set("is_dir", is_dir ? Row->True() : Row->False());
 		};
 		
 		return table;		
