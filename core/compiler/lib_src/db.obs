@@ -469,9 +469,10 @@ bundle Query {
 			left := expr->GetLeft();
 			if(left <> Nil & left->GetType() = Token->Type->WHERE) {
 				return ProcessTerm(left->GetLeft());
+			}
+			else {
+				return @table->All();
 			};
-			
-			return Nil;
 		}
 		
 		method : Dump(results : Vector) ~ Nil {
