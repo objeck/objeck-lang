@@ -5,9 +5,9 @@ use Query;
 
 class Rosetta {
 	function : Main(args : String[]) ~ Nil {
-		Rex("a%p%");
+##		Rex("a%l%e", "apple");
 		
-#~	
+#~			
 		root := "/Users/randy/Documents/Code/objeck-lang/core/release/";
 		files := Directory->List(root);
 		each(i : files) {
@@ -15,6 +15,7 @@ class Rosetta {
 			pre += files[i];
 			Dir(pre);
 		};
+~#	
 	
 		table := MakeTable2();
 		name := table->GetName();
@@ -24,19 +25,19 @@ class Rosetta {
 ##		query := Query->New("from game where name=doom or system=wii", table);
 ##		query := Query->New("from game where name='wolfenstein 2' and (system=wii or date='10/27/17')", table);
 ##		query := Query->New("select date, system from game where name='wolfenstein 2' and (system=wii or date='10/27/17')", table);
-		query := Query->New("select name from events where date = #10/27/17#", table);
+		query := Query->New("select name from events where name like '%ball'", table);
 		results := query->Query();
 		"---"->PrintLine();
 		
 		results->ToString()->PrintLine();
-~#		
 	}
 	
-	function : Rex(pattern : String) ~ Nil {
+	function : Rex(pattern : String, input : String) ~ Nil {
 		out := "";
 		
 		each(i : pattern) {
 			c := pattern->Get(i);
+			
 			if(c = '%') {
 				out += ".*";
 			}
@@ -49,7 +50,7 @@ class Rosetta {
 		};
 		
 		rex := RegEx->New(out);
-		rex->Match("appl")->PrintLine();
+		rex->Match(input)->PrintLine();
 	}
 	
 	function : Dir(file : String) ~ Nil {
@@ -78,6 +79,14 @@ class Rosetta {
 		r := t->Insert();
 		r->Set("name", "tennis");
 		r->Set("date", System.Time.Date->New(5, 6, 1912, false));
+		
+		r := t->Insert();
+		r->Set("name", "basketball");
+		r->Set("date", System.Time.Date->New(1, 11, 1993, false));
+		
+		r := t->Insert();
+		r->Set("name", "track");
+		r->Set("date", System.Time.Date->New(15, 11, 2016, false));
 	
 		return t;	
 	}
