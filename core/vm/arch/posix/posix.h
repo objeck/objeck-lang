@@ -72,6 +72,14 @@ class File {
     
     return true;
   }
+  
+  static bool FileReadOk(const char* name) {
+    return access(name, R_OK);
+  }
+  
+  static bool FileWriteOk(const char* name) {
+    return access(name, W_OK);
+  }
 
   static time_t FileCreatedTime(const char* name) {
     struct stat buf;
