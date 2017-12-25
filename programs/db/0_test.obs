@@ -4,33 +4,24 @@ use RegEx;
 use Query;
 
 class Rosetta {
-	function : Main(args : String[]) ~ Nil {
-##		Rex("a%l%e", "apple");
+	function : Main(args : String[]) ~ Nil {		
+		table := MakeTable3("/Users/randy/Documents/Code/objeck-lang/core/release/");
+		if(table <> Nil) {
+			name := table->GetName();
+			rows := table->Size();
+			"table: name='{$name}', rows={$rows}"->PrintLine();
+	
+			query := Query->New("from files where name = 'a.out'", table);
+			results := query->Query();
+			"---"->PrintLine();
 		
-#~			
-		root := "/Users/randy/Documents/Code/objeck-lang/core/release/";
-		files := Directory->List(root);
-		each(i : files) {
-			pre := String->New(root);
-			pre += files[i];
-			Dir(pre);
+			results->ToString()->PrintLine();
 		};
-~#	
-	
-		table := MakeTable2();
-		name := table->GetName();
-		rows := table->Size();
-		"table: name='{$name}', rows={$rows}"->PrintLine();
-	
-##		query := Query->New("from game where name=doom or system=wii", table);
-##		query := Query->New("from game where name='wolfenstein 2' and (system=wii or date='10/27/17')", table);
-##		query := Query->New("select date, system from game where name='wolfenstein 2' and (system=wii or date='10/27/17')", table);
-		query := Query->New("select name from events where name like '%ball'", table);
-		results := query->Query();
-		"---"->PrintLine();
-		
-		results->ToString()->PrintLine();
 	}
+
+##	query := Query->New("from game where name=doom or system=wii", table);
+##	query := Query->New("from game where name='wolfenstein 2' and (system=wii or date='10/27/17')", table);
+## query := Query->New("select date, system from game where name='wolfenstein 2' and (system=wii or date='10/27/17')", table);
 	
 	function : Rex(pattern : String, input : String) ~ Nil {
 		out := "";
@@ -53,20 +44,25 @@ class Rosetta {
 		rex->Match(input)->PrintLine();
 	}
 	
-	function : Dir(file : String) ~ Nil {
-		short_name := "";
-		index := file->FindLast('/');
-		if(index > 0) {
-			index += 1;
-			short_name := file->SubString(index, file->Size() - index);
-		}
-		else {
-			short_name := file;
+	function : MakeTable3(root : String) ~ Table {
+		table := Table->New("files", ["name", "full_name", "create_date", "owner"]);
+		
+		files := Directory->List(root);
+		each(i : files) {
+			short_name := files[i];
+			long_name := String->New(root); 
+			long_name += short_name;
+			file_owner := File->Owner(long_name);
+			create_date := File->CreateTime(long_name);
+			
+			row := table->Insert();
+			row->Set("name", short_name);
+			row->Set("full_name", long_name);
+			row->Set("create_date", create_date);
+			row->Set("owner", file_owner);
 		};
 		
-		owner := File->Owner(file);
-		create := File->CreateTime(file);
-		"*** short_name='{$short_name}', long_name='{$file}', owner='{$owner}', create='{$create}' ***"->PrintLine();
+		return table;		
 	}
 	
 	function : MakeTable2() ~ Table {
