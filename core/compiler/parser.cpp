@@ -1619,6 +1619,18 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
                                                                instructions::FILE_EXISTS);
       NextToken();
       break;
+        
+    case FILE_CAN_READ:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+                                                                instructions::FILE_CAN_READ);
+      NextToken();
+      break;
+      
+    case FILE_CAN_WRITE:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+                                                               instructions::FILE_CAN_WRITE);
+      NextToken();
+      break;
 
     case FILE_SIZE:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
