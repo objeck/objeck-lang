@@ -380,6 +380,7 @@ bundle Query {
 		@table : Table;
 		@conds : Vector;
 		@from_results : Vector;
+		@error : String;
 		
 		New(line : String, table : Table) {
 			@table := table;
@@ -389,16 +390,15 @@ bundle Query {
 		
 		method : public : Query() ~ Table {
 			expr := @parser->Parse();
-			
 			if(expr = Nil) {
-"** ERROR PARSE **"->PrintLine();
+				@error := "*** Parse error ***";
 				return Nil;
 			};
 			
 			if(expr->GetType() = Token->Type->SELECT) {
 				results := ProcessSelect(expr);
 				if(results = Nil) {
-"** ERROR SELECT **"->PrintLine();
+					@error := "*** Select error ***";
 					return Nil;
 				};
 				
@@ -407,7 +407,7 @@ bundle Query {
 			else if(expr->GetType() = Token->Type->FROM) {
 				results := ProcessFrom(expr);
 				if(results = Nil) {
-"** ERROR FROM **"->PrintLine();
+					@error := "*** From error ***";
 					return Nil;
 				};
 				
@@ -420,11 +420,15 @@ bundle Query {
 				return BuildTable("<rs>", column_names, results);				
 			}
 			else {
-"** ERROR OTHER **"->PrintLine();
+				@error := "*** General error ***";
 				return Nil;
 			};
 			
 			return Nil;
+		}
+		
+		method : public : GetError() ~ String {
+			return @error;
 		}
 		
 		method : ProcessSelect(expr : Term) ~ Table {
@@ -885,7 +889,12 @@ bundle Query {
 							string->Append(@line->Get(i));
 							i += 1;
 						};
+						
+						if(@line->Get(i) <> '\'') {
+							return Nil;
+						};
 						i += 1;
+						
 						tokens->AddBack(Token->New(string));
 					}
 					# date
