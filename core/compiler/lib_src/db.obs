@@ -5,6 +5,7 @@
 
 use Collection;
 use System.Time;
+use RegEx;
 
 bundle Query {
 	class Table {
@@ -107,6 +108,11 @@ bundle Query {
 						}
 						
 						label Conditional->Qualifier->LIKE: {
+							if(left->TypeOf(String) & right->TypeOf(String)) {
+								if(MatchLike(left->As(String), right->As(String))) {
+									matches->AddBack(row);
+								};
+							};
 						}
 					};
 				};
@@ -114,6 +120,27 @@ bundle Query {
 			};
 			
 			return matches;
+		}
+		
+		method : native : MatchLike(check : String, cond : String) ~ Bool {
+			pattern := "";
+			
+			each(i : cond) {
+				c := cond->Get(i);
+				
+				if(c =  '%') {
+					pattern += ".*";
+				}
+				else if(c =  '_') {
+					pattern += '.';
+				}
+				else {
+					pattern += c;
+				};
+			};
+			regex := RegEx->New(pattern);
+			
+			return regex->MatchExact(check);
 		}
 		
 		method : public : native : Insert() ~ Row {
@@ -362,6 +389,7 @@ bundle Query {
 		
 		method : public : Query() ~ Table {
 			expr := @parser->Parse();
+			
 			if(expr = Nil) {
 "** ERROR PARSE **"->PrintLine();
 				return Nil;
@@ -525,6 +553,14 @@ bundle Query {
 						return @table->Filter(Conditional->New(index, Conditional->Qualifier->LESS_EQUAL, right->GetValue()));
 					};
 				}
+				
+				label Token->Type->LIKE: {
+## "== Like =="->PrintLine();
+					index := @table->GetIndex(left->GetValue()->As(String));
+ 					if(index > -1) {
+						return @table->Filter(Conditional->New(index, Conditional->Qualifier->LIKE, right->GetValue()));
+					};
+				}
 			};
 			
 			return Nil;
@@ -589,9 +625,8 @@ bundle Query {
 				return Nil;
 			};			
 			NextToken();
-			
 			if(TokenType() = Token->Type->SELECT) {
-				NextToken();
+				NextToken();				
 				return ParseSelect();
 			}
 			else if(TokenType() = Token->Type->FROM) {
@@ -622,7 +657,7 @@ bundle Query {
 			}
 			while(TokenType() <> Token->Type->EOS & TokenType() <> Token->Type->FROM);
 
-			if(TokenType() <> Token->Type->FROM) {
+			if(TokenType() <> Token->Type->FROM) {			
 				return Nil;
 			};
 			
@@ -632,7 +667,7 @@ bundle Query {
 				return Nil;
 			};
 			term->SetLeft(left);
-			
+
 			return term;
 		}
 
@@ -711,7 +746,7 @@ bundle Query {
 				term->SetRight(right);
 				return term;
 			};
-			
+
 			return left;
 		}
 		
@@ -748,6 +783,7 @@ bundle Query {
 			
 			term : Term;
 			select(TokenType()) {
+				label Token->Type->LIKE:
 				label Token->Type->EQUAL:
 				label Token->Type->NOT_EQUAL:
 				label Token->Type->LESS:
@@ -782,6 +818,7 @@ bundle Query {
 		
 			term->SetLeft(left);
 			term->SetRight(right);
+			
 			return term;
 		}
 		
@@ -831,7 +868,7 @@ bundle Query {
 			
 			i := 0;
 			tokens := Vector->New();
-			while(i < @line->Size()) {  			  
+			while(i < @line->Size()) { 			 			  
 				# skip whitespace
 				while(i < @line->Size() & (@line->Get(i) = ' ' | @line->Get(i) = '\t')) {
 					i += 1;					
@@ -849,9 +886,7 @@ bundle Query {
 						};
 						i += 1;
 						tokens->AddBack(Token->New(string));
-## string->PrintLine();						
 					}
-					
 					# date
 					else if(@line->Get(i) = '#') {
 						i += 1;					
@@ -892,7 +927,6 @@ bundle Query {
 							}
 						};
 					}
-					
 					# word
 					else if(@line->Get(i)->IsChar() = true) {
 						string := "";
