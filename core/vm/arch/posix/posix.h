@@ -74,11 +74,19 @@ class File {
   }
   
   static bool FileReadOk(const char* name) {
-    return access(name, R_OK);
+    if(!access(name, R_OK)) {
+      return true;
+    }
+    
+    return false;
   }
   
   static bool FileWriteOk(const char* name) {
-    return access(name, W_OK);
+    if(!access(name, W_OK)) {
+      return true;
+    }
+    
+    return false;
   }
 
   static time_t FileCreatedTime(const char* name) {

@@ -2,7 +2,7 @@ use System.IO.File;
 use Query;
 
 class Rosetta {
-	function : Main(args : String[]) ~ Nil {		
+	function : Main(args : String[]) ~ Nil {
 		table := MakeTable3("/Users/randy/Documents/Code/objeck-lang/core/release/");
 		if(table <> Nil) {
 			"---"->PrintLine();
@@ -31,7 +31,7 @@ class Rosetta {
 	
 	function : MakeTable3(root : String) ~ Table {
 		table := Table->New("files", ["name", "full_name", "create_date", "owner", "is_dir"]);
-		
+
 		files := Directory->List(root);
 		each(i : files) {
 			short_name := files[i];
