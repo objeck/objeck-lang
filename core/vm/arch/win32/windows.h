@@ -162,6 +162,14 @@ class File {
 
     return true;
   }
+  
+  static bool FileReadOk(const char* name) {
+    return access(name, R_OK);
+  }
+  
+  static bool FileWriteOk(const char* name) {
+    return access(name, W_OK);
+  }
 
   static FILE* FileOpen(const char* name, const char* mode) {
     FILE* file;
