@@ -4350,11 +4350,20 @@ bundle System.IO.File {
 		}
 
 		#~
+		Check to see if a file can be read-only
+		@param n file name
+		@return true if file can be read-only
+		~#
+		function : IsReadOnly(n : System.String) ~ Bool {
+			return IsRead(n) & <>IsWrite(n);
+		}
+
+		#~
 		Check to see if a file can be read
 		@param n file name
 		@return true if file can be read
 		~#
-		function : CanRead(n : System.String) ~ Bool {
+		function : IsRead(n : System.String) ~ Bool {
 			FILE_CAN_READ;
 		}
 		
@@ -4363,7 +4372,7 @@ bundle System.IO.File {
 		@param n file name
 		@return true if file can be written
 		~#
-		function : CanWrite(n : System.String) ~ Bool {
+		function : IsWrite(n : System.String) ~ Bool {
 			FILE_CAN_WRITE;
 		}
 		
