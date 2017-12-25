@@ -1,6 +1,6 @@
 #~~
-# Simple tabular query library
-# Copyright (c) 2017-2018 Randy Hollines
+Simple tabular query library
+Copyright (c) 2017-2018 Randy Hollines
 ~~#
 
 use Collection;
@@ -317,7 +317,8 @@ bundle Query {
 			};
 			
 			return @false_token;
-		}		
+		}
+			
 		method : public : Next() ~ Row {
 			return @next;
 		}
