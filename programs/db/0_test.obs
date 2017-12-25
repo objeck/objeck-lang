@@ -1,6 +1,4 @@
 use System.IO.File;
-use Collection;
-use RegEx;
 use Query;
 
 class Rosetta {
@@ -9,7 +7,7 @@ class Rosetta {
 		if(table <> Nil) {
 			"---"->PrintLine();
 			TableMeta(table);
-			query := Query->New("select name from files where is_dir=true", table);
+			query := Query->New("select name create_date from files where create_date < #12/01/17# and is_dir = true", table);
 			results := query->Query();
 			if(results <> Nil) {
 				results->ToString()->PrintLine();
