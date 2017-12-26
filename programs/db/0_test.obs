@@ -30,7 +30,7 @@ class Rosetta {
 	}
 	
 	function : MakeTable3(root : String) ~ Table {
-		table := Table->New("files", ["name", "full_name", "create_date", "owner", "is_dir"]);
+		table := Table->New("files", ["name", "full_name", "create_date", "owner", "is_dir", "is_readonly"]);
 
 		files := Directory->List(root);
 		each(i : files) {
@@ -40,6 +40,7 @@ class Rosetta {
 			file_owner := File->Owner(long_name);
 			create_date := File->CreateTime(long_name);
 			is_dir := Directory->Exists(long_name);
+			is_readonly := File->IsReadOnly(long_name);
 			
 			row := table->Insert();
 			row->Set("name", short_name);
@@ -47,6 +48,7 @@ class Rosetta {
 			row->Set("create_date", create_date);
 			row->Set("owner", file_owner);
 			row->Set("is_dir", is_dir ? Row->True() : Row->False());
+			row->Set("is_readonly", is_readonly ? Row->True() : Row->False());
 		};
 		
 		return table;		
