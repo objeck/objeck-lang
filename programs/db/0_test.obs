@@ -7,7 +7,7 @@ class Rosetta {
 		if(table <> Nil) {
 			"---"->PrintLine();
 			TableMeta(table);
-			results := table->Query("select * from game where name='wolfenstein 2' and (system=wii or date='10/27/17')");
+			results := table->Query("select system from game");
 			if(results <> Nil) {
 				results->ToString()->PrintLine();
 			}
@@ -99,6 +99,11 @@ class Rosetta {
 		r->Set("date", "10/27/17");
 		
 		r := t->Insert();
+		r->Set("name", "wolfenstein 2");
+		r->Set("system", "xbox");
+		r->Set("date", "10/27/17");
+		
+		r := t->Insert();
 		r->Set("name", "xenoblade");
 		r->Set("system", "wii");
 		r->Set("date", "5/6/12");
@@ -109,9 +114,9 @@ class Rosetta {
 		r->Set("date", "5/13/16");
 		
 		r := t->Insert();
-		r->Set("name", "doom");
+		r->Set("name", "zelda");
 		r->Set("system", "wii");
-		r->Set("date", "9/10/17");
+		r->Set("date", "5/15/17");
 		
 		r := t->Insert();
 		r->Set("name", "doom");
