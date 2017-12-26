@@ -3,6 +3,20 @@ use Query;
 
 class Rosetta {
 	function : Main(args : String[]) ~ Nil {
+		table := MakeTable();
+		if(table <> Nil) {
+			"---"->PrintLine();
+			TableMeta(table);
+			results := table->Query("select * from game where name='wolfenstein 2' and (system=wii or date='10/27/17')");
+			if(results <> Nil) {
+				results->ToString()->PrintLine();
+			}
+			else {
+				table->GetError()->PrintLine();
+			};	
+			"---"->PrintLine();		
+		};
+#~	
 		table := MakeTable3("/Users/randy/Documents/Code/objeck-lang/core/release/");
 		if(table <> Nil) {
 			"---"->PrintLine();
@@ -16,6 +30,7 @@ class Rosetta {
 			};	
 			"---"->PrintLine();		
 		};
+~#		
 	}
 	
 ##	query := Query->New("from game where name=doom or system=wii", table);
