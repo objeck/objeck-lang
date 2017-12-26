@@ -553,11 +553,21 @@ bundle Query {
 			};
 			columns := expr->GetTerms();
 			
-			column_names := String->New[columns->Size()];
-			each(i : columns) {
-				column_names[i] := columns->Get(i)->As(Term)->GetValue()->As(String);
+			column_names : String[];
+			if(columns->Size() = 1 & columns->Get(0)->As(Term)->GetType() = Token->Type->STAR) {
+				names := @table->GetColumnNames();
+				column_names := String->New[names->Size() - 1];
+				each(i : column_names) {
+					column_names[i] := names[i + 1];
+				};
+			}
+			else {
+				column_names := String->New[columns->Size()];
+				each(i : columns) {
+					column_names[i] := columns->Get(i)->As(Term)->GetValue()->As(String);
+				};
 			};
-			
+						
 			return BuildTable("<rs>", column_names, results);
 		}
 		
@@ -755,27 +765,33 @@ bundle Query {
 			
 			return Nil;
 		}
-
+		
 		method : ParseSelect() ~ Term {
 ## "--- Select ---"->PrintLine();		
 			term := Term->New(Token->Type->SELECT);
 			term->SetValue(TokenValue());
 			
-			do {
-				if(TokenType() <> Token->Type->REF) {
-					return Nil;
-				};
-				name := Term->New(Token->Type->REF);
-				name->SetValue(TokenValue());
-				term->AddTerm(name);
-				NextToken();
-				
-				if(TokenType() = Token->Type->COMMA) {
-					NextToken();
-				};
+			if(TokenType() = Token->Type->STAR) {
+				term->AddTerm(Term->New(Token->Type->STAR));
+				NextToken();		
 			}
-			while(TokenType() <> Token->Type->EOS & TokenType() <> Token->Type->FROM);
-
+			else {
+				do {
+					if(TokenType() <> Token->Type->REF) {
+						return Nil;
+					};
+					name := Term->New(Token->Type->REF);
+					name->SetValue(TokenValue());
+					term->AddTerm(name);
+					NextToken();
+				
+					if(TokenType() = Token->Type->COMMA) {
+						NextToken();
+					};
+				}
+				while(TokenType() <> Token->Type->EOS & TokenType() <> Token->Type->FROM);
+			};
+			
 			if(TokenType() <> Token->Type->FROM) {			
 				return Nil;
 			};
