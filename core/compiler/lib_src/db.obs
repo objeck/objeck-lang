@@ -561,6 +561,11 @@ bundle Query {
 					column_names[i] := names[i + 1];
 				};
 			}
+			else if(columns->Size() = 2 & 
+					columns->Get(0)->As(Term)->GetType() = Token->Type->DISTINCT & 
+					columns->Get(1)->As(Term)->GetType() = Token->Type->REF) {
+				
+			}
 			else {
 				column_names := String->New[columns->Size()];
 				each(i : columns) {
@@ -772,15 +777,27 @@ bundle Query {
 			term->SetValue(TokenValue());
 			
 			if(TokenType() = Token->Type->STAR) {
-				term->AddTerm(Term->New(Token->Type->STAR));
+				term->AddTerm(Term->New(TokenType()));
 				NextToken();		
+			}
+			else if(TokenType() = Token->Type->DISTINCT) {
+				term->AddTerm(Term->New(TokenType()));
+				NextToken();
+				
+				if(TokenType() <> Token->Type->REF) {
+					return Nil;
+				};
+				name := Term->New(TokenType());
+				name->SetValue(TokenValue());
+				term->AddTerm(name);
+				NextToken();
 			}
 			else {
 				do {
 					if(TokenType() <> Token->Type->REF) {
 						return Nil;
 					};
-					name := Term->New(Token->Type->REF);
+					name := Term->New(TokenType());
 					name->SetValue(TokenValue());
 					term->AddTerm(name);
 					NextToken();
@@ -987,6 +1004,7 @@ bundle Query {
 		method : native : Scan() ~ Vector {		
 			reserved := StringMap->New();
 			reserved->Insert("select", Token->New(Token->Type->SELECT));
+			reserved->Insert("distinct", Token->New(Token->Type->DISTINCT));
 			reserved->Insert("from", Token->New(Token->Type->FROM));
 			reserved->Insert("where", Token->New(Token->Type->WHERE));
 			reserved->Insert("like", Token->New(Token->Type->LIKE));
@@ -1233,6 +1251,7 @@ bundle Query {
 		
 		enum Type {
 			SELECT,
+			DISTINCT,
 			FROM,
 			WHERE,
 			LIKE,
@@ -1301,6 +1320,10 @@ bundle Query {
 					buffer += "SELECT";
 				}
 
+				label Type->DISTINCT: {
+					buffer += "DISTINCT";
+				}
+				
 				label Type->FROM: {
 					buffer += "FROM";
 				}
