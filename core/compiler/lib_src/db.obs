@@ -7,7 +7,13 @@ use Collection;
 use System.Time;
 use RegEx;
 
+#~
+Supports processing of semi-structured data
+~#
 bundle Query {
+	#~
+	Container for semi-structured data
+	~#
 	class Table {
 		@name : String;
 		@keys : IntMap;
@@ -16,7 +22,13 @@ bundle Query {
 		@head : Row;
 		@tail : Row;
 		@count : Int;
+		@query : Query;
 		
+		#~
+		Constructor
+		@param name table name
+		@param column_names column names
+		~#
 		New(name : String, column_names : String[]) {
 			@column_map := StringMap->New();
 			@keys := IntMap->New();
@@ -30,12 +42,20 @@ bundle Query {
 			};
 		}
 		
+		#~
+		Gets the table name
+		@return table name
+		~#
 		method : public : GetName() ~ String {
 			return @name;
 		}
 		
-		method : public : native : GetIndex(n : String) ~ Int {
-			found := @column_map->Find(n);
+		#~
+		Get column index by name
+		@return column name
+		~#
+		method : public : native : GetIndex(name : String) ~ Int {
+			found := @column_map->Find(name);
 			if(found <> Nil) {
 				return found->As(IntHolder)->Get();
 			};
@@ -43,7 +63,11 @@ bundle Query {
 			return -1;
 		}
 		
-		method : public : native : All() ~ Vector {
+		#~
+		Get all row
+		@return all row
+		~#
+		method : public : native : GetAll() ~ Vector {
 			matches := Vector->New();
 			
 			row := @head;
@@ -55,21 +79,34 @@ bundle Query {
 			return matches;
 		}
 		
-		method : public : GetColumns() ~ String[] {
+		#~
+		Get row by primary key
+		@param pk primary key
+		@return row
+		~#
+		method : public : native : GetRow(pk : Int) ~ Row {
+			return @keys->Find(pk)->As(Row);
+		}
+		
+		#~
+		Gets all column names
+		@return column names
+		~#
+		method : public : GetColumnNames() ~ String[] {
 			return @column_names;
 		}
 		
+		#~
+		Filters table based upon conditional criteria 
+		@return filtered rows
+		~#
 		method : public : native : Filter(cond : Conditional) ~ Vector {
 			matches := Vector->New();
-			
 			row := @head;
 			while(row <> Nil) {
 				left := row->Get(cond->GetLeft());
 				if(left <> Nil) {
 					right := cond->GetValue();
-					if(right = Nil) {
-						right := row->Get(cond->GetRight());
-					};
 					select(cond->GetQualifier()) {
 						label Conditional->Qualifier->EQUAL: {
 							if(left->Compare(right) = 0) {
@@ -122,6 +159,23 @@ bundle Query {
 			return matches;
 		}
 		
+		#~
+		Query table using SQL-like syntax
+		@return result table
+		~#
+		method : public : Query(statement : String) ~ Table {
+			@query := Query->New(statement, @self);
+			return @query->Query();
+		}
+		
+		#~
+		Gets the last query error
+		@return last query error
+		~#
+		method : public : GetError() ~ String {
+			return @query->GetError();
+		}
+		
 		method : native : MatchLike(check : String, cond : String) ~ Bool {
 			pattern := "";
 			
@@ -143,6 +197,11 @@ bundle Query {
 			return regex->MatchExact(check);
 		}
 		
+		#~
+		Inserts a new row into the table. After the row 
+		has been added it's values will need to be set.
+		@return newly inserted row
+		~#
 		method : public : native : Insert() ~ Row {
 			pk := IntHolder->New(@count);
 			values := Compare->New[@column_names->Size()];
@@ -164,15 +223,11 @@ bundle Query {
 			return row;
 		}
 		
-		method : public : Delete(n : String) ~ Bool {
-			pk := GetIndex(n);
-			if(pk < 0) {
-				return false;
-			};
-			
-			return Delete(pk);
-		}
-		
+		#~
+		Delete row by primary key
+		@param pk primary key
+		@return true of successful, false otherwise
+		~#
 		method : public : native : Delete(pk : Int) ~ Bool {
 			row := @keys->Find(pk)->As(Row);
 			if(row <> Nil) {
@@ -200,10 +255,18 @@ bundle Query {
 			return false;
 		}
 		
+		#~
+		Size of table
+		@return number of rows
+		~#
 		method : public : Size() ~ Int {
 			return @count;
 		}
 		
+		#~
+		String representation of table
+		@return all row as a string
+		~#
 		method : public : ToString() ~ String {
 			buffer := "";
 			
@@ -218,12 +281,17 @@ bundle Query {
 		}
 	}
 	
+	#~
+	Conditional for filtering
+	~#
 	class Conditional {
 		@left : Int;
-		@right : Int;
 		@qualifier : Conditional->Qualifier;
 		@value : Compare;
 		
+		#~
+		Conditional comparisons 
+		~#
 		enum Qualifier {
 			EQUAL,
 			NOT_EQUAL,
@@ -234,37 +302,46 @@ bundle Query {
 			LIKE
 		}
 		
+		#~
+		Constructor
+		@param left index of column to compare
+		@param qualifier comparison type
+		@param value to compare against column
+		~#
 		New(left : Int, qualifier : Conditional->Qualifier, value : Compare) {
 			@left := left;
-			@right := -1;
 			@qualifier := qualifier;
 			@value := value;
 		}
 		
-		New(left : Int, qualifier : Conditional->Qualifier, right : Int) {
-			@left := left;
-			@right := right;
-			@qualifier := qualifier;
-			@value := Nil;
-		}
-		
+		#~
+		Get the qualifying value
+		@return qualifying value
+		~#
 		method : public : GetQualifier() ~ Qualifier {
 			return @qualifier;
 		}
 		
+		#~
+		Gets the comparison value
+		@return comparison value
+		~#
 		method : public : GetValue() ~ Compare {
 			return @value;
 		}
 		
+		#~
+		Gets comparison index
+		@return comparison index
+		~#
 		method : public : GetLeft() ~ Int {
 			return @left;
 		}
-		
-		method : public : GetRight() ~ Int {
-			return @right;
-		}
 	}
 	
+	#~
+	Row in table
+	~#
 	class Row {
 		@values : Compare[];
 		@table : Table;
@@ -278,31 +355,55 @@ bundle Query {
 			@values := values;
 		}
 		
-		method : public : Get(n : String) ~ Compare {
-			return Get(@table->GetIndex(n));
+		#~
+		Gets value by name
+		@return value
+		~#
+		method : public : Get(name : String) ~ Compare {
+			return Get(@table->GetIndex(name));
 		}
 		
-		method : public : Set(n : String, value : Compare) ~ Bool {
-			return Set(@table->GetIndex(n), value);
+		#~
+		Sets value by name
+		@param name column name
+		@param value value
+		@return ture of successful, false otherwise
+		~#
+		method : public : Set(name : String, value : Compare) ~ Bool {
+			return Set(@table->GetIndex(name), value);
 		}
 		
-		method : public : Get(i : Int) ~ Compare {
-			if(i < 0 | i >= @values->Size()) {
+		#~
+		Gets value by index
+		@return value
+		~#
+		method : public : Get(index : Int) ~ Compare {
+			if(index < 0 | index >= @values->Size()) {
 				return Nil;
 			};
 			
-			return @values[i];
+			return @values[index];
 		}
 		
-		method : public : Set(i : Int, value : Compare) ~ Bool {
-			if(i < 0 | i >= @values->Size()) {
+		#~
+		Sets value by index
+		@param name column index
+		@param value value
+		@return ture of successful, false otherwise
+		~#
+		method : public : Set(index : Int, value : Compare) ~ Bool {
+			if(index < 0 | index >= @values->Size()) {
 				return false;
 			};
 			
-			@values[i] := value;
+			@values[index] := value;
 			return true;
 		}
 		
+		#~
+		Helper for setting 'true' column value
+		@return 'true' value holder
+		~#
 		function : True() ~ IntHolder {
 			if(@true_token = Nil) {
 				@true_token := IntHolder->New(1);
@@ -311,6 +412,10 @@ bundle Query {
 			return @true_token;
 		}
 		
+		#~
+		Helper for setting 'false' column value
+		@return 'false' value holder
+		~#
 		function : False() ~ IntHolder {
 			if(@false_token = Nil) {
 				@false_token := IntHolder->New(0);
@@ -335,10 +440,18 @@ bundle Query {
 			@prev := prev;
 		}
 		
+		#~
+		Gets the number of columns
+		@return number of columns
+		~#
 		method : public : Size() ~ Int {
 			return @values->Size();
 		}
 		
+		#~
+		String representation of row
+		@return row as string
+		~#
 		method : public : ToString() ~ String {
 			buffer := "";
 
@@ -412,7 +525,7 @@ bundle Query {
 					return Nil;
 				};
 				
-				names := @table->GetColumns();
+				names := @table->GetColumnNames();
 				column_names := String->New[names->Size() - 1];
 				each(i : column_names) {
 					column_names[i] := names[i + 1];
@@ -476,7 +589,7 @@ bundle Query {
 				return ProcessTerm(left->GetLeft());
 			}
 			else {
-				return @table->All();
+				return @table->GetAll();
 			};
 		}
 		
@@ -858,12 +971,8 @@ bundle Query {
 		method : native : Scan() ~ Vector {		
 			reserved := StringMap->New();
 			reserved->Insert("select", Token->New(Token->Type->SELECT));
-			reserved->Insert("update", Token->New(Token->Type->UPDATE));
 			reserved->Insert("from", Token->New(Token->Type->FROM));
 			reserved->Insert("where", Token->New(Token->Type->WHERE));
-			reserved->Insert("insert", Token->New(Token->Type->INSERT));
-			reserved->Insert("into", Token->New(Token->Type->INTO));
-			reserved->Insert("values", Token->New(Token->Type->VALUES));
 			reserved->Insert("like", Token->New(Token->Type->LIKE));
 			reserved->Insert("between", Token->New(Token->Type->BETWEEN));
 			reserved->Insert("in", Token->New(Token->Type->IN));
@@ -1108,12 +1217,8 @@ bundle Query {
 		
 		enum Type {
 			SELECT,
-			UPDATE,
 			FROM,
 			WHERE,
-			INSERT,
-			INTO,
-			VALUES,
 			LIKE,
 			BETWEEN,
 			IN,
@@ -1180,28 +1285,12 @@ bundle Query {
 					buffer += "SELECT";
 				}
 
-				label Type->UPDATE: {
-					buffer += "UPDATE";
-				}
-
 				label Type->FROM: {
 					buffer += "FROM";
 				}
 
 				label Type->WHERE: {
 					buffer += "WHERE";
-				}
-
-				label Type->INSERT: {
-					buffer += "INSERT";
-				}
-
-				label Type->INTO: {
-					buffer += "INTO";
-				}
-
-				label Type->VALUES: {
-					buffer += "VALUES";
 				}
 
 				label Type->LIKE: {

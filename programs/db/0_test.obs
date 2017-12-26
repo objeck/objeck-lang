@@ -7,15 +7,14 @@ class Rosetta {
 		if(table <> Nil) {
 			"---"->PrintLine();
 			TableMeta(table);
-			query := Query->New("select name create_date from files where create_date < #12/01/17# and is_dir = true", table);
-			results := query->Query();
+			results := table->Query("select name create_date from files where create_date < #12/01/17# and is_dir = true");
 			if(results <> Nil) {
 				results->ToString()->PrintLine();
-				"---"->PrintLine();
 			}
 			else {
-				query->GetError()->PrintLine();
-			};			
+				table->GetError()->PrintLine();
+			};	
+			"---"->PrintLine();		
 		};
 	}
 	
