@@ -40,7 +40,7 @@ class Rosetta {
 	
 	function : TableMeta(table : Table) ~ Nil {
 		name := table->GetName();
-		rows := table->Size();
+		rows := table->Count();
 		"*** table: name='{$name}', rows={$rows} ***"->PrintLine();
 	}
 	

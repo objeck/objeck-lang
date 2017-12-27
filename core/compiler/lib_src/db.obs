@@ -96,7 +96,12 @@ bundle Query {
 			return @column_names;
 		}
 		
-		method : Unique(name : String) ~ Vector {
+		#~
+		Gets unique rows by column name
+		@param name column name
+		@return unique rows
+		~#
+		method : public : Unique(name : String) ~ Vector {
 			out := Vector->New();
 			
 			index := GetIndex(name);		
@@ -129,16 +134,66 @@ bundle Query {
 			return out;
 		}
 		
-		method : Count(name : String) ~ Vector {
-			return Nil;
+		#~
+		Gets the column average
+		@param name column name
+		@return column average
+		~#
+		method : public : Average(name : String) ~ Float {
+			index := GetIndex(name);		
+			if(index < 0) {
+				return 0.0;
+			};
+			
+			sum := 0.0;
+			count := 0.0;
+			row := @head;
+			while(row <> Nil) {
+				value := row->Get(index);
+				
+				if(value->TypeOf(IntHolder)) {
+					sum += value->As(IntHolder)->Get()->As(Float);
+				}
+				else if(value->TypeOf(FloatHolder)) {
+					sum += value->As(FloatHolder)->Get();
+				};
+				
+				# next
+				count += 1.0;
+				row := row->Next();
+			};
+			
+			return sum / count;
 		}
 		
-		method : Average(name : String) ~ Vector {
-			return Nil;
-		}
-		
-		method : Sum(name : String) ~ Vector {
-			return Nil;
+		#~
+		Gets the column sum
+		@param name column name
+		@return column sum
+		~#
+		method : public : Sum(name : String) ~ Float {
+			index := GetIndex(name);		
+			if(index < 0) {
+				return 0.0;
+			};
+			
+			sum := 0.0;
+			row := @head;
+			while(row <> Nil) {
+				value := row->Get(index);
+				
+				if(value->TypeOf(IntHolder)) {
+					sum += value->As(IntHolder)->Get()->As(Float);
+				}
+				else if(value->TypeOf(FloatHolder)) {
+					sum += value->As(FloatHolder)->Get();
+				};
+				
+				# next
+				row := row->Next();
+			};
+			
+			return sum;
 		}
 		
 		#~
@@ -302,10 +357,10 @@ bundle Query {
 		}
 		
 		#~
-		Size of table
+		Count of rows
 		@return number of rows
 		~#
-		method : public : Size() ~ Int {
+		method : public : Count() ~ Int {
 			return @count;
 		}
 		
@@ -857,27 +912,6 @@ bundle Query {
 				term->AddTerm(Term->New(TokenType()));
 				NextToken();		
 			}
-			else if(TokenType() = Token->Type->COUNT) {
-				term->AddTerm(Term->New(TokenType()));
-				NextToken();
-				
-				if(TokenType() <> Token->Type->OPRN) {
-					return Nil;
-				};
-				NextToken();
-				
-				if(TokenType() = Token->Type->STAR | TokenType() = Token->Type->REF) {
-					value := Term->New(TokenType());
-					value->SetValue(TokenValue());
-					term->AddTerm(value);
-					NextToken();
-				};
-				
-				if(TokenType() <> Token->Type->CPRN) {
-					return Nil;
-				};
-				NextToken();
-			}
 			else if(TokenType() = Token->Type->DISTINCT) {
 				term->AddTerm(Term->New(TokenType()));
 				NextToken();
@@ -1102,7 +1136,6 @@ bundle Query {
 		method : native : Scan() ~ Vector {		
 			reserved := StringMap->New();
 			reserved->Insert("select", Token->New(Token->Type->SELECT));
-			reserved->Insert("count", Token->New(Token->Type->COUNT));
 			reserved->Insert("distinct", Token->New(Token->Type->DISTINCT));
 			reserved->Insert("from", Token->New(Token->Type->FROM));
 			reserved->Insert("where", Token->New(Token->Type->WHERE));
@@ -1350,7 +1383,6 @@ bundle Query {
 		
 		enum Type {
 			SELECT,
-			COUNT,
 			DISTINCT,
 			FROM,
 			WHERE,
@@ -1422,10 +1454,6 @@ bundle Query {
 
 				label Type->DISTINCT: {
 					buffer += "DISTINCT";
-				}
-				
-				label Type->COUNT: {
-					buffer += "COUNT";
 				}
 				
 				label Type->FROM: {
