@@ -7,7 +7,7 @@ class Rosetta {
 		if(table <> Nil) {
 			"---"->PrintLine();
 			TableMeta(table);
-			results := table->Query("select system from game");
+			results := table->Query("select distinct system from game");
 			if(results <> Nil) {
 				results->ToString()->PrintLine();
 			}
