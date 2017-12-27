@@ -7,9 +7,10 @@ class Rosetta {
 		if(table <> Nil) {
 			"---"->PrintLine();
 			TableMeta(table);
-			results := table->Query("select distinct system from game");
+			results := table->Query("select distinct price from game");
 			if(results <> Nil) {
-				results->ToString()->PrintLine();
+				results->Average("price")->PrintLine();
+#				results->ToString()->PrintLine();
 			}
 			else {
 				table->GetError()->PrintLine();
@@ -92,42 +93,49 @@ class Rosetta {
 	}
 	
 	function : MakeTable() ~ Table {
-		t := Table->New("game", ["name", "system", "date"]);
+		t := Table->New("game", ["name", "system", "date", "price"]);
 		
 		r := t->Insert();
 		r->Set("name", "wolfenstein 2");
 		r->Set("system", "pc");
 		r->Set("date", "10/27/17");
+		r->Set("price", FloatHolder->New(79.99));
 		
 		r := t->Insert();
 		r->Set("name", "wolfenstein 2");
 		r->Set("system", "xbox");
 		r->Set("date", "10/27/17");
+		r->Set("price", FloatHolder->New(59.99));
 		
 		r := t->Insert();
 		r->Set("name", "xenoblade");
 		r->Set("system", "wii");
 		r->Set("date", "5/6/12");
+		r->Set("price", FloatHolder->New(89.99));
 		
 		r := t->Insert();
 		r->Set("name", "doom");
 		r->Set("system", "pc");
 		r->Set("date", "5/13/16");
+		r->Set("price", FloatHolder->New(49.99));
 		
 		r := t->Insert();
 		r->Set("name", "zelda");
 		r->Set("system", "wii");
 		r->Set("date", "5/15/17");
+		r->Set("price", FloatHolder->New(59.99));
 		
 		r := t->Insert();
 		r->Set("name", "doom");
 		r->Set("system", "wii");
 		r->Set("date", "1/1/18");
+		r->Set("price", FloatHolder->New(59.99));
 		
 		r := t->Insert();
 		r->Set("name", "doom");
 		r->Set("system", "xbox");
 		r->Set("date", "10/16/12");
+		r->Set("price", FloatHolder->New(49.99));
 
 #~		
 		r := t->Insert();
