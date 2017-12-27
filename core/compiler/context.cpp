@@ -2699,7 +2699,7 @@ bool ContextAnalyzer::Analyze()
     // typeof check
     else if(expression->GetTypeOf()) {
       if(expression->GetTypeOf()->GetType() != CLASS_TYPE ||
-         expression->GetEvalType()->GetType() != CLASS_TYPE) {
+         (expression->GetEvalType() && expression->GetEvalType()->GetType() != CLASS_TYPE)) {
         ProcessError(expression, L"Invalid 'TypeOf' check, only complex classes are supported");
       }
 

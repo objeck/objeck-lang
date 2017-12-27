@@ -434,10 +434,10 @@ bundle Query {
 		#~
 		Gets comparison index
 		@return comparison index
-		~#
+		
 		method : public : GetLeft() ~ Int {
 			return @left;
-		}
+		} ~#
 	}
 	
 	#~
