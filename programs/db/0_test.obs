@@ -16,6 +16,7 @@ class Rosetta {
 			};	
 			"---"->PrintLine();		
 		};
+		
 #~	
 		table := MakeTable3("/Users/randy/Documents/Code/objeck-lang/core/release/");
 		if(table <> Nil) {
