@@ -97,6 +97,44 @@ bundle Query {
 		}
 		
 		#~
+		Gets unique rows by column name
+		@param name column name
+		@return unique rows
+		~#
+		method : Unique(name : String) ~ Vector {
+			out := Vector->New();
+			
+			index := GetIndex(name);		
+			if(index < 0) {
+				return out;
+			};
+			
+			in_row := @head;
+			while(in_row <> Nil) {
+				left := in_row->Get(index);
+				
+				found := false;
+				for(j := 0; found = false & j < out->Size(); j += 1;) {
+					out_row := out->Get(j)->As(Row);
+					right := out_row->Get(index);
+					if(left->Compare(right) = 0) {
+						found := true;
+					};
+				};
+				
+				# add
+				if(<>found) {
+					out->AddBack(in_row);
+				};
+				
+				# next
+				in_row := in_row->Next();
+			};
+			
+			return out;
+		}
+		
+		#~
 		Filters table based upon conditional criteria 
 		@return filtered rows
 		~#
@@ -153,6 +191,7 @@ bundle Query {
 						}
 					};
 				};
+				# next
 				row := row->Next();
 			};
 			
@@ -493,7 +532,6 @@ bundle Query {
 		@terms : Term;
 		@table : Table;
 		@conds : Vector;
-		@from_results : Vector;
 		@error : String;
 		
 		New(line : String, table : Table) {
@@ -552,7 +590,7 @@ bundle Query {
 				return Nil;
 			};
 			columns := expr->GetTerms();
-			
+						
 			column_names : String[];
 			if(columns->Size() = 1 & columns->Get(0)->As(Term)->GetType() = Token->Type->STAR) {
 				names := @table->GetColumnNames();
@@ -564,7 +602,10 @@ bundle Query {
 			else if(columns->Size() = 2 & 
 					columns->Get(0)->As(Term)->GetType() = Token->Type->DISTINCT & 
 					columns->Get(1)->As(Term)->GetType() = Token->Type->REF) {
-				
+				column_names := String->New[1];
+				column_name := columns->Get(1)->As(Term)->GetValue()->As(String);
+				column_names[0] := column_name;
+				results := Unique(column_name, results);
 			}
 			else {
 				column_names := String->New[columns->Size()];
@@ -574,6 +615,35 @@ bundle Query {
 			};
 						
 			return BuildTable("<rs>", column_names, results);
+		}
+		
+		method : Unique(col : String, in : Vector) ~ Vector {
+			out := Vector->New();
+			
+			index := @table->GetIndex(col);
+			if(index < 0) {
+				return out;
+			};
+			
+			each(i : in) {
+				in_row := in->Get(i)->As(Row);
+				left := in_row->Get(index);
+				
+				found := false;
+				for(j := 0; found = false & j < out->Size(); j += 1;) {
+					out_row := out->Get(j)->As(Row);
+					right := out_row->Get(index);
+					if(left->Compare(right) = 0) {
+						found := true;
+					};
+				};
+				
+				if(<>found) {
+					out->AddBack(in_row);
+				};
+			};
+			
+			return out;
 		}
 		
 		method : BuildTable(name : String, column_names : String[], from_results : Vector) ~ Table {
@@ -707,7 +777,7 @@ bundle Query {
 				right_value := right->Get(i);
 				
 				found := false;
-				each(j : left) {
+				for(j := 0; found = false & j < left->Size(); j += 1;) {
 					left_value := left->Get(j);
 					if(left_value = right_value) {
 						found := true;
@@ -727,7 +797,7 @@ bundle Query {
 				right_value := right->Get(i);
 				
 				not_found := false;
-				each(j : left) {
+				for(j := 0; not_found = false & j < left->Size(); j += 1;) {
 					left_value := left->Get(j);
 					if(left_value <> right_value) {
 						not_found := true;
