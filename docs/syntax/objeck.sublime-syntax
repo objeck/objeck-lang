@@ -14,18 +14,36 @@ contexts:
 
     # Line comments begin with a '#' and continue to the end of the line
     - match: '#'
-      scope: punctuation.definition.comment.objeck-obs
+      scope: comment.block.objeck-obs
       push: line_comment
 
     # Strings begin and end with quotes, and use backslashes as an escape
     # character
     - match: '"'
-      scope: punctuation.definition.string.begin.objeck-obs
+      scope: string.quoted.double.objeck-obs
       push: double_quoted_string
 
     # Keywords 
-    - match: '\b(critical|use|leaving|and|or|xor|virtual|if|else|do|while|bundle|native|static|public|private|class|interface|select|other|enum|for|each|label|return|Byte|Int|Parent|from|implements|Float|Char|Bool|String|function|method)\b'
+    - match: '\b(if|else|do|while|static|select|other|enum|for|each|label|return|critical)\b'
       scope: keyword.control.objeck-obs
+
+    - match: '\b(use|leaving|virtual|bundle|native|Parent|from|implements|function|method)\b'
+      scope: keyword.other
+
+    - match: '\b(class)\b'
+      scope: entity.name.class.objeck-obs
+
+    - match: '\b(public|private)\b'
+      scope: storage.modifier.objeck-obs
+
+    - match: '\b(interface)\b'
+      scope: entity.name.interface.objeck-obs
+
+    - match: '\b(Byte|Int|Float|Char|Bool|String)\b'
+      scope: storage.type.objeck-obs
+
+    - match: \[|\]
+      scope: storage.type.objeck-obs
 
     - match: \b(Nil|true|false)\b
       scope: constant.language.objeck-obs
@@ -37,18 +55,18 @@ contexts:
     - match: '->'
       scope: punctuation.accessor.objeck-obs
 
-    - match: \+\=|-\=|\*\=|/\=
-      scope: keyword.operator.assignment.augmented.objeck-obs
-
-    - match: \+|\-|/|%|\||&|<>|(|)
-      scope: keyword.operator.arithmetic.objeck-obs
-
-    - match: ':='
+    - match: \+\=|-\=|\*\=|/\=|\:=
       scope: keyword.operator.assignment.objeck-obs
-        
-    - match: \+|-|&|\||
+
+    - match: \+|\-|/|%|\*
       scope: keyword.operator.arithmetic.objeck-obs
 
+    - match: \||&|'<>'|<|>
+      scope: keyword.operator.logical.objeck-obs
+
+    - match: '\b(and|or|xor)\b'
+      scope: keyword.operator.bitwise.objeck-obs
+        
   line_comment:
     - meta_scope: comment.line.objeck-obs
     - match: $
@@ -62,7 +80,7 @@ contexts:
   double_quoted_string:
     - meta_scope: string.quoted.double.objeck-obs
     - match: '\\.'
-      scope: constant.character.escape.objeck-obs
+      scope: string.quoted.double.objeck-obs
     - match: '"'
-      scope: punctuation.definition.string.end.objeck-obs
+      scope: string.quoted.double.objeck-obs
       pop: true
