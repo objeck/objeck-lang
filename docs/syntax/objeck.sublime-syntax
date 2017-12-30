@@ -1,0 +1,68 @@
+%YAML 1.2
+---
+# See http://www.sublimetext.com/docs/3/syntax.html
+name: Objeck
+file_extensions:
+  - obs
+scope: source.objeck-obs
+contexts:
+  main:
+    # Multi-line comments begin with a '#~' and end with '~#'
+    - match: '#~'
+      scope: comment.block.objeck-obs
+      push: multi_line_comment
+
+    # Line comments begin with a '#' and continue to the end of the line
+    - match: '#'
+      scope: punctuation.definition.comment.objeck-obs
+      push: line_comment
+
+    # Strings begin and end with quotes, and use backslashes as an escape
+    # character
+    - match: '"'
+      scope: punctuation.definition.string.begin.objeck-obs
+      push: double_quoted_string
+
+    # Keywords 
+    - match: '\b(critical|use|leaving|and|or|xor|virtual|if|else|do|while|bundle|native|static|public|private|class|interface|select|other|enum|for|each|label|return|Byte|Int|Parent|from|implements|Float|Char|Bool|String|function|method)\b'
+      scope: keyword.control.objeck-obs
+
+    - match: \b(Nil|true|false)\b
+      scope: constant.language.objeck-obs
+
+    # Numbers
+    - match: '\b((0(x|X)[0-9a-fA-F]*)|(([0-9]+\.?[0-9]*)|(\.[0-9]+))((e|E)(\+|-)?[0-9]+)?)\b'
+      scope: constant.numeric.objeck-obs
+  
+    - match: '->'
+      scope: punctuation.accessor.objeck-obs
+
+    - match: \+\=|-\=|\*\=|/\=
+      scope: keyword.operator.assignment.augmented.objeck-obs
+
+    - match: \+|\-|/|%|\||&|<>|(|)
+      scope: keyword.operator.arithmetic.objeck-obs
+
+    - match: ':='
+      scope: keyword.operator.assignment.objeck-obs
+        
+    - match: \+|-|&|\||
+      scope: keyword.operator.arithmetic.objeck-obs
+
+  line_comment:
+    - meta_scope: comment.line.objeck-obs
+    - match: $
+      pop: true
+
+  multi_line_comment:
+    - meta_scope: comment.block.objeck-obs
+    - match: '~#'
+      pop: true
+
+  double_quoted_string:
+    - meta_scope: string.quoted.double.objeck-obs
+    - match: '\\.'
+      scope: constant.character.escape.objeck-obs
+    - match: '"'
+      scope: punctuation.definition.string.end.objeck-obs
+      pop: true
