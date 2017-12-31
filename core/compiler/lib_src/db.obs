@@ -641,6 +641,10 @@ bundle Query {
 			return Nil;
 		}
 		
+fn foo() {
+
+}
+
 		method : public : GetError() ~ String {
 			return @error;
 		}
@@ -977,8 +981,8 @@ bundle Query {
 			term->SetRight(Term->New(Token->Type->EOS));
 			return term;
 		}
-		
-		method : ParseWhere() ~ Term {
+
+		method : public : ParseWhere() ~ Term {
 ## "--- Where ---"->PrintLine();
 			
 			where := Term->New(Token->Type->WHERE);
@@ -1007,6 +1011,12 @@ bundle Query {
 			return where;
 		}
 		
+		method foo() {
+
+		}
+
+		function bar(a:b, c:d) ~ Nil {}
+
 		method : ParseLogic() ~ Term {
 			left := ParseTerm();
 			if(left = Nil) {
