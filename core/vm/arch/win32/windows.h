@@ -36,6 +36,7 @@
 
 #include "../../common.h"
 #include <windows.h>
+#include  <io.h>
 #include <tchar.h>
 #include <userenv.h>
 #include <sys/stat.h>
@@ -164,13 +165,27 @@ class File {
   }
   
   static bool FileReadOk(const char* name) {
-    // return access(name, R_OK);
-    return false;
+    FILE* file = fopen(name, "r");
+    
+    bool is_ok = false;
+    if(file) {
+      is_ok = true;
+      fclose(file);
+    }
+
+    return is_ok;
   }
   
   static bool FileWriteOk(const char* name) {
-    // return access(name, W_OK);
-    return false;
+    FILE* file = fopen(name, "w");
+
+    bool is_ok = false;
+    if(file) {
+      is_ok = true;
+      fclose(file);
+    }
+
+    return is_ok;
   }
 
   static FILE* FileOpen(const char* name, const char* mode) {
