@@ -35,17 +35,14 @@ contexts:
     - match: '\b(use|leaving|virtual|bundle|Parent|from|implements)\b'
       scope: keyword.other
 
-    - match: '\b(class)\b'
-      scope: entity.name.class.objeck-obs
-
     - match: '\b(interface)\b'
       scope: entity.name.interface.objeck-obs
 
     - match: '\b(Byte|Int|Float|Char|Bool|String)\b'
       scope: storage.type.objeck-obs
 
-    - match: \[|\]
-      scope: storage.type.objeck-obs
+    - match: \[|\]|,
+      scope: punctuation.separator.objeck-obs
 
     - match: '\b(Nil|true|false)\b'
       scope: constant.language.objeck-obs
@@ -68,14 +65,13 @@ contexts:
 
     - match: '\b(and|or|xor)\b'
       scope: keyword.operator.bitwise.objeck-obs
-
+        
     - match: '(method\s+:|function\s+:)\s+(public\s*:|private\s*:)\s+(native)\s*:\s+?(?={{identifier}})'
       scope: meta.function.objeck-obs
       captures:
         1: storage.type.function.objeck-obs
         2: storage.modifier.objeck-obs
         3: storage.modifier.objeck-obs
-
       push: func_def
 
     - match: '(method\s+:|function\s+:)\s+(native\s*:|public\s*:|private\s*:)\s+?(?={{identifier}})'
