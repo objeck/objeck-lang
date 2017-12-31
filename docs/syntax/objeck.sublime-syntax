@@ -51,6 +51,11 @@ contexts:
     - match: '\b((0(x|X)[0-9a-fA-F]*)|(([0-9]+\.?[0-9]*)|(\.[0-9]+))((e|E)(\+|-)?[0-9]+)?)\b'
       scope: constant.numeric.objeck-obs
   
+    - match: '\b(New)\b\s*.*{'
+      scope: meta.constructor.objeck-obs
+      captures:
+        1: entity.name.function.constructor.objeck-obs
+
     - match: '->'
       scope: punctuation.accessor.objeck-obs
 
@@ -65,8 +70,13 @@ contexts:
 
     - match: '\b(and|or|xor)\b'
       scope: keyword.operator.bitwise.objeck-obs
-        
-    - match: '(method\s+:|function\s+:)\s+(public\s*:|private\s*:)\s+(native)\s*:\s+?(?={{identifier}})'
+    
+    - match: '(class)\s+'
+      1: storage.type.function.objeck-obs
+      scope: meta.class.objeck-obs
+      push: cls_def
+
+    - match: '(method|function)\s+:\s+(public|private)\s*:\s+(native)\s*:\s+'
       scope: meta.function.objeck-obs
       captures:
         1: storage.type.function.objeck-obs
@@ -74,14 +84,14 @@ contexts:
         3: storage.modifier.objeck-obs
       push: func_def
 
-    - match: '(method\s+:|function\s+:)\s+(native\s*:|public\s*:|private\s*:)\s+?(?={{identifier}})'
+    - match: '(method|function)\s+:\s+(native|public|private)\s*:\s+'
       scope: meta.function.objeck-obs
       captures:
         1: storage.type.function.objeck-obs
         2: storage.modifier.objeck-obs
       push: func_def
 
-    - match: '(method\s+:|function\s+:)\s+?(?={{identifier}})'
+    - match: '(method|function)\s+:\s+'
       scope: meta.function.objeck-obs
       captures:
         1: storage.type.function.objeck-obs
@@ -103,6 +113,11 @@ contexts:
       scope: string.quoted.double.objeck-obs
     - match: '"'
       scope: string.quoted.double.objeck-obs
+      pop: true
+
+  cls_def:
+    - match: '{{identifier}}'
+      scope: entity.name.class.objeck-obs
       pop: true
 
   func_def:
