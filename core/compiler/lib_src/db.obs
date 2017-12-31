@@ -640,10 +640,6 @@ bundle Query {
 			
 			return Nil;
 		}
-		
-fn foo() {
-
-}
 
 		method : public : GetError() ~ String {
 			return @error;
@@ -1011,12 +1007,6 @@ fn foo() {
 			return where;
 		}
 		
-		method foo() {
-
-		}
-
-		function bar(a:b, c:d) ~ Nil {}
-
 		method : ParseLogic() ~ Term {
 			left := ParseTerm();
 			if(left = Nil) {
