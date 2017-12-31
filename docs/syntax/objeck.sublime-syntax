@@ -8,7 +8,7 @@ scope: source.objeck-obs
 
 variables:
   identifier: \b[[:alpha:]_][[:alnum:]_]*\b # upper and lowercase
-
+  escaped_char: '\\(x\h{2}|n|r|t|0|"|''|\\|u\{\h{1,6}\})'
 
 contexts:
   main:
@@ -24,6 +24,9 @@ contexts:
 
     # Strings begin and end with quotes, and use backslashes as an escape
     # character
+    - match: \'(.|{{escaped_char}})+\'
+      scope: constant.character.escape.objeck-obs
+
     - match: '"'
       scope: string.quoted.double.objeck-obs
       push: double_quoted_string
@@ -109,8 +112,6 @@ contexts:
 
   double_quoted_string:
     - meta_scope: string.quoted.double.objeck-obs
-    - match: '\\.'
-      scope: string.quoted.double.objeck-obs
     - match: '"'
       scope: string.quoted.double.objeck-obs
       pop: true
