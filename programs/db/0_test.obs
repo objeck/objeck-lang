@@ -7,10 +7,10 @@ class Rosetta {
 		if(table <> Nil) {
 			"---"->PrintLine();
 			TableMeta(table);
-			results := table->Query("select distinct price from game");
+			results := table->Query("select price, name from game order by price");
 			if(results <> Nil) {
-				results->Average("price")->PrintLine();
-#				results->ToString()->PrintLine();
+#				results->Average("price")->PrintLine();
+				results->ToString()->PrintLine();
 			}
 			else {
 				table->GetError()->PrintLine();
