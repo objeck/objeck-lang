@@ -631,7 +631,7 @@ bundle Query {
 					column_names[i] := names[i + 1];
 				};
 				
-				return BuildTable("<rs>", column_names, results);				
+				return BuildTable("<rs>", column_names, results, Nil);				
 			}
 			else {
 				@error := "*** General error ***";
@@ -675,8 +675,13 @@ bundle Query {
 					column_names[i] := columns->Get(i)->As(Term)->GetValue()->As(String);
 				};
 			};
+
+			if(expr->GetRight() <> Nil) {
+				order_by := expr->GetRight()->GetValue()->As(String);
+				return BuildTable("<rs>", column_names, results, order_by);
+			};
 						
-			return BuildTable("<rs>", column_names, results);
+			return BuildTable("<rs>", column_names, results, Nil);
 		}
 		
 		method : Unique(col : String, in : Vector) ~ Vector {
@@ -708,8 +713,21 @@ bundle Query {
 			return out;
 		}
 		
-		method : BuildTable(name : String, column_names : String[], from_results : Vector) ~ Table {
+		method : BuildTable(name : String, column_names : String[], from_results : Vector, order_by : String) ~ Table {
 			table := Table->New(name, column_names);
+
+			if(order_by <> Nil) {
+				order_index := @table->GetIndex(order_by);
+				if(order_index > -1) {
+					ordered_values := Map->New();
+					each(i : from_results) {
+						row := from_results->Get(i)->As(Row);
+						ordered_values->Insert(row->Get(order_index), row);
+					};
+					from_results := ordered_values->GetValues();
+				};
+			};
+			
 			each(i : from_results) {
 				row := from_results->Get(i)->As(Row);
 				result_row := table->Insert();
@@ -887,20 +905,39 @@ bundle Query {
 		
 		method : public : Parse() ~ Term {
 			@tokens := Scan();
+
+			term : Term;
 			if(@tokens = Nil)	{
 				return Nil;
 			};			
 			NextToken();
 			if(TokenType() = Token->Type->SELECT) {
 				NextToken();				
-				return ParseSelect();
+				term := ParseSelect();
 			}
 			else if(TokenType() = Token->Type->FROM) {
 				NextToken();
-				return ParseFrom();
+				term := ParseFrom();
+			};
+
+			if(term <> Nil & TokenType() = Token->Type->ORDER) {
+				NextToken();
+
+				if(TokenType() <> Token->Type->BY) {
+					return Nil;
+				};
+				NextToken();
+
+				if(TokenType() <> Token->Type->REF) {
+					return Nil;
+				};
+
+				right := Term->New(TokenType());
+				right->SetValue(TokenValue());
+				term->SetRight(right);
 			};
 			
-			return Nil;
+			return term;
 		}
 		
 		method : ParseSelect() ~ Term {
@@ -1146,6 +1183,8 @@ bundle Query {
 			reserved->Insert("or", Token->New(Token->Type->OR));
 			reserved->Insert("true", Token->New(1));
 			reserved->Insert("false", Token->New(0));
+			reserved->Insert("order", Token->New(Token->Type->ORDER));
+			reserved->Insert("by", Token->New(Token->Type->BY));
 			
 			i := 0;
 			tokens := Vector->New();
@@ -1391,6 +1430,8 @@ bundle Query {
 			IN,
 			AND,
 			OR,
+			ORDER,
+			BY,
 			STAR,
 			COMMA,
 			OPRN,
@@ -1486,6 +1527,14 @@ bundle Query {
 
 				label Type->STAR: {
 					buffer += "STAR";
+				}
+
+				label Type->ORDER: {
+					buffer += "ORDER";
+				}
+
+				label Type->BY: {
+					buffer += "BY";
 				}
 
 				label Type->COMMA: {
