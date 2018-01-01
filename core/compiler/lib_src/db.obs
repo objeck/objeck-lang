@@ -646,7 +646,7 @@ bundle Query {
 		}
 		
 		method : ProcessSelect(expr : Term) ~ Table {
-## "== Select =="->PrintLine();
+# "== Select =="->PrintLine();
 			results := ProcessFrom(expr->GetLeft());
 			if(results = Nil) {
 				return Nil;
@@ -741,14 +741,14 @@ bundle Query {
 		}
 		
 		method : ProcessFrom(expr : Term) ~ Vector {
-## "== From =="->PrintLine();
-		
+# "== From =="->PrintLine();
+			
 			name := expr->GetValue()->As(String);
 			if(<>name->Equals(@table->GetName())) {
 				return Nil;
 			};
 			
-			## where
+			# where
 			left := expr->GetLeft();
 			if(left <> Nil & left->GetType() = Token->Type->WHERE) {
 				return ProcessTerm(left->GetLeft());
@@ -759,7 +759,7 @@ bundle Query {
 		}
 		
 		method : Dump(results : Vector) ~ Nil {
-			"## DUMP ##"->PrintLine();
+			"# DUMP ##"->PrintLine();
 			count := results->Size();
 			"count={$count}"->PrintLine();
 			each(i : results) {
@@ -777,21 +777,21 @@ bundle Query {
 			
 			select(expr->GetType()) {
 				label Token->Type->AND: {
-## "== And =="->PrintLine();		
+# "== And =="->PrintLine();		
 					left_result := ProcessTerm(left);
 					right_result := ProcessTerm(right);
 					return MergeAnd(left_result, right_result);
 				}
 				
 				label Token->Type->OR: {
-## "== Or =="->PrintLine();		
+# "== Or =="->PrintLine();		
 					left_result := ProcessTerm(left);
 					right_result := ProcessTerm(right);
 					return MergeOr(left_result, right_result);
 				}
 				
 				label Token->Type->EQUAL: {					
-## "== Equal =="->PrintLine();
+# "== Equal =="->PrintLine();
 					index := @table->GetIndex(left->GetValue()->As(String));
  					if(index > -1) {
 						return @table->Filter(Conditional->New(index, Conditional->Qualifier->EQUAL, right->GetValue()));
@@ -799,7 +799,7 @@ bundle Query {
 				}
 				
 				label Token->Type->NOT_EQUAL: {
-## "== Not equal =="->PrintLine();
+# "== Not equal =="->PrintLine();
 					index := @table->GetIndex(left->GetValue()->As(String));
  					if(index > -1) {
 						return @table->Filter(Conditional->New(index, Conditional->Qualifier->NOT_EQUAL, right->GetValue()));
@@ -807,7 +807,7 @@ bundle Query {
 				}
 				
 				label Token->Type->GREATER: {
-## "== Greater =="->PrintLine();
+# "== Greater =="->PrintLine();
 					index := @table->GetIndex(left->GetValue()->As(String));
  					if(index > -1) {
 						return @table->Filter(Conditional->New(index, Conditional->Qualifier->GREATER, right->GetValue()));
@@ -815,7 +815,7 @@ bundle Query {
 				}
 				
 				label Token->Type->LESS: {
-## "== Less =="->PrintLine();
+# "== Less =="->PrintLine();
 					index := @table->GetIndex(left->GetValue()->As(String));
  					if(index > -1) {
 						return @table->Filter(Conditional->New(index, Conditional->Qualifier->LESS, right->GetValue()));
@@ -823,7 +823,7 @@ bundle Query {
 				}
 				
 				label Token->Type->GREATER_EQUAL: {
-## "== Greater =="->PrintLine();
+# "== Greater =="->PrintLine();
 					index := @table->GetIndex(left->GetValue()->As(String));
  					if(index > -1) {
 						return @table->Filter(Conditional->New(index, Conditional->Qualifier->GREATER_EQUAL, right->GetValue()));
@@ -831,7 +831,7 @@ bundle Query {
 				}
 				
 				label Token->Type->LESS_EQUAL: {
-## "== Less =="->PrintLine();
+# "== Less =="->PrintLine();
 					index := @table->GetIndex(left->GetValue()->As(String));
  					if(index > -1) {
 						return @table->Filter(Conditional->New(index, Conditional->Qualifier->LESS_EQUAL, right->GetValue()));
@@ -839,7 +839,7 @@ bundle Query {
 				}
 				
 				label Token->Type->LIKE: {
-## "== Like =="->PrintLine();
+# "== Like =="->PrintLine();
 					index := @table->GetIndex(left->GetValue()->As(String));
  					if(index > -1) {
 						return @table->Filter(Conditional->New(index, Conditional->Qualifier->LIKE, right->GetValue()));
@@ -941,7 +941,7 @@ bundle Query {
 		}
 		
 		method : ParseSelect() ~ Term {
-## "--- Select ---"->PrintLine();		
+# "--- Select ---"->PrintLine();		
 			term := Term->New(Token->Type->SELECT);
 			term->SetValue(TokenValue());
 			
@@ -993,7 +993,7 @@ bundle Query {
 		}
 
 		method : ParseFrom() ~ Term {
-## "--- From ---"->PrintLine();
+# "--- From ---"->PrintLine();
 
 			if(TokenType() <> Token->Type->REF) {
 				return Nil;
@@ -1016,7 +1016,7 @@ bundle Query {
 		}
 
 		method : public : ParseWhere() ~ Term {
-## "--- Where ---"->PrintLine();
+# "--- Where ---"->PrintLine();
 			
 			where := Term->New(Token->Type->WHERE);
 			
@@ -1052,7 +1052,7 @@ bundle Query {
 			
 			type := TokenType();
 			if(type = Token->Type->AND | type = Token->Type->OR) {
-## "--- Logic ---"->PrintLine();
+# "--- Logic ---"->PrintLine();
 			
 				term := Term->New(type);
 				term->SetValue(TokenValue());
@@ -1072,7 +1072,7 @@ bundle Query {
 		}
 		
 		method : ParseTerm() ~ Term {
-## "--- Term ---"->PrintLine();
+# "--- Term ---"->PrintLine();
 			
 			left : Term;
 			select(TokenType()) {
