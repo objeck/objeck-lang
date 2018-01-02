@@ -3,7 +3,7 @@
 # run: obr https.obe
 ~#
 
-use HTTP;
+use Web.HTTP;
 
 class HttpsTest {
 	function : Main(args : String[]) ~ Nil {

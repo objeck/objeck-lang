@@ -3,8 +3,8 @@
 # run: obr json.obe
 ~#
 
-use JSON;
-use HTTP;
+use Data.JSON;
+use Web.HTTP;
 use System.IO.Net;
 
 class JsonWeb {

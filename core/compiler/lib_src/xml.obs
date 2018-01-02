@@ -8,7 +8,7 @@ use Collection;
 #~
 Support for parsing XML documents
 ~#
-bundle XML {
+bundle Data.XML {
 	#~
 	Used to programmatically build XML documents
 	~#

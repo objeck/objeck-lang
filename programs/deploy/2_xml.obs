@@ -4,7 +4,7 @@
 ~#
 
 use System.IO;
-use XML;
+use Data.XML;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {

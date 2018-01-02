@@ -8,7 +8,7 @@ use Collection;
 #~
 Support for paring JSON strings and documents
 ~#
-bundle JSON {
+bundle Data.JSON {
 	#~
 	Support for JSON parsing
 	~#

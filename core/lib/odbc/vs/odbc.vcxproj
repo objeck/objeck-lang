@@ -78,7 +78,7 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>D:\Code\objeck-lang\core\lib\openssl\win32\include;$(IncludePath)</IncludePath>
+    <IncludePath>..\..\openssl\win32\include;$(IncludePath)</IncludePath>
     <OutDir>..\$(Configuration)\</OutDir>
     <TargetName>libobjk_odbc</TargetName>
   </PropertyGroup>
@@ -87,7 +87,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>D:\Code\objeck-lang\core\lib\openssl\win32\include;$(IncludePath)</IncludePath>
+    <IncludePath>..\..\openssl\win32\include;$(IncludePath)</IncludePath>
     <OutDir>..\$(Configuration)\</OutDir>
     <TargetName>libobjk_odbc</TargetName>
   </PropertyGroup>

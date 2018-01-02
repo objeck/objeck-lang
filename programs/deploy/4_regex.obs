@@ -3,7 +3,7 @@
 # run: obr regex.obe
 ~#
 
-use RegEx;
+use Query.RegEx;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {

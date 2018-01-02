@@ -6,7 +6,7 @@ use HTTP;
 #~
 Support for the FastCGI web server protocol 
 ~#
-bundle FastCgi {
+bundle Web.FastCgi {
 	#~
 	Interface required to implementing handling classes
 	~#

@@ -9,7 +9,7 @@ use Collection;
 #~
 Regular expression engine
 ~#
-bundle RegEx {
+bundle Query.RegEx {
 	#~
 	Regular expression engine.
 	

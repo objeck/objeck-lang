@@ -4,9 +4,9 @@
 # note: takes a few seconds to run
 ~#
 
-use HTTP;
-use RegEx;
-use XML;
+use Web.HTTP;
+use Data.RegEx;
+use Data.XML;
 use Collection;
 
 class RosettaRank {

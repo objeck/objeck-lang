@@ -7,7 +7,7 @@ use Collection;
 #~
 Provides a mechanism to search and perform calculations on CSV files.
 ~#
-bundle CSV {
+bundle Data.CSV {
 	#~
 	CSV row
 	~#

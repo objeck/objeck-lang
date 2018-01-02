@@ -4170,7 +4170,7 @@ bundle Collection {
 #~
 HTTP and HTTPS client support
 ~#
-bundle HTTP {
+bundle Web.HTTP {
 	#~
 	HTTP client
 	~#

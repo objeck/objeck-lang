@@ -4,7 +4,7 @@ use System.API;
 #~
 Provides basic data access support via ODBC. 
 ~#
-bundle ODBC {
+bundle Database.ODBC {
 	class Proxy {
 		@lib_proxy : static : DllProxy;
 		
