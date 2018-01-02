@@ -52,6 +52,7 @@ bundle Query {
 		
 		#~
 		Get column index by name
+		@param name column name
 		@return column name
 		~#
 		method : public : native : GetIndex(name : String) ~ Int {
@@ -197,7 +198,8 @@ bundle Query {
 		}
 		
 		#~
-		Filters table based upon conditional criteria 
+		Filters table based upon conditional criteria
+		@param cond conditional filter
 		@return filtered rows
 		~#
 		method : public : native : Filter(cond : Conditional) ~ Vector {
@@ -262,6 +264,7 @@ bundle Query {
 		
 		#~
 		Query table using SQL-like syntax
+		@param statement query statement
 		@return result table
 		~#
 		method : public : Query(statement : String) ~ Table {
@@ -458,6 +461,7 @@ bundle Query {
 		
 		#~
 		Gets value by name
+		@param name column name
 		@return value
 		~#
 		method : public : Get(name : String) ~ Compare {
@@ -476,6 +480,7 @@ bundle Query {
 		
 		#~
 		Gets value by index
+		@param index column index
 		@return value
 		~#
 		method : public : Get(index : Int) ~ Compare {
@@ -488,7 +493,7 @@ bundle Query {
 		
 		#~
 		Sets value by index
-		@param name column index
+		@param index column index
 		@param value value
 		@return ture of successful, false otherwise
 		~#
