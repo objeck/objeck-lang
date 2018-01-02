@@ -5,12 +5,12 @@ Copyright (c) 2017-2018 Randy Hollines
 
 use Collection;
 use System.Time;
-use RegEx;
+use Query.RegEx;
 
 #~
 Supports processing of semi-structured data
 ~#
-bundle Query {
+bundle Query.Structured {
 	#~
 	Container for semi-structured data
 	~#

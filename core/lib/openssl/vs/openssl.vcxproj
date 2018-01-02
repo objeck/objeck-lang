@@ -77,7 +77,7 @@
     <LinkIncremental>true</LinkIncremental>
     <OutDir>..\$(Configuration)\</OutDir>
     <TargetName>libobjk_openssl</TargetName>
-    <IncludePath>D:\Code\objeck-lang\core\lib\openssl\win32\include;$(IncludePath)</IncludePath>
+    <IncludePath>..\..\openssl\win32\include;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
@@ -87,7 +87,7 @@
     <OutDir>..\$(Configuration)\</OutDir>
     <TargetName>libobjk_openssl</TargetName>
     <TargetExt>.dll</TargetExt>
-    <IncludePath>D:\Code\objeck-lang\core\lib\openssl\win32\include;$(IncludePath)</IncludePath>
+    <IncludePath>..\..\openssl\win32\include;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
