@@ -1081,7 +1081,7 @@ bundle Database.ODBC {
 		@param column column ID
 		@return date value
 		~#
-		method : public : GetDate(column : Int) ~ ODBC.Date {
+		method : public : GetDate(column : Int) ~ Database.ODBC.Date {
 			if(@native_stmt <> 0 & @native_names <> 0) {
       			array_args := Base->New[5];
 				array_args[0] := IntHolder->New();
@@ -1098,7 +1098,7 @@ bundle Database.ODBC {
 				if(@is_null) {
 					return Nil;
 				};
-				return array_args[1]->As(ODBC.Date);
+				return array_args[1]->As(Database.ODBC.Date);
       		};
       		
       		return Nil;
@@ -1109,7 +1109,7 @@ bundle Database.ODBC {
 		@param column column name
 		@return date value
 		~#
-		method : public : GetDate(column : String) ~ ODBC.Date {
+		method : public : GetDate(column : String) ~ Database.ODBC.Date {
 			if(@native_stmt <> 0 & @native_names <> 0) {
       			array_args := Base->New[5];
 				array_args[0] := IntHolder->New();
@@ -1126,7 +1126,7 @@ bundle Database.ODBC {
 				if(@is_null) {
 					return Nil;
 				};
-				return array_args[1]->As(ODBC.Date);
+				return array_args[1]->As(Database.ODBC.Date);
       		};
       		
       		return Nil;
