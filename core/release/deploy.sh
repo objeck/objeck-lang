@@ -30,7 +30,7 @@ cp ../lib/*.obl ../release/deploy/lib
 cp ../vm/misc/*.pem ../release/deploy/lib
 rm ../release/deploy/lib/gtk2.obl
 rm ../release/deploy/lib/sdl.obl
-rm ../release/deploy/lib/db.obl
+# rm ../release/deploy/lib/query.obl
 
 # build VM
 cd ../vm
