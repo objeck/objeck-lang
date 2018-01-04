@@ -1,5 +1,5 @@
 use System.IO.File;
-use Query;
+use Query.Structured;
 
 class Rosetta {
 	function : Main(args : String[]) ~ Nil {
