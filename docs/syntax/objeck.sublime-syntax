@@ -65,11 +65,11 @@ contexts:
     - match: \+\=|-\=|\*\=|/\=|\:=
       scope: keyword.operator.assignment.objeck-obs
 
+    - match: \||&|'<>'|<|>|<|>|=
+      scope: keyword.operator.logical.objeck-obs
+
     - match: \+|\-|/|%|\*
       scope: keyword.operator.arithmetic.objeck-obs
-
-    - match: \||&|'<>'|<|>
-      scope: keyword.operator.logical.objeck-obs
 
     - match: '\b(and|or|xor)\b'
       scope: keyword.operator.bitwise.objeck-obs
