@@ -197,8 +197,9 @@ void Scanner::LoadKeywords()
   ident_map[L"FILE_OUT_BYTE"] = FILE_OUT_BYTE;
   ident_map[L"FILE_OUT_STRING"] = FILE_OUT_STRING;
   ident_map[L"FILE_EXISTS"] = FILE_EXISTS;
-  ident_map[L"FILE_CAN_READ"] = FILE_CAN_READ;
-  ident_map[L"FILE_CAN_WRITE"] = FILE_CAN_WRITE;
+  ident_map[L"FILE_CAN_READ_ONLY"] = FILE_CAN_READ_ONLY;
+  ident_map[L"FILE_CAN_WRITE_ONLY"] = FILE_CAN_WRITE_ONLY;
+  ident_map[L"FILE_CAN_READ_WRITE"] = FILE_CAN_READ_WRITE;
   ident_map[L"FILE_SIZE"] = FILE_SIZE;
   ident_map[L"FILE_SEEK"] = FILE_SEEK;
   ident_map[L"FILE_EOF"] = FILE_EOF;
@@ -398,8 +399,9 @@ void Scanner::CheckIdentifier(int index)
     case FILE_OUT_CHAR_ARY:
     case FILE_OUT_STRING:
     case FILE_EXISTS:
-    case FILE_CAN_WRITE:
-    case FILE_CAN_READ:
+    case FILE_CAN_WRITE_ONLY:
+    case FILE_CAN_READ_ONLY:
+    case FILE_CAN_READ_WRITE:
     case FILE_SIZE:
     case FILE_SEEK:
     case FILE_EOF:

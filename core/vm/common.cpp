@@ -1652,11 +1652,14 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, long* inst,
   case FILE_EXISTS:
     return FileExists(program, inst, op_stack, stack_pos, frame);
       
-  case FILE_CAN_WRITE:
-    return FileCanWrite(program, inst, op_stack, stack_pos, frame);
+  case FILE_CAN_WRITE_ONLY:
+    return FileCanWriteOnly(program, inst, op_stack, stack_pos, frame);
       
-  case FILE_CAN_READ:
-    return FileCanRead(program, inst, op_stack, stack_pos, frame);
+  case FILE_CAN_READ_ONLY:
+    return FileCanReadOnly(program, inst, op_stack, stack_pos, frame);
+
+  case FILE_CAN_READ_WRITE:
+    return FileCanReadWrite(program, inst, op_stack, stack_pos, frame);
     
   case FILE_SIZE:
     return FileSize(program, inst, op_stack, stack_pos, frame);
@@ -3461,14 +3464,14 @@ bool TrapProcessor::FileIsOpen(StackProgram* program, long* inst, long* &op_stac
   return true;
 }
 
-bool TrapProcessor::FileCanWrite(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::FileCanWriteOnly(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   long* array = (long*)PopInt(op_stack, stack_pos);
   if(array) {
     array = (long*)array[0];
     const wstring wname((wchar_t*)(array + 3));
     const string name(wname.begin(), wname.end());
-    PushInt(File::FileWriteOk(name.c_str()), op_stack, stack_pos);
+    PushInt(File::FileWriteOnly(name.c_str()), op_stack, stack_pos);
   }
   else {
     PushInt(0, op_stack, stack_pos);
@@ -3477,19 +3480,35 @@ bool TrapProcessor::FileCanWrite(StackProgram* program, long* inst, long* &op_st
   return true;
 }
 
-bool TrapProcessor::FileCanRead(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::FileCanReadOnly(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   long* array = (long*)PopInt(op_stack, stack_pos);
   if(array) {
     array = (long*)array[0];
     const wstring wname((wchar_t*)(array + 3));
     const string name(wname.begin(), wname.end());
-    PushInt(File::FileReadOk(name.c_str()), op_stack, stack_pos);
+    PushInt(File::FileReadOnly(name.c_str()), op_stack, stack_pos);
   }
   else {
     PushInt(0, op_stack, stack_pos);
   }
   
+  return true;
+}
+
+bool TrapProcessor::FileCanReadWrite(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame)
+{
+  long* array = (long*)PopInt(op_stack, stack_pos);
+  if (array) {
+    array = (long*)array[0];
+    const wstring wname((wchar_t*)(array + 3));
+    const string name(wname.begin(), wname.end());
+    PushInt(File::FileReadWrite(name.c_str()), op_stack, stack_pos);
+  }
+  else {
+    PushInt(0, op_stack, stack_pos);
+  }
+
   return true;
 }
 

@@ -1620,15 +1620,21 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       NextToken();
       break;
         
-    case FILE_CAN_READ:
+    case FILE_CAN_READ_ONLY:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
-                                                                instructions::FILE_CAN_READ);
+                                                                instructions::FILE_CAN_READ_ONLY);
       NextToken();
       break;
       
-    case FILE_CAN_WRITE:
+    case FILE_CAN_WRITE_ONLY:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
-                                                               instructions::FILE_CAN_WRITE);
+                                                               instructions::FILE_CAN_WRITE_ONLY);
+      NextToken();
+      break;
+
+    case FILE_CAN_READ_WRITE:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+        instructions::FILE_CAN_READ_WRITE);
       NextToken();
       break;
 
