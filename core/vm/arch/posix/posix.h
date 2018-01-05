@@ -73,19 +73,27 @@ class File {
     return true;
   }
   
-  static bool FileReadOk(const char* name) {
-    if(!access(name, R_OK)) {
+  static bool FileReadOnly(const char* name) {
+    if(!access(name, R_OK) && access(name, W_OK) == EACCES) {
       return true;
     }
     
     return false;
   }
   
-  static bool FileWriteOk(const char* name) {
-    if(!access(name, W_OK)) {
+  static bool FileWriteOnly(const char* name) {
+    if(!access(name, W_OK) && access(name, R_OK) == EACCES) {
       return true;
     }
     
+    return false;
+  }
+
+  static bool FileReadWrite(const char* name) {
+    if (!access(name, W_OK) && !access(name, R_OK)) {
+      return true;
+    }
+
     return false;
   }
 

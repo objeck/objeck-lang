@@ -164,16 +164,24 @@ class File {
     return true;
   }
   
-  static bool FileReadOk(const char* name) {
-    if(_access(name, 4) == 0) {
+  static bool FileReadOnly(const char* name) {
+    if(!_access(name, 4)) {
       return true;
     }
 
     return false;
   }
   
-  static bool FileWriteOk(const char* name) {
-    if (_access(name, 2) == 0) {
+  static bool FileWriteOnly(const char* name) {
+    if (!_access(name, 2)) {
+      return true;
+    }
+
+    return false;
+  }
+
+  static bool FileReadWrite(const char* name) {
+    if (!_access(name, 6)) {
       return true;
     }
 
