@@ -763,16 +763,6 @@ bundle Query.Structured {
 			};
 		}
 		
-		method : Dump(results : Vector) ~ Nil {
-			"# DUMP ##"->PrintLine();
-			count := results->Size();
-			"count={$count}"->PrintLine();
-			each(i : results) {
-				row := results->Get(i)->As(Row);
-				row->ToString()->PrintLine();
-			};
-		}
-				
 		method : ProcessTerm(expr : Term) ~ Vector {
 			left := expr->GetLeft();
 			right := expr->GetRight();

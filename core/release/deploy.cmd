@@ -49,7 +49,7 @@ REM build and update docs
 mkdir deploy\doc 
 copy ..\..\docs\guide\objeck_lang.pdf deploy\doc 
 mkdir deploy\doc\syntax
-copy ..\..\docs\syntax\* deploy\doc\syntax
+xcopy /e ..\..\docs\syntax\* deploy\doc\syntax
 copy ..\..\docs\readme.htm deploy
 call code_doc.cmd
 
