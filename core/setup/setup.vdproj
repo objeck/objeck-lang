@@ -483,6 +483,12 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_8AD6D121DEDE42828C3C447F7EA808C2"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_8B2349D0F5AC4B908CAAD79D1A900804"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -1054,6 +1060,12 @@
         "Entry"
         {
         "MsmKey" = "8:_FC94E2E3D05B4F5DA6878BF1F8E96673"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_FCFA568E8C414F528F4A825531AEDC86"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -2699,6 +2711,26 @@
             "TargetName" = "8:data.csv-csvrow.html"
             "Tag" = "8:"
             "Folder" = "8:_2A8AE7B55CE342BF9464ACD4F53264E4"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_8AD6D121DEDE42828C3C447F7EA808C2"
+            {
+            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang\\doc\\syntax\\sublime\\objeck.sublime-syntax"
+            "TargetName" = "8:objeck.sublime-syntax"
+            "Tag" = "8:"
+            "Folder" = "8:_43AC936462B043339C57BE365FC4B342"
             "Condition" = "8:"
             "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
@@ -4633,6 +4665,26 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_FCFA568E8C414F528F4A825531AEDC86"
+            {
+            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang\\doc\\syntax\\sublime\\objeck.tmPreferences"
+            "TargetName" = "8:objeck.tmPreferences"
+            "Tag" = "8:"
+            "Folder" = "8:_43AC936462B043339C57BE365FC4B342"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
         }
         "FileType"
         {
@@ -4821,6 +4873,17 @@
                             "Property" = "8:_7C371DA033F2420CB3B373C87A6E4591"
                                 "Folders"
                                 {
+                                    "{9EF0B969-E518-4E46-987F-47570745A589}:_43AC936462B043339C57BE365FC4B342"
+                                    {
+                                    "Name" = "8:sublime"
+                                    "AlwaysCreate" = "11:FALSE"
+                                    "Condition" = "8:"
+                                    "Transitive" = "11:FALSE"
+                                    "Property" = "8:_5DFEC95722794743B211B24721DA2ED6"
+                                        "Folders"
+                                        {
+                                        }
+                                    }
                                 }
                             }
                             "{9EF0B969-E518-4E46-987F-47570745A589}:_E71AA59365BD4EC389E9B4DA13B547A4"
