@@ -62,10 +62,10 @@ contexts:
       captures:
         1: entity.name.function.constructor.objeck-obs
 
-    - match: \+\=|-\=|\*\=|/\=|\:=
+    - match: \+\=|-\=|\*\=|/\=|(:=)
       scope: keyword.operator.assignment.objeck-obs
 
-    - match: \||&|'<>'|<|>|<|>|=
+    - match: \||&|(<>)|<|>|<|>|(>=)|(<=)|=
       scope: keyword.operator.logical.objeck-obs
 
     - match: \+|\-|/|%|\*
