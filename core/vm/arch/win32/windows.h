@@ -165,27 +165,19 @@ class File {
   }
   
   static bool FileReadOk(const char* name) {
-    FILE* file = fopen(name, "r");
-    
-    bool is_ok = false;
-    if(file) {
-      is_ok = true;
-      fclose(file);
+    if(_access(name, 4) == 0) {
+      return true;
     }
 
-    return is_ok;
+    return false;
   }
   
   static bool FileWriteOk(const char* name) {
-    FILE* file = fopen(name, "w");
-
-    bool is_ok = false;
-    if(file) {
-      is_ok = true;
-      fclose(file);
+    if (_access(name, 2) == 0) {
+      return true;
     }
 
-    return is_ok;
+    return false;
   }
 
   static FILE* FileOpen(const char* name, const char* mode) {
