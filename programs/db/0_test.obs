@@ -3,11 +3,11 @@ use Query.Structured;
 
 class Rosetta {
 	function : Main(args : String[]) ~ Nil {
-		table := MakeTable();
+		table := Table->FromFilesystem("../");
 		if(table <> Nil) {
 			"---"->PrintLine();
 			TableMeta(table);
-			results := table->Query("select price, name from game order by price");
+			results := table->Query("select full_name from files");
 			if(results <> Nil) {
 #				results->Average("price")->PrintLine();
 				results->ToString()->PrintLine();
