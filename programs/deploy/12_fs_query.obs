@@ -9,7 +9,7 @@ class Example {
 	function : Main(args : String[]) ~ Nil {
 		table := Table->FromFilesystem(".");
 		if(table <> Nil) {
-			results := table->Query("select path_name from files");
+			results := table->Query("from files");
 			if(results <> Nil) {
 				results->ToString()->PrintLine();
 			}
