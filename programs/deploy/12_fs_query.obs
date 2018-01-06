@@ -1,0 +1,21 @@
+#~
+# compile: obc -src 12_fs_query.obs -lib query.obl,collect.obl,regex.obl -dest ..\query_fs.obe
+# run: obr query_fs.obe
+~#
+
+use Query.Structured;
+
+class Example {
+	function : Main(args : String[]) ~ Nil {
+		table := Table->FromFilesystem(".");
+		if(table <> Nil) {
+			results := table->Query("select path_name from files");
+			if(results <> Nil) {
+				results->ToString()->PrintLine();
+			}
+			else {
+				table->GetError()->PrintLine();
+			};
+		};
+	}
+}
