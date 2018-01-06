@@ -1,9 +1,7 @@
-class Hello {
+use System.Time;
+
+class Test {
 	function : Main(args : String[]) ~ Nil {
-		Go(3*4);
-	}
-  
-	function : Go(i : Int) ~ Nil {
-		i->PrintLine();
+		Date->New(5, 1, 2018, false)->ToString()->PrintLine();
 	}
 }
