@@ -388,11 +388,14 @@ bundle Query.Structured {
 
 
 		function : FromFilesystem(path : String) ~ Table {
-			table := Table->New("files", ["name", "full_name", "create_date", "owner", "is_dir", "is_readonly"]);
+			table := Table->New("files", ["name", "path_name", "create_date", "owner", "is_dir", "is_readonly"]);
+
+			if(<>path->EndsWith('/')  <>path->EndsWith('\\')) {
+				path += '/';
+			};
 
 			files := Directory->List(path);
 			each(i : files) {
-"##"->PrintLine();
 				short_name := files[i];
 				long_name := String->New(path); 
 				long_name += short_name;
@@ -403,7 +406,7 @@ bundle Query.Structured {
 				
 				row := table->Insert();
 				row->Set("name", short_name);
-				row->Set("full_name", long_name);
+				row->Set("path_name", long_name);
 				row->Set("create_date", create_date);
 				row->Set("owner", file_owner);
 				row->Set("is_dir", is_dir ? Row->True() : Row->False());
