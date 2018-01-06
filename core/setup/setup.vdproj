@@ -291,6 +291,12 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_502520D6AE64446B81E69465CFEC2FE8"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_518B5CD6C88E4328873C7CA0E1D6E81E"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -982,6 +988,12 @@
         "Entry"
         {
         "MsmKey" = "8:_ECDED8FD552A41E8B0A34ED493B526EE"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_ECF86F220FDD4DDD804877CA68FDD7A2"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -2071,6 +2083,26 @@
             "TargetName" = "8:fact.t"
             "Tag" = "8:"
             "Folder" = "8:_4F534DD33A084AD2A60234DB990400BE"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_502520D6AE64446B81E69465CFEC2FE8"
+            {
+            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang\\examples\\12_fs_query.obs"
+            "TargetName" = "8:12_fs_query.obs"
+            "Tag" = "8:"
+            "Folder" = "8:_69F22D22706547EC851EA3418ABD3385"
             "Condition" = "8:"
             "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
@@ -4391,6 +4423,26 @@
             "TargetName" = "8:system-base.html"
             "Tag" = "8:"
             "Folder" = "8:_2A8AE7B55CE342BF9464ACD4F53264E4"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_ECF86F220FDD4DDD804877CA68FDD7A2"
+            {
+            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang\\lib\\query.obl"
+            "TargetName" = "8:query.obl"
+            "Tag" = "8:"
+            "Folder" = "8:_667FCBFF439341709B3DF3DE6A32A081"
             "Condition" = "8:"
             "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
