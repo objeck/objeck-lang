@@ -24,7 +24,7 @@ contexts:
 
     # Strings begin and end with quotes, and use backslashes as an escape
     # character
-    - match: \'(.|{{escaped_char}})+\'
+    - match: \'(.|{{escaped_char}})\'
       scope: constant.character.escape.objeck-obs
 
     - match: '"'
