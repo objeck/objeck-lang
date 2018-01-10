@@ -4355,6 +4355,22 @@ bundle Web.HTTP {
 			
 			return content;
 		}
+
+		#~
+		Performs a HTTP GET and returns results as a String
+		@param url URL
+		@return output as one string
+		~#
+		method : public : GetAll(url : String) ~ String {
+			document := "";
+			
+			lines := Get(url);
+			each(i : lines) {
+				document->Append(lines->Get(i)->As(String));
+			};
+
+			return document;
+		}
 		
 		#~
 		Performs a HTTP GET
@@ -4714,6 +4730,23 @@ bundle Web.HTTP {
 			return content;
 		}
 		
+
+		#~
+		Performs a HTTP GET and returns results as a String
+		@param url URL
+		@return output as one string
+		~#
+		method : public : GetAll(url : String) ~ String {
+			document := "";
+			
+			lines := Get(url);
+			each(i : lines) {
+				document->Append(lines->Get(i)->As(String));
+			};
+
+			return document;
+		}
+
 		#~
 		Performs a HTTP GET
 		@param url URL
