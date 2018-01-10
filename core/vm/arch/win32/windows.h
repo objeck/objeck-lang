@@ -45,6 +45,7 @@
 #include <accctrl.h>
 #include <aclapi.h>
 #include <shlwapi.h>
+#include <versionhelpers.h>
 
 #pragma comment(lib, "Ws2_32.lib")
 #pragma comment(lib, "User32.lib")
@@ -574,27 +575,27 @@ class System {
 
   static BOOL GetOSDisplayString(LPTSTR buffer)
   {
-    if (CompareWindowsVersion(6, 3)) {
+    if(IsWindows10OrGreater()) {
+      StringCchCopy(buffer, BUFSIZE, TEXT("Windows 10"));
+      return TRUE;
+    }
+    else if(IsWindows8Point1OrGreater()) {
       StringCchCopy(buffer, BUFSIZE, TEXT("Windows 8.1"));
       return TRUE;
     }
-    else if (CompareWindowsVersion(6, 2)) {
+    else if(IsWindows8OrGreater()) {
       StringCchCopy(buffer, BUFSIZE, TEXT("Windows 8"));
       return TRUE;
     }
-    else if (CompareWindowsVersion(6, 1)) {
+    else if(IsWindows7OrGreater()) {
       StringCchCopy(buffer, BUFSIZE, TEXT("Windows 7"));
       return TRUE;
     }
-    else if (CompareWindowsVersion(6, 0)) {
+    else if (IsWindowsVistaOrGreater()) {
       StringCchCopy(buffer, BUFSIZE, TEXT("Windows Vista"));
       return TRUE;
     }
-    else if (CompareWindowsVersion(5, 2)) {
-      StringCchCopy(buffer, BUFSIZE, TEXT("Windows XP 64-Bit Edition"));
-      return TRUE;
-    }
-    else if (CompareWindowsVersion(5, 1)) {
+    else if(IsWindowsXPOrGreater()) {
       StringCchCopy(buffer, BUFSIZE, TEXT("Windows XP"));
       return TRUE;
     }

@@ -133,7 +133,7 @@ class LibraryMethodCallSelector {
       int match_score = 0;
       bool exact_match = true;
       vector<int> parm_matches = matches[i]->GetParameterMatches();
-      for(size_t j = 0; exact_match && j < parm_matches.size(); j++) {
+      for(size_t j = 0; exact_match && j < parm_matches.size(); ++j) {
         if(parm_matches[j] == 0) {
           match_score++;
         }
@@ -143,7 +143,7 @@ class LibraryMethodCallSelector {
       }
       // save the index of the best match
       if(match_score >  high_score) {
-        match_index = i;
+        match_index = (int)i;
         high_score = match_score;
       }
     }
@@ -249,7 +249,7 @@ class MethodCallSelector {
       int match_score = 0;
       bool exact_match = true;
       vector<int> parm_matches = matches[i]->GetParameterMatches();
-      for(size_t j = 0; exact_match && j < parm_matches.size(); j++) {
+      for(size_t j = 0; exact_match && j < parm_matches.size(); ++j) {
         if(parm_matches[j] == 0) {
           match_score++;
         }
@@ -259,7 +259,7 @@ class MethodCallSelector {
       }
       // save the index of the best match
       if(match_score >  high_score) {
-        match_index = i;
+        match_index = (int)i;
         high_score = match_score;
       }
     }

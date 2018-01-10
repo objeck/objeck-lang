@@ -180,7 +180,7 @@ namespace frontend {
 
     int GetFunctionParameterCount() {
       if(func_param_count < 0) {
-        return func_params.size();
+        return (int)func_params.size();
       }
 
       return func_param_count;
@@ -318,7 +318,7 @@ namespace backend {
         wcerr << L">>> Unable to write unicode string <<<" << endl;
         exit(1);
       }
-      WriteInt(out.size(), file_out);
+      WriteInt((int)out.size(), file_out);
       file_out.write(out.c_str(), out.size());
     }
 

@@ -398,7 +398,7 @@ void IntermediateEmitter::EmitStrings()
           if(char_str_insts[i]->value == char_string_values[j]) {
             vector<LibraryInstr*> instrs = char_str_insts[i]->instrs;
             for(size_t k = 0; k < instrs.size(); k++) {
-              instrs[k]->SetOperand(j);
+              instrs[k]->SetOperand((int)j);
             }
             found = true;
           }
@@ -415,7 +415,7 @@ void IntermediateEmitter::EmitStrings()
           if(IntStringHolderEqual(int_str_insts[i]->value, int_string_values[j])) {
             vector<LibraryInstr*> instrs = int_str_insts[i]->instrs;
             for(size_t k = 0; k < instrs.size(); k++) {
-              instrs[k]->SetOperand(j);
+              instrs[k]->SetOperand((int)j);
             }
             found = true;
           }
@@ -432,7 +432,7 @@ void IntermediateEmitter::EmitStrings()
           if(FloatStringHolderEqual(float_str_insts[i]->value, float_string_values[j])) {
             vector<LibraryInstr*> instrs = float_str_insts[i]->instrs;
             for(size_t k = 0; k < instrs.size(); k++) {
-              instrs[k]->SetOperand(j);
+              instrs[k]->SetOperand((int)j);
             }
             found = true;
           }
@@ -555,9 +555,9 @@ IntermediateClass* IntermediateEmitter::EmitClass(Class* klass)
 
   // get short file name
   const wstring &file_name = current_class->GetFileName();
-  int offset = file_name.find_last_of(L"/\\");
+  size_t offset = file_name.find_last_of(L"/\\");
   wstring short_file_name;
-  if(offset < 0) {
+  if(offset == wstring::npos) {
     short_file_name = file_name;
   }
   else {
@@ -2627,7 +2627,7 @@ void IntermediateEmitter::EmitStaticArray(StaticArray* array) {
   if(array->GetType() != frontend::CLASS_TYPE) {
     // emit dimensions
     vector<int> sizes = array->GetSizes();
-    for(int i = sizes.size() - 1; i > -1; i--) {      
+    for(int i = (int)sizes.size() - 1; i > -1; i--) {      
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, (INT_VALUE)sizes[i]));
     }
     
@@ -2662,7 +2662,7 @@ void IntermediateEmitter::EmitStaticArray(StaticArray* array) {
     // create wstring literals
     is_str_array = true;
     vector<Expression*> all_elements = array->GetAllElements()->GetExpressions();
-    for(int i = all_elements.size() - 1; i > -1; i--) {
+    for(int i = (int)all_elements.size() - 1; i > -1; i--) {
       EmitCharacterString(static_cast<CharacterString*>(all_elements[i]));
     }
     is_str_array = false;

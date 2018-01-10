@@ -303,7 +303,7 @@ bool ContextAnalyzer::Analyze()
     vector<Declaration*> declarations = method->GetDeclarations()->GetDeclarations();
     if(declarations.size() > 0 && declarations[declarations.size() - 1]->GetAssignment()) {
       bool default_params = true;
-      for(int i = declarations.size() - 1; i > -1; i--) {
+      for(int i = (int)declarations.size() - 1; i > -1; i--) {
         if(declarations[i]->GetAssignment()) {
           if(method->IsVirtual()) {
             ProcessError(method, L"Virtual methods and interfaces cannot contain default parameter values");
@@ -321,7 +321,7 @@ bool ContextAnalyzer::Analyze()
       }
 
       int start = -1;      
-      const int end = declarations.size();
+      const int end = (int)declarations.size();
       do {
         start = GenerateParameterMethods(bundle, klass, method, start);
       }
@@ -345,7 +345,7 @@ bool ContextAnalyzer::Analyze()
     DeclarationList* param_declarations = TreeFactory::Instance()->MakeDeclarationList();
     bundle->GetSymbolTableManager()->NewParseScope();
     bool done = false;
-    const int end = declarations.size();
+    const int end = (int)declarations.size();
     int i = 0;
     ExpressionList* param_expressions = TreeFactory::Instance()->MakeExpressionList();
     for(; !done && i < end; i++) {
@@ -471,7 +471,7 @@ bool ContextAnalyzer::Analyze()
     // methods
     vector<Method*> methods = klass->GetMethods();
     for(size_t i = 0; i < methods.size(); ++i) {
-      AnalyzeMethod(methods[i], i, depth + 1);
+      AnalyzeMethod(methods[i], (int)i, depth + 1);
     }
 
     // look for parent virutal methods
@@ -1215,7 +1215,7 @@ bool ContextAnalyzer::Analyze()
       for(size_t i = 0; i < str.size(); ++i) {
         // variable start
         if(str[i] == L'{' && i + 1 < str.size() && str[i + 1] == L'$') {      
-          var_start = i;
+          var_start = (int)i;
           const wstring token = str.substr(str_start, i - str_start);
 #ifdef _DEBUG
           Show(L"substring 0: value=|" + token + L"|", char_str->GetLineNumber(), depth + 1);
@@ -1236,7 +1236,7 @@ bool ContextAnalyzer::Analyze()
             }	  
             // update
             var_start = -1;
-            str_start = i + 1;
+            str_start = (int)i + 1;
           }
           else if(i + 1 == str.size()) {
             const wstring token = str.substr(var_start + 1, i - var_start);
@@ -1249,11 +1249,11 @@ bool ContextAnalyzer::Analyze()
             }	  
             // update
             var_start = -1;
-            str_start = i + 1;
+            str_start = (int)i + 1;
           }
         }
         else if(i + 1 == str.size()) {
-          var_start = i;
+          var_start = (int)i;
           const wstring token = str.substr(str_start, i - str_start + 1);
 #ifdef _DEBUG
           Show(L"substring 1: value=|" + token + L"|", char_str->GetLineNumber(), depth + 1);
@@ -2494,13 +2494,13 @@ bool ContextAnalyzer::Analyze()
         }
       }
       else {
-        int start = dyn_func_params.find('(');
-        int end = dyn_func_params.find(')', start + 1);
-        if(start != (int)wstring::npos && end != (int)wstring::npos) {
+        size_t start = dyn_func_params.find('(');
+        size_t end = dyn_func_params.find(')', start + 1);
+        if(start != wstring::npos && end != wstring::npos) {
           dyn_func_params = dyn_func_params.substr(start + 1, end - start - 1);
         }
       }
-      type->SetFunctionParameterCount(method_call->GetCallingParameters()->GetExpressions().size());
+      type->SetFunctionParameterCount((int)method_call->GetCallingParameters()->GetExpressions().size());
 
       // check parameters again dynamic definition
       const wstring call_params = EncodeMethodCall(method_call->GetCallingParameters(), depth);
@@ -2553,7 +2553,7 @@ bool ContextAnalyzer::Analyze()
     if(method) {
       const wstring func_type_id = L"m.(" + func_encoding + L")~" + method->GetEncodedReturn();
       Type* type = TypeFactory::Instance()->MakeType(FUNC_TYPE, func_type_id);
-      type->SetFunctionParameterCount(method_call->GetCallingParameters()->GetExpressions().size());
+      type->SetFunctionParameterCount((int)method_call->GetCallingParameters()->GetExpressions().size());
       type->SetFunctionReturn(method->GetReturn());
       method_call->SetEvalType(type, true);
 
@@ -2614,7 +2614,7 @@ bool ContextAnalyzer::Analyze()
     if(method) {
       const wstring func_type_id = L'(' + func_encoding + L")~" + method->GetEncodedReturn();
       Type* type = TypeFactory::Instance()->MakeType(FUNC_TYPE, func_type_id);
-      type->SetFunctionParameterCount(method_call->GetCallingParameters()->GetExpressions().size());
+      type->SetFunctionParameterCount((int)method_call->GetCallingParameters()->GetExpressions().size());
       type->SetFunctionReturn(method->GetReturn());
       method_call->SetEvalType(type, true);
 
@@ -4569,7 +4569,7 @@ bool ContextAnalyzer::Analyze()
         // dimension
         if(variable->GetIndices()) {
           vector<Expression*> indices = variable->GetIndices()->GetExpressions();
-          variable->GetEvalType()->SetDimension(indices.size());
+          variable->GetEvalType()->SetDimension((int)indices.size());
           for(size_t j = 0; j < indices.size(); j++) {
             encoded_name += L'*';
           }

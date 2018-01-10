@@ -423,9 +423,9 @@ class Scanner {
   size_t buffer_pos;
   bool is_first_token;
   // start marker position
-  int start_pos;
+  size_t start_pos;
   // end marker position
-  int end_pos;
+  size_t end_pos;
   // input characters
   wchar_t cur_char, nxt_char, nxt_nxt_char;
   // map of reserved identifiers
@@ -503,7 +503,7 @@ class Scanner {
   // parsers a character string
   inline void CheckString(int index, bool is_valid) {
     // copy string
-    const int length = end_pos - start_pos;
+    const size_t length = end_pos - start_pos;
     wstring char_string(buffer, start_pos, length);
     // set string
     if(is_valid) {
@@ -520,7 +520,7 @@ class Scanner {
   // parse an integer
   inline void ParseInteger(int index, int base = 0) {
     // copy string
-    int length = end_pos - start_pos;
+    size_t length = end_pos - start_pos;
     wstring ident(buffer, start_pos, length);
 
     // set token
@@ -534,7 +534,7 @@ class Scanner {
   // parse a double
   inline void ParseDouble(int index) {
     // copy string
-    const int length = end_pos - start_pos;
+    const size_t length = end_pos - start_pos;
     wstring ident(buffer, start_pos, length);
     // set token
     tokens[index]->SetType(TOKEN_FLOAT_LIT);
@@ -546,7 +546,7 @@ class Scanner {
   // parsers an unicode character
   inline void ParseUnicodeChar(int index) {
     // copy string
-    const int length = end_pos - start_pos;
+    const size_t length = end_pos - start_pos;
     if(length < 5) {
       wstring ident(buffer, start_pos, length);
       // set token

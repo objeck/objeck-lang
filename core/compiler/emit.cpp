@@ -208,14 +208,14 @@ void IntermediateClass::Write(bool emit_lib, ofstream &file_out) {
   WriteString(parent_name, file_out);
 
   // interface ids
-  WriteInt(interface_ids.size(), file_out);
+  WriteInt((int)interface_ids.size(), file_out);
   for(size_t i = 0; i < interface_ids.size(); ++i) {
     WriteInt(interface_ids[i], file_out);
   }
 
   // interface names
   if(emit_lib) {
-    WriteInt(interface_names.size(), file_out);
+    WriteInt((int)interface_names.size(), file_out);
     for(size_t i = 0; i < interface_names.size(); ++i) {
       WriteString(interface_names[i], file_out);
     }
@@ -271,7 +271,7 @@ void IntermediateMethod::Write(bool emit_lib, bool is_debug, ofstream &file_out)
   // write statements
   uint32_t num_instrs = 0;
   for(size_t i = 0; i < blocks.size(); ++i) {
-    num_instrs += blocks[i]->GetInstructions().size();
+    num_instrs += (int)blocks[i]->GetInstructions().size();
   }
   WriteUnsigned(num_instrs, file_out);
 

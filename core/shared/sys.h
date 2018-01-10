@@ -92,7 +92,7 @@ static map<const wstring, wstring> ParseCommnadLine(const wstring &path_string) 
     }
     if(path_string[pos] == L'-' && pos > 0 && path_string[pos - 1] == L' ') {
       // parse key
-      int start =  ++pos;
+      size_t start =  ++pos;
       while(pos < end && path_string[pos] != L' ' && path_string[pos] != L'\t') {
         pos++;
       }

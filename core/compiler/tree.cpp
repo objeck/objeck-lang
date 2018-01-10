@@ -218,7 +218,7 @@ void StaticArray::Validate(StaticArray* array) {
       else {
 	// check lengths
 	if(cur_width == -1) {
-	  cur_width = static_array.size();
+	  cur_width = (int)static_array.size();
 	}
 	if(cur_width != (int)static_array.size()) {
 	  matching_lengths = false;
