@@ -2441,10 +2441,10 @@ namespace frontend {
 
         // add to unqualified names to list
         const wstring &encoded_name = method->GetEncodedName();
-        const int start = encoded_name.find(':');
-        if(start > -1) {
-          const int end = encoded_name.find(':', start + 1);
-          if(end > -1) {
+        const size_t start = encoded_name.find(':');
+        if(start != wstring::npos) {
+          const size_t end = encoded_name.find(':', start + 1);
+          if(end != wstring::npos) {
             const wstring &unqualified_name = encoded_name.substr(start + 1, end - start - 1);
             unqualified_methods.insert(pair<wstring, Method*>(unqualified_name, method));
           }
@@ -3304,7 +3304,7 @@ namespace frontend {
 
       IntStringHolder* holder = new IntStringHolder;
       holder->value = int_array;
-      holder->length = int_elements.size();
+      holder->length = (int)int_elements.size();
 
       int_string_ids.insert(pair<IntStringHolder*, int>(holder, id));
       int_strings.push_back(holder);
@@ -3318,7 +3318,7 @@ namespace frontend {
 
       IntStringHolder* holder = new IntStringHolder;
       holder->value = int_array;
-      holder->length = int_elements.size();
+      holder->length = (int)int_elements.size();
 
       map<IntStringHolder*, int, int_string_comp>::iterator result = int_string_ids.find(holder);
       if(result != int_string_ids.end()) {
@@ -3350,7 +3350,7 @@ namespace frontend {
 
       FloatStringHolder* holder = new FloatStringHolder;
       holder->value = float_array;
-      holder->length = float_elements.size();
+      holder->length = (int)float_elements.size();
 
       float_string_ids.insert(pair<FloatStringHolder*, int>(holder, id));
       float_strings.push_back(holder);
@@ -3364,7 +3364,7 @@ namespace frontend {
 
       FloatStringHolder* holder = new FloatStringHolder;
       holder->value = float_array;
-      holder->length = float_elements.size();
+      holder->length = (int)float_elements.size();
 
 
       map<FloatStringHolder*, int, float_string_comp>::iterator result = float_string_ids.find(holder);

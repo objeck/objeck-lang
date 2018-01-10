@@ -297,7 +297,7 @@ void Scanner::CheckIdentifier(int index)
 {
   try {
     // copy string
-    const int length = end_pos - start_pos;
+    const size_t length = end_pos - start_pos;
     wstring ident(buffer, start_pos, length);
     // check string
     ScannerTokenType ident_type = ident_map[ident];

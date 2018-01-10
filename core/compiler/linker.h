@@ -818,10 +818,10 @@ class LibraryClass {
     methods.insert(pair<const wstring, LibraryMethod*>(encoded_name, method));
     
     // add to unqualified names to list
-    const int start = encoded_name.find(':');
-    if(start > -1) {
-      const int end = encoded_name.find(':', start + 1);
-      if(end > -1) {
+    const size_t start = encoded_name.find(':');
+    if(start != wstring::npos) {
+      const size_t end = encoded_name.find(':', start + 1);
+      if(end != wstring::npos) {
         const wstring &unqualified_name = encoded_name.substr(start + 1, end - start - 1);
         unqualified_methods.insert(pair<wstring, LibraryMethod*>(unqualified_name, method));
       }

@@ -65,7 +65,7 @@ namespace backend {
         wcerr << L">>> Unable to write unicode string <<<" << endl;
         exit(1);
       }
-      WriteInt(out.size(), file_out);
+      WriteInt((int)out.size(), file_out);
       file_out.write(out.c_str(), out.size());
     }
 
@@ -90,7 +90,7 @@ namespace backend {
 
       // write bytes
       if(buffer.size()) {
-        WriteInt(buffer.size(), file_out);
+        WriteInt((int)buffer.size(), file_out);
         file_out.write(buffer.c_str(), buffer.size());
       }
       else {
@@ -729,7 +729,7 @@ namespace backend {
     }
 
     int GetSize() {
-      return instructions.size();
+      return (int)instructions.size();
     }
 
     void Clear() {
@@ -1291,7 +1291,7 @@ namespace backend {
     void Debug() {
       wcout << L"Strings:" << endl;
       for(size_t i = 0; i < char_strings.size(); ++i) {
-        wcout << L"wstring id=" << i << L", size='" << ToString(char_strings[i].size())
+        wcout << L"wstring id=" << i << L", size='" << ToString((int)char_strings[i].size())
               << L"': '" << char_strings[i] << L"'" << endl;
       }
       wcout << endl;

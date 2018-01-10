@@ -2,6 +2,6 @@ use System.Time;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		Date->New(5, 1, 2018, false)->ToString()->PrintLine();
+		System.Runtime->GetPlatform()->PrintLine();
 	}
 }
