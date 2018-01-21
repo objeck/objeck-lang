@@ -49,7 +49,7 @@ int Execute(const int argc, const char* argv[])
     }
 
     // execute
-    long* op_stack = new long[OP_STACK_SIZE];
+    size_t* op_stack = new size_t[OP_STACK_SIZE];
     long* stack_pos = new long;
     (*stack_pos) = 0;
     

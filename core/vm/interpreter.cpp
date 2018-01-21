@@ -156,7 +156,7 @@ void StackInterpreter::Initialize(StackProgram* p)
  * funciton is used by callbacks 
  * from native code for the C API
  ********************************/
-void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i, 
+void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, 
                                StackMethod* method, long* instance, bool jit_called)
 {
   long left;
@@ -691,7 +691,7 @@ void StackInterpreter::Execute(long* op_stack, long* stack_pos, long i,
 #endif
 }
 
-void StackInterpreter::StorLoclIntVar(StackInstr* instr, long* &op_stack, long* &stack_pos)
+void StackInterpreter::StorLoclIntVar(StackInstr* instr, size_t* &op_stack, long* &stack_pos)
 {
 #ifdef _DEBUG
   wcout << L"stack oper: STOR_LOCL_INT_VAR; index=" << instr->GetOperand() << endl;
@@ -700,7 +700,7 @@ void StackInterpreter::StorLoclIntVar(StackInstr* instr, long* &op_stack, long* 
   mem[instr->GetOperand() + 1] = PopInt(op_stack, stack_pos);
 }
 
-void StackInterpreter::StorClsInstIntVar(StackInstr* instr, long* &op_stack, long* &stack_pos)
+void StackInterpreter::StorClsInstIntVar(StackInstr* instr, size_t* &op_stack, long* &stack_pos)
 {
 #ifdef _DEBUG
   wcout << L"stack oper: STOR_CLS_INST_INT_VAR; index=" << instr->GetOperand() << endl;
@@ -720,7 +720,7 @@ void StackInterpreter::StorClsInstIntVar(StackInstr* instr, long* &op_stack, lon
   cls_inst_mem[instr->GetOperand()] = mem;
 }
 
-void StackInterpreter::CopyLoclIntVar(StackInstr* instr, long* &op_stack, long* &stack_pos)
+void StackInterpreter::CopyLoclIntVar(StackInstr* instr, size_t* &op_stack, long* &stack_pos)
 {
 #ifdef _DEBUG
   wcout << L"stack oper: COPY_LOCL_INT_VAR; index=" << instr->GetOperand() << endl;
@@ -729,7 +729,7 @@ void StackInterpreter::CopyLoclIntVar(StackInstr* instr, long* &op_stack, long* 
   mem[instr->GetOperand() + 1] = TopInt(op_stack, stack_pos);
 }
 
-void StackInterpreter::CopyClsInstIntVar(StackInstr* instr, long* &op_stack, long* &stack_pos)
+void StackInterpreter::CopyClsInstIntVar(StackInstr* instr, size_t* &op_stack, long* &stack_pos)
 {
 #ifdef _DEBUG
   wcout << L"stack oper: COPY_CLS_INST_INT_VAR; index=" << instr->GetOperand() << endl;
@@ -749,7 +749,7 @@ void StackInterpreter::CopyClsInstIntVar(StackInstr* instr, long* &op_stack, lon
   cls_inst_mem[instr->GetOperand()] = TopInt(op_stack, stack_pos);
 }
 
-void StackInterpreter::ShlInt(long* &op_stack, long* &stack_pos)
+void StackInterpreter::ShlInt(size_t* &op_stack, long* &stack_pos)
 {
 #ifdef _DEBUG
   wcout << L"stack oper: SHL_INT; call_pos=" << (*call_stack_pos) << endl;
@@ -759,7 +759,7 @@ void StackInterpreter::ShlInt(long* &op_stack, long* &stack_pos)
   PushInt(left << right, op_stack, stack_pos);
 }
 
-void StackInterpreter::ShrInt(long* &op_stack, long* &stack_pos)
+void StackInterpreter::ShrInt(size_t* &op_stack, long* &stack_pos)
 {
 #ifdef _DEBUG
   wcout << L"stack oper: SHR_INT; call_pos=" << (*call_stack_pos) << endl;
@@ -769,7 +769,7 @@ void StackInterpreter::ShrInt(long* &op_stack, long* &stack_pos)
   PushInt(left >> right, op_stack, stack_pos);
 }
 
-void StackInterpreter::LoadLoclIntVar(StackInstr* instr, long* &op_stack, long* &stack_pos)
+void StackInterpreter::LoadLoclIntVar(StackInstr* instr, size_t* &op_stack, long* &stack_pos)
 {
 #ifdef _DEBUG
   wcout << L"stack oper: LOAD_LOCL_INT_VAR; index=" << instr->GetOperand() << endl;
@@ -778,7 +778,7 @@ void StackInterpreter::LoadLoclIntVar(StackInstr* instr, long* &op_stack, long* 
   PushInt(mem[instr->GetOperand() + 1], op_stack, stack_pos);
 }
 
-void StackInterpreter::LoadClsInstIntVar(StackInstr* instr, long* &op_stack, long* &stack_pos)
+void StackInterpreter::LoadClsInstIntVar(StackInstr* instr, size_t* &op_stack, long* &stack_pos)
 {
 #ifdef _DEBUG
   wcout << L"stack oper: LOAD_CLS_INST_INT_VAR; index=" << instr->GetOperand() << endl;
@@ -797,7 +797,7 @@ void StackInterpreter::LoadClsInstIntVar(StackInstr* instr, long* &op_stack, lon
   PushInt(cls_inst_mem[instr->GetOperand()], op_stack, stack_pos);
 }
 
-void StackInterpreter::AndInt(long* &op_stack, long* &stack_pos)
+void StackInterpreter::AndInt(size_t* &op_stack, long* &stack_pos)
 {
 #ifdef _DEBUG
   wcout << L"stack oper: AND; call_pos=" << (*call_stack_pos) << endl;
@@ -807,7 +807,7 @@ void StackInterpreter::AndInt(long* &op_stack, long* &stack_pos)
   PushInt(left && right, op_stack, stack_pos);
 }
 
-void StackInterpreter::OrInt(long* &op_stack, long* &stack_pos)
+void StackInterpreter::OrInt(size_t* &op_stack, long* &stack_pos)
 {
 #ifdef _DEBUG
   wcout << L"stack oper: OR; call_pos=" << (*call_stack_pos) << endl;
@@ -817,7 +817,7 @@ void StackInterpreter::OrInt(long* &op_stack, long* &stack_pos)
   PushInt(left || right, op_stack, stack_pos);
 }
 
-void StackInterpreter::AddInt(long* &op_stack, long* &stack_pos)
+void StackInterpreter::AddInt(size_t* &op_stack, long* &stack_pos)
 {
 #ifdef _DEBUG
   wcout << L"stack oper: ADD; call_pos=" << (*call_stack_pos) << endl;
@@ -827,7 +827,7 @@ void StackInterpreter::AddInt(long* &op_stack, long* &stack_pos)
   PushInt(left + right, op_stack, stack_pos);
 }
 
-void StackInterpreter::AddFloat(long* &op_stack, long* &stack_pos)
+void StackInterpreter::AddFloat(size_t* &op_stack, long* &stack_pos)
 {
 #ifdef _DEBUG
   wcout << L"stack oper: ADD; call_pos=" << (*call_stack_pos) << endl;
@@ -837,7 +837,7 @@ void StackInterpreter::AddFloat(long* &op_stack, long* &stack_pos)
   PushFloat(left_double + right_double, op_stack, stack_pos);
 }
 
-void StackInterpreter::SubInt(long* &op_stack, long* &stack_pos)
+void StackInterpreter::SubInt(size_t* &op_stack, long* &stack_pos)
 {
 #ifdef _DEBUG
   wcout << L"stack oper: SUB; call_pos=" << (*call_stack_pos) << endl;
@@ -847,7 +847,7 @@ void StackInterpreter::SubInt(long* &op_stack, long* &stack_pos)
   PushInt(left - right, op_stack, stack_pos);
 }
 
-void StackInterpreter::SubFloat(long* &op_stack, long* &stack_pos)
+void StackInterpreter::SubFloat(size_t* &op_stack, long* &stack_pos)
 {
 #ifdef _DEBUG
   wcout << L"stack oper: SUB; call_pos=" << (*call_stack_pos) << endl;
@@ -857,7 +857,7 @@ void StackInterpreter::SubFloat(long* &op_stack, long* &stack_pos)
   PushFloat(left_double - right_double, op_stack, stack_pos);
 }
 
-void StackInterpreter::MulInt(long* &op_stack, long* &stack_pos)
+void StackInterpreter::MulInt(size_t* &op_stack, long* &stack_pos)
 {
 #ifdef _DEBUG
   wcout << L"stack oper: MUL; call_pos=" << (*call_stack_pos) << endl;
@@ -867,7 +867,7 @@ void StackInterpreter::MulInt(long* &op_stack, long* &stack_pos)
   PushInt(left * right, op_stack, stack_pos);
 }
 
-void StackInterpreter::DivInt(long* &op_stack, long* &stack_pos)
+void StackInterpreter::DivInt(size_t* &op_stack, long* &stack_pos)
 {
 #ifdef _DEBUG
   wcout << L"stack oper: DIV; call_pos=" << (*call_stack_pos) << endl;
@@ -877,7 +877,7 @@ void StackInterpreter::DivInt(long* &op_stack, long* &stack_pos)
   PushInt(left / right, op_stack, stack_pos);
 }
 
-void StackInterpreter::MulFloat(long* &op_stack, long* &stack_pos)
+void StackInterpreter::MulFloat(size_t* &op_stack, long* &stack_pos)
 {
 #ifdef _DEBUG
   wcout << L"stack oper: MUL; call_pos=" << (*call_stack_pos) << endl;
@@ -887,7 +887,7 @@ void StackInterpreter::MulFloat(long* &op_stack, long* &stack_pos)
   PushFloat(left_double * right_double, op_stack, stack_pos);
 }
 
-void StackInterpreter::DivFloat(long* &op_stack, long* &stack_pos)
+void StackInterpreter::DivFloat(size_t* &op_stack, long* &stack_pos)
 {
 #ifdef _DEBUG
   wcout << L"stack oper: DIV; call_pos=" << (*call_stack_pos) << endl;
@@ -897,7 +897,7 @@ void StackInterpreter::DivFloat(long* &op_stack, long* &stack_pos)
   PushFloat(left_double / right_double, op_stack, stack_pos);
 }
 
-void StackInterpreter::ModInt(long* &op_stack, long* &stack_pos)
+void StackInterpreter::ModInt(size_t* &op_stack, long* &stack_pos)
 {
 #ifdef _DEBUG
   wcout << L"stack oper: MOD; call_pos=" << (*call_stack_pos) << endl;
@@ -907,7 +907,7 @@ void StackInterpreter::ModInt(long* &op_stack, long* &stack_pos)
   PushInt(left % right, op_stack, stack_pos);
 }
 
-void StackInterpreter::BitAndInt(long* &op_stack, long* &stack_pos)
+void StackInterpreter::BitAndInt(size_t* &op_stack, long* &stack_pos)
 {
 #ifdef _DEBUG
   wcout << L"stack oper: BIT_AND; call_pos=" << (*call_stack_pos) << endl;
@@ -917,7 +917,7 @@ void StackInterpreter::BitAndInt(long* &op_stack, long* &stack_pos)
   PushInt(left & right, op_stack, stack_pos);
 }
 
-void StackInterpreter::BitOrInt(long* &op_stack, long* &stack_pos)
+void StackInterpreter::BitOrInt(size_t* &op_stack, long* &stack_pos)
 {
 #ifdef _DEBUG
   wcout << L"stack oper: BIT_OR; call_pos=" << (*call_stack_pos) << endl;
@@ -927,7 +927,7 @@ void StackInterpreter::BitOrInt(long* &op_stack, long* &stack_pos)
   PushInt(left | right, op_stack, stack_pos);
 }
 
-void StackInterpreter::BitXorInt(long* &op_stack, long* &stack_pos)
+void StackInterpreter::BitXorInt(size_t* &op_stack, long* &stack_pos)
 {
 #ifdef _DEBUG
   wcout << L"stack oper: BIT_XOR; call_pos=" << (*call_stack_pos) << endl;
@@ -937,7 +937,7 @@ void StackInterpreter::BitXorInt(long* &op_stack, long* &stack_pos)
   PushInt(left ^ right, op_stack, stack_pos);
 }
 
-void StackInterpreter::LesEqlInt(long* &op_stack, long* &stack_pos)
+void StackInterpreter::LesEqlInt(size_t* &op_stack, long* &stack_pos)
 {
 #ifdef _DEBUG
   wcout << L"stack oper: LES_EQL; call_pos=" << (*call_stack_pos) << endl;
@@ -947,7 +947,7 @@ void StackInterpreter::LesEqlInt(long* &op_stack, long* &stack_pos)
   PushInt(left <= right, op_stack, stack_pos);
 }
 
-void StackInterpreter::GtrEqlInt(long* &op_stack, long* &stack_pos)
+void StackInterpreter::GtrEqlInt(size_t* &op_stack, long* &stack_pos)
 {
 #ifdef _DEBUG
   wcout << L"stack oper: GTR_EQL; call_pos=" << (*call_stack_pos) << endl;
@@ -957,7 +957,7 @@ void StackInterpreter::GtrEqlInt(long* &op_stack, long* &stack_pos)
   PushInt(left >= right, op_stack, stack_pos);
 }
 
-void StackInterpreter::LesEqlFloat(long* &op_stack, long* &stack_pos)
+void StackInterpreter::LesEqlFloat(size_t* &op_stack, long* &stack_pos)
 {
 #ifdef _DEBUG
   wcout << L"stack oper: LES_EQL; call_pos=" << (*call_stack_pos) << endl;
@@ -967,7 +967,7 @@ void StackInterpreter::LesEqlFloat(long* &op_stack, long* &stack_pos)
   PushInt(left_double <= right_double, op_stack, stack_pos);
 }
 
-void StackInterpreter::GtrEqlFloat(long* &op_stack, long* &stack_pos)
+void StackInterpreter::GtrEqlFloat(size_t* &op_stack, long* &stack_pos)
 {
 #ifdef _DEBUG
   wcout << L"stack oper: GTR_EQL; call_pos=" << (*call_stack_pos) << endl;
@@ -977,7 +977,7 @@ void StackInterpreter::GtrEqlFloat(long* &op_stack, long* &stack_pos)
   PushInt(left_double >= right_double, op_stack, stack_pos);
 }
 
-void StackInterpreter::EqlInt(long* &op_stack, long* &stack_pos)
+void StackInterpreter::EqlInt(size_t* &op_stack, long* &stack_pos)
 {
 #ifdef _DEBUG
   wcout << L"stack oper: EQL; call_pos=" << (*call_stack_pos) << endl;
@@ -987,7 +987,7 @@ void StackInterpreter::EqlInt(long* &op_stack, long* &stack_pos)
   PushInt(left == right, op_stack, stack_pos);
 }
 
-void StackInterpreter::NeqlInt(long* &op_stack, long* &stack_pos)
+void StackInterpreter::NeqlInt(size_t* &op_stack, long* &stack_pos)
 {
 #ifdef _DEBUG
   wcout << L"stack oper: NEQL; call_pos=" << (*call_stack_pos) << endl;
@@ -997,7 +997,7 @@ void StackInterpreter::NeqlInt(long* &op_stack, long* &stack_pos)
   PushInt(left != right, op_stack, stack_pos);
 }
 
-void StackInterpreter::LesInt(long* &op_stack, long* &stack_pos)
+void StackInterpreter::LesInt(size_t* &op_stack, long* &stack_pos)
 {
 #ifdef _DEBUG
   wcout << L"stack oper: LES; call_pos=" << (*call_stack_pos) << endl;
@@ -1007,7 +1007,7 @@ void StackInterpreter::LesInt(long* &op_stack, long* &stack_pos)
   PushInt(left < right, op_stack, stack_pos);
 }
 
-void StackInterpreter::GtrInt(long* &op_stack, long* &stack_pos)
+void StackInterpreter::GtrInt(size_t* &op_stack, long* &stack_pos)
 {
 #ifdef _DEBUG
   wcout << L"stack oper: GTR; call_pos=" << (*call_stack_pos) << endl;
@@ -1017,7 +1017,7 @@ void StackInterpreter::GtrInt(long* &op_stack, long* &stack_pos)
   PushInt(left > right, op_stack, stack_pos);
 }
 
-void StackInterpreter::EqlFloat(long* &op_stack, long* &stack_pos)
+void StackInterpreter::EqlFloat(size_t* &op_stack, long* &stack_pos)
 {
 #ifdef _DEBUG
   wcout << L"stack oper: EQL; call_pos=" << (*call_stack_pos) << endl;
@@ -1027,7 +1027,7 @@ void StackInterpreter::EqlFloat(long* &op_stack, long* &stack_pos)
   PushInt(left_double == right_double, op_stack, stack_pos);
 }
 
-void StackInterpreter::NeqlFloat(long* &op_stack, long* &stack_pos)
+void StackInterpreter::NeqlFloat(size_t* &op_stack, long* &stack_pos)
 {
 #ifdef _DEBUG
   wcout << L"stack oper: NEQL; call_pos=" << (*call_stack_pos) << endl;
@@ -1037,7 +1037,7 @@ void StackInterpreter::NeqlFloat(long* &op_stack, long* &stack_pos)
   PushInt(left_double != right_double, op_stack, stack_pos);
 }
 
-void StackInterpreter::LesFloat(long* &op_stack, long* &stack_pos)
+void StackInterpreter::LesFloat(size_t* &op_stack, long* &stack_pos)
 {
 #ifdef _DEBUG
   wcout << L"stack oper: LES; call_pos=" << (*call_stack_pos) << endl;
@@ -1047,7 +1047,7 @@ void StackInterpreter::LesFloat(long* &op_stack, long* &stack_pos)
   PushInt(left_double < right_double, op_stack, stack_pos);
 }
 
-void StackInterpreter::GtrFloat(long* &op_stack, long* &stack_pos)
+void StackInterpreter::GtrFloat(size_t* &op_stack, long* &stack_pos)
 {
 #ifdef _DEBUG
   wcout << L"stack oper: GTR_FLOAT; call_pos=" << (*call_stack_pos) << endl;
@@ -1057,7 +1057,7 @@ void StackInterpreter::GtrFloat(long* &op_stack, long* &stack_pos)
   PushInt(left_double > right_double, op_stack, stack_pos);
 }
 
-void StackInterpreter::LoadArySize(long* &op_stack, long* &stack_pos)
+void StackInterpreter::LoadArySize(size_t* &op_stack, long* &stack_pos)
 {
 #ifdef _DEBUG
   wcout << L"stack oper: LOAD_ARY_SIZE; call_pos=" << (*call_stack_pos) << endl;
@@ -1076,7 +1076,7 @@ void StackInterpreter::LoadArySize(long* &op_stack, long* &stack_pos)
   PushInt(array[2], op_stack, stack_pos);
 }
 
-void StackInterpreter::CpyByteAry(long* &op_stack, long* &stack_pos)
+void StackInterpreter::CpyByteAry(size_t* &op_stack, long* &stack_pos)
 {
 #ifdef _DEBUG
   wcout << L"stack oper: CPY_BYTE_ARY; call_pos=" << (*call_stack_pos) << endl;
@@ -1112,7 +1112,7 @@ void StackInterpreter::CpyByteAry(long* &op_stack, long* &stack_pos)
   }
 }
 
-void StackInterpreter::CpyCharAry(long* &op_stack, long* &stack_pos)
+void StackInterpreter::CpyCharAry(size_t* &op_stack, long* &stack_pos)
 {
 #ifdef _DEBUG
   wcout << L"stack oper: CPY_CHAR_ARY; call_pos=" << (*call_stack_pos) << endl;
@@ -1148,7 +1148,7 @@ void StackInterpreter::CpyCharAry(long* &op_stack, long* &stack_pos)
   }
 }
 
-void StackInterpreter::CpyIntAry(long* &op_stack, long* &stack_pos)
+void StackInterpreter::CpyIntAry(size_t* &op_stack, long* &stack_pos)
 {
 #ifdef _DEBUG
   wcout << L"stack oper: CPY_INT_ARY; call_pos=" << (*call_stack_pos) << endl;
@@ -1183,7 +1183,7 @@ void StackInterpreter::CpyIntAry(long* &op_stack, long* &stack_pos)
   }
 }
 
-void StackInterpreter::CpyFloatAry(long* &op_stack, long* &stack_pos)
+void StackInterpreter::CpyFloatAry(size_t* &op_stack, long* &stack_pos)
 {
 #ifdef _DEBUG
   wcout << L"stack oper: CPY_FLOAT_ARY; call_pos=" << (*call_stack_pos) << endl;
@@ -1218,7 +1218,7 @@ void StackInterpreter::CpyFloatAry(long* &op_stack, long* &stack_pos)
   }
 }
 
-void StackInterpreter::ObjTypeOf(StackInstr* instr, long* &op_stack, long* &stack_pos)
+void StackInterpreter::ObjTypeOf(StackInstr* instr, size_t* &op_stack, long* &stack_pos)
 {
   long* mem = (long*)PopInt(op_stack, stack_pos);
   if(mem) {
@@ -1239,7 +1239,7 @@ void StackInterpreter::ObjTypeOf(StackInstr* instr, long* &op_stack, long* &stac
   }
 }
 
-void StackInterpreter::ObjInstCast(StackInstr* instr, long* &op_stack, long* &stack_pos)
+void StackInterpreter::ObjInstCast(StackInstr* instr, size_t* &op_stack, long* &stack_pos)
 {
   long* mem = (long*)PopInt(op_stack, stack_pos);
   long result = (long)MemoryManager::ValidObjectCast(mem, instr->GetOperand(),
@@ -1263,7 +1263,7 @@ void StackInterpreter::ObjInstCast(StackInstr* instr, long* &op_stack, long* &st
   PushInt(result, op_stack, stack_pos);
 }
 
-void StackInterpreter::AsyncMthdCall(long* &op_stack, long* &stack_pos)
+void StackInterpreter::AsyncMthdCall(size_t* &op_stack, long* &stack_pos)
 {
   long* instance = (long*)(*frame)->mem[0];
   long* param = (long*)(*frame)->mem[1];
@@ -1294,7 +1294,7 @@ void StackInterpreter::AsyncMthdCall(long* &op_stack, long* &stack_pos)
   ProcessAsyncMethodCall(called, param);
 }
 
-void StackInterpreter::ThreadJoin(long* &op_stack, long* &stack_pos)
+void StackInterpreter::ThreadJoin(size_t* &op_stack, long* &stack_pos)
 {
 #ifdef _DEBUG
   wcout << L"stack oper: THREAD_JOIN; call_pos=" << (*call_stack_pos) << endl;
@@ -1335,7 +1335,7 @@ void StackInterpreter::ThreadJoin(long* &op_stack, long* &stack_pos)
 #endif
 }
 
-void StackInterpreter::ThreadMutex(long* &op_stack, long* &stack_pos)
+void StackInterpreter::ThreadMutex(size_t* &op_stack, long* &stack_pos)
 {
 #ifdef _DEBUG
   wcout << L"stack oper: THREAD_MUTEX; call_pos=" << (*call_stack_pos) << endl;
@@ -1358,7 +1358,7 @@ void StackInterpreter::ThreadMutex(long* &op_stack, long* &stack_pos)
 #endif
 }
 
-void StackInterpreter::CriticalStart(long* &op_stack, long* &stack_pos)
+void StackInterpreter::CriticalStart(size_t* &op_stack, long* &stack_pos)
 {
 #ifdef _DEBUG
   wcout << L"stack oper: CRITICAL_START; call_pos=" << (*call_stack_pos) << endl;
@@ -1381,7 +1381,7 @@ void StackInterpreter::CriticalStart(long* &op_stack, long* &stack_pos)
 #endif
 }
 
-void StackInterpreter::CriticalEnd(long* &op_stack, long* &stack_pos)
+void StackInterpreter::CriticalEnd(size_t* &op_stack, long* &stack_pos)
 {
 #ifdef _DEBUG
   wcout << L"stack oper: CRITICAL_END; call_pos=" << (*call_stack_pos) << endl;
@@ -1408,7 +1408,7 @@ void StackInterpreter::CriticalEnd(long* &op_stack, long* &stack_pos)
  * Processes a load function
  * variable instruction.
  ********************************/
-void StackInterpreter::ProcessLoadFunction(StackInstr* instr, long* &op_stack, long* &stack_pos)
+void StackInterpreter::ProcessLoadFunction(StackInstr* instr, size_t* &op_stack, long* &stack_pos)
 {
 #ifdef _DEBUG
   wcout << L"stack oper: LOAD_FUNC_VAR; index=" << instr->GetOperand()
@@ -1440,7 +1440,7 @@ void StackInterpreter::ProcessLoadFunction(StackInstr* instr, long* &op_stack, l
  * Processes a load float
  * variable instruction.
  ********************************/
-void StackInterpreter::ProcessLoadFloat(StackInstr* instr, long* &op_stack, long* &stack_pos)
+void StackInterpreter::ProcessLoadFloat(StackInstr* instr, size_t* &op_stack, long* &stack_pos)
 {
 #ifdef _DEBUG
   wcout << L"stack oper: LOAD_FLOAT_VAR; index=" << instr->GetOperand()
@@ -1474,7 +1474,7 @@ void StackInterpreter::ProcessLoadFloat(StackInstr* instr, long* &op_stack, long
  * Processes a store function
  * variable instruction.
  ********************************/
-void StackInterpreter::ProcessStoreFunction(StackInstr* instr, long* &op_stack, long* &stack_pos)
+void StackInterpreter::ProcessStoreFunction(StackInstr* instr, size_t* &op_stack, long* &stack_pos)
 {
 #ifdef _DEBUG
   wcout << L"stack oper: STOR_FUNC_VAR; index=" << instr->GetOperand()
@@ -1506,7 +1506,7 @@ void StackInterpreter::ProcessStoreFunction(StackInstr* instr, long* &op_stack, 
  * Processes a store float
  * variable instruction.
  ********************************/
-void StackInterpreter::ProcessStoreFloat(StackInstr* instr, long* &op_stack, long* &stack_pos)
+void StackInterpreter::ProcessStoreFloat(StackInstr* instr, size_t* &op_stack, long* &stack_pos)
 {
 #ifdef _DEBUG
   wcout << L"stack oper: STOR_FLOAT_VAR; index=" << instr->GetOperand()
@@ -1540,7 +1540,7 @@ void StackInterpreter::ProcessStoreFloat(StackInstr* instr, long* &op_stack, lon
  * Processes a copy float
  * variable instruction.
  ********************************/
-void StackInterpreter::ProcessCopyFloat(StackInstr* instr, long* &op_stack, long* &stack_pos)
+void StackInterpreter::ProcessCopyFloat(StackInstr* instr, size_t* &op_stack, long* &stack_pos)
 {
 #ifdef _DEBUG
   wcout << L"stack oper: COPY_FLOAT_VAR; index=" << instr->GetOperand()
@@ -1573,7 +1573,7 @@ void StackInterpreter::ProcessCopyFloat(StackInstr* instr, long* &op_stack, long
  * Processes a new object instance
  * request.
  ********************************/
-void StackInterpreter::ProcessNewObjectInstance(StackInstr* instr, long* &op_stack, long* &stack_pos)
+void StackInterpreter::ProcessNewObjectInstance(StackInstr* instr, size_t* &op_stack, long* &stack_pos)
 {
 #ifdef _DEBUG
   wcout << L"stack oper: NEW_OBJ_INST: id=" << instr->GetOperand() << endl;
@@ -1588,7 +1588,7 @@ void StackInterpreter::ProcessNewObjectInstance(StackInstr* instr, long* &op_sta
  * Processes a new array instance
  * request.
  ********************************/
-void StackInterpreter::ProcessNewArray(StackInstr* instr, long* &op_stack, long* &stack_pos, bool is_float)
+void StackInterpreter::ProcessNewArray(StackInstr* instr, size_t* &op_stack, long* &stack_pos, bool is_float)
 {
 #ifdef _DEBUG
   wcout << L"stack oper: NEW_INT_ARY/NEW_FLOAT_ARY; call_pos=" << (*call_stack_pos) << endl;
@@ -1631,7 +1631,7 @@ void StackInterpreter::ProcessNewArray(StackInstr* instr, long* &op_stack, long*
  * Processes a new byte array instance
  * request.
  ********************************/
-void StackInterpreter::ProcessNewByteArray(StackInstr* instr, long* &op_stack, long* &stack_pos)
+void StackInterpreter::ProcessNewByteArray(StackInstr* instr, size_t* &op_stack, long* &stack_pos)
 {
 #ifdef _DEBUG
   wcout << L"stack oper: NEW_BYTE_ARY; call_pos=" << (*call_stack_pos) << endl;
@@ -1660,7 +1660,7 @@ void StackInterpreter::ProcessNewByteArray(StackInstr* instr, long* &op_stack, l
  * Processes a new char array instance
  * request.
  ********************************/
-void StackInterpreter::ProcessNewCharArray(StackInstr* instr, long* &op_stack, long* &stack_pos)
+void StackInterpreter::ProcessNewCharArray(StackInstr* instr, size_t* &op_stack, long* &stack_pos)
 {
 #ifdef _DEBUG
   wcout << L"stack oper: NEW_CHAR_ARY; call_pos=" << (*call_stack_pos) << endl;
@@ -1767,7 +1767,7 @@ uintptr_t WINAPI StackInterpreter::AsyncMethodCall(LPVOID arg)
   ThreadHolder* holder = (ThreadHolder*)arg;
 
   // execute
-  long* thread_op_stack = new long[OP_STACK_SIZE];
+  size_t* thread_op_stack = new size_t[OP_STACK_SIZE];
   long* thread_stack_pos = new long;
   (*thread_stack_pos) = 0;
   
@@ -1856,7 +1856,7 @@ void* StackInterpreter::AsyncMethodCall(void* arg)
  * Processes a synchronous
  * dynamic method call.
  ********************************/
-void StackInterpreter::ProcessDynamicMethodCall(StackInstr* instr, StackInstr** &instrs, long &ip, long* &op_stack, long* &stack_pos)
+void StackInterpreter::ProcessDynamicMethodCall(StackInstr* instr, StackInstr** &instrs, long &ip, size_t* &op_stack, long* &stack_pos)
 {
   // save current method
   (*frame)->ip = ip;
@@ -1896,7 +1896,7 @@ void StackInterpreter::ProcessDynamicMethodCall(StackInstr* instr, StackInstr** 
  * Processes a synchronous method
  * call.
  ********************************/
-void StackInterpreter::ProcessMethodCall(StackInstr* instr, StackInstr** &instrs, long &ip, long* &op_stack, long* &stack_pos)
+void StackInterpreter::ProcessMethodCall(StackInstr* instr, StackInstr** &instrs, long &ip, size_t* &op_stack, long* &stack_pos)
 {
   // save current method
   (*frame)->ip = ip;
@@ -1968,7 +1968,7 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr, StackInstr** &instrs
  * Processes an interpreted
  * synchronous method call.
  ********************************/
-void StackInterpreter::ProcessJitMethodCall(StackMethod* called, long* instance, StackInstr** &instrs, long &ip, long* &op_stack, long* &stack_pos)
+void StackInterpreter::ProcessJitMethodCall(StackMethod* called, long* instance, StackInstr** &instrs, long &ip, size_t* &op_stack, long* &stack_pos)
 {
 #if defined(_DEBUGGER) || defined(_NO_JIT)
   ProcessInterpretedMethodCall(called, instance, instrs, ip);
@@ -2067,7 +2067,7 @@ void StackInterpreter::ProcessInterpretedMethodCall(StackMethod* called, long* i
  * Processes a load integer array
  * variable instruction.
  ********************************/
-void StackInterpreter::ProcessLoadIntArrayElement(StackInstr* instr, long* &op_stack, long* &stack_pos)
+void StackInterpreter::ProcessLoadIntArrayElement(StackInstr* instr, size_t* &op_stack, long* &stack_pos)
 {
 #ifdef _DEBUG
   wcout << L"stack oper: LOAD_INT_ARY_ELM; call_pos=" << (*call_stack_pos) << endl;
@@ -2093,7 +2093,7 @@ void StackInterpreter::ProcessLoadIntArrayElement(StackInstr* instr, long* &op_s
  * Processes a load store array
  * variable instruction.
  ********************************/
-void StackInterpreter::ProcessStoreIntArrayElement(StackInstr* instr, long* &op_stack, long* &stack_pos)
+void StackInterpreter::ProcessStoreIntArrayElement(StackInstr* instr, size_t* &op_stack, long* &stack_pos)
 {
 #ifdef _DEBUG
   wcout << L"stack oper: STOR_INT_ARY_ELM; call_pos=" << (*call_stack_pos) << endl;
@@ -2121,7 +2121,7 @@ void StackInterpreter::ProcessStoreIntArrayElement(StackInstr* instr, long* &op_
  * Processes a load byte array
  * variable instruction.
  ********************************/
-void StackInterpreter::ProcessLoadByteArrayElement(StackInstr* instr, long* &op_stack, long* &stack_pos)
+void StackInterpreter::ProcessLoadByteArrayElement(StackInstr* instr, size_t* &op_stack, long* &stack_pos)
 {
 #ifdef _DEBUG
   wcout << L"stack oper: LOAD_BYTE_ARY_ELM; call_pos=" << (*call_stack_pos) << endl;
@@ -2148,7 +2148,7 @@ void StackInterpreter::ProcessLoadByteArrayElement(StackInstr* instr, long* &op_
  * Processes a load char array
  * variable instruction.
  ********************************/
-void StackInterpreter::ProcessLoadCharArrayElement(StackInstr* instr, long* &op_stack, long* &stack_pos)
+void StackInterpreter::ProcessLoadCharArrayElement(StackInstr* instr, size_t* &op_stack, long* &stack_pos)
 {
 #ifdef _DEBUG
   wcout << L"stack oper: LOAD_CHAR_ARY_ELM; call_pos=" << (*call_stack_pos) << endl;
@@ -2175,7 +2175,7 @@ void StackInterpreter::ProcessLoadCharArrayElement(StackInstr* instr, long* &op_
  * Processes a store byte array
  * variable instruction.
  ********************************/
-void StackInterpreter::ProcessStoreByteArrayElement(StackInstr* instr, long* &op_stack, long* &stack_pos)
+void StackInterpreter::ProcessStoreByteArrayElement(StackInstr* instr, size_t* &op_stack, long* &stack_pos)
 {
 #ifdef _DEBUG
   wcout << L"stack oper: STOR_BYTE_ARY_ELM; call_pos=" << (*call_stack_pos) << endl;
@@ -2202,7 +2202,7 @@ void StackInterpreter::ProcessStoreByteArrayElement(StackInstr* instr, long* &op
  * Processes a store char array
  * variable instruction.
  ********************************/
-void StackInterpreter::ProcessStoreCharArrayElement(StackInstr* instr, long* &op_stack, long* &stack_pos)
+void StackInterpreter::ProcessStoreCharArrayElement(StackInstr* instr, size_t* &op_stack, long* &stack_pos)
 {
 #ifdef _DEBUG
   wcout << L"stack oper: STOR_CHAR_ARY_ELM; call_pos=" << (*call_stack_pos) << endl;
@@ -2229,7 +2229,7 @@ void StackInterpreter::ProcessStoreCharArrayElement(StackInstr* instr, long* &op
  * Processes a load float array
  * variable instruction.
  ********************************/
-void StackInterpreter::ProcessLoadFloatArrayElement(StackInstr* instr, long* &op_stack, long* &stack_pos)
+void StackInterpreter::ProcessLoadFloatArrayElement(StackInstr* instr, size_t* &op_stack, long* &stack_pos)
 {
 #ifdef _DEBUG
   wcout << L"stack oper: LOAD_FLOAT_ARY_ELM; call_pos=" << (*call_stack_pos) << endl;
@@ -2257,7 +2257,7 @@ void StackInterpreter::ProcessLoadFloatArrayElement(StackInstr* instr, long* &op
  * Processes a store float array
  * variable instruction.
  ********************************/
-void StackInterpreter::ProcessStoreFloatArrayElement(StackInstr* instr, long* &op_stack, long* &stack_pos)
+void StackInterpreter::ProcessStoreFloatArrayElement(StackInstr* instr, size_t* &op_stack, long* &stack_pos)
 {
 #ifdef _DEBUG
   wcout << L"stack oper: STOR_FLOAT_ARY_ELM; call_pos=" << (*call_stack_pos) << endl;
@@ -2441,7 +2441,7 @@ void StackInterpreter::ProcessDllUnload(StackInstr* instr)
 }
 
 typedef void (*lib_func_def) (VMContext& callbacks);
-void StackInterpreter::ProcessDllCall(StackInstr* instr, long* &op_stack, long* &stack_pos)
+void StackInterpreter::ProcessDllCall(StackInstr* instr, size_t* &op_stack, long* &stack_pos)
 {
 #ifdef _DEBUG
   wcout << L"stack oper: shared LIBRARY_FUNC_CALL; call_pos=" << (*call_stack_pos) << endl;

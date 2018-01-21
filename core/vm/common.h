@@ -1389,7 +1389,7 @@ class ObjectDeserializer
   const char* buffer;
   long buffer_offset;
   long buffer_array_size;
-  long* op_stack;
+  size_t* op_stack;
   long* stack_pos;
   StackClass* cls;
   long* instance;
@@ -1438,7 +1438,7 @@ class ObjectDeserializer
   }
 
  public:
-  ObjectDeserializer(const char* b, long s, long* stack, long* pos) {
+  ObjectDeserializer(const char* b, long s, size_t* stack, long* pos) {
     op_stack = stack;
     stack_pos = pos;
     buffer = b;
@@ -1450,7 +1450,7 @@ class ObjectDeserializer
   }
 
   ObjectDeserializer(const char* b, long o, map<INT_VALUE, long*> &c, 
-		     long s, long* stack, long* pos) {
+		     long s, size_t* stack, long* pos) {
     op_stack = stack;
     stack_pos = pos;
     buffer = b;
@@ -1491,7 +1491,7 @@ class TrapProcessor {
   // pops an integer from the calculation stack.  this code
   // in normally inlined and there's a macro version available.
   //
-  static inline long PopInt(long* op_stack, long* stack_pos) {    
+  static inline long PopInt(size_t* op_stack, long* stack_pos) {    
 #ifdef _DEBUG
     long v = op_stack[--(*stack_pos)];
     wcout << L"  [pop_i: stack_pos=" << (*stack_pos) << L"; value=" << v << L"("
@@ -1506,7 +1506,7 @@ class TrapProcessor {
   // pushes an integer onto the calculation stack.  this code
   // in normally inlined and there's a macro version available.
   //
-  static inline void PushInt(long v, long* op_stack, long* stack_pos) {
+  static inline void PushInt(long v, size_t* op_stack, long* stack_pos) {
 #ifdef _DEBUG
     wcout << L"  [push_i: stack_pos=" << (*stack_pos) << L"; value=" << v << L"("
 	  << (void*)v << L")]" << endl;
@@ -1517,7 +1517,7 @@ class TrapProcessor {
   //
   // pushes an double onto the calculation stack.
   //
-  static inline void PushFloat(FLOAT_VALUE v, long* op_stack, long* stack_pos) {
+  static inline void PushFloat(FLOAT_VALUE v, size_t* op_stack, long* stack_pos) {
 #ifdef _DEBUG
     wcout << L"  [push_f: stack_pos=" << (*stack_pos) << L"; value=" << v << L"]" << endl;
 #endif
@@ -1533,7 +1533,7 @@ class TrapProcessor {
   //
   // swaps two integers on the calculation stack
   //
-  static inline void SwapInt(long* op_stack, long* stack_pos) {
+  static inline void SwapInt(size_t* op_stack, long* stack_pos) {
     long v = op_stack[(*stack_pos) - 2];
     op_stack[(*stack_pos) - 2] = op_stack[(*stack_pos) - 1];
     op_stack[(*stack_pos) - 1] = v;
@@ -1542,7 +1542,7 @@ class TrapProcessor {
   //
   // pops a double from the calculation stack
   //
-  static inline FLOAT_VALUE PopFloat(long* op_stack, long* stack_pos) {
+  static inline FLOAT_VALUE PopFloat(size_t* op_stack, long* stack_pos) {
     FLOAT_VALUE v;
 
 #ifdef _X64
@@ -1563,7 +1563,7 @@ class TrapProcessor {
   // peeks at the integer on the top of the
   // execution stack.
   //
-  static inline long TopInt(long* op_stack, long* stack_pos) {
+  static inline long TopInt(size_t* op_stack, long* stack_pos) {
 #ifdef _DEBUG
     long v = op_stack[(*stack_pos) - 1];
     wcout << L"  [top_i: stack_pos=" << (*stack_pos) << L"; value=" << v << L"(" << (void*)v << L")]" << endl;
@@ -1577,7 +1577,7 @@ class TrapProcessor {
   // peeks at the double on the top of the
   // execution stack.
   //
-  static inline FLOAT_VALUE TopFloat(long* op_stack, long* stack_pos) {
+  static inline FLOAT_VALUE TopFloat(size_t* op_stack, long* stack_pos) {
     FLOAT_VALUE v;
 
 #ifdef _X64
@@ -1595,132 +1595,132 @@ class TrapProcessor {
   }
 
   // main trap functions
-  static bool LoadClsInstId(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool LoadNewObjInst(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool LoadClsByInst(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool ConvertBytesToUnicode(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool ConvertUnicodeToBytes(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool LoadMultiArySize(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool CpyCharStrAry(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool CpyCharStrArys(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool CpyIntStrAry(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool CpyFloatStrAry(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool StdOutBool(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool StdOutByte(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool StdOutChar(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool StdOutInt(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool StdOutFloat(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool StdOutCharAry(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool StdOutByteAryLen(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool StdOutCharAryLen(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool StdInString(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool StdErrBool(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool StdErrByte(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool StdErrChar(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool StdErrInt(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool StdErrFloat(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool StdErrCharAry(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool StdErrByteAry(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool Exit(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool GmtTime(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool SysTime(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool DateTimeSet1(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool DateTimeSet2(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool DateTimeAddDays(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool DateTimeAddHours(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool DateTimeAddMins(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool DateTimeAddSecs(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool TimerStart(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool TimerEnd(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool TimerElapsed(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool GetPltfrm(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool GetVersion(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool GetSysProp(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool SetSysProp(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool SockTcpResolveName(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool SockTcpHostName(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool SockTcpConnect(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool SockTcpBind(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool SockTcpListen(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool SockTcpAccept(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool SockTcpClose(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool SockTcpOutString(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool SockTcpInString(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool SockTcpSslConnect(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool SockTcpSslCert(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool SockTcpSslClose(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool SockTcpSslOutString(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool SockTcpSslInString(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool SerlChar(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool SerlInt(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool SerlFloat(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool SerlObjInst(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool SerlByteAry(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool SerlCharAry(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool SerlIntAry(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool SerlObjAry(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool SerlFloatAry(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool DeserlChar(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool DeserlInt(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool DeserlFloat(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool DeserlObjInst(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool DeserlByteAry(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool DeserlCharAry(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool DeserlIntAry(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool DeserlObjAry(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool DeserlFloatAry(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool FileOpenRead(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool FileOpenAppend(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool FileOpenWrite(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool FileOpenReadWrite(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool FileClose(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool FileFlush(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool FileInString(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool FileOutString(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool FileRewind(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool SockTcpIsConnected(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool SockTcpInByte(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool SockTcpInByteAry(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool SockTcpInCharAry(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool SockTcpOutByte(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool SockTcpOutByteAry(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool SockTcpOutCharAry(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool SockTcpSslInByte(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool SockTcpSslInByteAry(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool SockTcpSslInCharAry(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool SockTcpSslOutByte(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool SockTcpSslOutByteAry(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool SockTcpSslOutCharAry(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool FileInByte(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool FileInCharAry(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool FileInByteAry(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool FileOutByte(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool FileOutByteAry(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool FileOutCharAry(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool FileSeek(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool FileEof(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool FileIsOpen(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool FileCanWriteOnly(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool FileCanReadOnly(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool FileCanReadWrite(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool FileExists(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool FileSize(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool FileAccountOwner(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool FileGroupOwner(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool FileDelete(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool FileRename(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool FileCreateTime(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool FileModifiedTime(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool FileAccessedTime(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool DirCreate(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool DirExists(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
-  static bool DirList(StackProgram* program, long* inst, long* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool LoadClsInstId(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool LoadNewObjInst(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool LoadClsByInst(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool ConvertBytesToUnicode(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool ConvertUnicodeToBytes(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool LoadMultiArySize(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool CpyCharStrAry(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool CpyCharStrArys(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool CpyIntStrAry(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool CpyFloatStrAry(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool StdOutBool(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool StdOutByte(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool StdOutChar(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool StdOutInt(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool StdOutFloat(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool StdOutCharAry(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool StdOutByteAryLen(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool StdOutCharAryLen(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool StdInString(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool StdErrBool(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool StdErrByte(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool StdErrChar(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool StdErrInt(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool StdErrFloat(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool StdErrCharAry(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool StdErrByteAry(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool Exit(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool GmtTime(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool SysTime(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool DateTimeSet1(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool DateTimeSet2(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool DateTimeAddDays(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool DateTimeAddHours(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool DateTimeAddMins(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool DateTimeAddSecs(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool TimerStart(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool TimerEnd(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool TimerElapsed(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool GetPltfrm(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool GetVersion(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool GetSysProp(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool SetSysProp(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool SockTcpResolveName(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool SockTcpHostName(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool SockTcpConnect(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool SockTcpBind(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool SockTcpListen(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool SockTcpAccept(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool SockTcpClose(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool SockTcpOutString(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool SockTcpInString(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool SockTcpSslConnect(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool SockTcpSslCert(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool SockTcpSslClose(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool SockTcpSslOutString(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool SockTcpSslInString(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool SerlChar(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool SerlInt(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool SerlFloat(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool SerlObjInst(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool SerlByteAry(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool SerlCharAry(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool SerlIntAry(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool SerlObjAry(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool SerlFloatAry(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool DeserlChar(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool DeserlInt(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool DeserlFloat(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool DeserlObjInst(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool DeserlByteAry(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool DeserlCharAry(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool DeserlIntAry(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool DeserlObjAry(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool DeserlFloatAry(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool FileOpenRead(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool FileOpenAppend(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool FileOpenWrite(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool FileOpenReadWrite(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool FileClose(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool FileFlush(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool FileInString(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool FileOutString(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool FileRewind(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool SockTcpIsConnected(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool SockTcpInByte(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool SockTcpInByteAry(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool SockTcpInCharAry(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool SockTcpOutByte(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool SockTcpOutByteAry(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool SockTcpOutCharAry(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool SockTcpSslInByte(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool SockTcpSslInByteAry(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool SockTcpSslInCharAry(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool SockTcpSslOutByte(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool SockTcpSslOutByteAry(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool SockTcpSslOutCharAry(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool FileInByte(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool FileInCharAry(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool FileInByteAry(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool FileOutByte(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool FileOutByteAry(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool FileOutCharAry(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool FileSeek(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool FileEof(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool FileIsOpen(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool FileCanWriteOnly(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool FileCanReadOnly(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool FileCanReadWrite(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool FileExists(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool FileSize(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool FileAccountOwner(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool FileGroupOwner(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool FileDelete(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool FileRename(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool FileCreateTime(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool FileModifiedTime(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool FileAccessedTime(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool DirCreate(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool DirExists(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool DirList(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
 
   //
   // writes out serialized objects
   // 
   static inline void WriteSerializedBytes(const char* array, const long src_buffer_size, long* inst,
-					  long* &op_stack, long* &stack_pos) {
+					  size_t* &op_stack, long* &stack_pos) {
     long* dest_buffer = (long*)inst[0];
     if(array && dest_buffer) {
       const long dest_pos = inst[1];
@@ -1740,7 +1740,7 @@ class TrapProcessor {
   // serializes an array
   // 
   static inline void SerializeArray(const long* array, ParamType type, long* inst, 
-				    long* &op_stack, long* &stack_pos) {
+				    size_t* &op_stack, long* &stack_pos) {
     if(array) {
       SerializeByte(1, inst, op_stack, stack_pos);
       const long array_size = array[0];
@@ -1883,18 +1883,18 @@ class TrapProcessor {
   //
   // deserializes an array of objects
   // 
-  static inline long* DeserializeArray(ParamType type, long* inst, long* &op_stack, long* &stack_pos);
+  static inline long* DeserializeArray(ParamType type, long* inst, size_t* &op_stack, long* &stack_pos);
 
   //
   // expand buffer
   //
   static long* ExpandSerialBuffer(const long src_buffer_size, long* dest_buffer, long* inst, 
-				  long* &op_stack, long* &stack_pos);
+				  size_t* &op_stack, long* &stack_pos);
   
   // 
   // serializes a byte
   // 
-  static void SerializeByte(char value, long* inst, long* &op_stack, long* &stack_pos) {
+  static void SerializeByte(char value, long* inst, size_t* &op_stack, long* &stack_pos) {
     const long src_buffer_size = sizeof(value);
     long* dest_buffer = (long*)inst[0];
     
@@ -1934,7 +1934,7 @@ class TrapProcessor {
   // 
   // serializes a char
   // 
-  static void SerializeChar(wchar_t value, long* inst, long* &op_stack, long* &stack_pos) {
+  static void SerializeChar(wchar_t value, long* inst, size_t* &op_stack, long* &stack_pos) {
     // convert to bytes
     string out;
     CharacterToBytes(value, out);
@@ -1989,7 +1989,7 @@ class TrapProcessor {
   // 
   // serializes an int
   // 
-  static void SerializeInt(INT_VALUE value, long* inst, long* &op_stack, long* &stack_pos) {
+  static void SerializeInt(INT_VALUE value, long* inst, size_t* &op_stack, long* &stack_pos) {
     const long src_buffer_size = sizeof(value);
     long* dest_buffer = (long*)inst[0];
 
@@ -2029,7 +2029,7 @@ class TrapProcessor {
   // 
   // serializes a float
   // 
-  static void SerializeFloat(FLOAT_VALUE value, long* inst, long* &op_stack, long* &stack_pos) {
+  static void SerializeFloat(FLOAT_VALUE value, long* inst, size_t* &op_stack, long* &stack_pos) {
     const long src_buffer_size = sizeof(value);
     long* dest_buffer = (long*)inst[0];
 
@@ -2068,72 +2068,72 @@ class TrapProcessor {
   //
   // serialize and deserialize object instances
   //
-  static void SerializeObject(long* inst, StackFrame* frame, long* &op_stack, long* &stack_pos);
-  static void DeserializeObject(long* inst, long* &op_stack, long* &stack_pos);
+  static void SerializeObject(long* inst, StackFrame* frame, size_t* &op_stack, long* &stack_pos);
+  static void DeserializeObject(long* inst, size_t* &op_stack, long* &stack_pos);
 
   //
   // time functions
   //
   static inline void ProcessCurrentTime(StackFrame* frame, bool is_gmt);
-  static inline void ProcessSetTime1(long* &op_stack, long* &stack_pos);
-  static inline void ProcessSetTime2(long* &op_stack, long* &stack_pos);
-  static inline void ProcessSetTime3(long* &op_stack, long* &stack_pos);
-  static inline void ProcessAddTime(TimeInterval t, long* &op_stack, long* &stack_pos);
-  static inline void ProcessTimerStart(long* &op_stack, long* &stack_pos);
-  static inline void ProcessTimerEnd(long* &op_stack, long* &stack_pos);
-  static inline void ProcessTimerElapsed(long* &op_stack, long* &stack_pos);
+  static inline void ProcessSetTime1(size_t* &op_stack, long* &stack_pos);
+  static inline void ProcessSetTime2(size_t* &op_stack, long* &stack_pos);
+  static inline void ProcessSetTime3(size_t* &op_stack, long* &stack_pos);
+  static inline void ProcessAddTime(TimeInterval t, size_t* &op_stack, long* &stack_pos);
+  static inline void ProcessTimerStart(size_t* &op_stack, long* &stack_pos);
+  static inline void ProcessTimerEnd(size_t* &op_stack, long* &stack_pos);
+  static inline void ProcessTimerElapsed(size_t* &op_stack, long* &stack_pos);
   
   // 
   // platform string
   //
-  static inline void ProcessPlatform(StackProgram* program, long* &op_stack, long* &stack_pos);
+  static inline void ProcessPlatform(StackProgram* program, size_t* &op_stack, long* &stack_pos);
 
   // 
   // platform string
   //
   static inline void ProcessFileOwner(const char* name, bool is_account,
-				      StackProgram* program, long* &op_stack, long* &stack_pos);
+				      StackProgram* program, size_t* &op_stack, long* &stack_pos);
   
   // 
   // version string
   //
-  static inline void ProcessVersion(StackProgram* program, long* &op_stack, long* &stack_pos);
+  static inline void ProcessVersion(StackProgram* program, size_t* &op_stack, long* &stack_pos);
 
   //
   // creates new object and call default constructor
   //
-  static inline void CreateNewObject(const wstring &cls_id, long* &op_stack, long* &stack_pos);
+  static inline void CreateNewObject(const wstring &cls_id, size_t* &op_stack, long* &stack_pos);
 
   //
   // creates a new class instance
   //
-  static inline void CreateClassObject(StackClass* cls, long* cls_obj, long* &op_stack, 
+  static inline void CreateClassObject(StackClass* cls, long* cls_obj, size_t* &op_stack, 
 				       long* &stack_pos, StackProgram* program);
 
   //
   // creates an instance of the 'Method' class
   //
   static inline long* CreateMethodObject(long* cls_obj, StackMethod* mthd, StackProgram* program, 
-					 long* &op_stack, long* &stack_pos);
+					 size_t* &op_stack, long* &stack_pos);
 
   //
   // creates a wstring object instance
   //
   static inline long* CreateStringObject(const wstring &value_str, StackProgram* program, 
-					 long* &op_stack, long* &stack_pos);
+					 size_t* &op_stack, long* &stack_pos);
 
  public:
 
   static bool ProcessTrap(StackProgram* program, long* inst, 
-			  long* &op_stack, long* &stack_pos, StackFrame* frame);
+			  size_t* &op_stack, long* &stack_pos, StackFrame* frame);
 };
 
 /********************************
  * Call back for DLL method calls
  ********************************/
-void APITools_MethodCall(long* op_stack, long *stack_pos, long* instance, 
+void APITools_MethodCall(size_t* op_stack, long *stack_pos, long* instance, 
                          const wchar_t* cls_id, const wchar_t* mthd_id);
-void APITools_MethodCallId(long* op_stack, long *stack_pos, long *instance, 
+void APITools_MethodCallId(size_t* op_stack, long *stack_pos, long *instance, 
                            const int cls_id, const int mthd_id);			 
 
 #endif

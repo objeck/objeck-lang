@@ -345,7 +345,7 @@ namespace Runtime {
    * Prototype for jit function
    ********************************/
   typedef int32_t (*jit_fun_ptr)(int32_t cls_id, int32_t mthd_id, int32_t* cls_mem, 
-				 int32_t* inst, int32_t* op_stack, int32_t *stack_pos, 
+				 int32_t* inst, size_t* op_stack, int32_t *stack_pos, 
 				 StackFrame** call_stack, long* call_stack_pos);
   
   /********************************
@@ -930,7 +930,7 @@ namespace Runtime {
     // generates a conditional jump
     bool cond_jmp(InstructionType type);
 
-    inline static int32_t PopInt(int32_t* op_stack, int32_t *stack_pos) {
+    inline static int32_t PopInt(size_t* op_stack, int32_t *stack_pos) {
       int32_t value = op_stack[--(*stack_pos)];
 #ifdef _DEBUG
       wcout << L"\t[pop_i: value=" << (int32_t*)value << L"(" << value << L")]" << L"; pos=" << (*stack_pos) << endl;
@@ -939,7 +939,7 @@ namespace Runtime {
       return value;
     }
 
-    inline static void PushInt(int32_t* op_stack, int32_t *stack_pos, int32_t value) {
+    inline static void PushInt(size_t* op_stack, int32_t *stack_pos, int32_t value) {
       op_stack[(*stack_pos)++] = value;
 #ifdef _DEBUG
       wcout << L"\t[push_i: value=" << (int32_t*)value << L"(" << value << L")]" << L"; pos=" << (*stack_pos) << endl;
@@ -948,7 +948,7 @@ namespace Runtime {
 
     // Process call backs from ASM code
     static void StackCallback(const int32_t instr_id, StackInstr* instr, const int32_t cls_id, 
-			      const int32_t mthd_id, int32_t* inst, int32_t* op_stack, int32_t *stack_pos, 
+			      const int32_t mthd_id, int32_t* inst, size_t* op_stack, int32_t *stack_pos, 
 			      StackFrame** call_stack, long* call_stack_pos, const int32_t ip) {
 #ifdef _DEBUG
       wcout << L"Stack Call: instr=" << instr_id
@@ -963,7 +963,7 @@ namespace Runtime {
 	wcout << L"jit oper: MTHD_CALL: cls=" << instr->GetOperand() << L", mthd=" << instr->GetOperand2() << endl;
 #endif
 	StackInterpreter intpr(call_stack, call_stack_pos);
-	intpr.Execute((long*)op_stack, (long*)stack_pos, ip, program->GetClass(cls_id)->GetMethod(mthd_id), (long*)inst, true);
+	intpr.Execute(op_stack, (long*)stack_pos, ip, program->GetClass(cls_id)->GetMethod(mthd_id), (long*)inst, true);
       }
 	break;
 
@@ -991,7 +991,7 @@ namespace Runtime {
 	}
 	size++;
 	int32_t* mem = (int32_t*)MemoryManager::AllocateArray(size + ((dim + 2) * sizeof(int32_t)), 
-							      BYTE_ARY_TYPE, (long*)op_stack, *stack_pos);
+							      BYTE_ARY_TYPE, op_stack, *stack_pos);
 	mem[0] = size - 1;
 	mem[1] = dim;
 	memcpy(mem + 2, indices, dim * sizeof(int32_t));
@@ -1017,7 +1017,7 @@ namespace Runtime {
 	}
 	size++;
 	int32_t* mem = (int32_t*)MemoryManager::AllocateArray(size + ((dim + 2) * sizeof(int32_t)), 
-							      CHAR_ARY_TYPE, (long*)op_stack, *stack_pos);
+							      CHAR_ARY_TYPE, op_stack, *stack_pos);
 	mem[0] = size - 1;
 	mem[1] = dim;
 	memcpy(mem + 2, indices, dim * sizeof(int32_t));
@@ -1041,7 +1041,7 @@ namespace Runtime {
 	  size *= value;
 	  indices[dim++] = value;
 	}
-	int32_t* mem = (int32_t*)MemoryManager::AllocateArray(size + dim + 2, INT_TYPE, (long*)op_stack, *stack_pos);
+	int32_t* mem = (int32_t*)MemoryManager::AllocateArray(size + dim + 2, INT_TYPE, op_stack, *stack_pos);
 #ifdef _DEBUG
 	wcout << L"jit oper: NEW_INT_ARY: dim=" << dim << L"; size=" << size 
 	      << L"; index=" << (*stack_pos) << L"; mem=" << mem << endl;
@@ -1065,7 +1065,7 @@ namespace Runtime {
 	  indices[dim++] = value;
 	}
 	size *= 2;
-	int32_t* mem = (int32_t*)MemoryManager::AllocateArray(size + dim + 2, INT_TYPE, (long*)op_stack, *stack_pos);
+	int32_t* mem = (int32_t*)MemoryManager::AllocateArray(size + dim + 2, INT_TYPE, op_stack, *stack_pos);
 #ifdef _DEBUG
 	wcout << L"jit oper: NEW_FLOAT_ARY: dim=" << dim << L"; size=" << size 
 	      << L"; index=" << (*stack_pos) << L"; mem=" << mem << endl; 
@@ -1082,7 +1082,7 @@ namespace Runtime {
 	wcout << L"jit oper: NEW_OBJ_INST: id=" << instr->GetOperand() << endl; 
 #endif
 	int32_t* mem = (int32_t*)MemoryManager::AllocateObject(instr->GetOperand(), 
-							       (long*)op_stack, *stack_pos);
+							       op_stack, *stack_pos);
 	PushInt(op_stack, stack_pos, (int32_t)mem);
       }
 	break;
@@ -1311,7 +1311,7 @@ namespace Runtime {
 
       case TRAP:
       case TRAP_RTRN: {
-	long* stack = (long*)op_stack; 
+	size_t* stack = (size_t*)op_stack;
 	long* pos = (long*)stack_pos;
 	if(!TrapProcessor::ProcessTrap(program, (long*)inst, stack, pos, NULL)) {
 	  wcerr << L"  JIT compiled machine code..." << endl;
@@ -1735,7 +1735,7 @@ namespace Runtime {
     double* floats;
 
     int32_t ExecuteMachineCode(int32_t cls_id, int32_t mthd_id, int32_t* inst, unsigned char* code, 
-			       const int32_t code_size, int32_t* op_stack, int32_t *stack_pos,
+			       const int32_t code_size, size_t* op_stack, int32_t *stack_pos,
 			       StackFrame** call_stack, long* call_stack_pos);
 
   public:
@@ -1748,7 +1748,7 @@ namespace Runtime {
     }    
     
     // Executes machine code
-    inline long Execute(StackMethod* cm, long* inst, long* op_stack, long* stack_pos, 
+    inline long Execute(StackMethod* cm, long* inst, size_t* op_stack, long* stack_pos, 
 			StackFrame** call_stack, long* call_stack_pos) {
       method = cm;
       int32_t cls_id = method->GetClass()->GetId();
@@ -1769,7 +1769,7 @@ namespace Runtime {
       
       // execute
       return ExecuteMachineCode(cls_id, mthd_id, (int32_t*)inst, code, code_index, 
-				(int32_t*)op_stack, (int32_t*)stack_pos, call_stack, call_stack_pos);
+				op_stack, (int32_t*)stack_pos, call_stack, call_stack_pos);
     }
   };
 }

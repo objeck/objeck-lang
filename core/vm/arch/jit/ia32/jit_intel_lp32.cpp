@@ -3827,7 +3827,7 @@ void JitExecutor::Initialize(StackProgram* p) {
 }
 
 int32_t JitExecutor::ExecuteMachineCode(int32_t cls_id, int32_t mthd_id, int32_t* inst, 
-					unsigned char* code, const int32_t code_size, int32_t* op_stack, int32_t *stack_pos,
+					unsigned char* code, const int32_t code_size, size_t* op_stack, int32_t *stack_pos,
 					StackFrame** call_stack, long* call_stack_pos) {
   // create function
   jit_fun_ptr jit_fun = (jit_fun_ptr)code;

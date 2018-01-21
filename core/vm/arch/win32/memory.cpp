@@ -276,7 +276,7 @@ void MemoryManager::RemoveJitMethodRoot(long* mem)
   id = NULL;
 }
 
-long* MemoryManager::AllocateObject(const long obj_id, long* op_stack, long stack_pos, bool collect)
+long* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, long stack_pos, bool collect)
 {
   StackClass* cls = prgm->GetClass(obj_id);
 #ifdef _DEBUG
@@ -366,7 +366,7 @@ long* MemoryManager::AllocateObject(const long obj_id, long* op_stack, long stac
 }
 
 long* MemoryManager::AllocateArray(const long size, const MemoryType type,
-                                   long* op_stack, long stack_pos, bool collect)
+                                   size_t* op_stack, long stack_pos, bool collect)
 {
   long calc_size;
   long* mem;
@@ -508,7 +508,7 @@ long* MemoryManager::ValidObjectCast(long* mem, long to_id, int* cls_hierarchy, 
   return NULL;
 }
 
-void MemoryManager::CollectAllMemory(long* op_stack, long stack_pos)
+void MemoryManager::CollectAllMemory(size_t* op_stack, long stack_pos)
 {
 #ifdef _TIMING
   clock_t start = clock();
