@@ -40,17 +40,17 @@ using namespace std;
 #define ARRAY_HEADER_OFFSET 3
 
 // function declaration for native C++ callbacks
-typedef void(*APITools_MethodCall_Ptr) (long* op_stack, long *stack_pos, long *instance, 
+typedef void(*APITools_MethodCall_Ptr) (size_t* op_stack, long *stack_pos, long *instance, 
 					const wchar_t* cls_name, const wchar_t* mthd_name);
-typedef void(*APITools_MethodCallId_Ptr) (long* op_stack, long *stack_pos, long *instance, 
+typedef void(*APITools_MethodCallId_Ptr) (size_t* op_stack, long *stack_pos, long *instance, 
 					const int cls_id, const int mthd_id);
-typedef long*(*APITools_AllocateObject_Ptr) (const wchar_t*, long* op_stack, long stack_pos, bool collect);
+typedef long*(*APITools_AllocateObject_Ptr) (const wchar_t*, size_t* op_stack, long stack_pos, bool collect);
 typedef long*(*APITools_AllocateArray_Ptr) (const long size, const instructions::MemoryType type, 
-					    long* op_stack, long stack_pos, bool collect);
+					    size_t* op_stack, long stack_pos, bool collect);
 // context structure
 struct VMContext {
   long* data_array;
-  long* op_stack;
+  size_t* op_stack;
   long* stack_pos;
   APITools_AllocateArray_Ptr alloc_array;
   APITools_AllocateObject_Ptr alloc_obj;
@@ -346,7 +346,7 @@ void APITools_SetStringValue(VMContext &context, int index, const wstring &value
   wcsncpy(char_array_ptr, value.c_str(), char_array_size);
   
   // create 'System.String' object instance
-  long* str_obj = context.alloc_obj(L"System.String", (long*)context.op_stack, 
+  long* str_obj = context.alloc_obj(L"System.String", context.op_stack, 
 				    *context.stack_pos, false);
   str_obj[0] = (long)char_array;
   str_obj[1] = char_array_size;
