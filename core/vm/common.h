@@ -1341,7 +1341,7 @@ class ObjectSerializer
   inline void SerializeChar(const wchar_t v) {
     string out;
     CharacterToBytes(v, out);
-    SerializeInt(out.size());
+    SerializeInt((INT_VALUE)out.size());
     for(size_t i = 0; i < out.size(); ++i) {
       values.push_back(out[i]); 
     }
@@ -1534,7 +1534,7 @@ class TrapProcessor {
   // swaps two integers on the calculation stack
   //
   static inline void SwapInt(size_t* op_stack, long* stack_pos) {
-    long v = op_stack[(*stack_pos) - 2];
+    size_t v = op_stack[(*stack_pos) - 2];
     op_stack[(*stack_pos) - 2] = op_stack[(*stack_pos) - 1];
     op_stack[(*stack_pos) - 1] = v;
   }
@@ -1723,7 +1723,7 @@ class TrapProcessor {
 					  size_t* &op_stack, long* &stack_pos) {
     size_t* dest_buffer = (size_t*)inst[0];
     if(array && dest_buffer) {
-      const long dest_pos = inst[1];
+      const long dest_pos = (long)inst[1];
 
       // expand buffer, if needed
       dest_buffer = ExpandSerialBuffer(src_buffer_size, dest_buffer, inst, op_stack, stack_pos);
@@ -1743,16 +1743,16 @@ class TrapProcessor {
 				    size_t* &op_stack, long* &stack_pos) {
     if(array) {
       SerializeByte(1, inst, op_stack, stack_pos);
-      const long array_size = array[0];
+      const long array_size = (long)array[0];
 
       // write values
       switch(type) {
       case BYTE_ARY_PARM: {
 	// write metadata
 	char* array_ptr = (char*)(array + 3);
-	SerializeInt(array[0], inst, op_stack, stack_pos);
-	SerializeInt(array[1], inst, op_stack, stack_pos);
-	SerializeInt(array[2], inst, op_stack, stack_pos);	
+	SerializeInt((INT_VALUE)array[0], inst, op_stack, stack_pos);
+	SerializeInt((INT_VALUE)array[1], inst, op_stack, stack_pos);
+	SerializeInt((INT_VALUE)array[2], inst, op_stack, stack_pos);
 	// write data
 	WriteSerializedBytes(array_ptr, array_size, inst, op_stack, stack_pos);
       }
@@ -1763,9 +1763,9 @@ class TrapProcessor {
 	char* array_ptr = (char*)(array + 3);
 	const string buffer = UnicodeToBytes((const wchar_t*)array_ptr);
 	// write metadata	
-	SerializeInt(buffer.size(), inst, op_stack, stack_pos);
-	SerializeInt(array[1], inst, op_stack, stack_pos);
-	SerializeInt(buffer.size(), inst, op_stack, stack_pos);	
+	SerializeInt((INT_VALUE)buffer.size(), inst, op_stack, stack_pos);
+	SerializeInt((INT_VALUE)array[1], inst, op_stack, stack_pos);
+	SerializeInt((INT_VALUE)buffer.size(), inst, op_stack, stack_pos);
 	// write data
 	WriteSerializedBytes((const char*)buffer.c_str(), buffer.size(), inst, op_stack, stack_pos);
       }
@@ -1774,18 +1774,18 @@ class TrapProcessor {
       case INT_ARY_PARM: {
 	// write metadata
 	char* array_ptr = (char*)(array + 3);
-	SerializeInt(array[0], inst, op_stack, stack_pos);
-	SerializeInt(array[1], inst, op_stack, stack_pos);
-	SerializeInt(array[2], inst, op_stack, stack_pos);	
+	SerializeInt((INT_VALUE)array[0], inst, op_stack, stack_pos);
+	SerializeInt((INT_VALUE)array[1], inst, op_stack, stack_pos);
+	SerializeInt((INT_VALUE)array[2], inst, op_stack, stack_pos);
 	// write data
 	WriteSerializedBytes(array_ptr, array_size * sizeof(INT_VALUE), inst, op_stack, stack_pos);
       }
 	break;
 	
       case OBJ_ARY_PARM: {
-	SerializeInt(array[0], inst, op_stack, stack_pos);
-	SerializeInt(array[1], inst, op_stack, stack_pos);
-	SerializeInt(array[2], inst, op_stack, stack_pos);
+	SerializeInt((INT_VALUE)array[0], inst, op_stack, stack_pos);
+	SerializeInt((INT_VALUE)array[1], inst, op_stack, stack_pos);
+	SerializeInt((INT_VALUE)array[2], inst, op_stack, stack_pos);
 
   size_t* array_ptr = (size_t*)(array + 3);
 	for(int i = 0; i < array_size; ++i) {
@@ -1813,9 +1813,9 @@ class TrapProcessor {
       case FLOAT_ARY_PARM: {
 	// write metadata
 	char* array_ptr = (char*)(array + 3);
-	SerializeInt(array[0], inst, op_stack, stack_pos);
-	SerializeInt(array[1], inst, op_stack, stack_pos);
-	SerializeInt(array[2], inst, op_stack, stack_pos);	
+	SerializeInt((INT_VALUE)array[0], inst, op_stack, stack_pos);
+	SerializeInt((INT_VALUE)array[1], inst, op_stack, stack_pos);
+	SerializeInt((INT_VALUE)array[2], inst, op_stack, stack_pos);
 	// write data
 	WriteSerializedBytes(array_ptr, array_size * sizeof(FLOAT_VALUE), inst, op_stack, stack_pos);
       }
