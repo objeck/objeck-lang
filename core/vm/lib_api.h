@@ -40,9 +40,9 @@ using namespace std;
 #define ARRAY_HEADER_OFFSET 3
 
 // function declaration for native C++ callbacks
-typedef void(*APITools_MethodCall_Ptr) (size_t* op_stack, long *stack_pos, long *instance, 
+typedef void(*APITools_MethodCall_Ptr) (size_t* op_stack, long *stack_pos, size_t* instance, 
 					const wchar_t* cls_name, const wchar_t* mthd_name);
-typedef void(*APITools_MethodCallId_Ptr) (size_t* op_stack, long *stack_pos, long *instance, 
+typedef void(*APITools_MethodCallId_Ptr) (size_t* op_stack, long *stack_pos, size_t* instance,
 					const int cls_id, const int mthd_id);
 typedef long*(*APITools_AllocateObject_Ptr) (const wchar_t*, size_t* op_stack, long stack_pos, bool collect);
 typedef long*(*APITools_AllocateArray_Ptr) (const long size, const instructions::MemoryType type, 

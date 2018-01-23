@@ -77,7 +77,7 @@ StackProgram* Scripter::GetProgram() {
 /********************************
  * ObjectSerializer struct
  ********************************/
-void ObjectSerializer::CheckObject(long* mem, bool is_obj, long depth) {
+void ObjectSerializer::CheckObject(size_t* mem, bool is_obj, long depth) {
   if(mem) {
     SerializeByte(1);
     StackClass* cls = MemoryManager::GetClass(mem);
@@ -113,7 +113,7 @@ void ObjectSerializer::CheckObject(long* mem, bool is_obj, long depth) {
 #endif
       // primitive or object array
       if(!WasSerialized(mem)) {
-        long* array = (mem);
+        size_t* array = (mem);
         const long size = array[0];
         const long dim = array[1];
         long* objects = (long*)(array + 2 + dim);
@@ -191,7 +191,7 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
       if(array) {
         SerializeByte(1);
         // mark data
-        if(!WasSerialized((long*)(*mem))) {
+        if(!WasSerialized((size_t*)(*mem))) {
           const long array_size = array[0];
 #ifdef _DEBUG
           wcout << L"\t" << i << L": ----- serializing byte array: mem_id=" << cur_id << L", size=" 
@@ -220,7 +220,7 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
       if(array) {
         SerializeByte(1);
         // mark data
-        if(!WasSerialized((long*)(*mem))) {
+        if(!WasSerialized((size_t*)(*mem))) {
           // convert
           const string buffer = UnicodeToBytes((wchar_t*)(array + 3));
           const long array_size = buffer.size();	  
@@ -250,7 +250,7 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
       if(array) {
         SerializeByte(1);
         // mark data
-        if(!WasSerialized((long*)(*mem))) {
+        if(!WasSerialized((size_t*)(*mem))) {
           const long array_size = array[0];
 #ifdef _DEBUG
           wcout << L"\t" << i << L": ----- serializing int array: mem_id=" << cur_id << L", size=" 
@@ -281,7 +281,7 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
       if(array) {
         SerializeByte(1);
         // mark data
-        if(!WasSerialized((long*)(*mem))) {
+        if(!WasSerialized((size_t*)(*mem))) {
           const long array_size = array[0];
 #ifdef _DEBUG
           wcout << L"\t" << i << L": ----- serializing float array: mem_id=" << cur_id << L", size=" 
@@ -310,7 +310,7 @@ void ObjectSerializer::CheckMemory(long* mem, StackDclr** dclrs, const long dcls
       if(array) {
         SerializeByte(1);
         // mark data
-        if(!WasSerialized((long*)(*mem))) {
+        if(!WasSerialized((size_t*)(*mem))) {
           const long array_size = array[0];
 #ifdef _DEBUG
           wcout << L"\t" << i << L": ----- serializing objeck array: mem_id=" << cur_id << L", size="
@@ -424,7 +424,7 @@ long* ObjectDeserializer::DeserializeObject() {
           const long byte_array_size = DeserializeInt();
           const long byte_array_dim = DeserializeInt();
           const long byte_array_size_dim = DeserializeInt();
-          long* byte_array = (long*)MemoryManager::AllocateArray(byte_array_size +
+          size_t* byte_array = MemoryManager::AllocateArray(byte_array_size +
                                                                  ((byte_array_dim + 2) *
                                                                   sizeof(long)), BYTE_ARY_TYPE,
                                                                  op_stack, *stack_pos, false);
@@ -477,7 +477,7 @@ long* ObjectDeserializer::DeserializeObject() {
                 << char_array_size << L" ---" << endl;
 #endif
           char_array_size = char_array_size_dim = out.size();
-          long* char_array = (long*)MemoryManager::AllocateArray(char_array_size +
+          size_t* char_array = MemoryManager::AllocateArray(char_array_size +
                                                                  ((char_array_dim + 2) *
                                                                   sizeof(long)), CHAR_ARY_TYPE,
                                                                  op_stack, *stack_pos, false);
@@ -513,7 +513,7 @@ long* ObjectDeserializer::DeserializeObject() {
           const long array_size = DeserializeInt();
           const long array_dim = DeserializeInt();
           const long array_size_dim = DeserializeInt();	
-          long* array = (long*)MemoryManager::AllocateArray(array_size + array_dim + 2, INT_TYPE, 
+          size_t* array = MemoryManager::AllocateArray(array_size + array_dim + 2, INT_TYPE,
                                                             op_stack, *stack_pos, false);
           array[0] = array_size;
           array[1] = array_dim;
@@ -551,7 +551,7 @@ long* ObjectDeserializer::DeserializeObject() {
           const long array_size = DeserializeInt();
           const long array_dim = DeserializeInt();
           const long array_size_dim = DeserializeInt();
-          long* array = (long*)MemoryManager::AllocateArray(array_size * 2 + array_dim + 2, INT_TYPE, 
+          size_t* array = MemoryManager::AllocateArray(array_size * 2 + array_dim + 2, INT_TYPE,
                                                             op_stack, *stack_pos, false);
 
           array[0] = array_size;
@@ -589,12 +589,12 @@ long* ObjectDeserializer::DeserializeObject() {
           const long array_size = DeserializeInt();
           const long array_dim = DeserializeInt();
           const long array_size_dim = DeserializeInt();
-          long* array = (long*)MemoryManager::AllocateArray(array_size + array_dim + 2, INT_TYPE,
+          size_t* array = MemoryManager::AllocateArray(array_size + array_dim + 2, INT_TYPE,
 							    op_stack, *stack_pos, false);
           array[0] = array_size;
           array[1] = array_dim;
           array[2] = array_size_dim;
-          long* array_ptr = array + 3;
+          size_t* array_ptr = array + 3;
 
           // copy content
           for(int i = 0; i < array_size; i++) {
@@ -618,7 +618,7 @@ long* ObjectDeserializer::DeserializeObject() {
           instance[instance_pos++] = (long)array;
         }
         else {
-          map<INT_VALUE, long*>::iterator found = mem_cache.find(mem_id);
+          map<INT_VALUE, size_t*>::iterator found = mem_cache.find(mem_id);
           if (found == mem_cache.end()) {
             return NULL;
           }
@@ -653,7 +653,7 @@ long* ObjectDeserializer::DeserializeObject() {
  * SDK functions
  ********************************/
 #ifndef _UTILS
-void APITools_MethodCall(size_t* op_stack, long *stack_pos, long *instance, int cls_id, int mthd_id) {
+void APITools_MethodCall(size_t* op_stack, long *stack_pos, size_t* instance, int cls_id, int mthd_id) {
 #ifdef _SCRIPTER
   StackClass* cls = Scripter::GetProgram()->GetClass(cls_id);
 #else
@@ -677,7 +677,7 @@ void APITools_MethodCall(size_t* op_stack, long *stack_pos, long *instance, int 
   }
 }
 
-void APITools_MethodCall(size_t* op_stack, long *stack_pos, long *instance, 
+void APITools_MethodCall(size_t* op_stack, long* stack_pos, size_t* instance, 
                          const wchar_t* cls_id, const wchar_t* mthd_id) 
 {
 #ifdef _SCRIPTER
@@ -731,7 +731,7 @@ void APITools_MethodCallId(size_t* op_stack, long *stack_pos, long *instance,
  *  TrapManager class
  ********************************/
 void TrapProcessor::CreateNewObject(const wstring &cls_id, size_t* &op_stack, long* &stack_pos) {
-  long* obj = MemoryManager::AllocateObject(cls_id.c_str(), op_stack, *stack_pos, false);
+  size_t* obj = MemoryManager::AllocateObject(cls_id.c_str(), op_stack, *stack_pos, false);
   if(obj) {
     // instance will be put on stack by method call
     const wstring mthd_name = cls_id + L":New:";
@@ -745,15 +745,15 @@ void TrapProcessor::CreateNewObject(const wstring &cls_id, size_t* &op_stack, lo
 /********************************
  * Creates a container for a method
  ********************************/
-long* TrapProcessor::CreateMethodObject(long* cls_obj, StackMethod* mthd, StackProgram* program, 
+long* TrapProcessor::CreateMethodObject(size_t* cls_obj, StackMethod* mthd, StackProgram* program,
                                         size_t* &op_stack, long* &stack_pos) {
-  long* mthd_obj = MemoryManager::AllocateObject(program->GetMethodObjectId(),
+  size_t* mthd_obj = MemoryManager::AllocateObject(program->GetMethodObjectId(),
                                                  op_stack, *stack_pos,
                                                  false);
   // method and class object
-  mthd_obj[0] = (long)mthd;
-  mthd_obj[1] = (long)cls_obj;
-      
+  mthd_obj[0] = (size_t)mthd;
+  mthd_obj[1] = (size_t)cls_obj;
+  
   // set method name
   const wstring &qual_mthd_name = mthd->GetName();
   const size_t semi_qual_mthd_index = qual_mthd_name.find(':');
@@ -852,7 +852,7 @@ long* TrapProcessor::CreateMethodObject(long* cls_obj, StackMethod* mthd, StackP
   // create type array
   const long type_obj_array_size = (long)data_type_obj_holder.size();
   const long type_obj_array_dim = 1;
-  long* type_obj_array = (long*)MemoryManager::AllocateArray(type_obj_array_size +
+  long* type_obj_array = MemoryManager::AllocateArray(type_obj_array_size +
                                                              type_obj_array_dim + 2,
                                                              INT_TYPE, op_stack,
                                                              *stack_pos, false);
@@ -873,12 +873,12 @@ long* TrapProcessor::CreateMethodObject(long* cls_obj, StackMethod* mthd, StackP
 /********************************
  * Creates a container for a class
  ********************************/
-void TrapProcessor::CreateClassObject(StackClass* cls, long* cls_obj, size_t* &op_stack, 
+void TrapProcessor::CreateClassObject(StackClass* cls, size_t* cls_obj, size_t* &op_stack,
                                       long* &stack_pos, StackProgram* program) {
   // create and set methods
   const long mthd_obj_array_size = cls->GetMethodCount();
   const long mthd_obj_array_dim = 1;
-  long* mthd_obj_array = (long*)MemoryManager::AllocateArray(mthd_obj_array_size +
+  size_t* mthd_obj_array = MemoryManager::AllocateArray(mthd_obj_array_size +
                                                              mthd_obj_array_dim + 2,
                                                              INT_TYPE, op_stack,
                                                              *stack_pos, false);
@@ -888,9 +888,9 @@ void TrapProcessor::CreateClassObject(StackClass* cls, long* cls_obj, size_t* &o
   mthd_obj_array[2] = mthd_obj_array_size;
       
   StackMethod** methods = cls->GetMethods();
-  long* mthd_obj_array_ptr = mthd_obj_array + 3;
+  size_t* mthd_obj_array_ptr = mthd_obj_array + 3;
   for(int i = 0; i < mthd_obj_array_size; i++) {
-    long* mthd_obj = CreateMethodObject(cls_obj, methods[i], program, op_stack, stack_pos);
+    size_t* mthd_obj = CreateMethodObject(cls_obj, methods[i], program, op_stack, stack_pos);
     mthd_obj_array_ptr[i] = (long)mthd_obj;
   }
   cls_obj[1] = (long)mthd_obj_array;
@@ -904,7 +904,7 @@ long* TrapProcessor::CreateStringObject(const wstring &value_str, StackProgram* 
   // create character array
   const long char_array_size = value_str.size();
   const long char_array_dim = 1;
-  long* char_array = (long*)MemoryManager::AllocateArray(char_array_size + 1 +
+  size_t* char_array = MemoryManager::AllocateArray(char_array_size + 1 +
                                                          ((char_array_dim + 2) *
                                                           sizeof(long)),
                                                          CHAR_ARY_TYPE,
@@ -1186,12 +1186,12 @@ void TrapProcessor::ProcessVersion(StackProgram* program, size_t* &op_stack, lon
 //
 // deserializes an array of objects
 // 
-inline long* TrapProcessor::DeserializeArray(ParamType type, long* inst, size_t* &op_stack, long* &stack_pos) {
+inline size_t* TrapProcessor::DeserializeArray(ParamType type, size_t* inst, size_t* &op_stack, long* &stack_pos) {
   if(!DeserializeByte(inst)) {
     return NULL;
   }
 
-  long* src_array = (long*)inst[0];
+  size_t* src_array = (size_t*)inst[0];
   long dest_pos = inst[1];
 
   if(dest_pos < src_array[0]) {
@@ -1199,21 +1199,21 @@ inline long* TrapProcessor::DeserializeArray(ParamType type, long* inst, size_t*
     const long dest_array_dim = DeserializeInt(inst);
     const long dest_array_dim_size = DeserializeInt(inst);
 
-    long* dest_array;
+    size_t* dest_array;
     if(type == BYTE_ARY_PARM) {
-      dest_array = (long*)MemoryManager::AllocateArray(dest_array_size + ((dest_array_dim + 2) * sizeof(long)),
+      dest_array = MemoryManager::AllocateArray(dest_array_size + ((dest_array_dim + 2) * sizeof(long)),
                                                        BYTE_ARY_TYPE, op_stack, *stack_pos, false);
     }
     else if(type == CHAR_ARY_PARM) {
-      dest_array = (long*)MemoryManager::AllocateArray(dest_array_size + ((dest_array_dim + 2) * sizeof(long)),
+      dest_array = MemoryManager::AllocateArray(dest_array_size + ((dest_array_dim + 2) * sizeof(long)),
                                                        CHAR_ARY_TYPE, op_stack, *stack_pos, false);
     }
     else if(type == INT_ARY_PARM || type == OBJ_ARY_PARM) {
-      dest_array = (long*)MemoryManager::AllocateArray(dest_array_size + dest_array_dim + 2,
+      dest_array = MemoryManager::AllocateArray(dest_array_size + dest_array_dim + 2,
                                                        INT_TYPE, op_stack, *stack_pos, false);
     }
     else {
-      dest_array = (long*)MemoryManager::AllocateArray(dest_array_size + dest_array_dim + 2,
+      dest_array = MemoryManager::AllocateArray(dest_array_size + dest_array_dim + 2,
                                                        FLOAT_TYPE, op_stack, *stack_pos, false);
     }
 
@@ -1223,7 +1223,7 @@ inline long* TrapProcessor::DeserializeArray(ParamType type, long* inst, size_t*
     dest_array[2] = dest_array_dim_size;
 
     if(type == OBJ_ARY_PARM) {
-      long* dest_array_ptr = dest_array + 3;
+      size_t* dest_array_ptr = dest_array + 3;
       for(int i = 0; i < dest_array_size; ++i) {
         if(!DeserializeByte(inst)) {
           dest_array_ptr[i] = 0;
@@ -1252,8 +1252,8 @@ inline long* TrapProcessor::DeserializeArray(ParamType type, long* inst, size_t*
 //
 // expand buffer
 //
-long* TrapProcessor::ExpandSerialBuffer(const long src_buffer_size, long* dest_buffer, 
-                                        long* inst, size_t* &op_stack, long* &stack_pos) {
+size_t* TrapProcessor::ExpandSerialBuffer(const long src_buffer_size, size_t* dest_buffer,
+  size_t* inst, size_t* &op_stack, long* &stack_pos) {
   long dest_buffer_size = dest_buffer[2];
   const long dest_pos = inst[1];      
   const long calc_offset = src_buffer_size + dest_pos;
@@ -1266,7 +1266,7 @@ long* TrapProcessor::ExpandSerialBuffer(const long src_buffer_size, long* dest_b
     // create byte array
     const long byte_array_size = dest_buffer_size;
     const long byte_array_dim = 1;
-    long* byte_array = (long*)MemoryManager::AllocateArray(byte_array_size + 1 + ((byte_array_dim + 2) * sizeof(long)),
+    size_t* byte_array = (size_t*)MemoryManager::AllocateArray(byte_array_size + 1 + ((byte_array_dim + 2) * sizeof(long)),
                                                            BYTE_ARY_TYPE, op_stack, *stack_pos, false);
     byte_array[0] = byte_array_size + 1;
     byte_array[1] = byte_array_dim;
@@ -1286,13 +1286,13 @@ long* TrapProcessor::ExpandSerialBuffer(const long src_buffer_size, long* dest_b
 /********************************
  * Serializes an object graph
  ********************************/
-void TrapProcessor::SerializeObject(long* inst, StackFrame* frame, size_t* &op_stack, long* &stack_pos)
+void TrapProcessor::SerializeObject(size_t* inst, StackFrame* frame, size_t* &op_stack, long* &stack_pos)
 {
-  long* obj = (long*)frame->mem[1];
+  size_t* obj = (size_t*)frame->mem[1];
   ObjectSerializer serializer(obj);
   vector<char> src_buffer = serializer.GetValues();
   const long src_buffer_size = src_buffer.size();
-  long* dest_buffer = (long*)inst[0];
+  size_t* dest_buffer = (size_t*)inst[0];
   long dest_pos = inst[1];
   
   // expand buffer, if needed
@@ -1310,7 +1310,7 @@ void TrapProcessor::SerializeObject(long* inst, StackFrame* frame, size_t* &op_s
 /********************************
  * Deserializes an object graph
  ********************************/
-void TrapProcessor::DeserializeObject(long* inst, size_t* &op_stack, long* &stack_pos) {
+void TrapProcessor::DeserializeObject(size_t* inst, size_t* &op_stack, long* &stack_pos) {
   if(!DeserializeByte(inst)) {
     PushInt(0, op_stack, stack_pos);    
   }
@@ -1330,7 +1330,7 @@ void TrapProcessor::DeserializeObject(long* inst, size_t* &op_stack, long* &stac
  * Handles callback traps from 
  * the interpreter and JIT code
  ********************************/
-bool TrapProcessor::ProcessTrap(StackProgram* program, long* inst,
+bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
                                 size_t* &op_stack, long* &stack_pos, StackFrame* frame) {
   const long id = PopInt(op_stack, stack_pos);
   switch(id) {
@@ -1698,14 +1698,14 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, long* inst,
   return false;
 }
 
-bool TrapProcessor::LoadClsInstId(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::LoadClsInstId(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
-  long* obj = (long*)PopInt(op_stack, stack_pos);
+  size_t* obj = (size_t*)PopInt(op_stack, stack_pos);
   PushInt(MemoryManager::GetObjectID(obj), op_stack, stack_pos);
   return true;
 }
 
-bool TrapProcessor::LoadNewObjInst(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::LoadNewObjInst(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   long* array = (long*)PopInt(op_stack, stack_pos);
   if(array) {
@@ -1723,7 +1723,7 @@ bool TrapProcessor::LoadNewObjInst(StackProgram* program, long* inst, size_t* &o
   return true;
 }
 
-bool TrapProcessor::LoadClsByInst(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::LoadClsByInst(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
 #ifdef _DEBUG
   wcout << L"stack oper: LOAD_CLS_BY_INST" << endl;
@@ -1735,7 +1735,7 @@ bool TrapProcessor::LoadClsByInst(StackProgram* program, long* inst, size_t* &op
     return false;
   }
   // set name and create 'Class' instance
-  long* cls_obj = MemoryManager::AllocateObject(program->GetClassObjectId(),
+  size_t* cls_obj = MemoryManager::AllocateObject(program->GetClassObjectId(),
 						op_stack, *stack_pos, false);
   cls_obj[0] = (long)CreateStringObject(cls->GetName(), program, op_stack, stack_pos);
   frame->mem[1] = (long)cls_obj;
@@ -1744,9 +1744,9 @@ bool TrapProcessor::LoadClsByInst(StackProgram* program, long* inst, size_t* &op
   return true;
 }
 
-bool TrapProcessor::ConvertBytesToUnicode(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::ConvertBytesToUnicode(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
-  long* array = (long*)PopInt(op_stack, stack_pos);
+  size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(!array) {
     wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
     return false;
@@ -1756,7 +1756,7 @@ bool TrapProcessor::ConvertBytesToUnicode(StackProgram* program, long* inst, siz
   // create character array
   const long char_array_size = out.size();
   const long char_array_dim = 1;
-  long* char_array = (long*)MemoryManager::AllocateArray(char_array_size + 1 +
+  size_t* char_array = MemoryManager::AllocateArray(char_array_size + 1 +
 							 ((char_array_dim + 2) *
 							  sizeof(long)),
                                                          CHAR_ARY_TYPE,
@@ -1776,9 +1776,9 @@ bool TrapProcessor::ConvertBytesToUnicode(StackProgram* program, long* inst, siz
   return true;
 }
 
-bool TrapProcessor::ConvertUnicodeToBytes(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::ConvertUnicodeToBytes(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
-  long* array = (long*)PopInt(op_stack, stack_pos);
+  size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(!array) {
     wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
     return false;
@@ -1788,7 +1788,7 @@ bool TrapProcessor::ConvertUnicodeToBytes(StackProgram* program, long* inst, siz
   // create byte array
   const long byte_array_size = out.size();
   const long byte_array_dim = 1;
-  long* byte_array = (long*)MemoryManager::AllocateArray(byte_array_size + 1 + ((byte_array_dim + 2) * sizeof(long)), 
+  size_t* byte_array = MemoryManager::AllocateArray(byte_array_size + 1 + ((byte_array_dim + 2) * sizeof(long)),
                                                          BYTE_ARY_TYPE, op_stack, *stack_pos, false);
   byte_array[0] = byte_array_size + 1;
   byte_array[1] = byte_array_dim;
@@ -1804,9 +1804,9 @@ bool TrapProcessor::ConvertUnicodeToBytes(StackProgram* program, long* inst, siz
   return true;
 }
 
-bool TrapProcessor::LoadMultiArySize(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::LoadMultiArySize(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
-  long* array = (long*)PopInt(op_stack, stack_pos);
+  size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(!array) {
     wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
     return false;
@@ -1815,7 +1815,7 @@ bool TrapProcessor::LoadMultiArySize(StackProgram* program, long* inst, size_t* 
   // allocate 'size' array and copy metadata
   long size = array[1];
   long dim = 1;
-  long* mem = (long*)MemoryManager::AllocateArray(size + dim + 2, INT_TYPE,
+  size_t* mem = MemoryManager::AllocateArray(size + dim + 2, INT_TYPE,
                                                   op_stack, *stack_pos);
   int i, j;
   for(i = 0, j = size + 2; i < size; i++) {
@@ -1830,7 +1830,7 @@ bool TrapProcessor::LoadMultiArySize(StackProgram* program, long* inst, size_t* 
   return true;
 }
 
-bool TrapProcessor::CpyCharStrAry(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::CpyCharStrAry(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   long index = PopInt(op_stack, stack_pos);
   const wchar_t* value_str = program->GetCharStrings()[index];
@@ -1851,7 +1851,7 @@ bool TrapProcessor::CpyCharStrAry(StackProgram* program, long* inst, size_t* &op
   return true;
 }
 
-bool TrapProcessor::CpyCharStrArys(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::CpyCharStrArys(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   // copy array
   long* array = (long*)PopInt(op_stack, stack_pos);
@@ -1874,7 +1874,7 @@ bool TrapProcessor::CpyCharStrArys(StackProgram* program, long* inst, size_t* &o
   return true;
 }
 
-bool TrapProcessor::CpyIntStrAry(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::CpyIntStrAry(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   long index = PopInt(op_stack, stack_pos);
   int* value_str = program->GetIntStrings()[index];
@@ -1898,7 +1898,7 @@ bool TrapProcessor::CpyIntStrAry(StackProgram* program, long* inst, size_t* &op_
   return true;
 }
 
-bool TrapProcessor::CpyFloatStrAry(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::CpyFloatStrAry(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   long index = PopInt(op_stack, stack_pos);
   FLOAT_VALUE* value_str = program->GetFloatStrings()[index];
@@ -1923,7 +1923,7 @@ bool TrapProcessor::CpyFloatStrAry(StackProgram* program, long* inst, size_t* &o
   return true;
 }
 
-bool TrapProcessor::StdOutBool(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::StdOutBool(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
 #ifdef _DEBUG
   wcout << L"  STD_OUT_BOOL" << endl;
@@ -1933,7 +1933,7 @@ bool TrapProcessor::StdOutBool(StackProgram* program, long* inst, size_t* &op_st
   return true;
 }
 
-bool TrapProcessor::StdOutByte(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::StdOutByte(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
 #ifdef _DEBUG
   wcout << L"  STD_OUT_BYTE" << endl;
@@ -1943,7 +1943,7 @@ bool TrapProcessor::StdOutByte(StackProgram* program, long* inst, size_t* &op_st
   return true;
 }
 
-bool TrapProcessor::StdOutChar(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::StdOutChar(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
 #ifdef _DEBUG
   wcout << L"  STD_OUT_CHAR" << endl;
@@ -1953,7 +1953,7 @@ bool TrapProcessor::StdOutChar(StackProgram* program, long* inst, size_t* &op_st
   return true;
 }
 
-bool TrapProcessor::StdOutInt(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::StdOutInt(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
 #ifdef _DEBUG
   wcout << L"  STD_OUT_INT" << endl;
@@ -1963,7 +1963,7 @@ bool TrapProcessor::StdOutInt(StackProgram* program, long* inst, size_t* &op_sta
   return true;
 }
 
-bool TrapProcessor::StdOutFloat(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::StdOutFloat(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
 #ifdef _DEBUG
   wcout << L"  STD_OUT_FLOAT" << endl;
@@ -1974,7 +1974,7 @@ bool TrapProcessor::StdOutFloat(StackProgram* program, long* inst, size_t* &op_s
   return true;
 }
 
-bool TrapProcessor::StdOutCharAry(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::StdOutCharAry(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   long* array = (long*)PopInt(op_stack, stack_pos);
 #ifdef _DEBUG
@@ -1992,7 +1992,7 @@ bool TrapProcessor::StdOutCharAry(StackProgram* program, long* inst, size_t* &op
   return true;
 }
 
-bool TrapProcessor::StdOutByteAryLen(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::StdOutByteAryLen(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   long* array = (long*)PopInt(op_stack, stack_pos);
   const long num = PopInt(op_stack, stack_pos);
@@ -2017,7 +2017,7 @@ bool TrapProcessor::StdOutByteAryLen(StackProgram* program, long* inst, size_t* 
   return true;
 }
 
-bool TrapProcessor::StdOutCharAryLen(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::StdOutCharAryLen(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   long* array = (long*)PopInt(op_stack, stack_pos);
   const long num = PopInt(op_stack, stack_pos);
@@ -2040,7 +2040,7 @@ bool TrapProcessor::StdOutCharAryLen(StackProgram* program, long* inst, size_t* 
   return true;
 }
 
-bool TrapProcessor::StdInString(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::StdInString(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   long* array = (long*)PopInt(op_stack, stack_pos);
   if(array) {
@@ -2059,7 +2059,7 @@ bool TrapProcessor::StdInString(StackProgram* program, long* inst, size_t* &op_s
   return true;
 }
 
-bool TrapProcessor::StdErrBool(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::StdErrBool(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
 #ifdef _DEBUG
   wcout << L"  STD_ERR_BOOL" << endl;
@@ -2069,7 +2069,7 @@ bool TrapProcessor::StdErrBool(StackProgram* program, long* inst, size_t* &op_st
   return true;
 }
 
-bool TrapProcessor::StdErrByte(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::StdErrByte(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
 #ifdef _DEBUG
   wcout << L"  STD_ERR_BYTE" << endl;
@@ -2079,7 +2079,7 @@ bool TrapProcessor::StdErrByte(StackProgram* program, long* inst, size_t* &op_st
   return true;
 }
 
-bool TrapProcessor::StdErrChar(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::StdErrChar(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
 #ifdef _DEBUG
   wcout << L"  STD_ERR_CHAR" << endl;
@@ -2089,7 +2089,7 @@ bool TrapProcessor::StdErrChar(StackProgram* program, long* inst, size_t* &op_st
   return true;
 }
 
-bool TrapProcessor::StdErrInt(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::StdErrInt(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
 #ifdef _DEBUG
   wcout << L"  STD_ERR_INT" << endl;
@@ -2099,7 +2099,7 @@ bool TrapProcessor::StdErrInt(StackProgram* program, long* inst, size_t* &op_sta
   return true;
 }
 
-bool TrapProcessor::StdErrFloat(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::StdErrFloat(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
 #ifdef _DEBUG
   wcout << L"  STD_ERR_FLOAT" << endl;
@@ -2110,7 +2110,7 @@ bool TrapProcessor::StdErrFloat(StackProgram* program, long* inst, size_t* &op_s
   return true;
 }
 
-bool TrapProcessor::StdErrCharAry(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::StdErrCharAry(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   long* array = (long*)PopInt(op_stack, stack_pos);
 
@@ -2129,7 +2129,7 @@ bool TrapProcessor::StdErrCharAry(StackProgram* program, long* inst, size_t* &op
   return true;
 }
 
-bool TrapProcessor::StdErrByteAry(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::StdErrByteAry(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   long* array = (long*)PopInt(op_stack, stack_pos);
   const long num = PopInt(op_stack, stack_pos);
@@ -2154,105 +2154,105 @@ bool TrapProcessor::StdErrByteAry(StackProgram* program, long* inst, size_t* &op
   return true;
 }
 
-bool TrapProcessor::Exit(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::Exit(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   exit(PopInt(op_stack, stack_pos));
 
   return true;
 }
 
-bool TrapProcessor::GmtTime(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::GmtTime(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   ProcessCurrentTime(frame, true);
 
   return true;
 }
 
-bool TrapProcessor::SysTime(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::SysTime(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   ProcessCurrentTime(frame, false);
 
   return true;
 }
 
-bool TrapProcessor::DateTimeSet1(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::DateTimeSet1(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   ProcessSetTime1(op_stack, stack_pos);
 
   return true;
 }
 
-bool TrapProcessor::DateTimeSet2(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::DateTimeSet2(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   ProcessSetTime2(op_stack, stack_pos);
 
   return true;
 }
 
-bool TrapProcessor::DateTimeAddDays(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::DateTimeAddDays(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   ProcessAddTime(DAY_TIME, op_stack, stack_pos);
 
   return true;
 }
 
-bool TrapProcessor::DateTimeAddHours(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::DateTimeAddHours(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   ProcessAddTime(HOUR_TIME, op_stack, stack_pos);
 
   return true;
 }
 
-bool TrapProcessor::DateTimeAddMins(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::DateTimeAddMins(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   ProcessAddTime(MIN_TIME, op_stack, stack_pos);
 
   return true;
 }
 
-bool TrapProcessor::DateTimeAddSecs(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::DateTimeAddSecs(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   ProcessAddTime(SEC_TIME, op_stack, stack_pos);
 
   return true;
 }
 
-bool TrapProcessor::TimerStart(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::TimerStart(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   ProcessTimerStart(op_stack, stack_pos);
 
   return true;
 }
 
-bool TrapProcessor::TimerEnd(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::TimerEnd(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   ProcessTimerEnd(op_stack, stack_pos);
 
   return true;
 }
 
-bool TrapProcessor::TimerElapsed(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::TimerElapsed(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   ProcessTimerElapsed(op_stack, stack_pos);
 
   return true;
 }
 
-bool TrapProcessor::GetPltfrm(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::GetPltfrm(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   ProcessPlatform(program, op_stack, stack_pos);
 
   return true;
 }
 
-bool TrapProcessor::GetVersion(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::GetVersion(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   ProcessVersion(program, op_stack, stack_pos);
 
   return true;
 }
 
-bool TrapProcessor::GetSysProp(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::GetSysProp(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   long* key_array = (long*)PopInt(op_stack, stack_pos);
   if(key_array) {
@@ -2269,7 +2269,7 @@ bool TrapProcessor::GetSysProp(StackProgram* program, long* inst, size_t* &op_st
   return true;
 }
 
-bool TrapProcessor::SetSysProp(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::SetSysProp(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   long* value_array = (long*)PopInt(op_stack, stack_pos);
   long* key_array = (long*)PopInt(op_stack, stack_pos);
@@ -2286,7 +2286,7 @@ bool TrapProcessor::SetSysProp(StackProgram* program, long* inst, size_t* &op_st
   return true;
 }
 
-bool TrapProcessor::SockTcpResolveName(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::SockTcpResolveName(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   long* array = (long*)PopInt(op_stack, stack_pos);
   array = (long*)array[0];
@@ -2298,12 +2298,12 @@ bool TrapProcessor::SockTcpResolveName(StackProgram* program, long* inst, size_t
     // create 'System.String' object array
     const long str_obj_array_size = addrs.size();
     const long str_obj_array_dim = 1;
-    long* str_obj_array = (long*)MemoryManager::AllocateArray(str_obj_array_size + str_obj_array_dim + 2,
+    size_t* str_obj_array = MemoryManager::AllocateArray(str_obj_array_size + str_obj_array_dim + 2,
                                                               INT_TYPE, op_stack, *stack_pos, false);
     str_obj_array[0] = str_obj_array_size;
     str_obj_array[1] = str_obj_array_dim;
     str_obj_array[2] = str_obj_array_size;
-    long* str_obj_array_ptr = str_obj_array + 3;
+    size_t* str_obj_array_ptr = str_obj_array + 3;
 
     // create and assign 'System.String' instances to array
     for(size_t i = 0; i < addrs.size(); ++i) {
@@ -2320,7 +2320,7 @@ bool TrapProcessor::SockTcpResolveName(StackProgram* program, long* inst, size_t
   return true;
 }
 
-bool TrapProcessor::SockTcpHostName(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::SockTcpHostName(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   long* array = (long*)PopInt(op_stack, stack_pos);
   if(array) {
@@ -2352,7 +2352,7 @@ bool TrapProcessor::SockTcpHostName(StackProgram* program, long* inst, size_t* &
   return true;
 }
 
-bool TrapProcessor::SockTcpConnect(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::SockTcpConnect(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   long port = PopInt(op_stack, stack_pos);
   long* array = (long*)PopInt(op_stack, stack_pos);
@@ -2373,7 +2373,7 @@ bool TrapProcessor::SockTcpConnect(StackProgram* program, long* inst, size_t* &o
   return true;
 }
 
-bool TrapProcessor::SockTcpBind(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::SockTcpBind(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   long port = PopInt(op_stack, stack_pos);
   long* instance = (long*)PopInt(op_stack, stack_pos);
@@ -2390,7 +2390,7 @@ bool TrapProcessor::SockTcpBind(StackProgram* program, long* inst, size_t* &op_s
   return true;
 }
 
-bool TrapProcessor::SockTcpListen(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::SockTcpListen(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   long backlog = PopInt(op_stack, stack_pos);
   long* instance = (long*)PopInt(op_stack, stack_pos);
@@ -2416,7 +2416,7 @@ bool TrapProcessor::SockTcpListen(StackProgram* program, long* inst, size_t* &op
   return true;
 }
 
-bool TrapProcessor::SockTcpAccept(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::SockTcpAccept(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   long* instance = (long*)PopInt(op_stack, stack_pos);
   if(instance && (long)instance[0] > -1) {
@@ -2430,7 +2430,7 @@ bool TrapProcessor::SockTcpAccept(StackProgram* program, long* inst, size_t* &op
 	  << (long)server << L") #" << endl;
 #endif
     const wstring wclient_address = BytesToUnicode(client_address);
-    long* sock_obj = MemoryManager::AllocateObject(program->GetSocketObjectId(),
+    size_t* sock_obj = MemoryManager::AllocateObject(program->GetSocketObjectId(),
 						   op_stack, *stack_pos, false);
     sock_obj[0] = client;
     sock_obj[1] = (long)CreateStringObject(wclient_address, program, op_stack, stack_pos);
@@ -2442,7 +2442,7 @@ bool TrapProcessor::SockTcpAccept(StackProgram* program, long* inst, size_t* &op
   return true;
 }
 
-bool TrapProcessor::SockTcpClose(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::SockTcpClose(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   long* instance = (long*)PopInt(op_stack, stack_pos);
   if(instance && (long)instance[0] > -1) {
@@ -2457,7 +2457,7 @@ bool TrapProcessor::SockTcpClose(StackProgram* program, long* inst, size_t* &op_
   return true;
 }
 
-bool TrapProcessor::SockTcpOutString(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::SockTcpOutString(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   long* array = (long*)PopInt(op_stack, stack_pos);
   long* instance = (long*)PopInt(op_stack, stack_pos);
@@ -2478,7 +2478,7 @@ bool TrapProcessor::SockTcpOutString(StackProgram* program, long* inst, size_t* 
   return true;
 }
 
-bool TrapProcessor::SockTcpInString(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::SockTcpInString(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   long* array = (long*)PopInt(op_stack, stack_pos);
   long* instance = (long*)PopInt(op_stack, stack_pos);
@@ -2518,7 +2518,7 @@ bool TrapProcessor::SockTcpInString(StackProgram* program, long* inst, size_t* &
   return true;
 }
 
-bool TrapProcessor::SockTcpSslConnect(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::SockTcpSslConnect(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   const long port = PopInt(op_stack, stack_pos);
   long* array = (long*)PopInt(op_stack, stack_pos);
@@ -2547,7 +2547,7 @@ bool TrapProcessor::SockTcpSslConnect(StackProgram* program, long* inst, size_t*
   return true;
 }
 
-bool TrapProcessor::SockTcpSslCert(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::SockTcpSslCert(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   long* instance = (long*)PopInt(op_stack, stack_pos);
   X509* cert = (X509*)instance[2];
@@ -2564,7 +2564,7 @@ bool TrapProcessor::SockTcpSslCert(StackProgram* program, long* inst, size_t* &o
   return true;
 }
 
-bool TrapProcessor::SockTcpSslClose(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::SockTcpSslClose(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   long* instance = (long*)PopInt(op_stack, stack_pos);
   SSL_CTX* ctx = (SSL_CTX*)instance[0];
@@ -2581,7 +2581,7 @@ bool TrapProcessor::SockTcpSslClose(StackProgram* program, long* inst, size_t* &
   return true;
 }
 
-bool TrapProcessor::SockTcpSslOutString(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::SockTcpSslOutString(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   long* array = (long*)PopInt(op_stack, stack_pos);
   long* instance = (long*)PopInt(op_stack, stack_pos);
@@ -2598,7 +2598,7 @@ bool TrapProcessor::SockTcpSslOutString(StackProgram* program, long* inst, size_
   return true;
 }
 
-bool TrapProcessor::SockTcpSslInString(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::SockTcpSslInString(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   long* array = (long*)PopInt(op_stack, stack_pos);
   long* instance = (long*)PopInt(op_stack, stack_pos);
@@ -2638,7 +2638,7 @@ bool TrapProcessor::SockTcpSslInString(StackProgram* program, long* inst, size_t
   return true;
 }
 
-bool TrapProcessor::SerlChar(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::SerlChar(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
 #ifdef _DEBUG
   wcout << L"# serializing char #" << endl;
@@ -2648,7 +2648,7 @@ bool TrapProcessor::SerlChar(StackProgram* program, long* inst, size_t* &op_stac
   return true;
 }
 
-bool TrapProcessor::SerlInt(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::SerlInt(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
 #ifdef _DEBUG
   wcout << L"# serializing int #" << endl;
@@ -2658,7 +2658,7 @@ bool TrapProcessor::SerlInt(StackProgram* program, long* inst, size_t* &op_stack
   return true;
 }
 
-bool TrapProcessor::SerlFloat(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::SerlFloat(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
 #ifdef _DEBUG
   wcout << L"# serializing float #" << endl;
@@ -2671,54 +2671,54 @@ bool TrapProcessor::SerlFloat(StackProgram* program, long* inst, size_t* &op_sta
   return true;
 }
 
-bool TrapProcessor::SerlObjInst(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::SerlObjInst(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   SerializeObject(inst, frame, op_stack, stack_pos);
 
   return true;
 }
 
-bool TrapProcessor::SerlByteAry(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::SerlByteAry(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   SerializeInt(BYTE_ARY_PARM, inst, op_stack, stack_pos);
-  SerializeArray((long*)frame->mem[1], BYTE_ARY_PARM, inst, op_stack, stack_pos);
+  SerializeArray((size_t*)frame->mem[1], BYTE_ARY_PARM, inst, op_stack, stack_pos);
 
   return true;
 }
 
-bool TrapProcessor::SerlCharAry(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::SerlCharAry(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   SerializeInt(CHAR_ARY_PARM, inst, op_stack, stack_pos);
-  SerializeArray((long*)frame->mem[1], CHAR_ARY_PARM, inst, op_stack, stack_pos);
+  SerializeArray((size_t*)frame->mem[1], CHAR_ARY_PARM, inst, op_stack, stack_pos);
 
   return true;
 }
 
-bool TrapProcessor::SerlIntAry(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::SerlIntAry(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   SerializeInt(INT_ARY_PARM, inst, op_stack, stack_pos);
-  SerializeArray((long*)frame->mem[1], INT_ARY_PARM, inst, op_stack, stack_pos);
+  SerializeArray((size_t*)frame->mem[1], INT_ARY_PARM, inst, op_stack, stack_pos);
 
   return true;
 }
 
-bool TrapProcessor::SerlObjAry(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::SerlObjAry(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   SerializeInt(OBJ_ARY_PARM, inst, op_stack, stack_pos);
-  SerializeArray((long*)frame->mem[1], OBJ_ARY_PARM, inst, op_stack, stack_pos);
+  SerializeArray((size_t*)frame->mem[1], OBJ_ARY_PARM, inst, op_stack, stack_pos);
 
   return true;
 }
 
-bool TrapProcessor::SerlFloatAry(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::SerlFloatAry(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   SerializeInt(FLOAT_ARY_PARM, inst, op_stack, stack_pos);
-  SerializeArray((long*)frame->mem[1], FLOAT_ARY_PARM, inst, op_stack, stack_pos);
+  SerializeArray((size_t*)frame->mem[1], FLOAT_ARY_PARM, inst, op_stack, stack_pos);
 
   return true;
 }
 
-bool TrapProcessor::DeserlChar(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::DeserlChar(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
 #ifdef _DEBUG
   wcout << L"# deserializing char #" << endl;
@@ -2733,7 +2733,7 @@ bool TrapProcessor::DeserlChar(StackProgram* program, long* inst, size_t* &op_st
   return true;
 }
 
-bool TrapProcessor::DeserlInt(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::DeserlInt(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
 #ifdef _DEBUG
   wcout << L"# deserializing int #" << endl;
@@ -2748,7 +2748,7 @@ bool TrapProcessor::DeserlInt(StackProgram* program, long* inst, size_t* &op_sta
   return true;
 }
 
-bool TrapProcessor::DeserlFloat(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::DeserlFloat(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
 #ifdef _DEBUG
   wcout << L"# deserializing float #" << endl;
@@ -2763,14 +2763,14 @@ bool TrapProcessor::DeserlFloat(StackProgram* program, long* inst, size_t* &op_s
   return true;
 }
 
-bool TrapProcessor::DeserlObjInst(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::DeserlObjInst(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   DeserializeObject(inst, op_stack, stack_pos);
 
   return true;
 }
 
-bool TrapProcessor::DeserlByteAry(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::DeserlByteAry(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
 #ifdef _DEBUG
   wcout << L"# deserializing byte array #" << endl;
@@ -2785,7 +2785,7 @@ bool TrapProcessor::DeserlByteAry(StackProgram* program, long* inst, size_t* &op
   return true;
 }
 
-bool TrapProcessor::DeserlCharAry(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::DeserlCharAry(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
 #ifdef _DEBUG
   wcout << L"# deserializing char array #" << endl;
@@ -2800,7 +2800,7 @@ bool TrapProcessor::DeserlCharAry(StackProgram* program, long* inst, size_t* &op
   return true;
 }
 
-bool TrapProcessor::DeserlIntAry(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::DeserlIntAry(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
 #ifdef _DEBUG
   wcout << L"# deserializing int array #" << endl;
@@ -2815,7 +2815,7 @@ bool TrapProcessor::DeserlIntAry(StackProgram* program, long* inst, size_t* &op_
   return true;
 }
 
-bool TrapProcessor::DeserlObjAry(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::DeserlObjAry(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
 #ifdef _DEBUG
   wcout << L"# deserializing an object array #" << endl;
@@ -2830,7 +2830,7 @@ bool TrapProcessor::DeserlObjAry(StackProgram* program, long* inst, size_t* &op_
   return true;
 }
 
-bool TrapProcessor::DeserlFloatAry(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::DeserlFloatAry(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
 #ifdef _DEBUG
   wcout << L"# deserializing float array #" << endl;
@@ -2845,7 +2845,7 @@ bool TrapProcessor::DeserlFloatAry(StackProgram* program, long* inst, size_t* &o
   return true;
 }
 
-bool TrapProcessor::FileOpenRead(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::FileOpenRead(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   long* array = (long*)PopInt(op_stack, stack_pos);
   long* instance = (long*)PopInt(op_stack, stack_pos);
@@ -2865,7 +2865,7 @@ bool TrapProcessor::FileOpenRead(StackProgram* program, long* inst, size_t* &op_
   return true;
 }
 
-bool TrapProcessor::FileOpenAppend(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::FileOpenAppend(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   long* array = (long*)PopInt(op_stack, stack_pos);
   long* instance = (long*)PopInt(op_stack, stack_pos);
@@ -2885,7 +2885,7 @@ bool TrapProcessor::FileOpenAppend(StackProgram* program, long* inst, size_t* &o
   return true;
 }
 
-bool TrapProcessor::FileOpenWrite(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::FileOpenWrite(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   long* array = (long*)PopInt(op_stack, stack_pos);
   long* instance = (long*)PopInt(op_stack, stack_pos);
@@ -2905,7 +2905,7 @@ bool TrapProcessor::FileOpenWrite(StackProgram* program, long* inst, size_t* &op
   return true;
 }
 
-bool TrapProcessor::FileOpenReadWrite(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::FileOpenReadWrite(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   long* array = (long*)PopInt(op_stack, stack_pos);
   long* instance = (long*)PopInt(op_stack, stack_pos);
@@ -2925,7 +2925,7 @@ bool TrapProcessor::FileOpenReadWrite(StackProgram* program, long* inst, size_t*
   return true;
 }
 
-bool TrapProcessor::FileClose(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::FileClose(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   long* instance = (long*)PopInt(op_stack, stack_pos);
   if(instance && (FILE*)instance[0]) {
@@ -2940,7 +2940,7 @@ bool TrapProcessor::FileClose(StackProgram* program, long* inst, size_t* &op_sta
   return true;
 }
 
-bool TrapProcessor::FileFlush(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::FileFlush(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   long* instance = (long*)PopInt(op_stack, stack_pos);
   if(instance && (FILE*)instance[0]) {
@@ -2955,7 +2955,7 @@ bool TrapProcessor::FileFlush(StackProgram* program, long* inst, size_t* &op_sta
   return true;
 }
 
-bool TrapProcessor::FileInString(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::FileInString(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   const long* array = (long*)PopInt(op_stack, stack_pos);
   const long* instance = (long*)PopInt(op_stack, stack_pos);
@@ -2987,7 +2987,7 @@ bool TrapProcessor::FileInString(StackProgram* program, long* inst, size_t* &op_
   return true;
 }
 
-bool TrapProcessor::FileOutString(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::FileOutString(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   const long* array = (long*)PopInt(op_stack, stack_pos);
   const long* instance = (long*)PopInt(op_stack, stack_pos);
@@ -3002,7 +3002,7 @@ bool TrapProcessor::FileOutString(StackProgram* program, long* inst, size_t* &op
   return true;
 }
 
-bool TrapProcessor::FileRewind(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::FileRewind(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   const long* instance = (long*)PopInt(op_stack, stack_pos);
   if(instance && (FILE*)instance[0]) {
@@ -3013,7 +3013,7 @@ bool TrapProcessor::FileRewind(StackProgram* program, long* inst, size_t* &op_st
   return true;
 }
 
-bool TrapProcessor::SockTcpIsConnected(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::SockTcpIsConnected(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   long* instance = (long*)PopInt(op_stack, stack_pos);
   if(instance && (long)instance[0] > -1) {
@@ -3026,7 +3026,7 @@ bool TrapProcessor::SockTcpIsConnected(StackProgram* program, long* inst, size_t
   return true;
 }
 
-bool TrapProcessor::SockTcpInByte(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::SockTcpInByte(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   long* instance = (long*)PopInt(op_stack, stack_pos);
   if(instance && (long)instance[0] > -1) {
@@ -3041,7 +3041,7 @@ bool TrapProcessor::SockTcpInByte(StackProgram* program, long* inst, size_t* &op
   return true;
 }
 
-bool TrapProcessor::SockTcpInByteAry(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::SockTcpInByteAry(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   long* array = (long*)PopInt(op_stack, stack_pos);
   const long num = PopInt(op_stack, stack_pos);
@@ -3060,7 +3060,7 @@ bool TrapProcessor::SockTcpInByteAry(StackProgram* program, long* inst, size_t* 
   return true;
 }
 
-bool TrapProcessor::SockTcpInCharAry(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::SockTcpInCharAry(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   long* array = (long*)PopInt(op_stack, stack_pos);
   const long num = PopInt(op_stack, stack_pos);
@@ -3093,7 +3093,7 @@ bool TrapProcessor::SockTcpInCharAry(StackProgram* program, long* inst, size_t* 
   return true;
 }
 
-bool TrapProcessor::SockTcpOutByte(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::SockTcpOutByte(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   long value = PopInt(op_stack, stack_pos);
   long* instance = (long*)PopInt(op_stack, stack_pos);
@@ -3109,7 +3109,7 @@ bool TrapProcessor::SockTcpOutByte(StackProgram* program, long* inst, size_t* &o
   return true;
 }
 
-bool TrapProcessor::SockTcpOutByteAry(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::SockTcpOutByteAry(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   long* array = (long*)PopInt(op_stack, stack_pos);
   const long num = PopInt(op_stack, stack_pos);
@@ -3128,7 +3128,7 @@ bool TrapProcessor::SockTcpOutByteAry(StackProgram* program, long* inst, size_t*
   return true;
 }
 
-bool TrapProcessor::SockTcpOutCharAry(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::SockTcpOutCharAry(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   long* array = (long*)PopInt(op_stack, stack_pos);
   const long num = PopInt(op_stack, stack_pos);
@@ -3151,7 +3151,7 @@ bool TrapProcessor::SockTcpOutCharAry(StackProgram* program, long* inst, size_t*
   return true;
 }
 
-bool TrapProcessor::SockTcpSslInByte(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::SockTcpSslInByte(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   long* instance = (long*)PopInt(op_stack, stack_pos);
   if(instance) {
@@ -3167,7 +3167,7 @@ bool TrapProcessor::SockTcpSslInByte(StackProgram* program, long* inst, size_t* 
   return true;
 }
 
-bool TrapProcessor::SockTcpSslInByteAry(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::SockTcpSslInByteAry(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   long* array = (long*)PopInt(op_stack, stack_pos);
   const long num = PopInt(op_stack, stack_pos);
@@ -3187,7 +3187,7 @@ bool TrapProcessor::SockTcpSslInByteAry(StackProgram* program, long* inst, size_
   return true;
 }
 
-bool TrapProcessor::SockTcpSslInCharAry(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::SockTcpSslInCharAry(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   long* array = (long*)PopInt(op_stack, stack_pos);
   const long num = PopInt(op_stack, stack_pos);
@@ -3220,7 +3220,7 @@ bool TrapProcessor::SockTcpSslInCharAry(StackProgram* program, long* inst, size_
   return true;
 }
 
-bool TrapProcessor::SockTcpSslOutByte(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::SockTcpSslOutByte(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   long value = PopInt(op_stack, stack_pos);
   long* instance = (long*)PopInt(op_stack, stack_pos);
@@ -3237,7 +3237,7 @@ bool TrapProcessor::SockTcpSslOutByte(StackProgram* program, long* inst, size_t*
   return true;
 }
 
-bool TrapProcessor::SockTcpSslOutByteAry(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::SockTcpSslOutByteAry(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   long* array = (long*)PopInt(op_stack, stack_pos);
   const long num = PopInt(op_stack, stack_pos);
@@ -3257,7 +3257,7 @@ bool TrapProcessor::SockTcpSslOutByteAry(StackProgram* program, long* inst, size
   return true;
 }
 
-bool TrapProcessor::SockTcpSslOutCharAry(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::SockTcpSslOutCharAry(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   long* array = (long*)PopInt(op_stack, stack_pos);
   const long num = PopInt(op_stack, stack_pos);
@@ -3281,7 +3281,7 @@ bool TrapProcessor::SockTcpSslOutCharAry(StackProgram* program, long* inst, size
   return true;
 }
 
-bool TrapProcessor::FileInByte(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::FileInByte(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   const long* instance = (long*)PopInt(op_stack, stack_pos);
   if((FILE*)instance[0]) {
@@ -3300,7 +3300,7 @@ bool TrapProcessor::FileInByte(StackProgram* program, long* inst, size_t* &op_st
   return true;
 }
 
-bool TrapProcessor::FileInCharAry(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::FileInCharAry(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   const long* array = (long*)PopInt(op_stack, stack_pos);
   const long num = PopInt(op_stack, stack_pos);
@@ -3333,7 +3333,7 @@ bool TrapProcessor::FileInCharAry(StackProgram* program, long* inst, size_t* &op
   return true;
 }
 
-bool TrapProcessor::FileInByteAry(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::FileInByteAry(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   const long* array = (long*)PopInt(op_stack, stack_pos);
   const long num = PopInt(op_stack, stack_pos);
@@ -3352,7 +3352,7 @@ bool TrapProcessor::FileInByteAry(StackProgram* program, long* inst, size_t* &op
   return true;
 }
 
-bool TrapProcessor::FileOutByte(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::FileOutByte(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   const long value = PopInt(op_stack, stack_pos);
   const long* instance = (long*)PopInt(op_stack, stack_pos);
@@ -3374,7 +3374,7 @@ bool TrapProcessor::FileOutByte(StackProgram* program, long* inst, size_t* &op_s
   return true;
 }
 
-bool TrapProcessor::FileOutByteAry(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::FileOutByteAry(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   const long* array = (long*)PopInt(op_stack, stack_pos);
   const long num = PopInt(op_stack, stack_pos);
@@ -3393,7 +3393,7 @@ bool TrapProcessor::FileOutByteAry(StackProgram* program, long* inst, size_t* &o
   return true;
 }
 
-bool TrapProcessor::FileOutCharAry(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::FileOutCharAry(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   const long* array = (long*)PopInt(op_stack, stack_pos);
   const long num = PopInt(op_stack, stack_pos);
@@ -3416,7 +3416,7 @@ bool TrapProcessor::FileOutCharAry(StackProgram* program, long* inst, size_t* &o
   return true;
 }
 
-bool TrapProcessor::FileSeek(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::FileSeek(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   long pos = PopInt(op_stack, stack_pos);
   long* instance = (long*)PopInt(op_stack, stack_pos);
@@ -3437,7 +3437,7 @@ bool TrapProcessor::FileSeek(StackProgram* program, long* inst, size_t* &op_stac
   return true;
 }
 
-bool TrapProcessor::FileEof(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::FileEof(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   const long* instance = (long*)PopInt(op_stack, stack_pos);
   if(instance && (FILE*)instance[0]) {
@@ -3451,7 +3451,7 @@ bool TrapProcessor::FileEof(StackProgram* program, long* inst, size_t* &op_stack
   return true;
 }
 
-bool TrapProcessor::FileIsOpen(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::FileIsOpen(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   const long* instance = (long*)PopInt(op_stack, stack_pos);
   if(instance && (FILE*)instance[0]) {
@@ -3464,7 +3464,7 @@ bool TrapProcessor::FileIsOpen(StackProgram* program, long* inst, size_t* &op_st
   return true;
 }
 
-bool TrapProcessor::FileCanWriteOnly(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::FileCanWriteOnly(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   long* array = (long*)PopInt(op_stack, stack_pos);
   if(array) {
@@ -3480,7 +3480,7 @@ bool TrapProcessor::FileCanWriteOnly(StackProgram* program, long* inst, size_t* 
   return true;
 }
 
-bool TrapProcessor::FileCanReadOnly(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::FileCanReadOnly(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   long* array = (long*)PopInt(op_stack, stack_pos);
   if(array) {
@@ -3496,7 +3496,7 @@ bool TrapProcessor::FileCanReadOnly(StackProgram* program, long* inst, size_t* &
   return true;
 }
 
-bool TrapProcessor::FileCanReadWrite(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::FileCanReadWrite(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   long* array = (long*)PopInt(op_stack, stack_pos);
   if (array) {
@@ -3512,7 +3512,7 @@ bool TrapProcessor::FileCanReadWrite(StackProgram* program, long* inst, size_t* 
   return true;
 }
 
-bool TrapProcessor::FileExists(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::FileExists(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   long* array = (long*)PopInt(op_stack, stack_pos);
   if(array) {
@@ -3528,7 +3528,7 @@ bool TrapProcessor::FileExists(StackProgram* program, long* inst, size_t* &op_st
   return true;
 }
 
-bool TrapProcessor::FileSize(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::FileSize(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   long* array = (long*)PopInt(op_stack, stack_pos);
   if(array) {
@@ -3544,7 +3544,7 @@ bool TrapProcessor::FileSize(StackProgram* program, long* inst, size_t* &op_stac
   return true;
 }
 
-bool TrapProcessor::FileAccountOwner(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::FileAccountOwner(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   long* array = (long*)PopInt(op_stack, stack_pos);
   if(array) {
@@ -3560,7 +3560,7 @@ bool TrapProcessor::FileAccountOwner(StackProgram* program, long* inst, size_t* 
   return true;
 }
 
-bool TrapProcessor::FileGroupOwner(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::FileGroupOwner(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   long* array = (long*)PopInt(op_stack, stack_pos);
   if(array) {
@@ -3576,7 +3576,7 @@ bool TrapProcessor::FileGroupOwner(StackProgram* program, long* inst, size_t* &o
   return true;
 }
 
-bool TrapProcessor::FileDelete(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::FileDelete(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   long* array = (long*)PopInt(op_stack, stack_pos);
   if(array) {
@@ -3597,7 +3597,7 @@ bool TrapProcessor::FileDelete(StackProgram* program, long* inst, size_t* &op_st
   return true;
 }
 
-bool TrapProcessor::FileRename(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::FileRename(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   const long* to = (long*)PopInt(op_stack, stack_pos);
   const long* from = (long*)PopInt(op_stack, stack_pos);
@@ -3625,7 +3625,7 @@ bool TrapProcessor::FileRename(StackProgram* program, long* inst, size_t* &op_st
   return true;
 }
 
-bool TrapProcessor::FileCreateTime(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::FileCreateTime(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   const long is_gmt = PopInt(op_stack, stack_pos);
   long* array = (long*)PopInt(op_stack, stack_pos);
@@ -3661,7 +3661,7 @@ bool TrapProcessor::FileCreateTime(StackProgram* program, long* inst, size_t* &o
   return true;
 }
 
-bool TrapProcessor::FileModifiedTime(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::FileModifiedTime(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   const long is_gmt = PopInt(op_stack, stack_pos);
   long* array = (long*)PopInt(op_stack, stack_pos);
@@ -3697,7 +3697,7 @@ bool TrapProcessor::FileModifiedTime(StackProgram* program, long* inst, size_t* 
   return true;
 }
 
-bool TrapProcessor::FileAccessedTime(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::FileAccessedTime(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   const long is_gmt = PopInt(op_stack, stack_pos);
   long* array = (long*)PopInt(op_stack, stack_pos);
@@ -3733,7 +3733,7 @@ bool TrapProcessor::FileAccessedTime(StackProgram* program, long* inst, size_t* 
   return true;
 }
 
-bool TrapProcessor::DirCreate(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::DirCreate(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   long* array = (long*)PopInt(op_stack, stack_pos);
   if(array) {
@@ -3749,7 +3749,7 @@ bool TrapProcessor::DirCreate(StackProgram* program, long* inst, size_t* &op_sta
   return true;
 }
 
-bool TrapProcessor::DirExists(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::DirExists(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   long* array = (long*)PopInt(op_stack, stack_pos);
   if(array) {
@@ -3765,10 +3765,10 @@ bool TrapProcessor::DirExists(StackProgram* program, long* inst, size_t* &op_sta
   return true;
 }
 
-bool TrapProcessor::DirList(StackProgram* program, long* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+bool TrapProcessor::DirList(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
-  long* array = (long*)PopInt(op_stack, stack_pos);
-  array = (long*)array[0];
+  size_t* array = (size_t*)PopInt(op_stack, stack_pos);
+  array = (size_t*)array[0];
   if(array) {
     const wstring wname((wchar_t*)(array + 3));
     const string name(wname.begin(), wname.end());
@@ -3777,12 +3777,12 @@ bool TrapProcessor::DirList(StackProgram* program, long* inst, size_t* &op_stack
     // create 'System.String' object array
     const long str_obj_array_size = files.size();
     const long str_obj_array_dim = 1;
-    long* str_obj_array = (long*)MemoryManager::AllocateArray(str_obj_array_size + str_obj_array_dim + 2,
+    size_t* str_obj_array = MemoryManager::AllocateArray(str_obj_array_size + str_obj_array_dim + 2,
                                                               INT_TYPE, op_stack, *stack_pos, false);
     str_obj_array[0] = str_obj_array_size;
     str_obj_array[1] = str_obj_array_dim;
     str_obj_array[2] = str_obj_array_size;
-    long* str_obj_array_ptr = str_obj_array + 3;
+    size_t* str_obj_array_ptr = str_obj_array + 3;
 
     // create and assign 'System.String' instances to array
     for(size_t i = 0; i < files.size(); ++i) {

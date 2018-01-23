@@ -130,7 +130,7 @@ void StackInterpreter::Initialize(StackProgram* p)
   // allocate 256K frames
   for(int i = 0; i < CALL_STACK_SIZE * 16; i++) {
     StackFrame* frame = new StackFrame();
-    frame->mem = (long*)calloc(LOCAL_SIZE, sizeof(long));
+    frame->mem = (size_t*)calloc(LOCAL_SIZE, sizeof(long));
     cached_frames.push(frame);
   }
 #endif
@@ -663,7 +663,7 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i,
 #ifdef _DEBUG
       wcout << L"stack oper: TRAP; call_pos=" << (*call_stack_pos) << endl;
 #endif
-      if(!TrapProcessor::ProcessTrap(program, (long*)(*frame)->mem[0], op_stack, stack_pos, (*frame))) {
+      if(!TrapProcessor::ProcessTrap(program, (size_t*)(*frame)->mem[0], op_stack, stack_pos, (*frame))) {
         StackErrorUnwind();
 #ifdef _DEBUGGER
         halt = true;
@@ -696,7 +696,7 @@ void StackInterpreter::StorLoclIntVar(StackInstr* instr, size_t* &op_stack, long
 #ifdef _DEBUG
   wcout << L"stack oper: STOR_LOCL_INT_VAR; index=" << instr->GetOperand() << endl;
 #endif
-  long* mem = (*frame)->mem;
+  size_t* mem = (*frame)->mem;
   mem[instr->GetOperand() + 1] = PopInt(op_stack, stack_pos);
 }
 
@@ -725,7 +725,7 @@ void StackInterpreter::CopyLoclIntVar(StackInstr* instr, size_t* &op_stack, long
 #ifdef _DEBUG
   wcout << L"stack oper: COPY_LOCL_INT_VAR; index=" << instr->GetOperand() << endl;
 #endif
-  long* mem = (*frame)->mem;
+  size_t* mem = (*frame)->mem;
   mem[instr->GetOperand() + 1] = TopInt(op_stack, stack_pos);
 }
 
@@ -774,7 +774,7 @@ void StackInterpreter::LoadLoclIntVar(StackInstr* instr, size_t* &op_stack, long
 #ifdef _DEBUG
   wcout << L"stack oper: LOAD_LOCL_INT_VAR; index=" << instr->GetOperand() << endl;
 #endif
-  long* mem = (*frame)->mem;
+  size_t* mem = (*frame)->mem;
   PushInt(mem[instr->GetOperand() + 1], op_stack, stack_pos);
 }
 
@@ -1220,9 +1220,9 @@ void StackInterpreter::CpyFloatAry(size_t* &op_stack, long* &stack_pos)
 
 void StackInterpreter::ObjTypeOf(StackInstr* instr, size_t* &op_stack, long* &stack_pos)
 {
-  long* mem = (long*)PopInt(op_stack, stack_pos);
+  size_t* mem = (size_t*)PopInt(op_stack, stack_pos);
   if(mem) {
-    long* result = MemoryManager::ValidObjectCast(mem, instr->GetOperand(),
+    size_t* result = MemoryManager::ValidObjectCast(mem, instr->GetOperand(),
                                                   program->GetHierarchy(),
                                                   program->GetInterfaces());
     if(result) {
@@ -1241,7 +1241,7 @@ void StackInterpreter::ObjTypeOf(StackInstr* instr, size_t* &op_stack, long* &st
 
 void StackInterpreter::ObjInstCast(StackInstr* instr, size_t* &op_stack, long* &stack_pos)
 {
-  long* mem = (long*)PopInt(op_stack, stack_pos);
+  size_t* mem = (size_t*)PopInt(op_stack, stack_pos);
   long result = (long)MemoryManager::ValidObjectCast(mem, instr->GetOperand(),
                                                      program->GetHierarchy(),
                                                      program->GetInterfaces());
@@ -1415,7 +1415,7 @@ void StackInterpreter::ProcessLoadFunction(StackInstr* instr, size_t* &op_stack,
 	<< "; local=" << ((instr->GetOperand2() == LOCL) ? "true" : "false") << endl;
 #endif
   if(instr->GetOperand2() == LOCL) {
-    long* mem = (*frame)->mem;
+    size_t* mem = (*frame)->mem;
     PushInt(mem[instr->GetOperand() + 2], op_stack, stack_pos);
     PushInt(mem[instr->GetOperand() + 1], op_stack, stack_pos);
   } 
@@ -1448,7 +1448,7 @@ void StackInterpreter::ProcessLoadFloat(StackInstr* instr, size_t* &op_stack, lo
 #endif
   FLOAT_VALUE value;
   if(instr->GetOperand2() == LOCL) {
-    long* mem = (*frame)->mem;
+    size_t* mem = (*frame)->mem;
     // ::memcpy(&value, &mem[instr->GetOperand() + 1], sizeof(FLOAT_VALUE));
     value = *((FLOAT_VALUE*)(&mem[instr->GetOperand() + 1]));
 
@@ -1481,7 +1481,7 @@ void StackInterpreter::ProcessStoreFunction(StackInstr* instr, size_t* &op_stack
 	<< "; local=" << ((instr->GetOperand2() == LOCL) ? "true" : "false") << endl;
 #endif
   if(instr->GetOperand2() == LOCL) {
-    long* mem = (*frame)->mem;
+    size_t* mem = (*frame)->mem;
     mem[instr->GetOperand() + 1] = PopInt(op_stack, stack_pos);
     mem[instr->GetOperand() + 2] = PopInt(op_stack, stack_pos);
   } 
@@ -1514,7 +1514,7 @@ void StackInterpreter::ProcessStoreFloat(StackInstr* instr, size_t* &op_stack, l
 #endif
   if(instr->GetOperand2() == LOCL) {
     const FLOAT_VALUE value = PopFloat(op_stack, stack_pos);
-    long* mem = (*frame)->mem;
+    size_t* mem = (*frame)->mem;
     // ::memcpy(&mem[instr->GetOperand() + 1], &value, sizeof(FLOAT_VALUE));
     *((FLOAT_VALUE*)(&mem[instr->GetOperand() + 1])) = value;
   } 
@@ -1548,7 +1548,7 @@ void StackInterpreter::ProcessCopyFloat(StackInstr* instr, size_t* &op_stack, lo
 #endif
   if(instr->GetOperand2() == LOCL) {
     FLOAT_VALUE value = TopFloat(op_stack, stack_pos);
-    long* mem = (*frame)->mem;
+    size_t* mem = (*frame)->mem;
     // ::memcpy(&mem[instr->GetOperand() + 1], &value, sizeof(FLOAT_VALUE));
     *((FLOAT_VALUE*)(&mem[instr->GetOperand() + 1])) = value;
   } else {
@@ -1648,7 +1648,7 @@ void StackInterpreter::ProcessNewByteArray(StackInstr* instr, size_t* &op_stack,
   }
   // NULL terminated string 
   size++;
-  long* mem = (long*)MemoryManager::AllocateArray(size + ((dim + 2) * sizeof(long)),
+  size_t* mem = MemoryManager::AllocateArray(size + ((dim + 2) * sizeof(long)),
 						  BYTE_ARY_TYPE, op_stack, *stack_pos);
   mem[0] = size - 1;
   mem[1] = dim;
@@ -1677,7 +1677,7 @@ void StackInterpreter::ProcessNewCharArray(StackInstr* instr, size_t* &op_stack,
   }
   // NULL terminated string 
   size++;
-  long* mem = (long*)MemoryManager::AllocateArray(size + ((dim + 2) * sizeof(long)),
+  size_t* mem = MemoryManager::AllocateArray(size + ((dim + 2) * sizeof(long)),
 						  CHAR_ARY_TYPE, op_stack, *stack_pos);
   mem[0] = size - 1;
   mem[1] = dim;
