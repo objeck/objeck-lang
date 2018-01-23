@@ -1738,7 +1738,7 @@ bool TrapProcessor::LoadClsByInst(StackProgram* program, size_t* inst, size_t* &
   size_t* cls_obj = MemoryManager::AllocateObject(program->GetClassObjectId(),
 						op_stack, *stack_pos, false);
   cls_obj[0] = (size_t)CreateStringObject(cls->GetName(), program, op_stack, stack_pos);
-  frame->mem[1] = (long)cls_obj;
+  frame->mem[1] = (size_t)cls_obj;
   CreateClassObject(cls, cls_obj, op_stack, stack_pos, program);
 
   return true;
@@ -1754,7 +1754,7 @@ bool TrapProcessor::ConvertBytesToUnicode(StackProgram* program, size_t* inst, s
   const wstring out = BytesToUnicode((char*)(array + 3));
 
   // create character array
-  const long char_array_size = out.size();
+  const long char_array_size = (long)out.size();
   const long char_array_dim = 1;
   size_t* char_array = MemoryManager::AllocateArray(char_array_size + 1 +
 							 ((char_array_dim + 2) *
@@ -1771,7 +1771,7 @@ bool TrapProcessor::ConvertBytesToUnicode(StackProgram* program, size_t* inst, s
   wcsncpy(char_array_ptr, out.c_str(), char_array_size);
 
   // push result
-  PushInt((long)char_array, op_stack, stack_pos);
+  PushInt((size_t)char_array, op_stack, stack_pos);
 
   return true;
 }
@@ -1786,7 +1786,7 @@ bool TrapProcessor::ConvertUnicodeToBytes(StackProgram* program, size_t* inst, s
   const string out = UnicodeToBytes((wchar_t*)(array + 3));
 
   // create byte array
-  const long byte_array_size = out.size();
+  const long byte_array_size = (long)out.size();
   const long byte_array_dim = 1;
   size_t* byte_array = MemoryManager::AllocateArray(byte_array_size + 1 + ((byte_array_dim + 2) * sizeof(long)),
                                                          BYTE_ARY_TYPE, op_stack, *stack_pos, false);
@@ -1799,7 +1799,7 @@ bool TrapProcessor::ConvertUnicodeToBytes(StackProgram* program, size_t* inst, s
   strncpy(byte_array_ptr, out.c_str(), byte_array_size);
 
   // push result
-  PushInt((long)byte_array, op_stack, stack_pos);
+  PushInt((size_t)byte_array, op_stack, stack_pos);
 
   return true;
 }
@@ -1825,7 +1825,7 @@ bool TrapProcessor::LoadMultiArySize(StackProgram* program, size_t* inst, size_t
   mem[1] = dim;
   mem[2] = size;
 
-  PushInt((long)mem, op_stack, stack_pos);
+  PushInt((size_t)mem, op_stack, stack_pos);
 
   return true;
 }
@@ -1846,7 +1846,7 @@ bool TrapProcessor::CpyCharStrAry(StackProgram* program, size_t* inst, size_t* &
 #ifdef _DEBUG
   wcout << L"stack oper: CPY_CHAR_STR_ARY: index=" << index << L", string='" << str << L"'" << endl;
 #endif
-  PushInt((long)array, op_stack, stack_pos);
+  PushInt((size_t)array, op_stack, stack_pos);
 
   return true;
 }
@@ -1869,7 +1869,7 @@ bool TrapProcessor::CpyCharStrArys(StackProgram* program, size_t* inst, size_t* 
 #ifdef _DEBUG
   wcout << L"stack oper: CPY_CHAR_STR_ARYS" << endl;
 #endif
-  PushInt((long)array, op_stack, stack_pos);
+  PushInt((size_t)array, op_stack, stack_pos);
 
   return true;
 }
@@ -1893,7 +1893,7 @@ bool TrapProcessor::CpyIntStrAry(StackProgram* program, size_t* inst, size_t* &o
 #ifdef _DEBUG
   wcout << L"stack oper: CPY_INT_STR_ARY" << endl;
 #endif
-  PushInt((long)array, op_stack, stack_pos);
+  PushInt((size_t)array, op_stack, stack_pos);
 
   return true;
 }
@@ -1918,7 +1918,7 @@ bool TrapProcessor::CpyFloatStrAry(StackProgram* program, size_t* inst, size_t* 
 #ifdef _DEBUG
   wcout << L"stack oper: CPY_FLOAT_STR_ARY" << endl;
 #endif
-  PushInt((long)array, op_stack, stack_pos);
+  PushInt((size_t)array, op_stack, stack_pos);
 
   return true;
 }
@@ -2156,7 +2156,7 @@ bool TrapProcessor::StdErrByteAry(StackProgram* program, size_t* inst, size_t* &
 
 bool TrapProcessor::Exit(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
-  exit(PopInt(op_stack, stack_pos));
+  exit((int)PopInt(op_stack, stack_pos));
 
   return true;
 }
@@ -2259,11 +2259,11 @@ bool TrapProcessor::GetSysProp(StackProgram* program, size_t* inst, size_t* &op_
     key_array = (size_t*)key_array[0];
     const wchar_t* key = (wchar_t*)(key_array + 3);
     size_t* value = CreateStringObject(program->GetProperty(key), program, op_stack, stack_pos);
-    PushInt((long)value, op_stack, stack_pos);
+    PushInt((size_t)value, op_stack, stack_pos);
   }
   else {
     size_t* value = CreateStringObject(L"", program, op_stack, stack_pos);
-    PushInt((long)value, op_stack, stack_pos);
+    PushInt((size_t)value, op_stack, stack_pos);
   }
 
   return true;
@@ -2296,7 +2296,7 @@ bool TrapProcessor::SockTcpResolveName(StackProgram* program, size_t* inst, size
     vector<string> addrs = IPSocket::Resolve(name.c_str());
 
     // create 'System.String' object array
-    const long str_obj_array_size = addrs.size();
+    const long str_obj_array_size = (long)addrs.size();
     const long str_obj_array_dim = 1;
     size_t* str_obj_array = MemoryManager::AllocateArray(str_obj_array_size + str_obj_array_dim + 2,
                                                               INT_TYPE, op_stack, *stack_pos, false);
@@ -2308,10 +2308,10 @@ bool TrapProcessor::SockTcpResolveName(StackProgram* program, size_t* inst, size
     // create and assign 'System.String' instances to array
     for(size_t i = 0; i < addrs.size(); ++i) {
       const wstring waddr(addrs[i].begin(), addrs[i].end());
-      str_obj_array_ptr[i] = (long)CreateStringObject(waddr, program, op_stack, stack_pos);
+      str_obj_array_ptr[i] = (size_t)CreateStringObject(waddr, program, op_stack, stack_pos);
     }
 
-    PushInt((long)str_obj_array, op_stack, stack_pos);
+    PushInt((size_t)str_obj_array, op_stack, stack_pos);
   }
   else {
     PushInt(0, op_stack, stack_pos);
@@ -2343,7 +2343,7 @@ bool TrapProcessor::SockTcpHostName(StackProgram* program, size_t* inst, size_t*
 #ifdef _DEBUG
     wcout << L"stack oper: SOCK_TCP_HOST_NAME: host='" << str << L"'" << endl;
 #endif
-    PushInt((long)array, op_stack, stack_pos);
+    PushInt((size_t)array, op_stack, stack_pos);
   }
   else {
     PushInt(0, op_stack, stack_pos);
@@ -2433,10 +2433,10 @@ bool TrapProcessor::SockTcpAccept(StackProgram* program, size_t* inst, size_t* &
     size_t* sock_obj = MemoryManager::AllocateObject(program->GetSocketObjectId(),
 						   op_stack, *stack_pos, false);
     sock_obj[0] = client;
-    sock_obj[1] = (long)CreateStringObject(wclient_address, program, op_stack, stack_pos);
+    sock_obj[1] = (size_t)CreateStringObject(wclient_address, program, op_stack, stack_pos);
     sock_obj[2] = client_port;
 
-    PushInt((long)sock_obj, op_stack, stack_pos);
+    PushInt((size_t)sock_obj, op_stack, stack_pos);
   }
 
   return true;
@@ -2471,7 +2471,7 @@ bool TrapProcessor::SockTcpOutString(StackProgram* program, size_t* inst, size_t
 #endif	      
     if((long)sock > -1) {
       const string data = UnicodeToBytes(wdata);
-      IPSocket::WriteBytes(data.c_str(), data.size(), sock);
+      IPSocket::WriteBytes(data.c_str(), (int)data.size(), sock);
     }
   }
 
@@ -2532,9 +2532,9 @@ bool TrapProcessor::SockTcpSslConnect(StackProgram* program, size_t* inst, size_
 
     SSL_CTX* ctx; BIO* bio; X509* cert;
     bool is_open = IPSecureSocket::Open(addr.c_str(), port, ctx, bio, cert);
-    instance[0] = (long)ctx;
-    instance[1] = (long)bio;
-    instance[2] = (long)cert;
+    instance[0] = (size_t)ctx;
+    instance[1] = (size_t)bio;
+    instance[2] = (size_t)cert;
     instance[3] = is_open;
 
 #ifdef _DEBUG
@@ -2555,7 +2555,7 @@ bool TrapProcessor::SockTcpSslCert(StackProgram* program, size_t* inst, size_t* 
     char buffer[LARGE_BUFFER_MAX + 1];
     X509_NAME_oneline(X509_get_subject_name(cert), buffer, LARGE_BUFFER_MAX);
     const wstring in = BytesToUnicode(buffer);
-    PushInt((long)CreateStringObject(in, program, op_stack, stack_pos), op_stack, stack_pos);
+    PushInt((size_t)CreateStringObject(in, program, op_stack, stack_pos), op_stack, stack_pos);
   }
   else {
     PushInt(0, op_stack, stack_pos);
@@ -2591,7 +2591,7 @@ bool TrapProcessor::SockTcpSslOutString(StackProgram* program, size_t* inst, siz
     const wstring data((wchar_t*)(array + 3));
     if(instance[3]) {
       const string out = UnicodeToBytes(data);
-      IPSecureSocket::WriteBytes(out.c_str(), out.size(), ctx, bio);
+      IPSecureSocket::WriteBytes(out.c_str(), (int)out.size(), ctx, bio);
     }
   }
 
@@ -2654,7 +2654,7 @@ bool TrapProcessor::SerlInt(StackProgram* program, size_t* inst, size_t* &op_sta
   wcout << L"# serializing int #" << endl;
 #endif
   SerializeInt(INT_PARM, inst, op_stack, stack_pos);
-  SerializeInt(frame->mem[1], inst, op_stack, stack_pos);
+  SerializeInt((INT_VALUE)frame->mem[1], inst, op_stack, stack_pos);
   return true;
 }
 
@@ -2776,7 +2776,7 @@ bool TrapProcessor::DeserlByteAry(StackProgram* program, size_t* inst, size_t* &
   wcout << L"# deserializing byte array #" << endl;
 #endif
   if(BYTE_ARY_PARM == (ParamType)DeserializeInt(inst)) {
-    PushInt((long)DeserializeArray(BYTE_ARY_PARM, inst, op_stack, stack_pos), op_stack, stack_pos);
+    PushInt((size_t)DeserializeArray(BYTE_ARY_PARM, inst, op_stack, stack_pos), op_stack, stack_pos);
   }
   else {
     PushInt(0, op_stack, stack_pos);
@@ -2791,7 +2791,7 @@ bool TrapProcessor::DeserlCharAry(StackProgram* program, size_t* inst, size_t* &
   wcout << L"# deserializing char array #" << endl;
 #endif
   if(CHAR_ARY_PARM == (ParamType)DeserializeInt(inst)) {
-    PushInt((long)DeserializeArray(CHAR_ARY_PARM, inst, op_stack, stack_pos), op_stack, stack_pos);
+    PushInt((size_t)DeserializeArray(CHAR_ARY_PARM, inst, op_stack, stack_pos), op_stack, stack_pos);
   }
   else {
     PushInt(0, op_stack, stack_pos);
@@ -2806,7 +2806,7 @@ bool TrapProcessor::DeserlIntAry(StackProgram* program, size_t* inst, size_t* &o
   wcout << L"# deserializing int array #" << endl;
 #endif
   if(INT_ARY_PARM == (ParamType)DeserializeInt(inst)) {
-    PushInt((long)DeserializeArray(INT_ARY_PARM, inst, op_stack, stack_pos), op_stack, stack_pos);
+    PushInt((size_t)DeserializeArray(INT_ARY_PARM, inst, op_stack, stack_pos), op_stack, stack_pos);
   }
   else {
     PushInt(0, op_stack, stack_pos);
@@ -2821,7 +2821,7 @@ bool TrapProcessor::DeserlObjAry(StackProgram* program, size_t* inst, size_t* &o
   wcout << L"# deserializing an object array #" << endl;
 #endif
   if(OBJ_ARY_PARM == (ParamType)DeserializeInt(inst)) {
-    PushInt((long)DeserializeArray(OBJ_ARY_PARM, inst, op_stack, stack_pos), op_stack, stack_pos);
+    PushInt((size_t)DeserializeArray(OBJ_ARY_PARM, inst, op_stack, stack_pos), op_stack, stack_pos);
   }
   else {
     PushInt(0, op_stack, stack_pos);
@@ -2836,7 +2836,7 @@ bool TrapProcessor::DeserlFloatAry(StackProgram* program, size_t* inst, size_t* 
   wcout << L"# deserializing float array #" << endl;
 #endif
   if(FLOAT_ARY_PARM == (ParamType)DeserializeInt(inst)) {
-    PushInt((long)DeserializeArray(FLOAT_ARY_PARM, inst, op_stack, stack_pos), op_stack, stack_pos);
+    PushInt((size_t)DeserializeArray(FLOAT_ARY_PARM, inst, op_stack, stack_pos), op_stack, stack_pos);
   }
   else {
     PushInt(0, op_stack, stack_pos);
@@ -2859,7 +2859,7 @@ bool TrapProcessor::FileOpenRead(StackProgram* program, size_t* inst, size_t* &o
 	  << (long)instance << L")" << L"; addr=" << file << L"(" << (long)file
 	  << L") #" << endl;
 #endif
-    instance[0] = (long)file;
+    instance[0] = (size_t)file;
   }
 
   return true;
@@ -2879,7 +2879,7 @@ bool TrapProcessor::FileOpenAppend(StackProgram* program, size_t* inst, size_t* 
 	  << (long)instance << L")" << L"; addr=" << file << L"(" << (long)file
 	  << L") #" << endl;
 #endif
-    instance[0] = (long)file;
+    instance[0] = (size_t)file;
   }
 
   return true;
@@ -2899,7 +2899,7 @@ bool TrapProcessor::FileOpenWrite(StackProgram* program, size_t* inst, size_t* &
 	  << (long)instance << L")" << L"; addr=" << file << L"(" << (long)file
 	  << L") #" << endl;
 #endif
-    instance[0] = (long)file;
+    instance[0] = (size_t)file;
   }
 
   return true;
@@ -2919,7 +2919,7 @@ bool TrapProcessor::FileOpenReadWrite(StackProgram* program, size_t* inst, size_
 	  << (long)instance << L")" << L"; addr=" << file << L"(" << (long)file
 	  << L") #" << endl;
 #endif
-    instance[0] = (long)file;
+    instance[0] = (size_t)file;
   }
 
   return true;
@@ -2963,7 +2963,7 @@ bool TrapProcessor::FileInString(StackProgram* program, size_t* inst, size_t* &o
     FILE* file = (FILE*)instance[0];
     char buffer[SMALL_BUFFER_MAX + 1];
     if(file && fgets(buffer, SMALL_BUFFER_MAX, file)) {
-      long end_index = strlen(buffer) - 1;
+      long end_index = (long)strlen(buffer) - 1;
       if(end_index > -1) {
         if(buffer[end_index] == '\n' || buffer[end_index] == '\r') {
           buffer[end_index] = '\0';
@@ -3142,7 +3142,7 @@ bool TrapProcessor::SockTcpOutCharAry(StackProgram* program, size_t* inst, size_
     wstring sub_buffer(buffer + offset, num);
     // convert to bytes and write out
     string buffer_out = UnicodeToBytes(sub_buffer);
-    PushInt(IPSocket::WriteBytes(buffer_out.c_str(), buffer_out.size(), sock), op_stack, stack_pos);
+    PushInt(IPSocket::WriteBytes(buffer_out.c_str(), (int)buffer_out.size(), sock), op_stack, stack_pos);
   }
   else {
     PushInt(-1, op_stack, stack_pos);
@@ -3272,7 +3272,7 @@ bool TrapProcessor::SockTcpSslOutCharAry(StackProgram* program, size_t* inst, si
     wstring sub_buffer(buffer + offset, num);
     // convert to bytes and write out
     string buffer_out = UnicodeToBytes(sub_buffer);
-    PushInt(IPSecureSocket::WriteBytes(buffer_out.c_str(), buffer_out.size(), ctx, bio), op_stack, stack_pos);
+    PushInt(IPSecureSocket::WriteBytes(buffer_out.c_str(), (int)buffer_out.size(), ctx, bio), op_stack, stack_pos);
   }
   else {
     PushInt(-1, op_stack, stack_pos);
@@ -3775,7 +3775,7 @@ bool TrapProcessor::DirList(StackProgram* program, size_t* inst, size_t* &op_sta
     vector<string> files = File::ListDir(name.c_str());
 
     // create 'System.String' object array
-    const long str_obj_array_size = files.size();
+    const long str_obj_array_size = (long)files.size();
     const long str_obj_array_dim = 1;
     size_t* str_obj_array = MemoryManager::AllocateArray(str_obj_array_size + str_obj_array_dim + 2,
                                                               INT_TYPE, op_stack, *stack_pos, false);
@@ -3787,10 +3787,10 @@ bool TrapProcessor::DirList(StackProgram* program, size_t* inst, size_t* &op_sta
     // create and assign 'System.String' instances to array
     for(size_t i = 0; i < files.size(); ++i) {
       const wstring wfile(files[i].begin(), files[i].end());
-      str_obj_array_ptr[i] = (long)CreateStringObject(wfile, program, op_stack, stack_pos);
+      str_obj_array_ptr[i] = (size_t)CreateStringObject(wfile, program, op_stack, stack_pos);
     }
 
-    PushInt((long)str_obj_array, op_stack, stack_pos);
+    PushInt((size_t)str_obj_array, op_stack, stack_pos);
   }
   else {
     PushInt(0, op_stack, stack_pos);
