@@ -550,7 +550,7 @@ void MemoryManager::CollectAllMemory(size_t* op_stack, long stack_pos)
 #endif
 }
 
-uintptr_t WINAPI MemoryManager::CollectMemory(void* arg)
+unsigned int MemoryManager::CollectMemory(void* arg)
 {
   CollectionInfo* info = (CollectionInfo*)arg;
 
@@ -786,7 +786,7 @@ uintptr_t WINAPI MemoryManager::CollectMemory(void* arg)
   return 0;
 }
 
-size_t WINAPI MemoryManager::CheckStatic(void* arg)
+unsigned int MemoryManager::CheckStatic(void* arg)
 {
   StackClass** clss = prgm->GetClasses();
   int cls_num = prgm->GetClassNumber();
@@ -800,7 +800,7 @@ size_t WINAPI MemoryManager::CheckStatic(void* arg)
   return 0;
 }
 
-uintptr_t WINAPI MemoryManager::CheckStack(void* arg)
+unsigned int MemoryManager::CheckStack(void* arg)
 {
   CollectionInfo* info = (CollectionInfo*)arg;
 #ifdef _DEBUG
@@ -816,7 +816,7 @@ uintptr_t WINAPI MemoryManager::CheckStack(void* arg)
   return 0;
 }
 
-uintptr_t WINAPI MemoryManager::CheckJitRoots(void* arg)
+unsigned int MemoryManager::CheckJitRoots(void* arg)
 {
 #ifndef GC_SERIAL
   EnterCriticalSection(&jit_cs);
@@ -985,7 +985,7 @@ uintptr_t WINAPI MemoryManager::CheckJitRoots(void* arg)
   return 0;
 }
 
-uintptr_t WINAPI MemoryManager::CheckPdaRoots(void* arg)
+unsigned int MemoryManager::CheckPdaRoots(void* arg)
 {
 #ifndef _GC_SERIAL
   EnterCriticalSection(&pda_frame_cs);
