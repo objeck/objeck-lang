@@ -963,12 +963,12 @@ namespace Runtime {
 	wcout << L"jit oper: MTHD_CALL: cls=" << instr->GetOperand() << L", mthd=" << instr->GetOperand2() << endl;
 #endif
 	StackInterpreter intpr(call_stack, call_stack_pos);
-	intpr.Execute(op_stack, (long*)stack_pos, ip, program->GetClass(cls_id)->GetMethod(mthd_id), (long*)inst, true);
+	intpr.Execute(op_stack, (long*)stack_pos, ip, program->GetClass(cls_id)->GetMethod(mthd_id), (size_t*)inst, true);
       }
 	break;
 
       case LOAD_ARY_SIZE: {
-	long* array = (long*)PopInt(op_stack, stack_pos);
+	size_t* array = (size_t*)PopInt(op_stack, stack_pos);
 	if(!array) {
 	  wcerr << L"Atempting to dereference a 'Nil' memory instance" << endl;
 	  wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
@@ -1088,8 +1088,8 @@ namespace Runtime {
 	break;
 
       case OBJ_TYPE_OF: {
-	long* mem = (long*)PopInt(op_stack, stack_pos);
-	long* result = MemoryManager::ValidObjectCast(mem, instr->GetOperand(),
+	size_t* mem = (size_t*)PopInt(op_stack, stack_pos);
+	size_t* result = MemoryManager::ValidObjectCast(mem, instr->GetOperand(),
 						      program->GetHierarchy(),
 						      program->GetInterfaces());
 	if(result) {
@@ -1107,10 +1107,10 @@ namespace Runtime {
 #ifdef _DEBUG
 	wcout << L"jit oper: OBJ_INST_CAST: from=" << mem << L", to=" << to_id << endl; 
 #endif	
-	int32_t result = (int32_t)MemoryManager::ValidObjectCast((long*)mem, to_id, 
+	int32_t result = (int32_t)MemoryManager::ValidObjectCast((size_t*)mem, to_id, 
 								 program->GetHierarchy(), program->GetInterfaces());
 	if(!result && mem) {
-	  StackClass* to_cls = MemoryManager::GetClass((long*)mem);	  
+	  StackClass* to_cls = MemoryManager::GetClass((size_t*)mem);	  
 	  wcerr << L">>> Invalid object cast: '" << (to_cls ? to_cls->GetName() : L"?" )  
 		<< L"' to '" << program->GetClass(to_id)->GetName() << L"' <<<" << endl;
 	  wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
@@ -1203,9 +1203,9 @@ namespace Runtime {
       case CPY_BYTE_ARY: {
 	long length = PopInt(op_stack, stack_pos);;
 	const long src_offset = PopInt(op_stack, stack_pos);;
-	long* src_array = (long*)PopInt(op_stack, stack_pos);;
+	size_t* src_array = (size_t*)PopInt(op_stack, stack_pos);;
 	const long dest_offset = PopInt(op_stack, stack_pos);;
-	long* dest_array = (long*)PopInt(op_stack, stack_pos);;      
+	size_t* dest_array = (size_t*)PopInt(op_stack, stack_pos);;      
 
 	if(!src_array || !dest_array) {
 	  wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
@@ -1230,9 +1230,9 @@ namespace Runtime {
       case CPY_CHAR_ARY: {
 	long length = PopInt(op_stack, stack_pos);;
 	const long src_offset = PopInt(op_stack, stack_pos);;
-	long* src_array = (long*)PopInt(op_stack, stack_pos);;
+	size_t* src_array = (size_t*)PopInt(op_stack, stack_pos);;
 	const long dest_offset = PopInt(op_stack, stack_pos);;
-	long* dest_array = (long*)PopInt(op_stack, stack_pos);;      
+	size_t* dest_array = (size_t*)PopInt(op_stack, stack_pos);;      
 
 	if(!src_array || !dest_array) {
 	  wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
@@ -1258,9 +1258,9 @@ namespace Runtime {
       case CPY_INT_ARY: {
 	long length = PopInt(op_stack, stack_pos);;
 	const long src_offset = PopInt(op_stack, stack_pos);;
-	long* src_array = (long*)PopInt(op_stack, stack_pos);;
+	size_t* src_array = (size_t*)PopInt(op_stack, stack_pos);;
 	const long dest_offset = PopInt(op_stack, stack_pos);;
-	long* dest_array = (long*)PopInt(op_stack, stack_pos);;      
+	size_t* dest_array = (size_t*)PopInt(op_stack, stack_pos);;      
 
 	if(!src_array || !dest_array) {
 	  wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
@@ -1271,8 +1271,8 @@ namespace Runtime {
 	const long src_array_len = src_array[0];
 	const long dest_array_len = dest_array[0];
 	if(length > 0 && src_offset + length <= src_array_len && dest_offset + length <= dest_array_len) {
-	  long* src_array_ptr = src_array + 3;
-	  long* dest_array_ptr = dest_array + 3;
+	  size_t* src_array_ptr = src_array + 3;
+	  size_t* dest_array_ptr = dest_array + 3;
 	  memcpy(dest_array_ptr + dest_offset, src_array_ptr + src_offset, length * sizeof(long));
 	  PushInt(op_stack, stack_pos, 1);
 	}
@@ -1285,9 +1285,9 @@ namespace Runtime {
       case CPY_FLOAT_ARY: {
 	long length = PopInt(op_stack, stack_pos);;
 	const long src_offset = PopInt(op_stack, stack_pos);;
-	long* src_array = (long*)PopInt(op_stack, stack_pos);;
+	size_t* src_array = (size_t*)PopInt(op_stack, stack_pos);;
 	const long dest_offset = PopInt(op_stack, stack_pos);;
-	long* dest_array = (long*)PopInt(op_stack, stack_pos);;      
+	size_t* dest_array = (size_t*)PopInt(op_stack, stack_pos);;      
 
 	if(!src_array || !dest_array) {
 	  wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
@@ -1298,8 +1298,8 @@ namespace Runtime {
 	const long src_array_len = src_array[0];
 	const long dest_array_len = dest_array[0];
 	if(length > 0 && src_offset + length <= src_array_len && dest_offset + length <= dest_array_len) {
-	  long* src_array_ptr = src_array + 3;
-	  long* dest_array_ptr = dest_array + 3;
+	  size_t* src_array_ptr = src_array + 3;
+	  size_t* dest_array_ptr = dest_array + 3;
 	  memcpy(dest_array_ptr + dest_offset, src_array_ptr + src_offset, length * sizeof(FLOAT_VALUE));
 	  PushInt(op_stack, stack_pos, 1);
 	}
@@ -1748,7 +1748,7 @@ namespace Runtime {
     }    
     
     // Executes machine code
-    inline long Execute(StackMethod* cm, long* inst, size_t* op_stack, long* stack_pos, 
+    inline long Execute(StackMethod* cm, size_t* inst, size_t* op_stack, long* stack_pos, 
 			StackFrame** call_stack, long* call_stack_pos) {
       method = cm;
       int32_t cls_id = method->GetClass()->GetId();
