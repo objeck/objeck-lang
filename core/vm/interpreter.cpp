@@ -1762,7 +1762,7 @@ void StackInterpreter::ProcessAsyncMethodCall(StackMethod* called, size_t* param
 //
 // windows thread callback
 //
-uintptr_t WINAPI StackInterpreter::AsyncMethodCall(LPVOID arg)
+unsigned int WINAPI StackInterpreter::AsyncMethodCall(LPVOID arg)
 {
   ThreadHolder* holder = (ThreadHolder*)arg;
 

@@ -584,7 +584,7 @@ namespace Runtime {
     }
 
 #ifdef _WIN32
-    static uintptr_t WINAPI AsyncMethodCall(LPVOID arg);
+    static unsigned int WINAPI AsyncMethodCall(LPVOID arg);
 #else
     static void* AsyncMethodCall(void* arg);
 #endif

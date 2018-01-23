@@ -198,11 +198,11 @@ public:
 
   // mark and sweep functions
   static void CollectAllMemory(size_t* op_stack, long stack_pos);
-  static uintptr_t WINAPI CollectMemory(LPVOID arg);
-  static uintptr_t WINAPI CheckStatic(LPVOID arg);
-  static uintptr_t WINAPI CheckStack(LPVOID arg);
-  static uintptr_t WINAPI CheckJitRoots(LPVOID arg);
-  static uintptr_t WINAPI CheckPdaRoots(LPVOID arg);
+  static unsigned int WINAPI CollectMemory(LPVOID arg);
+  static unsigned int WINAPI CheckStatic(LPVOID arg);
+  static unsigned int WINAPI CheckStack(LPVOID arg);
+  static unsigned int WINAPI CheckJitRoots(LPVOID arg);
+  static unsigned int WINAPI CheckPdaRoots(LPVOID arg);
   
   // add and remove jit roots
   static void AddJitMethodRoot(long cls_id, long mthd_id, size_t* self, size_t* mem, long offset);
