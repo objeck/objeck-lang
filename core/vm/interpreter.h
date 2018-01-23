@@ -244,11 +244,11 @@ namespace Runtime {
     // pops an integer from the calculation stack.  this code
     // in normally inlined and there's a macro version available.
     //
-    inline long PopInt(size_t* op_stack, long* stack_pos) {    
+    inline size_t PopInt(size_t* op_stack, long* stack_pos) {
 #ifdef _DEBUG
-      long v = op_stack[--(*stack_pos)];
+      size_t v = op_stack[--(*stack_pos)];
       wcout << L"  [pop_i: stack_pos=" << (*stack_pos) << L"; value=" << v << L"("
-	    << (void*)v << L")]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << endl;
+	    << (size_t*)v << L")]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << endl;
       return v;
 #else
       return op_stack[--(*stack_pos)];
@@ -259,10 +259,10 @@ namespace Runtime {
     // pushes an integer onto the calculation stack.  this code
     // in normally inlined and there's a macro version available.
     //
-    inline void PushInt(long v, size_t* op_stack, long* stack_pos) {
+    inline void PushInt(size_t v, size_t* op_stack, long* stack_pos) {
 #ifdef _DEBUG
       wcout << L"  [push_i: stack_pos=" << (*stack_pos) << L"; value=" << v << L"("
-	    << (void*)v << L")]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << endl;
+	    << (size_t*)v << L")]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << endl;
 #endif
       op_stack[(*stack_pos)++] = v;
     }
@@ -318,9 +318,9 @@ namespace Runtime {
     // peeks at the integer on the top of the
     // execution stack.
     //
-    inline long TopInt(size_t* op_stack, long* stack_pos) {
+    inline size_t TopInt(size_t* op_stack, long* stack_pos) {
 #ifdef _DEBUG
-      long v = op_stack[(*stack_pos) - 1];
+      size_t v = op_stack[(*stack_pos) - 1];
       wcout << L"  [top_i: stack_pos=" << (*stack_pos) << L"; value=" << v << L"(" << (void*)v
 	    << L")]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << endl;
       return v;

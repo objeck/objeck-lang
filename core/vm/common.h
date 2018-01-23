@@ -1491,11 +1491,11 @@ class TrapProcessor {
   // pops an integer from the calculation stack.  this code
   // in normally inlined and there's a macro version available.
   //
-  static inline long PopInt(size_t* op_stack, long* stack_pos) {    
+  static inline size_t PopInt(size_t* op_stack, long* stack_pos) {    
 #ifdef _DEBUG
-    long v = op_stack[--(*stack_pos)];
+    size_t v = op_stack[--(*stack_pos)];
     wcout << L"  [pop_i: stack_pos=" << (*stack_pos) << L"; value=" << v << L"("
-	  << (void*)v << L")]" << endl;
+	  << (size_t*)v << L")]" << endl;
     return v;
 #else
     return op_stack[--(*stack_pos)];
@@ -1506,10 +1506,10 @@ class TrapProcessor {
   // pushes an integer onto the calculation stack.  this code
   // in normally inlined and there's a macro version available.
   //
-  static inline void PushInt(long v, size_t* op_stack, long* stack_pos) {
+  static inline void PushInt(size_t v, size_t* op_stack, long* stack_pos) {
 #ifdef _DEBUG
     wcout << L"  [push_i: stack_pos=" << (*stack_pos) << L"; value=" << v << L"("
-	  << (void*)v << L")]" << endl;
+	  << (size_t*)v << L")]" << endl;
 #endif
     op_stack[(*stack_pos)++] = v;
   }
@@ -1563,9 +1563,9 @@ class TrapProcessor {
   // peeks at the integer on the top of the
   // execution stack.
   //
-  static inline long TopInt(size_t* op_stack, long* stack_pos) {
+  static inline size_t TopInt(size_t* op_stack, long* stack_pos) {
 #ifdef _DEBUG
-    long v = op_stack[(*stack_pos) - 1];
+    size_t v = op_stack[(*stack_pos) - 1];
     wcout << L"  [top_i: stack_pos=" << (*stack_pos) << L"; value=" << v << L"(" << (void*)v << L")]" << endl;
     return v;
 #else

@@ -114,8 +114,8 @@ void ObjectSerializer::CheckObject(size_t* mem, bool is_obj, long depth) {
       // primitive or object array
       if(!WasSerialized(mem)) {
         size_t* array = (mem);
-        const long size = array[0];
-        const long dim = array[1];
+        const long size = (long)array[0];
+        const long dim = (long)array[1];
         size_t* objects = (size_t*)(array + 2 + dim);
 
 #ifdef _DEBUG
@@ -168,7 +168,7 @@ void ObjectSerializer::CheckMemory(size_t* mem, StackDclr** dclrs, const long dc
       wcout << L"\t" << i << L": ----- serializing int: value=" 
             << (*mem) << L", size=" << sizeof(INT_VALUE) << L" byte(s) -----" << endl;
 #endif
-      SerializeInt(*mem);
+      SerializeInt((INT_VALUE)*mem);
       // update
       mem++;
       break;
@@ -192,15 +192,15 @@ void ObjectSerializer::CheckMemory(size_t* mem, StackDclr** dclrs, const long dc
         SerializeByte(1);
         // mark data
         if(!WasSerialized((size_t*)(*mem))) {
-          const long array_size = array[0];
+          const long array_size = (long)array[0];
 #ifdef _DEBUG
           wcout << L"\t" << i << L": ----- serializing byte array: mem_id=" << cur_id << L", size=" 
                 << array_size << L" byte(s) -----" << endl;
 #endif
           // write metadata
-          SerializeInt(array[0]);
-          SerializeInt(array[1]);
-          SerializeInt(array[2]);
+          SerializeInt((INT_VALUE)array[0]);
+          SerializeInt((INT_VALUE)array[1]);
+          SerializeInt((INT_VALUE)array[2]);
           char* array_ptr = (char*)(array + 3);
 
           // values
@@ -223,14 +223,14 @@ void ObjectSerializer::CheckMemory(size_t* mem, StackDclr** dclrs, const long dc
         if(!WasSerialized((size_t*)(*mem))) {
           // convert
           const string buffer = UnicodeToBytes((wchar_t*)(array + 3));
-          const long array_size = buffer.size();	  
+          const long array_size = (long)buffer.size();	  
 #ifdef _DEBUG
           wcout << L"\t" << i << L": ----- serializing char array: mem_id=" << cur_id << L", size=" 
                 << array_size << L" byte(s) -----" << endl;
 #endif	  
           // write metadata
           SerializeInt(array_size);
-          SerializeInt(array[1]);
+          SerializeInt((INT_VALUE)array[1]);
           SerializeInt(array_size);
           
           // values
@@ -251,20 +251,20 @@ void ObjectSerializer::CheckMemory(size_t* mem, StackDclr** dclrs, const long dc
         SerializeByte(1);
         // mark data
         if(!WasSerialized((size_t*)(*mem))) {
-          const long array_size = array[0];
+          const long array_size = (long)array[0];
 #ifdef _DEBUG
           wcout << L"\t" << i << L": ----- serializing int array: mem_id=" << cur_id << L", size=" 
                 << array_size << L" byte(s) -----" << endl;
 #endif
           // write metadata
-          SerializeInt(array[0]);
-          SerializeInt(array[1]);
-          SerializeInt(array[2]);
+          SerializeInt((INT_VALUE)array[0]);
+          SerializeInt((INT_VALUE)array[1]);
+          SerializeInt((INT_VALUE)array[2]);
           size_t* array_ptr = array + 3;
 
           // values
           for(int i = 0; i < array_size; i++) {
-            SerializeInt(array_ptr[i]);
+            SerializeInt((INT_VALUE)array_ptr[i]);
           }
         }
       }
@@ -282,15 +282,15 @@ void ObjectSerializer::CheckMemory(size_t* mem, StackDclr** dclrs, const long dc
         SerializeByte(1);
         // mark data
         if(!WasSerialized((size_t*)(*mem))) {
-          const long array_size = array[0];
+          const long array_size = (long)array[0];
 #ifdef _DEBUG
           wcout << L"\t" << i << L": ----- serializing float array: mem_id=" << cur_id << L", size=" 
                 << array_size << L" byte(s) -----" << endl;
 #endif
           // write metadata
-          SerializeInt(array[0]);
-          SerializeInt(array[1]);
-          SerializeInt(array[2]);
+          SerializeInt((INT_VALUE)array[0]);
+          SerializeInt((INT_VALUE)array[1]);
+          SerializeInt((INT_VALUE)array[2]);
           FLOAT_VALUE* array_ptr = (FLOAT_VALUE*)(array + 3);
 
           // write values
@@ -311,15 +311,15 @@ void ObjectSerializer::CheckMemory(size_t* mem, StackDclr** dclrs, const long dc
         SerializeByte(1);
         // mark data
         if(!WasSerialized((size_t*)(*mem))) {
-          const long array_size = array[0];
+          const long array_size = (long)array[0];
 #ifdef _DEBUG
           wcout << L"\t" << i << L": ----- serializing objeck array: mem_id=" << cur_id << L", size="
 		<< array_size << L" byte(s) -----" << endl;
 #endif
           // write metadata
-          SerializeInt(array[0]);
-          SerializeInt(array[1]);
-          SerializeInt(array[2]);
+          SerializeInt((INT_VALUE)array[0]);
+          SerializeInt((INT_VALUE)array[1]);
+          SerializeInt((INT_VALUE)array[2]);
           size_t* array_ptr = array + 3;
 
           // write values
@@ -440,14 +440,14 @@ size_t* ObjectDeserializer::DeserializeObject() {
 #endif
           // update cache
           mem_cache[-mem_id] = byte_array;
-          instance[instance_pos++] = (long)byte_array;
+          instance[instance_pos++] = (size_t)byte_array;
         }
         else {
           map<INT_VALUE, size_t*>::iterator found = mem_cache.find(mem_id);
           if(found == mem_cache.end()) {
             return NULL;
           } 
-          instance[instance_pos++] = (long)found->second;
+          instance[instance_pos++] = (size_t)found->second;
         }
       }
     }
@@ -476,7 +476,7 @@ size_t* ObjectDeserializer::DeserializeObject() {
           wcout << L"--- deserialization: char array; value=" << out <<  ", size=" 
                 << char_array_size << L" ---" << endl;
 #endif
-          char_array_size = char_array_size_dim = out.size();
+          char_array_size = char_array_size_dim = (long)out.size();
           size_t* char_array = MemoryManager::AllocateArray(char_array_size +
                                                                  ((char_array_dim + 2) *
                                                                   sizeof(long)), CHAR_ARY_TYPE,
@@ -490,14 +490,14 @@ size_t* ObjectDeserializer::DeserializeObject() {
 	  
           // update cache
           mem_cache[-mem_id] = char_array;
-          instance[instance_pos++] = (long)char_array;
+          instance[instance_pos++] = (size_t)char_array;
         }
         else {
           map<INT_VALUE, size_t*>::iterator found = mem_cache.find(mem_id);
           if(found == mem_cache.end()) {
             return NULL;
           } 
-          instance[instance_pos++] = (long)found->second;
+          instance[instance_pos++] = (size_t)found->second;
         }
       }
     }
@@ -528,14 +528,14 @@ size_t* ObjectDeserializer::DeserializeObject() {
 #endif
           // update cache
           mem_cache[-mem_id] = array;
-          instance[instance_pos++] = (long)array;
+          instance[instance_pos++] = (size_t)array;
         }
         else {
           map<INT_VALUE, size_t*>::iterator found = mem_cache.find(mem_id);
           if(found == mem_cache.end()) {
             return NULL;
           } 
-          instance[instance_pos++] = (long)found->second;
+          instance[instance_pos++] = (size_t)found->second;
         }
       }
     }
@@ -566,14 +566,14 @@ size_t* ObjectDeserializer::DeserializeObject() {
 #endif
           // update cache
           mem_cache[-mem_id] = array;
-          instance[instance_pos++] = (long)array;
+          instance[instance_pos++] = (size_t)array;
         }
         else {
           map<INT_VALUE, size_t*>::iterator found = mem_cache.find(mem_id);
           if(found == mem_cache.end()) {
             return NULL;
           } 
-          instance[instance_pos++] = (long)found->second;
+          instance[instance_pos++] = (size_t)found->second;
         }
       }
     }
@@ -604,7 +604,7 @@ size_t* ObjectDeserializer::DeserializeObject() {
             else {
               ObjectDeserializer deserializer(buffer, buffer_offset, mem_cache,
 					      buffer_array_size, op_stack, stack_pos);
-              array_ptr[i] = (long)deserializer.DeserializeObject();
+              array_ptr[i] = (size_t)deserializer.DeserializeObject();
               buffer_offset = deserializer.GetOffset();
               mem_cache = deserializer.GetMemoryCache();
             }
@@ -615,14 +615,14 @@ size_t* ObjectDeserializer::DeserializeObject() {
 #endif
           // update cache
           mem_cache[-mem_id] = array;
-          instance[instance_pos++] = (long)array;
+          instance[instance_pos++] = (size_t)array;
         }
         else {
           map<INT_VALUE, size_t*>::iterator found = mem_cache.find(mem_id);
           if (found == mem_cache.end()) {
             return NULL;
           }
-          instance[instance_pos++] = (long)found->second;
+          instance[instance_pos++] = (size_t)found->second;
         }
       }
     }
@@ -634,7 +634,7 @@ size_t* ObjectDeserializer::DeserializeObject() {
       }
       else {
         ObjectDeserializer deserializer(buffer, buffer_offset, mem_cache, buffer_array_size, op_stack, stack_pos);
-        instance[instance_pos++] = (long)deserializer.DeserializeObject();
+        instance[instance_pos++] = (size_t)deserializer.DeserializeObject();
         buffer_offset = deserializer.GetOffset();
         mem_cache = deserializer.GetMemoryCache();
       }
@@ -769,7 +769,7 @@ size_t* TrapProcessor::CreateMethodObject(size_t* cls_obj, StackMethod* mthd, St
     exit(1);
   }
   const wstring &mthd_string = semi_qual_mthd_string.substr(0, mthd_index);
-  mthd_obj[2] = (long)CreateStringObject(mthd_string, program, op_stack, stack_pos);
+  mthd_obj[2] = (size_t)CreateStringObject(mthd_string, program, op_stack, stack_pos);
 
   // parse parameter wstring      
   int index = 0;
@@ -814,7 +814,7 @@ size_t* TrapProcessor::CreateMethodObject(size_t* cls_obj, StackMethod* mthd, St
       while(index < (int)params_string.size() && params_string[index] != L',') {
         index++;
       }
-      data_type_obj[1] = (long)CreateStringObject(params_string.substr(start_index, index - 2), 
+      data_type_obj[1] = (size_t)CreateStringObject(params_string.substr(start_index, index - 2), 
                                                   program, op_stack, stack_pos);
     }
       break;
@@ -862,10 +862,10 @@ size_t* TrapProcessor::CreateMethodObject(size_t* cls_obj, StackMethod* mthd, St
   size_t* type_obj_array_ptr = type_obj_array + 3;
   // copy types objects
   for(int i = 0; i < type_obj_array_size; i++) {
-    type_obj_array_ptr[i] = (long)data_type_obj_holder[i];
+    type_obj_array_ptr[i] = (size_t)data_type_obj_holder[i];
   }
   // set type array
-  mthd_obj[3] = (long)type_obj_array;
+  mthd_obj[3] = (size_t)type_obj_array;
       
   return mthd_obj;
 }
@@ -891,9 +891,9 @@ void TrapProcessor::CreateClassObject(StackClass* cls, size_t* cls_obj, size_t* 
   size_t* mthd_obj_array_ptr = mthd_obj_array + 3;
   for(int i = 0; i < mthd_obj_array_size; i++) {
     size_t* mthd_obj = CreateMethodObject(cls_obj, methods[i], program, op_stack, stack_pos);
-    mthd_obj_array_ptr[i] = (long)mthd_obj;
+    mthd_obj_array_ptr[i] = (size_t)mthd_obj;
   }
-  cls_obj[1] = (long)mthd_obj_array;
+  cls_obj[1] = (size_t)mthd_obj_array;
 }
 
 /********************************
@@ -902,7 +902,7 @@ void TrapProcessor::CreateClassObject(StackClass* cls, size_t* cls_obj, size_t* 
 size_t* TrapProcessor::CreateStringObject(const wstring &value_str, StackProgram* program,
                                         size_t* &op_stack, long* &stack_pos) {
   // create character array
-  const long char_array_size = value_str.size();
+  const long char_array_size = (long)value_str.size();
   const long char_array_dim = 1;
   size_t* char_array = MemoryManager::AllocateArray(char_array_size + 1 +
                                                          ((char_array_dim + 2) *
@@ -987,10 +987,10 @@ void TrapProcessor::ProcessCurrentTime(StackFrame* frame, bool is_gmt)
 void TrapProcessor::ProcessSetTime1(size_t* &op_stack, long* &stack_pos)
 {
   // get time values
-  long is_gmt = PopInt(op_stack, stack_pos);
-  long year = PopInt(op_stack, stack_pos);
-  long month = PopInt(op_stack, stack_pos);
-  long day = PopInt(op_stack, stack_pos);
+  long is_gmt = (long)PopInt(op_stack, stack_pos);
+  long year = (long)PopInt(op_stack, stack_pos);
+  long month = (long)PopInt(op_stack, stack_pos);
+  long day = (long)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
   if(instance) {
@@ -1036,13 +1036,13 @@ void TrapProcessor::ProcessSetTime1(size_t* &op_stack, long* &stack_pos)
 void TrapProcessor::ProcessSetTime2(size_t* &op_stack, long* &stack_pos)
 {
   // get time values
-  long is_gmt = PopInt(op_stack, stack_pos);
-  long secs = PopInt(op_stack, stack_pos);
-  long mins = PopInt(op_stack, stack_pos);
-  long hours = PopInt(op_stack, stack_pos);
-  long year = PopInt(op_stack, stack_pos);
-  long month = PopInt(op_stack, stack_pos);
-  long day = PopInt(op_stack, stack_pos);
+  long is_gmt = (long)PopInt(op_stack, stack_pos);
+  long secs = (long)PopInt(op_stack, stack_pos);
+  long mins = (long)PopInt(op_stack, stack_pos);
+  long hours = (long)PopInt(op_stack, stack_pos);
+  long year = (long)PopInt(op_stack, stack_pos);
+  long month = (long)PopInt(op_stack, stack_pos);
+  long day = (long)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
   if(instance) {
@@ -1089,7 +1089,7 @@ void TrapProcessor::ProcessSetTime3(size_t* &op_stack, long* &stack_pos)
 
 void TrapProcessor::ProcessAddTime(TimeInterval t, size_t* &op_stack, long* &stack_pos)
 {  
-  long value = PopInt(op_stack, stack_pos);
+  long value = (long)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
   if(instance) {
@@ -1115,13 +1115,13 @@ void TrapProcessor::ProcessAddTime(TimeInterval t, size_t* &op_stack, long* &sta
 
     // create time structure
     struct tm set_time;
-    set_time.tm_mday = instance[0];          // day
-    set_time.tm_mon = instance[1] - 1;       // month
-    set_time.tm_year = instance[2] - 1900;   // year
-    set_time.tm_hour = instance[3];          // hours
-    set_time.tm_min = instance[4];           // mins
-    set_time.tm_sec = instance[5];           // secs
-    set_time.tm_isdst = instance[6];         // savings time
+    set_time.tm_mday = (int)instance[0];          // day
+    set_time.tm_mon = (int)instance[1] - 1;       // month
+    set_time.tm_year = (int)instance[2] - 1900;   // year
+    set_time.tm_hour = (int)instance[3];          // hours
+    set_time.tm_min = (int)instance[4];           // mins
+    set_time.tm_sec = (int)instance[5];           // secs
+    set_time.tm_isdst = (int)instance[6];         // savings time
 
     // calculate difference
     time_t raw_time = mktime(&set_time);
@@ -1192,7 +1192,7 @@ inline size_t* TrapProcessor::DeserializeArray(ParamType type, size_t* inst, siz
   }
 
   size_t* src_array = (size_t*)inst[0];
-  long dest_pos = inst[1];
+  long dest_pos = (long)inst[1];
 
   if(dest_pos < (long)src_array[0]) {
     const long dest_array_size = DeserializeInt(inst);
@@ -1229,12 +1229,12 @@ inline size_t* TrapProcessor::DeserializeArray(ParamType type, size_t* inst, siz
           dest_array_ptr[i] = 0;
         }
         else {
-          const long dest_pos = inst[1];
-          const long byte_array_dim_size = src_array[2];
+          const long dest_pos = (long)inst[1];
+          const long byte_array_dim_size = (long)src_array[2];
           const char* byte_array_ptr = ((char*)(src_array + 3) + dest_pos);
 
           ObjectDeserializer deserializer(byte_array_ptr, byte_array_dim_size, op_stack, stack_pos);
-          dest_array_ptr[i] = (long)deserializer.DeserializeObject();
+          dest_array_ptr[i] = (size_t)deserializer.DeserializeObject();
           inst[1] = dest_pos + deserializer.GetOffset();
         }
       }
@@ -1254,12 +1254,12 @@ inline size_t* TrapProcessor::DeserializeArray(ParamType type, size_t* inst, siz
 //
 size_t* TrapProcessor::ExpandSerialBuffer(const long src_buffer_size, size_t* dest_buffer,
   size_t* inst, size_t* &op_stack, long* &stack_pos) {
-  long dest_buffer_size = dest_buffer[2];
-  const long dest_pos = inst[1];      
+  long dest_buffer_size = (long)dest_buffer[2];
+  const long dest_pos = (long)inst[1];
   const long calc_offset = src_buffer_size + dest_pos;
       
   if(calc_offset >= dest_buffer_size) {
-    const long dest_pos = inst[1];
+    const long dest_pos = (long)inst[1];
     while(calc_offset >= dest_buffer_size) {
       dest_buffer_size += calc_offset / 2;
     }
@@ -1291,13 +1291,13 @@ void TrapProcessor::SerializeObject(size_t* inst, StackFrame* frame, size_t* &op
   size_t* obj = (size_t*)frame->mem[1];
   ObjectSerializer serializer(obj);
   vector<char> src_buffer = serializer.GetValues();
-  const long src_buffer_size = src_buffer.size();
+  const long src_buffer_size = (long)src_buffer.size();
   size_t* dest_buffer = (size_t*)inst[0];
-  long dest_pos = inst[1];
+  long dest_pos = (long)inst[1];
   
   // expand buffer, if needed
   dest_buffer = ExpandSerialBuffer(src_buffer_size, dest_buffer, inst, op_stack, stack_pos);
-  inst[0] = (long)dest_buffer;
+  inst[0] = (size_t)dest_buffer;
   
   // copy content
   char* dest_buffer_ptr = ((char*)(dest_buffer + 3) + dest_pos);
@@ -1316,12 +1316,12 @@ void TrapProcessor::DeserializeObject(size_t* inst, size_t* &op_stack, long* &st
   }
   else {
     size_t* byte_array = (size_t*)inst[0];
-    const long dest_pos = inst[1];
-    const long byte_array_dim_size = byte_array[2];  
+    const long dest_pos = (long)inst[1];
+    const long byte_array_dim_size = (long)byte_array[2];  
     const char* byte_array_ptr = ((char*)(byte_array + 3) + dest_pos);
     
     ObjectDeserializer deserializer(byte_array_ptr, byte_array_dim_size, op_stack, stack_pos);
-    PushInt((long)deserializer.DeserializeObject(), op_stack, stack_pos);
+    PushInt((size_t)deserializer.DeserializeObject(), op_stack, stack_pos);
     inst[1] = dest_pos + deserializer.GetOffset();
   }
 }
@@ -1332,7 +1332,7 @@ void TrapProcessor::DeserializeObject(size_t* inst, size_t* &op_stack, long* &st
  ********************************/
 bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
                                 size_t* &op_stack, long* &stack_pos, StackFrame* frame) {
-  const long id = PopInt(op_stack, stack_pos);
+  const long id = (long)PopInt(op_stack, stack_pos);
   switch(id) {
   case LOAD_CLS_INST_ID:
     return LoadClsInstId(program, inst, op_stack, stack_pos, frame);
@@ -1737,7 +1737,7 @@ bool TrapProcessor::LoadClsByInst(StackProgram* program, size_t* inst, size_t* &
   // set name and create 'Class' instance
   size_t* cls_obj = MemoryManager::AllocateObject(program->GetClassObjectId(),
 						op_stack, *stack_pos, false);
-  cls_obj[0] = (long)CreateStringObject(cls->GetName(), program, op_stack, stack_pos);
+  cls_obj[0] = (size_t)CreateStringObject(cls->GetName(), program, op_stack, stack_pos);
   frame->mem[1] = (long)cls_obj;
   CreateClassObject(cls, cls_obj, op_stack, stack_pos, program);
 
@@ -1813,7 +1813,7 @@ bool TrapProcessor::LoadMultiArySize(StackProgram* program, size_t* inst, size_t
   }
 
   // allocate 'size' array and copy metadata
-  long size = array[1];
+  long size = (long)array[1];
   long dim = 1;
   size_t* mem = MemoryManager::AllocateArray(size + dim + 2, INT_TYPE,
                                                   op_stack, *stack_pos);
@@ -1832,7 +1832,7 @@ bool TrapProcessor::LoadMultiArySize(StackProgram* program, size_t* inst, size_t
 
 bool TrapProcessor::CpyCharStrAry(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
-  long index = PopInt(op_stack, stack_pos);
+  long index = (long)PopInt(op_stack, stack_pos);
   const wchar_t* value_str = program->GetCharStrings()[index];
   // copy array
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
@@ -1840,7 +1840,7 @@ bool TrapProcessor::CpyCharStrAry(StackProgram* program, size_t* inst, size_t* &
     wcerr << L">>> Atempting to dereference a 'Nil' memory element <<<" << endl;
     return false;
   }
-  const long size = array[2];
+  const long size = (long)array[2];
   wchar_t* str = (wchar_t*)(array + 3);
   memcpy(str, value_str, size * sizeof(wchar_t));
 #ifdef _DEBUG
@@ -1859,8 +1859,8 @@ bool TrapProcessor::CpyCharStrArys(StackProgram* program, size_t* inst, size_t* 
     wcerr << L">>> Atempting to dereference a 'Nil' memory element <<<" << endl;
     return false;
   }
-  const long size = array[0];
-  const long dim = array[1];
+  const long size = (long)array[0];
+  const long dim = (long)array[1];
   // copy elements
   size_t* str = (size_t*)(array + dim + 2);
   for(long i = 0; i < size; i++) {
@@ -1876,7 +1876,7 @@ bool TrapProcessor::CpyCharStrArys(StackProgram* program, size_t* inst, size_t* 
 
 bool TrapProcessor::CpyIntStrAry(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
-  long index = PopInt(op_stack, stack_pos);
+  long index = (long)PopInt(op_stack, stack_pos);
   int* value_str = program->GetIntStrings()[index];
   // copy array
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
@@ -1884,8 +1884,8 @@ bool TrapProcessor::CpyIntStrAry(StackProgram* program, size_t* inst, size_t* &o
     wcerr << L">>> Atempting to dereference a 'Nil' memory element <<<" << endl;
     return false;
   }
-  const long size = array[0];
-  const long dim = array[1];
+  const long size = (long)array[0];
+  const long dim = (long)array[1];
   size_t* str = (size_t*)(array + dim + 2);
   for(long i = 0; i < size; i++) {
     str[i] = value_str[i];
@@ -1900,7 +1900,7 @@ bool TrapProcessor::CpyIntStrAry(StackProgram* program, size_t* inst, size_t* &o
 
 bool TrapProcessor::CpyFloatStrAry(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
-  long index = PopInt(op_stack, stack_pos);
+  long index = (long)PopInt(op_stack, stack_pos);
   FLOAT_VALUE* value_str = program->GetFloatStrings()[index];
   // copy array
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
@@ -1908,8 +1908,8 @@ bool TrapProcessor::CpyFloatStrAry(StackProgram* program, size_t* inst, size_t* 
     wcerr << L">>> Atempting to dereference a 'Nil' memory element <<<" << endl;
     return false;
   }
-  const long size = array[0];
-  const long dim = array[1];
+  const long size = (long)array[0];
+  const long dim = (long)array[1];
   FLOAT_VALUE* str = (FLOAT_VALUE*)(array + dim + 2);
   for(long i = 0; i < size; i++) {
     str[i] = value_str[i];
@@ -1995,8 +1995,8 @@ bool TrapProcessor::StdOutCharAry(StackProgram* program, size_t* inst, size_t* &
 bool TrapProcessor::StdOutByteAryLen(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
-  const long num = PopInt(op_stack, stack_pos);
-  const long offset = PopInt(op_stack, stack_pos);
+  const long num = (long)PopInt(op_stack, stack_pos);
+  const long offset = (long)PopInt(op_stack, stack_pos);
 
 #ifdef _DEBUG
   wcout << L"  STD_OUT_BYTE_ARY_LEN: addr=" << array << L"(" << long(array) << L")" << endl;
@@ -2020,8 +2020,8 @@ bool TrapProcessor::StdOutByteAryLen(StackProgram* program, size_t* inst, size_t
 bool TrapProcessor::StdOutCharAryLen(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
-  const long num = PopInt(op_stack, stack_pos);
-  const long offset = PopInt(op_stack, stack_pos);
+  const long num = (long)PopInt(op_stack, stack_pos);
+  const long offset = (long)PopInt(op_stack, stack_pos);
 
 #ifdef _DEBUG
   wcout << L"  STD_OUT_CHAR_ARY: addr=" << array << L"(" << long(array) << L")" << endl;
@@ -2045,7 +2045,7 @@ bool TrapProcessor::StdInString(StackProgram* program, size_t* inst, size_t* &op
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(array) {
     // read input
-    const long max = array[2];
+    const long max = (long)array[2];
     wchar_t* buffer = new wchar_t[max + 1];
     wcin.getline(buffer, max);
     // copy to dest
@@ -2132,8 +2132,8 @@ bool TrapProcessor::StdErrCharAry(StackProgram* program, size_t* inst, size_t* &
 bool TrapProcessor::StdErrByteAry(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
-  const long num = PopInt(op_stack, stack_pos);
-  const long offset = PopInt(op_stack, stack_pos);
+  const long num = (long)PopInt(op_stack, stack_pos);
+  const long offset = (long)PopInt(op_stack, stack_pos);
 
 #ifdef _DEBUG
   wcout << L"  STD_ERR_CHAR_ARY: addr=" << array << L"(" << long(array) << L")" << endl;
@@ -2324,7 +2324,7 @@ bool TrapProcessor::SockTcpHostName(StackProgram* program, size_t* inst, size_t*
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(array) {
-    const long size = array[2];
+    const long size = (long)array[2];
     wchar_t* str = (wchar_t*)(array + 3);
 
     // get host name
@@ -2354,7 +2354,7 @@ bool TrapProcessor::SockTcpHostName(StackProgram* program, size_t* inst, size_t*
 
 bool TrapProcessor::SockTcpConnect(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
-  long port = PopInt(op_stack, stack_pos);
+  long port = (long)PopInt(op_stack, stack_pos);
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(array && instance) {
@@ -2375,7 +2375,7 @@ bool TrapProcessor::SockTcpConnect(StackProgram* program, size_t* inst, size_t* 
 
 bool TrapProcessor::SockTcpBind(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
-  long port = PopInt(op_stack, stack_pos);
+  long port = (long)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(instance) {
     SOCKET server = IPSocket::Bind(port);
@@ -2392,7 +2392,7 @@ bool TrapProcessor::SockTcpBind(StackProgram* program, size_t* inst, size_t* &op
 
 bool TrapProcessor::SockTcpListen(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
-  long backlog = PopInt(op_stack, stack_pos);
+  long backlog = (long)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
   if(instance && (long)instance[0] > -1) {
@@ -2510,7 +2510,7 @@ bool TrapProcessor::SockTcpInString(StackProgram* program, size_t* inst, size_t*
       // copy content
       const wstring in = BytesToUnicode(buffer);
       wchar_t* out = (wchar_t*)(array + 3);
-      const long max = array[2];
+      const long max = (long)array[2];
       wcsncpy(out, in.c_str(), max);
     }
   }
@@ -2520,7 +2520,7 @@ bool TrapProcessor::SockTcpInString(StackProgram* program, size_t* inst, size_t*
 
 bool TrapProcessor::SockTcpSslConnect(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
-  const long port = PopInt(op_stack, stack_pos);
+  const long port = (long)PopInt(op_stack, stack_pos);
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(array && instance) {
@@ -2630,7 +2630,7 @@ bool TrapProcessor::SockTcpSslInString(StackProgram* program, size_t* inst, size
       // copy content
       const wstring in = BytesToUnicode(buffer);
       wchar_t* out = (wchar_t*)(array + 3);
-      const long max = array[2];
+      const long max = (long)array[2];
       wcsncpy(out, in.c_str(), max);
     }
   }
@@ -2979,7 +2979,7 @@ bool TrapProcessor::FileInString(StackProgram* program, size_t* inst, size_t* &o
       // copy
       const wstring in = BytesToUnicode(buffer);
       wchar_t* out = (wchar_t*)(array + 3);
-      const long max = array[2];
+      const long max = (long)array[2];
       wcsncpy(out, in.c_str(), max);
     }
   }
@@ -3044,8 +3044,8 @@ bool TrapProcessor::SockTcpInByte(StackProgram* program, size_t* inst, size_t* &
 bool TrapProcessor::SockTcpInByteAry(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
-  const long num = PopInt(op_stack, stack_pos);
-  const long offset = PopInt(op_stack, stack_pos);
+  const long num = (long)PopInt(op_stack, stack_pos);
+  const long offset = (long)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
   if(array && instance && (long)instance[0] > -1 && offset > -1 && offset + num <= (long)array[0]) {
@@ -3063,8 +3063,8 @@ bool TrapProcessor::SockTcpInByteAry(StackProgram* program, size_t* inst, size_t
 bool TrapProcessor::SockTcpInCharAry(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
-  const long num = PopInt(op_stack, stack_pos);
-  const long offset = PopInt(op_stack, stack_pos);
+  const long num = (long)PopInt(op_stack, stack_pos);
+  const long offset = (long)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
   if(array && instance && (long)instance[0] > -1 && offset > -1 && offset + num <= (long)array[0]) {
@@ -3095,7 +3095,7 @@ bool TrapProcessor::SockTcpInCharAry(StackProgram* program, size_t* inst, size_t
 
 bool TrapProcessor::SockTcpOutByte(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
-  long value = PopInt(op_stack, stack_pos);
+  long value = (long)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(instance && (long)instance[0] > -1) {
     SOCKET sock = (SOCKET)instance[0];
@@ -3112,8 +3112,8 @@ bool TrapProcessor::SockTcpOutByte(StackProgram* program, size_t* inst, size_t* 
 bool TrapProcessor::SockTcpOutByteAry(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
-  const long num = PopInt(op_stack, stack_pos);
-  const long offset = PopInt(op_stack, stack_pos);
+  const long num = (long)PopInt(op_stack, stack_pos);
+  const long offset = (long)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
   if(array && instance && (long)instance[0] > -1 && offset > -1 && offset + num <= (long)array[0]) {
@@ -3131,8 +3131,8 @@ bool TrapProcessor::SockTcpOutByteAry(StackProgram* program, size_t* inst, size_
 bool TrapProcessor::SockTcpOutCharAry(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
-  const long num = PopInt(op_stack, stack_pos);
-  const long offset = PopInt(op_stack, stack_pos);
+  const long num = (long)PopInt(op_stack, stack_pos);
+  const long offset = (long)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
   if(array && instance && (long)instance[0] > -1 && offset > -1 && offset + num <= (long)array[0]) {
@@ -3170,8 +3170,8 @@ bool TrapProcessor::SockTcpSslInByte(StackProgram* program, size_t* inst, size_t
 bool TrapProcessor::SockTcpSslInByteAry(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
-  const long num = PopInt(op_stack, stack_pos);
-  const long offset = PopInt(op_stack, stack_pos);
+  const long num = (long)PopInt(op_stack, stack_pos);
+  const long offset = (long)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
   if(array && instance && instance[2] && offset > -1 && offset + num <= (long)array[0]) {
@@ -3190,8 +3190,8 @@ bool TrapProcessor::SockTcpSslInByteAry(StackProgram* program, size_t* inst, siz
 bool TrapProcessor::SockTcpSslInCharAry(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
-  const long num = PopInt(op_stack, stack_pos);
-  const long offset = PopInt(op_stack, stack_pos);
+  const long num = (long)PopInt(op_stack, stack_pos);
+  const long offset = (long)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
   if(array && instance && instance[2] && offset > -1 && offset + num <= (long)array[0]) {
@@ -3222,7 +3222,7 @@ bool TrapProcessor::SockTcpSslInCharAry(StackProgram* program, size_t* inst, siz
 
 bool TrapProcessor::SockTcpSslOutByte(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
-  long value = PopInt(op_stack, stack_pos);
+  long value = (long)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(instance) {
     SSL_CTX* ctx = (SSL_CTX*)instance[0];
@@ -3240,8 +3240,8 @@ bool TrapProcessor::SockTcpSslOutByte(StackProgram* program, size_t* inst, size_
 bool TrapProcessor::SockTcpSslOutByteAry(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
-  const long num = PopInt(op_stack, stack_pos);
-  const long offset = PopInt(op_stack, stack_pos);
+  const long num = (long)PopInt(op_stack, stack_pos);
+  const long offset = (long)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
   if(array && instance && instance[2] && offset > -1 && offset + num <= (long)array[0]) {
@@ -3260,8 +3260,8 @@ bool TrapProcessor::SockTcpSslOutByteAry(StackProgram* program, size_t* inst, si
 bool TrapProcessor::SockTcpSslOutCharAry(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
-  const long num = PopInt(op_stack, stack_pos);
-  const long offset = PopInt(op_stack, stack_pos);
+  const long num = (long)PopInt(op_stack, stack_pos);
+  const long offset = (long)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
   if(array && instance && instance[2] && offset > -1 && offset + num <= (long)array[0]) {
@@ -3303,8 +3303,8 @@ bool TrapProcessor::FileInByte(StackProgram* program, size_t* inst, size_t* &op_
 bool TrapProcessor::FileInCharAry(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   const size_t* array = (size_t*)PopInt(op_stack, stack_pos);
-  const long num = PopInt(op_stack, stack_pos);
-  const long offset = PopInt(op_stack, stack_pos);
+  const long num = (long)PopInt(op_stack, stack_pos);
+  const long offset = (long)PopInt(op_stack, stack_pos);
   const size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
   if(array && instance && (FILE*)instance[0] && offset > -1 && offset + num <= (long)array[0]) {
@@ -3336,8 +3336,8 @@ bool TrapProcessor::FileInCharAry(StackProgram* program, size_t* inst, size_t* &
 bool TrapProcessor::FileInByteAry(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   const size_t* array = (size_t*)PopInt(op_stack, stack_pos);
-  const long num = PopInt(op_stack, stack_pos);
-  const long offset = PopInt(op_stack, stack_pos);
+  const long num = (long)PopInt(op_stack, stack_pos);
+  const long offset = (long)PopInt(op_stack, stack_pos);
   const size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
   if(array && instance && (FILE*)instance[0] && offset > -1 && offset + num <= (long)array[0]) {
@@ -3354,7 +3354,7 @@ bool TrapProcessor::FileInByteAry(StackProgram* program, size_t* inst, size_t* &
 
 bool TrapProcessor::FileOutByte(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
-  const long value = PopInt(op_stack, stack_pos);
+  const long value = (long)PopInt(op_stack, stack_pos);
   const size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
   if(instance && (FILE*)instance[0]) {
@@ -3377,8 +3377,8 @@ bool TrapProcessor::FileOutByte(StackProgram* program, size_t* inst, size_t* &op
 bool TrapProcessor::FileOutByteAry(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   const size_t* array = (size_t*)PopInt(op_stack, stack_pos);
-  const long num = PopInt(op_stack, stack_pos);
-  const long offset = PopInt(op_stack, stack_pos);
+  const long num = (long)PopInt(op_stack, stack_pos);
+  const long offset = (long)PopInt(op_stack, stack_pos);
   const size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
   if(array && instance && (FILE*)instance[0] && offset > -1 && offset + num <= (long)array[0]) {
@@ -3396,8 +3396,8 @@ bool TrapProcessor::FileOutByteAry(StackProgram* program, size_t* inst, size_t* 
 bool TrapProcessor::FileOutCharAry(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   const size_t* array = (size_t*)PopInt(op_stack, stack_pos);
-  const long num = PopInt(op_stack, stack_pos);
-  const long offset = PopInt(op_stack, stack_pos);
+  const long num = (long)PopInt(op_stack, stack_pos);
+  const long offset = (long)PopInt(op_stack, stack_pos);
   const size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
   if(array && instance && (FILE*)instance[0] && offset > -1 && offset + num <= (long)array[0]) {
@@ -3418,7 +3418,7 @@ bool TrapProcessor::FileOutCharAry(StackProgram* program, size_t* inst, size_t* 
 
 bool TrapProcessor::FileSeek(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
-  long pos = PopInt(op_stack, stack_pos);
+  long pos = (long)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
   if(instance && (FILE*)instance[0]) {
@@ -3627,7 +3627,7 @@ bool TrapProcessor::FileRename(StackProgram* program, size_t* inst, size_t* &op_
 
 bool TrapProcessor::FileCreateTime(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
-  const long is_gmt = PopInt(op_stack, stack_pos);
+  const long is_gmt = (long)PopInt(op_stack, stack_pos);
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(array) {
     array = (size_t*)array[0];
@@ -3663,7 +3663,7 @@ bool TrapProcessor::FileCreateTime(StackProgram* program, size_t* inst, size_t* 
 
 bool TrapProcessor::FileModifiedTime(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
-  const long is_gmt = PopInt(op_stack, stack_pos);
+  const long is_gmt = (long)PopInt(op_stack, stack_pos);
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(array) {
     array = (size_t*)array[0];
@@ -3699,7 +3699,7 @@ bool TrapProcessor::FileModifiedTime(StackProgram* program, size_t* inst, size_t
 
 bool TrapProcessor::FileAccessedTime(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
-  const long is_gmt = PopInt(op_stack, stack_pos);
+  const long is_gmt = (long)PopInt(op_stack, stack_pos);
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(array) {
     array = (size_t*)array[0];
