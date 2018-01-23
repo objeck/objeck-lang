@@ -33,7 +33,7 @@
 
 bool MemoryManager::initialized;
 StackProgram* MemoryManager::prgm;
-unordered_map<long*, ClassMethodId*> MemoryManager::jit_roots;
+unordered_map<size_t*, ClassMethodId*> MemoryManager::jit_roots;
 unordered_map<StackFrameMonitor*, StackFrameMonitor*> MemoryManager::pda_monitors;
 set<StackFrame**> MemoryManager::pda_frames;
 stack<char*> MemoryManager::cache_pool_16;
@@ -41,7 +41,7 @@ stack<char*> MemoryManager::cache_pool_32;
 stack<char*> MemoryManager::cache_pool_64;
 stack<char*> MemoryManager::cache_pool_256;
 stack<char*> MemoryManager::cache_pool_512;
-vector<long*> MemoryManager::allocated_memory;
+vector<size_t*> MemoryManager::allocated_memory;
 long MemoryManager::allocation_size;
 long MemoryManager::mem_max_size;
 long MemoryManager::uncollected_count;
@@ -87,7 +87,7 @@ void MemoryManager::Initialize(StackProgram* p)
 }
 
 // if return true, trace memory otherwise do not
-inline bool MemoryManager::MarkMemory(long* mem)
+inline bool MemoryManager::MarkMemory(size_t* mem)
 {
   if(mem) {
     // check if memory has been marked
@@ -111,7 +111,7 @@ inline bool MemoryManager::MarkMemory(long* mem)
 }
 
 // if return true, trace memory otherwise do not
-inline bool MemoryManager::MarkValidMemory(long* mem)
+inline bool MemoryManager::MarkValidMemory(size_t* mem)
 {
   if(mem) {
 #ifndef _GC_SERIAL
@@ -216,7 +216,7 @@ void MemoryManager::RemovePdaMethodRoot(StackFrameMonitor* monitor)
 #endif
 }
 
-void MemoryManager::AddJitMethodRoot(long cls_id, long mthd_id,long* self, long* mem, long offset)
+void MemoryManager::AddJitMethodRoot(long cls_id, long mthd_id,size_t* self, size_t* mem, long offset)
 {
 #ifdef _DEBUG
 /*
@@ -237,20 +237,20 @@ void MemoryManager::AddJitMethodRoot(long cls_id, long mthd_id,long* self, long*
 #ifndef _GC_SERIAL
   pthread_mutex_lock(&jit_mutex);
 #endif
-  jit_roots.insert(pair<long*, ClassMethodId*>(mem, mthd_info));
+  jit_roots.insert(pair<size_t*, ClassMethodId*>(mem, mthd_info));
 #ifndef _GC_SERIAL
   pthread_mutex_unlock(&jit_mutex);
 #endif
 }
 
-void MemoryManager::RemoveJitMethodRoot(long* mem)
+void MemoryManager::RemoveJitMethodRoot(size_t* mem)
 {
   ClassMethodId* id;
 #ifndef _GC_SERIAL
   pthread_mutex_lock(&jit_mutex);
 #endif
   
-  unordered_map<long*, ClassMethodId*>::iterator found = jit_roots.find(mem);
+  unordered_map<size_t*, ClassMethodId*>::iterator found = jit_roots.find(mem);
   if(found == jit_roots.end()) {
     cerr << L"Unable to find JIT root!" << endl;
     exit(-1);
@@ -273,7 +273,7 @@ void MemoryManager::RemoveJitMethodRoot(long* mem)
   id = NULL;
 }
 
-long* MemoryManager::AllocateObject(const long obj_id, long* op_stack, 
+size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, 
                                     long stack_pos, bool collect)
 {
   StackClass* cls = prgm->GetClass(obj_id);
@@ -281,7 +281,7 @@ long* MemoryManager::AllocateObject(const long obj_id, long* op_stack,
   assert(cls);
 #endif
 
-  long* mem = NULL;
+  size_t* mem = NULL;
   if(cls) {
     long size = cls->GetInstanceMemorySize();
 #ifdef _X64
@@ -304,7 +304,7 @@ long* MemoryManager::AllocateObject(const long obj_id, long* op_stack,
     const long alloc_size = size * 2 + sizeof(long) * EXTRA_BUF_SIZE;
 
     if(cache_pool_512.size() > 0 && alloc_size <= 512 && alloc_size > 256) {
-      mem = (long*)cache_pool_512.top();
+      mem = (size_t*)cache_pool_512.top();
       cache_pool_512.pop();
       mem[EXTRA_BUF_SIZE + CACHE_SIZE] = 512;
 #ifdef _DEBUG
@@ -312,7 +312,7 @@ long* MemoryManager::AllocateObject(const long obj_id, long* op_stack,
 #endif
     }
     else if(cache_pool_256.size() > 0 && alloc_size <= 256 && alloc_size > 64) {
-      mem = (long*)cache_pool_256.top();
+      mem = (size_t*)cache_pool_256.top();
       cache_pool_256.pop();
       mem[EXTRA_BUF_SIZE + CACHE_SIZE] = 256;
 #ifdef _DEBUG
@@ -320,7 +320,7 @@ long* MemoryManager::AllocateObject(const long obj_id, long* op_stack,
 #endif
     }
     else if(cache_pool_64.size() > 0 && alloc_size <= 64 && alloc_size > 32) {
-      mem = (long*)cache_pool_64.top();
+      mem = (size_t*)cache_pool_64.top();
       cache_pool_64.pop();
       mem[EXTRA_BUF_SIZE + CACHE_SIZE] = 64;
 #ifdef _DEBUG
@@ -328,7 +328,7 @@ long* MemoryManager::AllocateObject(const long obj_id, long* op_stack,
 #endif
     }
     else if(cache_pool_32.size() > 0 && alloc_size <= 32 && alloc_size > 16) {
-      mem = (long*)cache_pool_32.top();
+      mem = (size_t*)cache_pool_32.top();
       cache_pool_32.pop();
       mem[EXTRA_BUF_SIZE + CACHE_SIZE] = 32;
 #ifdef _DEBUG
@@ -336,7 +336,7 @@ long* MemoryManager::AllocateObject(const long obj_id, long* op_stack,
 #endif
     }
     else if(cache_pool_16.size() > 0 && alloc_size <= 16) {
-      mem = (long*)cache_pool_16.top();
+      mem = (size_t*)cache_pool_16.top();
       cache_pool_16.pop();
       mem[EXTRA_BUF_SIZE + CACHE_SIZE] = 16;
 #ifdef _DEBUG
@@ -344,7 +344,7 @@ long* MemoryManager::AllocateObject(const long obj_id, long* op_stack,
 #endif
     } 
     else {
-      mem = (long*)calloc(alloc_size, sizeof(char));
+      mem = (size_t*)calloc(alloc_size, sizeof(char));
       mem[EXTRA_BUF_SIZE + CACHE_SIZE] = -1;
     }
     mem[EXTRA_BUF_SIZE + TYPE] = NIL_TYPE;
@@ -373,11 +373,11 @@ long* MemoryManager::AllocateObject(const long obj_id, long* op_stack,
   return mem;
 }
 
-long* MemoryManager::AllocateArray(const long size, const MemoryType type,
-                                   long* op_stack, long stack_pos, bool collect)
+size_t* MemoryManager::AllocateArray(const long size, const MemoryType type,
+                                   size_t* op_stack, long stack_pos, bool collect)
 {
   long calc_size;
-  long* mem;
+  size_t* mem;
   switch(type) {
   case BYTE_ARY_TYPE:
     calc_size = size * sizeof(char);
@@ -412,7 +412,7 @@ long* MemoryManager::AllocateArray(const long size, const MemoryType type,
   // allocate memory
   const long alloc_size = calc_size + sizeof(long) * EXTRA_BUF_SIZE;
   if(cache_pool_512.size() > 0 && alloc_size <= 512 && alloc_size > 256) {
-    mem = (long*)cache_pool_512.top();
+    mem = (size_t*)cache_pool_512.top();
     cache_pool_512.pop();
     mem[EXTRA_BUF_SIZE + CACHE_SIZE] = 512;
 #ifdef _DEBUG
@@ -420,7 +420,7 @@ long* MemoryManager::AllocateArray(const long size, const MemoryType type,
 #endif
   }
   else if(cache_pool_256.size() > 0 && alloc_size <= 256 && alloc_size > 64) {
-    mem = (long*)cache_pool_256.top();
+    mem = (size_t*)cache_pool_256.top();
     cache_pool_256.pop();
     mem[EXTRA_BUF_SIZE + CACHE_SIZE] = 256;
 #ifdef _DEBUG
@@ -428,7 +428,7 @@ long* MemoryManager::AllocateArray(const long size, const MemoryType type,
 #endif
   }
   else   if(cache_pool_64.size() > 0 && alloc_size <= 64 && alloc_size > 32) {
-    mem = (long*)cache_pool_64.top();
+    mem = (size_t*)cache_pool_64.top();
     cache_pool_64.pop();
     mem[EXTRA_BUF_SIZE + CACHE_SIZE] = 64;
 #ifdef _DEBUG
@@ -436,7 +436,7 @@ long* MemoryManager::AllocateArray(const long size, const MemoryType type,
 #endif
   }
   else if(cache_pool_32.size() > 0 && alloc_size <= 32 && alloc_size > 16) {
-    mem = (long*)cache_pool_32.top();
+    mem = (size_t*)cache_pool_32.top();
     cache_pool_32.pop();
     mem[EXTRA_BUF_SIZE + CACHE_SIZE] = 32;
 #ifdef _DEBUG
@@ -444,7 +444,7 @@ long* MemoryManager::AllocateArray(const long size, const MemoryType type,
 #endif
   }
   else if(cache_pool_16.size() > 0 && alloc_size <= 16) {
-    mem = (long*)cache_pool_16.top();
+    mem = (size_t*)cache_pool_16.top();
     cache_pool_16.pop();
     mem[EXTRA_BUF_SIZE + CACHE_SIZE] = 16;
 #ifdef _DEBUG
@@ -452,7 +452,7 @@ long* MemoryManager::AllocateArray(const long size, const MemoryType type,
 #endif
   } 
   else {    
-    mem = (long*)calloc(alloc_size, sizeof(char));
+    mem = (size_t*)calloc(alloc_size, sizeof(char));
     mem[EXTRA_BUF_SIZE + CACHE_SIZE] = -1;
   }
   mem[EXTRA_BUF_SIZE + TYPE] = type;
@@ -479,7 +479,7 @@ long* MemoryManager::AllocateArray(const long size, const MemoryType type,
   return mem;
 }
 
-long* MemoryManager::ValidObjectCast(long* mem, long to_id, int* cls_hierarchy, int** cls_interfaces)
+size_t* MemoryManager::ValidObjectCast(size_t* mem, long to_id, int* cls_hierarchy, int** cls_interfaces)
 {
   // invalid array cast  
   long id = GetObjectID(mem);
@@ -518,7 +518,7 @@ long* MemoryManager::ValidObjectCast(long* mem, long to_id, int* cls_hierarchy, 
   return NULL;
 }
 
-void MemoryManager::CollectMemory(long* op_stack, long stack_pos)
+void MemoryManager::CollectMemory(size_t* op_stack, long stack_pos)
 {
 #ifndef _GC_SERIAL
   // only one thread at a time can invoke the gargabe collector
@@ -669,10 +669,10 @@ void* MemoryManager::CollectMemory(void* arg)
 #ifndef _GC_SERIAL
   pthread_mutex_lock(&allocated_mutex);
 #endif
-  vector<long*> live_memory;
+  vector<size_t*> live_memory;
   live_memory.reserve(allocated_memory.size());
   for(size_t i = 0; i < allocated_memory.size(); ++i) {
-    long* mem = allocated_memory[i];
+    size_t* mem = allocated_memory[i];
     
     // check dynamic memory
     bool found = false;
@@ -710,7 +710,7 @@ void* MemoryManager::CollectMemory(void* arg)
       allocation_size -= mem_size;
       
       // cache or free memory
-      long* tmp = mem - EXTRA_BUF_SIZE;
+      size_t* tmp = mem - EXTRA_BUF_SIZE;
       switch(mem[CACHE_SIZE]) {
       case 512:	  
         if(cache_pool_512.size() < POOL_SIZE + 1) {
@@ -855,7 +855,7 @@ void* MemoryManager::CheckStack(void* arg)
         << L"; thread=" << pthread_self() << L" -----" << endl;
 #endif
   while(info->stack_pos > -1) {
-    CheckObject((long*)info->op_stack[info->stack_pos--], false, 1);
+    CheckObject((size_t*)info->op_stack[info->stack_pos--], false, 1);
   }
   delete info;
   info = NULL;
@@ -877,10 +877,10 @@ void* MemoryManager::CheckJitRoots(void* arg)
   wcout << L"memory types: " << endl;
 #endif
   
-  unordered_map<long*, ClassMethodId*>::iterator jit_iter;
+  unordered_map<size_t*, ClassMethodId*>::iterator jit_iter;
   for(jit_iter = jit_roots.begin(); jit_iter != jit_roots.end(); ++jit_iter) {
     ClassMethodId* id = jit_iter->second;
-    long* mem = id->mem;
+    size_t* mem = id->mem;
     StackMethod* mthd = prgm->GetClass(id->cls_id)->GetMethod(id->mthd_id);
     const long dclrs_num = mthd->GetNumberDeclarations();
 
@@ -934,59 +934,59 @@ void* MemoryManager::CheckJitRoots(void* arg)
       case BYTE_ARY_PARM:
 #ifdef _DEBUG
         wcout << L"\t" << j << L": BYTE_ARY_PARM: addr=" 
-              << (long*)(*mem) << L"(" << (long)(*mem) 
-              << L"), size=" << ((*mem) ? ((long*)(*mem))[SIZE_OR_CLS] : 0)
+              << (size_t*)(*mem) << L"(" << (long)(*mem) 
+              << L"), size=" << ((*mem) ? ((size_t*)(*mem))[SIZE_OR_CLS] : 0)
               << L" byte(s)" << endl;
 #endif
         // mark data
-        MarkMemory((long*)(*mem));
+        MarkMemory((size_t*)(*mem));
         // update
         mem++;
         break;
 
       case CHAR_ARY_PARM:
 #ifdef _DEBUG
-        wcout << L"\t" << j << L": CHAR_ARY_PARM: addr=" << (long*)(*mem) << L"(" << (long)(*mem) 
-              << L"), size=" << ((*mem) ? ((long*)(*mem))[SIZE_OR_CLS] : 0)
+        wcout << L"\t" << j << L": CHAR_ARY_PARM: addr=" << (size_t*)(*mem) << L"(" << (long)(*mem) 
+              << L"), size=" << ((*mem) ? ((size_t*)(*mem))[SIZE_OR_CLS] : 0)
               << L" byte(s)" << endl;
 #endif
         // mark data
-        MarkMemory((long*)(*mem));
+        MarkMemory((size_t*)(*mem));
         // update
         mem++;
         break;
 
       case INT_ARY_PARM:
 #ifdef _DEBUG
-        wcout << L"\t" << j << L": INT_ARY_PARM: addr=" << (long*)(*mem)
+        wcout << L"\t" << j << L": INT_ARY_PARM: addr=" << (size_t*)(*mem)
               << L"(" << (long)(*mem) << L"), size=" 
-              << ((*mem) ? ((long*)(*mem))[SIZE_OR_CLS] : 0) 
+              << ((*mem) ? ((size_t*)(*mem))[SIZE_OR_CLS] : 0) 
               << L" byte(s)" << endl;
 #endif
         // mark data
-        MarkMemory((long*)(*mem));
+        MarkMemory((size_t*)(*mem));
         // update
         mem++;
         break;
 
       case FLOAT_ARY_PARM:
 #ifdef _DEBUG
-        wcout << L"\t" << j << L": FLOAT_ARY_PARM: addr=" << (long*)(*mem)
+        wcout << L"\t" << j << L": FLOAT_ARY_PARM: addr=" << (size_t*)(*mem)
               << L"(" << (long)(*mem) << L"), size=" << L" byte(s)" 
-              << ((*mem) ? ((long*)(*mem))[SIZE_OR_CLS] : 0) << endl;
+              << ((*mem) ? ((size_t*)(*mem))[SIZE_OR_CLS] : 0) << endl;
 #endif
         // mark data
-        MarkMemory((long*)(*mem));
+        MarkMemory((size_t*)(*mem));
         // update
         mem++;
         break;
 
       case OBJ_PARM: {
 #ifdef _DEBUG
-        wcout << L"\t" << j << L": OBJ_PARM: addr=" << (long*)(*mem)
+        wcout << L"\t" << j << L": OBJ_PARM: addr=" << (size_t*)(*mem)
               << L"(" << (long)(*mem) << L"), id=";
         if(*mem) {
-          StackClass* tmp = (StackClass*)((long*)(*mem))[SIZE_OR_CLS];
+          StackClass* tmp = (StackClass*)((size_t*)(*mem))[SIZE_OR_CLS];
           wcout << L"'" << tmp->GetName() << L"'" << endl;
         }
         else {
@@ -994,7 +994,7 @@ void* MemoryManager::CheckJitRoots(void* arg)
         }
 #endif
         // check object
-        CheckObject((long*)(*mem), true, 1);
+        CheckObject((size_t*)(*mem), true, 1);
         // update
         mem++;
       }
@@ -1003,18 +1003,18 @@ void* MemoryManager::CheckJitRoots(void* arg)
         // TODO: test the code below
       case OBJ_ARY_PARM:
 #ifdef _DEBUG
-        wcout << L"\t" << j << L": OBJ_ARY_PARM: addr=" << (long*)(*mem) << L"("
-              << (long)(*mem) << L"), size=" << ((*mem) ? ((long*)(*mem))[SIZE_OR_CLS] : 0) 
+        wcout << L"\t" << j << L": OBJ_ARY_PARM: addr=" << (size_t*)(*mem) << L"("
+              << (long)(*mem) << L"), size=" << ((*mem) ? ((size_t*)(*mem))[SIZE_OR_CLS] : 0) 
               << L" byte(s)" << endl;
 #endif
         // mark data
-        if(MarkValidMemory((long*)(*mem))) {
-          long* array = (long*)(*mem);
+        if(MarkValidMemory((size_t*)(*mem))) {
+          size_t* array = (size_t*)(*mem);
           const long size = array[0];
           const long dim = array[1];
-          long* objects = (long*)(array + 2 + dim);
+          size_t* objects = (size_t*)(array + 2 + dim);
           for(long k = 0; k < size; k++) {
-            CheckObject((long*)objects[k], true, 2);
+            CheckObject((size_t*)objects[k], true, 2);
           }
         }
         // update
@@ -1029,7 +1029,7 @@ void* MemoryManager::CheckJitRoots(void* arg)
     // NOTE: this marks temporary variables that are stored in JIT memory
     // during some method calls. there are 3 integer temp addresses
     for(int i = 0; i < 8; i++) {
-      CheckObject((long*)mem[i], false, 1);
+      CheckObject((size_t*)mem[i], false, 1);
     }
   }
   
@@ -1056,7 +1056,7 @@ void* MemoryManager::CheckPdaRoots(void* arg)
     StackFrame** frame = *iter;
     if(*frame) {
       StackMethod* mthd = (*frame)->method;
-      long* mem = (*frame)->mem;
+      size_t* mem = (*frame)->mem;
     
 #ifdef _DEBUG
       wcout << L"\t===== PDA method: name=" << mthd->GetName() << L", addr="
@@ -1064,7 +1064,7 @@ void* MemoryManager::CheckPdaRoots(void* arg)
 #endif
     
       // mark self
-      CheckObject((long*)(*mem), true, 1);
+      CheckObject((size_t*)(*mem), true, 1);
     
       if(mthd->HasAndOr()) {
 	mem += 2;
@@ -1111,7 +1111,7 @@ void* MemoryManager::CheckPdaRoots(void* arg)
     
       for(size_t i = 0; i < frames.size(); ++i) {    
         StackMethod* mthd = frames[i]->method;
-        long* mem = frames[i]->mem;
+        size_t* mem = frames[i]->mem;
 
 #ifdef _DEBUG
         wcout << L"\t===== PDA method: name=" << mthd->GetName() << L", addr="
@@ -1119,7 +1119,7 @@ void* MemoryManager::CheckPdaRoots(void* arg)
 #endif
 
         // mark self
-        CheckObject((long*)(*mem), true, 1);
+        CheckObject((size_t*)(*mem), true, 1);
 
         if(mthd->HasAndOr()) {
           mem += 2;
@@ -1139,7 +1139,7 @@ void* MemoryManager::CheckPdaRoots(void* arg)
 #endif
 }
 
-void MemoryManager::CheckMemory(long* mem, StackDclr** dclrs, const long dcls_size, long depth)
+void MemoryManager::CheckMemory(size_t* mem, StackDclr** dclrs, const long dcls_size, long depth)
 {
   // check method
   for(long i = 0; i < dcls_size; i++) {            
@@ -1182,58 +1182,58 @@ void MemoryManager::CheckMemory(long* mem, StackDclr** dclrs, const long dcls_si
 
     case BYTE_ARY_PARM:
 #ifdef _DEBUG
-      wcout << L"\t" << i << L": BYTE_ARY_PARM: addr=" << (long*)(*mem) << L"("
-            << (long)(*mem) << L"), size=" << ((*mem) ? ((long*)(*mem))[SIZE_OR_CLS] : 0)
+      wcout << L"\t" << i << L": BYTE_ARY_PARM: addr=" << (size_t*)(*mem) << L"("
+            << (long)(*mem) << L"), size=" << ((*mem) ? ((size_t*)(*mem))[SIZE_OR_CLS] : 0)
             << L" byte(s)" << endl;
 #endif
       // mark data
-      MarkMemory((long*)(*mem));
+      MarkMemory((size_t*)(*mem));
       // update
       mem++;
       break;
 
     case CHAR_ARY_PARM:
 #ifdef _DEBUG
-      wcout << L"\t" << i << L": CHAR_ARY_PARM: addr=" << (long*)(*mem) << L"("
-            << (long)(*mem) << L"), size=" << ((*mem) ? ((long*)(*mem))[SIZE_OR_CLS] : 0) 
+      wcout << L"\t" << i << L": CHAR_ARY_PARM: addr=" << (size_t*)(*mem) << L"("
+            << (long)(*mem) << L"), size=" << ((*mem) ? ((size_t*)(*mem))[SIZE_OR_CLS] : 0) 
             << L" byte(s)" << endl;
 #endif
       // mark data
-      MarkMemory((long*)(*mem));
+      MarkMemory((size_t*)(*mem));
       // update
       mem++;
       break;
 
     case INT_ARY_PARM:
 #ifdef _DEBUG
-      wcout << L"\t" << i << L": INT_ARY_PARM: addr=" << (long*)(*mem) << L"("
-            << (long)(*mem) << L"), size=" << ((*mem) ? ((long*)(*mem))[SIZE_OR_CLS] : 0) 
+      wcout << L"\t" << i << L": INT_ARY_PARM: addr=" << (size_t*)(*mem) << L"("
+            << (long)(*mem) << L"), size=" << ((*mem) ? ((size_t*)(*mem))[SIZE_OR_CLS] : 0) 
             << L" byte(s)" << endl;
 #endif
       // mark data
-      MarkMemory((long*)(*mem));
+      MarkMemory((size_t*)(*mem));
       // update
       mem++;
       break;
 
     case FLOAT_ARY_PARM:
 #ifdef _DEBUG
-      wcout << L"\t" << i << L": FLOAT_ARY_PARM: addr=" << (long*)(*mem) << L"("
-            << (long)(*mem) << L"), size=" << ((*mem) ? ((long*)(*mem))[SIZE_OR_CLS] : 0) 
+      wcout << L"\t" << i << L": FLOAT_ARY_PARM: addr=" << (size_t*)(*mem) << L"("
+            << (long)(*mem) << L"), size=" << ((*mem) ? ((size_t*)(*mem))[SIZE_OR_CLS] : 0) 
             << L" byte(s)" << endl;
 #endif
       // mark data
-      MarkMemory((long*)(*mem));
+      MarkMemory((size_t*)(*mem));
       // update
       mem++;
       break;
 
     case OBJ_PARM: {
 #ifdef _DEBUG
-      wcout << L"\t" << i << L": OBJ_PARM: addr=" << (long*)(*mem) << L"("
+      wcout << L"\t" << i << L": OBJ_PARM: addr=" << (size_t*)(*mem) << L"("
             << (long)(*mem) << L"), id=";
       if(*mem) {
-        StackClass* tmp = (StackClass*)((long*)(*mem))[SIZE_OR_CLS];
+        StackClass* tmp = (StackClass*)((size_t*)(*mem))[SIZE_OR_CLS];
         wcout << L"'" << tmp->GetName() << L"'" << endl;
       }
       else {
@@ -1241,7 +1241,7 @@ void MemoryManager::CheckMemory(long* mem, StackDclr** dclrs, const long dcls_si
       }
 #endif
       // check object
-      CheckObject((long*)(*mem), true, depth + 1);
+      CheckObject((size_t*)(*mem), true, depth + 1);
       // update
       mem++;
     }
@@ -1249,18 +1249,18 @@ void MemoryManager::CheckMemory(long* mem, StackDclr** dclrs, const long dcls_si
       
     case OBJ_ARY_PARM:
 #ifdef _DEBUG
-      wcout << L"\t" << i << L": OBJ_ARY_PARM: addr=" << (long*)(*mem) << L"("
-            << (long)(*mem) << L"), size=" << ((*mem) ? ((long*)(*mem))[SIZE_OR_CLS] : 0) 
+      wcout << L"\t" << i << L": OBJ_ARY_PARM: addr=" << (size_t*)(*mem) << L"("
+            << (long)(*mem) << L"), size=" << ((*mem) ? ((size_t*)(*mem))[SIZE_OR_CLS] : 0) 
             << L" byte(s)" << endl;
 #endif
       // mark data
-      if(MarkValidMemory((long*)(*mem))) {
-        long* array = (long*)(*mem);
+      if(MarkValidMemory((size_t*)(*mem))) {
+        size_t* array = (size_t*)(*mem);
         const long size = array[0];
         const long dim = array[1];
-        long* objects = (long*)(array + 2 + dim);
+        size_t* objects = (size_t*)(array + 2 + dim);
         for(long k = 0; k < size; k++) {
-          CheckObject((long*)objects[k], true, 2);
+          CheckObject((size_t*)objects[k], true, 2);
         }
       }
       // update
@@ -1273,7 +1273,7 @@ void MemoryManager::CheckMemory(long* mem, StackDclr** dclrs, const long dcls_si
   }
 }
 
-void MemoryManager::CheckObject(long* mem, bool is_obj, long depth)
+void MemoryManager::CheckObject(size_t* mem, bool is_obj, long depth)
 {
   if(mem) {
     StackClass* cls;
@@ -1316,12 +1316,12 @@ void MemoryManager::CheckObject(long* mem, bool is_obj, long depth)
         // ensure we're only checking int and obj arrays
         if(std::binary_search(allocated_memory.begin(), allocated_memory.end(), mem) && 
            (mem[TYPE] == NIL_TYPE || mem[TYPE] == INT_TYPE)) {
-          long* array = mem;
+          size_t* array = mem;
           const long size = array[0];
           const long dim = array[1];
-          long* objects = (long*)(array + 2 + dim);
+          size_t* objects = (size_t*)(array + 2 + dim);
           for(long k = 0; k < size; k++) {
-            CheckObject((long*)objects[k], false, 2);
+            CheckObject((size_t*)objects[k], false, 2);
           }
         }
       }

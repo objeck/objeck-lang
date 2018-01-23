@@ -55,7 +55,7 @@ using namespace std;
 namespace instructions {
   // vm types
   typedef enum _MemoryType {
-    NIL_TYPE = -1000,
+    NIL_TYPE = 1000,
     BYTE_ARY_TYPE,
     CHAR_ARY_TYPE,
     INT_TYPE,
