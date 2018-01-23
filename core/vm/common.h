@@ -1883,7 +1883,7 @@ class TrapProcessor {
   //
   // deserializes an array of objects
   // 
-  static inline long* DeserializeArray(ParamType type, size_t* inst, size_t* &op_stack, long* &stack_pos);
+  static inline size_t* DeserializeArray(ParamType type, size_t* inst, size_t* &op_stack, long* &stack_pos);
 
   //
   // expand buffer
@@ -2054,7 +2054,7 @@ class TrapProcessor {
     size_t* byte_array = (size_t*)inst[0];
     const long dest_pos = inst[1];
 
-    if(byte_array && dest_pos < byte_array[0]) {
+    if(byte_array && dest_pos < (long)byte_array[0]) {
       const char* byte_array_ptr = (char*)(byte_array + 3);
       FLOAT_VALUE value;
       memcpy(&value, byte_array_ptr + dest_pos, sizeof(value));
@@ -2113,13 +2113,13 @@ class TrapProcessor {
   //
   // creates an instance of the 'Method' class
   //
-  static inline long* CreateMethodObject(size_t* cls_obj, StackMethod* mthd, StackProgram* program,
+  static inline size_t* CreateMethodObject(size_t* cls_obj, StackMethod* mthd, StackProgram* program,
 					 size_t* &op_stack, long* &stack_pos);
 
   //
   // creates a wstring object instance
   //
-  static inline long* CreateStringObject(const wstring &value_str, StackProgram* program, 
+  static inline size_t* CreateStringObject(const wstring &value_str, StackProgram* program, 
 					 size_t* &op_stack, long* &stack_pos);
 
  public:
@@ -2133,7 +2133,7 @@ class TrapProcessor {
  ********************************/
 void APITools_MethodCall(size_t* op_stack, long *stack_pos, size_t* instance, 
                          const wchar_t* cls_id, const wchar_t* mthd_id);
-void APITools_MethodCallId(size_t* op_stack, long *stack_pos, long *instance, 
+void APITools_MethodCallId(size_t* op_stack, long *stack_pos, size_t* instance, 
                            const int cls_id, const int mthd_id);			 
 
 #endif

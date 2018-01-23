@@ -44,12 +44,12 @@ typedef void(*APITools_MethodCall_Ptr) (size_t* op_stack, long *stack_pos, size_
 					const wchar_t* cls_name, const wchar_t* mthd_name);
 typedef void(*APITools_MethodCallId_Ptr) (size_t* op_stack, long *stack_pos, size_t* instance,
 					const int cls_id, const int mthd_id);
-typedef long*(*APITools_AllocateObject_Ptr) (const wchar_t*, size_t* op_stack, long stack_pos, bool collect);
-typedef long*(*APITools_AllocateArray_Ptr) (const long size, const instructions::MemoryType type, 
+typedef size_t*(*APITools_AllocateObject_Ptr) (const wchar_t*, size_t* op_stack, long stack_pos, bool collect);
+typedef size_t*(*APITools_AllocateArray_Ptr) (const long size, const instructions::MemoryType type,
 					    size_t* op_stack, long stack_pos, bool collect);
 // context structure
 struct VMContext {
-  long* data_array;
+  size_t* data_array;
   size_t* op_stack;
   long* stack_pos;
   APITools_AllocateArray_Ptr alloc_array;
@@ -73,39 +73,39 @@ int APITools_GetArgumentCount(VMContext &context) {
   return 0;
 }
 
-long APITools_GetIntArrayElement(long* array, int index) {
+long APITools_GetIntArrayElement(size_t* array, int index) {
   if(!array) {
     return 0;
   }
   
   const long src_array_len = array[0];
   if(index < src_array_len) {
-    long* src_array_ptr = array + 3;
+    size_t* src_array_ptr = array + 3;
     return src_array_ptr[index];
   }
   return 0;
 }
 
-void APITools_SetIntArrayElement(long* array, int index, long value) {
+void APITools_SetIntArrayElement(size_t* array, int index, long value) {
   if(!array) {
     return;
   }
   
   const long src_array_len = array[0];
   if(index < src_array_len) {
-    long* src_array_ptr = array + 3;
+    size_t* src_array_ptr = array + 3;
     src_array_ptr[index] = value;
   }
 }
 
-double APITools_GetFloatArrayElement(long* array, int index) {
+double APITools_GetFloatArrayElement(size_t* array, int index) {
   if(!array) {
     return 0.0;
   }
   
   const long src_array_len = array[0];
   if(index < src_array_len) {
-    long* src_array_ptr = array + 3;
+    size_t* src_array_ptr = array + 3;
     double value;
 #ifdef _X64
     memcpy(&value, &src_array_ptr[index], sizeof(value));
@@ -118,14 +118,14 @@ double APITools_GetFloatArrayElement(long* array, int index) {
   return 0.0;
 }
 
-void APITools_SetFloatArrayElement(long* array, int index, double value) {
+void APITools_SetFloatArrayElement(size_t* array, int index, double value) {
   if(!array) {
     return;
   }
   
   const long src_array_len = array[0];
   if(index < src_array_len) {
-    long* src_array_ptr = array + 3;
+    size_t* src_array_ptr = array + 3;
 #ifdef _X64
     memcpy(&src_array_ptr[index], &value, sizeof(value));
 #else
@@ -134,7 +134,7 @@ void APITools_SetFloatArrayElement(long* array, int index, double value) {
   }
 }
 
-unsigned char* APITools_GetByteArray(long* array) {
+unsigned char* APITools_GetByteArray(size_t* array) {
   if(array) {
     return (unsigned char*)(array + 3);
   }
@@ -142,7 +142,7 @@ unsigned char* APITools_GetByteArray(long* array) {
   return NULL;
 }
 
-wchar_t* APITools_GetCharArray(long* array) {
+wchar_t* APITools_GetCharArray(size_t* array) {
   if(array) {
     return (wchar_t*)(array + 3);
   }
@@ -150,7 +150,7 @@ wchar_t* APITools_GetCharArray(long* array) {
   return NULL;
 }
 
-int APITools_GetArraySize(long* array) {
+int APITools_GetArraySize(size_t* array) {
   if(array) {
     return array[0];
   }
@@ -158,10 +158,10 @@ int APITools_GetArraySize(long* array) {
   return -1;
 }
 
-long* APITools_MakeByteArray(VMContext &context, const long char_array_size) {
+size_t* APITools_MakeByteArray(VMContext &context, const long char_array_size) {
   // create character array
   const long char_array_dim = 1;
-  long* char_array = (long*)context.alloc_array(char_array_size + 1 +
+  size_t* char_array = (size_t*)context.alloc_array(char_array_size + 1 +
 						((char_array_dim + 2) *
 						 sizeof(long)),
 						BYTE_ARY_TYPE,
@@ -173,10 +173,10 @@ long* APITools_MakeByteArray(VMContext &context, const long char_array_size) {
   return char_array;
 }
 
-long* APITools_MakeCharArray(VMContext &context, const long char_array_size) {
+size_t* APITools_MakeCharArray(VMContext &context, const long char_array_size) {
   // create character array
   const long char_array_dim = 1;
-  long* char_array = (long*)context.alloc_array(char_array_size + 1 +
+  size_t* char_array = (size_t*)context.alloc_array(char_array_size + 1 +
 						((char_array_dim + 2) *
 						 sizeof(long)),
 						CHAR_ARY_TYPE,
@@ -190,10 +190,10 @@ long* APITools_MakeCharArray(VMContext &context, const long char_array_size) {
 
 // gets the requested function ID from an Object[]
 int APITools_GetFunctionValue(VMContext &context, int index, FunctionId id) {
-  long* data_array = context.data_array;
-  if(data_array && index < data_array[0]) {
+  size_t* data_array = context.data_array;
+  if(data_array && index < (int)data_array[0]) {
     data_array += ARRAY_HEADER_OFFSET;
-    long* int_holder = (long*)data_array[index];
+    size_t* int_holder = (size_t*)data_array[index];
     
     if(id == CLS_ID) {
       return int_holder[0];
@@ -209,10 +209,10 @@ int APITools_GetFunctionValue(VMContext &context, int index, FunctionId id) {
 // sets the requested function ID from an Object[].  Please note, that 
 // memory should be allocated for this element prior to array access.
 void APITools_SetFunctionValue(VMContext &context, int index, FunctionId id, int value) {
-  long* data_array = context.data_array;
-  if(data_array && index < data_array[0]) {
+  size_t* data_array = context.data_array;
+  if(data_array && index < (int)data_array[0]) {
     data_array += ARRAY_HEADER_OFFSET;
-    long* int_holder = (long*)data_array[index];
+    size_t* int_holder = (size_t*)data_array[index];
     
     if(id == CLS_ID) {
       int_holder[0] = value;
@@ -225,10 +225,10 @@ void APITools_SetFunctionValue(VMContext &context, int index, FunctionId id, int
 
 // get the requested integer value from an Object[].
 long APITools_GetIntValue(VMContext &context, int index) {
-  long* data_array = context.data_array;
-  if(data_array && index < data_array[0]) {
+  size_t* data_array = context.data_array;
+  if(data_array && index < (int)data_array[0]) {
     data_array += ARRAY_HEADER_OFFSET;
-    long* int_holder = (long*)data_array[index];
+    size_t* int_holder = (size_t*)data_array[index];
 #ifdef _DEBUG
     assert(int_holder);
 #endif
@@ -239,11 +239,11 @@ long APITools_GetIntValue(VMContext &context, int index) {
 }
 
 // get the requested integer address from an Object[].
-long* APITools_GetIntAddress(VMContext &context, int index) {
-  long* data_array = context.data_array;
-  if(data_array && index < data_array[0]) {
+size_t* APITools_GetIntAddress(VMContext &context, int index) {
+  size_t* data_array = context.data_array;
+  if(data_array && index < (int)data_array[0]) {
     data_array += ARRAY_HEADER_OFFSET;
-    long* int_holder = (long*)data_array[index];
+    size_t* int_holder = (size_t*)data_array[index];
 #ifdef _DEBUG
     assert(int_holder);
 #endif
@@ -256,10 +256,10 @@ long* APITools_GetIntAddress(VMContext &context, int index) {
 // sets the requested function ID from an Object[].  Please note, that 
 // memory should be allocated for this element prior to array access.
 void APITools_SetIntValue(VMContext &context, int index, long value) {
-  long* data_array = context.data_array;
-  if(data_array && index < data_array[0]) {
+  size_t* data_array = context.data_array;
+  if(data_array && index < (int)data_array[0]) {
     data_array += ARRAY_HEADER_OFFSET;
-    long* int_holder = (long*)data_array[index];
+    size_t* int_holder = (size_t*)data_array[index];
 #ifdef _DEBUG
     assert(int_holder);
 #endif
@@ -269,10 +269,10 @@ void APITools_SetIntValue(VMContext &context, int index, long value) {
 
 // get the requested double value from an Object[].
 double APITools_GetFloatValue(VMContext &context, int index) {
-  long* data_array = context.data_array;
-  if(data_array && index < data_array[0]) {
+  size_t* data_array = context.data_array;
+  if(data_array && index < (int)data_array[0]) {
     data_array += ARRAY_HEADER_OFFSET;
-    long* float_holder = (long*)data_array[index];
+    size_t* float_holder = (size_t*)data_array[index];
 
 #ifdef _DEBUG
     assert(float_holder);
@@ -286,11 +286,11 @@ double APITools_GetFloatValue(VMContext &context, int index) {
 } 
 
 // get the requested double address from an Object[].
-long* APITools_GetFloatAddress(VMContext &context, int index) {
-  long* data_array = context.data_array;
-  if(data_array && index < data_array[0]) {
+size_t* APITools_GetFloatAddress(VMContext &context, int index) {
+  size_t* data_array = context.data_array;
+  if(data_array && index < (int)data_array[0]) {
     data_array += ARRAY_HEADER_OFFSET;
-    long* float_holder = (long*)data_array[index];
+    size_t* float_holder = (size_t*)data_array[index];
 
 #ifdef _DEBUG
     assert(float_holder);
@@ -304,10 +304,10 @@ long* APITools_GetFloatAddress(VMContext &context, int index) {
 // sets the requested float value for an Object[].  Please note, that 
 // memory should be allocated for this element prior to array access.
 void APITools_SetFloatValue(VMContext &context, int index, double value) {
- long* data_array = context.data_array;
-  if(data_array && index < data_array[0]) {
+ size_t* data_array = context.data_array;
+  if(data_array && index < (int)data_array[0]) {
     data_array += ARRAY_HEADER_OFFSET;
-    long* float_holder = (long*)data_array[index];
+    size_t* float_holder = (size_t*)data_array[index];
 
 #ifdef _DEBUG
     assert(float_holder);
@@ -318,9 +318,9 @@ void APITools_SetFloatValue(VMContext &context, int index, double value) {
 
 // sets the requested Base object for an Object[].  Please note, that 
 // memory should be allocated for this element prior to array access.
-void APITools_SetObjectValue(VMContext &context, int index, long* obj) {
-  long* data_array = context.data_array;
-  if(data_array && index < data_array[0]) {
+void APITools_SetObjectValue(VMContext &context, int index, size_t* obj) {
+  size_t* data_array = context.data_array;
+  if(data_array && index < (int)data_array[0]) {
     data_array += ARRAY_HEADER_OFFSET;
     data_array[index] = (long)obj;
   }
@@ -332,7 +332,7 @@ void APITools_SetStringValue(VMContext &context, int index, const wstring &value
   // create character array
   const long char_array_size = value.size();
   const long char_array_dim = 1;
-  long* char_array = (long*)context.alloc_array(char_array_size + 1 +
+  size_t* char_array = (size_t*)context.alloc_array(char_array_size + 1 +
 						((char_array_dim + 2) *
 						 sizeof(long)),
 						CHAR_ARY_TYPE,
@@ -346,7 +346,7 @@ void APITools_SetStringValue(VMContext &context, int index, const wstring &value
   wcsncpy(char_array_ptr, value.c_str(), char_array_size);
   
   // create 'System.String' object instance
-  long* str_obj = context.alloc_obj(L"System.String", context.op_stack, 
+  size_t* str_obj = context.alloc_obj(L"System.String", context.op_stack, 
 				    *context.stack_pos, false);
   str_obj[0] = (long)char_array;
   str_obj[1] = char_array_size;
@@ -357,15 +357,15 @@ void APITools_SetStringValue(VMContext &context, int index, const wstring &value
 
 // get the requested string value from an Object[].
 wchar_t* APITools_GetStringValue(VMContext &context, int index) {
-  long* data_array = context.data_array;
-  if(data_array && index < data_array[0]) {
+  size_t* data_array = context.data_array;
+  if(data_array && index < (int)data_array[0]) {
     data_array += ARRAY_HEADER_OFFSET;
-    long* string_holder = (long*)data_array[index];
+    size_t* string_holder = (size_t*)data_array[index];
     
 #ifdef _DEBUG
     assert(string_holder);
 #endif
-    long* char_array = (long*)string_holder[0];
+    size_t* char_array = (size_t*)string_holder[0];
     wchar_t* str = (wchar_t*)(char_array + 3);
     return str;
   }
@@ -373,11 +373,11 @@ wchar_t* APITools_GetStringValue(VMContext &context, int index) {
   return NULL;
 }
 
-long* APITools_GetObjectValue(VMContext &context, int index) {
-  long* data_array = context.data_array;
-  if(data_array && index < data_array[0]) {
+size_t* APITools_GetObjectValue(VMContext &context, int index) {
+  size_t* data_array = context.data_array;
+  if(data_array && index < (int)data_array[0]) {
     data_array += ARRAY_HEADER_OFFSET;
-    long* object_holder = (long*)data_array[index];
+    size_t* object_holder = (size_t*)data_array[index];
     
     return object_holder;
   }
@@ -387,7 +387,7 @@ long* APITools_GetObjectValue(VMContext &context, int index) {
 
 
 // invokes a runtime Objeck method
-void APITools_CallMethod(VMContext &context, long* instance, const wchar_t* mthd_name) {
+void APITools_CallMethod(VMContext &context, size_t* instance, const wchar_t* mthd_name) {
   const wstring qualified_method_name(mthd_name);
   size_t delim = qualified_method_name.find(':');
   if(delim != wstring::npos) {
@@ -405,7 +405,7 @@ void APITools_CallMethod(VMContext &context, long* instance, const wchar_t* mthd
 }
 
 // invokes a runtime Objeck method
-void APITools_CallMethod(VMContext &context, long* instance, const int cls_id, const int mthd_id) {
+void APITools_CallMethod(VMContext &context, size_t* instance, const int cls_id, const int mthd_id) {
   (*context.call_method_by_id)(context.op_stack, context.stack_pos, instance, cls_id, mthd_id);
     
 #ifdef _DEBUG

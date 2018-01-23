@@ -157,7 +157,7 @@ void StackInterpreter::Initialize(StackProgram* p)
  * from native code for the C API
  ********************************/
 void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, 
-                               StackMethod* method, long* instance, bool jit_called)
+                               StackMethod* method, size_t* instance, bool jit_called)
 {
   long left;
   double left_double, right_double;
@@ -635,7 +635,7 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i,
 #ifdef _DEBUG
       wcout << L"stack oper: LOAD_CLS_MEM; call_pos=" << (*call_stack_pos) << endl;
 #endif
-      PushInt((long)(*frame)->method->GetClass()->GetClassMemory(), op_stack, stack_pos);
+      PushInt((size_t)(*frame)->method->GetClass()->GetClassMemory(), op_stack, stack_pos);
       break;
 
     case LOAD_INST_MEM:
@@ -705,7 +705,7 @@ void StackInterpreter::StorClsInstIntVar(StackInstr* instr, size_t* &op_stack, l
 #ifdef _DEBUG
   wcout << L"stack oper: STOR_CLS_INST_INT_VAR; index=" << instr->GetOperand() << endl;
 #endif
-  long* cls_inst_mem = (long*)PopInt(op_stack, stack_pos);
+  size_t* cls_inst_mem = (size_t*)PopInt(op_stack, stack_pos);
   if(!cls_inst_mem) {
     wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
     StackErrorUnwind();
@@ -735,7 +735,7 @@ void StackInterpreter::CopyClsInstIntVar(StackInstr* instr, size_t* &op_stack, l
   wcout << L"stack oper: COPY_CLS_INST_INT_VAR; index=" << instr->GetOperand() << endl;
 #endif
 
-  long* cls_inst_mem = (long*)PopInt(op_stack, stack_pos);
+  size_t* cls_inst_mem = (size_t*)PopInt(op_stack, stack_pos);
   if(!cls_inst_mem) {
     wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
     StackErrorUnwind();
@@ -783,7 +783,7 @@ void StackInterpreter::LoadClsInstIntVar(StackInstr* instr, size_t* &op_stack, l
 #ifdef _DEBUG
   wcout << L"stack oper: LOAD_CLS_INST_INT_VAR; index=" << instr->GetOperand() << endl;
 #endif      
-  long* cls_inst_mem = (long*)PopInt(op_stack, stack_pos);
+  size_t* cls_inst_mem = (size_t*)PopInt(op_stack, stack_pos);
   if(!cls_inst_mem) {
     wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
     StackErrorUnwind();
@@ -1062,7 +1062,7 @@ void StackInterpreter::LoadArySize(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   wcout << L"stack oper: LOAD_ARY_SIZE; call_pos=" << (*call_stack_pos) << endl;
 #endif
-  long* array = (long*)PopInt(op_stack, stack_pos);
+  size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(!array) {
     wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
     StackErrorUnwind();
@@ -1083,9 +1083,9 @@ void StackInterpreter::CpyByteAry(size_t* &op_stack, long* &stack_pos)
 #endif
   long length = PopInt(op_stack, stack_pos);
   const long src_offset = PopInt(op_stack, stack_pos);
-  long* src_array = (long*)PopInt(op_stack, stack_pos);
+  size_t* src_array = (size_t*)PopInt(op_stack, stack_pos);
   const long dest_offset = PopInt(op_stack, stack_pos);
-  long* dest_array = (long*)PopInt(op_stack, stack_pos);
+  size_t* dest_array = (size_t*)PopInt(op_stack, stack_pos);
 
   if(!src_array || !dest_array) {
     wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
@@ -1119,9 +1119,9 @@ void StackInterpreter::CpyCharAry(size_t* &op_stack, long* &stack_pos)
 #endif
   long length = PopInt(op_stack, stack_pos);
   const long src_offset = PopInt(op_stack, stack_pos);
-  long* src_array = (long*)PopInt(op_stack, stack_pos);
+  size_t* src_array = (size_t*)PopInt(op_stack, stack_pos);
   const long dest_offset = PopInt(op_stack, stack_pos);
-  long* dest_array = (long*)PopInt(op_stack, stack_pos);
+  size_t* dest_array = (size_t*)PopInt(op_stack, stack_pos);
 
   if(!src_array || !dest_array) {
     wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
@@ -1155,9 +1155,9 @@ void StackInterpreter::CpyIntAry(size_t* &op_stack, long* &stack_pos)
 #endif
   long length = PopInt(op_stack, stack_pos);
   const long src_offset = PopInt(op_stack, stack_pos);
-  long* src_array = (long*)PopInt(op_stack, stack_pos);
+  size_t* src_array = (size_t*)PopInt(op_stack, stack_pos);
   const long dest_offset = PopInt(op_stack, stack_pos);
-  long* dest_array = (long*)PopInt(op_stack, stack_pos);
+  size_t* dest_array = (size_t*)PopInt(op_stack, stack_pos);
 
   if(!src_array || !dest_array) {
     wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
@@ -1173,8 +1173,8 @@ void StackInterpreter::CpyIntAry(size_t* &op_stack, long* &stack_pos)
   const long src_array_len = src_array[0];
   const long dest_array_len = dest_array[0];
   if(length > 0 && src_offset + length <= src_array_len && dest_offset + length <= dest_array_len) {
-    long* src_array_ptr = src_array + 3;
-    long* dest_array_ptr = dest_array + 3;
+    size_t* src_array_ptr = src_array + 3;
+    size_t* dest_array_ptr = dest_array + 3;
     ::memcpy(dest_array_ptr + dest_offset, src_array_ptr + src_offset, length * sizeof(long));
     PushInt(1, op_stack, stack_pos);
   }
@@ -1190,9 +1190,9 @@ void StackInterpreter::CpyFloatAry(size_t* &op_stack, long* &stack_pos)
 #endif
   long length = PopInt(op_stack, stack_pos);
   const long src_offset = PopInt(op_stack, stack_pos);
-  long* src_array = (long*)PopInt(op_stack, stack_pos);
+  size_t* src_array = (size_t*)PopInt(op_stack, stack_pos);
   const long dest_offset = PopInt(op_stack, stack_pos);
-  long* dest_array = (long*)PopInt(op_stack, stack_pos);
+  size_t* dest_array = (size_t*)PopInt(op_stack, stack_pos);
 
   if(!src_array || !dest_array) {
     wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
@@ -1208,8 +1208,8 @@ void StackInterpreter::CpyFloatAry(size_t* &op_stack, long* &stack_pos)
   const long src_array_len = src_array[0];
   const long dest_array_len = dest_array[0];
   if(length > 0 && src_offset + length <= src_array_len && dest_offset + length <= dest_array_len) {
-    long* src_array_ptr = src_array + 3;
-    long* dest_array_ptr = dest_array + 3;
+    size_t* src_array_ptr = src_array + 3;
+    size_t* dest_array_ptr = dest_array + 3;
     ::memcpy(dest_array_ptr + dest_offset, src_array_ptr + src_offset, length * sizeof(FLOAT_VALUE));
     PushInt(1, op_stack, stack_pos);
   }
@@ -1242,14 +1242,14 @@ void StackInterpreter::ObjTypeOf(StackInstr* instr, size_t* &op_stack, long* &st
 void StackInterpreter::ObjInstCast(StackInstr* instr, size_t* &op_stack, long* &stack_pos)
 {
   size_t* mem = (size_t*)PopInt(op_stack, stack_pos);
-  long result = (long)MemoryManager::ValidObjectCast(mem, instr->GetOperand(),
+  size_t result = (size_t)MemoryManager::ValidObjectCast(mem, instr->GetOperand(),
                                                      program->GetHierarchy(),
                                                      program->GetInterfaces());
 #ifdef _DEBUG
   wcout << L"stack oper: OBJ_INST_CAST: from=" << mem << ", to=" << instr->GetOperand() << endl;
 #endif
   if(!result && mem) {
-    StackClass* to_cls = MemoryManager::GetClass((long*)mem);
+    StackClass* to_cls = MemoryManager::GetClass((size_t*)mem);
     wcerr << L">>> Invalid object cast: '" << (to_cls ? to_cls->GetName() : L"?")
 	  << "' to '" << program->GetClass(instr->GetOperand())->GetName() << "' <<<" << endl;
     StackErrorUnwind();
@@ -1265,8 +1265,8 @@ void StackInterpreter::ObjInstCast(StackInstr* instr, size_t* &op_stack, long* &
 
 void StackInterpreter::AsyncMthdCall(size_t* &op_stack, long* &stack_pos)
 {
-  long* instance = (long*)(*frame)->mem[0];
-  long* param = (long*)(*frame)->mem[1];
+  size_t* instance = (size_t*)(*frame)->mem[0];
+  size_t* param = (size_t*)(*frame)->mem[1];
 
   StackClass* impl_class = MemoryManager::GetClass(instance);
   if(!impl_class) {
@@ -1299,7 +1299,7 @@ void StackInterpreter::ThreadJoin(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   wcout << L"stack oper: THREAD_JOIN; call_pos=" << (*call_stack_pos) << endl;
 #endif
-  long* instance = (long*)(*frame)->mem[0];
+  size_t* instance = (size_t*)(*frame)->mem[0];
   if(!instance) {
     wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
     StackErrorUnwind();
@@ -1340,7 +1340,7 @@ void StackInterpreter::ThreadMutex(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   wcout << L"stack oper: THREAD_MUTEX; call_pos=" << (*call_stack_pos) << endl;
 #endif
-  long* instance = (long*)(*frame)->mem[0];
+  size_t* instance = (size_t*)(*frame)->mem[0];
   if(!instance) {
     wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
     StackErrorUnwind();
@@ -1363,7 +1363,7 @@ void StackInterpreter::CriticalStart(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   wcout << L"stack oper: CRITICAL_START; call_pos=" << (*call_stack_pos) << endl;
 #endif
-  long* instance = (long*)PopInt(op_stack, stack_pos);
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(!instance) {
     wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
     StackErrorUnwind();
@@ -1386,7 +1386,7 @@ void StackInterpreter::CriticalEnd(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   wcout << L"stack oper: CRITICAL_END; call_pos=" << (*call_stack_pos) << endl;
 #endif
-  long* instance = (long*)PopInt(op_stack, stack_pos);
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(!instance) {
     wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
     StackErrorUnwind();
@@ -1420,7 +1420,7 @@ void StackInterpreter::ProcessLoadFunction(StackInstr* instr, size_t* &op_stack,
     PushInt(mem[instr->GetOperand() + 1], op_stack, stack_pos);
   } 
   else {
-    long* cls_inst_mem = (long*)PopInt(op_stack, stack_pos);
+    size_t* cls_inst_mem = (size_t*)PopInt(op_stack, stack_pos);
     if(!cls_inst_mem) {
       wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
       StackErrorUnwind();
@@ -1453,7 +1453,7 @@ void StackInterpreter::ProcessLoadFloat(StackInstr* instr, size_t* &op_stack, lo
     value = *((FLOAT_VALUE*)(&mem[instr->GetOperand() + 1]));
 
   } else {
-    long* cls_inst_mem = (long*)PopInt(op_stack, stack_pos);
+    size_t* cls_inst_mem = (size_t*)PopInt(op_stack, stack_pos);
     if(!cls_inst_mem) {
       wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
       StackErrorUnwind();
@@ -1486,7 +1486,7 @@ void StackInterpreter::ProcessStoreFunction(StackInstr* instr, size_t* &op_stack
     mem[instr->GetOperand() + 2] = PopInt(op_stack, stack_pos);
   } 
   else {
-    long* cls_inst_mem = (long*)PopInt(op_stack, stack_pos);
+    size_t* cls_inst_mem = (size_t*)PopInt(op_stack, stack_pos);
     if(!cls_inst_mem) {
       wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
       StackErrorUnwind();
@@ -1519,7 +1519,7 @@ void StackInterpreter::ProcessStoreFloat(StackInstr* instr, size_t* &op_stack, l
     *((FLOAT_VALUE*)(&mem[instr->GetOperand() + 1])) = value;
   } 
   else {
-    long* cls_inst_mem = (long*)PopInt(op_stack, stack_pos);
+    size_t* cls_inst_mem = (size_t*)PopInt(op_stack, stack_pos);
     if(!cls_inst_mem) {
       wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
       StackErrorUnwind();
@@ -1552,7 +1552,7 @@ void StackInterpreter::ProcessCopyFloat(StackInstr* instr, size_t* &op_stack, lo
     // ::memcpy(&mem[instr->GetOperand() + 1], &value, sizeof(FLOAT_VALUE));
     *((FLOAT_VALUE*)(&mem[instr->GetOperand() + 1])) = value;
   } else {
-    long* cls_inst_mem = (long*)PopInt(op_stack, stack_pos);
+    size_t* cls_inst_mem = (size_t*)PopInt(op_stack, stack_pos);
     if(!cls_inst_mem) {
       wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
       StackErrorUnwind();
@@ -1579,7 +1579,7 @@ void StackInterpreter::ProcessNewObjectInstance(StackInstr* instr, size_t* &op_s
   wcout << L"stack oper: NEW_OBJ_INST: id=" << instr->GetOperand() << endl;
 #endif
 
-  long inst_mem = (long)MemoryManager::AllocateObject(instr->GetOperand(),
+  size_t inst_mem = (size_t)MemoryManager::AllocateObject(instr->GetOperand(),
 						      op_stack, *stack_pos);
   PushInt(inst_mem, op_stack, stack_pos);
 }
@@ -1604,18 +1604,18 @@ void StackInterpreter::ProcessNewArray(StackInstr* instr, size_t* &op_stack, lon
     indices[dim++] = value;
   }
 
-  long* mem;  
+  size_t* mem;  
 #ifdef _X64
-  mem = (long*)MemoryManager::AllocateArray(size + dim + 2, INT_TYPE,
+  mem = (size_t*)MemoryManager::AllocateArray(size + dim + 2, INT_TYPE,
 					    op_stack, *stack_pos);
 #else
   if(is_float) {
     // doubles are twice the size of integers for 32-bit target
-    mem = (long*)MemoryManager::AllocateArray(size * 2 + dim + 2, INT_TYPE,
+    mem = (size_t*)MemoryManager::AllocateArray(size * 2 + dim + 2, INT_TYPE,
 					      op_stack, *stack_pos);
   }
   else {
-    mem = (long*)MemoryManager::AllocateArray(size + dim + 2, INT_TYPE,
+    mem = (size_t*)MemoryManager::AllocateArray(size + dim + 2, INT_TYPE,
 					      op_stack, *stack_pos);
   }
 #endif
@@ -1624,7 +1624,7 @@ void StackInterpreter::ProcessNewArray(StackInstr* instr, size_t* &op_stack, lon
   mem[1] = dim;
 
   ::memcpy(mem + 2, indices, dim * sizeof(long));
-  PushInt((long)mem, op_stack, stack_pos);
+  PushInt((size_t)mem, op_stack, stack_pos);
 }
 
 /********************************
@@ -1653,7 +1653,7 @@ void StackInterpreter::ProcessNewByteArray(StackInstr* instr, size_t* &op_stack,
   mem[0] = size - 1;
   mem[1] = dim;
   ::memcpy(mem + 2, indices, dim * sizeof(long));
-  PushInt((long)mem, op_stack, stack_pos);
+  PushInt((size_t)mem, op_stack, stack_pos);
 }
 
 /********************************
@@ -1682,7 +1682,7 @@ void StackInterpreter::ProcessNewCharArray(StackInstr* instr, size_t* &op_stack,
   mem[0] = size - 1;
   mem[1] = dim;
   ::memcpy(mem + 2, indices, dim * sizeof(long));
-  PushInt((long)mem, op_stack, stack_pos);
+  PushInt((size_t)mem, op_stack, stack_pos);
 }
 
 /********************************
@@ -1719,9 +1719,9 @@ void StackInterpreter::ProcessReturn(StackInstr** &instrs, long &ip)
  * Processes a asynchronous
  * method call.
  ********************************/
-void StackInterpreter::ProcessAsyncMethodCall(StackMethod* called, long* param)
+void StackInterpreter::ProcessAsyncMethodCall(StackMethod* called, size_t* param)
 {
-  long* instance = (long*)(*frame)->mem[0];
+  size_t* instance = (size_t*)(*frame)->mem[0];
   ThreadHolder* holder = new ThreadHolder;
   holder->called = called;
   holder->self = instance;
@@ -1752,7 +1752,7 @@ void StackInterpreter::ProcessAsyncMethodCall(StackMethod* called, long* param)
     ::exit(-1);
   }
 
-  instance[0] = (long)vm_thread;
+  instance[0] = (size_t)vm_thread;
 #ifdef _DEBUG
   wcout << L"*** New Thread ID: " << vm_thread  << ": " << instance << " ***" << endl;
 #endif
@@ -1772,7 +1772,7 @@ uintptr_t WINAPI StackInterpreter::AsyncMethodCall(LPVOID arg)
   (*thread_stack_pos) = 0;
   
   // set parameter
-  thread_op_stack[(*thread_stack_pos)++] = (long)holder->param;
+  thread_op_stack[(*thread_stack_pos)++] = (size_t)holder->param;
 
   HANDLE vm_thread;
   DuplicateHandle(GetCurrentProcess(), GetCurrentThread(), GetCurrentProcess(),
@@ -1815,12 +1815,12 @@ void* StackInterpreter::AsyncMethodCall(void* arg)
   ThreadHolder* holder = (ThreadHolder*)arg;
 
   // execute
-  long* thread_op_stack = new long[OP_STACK_SIZE];
+  size_t* thread_op_stack = new size_t[OP_STACK_SIZE];
   long* thread_stack_pos = new long;
   (*thread_stack_pos) = 0;
 
   // set parameter
-  thread_op_stack[(*thread_stack_pos)++] = (long)holder->param;
+  thread_op_stack[(*thread_stack_pos)++] = (size_t)holder->param;
 
 #ifdef _DEBUG
   wcout << L"# Starting thread=" << pthread_self() << " #" << endl;
@@ -1863,7 +1863,7 @@ void StackInterpreter::ProcessDynamicMethodCall(StackInstr* instr, StackInstr** 
   PushFrame((*frame));
 
   // pop instance
-  long* instance = (long*)PopInt(op_stack, stack_pos);
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
   // make call
   long cls_id = PopInt(op_stack, stack_pos);
@@ -1903,13 +1903,13 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr, StackInstr** &instrs
   PushFrame((*frame));
 
   // pop instance
-  long* instance = (long*)PopInt(op_stack, stack_pos);
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
   // make call
   StackMethod* called = program->GetClass(instr->GetOperand())->GetMethod(instr->GetOperand2());
   // dynamically bind class for virutal method
   if(called->IsVirtual()) {
-    StackClass* impl_class = MemoryManager::GetClass((long*)instance);
+    StackClass* impl_class = MemoryManager::GetClass((size_t*)instance);
     if(!impl_class) {
       wcerr << L">>> Invalid instance reference! ref=" << instance << " << " << endl;
       StackErrorUnwind();
@@ -1968,14 +1968,14 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr, StackInstr** &instrs
  * Processes an interpreted
  * synchronous method call.
  ********************************/
-void StackInterpreter::ProcessJitMethodCall(StackMethod* called, long* instance, StackInstr** &instrs, long &ip, size_t* &op_stack, long* &stack_pos)
+void StackInterpreter::ProcessJitMethodCall(StackMethod* called, size_t* instance, StackInstr** &instrs, long &ip, size_t* &op_stack, long* &stack_pos)
 {
 #if defined(_DEBUGGER) || defined(_NO_JIT)
   ProcessInterpretedMethodCall(called, instance, instrs, ip);
 #else
   if(called->GetNativeCode()) {
     JitExecutor jit_executor;
-    long status = jit_executor.Execute(called, (long*)instance, op_stack, stack_pos, call_stack, call_stack_pos);
+    long status = jit_executor.Execute(called, (size_t*)instance, op_stack, stack_pos, call_stack, call_stack_pos);
     if(status < 0) {
       switch(status) {
       case -1:
@@ -2017,7 +2017,7 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, long* instance,
     }
     // execute
     JitExecutor jit_executor;
-    long status = jit_executor.Execute(called, (long*)instance, op_stack, stack_pos, call_stack, call_stack_pos);
+    long status = jit_executor.Execute(called, (size_t*)instance, op_stack, stack_pos, call_stack, call_stack_pos);
     if(status < 0) {
       switch(status) {
       case -1:
@@ -2049,7 +2049,7 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, long* instance,
  * Processes an interpreted
  * synchronous method call.
  ********************************/
-void StackInterpreter::ProcessInterpretedMethodCall(StackMethod* called, long* instance, StackInstr** &instrs, long &ip)
+void StackInterpreter::ProcessInterpretedMethodCall(StackMethod* called, size_t* instance, StackInstr** &instrs, long &ip)
 {
 #ifdef _DEBUG
   wcout << L"=== MTHD_CALL: id=" << called->GetClass()->GetId() << ","
@@ -2072,7 +2072,7 @@ void StackInterpreter::ProcessLoadIntArrayElement(StackInstr* instr, size_t* &op
 #ifdef _DEBUG
   wcout << L"stack oper: LOAD_INT_ARY_ELM; call_pos=" << (*call_stack_pos) << endl;
 #endif
-  long* array = (long*)PopInt(op_stack, stack_pos);
+  size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(!array) {
     wcerr << L">>> Atempting to dereference a 'Nil' memory element <<<" << endl;
     StackErrorUnwind();
@@ -2099,7 +2099,7 @@ void StackInterpreter::ProcessStoreIntArrayElement(StackInstr* instr, size_t* &o
   wcout << L"stack oper: STOR_INT_ARY_ELM; call_pos=" << (*call_stack_pos) << endl;
 #endif
 
-  long* array = (long*)PopInt(op_stack, stack_pos);
+  size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(!array) {
     wcerr << L">>> Atempting to dereference a 'Nil' memory element <<<" << endl;
     StackErrorUnwind();
@@ -2126,7 +2126,7 @@ void StackInterpreter::ProcessLoadByteArrayElement(StackInstr* instr, size_t* &o
 #ifdef _DEBUG
   wcout << L"stack oper: LOAD_BYTE_ARY_ELM; call_pos=" << (*call_stack_pos) << endl;
 #endif
-  long* array = (long*)PopInt(op_stack, stack_pos);
+  size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(!array) {
     wcerr << L">>> Atempting to dereference a 'Nil' memory element <<<" << endl;
     StackErrorUnwind();
@@ -2153,7 +2153,7 @@ void StackInterpreter::ProcessLoadCharArrayElement(StackInstr* instr, size_t* &o
 #ifdef _DEBUG
   wcout << L"stack oper: LOAD_CHAR_ARY_ELM; call_pos=" << (*call_stack_pos) << endl;
 #endif
-  long* array = (long*)PopInt(op_stack, stack_pos);
+  size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(!array) {
     wcerr << L">>> Atempting to dereference a 'Nil' memory element <<<" << endl;
     StackErrorUnwind();
@@ -2180,7 +2180,7 @@ void StackInterpreter::ProcessStoreByteArrayElement(StackInstr* instr, size_t* &
 #ifdef _DEBUG
   wcout << L"stack oper: STOR_BYTE_ARY_ELM; call_pos=" << (*call_stack_pos) << endl;
 #endif
-  long* array = (long*)PopInt(op_stack, stack_pos);
+  size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(!array) {
     wcerr << L">>> Atempting to dereference a 'Nil' memory element <<<" << endl;
     StackErrorUnwind();
@@ -2207,7 +2207,7 @@ void StackInterpreter::ProcessStoreCharArrayElement(StackInstr* instr, size_t* &
 #ifdef _DEBUG
   wcout << L"stack oper: STOR_CHAR_ARY_ELM; call_pos=" << (*call_stack_pos) << endl;
 #endif
-  long* array = (long*)PopInt(op_stack, stack_pos);
+  size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(!array) {
     wcerr << L">>> Atempting to dereference a 'Nil' memory element <<<" << endl;
     StackErrorUnwind();
@@ -2234,7 +2234,7 @@ void StackInterpreter::ProcessLoadFloatArrayElement(StackInstr* instr, size_t* &
 #ifdef _DEBUG
   wcout << L"stack oper: LOAD_FLOAT_ARY_ELM; call_pos=" << (*call_stack_pos) << endl;
 #endif
-  long* array = (long*)PopInt(op_stack, stack_pos);
+  size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(!array) {
     wcerr << L">>> Atempting to dereference a 'Nil' memory element <<<" << endl;
     StackErrorUnwind();
@@ -2262,7 +2262,7 @@ void StackInterpreter::ProcessStoreFloatArrayElement(StackInstr* instr, size_t* 
 #ifdef _DEBUG
   wcout << L"stack oper: STOR_FLOAT_ARY_ELM; call_pos=" << (*call_stack_pos) << endl;
 #endif
-  long* array = (long*)PopInt(op_stack, stack_pos);
+  size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(!array) {
     wcerr << L">>> Atempting to dereference a 'Nil' memory element <<<" << endl;
     StackErrorUnwind();
@@ -2290,7 +2290,7 @@ void StackInterpreter::ProcessDllLoad(StackInstr* instr)
 #ifdef _DEBUG
   wcout << L"stack oper: shared LIBRARY_LOAD; call_pos=" << (*call_stack_pos) << endl;
 #endif
-  long* instance = (long*)(*frame)->mem[0];
+  size_t* instance = (size_t*)(*frame)->mem[0];
   if(!instance) {
     wcerr << L">>> Unable to load shared library! <<<" << endl;
 #ifdef _DEBUGGER
@@ -2300,8 +2300,8 @@ void StackInterpreter::ProcessDllLoad(StackInstr* instr)
 #endif
   }
 
-  long* str_obj = (long*)instance[0];
-  if(!str_obj || !(long*)str_obj[0]) {
+  size_t* str_obj = (size_t*)instance[0];
+  if(!str_obj || !(size_t*)str_obj[0]) {
     wcerr << L">>> Name of runtime shared library was not specified! <<<" << endl;
 #ifdef _DEBUGGER
     return;
@@ -2316,7 +2316,7 @@ void StackInterpreter::ProcessDllLoad(StackInstr* instr)
   wstring path_str = L"..";
 #endif
   path_str += L"/lib/native/";
-  long* array = (long*)str_obj[0];
+  size_t* array = (size_t*)str_obj[0];
   const wstring post_path_str((wchar_t*)(array + 3));
   path_str += post_path_str;
   
@@ -2350,7 +2350,7 @@ void StackInterpreter::ProcessDllLoad(StackInstr* instr)
     ::exit(1);
 #endif
   }
-  instance[1] = (long)dll_handle;
+  instance[1] = (size_t)dll_handle;
 
   // call load function
   ext_load_def ext_load = (ext_load_def)GetProcAddress(dll_handle, "load_lib");
@@ -2374,7 +2374,7 @@ void StackInterpreter::ProcessDllLoad(StackInstr* instr)
     ::exit(1);
 #endif
   }
-  instance[1] = (long)dll_handle;
+  instance[1] = (size_t)dll_handle;
 
   // call load function
   ext_load_def ext_load = (ext_load_def)dlsym(dll_handle, "load_lib");
@@ -2398,7 +2398,7 @@ void StackInterpreter::ProcessDllUnload(StackInstr* instr)
 #ifdef _DEBUG
   wcout << L"stack oper: shared library_UNLOAD; call_pos=" << (*call_stack_pos) << endl;
 #endif
-  long* instance = (long*)(*frame)->mem[0];
+  size_t* instance = (size_t*)(*frame)->mem[0];
   // unload shared library
 #ifdef _WIN32
   HINSTANCE dll_handle = (HINSTANCE)instance[1];
@@ -2446,9 +2446,9 @@ void StackInterpreter::ProcessDllCall(StackInstr* instr, size_t* &op_stack, long
 #ifdef _DEBUG
   wcout << L"stack oper: shared LIBRARY_FUNC_CALL; call_pos=" << (*call_stack_pos) << endl;
 #endif 
-  long* instance = (long*)(*frame)->mem[0];
-  long* str_obj = (long*)(*frame)->mem[1];
-  long* array = (long*)str_obj[0];
+  size_t* instance = (size_t*)(*frame)->mem[0];
+  size_t* str_obj = (size_t*)(*frame)->mem[1];
+  size_t* array = (size_t*)str_obj[0];
   if(!array) {
     wcerr << L">>> Runtime error calling function <<<" << endl;
 #ifdef _DEBUGGER
@@ -2459,7 +2459,7 @@ void StackInterpreter::ProcessDllCall(StackInstr* instr, size_t* &op_stack, long
   }
 
   const wstring wstr((wchar_t*)(array + 3));
-  long* args = (long*)(*frame)->mem[2];
+  size_t* args = (size_t*)(*frame)->mem[2];
   lib_func_def ext_func;
 
 #ifdef _WIN32

@@ -61,8 +61,8 @@ namespace Runtime {
   // method calls
   struct ThreadHolder {
     StackMethod* called;
-    long* self;
-    long* param;
+    size_t* self;
+    size_t* param;
   };
   
   class StackInterpreter {
@@ -92,7 +92,7 @@ namespace Runtime {
     //
     // get stack frame
     //
-    static inline StackFrame* GetStackFrame(StackMethod* method, long* instance) {
+    static inline StackFrame* GetStackFrame(StackMethod* method, size_t* instance) {
 #ifdef _WIN32
       EnterCriticalSection(&cached_frames_cs);
 #else
@@ -354,7 +354,7 @@ namespace Runtime {
     //
     // calculates an array offset
     //
-    inline long ArrayIndex(StackInstr* instr, long* array, const long size, size_t* &op_stack, long* &stack_pos) {
+    inline long ArrayIndex(StackInstr* instr, size_t* array, const long size, size_t* &op_stack, long* &stack_pos) {
       // generate index
       long index = PopInt(op_stack, stack_pos);
       const long dim = instr->GetOperand();
@@ -402,11 +402,11 @@ namespace Runtime {
     //
     // creates a string object instance
     // 
-    inline long* CreateStringObject(const wstring &value_str, size_t* &op_stack, long* &stack_pos) {
+    inline size_t* CreateStringObject(const wstring &value_str, size_t* &op_stack, long* &stack_pos) {
       // create character array
       const long char_array_size = value_str.size();
       const long char_array_dim = 1;
-      long* char_array = (long*)MemoryManager::AllocateArray(char_array_size + 1 +
+      size_t* char_array = (size_t*)MemoryManager::AllocateArray(char_array_size + 1 +
 							     ((char_array_dim + 2) *
 							      sizeof(long)),
 							     CHAR_ARY_TYPE,
@@ -492,10 +492,10 @@ namespace Runtime {
 
     inline void ProcessMethodCall(StackInstr* instr, StackInstr** &instrs, long &ip, size_t* &op_stack, long* &stack_pos);
     inline void ProcessDynamicMethodCall(StackInstr* instr, StackInstr** &instrs, long &ip, size_t* &op_stack, long* &stack_pos);
-    inline void ProcessJitMethodCall(StackMethod* called, long* instance, StackInstr** &instrs, long &ip, size_t* &op_stack, long* &stack_pos);
-    inline void ProcessAsyncMethodCall(StackMethod* called, long* param);
+    inline void ProcessJitMethodCall(StackMethod* called, size_t* instance, StackInstr** &instrs, long &ip, size_t* &op_stack, long* &stack_pos);
+    inline void ProcessAsyncMethodCall(StackMethod* called, size_t* param);
 
-    inline void ProcessInterpretedMethodCall(StackMethod* called, long* instance, StackInstr** &instrs, long &ip);
+    inline void ProcessInterpretedMethodCall(StackMethod* called, size_t* instance, StackInstr** &instrs, long &ip);
     inline void ProcessLoadIntArrayElement(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
     inline void ProcessStoreIntArrayElement(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
     inline void ProcessLoadFloatArrayElement(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
@@ -673,7 +673,7 @@ namespace Runtime {
     }
 
     // execute method
-    void Execute(size_t* op_stack, long* stack_pos, long i, StackMethod* method, long* instance, bool jit_called);
+    void Execute(size_t* op_stack, long* stack_pos, long i, StackMethod* method, size_t* instance, bool jit_called);
   };
 }
 #endif
