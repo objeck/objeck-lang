@@ -161,14 +161,14 @@ namespace Runtime {
     bool is_next;
     bool is_next_line;
     bool is_jmp_out;
-    long* ref_mem;
+    size_t* ref_mem;
     StackClass* ref_klass;
     // interpreter variables
     vector<wstring> arguments;
     StackInterpreter* interpreter;
     StackProgram* cur_program;
     StackFrame* cur_frame;
-    long* op_stack;
+    size_t* op_stack;
     long* stack_pos;
 
     // pretty prints a method

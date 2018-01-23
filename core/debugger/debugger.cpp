@@ -187,7 +187,7 @@ void Runtime::Debugger::ProcessRun() {
     cur_program = loader.GetProgram();
 
     // execute
-    op_stack = new long[CALC_STACK_SIZE];
+    op_stack = new size_t[CALC_STACK_SIZE];
     stack_pos = new long;
     (*stack_pos) = 0;
 
@@ -388,9 +388,9 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
 
         case OBJ_PARM:
           if(ref_klass && ref_klass->GetName() == L"System.String") {
-            long* instance = (long*)reference->GetIntValue();
+            size_t* instance = (size_t*)reference->GetIntValue();
             if(instance) {
-              long* string_instance = (long*)instance[0];
+              size_t* string_instance = (size_t*)instance[0];
               const wchar_t* char_string = (wchar_t*)(string_instance + 3);
               wcout << L"print: type=" << ref_klass->GetName() << L", value=\""
 										<< char_string << L"\"" << endl;
@@ -408,9 +408,9 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
 
         case OBJ_ARY_PARM:
           if(reference->GetIndices()) {
-            StackClass* klass = MemoryManager::GetClass((long*)reference->GetIntValue());
+            StackClass* klass = MemoryManager::GetClass((size_t*)reference->GetIntValue());
             if(klass) {	      
-              long* instance = (long*)reference->GetIntValue();
+              size_t* instance = (size_t*)reference->GetIntValue();
               if(instance) {
                 wcout << L"print: type=" << klass->GetName() << L", value=" << (void*)reference->GetIntValue() << endl;
               }
@@ -925,7 +925,7 @@ void Runtime::Debugger::EvaluateReference(Reference* &reference, MemoryContext c
 void Runtime::Debugger::EvaluateInstanceReference(Reference* reference, int index) {
   if(ref_mem) {
     reference->SetIntValue(ref_mem[index]);
-    ref_mem =(long*)ref_mem[index];
+    ref_mem =(size_t*)ref_mem[index];
     ref_klass = MemoryManager::GetClass(ref_mem);
     if(reference->GetReference()) {
       Reference* next_reference = reference->GetReference();
@@ -939,7 +939,7 @@ void Runtime::Debugger::EvaluateInstanceReference(Reference* reference, int inde
 }
 
 void Runtime::Debugger::EvaluateClassReference(Reference* reference, StackClass* klass, int index) {
-  long* cls_mem = klass->GetClassMemory();
+  size_t* cls_mem = klass->GetClassMemory();
   reference->SetIntValue((long)cls_mem);
   ref_mem  =cls_mem;
   ref_klass = klass;
@@ -950,7 +950,7 @@ void Runtime::Debugger::EvaluateClassReference(Reference* reference, StackClass*
 }
 
 void Runtime::Debugger::EvaluateByteReference(Reference* reference, int index) {
-  long* array = (long*)ref_mem[index];
+  size_t* array = (size_t*)ref_mem[index];
   if(array) {
     const int max = array[0];
     const int dim = array[1];
@@ -1009,7 +1009,7 @@ void Runtime::Debugger::EvaluateByteReference(Reference* reference, int index) {
 }
 
 void Runtime::Debugger::EvaluateCharReference(Reference* reference, int index) {
-  long* array = (long*)ref_mem[index];
+  size_t* array = (size_t*)ref_mem[index];
   if(array) {
     const int max = array[0];
     const int dim = array[1];
@@ -1068,7 +1068,7 @@ void Runtime::Debugger::EvaluateCharReference(Reference* reference, int index) {
 }
 
 void Runtime::Debugger::EvaluateIntFloatReference(Reference* reference, int index, bool is_float) {
-  long* array = (long*)ref_mem[index];
+  size_t* array = (size_t*)ref_mem[index];
   if(array) {
     const int max = array[0];
     const int dim = array[1];
