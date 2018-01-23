@@ -730,11 +730,11 @@ class StackClass {
   long cls_num_dclrs;
   StackDclr** inst_dclrs;
   long inst_num_dclrs;
-  long* cls_mem;
+  size_t* cls_mem;
   bool is_debug;
 
   long InitMemory(long size) {
-    cls_mem = new long[size];
+    cls_mem = new size_t[size];
     memset(cls_mem, 0, size * sizeof(long));    
     return size;
   }
@@ -833,7 +833,7 @@ class StackClass {
     return is_virtual;
   }
 
-  inline long* GetClassMemory() const {
+  inline size_t* GetClassMemory() const {
     return cls_mem;
   }
 
@@ -1277,7 +1277,7 @@ class StackProgram {
 
 struct StackFrame {
   StackMethod* method;
-  long* mem;
+  size_t* mem;
   long ip;
   bool jit_called;
 };
