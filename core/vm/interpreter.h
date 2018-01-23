@@ -102,7 +102,7 @@ namespace Runtime {
         // load cache
         for(int i = 0; i < CALL_STACK_SIZE; ++i) {
           StackFrame* frame = new StackFrame();
-          frame->mem = (long*)calloc(LOCAL_SIZE, sizeof(long));
+          frame->mem = (size_t*)calloc(LOCAL_SIZE, sizeof(long));
           cached_frames.push(frame);
         }
       }
@@ -244,11 +244,11 @@ namespace Runtime {
     // pops an integer from the calculation stack.  this code
     // in normally inlined and there's a macro version available.
     //
-    inline size_t PopInt(size_t* op_stack, long* stack_pos) {
+    inline long PopInt(size_t* op_stack, long* stack_pos) {    
 #ifdef _DEBUG
-      size_t v = op_stack[--(*stack_pos)];
+      long v = op_stack[--(*stack_pos)];
       wcout << L"  [pop_i: stack_pos=" << (*stack_pos) << L"; value=" << v << L"("
-	    << (size_t*)v << L")]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << endl;
+	    << (void*)v << L")]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << endl;
       return v;
 #else
       return op_stack[--(*stack_pos)];
@@ -259,10 +259,10 @@ namespace Runtime {
     // pushes an integer onto the calculation stack.  this code
     // in normally inlined and there's a macro version available.
     //
-    inline void PushInt(size_t v, size_t* op_stack, long* stack_pos) {
+    inline void PushInt(long v, size_t* op_stack, long* stack_pos) {
 #ifdef _DEBUG
       wcout << L"  [push_i: stack_pos=" << (*stack_pos) << L"; value=" << v << L"("
-	    << (size_t*)v << L")]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << endl;
+	    << (void*)v << L")]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << endl;
 #endif
       op_stack[(*stack_pos)++] = v;
     }
@@ -288,7 +288,7 @@ namespace Runtime {
     // swaps two integers on the calculation stack
     //
     inline void SwapInt(size_t* op_stack, long* stack_pos) {
-      const size_t v = op_stack[(*stack_pos) - 2];
+      long v = op_stack[(*stack_pos) - 2];
       op_stack[(*stack_pos) - 2] = op_stack[(*stack_pos) - 1];
       op_stack[(*stack_pos) - 1] = v;
     }
@@ -318,10 +318,10 @@ namespace Runtime {
     // peeks at the integer on the top of the
     // execution stack.
     //
-    inline size_t TopInt(size_t* op_stack, long* stack_pos) {
+    inline long TopInt(size_t* op_stack, long* stack_pos) {
 #ifdef _DEBUG
-      size_t v = op_stack[(*stack_pos) - 1];
-      wcout << L"  [top_i: stack_pos=" << (*stack_pos) << L"; value=" << v << L"(" << (size_t*)v
+      long v = op_stack[(*stack_pos) - 1];
+      wcout << L"  [top_i: stack_pos=" << (*stack_pos) << L"; value=" << v << L"(" << (void*)v
 	    << L")]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << endl;
       return v;
 #else
@@ -421,7 +421,7 @@ namespace Runtime {
       wcsncpy(char_array_ptr, value_str.c_str(), char_array_size);
       
       // create 'System.String' object instance
-      long* str_obj = MemoryManager::AllocateObject(program->GetStringObjectId(),
+      size_t* str_obj = MemoryManager::AllocateObject(program->GetStringObjectId(),
 						    op_stack, *stack_pos,
 						    false);
       str_obj[0] = (long)char_array;

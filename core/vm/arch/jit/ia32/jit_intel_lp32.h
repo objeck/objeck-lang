@@ -1313,7 +1313,7 @@ namespace Runtime {
       case TRAP_RTRN: {
 	size_t* stack = (size_t*)op_stack;
 	long* pos = (long*)stack_pos;
-	if(!TrapProcessor::ProcessTrap(program, (long*)inst, stack, pos, NULL)) {
+	if(!TrapProcessor::ProcessTrap(program, (size_t*)inst, stack, pos, NULL)) {
 	  wcerr << L"  JIT compiled machine code..." << endl;
 	  exit(1);
 	}
