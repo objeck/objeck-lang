@@ -640,7 +640,7 @@ class StackMethod {
     // +1 is for instance variable
     const long size = mem_size + 2;
     size_t* mem = new size_t[size];
-    memset(mem, 0, size * sizeof(long));
+    memset(mem, 0, size * sizeof(size_t));
 
     return mem;
   }
@@ -735,7 +735,7 @@ class StackClass {
 
   long InitMemory(long size) {
     cls_mem = new size_t[size];
-    memset(cls_mem, 0, size * sizeof(long));    
+    memset(cls_mem, 0, size * sizeof(size_t));    
     return size;
   }
 
@@ -1727,7 +1727,7 @@ class TrapProcessor {
 
       // expand buffer, if needed
       dest_buffer = ExpandSerialBuffer(src_buffer_size, dest_buffer, inst, op_stack, stack_pos);
-      inst[0] = (long)dest_buffer;
+      inst[0] = (size_t)dest_buffer;
 
       // copy content
       char* dest_buffer_ptr = (char*)(dest_buffer + 3);
@@ -1798,7 +1798,7 @@ class TrapProcessor {
 
 	  // expand buffer, if needed
 	  dest_buffer = ExpandSerialBuffer(src_buffer_size, dest_buffer, inst, op_stack, stack_pos);
-	  inst[0] = (long)dest_buffer;
+	  inst[0] = (size_t)dest_buffer;
 
 	  // copy content
 	  char* dest_buffer_ptr = ((char*)(dest_buffer + 3) + dest_pos);
@@ -1903,7 +1903,7 @@ class TrapProcessor {
 
       // expand buffer, if needed
       dest_buffer = ExpandSerialBuffer(src_buffer_size, dest_buffer, inst, op_stack, stack_pos);
-      inst[0] = (long)dest_buffer;
+      inst[0] = (size_t)dest_buffer;
 
       // copy content
       char* dest_buffer_ptr = (char*)(dest_buffer + 3);
@@ -1948,7 +1948,7 @@ class TrapProcessor {
       
       // expand buffer, if needed
       dest_buffer = ExpandSerialBuffer(src_buffer_size, dest_buffer, inst, op_stack, stack_pos);
-      inst[0] = (long)dest_buffer;
+      inst[0] = (size_t)dest_buffer;
 
       // copy content
       char* dest_buffer_ptr = (char*)(dest_buffer + 3);
@@ -1998,7 +1998,7 @@ class TrapProcessor {
       
       // expand buffer, if needed
       dest_buffer = ExpandSerialBuffer(src_buffer_size, dest_buffer, inst, op_stack, stack_pos);
-      inst[0] = (long)dest_buffer;
+      inst[0] = (size_t)dest_buffer;
       
       // copy content
       char* dest_buffer_ptr = (char*)(dest_buffer + 3);
@@ -2038,7 +2038,7 @@ class TrapProcessor {
       
       // expand buffer, if needed
       dest_buffer = ExpandSerialBuffer(src_buffer_size, dest_buffer, inst, op_stack, stack_pos);
-      inst[0] = (long)dest_buffer;
+      inst[0] = (size_t)dest_buffer;
       
       // copy content
       char* dest_buffer_ptr = (char*)(dest_buffer + 3);

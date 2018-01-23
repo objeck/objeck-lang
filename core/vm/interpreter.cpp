@@ -130,7 +130,7 @@ void StackInterpreter::Initialize(StackProgram* p)
   // allocate 256K frames
   for(int i = 0; i < CALL_STACK_SIZE * 16; i++) {
     StackFrame* frame = new StackFrame();
-    frame->mem = (size_t*)calloc(LOCAL_SIZE, sizeof(long));
+    frame->mem = (size_t*)calloc(LOCAL_SIZE, sizeof(size_t));
     cached_frames.push(frame);
   }
 #endif
@@ -1175,7 +1175,7 @@ void StackInterpreter::CpyIntAry(size_t* &op_stack, long* &stack_pos)
   if(length > 0 && src_offset + length <= src_array_len && dest_offset + length <= dest_array_len) {
     size_t* src_array_ptr = src_array + 3;
     size_t* dest_array_ptr = dest_array + 3;
-    ::memcpy(dest_array_ptr + dest_offset, src_array_ptr + src_offset, length * sizeof(long));
+    ::memcpy(dest_array_ptr + dest_offset, src_array_ptr + src_offset, length * sizeof(size_t));
     PushInt(1, op_stack, stack_pos);
   }
   else {
@@ -1623,7 +1623,7 @@ void StackInterpreter::ProcessNewArray(StackInstr* instr, size_t* &op_stack, lon
   mem[0] = size;
   mem[1] = dim;
 
-  ::memcpy(mem + 2, indices, dim * sizeof(long));
+  ::memcpy(mem + 2, indices, dim * sizeof(size_t));
   PushInt((size_t)mem, op_stack, stack_pos);
 }
 
@@ -1648,11 +1648,11 @@ void StackInterpreter::ProcessNewByteArray(StackInstr* instr, size_t* &op_stack,
   }
   // NULL terminated string 
   size++;
-  size_t* mem = MemoryManager::AllocateArray(size + ((dim + 2) * sizeof(long)),
+  size_t* mem = MemoryManager::AllocateArray(size + ((dim + 2) * sizeof(size_t)),
 						  BYTE_ARY_TYPE, op_stack, *stack_pos);
   mem[0] = size - 1;
   mem[1] = dim;
-  ::memcpy(mem + 2, indices, dim * sizeof(long));
+  ::memcpy(mem + 2, indices, dim * sizeof(size_t));
   PushInt((size_t)mem, op_stack, stack_pos);
 }
 
@@ -1677,11 +1677,11 @@ void StackInterpreter::ProcessNewCharArray(StackInstr* instr, size_t* &op_stack,
   }
   // NULL terminated string 
   size++;
-  size_t* mem = MemoryManager::AllocateArray(size + ((dim + 2) * sizeof(long)),
+  size_t* mem = MemoryManager::AllocateArray(size + ((dim + 2) * sizeof(size_t)),
 						  CHAR_ARY_TYPE, op_stack, *stack_pos);
   mem[0] = size - 1;
   mem[1] = dim;
-  ::memcpy(mem + 2, indices, dim * sizeof(long));
+  ::memcpy(mem + 2, indices, dim * sizeof(size_t));
   PushInt((size_t)mem, op_stack, stack_pos);
 }
 

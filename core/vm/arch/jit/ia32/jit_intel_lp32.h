@@ -953,7 +953,7 @@ namespace Runtime {
 #ifdef _DEBUG
       wcout << L"Stack Call: instr=" << instr_id
 	    << L", oper_1=" << instr->GetOperand() << L", oper_2=" << instr->GetOperand2() 
-	    << L", oper_3=" << instr->GetOperand3() << L", self=" << inst << L"(" << (long)inst << L"), stack=" 
+	    << L", oper_3=" << instr->GetOperand3() << L", self=" << inst << L"(" << (size_t)inst << L"), stack=" 
 	    << op_stack << L", stack_addr=" << stack_pos << L", stack_pos=" << (*stack_pos) << endl;
 #endif
       switch(instr_id) {
@@ -1273,7 +1273,7 @@ namespace Runtime {
 	if(length > 0 && src_offset + length <= src_array_len && dest_offset + length <= dest_array_len) {
 	  size_t* src_array_ptr = src_array + 3;
 	  size_t* dest_array_ptr = dest_array + 3;
-	  memcpy(dest_array_ptr + dest_offset, src_array_ptr + src_offset, length * sizeof(long));
+	  memcpy(dest_array_ptr + dest_offset, src_array_ptr + src_offset, length * sizeof(size_t));
 	  PushInt(op_stack, stack_pos, 1);
 	}
 	else {
@@ -1756,7 +1756,7 @@ namespace Runtime {
 
 #ifdef _DEBUG
       wcout << L"=== MTHD_CALL (native): id=" << cls_id << L"," << mthd_id 
-	    << L"; name='" << method->GetName() << L"'; self=" << inst << L"(" << (long)inst 
+	    << L"; name='" << method->GetName() << L"'; self=" << inst << L"(" << (size_t)inst 
 	    << L"); stack=" << op_stack << L"; stack_pos=" << (*stack_pos) << L"; params=" 
 	    << method->GetParamCount() << L" ===" << endl;
       assert((*stack_pos) >= method->GetParamCount());
