@@ -110,7 +110,7 @@ namespace Runtime {
       cached_frames.pop();
 
       frame->method = method;
-      frame->mem[0] = (long)instance;
+      frame->mem[0] = (size_t)instance;
       frame->ip = -1;
       frame->jit_called = false;
 #ifdef _DEBUG
@@ -288,7 +288,7 @@ namespace Runtime {
     // swaps two integers on the calculation stack
     //
     inline void SwapInt(size_t* op_stack, long* stack_pos) {
-      long v = op_stack[(*stack_pos) - 2];
+      size_t v = op_stack[(*stack_pos) - 2];
       op_stack[(*stack_pos) - 2] = op_stack[(*stack_pos) - 1];
       op_stack[(*stack_pos) - 1] = v;
     }
@@ -356,12 +356,12 @@ namespace Runtime {
     //
     inline long ArrayIndex(StackInstr* instr, size_t* array, const long size, size_t* &op_stack, long* &stack_pos) {
       // generate index
-      long index = PopInt(op_stack, stack_pos);
+      long index = (long)PopInt(op_stack, stack_pos);
       const long dim = instr->GetOperand();
 
       for(long i = 1; i < dim; i++) {
-        index *= array[i];
-        index += PopInt(op_stack, stack_pos);
+        index *= (long)array[i];
+        index += (long)PopInt(op_stack, stack_pos);
       }
 
 #ifdef _DEBUG
@@ -404,7 +404,7 @@ namespace Runtime {
     // 
     inline size_t* CreateStringObject(const wstring &value_str, size_t* &op_stack, long* &stack_pos) {
       // create character array
-      const long char_array_size = value_str.size();
+      const long char_array_size = (long)value_str.size();
       const long char_array_dim = 1;
       size_t* char_array = (size_t*)MemoryManager::AllocateArray(char_array_size + 1 +
 							     ((char_array_dim + 2) *
@@ -424,7 +424,7 @@ namespace Runtime {
       size_t* str_obj = MemoryManager::AllocateObject(program->GetStringObjectId(),
 						    op_stack, *stack_pos,
 						    false);
-      str_obj[0] = (long)char_array;
+      str_obj[0] = (size_t)char_array;
       str_obj[1] = char_array_size;
       str_obj[2] = char_array_size;
       
