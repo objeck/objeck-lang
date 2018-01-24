@@ -34,7 +34,9 @@
 
 #ifndef _NO_JIT
 #ifdef _X64
-#include "arch/jit/amd64/jit_amd_lp64.h"
+#include "arch/jit/posix64/jit_amd_lp64.h"
+#elif _WIN64
+#include "arch/jit/win64/jit_amd_llp64.h"
 #elif _ARM32
 #include "arch/jit/arm32/jit_arm_a32.h"
 #else
