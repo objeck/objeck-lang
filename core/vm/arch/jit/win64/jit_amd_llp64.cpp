@@ -152,7 +152,7 @@ void JitCompilerIA64::RegisterRoot() {
   move_mem_reg(CLS_ID, RBP, RDI);
   
   // call method
-  move_imm_reg((long)MemoryManager::AddJitMethodRoot, R15);
+  move_imm_reg((size_t)MemoryManager::AddJitMethodRoot, R15);
   call_reg(R15);
 
   /*
@@ -185,7 +185,7 @@ void JitCompilerIA64::UnregisterRoot() {
   */
   
   // call method
-  move_imm_reg((long)MemoryManager::RemoveJitMethodRoot, R15);
+  move_imm_reg((size_t)MemoryManager::RemoveJitMethodRoot, R15);
   call_reg(R15);
     
   /*
@@ -240,7 +240,7 @@ void JitCompilerIA64::ProcessParameters(long params) {
                    dest_holder->GetRegister());
       
       RegisterHolder* dest_holder2 = GetRegister();
-      move_mem_reg(-sizeof(long), op_stack_holder->GetRegister(), 
+      move_mem_reg(-1 * sizeof(size_t), op_stack_holder->GetRegister(), 
                    dest_holder2->GetRegister());
       
       move_mem_reg(STACK_POS, RBP, stack_pos_holder->GetRegister());
@@ -1516,7 +1516,7 @@ void JitCompilerIA64::ProcessStackCallback(long instr_id, StackInstr* instr,
     non_params = 0;
   }
   else {
-    non_params = working_stack.size() - params;
+    non_params = (long)working_stack.size() - params;
   }
   
 #ifdef _DEBUG
@@ -1582,13 +1582,13 @@ void JitCompilerIA64::ProcessStackCallback(long instr_id, StackInstr* instr,
   move_mem_reg(INSTANCE_MEM, RBP, R8);
   move_mem_reg(MTHD_ID, RBP, RCX);
   move_mem_reg(CLS_ID, RBP, RDX);
-  move_imm_reg((long)instr, RSI);
+  move_imm_reg((size_t)instr, RSI);
   move_imm_reg(instr_id, RDI);  
   push_imm(instr_index - 1);
   push_mem(STACK_POS, RBP);
   
   // call function
-  move_imm_reg((long)JitCompilerIA64::StackCallback, R15);
+  move_imm_reg((size_t)JitCompilerIA64::StackCallback, R15);
   call_reg(R15);
   
   add_imm_reg(16, RSP);
@@ -1635,7 +1635,7 @@ void JitCompilerIA64::ProcessReturn(long params) {
       non_params = 0;
     }
     else {
-      non_params = working_stack.size() - params;
+      non_params = (long)working_stack.size() - params;
     }
 #ifdef _DEBUG
     wcout << L"Return: params=" << params << L", non-params=" << non_params << endl;
@@ -1703,7 +1703,7 @@ void JitCompilerIA64::ProcessReturn(long params) {
     
     // clean up working stack
     if(params < 0) {
-      params = working_stack.size();
+      params = (long)working_stack.size();
     }
     for(long i = 0; i < params; i++) {
       RegInstr* left = working_stack.front();
@@ -2251,7 +2251,7 @@ void JitCompilerIA64::move_imm_mem8(long imm, long offset, Register dest) {
   AddMachineCode(code);
   // write value
   AddImm(offset);
-  AddMachineCode(imm);
+  AddMachineCode((unsigned char)imm);
 }
 
 void JitCompilerIA64::move_imm_mem(long imm, long offset, Register dest) {
@@ -3420,7 +3420,7 @@ void JitCompilerIA64::shl_imm_reg(long value, Register dest) {
   unsigned char code = 0xe0;
   RegisterEncode3(code, 5, dest);
   AddMachineCode(code);
-  AddMachineCode(value);
+  AddMachineCode((unsigned char)value);
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [shlq $" << value << L", %" 
         << GetRegisterName(dest) << L"]" << endl;
