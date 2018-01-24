@@ -1767,7 +1767,7 @@ class TrapProcessor {
 	SerializeInt((INT_VALUE)array[1], inst, op_stack, stack_pos);
 	SerializeInt((INT_VALUE)buffer.size(), inst, op_stack, stack_pos);
 	// write data
-	WriteSerializedBytes((const char*)buffer.c_str(), buffer.size(), inst, op_stack, stack_pos);
+	WriteSerializedBytes((const char*)buffer.c_str(), (long)buffer.size(), inst, op_stack, stack_pos);
       }
 	break;
 
@@ -1792,9 +1792,9 @@ class TrapProcessor {
     size_t* obj = (size_t*)array_ptr[i];
 	  ObjectSerializer serializer(obj);
 	  vector<char> src_buffer = serializer.GetValues();
-	  const long src_buffer_size = src_buffer.size();
+	  const long src_buffer_size = (long)src_buffer.size();
     size_t* dest_buffer = (size_t*)inst[0];
-	  long dest_pos = inst[1];
+	  long dest_pos = (long)inst[1];
 
 	  // expand buffer, if needed
 	  dest_buffer = ExpandSerialBuffer(src_buffer_size, dest_buffer, inst, op_stack, stack_pos);
@@ -1836,7 +1836,7 @@ class TrapProcessor {
   static inline void ReadSerializedBytes(size_t* dest_array, const size_t* src_array,
 					 ParamType type, size_t* inst) {
     if(dest_array && src_array) {
-      const long dest_pos = inst[1];
+      const long dest_pos = (long)inst[1];
       const long src_array_size = src_array[0];
       long dest_array_size = dest_array[0];
 
@@ -1899,7 +1899,7 @@ class TrapProcessor {
     size_t* dest_buffer = (size_t*)inst[0];
     
     if(dest_buffer) {
-      const long dest_pos = inst[1];
+      const long dest_pos = (long)inst[1];
 
       // expand buffer, if needed
       dest_buffer = ExpandSerialBuffer(src_buffer_size, dest_buffer, inst, op_stack, stack_pos);
@@ -1917,7 +1917,7 @@ class TrapProcessor {
   // 
   static char DeserializeByte(size_t* inst) {
     size_t* byte_array = (size_t*)inst[0];
-    const long dest_pos = inst[1];
+    const long dest_pos = (long)inst[1];
 
     if(byte_array && dest_pos < (long)byte_array[0]) {
       const char* byte_array_ptr = (char*)(byte_array + 3);	
@@ -1944,7 +1944,7 @@ class TrapProcessor {
     // prepare copy   
     size_t* dest_buffer = (size_t*)inst[0];
     if(dest_buffer) {
-      const long dest_pos = inst[1];
+      const long dest_pos = (long)inst[1];
       
       // expand buffer, if needed
       dest_buffer = ExpandSerialBuffer(src_buffer_size, dest_buffer, inst, op_stack, stack_pos);
@@ -1963,7 +1963,7 @@ class TrapProcessor {
   static wchar_t DeserializeChar(size_t* inst) {
     const int num = DeserializeInt(inst);      
     size_t* byte_array = (size_t*)inst[0];
-    const long dest_pos = inst[1];
+    const long dest_pos = (long)inst[1];
 
     if(byte_array && dest_pos < (long)byte_array[0]) {
       const char* byte_array_ptr = (char*)(byte_array + 3);	
@@ -1994,7 +1994,7 @@ class TrapProcessor {
     size_t* dest_buffer = (size_t*)inst[0];
 
     if(dest_buffer) {
-      const long dest_pos = inst[1];
+      const long dest_pos = (long)inst[1];
       
       // expand buffer, if needed
       dest_buffer = ExpandSerialBuffer(src_buffer_size, dest_buffer, inst, op_stack, stack_pos);
@@ -2012,7 +2012,7 @@ class TrapProcessor {
   // 
   static INT_VALUE DeserializeInt(size_t* inst) {
     size_t* byte_array = (size_t*)inst[0];
-    const long dest_pos = inst[1];
+    const long dest_pos = (long)inst[1];
 
     if(byte_array && dest_pos < (long)byte_array[0]) {
       const char* byte_array_ptr = (char*)(byte_array + 3);	
@@ -2034,7 +2034,7 @@ class TrapProcessor {
     size_t* dest_buffer = (size_t*)inst[0];
 
     if(dest_buffer) {
-      const long dest_pos = inst[1];
+      const long dest_pos = (long)inst[1];
       
       // expand buffer, if needed
       dest_buffer = ExpandSerialBuffer(src_buffer_size, dest_buffer, inst, op_stack, stack_pos);
@@ -2052,7 +2052,7 @@ class TrapProcessor {
   // 
   static FLOAT_VALUE DeserializeFloat(size_t* inst) {
     size_t* byte_array = (size_t*)inst[0];
-    const long dest_pos = inst[1];
+    const long dest_pos = (long)inst[1];
 
     if(byte_array && dest_pos < (long)byte_array[0]) {
       const char* byte_array_ptr = (char*)(byte_array + 3);

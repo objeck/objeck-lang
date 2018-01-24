@@ -1978,7 +1978,7 @@ bool TrapProcessor::StdOutCharAry(StackProgram* program, size_t* inst, size_t* &
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
 #ifdef _DEBUG
-  wcout << L"  STD_OUT_CHAR_ARY: addr=" << array << L"(" << long(array) << L")" << endl;
+  wcout << L"  STD_OUT_CHAR_ARY: addr=" << array << L"(" << (size_t)array << L")" << endl;
 #endif
 
   if(array) {
@@ -1999,10 +1999,10 @@ bool TrapProcessor::StdOutByteAryLen(StackProgram* program, size_t* inst, size_t
   const long offset = (long)PopInt(op_stack, stack_pos);
 
 #ifdef _DEBUG
-  wcout << L"  STD_OUT_BYTE_ARY_LEN: addr=" << array << L"(" << long(array) << L")" << endl;
+  wcout << L"  STD_OUT_BYTE_ARY_LEN: addr=" << array << L"(" << (size_t)array << L")" << endl;
 #endif
 
-  if(array && offset > -1 && offset + num < (long)array[0]) {
+  if(array && offset > -1 && offset + num < (size_t)array[0]) {
     const char* buffer = (char*)(array + 3);
     for(long i = 0; i < num; i++) {
       wcout << (char)buffer[i + offset];
@@ -2024,10 +2024,10 @@ bool TrapProcessor::StdOutCharAryLen(StackProgram* program, size_t* inst, size_t
   const long offset = (long)PopInt(op_stack, stack_pos);
 
 #ifdef _DEBUG
-  wcout << L"  STD_OUT_CHAR_ARY: addr=" << array << L"(" << long(array) << L")" << endl;
+  wcout << L"  STD_OUT_CHAR_ARY: addr=" << array << L"(" << (size_t)array << L")" << endl;
 #endif
 
-  if(array && offset > -1 && offset + num < (long)array[0]) {
+  if(array && offset > -1 && offset + num < (size_t)array[0]) {
     const wchar_t* buffer = (wchar_t*)(array + 3);
     wcout.write(buffer + offset, num);
     PushInt(1, op_stack, stack_pos);
@@ -2115,7 +2115,7 @@ bool TrapProcessor::StdErrCharAry(StackProgram* program, size_t* inst, size_t* &
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
 
 #ifdef _DEBUG
-  wcout << L"  STD_ERR_CHAR_ARY: addr=" << array << L"(" << long(array) << L")" << endl;
+  wcout << L"  STD_ERR_CHAR_ARY: addr=" << array << L"(" << (size_t)array << L")" << endl;
 #endif
 
   if(array) {
@@ -2136,10 +2136,10 @@ bool TrapProcessor::StdErrByteAry(StackProgram* program, size_t* inst, size_t* &
   const long offset = (long)PopInt(op_stack, stack_pos);
 
 #ifdef _DEBUG
-  wcout << L"  STD_ERR_CHAR_ARY: addr=" << array << L"(" << long(array) << L")" << endl;
+  wcout << L"  STD_ERR_CHAR_ARY: addr=" << array << L"(" << (size_t)array << L")" << endl;
 #endif
 
-  if(array && offset > -1 && offset + num < (long)array[2]) {
+  if(array && offset > -1 && offset + num < (size_t)array[2]) {
     const unsigned char* buffer = (unsigned char*)(array + 3);
     for(long i = 0; i < num; i++) {
       wcerr << (char)buffer[i + offset];
@@ -2364,7 +2364,7 @@ bool TrapProcessor::SockTcpConnect(StackProgram* program, size_t* inst, size_t* 
     SOCKET sock = IPSocket::Open(addr.c_str(), port);
 #ifdef _DEBUG
     wcout << L"# socket connect: addr='" << waddr << L":" << port << L"'; instance="
-	  << instance << L"(" << (long)instance << L")" << L"; addr=" << sock << L"("
+	  << instance << L"(" << (size_t)instance << L")" << L"; addr=" << sock << L"("
 	  << (long)sock << L") #" << endl;
 #endif
     instance[0] = (long)sock;
@@ -2381,7 +2381,7 @@ bool TrapProcessor::SockTcpBind(StackProgram* program, size_t* inst, size_t* &op
     SOCKET server = IPSocket::Bind(port);
 #ifdef _DEBUG
     wcout << L"# socket bind: port=" << port << L"; instance=" << instance << L"("
-	  << (long)instance << L")" << L"; addr=" << server << L"(" << (long)server
+	  << (size_t)instance << L")" << L"; addr=" << server << L"(" << (size_t)server
 	  << L") #" << endl;
 #endif
     instance[0] = (long)server;
@@ -2395,11 +2395,11 @@ bool TrapProcessor::SockTcpListen(StackProgram* program, size_t* inst, size_t* &
   long backlog = (long)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
-  if(instance && (long)instance[0] > -1) {
+  if(instance && (size_t)instance[0] > -1) {
     SOCKET server = (SOCKET)instance[0];
 #ifdef _DEBUG
     wcout << L"# socket listen: backlog=" << backlog << L"'; instance=" << instance
-	  << L"(" << (long)instance << L")" << L"; addr=" << server << L"("
+	  << L"(" << (size_t)instance << L")" << L"; addr=" << server << L"("
 	  << (long)server << L") #" << endl;
 #endif
     if(IPSocket::Listen(server, backlog)) {
@@ -2419,13 +2419,13 @@ bool TrapProcessor::SockTcpListen(StackProgram* program, size_t* inst, size_t* &
 bool TrapProcessor::SockTcpAccept(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  if(instance && (long)instance[0] > -1) {
+  if(instance && (size_t)instance[0] > -1) {
     SOCKET server = (SOCKET)instance[0];
     char client_address[SMALL_BUFFER_MAX + 1];
     int client_port;
     SOCKET client = IPSocket::Accept(server, client_address, client_port);
 #ifdef _DEBUG
-    wcout << L"# socket accept: instance=" << instance << L"(" << (long)instance << L")" << L"; ip="
+    wcout << L"# socket accept: instance=" << instance << L"(" << (size_t)instance << L")" << L"; ip="
 	  << BytesToUnicode(client_address) << L"; port=" << client_port << L"; addr=" << server << L"("
 	  << (long)server << L") #" << endl;
 #endif
@@ -2445,7 +2445,7 @@ bool TrapProcessor::SockTcpAccept(StackProgram* program, size_t* inst, size_t* &
 bool TrapProcessor::SockTcpClose(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  if(instance && (long)instance[0] > -1) {
+  if(instance && (size_t)instance[0] > -1) {
     SOCKET sock = (SOCKET)instance[0];
 #ifdef _DEBUG
     wcout << L"# socket close: addr=" << sock << L"(" << (long)sock << L") #" << endl;
@@ -2461,13 +2461,13 @@ bool TrapProcessor::SockTcpOutString(StackProgram* program, size_t* inst, size_t
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  if(array && instance && (long)instance[0] > -1) {
+  if(array && instance && (size_t)instance[0] > -1) {
     SOCKET sock = (SOCKET)instance[0];
     const wchar_t* wdata = (wchar_t*)(array + 3);
 
 #ifdef _DEBUG
-    wcout << L"# socket write string: instance=" << instance << L"(" << (long)instance << L")"
-	  << L"; array=" << array << L"(" << (long)array << L")" << L"; data=" << wdata << endl;
+    wcout << L"# socket write string: instance=" << instance << L"(" << (size_t)instance << L")"
+	  << L"; array=" << array << L"(" << (size_t)array << L")" << L"; data=" << wdata << endl;
 #endif	      
     if((long)sock > -1) {
       const string data = UnicodeToBytes(wdata);
@@ -2482,7 +2482,7 @@ bool TrapProcessor::SockTcpInString(StackProgram* program, size_t* inst, size_t*
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  if(array && instance && (long)instance[0] > -1) {
+  if(array && instance && (size_t)instance[0] > -1) {
     char buffer[LARGE_BUFFER_MAX + 1];
     SOCKET sock = (SOCKET)instance[0];
     int status;
@@ -2539,8 +2539,8 @@ bool TrapProcessor::SockTcpSslConnect(StackProgram* program, size_t* inst, size_
 
 #ifdef _DEBUG
     wcout << L"# socket connect: addr='" << waddr << L":" << port << L"'; instance="
-	  << instance << L"(" << (long)instance << L")" << L"; addr=" << ctx << L"|" << bio << L"("
-	  << (long)ctx << L"|" << (long)bio << L") #" << endl;
+	  << instance << L"(" << (size_t)instance << L")" << L"; addr=" << ctx << L"|" << bio << L"("
+	  << (size_t)ctx << L"|" << (size_t)bio << L") #" << endl;
 #endif
   }
 
@@ -2573,7 +2573,7 @@ bool TrapProcessor::SockTcpSslClose(StackProgram* program, size_t* inst, size_t*
 
 #ifdef _DEBUG
   wcout << L"# socket close: addr=" << ctx << L"|" << bio << L"("
-	<< (long)ctx << L"|" << (long)bio << L") #" << endl;
+	<< (size_t)ctx << L"|" << (size_t)bio << L") #" << endl;
 #endif      
   IPSecureSocket::Close(ctx, bio, cert);
   instance[0] = instance[1] = instance[2] = instance[3] = 0;
@@ -2856,7 +2856,7 @@ bool TrapProcessor::FileOpenRead(StackProgram* program, size_t* inst, size_t* &o
     FILE* file = File::FileOpen(filename.c_str(), "rb");
 #ifdef _DEBUG
     wcout << L"# file open: name='" << name << L"'; instance=" << instance << L"("
-	  << (long)instance << L")" << L"; addr=" << file << L"(" << (long)file
+	  << (size_t)instance << L")" << L"; addr=" << file << L"(" << (size_t)file
 	  << L") #" << endl;
 #endif
     instance[0] = (size_t)file;
@@ -2876,7 +2876,7 @@ bool TrapProcessor::FileOpenAppend(StackProgram* program, size_t* inst, size_t* 
     FILE* file = File::FileOpen(filename.c_str(), "ab");
 #ifdef _DEBUG
     wcout << L"# file open: name='" << name << L"'; instance=" << instance << L"("
-	  << (long)instance << L")" << L"; addr=" << file << L"(" << (long)file
+	  << (size_t)instance << L")" << L"; addr=" << file << L"(" << (size_t)file
 	  << L") #" << endl;
 #endif
     instance[0] = (size_t)file;
@@ -2896,7 +2896,7 @@ bool TrapProcessor::FileOpenWrite(StackProgram* program, size_t* inst, size_t* &
     FILE* file = File::FileOpen(filename.c_str(), "wb");
 #ifdef _DEBUG
     wcout << L"# file open: name='" << name << L"'; instance=" << instance << L"("
-	  << (long)instance << L")" << L"; addr=" << file << L"(" << (long)file
+	  << (size_t)instance << L")" << L"; addr=" << file << L"(" << (size_t)file
 	  << L") #" << endl;
 #endif
     instance[0] = (size_t)file;
@@ -2916,7 +2916,7 @@ bool TrapProcessor::FileOpenReadWrite(StackProgram* program, size_t* inst, size_
     FILE* file = File::FileOpen(filename.c_str(), "w+b");
 #ifdef _DEBUG
     wcout << L"# file open: name='" << name << L"'; instance=" << instance << L"("
-	  << (long)instance << L")" << L"; addr=" << file << L"(" << (long)file
+	  << (size_t)instance << L")" << L"; addr=" << file << L"(" << (size_t)file
 	  << L") #" << endl;
 #endif
     instance[0] = (size_t)file;
@@ -2931,7 +2931,7 @@ bool TrapProcessor::FileClose(StackProgram* program, size_t* inst, size_t* &op_s
   if(instance && (FILE*)instance[0]) {
     FILE* file = (FILE*)instance[0];
 #ifdef _DEBUG
-    wcout << L"# file close: addr=" << file << L"(" << (long)file << L") #" << endl;
+    wcout << L"# file close: addr=" << file << L"(" << (size_t)file << L") #" << endl;
 #endif
     instance[0] = 0;
     fclose(file);
@@ -2946,7 +2946,7 @@ bool TrapProcessor::FileFlush(StackProgram* program, size_t* inst, size_t* &op_s
   if(instance && (FILE*)instance[0]) {
     FILE* file = (FILE*)instance[0];
 #ifdef _DEBUG
-    wcout << L"# file close: addr=" << file << L"(" << (long)file << L") #" << endl;
+    wcout << L"# file close: addr=" << file << L"(" << (size_t)file << L") #" << endl;
 #endif
     instance[0] = 0;
     fflush(file);
@@ -3016,7 +3016,7 @@ bool TrapProcessor::FileRewind(StackProgram* program, size_t* inst, size_t* &op_
 bool TrapProcessor::SockTcpIsConnected(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  if(instance && (long)instance[0] > -1) {
+  if(instance && (size_t)instance[0] > -1) {
     PushInt(1, op_stack, stack_pos);
   }
   else {
@@ -3029,7 +3029,7 @@ bool TrapProcessor::SockTcpIsConnected(StackProgram* program, size_t* inst, size
 bool TrapProcessor::SockTcpInByte(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  if(instance && (long)instance[0] > -1) {
+  if(instance && (size_t)instance[0] > -1) {
     SOCKET sock = (SOCKET)instance[0];
     int status;
     PushInt(IPSocket::ReadByte(sock, status), op_stack, stack_pos);
@@ -3048,7 +3048,7 @@ bool TrapProcessor::SockTcpInByteAry(StackProgram* program, size_t* inst, size_t
   const long offset = (long)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
-  if(array && instance && (long)instance[0] > -1 && offset > -1 && offset + num <= (long)array[0]) {
+  if(array && instance && (size_t)instance[0] > -1 && offset > -1 && offset + num <= (size_t)array[0]) {
     SOCKET sock = (SOCKET)instance[0];
     char* buffer = (char*)(array + 3);
     PushInt(IPSocket::ReadBytes(buffer + offset, num, sock), op_stack, stack_pos);
@@ -3067,7 +3067,7 @@ bool TrapProcessor::SockTcpInCharAry(StackProgram* program, size_t* inst, size_t
   const long offset = (long)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
-  if(array && instance && (long)instance[0] > -1 && offset > -1 && offset + num <= (long)array[0]) {
+  if(array && instance && (size_t)instance[0] > -1 && offset > -1 && offset + num <= (size_t)array[0]) {
     SOCKET sock = (SOCKET)instance[0];
     wchar_t* buffer = (wchar_t*)(array + 3);
     // allocate temporary buffer
@@ -3097,7 +3097,7 @@ bool TrapProcessor::SockTcpOutByte(StackProgram* program, size_t* inst, size_t* 
 {
   long value = (long)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  if(instance && (long)instance[0] > -1) {
+  if(instance && (size_t)instance[0] > -1) {
     SOCKET sock = (SOCKET)instance[0];
     IPSocket::WriteByte((char)value, sock);
     PushInt(1, op_stack, stack_pos);
@@ -3116,7 +3116,7 @@ bool TrapProcessor::SockTcpOutByteAry(StackProgram* program, size_t* inst, size_
   const long offset = (long)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
-  if(array && instance && (long)instance[0] > -1 && offset > -1 && offset + num <= (long)array[0]) {
+  if(array && instance && (size_t)instance[0] > -1 && offset > -1 && offset + num <= (size_t)array[0]) {
     SOCKET sock = (SOCKET)instance[0];
     char* buffer = (char*)(array + 3);
     PushInt(IPSocket::WriteBytes(buffer + offset, num, sock), op_stack, stack_pos);
@@ -3135,7 +3135,7 @@ bool TrapProcessor::SockTcpOutCharAry(StackProgram* program, size_t* inst, size_
   const long offset = (long)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
-  if(array && instance && (long)instance[0] > -1 && offset > -1 && offset + num <= (long)array[0]) {
+  if(array && instance && (size_t)instance[0] > -1 && offset > -1 && offset + num <= (size_t)array[0]) {
     SOCKET sock = (SOCKET)instance[0];
     const wchar_t* buffer = (wchar_t*)(array + 3);
     // copy sub buffer
@@ -3174,7 +3174,7 @@ bool TrapProcessor::SockTcpSslInByteAry(StackProgram* program, size_t* inst, siz
   const long offset = (long)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
-  if(array && instance && instance[2] && offset > -1 && offset + num <= (long)array[0]) {
+  if(array && instance && instance[2] && offset > -1 && offset + num <= (size_t)array[0]) {
     SSL_CTX* ctx = (SSL_CTX*)instance[0];
     BIO* bio = (BIO*)instance[1];
     char* buffer = (char*)(array + 3);
@@ -3194,7 +3194,7 @@ bool TrapProcessor::SockTcpSslInCharAry(StackProgram* program, size_t* inst, siz
   const long offset = (long)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
-  if(array && instance && instance[2] && offset > -1 && offset + num <= (long)array[0]) {
+  if(array && instance && instance[2] && offset > -1 && offset + num <= (size_t)array[0]) {
     SSL_CTX* ctx = (SSL_CTX*)instance[0];
     BIO* bio = (BIO*)instance[1];
     wchar_t* buffer = (wchar_t*)(array + 3);
@@ -3244,7 +3244,7 @@ bool TrapProcessor::SockTcpSslOutByteAry(StackProgram* program, size_t* inst, si
   const long offset = (long)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
-  if(array && instance && instance[2] && offset > -1 && offset + num <= (long)array[0]) {
+  if(array && instance && instance[2] && offset > -1 && offset + num <= (size_t)array[0]) {
     SSL_CTX* ctx = (SSL_CTX*)instance[0];
     BIO* bio = (BIO*)instance[1];
     char* buffer = (char*)(array + 3);
@@ -3264,7 +3264,7 @@ bool TrapProcessor::SockTcpSslOutCharAry(StackProgram* program, size_t* inst, si
   const long offset = (long)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
-  if(array && instance && instance[2] && offset > -1 && offset + num <= (long)array[0]) {
+  if(array && instance && instance[2] && offset > -1 && offset + num <= (size_t)array[0]) {
     SSL_CTX* ctx = (SSL_CTX*)instance[0];
     BIO* bio = (BIO*)instance[1];
     const wchar_t* buffer = (wchar_t*)(array + 3);
@@ -3307,7 +3307,7 @@ bool TrapProcessor::FileInCharAry(StackProgram* program, size_t* inst, size_t* &
   const long offset = (long)PopInt(op_stack, stack_pos);
   const size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
-  if(array && instance && (FILE*)instance[0] && offset > -1 && offset + num <= (long)array[0]) {
+  if(array && instance && (FILE*)instance[0] && offset > -1 && offset + num <= (size_t)array[0]) {
     FILE* file = (FILE*)instance[0];
     wchar_t* out = (wchar_t*)(array + 3);
 
@@ -3340,7 +3340,7 @@ bool TrapProcessor::FileInByteAry(StackProgram* program, size_t* inst, size_t* &
   const long offset = (long)PopInt(op_stack, stack_pos);
   const size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
-  if(array && instance && (FILE*)instance[0] && offset > -1 && offset + num <= (long)array[0]) {
+  if(array && instance && (FILE*)instance[0] && offset > -1 && offset + num <= (size_t)array[0]) {
     FILE* file = (FILE*)instance[0];
     char* buffer = (char*)(array + 3);
     PushInt(fread(buffer + offset, 1, num, file), op_stack, stack_pos);
@@ -3381,7 +3381,7 @@ bool TrapProcessor::FileOutByteAry(StackProgram* program, size_t* inst, size_t* 
   const long offset = (long)PopInt(op_stack, stack_pos);
   const size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
-  if(array && instance && (FILE*)instance[0] && offset > -1 && offset + num <= (long)array[0]) {
+  if(array && instance && (FILE*)instance[0] && offset > -1 && offset + num <= (size_t)array[0]) {
     FILE* file = (FILE*)instance[0];
     char* buffer = (char*)(array + 3);
     PushInt(fwrite(buffer + offset, 1, num, file), op_stack, stack_pos);
@@ -3400,7 +3400,7 @@ bool TrapProcessor::FileOutCharAry(StackProgram* program, size_t* inst, size_t* 
   const long offset = (long)PopInt(op_stack, stack_pos);
   const size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
-  if(array && instance && (FILE*)instance[0] && offset > -1 && offset + num <= (long)array[0]) {
+  if(array && instance && (FILE*)instance[0] && offset > -1 && offset + num <= (size_t)array[0]) {
     FILE* file = (FILE*)instance[0];
     const wchar_t* buffer = (wchar_t*)(array + 3);
     // copy sub buffer
