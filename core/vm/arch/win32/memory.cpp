@@ -342,7 +342,7 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, long 
       mem[EXTRA_BUF_SIZE + CACHE_SIZE] = -1;
     }
     mem[EXTRA_BUF_SIZE + TYPE] = NIL_TYPE;
-    mem[EXTRA_BUF_SIZE + SIZE_OR_CLS] = (long)cls;
+    mem[EXTRA_BUF_SIZE + SIZE_OR_CLS] = (size_t)cls;
     mem += EXTRA_BUF_SIZE;
 
     // record
@@ -663,11 +663,11 @@ unsigned int MemoryManager::CollectMemory(void* arg)
           mem_size = cls->GetInstanceMemorySize();
         }
         else {
-          mem_size = mem[SIZE_OR_CLS];
+          mem_size = (long)mem[SIZE_OR_CLS];
         }
       } 
       else {
-        mem_size = mem[SIZE_OR_CLS];
+        mem_size = (long)mem[SIZE_OR_CLS];
       }
 
       // account for deallocated memory
@@ -955,8 +955,8 @@ unsigned int MemoryManager::CheckJitRoots(void* arg)
         // mark data
         if(MarkValidMemory((size_t*)(*mem))) {
           size_t* array = (size_t*)(*mem);
-          const long size = array[0];
-          const long dim = array[1];
+          const long size = (long)array[0];
+          const long dim = (long)array[1];
           size_t* objects = (size_t*)(array + 2 + dim);
           for(long k = 0; k < size; k++) {
             CheckObject((size_t*)objects[k], true, 2);
@@ -1201,8 +1201,8 @@ void MemoryManager::CheckMemory(size_t* mem, StackDclr** dclrs, const long dcls_
       // mark data
       if(MarkValidMemory((size_t*)(*mem))) {
         size_t* array = (size_t*)(*mem);
-        const long size = array[0];
-        const long dim = array[1];
+        const long size = (long)array[0];
+        const long dim = (long)array[1];
         size_t* objects = (size_t*)(array + 2 + dim);
         for(long k = 0; k < size; k++) {
           CheckObject((size_t*)objects[k], true, 2);
@@ -1262,8 +1262,8 @@ void MemoryManager::CheckObject(size_t* mem, bool is_obj, long depth)
         if(std::binary_search(allocated_memory.begin(), allocated_memory.end(), mem) && 
           (mem[TYPE] == NIL_TYPE || mem[TYPE] == INT_TYPE)) {
             size_t* array = mem;
-            const long size = array[0];
-            const long dim = array[1];
+            const long size = (long)array[0];
+            const long dim = (long)array[1];
             size_t* objects = (size_t*)(array + 2 + dim);
             for(long k = 0; k < size; k++) {
               CheckObject((size_t*)objects[k], false, 2);
