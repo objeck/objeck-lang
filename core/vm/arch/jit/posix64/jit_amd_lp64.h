@@ -347,7 +347,7 @@ namespace Runtime {
   /********************************
    * Prototype for jit function
    ********************************/
-  typedef long (*jit_fun_ptr)(long cls_id, long mthd_id, long* cls_mem, long* inst, long* op_stack, 
+  typedef long (*jit_fun_ptr)(long cls_id, long mthd_id, size_t* cls_mem, size_t* inst, size_t* op_stack, 
 			      long *stack_pos, StackFrame** call_stack, long* call_stack_pos);
   
   /********************************
@@ -1140,25 +1140,25 @@ namespace Runtime {
 
     // generates a conditional jump
     bool cond_jmp(InstructionType type);
-
-    static long PopInt(long* op_stack, long *stack_pos) {
-      long value = op_stack[--(*stack_pos)];
+    
+    static size_t PopInt(size_t* op_stack, long *stack_pos) {
+      const size_t value = op_stack[--(*stack_pos)];
 #ifdef _DEBUG
-      wcout << L"\t[pop_i: value=" << (long*)value << L"(" << value << L")]" << L"; pos=" << (*stack_pos) << endl;
+      wcout << L"\t[pop_i: value=" << (size_t*)value << L"(" << value << L")]" << L"; pos=" << (*stack_pos) << endl;
 #endif
-
+      
       return value;
     }
 
-    static void PushInt(long* op_stack, long *stack_pos, long value) {
+    static void PushInt(size_t* op_stack, long *stack_pos, size_t value) {
       op_stack[(*stack_pos)++] = value;
 #ifdef _DEBUG
-      wcout << L"\t[push_i: value=" << (long*)value << L"(" << value << L")]" << L"; pos=" << (*stack_pos) << endl;
+      wcout << L"\t[push_i: value=" << (size_t*)value << L"(" << value << L")]" << L"; pos=" << (*stack_pos) << endl;
 #endif
     }
-
+    
     static void StackCallback(const long instr_id, StackInstr* instr, const long cls_id, 
-			      const long mthd_id, long* inst, long* op_stack, 
+			      const long mthd_id, size_t* inst, size_t* op_stack, 
 			      long *stack_pos, const long ip) {
 #ifdef _DEBUG
       wcout << L"Stack Call: instr=" << instr_id
@@ -1174,12 +1174,12 @@ namespace Runtime {
         wcout << L"jit oper: MTHD_CALL: cls=" << instr->GetOperand() << L", mthd=" << instr->GetOperand2() << endl;
 #endif
 	StackInterpreter intpr;
-	intpr.Execute((long*)op_stack, (long*)stack_pos, ip, program->GetClass(cls_id)->GetMethod(mthd_id), (long*)inst, true);
+	intpr.Execute(op_stack, stack_pos, ip, program->GetClass(cls_id)->GetMethod(mthd_id), inst, true);
       }
 	break;
 
       case LOAD_ARY_SIZE: {
-	long* array = (long*)PopInt(op_stack, stack_pos);
+	size_t* array = (size_t*)PopInt(op_stack, stack_pos);
 	if(!array) {
 	  wcerr << L"Atempting to dereference a 'Nil' memory instance" << endl;
 	  wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
@@ -1191,22 +1191,22 @@ namespace Runtime {
 	
       case NEW_BYTE_ARY: {
 	long indices[8];
-	long value = PopInt(op_stack, stack_pos);
+	long value = (long)PopInt(op_stack, stack_pos);
 	long size = value;
 	indices[0] = value;
 	long dim = 1;
 	for(long i = 1; i < instr->GetOperand(); i++) {
-	  long value = PopInt(op_stack, stack_pos);
+	  long value = (long)PopInt(op_stack, stack_pos);
 	  size *= value;
 	  indices[dim++] = value;
 	}
 	// NULL terminated string workaround
 	size++;
-	long* mem = (long*)MemoryManager::AllocateArray(size + ((dim + 2) * sizeof(long)), BYTE_ARY_TYPE, (long*)op_stack, *stack_pos);
+	size_t* mem = MemoryManager::AllocateArray(size + ((dim + 2) * sizeof(long)), BYTE_ARY_TYPE, op_stack, *stack_pos);
 	mem[0] = size;
 	mem[1] = dim;
 	memcpy(mem + 2, indices, dim * sizeof(long));
-	PushInt(op_stack, stack_pos, (long)mem);
+	PushInt(op_stack, stack_pos, (size_t)mem);
 	
 #ifdef _DEBUG
 	wcout << L"jit oper: NEW_BYTE_ARY: dim=" << dim << L"; size=" << size 
@@ -1217,18 +1217,18 @@ namespace Runtime {
 
       case NEW_CHAR_ARY: {
 	long indices[8];
-	long value = PopInt(op_stack, stack_pos);
+	long value = (long)PopInt(op_stack, stack_pos);
 	long size = value;
 	indices[0] = value;
 	long dim = 1;
 	for(long i = 1; i < instr->GetOperand(); i++) {
-	  long value = PopInt(op_stack, stack_pos);
+	  long value = (long)PopInt(op_stack, stack_pos);
 	  size *= value;
 	  indices[dim++] = value;
 	}
 	size++;
-	long* mem = (long*)MemoryManager::AllocateArray(size + ((dim + 2) * sizeof(long)), 
-							CHAR_ARY_TYPE, (long*)op_stack, *stack_pos);
+	size_t* mem = MemoryManager::AllocateArray(size + ((dim + 2) * sizeof(long)), 
+						   CHAR_ARY_TYPE, (size_t*)op_stack, *stack_pos);
 	mem[0] = size - 1;
 	mem[1] = dim;
 	memcpy(mem + 2, indices, dim * sizeof(long));
@@ -1252,7 +1252,7 @@ namespace Runtime {
 	  size *= value;
 	  indices[dim++] = value;
 	}
-	long* mem = (long*)MemoryManager::AllocateArray(size + dim + 2, INT_TYPE, (long*)op_stack, *stack_pos);
+	size_t* mem = MemoryManager::AllocateArray(size + dim + 2, INT_TYPE, op_stack, *stack_pos);
 #ifdef _DEBUG
 	wcout << L"jit oper: NEW_INT_ARY: dim=" << dim << L"; size=" << size 
 	      << L"; index=" << (*stack_pos) << L"; mem=" << mem << endl;
@@ -1276,7 +1276,7 @@ namespace Runtime {
 	  indices[dim++] = value;
 	}
 	size *= 2;
-	long* mem = (long*)MemoryManager::AllocateArray(size + dim + 2, INT_TYPE, (long*)op_stack, *stack_pos);
+	size_t* mem = MemoryManager::AllocateArray(size + dim + 2, INT_TYPE, op_stack, *stack_pos);
 #ifdef _DEBUG
 	wcout << L"jit oper: NEW_FLOAT_ARY: dim=" << dim << L"; size=" << size 
 	      << L"; index=" << (*stack_pos) << L"; mem=" << mem << endl; 
@@ -1292,17 +1292,16 @@ namespace Runtime {
 #ifdef _DEBUG
 	wcout << L"jit oper: NEW_OBJ_INST: id=" << instr->GetOperand() << endl; 
 #endif
-	long* mem = (long*)MemoryManager::AllocateObject(instr->GetOperand(), 
-								     (long*)op_stack, *stack_pos);
+	size_t* mem = MemoryManager::AllocateObject(instr->GetOperand(), op_stack, *stack_pos);
 	PushInt(op_stack, stack_pos, (long)mem);
       }
 	break;
 	
       case OBJ_TYPE_OF: {
-	long* mem = (long*)PopInt(op_stack, stack_pos);
-	long* result = MemoryManager::ValidObjectCast(mem, instr->GetOperand(),
-								  program->GetHierarchy(),
-								  program->GetInterfaces());
+	size_t* mem = (size_t*)PopInt(op_stack, stack_pos);
+	size_t* result = MemoryManager::ValidObjectCast(mem, instr->GetOperand(),
+						      program->GetHierarchy(),
+						      program->GetInterfaces());
 	if(result) {
 	  PushInt(op_stack, stack_pos, 1);
 	}
@@ -1313,16 +1312,14 @@ namespace Runtime {
 	break;
 	
       case OBJ_INST_CAST: {
-	long* mem = (long*)PopInt(op_stack, stack_pos);
+	size_t* mem = (size_t*)PopInt(op_stack, stack_pos);
 	long to_id = instr->GetOperand();
 #ifdef _DEBUG
 	wcout << L"jit oper: OBJ_INST_CAST: from=" << mem << L", to=" << to_id << endl; 
 #endif	
-	long result = (long)MemoryManager::ValidObjectCast((long*)mem, to_id, 
-								       program->GetHierarchy(),
-								       program->GetInterfaces());
+	size_t result = (size_t)MemoryManager::ValidObjectCast(mem, to_id, program->GetHierarchy(), program->GetInterfaces());
 	if(!result && mem) {
-	  StackClass* to_cls = MemoryManager::GetClass((long*)mem);	  
+	  StackClass* to_cls = MemoryManager::GetClass(mem);	  
 	  wcerr << L">>> Invalid object cast: '" << (to_cls ? to_cls->GetName() : L"?" )  
 		<< L"' to '" << program->GetClass(to_id)->GetName() << L"' <<<" << endl;
 	  wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
@@ -1335,7 +1332,7 @@ namespace Runtime {
 	//----------- threads -----------
       
       case THREAD_JOIN: {
-	long* instance = inst;
+	size_t* instance = inst;
 	if(!instance) {
 	  wcerr << L"Atempting to dereference a 'Nil' memory instance" << endl;
 	  wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
@@ -1356,7 +1353,7 @@ namespace Runtime {
 	break;
       
       case THREAD_MUTEX: {
-	long* instance = inst;
+	size_t* instance = inst;
 	if(!instance) {
 	  wcerr << L"Atempting to dereference a 'Nil' memory instance" << endl;
 	  wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
@@ -1367,7 +1364,7 @@ namespace Runtime {
 	break;
 	
       case CRITICAL_START: {
-	long* instance = (long*)PopInt(op_stack, stack_pos);
+	size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 	if(!instance) {
 	  wcerr << L"Atempting to dereference a 'Nil' memory instance" << endl;
 	  wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
@@ -1378,7 +1375,7 @@ namespace Runtime {
 	break;
 
       case CRITICAL_END: {
-	long* instance = (long*)PopInt(op_stack, stack_pos);
+	size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 	if(!instance) {
 	  wcerr << L"Atempting to dereference a 'Nil' memory instance" << endl;
 	  wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
@@ -1392,9 +1389,9 @@ namespace Runtime {
       case CPY_BYTE_ARY: {
 	long length = PopInt(op_stack, stack_pos);;
 	const long src_offset = PopInt(op_stack, stack_pos);;
-	long* src_array = (long*)PopInt(op_stack, stack_pos);;
+	size_t* src_array = (size_t*)PopInt(op_stack, stack_pos);;
 	const long dest_offset = PopInt(op_stack, stack_pos);;
-	long* dest_array = (long*)PopInt(op_stack, stack_pos);;      
+	size_t* dest_array = (size_t*)PopInt(op_stack, stack_pos);;      
 	
 	if(!src_array || !dest_array) {
 	  wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
@@ -1419,9 +1416,9 @@ namespace Runtime {
       case CPY_CHAR_ARY: {
 	long length = PopInt(op_stack, stack_pos);;
 	const long src_offset = PopInt(op_stack, stack_pos);;
-	long* src_array = (long*)PopInt(op_stack, stack_pos);;
+	size_t* src_array = (size_t*)PopInt(op_stack, stack_pos);;
 	const long dest_offset = PopInt(op_stack, stack_pos);;
-	long* dest_array = (long*)PopInt(op_stack, stack_pos);;      
+	size_t* dest_array = (size_t*)PopInt(op_stack, stack_pos);;      
 
 	if(!src_array || !dest_array) {
 	  wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
@@ -1447,9 +1444,9 @@ namespace Runtime {
       case CPY_INT_ARY: {
 	long length = PopInt(op_stack, stack_pos);;
 	const long src_offset = PopInt(op_stack, stack_pos);;
-	long* src_array = (long*)PopInt(op_stack, stack_pos);;
+	size_t* src_array = (size_t*)PopInt(op_stack, stack_pos);;
 	const long dest_offset = PopInt(op_stack, stack_pos);;
-	long* dest_array = (long*)PopInt(op_stack, stack_pos);;      
+	size_t* dest_array = (size_t*)PopInt(op_stack, stack_pos);;      
       
 	if(!src_array || !dest_array) {
 	  wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
@@ -1460,8 +1457,8 @@ namespace Runtime {
 	const long src_array_len = src_array[0];
 	const long dest_array_len = dest_array[0];
 	if(length > 0 && src_offset + length <= src_array_len && dest_offset + length <= dest_array_len) {
-	  long* src_array_ptr = src_array + 3;
-	  long* dest_array_ptr = dest_array + 3;
+	  size_t* src_array_ptr = src_array + 3;
+	  size_t* dest_array_ptr = dest_array + 3;
 	  memcpy(dest_array_ptr + dest_offset, src_array_ptr + src_offset, length * sizeof(long));
 	  PushInt(op_stack, stack_pos, 1);
 	}
@@ -1474,9 +1471,9 @@ namespace Runtime {
       case CPY_FLOAT_ARY: {
 	long length = PopInt(op_stack, stack_pos);;
 	const long src_offset = PopInt(op_stack, stack_pos);;
-	long* src_array = (long*)PopInt(op_stack, stack_pos);;
+	size_t* src_array = (size_t*)PopInt(op_stack, stack_pos);;
 	const long dest_offset = PopInt(op_stack, stack_pos);;
-	long* dest_array = (long*)PopInt(op_stack, stack_pos);;      
+	size_t* dest_array = (size_t*)PopInt(op_stack, stack_pos);;      
       
 	if(!src_array || !dest_array) {
 	  wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
@@ -1487,8 +1484,8 @@ namespace Runtime {
 	const long src_array_len = src_array[0];
 	const long dest_array_len = dest_array[0];
 	if(length > 0 && src_offset + length <= src_array_len && dest_offset + length <= dest_array_len) {
-	  long* src_array_ptr = src_array + 3;
-	  long* dest_array_ptr = dest_array + 3;
+	  size_t* src_array_ptr = src_array + 3;
+	  size_t* dest_array_ptr = dest_array + 3;
 	  memcpy(dest_array_ptr + dest_offset, src_array_ptr + src_offset, length * sizeof(FLOAT_VALUE));
 	  PushInt(op_stack, stack_pos, 1);
 	}
@@ -1933,8 +1930,8 @@ namespace Runtime {
     long code_index; 
     double* floats;
     
-    long ExecuteMachineCode(long cls_id, long mthd_id, long* inst, unsigned char* code, const long code_size, 
-			    long* op_stack, long *stack_pos, StackFrame** call_stack, long* call_stack_pos);
+    long ExecuteMachineCode(long cls_id, long mthd_id, size_t* inst, unsigned char* code, const long code_size, 
+			    size_t* op_stack, long *stack_pos, StackFrame** call_stack, long* call_stack_pos);
     
   public:
     static void Initialize(StackProgram* p);
@@ -1946,7 +1943,7 @@ namespace Runtime {
     }    
     
     // Executes machine code
-    long Execute(StackMethod* cm, long* inst, long* op_stack, long* stack_pos, 
+    long Execute(StackMethod* cm, size_t* inst, size_t* op_stack, long* stack_pos, 
 		 StackFrame** call_stack, long* call_stack_pos) {
       method = cm;
       long cls_id = method->GetClass()->GetId();
@@ -1971,8 +1968,8 @@ namespace Runtime {
 #endif
       
       // execute
-      return ExecuteMachineCode(cls_id, mthd_id, (long*)inst, code, code_index, 
-				(long*)op_stack, (long*)stack_pos, call_stack, call_stack_pos);
+      return ExecuteMachineCode(cls_id, mthd_id, inst, code, code_index, 
+				op_stack, stack_pos, call_stack, call_stack_pos);
     }
   };
 }
