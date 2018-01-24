@@ -1081,10 +1081,10 @@ void StackInterpreter::CpyByteAry(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   wcout << L"stack oper: CPY_BYTE_ARY; call_pos=" << (*call_stack_pos) << endl;
 #endif
-  long length = PopInt(op_stack, stack_pos);
-  const long src_offset = PopInt(op_stack, stack_pos);
+  long length = (long)PopInt(op_stack, stack_pos);
+  const long src_offset = (long)PopInt(op_stack, stack_pos);
   size_t* src_array = (size_t*)PopInt(op_stack, stack_pos);
-  const long dest_offset = PopInt(op_stack, stack_pos);
+  const long dest_offset = (long)PopInt(op_stack, stack_pos);
   size_t* dest_array = (size_t*)PopInt(op_stack, stack_pos);
 
   if(!src_array || !dest_array) {
@@ -1098,9 +1098,8 @@ void StackInterpreter::CpyByteAry(size_t* &op_stack, long* &stack_pos)
 #endif
   }
 
-  const long src_array_len = src_array[2];
-  const long dest_array_len = dest_array[2];
-
+  const long src_array_len = (long)src_array[2];
+  const long dest_array_len = (long)dest_array[2];
   if(length > 0 && src_offset + length <= src_array_len && dest_offset + length <= dest_array_len) {
     const char* src_array_ptr = (char*)(src_array + 3);
     char* dest_array_ptr = (char*)(dest_array + 3);
@@ -1117,10 +1116,10 @@ void StackInterpreter::CpyCharAry(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   wcout << L"stack oper: CPY_CHAR_ARY; call_pos=" << (*call_stack_pos) << endl;
 #endif
-  long length = PopInt(op_stack, stack_pos);
-  const long src_offset = PopInt(op_stack, stack_pos);
+  long length = (long)PopInt(op_stack, stack_pos);
+  const long src_offset = (long)PopInt(op_stack, stack_pos);
   size_t* src_array = (size_t*)PopInt(op_stack, stack_pos);
-  const long dest_offset = PopInt(op_stack, stack_pos);
+  const long dest_offset = (long)PopInt(op_stack, stack_pos);
   size_t* dest_array = (size_t*)PopInt(op_stack, stack_pos);
 
   if(!src_array || !dest_array) {
@@ -1134,9 +1133,8 @@ void StackInterpreter::CpyCharAry(size_t* &op_stack, long* &stack_pos)
 #endif
   }
 
-  const long src_array_len = src_array[2];
-  const long dest_array_len = dest_array[2];
-
+  const long src_array_len = (long)src_array[2];
+  const long dest_array_len = (long)dest_array[2];
   if(length > 0 && src_offset + length <= src_array_len && dest_offset + length <= dest_array_len) {
     wchar_t* src_array_ptr = (wchar_t*)(src_array + 3);
     wchar_t* dest_array_ptr = (wchar_t*)(dest_array + 3);
@@ -1153,10 +1151,10 @@ void StackInterpreter::CpyIntAry(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   wcout << L"stack oper: CPY_INT_ARY; call_pos=" << (*call_stack_pos) << endl;
 #endif
-  long length = PopInt(op_stack, stack_pos);
-  const long src_offset = PopInt(op_stack, stack_pos);
+  long length = (long)PopInt(op_stack, stack_pos);
+  const long src_offset = (long)PopInt(op_stack, stack_pos);
   size_t* src_array = (size_t*)PopInt(op_stack, stack_pos);
-  const long dest_offset = PopInt(op_stack, stack_pos);
+  const long dest_offset = (long)PopInt(op_stack, stack_pos);
   size_t* dest_array = (size_t*)PopInt(op_stack, stack_pos);
 
   if(!src_array || !dest_array) {
@@ -1170,8 +1168,8 @@ void StackInterpreter::CpyIntAry(size_t* &op_stack, long* &stack_pos)
 #endif
   }
 
-  const long src_array_len = src_array[0];
-  const long dest_array_len = dest_array[0];
+  const long src_array_len = (long)src_array[0];
+  const long dest_array_len = (long)dest_array[0];
   if(length > 0 && src_offset + length <= src_array_len && dest_offset + length <= dest_array_len) {
     size_t* src_array_ptr = src_array + 3;
     size_t* dest_array_ptr = dest_array + 3;
@@ -1188,10 +1186,10 @@ void StackInterpreter::CpyFloatAry(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   wcout << L"stack oper: CPY_FLOAT_ARY; call_pos=" << (*call_stack_pos) << endl;
 #endif
-  long length = PopInt(op_stack, stack_pos);
-  const long src_offset = PopInt(op_stack, stack_pos);
+  long length = (long)PopInt(op_stack, stack_pos);
+  const long src_offset = (long)PopInt(op_stack, stack_pos);
   size_t* src_array = (size_t*)PopInt(op_stack, stack_pos);
-  const long dest_offset = PopInt(op_stack, stack_pos);
+  const long dest_offset = (long)PopInt(op_stack, stack_pos);
   size_t* dest_array = (size_t*)PopInt(op_stack, stack_pos);
 
   if(!src_array || !dest_array) {
@@ -1205,8 +1203,8 @@ void StackInterpreter::CpyFloatAry(size_t* &op_stack, long* &stack_pos)
 #endif
   }
 
-  const long src_array_len = src_array[0];
-  const long dest_array_len = dest_array[0];
+  const long src_array_len = (long)src_array[0];
+  const long dest_array_len = (long)dest_array[0];
   if(length > 0 && src_offset + length <= src_array_len && dest_offset + length <= dest_array_len) {
     size_t* src_array_ptr = src_array + 3;
     size_t* dest_array_ptr = dest_array + 3;
@@ -1594,12 +1592,12 @@ void StackInterpreter::ProcessNewArray(StackInstr* instr, size_t* &op_stack, lon
   wcout << L"stack oper: NEW_INT_ARY/NEW_FLOAT_ARY; call_pos=" << (*call_stack_pos) << endl;
 #endif
   long indices[8];
-  long value = PopInt(op_stack, stack_pos);
+  long value = (long)PopInt(op_stack, stack_pos);
   long size = value;
   indices[0] = value;
   long dim = 1;
   for(long i = 1; i < instr->GetOperand(); i++) {
-    long value = PopInt(op_stack, stack_pos);
+    long value = (long)PopInt(op_stack, stack_pos);
     size *= value;
     indices[dim++] = value;
   }
@@ -1637,12 +1635,12 @@ void StackInterpreter::ProcessNewByteArray(StackInstr* instr, size_t* &op_stack,
   wcout << L"stack oper: NEW_BYTE_ARY; call_pos=" << (*call_stack_pos) << endl;
 #endif
   long indices[8];
-  long value = PopInt(op_stack, stack_pos);
+  long value = (long)PopInt(op_stack, stack_pos);
   long size = value;
   indices[0] = value;
   long dim = 1;
   for(long i = 1; i < instr->GetOperand(); i++) {
-    long value = PopInt(op_stack, stack_pos);
+    long value = (long)PopInt(op_stack, stack_pos);
     size *= value;
     indices[dim++] = value;
   }
@@ -1666,12 +1664,12 @@ void StackInterpreter::ProcessNewCharArray(StackInstr* instr, size_t* &op_stack,
   wcout << L"stack oper: NEW_CHAR_ARY; call_pos=" << (*call_stack_pos) << endl;
 #endif
   long indices[8];
-  long value = PopInt(op_stack, stack_pos);
+  long value = (long)PopInt(op_stack, stack_pos);
   long size = value;
   indices[0] = value;
   long dim = 1;
   for(long i = 1; i < instr->GetOperand(); i++) {
-    long value = PopInt(op_stack, stack_pos);
+    long value = (long)PopInt(op_stack, stack_pos);
     size *= value;
     indices[dim++] = value;
   }
@@ -1866,8 +1864,8 @@ void StackInterpreter::ProcessDynamicMethodCall(StackInstr* instr, StackInstr** 
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
   // make call
-  long cls_id = PopInt(op_stack, stack_pos);
-  long mthd_id = PopInt(op_stack, stack_pos);
+  long cls_id = (long)PopInt(op_stack, stack_pos);
+  long mthd_id = (long)PopInt(op_stack, stack_pos);
 #ifdef _DEBUG
   wcout << L"stack oper: DYN_MTHD_CALL; cls_mtd_id=" << cls_id << "," << mthd_id << endl;
 #endif
@@ -2083,7 +2081,7 @@ void StackInterpreter::ProcessLoadIntArrayElement(StackInstr* instr, size_t* &op
     ::exit(1);
 #endif
   }
-  const long size = array[0];
+  const long size = (long)array[0];
   array += 2;
   long index = ArrayIndex(instr, array, size, op_stack, stack_pos);
   PushInt(array[index + instr->GetOperand()], op_stack, stack_pos);
@@ -2111,7 +2109,7 @@ void StackInterpreter::ProcessStoreIntArrayElement(StackInstr* instr, size_t* &o
 #endif
   }
   
-  const long size = array[0];
+  const long size = (long)array[0];
   array += 2;
   long index = ArrayIndex(instr, array, size, op_stack, stack_pos);
   array[index + instr->GetOperand()] = PopInt(op_stack, stack_pos);
@@ -2137,7 +2135,7 @@ void StackInterpreter::ProcessLoadByteArrayElement(StackInstr* instr, size_t* &o
     ::exit(1);
 #endif
   }
-  const long size = array[0];
+  const long size = (long)array[0];
   array += 2;
   long index = ArrayIndex(instr, array, size, op_stack, stack_pos);
   array += instr->GetOperand();
@@ -2164,7 +2162,7 @@ void StackInterpreter::ProcessLoadCharArrayElement(StackInstr* instr, size_t* &o
     ::exit(1);
 #endif
   }
-  const long size = array[0];
+  const long size = (long)array[0];
   array += 2;
   long index = ArrayIndex(instr, array, size, op_stack, stack_pos);
   array += instr->GetOperand();
@@ -2191,7 +2189,7 @@ void StackInterpreter::ProcessStoreByteArrayElement(StackInstr* instr, size_t* &
     ::exit(1);
 #endif
   }
-  const long size = array[0];
+  const long size = (long)array[0];
   array += 2;
   long index = ArrayIndex(instr, array, size, op_stack, stack_pos);
   array += instr->GetOperand();
@@ -2218,7 +2216,7 @@ void StackInterpreter::ProcessStoreCharArrayElement(StackInstr* instr, size_t* &
     ::exit(1);
 #endif
   }
-  const long size = array[0];
+  const long size = (long)array[0];
   array += 2;
   long index = ArrayIndex(instr, array, size, op_stack, stack_pos);
   array += instr->GetOperand();
@@ -2245,7 +2243,7 @@ void StackInterpreter::ProcessLoadFloatArrayElement(StackInstr* instr, size_t* &
     ::exit(1);
 #endif
   }
-  const long size = array[0];
+  const long size = (long)array[0];
   array += 2;
   long index = ArrayIndex(instr, array, size, op_stack, stack_pos);
   FLOAT_VALUE value;
@@ -2273,7 +2271,7 @@ void StackInterpreter::ProcessStoreFloatArrayElement(StackInstr* instr, size_t* 
     ::exit(1);
 #endif
   }
-  const long size = array[0];
+  const long size = (long)array[0];
   array += 2;
   long index = ArrayIndex(instr, array, size, op_stack, stack_pos);
   FLOAT_VALUE value = PopFloat(op_stack, stack_pos);
