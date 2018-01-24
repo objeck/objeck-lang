@@ -65,7 +65,7 @@ int Execute(const int argc, const char* argv[])
     wcout << L"# final stack: pos=" << (*stack_pos) << L" #" << endl;
     if((*stack_pos) > 0) {
       for(int i = 0; i < (*stack_pos); ++i) {
-        wcout << L"dump: value=" << (void*)(*stack_pos) << endl;
+        wcout << L"dump: value=" << (long*)(*stack_pos) << endl;
       } 
     }
 #endif

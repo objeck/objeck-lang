@@ -29,7 +29,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
-#include "jit_amd_lp64.h"
+#include "jit_amd_llp64.h"
 #include <string>
 
 using namespace Runtime;
@@ -3917,8 +3917,8 @@ void JitExecutor::Initialize(StackProgram* p) {
   program = p;
 }
 
-long JitExecutor::ExecuteMachineCode(long cls_id, long mthd_id, long* inst, unsigned char* code, 
-                                         const long code_size, long* op_stack, long *stack_pos,
+long JitExecutor::ExecuteMachineCode(long cls_id, long mthd_id, size_t* inst, unsigned char* code, 
+                                         const long code_size, size_t* op_stack, long *stack_pos,
                                          StackFrame** call_stack, long* call_stack_pos) {
   
   // create function

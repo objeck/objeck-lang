@@ -31,11 +31,7 @@
 #ifndef __REG_ALLOC_H__
 #define __REG_ALLOC_H__
 
-#include "../../posix/memory.h"
-#include "../../posix/posix.h"
-#include <sys/mman.h>
-#include <errno.h>
-
+#include "../../../arch/win32/windows.h"
 #include "../../../common.h"
 #include "../../../interpreter.h"
 
@@ -347,7 +343,7 @@ namespace Runtime {
   /********************************
    * Prototype for jit function
    ********************************/
-  typedef long (*jit_fun_ptr)(long cls_id, long mthd_id, long* cls_mem, long* inst, long* op_stack, 
+  typedef long (*jit_fun_ptr)(long cls_id, long mthd_id, size_t* cls_mem, size_t* inst, size_t* op_stack, 
 			      long *stack_pos, StackFrame** call_stack, long* call_stack_pos);
   
   /********************************
@@ -1933,8 +1929,8 @@ namespace Runtime {
     long code_index; 
     double* floats;
     
-    long ExecuteMachineCode(long cls_id, long mthd_id, long* inst, unsigned char* code, const long code_size, 
-			    long* op_stack, long *stack_pos, StackFrame** call_stack, long* call_stack_pos);
+    long ExecuteMachineCode(long cls_id, long mthd_id, size_t* inst, unsigned char* code, const long code_size,
+                            size_t* op_stack, long *stack_pos, StackFrame** call_stack, long* call_stack_pos);
     
   public:
     static void Initialize(StackProgram* p);
