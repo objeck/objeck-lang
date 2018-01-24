@@ -1837,8 +1837,8 @@ class TrapProcessor {
 					 ParamType type, size_t* inst) {
     if(dest_array && src_array) {
       const long dest_pos = (long)inst[1];
-      const long src_array_size = src_array[0];
-      long dest_array_size = dest_array[0];
+      const long src_array_size = (long)src_array[0];
+      long dest_array_size = (long)dest_array[0];
 
       if(dest_pos < src_array_size) {
 	const char* src_array_ptr = (char*)(src_array + 3);	
@@ -1938,8 +1938,8 @@ class TrapProcessor {
     // convert to bytes
     string out;
     CharacterToBytes(value, out);
-    const long src_buffer_size = out.size();
-    SerializeInt(out.size(), inst, op_stack, stack_pos);
+    const long src_buffer_size = (long)out.size();
+    SerializeInt((INT_VALUE)out.size(), inst, op_stack, stack_pos);
 
     // prepare copy   
     size_t* dest_buffer = (size_t*)inst[0];
