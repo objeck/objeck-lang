@@ -518,7 +518,7 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i,
           ip = (*frame)->method->GetLabelIndex(instr->GetOperand()) + 1;
           instr->SetOperand3(ip);
         }
-        else if(PopInt(op_stack, stack_pos) == instr->GetOperand2()) {
+        else if((long)PopInt(op_stack, stack_pos) == instr->GetOperand2()) {
           ip = (*frame)->method->GetLabelIndex(instr->GetOperand()) + 1;
           instr->SetOperand3(ip);
         }
@@ -527,7 +527,7 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i,
         if(instr->GetOperand2() < 0) {
           ip = instr->GetOperand3();
         }
-        else if(PopInt(op_stack, stack_pos) == instr->GetOperand2()) {
+        else if((long)PopInt(op_stack, stack_pos) == instr->GetOperand2()) {
           ip = instr->GetOperand3();
         }
       }
