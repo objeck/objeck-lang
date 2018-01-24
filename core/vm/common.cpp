@@ -2395,7 +2395,7 @@ bool TrapProcessor::SockTcpListen(StackProgram* program, size_t* inst, size_t* &
   long backlog = (long)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
-  if(instance && (size_t)instance[0] > -1) {
+  if(instance && (long)instance[0] > -1) {
     SOCKET server = (SOCKET)instance[0];
 #ifdef _DEBUG
     wcout << L"# socket listen: backlog=" << backlog << L"'; instance=" << instance
@@ -2419,7 +2419,7 @@ bool TrapProcessor::SockTcpListen(StackProgram* program, size_t* inst, size_t* &
 bool TrapProcessor::SockTcpAccept(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  if(instance && (size_t)instance[0] > -1) {
+  if(instance && (long)instance[0] > -1) {
     SOCKET server = (SOCKET)instance[0];
     char client_address[SMALL_BUFFER_MAX + 1];
     int client_port;
@@ -2445,7 +2445,7 @@ bool TrapProcessor::SockTcpAccept(StackProgram* program, size_t* inst, size_t* &
 bool TrapProcessor::SockTcpClose(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  if(instance && (size_t)instance[0] > -1) {
+  if(instance && (long)instance[0] > -1) {
     SOCKET sock = (SOCKET)instance[0];
 #ifdef _DEBUG
     wcout << L"# socket close: addr=" << sock << L"(" << (long)sock << L") #" << endl;
@@ -2461,7 +2461,7 @@ bool TrapProcessor::SockTcpOutString(StackProgram* program, size_t* inst, size_t
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  if(array && instance && (size_t)instance[0] > -1) {
+  if(array && instance && (long)instance[0] > -1) {
     SOCKET sock = (SOCKET)instance[0];
     const wchar_t* wdata = (wchar_t*)(array + 3);
 
@@ -2482,7 +2482,7 @@ bool TrapProcessor::SockTcpInString(StackProgram* program, size_t* inst, size_t*
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  if(array && instance && (size_t)instance[0] > -1) {
+  if(array && instance && (long)instance[0] > -1) {
     char buffer[LARGE_BUFFER_MAX + 1];
     SOCKET sock = (SOCKET)instance[0];
     int status;
@@ -3016,7 +3016,7 @@ bool TrapProcessor::FileRewind(StackProgram* program, size_t* inst, size_t* &op_
 bool TrapProcessor::SockTcpIsConnected(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  if(instance && (size_t)instance[0] > -1) {
+  if(instance && (long)instance[0] > -1) {
     PushInt(1, op_stack, stack_pos);
   }
   else {
@@ -3029,7 +3029,7 @@ bool TrapProcessor::SockTcpIsConnected(StackProgram* program, size_t* inst, size
 bool TrapProcessor::SockTcpInByte(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  if(instance && (size_t)instance[0] > -1) {
+  if(instance && (long)instance[0] > -1) {
     SOCKET sock = (SOCKET)instance[0];
     int status;
     PushInt(IPSocket::ReadByte(sock, status), op_stack, stack_pos);
@@ -3048,7 +3048,7 @@ bool TrapProcessor::SockTcpInByteAry(StackProgram* program, size_t* inst, size_t
   const long offset = (long)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
-  if(array && instance && (size_t)instance[0] > -1 && offset > -1 && offset + num <= (long)array[0]) {
+  if(array && instance && (long)instance[0] > -1 && offset > -1 && offset + num <= (long)array[0]) {
     SOCKET sock = (SOCKET)instance[0];
     char* buffer = (char*)(array + 3);
     PushInt(IPSocket::ReadBytes(buffer + offset, num, sock), op_stack, stack_pos);
@@ -3067,7 +3067,7 @@ bool TrapProcessor::SockTcpInCharAry(StackProgram* program, size_t* inst, size_t
   const long offset = (long)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
-  if(array && instance && (size_t)instance[0] > -1 && offset > -1 && offset + num <= (long)array[0]) {
+  if(array && instance && (long)instance[0] > -1 && offset > -1 && offset + num <= (long)array[0]) {
     SOCKET sock = (SOCKET)instance[0];
     wchar_t* buffer = (wchar_t*)(array + 3);
     // allocate temporary buffer
@@ -3097,7 +3097,7 @@ bool TrapProcessor::SockTcpOutByte(StackProgram* program, size_t* inst, size_t* 
 {
   long value = (long)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  if(instance && (size_t)instance[0] > -1) {
+  if(instance && (long)instance[0] > -1) {
     SOCKET sock = (SOCKET)instance[0];
     IPSocket::WriteByte((char)value, sock);
     PushInt(1, op_stack, stack_pos);
@@ -3116,7 +3116,7 @@ bool TrapProcessor::SockTcpOutByteAry(StackProgram* program, size_t* inst, size_
   const long offset = (long)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
-  if(array && instance && (size_t)instance[0] > -1 && offset > -1 && offset + num <= (long)array[0]) {
+  if(array && instance && (long)instance[0] > -1 && offset > -1 && offset + num <= (long)array[0]) {
     SOCKET sock = (SOCKET)instance[0];
     char* buffer = (char*)(array + 3);
     PushInt(IPSocket::WriteBytes(buffer + offset, num, sock), op_stack, stack_pos);
@@ -3135,7 +3135,7 @@ bool TrapProcessor::SockTcpOutCharAry(StackProgram* program, size_t* inst, size_
   const long offset = (long)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
-  if(array && instance && (size_t)instance[0] > -1 && offset > -1 && offset + num <= (long)array[0]) {
+  if(array && instance && (long)instance[0] > -1 && offset > -1 && offset + num <= (long)array[0]) {
     SOCKET sock = (SOCKET)instance[0];
     const wchar_t* buffer = (wchar_t*)(array + 3);
     // copy sub buffer
