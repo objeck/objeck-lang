@@ -67,7 +67,7 @@ enum FunctionId {
 // gets the size of an Object[] array
 int APITools_GetArgumentCount(VMContext &context) {
   if(context.data_array) {
-    return context.data_array[0];
+    return (long)context.data_array[0];
   }
 
   return 0;
@@ -78,11 +78,12 @@ long APITools_GetIntArrayElement(size_t* array, int index) {
     return 0;
   }
   
-  const long src_array_len = array[0];
+  const long src_array_len = (long)array[0];
   if(index < src_array_len) {
     size_t* src_array_ptr = array + 3;
-    return src_array_ptr[index];
+    return (long)src_array_ptr[index];
   }
+
   return 0;
 }
 
@@ -91,7 +92,7 @@ void APITools_SetIntArrayElement(size_t* array, int index, long value) {
     return;
   }
   
-  const long src_array_len = array[0];
+  const long src_array_len = (long)array[0];
   if(index < src_array_len) {
     size_t* src_array_ptr = array + 3;
     src_array_ptr[index] = value;
@@ -103,7 +104,7 @@ double APITools_GetFloatArrayElement(size_t* array, int index) {
     return 0.0;
   }
   
-  const long src_array_len = array[0];
+  const long src_array_len = (long)array[0];
   if(index < src_array_len) {
     size_t* src_array_ptr = array + 3;
     double value;
@@ -123,7 +124,7 @@ void APITools_SetFloatArrayElement(size_t* array, int index, double value) {
     return;
   }
   
-  const long src_array_len = array[0];
+  const long src_array_len = (long)array[0];
   if(index < src_array_len) {
     size_t* src_array_ptr = array + 3;
 #ifdef _X64
@@ -152,7 +153,7 @@ wchar_t* APITools_GetCharArray(size_t* array) {
 
 int APITools_GetArraySize(size_t* array) {
   if(array) {
-    return array[0];
+    return (long)array[0];
   }
   
   return -1;
@@ -196,10 +197,10 @@ int APITools_GetFunctionValue(VMContext &context, int index, FunctionId id) {
     size_t* int_holder = (size_t*)data_array[index];
     
     if(id == CLS_ID) {
-      return int_holder[0];
+      return (long)int_holder[0];
     }
     else {
-      return int_holder[1];
+      return (long)int_holder[1];
     }
   }
   
@@ -232,7 +233,7 @@ long APITools_GetIntValue(VMContext &context, int index) {
 #ifdef _DEBUG
     assert(int_holder);
 #endif
-    return int_holder[0];
+    return (long)int_holder[0];
   }
 
   return 0;
@@ -322,7 +323,7 @@ void APITools_SetObjectValue(VMContext &context, int index, size_t* obj) {
   size_t* data_array = context.data_array;
   if(data_array && index < (int)data_array[0]) {
     data_array += ARRAY_HEADER_OFFSET;
-    data_array[index] = (long)obj;
+    data_array[index] = (size_t)obj;
   }
 }
 
@@ -330,7 +331,7 @@ void APITools_SetObjectValue(VMContext &context, int index, size_t* obj) {
 // memory should be allocated for this element prior to array access.
 void APITools_SetStringValue(VMContext &context, int index, const wstring &value) {
   // create character array
-  const long char_array_size = value.size();
+  const long char_array_size = (long)value.size();
   const long char_array_dim = 1;
   size_t* char_array = (size_t*)context.alloc_array(char_array_size + 1 +
 						((char_array_dim + 2) *
@@ -348,7 +349,7 @@ void APITools_SetStringValue(VMContext &context, int index, const wstring &value
   // create 'System.String' object instance
   size_t* str_obj = context.alloc_obj(L"System.String", context.op_stack, 
 				    *context.stack_pos, false);
-  str_obj[0] = (long)char_array;
+  str_obj[0] = (size_t)char_array;
   str_obj[1] = char_array_size;
   str_obj[2] = char_array_size;
   
