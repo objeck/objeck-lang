@@ -1205,7 +1205,7 @@ namespace Runtime {
           mem[0] = size;
           mem[1] = dim;
           memcpy(mem + 2, indices, dim * sizeof(long));
-          PushInt(op_stack, stack_pos, mem);
+          PushInt(op_stack, stack_pos, (size_t)mem);
 
 #ifdef _DEBUG
           wcout << L"jit oper: NEW_BYTE_ARY: dim=" << dim << L"; size=" << size
