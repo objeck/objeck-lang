@@ -227,7 +227,7 @@ void MemoryManager::AddJitMethodRoot(long cls_id, long mthd_id,
 {
 #ifdef _DEBUG
   wcout << L"adding JIT root: class=" << cls_id << L", method=" << mthd_id << L", self=" << self
-    << L"(" << (long)self << L"), mem=" << mem << L", offset=" << offset << endl;
+    << L"(" << (size_t)self << L"), mem=" << mem << L", offset=" << offset << endl;
 #endif
 
   // zero out memory
@@ -264,7 +264,7 @@ void MemoryManager::RemoveJitMethodRoot(size_t* mem)
 
 #ifdef _DEBUG  
   wcout << L"removing JIT method: mem=" << id->mem << L", self=" 
-    << id->self << L"(" << (long)id->self << L")" << endl;
+    << id->self << L"(" << (size_t)id->self << L")" << endl;
 #endif
   jit_roots.erase(found);
 
@@ -357,7 +357,7 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, long 
 
 #ifdef _DEBUG
     wcout << L"# allocating object: cached=" << (is_cached ? "true" : "false")  
-      << ", addr=" << mem << L"(" << (long)mem << L"), size="
+      << ", addr=" << mem << L"(" << (size_t)mem << L"), size="
       << size << L" byte(s), used=" << allocation_size << L" byte(s) #" << endl;
 #endif
   }
@@ -681,7 +681,7 @@ unsigned int MemoryManager::CollectMemory(void* arg)
           memset(tmp, 0, 512);
           cache_pool_512.push((char*)tmp);
 #ifdef _DEBUG
-          wcout << L"# caching memory: addr=" << mem << L"(" << (long)mem
+          wcout << L"# caching memory: addr=" << mem << L"(" << (size_t)mem
             << L"), size=" << mem_size << L" byte(s) #" << endl;
 #endif
         }
@@ -692,7 +692,7 @@ unsigned int MemoryManager::CollectMemory(void* arg)
           memset(tmp, 0, 256);
           cache_pool_256.push((char*)tmp);
 #ifdef _DEBUG
-          wcout << L"# caching memory: addr=" << mem << L"(" << (long)mem
+          wcout << L"# caching memory: addr=" << mem << L"(" << (size_t)mem
             << L"), size=" << mem_size << L" byte(s) #" << endl;
 #endif
         }
@@ -703,7 +703,7 @@ unsigned int MemoryManager::CollectMemory(void* arg)
           memset(tmp, 0, 64);
           cache_pool_64.push((char*)tmp);
 #ifdef _DEBUG
-          wcout << L"# caching memory: addr=" << mem << L"(" << (long)mem
+          wcout << L"# caching memory: addr=" << mem << L"(" << (size_t)mem
             << L"), size=" << mem_size << L" byte(s) #" << endl;
 #endif
         }
@@ -714,7 +714,7 @@ unsigned int MemoryManager::CollectMemory(void* arg)
           memset(tmp, 0, 32);
           cache_pool_32.push((char*)tmp);
 #ifdef _DEBUG
-          wcout << L"# caching memory: addr=" << mem << L"(" << (long)mem
+          wcout << L"# caching memory: addr=" << mem << L"(" << (size_t)mem
             << L"), size=" << mem_size << L" byte(s) #" << endl;
 #endif
         }
@@ -725,7 +725,7 @@ unsigned int MemoryManager::CollectMemory(void* arg)
           memset(tmp, 0, 16);
           cache_pool_16.push((char*)tmp);
 #ifdef _DEBUG
-          wcout << L"# caching memory: addr=" << mem << L"(" << (long)mem
+          wcout << L"# caching memory: addr=" << mem << L"(" << (size_t)mem
             << L"), size=" << mem_size << L" byte(s) #" << endl;
 #endif
         }
@@ -735,7 +735,7 @@ unsigned int MemoryManager::CollectMemory(void* arg)
         free(tmp);
         tmp = NULL;
 #ifdef _DEBUG
-        wcout << L"# freeing memory: addr=" << mem << L"(" << (long)mem
+        wcout << L"# freeing memory: addr=" << mem << L"(" << (size_t)mem
           << L"), size=" << mem_size << L" byte(s) #" << endl;
 #endif
         break;
@@ -1234,7 +1234,7 @@ void MemoryManager::CheckObject(size_t* mem, bool is_obj, long depth)
       for(int i = 0; i < depth; ++i) {
         wcout << L"\t";
       }
-      wcout << L"\t----- object: addr=" << mem << L"(" << (long)mem << L"), num="
+      wcout << L"\t----- object: addr=" << mem << L"(" << (size_t)mem << L"), num="
         << cls->GetNumberInstanceDeclarations() << L" -----" << endl;
 #endif
 
