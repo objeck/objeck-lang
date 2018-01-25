@@ -240,7 +240,7 @@ void JitCompilerIA64::ProcessParameters(long params) {
                    dest_holder->GetRegister());
       
       RegisterHolder* dest_holder2 = GetRegister();
-      move_mem_reg(-1 * sizeof(size_t), op_stack_holder->GetRegister(), 
+      move_mem_reg(/*-sizeof(size_t)*/-8, op_stack_holder->GetRegister(), 
                    dest_holder2->GetRegister());
       
       move_mem_reg(STACK_POS, RBP, stack_pos_holder->GetRegister());
