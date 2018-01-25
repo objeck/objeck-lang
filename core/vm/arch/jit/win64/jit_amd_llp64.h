@@ -259,33 +259,39 @@ namespace Runtime {
         factor = size / PAGE_SIZE + 1;
       }
       available = factor * PAGE_SIZE;
+      buffer = (unsigned char*)VirtualAlloc(NULL, available, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
 
-      if(/*posix_memalign((void**)&buffer, PAGE_SIZE, available)*/ false) {
+      /*
+      if(posix_memalign((void**)&buffer, PAGE_SIZE, available)) {
         wcerr << L"Unable to allocate JIT memory!" << endl;
         exit(1);
       }
-      if(/*mprotect(buffer, available, PROT_READ | PROT_WRITE | PROT_EXEC) < 0*/ false) {
+      if(mprotect(buffer, available, PROT_READ | PROT_WRITE | PROT_EXEC) < 0) {
         wcerr << L"Unable to mprotect" << endl;
         exit(1);
       }
+      */
     }
 
     PageHolder() {
       index = 0;
       available = PAGE_SIZE;
-      if(/*posix_memalign((void**)&buffer, PAGE_SIZE, PAGE_SIZE)*/ false) {
+      buffer = (unsigned char*)VirtualAlloc(NULL, PAGE_SIZE, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
+      /*
+      if(posix_memalign((void**)&buffer, PAGE_SIZE, PAGE_SIZE)) {
         wcerr << L"Unable to allocate JIT memory!" << endl;
         exit(1);
       }
 
-      if(/*mprotect(buffer, PAGE_SIZE, PROT_READ | PROT_WRITE | PROT_EXEC) < 0*/ false) {
+      if(mprotect(buffer, PAGE_SIZE, PROT_READ | PROT_WRITE | PROT_EXEC) < 0) {
         wcerr << L"Unable to mprotect" << endl;
         exit(1);
       }
+      */
     }
 
     ~PageHolder() {
-      free(buffer);
+      VirtualFree(buffer, NULL, MEM_RELEASE);
       buffer = NULL;
     }
 
@@ -1884,7 +1890,7 @@ namespace Runtime {
         aval_xregs.push_back(new RegisterHolder(XMM11));
         aval_xregs.push_back(new RegisterHolder(XMM10));
 #ifdef _DEBUG
-        wcout << L"Compiling code for AMD64 architecture..." << endl;
+        wcout << L"Compiling code for Windows AMD64 architecture..." << endl;
 #endif
 
         // process offsets
