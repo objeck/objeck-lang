@@ -248,7 +248,7 @@ namespace Runtime {
 #ifdef _DEBUG
       size_t v = op_stack[--(*stack_pos)];
       wcout << L"  [pop_i: stack_pos=" << (*stack_pos) << L"; value=" << v << L"("
-	    << (size_t*)v << L")]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << endl;
+        << (size_t*)v << L")]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << endl;
       return v;
 #else
       return op_stack[--(*stack_pos)];
@@ -262,7 +262,7 @@ namespace Runtime {
     inline void PushInt(size_t v, size_t* op_stack, long* stack_pos) {
 #ifdef _DEBUG
       wcout << L"  [push_i: stack_pos=" << (*stack_pos) << L"; value=" << v << L"("
-	    << (size_t*)v << L")]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << endl;
+        << (size_t*)v << L")]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << endl;
 #endif
       op_stack[(*stack_pos)++] = v;
     }
