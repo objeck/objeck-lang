@@ -330,7 +330,7 @@ namespace Runtime {
     unsigned char* GetPage(unsigned char* code, int32_t size) {
       bool placed = false;
 
-      unsigned char* temp;
+      unsigned char* temp = NULL;
       for(size_t i = 0; !placed && i < holders.size(); ++i) {
         PageHolder* holder = holders[i];
         if(holder->CanAddCode(size)) {
