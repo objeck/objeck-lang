@@ -1,7 +1,7 @@
 /***************************************************************************
- * JIT compiler for the AMD64 architecture.
+ * JIT compiler for the Windows AMD64 architecture.
  *
- * Copyright (c) 2008-2015 Randy Hollines
+ * Copyright (c) 2008-2018 Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without 
