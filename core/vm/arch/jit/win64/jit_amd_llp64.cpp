@@ -494,7 +494,7 @@ void JitCompilerIA64::ProcessInstructions() {
 #endif
       ProcessReturn();
       // unregister root
-      UnregisterRoot();
+      // UnregisterRoot();
       // teardown
       Epilog(0);
       break;

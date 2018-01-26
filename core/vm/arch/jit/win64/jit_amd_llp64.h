@@ -277,6 +277,7 @@ namespace Runtime {
       index = 0;
       available = PAGE_SIZE;
       buffer = (unsigned char*)VirtualAlloc(NULL, PAGE_SIZE, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
+
       /*
       if(posix_memalign((void**)&buffer, PAGE_SIZE, PAGE_SIZE)) {
         wcerr << L"Unable to allocate JIT memory!" << endl;
