@@ -1626,7 +1626,7 @@ void JitCompilerIA64::ProcessReturn(long params) {
     
     RegisterHolder* stack_pos_holder = GetRegister();
     move_mem_reg(STACK_POS, RBP, stack_pos_holder->GetRegister());    
-    move_mem_reg(0, stack_pos_holder->GetRegister(), stack_pos_holder->GetRegister());
+    move_mem_reg32(0, stack_pos_holder->GetRegister(), stack_pos_holder->GetRegister());
     shl_imm_reg(3, stack_pos_holder->GetRegister());
     add_reg_reg(stack_pos_holder->GetRegister(), op_stack_holder->GetRegister());  
 
@@ -2225,6 +2225,20 @@ void JitCompilerIA64::move_mem_reg(long offset, Register src, Register dest) {
 #endif
   // encode
   AddMachineCode(RXB(dest, src));
+  AddMachineCode(0x8b);
+  AddMachineCode(ModRM(src, dest));
+  // write value
+  AddImm(offset);
+}
+
+void JitCompilerIA64::move_mem_reg32(int32_t offset, Register src, Register dest) {
+#ifdef _DEBUG
+  wcout << L"  " << (++instr_count) << L": [movl " << offset << L"(%"
+    << GetRegisterName(src) << L"), %" << GetRegisterName(dest)
+    << L"]" << endl;
+#endif
+  // encode
+  AddMachineCode(RXB32(dest, src));
   AddMachineCode(0x8b);
   AddMachineCode(ModRM(src, dest));
   // write value
