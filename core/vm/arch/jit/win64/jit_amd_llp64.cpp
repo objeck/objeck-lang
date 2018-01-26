@@ -1642,7 +1642,7 @@ void JitCompilerIA64::ProcessReturn(long params) {
 #endif
     
     long i = 0;     
-    for(deque<RegInstr*>::reverse_iterator iter = working_stack.rbegin(); 
+    for(deque<RegInstr*>::reverse_iterator iter = working_stack.rbegin();
         iter != working_stack.rend(); ++iter) {
       // skip non-params... processed above
       RegInstr* left = (*iter);
@@ -1650,52 +1650,54 @@ void JitCompilerIA64::ProcessReturn(long params) {
         i++;
       }
       else {
-        move_mem_reg(STACK_POS, RBP, stack_pos_holder->GetRegister());            
+        move_mem_reg(STACK_POS, RBP, stack_pos_holder->GetRegister());
         switch(left->GetType()) {
-        case IMM_INT:
-          move_imm_mem(left->GetOperand(), 0, op_stack_holder->GetRegister());
-          inc_mem(0, stack_pos_holder->GetRegister());
-          add_imm_reg(sizeof(long), op_stack_holder->GetRegister());
+          case IMM_INT:
+            move_imm_mem(left->GetOperand(), 0, op_stack_holder->GetRegister());
+            inc_mem(0, stack_pos_holder->GetRegister());
+            add_imm_reg(sizeof(long), op_stack_holder->GetRegister());
+            break;
+
+          case MEM_INT:
+          {
+            RegisterHolder* temp_holder = GetRegister();
+            move_mem_reg(left->GetOperand(), RBP, temp_holder->GetRegister());
+            move_reg_mem(temp_holder->GetRegister(), 0, op_stack_holder->GetRegister());
+            inc_mem(0, stack_pos_holder->GetRegister());
+            add_imm_reg(sizeof(long), op_stack_holder->GetRegister());
+            ReleaseRegister(temp_holder);
+          }
           break;
-	
-        case MEM_INT: {
-          RegisterHolder* temp_holder = GetRegister();
-          move_mem_reg(left->GetOperand(), RBP, temp_holder->GetRegister());
-          move_reg_mem(temp_holder->GetRegister(), 0, op_stack_holder->GetRegister());
-          inc_mem(0, stack_pos_holder->GetRegister());
-          add_imm_reg(sizeof(long), op_stack_holder->GetRegister()); 
-          ReleaseRegister(temp_holder);
+
+          case REG_INT:
+            move_reg_mem(left->GetRegister()->GetRegister(), 0, op_stack_holder->GetRegister());
+            inc_mem(0, stack_pos_holder->GetRegister());
+            add_imm_reg(sizeof(size_t), op_stack_holder->GetRegister());
+            break;
+
+          case IMM_FLOAT:
+            move_imm_memx(left, 0, op_stack_holder->GetRegister());
+            inc_mem(0, stack_pos_holder->GetRegister());
+            add_imm_reg(sizeof(double), op_stack_holder->GetRegister());
+            break;
+
+          case MEM_FLOAT:
+          {
+            RegisterHolder* temp_holder = GetXmmRegister();
+            move_mem_xreg(left->GetOperand(), RBP, temp_holder->GetRegister());
+            move_xreg_mem(temp_holder->GetRegister(), 0, op_stack_holder->GetRegister());
+            inc_mem(0, stack_pos_holder->GetRegister());
+            add_imm_reg(sizeof(double), op_stack_holder->GetRegister());
+            ReleaseXmmRegister(temp_holder);
+          }
+          break;
+
+          case REG_FLOAT:
+            move_xreg_mem(left->GetRegister()->GetRegister(), 0, op_stack_holder->GetRegister());
+            inc_mem(0, stack_pos_holder->GetRegister());
+            add_imm_reg(sizeof(double), op_stack_holder->GetRegister());
+            break;
         }
-          break;
-	
-        case REG_INT:
-          move_reg_mem(left->GetRegister()->GetRegister(), 0, op_stack_holder->GetRegister());
-          inc_mem(0, stack_pos_holder->GetRegister());
-          add_imm_reg(sizeof(long), op_stack_holder->GetRegister()); 
-          break;
-	
-        case IMM_FLOAT:
-          move_imm_memx(left, 0, op_stack_holder->GetRegister());
-          inc_mem(0, stack_pos_holder->GetRegister());
-          add_imm_reg(sizeof(double), op_stack_holder->GetRegister()); 
-          break;
-	
-        case MEM_FLOAT: {       
-          RegisterHolder* temp_holder = GetXmmRegister();
-          move_mem_xreg(left->GetOperand(), RBP, temp_holder->GetRegister());
-          move_xreg_mem(temp_holder->GetRegister(), 0, op_stack_holder->GetRegister());
-          inc_mem(0, stack_pos_holder->GetRegister());
-          add_imm_reg(sizeof(double), op_stack_holder->GetRegister());
-          ReleaseXmmRegister(temp_holder); 
-        }
-          break;
-	
-        case REG_FLOAT:
-          move_xreg_mem(left->GetRegister()->GetRegister(), 0, op_stack_holder->GetRegister());
-          inc_mem(0, stack_pos_holder->GetRegister());
-          add_imm_reg(sizeof(double), op_stack_holder->GetRegister());
-          break;
-        }    
       }
     }
     ReleaseRegister(op_stack_holder);
