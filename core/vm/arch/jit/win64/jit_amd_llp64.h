@@ -43,8 +43,8 @@ namespace Runtime {
 #define MTHD_ID -16
 #define CLASS_MEM -24
 #define INSTANCE_MEM -32
-#define OP_STACK -40
-#define STACK_POS -48
+#define OP_STACK 64
+#define STACK_POS 72
   // float temps
 #define TMP_XMM_0 -64
 #define TMP_XMM_1 -72
@@ -1901,15 +1901,15 @@ namespace Runtime {
         Prolog();
 
         // method information
-        move_reg_mem(RDI, CLS_ID, RBP);
-        move_reg_mem(RSI, MTHD_ID, RBP);
-        move_reg_mem(RDX, CLASS_MEM, RBP);
-        move_reg_mem(RCX, INSTANCE_MEM, RBP);
-        move_reg_mem(R8, OP_STACK, RBP);
-        move_reg_mem(R9, STACK_POS, RBP);
+        move_reg_mem(RCX, CLS_ID, RBP);
+        move_reg_mem(RDX, MTHD_ID, RBP);
+        move_reg_mem(R8, CLASS_MEM, RBP);
+        move_reg_mem(R9, INSTANCE_MEM, RBP);
+//        move_reg_mem(R8, OP_STACK, RBP);
+//        move_reg_mem(R9, STACK_POS, RBP);
 
         // register root
-        //RegisterRoot();
+//RegisterRoot();
 
         // translate parameters
         ProcessParameters(method->GetParamCount());
