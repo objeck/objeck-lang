@@ -41,23 +41,23 @@ namespace Runtime {
   // offsets for Intel (AMD-64) addresses
 #define OP_STACK 48
 #define STACK_POS 56
-#define CLS_ID 80
-#define MTHD_ID 88
-#define CLASS_MEM 96
-#define INSTANCE_MEM 104
+#define CLS_ID 72
+#define MTHD_ID 80
+#define CLASS_MEM 88
+#define INSTANCE_MEM 96
 
   // float temps
-#define TMP_XMM_0 -64
-#define TMP_XMM_1 -72
-#define TMP_XMM_2 -80
+#define TMP_XMM_0 104
+#define TMP_XMM_1 112
+#define TMP_XMM_2 120
   // integer temps
-#define TMP_REG_0 -88
-#define TMP_REG_1 -96
-#define TMP_REG_2 -104
-#define TMP_REG_3 -112
-#define TMP_REG_4 -120
-#define TMP_REG_5 -128
-#define RED_ZONE 128  
+#define TMP_REG_0 128
+#define TMP_REG_1 136
+#define TMP_REG_2 144
+#define TMP_REG_3 152
+#define TMP_REG_4 160
+#define TMP_REG_5 168
+#define RED_ZONE 168
 
 #define MAX_DBLS 64
 #define BUFFER_SIZE 512
@@ -1764,7 +1764,7 @@ namespace Runtime {
         }
 #endif
       }
-      org_local_space = local_space = index; // -(index + TMP_REG_5);
+      org_local_space = local_space = index; // + RED_ZONE / 8; // -(index + TMP_REG_5);
 
 #ifdef _DEBUG
       wcout << L"Local space required: " << (local_space + 16) << L" byte(s)" << endl;
