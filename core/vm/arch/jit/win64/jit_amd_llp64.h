@@ -39,12 +39,13 @@ using namespace std;
 
 namespace Runtime {
   // offsets for Intel (AMD-64) addresses
-#define CLS_ID -8
-#define MTHD_ID -16
-#define CLASS_MEM -24
-#define INSTANCE_MEM -32
-#define OP_STACK 64
-#define STACK_POS 72
+#define OP_STACK 48
+#define STACK_POS 56
+#define CLS_ID 80
+#define MTHD_ID 88
+#define CLASS_MEM 96
+#define INSTANCE_MEM 104
+
   // float temps
 #define TMP_XMM_0 -64
 #define TMP_XMM_1 -72
@@ -56,7 +57,7 @@ namespace Runtime {
 #define TMP_REG_3 -112
 #define TMP_REG_4 -120
 #define TMP_REG_5 -128
-#define RED_ZONE -128  
+#define RED_ZONE 128  
 
 #define MAX_DBLS 64
 #define BUFFER_SIZE 512
@@ -1739,14 +1740,14 @@ namespace Runtime {
                instr->GetType() == STOR_CLS_INST_INT_VAR ||
                instr->GetType() == COPY_LOCL_INT_VAR ||
                instr->GetType() == COPY_CLS_INST_INT_VAR) {
-              index -= sizeof(long);
+              index += sizeof(long);
             }
             else if(instr->GetType() == LOAD_FUNC_VAR ||
                     instr->GetType() == STOR_FUNC_VAR) {
-              index -= sizeof(long) * 2;
+              index += sizeof(long) * 2;
             }
             else {
-              index -= sizeof(double);
+              index += sizeof(double);
             }
           }
           instr->SetOperand3(index);
@@ -1763,7 +1764,7 @@ namespace Runtime {
         }
 #endif
       }
-      org_local_space = local_space = -(index + TMP_REG_5);
+      org_local_space = local_space = index; // -(index + TMP_REG_5);
 
 #ifdef _DEBUG
       wcout << L"Local space required: " << (local_space + 16) << L" byte(s)" << endl;
