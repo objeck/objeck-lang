@@ -1,10 +1,10 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		Go()->PrintLine();
+		Go(9)->PrintLine();
 	}
 
-	function : native : Go() ~ Int {
-		a := 3;
-		return a * 7;
+	function : native : Go(a : Int) ~ Int {
+		b := 3;
+		return a + b * 7;
 	}
 }
