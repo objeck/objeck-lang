@@ -216,7 +216,7 @@ void JitCompilerIA64::ProcessParameters(long params) {
     if(instr->GetType() == STOR_LOCL_INT_VAR ||
        instr->GetType() == STOR_CLS_INST_INT_VAR) {
       dec_mem(0, stack_pos_holder->GetRegister());  
-      move_mem_reg(0, stack_pos_holder->GetRegister(), 
+      move_mem_reg32(0, stack_pos_holder->GetRegister(), 
                    stack_pos_holder->GetRegister());
       shl_imm_reg(3, stack_pos_holder->GetRegister());
       add_reg_reg(stack_pos_holder->GetRegister(),
@@ -230,7 +230,7 @@ void JitCompilerIA64::ProcessParameters(long params) {
     }
     else if(instr->GetType() == STOR_FUNC_VAR) {
       dec_mem(0, stack_pos_holder->GetRegister());  
-      move_mem_reg(0, stack_pos_holder->GetRegister(), 
+      move_mem_reg32(0, stack_pos_holder->GetRegister(), 
                    stack_pos_holder->GetRegister());
       shl_imm_reg(3, stack_pos_holder->GetRegister());
       add_reg_reg(stack_pos_holder->GetRegister(),
@@ -256,7 +256,7 @@ void JitCompilerIA64::ProcessParameters(long params) {
     else {
       RegisterHolder* dest_holder = GetXmmRegister();
       dec_mem(0, stack_pos_holder->GetRegister());
-      move_mem_reg(0, stack_pos_holder->GetRegister(), 
+      move_mem_reg32(0, stack_pos_holder->GetRegister(), 
                    stack_pos_holder->GetRegister());
       shl_imm_reg(3, stack_pos_holder->GetRegister());
       add_reg_reg(stack_pos_holder->GetRegister(),
@@ -284,7 +284,7 @@ void JitCompilerIA64::ProcessIntCallParameter() {
   move_mem_reg(STACK_POS, RBP, stack_pos_holder->GetRegister());
   
   dec_mem(0, stack_pos_holder->GetRegister());  
-  move_mem_reg(0, stack_pos_holder->GetRegister(), stack_pos_holder->GetRegister());
+  move_mem_reg32(0, stack_pos_holder->GetRegister(), stack_pos_holder->GetRegister());
   shl_imm_reg(3, stack_pos_holder->GetRegister());
   add_reg_reg(stack_pos_holder->GetRegister(), op_stack_holder->GetRegister());  
   move_mem_reg(0, op_stack_holder->GetRegister(), op_stack_holder->GetRegister());
@@ -306,7 +306,7 @@ void JitCompilerIA64::ProcessFunctionCallParameter() {
   
   sub_imm_mem(2, 0, stack_pos_holder->GetRegister());
 
-  move_mem_reg(0, stack_pos_holder->GetRegister(), stack_pos_holder->GetRegister());
+  move_mem_reg32(0, stack_pos_holder->GetRegister(), stack_pos_holder->GetRegister());
   shl_imm_reg(3, stack_pos_holder->GetRegister());
   add_reg_reg(stack_pos_holder->GetRegister(), op_stack_holder->GetRegister());  
   
@@ -335,7 +335,7 @@ void JitCompilerIA64::ProcessFloatCallParameter() {
   
   RegisterHolder* dest_holder = GetXmmRegister();
   dec_mem(0, stack_pos_holder->GetRegister());  
-  move_mem_reg(0, stack_pos_holder->GetRegister(), stack_pos_holder->GetRegister());
+  move_mem_reg32(0, stack_pos_holder->GetRegister(), stack_pos_holder->GetRegister());
   shl_imm_reg(3, stack_pos_holder->GetRegister());
   add_reg_reg(stack_pos_holder->GetRegister(), op_stack_holder->GetRegister()); 
   move_mem_xreg(0, op_stack_holder->GetRegister(), dest_holder->GetRegister());

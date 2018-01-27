@@ -1,7 +1,10 @@
-use System.Time;
-
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		System.Runtime->GetPlatform()->PrintLine();
+		Go()->PrintLine();
+	}
+
+	function : native : Go() ~ Int {
+		a := 3;
+		return a * 7;
 	}
 }
