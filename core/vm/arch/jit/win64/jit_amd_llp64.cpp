@@ -131,10 +131,10 @@ void JitCompilerIA64::RegisterRoot() {
   // caculate root address
   // note: the offset requried to 
   // get to the first local variale
-  const long offset = org_local_space + RED_ZONE + TMP_REG_5;
+  const long offset = org_local_space - RED_ZONE - TMP_REG_5;
   RegisterHolder* holder = GetRegister();
   move_reg_reg(RBP, holder->GetRegister());
-  sub_imm_reg(-TMP_REG_5 + offset, holder->GetRegister());
+  sub_imm_reg(TMP_REG_5 + offset, holder->GetRegister());
   
   /*
   // save registers
@@ -145,11 +145,11 @@ void JitCompilerIA64::RegisterRoot() {
   */
 
   // copy values 
-  move_imm_reg(offset, R8);
-  move_reg_reg(holder->GetRegister(), RCX);
-  move_mem_reg(INSTANCE_MEM, RBP, RDX);
-  move_mem_reg(MTHD_ID, RBP, RSI);
-  move_mem_reg(CLS_ID, RBP, RDI);
+  move_imm_reg(offset, RCX);
+  move_reg_reg(holder->GetRegister(), RDX);
+  move_mem_reg(INSTANCE_MEM, RBP, R8);
+  move_mem_reg(MTHD_ID, RBP, R9);
+  push_mem(CLS_ID, RBP);
   
   // call method
   move_imm_reg((size_t)MemoryManager::AddJitMethodRoot, R15);
@@ -2286,7 +2286,7 @@ void JitCompilerIA64::move_imm_mem(long imm, long offset, Register dest) {
   AddImm(imm);
 }
 
-void JitCompilerIA64::move_imm_reg(long imm, Register reg) {
+void JitCompilerIA64::move_imm_reg(size_t imm, Register reg) {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [movq $" << imm << L", %" 
         << GetRegisterName(reg) << L"]" << endl;
