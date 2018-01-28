@@ -459,10 +459,10 @@ namespace Runtime {
      * Encodes and writes out 64-bit
      * integer values
      ********************************/
-    inline void AddImm64(long imm) {
-      unsigned char buffer[sizeof(long)];
+    inline void AddImm64(size_t imm) {
+      unsigned char buffer[sizeof(size_t)];
       ByteEncode64(buffer, imm);
-      for(size_t i = 0; i < sizeof(long); i++) {
+      for(int i = 0; i < sizeof(size_t); i++) {
         AddMachineCode(buffer[i]);
       }
     }
@@ -1051,7 +1051,7 @@ namespace Runtime {
     void move_mem_reg32(int32_t offset, Register src, Register dest);
     void move_imm_memx(RegInstr* instr, long offset, Register dest);
     void move_imm_mem(long imm, long offset, Register dest);
-    void move_imm_reg(long imm, Register reg);
+    void move_imm_reg(size_t imm, Register reg);
     void move_imm_xreg(RegInstr* instr, Register reg);
     void move_mem_xreg(long offset, Register src, Register dest);
     void move_xreg_mem(Register src, long offset, Register dest);
@@ -1911,7 +1911,7 @@ namespace Runtime {
 //        move_reg_mem(R9, STACK_POS, RBP);
 
         // register root
-//RegisterRoot();
+        RegisterRoot();
 
         // translate parameters
         ProcessParameters(method->GetParamCount());
