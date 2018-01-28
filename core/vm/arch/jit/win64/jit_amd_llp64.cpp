@@ -131,10 +131,10 @@ void JitCompilerIA64::RegisterRoot() {
   // caculate root address
   // note: the offset requried to 
   // get to the first local variale
-  const long offset = org_local_space - RED_ZONE - TMP_REG_5;
+  const long offset = org_local_space /* - RED_ZONE - TMP_REG_5 */;
   RegisterHolder* holder = GetRegister();
   move_reg_reg(RBP, holder->GetRegister());
-  sub_imm_reg(TMP_REG_5 + offset, holder->GetRegister());
+  sub_imm_reg(/*TMP_REG_5 +*/offset, holder->GetRegister());
   
   /*
   // save registers
@@ -145,12 +145,28 @@ void JitCompilerIA64::RegisterRoot() {
   */
 
   // copy values 
+  move_mem_reg(CLS_ID, RBP, RCX);
+  move_mem_reg(MTHD_ID, RBP, RDX);
+  move_mem_reg(INSTANCE_MEM, RBP, R8);
+  move_reg_reg(holder->GetRegister(), R9);
+
+  push_imm(offset);
+  push_imm(0);
+  push_imm(0);
+  push_imm(0);
+  push_imm(0);
+  
+  // add_imm_reg(40, RSP);
+
+
+  /*
   move_imm_reg(offset, RCX);
   move_reg_reg(holder->GetRegister(), RDX);
   move_mem_reg(INSTANCE_MEM, RBP, R8);
   move_mem_reg(MTHD_ID, RBP, R9);
   push_mem(CLS_ID, RBP);
-  
+  */
+
   // call method
   move_imm_reg((size_t)MemoryManager::AddJitMethodRoot, R15);
   call_reg(R15);
@@ -3936,7 +3952,7 @@ void JitExecutor::Initialize(StackProgram* p) {
 long JitExecutor::ExecuteMachineCode(long cls_id, long mthd_id, size_t* inst, unsigned char* code, 
                                          const long code_size, size_t* op_stack, long *stack_pos,
                                          StackFrame** call_stack, long* call_stack_pos) {
-  
+
   // create function
   jit_fun_ptr jit_fun = (jit_fun_ptr)code;
   return jit_fun(cls_id, mthd_id, method->GetClass()->GetClassMemory(), 
