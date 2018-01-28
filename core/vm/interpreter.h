@@ -102,7 +102,7 @@ namespace Runtime {
         // load cache
         for(int i = 0; i < CALL_STACK_SIZE; ++i) {
           StackFrame* frame = new StackFrame();
-          frame->mem = (size_t*)calloc(LOCAL_SIZE, sizeof(long));
+          frame->mem = (size_t*)calloc(LOCAL_SIZE, sizeof(size_t));
           cached_frames.push(frame);
         }
       }
@@ -136,7 +136,7 @@ namespace Runtime {
 #endif      
       
       // load cache
-      memset(frame->mem, 0, LOCAL_SIZE * sizeof(long));
+      memset(frame->mem, 0, LOCAL_SIZE * sizeof(size_t));
       cached_frames.push(frame);
 #ifdef _DEBUG
       wcout << L"caching frame=" << frame << endl;
@@ -408,7 +408,7 @@ namespace Runtime {
       const long char_array_dim = 1;
       size_t* char_array = (size_t*)MemoryManager::AllocateArray(char_array_size + 1 +
 							     ((char_array_dim + 2) *
-							      sizeof(long)),
+							      sizeof(size_t)),
 							     CHAR_ARY_TYPE,
 							     op_stack, *stack_pos,
 							     false);

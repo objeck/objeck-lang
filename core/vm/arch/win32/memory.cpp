@@ -296,7 +296,7 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, long 
 #ifdef _DEBUG
     bool is_cached = false;
 #endif
-    const long alloc_size = size * 2 + sizeof(long) * EXTRA_BUF_SIZE;
+    const long alloc_size = size * 2 + sizeof(size_t) * EXTRA_BUF_SIZE;
     if(cache_pool_512.size() > 0 && alloc_size <= 512 && alloc_size > 256) {
       mem = (size_t*)cache_pool_512.top();
       cache_pool_512.pop();
@@ -380,7 +380,7 @@ size_t* MemoryManager::AllocateArray(const long size, const MemoryType type,
     break;
 
   case INT_TYPE:
-    calc_size = size * sizeof(long);
+    calc_size = size * sizeof(size_t);
     break;
 
   case FLOAT_TYPE:
@@ -402,7 +402,7 @@ size_t* MemoryManager::AllocateArray(const long size, const MemoryType type,
 #ifdef _DEBUG
   bool is_cached = false;
 #endif
-  const long alloc_size = calc_size + sizeof(long) * EXTRA_BUF_SIZE;
+  const long alloc_size = calc_size + sizeof(size_t) * EXTRA_BUF_SIZE;
   if(cache_pool_512.size() > 0 && alloc_size <= 512 && alloc_size > 256) {
     mem = (size_t*)cache_pool_512.top();
     cache_pool_512.pop();
@@ -1012,7 +1012,7 @@ unsigned int MemoryManager::CheckPdaRoots(void* arg)
       // mark self
       CheckObject((size_t*)(*mem), true, 1);
 
-      if (mthd->HasAndOr()) {
+      if(mthd->HasAndOr()) {
         mem += 2;
       }
       else {

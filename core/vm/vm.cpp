@@ -78,10 +78,10 @@ int Execute(const int argc, const char* argv[])
     stack_pos = NULL;
     
     Runtime::StackInterpreter::RemoveThread(intpr);
+    Runtime::StackInterpreter::HaltAll();
+
     delete intpr;
     intpr = NULL;
-    
-    Runtime::StackInterpreter::HaltAll();
 
 #ifdef _SANITIZE
     wcout << L"# final stack: pos=" << (*stack_pos) << L" #" << endl;
@@ -103,6 +103,7 @@ int Execute(const int argc, const char* argv[])
 #endif
 
     CleanUpCommandLine(argc, commands);
+    
     return SUCCESS;
   } 
   else {

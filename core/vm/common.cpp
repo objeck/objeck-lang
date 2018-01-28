@@ -426,7 +426,7 @@ size_t* ObjectDeserializer::DeserializeObject() {
           const long byte_array_size_dim = DeserializeInt();
           size_t* byte_array = MemoryManager::AllocateArray(byte_array_size +
                                                                  ((byte_array_dim + 2) *
-                                                                  sizeof(long)), BYTE_ARY_TYPE,
+                                                                  sizeof(size_t)), BYTE_ARY_TYPE,
                                                                  op_stack, *stack_pos, false);
           char* byte_array_ptr = (char*)(byte_array + 3);
           byte_array[0] = byte_array_size;
@@ -479,7 +479,7 @@ size_t* ObjectDeserializer::DeserializeObject() {
           char_array_size = char_array_size_dim = (long)out.size();
           size_t* char_array = MemoryManager::AllocateArray(char_array_size +
                                                                  ((char_array_dim + 2) *
-                                                                  sizeof(long)), CHAR_ARY_TYPE,
+                                                                  sizeof(size_t)), CHAR_ARY_TYPE,
                                                                  op_stack, *stack_pos, false);
           char_array[0] = char_array_size;
           char_array[1] = char_array_dim;
@@ -906,7 +906,7 @@ size_t* TrapProcessor::CreateStringObject(const wstring &value_str, StackProgram
   const long char_array_dim = 1;
   size_t* char_array = MemoryManager::AllocateArray(char_array_size + 1 +
                                                          ((char_array_dim + 2) *
-                                                          sizeof(long)),
+                                                          sizeof(size_t)),
                                                          CHAR_ARY_TYPE,
                                                          op_stack, *stack_pos,
                                                          false);
@@ -1201,11 +1201,11 @@ inline size_t* TrapProcessor::DeserializeArray(ParamType type, size_t* inst, siz
 
     size_t* dest_array;
     if(type == BYTE_ARY_PARM) {
-      dest_array = MemoryManager::AllocateArray(dest_array_size + ((dest_array_dim + 2) * sizeof(long)),
+      dest_array = MemoryManager::AllocateArray(dest_array_size + ((dest_array_dim + 2) * sizeof(size_t)),
                                                        BYTE_ARY_TYPE, op_stack, *stack_pos, false);
     }
     else if(type == CHAR_ARY_PARM) {
-      dest_array = MemoryManager::AllocateArray(dest_array_size + ((dest_array_dim + 2) * sizeof(long)),
+      dest_array = MemoryManager::AllocateArray(dest_array_size + ((dest_array_dim + 2) * sizeof(size_t)),
                                                        CHAR_ARY_TYPE, op_stack, *stack_pos, false);
     }
     else if(type == INT_ARY_PARM || type == OBJ_ARY_PARM) {
@@ -1266,7 +1266,7 @@ size_t* TrapProcessor::ExpandSerialBuffer(const long src_buffer_size, size_t* de
     // create byte array
     const long byte_array_size = dest_buffer_size;
     const long byte_array_dim = 1;
-    size_t* byte_array = (size_t*)MemoryManager::AllocateArray(byte_array_size + 1 + ((byte_array_dim + 2) * sizeof(long)),
+    size_t* byte_array = (size_t*)MemoryManager::AllocateArray(byte_array_size + 1 + ((byte_array_dim + 2) * sizeof(size_t)),
                                                            BYTE_ARY_TYPE, op_stack, *stack_pos, false);
     byte_array[0] = byte_array_size + 1;
     byte_array[1] = byte_array_dim;
@@ -1758,7 +1758,7 @@ bool TrapProcessor::ConvertBytesToUnicode(StackProgram* program, size_t* inst, s
   const long char_array_dim = 1;
   size_t* char_array = MemoryManager::AllocateArray(char_array_size + 1 +
 							 ((char_array_dim + 2) *
-							  sizeof(long)),
+							  sizeof(size_t)),
                                                          CHAR_ARY_TYPE,
                                                          op_stack, *stack_pos,
                                                          false);
@@ -1788,7 +1788,7 @@ bool TrapProcessor::ConvertUnicodeToBytes(StackProgram* program, size_t* inst, s
   // create byte array
   const long byte_array_size = (long)out.size();
   const long byte_array_dim = 1;
-  size_t* byte_array = MemoryManager::AllocateArray(byte_array_size + 1 + ((byte_array_dim + 2) * sizeof(long)),
+  size_t* byte_array = MemoryManager::AllocateArray(byte_array_size + 1 + ((byte_array_dim + 2) * sizeof(size_t)),
                                                          BYTE_ARY_TYPE, op_stack, *stack_pos, false);
   byte_array[0] = byte_array_size + 1;
   byte_array[1] = byte_array_dim;
