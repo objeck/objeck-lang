@@ -806,8 +806,8 @@ namespace Runtime {
      * Encodes a byte array with a
      * 64-bit value
      ********************************/
-    inline void ByteEncode64(unsigned char buffer[], long value) {
-      memcpy(buffer, &value, sizeof(long));
+    inline void ByteEncode64(unsigned char buffer[], size_t value) {
+      memcpy(buffer, &value, sizeof(size_t));
     }
 
     /********************************
@@ -1911,7 +1911,7 @@ namespace Runtime {
 //        move_reg_mem(R9, STACK_POS, RBP);
 
         // register root
-        RegisterRoot();
+//        RegisterRoot();
 
         // translate parameters
         ProcessParameters(method->GetParamCount());
