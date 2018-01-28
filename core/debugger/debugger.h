@@ -290,7 +290,7 @@ namespace Runtime {
         StackDclr* dclr = dclrs[i];
 
         // parse name
-        int param_name_index = dclrs[i]->name.find_last_of(':');
+        size_t param_name_index = dclrs[i]->name.find_last_of(':');
         const wstring &param_name = dclrs[i]->name.substr(param_name_index + 1);
         wcout << L"    parameter: name='" << param_name << L"', ";
 
