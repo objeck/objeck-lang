@@ -1219,10 +1219,10 @@ namespace Runtime {
           }
           // NULL terminated string workaround
           size++;
-          size_t* mem = MemoryManager::AllocateArray(size + ((dim + 2) * sizeof(long)), BYTE_ARY_TYPE, op_stack, *stack_pos);
+          size_t* mem = MemoryManager::AllocateArray(size + ((dim + 2) * sizeof(size_t)), BYTE_ARY_TYPE, op_stack, *stack_pos);
           mem[0] = size;
           mem[1] = dim;
-          memcpy(mem + 2, indices, dim * sizeof(long));
+          memcpy(mem + 2, indices, dim * sizeof(size_t));
           PushInt(op_stack, stack_pos, (size_t)mem);
 
 #ifdef _DEBUG
@@ -1245,7 +1245,7 @@ namespace Runtime {
             indices[dim++] = value;
           }
           size++;
-          size_t* mem = (size_t*)MemoryManager::AllocateArray(size + ((dim + 2) * sizeof(long)),
+          size_t* mem = (size_t*)MemoryManager::AllocateArray(size + ((dim + 2) * sizeof(size_t)),
                                                           CHAR_ARY_TYPE, op_stack, *stack_pos);
           mem[0] = size - 1;
           mem[1] = dim;
@@ -1494,7 +1494,7 @@ namespace Runtime {
           if(length > 0 && src_offset + length <= src_array_len && dest_offset + length <= dest_array_len) {
             size_t* src_array_ptr = src_array + 3;
             size_t* dest_array_ptr = dest_array + 3;
-            memcpy(dest_array_ptr + dest_offset, src_array_ptr + src_offset, length * sizeof(long));
+            memcpy(dest_array_ptr + dest_offset, src_array_ptr + src_offset, length * sizeof(size_t));
             PushInt(op_stack, stack_pos, 1);
           }
           else {
@@ -1623,7 +1623,7 @@ namespace Runtime {
       const long dim = instr->GetOperand();
       for(int i = 1; i < dim; i++) {
         // index *= array[i];
-        mul_mem_reg((i + 2) * sizeof(long), array_holder->GetRegister(),
+        mul_mem_reg((i + 2) * sizeof(size_t), array_holder->GetRegister(),
                     index_holder->GetRegister());
         if(holder) {
           delete holder;
@@ -1678,7 +1678,7 @@ namespace Runtime {
       ReleaseRegister(bounds_holder);
 
       // skip first 2 integers (size and dimension) and all dimension indices
-      add_imm_reg((instr->GetOperand() + 2) * sizeof(long), index_holder->GetRegister());
+      add_imm_reg((instr->GetOperand() + 2) * sizeof(size_t), index_holder->GetRegister());
       add_reg_reg(index_holder->GetRegister(), array_holder->GetRegister());
       ReleaseRegister(index_holder);
 
@@ -1727,7 +1727,7 @@ namespace Runtime {
         if(instr->GetOperand2() == INST || instr->GetOperand2() == CLS) {
           // note: all instance variables are allocted in 4-byte blocks,
           // for floats the assembler allocates 2 4-byte blocks
-          instr->SetOperand3(instr->GetOperand() * sizeof(long));
+          instr->SetOperand3(instr->GetOperand() * sizeof(size_t));
         }
         // local reference
         else {
@@ -1740,11 +1740,11 @@ namespace Runtime {
                instr->GetType() == STOR_CLS_INST_INT_VAR ||
                instr->GetType() == COPY_LOCL_INT_VAR ||
                instr->GetType() == COPY_CLS_INST_INT_VAR) {
-              index += sizeof(long);
+              index += sizeof(size_t);
             }
             else if(instr->GetType() == LOAD_FUNC_VAR ||
                     instr->GetType() == STOR_FUNC_VAR) {
-              index += sizeof(long) * 2;
+              index += sizeof(size_t) * 2;
             }
             else {
               index += sizeof(double);

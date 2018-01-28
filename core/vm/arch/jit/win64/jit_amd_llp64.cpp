@@ -840,7 +840,7 @@ void JitCompilerIA64::ProcessLoad(StackInstr* instr) {
   if(instr->GetOperand2() == LOCL) {
     if(instr->GetType() == LOAD_FUNC_VAR) {
       RegisterHolder* holder = GetRegister();
-      move_mem_reg(instr->GetOperand3() + sizeof(long), RBP, holder->GetRegister());
+      move_mem_reg(instr->GetOperand3() + sizeof(size_t), RBP, holder->GetRegister());
       working_stack.push_front(new RegInstr(holder));
       
       RegisterHolder* holder2 = GetRegister();
@@ -875,7 +875,7 @@ void JitCompilerIA64::ProcessLoad(StackInstr* instr) {
     // function value
     else if(instr->GetType() == LOAD_FUNC_VAR) {
       RegisterHolder* holder2 = GetRegister();
-      move_mem_reg(instr->GetOperand3() + sizeof(long), holder->GetRegister(), holder2->GetRegister());
+      move_mem_reg(instr->GetOperand3() + sizeof(size_t), holder->GetRegister(), holder2->GetRegister());
       working_stack.push_front(new RegInstr(holder2));
       
       move_mem_reg(instr->GetOperand3(), holder->GetRegister(), holder->GetRegister());
@@ -1354,7 +1354,7 @@ void JitCompilerIA64::ProcessStore(StackInstr* instr) {
       
       RegInstr* left2 = working_stack.front();
       working_stack.pop_front();
-      move_imm_mem(left2->GetOperand(), instr->GetOperand3() + sizeof(long), dest);
+      move_imm_mem(left2->GetOperand(), instr->GetOperand3() + sizeof(size_t), dest);
 
       delete left2;
       left2 = NULL;
@@ -1373,7 +1373,7 @@ void JitCompilerIA64::ProcessStore(StackInstr* instr) {
       RegInstr* left2 = working_stack.front();
       working_stack.pop_front();
       move_mem_reg(left2->GetOperand(), RBP, holder->GetRegister());
-      move_reg_mem(holder->GetRegister(), instr->GetOperand3() + sizeof(long), dest);
+      move_reg_mem(holder->GetRegister(), instr->GetOperand3() + sizeof(size_t), dest);
 
       delete left2;
       left2 = NULL;
@@ -1395,7 +1395,7 @@ void JitCompilerIA64::ProcessStore(StackInstr* instr) {
       working_stack.pop_front();
       RegisterHolder* holder2  = left2->GetRegister();
       
-      move_reg_mem(holder2->GetRegister(), instr->GetOperand3() + sizeof(long), dest);
+      move_reg_mem(holder2->GetRegister(), instr->GetOperand3() + sizeof(size_t), dest);
       ReleaseRegister(holder2);
 
       delete left2;
@@ -1557,7 +1557,7 @@ void JitCompilerIA64::ProcessStackCallback(long instr_id, StackInstr* instr,
         move_reg_mem(left->GetRegister()->GetRegister(), reg_offset, RBP);
         dirty_regs.push(reg_offset);
         regs.push(left);
-        reg_offset -= sizeof(long);
+        reg_offset -= sizeof(size_t);
         break;
 
       case REG_FLOAT:
@@ -1671,7 +1671,7 @@ void JitCompilerIA64::ProcessReturn(long params) {
           case IMM_INT:
             move_imm_mem(left->GetOperand(), 0, op_stack_holder->GetRegister());
             inc_mem(0, stack_pos_holder->GetRegister());
-            add_imm_reg(sizeof(long), op_stack_holder->GetRegister());
+            add_imm_reg(sizeof(size_t), op_stack_holder->GetRegister());
             break;
 
           case MEM_INT:
@@ -1680,7 +1680,7 @@ void JitCompilerIA64::ProcessReturn(long params) {
             move_mem_reg(left->GetOperand(), RBP, temp_holder->GetRegister());
             move_reg_mem(temp_holder->GetRegister(), 0, op_stack_holder->GetRegister());
             inc_mem(0, stack_pos_holder->GetRegister());
-            add_imm_reg(sizeof(long), op_stack_holder->GetRegister());
+            add_imm_reg(sizeof(size_t), op_stack_holder->GetRegister());
             ReleaseRegister(temp_holder);
           }
           break;

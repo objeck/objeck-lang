@@ -164,7 +164,7 @@ size_t* APITools_MakeByteArray(VMContext &context, const long char_array_size) {
   const long char_array_dim = 1;
   size_t* char_array = (size_t*)context.alloc_array(char_array_size + 1 +
 						((char_array_dim + 2) *
-						 sizeof(long)),
+						 sizeof(size_t)),
 						BYTE_ARY_TYPE,
 						context.op_stack, *context.stack_pos, false);
   char_array[0] = char_array_size + 1;
@@ -179,7 +179,7 @@ size_t* APITools_MakeCharArray(VMContext &context, const long char_array_size) {
   const long char_array_dim = 1;
   size_t* char_array = (size_t*)context.alloc_array(char_array_size + 1 +
 						((char_array_dim + 2) *
-						 sizeof(long)),
+						 sizeof(size_t)),
 						CHAR_ARY_TYPE,
 						context.op_stack, *context.stack_pos, false);
   char_array[0] = char_array_size + 1;
@@ -335,7 +335,7 @@ void APITools_SetStringValue(VMContext &context, int index, const wstring &value
   const long char_array_dim = 1;
   size_t* char_array = (size_t*)context.alloc_array(char_array_size + 1 +
 						((char_array_dim + 2) *
-						 sizeof(long)),
+						 sizeof(size_t)),
 						CHAR_ARY_TYPE,
 						context.op_stack, *context.stack_pos, false);
   char_array[0] = char_array_size + 1;
