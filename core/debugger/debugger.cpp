@@ -952,15 +952,15 @@ void Runtime::Debugger::EvaluateClassReference(Reference* reference, StackClass*
 void Runtime::Debugger::EvaluateByteReference(Reference* reference, int index) {
   size_t* array = (size_t*)ref_mem[index];
   if(array) {
-    const size_t max = array[0];
-    const size_t dim = array[1];
+    const long max = (long)array[0];
+    const long dim = (long)array[1];
 
     // de-reference array value
     ExpressionList* indices = reference->GetIndices();
     if(indices) {
       // calculate indices values
       vector<Expression*> expressions = indices->GetExpressions();
-      vector<int> values;
+      vector<long> values;
       for(size_t i = 0; i < expressions.size(); i++) {
         EvaluateExpression(expressions[i]);
         if(expressions[i]->GetExpressionType() == INT_LIT_EXPR) {
@@ -974,10 +974,10 @@ void Runtime::Debugger::EvaluateByteReference(Reference* reference, int index) {
       if(expressions.size() == dim) {
         // calculate indices
         array += 2;
-        size_t j = dim - 1;
-        size_t array_index = values[j--];
-        for(size_t i = 1; i < dim; ++i) {
-          array_index *= array[i];
+        long j = dim - 1;
+        long array_index = values[j--];
+        for(long i = 1; i < dim; ++i) {
+          array_index *= (long)array[i];
           array_index += values[j--];
         }
         array += dim;
@@ -1011,8 +1011,8 @@ void Runtime::Debugger::EvaluateByteReference(Reference* reference, int index) {
 void Runtime::Debugger::EvaluateCharReference(Reference* reference, int index) {
   size_t* array = (size_t*)ref_mem[index];
   if(array) {
-    const int max = array[0];
-    const int dim = array[1];
+    const long max = (long)array[0];
+    const long dim = (long)array[1];
 
     // de-reference array value
     ExpressionList* indices = reference->GetIndices();
@@ -1026,7 +1026,7 @@ void Runtime::Debugger::EvaluateCharReference(Reference* reference, int index) {
           values.push_back(static_cast<IntegerLiteral*>(expressions[i])->GetValue());
         }
         else {
-          values.push_back(expressions[i]->GetIntValue());
+          values.push_back((long)expressions[i]->GetIntValue());
         }
       }
       // match the dimensions
@@ -1036,7 +1036,7 @@ void Runtime::Debugger::EvaluateCharReference(Reference* reference, int index) {
         int j = dim - 1;
         long array_index = values[j--];
         for(long i = 1; i < dim; i++) {
-          array_index *= array[i];
+          array_index *= (long)array[i];
           array_index += values[j--];
         }
         array += dim;
@@ -1070,8 +1070,8 @@ void Runtime::Debugger::EvaluateCharReference(Reference* reference, int index) {
 void Runtime::Debugger::EvaluateIntFloatReference(Reference* reference, int index, bool is_float) {
   size_t* array = (size_t*)ref_mem[index];
   if(array) {
-    const int max = array[0];
-    const int dim = array[1];
+    const long max = (long)array[0];
+    const int dim = (long)array[1];
 
     // de-reference array value
     ExpressionList* indices = reference->GetIndices();
@@ -1085,7 +1085,7 @@ void Runtime::Debugger::EvaluateIntFloatReference(Reference* reference, int inde
           values.push_back(static_cast<IntegerLiteral*>(expressions[i])->GetValue());
         }
         else {
-          values.push_back(expressions[i]->GetIntValue());
+          values.push_back((long)expressions[i]->GetIntValue());
         }
       }
       // match the dimensions
@@ -1095,7 +1095,7 @@ void Runtime::Debugger::EvaluateIntFloatReference(Reference* reference, int inde
         int j = dim - 1;
         long array_index = values[j--];
         for(long i = 1; i < dim; i++) {
-          array_index *= array[i];
+          array_index *= (long)array[i];
           array_index += values[j--];
         }
         array += dim;
@@ -1391,10 +1391,10 @@ void Runtime::Debugger::ProcessInfo(Info* info) {
 
       // parse method and class names
       const wstring &long_name = cur_frame->method->GetName();
-      int end_index = long_name.find_last_of(':');
+      size_t end_index = long_name.find_last_of(':');
       const wstring &cls_mthd_name = long_name.substr(0, end_index);
 
-      int mid_index = cls_mthd_name.find_last_of(':');
+      size_t mid_index = cls_mthd_name.find_last_of(':');
       const wstring &cls_name = cls_mthd_name.substr(0, mid_index);
       const wstring &mthd_name = cls_mthd_name.substr(mid_index + 1);
 
