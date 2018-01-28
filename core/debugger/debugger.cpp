@@ -64,11 +64,11 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
 
       // prompt for input
       const wstring &long_name = cur_frame->method->GetName();
-      int end_index = long_name.find_last_of(':');
+      size_t end_index = long_name.find_last_of(':');
       const wstring &cls_mthd_name = long_name.substr(0, end_index);
 
       // show break info
-      int mid_index = cls_mthd_name.find_last_of(':');
+      size_t mid_index = cls_mthd_name.find_last_of(':');
       const wstring &cls_name = cls_mthd_name.substr(0, mid_index);
       const wstring &mthd_name = cls_mthd_name.substr(mid_index + 1);
       wcout << L"break: file='" << file_name << L":" << line_num << L"', method='"
@@ -171,9 +171,9 @@ void Runtime::Debugger::ProcessExe(Load* load) {
 void Runtime::Debugger::ProcessRun() {
   if(program_file.size() > 0) {
     // process program parameters
-    const int argc = arguments.size();
+    long argc = (long)arguments.size();
     wchar_t** argv = new wchar_t*[argc];
-    for(int i = 0; i < argc; i++) {
+    for(long i = 0; i < argc; ++i) {
 #ifdef _WIN32
       argv[i] = _wcsdup(arguments[i].c_str());
 #else
@@ -433,7 +433,7 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
           break;
 
         case FUNC_PARM: {
-          StackClass* klass = cur_program->GetClass(reference->GetIntValue());
+          StackClass* klass = cur_program->GetClass((long)reference->GetIntValue());
           if(klass) {
             wcout << L"print: type=Functon, class=" << klass->GetName() 
 									<< L", method=" << PrintMethod(klass->GetMethod(reference->GetIntValue2())) << endl;
@@ -778,8 +778,8 @@ void Runtime::Debugger::EvaluateReference(Reference* &reference, MemoryContext c
           break;
 
         case FUNC_PARM:
-          reference->SetIntValue(ref_mem[dclr_value.id]);
-          reference->SetIntValue2(ref_mem[dclr_value.id + 1]);
+          reference->SetIntValue((long)ref_mem[dclr_value.id]);
+          reference->SetIntValue2((long)ref_mem[dclr_value.id + 1]);
           break;
 
         case FLOAT_PARM: {
@@ -856,8 +856,8 @@ void Runtime::Debugger::EvaluateReference(Reference* &reference, MemoryContext c
             break;
 
           case FUNC_PARM:
-            reference->SetIntValue(ref_mem[dclr_value.id + 1]);
-            reference->SetIntValue2(ref_mem[dclr_value.id + 2]);
+            reference->SetIntValue((long)ref_mem[dclr_value.id + 1]);
+            reference->SetIntValue2((long)ref_mem[dclr_value.id + 2]);
             break;
 
           case FLOAT_PARM: {
@@ -940,7 +940,7 @@ void Runtime::Debugger::EvaluateInstanceReference(Reference* reference, int inde
 
 void Runtime::Debugger::EvaluateClassReference(Reference* reference, StackClass* klass, int index) {
   size_t* cls_mem = klass->GetClassMemory();
-  reference->SetIntValue((long)cls_mem);
+  reference->SetIntValue((size_t)cls_mem);
   ref_mem  =cls_mem;
   ref_klass = klass;
   if(reference->GetReference()) {
@@ -952,8 +952,8 @@ void Runtime::Debugger::EvaluateClassReference(Reference* reference, StackClass*
 void Runtime::Debugger::EvaluateByteReference(Reference* reference, int index) {
   size_t* array = (size_t*)ref_mem[index];
   if(array) {
-    const int max = array[0];
-    const int dim = array[1];
+    const size_t max = array[0];
+    const size_t dim = array[1];
 
     // de-reference array value
     ExpressionList* indices = reference->GetIndices();
@@ -967,16 +967,16 @@ void Runtime::Debugger::EvaluateByteReference(Reference* reference, int index) {
           values.push_back(static_cast<IntegerLiteral*>(expressions[i])->GetValue());
         }
         else {
-          values.push_back(expressions[i]->GetIntValue());
+          values.push_back((long)expressions[i]->GetIntValue());
         }
       }
       // match the dimensions
-      if(expressions.size() == (size_t)dim) {
+      if(expressions.size() == dim) {
         // calculate indices
         array += 2;
-        int j = dim - 1;
-        long array_index = values[j--];
-        for(long i = 1; i < dim; i++) {
+        size_t j = dim - 1;
+        size_t array_index = values[j--];
+        for(size_t i = 1; i < dim; ++i) {
           array_index *= array[i];
           array_index += values[j--];
         }
@@ -997,8 +997,8 @@ void Runtime::Debugger::EvaluateByteReference(Reference* reference, int index) {
     }
     // set array address
     else {
-      reference->SetArrayDimension(dim);
-      reference->SetArraySize(max);
+      reference->SetArrayDimension((long)dim);
+      reference->SetArraySize((long)max);
       reference->SetIntValue(ref_mem[index]);
     }
   }
