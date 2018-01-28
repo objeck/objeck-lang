@@ -664,7 +664,7 @@ void APITools_MethodCall(size_t* op_stack, long *stack_pos, size_t* instance, in
     StackMethod* mthd = cls->GetMethod(mthd_id);
     if(mthd) {
       Runtime::StackInterpreter intpr;
-      intpr.Execute(op_stack, (long*)stack_pos, 0, mthd, instance, false);
+      intpr.Execute(op_stack, stack_pos, 0, mthd, instance, false);
     }
     else {
       cerr << L">>> DLL call: Unable to locate method; id=" << mthd_id << L" <<<" << endl;
@@ -689,7 +689,7 @@ void APITools_MethodCall(size_t* op_stack, long* stack_pos, size_t* instance,
     StackMethod* mthd = cls->GetMethod(mthd_id);
     if(mthd) {
       Runtime::StackInterpreter intpr;
-      intpr.Execute(op_stack, (long*)stack_pos, 0, mthd, instance, false);
+      intpr.Execute(op_stack, stack_pos, 0, mthd, instance, false);
     }
     else {
       wcerr << L">>> Unable to locate method; name=': " << mthd_id << L"' <<<" << endl;
@@ -714,7 +714,7 @@ void APITools_MethodCallId(size_t* op_stack, long *stack_pos, size_t* instance,
     StackMethod* mthd = cls->GetMethod(mthd_id);
     if(mthd) {
       Runtime::StackInterpreter intpr;
-      intpr.Execute(op_stack, (long*)stack_pos, 0, mthd, instance, false);
+      intpr.Execute(op_stack, stack_pos, 0, mthd, instance, false);
     }
     else {
       cerr << L">>> DLL call: Unable to locate method; id=: " << mthd_id << L" <<<" << endl;

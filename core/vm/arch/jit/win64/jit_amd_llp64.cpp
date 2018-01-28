@@ -168,8 +168,8 @@ void JitCompilerIA64::RegisterRoot() {
   */
 
   // call method
-  move_imm_reg((size_t)MemoryManager::AddJitMethodRoot, R15);
-  call_reg(R15);
+  move_imm_reg((size_t)MemoryManager::AddJitMethodRoot, R10);
+  call_reg(R10);
 
   /*
   // restore registers
@@ -3950,7 +3950,7 @@ void JitExecutor::Initialize(StackProgram* p) {
 }
 
 long JitExecutor::ExecuteMachineCode(long cls_id, long mthd_id, size_t* inst, unsigned char* code, 
-                                         const long code_size, size_t* op_stack, long *stack_pos,
+                                         const long code_size, size_t* op_stack, long* stack_pos,
                                          StackFrame** call_stack, long* call_stack_pos) {
 
   // create function

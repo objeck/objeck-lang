@@ -361,7 +361,7 @@ namespace Runtime {
    * Prototype for jit function
    ********************************/
   typedef long(*jit_fun_ptr)(long cls_id, long mthd_id, size_t* cls_mem, size_t* inst, size_t* op_stack,
-                             long *stack_pos, StackFrame** call_stack, long* call_stack_pos);
+                             long* stack_pos, StackFrame** call_stack, long* call_stack_pos);
 
   /********************************
    * JitCompilerIA64 class
@@ -1158,7 +1158,7 @@ namespace Runtime {
     static size_t PopInt(size_t* op_stack, long *stack_pos) {
       const size_t value = op_stack[--(*stack_pos)];
 #ifdef _DEBUG
-      wcout << L"\t[pop_i: value=" << (long*)value << L"(" << value << L")]" << L"; pos=" << (*stack_pos) << endl;
+      wcout << L"\t[pop_i: value=" << (size_t*)value << L"(" << value << L")]" << L"; pos=" << (*stack_pos) << endl;
 #endif
 
       return value;
@@ -1167,7 +1167,7 @@ namespace Runtime {
     static void PushInt(size_t* op_stack, long *stack_pos, size_t value) {
       op_stack[(*stack_pos)++] = value;
 #ifdef _DEBUG
-      wcout << L"\t[push_i: value=" << (long*)value << L"(" << value << L")]" << L"; pos=" << (*stack_pos) << endl;
+      wcout << L"\t[push_i: value=" << (size_t*)value << L"(" << value << L")]" << L"; pos=" << (*stack_pos) << endl;
 #endif
     }
 
@@ -1189,7 +1189,7 @@ namespace Runtime {
           wcout << L"jit oper: MTHD_CALL: cls=" << instr->GetOperand() << L", mthd=" << instr->GetOperand2() << endl;
 #endif
           StackInterpreter intpr;
-          intpr.Execute(op_stack, (long*)stack_pos, ip, program->GetClass(cls_id)->GetMethod(mthd_id), inst, true);
+          intpr.Execute(op_stack, stack_pos, ip, program->GetClass(cls_id)->GetMethod(mthd_id), inst, true);
         }
         break;
 
@@ -1245,11 +1245,11 @@ namespace Runtime {
             indices[dim++] = value;
           }
           size++;
-          long* mem = (long*)MemoryManager::AllocateArray(size + ((dim + 2) * sizeof(long)),
+          size_t* mem = (size_t*)MemoryManager::AllocateArray(size + ((dim + 2) * sizeof(long)),
                                                           CHAR_ARY_TYPE, op_stack, *stack_pos);
           mem[0] = size - 1;
           mem[1] = dim;
-          memcpy(mem + 2, indices, dim * sizeof(long));
+          memcpy(mem + 2, indices, dim * sizeof(size_t));
           PushInt(op_stack, stack_pos, (size_t)mem);
 
 #ifdef _DEBUG
@@ -1271,14 +1271,14 @@ namespace Runtime {
             size *= value;
             indices[dim++] = value;
           }
-          long* mem = (long*)MemoryManager::AllocateArray(size + dim + 2, INT_TYPE, op_stack, *stack_pos);
+          size_t* mem = (size_t*)MemoryManager::AllocateArray(size + dim + 2, INT_TYPE, op_stack, *stack_pos);
 #ifdef _DEBUG
           wcout << L"jit oper: NEW_INT_ARY: dim=" << dim << L"; size=" << size
             << L"; index=" << (*stack_pos) << L"; mem=" << mem << endl;
 #endif
           mem[0] = size;
           mem[1] = dim;
-          memcpy(mem + 2, indices, dim * sizeof(long));
+          memcpy(mem + 2, indices, dim * sizeof(size_t));
           PushInt(op_stack, stack_pos, (size_t)mem);
         }
         break;
@@ -1296,14 +1296,14 @@ namespace Runtime {
             indices[dim++] = value;
           }
           size *= 2;
-          long* mem = (long*)MemoryManager::AllocateArray(size + dim + 2, INT_TYPE, op_stack, *stack_pos);
+          size_t* mem = (size_t*)MemoryManager::AllocateArray(size + dim + 2, INT_TYPE, op_stack, *stack_pos);
 #ifdef _DEBUG
           wcout << L"jit oper: NEW_FLOAT_ARY: dim=" << dim << L"; size=" << size
             << L"; index=" << (*stack_pos) << L"; mem=" << mem << endl;
 #endif
           mem[0] = size / 2;
           mem[1] = dim;
-          memcpy(mem + 2, indices, dim * sizeof(long));
+          memcpy(mem + 2, indices, dim * sizeof(size_t));
           PushInt(op_stack, stack_pos, (size_t)mem);
         }
         break;
@@ -1313,7 +1313,7 @@ namespace Runtime {
 #ifdef _DEBUG
           wcout << L"jit oper: NEW_OBJ_INST: id=" << instr->GetOperand() << endl;
 #endif
-          long* mem = (long*)MemoryManager::AllocateObject(instr->GetOperand(),
+          size_t* mem = (size_t*)MemoryManager::AllocateObject(instr->GetOperand(),
                                                            op_stack, *stack_pos);
           PushInt(op_stack, stack_pos, (size_t)mem);
         }
@@ -1393,7 +1393,7 @@ namespace Runtime {
 
         case CRITICAL_START:
         {
-          long* instance = (long*)PopInt(op_stack, stack_pos);
+          size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
           if(!instance) {
             wcerr << L"Atempting to dereference a 'Nil' memory instance" << endl;
             wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
@@ -1406,7 +1406,7 @@ namespace Runtime {
 
         case CRITICAL_END:
         {
-          long* instance = (long*)PopInt(op_stack, stack_pos);
+          size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
           if(!instance) {
             wcerr << L"Atempting to dereference a 'Nil' memory instance" << endl;
             wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
@@ -1970,7 +1970,7 @@ namespace Runtime {
     double* floats;
 
     long ExecuteMachineCode(long cls_id, long mthd_id, size_t* inst, unsigned char* code, const long code_size,
-                            size_t* op_stack, long *stack_pos, StackFrame** call_stack, long* call_stack_pos);
+                            size_t* op_stack, long* stack_pos, StackFrame** call_stack, long* call_stack_pos);
 
   public:
     static void Initialize(StackProgram* p);

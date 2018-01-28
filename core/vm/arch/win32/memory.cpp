@@ -231,7 +231,7 @@ void MemoryManager::AddJitMethodRoot(long cls_id, long mthd_id,
 #endif
 
   // zero out memory
-  // memset(mem, 0, offset);
+  memset(mem, 0, offset);
 
   ClassMethodId* mthd_info = new ClassMethodId;
   mthd_info->self = self;
