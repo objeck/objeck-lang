@@ -131,10 +131,10 @@ void JitCompilerIA64::RegisterRoot() {
   // caculate root address
   // note: the offset requried to 
   // get to the first local variale
-  const long offset = org_local_space /* - RED_ZONE - TMP_REG_5 */;
+  const long offset = org_local_space - RED_ZONE;
   RegisterHolder* holder = GetRegister();
   move_reg_reg(RBP, holder->GetRegister());
-  sub_imm_reg(/*TMP_REG_5 +*/offset, holder->GetRegister());
+  add_imm_reg(RED_ZONE + offset, holder->GetRegister());
   
   /*
   // save registers

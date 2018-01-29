@@ -229,7 +229,7 @@ void MemoryManager::AddJitMethodRoot(long cls_id, long mthd_id,
   wcout << L"adding JIT root: class=" << cls_id << L", method=" << mthd_id << L", self=" << self
     << L"(" << (size_t)self << L"), mem=" << mem << L", offset=" << offset << endl;
 #endif
-
+  
   // zero out memory
   memset(mem, 0, offset);
 

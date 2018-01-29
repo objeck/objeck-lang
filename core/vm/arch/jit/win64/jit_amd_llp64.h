@@ -1911,7 +1911,7 @@ namespace Runtime {
 //        move_reg_mem(R9, STACK_POS, RBP);
 
         // register root
-//        RegisterRoot();
+        RegisterRoot();
 
         // translate parameters
         ProcessParameters(method->GetParamCount());
