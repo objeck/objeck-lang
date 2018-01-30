@@ -131,10 +131,10 @@ void JitCompilerIA64::RegisterRoot() {
   // caculate root address
   // note: the offset requried to 
   // get to the first local variale
-  const long offset = org_local_space - RED_ZONE;
+  const long offset = org_local_space - TMP_REG_5 + 16;
   RegisterHolder* holder = GetRegister();
   move_reg_reg(RBP, holder->GetRegister());
-  add_imm_reg(RED_ZONE + offset, holder->GetRegister());
+  add_imm_reg(offset + TMP_REG_5, holder->GetRegister());
   
   /*
   // save registers
@@ -189,11 +189,16 @@ void JitCompilerIA64::UnregisterRoot() {
   move_reg_reg(RBP, holder->GetRegister());
   // note: the offset requried to 
   // get to the memory base
-  const long offset = org_local_space + RED_ZONE;
-  sub_imm_reg(offset, holder->GetRegister());
-  // push call value
-  move_reg_reg(holder->GetRegister(), RDI);
+  const long offset = org_local_space - TMP_REG_5 + 16;
+  add_imm_reg(offset + TMP_REG_5, holder->GetRegister());
   
+  // push call value
+  move_reg_reg(holder->GetRegister(), RCX);
+  push_imm(0);
+  push_imm(0);
+  push_imm(0);
+  push_imm(0);
+
   /*
     push_reg(R15);
     push_reg(R14);
@@ -510,7 +515,7 @@ void JitCompilerIA64::ProcessInstructions() {
 #endif
       ProcessReturn();
       // unregister root
-// UnregisterRoot();
+      UnregisterRoot();
       // teardown
       Epilog(0);
       break;
@@ -3755,8 +3760,7 @@ void JitCompilerIA64::cvt_imm_reg(RegInstr* instr, Register reg) {
 void JitCompilerIA64::cvt_mem_reg(long offset, Register src, Register dest) {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [cvtsd2si " << offset << L"(%" 
-        << GetRegisterName(src) << L"), %" << GetRegisterName(dest) 
-        << L"]" << endl;
+        << GetRegisterName(src) << L"), %" << GetRegisterName(dest) << L"]" << endl;
 #endif
   // encode
   AddMachineCode(0xf2);
@@ -3796,8 +3800,7 @@ void JitCompilerIA64::cvt_imm_xreg(RegInstr* instr, Register reg) {
 void JitCompilerIA64::cvt_mem_xreg(long offset, Register src, Register dest) {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [cvtsi2sd " << offset << L"(%" 
-        << GetRegisterName(src) << L"), %" << GetRegisterName(dest) 
-        << L"]" << endl;
+        << GetRegisterName(src) << L"), %" << GetRegisterName(dest) << L"]" << endl;
 #endif
   // encode
   AddMachineCode(0xf2);
@@ -3842,8 +3845,7 @@ void JitCompilerIA64::and_reg_reg(Register src, Register dest) {
 void JitCompilerIA64::and_mem_reg(long offset, Register src, Register dest) {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [andq " << offset << L"(%" 
-        << GetRegisterName(src) << L"), %" << GetRegisterName(dest) 
-        << L"]" << endl;
+        << GetRegisterName(src) << L"), %" << GetRegisterName(dest) << L"]" << endl;
 #endif
   // encode
   AddMachineCode(RXB(src, dest));
@@ -3886,8 +3888,7 @@ void JitCompilerIA64::or_reg_reg(Register src, Register dest) {
 void JitCompilerIA64::or_mem_reg(long offset, Register src, Register dest) {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [orq " << offset << L"(%" 
-        << GetRegisterName(src) << L"), %" << GetRegisterName(dest) 
-        << L"]" << endl;
+        << GetRegisterName(src) << L"), %" << GetRegisterName(dest) << L"]" << endl;
 #endif
   // encode
   AddMachineCode(RXB(src, dest));
@@ -3930,8 +3931,7 @@ void JitCompilerIA64::xor_reg_reg(Register src, Register dest) {
 void JitCompilerIA64::xor_mem_reg(long offset, Register src, Register dest) {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [xorq " << offset << L"(%" 
-        << GetRegisterName(src) << L"), %" << GetRegisterName(dest) 
-        << L"]" << endl;
+        << GetRegisterName(src) << L"), %" << GetRegisterName(dest) << L"]" << endl;
 #endif
   // encode
   AddMachineCode(RXB(src, dest));
@@ -3949,12 +3949,12 @@ void JitExecutor::Initialize(StackProgram* p) {
   program = p;
 }
 
-long JitExecutor::ExecuteMachineCode(long cls_id, long mthd_id, size_t* inst, unsigned char* code, 
-                                         const long code_size, size_t* op_stack, long* stack_pos,
-                                         StackFrame** call_stack, long* call_stack_pos) {
+long JitExecutor::ExecuteMachineCode(long cls_id, long mthd_id, size_t* inst, unsigned char* code,
+                                     const long code_size, size_t* op_stack, long* stack_pos,
+                                     StackFrame** call_stack, long* call_stack_pos) {
 
   // create function
   jit_fun_ptr jit_fun = (jit_fun_ptr)code;
-  return jit_fun(cls_id, mthd_id, method->GetClass()->GetClassMemory(), 
+  return jit_fun(cls_id, mthd_id, method->GetClass()->GetClassMemory(),
                  inst, op_stack, stack_pos, call_stack, call_stack_pos);
 }
