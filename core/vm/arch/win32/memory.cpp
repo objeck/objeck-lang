@@ -222,8 +222,7 @@ void MemoryManager::RemovePdaMethodRoot(StackFrameMonitor* monitor)
 #endif
 }
 
-void MemoryManager::AddJitMethodRoot(long cls_id, long mthd_id,
-                                     size_t* self, size_t* mem, long offset)
+void MemoryManager::AddJitMethodRoot(long cls_id, long mthd_id, size_t* self, size_t* mem, long offset)
 {
 #ifdef _DEBUG
   wcout << L"adding JIT root: class=" << cls_id << L", method=" << mthd_id << L", self=" << self
