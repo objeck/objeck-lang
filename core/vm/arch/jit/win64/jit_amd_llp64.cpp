@@ -131,19 +131,11 @@ void JitCompilerIA64::RegisterRoot() {
   // caculate root address
   // note: the offset requried to 
   // get to the first local variale
-  const long offset = org_local_space - TMP_REG_5 + 16;
+  const long offset = local_space - RED_ZONE;
   RegisterHolder* holder = GetRegister();
   move_reg_reg(RBP, holder->GetRegister());
-  add_imm_reg(offset + TMP_REG_5, holder->GetRegister());
+  add_imm_reg(RED_ZONE, holder->GetRegister());
   
-  /*
-  // save registers
-  push_reg(R15);
-  push_reg(R14);
-  push_reg(R13); 
-  push_reg(R8);
-  */
-
   // copy values 
   move_mem_reg(CLS_ID, RBP, RCX);
   move_mem_reg(MTHD_ID, RBP, RDX);
@@ -155,29 +147,10 @@ void JitCompilerIA64::RegisterRoot() {
   push_imm(0);
   push_imm(0);
   push_imm(0);
-  
-  // add_imm_reg(40, RSP);
-
-
-  /*
-  move_imm_reg(offset, RCX);
-  move_reg_reg(holder->GetRegister(), RDX);
-  move_mem_reg(INSTANCE_MEM, RBP, R8);
-  move_mem_reg(MTHD_ID, RBP, R9);
-  push_mem(CLS_ID, RBP);
-  */
 
   // call method
   move_imm_reg((size_t)MemoryManager::AddJitMethodRoot, R10);
   call_reg(R10);
-
-  /*
-  // restore registers
-  pop_reg(R8);
-  pop_reg(R13);
-  pop_reg(R14);
-  pop_reg(R15);
-  */
 
   // clean up
   ReleaseRegister(holder);
@@ -187,10 +160,7 @@ void JitCompilerIA64::UnregisterRoot() {
   // caculate root address
   RegisterHolder* holder = GetRegister();
   move_reg_reg(RBP, holder->GetRegister());
-  // note: the offset requried to 
-  // get to the memory base
-  const long offset = org_local_space - TMP_REG_5 + 16;
-  add_imm_reg(offset + TMP_REG_5, holder->GetRegister());
+  add_imm_reg(RED_ZONE, holder->GetRegister());
   
   // push call value
   move_reg_reg(holder->GetRegister(), RCX);
@@ -198,22 +168,10 @@ void JitCompilerIA64::UnregisterRoot() {
   push_imm(0);
   push_imm(0);
   push_imm(0);
-
-  /*
-    push_reg(R15);
-    push_reg(R14);
-    push_reg(R13);
-  */
   
   // call method
   move_imm_reg((size_t)MemoryManager::RemoveJitMethodRoot, R15);
   call_reg(R15);
-    
-  /*
-    pop_reg(R13);
-    pop_reg(R14);
-    pop_reg(R15);
-  */
   
   // clean up
   ReleaseRegister(holder);
