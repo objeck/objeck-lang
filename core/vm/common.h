@@ -1280,6 +1280,8 @@ struct StackFrame {
   size_t* mem;
   long ip;
   bool jit_called;
+  size_t* jit_mem;
+  long jit_offset;
 };
 
 #ifdef _SCRIPTER

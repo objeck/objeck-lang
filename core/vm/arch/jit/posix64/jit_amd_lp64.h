@@ -49,6 +49,8 @@ namespace Runtime {
 #define INSTANCE_MEM -32
 #define OP_STACK -40
 #define STACK_POS -48
+#define JIT_MEM 16
+#define JIT_OFFSET 24
   // float temps
 #define TMP_XMM_0 -64
 #define TMP_XMM_1 -72
@@ -347,8 +349,8 @@ namespace Runtime {
   /********************************
    * Prototype for jit function
    ********************************/
-  typedef long (*jit_fun_ptr)(long cls_id, long mthd_id, size_t* cls_mem, size_t* inst, size_t* op_stack, 
-			      long *stack_pos, StackFrame** call_stack, long* call_stack_pos);
+  typedef long (*jit_fun_ptr)(long cls_id, long mthd_id, size_t* cls_mem, size_t* inst,
+			      size_t* op_stack, long *stack_pos, size_t** jit_mem, long* offset);
   
   /********************************
    * JitCompilerIA64 class
@@ -1930,8 +1932,8 @@ namespace Runtime {
     long code_index; 
     double* floats;
     
-    long ExecuteMachineCode(long cls_id, long mthd_id, size_t* inst, unsigned char* code, const long code_size, 
-			    size_t* op_stack, long *stack_pos, StackFrame** call_stack, long* call_stack_pos);
+    long ExecuteMachineCode(long cls_id, long mthd_id, size_t* inst, unsigned char* code,
+			    const long code_size, size_t* op_stack, long *stack_pos, StackFrame* frame);
     
   public:
     static void Initialize(StackProgram* p);
@@ -1943,8 +1945,7 @@ namespace Runtime {
     }    
     
     // Executes machine code
-    long Execute(StackMethod* cm, size_t* inst, size_t* op_stack, long* stack_pos, 
-		 StackFrame** call_stack, long* call_stack_pos) {
+    long Execute(StackMethod* cm, size_t* inst, size_t* op_stack, long* stack_pos, StackFrame* frame) {
       method = cm;
       long cls_id = method->GetClass()->GetId();
       long mthd_id = method->GetId();
@@ -1968,8 +1969,7 @@ namespace Runtime {
 #endif
       
       // execute
-      return ExecuteMachineCode(cls_id, mthd_id, inst, code, code_index, 
-				op_stack, stack_pos, call_stack, call_stack_pos);
+      return ExecuteMachineCode(cls_id, mthd_id, inst, code, code_index, op_stack, stack_pos, frame);
     }
   };
 }

@@ -1974,8 +1974,9 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, size_t* instanc
   ProcessInterpretedMethodCall(called, instance, instrs, ip);
 #else
   if(called->GetNativeCode()) {
+    (*frame) = GetStackFrame(called, instance);
     JitExecutor jit_executor;
-    long status = jit_executor.Execute(called, (size_t*)instance, op_stack, stack_pos, call_stack, call_stack_pos);
+    long status = jit_executor.Execute(called, (size_t*)instance, op_stack, stack_pos, *frame);
     if(status < 0) {
       switch(status) {
       case -1:
@@ -2015,9 +2016,11 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, size_t* instanc
 #endif
       return;
     }
+    
     // execute
+    (*frame) = GetStackFrame(called, instance);
     JitExecutor jit_executor;
-    long status = jit_executor.Execute(called, (size_t*)instance, op_stack, stack_pos, call_stack, call_stack_pos);
+    long status = jit_executor.Execute(called, instance, op_stack, stack_pos, *frame);
     if(status < 0) {
       switch(status) {
       case -1:

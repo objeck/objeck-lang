@@ -135,15 +135,16 @@ void JitCompilerIA64::RegisterRoot() {
   RegisterHolder* holder = GetRegister();
   move_reg_reg(RBP, holder->GetRegister());
   sub_imm_reg(-TMP_REG_5 + offset, holder->GetRegister());
+
+  RegisterHolder* mem_holder = GetRegister();
+  move_mem_reg(JIT_MEM, RBP, mem_holder->GetRegister());
+  move_reg_mem(holder->GetRegister(), 0, mem_holder->GetRegister());
+
+  move_mem_reg(JIT_OFFSET, RBP, mem_holder->GetRegister());
+  move_imm_mem(offset, 0, mem_holder->GetRegister());
+  
   
   /*
-  // save registers
-  push_reg(R15);
-  push_reg(R14);
-  push_reg(R13); 
-  push_reg(R8);
-  */
-
   // copy values 
   move_imm_reg(offset, R8);
   move_reg_reg(holder->GetRegister(), RCX);
@@ -154,20 +155,15 @@ void JitCompilerIA64::RegisterRoot() {
   // call method
   move_imm_reg((long)MemoryManager::AddJitMethodRoot, R15);
   call_reg(R15);
-
-  /*
-  // restore registers
-  pop_reg(R8);
-  pop_reg(R13);
-  pop_reg(R14);
-  pop_reg(R15);
   */
 
   // clean up
   ReleaseRegister(holder);
+  ReleaseRegister(mem_holder);
 }
 
 void JitCompilerIA64::UnregisterRoot() {
+  /*
   // caculate root address
   RegisterHolder* holder = GetRegister();
   move_reg_reg(RBP, holder->GetRegister());
@@ -178,24 +174,13 @@ void JitCompilerIA64::UnregisterRoot() {
   // push call value
   move_reg_reg(holder->GetRegister(), RDI);
   
-  /*
-    push_reg(R15);
-    push_reg(R14);
-    push_reg(R13);
-  */
-  
   // call method
   move_imm_reg((long)MemoryManager::RemoveJitMethodRoot, R15);
   call_reg(R15);
-    
-  /*
-    pop_reg(R13);
-    pop_reg(R14);
-    pop_reg(R15);
-  */
   
   // clean up
   ReleaseRegister(holder);
+  */
 }
 
 void JitCompilerIA64::ProcessParameters(long params) {
@@ -3917,12 +3902,13 @@ void JitExecutor::Initialize(StackProgram* p) {
   program = p;
 }
 
-long JitExecutor::ExecuteMachineCode(long cls_id, long mthd_id, size_t* inst, unsigned char* code, 
-                                         const long code_size, size_t* op_stack, long *stack_pos,
-                                         StackFrame** call_stack, long* call_stack_pos) {
-  
+long JitExecutor::ExecuteMachineCode(long cls_id, long mthd_id, size_t* inst, unsigned char* code,
+				     const long code_size, size_t* op_stack, long *stack_pos, StackFrame* frame)
+{
   // create function
   jit_fun_ptr jit_fun = (jit_fun_ptr)code;
-  return jit_fun(cls_id, mthd_id, method->GetClass()->GetClassMemory(), 
-                 inst, op_stack, stack_pos, call_stack, call_stack_pos);
+  return jit_fun(cls_id, mthd_id, method->GetClass()->GetClassMemory(), inst,
+		 op_stack, stack_pos, &(frame->jit_mem), &(frame->jit_offset));
+  wcout << frame->jit_mem << endl;
+  wcout << frame->jit_offset << endl;
 }

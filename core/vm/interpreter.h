@@ -113,6 +113,8 @@ namespace Runtime {
       frame->mem[0] = (size_t)instance;
       frame->ip = -1;
       frame->jit_called = false;
+      frame->jit_mem = NULL;
+      frame->jit_offset = 0;
 #ifdef _DEBUG
       wcout << L"fetching frame=" << frame << endl;
 #endif
