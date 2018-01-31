@@ -57,7 +57,7 @@ namespace Runtime {
 #define TMP_REG_3 152
 #define TMP_REG_4 160
 #define TMP_REG_5 168
-#define RED_ZONE 168
+#define RED_ZONE 176
 
 #define MAX_DBLS 64
 #define BUFFER_SIZE 512
@@ -377,7 +377,7 @@ namespace Runtime {
     vector<RegisterHolder*> aval_xregs;
     list<RegisterHolder*> used_xregs;
     unordered_map<int, StackInstr*> jump_table; // jump addresses are 64-bits
-    long org_local_space, local_space;
+    long local_space;
     StackMethod* method;
     long instr_count;
     unsigned char* code;
@@ -1717,7 +1717,7 @@ namespace Runtime {
         }
       }
 
-      long index = RED_ZONE;
+      long index = RED_ZONE - sizeof(size_t);
       long last_id = -1;
       multimap<long, StackInstr*>::iterator value;
       for(value = values.begin(); value != values.end(); ++value) {
@@ -1764,10 +1764,10 @@ namespace Runtime {
         }
 #endif
       }
-      org_local_space = local_space = index; // + RED_ZONE / 8; // -(index + TMP_REG_5);
+      local_space = index; // + RED_ZONE / 8; // -(index + TMP_REG_5);
 
 #ifdef _DEBUG
-      wcout << L"Local space required: " << (local_space + 16) << L" byte(s)" << endl;
+      wcout << L"Local space required: " << local_space << L" byte(s)" << endl;
 #endif
     }
 
