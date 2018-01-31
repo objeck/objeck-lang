@@ -141,12 +141,11 @@ void JitCompilerIA64::RegisterRoot() {
   move_mem_reg(MTHD_ID, RBP, RDX);
   move_mem_reg(INSTANCE_MEM, RBP, R8);
   move_reg_reg(holder->GetRegister(), R9);
-
   push_imm(offset);
-  push_imm(0);
-  push_imm(0);
-  push_imm(0);
-  push_imm(0);
+
+  // 32-byte shadow space
+  push_imm(0); push_imm(0);
+  push_imm(0); push_imm(0);
 
   // call method
   move_imm_reg((size_t)MemoryManager::AddJitMethodRoot, R10);
@@ -164,14 +163,14 @@ void JitCompilerIA64::UnregisterRoot() {
   
   // push call value
   move_reg_reg(holder->GetRegister(), RCX);
-  push_imm(0);
-  push_imm(0);
-  push_imm(0);
-  push_imm(0);
+
+  // 32-byte shadow space
+  push_imm(0); push_imm(0);
+  push_imm(0); push_imm(0);
   
   // call method
-  move_imm_reg((size_t)MemoryManager::RemoveJitMethodRoot, R15);
-  call_reg(R15);
+  move_imm_reg((size_t)MemoryManager::RemoveJitMethodRoot, R10);
+  call_reg(R10);
   
   // clean up
   ReleaseRegister(holder);
