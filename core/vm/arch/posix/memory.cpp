@@ -219,12 +219,10 @@ void MemoryManager::RemovePdaMethodRoot(StackFrameMonitor* monitor)
 void MemoryManager::AddJitMethodRoot(long cls_id, long mthd_id,size_t* self, size_t* mem, long offset)
 {
 #ifdef _DEBUG
-/*
   wcout << L"adding JIT root: class=" << cls_id << L", method=" << mthd_id << L", self=" << self
-        << L"(" << (long)self << L"), mem=" << mem << L", offset=" << offset << endl;
-*/
+        << L"(" << self << L"), mem=" << mem << L", offset=" << offset << endl;
 #endif
-
+  
   // zero out memory
   memset(mem, 0, offset);
 
@@ -258,10 +256,8 @@ void MemoryManager::RemoveJitMethodRoot(size_t* mem)
   id = found->second;
   
 #ifdef _DEBUG  
-/*
   wcout << L"removing JIT method: mem=" << id->mem << L", self=" 
-        << id->self << L"(" << (long)id->self << L")" << endl;
-*/
+        << id->self << L"(" << (size_t)id->self << L")" << endl;
 #endif
   jit_roots.erase(found);
   
@@ -605,11 +601,14 @@ void* MemoryManager::CollectMemory(void* arg)
     exit(-1);
   }
   
+  /*
   pthread_t jit_thread;
   if(pthread_create(&jit_thread, &attrs, CheckJitRoots, NULL)) {
     cerr << L"Unable to create garbage collection thread!" << endl;
     exit(-1);
   }
+  */
+  
   pthread_attr_destroy(&attrs);
   
   // join all of the mark threads
@@ -630,10 +629,13 @@ void* MemoryManager::CollectMemory(void* arg)
     exit(-1);
   }
 
+  /*
   if(pthread_join(jit_thread, &status)) {
     cerr << L"Unable to join garbage collection threads!" << endl;
     exit(-1);
   }
+  */
+
 #else
   CheckStatic(NULL);
   CheckStack(info);
@@ -1056,8 +1058,15 @@ void* MemoryManager::CheckPdaRoots(void* arg)
     StackFrame** frame = *iter;
     if(*frame) {
       StackMethod* mthd = (*frame)->method;
-      size_t* mem = (*frame)->mem;
-    
+      
+      size_t* mem;
+      if((*frame)->jit_mem) {
+	mem = (*frame)->jit_mem;
+      }
+      else {
+	mem = (*frame)->mem;
+      }
+      
 #ifdef _DEBUG
       wcout << L"\t===== PDA method: name=" << mthd->GetName() << L", addr="
 	    << mthd << L", num=" << mthd->GetNumberDeclarations() << L" =====" << endl;

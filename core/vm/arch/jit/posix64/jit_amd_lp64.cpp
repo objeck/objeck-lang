@@ -139,10 +139,14 @@ void JitCompilerIA64::RegisterRoot() {
   RegisterHolder* mem_holder = GetRegister();
   move_mem_reg(JIT_MEM, RBP, mem_holder->GetRegister());
   move_reg_mem(holder->GetRegister(), 0, mem_holder->GetRegister());
-
+  
+  move_imm_reg(offset / sizeof(size_t), RCX);
+  move_imm_mem(0, 0, holder->GetRegister());
+  add_imm_reg(8, holder->GetRegister());
+  loop(-20);
+  
   move_mem_reg(JIT_OFFSET, RBP, mem_holder->GetRegister());
   move_imm_mem(offset, 0, mem_holder->GetRegister());
-  
   
   /*
   // copy values 
@@ -160,27 +164,6 @@ void JitCompilerIA64::RegisterRoot() {
   // clean up
   ReleaseRegister(holder);
   ReleaseRegister(mem_holder);
-}
-
-void JitCompilerIA64::UnregisterRoot() {
-  /*
-  // caculate root address
-  RegisterHolder* holder = GetRegister();
-  move_reg_reg(RBP, holder->GetRegister());
-  // note: the offset requried to 
-  // get to the memory base
-  const long offset = org_local_space + RED_ZONE;
-  sub_imm_reg(offset, holder->GetRegister());
-  // push call value
-  move_reg_reg(holder->GetRegister(), RDI);
-  
-  // call method
-  move_imm_reg((long)MemoryManager::RemoveJitMethodRoot, R15);
-  call_reg(R15);
-  
-  // clean up
-  ReleaseRegister(holder);
-  */
 }
 
 void JitCompilerIA64::ProcessParameters(long params) {
@@ -478,8 +461,6 @@ void JitCompilerIA64::ProcessInstructions() {
       wcout << L"RTRN: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
       ProcessReturn();
-      // unregister root
-      UnregisterRoot();
       // teardown
       Epilog(0);
       break;
@@ -2505,7 +2486,14 @@ bool JitCompilerIA64::cond_jmp(InstructionType type) {
   return false;
 }
 
-void JitCompilerIA64::math_imm_reg(long imm, Register reg, InstructionType type) {
+void JitCompilerIA64::loop(long offset)
+{
+  AddMachineCode(0xe2);
+  AddMachineCode(offset);
+}
+
+void JitCompilerIA64::math_imm_reg(long imm, Register reg, InstructionType type)
+{
   switch(type) {
   case AND_INT:
     and_imm_reg(imm, reg);
@@ -3909,6 +3897,4 @@ long JitExecutor::ExecuteMachineCode(long cls_id, long mthd_id, size_t* inst, un
   jit_fun_ptr jit_fun = (jit_fun_ptr)code;
   return jit_fun(cls_id, mthd_id, method->GetClass()->GetClassMemory(), inst,
 		 op_stack, stack_pos, &(frame->jit_mem), &(frame->jit_offset));
-  wcout << frame->jit_mem << endl;
-  wcout << frame->jit_offset << endl;
 }

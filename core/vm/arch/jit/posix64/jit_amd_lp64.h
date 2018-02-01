@@ -385,7 +385,6 @@ namespace Runtime {
     // stack conversion operations
     void ProcessParameters(long count);
     void RegisterRoot();
-    void UnregisterRoot();
     void ProcessInstructions();
     void ProcessLiteral(StackInstr* instruction) ;
     void ProcessVariable(StackInstr* instruction);
@@ -396,8 +395,7 @@ namespace Runtime {
     void ProcessIntCalculation(StackInstr* instruction);
     void ProcessFloatCalculation(StackInstr* instruction);
     void ProcessReturn(long params = -1);
-    void ProcessStackCallback(long instr_id, StackInstr* instr, 
-			      long &instr_index, long params);
+    void ProcessStackCallback(long instr_id, StackInstr* instr, long &instr_index, long params);
     void ProcessFunctionCallParameter();
     void ProcessIntCallParameter();
     void ProcessFloatCallParameter(); 
@@ -1142,6 +1140,7 @@ namespace Runtime {
 
     // generates a conditional jump
     bool cond_jmp(InstructionType type);
+    void loop(long offset);
     
     static size_t PopInt(size_t* op_stack, long *stack_pos) {
       const size_t value = op_stack[--(*stack_pos)];
