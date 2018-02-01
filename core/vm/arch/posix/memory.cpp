@@ -33,7 +33,6 @@
 
 bool MemoryManager::initialized;
 StackProgram* MemoryManager::prgm;
-unordered_map<size_t*, ClassMethodId*> MemoryManager::jit_roots;
 unordered_map<StackFrameMonitor*, StackFrameMonitor*> MemoryManager::pda_monitors;
 set<StackFrame**> MemoryManager::pda_frames;
 stack<char*> MemoryManager::cache_pool_16;
@@ -47,7 +46,6 @@ long MemoryManager::mem_max_size;
 long MemoryManager::uncollected_count;
 long MemoryManager::collected_count;
 #ifndef _GC_SERIAL
-pthread_mutex_t MemoryManager::jit_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t MemoryManager::pda_monitor_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t MemoryManager::pda_frame_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t MemoryManager::allocated_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -214,59 +212,6 @@ void MemoryManager::RemovePdaMethodRoot(StackFrameMonitor* monitor)
 #ifndef _GC_SERIAL
   pthread_mutex_unlock(&pda_monitor_mutex);
 #endif
-}
-
-void MemoryManager::AddJitMethodRoot(long cls_id, long mthd_id,size_t* self, size_t* mem, long offset)
-{
-#ifdef _DEBUG
-  wcout << L"adding JIT root: class=" << cls_id << L", method=" << mthd_id << L", self=" << self
-        << L"(" << self << L"), mem=" << mem << L", offset=" << offset << endl;
-#endif
-  
-  // zero out memory
-  memset(mem, 0, offset);
-
-  ClassMethodId* mthd_info = new ClassMethodId;
-  mthd_info->self = self;
-  mthd_info->mem = mem;
-  mthd_info->cls_id = cls_id;
-  mthd_info->mthd_id = mthd_id;
-
-#ifndef _GC_SERIAL
-  pthread_mutex_lock(&jit_mutex);
-#endif
-  jit_roots.insert(pair<size_t*, ClassMethodId*>(mem, mthd_info));
-#ifndef _GC_SERIAL
-  pthread_mutex_unlock(&jit_mutex);
-#endif
-}
-
-void MemoryManager::RemoveJitMethodRoot(size_t* mem)
-{
-  ClassMethodId* id;
-#ifndef _GC_SERIAL
-  pthread_mutex_lock(&jit_mutex);
-#endif
-  
-  unordered_map<size_t*, ClassMethodId*>::iterator found = jit_roots.find(mem);
-  if(found == jit_roots.end()) {
-    cerr << L"Unable to find JIT root!" << endl;
-    exit(-1);
-  }
-  id = found->second;
-  
-#ifdef _DEBUG  
-  wcout << L"removing JIT method: mem=" << id->mem << L", self=" 
-        << id->self << L"(" << (size_t)id->self << L")" << endl;
-#endif
-  jit_roots.erase(found);
-  
-#ifndef _GC_SERIAL
-  pthread_mutex_unlock(&jit_mutex);
-#endif
-  
-  delete id;;
-  id = NULL;
 }
 
 size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, 
@@ -594,20 +539,12 @@ void* MemoryManager::CollectMemory(void* arg)
     cerr << L"Unable to create garbage collection thread!" << endl;
     exit(-1);
   }
-  
+
   pthread_t pda_thread;
   if(pthread_create(&pda_thread, &attrs, CheckPdaRoots, NULL)) {
     cerr << L"Unable to create garbage collection thread!" << endl;
     exit(-1);
   }
-  
-  /*
-  pthread_t jit_thread;
-  if(pthread_create(&jit_thread, &attrs, CheckJitRoots, NULL)) {
-    cerr << L"Unable to create garbage collection thread!" << endl;
-    exit(-1);
-  }
-  */
   
   pthread_attr_destroy(&attrs);
   
@@ -628,19 +565,11 @@ void* MemoryManager::CollectMemory(void* arg)
     cerr << L"Unable to join garbage collection threads!" << endl;
     exit(-1);
   }
-
-  /*
-  if(pthread_join(jit_thread, &status)) {
-    cerr << L"Unable to join garbage collection threads!" << endl;
-    exit(-1);
-  }
-  */
-
+  
 #else
   CheckStatic(NULL);
   CheckStack(info);
   CheckPdaRoots(NULL);
-  CheckJitRoots(NULL);
 #endif
 
 #ifdef _TIMING
@@ -867,33 +796,33 @@ void* MemoryManager::CheckStack(void* arg)
 #endif
 }
 
-void* MemoryManager::CheckJitRoots(void* arg)
+void MemoryManager::CheckJitRoots(vector<StackFrame*> jit_frames)
 {
 #ifndef _GC_SERIAL
-  pthread_mutex_lock(&jit_mutex);
+  // pthread_mutex_lock(&jit_mutex);
 #endif  
   
 #ifdef _DEBUG
-  wcout << L"---- Marking JIT method root(s): num=" << jit_roots.size() 
+  wcout << L"---- Marking JIT method root(s): num=" << jit_frames.size() 
         << L"; thread=" << pthread_self() << L" ------" << endl;
   wcout << L"memory types: " << endl;
 #endif
   
-  unordered_map<size_t*, ClassMethodId*>::iterator jit_iter;
-  for(jit_iter = jit_roots.begin(); jit_iter != jit_roots.end(); ++jit_iter) {
-    ClassMethodId* id = jit_iter->second;
-    size_t* mem = id->mem;
-    StackMethod* mthd = prgm->GetClass(id->cls_id)->GetMethod(id->mthd_id);
+  for(size_t i = 0; i < jit_frames.size(); ++i) {
+    StackFrame* frame = jit_frames[i];    
+    size_t* mem = frame->jit_mem;
+    size_t* self = (size_t*)frame->mem[0];
+    StackMethod* mthd = frame->method;
     const long dclrs_num = mthd->GetNumberDeclarations();
 
 #ifdef _DEBUG
-    wcout << L"\t===== JIT method: name=" << mthd->GetName() << L", id=" << id->cls_id << L"," 
-          << id->mthd_id << L"; addr=" << mthd << L"; mem=" << mem << L"; self=" << id->self 
+    wcout << L"\t===== JIT method: name=" << mthd->GetName() << L", id=" << mthd->GetClass()->GetId()
+	  << L"," << mthd->GetId() << L"; addr=" << mthd << L"; mem=" << mem << L"; self=" << self 
           << L"; num=" << mthd->GetNumberDeclarations() << L" =====" << endl;
 #endif
-
+    
     // check self
-    CheckObject(id->self, true, 1);
+    CheckObject(self, true, 1);
 
     StackDclr** dclrs = mthd->GetDeclarations();
     for(int j = dclrs_num - 1; j > -1; j--) {            
@@ -936,8 +865,8 @@ void* MemoryManager::CheckJitRoots(void* arg)
       case BYTE_ARY_PARM:
 #ifdef _DEBUG
         wcout << L"\t" << j << L": BYTE_ARY_PARM: addr=" 
-              << (size_t*)(*mem) << L"(" << (long)(*mem) 
-              << L"), size=" << ((*mem) ? ((size_t*)(*mem))[SIZE_OR_CLS] : 0)
+              << (long*)(*mem) << L"(" << (long)(*mem) 
+              << L"), size=" << ((*mem) ? ((long*)(*mem))[SIZE_OR_CLS] : 0)
               << L" byte(s)" << endl;
 #endif
         // mark data
@@ -948,8 +877,8 @@ void* MemoryManager::CheckJitRoots(void* arg)
 
       case CHAR_ARY_PARM:
 #ifdef _DEBUG
-        wcout << L"\t" << j << L": CHAR_ARY_PARM: addr=" << (size_t*)(*mem) << L"(" << (long)(*mem) 
-              << L"), size=" << ((*mem) ? ((size_t*)(*mem))[SIZE_OR_CLS] : 0)
+        wcout << L"\t" << j << L": CHAR_ARY_PARM: addr=" << (long*)(*mem) << L"(" << (long)(*mem) 
+              << L"), size=" << ((*mem) ? ((long*)(*mem))[SIZE_OR_CLS] : 0)
               << L" byte(s)" << endl;
 #endif
         // mark data
@@ -960,9 +889,9 @@ void* MemoryManager::CheckJitRoots(void* arg)
 
       case INT_ARY_PARM:
 #ifdef _DEBUG
-        wcout << L"\t" << j << L": INT_ARY_PARM: addr=" << (size_t*)(*mem)
+        wcout << L"\t" << j << L": INT_ARY_PARM: addr=" << (long*)(*mem)
               << L"(" << (long)(*mem) << L"), size=" 
-              << ((*mem) ? ((size_t*)(*mem))[SIZE_OR_CLS] : 0) 
+              << ((*mem) ? ((long*)(*mem))[SIZE_OR_CLS] : 0) 
               << L" byte(s)" << endl;
 #endif
         // mark data
@@ -973,9 +902,9 @@ void* MemoryManager::CheckJitRoots(void* arg)
 
       case FLOAT_ARY_PARM:
 #ifdef _DEBUG
-        wcout << L"\t" << j << L": FLOAT_ARY_PARM: addr=" << (size_t*)(*mem)
+        wcout << L"\t" << j << L": FLOAT_ARY_PARM: addr=" << (long*)(*mem)
               << L"(" << (long)(*mem) << L"), size=" << L" byte(s)" 
-              << ((*mem) ? ((size_t*)(*mem))[SIZE_OR_CLS] : 0) << endl;
+              << ((*mem) ? ((long*)(*mem))[SIZE_OR_CLS] : 0) << endl;
 #endif
         // mark data
         MarkMemory((size_t*)(*mem));
@@ -1036,8 +965,8 @@ void* MemoryManager::CheckJitRoots(void* arg)
   }
   
 #ifndef _GC_SERIAL
-  pthread_mutex_unlock(&jit_mutex);  
-  pthread_exit(NULL);
+  // pthread_mutex_unlock(&jit_mutex);  
+  // pthread_exit(NULL);
 #endif
 }
 
@@ -1052,39 +981,50 @@ void* MemoryManager::CheckPdaRoots(void* arg)
         << L"; thread=" << pthread_self() << L" -----" << endl;
   wcout << L"memory types:" <<  endl;
 #endif
-  
+
+  // copy frames locally
+  vector<StackFrame*> p_frames;
+  vector<StackFrame*> j_frames;
+
   set<StackFrame**, StackFrame**>::iterator iter;
   for(iter = pda_frames.begin(); iter != pda_frames.end(); ++iter) {
     StackFrame** frame = *iter;
     if(*frame) {
-      StackMethod* mthd = (*frame)->method;
-      
-      size_t* mem;
       if((*frame)->jit_mem) {
-	mem = (*frame)->jit_mem;
+	j_frames.push_back(*frame);
       }
       else {
-	mem = (*frame)->mem;
+	p_frames.push_back(*frame);
       }
-      
+    }
+  }
+  
+  // check JIT roots
+  CheckJitRoots(j_frames);
+  
+  // check PDA roots
+  for(size_t i = 0; i < p_frames.size(); ++i) {
+    StackFrame* frame = p_frames[i];
+    StackMethod* mthd = frame->method;      
+    size_t* mem = frame->mem;
+    
 #ifdef _DEBUG
-      wcout << L"\t===== PDA method: name=" << mthd->GetName() << L", addr="
-	    << mthd << L", num=" << mthd->GetNumberDeclarations() << L" =====" << endl;
+    wcout << L"\t===== PDA method: name=" << mthd->GetName() << L", addr="
+	  << mthd << L", num=" << mthd->GetNumberDeclarations() << L" =====" << endl;
 #endif
     
-      // mark self
-      CheckObject((size_t*)(*mem), true, 1);
+    // mark self
+    CheckObject((size_t*)(*mem), true, 1);
     
-      if(mthd->HasAndOr()) {
-	mem += 2;
-      } 
-      else {
-	mem++;
-      }
-    
-      // mark rest of memory
-      CheckMemory(mem, mthd->GetDeclarations(), mthd->GetNumberDeclarations(), 0);
+    if(mthd->HasAndOr()) {
+      mem += 2;
+    } 
+    else {
+      mem++;
     }
+      
+    // mark rest of memory
+    CheckMemory(mem, mthd->GetDeclarations(), mthd->GetNumberDeclarations(), 0);
   }
 #ifndef _GC_SERIAL
   pthread_mutex_unlock(&pda_frame_mutex);
@@ -1100,7 +1040,7 @@ void* MemoryManager::CheckPdaRoots(void* arg)
   wcout << L"memory types:" <<  endl;
 #endif
   
-  // look at pda methods
+  // look at PDA and JIT methods
   unordered_map<StackFrameMonitor*, StackFrameMonitor*>::iterator pda_iter;
   for(pda_iter = pda_monitors.begin(); pda_iter != pda_monitors.end(); ++pda_iter) {
     // gather stack frames
@@ -1112,21 +1052,40 @@ void* MemoryManager::CheckPdaRoots(void* arg)
       StackFrame* cur_frame = *(monitor->cur_frame);
 
       // copy frames locally
-      vector<StackFrame*> frames;
-      frames.push_back(cur_frame);
-      while(--call_stack_pos > -1) {
-        frames.push_back(call_stack[call_stack_pos]);
+      vector<StackFrame*> p_frames;
+      vector<StackFrame*> j_frames;
+      
+      if(cur_frame->jit_mem) {
+	j_frames.push_back(cur_frame);
       }
-    
-      for(size_t i = 0; i < frames.size(); ++i) {    
-        StackMethod* mthd = frames[i]->method;
-        size_t* mem = frames[i]->mem;
+      else {
+	p_frames.push_back(cur_frame);
+      }
+      
+      while(--call_stack_pos > -1) {
+	StackFrame* frame = call_stack[call_stack_pos];
+	if(frame->jit_mem) {
+	  j_frames.push_back(frame);
+	}
+	else {
+	  p_frames.push_back(frame);
+	}
+      }
+      
+      // check JIT roots
+      CheckJitRoots(j_frames);
+
+      // check PDA roots
+      for(size_t i = 0; i < p_frames.size(); ++i) {
+	StackFrame* frame = p_frames[i];
+        StackMethod* mthd = frame->method;	
+	size_t* mem = frame->mem;
 
 #ifdef _DEBUG
         wcout << L"\t===== PDA method: name=" << mthd->GetName() << L", addr="
               << mthd << L", num=" << mthd->GetNumberDeclarations() << L" =====" << endl;
 #endif
-
+	
         // mark self
         CheckObject((size_t*)(*mem), true, 1);
 
