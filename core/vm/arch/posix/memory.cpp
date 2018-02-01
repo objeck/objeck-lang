@@ -981,11 +981,11 @@ void* MemoryManager::CheckPdaRoots(void* arg)
         << L"; thread=" << pthread_self() << L" -----" << endl;
   wcout << L"memory types:" <<  endl;
 #endif
-
-  // copy frames locally
+  
   vector<StackFrame*> p_frames;
   vector<StackFrame*> j_frames;
-
+  
+  // separate frames
   set<StackFrame**, StackFrame**>::iterator iter;
   for(iter = pda_frames.begin(); iter != pda_frames.end(); ++iter) {
     StackFrame** frame = *iter;
@@ -998,18 +998,17 @@ void* MemoryManager::CheckPdaRoots(void* arg)
       }
     }
   }
-  
-  // look at PDA and JIT methods
+
+  // separate monitor frames
   unordered_map<StackFrameMonitor*, StackFrameMonitor*>::iterator pda_iter;
   for(pda_iter = pda_monitors.begin(); pda_iter != pda_monitors.end(); ++pda_iter) {
-    // gather stack frames
     StackFrameMonitor* monitor = pda_iter->first;
     long call_stack_pos = *(monitor->call_stack_pos);
     
     if(call_stack_pos > 0) {
       StackFrame** call_stack = monitor->call_stack;
       StackFrame* cur_frame = *(monitor->cur_frame);
-
+      
       if(cur_frame->jit_mem) {
 	j_frames.push_back(cur_frame);
       }
@@ -1059,7 +1058,7 @@ void* MemoryManager::CheckPdaRoots(void* arg)
 #ifndef _GC_SERIAL
   pthread_mutex_unlock(&pda_frame_mutex);
 #endif  
-
+  
 
 
 
