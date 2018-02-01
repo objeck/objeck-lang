@@ -35,6 +35,7 @@ bool MemoryManager::initialized;
 StackProgram* MemoryManager::prgm;
 unordered_map<StackFrameMonitor*, StackFrameMonitor*> MemoryManager::pda_monitors;
 set<StackFrame**> MemoryManager::pda_frames;
+vector<StackFrame*> MemoryManager::jit_frames;
 stack<char*> MemoryManager::cache_pool_16;
 stack<char*> MemoryManager::cache_pool_32;
 stack<char*> MemoryManager::cache_pool_64;
@@ -48,6 +49,7 @@ long MemoryManager::collected_count;
 #ifndef _GC_SERIAL
 pthread_mutex_t MemoryManager::pda_monitor_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t MemoryManager::pda_frame_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t MemoryManager::jit_frame_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t MemoryManager::allocated_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t MemoryManager::marked_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t MemoryManager::marked_sweep_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -796,10 +798,10 @@ void* MemoryManager::CheckStack(void* arg)
 #endif
 }
 
-void MemoryManager::CheckJitRoots(vector<StackFrame*> jit_frames)
+void* MemoryManager::CheckJitRoots(void* arg)
 {
 #ifndef _GC_SERIAL
-  // pthread_mutex_lock(&jit_mutex);
+  pthread_mutex_lock(&jit_frame_mutex);
 #endif  
   
 #ifdef _DEBUG
@@ -963,15 +965,19 @@ void MemoryManager::CheckJitRoots(vector<StackFrame*> jit_frames)
       CheckObject((size_t*)mem[i], false, 1);
     }
   }
+
+  jit_frames.empty();
   
 #ifndef _GC_SERIAL
-  // pthread_mutex_unlock(&jit_mutex);  
-  // pthread_exit(NULL);
+  pthread_mutex_unlock(&jit_frame_mutex);  
+  pthread_exit(NULL);
 #endif
 }
 
 void* MemoryManager::CheckPdaRoots(void* arg)
 {
+  vector<StackFrame*> frames;
+  
 #ifndef _GC_SERIAL
   pthread_mutex_lock(&pda_frame_mutex);
 #endif
@@ -982,23 +988,39 @@ void* MemoryManager::CheckPdaRoots(void* arg)
   wcout << L"memory types:" <<  endl;
 #endif
   
-  vector<StackFrame*> p_frames;
-  vector<StackFrame*> j_frames;
-  
   // separate frames
   set<StackFrame**, StackFrame**>::iterator iter;
   for(iter = pda_frames.begin(); iter != pda_frames.end(); ++iter) {
     StackFrame** frame = *iter;
     if(*frame) {
       if((*frame)->jit_mem) {
-	j_frames.push_back(*frame);
+#ifndef _GC_SERIAL
+	pthread_mutex_lock(&jit_frame_mutex);
+#endif
+	jit_frames.push_back(*frame);
+#ifndef _GC_SERIAL
+	pthread_mutex_unlock(&jit_frame_mutex);
+#endif
       }
       else {
-	p_frames.push_back(*frame);
+	frames.push_back(*frame);
       }
     }
   }
+#ifndef _GC_SERIAL
+  pthread_mutex_unlock(&pda_frame_mutex);
+#endif  
+  
+#ifndef _GC_SERIAL
+  pthread_mutex_lock(&pda_monitor_mutex);
+#endif
 
+#ifdef _DEBUG
+  wcout << L"----- PDA monitor(s): num=" << pda_monitors.size() 
+        << L"; thread=" << pthread_self()<< L" -----" << endl;
+  wcout << L"memory types:" <<  endl;
+#endif
+  
   // separate monitor frames
   unordered_map<StackFrameMonitor*, StackFrameMonitor*>::iterator pda_iter;
   for(pda_iter = pda_monitors.begin(); pda_iter != pda_monitors.end(); ++pda_iter) {
@@ -1010,30 +1032,54 @@ void* MemoryManager::CheckPdaRoots(void* arg)
       StackFrame* cur_frame = *(monitor->cur_frame);
       
       if(cur_frame->jit_mem) {
-	j_frames.push_back(cur_frame);
+#ifndef _GC_SERIAL
+	pthread_mutex_lock(&jit_frame_mutex);
+#endif
+	jit_frames.push_back(cur_frame);
+#ifndef _GC_SERIAL
+	pthread_mutex_unlock(&jit_frame_mutex);
+#endif
       }
       else {
-	p_frames.push_back(cur_frame);
+	frames.push_back(cur_frame);
       }
       
       while(--call_stack_pos > -1) {
 	StackFrame* frame = call_stack[call_stack_pos];
 	if(frame->jit_mem) {
-	  j_frames.push_back(frame);
+#ifndef _GC_SERIAL
+	pthread_mutex_lock(&jit_frame_mutex);
+#endif	  
+	  jit_frames.push_back(frame);
+#ifndef _GC_SERIAL
+	  pthread_mutex_unlock(&jit_frame_mutex);
+#endif
 	}
 	else {
-	  p_frames.push_back(frame);
+	  frames.push_back(frame);
 	}
       }
     }
   }
+#ifndef _GC_SERIAL
+  pthread_mutex_unlock(&pda_monitor_mutex);
+  pthread_exit(NULL);
+#endif
   
-  // check JIT roots
-  CheckJitRoots(j_frames);
+  // check JIT roots in separate thread
+  pthread_attr_t attrs;
+  pthread_attr_init(&attrs);
+  pthread_attr_setdetachstate(&attrs, PTHREAD_CREATE_JOINABLE);
+  
+  pthread_t jit_thread;
+  if(pthread_create(&jit_thread, &attrs, CheckJitRoots, NULL)) {
+    cerr << L"Unable to create garbage collection thread!" << endl;
+    exit(-1);
+  }
   
   // check PDA roots
-  for(size_t i = 0; i < p_frames.size(); ++i) {
-    StackFrame* frame = p_frames[i];
+  for(size_t i = 0; i < frames.size(); ++i) {
+    StackFrame* frame = frames[i];
     StackMethod* mthd = frame->method;      
     size_t* mem = frame->mem;
     
@@ -1055,43 +1101,16 @@ void* MemoryManager::CheckPdaRoots(void* arg)
     // mark rest of memory
     CheckMemory(mem, mthd->GetDeclarations(), mthd->GetNumberDeclarations(), 0);
   }
-#ifndef _GC_SERIAL
-  pthread_mutex_unlock(&pda_frame_mutex);
-#endif  
   
-
-
-
-
-
+  void *status;
+  if(pthread_join(jit_thread, &status)) {
+    cerr << L"Unable to join garbage collection threads!" << endl;
+    exit(-1);
+  }
   
 #ifndef _GC_SERIAL
-  pthread_mutex_lock(&pda_monitor_mutex);
-#endif
-
-  
-#ifdef _DEBUG
-  wcout << L"----- PDA monitor(s): num=" << pda_monitors.size() 
-        << L"; thread=" << pthread_self()<< L" -----" << endl;
-  wcout << L"memory types:" <<  endl;
-#endif
-  
-  
-#ifndef _GC_SERIAL
-  pthread_mutex_unlock(&pda_monitor_mutex);
   pthread_exit(NULL);
-#endif
-
-
-
-
-
-
-
-
-
-
-  
+#endif  
 }
 
 void MemoryManager::CheckMemory(size_t* mem, StackDclr** dclrs, const long dcls_size, long depth)
