@@ -999,6 +999,36 @@ void* MemoryManager::CheckPdaRoots(void* arg)
     }
   }
   
+  // look at PDA and JIT methods
+  unordered_map<StackFrameMonitor*, StackFrameMonitor*>::iterator pda_iter;
+  for(pda_iter = pda_monitors.begin(); pda_iter != pda_monitors.end(); ++pda_iter) {
+    // gather stack frames
+    StackFrameMonitor* monitor = pda_iter->first;
+    long call_stack_pos = *(monitor->call_stack_pos);
+    
+    if(call_stack_pos > 0) {
+      StackFrame** call_stack = monitor->call_stack;
+      StackFrame* cur_frame = *(monitor->cur_frame);
+
+      if(cur_frame->jit_mem) {
+	j_frames.push_back(cur_frame);
+      }
+      else {
+	p_frames.push_back(cur_frame);
+      }
+      
+      while(--call_stack_pos > -1) {
+	StackFrame* frame = call_stack[call_stack_pos];
+	if(frame->jit_mem) {
+	  j_frames.push_back(frame);
+	}
+	else {
+	  p_frames.push_back(frame);
+	}
+      }
+    }
+  }
+  
   // check JIT roots
   CheckJitRoots(j_frames);
   
@@ -1029,82 +1059,40 @@ void* MemoryManager::CheckPdaRoots(void* arg)
 #ifndef _GC_SERIAL
   pthread_mutex_unlock(&pda_frame_mutex);
 #endif  
+
+
+
+
+
+
   
 #ifndef _GC_SERIAL
   pthread_mutex_lock(&pda_monitor_mutex);
 #endif
 
+  
 #ifdef _DEBUG
   wcout << L"----- PDA monitor(s): num=" << pda_monitors.size() 
         << L"; thread=" << pthread_self()<< L" -----" << endl;
   wcout << L"memory types:" <<  endl;
 #endif
   
-  // look at PDA and JIT methods
-  unordered_map<StackFrameMonitor*, StackFrameMonitor*>::iterator pda_iter;
-  for(pda_iter = pda_monitors.begin(); pda_iter != pda_monitors.end(); ++pda_iter) {
-    // gather stack frames
-    StackFrameMonitor* monitor = pda_iter->first;
-    long call_stack_pos = *(monitor->call_stack_pos);
-    
-    if(call_stack_pos > 0) {
-      StackFrame** call_stack = monitor->call_stack;
-      StackFrame* cur_frame = *(monitor->cur_frame);
-
-      // copy frames locally
-      vector<StackFrame*> p_frames;
-      vector<StackFrame*> j_frames;
-      
-      if(cur_frame->jit_mem) {
-	j_frames.push_back(cur_frame);
-      }
-      else {
-	p_frames.push_back(cur_frame);
-      }
-      
-      while(--call_stack_pos > -1) {
-	StackFrame* frame = call_stack[call_stack_pos];
-	if(frame->jit_mem) {
-	  j_frames.push_back(frame);
-	}
-	else {
-	  p_frames.push_back(frame);
-	}
-      }
-      
-      // check JIT roots
-      CheckJitRoots(j_frames);
-
-      // check PDA roots
-      for(size_t i = 0; i < p_frames.size(); ++i) {
-	StackFrame* frame = p_frames[i];
-        StackMethod* mthd = frame->method;	
-	size_t* mem = frame->mem;
-
-#ifdef _DEBUG
-        wcout << L"\t===== PDA method: name=" << mthd->GetName() << L", addr="
-              << mthd << L", num=" << mthd->GetNumberDeclarations() << L" =====" << endl;
-#endif
-	
-        // mark self
-        CheckObject((size_t*)(*mem), true, 1);
-
-        if(mthd->HasAndOr()) {
-          mem += 2;
-        } 
-        else {
-          mem++;
-        }
-    
-        // mark rest of memory
-        CheckMemory(mem, mthd->GetDeclarations(), mthd->GetNumberDeclarations(), 0);
-      }
-    }
-  }
+  
 #ifndef _GC_SERIAL
   pthread_mutex_unlock(&pda_monitor_mutex);
   pthread_exit(NULL);
 #endif
+
+
+
+
+
+
+
+
+
+
+  
 }
 
 void MemoryManager::CheckMemory(size_t* mem, StackDclr** dclrs, const long dcls_size, long depth)
