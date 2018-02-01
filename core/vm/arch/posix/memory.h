@@ -79,6 +79,7 @@ class MemoryManager {
   static StackProgram* prgm;
   static unordered_map<StackFrameMonitor*, StackFrameMonitor*> pda_monitors; // deleted elsewhere
   static set<StackFrame**> pda_frames;
+  static vector<StackFrame*> jit_frames;
   static vector<size_t*> allocated_memory;
   
   static stack<char*> cache_pool_16;
@@ -90,6 +91,7 @@ class MemoryManager {
 #ifndef _GC_SERIAL
   static pthread_mutex_t pda_monitor_mutex;
   static pthread_mutex_t pda_frame_mutex;
+  static pthread_mutex_t jit_frame_mutex;
   static pthread_mutex_t allocated_mutex;
   static pthread_mutex_t marked_mutex;
   static pthread_mutex_t marked_sweep_mutex;
@@ -109,7 +111,7 @@ class MemoryManager {
   static void* CheckStatic(void* arg);
   static void* CheckStack(void* arg);
   static void* CheckPdaRoots(void* arg);
-  static void CheckJitRoots(vector<StackFrame*> jit_frames);
+  static void* CheckJitRoots(void* arg);
   
   // recover memory
   static void CollectMemory(size_t* op_stack, long stack_pos);
