@@ -1160,9 +1160,9 @@ namespace Runtime {
 #endif
     }
     
-    static void StackCallback(const long instr_id, StackInstr* instr, const long cls_id, 
-			      const long mthd_id, size_t* inst, size_t* op_stack, 
-			      long *stack_pos, const long ip) {
+    static void StackCallback(const long instr_id, StackInstr* instr, const long cls_id,
+			      const long mthd_id,size_t* inst, size_t* op_stack, long *stack_pos,
+			      StackFrame** call_stack, long* call_stack_pos, const long ip) {
 #ifdef _DEBUG
       wcout << L"Stack Call: instr=" << instr_id
 	    << L", oper_1=" << instr->GetOperand() << L", oper_2=" << instr->GetOperand2() 
@@ -1176,7 +1176,7 @@ namespace Runtime {
 #ifdef _DEBUG
         wcout << L"jit oper: MTHD_CALL: cls=" << instr->GetOperand() << L", mthd=" << instr->GetOperand2() << endl;
 #endif
-	StackInterpreter intpr;
+	StackInterpreter intpr(call_stack, call_stack_pos);
 	intpr.Execute(op_stack, stack_pos, ip, program->GetClass(cls_id)->GetMethod(mthd_id), inst, true);
       }
 	break;
