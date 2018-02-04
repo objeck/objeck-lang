@@ -1480,11 +1480,11 @@ void JitCompilerIA64::ProcessStackCallback(long instr_id, StackInstr* instr,
   
   stack<RegInstr*> regs;
   stack<long> dirty_regs;
-  long reg_offset = TMP_REG_0;  
+  long reg_offset = 0;  
 
   stack<RegInstr*> xmms;
   stack<long> dirty_xmms;
-  long xmm_offset = TMP_XMM_0;
+  long xmm_offset = 0;
   
   long i = 0;     
   for(deque<RegInstr*>::reverse_iterator iter = working_stack.rbegin();
@@ -1496,14 +1496,14 @@ void JitCompilerIA64::ProcessStackCallback(long instr_id, StackInstr* instr,
         move_reg_mem(left->GetRegister()->GetRegister(), reg_offset, RBP);
         dirty_regs.push(reg_offset);
         regs.push(left);
-        reg_offset -= sizeof(size_t);
+        reg_offset += sizeof(size_t);
         break;
 
       case REG_FLOAT:
         move_xreg_mem(left->GetRegister()->GetRegister(), xmm_offset, RBP);
         dirty_xmms.push(xmm_offset);
         xmms.push(left);
-        xmm_offset -= sizeof(double);
+        xmm_offset += sizeof(double);
         break;
 
       default:
@@ -1515,8 +1515,8 @@ void JitCompilerIA64::ProcessStackCallback(long instr_id, StackInstr* instr,
   }
 
 #ifdef _DEBUG
-  assert(reg_offset >= TMP_REG_5);
-  assert(xmm_offset >= TMP_XMM_2);
+  assert(reg_offset < TMP_REG_5);
+  assert(xmm_offset < TMP_XMM_2);
 #endif
 
   if(dirty_regs.size() > 6 || dirty_xmms.size() > 3 ) {
@@ -1551,7 +1551,7 @@ void JitCompilerIA64::ProcessStackCallback(long instr_id, StackInstr* instr,
   push_imm(0); push_imm(0);
   push_imm(0); push_imm(0);
   move_imm_reg((size_t)JitCompilerIA64::StackCallback, R10);
-  call_reg(R15);
+  call_reg(R10);
   
   // restore registers
   add_imm_reg(48, RSP);
