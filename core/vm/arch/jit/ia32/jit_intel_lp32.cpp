@@ -101,6 +101,7 @@ void JitCompilerIA32::Epilog(int32_t imm) {
 }
 
 void JitCompilerIA32::RegisterRoot() {
+  /*
   // caculate root address
   RegisterHolder* holder = GetRegister();
   // note: -8 is the offset requried to 
@@ -122,26 +123,7 @@ void JitCompilerIA32::RegisterRoot() {
   // clean up
   ReleaseRegister(holder);
   ReleaseRegister(call_holder);
-}
-
-void JitCompilerIA32::UnregisterRoot() {
-  // caculate root address
-  RegisterHolder* holder = GetRegister();
-  move_reg_reg(EBP, holder->GetRegister());
-  // note: -8 is the offset requried to 
-  // get to the memory root
-  sub_imm_reg(local_space + TMP_REG_5 - 8, 
-	      holder->GetRegister());
-  // push call value
-  push_reg(holder->GetRegister());
-  // call method
-  RegisterHolder* call_holder = GetRegister();
-  move_imm_reg((int32_t)MemoryManager::RemoveJitMethodRoot, call_holder->GetRegister());
-  call_reg(call_holder->GetRegister());
-  // clean up
-  add_imm_reg(4, ESP);
-  ReleaseRegister(holder);
-  ReleaseRegister(call_holder);
+  */
 }
 
 void JitCompilerIA32::ProcessParameters(int32_t params) {
@@ -438,8 +420,6 @@ void JitCompilerIA32::ProcessInstructions() {
       wcout << L"RTRN: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
       ProcessReturn();
-      // unregister root
-      UnregisterRoot();
       // teardown
       Epilog(0);
       break;
@@ -3826,14 +3806,15 @@ void JitExecutor::Initialize(StackProgram* p) {
   program = p;
 }
 
-int32_t JitExecutor::ExecuteMachineCode(int32_t cls_id, int32_t mthd_id, int32_t* inst, 
-					unsigned char* code, const int32_t code_size, size_t* op_stack, int32_t *stack_pos,
-					StackFrame** call_stack, long* call_stack_pos) {
+int32_t JitExecutor::ExecuteMachineCode(int32_t cls_id, int32_t mthd_id, size_t* inst, unsigned char* code,
+                                        const int32_t code_size, size_t* op_stack, long* stack_pos,
+                                        StackFrame** call_stack, long* call_stack_pos, StackFrame* frame) {
   // create function
   jit_fun_ptr jit_fun = (jit_fun_ptr)code;
   // execute
-  int32_t rtrn_value = jit_fun(cls_id, mthd_id, (int32_t*)method->GetClass()->GetClassMemory(), 
-			       inst, op_stack, stack_pos, call_stack, call_stack_pos);
+  const int32_t rtrn_value = jit_fun(cls_id, mthd_id, method->GetClass()->GetClassMemory(), inst,
+                                     op_stack, stack_pos, call_stack, call_stack_pos,
+                                     &(frame->jit_mem), &(frame->jit_offset));
   
 #ifdef _DEBUG
   wcout << L"JIT return=: " << rtrn_value << endl;

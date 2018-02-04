@@ -128,6 +128,7 @@ void JitCompilerIA64::Epilog(long imm) {
 }
 
 void JitCompilerIA64::RegisterRoot() {
+  /*
   // caculate root address
   // note: the offset requried to 
   // get to the first local variale
@@ -153,27 +154,7 @@ void JitCompilerIA64::RegisterRoot() {
 
   // clean up
   ReleaseRegister(holder);
-}
-
-void JitCompilerIA64::UnregisterRoot() {
-  // caculate root address
-  RegisterHolder* holder = GetRegister();
-  move_reg_reg(RBP, holder->GetRegister());
-  add_imm_reg(RED_ZONE, holder->GetRegister());
-  
-  // push call value
-  move_reg_reg(holder->GetRegister(), RCX);
-
-  // 32-byte shadow space
-  push_imm(0); push_imm(0);
-  push_imm(0); push_imm(0);
-  
-  // call method
-  move_imm_reg((size_t)MemoryManager::RemoveJitMethodRoot, R10);
-  call_reg(R10);
-  
-  // clean up
-  ReleaseRegister(holder);
+  */
 }
 
 void JitCompilerIA64::ProcessParameters(long params) {
@@ -471,8 +452,6 @@ void JitCompilerIA64::ProcessInstructions() {
       wcout << L"RTRN: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
       ProcessReturn();
-      // unregister root
-      UnregisterRoot();
       // teardown
       Epilog(0);
       break;
@@ -3906,12 +3885,10 @@ void JitExecutor::Initialize(StackProgram* p) {
   program = p;
 }
 
-long JitExecutor::ExecuteMachineCode(long cls_id, long mthd_id, size_t* inst, unsigned char* code,
-                                     const long code_size, size_t* op_stack, long* stack_pos,
-                                     StackFrame** call_stack, long* call_stack_pos) {
-
+long JitExecutor::ExecuteMachineCode(long cls_id, long mthd_id, size_t* inst, unsigned char* code, const long code_size,
+                                     size_t* op_stack, long *stack_pos, StackFrame** call_stack, long* call_stack_pos, StackFrame* frame) {
   // create function
   jit_fun_ptr jit_fun = (jit_fun_ptr)code;
-  return jit_fun(cls_id, mthd_id, method->GetClass()->GetClassMemory(),
-                 inst, op_stack, stack_pos, call_stack, call_stack_pos);
+  return jit_fun(cls_id, mthd_id, method->GetClass()->GetClassMemory(), inst, op_stack, 
+                 stack_pos, call_stack, call_stack_pos, &(frame->jit_mem), &(frame->jit_offset));
 }

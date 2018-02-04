@@ -33,7 +33,7 @@
 #include <iomanip>
 
 StackProgram* MemoryManager::prgm;
-unordered_map<size_t*, ClassMethodId*> MemoryManager::jit_roots;
+vector<StackFrame*> MemoryManager::jit_frames;
 unordered_set<StackFrame**> MemoryManager::pda_frames;
 unordered_map<StackFrameMonitor*, StackFrameMonitor*> MemoryManager::pda_monitors;
 stack<char*> MemoryManager::cache_pool_16;
@@ -48,7 +48,7 @@ long MemoryManager::allocation_size;
 long MemoryManager::mem_max_size;
 long MemoryManager::uncollected_count;
 long MemoryManager::collected_count;
-CRITICAL_SECTION MemoryManager::jit_cs;
+CRITICAL_SECTION MemoryManager::jit_frame_cs;
 CRITICAL_SECTION MemoryManager::pda_frame_cs;
 CRITICAL_SECTION MemoryManager::pda_monitor_cs;
 CRITICAL_SECTION MemoryManager::allocated_cs;
@@ -62,7 +62,7 @@ void MemoryManager::Initialize(StackProgram* p)
   mem_max_size = MEM_MAX;
   uncollected_count = 0;
 
-  InitializeCriticalSection(&jit_cs);
+  InitializeCriticalSection(&jit_frame_cs);
   InitializeCriticalSection(&pda_frame_cs);
   InitializeCriticalSection(&pda_monitor_cs);
   InitializeCriticalSection(&allocated_cs);
@@ -220,59 +220,6 @@ void MemoryManager::RemovePdaMethodRoot(StackFrameMonitor* monitor)
 #ifndef GC_SERIAL
   LeaveCriticalSection(&pda_monitor_cs);
 #endif
-}
-
-void MemoryManager::AddJitMethodRoot(long cls_id, long mthd_id, size_t* self, size_t* mem, long offset)
-{
-#ifdef _DEBUG
-  wcout << L"adding JIT root: class=" << cls_id << L", method=" << mthd_id << L", self=" << self
-    << L"(" << (size_t)self << L"), mem=" << mem << L", offset=" << offset << endl;
-#endif
-  
-  // zero out memory
-  memset(mem, 0, offset);
-
-  ClassMethodId* mthd_info = new ClassMethodId;
-  mthd_info->self = self;
-  mthd_info->mem = mem;
-  mthd_info->cls_id = cls_id;
-  mthd_info->mthd_id = mthd_id;
-
-#ifndef GC_SERIAL
-  EnterCriticalSection(&jit_cs);
-#endif
-  jit_roots.insert(pair<size_t*, ClassMethodId*>(mem, mthd_info));
-#ifndef GC_SERIAL
-  LeaveCriticalSection(&jit_cs);
-#endif
-}
-
-void MemoryManager::RemoveJitMethodRoot(size_t* mem)
-{
-  ClassMethodId* id;
-#ifndef GC_SERIAL
-  EnterCriticalSection(&jit_cs);
-#endif
-
-  unordered_map<size_t*, ClassMethodId*>::iterator found = jit_roots.find(mem);
-  if(found == jit_roots.end()) {
-    wcerr << L"Unable to find JIT root!" << endl;
-    exit(-1);
-  }
-  id = found->second;
-
-#ifdef _DEBUG  
-  wcout << L"removing JIT method: mem=" << id->mem << L", self=" 
-    << id->self << L"(" << (size_t)id->self << L")" << endl;
-#endif
-  jit_roots.erase(found);
-
-#ifndef GC_SERIAL
-  LeaveCriticalSection(&jit_cs);
-#endif
-
-  delete id;;
-  id = NULL;
 }
 
 size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, long stack_pos, bool collect)
@@ -570,7 +517,7 @@ unsigned int MemoryManager::CollectMemory(void* arg)
 #endif
 
 #ifndef GC_SERIAL
-  const int num_threads = 4;
+  const int num_threads = 3;
   HANDLE thread_ids[num_threads];
 
   thread_ids[0] = (HANDLE)_beginthreadex(NULL, 0, CheckStatic, info, 0, NULL);
@@ -591,13 +538,7 @@ unsigned int MemoryManager::CollectMemory(void* arg)
     exit(-1);
   }
 
-  thread_ids[3] = (HANDLE)_beginthreadex(NULL, 0, CheckJitRoots, NULL, 0, NULL);
-  if(!thread_ids[3]) {
-    wcerr << L"Unable to create garbage collection thread!" << endl;
-    exit(-1);
-  }
-
-  // join all of the mark threads
+  // join all mark threads
   if(WaitForMultipleObjects(num_threads, thread_ids, TRUE, INFINITE) != WAIT_OBJECT_0) {
     wcerr << L"Unable to join garbage collection threads!" << endl;
     exit(-1);
@@ -817,31 +758,32 @@ unsigned int MemoryManager::CheckStack(void* arg)
 
 unsigned int MemoryManager::CheckJitRoots(void* arg)
 {
+
 #ifndef GC_SERIAL
-  EnterCriticalSection(&jit_cs);
+  EnterCriticalSection(&jit_frame_cs);
 #endif  
 
 #ifdef _DEBUG
-  wcout << L"---- Marking JIT method root(s): num=" << jit_roots.size()
+  wcout << L"---- Marking JIT method root(s): num=" << jit_frames.size()
     << L"; thread=" << GetCurrentThread() << L" ------" << endl;
   wcout << L"memory types: " << endl;
 #endif
 
-  unordered_map<size_t*, ClassMethodId*>::iterator jit_iter;
-  for(jit_iter = jit_roots.begin(); jit_iter != jit_roots.end(); ++jit_iter) {
-    ClassMethodId* id = jit_iter->second;
-    size_t* mem = id->mem;
-    StackMethod* mthd = prgm->GetClass(id->cls_id)->GetMethod(id->mthd_id);
+  for(size_t i = 0; i < jit_frames.size(); ++i) {
+    StackFrame* frame = jit_frames[i];
+    size_t* mem = frame->jit_mem;
+    size_t* self = (size_t*)frame->mem[0];
+    StackMethod* mthd = frame->method;
     const long dclrs_num = mthd->GetNumberDeclarations();
 
 #ifdef _DEBUG
-    wcout << L"\t===== JIT method: name=" << mthd->GetName() << L", id=" << id->cls_id << L","
-      << id->mthd_id << L"; addr=" << mthd << L"; num=" << mthd->GetNumberDeclarations()
-      << L" =====" << endl;
+    wcout << L"\t===== JIT method: name=" << mthd->GetName() << L", id=" << mthd->GetClass()->GetId()
+      << L"," << mthd->GetId() << L"; addr=" << mthd << L"; mem=" << mem << L"; self=" << self
+      << L"; num=" << mthd->GetNumberDeclarations() << L" =====" << endl;
 #endif
 
     // check self
-    CheckObject(id->self, true, 1);
+    CheckObject(self, true, 1);
 
     StackDclr** dclrs = mthd->GetDeclarations();
     for(int j = dclrs_num - 1; j > -1; j--) {
@@ -976,9 +918,8 @@ unsigned int MemoryManager::CheckJitRoots(void* arg)
       CheckObject((size_t*)mem[i], false, 1);
     }
   }
-
 #ifndef GC_SERIAL
-  LeaveCriticalSection(&jit_cs);  
+  LeaveCriticalSection(&jit_frame_cs);  
 #endif
 
   return 0;
@@ -986,6 +927,8 @@ unsigned int MemoryManager::CheckJitRoots(void* arg)
 
 unsigned int MemoryManager::CheckPdaRoots(void* arg)
 {
+  vector<StackFrame*> frames;
+
 #ifndef _GC_SERIAL
   EnterCriticalSection(&pda_frame_cs);
 #endif
@@ -1000,32 +943,25 @@ unsigned int MemoryManager::CheckPdaRoots(void* arg)
   for(iter = pda_frames.begin(); iter != pda_frames.end(); ++iter) {
     StackFrame** frame = *iter;
     if(*frame) {
-      StackMethod* mthd = (*frame)->method;
-      size_t* mem = (*frame)->mem;
-
-#ifdef _DEBUG
-      wcout << L"\t===== PDA method: name=" << mthd->GetName() << L", addr="
-        << mthd << L", num=" << mthd->GetNumberDeclarations() << L" =====" << endl;
+      if((*frame)->jit_mem) {
+#ifndef _GC_SERIAL
+        EnterCriticalSection(&jit_frame_cs);
 #endif
-
-      // mark self
-      CheckObject((size_t*)(*mem), true, 1);
-
-      if(mthd->HasAndOr()) {
-        mem += 2;
+        jit_frames.push_back(*frame);
+#ifndef _GC_SERIAL
+        LeaveCriticalSection(&jit_frame_cs);
+#endif
       }
       else {
-        mem++;
+        frames.push_back(*frame);
       }
-
-      // mark rest of memory
-      CheckMemory(mem, mthd->GetDeclarations(), mthd->GetNumberDeclarations(), 0);
     }
   }
 #ifndef _GC_SERIAL
   LeaveCriticalSection(&pda_frame_cs);
 #endif 
   
+  // ------
 #ifndef GC_SERIAL
   EnterCriticalSection(&pda_monitor_cs);
 #endif
@@ -1041,45 +977,86 @@ unsigned int MemoryManager::CheckPdaRoots(void* arg)
     // gather stack frames
     StackFrameMonitor* monitor = pda_iter->first;
     long call_stack_pos = *(monitor->call_stack_pos);
-    
-    if (call_stack_pos > 0) {
+
+    if(call_stack_pos > 0) {
       StackFrame** call_stack = monitor->call_stack;
       StackFrame* cur_frame = *(monitor->cur_frame);
+
+      if(cur_frame->jit_mem) {
+#ifndef _GC_SERIAL
+        EnterCriticalSection(&jit_frame_cs);
+#endif
+        jit_frames.push_back(cur_frame);
+#ifndef _GC_SERIAL
+        LeaveCriticalSection(&jit_frame_cs);
+#endif
+      }
+      else {
+        frames.push_back(cur_frame);
+      }
 
       // copy frames locally
       vector<StackFrame*> frames;
       frames.push_back(cur_frame);
-      while (--call_stack_pos > -1) {
-        frames.push_back(call_stack[call_stack_pos]);
-      }
-
-      for (size_t i = 0; i < frames.size(); ++i) {
-        StackMethod* mthd = frames[i]->method;
-        size_t* mem = frames[i]->mem;
-
-#ifdef _DEBUG
-        wcout << L"\t===== PDA method: name=" << mthd->GetName() << L", addr="
-          << mthd << L", num=" << mthd->GetNumberDeclarations() << L" =====" << endl;
+      while(--call_stack_pos > -1) {
+        StackFrame* frame = call_stack[call_stack_pos];
+        if(frame->jit_mem) {
+#ifndef _GC_SERIAL
+          EnterCriticalSection(&jit_frame_cs);
+#endif	  
+          jit_frames.push_back(frame);
+#ifndef _GC_SERIAL
+          LeaveCriticalSection(&jit_frame_cs);
 #endif
-
-        // mark self
-        CheckObject((size_t*)(*mem), true, 1);
-
-        if (mthd->HasAndOr()) {
-          mem += 2;
         }
         else {
-          mem++;
+          frames.push_back(frame);
         }
-
-        // mark rest of memory
-        CheckMemory(mem, mthd->GetDeclarations(), mthd->GetNumberDeclarations(), 0);
       }
     }
   }
 #ifndef GC_SERIAL
   LeaveCriticalSection(&pda_monitor_cs);
 #endif
+
+  // check JIT roots in separate thread
+  HANDLE thread_id = (HANDLE)_beginthreadex(NULL, 0, CheckJitRoots, NULL, 0, NULL);
+  if(!thread_id) {
+    wcerr << L"Unable to create garbage collection thread!" << endl;
+    exit(-1);
+  }
+
+  // check PDA roots
+  for(size_t i = 0; i < frames.size(); ++i) {
+    StackFrame* frame = frames[i];
+    StackMethod* mthd = frame->method;
+    size_t* mem = frame->mem;
+
+#ifdef _DEBUG
+    wcout << L"\t===== PDA method: name=" << mthd->GetName() << L", addr="
+      << mthd << L", num=" << mthd->GetNumberDeclarations() << L" =====" << endl;
+#endif
+
+    // mark self
+    CheckObject((size_t*)(*mem), true, 1);
+
+    if(mthd->HasAndOr()) {
+      mem += 2;
+    }
+    else {
+      mem++;
+    }
+
+    // mark rest of memory
+    CheckMemory(mem, mthd->GetDeclarations(), mthd->GetNumberDeclarations(), 0);
+  }
+
+  // wait for JIT thread
+  if(WaitForSingleObject(thread_id, INFINITE) != WAIT_OBJECT_0) {
+    wcerr << L"Unable to join garbage collection threads!" << endl;
+    exit(-1);
+  }
+  CloseHandle(thread_id);
 
   return 0;
 }

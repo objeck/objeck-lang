@@ -80,11 +80,9 @@ struct ClassMethodId {
 class MemoryManager {
   static bool initialized;
   static StackProgram* prgm;
-  
-  // reference containers
-  static unordered_map<size_t*, ClassMethodId*> jit_roots;
-  static unordered_set<StackFrame**> pda_frames;
   static unordered_map<StackFrameMonitor*, StackFrameMonitor*> pda_monitors; // deleted elsewhere
+  static unordered_set<StackFrame**> pda_frames;
+  static vector<StackFrame*> jit_frames;  // deleted elsewhere
   static vector<size_t*> allocated_memory;
 
   // memory caches
@@ -94,7 +92,7 @@ class MemoryManager {
   static stack<char*> cache_pool_256;
   static stack<char*> cache_pool_512;
   
-  static CRITICAL_SECTION jit_cs;
+  static CRITICAL_SECTION jit_frame_cs;
   static CRITICAL_SECTION pda_frame_cs;
   static CRITICAL_SECTION pda_monitor_cs;
   static CRITICAL_SECTION allocated_cs;
@@ -135,14 +133,6 @@ public:
 
   // free static resources
   static void Clear() {
-    unordered_map<size_t*, ClassMethodId*>::iterator id_iter;
-    for(id_iter = jit_roots.begin(); id_iter != jit_roots.end(); ++id_iter) {
-      ClassMethodId* tmp = id_iter->second;
-      // delete
-      delete tmp;
-      tmp = NULL;
-    }
-
     while(!allocated_memory.empty()) {
       size_t* temp = allocated_memory.front();
       allocated_memory.erase(allocated_memory.begin());      
@@ -187,7 +177,7 @@ public:
       mem = NULL;
     }
     
-    DeleteCriticalSection(&jit_cs);
+    DeleteCriticalSection(&jit_frame_cs);
     DeleteCriticalSection(&pda_monitor_cs);
     DeleteCriticalSection(&allocated_cs);
     DeleteCriticalSection(&marked_cs);
@@ -204,10 +194,6 @@ public:
   static unsigned int WINAPI CheckJitRoots(LPVOID arg);
   static unsigned int WINAPI CheckPdaRoots(LPVOID arg);
   
-  // add and remove jit roots
-  static void AddJitMethodRoot(long cls_id, long mthd_id, size_t* self, size_t* mem, long offset);
-  static void RemoveJitMethodRoot(size_t* mem);
-
   // add and remove pda roots
   static void AddPdaMethodRoot(StackFrame** frame);
   static void RemovePdaMethodRoot(StackFrame** frame);
