@@ -184,35 +184,35 @@ namespace Runtime {
       wcerr << L"Unwinding local stack (" << this << L"):" << endl;
       StackMethod* method =  (*frame)->method;
       if((*frame)->ip > 0 && pos > -1 && 
-	 method->GetInstruction((*frame)->ip)->GetLineNumber() > 0) {
-	wcerr << L"  method: pos=" << pos << L", file="
-	      << (*frame)->method->GetClass()->GetFileName() << L", name='" 
-	      << (*frame)->method->GetName() << L"', line=" 
-	      << method->GetInstruction((*frame)->ip)->GetLineNumber() << endl;
+         method->GetInstruction((*frame)->ip)->GetLineNumber() > 0) {
+        wcerr << L"  method: pos=" << pos << L", file="
+              << (*frame)->method->GetClass()->GetFileName() << L", name='" 
+              << (*frame)->method->GetName() << L"', line=" 
+              << method->GetInstruction((*frame)->ip)->GetLineNumber() << endl;
       }
       if(pos != 0) {
-	while(--pos) {
-	  StackMethod* method =  call_stack[pos]->method;
-	  if(call_stack[pos]->ip > 0 && pos > -1 && 
-	     method->GetInstruction(call_stack[pos]->ip)->GetLineNumber() > 0) {
-	    wcerr << L"  method: pos=" << pos << L", file=" 
-		  << call_stack[pos]->method->GetClass()->GetFileName() << L", name='"
-		  << call_stack[pos]->method->GetName() << L"', line=" 
-		  << method->GetInstruction(call_stack[pos]->ip)->GetLineNumber() << endl;
-	  }
-	}
-	pos = 0;
+        while(--pos) {
+          StackMethod* method =  call_stack[pos]->method;
+          if(call_stack[pos]->ip > 0 && pos > -1 && 
+             method->GetInstruction(call_stack[pos]->ip)->GetLineNumber() > 0) {
+            wcerr << L"  method: pos=" << pos << L", file=" 
+                  << call_stack[pos]->method->GetClass()->GetFileName() << L", name='"
+                  << call_stack[pos]->method->GetName() << L"', line=" 
+                  << method->GetInstruction(call_stack[pos]->ip)->GetLineNumber() << endl;
+          }
+        }
+        pos = 0;
       }
       wcerr << L"  ..." << endl;
 #else
       wcerr << L"Unwinding local stack (" << this << L"):" << endl;
       wcerr << L"  method: pos=" << pos << L", name=" 
-	    << (*frame)->method->GetName() << endl;
+            << (*frame)->method->GetName() << endl;
       if(pos != 0) {
-	while(--pos && pos > -1) {
-	  wcerr << L"  method: pos=" << pos << L", name="
-		<< call_stack[pos]->method->GetName() << endl;
-	}
+        while(--pos && pos > -1) {
+          wcerr << L"  method: pos=" << pos << L", name="
+                << call_stack[pos]->method->GetName() << endl;
+        }
       }
       wcerr << L"  ..." << endl;
 #endif
@@ -225,12 +225,12 @@ namespace Runtime {
       long pos = (*call_stack_pos);
       wcerr << L"Unwinding local stack (" << this << L"):" << endl;
       wcerr << L"  method: pos=" << pos << L", name="
-	    << method->GetName() << endl;
+            << method->GetName() << endl;
       while(--pos) {
-	if(pos > - 1) {
-	  wcerr << L"  method: pos=" << pos << L", name="
-		<< call_stack[pos]->method->GetName() << endl;
-	}
+        if(pos > - 1) {
+          wcerr << L"  method: pos=" << pos << L", name="
+                << call_stack[pos]->method->GetName() << endl;
+        }
       }
       wcerr << L"  ..." << endl;
     }
@@ -250,7 +250,7 @@ namespace Runtime {
 #ifdef _DEBUG
       size_t v = op_stack[--(*stack_pos)];
       wcout << L"  [pop_i: stack_pos=" << (*stack_pos) << L"; value=" << v << L"("
-        << (size_t*)v << L")]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << endl;
+            << (size_t*)v << L")]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << endl;
       return v;
 #else
       return op_stack[--(*stack_pos)];
@@ -264,7 +264,7 @@ namespace Runtime {
     inline void PushInt(size_t v, size_t* op_stack, long* stack_pos) {
 #ifdef _DEBUG
       wcout << L"  [push_i: stack_pos=" << (*stack_pos) << L"; value=" << v << L"("
-        << (size_t*)v << L")]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << endl;
+            << (size_t*)v << L")]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << endl;
 #endif
       op_stack[(*stack_pos)++] = v;
     }
@@ -275,7 +275,7 @@ namespace Runtime {
     inline void PushFloat(FLOAT_VALUE v, size_t* op_stack, long* stack_pos) {
 #ifdef _DEBUG
       wcout << L"  [push_f: stack_pos=" << (*stack_pos) << L"; value=" << v
-	    << L"]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << endl;
+            << L"]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << endl;
 #endif
       // ::memcpy(&op_stack[(*stack_pos)], &v, sizeof(FLOAT_VALUE));
       *((FLOAT_VALUE*)(&op_stack[(*stack_pos)])) = v;
@@ -309,7 +309,7 @@ namespace Runtime {
       // ::memcpy(&v, &op_stack[(*stack_pos)], sizeof(FLOAT_VALUE));
       FLOAT_VALUE v = *((FLOAT_VALUE*)(&op_stack[(*stack_pos)]));
       wcout << L"  [pop_f: stack_pos=" << (*stack_pos) << L"; value=" << v
-	    << L"]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << endl;
+            << L"]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << endl;
       return v;
 #endif
 
@@ -324,7 +324,7 @@ namespace Runtime {
 #ifdef _DEBUG
       size_t v = op_stack[(*stack_pos) - 1];
       wcout << L"  [top_i: stack_pos=" << (*stack_pos) << L"; value=" << v << L"(" << (void*)v
-	    << L")]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << endl;
+            << L")]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << endl;
       return v;
 #else
       return op_stack[(*stack_pos) - 1];
@@ -346,7 +346,7 @@ namespace Runtime {
       // ::memcpy(&v, &op_stack[index], sizeof(FLOAT_VALUE));
       FLOAT_VALUE v = *((FLOAT_VALUE*)(&op_stack[index]));
       wcout << L"  [top_f: stack_pos=" << (*stack_pos) << L"; value=" << v
-	    << L"]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << endl;
+            << L"]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << endl;
       return v;
 #endif
       
@@ -409,11 +409,11 @@ namespace Runtime {
       const long char_array_size = (long)value_str.size();
       const long char_array_dim = 1;
       size_t* char_array = (size_t*)MemoryManager::AllocateArray(char_array_size + 1 +
-							     ((char_array_dim + 2) *
-							      sizeof(size_t)),
-							     CHAR_ARY_TYPE,
-							     op_stack, *stack_pos,
-							     false);
+                                                                 ((char_array_dim + 2) *
+                                                                  sizeof(size_t)),
+                                                                 CHAR_ARY_TYPE,
+                                                                 op_stack, *stack_pos,
+                                                                 false);
       char_array[0] = char_array_size + 1;
       char_array[1] = char_array_dim;
       char_array[2] = char_array_size;
@@ -424,8 +424,8 @@ namespace Runtime {
       
       // create 'System.String' object instance
       size_t* str_obj = MemoryManager::AllocateObject(program->GetStringObjectId(),
-						    op_stack, *stack_pos,
-						    false);
+                                                      op_stack, *stack_pos,
+                                                      false);
       str_obj[0] = (size_t)char_array;
       str_obj[1] = char_array_size;
       str_obj[2] = char_array_size;

@@ -196,7 +196,7 @@ class MemoryManager {
   static void CheckObject(size_t* mem, bool is_obj, const long depth);
   
   static size_t* AllocateObject(const wchar_t* obj_name, size_t* op_stack, 
-                              long stack_pos, bool collect = true) {
+                                long stack_pos, bool collect = true) {
     StackClass* cls = prgm->GetClass(obj_name);
     if(cls) {
       return AllocateObject(cls->GetId(), op_stack, stack_pos, collect);
@@ -206,9 +206,9 @@ class MemoryManager {
   }
   
   static size_t* AllocateObject(const long obj_id, size_t* op_stack, 
-                              long stack_pos, bool collect = true);
+                                long stack_pos, bool collect = true);
   static size_t* AllocateArray(const long size, const MemoryType type, 
-                             size_t* op_stack, long stack_pos, bool collect = true);
+                               size_t* op_stack, long stack_pos, bool collect = true);
   
   // object verification
   static size_t* ValidObjectCast(size_t* mem, long to_id, int* cls_hierarchy, int** cls_interfaces);

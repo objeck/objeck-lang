@@ -155,7 +155,7 @@ void MemoryManager::AddPdaMethodRoot(StackFrame** frame)
   }
 
 #ifdef _DEBUG
-//  wcout << L"adding PDA frame: addr=" << frame << endl;
+  //  wcout << L"adding PDA frame: addr=" << frame << endl;
 #endif
 
 #ifndef _GC_SERIAL
@@ -170,7 +170,7 @@ void MemoryManager::AddPdaMethodRoot(StackFrame** frame)
 void MemoryManager::RemovePdaMethodRoot(StackFrame** frame)
 {
 #ifdef _DEBUG
-//  wcout << L"removing PDA frame: addr=" << frame << endl;
+  //  wcout << L"removing PDA frame: addr=" << frame << endl;
 #endif
   
 #ifndef _GC_SERIAL
@@ -189,7 +189,7 @@ void MemoryManager::AddPdaMethodRoot(StackFrameMonitor* monitor)
   }
 
 #ifdef _DEBUG
-//  wcout << L"adding PDA monitor: addr=" << monitor << endl;
+  //  wcout << L"adding PDA monitor: addr=" << monitor << endl;
 #endif
 
 #ifndef _GC_SERIAL
@@ -204,7 +204,7 @@ void MemoryManager::AddPdaMethodRoot(StackFrameMonitor* monitor)
 void MemoryManager::RemovePdaMethodRoot(StackFrameMonitor* monitor)
 {
 #ifdef _DEBUG
-//  wcout << L"removing PDA monitor: addr=" << monitor << endl;
+  //  wcout << L"removing PDA monitor: addr=" << monitor << endl;
 #endif
 
 #ifndef _GC_SERIAL
@@ -217,7 +217,7 @@ void MemoryManager::RemovePdaMethodRoot(StackFrameMonitor* monitor)
 }
 
 size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, 
-                                    long stack_pos, bool collect)
+                                      long stack_pos, bool collect)
 {
   StackClass* cls = prgm->GetClass(obj_id);
 #ifdef _DEBUG
@@ -304,20 +304,20 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack,
     pthread_mutex_unlock(&allocated_mutex);
 #endif
    
-/* 
-#ifdef _DEBUG
-    wcout << L"# allocating object: cached=" << (is_cached ? "true" : "false")  
-          << ", addr=" << mem << L"(" << (long)mem << L"), size="
-          << size << L" byte(s), used=" << allocation_size << L" byte(s) #" << endl;
-#endif
-*/
+    /* 
+       #ifdef _DEBUG
+       wcout << L"# allocating object: cached=" << (is_cached ? "true" : "false")  
+       << ", addr=" << mem << L"(" << (long)mem << L"), size="
+       << size << L" byte(s), used=" << allocation_size << L" byte(s) #" << endl;
+       #endif
+    */
   }
 
   return mem;
 }
 
 size_t* MemoryManager::AllocateArray(const long size, const MemoryType type,
-                                   size_t* op_stack, long stack_pos, bool collect)
+                                     size_t* op_stack, long stack_pos, bool collect)
 {
   long calc_size;
   size_t* mem;
@@ -411,13 +411,13 @@ size_t* MemoryManager::AllocateArray(const long size, const MemoryType type,
   pthread_mutex_unlock(&allocated_mutex);
 #endif
  
-/* 
-#ifdef _DEBUG
-  wcout << L"# allocating array: cached=" << (is_cached ? "true" : "false") 
-        << ", addr=" << mem << L"(" << (long)mem << L"), size=" << calc_size
-        << L" byte(s), used=" << allocation_size << L" byte(s) #" << endl;
-#endif
-*/
+  /* 
+     #ifdef _DEBUG
+     wcout << L"# allocating array: cached=" << (is_cached ? "true" : "false") 
+     << ", addr=" << mem << L"(" << (long)mem << L"), size=" << calc_size
+     << L" byte(s), used=" << allocation_size << L" byte(s) #" << endl;
+     #endif
+  */
 
   return mem;
 }
@@ -819,7 +819,7 @@ void* MemoryManager::CheckJitRoots(void* arg)
 
 #ifdef _DEBUG
     wcout << L"\t===== JIT method: name=" << mthd->GetName() << L", id=" << mthd->GetClass()->GetId()
-	  << L"," << mthd->GetId() << L"; addr=" << mthd << L"; mem=" << mem << L"; self=" << self 
+          << L"," << mthd->GetId() << L"; addr=" << mthd << L"; mem=" << mem << L"; self=" << self 
           << L"; num=" << mthd->GetNumberDeclarations() << L" =====" << endl;
 #endif
     
@@ -995,15 +995,15 @@ void* MemoryManager::CheckPdaRoots(void* arg)
     if(*frame) {
       if((*frame)->jit_mem) {
 #ifndef _GC_SERIAL
-	pthread_mutex_lock(&jit_frame_mutex);
+        pthread_mutex_lock(&jit_frame_mutex);
 #endif
-	jit_frames.push_back(*frame);
+        jit_frames.push_back(*frame);
 #ifndef _GC_SERIAL
-	pthread_mutex_unlock(&jit_frame_mutex);
+        pthread_mutex_unlock(&jit_frame_mutex);
 #endif
       }
       else {
-	frames.push_back(*frame);
+        frames.push_back(*frame);
       }
     }
   }
@@ -1033,31 +1033,31 @@ void* MemoryManager::CheckPdaRoots(void* arg)
       
       if(cur_frame->jit_mem) {
 #ifndef _GC_SERIAL
-	pthread_mutex_lock(&jit_frame_mutex);
+        pthread_mutex_lock(&jit_frame_mutex);
 #endif
-	jit_frames.push_back(cur_frame);
+        jit_frames.push_back(cur_frame);
 #ifndef _GC_SERIAL
-	pthread_mutex_unlock(&jit_frame_mutex);
+        pthread_mutex_unlock(&jit_frame_mutex);
 #endif
       }
       else {
-	frames.push_back(cur_frame);
+        frames.push_back(cur_frame);
       }
       
       while(--call_stack_pos > -1) {
-	StackFrame* frame = call_stack[call_stack_pos];
-	if(frame->jit_mem) {
+        StackFrame* frame = call_stack[call_stack_pos];
+        if(frame->jit_mem) {
 #ifndef _GC_SERIAL
-	pthread_mutex_lock(&jit_frame_mutex);
+          pthread_mutex_lock(&jit_frame_mutex);
 #endif	  
-	  jit_frames.push_back(frame);
+          jit_frames.push_back(frame);
 #ifndef _GC_SERIAL
-	  pthread_mutex_unlock(&jit_frame_mutex);
+          pthread_mutex_unlock(&jit_frame_mutex);
 #endif
-	}
-	else {
-	  frames.push_back(frame);
-	}
+        }
+        else {
+          frames.push_back(frame);
+        }
       }
     }
   }
@@ -1085,7 +1085,7 @@ void* MemoryManager::CheckPdaRoots(void* arg)
     
 #ifdef _DEBUG
     wcout << L"\t===== PDA method: name=" << mthd->GetName() << L", addr="
-	  << mthd << L", num=" << mthd->GetNumberDeclarations() << L" =====" << endl;
+          << mthd << L", num=" << mthd->GetNumberDeclarations() << L" =====" << endl;
 #endif
     
     // mark self
