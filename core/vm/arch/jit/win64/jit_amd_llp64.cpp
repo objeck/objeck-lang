@@ -1527,38 +1527,40 @@ void JitCompilerIA64::ProcessStackCallback(long instr_id, StackInstr* instr,
   ProcessReturn(params);
   
   // save other registers
-  push_reg(R15);
-  push_reg(R14);
-  push_reg(R13);
+  push_reg(RCX);
+  push_reg(RDX);
   push_reg(R8);
+  push_reg(R9);
+  push_reg(R10);
   
   // TODO: FIX ME!!
   // set parameters
-  move_mem_reg(OP_STACK, RBP, R9);
-  move_mem_reg(INSTANCE_MEM, RBP, R8);
-  move_mem_reg(MTHD_ID, RBP, RCX);
-  move_mem_reg(CLS_ID, RBP, RDX);
-  move_imm_reg((size_t)instr, RSI);
-  move_imm_reg(instr_id, RDI);  
+  move_imm_reg(instr_id, RCX);
+  move_imm_reg((size_t)instr, RDX);
+  move_mem_reg(CLS_ID, RBP, R8);
+  move_mem_reg(MTHD_ID, RBP, R9);
+
   push_imm(instr_index - 1);
-  push_mem(CALL_STACK, RBP);
   push_mem(CALL_STACK_POS, RBP);
+  push_mem(CALL_STACK, RBP);
   push_mem(STACK_POS, RBP);
-  
+  push_mem(OP_STACK, RBP);
+  push_mem(INSTANCE_MEM, RBP);
+
   // call function
-  move_imm_reg((size_t)JitCompilerIA64::StackCallback, R15);
+  push_imm(0); push_imm(0);
+  push_imm(0); push_imm(0);
+  move_imm_reg((size_t)JitCompilerIA64::StackCallback, R10);
   call_reg(R15);
   
-  add_imm_reg(48, RSP);
-  
   // restore registers
+  add_imm_reg(48, RSP);
+  pop_reg(R10);
+  pop_reg(R9);
   pop_reg(R8);
-  pop_reg(R13);
-  pop_reg(R14);
-  pop_reg(R15);
+  pop_reg(RDX);
+  pop_reg(RCX);
 
-
-  
   // restore register values
   while(!dirty_regs.empty()) {
     RegInstr* left = regs.top();
