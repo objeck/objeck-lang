@@ -1532,6 +1532,7 @@ void JitCompilerIA64::ProcessStackCallback(long instr_id, StackInstr* instr,
   push_reg(R13);
   push_reg(R8);
   
+  // TODO: FIX ME!!
   // set parameters
   move_mem_reg(OP_STACK, RBP, R9);
   move_mem_reg(INSTANCE_MEM, RBP, R8);
@@ -1548,7 +1549,7 @@ void JitCompilerIA64::ProcessStackCallback(long instr_id, StackInstr* instr,
   move_imm_reg((size_t)JitCompilerIA64::StackCallback, R15);
   call_reg(R15);
   
-  add_imm_reg(32, RSP);
+  add_imm_reg(48, RSP);
   
   // restore registers
   pop_reg(R8);
