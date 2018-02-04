@@ -1,7 +1,7 @@
 /***************************************************************************
  * JIT compiler for the AMD64 architecture.
  *
- * Copyright (c) 2008-2013 Randy Hollines
+ * Copyright (c) 2008-2018 Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without 
@@ -49,8 +49,10 @@ namespace Runtime {
 #define INSTANCE_MEM -32
 #define OP_STACK -40
 #define STACK_POS -48
-#define JIT_MEM 16
-#define JIT_OFFSET 24
+#define CALL_STACK 16
+#define CALL_STACK_POS 24
+#define JIT_MEM 32
+#define JIT_OFFSET 40
   // float temps
 #define TMP_XMM_0 -64
 #define TMP_XMM_1 -72
@@ -349,8 +351,8 @@ namespace Runtime {
   /********************************
    * Prototype for jit function
    ********************************/
-  typedef long (*jit_fun_ptr)(long cls_id, long mthd_id, size_t* cls_mem, size_t* inst,
-			      size_t* op_stack, long *stack_pos, size_t** jit_mem, long* offset);
+  typedef long (*jit_fun_ptr)(long cls_id, long mthd_id, size_t* cls_mem, size_t* inst, size_t* op_stack, long *stack_pos,
+			      StackFrame** call_stack, long* call_stack_pos, size_t** jit_mem, long* offset);
   
   /********************************
    * JitCompilerIA64 class
@@ -1932,7 +1934,8 @@ namespace Runtime {
     double* floats;
     
     long ExecuteMachineCode(long cls_id, long mthd_id, size_t* inst, unsigned char* code,
-			    const long code_size, size_t* op_stack, long *stack_pos, StackFrame* frame);
+			    const long code_size, size_t *op_stack, long *stack_pos,
+			    StackFrame** call_stack, long* call_stack_pos, StackFrame* frame);
     
   public:
     static void Initialize(StackProgram* p);
@@ -1944,7 +1947,8 @@ namespace Runtime {
     }    
     
     // Executes machine code
-    long Execute(StackMethod* cm, size_t* inst, size_t* op_stack, long* stack_pos, StackFrame* frame) {
+    long Execute(StackMethod* cm, size_t* inst, size_t* op_stack, long* stack_pos,
+		 StackFrame** call_stack, long* call_stack_pos, StackFrame* frame) {
       method = cm;
       long cls_id = method->GetClass()->GetId();
       long mthd_id = method->GetId();
@@ -1968,7 +1972,8 @@ namespace Runtime {
 #endif
       
       // execute
-      return ExecuteMachineCode(cls_id, mthd_id, inst, code, code_index, op_stack, stack_pos, frame);
+      return ExecuteMachineCode(cls_id, mthd_id, inst, code, code_index, op_stack,
+				stack_pos, call_stack, call_stack_pos, frame);
     }
   };
 }
