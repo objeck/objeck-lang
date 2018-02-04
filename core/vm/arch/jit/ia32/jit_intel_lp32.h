@@ -56,6 +56,8 @@ namespace Runtime {
 #define STACK_POS 28
 #define CALL_STACK 32
 #define CALL_STACK_POS 36
+#define JIT_MEM 40
+#define JIT_OFFSET 44
   // float temps
 #define TMP_XMM_0 -8
 #define TMP_XMM_1 -16
@@ -927,6 +929,7 @@ namespace Runtime {
 
     // generates a conditional jump
     bool cond_jmp(InstructionType type);
+    void loop(int32_t offset);
 
     inline static int32_t PopInt(size_t* op_stack, int32_t *stack_pos) {
       int32_t value = op_stack[--(*stack_pos)];

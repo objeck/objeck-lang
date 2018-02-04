@@ -1161,7 +1161,7 @@ namespace Runtime {
     }
     
     static void StackCallback(const long instr_id, StackInstr* instr, const long cls_id,
-			      const long mthd_id,size_t* inst, size_t* op_stack, long *stack_pos,
+			      const long mthd_id, size_t* inst, size_t* op_stack, long *stack_pos,
 			      StackFrame** call_stack, long* call_stack_pos, const long ip) {
 #ifdef _DEBUG
       wcout << L"Stack Call: instr=" << instr_id
@@ -1934,7 +1934,7 @@ namespace Runtime {
     double* floats;
     
     long ExecuteMachineCode(long cls_id, long mthd_id, size_t* inst, unsigned char* code,
-			    const long code_size, size_t *op_stack, long *stack_pos,
+			    const long code_size, size_t* op_stack, long *stack_pos,
 			    StackFrame** call_stack, long* call_stack_pos, StackFrame* frame);
     
   public:

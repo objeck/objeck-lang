@@ -144,26 +144,13 @@ void JitCompilerIA64::RegisterRoot() {
   if(index > 0) {  
     move_imm_reg(index, RCX);
     move_imm_mem(0, 0, holder->GetRegister());
-    add_imm_reg(8, holder->GetRegister());
+    add_imm_reg(sizeof(size_t), holder->GetRegister());
     loop(-20);
   }
   
   move_mem_reg(JIT_OFFSET, RBP, mem_holder->GetRegister());
   move_imm_mem(offset, 0, mem_holder->GetRegister());
   
-  /*
-  // copy values 
-  move_imm_reg(offset, R8);
-  move_reg_reg(holder->GetRegister(), RCX);
-  move_mem_reg(INSTANCE_MEM, RBP, RDX);
-  move_mem_reg(MTHD_ID, RBP, RSI);
-  move_mem_reg(CLS_ID, RBP, RDI);
-  
-  // call method
-  move_imm_reg((long)MemoryManager::AddJitMethodRoot, R15);
-  call_reg(R15);
-  */
-
   // clean up
   ReleaseRegister(holder);
   ReleaseRegister(mem_holder);
