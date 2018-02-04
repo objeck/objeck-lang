@@ -101,7 +101,6 @@ void JitCompilerIA32::Epilog(int32_t imm) {
 }
 
 void JitCompilerIA32::RegisterRoot() {
-  /*
   // caculate root address
   RegisterHolder* holder = GetRegister();
   // note: -8 is the offset requried to 
@@ -109,21 +108,24 @@ void JitCompilerIA32::RegisterRoot() {
   const int32_t offset = local_space + TMP_REG_5 - 8;
   move_reg_reg(EBP, holder->GetRegister());
   sub_imm_reg(offset, holder->GetRegister());
-  // push call values
-  push_imm(offset + TMP_REG_5);
-  push_reg(holder->GetRegister());
-  push_mem(INSTANCE_MEM, EBP);
-  push_mem(MTHD_ID, EBP);
-  push_mem(CLS_ID, EBP);
-  // call method
-  RegisterHolder* call_holder = GetRegister();
-  move_imm_reg((int32_t)MemoryManager::AddJitMethodRoot, call_holder->GetRegister());
-  call_reg(call_holder->GetRegister());
-  add_imm_reg(20, ESP);
+
+  RegisterHolder* mem_holder = GetRegister();
+  move_mem_reg(JIT_MEM, EBP, mem_holder->GetRegister());
+  move_reg_mem(holder->GetRegister(), 0, mem_holder->GetRegister());
+
+  int index = offset / sizeof(int32_t); // TOOD: CHANGE ME
+  if(index > 0) {
+    move_imm_reg(index, ECX);
+    move_imm_mem(0, 0, holder->GetRegister());
+    add_imm_reg(sizeof(int32_t), holder->GetRegister());
+    loop(-18);
+  }
+  move_mem_reg(JIT_OFFSET, EBP, mem_holder->GetRegister());
+  move_imm_mem(offset, 0, mem_holder->GetRegister());
+
   // clean up
   ReleaseRegister(holder);
-  ReleaseRegister(call_holder);
-  */
+  ReleaseRegister(mem_holder);
 }
 
 void JitCompilerIA32::ProcessParameters(int32_t params) {
@@ -1458,8 +1460,7 @@ void JitCompilerIA32::ProcessCopy(StackInstr* instr) {
   }
 }
 
-void JitCompilerIA32::ProcessStackCallback(int32_t instr_id, StackInstr* instr,
-					   int32_t &instr_index, int32_t params) {
+void JitCompilerIA32::ProcessStackCallback(int32_t instr_id, StackInstr* instr, int32_t &instr_index, int32_t params) {
   int32_t non_params;
   if(params < 0) {
     non_params = 0;
@@ -2698,6 +2699,12 @@ void JitCompilerIA32::math_imm_xreg(RegInstr* instr, Register reg, InstructionTy
   }
 }
 
+void JitCompilerIA32::loop(int32_t offset)
+{
+  AddMachineCode(0xe2);
+  AddMachineCode(offset);
+}
+
 void JitCompilerIA32::math_mem_xreg(int32_t offset, Register dest, InstructionType type) {
   RegisterHolder* holder = GetXmmRegister();
   move_mem_xreg(offset, EBP, holder->GetRegister());
@@ -3812,9 +3819,8 @@ int32_t JitExecutor::ExecuteMachineCode(int32_t cls_id, int32_t mthd_id, size_t*
   // create function
   jit_fun_ptr jit_fun = (jit_fun_ptr)code;
   // execute
-  const int32_t rtrn_value = jit_fun(cls_id, mthd_id, method->GetClass()->GetClassMemory(), inst,
-                                     op_stack, stack_pos, call_stack, call_stack_pos,
-                                     &(frame->jit_mem), &(frame->jit_offset));
+  const int32_t rtrn_value = jit_fun(cls_id, mthd_id, method->GetClass()->GetClassMemory(), inst, op_stack, 
+                                     stack_pos, call_stack, call_stack_pos, &(frame->jit_mem), &(frame->jit_offset));
   
 #ifdef _DEBUG
   wcout << L"JIT return=: " << rtrn_value << endl;
