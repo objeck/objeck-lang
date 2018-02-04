@@ -187,9 +187,9 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i,
 
 #ifdef _DEBUG
   wcout << L"\n---------- Executing Interpretered Code: id=" 
-	<< (((*frame)->method->GetClass()) ? (*frame)->method->GetClass()->GetId() : -1) << ","
-	<< (*frame)->method->GetId() << "; method_name='" << (*frame)->method->GetName() 
-	<< "' ---------\n" << endl;
+        << (((*frame)->method->GetClass()) ? (*frame)->method->GetClass()->GetId() : -1) << ","
+        << (*frame)->method->GetId() << "; method_name='" << (*frame)->method->GetName() 
+        << "' ---------\n" << endl;
 #endif
 
   // execute
@@ -1223,8 +1223,8 @@ void StackInterpreter::ObjTypeOf(StackInstr* instr, size_t* &op_stack, long* &st
   size_t* mem = (size_t*)PopInt(op_stack, stack_pos);
   if(mem) {
     size_t* result = MemoryManager::ValidObjectCast(mem, instr->GetOperand(),
-                                                  program->GetHierarchy(),
-                                                  program->GetInterfaces());
+                                                    program->GetHierarchy(),
+                                                    program->GetInterfaces());
     if(result) {
       PushInt(1, op_stack, stack_pos);
     }
@@ -1243,15 +1243,15 @@ void StackInterpreter::ObjInstCast(StackInstr* instr, size_t* &op_stack, long* &
 {
   size_t* mem = (size_t*)PopInt(op_stack, stack_pos);
   size_t result = (size_t)MemoryManager::ValidObjectCast(mem, instr->GetOperand(),
-                                                     program->GetHierarchy(),
-                                                     program->GetInterfaces());
+                                                         program->GetHierarchy(),
+                                                         program->GetInterfaces());
 #ifdef _DEBUG
   wcout << L"stack oper: OBJ_INST_CAST: from=" << mem << ", to=" << instr->GetOperand() << endl;
 #endif
   if(!result && mem) {
     StackClass* to_cls = MemoryManager::GetClass((size_t*)mem);
     wcerr << L">>> Invalid object cast: '" << (to_cls ? to_cls->GetName() : L"?")
-	  << "' to '" << program->GetClass(instr->GetOperand())->GetName() << "' <<<" << endl;
+          << "' to '" << program->GetClass(instr->GetOperand())->GetName() << "' <<<" << endl;
     StackErrorUnwind();
 #ifdef _DEBUGGER
     halt = true;
@@ -1285,8 +1285,8 @@ void StackInterpreter::AsyncMthdCall(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   assert(called);
   wcout << L"=== ASYNC_MTHD_CALL: id=" << called->GetClass()->GetId() << ","
-	<< called->GetId() << "; name='" << called->GetName()
-	<< "'; param=" << param << " ===" << endl;
+        << called->GetId() << "; name='" << called->GetName()
+        << "'; param=" << param << " ===" << endl;
 #endif
 
   // create and execute the new thread
@@ -1412,7 +1412,7 @@ void StackInterpreter::ProcessLoadFunction(StackInstr* instr, size_t* &op_stack,
 {
 #ifdef _DEBUG
   wcout << L"stack oper: LOAD_FUNC_VAR; index=" << instr->GetOperand()
-	<< "; local=" << ((instr->GetOperand2() == LOCL) ? "true" : "false") << endl;
+        << "; local=" << ((instr->GetOperand2() == LOCL) ? "true" : "false") << endl;
 #endif
   if(instr->GetOperand2() == LOCL) {
     size_t* mem = (*frame)->mem;
@@ -1444,7 +1444,7 @@ void StackInterpreter::ProcessLoadFloat(StackInstr* instr, size_t* &op_stack, lo
 {
 #ifdef _DEBUG
   wcout << L"stack oper: LOAD_FLOAT_VAR; index=" << instr->GetOperand()
-	<< "; local=" << ((instr->GetOperand2() == LOCL) ? "true" : "false") << endl;
+        << "; local=" << ((instr->GetOperand2() == LOCL) ? "true" : "false") << endl;
 #endif
   FLOAT_VALUE value;
   if(instr->GetOperand2() == LOCL) {
@@ -1478,7 +1478,7 @@ void StackInterpreter::ProcessStoreFunction(StackInstr* instr, size_t* &op_stack
 {
 #ifdef _DEBUG
   wcout << L"stack oper: STOR_FUNC_VAR; index=" << instr->GetOperand()
-	<< "; local=" << ((instr->GetOperand2() == LOCL) ? "true" : "false") << endl;
+        << "; local=" << ((instr->GetOperand2() == LOCL) ? "true" : "false") << endl;
 #endif
   if(instr->GetOperand2() == LOCL) {
     size_t* mem = (*frame)->mem;
@@ -1510,7 +1510,7 @@ void StackInterpreter::ProcessStoreFloat(StackInstr* instr, size_t* &op_stack, l
 {
 #ifdef _DEBUG
   wcout << L"stack oper: STOR_FLOAT_VAR; index=" << instr->GetOperand()
-	<< "; local=" << ((instr->GetOperand2() == LOCL) ? "true" : "false") << endl;
+        << "; local=" << ((instr->GetOperand2() == LOCL) ? "true" : "false") << endl;
 #endif
   if(instr->GetOperand2() == LOCL) {
     const FLOAT_VALUE value = PopFloat(op_stack, stack_pos);
@@ -1544,7 +1544,7 @@ void StackInterpreter::ProcessCopyFloat(StackInstr* instr, size_t* &op_stack, lo
 {
 #ifdef _DEBUG
   wcout << L"stack oper: COPY_FLOAT_VAR; index=" << instr->GetOperand()
-	<< "; local=" << ((instr->GetOperand2() == LOCL) ? "true" : "false") << endl;
+        << "; local=" << ((instr->GetOperand2() == LOCL) ? "true" : "false") << endl;
 #endif
   if(instr->GetOperand2() == LOCL) {
     FLOAT_VALUE value = TopFloat(op_stack, stack_pos);
@@ -1580,7 +1580,7 @@ void StackInterpreter::ProcessNewObjectInstance(StackInstr* instr, size_t* &op_s
 #endif
 
   size_t inst_mem = (size_t)MemoryManager::AllocateObject(instr->GetOperand(),
-						      op_stack, *stack_pos);
+                                                          op_stack, *stack_pos);
   PushInt(inst_mem, op_stack, stack_pos);
 }
 
@@ -1607,16 +1607,16 @@ void StackInterpreter::ProcessNewArray(StackInstr* instr, size_t* &op_stack, lon
   size_t* mem;  
 #ifdef _X64
   mem = (size_t*)MemoryManager::AllocateArray(size + dim + 2, INT_TYPE,
-					    op_stack, *stack_pos);
+                                              op_stack, *stack_pos);
 #else
   if(is_float) {
     // doubles are twice the size of integers for 32-bit target
     mem = (size_t*)MemoryManager::AllocateArray(size * 2 + dim + 2, INT_TYPE,
-					      op_stack, *stack_pos);
+                                                op_stack, *stack_pos);
   }
   else {
     mem = (size_t*)MemoryManager::AllocateArray(size + dim + 2, INT_TYPE,
-					      op_stack, *stack_pos);
+                                                op_stack, *stack_pos);
   }
 #endif
 
@@ -1649,7 +1649,7 @@ void StackInterpreter::ProcessNewByteArray(StackInstr* instr, size_t* &op_stack,
   // NULL terminated string 
   size++;
   size_t* mem = MemoryManager::AllocateArray(size + ((dim + 2) * sizeof(size_t)),
-						  BYTE_ARY_TYPE, op_stack, *stack_pos);
+                                             BYTE_ARY_TYPE, op_stack, *stack_pos);
   mem[0] = size - 1;
   mem[1] = dim;
   ::memcpy(mem + 2, indices, dim * sizeof(size_t));
@@ -1678,7 +1678,7 @@ void StackInterpreter::ProcessNewCharArray(StackInstr* instr, size_t* &op_stack,
   // NULL terminated string 
   size++;
   size_t* mem = MemoryManager::AllocateArray(size + ((dim + 2) * sizeof(size_t)),
-						  CHAR_ARY_TYPE, op_stack, *stack_pos);
+                                             CHAR_ARY_TYPE, op_stack, *stack_pos);
   mem[0] = size - 1;
   mem[1] = dim;
   ::memcpy(mem + 2, indices, dim * sizeof(size_t));
@@ -1776,7 +1776,7 @@ unsigned int WINAPI StackInterpreter::AsyncMethodCall(LPVOID arg)
 
   HANDLE vm_thread;
   DuplicateHandle(GetCurrentProcess(), GetCurrentThread(), GetCurrentProcess(),
-		  &vm_thread, 0, TRUE, DUPLICATE_SAME_ACCESS);
+                  &vm_thread, 0, TRUE, DUPLICATE_SAME_ACCESS);
 
 #ifdef _DEBUG
   wcout << L"# Starting thread=" << vm_thread << " #" << endl;
@@ -2056,7 +2056,7 @@ void StackInterpreter::ProcessInterpretedMethodCall(StackMethod* called, size_t*
 {
 #ifdef _DEBUG
   wcout << L"=== MTHD_CALL: id=" << called->GetClass()->GetId() << ","
-	<< called->GetId() << "; name='" << called->GetName() << "' ===" << endl;
+        << called->GetId() << "; name='" << called->GetName() << "' ===" << endl;
 #endif	
   (*frame) = GetStackFrame(called, instance);
   instrs = (*frame)->method->GetInstructions();
