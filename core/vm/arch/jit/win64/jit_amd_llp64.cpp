@@ -1540,13 +1540,15 @@ void JitCompilerIA64::ProcessStackCallback(long instr_id, StackInstr* instr,
   move_imm_reg((size_t)instr, RSI);
   move_imm_reg(instr_id, RDI);  
   push_imm(instr_index - 1);
+  push_mem(CALL_STACK, RBP);
+  push_mem(CALL_STACK_POS, RBP);
   push_mem(STACK_POS, RBP);
   
   // call function
   move_imm_reg((size_t)JitCompilerIA64::StackCallback, R15);
   call_reg(R15);
   
-  add_imm_reg(16, RSP);
+  add_imm_reg(32, RSP);
   
   // restore registers
   pop_reg(R8);
@@ -3890,7 +3892,7 @@ void JitExecutor::Initialize(StackProgram* p) {
 }
 
 long JitExecutor::ExecuteMachineCode(long cls_id, long mthd_id, size_t* inst, unsigned char* code, const long code_size,
-                                     size_t* op_stack, long *stack_pos, StackFrame** call_stack, long* call_stack_pos, StackFrame* frame) {
+                                     size_t* op_stack, long* stack_pos, StackFrame** call_stack, long* call_stack_pos, StackFrame* frame) {
   // create function
   jit_fun_ptr jit_fun = (jit_fun_ptr)code;
   return jit_fun(cls_id, mthd_id, method->GetClass()->GetClassMemory(), inst, op_stack, 

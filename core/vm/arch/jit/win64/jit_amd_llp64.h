@@ -39,29 +39,30 @@ using namespace std;
 
 namespace Runtime {
   // offsets for Intel (AMD-64) addresses
-#define OP_STACK 64
-#define STACK_POS 72
-#define CLS_ID 80
-#define MTHD_ID 88
-#define CLASS_MEM 96
-#define INSTANCE_MEM 104
-#define JIT_MEM 56
-#define JIT_OFFSET 48
-#define CALL_STACK 40
-#define CALL_STACK_POS 32
+#define CLS_ID 96
+#define MTHD_ID 104
+#define CLASS_MEM 112
+#define INSTANCE_MEM 120
+
+#define OP_STACK 48
+#define STACK_POS 56
+#define CALL_STACK 64
+#define CALL_STACK_POS 72
+#define JIT_MEM 80
+#define JIT_OFFSET 88
 
   // float temps
-#define TMP_XMM_0 104
-#define TMP_XMM_1 112
-#define TMP_XMM_2 120
+#define TMP_XMM_0 128
+#define TMP_XMM_1 136
+#define TMP_XMM_2 144
   // integer temps
-#define TMP_REG_0 128
-#define TMP_REG_1 136
-#define TMP_REG_2 144
-#define TMP_REG_3 152
-#define TMP_REG_4 160
-#define TMP_REG_5 168
-#define RED_ZONE 192
+#define TMP_REG_0 152
+#define TMP_REG_1 160
+#define TMP_REG_2 168
+#define TMP_REG_3 176
+#define TMP_REG_4 184
+#define TMP_REG_5 192
+#define RED_ZONE 208
 
 #define MAX_DBLS 64
 #define BUFFER_SIZE 512
