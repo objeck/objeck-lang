@@ -1554,21 +1554,20 @@ void JitCompilerIA64::ProcessStackCallback(long instr_id, StackInstr* instr,
   move_imm_reg((long)instr, RSI);
   move_imm_reg(instr_id, RDI);  
   push_imm(instr_index - 1);
+  push_mem(CALL_STACK_POS, RBP);
+  push_mem(CALL_STACK, RBP);
   push_mem(STACK_POS, RBP);
   
   // call function
   move_imm_reg((long)JitCompilerIA64::StackCallback, R15);
   call_reg(R15);
-  
-  add_imm_reg(16, RSP);
+  add_imm_reg(32, RSP);
   
   // restore registers
   pop_reg(R8);
   pop_reg(R13);
   pop_reg(R14);
   pop_reg(R15);
-
-
   
   // restore register values
   while(!dirty_regs.empty()) {
