@@ -54,7 +54,7 @@ void JitCompilerIA64::Prolog() {
   while(local_space % 16 != 0) {
     local_space++;
   }
-  local_space+=8;
+  local_space += 8;
   
   unsigned char buffer[4];
   ByteEncode32(buffer, local_space);
