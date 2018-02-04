@@ -128,7 +128,6 @@ void JitCompilerIA64::Epilog(long imm) {
 }
 
 void JitCompilerIA64::RegisterRoot() {
-  /*
   // caculate root address
   // note: the offset requried to 
   // get to the first local variale
@@ -136,25 +135,24 @@ void JitCompilerIA64::RegisterRoot() {
   RegisterHolder* holder = GetRegister();
   move_reg_reg(RBP, holder->GetRegister());
   add_imm_reg(RED_ZONE, holder->GetRegister());
-  
-  // copy values 
-  move_mem_reg(CLS_ID, RBP, RCX);
-  move_mem_reg(MTHD_ID, RBP, RDX);
-  move_mem_reg(INSTANCE_MEM, RBP, R8);
-  move_reg_reg(holder->GetRegister(), R9);
-  push_imm(offset);
 
-  // 32-byte shadow space
-  push_imm(0); push_imm(0);
-  push_imm(0); push_imm(0);
+  RegisterHolder* mem_holder = GetRegister();
+  move_mem_reg(JIT_MEM, RBP, mem_holder->GetRegister());
+  move_reg_mem(holder->GetRegister(), 0, mem_holder->GetRegister());
 
-  // call method
-  move_imm_reg((size_t)MemoryManager::AddJitMethodRoot, R10);
-  call_reg(R10);
+  int index = offset >> 3;
+  if(index > 0) {
+    move_imm_reg(index, RCX);
+    move_imm_mem(0, 0, holder->GetRegister());
+    add_imm_reg(sizeof(size_t), holder->GetRegister());
+    loop(-20);
+  }
+  move_mem_reg(JIT_OFFSET, RBP, mem_holder->GetRegister());
+  move_imm_mem(offset, 0, mem_holder->GetRegister());
 
   // clean up
   ReleaseRegister(holder);
-  */
+  ReleaseRegister(mem_holder);
 }
 
 void JitCompilerIA64::ProcessParameters(long params) {
@@ -2558,6 +2556,12 @@ void JitCompilerIA64::math_imm_reg(long imm, Register reg, InstructionType type)
   default:
     break;
   }
+}
+
+void JitCompilerIA64::loop(long offset)
+{
+  AddMachineCode(0xe2);
+  AddMachineCode((unsigned char)offset);
 }
 
 void JitCompilerIA64::math_reg_reg(Register src, Register dest, InstructionType type) {

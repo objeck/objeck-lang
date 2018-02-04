@@ -140,7 +140,7 @@ void JitCompilerIA64::RegisterRoot() {
   move_mem_reg(JIT_MEM, RBP, mem_holder->GetRegister());
   move_reg_mem(holder->GetRegister(), 0, mem_holder->GetRegister());
   
-  int index = offset / sizeof(size_t);
+  int index = offset >> 3;
   if(index > 0) {  
     move_imm_reg(index, RCX);
     move_imm_mem(0, 0, holder->GetRegister());
