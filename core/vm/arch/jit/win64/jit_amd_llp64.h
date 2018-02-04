@@ -39,12 +39,16 @@ using namespace std;
 
 namespace Runtime {
   // offsets for Intel (AMD-64) addresses
-#define OP_STACK 48
-#define STACK_POS 56
-#define CLS_ID 72
-#define MTHD_ID 80
-#define CLASS_MEM 88
-#define INSTANCE_MEM 96
+#define OP_STACK 64
+#define STACK_POS 72
+#define CLS_ID 80
+#define MTHD_ID 88
+#define CLASS_MEM 96
+#define INSTANCE_MEM 104
+#define JIT_MEM 56
+#define JIT_OFFSET 48
+#define CALL_STACK 40
+#define CALL_STACK_POS 32
 
   // float temps
 #define TMP_XMM_0 104
@@ -57,7 +61,7 @@ namespace Runtime {
 #define TMP_REG_3 152
 #define TMP_REG_4 160
 #define TMP_REG_5 168
-#define RED_ZONE 176
+#define RED_ZONE 192
 
 #define MAX_DBLS 64
 #define BUFFER_SIZE 512
@@ -1153,6 +1157,7 @@ namespace Runtime {
 
     // generates a conditional jump
     bool cond_jmp(InstructionType type);
+    void loop(long offset);
 
     static size_t PopInt(size_t* op_stack, long *stack_pos) {
       const size_t value = op_stack[--(*stack_pos)];
@@ -1171,8 +1176,8 @@ namespace Runtime {
     }
 
     static void StackCallback(const long instr_id, StackInstr* instr, const long cls_id,
-                              const long mthd_id, size_t* inst, size_t* op_stack,
-                              long *stack_pos, const long ip) {
+                              const long mthd_id, size_t* inst, size_t* op_stack, long *stack_pos, 
+                              StackFrame** call_stack, long* call_stack_pos, const long ip) {
 #ifdef _DEBUG
       wcout << L"Stack Call: instr=" << instr_id
         << L", oper_1=" << instr->GetOperand() << L", oper_2=" << instr->GetOperand2()
@@ -1906,8 +1911,6 @@ namespace Runtime {
         move_reg_mem(RDX, MTHD_ID, RBP);
         move_reg_mem(R8, CLASS_MEM, RBP);
         move_reg_mem(R9, INSTANCE_MEM, RBP);
-//        move_reg_mem(R8, OP_STACK, RBP);
-//        move_reg_mem(R9, STACK_POS, RBP);
 
         // register root
         RegisterRoot();
