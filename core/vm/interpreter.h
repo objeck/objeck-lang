@@ -279,7 +279,7 @@ namespace Runtime {
 #endif
       // ::memcpy(&op_stack[(*stack_pos)], &v, sizeof(FLOAT_VALUE));
       *((FLOAT_VALUE*)(&op_stack[(*stack_pos)])) = v;
-#ifdef _X64
+#if defined(_WIN64) || defined(_X64)
       (*stack_pos)++;
 #else
       (*stack_pos) += 2;
@@ -299,7 +299,7 @@ namespace Runtime {
     // pops a double from the calculation stack
     //
     inline FLOAT_VALUE PopFloat(size_t* op_stack, long* stack_pos) {
-#ifdef _X64
+#if defined(_WIN64) || defined(_X64)
       (*stack_pos)--;
 #else
       (*stack_pos) -= 2;
@@ -336,7 +336,7 @@ namespace Runtime {
     // execution stack.
     //
     inline FLOAT_VALUE TopFloat(size_t* op_stack, long* stack_pos) {
-#ifdef _X64
+#if defined(_WIN64) || defined(_X64)
       long index = (*stack_pos) - 1;
 #else
       long index = (*stack_pos) - 2;
@@ -371,7 +371,7 @@ namespace Runtime {
 #endif
 
       // 64-bit bounds check
-#ifdef _X64
+#if defined(_WIN64) || defined(_X64)
       if(index < 0 || index >= size) {
         wcerr << L">>> Index out of bounds: " << index << L"," << size << L" <<<" << endl;
         StackErrorUnwind();
