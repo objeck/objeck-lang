@@ -1605,7 +1605,7 @@ void StackInterpreter::ProcessNewArray(StackInstr* instr, size_t* &op_stack, lon
   }
 
   size_t* mem;  
-#ifdef _X64
+#if defined(_WIN64) || defined(_X64)
   mem = (size_t*)MemoryManager::AllocateArray(size + dim + 2, INT_TYPE,
                                               op_stack, *stack_pos);
 #else
