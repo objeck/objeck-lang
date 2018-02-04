@@ -344,9 +344,8 @@ namespace Runtime {
   /********************************
    * Prototype for jit function
    ********************************/
-  typedef int32_t (*jit_fun_ptr)(int32_t cls_id, int32_t mthd_id, int32_t* cls_mem, 
-				 int32_t* inst, size_t* op_stack, int32_t *stack_pos, 
-				 StackFrame** call_stack, long* call_stack_pos);
+  typedef int32_t (*jit_fun_ptr)(int32_t cls_id, int32_t mthd_id, size_t* cls_mem, size_t* inst, size_t* op_stack, 
+                                 long* stack_pos, StackFrame** call_stack, long* call_stack_pos, size_t** jit_mem, long* offset);
   
   /********************************
    * JitCompilerIA32 class
@@ -381,7 +380,6 @@ namespace Runtime {
     // stack conversion operations
     void ProcessParameters(int32_t count);
     void RegisterRoot();
-    void UnregisterRoot();
     void ProcessInstructions();
     void ProcessLoad(StackInstr* instr);
     void ProcessStore(StackInstr* instruction);
@@ -1734,9 +1732,9 @@ namespace Runtime {
     int32_t code_index; 
     double* floats;
 
-    int32_t ExecuteMachineCode(int32_t cls_id, int32_t mthd_id, int32_t* inst, unsigned char* code, 
-			       const int32_t code_size, size_t* op_stack, int32_t *stack_pos,
-			       StackFrame** call_stack, long* call_stack_pos);
+    int32_t ExecuteMachineCode(int32_t cls_id, int32_t mthd_id, size_t* inst, unsigned char* code, 
+                               const int32_t code_size, size_t* op_stack, long* stack_pos,
+                               StackFrame** call_stack, long* call_stack_pos, StackFrame* frame);
 
   public:
     static void Initialize(StackProgram* p);
@@ -1748,8 +1746,7 @@ namespace Runtime {
     }    
     
     // Executes machine code
-    inline long Execute(StackMethod* cm, size_t* inst, size_t* op_stack, long* stack_pos, 
-			StackFrame** call_stack, long* call_stack_pos) {
+    inline long Execute(StackMethod* cm, size_t* inst, size_t* op_stack, long* stack_pos, StackFrame** call_stack, long* call_stack_pos, StackFrame* frame) {
       method = cm;
       int32_t cls_id = method->GetClass()->GetId();
       int32_t mthd_id = method->GetId();
@@ -1768,8 +1765,7 @@ namespace Runtime {
       floats = native_code->GetFloats();
       
       // execute
-      return ExecuteMachineCode(cls_id, mthd_id, (int32_t*)inst, code, code_index, 
-				op_stack, (int32_t*)stack_pos, call_stack, call_stack_pos);
+      return ExecuteMachineCode(cls_id, mthd_id, inst, code, code_index, op_stack, stack_pos, call_stack, call_stack_pos, frame);
     }
   };
 }

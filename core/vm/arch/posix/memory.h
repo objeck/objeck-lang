@@ -79,7 +79,7 @@ class MemoryManager {
   static StackProgram* prgm;
   static unordered_map<StackFrameMonitor*, StackFrameMonitor*> pda_monitors; // deleted elsewhere
   static set<StackFrame**> pda_frames;
-  static vector<StackFrame*> jit_frames;
+  static vector<StackFrame*> jit_frames; // deleted elsewhere
   static vector<size_t*> allocated_memory;
   
   static stack<char*> cache_pool_16;
