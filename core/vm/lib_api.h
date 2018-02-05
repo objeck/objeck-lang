@@ -108,7 +108,7 @@ double APITools_GetFloatArrayElement(size_t* array, int index) {
   if(index < src_array_len) {
     size_t* src_array_ptr = array + 3;
     double value;
-#ifdef _X64
+#if defined(_WIN64) || defined(_X64)
     memcpy(&value, &src_array_ptr[index], sizeof(value));
 #else
     memcpy(&value, &src_array_ptr[index * 2], sizeof(value));
@@ -127,7 +127,7 @@ void APITools_SetFloatArrayElement(size_t* array, int index, double value) {
   const long src_array_len = (long)array[0];
   if(index < src_array_len) {
     size_t* src_array_ptr = array + 3;
-#ifdef _X64
+#if defined(_WIN64) || defined(_X64)
     memcpy(&src_array_ptr[index], &value, sizeof(value));
 #else
     memcpy(&src_array_ptr[index * 2], &value, sizeof(value));
@@ -422,7 +422,7 @@ void APITools_PushInt(VMContext &context, long value) {
 // pushes an double value onto the runtime stack
 void APITools_PushFloat(VMContext &context, double v) {
   memcpy(&context.op_stack[(*context.stack_pos)], &v, sizeof(double));
-#ifdef _X64
+#if defined(_WIN64) || defined(_X64)
   (*context.stack_pos)++;
 #else
   (*context.stack_pos) += 2;

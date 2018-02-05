@@ -1464,8 +1464,7 @@ void JitCompilerIA64::ProcessCopy(StackInstr* instr) {
   }
 }
 
-void JitCompilerIA64::ProcessStackCallback(long instr_id, StackInstr* instr,
-                                           long &instr_index, long params) {
+void JitCompilerIA64::ProcessStackCallback(long instr_id, StackInstr* instr, long &instr_index, long params) {
   long non_params;
   if(params < 0) {
     non_params = 0;
@@ -1477,10 +1476,11 @@ void JitCompilerIA64::ProcessStackCallback(long instr_id, StackInstr* instr,
 #ifdef _DEBUG
   wcout << L"Return: params=" << params << L", non-params=" << non_params << endl;
 #endif
-  
+
+  // TODO: FIX ME
   stack<RegInstr*> regs;
   stack<long> dirty_regs;
-  long reg_offset = 0;  
+  long reg_offset = 0;  // FIX
 
   stack<RegInstr*> xmms;
   stack<long> dirty_xmms;

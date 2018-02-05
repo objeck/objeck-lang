@@ -266,35 +266,20 @@ namespace Runtime {
       }
       available = factor * PAGE_SIZE;
       buffer = (unsigned char*)VirtualAlloc(NULL, available, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
-
-      /*
-      if(posix_memalign((void**)&buffer, PAGE_SIZE, available)) {
+      if(!buffer) {
         wcerr << L"Unable to allocate JIT memory!" << endl;
         exit(1);
       }
-      if(mprotect(buffer, available, PROT_READ | PROT_WRITE | PROT_EXEC) < 0) {
-        wcerr << L"Unable to mprotect" << endl;
-        exit(1);
-      }
-      */
     }
 
     PageHolder() {
       index = 0;
       available = PAGE_SIZE;
       buffer = (unsigned char*)VirtualAlloc(NULL, PAGE_SIZE, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
-
-      /*
-      if(posix_memalign((void**)&buffer, PAGE_SIZE, PAGE_SIZE)) {
+      if(!buffer) {
         wcerr << L"Unable to allocate JIT memory!" << endl;
         exit(1);
       }
-
-      if(mprotect(buffer, PAGE_SIZE, PROT_READ | PROT_WRITE | PROT_EXEC) < 0) {
-        wcerr << L"Unable to mprotect" << endl;
-        exit(1);
-      }
-      */
     }
 
     ~PageHolder() {
@@ -1193,7 +1178,7 @@ namespace Runtime {
 #ifdef _DEBUG
           wcout << L"jit oper: MTHD_CALL: cls=" << instr->GetOperand() << L", mthd=" << instr->GetOperand2() << endl;
 #endif
-          StackInterpreter intpr;
+          StackInterpreter intpr(call_stack, call_stack_pos);
           intpr.Execute(op_stack, stack_pos, ip, program->GetClass(cls_id)->GetMethod(mthd_id), inst, true);
         }
         break;
@@ -1867,28 +1852,30 @@ namespace Runtime {
         code = (unsigned char*)malloc(code_buf_max);
 
         // floats memory
-        // TODO: WIN64
-        if(/*posix_memalign((void**)&floats, PAGE_SIZE, sizeof(double) * MAX_DBLS)*/ false) {
-          wcerr << L"Unable to reallocate JIT memory!" << endl;
+
+
+        floats = (double*)VirtualAlloc(NULL, sizeof(double) * MAX_DBLS, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
+        if(!floats) {
+          wcerr << L"Unable to allocate JIT memory for floats!" << endl;
           exit(1);
         }
         floats_index = instr_index = code_index = instr_count = 0;
 
         // general use registers
-        //	aval_regs.push_back(new RegisterHolder(RDX));
-        //	aval_regs.push_back(new RegisterHolder(RCX));
-        aval_regs.push_back(new RegisterHolder(RBX));
+        aval_regs.push_back(new RegisterHolder(RDX));
+        aval_regs.push_back(new RegisterHolder(RCX));
+        // aval_regs.push_back(new RegisterHolder(RBX));
         aval_regs.push_back(new RegisterHolder(RAX));
         // aux general use registers
-        //        aux_regs.push(new RegisterHolder(RDI));
-        //        aux_regs.push(new RegisterHolder(RSI));
-        aux_regs.push(new RegisterHolder(R15));
-        aux_regs.push(new RegisterHolder(R14));
-        aux_regs.push(new RegisterHolder(R13));
+        // aux_regs.push(new RegisterHolder(RDI));
+        // aux_regs.push(new RegisterHolder(RSI));
+        // aux_regs.push(new RegisterHolder(R15));
+        // aux_regs.push(new RegisterHolder(R14));
+        // aux_regs.push(new RegisterHolder(R13));
         // aux_regs.push(new RegisterHolder(R12));
         aux_regs.push(new RegisterHolder(R11));
         aux_regs.push(new RegisterHolder(R10));
-        // aux_regs.push(new RegisterHolder(R9));
+        aux_regs.push(new RegisterHolder(R9));
         aux_regs.push(new RegisterHolder(R8));
         // floating point registers
         aval_xregs.push_back(new RegisterHolder(XMM15));
@@ -1944,6 +1931,9 @@ namespace Runtime {
 #endif
         // store compiled code
         method->SetNativeCode(new NativeCode(page_manager->GetPage(code, code_index), code_index, floats));
+        VirtualFree(code, NULL, MEM_RELEASE);
+        code = NULL;
+
         compile_success = true;
 
 #ifndef _JIT_SERIAL
