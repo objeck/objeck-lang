@@ -277,7 +277,6 @@ namespace Runtime {
       wcout << L"  [push_f: stack_pos=" << (*stack_pos) << L"; value=" << v
             << L"]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << endl;
 #endif
-      // ::memcpy(&op_stack[(*stack_pos)], &v, sizeof(FLOAT_VALUE));
       *((FLOAT_VALUE*)(&op_stack[(*stack_pos)])) = v;
 #if defined(_WIN64) || defined(_X64)
       (*stack_pos)++;
@@ -306,7 +305,6 @@ namespace Runtime {
 #endif
       
 #ifdef _DEBUG
-      // ::memcpy(&v, &op_stack[(*stack_pos)], sizeof(FLOAT_VALUE));
       FLOAT_VALUE v = *((FLOAT_VALUE*)(&op_stack[(*stack_pos)]));
       wcout << L"  [pop_f: stack_pos=" << (*stack_pos) << L"; value=" << v
             << L"]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << endl;
@@ -343,7 +341,6 @@ namespace Runtime {
 #endif
       
 #ifdef _DEBUG
-      // ::memcpy(&v, &op_stack[index], sizeof(FLOAT_VALUE));
       FLOAT_VALUE v = *((FLOAT_VALUE*)(&op_stack[index]));
       wcout << L"  [top_f: stack_pos=" << (*stack_pos) << L"; value=" << v
             << L"]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << endl;
