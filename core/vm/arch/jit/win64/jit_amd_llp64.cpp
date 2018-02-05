@@ -1548,8 +1548,7 @@ void JitCompilerIA64::ProcessStackCallback(long instr_id, StackInstr* instr, lon
   push_mem(INSTANCE_MEM, RBP);
 
   // call function
-  push_imm(0); push_imm(0);
-  push_imm(0); push_imm(0);
+  sub_imm_reg(32, RSP);
   move_imm_reg((size_t)JitCompilerIA64::StackCallback, R10);
   call_reg(R10);
   

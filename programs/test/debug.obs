@@ -4,8 +4,18 @@ class Test {
 	}
 
 	function : native : Go(x : Int) ~ Nil {
+#~
+		b := 3;
+		(a + b * 7)->PrintLine();
+
+		a := Int->New[3];
+		a[1] := 13;
+		b := a[1] + 7 * x;
+		b->PrintLine();
+~#
 		d := 3.14;
 		g := d - .9;
 		g->PrintLine();
+#		return g;
 	}
 }
