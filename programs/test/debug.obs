@@ -3,8 +3,14 @@ class Test {
 		Go(9);
 	}
 
-	function : native : Go(a : Int) ~ Nil {
+	function : native : Go(x : Int) ~ Nil {
+#~
 		b := 3;
 		(a + b * 7)->PrintLine();
+~#
+		a := Int->New[3];
+		a[1] := 13;
+		b := a[1] + 7 * x;
+		b->PrintLine();
 	}
 }

@@ -261,7 +261,7 @@ namespace Runtime {
     // pushes an integer onto the calculation stack.  this code
     // in normally inlined and there's a macro version available.
     //
-    inline void PushInt(size_t v, size_t* op_stack, long* stack_pos) {
+    inline void PushInt(const size_t v, size_t* op_stack, long* stack_pos) {
 #ifdef _DEBUG
       wcout << L"  [push_i: stack_pos=" << (*stack_pos) << L"; value=" << v << L"("
             << (size_t*)v << L")]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << endl;
@@ -272,14 +272,13 @@ namespace Runtime {
     //
     // pushes an double onto the calculation stack.
     //
-    inline void PushFloat(FLOAT_VALUE v, size_t* op_stack, long* stack_pos) {
+    inline void PushFloat(const FLOAT_VALUE v, size_t* op_stack, long* stack_pos) {
 #ifdef _DEBUG
       wcout << L"  [push_f: stack_pos=" << (*stack_pos) << L"; value=" << v
             << L"]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << endl;
 #endif
-      // ::memcpy(&op_stack[(*stack_pos)], &v, sizeof(FLOAT_VALUE));
       *((FLOAT_VALUE*)(&op_stack[(*stack_pos)])) = v;
-#ifdef _X64
+#if defined(_WIN64) || defined(_X64)
       (*stack_pos)++;
 #else
       (*stack_pos) += 2;
@@ -290,7 +289,7 @@ namespace Runtime {
     // swaps two integers on the calculation stack
     //
     inline void SwapInt(size_t* op_stack, long* stack_pos) {
-      size_t v = op_stack[(*stack_pos) - 2];
+      const size_t v = op_stack[(*stack_pos) - 2];
       op_stack[(*stack_pos) - 2] = op_stack[(*stack_pos) - 1];
       op_stack[(*stack_pos) - 1] = v;
     }
@@ -299,14 +298,13 @@ namespace Runtime {
     // pops a double from the calculation stack
     //
     inline FLOAT_VALUE PopFloat(size_t* op_stack, long* stack_pos) {
-#ifdef _X64
+#if defined(_WIN64) || defined(_X64)
       (*stack_pos)--;
 #else
       (*stack_pos) -= 2;
 #endif
       
 #ifdef _DEBUG
-      // ::memcpy(&v, &op_stack[(*stack_pos)], sizeof(FLOAT_VALUE));
       FLOAT_VALUE v = *((FLOAT_VALUE*)(&op_stack[(*stack_pos)]));
       wcout << L"  [pop_f: stack_pos=" << (*stack_pos) << L"; value=" << v
             << L"]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << endl;
@@ -336,14 +334,13 @@ namespace Runtime {
     // execution stack.
     //
     inline FLOAT_VALUE TopFloat(size_t* op_stack, long* stack_pos) {
-#ifdef _X64
+#if defined(_WIN64) || defined(_X64)
       long index = (*stack_pos) - 1;
 #else
       long index = (*stack_pos) - 2;
 #endif
       
 #ifdef _DEBUG
-      // ::memcpy(&v, &op_stack[index], sizeof(FLOAT_VALUE));
       FLOAT_VALUE v = *((FLOAT_VALUE*)(&op_stack[index]));
       wcout << L"  [top_f: stack_pos=" << (*stack_pos) << L"; value=" << v
             << L"]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << endl;
@@ -371,7 +368,7 @@ namespace Runtime {
 #endif
 
       // 64-bit bounds check
-#ifdef _X64
+#if defined(_WIN64) || defined(_X64)
       if(index < 0 || index >= size) {
         wcerr << L">>> Index out of bounds: " << index << L"," << size << L" <<<" << endl;
         StackErrorUnwind();
