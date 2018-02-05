@@ -261,7 +261,7 @@ namespace Runtime {
     // pushes an integer onto the calculation stack.  this code
     // in normally inlined and there's a macro version available.
     //
-    inline void PushInt(size_t v, size_t* op_stack, long* stack_pos) {
+    inline void PushInt(const size_t v, size_t* op_stack, long* stack_pos) {
 #ifdef _DEBUG
       wcout << L"  [push_i: stack_pos=" << (*stack_pos) << L"; value=" << v << L"("
             << (size_t*)v << L")]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << endl;
@@ -272,7 +272,7 @@ namespace Runtime {
     //
     // pushes an double onto the calculation stack.
     //
-    inline void PushFloat(FLOAT_VALUE v, size_t* op_stack, long* stack_pos) {
+    inline void PushFloat(const FLOAT_VALUE v, size_t* op_stack, long* stack_pos) {
 #ifdef _DEBUG
       wcout << L"  [push_f: stack_pos=" << (*stack_pos) << L"; value=" << v
             << L"]; frame=" << (*frame) << L"; call_pos=" << (*call_stack_pos) << endl;
