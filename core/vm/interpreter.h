@@ -289,7 +289,7 @@ namespace Runtime {
     // swaps two integers on the calculation stack
     //
     inline void SwapInt(size_t* op_stack, long* stack_pos) {
-      size_t v = op_stack[(*stack_pos) - 2];
+      const size_t v = op_stack[(*stack_pos) - 2];
       op_stack[(*stack_pos) - 2] = op_stack[(*stack_pos) - 1];
       op_stack[(*stack_pos) - 1] = v;
     }
