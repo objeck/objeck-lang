@@ -89,7 +89,7 @@ void ObjectSerializer::CheckObject(size_t* mem, bool is_obj, long depth) {
 #ifdef _DEBUG
         long mem_size = cls->GetInstanceMemorySize();
 
-#ifdef _X64
+#if defined(_WIN64) || defined(_X64)
         mem_size *= 2;
 #endif
         for(int i = 0; i < depth; i++) {

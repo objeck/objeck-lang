@@ -239,8 +239,10 @@ class NativeCode
     }
   
   ~NativeCode() {
-#ifndef _WIN32
-    free(floats);
+#ifdef _WIN64
+    VirtualFree(floats, NULL, MEM_RELEASE);
+#elif _X64
+    free(floats); 
 #else
     delete[] floats;
 #endif
@@ -1525,7 +1527,7 @@ class TrapProcessor {
 #endif
     memcpy(&op_stack[(*stack_pos)], &v, sizeof(FLOAT_VALUE));
 
-#ifdef _X64
+#if defined(_WIN64) || defined(_X64)
     (*stack_pos)++;
 #else
     (*stack_pos) += 2;
@@ -1547,7 +1549,7 @@ class TrapProcessor {
   static inline FLOAT_VALUE PopFloat(size_t* op_stack, long* stack_pos) {
     FLOAT_VALUE v;
 
-#ifdef _X64
+#if defined(_WIN64) || defined(_X64)
     (*stack_pos)--;
 #else
     (*stack_pos) -= 2;
@@ -1582,7 +1584,7 @@ class TrapProcessor {
   static inline FLOAT_VALUE TopFloat(size_t* op_stack, long* stack_pos) {
     FLOAT_VALUE v;
 
-#ifdef _X64
+#if defined(_WIN64) || defined(_X64)
     long index = (*stack_pos) - 1;
 #else
     long index = (*stack_pos) - 2;
