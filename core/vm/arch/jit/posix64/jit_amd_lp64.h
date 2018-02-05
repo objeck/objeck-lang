@@ -1906,6 +1906,9 @@ namespace Runtime {
 #endif
         // store compiled code
         method->SetNativeCode(new NativeCode(page_manager->GetPage(code, code_index), code_index, floats));
+        free(code);
+        code = NULL;
+        
         compile_success = true;
 	
 #ifndef _JIT_SERIAL
