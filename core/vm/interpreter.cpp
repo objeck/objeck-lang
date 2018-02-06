@@ -33,12 +33,8 @@
 #include "lib_api.h"
 
 #ifndef _NO_JIT
-#ifdef _WIN64
-#include "arch/jit/win64/jit_amd_llp64.h"
-#elif _X64
-#include "arch/jit/posix64/jit_amd_lp64.h"
-#elif _ARM32
-#include "arch/jit/arm32/jit_arm_a32.h"
+#if defined(_WIN64) || defined(_X64)
+#include "arch/jit/amd64/jit_amd_lp64.h"
 #else
 #include "arch/jit/ia32/jit_intel_lp32.h"
 #endif
