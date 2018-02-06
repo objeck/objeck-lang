@@ -5,7 +5,7 @@
 ~#
 
 use Web.HTTP;
-use Data.RegEx;
+use Query.RegEx;
 use Data.XML;
 use Collection;
 

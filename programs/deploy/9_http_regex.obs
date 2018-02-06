@@ -4,8 +4,8 @@
 # note: takes a few seconds to run
 ~#
 
-use HTTP;
-use RegEx;
+use Web.HTTP;
+use Query.RegEx;
 
 class RegExUrls {
 	function : Main(args : String[]) ~ Nil {

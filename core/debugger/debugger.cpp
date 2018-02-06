@@ -64,11 +64,11 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
 
       // prompt for input
       const wstring &long_name = cur_frame->method->GetName();
-      int end_index = long_name.find_last_of(':');
+      size_t end_index = long_name.find_last_of(':');
       const wstring &cls_mthd_name = long_name.substr(0, end_index);
 
       // show break info
-      int mid_index = cls_mthd_name.find_last_of(':');
+      size_t mid_index = cls_mthd_name.find_last_of(':');
       const wstring &cls_name = cls_mthd_name.substr(0, mid_index);
       const wstring &mthd_name = cls_mthd_name.substr(mid_index + 1);
       wcout << L"break: file='" << file_name << L":" << line_num << L"', method='"
@@ -171,9 +171,9 @@ void Runtime::Debugger::ProcessExe(Load* load) {
 void Runtime::Debugger::ProcessRun() {
   if(program_file.size() > 0) {
     // process program parameters
-    const int argc = arguments.size();
+    long argc = (long)arguments.size();
     wchar_t** argv = new wchar_t*[argc];
-    for(int i = 0; i < argc; i++) {
+    for(long i = 0; i < argc; ++i) {
 #ifdef _WIN32
       argv[i] = _wcsdup(arguments[i].c_str());
 #else
@@ -187,7 +187,7 @@ void Runtime::Debugger::ProcessRun() {
     cur_program = loader.GetProgram();
 
     // execute
-    op_stack = new long[CALC_STACK_SIZE];
+    op_stack = new size_t[CALC_STACK_SIZE];
     stack_pos = new long;
     (*stack_pos) = 0;
 
@@ -388,9 +388,9 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
 
         case OBJ_PARM:
           if(ref_klass && ref_klass->GetName() == L"System.String") {
-            long* instance = (long*)reference->GetIntValue();
+            size_t* instance = (size_t*)reference->GetIntValue();
             if(instance) {
-              long* string_instance = (long*)instance[0];
+              size_t* string_instance = (size_t*)instance[0];
               const wchar_t* char_string = (wchar_t*)(string_instance + 3);
               wcout << L"print: type=" << ref_klass->GetName() << L", value=\""
 										<< char_string << L"\"" << endl;
@@ -408,9 +408,9 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
 
         case OBJ_ARY_PARM:
           if(reference->GetIndices()) {
-            StackClass* klass = MemoryManager::GetClass((long*)reference->GetIntValue());
+            StackClass* klass = MemoryManager::GetClass((size_t*)reference->GetIntValue());
             if(klass) {	      
-              long* instance = (long*)reference->GetIntValue();
+              size_t* instance = (size_t*)reference->GetIntValue();
               if(instance) {
                 wcout << L"print: type=" << klass->GetName() << L", value=" << (void*)reference->GetIntValue() << endl;
               }
@@ -433,7 +433,7 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
           break;
 
         case FUNC_PARM: {
-          StackClass* klass = cur_program->GetClass(reference->GetIntValue());
+          StackClass* klass = cur_program->GetClass((long)reference->GetIntValue());
           if(klass) {
             wcout << L"print: type=Functon, class=" << klass->GetName() 
 									<< L", method=" << PrintMethod(klass->GetMethod(reference->GetIntValue2())) << endl;
@@ -778,8 +778,8 @@ void Runtime::Debugger::EvaluateReference(Reference* &reference, MemoryContext c
           break;
 
         case FUNC_PARM:
-          reference->SetIntValue(ref_mem[dclr_value.id]);
-          reference->SetIntValue2(ref_mem[dclr_value.id + 1]);
+          reference->SetIntValue((long)ref_mem[dclr_value.id]);
+          reference->SetIntValue2((long)ref_mem[dclr_value.id + 1]);
           break;
 
         case FLOAT_PARM: {
@@ -856,8 +856,8 @@ void Runtime::Debugger::EvaluateReference(Reference* &reference, MemoryContext c
             break;
 
           case FUNC_PARM:
-            reference->SetIntValue(ref_mem[dclr_value.id + 1]);
-            reference->SetIntValue2(ref_mem[dclr_value.id + 2]);
+            reference->SetIntValue((long)ref_mem[dclr_value.id + 1]);
+            reference->SetIntValue2((long)ref_mem[dclr_value.id + 2]);
             break;
 
           case FLOAT_PARM: {
@@ -925,7 +925,7 @@ void Runtime::Debugger::EvaluateReference(Reference* &reference, MemoryContext c
 void Runtime::Debugger::EvaluateInstanceReference(Reference* reference, int index) {
   if(ref_mem) {
     reference->SetIntValue(ref_mem[index]);
-    ref_mem =(long*)ref_mem[index];
+    ref_mem =(size_t*)ref_mem[index];
     ref_klass = MemoryManager::GetClass(ref_mem);
     if(reference->GetReference()) {
       Reference* next_reference = reference->GetReference();
@@ -939,8 +939,8 @@ void Runtime::Debugger::EvaluateInstanceReference(Reference* reference, int inde
 }
 
 void Runtime::Debugger::EvaluateClassReference(Reference* reference, StackClass* klass, int index) {
-  long* cls_mem = klass->GetClassMemory();
-  reference->SetIntValue((long)cls_mem);
+  size_t* cls_mem = klass->GetClassMemory();
+  reference->SetIntValue((size_t)cls_mem);
   ref_mem  =cls_mem;
   ref_klass = klass;
   if(reference->GetReference()) {
@@ -950,34 +950,34 @@ void Runtime::Debugger::EvaluateClassReference(Reference* reference, StackClass*
 }
 
 void Runtime::Debugger::EvaluateByteReference(Reference* reference, int index) {
-  long* array = (long*)ref_mem[index];
+  size_t* array = (size_t*)ref_mem[index];
   if(array) {
-    const int max = array[0];
-    const int dim = array[1];
+    const long max = (long)array[0];
+    const long dim = (long)array[1];
 
     // de-reference array value
     ExpressionList* indices = reference->GetIndices();
     if(indices) {
       // calculate indices values
       vector<Expression*> expressions = indices->GetExpressions();
-      vector<int> values;
+      vector<long> values;
       for(size_t i = 0; i < expressions.size(); i++) {
         EvaluateExpression(expressions[i]);
         if(expressions[i]->GetExpressionType() == INT_LIT_EXPR) {
           values.push_back(static_cast<IntegerLiteral*>(expressions[i])->GetValue());
         }
         else {
-          values.push_back(expressions[i]->GetIntValue());
+          values.push_back((long)expressions[i]->GetIntValue());
         }
       }
       // match the dimensions
-      if(expressions.size() == (size_t)dim) {
+      if(expressions.size() == dim) {
         // calculate indices
         array += 2;
-        int j = dim - 1;
+        long j = dim - 1;
         long array_index = values[j--];
-        for(long i = 1; i < dim; i++) {
-          array_index *= array[i];
+        for(long i = 1; i < dim; ++i) {
+          array_index *= (long)array[i];
           array_index += values[j--];
         }
         array += dim;
@@ -997,8 +997,8 @@ void Runtime::Debugger::EvaluateByteReference(Reference* reference, int index) {
     }
     // set array address
     else {
-      reference->SetArrayDimension(dim);
-      reference->SetArraySize(max);
+      reference->SetArrayDimension((long)dim);
+      reference->SetArraySize((long)max);
       reference->SetIntValue(ref_mem[index]);
     }
   }
@@ -1009,10 +1009,10 @@ void Runtime::Debugger::EvaluateByteReference(Reference* reference, int index) {
 }
 
 void Runtime::Debugger::EvaluateCharReference(Reference* reference, int index) {
-  long* array = (long*)ref_mem[index];
+  size_t* array = (size_t*)ref_mem[index];
   if(array) {
-    const int max = array[0];
-    const int dim = array[1];
+    const long max = (long)array[0];
+    const long dim = (long)array[1];
 
     // de-reference array value
     ExpressionList* indices = reference->GetIndices();
@@ -1026,7 +1026,7 @@ void Runtime::Debugger::EvaluateCharReference(Reference* reference, int index) {
           values.push_back(static_cast<IntegerLiteral*>(expressions[i])->GetValue());
         }
         else {
-          values.push_back(expressions[i]->GetIntValue());
+          values.push_back((long)expressions[i]->GetIntValue());
         }
       }
       // match the dimensions
@@ -1036,7 +1036,7 @@ void Runtime::Debugger::EvaluateCharReference(Reference* reference, int index) {
         int j = dim - 1;
         long array_index = values[j--];
         for(long i = 1; i < dim; i++) {
-          array_index *= array[i];
+          array_index *= (long)array[i];
           array_index += values[j--];
         }
         array += dim;
@@ -1068,10 +1068,10 @@ void Runtime::Debugger::EvaluateCharReference(Reference* reference, int index) {
 }
 
 void Runtime::Debugger::EvaluateIntFloatReference(Reference* reference, int index, bool is_float) {
-  long* array = (long*)ref_mem[index];
+  size_t* array = (size_t*)ref_mem[index];
   if(array) {
-    const int max = array[0];
-    const int dim = array[1];
+    const long max = (long)array[0];
+    const int dim = (long)array[1];
 
     // de-reference array value
     ExpressionList* indices = reference->GetIndices();
@@ -1085,7 +1085,7 @@ void Runtime::Debugger::EvaluateIntFloatReference(Reference* reference, int inde
           values.push_back(static_cast<IntegerLiteral*>(expressions[i])->GetValue());
         }
         else {
-          values.push_back(expressions[i]->GetIntValue());
+          values.push_back((long)expressions[i]->GetIntValue());
         }
       }
       // match the dimensions
@@ -1095,7 +1095,7 @@ void Runtime::Debugger::EvaluateIntFloatReference(Reference* reference, int inde
         int j = dim - 1;
         long array_index = values[j--];
         for(long i = 1; i < dim; i++) {
-          array_index *= array[i];
+          array_index *= (long)array[i];
           array_index += values[j--];
         }
         array += dim;
@@ -1391,10 +1391,10 @@ void Runtime::Debugger::ProcessInfo(Info* info) {
 
       // parse method and class names
       const wstring &long_name = cur_frame->method->GetName();
-      int end_index = long_name.find_last_of(':');
+      size_t end_index = long_name.find_last_of(':');
       const wstring &cls_mthd_name = long_name.substr(0, end_index);
 
-      int mid_index = cls_mthd_name.find_last_of(':');
+      size_t mid_index = cls_mthd_name.find_last_of(':');
       const wstring &cls_name = cls_mthd_name.substr(0, mid_index);
       const wstring &mthd_name = cls_mthd_name.substr(mid_index + 1);
 

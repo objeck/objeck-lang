@@ -1,7 +1,7 @@
 /***************************************************************************
  * VM memory manager. Implements a simple "mark and sweep" collection algorithm.
  *
- * Copyright (c) 2008-2015, Randy Hollines
+ * Copyright (c) 2008-2018, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -37,6 +37,7 @@
 
 // basic vm tuning parameters
 #define MEM_MAX 2097152
+// #define MEM_MAX 4096
 #define UNCOLLECTED_COUNT 5
 #define COLLECTED_COUNT 13
 #define POOL_SIZE 128
@@ -48,7 +49,7 @@
 #define CACHE_SIZE -4
 
 struct StackOperMemory {
-  long* op_stack;
+  size_t* op_stack;
   long* stack_pos;
 };
 
@@ -62,13 +63,13 @@ struct StackFrameMonitor {
 
 // holders
 struct CollectionInfo {
-  long* op_stack;
+  size_t* op_stack;
   long stack_pos;
 };
 
 struct ClassMethodId {
-  long* self;
-  long* mem;
+  size_t* self;
+  size_t* mem;
   long cls_id;
   long mthd_id;
 };
@@ -76,10 +77,10 @@ struct ClassMethodId {
 class MemoryManager {
   static bool initialized;
   static StackProgram* prgm;
-  static unordered_map<long*, ClassMethodId*> jit_roots;
   static unordered_map<StackFrameMonitor*, StackFrameMonitor*> pda_monitors; // deleted elsewhere
   static set<StackFrame**> pda_frames;
-  static vector<long*> allocated_memory;
+  static vector<StackFrame*> jit_frames; // deleted elsewhere
+  static vector<size_t*> allocated_memory;
   
   static stack<char*> cache_pool_16;
   static stack<char*> cache_pool_32;
@@ -88,9 +89,9 @@ class MemoryManager {
   static stack<char*> cache_pool_512;
   
 #ifndef _GC_SERIAL
-  static pthread_mutex_t jit_mutex;
   static pthread_mutex_t pda_monitor_mutex;
   static pthread_mutex_t pda_frame_mutex;
+  static pthread_mutex_t jit_frame_mutex;
   static pthread_mutex_t allocated_mutex;
   static pthread_mutex_t marked_mutex;
   static pthread_mutex_t marked_sweep_mutex;
@@ -103,20 +104,20 @@ class MemoryManager {
   static long collected_count;
 
   // if return true, trace memory otherwise do not
-  static inline bool MarkMemory(long* mem);
-  static inline bool MarkValidMemory(long* mem);
+  static inline bool MarkMemory(size_t* mem);
+  static inline bool MarkValidMemory(size_t* mem);
 
   // mark memory
   static void* CheckStatic(void* arg);
   static void* CheckStack(void* arg);
-  static void* CheckJitRoots(void* arg);
   static void* CheckPdaRoots(void* arg);
-
+  static void* CheckJitRoots(void* arg);
+  
   // recover memory
-  static void CollectMemory(long* op_stack, long stack_pos);
+  static void CollectMemory(size_t* op_stack, long stack_pos);
   static void* CollectMemory(void* arg);
 
-  static inline StackClass* GetClassMapping(long* mem) {
+  static inline StackClass* GetClassMapping(size_t* mem) {
 #ifndef _GC_SERIAL
     pthread_mutex_lock(&allocated_mutex);
 #endif
@@ -138,16 +139,8 @@ class MemoryManager {
   static void Initialize(StackProgram* p);
 
   static void Clear() {
-    unordered_map<long*, ClassMethodId*>::iterator id_iter;
-    for(id_iter = jit_roots.begin(); id_iter != jit_roots.end(); ++id_iter) {
-      ClassMethodId* tmp = id_iter->second;
-      // delete
-      delete tmp;
-      tmp = NULL;
-    }
-    
     while(!allocated_memory.empty()) {
-      long* temp = allocated_memory.front();
+      size_t* temp = allocated_memory.front();
       allocated_memory.erase(allocated_memory.begin());      
       temp -= EXTRA_BUF_SIZE;
       free(temp);
@@ -193,21 +186,17 @@ class MemoryManager {
     initialized = false;
   }
   
-  // add and remove jit roots
-  static void AddJitMethodRoot(long cls_id, long mthd_id, long* self, long* mem, long offset);
-  static void RemoveJitMethodRoot(long* mem);
-
   // add and remove pda roots
   static void AddPdaMethodRoot(StackFrame** frame);
   static void RemovePdaMethodRoot(StackFrame** frame);
   static void AddPdaMethodRoot(StackFrameMonitor* monitor);  
   static void RemovePdaMethodRoot(StackFrameMonitor* monitor);
   
-  static void CheckMemory(long* mem, StackDclr** dclrs, const long dcls_size, const long depth);
-  static void CheckObject(long* mem, bool is_obj, const long depth);
+  static void CheckMemory(size_t* mem, StackDclr** dclrs, const long dcls_size, const long depth);
+  static void CheckObject(size_t* mem, bool is_obj, const long depth);
   
-  static long* AllocateObject(const wchar_t* obj_name, long* op_stack, 
-                              long stack_pos, bool collect = true) {
+  static size_t* AllocateObject(const wchar_t* obj_name, size_t* op_stack, 
+                                long stack_pos, bool collect = true) {
     StackClass* cls = prgm->GetClass(obj_name);
     if(cls) {
       return AllocateObject(cls->GetId(), op_stack, stack_pos, collect);
@@ -216,18 +205,18 @@ class MemoryManager {
     return NULL;
   }
   
-  static long* AllocateObject(const long obj_id, long* op_stack, 
-                              long stack_pos, bool collect = true);
-  static long* AllocateArray(const long size, const MemoryType type, 
-                             long* op_stack, long stack_pos, bool collect = true);
+  static size_t* AllocateObject(const long obj_id, size_t* op_stack, 
+                                long stack_pos, bool collect = true);
+  static size_t* AllocateArray(const long size, const MemoryType type, 
+                               size_t* op_stack, long stack_pos, bool collect = true);
   
   // object verification
-  static long* ValidObjectCast(long* mem, long to_id, int* cls_hierarchy, int** cls_interfaces);
+  static size_t* ValidObjectCast(size_t* mem, long to_id, int* cls_hierarchy, int** cls_interfaces);
   
   //
   // returns the class reference for an object instance
   //
-  static inline StackClass* GetClass(long* mem) {
+  static inline StackClass* GetClass(size_t* mem) {
     if(mem && mem[TYPE] == NIL_TYPE) {
       return (StackClass*)mem[SIZE_OR_CLS];
     }
@@ -237,7 +226,7 @@ class MemoryManager {
   //
   // returns a unique object id for an instance
   //
-  static inline long GetObjectID(long* mem) {
+  static inline long GetObjectID(size_t* mem) {
     StackClass* klass = GetClass(mem);
     if(klass) {
       return klass->GetId();
