@@ -28,8 +28,8 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
-#ifndef __REG_ALLOC_H__
-#define __REG_ALLOC_H__
+#ifndef __JIT_COMPILER__
+#define __JIT_COMPILER__
 
 #ifdef _WIN64
 #include "../../../arch/win32/windows.h"

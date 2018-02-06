@@ -29,8 +29,8 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
-#ifndef __REG_ALLOC_H__
-#define __REG_ALLOC_H__
+#ifndef __JIT_COMPILER__
+#define __JIT_COMPILER__
 
 #ifndef _WIN32
 #include "../../../arch/posix/memory.h"
