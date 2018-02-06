@@ -2014,13 +2014,6 @@ namespace Runtime {
         aux_regs.push(new RegisterHolder(R10));
         aux_regs.push(new RegisterHolder(R9));
         aux_regs.push(new RegisterHolder(R8));
-        // floating point registers
-        aval_xregs.push_back(new RegisterHolder(XMM15));
-        aval_xregs.push_back(new RegisterHolder(XMM14));
-        aval_xregs.push_back(new RegisterHolder(XMM13));
-        aval_xregs.push_back(new RegisterHolder(XMM12));
-        aval_xregs.push_back(new RegisterHolder(XMM11));
-        aval_xregs.push_back(new RegisterHolder(XMM10));
 #else
         // general use registers
         aval_regs.push_back(new RegisterHolder(RBX));
@@ -2032,6 +2025,7 @@ namespace Runtime {
         aux_regs.push(new RegisterHolder(R11));
         aux_regs.push(new RegisterHolder(R10));
         aux_regs.push(new RegisterHolder(R8));
+#endif
         // floating point registers
         aval_xregs.push_back(new RegisterHolder(XMM15));
         aval_xregs.push_back(new RegisterHolder(XMM14));
@@ -2039,7 +2033,7 @@ namespace Runtime {
         aval_xregs.push_back(new RegisterHolder(XMM12));
         aval_xregs.push_back(new RegisterHolder(XMM11));
         aval_xregs.push_back(new RegisterHolder(XMM10));
-#endif
+
 
 #ifdef _DEBUG
         wcout << L"Compiling code for AMD64 architecture..." << endl;

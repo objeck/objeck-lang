@@ -128,7 +128,6 @@ void JitCompilerIA64::Epilog(long imm) {
     0x48, 0x59,       // pop rcx
     0x48, 0x5b,       // pop rbx
 #endif
-
     // tear down stack frame and return
     0x48, 0x89, 0xec, // mov  %rbp, %rsp
     0x48, 0x5d,       // pop %rbp
