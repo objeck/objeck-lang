@@ -53,7 +53,7 @@ static wchar_t** ProcessCommandLine(const int argc, const char* argv[]) {
   wchar_t** wide_args = new wchar_t*[argc];
   for(int i = 0; i < argc; ++i) {
     const char* arg = argv[i];
-    const int len = strlen(arg);
+    const int len = (int)strlen(arg);
     wchar_t* wide_arg = new wchar_t[len + 1];
     for(int j = 0; j < len; ++j) {
       wide_arg[j] = arg[j];

@@ -415,7 +415,7 @@ void Loader::LoadInitializationCode(StackMethod* method)
   // copy and set instructions
   StackInstr** mthd_instrs = new StackInstr*[instrs.size()];
   copy(instrs.begin(), instrs.end(), mthd_instrs);
-  method->SetInstructions(mthd_instrs, instrs.size());
+  method->SetInstructions(mthd_instrs, (int)instrs.size());
 }
 
 void Loader::LoadStatements(StackMethod* method, bool is_debug)

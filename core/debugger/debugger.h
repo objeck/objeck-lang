@@ -161,14 +161,14 @@ namespace Runtime {
     bool is_next;
     bool is_next_line;
     bool is_jmp_out;
-    long* ref_mem;
+    size_t* ref_mem;
     StackClass* ref_klass;
     // interpreter variables
     vector<wstring> arguments;
     StackInterpreter* interpreter;
     StackProgram* cur_program;
     StackFrame* cur_frame;
-    long* op_stack;
+    size_t* op_stack;
     long* stack_pos;
 
     // pretty prints a method
@@ -290,7 +290,7 @@ namespace Runtime {
         StackDclr* dclr = dclrs[i];
 
         // parse name
-        int param_name_index = dclrs[i]->name.find_last_of(':');
+        size_t param_name_index = dclrs[i]->name.find_last_of(':');
         const wstring &param_name = dclrs[i]->name.substr(param_name_index + 1);
         wcout << L"    parameter: name='" << param_name << L"', ";
 

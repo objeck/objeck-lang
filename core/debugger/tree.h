@@ -96,7 +96,7 @@ namespace frontend {
   class Expression : public ParseNode {
     friend class TreeFactory;
     bool is_float_eval;
-    long int_value;
+    size_t int_value;
     long int_value2;
     double float_value;
 
@@ -115,11 +115,11 @@ namespace frontend {
       return is_float_eval;
     }
 
-    void SetIntValue(long i) {
+    void SetIntValue(size_t i) {
       int_value = i;
     }
 
-    long GetIntValue() {
+    size_t GetIntValue() {
       return int_value;
     }
 

@@ -49,7 +49,7 @@ int Execute(const int argc, const char* argv[])
     }
 
     // execute
-    long* op_stack = new long[OP_STACK_SIZE];
+    size_t* op_stack = new size_t[OP_STACK_SIZE];
     long* stack_pos = new long;
     (*stack_pos) = 0;
     
@@ -65,7 +65,7 @@ int Execute(const int argc, const char* argv[])
     wcout << L"# final stack: pos=" << (*stack_pos) << L" #" << endl;
     if((*stack_pos) > 0) {
       for(int i = 0; i < (*stack_pos); ++i) {
-        wcout << L"dump: value=" << (void*)(*stack_pos) << endl;
+        wcout << L"dump: value=" << (size_t)(*stack_pos) << endl;
       } 
     }
 #endif
@@ -78,10 +78,10 @@ int Execute(const int argc, const char* argv[])
     stack_pos = NULL;
     
     Runtime::StackInterpreter::RemoveThread(intpr);
+    Runtime::StackInterpreter::HaltAll();
+
     delete intpr;
     intpr = NULL;
-    
-    Runtime::StackInterpreter::HaltAll();
 
 #ifdef _SANITIZE
     wcout << L"# final stack: pos=" << (*stack_pos) << L" #" << endl;
@@ -103,6 +103,7 @@ int Execute(const int argc, const char* argv[])
 #endif
 
     CleanUpCommandLine(argc, commands);
+    
     return SUCCESS;
   } 
   else {
