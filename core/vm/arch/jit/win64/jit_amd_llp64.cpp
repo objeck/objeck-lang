@@ -1526,14 +1526,6 @@ void JitCompilerIA64::ProcessStackCallback(long instr_id, StackInstr* instr, lon
   // copy values to execution stack
   ProcessReturn(params);
   
-  // save other registers
-  push_reg(RCX);
-  push_reg(RDX);
-  push_reg(R8);
-  push_reg(R9);
-  push_reg(R10);
-  
-  // TODO: FIX ME!!
   // set parameters
   move_imm_reg(instr_id, RCX);
   move_imm_reg((size_t)instr, RDX);
@@ -1551,14 +1543,7 @@ void JitCompilerIA64::ProcessStackCallback(long instr_id, StackInstr* instr, lon
   sub_imm_reg(32, RSP);
   move_imm_reg((size_t)JitCompilerIA64::StackCallback, R10);
   call_reg(R10);
-  
-  // restore registers
-  add_imm_reg(48, RSP);
-  pop_reg(R10);
-  pop_reg(R9);
-  pop_reg(R8);
-  pop_reg(RDX);
-  pop_reg(RCX);
+  add_imm_reg(80, RSP);
 
   // restore register values
   while(!dirty_regs.empty()) {
@@ -3736,7 +3721,7 @@ void JitCompilerIA64::cvt_reg_xreg(Register src, Register dest) {
 void JitCompilerIA64::cvt_imm_xreg(RegInstr* instr, Register reg) {
   // copy address of imm value
   RegisterHolder* imm_holder = GetRegister();
-  move_imm_reg(instr->GetOperand2(), imm_holder->GetRegister());
+  move_imm_reg(instr->GetOperand(), imm_holder->GetRegister());
   cvt_reg_xreg(imm_holder->GetRegister(), reg);
   ReleaseRegister(imm_holder);
 }
