@@ -427,7 +427,7 @@ namespace Runtime {
     list<RegisterHolder*> used_xregs;
     unordered_map<int, StackInstr*> jump_table; // jump addresses are 64-bits
     long local_space;
-#ifdef x64
+#ifdef _X64
     long org_local_space;
 #endif 
     StackMethod* method;
@@ -501,7 +501,7 @@ namespace Runtime {
     inline void AddImm16(int16_t imm) {
       unsigned char buffer[sizeof(int16_t)];
       ByteEncode16(buffer, imm);
-      for(int i = 0; i < sizeof(int16_t); ++i) {
+      for(size_t i = 0; i < sizeof(int16_t); ++i) {
         AddMachineCode(buffer[i]);
       }
     }
@@ -513,7 +513,7 @@ namespace Runtime {
     inline void AddImm(int imm) {
       unsigned char buffer[sizeof(int)];
       ByteEncode32(buffer, imm);
-      for(int i = 0; i < sizeof(int); ++i) {
+      for(size_t i = 0; i < sizeof(int); ++i) {
         AddMachineCode(buffer[i]);
       }
     }
@@ -525,7 +525,7 @@ namespace Runtime {
     inline void AddImm64(size_t imm) {
       unsigned char buffer[sizeof(size_t)];
       ByteEncode64(buffer, imm);
-      for(int i = 0; i < sizeof(size_t); ++i) {
+      for(size_t i = 0; i < sizeof(size_t); ++i) {
         AddMachineCode(buffer[i]);
       }
     }
