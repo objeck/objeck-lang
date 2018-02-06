@@ -2924,7 +2924,7 @@ void JitCompilerIA64::add_imm_reg(long imm, Register reg) {
 void JitCompilerIA64::add_imm_xreg(RegInstr* instr, Register reg) {
   // copy address of imm value
   RegisterHolder* imm_holder = GetRegister();
-  move_imm_reg(instr->GetOperand2(), imm_holder->GetRegister());
+  move_imm_reg(instr->GetOperand(), imm_holder->GetRegister());
   add_mem_xreg(0, imm_holder->GetRegister(), reg);
   ReleaseRegister(imm_holder);
 }
@@ -2932,7 +2932,7 @@ void JitCompilerIA64::add_imm_xreg(RegInstr* instr, Register reg) {
 void JitCompilerIA64::sub_imm_xreg(RegInstr* instr, Register reg) {
   // copy address of imm value
   RegisterHolder* imm_holder = GetRegister();
-  move_imm_reg(instr->GetOperand2(), imm_holder->GetRegister());
+  move_imm_reg(instr->GetOperand(), imm_holder->GetRegister());
   sub_mem_xreg(0, imm_holder->GetRegister(), reg);
   ReleaseRegister(imm_holder);
 }
@@ -2940,7 +2940,7 @@ void JitCompilerIA64::sub_imm_xreg(RegInstr* instr, Register reg) {
 void JitCompilerIA64::div_imm_xreg(RegInstr* instr, Register reg) {
   // copy address of imm value
   RegisterHolder* imm_holder = GetRegister();
-  move_imm_reg(instr->GetOperand2(), imm_holder->GetRegister());
+  move_imm_reg(instr->GetOperand(), imm_holder->GetRegister());
   div_mem_xreg(0, imm_holder->GetRegister(), reg);
   ReleaseRegister(imm_holder);
 }
@@ -2948,7 +2948,7 @@ void JitCompilerIA64::div_imm_xreg(RegInstr* instr, Register reg) {
 void JitCompilerIA64::mul_imm_xreg(RegInstr* instr, Register reg) {
   // copy address of imm value
   RegisterHolder* imm_holder = GetRegister();
-  move_imm_reg(instr->GetOperand2(), imm_holder->GetRegister());
+  move_imm_reg(instr->GetOperand(), imm_holder->GetRegister());
   mul_mem_xreg(0, imm_holder->GetRegister(), reg);
   ReleaseRegister(imm_holder);
 }
@@ -3615,7 +3615,7 @@ void JitCompilerIA64::cmp_mem_xreg(long offset, Register src, Register dest) {
 void JitCompilerIA64::cmp_imm_xreg(RegInstr* instr, Register reg) {
   // copy address of imm value
   RegisterHolder* imm_holder = GetRegister();
-  move_imm_reg(instr->GetOperand2(), imm_holder->GetRegister());
+  move_imm_reg(instr->GetOperand(), imm_holder->GetRegister());
   cmp_mem_xreg(0, imm_holder->GetRegister(), reg);
   ReleaseRegister(imm_holder);
 }
@@ -3640,7 +3640,7 @@ void JitCompilerIA64::cvt_xreg_reg(Register src, Register dest) {
 void JitCompilerIA64::round_imm_xreg(RegInstr* instr, Register reg, bool is_floor) {
   // copy address of imm value
   RegisterHolder* imm_holder = GetRegister();
-  move_imm_reg(instr->GetOperand2(), imm_holder->GetRegister());
+  move_imm_reg(instr->GetOperand(), imm_holder->GetRegister());
   round_mem_xreg(0, imm_holder->GetRegister(), reg, is_floor);
   ReleaseRegister(imm_holder);
 }
@@ -3697,7 +3697,7 @@ void JitCompilerIA64::round_xreg_xreg(Register src, Register dest, bool is_floor
 void JitCompilerIA64::cvt_imm_reg(RegInstr* instr, Register reg) {
   // copy address of imm value
   RegisterHolder* imm_holder = GetRegister();
-  move_imm_reg(instr->GetOperand2(), imm_holder->GetRegister());
+  move_imm_reg(instr->GetOperand(), imm_holder->GetRegister());
   cvt_mem_reg(0, imm_holder->GetRegister(), reg);
   ReleaseRegister(imm_holder);
 }
