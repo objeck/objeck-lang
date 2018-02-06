@@ -433,6 +433,18 @@ namespace Runtime {
     }
 
     /********************************
+    * Encodes and writes out 32-bit
+    * integer values
+    ********************************/
+    inline void AddImm16(int16_t imm) {
+      unsigned char buffer[sizeof(int16_t)];
+      ByteEncode16(buffer, imm);
+      for(int16_t i = 0; i < (int16_t)sizeof(int16_t); i++) {
+        AddMachineCode(buffer[i]);
+      }
+    }
+
+    /********************************
      * Encodes and writes out 32-bit
      * integer values; note sizeof(int)
      ********************************/
@@ -784,6 +796,14 @@ namespace Runtime {
     }
 
     /********************************
+    * Encodes a byte array with a 
+    * 16-bit value
+    ********************************/
+    inline void ByteEncode16(unsigned char buffer[], int16_t value) {
+      memcpy(buffer, &value, sizeof(int16_t));
+    }
+
+    /********************************
      * Encodes a byte array with a
      * 32-bit value
      ********************************/
@@ -1032,12 +1052,15 @@ namespace Runtime {
     void move_reg_mem8(Register src, long offset, Register dest);
     void move_mem8_reg(long offset, Register src, Register dest);
     void move_imm_mem8(long imm, long offset, Register dest);
+    void move_reg_mem16(Register src, long offset, Register dest);
+    void move_mem16_reg(long offset, Register src, Register dest);
+    void move_imm_mem16(long imm, long offset, Register dest);
     void move_reg_mem32(Register src, long offset, Register dest);
     void move_mem32_reg(long offset, Register src, Register dest);
     void move_reg_reg(Register src, Register dest);
     void move_reg_mem(Register src, long offset, Register dest);
     void move_mem_reg(long offset, Register src, Register dest);
-    void move_mem_reg32(int32_t offset, Register src, Register dest);
+    void move_mem_reg32(long offset, Register src, Register dest);
     void move_imm_memx(RegInstr* instr, long offset, Register dest);
     void move_imm_mem(long imm, long offset, Register dest);
     void move_imm_reg(size_t imm, Register reg);
@@ -1364,8 +1387,7 @@ namespace Runtime {
         break;
 
         case THREAD_SLEEP:
-          // TODO: WIN64
-          // usleep(PopInt(op_stack, stack_pos));
+          Sleep((DWORD)PopInt(op_stack, stack_pos));
           break;
 
         case THREAD_MUTEX:
@@ -1376,8 +1398,7 @@ namespace Runtime {
             wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
             exit(1);
           }
-          // TODO: WIN64
-          // pthread_mutex_init((pthread_mutex_t*)&instance[1], NULL);
+          InitializeCriticalSection((CRITICAL_SECTION*)&instance[1]);
         }
         break;
 
@@ -1389,8 +1410,7 @@ namespace Runtime {
             wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
             exit(1);
           }
-          // TODO: WIN64
-          // pthread_mutex_lock((pthread_mutex_t*)&instance[1]);
+          EnterCriticalSection((CRITICAL_SECTION*)&instance[1]);
         }
         break;
 
@@ -1402,8 +1422,7 @@ namespace Runtime {
             wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
             exit(1);
           }
-          // TODO: WIN64
-          // pthread_mutex_unlock((pthread_mutex_t*)&instance[1]);
+          LeaveCriticalSection((CRITICAL_SECTION*)&instance[1]);
         }
         break;
 
@@ -1651,8 +1670,8 @@ namespace Runtime {
           break;
 
         case CHAR_ARY_TYPE:
-          shl_imm_reg(2, index_holder->GetRegister());
-          shl_imm_reg(2, bounds_holder->GetRegister());
+          shl_imm_reg(1, index_holder->GetRegister());
+          shl_imm_reg(1, bounds_holder->GetRegister());
           break;
 
         case INT_TYPE:
@@ -1852,8 +1871,6 @@ namespace Runtime {
         code = (unsigned char*)malloc(code_buf_max);
 
         // floats memory
-
-
         floats = (double*)VirtualAlloc(NULL, sizeof(double) * MAX_DBLS, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
         if(!floats) {
           wcerr << L"Unable to allocate JIT memory for floats!" << endl;
@@ -1864,15 +1881,11 @@ namespace Runtime {
         // general use registers
         aval_regs.push_back(new RegisterHolder(RDX));
         aval_regs.push_back(new RegisterHolder(RCX));
-        // aval_regs.push_back(new RegisterHolder(RBX));
+        aval_regs.push_back(new RegisterHolder(RBX));
         aval_regs.push_back(new RegisterHolder(RAX));
         // aux general use registers
-        // aux_regs.push(new RegisterHolder(RDI));
-        // aux_regs.push(new RegisterHolder(RSI));
-        // aux_regs.push(new RegisterHolder(R15));
-        // aux_regs.push(new RegisterHolder(R14));
-        // aux_regs.push(new RegisterHolder(R13));
-        // aux_regs.push(new RegisterHolder(R12));
+        aux_regs.push(new RegisterHolder(RDI));
+        aux_regs.push(new RegisterHolder(RSI));
         aux_regs.push(new RegisterHolder(R11));
         aux_regs.push(new RegisterHolder(R10));
         aux_regs.push(new RegisterHolder(R9));
@@ -1933,14 +1946,7 @@ namespace Runtime {
         method->SetNativeCode(new NativeCode(page_manager->GetPage(code, code_index), code_index, floats));
         VirtualFree(code, NULL, MEM_RELEASE);
         code = NULL;
-
         compile_success = true;
-
-#ifndef _JIT_SERIAL
-        // release our lock, native code has been compiled and set
-        // TODO: WIN64
-        // pthread_mutex_unlock(&cm->jit_mutex);
-#endif
 
 #ifdef _TIMING
         wcout << L"JIT compiling: method='" << method->GetName() << L"', time="
