@@ -2478,7 +2478,7 @@ bool JitCompilerIA64::cond_jmp(InstructionType type) {
 void JitCompilerIA64::loop(long offset)
 {
   AddMachineCode(0xe2);
-  AddMachineCode(offset);
+  AddMachineCode((unsigned char)offset);
 }
 
 void JitCompilerIA64::math_imm_reg(long imm, Register reg, InstructionType type)
@@ -3382,7 +3382,7 @@ void JitCompilerIA64::shl_imm_reg(long value, Register dest) {
   unsigned char code = 0xe0;
   RegisterEncode3(code, 5, dest);
   AddMachineCode(code);
-  AddMachineCode(value);
+  AddMachineCode((unsigned char)value);
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [shlq $" << value << L", %" 
         << GetRegisterName(dest) << L"]" << endl;
@@ -3446,7 +3446,7 @@ void JitCompilerIA64::shr_imm_reg(long value, Register dest) {
   unsigned char code = 0xe8;
   RegisterEncode3(code, 5, dest);
   AddMachineCode(code);
-  AddMachineCode(value);
+  AddMachineCode((unsigned char)value);
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [shrq $" << value << L", %" 
         << GetRegisterName(dest) << L"]" << endl;
