@@ -1,5 +1,5 @@
 /***************************************************************************
- * JIT compiler for the AMD64 architectures
+ * JIT compiler for the Windows AMD64 architecture.
  *
  * Copyright (c) 2008-2018 Randy Hollines
  * All rights reserved.
@@ -28,36 +28,29 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
-#ifndef __JIT_COMPILER__
-#define __JIT_COMPILER__
+#ifndef __REG_ALLOC_H__
+#define __REG_ALLOC_H__
 
-#ifdef _WIN64
 #include "../../../arch/win32/windows.h"
-#else
-#include "../../posix/memory.h"
-#include "../../posix/posix.h"
-#include <sys/mman.h>
-#include <errno.h>
-#endif
-
 #include "../../../common.h"
 #include "../../../interpreter.h"
 
 using namespace std;
 
 namespace Runtime {
-#ifdef _WIN64
-  // offsets for Windows 64-bit
+  // offsets for Intel (AMD-64) addresses
 #define CLS_ID 96
 #define MTHD_ID 104
 #define CLASS_MEM 112
 #define INSTANCE_MEM 120
+
 #define OP_STACK 48
 #define STACK_POS 56
 #define CALL_STACK 64
 #define CALL_STACK_POS 72
 #define JIT_MEM 80
 #define JIT_OFFSET 88
+
   // float temps
 #define TMP_XMM_0 128
 #define TMP_XMM_1 136
@@ -70,37 +63,10 @@ namespace Runtime {
 #define TMP_REG_4 184
 #define TMP_REG_5 192
 #define RED_ZONE 208
+
 #define MAX_DBLS 64
 #define BUFFER_SIZE 512
 #define PAGE_SIZE 4096
-#else
-  // offsets for Posix 64-bit
-#define CLS_ID -8
-#define MTHD_ID -16
-#define CLASS_MEM -24
-#define INSTANCE_MEM -32
-#define OP_STACK -40
-#define STACK_POS -48
-#define CALL_STACK 16
-#define CALL_STACK_POS 24
-#define JIT_MEM 32
-#define JIT_OFFSET 40
-  // float temps
-#define TMP_XMM_0 -64
-#define TMP_XMM_1 -72
-#define TMP_XMM_2 -80
-  // integer temps
-#define TMP_REG_0 -88
-#define TMP_REG_1 -96
-#define TMP_REG_2 -104
-#define TMP_REG_3 -112
-#define TMP_REG_4 -120
-#define TMP_REG_5 -128
-#define RED_ZONE -128  
-#define MAX_DBLS 64
-#define BUFFER_SIZE 512
-#define PAGE_SIZE 4096
-#endif
 
   // register type
   typedef enum _RegType {
@@ -275,6 +241,10 @@ namespace Runtime {
       return operand;
     }
 
+    void SetOperand2(size_t o2) {
+      operand2 = o2;
+    }
+
     size_t GetOperand2() {
       return operand2;
     }
@@ -295,54 +265,25 @@ namespace Runtime {
         factor = size / PAGE_SIZE + 1;
       }
       available = factor * PAGE_SIZE;
-
-#ifdef _WIN64
       buffer = (unsigned char*)VirtualAlloc(NULL, available, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
       if(!buffer) {
         wcerr << L"Unable to allocate JIT memory!" << endl;
         exit(1);
       }
-#else
-      if(posix_memalign((void**)&buffer, PAGE_SIZE, available)) {
-        wcerr << L"Unable to allocate JIT memory!" << endl;
-        exit(1);
-      }
-      if(mprotect(buffer, available, PROT_READ | PROT_WRITE | PROT_EXEC) < 0) {
-        wcerr << L"Unable to mprotect" << endl;
-        exit(1);
-      }
-#endif
     }
 
     PageHolder() {
       index = 0;
       available = PAGE_SIZE;
-
-#ifdef _WIN64
       buffer = (unsigned char*)VirtualAlloc(NULL, PAGE_SIZE, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
       if(!buffer) {
         wcerr << L"Unable to allocate JIT memory!" << endl;
         exit(1);
       }
-#else
-      if(posix_memalign((void**)&buffer, PAGE_SIZE, PAGE_SIZE)) {
-        wcerr << L"Unable to allocate JIT memory!" << endl;
-        exit(1);
-      }
-
-      if(mprotect(buffer, PAGE_SIZE, PROT_READ | PROT_WRITE | PROT_EXEC) < 0) {
-        wcerr << L"Unable to mprotect" << endl;
-        exit(1);
-      }
-#endif
     }
 
     ~PageHolder() {
-#ifdef _WIN64
       VirtualFree(buffer, NULL, MEM_RELEASE);
-#else
-      free(buffer);
-#endif
       buffer = NULL;
     }
 
@@ -427,9 +368,6 @@ namespace Runtime {
     list<RegisterHolder*> used_xregs;
     unordered_map<int, StackInstr*> jump_table; // jump addresses are 64-bits
     long local_space;
-#ifdef _X64
-    long org_local_space;
-#endif 
     StackMethod* method;
     long instr_count;
     unsigned char* code;
@@ -495,25 +433,13 @@ namespace Runtime {
     }
 
     /********************************
-    * Encodes and writes out 32-bit
-    * integer values
-    ********************************/
-    inline void AddImm16(int16_t imm) {
-      unsigned char buffer[sizeof(int16_t)];
-      ByteEncode16(buffer, imm);
-      for(size_t i = 0; i < sizeof(int16_t); ++i) {
-        AddMachineCode(buffer[i]);
-      }
-    }
-
-    /********************************
      * Encodes and writes out 32-bit
      * integer values; note sizeof(int)
      ********************************/
     inline void AddImm(int imm) {
       unsigned char buffer[sizeof(int)];
       ByteEncode32(buffer, imm);
-      for(size_t i = 0; i < sizeof(int); ++i) {
+      for(size_t i = 0; i < sizeof(int); i++) {
         AddMachineCode(buffer[i]);
       }
     }
@@ -525,7 +451,7 @@ namespace Runtime {
     inline void AddImm64(size_t imm) {
       unsigned char buffer[sizeof(size_t)];
       ByteEncode64(buffer, imm);
-      for(size_t i = 0; i < sizeof(size_t); ++i) {
+      for(int i = 0; i < sizeof(size_t); i++) {
         AddMachineCode(buffer[i]);
       }
     }
@@ -858,14 +784,6 @@ namespace Runtime {
     }
 
     /********************************
-    * Encodes a byte array with a 
-    * 16-bit value
-    ********************************/
-    inline void ByteEncode16(unsigned char buffer[], int16_t value) {
-      memcpy(buffer, &value, sizeof(int16_t));
-    }
-
-    /********************************
      * Encodes a byte array with a
      * 32-bit value
      ********************************/
@@ -964,7 +882,7 @@ namespace Runtime {
      * Check for 'Nil' dereferencing
      **********************************/
     inline void CheckNilDereference(Register reg) {
-      const long offset = 31;
+      const long offset = 43;
       cmp_imm_reg(0, reg);
 #ifdef _DEBUG
       wcout << L"  " << (++instr_count) << L": [jne $" << offset << L"]" << endl;
@@ -980,7 +898,7 @@ namespace Runtime {
      * Checks array bounds
      **********************************/
     inline void CheckArrayBounds(Register reg, Register max_reg) {
-      const long offset = 31;
+      const long offset = 43;
 
       // less than zero
       cmp_imm_reg(-1, reg);
@@ -1114,15 +1032,12 @@ namespace Runtime {
     void move_reg_mem8(Register src, long offset, Register dest);
     void move_mem8_reg(long offset, Register src, Register dest);
     void move_imm_mem8(long imm, long offset, Register dest);
-    void move_reg_mem16(Register src, long offset, Register dest);
-    void move_mem16_reg(long offset, Register src, Register dest);
-    void move_imm_mem16(long imm, long offset, Register dest);
     void move_reg_mem32(Register src, long offset, Register dest);
     void move_mem32_reg(long offset, Register src, Register dest);
     void move_reg_reg(Register src, Register dest);
     void move_reg_mem(Register src, long offset, Register dest);
     void move_mem_reg(long offset, Register src, Register dest);
-    void move_mem_reg32(long offset, Register src, Register dest);
+    void move_mem_reg32(int32_t offset, Register src, Register dest);
     void move_imm_memx(RegInstr* instr, long offset, Register dest);
     void move_imm_mem(long imm, long offset, Register dest);
     void move_imm_reg(size_t imm, Register reg);
@@ -1258,7 +1173,8 @@ namespace Runtime {
 #endif
       switch(instr_id) {
         case MTHD_CALL:
-        case DYN_MTHD_CALL: {
+        case DYN_MTHD_CALL:
+        {
 #ifdef _DEBUG
           wcout << L"jit oper: MTHD_CALL: cls=" << instr->GetOperand() << L", mthd=" << instr->GetOperand2() << endl;
 #endif
@@ -1267,7 +1183,8 @@ namespace Runtime {
         }
         break;
 
-        case LOAD_ARY_SIZE: {
+        case LOAD_ARY_SIZE:
+        {
           size_t* array = (size_t*)PopInt(op_stack, stack_pos);
           if(!array) {
             wcerr << L"Atempting to dereference a 'Nil' memory instance" << endl;
@@ -1278,7 +1195,8 @@ namespace Runtime {
         }
         break;
 
-        case NEW_BYTE_ARY: {
+        case NEW_BYTE_ARY:
+        {
           long indices[8];
           long value = (long)PopInt(op_stack, stack_pos);
           long size = value;
@@ -1304,7 +1222,8 @@ namespace Runtime {
         }
         break;
 
-        case NEW_CHAR_ARY: {
+        case NEW_CHAR_ARY:
+        {
           long indices[8];
           long value = (long)PopInt(op_stack, stack_pos);
           long size = value;
@@ -1316,7 +1235,8 @@ namespace Runtime {
             indices[dim++] = value;
           }
           size++;
-          size_t* mem = MemoryManager::AllocateArray(size + ((dim + 2) * sizeof(size_t)), CHAR_ARY_TYPE, op_stack, *stack_pos);
+          size_t* mem = (size_t*)MemoryManager::AllocateArray(size + ((dim + 2) * sizeof(size_t)),
+                                                          CHAR_ARY_TYPE, op_stack, *stack_pos);
           mem[0] = size - 1;
           mem[1] = dim;
           memcpy(mem + 2, indices, dim * sizeof(size_t));
@@ -1329,7 +1249,8 @@ namespace Runtime {
         }
         break;
 
-        case NEW_INT_ARY: {
+        case NEW_INT_ARY:
+        {
           long indices[8];
           long value = (long)PopInt(op_stack, stack_pos);
           long size = value;
@@ -1340,7 +1261,7 @@ namespace Runtime {
             size *= value;
             indices[dim++] = value;
           }
-          size_t* mem = MemoryManager::AllocateArray(size + dim + 2, INT_TYPE, op_stack, *stack_pos);
+          size_t* mem = (size_t*)MemoryManager::AllocateArray(size + dim + 2, INT_TYPE, op_stack, *stack_pos);
 #ifdef _DEBUG
           wcout << L"jit oper: NEW_INT_ARY: dim=" << dim << L"; size=" << size
             << L"; index=" << (*stack_pos) << L"; mem=" << mem << endl;
@@ -1352,7 +1273,8 @@ namespace Runtime {
         }
         break;
 
-        case NEW_FLOAT_ARY: {
+        case NEW_FLOAT_ARY:
+        {
           long indices[8];
           long value = (long)PopInt(op_stack, stack_pos);
           long size = value;
@@ -1364,7 +1286,7 @@ namespace Runtime {
             indices[dim++] = value;
           }
           size *= 2;
-          size_t* mem = MemoryManager::AllocateArray(size + dim + 2, INT_TYPE, op_stack, *stack_pos);
+          size_t* mem = (size_t*)MemoryManager::AllocateArray(size + dim + 2, INT_TYPE, op_stack, *stack_pos);
 #ifdef _DEBUG
           wcout << L"jit oper: NEW_FLOAT_ARY: dim=" << dim << L"; size=" << size
             << L"; index=" << (*stack_pos) << L"; mem=" << mem << endl;
@@ -1376,16 +1298,19 @@ namespace Runtime {
         }
         break;
 
-        case NEW_OBJ_INST: {
+        case NEW_OBJ_INST:
+        {
 #ifdef _DEBUG
           wcout << L"jit oper: NEW_OBJ_INST: id=" << instr->GetOperand() << endl;
 #endif
-          size_t* mem = MemoryManager::AllocateObject(instr->GetOperand(), op_stack, *stack_pos);
+          size_t* mem = (size_t*)MemoryManager::AllocateObject(instr->GetOperand(),
+                                                           op_stack, *stack_pos);
           PushInt(op_stack, stack_pos, (size_t)mem);
         }
         break;
 
-        case OBJ_TYPE_OF: {
+        case OBJ_TYPE_OF:
+        {
           size_t* mem = (size_t*)PopInt(op_stack, stack_pos);
           size_t* result = MemoryManager::ValidObjectCast(mem, instr->GetOperand(), program->GetHierarchy(), program->GetInterfaces());
           if(result) {
@@ -1397,7 +1322,8 @@ namespace Runtime {
         }
         break;
 
-        case OBJ_INST_CAST: {
+        case OBJ_INST_CAST:
+        {
           size_t* mem = (size_t*)PopInt(op_stack, stack_pos);
           long to_id = instr->GetOperand();
 #ifdef _DEBUG
@@ -1417,7 +1343,8 @@ namespace Runtime {
 
         //----------- threads -----------
 
-        case THREAD_JOIN: {
+        case THREAD_JOIN:
+        {
           size_t* instance = inst;
           if(!instance) {
             wcerr << L"Atempting to dereference a 'Nil' memory instance" << endl;
@@ -1425,78 +1352,64 @@ namespace Runtime {
             exit(1);
           }
 
-#ifdef _WIN64
-          HANDLE vm_thread = (HANDLE)instance[0];
-          if(WaitForSingleObject(vm_thread, INFINITE) != WAIT_OBJECT_0) {
-            wcerr << L"Unable to join thread!" << endl;
-            exit(-1);
-          }
-#else
+          /*
           void* status;
           pthread_t vm_thread = (pthread_t)instance[0];
           if(pthread_join(vm_thread, &status)) {
             wcerr << L"Unable to join thread!" << endl;
             exit(-1);
           }
-#endif
+          */
         }
         break;
 
         case THREAD_SLEEP:
-#ifdef _WIN64
-          Sleep((DWORD)PopInt(op_stack, stack_pos));
-#else
-          usleep(PopInt(op_stack, stack_pos));
-#endif
+          // TODO: WIN64
+          // usleep(PopInt(op_stack, stack_pos));
           break;
 
-        case THREAD_MUTEX: {
+        case THREAD_MUTEX:
+        {
           size_t* instance = inst;
           if(!instance) {
             wcerr << L"Atempting to dereference a 'Nil' memory instance" << endl;
             wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
             exit(1);
           }
-#ifdef _WIN64
-          InitializeCriticalSection((CRITICAL_SECTION*)&instance[1]);
-#else
-          pthread_mutex_init((pthread_mutex_t*)&instance[1], NULL);
-#endif
+          // TODO: WIN64
+          // pthread_mutex_init((pthread_mutex_t*)&instance[1], NULL);
         }
         break;
 
-        case CRITICAL_START: {
+        case CRITICAL_START:
+        {
           size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
           if(!instance) {
             wcerr << L"Atempting to dereference a 'Nil' memory instance" << endl;
             wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
             exit(1);
           }
-#ifdef _WIN64
-          EnterCriticalSection((CRITICAL_SECTION*)&instance[1]);
-#else
-          pthread_mutex_unlock((pthread_mutex_t*)&instance[1]);
-#endif
+          // TODO: WIN64
+          // pthread_mutex_lock((pthread_mutex_t*)&instance[1]);
         }
         break;
 
-        case CRITICAL_END: {
+        case CRITICAL_END:
+        {
           size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
           if(!instance) {
             wcerr << L"Atempting to dereference a 'Nil' memory instance" << endl;
             wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
             exit(1);
           }
-#ifdef _WIN64
-          LeaveCriticalSection((CRITICAL_SECTION*)&instance[1]);
-#else
-          pthread_mutex_unlock((pthread_mutex_t*)&instance[1]);
-#endif
+          // TODO: WIN64
+          // pthread_mutex_unlock((pthread_mutex_t*)&instance[1]);
         }
         break;
 
         // ---------------- memory copy ----------------
-        case CPY_BYTE_ARY: {
+        case CPY_BYTE_ARY:
+        {
           long length = (long)PopInt(op_stack, stack_pos);;
           const long src_offset = (long)PopInt(op_stack, stack_pos);;
           size_t* src_array = (size_t*)PopInt(op_stack, stack_pos);;
@@ -1523,7 +1436,8 @@ namespace Runtime {
         }
         break;
 
-        case CPY_CHAR_ARY: {
+        case CPY_CHAR_ARY:
+        {
           long length = (long)PopInt(op_stack, stack_pos);;
           const long src_offset = (long)PopInt(op_stack, stack_pos);;
           size_t* src_array = (size_t*)PopInt(op_stack, stack_pos);;
@@ -1551,7 +1465,8 @@ namespace Runtime {
         }
         break;
 
-        case CPY_INT_ARY: {
+        case CPY_INT_ARY:
+        {
           long length = (long)PopInt(op_stack, stack_pos);;
           const long src_offset = (long)PopInt(op_stack, stack_pos);;
           size_t* src_array = (size_t*)PopInt(op_stack, stack_pos);;
@@ -1578,7 +1493,8 @@ namespace Runtime {
         }
         break;
 
-        case CPY_FLOAT_ARY: {
+        case CPY_FLOAT_ARY:
+        {
           long length = (long)PopInt(op_stack, stack_pos);;
           const long src_offset = (long)PopInt(op_stack, stack_pos);;
           size_t* src_array = (size_t*)PopInt(op_stack, stack_pos);;
@@ -1735,13 +1651,8 @@ namespace Runtime {
           break;
 
         case CHAR_ARY_TYPE:
-#ifdef _WIN64
-          shl_imm_reg(1, index_holder->GetRegister());
-          shl_imm_reg(1, bounds_holder->GetRegister());
-#else
           shl_imm_reg(2, index_holder->GetRegister());
           shl_imm_reg(2, bounds_holder->GetRegister());
-#endif
           break;
 
         case INT_TYPE:
@@ -1796,7 +1707,6 @@ namespace Runtime {
         }
       }
 
-#ifdef _WIN64
       long index = RED_ZONE - sizeof(size_t);
       long last_id = -1;
       multimap<long, StackInstr*>::iterator value;
@@ -1833,45 +1743,6 @@ namespace Runtime {
           instr->SetOperand3(index);
           last_id = id;
         }
-#else
-      long index = RED_ZONE;
-      long last_id = -1;
-      multimap<long, StackInstr*>::iterator value;
-      for(value = values.begin(); value != values.end(); ++value) {
-        long id = value->first;
-        StackInstr* instr = value->second;
-        // instance reference
-        if(instr->GetOperand2() == INST || instr->GetOperand2() == CLS) {
-          // note: all instance variables are allocted in 4-byte blocks,
-          // for floats the assembler allocates 2 4-byte blocks
-          instr->SetOperand3(instr->GetOperand() * sizeof(size_t));
-        }
-        // local reference
-        else {
-          // note: all local variables are allocted in 4 or 8 bytes ` 
-          // blocks depending upon type
-          if(last_id != id) {
-            if(instr->GetType() == LOAD_LOCL_INT_VAR ||
-               instr->GetType() == LOAD_CLS_INST_INT_VAR ||
-               instr->GetType() == STOR_LOCL_INT_VAR ||
-               instr->GetType() == STOR_CLS_INST_INT_VAR ||
-               instr->GetType() == COPY_LOCL_INT_VAR ||
-               instr->GetType() == COPY_CLS_INST_INT_VAR) {
-              index -= sizeof(size_t);
-            }
-            else if(instr->GetType() == LOAD_FUNC_VAR ||
-                    instr->GetType() == STOR_FUNC_VAR) {
-              index -= sizeof(size_t) * 2;
-            }
-            else {
-              index -= sizeof(double);
-            }
-          }
-          instr->SetOperand3(index);
-          last_id = id;
-        }
-#endif
-
 #ifdef _DEBUG
         if(instr->GetOperand2() == INST || instr->GetOperand2() == CLS) {
           wcout << L"native memory: index=" << instr->GetOperand() << L"; jit index="
@@ -1883,17 +1754,10 @@ namespace Runtime {
         }
 #endif
       }
-
-#ifdef _WIN64
       local_space = index; // + RED_ZONE / 8; // -(index + TMP_REG_5);
+
 #ifdef _DEBUG
       wcout << L"Local space required: " << local_space << L" byte(s)" << endl;
-#endif
-#else
-      org_local_space = local_space = -(index + TMP_REG_5);
-#ifdef _DEBUG
-      wcout << L"Local space required: " << (local_space + 16) << L" byte(s)" << endl;
-#endif
 #endif
     }
 
@@ -1988,44 +1852,31 @@ namespace Runtime {
         code = (unsigned char*)malloc(code_buf_max);
 
         // floats memory
-#ifdef _WIN64
+
+
         floats = (double*)VirtualAlloc(NULL, sizeof(double) * MAX_DBLS, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
         if(!floats) {
           wcerr << L"Unable to allocate JIT memory for floats!" << endl;
           exit(1);
         }
-#else
-        // floats memory
-        if(posix_memalign((void**)&floats, PAGE_SIZE, sizeof(double) * MAX_DBLS)) {
-          wcerr << L"Unable to reallocate JIT memory!" << endl;
-          exit(1);
-        }
-#endif
         floats_index = instr_index = code_index = instr_count = 0;
 
-#ifdef _WIN64
         // general use registers
         aval_regs.push_back(new RegisterHolder(RDX));
         aval_regs.push_back(new RegisterHolder(RCX));
-        aval_regs.push_back(new RegisterHolder(RBX));
+        // aval_regs.push_back(new RegisterHolder(RBX));
         aval_regs.push_back(new RegisterHolder(RAX));
         // aux general use registers
+        // aux_regs.push(new RegisterHolder(RDI));
+        // aux_regs.push(new RegisterHolder(RSI));
+        // aux_regs.push(new RegisterHolder(R15));
+        // aux_regs.push(new RegisterHolder(R14));
+        // aux_regs.push(new RegisterHolder(R13));
+        // aux_regs.push(new RegisterHolder(R12));
         aux_regs.push(new RegisterHolder(R11));
         aux_regs.push(new RegisterHolder(R10));
         aux_regs.push(new RegisterHolder(R9));
         aux_regs.push(new RegisterHolder(R8));
-#else
-        // general use registers
-        aval_regs.push_back(new RegisterHolder(RBX));
-        aval_regs.push_back(new RegisterHolder(RAX));
-        // aux general use registers
-        aux_regs.push(new RegisterHolder(R15));
-        aux_regs.push(new RegisterHolder(R14));
-        aux_regs.push(new RegisterHolder(R13));
-        aux_regs.push(new RegisterHolder(R11));
-        aux_regs.push(new RegisterHolder(R10));
-        aux_regs.push(new RegisterHolder(R8));
-#endif
         // floating point registers
         aval_xregs.push_back(new RegisterHolder(XMM15));
         aval_xregs.push_back(new RegisterHolder(XMM14));
@@ -2033,10 +1884,8 @@ namespace Runtime {
         aval_xregs.push_back(new RegisterHolder(XMM12));
         aval_xregs.push_back(new RegisterHolder(XMM11));
         aval_xregs.push_back(new RegisterHolder(XMM10));
-
-
 #ifdef _DEBUG
-        wcout << L"Compiling code for AMD64 architecture..." << endl;
+        wcout << L"Compiling code for Windows AMD64 architecture..." << endl;
 #endif
 
         // process offsets
@@ -2046,19 +1895,10 @@ namespace Runtime {
         Prolog();
 
         // method information
-#ifdef _WIN64
         move_reg_mem(RCX, CLS_ID, RBP);
         move_reg_mem(RDX, MTHD_ID, RBP);
         move_reg_mem(R8, CLASS_MEM, RBP);
         move_reg_mem(R9, INSTANCE_MEM, RBP);
-#else
-        move_reg_mem(RDI, CLS_ID, RBP);
-        move_reg_mem(RSI, MTHD_ID, RBP);
-        move_reg_mem(RDX, CLASS_MEM, RBP);
-        move_reg_mem(RCX, INSTANCE_MEM, RBP);
-        move_reg_mem(R8, OP_STACK, RBP);
-        move_reg_mem(R9, STACK_POS, RBP);
-#endif
 
         // register root
         RegisterRoot();
@@ -2091,13 +1931,16 @@ namespace Runtime {
 #endif
         // store compiled code
         method->SetNativeCode(new NativeCode(page_manager->GetPage(code, code_index), code_index, floats));
-#ifdef _WIN64
         VirtualFree(code, NULL, MEM_RELEASE);
-#else
-        free(code);
-#endif
         code = NULL;
+
         compile_success = true;
+
+#ifndef _JIT_SERIAL
+        // release our lock, native code has been compiled and set
+        // TODO: WIN64
+        // pthread_mutex_unlock(&cm->jit_mutex);
+#endif
 
 #ifdef _TIMING
         wcout << L"JIT compiling: method='" << method->GetName() << L"', time="
