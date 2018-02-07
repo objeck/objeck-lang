@@ -35,7 +35,7 @@
 StackProgram* MemoryManager::prgm;
 vector<StackFrame*> MemoryManager::jit_frames;
 unordered_set<StackFrame**> MemoryManager::pda_frames;
-unordered_map<StackFrameMonitor*, StackFrameMonitor*> MemoryManager::pda_monitors;
+unordered_set<StackFrameMonitor*> MemoryManager::pda_monitors;
 stack<char*> MemoryManager::cache_pool_16;
 stack<char*> MemoryManager::cache_pool_32;
 stack<char*> MemoryManager::cache_pool_64;
@@ -197,7 +197,7 @@ void MemoryManager::AddPdaMethodRoot(StackFrameMonitor* monitor)
 #ifndef GC_SERIAL
   EnterCriticalSection(&pda_monitor_cs);
 #endif
-  pda_monitors.insert(pair<StackFrameMonitor*, StackFrameMonitor*>(monitor, monitor));
+  pda_monitors.insert(monitor);
 #ifndef GC_SERIAL
   LeaveCriticalSection(&pda_monitor_cs);
 #endif
@@ -972,10 +972,10 @@ unsigned int MemoryManager::CheckPdaRoots(void* arg)
   wcout << L"memory types:" <<  endl;
 #endif
   // look at pda methods
-  unordered_map<StackFrameMonitor*, StackFrameMonitor*>::iterator pda_iter;
+  unordered_set<StackFrameMonitor*>::iterator pda_iter;
   for(pda_iter = pda_monitors.begin(); pda_iter != pda_monitors.end(); ++pda_iter) {
     // gather stack frames
-    StackFrameMonitor* monitor = pda_iter->first;
+    StackFrameMonitor* monitor = (*pda_iter);
     long call_stack_pos = *(monitor->call_stack_pos);
 
     if(call_stack_pos > 0) {
