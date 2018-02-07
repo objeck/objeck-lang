@@ -1,9 +1,10 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		Go(9);
+		Go(9)->PrintLine();
 	}
 
 	function : native : Go(x : Int) ~ Int {
+#~
 		ii := Int->New[4];
 		ii[2] := 13;
 		ii[0] := 7;
@@ -11,5 +12,9 @@ class Test {
 		ii[1]->PrintLine();
 
 		return 13;
+~#
+		1.1->PrintLine();
+
+		return 7;
 	}
 }
