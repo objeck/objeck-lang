@@ -3,19 +3,13 @@ class Test {
 		Go(9);
 	}
 
-	function : native : Go(x : Int) ~ Nil {
-#~
-		b := 3;
-		(a + b * 7)->PrintLine();
+	function : native : Go(x : Int) ~ Int {
+		ii := Int->New[4];
+		ii[2] := 13;
+		ii[0] := 7;
+		ii[1] := ii[0] * ii[2];
+		ii[1]->PrintLine();
 
-		a := Int->New[3];
-		a[1] := 13;
-		b := a[1] + 7 * x;
-		b->PrintLine();
-~#
-		d := 3.14;
-		g := d - .9;
-		g->PrintLine();
-#		return g;
+		return 13;
 	}
 }
