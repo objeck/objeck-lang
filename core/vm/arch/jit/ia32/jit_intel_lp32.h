@@ -426,7 +426,7 @@ namespace Runtime {
     inline void AddImm(int32_t imm) {
       unsigned char buffer[sizeof(int32_t)];
       ByteEncode32(buffer, imm);
-      for(int32_t i = 0; i < (int32_t)sizeof(int32_t); i++) {
+      for(int i = 0; i < sizeof(int32_t); ++i) {
         AddMachineCode(buffer[i]);
       }
     }
@@ -435,7 +435,7 @@ namespace Runtime {
     inline void AddImm16(int16_t imm) {
       unsigned char buffer[sizeof(int16_t)];
       ByteEncode16(buffer, imm);
-      for(int16_t i = 0; i < (int16_t)sizeof(int16_t); i++) {
+      for(int i = 0; i < sizeof(int16_t); ++i) {
         AddMachineCode(buffer[i]);
       }
     }

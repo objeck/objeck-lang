@@ -2189,11 +2189,6 @@ void JitCompilerIA32::move_imm_mem16(int32_t imm, int32_t offset, Register dest)
   wcout << L"  " << (++instr_count) << L": [movw $" << imm << L", " << offset 
         << L"(%" << GetRegisterName(dest) << L")" << L"]" << endl;
 #endif
-
-#ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << L": [movl $" << imm << L", " << offset 
-        << L"(%" << GetRegisterName(dest) << L")" << L"]" << endl;
-#endif
   // encode
   AddMachineCode(0x66);    
   AddMachineCode(0xc7);    
