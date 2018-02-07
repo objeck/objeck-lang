@@ -922,7 +922,7 @@ void JitCompilerIA64::ProcessLoadCharElement(StackInstr* instr) {
   RegisterHolder* holder = GetRegister();
   RegisterHolder* elem_holder = ArrayIndex(instr, CHAR_ARY_TYPE);
   xor_reg_reg(holder->GetRegister(), holder->GetRegister());
-  move_mem32_reg(0, elem_holder->GetRegister(), holder->GetRegister());
+  move_mem16_reg(0, elem_holder->GetRegister(), holder->GetRegister());
   ReleaseRegister(elem_holder);
   working_stack.push_front(new RegInstr(holder));
 }
@@ -998,11 +998,11 @@ void JitCompilerIA64::ProcessStoreCharElement(StackInstr* instr) {
       RegisterHolder* holder = GetRegister(false);
       move_reg_reg(elem_holder->GetRegister(), holder->GetRegister());
       ReleaseRegister(elem_holder);
-      move_imm_mem(left->GetOperand(), 0, holder->GetRegister());
+      move_imm_mem16(left->GetOperand(), 0, elem_holder->GetRegister());
       ReleaseRegister(holder);
     }
     else {
-      move_imm_mem(left->GetOperand(), 0, elem_holder->GetRegister());
+      move_imm_mem16(left->GetOperand(), 0, elem_holder->GetRegister());
       ReleaseRegister(elem_holder);
     }
     break;
@@ -1011,7 +1011,7 @@ void JitCompilerIA64::ProcessStoreCharElement(StackInstr* instr) {
     // movb can only use al, bl, cl and dl registers
     RegisterHolder* holder = GetRegister(false);
     move_mem_reg(left->GetOperand(), RBP, holder->GetRegister());
-    move_reg_mem32(holder->GetRegister(), 0, elem_holder->GetRegister());
+    move_reg_mem16(holder->GetRegister(), 0, elem_holder->GetRegister());
     ReleaseRegister(holder);
     ReleaseRegister(elem_holder);
   }
@@ -1023,11 +1023,11 @@ void JitCompilerIA64::ProcessStoreCharElement(StackInstr* instr) {
     if(holder->GetRegister() == RDI || holder->GetRegister() == RSI) {
       RegisterHolder* tmp_holder = GetRegister(false);
       move_reg_reg(holder->GetRegister(), tmp_holder->GetRegister());
-      move_reg_mem32(tmp_holder->GetRegister(), 0, elem_holder->GetRegister());      
+      move_reg_mem16(tmp_holder->GetRegister(), 0, elem_holder->GetRegister());
       ReleaseRegister(tmp_holder);
     }
     else {
-      move_reg_mem32(holder->GetRegister(), 0, elem_holder->GetRegister());   
+      move_reg_mem16(holder->GetRegister(), 0, elem_holder->GetRegister());
     }
     ReleaseRegister(holder);
     ReleaseRegister(elem_holder);
@@ -2093,6 +2093,21 @@ void JitCompilerIA64::move_reg_mem8(Register src, long offset, Register dest) {
   AddImm(offset);
 }
 
+void JitCompilerIA64::move_reg_mem16(Register src, int32_t offset, Register dest) {
+#ifdef _DEBUG
+  wcout << L"  " << (++instr_count) << L": [movw %" << GetRegisterName(src)
+    << L", " << offset << L"(%" << GetRegisterName(dest) << L")" << L"]"
+    << endl;
+#endif
+  // encode
+  AddMachineCode(RXB(src, dest));
+  AddMachineCode(0x66);
+  AddMachineCode(0x89);
+  AddMachineCode(ModRM(dest, src));
+  // write value
+  AddImm(offset);
+}
+
 void JitCompilerIA64::move_reg_mem32(Register src, long offset, Register dest) { 
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [movw %" << GetRegisterName(src) 
@@ -2131,6 +2146,21 @@ void JitCompilerIA64::move_mem8_reg(long offset, Register src, Register dest) {
   AddMachineCode(RXB(dest, src));
   AddMachineCode(0x0f);
   AddMachineCode(0xb6);
+  AddMachineCode(ModRM(src, dest));
+  // write value
+  AddImm(offset);
+}
+
+void JitCompilerIA64::move_mem16_reg(int32_t offset, Register src, Register dest) {
+#ifdef _DEBUG
+  wcout << L"  " << (++instr_count) << L": [movw " << offset << L"(%"
+    << GetRegisterName(src) << L"), %" << GetRegisterName(dest)
+    << L"]" << endl;
+#endif
+  // encode
+  AddMachineCode(RXB(dest, src));
+  AddMachineCode(0x0f);
+  AddMachineCode(0xb7);
   AddMachineCode(ModRM(src, dest));
   // write value
   AddImm(offset);
@@ -2199,6 +2229,23 @@ void JitCompilerIA64::move_imm_mem8(long imm, long offset, Register dest) {
   // write value
   AddImm(offset);
   AddMachineCode((unsigned char)imm);
+}
+
+void JitCompilerIA64::move_imm_mem16(int32_t imm, int32_t offset, Register dest) {
+#ifdef _DEBUG
+  wcout << L"  " << (++instr_count) << L": [movw $" << imm << L", " << offset
+    << L"(%" << GetRegisterName(dest) << L")" << L"]" << endl;
+#endif
+  // encode
+  AddMachineCode(XB(dest));
+  AddMachineCode(0x66);
+  AddMachineCode(0xc7);
+  unsigned char code = 0x80;
+  RegisterEncode3(code, 5, dest);
+  AddMachineCode(code);
+  // write value
+  AddImm(offset);
+  AddImm16(imm);
 }
 
 void JitCompilerIA64::move_imm_mem(long imm, long offset, Register dest) {
