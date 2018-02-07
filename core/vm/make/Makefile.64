@@ -6,7 +6,7 @@ CC=g++
 SRC=common.o interpreter.o loader.o vm.o posix_main.o 
 OBJ_LIBS= jit_amd_lp64.a memory.a
 MEM_PATH= arch/posix
-JIT_PATH= arch/jit/amd64
+JIT_PATH= arch/jit/posix64
 EXE= obr
 
 $(EXE): $(SRC) $(OBJ_LIBS)
