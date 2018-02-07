@@ -4,6 +4,7 @@ class Test {
 	}
 
 	function : native : Go(x : Int) ~ Int {
+#~		
 		ii := Int->New[4];
 		ii[2] := 13;
 		ii[0] := 7;
@@ -12,9 +13,17 @@ class Test {
 
 		return 13;
 
-#~
+cc[0] := a;cc[0] := a;
 		1.1->PrintLine();
 		return 7;
 ~#
+		cc := Char->New[10];
+		cc[0] := 'l';
+		cc[1] := 'o';
+		cc[2] := 'c';
+		cc[3] := '\0';
+		cc->PrintLine();
+
+		return 44;
 	}
 }
