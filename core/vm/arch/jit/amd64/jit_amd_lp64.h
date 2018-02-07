@@ -964,7 +964,7 @@ namespace Runtime {
      * Check for 'Nil' dereferencing
      **********************************/
     inline void CheckNilDereference(Register reg) {
-      const long offset = 43;
+      const long offset = 31;
       cmp_imm_reg(0, reg);
 #ifdef _DEBUG
       wcout << L"  " << (++instr_count) << L": [jne $" << offset << L"]" << endl;
@@ -980,7 +980,7 @@ namespace Runtime {
      * Checks array bounds
      **********************************/
     inline void CheckArrayBounds(Register reg, Register max_reg) {
-      const long offset = 43;
+      const long offset = 31;
 
       // less than zero
       cmp_imm_reg(-1, reg);
