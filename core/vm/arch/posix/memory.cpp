@@ -33,8 +33,8 @@
 
 bool MemoryManager::initialized;
 StackProgram* MemoryManager::prgm;
-unordered_map<StackFrameMonitor*, StackFrameMonitor*> MemoryManager::pda_monitors;
-set<StackFrame**> MemoryManager::pda_frames;
+unordered_set<StackFrameMonitor*> MemoryManager::pda_monitors;
+unordered_set<StackFrame**> MemoryManager::pda_frames;
 vector<StackFrame*> MemoryManager::jit_frames;
 stack<char*> MemoryManager::cache_pool_16;
 stack<char*> MemoryManager::cache_pool_32;
@@ -195,7 +195,7 @@ void MemoryManager::AddPdaMethodRoot(StackFrameMonitor* monitor)
 #ifndef _GC_SERIAL
   pthread_mutex_lock(&pda_monitor_mutex);
 #endif
-  pda_monitors.insert(pair<StackFrameMonitor*, StackFrameMonitor*>(monitor, monitor));
+  pda_monitors.insert(monitor);
 #ifndef _GC_SERIAL
   pthread_mutex_unlock(&pda_monitor_mutex);
 #endif
@@ -989,7 +989,7 @@ void* MemoryManager::CheckPdaRoots(void* arg)
 #endif
   
   // separate frames
-  set<StackFrame**, StackFrame**>::iterator iter;
+  unordered_set<StackFrame**>::iterator iter;
   for(iter = pda_frames.begin(); iter != pda_frames.end(); ++iter) {
     StackFrame** frame = *iter;
     if(*frame) {
@@ -1022,9 +1022,9 @@ void* MemoryManager::CheckPdaRoots(void* arg)
 #endif
   
   // separate monitor frames
-  unordered_map<StackFrameMonitor*, StackFrameMonitor*>::iterator pda_iter;
+  unordered_set<StackFrameMonitor*>::iterator pda_iter;
   for(pda_iter = pda_monitors.begin(); pda_iter != pda_monitors.end(); ++pda_iter) {
-    StackFrameMonitor* monitor = pda_iter->first;
+    StackFrameMonitor* monitor = *pda_iter;
     long call_stack_pos = *(monitor->call_stack_pos);
     
     if(call_stack_pos > 0) {
