@@ -48,12 +48,12 @@ long MemoryManager::allocation_size;
 long MemoryManager::mem_max_size;
 long MemoryManager::uncollected_count;
 long MemoryManager::collected_count;
-CRITICAL_SECTION MemoryManager::jit_frame_cs;
-CRITICAL_SECTION MemoryManager::pda_frame_cs;
-CRITICAL_SECTION MemoryManager::pda_monitor_cs;
-CRITICAL_SECTION MemoryManager::allocated_cs;
-CRITICAL_SECTION MemoryManager::marked_cs;
-CRITICAL_SECTION MemoryManager::marked_sweep_cs;
+CRITICAL_SECTION MemoryManager::jit_frame_lock;
+CRITICAL_SECTION MemoryManager::pda_frame_lock;
+CRITICAL_SECTION MemoryManager::pda_monitor_lock;
+CRITICAL_SECTION MemoryManager::allocated_lock;
+CRITICAL_SECTION MemoryManager::marked_lock;
+CRITICAL_SECTION MemoryManager::marked_sweep_lock;
 
 void MemoryManager::Initialize(StackProgram* p)
 {
@@ -62,12 +62,12 @@ void MemoryManager::Initialize(StackProgram* p)
   mem_max_size = MEM_MAX;
   uncollected_count = 0;
 
-  InitializeCriticalSection(&jit_frame_cs);
-  InitializeCriticalSection(&pda_frame_cs);
-  InitializeCriticalSection(&pda_monitor_cs);
-  InitializeCriticalSection(&allocated_cs);
-  InitializeCriticalSection(&marked_cs);
-  InitializeCriticalSection(&marked_sweep_cs);
+  InitializeCriticalSection(&jit_frame_lock);
+  InitializeCriticalSection(&pda_frame_lock);
+  InitializeCriticalSection(&pda_monitor_lock);
+  InitializeCriticalSection(&allocated_lock);
+  InitializeCriticalSection(&marked_lock);
+  InitializeCriticalSection(&marked_sweep_lock);
 
   for(int i = 0; i < POOL_SIZE; ++i) {
     cache_pool_16.push((char*)calloc(16, sizeof(char)));
@@ -103,11 +103,11 @@ inline bool MemoryManager::MarkMemory(size_t* mem)
 
     // mark & add to list
 #ifndef GC_SERIAL
-    EnterCriticalSection(&marked_cs);
+    MUTEX_LOCK(&marked_lock);
 #endif
     mem[MARKED_FLAG] = 1L;
 #ifndef GC_SERIAL
-    LeaveCriticalSection(&marked_cs);     
+    MUTEX_UNLOCK(&marked_lock);     
 #endif
 
     return true;
@@ -121,31 +121,31 @@ inline bool MemoryManager::MarkValidMemory(size_t* mem)
 {
   if(mem) {
 #ifndef GC_SERIAL
-    EnterCriticalSection(&allocated_cs);
+    MUTEX_LOCK(&allocated_lock);
 #endif
     if(std::binary_search(allocated_memory.begin(), allocated_memory.end(), mem)) {
       // check if memory has been marked
       if(mem[MARKED_FLAG]) {
 #ifndef GC_SERIAL
-        LeaveCriticalSection(&allocated_cs);
+        MUTEX_UNLOCK(&allocated_lock);
 #endif
         return false;
       }
 
       // mark & add to list
 #ifndef GC_SERIAL
-      EnterCriticalSection(&marked_cs);
+      MUTEX_LOCK(&marked_lock);
 #endif
       mem[-1] = 1L;
 #ifndef GC_SERIAL
-      LeaveCriticalSection(&marked_cs);      
-      LeaveCriticalSection(&allocated_cs);
+      MUTEX_UNLOCK(&marked_lock);      
+      MUTEX_UNLOCK(&allocated_lock);
 #endif
       return true;
     } 
     else {
 #ifndef GC_SERIAL
-      LeaveCriticalSection(&allocated_cs);
+      MUTEX_UNLOCK(&allocated_lock);
 #endif
       return false;
     }
@@ -165,11 +165,11 @@ void MemoryManager::AddPdaMethodRoot(StackFrame** frame)
 #endif
 
 #ifndef _GC_SERIAL
-  EnterCriticalSection(&pda_frame_cs);
+  MUTEX_LOCK(&pda_frame_lock);
 #endif
   pda_frames.insert(frame);
 #ifndef _GC_SERIAL
-  LeaveCriticalSection(&pda_frame_cs);
+  MUTEX_UNLOCK(&pda_frame_lock);
 #endif
 }
 
@@ -180,11 +180,11 @@ void MemoryManager::RemovePdaMethodRoot(StackFrame** frame)
 #endif
   
 #ifndef _GC_SERIAL
-  EnterCriticalSection(&pda_frame_cs);
+  MUTEX_LOCK(&pda_frame_lock);
 #endif
   pda_frames.erase(frame);
 #ifndef _GC_SERIAL
-  LeaveCriticalSection(&pda_frame_cs);
+  MUTEX_UNLOCK(&pda_frame_lock);
 #endif
 }
 
@@ -195,11 +195,11 @@ void MemoryManager::AddPdaMethodRoot(StackFrameMonitor* monitor)
 #endif
 
 #ifndef GC_SERIAL
-  EnterCriticalSection(&pda_monitor_cs);
+  MUTEX_LOCK(&pda_monitor_lock);
 #endif
   pda_monitors.insert(monitor);
 #ifndef GC_SERIAL
-  LeaveCriticalSection(&pda_monitor_cs);
+  MUTEX_UNLOCK(&pda_monitor_lock);
 #endif
 }
 
@@ -214,11 +214,11 @@ void MemoryManager::RemovePdaMethodRoot(StackFrameMonitor* monitor)
 #endif
 
 #ifndef GC_SERIAL
-  EnterCriticalSection(&pda_monitor_cs);
+  MUTEX_LOCK(&pda_monitor_lock);
 #endif
   pda_monitors.erase(monitor);
 #ifndef GC_SERIAL
-  LeaveCriticalSection(&pda_monitor_cs);
+  MUTEX_UNLOCK(&pda_monitor_lock);
 #endif
 }
 
@@ -293,12 +293,12 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, long 
 
     // record
 #ifndef GC_SERIAL
-    EnterCriticalSection(&allocated_cs);
+    MUTEX_LOCK(&allocated_lock);
 #endif
     allocation_size += size;
     allocated_memory.push_back(mem);
 #ifndef GC_SERIAL
-    LeaveCriticalSection(&allocated_cs);
+    MUTEX_UNLOCK(&allocated_lock);
 #endif
 
 #ifdef _DEBUG
@@ -398,12 +398,12 @@ size_t* MemoryManager::AllocateArray(const long size, const MemoryType type,
   mem += EXTRA_BUF_SIZE;
 
 #ifndef GC_SERIAL
-  EnterCriticalSection(&allocated_cs);
+  MUTEX_LOCK(&allocated_lock);
 #endif
   allocation_size += calc_size;
   allocated_memory.push_back(mem);
 #ifndef GC_SERIAL
-  LeaveCriticalSection(&allocated_cs);
+  MUTEX_UNLOCK(&allocated_lock);
 #endif
 
 #ifdef _DEBUG
@@ -462,7 +462,7 @@ void MemoryManager::CollectAllMemory(size_t* op_stack, long stack_pos)
 
 #ifndef GC_SERIAL
   // only one thread at a time can invoke the gargabe collector
-  if(!TryEnterCriticalSection(&marked_sweep_cs)) {
+  if(!TryEnterCriticalSection(&marked_sweep_lock)) {
     return;
   }
 #endif
@@ -486,7 +486,7 @@ void MemoryManager::CollectAllMemory(size_t* op_stack, long stack_pos)
     exit(-1);
   }
   CloseHandle(collect_thread_id);
-  LeaveCriticalSection(&marked_sweep_cs);
+  MUTEX_UNLOCK(&marked_sweep_lock);
 #endif
 
 #ifdef _TIMING
@@ -501,11 +501,11 @@ unsigned int MemoryManager::CollectMemory(void* arg)
   CollectionInfo* info = (CollectionInfo*)arg;
 
 #ifndef _GC_SERIAL
-  EnterCriticalSection(&allocated_cs);
+  MUTEX_LOCK(&allocated_lock);
 #endif
   std::sort(allocated_memory.begin(), allocated_memory.end());
 #ifndef _GC_SERIAL
-  LeaveCriticalSection(&allocated_cs);
+  MUTEX_UNLOCK(&allocated_lock);
 #endif
 
 #ifdef _DEBUG
@@ -561,8 +561,8 @@ unsigned int MemoryManager::CollectMemory(void* arg)
 
   // sort and search
 #ifndef GC_SERIAL
-  EnterCriticalSection(&allocated_cs);
-  EnterCriticalSection(&marked_cs);
+  MUTEX_LOCK(&allocated_lock);
+  MUTEX_LOCK(&marked_lock);
 #endif
 
 #ifdef _DEBUG
@@ -684,7 +684,7 @@ unsigned int MemoryManager::CollectMemory(void* arg)
   }
 
 #ifndef GC_SERIAL
-  LeaveCriticalSection(&marked_cs);
+  MUTEX_UNLOCK(&marked_lock);
 #endif  
 
   // did not collect memory; ajust constraints
@@ -711,7 +711,7 @@ unsigned int MemoryManager::CollectMemory(void* arg)
   // copy live memory to allocated memory
   allocated_memory = live_memory;
 #ifndef GC_SERIAL
-  LeaveCriticalSection(&allocated_cs);
+  MUTEX_UNLOCK(&allocated_lock);
 #endif
 
 #ifdef _DEBUG
@@ -760,7 +760,7 @@ unsigned int MemoryManager::CheckJitRoots(void* arg)
 {
 
 #ifndef GC_SERIAL
-  EnterCriticalSection(&jit_frame_cs);
+  MUTEX_LOCK(&jit_frame_lock);
 #endif  
 
 #ifdef _DEBUG
@@ -919,7 +919,7 @@ unsigned int MemoryManager::CheckJitRoots(void* arg)
     }
   }
 #ifndef GC_SERIAL
-  LeaveCriticalSection(&jit_frame_cs);  
+  MUTEX_UNLOCK(&jit_frame_lock);  
 #endif
 
   return 0;
@@ -930,7 +930,7 @@ unsigned int MemoryManager::CheckPdaRoots(void* arg)
   vector<StackFrame*> frames;
 
 #ifndef _GC_SERIAL
-  EnterCriticalSection(&pda_frame_cs);
+  MUTEX_LOCK(&pda_frame_lock);
 #endif
 
 #ifdef _DEBUG
@@ -945,11 +945,11 @@ unsigned int MemoryManager::CheckPdaRoots(void* arg)
     if(*frame) {
       if((*frame)->jit_mem) {
 #ifndef _GC_SERIAL
-        EnterCriticalSection(&jit_frame_cs);
+        MUTEX_LOCK(&jit_frame_lock);
 #endif
         jit_frames.push_back(*frame);
 #ifndef _GC_SERIAL
-        LeaveCriticalSection(&jit_frame_cs);
+        MUTEX_UNLOCK(&jit_frame_lock);
 #endif
       }
       else {
@@ -958,12 +958,12 @@ unsigned int MemoryManager::CheckPdaRoots(void* arg)
     }
   }
 #ifndef _GC_SERIAL
-  LeaveCriticalSection(&pda_frame_cs);
+  MUTEX_UNLOCK(&pda_frame_lock);
 #endif 
   
   // ------
 #ifndef GC_SERIAL
-  EnterCriticalSection(&pda_monitor_cs);
+  MUTEX_LOCK(&pda_monitor_lock);
 #endif
 
 #ifdef _DEBUG
@@ -984,11 +984,11 @@ unsigned int MemoryManager::CheckPdaRoots(void* arg)
 
       if(cur_frame->jit_mem) {
 #ifndef _GC_SERIAL
-        EnterCriticalSection(&jit_frame_cs);
+        MUTEX_LOCK(&jit_frame_lock);
 #endif
         jit_frames.push_back(cur_frame);
 #ifndef _GC_SERIAL
-        LeaveCriticalSection(&jit_frame_cs);
+        MUTEX_UNLOCK(&jit_frame_lock);
 #endif
       }
       else {
@@ -1002,11 +1002,11 @@ unsigned int MemoryManager::CheckPdaRoots(void* arg)
         StackFrame* frame = call_stack[call_stack_pos];
         if(frame->jit_mem) {
 #ifndef _GC_SERIAL
-          EnterCriticalSection(&jit_frame_cs);
+          MUTEX_LOCK(&jit_frame_lock);
 #endif	  
           jit_frames.push_back(frame);
 #ifndef _GC_SERIAL
-          LeaveCriticalSection(&jit_frame_cs);
+          MUTEX_UNLOCK(&jit_frame_lock);
 #endif
         }
         else {
@@ -1016,7 +1016,7 @@ unsigned int MemoryManager::CheckPdaRoots(void* arg)
     }
   }
 #ifndef GC_SERIAL
-  LeaveCriticalSection(&pda_monitor_cs);
+  MUTEX_UNLOCK(&pda_monitor_lock);
 #endif
 
   // check JIT roots in separate thread
