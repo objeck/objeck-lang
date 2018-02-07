@@ -83,10 +83,17 @@ namespace std {
 #include <dlfcn.h>
 #endif
 
-
 #define SMALL_BUFFER_MAX 511
 #define LARGE_BUFFER_MAX 4095
 #define CALC_STACK_SIZE 512
+
+#ifdef _WIN32
+#define MUTEX_LOCK EnterCriticalSection
+#define MUTEX_UNLOCK LeaveCriticalSection
+#else
+MUTEX_LOCK pthread_mutex_lock
+MUTEX_UNLOCK pthread_mutex_unlock
+#endif
 
 using namespace std;
 using namespace instructions;

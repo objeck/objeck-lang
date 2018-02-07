@@ -92,14 +92,14 @@ class MemoryManager {
   static stack<char*> cache_pool_256;
   static stack<char*> cache_pool_512;
   
-  static CRITICAL_SECTION jit_frame_cs;
-  static CRITICAL_SECTION pda_frame_cs;
-  static CRITICAL_SECTION pda_monitor_cs;
-  static CRITICAL_SECTION allocated_cs;
-  static CRITICAL_SECTION marked_cs;
-  static CRITICAL_SECTION marked_sweep_cs;
+  static CRITICAL_SECTION jit_frame_lock;
+  static CRITICAL_SECTION pda_frame_lock;
+  static CRITICAL_SECTION pda_monitor_lock;
+  static CRITICAL_SECTION allocated_lock;
+  static CRITICAL_SECTION marked_lock;
+  static CRITICAL_SECTION marked_sweep_lock;
   
-  // note: protected by 'allocated_cs'
+  // note: protected by 'allocated_lock'
   static long allocation_size;
   static long mem_max_size;
   static long uncollected_count;
@@ -111,17 +111,17 @@ class MemoryManager {
 
   static inline StackClass* GetClassMapping(size_t* mem) {
 #ifndef _GC_SERIAL
-      EnterCriticalSection(&allocated_cs);
+      MUTEX_LOCK(&allocated_lock);
 #endif
     if(mem && std::binary_search(allocated_memory.begin(), allocated_memory.end(), mem) && 
        mem[TYPE] == MemoryType::NIL_TYPE) {
 #ifndef _GC_SERIAL
-      LeaveCriticalSection(&allocated_cs);
+      MUTEX_UNLOCK(&allocated_lock);
 #endif
       return (StackClass*)mem[SIZE_OR_CLS];
     }
 #ifndef _GC_SERIAL
-    LeaveCriticalSection(&allocated_cs);
+    MUTEX_UNLOCK(&allocated_lock);
 #endif
     
     return NULL;
@@ -177,11 +177,11 @@ public:
       mem = NULL;
     }
     
-    DeleteCriticalSection(&jit_frame_cs);
-    DeleteCriticalSection(&pda_monitor_cs);
-    DeleteCriticalSection(&allocated_cs);
-    DeleteCriticalSection(&marked_cs);
-    DeleteCriticalSection(&marked_sweep_cs);
+    DeleteCriticalSection(&jit_frame_lock);
+    DeleteCriticalSection(&pda_monitor_lock);
+    DeleteCriticalSection(&allocated_lock);
+    DeleteCriticalSection(&marked_lock);
+    DeleteCriticalSection(&marked_sweep_lock);
 
     initialized = false;
   }
