@@ -13,10 +13,10 @@ class Test {
 
 		return 13;
 
-cc[0] := a;cc[0] := a;
+		cc[0] := a;cc[0] := a;
 		1.1->PrintLine();
 		return 7;
-~#
+
 		cc := Char->New[10];
 		cc[0] := 'l';
 		cc[1] := 'o';
@@ -24,6 +24,17 @@ cc[0] := a;cc[0] := a;
 		cc[3] := '\0';
 		cc->PrintLine();
 
+		ss := "Blue";
+		ss->Size()->PrintLine();
+~#
+		c := 'a';
+		cc := Char->New[6];
+		cc[0] := 'x';
+		cc[1] := 'y';
+		cc[2] := c;
+		cc[3] := '\0';
+		c := cc[1];
+		
 		return 44;
 	}
 }
