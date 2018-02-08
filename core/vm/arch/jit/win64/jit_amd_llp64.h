@@ -1056,7 +1056,6 @@ namespace Runtime {
     void move_mem16_reg(int32_t offset, Register src, Register dest);
     void move_imm_mem16(int32_t imm, int32_t offset, Register dest);
 
-
     void move_reg_mem32(Register src, long offset, Register dest);
     void move_mem32_reg(long offset, Register src, Register dest);
     void move_reg_reg(Register src, Register dest);
@@ -1589,13 +1588,13 @@ namespace Runtime {
       CheckNilDereference(array_holder->GetRegister());
 
       /* Algorithm:
-   long index = PopInt();
-   const long dim = instr->GetOperand();
+       long index = PopInt();
+       const long dim = instr->GetOperand();
 
-   for(int i = 1; i < dim; i++) {
-   index *= array[i];
-   index += PopInt();
-   }
+       for(int i = 1; i < dim; i++) {
+         index *= array[i];
+         index += PopInt();
+       }
       */
 
       if(holder) {

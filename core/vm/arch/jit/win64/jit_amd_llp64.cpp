@@ -919,7 +919,7 @@ void JitCompilerIA64::ProcessLoadByteElement(StackInstr* instr) {
 }
 
 void JitCompilerIA64::ProcessLoadCharElement(StackInstr* instr) {
-  RegisterHolder* holder = GetRegister();
+  RegisterHolder* holder = GetRegister(false);
   RegisterHolder* elem_holder = ArrayIndex(instr, CHAR_ARY_TYPE);
   xor_reg_reg(holder->GetRegister(), holder->GetRegister());
   move_mem16_reg(0, elem_holder->GetRegister(), holder->GetRegister());
@@ -2101,7 +2101,6 @@ void JitCompilerIA64::move_reg_mem16(Register src, int32_t offset, Register dest
     << endl;
 #endif
   // encode
-  // AddMachineCode(RXB(src, dest));
   AddMachineCode(0x66);
   AddMachineCode(0x89);
   AddMachineCode(ModRM(dest, src));
@@ -2159,7 +2158,6 @@ void JitCompilerIA64::move_mem16_reg(int32_t offset, Register src, Register dest
     << L"]" << endl;
 #endif
   // encode
-  // AddMachineCode(RXB(dest, src));
   AddMachineCode(0x0f);
   AddMachineCode(0xb7);
   AddMachineCode(ModRM(src, dest));
@@ -2238,7 +2236,6 @@ void JitCompilerIA64::move_imm_mem16(int32_t imm, int32_t offset, Register dest)
     << L"(%" << GetRegisterName(dest) << L")" << L"]" << endl;
 #endif
   // encode
-  // AddMachineCode(XB(dest));
   AddMachineCode(0x66);
   AddMachineCode(0xc7);
   unsigned char code = 0x80;
