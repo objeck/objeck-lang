@@ -995,6 +995,7 @@ void JitCompilerIA64::ProcessStoreCharElement(StackInstr* instr) {
   switch(left->GetType()) {
   case IMM_INT:
     if(elem_holder->GetRegister() > RSP) {    
+      // movw can only use al, bl, cl and dl registers
       RegisterHolder* holder = GetRegister(false);
       move_reg_reg(elem_holder->GetRegister(), holder->GetRegister());
       ReleaseRegister(elem_holder);
@@ -1008,7 +1009,7 @@ void JitCompilerIA64::ProcessStoreCharElement(StackInstr* instr) {
     break;
 
   case MEM_INT: {    
-    // movb can only use al, bl, cl and dl registers
+    // movw can only use al, bl, cl and dl registers
     RegisterHolder* holder = GetRegister(false);
     move_mem_reg(left->GetOperand(), RBP, holder->GetRegister());
     move_reg_mem16(holder->GetRegister(), 0, elem_holder->GetRegister());
@@ -1018,7 +1019,7 @@ void JitCompilerIA64::ProcessStoreCharElement(StackInstr* instr) {
     break;
 
   case REG_INT: {
-    // movb can only use al, bl, cl and dl registers
+    // movw can only use al, bl, cl and dl registers
     RegisterHolder* holder = left->GetRegister();
     if(holder->GetRegister() == RDI || holder->GetRegister() == RSI) {
       RegisterHolder* tmp_holder = GetRegister(false);
@@ -2100,7 +2101,7 @@ void JitCompilerIA64::move_reg_mem16(Register src, int32_t offset, Register dest
     << endl;
 #endif
   // encode
-  AddMachineCode(RXB(src, dest));
+  // AddMachineCode(RXB(src, dest));
   AddMachineCode(0x66);
   AddMachineCode(0x89);
   AddMachineCode(ModRM(dest, src));
@@ -2158,7 +2159,7 @@ void JitCompilerIA64::move_mem16_reg(int32_t offset, Register src, Register dest
     << L"]" << endl;
 #endif
   // encode
-  AddMachineCode(RXB(dest, src));
+  // AddMachineCode(RXB(dest, src));
   AddMachineCode(0x0f);
   AddMachineCode(0xb7);
   AddMachineCode(ModRM(src, dest));
@@ -2237,7 +2238,7 @@ void JitCompilerIA64::move_imm_mem16(int32_t imm, int32_t offset, Register dest)
     << L"(%" << GetRegisterName(dest) << L")" << L"]" << endl;
 #endif
   // encode
-  AddMachineCode(XB(dest));
+  // AddMachineCode(XB(dest));
   AddMachineCode(0x66);
   AddMachineCode(0xc7);
   unsigned char code = 0x80;
