@@ -904,7 +904,11 @@ void JitCompilerIA32::ProcessLoadByteElement(StackInstr* instr) {
 }
 
 void JitCompilerIA32::ProcessLoadCharElement(StackInstr* instr) {
+#ifdef _WIN32
+  RegisterHolder* holder = GetRegister(false);
+#else
   RegisterHolder* holder = GetRegister();
+#endif
   RegisterHolder* elem_holder = ArrayIndex(instr, CHAR_ARY_TYPE);
   xor_reg_reg(holder->GetRegister(), holder->GetRegister());
 
