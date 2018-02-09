@@ -16,17 +16,18 @@ class Test {
 		cc[0] := a;cc[0] := a;
 		1.1->PrintLine();
 		return 7;
-
+~#
 		cc := Char->New[10];
 		cc[0] := 'l';
 		cc[1] := 'o';
 		cc[2] := 'c';
 		cc[3] := '\0';
-		cc->PrintLine();
 
+#~		
+		cc->PrintLine();
 		ss := "Blue";
-		ss->Size()->PrintLine();
-~#
+		ss->PrintLine();
+	
 		cc := Char->New[4];
 		cc[0] := 'x';
 		cc[1] := 'y';
@@ -34,7 +35,7 @@ class Test {
 		cc[3] := '\0';
 		
 		cc->PrintLine();
-
+~#
 		return 44;
 	}
 }
