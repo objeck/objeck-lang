@@ -901,7 +901,7 @@ namespace Runtime {
      * Check for 'Nil' dereferencing
      **********************************/
     inline void CheckNilDereference(Register reg) {
-      const long offset = 35;
+      const long offset = 27;
       cmp_imm_reg(0, reg);
 #ifdef _DEBUG
       wcout << L"  " << (++instr_count) << L": [jne $" << offset << L"]" << endl;
@@ -917,7 +917,7 @@ namespace Runtime {
      * Checks array bounds
      **********************************/
     inline void CheckArrayBounds(Register reg, Register max_reg) {
-      const long offset = 35;
+      const long offset = 27;
 
       // less than zero
       cmp_imm_reg(-1, reg);
@@ -1884,12 +1884,8 @@ namespace Runtime {
         aval_regs.push_back(new RegisterHolder(RBX));
         aval_regs.push_back(new RegisterHolder(RAX));
         // aux general use registers
-        aux_regs.push(new RegisterHolder(R13));
-        aux_regs.push(new RegisterHolder(R12));
-        aux_regs.push(new RegisterHolder(R11));
-        aux_regs.push(new RegisterHolder(R10));
-        aux_regs.push(new RegisterHolder(R9));
-        aux_regs.push(new RegisterHolder(R8));
+        aux_regs.push(new RegisterHolder(RDI));
+        aux_regs.push(new RegisterHolder(RSI));
         // floating point registers
         aval_xregs.push_back(new RegisterHolder(XMM15));
         aval_xregs.push_back(new RegisterHolder(XMM14));
