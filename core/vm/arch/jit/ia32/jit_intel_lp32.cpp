@@ -12,7 +12,7 @@
  * - Redistributions in binary form must reproduce the above copyright 
  * notice, this list of conditions and the following disclaimer in 
  * the documentation and/or other materials provided with the distribution.
- * - Neither the name of the StackVM Team nor the names of its 
+ * - Neither the name of the Objeck team nor the names of its 
  * contributors may be used to endorse or promote products derived 
  * from this software without specific prior written permission.
  *
@@ -75,12 +75,31 @@ void JitCompilerIA32::Prolog() {
 }
 
 // teardown of stackframe
-void JitCompilerIA32::Epilog(int32_t imm) {
+void JitCompilerIA32::Epilog() {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [<epilog>]" << endl;
 #endif
-  
-  move_imm_reg(imm, EAX);
+  epilog_index = code_index;
+
+  // nominal
+  AddMachineCode(0xe9);
+  AddImm(30);
+  // null deref
+  move_imm_reg(-1, EAX);
+  AddMachineCode(0xe9);
+  AddImm(25);
+  // under bounds
+  move_imm_reg(-2, EAX);
+  AddMachineCode(0xe9);
+  AddImm(15);
+  // over bounds
+  move_imm_reg(-3, EAX);
+  AddMachineCode(0xe9);
+  AddImm(5);
+  // nominal
+  move_imm_reg(0, EAX);
+
+  // assume return value is in EAX
   unsigned char teardown_code[] = {
     // restore registers
     0x5e,             // pop esi
@@ -423,7 +442,7 @@ void JitCompilerIA32::ProcessInstructions() {
 #endif
       ProcessReturn();
       // teardown
-      Epilog(0);
+      Epilog();
       break;
       
     case MTHD_CALL: {
