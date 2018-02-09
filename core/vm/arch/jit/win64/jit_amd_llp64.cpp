@@ -84,7 +84,8 @@ void JitCompilerIA64::Epilog() {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [<epilog>]" << endl;
 #endif
-  
+  epilog_index = code_index;
+
   // nominal
   AddMachineCode(0xe9);
   AddImm(55);

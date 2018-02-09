@@ -905,11 +905,7 @@ namespace Runtime {
      * Check for 'Nil' dereferencing
      **********************************/
     inline void CheckNilDereference(Register reg) {
-      const long offset = 27;
       cmp_imm_reg(0, reg);
-#ifdef _DEBUG
-      wcout << L"  " << (++instr_count) << L": [je $" << offset << L"]" << endl;
-#endif
       // jump not equal
       AddMachineCode(0x0f);
       AddMachineCode(0x84);
@@ -922,13 +918,8 @@ namespace Runtime {
      * Checks array bounds
      **********************************/
     inline void CheckArrayBounds(Register reg, Register max_reg) {
-      const long offset = 27;
-
       // less than zero
       cmp_imm_reg(-1, reg);
-#ifdef _DEBUG
-      wcout << L"  " << (++instr_count) << L": [jg $" << offset << L"]" << endl;
-#endif
       // jump not equal
       AddMachineCode(0x0f);
       AddMachineCode(0x8c);
@@ -938,9 +929,6 @@ namespace Runtime {
 
       // greater than max
       cmp_reg_reg(max_reg, reg);
-#ifdef _DEBUG
-      wcout << L"  " << (++instr_count) << L": [jl $" << offset << L"]" << endl;
-#endif
       // jump not equal
       AddMachineCode(0x0f);
       AddMachineCode(0x8d);
@@ -1944,19 +1932,19 @@ namespace Runtime {
 
         for(size_t i = 0; i < deref_offsets.size(); ++i) {
           const long index = deref_offsets[i];
-          long offset = epilog_index - index + 1;
+          long offset = epilog_index - index + 6;
           memcpy(&code[index], &offset, 4);
         }
 
         for(size_t i = 0; i < bounds_less_offsets.size(); ++i) {
           const long index = bounds_less_offsets[i];
-          long offset = epilog_index - index + 11;
+          long offset = epilog_index - index + 16;
           memcpy(&code[index], &offset, 4);
         }
 
         for(size_t i = 0; i < bounds_greater_offsets.size(); ++i) {
           const long index = bounds_greater_offsets[i];
-          long offset = epilog_index - index + 21;
+          long offset = epilog_index - index + 31;
           memcpy(&code[index], &offset, 4);
         }
 
