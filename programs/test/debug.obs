@@ -27,12 +27,14 @@ class Test {
 		ss := "Blue";
 		ss->Size()->PrintLine();
 ~#
-		cc := Char->New[2];
+		cc := Char->New[4];
 		cc[0] := 'x';
 		cc[1] := 'y';
 		cc[2] := 'a';
-		cc[3] := 'b';
+		cc[3] := '\0';
 		
+		cc->PrintLine();
+
 		return 44;
 	}
 }
