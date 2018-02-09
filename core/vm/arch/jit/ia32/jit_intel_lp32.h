@@ -1721,13 +1721,13 @@ namespace Runtime {
 
         for(size_t i = 0; i < bounds_less_offsets.size(); ++i) {
           const int32_t index = bounds_less_offsets[i];
-          int32_t offset = epilog_index - index + 4;
+          int32_t offset = epilog_index - index + 11;
           memcpy(&code[index], &offset, 4);
         }
             
         for(size_t i = 0; i < bounds_greater_offsets.size(); ++i) {
           const int32_t index = bounds_greater_offsets[i];
-          int32_t offset = epilog_index - index + 7;
+          int32_t offset = epilog_index - index + 21;
           memcpy(&code[index], &offset, 4);
         }
 
