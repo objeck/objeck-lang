@@ -12,7 +12,7 @@
  * - Redistributions in binary form must reproduce the above copyright 
  * notice, this list of conditions and the following disclaimer in 
  * the documentation and/or other materials provided with the distribution.
- * - Neither the name of the StackVM Team nor the names of its 
+ * - Neither the name of the Objeck team nor the names of its 
  * contributors may be used to endorse or promote products derived 
  * from this software without specific prior written permission.
  *
@@ -363,11 +363,15 @@ namespace Runtime {
     vector<RegisterHolder*> aval_xregs;
     list<RegisterHolder*> used_xregs;
     unordered_map<int32_t, StackInstr*> jump_table;
+    vector<int32_t> deref_offsets;          // -1
+    vector<int32_t> bounds_less_offsets;    // -2
+    vector<int32_t> bounds_greater_offsets; // -3
     int32_t local_space;
     StackMethod* method;
     int32_t instr_count;
     unsigned char* code;
-    int32_t code_index;   
+    int32_t code_index;
+    int32_t epilog_index;
     double* floats;     
     int32_t floats_index;
     int32_t instr_index;
@@ -377,7 +381,7 @@ namespace Runtime {
 
     // setup and teardown
     void Prolog();
-    void Epilog(int32_t imm);
+    void Epilog();
 
     // stack conversion operations
     void ProcessParameters(int32_t count);
@@ -669,13 +673,13 @@ namespace Runtime {
       const int32_t offset = 14;
       cmp_imm_reg(0, reg);
 #ifdef _DEBUG
-      wcout << L"  " << (++instr_count) << L": [jne $" << offset << L"]" << endl;
+      wcout << L"  " << (++instr_count) << L": [je $" << offset << L"]" << endl;
 #endif
-      // jump not equal
       AddMachineCode(0x0f);
-      AddMachineCode(0x85);
-      AddImm(offset);
-      Epilog(-1);
+      AddMachineCode(0x84);
+      deref_offsets.push_back(code_index);
+      AddImm(0);
+      // jump to exit
     }
 
     /***********************************
@@ -685,26 +689,26 @@ namespace Runtime {
       const int32_t offset = 14;
 
       // less than zero
-      cmp_imm_reg(-1, reg);
+      cmp_imm_reg(0, reg);
 #ifdef _DEBUG
-      wcout << L"  " << (++instr_count) << L": [jg $" << offset << L"]" << endl;
+      wcout << L"  " << (++instr_count) << L": [jl $" << offset << L"]" << endl;
 #endif
-      // jump not equal
       AddMachineCode(0x0f);
-      AddMachineCode(0x8f);
-      AddImm(offset);
-      Epilog(-2);
+      AddMachineCode(0x8c);
+      bounds_less_offsets.push_back(code_index);
+      AddImm(0);
+      // jump to exit
 
       // greater than max
       cmp_reg_reg(max_reg, reg);
 #ifdef _DEBUG
-      wcout << L"  " << (++instr_count) << L": [jl $" << offset << L"]" << endl;
+      wcout << L"  " << (++instr_count) << L": [jge $" << offset << L"]" << endl;
 #endif
-      // jump not equal
       AddMachineCode(0x0f);
-      AddMachineCode(0x8c);
-      AddImm(offset);
-      Epilog(-3);
+      AddMachineCode(0x8d);
+      bounds_greater_offsets.push_back(code_index);
+      AddImm(0);
+      // jump to exit
     }
 
     /***********************************
@@ -1368,8 +1372,8 @@ namespace Runtime {
          const int32_t dim = instr->GetOperand();
 
          for(int i = 1; i < dim; i++) {
-         index *= array[i];
-         index += PopInt();
+           index *= array[i];
+           index += PopInt();
          }
       */
 
@@ -1656,7 +1660,7 @@ namespace Runtime {
         }
 #endif
 
-        floats_index = instr_index = code_index = instr_count = 0;
+        floats_index = instr_index = code_index = epilog_index = instr_count = 0;
         // general use registers
         aval_regs.push_back(new RegisterHolder(EDX));
         aval_regs.push_back(new RegisterHolder(ECX));
@@ -1705,13 +1709,30 @@ namespace Runtime {
           const int32_t offset = dest_offset - src_offset - 4;
           memcpy(&code[src_offset], &offset, 4); 
 #ifdef _DEBUG
-          wcout << L"jump update: src=" << src_offset 
-                << L"; dest=" << dest_offset << endl;
+          wcout << L"jump update: src=" << src_offset << L"; dest=" << dest_offset << endl;
 #endif
         }
+
+        for(size_t i = 0; i < deref_offsets.size(); ++i) {
+          const int32_t index = deref_offsets[i];
+          int32_t offset = epilog_index - index + 1;
+          memcpy(&code[index], &offset, 4);
+        }
+
+        for(size_t i = 0; i < bounds_less_offsets.size(); ++i) {
+          const int32_t index = bounds_less_offsets[i];
+          int32_t offset = epilog_index - index + 4;
+          memcpy(&code[index], &offset, 4);
+        }
+            
+        for(size_t i = 0; i < bounds_greater_offsets.size(); ++i) {
+          const int32_t index = bounds_greater_offsets[i];
+          int32_t offset = epilog_index - index + 7;
+          memcpy(&code[index], &offset, 4);
+        }
+
 #ifdef _DEBUG
-        wcout << L"Caching JIT code: actual=" << code_index 
-              << L", buffer=" << code_buf_max << L" byte(s)" << endl;
+        wcout << L"Caching JIT code: actual=" << code_index << L", buffer=" << code_buf_max << L" byte(s)" << endl;
 #endif
         // store compiled code
         method->SetNativeCode(new NativeCode(page_manager->GetPage(code, code_index), code_index, floats));
