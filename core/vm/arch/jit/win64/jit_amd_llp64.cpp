@@ -3923,7 +3923,7 @@ long JitExecutor::ExecuteMachineCode(long cls_id, long mthd_id, size_t* inst, un
   // create function
   jit_fun_ptr jit_fun = (jit_fun_ptr)code;
   const long status = jit_fun(cls_id, mthd_id, method->GetClass()->GetClassMemory(), inst, op_stack, 
-                     stack_pos, call_stack, call_stack_pos, &(frame->jit_mem), &(frame->jit_offset));
+                              stack_pos, call_stack, call_stack_pos, &(frame->jit_mem), &(frame->jit_offset));
 
 #ifdef _DEBUG
   wcout << L"JIT return=: " << status << endl;
