@@ -87,19 +87,19 @@ void JitCompilerIA64::Epilog() {
   
   // nominal
   AddMachineCode(0xe9);
-  AddImm(30);
+  AddImm(55);
   // null deref
   move_imm_reg(-1, RAX);
   AddMachineCode(0xe9);
-  AddImm(25);
+  AddImm(40);
   // under bounds
   move_imm_reg(-2, RAX);
   AddMachineCode(0xe9);
-  AddImm(15);
+  AddImm(25);
   // over bounds
   move_imm_reg(-3, RAX);
   AddMachineCode(0xe9);
-  AddImm(5);
+  AddImm(10);
   // nominal
   move_imm_reg(0, RAX);
   
