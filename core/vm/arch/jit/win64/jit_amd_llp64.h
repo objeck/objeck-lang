@@ -1932,7 +1932,7 @@ namespace Runtime {
 
         for(size_t i = 0; i < deref_offsets.size(); ++i) {
           const long index = deref_offsets[i];
-          long offset = epilog_index - index + 6;
+          long offset = epilog_index - index + 1;
           memcpy(&code[index], &offset, 4);
         }
 

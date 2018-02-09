@@ -17,7 +17,7 @@ class Test {
 		1.1->PrintLine();
 		return 7;
 ~#
-		cc := Char->New[10];
+		cc : Int[];#= Char->New[4];
 		cc[0] := 'l';
 		cc[1] := 'o';
 		cc[2] := 'c';
