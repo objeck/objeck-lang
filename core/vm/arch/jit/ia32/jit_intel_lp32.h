@@ -670,6 +670,7 @@ namespace Runtime {
      * Check for 'Nil' dereferencing
      **********************************/
     inline void CheckNilDereference(Register reg) {
+      // is zero
       cmp_imm_reg(0, reg);
       AddMachineCode(0x0f);
       AddMachineCode(0x84);
