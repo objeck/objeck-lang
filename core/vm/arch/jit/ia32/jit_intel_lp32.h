@@ -670,11 +670,7 @@ namespace Runtime {
      * Check for 'Nil' dereferencing
      **********************************/
     inline void CheckNilDereference(Register reg) {
-      const int32_t offset = 14;
       cmp_imm_reg(0, reg);
-#ifdef _DEBUG
-      wcout << L"  " << (++instr_count) << L": [je $" << offset << L"]" << endl;
-#endif
       AddMachineCode(0x0f);
       AddMachineCode(0x84);
       deref_offsets.push_back(code_index);
@@ -686,13 +682,8 @@ namespace Runtime {
      * Checks array bounds
      **********************************/
     inline void CheckArrayBounds(Register reg, Register max_reg) {
-      const int32_t offset = 14;
-
       // less than zero
       cmp_imm_reg(0, reg);
-#ifdef _DEBUG
-      wcout << L"  " << (++instr_count) << L": [jl $" << offset << L"]" << endl;
-#endif
       AddMachineCode(0x0f);
       AddMachineCode(0x8c);
       bounds_less_offsets.push_back(code_index);
@@ -701,9 +692,6 @@ namespace Runtime {
 
       // greater than max
       cmp_reg_reg(max_reg, reg);
-#ifdef _DEBUG
-      wcout << L"  " << (++instr_count) << L": [jge $" << offset << L"]" << endl;
-#endif
       AddMachineCode(0x0f);
       AddMachineCode(0x8d);
       bounds_greater_offsets.push_back(code_index);
