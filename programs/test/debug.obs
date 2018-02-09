@@ -23,14 +23,14 @@ class Test {
 		cc[2] := 'c';
 		cc[3] := '\0';
 ~#
-
 		cc := Char->New[4];
 		for(i := 0; i < cc->Size(); i++;) {
 			cc[i] := 101 + i;
 		};
-		cc->PrintLine();
-		
 #~		
+		cc->PrintLine();
+
+		
 		ss := "Blue";
 		ss->PrintLine();
 	

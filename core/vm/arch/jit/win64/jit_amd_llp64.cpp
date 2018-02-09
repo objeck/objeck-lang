@@ -2810,7 +2810,7 @@ void JitCompilerIA64::cmp_reg_reg(Register src, Register dest) {
         << L", %" << GetRegisterName(dest) << L"]" << endl;
 #endif
   // encode
-  AddMachineCode(ROB(src, dest));
+  // AddMachineCode(ROB(src, dest));
   AddMachineCode(0x39);
   unsigned char code = 0xc0;
   // write value
