@@ -169,14 +169,11 @@ void JitCompilerIA64::ProcessParameters(long params) {
     if(instr->GetType() == STOR_LOCL_INT_VAR ||
        instr->GetType() == STOR_CLS_INST_INT_VAR) {
       dec_mem(0, stack_pos_holder->GetRegister());  
-      move_mem_reg32(0, stack_pos_holder->GetRegister(), 
-                   stack_pos_holder->GetRegister());
+      move_mem_reg32(0, stack_pos_holder->GetRegister(), stack_pos_holder->GetRegister());
       shl_imm_reg(3, stack_pos_holder->GetRegister());
-      add_reg_reg(stack_pos_holder->GetRegister(),
-                  op_stack_holder->GetRegister());
+      add_reg_reg(stack_pos_holder->GetRegister(), op_stack_holder->GetRegister());
       RegisterHolder* dest_holder = GetRegister();
-      move_mem_reg(0, op_stack_holder->GetRegister(), 
-                   dest_holder->GetRegister());
+      move_mem_reg(0, op_stack_holder->GetRegister(), dest_holder->GetRegister());
       working_stack.push_front(new RegInstr(dest_holder));
       // store int
       ProcessStore(instr);
@@ -189,8 +186,7 @@ void JitCompilerIA64::ProcessParameters(long params) {
       add_reg_reg(stack_pos_holder->GetRegister(),
                   op_stack_holder->GetRegister());
       RegisterHolder* dest_holder = GetRegister();
-      move_mem_reg(0, op_stack_holder->GetRegister(), 
-                   dest_holder->GetRegister());
+      move_mem_reg(0, op_stack_holder->GetRegister(), dest_holder->GetRegister());
       
       RegisterHolder* dest_holder2 = GetRegister();
       move_mem_reg(/*-sizeof(size_t)*/-8, op_stack_holder->GetRegister(), 
@@ -2826,7 +2822,7 @@ void JitCompilerIA64::cmp_mem_reg(long offset, Register src, Register dest) {
         << L"]" << endl;
 #endif
   // encode
-  AddMachineCode(RXB(dest, src));
+  // AddMachineCode(RXB(dest, src));
   AddMachineCode(0x3b);
   AddMachineCode(ModRM(src, dest));
   // write value
