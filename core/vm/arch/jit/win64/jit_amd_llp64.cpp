@@ -88,7 +88,7 @@ void JitCompilerIA64::Epilog() {
 
   // nominal
   AddMachineCode(0xe9);
-  AddImm(55);
+  AddImm(45);
   // null deref
   move_imm_reg(-1, RAX);
   AddMachineCode(0xe9);
