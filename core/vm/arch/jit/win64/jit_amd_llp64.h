@@ -1046,11 +1046,9 @@ namespace Runtime {
     void move_reg_mem8(Register src, long offset, Register dest);
     void move_mem8_reg(long offset, Register src, Register dest);
     void move_imm_mem8(long imm, long offset, Register dest);
-
     void move_reg_mem16(Register src, int32_t offset, Register dest);
     void move_mem16_reg(int32_t offset, Register src, Register dest);
     void move_imm_mem16(int32_t imm, int32_t offset, Register dest);
-
     void move_reg_mem32(Register src, long offset, Register dest);
     void move_mem32_reg(long offset, Register src, Register dest);
     void move_reg_reg(Register src, Register dest);
@@ -1194,11 +1192,12 @@ namespace Runtime {
         case MTHD_CALL:
         case DYN_MTHD_CALL:
         {
+          StackMethod* method = program->GetClass(cls_id)->GetMethod(mthd_id);
 #ifdef _DEBUG
-          wcout << L"jit oper: MTHD_CALL: cls=" << instr->GetOperand() << L", mthd=" << instr->GetOperand2() << endl;
+          wcout << L"jit oper: MTHD_CALL: mthd=" << method->GetName() << endl;
 #endif
           StackInterpreter intpr(call_stack, call_stack_pos);
-          intpr.Execute(op_stack, stack_pos, ip, program->GetClass(cls_id)->GetMethod(mthd_id), inst, true);
+          intpr.Execute(op_stack, stack_pos, ip, method, inst, true);
         }
         break;
 
@@ -1320,10 +1319,10 @@ namespace Runtime {
         case NEW_OBJ_INST:
         {
 #ifdef _DEBUG
-          wcout << L"jit oper: NEW_OBJ_INST: id=" << instr->GetOperand() << endl;
+          StackClass* klass = program->GetClass(instr->GetOperand());
+          wcout << L"jit oper: NEW_OBJ_INST: class=" << klass->GetName() << endl;
 #endif
-          size_t* mem = (size_t*)MemoryManager::AllocateObject(instr->GetOperand(),
-                                                           op_stack, *stack_pos);
+          size_t* mem = (size_t*)MemoryManager::AllocateObject(instr->GetOperand(), op_stack, *stack_pos);
           PushInt(op_stack, stack_pos, (size_t)mem);
         }
         break;
@@ -1655,7 +1654,7 @@ namespace Runtime {
 
       // bounds check
       RegisterHolder* bounds_holder = GetRegister();
-      move_mem_reg(0, array_holder->GetRegister(), bounds_holder->GetRegister());
+      move_mem_reg32(0, array_holder->GetRegister(), bounds_holder->GetRegister());
 
       // ajust indices
       switch(type) {
