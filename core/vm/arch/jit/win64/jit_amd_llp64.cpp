@@ -1479,8 +1479,7 @@ void JitCompilerIA64::ProcessStackCallback(long instr_id, StackInstr* instr, lon
   long xmm_offset = TMP_XMM_0;
 
   long i = 0;
-  for(deque<RegInstr*>::reverse_iterator iter = working_stack.rbegin();
-      iter != working_stack.rend(); ++iter) {
+  for(deque<RegInstr*>::reverse_iterator iter = working_stack.rbegin(); iter != working_stack.rend(); ++iter) {
     RegInstr* left = (*iter);
     if(i < non_params) {
       switch(left->GetType()) {
@@ -1488,7 +1487,7 @@ void JitCompilerIA64::ProcessStackCallback(long instr_id, StackInstr* instr, lon
           move_reg_mem(left->GetRegister()->GetRegister(), reg_offset, RBP);
           dirty_regs.push(reg_offset);
           regs.push(left);
-          reg_offset -= sizeof(long);
+          reg_offset -= sizeof(size_t);
           break;
 
         case REG_FLOAT:
@@ -1578,8 +1577,7 @@ void JitCompilerIA64::ProcessReturn(long params) {
 #endif
     
     long i = 0;     
-    for(deque<RegInstr*>::reverse_iterator iter = working_stack.rbegin();
-        iter != working_stack.rend(); ++iter) {
+    for(deque<RegInstr*>::reverse_iterator iter = working_stack.rbegin(); iter != working_stack.rend(); ++iter) {
       // skip non-params... processed above
       RegInstr* left = (*iter);
       if(i < non_params) {
