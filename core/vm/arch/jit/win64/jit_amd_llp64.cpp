@@ -71,7 +71,8 @@ void JitCompilerIA64::Prolog() {
     0x48, 0x51,                                    // push rcx
     0x48, 0x52,                                    // push rdx
     0x48, 0x57,                                    // push rdi
-    0x48, 0x56                                     // push rsi
+    0x48, 0x56,                                    // push rsi
+    // 0x49, 0x50                                     // push r8
   };
   const long setup_size = sizeof(setup_code);
   // copy setup
@@ -106,6 +107,7 @@ void JitCompilerIA64::Epilog() {
   
   unsigned char teardown_code[] = {
     // restore registers
+    // 0x49, 0x58,       // pop r8
     0x48, 0x5e,       // pop rsi
     0x48, 0x5f,       // pop rdi
     0x48, 0x5a,       // pop rdx
