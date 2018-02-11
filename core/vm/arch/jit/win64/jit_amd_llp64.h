@@ -1192,12 +1192,13 @@ namespace Runtime {
         case MTHD_CALL:
         case DYN_MTHD_CALL:
         {
-          StackMethod* method = program->GetClass(cls_id)->GetMethod(mthd_id);
+          
 #ifdef _DEBUG
-          wcout << L"jit oper: MTHD_CALL: mthd=" << method->GetName() << endl;
+          StackMethod* called = program->GetClass(instr->GetOperand())->GetMethod(instr->GetOperand2());
+          wcout << L"jit oper: MTHD_CALL: mthd=" << called->GetName() << endl;
 #endif
           StackInterpreter intpr(call_stack, call_stack_pos);
-          intpr.Execute(op_stack, stack_pos, ip, method, inst, true);
+          intpr.Execute(op_stack, stack_pos, ip, program->GetClass(cls_id)->GetMethod(mthd_id), inst, true);
         }
         break;
 
