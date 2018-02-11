@@ -39,30 +39,28 @@ using namespace std;
 
 namespace Runtime {
   // offsets for Intel (AMD-64) addresses
-#define CLS_ID 96
-#define MTHD_ID 104
-#define CLASS_MEM 112
-#define INSTANCE_MEM 120
-
+#define CLS_ID -8
+#define MTHD_ID -16
+#define CLASS_MEM -24
+#define INSTANCE_MEM -32
 #define OP_STACK 48
 #define STACK_POS 56
 #define CALL_STACK 64
 #define CALL_STACK_POS 72
 #define JIT_MEM 80
 #define JIT_OFFSET 88
-
   // float temps
-#define TMP_XMM_0 128
-#define TMP_XMM_1 136
-#define TMP_XMM_2 144
+#define TMP_XMM_0 -40
+#define TMP_XMM_1 -48
+#define TMP_XMM_2 -56
   // integer temps
-#define TMP_REG_0 152
-#define TMP_REG_1 160
-#define TMP_REG_2 168
-#define TMP_REG_3 176
-#define TMP_REG_4 184
-#define TMP_REG_5 192
-#define RED_ZONE 208
+#define TMP_REG_0 -64
+#define TMP_REG_1 -72
+#define TMP_REG_2 -80
+#define TMP_REG_3 -88
+#define TMP_REG_4 -96
+#define TMP_REG_5 -104
+#define RED_ZONE -112  
 
 #define MAX_DBLS 64
 #define BUFFER_SIZE 512
@@ -366,11 +364,11 @@ namespace Runtime {
     stack<RegisterHolder*> aux_regs;
     vector<RegisterHolder*> aval_xregs;
     list<RegisterHolder*> used_xregs;
-    unordered_map<long, StackInstr*> jump_table; // jump addresses are 64-bits
-    vector<long> deref_offsets;          // -1
-    vector<long> bounds_less_offsets;    // -2
-    vector<long> bounds_greater_offsets; // -3
-    long local_space;
+    unordered_map<long, StackInstr*> jump_table; // jump addresses
+    vector<long> nil_deref_offsets;      // code -1
+    vector<long> bounds_less_offsets;    // code -2
+    vector<long> bounds_greater_offsets; // code -3
+    long local_space, org_local_space;
     StackMethod* method;
     long instr_count;
     unsigned char* code;
@@ -909,7 +907,7 @@ namespace Runtime {
       // jump not equal
       AddMachineCode(0x0f);
       AddMachineCode(0x84);
-      deref_offsets.push_back(code_index);
+      nil_deref_offsets.push_back(code_index);
       AddImm(0);
       // jump to exit
     }
@@ -1719,7 +1717,7 @@ namespace Runtime {
         }
       }
 
-      long index = RED_ZONE - sizeof(size_t);
+      long index = RED_ZONE;
       long last_id = -1;
       multimap<long, StackInstr*>::iterator value;
       for(value = values.begin(); value != values.end(); ++value) {
@@ -1729,7 +1727,7 @@ namespace Runtime {
         if(instr->GetOperand2() == INST || instr->GetOperand2() == CLS) {
           // note: all instance variables are allocted in 4-byte blocks,
           // for floats the assembler allocates 2 4-byte blocks
-          instr->SetOperand3(instr->GetOperand() * sizeof(size_t));
+          instr->SetOperand3(instr->GetOperand() * sizeof(long));
         }
         // local reference
         else {
@@ -1742,14 +1740,14 @@ namespace Runtime {
                instr->GetType() == STOR_CLS_INST_INT_VAR ||
                instr->GetType() == COPY_LOCL_INT_VAR ||
                instr->GetType() == COPY_CLS_INST_INT_VAR) {
-              index += sizeof(size_t);
+              index -= sizeof(long);
             }
             else if(instr->GetType() == LOAD_FUNC_VAR ||
                     instr->GetType() == STOR_FUNC_VAR) {
-              index += sizeof(size_t) * 2;
+              index -= sizeof(long) * 2;
             }
             else {
-              index += sizeof(double);
+              index -= sizeof(double);
             }
           }
           instr->SetOperand3(index);
@@ -1766,10 +1764,10 @@ namespace Runtime {
         }
 #endif
       }
-      local_space = index; // + RED_ZONE / 8; // -(index + TMP_REG_5);
+      org_local_space = local_space = -(index + TMP_REG_5);
 
 #ifdef _DEBUG
-      wcout << L"Local space required: " << local_space << L" byte(s)" << endl;
+      wcout << L"Local space required: " << (local_space + 16) << L" byte(s)" << endl;
 #endif
     }
 
@@ -1930,8 +1928,8 @@ namespace Runtime {
 #endif
         }
 
-        for(size_t i = 0; i < deref_offsets.size(); ++i) {
-          const long index = deref_offsets[i];
+        for(size_t i = 0; i < nil_deref_offsets.size(); ++i) {
+          const long index = nil_deref_offsets[i];
           long offset = epilog_index - index + 1;
           memcpy(&code[index], &offset, 4);
         }

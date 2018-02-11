@@ -72,7 +72,6 @@ void JitCompilerIA64::Prolog() {
     0x48, 0x52,                                    // push rdx
     0x48, 0x57,                                    // push rdi
     0x48, 0x56,                                    // push rsi
-    // 0x49, 0x50                                     // push r8
   };
   const long setup_size = sizeof(setup_code);
   // copy setup
@@ -107,7 +106,6 @@ void JitCompilerIA64::Epilog() {
   
   unsigned char teardown_code[] = {
     // restore registers
-    // 0x49, 0x58,       // pop r8
     0x48, 0x5e,       // pop rsi
     0x48, 0x5f,       // pop rdi
     0x48, 0x5a,       // pop rdx
@@ -129,7 +127,7 @@ void JitCompilerIA64::RegisterRoot() {
   // caculate root address
   // note: the offset requried to 
   // get to the first local variale
-  const long offset = local_space - RED_ZONE;
+  const long offset = org_local_space + RED_ZONE + TMP_REG_5;
   RegisterHolder* holder = GetRegister();
   move_reg_reg(RBP, holder->GetRegister());
   add_imm_reg(RED_ZONE, holder->GetRegister());
@@ -1472,37 +1470,36 @@ void JitCompilerIA64::ProcessStackCallback(long instr_id, StackInstr* instr, lon
   wcout << L"Return: params=" << params << L", non-params=" << non_params << endl;
 #endif
 
-  // TODO: FIX ME
   stack<RegInstr*> regs;
   stack<long> dirty_regs;
-  long reg_offset = 0;  // FIX
+  long reg_offset = TMP_REG_0;
 
   stack<RegInstr*> xmms;
   stack<long> dirty_xmms;
-  long xmm_offset = 0;
-  
-  long i = 0;     
+  long xmm_offset = TMP_XMM_0;
+
+  long i = 0;
   for(deque<RegInstr*>::reverse_iterator iter = working_stack.rbegin();
       iter != working_stack.rend(); ++iter) {
     RegInstr* left = (*iter);
     if(i < non_params) {
       switch(left->GetType()) {
-      case REG_INT:
-        move_reg_mem(left->GetRegister()->GetRegister(), reg_offset, RBP);
-        dirty_regs.push(reg_offset);
-        regs.push(left);
-        reg_offset += sizeof(size_t);
-        break;
+        case REG_INT:
+          move_reg_mem(left->GetRegister()->GetRegister(), reg_offset, RBP);
+          dirty_regs.push(reg_offset);
+          regs.push(left);
+          reg_offset -= sizeof(long);
+          break;
 
-      case REG_FLOAT:
-        move_xreg_mem(left->GetRegister()->GetRegister(), xmm_offset, RBP);
-        dirty_xmms.push(xmm_offset);
-        xmms.push(left);
-        xmm_offset += sizeof(double);
-        break;
+        case REG_FLOAT:
+          move_xreg_mem(left->GetRegister()->GetRegister(), xmm_offset, RBP);
+          dirty_xmms.push(xmm_offset);
+          xmms.push(left);
+          xmm_offset -= sizeof(double);
+          break;
 
-      default:
-        break;
+        default:
+          break;
       }
       // update
       i++;
@@ -1510,8 +1507,8 @@ void JitCompilerIA64::ProcessStackCallback(long instr_id, StackInstr* instr, lon
   }
 
 #ifdef _DEBUG
-  assert(reg_offset < TMP_REG_5);
-  assert(xmm_offset < TMP_XMM_2);
+  assert(reg_offset >= TMP_REG_5);
+  assert(xmm_offset >= TMP_XMM_2);
 #endif
 
   if(dirty_regs.size() > 6 || dirty_xmms.size() > 3 ) {
@@ -3921,7 +3918,7 @@ long JitExecutor::ExecuteMachineCode(long cls_id, long mthd_id, size_t* inst, un
                                      size_t* op_stack, long* stack_pos, StackFrame** call_stack, long* call_stack_pos, StackFrame* frame) {
   // create function
   jit_fun_ptr jit_fun = (jit_fun_ptr)code;
-  const long status = jit_fun(cls_id, mthd_id, method->GetClass()->GetClassMemory(), inst, op_stack, 
+  const long status = jit_fun(cls_id, mthd_id, method->GetClass()->GetClassMemory(), inst, op_stack,
                               stack_pos, call_stack, call_stack_pos, &(frame->jit_mem), &(frame->jit_offset));
 
 #ifdef _DEBUG
