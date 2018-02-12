@@ -39,10 +39,10 @@ using namespace std;
 
 namespace Runtime {
   // offsets for Intel (AMD-64) addresses
-#define CLS_ID -8
-#define MTHD_ID -16
-#define CLASS_MEM -24
-#define INSTANCE_MEM -32
+#define CLS_ID 16
+#define MTHD_ID 24
+#define CLASS_MEM 32
+#define INSTANCE_MEM 40
 #define OP_STACK 48
 #define STACK_POS 56
 #define CALL_STACK 64
@@ -50,17 +50,17 @@ namespace Runtime {
 #define JIT_MEM 80
 #define JIT_OFFSET 88
   // float temps
-#define TMP_XMM_0 -40
-#define TMP_XMM_1 -48
-#define TMP_XMM_2 -56
+#define TMP_XMM_0 -8
+#define TMP_XMM_1 -16
+#define TMP_XMM_2 -24
   // integer temps
-#define TMP_REG_0 -64
-#define TMP_REG_1 -72
-#define TMP_REG_2 -80
-#define TMP_REG_3 -88
-#define TMP_REG_4 -96
-#define TMP_REG_5 -104
-#define RED_ZONE -112  
+#define TMP_REG_0 -32
+#define TMP_REG_1 -40
+#define TMP_REG_2 -48
+#define TMP_REG_3 -56
+#define TMP_REG_4 -64
+#define TMP_REG_5 -72
+#define RED_ZONE -80  
 
 #define MAX_DBLS 64
 #define BUFFER_SIZE 512
@@ -1727,27 +1727,31 @@ namespace Runtime {
         if(instr->GetOperand2() == INST || instr->GetOperand2() == CLS) {
           // note: all instance variables are allocted in 4-byte blocks,
           // for floats the assembler allocates 2 4-byte blocks
-          instr->SetOperand3(instr->GetOperand() * sizeof(long));
+          instr->SetOperand3(instr->GetOperand() * sizeof(size_t));
         }
         // local reference
         else {
           // note: all local variables are allocted in 4 or 8 bytes ` 
           // blocks depending upon type
           if(last_id != id) {
-            if(instr->GetType() == LOAD_LOCL_INT_VAR ||
-               instr->GetType() == LOAD_CLS_INST_INT_VAR ||
-               instr->GetType() == STOR_LOCL_INT_VAR ||
-               instr->GetType() == STOR_CLS_INST_INT_VAR ||
-               instr->GetType() == COPY_LOCL_INT_VAR ||
-               instr->GetType() == COPY_CLS_INST_INT_VAR) {
-              index -= sizeof(long);
-            }
-            else if(instr->GetType() == LOAD_FUNC_VAR ||
-                    instr->GetType() == STOR_FUNC_VAR) {
-              index -= sizeof(long) * 2;
-            }
-            else {
-              index -= sizeof(double);
+            switch(instr->GetType()) {
+              case LOAD_LOCL_INT_VAR:
+              case LOAD_CLS_INST_INT_VAR:
+              case STOR_LOCL_INT_VAR:
+              case STOR_CLS_INST_INT_VAR:
+              case COPY_LOCL_INT_VAR:
+              case COPY_CLS_INST_INT_VAR:
+                index -= sizeof(size_t);
+                break;
+
+              case LOAD_FUNC_VAR:
+              case STOR_FUNC_VAR:
+                index -= sizeof(size_t) * 2;
+                break;
+
+              default:
+                index -= sizeof(double);
+                break;
             }
           }
           instr->SetOperand3(index);
