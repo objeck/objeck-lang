@@ -62,16 +62,16 @@ void JitCompilerIA64::Prolog() {
   // TODO: skinny down
   unsigned char setup_code[] = {
     // setup stack frame
-    0x48, 0x55,                                    // push rbp
-    0x48, 0x89, 0xe5,                              // mov  rsp, rbp    
-    0x48, 0x81, 0xec,                              // sub  imm, rsp
+    0x48, 0x55,                                    // push $rbp
+    0x48, 0x89, 0xe5,                              // mov  $rsp, $rbp    
+    0x48, 0x81, 0xec,                              // sub  %imm, $rsp
     buffer[0], buffer[1], buffer[2], buffer[3],      
     // save registers
-    0x48, 0x53,                                    // push rbx
-    0x48, 0x51,                                    // push rcx
-    0x48, 0x52,                                    // push rdx
-    0x48, 0x57,                                    // push rdi
-    0x48, 0x56,                                    // push rsi
+    0x48, 0x53,                                    // push $rbx
+    0x48, 0x51,                                    // push $rcx
+    0x48, 0x52,                                    // push $rdx
+    0x48, 0x57,                                    // push $rdi
+    0x48, 0x56,                                    // push $rsi
   };
   const long setup_size = sizeof(setup_code);
   // copy setup
@@ -106,14 +106,14 @@ void JitCompilerIA64::Epilog() {
   
   unsigned char teardown_code[] = {
     // restore registers
-    0x48, 0x5e,       // pop rsi
-    0x48, 0x5f,       // pop rdi
-    0x48, 0x5a,       // pop rdx
-    0x48, 0x59,       // pop rcx
-    0x48, 0x5b,       // pop rbx
+    0x48, 0x5e,       // pop $rsi
+    0x48, 0x5f,       // pop $rdi
+    0x48, 0x5a,       // pop $rdx
+    0x48, 0x59,       // pop $rcx
+    0x48, 0x5b,       // pop $rbx
     // tear down stack frame and return
-    0x48, 0x89, 0xec, // mov rbp, rsp
-    0x48, 0x5d,       // pop rbp
+    0x48, 0x89, 0xec, // mov $rbp, $rsp
+    0x48, 0x5d,       // pop $rbp
     0x48, 0xc3        // rtn
   };
   const long teardown_size = sizeof(teardown_code);
@@ -130,7 +130,7 @@ void JitCompilerIA64::RegisterRoot() {
   const long offset = org_local_space + RED_ZONE + TMP_REG_5;
   RegisterHolder* holder = GetRegister();
   move_reg_reg(RBP, holder->GetRegister());
-  add_imm_reg(RED_ZONE, holder->GetRegister());
+  sub_imm_reg(-TMP_REG_5 + offset, holder->GetRegister());
 
   RegisterHolder* mem_holder = GetRegister();
   move_mem_reg(JIT_MEM, RBP, mem_holder->GetRegister());
@@ -143,6 +143,7 @@ void JitCompilerIA64::RegisterRoot() {
     add_imm_reg(sizeof(size_t), holder->GetRegister());
     loop(-20);
   }
+
   move_mem_reg(JIT_OFFSET, RBP, mem_holder->GetRegister());
   move_imm_mem(offset, 0, mem_holder->GetRegister());
 

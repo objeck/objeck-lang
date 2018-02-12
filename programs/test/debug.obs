@@ -22,7 +22,6 @@ class Test {
 		cc[1] := 'o';
 		cc[2] := 'c';
 		cc[3] := '\0';
-~#
 
 		cc := Char->New[6];
 		for(i := 0; i < cc->Size(); i++;) {
@@ -30,18 +29,14 @@ class Test {
 		};
 		cc->PrintLine();
 
-#~		
-		ss := "Blue";
-		ss->PrintLine();
-	
-		cc := Char->New[4];
-		cc[0] := 'x';
-		cc[1] := 'y';
-		cc[2] := 'a';
-		cc[3] := '\0';
-		
-		cc->PrintLine();
 ~#
+		ss := "Blue";
+		ss->PrintLine();	
+#~		
+		cc := Char->New[2];
+		cc[0] := 'x';
+		cc[1] := '\0';
+~#		
 		return 44;
 	}
 }
