@@ -31,7 +31,7 @@
 #ifndef __REG_ALLOC_H__
 #define __REG_ALLOC_H__
 
-#include "../../../arch/win32/windows.h"
+#include "../../../arch/win32/win32.h"
 #include "../../../common.h"
 #include "../../../interpreter.h"
 
@@ -126,7 +126,7 @@ namespace Runtime {
     ~RegisterHolder() {
     }
 
-    Register GetRegister() {
+    inline Register GetRegister() {
       return reg;
     }
   };
