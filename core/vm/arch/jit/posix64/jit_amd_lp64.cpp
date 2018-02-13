@@ -89,13 +89,14 @@ void JitCompilerIA64::Prolog() {
   }
 }
 
-void JitCompilerIA64::Epilog(long imm) {
+void JitCompilerIA64::Epilog()
+{
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [<epilog>]" << endl;
 #endif
   
-epilog_index = code_index;
-
+  epilog_index = code_index;
+ 
   // nominal
   AddMachineCode(0xe9);
   AddImm(45);
@@ -113,7 +114,6 @@ epilog_index = code_index;
   AddImm(10);
   // nominal
   move_imm_reg(0, RAX);
-  move_imm_reg(imm, RAX);
   
   unsigned char teardown_code[] = {
     // restore registers
@@ -3904,7 +3904,10 @@ long JitExecutor::ExecuteMachineCode(long cls_id, long mthd_id, size_t* inst, un
 {
   // create function
   jit_fun_ptr jit_fun = (jit_fun_ptr)code;
-  return jit_fun(cls_id, mthd_id, method->GetClass()->GetClassMemory(), inst,
-                 op_stack, stack_pos, call_stack, call_stack_pos,
-                 &(frame->jit_mem), &(frame->jit_offset));
+  const long status = jit_fun(cls_id, mthd_id, method->GetClass()->GetClassMemory(), inst, op_stack, stack_pos,
+                              call_stack, call_stack_pos, &(frame->jit_mem), &(frame->jit_offset));
+  
+#ifdef _DEBUG
+  wcout << L"JIT return=: " << status << endl;
+#endif
 }

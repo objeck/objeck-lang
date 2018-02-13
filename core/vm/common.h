@@ -91,8 +91,8 @@ namespace std {
 #define MUTEX_LOCK EnterCriticalSection
 #define MUTEX_UNLOCK LeaveCriticalSection
 #else
-MUTEX_LOCK pthread_mutex_lock
-MUTEX_UNLOCK pthread_mutex_unlock
+#define MUTEX_LOCK pthread_mutex_lock
+#define MUTEX_UNLOCK pthread_mutex_unlock
 #endif
 
 using namespace std;

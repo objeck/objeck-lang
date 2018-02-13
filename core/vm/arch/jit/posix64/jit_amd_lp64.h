@@ -1896,7 +1896,7 @@ namespace Runtime {
         }
 
         // show content
-        unordered_map<int, StackInstr*>::iterator iter;
+        unordered_map<long, StackInstr*>::iterator iter;
         for(iter = jump_table.begin(); iter != jump_table.end(); ++iter) {
           StackInstr* instr = iter->second;
           const long src_offset = iter->first;
