@@ -94,7 +94,6 @@ namespace Runtime {
 #define RED_ZONE -128 
 #endif
 
-
 #define MAX_DBLS 64
 #define BUFFER_SIZE 512
 #define PAGE_SIZE 4096
@@ -2118,18 +2117,19 @@ namespace Runtime {
 #endif		
         code = NULL;
 
-        compile_success = true;
-
 #ifndef _JIT_SERIAL
+#ifndef _WIN64	
         // release our lock, native code has been compiled and set
-        // TODO: WIN64
-        // pthread_mutex_unlock(&cm->jit_mutex);
+        pthread_mutex_unlock(&cm->jit_mutex);
+#endif
 #endif
 
 #ifdef _TIMING
         wcout << L"JIT compiling: method='" << method->GetName() << L"', time="
           << (double)(clock() - start) / CLOCKS_PER_SEC << L" second(s)." << endl;
 #endif
+
+        compile_success = true;
       }
 
       return compile_success;
