@@ -904,6 +904,9 @@ namespace Runtime {
      **********************************/
     inline void CheckNilDereference(Register reg) {
       cmp_imm_reg(0, reg);
+#ifdef _DEBUG
+      wcout << L"  " << (++instr_count) << L": [je <err>]" << endl;
+#endif
       // jump not equal
       AddMachineCode(0x0f);
       AddMachineCode(0x84);
@@ -911,13 +914,17 @@ namespace Runtime {
       AddImm(0);
       // jump to exit
     }
-
+	
     /***********************************
      * Checks array bounds
      **********************************/
     inline void CheckArrayBounds(Register reg, Register max_reg) {
+
       // less than zero
-      cmp_imm_reg(-1, reg);
+      cmp_imm_reg(0, reg);
+#ifdef _DEBUG
+      wcout << L"  " << (++instr_count) << L": [jl <err>]" << endl;
+#endif
       // jump not equal
       AddMachineCode(0x0f);
       AddMachineCode(0x8c);
@@ -927,6 +934,9 @@ namespace Runtime {
 
       // greater than max
       cmp_reg_reg(max_reg, reg);
+#ifdef _DEBUG
+      wcout << L"  " << (++instr_count) << L": [jge <err>]" << endl;
+#endif
       // jump not equal
       AddMachineCode(0x0f);
       AddMachineCode(0x8d);

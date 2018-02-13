@@ -130,7 +130,7 @@ namespace Runtime {
     ~RegisterHolder() {
     }
 
-    Register GetRegister() {
+    inline Register GetRegister() {
       return reg;
     }
   };
@@ -329,7 +329,7 @@ namespace Runtime {
     unsigned char* GetPage(unsigned char* code, int32_t size) {
       bool placed = false;
 
-      unsigned char* temp;
+      unsigned char* temp = NULL;
       for(size_t i = 0; !placed && i < holders.size(); ++i) {
         PageHolder* holder = holders[i];
         if(holder->CanAddCode(size)) {
@@ -367,12 +367,16 @@ namespace Runtime {
     stack<RegisterHolder*> aux_regs;
     vector<RegisterHolder*> aval_xregs;
     list<RegisterHolder*> used_xregs;
-    unordered_map<int, StackInstr*> jump_table; // jump addresses are 64-bits
-    long org_local_space, local_space;
+    unordered_map<long, StackInstr*> jump_table; // jump addresses are 64-bits
+	vector<long> nil_deref_offsets;      // code -1
+    vector<long> bounds_less_offsets;    // code -2
+    vector<long> bounds_greater_offsets; // code -3
+    long local_space, org_local_space;
     StackMethod* method;
     long instr_count;
     unsigned char* code;
     long code_index;   
+	long epilog_index;
     double* floats;     
     long floats_index;
     long instr_index;
@@ -382,7 +386,7 @@ namespace Runtime {
 
     // setup and teardown
     void Prolog();
-    void Epilog(long imm);
+    void Epilog();
     
     // stack conversion operations
     void ProcessParameters(long count);
@@ -882,45 +886,46 @@ namespace Runtime {
      * Check for 'Nil' dereferencing
      **********************************/
     inline void CheckNilDereference(Register reg) {
-      const long offset = 43;
       cmp_imm_reg(0, reg);
 #ifdef _DEBUG
-      wcout << L"  " << (++instr_count) << L": [jne $" << offset << L"]" << endl;
+      wcout << L"  " << (++instr_count) << L": [je <err>]" << endl;
 #endif
       // jump not equal
       AddMachineCode(0x0f);
-      AddMachineCode(0x85);
-      AddImm(offset);
-      Epilog(-1);
+      AddMachineCode(0x84);
+      nil_deref_offsets.push_back(code_index);
+      AddImm(0);
+      // jump to exit
     }
-    
+	
     /***********************************
      * Checks array bounds
      **********************************/
     inline void CheckArrayBounds(Register reg, Register max_reg) {
-      const long offset = 43;
-      
+
       // less than zero
-      cmp_imm_reg(-1, reg);
+      cmp_imm_reg(0, reg);
 #ifdef _DEBUG
-      wcout << L"  " << (++instr_count) << L": [jg $" << offset << L"]" << endl;
-#endif
-      // jump not equal
-      AddMachineCode(0x0f);
-      AddMachineCode(0x8f);
-      AddImm(offset);
-      Epilog(-2);
-      
-      // greater than max
-      cmp_reg_reg(max_reg, reg);
-#ifdef _DEBUG
-      wcout << L"  " << (++instr_count) << L": [jl $" << offset << L"]" << endl;
+      wcout << L"  " << (++instr_count) << L": [jl <err>]" << endl;
 #endif
       // jump not equal
       AddMachineCode(0x0f);
       AddMachineCode(0x8c);
-      AddImm(offset);
-      Epilog(-3);
+      bounds_less_offsets.push_back(code_index);
+      AddImm(0);
+      // jump to exit
+
+      // greater than max
+      cmp_reg_reg(max_reg, reg);
+#ifdef _DEBUG
+      wcout << L"  " << (++instr_count) << L": [jge <err>]" << endl;
+#endif
+      // jump not equal
+      AddMachineCode(0x0f);
+      AddMachineCode(0x8d);
+      bounds_greater_offsets.push_back(code_index);
+      AddImm(0);
+      // jump to exit
     }
     
     // Gets an avaiable register from
@@ -1701,20 +1706,24 @@ namespace Runtime {
           // note: all local variables are allocted in 4 or 8 bytes ` 
           // blocks depending upon type
           if(last_id != id) {
-            if(instr->GetType() == LOAD_LOCL_INT_VAR || 
-               instr->GetType() == LOAD_CLS_INST_INT_VAR || 
-               instr->GetType() == STOR_LOCL_INT_VAR ||
-               instr->GetType() == STOR_CLS_INST_INT_VAR ||
-               instr->GetType() == COPY_LOCL_INT_VAR ||
-               instr->GetType() == COPY_CLS_INST_INT_VAR) {
-              index -= sizeof(long);
-            }
-            else if(instr->GetType() == LOAD_FUNC_VAR || 
-                    instr->GetType() == STOR_FUNC_VAR) {
-              index -= sizeof(long) * 2;
-            }
-            else {
-              index -= sizeof(double);
+            switch(instr->GetType()) {
+              case LOAD_LOCL_INT_VAR:
+              case LOAD_CLS_INST_INT_VAR:
+              case STOR_LOCL_INT_VAR:
+              case STOR_CLS_INST_INT_VAR:
+              case COPY_LOCL_INT_VAR:
+              case COPY_CLS_INST_INT_VAR:
+                index -= sizeof(size_t);
+                break;
+
+              case LOAD_FUNC_VAR:
+              case STOR_FUNC_VAR:
+                index -= sizeof(size_t) * 2;
+                break;
+
+              default:
+                index -= sizeof(double);
+                break;
             }
           }
           instr->SetOperand3(index);
@@ -1899,6 +1908,24 @@ namespace Runtime {
           wcout << L"jump update: src=" << src_offset 
                 << L"; dest=" << dest_offset << endl;
 #endif
+        }
+
+		for(size_t i = 0; i < nil_deref_offsets.size(); ++i) {
+          const long index = nil_deref_offsets[i];
+          long offset = epilog_index - index + 1;
+          memcpy(&code[index], &offset, 4);
+        }
+
+        for(size_t i = 0; i < bounds_less_offsets.size(); ++i) {
+          const long index = bounds_less_offsets[i];
+          long offset = epilog_index - index + 16;
+          memcpy(&code[index], &offset, 4);
+        }
+
+        for(size_t i = 0; i < bounds_greater_offsets.size(); ++i) {
+          const long index = bounds_greater_offsets[i];
+          long offset = epilog_index - index + 31;
+          memcpy(&code[index], &offset, 4);
         }
 #ifdef _DEBUG
         wcout << L"Caching JIT code: actual=" << code_index 
