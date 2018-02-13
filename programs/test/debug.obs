@@ -4,6 +4,8 @@ class Test {
 	}
 
 	function : native : Go(x : Int) ~ Int {
+		ii := Int->New[3];
+		ii[-1] := 13;
 #~		
 		ii := Int->New[4];
 		ii[2] := 13;
@@ -22,7 +24,7 @@ class Test {
 		cc[1] := 'o';
 		cc[2] := 'c';
 		cc[3] := '\0';
-~#
+
 		cc := Char->New[6];
 		for(i := 0; i < cc->Size(); i++;) {
 			cc[i] := 101 + i;
@@ -53,7 +55,8 @@ class Test {
 		} else {
 			"Diff"->PrintLine();
 		};
-		
+~#
+
 		return 44;
 	}
 }
