@@ -2130,13 +2130,11 @@ class TrapProcessor {
   //
   // creates a wstring object instance
   //
-  static inline size_t* CreateStringObject(const wstring &value_str, StackProgram* program, 
-					 size_t* &op_stack, long* &stack_pos);
+  static inline size_t* CreateStringObject(const wstring &value_str, StackProgram* program, size_t* &op_stack, long* &stack_pos);
 
  public:
 
-  static bool ProcessTrap(StackProgram* program, size_t* inst, 
-			  size_t* &op_stack, long* &stack_pos, StackFrame* frame);
+  static bool ProcessTrap(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
 };
 
 /********************************
