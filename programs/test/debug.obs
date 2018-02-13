@@ -31,7 +31,16 @@ class Test {
 
 ~#
 		ss := "Blue";
-		ss->PrintLine();	
+		ss->PrintLine();
+
+		x := -1;
+		if(x = -1) {
+			"Okay"->PrintLine();
+		};
+
+		a := 9;
+		b := 3;
+		(a/b)->PrintLine();
 #~		
 		cc := Char->New[2];
 		cc[0] := 'x';
