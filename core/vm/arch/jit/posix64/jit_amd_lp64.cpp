@@ -67,14 +67,12 @@ void JitCompilerIA64::Prolog() {
     buffer[0], buffer[1], buffer[2], buffer[3],      
     // save registers
     0x48, 0x53,                                    // push rbx
-    /****/
     0x48, 0x51,                                    // push rcx
     0x48, 0x52,                                    // push rdx
     0x48, 0x57,                                    // push rdi
     0x48, 0x56,                                    // push rsi
     0x49, 0x50,                                    // push r8
     0x49, 0x51,                                    // push r9
-    /****/
     0x49, 0x52,                                    // push r10
     0x49, 0x53,                                    // push r11
     0x49, 0x54,                                    // push r12
@@ -83,6 +81,7 @@ void JitCompilerIA64::Prolog() {
     0x49, 0x57,                                    // push r15
   };
   const long setup_size = sizeof(setup_code);
+  
   // copy setup
   for(long i = 0; i < setup_size; i++) {
     AddMachineCode(setup_code[i]);
@@ -100,18 +99,22 @@ void JitCompilerIA64::Epilog()
   // nominal
   AddMachineCode(0xe9);
   AddImm(45);
+  
   // null deref
   move_imm_reg(-1, RAX);
   AddMachineCode(0xe9);
   AddImm(40);
+
   // under bounds
   move_imm_reg(-2, RAX);
   AddMachineCode(0xe9);
   AddImm(25);
+
   // over bounds
   move_imm_reg(-3, RAX);
   AddMachineCode(0xe9);
   AddImm(10);
+
   // nominal
   move_imm_reg(0, RAX);
   
@@ -123,16 +126,13 @@ void JitCompilerIA64::Epilog()
     0x49, 0x5c,       // pop r12
     0x49, 0x5b,       // pop r11
     0x49, 0x5a,       // pop r10
-    /****/
     0x49, 0x59,       // pop r9
     0x49, 0x58,       // pop r8
     0x48, 0x5e,       // pop rsi
     0x48, 0x5f,       // pop rdi
     0x48, 0x5a,       // pop rdx
     0x48, 0x59,       // pop rcx
-    /****/
     0x48, 0x5b,       // pop rbx
-    // 0x48, 0x58,       // pop rax    
     // tear down stack frame and return
     0x48, 0x89, 0xec, // mov  %rbp, %rsp
     0x48, 0x5d,       // pop %rbp

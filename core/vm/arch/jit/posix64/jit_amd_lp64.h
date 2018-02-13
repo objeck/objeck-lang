@@ -42,7 +42,7 @@
 using namespace std;
 
 namespace Runtime {
-  // offsets for Intel (AMD-64) addresses
+  // offsets for Posix AMD64
 #define CLS_ID -8
 #define MTHD_ID -16
 #define CLASS_MEM -24
@@ -121,7 +121,7 @@ namespace Runtime {
    ********************************/
   class RegisterHolder {
     Register reg;
-  
+    
   public:
     RegisterHolder(Register r) {
       reg = r;
@@ -249,7 +249,7 @@ namespace Runtime {
   class PageHolder {
     unsigned char* buffer;
     int32_t available, index;
-
+    
   public:
     PageHolder(int32_t size) {
       index = 0;
