@@ -6,10 +6,11 @@ class Test {
 	function : native : Go(x : Int) ~ Int {
 		ii := Char->New[3];
 		ii[0] := 'o';
-		ii[-1] := 'k';
+		ii[1] := 'k';
 		ii[2] := '\0';
 
 		ii->PrintLine();
+		ii[1]->PrintLine();
 #~		
 		ii := Int->New[4];
 		ii[2] := 13;
