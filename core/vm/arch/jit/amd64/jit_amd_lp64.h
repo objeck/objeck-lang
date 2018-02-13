@@ -28,10 +28,16 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
-#ifndef __REG_ALLOC_H__
-#define __REG_ALLOC_H__
+#ifndef __JIT_COMPILER__
+#define __JIT_COMPILER__
 
+#ifdef _WIN64
 #include "../../../arch/win32/win32.h"
+#else
+#include "../../posix/posix.h"
+#include <sys/mman.h>
+#include <errno.h>
+#endif
 #include "../../../common.h"
 #include "../../../interpreter.h"
 
@@ -511,7 +517,7 @@ namespace Runtime {
     inline void AddImm16(int16_t imm) {
       unsigned char buffer[sizeof(int16_t)];
       ByteEncode16(buffer, imm);
-      for(int i = 0; i < sizeof(int16_t); ++i) {
+      for(size_t i = 0; i < sizeof(int16_t); ++i) {
         AddMachineCode(buffer[i]);
       }
     }
