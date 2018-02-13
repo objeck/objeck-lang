@@ -38,7 +38,7 @@
 
 #ifdef _WIN32
 #ifndef _UTILS
-#include "arch/win32/windows.h"
+#include "arch/win32/win32.h"
 #endif
 #include "arch/win32/memory.h"
 #else
@@ -50,10 +50,6 @@
 CRITICAL_SECTION StackProgram::program_cs;
 CRITICAL_SECTION StackMethod::virutal_cs;
 CRITICAL_SECTION StackProgram::prop_cs;
-// support VS2015
-#if _MSC_VER >= 1900
-extern "C" { FILE __iob_func[3] = { *stdin,*stdout,*stderr }; }
-#endif
 #else
 pthread_mutex_t StackProgram::program_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t StackMethod::virtual_mutex = PTHREAD_MUTEX_INITIALIZER;
