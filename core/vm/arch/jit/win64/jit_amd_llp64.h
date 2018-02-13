@@ -1881,8 +1881,8 @@ namespace Runtime {
         aval_regs.push_back(new RegisterHolder(RBX));
         aval_regs.push_back(new RegisterHolder(RAX));
         // aux general use registers
-        aux_regs.push(new RegisterHolder(RDI));
         aux_regs.push(new RegisterHolder(RSI));
+        aux_regs.push(new RegisterHolder(RDI));
         // floating point registers
         aval_xregs.push_back(new RegisterHolder(XMM15));
         aval_xregs.push_back(new RegisterHolder(XMM14));
