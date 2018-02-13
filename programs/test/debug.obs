@@ -5,7 +5,9 @@ class Test {
 
 	function : native : Go(x : Int) ~ Int {
 		ii := Int->New[3];
-		ii[-1] := 13;
+		ii[0] := 'o';
+		ii[1] := 'k';
+		ii[2] := '\0';
 #~		
 		ii := Int->New[4];
 		ii[2] := 13;
