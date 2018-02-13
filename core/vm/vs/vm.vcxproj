@@ -158,7 +158,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\arch\jit\amd64\jit_amd_lp64.cpp" />
+    <ClCompile Include="..\arch\jit\amd64\jit_amd_lp64.cpp" Condition="'$(Platform)'=='x64'" />
     <ClCompile Include="..\arch\jit\ia32\jit_intel_lp32.cpp" Condition="'$(Platform)'=='Win32'" />
     <ClCompile Include="..\arch\win32\memory.cpp" />
     <ClCompile Include="..\common.cpp" />
@@ -168,7 +168,7 @@
     <ClCompile Include="..\win_main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\arch\jit\amd64\jit_amd_lp64.h" />
+    <ClInclude Include="..\arch\jit\amd64\jit_amd_lp64.h" Condition="'$(Platform)'=='x64'" />
     <ClInclude Include="..\arch\jit\ia32\jit_intel_lp32.h" Condition="'$(Platform)'=='Win32'" />
     <ClInclude Include="..\arch\win32\memory.h" />
     <ClInclude Include="..\arch\win32\win32.h" />
