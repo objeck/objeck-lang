@@ -45,6 +45,14 @@ class Test {
 		cc := Char->New[2];
 		cc[0] := 'x';
 		cc[1] := '\0';
+
+		str0 := "Foo";
+		str1 := "Bar";
+		if(str1 = str1) {
+			"Same"->PrintLine();
+		} else {
+			"Diff"->PrintLine();
+		};
 		
 		return 44;
 	}
