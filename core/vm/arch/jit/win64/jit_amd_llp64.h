@@ -389,8 +389,6 @@ namespace Runtime {
     void ProcessParameters(long count);
     void RegisterRoot();
     void ProcessInstructions();
-    void ProcessLiteral(StackInstr* instruction);
-    void ProcessVariable(StackInstr* instruction);
     void ProcessLoad(StackInstr* instr);
     void ProcessStore(StackInstr* instruction);
     void ProcessCopy(StackInstr* instr);
@@ -412,7 +410,6 @@ namespace Runtime {
     void ProcessLoadFloatElement(StackInstr* instr);
     void ProcessStoreFloatElement(StackInstr* instr);
     void ProcessJump(StackInstr* instr);
-    void ProcessLogic(StackInstr* instr);
     void ProcessFloor(StackInstr* instr);
     void ProcessCeiling(StackInstr* instr);
     void ProcessFloatToInt(StackInstr* instr);
