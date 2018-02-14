@@ -2115,13 +2115,6 @@ namespace Runtime {
 #endif		
         code = NULL;
 
-#ifndef _JIT_SERIAL
-#ifndef _WIN64	
-        // release our lock, native code has been compiled and set
-        pthread_mutex_unlock(&cm->jit_mutex);
-#endif
-#endif
-
 #ifdef _TIMING
         wcout << L"JIT compiling: method='" << method->GetName() << L"', time="
           << (double)(clock() - start) / CLOCKS_PER_SEC << L" second(s)." << endl;

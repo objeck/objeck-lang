@@ -490,21 +490,7 @@ class StackMethod {
   }
 
  public:
-  // mutex variable used to support 
-  // concurrent JIT compiling
-#ifdef _WIN32
-  CRITICAL_SECTION jit_cs;
-#else 
-  pthread_mutex_t jit_mutex;
-#endif
-
-  StackMethod(long i, const wstring &n, bool v, bool h, StackDclr** d, long nd,
-	      long p, long m, MemoryType r, StackClass* k) {
-#ifdef _WIN32
-    InitializeCriticalSection(&jit_cs);
-#else
-    pthread_mutex_init(&jit_mutex, NULL);
-#endif
+  StackMethod(long i, const wstring &n, bool v, bool h, StackDclr** d, long nd, long p, long m, MemoryType r, StackClass* k) {
     id = i;
     name = ParseName(n);
     is_virtual = v;
@@ -531,10 +517,6 @@ class StackMethod {
       delete[] dclrs;
       dclrs = NULL;
     }
-
-#ifdef _WIN32
-    DeleteCriticalSection(&jit_cs); 
-#endif
 
     // clean up
     if(native_code) {
