@@ -33,6 +33,7 @@
 #include <iomanip>
 
 StackProgram* MemoryManager::prgm;
+
 unordered_set<StackFrame**> MemoryManager::pda_frames;
 unordered_set<StackFrameMonitor*> MemoryManager::pda_monitors;
 vector<StackFrame*> MemoryManager::jit_frames;
