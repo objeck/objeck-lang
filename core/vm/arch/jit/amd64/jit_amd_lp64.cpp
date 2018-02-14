@@ -2394,8 +2394,7 @@ void JitCompilerIA64::move_imm_xreg(RegInstr* instr, Register reg) {
 void JitCompilerIA64::move_mem_xreg(long offset, Register src, Register dest) {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [movsd " << offset << L"(%" 
-        << GetRegisterName(src) << L"), %" << GetRegisterName(dest)
-        << L"]" << endl;
+        << GetRegisterName(src) << L"), %" << GetRegisterName(dest) << L"]" << endl;
 #endif
   // encode
   AddMachineCode(0xf2);
@@ -3012,6 +3011,7 @@ void JitCompilerIA64::cmov_reg(Register reg, InstructionType oper) {
     break;
   }
   unsigned char code = 0xc0;
+  
   // write value
   RegisterEncode3(code, 2, reg);
   RegisterEncode3(code, 5, true_holder->GetRegister());
