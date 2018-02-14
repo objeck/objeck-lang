@@ -216,8 +216,7 @@ void MemoryManager::RemovePdaMethodRoot(StackFrameMonitor* monitor)
 #endif
 }
 
-size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, 
-                                      long stack_pos, bool collect)
+size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, long stack_pos, bool collect)
 {
   StackClass* cls = prgm->GetClass(obj_id);
 #ifdef _DEBUG

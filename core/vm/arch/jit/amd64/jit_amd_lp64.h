@@ -527,7 +527,6 @@ namespace Runtime {
      ********************************/
 #ifdef _WIN64	 
     inline void AddImm64(size_t imm) {
-	
       unsigned char buffer[sizeof(size_t)];
       ByteEncode64(buffer, imm);
       for(int i = 0; i < sizeof(size_t); i++) {
@@ -1117,8 +1116,7 @@ namespace Runtime {
 #endif
 
 #ifdef _VERBOSE
-      wcout << L"\t * releasing: " << GetRegisterName(h->GetRegister())
-        << L" * " << endl;
+      wcout << L"\t * releasing: " << GetRegisterName(h->GetRegister()) << L" * " << endl;
 #endif
       aval_xregs.push_back(h);
       used_xregs.remove(h);

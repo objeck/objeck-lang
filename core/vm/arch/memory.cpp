@@ -48,12 +48,21 @@ long MemoryManager::allocation_size;
 long MemoryManager::mem_max_size;
 long MemoryManager::uncollected_count;
 long MemoryManager::collected_count;
+#ifdef _WIN32
 CRITICAL_SECTION MemoryManager::jit_frame_lock;
 CRITICAL_SECTION MemoryManager::pda_frame_lock;
 CRITICAL_SECTION MemoryManager::pda_monitor_lock;
 CRITICAL_SECTION MemoryManager::allocated_lock;
 CRITICAL_SECTION MemoryManager::marked_lock;
 CRITICAL_SECTION MemoryManager::marked_sweep_lock;
+#else
+pthread_lock_t MemoryManager::pda_monitor_lock = PTHREAD_lock_INITIALIZER;
+pthread_lock_t MemoryManager::pda_frame_lock = PTHREAD_lock_INITIALIZER;
+pthread_lock_t MemoryManager::jit_frame_lock = PTHREAD_lock_INITIALIZER;
+pthread_lock_t MemoryManager::allocated_lock = PTHREAD_lock_INITIALIZER;
+pthread_lock_t MemoryManager::marked_lock = PTHREAD_lock_INITIALIZER;
+pthread_lock_t MemoryManager::marked_sweep_lock = PTHREAD_lock_INITIALIZER;
+#endif
 
 void MemoryManager::Initialize(StackProgram* p)
 {
@@ -62,12 +71,14 @@ void MemoryManager::Initialize(StackProgram* p)
   mem_max_size = MEM_MAX;
   uncollected_count = 0;
 
+#ifdef _WIN32
   InitializeCriticalSection(&jit_frame_lock);
   InitializeCriticalSection(&pda_frame_lock);
   InitializeCriticalSection(&pda_monitor_lock);
   InitializeCriticalSection(&allocated_lock);
   InitializeCriticalSection(&marked_lock);
   InitializeCriticalSection(&marked_sweep_lock);
+#endif
 
   for(int i = 0; i < POOL_SIZE; ++i) {
     cache_pool_16.push((char*)calloc(16, sizeof(char)));
@@ -136,7 +147,7 @@ inline bool MemoryManager::MarkValidMemory(size_t* mem)
 #ifndef _GC_SERIAL
       MUTEX_LOCK(&marked_lock);
 #endif
-      mem[-1] = 1L;
+      mem[MARKED_FLAG] = 1L;
 #ifndef _GC_SERIAL
       MUTEX_UNLOCK(&marked_lock);      
       MUTEX_UNLOCK(&allocated_lock);
@@ -232,6 +243,12 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, long 
   size_t* mem = NULL;
   if(cls) {
     long size = cls->GetInstanceMemorySize();
+#ifdef _X64
+    // TODO: memory size is doubled the compiler assumes that integers are 4-bytes.
+    // In 64-bit mode integers and floats are 8-bytes.  This approach allocates more
+    // memory for floats (a.k.a doubles) than needed.
+    size *= 2;
+#endif
 
     // collect memory
     if(collect && allocation_size + size > mem_max_size) {
@@ -302,9 +319,8 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, long 
 #endif
 
 #ifdef _DEBUG
-    wcout << L"# allocating object: cached=" << (is_cached ? "true" : "false")  
-      << ", addr=" << mem << L"(" << (size_t)mem << L"), size="
-      << size << L" byte(s), used=" << allocation_size << L" byte(s) #" << endl;
+    wcout << L"# allocating object: cached=" << (is_cached ? "true" : "false")  << ", addr=" << mem << L"(" 
+	      << (size_t)mem << L"), size=" << size << L" byte(s), used=" << allocation_size << L" byte(s) #" << endl;
 #endif
   }
 
@@ -407,9 +423,9 @@ size_t* MemoryManager::AllocateArray(const long size, const MemoryType type,
 #endif
 
 #ifdef _DEBUG
-  wcout << L"# allocating array: cached=" << (is_cached ? "true" : "false") 
-    << ", addr=" << mem << L"(" << (size_t)mem << L"), size=" << calc_size
-    << L" byte(s), used=" << allocation_size << L" byte(s) #" << endl;
+  wcout << L"# allocating array: cached=" << (is_cached ? "true" : "false") << ", addr=" << mem 
+        << L"(" << (size_t)mem << L"), size=" << calc_size << L" byte(s), used=" << allocation_size 
+		<< L" byte(s) #" << endl;
 #endif
 
   return mem;
@@ -461,31 +477,59 @@ void MemoryManager::CollectAllMemory(size_t* op_stack, long stack_pos)
 #endif
 
 #ifndef _GC_SERIAL
+#ifdef _WIN32
   // only one thread at a time can invoke the gargabe collector
   if(!TryEnterCriticalSection(&marked_sweep_lock)) {
     return;
   }
+#else
+  if(pthread_mutex_trylock(&marked_sweep_mutex)) {
+    return;
+  }  
 #endif
+#endif
+
   CollectionInfo* info = new CollectionInfo;
   info->op_stack = op_stack; 
   info->stack_pos = stack_pos;
 
 #ifndef _GC_SERIAL
+#ifdef _WIN32
   HANDLE collect_thread_id = (HANDLE)_beginthreadex(NULL, 0, CollectMemory, info, 0, NULL);
   if(!collect_thread_id) {
     wcerr << L"Unable to create garbage collection thread!" << endl;
     exit(-1);
   }
 #else
+  pthread_attr_t attrs;
+  pthread_attr_init(&attrs);
+  pthread_attr_setdetachstate(&attrs, PTHREAD_CREATE_JOINABLE);
+  
+  pthread_t collect_thread;
+  if(pthread_create(&collect_thread, &attrs, CollectMemory, (void*)info)) {
+    cerr << L"Unable to create garbage collection thread!" << endl;
+    exit(-1);
+  }
+#endif
+#else
   CollectMemory(info);
 #endif
 
 #ifndef _GC_SERIAL
+#ifdef _WIN32
   if(WaitForSingleObject(collect_thread_id, INFINITE) != WAIT_OBJECT_0) {
     wcerr << L"Unable to join garbage collection threads!" << endl;
     exit(-1);
-  }
+  }  
   CloseHandle(collect_thread_id);
+#else
+  void* status;
+  if(pthread_join(collect_thread, &status)) {
+    cerr << L"Unable to join garbage collection threads!" << endl;
+    exit(-1);
+  }
+  pthread_attr_destroy(&attrs);
+#endif  
   MUTEX_UNLOCK(&marked_sweep_lock);
 #endif
 
@@ -496,8 +540,16 @@ void MemoryManager::CollectAllMemory(size_t* op_stack, long stack_pos)
 #endif
 }
 
+#ifdef _WIN32
 unsigned int MemoryManager::CollectMemory(void* arg)
+#else
+void* MemoryManager::CollectMemory(void* arg)
+#endif
 {
+#ifdef _TIMING
+  clock_t start = clock();
+#endif
+
   CollectionInfo* info = (CollectionInfo*)arg;
 
 #ifndef _GC_SERIAL
@@ -511,12 +563,17 @@ unsigned int MemoryManager::CollectMemory(void* arg)
 #ifdef _DEBUG
   long start = allocation_size;
   wcout << dec << endl << L"=========================================" << endl;
+#ifdef _WIN32  
   wcout << L"Starting Garbage Collection; thread=" << GetCurrentThread() << endl;
+#else
+  wcout << L"Starting Garbage Collection; thread=" << pthread_self() << endl;
+#endif  
   wcout << L"=========================================" << endl;
   wcout << L"## Marking memory ##" << endl;
 #endif
 
 #ifndef _GC_SERIAL
+#ifdef _WIN32
   const int num_threads = 3;
   HANDLE thread_ids[num_threads];
 
@@ -548,12 +605,64 @@ unsigned int MemoryManager::CollectMemory(void* arg)
     CloseHandle(thread_ids[i]);
   }
 #else
+  pthread_attr_t attrs;
+  pthread_attr_init(&attrs);
+  pthread_attr_setdetachstate(&attrs, PTHREAD_CREATE_JOINABLE);
+  
+  pthread_t static_thread;
+  if(pthread_create(&static_thread, &attrs, CheckStatic, (void*)info)) {
+    cerr << L"Unable to create garbage collection thread!" << endl;
+    exit(-1);
+  }
+
+  pthread_t stack_thread;
+  if(pthread_create(&stack_thread, &attrs, CheckStack, (void*)info)) {
+    cerr << L"Unable to create garbage collection thread!" << endl;
+    exit(-1);
+  }
+
+  pthread_t pda_thread;
+  if(pthread_create(&pda_thread, &attrs, CheckPdaRoots, NULL)) {
+    cerr << L"Unable to create garbage collection thread!" << endl;
+    exit(-1);
+  }
+  
+  pthread_attr_destroy(&attrs);
+  
+  // join all of the mark threads
+  void *status;
+
+  if(pthread_join(static_thread, &status)) {
+    cerr << L"Unable to join garbage collection threads!" << endl;
+    exit(-1);
+  }
+  
+  if(pthread_join(stack_thread, &status)) {
+    cerr << L"Unable to join garbage collection threads!" << endl;
+    exit(-1);
+  }
+
+  if(pthread_join(pda_thread, &status)) {
+    cerr << L"Unable to join garbage collection threads!" << endl;
+    exit(-1);
+  }
+#endif  
+#else
   CheckStatic(NULL);
   CheckStack(info);
   CheckPdaRoots(NULL);
   CheckJitRoots(NULL);
 #endif
-
+  
+#ifdef _TIMING
+  clock_t end = clock();
+  wcout << dec << endl << L"=========================================" << endl;
+  wcout << L"Mark time: " << (double)(end - start) / CLOCKS_PER_SEC 
+        << L" second(s)." << endl;
+  wcout << L"=========================================" << endl;
+  start = clock();
+#endif
+  
   // sweep memory
 #ifdef _DEBUG
   wcout << L"## Sweeping memory ##" << endl;
@@ -723,29 +832,54 @@ unsigned int MemoryManager::CollectMemory(void* arg)
   wcout << L"===============================================================" << endl;
 #endif
 
+#ifdef _TIMING
+  end = clock();
+  wcout << dec << endl << L"=========================================" << endl;
+  wcout << L"Sweep time: " << (double)(end - start) / CLOCKS_PER_SEC 
+        << L" second(s)." << endl;
+  wcout << L"=========================================" << endl;
+#endif
+
+#ifndef _WIN32
+#ifndef _GC_SERIAL
+  pthread_exit(NULL);
+#endif
+#endif
+  
   return 0;
 }
 
+#ifdef _WIN32
 unsigned int MemoryManager::CheckStatic(void* arg)
+#else
+void* MemoryManager::CheckStatic(void* arg)
+#endif
 {
   StackClass** clss = prgm->GetClasses();
   int cls_num = prgm->GetClassNumber();
 
   for(int i = 0; i < cls_num; ++i) {
     StackClass* cls = clss[i];
-    CheckMemory(cls->GetClassMemory(), cls->GetClassDeclarations(), 
-      cls->GetNumberClassDeclarations(), 0);
+    CheckMemory(cls->GetClassMemory(), cls->GetClassDeclarations(), cls->GetNumberClassDeclarations(), 0);
   }
 
   return 0;
 }
 
+#ifdef _WIN32
 unsigned int MemoryManager::CheckStack(void* arg)
+#else
+void* MemoryManager::CheckStack(void* arg)
+#endif
 {
   CollectionInfo* info = (CollectionInfo*)arg;
 #ifdef _DEBUG
   wcout << L"----- Marking Stack: stack: pos=" << info->stack_pos 
-    << L"; thread=" << GetCurrentThread() << L" -----" << endl;
+#ifdef _WIN32  
+        << L"; thread=" << GetCurrentThread() << L" -----" << endl;
+#else
+        << L"; thread=" << pthread_self() << L" -----" << endl;
+#endif		
 #endif
   while(info->stack_pos > -1) {
     CheckObject((size_t*)info->op_stack[info->stack_pos--], false, 1);
@@ -753,10 +887,20 @@ unsigned int MemoryManager::CheckStack(void* arg)
   delete info;
   info = NULL;
 
-  return 0;
+#ifndef _WIN32
+#ifndef _GC_SERIAL
+  pthread_exit(NULL);
+#endif
+#endif
+    
+  return 0;  
 }
 
+#ifdef _WIN32
 unsigned int MemoryManager::CheckJitRoots(void* arg)
+#else
+void* MemoryManager::CheckJitRoots(void* arg)
+#endif
 {
 
 #ifndef _GC_SERIAL
@@ -765,10 +909,14 @@ unsigned int MemoryManager::CheckJitRoots(void* arg)
 
 #ifdef _DEBUG
   wcout << L"---- Marking JIT method root(s): num=" << jit_frames.size()
-    << L"; thread=" << GetCurrentThread() << L" ------" << endl;
+#ifdef _WIN32
+        << L"; thread=" << GetCurrentThread() << L" ------" << endl;
+#else
+        << L"; thread=" << pthread_self() << L" ------" << endl;
+#endif		
   wcout << L"memory types: " << endl;
 #endif
-
+  
   for(size_t i = 0; i < jit_frames.size(); ++i) {
     StackFrame* frame = jit_frames[i];
     size_t* mem = frame->jit_mem;
@@ -814,9 +962,14 @@ unsigned int MemoryManager::CheckJitRoots(void* arg)
         wcout << L"\t" << j << L": FLOAT_PARM: value=" << value << endl;
 #endif
         // update
+#ifdef _X64
+        // mapped such that all 64-bit values the same size
+        mem++;
+#else
         mem += 2;
+#endif
       }
-                       break;
+        break;
 
       case BYTE_ARY_PARM:
 #ifdef _DEBUG
@@ -918,14 +1071,22 @@ unsigned int MemoryManager::CheckJitRoots(void* arg)
       CheckObject((size_t*)mem[i], false, 1);
     }
   }
+  jit_frames.empty();
 #ifndef _GC_SERIAL
   MUTEX_UNLOCK(&jit_frame_lock);  
+#ifndef _WIN32
+  pthread_exit(NULL);
+#endif
 #endif
 
   return 0;
 }
 
+#ifdef _WIN32
 unsigned int MemoryManager::CheckPdaRoots(void* arg)
+#else
+void* MemoryManager::CheckPdaRoots(void* arg)
+#endif
 {
   vector<StackFrame*> frames;
 
@@ -935,11 +1096,15 @@ unsigned int MemoryManager::CheckPdaRoots(void* arg)
 
 #ifdef _DEBUG
   wcout << L"----- PDA frames(s): num=" << pda_frames.size() 
+#ifdef _WIN32  
         << L"; thread=" << GetCurrentThread()<< L" -----" << endl;
+#else
+        << L"; thread=" << pthread_self() << L" -----" << endl;
+#endif		
   wcout << L"memory types:" <<  endl;
 #endif
   
-  unordered_set<StackFrame**, StackFrame**>::iterator iter;
+  unordered_set<StackFrame**>::iterator iter;
   for(iter = pda_frames.begin(); iter != pda_frames.end(); ++iter) {
     StackFrame** frame = *iter;
     if(*frame) {
@@ -968,14 +1133,18 @@ unsigned int MemoryManager::CheckPdaRoots(void* arg)
 
 #ifdef _DEBUG
   wcout << L"----- PDA method root(s): num=" << pda_monitors.size() 
-    << L"; thread=" << GetCurrentThread()<< L" -----" << endl;
+#ifdef _WIN32  
+        << L"; thread=" << GetCurrentThread()<< L" -----" << endl;
+#else
+        << L"; thread=" << pthread_self()<< L" -----" << endl;
+#endif		
   wcout << L"memory types:" <<  endl;
 #endif
   // look at pda methods
   unordered_set<StackFrameMonitor*>::iterator pda_iter;
   for(pda_iter = pda_monitors.begin(); pda_iter != pda_monitors.end(); ++pda_iter) {
     // gather stack frames
-    StackFrameMonitor* monitor = (*pda_iter);
+    StackFrameMonitor* monitor = *pda_iter;
     long call_stack_pos = *(monitor->call_stack_pos);
 
     if(call_stack_pos > 0) {
@@ -1015,16 +1184,29 @@ unsigned int MemoryManager::CheckPdaRoots(void* arg)
       }
     }
   }
+
 #ifndef _GC_SERIAL
   MUTEX_UNLOCK(&pda_monitor_lock);
 #endif
 
   // check JIT roots in separate thread
+#ifdef _WIN32
   HANDLE thread_id = (HANDLE)_beginthreadex(NULL, 0, CheckJitRoots, NULL, 0, NULL);
   if(!thread_id) {
     wcerr << L"Unable to create garbage collection thread!" << endl;
     exit(-1);
   }
+#else
+  pthread_attr_t attrs;
+  pthread_attr_init(&attrs);
+  pthread_attr_setdetachstate(&attrs, PTHREAD_CREATE_JOINABLE);
+  
+  pthread_t jit_thread;
+  if(pthread_create(&jit_thread, &attrs, CheckJitRoots, NULL)) {
+    cerr << L"Unable to create garbage collection thread!" << endl;
+    exit(-1);
+  }
+#endif
 
   // check PDA roots
   for(size_t i = 0; i < frames.size(); ++i) {
@@ -1051,13 +1233,22 @@ unsigned int MemoryManager::CheckPdaRoots(void* arg)
     CheckMemory(mem, mthd->GetDeclarations(), mthd->GetNumberDeclarations(), 0);
   }
 
+#ifdef _WIN32
   // wait for JIT thread
   if(WaitForSingleObject(thread_id, INFINITE) != WAIT_OBJECT_0) {
     wcerr << L"Unable to join garbage collection threads!" << endl;
     exit(-1);
   }
   CloseHandle(thread_id);
-
+#else
+  void *status;
+  if(pthread_join(jit_thread, &status)) {
+    cerr << L"Unable to join garbage collection threads!" << endl;
+    exit(-1);
+  }
+  pthread_exit(NULL);
+#endif
+  
   return 0;
 }
 

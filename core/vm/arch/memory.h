@@ -1,5 +1,5 @@
 /***************************************************************************
- * VM memory manager. Implements a simple "mark and sweep" collection algorithm.
+ * Implements a caching "mark and sweep" collector
  *
  * Copyright (c) 2008-2018, Randy Hollines
  * All rights reserved.
@@ -32,19 +32,15 @@
 #ifndef __MEM_MGR_H__
 #define __MEM_MGR_H__
 
-#include "../../common.h"
+#include "../common.h"
 
-// initial threshold
+// basic vm tuning parameters
 #define MEM_MAX 2097152
-// when this limit is met the garbage collect threshold
-// is increased
+// #define MEM_MAX 4096
 #define UNCOLLECTED_COUNT 5
-// when this limit is met the garbage collect threshold
-// is lowered
 #define COLLECTED_COUNT 13
 #define POOL_SIZE 128
 
-// memory meta data tags
 #define EXTRA_BUF_SIZE 4
 #define MARKED_FLAG -1
 #define SIZE_OR_CLS -2
@@ -82,23 +78,31 @@ class MemoryManager {
   static StackProgram* prgm;
   static unordered_set<StackFrameMonitor*> pda_monitors; // deleted elsewhere
   static unordered_set<StackFrame**> pda_frames;
-  static vector<StackFrame*> jit_frames;  // deleted elsewhere
+  static vector<StackFrame*> jit_frames; // deleted elsewhere
   static vector<size_t*> allocated_memory;
-
-  // memory caches
+  
   static stack<char*> cache_pool_16;
   static stack<char*> cache_pool_32;
   static stack<char*> cache_pool_64;
   static stack<char*> cache_pool_256;
   static stack<char*> cache_pool_512;
   
+#ifdef _WIN32
   static CRITICAL_SECTION jit_frame_lock;
   static CRITICAL_SECTION pda_frame_lock;
   static CRITICAL_SECTION pda_monitor_lock;
   static CRITICAL_SECTION allocated_lock;
   static CRITICAL_SECTION marked_lock;
   static CRITICAL_SECTION marked_sweep_lock;
-  
+#else
+  static pthread_lock_t pda_monitor_lock;
+  static pthread_lock_t pda_frame_lock;
+  static pthread_lock_t jit_frame_lock;
+  static pthread_lock_t allocated_lock;
+  static pthread_lock_t marked_lock;
+  static pthread_lock_t marked_sweep_lock;
+#endif
+    
   // note: protected by 'allocated_lock'
   static long allocation_size;
   static long mem_max_size;
@@ -109,7 +113,9 @@ class MemoryManager {
   static inline bool MarkMemory(size_t* mem);
   static inline bool MarkValidMemory(size_t* mem);
 
-  // mark and sweep functions
+  
+#ifdef _WIN32
+  // mark memory
   static unsigned int WINAPI CheckStatic(LPVOID arg);
   static unsigned int WINAPI CheckStack(LPVOID arg);
   static unsigned int WINAPI CheckPdaRoots(LPVOID arg);
@@ -118,10 +124,20 @@ class MemoryManager {
   // recover memory
   static void CollectAllMemory(size_t* op_stack, long stack_pos);
   static unsigned int WINAPI CollectMemory(LPVOID arg);
-  
+#else  
+  // mark memory
+  static void* CheckStatic(void* arg);
+  static void* CheckStack(void* arg);
+  static void* CheckPdaRoots(void* arg);
+  static void* CheckJitRoots(void* arg);
+  // recover memory
+  static void CollectAllMemory(size_t* op_stack, long stack_pos);
+  static void* CollectMemory(void* arg);
+#endif
+
   static inline StackClass* GetClassMapping(size_t* mem) {
 #ifndef _GC_SERIAL
-      MUTEX_LOCK(&allocated_lock);
+    MUTEX_LOCK(&allocated_lock);
 #endif
     if(mem && std::binary_search(allocated_memory.begin(), allocated_memory.end(), mem) && 
        mem[TYPE] == MemoryType::NIL_TYPE) {
@@ -137,11 +153,9 @@ class MemoryManager {
     return NULL;
   }
 
-public:
-  // initialize the runtime system
+ public:
   static void Initialize(StackProgram* p);
 
-  // free static resources
   static void Clear() {
     while(!allocated_memory.empty()) {
       size_t* temp = allocated_memory.front();
@@ -187,46 +201,39 @@ public:
       mem = NULL;
     }
     
+#ifdef _WIN32
     DeleteCriticalSection(&jit_frame_lock);
     DeleteCriticalSection(&pda_monitor_lock);
     DeleteCriticalSection(&allocated_lock);
     DeleteCriticalSection(&marked_lock);
     DeleteCriticalSection(&marked_sweep_lock);
-
+#endif
+    	
     initialized = false;
   }
   
   // add and remove pda roots
   static void AddPdaMethodRoot(StackFrame** frame);
   static void RemovePdaMethodRoot(StackFrame** frame);
-  static void AddPdaMethodRoot(StackFrameMonitor* monitor);
+  static void AddPdaMethodRoot(StackFrameMonitor* monitor);  
   static void RemovePdaMethodRoot(StackFrameMonitor* monitor);
   
-  // sweeps memory
   static void CheckMemory(size_t* mem, StackDclr** dclrs, const long dcls_size, const long depth);
-
-  // sweeps an object and it's references
   static void CheckObject(size_t* mem, bool is_obj, const long depth);
-
-  // memory allocation
+  
   static size_t* AllocateObject(const wchar_t* obj_name, size_t* op_stack, long stack_pos, bool collect = true) {
     StackClass* cls = prgm->GetClass(obj_name);
     if(cls) {
       return AllocateObject(cls->GetId(), op_stack, stack_pos, collect);
     }
-
+    
     return NULL;
   }
   
-  //
-  // object and array allocation
-  //
   static size_t* AllocateObject(const long obj_id, size_t* op_stack, long stack_pos, bool collect = true);
   static size_t* AllocateArray(const long size, const MemoryType type, size_t* op_stack, long stack_pos, bool collect = true);
-
-  //
+  
   // object verification
-  //
   static size_t* ValidObjectCast(size_t* mem, long to_id, int* cls_hierarchy, int** cls_interfaces);
   
   //
@@ -236,7 +243,6 @@ public:
     if(mem && mem[TYPE] == MemoryType::NIL_TYPE) {
       return (StackClass*)mem[SIZE_OR_CLS];
     }
-    
     return NULL;
   }
 
