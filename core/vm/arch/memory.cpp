@@ -59,12 +59,12 @@ CRITICAL_SECTION MemoryManager::allocated_lock;
 CRITICAL_SECTION MemoryManager::marked_lock;
 CRITICAL_SECTION MemoryManager::marked_sweep_lock;
 #else
-pthread_lock_t MemoryManager::pda_monitor_lock = PTHREAD_lock_INITIALIZER;
-pthread_lock_t MemoryManager::pda_frame_lock = PTHREAD_lock_INITIALIZER;
-pthread_lock_t MemoryManager::jit_frame_lock = PTHREAD_lock_INITIALIZER;
-pthread_lock_t MemoryManager::allocated_lock = PTHREAD_lock_INITIALIZER;
-pthread_lock_t MemoryManager::marked_lock = PTHREAD_lock_INITIALIZER;
-pthread_lock_t MemoryManager::marked_sweep_lock = PTHREAD_lock_INITIALIZER;
+pthread_mutex_t MemoryManager::pda_monitor_lock = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t MemoryManager::pda_frame_lock = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t MemoryManager::jit_frame_lock = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t MemoryManager::allocated_lock = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t MemoryManager::marked_lock = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t MemoryManager::marked_sweep_lock = PTHREAD_MUTEX_INITIALIZER;
 #endif
 
 void MemoryManager::Initialize(StackProgram* p)
@@ -486,7 +486,7 @@ void MemoryManager::CollectAllMemory(size_t* op_stack, long stack_pos)
     return;
   }
 #else
-  if(pthread_mutex_trylock(&marked_sweep_mutex)) {
+  if(pthread_mutex_trylock(&marked_sweep_lock)) {
     return;
   }  
 #endif
