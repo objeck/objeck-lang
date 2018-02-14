@@ -1359,8 +1359,8 @@ void MemoryManager::CheckMemory(size_t* mem, StackDclr** dclrs, const long dcls_
       CheckObject((size_t*)(*mem), true, depth + 1);
       // update
       mem++;
-                   }
-                   break;
+    }
+      break;
 
     case OBJ_ARY_PARM:
 #ifdef _DEBUG
