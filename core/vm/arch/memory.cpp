@@ -733,8 +733,8 @@ void* MemoryManager::CollectMemory(void* arg)
           memset(tmp, 0, 512);
           cache_pool_512.push((char*)tmp);
 #ifdef _DEBUG
-          wcout << L"# caching memory: addr=" << mem << L"(" << (size_t)mem
-            << L"), size=" << mem_size << L" byte(s) #" << endl;
+          wcout << L"# caching memory: addr=" << mem << L"(" << (size_t)mem << L"), size="
+                << mem_size << L" byte(s) #" << endl;
 #endif
         }
         break;
@@ -744,8 +744,8 @@ void* MemoryManager::CollectMemory(void* arg)
           memset(tmp, 0, 256);
           cache_pool_256.push((char*)tmp);
 #ifdef _DEBUG
-          wcout << L"# caching memory: addr=" << mem << L"(" << (size_t)mem
-            << L"), size=" << mem_size << L" byte(s) #" << endl;
+          wcout << L"# caching memory: addr=" << mem << L"(" << (size_t)mem << L"), size="
+                << mem_size << L" byte(s) #" << endl;
 #endif
         }
         break;
@@ -755,8 +755,8 @@ void* MemoryManager::CollectMemory(void* arg)
           memset(tmp, 0, 64);
           cache_pool_64.push((char*)tmp);
 #ifdef _DEBUG
-          wcout << L"# caching memory: addr=" << mem << L"(" << (size_t)mem
-            << L"), size=" << mem_size << L" byte(s) #" << endl;
+          wcout << L"# caching memory: addr=" << mem << L"(" << (size_t)mem << L"), size="
+                << mem_size << L" byte(s) #" << endl;
 #endif
         }
         break;
@@ -766,8 +766,8 @@ void* MemoryManager::CollectMemory(void* arg)
           memset(tmp, 0, 32);
           cache_pool_32.push((char*)tmp);
 #ifdef _DEBUG
-          wcout << L"# caching memory: addr=" << mem << L"(" << (size_t)mem
-            << L"), size=" << mem_size << L" byte(s) #" << endl;
+          wcout << L"# caching memory: addr=" << mem << L"(" << (size_t)mem << L"), size="
+                << mem_size << L" byte(s) #" << endl;
 #endif
         }
         break;
@@ -778,7 +778,7 @@ void* MemoryManager::CollectMemory(void* arg)
           cache_pool_16.push((char*)tmp);
 #ifdef _DEBUG
           wcout << L"# caching memory: addr=" << mem << L"(" << (size_t)mem
-            << L"), size=" << mem_size << L" byte(s) #" << endl;
+                << L"), size=" << mem_size << L" byte(s) #" << endl;
 #endif
         }
         break;
@@ -788,7 +788,7 @@ void* MemoryManager::CollectMemory(void* arg)
         tmp = NULL;
 #ifdef _DEBUG
         wcout << L"# freeing memory: addr=" << mem << L"(" << (size_t)mem
-          << L"), size=" << mem_size << L" byte(s) #" << endl;
+              << L"), size=" << mem_size << L" byte(s) #" << endl;
 #endif
         break;
       }
@@ -829,12 +829,12 @@ void* MemoryManager::CollectMemory(void* arg)
 #ifdef _DEBUG
   wcout << L"===============================================================" << endl;
   wcout << L"Finished Collection: collected=" << (start - allocation_size)
-    << L" of " << start << L" byte(s) - " << showpoint << setprecision(3)
-    << (((double)(start - allocation_size) / (double)start) * 100.0)
-    << L"%" << endl;
+        << L" of " << start << L" byte(s) - " << showpoint << setprecision(3)
+        << (((double)(start - allocation_size) / (double)start) * 100.0)
+        << L"%" << endl;
   wcout << L"===============================================================" << endl;
 #endif
-
+  
 #ifdef _TIMING
   end = clock();
   wcout << dec << endl << L"=========================================" << endl;
@@ -842,7 +842,7 @@ void* MemoryManager::CollectMemory(void* arg)
         << L" second(s)." << endl;
   wcout << L"=========================================" << endl;
 #endif
-
+  
 #ifndef _WIN32
 #ifndef _GC_SERIAL
   pthread_exit(NULL);
@@ -859,13 +859,13 @@ void* MemoryManager::CheckStatic(void* arg)
 #endif
 {
   StackClass** clss = prgm->GetClasses();
-  int cls_num = prgm->GetClassNumber();
-
+  const int cls_num = prgm->GetClassNumber();
+  
   for(int i = 0; i < cls_num; ++i) {
     StackClass* cls = clss[i];
     CheckMemory(cls->GetClassMemory(), cls->GetClassDeclarations(), cls->GetNumberClassDeclarations(), 0);
   }
-
+  
   return 0;
 }
 
@@ -905,7 +905,6 @@ unsigned int MemoryManager::CheckJitRoots(void* arg)
 void* MemoryManager::CheckJitRoots(void* arg)
 #endif
 {
-
 #ifndef _GC_SERIAL
   MUTEX_LOCK(&jit_frame_lock);
 #endif  
@@ -929,10 +928,10 @@ void* MemoryManager::CheckJitRoots(void* arg)
 
 #ifdef _DEBUG
     wcout << L"\t===== JIT method: name=" << mthd->GetName() << L", id=" << mthd->GetClass()->GetId()
-      << L"," << mthd->GetId() << L"; addr=" << mthd << L"; mem=" << mem << L"; self=" << self
-      << L"; num=" << mthd->GetNumberDeclarations() << L" =====" << endl;
+          << L"," << mthd->GetId() << L"; addr=" << mthd << L"; mem=" << mem << L"; self=" << self
+          << L"; num=" << mthd->GetNumberDeclarations() << L" =====" << endl;
 #endif
-
+    
     // check self
     CheckObject(self, true, 1);
 
@@ -942,8 +941,7 @@ void* MemoryManager::CheckJitRoots(void* arg)
       switch(dclrs[j]->type) {
       case FUNC_PARM:
 #ifdef _DEBUG
-        wcout << L"\t" << j << L": FUNC_PARM: value=" << (*mem)
-          << L"," << *(mem + 1) << endl;
+        wcout << L"\t" << j << L": FUNC_PARM: value=" << (*mem) << L"," << *(mem + 1) << endl;
 #endif
         // update
         mem += 2;
@@ -976,10 +974,9 @@ void* MemoryManager::CheckJitRoots(void* arg)
 
       case BYTE_ARY_PARM:
 #ifdef _DEBUG
-        wcout << L"\t" << j << L": BYTE_ARY_PARM: addr="
-          << (size_t*)(*mem) << L"(" << (long)(*mem)
-          << L"), size=" << ((*mem) ? ((size_t*)(*mem))[SIZE_OR_CLS] : 0)
-          << L" byte(s)" << endl;
+        wcout << L"\t" << j << L": BYTE_ARY_PARM: addr=" << (size_t*)(*mem) << L"("
+              << (long)(*mem) << L"), size=" << ((*mem) ? ((size_t*)(*mem))[SIZE_OR_CLS] : 0)
+              << L" byte(s)" << endl;
 #endif
         // mark data
         MarkMemory((size_t*)(*mem));
@@ -990,8 +987,8 @@ void* MemoryManager::CheckJitRoots(void* arg)
       case CHAR_ARY_PARM:
 #ifdef _DEBUG
         wcout << L"\t" << j << L": CHAR_ARY_PARM: addr=" << (size_t*)(*mem) << L"(" << (long)(*mem)
-          << L"), size=" << ((*mem) ? ((size_t*)(*mem))[SIZE_OR_CLS] : 0)
-          << L" byte(s)" << endl;
+              << L"), size=" << ((*mem) ? ((size_t*)(*mem))[SIZE_OR_CLS] : 0)
+              << L" byte(s)" << endl;
 #endif
         // mark data
         MarkMemory((size_t*)(*mem));
@@ -1002,9 +999,9 @@ void* MemoryManager::CheckJitRoots(void* arg)
       case INT_ARY_PARM:
 #ifdef _DEBUG
         wcout << L"\t" << j << L": INT_ARY_PARM: addr=" << (size_t*)(*mem)
-          << L"(" << (long)(*mem) << L"), size="
-          << ((*mem) ? ((size_t*)(*mem))[SIZE_OR_CLS] : 0)
-          << L" byte(s)" << endl;
+              << L"(" << (long)(*mem) << L"), size="
+              << ((*mem) ? ((size_t*)(*mem))[SIZE_OR_CLS] : 0)
+              << L" byte(s)" << endl;
 #endif
         // mark data
         MarkMemory((size_t*)(*mem));
@@ -1027,7 +1024,7 @@ void* MemoryManager::CheckJitRoots(void* arg)
       case OBJ_PARM: {
 #ifdef _DEBUG
         wcout << L"\t" << j << L": OBJ_PARM: addr=" << (size_t*)(*mem)
-          << L"(" << (long)(*mem) << L"), id=";
+              << L"(" << (long)(*mem) << L"), id=";
         if(*mem) {
           StackClass* tmp = (StackClass*)((size_t*)(*mem))[SIZE_OR_CLS];
           wcout << L"'" << tmp->GetName() << L"'" << endl;
@@ -1046,8 +1043,8 @@ void* MemoryManager::CheckJitRoots(void* arg)
       case OBJ_ARY_PARM:
 #ifdef _DEBUG
         wcout << L"\t" << j << L": OBJ_ARY_PARM: addr=" << (size_t*)(*mem) << L"("
-          << (long)(*mem) << L"), size=" << ((*mem) ? ((size_t*)(*mem))[SIZE_OR_CLS] : 0)
-          << L" byte(s)" << endl;
+              << (long)(*mem) << L"), size=" << ((*mem) ? ((size_t*)(*mem))[SIZE_OR_CLS] : 0)
+              << L" byte(s)" << endl;
 #endif
         // mark data
         if(MarkValidMemory((size_t*)(*mem))) {
@@ -1299,8 +1296,8 @@ void MemoryManager::CheckMemory(size_t* mem, StackDclr** dclrs, const long dcls_
     case BYTE_ARY_PARM:
 #ifdef _DEBUG
       wcout << L"\t" << i << L": BYTE_ARY_PARM: addr=" << (size_t*)(*mem) << L"("
-        << (long)(*mem) << L"), size=" << ((*mem) ? ((size_t*)(*mem))[SIZE_OR_CLS] : 0)
-        << L" byte(s)" << endl;
+            << (long)(*mem) << L"), size=" << ((*mem) ? ((size_t*)(*mem))[SIZE_OR_CLS] : 0)
+            << L" byte(s)" << endl;
 #endif
       // mark data
       MarkMemory((size_t*)(*mem));
@@ -1311,8 +1308,8 @@ void MemoryManager::CheckMemory(size_t* mem, StackDclr** dclrs, const long dcls_
     case CHAR_ARY_PARM:
 #ifdef _DEBUG
       wcout << L"\t" << i << L": CHAR_ARY_PARM: addr=" << (size_t*)(*mem) << L"("
-        << (long)(*mem) << L"), size=" << ((*mem) ? ((size_t*)(*mem))[SIZE_OR_CLS] : 0) 
-        << L" byte(s)" << endl;
+            << (long)(*mem) << L"), size=" << ((*mem) ? ((size_t*)(*mem))[SIZE_OR_CLS] : 0) 
+            << L" byte(s)" << endl;
 #endif
       // mark data
       MarkMemory((size_t*)(*mem));
@@ -1323,8 +1320,8 @@ void MemoryManager::CheckMemory(size_t* mem, StackDclr** dclrs, const long dcls_
     case INT_ARY_PARM:
 #ifdef _DEBUG
       wcout << L"\t" << i << L": INT_ARY_PARM: addr=" << (size_t*)(*mem) << L"("
-        << (long)(*mem) << L"), size=" << ((*mem) ? ((size_t*)(*mem))[SIZE_OR_CLS] : 0) 
-        << L" byte(s)" << endl;
+            << (long)(*mem) << L"), size=" << ((*mem) ? ((size_t*)(*mem))[SIZE_OR_CLS] : 0) 
+            << L" byte(s)" << endl;
 #endif
       // mark data
       MarkMemory((size_t*)(*mem));
@@ -1335,8 +1332,8 @@ void MemoryManager::CheckMemory(size_t* mem, StackDclr** dclrs, const long dcls_
     case FLOAT_ARY_PARM:
 #ifdef _DEBUG
       wcout << L"\t" << i << L": FLOAT_ARY_PARM: addr=" << (size_t*)(*mem) << L"("
-        << (long)(*mem) << L"), size=" << ((*mem) ? ((size_t*)(*mem))[SIZE_OR_CLS] : 0) 
-        << L" byte(s)" << endl;
+            << (long)(*mem) << L"), size=" << ((*mem) ? ((size_t*)(*mem))[SIZE_OR_CLS] : 0) 
+            << L" byte(s)" << endl;
 #endif
       // mark data
       MarkMemory((size_t*)(*mem));
@@ -1346,8 +1343,7 @@ void MemoryManager::CheckMemory(size_t* mem, StackDclr** dclrs, const long dcls_
 
     case OBJ_PARM: {
 #ifdef _DEBUG
-      wcout << L"\t" << i << L": OBJ_PARM: addr=" << (size_t*)(*mem) << L"("
-        << (long)(*mem) << L"), id=";
+      wcout << L"\t" << i << L": OBJ_PARM: addr=" << (size_t*)(*mem) << L"(" << (long)(*mem) << L"), id=";
       if(*mem) {
         StackClass* tmp = (StackClass*)((size_t*)(*mem))[SIZE_OR_CLS];
         wcout << L"'" << tmp->GetName() << L"'" << endl;
@@ -1366,7 +1362,8 @@ void MemoryManager::CheckMemory(size_t* mem, StackDclr** dclrs, const long dcls_
     case OBJ_ARY_PARM:
 #ifdef _DEBUG
       wcout << L"\t" << i << L": OBJ_ARY_PARM: addr=" << (size_t*)(*mem) << L"("
-        << (long)(*mem) << L"), size=" << ((*mem) ? ((size_t*)(*mem))[SIZE_OR_CLS] : 0) << L" byte(s)" << endl;
+            << (long)(*mem) << L"), size=" << ((*mem) ? ((size_t*)(*mem))[SIZE_OR_CLS] : 0)
+            << L" byte(s)" << endl;
 #endif
       // mark data
       if(MarkValidMemory((size_t*)(*mem))) {

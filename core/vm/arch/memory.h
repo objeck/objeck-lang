@@ -35,8 +35,8 @@
 #include "../common.h"
 
 // basic vm tuning parameters
-#define MEM_MAX 2097152
-// #define MEM_MAX 4096
+// define MEM_MAX 2097152
+#define MEM_MAX 4096 * 4
 #define UNCOLLECTED_COUNT 5
 #define COLLECTED_COUNT 13
 #define POOL_SIZE 128
@@ -140,7 +140,7 @@ class MemoryManager {
     MUTEX_LOCK(&allocated_lock);
 #endif
     if(mem && std::binary_search(allocated_memory.begin(), allocated_memory.end(), mem) && 
-       mem[TYPE] == MemoryType::NIL_TYPE) {
+       mem[TYPE] == NIL_TYPE) {
 #ifndef _GC_SERIAL
       MUTEX_UNLOCK(&allocated_lock);
 #endif
@@ -240,7 +240,7 @@ class MemoryManager {
   // returns the class reference for an object instance
   //
   static inline StackClass* GetClass(size_t* mem) {
-    if(mem && mem[TYPE] == MemoryType::NIL_TYPE) {
+    if(mem && mem[TYPE] == NIL_TYPE) {
       return (StackClass*)mem[SIZE_OR_CLS];
     }
     return NULL;
