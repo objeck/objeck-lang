@@ -59,7 +59,6 @@ void JitCompilerIA64::Prolog() {
   unsigned char buffer[4];
   ByteEncode32(buffer, local_space);
 
-  // TODO: skinny down
   unsigned char setup_code[] = {
     // setup stack frame
     0x48, 0x55,                                    // push $rbp
