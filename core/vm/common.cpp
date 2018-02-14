@@ -40,10 +40,10 @@
 #ifndef _UTILS
 #include "arch/win32/win32.h"
 #endif
-#include "arch/win32/memory.h"
+#include "arch/memory.h"
 #else
+#include "arch/memory.h"
 #include "arch/posix/posix.h"
-#include "arch/posix/memory.h"
 #endif
 
 #ifdef _WIN32
@@ -86,23 +86,24 @@ void ObjectSerializer::CheckObject(size_t* mem, bool is_obj, long depth) {
         long mem_size = cls->GetInstanceMemorySize();
 
 #if defined(_WIN64) || defined(_X64)
-        mem_size *= 2;
+        mem_size
+          ;
 #endif
         for(int i = 0; i < depth; i++) {
           wcout << L"\t";
         }
-        wcout << L"\t----- SERIALIZING object: cls_id=" << cls->GetId() << L", mem_id=" 
-              << cur_id << L", size=" << mem_size << L" byte(s) -----" << endl;
+        wcout << L"\t----- SERIALIZING object: cls_id=" << cls->GetId() << L", mem_id="
+          << cur_id << L", size=" << mem_size << L" byte(s) -----" << endl;
 #endif
         CheckMemory(mem, cls->GetInstanceDeclarations(), cls->GetNumberInstanceDeclarations(), depth);
-      } 
+      }
     }
     else {
 #ifdef _DEBUG
       for(int i = 0; i < depth; i++) {
         wcout << L"\t";
       }
-      wcout <<"$: addr/value=" << mem << endl;
+      wcout << "$: addr/value=" << mem << endl;
       if(is_obj) {
         assert(cls);
       }
@@ -118,7 +119,7 @@ void ObjectSerializer::CheckObject(size_t* mem, bool is_obj, long depth) {
         for(int i = 0; i < depth; i++) {
           wcout << L"\t";
         }
-        wcout << L"\t----- SERIALIZE: size=" << (size * sizeof(INT_VALUE)) << L" -----" << endl;	
+        wcout << L"\t----- SERIALIZE: size=" << (size * sizeof(INT_VALUE)) << L" -----" << endl;
 #endif
 
         for(long k = 0; k < size; k++) {
@@ -129,7 +130,7 @@ void ObjectSerializer::CheckObject(size_t* mem, bool is_obj, long depth) {
   }
   else {
 #ifdef _DEBUG
-    for (int i = 0; i < depth; i++) {
+    for(int i = 0; i < depth; i++) {
       wcout << L"\t";
     }
     wcout << L"\t----- SERIALIZING object: value=Nil -----" << endl;
@@ -146,202 +147,209 @@ void ObjectSerializer::CheckMemory(size_t* mem, StackDclr** dclrs, const long dc
       wcout << L"\t";
     }
 #endif
-    
+
     // update address based upon type
     switch(dclrs[i]->type) {
-    case CHAR_PARM:
+      case CHAR_PARM:
 #ifdef _DEBUG
-      wcout << L"\t" << i << L": ----- serializing char: value=" 
-            << (*mem) << L", size=" << sizeof(INT_VALUE) << L" byte(s) -----" << endl;
+        wcout << L"\t" << i << L": ----- serializing char: value="
+          << (*mem) << L", size=" << sizeof(INT_VALUE) << L" byte(s) -----" << endl;
 #endif
-      SerializeChar((wchar_t)*mem);
-      // update
-      mem++;
-      break;
-      
-    case INT_PARM:
+        SerializeChar((wchar_t)*mem);
+        // update
+        mem++;
+        break;
+
+      case INT_PARM:
 #ifdef _DEBUG
-      wcout << L"\t" << i << L": ----- serializing int: value=" 
-            << (*mem) << L", size=" << sizeof(INT_VALUE) << L" byte(s) -----" << endl;
+        wcout << L"\t" << i << L": ----- serializing int: value="
+          << (*mem) << L", size=" << sizeof(INT_VALUE) << L" byte(s) -----" << endl;
 #endif
-      SerializeInt((INT_VALUE)*mem);
-      // update
-      mem++;
+        SerializeInt((INT_VALUE)*mem);
+        // update
+        mem++;
+        break;
+
+      case FLOAT_PARM:
+      {
+        FLOAT_VALUE value;
+        memcpy(&value, mem, sizeof(FLOAT_VALUE));
+#ifdef _DEBUG
+        wcout << L"\t" << i << L": ----- serializing float: value=" << value << L", size="
+          << sizeof(FLOAT_VALUE) << L" byte(s) -----" << endl;
+#endif
+        SerializeFloat(value);
+        // update
+        mem += 2;
+      }
       break;
 
-    case FLOAT_PARM: {
-      FLOAT_VALUE value;
-      memcpy(&value, mem, sizeof(FLOAT_VALUE));
+      case BYTE_ARY_PARM:
+      {
+        size_t* array = (size_t*)(*mem);
+        if(array) {
+          SerializeByte(1);
+          // mark data
+          if(!WasSerialized((size_t*)(*mem))) {
+            const long array_size = (long)array[0];
 #ifdef _DEBUG
-      wcout << L"\t" << i << L": ----- serializing float: value=" << value << L", size=" 
-            << sizeof(FLOAT_VALUE) << L" byte(s) -----" << endl;
+            wcout << L"\t" << i << L": ----- serializing byte array: mem_id=" << cur_id << L", size="
+              << array_size << L" byte(s) -----" << endl;
 #endif
-      SerializeFloat(value);
-      // update
-      mem += 2;
-    }
-      break;
+            // write metadata
+            SerializeInt((INT_VALUE)array[0]);
+            SerializeInt((INT_VALUE)array[1]);
+            SerializeInt((INT_VALUE)array[2]);
+            char* array_ptr = (char*)(array + 3);
 
-    case BYTE_ARY_PARM: {
-      size_t* array = (size_t*)(*mem);
-      if(array) {
-        SerializeByte(1);
-        // mark data
-        if(!WasSerialized((size_t*)(*mem))) {
-          const long array_size = (long)array[0];
-#ifdef _DEBUG
-          wcout << L"\t" << i << L": ----- serializing byte array: mem_id=" << cur_id << L", size=" 
-                << array_size << L" byte(s) -----" << endl;
-#endif
-          // write metadata
-          SerializeInt((INT_VALUE)array[0]);
-          SerializeInt((INT_VALUE)array[1]);
-          SerializeInt((INT_VALUE)array[2]);
-          char* array_ptr = (char*)(array + 3);
-
-          // values
-          SerializeBytes(array_ptr, array_size);
+            // values
+            SerializeBytes(array_ptr, array_size);
+          }
         }
+        else {
+          SerializeByte(0);
+        }
+        // update
+        mem++;
       }
-      else {
-        SerializeByte(0);
-      }
-      // update
-      mem++;
-    }
       break;
 
-    case CHAR_ARY_PARM: {
-      size_t* array = (size_t*)(*mem);
-      if(array) {
-        SerializeByte(1);
-        // mark data
-        if(!WasSerialized((size_t*)(*mem))) {
-          // convert
-          const string buffer = UnicodeToBytes((wchar_t*)(array + 3));
-          const long array_size = (long)buffer.size();	  
+      case CHAR_ARY_PARM:
+      {
+        size_t* array = (size_t*)(*mem);
+        if(array) {
+          SerializeByte(1);
+          // mark data
+          if(!WasSerialized((size_t*)(*mem))) {
+            // convert
+            const string buffer = UnicodeToBytes((wchar_t*)(array + 3));
+            const long array_size = (long)buffer.size();
 #ifdef _DEBUG
-          wcout << L"\t" << i << L": ----- serializing char array: mem_id=" << cur_id << L", size=" 
-                << array_size << L" byte(s) -----" << endl;
+            wcout << L"\t" << i << L": ----- serializing char array: mem_id=" << cur_id << L", size="
+              << array_size << L" byte(s) -----" << endl;
 #endif	  
-          // write metadata
-          SerializeInt(array_size);
-          SerializeInt((INT_VALUE)array[1]);
-          SerializeInt(array_size);
-          
-          // values
-          SerializeBytes(buffer.c_str(), array_size);
-        }
-      }
-      else {
-        SerializeByte(0);
-      }
-      // update
-      mem++;
-    }
-      break;
-    
-    case INT_ARY_PARM: {
-      size_t* array = (size_t*)(*mem);
-      if(array) {
-        SerializeByte(1);
-        // mark data
-        if(!WasSerialized((size_t*)(*mem))) {
-          const long array_size = (long)array[0];
-#ifdef _DEBUG
-          wcout << L"\t" << i << L": ----- serializing int array: mem_id=" << cur_id << L", size=" 
-                << array_size << L" byte(s) -----" << endl;
-#endif
-          // write metadata
-          SerializeInt((INT_VALUE)array[0]);
-          SerializeInt((INT_VALUE)array[1]);
-          SerializeInt((INT_VALUE)array[2]);
-          size_t* array_ptr = array + 3;
+            // write metadata
+            SerializeInt(array_size);
+            SerializeInt((INT_VALUE)array[1]);
+            SerializeInt(array_size);
 
-          // values
-          for(int i = 0; i < array_size; i++) {
-            SerializeInt((INT_VALUE)array_ptr[i]);
+            // values
+            SerializeBytes(buffer.c_str(), array_size);
           }
         }
-      }
-      else {
-        SerializeByte(0);
-      }
-      // update
-      mem++;
-    }
-      break;
-
-    case FLOAT_ARY_PARM: {
-      size_t* array = (size_t*)(*mem);
-      if(array) {
-        SerializeByte(1);
-        // mark data
-        if(!WasSerialized((size_t*)(*mem))) {
-          const long array_size = (long)array[0];
-#ifdef _DEBUG
-          wcout << L"\t" << i << L": ----- serializing float array: mem_id=" << cur_id << L", size=" 
-                << array_size << L" byte(s) -----" << endl;
-#endif
-          // write metadata
-          SerializeInt((INT_VALUE)array[0]);
-          SerializeInt((INT_VALUE)array[1]);
-          SerializeInt((INT_VALUE)array[2]);
-          FLOAT_VALUE* array_ptr = (FLOAT_VALUE*)(array + 3);
-
-          // write values
-          SerializeBytes(array_ptr, array_size * sizeof(FLOAT_VALUE));
+        else {
+          SerializeByte(0);
         }
+        // update
+        mem++;
       }
-      else {
-        SerializeByte(0);
-      }
-      // update
-      mem++;
-    }
       break;
-      
-    case OBJ_ARY_PARM: {
-      size_t* array = (size_t*)(*mem);
-      if(array) {
-        SerializeByte(1);
-        // mark data
-        if(!WasSerialized((size_t*)(*mem))) {
-          const long array_size = (long)array[0];
-#ifdef _DEBUG
-          wcout << L"\t" << i << L": ----- serializing objeck array: mem_id=" << cur_id << L", size="
-		<< array_size << L" byte(s) -----" << endl;
-#endif
-          // write metadata
-          SerializeInt((INT_VALUE)array[0]);
-          SerializeInt((INT_VALUE)array[1]);
-          SerializeInt((INT_VALUE)array[2]);
-          size_t* array_ptr = array + 3;
 
-          // write values
-          for (int i = 0; i < array_size; i++) {
-            CheckObject((size_t*)(array_ptr[i]), true, depth + 1);
+      case INT_ARY_PARM:
+      {
+        size_t* array = (size_t*)(*mem);
+        if(array) {
+          SerializeByte(1);
+          // mark data
+          if(!WasSerialized((size_t*)(*mem))) {
+            const long array_size = (long)array[0];
+#ifdef _DEBUG
+            wcout << L"\t" << i << L": ----- serializing int array: mem_id=" << cur_id << L", size="
+              << array_size << L" byte(s) -----" << endl;
+#endif
+            // write metadata
+            SerializeInt((INT_VALUE)array[0]);
+            SerializeInt((INT_VALUE)array[1]);
+            SerializeInt((INT_VALUE)array[2]);
+            size_t* array_ptr = array + 3;
+
+            // values
+            for(int i = 0; i < array_size; i++) {
+              SerializeInt((INT_VALUE)array_ptr[i]);
+            }
           }
         }
+        else {
+          SerializeByte(0);
+        }
+        // update
+        mem++;
       }
-      else {
-        SerializeByte(0);
-      }
-      // update
-      mem++;
-    }
       break;
 
-    case OBJ_PARM: {
-      // check object
-      CheckObject((size_t*)(*mem), true, depth + 1);
-      // update
-      mem++;
-    }
+      case FLOAT_ARY_PARM:
+      {
+        size_t* array = (size_t*)(*mem);
+        if(array) {
+          SerializeByte(1);
+          // mark data
+          if(!WasSerialized((size_t*)(*mem))) {
+            const long array_size = (long)array[0];
+#ifdef _DEBUG
+            wcout << L"\t" << i << L": ----- serializing float array: mem_id=" << cur_id << L", size="
+              << array_size << L" byte(s) -----" << endl;
+#endif
+            // write metadata
+            SerializeInt((INT_VALUE)array[0]);
+            SerializeInt((INT_VALUE)array[1]);
+            SerializeInt((INT_VALUE)array[2]);
+            FLOAT_VALUE* array_ptr = (FLOAT_VALUE*)(array + 3);
+
+            // write values
+            SerializeBytes(array_ptr, array_size * sizeof(FLOAT_VALUE));
+          }
+        }
+        else {
+          SerializeByte(0);
+        }
+        // update
+        mem++;
+      }
       break;
 
-    default:
+      case OBJ_ARY_PARM:
+      {
+        size_t* array = (size_t*)(*mem);
+        if(array) {
+          SerializeByte(1);
+          // mark data
+          if(!WasSerialized((size_t*)(*mem))) {
+            const long array_size = (long)array[0];
+#ifdef _DEBUG
+            wcout << L"\t" << i << L": ----- serializing objeck array: mem_id=" << cur_id << L", size="
+              << array_size << L" byte(s) -----" << endl;
+#endif
+            // write metadata
+            SerializeInt((INT_VALUE)array[0]);
+            SerializeInt((INT_VALUE)array[1]);
+            SerializeInt((INT_VALUE)array[2]);
+            size_t* array_ptr = array + 3;
+
+            // write values
+            for(int i = 0; i < array_size; i++) {
+              CheckObject((size_t*)(array_ptr[i]), true, depth + 1);
+            }
+          }
+        }
+        else {
+          SerializeByte(0);
+        }
+        // update
+        mem++;
+      }
       break;
+
+      case OBJ_PARM:
+      {
+        // check object
+        CheckObject((size_t*)(*mem), true, depth + 1);
+        // update
+        mem++;
+      }
+      break;
+
+      default:
+        break;
     }
   }
 }
@@ -371,7 +379,7 @@ size_t* ObjectDeserializer::DeserializeObject() {
       map<INT_VALUE, size_t*>::iterator found = mem_cache.find(mem_id);
       if(found == mem_cache.end()) {
         return NULL;
-      }      
+      }
       return found->second;
     }
   }
@@ -379,266 +387,273 @@ size_t* ObjectDeserializer::DeserializeObject() {
     return NULL;
   }
 
-  long dclr_pos = 0;  
+  long dclr_pos = 0;
   StackDclr** dclrs = cls->GetInstanceDeclarations();
   const long dclr_num = cls->GetNumberInstanceDeclarations();
   while(dclr_pos < dclr_num && buffer_offset < buffer_array_size) {
     ParamType type = dclrs[dclr_pos++]->type;
 
     switch(type) {
-    case CHAR_PARM:
-      instance[instance_pos++] = DeserializeChar();
+      case CHAR_PARM:
+        instance[instance_pos++] = DeserializeChar();
 #ifdef _DEBUG
-      wcout << L"--- deserialization: char value=" << instance[instance_pos - 1] << L" ---" << endl;
+        wcout << L"--- deserialization: char value=" << instance[instance_pos - 1] << L" ---" << endl;
 #endif
-      break;
-      
-    case INT_PARM:
-      instance[instance_pos++] = DeserializeInt();
+        break;
+
+      case INT_PARM:
+        instance[instance_pos++] = DeserializeInt();
 #ifdef _DEBUG
-      wcout << L"--- deserialization: int value=" << instance[instance_pos - 1] << L" ---" << endl;
+        wcout << L"--- deserialization: int value=" << instance[instance_pos - 1] << L" ---" << endl;
 #endif
+        break;
+
+      case FLOAT_PARM:
+      {
+        FLOAT_VALUE value = DeserializeFloat();
+        memcpy(&instance[instance_pos], &value, sizeof(value));
+#ifdef _DEBUG
+        wcout << L"--- deserialization: float value=" << value << L" ---" << endl;
+#endif
+        instance_pos += 2;
+      }
       break;
 
-    case FLOAT_PARM: {
-      FLOAT_VALUE value = DeserializeFloat();
-      memcpy(&instance[instance_pos], &value, sizeof(value));
-#ifdef _DEBUG
-      wcout << L"--- deserialization: float value=" << value << L" ---" << endl;
-#endif
-      instance_pos += 2;
-    }
-      break;
-
-    case BYTE_ARY_PARM: {
-      if(!DeserializeByte()) {
-        instance[instance_pos++] = 0;
-      }
-      else {
-        INT_VALUE mem_id = DeserializeInt();
-        if(mem_id < 0) {
-          const long byte_array_size = DeserializeInt();
-          const long byte_array_dim = DeserializeInt();
-          const long byte_array_size_dim = DeserializeInt();
-          size_t* byte_array = MemoryManager::AllocateArray(byte_array_size +
-                                                                 ((byte_array_dim + 2) *
-                                                                  sizeof(size_t)), BYTE_ARY_TYPE,
-                                                                 op_stack, *stack_pos, false);
-          char* byte_array_ptr = (char*)(byte_array + 3);
-          byte_array[0] = byte_array_size;
-          byte_array[1] = byte_array_dim;
-          byte_array[2] = byte_array_size_dim;	
-          // copy content
-          memcpy(byte_array_ptr, buffer + buffer_offset, byte_array_size);
-          buffer_offset += byte_array_size;
-#ifdef _DEBUG
-          wcout << L"--- deserialization: byte array; value=" << byte_array <<  ", size=" << byte_array_size << L" ---" << endl;
-#endif
-          // update cache
-          mem_cache[-mem_id] = byte_array;
-          instance[instance_pos++] = (size_t)byte_array;
+      case BYTE_ARY_PARM:
+      {
+        if(!DeserializeByte()) {
+          instance[instance_pos++] = 0;
         }
         else {
-          map<INT_VALUE, size_t*>::iterator found = mem_cache.find(mem_id);
-          if(found == mem_cache.end()) {
-            return NULL;
-          } 
-          instance[instance_pos++] = (size_t)found->second;
-        }
-      }
-    }
-      break;
-      
-    case CHAR_ARY_PARM: {
-      if(!DeserializeByte()) {
-        instance[instance_pos++] = 0;
-      }
-      else {
-        INT_VALUE mem_id = DeserializeInt();
-        if(mem_id < 0) {
-          long char_array_size = DeserializeInt();
-          const long char_array_dim = DeserializeInt();
-          long char_array_size_dim = DeserializeInt();
-          // copy content
-          char* in = new char[char_array_size + 1];
-          memcpy(in, buffer + buffer_offset, char_array_size);
-          buffer_offset += char_array_size;
-          in[char_array_size] = '\0';
-          const wstring out = BytesToUnicode(in);
-          // clean up
-          delete[] in;
-          in = NULL;
+          INT_VALUE mem_id = DeserializeInt();
+          if(mem_id < 0) {
+            const long byte_array_size = DeserializeInt();
+            const long byte_array_dim = DeserializeInt();
+            const long byte_array_size_dim = DeserializeInt();
+            size_t* byte_array = MemoryManager::AllocateArray(byte_array_size +
+              ((byte_array_dim + 2) *
+                                                              sizeof(size_t)), BYTE_ARY_TYPE,
+                                                              op_stack, *stack_pos, false);
+            char* byte_array_ptr = (char*)(byte_array + 3);
+            byte_array[0] = byte_array_size;
+            byte_array[1] = byte_array_dim;
+            byte_array[2] = byte_array_size_dim;
+            // copy content
+            memcpy(byte_array_ptr, buffer + buffer_offset, byte_array_size);
+            buffer_offset += byte_array_size;
 #ifdef _DEBUG
-          wcout << L"--- deserialization: char array; value=" << out <<  ", size=" 
-                << char_array_size << L" ---" << endl;
+            wcout << L"--- deserialization: byte array; value=" << byte_array << ", size=" << byte_array_size << L" ---" << endl;
 #endif
-          char_array_size = char_array_size_dim = (long)out.size();
-          size_t* char_array = MemoryManager::AllocateArray(char_array_size +
-                                                                 ((char_array_dim + 2) *
-                                                                  sizeof(size_t)), CHAR_ARY_TYPE,
-                                                                 op_stack, *stack_pos, false);
-          char_array[0] = char_array_size;
-          char_array[1] = char_array_dim;
-          char_array[2] = char_array_size_dim;
-	  
-          wchar_t* char_array_ptr = (wchar_t*)(char_array + 3);
-          memcpy(char_array_ptr, out.c_str(), char_array_size * sizeof(wchar_t));
-	  
-          // update cache
-          mem_cache[-mem_id] = char_array;
-          instance[instance_pos++] = (size_t)char_array;
-        }
-        else {
-          map<INT_VALUE, size_t*>::iterator found = mem_cache.find(mem_id);
-          if(found == mem_cache.end()) {
-            return NULL;
-          } 
-          instance[instance_pos++] = (size_t)found->second;
-        }
-      }
-    }
-      break;                          
-      
-    case INT_ARY_PARM: {
-      if(!DeserializeByte()) {
-        instance[instance_pos++] = 0;
-      }
-      else {
-        INT_VALUE mem_id = DeserializeInt();
-        if(mem_id < 0) {
-          const long array_size = DeserializeInt();
-          const long array_dim = DeserializeInt();
-          const long array_size_dim = DeserializeInt();	
-          size_t* array = MemoryManager::AllocateArray(array_size + array_dim + 2, INT_TYPE,
-                                                            op_stack, *stack_pos, false);
-          array[0] = array_size;
-          array[1] = array_dim;
-          array[2] = array_size_dim;
-          size_t* array_ptr = array + 3;	
-          // copy content
-          for(int i = 0; i < array_size; i++) {
-            array_ptr[i] = DeserializeInt();
+            // update cache
+            mem_cache[-mem_id] = byte_array;
+            instance[instance_pos++] = (size_t)byte_array;
           }
-#ifdef _DEBUG
-          wcout << L"--- deserialization: int array; value=" << array <<  ",  size=" << array_size << L" ---" << endl;
-#endif
-          // update cache
-          mem_cache[-mem_id] = array;
-          instance[instance_pos++] = (size_t)array;
-        }
-        else {
-          map<INT_VALUE, size_t*>::iterator found = mem_cache.find(mem_id);
-          if(found == mem_cache.end()) {
-            return NULL;
-          } 
-          instance[instance_pos++] = (size_t)found->second;
-        }
-      }
-    }
-      break;
-
-    case FLOAT_ARY_PARM: {
-      if(!DeserializeByte()) {
-        instance[instance_pos++] = 0;
-      }
-      else {
-        INT_VALUE mem_id = DeserializeInt();
-        if(mem_id < 0) {
-          const long array_size = DeserializeInt();
-          const long array_dim = DeserializeInt();
-          const long array_size_dim = DeserializeInt();
-          size_t* array = MemoryManager::AllocateArray(array_size * 2 + array_dim + 2, INT_TYPE,
-                                                            op_stack, *stack_pos, false);
-
-          array[0] = array_size;
-          array[1] = array_dim;
-          array[2] = array_size_dim;
-          FLOAT_VALUE* array_ptr = (FLOAT_VALUE*)(array + 3);	
-          // copy content
-          memcpy(array_ptr, buffer + buffer_offset, array_size * sizeof(FLOAT_VALUE));
-          buffer_offset += array_size * sizeof(FLOAT_VALUE);
-#ifdef _DEBUG
-          wcout << L"--- deserialization: float array; value=" << array <<  ", size=" << array_size << L" ---" << endl;
-#endif
-          // update cache
-          mem_cache[-mem_id] = array;
-          instance[instance_pos++] = (size_t)array;
-        }
-        else {
-          map<INT_VALUE, size_t*>::iterator found = mem_cache.find(mem_id);
-          if(found == mem_cache.end()) {
-            return NULL;
-          } 
-          instance[instance_pos++] = (size_t)found->second;
-        }
-      }
-    }
-      break;
-
-    case OBJ_ARY_PARM: {
-      if(!DeserializeByte()) {
-        instance[instance_pos++] = 0;
-      }
-      else {
-        INT_VALUE mem_id = DeserializeInt();
-        if (mem_id < 0) {
-          const long array_size = DeserializeInt();
-          const long array_dim = DeserializeInt();
-          const long array_size_dim = DeserializeInt();
-          size_t* array = MemoryManager::AllocateArray(array_size + array_dim + 2, INT_TYPE,
-							    op_stack, *stack_pos, false);
-          array[0] = array_size;
-          array[1] = array_dim;
-          array[2] = array_size_dim;
-          size_t* array_ptr = array + 3;
-
-          // copy content
-          for(int i = 0; i < array_size; i++) {
-            if(!DeserializeByte()) {
-              instance[instance_pos++] = 0;
+          else {
+            map<INT_VALUE, size_t*>::iterator found = mem_cache.find(mem_id);
+            if(found == mem_cache.end()) {
+              return NULL;
             }
-            else {
-              ObjectDeserializer deserializer(buffer, buffer_offset, mem_cache,
-					      buffer_array_size, op_stack, stack_pos);
-              array_ptr[i] = (size_t)deserializer.DeserializeObject();
-              buffer_offset = deserializer.GetOffset();
-              mem_cache = deserializer.GetMemoryCache();
-            }
+            instance[instance_pos++] = (size_t)found->second;
           }
-#ifdef _DEBUG
-          wcout << L"--- deserialization: object array; value=" << array << ",  size="
-		<< array_size << L" ---" << endl;
-#endif
-          // update cache
-          mem_cache[-mem_id] = array;
-          instance[instance_pos++] = (size_t)array;
+        }
+      }
+      break;
+
+      case CHAR_ARY_PARM:
+      {
+        if(!DeserializeByte()) {
+          instance[instance_pos++] = 0;
         }
         else {
-          map<INT_VALUE, size_t*>::iterator found = mem_cache.find(mem_id);
-          if (found == mem_cache.end()) {
-            return NULL;
+          INT_VALUE mem_id = DeserializeInt();
+          if(mem_id < 0) {
+            long char_array_size = DeserializeInt();
+            const long char_array_dim = DeserializeInt();
+            long char_array_size_dim = DeserializeInt();
+            // copy content
+            char* in = new char[char_array_size + 1];
+            memcpy(in, buffer + buffer_offset, char_array_size);
+            buffer_offset += char_array_size;
+            in[char_array_size] = '\0';
+            const wstring out = BytesToUnicode(in);
+            // clean up
+            delete[] in;
+            in = NULL;
+#ifdef _DEBUG
+            wcout << L"--- deserialization: char array; value=" << out << ", size="
+              << char_array_size << L" ---" << endl;
+#endif
+            char_array_size = char_array_size_dim = (long)out.size();
+            size_t* char_array = MemoryManager::AllocateArray(char_array_size +
+              ((char_array_dim + 2) *
+                                                              sizeof(size_t)), CHAR_ARY_TYPE,
+                                                              op_stack, *stack_pos, false);
+            char_array[0] = char_array_size;
+            char_array[1] = char_array_dim;
+            char_array[2] = char_array_size_dim;
+
+            wchar_t* char_array_ptr = (wchar_t*)(char_array + 3);
+            memcpy(char_array_ptr, out.c_str(), char_array_size * sizeof(wchar_t));
+
+            // update cache
+            mem_cache[-mem_id] = char_array;
+            instance[instance_pos++] = (size_t)char_array;
           }
-          instance[instance_pos++] = (size_t)found->second;
+          else {
+            map<INT_VALUE, size_t*>::iterator found = mem_cache.find(mem_id);
+            if(found == mem_cache.end()) {
+              return NULL;
+            }
+            instance[instance_pos++] = (size_t)found->second;
+          }
         }
       }
-    }
       break;
 
-    case OBJ_PARM: {
-      if(!DeserializeByte()) {
-        instance[instance_pos++] = 0;
+      case INT_ARY_PARM:
+      {
+        if(!DeserializeByte()) {
+          instance[instance_pos++] = 0;
+        }
+        else {
+          INT_VALUE mem_id = DeserializeInt();
+          if(mem_id < 0) {
+            const long array_size = DeserializeInt();
+            const long array_dim = DeserializeInt();
+            const long array_size_dim = DeserializeInt();
+            size_t* array = MemoryManager::AllocateArray(array_size + array_dim + 2, INT_TYPE,
+                                                         op_stack, *stack_pos, false);
+            array[0] = array_size;
+            array[1] = array_dim;
+            array[2] = array_size_dim;
+            size_t* array_ptr = array + 3;
+            // copy content
+            for(int i = 0; i < array_size; i++) {
+              array_ptr[i] = DeserializeInt();
+            }
+#ifdef _DEBUG
+            wcout << L"--- deserialization: int array; value=" << array << ",  size=" << array_size << L" ---" << endl;
+#endif
+            // update cache
+            mem_cache[-mem_id] = array;
+            instance[instance_pos++] = (size_t)array;
+          }
+          else {
+            map<INT_VALUE, size_t*>::iterator found = mem_cache.find(mem_id);
+            if(found == mem_cache.end()) {
+              return NULL;
+            }
+            instance[instance_pos++] = (size_t)found->second;
+          }
+        }
       }
-      else {
-        ObjectDeserializer deserializer(buffer, buffer_offset, mem_cache, buffer_array_size, op_stack, stack_pos);
-        instance[instance_pos++] = (size_t)deserializer.DeserializeObject();
-        buffer_offset = deserializer.GetOffset();
-        mem_cache = deserializer.GetMemoryCache();
-      }
-    }
       break;
 
-    default:
+      case FLOAT_ARY_PARM:
+      {
+        if(!DeserializeByte()) {
+          instance[instance_pos++] = 0;
+        }
+        else {
+          INT_VALUE mem_id = DeserializeInt();
+          if(mem_id < 0) {
+            const long array_size = DeserializeInt();
+            const long array_dim = DeserializeInt();
+            const long array_size_dim = DeserializeInt();
+            size_t* array = MemoryManager::AllocateArray(array_size * 2 + array_dim + 2, INT_TYPE,
+                                                         op_stack, *stack_pos, false);
+
+            array[0] = array_size;
+            array[1] = array_dim;
+            array[2] = array_size_dim;
+            FLOAT_VALUE* array_ptr = (FLOAT_VALUE*)(array + 3);
+            // copy content
+            memcpy(array_ptr, buffer + buffer_offset, array_size * sizeof(FLOAT_VALUE));
+            buffer_offset += array_size * sizeof(FLOAT_VALUE);
+#ifdef _DEBUG
+            wcout << L"--- deserialization: float array; value=" << array << ", size=" << array_size << L" ---" << endl;
+#endif
+            // update cache
+            mem_cache[-mem_id] = array;
+            instance[instance_pos++] = (size_t)array;
+          }
+          else {
+            map<INT_VALUE, size_t*>::iterator found = mem_cache.find(mem_id);
+            if(found == mem_cache.end()) {
+              return NULL;
+            }
+            instance[instance_pos++] = (size_t)found->second;
+          }
+        }
+      }
       break;
+
+      case OBJ_ARY_PARM:
+      {
+        if(!DeserializeByte()) {
+          instance[instance_pos++] = 0;
+        }
+        else {
+          INT_VALUE mem_id = DeserializeInt();
+          if(mem_id < 0) {
+            const long array_size = DeserializeInt();
+            const long array_dim = DeserializeInt();
+            const long array_size_dim = DeserializeInt();
+            size_t* array = MemoryManager::AllocateArray(array_size + array_dim + 2, INT_TYPE,
+                                                         op_stack, *stack_pos, false);
+            array[0] = array_size;
+            array[1] = array_dim;
+            array[2] = array_size_dim;
+            size_t* array_ptr = array + 3;
+
+            // copy content
+            for(int i = 0; i < array_size; i++) {
+              if(!DeserializeByte()) {
+                instance[instance_pos++] = 0;
+              }
+              else {
+                ObjectDeserializer deserializer(buffer, buffer_offset, mem_cache,
+                                                buffer_array_size, op_stack, stack_pos);
+                array_ptr[i] = (size_t)deserializer.DeserializeObject();
+                buffer_offset = deserializer.GetOffset();
+                mem_cache = deserializer.GetMemoryCache();
+              }
+            }
+#ifdef _DEBUG
+            wcout << L"--- deserialization: object array; value=" << array << ",  size="
+              << array_size << L" ---" << endl;
+#endif
+            // update cache
+            mem_cache[-mem_id] = array;
+            instance[instance_pos++] = (size_t)array;
+          }
+          else {
+            map<INT_VALUE, size_t*>::iterator found = mem_cache.find(mem_id);
+            if(found == mem_cache.end()) {
+              return NULL;
+            }
+            instance[instance_pos++] = (size_t)found->second;
+          }
+        }
+      }
+      break;
+
+      case OBJ_PARM:
+      {
+        if(!DeserializeByte()) {
+          instance[instance_pos++] = 0;
+        }
+        else {
+          ObjectDeserializer deserializer(buffer, buffer_offset, mem_cache, buffer_array_size, op_stack, stack_pos);
+          instance[instance_pos++] = (size_t)deserializer.DeserializeObject();
+          buffer_offset = deserializer.GetOffset();
+          mem_cache = deserializer.GetMemoryCache();
+        }
+      }
+      break;
+
+      default:
+        break;
     }
   }
 
@@ -655,7 +670,7 @@ void APITools_MethodCall(size_t* op_stack, long *stack_pos, size_t* instance, in
 #else
   StackClass* cls = Loader::GetProgram()->GetClass(cls_id);
 #endif
-  
+
   if(cls) {
     StackMethod* mthd = cls->GetMethod(mthd_id);
     if(mthd) {
@@ -673,8 +688,8 @@ void APITools_MethodCall(size_t* op_stack, long *stack_pos, size_t* instance, in
   }
 }
 
-void APITools_MethodCall(size_t* op_stack, long* stack_pos, size_t* instance, 
-                         const wchar_t* cls_id, const wchar_t* mthd_id) 
+void APITools_MethodCall(size_t* op_stack, long* stack_pos, size_t* instance,
+                         const wchar_t* cls_id, const wchar_t* mthd_id)
 {
 #ifdef _SCRIPTER
   StackClass* cls = Scripter::GetProgram()->GetClass(cls_id);
@@ -698,8 +713,8 @@ void APITools_MethodCall(size_t* op_stack, long* stack_pos, size_t* instance,
   }
 }
 
-void APITools_MethodCallId(size_t* op_stack, long *stack_pos, size_t* instance, 
-                           const int cls_id, const int mthd_id) 
+void APITools_MethodCallId(size_t* op_stack, long *stack_pos, size_t* instance,
+                           const int cls_id, const int mthd_id)
 {
 #ifdef _SCRIPTER
   StackClass* cls = Scripter::GetProgram()->GetClass(cls_id);
@@ -742,14 +757,14 @@ void TrapProcessor::CreateNewObject(const wstring &cls_id, size_t* &op_stack, lo
  * Creates a container for a method
  ********************************/
 size_t* TrapProcessor::CreateMethodObject(size_t* cls_obj, StackMethod* mthd, StackProgram* program,
-                                        size_t* &op_stack, long* &stack_pos) {
+                                          size_t* &op_stack, long* &stack_pos) {
   size_t* mthd_obj = MemoryManager::AllocateObject(program->GetMethodObjectId(),
-                                                 op_stack, *stack_pos,
-                                                 false);
+                                                   op_stack, *stack_pos,
+                                                   false);
   // method and class object
   mthd_obj[0] = (size_t)mthd;
   mthd_obj[1] = (size_t)cls_obj;
-  
+
   // set method name
   const wstring &qual_mthd_name = mthd->GetName();
   const size_t semi_qual_mthd_index = qual_mthd_name.find(':');
@@ -757,7 +772,7 @@ size_t* TrapProcessor::CreateMethodObject(size_t* cls_obj, StackMethod* mthd, St
     wcerr << L">>> Internal error: invalid method name <<<" << endl;
     exit(1);
   }
-      
+
   const wstring &semi_qual_mthd_string = qual_mthd_name.substr(semi_qual_mthd_index + 1);
   const size_t mthd_index = semi_qual_mthd_string.find(':');
   if(mthd_index == wstring::npos) {
@@ -773,66 +788,67 @@ size_t* TrapProcessor::CreateMethodObject(size_t* cls_obj, StackMethod* mthd, St
   vector<size_t*> data_type_obj_holder;
   while(index < (int)params_string.size()) {
     size_t* data_type_obj = MemoryManager::AllocateObject(program->GetDataTypeObjectId(),
-                                                        op_stack, *stack_pos,
-                                                        false);
+                                                          op_stack, *stack_pos,
+                                                          false);
     data_type_obj_holder.push_back(data_type_obj);
-        
+
     switch(params_string[index]) {
-    case L'l':
-      data_type_obj[0] = -1000;
-      index++;
-      break;
-	  
-    case L'b':
-      data_type_obj[0] = -999;
-      index++;
-      break;
-
-    case L'i':
-      data_type_obj[0] = -997;
-      index++;
-      break;
-
-    case L'f':
-      data_type_obj[0] = -996;
-      index++;
-      break;
-
-    case L'c':
-      data_type_obj[0] = -998;
-      index++;
-      break;
-	  
-    case L'o': {
-      data_type_obj[0] = -995;
-      index++;
-      const int start_index = index + 1;
-      while(index < (int)params_string.size() && params_string[index] != L',') {
+      case L'l':
+        data_type_obj[0] = -1000;
         index++;
-      }
-      data_type_obj[1] = (size_t)CreateStringObject(params_string.substr(start_index, index - 2), 
-                                                  program, op_stack, stack_pos);
-    }
-      break;
-	  
-    case L'm':
-      data_type_obj[0] = -994;
-      index++;
-      while(index < (int)params_string.size() && params_string[index] != L'~') {
+        break;
+
+      case L'b':
+        data_type_obj[0] = -999;
         index++;
-      }
-      while(index < (int)params_string.size() && params_string[index] != L',') {
+        break;
+
+      case L'i':
+        data_type_obj[0] = -997;
         index++;
+        break;
+
+      case L'f':
+        data_type_obj[0] = -996;
+        index++;
+        break;
+
+      case L'c':
+        data_type_obj[0] = -998;
+        index++;
+        break;
+
+      case L'o':
+      {
+        data_type_obj[0] = -995;
+        index++;
+        const int start_index = index + 1;
+        while(index < (int)params_string.size() && params_string[index] != L',') {
+          index++;
+        }
+        data_type_obj[1] = (size_t)CreateStringObject(params_string.substr(start_index, index - 2),
+                                                      program, op_stack, stack_pos);
       }
       break;
-	  
-    default:
+
+      case L'm':
+        data_type_obj[0] = -994;
+        index++;
+        while(index < (int)params_string.size() && params_string[index] != L'~') {
+          index++;
+        }
+        while(index < (int)params_string.size() && params_string[index] != L',') {
+          index++;
+        }
+        break;
+
+      default:
 #ifdef _DEBUG
-      assert(false);
+        assert(false);
 #endif
-      break;
+        break;
     }
-	
+
     // check array dimension
     int dimension = 0;
     while(index < (int)params_string.size() && params_string[index] == L'*') {
@@ -840,18 +856,18 @@ size_t* TrapProcessor::CreateMethodObject(size_t* cls_obj, StackMethod* mthd, St
       index++;
     }
     data_type_obj[2] = dimension;
-	
+
     // match ','
     index++;
   }
-      
+
   // create type array
   const long type_obj_array_size = (long)data_type_obj_holder.size();
   const long type_obj_array_dim = 1;
   size_t* type_obj_array = MemoryManager::AllocateArray(type_obj_array_size +
-                                                             type_obj_array_dim + 2,
-                                                             INT_TYPE, op_stack,
-                                                             *stack_pos, false);
+                                                        type_obj_array_dim + 2,
+                                                        INT_TYPE, op_stack,
+                                                        *stack_pos, false);
   type_obj_array[0] = type_obj_array_size;
   type_obj_array[1] = type_obj_array_dim;
   type_obj_array[2] = type_obj_array_size;
@@ -862,10 +878,10 @@ size_t* TrapProcessor::CreateMethodObject(size_t* cls_obj, StackMethod* mthd, St
   }
   // set type array
   mthd_obj[3] = (size_t)type_obj_array;
-      
+
   return mthd_obj;
 }
-    
+
 /********************************
  * Creates a container for a class
  ********************************/
@@ -875,14 +891,14 @@ void TrapProcessor::CreateClassObject(StackClass* cls, size_t* cls_obj, size_t* 
   const long mthd_obj_array_size = cls->GetMethodCount();
   const long mthd_obj_array_dim = 1;
   size_t* mthd_obj_array = MemoryManager::AllocateArray(mthd_obj_array_size +
-                                                             mthd_obj_array_dim + 2,
-                                                             INT_TYPE, op_stack,
-                                                             *stack_pos, false);
-      
+                                                        mthd_obj_array_dim + 2,
+                                                        INT_TYPE, op_stack,
+                                                        *stack_pos, false);
+
   mthd_obj_array[0] = mthd_obj_array_size;
   mthd_obj_array[1] = mthd_obj_array_dim;
   mthd_obj_array[2] = mthd_obj_array_size;
-      
+
   StackMethod** methods = cls->GetMethods();
   size_t* mthd_obj_array_ptr = mthd_obj_array + 3;
   for(int i = 0; i < mthd_obj_array_size; i++) {
@@ -896,16 +912,16 @@ void TrapProcessor::CreateClassObject(StackClass* cls, size_t* cls_obj, size_t* 
  * Create a string instance
  ********************************/
 size_t* TrapProcessor::CreateStringObject(const wstring &value_str, StackProgram* program,
-                                        size_t* &op_stack, long* &stack_pos) {
+                                          size_t* &op_stack, long* &stack_pos) {
   // create character array
   const long char_array_size = (long)value_str.size();
   const long char_array_dim = 1;
   size_t* char_array = MemoryManager::AllocateArray(char_array_size + 1 +
-                                                         ((char_array_dim + 2) *
-                                                          sizeof(size_t)),
-                                                         CHAR_ARY_TYPE,
-                                                         op_stack, *stack_pos,
-                                                         false);
+    ((char_array_dim + 2) *
+                                                    sizeof(size_t)),
+                                                    CHAR_ARY_TYPE,
+                                                    op_stack, *stack_pos,
+                                                    false);
   char_array[0] = char_array_size + 1;
   char_array[1] = char_array_dim;
   char_array[2] = char_array_size;
@@ -913,15 +929,15 @@ size_t* TrapProcessor::CreateStringObject(const wstring &value_str, StackProgram
   // copy wstring
   wchar_t* char_array_ptr = (wchar_t*)(char_array + 3);
   wcsncpy(char_array_ptr, value_str.c_str(), char_array_size);
-      
+
   // create 'System.String' object instance
   size_t* str_obj = MemoryManager::AllocateObject(program->GetStringObjectId(),
-                                                op_stack, *stack_pos,
-                                                false);
+                                                  op_stack, *stack_pos,
+                                                  false);
   str_obj[0] = (size_t)char_array;
   str_obj[1] = char_array_size;
   str_obj[2] = char_array_size;
-      
+
   return str_obj;
 }
 
@@ -950,7 +966,7 @@ void TrapProcessor::ProcessTimerElapsed(size_t* &op_stack, long* &stack_pos)
  * Creates a Date object with
  * current time
  ********************************/
-void TrapProcessor::ProcessCurrentTime(StackFrame* frame, bool is_gmt) 
+void TrapProcessor::ProcessCurrentTime(StackFrame* frame, bool is_gmt)
 {
   time_t raw_time;
   raw_time = time(NULL);
@@ -1084,7 +1100,7 @@ void TrapProcessor::ProcessSetTime3(size_t* &op_stack, long* &stack_pos)
 }
 
 void TrapProcessor::ProcessAddTime(TimeInterval t, size_t* &op_stack, long* &stack_pos)
-{  
+{
   long value = (long)PopInt(op_stack, stack_pos);
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
@@ -1092,21 +1108,21 @@ void TrapProcessor::ProcessAddTime(TimeInterval t, size_t* &op_stack, long* &sta
     // calculate change in seconds
     long offset;
     switch(t) {
-    case DAY_TIME:
-      offset = 86400 * value;
-      break;
+      case DAY_TIME:
+        offset = 86400 * value;
+        break;
 
-    case HOUR_TIME:
-      offset = 3600 * value;
-      break;
+      case HOUR_TIME:
+        offset = 3600 * value;
+        break;
 
-    case MIN_TIME:
-      offset = 60 * value;
-      break;
+      case MIN_TIME:
+        offset = 60 * value;
+        break;
 
-    default:
-      offset = value;
-      break;
+      default:
+        offset = value;
+        break;
     }
 
     // create time structure
@@ -1121,7 +1137,7 @@ void TrapProcessor::ProcessAddTime(TimeInterval t, size_t* &op_stack, long* &sta
 
     // calculate difference
     time_t raw_time = mktime(&set_time);
-    raw_time += offset;  
+    raw_time += offset;
 
     struct tm* curr_time;
     if(instance[8]) {
@@ -1148,7 +1164,7 @@ void TrapProcessor::ProcessAddTime(TimeInterval t, size_t* &op_stack, long* &sta
 /********************************
  * Get platform string
  ********************************/
-void TrapProcessor::ProcessPlatform(StackProgram* program, size_t* &op_stack, long* &stack_pos) 
+void TrapProcessor::ProcessPlatform(StackProgram* program, size_t* &op_stack, long* &stack_pos)
 {
   const wstring value_str = BytesToUnicode(System::GetPlatform());
   size_t* str_obj = CreateStringObject(value_str, program, op_stack, stack_pos);
@@ -1159,7 +1175,7 @@ void TrapProcessor::ProcessPlatform(StackProgram* program, size_t* &op_stack, lo
  * Get file owner string
  ********************************/
 void TrapProcessor::ProcessFileOwner(const char* name, bool is_account,
-				     StackProgram* program, size_t* &op_stack, long* &stack_pos) {
+                                     StackProgram* program, size_t* &op_stack, long* &stack_pos) {
   const wstring value_str = File::FileOwner(name, is_account);
   if(value_str.size() > 0) {
     size_t* str_obj = CreateStringObject(value_str, program, op_stack, stack_pos);
@@ -1173,7 +1189,7 @@ void TrapProcessor::ProcessFileOwner(const char* name, bool is_account,
 /********************************
  * Get version string
  ********************************/
-void TrapProcessor::ProcessVersion(StackProgram* program, size_t* &op_stack, long* &stack_pos) 
+void TrapProcessor::ProcessVersion(StackProgram* program, size_t* &op_stack, long* &stack_pos)
 {
   size_t* str_obj = CreateStringObject(VERSION_STRING, program, op_stack, stack_pos);
   PushInt((size_t)str_obj, op_stack, stack_pos);
@@ -1198,19 +1214,19 @@ inline size_t* TrapProcessor::DeserializeArray(ParamType type, size_t* inst, siz
     size_t* dest_array;
     if(type == BYTE_ARY_PARM) {
       dest_array = MemoryManager::AllocateArray(dest_array_size + ((dest_array_dim + 2) * sizeof(size_t)),
-                                                       BYTE_ARY_TYPE, op_stack, *stack_pos, false);
+                                                BYTE_ARY_TYPE, op_stack, *stack_pos, false);
     }
     else if(type == CHAR_ARY_PARM) {
       dest_array = MemoryManager::AllocateArray(dest_array_size + ((dest_array_dim + 2) * sizeof(size_t)),
-                                                       CHAR_ARY_TYPE, op_stack, *stack_pos, false);
+                                                CHAR_ARY_TYPE, op_stack, *stack_pos, false);
     }
     else if(type == INT_ARY_PARM || type == OBJ_ARY_PARM) {
       dest_array = MemoryManager::AllocateArray(dest_array_size + dest_array_dim + 2,
-                                                       INT_TYPE, op_stack, *stack_pos, false);
+                                                INT_TYPE, op_stack, *stack_pos, false);
     }
     else {
       dest_array = MemoryManager::AllocateArray(dest_array_size + dest_array_dim + 2,
-                                                       FLOAT_TYPE, op_stack, *stack_pos, false);
+                                                FLOAT_TYPE, op_stack, *stack_pos, false);
     }
 
     // read array meta data
@@ -1249,11 +1265,11 @@ inline size_t* TrapProcessor::DeserializeArray(ParamType type, size_t* inst, siz
 // expand buffer
 //
 size_t* TrapProcessor::ExpandSerialBuffer(const long src_buffer_size, size_t* dest_buffer,
-  size_t* inst, size_t* &op_stack, long* &stack_pos) {
+                                          size_t* inst, size_t* &op_stack, long* &stack_pos) {
   long dest_buffer_size = (long)dest_buffer[2];
   const long dest_pos = (long)inst[1];
   const long calc_offset = src_buffer_size + dest_pos;
-      
+
   if(calc_offset >= dest_buffer_size) {
     const long dest_pos = (long)inst[1];
     while(calc_offset >= dest_buffer_size) {
@@ -1263,16 +1279,16 @@ size_t* TrapProcessor::ExpandSerialBuffer(const long src_buffer_size, size_t* de
     const long byte_array_size = dest_buffer_size;
     const long byte_array_dim = 1;
     size_t* byte_array = (size_t*)MemoryManager::AllocateArray(byte_array_size + 1 + ((byte_array_dim + 2) * sizeof(size_t)),
-                                                           BYTE_ARY_TYPE, op_stack, *stack_pos, false);
+                                                               BYTE_ARY_TYPE, op_stack, *stack_pos, false);
     byte_array[0] = byte_array_size + 1;
     byte_array[1] = byte_array_dim;
     byte_array[2] = byte_array_size;
-    
+
     // copy content
     char* byte_array_ptr = (char*)(byte_array + 3);
-    const char* dest_buffer_ptr = (char*)(dest_buffer + 3);	
+    const char* dest_buffer_ptr = (char*)(dest_buffer + 3);
     memcpy(byte_array_ptr, dest_buffer_ptr, dest_pos);
-	
+
     return byte_array;
   }
 
@@ -1290,11 +1306,11 @@ void TrapProcessor::SerializeObject(size_t* inst, StackFrame* frame, size_t* &op
   const long src_buffer_size = (long)src_buffer.size();
   size_t* dest_buffer = (size_t*)inst[0];
   long dest_pos = (long)inst[1];
-  
+
   // expand buffer, if needed
   dest_buffer = ExpandSerialBuffer(src_buffer_size, dest_buffer, inst, op_stack, stack_pos);
   inst[0] = (size_t)dest_buffer;
-  
+
   // copy content
   char* dest_buffer_ptr = ((char*)(dest_buffer + 3) + dest_pos);
   for(int i = 0; i < src_buffer_size; i++, dest_pos++) {
@@ -1308,14 +1324,14 @@ void TrapProcessor::SerializeObject(size_t* inst, StackFrame* frame, size_t* &op
  ********************************/
 void TrapProcessor::DeserializeObject(size_t* inst, size_t* &op_stack, long* &stack_pos) {
   if(!DeserializeByte(inst)) {
-    PushInt(0, op_stack, stack_pos);    
+    PushInt(0, op_stack, stack_pos);
   }
   else {
     size_t* byte_array = (size_t*)inst[0];
     const long dest_pos = (long)inst[1];
-    const long byte_array_dim_size = (long)byte_array[2];  
+    const long byte_array_dim_size = (long)byte_array[2];
     const char* byte_array_ptr = ((char*)(byte_array + 3) + dest_pos);
-    
+
     ObjectDeserializer deserializer(byte_array_ptr, byte_array_dim_size, op_stack, stack_pos);
     PushInt((size_t)deserializer.DeserializeObject(), op_stack, stack_pos);
     inst[1] = dest_pos + deserializer.GetOffset();
@@ -1323,372 +1339,372 @@ void TrapProcessor::DeserializeObject(size_t* inst, size_t* &op_stack, long* &st
 }
 
 /********************************
- * Handles callback traps from 
+ * Handles callback traps from
  * the interpreter and JIT code
  ********************************/
 bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
                                 size_t* &op_stack, long* &stack_pos, StackFrame* frame) {
   const long id = (long)PopInt(op_stack, stack_pos);
   switch(id) {
-  case LOAD_CLS_INST_ID:
-    return LoadClsInstId(program, inst, op_stack, stack_pos, frame);
+    case LOAD_CLS_INST_ID:
+      return LoadClsInstId(program, inst, op_stack, stack_pos, frame);
 
-  case LOAD_NEW_OBJ_INST:
-    return LoadNewObjInst(program, inst, op_stack, stack_pos, frame);
+    case LOAD_NEW_OBJ_INST:
+      return LoadNewObjInst(program, inst, op_stack, stack_pos, frame);
 
-  case LOAD_CLS_BY_INST:
-    return LoadClsByInst(program, inst, op_stack, stack_pos, frame);
+    case LOAD_CLS_BY_INST:
+      return LoadClsByInst(program, inst, op_stack, stack_pos, frame);
 
-  case BYTES_TO_UNICODE:
-    return ConvertBytesToUnicode(program, inst, op_stack, stack_pos, frame);
+    case BYTES_TO_UNICODE:
+      return ConvertBytesToUnicode(program, inst, op_stack, stack_pos, frame);
 
-  case UNICODE_TO_BYTES:
-    return ConvertUnicodeToBytes(program, inst, op_stack, stack_pos, frame);
+    case UNICODE_TO_BYTES:
+      return ConvertUnicodeToBytes(program, inst, op_stack, stack_pos, frame);
 
-  case LOAD_MULTI_ARY_SIZE:
-    return LoadMultiArySize(program, inst, op_stack, stack_pos, frame);
+    case LOAD_MULTI_ARY_SIZE:
+      return LoadMultiArySize(program, inst, op_stack, stack_pos, frame);
 
-  case CPY_CHAR_STR_ARY:
-    return CpyCharStrAry(program, inst, op_stack, stack_pos, frame);
+    case CPY_CHAR_STR_ARY:
+      return CpyCharStrAry(program, inst, op_stack, stack_pos, frame);
 
-  case CPY_CHAR_STR_ARYS:
-    return CpyCharStrArys(program, inst, op_stack, stack_pos, frame);
+    case CPY_CHAR_STR_ARYS:
+      return CpyCharStrArys(program, inst, op_stack, stack_pos, frame);
 
-  case CPY_INT_STR_ARY:
-    return CpyIntStrAry(program, inst, op_stack, stack_pos, frame);
+    case CPY_INT_STR_ARY:
+      return CpyIntStrAry(program, inst, op_stack, stack_pos, frame);
 
-  case CPY_FLOAT_STR_ARY:
-    return CpyFloatStrAry(program, inst, op_stack, stack_pos, frame);
+    case CPY_FLOAT_STR_ARY:
+      return CpyFloatStrAry(program, inst, op_stack, stack_pos, frame);
 
-  case STD_OUT_BOOL:
-    return StdOutBool(program, inst, op_stack, stack_pos, frame);
+    case STD_OUT_BOOL:
+      return StdOutBool(program, inst, op_stack, stack_pos, frame);
 
-  case STD_OUT_BYTE:
-    return StdOutByte(program, inst, op_stack, stack_pos, frame);
+    case STD_OUT_BYTE:
+      return StdOutByte(program, inst, op_stack, stack_pos, frame);
 
-  case STD_OUT_CHAR:
-    return StdOutChar(program, inst, op_stack, stack_pos, frame);
+    case STD_OUT_CHAR:
+      return StdOutChar(program, inst, op_stack, stack_pos, frame);
 
-  case STD_OUT_INT:
-    return StdOutInt(program, inst, op_stack, stack_pos, frame);
+    case STD_OUT_INT:
+      return StdOutInt(program, inst, op_stack, stack_pos, frame);
 
-  case STD_OUT_FLOAT:
-    return StdOutFloat(program, inst, op_stack, stack_pos, frame);
+    case STD_OUT_FLOAT:
+      return StdOutFloat(program, inst, op_stack, stack_pos, frame);
 
-  case STD_OUT_CHAR_ARY:
-    return StdOutCharAry(program, inst, op_stack, stack_pos, frame);
+    case STD_OUT_CHAR_ARY:
+      return StdOutCharAry(program, inst, op_stack, stack_pos, frame);
 
-  case STD_OUT_BYTE_ARY_LEN:
-    return StdOutByteAryLen(program, inst, op_stack, stack_pos, frame);
+    case STD_OUT_BYTE_ARY_LEN:
+      return StdOutByteAryLen(program, inst, op_stack, stack_pos, frame);
 
-  case STD_OUT_CHAR_ARY_LEN:
-    return StdOutCharAryLen(program, inst, op_stack, stack_pos, frame);
+    case STD_OUT_CHAR_ARY_LEN:
+      return StdOutCharAryLen(program, inst, op_stack, stack_pos, frame);
 
-  case STD_IN_STRING:
-    return StdInString(program, inst, op_stack, stack_pos, frame);
+    case STD_IN_STRING:
+      return StdInString(program, inst, op_stack, stack_pos, frame);
 
-  case STD_ERR_BOOL:
-    return StdErrBool(program, inst, op_stack, stack_pos, frame);
+    case STD_ERR_BOOL:
+      return StdErrBool(program, inst, op_stack, stack_pos, frame);
 
-  case STD_ERR_BYTE:
-    return StdErrByte(program, inst, op_stack, stack_pos, frame);
+    case STD_ERR_BYTE:
+      return StdErrByte(program, inst, op_stack, stack_pos, frame);
 
-  case STD_ERR_CHAR:
-    return StdErrChar(program, inst, op_stack, stack_pos, frame);
+    case STD_ERR_CHAR:
+      return StdErrChar(program, inst, op_stack, stack_pos, frame);
 
-  case STD_ERR_INT:
-    return StdErrInt(program, inst, op_stack, stack_pos, frame);
+    case STD_ERR_INT:
+      return StdErrInt(program, inst, op_stack, stack_pos, frame);
 
-  case STD_ERR_FLOAT:
-    return StdErrFloat(program, inst, op_stack, stack_pos, frame);
+    case STD_ERR_FLOAT:
+      return StdErrFloat(program, inst, op_stack, stack_pos, frame);
 
-  case STD_ERR_CHAR_ARY:
-    return StdErrCharAry(program, inst, op_stack, stack_pos, frame);
+    case STD_ERR_CHAR_ARY:
+      return StdErrCharAry(program, inst, op_stack, stack_pos, frame);
 
-  case STD_ERR_BYTE_ARY:
-    return StdErrByteAry(program, inst, op_stack, stack_pos, frame);
+    case STD_ERR_BYTE_ARY:
+      return StdErrByteAry(program, inst, op_stack, stack_pos, frame);
 
-  case EXIT:
-    return Exit(program, inst, op_stack, stack_pos, frame);
+    case EXIT:
+      return Exit(program, inst, op_stack, stack_pos, frame);
 
-  case GMT_TIME:
-    return GmtTime(program, inst, op_stack, stack_pos, frame);
+    case GMT_TIME:
+      return GmtTime(program, inst, op_stack, stack_pos, frame);
 
-  case SYS_TIME:
-    return SysTime(program, inst, op_stack, stack_pos, frame);
+    case SYS_TIME:
+      return SysTime(program, inst, op_stack, stack_pos, frame);
 
-  case DATE_TIME_SET_1:
-    return DateTimeSet1(program, inst, op_stack, stack_pos, frame);
+    case DATE_TIME_SET_1:
+      return DateTimeSet1(program, inst, op_stack, stack_pos, frame);
 
-  case DATE_TIME_SET_2:
-    return DateTimeSet2(program, inst, op_stack, stack_pos, frame);
+    case DATE_TIME_SET_2:
+      return DateTimeSet2(program, inst, op_stack, stack_pos, frame);
 
-  case DATE_TIME_ADD_DAYS:
-    return DateTimeAddDays(program, inst, op_stack, stack_pos, frame);
+    case DATE_TIME_ADD_DAYS:
+      return DateTimeAddDays(program, inst, op_stack, stack_pos, frame);
 
-  case DATE_TIME_ADD_HOURS:
-    return DateTimeAddHours(program, inst, op_stack, stack_pos, frame);
+    case DATE_TIME_ADD_HOURS:
+      return DateTimeAddHours(program, inst, op_stack, stack_pos, frame);
 
-  case DATE_TIME_ADD_MINS:
-    return DateTimeAddMins(program, inst, op_stack, stack_pos, frame);
+    case DATE_TIME_ADD_MINS:
+      return DateTimeAddMins(program, inst, op_stack, stack_pos, frame);
 
-  case DATE_TIME_ADD_SECS:
-    return DateTimeAddSecs(program, inst, op_stack, stack_pos, frame);
+    case DATE_TIME_ADD_SECS:
+      return DateTimeAddSecs(program, inst, op_stack, stack_pos, frame);
 
-  case TIMER_START:
-    return TimerStart(program, inst, op_stack, stack_pos, frame);
+    case TIMER_START:
+      return TimerStart(program, inst, op_stack, stack_pos, frame);
 
-  case TIMER_END:
-    return TimerEnd(program, inst, op_stack, stack_pos, frame);
+    case TIMER_END:
+      return TimerEnd(program, inst, op_stack, stack_pos, frame);
 
-  case TIMER_ELAPSED:
-    return TimerElapsed(program, inst, op_stack, stack_pos, frame);
+    case TIMER_ELAPSED:
+      return TimerElapsed(program, inst, op_stack, stack_pos, frame);
 
-  case GET_PLTFRM:
-    return GetPltfrm(program, inst, op_stack, stack_pos, frame);
+    case GET_PLTFRM:
+      return GetPltfrm(program, inst, op_stack, stack_pos, frame);
 
-  case GET_VERSION:
-    return GetVersion(program, inst, op_stack, stack_pos, frame);
+    case GET_VERSION:
+      return GetVersion(program, inst, op_stack, stack_pos, frame);
 
-  case GET_SYS_PROP:
-    return GetSysProp(program, inst, op_stack, stack_pos, frame);
+    case GET_SYS_PROP:
+      return GetSysProp(program, inst, op_stack, stack_pos, frame);
 
-  case SET_SYS_PROP:
-    return SetSysProp(program, inst, op_stack, stack_pos, frame);
+    case SET_SYS_PROP:
+      return SetSysProp(program, inst, op_stack, stack_pos, frame);
 
-  case SOCK_TCP_RESOLVE_NAME:
-    return SockTcpResolveName(program, inst, op_stack, stack_pos, frame);
+    case SOCK_TCP_RESOLVE_NAME:
+      return SockTcpResolveName(program, inst, op_stack, stack_pos, frame);
 
-  case SOCK_TCP_HOST_NAME:
-    return SockTcpHostName(program, inst, op_stack, stack_pos, frame);
+    case SOCK_TCP_HOST_NAME:
+      return SockTcpHostName(program, inst, op_stack, stack_pos, frame);
 
-  case SOCK_TCP_CONNECT:
-    return SockTcpConnect(program, inst, op_stack, stack_pos, frame);
+    case SOCK_TCP_CONNECT:
+      return SockTcpConnect(program, inst, op_stack, stack_pos, frame);
 
-  case SOCK_TCP_BIND:
-    return SockTcpBind(program, inst, op_stack, stack_pos, frame);
+    case SOCK_TCP_BIND:
+      return SockTcpBind(program, inst, op_stack, stack_pos, frame);
 
-  case SOCK_TCP_LISTEN:
-    return SockTcpListen(program, inst, op_stack, stack_pos, frame);
+    case SOCK_TCP_LISTEN:
+      return SockTcpListen(program, inst, op_stack, stack_pos, frame);
 
-  case SOCK_TCP_ACCEPT:
-    return SockTcpAccept(program, inst, op_stack, stack_pos, frame);
+    case SOCK_TCP_ACCEPT:
+      return SockTcpAccept(program, inst, op_stack, stack_pos, frame);
 
-  case SOCK_TCP_CLOSE:
-    return SockTcpClose(program, inst, op_stack, stack_pos, frame);
+    case SOCK_TCP_CLOSE:
+      return SockTcpClose(program, inst, op_stack, stack_pos, frame);
 
-  case SOCK_TCP_OUT_STRING:
-    return SockTcpOutString(program, inst, op_stack, stack_pos, frame);
+    case SOCK_TCP_OUT_STRING:
+      return SockTcpOutString(program, inst, op_stack, stack_pos, frame);
 
-  case SOCK_TCP_IN_STRING:
-    return SockTcpInString(program, inst, op_stack, stack_pos, frame);
+    case SOCK_TCP_IN_STRING:
+      return SockTcpInString(program, inst, op_stack, stack_pos, frame);
 
-  case SOCK_TCP_SSL_CONNECT:
-    return SockTcpSslConnect(program, inst, op_stack, stack_pos, frame);
+    case SOCK_TCP_SSL_CONNECT:
+      return SockTcpSslConnect(program, inst, op_stack, stack_pos, frame);
 
-  case SOCK_TCP_SSL_CERT:
-    return SockTcpSslCert(program, inst, op_stack, stack_pos, frame);
+    case SOCK_TCP_SSL_CERT:
+      return SockTcpSslCert(program, inst, op_stack, stack_pos, frame);
 
-  case SOCK_TCP_SSL_CLOSE:
-    return SockTcpSslClose(program, inst, op_stack, stack_pos, frame);
+    case SOCK_TCP_SSL_CLOSE:
+      return SockTcpSslClose(program, inst, op_stack, stack_pos, frame);
 
-  case SOCK_TCP_SSL_OUT_STRING:
-    return SockTcpSslOutString(program, inst, op_stack, stack_pos, frame);
+    case SOCK_TCP_SSL_OUT_STRING:
+      return SockTcpSslOutString(program, inst, op_stack, stack_pos, frame);
 
-  case SOCK_TCP_SSL_IN_STRING:
-    return SockTcpSslInString(program, inst, op_stack, stack_pos, frame);
+    case SOCK_TCP_SSL_IN_STRING:
+      return SockTcpSslInString(program, inst, op_stack, stack_pos, frame);
 
-  case SERL_CHAR:
-    return SerlChar(program, inst, op_stack, stack_pos, frame);
+    case SERL_CHAR:
+      return SerlChar(program, inst, op_stack, stack_pos, frame);
 
-  case SERL_INT:
-    return SerlInt(program, inst, op_stack, stack_pos, frame);
+    case SERL_INT:
+      return SerlInt(program, inst, op_stack, stack_pos, frame);
 
-  case SERL_FLOAT:
-    return SerlFloat(program, inst, op_stack, stack_pos, frame);
+    case SERL_FLOAT:
+      return SerlFloat(program, inst, op_stack, stack_pos, frame);
 
-  case SERL_OBJ_INST:
-    return SerlObjInst(program, inst, op_stack, stack_pos, frame);
+    case SERL_OBJ_INST:
+      return SerlObjInst(program, inst, op_stack, stack_pos, frame);
 
-  case SERL_BYTE_ARY:
-    return SerlByteAry(program, inst, op_stack, stack_pos, frame);
+    case SERL_BYTE_ARY:
+      return SerlByteAry(program, inst, op_stack, stack_pos, frame);
 
-  case SERL_CHAR_ARY:
-    return SerlCharAry(program, inst, op_stack, stack_pos, frame);
+    case SERL_CHAR_ARY:
+      return SerlCharAry(program, inst, op_stack, stack_pos, frame);
 
-  case SERL_INT_ARY:
-    return SerlIntAry(program, inst, op_stack, stack_pos, frame);
+    case SERL_INT_ARY:
+      return SerlIntAry(program, inst, op_stack, stack_pos, frame);
 
-  case SERL_OBJ_ARY:
-    return SerlObjAry(program, inst, op_stack, stack_pos, frame);
+    case SERL_OBJ_ARY:
+      return SerlObjAry(program, inst, op_stack, stack_pos, frame);
 
-  case SERL_FLOAT_ARY:
-    return SerlFloatAry(program, inst, op_stack, stack_pos, frame);
+    case SERL_FLOAT_ARY:
+      return SerlFloatAry(program, inst, op_stack, stack_pos, frame);
 
-  case DESERL_CHAR:
-    return DeserlChar(program, inst, op_stack, stack_pos, frame);
+    case DESERL_CHAR:
+      return DeserlChar(program, inst, op_stack, stack_pos, frame);
 
-  case DESERL_INT:
-    return DeserlInt(program, inst, op_stack, stack_pos, frame);
+    case DESERL_INT:
+      return DeserlInt(program, inst, op_stack, stack_pos, frame);
 
-  case DESERL_FLOAT:
-    return DeserlFloat(program, inst, op_stack, stack_pos, frame);
+    case DESERL_FLOAT:
+      return DeserlFloat(program, inst, op_stack, stack_pos, frame);
 
-  case DESERL_OBJ_INST:
-    return DeserlObjInst(program, inst, op_stack, stack_pos, frame);
+    case DESERL_OBJ_INST:
+      return DeserlObjInst(program, inst, op_stack, stack_pos, frame);
 
-  case DESERL_BYTE_ARY:
-    return DeserlByteAry(program, inst, op_stack, stack_pos, frame);
+    case DESERL_BYTE_ARY:
+      return DeserlByteAry(program, inst, op_stack, stack_pos, frame);
 
-  case DESERL_CHAR_ARY:
-    return DeserlCharAry(program, inst, op_stack, stack_pos, frame);
+    case DESERL_CHAR_ARY:
+      return DeserlCharAry(program, inst, op_stack, stack_pos, frame);
 
-  case DESERL_INT_ARY:
-    return DeserlIntAry(program, inst, op_stack, stack_pos, frame);
+    case DESERL_INT_ARY:
+      return DeserlIntAry(program, inst, op_stack, stack_pos, frame);
 
-  case DESERL_OBJ_ARY:
-    return DeserlObjAry(program, inst, op_stack, stack_pos, frame);
+    case DESERL_OBJ_ARY:
+      return DeserlObjAry(program, inst, op_stack, stack_pos, frame);
 
-  case DESERL_FLOAT_ARY:
-    return DeserlFloatAry(program, inst, op_stack, stack_pos, frame);
+    case DESERL_FLOAT_ARY:
+      return DeserlFloatAry(program, inst, op_stack, stack_pos, frame);
 
-  case FILE_OPEN_READ:
-    return FileOpenRead(program, inst, op_stack, stack_pos, frame);
+    case FILE_OPEN_READ:
+      return FileOpenRead(program, inst, op_stack, stack_pos, frame);
 
-  case FILE_OPEN_APPEND:
-    return FileOpenAppend(program, inst, op_stack, stack_pos, frame);
+    case FILE_OPEN_APPEND:
+      return FileOpenAppend(program, inst, op_stack, stack_pos, frame);
 
-  case FILE_OPEN_WRITE:
-    return FileOpenWrite(program, inst, op_stack, stack_pos, frame);
+    case FILE_OPEN_WRITE:
+      return FileOpenWrite(program, inst, op_stack, stack_pos, frame);
 
-  case FILE_OPEN_READ_WRITE:
-    return FileOpenReadWrite(program, inst, op_stack, stack_pos, frame);
+    case FILE_OPEN_READ_WRITE:
+      return FileOpenReadWrite(program, inst, op_stack, stack_pos, frame);
 
-  case FILE_CLOSE:
-    return FileClose(program, inst, op_stack, stack_pos, frame);
+    case FILE_CLOSE:
+      return FileClose(program, inst, op_stack, stack_pos, frame);
 
-  case FILE_FLUSH:
-    return FileFlush(program, inst, op_stack, stack_pos, frame);
+    case FILE_FLUSH:
+      return FileFlush(program, inst, op_stack, stack_pos, frame);
 
-  case FILE_IN_STRING:
-    return FileInString(program, inst, op_stack, stack_pos, frame);
+    case FILE_IN_STRING:
+      return FileInString(program, inst, op_stack, stack_pos, frame);
 
-  case FILE_OUT_STRING:
-    return FileOutString(program, inst, op_stack, stack_pos, frame);
+    case FILE_OUT_STRING:
+      return FileOutString(program, inst, op_stack, stack_pos, frame);
 
-  case FILE_REWIND:
-    return FileRewind(program, inst, op_stack, stack_pos, frame);
+    case FILE_REWIND:
+      return FileRewind(program, inst, op_stack, stack_pos, frame);
 
-  case SOCK_TCP_IS_CONNECTED:
-    return SockTcpIsConnected(program, inst, op_stack, stack_pos, frame);
+    case SOCK_TCP_IS_CONNECTED:
+      return SockTcpIsConnected(program, inst, op_stack, stack_pos, frame);
 
-  case SOCK_TCP_IN_BYTE:
-    return SockTcpInByte(program, inst, op_stack, stack_pos, frame);
+    case SOCK_TCP_IN_BYTE:
+      return SockTcpInByte(program, inst, op_stack, stack_pos, frame);
 
-  case SOCK_TCP_IN_BYTE_ARY:
-    return SockTcpInByteAry(program, inst, op_stack, stack_pos, frame);
+    case SOCK_TCP_IN_BYTE_ARY:
+      return SockTcpInByteAry(program, inst, op_stack, stack_pos, frame);
 
-  case SOCK_TCP_IN_CHAR_ARY:
-    return SockTcpInCharAry(program, inst, op_stack, stack_pos, frame);
+    case SOCK_TCP_IN_CHAR_ARY:
+      return SockTcpInCharAry(program, inst, op_stack, stack_pos, frame);
 
-  case SOCK_TCP_OUT_BYTE:
-    return SockTcpOutByte(program, inst, op_stack, stack_pos, frame);
+    case SOCK_TCP_OUT_BYTE:
+      return SockTcpOutByte(program, inst, op_stack, stack_pos, frame);
 
-  case SOCK_TCP_OUT_BYTE_ARY:
-    return SockTcpOutByteAry(program, inst, op_stack, stack_pos, frame);
+    case SOCK_TCP_OUT_BYTE_ARY:
+      return SockTcpOutByteAry(program, inst, op_stack, stack_pos, frame);
 
-  case SOCK_TCP_OUT_CHAR_ARY:
-    return SockTcpOutCharAry(program, inst, op_stack, stack_pos, frame);
+    case SOCK_TCP_OUT_CHAR_ARY:
+      return SockTcpOutCharAry(program, inst, op_stack, stack_pos, frame);
 
-  case SOCK_TCP_SSL_IN_BYTE:
-    return SockTcpSslInByte(program, inst, op_stack, stack_pos, frame);
+    case SOCK_TCP_SSL_IN_BYTE:
+      return SockTcpSslInByte(program, inst, op_stack, stack_pos, frame);
 
-  case SOCK_TCP_SSL_IN_BYTE_ARY:
-    return SockTcpSslInByteAry(program, inst, op_stack, stack_pos, frame);
+    case SOCK_TCP_SSL_IN_BYTE_ARY:
+      return SockTcpSslInByteAry(program, inst, op_stack, stack_pos, frame);
 
-  case SOCK_TCP_SSL_IN_CHAR_ARY:
-    return SockTcpSslInCharAry(program, inst, op_stack, stack_pos, frame);
+    case SOCK_TCP_SSL_IN_CHAR_ARY:
+      return SockTcpSslInCharAry(program, inst, op_stack, stack_pos, frame);
 
-  case SOCK_TCP_SSL_OUT_BYTE:
-    return SockTcpSslOutByte(program, inst, op_stack, stack_pos, frame);
+    case SOCK_TCP_SSL_OUT_BYTE:
+      return SockTcpSslOutByte(program, inst, op_stack, stack_pos, frame);
 
-  case SOCK_TCP_SSL_OUT_BYTE_ARY:
-    return SockTcpSslOutByteAry(program, inst, op_stack, stack_pos, frame);
+    case SOCK_TCP_SSL_OUT_BYTE_ARY:
+      return SockTcpSslOutByteAry(program, inst, op_stack, stack_pos, frame);
 
-  case SOCK_TCP_SSL_OUT_CHAR_ARY:
-    return SockTcpSslOutCharAry(program, inst, op_stack, stack_pos, frame);
+    case SOCK_TCP_SSL_OUT_CHAR_ARY:
+      return SockTcpSslOutCharAry(program, inst, op_stack, stack_pos, frame);
 
-  case FILE_IN_BYTE:
-    return FileInByte(program, inst, op_stack, stack_pos, frame);
+    case FILE_IN_BYTE:
+      return FileInByte(program, inst, op_stack, stack_pos, frame);
 
-  case FILE_IN_CHAR_ARY:
-    return FileInCharAry(program, inst, op_stack, stack_pos, frame);
+    case FILE_IN_CHAR_ARY:
+      return FileInCharAry(program, inst, op_stack, stack_pos, frame);
 
-  case FILE_IN_BYTE_ARY:
-    return FileInByteAry(program, inst, op_stack, stack_pos, frame);
+    case FILE_IN_BYTE_ARY:
+      return FileInByteAry(program, inst, op_stack, stack_pos, frame);
 
-  case FILE_OUT_BYTE:
-    return FileOutByte(program, inst, op_stack, stack_pos, frame);
+    case FILE_OUT_BYTE:
+      return FileOutByte(program, inst, op_stack, stack_pos, frame);
 
-  case FILE_OUT_BYTE_ARY:
-    return FileOutByteAry(program, inst, op_stack, stack_pos, frame);
+    case FILE_OUT_BYTE_ARY:
+      return FileOutByteAry(program, inst, op_stack, stack_pos, frame);
 
-  case FILE_OUT_CHAR_ARY:
-    return FileOutCharAry(program, inst, op_stack, stack_pos, frame);
+    case FILE_OUT_CHAR_ARY:
+      return FileOutCharAry(program, inst, op_stack, stack_pos, frame);
 
-  case FILE_SEEK:
-    return FileSeek(program, inst, op_stack, stack_pos, frame);
+    case FILE_SEEK:
+      return FileSeek(program, inst, op_stack, stack_pos, frame);
 
-  case FILE_EOF:
-    return FileEof(program, inst, op_stack, stack_pos, frame);
+    case FILE_EOF:
+      return FileEof(program, inst, op_stack, stack_pos, frame);
 
-  case FILE_IS_OPEN:
-    return FileIsOpen(program, inst, op_stack, stack_pos, frame);
+    case FILE_IS_OPEN:
+      return FileIsOpen(program, inst, op_stack, stack_pos, frame);
 
-  case FILE_EXISTS:
-    return FileExists(program, inst, op_stack, stack_pos, frame);
-      
-  case FILE_CAN_WRITE_ONLY:
-    return FileCanWriteOnly(program, inst, op_stack, stack_pos, frame);
-      
-  case FILE_CAN_READ_ONLY:
-    return FileCanReadOnly(program, inst, op_stack, stack_pos, frame);
+    case FILE_EXISTS:
+      return FileExists(program, inst, op_stack, stack_pos, frame);
 
-  case FILE_CAN_READ_WRITE:
-    return FileCanReadWrite(program, inst, op_stack, stack_pos, frame);
-    
-  case FILE_SIZE:
-    return FileSize(program, inst, op_stack, stack_pos, frame);
+    case FILE_CAN_WRITE_ONLY:
+      return FileCanWriteOnly(program, inst, op_stack, stack_pos, frame);
 
-  case FILE_ACCOUNT_OWNER:
-    return FileAccountOwner(program, inst, op_stack, stack_pos, frame);
+    case FILE_CAN_READ_ONLY:
+      return FileCanReadOnly(program, inst, op_stack, stack_pos, frame);
 
-  case FILE_GROUP_OWNER:
-    return FileGroupOwner(program, inst, op_stack, stack_pos, frame);
+    case FILE_CAN_READ_WRITE:
+      return FileCanReadWrite(program, inst, op_stack, stack_pos, frame);
 
-  case FILE_DELETE:
-    return FileDelete(program, inst, op_stack, stack_pos, frame);
+    case FILE_SIZE:
+      return FileSize(program, inst, op_stack, stack_pos, frame);
 
-  case FILE_RENAME:
-    return FileRename(program, inst, op_stack, stack_pos, frame);
+    case FILE_ACCOUNT_OWNER:
+      return FileAccountOwner(program, inst, op_stack, stack_pos, frame);
 
-  case FILE_CREATE_TIME:
-    return FileCreateTime(program, inst, op_stack, stack_pos, frame);
+    case FILE_GROUP_OWNER:
+      return FileGroupOwner(program, inst, op_stack, stack_pos, frame);
 
-  case FILE_MODIFIED_TIME:
-    return FileModifiedTime(program, inst, op_stack, stack_pos, frame);
+    case FILE_DELETE:
+      return FileDelete(program, inst, op_stack, stack_pos, frame);
 
-  case FILE_ACCESSED_TIME:
-    return FileAccessedTime(program, inst, op_stack, stack_pos, frame);
+    case FILE_RENAME:
+      return FileRename(program, inst, op_stack, stack_pos, frame);
 
-  case DIR_CREATE:
-    return DirCreate(program, inst, op_stack, stack_pos, frame);
+    case FILE_CREATE_TIME:
+      return FileCreateTime(program, inst, op_stack, stack_pos, frame);
 
-  case DIR_EXISTS:
-    return DirExists(program, inst, op_stack, stack_pos, frame);
+    case FILE_MODIFIED_TIME:
+      return FileModifiedTime(program, inst, op_stack, stack_pos, frame);
 
-  case DIR_LIST:
-    return DirList(program, inst, op_stack, stack_pos, frame);
+    case FILE_ACCESSED_TIME:
+      return FileAccessedTime(program, inst, op_stack, stack_pos, frame);
+
+    case DIR_CREATE:
+      return DirCreate(program, inst, op_stack, stack_pos, frame);
+
+    case DIR_EXISTS:
+      return DirExists(program, inst, op_stack, stack_pos, frame);
+
+    case DIR_LIST:
+      return DirList(program, inst, op_stack, stack_pos, frame);
   }
 
   return false;
@@ -1732,7 +1748,7 @@ bool TrapProcessor::LoadClsByInst(StackProgram* program, size_t* inst, size_t* &
   }
   // set name and create 'Class' instance
   size_t* cls_obj = MemoryManager::AllocateObject(program->GetClassObjectId(),
-						op_stack, *stack_pos, false);
+                                                  op_stack, *stack_pos, false);
   cls_obj[0] = (size_t)CreateStringObject(cls->GetName(), program, op_stack, stack_pos);
   frame->mem[1] = (size_t)cls_obj;
   CreateClassObject(cls, cls_obj, op_stack, stack_pos, program);
@@ -1753,11 +1769,11 @@ bool TrapProcessor::ConvertBytesToUnicode(StackProgram* program, size_t* inst, s
   const long char_array_size = (long)out.size();
   const long char_array_dim = 1;
   size_t* char_array = MemoryManager::AllocateArray(char_array_size + 1 +
-							 ((char_array_dim + 2) *
-							  sizeof(size_t)),
-                                                         CHAR_ARY_TYPE,
-                                                         op_stack, *stack_pos,
-                                                         false);
+    ((char_array_dim + 2) *
+                                                    sizeof(size_t)),
+                                                    CHAR_ARY_TYPE,
+                                                    op_stack, *stack_pos,
+                                                    false);
   char_array[0] = char_array_size + 1;
   char_array[1] = char_array_dim;
   char_array[2] = char_array_size;
@@ -1785,7 +1801,7 @@ bool TrapProcessor::ConvertUnicodeToBytes(StackProgram* program, size_t* inst, s
   const long byte_array_size = (long)out.size();
   const long byte_array_dim = 1;
   size_t* byte_array = MemoryManager::AllocateArray(byte_array_size + 1 + ((byte_array_dim + 2) * sizeof(size_t)),
-                                                         BYTE_ARY_TYPE, op_stack, *stack_pos, false);
+                                                    BYTE_ARY_TYPE, op_stack, *stack_pos, false);
   byte_array[0] = byte_array_size + 1;
   byte_array[1] = byte_array_dim;
   byte_array[2] = byte_array_size;
@@ -1812,7 +1828,7 @@ bool TrapProcessor::LoadMultiArySize(StackProgram* program, size_t* inst, size_t
   long size = (long)array[1];
   long dim = 1;
   size_t* mem = MemoryManager::AllocateArray(size + dim + 2, INT_TYPE,
-                                                  op_stack, *stack_pos);
+                                             op_stack, *stack_pos);
   int i, j;
   for(i = 0, j = size + 2; i < size; i++) {
     mem[i + 3] = array[--j];
@@ -2295,7 +2311,7 @@ bool TrapProcessor::SockTcpResolveName(StackProgram* program, size_t* inst, size
     const long str_obj_array_size = (long)addrs.size();
     const long str_obj_array_dim = 1;
     size_t* str_obj_array = MemoryManager::AllocateArray(str_obj_array_size + str_obj_array_dim + 2,
-                                                              INT_TYPE, op_stack, *stack_pos, false);
+                                                         INT_TYPE, op_stack, *stack_pos, false);
     str_obj_array[0] = str_obj_array_size;
     str_obj_array[1] = str_obj_array_dim;
     str_obj_array[2] = str_obj_array_size;
@@ -2360,8 +2376,8 @@ bool TrapProcessor::SockTcpConnect(StackProgram* program, size_t* inst, size_t* 
     SOCKET sock = IPSocket::Open(addr.c_str(), port);
 #ifdef _DEBUG
     wcout << L"# socket connect: addr='" << waddr << L":" << port << L"'; instance="
-	  << instance << L"(" << (size_t)instance << L")" << L"; addr=" << sock << L"("
-	  << (long)sock << L") #" << endl;
+      << instance << L"(" << (size_t)instance << L")" << L"; addr=" << sock << L"("
+      << (long)sock << L") #" << endl;
 #endif
     instance[0] = (long)sock;
   }
@@ -2377,8 +2393,8 @@ bool TrapProcessor::SockTcpBind(StackProgram* program, size_t* inst, size_t* &op
     SOCKET server = IPSocket::Bind(port);
 #ifdef _DEBUG
     wcout << L"# socket bind: port=" << port << L"; instance=" << instance << L"("
-	  << (size_t)instance << L")" << L"; addr=" << server << L"(" << (size_t)server
-	  << L") #" << endl;
+      << (size_t)instance << L")" << L"; addr=" << server << L"(" << (size_t)server
+      << L") #" << endl;
 #endif
     instance[0] = (long)server;
   }
@@ -2395,8 +2411,8 @@ bool TrapProcessor::SockTcpListen(StackProgram* program, size_t* inst, size_t* &
     SOCKET server = (SOCKET)instance[0];
 #ifdef _DEBUG
     wcout << L"# socket listen: backlog=" << backlog << L"'; instance=" << instance
-	  << L"(" << (size_t)instance << L")" << L"; addr=" << server << L"("
-	  << (long)server << L") #" << endl;
+      << L"(" << (size_t)instance << L")" << L"; addr=" << server << L"("
+      << (long)server << L") #" << endl;
 #endif
     if(IPSocket::Listen(server, backlog)) {
       PushInt(1, op_stack, stack_pos);
@@ -2422,12 +2438,12 @@ bool TrapProcessor::SockTcpAccept(StackProgram* program, size_t* inst, size_t* &
     SOCKET client = IPSocket::Accept(server, client_address, client_port);
 #ifdef _DEBUG
     wcout << L"# socket accept: instance=" << instance << L"(" << (size_t)instance << L")" << L"; ip="
-	  << BytesToUnicode(client_address) << L"; port=" << client_port << L"; addr=" << server << L"("
-	  << (long)server << L") #" << endl;
+      << BytesToUnicode(client_address) << L"; port=" << client_port << L"; addr=" << server << L"("
+      << (long)server << L") #" << endl;
 #endif
     const wstring wclient_address = BytesToUnicode(client_address);
     size_t* sock_obj = MemoryManager::AllocateObject(program->GetSocketObjectId(),
-						   op_stack, *stack_pos, false);
+                                                     op_stack, *stack_pos, false);
     sock_obj[0] = client;
     sock_obj[1] = (size_t)CreateStringObject(wclient_address, program, op_stack, stack_pos);
     sock_obj[2] = client_port;
@@ -2463,7 +2479,7 @@ bool TrapProcessor::SockTcpOutString(StackProgram* program, size_t* inst, size_t
 
 #ifdef _DEBUG
     wcout << L"# socket write string: instance=" << instance << L"(" << (size_t)instance << L")"
-	  << L"; array=" << array << L"(" << (size_t)array << L")" << L"; data=" << wdata << endl;
+      << L"; array=" << array << L"(" << (size_t)array << L")" << L"; data=" << wdata << endl;
 #endif	      
     if((long)sock > -1) {
       const string data = UnicodeToBytes(wdata);
@@ -2495,7 +2511,8 @@ bool TrapProcessor::SockTcpInString(StackProgram* program, size_t* inst, size_t*
         else {
           end_line = true;
         }
-      } while(!end_line);
+      }
+      while(!end_line);
       buffer[index] = '\0';
 
       // assume LF
@@ -2535,8 +2552,8 @@ bool TrapProcessor::SockTcpSslConnect(StackProgram* program, size_t* inst, size_
 
 #ifdef _DEBUG
     wcout << L"# socket connect: addr='" << waddr << L":" << port << L"'; instance="
-	  << instance << L"(" << (size_t)instance << L")" << L"; addr=" << ctx << L"|" << bio << L"("
-	  << (size_t)ctx << L"|" << (size_t)bio << L") #" << endl;
+      << instance << L"(" << (size_t)instance << L")" << L"; addr=" << ctx << L"|" << bio << L"("
+      << (size_t)ctx << L"|" << (size_t)bio << L") #" << endl;
 #endif
   }
 
@@ -2569,7 +2586,7 @@ bool TrapProcessor::SockTcpSslClose(StackProgram* program, size_t* inst, size_t*
 
 #ifdef _DEBUG
   wcout << L"# socket close: addr=" << ctx << L"|" << bio << L"("
-	<< (size_t)ctx << L"|" << (size_t)bio << L") #" << endl;
+    << (size_t)ctx << L"|" << (size_t)bio << L") #" << endl;
 #endif      
   IPSecureSocket::Close(ctx, bio, cert);
   instance[0] = instance[1] = instance[2] = instance[3] = 0;
@@ -2615,7 +2632,8 @@ bool TrapProcessor::SockTcpSslInString(StackProgram* program, size_t* inst, size
         else {
           end_line = true;
         }
-      } while(!end_line);
+      }
+      while(!end_line);
       buffer[index] = '\0';
 
       // assume LF
@@ -2852,8 +2870,8 @@ bool TrapProcessor::FileOpenRead(StackProgram* program, size_t* inst, size_t* &o
     FILE* file = File::FileOpen(filename.c_str(), "rb");
 #ifdef _DEBUG
     wcout << L"# file open: name='" << name << L"'; instance=" << instance << L"("
-	  << (size_t)instance << L")" << L"; addr=" << file << L"(" << (size_t)file
-	  << L") #" << endl;
+      << (size_t)instance << L")" << L"; addr=" << file << L"(" << (size_t)file
+      << L") #" << endl;
 #endif
     instance[0] = (size_t)file;
   }
@@ -2872,8 +2890,8 @@ bool TrapProcessor::FileOpenAppend(StackProgram* program, size_t* inst, size_t* 
     FILE* file = File::FileOpen(filename.c_str(), "ab");
 #ifdef _DEBUG
     wcout << L"# file open: name='" << name << L"'; instance=" << instance << L"("
-	  << (size_t)instance << L")" << L"; addr=" << file << L"(" << (size_t)file
-	  << L") #" << endl;
+      << (size_t)instance << L")" << L"; addr=" << file << L"(" << (size_t)file
+      << L") #" << endl;
 #endif
     instance[0] = (size_t)file;
   }
@@ -2892,8 +2910,8 @@ bool TrapProcessor::FileOpenWrite(StackProgram* program, size_t* inst, size_t* &
     FILE* file = File::FileOpen(filename.c_str(), "wb");
 #ifdef _DEBUG
     wcout << L"# file open: name='" << name << L"'; instance=" << instance << L"("
-	  << (size_t)instance << L")" << L"; addr=" << file << L"(" << (size_t)file
-	  << L") #" << endl;
+      << (size_t)instance << L")" << L"; addr=" << file << L"(" << (size_t)file
+      << L") #" << endl;
 #endif
     instance[0] = (size_t)file;
   }
@@ -2912,8 +2930,8 @@ bool TrapProcessor::FileOpenReadWrite(StackProgram* program, size_t* inst, size_
     FILE* file = File::FileOpen(filename.c_str(), "w+b");
 #ifdef _DEBUG
     wcout << L"# file open: name='" << name << L"'; instance=" << instance << L"("
-	  << (size_t)instance << L")" << L"; addr=" << file << L"(" << (size_t)file
-	  << L") #" << endl;
+      << (size_t)instance << L")" << L"; addr=" << file << L"(" << (size_t)file
+      << L") #" << endl;
 #endif
     instance[0] = (size_t)file;
   }
@@ -3472,7 +3490,7 @@ bool TrapProcessor::FileCanWriteOnly(StackProgram* program, size_t* inst, size_t
   else {
     PushInt(0, op_stack, stack_pos);
   }
-  
+
   return true;
 }
 
@@ -3488,14 +3506,14 @@ bool TrapProcessor::FileCanReadOnly(StackProgram* program, size_t* inst, size_t*
   else {
     PushInt(0, op_stack, stack_pos);
   }
-  
+
   return true;
 }
 
 bool TrapProcessor::FileCanReadWrite(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
-  if (array) {
+  if(array) {
     array = (size_t*)array[0];
     const wstring wname((wchar_t*)(array + 3));
     const string name(wname.begin(), wname.end());
@@ -3774,7 +3792,7 @@ bool TrapProcessor::DirList(StackProgram* program, size_t* inst, size_t* &op_sta
     const long str_obj_array_size = (long)files.size();
     const long str_obj_array_dim = 1;
     size_t* str_obj_array = MemoryManager::AllocateArray(str_obj_array_size + str_obj_array_dim + 2,
-                                                              INT_TYPE, op_stack, *stack_pos, false);
+                                                         INT_TYPE, op_stack, *stack_pos, false);
     str_obj_array[0] = str_obj_array_size;
     str_obj_array[1] = str_obj_array_dim;
     str_obj_array[2] = str_obj_array_size;

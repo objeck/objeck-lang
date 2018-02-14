@@ -48,6 +48,8 @@ long MemoryManager::allocation_size;
 long MemoryManager::mem_max_size;
 long MemoryManager::uncollected_count;
 long MemoryManager::collected_count;
+
+// operation locks
 #ifdef _WIN32
 CRITICAL_SECTION MemoryManager::jit_frame_lock;
 CRITICAL_SECTION MemoryManager::pda_frame_lock;
@@ -243,7 +245,7 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, long 
   size_t* mem = NULL;
   if(cls) {
     long size = cls->GetInstanceMemorySize();
-#ifdef _X64
+#if defined(_WIN64) || defined(_X64)
     // TODO: memory size is doubled the compiler assumes that integers are 4-bytes.
     // In 64-bit mode integers and floats are 8-bytes.  This approach allocates more
     // memory for floats (a.k.a doubles) than needed.
@@ -962,7 +964,7 @@ void* MemoryManager::CheckJitRoots(void* arg)
         wcout << L"\t" << j << L": FLOAT_PARM: value=" << value << endl;
 #endif
         // update
-#ifdef _X64
+#if defined(_WIN64) || defined(_X64)
         // mapped such that all 64-bit values the same size
         mem++;
 #else
