@@ -330,8 +330,7 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, long 
   return mem;
 }
 
-size_t* MemoryManager::AllocateArray(const long size, const MemoryType type,
-                                   size_t* op_stack, long stack_pos, bool collect)
+size_t* MemoryManager::AllocateArray(const long size, const MemoryType type,  size_t* op_stack, long stack_pos, bool collect)
 {
   long calc_size;
   size_t* mem;
@@ -1046,8 +1045,8 @@ void* MemoryManager::CheckJitRoots(void* arg)
       case OBJ_ARY_PARM:
 #ifdef _DEBUG
         wcout << L"\t" << j << L": OBJ_ARY_PARM: addr=" << (size_t*)(*mem) << L"("
-          << (long)(*mem) << L"), size=" << ((*mem) ? ((size_t*)(*mem))[SIZE_OR_CLS] : 0)
-          << L" byte(s)" << endl;
+              << (long)(*mem) << L"), size=" << ((*mem) ? ((size_t*)(*mem))[SIZE_OR_CLS] : 0)
+              << L" byte(s)" << endl;
 #endif
         // mark data
         if(MarkValidMemory((size_t*)(*mem))) {
@@ -1075,6 +1074,7 @@ void* MemoryManager::CheckJitRoots(void* arg)
     }
   }
   jit_frames.empty();
+
 #ifndef _GC_SERIAL
   MUTEX_UNLOCK(&jit_frame_lock);  
 #ifndef _WIN32
