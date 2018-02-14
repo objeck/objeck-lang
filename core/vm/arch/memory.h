@@ -95,12 +95,12 @@ class MemoryManager {
   static CRITICAL_SECTION marked_lock;
   static CRITICAL_SECTION marked_sweep_lock;
 #else
-  static pthread_lock_t pda_monitor_lock;
-  static pthread_lock_t pda_frame_lock;
-  static pthread_lock_t jit_frame_lock;
-  static pthread_lock_t allocated_lock;
-  static pthread_lock_t marked_lock;
-  static pthread_lock_t marked_sweep_lock;
+  static pthread_mutex_t pda_monitor_lock;
+  static pthread_mutex_t pda_frame_lock;
+  static pthread_mutex_t jit_frame_lock;
+  static pthread_mutex_t allocated_lock;
+  static pthread_mutex_t marked_lock;
+  static pthread_mutex_t marked_sweep_lock;
 #endif
     
   // note: protected by 'allocated_lock'
