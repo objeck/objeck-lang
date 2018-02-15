@@ -8,8 +8,8 @@ bundle Default {
 			Run(args);
 		}
 
-#		function : native : Run(args : String[]) ~ Nil {		
-		function : Run(args : String[]) ~ Nil {		
+		function : native : Run(args : String[]) ~ Nil {		
+#		function : Run(args : String[]) ~ Nil {		
 			b := 13;
 			(b-9.33)->PrintLine();
 

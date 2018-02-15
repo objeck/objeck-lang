@@ -4,8 +4,8 @@ bundle Default {
 			Run();
 		}
 		
-		function : Run() ~ Nil {
-#		function : native : Run() ~ Nil {
+#		function : Run() ~ Nil {
+		function : native : Run() ~ Nil {
 			ss : System.String := "Blah";
 			ii : Byte[,,] := Byte->New[2,2,2];
 
@@ -26,7 +26,7 @@ bundle Default {
 				i := i + 1;
 			};
 #~~#
-			PrintLine(ii, ss);	
+#			PrintLine(ii, ss);	
 
 #~
 			ii[0,1,0] := 13;
@@ -49,7 +49,7 @@ bundle Default {
 #			ii[0,1,1]->PrintLine();
 #			ii[1,1,1]->PrintLine();
 
-#~
+
 			ii[0,0,0]->PrintLine();
 			ii[1,0,0]->PrintLine();
 			ii[0,1,0]->PrintLine();
@@ -58,7 +58,7 @@ bundle Default {
 			ii[1,1,0]->PrintLine();
 			ii[0,1,1]->PrintLine();
 			ii[1,1,1]->PrintLine();
-~#
+#~
 
 			a := ii[0,0,0];
       a->As(Int)->PrintLine();
@@ -78,6 +78,7 @@ bundle Default {
       a->As(Int)->PrintLine();
 
 #			ss->PrintLine();
+~#
 		}
 
 #~

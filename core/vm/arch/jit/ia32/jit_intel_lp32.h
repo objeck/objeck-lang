@@ -38,7 +38,7 @@
 #include <sys/mman.h>
 #include <errno.h>
 #else
-#include "../../../arch/win32/windows.h"
+#include "../../../arch/win32/win32.h"
 #endif
 
 #include "../../../common.h"

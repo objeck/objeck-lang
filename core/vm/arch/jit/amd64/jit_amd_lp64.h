@@ -1303,19 +1303,20 @@ namespace Runtime {
         break;
 
         case NEW_BYTE_ARY: {
-          long indices[8];
-          long value = (long)PopInt(op_stack, stack_pos);
-          long size = value;
+          size_t indices[8];
+          size_t value = PopInt(op_stack, stack_pos);
+          size_t size = value;
           indices[0] = value;
           long dim = 1;
           for(long i = 1; i < instr->GetOperand(); i++) {
-            long value = (long)PopInt(op_stack, stack_pos);
+            size_t value = PopInt(op_stack, stack_pos);
             size *= value;
             indices[dim++] = value;
           }
+
           // NULL terminated string workaround
           size++;
-          size_t* mem = MemoryManager::AllocateArray(size + ((dim + 2) * sizeof(size_t)), BYTE_ARY_TYPE, op_stack, *stack_pos);
+          size_t* mem = MemoryManager::AllocateArray((long)(size + ((dim + 2) * sizeof(size_t))), BYTE_ARY_TYPE, op_stack, *stack_pos);
           mem[0] = size;
           mem[1] = dim;
           memcpy(mem + 2, indices, dim * sizeof(size_t));
@@ -1329,18 +1330,19 @@ namespace Runtime {
         break;
 
         case NEW_CHAR_ARY: {
-          long indices[8];
-          long value = (long)PopInt(op_stack, stack_pos);
-          long size = value;
+          size_t indices[8];
+          size_t value = PopInt(op_stack, stack_pos);
+          size_t size = value;
           indices[0] = value;
           long dim = 1;
           for(long i = 1; i < instr->GetOperand(); i++) {
-            long value = (long)PopInt(op_stack, stack_pos);
+            size_t value = PopInt(op_stack, stack_pos);
             size *= value;
             indices[dim++] = value;
           }
+
           size++;
-          size_t* mem = (size_t*)MemoryManager::AllocateArray(size + ((dim + 2) * sizeof(size_t)), CHAR_ARY_TYPE, op_stack, *stack_pos);
+          size_t* mem = (size_t*)MemoryManager::AllocateArray((long)(size + ((dim + 2) * sizeof(size_t))), CHAR_ARY_TYPE, op_stack, *stack_pos);
           mem[0] = size - 1;
           mem[1] = dim;
           memcpy(mem + 2, indices, dim * sizeof(size_t));
@@ -1354,17 +1356,18 @@ namespace Runtime {
         break;
 
         case NEW_INT_ARY: {
-          long indices[8];
-          long value = (long)PopInt(op_stack, stack_pos);
-          long size = value;
+          size_t indices[8];
+          size_t value = PopInt(op_stack, stack_pos);
+          size_t size = value;
           indices[0] = value;
           long dim = 1;
           for(long i = 1; i < instr->GetOperand(); i++) {
-            long value = (long)PopInt(op_stack, stack_pos);
+            size_t value = PopInt(op_stack, stack_pos);
             size *= value;
             indices[dim++] = value;
           }
-          size_t* mem = (size_t*)MemoryManager::AllocateArray(size + dim + 2, INT_TYPE, op_stack, *stack_pos);
+
+          size_t* mem = (size_t*)MemoryManager::AllocateArray((long)(size + dim + 2), INT_TYPE, op_stack, *stack_pos);
 #ifdef _DEBUG
           wcout << L"jit oper: NEW_INT_ARY: dim=" << dim << L"; size=" << size
             << L"; index=" << (*stack_pos) << L"; mem=" << mem << endl;
@@ -1377,18 +1380,19 @@ namespace Runtime {
         break;
 
         case NEW_FLOAT_ARY: {
-          long indices[8];
-          long value = (long)PopInt(op_stack, stack_pos);
-          long size = value;
+          size_t indices[8];
+          size_t value = PopInt(op_stack, stack_pos);
+          size_t size = value;
           indices[0] = value;
           long dim = 1;
           for(long i = 1; i < instr->GetOperand(); i++) {
-            long value = (long)PopInt(op_stack, stack_pos);
+            size_t value = PopInt(op_stack, stack_pos);
             size *= value;
             indices[dim++] = value;
           }
+
           size *= 2;
-          size_t* mem = MemoryManager::AllocateArray(size + dim + 2, INT_TYPE, op_stack, *stack_pos);
+          size_t* mem = MemoryManager::AllocateArray((long)(size + dim + 2), INT_TYPE, op_stack, *stack_pos);
 #ifdef _DEBUG
           wcout << L"jit oper: NEW_FLOAT_ARY: dim=" << dim << L"; size=" << size
             << L"; index=" << (*stack_pos) << L"; mem=" << mem << endl;
