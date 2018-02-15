@@ -1588,20 +1588,20 @@ void StackInterpreter::ProcessNewArray(StackInstr* instr, size_t* &op_stack, lon
 #ifdef _DEBUG
   wcout << L"stack oper: NEW_INT_ARY/NEW_FLOAT_ARY; call_pos=" << (*call_stack_pos) << endl;
 #endif
-  long indices[8];
-  long value = (long)PopInt(op_stack, stack_pos);
-  long size = value;
+  size_t indices[8];
+  size_t value = PopInt(op_stack, stack_pos);
+  size_t size = value;
   indices[0] = value;
   long dim = 1;
   for(long i = 1; i < instr->GetOperand(); i++) {
-    long value = (long)PopInt(op_stack, stack_pos);
+    size_t value = PopInt(op_stack, stack_pos);
     size *= value;
     indices[dim++] = value;
   }
 
   size_t* mem;  
 #if defined(_WIN64) || defined(_X64)
-  mem = (size_t*)MemoryManager::AllocateArray(size + dim + 2, INT_TYPE, op_stack, *stack_pos);
+  mem = (size_t*)MemoryManager::AllocateArray((long)(size + dim + 2), INT_TYPE, op_stack, *stack_pos);
 #else
   if(is_float) {
     // doubles are twice the size of integers for 32-bit target
@@ -1628,20 +1628,20 @@ void StackInterpreter::ProcessNewByteArray(StackInstr* instr, size_t* &op_stack,
 #ifdef _DEBUG
   wcout << L"stack oper: NEW_BYTE_ARY; call_pos=" << (*call_stack_pos) << endl;
 #endif
-  long indices[8];
-  long value = (long)PopInt(op_stack, stack_pos);
-  long size = value;
+  size_t indices[8];
+  size_t value = PopInt(op_stack, stack_pos);
+  size_t size = value;
   indices[0] = value;
   long dim = 1;
   for(long i = 1; i < instr->GetOperand(); i++) {
-    long value = (long)PopInt(op_stack, stack_pos);
+    size_t value = PopInt(op_stack, stack_pos);
     size *= value;
     indices[dim++] = value;
   }
+
   // NULL terminated string 
   size++;
-  size_t* mem = MemoryManager::AllocateArray(size + ((dim + 2) * sizeof(size_t)),
-                                             BYTE_ARY_TYPE, op_stack, *stack_pos);
+  size_t* mem = MemoryManager::AllocateArray((long)(size + ((dim + 2) * sizeof(size_t))), BYTE_ARY_TYPE, op_stack, *stack_pos);
   mem[0] = size - 1;
   mem[1] = dim;
   ::memcpy(mem + 2, indices, dim * sizeof(size_t));
@@ -1657,20 +1657,20 @@ void StackInterpreter::ProcessNewCharArray(StackInstr* instr, size_t* &op_stack,
 #ifdef _DEBUG
   wcout << L"stack oper: NEW_CHAR_ARY; call_pos=" << (*call_stack_pos) << endl;
 #endif
-  long indices[8];
-  long value = (long)PopInt(op_stack, stack_pos);
-  long size = value;
+  size_t indices[8];
+  size_t value = PopInt(op_stack, stack_pos);
+  size_t size = value;
   indices[0] = value;
   long dim = 1;
   for(long i = 1; i < instr->GetOperand(); i++) {
-    long value = (long)PopInt(op_stack, stack_pos);
+    size_t value = PopInt(op_stack, stack_pos);
     size *= value;
     indices[dim++] = value;
   }
+
   // NULL terminated string 
   size++;
-  size_t* mem = MemoryManager::AllocateArray(size + ((dim + 2) * sizeof(size_t)),
-                                             CHAR_ARY_TYPE, op_stack, *stack_pos);
+  size_t* mem = MemoryManager::AllocateArray((long)(size + ((dim + 2) * sizeof(size_t))), CHAR_ARY_TYPE, op_stack, *stack_pos);
   mem[0] = size - 1;
   mem[1] = dim;
   ::memcpy(mem + 2, indices, dim * sizeof(size_t));
