@@ -504,7 +504,7 @@ namespace Runtime {
     inline void AddImm(int imm) {
       unsigned char buffer[sizeof(int)];
       ByteEncode32(buffer, imm);
-      for(size_t i = 0; i < sizeof(int); i++) {
+      for(size_t i = 0; i < sizeof(int); ++i) {
         AddMachineCode(buffer[i]);
       }
     }
@@ -529,7 +529,7 @@ namespace Runtime {
     inline void AddImm64(size_t imm) {
       unsigned char buffer[sizeof(size_t)];
       ByteEncode64(buffer, imm);
-      for(int i = 0; i < sizeof(size_t); i++) {
+      for(int i = 0; i < sizeof(size_t); ++i) {
         AddMachineCode(buffer[i]);
       }
 	}  
@@ -537,7 +537,7 @@ namespace Runtime {
     inline void AddImm64(long imm) {
       unsigned char buffer[sizeof(long)];
       ByteEncode64(buffer, imm);
-      for(size_t i = 0; i < sizeof(long); i++) {
+      for(size_t i = 0; i < sizeof(long); ++i) {
         AddMachineCode(buffer[i]);
       }	  
     }
@@ -1065,7 +1065,7 @@ namespace Runtime {
 
 #ifdef _DEBUG
       assert(h->GetRegister() < XMM0);
-      for(size_t i = 0; i < aval_regs.size(); i++) {
+      for(size_t i = 0; i < aval_regs.size(); ++i) {
         assert(h != aval_regs[i]);
       }
 #endif
@@ -1110,7 +1110,7 @@ namespace Runtime {
     void ReleaseXmmRegister(RegisterHolder* h) {
 #ifdef _DEBUG
       assert(h->GetRegister() >= XMM0);
-      for(size_t i = 0; i < aval_xregs.size(); i++) {
+      for(size_t i = 0; i < aval_xregs.size(); ++i) {
         assert(h != aval_xregs[i]);
       }
 #endif
@@ -1308,7 +1308,7 @@ namespace Runtime {
           size_t size = value;
           indices[0] = value;
           long dim = 1;
-          for(long i = 1; i < instr->GetOperand(); i++) {
+          for(long i = 1; i < instr->GetOperand(); ++i) {
             size_t value = PopInt(op_stack, stack_pos);
             size *= value;
             indices[dim++] = value;
@@ -1335,7 +1335,7 @@ namespace Runtime {
           size_t size = value;
           indices[0] = value;
           long dim = 1;
-          for(long i = 1; i < instr->GetOperand(); i++) {
+          for(long i = 1; i < instr->GetOperand(); ++i) {
             size_t value = PopInt(op_stack, stack_pos);
             size *= value;
             indices[dim++] = value;
@@ -1361,7 +1361,7 @@ namespace Runtime {
           size_t size = value;
           indices[0] = value;
           long dim = 1;
-          for(long i = 1; i < instr->GetOperand(); i++) {
+          for(long i = 1; i < instr->GetOperand(); ++i) {
             size_t value = PopInt(op_stack, stack_pos);
             size *= value;
             indices[dim++] = value;
@@ -1385,7 +1385,7 @@ namespace Runtime {
           size_t size = value;
           indices[0] = value;
           long dim = 1;
-          for(long i = 1; i < instr->GetOperand(); i++) {
+          for(long i = 1; i < instr->GetOperand(); ++i) {
             size_t value = PopInt(op_stack, stack_pos);
             size *= value;
             indices[dim++] = value;
@@ -1687,7 +1687,7 @@ namespace Runtime {
        long index = PopInt();
        const long dim = instr->GetOperand();
 
-       for(int i = 1; i < dim; i++) {
+       for(int i = 1; i < dim; ++i) {
          index *= array[i];
          index += PopInt();
        }
@@ -1724,7 +1724,7 @@ namespace Runtime {
       }
 
       const long dim = instr->GetOperand();
-      for(int i = 1; i < dim; i++) {
+      for(int i = 1; i < dim; ++i) {
         // index *= array[i];
         mul_mem_reg((i + 2) * sizeof(size_t), array_holder->GetRegister(),
                     index_holder->GetRegister());
@@ -1807,7 +1807,7 @@ namespace Runtime {
       wcout << L"Calculating indices for variables..." << endl;
 #endif
       multimap<long, StackInstr*> values;
-      for(long i = 0; i < method->GetInstructionCount(); i++) {
+      for(long i = 0; i < method->GetInstructionCount(); ++i) {
         StackInstr* instr = method->GetInstruction(i);
         switch(instr->GetType()) {
           case LOAD_LOCL_INT_VAR:
