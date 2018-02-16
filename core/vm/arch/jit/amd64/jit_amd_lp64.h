@@ -191,6 +191,8 @@ namespace Runtime {
       type = IMM_FLOAT;
 #ifdef _WIN64	  
       operand2 = (size_t)da;
+#else
+      operand = (long)da;
 #endif	  
       holder = NULL;
       instr = NULL;
