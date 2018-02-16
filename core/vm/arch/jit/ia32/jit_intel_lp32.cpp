@@ -79,23 +79,28 @@ void JitCompilerIA32::Epilog() {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [<epilog>]" << endl;
 #endif
+
   epilog_index = code_index;
 
   // nominal
   AddMachineCode(0xe9);
   AddImm(30);
+
   // null deref
   move_imm_reg(-1, EAX);
   AddMachineCode(0xe9);
+
   AddImm(25);
   // under bounds
   move_imm_reg(-2, EAX);
   AddMachineCode(0xe9);
   AddImm(15);
+
   // over bounds
   move_imm_reg(-3, EAX);
   AddMachineCode(0xe9);
   AddImm(5);
+
   // nominal
   move_imm_reg(0, EAX);
 
@@ -113,6 +118,7 @@ void JitCompilerIA32::Epilog() {
     0xc3              // rtn
   };
   const int32_t teardown_size = sizeof(teardown_code);
+
   // copy teardown
   for(int32_t i = 0; i < teardown_size; ++i) {
     AddMachineCode(teardown_code[i]);
