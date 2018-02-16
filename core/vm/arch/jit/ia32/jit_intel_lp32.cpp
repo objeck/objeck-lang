@@ -89,8 +89,8 @@ void JitCompilerIA32::Epilog() {
   // null deref
   move_imm_reg(-1, EAX);
   AddMachineCode(0xe9);
-
   AddImm(25);
+
   // under bounds
   move_imm_reg(-2, EAX);
   AddMachineCode(0xe9);
