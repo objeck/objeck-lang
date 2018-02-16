@@ -1,5 +1,5 @@
 /***************************************************************************
- * JIT compiler for Posix and Windows AMD64 architectures.
+ * JIT compiler for x86-64 architectures (Windows, macOS and Linux).
  *
  * Copyright (c) 2008-2018 Randy Hollines
  * All rights reserved.
