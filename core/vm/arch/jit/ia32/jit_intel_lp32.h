@@ -742,7 +742,7 @@ namespace Runtime {
 
 #ifdef _DEBUG
       assert(h->GetRegister() < XMM0);
-      for(size_t i  = 0; i < aval_regs.size(); i++) {
+      for(size_t i  = 0; i < aval_regs.size(); ++i) {
         assert(h != aval_regs[i]);
       }
 #endif
@@ -787,7 +787,7 @@ namespace Runtime {
     void ReleaseXmmRegister(RegisterHolder* h) {
 #ifdef _DEBUG
       assert(h->GetRegister() >= XMM0);
-      for(size_t i = 0; i < aval_xregs.size(); i++) {
+      for(size_t i = 0; i < aval_xregs.size(); ++i) {
         assert(h != aval_xregs[i]);
       }
 #endif
@@ -973,19 +973,19 @@ namespace Runtime {
         break;
 	  
       case NEW_BYTE_ARY: {
-        int32_t indices[8];
-        int32_t value = PopInt(op_stack, stack_pos);
-        int32_t size = value;
+        size_t indices[8];
+        size_t value = PopInt(op_stack, stack_pos);
+        size_t size = value;
         indices[0] = value;
-        int32_t dim = 1;
-        for(int32_t i = 1; i < instr->GetOperand(); i++) {
-          int32_t value = PopInt(op_stack, stack_pos);
+        long dim = 1;
+        for(long i = 1; i < instr->GetOperand(); ++i) {
+          size_t value = PopInt(op_stack, stack_pos);
           size *= value;
           indices[dim++] = value;
         }
+
         size++;
-        int32_t* mem = (int32_t*)MemoryManager::AllocateArray(size + ((dim + 2) * sizeof(int32_t)), 
-                                                              BYTE_ARY_TYPE, op_stack, *stack_pos);
+        int32_t* mem = (int32_t*)MemoryManager::AllocateArray(size + ((dim + 2) * sizeof(int32_t)), BYTE_ARY_TYPE, op_stack, *stack_pos);
         mem[0] = size - 1;
         mem[1] = dim;
         memcpy(mem + 2, indices, dim * sizeof(int32_t));
@@ -999,16 +999,17 @@ namespace Runtime {
         break;
 
       case NEW_CHAR_ARY: {
-        int32_t indices[8];
-        int32_t value = PopInt(op_stack, stack_pos);
-        int32_t size = value;
+        size_t indices[8];
+        size_t value = PopInt(op_stack, stack_pos);
+        size_t size = value;
         indices[0] = value;
-        int32_t dim = 1;
-        for(int32_t i = 1; i < instr->GetOperand(); i++) {
-          int32_t value = PopInt(op_stack, stack_pos);
+        long dim = 1;
+        for(long i = 1; i < instr->GetOperand(); ++i) {
+          size_t value = PopInt(op_stack, stack_pos);
           size *= value;
           indices[dim++] = value;
         }
+
         size++;
         int32_t* mem = (int32_t*)MemoryManager::AllocateArray(size + ((dim + 2) * sizeof(int32_t)), 
                                                               CHAR_ARY_TYPE, op_stack, *stack_pos);
@@ -1025,16 +1026,17 @@ namespace Runtime {
         break;
 
       case NEW_INT_ARY: {
-        int32_t indices[8];
-        int32_t value = PopInt(op_stack, stack_pos);
-        int32_t size = value;
+        size_t indices[8];
+        size_t value = PopInt(op_stack, stack_pos);
+        size_t size = value;
         indices[0] = value;
-        int32_t dim = 1;
-        for(int32_t i = 1; i < instr->GetOperand(); i++) {
-          int32_t value = PopInt(op_stack, stack_pos);
+        long dim = 1;
+        for(long i = 1; i < instr->GetOperand(); ++i) {
+          size_t value = PopInt(op_stack, stack_pos);
           size *= value;
           indices[dim++] = value;
         }
+
         int32_t* mem = (int32_t*)MemoryManager::AllocateArray(size + dim + 2, INT_TYPE, op_stack, *stack_pos);
 #ifdef _DEBUG
         wcout << L"jit oper: NEW_INT_ARY: dim=" << dim << L"; size=" << size 
@@ -1048,16 +1050,17 @@ namespace Runtime {
         break;
 
       case NEW_FLOAT_ARY: {
-        int32_t indices[8];
-        int32_t value = PopInt(op_stack, stack_pos);
-        int32_t size = value;
+        size_t indices[8];
+        size_t value = PopInt(op_stack, stack_pos);
+        size_t size = value;
         indices[0] = value;
-        int32_t dim = 1;
-        for(int32_t i = 1; i < instr->GetOperand(); i++) {
-          int32_t value = PopInt(op_stack, stack_pos);
+        long dim = 1;
+        for(long i = 1; i < instr->GetOperand(); ++i) {
+          size_t value = PopInt(op_stack, stack_pos);
           size *= value;
           indices[dim++] = value;
         }
+
         size *= 2;
         int32_t* mem = (int32_t*)MemoryManager::AllocateArray(size + dim + 2, INT_TYPE, op_stack, *stack_pos);
 #ifdef _DEBUG
@@ -1360,7 +1363,7 @@ namespace Runtime {
          int32_t index = PopInt();
          const int32_t dim = instr->GetOperand();
 
-         for(int i = 1; i < dim; i++) {
+         for(int i = 1; i < dim; ++i) {
            index *= array[i];
            index += PopInt();
          }
@@ -1395,7 +1398,7 @@ namespace Runtime {
       }
 
       const int32_t dim = instr->GetOperand();
-      for(int i = 1; i < dim; i++) {
+      for(int i = 1; i < dim; ++i) {
         // index *= array[i];
         mul_mem_reg((i + 2) * sizeof(int32_t), array_holder->GetRegister(), 
                     index_holder->GetRegister());
@@ -1478,7 +1481,7 @@ namespace Runtime {
       wcout << L"Calculating indices for variables..." << endl;
 #endif
       multimap<int32_t, StackInstr*> values;
-      for(int32_t i = 0; i < method->GetInstructionCount(); i++) {
+      for(int32_t i = 0; i < method->GetInstructionCount(); ++i) {
         StackInstr* instr = method->GetInstruction(i);
         switch(instr->GetType()) {
         case LOAD_LOCL_INT_VAR:

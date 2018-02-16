@@ -69,7 +69,7 @@ void JitCompilerIA32::Prolog() {
   };
   const int32_t setup_size = sizeof(setup_code);
   // copy setup
-  for(int32_t i = 0; i < setup_size; i++) {
+  for(int32_t i = 0; i < setup_size; ++i) {
     AddMachineCode(setup_code[i]);
   }
 }
@@ -114,7 +114,7 @@ void JitCompilerIA32::Epilog() {
   };
   const int32_t teardown_size = sizeof(teardown_code);
   // copy teardown
-  for(int32_t i = 0; i < teardown_size; i++) {
+  for(int32_t i = 0; i < teardown_size; ++i) {
     AddMachineCode(teardown_code[i]);
   }
 }
@@ -152,7 +152,7 @@ void JitCompilerIA32::ProcessParameters(int32_t params) {
   wcout << L"CALLED_PARMS: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
   
-  for(int32_t i = 0; i < params; i++) {
+  for(int32_t i = 0; i < params; ++i) {
     RegisterHolder* op_stack_holder = GetRegister();
     move_mem_reg(OP_STACK, EBP, op_stack_holder->GetRegister());
 
@@ -1667,7 +1667,7 @@ void JitCompilerIA32::ProcessReturn(int32_t params) {
     if(params < 0) {
       params = working_stack.size();
     }
-    for(int32_t i = 0; i < params; i++) {
+    for(int32_t i = 0; i < params; ++i) {
       RegInstr* left = working_stack.front();
       working_stack.pop_front();
 
