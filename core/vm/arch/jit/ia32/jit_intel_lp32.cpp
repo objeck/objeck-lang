@@ -61,11 +61,11 @@ void JitCompilerIA32::Prolog() {
     0x89, 0xe5,                                                  // mov  %esp, %ebp
     0x81, 0xec, buffer[0], buffer[1], buffer[2], buffer[3],      // sub  $imm, %esp
                                                                  // save registers
-    0x53,                                                        // push ebx
-    0x51,                                                        // push ecx
-    0x52,                                                        // push edx
-    0x57,                                                        // push edi
-    0x56                                                         // push esi
+    0x53,                                                        // push $ebx
+    0x51,                                                        // push $ecx
+    0x52,                                                        // push $edx
+    0x57,                                                        // push $edi
+    0x56                                                         // push $esi
   };
   const int32_t setup_size = sizeof(setup_code);
   // copy setup
@@ -102,13 +102,13 @@ void JitCompilerIA32::Epilog() {
   // assume return value is in EAX
   unsigned char teardown_code[] = {
     // restore registers
-    0x5e,             // pop esi
-    0x5f,             // pop edi
-    0x5a,             // pop edx
-    0x59,             // pop ecx
-    0x5b,             // pop ebx
+    0x5e,             // pop $esi
+    0x5f,             // pop $edi
+    0x5a,             // pop $edx
+    0x59,             // pop $ecx
+    0x5b,             // pop $ebx
     // tear down stack frame and return
-    0x89, 0xec,       // mov  %ebp, %esp
+    0x89, 0xec,       // mov %ebp, %esp
     0x5d,             // pop %ebp
     0xc3              // rtn
   };
