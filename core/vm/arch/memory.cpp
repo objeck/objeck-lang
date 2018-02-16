@@ -323,7 +323,8 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, long 
 
 #ifdef _DEBUG
     wcout << L"# allocating object: cached=" << (is_cached ? "true" : "false")  << ", addr=" << mem << L"(" 
-	      << (size_t)mem << L"), size=" << size << L" byte(s), used=" << allocation_size << L" byte(s) #" << endl;
+          << (size_t)mem << L"), size=" << size << L" byte(s), used=" << allocation_size << L" byte(s) #"
+          << endl;
 #endif
   }
 

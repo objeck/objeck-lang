@@ -37,9 +37,9 @@
 // basic vm tuning parameters
 // define MEM_MAX 2097152
 #define MEM_MAX 4096 * 4
-#define UNCOLLECTED_COUNT 5
-#define COLLECTED_COUNT 13
-#define POOL_SIZE 128
+#define UNCOLLECTED_COUNT 3
+#define COLLECTED_COUNT 7
+#define POOL_SIZE 32
 
 #define EXTRA_BUF_SIZE 4
 #define MARKED_FLAG -1
