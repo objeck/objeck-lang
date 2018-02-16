@@ -25,8 +25,8 @@ bundle Default {
 				};
 				i := i + 1;
 			};
-#~~#
-#			PrintLine(ii, ss);	
+
+			PrintLine(ii, ss);	
 
 #~
 			ii[0,1,0] := 13;
