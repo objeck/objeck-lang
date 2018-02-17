@@ -1,17 +1,17 @@
 bundle Default {
 	class Test {
 		function : Main(args : System.String[]) ~ Nil {
-#			ff : Float[,] := Float->New[2,3];
-#			ff[0,2] := 3;
-#			ff[1,2] := 34.50;
+			ff : Float[,] := Float->New[2,3];
+			ff[0,2] := 3;
+			ff[1,2] := 34.50;
 		
-			Run();
+			Run(ff);
 		}
 		
 #		function : Run(ff : Float[,]) ~ Nil {
-#		function : native : Run(ff : Float[,]) ~ Nil {
+		function : native : Run(ff : Float[,]) ~ Nil {
 #		function : Run() ~ Nil {
-		function : native : Run() ~ Nil {
+#		function : native : Run() ~ Nil {
 #		function : Run() ~ Nil {
 #~	
 			c : Char[] := "-#";		
@@ -25,10 +25,11 @@ bundle Default {
 ~#
 
 			y : System.String := System.String->New("22675");
-#			x : Int := y->ToInt();
-#			x->PrintLine();	
+			x : Int := y->ToInt();
+			x->PrintLine();	
 
-#~	
+			ss := Char->New[4];
+#~
 			ss : Char[] := "Hello";
 			ss[2]->PrintLine();
 			ss->PrintLine();
@@ -40,15 +41,15 @@ bundle Default {
 			ss : Char[] := "Hello";
 			ss[2]->PrintLine();
 			a->PrintLine();
-			(a + ss[2])->PrintLine();
+			(a + ss[2])->PrintLine(); 
+~#
 			
 			ff[1,2]->PrintLine();
 			ss[3] := ff[0,2] * ff[1,2] - ff[0,0];
 			ff[1,2]->PrintLine();
 			ss->PrintLine();
 			
-			(3.3->As(Int) * 3.3->As(Int))->PrintLine();
-~#			
+			(3.3->As(Int) * 3.3->As(Int))->PrintLine();		
 		}
 	}
 }
