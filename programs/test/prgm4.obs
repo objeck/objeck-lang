@@ -22,15 +22,14 @@ bundle Default {
 			else {
 				"false"->PrintLine();
 			};
-~#
+
 
 			y : System.String := System.String->New("22675");
 			x : Int := y->ToInt();
 			x->PrintLine();	
 
 			ss := Char->New[4];
-#~
-			ss : Char[] := "Hello";
+
 			ss[2]->PrintLine();
 			ss->PrintLine();
 			x->PrintLine();	
@@ -42,13 +41,13 @@ bundle Default {
 			ss[2]->PrintLine();
 			a->PrintLine();
 			(a + ss[2])->PrintLine(); 
-~#
-			
+
+			ss := Char->New[4];		
 			ff[1,2]->PrintLine();
 			ss[3] := ff[0,2] * ff[1,2] - ff[0,0];
 			ff[1,2]->PrintLine();
 			ss->PrintLine();
-			
+~#			
 			(3.3->As(Int) * 3.3->As(Int))->PrintLine();		
 		}
 	}
