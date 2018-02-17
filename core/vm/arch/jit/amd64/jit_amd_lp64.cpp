@@ -187,8 +187,7 @@ void JitCompilerIA64::ProcessParameters(long params) {
     RegisterHolder* stack_pos_holder = GetRegister();
     move_mem_reg(STACK_POS, RBP, stack_pos_holder->GetRegister());
     
-    if(instr->GetType() == STOR_LOCL_INT_VAR ||
-       instr->GetType() == STOR_CLS_INST_INT_VAR) {
+    if(instr->GetType() == STOR_LOCL_INT_VAR || instr->GetType() == STOR_CLS_INST_INT_VAR) {
       dec_mem(0, stack_pos_holder->GetRegister());
 #ifdef _WIN64	  
       move_mem_reg32(0, stack_pos_holder->GetRegister(), stack_pos_holder->GetRegister());
