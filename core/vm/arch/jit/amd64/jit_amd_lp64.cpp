@@ -3887,7 +3887,6 @@ void JitCompilerIA64::cvt_reg_xreg(Register src, Register dest) {
 }
 
 void JitCompilerIA64::cvt_imm_xreg(RegInstr* instr, Register reg) {
-  // copy address of imm value
   RegisterHolder* imm_holder = GetRegister();
   move_imm_reg(instr->GetOperand(), imm_holder->GetRegister());
   cvt_reg_xreg(imm_holder->GetRegister(), reg);
