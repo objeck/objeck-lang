@@ -26,8 +26,8 @@ bundle Default {
 
 		}
 
-		function : PrintLine(aa : Int[,,]) ~ Nil {
-#		function : native : PrintLine(aa : Int[,,]) ~ Nil {
+#		function : PrintLine(aa : Int[,,]) ~ Nil {
+		function : native : PrintLine(aa : Int[,,]) ~ Nil {
 			for(i : Int := 0; i < 3; i := i + 1;) {
 				for(j : Int := 0; j < 5; j := j + 1;) {
 					for(k : Int := 0; k < 2; k := k + 1;) {
@@ -35,8 +35,7 @@ bundle Default {
 					
 						if(aa[i,j,k] % 2 = 0) {
 							aa[i,j,k]->PrintLine();
-						};
-#~
+						}
 						else {
 							v : Int := aa[i,j,k];
 							select(v) {
@@ -73,7 +72,6 @@ bundle Default {
 								}
 							};
 						};
-~#
 					};
 				};
 			};
