@@ -1297,8 +1297,7 @@ void JitCompilerIA64::ProcessIntToFloat(StackInstr* instr) {
     break;
 
   case REG_INT:
-    cvt_reg_xreg(left->GetRegister()->GetRegister(), 
-                 holder->GetRegister());
+    cvt_reg_xreg(left->GetRegister()->GetRegister(), holder->GetRegister());
     ReleaseRegister(left->GetRegister());
     break;
 
@@ -3890,11 +3889,7 @@ void JitCompilerIA64::cvt_reg_xreg(Register src, Register dest) {
 void JitCompilerIA64::cvt_imm_xreg(RegInstr* instr, Register reg) {
   // copy address of imm value
   RegisterHolder* imm_holder = GetRegister();
-#ifdef _WIN64
-  move_imm_reg(instr->GetOperand2(), imm_holder->GetRegister());
-#else
   move_imm_reg(instr->GetOperand(), imm_holder->GetRegister());
-#endif
   cvt_reg_xreg(imm_holder->GetRegister(), reg);
   ReleaseRegister(imm_holder);
 }
