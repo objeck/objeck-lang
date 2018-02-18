@@ -1267,8 +1267,7 @@ void JitCompilerIA64::ProcessFloatToInt(StackInstr* instr) {
     break;
 
   case REG_FLOAT:
-    cvt_xreg_reg(left->GetRegister()->GetRegister(), 
-                 holder->GetRegister());
+    cvt_xreg_reg(left->GetRegister()->GetRegister(), holder->GetRegister());
     ReleaseXmmRegister(left->GetRegister());
     break;
 
