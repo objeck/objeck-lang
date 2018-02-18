@@ -405,12 +405,8 @@ namespace Runtime {
       // create character array
       const long char_array_size = (long)value_str.size();
       const long char_array_dim = 1;
-      size_t* char_array = (size_t*)MemoryManager::AllocateArray(char_array_size + 1 +
-                                                                 ((char_array_dim + 2) *
-                                                                  sizeof(size_t)),
-                                                                 CHAR_ARY_TYPE,
-                                                                 op_stack, *stack_pos,
-                                                                 false);
+      size_t* char_array = (size_t*)MemoryManager::AllocateArray(char_array_size + 1 + ((char_array_dim + 2) * sizeof(size_t)),
+                                                                 CHAR_ARY_TYPE, op_stack, *stack_pos, false);
       char_array[0] = char_array_size + 1;
       char_array[1] = char_array_dim;
       char_array[2] = char_array_size;
@@ -420,9 +416,7 @@ namespace Runtime {
       wcsncpy(char_array_ptr, value_str.c_str(), char_array_size);
       
       // create 'System.String' object instance
-      size_t* str_obj = MemoryManager::AllocateObject(program->GetStringObjectId(),
-                                                      op_stack, *stack_pos,
-                                                      false);
+      size_t* str_obj = MemoryManager::AllocateObject(program->GetStringObjectId(), op_stack, *stack_pos, false);
       str_obj[0] = (size_t)char_array;
       str_obj[1] = char_array_size;
       str_obj[2] = char_array_size;
