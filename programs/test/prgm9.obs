@@ -16,6 +16,7 @@ bundle Default {
 			};
 			
 			for(i : Int := 0; i < @int_array->Size(); i := i + 1;) {
+#				@int_array[i] := @float_array[i] * 10;
 				@int_array[i] := @float_array[i] * 10;
 			};
 		}
