@@ -1,67 +1,6 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		Go(9)->PrintLine();
-	}
-
-	function : native : Go(x : Int) ~ Int {
-		ii := Char->New[3];
-		ii[0] := 'o';
-		ii[1] := 'k';
-		ii[2] := '\0';
-
-		ii->PrintLine();
-		ii[1]->PrintLine();
-#~		
-		ii := Int->New[4];
-		ii[2] := 13;
-		ii[0] := 7;
-		ii[1] := ii[0] * ii[2];
-		ii[1]->PrintLine();
-
-		return 13;
-
-		cc[0] := a;cc[0] := a;
-		1.1->PrintLine();
-		return 7;
-
-		cc : Int[];#= Char->New[4];
-		cc[0] := 'l';
-		cc[1] := 'o';
-		cc[2] := 'c';
-		cc[3] := '\0';
-
-		cc := Char->New[6];
-		for(i := 0; i < cc->Size(); i++;) {
-			cc[i] := 101 + i;
-		};
-		cc->PrintLine();
-
-
-		ss := "Blue";
-		ss->PrintLine();
-
-		x := -1;
-		if(x = -1) {
-			"Okay"->PrintLine();
-		};
-
-		a := 9;
-		b := 3;
-		(a/b)->PrintLine();
-		
-		cc := Char->New[2];
-		cc[0] := 'x';
-		cc[1] := '\0';
-
-		str0 := "Foo";
-		str1 := "Bar";
-		if(str1 = str1) {
-			"Same"->PrintLine();
-		} else {
-			"Diff"->PrintLine();
-		};
-~#
-
-		return 44;
+		ff : Float[];
+		a := ff[0] + 10;
 	}
 }

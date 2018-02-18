@@ -6,7 +6,6 @@ bundle Default {
 		
 		function : native : Run() ~ Nil {
 #		function : Run() ~ Nil {
-#~
 			s : System.String := System.String->New();
 			s->Append("23");
 			s->Append("0");
@@ -17,21 +16,22 @@ bundle Default {
 
 			ss : System.String := System.String->New();
 
-			a : Char[] := "John Doe";
+			a := "John Doe";
 			ss->Append(a);
-			b : Char[] := " Unix";
+			b := " Unix";
 			ss->Append(b);
 
 			ss->PrintLine();
-			"Done."->PrintLine(;
 			"Done."->PrintLine();
-~#
+			"Done."->PrintLine();
+#~
 			value : Float := 3.14;
 			digit : Int := 2;
 			
 			value->PrintLine();
 			value := value - digit * 10.0;
 			value->PrintLine();
+~#
 		}
 	}
 }
