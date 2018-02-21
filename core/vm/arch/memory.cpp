@@ -384,7 +384,7 @@ size_t* MemoryManager::AllocateArray(const long size, const MemoryType type,  si
     is_cached = true;
 #endif
   }
-  else   if(cache_pool_64.size() > 0 && alloc_size <= 64 && alloc_size > 32) {
+  else if(cache_pool_64.size() > 0 && alloc_size <= 64 && alloc_size > 32) {
     mem = (size_t*)cache_pool_64.top();
     cache_pool_64.pop();
     mem[EXTRA_BUF_SIZE + CACHE_SIZE] = 64;
@@ -932,10 +932,10 @@ void* MemoryManager::CheckJitRoots(void* arg)
       << L"; num=" << mthd->GetNumberDeclarations() << L" =====" << endl;
 #endif
 
-    // check self
-    CheckObject(self, true, 1);
-
     if(mem) {
+      // check self
+      CheckObject(self, true, 1);
+
       StackDclr** dclrs = mthd->GetDeclarations();
       for(int j = dclrs_num - 1; j > -1; j--) {
         // update address based upon type
@@ -1415,7 +1415,7 @@ void MemoryManager::CheckObject(size_t* mem, bool is_obj, long depth)
         wcout << L"\t";
       }
       wcout << L"\t----- object: addr=" << mem << L"(" << (size_t)mem << L"), num="
-        << cls->GetNumberInstanceDeclarations() << L" -----" << endl;
+            << cls->GetNumberInstanceDeclarations() << L" -----" << endl;
 #endif
 
       // mark data

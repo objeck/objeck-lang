@@ -65,7 +65,7 @@ extern "C" {
 #endif
   void openssl_hash_sha256(VMContext& context) {
     // get parameters
-    long* input_array = (long*)APITools_GetIntAddress(context, 1)[0];    
+    size_t* input_array = (size_t*)APITools_GetIntAddress(context, 1)[0];
     int input_size =  APITools_GetArraySize(input_array) - 1;
     const unsigned char* input =  (unsigned char*)APITools_GetByteArray(input_array);
     
@@ -77,13 +77,13 @@ extern "C" {
     SHA256_Final(output, &sha256);
 
     // copy output
-    long* output_byte_array = APITools_MakeByteArray(context, SHA256_DIGEST_LENGTH);
+    size_t* output_byte_array = APITools_MakeByteArray(context, SHA256_DIGEST_LENGTH);
     unsigned char* output_byte_array_buffer = (unsigned char*)(output_byte_array + 3);
     for(int i = 0; i < SHA256_DIGEST_LENGTH; i++) {
       output_byte_array_buffer[i] = output[i];
     }
     
-    long* output_holder = APITools_GetIntAddress(context, 0);
+    size_t* output_holder = APITools_GetIntAddress(context, 0);
     output_holder[0] = (long)output_byte_array;   
   }
   
@@ -95,7 +95,7 @@ extern "C" {
 #endif
   void openssl_hash_ripemd160(VMContext& context) {
     // get parameters
-    long* input_array = (long*)APITools_GetIntAddress(context, 1)[0];    
+    size_t* input_array = (size_t*)APITools_GetIntAddress(context, 1)[0];    
     int input_size =  APITools_GetArraySize(input_array) - 1;
     const unsigned char* input =  (unsigned char*)APITools_GetByteArray(input_array);
     
@@ -107,13 +107,13 @@ extern "C" {
     RIPEMD160_Final(output, &sha256);
 
     // copy output
-    long* output_byte_array = APITools_MakeByteArray(context, RIPEMD160_DIGEST_LENGTH);
+    size_t* output_byte_array = APITools_MakeByteArray(context, RIPEMD160_DIGEST_LENGTH);
     unsigned char* output_byte_array_buffer = (unsigned char*)(output_byte_array + 3);
     for(int i = 0; i < RIPEMD160_DIGEST_LENGTH; i++) {
       output_byte_array_buffer[i] = output[i];
     }
     
-    long* output_holder = APITools_GetIntAddress(context, 0);
+    size_t* output_holder = APITools_GetIntAddress(context, 0);
     output_holder[0] = (long)output_byte_array;   
   }
   
@@ -122,7 +122,7 @@ extern "C" {
 #endif
   void openssl_hash_md5(VMContext& context) {
     // get parameters
-    long* input_array = (long*)APITools_GetIntAddress(context, 1)[0];    
+    size_t* input_array = (size_t*)APITools_GetIntAddress(context, 1)[0];    
     int input_size =  APITools_GetArraySize(input_array) - 1;
     const unsigned char* input =  (unsigned char*)APITools_GetByteArray(input_array);
     
@@ -131,13 +131,13 @@ extern "C" {
     MD5(input, input_size, output);
     
     // copy output
-    long* output_byte_array = APITools_MakeByteArray(context, MD5_DIGEST_LENGTH);
+    size_t* output_byte_array = APITools_MakeByteArray(context, MD5_DIGEST_LENGTH);
     unsigned char* output_byte_array_buffer = (unsigned char*)(output_byte_array + 3);
     for(int i = 0; i < MD5_DIGEST_LENGTH; i++) {
       output_byte_array_buffer[i] = output[i];
     }
     
-    long* output_holder = APITools_GetIntAddress(context, 0);
+    size_t* output_holder = APITools_GetIntAddress(context, 0);
     output_holder[0] = (long)output_byte_array;   
   }
 
@@ -149,11 +149,11 @@ extern "C" {
 #endif
   void openssl_encrypt_aes256(VMContext& context) {
     // get parameters
-    long* key_array = (long*)APITools_GetIntAddress(context, 1)[0];    
+    size_t* key_array = (size_t*)APITools_GetIntAddress(context, 1)[0];    
     const int key_size =  APITools_GetArraySize(key_array) - 1;
     const unsigned char* key =  (unsigned char*)APITools_GetByteArray(key_array);
     
-    long* input_array = (long*)APITools_GetIntAddress(context, 2)[0];    
+    size_t* input_array = (size_t*)APITools_GetIntAddress(context, 2)[0];    
     const int input_size =  APITools_GetArraySize(input_array) - 1;
     const unsigned char* input =  (unsigned char*)APITools_GetByteArray(input_array);
     
@@ -199,7 +199,7 @@ extern "C" {
     
     // copy output
     const int total_size = output_size + final_size;
-    long* output_byte_array = APITools_MakeByteArray(context, total_size);
+    size_t* output_byte_array = APITools_MakeByteArray(context, total_size);
     unsigned char* output_byte_array_buffer = (unsigned char*)(output_byte_array + 3);
     for(int i = 0; i < total_size; i++) {
       output_byte_array_buffer[i] = output[i];
@@ -207,7 +207,7 @@ extern "C" {
     free(output);
     output = NULL;
     
-    long* output_holder = APITools_GetIntAddress(context, 0);
+    size_t* output_holder = APITools_GetIntAddress(context, 0);
     output_holder[0] = (long)output_byte_array;    
   }
   
@@ -219,11 +219,11 @@ extern "C" {
 #endif
   void openssl_decrypt_aes256(VMContext& context) {
     // get parameters
-    long* key_array = (long*)APITools_GetIntAddress(context, 1)[0];    
+    size_t* key_array = (size_t*)APITools_GetIntAddress(context, 1)[0];    
     const int key_size =  APITools_GetArraySize(key_array) - 1;
     const unsigned char* key =  (unsigned char*)APITools_GetByteArray(key_array);
     
-    long* input_array = (long*)APITools_GetIntAddress(context, 2)[0];    
+    size_t* input_array = (size_t*)APITools_GetIntAddress(context, 2)[0];    
     const int input_size =  APITools_GetArraySize(input_array) - 1;
     const unsigned char* input =  (unsigned char*)APITools_GetByteArray(input_array);
     
@@ -268,7 +268,7 @@ extern "C" {
     
     // copy output
     const int total_size = output_size + final_size;
-    long* output_byte_array = APITools_MakeByteArray(context, total_size);
+    size_t* output_byte_array = APITools_MakeByteArray(context, total_size);
     unsigned char* output_byte_array_buffer = (unsigned char*)(output_byte_array + 3);
     for(int i = 0; i < total_size; i++) {
       output_byte_array_buffer[i] = output[i];
@@ -276,7 +276,7 @@ extern "C" {
     free(output);
     output = NULL;
     
-    long* output_holder = APITools_GetIntAddress(context, 0);
+    size_t* output_holder = APITools_GetIntAddress(context, 0);
     output_holder[0] = (long)output_byte_array;
   }
 }
