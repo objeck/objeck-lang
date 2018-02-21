@@ -1166,7 +1166,6 @@ void* MemoryManager::CheckPdaRoots(void* arg)
       }
 
       // copy frames locally
-      vector<StackFrame*> frames;
       frames.push_back(cur_frame);
       while(--call_stack_pos > -1) {
         StackFrame* frame = call_stack[call_stack_pos];
@@ -1183,6 +1182,8 @@ void* MemoryManager::CheckPdaRoots(void* arg)
           frames.push_back(frame);
         }
       }
+
+
     }
   }
 
