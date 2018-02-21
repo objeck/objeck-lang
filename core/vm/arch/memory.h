@@ -106,8 +106,8 @@ class MemoryManager {
   // note: protected by 'allocated_lock'
   static size_t allocation_size;
   static size_t mem_max_size;
-  static long uncollected_count;
-  static long collected_count;
+  static size_t uncollected_count;
+  static size_t collected_count;
 
   // if return true, trace memory otherwise do not
   static inline bool MarkMemory(size_t* mem);
@@ -231,7 +231,7 @@ class MemoryManager {
   }
   
   static size_t* AllocateObject(const long obj_id, size_t* op_stack, long stack_pos, bool collect = true);
-  static size_t* AllocateArray(const long size, const MemoryType type, size_t* op_stack, long stack_pos, bool collect = true);
+  static size_t* AllocateArray(const size_t size, const MemoryType type, size_t* op_stack, long stack_pos, bool collect = true);
   
   // object verification
   static size_t* ValidObjectCast(size_t* mem, long to_id, int* cls_hierarchy, int** cls_interfaces);
