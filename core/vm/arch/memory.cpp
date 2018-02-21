@@ -1066,8 +1066,8 @@ void* MemoryManager::CheckJitRoots(void* arg)
     }
 
     // NOTE: this marks temporary variables that are stored in JIT memory
-    // during some method calls. there are 3 integer temp addresses
-    for(int i = 0; i < 8; ++i) {
+    // during some method calls. there are 6 integer temp addresses
+    for(int i = 0; i < 6; ++i) {
       CheckObject((size_t*)mem[i], false, 1);
     }
   }

@@ -147,7 +147,11 @@ void JitCompilerIA64::RegisterRoot() {
   // caculate root address
   // note: the offset requried to 
   // get to the first local variale
-  const long offset = org_local_space + RED_ZONE + TMP_REG_5;
+#ifdef _WIN64
+  const long offset = org_local_space + RED_ZONE + TMP_REG_5 + 8;
+#else
+  const long offset = org_local_space + RED_ZONE + TMP_REG_;
+#endif
   RegisterHolder* holder = GetRegister();
   move_reg_reg(RBP, holder->GetRegister());
   sub_imm_reg(-TMP_REG_5 + offset, holder->GetRegister());
