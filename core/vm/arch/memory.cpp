@@ -476,6 +476,7 @@ size_t* MemoryManager::ValidObjectCast(size_t* mem, long to_id, int* cls_hierarc
 void MemoryManager::CollectAllMemory(size_t* op_stack, long stack_pos)
 {
 #ifdef _TIMING
+  wcout << L"=========================================" << endl;
   clock_t start = clock();
 #endif
 
@@ -538,8 +539,8 @@ void MemoryManager::CollectAllMemory(size_t* op_stack, long stack_pos)
 
 #ifdef _TIMING
   clock_t end = clock();
-  wcout << L"---------------------------" << endl;
   wcout << L"Collection: size=" << mem_max_size << L", time=" << (double)(end - start) / CLOCKS_PER_SEC << " second(s)." << endl;
+  wcout << L"=========================================" << endl << endl;
 #endif
 }
 
@@ -659,10 +660,7 @@ void* MemoryManager::CollectMemory(void* arg)
   
 #ifdef _TIMING
   clock_t end = clock();
-  wcout << dec << endl << L"=========================================" << endl;
-  wcout << L"Mark time: " << (double)(end - start) / CLOCKS_PER_SEC 
-        << L" second(s)." << endl;
-  wcout << L"=========================================" << endl;
+  wcout << dec << L"Mark time: " << (double)(end - start) / CLOCKS_PER_SEC << L" second(s)." << endl;
   start = clock();
 #endif
   
@@ -841,10 +839,7 @@ void* MemoryManager::CollectMemory(void* arg)
   
 #ifdef _TIMING
   end = clock();
-  wcout << dec << endl << L"=========================================" << endl;
-  wcout << L"Sweep time: " << (double)(end - start) / CLOCKS_PER_SEC 
-        << L" second(s)." << endl;
-  wcout << L"=========================================" << endl;
+  wcout << dec << L"Sweep time: " << (double)(end - start) / CLOCKS_PER_SEC << L" second(s)." << endl;
 #endif
   
 #ifndef _WIN32
