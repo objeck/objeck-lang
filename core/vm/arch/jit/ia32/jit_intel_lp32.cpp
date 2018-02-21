@@ -138,7 +138,7 @@ void JitCompilerIA32::RegisterRoot() {
   move_mem_reg(JIT_MEM, EBP, mem_holder->GetRegister());
   move_reg_mem(holder->GetRegister(), 0, mem_holder->GetRegister());
 
-  int index = offset >> 2;
+  int index = ((offset + TMP_REG_5) >> 2) + 6;
   if(index > 0) {
     move_imm_reg(index, ECX);
     move_imm_mem(0, 0, holder->GetRegister());
