@@ -150,7 +150,7 @@ void JitCompilerIA64::RegisterRoot() {
 #ifdef _WIN64
   const long offset = org_local_space + RED_ZONE + TMP_REG_5 + 8;
 #else
-  const long offset = org_local_space + RED_ZONE + TMP_REG_;
+  const long offset = org_local_space + RED_ZONE + TMP_REG_5;
 #endif
   RegisterHolder* holder = GetRegister();
   move_reg_reg(RBP, holder->GetRegister());
@@ -160,7 +160,7 @@ void JitCompilerIA64::RegisterRoot() {
   move_mem_reg(JIT_MEM, RBP, mem_holder->GetRegister());
   move_reg_mem(holder->GetRegister(), 0, mem_holder->GetRegister());
 
-  int index = offset >> 3;
+  const int index = (offset >> 3) + 6;
   if(index > 0) {
     move_imm_reg(index, RCX);
     move_imm_mem(0, 0, holder->GetRegister());
