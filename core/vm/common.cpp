@@ -430,10 +430,8 @@ size_t* ObjectDeserializer::DeserializeObject() {
             const long byte_array_size = DeserializeInt();
             const long byte_array_dim = DeserializeInt();
             const long byte_array_size_dim = DeserializeInt();
-            size_t* byte_array = MemoryManager::AllocateArray(byte_array_size +
-              ((byte_array_dim + 2) *
-                                                              sizeof(size_t)), BYTE_ARY_TYPE,
-                                                              op_stack, *stack_pos, false);
+            size_t* byte_array = MemoryManager::AllocateArray((size_t)(byte_array_size + ((byte_array_dim + 2) * sizeof(size_t))),
+                                                              BYTE_ARY_TYPE, op_stack, *stack_pos, false);
             char* byte_array_ptr = (char*)(byte_array + 3);
             byte_array[0] = byte_array_size;
             byte_array[1] = byte_array_dim;
@@ -599,7 +597,7 @@ size_t* ObjectDeserializer::DeserializeObject() {
             const long array_size = DeserializeInt();
             const long array_dim = DeserializeInt();
             const long array_size_dim = DeserializeInt();
-            size_t* array = MemoryManager::AllocateArray(array_size + array_dim + 2, INT_TYPE,
+            size_t* array = MemoryManager::AllocateArray((size_t)(array_size + array_dim + 2), INT_TYPE,
                                                          op_stack, *stack_pos, false);
             array[0] = array_size;
             array[1] = array_dim;
@@ -1278,7 +1276,7 @@ size_t* TrapProcessor::ExpandSerialBuffer(const long src_buffer_size, size_t* de
     // create byte array
     const long byte_array_size = dest_buffer_size;
     const long byte_array_dim = 1;
-    size_t* byte_array = (size_t*)MemoryManager::AllocateArray(byte_array_size + 1 + ((byte_array_dim + 2) * sizeof(size_t)),
+    size_t* byte_array = (size_t*)MemoryManager::AllocateArray((size_t)(byte_array_size + 1 + ((byte_array_dim + 2) * sizeof(size_t))),
                                                                BYTE_ARY_TYPE, op_stack, *stack_pos, false);
     byte_array[0] = byte_array_size + 1;
     byte_array[1] = byte_array_dim;
@@ -1769,8 +1767,8 @@ bool TrapProcessor::ConvertBytesToUnicode(StackProgram* program, size_t* inst, s
   const long char_array_size = (long)out.size();
   const long char_array_dim = 1;
   size_t* char_array = MemoryManager::AllocateArray(char_array_size + 1 +
-    ((char_array_dim + 2) *
-                                                    sizeof(size_t)),
+                                                    ((char_array_dim + 2) *
+                                                     sizeof(size_t)),
                                                     CHAR_ARY_TYPE,
                                                     op_stack, *stack_pos,
                                                     false);
