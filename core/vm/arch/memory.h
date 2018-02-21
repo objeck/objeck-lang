@@ -104,8 +104,8 @@ class MemoryManager {
 #endif
     
   // note: protected by 'allocated_lock'
-  static long allocation_size;
-  static long mem_max_size;
+  static size_t allocation_size;
+  static size_t mem_max_size;
   static long uncollected_count;
   static long collected_count;
 

@@ -45,8 +45,8 @@ stack<char*> MemoryManager::cache_pool_512;
 vector<size_t*> MemoryManager::allocated_memory;
 
 bool MemoryManager::initialized;
-long MemoryManager::allocation_size;
-long MemoryManager::mem_max_size;
+size_t MemoryManager::allocation_size;
+size_t MemoryManager::mem_max_size;
 long MemoryManager::uncollected_count;
 long MemoryManager::collected_count;
 
