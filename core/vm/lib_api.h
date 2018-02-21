@@ -45,7 +45,7 @@ typedef void(*APITools_MethodCall_Ptr) (size_t* op_stack, long *stack_pos, size_
 typedef void(*APITools_MethodCallId_Ptr) (size_t* op_stack, long *stack_pos, size_t* instance,
 					const int cls_id, const int mthd_id);
 typedef size_t*(*APITools_AllocateObject_Ptr) (const wchar_t*, size_t* op_stack, long stack_pos, bool collect);
-typedef size_t*(*APITools_AllocateArray_Ptr) (const size_t size, const instructions::MemoryType type,
+typedef size_t*(*APITools_AllocateArray_Ptr) (const long size, const instructions::MemoryType type,
 					    size_t* op_stack, long stack_pos, bool collect);
 // context structure
 struct VMContext {
