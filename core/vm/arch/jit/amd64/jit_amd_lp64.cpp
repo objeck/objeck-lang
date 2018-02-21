@@ -160,6 +160,7 @@ void JitCompilerIA64::RegisterRoot() {
   move_mem_reg(JIT_MEM, RBP, mem_holder->GetRegister());
   move_reg_mem(holder->GetRegister(), 0, mem_holder->GetRegister());
 
+  // 6 slots to hold spilled registers 
   const int index = (offset >> 3) + 6;
   if(index > 0) {
     move_imm_reg(index, RCX);
