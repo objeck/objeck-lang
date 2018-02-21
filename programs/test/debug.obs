@@ -22,7 +22,7 @@ class Test {
 	}
 
 	function : native : Run(nodes : Vector) ~ Nil {
-		for(i := 0; i < 100; i++;) {
+		for(i := 0; i < 150; i++;) {
 			nodes->AddBack(Node->New());
 		};
 	}

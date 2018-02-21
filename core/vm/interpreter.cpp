@@ -1988,6 +1988,7 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, size_t* instanc
 #endif
     }
     // restore previous state
+    ReleaseStackFrame(*frame);
     (*frame) = PopFrame();
     instrs = (*frame)->method->GetInstructions();
     ip = (*frame)->ip;
@@ -2032,7 +2033,9 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, size_t* instanc
       ::exit(1);
 #endif
     }
+
     // restore previous state
+    ReleaseStackFrame(*frame);
     (*frame) = PopFrame();
     instrs = (*frame)->method->GetInstructions();
     ip = (*frame)->ip;

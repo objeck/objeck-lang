@@ -138,6 +138,7 @@ namespace Runtime {
 #endif      
       
       // load cache
+      frame->jit_mem = NULL;
       memset(frame->mem, 0, LOCAL_SIZE * sizeof(size_t));
       cached_frames.push(frame);
 #ifdef _DEBUG
