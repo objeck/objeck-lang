@@ -1191,6 +1191,7 @@ void* MemoryManager::CheckPdaRoots(void* arg)
 #endif
 
   // check JIT roots in separate thread
+#ifndef _GC_SERIAL
 #ifdef _WIN32
   HANDLE thread_id = (HANDLE)_beginthreadex(NULL, 0, CheckJitRoots, NULL, 0, NULL);
   if(!thread_id) {
@@ -1207,6 +1208,7 @@ void* MemoryManager::CheckPdaRoots(void* arg)
     cerr << L"Unable to create garbage collection thread!" << endl;
     exit(-1);
   }
+#endif
 #endif
 
   // check PDA roots
@@ -1234,6 +1236,7 @@ void* MemoryManager::CheckPdaRoots(void* arg)
     CheckMemory(mem, mthd->GetDeclarations(), mthd->GetNumberDeclarations(), 0);
   }
 
+#ifndef _GC_SERIAL
 #ifdef _WIN32
   // wait for JIT thread
   if(WaitForSingleObject(thread_id, INFINITE) != WAIT_OBJECT_0) {
@@ -1249,7 +1252,8 @@ void* MemoryManager::CheckPdaRoots(void* arg)
   }
   pthread_exit(NULL);
 #endif
-  
+#endif
+
   return 0;
 }
 
