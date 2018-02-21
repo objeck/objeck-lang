@@ -553,7 +553,7 @@ extern "C" {
 #endif
   void odbc_stmt_set_smallint(VMContext& context) 
   {
-    long* value = APITools_GetIntAddress(context, 1);
+    size_t* value = APITools_GetIntAddress(context, 1);
     SQLUSMALLINT i = (SQLUSMALLINT)APITools_GetIntValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
 
@@ -605,7 +605,7 @@ extern "C" {
 #endif
   void odbc_stmt_set_bit(VMContext& context) 
   {
-    long* value = APITools_GetIntAddress(context, 1);
+    size_t* value = APITools_GetIntAddress(context, 1);
     SQLUSMALLINT i = (SQLUSMALLINT)APITools_GetIntValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
 
@@ -657,7 +657,7 @@ extern "C" {
 #endif
   void odbc_stmt_set_int(VMContext& context) 
   {
-    long* value = APITools_GetIntAddress(context, 1);
+    size_t* value = APITools_GetIntAddress(context, 1);
     SQLUSMALLINT i = (SQLUSMALLINT)APITools_GetIntValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
 
@@ -710,7 +710,7 @@ extern "C" {
 #endif
   void odbc_stmt_set_double(VMContext& context) 
   {
-    long* value = APITools_GetFloatAddress(context, 1);
+    size_t* value = APITools_GetFloatAddress(context, 1);
     SQLUSMALLINT i = (SQLUSMALLINT)APITools_GetIntValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
 
@@ -763,7 +763,7 @@ extern "C" {
 #endif
   void odbc_stmt_set_real(VMContext& context) 
   {
-    long* value = APITools_GetFloatAddress(context, 1);
+    size_t* value = APITools_GetFloatAddress(context, 1);
     SQLUSMALLINT i = (SQLUSMALLINT)APITools_GetIntValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
 
@@ -1244,7 +1244,7 @@ extern "C" {
 #endif
   void odbc_stmt_set_varchar(VMContext& context) 
   {
-    long* byte_array = (long*)APITools_GetIntValue(context, 1);
+    size_t* byte_array = (size_t*)APITools_GetIntValue(context, 1);
     char* value = (char*)APITools_GetByteArray(byte_array);
     SQLUSMALLINT i = (SQLUSMALLINT)APITools_GetIntValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
@@ -1298,7 +1298,7 @@ extern "C" {
 #endif
   void odbc_stmt_set_blob(VMContext& context) 
   {
-    long* byte_array = (long*)APITools_GetIntValue(context, 1);
+    size_t* byte_array = (size_t*)APITools_GetIntValue(context, 1);
     char* value = (char*)APITools_GetByteArray(byte_array);
     int value_size = APITools_GetArraySize(byte_array);
     SQLUSMALLINT i = (SQLUSMALLINT)APITools_GetIntValue(context, 2);
@@ -1327,9 +1327,9 @@ extern "C" {
 #endif
   void odbc_stmt_set_bytes(VMContext& context) 
   {
-    long* byte_array = (long*)APITools_GetIntValue(context, 1);
+    size_t* byte_array = (size_t*)APITools_GetIntValue(context, 1);
     char* value = (char*)APITools_GetByteArray(byte_array);
-    long* value_size = APITools_GetIntAddress(context, 2);
+    SQLINTEGER* value_size = (SQLINTEGER*)APITools_GetIntAddress(context, 2);
     SQLUSMALLINT i = (SQLUSMALLINT)APITools_GetIntValue(context, 3);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 4);
     map<int, pair<void*, int> >* exec_data = (map<int, pair<void*, int> >*)APITools_GetIntValue(context, 5);		
@@ -1385,7 +1385,7 @@ extern "C" {
 #endif
   void odbc_stmt_set_timestamp(VMContext& context) 
   {
-    long* value = APITools_GetObjectValue(context, 1);
+    size_t* value = APITools_GetObjectValue(context, 1);
     SQLUSMALLINT i = (SQLUSMALLINT)APITools_GetIntValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
 
@@ -1405,7 +1405,7 @@ extern "C" {
     time_stamp.second = (SQLUSMALLINT)value[6];
     time_stamp.fraction = (SQLUSMALLINT)value[7];
 
-    long* data = (long*)value[0];
+    size_t* data = (size_t*)value[0];
     data += 3;
     memcpy(data, &time_stamp, sizeof(time_stamp));
 
@@ -1453,7 +1453,7 @@ extern "C" {
 #endif
   void odbc_stmt_set_date(VMContext& context) 
   {
-    long* value = APITools_GetObjectValue(context, 1);
+    size_t* value = APITools_GetObjectValue(context, 1);
     SQLUSMALLINT i = (SQLUSMALLINT)APITools_GetIntValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
 
@@ -1467,7 +1467,7 @@ extern "C" {
     time_stamp.month = (SQLUSMALLINT)value[2];
     time_stamp.day = (SQLUSMALLINT)value[3];
 
-    long* data = (long*)value[0];
+    size_t* data = (size_t*)value[0];
     data += 3;
     memcpy(data, &time_stamp, sizeof(time_stamp));
 
@@ -1529,7 +1529,7 @@ extern "C" {
 #endif
   void odbc_result_get_blob_by_id(VMContext& context) 
   {
-    long* byte_array = (long*)APITools_GetIntValue(context, 1);
+    size_t* byte_array = (size_t*)APITools_GetIntValue(context, 1);
     char* buffer = (char*)APITools_GetByteArray(byte_array);
     int buffer_size = APITools_GetArraySize(byte_array);
 		
@@ -1566,7 +1566,7 @@ extern "C" {
   void odbc_result_get_blob_by_name(VMContext& context) 
   {
 
-    long* byte_array = (long*)APITools_GetIntValue(context, 1);
+    size_t* byte_array = (size_t*)APITools_GetIntValue(context, 1);
     char* buffer = (char*)APITools_GetByteArray(byte_array);
     int buffer_size = APITools_GetArraySize(byte_array);
 
@@ -1678,7 +1678,7 @@ extern "C" {
     SQLRETURN status = SQLGetData(stmt, i, SQL_C_TYPE_TIMESTAMP, &value, 
                                   sizeof(TIMESTAMP_STRUCT), &is_null);
     if(SQL_OK) {
-      long* ts_obj = context.alloc_obj(L"ODBC.Timestamp", (long*)context.op_stack, *context.stack_pos, false);
+      size_t* ts_obj = context.alloc_obj(L"ODBC.Timestamp", (size_t*)context.op_stack, *context.stack_pos, false);
       ts_obj[1] = value.year;
       ts_obj[2] = value.month;
       ts_obj[3] = value.day;
@@ -1743,7 +1743,7 @@ extern "C" {
     SQLRETURN status = SQLGetData(stmt, i, SQL_C_TYPE_TIMESTAMP, &value, 
                                   sizeof(TIMESTAMP_STRUCT), &is_null);
     if(SQL_OK) {
-      long* ts_obj = context.alloc_obj(L"ODBC.Timestamp", (long*)context.op_stack, *context.stack_pos, false);
+      size_t* ts_obj = context.alloc_obj(L"ODBC.Timestamp", (size_t*)context.op_stack, *context.stack_pos, false);
       ts_obj[1] = value.year;
       ts_obj[2] = value.month;
       ts_obj[3] = value.day;
@@ -1799,7 +1799,7 @@ extern "C" {
     DATE_STRUCT value;
     SQLRETURN status = SQLGetData(stmt, i, SQL_C_TYPE_DATE, &value, sizeof(DATE_STRUCT), &is_null);
     if(SQL_OK) {
-      long* ts_obj = context.alloc_obj(L"ODBC.Date", (long*)context.op_stack, *context.stack_pos, false);
+      size_t* ts_obj = context.alloc_obj(L"ODBC.Date", (size_t*)context.op_stack, *context.stack_pos, false);
       ts_obj[1] = value.year;
       ts_obj[2] = value.month;
       ts_obj[3] = value.day;
@@ -1855,7 +1855,7 @@ extern "C" {
     DATE_STRUCT value;
     SQLRETURN status = SQLGetData(stmt, i, SQL_C_TYPE_DATE, &value, sizeof(DATE_STRUCT), &is_null);
     if(SQL_OK) {
-      long* ts_obj = context.alloc_obj(L"ODBC.Date", (long*)context.op_stack, *context.stack_pos, false);
+      size_t* ts_obj = context.alloc_obj(L"ODBC.Date", (size_t*)context.op_stack, *context.stack_pos, false);
       ts_obj[1] = value.year;
       ts_obj[2] = value.month;
       ts_obj[3] = value.day;
