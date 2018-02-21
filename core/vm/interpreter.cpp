@@ -1965,36 +1965,9 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, size_t* instanc
 #if defined(_DEBUGGER) || defined(_NO_JIT)
   ProcessInterpretedMethodCall(called, instance, instrs, ip);
 #else
-  if(called->GetNativeCode()) {
-    (*frame) = GetStackFrame(called, instance);
-    JitExecutor jit_executor;
-    long status = jit_executor.Execute(called, (size_t*)instance, op_stack, stack_pos, call_stack, call_stack_pos, *frame);
-    if(status < 0) {
-      switch(status) {
-      case -1:
-        wcerr << L">>> Atempting to dereference a 'Nil' memory instance in native JIT code <<<" << endl;
-        break;
-      case -2:
-      case -3:
-        wcerr << L">>> Index out of bounds in native JIT code! <<<" << endl;
-        break;
-      }
-      StackErrorUnwind(called);
-#ifdef _DEBUGGER
-      halt = true;
-      return;
-#else
-      ::exit(1);
-#endif
-    }
-    // restore previous state
-    ReleaseStackFrame(*frame);
-    (*frame) = PopFrame();
-    instrs = (*frame)->method->GetInstructions();
-    ip = (*frame)->ip;
-  } 
-  else {
-    // compile
+  // compile, if needed
+  if(!called->GetNativeCode()) {
+    
 #if defined(_WIN64) || defined(_X64)
     JitCompilerIA64 jit_compiler;
 #elif _ARM32
@@ -2009,37 +1982,36 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, size_t* instanc
 #endif
       return;
     }
-    
-    // execute
-    (*frame) = GetStackFrame(called, instance);
-    JitExecutor jit_executor;
-    long status = jit_executor.Execute(called, instance, op_stack, stack_pos, call_stack, call_stack_pos, *frame);
-    if(status < 0) {
-      switch(status) {
-      case -1:
-        wcerr << L">>> Atempting to dereference a 'Nil' memory instance in native JIT code <<<" << endl;
-        break;
-
-      case -2:
-      case -3:
-        wcerr << L">>> Index out of bounds in native JIT code! <<<" << endl;
-        break;
-      }
-      StackErrorUnwind(called);
-#ifdef _DEBUGGER
-      halt = true;
-      return;
-#else
-      ::exit(1);
-#endif
-    }
-
-    // restore previous state
-    ReleaseStackFrame(*frame);
-    (*frame) = PopFrame();
-    instrs = (*frame)->method->GetInstructions();
-    ip = (*frame)->ip;
   }
+  
+  // execute
+  (*frame) = GetStackFrame(called, instance);
+  JitExecutor jit_executor;
+  long status = jit_executor.Execute(called, (size_t*)instance, op_stack, stack_pos, call_stack, call_stack_pos, *frame);
+  if(status < 0) {
+    switch(status) {
+    case -1:
+      wcerr << L">>> Atempting to dereference a 'Nil' memory instance in native JIT code <<<" << endl;
+      break;
+    case -2:
+    case -3:
+      wcerr << L">>> Index out of bounds in native JIT code! <<<" << endl;
+      break;
+    }
+    StackErrorUnwind(called);
+#ifdef _DEBUGGER
+    halt = true;
+    return;
+#else
+    ::exit(1);
+#endif
+  }
+
+  // restore previous state
+  ReleaseStackFrame(*frame);
+  (*frame) = PopFrame();
+  instrs = (*frame)->method->GetInstructions();
+  ip = (*frame)->ip;
 #endif
 }
 
