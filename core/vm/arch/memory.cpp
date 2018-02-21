@@ -928,148 +928,157 @@ void* MemoryManager::CheckJitRoots(void* arg)
 
 #ifdef _DEBUG
     wcout << L"\t===== JIT method: name=" << mthd->GetName() << L", id=" << mthd->GetClass()->GetId()
-          << L"," << mthd->GetId() << L"; addr=" << mthd << L"; mem=" << mem << L"; self=" << self
-          << L"; num=" << mthd->GetNumberDeclarations() << L" =====" << endl;
+      << L"," << mthd->GetId() << L"; addr=" << mthd << L"; mem=" << mem << L"; self=" << self
+      << L"; num=" << mthd->GetNumberDeclarations() << L" =====" << endl;
 #endif
-    
+
     // check self
     CheckObject(self, true, 1);
 
-    StackDclr** dclrs = mthd->GetDeclarations();
-    for(int j = dclrs_num - 1; j > -1; j--) {
-      // update address based upon type
-      switch(dclrs[j]->type) {
-      case FUNC_PARM:
-#ifdef _DEBUG
-        wcout << L"\t" << j << L": FUNC_PARM: value=" << (*mem) << L"," << *(mem + 1) << endl;
-#endif
-        // update
-        mem += 2;
-        break;
+    if(mem) {
+      StackDclr** dclrs = mthd->GetDeclarations();
+      for(int j = dclrs_num - 1; j > -1; j--) {
+        // update address based upon type
+        switch(dclrs[j]->type) {
+          case FUNC_PARM:
+  #ifdef _DEBUG
+            wcout << L"\t" << j << L": FUNC_PARM: value=" << (*mem) << L"," << *(mem + 1) << endl;
+  #endif
+            // update
+            mem += 2;
+            break;
 
-      case CHAR_PARM:
-      case INT_PARM:
-#ifdef _DEBUG
-        wcout << L"\t" << j << L": CHAR_PARM/INT_PARM: value=" << (*mem) << endl;
-#endif
-        // update
-        mem++;
-        break;
+          case CHAR_PARM:
+          case INT_PARM:
+  #ifdef _DEBUG
+            wcout << L"\t" << j << L": CHAR_PARM/INT_PARM: value=" << (*mem) << endl;
+  #endif
+            // update
+            mem++;
+            break;
 
-      case FLOAT_PARM: {
-#ifdef _DEBUG
-        FLOAT_VALUE value;
-        memcpy(&value, mem, sizeof(FLOAT_VALUE));
-        wcout << L"\t" << j << L": FLOAT_PARM: value=" << value << endl;
-#endif
-        // update
-#if defined(_WIN64) || defined(_X64)
-        // mapped such that all 64-bit values the same size
-        mem++;
-#else
-        mem += 2;
-#endif
-      }
-        break;
+          case FLOAT_PARM:
+          {
+  #ifdef _DEBUG
+            FLOAT_VALUE value;
+            memcpy(&value, mem, sizeof(FLOAT_VALUE));
+            wcout << L"\t" << j << L": FLOAT_PARM: value=" << value << endl;
+  #endif
+            // update
+  #if defined(_WIN64) || defined(_X64)
+          // mapped such that all 64-bit values the same size
+            mem++;
+  #else
+            mem += 2;
+  #endif
+          }
+          break;
 
-      case BYTE_ARY_PARM:
-#ifdef _DEBUG
-        wcout << L"\t" << j << L": BYTE_ARY_PARM: addr=" << (size_t*)(*mem) << L"("
+          case BYTE_ARY_PARM:
+  #ifdef _DEBUG
+            wcout << L"\t" << j << L": BYTE_ARY_PARM: addr=" << (size_t*)(*mem) << L"("
               << (long)(*mem) << L"), size=" << ((*mem) ? ((size_t*)(*mem))[SIZE_OR_CLS] : 0)
               << L" byte(s)" << endl;
-#endif
-        // mark data
-        MarkMemory((size_t*)(*mem));
-        // update
-        mem++;
-        break;
+  #endif
+            // mark data
+            MarkMemory((size_t*)(*mem));
+            // update
+            mem++;
+            break;
 
-      case CHAR_ARY_PARM:
-#ifdef _DEBUG
-        wcout << L"\t" << j << L": CHAR_ARY_PARM: addr=" << (size_t*)(*mem) << L"(" << (long)(*mem)
+          case CHAR_ARY_PARM:
+  #ifdef _DEBUG
+            wcout << L"\t" << j << L": CHAR_ARY_PARM: addr=" << (size_t*)(*mem) << L"(" << (long)(*mem)
               << L"), size=" << ((*mem) ? ((size_t*)(*mem))[SIZE_OR_CLS] : 0)
               << L" byte(s)" << endl;
-#endif
-        // mark data
-        MarkMemory((size_t*)(*mem));
-        // update
-        mem++;
-        break;
+  #endif
+            // mark data
+            MarkMemory((size_t*)(*mem));
+            // update
+            mem++;
+            break;
 
-      case INT_ARY_PARM:
-#ifdef _DEBUG
-        wcout << L"\t" << j << L": INT_ARY_PARM: addr=" << (size_t*)(*mem)
+          case INT_ARY_PARM:
+  #ifdef _DEBUG
+            wcout << L"\t" << j << L": INT_ARY_PARM: addr=" << (size_t*)(*mem)
               << L"(" << (long)(*mem) << L"), size="
               << ((*mem) ? ((size_t*)(*mem))[SIZE_OR_CLS] : 0)
               << L" byte(s)" << endl;
-#endif
-        // mark data
-        MarkMemory((size_t*)(*mem));
-        // update
-        mem++;
-        break;
+  #endif
+            // mark data
+            MarkMemory((size_t*)(*mem));
+            // update
+            mem++;
+            break;
 
-      case FLOAT_ARY_PARM:
-#ifdef _DEBUG
-        wcout << L"\t" << j << L": FLOAT_ARY_PARM: addr=" << (size_t*)(*mem)
-          << L"(" << (long)(*mem) << L"), size=" << L" byte(s)"
-          << ((*mem) ? ((size_t*)(*mem))[SIZE_OR_CLS] : 0) << endl;
-#endif
-        // mark data
-        MarkMemory((size_t*)(*mem));
-        // update
-        mem++;
-        break;
+          case FLOAT_ARY_PARM:
+  #ifdef _DEBUG
+            wcout << L"\t" << j << L": FLOAT_ARY_PARM: addr=" << (size_t*)(*mem)
+              << L"(" << (long)(*mem) << L"), size=" << L" byte(s)"
+              << ((*mem) ? ((size_t*)(*mem))[SIZE_OR_CLS] : 0) << endl;
+  #endif
+            // mark data
+            MarkMemory((size_t*)(*mem));
+            // update
+            mem++;
+            break;
 
-      case OBJ_PARM: {
-#ifdef _DEBUG
-        wcout << L"\t" << j << L": OBJ_PARM: addr=" << (size_t*)(*mem)
+          case OBJ_PARM:
+          {
+  #ifdef _DEBUG
+            wcout << L"\t" << j << L": OBJ_PARM: addr=" << (size_t*)(*mem)
               << L"(" << (long)(*mem) << L"), id=";
-        if(*mem) {
-          StackClass* tmp = (StackClass*)((size_t*)(*mem))[SIZE_OR_CLS];
-          wcout << L"'" << tmp->GetName() << L"'" << endl;
-        }
-        else {
-          wcout << L"Unknown" << endl;
-        }
-#endif
-        // check object
-        CheckObject((size_t*)(*mem), true, 1);
-        // update
-        mem++;
-      }
-                     break;
+            if(*mem) {
+              StackClass* tmp = (StackClass*)((size_t*)(*mem))[SIZE_OR_CLS];
+              wcout << L"'" << tmp->GetName() << L"'" << endl;
+            }
+            else {
+              wcout << L"Unknown" << endl;
+            }
+  #endif
+            // check object
+            CheckObject((size_t*)(*mem), true, 1);
+            // update
+            mem++;
+          }
+          break;
 
-      case OBJ_ARY_PARM:
-#ifdef _DEBUG
-        wcout << L"\t" << j << L": OBJ_ARY_PARM: addr=" << (size_t*)(*mem) << L"("
+          case OBJ_ARY_PARM:
+  #ifdef _DEBUG
+            wcout << L"\t" << j << L": OBJ_ARY_PARM: addr=" << (size_t*)(*mem) << L"("
               << (long)(*mem) << L"), size=" << ((*mem) ? ((size_t*)(*mem))[SIZE_OR_CLS] : 0)
               << L" byte(s)" << endl;
-#endif
-        // mark data
-        if(MarkValidMemory((size_t*)(*mem))) {
-          size_t* array = (size_t*)(*mem);
-          const long size = (long)array[0];
-          const long dim = (long)array[1];
-          size_t* objects = (size_t*)(array + 2 + dim);
-          for(long k = 0; k < size; k++) {
-            CheckObject((size_t*)objects[k], true, 2);
-          }
-        }
-        // update
-        mem++;
-        break;
+  #endif
+            // mark data
+            if(MarkValidMemory((size_t*)(*mem))) {
+              size_t* array = (size_t*)(*mem);
+              const long size = (long)array[0];
+              const long dim = (long)array[1];
+              size_t* objects = (size_t*)(array + 2 + dim);
+              for(long k = 0; k < size; k++) {
+                CheckObject((size_t*)objects[k], true, 2);
+              }
+            }
+            // update
+            mem++;
+            break;
 
-      default:
-        break;
+          default:
+            break;
+        }
+      }
+
+      // NOTE: this marks temporary variables that are stored in JIT memory
+      // during some method calls. there are 6 integer temp addresses
+      for(int i = 0; i < 6; ++i) {
+        CheckObject((size_t*)mem[i], false, 1);
       }
     }
-
-    // NOTE: this marks temporary variables that are stored in JIT memory
-    // during some method calls. there are 6 integer temp addresses
-    for(int i = 0; i < 6; ++i) {
-      CheckObject((size_t*)mem[i], false, 1);
+#ifdef _DEBUG
+    else {
+      wcout << L"\t\t--- Nil memory ---" << endl;
     }
+#endif
   }
   jit_frames.empty();
 
@@ -1182,8 +1191,6 @@ void* MemoryManager::CheckPdaRoots(void* arg)
           frames.push_back(frame);
         }
       }
-
-
     }
   }
 
