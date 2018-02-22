@@ -279,7 +279,11 @@ namespace Runtime {
     }
 
     ~PageHolder() {
+#ifdef _WIN32
       free(buffer);
+#else
+      munmap(buffer, PAGE_SIZE)
+#endif
       buffer = NULL;
     }
 

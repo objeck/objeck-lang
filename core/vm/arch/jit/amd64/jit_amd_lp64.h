@@ -349,7 +349,7 @@ namespace Runtime {
 #ifdef _WIN64	
       VirtualFree(buffer, NULL, MEM_RELEASE);
 #else
-      free(buffer);
+      munmap(buffer, PAGE_SIZE);
 #endif	  
       buffer = NULL;
     }
