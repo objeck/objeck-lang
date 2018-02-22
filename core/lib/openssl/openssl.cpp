@@ -84,7 +84,7 @@ extern "C" {
     }
     
     size_t* output_holder = APITools_GetIntAddress(context, 0);
-    output_holder[0] = (long)output_byte_array;   
+    output_holder[0] = (size_t)output_byte_array;
   }
   
   //
@@ -114,7 +114,7 @@ extern "C" {
     }
     
     size_t* output_holder = APITools_GetIntAddress(context, 0);
-    output_holder[0] = (long)output_byte_array;   
+    output_holder[0] = (size_t)output_byte_array;
   }
   
 #ifdef _WIN32
@@ -138,7 +138,7 @@ extern "C" {
     }
     
     size_t* output_holder = APITools_GetIntAddress(context, 0);
-    output_holder[0] = (long)output_byte_array;   
+    output_holder[0] = (size_t)output_byte_array;
   }
 
   //
@@ -208,7 +208,7 @@ extern "C" {
     output = NULL;
     
     size_t* output_holder = APITools_GetIntAddress(context, 0);
-    output_holder[0] = (long)output_byte_array;    
+    output_holder[0] = (size_t)output_byte_array;
   }
   
   //
@@ -277,6 +277,6 @@ extern "C" {
     output = NULL;
     
     size_t* output_holder = APITools_GetIntAddress(context, 0);
-    output_holder[0] = (long)output_byte_array;
+    output_holder[0] = (size_t)output_byte_array;
   }
 }

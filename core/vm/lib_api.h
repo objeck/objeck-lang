@@ -225,7 +225,7 @@ void APITools_SetFunctionValue(VMContext &context, int index, FunctionId id, int
 }
 
 // get the requested integer value from an Object[].
-long APITools_GetIntValue(VMContext &context, int index) {
+size_t APITools_GetIntValue(VMContext &context, int index) {
   size_t* data_array = context.data_array;
   if(data_array && index < (int)data_array[0]) {
     data_array += ARRAY_HEADER_OFFSET;
@@ -233,7 +233,7 @@ long APITools_GetIntValue(VMContext &context, int index) {
 #ifdef _DEBUG
     assert(int_holder);
 #endif
-    return (long)int_holder[0];
+    return int_holder[0];
   }
 
   return 0;
@@ -256,7 +256,7 @@ size_t* APITools_GetIntAddress(VMContext &context, int index) {
 
 // sets the requested function ID from an Object[].  Please note, that 
 // memory should be allocated for this element prior to array access.
-void APITools_SetIntValue(VMContext &context, int index, long value) {
+void APITools_SetIntValue(VMContext &context, int index, size_t value) {
   size_t* data_array = context.data_array;
   if(data_array && index < (int)data_array[0]) {
     data_array += ARRAY_HEADER_OFFSET;
