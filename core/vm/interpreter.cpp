@@ -1605,7 +1605,7 @@ void StackInterpreter::ProcessNewArray(StackInstr* instr, size_t* &op_stack, lon
 #else
   if(is_float) {
     // doubles are twice the size of integers for 32-bit target
-    mem = (size_t*)MemoryManager::AllocateArray(size * 2 + dim + 2, INT_TYPE, op_stack, *stack_pos);
+    mem = (size_t*)MemoryManager::AllocateArray(size + dim + 2, FLOAT_TYPE, op_stack, *stack_pos);
   }
   else {
     mem = (size_t*)MemoryManager::AllocateArray(size + dim + 2, INT_TYPE, op_stack, *stack_pos);
