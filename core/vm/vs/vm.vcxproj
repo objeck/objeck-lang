@@ -85,6 +85,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <IncludePath>..\..\lib\openssl\win64\include;$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
     <TargetName>obr</TargetName>
+    <OutDir>..\$(Configuration)\win64</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <IncludePath>..\..\lib\openssl\win64\include;$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
