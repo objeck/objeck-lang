@@ -35,10 +35,14 @@
 #include "../common.h"
 
 // basic vm tuning parameters
-// define MEM_MAX 2097152
-#define MEM_MAX 4096 * 4
-#define UNCOLLECTED_COUNT 3
-#define COLLECTED_COUNT 7
+#if defined(_WIN64) || defined(_X64)
+#define MEM_MAX 1048576 * 3
+#else
+#define MEM_MAX 1048576 * 2
+#endif
+
+#define UNCOLLECTED_COUNT 7
+#define COLLECTED_COUNT 13
 #define POOL_SIZE 32
 
 #define EXTRA_BUF_SIZE 4

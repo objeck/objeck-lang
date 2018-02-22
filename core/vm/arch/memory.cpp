@@ -817,7 +817,7 @@ void* MemoryManager::CollectMemory(void* arg)
       collected_count++;
     } 
     else {
-      mem_max_size >>= 1;
+      mem_max_size = (mem_max_size >> 1) / 2;
       collected_count = 0;
     }
   }
@@ -963,9 +963,9 @@ void* MemoryManager::CheckJitRoots(void* arg)
             memcpy(&value, mem, sizeof(FLOAT_VALUE));
             wcout << L"\t" << j << L": FLOAT_PARM: value=" << value << endl;
   #endif
-            // update
+           // update
+           // TODO: mapped such that all 64-bit values the same size
   #if defined(_WIN64) || defined(_X64)
-          // mapped such that all 64-bit values the same size
             mem++;
   #else
             mem += 2;
