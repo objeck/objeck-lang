@@ -88,12 +88,15 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <IncludePath>..\..\openssl\win32\include;$(IncludePath)</IncludePath>
-    <OutDir>..\$(Configuration)\</OutDir>
+    <OutDir>..\$(Configuration)\win64</OutDir>
     <TargetName>libobjk_odbc</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
     <IncludePath>..\..\openssl\win64\include;$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
+    <OutDir>..\$(Configuration)\win64\</OutDir>
+    <TargetName>libobjk_odbc</TargetName>
+    <IntDir>$(Configuration)\</IntDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
