@@ -43,7 +43,11 @@
 
 #define UNCOLLECTED_COUNT 7
 #define COLLECTED_COUNT 13
+#if defined(_WIN64) || defined(_X64)
+#define POOL_SIZE 256
+#else
 #define POOL_SIZE 128
+#endif
 
 #define EXTRA_BUF_SIZE 4
 #define MARKED_FLAG -1
