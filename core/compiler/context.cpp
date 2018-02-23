@@ -3512,7 +3512,7 @@ bool ContextAnalyzer::Analyze()
           break;
 
         case FLOAT_TYPE:
-          left_expr->SetCastType(right);
+          left_expr->SetCastType(right, true);
           expression->SetEvalType(right, true);
           break;
 
@@ -3549,7 +3549,7 @@ bool ContextAnalyzer::Analyze()
           break;
 
         case FLOAT_TYPE:
-          left_expr->SetCastType(right);
+          left_expr->SetCastType(right, true);
           expression->SetEvalType(right, true);
           break;
 
@@ -3586,7 +3586,7 @@ bool ContextAnalyzer::Analyze()
           break;
 
         case FLOAT_TYPE:
-          left_expr->SetCastType(right);
+          left_expr->SetCastType(right, true);
           expression->SetEvalType(right, true);
           break;
 
@@ -3624,7 +3624,7 @@ bool ContextAnalyzer::Analyze()
         case BYTE_TYPE:
         case CHAR_TYPE:
         case INT_TYPE:
-          right_expr->SetCastType(left);
+          right_expr->SetCastType(left, true);
           expression->SetEvalType(left, true);
           break;
 
@@ -3919,7 +3919,7 @@ bool ContextAnalyzer::Analyze()
           break;
 
         case FLOAT_TYPE:
-          expression->SetCastType(left);
+          expression->SetCastType(left, false);
           expression->SetEvalType(right, false);
           break;
 
@@ -3963,7 +3963,7 @@ bool ContextAnalyzer::Analyze()
           break;
 
         case FLOAT_TYPE:
-          expression->SetCastType(left);
+          expression->SetCastType(left, false);
           expression->SetEvalType(right, false);
           break;
 
@@ -4007,7 +4007,7 @@ bool ContextAnalyzer::Analyze()
           break;
 
         case FLOAT_TYPE:
-          expression->SetCastType(left);
+          expression->SetCastType(left, false);
           expression->SetEvalType(right, false);
           break;
 
@@ -4051,7 +4051,7 @@ bool ContextAnalyzer::Analyze()
         case BYTE_TYPE:
         case CHAR_TYPE:
         case INT_TYPE:
-          expression->SetCastType(left);
+          expression->SetCastType(left, false);
           expression->SetEvalType(right, false);
           break;
 
