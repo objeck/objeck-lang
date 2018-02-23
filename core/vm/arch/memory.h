@@ -43,7 +43,7 @@
 
 #define UNCOLLECTED_COUNT 7
 #define COLLECTED_COUNT 13
-#define POOL_SIZE 32
+#define POOL_SIZE 128
 
 #define EXTRA_BUF_SIZE 4
 #define MARKED_FLAG -1
