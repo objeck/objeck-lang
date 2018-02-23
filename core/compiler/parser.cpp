@@ -2932,7 +2932,7 @@ void Parser::ParseCastTypeOf(Expression* expression, int depth)
       NextToken();
 
       if(expression) {
-        expression->SetCastType(ParseType(depth + 1));
+        expression->SetCastType(ParseType(depth + 1), false);
       }
 
       if(!Match(TOKEN_CLOSED_PAREN)) {
@@ -3048,7 +3048,7 @@ MethodCall* Parser::ParseMethodCall(const wstring &ident, int depth)
       NextToken();
 
       if(variable) {
-        variable->SetCastType(ParseType(depth + 1));
+        variable->SetCastType(ParseType(depth + 1), false);
       }
 
       if(!Match(TOKEN_CLOSED_PAREN)) {
@@ -3059,11 +3059,11 @@ MethodCall* Parser::ParseMethodCall(const wstring &ident, int depth)
       // subsequent method calls
       if(Match(TOKEN_ASSESSOR)) {
         method_call = ParseMethodCall(variable, depth + 1);
-        method_call->SetCastType(variable->GetCastType());
+        method_call->SetCastType(variable->GetCastType(), false);
       }
       else {
         method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, ident, L"");
-        method_call->SetCastType(variable->GetCastType());
+        method_call->SetCastType(variable->GetCastType(), false);
       }
     }
     else if(Match(TOKEN_TYPE_OF_ID)) {
