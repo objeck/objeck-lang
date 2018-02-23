@@ -70,16 +70,22 @@ int main(const int argc, const char* argv[])
     return status;
   }
   else {
-    wstring usage;
-    // usage += L"Copyright (c) 2008-2018, Randy Hollines. All rights reserved.\n";
-    // usage += L"THIS SOFTWARE IS PROVIDED \"AS IS\" WITHOUT WARRANTY. REFER TO THE\n";
-    // usage += L"license.txt file or http://www.opensource.org/licenses/bsd-license.php\n";
-    // usage += L"FOR MORE INFORMATION.\n\n";
-    // usage += VERSION_STRING;
-    // usage += L"\n\n";
-    usage += L"Usage: obr <program>\n\n";
+    wstring usage = L"Usage: obr <program>\n\n";
     usage += L"Example: \"obr hello.obe\"\n\nVersion: ";
     usage += VERSION_STRING;
+
+#if defined(_WIN64) && defined(_WIN32)
+    usage += L" (x86_64 Windows)";
+#elif _WIN32
+    usage += L" (x86 Windows)";
+#elif _OSX
+    usage += L" (x86_64 macOS)";
+#elif _X64
+    usage += L" (x86_64 Linux)";
+#else
+    usage += L" (x86 Linux)";
+#endif 
+
     wcerr << usage << endl << endl;
   }
 

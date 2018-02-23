@@ -64,6 +64,18 @@ int main(int argc, char* argv[])
   usage += L"\n\nExample: \"obc -src ../examples/hello.obs -dest hello.obe\"\n\nVersion: ";
   usage += VERSION_STRING;
   
+#if defined(_WIN64) && defined(_WIN32)
+  usage += L" (x86_64 Windows)";
+#elif _WIN32
+  usage += L" (x86 Windows)";
+#elif _OSX
+  usage += L" (x86_64 macOS)";
+#elif _X64
+  usage += L" (x86_64 Linux)";
+#else
+  usage += L" (x86 Linux)";
+#endif
+
   int status;
   if(argc > 0) {
     // reconstruct command line

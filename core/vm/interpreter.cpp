@@ -666,7 +666,7 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
         halt = true;
         return;
 #else
-        ::exit(1);
+        exit(1);
 #endif
       }
       break;
@@ -710,7 +710,7 @@ void StackInterpreter::StorClsInstIntVar(StackInstr* instr, size_t* &op_stack, l
     halt = true;
     return;
 #else
-    ::exit(1);
+    exit(1);
 #endif
   }
   size_t mem = PopInt(op_stack, stack_pos);
@@ -740,7 +740,7 @@ void StackInterpreter::CopyClsInstIntVar(StackInstr* instr, size_t* &op_stack, l
     halt = true;
     return;
 #else
-    ::exit(1);
+    exit(1);
 #endif
   }
   cls_inst_mem[instr->GetOperand()] = TopInt(op_stack, stack_pos);
@@ -788,7 +788,7 @@ void StackInterpreter::LoadClsInstIntVar(StackInstr* instr, size_t* &op_stack, l
     halt = true;
     return;
 #else
-    ::exit(1);
+    exit(1);
 #endif
   }
   PushInt(cls_inst_mem[instr->GetOperand()], op_stack, stack_pos);
@@ -1067,7 +1067,7 @@ void StackInterpreter::LoadArySize(size_t* &op_stack, long* &stack_pos)
     halt = true;
     return;
 #else
-    ::exit(1);
+    exit(1);
 #endif
   }
   PushInt(array[2], op_stack, stack_pos);
@@ -1091,7 +1091,7 @@ void StackInterpreter::CpyByteAry(size_t* &op_stack, long* &stack_pos)
     halt = true;
     return;
 #else
-    ::exit(1);
+    exit(1);
 #endif
   }
 
@@ -1126,7 +1126,7 @@ void StackInterpreter::CpyCharAry(size_t* &op_stack, long* &stack_pos)
     halt = true;
     return;
 #else
-    ::exit(1);
+    exit(1);
 #endif
   }
 
@@ -1161,7 +1161,7 @@ void StackInterpreter::CpyIntAry(size_t* &op_stack, long* &stack_pos)
     halt = true;
     return;
 #else
-    ::exit(1);
+    exit(1);
 #endif
   }
 
@@ -1196,7 +1196,7 @@ void StackInterpreter::CpyFloatAry(size_t* &op_stack, long* &stack_pos)
     halt = true;
     return;
 #else
-    ::exit(1);
+    exit(1);
 #endif
   }
 
@@ -1230,7 +1230,7 @@ void StackInterpreter::ObjTypeOf(StackInstr* instr, size_t* &op_stack, long* &st
   else {
     wcerr << L">>> TypeOf(..) check on Nil value <<<" << endl;
     StackErrorUnwind();
-    ::exit(1);
+    exit(1);
   }
 }
 
@@ -1252,7 +1252,7 @@ void StackInterpreter::ObjInstCast(StackInstr* instr, size_t* &op_stack, long* &
     halt = true;
     return;
 #else
-    ::exit(1);
+    exit(1);
 #endif
   }
   PushInt(result, op_stack, stack_pos);
@@ -1271,7 +1271,7 @@ void StackInterpreter::AsyncMthdCall(size_t* &op_stack, long* &stack_pos)
     halt = true;
     return;
 #else
-    ::exit(1);
+    exit(1);
 #endif
   }
 
@@ -1302,7 +1302,7 @@ void StackInterpreter::ThreadJoin(size_t* &op_stack, long* &stack_pos)
     halt = true;
     return;
 #else
-    ::exit(1);
+    exit(1);
 #endif
   }
 
@@ -1313,7 +1313,7 @@ void StackInterpreter::ThreadJoin(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUGGER
     return;
 #else
-    ::exit(1);
+    exit(1);
 #endif
   }
 #else
@@ -1324,7 +1324,7 @@ void StackInterpreter::ThreadJoin(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUGGER
     return;
 #else
-    ::exit(1);
+    exit(1);
 #endif
   }
 #endif
@@ -1343,7 +1343,7 @@ void StackInterpreter::ThreadMutex(size_t* &op_stack, long* &stack_pos)
     halt = true;
     return;
 #else
-    ::exit(1);
+    exit(1);
 #endif
   }
 #ifdef _WIN32
@@ -1366,7 +1366,7 @@ void StackInterpreter::CriticalStart(size_t* &op_stack, long* &stack_pos)
     halt = true;
     return;
 #else
-    ::exit(1);
+    exit(1);
 #endif        
   }
 #ifdef _WIN32
@@ -1389,7 +1389,7 @@ void StackInterpreter::CriticalEnd(size_t* &op_stack, long* &stack_pos)
     halt = true;
     return;
 #else
-    ::exit(1);
+    exit(1);
 #endif
   }
 #ifdef _WIN32
@@ -1423,7 +1423,7 @@ void StackInterpreter::ProcessLoadFunction(StackInstr* instr, size_t* &op_stack,
       halt = true;
       return;
 #else
-      ::exit(1);
+      exit(1);
 #endif
     }
     PushInt(cls_inst_mem[instr->GetOperand() + 1], op_stack, stack_pos);
@@ -1456,7 +1456,7 @@ void StackInterpreter::ProcessLoadFloat(StackInstr* instr, size_t* &op_stack, lo
       halt = true;
       return;
 #else
-      ::exit(1);
+      exit(1);
 #endif
     }
     // ::memcpy(&value, &cls_inst_mem[instr->GetOperand()], sizeof(FLOAT_VALUE));
@@ -1489,7 +1489,7 @@ void StackInterpreter::ProcessStoreFunction(StackInstr* instr, size_t* &op_stack
       halt = true;
       return;
 #else
-      ::exit(1);
+      exit(1);
 #endif
     }
     cls_inst_mem[instr->GetOperand()] = PopInt(op_stack, stack_pos);
@@ -1522,7 +1522,7 @@ void StackInterpreter::ProcessStoreFloat(StackInstr* instr, size_t* &op_stack, l
       halt = true;
       return;
 #else
-      ::exit(1);
+      exit(1);
 #endif
     }
     const FLOAT_VALUE value = PopFloat(op_stack, stack_pos);
@@ -1555,7 +1555,7 @@ void StackInterpreter::ProcessCopyFloat(StackInstr* instr, size_t* &op_stack, lo
       halt = true;
       return;
 #else
-      ::exit(1);
+      exit(1);
 #endif
     }
     FLOAT_VALUE value = TopFloat(op_stack, stack_pos);
@@ -1723,7 +1723,7 @@ void StackInterpreter::ProcessAsyncMethodCall(StackMethod* called, size_t* param
   HANDLE vm_thread = (HANDLE)_beginthreadex(NULL, 0, AsyncMethodCall, holder, 0, NULL);
   if(!vm_thread) {
     wcerr << L">>> Internal error: Unable to create garbage collection thread! <<<" << endl;
-    ::exit(-1);
+    exit(-1);
   }
 #else
   pthread_attr_t attrs;
@@ -1734,14 +1734,14 @@ void StackInterpreter::ProcessAsyncMethodCall(StackMethod* called, size_t* param
   pthread_t vm_thread;
   if(pthread_create(&vm_thread, &attrs, AsyncMethodCall, (void*)holder)) {
     wcerr << L">>> Internal error: Internal error: Unable to create runtime thread! <<<" << endl;
-    ::exit(-1);
+    exit(-1);
   }
 #endif  
   
   // assign thread ID
   if(!instance) {
     wcerr << L">>> Internal error: Unable to create runtime thread! <<<" << endl;
-    ::exit(-1);
+    exit(-1);
   }
 
   instance[0] = (size_t)vm_thread;
@@ -1899,6 +1899,7 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr, StackInstr** &instrs
 
   // make call
   StackMethod* called = program->GetClass(instr->GetOperand())->GetMethod(instr->GetOperand2());
+
   // dynamically bind class for virutal method
   if(called->IsVirtual()) {
     StackClass* impl_class = MemoryManager::GetClass((size_t*)instance);
@@ -1909,7 +1910,7 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr, StackInstr** &instrs
       halt = true;
       return;
 #else
-      ::exit(1);
+      exit(1);
 #endif
     }
     
@@ -1918,8 +1919,8 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr, StackInstr** &instrs
 #endif
 
     // binding method
-    const wstring& qualified_method_name = called->GetName();
-    const wstring& method_ending = qualified_method_name.substr(qualified_method_name.find(L':'));
+    const wstring qualified_method_name = called->GetName();
+    const wstring method_ending = qualified_method_name.substr(qualified_method_name.find(L':'));
     wstring method_name = impl_class->GetName() + method_ending;
 
     // check method cache
@@ -1947,9 +1948,7 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr, StackInstr** &instrs
   }
   // execute interpreter
   else {
-    (*frame) = GetStackFrame(called, instance);
-    instrs = (*frame)->method->GetInstructions();
-    ip = 0;
+    ProcessInterpretedMethodCall(called, instance, instrs, ip);
   }
 #else
   ProcessInterpretedMethodCall(called, instance, instrs, ip);
@@ -2003,7 +2002,7 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, size_t* instanc
     halt = true;
     return;
 #else
-    ::exit(1);
+    exit(1);
 #endif
   }
 
@@ -2050,7 +2049,7 @@ void StackInterpreter::ProcessLoadIntArrayElement(StackInstr* instr, size_t* &op
     halt = true;
     return;
 #else
-    ::exit(1);
+    exit(1);
 #endif
   }
   const long size = (long)array[0];
@@ -2077,7 +2076,7 @@ void StackInterpreter::ProcessStoreIntArrayElement(StackInstr* instr, size_t* &o
     halt = true;
     return;
 #else
-    ::exit(1);
+    exit(1);
 #endif
   }
   
@@ -2104,7 +2103,7 @@ void StackInterpreter::ProcessLoadByteArrayElement(StackInstr* instr, size_t* &o
     halt = true;
     return;
 #else
-    ::exit(1);
+    exit(1);
 #endif
   }
   const long size = (long)array[0];
@@ -2131,7 +2130,7 @@ void StackInterpreter::ProcessLoadCharArrayElement(StackInstr* instr, size_t* &o
     halt = true;
     return;
 #else
-    ::exit(1);
+    exit(1);
 #endif
   }
   const long size = (long)array[0];
@@ -2158,7 +2157,7 @@ void StackInterpreter::ProcessStoreByteArrayElement(StackInstr* instr, size_t* &
     halt = true;
     return;
 #else
-    ::exit(1);
+    exit(1);
 #endif
   }
   const long size = (long)array[0];
@@ -2185,7 +2184,7 @@ void StackInterpreter::ProcessStoreCharArrayElement(StackInstr* instr, size_t* &
     halt = true;
     return;
 #else
-    ::exit(1);
+    exit(1);
 #endif
   }
   const long size = (long)array[0];
@@ -2212,7 +2211,7 @@ void StackInterpreter::ProcessLoadFloatArrayElement(StackInstr* instr, size_t* &
     halt = true;
     return;
 #else
-    ::exit(1);
+    exit(1);
 #endif
   }
   const long size = (long)array[0];
@@ -2240,7 +2239,7 @@ void StackInterpreter::ProcessStoreFloatArrayElement(StackInstr* instr, size_t* 
     halt = true;
     return;
 #else
-    ::exit(1);
+    exit(1);
 #endif
   }
   const long size = (long)array[0];
@@ -2264,7 +2263,7 @@ void StackInterpreter::ProcessDllLoad(StackInstr* instr)
   if(!instance) {
     wcerr << L">>> Unable to load shared library! <<<" << endl;
 #ifdef _DEBUGGER
-    ::exit(1);
+    exit(1);
 #else
     return;
 #endif
@@ -2276,7 +2275,7 @@ void StackInterpreter::ProcessDllLoad(StackInstr* instr)
 #ifdef _DEBUGGER
     return;
 #else
-    ::exit(1);
+    exit(1);
 #endif
   }
     
@@ -2296,7 +2295,7 @@ void StackInterpreter::ProcessDllLoad(StackInstr* instr)
 #ifdef _DEBUGGER
     return;
 #else
-    ::exit(1);
+    exit(1);
 #endif
   }
 
@@ -2317,7 +2316,7 @@ void StackInterpreter::ProcessDllLoad(StackInstr* instr)
 #ifdef _DEBUGGER
     return;
 #else
-    ::exit(1);
+    exit(1);
 #endif
   }
   instance[1] = (size_t)dll_handle;
@@ -2330,7 +2329,7 @@ void StackInterpreter::ProcessDllLoad(StackInstr* instr)
 #ifdef _DEBUGGER
     return;
 #else
-    ::exit(1);
+    exit(1);
 #endif
   }
   (*ext_load)();
@@ -2341,7 +2340,7 @@ void StackInterpreter::ProcessDllLoad(StackInstr* instr)
 #ifdef _DEBUGGER
     return;
 #else
-    ::exit(1);
+    exit(1);
 #endif
   }
   instance[1] = (size_t)dll_handle;
@@ -2354,7 +2353,7 @@ void StackInterpreter::ProcessDllLoad(StackInstr* instr)
 #ifdef _DEBUGGER
     return;
 #else
-    ::exit(1);
+    exit(1);
 #endif
   }
   // call function
@@ -2381,7 +2380,7 @@ void StackInterpreter::ProcessDllUnload(StackInstr* instr)
 #ifdef _DEBUGGER
       return;
 #else
-      ::exit(1);
+      exit(1);
 #endif
     }
     (*ext_unload)();
@@ -2399,7 +2398,7 @@ void StackInterpreter::ProcessDllUnload(StackInstr* instr)
 #ifdef _DEBUGGER
       return;
 #else
-      ::exit(1);
+      exit(1);
 #endif
     }
     // call function
@@ -2424,7 +2423,7 @@ void StackInterpreter::ProcessDllCall(StackInstr* instr, size_t* &op_stack, long
 #ifdef _DEBUGGER
     return;
 #else
-    ::exit(1);
+    exit(1);
 #endif
   }
 
@@ -2444,7 +2443,7 @@ void StackInterpreter::ProcessDllCall(StackInstr* instr, size_t* &op_stack, long
 #ifdef _DEBUGGER
       return;
 #else
-      ::exit(1);
+      exit(1);
 #endif
     }
     // call function
@@ -2470,7 +2469,7 @@ void StackInterpreter::ProcessDllCall(StackInstr* instr, size_t* &op_stack, long
 #ifdef _DEBUGGER
       return;
 #else
-      ::exit(1);
+      exit(1);
 #endif
     }
     // call function

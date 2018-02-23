@@ -158,7 +158,7 @@ namespace Runtime {
     inline void PushFrame(StackFrame* f) {
       if((*call_stack_pos) >= CALL_STACK_SIZE) {
         wcerr << L">>> call stack bounds have been exceeded! <<<" << endl;
-        ::exit(1);
+        exit(1);
       }
       
       call_stack[(*call_stack_pos)++] = f;
@@ -170,7 +170,7 @@ namespace Runtime {
     inline StackFrame* PopFrame() {
       if((*call_stack_pos) <= 0) {
         wcerr << L">>> call stack bounds have been exceeded! <<<" << endl;
-        ::exit(1);
+        exit(1);
       }
       
       return call_stack[--(*call_stack_pos)];
@@ -373,7 +373,7 @@ namespace Runtime {
       if(index < 0 || index >= size) {
         wcerr << L">>> Index out of bounds: " << index << L"," << size << L" <<<" << endl;
         StackErrorUnwind();
-        ::exit(1);
+        exit(1);
       }
 #else
       // 32-bit bounds check
@@ -383,7 +383,7 @@ namespace Runtime {
         if(index < 0 || index >= size * 2) {
           wcerr << L">>> Index out of bounds: " << index << L"," << (size * 2) << L" <<<" << endl;
           StackErrorUnwind();
-          ::exit(1);
+          exit(1);
         }
       } 
       else {
@@ -391,7 +391,7 @@ namespace Runtime {
         if(index < 0 || index >= size) {
           wcerr << L">>> Index out of bounds: " << index << L"," << size << L" <<<" << endl;
           StackErrorUnwind();
-          ::exit(1);
+          exit(1);
         }
       }
 #endif
