@@ -6,7 +6,7 @@ REM update version information
 powershell.exe -executionpolicy remotesigned -file  update_version.ps1
 
 REM build binaries
-devenv /rebuild Release objeck.sln
+devenv objeck.sln /rebuild "Release|x86"
 mkdir deploy\bin
 copy ..\compiler\Release\*.exe deploy\bin
 copy ..\vm\Release\*.exe deploy\bin
@@ -24,16 +24,16 @@ copy ..\vm\misc\*.pem deploy\lib
 REM openssl support
 mkdir deploy\lib\native
 cd ..\lib\openssl
-devenv /rebuild Release openssl.sln
-copy Release\*.dll ..\..\release\deploy\lib\native
-copy ..\win32\bin\*.dll ..\..\release\deploy\bin
-cd ..\..\release
+devenv openssl.sln /rebuild "Release|x86"
+copy Release\*.dll ..\..\Release\deploy\lib\native
+copy ..\Win32\bin\*.dll ..\..\Release\deploy\bin
+cd ..\..\Release
 
 REM odbc support
 cd ..\lib\odbc
-devenv /rebuild Release odbc.sln
-copy Release\*.dll ..\..\release\deploy\lib\native
-cd ..\..\release
+devenv odbc.sln  /rebuild "Release|x86"
+copy Release\*.dll ..\..\Release\deploy\lib\native
+cd ..\..\Release
 
 REM copy examples
 mkdir deploy\examples\
@@ -63,7 +63,7 @@ if [%1] NEQ [deploy] goto end
 	copy ..\..\docs\eula.rtf "%USERPROFILE%\Desktop\objeck-lang\doc"
 	copy ..\..\docs\uninstall.vbs "%USERPROFILE%\Desktop\objeck-lang\doc"
 	copy ..\setup
-	devenv /rebuild Release setup.sln
+	devenv setup.sln /rebuild "Release|x86"
 	signtool sign /f "D:\Dropbox\Personal\signing keys\2016\randy_hollines.pfx" /p %2 /d "Objeck Toolchain" /t http://timestamp.verisign.com/scripts/timstamp.dll Release\setup.msi
 	copy Release\setup.msi "%USERPROFILE%\Desktop\objeck-lang.msi"
 	
