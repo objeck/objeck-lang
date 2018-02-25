@@ -2114,11 +2114,8 @@ namespace Runtime {
 #endif
         // store compiled code
         method->SetNativeCode(new NativeCode(page_manager->GetPage(code, code_index), code_index, floats));
-#ifdef _WIN64		
-        VirtualFree(code, NULL, MEM_RELEASE);
-#else
+        
         free(code);
-#endif		
         code = NULL;
 
 #ifdef _TIMING
