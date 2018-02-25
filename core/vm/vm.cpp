@@ -98,8 +98,7 @@ int Execute(const int argc, const char* argv[])
 #ifdef _TIMING    
     clock_t end = clock();
     wcout << L"---------------------------" << endl;
-    wcout << L"CPU Time: " << (double)(end - start) / CLOCKS_PER_SEC
-          << L" second(s)." << endl;
+    wcout << L"CPU Time: " << (double)(end - start) / CLOCKS_PER_SEC << L" second(s)." << endl;
 #endif
 
     CleanUpCommandLine(argc, commands);
