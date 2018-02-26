@@ -807,7 +807,11 @@ void* MemoryManager::CollectMemory(void* arg)
       uncollected_count++;
     } 
     else {
+#if defined(_WIN64) || defined(_X64)
+      mem_max_size <<= 6;
+#else
       mem_max_size <<= 4;
+#endif
       uncollected_count = 0;
     }
   }

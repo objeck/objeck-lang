@@ -42,7 +42,7 @@
 #endif
 
 #define UNCOLLECTED_COUNT 7
-#define COLLECTED_COUNT 13
+#define COLLECTED_COUNT 23
 #define POOL_SIZE 128
 
 #define EXTRA_BUF_SIZE 4
