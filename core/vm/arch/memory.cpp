@@ -802,12 +802,12 @@ void* MemoryManager::CollectMemory(void* arg)
 #endif  
 
   // did not collect memory; ajust constraints
-  if(live_memory.size() >= allocated_memory.size() - 1) {
+  if(live_memory.size() == allocated_memory.size() - 1) {
     if(uncollected_count < UNCOLLECTED_COUNT) {
       uncollected_count++;
     } 
     else {
-      mem_max_size <<= 2;
+      mem_max_size <<= 3;
       uncollected_count = 0;
     }
   }
