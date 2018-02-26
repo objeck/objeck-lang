@@ -1978,8 +1978,7 @@ bool TrapProcessor::StdOutFloat(StackProgram* program, size_t* inst, size_t* &op
 #ifdef _DEBUG
   wcout << L"  STD_OUT_FLOAT" << endl;
 #endif
-  wcout.precision(9);
-  wcout << PopFloat(op_stack, stack_pos);
+  wcout << setprecision(6) << PopFloat(op_stack, stack_pos);
 
   return true;
 }
