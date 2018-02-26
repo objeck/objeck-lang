@@ -41,8 +41,8 @@
 #define MEM_MAX 1048576 * 2
 #endif
 
-#define UNCOLLECTED_COUNT 7
-#define COLLECTED_COUNT 23
+#define UNCOLLECTED_COUNT 11
+#define COLLECTED_COUNT 29
 #define POOL_SIZE 128
 
 #define EXTRA_BUF_SIZE 4
