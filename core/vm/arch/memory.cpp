@@ -802,16 +802,12 @@ void* MemoryManager::CollectMemory(void* arg)
 #endif  
 
   // did not collect memory; ajust constraints
-  if(live_memory.size() == allocated_memory.size()) {
+  if(live_memory.size() >= allocated_memory.size() - 1) {
     if(uncollected_count < UNCOLLECTED_COUNT) {
       uncollected_count++;
     } 
     else {
-#if defined(_WIN64) || defined(_X64)
-      mem_max_size <<= 6;
-#else
-      mem_max_size <<= 4;
-#endif
+      mem_max_size <<= 2;
       uncollected_count = 0;
     }
   }
@@ -822,6 +818,9 @@ void* MemoryManager::CollectMemory(void* arg)
     } 
     else {
       mem_max_size = (mem_max_size >> 1) / 2;
+      if(mem_max_size <= 0) {
+        mem_max_size = MEM_MAX << 3;
+      }
       collected_count = 0;
     }
   }
