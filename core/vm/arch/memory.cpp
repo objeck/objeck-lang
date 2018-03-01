@@ -819,7 +819,7 @@ void* MemoryManager::CollectMemory(void* arg)
 #endif  
 
   // did not collect memory; ajust constraints
-  if(live_memory.size() == allocated_memory.size() - 1) {
+  if(live_memory.size() >= allocated_memory.size() - 1) {
     if(uncollected_count < UNCOLLECTED_COUNT) {
       uncollected_count++;
     } 
