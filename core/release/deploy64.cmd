@@ -65,7 +65,7 @@ if [%1] NEQ [deploy] goto end
 	copy ..\setup64
 	devenv setup.sln /rebuild
 	signtool sign /f "D:\Dropbox\Personal\signing keys\2016\randy_hollines.pfx" /p %2 /d "Objeck Toolchain" /t http://timestamp.verisign.com/scripts/timstamp.dll Release\setup.msi
-	copy Release\setup.msi "%USERPROFILE%\Desktop\objeck-lang-win64.msi"
+	copy Release64\setup.msi "%USERPROFILE%\Desktop\objeck-lang-win64.msi"
 	
 	rmdir /s /q "%USERPROFILE%\Desktop\Release64"
 	mkdir "%USERPROFILE%\Desktop\Release64"
