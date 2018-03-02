@@ -55,20 +55,20 @@ call code_doc.cmd
 
 REM finished
 if [%1] NEQ [deploy] goto end
-	mkdir "%USERPROFILE%\Desktop\objeck-lang"
-	xcopy /e deploy "%USERPROFILE%\Desktop\objeck-lang"
-	mkdir "%USERPROFILE%\Desktop\objeck-lang\doc\icons"
-	copy ..\..\images\setup_icons\*.ico "%USERPROFILE%\Desktop\objeck-lang\doc\icons"
-	copy ..\..\images\setup_icons\*.jpg "%USERPROFILE%\Desktop\objeck-lang\doc\icons"
-	copy ..\..\docs\eula.rtf "%USERPROFILE%\Desktop\objeck-lang\doc"
-	copy ..\..\docs\uninstall.vbs "%USERPROFILE%\Desktop\objeck-lang\doc"
+	mkdir "%USERPROFILE%\Desktop\objeck-lang-win32"
+	xcopy /e deploy "%USERPROFILE%\Desktop\objeck-lang-win32"
+	mkdir "%USERPROFILE%\Desktop\objeck-lang-win32\doc\icons"
+	copy ..\..\images\setup_icons\*.ico "%USERPROFILE%\Desktop\objeck-lang-win32\doc\icons"
+	copy ..\..\images\setup_icons\*.jpg "%USERPROFILE%\Desktop\objeck-lang-win32\doc\icons"
+	copy ..\..\docs\eula.rtf "%USERPROFILE%\Desktop\objeck-lang-win32\doc"
+	copy ..\..\docs\uninstall.vbs "%USERPROFILE%\Desktop\objeck-lang-win32\doc"
 	copy ..\setup
-	devenv setup.sln /rebuild "Release|x86"
+	devenv setup.sln /rebuild
 	signtool sign /f "D:\Dropbox\Personal\signing keys\2016\randy_hollines.pfx" /p %2 /d "Objeck Toolchain" /t http://timestamp.verisign.com/scripts/timstamp.dll Release\setup.msi
-	copy Release\setup.msi "%USERPROFILE%\Desktop\objeck-lang.msi"
+	copy Release\setup.msi "%USERPROFILE%\Desktop\objeck-lang-win32.msi"
 	
 	rmdir /s /q "%USERPROFILE%\Desktop\Release"
 	mkdir "%USERPROFILE%\Desktop\Release"
-	move "%USERPROFILE%\Desktop\objeck-lang" "%USERPROFILE%\Desktop\Release"
-	move "%USERPROFILE%\Desktop\objeck-lang.msi" "%USERPROFILE%\Desktop\Release"
+	move "%USERPROFILE%\Desktop\objeck-lang-win32" "%USERPROFILE%\Desktop\Release"
+	move "%USERPROFILE%\Desktop\objeck-lang-win32.msi" "%USERPROFILE%\Desktop\Release"
 :end
