@@ -88,7 +88,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <IncludePath>..\..\openssl\win32\include;$(IncludePath)</IncludePath>
-    <OutDir>..\$(Configuration)\win64</OutDir>
+    <OutDir>..\$(Configuration)\</OutDir>
     <TargetName>libobjk_odbc</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
