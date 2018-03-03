@@ -2113,8 +2113,7 @@ bool TrapProcessor::StdErrFloat(StackProgram* program, size_t* inst, size_t* &op
 #ifdef _DEBUG
   wcout << L"  STD_ERR_FLOAT" << endl;
 #endif
-  wcerr.precision(9);
-  wcerr << PopFloat(op_stack, stack_pos);
+  wcerr << setprecision(6) << PopFloat(op_stack, stack_pos);
 
   return true;
 }
