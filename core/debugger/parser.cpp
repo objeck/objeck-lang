@@ -31,9 +31,9 @@
 
 #include "parser.h"
 
-/****************************
- * Loads parsing error codes.
- ****************************/
+ /****************************
+  * Loads parsing error codes.
+  ****************************/
 void Parser::LoadErrorCodes()
 {
   error_msgs[TOKEN_IDENT] = L"Expected identifier";
@@ -58,7 +58,7 @@ void Parser::ProcessError(enum TokenType type)
   wstring msg = error_msgs[type];
 #ifdef _DEBUG
   wcout << L"\tError: "
-       << msg << endl;
+    << msg << endl;
 #endif
 
   errors.push_back(msg);
@@ -137,90 +137,90 @@ Command* Parser::ParseStatement(int depth)
 {
   Command* command;
   switch(GetToken()) {
-  case TOKEN_EXE_ID:
-    command = ParseLoad(EXE_COMMAND, depth + 1);
-    break;
+    case TOKEN_EXE_ID:
+      command = ParseLoad(EXE_COMMAND, depth + 1);
+      break;
 
-  case TOKEN_SRC_ID:
-    command = ParseLoad(SRC_COMMAND, depth + 1);
-    break;
+    case TOKEN_SRC_ID:
+      command = ParseLoad(SRC_COMMAND, depth + 1);
+      break;
 
-  case TOKEN_ARGS_ID:
-    command = ParseLoad(ARGS_COMMAND, depth + 1);
-    break;
+    case TOKEN_ARGS_ID:
+      command = ParseLoad(ARGS_COMMAND, depth + 1);
+      break;
 
-  case TOKEN_LIST_ID:
-    command = ParseList(depth + 1);
-    break;
+    case TOKEN_LIST_ID:
+      command = ParseList(depth + 1);
+      break;
 
-  case TOKEN_QUIT_ID:
-    NextToken();
-    command = TreeFactory::Instance()->MakeBasicCommand(QUIT_COMMAND);
-    break;
+    case TOKEN_QUIT_ID:
+      NextToken();
+      command = TreeFactory::Instance()->MakeBasicCommand(QUIT_COMMAND);
+      break;
 
-  case TOKEN_BREAKS_ID:
-    NextToken();
-    command = TreeFactory::Instance()->MakeBasicCommand(BREAKS_COMMAND);
-    break;
+    case TOKEN_BREAKS_ID:
+      NextToken();
+      command = TreeFactory::Instance()->MakeBasicCommand(BREAKS_COMMAND);
+      break;
 
-  case TOKEN_RUN_ID:
-    NextToken();
-    command = TreeFactory::Instance()->MakeBasicCommand(RUN_COMMAND);
-    break;
+    case TOKEN_RUN_ID:
+      NextToken();
+      command = TreeFactory::Instance()->MakeBasicCommand(RUN_COMMAND);
+      break;
 
-  case TOKEN_NEXT_ID:
-    NextToken();
-    command = TreeFactory::Instance()->MakeBasicCommand(NEXT_COMMAND);
-    break;
+    case TOKEN_NEXT_ID:
+      NextToken();
+      command = TreeFactory::Instance()->MakeBasicCommand(NEXT_COMMAND);
+      break;
 
-  case TOKEN_NEXT_LINE_ID:
-    NextToken();
-    command = TreeFactory::Instance()->MakeBasicCommand(NEXT_LINE_COMMAND);
-    break;
+    case TOKEN_NEXT_LINE_ID:
+      NextToken();
+      command = TreeFactory::Instance()->MakeBasicCommand(NEXT_LINE_COMMAND);
+      break;
 
-  case TOKEN_OUT_ID:
-    NextToken();
-    command = TreeFactory::Instance()->MakeBasicCommand(JUMP_OUT_COMMAND);
-    break;
+    case TOKEN_OUT_ID:
+      NextToken();
+      command = TreeFactory::Instance()->MakeBasicCommand(JUMP_OUT_COMMAND);
+      break;
 
-  case TOKEN_STACK_ID:
-    NextToken();
-    command = TreeFactory::Instance()->MakeBasicCommand(STACK_COMMAND);
-    break;
+    case TOKEN_STACK_ID:
+      NextToken();
+      command = TreeFactory::Instance()->MakeBasicCommand(STACK_COMMAND);
+      break;
 
-  case TOKEN_CONT_ID:
-    NextToken();
-    command = TreeFactory::Instance()->MakeBasicCommand(CONT_COMMAND);
-    break;
+    case TOKEN_CONT_ID:
+      NextToken();
+      command = TreeFactory::Instance()->MakeBasicCommand(CONT_COMMAND);
+      break;
 
-  case TOKEN_BREAK_ID:
-    command = ParseBreakDelete(true, depth + 1);
-    break;
-    
-  case TOKEN_DELETE_ID:
-    command = ParseBreakDelete(false, depth + 1);
-    break;
+    case TOKEN_BREAK_ID:
+      command = ParseBreakDelete(true, depth + 1);
+      break;
 
-  case TOKEN_PRINT_ID:
-    command = ParsePrint(depth + 1);
-    break;
+    case TOKEN_DELETE_ID:
+      command = ParseBreakDelete(false, depth + 1);
+      break;
 
-  case TOKEN_INFO_ID:
-    command = ParseInfo(depth + 1);
-    break;
+    case TOKEN_PRINT_ID:
+      command = ParsePrint(depth + 1);
+      break;
 
-  case TOKEN_FRAME_ID:
-    command = ParseFrame(depth + 1);
-    break;
+    case TOKEN_INFO_ID:
+      command = ParseInfo(depth + 1);
+      break;
 
-  case TOKEN_CLEAR_ID:
-    NextToken();
-    command = TreeFactory::Instance()->MakeBasicCommand(CLEAR_COMMAND);
-    break;
+    case TOKEN_FRAME_ID:
+      command = ParseFrame(depth + 1);
+      break;
 
-  default:
-    command = NULL;
-    break;
+    case TOKEN_CLEAR_ID:
+      NextToken();
+      command = TreeFactory::Instance()->MakeBasicCommand(CLEAR_COMMAND);
+      break;
+
+    default:
+      command = NULL;
+      break;
   }
 
   return command;
@@ -327,8 +327,8 @@ Command* Parser::ParseBreakDelete(bool is_break, int depth) {
   if(is_break) {
     return TreeFactory::Instance()->MakeFilePostion(BREAK_COMMAND, file_name, line_num);
   }
-  
-  return TreeFactory::Instance()->MakeFilePostion(DELETE_COMMAND, file_name, line_num);  
+
+  return TreeFactory::Instance()->MakeFilePostion(DELETE_COMMAND, file_name, line_num);
 }
 
 Command* Parser::ParsePrint(int depth) {
@@ -355,7 +355,7 @@ Command* Parser::ParseInfo(int depth) {
     }
     else if(Match(TOKEN_CHAR_STRING_LIT)) {
       CharacterString* char_string =
-	TreeFactory::Instance()->MakeCharacterString(scanner->GetToken()->GetIdentifier());
+        TreeFactory::Instance()->MakeCharacterString(scanner->GetToken()->GetIdentifier());
       cls_name = char_string->GetString();
     }
     else {
@@ -367,20 +367,20 @@ Command* Parser::ParseInfo(int depth) {
     if(Match(TOKEN_METHOD_ID)) {
       NextToken();
       if(!Match(TOKEN_EQL)) {
-	ProcessError(L"Expected equal sign");
+        ProcessError(L"Expected equal sign");
       }
       NextToken();
       // name
       if(Match(TOKEN_IDENT)) {
-	mthd_name = scanner->GetToken()->GetIdentifier();
+        mthd_name = scanner->GetToken()->GetIdentifier();
       }
       else if(Match(TOKEN_CHAR_STRING_LIT)) {
-	CharacterString* char_string =
-	  TreeFactory::Instance()->MakeCharacterString(scanner->GetToken()->GetIdentifier());
-	mthd_name = char_string->GetString();
+        CharacterString* char_string =
+          TreeFactory::Instance()->MakeCharacterString(scanner->GetToken()->GetIdentifier());
+        mthd_name = char_string->GetString();
       }
       else {
-	ProcessError(TOKEN_IDENT);
+        ProcessError(TOKEN_IDENT);
       }
       NextToken();
     }
@@ -458,15 +458,15 @@ Expression* Parser::ParseLogic(int depth)
     }
 
     switch(GetToken()) {
-    case TOKEN_AND:
-      expression = TreeFactory::Instance()->MakeCalculatedExpression(AND_EXPR);
-      break;
-    case TOKEN_OR:
-      expression = TreeFactory::Instance()->MakeCalculatedExpression(OR_EXPR);
-      break;
+      case TOKEN_AND:
+        expression = TreeFactory::Instance()->MakeCalculatedExpression(AND_EXPR);
+        break;
+      case TOKEN_OR:
+        expression = TreeFactory::Instance()->MakeCalculatedExpression(OR_EXPR);
+        break;
 
-    default:
-      break;
+      default:
+        break;
     }
     NextToken();
 
@@ -504,27 +504,27 @@ Expression* Parser::ParseMathLogic(int depth)
      Match(TOKEN_EQL) || Match(TOKEN_NEQL)) {
     CalculatedExpression* expression = NULL;
     switch(GetToken()) {
-    case TOKEN_LES:
-      expression = TreeFactory::Instance()->MakeCalculatedExpression(LES_EXPR);
-      break;
-    case TOKEN_GTR:
-      expression = TreeFactory::Instance()->MakeCalculatedExpression(GTR_EXPR);
-      break;
-    case TOKEN_LEQL:
-      expression = TreeFactory::Instance()->MakeCalculatedExpression(LES_EQL_EXPR);
-      break;
-    case TOKEN_GEQL:
-      expression = TreeFactory::Instance()->MakeCalculatedExpression(GTR_EQL_EXPR);
-      break;
-    case TOKEN_EQL:
-      expression = TreeFactory::Instance()->MakeCalculatedExpression(EQL_EXPR);
-      break;
-    case TOKEN_NEQL:
-      expression = TreeFactory::Instance()->MakeCalculatedExpression(NEQL_EXPR);
-      break;
+      case TOKEN_LES:
+        expression = TreeFactory::Instance()->MakeCalculatedExpression(LES_EXPR);
+        break;
+      case TOKEN_GTR:
+        expression = TreeFactory::Instance()->MakeCalculatedExpression(GTR_EXPR);
+        break;
+      case TOKEN_LEQL:
+        expression = TreeFactory::Instance()->MakeCalculatedExpression(LES_EQL_EXPR);
+        break;
+      case TOKEN_GEQL:
+        expression = TreeFactory::Instance()->MakeCalculatedExpression(GTR_EQL_EXPR);
+        break;
+      case TOKEN_EQL:
+        expression = TreeFactory::Instance()->MakeCalculatedExpression(EQL_EXPR);
+        break;
+      case TOKEN_NEQL:
+        expression = TreeFactory::Instance()->MakeCalculatedExpression(NEQL_EXPR);
+        break;
 
-    default:
-      break;
+      default:
+        break;
     }
     NextToken();
 
@@ -568,7 +568,8 @@ Expression* Parser::ParseTerm(int depth)
       CalculatedExpression* right;
       if(Match(TOKEN_ADD)) {
         right = TreeFactory::Instance()->MakeCalculatedExpression(ADD_EXPR);
-      } else {
+      }
+      else {
         right = TreeFactory::Instance()->MakeCalculatedExpression(SUB_EXPR);
       }
       NextToken();
@@ -583,7 +584,8 @@ Expression* Parser::ParseTerm(int depth)
     else {
       if(Match(TOKEN_ADD)) {
         expression = TreeFactory::Instance()->MakeCalculatedExpression(ADD_EXPR);
-      } else {
+      }
+      else {
         expression = TreeFactory::Instance()->MakeCalculatedExpression(SUB_EXPR);
       }
       NextToken();
@@ -624,9 +626,11 @@ Expression* Parser::ParseFactor(int depth)
       CalculatedExpression* right;
       if(Match(TOKEN_MUL)) {
         right = TreeFactory::Instance()->MakeCalculatedExpression(MUL_EXPR);
-      } else if(Match(TOKEN_MOD)) {
+      }
+      else if(Match(TOKEN_MOD)) {
         right = TreeFactory::Instance()->MakeCalculatedExpression(MOD_EXPR);
-      } else {
+      }
+      else {
         right = TreeFactory::Instance()->MakeCalculatedExpression(DIV_EXPR);
       }
       NextToken();
@@ -640,9 +644,11 @@ Expression* Parser::ParseFactor(int depth)
     else {
       if(Match(TOKEN_MUL)) {
         expression = TreeFactory::Instance()->MakeCalculatedExpression(MUL_EXPR);
-      } else if(Match(TOKEN_MOD)) {
+      }
+      else if(Match(TOKEN_MOD)) {
         expression = TreeFactory::Instance()->MakeCalculatedExpression(MOD_EXPR);
-      } else {
+      }
+      else {
         expression = TreeFactory::Instance()->MakeCalculatedExpression(DIV_EXPR);
       }
       NextToken();
@@ -681,20 +687,20 @@ Expression* Parser::ParseSimpleExpression(int depth)
     NextToken();
 
     switch(GetToken()) {
-    case TOKEN_INT_LIT:
-      expression = TreeFactory::Instance()->MakeIntegerLiteral(-scanner->GetToken()->GetIntLit());
-      NextToken();
-      break;
+      case TOKEN_INT_LIT:
+        expression = TreeFactory::Instance()->MakeIntegerLiteral(-scanner->GetToken()->GetIntLit());
+        NextToken();
+        break;
 
-    case TOKEN_FLOAT_LIT:
-      expression = TreeFactory::Instance()->MakeFloatLiteral(-scanner->GetToken()->GetFloatLit());
-      NextToken();
-      break;
+      case TOKEN_FLOAT_LIT:
+        expression = TreeFactory::Instance()->MakeFloatLiteral(-scanner->GetToken()->GetFloatLit());
+        NextToken();
+        break;
 
-    default:
-      ProcessError(L"Expected expression");
-      NextToken();
-      break;
+      default:
+        ProcessError(L"Expected expression");
+        NextToken();
+        break;
     }
   }
   else if(Match(TOKEN_OPEN_PAREN)) {
@@ -707,32 +713,33 @@ Expression* Parser::ParseSimpleExpression(int depth)
   }
   else {
     switch(GetToken()) {
-    case TOKEN_CHAR_LIT:
-      expression = TreeFactory::Instance()->MakeCharacterLiteral(scanner->GetToken()->GetCharLit());
-      NextToken();
+      case TOKEN_CHAR_LIT:
+        expression = TreeFactory::Instance()->MakeCharacterLiteral(scanner->GetToken()->GetCharLit());
+        NextToken();
+        break;
+
+      case TOKEN_INT_LIT:
+        expression = TreeFactory::Instance()->MakeIntegerLiteral(scanner->GetToken()->GetIntLit());
+        NextToken();
+        break;
+
+      case TOKEN_FLOAT_LIT:
+        expression = TreeFactory::Instance()->MakeFloatLiteral(scanner->GetToken()->GetFloatLit());
+        NextToken();
+        break;
+
+      case TOKEN_CHAR_STRING_LIT:
+      {
+        const wstring &ident = scanner->GetToken()->GetIdentifier();
+        expression = TreeFactory::Instance()->MakeCharacterString(ident);
+        NextToken();
+      }
       break;
 
-    case TOKEN_INT_LIT:
-      expression = TreeFactory::Instance()->MakeIntegerLiteral(scanner->GetToken()->GetIntLit());
-      NextToken();
-      break;
-
-    case TOKEN_FLOAT_LIT:
-      expression = TreeFactory::Instance()->MakeFloatLiteral(scanner->GetToken()->GetFloatLit());
-      NextToken();
-      break;
-
-    case TOKEN_CHAR_STRING_LIT: {
-      const wstring &ident = scanner->GetToken()->GetIdentifier();
-      expression = TreeFactory::Instance()->MakeCharacterString(ident);
-      NextToken();
-    }
-      break;
-
-    default:
-      ProcessError(L"Expected expression");
-      NextToken();
-      break;
+      default:
+        ProcessError(L"Expected expression");
+        NextToken();
+        break;
     }
   }
 
