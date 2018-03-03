@@ -73,11 +73,11 @@ namespace backend {
       file_out.write(&value, sizeof(value));
     }
 
-    inline void WriteInt(uint32_t value, ofstream &file_out) {
+    inline void WriteInt(int32_t value, ofstream &file_out) {
       file_out.write((char*)&value, sizeof(value));
     }
 
-    inline void WriteUnsigned(int value, ofstream &file_out) {
+    inline void WriteUnsigned(uint32_t value, ofstream &file_out) {
       file_out.write((char*)&value, sizeof(value));
     }
 
