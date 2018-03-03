@@ -170,8 +170,7 @@ void Loader::Load()
   start_class_id = ReadInt();
   start_method_id = ReadInt();
 #ifdef _DEBUG
-  wcout << L"Program starting point: " << start_class_id << L","
-	<< start_method_id << endl;
+  wcout << L"Program starting point: " << start_class_id << L"," << start_method_id << endl;
 #endif
 
   LoadClasses();
