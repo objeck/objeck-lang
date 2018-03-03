@@ -422,8 +422,7 @@ void Scanner::ParseToken(int index)
       hex_state = 1;
     }
     while(iswdigit(cur_char) || (cur_char == L'.' && iswdigit(nxt_char)) || cur_char == L'x' ||
-      (cur_char >= L'a' && cur_char <= L'f') ||
-          (cur_char >= L'A' && cur_char <= L'F')) {
+          (cur_char >= L'a' && cur_char <= L'f') || (cur_char >= L'A' && cur_char <= L'F')) {
       // decimal double
       if(cur_char == L'.') {
         // error
