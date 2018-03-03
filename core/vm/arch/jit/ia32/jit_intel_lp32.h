@@ -33,7 +33,7 @@
 #define __JIT_COMPILER__
 
 #ifndef _WIN32
-#include "../../../arch/posix/memory.h"
+#include "../../memory.h"
 #include "../../../arch/posix/posix.h"
 #include <sys/mman.h>
 #include <errno.h>
@@ -282,7 +282,7 @@ namespace Runtime {
 #ifdef _WIN32
       free(buffer);
 #else
-      munmap(buffer, PAGE_SIZE)
+      munmap(buffer, PAGE_SIZE);
 #endif
       buffer = NULL;
     }
@@ -434,7 +434,7 @@ namespace Runtime {
     inline void AddImm(int32_t imm) {
       unsigned char buffer[sizeof(int32_t)];
       ByteEncode32(buffer, imm);
-      for(int i = 0; i < sizeof(int32_t); ++i) {
+      for(int i = 0; i < (int)sizeof(int32_t); ++i) {
         AddMachineCode(buffer[i]);
       }
     }
@@ -443,7 +443,7 @@ namespace Runtime {
     inline void AddImm16(int16_t imm) {
       unsigned char buffer[sizeof(int16_t)];
       ByteEncode16(buffer, imm);
-      for(int i = 0; i < sizeof(int16_t); ++i) {
+      for(int i = 0; i < (int)sizeof(int16_t); ++i) {
         AddMachineCode(buffer[i]);
       }
     }

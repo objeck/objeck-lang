@@ -1865,6 +1865,26 @@ bundle System {
 		method : public : Has(offset : Int, char : Char) ~ Bool {
 			return Find(offset, char) > -1;
 		}
+
+
+		#~
+		Searches for the first occurrence of a character
+		@param str string to search for
+		@return true of found, false otherwise
+		~#
+		method : public : Has(str : String) ~ Bool {
+			return Find(0, str) > -1;
+		}
+
+		#~
+		Searches for the first occurrence of a character
+		@param offset search offset
+		@param str string to search for
+		@return true of found, false otherwise
+		~#
+		method : public : Has(offset : Int, str : String) ~ Bool {
+			return Find(offset, str) > -1;
+		}
 			
 		#~
 		Searches for the first occurrence of a character

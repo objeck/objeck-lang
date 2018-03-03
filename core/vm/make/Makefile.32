@@ -6,7 +6,7 @@ ARGS=-O3 -pthread -Wall -Wno-unused-function -std=c++11
 CC=g++
 SRC=common.o interpreter.o loader.o vm.o posix_main.o 
 OBJ_LIBS= jit_intel_lp32.a memory.a
-MEM_PATH=arch/posix
+MEM_PATH=arch
 JIT_PATH=arch/jit/ia32
 EXE=obr
 

@@ -3137,7 +3137,7 @@ bundle Collection {
 	}
 
 	#~
-	Binary tree of <code>String<code> values
+	Binary tree of string values
 	~#
 	class StringMap {
 		@map : Map;
@@ -3185,7 +3185,7 @@ bundle Collection {
 			return result <> Nil;
 		}
     
-    	#~
+    		#~
 		Get a collection of keys
 		@return vector of keys
 		~#
