@@ -33,9 +33,9 @@
 
 #define EOB L'\0'
 
-/****************************
- * Scanner constructor
- ****************************/
+ /****************************
+  * Scanner constructor
+  ****************************/
 Scanner::Scanner(const wstring &line)
 {
   // create tokens
@@ -82,7 +82,7 @@ void Scanner::LoadKeywords()
   ident_map[L"?src"] = TOKEN_SRC_ID;
   ident_map[L"?args"] = TOKEN_ARGS_ID;
   ident_map[L"?quit"] = TOKEN_QUIT_ID;
-  ident_map[L"?q"] = TOKEN_QUIT_ID;  
+  ident_map[L"?q"] = TOKEN_QUIT_ID;
   ident_map[L"?break"] = TOKEN_BREAK_ID;
   ident_map[L"?b"] = TOKEN_BREAK_ID;
   ident_map[L"?breaks"] = TOKEN_BREAKS_ID;
@@ -117,33 +117,33 @@ void Scanner::CheckIdentifier(int index)
   // check wstring
   enum TokenType ident_type = ident_map[ident];
   switch(ident_type) {
-  case TOKEN_STACK_ID:
-  case TOKEN_SRC_ID:
-  case TOKEN_ARGS_ID:
-  case TOKEN_CLASS_ID:
-  case TOKEN_METHOD_ID:
-  case TOKEN_LIST_ID:
-  case TOKEN_SELF_ID:
-  case TOKEN_NEXT_ID:
-  case TOKEN_NEXT_LINE_ID:
-  case TOKEN_OUT_ID:
-  case TOKEN_CONT_ID:
-  case TOKEN_EXE_ID:
-  case TOKEN_QUIT_ID:
-  case TOKEN_BREAK_ID:
-  case TOKEN_BREAKS_ID:
-  case TOKEN_PRINT_ID:
-  case TOKEN_INFO_ID:
-  case TOKEN_FRAME_ID:
-  case TOKEN_CLEAR_ID:
-  case TOKEN_DELETE_ID:
-  case TOKEN_RUN_ID:
-    tokens[index]->SetType(ident_type);
-    break;
-  default:
-    tokens[index]->SetType(TOKEN_IDENT);
-    tokens[index]->SetIdentifier(ident);
-    break;
+    case TOKEN_STACK_ID:
+    case TOKEN_SRC_ID:
+    case TOKEN_ARGS_ID:
+    case TOKEN_CLASS_ID:
+    case TOKEN_METHOD_ID:
+    case TOKEN_LIST_ID:
+    case TOKEN_SELF_ID:
+    case TOKEN_NEXT_ID:
+    case TOKEN_NEXT_LINE_ID:
+    case TOKEN_OUT_ID:
+    case TOKEN_CONT_ID:
+    case TOKEN_EXE_ID:
+    case TOKEN_QUIT_ID:
+    case TOKEN_BREAK_ID:
+    case TOKEN_BREAKS_ID:
+    case TOKEN_PRINT_ID:
+    case TOKEN_INFO_ID:
+    case TOKEN_FRAME_ID:
+    case TOKEN_CLEAR_ID:
+    case TOKEN_DELETE_ID:
+    case TOKEN_RUN_ID:
+      tokens[index]->SetType(ident_type);
+      break;
+    default:
+      tokens[index]->SetType(TOKEN_IDENT);
+      tokens[index]->SetIdentifier(ident);
+      break;
   }
 }
 
@@ -174,7 +174,8 @@ void Scanner::NextToken()
     for(int i = 0; i < LOOK_AHEAD; i++) {
       ParseToken(i);
     }
-  } else {
+  }
+  else {
     int i = 1;
     for(; i < LOOK_AHEAD; i++) {
       tokens[i - 1]->Copy(tokens[i]);
@@ -271,7 +272,7 @@ void Scanner::ParseToken(int index)
     }
     Whitespace();
   }
-  // character wstring
+  // character string
   if(cur_char == L'\"') {
     NextChar();
     // mark
@@ -280,28 +281,28 @@ void Scanner::ParseToken(int index)
       if(cur_char == L'\\') {
         NextChar();
         switch(cur_char) {
-        case L'"':
-          break;
+          case L'"':
+            break;
 
-        case L'\\':
-          break;
+          case L'\\':
+            break;
 
-        case L'n':
-          break;
+          case L'n':
+            break;
 
-        case L'r':
-          break;
+          case L'r':
+            break;
 
-        case L't':
-          break;
+          case L't':
+            break;
 
-        case L'0':
-          break;
+          case L'0':
+            break;
 
-        default:
-          tokens[index]->SetType(TOKEN_UNKNOWN);
-          NextChar();
-          break;
+          default:
+            tokens[index]->SetType(TOKEN_UNKNOWN);
+            NextChar();
+            break;
         }
       }
       NextChar();
@@ -324,8 +325,8 @@ void Scanner::ParseToken(int index)
         NextChar();
         start_pos = buffer_pos - 1;
         while(isdigit(cur_char) || (cur_char >= L'a' && cur_char <= L'f') ||
-	      (cur_char >= L'A' && cur_char <= L'F')) {
-	  NextChar();
+          (cur_char >= L'A' && cur_char <= L'F')) {
+          NextChar();
         }
         end_pos = buffer_pos - 1;
         ParseUnicodeChar(index);
@@ -338,36 +339,36 @@ void Scanner::ParseToken(int index)
       // escape
       else if(nxt_char == L'\'') {
         switch(cur_char) {
-        case L'n':
-          tokens[index]->SetType(TOKEN_CHAR_LIT);
-          tokens[index]->SetCharLit('\n');
-          NextChar();
-          NextChar();
-          return;
-        case L'r':
-          tokens[index]->SetType(TOKEN_CHAR_LIT);
-          tokens[index]->SetCharLit('\r');
-          NextChar();
-          NextChar();
-          return;
-        case L't':
-          tokens[index]->SetType(TOKEN_CHAR_LIT);
-          tokens[index]->SetCharLit('\t');
-          NextChar();
-          NextChar();
-          return;
-        case L'\\':
-          tokens[index]->SetType(TOKEN_CHAR_LIT);
-          tokens[index]->SetCharLit('\\');
-          NextChar();
-          NextChar();
-          return;
-        case L'0':
-          tokens[index]->SetType(TOKEN_CHAR_LIT);
-          tokens[index]->SetCharLit('\0');
-          NextChar();
-          NextChar();
-          return;
+          case L'n':
+            tokens[index]->SetType(TOKEN_CHAR_LIT);
+            tokens[index]->SetCharLit('\n');
+            NextChar();
+            NextChar();
+            return;
+          case L'r':
+            tokens[index]->SetType(TOKEN_CHAR_LIT);
+            tokens[index]->SetCharLit('\r');
+            NextChar();
+            NextChar();
+            return;
+          case L't':
+            tokens[index]->SetType(TOKEN_CHAR_LIT);
+            tokens[index]->SetCharLit('\t');
+            NextChar();
+            NextChar();
+            return;
+          case L'\\':
+            tokens[index]->SetType(TOKEN_CHAR_LIT);
+            tokens[index]->SetCharLit('\\');
+            NextChar();
+            NextChar();
+            return;
+          case L'0':
+            tokens[index]->SetType(TOKEN_CHAR_LIT);
+            tokens[index]->SetCharLit('\0');
+            NextChar();
+            NextChar();
+            return;
         }
       }
       // error
@@ -376,13 +377,15 @@ void Scanner::ParseToken(int index)
         NextChar();
         return;
       }
-    } else {
+    }
+    else {
       // error
       if(nxt_char != L'\'') {
         tokens[index]->SetType(TOKEN_UNKNOWN);
         NextChar();
         return;
-      } else {
+      }
+      else {
         tokens[index]->SetType(TOKEN_CHAR_LIT);
         tokens[index]->SetCharLit(cur_char);
         NextChar();
@@ -392,12 +395,13 @@ void Scanner::ParseToken(int index)
     }
   }
   // identifier
-  else if(isalpha(cur_char) || cur_char == L'@' || cur_char == L'?') {
+  else if(isalpha(cur_char) || cur_char == L'@' || cur_char == L'_' || cur_char == L'?' ||
+          (iswdigit(cur_char) && (isalpha(nxt_char) || nxt_char == L'_'))) {
     // mark
     start_pos = buffer_pos - 1;
 
-    while((isalpha(cur_char) || isdigit(cur_char) || cur_char == L'_' || 
-	   cur_char == L'@' || cur_char == L'?' || cur_char == L'.') && cur_char != EOB) {
+    while((isalpha(cur_char) || isdigit(cur_char) || cur_char == L'_' ||
+          cur_char == L'@' || cur_char == L'?' || cur_char == L'.') && cur_char != EOB) {
       NextChar();
     }
     // mark
@@ -418,29 +422,29 @@ void Scanner::ParseToken(int index)
       hex_state = 1;
     }
     while(iswdigit(cur_char) || (cur_char == L'.' && iswdigit(nxt_char)) || cur_char == L'x' ||
-	  (cur_char >= L'a' && cur_char <= L'f') ||
-	  (cur_char >= L'A' && cur_char <= L'F')) {
+      (cur_char >= L'a' && cur_char <= L'f') ||
+          (cur_char >= L'A' && cur_char <= L'F')) {
       // decimal double
       if(cur_char == L'.') {
-	// error
-	if(is_double) {
-	  tokens[index]->SetType(TOKEN_UNKNOWN);
-	  NextChar();
-	  break;
-	}
-	is_double = true;
+        // error
+        if(is_double) {
+          tokens[index]->SetType(TOKEN_UNKNOWN);
+          NextChar();
+          break;
+        }
+        is_double = true;
       }
       // hex integer
       if(cur_char == L'x') {
-	if(hex_state == 1) {
-	  hex_state = 2;
-	}
-	else {
-	  hex_state = 1;
-	}
+        if(hex_state == 1) {
+          hex_state = 2;
+        }
+        else {
+          hex_state = 1;
+        }
       }
       else {
-	hex_state = 0;
+        hex_state = 0;
       }
       // next character
       NextChar();
@@ -449,7 +453,7 @@ void Scanner::ParseToken(int index)
     end_pos = buffer_pos - 1;
     if(is_double) {
       ParseDouble(index);
-    } 
+    }
     else if(hex_state == 2) {
       ParseInteger(index, 16);
     }
@@ -464,145 +468,148 @@ void Scanner::ParseToken(int index)
   // other
   else {
     switch(cur_char) {
-    case L':':
-      if(nxt_char == L'=') {
+      case L':':
+        if(nxt_char == L'=') {
+          NextChar();
+          tokens[index]->SetType(TOKEN_ASSIGN);
+          NextChar();
+        }
+        else {
+          tokens[index]->SetType(TOKEN_COLON);
+          NextChar();
+        }
+        break;
+
+      case L'-':
+        if(nxt_char == L'>') {
+          NextChar();
+          tokens[index]->SetType(TOKEN_ASSESSOR);
+          NextChar();
+        }
+        else {
+          tokens[index]->SetType(TOKEN_SUB);
+          NextChar();
+        }
+        break;
+
+      case L'{':
+        tokens[index]->SetType(TOKEN_OPEN_BRACE);
         NextChar();
-        tokens[index]->SetType(TOKEN_ASSIGN);
+        break;
+
+      case L'.':
+        tokens[index]->SetType(TOKEN_PERIOD);
         NextChar();
-      } 
-      else {
-        tokens[index]->SetType(TOKEN_COLON);
+        break;
+
+      case L'}':
+        tokens[index]->SetType(TOKEN_CLOSED_BRACE);
         NextChar();
-      }
-      break;
+        break;
 
-    case L'-':
-      if(nxt_char == L'>') {
+      case L'[':
+        tokens[index]->SetType(TOKEN_OPEN_BRACKET);
         NextChar();
-        tokens[index]->SetType(TOKEN_ASSESSOR);
+        break;
+
+      case L']':
+        tokens[index]->SetType(TOKEN_CLOSED_BRACKET);
         NextChar();
-      } 
-      else {
-        tokens[index]->SetType(TOKEN_SUB);
+        break;
+
+      case L'(':
+        tokens[index]->SetType(TOKEN_OPEN_PAREN);
         NextChar();
-      }
-      break;
+        break;
 
-    case L'{':
-      tokens[index]->SetType(TOKEN_OPEN_BRACE);
-      NextChar();
-      break;
-
-    case L'.':
-      tokens[index]->SetType(TOKEN_PERIOD);
-      NextChar();
-      break;
-
-    case L'}':
-      tokens[index]->SetType(TOKEN_CLOSED_BRACE);
-      NextChar();
-      break;
-
-    case L'[':
-      tokens[index]->SetType(TOKEN_OPEN_BRACKET);
-      NextChar();
-      break;
-
-    case L']':
-      tokens[index]->SetType(TOKEN_CLOSED_BRACKET);
-      NextChar();
-      break;
-
-    case L'(':
-      tokens[index]->SetType(TOKEN_OPEN_PAREN);
-      NextChar();
-      break;
-
-    case L')':
-      tokens[index]->SetType(TOKEN_CLOSED_PAREN);
-      NextChar();
-      break;
-
-    case L',':
-      tokens[index]->SetType(TOKEN_COMMA);
-      NextChar();
-      break;
-
-    case L';':
-      tokens[index]->SetType(TOKEN_SEMI_COLON);
-      NextChar();
-      break;
-
-    case L'&':
-      tokens[index]->SetType(TOKEN_AND);
-      NextChar();
-      break;
-
-    case L'|':
-      tokens[index]->SetType(TOKEN_OR);
-      NextChar();
-      break;
-
-    case L'=':
-      tokens[index]->SetType(TOKEN_EQL);
-      NextChar();
-      break;
-
-    case L'<':
-      if(nxt_char == L'>') {
+      case L')':
+        tokens[index]->SetType(TOKEN_CLOSED_PAREN);
         NextChar();
-        tokens[index]->SetType(TOKEN_NEQL);
-        NextChar();
-      } else if(nxt_char == L'=') {
-        NextChar();
-        tokens[index]->SetType(TOKEN_LEQL);
-        NextChar();
-      } else {
-        tokens[index]->SetType(TOKEN_LES);
-        NextChar();
-      }
-      break;
+        break;
 
-    case L'>':
-      if(nxt_char == L'=') {
+      case L',':
+        tokens[index]->SetType(TOKEN_COMMA);
         NextChar();
-        tokens[index]->SetType(TOKEN_GEQL);
+        break;
+
+      case L';':
+        tokens[index]->SetType(TOKEN_SEMI_COLON);
         NextChar();
-      } else {
-        tokens[index]->SetType(TOKEN_GTR);
+        break;
+
+      case L'&':
+        tokens[index]->SetType(TOKEN_AND);
         NextChar();
-      }
-      break;
+        break;
 
-    case L'+':
-      tokens[index]->SetType(TOKEN_ADD);
-      NextChar();
-      break;
+      case L'|':
+        tokens[index]->SetType(TOKEN_OR);
+        NextChar();
+        break;
 
-    case L'*':
-      tokens[index]->SetType(TOKEN_MUL);
-      NextChar();
-      break;
+      case L'=':
+        tokens[index]->SetType(TOKEN_EQL);
+        NextChar();
+        break;
 
-    case L'/':
-      tokens[index]->SetType(TOKEN_DIV);
-      NextChar();
-      break;
+      case L'<':
+        if(nxt_char == L'>') {
+          NextChar();
+          tokens[index]->SetType(TOKEN_NEQL);
+          NextChar();
+        }
+        else if(nxt_char == L'=') {
+          NextChar();
+          tokens[index]->SetType(TOKEN_LEQL);
+          NextChar();
+        }
+        else {
+          tokens[index]->SetType(TOKEN_LES);
+          NextChar();
+        }
+        break;
 
-    case L'%':
-      tokens[index]->SetType(TOKEN_MOD);
-      NextChar();
-      break;
+      case L'>':
+        if(nxt_char == L'=') {
+          NextChar();
+          tokens[index]->SetType(TOKEN_GEQL);
+          NextChar();
+        }
+        else {
+          tokens[index]->SetType(TOKEN_GTR);
+          NextChar();
+        }
+        break;
 
-    case EOB:
-      tokens[index]->SetType(TOKEN_END_OF_STREAM);
-      break;
+      case L'+':
+        tokens[index]->SetType(TOKEN_ADD);
+        NextChar();
+        break;
 
-    default:
-      ProcessWarning();
-      tokens[index]->SetType(TOKEN_UNKNOWN);
-      NextChar();
-      break;
+      case L'*':
+        tokens[index]->SetType(TOKEN_MUL);
+        NextChar();
+        break;
+
+      case L'/':
+        tokens[index]->SetType(TOKEN_DIV);
+        NextChar();
+        break;
+
+      case L'%':
+        tokens[index]->SetType(TOKEN_MOD);
+        NextChar();
+        break;
+
+      case EOB:
+        tokens[index]->SetType(TOKEN_END_OF_STREAM);
+        break;
+
+      default:
+        ProcessWarning();
+        tokens[index]->SetType(TOKEN_UNKNOWN);
+        NextChar();
+        break;
     }
     return;
   }
