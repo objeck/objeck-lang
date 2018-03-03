@@ -425,11 +425,11 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
   StackInstr** mthd_instrs = new StackInstr*[num_instrs];
 
   for(uint32_t i = 0; i < num_instrs; ++i) {
+    const int type = ReadByte();
     if(is_debug) {
       line_num = ReadInt();
     }
 
-    const int type = ReadByte();
     switch(type) {
     case LOAD_INT_LIT:
       mthd_instrs[i] = new StackInstr(line_num, LOAD_INT_LIT, (long)ReadInt());
@@ -488,7 +488,7 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
 
     case STOR_FLOAT_VAR: {
       long id = ReadInt();
-      long mem_context = ReadInt();
+      const long mem_context = ReadInt();
       mthd_instrs[i] = new StackInstr(line_num, STOR_FLOAT_VAR, id, mem_context);
     }
       break;
@@ -510,84 +510,82 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       break;
 
     case LOAD_BYTE_ARY_ELM: {
-      long dim = ReadInt();
+      const long dim = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       mthd_instrs[i] = new StackInstr(line_num, LOAD_BYTE_ARY_ELM, dim, mem_context);
     }
       break;
 
     case LOAD_CHAR_ARY_ELM: {
-      long dim = ReadInt();
+      const long dim = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       mthd_instrs[i] = new StackInstr(line_num, LOAD_CHAR_ARY_ELM, dim, mem_context);
     }
       break;
       
     case LOAD_INT_ARY_ELM: {
-      long dim = ReadInt();
+      const long dim = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       mthd_instrs[i] = new StackInstr(line_num, LOAD_INT_ARY_ELM, dim, mem_context);
     }
       break;
 
     case LOAD_FLOAT_ARY_ELM: {
-      long dim = ReadInt();
+      const long dim = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       mthd_instrs[i] = new StackInstr(line_num, LOAD_FLOAT_ARY_ELM, dim, mem_context);
     }
       break;
 
     case STOR_BYTE_ARY_ELM: {
-      long dim = ReadInt();
+      const long dim = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       mthd_instrs[i] = new StackInstr(line_num, STOR_BYTE_ARY_ELM, dim, mem_context);
     }
       break;
 
     case STOR_CHAR_ARY_ELM: {
-      long dim = ReadInt();
+      const long dim = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       mthd_instrs[i] = new StackInstr(line_num, STOR_CHAR_ARY_ELM, dim, mem_context);
     }
       break;
 
     case STOR_INT_ARY_ELM: {
-      long dim = ReadInt();
+      const long dim = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       mthd_instrs[i] = new StackInstr(line_num, STOR_INT_ARY_ELM, dim, mem_context);
     }
       break;
 
     case STOR_FLOAT_ARY_ELM: {
-      long dim = ReadInt();
-      long mem_context = ReadInt();
+      const long dim = ReadInt();
+      const long mem_context = ReadInt();
       mthd_instrs[i] = new StackInstr(line_num, STOR_FLOAT_ARY_ELM, dim, mem_context);
     }
       break;
 
     case NEW_FLOAT_ARY: {
-      long dim = ReadInt();
+      const long dim = ReadInt();
       mthd_instrs[i] = new StackInstr(line_num, NEW_FLOAT_ARY, dim);
     }
       break;
 
     case NEW_INT_ARY: {
-      long dim = ReadInt();
+      const long dim = ReadInt();
       mthd_instrs[i] = new StackInstr(line_num, NEW_INT_ARY, dim);
     }
       break;
 
     case NEW_BYTE_ARY: {
-      long dim = ReadInt();
+      const long dim = ReadInt();
       mthd_instrs[i] = new StackInstr(line_num, NEW_BYTE_ARY, dim);
-
     }
       break;
 
     case NEW_CHAR_ARY: {
-      long dim = ReadInt();
+      const long dim = ReadInt();
       mthd_instrs[i] = new StackInstr(line_num, NEW_CHAR_ARY, dim);
-
     }
       break;
 

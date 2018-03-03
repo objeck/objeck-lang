@@ -293,13 +293,13 @@ void IntermediateBlock::Write(bool is_debug, ofstream &file_out) {
  * Instruction class
  ****************************/
 void IntermediateInstruction::Write(bool is_debug, ofstream &file_out) {
-  WriteByte((int)type, file_out);
+  WriteByte(type, file_out);
   if(is_debug) {
     WriteInt(line_num, file_out);
   }
+
   switch(type) {
   case LOAD_INT_LIT:
-
   case NEW_FLOAT_ARY:
   case NEW_INT_ARY:
   case NEW_BYTE_ARY:
