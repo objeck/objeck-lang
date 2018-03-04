@@ -3321,7 +3321,7 @@ bool ContextAnalyzer::Analyze()
         ProcessError(expression, L"Invalid mathematical operation");
       }
 
-      if(left->GetEvalType() && left->GetEvalType()->GetType() == FLOAT_TYPE) {
+      if(left->GetEvalType() && GetExpressionType(left, depth + 1)->GetType() == FLOAT_TYPE) {
         if(left->GetCastType()) {
           switch(left->GetCastType()->GetType()) {
           case BYTE_TYPE:
@@ -3338,7 +3338,7 @@ bool ContextAnalyzer::Analyze()
         }
       }
 
-      if(right->GetEvalType() && right->GetEvalType()->GetType() == FLOAT_TYPE) {
+      if(right->GetEvalType() && GetExpressionType(right, depth + 1)->GetType() == FLOAT_TYPE) {
         if(right->GetCastType()) {
           switch(right->GetCastType()->GetType()) {
           case BYTE_TYPE:
