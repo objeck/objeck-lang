@@ -1,4 +1,4 @@
-use ODBC;
+use Database.ODBC;
 
 bundle Default {
 	class SqlTest {
@@ -7,9 +7,9 @@ bundle Default {
 		}
 
 		function : native : Run() ~ Nil {
-			conn := Connection->New("test", "root", "helloworld");
+			conn := Connection->New("foo", "", "");
 			if(conn->IsOpen()) {
-				rs := conn->Select("SELECT * FROM world.city");
+				rs := conn->Select("SELECT * FROM Person");
 				if(rs <> Nil) {
 					i := 0;	
 					while(rs->Next()) {
