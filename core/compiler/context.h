@@ -989,8 +989,8 @@ class ContextAnalyzer {
 #ifdef _DEBUG
     Show(L"variable=|" + entry->GetName() + L"|", char_str->GetLineNumber(), depth + 1);
 #endif
-    if(!entry->GetType()) {
-      ProcessError(char_str, L"Invalid function variable type");
+    if(!entry->GetType() || entry->GetType()->GetDimension() > 0) {
+      ProcessError(char_str, L"Invalid function variable type or dimension size");
     }
     else if(entry->GetType()->GetType() == CLASS_TYPE && 
             entry->GetType()->GetClassName() != L"System.String" && 
