@@ -1,13 +1,15 @@
+
 use System.IO.File;
 use Query.Structured;
 
 class Rosetta {
 	function : Main(args : String[]) ~ Nil {
-		table := Table->FromFilesystem(".");
+#		
+		table := Table->FromFilesystem("../..");
 		if(table <> Nil) {
 			"---"->PrintLine();
 			TableMeta(table);
-			results := table->Query("select path_name from files");
+			results := table->Query("select path_name, create_date from files where create_date > #02/15/18#");
 			if(results <> Nil) {
 #				results->Average("price")->PrintLine();
 				results->ToString()->PrintLine();
