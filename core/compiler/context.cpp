@@ -67,7 +67,7 @@ void ContextAnalyzer::ProcessErrorAlternativeMethods(wstring &message)
  ****************************/
 void ContextAnalyzer::ProcessError(const wstring &msg)
 {
-#ifdef _EBUG
+#ifdef _DEBUG
   wcout << L"\tError: " << msg << endl;
 #endif
 
@@ -4478,6 +4478,7 @@ bool ContextAnalyzer::Analyze()
         type->SetClassName(encoded_name);
       }
 
+#ifndef _SYSTEM
       Statement* statement = declaration->GetAssignment();
       if(entry->IsStatic()) {
         if(current_method) {
@@ -4492,7 +4493,8 @@ bool ContextAnalyzer::Analyze()
       if(!entry->IsLocal() && statement) {
         ProcessError(entry, L"Variables cannot be initialized at class scope");
       }
-      
+#endif
+
       if(statement) {
         AnalyzeStatement(statement, depth);
       }
