@@ -1188,7 +1188,7 @@ class ContextAnalyzer {
     program->SetLinker(linker);
     char_str_index = int_str_index = float_str_index= 0;
     in_loop = false;
-
+    
     // setup type map
     type_map[L"$Byte"] = BYTE_TYPE;
     type_map[L"$Char"] = CHAR_TYPE;

@@ -451,6 +451,7 @@ bool ContextAnalyzer::Analyze()
     // declarations
     vector<Statement*> statements = klass->GetStatements();
     for(size_t i = 0; i < statements.size(); ++i) {
+      current_method = NULL;
       AnalyzeDeclaration(static_cast<Declaration*>(statements[i]), current_class, depth + 1);
     }
   }
@@ -4479,7 +4480,6 @@ bool ContextAnalyzer::Analyze()
       }
 
       Statement* statement = declaration->GetAssignment();
-#ifndef _SYSTEM
       if(entry->IsStatic()) {
         if(current_method) {
           ProcessError(entry, L"Static variables can only be declared at class scope");
@@ -4493,7 +4493,6 @@ bool ContextAnalyzer::Analyze()
       if(!entry->IsLocal() && statement) {
         ProcessError(entry, L"Variables cannot be initialized at class scope");
       }
-#endif
 
       if(statement) {
         AnalyzeStatement(statement, depth);
