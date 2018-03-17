@@ -1,6 +1,6 @@
 class Test {
-	a : static :  Int;
-	b : static : Int;
+	@a : static :  Int;
+	@b : static : Int;
 	
 	function : Main(args : String[]) ~ Nil {
 		a := 2; b := 3;
