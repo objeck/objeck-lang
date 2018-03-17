@@ -4477,8 +4477,22 @@ bool ContextAnalyzer::Analyze()
 #endif
         type->SetClassName(encoded_name);
       }
-      
+
       Statement* statement = declaration->GetAssignment();
+      if(entry->IsStatic()) {
+        if(current_method) {
+          ProcessError(entry, L"Static variables can only be declared at class scope");
+        }
+
+        if(statement) {
+          ProcessError(entry, L"Variables cannot be initialized at class scope");
+        }
+      }
+
+      if(!entry->IsLocal() && statement) {
+        ProcessError(entry, L"Variables cannot be initialized at class scope");
+      }
+      
       if(statement) {
         AnalyzeStatement(statement, depth);
       }

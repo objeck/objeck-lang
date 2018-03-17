@@ -504,41 +504,43 @@ class ContextAnalyzer {
 
   // returns a symbol table entry by name
   SymbolEntry* GetEntry(wstring name, bool is_parent = false) {
-    // check locally
-    SymbolEntry* entry = current_table->GetEntry(current_method->GetName() + L":" + name);
-    if(!is_parent && entry) {
-      return entry;
-    } 
-    else {
-      // check class
-      SymbolTable* table = symbol_table->GetSymbolTable(current_class->GetName());
-      entry = table->GetEntry(current_class->GetName() + L":" + name);
+    if(current_table) {
+      // check locally
+      SymbolEntry* entry = current_table->GetEntry(current_method->GetName() + L":" + name);
       if(!is_parent && entry) {
         return entry;
-      } 
-      else {	
-        // check parents
-        entry = NULL;
-        const wstring& bundle_name = bundle->GetName();
-        Class* parent;
-        if(bundle_name.size() > 0) {
-          parent = bundle->GetClass(bundle_name + L"." + current_class->GetParentName());
+      }
+      else {
+        // check class
+        SymbolTable* table = symbol_table->GetSymbolTable(current_class->GetName());
+        entry = table->GetEntry(current_class->GetName() + L":" + name);
+        if(!is_parent && entry) {
+          return entry;
         }
         else {
-          parent = bundle->GetClass(current_class->GetParentName());
-        }
-        while(parent && !entry) {
-          SymbolTable* table = symbol_table->GetSymbolTable(parent->GetName());
-          entry = table->GetEntry(parent->GetName() + L":" + name);
-          if(entry) {
-            return entry;
-          }
-          // get next parent	  
+          // check parents
+          entry = NULL;
+          const wstring& bundle_name = bundle->GetName();
+          Class* parent;
           if(bundle_name.size() > 0) {
-            parent = bundle->GetClass(bundle_name + L"." + parent->GetParentName());
+            parent = bundle->GetClass(bundle_name + L"." + current_class->GetParentName());
           }
           else {
-            parent = bundle->GetClass(parent->GetParentName());
+            parent = bundle->GetClass(current_class->GetParentName());
+          }
+          while(parent && !entry) {
+            SymbolTable* table = symbol_table->GetSymbolTable(parent->GetName());
+            entry = table->GetEntry(parent->GetName() + L":" + name);
+            if(entry) {
+              return entry;
+            }
+            // get next parent	  
+            if(bundle_name.size() > 0) {
+              parent = bundle->GetClass(bundle_name + L"." + parent->GetParentName());
+            }
+            else {
+              parent = bundle->GetClass(parent->GetParentName());
+            }
           }
         }
       }
