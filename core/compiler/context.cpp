@@ -4478,8 +4478,8 @@ bool ContextAnalyzer::Analyze()
         type->SetClassName(encoded_name);
       }
 
-#ifndef _SYSTEM
       Statement* statement = declaration->GetAssignment();
+#ifndef _SYSTEM
       if(entry->IsStatic()) {
         if(current_method) {
           ProcessError(entry, L"Static variables can only be declared at class scope");
