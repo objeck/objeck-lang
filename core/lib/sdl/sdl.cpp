@@ -323,7 +323,7 @@ extern "C" {
   __declspec(dllexport)
 #endif
     void sdl_surface_savebmp(VMContext& context) {
-    long* surface_obj = APITools_GetObjectValue(context, 1);
+    size_t* surface_obj = APITools_GetObjectValue(context, 1);
     SDL_Surface* surface = surface_obj ? (SDL_Surface*)surface_obj[0] : NULL;
     const wstring w_file = APITools_GetStringValue(context, 2);
     const string file(w_file.begin(), w_file.end());
