@@ -2179,4 +2179,38 @@ bundle SDL {
 		SDL_BLENDMODE_ADD := 0x00000002,
 		SDL_BLENDMODE_MOD := 0x00000004 
 	}
+
+	class Image {
+		function : Init(flags : Int) ~ Int {
+	        array_args := Base->New[2];
+	        array_args[0] := IntHolder->New();
+	        array_args[1] := IntHolder->New(flags);
+
+	        @lib_proxy := Proxy->GetDllProxy();
+	        @lib_proxy->CallFunction("sdl_image_init", array_args);
+
+	        value := array_args[0]->As(IntHolder);
+	        return value->Get();
+		}
+	
+
+		function : Load(file : String) ~ Surface {
+	        array_args := Base->New[2];
+	        array_args[0] := IntHolder->New();
+	        array_args[1] := file;
+
+	        @lib_proxy := Proxy->GetDllProxy();
+	        @lib_proxy->CallFunction("sdl_image_load", array_args);
+
+	        value := array_args[0]->As(IntHolder);
+			return Surface->New(value->Get());
+		}
+	}
+
+	consts ImageFlags {
+	    IMG_INIT_JPG := 0x00000001,
+	    IMG_INIT_PNG := 0x00000002,
+	    IMG_INIT_TIF := 0x00000004,
+	    IMG_INIT_WEBP := 0x00000008
+	}
 }

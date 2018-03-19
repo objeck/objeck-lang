@@ -30,6 +30,7 @@
  ***************************************************************************/
 
 #include <SDL.h>
+#include <SDL_image.h>
 #include <stdio.h>
 #include "../../vm/lib_api.h"
 
@@ -1544,4 +1545,26 @@ extern "C" {
     long* palette_obj = (long*)APITools_GetObjectValue(context, 1);
     sdl_palette_raw_read(palette, palette_obj);
   }
+}
+
+//
+// Image library
+// 
+#ifdef _WIN32
+__declspec(dllexport)
+#endif
+void sdl_image_init(VMContext& context) {
+  const int flags = APITools_GetIntValue(context, 1);
+  const int return_value = IMG_Init(flags);
+  APITools_SetIntValue(context, 0, return_value);
+}
+
+#ifdef _WIN32
+__declspec(dllexport)
+#endif
+void sdl_image_load(VMContext& context) {
+  const wstring wfile = APITools_GetStringValue(context, 1);
+  const string file(wfile.begin(), wfile.end());
+  const size_t* return_value = (size_t*)IMG_Load(file.c_str());
+  APITools_SetObjectValue(context, 0, (size_t*)return_value);
 }
