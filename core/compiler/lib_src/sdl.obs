@@ -2271,15 +2271,16 @@ bundle SDL {
 	}
 
 	class RendererInfo {
-		@renderer_info : Int;
-#~		
-		const char *name;
-	    Uint32 flags;
-	    Uint32 num_texture_formats;
-	    Uint32 texture_formats[16];
-	    int max_texture_width;
-	    int max_texture_height;
-~#	    
+		@name : String;
+	    @flags : Int;
+	    @num_texture_formats : Int;
+	    @texture_formats : Int[];
+	    @max_texture_width : Int;
+	    @max_texture_height : Int;
+		
+		New() {
+			@texture_formats := Int->New[16];
+		}
 	}
 
 	consts RendererFlags {
