@@ -327,33 +327,34 @@ void APITools_SetObjectValue(VMContext &context, int index, size_t* obj) {
   }
 }
 
-// sets the requested String object for an Object[].  Please note, that 
-// memory should be allocated for this element prior to array access.
-void APITools_SetStringValue(VMContext &context, int index, const wstring &value) {
+// creates a string object
+size_t* APITools_CreateStringValue(VMContext &context, const wstring &value) {
   // create character array
   const long char_array_size = (long)value.size();
   const long char_array_dim = 1;
-  size_t* char_array = (size_t*)context.alloc_array(char_array_size + 1 +
-						((char_array_dim + 2) *
-						 sizeof(size_t)),
-						CHAR_ARY_TYPE,
-						context.op_stack, *context.stack_pos, false);
+  size_t* char_array = (size_t*)context.alloc_array(char_array_size + 1 + ((char_array_dim + 2) * sizeof(size_t)),
+                                                    CHAR_ARY_TYPE, context.op_stack, *context.stack_pos, false);
   char_array[0] = char_array_size + 1;
   char_array[1] = char_array_dim;
   char_array[2] = char_array_size;
-  
+
   // copy string
   wchar_t* char_array_ptr = (wchar_t*)(char_array + 3);
   wcsncpy(char_array_ptr, value.c_str(), char_array_size);
-  
+
   // create 'System.String' object instance
-  size_t* str_obj = context.alloc_obj(L"System.String", context.op_stack, 
-				    *context.stack_pos, false);
+  size_t* str_obj = context.alloc_obj(L"System.String", context.op_stack, *context.stack_pos, false);
   str_obj[0] = (size_t)char_array;
   str_obj[1] = char_array_size;
   str_obj[2] = char_array_size;
-  
-  APITools_SetObjectValue(context, index, str_obj);
+
+  return str_obj;
+}
+
+// sets the requested String object for an Object[].  Please note, that 
+// memory should be allocated for this element prior to array access.
+void APITools_SetStringValue(VMContext &context, int index, const wstring &value) {
+  APITools_SetObjectValue(context, index, APITools_CreateStringValue(context, value));
 }
 
 // get the requested string value from an Object[].
