@@ -2186,8 +2186,7 @@ bundle SDL {
 	        array_args[0] := IntHolder->New();
 	        array_args[1] := IntHolder->New(flags);
 
-	        @lib_proxy := Proxy->GetDllProxy();
-	        @lib_proxy->CallFunction("sdl_image_init", array_args);
+	        Proxy->GetDllProxy()->CallFunction("sdl_image_init", array_args);
 
 	        value := array_args[0]->As(IntHolder);
 	        return value->Get();
@@ -2199,8 +2198,7 @@ bundle SDL {
 	        array_args[0] := IntHolder->New();
 	        array_args[1] := file;
 
-	        @lib_proxy := Proxy->GetDllProxy();
-	        @lib_proxy->CallFunction("sdl_image_load", array_args);
+	        Proxy->GetDllProxy()->CallFunction("sdl_image_load", array_args);
 
 	        value := array_args[0]->As(IntHolder);
 			return Surface->New(value->Get());
@@ -2212,5 +2210,82 @@ bundle SDL {
 	    IMG_INIT_PNG := 0x00000002,
 	    IMG_INIT_TIF := 0x00000004,
 	    IMG_INIT_WEBP := 0x00000008
+	}
+
+	class Renderer {
+		@renderer : Int;
+
+		New(window : Window, index : Int, flags : Int) {
+	        array_args := Base->New[4];
+	        array_args[0] := IntHolder->New();
+	        array_args[1] := window;
+	        array_args[2] := IntHolder->New(index);
+	        array_args[3] := IntHolder->New(flags);
+
+	        @lib_proxy := Proxy->GetDllProxy();
+	        @lib_proxy->CallFunction("sdl_renderer_create", array_args);
+
+	        value := array_args[0]->As(IntHolder);
+			@renderer := value->Get();
+		}
+
+		function : GetNumRenderDrivers() ~ Int {
+			array_args := Base->New[1];
+			array_args[0] := IntHolder->New();
+
+			@lib_proxy := Proxy->GetDllProxy();
+			@lib_proxy->CallFunction("sdl_renderer_get_num_render_drivers", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+
+		function : GetRenderDriverInfo(index : Int, info : RendererInfo) ~ Int {
+			array_args := Base->New[3];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(index);
+			array_args[2] := info;
+
+			@lib_proxy := Proxy->GetDllProxy();
+			@lib_proxy->CallFunction("sdl_renderer_get_render_driver_info", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+
+		method : public : SetDrawColor(r : Int, g : Int, b : Int, a : Int) ~ Int {
+	        array_args := Base->New[6];
+	        array_args[0] := IntHolder->New();
+	        array_args[1] := IntHolder->New(@renderer);
+	        array_args[2] := IntHolder->New(r);
+	        array_args[3] := IntHolder->New(g);
+	        array_args[4] := IntHolder->New(b);
+	        array_args[5] := IntHolder->New(a);
+
+	        @lib_proxy := Proxy->GetDllProxy();
+	        @lib_proxy->CallFunction("sdl_renderer_set_render_draw_color", array_args);
+
+	        value := array_args[0]->As(IntHolder);
+	        return value->Get();
+		}
+	}
+
+	class RendererInfo {
+		@renderer_info : Int;
+#~		
+		const char *name;
+	    Uint32 flags;
+	    Uint32 num_texture_formats;
+	    Uint32 texture_formats[16];
+	    int max_texture_width;
+	    int max_texture_height;
+~#	    
+	}
+
+	consts RendererFlags {
+	    SDL_RENDERER_SOFTWARE := 0x00000001,
+	    SDL_RENDERER_ACCELERATED := 0x00000002,
+	    SDL_RENDERER_PRESENTVSYNC := 0x00000004,
+	    SDL_RENDERER_TARGETTEXTURE := 0x00000008
 	}
 }

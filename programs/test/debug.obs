@@ -1,9 +1,16 @@
 class Test {
-	@a : static :  Int;
-	@b : static : Int;
-	
+	consts Foo {
+		a := 13,
+		b := 7,
+		c := 200
+	}
+
 	function : Main(args : String[]) ~ Nil {
-		a := 2; b := 3;
-		(a+b)->PrintLine();
+		x := Foo->b;
+		Show(x->As(Int));
+	}
+
+	function : Show(i : Int) ~ Nil {
+		i->PrintLine();
 	}
 }
