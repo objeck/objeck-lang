@@ -1545,26 +1545,63 @@ extern "C" {
     long* palette_obj = (long*)APITools_GetObjectValue(context, 1);
     sdl_palette_raw_read(palette, palette_obj);
   }
-}
 
-//
-// Image library
-// 
-#ifdef _WIN32
-__declspec(dllexport)
-#endif
-void sdl_image_init(VMContext& context) {
-  const int flags = APITools_GetIntValue(context, 1);
-  const int return_value = IMG_Init(flags);
-  APITools_SetIntValue(context, 0, return_value);
-}
+  //
+  // Image library
+  // 
+  // 
+  #ifdef _WIN32
+  __declspec(dllexport)
+  #endif
+  void sdl_image_init(VMContext& context) {
+    const int flags = APITools_GetIntValue(context, 1);
+    const int return_value = IMG_Init(flags);
+    APITools_SetIntValue(context, 0, return_value);
+  }
+
+  #ifdef _WIN32
+  __declspec(dllexport)
+  #endif
+  void sdl_image_load(VMContext& context) {
+    const wstring wfile = APITools_GetStringValue(context, 1);
+    const string file(wfile.begin(), wfile.end());
+    APITools_SetIntValue(context, 0, (long)IMG_Load(file.c_str()));
+  }
+
+  //
+  // Renderer
+  //
+  #ifdef _WIN32
+  __declspec(dllexport)
+  #endif
+  void sdl_renderer_create(VMContext& context) {
+    SDL_Window* window = (SDL_Window*)APITools_GetObjectValue(context, 1);
+    const int index = APITools_GetIntValue(context, 2);
+    const Uint32 flags = APITools_GetIntValue(context, 3);
+    SDL_Renderer* return_value = SDL_CreateRenderer(window, index, flags);
+    APITools_SetIntValue(context, 0, (long)return_value);
+  }
 
 #ifdef _WIN32
-__declspec(dllexport)
+  __declspec(dllexport)
 #endif
-void sdl_image_load(VMContext& context) {
-  const wstring wfile = APITools_GetStringValue(context, 1);
-  const string file(wfile.begin(), wfile.end());
-  const size_t* return_value = (size_t*)IMG_Load(file.c_str());
-  APITools_SetObjectValue(context, 0, (size_t*)return_value);
+    void sdl_renderer_get_render_driver_info(VMContext& context) {
+      const int index = APITools_GetIntValue(context, 1);
+      SDL_RendererInfo* info = (SDL_RendererInfo*)APITools_GetObjectValue(context, 2);
+      const int return_value = SDL_GetRenderDriverInfo(index, info);
+      APITools_SetIntValue(context, 0, return_value);
+    }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_renderer_set_render_draw_color(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+    const int r = APITools_GetIntValue(context, 2);
+    const int g = APITools_GetIntValue(context, 3);
+    const int b = APITools_GetIntValue(context, 4);
+    const int a = APITools_GetIntValue(context, 5);
+    const int return_value = SDL_SetRenderDrawColor(renderer, r, g, b, a);
+    APITools_SetIntValue(context, 0, return_value);
+  }
 }
