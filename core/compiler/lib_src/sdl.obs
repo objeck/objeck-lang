@@ -2285,6 +2285,26 @@ bundle SDL {
 		method : public : GetName() ~ String {
 			return @name;
 		}
+
+		method : public : GetFlags() ~ Int {
+			return @flags;
+		}
+
+		method : public : GetNumTextureFormats() ~ Int {
+			return @num_texture_formats;
+		}
+
+		method : public : GetTextureFormats() ~ Int[] {
+			return @texture_formats;
+		}
+
+		method : public : GetMaxTextureWidth() ~ Int {
+			return @max_texture_width;
+		}
+
+		method : public : GetMaxTextureHeight() ~ Int {
+			return @max_texture_height;
+		}
 	}
 
 	consts RendererFlags {
