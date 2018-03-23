@@ -2215,6 +2215,10 @@ bundle SDL {
 	class Renderer {
 		@renderer : Int;
 
+		New(renderer : Int) {
+			@renderer := renderer;
+		}
+
 		New(window : Window, index : Int, flags : Int) {
 	        array_args := Base->New[4];
 	        array_args[0] := IntHolder->New();
@@ -2222,8 +2226,7 @@ bundle SDL {
 	        array_args[2] := IntHolder->New(index);
 	        array_args[3] := IntHolder->New(flags);
 
-	        @lib_proxy := Proxy->GetDllProxy();
-	        @lib_proxy->CallFunction("sdl_renderer_create", array_args);
+	        Proxy->GetDllProxy()->CallFunction("sdl_renderer_create", array_args);
 
 	        value := array_args[0]->As(IntHolder);
 			@renderer := value->Get();
@@ -2233,8 +2236,7 @@ bundle SDL {
 			array_args := Base->New[1];
 			array_args[0] := IntHolder->New();
 
-			@lib_proxy := Proxy->GetDllProxy();
-			@lib_proxy->CallFunction("sdl_renderer_get_num_render_drivers", array_args);
+			Proxy->GetDllProxy()->CallFunction("sdl_renderer_get_num_render_drivers", array_args);
 
 			value := array_args[0]->As(IntHolder);
 			return value->Get();
@@ -2246,11 +2248,32 @@ bundle SDL {
 			array_args[1] := IntHolder->New(index);
 			array_args[2] := info;
 
-			@lib_proxy := Proxy->GetDllProxy();
-			@lib_proxy->CallFunction("sdl_renderer_get_render_driver_info", array_args);
+			Proxy->GetDllProxy()->CallFunction("sdl_renderer_get_render_driver_info", array_args);
 
 			value := array_args[0]->As(IntHolder);
 			return value->Get();
+		}
+
+		function : CreateSoftwareRenderer(surface : Surface) ~ Renderer {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := surface;
+
+			Proxy->GetDllProxy()->CallFunction("sdl_renderer_create_software", array_args);
+
+			value := array_args[0]->As(IntHolder);
+	        return Renderer->New(value->Get());
+		}
+
+		function : Get(window : Window) ~ Renderer {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := window;
+
+			Proxy->GetDllProxy()->CallFunction("sdl_renderer_get", array_args);
+
+			value := array_args[0]->As(IntHolder);
+	        return Renderer->New(value->Get());
 		}
 
 		method : public : SetDrawColor(r : Int, g : Int, b : Int, a : Int) ~ Int {
@@ -2262,11 +2285,22 @@ bundle SDL {
 	        array_args[4] := IntHolder->New(b);
 	        array_args[5] := IntHolder->New(a);
 
-	        @lib_proxy := Proxy->GetDllProxy();
-	        @lib_proxy->CallFunction("sdl_renderer_set_render_draw_color", array_args);
+	        Proxy->GetDllProxy()->CallFunction("sdl_renderer_set_render_draw_color", array_args);
 
 	        value := array_args[0]->As(IntHolder);
 	        return value->Get();
+		}
+
+		method : public : GetInfo(info : RendererInfo) ~ Int {
+			array_args := Base->New[3];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@renderer);
+			array_args[2] := info;
+
+			Proxy->GetDllProxy()->CallFunction("sdl_renderer_get_info", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
 		}
 	}
 

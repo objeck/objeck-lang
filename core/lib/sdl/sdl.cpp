@@ -1593,36 +1593,86 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-    void sdl_renderer_get_render_driver_info(VMContext& context) {
-      const int index = APITools_GetIntValue(context, 1);
-      long* info_obj = (long*)APITools_GetObjectValue(context, 2);
+  void sdl_renderer_get_render_driver_info(VMContext& context) {
+    const int index = APITools_GetIntValue(context, 1);
+    long* info_obj = (long*)APITools_GetObjectValue(context, 2);
 
-      if(info_obj) {
-        SDL_RendererInfo info;
-        const int return_value = SDL_GetRenderDriverInfo(index, &info);
+    if(info_obj) {
+      SDL_RendererInfo info;
+      const int return_value = SDL_GetRenderDriverInfo(index, &info);
 
-        string name(info.name);
-        wstring wname(name.begin(), name.end());
+      string name(info.name);
+      wstring wname(name.begin(), name.end());
 
-        info_obj[0] = (long)APITools_CreateStringValue(context, wname);
-        info_obj[1] = info.flags;
-        info_obj[2] = info.num_texture_formats;
+      info_obj[0] = (long)APITools_CreateStringValue(context, wname);
+      info_obj[1] = info.flags;
+      info_obj[2] = info.num_texture_formats;
 
-        long* dest_formats = (long*)info_obj[3];
-        Uint32* src_formats = info.texture_formats;
-        for(int i = 0; i < 16; ++i) {
-          dest_formats[i] = src_formats[i];
-        }
-
-        info_obj[4] = info.max_texture_width;
-        info_obj[5] = info.max_texture_height;
-
-        APITools_SetIntValue(context, 0, return_value);
+      long* dest_formats = (long*)info_obj[3];
+      Uint32* src_formats = info.texture_formats;
+      for(int i = 0; i < 16; ++i) {
+        dest_formats[i] = src_formats[i];
       }
-      else {
-        APITools_SetIntValue(context, 0, -1);
-      }
+
+      info_obj[4] = info.max_texture_width;
+      info_obj[5] = info.max_texture_height;
+
+      APITools_SetIntValue(context, 0, return_value);
     }
+    else {
+      APITools_SetIntValue(context, 0, -1);
+    }
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_renderer_create_software(VMContext& context) {
+    SDL_Surface* surface = (SDL_Surface*)APITools_GetObjectValue(context, 1);
+    APITools_SetIntValue(context, 0, (long)SDL_CreateSoftwareRenderer(surface));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_renderer_get(VMContext& context) {
+    SDL_Window* window = (SDL_Window*)APITools_GetObjectValue(context, 1);
+    APITools_SetIntValue(context, 0, (long)SDL_GetRenderer(window));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_renderer_get_info(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+    long* info_obj = (long*)APITools_GetObjectValue(context, 2);
+
+    if(info_obj) {
+      SDL_RendererInfo info;
+      const int return_value = SDL_GetRendererInfo(renderer, &info);
+
+      string name(info.name);
+      wstring wname(name.begin(), name.end());
+
+      info_obj[0] = (long)APITools_CreateStringValue(context, wname);
+      info_obj[1] = info.flags;
+      info_obj[2] = info.num_texture_formats;
+
+      long* dest_formats = (long*)info_obj[3];
+      Uint32* src_formats = info.texture_formats;
+      for(int i = 0; i < 16; ++i) {
+        dest_formats[i] = src_formats[i];
+      }
+
+      info_obj[4] = info.max_texture_width;
+      info_obj[5] = info.max_texture_height;
+
+      APITools_SetIntValue(context, 0, return_value);
+    }
+    else {
+      APITools_SetIntValue(context, 0, -1);
+    }
+  }
 
 #ifdef _WIN32
   __declspec(dllexport)
