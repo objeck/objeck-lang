@@ -2281,6 +2281,10 @@ bundle SDL {
 		New() {
 			@texture_formats := Int->New[16];
 		}
+
+		method : public : GetName() ~ String {
+			return @name;
+		}
 	}
 
 	consts RendererFlags {
