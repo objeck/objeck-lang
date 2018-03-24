@@ -1559,6 +1559,13 @@ extern "C" {
     APITools_SetIntValue(context, 0, return_value);
   }
 
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_image_quit(VMContext& context) {
+    IMG_Quit();
+  }
+
   #ifdef _WIN32
   __declspec(dllexport)
   #endif
