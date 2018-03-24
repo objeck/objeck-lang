@@ -1,0 +1,124 @@
+#~
+Lesson 05
+Optimized Surface Loading and Soft Stretching
+
+http://lazyfoo.net/tutorials/SDL/05_optimized_surface_loading_and_soft_stretching/index.php
+~#
+
+use SDL;
+
+class Test {
+	@window : static : Window;
+	@renderer : static : Renderer;
+	@texture : static : Texture;
+	
+	function : Main(args : String[]) ~ Nil {
+		# Start up SDL and create window
+		if( <>Init() ) {
+			"Failed to initialize!"->ErrorLine();
+		}
+		else {
+			# Load media
+			if( <>LoadMedia() ) {
+				"Failed to load media!"->PrintLine();
+			}
+			else {			
+				# Main loop flag
+				quit := false;
+				
+				# Event handler
+				e := Event->New();
+				
+				# While application is running
+				while( <>quit )
+				{
+					# Handle events on queue
+					while( e->Poll() <> 0 ) {
+						# User requests quit
+						if( e->GetType() = Flags->SDL_QUIT->As(Int) ) {
+							quit := true;
+						};
+					};
+
+					# Apply the image
+					stretchRect := Rect->New();
+					stretchRect->SetX(0);
+					stretchRect->SetY(0);
+					stretchRect->SetW(640);
+					stretchRect->SetH(480);
+					@texture->BlitScaled( Nil, @screen_surface, stretchRect );
+				
+					# Update the surface
+					@window->UpdateSurface();
+				};
+			};
+		};
+		
+		Close();
+	}
+	
+	function : Init() ~ Bool {
+		# Initialization flag
+		success := true;
+		
+		# Initialize SDL
+		if(Core->Init(Flags->SDL_INIT_VIDEO->As(Int)) < 0) {
+			"SDL could not initialize!"->ErrorLine();
+			success := false;
+		}
+		else {
+			# Create window
+			@window := Window->New( "SDL Tutorial", Flags->SDL_WINDOW_POS_UNDEFINED->As(Int), 
+				Flags->SDL_WINDOW_POS_UNDEFINED->As(Int), 640, 480, Flags->SDL_WINDOW_SHOWN->As(Int));
+			
+			# Get window surface
+			@renderer := Renderer->New(@window, -1, RendererFlags->SDL_RENDERER_ACCELERATED);
+			if(@renderer->IsNull()) {
+				"Bad renderer"->PrintLine();
+				return false;
+			};
+
+			@renderer->SetRenderDrawColor(0xFF, 0xFF, 0xFF, 0xFF);
+
+			img_flags := ImageFlags->IMG_INIT_PNG->As(Int);
+			if((Image->Init(img_flags) and img_flags) = 0) {
+				"SDL image could not initialize!"->ErrorLine();
+				success := false;
+			};
+		};
+		
+		return success;
+	}
+	
+	function : LoadMedia() ~ Bool {
+		@texture := LoadTexture( "images/texture.png" );
+		return @texture <> Nil ? true : false;
+	}
+	
+	function : LoadTexture(path : String) ~ Surface {
+		# Load image at specified path
+		loadedSurface := Image->Load(path);
+		if(loadedSurface->IsNull()) {
+			"Unable to load surface"->PrintLine();
+			return Nil;
+		};
+"--0--"->PrintLine();
+
+		texture := Texture->CreateFromSurface(@renderer, loadedSurface);
+		loadedSurface->Free();
+		
+		return texture;
+	}
+	
+	function : Close() ~ Nil {
+		@texture->Free();
+	
+		# Destroy window
+		@window->Destroy();
+		@window := Nil;
+
+		# Quit SDL subsystems
+		Image->Quit();
+		Core->Quit();
+	}
+}
