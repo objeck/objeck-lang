@@ -1701,4 +1701,38 @@ extern "C" {
     const int return_value = SDL_SetRenderDrawColor(renderer, r, g, b, a);
     APITools_SetIntValue(context, 0, return_value);
   }
+
+  //
+  // texture
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_texture_create(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetObjectValue(context, 1);
+    const int format = APITools_GetIntValue(context, 2);
+    const int access = APITools_GetIntValue(context, 3);
+    const int w = APITools_GetIntValue(context, 4);
+    const int h = APITools_GetIntValue(context, 5);
+    APITools_SetIntValue(context, 0, (long)SDL_CreateTexture(renderer, format, access, w, h));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_texture_query(VMContext& context) {
+    SDL_Texture* texture = (SDL_Texture*)APITools_GetIntValue(context, 1);
+    Uint32 format = APITools_GetIntValue(context, 2);
+    int access = APITools_GetIntValue(context, 3);
+    int w = APITools_GetIntValue(context, 4);
+    int h = APITools_GetIntValue(context, 5);
+    
+    APITools_SetIntValue(context, 0, SDL_QueryTexture(texture, &format, &access, &w, &h));
+
+    APITools_SetIntValue(context, 2, format);
+    APITools_SetIntValue(context, 3, access);
+    APITools_SetIntValue(context, 4, w);
+    APITools_SetIntValue(context, 5, h);
+  }
+
 }
