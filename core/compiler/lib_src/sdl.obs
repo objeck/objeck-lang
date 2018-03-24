@@ -181,20 +181,28 @@ bundle SDL {
 			value := array_args[0]->As(IntHolder);
 			@window := value->Get();
 		}
-				
-		method : public : GLGetDrawableSize(w : IntHolder, h : IntHolder) ~ Nil {
-			array_args := Base->New[3];
-			array_args[0] := IntHolder->New(@window);
-			array_args[1] := w;
-			array_args[2] := h;
+		
+		method : public : IsNull() ~ Bool {
+			return @window = 0;
+		}
 
-			Proxy->GetDllProxy()->CallFunction("sdl_window_gl_get_drawable_size", array_args);
+		method : public : GLGetDrawableSize(w : IntHolder, h : IntHolder) ~ Nil {
+			if(@window <> 0) {
+				array_args := Base->New[3];
+				array_args[0] := IntHolder->New(@window);
+				array_args[1] := w;
+				array_args[2] := h;
+
+				Proxy->GetDllProxy()->CallFunction("sdl_window_gl_get_drawable_size", array_args);
+			};
 		}
 		
 		method : public : GLSwap() ~ Nil {
-			array_args := Base->New[1];
-			array_args[0] := IntHolder->New(@window);
-			Proxy->GetDllProxy()->CallFunction("sdl_window_gl_swap", array_args);
+			if(@window <> 0) {
+				array_args := Base->New[1];
+				array_args[0] := IntHolder->New(@window);
+				Proxy->GetDllProxy()->CallFunction("sdl_window_gl_swap", array_args);
+			};
 		}
 		
 		method : public : GetDisplayIndex() ~ Int {
@@ -209,7 +217,7 @@ bundle SDL {
 				return value->Get();
 			};
 			
-			return 0;
+			return -1;
 		}
 		
 		method : public : SetDisplayMode(mode : DisplayMode) ~ Int {
@@ -225,7 +233,7 @@ bundle SDL {
 				return value->Get();
 			};
 			
-			return 0;
+			return -1;
 		}
 		
 		method : public : GetPixelFormat() ~ Int {
@@ -240,7 +248,7 @@ bundle SDL {
 				return value->Get();
 			};
 			
-			return 0;
+			return -1;
 		}
 		
 		method : public : GetID() ~ Int {
@@ -255,7 +263,7 @@ bundle SDL {
 				return value->Get();
 			};
 			
-			return 0;
+			return -1;
 		}
 		
 		method : public : GetFromID(id : Int) ~ Window {
@@ -285,7 +293,7 @@ bundle SDL {
 				return value->Get();
 			};
 			
-			return 0;
+			return -1;
 		}
 		
 		method : public : SetTitle(title : String) ~ Nil {
@@ -475,7 +483,7 @@ bundle SDL {
 				return value->Get();
 			};
 			
-			return 0;
+			return -1;
 		}
 		
 		method : public : GetSurface() ~ Surface {
@@ -505,7 +513,7 @@ bundle SDL {
 				return value->Get();
 			};
 		
-			return 0;
+			return -1;
 		}
 		
 		method : public : UpdateSurfaceRects(rects : Rect, numrects : Int) ~ Int {
@@ -522,7 +530,7 @@ bundle SDL {
 				return value->Get();
 			};
 			
-			return 0;
+			return -1;
 		}
 		
 		method : public : SetGrab(grabbed : Bool) ~ Nil {
@@ -564,7 +572,7 @@ bundle SDL {
 				return value->Get();
 			};
 			
-			return 0;
+			return -1;
 		}
 		
 		method : public : GetBrightness() ~ Float {
@@ -597,7 +605,7 @@ bundle SDL {
 				return value->Get();
 			};
 			
-			return 0;
+			return -1;
 		}
 		
 		method : public : GetGammaRamp(red : IntHolder, green : IntHolder, blue : IntHolder) ~ Int {
@@ -615,7 +623,7 @@ bundle SDL {
 				return value->Get();
 			};
 			
-			return 0;
+			return -1;
 		}
 		
 		method : public : Destroy() ~ Nil {
@@ -977,6 +985,10 @@ bundle SDL {
 		New : private (events : Int) {
 			@events := events;
 		}
+
+		method : public : IsNull() ~ Bool {
+			return @events = 0;
+		}
 		
 		method : public : Free() ~ Nil {
 			if(@events <> 0) {
@@ -999,7 +1011,7 @@ bundle SDL {
 				return value->Get();
 			};
 			
-			return 0;
+			return -1;
 		}
 		
 		method : public : GetKey() ~ KeyboardEvent {
@@ -1041,7 +1053,7 @@ bundle SDL {
 				return value->Get();
 			};
 			
-			return 0;
+			return -1;
 		}
 		
 		function : Has(type : Int) ~ Bool {
@@ -1073,7 +1085,7 @@ bundle SDL {
 				return value->Get();
 			};
 		
-			return 0;
+			return -1;
 		}
 		
 		method : public : Wait() ~ Int {
@@ -1088,7 +1100,7 @@ bundle SDL {
 				return value->Get();
 			};
 			
-			return 0;
+			return -1;
 		}
 		
 		method : public : WaitTimeout(timeout : Int) ~ Int {
@@ -1104,7 +1116,7 @@ bundle SDL {
 				return value->Get();
 			};
 			
-			return 0;
+			return -1;
 		}
 		
 		method : public : Push() ~ Int {
@@ -1119,7 +1131,7 @@ bundle SDL {
 				return value->Get();
 			};
 			
-			return 0;
+			return -1;
 		}
 		
 		function : State(type : Int, state : Int) ~ Int {
@@ -1805,6 +1817,10 @@ bundle SDL {
 			@surface := value->Get();
 		}
 		
+		method : public : IsNull() ~ Bool {
+			return @surface = 0;
+		}
+
 		method : public : Free() ~ Nil {
 			if(@surface <> 0) {
 				array_args := Base->New[1];
@@ -1839,7 +1855,7 @@ bundle SDL {
 				return value->Get();
 			};
 			
-			return 0;
+			return -1;
 		}
 		
 		method : public : Lock() ~ Int {
@@ -1853,7 +1869,7 @@ bundle SDL {
 				return value->Get();
 			};
 			
-			return 0;
+			return -1;
 		}
 		
 		method : public : Unlock() ~ Nil {
@@ -1900,7 +1916,7 @@ bundle SDL {
 				return value->Get();
 			};
 			
-			return 0;
+			return -1;
 		}
 		
 		method : public : SetColorKey(flag : Int, key : Int) ~ Int {
@@ -1917,7 +1933,7 @@ bundle SDL {
 				return value->Get();
 			};
 			
-			return 0;
+			return -1;
 		}
 		
 		method : public : GetColorKey(key : Int) ~ Int {
@@ -1933,7 +1949,7 @@ bundle SDL {
 				return value->Get();
 			};
 			
-			return 0;
+			return -1;
 		}
 		
 		method : public : SetColorMod(r : Int, g : Int, b : Int) ~ Int {
@@ -1951,7 +1967,7 @@ bundle SDL {
 				return value->Get();
 			};
 			
-			return 0;
+			return -1;
 		}
 		
 		method : public : GetColorMod(r : IntHolder, g : IntHolder, b : IntHolder) ~ Int {
@@ -1970,7 +1986,7 @@ bundle SDL {
 				return value->Get();
 			};
 			
-			return 0;
+			return -1;
 		}
 		
 		method : public : SetAlphaMod(alpha : Int) ~ Int {
@@ -1986,7 +2002,7 @@ bundle SDL {
 				return value->Get();
 			};
 			
-			return 0;
+			return -1;
 		}
 		
 		method : public : GetAlphaMod(alpha : Int) ~ Int {
@@ -2002,7 +2018,7 @@ bundle SDL {
 				return value->Get();
 			};
 			
-			return 0;
+			return -1;
 		}
 		
 		method : public : SetBlendMode(blendMode : BlendMode) ~ Int {
@@ -2018,7 +2034,7 @@ bundle SDL {
 				return value->Get();
 			};
 			
-			return 0;
+			return -1;
 		}
 		
 		method : public : GetBlendMode(blendMode : BlendMode) ~ Int {
@@ -2034,7 +2050,7 @@ bundle SDL {
 				return value->Get();
 			};
 			
-			return 0;
+			return -1;
 		}
 		
 		method : public : GetClipRect(rect : Rect) ~ Nil {
@@ -2094,50 +2110,62 @@ bundle SDL {
 				return value->Get();
 			};
 			
-			return 0;
+			return -1;
 		}
 		
 		method : public : UpperBlit(srcrect : Rect, dst : Surface, dstrect : Rect) ~ Int {
-			array_args := Base->New[5];
-			array_args[0] := IntHolder->New();
-			array_args[1] := IntHolder->New(@surface);
-			array_args[2] := srcrect;
-			array_args[3] := dst;
-			array_args[4] := dstrect;
+			if(@surface <> 0) {
+				array_args := Base->New[5];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@surface);
+				array_args[2] := srcrect;
+				array_args[3] := dst;
+				array_args[4] := dstrect;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_surface_upper_blit", array_args);
+				Proxy->GetDllProxy()->CallFunction("sdl_surface_upper_blit", array_args);
 
-			value := array_args[0]->As(IntHolder);
-			return value->Get();
+				value := array_args[0]->As(IntHolder);
+				return value->Get();
+			};
+
+			return -1;
 		}
 		
 		method : public : LowerBlit(srcrect : Rect, dst : Surface, dstrect : Rect) ~ Int {
-			array_args := Base->New[5];
-			array_args[0] := IntHolder->New();
-			array_args[1] := IntHolder->New(@surface);
-			array_args[2] := srcrect;
-			array_args[3] := dst;
-			array_args[4] := dstrect;
+			if(@surface <> 0) {
+				array_args := Base->New[5];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@surface);
+				array_args[2] := srcrect;
+				array_args[3] := dst;
+				array_args[4] := dstrect;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_surface_lower_blit", array_args);
+				Proxy->GetDllProxy()->CallFunction("sdl_surface_lower_blit", array_args);
 
-			value := array_args[0]->As(IntHolder);
-			return value->Get();
+				value := array_args[0]->As(IntHolder);
+				return value->Get();
+			};
+
+			return -1;
 		}
 		
 		method : public : SoftStretch(srcrect : Rect, dst : Surface, dstrect : Rect) ~ Int {
-			array_args := Base->New[5];
-			array_args[0] := IntHolder->New();
-			array_args[1] := IntHolder->New(@surface);
-			array_args[2] := srcrect;
-			array_args[3] := dst;
-			array_args[4] := dstrect;
+			if(@surface <> 0) {
+				array_args := Base->New[5];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@surface);
+				array_args[2] := srcrect;
+				array_args[3] := dst;
+				array_args[4] := dstrect;
 
-			@lib_proxy := Proxy->GetDllProxy();
-			@lib_proxy->CallFunction("sdl_surface_soft_stretch", array_args);
+				@lib_proxy := Proxy->GetDllProxy();
+				@lib_proxy->CallFunction("sdl_surface_soft_stretch", array_args);
 
-			value := array_args[0]->As(IntHolder);
-			return value->Get();
+				value := array_args[0]->As(IntHolder);
+				return value->Get();
+			};
+
+			return -1;
 		}
 		
 		method : public : BlitScaled(srcrect : Rect, dst : Surface, dstrect : Rect) ~ Int {
@@ -2145,31 +2173,39 @@ bundle SDL {
 		}
 		
 		method : public : UpperBlitScaled(srcrect : Rect, dst : Surface, dstrect : Rect) ~ Int {
-			array_args := Base->New[5];
-			array_args[0] := IntHolder->New();
-			array_args[1] := IntHolder->New(@surface);
-			array_args[2] := srcrect;
-			array_args[3] := dst;
-			array_args[4] := dstrect;
+			if(@surface <> 0) {
+				array_args := Base->New[5];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@surface);
+				array_args[2] := srcrect;
+				array_args[3] := dst;
+				array_args[4] := dstrect;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_surface_upper_blit_scaled", array_args);
+				Proxy->GetDllProxy()->CallFunction("sdl_surface_upper_blit_scaled", array_args);
 
-			value := array_args[0]->As(IntHolder);
-			return value->Get();
+				value := array_args[0]->As(IntHolder);
+				return value->Get();
+			};
+
+			return -1;
 		}
 		
 		method : public : LowerBlitScaled(srcrect : Rect, dst : Surface, dstrect : Rect) ~ Int {
-			array_args := Base->New[5];
-			array_args[0] := IntHolder->New();
-			array_args[1] := IntHolder->New(@surface);
-			array_args[2] := srcrect;
-			array_args[3] := dst;
-			array_args[4] := dstrect;
+			if(@surface <> 0) {
+				array_args := Base->New[5];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@surface);
+				array_args[2] := srcrect;
+				array_args[3] := dst;
+				array_args[4] := dstrect;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_surface_lower_blit_scaled", array_args);
+				Proxy->GetDllProxy()->CallFunction("sdl_surface_lower_blit_scaled", array_args);
 
-			value := array_args[0]->As(IntHolder);
-			return value->Get();
+				value := array_args[0]->As(IntHolder);
+				return value->Get();
+			};
+
+			return -1;
 		}
 	}
 	
@@ -2192,6 +2228,9 @@ bundle SDL {
 	        return value->Get();
 		}
 	
+		function : Quit() ~ Nil {
+			Proxy->GetDllProxy()->CallFunction("sdl_image_quit", Nil->As(Base[]));
+		}
 
 		function : Load(file : String) ~ Surface {
 	        array_args := Base->New[2];
@@ -2230,6 +2269,10 @@ bundle SDL {
 
 	        value := array_args[0]->As(IntHolder);
 			@renderer := value->Get();
+		}
+
+		method : public : IsNull() ~ Bool {
+			return @renderer = 0;
 		}
 
 		function : GetNumRenderDrivers() ~ Int {
@@ -2277,30 +2320,38 @@ bundle SDL {
 		}
 
 		method : public : SetDrawColor(r : Int, g : Int, b : Int, a : Int) ~ Int {
-	        array_args := Base->New[6];
-	        array_args[0] := IntHolder->New();
-	        array_args[1] := IntHolder->New(@renderer);
-	        array_args[2] := IntHolder->New(r);
-	        array_args[3] := IntHolder->New(g);
-	        array_args[4] := IntHolder->New(b);
-	        array_args[5] := IntHolder->New(a);
+			if(@renderer <> 0) {
+		        array_args := Base->New[6];
+		        array_args[0] := IntHolder->New();
+		        array_args[1] := IntHolder->New(@renderer);
+		        array_args[2] := IntHolder->New(r);
+		        array_args[3] := IntHolder->New(g);
+		        array_args[4] := IntHolder->New(b);
+		        array_args[5] := IntHolder->New(a);
 
-	        Proxy->GetDllProxy()->CallFunction("sdl_renderer_set_render_draw_color", array_args);
+		        Proxy->GetDllProxy()->CallFunction("sdl_renderer_set_render_draw_color", array_args);
 
-	        value := array_args[0]->As(IntHolder);
-	        return value->Get();
+		        value := array_args[0]->As(IntHolder);
+		        return value->Get();
+		    };
+
+		    return -1;
 		}
 
 		method : public : GetInfo(info : RendererInfo) ~ Int {
-			array_args := Base->New[3];
-			array_args[0] := IntHolder->New();
-			array_args[1] := IntHolder->New(@renderer);
-			array_args[2] := info;
+			if(@renderer <> 0) {
+				array_args := Base->New[3];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@renderer);
+				array_args[2] := info;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_renderer_get_info", array_args);
+				Proxy->GetDllProxy()->CallFunction("sdl_renderer_get_info", array_args);
 
-			value := array_args[0]->As(IntHolder);
-			return value->Get();
+				value := array_args[0]->As(IntHolder);
+				return value->Get();
+			};
+
+			return -1;
 		}
 	}
 
