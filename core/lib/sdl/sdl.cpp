@@ -1592,6 +1592,14 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
+    void sdl_renderer_destroy(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 0);
+    SDL_DestroyRenderer(renderer);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
    void sdl_renderer_get_num_render_drivers(VMContext& context) {
     const int return_value = SDL_GetNumRenderDrivers();
     APITools_SetIntValue(context, 0, return_value);
