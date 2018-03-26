@@ -160,7 +160,7 @@ method : public : GetAlphaMod(alpha : Int) ~ Int {
                 APITools_SetIntValue(context, 0, return_value);
         }
 
-************************
+---
 method : public : SetBlendMode(blendMode : BlendMode) ~ Int {
         array_args := Base->New[3];
         array_args[0] := IntHolder->New();
@@ -234,7 +234,7 @@ method : public : Update(rect : Rect, pixels : Int, pitch : Int) ~ Int {
                 APITools_SetIntValue(context, 0, return_value);
         }
 
----
+************************
 method : public : UpdateYUV(rect : Rect, Yplane : Int, Ypitch : Int, Uplane : Int, Upitch : Int, Vplane : Int, Vpitch : Int) ~ Int {
         array_args := Base->New[9];
         array_args[0] := IntHolder->New();
