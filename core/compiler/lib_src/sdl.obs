@@ -2489,15 +2489,15 @@ bundle SDL {
 		}
 
 		method : public : GetAlphaMod(alpha : IntHolder) ~ Int {
-        array_args := Base->New[3];
-        array_args[0] := IntHolder->New();
-        array_args[1] := IntHolder->New(@texture);
-        array_args[2] := alpha;
+			array_args := Base->New[3];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@texture);
+			array_args[2] := alpha;
 
-        Proxy->GetDllProxy()->CallFunction("sdl_texture_get_alpha_mod", array_args);
+			Proxy->GetDllProxy()->CallFunction("sdl_texture_get_alpha_mod", array_args);
 
-        value := array_args[0]->As(IntHolder);
-        return value->Get();
-}
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
 	}
 }
