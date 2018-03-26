@@ -1763,7 +1763,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-    void sdl_texture_set_alpha_mod(VMContext& context) {
+  void sdl_texture_set_alpha_mod(VMContext& context) {
     SDL_Texture* texture = (SDL_Texture*)APITools_GetIntValue(context, 1);
     const int alpha = APITools_GetIntValue(context, 2);
     const int return_value = SDL_SetTextureAlphaMod(texture, alpha);
