@@ -2449,55 +2449,111 @@ bundle SDL {
 		}
 
 		method : public : SetColorMod(r : Int, g : Int, b : Int) ~ Int {
-			array_args := Base->New[5];
-			array_args[0] := IntHolder->New();
-			array_args[1] := IntHolder->New(@texture);
-			array_args[2] := IntHolder->New(r);
-			array_args[3] := IntHolder->New(g);
-			array_args[4] := IntHolder->New(b);
+			if(@texture <> 0) {
+				array_args := Base->New[5];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@texture);
+				array_args[2] := IntHolder->New(r);
+				array_args[3] := IntHolder->New(g);
+				array_args[4] := IntHolder->New(b);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_texture_set_color_mod", array_args);
+				Proxy->GetDllProxy()->CallFunction("sdl_texture_set_color_mod", array_args);
 
-			value := array_args[0]->As(IntHolder);
-			return value->Get();
+				value := array_args[0]->As(IntHolder);
+				return value->Get();
+			};
+
+			return -1;
 		}
 
 		method : public : GetColorMod(r : IntHolder, g : IntHolder, b : IntHolder) ~ Int {
-			array_args := Base->New[5];
-			array_args[0] := IntHolder->New();
-			array_args[1] := IntHolder->New(@texture);
-			array_args[2] := r;
-			array_args[3] := g;
-			array_args[4] := b;
+			if(@texture <> 0) {
+				array_args := Base->New[5];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@texture);
+				array_args[2] := r;
+				array_args[3] := g;
+				array_args[4] := b;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_texture_get_color_mod", array_args);
+				Proxy->GetDllProxy()->CallFunction("sdl_texture_get_color_mod", array_args);
 
-			value := array_args[0]->As(IntHolder);
-			return value->Get();
+				value := array_args[0]->As(IntHolder);
+				return value->Get();
+			};
+
+			return -1;
 		}
 
 		method : public : SetAlphaMod(alpha : Int) ~ Int {
-			array_args := Base->New[3];
-			array_args[0] := IntHolder->New();
-			array_args[1] := IntHolder->New(@texture);
-			array_args[2] := IntHolder->New(alpha);
+			if(@texture <> 0) {
+				array_args := Base->New[3];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@texture);
+				array_args[2] := IntHolder->New(alpha);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_texture_set_alpha_mod", array_args);
+				Proxy->GetDllProxy()->CallFunction("sdl_texture_set_alpha_mod", array_args);
 
-			value := array_args[0]->As(IntHolder);
-			return value->Get();
+				value := array_args[0]->As(IntHolder);
+				return value->Get();
+			};
+
+			return -1;
 		}
 
 		method : public : GetAlphaMod(alpha : IntHolder) ~ Int {
-			array_args := Base->New[3];
-			array_args[0] := IntHolder->New();
-			array_args[1] := IntHolder->New(@texture);
-			array_args[2] := alpha;
+			if(@texture <> 0) {
+				array_args := Base->New[3];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@texture);
+				array_args[2] := alpha;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_texture_get_alpha_mod", array_args);
+				Proxy->GetDllProxy()->CallFunction("sdl_texture_get_alpha_mod", array_args);
 
-			value := array_args[0]->As(IntHolder);
-			return value->Get();
+				value := array_args[0]->As(IntHolder);
+				return value->Get();
+			};
+
+			return -1;
 		}
+
+		method : public : SetBlendMode(blendMode : Int) ~ Int {
+			if(@texture <> 0) {
+				array_args := Base->New[3];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@texture);
+				array_args[2] := IntHolder->New(blendMode);
+
+				Proxy->GetDllProxy()->CallFunction("sdl_texture_set_blend_mode", array_args);
+				
+				value := array_args[0]->As(IntHolder);
+				return value->Get();
+			};
+
+			return -1;
+		}
+
+		method : public : GetBlendMode(blendMode : IntHolder) ~ Int {
+			if(@texture <> 0) {
+				array_args := Base->New[3];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@texture);
+				array_args[2] := blendMode;
+
+				Proxy->GetDllProxy()->CallFunction("sdl_texture_get_blend_mode", array_args);
+
+				value := array_args[0]->As(IntHolder);
+				return value->Get();
+			};
+
+			return -1;
+		}
+	}
+
+	consts BlendModeFlags {
+		SDL_BLENDMODE_NONE := 0x00000000,
+		SDL_BLENDMODE_BLEND := 0x00000001,
+		SDL_BLENDMODE_ADD := 0x00000002,
+		SDL_BLENDMODE_MOD := 0x00000004,
+		SDL_BLENDMODE_INVALID := 0x7FFFFFFF
 	}
 }
