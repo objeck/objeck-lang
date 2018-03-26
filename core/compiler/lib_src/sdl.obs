@@ -2271,6 +2271,14 @@ bundle SDL {
 			@renderer := value->Get();
 		}
 
+		method : public : Destroy() ~ Nil {
+			array_args := Base->New[1];
+			array_args[0] := IntHolder->New(@renderer);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_renderer_destroy", array_args);
+
+		}
+
 		method : public : IsNull() ~ Bool {
 			return @renderer = 0;
 		}
@@ -2367,14 +2375,6 @@ bundle SDL {
 			@texture_formats := Int->New[16];
 		}
 
-		method : public : Destroy() ~ Nil {
-			array_args := Base->New[1];
-			array_args[0] := IntHolder->New(@renderer);
-
-			Proxy->GetDllProxy()->CallFunction("sdl_renderer_destroy", array_args);
-
-		}
-
 		method : public : GetName() ~ String {
 			return @name;
 		}
@@ -2413,7 +2413,7 @@ bundle SDL {
 		New(renderer : Renderer, format : Int, access : Int, w : Int, h : Int) {
 			array_args := Base->New[6];
 			array_args[0] := IntHolder->New();
-			array_args[1] := IntHolder->New(renderer);
+			array_args[1] := renderer;
 			array_args[2] := IntHolder->New(format);
 			array_args[3] := IntHolder->New(access);
 			array_args[4] := IntHolder->New(w);
@@ -2424,9 +2424,56 @@ bundle SDL {
 			value := array_args[0]->As(IntHolder);
 			@texture := value->Get();
 		}
-		
+
 		New(texture : Int) {
 			@texture := texture;
+		}
+
+		method : public : Query(format : IntHolder, access : IntHolder, w : IntHolder, h : IntHolder) ~ Int {
+			if(@texture <> 0) {
+				array_args := Base->New[6];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@texture);
+				array_args[2] := format;
+				array_args[3] := access;
+				array_args[4] := w;
+				array_args[5] := h;
+
+				Proxy->GetDllProxy()->CallFunction("sdl_texture_query", array_args);
+
+				value := array_args[0]->As(IntHolder);
+				return value->Get();
+			};
+
+			return -1;
+		}
+
+		method : public : SetColorMod(r : Int, g : Int, b : Int) ~ Int {
+			array_args := Base->New[5];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@texture);
+			array_args[2] := IntHolder->New(r);
+			array_args[3] := IntHolder->New(g);
+			array_args[4] := IntHolder->New(b);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_texture_set_color_mod", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+
+		method : public : GetColorMod(r : IntHolder, g : IntHolder, b : IntHolder) ~ Int {
+			array_args := Base->New[5];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@texture);
+			array_args[2] := r;
+			array_args[3] := g;
+			array_args[4] := b;
+
+			Proxy->GetDllProxy()->CallFunction("sdl_texture_get_color_mod", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
 		}
 	}
 }

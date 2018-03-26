@@ -1722,17 +1722,42 @@ extern "C" {
 #endif
   void sdl_texture_query(VMContext& context) {
     SDL_Texture* texture = (SDL_Texture*)APITools_GetIntValue(context, 1);
-    Uint32 format = APITools_GetIntValue(context, 2);
-    int access = APITools_GetIntValue(context, 3);
-    int w = APITools_GetIntValue(context, 4);
-    int h = APITools_GetIntValue(context, 5);
     
+    Uint32 format; int access, w, h;
     APITools_SetIntValue(context, 0, SDL_QueryTexture(texture, &format, &access, &w, &h));
 
     APITools_SetIntValue(context, 2, format);
     APITools_SetIntValue(context, 3, access);
     APITools_SetIntValue(context, 4, w);
     APITools_SetIntValue(context, 5, h);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_texture_set_color_mod(VMContext& context) {
+    SDL_Texture* texture = (SDL_Texture*)APITools_GetIntValue(context, 1);
+    const int r = APITools_GetIntValue(context, 2);
+    const int g = APITools_GetIntValue(context, 3);
+    const int b = APITools_GetIntValue(context, 4);
+    const int return_value = SDL_SetTextureColorMod(texture, r, g, b);
+    APITools_SetIntValue(context, 0, return_value);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_texture_get_color_mod(VMContext& context) {
+    SDL_Texture* texture = (SDL_Texture*)APITools_GetIntValue(context, 1);
+
+    Uint8 r, g, b;
+    const int return_value = SDL_GetTextureColorMod(texture, &r, &g, &b);
+
+    APITools_SetIntValue(context, 2, r);
+    APITools_SetIntValue(context, 3, g);
+    APITools_SetIntValue(context, 4, b);
+
+    APITools_SetIntValue(context, 0, return_value);
   }
 
 }
