@@ -1740,8 +1740,7 @@ extern "C" {
     const int r = APITools_GetIntValue(context, 2);
     const int g = APITools_GetIntValue(context, 3);
     const int b = APITools_GetIntValue(context, 4);
-    const int return_value = SDL_SetTextureColorMod(texture, r, g, b);
-    APITools_SetIntValue(context, 0, return_value);
+    APITools_SetIntValue(context, 0, SDL_SetTextureColorMod(texture, r, g, b));
   }
 
 #ifdef _WIN32
@@ -1766,8 +1765,7 @@ extern "C" {
   void sdl_texture_set_alpha_mod(VMContext& context) {
     SDL_Texture* texture = (SDL_Texture*)APITools_GetIntValue(context, 1);
     const int alpha = APITools_GetIntValue(context, 2);
-    const int return_value = SDL_SetTextureAlphaMod(texture, alpha);
-    APITools_SetIntValue(context, 0, return_value);
+    APITools_SetIntValue(context, 0, SDL_SetTextureAlphaMod(texture, alpha));
   }
 
 #ifdef _WIN32
@@ -1779,6 +1777,28 @@ extern "C" {
     Uint8 alpha;
     const int return_value = SDL_GetTextureAlphaMod(texture, &alpha);
     APITools_SetIntValue(context, 2, alpha);
+
+    APITools_SetIntValue(context, 0, return_value);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_texture_set_blend_mode(VMContext& context) {
+    SDL_Texture* texture = (SDL_Texture*)APITools_GetIntValue(context, 1);
+    const SDL_BlendMode blendMode = (SDL_BlendMode)APITools_GetIntValue(context, 2);
+    APITools_SetIntValue(context, 0, SDL_SetTextureBlendMode(texture, blendMode));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_texture_get_blend_mode(VMContext& context) {
+    SDL_Texture* texture = (SDL_Texture*)APITools_GetIntValue(context, 1);
+    
+    SDL_BlendMode blendMode;
+    const int return_value = SDL_GetTextureBlendMode(texture, &blendMode);
+    APITools_SetIntValue(context, 2, blendMode);
 
     APITools_SetIntValue(context, 0, return_value);
   }
