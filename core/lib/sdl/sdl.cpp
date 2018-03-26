@@ -1760,4 +1760,28 @@ extern "C" {
     APITools_SetIntValue(context, 0, return_value);
   }
 
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+    void sdl_texture_set_alpha_mod(VMContext& context) {
+    SDL_Texture* texture = (SDL_Texture*)APITools_GetIntValue(context, 1);
+    const int alpha = APITools_GetIntValue(context, 2);
+    const int return_value = SDL_SetTextureAlphaMod(texture, alpha);
+    APITools_SetIntValue(context, 0, return_value);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_texture_get_alpha_mod(VMContext& context) {
+    SDL_Texture* texture = (SDL_Texture*)APITools_GetIntValue(context, 1);
+    
+    Uint8 alpha;
+    const int return_value = SDL_GetTextureAlphaMod(texture, &alpha);
+    APITools_SetIntValue(context, 2, alpha);
+
+    APITools_SetIntValue(context, 0, return_value);
+  }
+
+
 }
