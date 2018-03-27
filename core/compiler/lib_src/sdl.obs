@@ -1305,7 +1305,7 @@ bundle SDL {
 	Hints
 	~#
 	class Hints {
-		method : public : SetHintWithPriority(name : String, value : String, priority : HintPriority) ~ Bool {
+		method : public : SetWithPriority(name : String, value : String, priority : HintPriority) ~ Bool {
 			array_args := Base->New[4];
 			array_args[0] := IntHolder->New();
 			array_args[1] := name;
@@ -1317,7 +1317,7 @@ bundle SDL {
 			return rvalue->Get() = 0 ? false : true;
 		}
 		
-		function : SetHint(name : String, value : String) ~ Bool {
+		function : Set(name : String, value : String) ~ Bool {
 			array_args := Base->New[3];
 			array_args[0] := IntHolder->New();
 			array_args[1] := name;
@@ -1329,20 +1329,19 @@ bundle SDL {
 			return rvalue->Get() = 0 ? false : true;
 		}
 		
-		function : GetHint(name : String) ~ String {
+		function : Get(name : String) ~ String {
 			array_args := Base->New[2];
 			array_args[0] := Nil;
 			array_args[1] := name;
 			
 			Proxy->GetDllProxy()->CallFunction("sdl_hints_get_hint", array_args);
+
 			return array_args[0]->As(String);
 		}
-		
+
 		function : Clear() ~ Nil {
 			array_args := Base->New[0];
-			@lib_proxy := Proxy->GetDllProxy();
-			@lib_proxy->CallFunction("sdl_hints_clear", array_args);
-
+			Proxy->GetDllProxy()->CallFunction("sdl_hints_clear", array_args);
 		}
 	}
 	
@@ -2404,6 +2403,27 @@ bundle SDL {
 			value := array_args[0]->As(IntHolder);
 			return value->Get();
 		}
+
+		method : public : Copy(texture : Texture, srcrect : Rect, dstrect : Rect) ~ Int {
+			array_args := Base->New[5];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@renderer);
+			array_args[2] := texture;
+			array_args[3] := srcrect;
+			array_args[4] := dstrect;
+
+			Proxy->GetDllProxy()->CallFunction("sdl_renderer_render_copy", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+
+		method : public : Present() ~ Nil {
+			array_args := Base->New[1];
+			array_args[0] := IntHolder->New(@renderer);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_renderer_render_present", array_args);
+		}
 	}
 
 	class RendererInfo {
@@ -2470,6 +2490,19 @@ bundle SDL {
 
 		New(texture : Int) {
 			@texture := texture;
+		}
+
+
+
+		method : public : Destroy() ~ Nil {
+			array_args := Base->New[1];
+			array_args[0] := IntHolder->New(@texture);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_texture_destroy", array_args);
+		}
+		
+		method : public : IsNull() ~ Bool {
+			return @texture = 0;
 		}
 
 		method : public : Query(format : IntHolder, access : IntHolder, w : IntHolder, h : IntHolder) ~ Int {
