@@ -283,6 +283,15 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
+  void sdl_surface_create_texture(VMContext& context) {
+    SDL_Surface* surface = (SDL_Surface*)APITools_GetIntValue(context, 1);
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetObjectValue(context, 2);
+    APITools_SetIntValue(context, 0, (long)SDL_CreateTextureFromSurface(renderer, surface));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
   void sdl_surface_set_palette(VMContext& context) {
     SDL_Surface* surface = (SDL_Surface*)APITools_GetIntValue(context, 1);
 
@@ -1585,8 +1594,10 @@ extern "C" {
     SDL_Window* window = (SDL_Window*)APITools_GetObjectValue(context, 1);
     const int index = APITools_GetIntValue(context, 2);
     const Uint32 flags = APITools_GetIntValue(context, 3);
-    SDL_Renderer* return_value = SDL_CreateRenderer(window, index, flags);
-    APITools_SetIntValue(context, 0, (long)return_value);
+wcout << window << L", " << index << L", " << flags << endl;
+const long x = (long)SDL_CreateRenderer(window, index, flags);
+wcout << x << endl;
+    APITools_SetIntValue(context, 0, x);
   }
 
 #ifdef _WIN32
@@ -1692,14 +1703,22 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
+  void sdl_renderer_render_clear(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+    const int return_value = SDL_RenderClear(renderer);
+    APITools_SetIntValue(context, 0, return_value);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
   void sdl_renderer_set_render_draw_color(VMContext& context) {
     SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
     const int r = APITools_GetIntValue(context, 2);
     const int g = APITools_GetIntValue(context, 3);
     const int b = APITools_GetIntValue(context, 4);
     const int a = APITools_GetIntValue(context, 5);
-    const int return_value = SDL_SetRenderDrawColor(renderer, r, g, b, a);
-    APITools_SetIntValue(context, 0, return_value);
+    APITools_SetIntValue(context, 0, SDL_SetRenderDrawColor(renderer, r, g, b, a));
   }
 
   //

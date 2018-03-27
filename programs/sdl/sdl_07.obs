@@ -40,16 +40,7 @@ class Test {
 						};
 					};
 
-					# Apply the image
-					stretchRect := Rect->New();
-					stretchRect->SetX(0);
-					stretchRect->SetY(0);
-					stretchRect->SetW(640);
-					stretchRect->SetH(480);
-					@texture->BlitScaled( Nil, @screen_surface, stretchRect );
-				
-					# Update the surface
-					@window->UpdateSurface();
+					@renderer->Clear();
 				};
 			};
 		};
@@ -70,15 +61,19 @@ class Test {
 			# Create window
 			@window := Window->New( "SDL Tutorial", Flags->SDL_WINDOW_POS_UNDEFINED->As(Int), 
 				Flags->SDL_WINDOW_POS_UNDEFINED->As(Int), 640, 480, Flags->SDL_WINDOW_SHOWN->As(Int));
-			
+
+"--0--"->PrintLine();			
 			# Get window surface
-			@renderer := Renderer->New(@window, -1, RendererFlags->SDL_RENDERER_ACCELERATED);
+			@renderer := Renderer->New(@window, -1, RendererFlags->SDL_RENDERER_ACCELERATED->As(Int));
 			if(@renderer->IsNull()) {
 				"Bad renderer"->PrintLine();
 				return false;
 			};
+"--1--"->PrintLine();
 
 			@renderer->SetRenderDrawColor(0xFF, 0xFF, 0xFF, 0xFF);
+
+"--2--"->PrintLine();
 
 			img_flags := ImageFlags->IMG_INIT_PNG->As(Int);
 			if((Image->Init(img_flags) and img_flags) = 0) {
@@ -95,24 +90,21 @@ class Test {
 		return @texture <> Nil ? true : false;
 	}
 	
-	function : LoadTexture(path : String) ~ Surface {
+	function : LoadTexture(path : String) ~ Texture {
 		# Load image at specified path
 		loadedSurface := Image->Load(path);
 		if(loadedSurface->IsNull()) {
 			"Unable to load surface"->PrintLine();
 			return Nil;
 		};
-"--0--"->PrintLine();
 
-		texture := Texture->CreateFromSurface(@renderer, loadedSurface);
+		texture := loadedSurface->CreateTexture(@renderer);
 		loadedSurface->Free();
 		
 		return texture;
 	}
 	
 	function : Close() ~ Nil {
-		@texture->Free();
-	
 		# Destroy window
 		@window->Destroy();
 		@window := Nil;

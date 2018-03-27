@@ -1865,6 +1865,7 @@ bundle SDL {
 				array_args[1] := IntHolder->New(@surface);
 
 				Proxy->GetDllProxy()->CallFunction("sdl_surface_lock", array_args);
+
 				value := array_args[0]->As(IntHolder);
 				return value->Get();
 			};
@@ -1878,6 +1879,22 @@ bundle SDL {
 				array_args[0] := IntHolder->New(@surface);
 				Proxy->GetDllProxy()->CallFunction("sdl_surface_unlock", array_args);
 			};
+		}
+
+		method : public : CreateTexture(renderer : Renderer) ~ Texture {
+			if(@surface <> 0) {
+				array_args := Base->New[3];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@surface);
+				array_args[2] := renderer;
+				
+				Proxy->GetDllProxy()->CallFunction("sdl_surface_create_texture", array_args);
+
+				value := array_args[0]->As(IntHolder);
+				return Texture->New(value->Get());
+			};
+
+			return Nil;
 		}
 		
 		function : LoadBMP(file : String) ~ Surface {
@@ -2361,6 +2378,32 @@ bundle SDL {
 
 			return -1;
 		}
+
+		method : public : SetRenderDrawColor(r : Int, g : Int, b : Int, a : Int) ~ Int {
+			array_args := Base->New[6];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@renderer);
+			array_args[2] := IntHolder->New(r);
+			array_args[3] := IntHolder->New(g);
+			array_args[4] := IntHolder->New(b);
+			array_args[5] := IntHolder->New(a);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_renderer_set_render_draw_color", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+
+		method : public : Clear() ~ Int {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@renderer);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_renderer_render_clear", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
 	}
 
 	class RendererInfo {
@@ -2547,7 +2590,7 @@ bundle SDL {
 
 			return -1;
 		}
-
+#~
 		method : public : Unlock() ~ Nil {
 			if(@texture <> 0) {
 				array_args := Base->New[1];
@@ -2555,6 +2598,7 @@ bundle SDL {
 				Proxy->GetDllProxy()->CallFunction("sdl_texture_unlock", array_args);
 			};
 		}
+~#		
 	}
 	
 	consts BlendModeFlags {
