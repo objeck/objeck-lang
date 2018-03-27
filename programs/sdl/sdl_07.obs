@@ -41,6 +41,8 @@ class Test {
 					};
 
 					@renderer->Clear();
+					@renderer->Copy(@texture, Nil, Nil);
+					@renderer->Present();
 				};
 			};
 		};
@@ -58,22 +60,22 @@ class Test {
 			success := false;
 		}
 		else {
+			if(<>Hints->Set("SDL_RENDER_SCALE_QUALITY", "1")) {
+				"Warning: Linear texture filtering not enabled!"->ErrorLine();
+				return false;
+			};
+
 			# Create window
 			@window := Window->New( "SDL Tutorial", Flags->SDL_WINDOW_POS_UNDEFINED->As(Int), 
 				Flags->SDL_WINDOW_POS_UNDEFINED->As(Int), 640, 480, Flags->SDL_WINDOW_SHOWN->As(Int));
 
-"--0--"->PrintLine();			
 			# Get window surface
 			@renderer := Renderer->New(@window, -1, RendererFlags->SDL_RENDERER_ACCELERATED->As(Int));
 			if(@renderer->IsNull()) {
-				"Bad renderer"->PrintLine();
+				"Cannot create renderer!"->ErrorLine();
 				return false;
 			};
-"--1--"->PrintLine();
-
 			@renderer->SetRenderDrawColor(0xFF, 0xFF, 0xFF, 0xFF);
-
-"--2--"->PrintLine();
 
 			img_flags := ImageFlags->IMG_INIT_PNG->As(Int);
 			if((Image->Init(img_flags) and img_flags) = 0) {
@@ -106,8 +108,9 @@ class Test {
 	
 	function : Close() ~ Nil {
 		# Destroy window
+		@texture->Destroy();
+		@renderer->Destroy();
 		@window->Destroy();
-		@window := Nil;
 
 		# Quit SDL subsystems
 		Image->Quit();
