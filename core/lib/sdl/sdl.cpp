@@ -1658,6 +1658,32 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
+  void sdl_renderer_render_set_viewport(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+    const size_t* rect_obj = (size_t*)APITools_GetObjectValue(context, 2);
+    SDL_Rect* rect = (SDL_Rect*)rect_obj[0];
+    APITools_SetIntValue(context, 0, SDL_RenderSetViewport(renderer, rect));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_renderer_render_get_viewport(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 0);
+    long* rect_obj = (long*)APITools_GetObjectValue(context, 1);
+
+    SDL_Rect rect;
+    SDL_RenderGetViewport(renderer, &rect);
+
+    rect_obj[1] = rect.x;
+    rect_obj[2] = rect.y;
+    rect_obj[3] = rect.w;
+    rect_obj[4] = rect.h;
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
   void sdl_renderer_render_draw_point(VMContext& context) {
     SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
     
