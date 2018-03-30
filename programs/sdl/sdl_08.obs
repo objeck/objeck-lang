@@ -37,7 +37,7 @@ class Test {
 
 				outlineRect := Rect->New();
 				outlineRect->SetX(SCREEN_WIDTH / 6); outlineRect->SetY(SCREEN_HEIGHT / 6);
-				outlineRect->SetW((SCREEN_WIDTH * 2) / 3); outlineRect->SetH((SCREEN_HEIGHT * 2) / 3);
+				outlineRect->SetW(SCREEN_WIDTH * 2 / 3); outlineRect->SetH(SCREEN_HEIGHT * 2 / 3);
 
 				# While application is running
 				while( <>quit )
