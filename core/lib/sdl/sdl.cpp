@@ -1620,6 +1620,56 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
+  void sdl_renderer_render_fill_rect(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+
+    const size_t* rect_obj = (size_t*)APITools_GetObjectValue(context, 2);
+    SDL_Rect* rect = (SDL_Rect*)rect_obj[0];
+
+    APITools_SetIntValue(context, 0, SDL_RenderFillRect(renderer, rect));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_renderer_render_draw_line(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+
+    const int x1 = APITools_GetIntValue(context, 2);
+    const int y1 = APITools_GetIntValue(context, 3);
+    const int x2 = APITools_GetIntValue(context, 4);
+    const int y2 = APITools_GetIntValue(context, 5);
+
+    APITools_SetIntValue(context, 0, SDL_RenderDrawLine(renderer, x1, y1, x2, y2));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_renderer_render_draw_rect(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+
+    const size_t* rect_obj = (size_t*)APITools_GetObjectValue(context, 2);
+    SDL_Rect* rect = (SDL_Rect*)rect_obj[0];
+    
+    APITools_SetIntValue(context, 0, SDL_RenderDrawRect(renderer, rect));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_renderer_render_draw_point(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+    
+    const int x = APITools_GetIntValue(context, 2);
+    const int y = APITools_GetIntValue(context, 3);
+
+    APITools_SetIntValue(context, 0, SDL_RenderDrawPoint(renderer, x, y));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
   void sdl_renderer_get_render_driver_info(VMContext& context) {
     const int index = APITools_GetIntValue(context, 1);
     size_t* info_obj = APITools_GetObjectValue(context, 2);

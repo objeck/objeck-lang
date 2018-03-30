@@ -2309,6 +2309,22 @@ bundle SDL {
 			return value->Get();
 		}
 
+		method : public : FillRect(rect : Rect) ~ Int {
+			if(@renderer <> 0) {
+				array_args := Base->New[3];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@renderer);
+				array_args[2] := rect;
+
+				Proxy->GetDllProxy()->CallFunction("sdl_renderer_render_fill_rect", array_args);
+
+				value := array_args[0]->As(IntHolder);
+				return value->Get();
+			};
+
+			return -1;
+		}
+
 		function : GetRenderDriverInfo(index : Int, info : RendererInfo) ~ Int {
 			array_args := Base->New[3];
 			array_args[0] := IntHolder->New();
@@ -2362,6 +2378,59 @@ bundle SDL {
 		    return -1;
 		}
 
+		method : public : DrawPoint(x : Int, y : Int) ~ Int {
+			if(@renderer <> 0) {
+				array_args := Base->New[4];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@renderer);
+				array_args[2] := IntHolder->New(x);
+				array_args[3] := IntHolder->New(y);
+
+				Proxy->GetDllProxy()->CallFunction("sdl_renderer_render_draw_point", array_args);
+
+				value := array_args[0]->As(IntHolder);
+				return value->Get();
+			};
+
+			return -1;
+		}
+
+		method : public : DrawLine(x1 : Int, y1 : Int, x2 : Int, y2 : Int) ~ Int {
+			if(@renderer <> 0) {
+				array_args := Base->New[6];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@renderer);
+				array_args[2] := IntHolder->New(x1);
+				array_args[3] := IntHolder->New(y1);
+				array_args[4] := IntHolder->New(x2);
+				array_args[5] := IntHolder->New(y2);
+
+				Proxy->GetDllProxy()->CallFunction("sdl_renderer_render_draw_line", array_args);
+
+				value := array_args[0]->As(IntHolder);
+				return value->Get();
+			};
+
+			return -1;
+		}
+
+		method : public : DrawRect(rect : Rect) ~ Int {
+			if(@renderer <> 0) {
+				array_args := Base->New[3];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@renderer);
+				array_args[2] := rect;
+
+				@lib_proxy := Proxy->GetDllProxy();
+				@lib_proxy->CallFunction("sdl_renderer_render_draw_rect", array_args);
+
+				value := array_args[0]->As(IntHolder);
+				return value->Get();
+			};
+
+			return -1;
+		}
+
 		method : public : GetInfo(info : RendererInfo) ~ Int {
 			if(@renderer <> 0) {
 				array_args := Base->New[3];
@@ -2376,21 +2445,6 @@ bundle SDL {
 			};
 
 			return -1;
-		}
-
-		method : public : SetRenderDrawColor(r : Int, g : Int, b : Int, a : Int) ~ Int {
-			array_args := Base->New[6];
-			array_args[0] := IntHolder->New();
-			array_args[1] := IntHolder->New(@renderer);
-			array_args[2] := IntHolder->New(r);
-			array_args[3] := IntHolder->New(g);
-			array_args[4] := IntHolder->New(b);
-			array_args[5] := IntHolder->New(a);
-
-			Proxy->GetDllProxy()->CallFunction("sdl_renderer_set_render_draw_color", array_args);
-
-			value := array_args[0]->As(IntHolder);
-			return value->Get();
 		}
 
 		method : public : Clear() ~ Int {
