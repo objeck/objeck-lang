@@ -2431,6 +2431,34 @@ bundle SDL {
 			return -1;
 		}
 
+		method : public : GetViewport(rect : Rect) ~ Nil {
+			if(@renderer <> 0) {
+				array_args := Base->New[2];
+				array_args[0] := IntHolder->New(@renderer);
+				array_args[1] := rect;
+
+				@lib_proxy := Proxy->GetDllProxy();
+				@lib_proxy->CallFunction("sdl_renderer_render_get_viewport", array_args);
+			};
+		}
+
+		method : public : SetViewport(rect : Rect) ~ Int {
+			if(@renderer <> 0) {
+				array_args := Base->New[3];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@renderer);
+				array_args[2] := rect;
+
+				@lib_proxy := Proxy->GetDllProxy();
+				@lib_proxy->CallFunction("sdl_renderer_render_set_viewport", array_args);
+
+				value := array_args[0]->As(IntHolder);
+				return value->Get();
+			};
+
+			return -1;
+		}
+
 		method : public : GetInfo(info : RendererInfo) ~ Int {
 			if(@renderer <> 0) {
 				array_args := Base->New[3];
