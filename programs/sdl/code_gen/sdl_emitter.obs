@@ -149,7 +149,7 @@ bundle CodeGen {
 						label ParsedType->Type->CLASS: {
 							buffer += "\t\tconst long* ";
 							buffer += parameter->GetName();
-							buffer += " = (long*)APITools_GetObjectValue(context, ";
+							buffer += " = (size_t*)APITools_GetObjectValue(context, ";
 							buffer += offset;
 							buffer += ");\n";
 						}
@@ -279,8 +279,7 @@ bundle CodeGen {
 				offset += 1;
 			};
 			
-			buffer += "\n\t@lib_proxy := Proxy->GetDllProxy();\n";
-			buffer += "\t@lib_proxy->CallFunction(\"";
+			buffer += "\n\tProxy->GetDllProxy()->CallFunction(\"";
 			buffer += parsed_method->GetCxxName();
 			buffer += "\", array_args);\n\n";
 			
