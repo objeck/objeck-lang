@@ -1254,10 +1254,11 @@ bundle SDL {
 			return rtrn_value->Get();
 		}
 		
-		function : GLGetAttribute(attr : GLattr) ~ Int {
-			array_args := Base->New[2];
+		function : GLGetAttribute(attr : GLattr, value : IntHolder) ~ Int {
+			array_args := Base->New[3];
 			array_args[0] := IntHolder->New();
 			array_args[1] := IntHolder->New(attr->As(Int));
+			array_args[2] := value;
 
 			Proxy->GetDllProxy()->CallFunction("sdl_core_gl_get_attribute", array_args);
 
@@ -1618,7 +1619,12 @@ bundle SDL {
 				Proxy->GetDllProxy()->CallFunction("sdl_rect_intersect", array_args);
 				
 				value := array_args[0]->As(IntHolder);
-				return Rect->New(value->Get());
+				if(value->Get() <> 0) {
+					return Rect->New(value->Get());
+				}
+				else {
+					return Nil;
+				};
 			};
 			
 			return Nil;
@@ -1870,7 +1876,12 @@ bundle SDL {
 			Proxy->GetDllProxy()->CallFunction("sdl_surface_get_pixel_format", array_args);
 
 			value := array_args[0]->As(IntHolder);
-			return PixelFormat->New(value->Get());
+			if(value->Get() <> 0) {
+				return PixelFormat->New(value->Get());
+			}
+			else {
+				return Nil;
+			};
 		}
 		
 		method : public : SetPalette(palette : Palette) ~ Int {
@@ -1984,12 +1995,12 @@ bundle SDL {
 			return -1;
 		}
 		
-		method : public : GetColorKey(key : Int) ~ Int {
+		method : public : GetColorKey(key : IntHolder) ~ Int {
 			if(@surface <> 0) {
 				array_args := Base->New[3];
 				array_args[0] := IntHolder->New();
 				array_args[1] := IntHolder->New(@surface);
-				array_args[2] := IntHolder->New(key);
+				array_args[2] := key;
 
 				Proxy->GetDllProxy()->CallFunction("sdl_surface_get_color_key", array_args);
 
@@ -2053,12 +2064,12 @@ bundle SDL {
 			return -1;
 		}
 		
-		method : public : GetAlphaMod(alpha : Int) ~ Int {
+		method : public : GetAlphaMod(alpha : IntHolder) ~ Int {
 			if(@surface <> 0) {
 				array_args := Base->New[3];
 				array_args[0] := IntHolder->New();
 				array_args[1] := IntHolder->New(@surface);
-				array_args[2] := IntHolder->New(alpha);
+				array_args[2] := alpha;
 
 				Proxy->GetDllProxy()->CallFunction("sdl_surface_get_alpha_mod", array_args);
 
@@ -2085,12 +2096,12 @@ bundle SDL {
 			return -1;
 		}
 		
-		method : public : GetBlendMode(blendMode : BlendMode) ~ Int {
+		method : public : GetBlendMode(blendMode : IntHolder) ~ Int {
 			if(@surface <> 0) {
 				array_args := Base->New[3];
 				array_args[0] := IntHolder->New();
 				array_args[1] := IntHolder->New(@surface);
-				array_args[2] := IntHolder->New(blendMode->As(Int));
+				array_args[2] := blendMode;
 
 				Proxy->GetDllProxy()->CallFunction("sdl_surface_get_blend_mode", array_args);
 

@@ -97,12 +97,10 @@ extern "C" {
     const int attr = APITools_GetIntValue(context, 1);
     
     int value;
-    if(!SDL_GL_GetAttribute((SDL_GLattr)attr, &value)) {
-      APITools_SetIntValue(context, 0, value);
-    }
-    else {
-      APITools_SetIntValue(context, 0, 0);
-    }
+    const int return_value = SDL_GL_GetAttribute((SDL_GLattr)attr, &value);
+
+    APITools_SetIntValue(context, 2, value);
+    APITools_SetIntValue(context, 0, return_value);
   }
 
 #ifdef _WIN32
@@ -366,13 +364,12 @@ extern "C" {
 #endif
   void sdl_surface_get_color_key(VMContext& context) {
     SDL_Surface* surface = (SDL_Surface*)APITools_GetIntValue(context, 1);
-    Uint32 key = APITools_GetIntValue(context, 2);
-    if(!SDL_GetColorKey(surface, &key)) {
-      APITools_SetIntValue(context, 0, key);
-    }
-    else {
-      APITools_SetIntValue(context, 0, 0);
-    }
+    
+    Uint32 key;
+    const int return_value = SDL_GetColorKey(surface, &key);
+
+    APITools_SetIntValue(context, 2, key);
+    APITools_SetIntValue(context, 0, return_value);
   }
 
 #ifdef _WIN32
@@ -411,14 +408,13 @@ extern "C" {
   __declspec(dllexport)
 #endif
   void sdl_surface_get_alpha_mod(VMContext& context) {
-    Uint8 alpha;
     SDL_Surface* surface = (SDL_Surface*)APITools_GetIntValue(context, 1);
-    if(!SDL_GetSurfaceAlphaMod(surface, &alpha)) {
-      APITools_SetIntValue(context, 0, alpha);
-    }
-    else {
-      APITools_SetIntValue(context, 0, 0);
-    }
+    
+    Uint8 alpha;
+    const int return_value = SDL_GetSurfaceAlphaMod(surface, &alpha);
+
+    APITools_SetIntValue(context, 2, alpha);
+    APITools_SetIntValue(context, 0, return_value);
   }
 
 #ifdef _WIN32
@@ -434,14 +430,14 @@ extern "C" {
   __declspec(dllexport)
 #endif
   void sdl_surface_get_blend_mode(VMContext& context) {
-    SDL_BlendMode blendMode;
+    
     SDL_Surface* surface = (SDL_Surface*)APITools_GetIntValue(context, 1);
-    if(!SDL_GetSurfaceBlendMode(surface, &blendMode)) {
-      APITools_SetIntValue(context, 0, blendMode);
-    }
-    else {
-      APITools_SetIntValue(context, 0, 0);
-    }
+
+    SDL_BlendMode blendMode;
+    const int return_value = SDL_GetSurfaceBlendMode(surface, &blendMode);
+
+    APITools_SetIntValue(context, 2, blendMode);
+    APITools_SetIntValue(context, 0, return_value);
   }
 
 #ifdef _WIN32
