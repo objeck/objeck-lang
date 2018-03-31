@@ -1729,6 +1729,24 @@ bundle SDL {
 				Proxy->GetDllProxy()->CallFunction("sdl_pixel_format_write", array_args);
 			};
 		}
+
+		method : public : MapRGB(r : Int, g : Int, b : Int) ~ Int {
+			if(@pixel_format <> 0) {
+				array_args := Base->New[5];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@pixel_format);
+				array_args[2] := IntHolder->New(r);
+				array_args[3] := IntHolder->New(g);
+				array_args[4] := IntHolder->New(b);
+
+				Proxy->GetDllProxy()->CallFunction("sdl_pixelformat_maprgb", array_args);
+
+				value := array_args[0]->As(IntHolder);
+				return value->Get();
+			};
+
+			return -1;
+		}
 		
 		method : public : GetFormat() ~ Int {
 			Read();
@@ -1949,12 +1967,12 @@ bundle SDL {
 			return -1;
 		}
 		
-		method : public : SetColorKey(flag : Int, key : Int) ~ Int {
+		method : public : SetColorKey(flag : Bool, key : Int) ~ Int {
 			if(@surface <> 0) {
 				array_args := Base->New[4];
 				array_args[0] := IntHolder->New();
 				array_args[1] := IntHolder->New(@surface);
-				array_args[2] := IntHolder->New(flag);
+				array_args[2] := IntHolder->New(flag ? 1 : 0);
 				array_args[3] := IntHolder->New(key);
 
 				Proxy->GetDllProxy()->CallFunction("sdl_surface_set_color_key", array_args);
