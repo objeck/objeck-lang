@@ -1,8 +1,6 @@
 #~
-Lesson 05
-Optimized Surface Loading and Soft Stretching
-
-http://lazyfoo.net/tutorials/SDL/05_optimized_surface_loading_and_soft_stretching/index.php
+Lesson 09
+http://lazyfoo.net/tutorials/SDL/09_the_viewport/index.php
 ~#
 
 use SDL;
@@ -41,7 +39,7 @@ class Test {
 				e := Event->New();
 				
 				# While application is running
-				while( <>quit )
+				while(<>quit)
 				{
 					# Handle events on queue
 					while( e->Poll() <> 0 ) {
@@ -51,11 +49,10 @@ class Test {
 						};
 					};
 
-					# Clear screen
 					@renderer->SetDrawColor(0xFF, 0xFF, 0xFF, 0xFF);
 					@renderer->Clear();
 
-					@renderer->SetViewport(topLeftViewport );
+					@renderer->SetViewport(topLeftViewport);
 					@renderer->Copy(@texture, Nil, Nil);
 
 					@renderer->SetViewport(topRightViewport);
@@ -116,7 +113,7 @@ class Test {
 	}
 	
 	function : LoadMedia() ~ Bool {
-		@texture := LoadTexture( "images/viewport.png" );
+		@texture := LoadTexture( "images/viewport.png");
 		return @texture <> Nil ? true : false;
 	}
 	
