@@ -17,6 +17,7 @@ class LTexture {
 
 	# Loads image at specified path
 	method : public : LoadFromFile(path : String) ~ Bool {
+"--0--"->PrintLine();		
 		# Load image at specified path
 		loadedSurface := Image->Load(path);
 		if(loadedSurface->IsNull()) {
@@ -25,16 +26,24 @@ class LTexture {
 		};
 
 		loadedSurface->SetColorKey(true, loadedSurface->GetPixelFormat()->MapRGB(0, 0xFF, 0xFF ));
+"--1' --"->PrintLine();		
+
+(@renderer = Nil)->PrintLine();
+
 		texture := loadedSurface->CreateTexture(@renderer);
+"--2' --"->PrintLine();		
 		if(texture->IsNull()) {
 			"Unable to create texture!"->PrintLine();
 			return false;
 		};
 
+
 		@width := loadedSurface->GetW();
+"--3--"->PrintLine();		
 		@height := loadedSurface->GetH();
 		loadedSurface->Free();
 		@texture := texture;
+"--4--"->PrintLine();
 
 		return @texture <> Nil;
 	}
@@ -65,7 +74,8 @@ class LTexture {
 class Test {
 	@window : static : Window;
 	@renderer : static : Renderer;
-	@texture : static : Texture;
+	@foo_texture : static : LTexture;
+	@background_texture : static : LTexture;
 	SCREEN_WIDTH : static : Int;
 	SCREEN_HEIGHT : static : Int;
 	
@@ -73,54 +83,58 @@ class Test {
 		# Start up SDL and create window
 		if( <>Init() ) {
 			"Failed to initialize!"->ErrorLine();
-		}
-		else {
-			# Load media
-			if( <>LoadMedia() ) {
-				"Failed to load media!"->PrintLine();
-			}
-			else {			
-				# Main loop flag
-				quit := false;
+			return;
+		};
+		
+		# Load media
+		if( <>LoadMedia() ) {
+			"Failed to load media!"->PrintLine();
+			return;
+		};
+			
+		# Main loop flag
+		quit := false;
 
-				# Top left corner viewport
-				topLeftViewport := Rect->New(0, 0, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2);
+		# Top left corner viewport
+		topLeftViewport := Rect->New(0, 0, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2);
 
-				# Top right viewport
-				topRightViewport := Rect->New(SCREEN_WIDTH / 2, 0, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2);
+		# Top right viewport
+		topRightViewport := Rect->New(SCREEN_WIDTH / 2, 0, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2);
 
-				# Bottom viewport
-				bottomViewport := Rect->New(0, SCREEN_HEIGHT / 2, SCREEN_WIDTH, SCREEN_HEIGHT / 2);
-				
-				# Event handler
-				e := Event->New();
-				
-				# While application is running
-				while(<>quit)
-				{
-					# Handle events on queue
-					while( e->Poll() <> 0 ) {
-						# User requests quit
-						if( e->GetType() = Flags->SDL_QUIT->As(Int) ) {
-							quit := true;
-						};
-					};
+		# Bottom viewport
+		bottomViewport := Rect->New(0, SCREEN_HEIGHT / 2, SCREEN_WIDTH, SCREEN_HEIGHT / 2);
+		
+		# Event handler
+		e := Event->New();
 
-					@renderer->SetDrawColor(0xFF, 0xFF, 0xFF, 0xFF);
-					@renderer->Clear();
-
-					@renderer->SetViewport(topLeftViewport);
-					@renderer->Copy(@texture, Nil, Nil);
-
-					@renderer->SetViewport(topRightViewport);
-					@renderer->Copy(@texture, Nil, Nil);
-
-					@renderer->SetViewport(bottomViewport);
-					@renderer->Copy(@texture, Nil, Nil);
-					
-					@renderer->Present();
+		@foo_texture := LTexture->New(@renderer);
+		@background_texture := LTexture->New(@renderer);
+			
+		# While application is running
+		while(<>quit) {
+			# Handle events on queue
+			while( e->Poll() <> 0 ) {
+				# User requests quit
+				if( e->GetType() = Flags->SDL_QUIT->As(Int) ) {
+					quit := true;
 				};
 			};
+
+			# Clear screen
+			@renderer->SetDrawColor(0xFF, 0xFF, 0xFF, 0xFF);
+			@renderer->Clear();
+
+			@foo_texture->Render(0, 0);
+			@background_texture->Render(240, 190);
+
+			# Render background texture to screen
+			@background_texture->Render(0, 0);
+
+			# Render Foo' to the screen
+			@foo_texture->Render(240, 190);
+
+			# Update screen
+			@renderer->Present();
 		};
 		
 		Close();
@@ -136,42 +150,48 @@ class Test {
 		# Initialize SDL
 		if(Core->Init(Flags->SDL_INIT_VIDEO->As(Int)) < 0) {
 			"SDL could not initialize!"->ErrorLine();
-			success := false;
-		}
-		else {
-			if(<>Hints->Set("SDL_RENDER_SCALE_QUALITY", "1")) {
-				"Warning: Linear texture filtering not enabled!"->ErrorLine();
-				return false;
-			};
-
-			# Create window
-			@window := Window->New( "SDL Tutorial", Flags->SDL_WINDOW_POS_UNDEFINED->As(Int), 
-				Flags->SDL_WINDOW_POS_UNDEFINED->As(Int), 640, 480, Flags->SDL_WINDOW_SHOWN->As(Int));
-			if(@window->IsNull()) {
-				"Cannot create window!"->ErrorLine();
-				return false;
-			};
-			# Get window surface
-			@renderer := Renderer->New(@window, -1, RendererFlags->SDL_RENDERER_ACCELERATED->As(Int));
-			if(@renderer->IsNull()) {
-				"Cannot create renderer!"->ErrorLine();
-				return false;
-			};
-			@renderer->SetDrawColor(0xFF, 0xFF, 0xFF, 0xFF);
-
-			img_flags := ImageFlags->IMG_INIT_PNG->As(Int);
-			if((Image->Init(img_flags) and img_flags) = 0) {
-				"SDL image could not initialize!"->ErrorLine();
-				success := false;
-			};
+			return false;
 		};
 		
-		return success;
+		if(<>Hints->Set("SDL_RENDER_SCALE_QUALITY", "1")) {
+			"Warning: Linear texture filtering not enabled!"->ErrorLine();
+			return false;
+		};
+
+		# Create window
+		@window := Window->New( "SDL Tutorial", Flags->SDL_WINDOW_POS_UNDEFINED->As(Int), 
+			Flags->SDL_WINDOW_POS_UNDEFINED->As(Int), 640, 480, Flags->SDL_WINDOW_SHOWN->As(Int));
+		if(@window->IsNull()) {
+			"Cannot create window!"->ErrorLine();
+			return false;
+		};
+		# Get window surface
+		@renderer := Renderer->New(@window, -1, RendererFlags->SDL_RENDERER_ACCELERATED->As(Int));
+		if(@renderer->IsNull()) {
+			"Cannot create renderer!"->ErrorLine();
+			return false;
+		};
+		@renderer->SetDrawColor(0xFF, 0xFF, 0xFF, 0xFF);
+
+		img_flags := ImageFlags->IMG_INIT_PNG->As(Int);
+		if((Image->Init(img_flags) and img_flags) = 0) {
+			"SDL image could not initialize!"->ErrorLine();
+			return false;
+		};
+		
+		return true;
 	}
 	
 	function : LoadMedia() ~ Bool {
-		@texture := LoadTexture( "images/viewport.png");
-		return @texture <> Nil ? true : false;
+		if(<>@foo_texture->LoadFromFile( "images/foo.png")) {
+			return false;
+		};
+
+		if(<>@background_texture->LoadFromFile( "images/background.png")) {
+			return false;
+		};
+
+		return true;
 	}
 	
 	function : LoadTexture(path : String) ~ Texture {
@@ -194,8 +214,8 @@ class Test {
 	}
 	
 	function : Close() ~ Nil {
-		# Destroy window
-		@texture->Destroy();
+		@foo_texture->Free();
+		@background_texture->Free();
 		@renderer->Destroy();
 		@window->Destroy();
 
