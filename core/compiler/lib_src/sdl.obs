@@ -1685,7 +1685,7 @@ bundle SDL {
 	class PixelFormat {
 		@pixel_format : Int;
 		@format : Int;
-		@palette : Palette; ## TODO
+		@palette : Palette; ## TODO and unit test
 		@bits_per_pixel : Int;
 		@bytes_per_pixel : Int;
 		@r_mask : Int;
