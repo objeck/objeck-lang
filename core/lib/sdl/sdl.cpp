@@ -270,12 +270,31 @@ extern "C" {
 #endif
   void sdl_surface_get_pixel_format(VMContext& context) {
     SDL_Surface* surface = (SDL_Surface*)APITools_GetIntValue(context, 1);
-    if(surface) {
-      APITools_SetIntValue(context, 0, (size_t)surface->format);
-    }
-    else {
-      APITools_SetIntValue(context, 0, 0);
-    }
+    APITools_SetIntValue(context, 0, (size_t)surface->format);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_surface_get_w(VMContext& context) {
+    SDL_Surface* surface = (SDL_Surface*)APITools_GetIntValue(context, 1);
+    APITools_SetIntValue(context, 0, (size_t)surface->w);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_surface_get_h(VMContext& context) {
+    SDL_Surface* surface = (SDL_Surface*)APITools_GetIntValue(context, 1);
+    APITools_SetIntValue(context, 0, (size_t)surface->h);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_surface_get_pitch(VMContext& context) {
+    SDL_Surface* surface = (SDL_Surface*)APITools_GetIntValue(context, 1);
+    APITools_SetIntValue(context, 0, (size_t)surface->pitch);
   }
 
 #ifdef _WIN32

@@ -31,8 +31,8 @@ class LTexture {
 			return false;
 		};
 
-#		@width := loadedSurface->GetW();
-#		@height := loadedSurface->GetH();
+		@width := loadedSurface->GetW();
+		@height := loadedSurface->GetH();
 		loadedSurface->Free();
 		@texture := texture;
 
@@ -41,21 +41,24 @@ class LTexture {
 
 	# Deallocates texture
 	method : public : Free() ~ Nil {
-
+		if(@texture <> Nil)	{
+			@texture->Destroy();
+		};
 	}
 
-		# Renders texture at given point
+	# Renders texture at given point
 	method : public : Render(x : Int, y : Int) ~ Nil {
-
+		renderQuad := Rect->New(x, y, @width, @height);
+		@renderer->Copy(@texture, Nil, renderQuad);
 	}
 
 	# Gets image dimensions
 	method : public : GetWidth() ~ Int {
-		return 0;
+		return @width;
 	}
 
 	method : public : GetHeight() ~ Int {
-		return 0;
+		return @height;
 	}
 }
 

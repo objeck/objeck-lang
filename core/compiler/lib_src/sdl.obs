@@ -1685,7 +1685,7 @@ bundle SDL {
 	class PixelFormat {
 		@pixel_format : Int;
 		@format : Int;
-		@palette : Palette; ## TODO and unit test
+		@palette : Palette; ## TODO and unit test r/w
 		@bits_per_pixel : Int;
 		@bytes_per_pixel : Int;
 		@r_mask : Int;
@@ -1869,19 +1869,63 @@ bundle SDL {
 		}
 		
 		method : public : GetPixelFormat() ~ PixelFormat {
-			array_args := Base->New[5];
-			array_args[0] := IntHolder->New();
-			array_args[1] := IntHolder->New(@surface);
-	
-			Proxy->GetDllProxy()->CallFunction("sdl_surface_get_pixel_format", array_args);
+			if(@surface <> 0) {
+				array_args := Base->New[5];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@surface);
+		
+				Proxy->GetDllProxy()->CallFunction("sdl_surface_get_pixel_format", array_args);
 
-			value := array_args[0]->As(IntHolder);
-			if(value->Get() <> 0) {
+				value := array_args[0]->As(IntHolder);
 				return PixelFormat->New(value->Get());
-			}
-			else {
-				return Nil;
 			};
+
+			return Nil;
+		}
+
+		method : public : GetW() ~ Int {
+			if(@surface <> 0) {
+				array_args := Base->New[2];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@surface);
+
+				Proxy->GetDllProxy()->CallFunction("sdl_surface_get_w", array_args);
+
+				value := array_args[0]->As(IntHolder);
+				return value->Get();
+			};
+			
+			return -1;
+		}
+
+		method : public : GetH() ~ Int {
+			if(@surface <> 0) {
+				array_args := Base->New[2];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@surface);
+
+				Proxy->GetDllProxy()->CallFunction("sdl_surface_get_h", array_args);
+
+				value := array_args[0]->As(IntHolder);
+				return value->Get();
+			};
+			
+			return -1;
+		}
+
+		method : public : GetPitch() ~ Int {
+			if(@surface <> 0) {
+				array_args := Base->New[2];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@surface);
+
+				Proxy->GetDllProxy()->CallFunction("sdl_surface_get_pitch", array_args);
+
+				value := array_args[0]->As(IntHolder);
+				return value->Get();
+			};
+			
+			return -1;
 		}
 		
 		method : public : SetPalette(palette : Palette) ~ Int {
