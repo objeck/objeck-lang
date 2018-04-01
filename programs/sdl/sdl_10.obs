@@ -25,9 +25,10 @@ class LTexture {
 			return false;
 		};
 
+(loadedSurface->GetPixelFormat() = Nil)->PrintLine();
 		loadedSurface->SetColorKey(true, loadedSurface->GetPixelFormat()->MapRGB(0, 0xFF, 0xFF ));
 "--1' --"->PrintLine();		
-
+"--1'' --"->PrintLine();	
 (@renderer = Nil)->PrintLine();
 
 		texture := loadedSurface->CreateTexture(@renderer);
