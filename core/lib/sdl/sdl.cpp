@@ -1389,35 +1389,35 @@ extern "C" {
   __declspec(dllexport)
 #endif
   void sdl_event_free(VMContext& context) {
-    SDL_Event* events = (SDL_Event*)APITools_GetIntValue(context, 1);
-    delete events;
+    SDL_Event* event = (SDL_Event*)APITools_GetIntValue(context, 1);
+    delete event;
   }
 
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
   void sdl_event_type(VMContext& context) {
-    SDL_Event* events = (SDL_Event*)APITools_GetIntValue(context, 1);
-    APITools_SetIntValue(context, 0, events->type);
+    SDL_Event* event = (SDL_Event*)APITools_GetIntValue(context, 1);
+    APITools_SetIntValue(context, 0, event->type);
   }
 
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
   void sdl_event_key(VMContext& context) {
-    SDL_Event* events = (SDL_Event*)APITools_GetIntValue(context, 0);
+    SDL_Event* event = (SDL_Event*)APITools_GetIntValue(context, 0);
     size_t* key_obj = APITools_GetObjectValue(context, 1);
     if(key_obj) {
-      key_obj[0] = events->key.type;
-      key_obj[1] = events->key.timestamp;
-      key_obj[2] = events->key.windowID;
-      key_obj[3] = events->key.state;
-      key_obj[4] = events->key.repeat;
+      key_obj[0] = event->key.type;
+      key_obj[1] = event->key.timestamp;
+      key_obj[2] = event->key.windowID;
+      key_obj[3] = event->key.state;
+      key_obj[4] = event->key.repeat;
       size_t* key_sym_obj = (size_t*)key_obj[5];
       if(key_sym_obj) {
-        key_sym_obj[0] = events->key.keysym.scancode;
-        key_sym_obj[1] = events->key.keysym.sym;
-        key_sym_obj[2] = events->key.keysym.mod;
+        key_sym_obj[0] = event->key.keysym.scancode;
+        key_sym_obj[1] = event->key.keysym.sym;
+        key_sym_obj[2] = event->key.keysym.mod;
       }
     }
   }
@@ -1426,12 +1426,12 @@ extern "C" {
   __declspec(dllexport)
 #endif
   void sdl_event_peeps(VMContext& context) {
-    SDL_Event* events = (SDL_Event*)APITools_GetIntValue(context, 1);
+    SDL_Event* event = (SDL_Event*)APITools_GetIntValue(context, 1);
     const int numevents = APITools_GetIntValue(context, 2);
     const SDL_eventaction action = (SDL_eventaction)APITools_GetIntValue(context, 3);
     const int minType = APITools_GetIntValue(context, 4);
     const int maxType = APITools_GetIntValue(context, 5);
-    APITools_SetIntValue(context, 0, SDL_PeepEvents(events, numevents, action, minType, maxType));
+    APITools_SetIntValue(context, 0, SDL_PeepEvents(event, numevents, action, minType, maxType));
   }
 
 #ifdef _WIN32

@@ -991,7 +991,7 @@ bundle SDL {
 	Event class
 	~#
 	class Event {
-		@events : Int;
+		@event : Int;
 		@key : KeyboardEvent;
 		
 		New() {
@@ -999,31 +999,31 @@ bundle SDL {
 			array_args[0] := IntHolder->New();
 			Proxy->GetDllProxy()->CallFunction("sdl_event_new", array_args);
 			value := array_args[0]->As(IntHolder);
-			@events := value->Get();
+			@event := value->Get();
 		}
 		
 		New : private (events : Int) {
-			@events := events;
+			@event := events;
 		}
 
 		method : public : IsNull() ~ Bool {
-			return @events = 0;
+			return @event = 0;
 		}
 		
 		method : public : Free() ~ Nil {
-			if(@events <> 0) {
+			if(@event <> 0) {
 				array_args := Base->New[1];
-				array_args[0] := IntHolder->New(@events);
+				array_args[0] := IntHolder->New(@event);
 				Proxy->GetDllProxy()->CallFunction("sdl_event_free", array_args);
-				@events := 0;
+				@event := 0;
 			};
 		}
 		
 		method : public : GetType() ~ Int {
-			if(@events <> 0) {
+			if(@event <> 0) {
 				array_args := Base->New[2];
 				array_args[0] := IntHolder->New();
-				array_args[1] := IntHolder->New(@events);
+				array_args[1] := IntHolder->New(@event);
 				
 				Proxy->GetDllProxy()->CallFunction("sdl_event_type", array_args);
 
@@ -1035,13 +1035,13 @@ bundle SDL {
 		}
 		
 		method : public : GetKey() ~ KeyboardEvent {
-			if(@events <> 0) {
+			if(@event <> 0) {
 				if(@key = Nil) {
 					@key := KeyboardEvent->New();
 				};
 				
 				array_args := Base->New[2];
-				array_args[0] := IntHolder->New(@events);
+				array_args[0] := IntHolder->New(@event);
 				array_args[1] := @key;
 				
 				Proxy->GetDllProxy()->CallFunction("sdl_event_key", array_args);
@@ -1058,10 +1058,10 @@ bundle SDL {
 		}
 		
 		method : public : Peeps(numevents : Int, action : EventAction, minType : Int, maxType : Int) ~ Int {
-			if(@events <> 0) {
+			if(@event <> 0) {
 				array_args := Base->New[6];
 				array_args[0] := IntHolder->New();
-				array_args[1] := IntHolder->New(@events);
+				array_args[1] := IntHolder->New(@event);
 				array_args[2] := IntHolder->New(numevents);
 				array_args[3] := IntHolder->New(action->As(Int));
 				array_args[4] := IntHolder->New(minType);
@@ -1094,10 +1094,10 @@ bundle SDL {
 		}
 		
 		method : public : Poll() ~ Int {
-			if(@events <> 0) {
+			if(@event <> 0) {
 				array_args := Base->New[2];
 				array_args[0] := IntHolder->New();
-				array_args[1] := IntHolder->New(@events);
+				array_args[1] := IntHolder->New(@event);
 
 				Proxy->GetDllProxy()->CallFunction("sdl_event_poll", array_args);
 
@@ -1109,10 +1109,10 @@ bundle SDL {
 		}
 		
 		method : public : Wait() ~ Int {
-			if(@events <> 0) {
+			if(@event <> 0) {
 				array_args := Base->New[2];
 				array_args[0] := IntHolder->New();
-				array_args[1] := IntHolder->New(@events);
+				array_args[1] := IntHolder->New(@event);
 
 				Proxy->GetDllProxy()->CallFunction("sdl_event_wait", array_args);
 
@@ -1124,10 +1124,10 @@ bundle SDL {
 		}
 		
 		method : public : WaitTimeout(timeout : Int) ~ Int {
-			if(@events <> 0) {
+			if(@event <> 0) {
 				array_args := Base->New[3];
 				array_args[0] := IntHolder->New();
-				array_args[1] := IntHolder->New(@events);
+				array_args[1] := IntHolder->New(@event);
 				array_args[2] := IntHolder->New(timeout);
 
 				Proxy->GetDllProxy()->CallFunction("sdl_event_wait_timeout", array_args);
@@ -1140,10 +1140,10 @@ bundle SDL {
 		}
 		
 		method : public : Push() ~ Int {
-			if(@events <> 0) {
+			if(@event <> 0) {
 				array_args := Base->New[2];
 				array_args[0] := IntHolder->New();
-				array_args[1] := IntHolder->New(@events);
+				array_args[1] := IntHolder->New(@event);
 
 				Proxy->GetDllProxy()->CallFunction("sdl_event_push", array_args);
 
