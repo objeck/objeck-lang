@@ -39,12 +39,18 @@ using namespace std;
 extern "C" {
   void sdl_point_raw_read(SDL_Point* point, size_t* point_obj);
   void sdl_point_raw_write(SDL_Point* point, size_t* point_obj);
+
   void sdl_rect_raw_read(SDL_Rect* rect, size_t* rect_obj);
   void sdl_rect_raw_write(SDL_Rect* rect, size_t* rect_obj);
+
   void sdl_pixel_format_raw_read(SDL_PixelFormat* pixel_format, size_t* pixel_format_obj);
   void sdl_pixel_format_raw_write(SDL_PixelFormat* pixel_format, size_t* pixel_format_obj);
+
   void sdl_palette_raw_read(SDL_Palette* palette_format, size_t* palette_format_obj);
   void sdl_palette_raw_write(SDL_Palette* palette_format, size_t* palette_format_obj);
+
+  void sdl_display_mode_raw_read(SDL_DisplayMode* mode, size_t* display_mode_obj);
+  void sdl_display_mode_raw_write(SDL_DisplayMode* mode, size_t* display_mode_obj);
 
   //
   // initialize library
@@ -917,14 +923,14 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void sdl_window_get_num_video_drivers(VMContext& context) {
+  void sdl_display_get_num_video_drivers(VMContext& context) {
     APITools_SetIntValue(context, 0, SDL_GetNumVideoDrivers());
   }
 
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void sdl_window_get_video_driver(VMContext& context) {
+  void sdl_display_get_video_driver(VMContext& context) {
     const int index = APITools_GetIntValue(context, 1);
     const string value = SDL_GetVideoDriver(index);
     const wstring w_value(value.begin(), value.end());
@@ -934,7 +940,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void sdl_window_video_init(VMContext& context) {
+  void sdl_display_video_init(VMContext& context) {
     const wstring w_driver_name = APITools_GetStringValue(context, 1);
     const string driver_name(w_driver_name.begin(), w_driver_name.end());
     APITools_SetIntValue(context, 0, SDL_VideoInit(driver_name.c_str()));
@@ -943,14 +949,14 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void sdl_window_video_quit(VMContext& context) {
+  void sdl_display_video_quit(VMContext& context) {
     SDL_VideoQuit();
   }
 
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void sdl_window_get_current_video_driver(VMContext& context) {
+  void sdl_display_get_current_video_driver(VMContext& context) {
     const string value = SDL_GetCurrentVideoDriver();
     const wstring w_value(value.begin(), value.end());
     APITools_SetStringValue(context, 0, w_value);
@@ -959,14 +965,14 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void sdl_window_get_num_video_displays(VMContext& context) {
+  void sdl_display_get_num_video_displays(VMContext& context) {
     APITools_SetIntValue(context, 0, SDL_GetNumVideoDisplays());
   }
 
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void sdl_window_get_display_name(VMContext& context) {
+  void sdl_display_get_display_name(VMContext& context) {
     const int displayIndex = APITools_GetIntValue(context, 1);
     const string value = SDL_GetDisplayName(displayIndex);
     const wstring w_value(value.begin(), value.end());
@@ -976,7 +982,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void sdl_window_get_display_bounds(VMContext& context) {
+  void sdl_display_get_display_bounds(VMContext& context) {
     const int displayIndex = APITools_GetIntValue(context, 1);
 
     const size_t* rect_obj = APITools_GetObjectValue(context, 2);
@@ -988,7 +994,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void sdl_window_get_num_display_modes(VMContext& context) {
+  void sdl_display_get_num_display_modes(VMContext& context) {
     const int displayIndex = APITools_GetIntValue(context, 1);
     APITools_SetIntValue(context, 0, SDL_GetNumDisplayModes(displayIndex));
   }
@@ -996,41 +1002,66 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void sdl_window_get_display_mode(VMContext& context) {
+  void sdl_display_get_display_mode(VMContext& context) {
     const int displayIndex = APITools_GetIntValue(context, 1);
     const int modeIndex = APITools_GetIntValue(context, 2);
-
-    const size_t* mode_obj = APITools_GetObjectValue(context, 3);
-    SDL_DisplayMode* mode = mode_obj ? (SDL_DisplayMode*)mode_obj[0] : NULL;
+    size_t* mode_obj = APITools_GetObjectValue(context, 3);
     
-    APITools_SetIntValue(context, 0, SDL_GetDisplayMode(displayIndex, modeIndex, mode));
+    SDL_DisplayMode mode;
+    const int return_value = SDL_GetDisplayMode(displayIndex, modeIndex, &mode);
+    sdl_display_mode_raw_read(&mode, mode_obj);
+
+    APITools_SetIntValue(context, 0, return_value);
   }
 
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void sdl_window_get_current_display_mode(VMContext& context) {
+  void sdl_display_get_current_display_mode(VMContext& context) {
     const int displayIndex = APITools_GetIntValue(context, 1);
+    size_t* mode_obj = APITools_GetObjectValue(context, 2);
 
-    const size_t* mode_obj = APITools_GetObjectValue(context, 2);
-    SDL_DisplayMode* mode = mode_obj ? (SDL_DisplayMode*)mode_obj[0] : NULL;
+    SDL_DisplayMode mode;
+    const int return_value = SDL_GetCurrentDisplayMode(displayIndex, &mode);
+    sdl_display_mode_raw_read(&mode, mode_obj);
     
-    APITools_SetIntValue(context, 0, SDL_GetCurrentDisplayMode(displayIndex, mode));
+    APITools_SetIntValue(context, 0, return_value);
   }
 
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void sdl_window_get_closest_display_mode(VMContext& context) {
+  void sdl_display_get_closest_display_mode(VMContext& context) {
     const int displayIndex = APITools_GetIntValue(context, 1);
+    size_t* mode_obj = APITools_GetObjectValue(context, 2);
+    size_t* closest_obj = APITools_GetObjectValue(context, 3);
 
-    const size_t* mode_obj = APITools_GetObjectValue(context, 2);
-    SDL_DisplayMode* mode = mode_obj ? (SDL_DisplayMode*)mode_obj[0] : NULL;
+    SDL_DisplayMode mode;
+    sdl_display_mode_raw_write(&mode, mode_obj);
 
-    const size_t* closest_obj = APITools_GetObjectValue(context, 3);
-    SDL_DisplayMode* closest = closest_obj ? (SDL_DisplayMode*)closest_obj[0] : NULL;
-    
-    APITools_SetIntValue(context, 0, (size_t)SDL_GetClosestDisplayMode(displayIndex, mode, closest));
+    SDL_DisplayMode closest;
+    SDL_DisplayMode* return_value = SDL_GetClosestDisplayMode(displayIndex, &mode, &closest);
+    sdl_display_mode_raw_write(&closest, closest_obj);
+
+    APITools_SetIntValue(context, 0, return_value == NULL);
+  }
+
+  void sdl_display_mode_raw_read(SDL_DisplayMode* mode, size_t* display_mode_obj) {
+    if(mode && display_mode_obj) {
+      display_mode_obj[0] = mode->format;
+      display_mode_obj[1] = mode->w;
+      display_mode_obj[2] = mode->h;
+      display_mode_obj[3] = mode->refresh_rate;
+    }
+  }
+
+  void sdl_display_mode_raw_write(SDL_DisplayMode* mode, size_t* display_mode_obj) {
+    if(mode && display_mode_obj) {
+      mode->format = display_mode_obj[0];
+      mode->w = display_mode_obj[1];
+      mode->h = display_mode_obj[2];
+      mode->refresh_rate = display_mode_obj[3];
+    }
   }
 
   //
@@ -1084,8 +1115,12 @@ extern "C" {
 #endif
   void sdl_window_set_display_mode(VMContext& context) {
     SDL_Window* window = (SDL_Window*)APITools_GetIntValue(context, 1);
-    const size_t* mode_obj = APITools_GetObjectValue(context, 2);
-    APITools_SetIntValue(context, 0, SDL_SetWindowDisplayMode(window, (SDL_DisplayMode*)mode_obj));
+    size_t* mode_obj = APITools_GetObjectValue(context, 2);
+
+    SDL_DisplayMode mode;
+    sdl_display_mode_raw_write(&mode, mode_obj);
+
+    APITools_SetIntValue(context, 0, SDL_SetWindowDisplayMode(window, &mode));
   }
 
 #ifdef _WIN32
@@ -1973,7 +2008,24 @@ extern "C" {
     SDL_UnlockTexture(texture);
   }
 
+  //
+  // Timer
+  //
 
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_timer_get_ticks(VMContext& context) {
+    APITools_SetIntValue(context, 0, SDL_GetTicks());
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_timer_delay(VMContext& context) {
+    const Uint32 ms = APITools_GetIntValue(context, 0);
+    SDL_Delay(ms);
+  }
 
 
 
