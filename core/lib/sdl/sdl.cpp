@@ -83,6 +83,15 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
+  void sdl_core_get_error(VMContext& context) {
+    const string return_value = SDL_GetError();
+    const wstring w_return_value(return_value.begin(), return_value.end());
+    APITools_SetStringValue(context, 0, w_return_value);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
   void sdl_core_gl_set_swap_interval(VMContext& context) {
     const int interval = APITools_GetIntValue(context, 1);
     APITools_SetIntValue(context, 0, SDL_GL_SetSwapInterval(interval));
