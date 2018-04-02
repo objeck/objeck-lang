@@ -111,7 +111,7 @@ class Test {
 			};
 
 			# Clear screen
-			for(i := 0; i < 480; i += 1;) {
+			for(i := 0; i < SCREEN_WIDTH; i += 1;) {
 				@renderer->SetDrawColor(0xFF, 0xFF, 0xFF, 0xFF);
 				@renderer->Clear();
 
