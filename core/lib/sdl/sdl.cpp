@@ -497,7 +497,7 @@ extern "C" {
     SDL_Rect rect;
     sdl_rect_raw_write(&rect, rect_obj);
 
-    APITools_SetIntValue(context, 0, SDL_SetClipRect(surface, &rect));
+    APITools_SetIntValue(context, 0, SDL_SetClipRect(surface, rect_obj ? &rect : NULL));
   }
 
 #ifdef _WIN32
@@ -511,7 +511,7 @@ extern "C" {
     SDL_PixelFormat fmt;
     sdl_pixel_format_raw_write(&fmt, fmt_obj);
 
-    APITools_SetIntValue(context, 0, (size_t)SDL_ConvertSurface(surface, &fmt, flags));
+    APITools_SetIntValue(context, 0, (size_t)SDL_ConvertSurface(surface, fmt_obj ? &fmt : NULL, flags));
   }
 
 #ifdef _WIN32
@@ -527,8 +527,7 @@ extern "C" {
     const int g = APITools_GetIntValue(context, 3);
     const int b = APITools_GetIntValue(context, 4);
 
-    const int return_value = SDL_MapRGB(&pixel_format, r, g, b);
-
+    const int return_value = SDL_MapRGB(pixel_format_obj ? &pixel_format : NULL, r, g, b);
     APITools_SetIntValue(context, 0, return_value);
   }
 
@@ -543,7 +542,7 @@ extern "C" {
     SDL_Rect rect;
     sdl_rect_raw_write(&rect, rect_obj);
 
-    APITools_SetIntValue(context, 0, SDL_FillRect(surface, &rect, color));
+    APITools_SetIntValue(context, 0, SDL_FillRect(surface, rect_obj ? &rect : NULL, color));
   }
 
 #ifdef _WIN32
@@ -563,7 +562,8 @@ extern "C" {
     SDL_Rect dstrect;
     sdl_rect_raw_write(&dstrect, dstrect_obj);
 
-    APITools_SetIntValue(context, 0, SDL_UpperBlit(surface, &srcrect, dst, &dstrect));
+    APITools_SetIntValue(context, 0, SDL_UpperBlit(surface, 
+      srcrect_obj ? &srcrect : NULL, dst, dstrect_obj ? &dstrect : NULL));
   }
 
 #ifdef _WIN32
@@ -583,7 +583,8 @@ extern "C" {
     SDL_Rect dstrect;
     sdl_rect_raw_write(&dstrect, dstrect_obj);
 
-    APITools_SetIntValue(context, 0, SDL_LowerBlit(surface, &srcrect, dst, &dstrect));
+    APITools_SetIntValue(context, 0, SDL_LowerBlit(surface, srcrect_obj ? &srcrect : NULL, 
+      dst, dstrect_obj ? &dstrect : NULL));
   }
 
 #ifdef _WIN32
@@ -603,7 +604,8 @@ extern "C" {
     SDL_Rect dstrect;
     sdl_rect_raw_write(&dstrect, dstrect_obj);
 
-    APITools_SetIntValue(context, 0, SDL_LowerBlit(surface, &srcrect, dst, &dstrect));
+    APITools_SetIntValue(context, 0, SDL_LowerBlit(surface, 
+      srcrect_obj ? &srcrect : NULL, dst, dstrect_obj ? &dstrect : NULL));
   }
 
 #ifdef _WIN32
@@ -623,7 +625,7 @@ extern "C" {
     SDL_Rect dstrect;
     sdl_rect_raw_write(&dstrect, dstrect_obj);
 
-    APITools_SetIntValue(context, 0, SDL_UpperBlitScaled(surface, &srcrect, dst, &dstrect));
+    APITools_SetIntValue(context, 0, SDL_UpperBlitScaled(surface, srcrect_obj ? &srcrect : NULL, dst, dstrect_obj ? &dstrect : NULL));
   }
 
 #ifdef _WIN32
@@ -643,7 +645,7 @@ extern "C" {
     SDL_Rect dstrect;
     sdl_rect_raw_write(&dstrect, dstrect_obj);
 
-    APITools_SetIntValue(context, 0, SDL_LowerBlitScaled(surface, &srcrect, dst, &dstrect));
+    APITools_SetIntValue(context, 0, SDL_LowerBlitScaled(surface, srcrect_obj ? &srcrect : NULL, dst, dstrect_obj ? &dstrect : NULL));
   }
 
   //
@@ -753,7 +755,7 @@ extern "C" {
     SDL_Rect B;
     sdl_rect_raw_write(&B, B_obj);
 
-    APITools_SetIntValue(context, 0, SDL_HasIntersection(&rect, &B));
+    APITools_SetIntValue(context, 0, SDL_HasIntersection(rect_obj ? &rect : NULL, B_obj ? &B : NULL));
   }
   
 #ifdef _WIN32
@@ -770,7 +772,7 @@ extern "C" {
 
     size_t* C_obj = APITools_GetObjectValue(context, 3);
     SDL_Rect C;
-    const int return_value = SDL_IntersectRect(&rect, &B, &C);
+    const int return_value = SDL_IntersectRect(rect_obj ? &rect : NULL, B_obj ? &B : NULL, C_obj ? &C : NULL);
     sdl_rect_raw_read(&C, C_obj);
 
     APITools_SetIntValue(context, 0, return_value);
@@ -789,9 +791,9 @@ extern "C" {
     sdl_rect_raw_write(&B, B_obj);
 
     size_t* C_obj = APITools_GetObjectValue(context, 2);
+    
     SDL_Rect C;
-
-    SDL_UnionRect(&rect, &B, &C);
+    SDL_UnionRect(rect_obj ? &rect : NULL, B_obj ? &B : NULL, &C);
     sdl_rect_raw_read(&C, C_obj);
   }
 
@@ -814,9 +816,6 @@ extern "C" {
   }
 */
 
-///////////////////////////////////////////
-
-
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
@@ -830,7 +829,7 @@ extern "C" {
     int X2 = APITools_GetIntValue(context, 4);
     int Y2 = APITools_GetIntValue(context, 5);
 
-    APITools_SetIntValue(context, 0, SDL_IntersectRectAndLine(&rect, &X1, &Y1, &X2, &Y2));
+    APITools_SetIntValue(context, 0, SDL_IntersectRectAndLine(rect_obj ? &rect : NULL, &X1, &Y1, &X2, &Y2));
   }
 
   //
@@ -958,8 +957,8 @@ extern "C" {
     sdl_display_mode_raw_write(&mode, mode_obj);
 
     SDL_DisplayMode closest;
-    SDL_DisplayMode* return_value = SDL_GetClosestDisplayMode(displayIndex, &mode, &closest);
-    sdl_display_mode_raw_write(&closest, closest_obj);
+    SDL_DisplayMode* return_value = SDL_GetClosestDisplayMode(displayIndex, mode_obj ? &mode : NULL, &closest);
+    sdl_display_mode_raw_read(&closest, closest_obj);
 
     APITools_SetIntValue(context, 0, return_value == NULL);
   }
@@ -1038,7 +1037,7 @@ extern "C" {
     SDL_DisplayMode mode;
     sdl_display_mode_raw_write(&mode, mode_obj);
 
-    APITools_SetIntValue(context, 0, SDL_SetWindowDisplayMode(window, &mode));
+    APITools_SetIntValue(context, 0, SDL_SetWindowDisplayMode(window, mode_obj ? &mode : NULL));
   }
 
 #ifdef _WIN32
@@ -1624,18 +1623,17 @@ extern "C" {
     APITools_SetIntValue(context, 0, SDL_RenderDrawLine(renderer, x1, y1, x2, y2));
   }
 
-  /////////////////////////////////////////////////
-
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
   void sdl_renderer_render_draw_rect(VMContext& context) {
     SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
 
-    const size_t* rect_obj = (size_t*)APITools_GetObjectValue(context, 2);
-    SDL_Rect* rect = (SDL_Rect*)rect_obj[0];
-    
-    APITools_SetIntValue(context, 0, SDL_RenderDrawRect(renderer, rect));
+    size_t* rect_obj = (size_t*)APITools_GetObjectValue(context, 2);
+    SDL_Rect rect;
+    sdl_rect_raw_write(&rect, rect_obj);
+
+    APITools_SetIntValue(context, 0, SDL_RenderDrawRect(renderer, rect_obj ? &rect : NULL));
   }
 
 #ifdef _WIN32
@@ -1643,9 +1641,12 @@ extern "C" {
 #endif
   void sdl_renderer_render_set_viewport(VMContext& context) {
     SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
-    const size_t* rect_obj = (size_t*)APITools_GetObjectValue(context, 2);
-    SDL_Rect* rect = (SDL_Rect*)rect_obj[0];
-    APITools_SetIntValue(context, 0, SDL_RenderSetViewport(renderer, rect));
+    size_t* rect_obj = (size_t*)APITools_GetObjectValue(context, 2);
+    
+    SDL_Rect rect;
+    sdl_rect_raw_write(&rect, rect_obj);
+
+    APITools_SetIntValue(context, 0, SDL_RenderSetViewport(renderer, rect_obj ? &rect : NULL));
   }
 
 #ifdef _WIN32
@@ -1653,15 +1654,10 @@ extern "C" {
 #endif
   void sdl_renderer_render_get_viewport(VMContext& context) {
     SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 0);
-    long* rect_obj = (long*)APITools_GetObjectValue(context, 1);
+    size_t* rect_obj = APITools_GetObjectValue(context, 1);
 
     SDL_Rect rect;
     SDL_RenderGetViewport(renderer, &rect);
-
-    rect_obj[1] = rect.x;
-    rect_obj[2] = rect.y;
-    rect_obj[3] = rect.w;
-    rect_obj[4] = rect.h;
   }
 
 #ifdef _WIN32
@@ -1780,14 +1776,16 @@ extern "C" {
     const size_t* texture_obj = APITools_GetObjectValue(context, 2);
     SDL_Texture* texture = texture_obj ? (SDL_Texture*)texture_obj[0] : NULL;
 
-    const size_t* srcrect_obj = APITools_GetObjectValue(context, 3);
-    SDL_Rect* srcrect = srcrect_obj ? (SDL_Rect*)srcrect_obj[0] : NULL;
+    size_t* srcrect_obj = APITools_GetObjectValue(context, 3);
+    SDL_Rect srcrect;
+    sdl_rect_raw_write(&srcrect, srcrect_obj);
 
-    const size_t* dstrect_obj = APITools_GetObjectValue(context, 4);
-    SDL_Rect* dstrect = dstrect_obj ? (SDL_Rect*)dstrect_obj[0] : NULL;
+    size_t* dstrect_obj = APITools_GetObjectValue(context, 4);
+    SDL_Rect dstrect;
+    sdl_rect_raw_write(&dstrect, dstrect_obj);
 
-    const int return_value = SDL_RenderCopy(renderer, texture, srcrect, dstrect);
-    APITools_SetIntValue(context, 0, return_value);
+    APITools_SetIntValue(context, 0, SDL_RenderCopy(renderer, texture, 
+      srcrect_obj ? &srcrect : NULL, dstrect_obj ? &dstrect : NULL));
   }
 
 #ifdef _WIN32
