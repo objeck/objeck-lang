@@ -186,7 +186,7 @@ class Test {
 			return false;
 		};
 
-		if(<>@background_texture->LoadFromFile( "images/background.png")) {
+		if(<>@background_texture->LoadFromFile("images/background.png")) {
 			return false;
 		};
 
