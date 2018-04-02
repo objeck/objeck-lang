@@ -1486,69 +1486,29 @@ bundle SDL {
 	}
 	
 	#~
-	TODO: load X and Y with 'New'
+	TODO: is this used?
 	~#
 	class Point {
-		@point : Int;
 		@x : Int;
 		@y : Int;
 		
 		New() {
-			array_args := Base->New[1];
-			array_args[0] := IntHolder->New();
-			Proxy->GetDllProxy()->CallFunction("sdl_point_new", array_args);
-			value := array_args[0]->As(IntHolder);
-			@point := value->Get();
-		}
-		
-		method : public : Free() ~ Nil {
-			if(@point <> 0) {
-				array_args := Base->New[1];
-				array_args[0] := IntHolder->New(@point);
-
-				Proxy->GetDllProxy()->CallFunction("sdl_point_free", array_args);
-				@point := 0;
-			};
-		}
-		
-		method : Read() ~ Nil {
-			if(@point <> 0) {
-				array_args := Base->New[2];
-				array_args[0] := IntHolder->New(@point);
-				array_args[1] := @self;
-
-				Proxy->GetDllProxy()->CallFunction("sdl_point_read", array_args);
-			};
-		}
-		
-		method : Write() ~ Nil {
-			if(@point <> 0) {
-				array_args := Base->New[2];
-				array_args[0] := IntHolder->New(@point);
-				array_args[1] := @self;
-
-				Proxy->GetDllProxy()->CallFunction("sdl_point_write", array_args);
-			};
 		}
 		
 		method : public : GetX() ~ Int {
-			Read();
 			return @x;
 		}
 		
 		method : public : GetY() ~ Int {
-			Read();
 			return @y;
 		}
 		
 		method : public : SetX(x : Int) ~ Nil {
 			@x := x;
-			Write();
 		}
 		
 		method : public : SetY(y : Int) ~ Nil {
 			@y := y;
-			Write();
 		}
 	}
 
@@ -1712,10 +1672,11 @@ bundle SDL {
 			return Nil;
 		}
 		
-		function : EnclosePoints(points : Point, count : Int, clip : Rect) ~ Rect {
+		# TODO: fix this
+		function : EnclosePoints(points : Point[], count : Int, clip : Rect) ~ Rect {
 			array_args := Base->New[4];
 			array_args[0] := IntHolder->New();
-			array_args[1] := points;
+#			array_args[1] := IntArrayHolder->New(points);
 			array_args[2] := IntHolder->New(count);
 			array_args[3] := clip;
 
@@ -1757,7 +1718,15 @@ bundle SDL {
 		@g_mask : Int;
 		@b_mask : Int;
 		@a_mask : Int;
-		
+		@r_loss : Int;
+	    @g_loss : Int;
+	    @b_loss : Int;
+	    @a_loss : Int;
+	    @r_shift : Int;
+	    @g_shift : Int;
+	    @b_shift : Int;
+	    @a_shift : Int;
+
 		New() {
 		}
 

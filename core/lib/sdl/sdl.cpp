@@ -517,8 +517,6 @@ extern "C" {
   __declspec(dllexport)
 #endif
   void sdl_pixelformat_maprgb(VMContext& context) {
-    wcout << L"-- sdl_pixelformat_maprgb --" << endl;
-
     size_t* pixel_format_obj = APITools_GetObjectValue(context, 1);
 
     SDL_PixelFormat pixel_format;
@@ -528,9 +526,9 @@ extern "C" {
     const int g = APITools_GetIntValue(context, 3);
     const int b = APITools_GetIntValue(context, 4);
 
-    APITools_SetIntValue(context, 0, SDL_MapRGB(&pixel_format, r, g, b));
+    const int return_value = SDL_MapRGB(&pixel_format, r, g, b);
 
-    wcout << L"-- sdl_pixelformat_maprgb --" << endl;
+    APITools_SetIntValue(context, 0, return_value);
   }
 
 #ifdef _WIN32
@@ -656,15 +654,26 @@ extern "C" {
       pixel_format_obj[5] = pixel_format->Gmask;
       pixel_format_obj[6] = pixel_format->Bmask;
       pixel_format_obj[7] = pixel_format->Amask;
+      pixel_format_obj[8] = pixel_format->Rloss;
+      pixel_format_obj[9] = pixel_format->Gloss;
+      pixel_format_obj[10] = pixel_format->Bloss;
+      pixel_format_obj[11] = pixel_format->Aloss;
+      pixel_format_obj[12] = pixel_format->Rshift;
+      pixel_format_obj[13] = pixel_format->Gshift;
+      pixel_format_obj[14] = pixel_format->Bshift;
+      pixel_format_obj[15] = pixel_format->Ashift;
     }
   }
 
   void sdl_pixel_format_raw_write(SDL_PixelFormat* pixel_format, size_t* pixel_format_obj) {
     if(pixel_format_obj) {
       pixel_format->format = pixel_format_obj[0];
-      if(pixel_format->palette) {
+      if(pixel_format_obj[1]) {
           size_t* palette_obj = (size_t*)pixel_format_obj[1];
           sdl_palette_raw_write(pixel_format->palette, palette_obj);
+      }
+      else {
+        pixel_format->palette = NULL;
       }
       pixel_format->BitsPerPixel = (Uint8)pixel_format_obj[2];
       pixel_format->BytesPerPixel = (Uint8)pixel_format_obj[3];
@@ -672,74 +681,32 @@ extern "C" {
       pixel_format->Gmask = pixel_format_obj[5];
       pixel_format->Bmask = pixel_format_obj[6];
       pixel_format->Amask = pixel_format_obj[7];
+      pixel_format->Rloss = (Uint8)pixel_format_obj[8];
+      pixel_format->Gloss = (Uint8)pixel_format_obj[9];
+      pixel_format->Bloss = (Uint8)pixel_format_obj[10];
+      pixel_format->Aloss = (Uint8)pixel_format_obj[11];
+      pixel_format->Rshift = (Uint8)pixel_format_obj[12];
+      pixel_format->Gshift = (Uint8)pixel_format_obj[13];
+      pixel_format->Bshift = (Uint8)pixel_format_obj[14];
+      pixel_format->Ashift = (Uint8)pixel_format_obj[15];
     }
   }
 
   //
   // SDL_Point
   //
-#ifdef _WIN32
-  __declspec(dllexport)
-#endif
-  void sdl_point_new(VMContext& context) {
-    SDL_Point* point = new SDL_Point;
-    APITools_SetIntValue(context, 0, (size_t)point);
-  }
-
-#ifdef _WIN32
-  __declspec(dllexport)
-#endif
-  void sdl_point_free(VMContext& context) {
-    SDL_Point* point = (SDL_Point*)APITools_GetIntValue(context, 0);
-    delete point;
-  }
-  
   void sdl_point_raw_read(SDL_Point* point, size_t* point_obj) {
-    if(point_obj) {
+    if(point) {
       point_obj[1] = point->x;
       point_obj[2] = point->y;
     }
   }
-
-#ifdef _WIN32
-  __declspec(dllexport)
-#endif
-  void sdl_point_read(VMContext& context) {
-    SDL_Point* point = (SDL_Point*)APITools_GetIntValue(context, 0);
-    size_t* point_obj = APITools_GetObjectValue(context, 1);
-    sdl_point_raw_read(point, point_obj);
-  }
-
+  
   void sdl_point_raw_write(SDL_Point* point, size_t* point_obj) {
     if(point_obj) {
       point->x = point_obj[1];
       point->y = point_obj[2];
     }
-  }
-
-#ifdef _WIN32
-  __declspec(dllexport)
-#endif
-  void sdl_point_write(VMContext& context) {
-    SDL_Point* point = (SDL_Point*)APITools_GetIntValue(context, 0);
-    size_t* point_obj = APITools_GetObjectValue(context, 1);
-    sdl_point_raw_write(point, point_obj);
-  }
-  
-#ifdef _WIN32
-  __declspec(dllexport)
-#endif
-  void sdl_point_x(VMContext& context) {
-    SDL_Point* point = (SDL_Point*)APITools_GetIntValue(context, 1);
-    APITools_SetIntValue(context, 0, point->x);
-  }
-
-#ifdef _WIN32
-  __declspec(dllexport)
-#endif
-  void sdl_point_y(VMContext& context) {
-    SDL_Point* point = (SDL_Point*)APITools_GetIntValue(context, 1);
-    APITools_SetIntValue(context, 0, point->y);
   }
 
   //
