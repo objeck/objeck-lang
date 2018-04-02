@@ -16,7 +16,7 @@ bundle SDL {
 		}
 	}
 	
-	## TODO: add values
+	## TODO: break out this flag (i.e. window vs. keyboard)
 	consts Flags {
 		SDL_INIT_VIDEO := 0x00000020,
 		SDL_WINDOW_POS_UNDEFINED := 0x1FFF0000,
@@ -677,7 +677,6 @@ bundle SDL {
 		}
 	}
 	
-	## TODO: add values
 	consts Scancode {
 		SCANCODE_UNKNOWN := 0,
 		SCANCODE_A := 4,
@@ -1327,8 +1326,34 @@ bundle SDL {
 		}
 	}
 	
-	## TODO: add values
-	consts GLattr {
+	enum GLattr {
+		SDL_GL_RED_SIZE,
+	    SDL_GL_GREEN_SIZE,
+	    SDL_GL_BLUE_SIZE,
+	    SDL_GL_ALPHA_SIZE,
+	    SDL_GL_BUFFER_SIZE,
+	    SDL_GL_DOUBLEBUFFER,
+	    SDL_GL_DEPTH_SIZE,
+	    SDL_GL_STENCIL_SIZE,
+	    SDL_GL_ACCUM_RED_SIZE,
+	    SDL_GL_ACCUM_GREEN_SIZE,
+	    SDL_GL_ACCUM_BLUE_SIZE,
+	    SDL_GL_ACCUM_ALPHA_SIZE,
+	    SDL_GL_STEREO,
+	    SDL_GL_MULTISAMPLEBUFFERS,
+	    SDL_GL_MULTISAMPLESAMPLES,
+	    SDL_GL_ACCELERATED_VISUAL,
+	    SDL_GL_RETAINED_BACKING,
+	    SDL_GL_CONTEXT_MAJOR_VERSION,
+	    SDL_GL_CONTEXT_MINOR_VERSION,
+	    SDL_GL_CONTEXT_EGL,
+	    SDL_GL_CONTEXT_FLAGS,
+	    SDL_GL_CONTEXT_PROFILE_MASK,
+	    SDL_GL_SHARE_WITH_CURRENT_CONTEXT,
+	    SDL_GL_FRAMEBUFFER_SRGB_CAPABLE,
+	    SDL_GL_CONTEXT_RELEASE_BEHAVIOR,
+	    SDL_GL_CONTEXT_RESET_NOTIFICATION,
+	    SDL_GL_CONTEXT_NO_ERROR
 	}
 	
 	#~
@@ -1485,9 +1510,6 @@ bundle SDL {
 		}
 	}
 	
-	#~
-	TODO: is this used?
-	~#
 	class Point {
 		@x : Int;
 		@y : Int;
@@ -1512,127 +1534,57 @@ bundle SDL {
 		}
 	}
 
-	#~
-	Rect class
-	TODO: add SDL_RectEmpty, SDL_RectEquals (SDL_rect.h)
-	~#
 	class Rect {
-		@rect : Int;
 		@x : Int;
 		@y : Int;
 		@w : Int;
 		@h : Int;
 		
 		New() {
-			array_args := Base->New[1];
-			array_args[0] := IntHolder->New();
-			Proxy->GetDllProxy()->CallFunction("sdl_rect_new", array_args);
-			value := array_args[0]->As(IntHolder);
-			@rect := value->Get();
 		}
 
-		New(x : Int, y : Int, w : Int, h : Int) {
-			array_args := Base->New[1];
-			array_args[0] := IntHolder->New();
-			Proxy->GetDllProxy()->CallFunction("sdl_rect_new", array_args);
-			value := array_args[0]->As(IntHolder);
-			@rect := value->Get();
-
-			@x := x;
-			@y := y;
-			@w := w;
-			@h := h;
-			Write();
-		}
-		
-		method : public : Free() ~ Nil {
-			if(@rect <> 0) {
-				array_args := Base->New[1];
-				array_args[0] := IntHolder->New(@rect);
-				Proxy->GetDllProxy()->CallFunction("sdl_rect_free", array_args);
-				@rect := 0;
-			};
-		}
-		
-		New : private (rect : Int) {
-			@rect := rect;
-			Read();
-		}
-		
-		method : Read() ~ Nil {
-			if(@rect <> 0) {
-				array_args := Base->New[2];
-				array_args[0] := IntHolder->New(@rect);
-				array_args[1] := @self;
-
-				Proxy->GetDllProxy()->CallFunction("sdl_rect_read", array_args);
-			};
-		}
-		
-		method : Write() ~ Nil {
-			if(@rect <> 0) {
-				array_args := Base->New[2];
-				array_args[0] := IntHolder->New(@rect);
-				array_args[1] := @self;
-
-				Proxy->GetDllProxy()->CallFunction("sdl_rect_write", array_args);
-			};
-		}
-		
 		method : public : GetX() ~ Int {
-			Read();
 			return @x;
 		}
 		
 		method : public : GetY() ~ Int {
-			Read();
 			return @y;
 		}
 		
 		method : public : GetH() ~ Int {
-			Read();
 			return @h;
 		}
 		
 		method : public : GetW() ~ Int {
-			Read();
 			return @w;
 		}
 		
 		method : public : SetX(x : Int) ~ Nil {
 			@x := x;
-			Write();
 		}
 		
 		method : public : SetY(y : Int) ~ Nil {
 			@y := y;
-			Write();
 		}
 		
 		method : public : SetH(h : Int) ~ Nil {
 			@h := h;
-			Write();
 		}
 		
 		method : public : SetW(w : Int) ~ Nil {
 			@w := w;
-			Write();
 		}
 		
 		method : public : HasIntersection(B : Rect) ~ Bool {
-			if(@rect <> 0) {
-				array_args := Base->New[3];
-				array_args[0] := IntHolder->New();
-				array_args[1] := IntHolder->New(@rect);
-				array_args[2] := B;
+			array_args := Base->New[3];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@self);
+			array_args[2] := B;
 
-				Proxy->GetDllProxy()->CallFunction("sdl_rect_has_intersection", array_args);
+			Proxy->GetDllProxy()->CallFunction("sdl_rect_has_intersection", array_args);
 
-				value := array_args[0]->As(IntHolder);
-				return value->Get() = 0 ? false : true;
-			};
-			
-			return false;
+			value := array_args[0]->As(IntHolder);
+			return value->Get() = 0 ? false : true;
 		}
 		
 		method : public : Intersect(B : Rect) ~ Rect {
@@ -1671,12 +1623,13 @@ bundle SDL {
 			
 			return Nil;
 		}
-		
+
+#~		
 		# TODO: fix this
 		function : EnclosePoints(points : Point[], count : Int, clip : Rect) ~ Rect {
 			array_args := Base->New[4];
 			array_args[0] := IntHolder->New();
-#			array_args[1] := IntArrayHolder->New(points);
+			array_args[1] := IntArrayHolder->New(points);
 			array_args[2] := IntHolder->New(count);
 			array_args[3] := clip;
 
@@ -1685,7 +1638,8 @@ bundle SDL {
 			value := array_args[0]->As(IntHolder);
 			return Rect->New(value->Get());
 		}
-		
+~#
+
 		method : public : IntersectAndLine(X1 : IntHolder, Y1 :IntHolder, X2 : IntHolder, Y2 : IntHolder) ~ Bool {
 			if(@rect <> 0) {		
 				array_args := Base->New[6];
