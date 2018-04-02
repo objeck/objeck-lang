@@ -1543,6 +1543,13 @@ bundle SDL {
 		
 		New() {
 		}
+		
+		New(x : Int, y : Int, w : Int, h : Int) {
+			@x := x;
+			@y := y;
+			@w := w;
+			@h := h;
+		}
 
 		method : public : GetX() ~ Int {
 			return @x;
