@@ -285,7 +285,8 @@ extern "C" {
 #endif
   void sdl_surface_get_pixel_format(VMContext& context) {
     SDL_Surface* surface = (SDL_Surface*)APITools_GetIntValue(context, 1);
-    APITools_SetIntValue(context, 0, (size_t)surface->format);
+	  size_t* pixel_format_obj = APITools_GetObjectValue(context, 0);
+	  sdl_pixel_format_raw_read(surface->format, pixel_format_obj);
   }
 
 #ifdef _WIN32
@@ -503,24 +504,33 @@ extern "C" {
 #endif
   void sdl_surface_convert(VMContext& context) {
     SDL_Surface* surface = (SDL_Surface*)APITools_GetIntValue(context, 1);
-
-    const size_t* fmt_obj = APITools_GetObjectValue(context, 2);
-    SDL_PixelFormat* fmt = fmt_obj ? (SDL_PixelFormat*)fmt_obj[0] : NULL;
-    
+    size_t* fmt_obj = APITools_GetObjectValue(context, 2);
     const int flags = APITools_GetIntValue(context, 3);
-    
-    APITools_SetIntValue(context, 0, (size_t)SDL_ConvertSurface(surface, fmt, flags));
+
+    SDL_PixelFormat fmt;
+    sdl_pixel_format_raw_write(&fmt, fmt_obj);
+
+    APITools_SetIntValue(context, 0, (size_t)SDL_ConvertSurface(surface, &fmt, flags));
   }
 
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
   void sdl_pixelformat_maprgb(VMContext& context) {
-    SDL_PixelFormat* format = (SDL_PixelFormat*)APITools_GetIntValue(context, 1);
+    wcout << L"-- sdl_pixelformat_maprgb --" << endl;
+
+    size_t* pixel_format_obj = APITools_GetObjectValue(context, 1);
+
+    SDL_PixelFormat pixel_format;
+    sdl_pixel_format_raw_write(&pixel_format, pixel_format_obj);
+
     const int r = APITools_GetIntValue(context, 2);
     const int g = APITools_GetIntValue(context, 3);
     const int b = APITools_GetIntValue(context, 4);
-    APITools_SetIntValue(context, 0, SDL_MapRGB(format, r, g, b));
+
+    APITools_SetIntValue(context, 0, SDL_MapRGB(&pixel_format, r, g, b));
+
+    wcout << L"-- sdl_pixelformat_maprgb --" << endl;
   }
 
 #ifdef _WIN32
@@ -630,75 +640,39 @@ extern "C" {
   //
   // SDL_PixelFormat
   //
-#ifdef _WIN32
-  __declspec(dllexport)
-#endif
-  void sdl_pixel_format_new(VMContext& context) {
-    SDL_PixelFormat* pixel_format = new SDL_PixelFormat;
-    APITools_SetIntValue(context, 0, (size_t)pixel_format);
-  }
-
-#ifdef _WIN32
-  __declspec(dllexport)
-#endif
-  void sdl_pixel_format_free(VMContext& context) {
-    SDL_PixelFormat* pixel_format = (SDL_PixelFormat*)APITools_GetIntValue(context, 0);
-    delete pixel_format;
-  }
-
   void sdl_pixel_format_raw_read(SDL_PixelFormat* pixel_format, size_t* pixel_format_obj) {
     if(pixel_format_obj) {
-      pixel_format_obj[1] = pixel_format->format;
+      pixel_format_obj[0] = pixel_format->format;
       if(pixel_format->palette) {
-        size_t* palette_obj = (size_t*)pixel_format_obj[2];
+        size_t* palette_obj = (size_t*)pixel_format_obj[1];
         sdl_palette_raw_read(pixel_format->palette, palette_obj);
       }
       else {
-        pixel_format_obj[2] = 0;
+        pixel_format_obj[1] = 0;
       }
-      pixel_format_obj[3] = pixel_format->BitsPerPixel;
-      pixel_format_obj[4] = pixel_format->BytesPerPixel;
-      pixel_format_obj[5] = pixel_format->Rmask;
-      pixel_format_obj[6] = pixel_format->Gmask;
-      pixel_format_obj[7] = pixel_format->Bmask;
-      pixel_format_obj[8] = pixel_format->Amask;
+      pixel_format_obj[2] = pixel_format->BitsPerPixel;
+      pixel_format_obj[3] = pixel_format->BytesPerPixel;
+      pixel_format_obj[4] = pixel_format->Rmask;
+      pixel_format_obj[5] = pixel_format->Gmask;
+      pixel_format_obj[6] = pixel_format->Bmask;
+      pixel_format_obj[7] = pixel_format->Amask;
     }
-  }
-
-#ifdef _WIN32
-  __declspec(dllexport)
-#endif
-  void sdl_pixel_format_read(VMContext& context) {
-    SDL_PixelFormat* pixel_format = (SDL_PixelFormat*)APITools_GetIntValue(context, 0);
-    size_t* pixel_format_obj = APITools_GetObjectValue(context, 1);
-    sdl_pixel_format_raw_read(pixel_format, pixel_format_obj);
   }
 
   void sdl_pixel_format_raw_write(SDL_PixelFormat* pixel_format, size_t* pixel_format_obj) {
     if(pixel_format_obj) {
-      if(pixel_format_obj) {
-        pixel_format_obj[1] = pixel_format->format;
-        if(pixel_format->palette) {
-          size_t* palette_obj = (size_t*)pixel_format_obj[2];
+      pixel_format->format = pixel_format_obj[0];
+      if(pixel_format->palette) {
+          size_t* palette_obj = (size_t*)pixel_format_obj[1];
           sdl_palette_raw_write(pixel_format->palette, palette_obj);
-        }
-        pixel_format->BitsPerPixel = (Uint8)pixel_format_obj[3];
-        pixel_format->BytesPerPixel = (Uint8)pixel_format_obj[4];
-        pixel_format->Rmask = pixel_format_obj[5];
-        pixel_format->Gmask = pixel_format_obj[6];
-        pixel_format->Bmask = pixel_format_obj[7];
-        pixel_format->Amask = pixel_format_obj[8];
       }
+      pixel_format->BitsPerPixel = (Uint8)pixel_format_obj[2];
+      pixel_format->BytesPerPixel = (Uint8)pixel_format_obj[3];
+      pixel_format->Rmask = pixel_format_obj[4];
+      pixel_format->Gmask = pixel_format_obj[5];
+      pixel_format->Bmask = pixel_format_obj[6];
+      pixel_format->Amask = pixel_format_obj[7];
     }
-  }
-
-#ifdef _WIN32
-  __declspec(dllexport)
-#endif
-  void sdl_pixel_format_write(VMContext& context) {
-    SDL_PixelFormat* pixel_format = (SDL_PixelFormat*)APITools_GetIntValue(context, 0);
-    size_t* pixel_format_obj = APITools_GetObjectValue(context, 1);
-    sdl_pixel_format_raw_write(pixel_format, pixel_format_obj);
   }
 
   //
