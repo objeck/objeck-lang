@@ -756,40 +756,46 @@ extern "C" {
     APITools_SetIntValue(context, 0, SDL_HasIntersection(&rect, &B));
   }
   
-  ///////////////////////////////////////////
-
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
   void sdl_rect_intersect(VMContext& context) {
-    SDL_Rect* rect = (SDL_Rect*)APITools_GetIntValue(context, 1);
+    size_t* rect_obj = APITools_GetObjectValue(context, 1);
+    SDL_Rect rect;
+    sdl_rect_raw_write(&rect, rect_obj);
 
-    const size_t* B_obj = APITools_GetObjectValue(context, 2);
-    SDL_Rect* B = B_obj ? (SDL_Rect*)B_obj[0] : NULL;
+    size_t* B_obj = APITools_GetObjectValue(context, 2);
+    SDL_Rect B;
+    sdl_rect_raw_write(&B, B_obj);
 
-    SDL_Rect* C = new SDL_Rect;
-    if(SDL_IntersectRect(rect, B, C)) {
-      APITools_SetIntValue(context, 0, (size_t)C);
-    }
-    else {
-      APITools_SetIntValue(context, 0, 0);
-    }
+    size_t* C_obj = APITools_GetObjectValue(context, 3);
+    SDL_Rect C;
+    const int return_value = SDL_IntersectRect(&rect, &B, &C);
+    sdl_rect_raw_read(&C, C_obj);
+
+    APITools_SetIntValue(context, 0, return_value);
   }
-
+  
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
   void sdl_rect_union(VMContext& context) {
-    SDL_Rect* rect = (SDL_Rect*)APITools_GetIntValue(context, 1);
-    
-    const size_t* B_obj = APITools_GetObjectValue(context, 2);
-    SDL_Rect* B = B_obj ? (SDL_Rect*)B_obj[0] : NULL;
+    size_t* rect_obj = APITools_GetObjectValue(context, 0);
+    SDL_Rect rect;
+    sdl_rect_raw_write(&rect, rect_obj);
 
-    SDL_Rect* C = new SDL_Rect;
-    SDL_UnionRect(rect, B, C);
-    APITools_SetIntValue(context, 0, (size_t)C);
+    size_t* B_obj = APITools_GetObjectValue(context, 1);
+    SDL_Rect B;
+    sdl_rect_raw_write(&B, B_obj);
+
+    size_t* C_obj = APITools_GetObjectValue(context, 2);
+    SDL_Rect C;
+
+    SDL_UnionRect(&rect, &B, &C);
+    sdl_rect_raw_read(&C, C_obj);
   }
 
+/*
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
@@ -806,23 +812,25 @@ extern "C" {
     const int return_value = SDL_EnclosePoints(points, count, clip, result);
     APITools_SetIntValue(context, 0, (size_t)result);
   }
+*/
+
+///////////////////////////////////////////
+
 
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
   void sdl_rect_intersect_and_line(VMContext& context) {
-    SDL_Rect* rect = (SDL_Rect*)APITools_GetIntValue(context, 1);
+    size_t* rect_obj = APITools_GetObjectValue(context, 1);
+    SDL_Rect rect;
+    sdl_rect_raw_write(&rect, rect_obj);
+
     int X1 = APITools_GetIntValue(context, 2);
     int Y1 = APITools_GetIntValue(context, 3);
     int X2 = APITools_GetIntValue(context, 4);
     int Y2 = APITools_GetIntValue(context, 5);
 
-    APITools_SetIntValue(context, 0, SDL_IntersectRectAndLine(rect, &X1, &Y1, &X2, &Y2));
-
-    APITools_SetIntValue(context, 2, X1);
-    APITools_SetIntValue(context, 3, Y1);
-    APITools_SetIntValue(context, 4, X2);
-    APITools_SetIntValue(context, 5, Y2);
+    APITools_SetIntValue(context, 0, SDL_IntersectRectAndLine(&rect, &X1, &Y1, &X2, &Y2));
   }
 
   //
@@ -892,11 +900,13 @@ extern "C" {
 #endif
   void sdl_display_get_display_bounds(VMContext& context) {
     const int displayIndex = APITools_GetIntValue(context, 1);
+    size_t* rect_obj = APITools_GetObjectValue(context, 2);
 
-    const size_t* rect_obj = APITools_GetObjectValue(context, 2);
-    SDL_Rect* rect = rect_obj ? (SDL_Rect*)rect_obj[0] : NULL;
-        
-    APITools_SetIntValue(context, 0, SDL_GetDisplayBounds(displayIndex, rect));
+    SDL_Rect rect;
+    const int return_value = SDL_GetDisplayBounds(displayIndex, &rect);
+    sdl_rect_raw_read(&rect, rect_obj);
+
+    APITools_SetIntValue(context, 0, return_value);
   }
 
 #ifdef _WIN32
@@ -1258,6 +1268,7 @@ extern "C" {
     APITools_SetIntValue(context, 0, SDL_UpdateWindowSurface(window));
   }
 
+  /* TODO: Fix
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
@@ -1271,6 +1282,7 @@ extern "C" {
     
     APITools_SetIntValue(context, 0, SDL_UpdateWindowSurfaceRects(window, rects, numrects));
   }
+  */
 
 #ifdef _WIN32
   __declspec(dllexport)
@@ -1611,6 +1623,8 @@ extern "C" {
 
     APITools_SetIntValue(context, 0, SDL_RenderDrawLine(renderer, x1, y1, x2, y2));
   }
+
+  /////////////////////////////////////////////////
 
 #ifdef _WIN32
   __declspec(dllexport)
