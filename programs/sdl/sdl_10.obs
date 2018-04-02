@@ -129,6 +129,8 @@ class Test {
 				Timer->Delay(20);
 			};
 		};
+
+		e->Free();
 		
 		Close();
 	}
