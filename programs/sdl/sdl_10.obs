@@ -17,7 +17,6 @@ class LTexture {
 
 	# Loads image at specified path
 	method : public : LoadFromFile(path : String) ~ Bool {
-"--0--"->PrintLine();		
 		# Load image at specified path
 		loadedSurface := Image->Load(path);
 		if(loadedSurface->IsNull()) {
@@ -25,14 +24,9 @@ class LTexture {
 			return false;
 		};
 
-(loadedSurface->GetPixelFormat() = Nil)->PrintLine();
-		loadedSurface->SetColorKey(true, loadedSurface->GetPixelFormat()->MapRGB(0, 0xFF, 0xFF ));
-"--1' --"->PrintLine();		
-"--1'' --"->PrintLine();	
-(@renderer = Nil)->PrintLine();
+		loadedSurface->SetColorKey(true, loadedSurface->GetPixelFormat()->MapRGB(0, 0xFF, 0xFF));
 
 		texture := loadedSurface->CreateTexture(@renderer);
-"--2' --"->PrintLine();		
 		if(texture->IsNull()) {
 			"Unable to create texture!"->PrintLine();
 			return false;
@@ -40,11 +34,9 @@ class LTexture {
 
 
 		@width := loadedSurface->GetW();
-"--3--"->PrintLine();		
 		@height := loadedSurface->GetH();
 		loadedSurface->Free();
 		@texture := texture;
-"--4--"->PrintLine();
 
 		return @texture <> Nil;
 	}
@@ -108,9 +100,6 @@ class Test {
 		# Event handler
 		e := Event->New();
 
-		@foo_texture := LTexture->New(@renderer);
-		@background_texture := LTexture->New(@renderer);
-			
 		# While application is running
 		while(<>quit) {
 			# Handle events on queue
@@ -122,20 +111,23 @@ class Test {
 			};
 
 			# Clear screen
-			@renderer->SetDrawColor(0xFF, 0xFF, 0xFF, 0xFF);
-			@renderer->Clear();
+			for(i := 0; i < 480; i += 1;) {
+				@renderer->SetDrawColor(0xFF, 0xFF, 0xFF, 0xFF);
+				@renderer->Clear();
 
-			@foo_texture->Render(0, 0);
-			@background_texture->Render(240, 190);
+				@foo_texture->Render(0, 0);
+				@background_texture->Render(240, 190);
 
-			# Render background texture to screen
-			@background_texture->Render(0, 0);
+				# Render background texture to screen
+				@background_texture->Render(0, 0);
 
-			# Render Foo' to the screen
-			@foo_texture->Render(240, 190);
-
-			# Update screen
-			@renderer->Present();
+				# Render Foo' to the screen
+				@foo_texture->Render(i, 190);
+				
+				# Update screen
+				@renderer->Present();
+				Timer->Delay(20);
+			};
 		};
 		
 		Close();
@@ -160,12 +152,15 @@ class Test {
 		};
 
 		# Create window
-		@window := Window->New( "SDL Tutorial", Flags->SDL_WINDOW_POS_UNDEFINED->As(Int), 
-			Flags->SDL_WINDOW_POS_UNDEFINED->As(Int), 640, 480, Flags->SDL_WINDOW_SHOWN->As(Int));
+		@window := Window->New("SDL Tutorial", 
+			Flags->SDL_WINDOW_POS_UNDEFINED->As(Int), 
+			Flags->SDL_WINDOW_POS_UNDEFINED->As(Int), 
+			640, 480, Flags->SDL_WINDOW_SHOWN->As(Int));
 		if(@window->IsNull()) {
 			"Cannot create window!"->ErrorLine();
 			return false;
 		};
+
 		# Get window surface
 		@renderer := Renderer->New(@window, -1, RendererFlags->SDL_RENDERER_ACCELERATED->As(Int));
 		if(@renderer->IsNull()) {
@@ -173,6 +168,9 @@ class Test {
 			return false;
 		};
 		@renderer->SetDrawColor(0xFF, 0xFF, 0xFF, 0xFF);
+
+		@foo_texture := LTexture->New(@renderer);
+		@background_texture := LTexture->New(@renderer);
 
 		img_flags := ImageFlags->IMG_INIT_PNG->As(Int);
 		if((Image->Init(img_flags) and img_flags) = 0) {

@@ -1,16 +1,26 @@
 class Test {
-	consts Foo {
-		a := 13,
-		b := 7,
-		c := 200
-	}
+	@s : static : String;
 
 	function : Main(args : String[]) ~ Nil {
-		x := Foo->b;
-		Show(x->As(Int));
+		Init();
+		
+		f := Foo->New(@s);
+		f->Show();
 	}
 
-	function : Show(i : Int) ~ Nil {
-		i->PrintLine();
+	function : Init() ~ Nil {
+		@s := "Hello World!";
+	}
+}
+
+class Foo {
+	@s : String;
+
+	New(s : String) {
+		@s := s;
+	}
+
+	method : public : Show() ~ Nil {
+		@s->PrintLine();
 	}
 }

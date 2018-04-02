@@ -50,14 +50,18 @@ bundle SDL {
 		}
 		
 		function : VideoInit(driver_name : String) ~ Int {
-			array_args := Base->New[2];
-			array_args[0] := IntHolder->New();
-			array_args[1] := driver_name;
+			if(driver_name <> Nil) {
+				array_args := Base->New[2];
+				array_args[0] := IntHolder->New();
+				array_args[1] := driver_name;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_display_video_init", array_args);
+				Proxy->GetDllProxy()->CallFunction("sdl_display_video_init", array_args);
 
-			value := array_args[0]->As(IntHolder);
-			return value->Get();
+				value := array_args[0]->As(IntHolder);
+				return value->Get();
+			};
+
+			return -1;
 		}
 		
 		function : VideoQuit() ~ Nil {
@@ -67,7 +71,7 @@ bundle SDL {
 		
 		function : GetCurrentVideoDriver() ~ String {
 			array_args := Base->New[1];
-			array_args[0] := IntHolder->New();
+			array_args[0] := Nil;
 
 			Proxy->GetDllProxy()->CallFunction("sdl_display_get_current_video_driver", array_args);
 
@@ -86,7 +90,7 @@ bundle SDL {
 		
 		function : GetDisplayName(displayIndex : Int) ~ String {
 			array_args := Base->New[2];
-			array_args[0] := IntHolder->New();
+			array_args[0] := Nil;
 			array_args[1] := IntHolder->New(displayIndex);
 
 			Proxy->GetDllProxy()->CallFunction("sdl_display_get_display_name", array_args);
@@ -95,15 +99,19 @@ bundle SDL {
 		}
 		
 		function : GetDisplayBounds(displayIndex : Int, rect : Rect) ~ Int {
-			array_args := Base->New[3];
-			array_args[0] := IntHolder->New();
-			array_args[1] := IntHolder->New(displayIndex);
-			array_args[2] := rect;
+			if(rect <> Nil) {
+				array_args := Base->New[3];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(displayIndex);
+				array_args[2] := rect;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_display_get_display_bounds", array_args);
+				Proxy->GetDllProxy()->CallFunction("sdl_display_get_display_bounds", array_args);
 
-			value := array_args[0]->As(IntHolder);
-			return value->Get();
+				value := array_args[0]->As(IntHolder);
+				return value->Get();
+			};
+
+			return -1;
 		}
 		
 		function : GetNumDisplayModes(displayIndex : Int) ~ Int {
@@ -118,41 +126,53 @@ bundle SDL {
 		}
 		
 		function : GetDisplayMode(displayIndex : Int, modeIndex : Int, mode : DisplayMode) ~ Int {
-			array_args := Base->New[4];
-			array_args[0] := IntHolder->New();
-			array_args[1] := IntHolder->New(displayIndex);
-			array_args[2] := IntHolder->New(modeIndex);
-			array_args[3] := mode;
+			if(mode <> Nil) {
+				array_args := Base->New[4];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(displayIndex);
+				array_args[2] := IntHolder->New(modeIndex);
+				array_args[3] := mode;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_display_get_display_mode", array_args);
+				Proxy->GetDllProxy()->CallFunction("sdl_display_get_display_mode", array_args);
 
-			value := array_args[0]->As(IntHolder);
-			return value->Get();
+				value := array_args[0]->As(IntHolder);
+				return value->Get();
+			};
+
+			return -1;
 		}
 		
 		function : GetCurrentDisplayMode(displayIndex : Int, mode : DisplayMode) ~ Int {
-			array_args := Base->New[3];
-			array_args[0] := IntHolder->New();
-			array_args[1] := IntHolder->New(displayIndex);
-			array_args[2] := mode;
+			if(mode <> Nil) {
+				array_args := Base->New[3];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(displayIndex);
+				array_args[2] := mode;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_display_get_current_display_mode", array_args);
+				Proxy->GetDllProxy()->CallFunction("sdl_display_get_current_display_mode", array_args);
 
-			value := array_args[0]->As(IntHolder);
-			return value->Get();
+				value := array_args[0]->As(IntHolder);
+				return value->Get();
+			};
+
+			return -1;
 		}
 		
-		function : GetClosestDisplayMode(displayIndex : Int, mode : DisplayMode, closest : DisplayMode) ~ DisplayMode {
-			array_args := Base->New[4];
-			array_args[0] := IntHolder->New();
-			array_args[1] := IntHolder->New(displayIndex);
-			array_args[2] := mode;
-			array_args[3] := closest;
+		function : GetClosestDisplayMode(displayIndex : Int, mode : DisplayMode, closest : DisplayMode) ~ Bool {
+			if(mode <> Nil & closest <> Nil) {
+				array_args := Base->New[4];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(displayIndex);
+				array_args[2] := mode;
+				array_args[3] := closest;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_display_get_closest_display_mode", array_args);
+				Proxy->GetDllProxy()->CallFunction("sdl_display_get_closest_display_mode", array_args);
 
-			value := array_args[0]->As(IntHolder);
-			return DisplayMode->New(value->Get());
+				value := array_args[0]->As(IntHolder);
+				return value->Get() <> 0;
+			};
+
+			return false;
 		}
 	}
 	
@@ -221,7 +241,7 @@ bundle SDL {
 		}
 		
 		method : public : SetDisplayMode(mode : DisplayMode) ~ Int {
-			if(@window <> 0) {
+			if(@window <> 0 & mode <> Nil) {
 				array_args := Base->New[3];
 				array_args[0] := IntHolder->New();
 				array_args[1] := IntHolder->New(@window);
@@ -1407,15 +1427,52 @@ bundle SDL {
 		}
 	}
 	
-	##
-	## TODO: SDL_video.h
-	## use new, delete
-	##
 	class DisplayMode {
-		@display_mode : Int;
+		@format : Int;
+	    @w : Int;
+	    @h : Int;
+	    @refresh_rate : Int;
 		
-		New(display_mode : Int) {
-			@display_mode := display_mode;
+	    New() {
+	    }
+
+		New(format : Int, w : Int, h : Int, refresh_rate : Int) {
+			@format := format;
+			@w := w;
+			@w := w;
+			@refresh_rate := refresh_rate;
+		}
+
+		method : public : GetFormat() ~ Int {
+			return @format;
+		}
+
+		method : public : SetFormat(format : Int) ~ Nil {
+			@format := format;
+		}
+
+		method : public : GetW() ~ Int {
+			return @w;
+		}
+
+		method : public : SetW(w : Int) ~ Nil {
+			@w := w;
+		}
+
+		method : public : GetH() ~ Int {
+			return @h;
+		}
+
+		method : public : SetH(h : Int) ~ Nil {
+			@h := h;
+		}
+
+		method : public : GetRefreshRate() ~ Int {
+			return @refresh_rate;
+		}
+
+		method : public : SetRefreshRate(refresh_rate : Int) ~ Nil {
+			@refresh_rate := refresh_rate;
 		}
 	}
 	
@@ -1968,7 +2025,7 @@ bundle SDL {
 		}
 
 		method : public : CreateTexture(renderer : Renderer) ~ Texture {
-			if(@surface <> 0) {
+			if(@surface <> 0 & renderer <> Nil) {
 				array_args := Base->New[3];
 				array_args[0] := IntHolder->New();
 				array_args[1] := IntHolder->New(@surface);
@@ -2809,5 +2866,24 @@ bundle SDL {
 		SDL_BLENDMODE_ADD := 0x00000002,
 		SDL_BLENDMODE_MOD := 0x00000004,
 		SDL_BLENDMODE_INVALID := 0x7FFFFFFF
+	}
+
+	class Timer {
+		function : GetTicks() ~ Int {
+			array_args := Base->New[1];
+			array_args[0] := IntHolder->New();
+			
+			Proxy->GetDllProxy()->CallFunction("sdl_timer_get_ticks", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+
+		function : Delay(ms : Int) ~ Nil {
+			array_args := Base->New[1];
+			array_args[0] := IntHolder->New(ms);
+			
+			Proxy->GetDllProxy()->CallFunction("sdl_timer_delay", array_args);
+		}
 	}
 }
