@@ -1316,6 +1316,15 @@ bundle SDL {
 			value := array_args[0]->As(IntHolder);
 			return value->Get();
 		}
+
+		function : GetError() ~ String {
+			array_args := Base->New[1];
+			array_args[0] := Nil;
+
+			Proxy->GetDllProxy()->CallFunction("sdl_core_gl_get_swap_interval", array_args);
+			
+			return array_args[0]->As(String);
+		}
 	}
 	
 	## TODO: add values
