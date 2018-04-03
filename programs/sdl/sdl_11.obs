@@ -32,7 +32,6 @@ class LTexture {
 			return false;
 		};
 
-
 		@width := loadedSurface->GetW();
 		@height := loadedSurface->GetH();
 		loadedSurface->Free();
@@ -49,9 +48,15 @@ class LTexture {
 	}
 
 	# Renders texture at given point
-	method : public : Render(x : Int, y : Int) ~ Nil {
+	method : public : Render(x : Int, y : Int, clip : Rect) ~ Nil {
 		renderQuad := Rect->New(x, y, @width, @height);
-		@renderer->Copy(@texture, Nil, renderQuad);
+
+		if(clip <> Nil)	{
+			renderQuad->SetW(clip->GetW());
+			renderQuad->SetH(clip->GetH());
+		};
+
+		@renderer->Copy(@texture, clip, renderQuad);
 	}
 
 	# Gets image dimensions
@@ -66,9 +71,12 @@ class LTexture {
 
 class Test {
 	@window : static : Window;
+
 	@renderer : static : Renderer;
-	@foo_texture : static : LTexture;
-	@background_texture : static : LTexture;
+
+	@sprite_sheet_texture : static : LTexture;
+	@sprite_clips : static : Rect[];
+
 	SCREEN_WIDTH : static : Int;
 	SCREEN_HEIGHT : static : Int;
 	
@@ -110,26 +118,24 @@ class Test {
 				};
 			};
 
-			# Clear screen
-			for(i := 0; i < SCREEN_WIDTH; i += 1;) {
-				@renderer->SetDrawColor(0xFF, 0xFF, 0xFF, 0xFF);
-				@renderer->Clear();
+			@renderer->SetDrawColor(0xFF, 0xFF, 0xFF, 0xFF);
+			@renderer->Clear();
 
-				@foo_texture->Render(0, 0);
-				@background_texture->Render(240, 190);
+			# Render top left sprite
+			@sprite_sheet_texture->Render(0, 0, @sprite_clips[ 0 ] );
 
-				# Render background texture to screen
-				@background_texture->Render(0, 0);
+			# Render top right sprite
+			@sprite_sheet_texture->Render( SCREEN_WIDTH - @sprite_clips[ 1 ]->GetW(), 0, @sprite_clips[ 1 ] );
 
-				# Render Foo' to the screen
-				@foo_texture->Render(i, 190);
-				
-				# Update screen
-				@renderer->Present();
-				Timer->Delay(20);
-			};
+			# Render bottom left sprite
+			@sprite_sheet_texture->Render( 0, SCREEN_HEIGHT - @sprite_clips[ 2 ]->GetH(), @sprite_clips[ 2 ] );
+
+			# Render bottom right sprite
+			@sprite_sheet_texture->Render( SCREEN_WIDTH - @sprite_clips[ 3 ]->GetW(), SCREEN_HEIGHT - @sprite_clips[ 3 ]->GetH(), @sprite_clips[ 3 ] );
+
+			# Update screen
+			@renderer->Present();
 		};
-
 		e->Free();
 		
 		Close();
@@ -171,8 +177,7 @@ class Test {
 		};
 		@renderer->SetDrawColor(0xFF, 0xFF, 0xFF, 0xFF);
 
-		@foo_texture := LTexture->New(@renderer);
-		@background_texture := LTexture->New(@renderer);
+		@sprite_sheet_texture := LTexture->New(@renderer);
 
 		img_flags := ImageFlags->IMG_INIT_PNG->As(Int);
 		if((Image->Init(img_flags) and img_flags) = 0) {
@@ -184,13 +189,15 @@ class Test {
 	}
 	
 	function : LoadMedia() ~ Bool {
-		if(<>@foo_texture->LoadFromFile( "images/foo.png")) {
+		if(<>@sprite_sheet_texture->LoadFromFile( "images/dots.png")) {
 			return false;
 		};
 
-		if(<>@background_texture->LoadFromFile("images/background.png")) {
-			return false;
-		};
+		@sprite_clips := Rect->New[4];
+		@sprite_clips[0] := Rect->New(0, 0, 100, 100);
+		@sprite_clips[1] := Rect->New(100, 0, 100, 100);
+		@sprite_clips[2] := Rect->New(0, 100, 100, 100);
+		@sprite_clips[3] := Rect->New(100, 100, 100, 100);
 
 		return true;
 	}
@@ -215,8 +222,7 @@ class Test {
 	}
 	
 	function : Close() ~ Nil {
-		@foo_texture->Free();
-		@background_texture->Free();
+		@sprite_sheet_texture->Free();
 		@renderer->Destroy();
 		@window->Destroy();
 
