@@ -20,7 +20,7 @@ class LTexture {
 		# Load image at specified path
 		loadedSurface := Image->Load(path);
 		if(loadedSurface->IsNull()) {
-			"Unable to load surface"->PrintLine();
+			"Unable to load surface"->ErrorLine();
 			return false;
 		};
 
@@ -28,7 +28,7 @@ class LTexture {
 
 		texture := loadedSurface->CreateTexture(@renderer);
 		if(texture->IsNull()) {
-			"Unable to create texture!"->PrintLine();
+			"Unable to create texture!"->ErrorLine();
 			return false;
 		};
 
@@ -89,7 +89,7 @@ class Test {
 		
 		# Load media
 		if( <>LoadMedia() ) {
-			"Failed to load media!"->PrintLine();
+			"Failed to load media!"->ErrorLine();
 			return;
 		};
 			
@@ -206,13 +206,13 @@ class Test {
 		# Load image at specified path
 		loadedSurface := Image->Load(path);
 		if(loadedSurface->IsNull()) {
-			"Unable to load surface"->PrintLine();
+			"Unable to load surface"->ErrorLine();
 			return Nil;
 		};
 
 		texture := loadedSurface->CreateTexture(@renderer);
 		if(texture->IsNull()) {
-			"Unable to create texture!"->PrintLine();
+			"Unable to create texture!"->ErrorLine();
 			return Nil;
 		};
 
