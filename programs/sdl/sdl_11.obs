@@ -1,6 +1,6 @@
 #~
-Lesson 10
-http:# lazyfoo.net/tutorials/SDL/10_color_keying/index.php
+Lesson 11
+http://lazyfoo.net/tutorials/SDL/11_clip_rendering_and_sprite_sheets/index.php
 ~#
 
 use SDL;
@@ -137,7 +137,7 @@ class Test {
 			@renderer->Present();
 		};
 		e->Free();
-		
+
 		Close();
 	}
 	
