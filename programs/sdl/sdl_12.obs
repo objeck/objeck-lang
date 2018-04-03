@@ -1,6 +1,6 @@
 #~
-Lesson 11
-http:# lazyfoo.net/tutorials/SDL/11_clip_rendering_and_sprite_sheets/index.php
+Lesson 12
+http://lazyfoo.net/tutorials/SDL/12_color_modulation/index.php
 ~#
 
 use SDL;
