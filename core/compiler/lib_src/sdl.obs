@@ -2686,12 +2686,12 @@ bundle SDL {
 			return -1;
 		}
 
-		method : public : SetBlendMode(blendMode : Int) ~ Int {
+		method : public : SetBlendMode(blendMode : BlendMode) ~ Int {
 			if(@texture <> 0) {
 				array_args := Base->New[3];
 				array_args[0] := IntHolder->New();
 				array_args[1] := IntHolder->New(@texture);
-				array_args[2] := IntHolder->New(blendMode);
+				array_args[2] := IntHolder->New(blendMode->As(Int));
 
 				Proxy->GetDllProxy()->CallFunction("sdl_texture_set_blend_mode", array_args);
 				
@@ -2728,14 +2728,6 @@ bundle SDL {
 ~#		
 	}
 	
-	consts BlendModeFlags {
-		SDL_BLENDMODE_NONE := 0x00000000,
-		SDL_BLENDMODE_BLEND := 0x00000001,
-		SDL_BLENDMODE_ADD := 0x00000002,
-		SDL_BLENDMODE_MOD := 0x00000004,
-		SDL_BLENDMODE_INVALID := 0x7FFFFFFF
-	}
-
 	class Timer {
 		function : GetTicks() ~ Int {
 			array_args := Base->New[1];
