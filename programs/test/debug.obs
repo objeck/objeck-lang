@@ -1,26 +1,9 @@
 class Test {
-	@s : static : String;
-
 	function : Main(args : String[]) ~ Nil {
 		Init();
-		
-		f := Foo->New(@s);
-		f->Show();
 	}
 
-	function : Init() ~ Nil {
-		@s := "Hello World!";
-	}
-}
-
-class Foo {
-	@s : String;
-
-	New(s : String) {
-		@s := s;
-	}
-
-	method : public : Show() ~ Nil {
-		@s->PrintLine();
+	function : Init(s : String := "foo") ~ Nil {
+		s->PrintLine();
 	}
 }

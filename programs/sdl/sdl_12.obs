@@ -52,7 +52,7 @@ class LTexture {
 	}
 
 	# Renders texture at given point
-	method : public : Render(x : Int, y : Int, clip : Rect) ~ Nil {
+	method : public : Render(x : Int, y : Int, clip : Rect := Nil) ~ Nil {
 		renderQuad := Rect->New(x, y, @width, @height);
 
 		if(clip <> Nil)	{
