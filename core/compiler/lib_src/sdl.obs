@@ -2520,7 +2520,7 @@ bundle SDL {
 			return -1;
 		}
 
-		method : public : RenderCopyEx(texture : Texture, srcrect : Rect, dstrect : Rect, angle : Float, center : Point, flip : RendererFlip) ~ Int {
+		method : public : CopyEx(texture : Texture, srcrect : Rect, dstrect : Rect, angle : Float, center : Point, flip : RendererFlip) ~ Int {
 			if(@renderer <> 0) {
 				array_args := Base->New[8];
 				array_args[0] := IntHolder->New();
