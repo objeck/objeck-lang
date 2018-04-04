@@ -3366,14 +3366,12 @@ bool ContextAnalyzer::Analyze()
     case BIT_AND_EXPR:
     case BIT_OR_EXPR:
     case BIT_XOR_EXPR:
-      if(IsBooleanExpression(left) || IsBooleanExpression(right)) {
+      if (IsBooleanExpression(left) || IsBooleanExpression(right)) {
         ProcessError(expression, L"Invalid mathematical operation");
       }
-      else if(IsEnumExpression(left) || IsEnumExpression(right)) {
-        ProcessError(expression, L"Invalid mathematical operation");
-      }
-      else if(((cls_type = GetExpressionType(left, depth + 1)) && cls_type->GetType() == CLASS_TYPE) ||
-              ((cls_type = GetExpressionType(right, depth + 1)) && cls_type->GetType() == CLASS_TYPE)) {
+      else if(!(IsEnumExpression(left) || IsEnumExpression(right)) && 
+        (((cls_type = GetExpressionType(left, depth + 1)) && cls_type->GetType() == CLASS_TYPE) ||
+        ((cls_type = GetExpressionType(right, depth + 1)) && cls_type->GetType() == CLASS_TYPE))) {
         ProcessError(expression, L"Invalid mathematical operation");
       }
       break;
