@@ -1,6 +1,6 @@
 #~
-Lesson 13
-http:# lazyfoo.net/tutorials/SDL/13_alpha_blending/index.php
+Lesson 14
+http://lazyfoo.net/tutorials/SDL/14_animated_sprites_and_vsync/index.php
 ~#
 
 use SDL;
