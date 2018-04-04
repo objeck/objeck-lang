@@ -2488,28 +2488,58 @@ bundle SDL {
 		}
 
 		method : public : Clear() ~ Int {
-			array_args := Base->New[2];
-			array_args[0] := IntHolder->New();
-			array_args[1] := IntHolder->New(@renderer);
+			if(@renderer <> 0) {
+				array_args := Base->New[2];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@renderer);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_renderer_render_clear", array_args);
+				Proxy->GetDllProxy()->CallFunction("sdl_renderer_render_clear", array_args);
 
-			value := array_args[0]->As(IntHolder);
-			return value->Get();
+				value := array_args[0]->As(IntHolder);
+				return value->Get();
+			};
+
+			return -1;
 		}
 
 		method : public : Copy(texture : Texture, srcrect : Rect, dstrect : Rect) ~ Int {
-			array_args := Base->New[5];
-			array_args[0] := IntHolder->New();
-			array_args[1] := IntHolder->New(@renderer);
-			array_args[2] := texture;
-			array_args[3] := srcrect;
-			array_args[4] := dstrect;
+			if(@renderer <> 0) {
+				array_args := Base->New[5];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@renderer);
+				array_args[2] := texture;
+				array_args[3] := srcrect;
+				array_args[4] := dstrect;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_renderer_render_copy", array_args);
+				Proxy->GetDllProxy()->CallFunction("sdl_renderer_render_copy", array_args);
 
-			value := array_args[0]->As(IntHolder);
-			return value->Get();
+				value := array_args[0]->As(IntHolder);
+				return value->Get();
+			};
+
+			return -1;
+		}
+
+		method : public : RenderCopyEx(texture : Texture, srcrect : Rect, dstrect : Rect, angle : Float, center : Point, flip : RendererFlip) ~ Int {
+			if(@renderer <> 0) {
+				array_args := Base->New[8];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@renderer);
+				array_args[2] := texture;
+				array_args[3] := srcrect;
+				array_args[4] := dstrect;
+				array_args[5] := FloatHolder->New(angle);
+				array_args[6] := center;
+				array_args[7] := IntHolder->New(flip->As(Int));
+
+				@lib_proxy := Proxy->GetDllProxy();
+				@lib_proxy->CallFunction("sdl_renderer_render_copy_ex", array_args);
+
+				value := array_args[0]->As(IntHolder);
+				return value->Get();
+			};
+
+			return -1;
 		}
 
 		method : public : Present() ~ Nil {
@@ -2518,6 +2548,12 @@ bundle SDL {
 
 			Proxy->GetDllProxy()->CallFunction("sdl_renderer_render_present", array_args);
 		}
+	}
+
+	consts RendererFlip {
+		SDL_FLIP_NONE := 0x00000000,
+    	SDL_FLIP_HORIZONTAL := 0x00000001,
+    	SDL_FLIP_VERTICAL := 0x00000002
 	}
 
 	class RendererInfo {

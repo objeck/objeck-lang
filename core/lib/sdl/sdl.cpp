@@ -1791,6 +1791,35 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
+  void sdl_renderer_render_copy_ex(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+
+    const size_t* texture_obj = APITools_GetObjectValue(context, 2);
+    SDL_Texture* texture = texture_obj ? (SDL_Texture*)texture_obj[0] : NULL;
+
+    size_t* srcrect_obj = APITools_GetObjectValue(context, 3);
+    SDL_Rect srcrect;
+    sdl_rect_raw_write(&srcrect, srcrect_obj);
+
+    size_t* dstrect_obj = APITools_GetObjectValue(context, 4);
+    SDL_Rect dstrect;
+    sdl_rect_raw_write(&dstrect, dstrect_obj);
+
+    const double angle = APITools_GetFloatValue(context, 5);
+
+    SDL_Point center;
+    size_t* center_obj = (size_t*)APITools_GetObjectValue(context, 6);
+    sdl_point_raw_write(&center, center_obj);
+
+    const SDL_RendererFlip flip = (SDL_RendererFlip)APITools_GetIntValue(context, 7);
+
+    APITools_SetIntValue(context, 0, SDL_RenderCopyEx(renderer, texture, 
+      srcrect_obj ? &srcrect : NULL, dstrect_obj ? &dstrect : NULL, angle, center_obj ? &center : NULL, flip));
+}
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
   void sdl_renderer_render_present(VMContext& context) {
     SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 0);
     SDL_RenderPresent(renderer);
