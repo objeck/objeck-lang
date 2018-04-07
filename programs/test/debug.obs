@@ -14,6 +14,6 @@ consts Flags {
 }
 
 consts Mags {
-	FOO := 4,
-	BAR := 8
+	FOO := 16,
+	BAR := 32
 }
