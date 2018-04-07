@@ -2093,6 +2093,13 @@ bool ContextAnalyzer::Analyze()
                 return ValidDownCast(to_lib_klass->GetName(), from_klass, from_lib_klass) ? 1 : -1;
               }
             }
+            else if(method_type->GetType() == INT_TYPE) {
+              // program
+              if(program->GetEnum(calling_type->GetClassName()) || 
+                 linker->SearchEnumLibraries(calling_type->GetClassName(), program->GetUses())) {
+                return 1;
+              }
+            }
 
             return -1;
           }
