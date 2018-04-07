@@ -1,14 +1,19 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		Init(Flags->FOO and Flags->BAR);
+		Init(Mags->FOO);
 	}
 
-	function : Init(v : Int) ~ Nil {
+	function : Init(v : Mags) ~ Nil {
 		v->PrintLine();
 	}
 }
 
 consts Flags {
+	FOO := 4,
+	BAR := 8
+}
+
+consts Mags {
 	FOO := 4,
 	BAR := 8
 }
