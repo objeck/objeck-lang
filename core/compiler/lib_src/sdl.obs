@@ -2782,4 +2782,12 @@ bundle SDL {
 			Proxy->GetDllProxy()->CallFunction("sdl_timer_delay", array_args);
 		}
 	}
+
+	class Font {
+		@ttf_font : Int;
+		
+		function : Init() ~ Int {
+			return -1;
+		}
+	}
 }
