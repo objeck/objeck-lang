@@ -38,6 +38,9 @@
 using namespace std;
 
 extern "C" {
+  void sdl_color_raw_read(SDL_Color* color, size_t* color_obj);
+  void sdl_color_raw_write(SDL_Color* color, size_t* color_obj);
+
   void sdl_point_raw_read(SDL_Point* point, size_t* point_obj);
   void sdl_point_raw_write(SDL_Point* point, size_t* point_obj);
 
@@ -707,19 +710,40 @@ extern "C" {
   }
 
   //
+  // Color
+  //
+  void sdl_color_raw_read(SDL_Color* color, size_t* color_obj) {
+    if(color) {
+      color_obj[0] = color->r;
+      color_obj[1] = color->g;
+      color_obj[2] = color->b;
+      color_obj[3] = color->a;
+    }
+  }
+  
+  void sdl_color_raw_write(SDL_Color* color, size_t* color_obj) {
+    if(color_obj) {
+      color->r = (Uint8)color_obj[0];
+      color->g = (Uint8)color_obj[1];
+      color->b = (Uint8)color_obj[2];
+      color->a = (Uint8)color_obj[3];
+    }
+  }
+
+  //
   // SDL_Point
   //
   void sdl_point_raw_read(SDL_Point* point, size_t* point_obj) {
     if(point) {
-      point_obj[1] = point->x;
-      point_obj[2] = point->y;
+      point_obj[0] = point->x;
+      point_obj[1] = point->y;
     }
   }
-  
+
   void sdl_point_raw_write(SDL_Point* point, size_t* point_obj) {
     if(point_obj) {
-      point->x = point_obj[1];
-      point->y = point_obj[2];
+      point->x = point_obj[0];
+      point->y = point_obj[1];
     }
   }
 
@@ -1976,8 +2000,64 @@ extern "C" {
     const Uint32 ms = APITools_GetIntValue(context, 0);
     SDL_Delay(ms);
   }
+  
+  //
+  // Font
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_font_init(VMContext& context) {
+    APITools_SetIntValue(context, 0, TTF_Init());
+  }
 
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_font_quit(VMContext& context) {
+    TTF_Quit();
+  }
 
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_font_open(VMContext& context) {
+    const wstring wfile = APITools_GetStringValue(context, 1);
+    const string file(wfile.begin(), wfile.end());
+    const int ptsize = APITools_GetIntValue(context, 2);
+
+    TTF_Font* return_value = TTF_OpenFont(file.c_str(), ptsize);
+    APITools_SetIntValue(context, 0, (size_t)return_value);
+  }
+
+  #ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_font_open_index(VMContext& context) {
+    const wstring wfile = APITools_GetStringValue(context, 1);
+    const string file(wfile.begin(), wfile.end());
+    const int ptsize = APITools_GetIntValue(context, 2);
+    const int index = APITools_GetIntValue(context, 3);
+
+    TTF_Font* return_value = TTF_OpenFontIndex(file.c_str(), ptsize, index);
+    APITools_SetIntValue(context, 0, (size_t)return_value);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_font_render_text_solid(VMContext& context) {
+    TTF_Font* font = (TTF_Font*)APITools_GetIntValue(context, 1);
+    
+    const wstring wtext = APITools_GetStringValue(context, 2);
+    const string text(wtext.begin(), wtext.end());
+
+    SDL_Color fg;
+    size_t* fg_obj = APITools_GetObjectValue(context, 3);
+    sdl_color_raw_write(&fg, fg_obj);
+
+    APITools_SetIntValue(context, 0, (size_t)TTF_RenderText_Solid(font, text.c_str(), fg));
+  }
 
 
 }
