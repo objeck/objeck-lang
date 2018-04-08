@@ -147,7 +147,7 @@ bundle CodeGen {
 						}
 		
 						label ParsedType->Type->CLASS: {
-							buffer += "\t\tconst long* ";
+							buffer += "\t\tconst size* ";
 							buffer += parameter->GetName();
 							buffer += " = (size_t*)APITools_GetObjectValue(context, ";
 							buffer += offset;
@@ -180,7 +180,7 @@ bundle CodeGen {
 				}
 
 				label ParsedType->Type->CLASS: {
-					buffer += "\t\tconst long* return_value = ";
+					buffer += "\t\tconst size* return_value = ";
 					buffer += parsed_method->GetFunctionName();
 					buffer += GetCallingString(parameters);
 					buffer += "\t\tAPITools_SetObjectValue(context, 0, (CAST*)return_value);\n";

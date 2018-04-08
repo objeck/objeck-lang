@@ -1197,7 +1197,7 @@ bundle SDL {
 			value := array_args[0]->As(IntHolder);
 			return value->Get();
 		}
-		
+
 		function : InitSubSystem(flags : Int) ~ Int {
 			array_args := Base->New[2];
 			array_args[0] := IntHolder->New();
@@ -1411,42 +1411,44 @@ bundle SDL {
 	Color class may be used independently 
 	~#
 	class Color {
-		@color : Int;
 		@r : Int;
 		@g : Int;
 		@b : Int;
 		@a : Int;
 		
 		New() {
-			array_args := Base->New[1];
-			array_args[0] := IntHolder->New();
-			Proxy->GetDllProxy()->CallFunction("sdl_color_new", array_args);
-			value := array_args[0]->As(IntHolder);
-			@color := value->Get();
 		}
-		
-		New(color : Int) {
-			@color := color;
-		}
-		
-		method : Read() ~ Nil {
-			if(@color <> 0) {
-				array_args := Base->New[2];
-				array_args[0] := IntHolder->New(@color);
-				array_args[1] := @self;
 
-				Proxy->GetDllProxy()->CallFunction("sdl_color_read", array_args);
-			};
+		method : public : GetR() ~ Int {
+			return @r;
 		}
 		
-		method : Write() ~ Nil {
-			if(@color <> 0) {
-				array_args := Base->New[2];
-				array_args[0] := IntHolder->New(@color);
-				array_args[1] := @self;
+		method : public : SetR(r : Int) ~ Nil {
+			@r := r;
+		}
 
-				Proxy->GetDllProxy()->CallFunction("sdl_color_write", array_args);
-			};
+		method : public : GetG() ~ Int {
+			return @g;
+		}
+		
+		method : public : SetG(g : Int) ~ Nil {
+			@g := g;
+		}
+
+		method : public : GetB() ~ Int {
+			return @b;
+		}
+		
+		method : public : SetB(g : Int) ~ Nil {
+			@b := b;
+		}
+
+		method : public : GetA() ~ Int {
+			return @a;
+		}
+		
+		method : public : SetA(a : Int) ~ Nil {
+			@a := a;
 		}
 	}
 	
@@ -2784,10 +2786,59 @@ bundle SDL {
 	}
 
 	class Font {
-		@ttf_font : Int;
-		
+		@font : Int;
+
 		function : Init() ~ Int {
-			return -1;
+			array_args := Base->New[1];
+	        array_args[0] := IntHolder->New();
+
+	        Proxy->GetDllProxy()->CallFunction("sdl_font_init", array_args);
+
+	        value := array_args[0]->As(IntHolder);
+	        return value->Get();
+		}
+
+		function : Init : Quit() ~ Nil {
+        	array_args := Base->New[0];
+        	Proxy->GetDllProxy()->CallFunction("sdl_font_quit", array_args);
+		}
+		
+		method : public : New(file : String, ptsize : Int) ~ Font {
+	        array_args := Base->New[3];
+	        array_args[0] := IntHolder->New();
+	        array_args[1] := IntHolder->New(file);
+	        array_args[2] := IntHolder->New(ptsize);
+
+	        Proxy->GetDllProxy()->CallFunction("sdl_font_open", array_args);
+
+	        value := array_args[0]->As(IntHolder);
+	        @font := value->Get();
+		}
+
+		method : public : New(file : String, ptsize : Int, index : Int) ~ Font {
+	        array_args := Base->New[4];
+	        array_args[0] := IntHolder->New();
+	        array_args[1] := IntHolder->New(file);
+	        array_args[2] := IntHolder->New(ptsize);
+	        array_args[3] := IntHolder->New(index);
+
+	        Proxy->GetDllProxy()->CallFunction("sdl_font_open_index", array_args);
+
+	        value := array_args[0]->As(IntHolder);
+	        @font := value->Get();
+		}
+
+		method : public : RenderTextSolid(text : String, fg : Color) ~ Surface {
+	        array_args := Base->New[4];
+	        array_args[0] := IntHolder->New();
+	        array_args[1] := IntHolder->New(@font);
+	        array_args[2] := text;
+	        array_args[3] := fg;
+
+	        Proxy->GetDllProxy()->CallFunction("sdl_font_render_text_solid", array_args);
+
+	        value := array_args[0]->As(IntHolder);
+	        return Surface->New(value->Get());
 		}
 	}
 }

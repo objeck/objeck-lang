@@ -11,7 +11,7 @@ method : public : LinkedVersion() ~ version {
         __declspec(dllexport)
 #endif
         void sdl_font_linked_version(VMContext& context) {
-                const long* return_value = TTF_Linked_Version();
+                const size* return_value = TTF_Linked_Version();
                 APITools_SetObjectValue(context, 0, (CAST*)return_value);
         }
 
@@ -69,7 +69,7 @@ method : public : Open(file : String, ptsize : Int) ~ Font {
         void sdl_font_open(VMContext& context) {
                 const wstring file = APITools_GetStringValue(context, 1);
                 const int ptsize = APITools_GetIntValue(context, 2);
-                const long* return_value = TTF_OpenFont(file, ptsize);
+                const size* return_value = TTF_OpenFont(file, ptsize);
                 APITools_SetObjectValue(context, 0, (CAST*)return_value);
         }
 
@@ -90,10 +90,10 @@ method : public : OpenRW(src : RWops, freesrc : Int, ptsize : Int) ~ Font {
         __declspec(dllexport)
 #endif
         void sdl_font_openrw(VMContext& context) {
-                const long* src = (size_t*)APITools_GetObjectValue(context, 1);
+                const size* src = (size_t*)APITools_GetObjectValue(context, 1);
                 const int freesrc = APITools_GetIntValue(context, 2);
                 const int ptsize = APITools_GetIntValue(context, 3);
-                const long* return_value = TTF_OpenFontRW(src, freesrc, ptsize);
+                const size* return_value = TTF_OpenFontRW(src, freesrc, ptsize);
                 APITools_SetObjectValue(context, 0, (CAST*)return_value);
         }
 
@@ -281,7 +281,7 @@ method : public : Faces() ~ long {
 #endif
         void sdl_font_faces(VMContext& context) {
                 SDL_Font* font = (Font*)APITools_GetIntValue(context, 1);
-                const long* return_value = TTF_FontFaces(font);
+                const size* return_value = TTF_FontFaces(font);
                 APITools_SetObjectValue(context, 0, (CAST*)return_value);
         }
 
@@ -455,8 +455,8 @@ method : public : RenderTextSolid(text : String, fg : Color) ~ Surface {
         void sdl_font_render_text_solid(VMContext& context) {
                 SDL_Font* font = (Font*)APITools_GetIntValue(context, 1);
                 const wstring text = APITools_GetStringValue(context, 2);
-                const long* fg = (size_t*)APITools_GetObjectValue(context, 3);
-                const long* return_value = TTF_RenderText_Solid(font, text, fg);
+                const size* fg = (size_t*)APITools_GetObjectValue(context, 3);
+                const size* return_value = TTF_RenderText_Solid(font, text, fg);
                 APITools_SetObjectValue(context, 0, (CAST*)return_value);
         }
 
@@ -479,8 +479,8 @@ method : public : RenderUNICODESolid(text : Int, fg : Color) ~ Surface {
         void sdl_font_renderunicode_solid(VMContext& context) {
                 SDL_Font* font = (Font*)APITools_GetIntValue(context, 1);
                 const int text = APITools_GetIntValue(context, 2);
-                const long* fg = (size_t*)APITools_GetObjectValue(context, 3);
-                const long* return_value = TTF_RenderUNICODE_Solid(font, text, fg);
+                const size* fg = (size_t*)APITools_GetObjectValue(context, 3);
+                const size* return_value = TTF_RenderUNICODE_Solid(font, text, fg);
                 APITools_SetObjectValue(context, 0, (CAST*)return_value);
         }
 
@@ -503,8 +503,8 @@ method : public : RenderGlyphSolid(ch : Int, fg : Color) ~ Surface {
         void sdl_font_render_glyph_solid(VMContext& context) {
                 SDL_Font* font = (Font*)APITools_GetIntValue(context, 1);
                 const int ch = APITools_GetIntValue(context, 2);
-                const long* fg = (size_t*)APITools_GetObjectValue(context, 3);
-                const long* return_value = TTF_RenderGlyph_Solid(font, ch, fg);
+                const size* fg = (size_t*)APITools_GetObjectValue(context, 3);
+                const size* return_value = TTF_RenderGlyph_Solid(font, ch, fg);
                 APITools_SetObjectValue(context, 0, (CAST*)return_value);
         }
 
@@ -528,9 +528,9 @@ method : public : RenderTextShaded(text : String, fg : Color, bg : Color) ~ Surf
         void sdl_font_render_text_shaded(VMContext& context) {
                 SDL_Font* font = (Font*)APITools_GetIntValue(context, 1);
                 const wstring text = APITools_GetStringValue(context, 2);
-                const long* fg = (size_t*)APITools_GetObjectValue(context, 3);
-                const long* bg = (size_t*)APITools_GetObjectValue(context, 4);
-                const long* return_value = TTF_RenderText_Shaded(font, text, fg, bg);
+                const size* fg = (size_t*)APITools_GetObjectValue(context, 3);
+                const size* bg = (size_t*)APITools_GetObjectValue(context, 4);
+                const size* return_value = TTF_RenderText_Shaded(font, text, fg, bg);
                 APITools_SetObjectValue(context, 0, (CAST*)return_value);
         }
 
@@ -554,9 +554,9 @@ method : public : RenderUNICODEShaded(text : Int, fg : Color, bg : Color) ~ Surf
         void sdl_font_renderunicode_shaded(VMContext& context) {
                 SDL_Font* font = (Font*)APITools_GetIntValue(context, 1);
                 const int text = APITools_GetIntValue(context, 2);
-                const long* fg = (size_t*)APITools_GetObjectValue(context, 3);
-                const long* bg = (size_t*)APITools_GetObjectValue(context, 4);
-                const long* return_value = TTF_RenderUNICODE_Shaded(font, text, fg, bg);
+                const size* fg = (size_t*)APITools_GetObjectValue(context, 3);
+                const size* bg = (size_t*)APITools_GetObjectValue(context, 4);
+                const size* return_value = TTF_RenderUNICODE_Shaded(font, text, fg, bg);
                 APITools_SetObjectValue(context, 0, (CAST*)return_value);
         }
 
@@ -580,9 +580,9 @@ method : public : RenderGlyphShaded(ch : Int, fg : Color, bg : Color) ~ Surface 
         void sdl_font_render_glyph_shaded(VMContext& context) {
                 SDL_Font* font = (Font*)APITools_GetIntValue(context, 1);
                 const int ch = APITools_GetIntValue(context, 2);
-                const long* fg = (size_t*)APITools_GetObjectValue(context, 3);
-                const long* bg = (size_t*)APITools_GetObjectValue(context, 4);
-                const long* return_value = TTF_RenderGlyph_Shaded(font, ch, fg, bg);
+                const size* fg = (size_t*)APITools_GetObjectValue(context, 3);
+                const size* bg = (size_t*)APITools_GetObjectValue(context, 4);
+                const size* return_value = TTF_RenderGlyph_Shaded(font, ch, fg, bg);
                 APITools_SetObjectValue(context, 0, (CAST*)return_value);
         }
 
@@ -605,8 +605,8 @@ method : public : RenderTextBlended(text : String, fg : Color) ~ Surface {
         void sdl_font_render_text_blended(VMContext& context) {
                 SDL_Font* font = (Font*)APITools_GetIntValue(context, 1);
                 const wstring text = APITools_GetStringValue(context, 2);
-                const long* fg = (size_t*)APITools_GetObjectValue(context, 3);
-                const long* return_value = TTF_RenderText_Blended(font, text, fg);
+                const size* fg = (size_t*)APITools_GetObjectValue(context, 3);
+                const size* return_value = TTF_RenderText_Blended(font, text, fg);
                 APITools_SetObjectValue(context, 0, (CAST*)return_value);
         }
 
@@ -629,8 +629,8 @@ method : public : RenderUNICODEBlended(text : Int, fg : Color) ~ Surface {
         void sdl_font_renderunicode_blended(VMContext& context) {
                 SDL_Font* font = (Font*)APITools_GetIntValue(context, 1);
                 const int text = APITools_GetIntValue(context, 2);
-                const long* fg = (size_t*)APITools_GetObjectValue(context, 3);
-                const long* return_value = TTF_RenderUNICODE_Blended(font, text, fg);
+                const size* fg = (size_t*)APITools_GetObjectValue(context, 3);
+                const size* return_value = TTF_RenderUNICODE_Blended(font, text, fg);
                 APITools_SetObjectValue(context, 0, (CAST*)return_value);
         }
 
@@ -654,9 +654,9 @@ method : public : RenderTextBlended_Wrapped(text : String, fg : Color, wrapLengt
         void sdl_font_render_text_blended_wrapped(VMContext& context) {
                 SDL_Font* font = (Font*)APITools_GetIntValue(context, 1);
                 const wstring text = APITools_GetStringValue(context, 2);
-                const long* fg = (size_t*)APITools_GetObjectValue(context, 3);
+                const size* fg = (size_t*)APITools_GetObjectValue(context, 3);
                 const int wrapLength = APITools_GetIntValue(context, 4);
-                const long* return_value = TTF_RenderText_Blended_Wrapped(font, text, fg, wrapLength);
+                const size* return_value = TTF_RenderText_Blended_Wrapped(font, text, fg, wrapLength);
                 APITools_SetObjectValue(context, 0, (CAST*)return_value);
         }
 
@@ -680,9 +680,9 @@ method : public : RenderUNICODEBlended_Wrapped(text : Int, fg : Color, wrapLengt
         void sdl_font_renderunicode_blended_wrapped(VMContext& context) {
                 SDL_Font* font = (Font*)APITools_GetIntValue(context, 1);
                 const int text = APITools_GetIntValue(context, 2);
-                const long* fg = (size_t*)APITools_GetObjectValue(context, 3);
+                const size* fg = (size_t*)APITools_GetObjectValue(context, 3);
                 const int wrapLength = APITools_GetIntValue(context, 4);
-                const long* return_value = TTF_RenderUNICODE_Blended_Wrapped(font, text, fg, wrapLength);
+                const size* return_value = TTF_RenderUNICODE_Blended_Wrapped(font, text, fg, wrapLength);
                 APITools_SetObjectValue(context, 0, (CAST*)return_value);
         }
 
@@ -705,8 +705,8 @@ method : public : RenderGlyphBlended(ch : Int, fg : Color) ~ Surface {
         void sdl_font_render_glyph_blended(VMContext& context) {
                 SDL_Font* font = (Font*)APITools_GetIntValue(context, 1);
                 const int ch = APITools_GetIntValue(context, 2);
-                const long* fg = (size_t*)APITools_GetObjectValue(context, 3);
-                const long* return_value = TTF_RenderGlyph_Blended(font, ch, fg);
+                const size* fg = (size_t*)APITools_GetObjectValue(context, 3);
+                const size* return_value = TTF_RenderGlyph_Blended(font, ch, fg);
                 APITools_SetObjectValue(context, 0, (CAST*)return_value);
         }
 
