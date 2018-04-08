@@ -157,7 +157,7 @@ class Test {
 			# Update screen
 			@renderer->Present();
 		};
-		
+
 		e->Free();
 		Close();
 	}
@@ -222,7 +222,7 @@ class Test {
 	}
 	
 	function : LoadMedia() ~ Bool {
-		color := Color->New(0, 0, 0);
+		color := Color->New(35, 60, 30);
 		if(<>@text_texture->LoadFromRenderedText( "The quick brown fox jumps over the lazy dog", color)) {
 			"Failed to render text texture!"->ErrorLine();
 			return false;
