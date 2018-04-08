@@ -1416,7 +1416,10 @@ bundle SDL {
 		@b : Int;
 		@a : Int;
 		
-		New() {
+		New(r : Int, g : Int, b : Int) {
+			@r := r;
+			@g := g;
+			@b := b;
 		}
 
 		method : public : GetR() ~ Int {
@@ -1439,7 +1442,7 @@ bundle SDL {
 			return @b;
 		}
 		
-		method : public : SetB(g : Int) ~ Nil {
+		method : public : SetB(b : Int) ~ Nil {
 			@b := b;
 		}
 
@@ -2798,15 +2801,15 @@ bundle SDL {
 	        return value->Get();
 		}
 
-		function : Init : Quit() ~ Nil {
+		function : Quit() ~ Nil {
         	array_args := Base->New[0];
         	Proxy->GetDllProxy()->CallFunction("sdl_font_quit", array_args);
 		}
 		
-		method : public : New(file : String, ptsize : Int) ~ Font {
+		New(file : String, ptsize : Int) {
 	        array_args := Base->New[3];
 	        array_args[0] := IntHolder->New();
-	        array_args[1] := IntHolder->New(file);
+	        array_args[1] := file;
 	        array_args[2] := IntHolder->New(ptsize);
 
 	        Proxy->GetDllProxy()->CallFunction("sdl_font_open", array_args);
@@ -2815,10 +2818,10 @@ bundle SDL {
 	        @font := value->Get();
 		}
 
-		method : public : New(file : String, ptsize : Int, index : Int) ~ Font {
+		New(file : String, ptsize : Int, index : Int) {
 	        array_args := Base->New[4];
 	        array_args[0] := IntHolder->New();
-	        array_args[1] := IntHolder->New(file);
+	        array_args[1] := file;
 	        array_args[2] := IntHolder->New(ptsize);
 	        array_args[3] := IntHolder->New(index);
 
