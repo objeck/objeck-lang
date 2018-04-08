@@ -2828,7 +2828,11 @@ bundle SDL {
 	        Proxy->GetDllProxy()->CallFunction("sdl_font_open_index", array_args);
 
 	        value := array_args[0]->As(IntHolder);
-	        @font := value->Get();
+	        @font := value->Get();        
+		}
+
+		method : public : IsNull() ~ Bool {
+			return @font = 0;
 		}
 
 		method : public : RenderTextSolid(text : String, fg : Color) ~ Surface {
