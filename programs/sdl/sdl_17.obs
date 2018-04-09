@@ -30,7 +30,17 @@ class LButton {
 
 	# Handles mouse event
 	method : public : HandleEvent(e : Event) ~ Nil {
+#~		
+		# If mouse event happened
+		if(e->GetType() == SDL_MOUSEMOTION || e->type == SDL_MOUSEBUTTONDOWN || e->type == SDL_MOUSEBUTTONUP) {
+			//Get mouse position
+			int x, y;
+			SDL_GetMouseState( &x, &y );
 
+			//Check if mouse is in button
+			bool inside = true;
+		}
+~#		
 	}
 	
 	# Shows button sprite
@@ -176,7 +186,7 @@ class Test {
 			# Handle events on queue
 			while( e->Poll() <> 0 ) {
 				# User requests quit
-				if(e->GetType() = Flags->SDL_QUIT->As(Int)) {
+				if(e->GetType() = EventType->SDL_QUIT) {
 					quit := true;
 				};
 			};
@@ -204,7 +214,7 @@ class Test {
 		SCREEN_HEIGHT := 480;
 
 		# Initialize SDL
-		if(Core->Init(Flags->SDL_INIT_VIDEO->As(Int)) < 0) {
+		if(Core->Init(Flags->SDL_INIT_VIDEO) < 0) {
 			"SDL could not initialize!"->ErrorLine();
 			return false;
 		};
@@ -216,9 +226,9 @@ class Test {
 
 		# Create window
 		@window := Window->New("SDL Tutorial", 
-			Flags->SDL_WINDOW_POS_UNDEFINED->As(Int), 
-			Flags->SDL_WINDOW_POS_UNDEFINED->As(Int), 
-			640, 480, Flags->SDL_WINDOW_SHOWN->As(Int));
+			WindowFlags->SDL_WINDOWPOS_UNDEFINED, 
+			WindowFlags->SDL_WINDOWPOS_UNDEFINED, 
+			640, 480, WindowFlags->SDL_WINDOW_SHOWN);
 		if(@window->IsNull()) {
 			"Cannot create window!"->ErrorLine();
 			return false;
@@ -226,7 +236,7 @@ class Test {
 
 		# Get window surface
 		@renderer := Renderer->New(@window, -1, 
-			(RendererFlags->SDL_RENDERER_ACCELERATED and RendererFlags->SDL_RENDERER_PRESENTVSYNC)->As(Int));
+			(RendererFlags->SDL_RENDERER_ACCELERATED->As(Int) and RendererFlags->SDL_RENDERER_PRESENTVSYNC->As(Int)));
 		if(@renderer->IsNull()) {
 			"Cannot create renderer!"->ErrorLine();
 			return false;
