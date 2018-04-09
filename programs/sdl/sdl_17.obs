@@ -5,10 +5,11 @@ http://lazyfoo.net/tutorials/SDL/17_mouse_events/index.php
 
 use SDL;
 
-class LButtonSprite {
-	@state : State;
+class LButton {
+	@position : Point;
+	@current_sprite : LButtonSprite;
 
-	enum State {
+	enum LButtonSprite {
 		BUTTON_SPRITE_MOUSE_OUT,
 		BUTTON_SPRITE_MOUSE_OVER_MOTION,
 		BUTTON_SPRITE_MOUSE_DOWN,
@@ -16,16 +17,25 @@ class LButtonSprite {
 		BUTTON_SPRITE_TOTAL
 	}
 
-	New(state : State) {
-		@state := state;
+	New() {
+		@position := Point->New();
+		@current_sprite := LButtonSprite->BUTTON_SPRITE_MOUSE_OUT;
 	}
 
-	method : public : GetState() ~ State {
-		return @state;
+	# Sets top left position
+	method : public : SetPosition(x : Int, y : Int) ~ Nil {
+		@position->SetX(x);
+		@position->SetY(y);
 	}
 
-	method : public : SetState(state : State) ~ Nil {
-		@state := state;
+	# Handles mouse event
+	method : public : HandleEvent(e : Event) ~ Nil {
+
+	}
+	
+	# Shows button sprite
+	method : public : Render() ~ Nil {
+
 	}
 }
 

@@ -1521,6 +1521,8 @@ bundle SDL {
 		@y : Int;
 		
 		New() {
+			@x := 0;
+			@y := 0;
 		}
 		
 		method : public : GetX() ~ Int {
