@@ -2892,4 +2892,19 @@ bundle SDL {
 	        return Surface->New(value->Get());
 		}
 	}
+
+	class Cursor {
+		method : public : GetGlobalMouseState(x : IntHolder, y : IntHolder) ~ Int {
+			array_args := Base->New[3];
+			array_args[0] := IntHolder->New();
+			array_args[1] := x;
+			array_args[2] := y;
+			
+			Proxy->GetDllProxy()->CallFunction("sdl_cursor_get_global_mouse_state", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+
+	}
 }
