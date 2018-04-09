@@ -18,11 +18,53 @@ bundle SDL {
 	
 	## TODO: break out this flag (i.e. window vs. keyboard)
 	consts Flags {
-		SDL_INIT_VIDEO := 0x00000020,
-		SDL_WINDOW_POS_UNDEFINED := 0x1FFF0000,
-		SDL_WINDOW_SHOWN := 0x00000004,
+		SDL_INIT_VIDEO := 0x00000020
+	}
+
+	consts WindowFlags {
+		SDL_WINDOWPOS_UNDEFINED := 0x1FFF0000,
+		###
+	    SDL_WINDOW_FULLSCREEN := 0x00000001,
+	    SDL_WINDOW_OPENGL := 0x00000002,
+	    SDL_WINDOW_SHOWN := 0x00000004,
+	    SDL_WINDOW_HIDDEN := 0x00000008,
+	    SDL_WINDOW_BORDERLESS := 0x00000010,
+	    SDL_WINDOW_RESIZABLE := 0x00000020,
+	    SDL_WINDOW_MINIMIZED := 0x00000040,
+	    SDL_WINDOW_MAXIMIZED := 0x00000080,
+	    SDL_WINDOW_INPUT_GRABBED := 0x00000100,
+	    SDL_WINDOW_INPUT_FOCUS := 0x00000200,
+	    SDL_WINDOW_MOUSE_FOCUS := 0x00000400,
+	    SDL_WINDOW_FOREIGN := 0x00000800,
+	    SDL_WINDOW_ALLOW_HIGHDPI := 0x00002000,
+	    SDL_WINDOW_MOUSE_CAPTURE := 0x00004000,
+	    SDL_WINDOW_ALWAYS_ON_TOP := 0x00008000,
+	    SDL_WINDOW_SKIP_TASKBAR := 0x00010000,
+	    SDL_WINDOW_UTILITY := 0x00020000,
+	    SDL_WINDOW_TOOLTIP := 0x00040000,
+	    SDL_WINDOW_POPUP_MENU := 0x00080000,
+	    SDL_WINDOW_VULKAN := 0x10000000
+	}
+
+	consts EventType {
 		SDL_QUIT := 0x00000100,
-		SDL_KEYDOWN := 0x00000300
+		 SDL_APP_TERMINATING := 0x00000101,
+	    SDL_APP_LOWMEMORY := 0x00000102,
+	    SDL_APP_WILLENTERBACKGROUND := 0x00000103,
+	    SDL_APP_DIDENTERBACKGROUND := 0x00000104,
+	    SDL_APP_WILLENTERFOREGROUND := 0x00000105,
+	    SDL_APP_DIDENTERFOREGROUND := 0x00000106,
+		###
+		SDL_KEYDOWN := 0x00000300,
+		SDL_KEYUP := 0x00000301,
+	    SDL_TEXTEDITING := 0x00000302,
+	    SDL_TEXTINPUT := 0x00000303,
+	    SDL_KEYMAPCHANGED := 0x00000304,
+    	####
+    	SDL_MOUSEMOTION := 0x400,
+	    SDL_MOUSEBUTTONDOWN := 0x401,
+	    SDL_MOUSEBUTTONUP := 0x402,
+	    SDL_MOUSEWHEEL := 0x403
 	}
 	
 	#~
@@ -1019,7 +1061,7 @@ bundle SDL {
 			};
 		}
 		
-		method : public : GetType() ~ Int {
+		method : public : GetType() ~ EventType {
 			if(@event <> 0) {
 				array_args := Base->New[2];
 				array_args[0] := IntHolder->New();
@@ -1028,7 +1070,7 @@ bundle SDL {
 				Proxy->GetDllProxy()->CallFunction("sdl_event_type", array_args);
 
 				value := array_args[0]->As(IntHolder);
-				return value->Get();
+				return value->Get()->As(EventType);
 			};
 			
 			return -1;
