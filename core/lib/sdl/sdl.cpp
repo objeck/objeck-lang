@@ -2070,10 +2070,21 @@ extern "C" {
     int x, y;
     const int return_value = SDL_GetGlobalMouseState(&x, &y);
 
-    APITools_SetIntValue(context, x, 1);
-    APITools_SetIntValue(context, y, 2);
+    APITools_SetIntValue(context, 1, x);
+    APITools_SetIntValue(context, 2, y);
     APITools_SetIntValue(context, 0, return_value);
   }
 
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_cursor_get_mouse_state(VMContext& context) {
+    int x, y;
+    const int return_value = SDL_GetMouseState(&x, &y);
+
+    APITools_SetIntValue(context, 1, x);
+    APITools_SetIntValue(context, 2, y);
+    APITools_SetIntValue(context, 0, return_value);
+  }
 
 }
