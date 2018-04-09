@@ -6,6 +6,8 @@ http://lazyfoo.net/tutorials/SDL/17_mouse_events/index.php
 use SDL;
 
 class LButtonSprite {
+	@state : State;
+
 	enum State {
 		BUTTON_SPRITE_MOUSE_OUT,
 		BUTTON_SPRITE_MOUSE_OVER_MOTION,
@@ -14,8 +16,16 @@ class LButtonSprite {
 		BUTTON_SPRITE_TOTAL
 	}
 
-	New() {
+	New(state : State) {
+		@state := state;
+	}
 
+	method : public : GetState() ~ State {
+		return @state;
+	}
+
+	method : public : SetState(state : State) ~ Nil {
+		@state := state;
 	}
 }
 
