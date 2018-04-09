@@ -2059,5 +2059,21 @@ extern "C" {
     APITools_SetIntValue(context, 0, (size_t)TTF_RenderText_Solid(font, text.c_str(), fg));
   }
 
+  //
+  // Cursor
+  //
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_cursor_get_global_mouse_state(VMContext& context) {
+    int x, y;
+    const int return_value = SDL_GetGlobalMouseState(&x, &y);
+
+    APITools_SetIntValue(context, x, 1);
+    APITools_SetIntValue(context, y, 2);
+    APITools_SetIntValue(context, 0, return_value);
+  }
+
 
 }
