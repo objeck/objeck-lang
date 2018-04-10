@@ -16,7 +16,6 @@ bundle SDL {
 		}
 	}
 	
-	## TODO: break out this flag (i.e. window vs. keyboard)
 	consts Flags {
 		SDL_INIT_VIDEO := 0x00000020
 	}

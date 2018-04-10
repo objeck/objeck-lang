@@ -387,7 +387,7 @@ bool ContextAnalyzer::Analyze()
                                                                       klass->GetName(), param_method_name, 
                                                                       param_expressions);
       // process return
-      if(method->GetReturn()->GetType() != NIL_TYPE) {
+      if(method->GetReturn()->GetType() != NIL_TYPE && method->GetMethodType() != NEW_PUBLIC_METHOD) {
         param_statement_list->AddStatement(TreeFactory::Instance()->MakeReturn(method->GetFileName(), 
                                                                                method->GetLineNumber() + 1, 
                                                                                mthd_call));

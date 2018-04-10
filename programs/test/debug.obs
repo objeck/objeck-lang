@@ -1,19 +1,15 @@
+
+
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		Init(Mags->FOO);
 	}
 
-	function : Init(v : Mags) ~ Nil {
+	New(v : Int, f :Foo := Nil) {
 		v->PrintLine();
 	}
 }
 
-consts Flags {
-	FOO := 4,
-	BAR := 8
-}
-
-consts Mags {
-	FOO := 16,
-	BAR := 32
+class Foo {
+	New() {
+	}
 }
