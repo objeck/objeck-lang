@@ -3,7 +3,7 @@ use System.API;
 #~
 Provides support for SDL
 ~#
-bundle SDL {
+bundle SDL2 {
 	class Proxy {
 		@lib_proxy : static : DllProxy;
 		
