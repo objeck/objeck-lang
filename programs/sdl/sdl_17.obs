@@ -103,7 +103,7 @@ class LTexture {
 	@width : Int;
 	@height : Int;
 
-	New(renderer : Renderer, font : Font) {
+	New(renderer : Renderer, font : Font := Nil) {
 		@renderer := renderer;
 		@font := font;
 	}
@@ -313,7 +313,7 @@ class Test {
 			@sprite_clips[i] := Rect->New();
 		};
 
-		@button_sprite_sheet_texture := LTexture->New(@renderer, Nil);
+		@button_sprite_sheet_texture := LTexture->New(@renderer);
 
 		@buttons := LButton->New[LButton->LButtonSprite->BUTTON_SPRITE_TOTAL];
 		each(i : @buttons) {
