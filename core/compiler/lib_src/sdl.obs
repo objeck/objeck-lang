@@ -1026,6 +1026,18 @@ bundle SDL2 {
 			return @keysym;
 		}
 	}
+
+	class Keyboard {
+		function : GetState() ~ Int[] {
+	        array_args := Base->New[1];
+	        array_args[0] := IntArrayHolder->New();
+	        
+	        Proxy->GetDllProxy()->CallFunction("sdl_keyboard_get_state", array_args);
+
+	        value := array_args[0]->As(IntArrayHolder);
+	        return value->Get();
+		}
+	}
 	
 	#~
 	Event class

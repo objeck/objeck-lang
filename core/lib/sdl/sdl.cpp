@@ -2088,3 +2088,24 @@ extern "C" {
   }
 
 }
+
+//
+// Keyboard
+//
+
+#ifdef _WIN32
+__declspec(dllexport)
+#endif
+void sdl_keyboard_get_state(VMContext& context) {
+  int numkeys;
+  const Uint8* state = SDL_GetKeyboardState(&numkeys);
+
+  size_t* array = APITools_MakeIntArray(context, numkeys);
+  size_t* int_array = (array + 3);
+  for(int i = 0; i < numkeys; ++i) {
+    int_array[i] = state[i];
+  }
+
+  size_t* int_obj = APITools_GetObjectValue(context, 0);
+  int_obj[0] = (size_t)array;
+}
