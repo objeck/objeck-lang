@@ -159,6 +159,30 @@ int APITools_GetArraySize(size_t* array) {
   return -1;
 }
 
+size_t* APITools_MakeIntArray(VMContext &context, const long int_array_size) {
+  // create character array
+  const long int_array_dim = 1;
+  size_t* int_array = (size_t*)context.alloc_array(int_array_size + int_array_dim + 2, INT_TYPE,
+                                                   context.op_stack, *context.stack_pos, false);
+  int_array[0] = int_array_size + 1;
+  int_array[1] = int_array_dim;
+  int_array[2] = int_array_size;
+
+  return int_array;
+}
+
+size_t* APITools_MakeFloatArray(VMContext &context, const long float_array_size) {
+  // create character array
+  const long float_array_dim = 1;
+  size_t* float_array = (size_t*)context.alloc_array(float_array_size + float_array_dim + 2, FLOAT_TYPE,
+                                                   context.op_stack, *context.stack_pos, false);
+  float_array[0] = float_array_size + 1;
+  float_array[1] = float_array_dim;
+  float_array[2] = float_array_size;
+
+  return float_array;
+}
+
 size_t* APITools_MakeByteArray(VMContext &context, const long char_array_size) {
   // create character array
   const long char_array_dim = 1;
