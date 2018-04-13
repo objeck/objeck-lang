@@ -175,7 +175,7 @@ size_t* APITools_MakeFloatArray(VMContext &context, const long float_array_size)
   // create character array
   const long float_array_dim = 1;
   size_t* float_array = (size_t*)context.alloc_array(float_array_size + float_array_dim + 2, FLOAT_TYPE,
-                                                   context.op_stack, *context.stack_pos, false);
+                                                     context.op_stack, *context.stack_pos, false);
   float_array[0] = float_array_size + 1;
   float_array[1] = float_array_dim;
   float_array[2] = float_array_size;
