@@ -1271,7 +1271,7 @@ bundle System {
 		Copy constructor 
 		@param values integer array 
 		~#
-		New(values : InBaset[]) {
+		New(values : Base[]) {
 			Parent();
 			@values := values;
 		}
