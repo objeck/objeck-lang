@@ -1262,6 +1262,38 @@ bundle System {
 	}
 
 	#~
+	Holds an base array
+	~#
+	class BaseArrayHolder {
+		@values : Base[];
+
+		#~
+		Copy constructor 
+		@param values integer array 
+		~#
+		New(values : InBaset[]) {
+			Parent();
+			@values := values;
+		}
+
+		#~
+		Get values
+		@return values
+		~#
+		method : public : Get() ~ Base[] {
+			return @values;
+		}
+		
+		#~
+		Set values
+		@param values integer array 
+		~#
+		method : public : Set(values : Base[]) ~ Nil {
+			@values := values;
+		}
+	}
+	
+	#~
 	Holds a float
 	~#
 	class FloatHolder implements Compare {
