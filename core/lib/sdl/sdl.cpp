@@ -2097,6 +2097,8 @@ extern "C" {
 __declspec(dllexport)
 #endif
 void sdl_keyboard_get_state(VMContext& context) {
+  size_t* int_obj = APITools_GetObjectValue(context, 0);
+
   int numkeys;
   const Uint8* state = SDL_GetKeyboardState(&numkeys);
 
@@ -2105,7 +2107,6 @@ void sdl_keyboard_get_state(VMContext& context) {
   for(int i = 0; i < numkeys; ++i) {
     int_array[i] = state[i];
   }
-
-  size_t* int_obj = APITools_GetObjectValue(context, 0);
+  
   int_obj[0] = (size_t)array;
 }
