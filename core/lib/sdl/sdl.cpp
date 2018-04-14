@@ -2087,26 +2087,30 @@ extern "C" {
     APITools_SetIntValue(context, 0, return_value);
   }
 
-}
+  //
+  // Keyboard
+  //
 
-//
-// Keyboard
-//
+  #ifdef _WIN32
+  __declspec(dllexport)
+  #endif
+  void sdl_keyboard_get_state(VMContext& context) {
+    int numkeys;
+    const Uint8* states = SDL_GetKeyboardState(&numkeys);
+    size_t* array = APITools_MakeByteArray(context, numkeys);
+    Uint8* byte_array = (Uint8*)(array + 3);
 
-#ifdef _WIN32
-__declspec(dllexport)
-#endif
-void sdl_keyboard_get_state(VMContext& context) {
-  size_t* int_obj = APITools_GetObjectValue(context, 0);
+    memcpy(byte_array, states, numkeys);
+    /*
+    for(int i = 0; i < numkeys; ++i) {
+      byte_array[i] = state[i];
+    }
+    */
 
-  int numkeys;
-  const Uint8* state = SDL_GetKeyboardState(&numkeys);
-
-  size_t* array = APITools_MakeIntArray(context, numkeys);
-  size_t* int_array = (array + 3);
-  for(int i = 0; i < numkeys; ++i) {
-    int_array[i] = state[i];
+    // create 'System.String' object instance
+    size_t* byte_obj = context.alloc_obj(L"System.ByteArrayHolder", context.op_stack, *context.stack_pos, false);
+    byte_obj[0] = (size_t)array;
+    
+    APITools_SetObjectValue(context, 0, byte_obj);
   }
-  
-  int_obj[0] = (size_t)array;
 }
