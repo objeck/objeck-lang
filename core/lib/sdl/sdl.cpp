@@ -2097,10 +2097,11 @@ extern "C" {
   void sdl_keyboard_get_state(VMContext& context) {
     int numkeys;
     const Uint8* states = SDL_GetKeyboardState(&numkeys);
+
     size_t* array = APITools_MakeByteArray(context, numkeys);
     Uint8* byte_array = (Uint8*)(array + 3);
-
     memcpy(byte_array, states, numkeys);
+
     /*
     for(int i = 0; i < numkeys; ++i) {
       byte_array[i] = state[i];
