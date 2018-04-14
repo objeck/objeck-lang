@@ -87,6 +87,14 @@ class LButton {
 				};
 			};
 		};
+
+		state := Keyboard->GetState();
+		if(state[Scancode->SDL_SCANCODE_R] <> 0) {
+			"-- R Pushed --"->PrintLine();
+		}
+		else if(state[Scancode->SDL_SCANCODE_H] <> 0) {
+			"-- H Pushed --"->PrintLine();
+		};
 	}
 	
 	# Shows button sprite
