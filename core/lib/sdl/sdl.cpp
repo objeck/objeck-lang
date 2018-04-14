@@ -2114,4 +2114,15 @@ extern "C" {
     
     APITools_SetObjectValue(context, 0, byte_obj);
   }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_keyboard_get_mod_state(VMContext& context) {
+    APITools_SetIntValue(context, 0, SDL_GetModState());
+  }
+
+
+
+
 }
