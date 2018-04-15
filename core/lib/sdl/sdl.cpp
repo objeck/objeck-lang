@@ -1430,9 +1430,9 @@ extern "C" {
   __declspec(dllexport)
 #endif
   void sdl_event_key(VMContext& context) {
-    SDL_Event* event = (SDL_Event*)APITools_GetIntValue(context, 0);
-    size_t* key_obj = APITools_GetObjectValue(context, 1);
-    if(key_obj) {
+    SDL_Event* event = (SDL_Event*)APITools_GetIntValue(context, 1);
+    if(event->type == SDL_KEYDOWN || event->type == SDL_KEYUP) {
+      size_t* key_obj = APITools_GetObjectValue(context, 2);
       key_obj[0] = event->key.type;
       key_obj[1] = event->key.timestamp;
       key_obj[2] = event->key.windowID;
@@ -1444,6 +1444,28 @@ extern "C" {
         key_sym_obj[1] = event->key.keysym.sym;
         key_sym_obj[2] = event->key.keysym.mod;
       }
+      APITools_SetIntValue(context, 0, 0);
+    }
+    else {
+      APITools_SetIntValue(context, 0, -1);
+    }
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+    void sdl_axis_key(VMContext& context) {
+    SDL_Event* event = (SDL_Event*)APITools_GetIntValue(context, 1);
+    if(event->type == SDL_JOYAXISMOTION) {
+      size_t* axis_obj = APITools_GetObjectValue(context, 2);
+      axis_obj[0] = event->jaxis.type;
+      axis_obj[1] = event->jaxis.timestamp;
+      axis_obj[2] = event->jaxis.which;
+      axis_obj[3] = event->jaxis.value;
+      APITools_SetIntValue(context, 0, 0);
+    }
+    else {
+      APITools_SetIntValue(context, 0, -1);
     }
   }
 

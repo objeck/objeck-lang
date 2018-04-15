@@ -1150,7 +1150,7 @@ bundle SDL2 {
 		@type : Int;
 		@timestamp : Int;
 		@which : Int;
-		@axis : Byte;
+		@axis : Int;
 		@value : Int;
 
 		New() {			
@@ -1163,6 +1163,7 @@ bundle SDL2 {
 	class Event {
 		@event : Int;
 		@key : KeyboardEvent;
+		@axis : JoyAxisEvent;
 		
 		New() {
 			array_args := Base->New[1];
@@ -1210,13 +1211,43 @@ bundle SDL2 {
 					@key := KeyboardEvent->New();
 				};
 				
-				array_args := Base->New[2];
-				array_args[0] := IntHolder->New(@event);
-				array_args[1] := @key;
+				array_args := Base->New[3];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@event);
+				array_args[2] := @key;
 				
 				Proxy->GetDllProxy()->CallFunction("sdl_event_key", array_args);
 
+				value := array_args[0]->As(IntHolder);
+				if(value->Get() < 0) {
+					return Nil;
+				};
+
 				return @key;
+			};
+			
+			return Nil;
+		}
+
+		method : public : JoyAxis() ~ JoyAxisEvent {
+			if(@event <> 0) {
+				if(@axis = Nil) {
+					@axis := JoyAxisEvent->New();
+				};
+				
+				array_args := Base->New[3];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@event);
+				array_args[2] := @axis;
+				
+				Proxy->GetDllProxy()->CallFunction("sdl_axis_key", array_args);
+
+				value := array_args[0]->As(IntHolder);
+				if(value->Get() < 0) {
+					return Nil;
+				};
+
+				return @axis;
 			};
 			
 			return Nil;
