@@ -841,7 +841,11 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
     case ATAN_FLOAT:
       instrs.push_back(new LibraryInstr(line_num, ATAN_FLOAT));
       break;
-
+      
+    case ATAN2_FLOAT:
+      instrs.push_back(new LibraryInstr(line_num, ATAN2_FLOAT));
+      break;
+      
     case LOG_FLOAT:
       instrs.push_back(new LibraryInstr(line_num, LOG_FLOAT));
       break;
