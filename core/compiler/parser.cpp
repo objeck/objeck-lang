@@ -1379,7 +1379,13 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
                                                                instructions::ATAN_FLOAT);
       NextToken();
       break;
-
+      
+    case ATAN2_FLOAT:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+                                                               instructions::ATAN2_FLOAT);
+      NextToken();
+      break;
+      
     case LOG_FLOAT:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
                                                                instructions::LOG_FLOAT);

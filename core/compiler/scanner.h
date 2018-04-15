@@ -160,6 +160,7 @@ enum ScannerTokenType {
   ASIN_FLOAT,
   ACOS_FLOAT,
   ATAN_FLOAT,
+  ATAN2_FLOAT,
   LOG_FLOAT,
   POW_FLOAT,
   SQRT_FLOAT,
