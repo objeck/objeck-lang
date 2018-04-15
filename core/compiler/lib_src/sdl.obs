@@ -1155,6 +1155,26 @@ bundle SDL2 {
 
 		New() {			
 		}
+
+		method : public : GetType() ~ Int {
+			return @type;
+		}
+
+		method : public : GetTimestamp() ~ Int {
+			return @timestamp;
+		}
+
+		method : public : GetWhich() ~ Int {
+			return @which;
+		}
+
+		method : public : GetAxis() ~ Int {
+			return @axis;
+		}
+		
+		method : public : GetValue() ~ Int {
+			return @value;
+		}
 	}
 	
 	#~
@@ -1229,7 +1249,7 @@ bundle SDL2 {
 			return Nil;
 		}
 
-		method : public : JoyAxis() ~ JoyAxisEvent {
+		method : public : GetJAxis() ~ JoyAxisEvent {
 			if(@event <> 0) {
 				if(@axis = Nil) {
 					@axis := JoyAxisEvent->New();
