@@ -1098,6 +1098,64 @@ bundle SDL2 {
 	        return value->Get()->As(Keymod);
 		}
 	}
+
+	class Joystick {
+		@joystick : Int;
+
+		New(device_index : Int) {
+			array_args := Base->New[2];
+	        array_args[0] := IntHolder->New();
+	        array_args[1] := IntHolder->New(device_index);
+
+	        Proxy->GetDllProxy()->CallFunction("sdl_joystick_open", array_args);
+
+	        value := array_args[0]->As(IntHolder);
+	        @joystick := value->Get();
+		}
+
+		method : public : IsNull() ~ Bool {
+			return @joystick = 0;
+		}
+
+		method : public : Free() ~ Nil {
+			if(@joystick <> 0) {
+				array_args := Base->New[1];
+		        array_args[0] := IntHolder->New(@joystick);
+				Proxy->GetDllProxy()->CallFunction("sdl_joystick_close", array_args);
+			}; 
+	    }
+
+	    function : Number() ~ Int {
+	        array_args := Base->New[1];
+	        array_args[0] := IntHolder->New();
+
+	        Proxy->GetDllProxy()->CallFunction("sdl_joystick_nums", array_args);
+
+	        value := array_args[0]->As(IntHolder);
+	        return value->Get();
+		}
+
+		method : public : GetName() ~ String {
+	        array_args := Base->New[2];
+	        array_args[0] := Nil;
+	        array_args[1] := IntHolder->New(@joystick);
+
+	        Proxy->GetDllProxy()->CallFunction("sdl_joystick_name", array_args);
+
+	        return array_args[0];
+		}
+	}
+
+	class JoyAxisEvent {
+		@type : Int;
+		@timestamp : Int;
+		@which : Int;
+		@axis : Byte;
+		@value : Int;
+
+		New() {			
+		}
+	}
 	
 	#~
 	Event class
@@ -1433,7 +1491,7 @@ bundle SDL2 {
 			array_args := Base->New[1];
 			array_args[0] := Nil;
 
-			Proxy->GetDllProxy()->CallFunction("sdl_core_gl_get_swap_interval", array_args);
+			Proxy->GetDllProxy()->CallFunction("sdl_core_get_error", array_args);
 			
 			return array_args[0]->As(String);
 		}

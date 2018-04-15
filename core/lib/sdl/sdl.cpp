@@ -2122,6 +2122,41 @@ extern "C" {
     APITools_SetIntValue(context, 0, SDL_GetModState());
   }
 
+  //
+  // Joystick
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_joystick_open(VMContext& context) {
+    const int device_index = APITools_GetIntValue(context, 1);
+    APITools_SetIntValue(context, 0, (size_t)SDL_JoystickOpen(device_index));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_joystick_close(VMContext& context) {
+    SDL_Joystick* joystick = (SDL_Joystick*)APITools_GetIntValue(context, 0);
+    SDL_JoystickClose(joystick);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_joystick_nums(VMContext& context) {
+    APITools_SetIntValue(context, 0, SDL_NumJoysticks());
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_joystick_name(VMContext& context) {
+    SDL_Joystick* joystick = (SDL_Joystick*)APITools_GetIntValue(context, 1);
+    const string return_value = SDL_JoystickName(joystick);
+    
+    const wstring w_return_value(return_value.begin(), return_value.end());
+    APITools_SetStringValue(context, 0, w_return_value);
+  }
 
 
 
