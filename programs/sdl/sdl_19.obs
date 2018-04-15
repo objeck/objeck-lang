@@ -1,9 +1,14 @@
 #~
 Lesson 19
-http://lazyfoo.net/tutorials/SDL/19_gamepads_and_joysticks/index.php
+http:# lazyfoo.net/tutorials/SDL/19_gamepads_and_joysticks/index.php
 ~#
 
 use SDL2;
+
+consts Screen {
+	SCREEN_WIDTH := 640, 
+	SCREEN_HEIGHT := 480
+}
 
 class LTexture {
 	@renderer : Renderer;
@@ -84,13 +89,10 @@ class LTexture {
 	}
 
 	# Renders texture at given point
-	method : public : Render(x : Int, y : Int, 
-			clip : Rect := Nil, 
-			angle : Float := 0.0, 
-			center : Point := Nil, 
-			flip : RendererFlip := RendererFlip->SDL_FLIP_NONE) ~ Nil {
+	method : public : Render(x : Int, y : Int, clip : Rect := Nil, angle : Float := 0.0, 
+			center : Point := Nil, flip : RendererFlip := RendererFlip->SDL_FLIP_NONE) ~ Nil {
+		
 		render_quad := Rect->New(x, y, @width, @height);
-
 		if(clip <> Nil)	{
 			render_quad->SetW(clip->GetW());
 			render_quad->SetH(clip->GetH());
@@ -112,12 +114,9 @@ class LTexture {
 class Test {
 	@window : static : Window;
 	@renderer : static : Renderer;
-	@press_texture : static : LTexture;
-	@up_texture : static : LTexture;
-	@down_texture : static : LTexture;
-	@left_texture : static : LTexture;
-	@right_texture : static : LTexture;
-
+	@arrow_texture : static : LTexture;
+	@joystick : static : Joystick;
+	
 	function : Main(args : String[]) ~ Nil {
 		# Start up SDL and create window
 		if( <>Init() ) {
@@ -139,6 +138,11 @@ class Test {
 		# Event handler
 		e := Event->New();
 
+		xDir := 0;
+		yDir := 0;
+
+		JOYSTICK_DEAD_ZONE := 8000;
+
 		# While application is running
 		while(<>quit) {
 			# Handle events on queue
@@ -146,31 +150,48 @@ class Test {
 				# User requests quit
 				if(e->GetType() = EventType->SDL_QUIT) {
 					quit := true;
-				};
-			};
+				}
+				else if(e->GetType() = EventType->SDL_JOYAXISMOTION) {
+					# Motion on controller 0
+					if( e->GetJAxis()->GetWhich() = 0 ) {						
+						# X axis motion
+						if( e->GetJAxis()->GetAxis() = 0 )	{
+							# Left of dead zone
+							if( e->GetJAxis()->GetValue() < (-1 * JOYSTICK_DEAD_ZONE) ) {
 
-			# Set texture based on current keystate
-			key_states := Keyboard->GetState();
-			if( key_states [ Scancode->SDL_SCANCODE_UP ] <> 0 ) {
-				current_texture := @up_texture;
-			}
-			else if( key_states [ Scancode->SDL_SCANCODE_DOWN ] <> 0 ) {
-				current_texture := @down_texture;
-			}
-			else if( key_states [ Scancode->SDL_SCANCODE_LEFT ] <> 0 ) {
-				current_texture := @left_texture;
-			}
-			else if( key_states [ Scancode->SDL_SCANCODE_RIGHT ] <> 0 ) {
-				current_texture := @right_texture;
-			}
-			else {
-				current_texture := @press_texture;
+								xDir := -1;
+							}
+							# Right of dead zone
+							else if( e->GetJAxis()->GetValue() > JOYSTICK_DEAD_ZONE ) {
+								xDir :=  1;
+							}
+							else {
+								xDir := 0;
+							};
+						}
+						# Y axis motion
+						else if( e->GetJAxis()->GetAxis() = 1 ) {
+							# Below of dead zone
+							if( e->GetJAxis()->GetValue() < (-1 * JOYSTICK_DEAD_ZONE) ) {
+								yDir := -1;
+							}
+							# Above of dead zone
+							else if( e->GetJAxis()->GetValue() > JOYSTICK_DEAD_ZONE ) {
+								yDir :=  1;
+							}
+							else {
+								yDir := 0;
+							};
+						};
+					};
+				};
 			};
 			
 			@renderer->SetDrawColor(0xFF, 0xFF, 0xFF, 0xFF);
 			@renderer->Clear();
 
-			current_texture->Render( 0, 0 );
+			@arrow_texture->Render( (Screen->SCREEN_WIDTH->As(Int) - @arrow_texture->GetWidth()) / 2 , 
+				(Screen->SCREEN_HEIGHT->As(Int) - @arrow_texture->GetHeight()) / 2);
 
 			# Update screen
 			@renderer->Present();
@@ -185,7 +206,7 @@ class Test {
 		success := true;
 
 		# Initialize SDL
-		if(Core->Init(HardwareFlags->SDL_INIT_VIDEO | HardwareFlags->SDL_INIT_JOYSTICK) < 0) {
+		if(Core->Init((HardwareFlags->SDL_INIT_VIDEO or HardwareFlags->SDL_INIT_JOYSTICK)->As(Int)) < 0) {
 			"SDL could not initialize!"->ErrorLine();
 			return false;
 		};
@@ -195,17 +216,24 @@ class Test {
 			return false;
 		};
 
+		if(Joystick->Number() < 1) {
+			"Warning: No joysticks connected!"->PrintLine();
+		};
+
+		@joystick := Joystick->New(0);
+
 		# Create window
 		@window := Window->New("SDL Tutorial", WindowFlags->SDL_WINDOWPOS_UNDEFINED, 
-			WindowFlags->SDL_WINDOWPOS_UNDEFINED, 640, 480, WindowFlags->SDL_WINDOW_SHOWN);
+			WindowFlags->SDL_WINDOWPOS_UNDEFINED, Screen->SCREEN_WIDTH, Screen->SCREEN_HEIGHT, 
+			WindowFlags->SDL_WINDOW_SHOWN);
 		if(@window->IsNull()) {
 			"Cannot create window!"->ErrorLine();
 			return false;
 		};
 
 		# Get window surface
-		@renderer := Renderer->New(@window, -1, (RendererFlags->SDL_RENDERER_ACCELERATED->As(Int) 
-			and RendererFlags->SDL_RENDERER_PRESENTVSYNC->As(Int)));
+		@renderer := Renderer->New(@window, -1, (RendererFlags->SDL_RENDERER_ACCELERATED or 
+			RendererFlags->SDL_RENDERER_PRESENTVSYNC)->As(Int));
 		if(@renderer->IsNull()) {
 			"Cannot create renderer!"->ErrorLine();
 			return false;
@@ -218,37 +246,13 @@ class Test {
 			return false;
 		};
 
-		@press_texture := LTexture->New(@renderer);
-		@up_texture := LTexture->New(@renderer);
-		@down_texture := LTexture->New(@renderer);
-		@left_texture := LTexture->New(@renderer);
-		@right_texture := LTexture->New(@renderer);
+		@arrow_texture := LTexture->New(@renderer);
 		
 		return true;
 	}
 	
 	function : LoadMedia() ~ Bool {
-		if(<>@press_texture->LoadFromFile("images/press.png")) {
-			"Failed to load press texture!"->ErrorLine();
-			return false;
-		};
-
-		if(<>@up_texture->LoadFromFile("images/up.png")) {
-			"Failed to load press texture!"->ErrorLine();
-			return false;
-		};
-
-		if(<>@down_texture->LoadFromFile("images/down.png")) {
-			"Failed to load press texture!"->ErrorLine();
-			return false;
-		};
-
-		if(<>@left_texture->LoadFromFile("images/left.png")) {
-			"Failed to load press texture!"->ErrorLine();
-			return false;
-		};
-
-		if(<>@right_texture->LoadFromFile("images/right.png")) {
+		if(<>@arrow_texture->LoadFromFile("images/arrow.png")) {
 			"Failed to load press texture!"->ErrorLine();
 			return false;
 		};
@@ -276,11 +280,8 @@ class Test {
 	}
 	
 	function : Close() ~ Nil {
-		@press_texture->Free();
-		@up_texture->Free();
-		@down_texture->Free();
-		@left_texture->Free();
-		@right_texture->Free();
+		@joystick->Free();
+		@arrow_texture->Free();
 
 		@renderer->Destroy();
 		@window->Destroy();
