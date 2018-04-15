@@ -281,7 +281,7 @@ class Test {
 		SCREEN_HEIGHT := 480;
 
 		# Initialize SDL
-		if(Core->Init(Flags->SDL_INIT_VIDEO) < 0) {
+		if(Core->Init(HardwareFlags->SDL_INIT_VIDEO) < 0) {
 			"SDL could not initialize!"->ErrorLine();
 			return false;
 		};
