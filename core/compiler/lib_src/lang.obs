@@ -965,13 +965,25 @@ bundle System {
 		
 		#~
 		Calculates the arc-tangent value
-		@ignore-params l
+		@ignore-params f
 		@return arc-tangent value
 		~#
 		function : ArcTan(f : Float) ~ Float {
 			ATAN_FLOAT;
 		}
 		
+		#~
+		Calculates arc tangent of y/x
+		@ignore-params f
+		@param x value
+		@return arc-tangent value
+		~#
+		function : ArcTan2(f : Float, x : Float) ~ Float {
+			ATAN2_FLOAT;
+		}
+		
+		#~
+		Calculates the log value
 		#~
 		Calculates the log value
 		@ignore-params l
