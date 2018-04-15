@@ -141,7 +141,7 @@ class Test {
 		xDir := 0;
 		yDir := 0;
 
-		JOYSTICK_DEAD_ZONE := 8000;
+		JOYSTICK_DEAD_ZONE := 4000;
 
 		# While application is running
 		while(<>quit) {
@@ -190,8 +190,9 @@ class Test {
 			@renderer->SetDrawColor(0xFF, 0xFF, 0xFF, 0xFF);
 			@renderer->Clear();
 
+			angle := yDir->As(Float)->ArcTan2(xDir->As(Float));
 			@arrow_texture->Render( (Screen->SCREEN_WIDTH->As(Int) - @arrow_texture->GetWidth()) / 2 , 
-				(Screen->SCREEN_HEIGHT->As(Int) - @arrow_texture->GetHeight()) / 2);
+				(Screen->SCREEN_HEIGHT->As(Int) - @arrow_texture->GetHeight()) / 2, Nil, angle);
 
 			# Update screen
 			@renderer->Present();
@@ -218,6 +219,7 @@ class Test {
 
 		if(Joystick->Number() < 1) {
 			"Warning: No joysticks connected!"->PrintLine();
+			return false;
 		};
 
 		@joystick := Joystick->New(0);
