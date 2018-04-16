@@ -417,8 +417,8 @@ bundle System {
 		
 		#~
 		Returns the smallest byte value
+		@param l value to compare
 		@param r value to compare
-		@ignore-param l
 		@return smallest byte value
 		~#
 		function : native : Min(l : Char, r : Char) ~ Char {
@@ -431,8 +431,8 @@ bundle System {
 
 		#~
 		Returns the largest byte value
+		@param l value to compare
 		@param r value to compare
-		@ignore-param l
 		@return largest byte value
 		~#
 		function : native : Max(l : Char, r : Char) ~ Char {
@@ -602,8 +602,8 @@ bundle System {
 
 		#~
 		Returns the smallest integer value
+		@param l value to compare
 		@param r value to compare
-		@ignore-param l
 		@return smallest integer value
 		~#
 		function : native : Min(l : Int, r : Int) ~ Int {
@@ -616,8 +616,8 @@ bundle System {
 	
 		#~
 		Returns the largest integer value
+		@param l value to compare
 		@param r value to compare
-		@ignore-param l
 		@return largest integer value
 		~#
 		function : native : Max(l : Int, r : Int) ~ Int {
@@ -875,8 +875,8 @@ bundle System {
 
 		#~
 		Returns the largest float value
+		@param l value to compare
 		@param r value to compare
-		@ignore-param l
 		@return largest float value
 		~#
 		function : native : Max(l : Float, r : Float) ~ Float {
