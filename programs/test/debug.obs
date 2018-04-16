@@ -1,15 +1,8 @@
-
-
 class Test {
 	function : Main(args : String[]) ~ Nil {
-	}
-
-	New(v : Int, f :Foo := Nil) {
-		v->PrintLine();
-	}
-}
-
-class Foo {
-	New() {
+		a : Float := 2.0;
+		b : Float := 3.0;
+		a->Power(b)->PrintLine();
+#		2.0->Power(3.0)->PrintLine();
 	}
 }
