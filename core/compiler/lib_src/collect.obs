@@ -3523,7 +3523,7 @@ bundle Collection {
 			if(node->GetLeft() <> Nil & node->GetRight() <> Nil) {
 				left : Int := node->GetLeft()->GetLevel();
 				right : Int := node->GetRight()->GetLevel();
-				value : Int := left->Min(right);
+				value : Int := Int->Min(left, right);
 			
 				if(value < node->GetLevel()) {
 					node->SetLevel(value);

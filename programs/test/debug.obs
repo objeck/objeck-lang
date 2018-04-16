@@ -2,7 +2,8 @@ class Test {
 	function : Main(args : String[]) ~ Nil {
 		a : Float := 2.0;
 		b : Float := 3.0;
-		a->Power(b)->PrintLine();
+		Float->Power(a,b)->PrintLine();
+#		a->Power(b)->PrintLine();
 #		2.0->Power(3.0)->PrintLine();
 	}
 }
