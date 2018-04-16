@@ -2421,8 +2421,13 @@ bool ContextAnalyzer::Analyze()
         encoded_name.push_back(L',');
       }
       lib_method = klass->GetMethod(encoded_name);
+      
+      if(lib_method && method_call->GetCallingParameters()->GetExpressions().size() > 0) {
+        ProcessError(static_cast<Expression*>(method_call),
+                     L"Cannot be called as a method, call as class function");
+      }
     }
-
+    
     method_call->SetOriginalLibraryClass(klass);
     AnalyzeMethodCall(lib_method, method_call, klass->IsVirtual() && !is_parent, is_expr, depth);
   }

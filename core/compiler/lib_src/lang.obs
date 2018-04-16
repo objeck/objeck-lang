@@ -137,8 +137,8 @@ bundle System {
 	class $Byte {
 		#~
 		Returns the smallest byte value
+		@param l value to compare
 		@param r value to compare
-		@ignore-param l
 		@return smallest byte value
 		~#
 		function : native : Min(l : Byte, r : Byte) ~ Byte {
@@ -151,8 +151,8 @@ bundle System {
 
 		#~
 		Returns the largest byte value
+		@param l value to compare
 		@param r value to compare
-		@ignore-param l
 		@return largest byte value
 		~#
 		function : native : Max(l : Byte, r : Byte) ~ Byte {
@@ -974,11 +974,11 @@ bundle System {
 		
 		#~
 		Calculates arc tangent of y/x
-		@ignore-params f
+		@param y value
 		@param x value
 		@return arc-tangent value
 		~#
-		function : ArcTan2(f : Float, x : Float) ~ Float {
+		function : ArcTan2(y : Float, x : Float) ~ Float {
 			ATAN2_FLOAT;
 		}
 		
@@ -1013,11 +1013,11 @@ bundle System {
 		
 		#~
 		Calculates the power value
-		@ignore-param f
+		@param b power base
 		@param r power to raise
 		@return pseudo power value
 		~#
-		function : Power(f : Float, r : Float) ~ Float {
+		function : Power(b : Float, r : Float) ~ Float {
 			POW_FLOAT;
 		}
 
