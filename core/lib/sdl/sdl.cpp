@@ -2231,6 +2231,25 @@ extern "C" {
     APITools_SetIntValue(context, 0, (size_t)chunk_obj);
   }
 
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_mixer_load_mus(VMContext& context) {
+    const wstring w_file = APITools_GetStringValue(context, 1);
+    const string file(w_file.begin(), w_file.end());
+
+    Mix_Music* music = Mix_LoadMUS(file.c_str());
+    APITools_SetIntValue(context, 0, (size_t)music);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_mixer_free_mus(VMContext& context) {
+    Mix_Music* music = (Mix_Music*)APITools_GetIntValue(context, 0);
+    Mix_FreeMusic(music);
+  }
+
   // sdl_mix_chunk_raw_read (to objeck)
   // sdl_mix_chunk_raw_write (to native)
 
