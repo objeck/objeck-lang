@@ -235,10 +235,8 @@ class Test {
 
 			# Update screen
 			@renderer->Present();
-
-			
 		};
-
+		
 		e->Free();
 		Close();
 	}
