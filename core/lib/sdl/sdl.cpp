@@ -39,6 +39,9 @@
 using namespace std;
 
 extern "C" {
+  void sdl_mix_chunk_raw_read(Mix_Chunk* chunk, size_t* chunk_obj);
+  void sdl_mix_chunk_raw_write(Mix_Chunk* chunk, size_t* chunk_obj);
+
   void sdl_color_raw_read(SDL_Color* color, size_t* color_obj);
   void sdl_color_raw_write(SDL_Color* color, size_t* color_obj);
 
@@ -2176,6 +2179,24 @@ extern "C" {
   //
   // Mixer
   //
+  void sdl_mix_chunk_raw_read(Mix_Chunk* chunk, size_t* chunk_obj) {
+    if(chunk) {
+      chunk_obj[0] = chunk->allocated;
+      chunk_obj[1] = (size_t)chunk->abuf;
+      chunk_obj[2] = chunk->alen;
+      chunk_obj[3] = chunk->volume;
+    }
+  }
+  
+  void sdl_mix_chunk_raw_write(Mix_Chunk* chunk, size_t* chunk_obj) {
+    if(chunk_obj) {
+      chunk->allocated = chunk_obj[0];
+      chunk->abuf = (Uint8*)chunk_obj[1];
+      chunk->alen = chunk_obj[2];
+      chunk->volume = (Uint8)chunk_obj[3];
+    }
+  }
+
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
@@ -2184,11 +2205,8 @@ extern "C" {
     const int format = APITools_GetIntValue(context, 2);
     const int channels = APITools_GetIntValue(context, 3);
     const int chunksize = APITools_GetIntValue(context, 4);
-    const int return_value = Mix_OpenAudio(frequency, format, channels, chunksize);
-
-    int i = MIX_DEFAULT_FORMAT;
-
-    APITools_SetIntValue(context, 0, return_value);
+    
+    APITools_SetIntValue(context, 0, Mix_OpenAudio(frequency, format, channels, chunksize));
   }
 
 #ifdef _WIN32
@@ -2197,13 +2215,29 @@ extern "C" {
   void sdl_mix_quit(VMContext& context) {
     Mix_Quit();
   }
-
-
-
+  
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
   void sdl_mixer_loadwav(VMContext& context) {
-    
+    const wstring w_file = APITools_GetStringValue(context, 1);
+    const string extension(w_file.begin(), w_file.end());
+
+    Mix_Chunk* chunk = Mix_LoadWAV(extension.c_str());
+
+    size_t* chunk_obj = context.alloc_obj(L"SDL2.MixChunk", context.op_stack, *context.stack_pos, false);
+    sdl_mix_chunk_raw_read(chunk, chunk_obj);
+
+    APITools_SetIntValue(context, 0, (size_t)chunk_obj);
   }
+
+  // sdl_mix_chunk_raw_read (to objeck)
+  // sdl_mix_chunk_raw_write (to native)
+
+
+
+
+
+
+
 }
