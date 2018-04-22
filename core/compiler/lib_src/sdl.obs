@@ -3088,4 +3088,51 @@ bundle SDL2 {
 	        return value->Get();
 		}
 	}
+
+	class Mixer {
+		const Flags {
+			MIX_DEFAULT_FORMAT := 0x8010,
+			MIX_DEFAULT_CHANNELS := 2,
+			MIX_MAX_VOLUME := 128
+		}
+
+		function : OpenAudio(frequency : Int, format : Int, channels : Int, chunksize : Int) ~ Bool {
+			array_args := Base->New[5];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(frequency);
+			array_args[2] := IntHolder->New(format);
+			array_args[3] := IntHolder->New(channels);
+			array_args[4] := IntHolder->New(chunksize);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_mixer_open_audio", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get() > -1;
+		}
+
+		function : LoadWAV(file : String) ~ MixChunk {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := file;
+
+			Proxy->GetDllProxy()->CallFunction("sdl_mixer_loadwav", array_args);
+
+			return array_args[0];
+		}
+		
+		function : Quit() ~ Nil {
+			array_args := Base->New[0];
+			Proxy->GetDllProxy()->CallFunction("sdl_mix_quit", array_args);
+		}
+	}
+
+	class MixChunk {
+	    allocated : Int;
+	    a_buf : Int;
+	    alen : Int;
+	    volume : Int;
+
+	    New() {
+	    }
+	}
 }

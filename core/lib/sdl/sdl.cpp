@@ -2173,6 +2173,37 @@ extern "C" {
     APITools_SetStringValue(context, 0, w_return_value);
   }
 
+  //
+  // Mixer
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_mixer_open_audio(VMContext& context) {
+    const int frequency = APITools_GetIntValue(context, 1);
+    const int format = APITools_GetIntValue(context, 2);
+    const int channels = APITools_GetIntValue(context, 3);
+    const int chunksize = APITools_GetIntValue(context, 4);
+    const int return_value = Mix_OpenAudio(frequency, format, channels, chunksize);
+
+    int i = MIX_DEFAULT_FORMAT;
+
+    APITools_SetIntValue(context, 0, return_value);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_mix_quit(VMContext& context) {
+    Mix_Quit();
+  }
 
 
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_mixer_loadwav(VMContext& context) {
+    
+  }
 }
