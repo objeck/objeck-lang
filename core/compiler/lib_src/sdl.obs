@@ -3112,12 +3112,12 @@ bundle SDL2 {
 
 		function : LoadWAV(file : String) ~ MixChunk {
 			array_args := Base->New[2];
-			array_args[0] := IntHolder->New();
+			array_args[0] := Nil;
 			array_args[1] := file;
 
 			Proxy->GetDllProxy()->CallFunction("sdl_mixer_loadwav", array_args);
-
-			return array_args[0];
+			
+			return array_args[0]->As(MixChunk);
 		}
 		
 		function : Quit() ~ Nil {
