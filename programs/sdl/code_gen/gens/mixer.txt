@@ -1,0 +1,1176 @@
+method : public : LinkedVersion() ~ version {
+        array_args := Base->New[1];
+        array_args[0] := IntHolder->New();
+
+        Proxy->GetDllProxy()->CallFunction("sdl_mixer_linked_version", array_args);
+
+        return array_args[0];
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_mixer_linked_version(VMContext& context) {
+                const size* return_value = Mix_Linked_Version();
+                APITools_SetObjectValue(context, 0, (CAST*)return_value);
+        }
+
+---
+method : public : Init(flags : Int) ~ Int {
+        array_args := Base->New[2];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(flags);
+
+        Proxy->GetDllProxy()->CallFunction("sdl_mixer_init", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_mixer_init(VMContext& context) {
+                const int flags = APITools_GetIntValue(context, 1);
+                const int return_value = Mix_Init(flags);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : Quit() ~ Nil {
+        array_args := Base->New[0];
+
+        Proxy->GetDllProxy()->CallFunction("sdl_mixer_quit", array_args);
+
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_mixer_quit(VMContext& context) {
+                Mix_Quit();
+        }
+
+---
+method : public : OpenAudio(frequency : Int, format : Int, channels : Int, chunksize : Int) ~ Int {
+        array_args := Base->New[5];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(frequency);
+        array_args[2] := IntHolder->New(format);
+        array_args[3] := IntHolder->New(channels);
+        array_args[4] := IntHolder->New(chunksize);
+
+        Proxy->GetDllProxy()->CallFunction("sdl_mixer_open_audio", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_mixer_open_audio(VMContext& context) {
+                const int frequency = APITools_GetIntValue(context, 1);
+                const int format = APITools_GetIntValue(context, 2);
+                const int channels = APITools_GetIntValue(context, 3);
+                const int chunksize = APITools_GetIntValue(context, 4);
+                const int return_value = Mix_OpenAudio(frequency, format, channels, chunksize);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : OpenAudioDevice(frequency : Int, format : Int, channels : Int, chunksize : Int, device : String, allowed_changes : Int) ~ Int {
+        array_args := Base->New[7];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(frequency);
+        array_args[2] := IntHolder->New(format);
+        array_args[3] := IntHolder->New(channels);
+        array_args[4] := IntHolder->New(chunksize);
+        array_args[5] := device;
+        array_args[6] := IntHolder->New(allowed_changes);
+
+        Proxy->GetDllProxy()->CallFunction("sdl_mixer_open_audio_device", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_mixer_open_audio_device(VMContext& context) {
+                const int frequency = APITools_GetIntValue(context, 1);
+                const int format = APITools_GetIntValue(context, 2);
+                const int channels = APITools_GetIntValue(context, 3);
+                const int chunksize = APITools_GetIntValue(context, 4);
+                const wstring device = APITools_GetStringValue(context, 5);
+                const int allowed_changes = APITools_GetIntValue(context, 6);
+                const int return_value = Mix_OpenAudioDevice(frequency, format, channels, chunksize, device, allowed_changes);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : AllocateChannels(numchans : Int) ~ Int {
+        array_args := Base->New[2];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(numchans);
+
+        Proxy->GetDllProxy()->CallFunction("sdl_mixer_allocate_channels", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_mixer_allocate_channels(VMContext& context) {
+                const int numchans = APITools_GetIntValue(context, 1);
+                const int return_value = Mix_AllocateChannels(numchans);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : QuerySpec(frequency : Int, format : Int, channels : Int) ~ Int {
+        array_args := Base->New[4];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(frequency);
+        array_args[2] := IntHolder->New(format);
+        array_args[3] := IntHolder->New(channels);
+
+        Proxy->GetDllProxy()->CallFunction("sdl_mixer_query_spec", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_mixer_query_spec(VMContext& context) {
+                const int frequency = APITools_GetIntValue(context, 1);
+                const int format = APITools_GetIntValue(context, 2);
+                const int channels = APITools_GetIntValue(context, 3);
+                const int return_value = Mix_QuerySpec(frequency, format, channels);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : LoadWAVRW(src : RWops, freesrc : Int) ~ Chunk {
+        array_args := Base->New[3];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(src);
+        array_args[2] := IntHolder->New(freesrc);
+
+        Proxy->GetDllProxy()->CallFunction("sdl_mixer_loadwavrw", array_args);
+
+        return array_args[0];
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_mixer_loadwavrw(VMContext& context) {
+                const size* src = (size_t*)APITools_GetObjectValue(context, 1);
+                const int freesrc = APITools_GetIntValue(context, 2);
+                const size* return_value = Mix_LoadWAV_RW(src, freesrc);
+                APITools_SetObjectValue(context, 0, (CAST*)return_value);
+        }
+
+---
+method : public : LoadMUS(file : String) ~ Music {
+        array_args := Base->New[2];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(file);
+
+        Proxy->GetDllProxy()->CallFunction("sdl_mixer_loadmus", array_args);
+
+        return array_args[0];
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_mixer_loadmus(VMContext& context) {
+                const wstring file = APITools_GetStringValue(context, 1);
+                const size* return_value = Mix_LoadMUS(file);
+                APITools_SetObjectValue(context, 0, (CAST*)return_value);
+        }
+
+---
+method : public : LoadMUSRW(src : RWops, freesrc : Int) ~ Music {
+        array_args := Base->New[3];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(src);
+        array_args[2] := IntHolder->New(freesrc);
+
+        Proxy->GetDllProxy()->CallFunction("sdl_mixer_loadmusrw", array_args);
+
+        return array_args[0];
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_mixer_loadmusrw(VMContext& context) {
+                const size* src = (size_t*)APITools_GetObjectValue(context, 1);
+                const int freesrc = APITools_GetIntValue(context, 2);
+                const size* return_value = Mix_LoadMUS_RW(src, freesrc);
+                APITools_SetObjectValue(context, 0, (CAST*)return_value);
+        }
+
+---
+method : public : LoadMUSTypeRW(src : RWops, type : MusicType, freesrc : Int) ~ Music {
+        array_args := Base->New[4];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(src);
+        array_args[2] := type;
+        array_args[3] := IntHolder->New(freesrc);
+
+        Proxy->GetDllProxy()->CallFunction("sdl_mixer_loadmus_typerw", array_args);
+
+        return array_args[0];
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_mixer_loadmus_typerw(VMContext& context) {
+                const size* src = (size_t*)APITools_GetObjectValue(context, 1);
+                const size* type = (size_t*)APITools_GetObjectValue(context, 2);
+                const int freesrc = APITools_GetIntValue(context, 3);
+                const size* return_value = Mix_LoadMUSType_RW(src, type, freesrc);
+                APITools_SetObjectValue(context, 0, (CAST*)return_value);
+        }
+
+---
+method : public : QuickLoadWAV(mem : Int) ~ Chunk {
+        array_args := Base->New[2];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(mem);
+
+        Proxy->GetDllProxy()->CallFunction("sdl_mixer_quick_loadwav", array_args);
+
+        return array_args[0];
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_mixer_quick_loadwav(VMContext& context) {
+                const int mem = APITools_GetIntValue(context, 1);
+                const size* return_value = Mix_QuickLoad_WAV(mem);
+                APITools_SetObjectValue(context, 0, (CAST*)return_value);
+        }
+
+---
+method : public : QuickLoadRAW(mem : Int, len : Int) ~ Chunk {
+        array_args := Base->New[3];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(mem);
+        array_args[2] := IntHolder->New(len);
+
+        Proxy->GetDllProxy()->CallFunction("sdl_mixer_quick_loadraw", array_args);
+
+        return array_args[0];
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_mixer_quick_loadraw(VMContext& context) {
+                const int mem = APITools_GetIntValue(context, 1);
+                const int len = APITools_GetIntValue(context, 2);
+                const size* return_value = Mix_QuickLoad_RAW(mem, len);
+                APITools_SetObjectValue(context, 0, (CAST*)return_value);
+        }
+
+---
+method : public : FreeChunk(chunk : Chunk) ~ Nil {
+        array_args := Base->New[1];
+        array_args[0] := IntHolder->New(chunk);
+
+        Proxy->GetDllProxy()->CallFunction("sdl_mixer_free_chunk", array_args);
+
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_mixer_free_chunk(VMContext& context) {
+                const size* chunk = (size_t*)APITools_GetObjectValue(context, 0);
+                Mix_FreeChunk(chunk);
+        }
+
+---
+method : public : GetNumChunkDecoders() ~ Int {
+        array_args := Base->New[1];
+        array_args[0] := IntHolder->New();
+
+        Proxy->GetDllProxy()->CallFunction("sdl_mixer_get_num_chunk_decoders", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_mixer_get_num_chunk_decoders(VMContext& context) {
+                const int return_value = Mix_GetNumChunkDecoders();
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : HasChunkDecoder(name : String) ~ Bool {
+        array_args := Base->New[2];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(name);
+
+        Proxy->GetDllProxy()->CallFunction("sdl_mixer_has_chunk_decoder", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get() = 0 ? false : true;
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_mixer_has_chunk_decoder(VMContext& context) {
+                const wstring name = APITools_GetStringValue(context, 1);
+                const int return_value = Mix_HasChunkDecoder(name);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : GetMusicDecoder(index : Int) ~ String {
+        array_args := Base->New[2];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(index);
+
+        Proxy->GetDllProxy()->CallFunction("sdl_mixer_get_music_decoder", array_args);
+
+        return array_args[0];
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_mixer_get_music_decoder(VMContext& context) {
+                const int index = APITools_GetIntValue(context, 1);
+                const wstring return_value = Mix_GetMusicDecoder(index);
+                APITools_SetStringValue(context, 0, return_value);
+        }
+
+---
+method : public : GetMusicType(music : Music) ~ MusicType {
+        array_args := Base->New[2];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(music);
+
+        Proxy->GetDllProxy()->CallFunction("sdl_mixer_get_music_type", array_args);
+
+        return array_args[0];
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_mixer_get_music_type(VMContext& context) {
+                const size* music = (size_t*)APITools_GetObjectValue(context, 1);
+                const size* return_value = Mix_GetMusicType(music);
+                APITools_SetObjectValue(context, 0, (CAST*)return_value);
+        }
+
+---
+method : public : GetMusicHookData() ~ Int {
+        array_args := Base->New[1];
+        array_args[0] := IntHolder->New();
+
+        Proxy->GetDllProxy()->CallFunction("sdl_mixer_get_music_hook_data", array_args);
+
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_mixer_get_music_hook_data(VMContext& context) {
+        }
+
+---
+method : public : RegisterEffect(chan : Int, f : EffectFunc_t, d : EffectDone_t, arg : Int) ~ Int {
+        array_args := Base->New[5];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(chan);
+        array_args[2] := f;
+        array_args[3] := d;
+
+        Proxy->GetDllProxy()->CallFunction("sdl_mixer_register_effect", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_mixer_register_effect(VMContext& context) {
+                const int chan = APITools_GetIntValue(context, 1);
+                const size* f = (size_t*)APITools_GetObjectValue(context, 2);
+                const size* d = (size_t*)APITools_GetObjectValue(context, 3);
+                const int return_value = Mix_RegisterEffect(chan, f, d, arg);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : UnregisterEffect(channel : Int, f : EffectFunc_t) ~ Int {
+        array_args := Base->New[3];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(channel);
+        array_args[2] := f;
+
+        Proxy->GetDllProxy()->CallFunction("sdl_mixer_unregister_effect", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_mixer_unregister_effect(VMContext& context) {
+                const int channel = APITools_GetIntValue(context, 1);
+                const size* f = (size_t*)APITools_GetObjectValue(context, 2);
+                const int return_value = Mix_UnregisterEffect(channel, f);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : UnregisterAllEffects(channel : Int) ~ Int {
+        array_args := Base->New[2];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(channel);
+
+        Proxy->GetDllProxy()->CallFunction("sdl_mixer_unregister_all_effects", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_mixer_unregister_all_effects(VMContext& context) {
+                const int channel = APITools_GetIntValue(context, 1);
+                const int return_value = Mix_UnregisterAllEffects(channel);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : SetPanning(channel : Int, left : Int, right : Int) ~ Int {
+        array_args := Base->New[4];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(channel);
+        array_args[2] := IntHolder->New(left);
+        array_args[3] := IntHolder->New(right);
+
+        Proxy->GetDllProxy()->CallFunction("sdl_mixer_set_panning", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_mixer_set_panning(VMContext& context) {
+                const int channel = APITools_GetIntValue(context, 1);
+                const int left = APITools_GetIntValue(context, 2);
+                const int right = APITools_GetIntValue(context, 3);
+                const int return_value = Mix_SetPanning(channel, left, right);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : SetPosition(channel : Int, angle : Sint16, distance : Int) ~ Int {
+        array_args := Base->New[4];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(channel);
+        array_args[2] := angle;
+        array_args[3] := IntHolder->New(distance);
+
+        Proxy->GetDllProxy()->CallFunction("sdl_mixer_set_position", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_mixer_set_position(VMContext& context) {
+                const int channel = APITools_GetIntValue(context, 1);
+                const size* angle = (size_t*)APITools_GetObjectValue(context, 2);
+                const int distance = APITools_GetIntValue(context, 3);
+                const int return_value = Mix_SetPosition(channel, angle, distance);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : SetDistance(channel : Int, distance : Int) ~ Int {
+        array_args := Base->New[3];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(channel);
+        array_args[2] := IntHolder->New(distance);
+
+        Proxy->GetDllProxy()->CallFunction("sdl_mixer_set_distance", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_mixer_set_distance(VMContext& context) {
+                const int channel = APITools_GetIntValue(context, 1);
+                const int distance = APITools_GetIntValue(context, 2);
+                const int return_value = Mix_SetDistance(channel, distance);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : SetReverseStereo(channel : Int, flip : Int) ~ Int {
+        array_args := Base->New[3];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(channel);
+        array_args[2] := IntHolder->New(flip);
+
+        Proxy->GetDllProxy()->CallFunction("sdl_mixer_set_reverse_stereo", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_mixer_set_reverse_stereo(VMContext& context) {
+                const int channel = APITools_GetIntValue(context, 1);
+                const int flip = APITools_GetIntValue(context, 2);
+                const int return_value = Mix_SetReverseStereo(channel, flip);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : ReserveChannels(num : Int) ~ Int {
+        array_args := Base->New[2];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(num);
+
+        Proxy->GetDllProxy()->CallFunction("sdl_mixer_reserve_channels", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_mixer_reserve_channels(VMContext& context) {
+                const int num = APITools_GetIntValue(context, 1);
+                const int return_value = Mix_ReserveChannels(num);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : GroupChannel(which : Int, tag : Int) ~ Int {
+        array_args := Base->New[3];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(which);
+        array_args[2] := IntHolder->New(tag);
+
+        Proxy->GetDllProxy()->CallFunction("sdl_mixer_group_channel", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_mixer_group_channel(VMContext& context) {
+                const int which = APITools_GetIntValue(context, 1);
+                const int tag = APITools_GetIntValue(context, 2);
+                const int return_value = Mix_GroupChannel(which, tag);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : GroupChannels(from : Int, to : Int, tag : Int) ~ Int {
+        array_args := Base->New[4];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(from);
+        array_args[2] := IntHolder->New(to);
+        array_args[3] := IntHolder->New(tag);
+
+        Proxy->GetDllProxy()->CallFunction("sdl_mixer_group_channels", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_mixer_group_channels(VMContext& context) {
+                const int from = APITools_GetIntValue(context, 1);
+                const int to = APITools_GetIntValue(context, 2);
+                const int tag = APITools_GetIntValue(context, 3);
+                const int return_value = Mix_GroupChannels(from, to, tag);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : GroupAvailable(tag : Int) ~ Int {
+        array_args := Base->New[2];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(tag);
+
+        Proxy->GetDllProxy()->CallFunction("sdl_mixer_group_available", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_mixer_group_available(VMContext& context) {
+                const int tag = APITools_GetIntValue(context, 1);
+                const int return_value = Mix_GroupAvailable(tag);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : GroupCount(tag : Int) ~ Int {
+        array_args := Base->New[2];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(tag);
+
+        Proxy->GetDllProxy()->CallFunction("sdl_mixer_group_count", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_mixer_group_count(VMContext& context) {
+                const int tag = APITools_GetIntValue(context, 1);
+                const int return_value = Mix_GroupCount(tag);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : GroupOldest(tag : Int) ~ Int {
+        array_args := Base->New[2];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(tag);
+
+        Proxy->GetDllProxy()->CallFunction("sdl_mixer_group_oldest", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_mixer_group_oldest(VMContext& context) {
+                const int tag = APITools_GetIntValue(context, 1);
+                const int return_value = Mix_GroupOldest(tag);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : GroupNewer(tag : Int) ~ Int {
+        array_args := Base->New[2];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(tag);
+
+        Proxy->GetDllProxy()->CallFunction("sdl_mixer_group_newer", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_mixer_group_newer(VMContext& context) {
+                const int tag = APITools_GetIntValue(context, 1);
+                const int return_value = Mix_GroupNewer(tag);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : PlayChannelTimed(channel : Int, chunk : Chunk, loops : Int, ticks : Int) ~ Int {
+        array_args := Base->New[5];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(channel);
+        array_args[2] := chunk;
+        array_args[3] := IntHolder->New(loops);
+        array_args[4] := IntHolder->New(ticks);
+
+        Proxy->GetDllProxy()->CallFunction("sdl_mixer_play_channel_timed", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_mixer_play_channel_timed(VMContext& context) {
+                const int channel = APITools_GetIntValue(context, 1);
+                const size* chunk = (size_t*)APITools_GetObjectValue(context, 2);
+                const int loops = APITools_GetIntValue(context, 3);
+                const int ticks = APITools_GetIntValue(context, 4);
+                const int return_value = Mix_PlayChannelTimed(channel, chunk, loops, ticks);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : FadeInMusic(music : Music, loops : Int, ms : Int) ~ Int {
+        array_args := Base->New[4];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(music);
+        array_args[2] := IntHolder->New(loops);
+        array_args[3] := IntHolder->New(ms);
+
+        Proxy->GetDllProxy()->CallFunction("sdl_mixer_fade_in_music", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_mixer_fade_in_music(VMContext& context) {
+                const size* music = (size_t*)APITools_GetObjectValue(context, 1);
+                const int loops = APITools_GetIntValue(context, 2);
+                const int ms = APITools_GetIntValue(context, 3);
+                const int return_value = Mix_FadeInMusic(music, loops, ms);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : FadeInChannelTimed(channel : Int, chunk : Chunk, loops : Int, ms : Int, ticks : Int) ~ Int {
+        array_args := Base->New[6];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(channel);
+        array_args[2] := chunk;
+        array_args[3] := IntHolder->New(loops);
+        array_args[4] := IntHolder->New(ms);
+        array_args[5] := IntHolder->New(ticks);
+
+        Proxy->GetDllProxy()->CallFunction("sdl_mixer_fade_in_channel_timed", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_mixer_fade_in_channel_timed(VMContext& context) {
+                const int channel = APITools_GetIntValue(context, 1);
+                const size* chunk = (size_t*)APITools_GetObjectValue(context, 2);
+                const int loops = APITools_GetIntValue(context, 3);
+                const int ms = APITools_GetIntValue(context, 4);
+                const int ticks = APITools_GetIntValue(context, 5);
+                const int return_value = Mix_FadeInChannelTimed(channel, chunk, loops, ms, ticks);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : Volume(channel : Int, volume : Int) ~ Int {
+        array_args := Base->New[3];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(channel);
+        array_args[2] := IntHolder->New(volume);
+
+        Proxy->GetDllProxy()->CallFunction("sdl_mixer_volume", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_mixer_volume(VMContext& context) {
+                const int channel = APITools_GetIntValue(context, 1);
+                const int volume = APITools_GetIntValue(context, 2);
+                const int return_value = Mix_Volume(channel, volume);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : VolumeMusic(volume : Int) ~ Int {
+        array_args := Base->New[2];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(volume);
+
+        Proxy->GetDllProxy()->CallFunction("sdl_mixer_volume_music", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_mixer_volume_music(VMContext& context) {
+                const int volume = APITools_GetIntValue(context, 1);
+                const int return_value = Mix_VolumeMusic(volume);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : HaltChannel(channel : Int) ~ Int {
+        array_args := Base->New[2];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(channel);
+
+        Proxy->GetDllProxy()->CallFunction("sdl_mixer_halt_channel", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_mixer_halt_channel(VMContext& context) {
+                const int channel = APITools_GetIntValue(context, 1);
+                const int return_value = Mix_HaltChannel(channel);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : HaltMusic() ~ Int {
+        array_args := Base->New[1];
+        array_args[0] := IntHolder->New();
+
+        Proxy->GetDllProxy()->CallFunction("sdl_mixer_halt_music", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_mixer_halt_music(VMContext& context) {
+                const int return_value = Mix_HaltMusic();
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : ExpireChannel(channel : Int, ticks : Int) ~ Int {
+        array_args := Base->New[3];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(channel);
+        array_args[2] := IntHolder->New(ticks);
+
+        Proxy->GetDllProxy()->CallFunction("sdl_mixer_expire_channel", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_mixer_expire_channel(VMContext& context) {
+                const int channel = APITools_GetIntValue(context, 1);
+                const int ticks = APITools_GetIntValue(context, 2);
+                const int return_value = Mix_ExpireChannel(channel, ticks);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : FadeOutChannel(which : Int, ms : Int) ~ Int {
+        array_args := Base->New[3];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(which);
+        array_args[2] := IntHolder->New(ms);
+
+        Proxy->GetDllProxy()->CallFunction("sdl_mixer_fade_out_channel", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_mixer_fade_out_channel(VMContext& context) {
+                const int which = APITools_GetIntValue(context, 1);
+                const int ms = APITools_GetIntValue(context, 2);
+                const int return_value = Mix_FadeOutChannel(which, ms);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : FadeOutMusic(ms : Int) ~ Int {
+        array_args := Base->New[2];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(ms);
+
+        Proxy->GetDllProxy()->CallFunction("sdl_mixer_fade_out_music", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_mixer_fade_out_music(VMContext& context) {
+                const int ms = APITools_GetIntValue(context, 1);
+                const int return_value = Mix_FadeOutMusic(ms);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : FadingMusic() ~ Fading {
+        array_args := Base->New[1];
+        array_args[0] := IntHolder->New();
+
+        Proxy->GetDllProxy()->CallFunction("sdl_mixer_fading_music", array_args);
+
+        return array_args[0];
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_mixer_fading_music(VMContext& context) {
+                const size* return_value = Mix_FadingMusic();
+                APITools_SetObjectValue(context, 0, (CAST*)return_value);
+        }
+
+---
+method : public : Pause(channel : Int) ~ Nil {
+        array_args := Base->New[1];
+        array_args[0] := IntHolder->New(channel);
+
+        Proxy->GetDllProxy()->CallFunction("sdl_mixer_pause", array_args);
+
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_mixer_pause(VMContext& context) {
+                const int channel = APITools_GetIntValue(context, 0);
+                Mix_Pause(channel);
+        }
+
+---
+method : public : Paused(channel : Int) ~ Int {
+        array_args := Base->New[2];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(channel);
+
+        Proxy->GetDllProxy()->CallFunction("sdl_mixer_paused", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_mixer_paused(VMContext& context) {
+                const int channel = APITools_GetIntValue(context, 1);
+                const int return_value = Mix_Paused(channel);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : PauseMusic() ~ Nil {
+        array_args := Base->New[0];
+
+        Proxy->GetDllProxy()->CallFunction("sdl_mixer_pause_music", array_args);
+
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_mixer_pause_music(VMContext& context) {
+                Mix_PauseMusic();
+        }
+
+---
+method : public : RewindMusic() ~ Nil {
+        array_args := Base->New[0];
+
+        Proxy->GetDllProxy()->CallFunction("sdl_mixer_rewind_music", array_args);
+
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_mixer_rewind_music(VMContext& context) {
+                Mix_RewindMusic();
+        }
+
+---
+method : public : SetMusicPosition(position : double) ~ Int {
+        array_args := Base->New[2];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(position);
+
+        Proxy->GetDllProxy()->CallFunction("sdl_mixer_set_music_position", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_mixer_set_music_position(VMContext& context) {
+                const size* position = (size_t*)APITools_GetObjectValue(context, 1);
+                const int return_value = Mix_SetMusicPosition(position);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : Playing(channel : Int) ~ Int {
+        array_args := Base->New[2];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(channel);
+
+        Proxy->GetDllProxy()->CallFunction("sdl_mixer_playing", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_mixer_playing(VMContext& context) {
+                const int channel = APITools_GetIntValue(context, 1);
+                const int return_value = Mix_Playing(channel);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : SetMusicCMD(command : String) ~ Int {
+        array_args := Base->New[2];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(command);
+
+        Proxy->GetDllProxy()->CallFunction("sdl_mixer_set_musiccmd", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_mixer_set_musiccmd(VMContext& context) {
+                const wstring command = APITools_GetStringValue(context, 1);
+                const int return_value = Mix_SetMusicCMD(command);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : SetSynchroValue(value : Int) ~ Int {
+        array_args := Base->New[2];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(value);
+
+        Proxy->GetDllProxy()->CallFunction("sdl_mixer_set_synchro_value", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_mixer_set_synchro_value(VMContext& context) {
+                const int value = APITools_GetIntValue(context, 1);
+                const int return_value = Mix_SetSynchroValue(value);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : SetSoundFonts(paths : String) ~ Int {
+        array_args := Base->New[2];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(paths);
+
+        Proxy->GetDllProxy()->CallFunction("sdl_mixer_set_sound_fonts", array_args);
+
+        value := array_args[0]->As(IntHolder);
+        return value->Get();
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_mixer_set_sound_fonts(VMContext& context) {
+                const wstring paths = APITools_GetStringValue(context, 1);
+                const int return_value = Mix_SetSoundFonts(paths);
+                APITools_SetIntValue(context, 0, return_value);
+        }
+
+---
+method : public : GetChunk(channel : Int) ~ Chunk {
+        array_args := Base->New[2];
+        array_args[0] := IntHolder->New();
+        array_args[1] := IntHolder->New(channel);
+
+        Proxy->GetDllProxy()->CallFunction("sdl_mixer_get_chunk", array_args);
+
+        return array_args[0];
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_mixer_get_chunk(VMContext& context) {
+                const int channel = APITools_GetIntValue(context, 1);
+                const size* return_value = Mix_GetChunk(channel);
+                APITools_SetObjectValue(context, 0, (CAST*)return_value);
+        }
+
+---
+method : public : CloseAudio() ~ Nil {
+        array_args := Base->New[0];
+
+        Proxy->GetDllProxy()->CallFunction("sdl_mixer_close_audio", array_args);
+
+}
+
+#ifdef _WIN32
+        __declspec(dllexport)
+#endif
+        void sdl_mixer_close_audio(VMContext& context) {
+                Mix_CloseAudio();
+        }
+
+---

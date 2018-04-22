@@ -102,7 +102,7 @@ bundle CodeGen {
 		}
 		
 		method : ParseCxxName(name : String) ~ String {
-			if(name->StartsWith("SDL_") | name->StartsWith("TTF_")) {
+			if(name->StartsWith("SDL_") | name->StartsWith("TTF_")  | name->StartsWith("Mix_")) {
 				name := name->SubString(4, name->Size() - 4);
 			};
 			
@@ -233,7 +233,7 @@ bundle CodeGen {
 		}
 		
 		method : public : GetObjeckName() ~ String {
-			if(@objk_name = Nil & (@func_name->StartsWith("SDL_") | @func_name->StartsWith("TTF_"))) {
+			if(@objk_name = Nil & (@func_name->StartsWith("SDL_") | @func_name->StartsWith("TTF_") | @func_name->StartsWith("Mix_"))) {
 				@objk_name := @func_name->SubString(4, @func_name->Size() - 4);
 				@objk_name := @objk_name->Replace(@this_name, "");
 				@objk_name := @objk_name->Replace("_", "");
