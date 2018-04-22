@@ -2981,15 +2981,6 @@ bundle SDL2 {
 
 			return -1;
 		}
-#~
-		method : public : Unlock() ~ Nil {
-			if(@texture <> 0) {
-				array_args := Base->New[1];
-				array_args[0] := IntHolder->New(@texture);
-				Proxy->GetDllProxy()->CallFunction("sdl_texture_unlock", array_args);
-			};
-		}
-~#		
 	}
 	
 	class Timer {

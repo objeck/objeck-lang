@@ -3,7 +3,7 @@ Lesson 14
 http://lazyfoo.net/tutorials/SDL/14_animated_sprites_and_vsync/index.php
 ~#
 
-use SDL;
+use SDL2;
 
 class LTexture {
 	@renderer : Renderer;
@@ -131,7 +131,7 @@ class Test {
 			# Handle events on queue
 			while( e->Poll() <> 0 ) {
 				# User requests quit
-				if(e->GetType() = Flags->SDL_QUIT->As(Int)) {
+				if(e->GetType() = EventType->SDL_QUIT) {
 					quit := true;
 				};
 			};
@@ -176,7 +176,7 @@ class Test {
 		WALKING_ANIMATION_FRAMES := 4;
 
 		# Initialize SDL
-		if(Core->Init(Flags->SDL_INIT_VIDEO->As(Int)) < 0) {
+		if(Core->Init(HardwareFlags->SDL_INIT_VIDEO->As(Int)) < 0) {
 			"SDL could not initialize!"->ErrorLine();
 			return false;
 		};
@@ -187,10 +187,8 @@ class Test {
 		};
 
 		# Create window
-		@window := Window->New("SDL Tutorial", 
-			Flags->SDL_WINDOW_POS_UNDEFINED->As(Int), 
-			Flags->SDL_WINDOW_POS_UNDEFINED->As(Int), 
-			640, 480, Flags->SDL_WINDOW_SHOWN->As(Int));
+		@window := Window->New("SDL Tutorial", WindowFlags->SDL_WINDOWPOS_UNDEFINED, 			
+			WindowFlags->SDL_WINDOWPOS_UNDEFINED, 640, 480, WindowFlags->SDL_WINDOW_SHOWN);
 		if(@window->IsNull()) {
 			"Cannot create window!"->ErrorLine();
 			return false;
