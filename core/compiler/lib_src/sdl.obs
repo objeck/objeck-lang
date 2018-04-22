@@ -3090,7 +3090,7 @@ bundle SDL2 {
 	}
 
 	class Mixer {
-		const Flags {
+		consts Flags {
 			MIX_DEFAULT_FORMAT := 0x8010,
 			MIX_DEFAULT_CHANNELS := 2,
 			MIX_MAX_VOLUME := 128
@@ -3116,7 +3116,7 @@ bundle SDL2 {
 			array_args[1] := file;
 
 			Proxy->GetDllProxy()->CallFunction("sdl_mixer_loadwav", array_args);
-			
+
 			return array_args[0]->As(MixChunk);
 		}
 		
