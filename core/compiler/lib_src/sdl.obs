@@ -3127,6 +3127,17 @@ bundle SDL2 {
 			return value->Get();
 		}
 
+		function : HaltChannel(channel : Int) ~ Int {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(channel);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_mixer_halt_channel", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+
 		function : Playing(channel : Int) ~ Bool {
 			array_args := Base->New[2];
 			array_args[0] := IntHolder->New();
@@ -3138,7 +3149,11 @@ bundle SDL2 {
 			return value->Get() <> 0;
 		}
 
-		method : public : Volume(channel : Int, volume : Int) ~ Int {
+		function : GetVolume(channel : Int) ~ Int {
+			return Volume(channel, -1);
+		}
+		
+		function : Volume(channel : Int, volume : Int) ~ Int {
 			array_args := Base->New[3];
 			array_args[0] := IntHolder->New();
 			array_args[1] := IntHolder->New(channel);
@@ -3265,6 +3280,10 @@ bundle SDL2 {
 		function : Halt() ~ Nil {
 			array_args := Base->New[0];
 			Proxy->GetDllProxy()->CallFunction("sdl_mixer_halt_music", array_args);
+		}
+
+		function : GetVolumeMusic() ~ Int {
+			return VolumeMusic(-1);
 		}
 
 		function : VolumeMusic(volume : Int) ~ Int {
