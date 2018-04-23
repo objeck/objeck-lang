@@ -160,7 +160,7 @@ class Test {
 		if(@music->IsNull()) {
 			return false;
 		};
-		@music->PlayMusic(-1);
+		@music->FadeInMusic(-1, 7000);
 
 		return true;
 	}

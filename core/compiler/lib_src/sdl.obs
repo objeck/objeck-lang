@@ -3114,6 +3114,41 @@ bundle SDL2 {
 			array_args := Base->New[0];
 			Proxy->GetDllProxy()->CallFunction("sdl_mix_quit", array_args);
 		}
+
+		function : FadeOutChannel(which : Int, ms : Int) ~ Int {
+			array_args := Base->New[3];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(which);
+			array_args[2] := IntHolder->New(ms);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_mixer_fade_out_channel", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+
+		function : Playing(channel : Int) ~ Bool {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(channel);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_mixer_playing", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get() <> 0;
+		}
+
+		method : public : Volume(channel : Int, volume : Int) ~ Int {
+			array_args := Base->New[3];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(channel);
+			array_args[2] := IntHolder->New(volume);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_mixer_volume", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
 	}
 
 	class MixChunk {
@@ -3152,15 +3187,23 @@ bundle SDL2 {
 			return value->Get();
 		}
 
-		function : Playing(channel : Int) ~ Bool {
-			array_args := Base->New[2];
+		method : public : FadeInChannel(channel : Int, loops : Int, ms : Int) ~ Int {
+			return FadeInChannelTimed(channel, loops, ms, -1);
+		}
+
+		method : public : FadeInChannelTimed(channel : Int, loops : Int, ms : Int, ticks : Int) ~ Int {
+			array_args := Base->New[6];
 			array_args[0] := IntHolder->New();
 			array_args[1] := IntHolder->New(channel);
+			array_args[2] := IntHolder->New(@mix_chunk);
+			array_args[3] := IntHolder->New(loops);
+			array_args[4] := IntHolder->New(ms);
+			array_args[5] := IntHolder->New(ticks);
 
-			Proxy->GetDllProxy()->CallFunction("sdl_mixer_playing", array_args);
+			Proxy->GetDllProxy()->CallFunction("sdl_mixer_fade_in_channel_timed", array_args);
 
 			value := array_args[0]->As(IntHolder);
-			return value->Get() <> 0;
+			return value->Get();
 		}
 
 	    method : public : Free() ~ Nil {
@@ -3224,6 +3267,17 @@ bundle SDL2 {
 			Proxy->GetDllProxy()->CallFunction("sdl_mixer_halt_music", array_args);
 		}
 
+		function : VolumeMusic(volume : Int) ~ Int {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(volume);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_mixer_volume_music", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+
 		method : public : PlayMusic(loops : Int) ~ Int {
 			array_args := Base->New[3];
 			array_args[0] := IntHolder->New();
@@ -3231,6 +3285,30 @@ bundle SDL2 {
 			array_args[2] := IntHolder->New(loops);
 			
 			Proxy->GetDllProxy()->CallFunction("sdl_mixer_play_music", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+
+		method : public : FadeInMusic(loops : Int, ms : Int) ~ Int {
+			array_args := Base->New[4];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@mix_music);
+			array_args[2] := IntHolder->New(loops);
+			array_args[3] := IntHolder->New(ms);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_mixer_fade_in_music", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+
+		function : FadeOutMusic(ms : Int) ~ Int {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(ms);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_mixer_fade_out_music", array_args);
 
 			value := array_args[0]->As(IntHolder);
 			return value->Get();

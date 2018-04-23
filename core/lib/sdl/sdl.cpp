@@ -2214,9 +2214,30 @@ extern "C" {
     const int loops = APITools_GetIntValue(context, 3);
     const int ticks = APITools_GetIntValue(context, 4);
 
-    const int return_value = Mix_PlayChannelTimed(channel, chunk, loops, ticks);
-    
-    APITools_SetIntValue(context, 0, return_value);
+    APITools_SetIntValue(context, 0, Mix_PlayChannelTimed(channel, chunk, loops, ticks));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_mixer_fade_in_channel_timed(VMContext& context) {
+    const int channel = APITools_GetIntValue(context, 1);
+    Mix_Chunk* chunk = (Mix_Chunk*)APITools_GetIntValue(context, 2);
+    const int loops = APITools_GetIntValue(context, 3);
+    const int ms = APITools_GetIntValue(context, 4);
+    const int ticks = APITools_GetIntValue(context, 5);
+
+    APITools_SetIntValue(context, 0, Mix_FadeInChannelTimed(channel, chunk, loops, ms, ticks));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_mixer_fade_out_channel(VMContext& context) {
+    const int which = APITools_GetIntValue(context, 1);
+    const int ms = APITools_GetIntValue(context, 2);
+
+    APITools_SetIntValue(context, 0, Mix_FadeOutChannel(which, ms));
   }
 
 #ifdef _WIN32
@@ -2254,6 +2275,43 @@ extern "C" {
     const int loops = APITools_GetIntValue(context, 2);
 
     APITools_SetIntValue(context, 0, Mix_PlayMusic(music, loops));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_mixer_volume(VMContext& context) {
+    const int channel = APITools_GetIntValue(context, 1);
+    const int volume = APITools_GetIntValue(context, 2);
+
+    APITools_SetIntValue(context, 0, Mix_Volume(channel, volume));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_mixer_volume_music(VMContext& context) {
+    const int volume = APITools_GetIntValue(context, 1);
+    APITools_SetIntValue(context, 0, Mix_VolumeMusic(volume));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_mixer_fade_in_music(VMContext& context) {
+    Mix_Music* music = (Mix_Music*)APITools_GetIntValue(context, 1);
+    const int loops = APITools_GetIntValue(context, 2);
+    const int ms = APITools_GetIntValue(context, 3);
+
+    APITools_SetIntValue(context, 0, Mix_FadeInMusic(music, loops, ms));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_mixer_fade_out_music(VMContext& context) {
+    const int ms = APITools_GetIntValue(context, 1);
+    APITools_SetIntValue(context, 0, Mix_FadeOutMusic(ms));
   }
 
 #ifdef _WIN32
