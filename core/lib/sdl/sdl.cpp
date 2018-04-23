@@ -2294,6 +2294,13 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
+  void sdl_mixer_halt_music(VMContext& context) {
+    Mix_HaltMusic();
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
   void sdl_mixer_resume_music(VMContext& context) {
     Mix_ResumeMusic();
   }
