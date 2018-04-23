@@ -2219,16 +2219,19 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void sdl_mixer_loadwav(VMContext& context) {
+  void sdl_mixer_load_wav(VMContext& context) {
     const wstring w_file = APITools_GetStringValue(context, 1);
     const string extension(w_file.begin(), w_file.end());
 
-    Mix_Chunk* chunk = Mix_LoadWAV(extension.c_str());
+    APITools_SetIntValue(context, 0, (size_t)Mix_LoadWAV(extension.c_str()));
+  }
 
-    size_t* chunk_obj = context.alloc_obj(L"SDL2.MixChunk", context.op_stack, *context.stack_pos, false);
-    sdl_mix_chunk_raw_read(chunk, chunk_obj);
-
-    APITools_SetIntValue(context, 0, (size_t)chunk_obj);
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+    void sdl_mixer_free_wav(VMContext& context) {
+    Mix_Chunk* chunk = (Mix_Chunk*)APITools_GetIntValue(context, 0);
+    Mix_FreeChunk(chunk);
   }
 
 #ifdef _WIN32
