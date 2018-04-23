@@ -1678,18 +1678,6 @@ bundle SDL2 {
 		}
 	}
 	
-	#~
-	Palette	class
-	~#
-	class Palette {
-		@palette : Int;
-		@ncolors : Int;
-		@colors : Color[];
-		
-		New() {
-		}
-	}
-	
 	class DisplayMode {
 		@format : Int;
 	    @w : Int;
@@ -1891,7 +1879,7 @@ bundle SDL2 {
 	~#
 	class PixelFormat {
 		@format : Int;
-		@palette : Palette; ## TODO
+		@palette : Int;
 		@bits_per_pixel : Int;
 		@bytes_per_pixel : Int;
 		@r_mask : Int;
@@ -2075,22 +2063,6 @@ bundle SDL2 {
 				array_args[1] := IntHolder->New(@surface);
 
 				Proxy->GetDllProxy()->CallFunction("sdl_surface_get_pitch", array_args);
-
-				value := array_args[0]->As(IntHolder);
-				return value->Get();
-			};
-			
-			return -1;
-		}
-		
-		method : public : SetPalette(palette : Palette) ~ Int {
-			if(@surface <> 0) {
-				array_args := Base->New[3];
-				array_args[0] := IntHolder->New();
-				array_args[1] := IntHolder->New(@surface);
-				array_args[2] := palette;
-
-				Proxy->GetDllProxy()->CallFunction("sdl_surface_set_palette", array_args);
 
 				value := array_args[0]->As(IntHolder);
 				return value->Get();
