@@ -2229,7 +2229,29 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-    void sdl_mixer_free_wav(VMContext& context) {
+  void sdl_mixer_play_channel_timed(VMContext& context) {
+    const int channel = APITools_GetIntValue(context, 1);
+    Mix_Chunk* chunk = (Mix_Chunk*)APITools_GetIntValue(context, 2);
+    const int loops = APITools_GetIntValue(context, 3);
+    const int ticks = APITools_GetIntValue(context, 4);
+
+    const int return_value = Mix_PlayChannelTimed(channel, chunk, loops, ticks);
+    
+    APITools_SetIntValue(context, 0, return_value);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_mixer_playing(VMContext& context) {
+    const int channel = APITools_GetIntValue(context, 1);
+    APITools_SetIntValue(context, 0, Mix_Playing(channel));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_mixer_free_wav(VMContext& context) {
     Mix_Chunk* chunk = (Mix_Chunk*)APITools_GetIntValue(context, 0);
     Mix_FreeChunk(chunk);
   }
@@ -2243,6 +2265,44 @@ extern "C" {
 
     Mix_Music* music = Mix_LoadMUS(file.c_str());
     APITools_SetIntValue(context, 0, (size_t)music);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_mixer_play_music(VMContext& context) {
+    Mix_Music* music = (Mix_Music*)APITools_GetIntValue(context, 1);
+    const int loops = APITools_GetIntValue(context, 2);
+
+    APITools_SetIntValue(context, 0, Mix_PlayMusic(music, loops));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_mixer_playing_music(VMContext& context) {
+    APITools_SetIntValue(context, 0, Mix_PlayingMusic());
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_mixer_paused_music(VMContext& context) {
+    APITools_SetIntValue(context, 0, Mix_PausedMusic());
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_mixer_resume_music(VMContext& context) {
+    Mix_ResumeMusic();
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_mixer_pause_music(VMContext& context) {
+    Mix_PauseMusic();
   }
 
 #ifdef _WIN32

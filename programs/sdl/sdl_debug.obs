@@ -7,6 +7,11 @@ use SDL2;
 class Test {
 	@window : static : Window;
 	@renderer : static : Renderer;
+	@low_chunk : static : MixChunk;
+	@med_chunk : static : MixChunk;
+	@high_chunk : static : MixChunk;
+	@music : static : MixMusic;
+
 	SCREEN_WIDTH : static : Int;
 	SCREEN_HEIGHT : static : Int;
 
@@ -42,7 +47,27 @@ class Test {
 				else if(e->GetType() = EventType->SDL_KEYDOWN) {
 					select(e->GetKey()->GetKeysym()->GetSym()) {
 						# Increase red
+						label 'w': {
+							@high_chunk->PlayChannel(-1, 0);
+						}
+
+						label 'a': {
+							@low_chunk->PlayChannel(-1, 0);
+						}
+
+						label 'd': {
+							@med_chunk->PlayChannel(-1, 0);
+						}
+
 						label 's': {
+							if(MixMusic->Playing()) {
+								if(MixMusic->Paused()) {
+									MixMusic->Resume();
+								}
+								else {
+									MixMusic->Pause();
+								};
+							};
 						}
 					};
 				};
@@ -100,11 +125,36 @@ class Test {
 			"SDL image could not initialize!"->ErrorLine();
 			return false;
 		};
+
+		if(<>Mixer->OpenAudio(44100, Mixer->Flags->MIX_DEFAULT_FORMAT, 2, 2048)) {
+			return false;
+		};
 		
 		return true;
 	}
 	
-	function : LoadMedia() ~ Bool {
+	function : LoadMedia() ~ Bool {		
+		@low_chunk := MixChunk->New("audio/low.wav");
+		if(@low_chunk->IsNull()) {
+			return false;
+		};
+
+		@high_chunk := MixChunk->New("audio/high.wav");
+		if(@high_chunk->IsNull()) {
+			return false;
+		};
+
+		@med_chunk := MixChunk->New("audio/medium.wav");
+		if(@med_chunk->IsNull()) {
+			return false;
+		};
+		
+		@music := MixMusic->New("audio/beat.wav");
+		if(@music->IsNull()) {
+			return false;
+		};
+		@music->PlayMusic(-1);
+
 		return true;
 	}
 	
@@ -113,6 +163,7 @@ class Test {
 		@window->Destroy();
 
 		# Quit SDL subsystems
+		Mixer->Quit();
 		Core->Quit();
 	}
 }
