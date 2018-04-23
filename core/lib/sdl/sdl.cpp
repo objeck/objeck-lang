@@ -2298,6 +2298,14 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
+  void sdl_mixer_halt_channel(VMContext& context) {
+    const int channel = APITools_GetIntValue(context, 1);
+    APITools_SetIntValue(context, 0, Mix_HaltChannel(channel));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
   void sdl_mixer_fade_in_music(VMContext& context) {
     Mix_Music* music = (Mix_Music*)APITools_GetIntValue(context, 1);
     const int loops = APITools_GetIntValue(context, 2);
