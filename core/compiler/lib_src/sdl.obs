@@ -3219,6 +3219,11 @@ bundle SDL2 {
 			Proxy->GetDllProxy()->CallFunction("sdl_mixer_pause_music", array_args);
 		}
 
+		function : Halt() ~ Nil {
+			array_args := Base->New[0];
+			Proxy->GetDllProxy()->CallFunction("sdl_mixer_halt_music", array_args);
+		}
+
 		method : public : PlayMusic(loops : Int) ~ Int {
 			array_args := Base->New[3];
 			array_args[0] := IntHolder->New();

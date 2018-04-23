@@ -59,6 +59,10 @@ class Test {
 							@med_chunk->PlayChannel(-1, 0);
 						}
 
+						label 'x': {
+							MixMusic->Halt();
+						}
+
 						label 's': {
 							if(MixMusic->Playing()) {
 								if(MixMusic->Paused()) {
@@ -67,6 +71,9 @@ class Test {
 								else {
 									MixMusic->Pause();
 								};
+							}
+							else {
+								@music->PlayMusic(-1);
 							};
 						}
 					};
