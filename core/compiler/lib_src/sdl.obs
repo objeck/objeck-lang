@@ -3110,16 +3110,6 @@ bundle SDL2 {
 			return value->Get() > -1;
 		}
 
-		function : LoadWAV(file : String) ~ MixChunk {
-			array_args := Base->New[2];
-			array_args[0] := Nil;
-			array_args[1] := file;
-
-			Proxy->GetDllProxy()->CallFunction("sdl_mixer_loadwav", array_args);
-
-			return array_args[0]->As(MixChunk);
-		}
-		
 		function : Quit() ~ Nil {
 			array_args := Base->New[0];
 			Proxy->GetDllProxy()->CallFunction("sdl_mix_quit", array_args);
@@ -3127,13 +3117,27 @@ bundle SDL2 {
 	}
 
 	class MixChunk {
-	    allocated : Int;
-	    a_buf : Int;
-	    alen : Int;
-	    volume : Int;
+	    @mix_chunk : Int;
 
 	    New() {
+	    	array_args := Base->New[2];
+			array_args[0] := Nil;
+			array_args[1] := file;
+
+			Proxy->GetDllProxy()->CallFunction("sdl_mixer_load_wav", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			@mix_chunk := value->Get();
 	    }
+
+	    # Volume
+
+	    method : public : Free() ~ Nil {
+			array_args := Base->New[1];
+	        array_args[0] := IntHolder->New(@mix_chunk);
+
+	        Proxy->GetDllProxy()->CallFunction("sdl_mixer_free_wav", array_args);
+		}
 	}
 
 	class MixMusic {
@@ -3149,6 +3153,8 @@ bundle SDL2 {
 	        value := array_args[0]->As(IntHolder);
 			@mix_music := value->Get();
 		}
+
+		# Volume
 
 		method : public : Free() ~ Nil {
 			array_args := Base->New[1];
