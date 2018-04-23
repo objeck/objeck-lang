@@ -39,9 +39,6 @@
 using namespace std;
 
 extern "C" {
-  void sdl_mix_chunk_raw_read(Mix_Chunk* chunk, size_t* chunk_obj);
-  void sdl_mix_chunk_raw_write(Mix_Chunk* chunk, size_t* chunk_obj);
-
   void sdl_color_raw_read(SDL_Color* color, size_t* color_obj);
   void sdl_color_raw_write(SDL_Color* color, size_t* color_obj);
 
@@ -2179,24 +2176,6 @@ extern "C" {
   //
   // Mixer
   //
-  void sdl_mix_chunk_raw_read(Mix_Chunk* chunk, size_t* chunk_obj) {
-    if(chunk) {
-      chunk_obj[0] = chunk->allocated;
-      chunk_obj[1] = (size_t)chunk->abuf;
-      chunk_obj[2] = chunk->alen;
-      chunk_obj[3] = chunk->volume;
-    }
-  }
-  
-  void sdl_mix_chunk_raw_write(Mix_Chunk* chunk, size_t* chunk_obj) {
-    if(chunk_obj) {
-      chunk->allocated = chunk_obj[0];
-      chunk->abuf = (Uint8*)chunk_obj[1];
-      chunk->alen = chunk_obj[2];
-      chunk->volume = (Uint8)chunk_obj[3];
-    }
-  }
-
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
