@@ -104,37 +104,29 @@ class Sprite {
 	}
 }
 
-class Paddle {
-	SCREEN_WIDTH : static : Int;
-	SCREEN_HEIGHT : static : Int;
+consts Environment {
+	SCREEN_WIDTH := 800,
+	SCREEN_HEIGHT := 600,
+	FPS := 30,
+	RED_ZONE := 60
+}
 
+class Paddle {
 	FRAME_RATE : static : Int;
-	VELOCITY : static : Int;
-	BALL_LEFT : static : Int;
-	BALL_RIGHT : static : Int;
-	BALL_CENTER : static : Int;
-	BALL_TOP : static : Int;
-	BALL_BOTTOM : static : Int;
-	PADDLE_LEFT : static : Int;
-	PADDLE_RIGHT : static : Int;
-	PADDLE_CENTER : static : Int;
-	PADDLE_TOP : static : Int;
-	PADDLE_BOTTOM : static : Int;
-	PADDLE_HEIGHT : static : Int;
-	BALL_PADDLE_BOTTOM : static : Int;
+	SPEED : static : Int;
 
 	@window : Window;
 	@renderer : Renderer;
 
-	@sprite_paddle_texture : Sprite;
-	@sprite_ball_texture : Sprite;
+	@paddle_sprite : Sprite;
+	@ball_sprite : Sprite;
 	@text_texture : Sprite;
 	@score_color : Color;
 	
 	@ball_x : Int;
 	@ball_y : Int;
-	@x_dir : Int;
-	@y_dir : Int;
+	@ball_x_dir : Int;
+	@ball_y_dir : Int;
 	@paddle_x : Int;
 	@paddle_y : Int;
 
@@ -145,60 +137,40 @@ class Paddle {
 		game->Run();
 	}
 
-	New () {
+	New() {
 	}
 
 	method : Run() ~ Nil {
-		# Start up SDL and create window
-		if( <>Init() ) {
+		if(<>Init()) {
 			"Failed to initialize!"->ErrorLine();
 			return;
 		};
 		
-		# Load media
-		if( <>LoadMedia() ) {
+		if(<>LoadMedia()) {
 			"Failed to load media!"->ErrorLine();
 			return;
 		};
 
-		# Main loop flag
+		FRAME_RATE := 1000 / Environment->FPS->As(Int);
+		SPEED := 8;
+
+		@ball_x_dir := 1;
+		@ball_y_dir := -1;
+
+		@ball_x := Environment->SCREEN_WIDTH->As(Int) / 2 - @ball_sprite->GetWidth() / 2;
+		@ball_y := Environment->SCREEN_HEIGHT->As(Int) - @paddle_sprite->GetHeight() - 
+			@ball_sprite->GetHeight() - Environment->RED_ZONE->As(Int);
+
+		@paddle_x := Environment->SCREEN_WIDTH->As(Int) / 2 - @paddle_sprite->GetWidth() / 2;
+		@paddle_y := Environment->SCREEN_HEIGHT->As(Int) - @paddle_sprite->GetHeight() - 
+			Environment->RED_ZONE->As(Int);
+
 		quit := false;
-
-		FRAME_RATE := 1000/30;
-		VELOCITY := FRAME_RATE / 3;
-
-		BALL_LEFT := 0 ;
-		BALL_RIGHT := SCREEN_WIDTH - @sprite_ball_texture->GetWidth();
-		BALL_CENTER := SCREEN_WIDTH / 2 - @sprite_ball_texture->GetWidth() / 2;
-		BALL_TOP := 0;
-		BALL_BOTTOM := SCREEN_HEIGHT; # - @sprite_ball_texture->GetHeight();
-
-		PADDLE_LEFT := 0;
-		PADDLE_RIGHT := SCREEN_WIDTH - @sprite_paddle_texture->GetWidth();
-		PADDLE_CENTER := SCREEN_WIDTH / 2 - @sprite_paddle_texture->GetWidth() / 2;
-		PADDLE_TOP := 0;
-		PADDLE_BOTTOM := SCREEN_HEIGHT - @sprite_paddle_texture->GetHeight();
-		PADDLE_HEIGHT := SCREEN_HEIGHT - @sprite_paddle_texture->GetHeight() - 60;
-
-		BALL_PADDLE_BOTTOM := PADDLE_HEIGHT - @sprite_ball_texture->GetHeight();
-
-		# Event handler
 		e := Event->New();
 
-		@ball_x := BALL_CENTER;
-		@ball_y := BALL_PADDLE_BOTTOM;
-
-		@paddle_x := PADDLE_CENTER;
-		@paddle_y := PADDLE_HEIGHT;
-
-		@x_dir := 1;
-		@y_dir := 1;
-
-		# While application is running
 		while(<>quit) {
 			start := Timer->GetTicks();
 
-			# Handle events on queue
 			while( e->Poll() <> 0 ) {
 				# User requests quit
 				if(e->GetType() = EventType->SDL_QUIT) {
@@ -206,9 +178,8 @@ class Paddle {
 				};
 			};
 
-			UpdatePaddle(Keyboard->GetState());
-			
-			UpdateBall();
+			Paddle(Keyboard->GetState());
+			Ball();
 			Render();
 
 			end := start - Timer->GetTicks();
@@ -216,82 +187,62 @@ class Paddle {
 				Timer->Delay(FRAME_RATE - end);
 			};
 		};
+
 		e->Free();
 
-		Close();
+		Quit();
 	}
 
-	method : native : UpdatePaddle(key_states : Byte[]) ~ Nil {
+	method : native : Paddle(key_states : Byte[]) ~ Nil {
 		if(key_states[Scancode->SDL_SCANCODE_LEFT] <> 0 ) {
-			if(@paddle_x - VELOCITY / 2 > PADDLE_LEFT) {
-				@paddle_x -= VELOCITY;
+			if(@paddle_x > 0) {
+				@paddle_x -= SPEED;
 			};
 		}
 		else if(key_states[Scancode->SDL_SCANCODE_RIGHT] <> 0) {
-			if(@paddle_x  + VELOCITY / 2 < PADDLE_RIGHT) {
-				@paddle_x += VELOCITY;
+			if(@paddle_x + @paddle_sprite->GetWidth() < Environment->SCREEN_WIDTH->As(Int)) {
+				@paddle_x += SPEED;
 			};
+		}
+		else if(key_states[Scancode->SDL_SCANCODE_UP] <> 0) {
 		};
 	}
-
-	method : native : UpdateBall() ~ Nil {
-		# hit left or right
-		if(@ball_x <= BALL_LEFT) {
-			@x_dir := 1;
+	
+	method : native : Ball() ~ Nil {
+		# hit top
+		if(@ball_y <= 0) {
+			@ball_y_dir := 1;
 		}
-		else if(@ball_x >= BALL_RIGHT) {
-			@x_dir := -1;
+		# hit bottom
+		else if(@ball_y + @ball_sprite->GetHeight() >= Environment->SCREEN_HEIGHT->As(Int)) {
+			@ball_y_dir := -1;
 		};
-		
-		# hit top or bottom
-		if(@ball_y <= BALL_TOP) {
-			@y_dir := 1;
-		};
-#~		
-		else if(@ball_y >= BALL_BOTTOM) {
-			@y_dir := -1;
-		};
-~#		
 
-		# hit paddle
-		ball_center := @ball_x + @sprite_ball_texture->GetWidth() / 2;
-		paddle_end := @paddle_x + @sprite_paddle_texture->GetWidth();
-		if(@ball_y >= BALL_PADDLE_BOTTOM & ball_center >= @paddle_x & ball_center <= paddle_end) {
-if(@ball_y + VELOCITY> BALL_PADDLE_BOTTOM)			
-"{$@ball_x}, {$@ball_y}"->PrintLine();
-};
-			@y_dir := -1;
+		# hit left
+		if(@ball_x <= 0) {
+			@ball_x_dir := 1;
 		}
-		else if(@ball_y >= BALL_BOTTOM) {
-			color := Color->New(245, 245, 245);
-			@score += 1;
-			@text_texture->LoadFromRenderedText("Count: {$@score}", @score_color);
-
-			@ball_x := BALL_CENTER;
-			@ball_y := BALL_PADDLE_BOTTOM;
-			@paddle_x := PADDLE_CENTER;
-			@paddle_y := PADDLE_HEIGHT;
+		# hit right
+		else if(@ball_x + @ball_sprite->GetWidth() >= Environment->SCREEN_WIDTH->As(Int)) {
+			@ball_x_dir := -1;
 		};
 
-		@ball_x += @x_dir * VELOCITY;
-		@ball_y += @y_dir * VELOCITY;
+		@ball_x += @ball_x_dir * SPEED;
+		@ball_y += @ball_y_dir * SPEED;
 	}
 
 	method : Render() ~ Nil {
 		@renderer->SetDrawColor(70, 130, 180, 0);
 		@renderer->Clear();
 
+		@ball_sprite->Render(@ball_x, @ball_y);
+		@paddle_sprite->Render(@paddle_x, @paddle_y);
 		@text_texture->Render(10, 10);
-		@sprite_ball_texture->Render(@ball_x, @ball_y);
-		@sprite_paddle_texture->Render(@paddle_x, @paddle_y);
 		
 		@renderer->Present();
 	}
 
 	method : Init() ~ Bool {
-		SCREEN_WIDTH := 800;
-		SCREEN_HEIGHT := 600;
-		
 		# Initialize SDL
 		if(Core->Init(HardwareFlags->SDL_INIT_VIDEO->As(Int)) < 0) {
 			"SDL could not initialize!"->ErrorLine();
@@ -305,7 +256,8 @@ if(@ball_y + VELOCITY> BALL_PADDLE_BOTTOM)
 
 		# Create window
 		@window := Window->New("SDL Tutorial", WindowFlags->SDL_WINDOWPOS_UNDEFINED, 			
-			WindowFlags->SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, WindowFlags->SDL_WINDOW_SHOWN);
+			WindowFlags->SDL_WINDOWPOS_UNDEFINED, Environment->SCREEN_WIDTH->As(Int), 
+			Environment->SCREEN_HEIGHT->As(Int), WindowFlags->SDL_WINDOW_SHOWN);
 		if(@window->IsNull()) {
 			"Cannot create window!"->ErrorLine();
 			return false;
@@ -320,8 +272,8 @@ if(@ball_y + VELOCITY> BALL_PADDLE_BOTTOM)
 		};
 		@renderer->SetDrawColor(0xFF, 0xFF, 0xFF, 0xFF);
 
-		@sprite_paddle_texture := Sprite->New(@renderer);
-		@sprite_ball_texture := Sprite->New(@renderer);
+		@paddle_sprite := Sprite->New(@renderer);
+		@ball_sprite := Sprite->New(@renderer);
 
 		img_flags := ImageFlags->IMG_INIT_PNG->As(Int);
 		if((Image->Init(img_flags) and img_flags) = 0) {
@@ -345,11 +297,11 @@ if(@ball_y + VELOCITY> BALL_PADDLE_BOTTOM)
 	}
 	
 	method : LoadMedia() ~ Bool {
-		if(<>@sprite_paddle_texture->LoadFromFile("images/paddle.png")) {
+		if(<>@paddle_sprite->LoadFromFile("images/paddle.png")) {
 			return false;
 		};
 
-		if(<>@sprite_ball_texture->LoadFromFile("images/ball.png")) {
+		if(<>@ball_sprite->LoadFromFile("images/ball.png")) {
 			return false;
 		};
 
@@ -381,9 +333,9 @@ if(@ball_y + VELOCITY> BALL_PADDLE_BOTTOM)
 		return texture;
 	}
 	
-	method : Close() ~ Nil {
-		@sprite_paddle_texture->Free();
-		@sprite_ball_texture->Free();
+	method : Quit() ~ Nil {
+		@paddle_sprite->Free();
+		@ball_sprite->Free();
 		@text_texture->Free();
 		@renderer->Destroy();
 		@window->Destroy();
