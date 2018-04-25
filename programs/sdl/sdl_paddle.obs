@@ -6,9 +6,11 @@ class Sprite {
 	@texture : Texture;
 	@width : Int;
 	@height : Int;
+	@frames : Int;
 
-	New(renderer : Renderer, font : Font := Nil) {
+	New(renderer : Renderer, frames : Int := 1, font : Font := Nil) {
 		@renderer := renderer;
+		@frames := frames;
 		@font := font;
 	}
 
@@ -83,7 +85,7 @@ class Sprite {
 	}
 
 	method : public : GetWidth() ~ Int {
-		return @width;
+		return @width / @frames;
 	}
 
 	method : public : GetHeight() ~ Int {
@@ -105,8 +107,15 @@ class Paddle {
 	@renderer : Renderer;
 
 	@paddle_sprite : Sprite;
+	@paddle_views : Rect[];
+	@paddle_rect : Rect;
+
+	@background : Sprite;
+	@grass : Sprite;
+
 	@ball_sprite : Sprite;
-	@text_texture : Sprite;
+	@score_texture : Sprite;
+	@high_score_texture : Sprite;
 	@score_color : Color;
 	
 	@ball_x : Int;
@@ -118,8 +127,13 @@ class Paddle {
 	@paddle_x : Int;
 	@paddle_y : Int;
 
+	@hit_chunk : MixChunk;
+	@bounce_chunk : MixChunk;
+	@howel_chunk : MixChunk;
+
 	@playing : Bool;
 	@score : Int;
+	@high_score : Int;
 	
 	function : Main(args : String[]) ~ Nil {
 		game := Paddle->New();
@@ -207,6 +221,10 @@ class Paddle {
 	}
 
 	method : Reset() ~ Nil {
+		if(@score > @high_score) {
+			@high_score := @score;
+			UpdateHighScore();
+		};
 		@score := 0;
 		UpdateScore();
 
@@ -217,11 +235,13 @@ class Paddle {
 
 		@ball_x := Environment->SCREEN_WIDTH->As(Int) / 2 - @ball_sprite->GetWidth() / 2;
 		@ball_y := Environment->SCREEN_HEIGHT->As(Int) - @paddle_sprite->GetHeight() - 
-			@ball_sprite->GetHeight() - Environment->RED_ZONE->As(Int);
+			@ball_sprite->GetHeight() - Environment->RED_ZONE->As(Int) - 1;
 
 		@paddle_x := Environment->SCREEN_WIDTH->As(Int) / 2 - @paddle_sprite->GetWidth() / 2;
 		@paddle_y := Environment->SCREEN_HEIGHT->As(Int) - @paddle_sprite->GetHeight() - 
 			Environment->RED_ZONE->As(Int);
+
+		@paddle_rect := @paddle_views[0];
 
 		@playing := false;
 	}
@@ -233,20 +253,24 @@ class Paddle {
 
 		# hit top
 		if(@ball_y <= 0) {
+			@bounce_chunk->PlayChannel(-1, 0);
 			@ball_y_dir := 1;
 		}
 		# hit bottom
 		else if(@ball_y + @ball_sprite->GetHeight() >= Environment->SCREEN_HEIGHT->As(Int)) {
+			@howel_chunk->PlayChannel(-1, 0);
 			Reset();
 			return;
 		};
 
 		# hit left
 		if(@ball_x <= 0) {
+			@bounce_chunk->PlayChannel(-1, 0);
 			@ball_x_dir := 1;
 		}
 		# hit right
 		else if(@ball_x + @ball_sprite->GetWidth() >= Environment->SCREEN_WIDTH->As(Int)) {
+			@bounce_chunk->PlayChannel(-1, 0);
 			@ball_x_dir := -1;
 		};
 
@@ -260,6 +284,11 @@ class Paddle {
 			paddle_right := @paddle_x + @paddle_sprite->GetWidth();
 
 			if(ball_left <= paddle_right & ball_right >= paddle_left) {
+				@hit_chunk->PlayChannel(-1, 0);
+
+				rand_frame := (Float->Random() * 100.0)->As(Int) % 3;
+				@paddle_rect := @paddle_views[rand_frame];
+
 				@score += 5;
 				UpdateScore();
 
@@ -283,18 +312,23 @@ class Paddle {
 	}
 
 	method : Render() ~ Nil {
-		@renderer->SetDrawColor(70, 130, 180, 0);
+		# @renderer->SetDrawColor(70, 130, 180, 0);
 		@renderer->Clear();
 
+
+		@background->Render(0, 0);
 		@ball_sprite->Render(@ball_x, @ball_y);
-		@paddle_sprite->Render(@paddle_x, @paddle_y);
-		@text_texture->Render(10, 10);
+		@paddle_sprite->Render(@paddle_x, @paddle_y, @paddle_rect);
+		@score_texture->Render(10, 10);
+		@high_score_texture->Render(10, 40);
+
+		@grass->Render(0, Environment->SCREEN_HEIGHT->As(Int) - Environment->RED_ZONE->As(Int));
 		
 		@renderer->Present();
 	}
 
 	method : Init() ~ Bool {
-		if(Core->Init(HardwareFlags->SDL_INIT_VIDEO->As(Int)) < 0) {
+		if(Core->Init(HardwareFlags->SDL_INIT_VIDEO->As(Int) or HardwareFlags->SDL_INIT_AUDIO->As(Int)) < 0) {
 			"SDL could not initialize!"->ErrorLine();
 			return false;
 		};
@@ -320,12 +354,23 @@ class Paddle {
 		};
 		@renderer->SetDrawColor(0xFF, 0xFF, 0xFF, 0xFF);
 
-		@paddle_sprite := Sprite->New(@renderer);
+		@paddle_sprite := Sprite->New(@renderer, 3);
+		@paddle_views := Rect->New[3];
+		@paddle_views[0] := Rect->New(0, 0, 122, 26);
+		@paddle_views[1] := Rect->New(122, 0, 122, 26);
+		@paddle_views[2] := Rect->New(244, 0, 123, 26);
+
 		@ball_sprite := Sprite->New(@renderer);
+		@background := Sprite->New(@renderer);
+		@grass := Sprite->New(@renderer);
 
 		img_flags := ImageFlags->IMG_INIT_PNG->As(Int);
 		if((Image->Init(img_flags) and img_flags) = 0) {
 			"SDL image could not initialize!"->ErrorLine();
+			return false;
+		};
+
+		if(<>Mixer->OpenAudio(44100, Mixer->Flags->MIX_DEFAULT_FORMAT, 2, 2048)) {
 			return false;
 		};
 
@@ -339,13 +384,23 @@ class Paddle {
 			"Failed to load font!"->ErrorLine();
 			return false;
 		};
-		@text_texture := Sprite->New(@renderer, @font);
+		@score_texture := Sprite->New(@renderer, 1, @font);
+		@high_score_texture := Sprite->New(@renderer, 1, @font);
 		
 		return true;
 	}
 
 	method : UpdateScore() ~ Bool {
-		if(<>@text_texture->LoadFromRenderedText( "Score: {$@score}", @score_color)) {
+		if(<>@score_texture->LoadFromRenderedText("Score: {$@score}", @score_color)) {
+			"Failed to render text texture!"->ErrorLine();
+			return false;
+		};
+
+		return true;
+	}
+
+	method : UpdateHighScore() ~ Bool {
+		if(<>@high_score_texture->LoadFromRenderedText("High: {$@high_score}", @score_color)) {
 			"Failed to render text texture!"->ErrorLine();
 			return false;
 		};
@@ -354,6 +409,14 @@ class Paddle {
 	}
 	
 	method : LoadMedia() ~ Bool {
+		if(<>@background->LoadFromFile("images/dog.png")) {
+			return false;
+		};
+
+		if(<>@grass->LoadFromFile("images/grass.png")) {
+			return false;
+		};
+
 		if(<>@paddle_sprite->LoadFromFile("images/paddle.png")) {
 			return false;
 		};
@@ -361,7 +424,22 @@ class Paddle {
 		if(<>@ball_sprite->LoadFromFile("images/ball.png")) {
 			return false;
 		};
-		@score_color := Color->New(245, 245, 245);
+		@score_color := Color->New(34, 177, 76);
+
+		@hit_chunk := MixChunk->New("audio/hit.wav");
+		if(@hit_chunk->IsNull()) {
+			return false;
+		};
+
+		@bounce_chunk := MixChunk->New("audio/bounce.wav");
+		if(@bounce_chunk->IsNull()) {
+			return false;
+		};
+
+		@howel_chunk := MixChunk->New("audio/howel.wav");
+		if(@bounce_chunk->IsNull()) {
+			return false;
+		};
 		
 		return true;
 	}
@@ -386,11 +464,15 @@ class Paddle {
 	
 	method : Quit() ~ Nil {
 		@paddle_sprite->Free();
+		@background->Free();
+		@grass->Free();
 		@ball_sprite->Free();
-		@text_texture->Free();
+		@score_texture->Free();
+		@high_score_texture->Free();
 		@renderer->Destroy();
 		@window->Destroy();
 
+		Mixer->Quit();
 		Image->Quit();
 		Font->Quit();
 		Core->Quit();

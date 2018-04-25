@@ -1,0 +1,176 @@
+#~
+SDL2 Debug
+~#
+
+use SDL2;
+
+class Test {
+	@window : static : Window;
+	@renderer : static : Renderer;
+	@low_chunk : static : MixChunk;
+	@med_chunk : static : MixChunk;
+	@high_chunk : static : MixChunk;
+	@music : static : MixMusic;
+
+	SCREEN_WIDTH : static : Int;
+	SCREEN_HEIGHT : static : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		# Start up SDL and create window
+		if( <>Init() ) {
+			"Failed to initialize!"->ErrorLine();
+			return;
+		};
+		
+		# Load media
+		if( <>LoadMedia() ) {
+			"Failed to load media!"->ErrorLine();
+			return;
+		};
+			
+		# Main loop flag
+		quit := false;
+
+		# Event handler
+		e := Event->New();
+
+		# While application is running
+		while(<>quit) {
+			start := Timer->GetTicks();
+
+			# Handle events on queue
+			while( e->Poll() <> 0 ) {
+				# User requests quit
+				if(e->GetType() = EventType->SDL_QUIT) {
+					quit := true;
+				}
+				else if(e->GetType() = EventType->SDL_KEYDOWN) {
+					select(e->GetKey()->GetKeysym()->GetSym()) {
+						# Increase red
+						label 'w': {
+							@high_chunk->PlayChannel(-1, 0);
+						}
+
+						label 'a': {
+							@low_chunk->PlayChannel(-1, 0);
+						}
+
+						label 'd': {
+							@med_chunk->PlayChannel(-1, 0);
+						}
+
+						label 'x': {
+							MixMusic->Halt();
+						}
+
+						label 's': {
+							if(MixMusic->Playing()) {
+								if(MixMusic->Paused()) {
+									MixMusic->Resume();
+								}
+								else {
+									MixMusic->Pause();
+								};
+							}
+							else {
+								@music->PlayMusic(-1);
+							};
+						}
+					};
+				};
+			};
+			
+			@renderer->SetDrawColor(0xFF, 0xFF, 0xFF, 0xFF);
+			@renderer->Clear();
+
+			# Update screen
+			@renderer->Present();
+		};
+		e->Free();
+
+		Close();
+	}
+	
+	function : Init() ~ Bool {
+		# Initialization flag
+		success := true;
+
+		SCREEN_WIDTH := 640;
+		SCREEN_HEIGHT := 480;
+
+		# Initialize SDL
+		if(Core->Init(HardwareFlags->SDL_INIT_VIDEO->As(Int) or HardwareFlags->SDL_INIT_AUDIO->As(Int)) < 0) {
+			"SDL could not initialize!"->ErrorLine();
+			return false;
+		};
+		
+		if(<>Hints->Set("SDL_RENDER_SCALE_QUALITY", "1")) {
+			"Warning: Linear texture filtering not enabled!"->ErrorLine();
+			return false;
+		};
+
+		# Create window
+		@window := Window->New("SDL Tutorial", WindowFlags->SDL_WINDOWPOS_UNDEFINED, 
+			WindowFlags->SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, 
+			WindowFlags->SDL_WINDOW_SHOWN);
+		if(@window->IsNull()) {
+			"Cannot create window!"->ErrorLine();
+			return false;
+		};
+
+		# Get window surface
+		@renderer := Renderer->New(@window, -1, 
+			(RendererFlags->SDL_RENDERER_ACCELERATED and RendererFlags->SDL_RENDERER_PRESENTVSYNC)->As(Int));
+		if(@renderer->IsNull()) {
+			"Cannot create renderer!"->ErrorLine();
+			return false;
+		};
+		@renderer->SetDrawColor(0xFF, 0xFF, 0xFF, 0xFF);
+
+		img_flags := ImageFlags->IMG_INIT_PNG->As(Int);
+		if((Image->Init(img_flags) and img_flags) = 0) {
+			"SDL image could not initialize!"->ErrorLine();
+			return false;
+		};
+
+		if(<>Mixer->OpenAudio(44100, Mixer->Flags->MIX_DEFAULT_FORMAT, 2, 2048)) {
+			return false;
+		};
+		
+		return true;
+	}
+	
+	function : LoadMedia() ~ Bool {		
+		@low_chunk := MixChunk->New("audio/low.wav");
+		if(@low_chunk->IsNull()) {
+			return false;
+		};
+
+		@high_chunk := MixChunk->New("audio/high.wav");
+		if(@high_chunk->IsNull()) {
+			return false;
+		};
+
+		@med_chunk := MixChunk->New("audio/medium.wav");
+		if(@med_chunk->IsNull()) {
+			return false;
+		};
+		
+		@music := MixMusic->New("audio/beat.wav");
+		if(@music->IsNull()) {
+			return false;
+		};
+		@music->FadeInMusic(-1, 6000);
+
+		return true;
+	}
+	
+	function : Close() ~ Nil {
+		@renderer->Destroy();
+		@window->Destroy();
+
+		# Quit SDL subsystems
+		Mixer->Quit();
+		Core->Quit();
+	}
+}
