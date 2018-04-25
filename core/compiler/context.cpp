@@ -382,15 +382,12 @@ bool ContextAnalyzer::Analyze()
     const size_t start = method_name.find_last_of(':');
     if(start != wstring::npos) {
       const wstring &param_method_name = method_name.substr(start + 1);
-      MethodCall* mthd_call = TreeFactory::Instance()->MakeMethodCall(method->GetFileName(), 
-                                                                      method->GetLineNumber() + 1, 
-                                                                      klass->GetName(), param_method_name, 
-                                                                      param_expressions);
+      MethodCall* mthd_call = TreeFactory::Instance()->MakeMethodCall(method->GetFileName(), method->GetLineNumber() + 1, 
+                                                                      klass->GetName(), param_method_name, param_expressions);
       // process return
       if(method->GetReturn()->GetType() != NIL_TYPE && method->GetMethodType() != NEW_PUBLIC_METHOD) {
         param_statement_list->AddStatement(TreeFactory::Instance()->MakeReturn(method->GetFileName(), 
-                                                                               method->GetLineNumber() + 1, 
-                                                                               mthd_call));
+                                           method->GetLineNumber() + 1, mthd_call));
       }
       else {
         param_statement_list->AddStatement(mthd_call);
@@ -3378,7 +3375,7 @@ bool ContextAnalyzer::Analyze()
     case BIT_AND_EXPR:
     case BIT_OR_EXPR:
     case BIT_XOR_EXPR:
-      if (IsBooleanExpression(left) || IsBooleanExpression(right)) {
+      if(IsBooleanExpression(left) || IsBooleanExpression(right)) {
         ProcessError(expression, L"Invalid mathematical operation");
       }
       else if(!(IsEnumExpression(left) || IsEnumExpression(right)) && 
