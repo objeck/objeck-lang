@@ -1,8 +1,3 @@
-#~
-Lesson 14
-http://lazyfoo.net/tutorials/SDL/14_animated_sprites_and_vsync/index.php
-~#
-
 use SDL2;
 
 class Sprite {
@@ -20,7 +15,6 @@ class Sprite {
 	method : public : LoadFromRenderedText(textureText : String, textColor : Color) ~ Bool {
 		Free();
 
-		# Render text surface
 		textSurface := @font->RenderTextSolid(textureText, textColor);
 		if(textSurface->IsNull()) {
 			"Unable to render text surface!"->ErrorLine();
@@ -35,9 +29,7 @@ class Sprite {
 		return @texture <> Nil;
 	}
 
-	# Loads image at specified path
 	method : public : LoadFromFile(path : String) ~ Bool {
-		# Load image at specified path
 		loadedSurface := Image->Load(path);
 		if(loadedSurface->IsNull()) {
 			"Unable to load surface"->ErrorLine();
@@ -61,7 +53,6 @@ class Sprite {
 		return @texture <> Nil;
 	}
 
-	# Deallocates texture
 	method : public : Free() ~ Nil {
 		if(@texture <> Nil)	{
 			@texture->Destroy();
@@ -73,16 +64,13 @@ class Sprite {
 	}
 
 	method : public : SetBlendMode(blending : BlendMode) ~ Nil {
-		# Set blending function
 		@texture->SetBlendMode(blending);
 	}
 	
 	method : public : SetAlpha(alpha : Int) ~ Nil {
-		# Modulate texture alpha
 		@texture->SetAlphaMod(alpha );
 	}
 
-	# Renders texture at given point
 	method : public : Render(x : Int, y : Int, clip : Rect := Nil) ~ Nil {
 		render_quad := Rect->New(x, y, @width, @height);
 
@@ -94,7 +82,6 @@ class Sprite {
 		@renderer->Copy(@texture, clip, render_quad);
 	}
 
-	# Gets image dimensions
 	method : public : GetWidth() ~ Int {
 		return @width;
 	}
@@ -233,6 +220,14 @@ class Paddle {
 			@ball_x_dir := -1;
 		};
 
+		y_check := Environment->SCREEN_HEIGHT->As(Int) - @paddle_sprite->GetHeight() - Environment->RED_ZONE->As(Int);
+		x_check := @ball_x + @ball_sprite->GetWidth() / 2;	
+		if(@ball_y + @ball_sprite->GetHeight() >= y_check & 
+			x_check >= @paddle_x & x_check <= @paddle_x + @paddle_sprite->GetWidth()) {
+"{$@ball_x}, {$@ball_y}"->PrintLine();			
+			@ball_y_dir := -1;
+		};
+
 		@ball_x += @ball_x_dir * SPEED;
 		@ball_y += @ball_y_dir * SPEED;
 	}
@@ -249,7 +244,6 @@ class Paddle {
 	}
 
 	method : Init() ~ Bool {
-		# Initialize SDL
 		if(Core->Init(HardwareFlags->SDL_INIT_VIDEO->As(Int)) < 0) {
 			"SDL could not initialize!"->ErrorLine();
 			return false;
@@ -260,7 +254,6 @@ class Paddle {
 			return false;
 		};
 
-		# Create window
 		@window := Window->New("SDL Tutorial", WindowFlags->SDL_WINDOWPOS_UNDEFINED, 			
 			WindowFlags->SDL_WINDOWPOS_UNDEFINED, Environment->SCREEN_WIDTH->As(Int), 
 			Environment->SCREEN_HEIGHT->As(Int), WindowFlags->SDL_WINDOW_SHOWN);
@@ -269,7 +262,6 @@ class Paddle {
 			return false;
 		};
 
-		# Get window surface
 		@renderer := Renderer->New(@window, -1, 
 			(RendererFlags->SDL_RENDERER_ACCELERATED and RendererFlags->SDL_RENDERER_PRESENTVSYNC)->As(Int));
 		if(@renderer->IsNull()) {
@@ -321,7 +313,6 @@ class Paddle {
 	}
 	
 	method : LoadTexture(path : String) ~ Texture {
-		# Load image at specified path
 		loadedSurface := Image->Load(path);
 		if(loadedSurface->IsNull()) {
 			"Unable to load surface"->ErrorLine();
@@ -346,7 +337,6 @@ class Paddle {
 		@renderer->Destroy();
 		@window->Destroy();
 
-		# Quit SDL subsystems
 		Image->Quit();
 		Font->Quit();
 		Core->Quit();
