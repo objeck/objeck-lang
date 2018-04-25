@@ -197,17 +197,23 @@ class Paddle {
 		if(key_states[Scancode->SDL_SCANCODE_LEFT] <> 0 ) {
 			if(@paddle_x > 0) {
 				@paddle_x -= SPEED;
+				if(@paddle_x < 0) {
+					@paddle_x := 0;
+				};
 			};
 		}
 		else if(key_states[Scancode->SDL_SCANCODE_RIGHT] <> 0) {
 			if(@paddle_x + @paddle_sprite->GetWidth() < Environment->SCREEN_WIDTH->As(Int)) {
 				@paddle_x += SPEED;
+				if(@paddle_x + @paddle_sprite->GetWidth() > Environment->SCREEN_WIDTH->As(Int)) {
+					@paddle_x := Environment->SCREEN_WIDTH->As(Int) - @paddle_sprite->GetWidth();
+				};
 			};
 		}
 		else if(key_states[Scancode->SDL_SCANCODE_UP] <> 0) {
 		};
 	}
-	
+
 	method : native : Ball() ~ Nil {
 		# hit top
 		if(@ball_y <= 0) {
@@ -288,7 +294,7 @@ class Paddle {
 
 		@font := Font->New("images/digital.ttf", 28);
 		if(@font->IsNull()) {
-			"Failed to load lazy font!"->ErrorLine();
+			"Failed to load font!"->ErrorLine();
 			return false;
 		};
 		@text_texture := Sprite->New(@renderer, @font);
