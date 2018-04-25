@@ -220,12 +220,18 @@ class Paddle {
 			@ball_x_dir := -1;
 		};
 
-		y_check := Environment->SCREEN_HEIGHT->As(Int) - @paddle_sprite->GetHeight() - Environment->RED_ZONE->As(Int);
-		x_check := @ball_x + @ball_sprite->GetWidth() / 2;	
-		if(@ball_y + @ball_sprite->GetHeight() >= y_check & 
-			x_check >= @paddle_x & x_check <= @paddle_x + @paddle_sprite->GetWidth()) {
-"{$@ball_x}, {$@ball_y}"->PrintLine();			
-			@ball_y_dir := -1;
+		y_bounds := Environment->SCREEN_HEIGHT->As(Int) - @paddle_sprite->GetHeight() - Environment->RED_ZONE->As(Int);
+		ball_bottom := @ball_y + @ball_sprite->GetHeight();
+		if(ball_bottom >= y_bounds & ball_bottom <= y_bounds + @paddle_sprite->GetHeight()) {
+			ball_left := @ball_x;
+			ball_right := @ball_x + @ball_sprite->GetWidth();
+
+			paddle_left := @paddle_x;
+			paddle_right := @paddle_x + @paddle_sprite->GetWidth();
+
+			if(ball_left <= paddle_right & ball_right >= paddle_left) {
+				@ball_y_dir := -1;
+			};
 		};
 
 		@ball_x += @ball_x_dir * SPEED;
