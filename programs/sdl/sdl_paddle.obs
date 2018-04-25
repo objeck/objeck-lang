@@ -100,8 +100,7 @@ consts Environment {
 
 class Paddle {
 	FRAME_RATE : static : Int;
-	SPEED : static : Int;
-
+		
 	@window : Window;
 	@renderer : Renderer;
 
@@ -114,9 +113,12 @@ class Paddle {
 	@ball_y : Int;
 	@ball_x_dir : Int;
 	@ball_y_dir : Int;
+	@ball_speed : Int;
+
 	@paddle_x : Int;
 	@paddle_y : Int;
 
+	@playing : Bool;
 	@score : Int;
 	
 	function : Main(args : String[]) ~ Nil {
@@ -139,7 +141,76 @@ class Paddle {
 		};
 
 		FRAME_RATE := 1000 / Environment->FPS->As(Int);
-		SPEED := 8;
+		
+		quit := false;
+		e := Event->New();
+
+		Reset();
+
+		frame := 0;
+
+		while(<>quit) {
+			start := Timer->GetTicks();
+
+			if(frame = Environment->FPS->As(Int) * 10) {
+				@score += 10;
+				UpdateScore();
+
+				frame := 0;
+			};
+
+			while( e->Poll() <> 0 ) {
+				# User requests quit
+				if(e->GetType() = EventType->SDL_QUIT) {
+					quit := true;
+				};
+			};
+			Paddle(Keyboard->GetState());
+			
+			Ball();
+			Render();
+
+			end := start - Timer->GetTicks();
+			if(end < FRAME_RATE) {
+				Timer->Delay(FRAME_RATE - end);
+			};
+			frame += 1;
+		};
+
+		e->Free();
+
+		Quit();
+	}
+
+	method : native : Paddle(key_states : Byte[]) ~ Nil {
+		if(@playing) {
+			if(key_states[Scancode->SDL_SCANCODE_LEFT] <> 0 ) {
+				if(@paddle_x > 0) {
+					@paddle_x -= @ball_speed;
+					if(@paddle_x < 0) {
+						@paddle_x := 0;
+					};
+				};
+			}
+			else if(key_states[Scancode->SDL_SCANCODE_RIGHT] <> 0) {
+				if(@paddle_x + @paddle_sprite->GetWidth() < Environment->SCREEN_WIDTH->As(Int)) {
+					@paddle_x += @ball_speed;
+					if(@paddle_x + @paddle_sprite->GetWidth() > Environment->SCREEN_WIDTH->As(Int)) {
+						@paddle_x := Environment->SCREEN_WIDTH->As(Int) - @paddle_sprite->GetWidth();
+					};
+				};
+			};
+		}
+		else if(key_states[Scancode->SDL_SCANCODE_UP] <> 0) {
+			@playing := true;
+		};
+	}
+
+	method : Reset() ~ Nil {
+		@score := 0;
+		UpdateScore();
+
+		@ball_speed := 8;
 
 		@ball_x_dir := 1;
 		@ball_y_dir := -1;
@@ -152,63 +223,22 @@ class Paddle {
 		@paddle_y := Environment->SCREEN_HEIGHT->As(Int) - @paddle_sprite->GetHeight() - 
 			Environment->RED_ZONE->As(Int);
 
-		quit := false;
-		e := Event->New();
-
-		while(<>quit) {
-			start := Timer->GetTicks();
-
-			while( e->Poll() <> 0 ) {
-				# User requests quit
-				if(e->GetType() = EventType->SDL_QUIT) {
-					quit := true;
-				};
-			};
-
-			Paddle(Keyboard->GetState());
-			Ball();
-			Render();
-
-			end := start - Timer->GetTicks();
-			if(end < FRAME_RATE) {
-				Timer->Delay(FRAME_RATE - end);
-			};
-		};
-
-		e->Free();
-
-		Quit();
-	}
-
-	method : native : Paddle(key_states : Byte[]) ~ Nil {
-		if(key_states[Scancode->SDL_SCANCODE_LEFT] <> 0 ) {
-			if(@paddle_x > 0) {
-				@paddle_x -= SPEED;
-				if(@paddle_x < 0) {
-					@paddle_x := 0;
-				};
-			};
-		}
-		else if(key_states[Scancode->SDL_SCANCODE_RIGHT] <> 0) {
-			if(@paddle_x + @paddle_sprite->GetWidth() < Environment->SCREEN_WIDTH->As(Int)) {
-				@paddle_x += SPEED;
-				if(@paddle_x + @paddle_sprite->GetWidth() > Environment->SCREEN_WIDTH->As(Int)) {
-					@paddle_x := Environment->SCREEN_WIDTH->As(Int) - @paddle_sprite->GetWidth();
-				};
-			};
-		}
-		else if(key_states[Scancode->SDL_SCANCODE_UP] <> 0) {
-		};
+		@playing := false;
 	}
 
 	method : native : Ball() ~ Nil {
+		if(<>@playing) {
+			return;
+		};
+
 		# hit top
 		if(@ball_y <= 0) {
 			@ball_y_dir := 1;
 		}
 		# hit bottom
 		else if(@ball_y + @ball_sprite->GetHeight() >= Environment->SCREEN_HEIGHT->As(Int)) {
-			@ball_y_dir := -1;
+			Reset();
+			return;
 		};
 
 		# hit left
@@ -230,23 +260,26 @@ class Paddle {
 			paddle_right := @paddle_x + @paddle_sprite->GetWidth();
 
 			if(ball_left <= paddle_right & ball_right >= paddle_left) {
+				@score += 5;
+				UpdateScore();
+
 				@ball_y_dir := -1;
 				
 				rand_dir := (Float->Random() * 100.0)->As(Int) % 5;
-				@ball_x += @ball_x_dir * SPEED + rand_dir;
+				@ball_x += @ball_x_dir * @ball_speed + rand_dir;
 
 				rand_speed := (Float->Random() * 100.0)->As(Int) % 10;
 				if(rand_speed < 2) {
-					SPEED -= 2;					
+					@ball_speed -= 1;					
 				}
 				else if(rand_speed > 5) {
-					SPEED += 2;
+					@ball_speed += 2;
 				};
 			};
 		};
 
-		@ball_x += @ball_x_dir * SPEED;
-		@ball_y += @ball_y_dir * SPEED;
+		@ball_x += @ball_x_dir * @ball_speed;
+		@ball_y += @ball_y_dir * @ball_speed;
 	}
 
 	method : Render() ~ Nil {
@@ -310,6 +343,15 @@ class Paddle {
 		
 		return true;
 	}
+
+	method : UpdateScore() ~ Bool {
+		if(<>@text_texture->LoadFromRenderedText( "Score: {$@score}", @score_color)) {
+			"Failed to render text texture!"->ErrorLine();
+			return false;
+		};
+
+		return true;
+	}
 	
 	method : LoadMedia() ~ Bool {
 		if(<>@paddle_sprite->LoadFromFile("images/paddle.png")) {
@@ -319,13 +361,8 @@ class Paddle {
 		if(<>@ball_sprite->LoadFromFile("images/ball.png")) {
 			return false;
 		};
-
 		@score_color := Color->New(245, 245, 245);
-		if(<>@text_texture->LoadFromRenderedText( "Count: {$@score}", @score_color)) {
-			"Failed to render text texture!"->ErrorLine();
-			return false;
-		};
-
+		
 		return true;
 	}
 	
