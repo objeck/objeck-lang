@@ -1,9 +1,11 @@
 class Test {
+	consts Flag {
+		VALUE1 := 18,
+		VALUE2 := 3
+	}
+
 	function : Main(args : String[]) ~ Nil {
-		a : Float := 2.0;
-		b : Float := 3.0;
-		Float->Power(a,b)->PrintLine();
-#		a->Power(b)->PrintLine();
-#		2.0->Power(3.0)->PrintLine();
+		v := Flag->VALUE1 | Flag->VALUE2;
+		v->PrintLine();
 	}
 }
