@@ -162,7 +162,7 @@ class Paddle {
 		quit := false;
 		e := Event->New();
 
-		VolumeMusic(96);
+		MixMusic->VolumeMusic(96);
 		Reset();
 
 		frame := 0;
@@ -293,8 +293,17 @@ class Paddle {
 			if(ball_left <= paddle_right & ball_right >= paddle_left) {
 				@hit_chunk->PlayChannel(-1, 0);
 
-				rand_frame := (Float->Random() * 100.0)->As(Int) % 3;
-				@paddle_rect := @paddle_views[rand_frame];
+				rand_frame := (Float->Random() * 100.0)->As(Int) % 10;
+				if(rand_frame < 2) {
+					@paddle_rect := @paddle_views[2];
+				}
+				else if(rand_frame < 4) {
+					@paddle_rect := @paddle_views[1];
+				}
+				else {
+					@paddle_rect := @paddle_views[0];
+				};
+				
 
 				@score += 5;
 				UpdateScore();
