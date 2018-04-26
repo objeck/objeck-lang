@@ -3698,7 +3698,7 @@ bool ContextAnalyzer::Analyze()
                    !linker->SearchClassLibraries(right->GetClassName(), program->GetUses(current_class->GetFileName())))) {
             ProcessError(left_expr, L"Invalid operation between classes or enums");
           }
-          expression->SetEvalType(TypeFactory::Instance()->MakeType(BOOLEAN_TYPE), true);
+          expression->SetEvalType(TypeFactory::Instance()->MakeType(INT_TYPE), true);
           break;
           
         case BOOLEAN_TYPE:
