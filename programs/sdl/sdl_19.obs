@@ -158,7 +158,6 @@ class Test {
 					quit := true;
 				}
 				else if(e->GetType() = EventType->SDL_JOYAXISMOTION) {
-'*'->Print();					
 					# Motion on controller 0
 					if( e->GetJAxis()->GetWhich() = 0 ) {						
 						# X axis motion
@@ -192,6 +191,14 @@ class Test {
 						};
 ~#						
 					};
+				}
+				else if(e->GetType() = EventType->SDL_JOYHATMOTION) {
+					e->GetJHat()->GetType()->PrintLine();
+					e->GetJHat()->GetValue()->PrintLine();
+					"-----"->PrintLine();
+				}
+				else if(e->GetType() = EventType->SDL_JOYBUTTONDOWN ) {
+					e->GetJButton()->GetTimestamp()->PrintLine();
 				};
 			};
 			

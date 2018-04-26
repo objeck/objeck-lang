@@ -1181,6 +1181,68 @@ bundle SDL2 {
 			return @value;
 		}
 	}
+
+	class JoyHatEvent {
+		@type : Int;
+		@timestamp : Int;
+		@which : Int;
+		@hat : Int;
+		@value : Int;
+
+		New() {			
+		}
+
+		method : public : GetType() ~ Int {
+			return @type;
+		}
+
+		method : public : GetTimestamp() ~ Int {
+			return @timestamp;
+		}
+
+		method : public : GetWhich() ~ Int {
+			return @which;
+		}
+
+		method : public : GetHat() ~ Int {
+			return @hat;
+		}
+		
+		method : public : GetValue() ~ Int {
+			return @value;
+		}
+	}
+
+	class JoyButtonEvent {
+		@type : Int;
+    	@timestamp : Int;
+    	@which : Int;
+    	@button : Int;
+    	@state : Int;
+
+    	New() {			
+		}
+
+		method : public : GetType() ~ Int {
+			return @type;
+		}
+
+		method : public : GetTimestamp() ~ Int {
+			return @timestamp;
+		}
+
+		method : public : GetWhich() ~ Int {
+			return @which;
+		}
+
+		method : public : GetButton() ~ Int {
+			return @button;
+		}
+		
+		method : public : GetState() ~ Int {
+			return @state;
+		}
+	}
 	
 	#~
 	Event class
@@ -1189,7 +1251,9 @@ bundle SDL2 {
 		@event : Int;
 		@key : KeyboardEvent;
 		@axis : JoyAxisEvent;
-		
+		@hat : JoyHatEvent;
+		@button : JoyButtonEvent;
+			
 		New() {
 			array_args := Base->New[1];
 			array_args[0] := IntHolder->New();
@@ -1273,6 +1337,54 @@ bundle SDL2 {
 				};
 
 				return @axis;
+			};
+			
+			return Nil;
+		}
+
+		method : public : GetJButton() ~ JoyButtonEvent {
+			if(@event <> 0) {
+				if(@button = Nil) {
+					@button := JoyButtonEvent->New();
+				};
+				
+				array_args := Base->New[3];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@event);
+				array_args[2] := @button;
+				
+				Proxy->GetDllProxy()->CallFunction("sdl_button_key", array_args);
+
+				value := array_args[0]->As(IntHolder);
+				if(value->Get() < 0) {
+					return Nil;
+				};
+
+				return @button;
+			};
+			
+			return Nil;
+		}
+
+		method : public : GetJHat() ~ JoyHatEvent {
+			if(@event <> 0) {
+				if(@hat = Nil) {
+					@hat := JoyHatEvent->New();
+				};
+				
+				array_args := Base->New[3];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@event);
+				array_args[2] := @hat;
+				
+				Proxy->GetDllProxy()->CallFunction("sdl_hat_key", array_args);
+				
+				value := array_args[0]->As(IntHolder);
+				if(value->Get() < 0) {
+					return Nil;
+				};
+
+				return @hat;
 			};
 			
 			return Nil;
