@@ -158,6 +158,7 @@ class Test {
 					quit := true;
 				}
 				else if(e->GetType() = EventType->SDL_JOYAXISMOTION) {
+'*'->Print();					
 					# Motion on controller 0
 					if( e->GetJAxis()->GetWhich() = 0 ) {						
 						# X axis motion
@@ -173,7 +174,8 @@ class Test {
 							else {
 								x_dir := 0;
 							};
-						}
+						};
+#~						
 						# Y axis motion
 						else if( e->GetJAxis()->GetAxis() = 1 ) {
 							# Below of dead zone
@@ -188,43 +190,53 @@ class Test {
 								y_dir := 0;
 							};
 						};
+~#						
 					};
 				};
 			};
 			
 			if(x_dir = 1 & y_dir = 1) {
-				x_pos += 1;	
-				y_pos += 1;
+				x_pos += 15;	
+				y_pos += 15;
+"-- 0 --"->PrintLine();
 			}
 			else if(x_dir = -1 & y_dir = -1) {
-				x_pos -= 1;	
-				y_pos -= 1;
+				x_pos -= 15;	
+				y_pos -= 15;
+"-- 1 --"->PrintLine();				
 			}
 			else if(x_dir = 1 & y_dir = -1) {
-				x_pos += 1;	
-				y_pos -= 1;
+				x_pos += 15;	
+				y_pos -= 15;
+"-- 2 --"->PrintLine();				
 			}
 			else if(x_dir = -1 & y_dir = 1) {
-				x_pos -= 1;	
-				y_pos += 1;
+				x_pos -= 15;	
+				y_pos += 15;
+"-- 3 --"->PrintLine();				
 			}
 			else if(x_dir = 0 & y_dir = -1) {
-				y_pos -= 1;	
+				y_pos -= 15;	
+"-- 4 --"->PrintLine();				
 			}
 			else if(x_dir = 0 & y_dir = 1) {
-				y_pos += 1;	
+				y_pos += 15;	
+"-- 5 --"->PrintLine();				
 			}
 			else if(x_dir = -1 & y_dir = 0) {
-				x_pos -= 1;	
+				x_pos -= 15;	
+# '+'->Print();				
 			}
 			else if(x_dir = 1 & y_dir = 0) {
-				x_pos += 1;	
+				x_pos += 15;	
+# '-'->Print();				
 			};
 
 # "-- {$x_pos}, {$y_pos} --"->PrintLine();			
 			@renderer->SetDrawColor(0xFF, 0xFF, 0xFF, 0xFF);
 			@renderer->Clear();
 
+# "-- {$x_dir}, {$y_dir} --"->PrintLine();
 			angle := Float->ArcTan2(y_dir, x_dir) * 180.0 / Float->Pi();
 			@arrow_texture->Render( x_pos , y_pos, Nil, angle);
 
