@@ -73,7 +73,8 @@ class Sprite {
 		@texture->SetAlphaMod(alpha );
 	}
 
-	method : public : Render(x : Int, y : Int, clip : Rect := Nil) ~ Nil {
+	method : public : Render(x : Int, y : Int, clip : Rect := Nil, angle : Float := 0.0, 
+			center : Point := Nil, flip : RendererFlip := RendererFlip->SDL_FLIP_NONE) ~ Nil {
 		render_quad := Rect->New(x, y, @width, @height);
 
 		if(clip <> Nil)	{
@@ -81,7 +82,7 @@ class Sprite {
 			render_quad->SetH(clip->GetH());
 		};
 
-		@renderer->Copy(@texture, clip, render_quad);
+		@renderer->CopyEx(@texture, clip, render_quad, angle, center, flip );
 	}
 
 	method : public : GetWidth() ~ Int {
@@ -129,6 +130,7 @@ class Paddle {
 	@ball_x_dir : Int;
 	@ball_y_dir : Int;
 	@ball_speed : Int;
+	@ball_angle : Float;
 
 	@paddle_x : Int;
 	@paddle_y : Int;
@@ -165,9 +167,11 @@ class Paddle {
 		};
 
 		FRAME_RATE := 1000 / Environment->FPS->As(Int);
+		JOYSTICK_DEAD_ZONE := 8000;
 		
 		quit := false;
 		e := Event->New();
+		x_dir : Float := 0;
 
 		MixMusic->VolumeMusic(96);
 		Reset();
@@ -192,6 +196,46 @@ class Paddle {
 				# User requests quit
 				if(e->GetType() = EventType->SDL_QUIT) {
 					quit := true;
+				}
+				else if(e->GetType() = EventType->SDL_JOYAXISMOTION) {
+					# Motion on controller 0
+					if( e->GetJAxis()->GetWhich() = 0 ) {						
+						# X axis motion
+						if( e->GetJAxis()->GetAxis() = 0 )	{
+							# Left of dead zone
+							if( e->GetJAxis()->GetValue() < (-1 * JOYSTICK_DEAD_ZONE) ) {
+								x_dir := -1;
+							}
+							# Right of dead zone
+							else if( e->GetJAxis()->GetValue() > JOYSTICK_DEAD_ZONE ) {
+								x_dir := 1;
+							}
+							else {
+								x_dir := 0;
+							};
+						};
+					};
+				}
+				else if(e->GetType() = EventType->SDL_JOYBUTTONDOWN) {
+					@music->FadeInMusic(-1, 1500);
+					@playing := true;
+				};
+			};
+
+			if(x_dir = -1) {
+				if(@paddle_x > 0) {
+					@paddle_x -= @ball_speed * 1.5;
+					if(@paddle_x < 0) {
+						@paddle_x := 0;
+					};
+				};
+			}
+			else if(x_dir = 1) {
+				if(@paddle_x + @paddle_sprite->GetWidth() < Environment->SCREEN_WIDTH->As(Int)) {
+					@paddle_x += @ball_speed * 1.5;
+					if(@paddle_x + @paddle_sprite->GetWidth() > Environment->SCREEN_WIDTH->As(Int)) {
+						@paddle_x := Environment->SCREEN_WIDTH->As(Int) - @paddle_sprite->GetWidth();
+					};
 				};
 			};
 
@@ -282,7 +326,7 @@ class Paddle {
 		return true;
 	}
 
-	method : MapBuild() ~ Nil {
+	method : native : MapBuild() ~ Nil {
 		rand_map := (Float->Random() * 100.0)->As(Int) % 3;
 		if(rand_map = 0) {
 			dims := @biskets->Size();
@@ -429,7 +473,7 @@ class Paddle {
 					@ball_x += @ball_x_dir * @ball_speed + rand_dir;
 
 					rand_speed := (Float->Random() * 100.0)->As(Int) % 10;
-					if(rand_speed < 1) {
+					if(rand_speed < 3) {
 						if(@ball_speed > 5) {
 							@ball_speed -= 1;
 						};
@@ -443,6 +487,11 @@ class Paddle {
 
 		@ball_x += @ball_x_dir * @ball_speed;
 		@ball_y += @ball_y_dir * @ball_speed;
+
+		if(@ball_angle >= 360.0) {
+			@ball_angle := 0;	
+		};
+		@ball_angle += 30.0;
 	}
 
 	method : Render() ~ Nil {
@@ -461,9 +510,9 @@ class Paddle {
 			};
 			y += @bisket_sprite->GetHeight();
 		};
-		@bisket_y_end := y;
+		@bisket_y_end := y;		
 
-		@ball_sprite->Render(@ball_x, @ball_y);
+		@ball_sprite->Render(@ball_x, @ball_y, Nil, @ball_angle);
 		@paddle_sprite->Render(@paddle_x, @paddle_y, @paddle_rect);
 		@score_texture->Render(10, 10);
 		@high_score_texture->Render(10, 40);
@@ -474,7 +523,9 @@ class Paddle {
 	}
 
 	method : Init() ~ Bool {
-		if(Core->Init(HardwareFlags->SDL_INIT_VIDEO->As(Int) or HardwareFlags->SDL_INIT_AUDIO->As(Int)) < 0) {
+		if(Core->Init(HardwareFlags->SDL_INIT_VIDEO->As(Int) or 
+				HardwareFlags->SDL_INIT_AUDIO->As(Int) or 
+				HardwareFlags->SDL_INIT_JOYSTICK->As(Int)) < 0) {
 			"SDL could not initialize!"->ErrorLine();
 			return false;
 		};
@@ -484,6 +535,9 @@ class Paddle {
 			return false;
 		};
 
+		if(Joystick->Number() < 1) {
+			"Warning: No joysticks connected!"->PrintLine();
+		};
 		@joystick := Joystick->New(0);
 
 		@window := Window->New("SDL Tutorial", WindowFlags->SDL_WINDOWPOS_UNDEFINED, 			
