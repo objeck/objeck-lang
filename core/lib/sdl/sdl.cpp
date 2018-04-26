@@ -1475,6 +1475,46 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
+  void sdl_button_key(VMContext& context) {
+    SDL_Event* event = (SDL_Event*)APITools_GetIntValue(context, 1);
+    if(event->type == SDL_JOYBUTTONDOWN || event->type == SDL_JOYBUTTONUP) {
+      size_t* button_obj = APITools_GetObjectValue(context, 2);
+      button_obj[0] = event->button.type;
+      button_obj[1] = event->button.timestamp;
+      button_obj[2] = event->button.which;
+      button_obj[3] = event->button.button;
+      button_obj[4] = event->button.state;
+
+      APITools_SetIntValue(context, 0, 0);
+    }
+    else {
+      APITools_SetIntValue(context, 0, -1);
+    }
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+    void sdl_hat_key(VMContext& context) {
+    SDL_Event* event = (SDL_Event*)APITools_GetIntValue(context, 1);
+    if(event->type == SDL_JOYHATMOTION) {
+      size_t* button_obj = APITools_GetObjectValue(context, 2);
+      button_obj[0] = event->jhat.type;
+      button_obj[1] = event->jhat.timestamp;
+      button_obj[2] = event->jhat.which;
+      button_obj[3] = event->jhat.hat;
+      button_obj[4] = event->jhat.value;
+
+      APITools_SetIntValue(context, 0, 0);
+    }
+    else {
+      APITools_SetIntValue(context, 0, -1);
+    }
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
   void sdl_event_peeps(VMContext& context) {
     SDL_Event* event = (SDL_Event*)APITools_GetIntValue(context, 1);
     const int numevents = APITools_GetIntValue(context, 2);
@@ -2364,9 +2404,6 @@ extern "C" {
     Mix_Music* music = (Mix_Music*)APITools_GetIntValue(context, 0);
     Mix_FreeMusic(music);
   }
-
-  // sdl_mix_chunk_raw_read (to objeck)
-  // sdl_mix_chunk_raw_write (to native)
 
 
 
