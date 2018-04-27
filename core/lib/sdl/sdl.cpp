@@ -1475,15 +1475,85 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void sdl_button_key(VMContext& context) {
+  void sdl_mouse_motion(VMContext& context) {
+    SDL_Event* event = (SDL_Event*)APITools_GetIntValue(context, 1);
+    if(event->type == SDL_MOUSEMOTION) {
+      size_t* motion_obj = APITools_GetObjectValue(context, 2);
+      motion_obj[0] = event->motion.type;
+      motion_obj[1] = event->motion.timestamp;
+      motion_obj[2] = event->motion.windowID;
+      motion_obj[3] = event->motion.which;
+      motion_obj[4] = event->motion.state;
+      motion_obj[5] = event->motion.x;
+      motion_obj[6] = event->motion.y;
+      motion_obj[7] = event->motion.xrel;
+      motion_obj[8] = event->motion.yrel;
+
+      APITools_SetIntValue(context, 0, 0);
+    }
+    else {
+      APITools_SetIntValue(context, 0, -1);
+    }
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_mouse_wheel(VMContext& context) {
+    SDL_Event* event = (SDL_Event*)APITools_GetIntValue(context, 1);
+    if(event->type == SDL_MOUSEWHEEL) {
+      size_t* wheel_obj = APITools_GetObjectValue(context, 2);
+      wheel_obj[0] = event->wheel.type;
+      wheel_obj[1] = event->wheel.timestamp;
+      wheel_obj[2] = event->wheel.windowID;
+      wheel_obj[3] = event->wheel.which;
+      wheel_obj[4] = event->wheel.x;
+      wheel_obj[5] = event->wheel.y;
+      wheel_obj[6] = event->wheel.direction;
+
+      APITools_SetIntValue(context, 0, 0);
+    }
+    else {
+      APITools_SetIntValue(context, 0, -1);
+    }
+  }
+  
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_jbutton_key(VMContext& context) {
     SDL_Event* event = (SDL_Event*)APITools_GetIntValue(context, 1);
     if(event->type == SDL_JOYBUTTONDOWN || event->type == SDL_JOYBUTTONUP) {
       size_t* button_obj = APITools_GetObjectValue(context, 2);
+      button_obj[0] = event->cbutton.type;
+      button_obj[1] = event->cbutton.timestamp;
+      button_obj[2] = event->cbutton.which;
+      button_obj[3] = event->cbutton.button;
+      button_obj[4] = event->cbutton.state;
+
+      APITools_SetIntValue(context, 0, 0);
+    }
+    else {
+      APITools_SetIntValue(context, 0, -1);
+    }
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_mbutton_key(VMContext& context) {
+    SDL_Event* event = (SDL_Event*)APITools_GetIntValue(context, 1);
+    if(event->type == SDL_MOUSEBUTTONDOWN || event->type == SDL_MOUSEBUTTONUP) {
+      size_t* button_obj = APITools_GetObjectValue(context, 2);
       button_obj[0] = event->button.type;
       button_obj[1] = event->button.timestamp;
-      button_obj[2] = event->button.which;
-      button_obj[3] = event->button.button;
-      button_obj[4] = event->button.state;
+      button_obj[2] = event->button.windowID;
+      button_obj[3] = event->button.which;
+      button_obj[4] = event->button.button;
+      button_obj[5] = event->button.state;
+      button_obj[6] = event->button.x;
+      button_obj[7] = event->button.y;
+      button_obj[8] = event->button.y;
 
       APITools_SetIntValue(context, 0, 0);
     }
