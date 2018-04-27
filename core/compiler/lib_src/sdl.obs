@@ -1243,7 +1243,150 @@ bundle SDL2 {
 			return @state;
 		}
 	}
-	
+
+	class MouseMotionEvent {
+		@type : Int;
+	    @timestamp : Int;
+	    @windowID : Int;
+	    @which : Int;
+	    @state : Int;
+	    @x : Int;
+	    @y : Int;
+	    @xrel : Int;
+	    @yrel : Int;
+
+	    New() {			
+		}
+
+		method : public : GetType() ~ Int {
+			return @type;
+		}
+
+		method : public : GetTimestamp() ~ Int {
+			return @timestamp;
+		}
+
+		method : public : GetWindowID() ~ Int {
+			return @windowID;
+		}
+
+		method : public : GetWhich() ~ Int {
+			return @which;
+		}
+
+		method : public : GetState() ~ Int {
+			return @state;
+		}
+
+		method : public : GetX() ~ Int {
+			return @x;
+		}
+
+		method : public : GetY() ~ Int {
+			return @y;
+		}
+
+		method : public : GetRelX() ~ Int {
+			return @xrel;
+		}
+
+		method : public : GetRelY() ~ Int {
+			return @yrel;
+		}
+	}
+
+	class MouseButtonEvent {
+		@type : Int;
+	    @timestamp : Int;
+	    @windowID : Int;
+	    @which : Int;
+	    @button : Int;
+	    @state : Int;
+	    @clicks : Int;
+	    @x : Int;
+	    @y : Int;
+
+	    New() {			
+		}
+
+		method : public : GetType() ~ Int {
+			return @type;
+		}
+
+		method : public : GetTimestamp() ~ Int {
+			return @timestamp;
+		}
+
+		method : public : GetWindowID() ~ Int {
+			return @windowID;
+		}
+
+		method : public : GetWhich() ~ Int {
+			return @which;
+		}
+
+		method : public : GetButton() ~ Int {
+			return @button;
+		}
+
+		method : public : GetState() ~ Int {
+			return @state;
+		}
+
+		method : public : GetClicks() ~ Int {
+			return @clicks;
+		}
+
+		method : public : GetX() ~ Int {
+			return @x;
+		}
+
+		method : public : GetY() ~ Int {
+			return @y;
+		}
+	}
+
+	class MouseWheelEvent {
+		@type : Int;
+	    @timestamp : Int;
+	    @windowID : Int;
+	    @which : Int;
+	    @x : Int;
+	    @y : Int;
+	    @direction : Int;
+
+	    New() {			
+		}
+
+		method : public : GetType() ~ Int {
+			return @type;
+		}
+
+		method : public : GetTimestamp() ~ Int {
+			return @timestamp;
+		}
+
+		method : public : GetWindowID() ~ Int {
+			return @windowID;
+		}
+
+		method : public : GetWhich() ~ Int {
+			return @which;
+		}
+
+		method : public : GetX() ~ Int {
+			return @x;
+		}
+
+		method : public : GetY() ~ Int {
+			return @y;
+		}
+
+		method : public : GetDirection() ~ Int {
+			return @direction;
+		}		
+	}
+
 	#~
 	Event class
 	~#
@@ -1252,7 +1395,10 @@ bundle SDL2 {
 		@key : KeyboardEvent;
 		@axis : JoyAxisEvent;
 		@hat : JoyHatEvent;
-		@button : JoyButtonEvent;
+		@jbutton : JoyButtonEvent;
+		@motion : MouseMotionEvent;
+		@mbutton : MouseButtonEvent;
+		@wheel : MouseWheelEvent;
 			
 		New() {
 			array_args := Base->New[1];
@@ -1342,25 +1488,97 @@ bundle SDL2 {
 			return Nil;
 		}
 
-		method : public : GetJButton() ~ JoyButtonEvent {
+		method : public : GetMouseMotion() ~ MouseMotionEvent {
 			if(@event <> 0) {
-				if(@button = Nil) {
-					@button := JoyButtonEvent->New();
+				if(@motion = Nil) {
+					@motion := MouseMotionEvent->New();
 				};
 				
 				array_args := Base->New[3];
 				array_args[0] := IntHolder->New();
 				array_args[1] := IntHolder->New(@event);
-				array_args[2] := @button;
+				array_args[2] := @motion;
 				
-				Proxy->GetDllProxy()->CallFunction("sdl_button_key", array_args);
+				Proxy->GetDllProxy()->CallFunction("sdl_mouse_motion", array_args);
 
 				value := array_args[0]->As(IntHolder);
 				if(value->Get() < 0) {
 					return Nil;
 				};
 
-				return @button;
+				return @motion;
+			};
+			
+			return Nil;
+		}
+
+		method : public : GetMouseWheel() ~ MouseWheelEvent {
+			if(@event <> 0) {
+				if(@wheel = Nil) {
+					@wheel := MouseWheelEvent->New();
+				};
+				
+				array_args := Base->New[3];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@event);
+				array_args[2] := @wheel;
+				
+				Proxy->GetDllProxy()->CallFunction("sdl_mouse_wheel", array_args);
+
+				value := array_args[0]->As(IntHolder);
+				if(value->Get() < 0) {
+					return Nil;
+				};
+
+				return @wheel;
+			};
+			
+			return Nil;
+		}
+
+		method : public : GetJButton() ~ JoyButtonEvent {
+			if(@event <> 0) {
+				if(@jbutton = Nil) {
+					@jbutton := JoyButtonEvent->New();
+				};
+				
+				array_args := Base->New[3];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@event);
+				array_args[2] := @jbutton;
+				
+				Proxy->GetDllProxy()->CallFunction("sdl_jbutton_key", array_args);
+
+				value := array_args[0]->As(IntHolder);
+				if(value->Get() < 0) {
+					return Nil;
+				};
+
+				return @jbutton;
+			};
+			
+			return Nil;
+		}
+
+		method : public : GetMButton() ~ MouseButtonEvent {
+			if(@event <> 0) {
+				if(@mbutton = Nil) {
+					@mbutton := MouseButtonEvent->New();
+				};
+				
+				array_args := Base->New[3];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@event);
+				array_args[2] := @mbutton;
+				
+				Proxy->GetDllProxy()->CallFunction("sdl_mbutton_key", array_args);
+
+				value := array_args[0]->As(IntHolder);
+				if(value->Get() < 0) {
+					return Nil;
+				};
+
+				return @mbutton;
 			};
 			
 			return Nil;

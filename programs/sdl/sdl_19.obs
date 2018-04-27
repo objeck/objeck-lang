@@ -198,7 +198,10 @@ class Test {
 					"-----"->PrintLine();
 				}
 				else if(e->GetType() = EventType->SDL_JOYBUTTONDOWN ) {
-					e->GetJButton()->GetTimestamp()->PrintLine();
+					e->GetJButton()->GetButton()->PrintLine();
+				}
+				else if(e->GetType() = EventType->SDL_MOUSEBUTTONDOWN) {
+					e->GetMButton()->GetButton()->PrintLine();
 				};
 			};
 			
