@@ -86,17 +86,15 @@ void Parser::ProcessError(const wstring &msg)
 /****************************
  * Emits parsing error.
  ****************************/
-void Parser::ProcessError(const wstring &msg, ScannerTokenType sync)
+void Parser::ProcessError(const wstring &msg, ScannerTokenType sync, int offset)
 {
 #ifdef _DEBUG
   wcout << L"\tError: " << GetFileName() << L":" << GetLineNumber() << L": "
         << msg << endl;
 #endif
 
-  const wstring &str_line_num = ToString(GetLineNumber());
-  errors.insert(pair<int, wstring>(GetLineNumber(),
-                                   GetFileName() + L":" + str_line_num +
-                                   L": " + msg));
+  const wstring &str_line_num = ToString(GetLineNumber() + offset);
+  errors.insert(pair<int, wstring>(GetLineNumber(), GetFileName() + L":" + str_line_num + L": " + msg));
   ScannerTokenType token = GetToken();
   while(token != sync && token != TOKEN_END_OF_STREAM) {
     NextToken();
@@ -2003,10 +2001,12 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
     }
   }
   else {
-    if(!Match(TOKEN_SEMI_COLON)) {
-      ProcessError(L"Expected ';'", TOKEN_SEMI_COLON);
+    if(Match(TOKEN_SEMI_COLON)) {
+      NextToken();
     }
-    NextToken();
+    else {
+      ProcessError(L"Expected ';'", TOKEN_CLOSED_BRACE, -1);
+    }
   }
   
   return statement;

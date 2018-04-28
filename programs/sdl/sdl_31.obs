@@ -132,7 +132,7 @@ class Dot {
 	            case SDLK_LEFT: mVelX -= DOT_VEL; break;
 	            case SDLK_RIGHT: mVelX += DOT_VEL; break;
 ~#	        	            
-	        };
+	        }
 	    };
 #~	    
 	    # If a key was released

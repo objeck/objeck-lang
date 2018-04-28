@@ -163,7 +163,7 @@ class Parser {
   void ProcessError(const ScannerTokenType type);
   void ProcessError(const wstring &msg);
   void ProcessError(const wstring &msg, ParseNode* node);
-  void ProcessError(const wstring &msg, const ScannerTokenType sync);
+  void ProcessError(const wstring &msg, const ScannerTokenType sync, int offset = 0);
   bool CheckErrors();
 
   // parsing operations
