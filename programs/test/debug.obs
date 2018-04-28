@@ -1,11 +1,19 @@
 class Test {
-	consts Flag {
-		VALUE1 := 18,
-		VALUE2 := 3
-	}
-
 	function : Main(args : String[]) ~ Nil {
-		v := Flag->VALUE1 | Flag->VALUE2;
-		v->PrintLine();
+		v := 13;
+		if(false) {
+			'0'->PrintLine();
+			v += 7;
+			if(true) {
+				'1'->PrintLine();
+
+				if(false) {
+					'2'->PrintLine();
+				}
+			}
+		};
+
+
+		b := 100;
 	}
 }
