@@ -1,6 +1,6 @@
 #~
 Lesson 31
-http://lazyfoo.net/tutorials/SDL/31_scrolling_backgrounds/index.php
+http:# lazyfoo.net/tutorials/SDL/31_scrolling_backgrounds/index.php
 ~#
 
 use SDL2;
@@ -119,10 +119,35 @@ class Dot {
 		@dot_texture := dot_texture;
 		DOT_VEL := 10;
 	}
-	
+
 	# Takes key presses and adjusts the dot's velocity
 	method : HandleEvent(e : Event) ~ Nil {
-
+		# If a key was pressed
+		if(e->GetType() = EventType->SDL_KEYDOWN & e->GetKey()->GetRepeat() = 0) {
+	        # Adjust the velocity
+	        select(e->GetType()->GetKeysym->GetSym()) {
+#~	    	
+	            case SDLK_UP: mVelY -= DOT_VEL; break;
+	            case SDLK_DOWN: mVelY += DOT_VEL; break;
+	            case SDLK_LEFT: mVelX -= DOT_VEL; break;
+	            case SDLK_RIGHT: mVelX += DOT_VEL; break;
+~#	        	            
+	        };
+	    };
+#~	    
+	    # If a key was released
+	    else if( e.type == SDL_KEYUP && e.key.repeat == 0 )
+	    {
+	        # Adjust the velocity
+	        switch( e.key.keysym.sym )
+	        {
+	            case SDLK_UP: mVelY += DOT_VEL; break;
+	            case SDLK_DOWN: mVelY -= DOT_VEL; break;
+	            case SDLK_LEFT: mVelX += DOT_VEL; break;
+	            case SDLK_RIGHT: mVelX -= DOT_VEL; break;
+	        }
+	    };
+~#	    
 	}
 
 	# Moves the dot
