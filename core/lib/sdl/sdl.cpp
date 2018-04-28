@@ -823,25 +823,6 @@ extern "C" {
     sdl_rect_raw_read(&C, C_obj);
   }
 
-/*
-#ifdef _WIN32
-  __declspec(dllexport)
-#endif
-  void sdl_rect_enclose_points(VMContext& context) {
-    const size_t* points_obj = APITools_GetObjectValue(context, 1);
-    SDL_Point* points = points_obj ? (SDL_Point*)points_obj[0] : NULL;
-
-    const int count = APITools_GetIntValue(context, 2);
-    
-    const size_t* clip_obj = APITools_GetObjectValue(context, 3);
-    SDL_Rect* clip = clip_obj ? (SDL_Rect*)clip_obj[0] : NULL;
-
-    SDL_Rect* result = new SDL_Rect;
-    const int return_value = SDL_EnclosePoints(points, count, clip, result);
-    APITools_SetIntValue(context, 0, (size_t)result);
-  }
-*/
-
 #ifdef _WIN32
   __declspec(dllexport)
 #endif

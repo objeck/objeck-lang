@@ -2144,8 +2144,6 @@ bundle SDL2 {
 		}
 		
 		method : public : Intersect(B : Rect, result : Rect) ~ Bool {
-			result := Rect->New();
-
 			array_args := Base->New[4];
 			array_args[0] := IntHolder->New();
 			array_args[1] := @self;
@@ -2159,8 +2157,6 @@ bundle SDL2 {
 		}
 		
 		method : public : Union(B : Rect, result : Rect) ~ Nil {
-			result := Rect->New();
-
 			array_args := Base->New[3];
 			array_args[0] := @self;
 			array_args[1] := B;
@@ -2168,26 +2164,7 @@ bundle SDL2 {
 
 			Proxy->GetDllProxy()->CallFunction("sdl_rect_union", array_args);
 		}
-
-
-		# TODO: fix this
-		function : EnclosePoints(points : Point[], count : Int, clip : Rect) ~ Rect {
-#~					
-			array_args := Base->New[4];
-			array_args[0] := IntHolder->New();
-			array_args[1] := IntArrayHolder->New(points);
-			array_args[2] := IntHolder->New(count);
-			array_args[3] := clip;
-
-			Proxy->GetDllProxy()->CallFunction("sdl_rect_enclose_points", array_args);
-
-			value := array_args[0]->As(IntHolder);
-			return Rect->New(value->Get());
-~#
-			return Nil;			
-		}
-
-
+		
 		method : public : IntersectAndLine(X1 : IntHolder, Y1 :IntHolder, X2 : IntHolder, Y2 : IntHolder) ~ Bool {
 			array_args := Base->New[6];
 			array_args[0] := IntHolder->New();
