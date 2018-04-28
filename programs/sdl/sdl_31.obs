@@ -117,7 +117,7 @@ class Dot {
 
 	New(dot_texture : LTexture) {
 		@dot_texture := dot_texture;
-		DOT_VEL := 2;
+		DOT_VEL := 10;
 	}
 
 	# Takes key presses and adjusts the dot's velocity
@@ -204,7 +204,7 @@ class Dot {
 consts Screen {
 	WIDTH := 640,
 	HEIGHT := 480,
-	FPS := 30
+	FPS := 60
 }
 
 class Test {
@@ -226,7 +226,9 @@ class Test {
 			return;
 		};
 
-		scrollingOffset := 0;
+		scrolling_offset := 0;
+
+		FRAME_RATE := 1000 / Screen->FPS->As(Int);
 			
 		# Main loop flag
 		quit := false;
@@ -236,6 +238,8 @@ class Test {
 
 		# While application is running
 		while(<>quit) {
+			start := Timer->GetTicks();
+
 			# Handle events on queue
 			while( e->Poll() <> 0 ) {
 				# User requests quit
@@ -254,19 +258,25 @@ class Test {
 
 
 			# Scroll background
-			scrollingOffset -= 1;
-			if(scrollingOffset < -1 * @bg_texture->GetWidth()) {
-				scrollingOffset := 0;
+			scrolling_offset -= 1;
+			if(scrolling_offset < -1 * @bg_texture->GetWidth()) {
+				scrolling_offset := 0;
 			};
 
 			# Render background
-			@bg_texture->Render(scrollingOffset, 0);
-			@bg_texture->Render(scrollingOffset + @bg_texture->GetWidth(), 0);
+			@bg_texture->Render(scrolling_offset, 0);
+			@bg_texture->Render(scrolling_offset + @bg_texture->GetWidth(), 0);
 
 			@dot->Render();
 
 			# Update screen
 			@renderer->Present();
+
+			end := start - Timer->GetTicks();
+			if(end < FRAME_RATE) {
+				Timer->Delay(FRAME_RATE - end);
+			};
+			frame += 1;
 		};
 
 		e->Free();
