@@ -109,55 +109,95 @@ class LTexture {
 
 class Dot {
 	@dot_texture : LTexture;
-	@x : Int;
-	@y : Int;
+	@posX : Int;
+	@posY : Int;
 	@velX : Int; 
 	@velY : Int;
 	DOT_VEL : Int;
 
 	New(dot_texture : LTexture) {
 		@dot_texture := dot_texture;
-		DOT_VEL := 10;
+		DOT_VEL := 2;
 	}
 
 	# Takes key presses and adjusts the dot's velocity
-	method : HandleEvent(e : Event) ~ Nil {
+	method : public : HandleEvent(e : Event) ~ Nil {
 		# If a key was pressed
 		if(e->GetType() = EventType->SDL_KEYDOWN & e->GetKey()->GetRepeat() = 0) {
 	        # Adjust the velocity
-	        select(e->GetType()->GetKeysym->GetSym()) {
-#~	    	
-	            case SDLK_UP: mVelY -= DOT_VEL; break;
-	            case SDLK_DOWN: mVelY += DOT_VEL; break;
-	            case SDLK_LEFT: mVelX -= DOT_VEL; break;
-	            case SDLK_RIGHT: mVelX += DOT_VEL; break;
-~#	        	            
-	        }
-	    };
-#~	    
+	        select(e->GetKey()->GetKeysym()->GetScancode()) {    	
+	            label Scancode->SDL_SCANCODE_UP: {
+	            	@velY -= DOT_VEL;
+	            }
+
+	            label Scancode->SDL_SCANCODE_DOWN: {
+	            	@velY += DOT_VEL;
+	            }
+
+	            label Scancode->SDL_SCANCODE_LEFT: {
+	            	@velX -= DOT_VEL;
+	            }
+
+	            label Scancode->SDL_SCANCODE_RIGHT: {
+	            	@velX += DOT_VEL;
+	            }        	            
+	        };
+	    }
 	    # If a key was released
-	    else if( e.type == SDL_KEYUP && e.key.repeat == 0 )
-	    {
+	    else if(e->GetType() = EventType->SDL_KEYUP & e->GetKey()->GetRepeat() = 0) {
 	        # Adjust the velocity
-	        switch( e.key.keysym.sym )
-	        {
-	            case SDLK_UP: mVelY += DOT_VEL; break;
-	            case SDLK_DOWN: mVelY -= DOT_VEL; break;
-	            case SDLK_LEFT: mVelX += DOT_VEL; break;
-	            case SDLK_RIGHT: mVelX -= DOT_VEL; break;
-	        }
-	    };
-~#	    
+	        select(e->GetKey()->GetKeysym()->GetScancode()) {
+	        	label Scancode->SDL_SCANCODE_UP: {
+	            	@velY += DOT_VEL;
+	            }
+
+	            label Scancode->SDL_SCANCODE_DOWN: {
+	            	@velY -= DOT_VEL;
+	            }
+
+	            label Scancode->SDL_SCANCODE_LEFT: {
+	            	@velX += DOT_VEL;
+	            }
+
+	            label Scancode->SDL_SCANCODE_RIGHT: {
+	            	@velX -= DOT_VEL;
+	            }
+	        };
+	    };   
 	}
 
 	# Moves the dot
-	method : Move() ~ Nil {
-		
+	method : public : Move() ~ Nil {
+		# Move the dot left or right
+	    @posX += @velX;
+
+	    # If the dot went too far to the left or right
+	    if( ( @posX < 0 ) | ( @posX + @dot_texture->GetWidth() > Screen->WIDTH->As(Int) ) ) {
+	        # Move back
+	        @posX -= @velX;
+	    };
+
+	    # Move the dot up or down
+	    @posY += @velY;
+
+	    # If the dot went too far up or down
+	    if( ( @posY < 0 ) | ( @posY + @dot_texture->GetHeight() > Screen->HEIGHT->As(Int) ) ) {
+	        # Move back
+	        @posY -= @velY;
+	    };
 	}
 
 	# Shows the dot1 on the screen
-	method : Render() ~ Nil {
-		
+	method : public : Render() ~ Nil {
+		@dot_texture->Render(@posX, @posY);
+	}
+
+	method : public : LoadFromFile(file : String) ~ Bool {
+		return @dot_texture->LoadFromFile(file);
+	}
+
+	method : public : Free() ~ Nil {
+		@dot_texture->Free();
 	}
 }
 
@@ -171,7 +211,7 @@ class Test {
 	@window : static : Window;
 	@renderer : static : Renderer;
 	@bg_texture : static : LTexture;
-	@dot_texture : static : LTexture;
+	@dot : static : Dot;
 	
 	function : Main(args : String[]) ~ Nil {
 		# Start up SDL and create window
@@ -185,6 +225,8 @@ class Test {
 			"Failed to load media!"->ErrorLine();
 			return;
 		};
+
+		scrollingOffset := 0;
 			
 		# Main loop flag
 		quit := false;
@@ -200,12 +242,28 @@ class Test {
 				if(e->GetType() = EventType->SDL_QUIT) {
 					quit := true;
 				};
+
+				# Handle input for the dot
+				@dot->HandleEvent(e);
 			};
+
+			@dot->Move();
 			
 			@renderer->SetDrawColor(0xFF, 0xFF, 0xFF, 0xFF);
 			@renderer->Clear();
 
-			@bg_texture->Render(0, 0);
+
+			# Scroll background
+			scrollingOffset -= 1;
+			if(scrollingOffset < -1 * @bg_texture->GetWidth()) {
+				scrollingOffset := 0;
+			};
+
+			# Render background
+			@bg_texture->Render(scrollingOffset, 0);
+			@bg_texture->Render(scrollingOffset + @bg_texture->GetWidth(), 0);
+
+			@dot->Render();
 
 			# Update screen
 			@renderer->Present();
@@ -258,13 +316,13 @@ class Test {
 		};
 
 		@bg_texture := LTexture->New(@renderer);
-		@dot_texture := LTexture->New(@renderer);
+		@dot := Dot->New(LTexture->New(@renderer));
 		
 		return true;
 	}
 	
 	function : LoadMedia() ~ Bool {
-		if(<>@dot_texture->LoadFromFile("images/dot.bmp")) {
+		if(<>@dot->LoadFromFile("images/dot.bmp")) {
 			"Failed to load bg image"->ErrorLine();
 			return false;
 		};
@@ -298,7 +356,7 @@ class Test {
 	
 	function : Close() ~ Nil {
 		@bg_texture->Free();
-		@dot_texture->Free();
+		@dot->Free();
 
 		@renderer->Destroy();
 		@window->Destroy();
