@@ -275,7 +275,8 @@ void IntermediateEmitter::EmitLibraries(Linker* linker)
     vector<LibraryClass*> lib_classes = linker->GetAllClasses();
     for(size_t i = 0; i < lib_classes.size(); ++i) {
       if(is_lib || lib_classes[i]->GetCalled()) {
-        imm_program->AddClass(new IntermediateClass(lib_classes[i]));
+        LibraryClass* parent_class = linker->SearchClassLibraries(lib_classes[i]->GetParentName(), parsed_program->GetUses());
+        imm_program->AddClass(new IntermediateClass(lib_classes[i], parent_class ? parent_class->GetId() : -1));
       }
     }
   }

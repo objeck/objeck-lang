@@ -952,11 +952,11 @@ namespace backend {
       file_name = fn;
     }
     
-    IntermediateClass(LibraryClass* lib_klass) {
+    IntermediateClass(LibraryClass* lib_klass, int pi) {
       // set attributes
       id = lib_klass->GetId();
       name = lib_klass->GetName();
-      pid = -1;
+      pid = pi;
       interface_ids = lib_klass->GetInterfaceIds();
       parent_name = lib_klass->GetParentName();
       interface_names = lib_klass->GetInterfaceNames();
