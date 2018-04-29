@@ -7,6 +7,8 @@ class Test {
 		if(game->IsOk()) {
 			e := game->GetEvent();
 			
+			image := game->AddImageSprite("../../../../programs/sdl/engine/tests/media/images/bg.png");
+
 			quit := false;
 			while(<>quit) {
 				game->FrameStart();
@@ -15,6 +17,8 @@ class Test {
 					if(e->GetType() = EventType->SDL_QUIT) {
 						quit := true;
 					};
+
+					image->Render(0, 0);
 				};
 
 				game->FrameEnd();
