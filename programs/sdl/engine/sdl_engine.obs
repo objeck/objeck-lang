@@ -1,0 +1,110 @@
+use SDL2;
+
+class TextSprite from Sprite {
+	@font : Font;
+
+	New(renderer : Renderer, font : Font) {
+		Parent(renderer);
+		@font := font;
+	}
+
+	method : public : LoadFromRenderedText(textureText : String, textColor : Color) ~ Bool {
+		Free();
+
+		# Render text surface
+		textSurface := @font->RenderTextSolid(textureText, textColor);
+		if(textSurface->IsNull()) {
+			"Unable to render text surface!"->ErrorLine();
+			return false;
+		};
+
+		texture := textSurface->CreateTexture(@renderer);
+		@render_quad->SetW(textSurface->GetW());
+		@render_quad->SetH(textSurface->GetH());
+		
+		@texture := texture;
+		return @texture <> Nil;
+	}
+}
+
+class Sprite {
+	@texture : Texture;
+	@render_quad : Rect;
+	@renderer : Renderer;
+
+	New(renderer : Renderer) {
+		@renderer := renderer;
+		@render_quad := Rect->New();
+	}
+
+	# Loads image at specified path
+	method : public : LoadFromFile(path : String) ~ Bool {
+		Free();
+
+		# Load image at specified path
+		loadedSurface := Image->Load(path);
+		if(loadedSurface->IsNull()) {
+			"Unable to load surface"->ErrorLine();
+			return false;
+		};
+
+		loadedSurface->SetColorKey(true, loadedSurface->GetPixelFormat()->MapRGB(0, 0xFF, 0xFF));
+
+		texture := loadedSurface->CreateTexture(@renderer);
+		if(texture->IsNull()) {
+			"Unable to create texture!"->ErrorLine();
+			return false;
+		};
+		@render_quad->SetW(loadedSurface->GetW());
+		@render_quad->SetH(loadedSurface->GetH());
+		
+		loadedSurface->Free();
+
+		@texture := texture;
+		return @texture <> Nil;
+	}
+
+	# Deallocates texture
+	method : public : Free() ~ Nil {
+		if(@texture <> Nil)	{
+			@texture->Destroy();
+		};
+	}
+
+	method : public : SetColor(red : Int, green : Int, blue : Int) ~ Nil {
+		@texture->SetColorMod(red, green, blue);
+	}
+
+	method : public : SetBlendMode(blending : BlendMode) ~ Nil {
+		# Set blending function
+		@texture->SetBlendMode(blending);
+	}
+	
+	method : public : SetAlpha(alpha : Int) ~ Nil {
+		# Modulate texture alpha
+		@texture->SetAlphaMod(alpha );
+	}
+
+	# Renders texture at given point
+	method : public : Render(x : Int, y : Int, clip : Rect := Nil, 
+			angle : Float := 0.0, center : Point := Nil, flip : RendererFlip := RendererFlip->SDL_FLIP_NONE) ~ Nil {
+		@render_quad->SetX(x);
+		@render_quad->SetY(y);
+
+		if(clip <> Nil)	{
+			@render_quad->SetW(clip->GetW());
+			@render_quad->SetH(clip->GetH());
+		};
+
+		@renderer->CopyEx(@texture, clip, @render_quad, angle, center, flip);
+	}
+
+	# Gets image dimensions
+	method : public : GetWidth() ~ Int {
+		return @render_quad->GetW();
+	}
+
+	method : public : GetHeight() ~ Int {
+		return @render_quad->GetH();
+	}
+}
