@@ -1,245 +1,260 @@
 use SDL2;
 use Collection;
 
-class AminatedSprite from ImageSprite {
-	New(renderer : Renderer, file : String, rows : Int, columns : Int) {
-		Parent(renderer, file);
-	}
-}
+bundle Game {
+	class ImageSprite from Sprite {
+		@is_ok : Bool;
 
-class ImageSprite from Sprite {
-	@is_ok : Bool;
+		New(renderer : Renderer, file : String) {
+			Parent(renderer);
+			@is_ok := LoadImage(file);
+		}
 
-	New(renderer : Renderer, file : String) {
-		Parent(renderer);
-		@is_ok := LoadImage(file);
-	}
+		method : LoadImage(file : String) ~ Bool {
+			Free();
 
-	method : LoadImage(file : String) ~ Bool {
-		Free();
-
-		surface := Image->Load(file);
-		if(surface->IsNull()) {
-			"Unable to load surface"->ErrorLine();
-			return false;
-		};
-		# TODO: set colorkey
-		surface->SetColorKey(true, surface->GetPixelFormat()->MapRGB(0, 0xFF, 0xFF));
-
-		texture := surface->CreateTexture(@renderer);
-		if(texture->IsNull()) {
-			"Unable to create texture!"->ErrorLine();
-			return false;
-		};
-		@render_rect->SetW(surface->GetW());
-		@render_rect->SetH(surface->GetH());
-		
-		surface->Free();
-
-		@texture := texture;
-		return @texture <> Nil;
-	}
-}
-
-class TextSprite from Sprite {
-	@font : Font;
-
-	New(renderer : Renderer, font : Font) {
-		Parent(renderer);
-		@font := font;
-	}
-
-	method : public : RenderedText(text : String, color : Color := Nil) ~ Bool {
-		Free();
-
-		if(color = Nil) {
-			color := Color->New(32, 32, 32);
-		};
-
-		# Render text surface
-		textSurface := @font->RenderTextSolid(text, color);
-		if(textSurface->IsNull()) {
-			"Unable to render text surface!"->ErrorLine();
-			return false;
-		};
-
-		texture := textSurface->CreateTexture(@renderer);
-		@render_rect->SetW(textSurface->GetW());
-		@render_rect->SetH(textSurface->GetH());
-		
-		@texture := texture;
-		return @texture <> Nil;
-	}
-}
-
-class Sprite {
-	@texture : Texture;
-	@render_rect : Rect;
-	@renderer : Renderer;
-
-	New(renderer : Renderer) {
-		@renderer := renderer;
-		@render_rect := Rect->New();
-	}
-
-	method : public : Free() ~ Nil {
-		if(@texture <> Nil)	{
-			@texture->Destroy();
-			@render_rect->SetX(0);
-			@render_rect->SetY(0);
-		};
-	}
-
-	method : public : SetColor(red : Int, green : Int, blue : Int) ~ Nil {
-		@texture->SetColorMod(red, green, blue);
-	}
-
-	method : public : SetBlendMode(blending : BlendMode) ~ Nil {
-		@texture->SetBlendMode(blending);
-	}
-	
-	method : public : SetAlpha(alpha : Int) ~ Nil {
-		@texture->SetAlphaMod(alpha );
-	}
-
-	method : public : Render(x : Int, y : Int, clip : Rect := Nil, 
-			angle : Float := 0.0, center : Point := Nil, 
-			flip : RendererFlip := RendererFlip->SDL_FLIP_NONE) ~ Nil {
-		@render_rect->SetX(x);
-		@render_rect->SetY(y);
-
-		if(clip <> Nil)	{
-			@render_rect->SetW(clip->GetW());
-			@render_rect->SetH(clip->GetH());
-		};
-
-		@renderer->CopyEx(@texture, clip, @render_rect, angle, center, flip);
-	}
-
-	method : public : GetWidth() ~ Int {
-		return @render_rect->GetW();
-	}
-
-	method : public : GetHeight() ~ Int {
-		return @render_rect->GetH();
-	}
-}
-
-class GameEngine {
-	@is_ok : Bool;
-	@screen_width : Int;
-	@screen_height : Int;
-	@renderer : Renderer;
-	@sprites : Vector;
-	@font : Font;
-
-	New(screen_width : Int, screen_height : Int, title : String, init_flags : Int) {
-		Init(screen_width, screen_height, title, init_flags);
-		@sprites := Vector->New();
-	}
-
-	method : Init(screen_width : Int, screen_height : Int, title : String, init_flags : Int) ~ Bool {
-		success := true;
-
-		@screen_width := screen_width;
-		@screen_height := screen_height;
-
-		# Initialize SDL
-		if(Core->Init(init_flags) < 0) {
-			"SDL could not initialize!"->ErrorLine();
-			return false;
-		};
-		
-		if(<>Hints->Set("SDL_RENDER_SCALE_QUALITY", "1")) {
-			"Warning: Linear texture filtering not enabled!"->ErrorLine();
-			return false;
-		};
-
-		# Create window
-		@window := Window->New(title, WindowFlags->SDL_WINDOWPOS_UNDEFINED, 
-			WindowFlags->SDL_WINDOWPOS_UNDEFINED, @screen_width, @screen_height, 
-			WindowFlags->SDL_WINDOW_SHOWN);
-		if(@window->IsNull()) {
-			"Cannot create window!"->ErrorLine();
-			return false;
-		};
-
-		@renderer := Renderer->New(@window, -1, 
-			RendererFlags->SDL_RENDERER_ACCELERATED and RendererFlags->SDL_RENDERER_PRESENTVSYNC);
-		if(@renderer->IsNull()) {
-			"Cannot create renderer!"->ErrorLine();
-			return false;
-		};
-		@renderer->SetDrawColor(0xFF, 0xFF, 0xFF, 0xFF);
-
-		img_flags := ImageFlags->IMG_INIT_PNG->As(Int);
-		if((Image->Init(img_flags) and img_flags) = 0) {
-			"SDL image could not initialize!"->ErrorLine();
-			return false;
-		};
-
-		if(Font->Init() < 0) {
-			"SDL_ttf could not initialize!"->ErrorLine();
-			return false;
-		};
-
-		# should be a parameter
-		@font := Font->New("images/digital.ttf", 28);
-		if(@font->IsNull()) {
-			"Failed to load font!"->ErrorLine();
-			return false;
-		};
-
-		if(<>Mixer->OpenAudio(44100, Mixer->Flags->MIX_DEFAULT_FORMAT, 2, 2048)) {
-			"SDL mixer could not initialize!"->ErrorLine();
-			return false;
-		};
-		
-		return true;
-	}
-
-	method : public : AddTextSprite() ~ TextSprite {
-		sprite := TextSprite->New(@renderer, @font);
-		@sprites->AddBack(sprite);
-
-		return sprite;
-	}
-
-	method : public : RemoveSprite(sprite : Sprite) ~ Bool {
-		found := -1;
-		
-		for(i := 0; i < @sprites->Size() & found < 0; i +=1;) {
-			if(@sprites->Get(i) = sprite) {
-				found := i;
+			surface := Image->Load(file);
+			if(surface->IsNull()) {
+				"Unable to load surface"->ErrorLine();
+				return false;
 			};
-		};
+			# TODO: set colorkey
+			surface->SetColorKey(true, surface->GetPixelFormat()->MapRGB(0, 0xFF, 0xFF));
 
-		if(found > -1) {
-			@sprites->Remove(found);
+			texture := surface->CreateTexture(@renderer);
+			if(texture->IsNull()) {
+				"Unable to create texture!"->ErrorLine();
+				return false;
+			};
+			@render_rect->SetW(surface->GetW());
+			@render_rect->SetH(surface->GetH());
+			
+			surface->Free();
+
+			@texture := texture;
+			return @texture <> Nil;
+		}
+	}
+
+	class TextSprite from Sprite {
+		@font : Font;
+
+		New(renderer : Renderer, font : Font) {
+			Parent(renderer);
+			@font := font;
+		}
+
+		method : public : RenderedText(text : String, color : Color := Nil) ~ Bool {
+			Free();
+
+			if(color = Nil) {
+				color := Color->New(32, 32, 32);
+			};
+
+			# Render text surface
+			textSurface := @font->RenderTextSolid(text, color);
+			if(textSurface->IsNull()) {
+				"Unable to render text surface!"->ErrorLine();
+				return false;
+			};
+
+			texture := textSurface->CreateTexture(@renderer);
+			@render_rect->SetW(textSurface->GetW());
+			@render_rect->SetH(textSurface->GetH());
+			
+			@texture := texture;
+			return @texture <> Nil;
+		}
+	}
+
+	class Sprite {
+		@texture : Texture;
+		@render_rect : Rect;
+		@renderer : Renderer;
+
+		New(renderer : Renderer) {
+			@renderer := renderer;
+			@render_rect := Rect->New();
+		}
+
+		method : public : Free() ~ Nil {
+			if(@texture <> Nil)	{
+				@texture->Destroy();
+				@render_rect->SetX(0);
+				@render_rect->SetY(0);
+			};
+		}
+
+		method : public : SetColor(red : Int, green : Int, blue : Int) ~ Nil {
+			@texture->SetColorMod(red, green, blue);
+		}
+
+		method : public : SetBlendMode(blending : BlendMode) ~ Nil {
+			@texture->SetBlendMode(blending);
+		}
+		
+		method : public : SetAlpha(alpha : Int) ~ Nil {
+			@texture->SetAlphaMod(alpha );
+		}
+
+		method : public : Render(x : Int, y : Int, clip : Rect := Nil, angle : Float := 0.0, 
+				center : Point := Nil, flip : RendererFlip := RendererFlip->SDL_FLIP_NONE) ~ Nil {
+			@render_rect->SetX(x);
+			@render_rect->SetY(y);
+
+			if(clip <> Nil)	{
+				@render_rect->SetW(clip->GetW());
+				@render_rect->SetH(clip->GetH());
+			};
+
+			@renderer->CopyEx(@texture, clip, @render_rect, angle, center, flip);
+		}
+
+		method : public : GetWidth() ~ Int {
+			return @render_rect->GetW();
+		}
+
+		method : public : GetHeight() ~ Int {
+			return @render_rect->GetH();
+		}
+	}
+
+	class GameEngine {
+		@is_ok : Bool;
+		@screen_width : Int;
+		@screen_height : Int;
+		@renderer : Renderer;
+
+		@frame_rate : Int;
+		@frame_start : Int;
+
+		@sprites : Vector;
+		@font : Font;
+		@event : Event;
+
+		New(screen_width : Int, screen_height : Int, title : String, fps : Int, init_flags : Int) {
+			@frame_rate := 1000 / fps;
+			@sprites := Vector->New();
+			
+			Init(screen_width, screen_height, title, init_flags);
+		}
+		New(screen_width : Int, screen_height : Int, title : String) {
+			init_flags := HardwareFlags->SDL_INIT_VIDEO->As(Int) or
+				HardwareFlags->SDL_INIT_AUDIO->As(Int) or 
+				HardwareFlags->SDL_INIT_JOYSTICK->As(Int);
+			@frame_rate := 1000 / 30;
+			@sprites := Vector->New();
+			
+			Init(screen_width, screen_height, title, init_flags);
+		}
+
+		method : Init(screen_width : Int, screen_height : Int, title : String, init_flags : Int) ~ Bool {
+			success := true;
+
+			@screen_width := screen_width;
+			@screen_height := screen_height;
+
+			# Initialize SDL
+			if(Core->Init(init_flags) < 0) {
+				"SDL could not initialize!"->ErrorLine();
+				return false;
+			};
+			
+			if(<>Hints->Set("SDL_RENDER_SCALE_QUALITY", "1")) {
+				"Warning: Linear texture filtering not enabled!"->ErrorLine();
+				return false;
+			};
+
+			# Create window
+			@window := Window->New(title, WindowFlags->SDL_WINDOWPOS_UNDEFINED, 
+				WindowFlags->SDL_WINDOWPOS_UNDEFINED, @screen_width, @screen_height, 
+				WindowFlags->SDL_WINDOW_SHOWN);
+			if(@window->IsNull()) {
+				"Cannot create window!"->ErrorLine();
+				return false;
+			};
+
+			@renderer := Renderer->New(@window, -1, 
+				RendererFlags->SDL_RENDERER_ACCELERATED and RendererFlags->SDL_RENDERER_PRESENTVSYNC);
+			if(@renderer->IsNull()) {
+				"Cannot create renderer!"->ErrorLine();
+				return false;
+			};
+			@renderer->SetDrawColor(0xFF, 0xFF, 0xFF, 0xFF);
+
+			img_flags := ImageFlags->IMG_INIT_PNG->As(Int);
+			if((Image->Init(img_flags) and img_flags) = 0) {
+				"SDL image could not initialize!"->ErrorLine();
+				return false;
+			};
+
+			if(Font->Init() < 0) {
+				"SDL_ttf could not initialize!"->ErrorLine();
+				return false;
+			};
+
+			# should be a parameter
+			@font := Font->New("images/digital.ttf", 28);
+			if(@font->IsNull()) {
+				"Failed to load font!"->ErrorLine();
+				return false;
+			};
+
+			if(<>Mixer->OpenAudio(44100, Mixer->Flags->MIX_DEFAULT_FORMAT, 2, 2048)) {
+				"SDL mixer could not initialize!"->ErrorLine();
+				return false;
+			};
+
+			@event := Event->New();
+			
 			return true;
-		};
+		}
 
-		return false;
+		method : public : GetEvent() ~ Event {
+			return @event;
+		}
+
+		method : public : FrameStart() ~ Nil {
+			@frame_start := Timer->GetTicks();
+		}
+
+		method : public : FrameEnd() ~ Nil {
+			end := @frame_start - Timer->GetTicks();
+			if(end < @frame_rate) {
+				Timer->Delay(@frame_rate - end);
+			};
+		}
+
+		method : public : AddTextSprite() ~ TextSprite {
+			sprite := TextSprite->New(@renderer, @font);
+			@sprites->AddBack(sprite);
+
+			return sprite;
+		}
+
+		method : public : RemoveSprite(sprite : Sprite) ~ Bool {
+			found := -1;
+			
+			for(i := 0; i < @sprites->Size() & found < 0; i +=1;) {
+				if(@sprites->Get(i) = sprite) {
+					found := i;
+				};
+			};
+
+			if(found > -1) {
+				@sprites->Remove(found);
+				return true;
+			};
+
+			return false;
+		}
+
+		method : public : Quit() ~ Nil {
+			@event->Free();
+			Image->Quit();
+			Font->Quit();
+			Mixer->Quit();
+			Core->Quit();
+		}
 	}
-
-	method : public : Run() ~ Bool {
-		if(@is_ok) {
-			return true;
-		};
-
-		return false;
-	}
-
-	method : virtual : ProcessInput(e : Event) ~ Nil;
-
-	method : virtual : UpdateAI() ~ Nil;
-
-	method : virtual : Render() ~ Nil;	
-
-	method : public : Quit() ~ Nil {
-		Image->Quit();
-		Font->Quit();
-		Mixer->Quit();
-		Core->Quit();
-	}
-}
+}	
