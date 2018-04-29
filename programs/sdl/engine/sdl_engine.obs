@@ -129,7 +129,10 @@ bundle Game {
 		@frame_start : Int;
 
 		@sprites : Vector;
+
 		@font : Font;
+		@joystick : Joystick;
+
 		@event : Event;
 
 		New(screen_width : Int, screen_height : Int, title : String, fps : Int, init_flags : Int) {
@@ -193,7 +196,7 @@ bundle Game {
 				return false;
 			};
 
-			# should be a parameter
+			# SHOULD BE A PARAMETER
 			@font := Font->New("images/digital.ttf", 28);
 			if(@font->IsNull()) {
 				"Failed to load font!"->ErrorLine();
@@ -204,6 +207,11 @@ bundle Game {
 				"SDL mixer could not initialize!"->ErrorLine();
 				return false;
 			};
+
+			if(Joystick->Number() < 1) {
+				"Warning: No joysticks connected!"->PrintLine();
+			};
+			@joystick := Joystick->New(0);
 
 			@event := Event->New();
 			
@@ -257,6 +265,11 @@ bundle Game {
 			if(@event <> Nil) {
 				@event->Free();
 			};
+
+			if(@joystick <> Nil) {
+				@joystick->Free();
+			};
+			
 			Image->Quit();
 			Font->Quit();
 			Mixer->Quit();
