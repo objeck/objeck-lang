@@ -120,7 +120,9 @@ class GameEngine {
 	@is_ok : Bool;
 	@screen_width : Int;
 	@screen_height : Int;
+	@renderer : Renderer;
 	@sprites : Vector;
+	@font : Font;
 
 	New(screen_width : Int, screen_height : Int, title : String, init_flags : Int) {
 		Init(screen_width, screen_height, title, init_flags);
@@ -167,12 +169,31 @@ class GameEngine {
 			return false;
 		};
 
+		if(Font->Init() < 0) {
+			"SDL_ttf could not initialize!"->ErrorLine();
+			return false;
+		};
+
+		# should be a parameter
+		@font := Font->New("images/digital.ttf", 28);
+		if(@font->IsNull()) {
+			"Failed to load font!"->ErrorLine();
+			return false;
+		};
+
 		if(<>Mixer->OpenAudio(44100, Mixer->Flags->MIX_DEFAULT_FORMAT, 2, 2048)) {
 			"SDL mixer could not initialize!"->ErrorLine();
 			return false;
 		};
 		
 		return true;
+	}
+
+	method : public : CreateTextSprite() ~ TextSprite {
+		sprite := TextSprite->New(@renderer, @font);
+		@sprites->AddBack(sprite);
+
+		return sprite;
 	}
 
 	method : public : Run() ~ Bool {
@@ -191,6 +212,7 @@ class GameEngine {
 
 	method : public : Quit() ~ Nil {
 		Image->Quit();
+		Font->Quit();
 		Mixer->Quit();
 		Core->Quit();
 	}
