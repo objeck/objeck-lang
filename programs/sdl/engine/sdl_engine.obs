@@ -136,7 +136,7 @@ bundle Game {
 			@frame_rate := 1000 / fps;
 			@sprites := Vector->New();
 			
-			Init(screen_width, screen_height, title, init_flags);
+			@is_ok := Init(screen_width, screen_height, title, init_flags);
 		}
 		New(screen_width : Int, screen_height : Int, title : String) {
 			init_flags := HardwareFlags->SDL_INIT_VIDEO->As(Int) or
@@ -145,7 +145,7 @@ bundle Game {
 			@frame_rate := 1000 / 30;
 			@sprites := Vector->New();
 			
-			Init(screen_width, screen_height, title, init_flags);
+			@is_ok := Init(screen_width, screen_height, title, init_flags);
 		}
 
 		method : Init(screen_width : Int, screen_height : Int, title : String, init_flags : Int) ~ Bool {
@@ -210,6 +210,10 @@ bundle Game {
 			return true;
 		}
 
+		method : public : IsOk() ~ Bool {
+			return @is_ok;
+		}		
+
 		method : public : GetEvent() ~ Event {
 			return @event;
 		}
@@ -250,7 +254,9 @@ bundle Game {
 		}
 
 		method : public : Quit() ~ Nil {
-			@event->Free();
+			if(@event <> Nil) {
+				@event->Free();
+			};
 			Image->Quit();
 			Font->Quit();
 			Mixer->Quit();
