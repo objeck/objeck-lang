@@ -244,6 +244,13 @@ bundle Game {
 			return sprite;
 		}
 
+		method : public : AddImageSprite(file : String) ~ ImageSprite {
+			sprite := ImageSprite->New(@renderer, file);
+			@sprites->AddBack(sprite);
+
+			return sprite;
+		}
+
 		method : public : RemoveSprite(sprite : Sprite) ~ Bool {
 			found := -1;
 			
@@ -262,6 +269,11 @@ bundle Game {
 		}
 
 		method : public : Quit() ~ Nil {
+			each(i : @sprites) {
+				sprite := @sprites->Get(i)->As(Sprite);
+				sprite->Free();
+			};
+
 			if(@event <> Nil) {
 				@event->Free();
 			};

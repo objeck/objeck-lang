@@ -6,12 +6,14 @@ class Sprite {
 	@texture : Texture;
 	@width : Int;
 	@height : Int;
+	@render_quad : Rect;
 	@frames : Int;
 
 	New(renderer : Renderer, frames : Int := 1, font : Font := Nil) {
 		@renderer := renderer;
 		@frames := frames;
 		@font := font;
+		@render_quad := Rect->New();
 	}
 
 	method : public : LoadFromRenderedText(textureText : String, textColor : Color) ~ Bool {
@@ -75,14 +77,17 @@ class Sprite {
 
 	method : public : Render(x : Int, y : Int, clip : Rect := Nil, angle : Float := 0.0, 
 			center : Point := Nil, flip : RendererFlip := RendererFlip->SDL_FLIP_NONE) ~ Nil {
-		render_quad := Rect->New(x, y, @width, @height);
-
+		@render_quad->SetX(x);
+		@render_quad->SetY(y);
+		@render_quad->SetW(@width);
+		@render_quad->SetH(@height);
+		
 		if(clip <> Nil)	{
-			render_quad->SetW(clip->GetW());
-			render_quad->SetH(clip->GetH());
+			@render_quad->SetW(clip->GetW());
+			@render_quad->SetH(clip->GetH());
 		};
 
-		@renderer->CopyEx(@texture, clip, render_quad, angle, center, flip );
+		@renderer->CopyEx(@texture, clip, @render_quad, angle, center, flip );
 	}
 
 	method : public : GetWidth() ~ Int {
