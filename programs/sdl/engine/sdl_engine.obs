@@ -4,7 +4,7 @@ class ImageSprite from Sprite {
 	New(renderer : Renderer, font : Font) {
 		Parent(renderer);
 	}
-	
+
 	method : public : LoadImage(path : String) ~ Bool {
 		Free();
 
@@ -112,5 +112,82 @@ class Sprite {
 
 	method : public : GetHeight() ~ Int {
 		return @render_rect->GetH();
+	}
+}
+
+class GameEngine {
+	@is_ok : Bool;
+	@screen_width : Int;
+	@screen_height : Int;
+
+	New(screen_width : Int, screen_height : Int, init_flags : Int) {
+		Init(screen_width, screen_height, init_flags);
+	}
+
+	method : Init(screen_width : Int, screen_height : Int, init_flags : Int) ~ Bool {
+		success := true;
+
+		@screen_width := screen_width;
+		@screen_height := screen_height;
+
+		# Initialize SDL
+		if(Core->Init(init_flags) < 0) {
+			"SDL could not initialize!"->ErrorLine();
+			return false;
+		};
+		
+		if(<>Hints->Set("SDL_RENDER_SCALE_QUALITY", "1")) {
+			"Warning: Linear texture filtering not enabled!"->ErrorLine();
+			return false;
+		};
+
+		# Create window
+		@window := Window->New("SDL Tutorial", 
+			WindowFlags->SDL_WINDOWPOS_UNDEFINED, WindowFlags->SDL_WINDOWPOS_UNDEFINED, 
+			@screen_width, @screen_height, WindowFlags->SDL_WINDOW_SHOWN);
+		if(@window->IsNull()) {
+			"Cannot create window!"->ErrorLine();
+			return false;
+		};
+
+		@renderer := Renderer->New(@window, -1, 
+			RendererFlags->SDL_RENDERER_ACCELERATED and RendererFlags->SDL_RENDERER_PRESENTVSYNC);
+		if(@renderer->IsNull()) {
+			"Cannot create renderer!"->ErrorLine();
+			return false;
+		};
+		@renderer->SetDrawColor(0xFF, 0xFF, 0xFF, 0xFF);
+
+		img_flags := ImageFlags->IMG_INIT_PNG->As(Int);
+		if((Image->Init(img_flags) and img_flags) = 0) {
+			"SDL image could not initialize!"->ErrorLine();
+			return false;
+		};
+
+		if(<>Mixer->OpenAudio(44100, Mixer->Flags->MIX_DEFAULT_FORMAT, 2, 2048)) {
+			return false;
+		};
+		
+		return true;
+	}
+
+	method : public : Run() ~ Bool {
+		if(@is_ok) {
+
+			return true;
+		};
+		return false;
+	}
+
+	method : virtual : ProcessInput(event : Event) ~ Nil;
+
+	method : virtual : UpdateAI() ~ Nil;
+
+	method : virtual : Render() ~ Nil;	
+
+	method : public : Quit() ~ Nil {
+		Image->Quit();
+		Mixer->Quit();
+		Core->Quit();
 	}
 }
