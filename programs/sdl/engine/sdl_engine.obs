@@ -1,4 +1,5 @@
 use SDL2;
+use Collection;
 
 class ImageSprite from Sprite {
 	New(renderer : Renderer, font : Font) {
@@ -119,12 +120,14 @@ class GameEngine {
 	@is_ok : Bool;
 	@screen_width : Int;
 	@screen_height : Int;
+	@sprites : Vector;
 
-	New(screen_width : Int, screen_height : Int, init_flags : Int) {
-		Init(screen_width, screen_height, init_flags);
+	New(screen_width : Int, screen_height : Int, title : String, init_flags : Int) {
+		Init(screen_width, screen_height, title, init_flags);
+		@sprites := Vector->New();
 	}
 
-	method : Init(screen_width : Int, screen_height : Int, init_flags : Int) ~ Bool {
+	method : Init(screen_width : Int, screen_height : Int, title : String, init_flags : Int) ~ Bool {
 		success := true;
 
 		@screen_width := screen_width;
@@ -142,9 +145,9 @@ class GameEngine {
 		};
 
 		# Create window
-		@window := Window->New("SDL Tutorial", 
-			WindowFlags->SDL_WINDOWPOS_UNDEFINED, WindowFlags->SDL_WINDOWPOS_UNDEFINED, 
-			@screen_width, @screen_height, WindowFlags->SDL_WINDOW_SHOWN);
+		@window := Window->New(title, WindowFlags->SDL_WINDOWPOS_UNDEFINED, 
+			WindowFlags->SDL_WINDOWPOS_UNDEFINED, @screen_width, @screen_height, 
+			WindowFlags->SDL_WINDOW_SHOWN);
 		if(@window->IsNull()) {
 			"Cannot create window!"->ErrorLine();
 			return false;
@@ -165,6 +168,7 @@ class GameEngine {
 		};
 
 		if(<>Mixer->OpenAudio(44100, Mixer->Flags->MIX_DEFAULT_FORMAT, 2, 2048)) {
+			"SDL mixer could not initialize!"->ErrorLine();
 			return false;
 		};
 		
@@ -173,13 +177,13 @@ class GameEngine {
 
 	method : public : Run() ~ Bool {
 		if(@is_ok) {
-
 			return true;
 		};
+
 		return false;
 	}
 
-	method : virtual : ProcessInput(event : Event) ~ Nil;
+	method : virtual : ProcessInput(e : Event) ~ Nil;
 
 	method : virtual : UpdateAI() ~ Nil;
 
