@@ -1,5 +1,9 @@
 use SDL2;
 
+class ImageSprite from Sprite {
+
+}
+
 class TextSprite from Sprite {
 	@font : Font;
 
@@ -8,11 +12,15 @@ class TextSprite from Sprite {
 		@font := font;
 	}
 
-	method : public : LoadFromRenderedText(textureText : String, textColor : Color) ~ Bool {
+	method : public : RenderedText(text : String, color : Color := Nil) ~ Bool {
 		Free();
 
+		if(color = Nil) {
+			color := Color->New(32, 32, 32);
+		};
+
 		# Render text surface
-		textSurface := @font->RenderTextSolid(textureText, textColor);
+		textSurface := @font->RenderTextSolid(text, color);
 		if(textSurface->IsNull()) {
 			"Unable to render text surface!"->ErrorLine();
 			return false;
@@ -68,6 +76,8 @@ class Sprite {
 	method : public : Free() ~ Nil {
 		if(@texture <> Nil)	{
 			@texture->Destroy();
+			@render_quad->SetX(0);
+			@render_quad->SetY(0);
 		};
 	}
 
