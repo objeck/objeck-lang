@@ -1,7 +1,34 @@
 use SDL2;
 
 class ImageSprite from Sprite {
+	New(renderer : Renderer, font : Font) {
+		Parent(renderer);
+	}
+	
+	method : public : LoadImage(path : String) ~ Bool {
+		Free();
 
+		surface := Image->Load(path);
+		if(surface->IsNull()) {
+			"Unable to load surface"->ErrorLine();
+			return false;
+		};
+		# TODO: set colorkey
+		surface->SetColorKey(true, surface->GetPixelFormat()->MapRGB(0, 0xFF, 0xFF));
+
+		texture := surface->CreateTexture(@renderer);
+		if(texture->IsNull()) {
+			"Unable to create texture!"->ErrorLine();
+			return false;
+		};
+		@render_rect->SetW(surface->GetW());
+		@render_rect->SetH(surface->GetH());
+		
+		surface->Free();
+
+		@texture := texture;
+		return @texture <> Nil;
+	}
 }
 
 class TextSprite from Sprite {
@@ -27,8 +54,8 @@ class TextSprite from Sprite {
 		};
 
 		texture := textSurface->CreateTexture(@renderer);
-		@render_quad->SetW(textSurface->GetW());
-		@render_quad->SetH(textSurface->GetH());
+		@render_rect->SetW(textSurface->GetW());
+		@render_rect->SetH(textSurface->GetH());
 		
 		@texture := texture;
 		return @texture <> Nil;
@@ -37,47 +64,19 @@ class TextSprite from Sprite {
 
 class Sprite {
 	@texture : Texture;
-	@render_quad : Rect;
+	@render_rect : Rect;
 	@renderer : Renderer;
 
 	New(renderer : Renderer) {
 		@renderer := renderer;
-		@render_quad := Rect->New();
+		@render_rect := Rect->New();
 	}
 
-	# Loads image at specified path
-	method : public : LoadFromFile(path : String) ~ Bool {
-		Free();
-
-		# Load image at specified path
-		loadedSurface := Image->Load(path);
-		if(loadedSurface->IsNull()) {
-			"Unable to load surface"->ErrorLine();
-			return false;
-		};
-
-		loadedSurface->SetColorKey(true, loadedSurface->GetPixelFormat()->MapRGB(0, 0xFF, 0xFF));
-
-		texture := loadedSurface->CreateTexture(@renderer);
-		if(texture->IsNull()) {
-			"Unable to create texture!"->ErrorLine();
-			return false;
-		};
-		@render_quad->SetW(loadedSurface->GetW());
-		@render_quad->SetH(loadedSurface->GetH());
-		
-		loadedSurface->Free();
-
-		@texture := texture;
-		return @texture <> Nil;
-	}
-
-	# Deallocates texture
 	method : public : Free() ~ Nil {
 		if(@texture <> Nil)	{
 			@texture->Destroy();
-			@render_quad->SetX(0);
-			@render_quad->SetY(0);
+			@render_rect->SetX(0);
+			@render_rect->SetY(0);
 		};
 	}
 
@@ -86,35 +85,32 @@ class Sprite {
 	}
 
 	method : public : SetBlendMode(blending : BlendMode) ~ Nil {
-		# Set blending function
 		@texture->SetBlendMode(blending);
 	}
 	
 	method : public : SetAlpha(alpha : Int) ~ Nil {
-		# Modulate texture alpha
 		@texture->SetAlphaMod(alpha );
 	}
 
-	# Renders texture at given point
 	method : public : Render(x : Int, y : Int, clip : Rect := Nil, 
-			angle : Float := 0.0, center : Point := Nil, flip : RendererFlip := RendererFlip->SDL_FLIP_NONE) ~ Nil {
-		@render_quad->SetX(x);
-		@render_quad->SetY(y);
+			angle : Float := 0.0, center : Point := Nil, 
+			flip : RendererFlip := RendererFlip->SDL_FLIP_NONE) ~ Nil {
+		@render_rect->SetX(x);
+		@render_rect->SetY(y);
 
 		if(clip <> Nil)	{
-			@render_quad->SetW(clip->GetW());
-			@render_quad->SetH(clip->GetH());
+			@render_rect->SetW(clip->GetW());
+			@render_rect->SetH(clip->GetH());
 		};
 
-		@renderer->CopyEx(@texture, clip, @render_quad, angle, center, flip);
+		@renderer->CopyEx(@texture, clip, @render_rect, angle, center, flip);
 	}
 
-	# Gets image dimensions
 	method : public : GetWidth() ~ Int {
-		return @render_quad->GetW();
+		return @render_rect->GetW();
 	}
 
 	method : public : GetHeight() ~ Int {
-		return @render_quad->GetH();
+		return @render_rect->GetH();
 	}
 }
