@@ -2,14 +2,17 @@ use SDL2;
 use Collection;
 
 class ImageSprite from Sprite {
-	New(renderer : Renderer, font : Font) {
+	@is_ok : Bool;
+
+	New(renderer : Renderer, file : String) {
 		Parent(renderer);
+		@is_ok := LoadImage(file);
 	}
 
-	method : public : LoadImage(path : String) ~ Bool {
+	method : LoadImage(file : String) ~ Bool {
 		Free();
 
-		surface := Image->Load(path);
+		surface := Image->Load(file);
 		if(surface->IsNull()) {
 			"Unable to load surface"->ErrorLine();
 			return false;
