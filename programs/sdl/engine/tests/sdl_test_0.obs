@@ -4,19 +4,21 @@ use Game;
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		game := GameEngine->New(640, 480, "Engine Test");
-		e := game->GetEvent();
+		if(game->IsOk()) {
+			e := game->GetEvent();
+			
+			quit := false;
+			while(<>quit) {
+				game->FrameStart();
 
-		quit := false;
-		while(<>quit) {
-			game->FrameStart();
-
-			while(e->Poll() <> 0) {
-				if(e->GetType() = EventType->SDL_QUIT) {
-					quit := true;
+				while(e->Poll() <> 0) {
+					if(e->GetType() = EventType->SDL_QUIT) {
+						quit := true;
+					};
 				};
-			};
 
-			game->FrameEnd();
+				game->FrameEnd();
+			};
 		};
 
 		leaving {
