@@ -17,9 +17,11 @@ class Test {
 					if(e->GetType() = EventType->SDL_QUIT) {
 						quit := true;
 					};
-
-					image->Render(0, 0);
 				};
+
+				game->Clear();
+				image->Render(0, 0);
+				game->Show();
 
 				game->FrameEnd();
 			};

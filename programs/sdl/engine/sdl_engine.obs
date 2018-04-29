@@ -237,6 +237,15 @@ bundle Game {
 			};
 		}
 
+		method : public : Clear() ~ Nil {
+			@renderer->SetDrawColor(0xFF, 0xFF, 0xFF, 0xFF);
+			@renderer->Clear();
+		}
+
+		method : public : Show() ~ Nil {
+			@renderer->Present();
+		}
+
 		method : public : AddTextSprite() ~ TextSprite {
 			sprite := TextSprite->New(@renderer, @font);
 			@sprites->AddBack(sprite);
