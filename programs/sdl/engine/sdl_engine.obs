@@ -1,6 +1,12 @@
 use SDL2;
 use Collection;
 
+class AminatedSprite from ImageSprite {
+	New(renderer : Renderer, file : String, rows : Int, columns : Int) {
+		Parent(renderer, file);
+	}
+}
+
 class ImageSprite from Sprite {
 	@is_ok : Bool;
 
@@ -192,11 +198,28 @@ class GameEngine {
 		return true;
 	}
 
-	method : public : CreateTextSprite() ~ TextSprite {
+	method : public : AddTextSprite() ~ TextSprite {
 		sprite := TextSprite->New(@renderer, @font);
 		@sprites->AddBack(sprite);
 
 		return sprite;
+	}
+
+	method : public : RemoveSprite(sprite : Sprite) ~ Bool {
+		found := -1;
+		
+		for(i := 0; i < @sprites->Size() & found < 0; i +=1;) {
+			if(@sprites->Get(i) = sprite) {
+				found := i;
+			};
+		};
+
+		if(found > -1) {
+			@sprites->Remove(found);
+			return true;
+		};
+
+		return false;
 	}
 
 	method : public : Run() ~ Bool {
