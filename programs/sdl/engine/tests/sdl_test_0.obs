@@ -7,7 +7,16 @@ class Test {
 		if(game->IsOk()) {
 			e := game->GetEvent();
 			
-			image := game->AddImageSprite("../../../../programs/sdl/engine/tests/media/images/bg.png");
+			image := game->AddImageSprite("../../../../programs/sdl/engine/tests/media/images/walker.png");
+
+			x := 130;
+			y := 70;
+			offset := image->GetWidth() / 4;
+
+			clip := Rect->New(0, 0, offset, image->GetHeight());
+			w := 0;
+
+			frame := 0;
 
 			quit := false;
 			while(<>quit) {
@@ -19,11 +28,22 @@ class Test {
 					};
 				};
 
+				clip->SetX(w);
+
 				game->Clear();
-				image->Render(0, 0);
+				image->Render(x, y, clip);
 				game->Show();
 
 				game->FrameEnd();
+
+				if(frame > 5) {
+					w += offset;
+					if(w > offset * 3) {
+						w := 0;
+					};
+					frame := 0;
+				};
+				frame += 1;
 			};
 		};
 
