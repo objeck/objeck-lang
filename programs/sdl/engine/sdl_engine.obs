@@ -1,7 +1,7 @@
 use SDL2;
 use Collection;
 
-bundle Game {
+bundle SDL2.Game {
 	class AnimatedImageSprite from ImageSprite {
 		@clip : Rect;
 		@clip_offset : Int;

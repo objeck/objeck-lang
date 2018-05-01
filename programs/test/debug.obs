@@ -1,19 +1,38 @@
+class Fee {
+	@fee : String;
+	New() {
+		Parent();
+		@free := "fee";
+	}
+}
+
+class Fie from Fee {
+	@fie : Float;
+	New() {
+		Parent();
+		@free := 33.3;
+	}
+}
+
+class Fum from Fie {
+	@fum : Int;
+	New() {
+		Parent();
+		@free := 13;
+	}
+
+	method : public : DoIt() ~ Nil {
+		if(@fie < 15.5 & @fum = 13) {
+			"Works!"->PrintLine();
+		}
+		else {
+			"Broken"->PrintLine();
+		};
+	}
+}
+
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		v := 13;
-		if(false) {
-			'0'->PrintLine();
-			v += 7;
-			if(true) {
-				'1'->PrintLine();
-
-				if(false) {
-					'2'->PrintLine();
-				}
-			}
-		};
-
-
-		b := 100;
+		Fum->New()->DoIt();		
 	}
 }

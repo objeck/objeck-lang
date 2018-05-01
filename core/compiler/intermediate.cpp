@@ -4441,7 +4441,15 @@ int IntermediateEmitter::CalculateEntrySpace(IntermediateDeclarations* declarati
     // inspect parent classes
     Class* parent = current_class->GetParent();
     if(parent) {
+      // start at last parent
+      list<Class*> parents;
       while(parent) {
+        parents.push_front(parent);
+        parent = parent->GetParent();
+      }
+
+      for(list<Class*>::iterator iter = parents.begin(); iter != parents.end(); ++iter) {
+        parent = *iter;
         SymbolTable* table = symbol_table->GetSymbolTable(parent->GetName());
         // parent may be defined in another file
         if(!table) {
@@ -4451,13 +4459,6 @@ int IntermediateEmitter::CalculateEntrySpace(IntermediateDeclarations* declarati
           }
         }
         size += CalculateEntrySpace(table, index, declarations, is_static);
-        Class* tmp = SearchProgramClasses(parent->GetParentName());
-        if(tmp == parent) {
-          parent = NULL;
-        }
-        else {
-          parent = tmp;
-        }
       }
     } 
     else {
