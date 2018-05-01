@@ -3,14 +3,24 @@ use SDL2.Game;
 
 class PlatformTest {
 	@game : GameEngine;
+
 	SCREEN_WIDTH : Int;
 	SCREEN_HEIGHT : Int;
+	BLOCK_WIDTH : Int;
+	BLOCK_HEIGHT : Int;
 
 	@bg : ImageSprite;
 	@hero : AnimatedImageSprite;
 	@game_time : TextSprite;
 
 	@block1 : ImageSprite;
+	@block2 : ImageSprite;
+	@block3 : ImageSprite;
+	@block4 : ImageSprite;
+	@fauna1 : ImageSprite;
+	@fauna2 : ImageSprite;
+	@fauna3 : ImageSprite;
+	@spikes1 : ImageSprite;
 
 	@bg_x : Int;
 	@bg_y : Int;
@@ -30,11 +40,19 @@ class PlatformTest {
 	New() {
 		SCREEN_WIDTH := 640;
 		SCREEN_HEIGHT := 480;
+		BLOCK_WIDTH := 32;
+		BLOCK_HEIGHT := 32;
 
 		@game := GameEngine->New(SCREEN_WIDTH, SCREEN_HEIGHT, "Engine Test");
-
 		@bg := @game->AddImageSprite("../../../../programs/sdl/engine/tests/media/images/hills.png");
 		@block1 := @game->AddImageSprite("../../../../programs/sdl/engine/tests/media/images/block1.png");
+		@block2 := @game->AddImageSprite("../../../../programs/sdl/engine/tests/media/images/block2.png");
+		@block3 := @game->AddImageSprite("../../../../programs/sdl/engine/tests/media/images/block3.png");
+		@block4 := @game->AddImageSprite("../../../../programs/sdl/engine/tests/media/images/block4.png");
+		@fauna1 := @game->AddImageSprite("../../../../programs/sdl/engine/tests/media/images/fauna1.png");
+		@fauna2 := @game->AddImageSprite("../../../../programs/sdl/engine/tests/media/images/fauna3.png");
+		@fauna3 := @game->AddImageSprite("../../../../programs/sdl/engine/tests/media/images/fauna3.png");
+		@spikes1 := @game->AddImageSprite("../../../../programs/sdl/engine/tests/media/images/spikes1.png");
 		@hero := @game->AddAnimatedImageSprite("../../../../programs/sdl/engine/tests/media/images/walk.png", 6);
 		@game_time := @game->AddTextSprite();
 
@@ -145,7 +163,31 @@ class PlatformTest {
 			for(y := 0; y < y_edge; y += 1;) {
 				select(@platform_grid[y, x]) {
 					label 1: {
-						@block1->Render(x * 32, y * 32);
+						@block1->Render(x * BLOCK_WIDTH, y * BLOCK_HEIGHT);
+					}
+
+					label 2: {
+						@block2->Render(x * BLOCK_WIDTH, y * BLOCK_HEIGHT);
+					}
+
+					label 3: {
+						@block3->Render(x * BLOCK_WIDTH, y * BLOCK_HEIGHT);
+					}
+
+					label 4: {
+						@block4->Render(x * BLOCK_WIDTH, y * BLOCK_HEIGHT);
+					}
+
+					label 5: {
+						@fauna1->Render(x * BLOCK_WIDTH, y * BLOCK_HEIGHT);
+					}
+
+					label 6: {
+						@fauna2->Render(x * BLOCK_WIDTH, y * BLOCK_HEIGHT);
+					}
+
+					label 7: {
+						@spikes1->Render(x * BLOCK_WIDTH, y * BLOCK_HEIGHT);
 					}
 				};
 			};
@@ -156,9 +198,9 @@ class PlatformTest {
 		platform_grid := [
 			[1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,]
 			[1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,]
-			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
-			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
-			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
+			[0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
+			[0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
+			[0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
