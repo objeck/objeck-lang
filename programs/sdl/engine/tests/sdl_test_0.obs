@@ -155,10 +155,9 @@ class PlatformTest {
 	}
 
 	method : RenderPlatform() ~ Nil {
-		edges := @platform_grid->Size();
-		y_edge := edges[0];
-		x_edge := edges[1];
-
+		x_edge := SCREEN_WIDTH / BLOCK_WIDTH;
+		y_edge := SCREEN_HEIGHT / BLOCK_HEIGHT;
+		
 		for(x := 0; x < x_edge; x += 1;) {
 			for(y := 0; y < y_edge; y += 1;) {
 				select(@platform_grid[y, x]) {
