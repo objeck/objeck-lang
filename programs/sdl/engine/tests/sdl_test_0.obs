@@ -1,7 +1,7 @@
 use SDL2;
 use SDL2.Game;
 
-class PlatformTest {
+class PlatformDemo {
 	@game : GameEngine;
 
 	SCREEN_WIDTH : Int;
@@ -24,8 +24,11 @@ class PlatformTest {
 
 	@bg_x : Int;
 	@bg_y : Int;
+	
 	@hero_x : Int;
 	@hero_y : Int;
+	@helo_walking : Bool;
+
 	@platform_grid : Int[,];
 	@frame : Int;
 	@hero_index : Int;
@@ -33,7 +36,7 @@ class PlatformTest {
 	@game_time_text : String;
 	
 	function : Main(args : String[]) ~ Nil {
-		platform := PlatformTest->New();
+		platform := PlatformDemo->New();
 		platform->Run();
 	}
 
@@ -71,6 +74,7 @@ class PlatformTest {
 		@game_time_text := "Time: 120";
 		@game_time->RenderedText(@game_time_text);
 
+		GameCheck()->PrintLine();
 	}
 
 	method : Run() ~ Nil {
@@ -86,6 +90,8 @@ class PlatformTest {
 					if(e->GetType() = EventType->SDL_QUIT) {
 						quit := true;
 					};
+
+					 HandleInput(e);
 				};
 
 				ProcessAi();
@@ -105,7 +111,48 @@ class PlatformTest {
 
 	}
 
-	method : native : ProcessTimeEvent() ~ Nil {
+	method : public : HandleInput(e : Event) ~ Nil {
+		if(e->GetType() = EventType->SDL_KEYDOWN & e->GetKey()->GetRepeat() = 0) {
+	        select(e->GetKey()->GetKeysym()->GetScancode()) {    	
+	            label Scancode->SDL_SCANCODE_UP: {
+	            	"-- [up] down --"->PrintLine();
+	            }
+
+	            label Scancode->SDL_SCANCODE_DOWN: {
+	            	"-- [down] down --"->PrintLine();
+	            }
+
+	            label Scancode->SDL_SCANCODE_LEFT: {
+	            	"-- [left] down --"->PrintLine();
+	            }
+
+	            label Scancode->SDL_SCANCODE_RIGHT: {
+	            	@helo_walking := true;
+	            }        	            
+	        };
+	    }
+	    else if(e->GetType() = EventType->SDL_KEYUP & e->GetKey()->GetRepeat() = 0) {
+	        select(e->GetKey()->GetKeysym()->GetScancode()) {
+	        	label Scancode->SDL_SCANCODE_UP: {
+	        		"-- [up] up --"->PrintLine();
+	            }
+
+	            label Scancode->SDL_SCANCODE_DOWN: {
+	            	"-- [down] up --"->PrintLine();
+	            }
+
+	            label Scancode->SDL_SCANCODE_LEFT: {
+	            	"-- [left] up --"->PrintLine();
+	            }
+
+	            label Scancode->SDL_SCANCODE_RIGHT: {
+	            	@helo_walking := false;
+	            }
+	        };
+	    };   
+	}
+
+	method : native : ProcessTimeEvent() ~ Nil {		
 		@frame += 1;
 		if(@frame <= @game->GetFps()) {
 			if(@frame % @game->GetFps() = 0) {
@@ -117,16 +164,18 @@ class PlatformTest {
 				@game_time->RenderedText(@game_time_text);
 			};
 
-			if(@frame % 5 = 0) {
-				@hero_index += 1;
-				
-				@bg_x -= @bg->GetWidth() / 25;
-				if(@bg_x < -1 * @bg->GetWidth()) {
-					@bg_x := 0;
-				};
+			if(@helo_walking) {
+				if(@frame % 5 = 0) {
+					@hero_index += 1;
+					
+					@bg_x -= @bg->GetWidth() / 25;
+					if(@bg_x < -1 * @bg->GetWidth()) {
+						@bg_x := 0;
+					};
 
-				if(@hero_index >= @hero->GetClipCount()) {
-					@hero_index := 0;
+					if(@hero_index >= @hero->GetClipCount()) {
+						@hero_index := 0;
+					};
 				};
 			};
 		}
@@ -195,8 +244,8 @@ class PlatformTest {
 
 	method : CreatePlatform() ~ Int[,] {
 		platform_grid := [
-			[1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,]
-			[1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,]
 			[0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
 			[0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
 			[0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
@@ -214,6 +263,6 @@ class PlatformTest {
 	}
 
 	method : GameCheck() ~ Bool {
-		return true;
+		return SCREEN_WIDTH % BLOCK_WIDTH = 0 & SCREEN_HEIGHT % BLOCK_HEIGHT = 0;
 	}
 }
