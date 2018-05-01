@@ -1,65 +1,122 @@
 use SDL2;
 use SDL2.Game;
 
-class Test {
+class PlatformTest {
+	@game : GameEngine;
+	SCREEN_WIDTH : Int;
+	SCREEN_HEIGHT : Int;
+
+	@bg : ImageSprite;
+	@hero : AnimatedImageSprite;
+	@game_time : TextSprite;
+	@bg_x : Int;
+	@bg_y : Int;
+	@hero_x : Int;
+	@hero_y : Int;
+	@frame : Int;
+	@hero_index : Int;
+	@game_time_seconds : Int;
+	@game_time_text : String;
+	
 	function : Main(args : String[]) ~ Nil {
+		platform := PlatformTest->New();
+		platform->Run();
+	}
+
+	New() {
 		SCREEN_WIDTH := 640;
 		SCREEN_HEIGHT := 480;
 
-		game := GameEngine->New(SCREEN_WIDTH, SCREEN_HEIGHT, "Engine Test");
-		if(game->IsOk()) {
-			e := game->GetEvent();
-			
-			bg := game->AddImageSprite("../../../../programs/sdl/engine/tests/media/images/hills.png");
-			hero := game->AddAnimatedImageSprite("../../../../programs/sdl/engine/tests/media/images/walk.png", 6);
+		@game := GameEngine->New(SCREEN_WIDTH, SCREEN_HEIGHT, "Engine Test");
+		@bg := @game->AddImageSprite("../../../../programs/sdl/engine/tests/media/images/hills.png");
+		@hero := @game->AddAnimatedImageSprite("../../../../programs/sdl/engine/tests/media/images/walk.png", 6);
+		@game_time := @game->AddTextSprite();
 
-			bg_x := 0;
-			bg_y := 0;
+		@bg_x := 0;
+		@bg_y := 0;
 
-			hero_x := 60;
-			hero_y := SCREEN_HEIGHT - (hero->GetHeight() + 20);
+		@hero_x := 60;
+		@hero_y := SCREEN_HEIGHT - (@hero->GetHeight() + 20);
 
-			frame := 0;
-			hero_index := 0;
+		@frame := 1;
+		@hero_index := 0;
+
+		@game_time_seconds := 120;
+		@game_time_text := "Time: 120";
+		@game_time->RenderedText(@game_time_text);
+
+	}
+
+	method : Run() ~ Nil {
+		if(@game->IsOk()) {
+			e := @game->GetEvent();
 
 			quit := false;
 			while(<>quit) {
-				game->FrameStart();
+				@game->FrameStart();
 
+				# user input
 				while(e->Poll() <> 0) {
 					if(e->GetType() = EventType->SDL_QUIT) {
 						quit := true;
 					};
 				};
 
-				# call once per second
-				frame += 1;
-				if(frame >= game->GetFps() * 0.2) {
-					frame := 0;
-					hero_index += 1;
-					
-					bg_x -= bg->GetWidth() / 25;
-					if(bg_x < -1 * bg->GetWidth()) {
-						bg_x := 0;
-					};
+				ProcessAi();
+				ProcessTimeEvent();
+				Render();
 
-					if(hero_index >= hero->GetClipCount()) {
-						hero_index := 0;
-					};
-				};
-
-				game->Clear();
-				bg->Render(bg_x, 0);
-				bg->Render(bg_x + bg->GetWidth(), 0);
-				hero->Render(hero_x, hero_y, hero_index);
-				game->Show();
-
-				game->FrameEnd();
+				@game->FrameEnd();
 			};
 		};
 
 		leaving {
-			game->Quit();
+			@game->Quit();
 		};
+	}
+	
+	method : ProcessAi() ~ Nil {
+
+	}
+
+
+
+	method : native : ProcessTimeEvent() ~ Nil {
+		@frame += 1;
+		if(@frame <= @game->GetFps()) {
+			if(@frame % @game->GetFps() = 0) {
+				@game_time_seconds -= 1;
+				if(@game_time_seconds < 0) {
+					@game_time_seconds := 120;
+				};
+				@game_time_text := "Time: {$@game_time_seconds}";
+				@game_time->RenderedText(@game_time_text);
+			};
+
+			if(@frame % 6 = 0) {
+				@hero_index += 1;
+				
+				@bg_x -= @bg->GetWidth() / 25;
+				if(@bg_x < -1 * @bg->GetWidth()) {
+					@bg_x := 0;
+				};
+
+				if(@hero_index >= @hero->GetClipCount()) {
+					@hero_index := 0;
+				};
+			};
+		}
+		else {
+			@frame := 1;
+		};
+	}
+
+	method : Render() ~ Nil {
+		@game->Clear();
+		@bg->Render(@bg_x, 0);
+		@bg->Render(@bg_x + @bg->GetWidth(), 0);
+		@hero->Render(@hero_x, @hero_y, @hero_index);
+		@game_time->Render(10, 10);
+		@game->Show();
 	}
 }
