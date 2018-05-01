@@ -157,7 +157,7 @@ class PlatformTest {
 	method : RenderPlatform() ~ Nil {
 		x_edge := SCREEN_WIDTH / BLOCK_WIDTH;
 		y_edge := SCREEN_HEIGHT / BLOCK_HEIGHT;
-		
+
 		for(x := 0; x < x_edge; x += 1;) {
 			for(y := 0; y < y_edge; y += 1;) {
 				select(@platform_grid[y, x]) {
@@ -211,5 +211,9 @@ class PlatformTest {
 			[1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,]
 			[1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1]];
 		return platform_grid;
+	}
+
+	method : GameCheck() ~ Bool {
+		return true;
 	}
 }
