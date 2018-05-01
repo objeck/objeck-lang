@@ -75,9 +75,11 @@ SymbolEntry* SymbolEntry::Copy()
  ****************************/
 void SymbolEntry::SetId(int i)
 {
-  id = i;
-  for(size_t j = 0; j < variables.size(); j++) {
-    variables[j]->SetId(i);
+  if(id < 0) {
+    id = i;
+    for(size_t j = 0; j < variables.size(); j++) {
+      variables[j]->SetId(i);
+    }
   }
 }
 

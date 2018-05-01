@@ -517,6 +517,10 @@ Class* Parser::ParseClass(const wstring &bundle_name, int depth)
     }
     // identifier
     parent_cls_name = ParseBundleName();
+
+    if(parent_cls_name == cls_name) {
+      ProcessError(L"Child and parent class names are the same");
+    }
   }
 
   // implements ids
