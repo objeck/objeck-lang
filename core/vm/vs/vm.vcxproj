@@ -98,6 +98,8 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_GC_SERIAL;_SCL_SECURE_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <UndefinePreprocessorDefinitions>
+      </UndefinePreprocessorDefinitions>
     </ClCompile>
     <Link>
       <DataExecutionPrevention>false</DataExecutionPrevention>

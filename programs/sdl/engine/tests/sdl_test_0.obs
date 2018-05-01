@@ -1,5 +1,5 @@
 use SDL2;
-use Game;
+use SDL2.Game;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
@@ -53,8 +53,6 @@ class Test {
 				bg->Render(bg_x + bg->GetWidth(), 0);
 				hero->Render(hero_x, hero_y, hero_index);
 				game->Show();
-
-				
 
 				game->FrameEnd();
 			};
