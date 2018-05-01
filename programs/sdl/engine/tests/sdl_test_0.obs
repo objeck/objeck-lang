@@ -117,7 +117,7 @@ class PlatformTest {
 				@game_time->RenderedText(@game_time_text);
 			};
 
-			if(@frame % 6 = 0) {
+			if(@frame % 5 = 0) {
 				@hero_index += 1;
 				
 				@bg_x -= @bg->GetWidth() / 25;
