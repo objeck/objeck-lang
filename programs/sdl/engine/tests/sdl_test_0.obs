@@ -137,15 +137,15 @@ class PlatformTest {
 	}
 
 	method : RenderPlatform() ~ Nil {
-		xy_max := @platform_grid->Size();
-		x_max := xy_max[0];
-		y_max := xy_max[1];
+		edges := @platform_grid->Size();
+		y_edge := edges[0];
+		x_edge := edges[1];
 
-		for(y := 0; y < y_max; y += 1;) {
-			for(x := 0; x < x_max; x += 1;) {
-				select(@platform_grid[x, y]) {
+		for(x := 0; x < x_edge; x += 1;) {
+			for(y := 0; y < y_edge; y += 1;) {
+				select(@platform_grid[y, x]) {
 					label 1: {
-						@block1->Render(y * 32, x * 32);
+						@block1->Render(x * 32, y * 32);
 					}
 				};
 			};
