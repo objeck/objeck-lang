@@ -7,14 +7,10 @@ class Test {
 		if(game->IsOk()) {
 			e := game->GetEvent();
 			
-			image := game->AddImageSprite("../../../../programs/sdl/engine/tests/media/images/walker.png");
+			image := game->AddAnimatedImageSprite("../../../../programs/sdl/engine/tests/media/images/walk.png", 6);
 
-			x := 130;
-			y := 70;
-			offset := image->GetWidth() / 4;
-
-			clip := Rect->New(0, 0, offset, image->GetHeight());
-			w := 0;
+			x := 0;
+			y := 0;
 
 			frame := 0;
 
@@ -28,22 +24,23 @@ class Test {
 					};
 				};
 
-				clip->SetX(w);
-
 				game->Clear();
-				image->Render(x, y, clip);
+				image->Render(x, y, 0);
+				x += 1;
 				game->Show();
 
-				game->FrameEnd();
+				
 
-				if(frame > 5) {
-					w += offset;
-					if(w > offset * 3) {
-						w := 0;
-					};
+				# call once per second
+				if(frame = game->GetFps()) {	
+'.'->Print();				
 					frame := 0;
+				} 
+				else {
+					frame++;
 				};
-				frame += 1;
+
+				game->FrameEnd();
 			};
 		};
 

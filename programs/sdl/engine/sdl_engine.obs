@@ -2,6 +2,34 @@ use SDL2;
 use Collection;
 
 bundle Game {
+	class AnimatedImageSprite from ImageSprite {
+		@clip : Rect;
+		@clip_offset : Int;
+		@clip_count : Int;
+
+		New(renderer : Renderer, file : String, clip_count : Int) {
+			Parent(renderer, file);
+
+			if(@is_ok) {
+				@clip_count := clip_count;
+				@clip_offset := GetWidth() / @clip_count;
+				@clip := Rect->New(0, 0, @clip_offset, GetHeight());
+			};
+		}
+
+		method : public : Render(x : Int, y : Int, index : Int) ~ Nil {
+			if(index > -1 & @is_ok & index < @clip_count) {
+				@clip->SetX(@clip_offset * index);
+				RenderAll(x, y, @clip);
+				@clip_count += 1;
+			};
+		}
+
+		method : GetClipCount() ~ Int {
+			return @clip_count;
+		}
+	}
+
 	class ImageSprite from Sprite {
 		@is_ok : Bool;
 
@@ -97,16 +125,14 @@ bundle Game {
 			@texture->SetAlphaMod(alpha );
 		}
 
-		method : public : Render(x : Int, y : Int, clip : Rect := Nil, angle : Float := 0.0, 
+		method : RenderAll(x : Int, y : Int, clip : Rect := Nil, angle : Float := 0.0, 
 				center : Point := Nil, flip : RendererFlip := RendererFlip->SDL_FLIP_NONE) ~ Nil {
 			@render_rect->SetX(x);
 			@render_rect->SetY(y);
-
 			if(clip <> Nil)	{
 				@render_rect->SetW(clip->GetW());
 				@render_rect->SetH(clip->GetH());
 			};
-
 			@renderer->CopyEx(@texture, clip, @render_rect, angle, center, flip);
 		}
 
@@ -126,6 +152,7 @@ bundle Game {
 		@renderer : Renderer;
 
 		@frame_rate : Int;
+		@fps : Int;
 		@frame_start : Int;
 
 		@sprites : Vector;
@@ -136,7 +163,8 @@ bundle Game {
 		@event : Event;
 
 		New(screen_width : Int, screen_height : Int, title : String, fps : Int, init_flags : Int) {
-			@frame_rate := 1000 / fps;
+			@fps := fps;
+			@frame_rate := 1000 / @fps;
 			@sprites := Vector->New();
 			
 			@is_ok := Init(screen_width, screen_height, title, init_flags);
@@ -145,6 +173,7 @@ bundle Game {
 			init_flags := HardwareFlags->SDL_INIT_VIDEO->As(Int) or
 				HardwareFlags->SDL_INIT_AUDIO->As(Int) or 
 				HardwareFlags->SDL_INIT_JOYSTICK->As(Int);
+			@fps := 30;	
 			@frame_rate := 1000 / 30;
 			@sprites := Vector->New();
 			
@@ -209,7 +238,7 @@ bundle Game {
 			};
 
 			if(Joystick->Number() < 1) {
-				"Warning: No joysticks connected!"->PrintLine();
+				"Warning: No joysticks connected!"->ErrorLine();
 			};
 			@joystick := Joystick->New(0);
 
@@ -228,6 +257,10 @@ bundle Game {
 
 		method : public : FrameStart() ~ Nil {
 			@frame_start := Timer->GetTicks();
+		}
+
+		method : public : GetFps() ~ Int {
+			return @fps;
 		}
 
 		method : public : FrameEnd() ~ Nil {
@@ -255,6 +288,13 @@ bundle Game {
 
 		method : public : AddImageSprite(file : String) ~ ImageSprite {
 			sprite := ImageSprite->New(@renderer, file);
+			@sprites->AddBack(sprite);
+
+			return sprite;
+		}
+
+		method : public : AddAnimatedImageSprite(file : String, clip_count : Int) ~ AnimatedImageSprite {
+			sprite := AnimatedImageSprite->New(@renderer, file, clip_count);
 			@sprites->AddBack(sprite);
 
 			return sprite;
