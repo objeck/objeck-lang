@@ -62,9 +62,9 @@ bundle SDL2.Game {
 			return @texture <> Nil;
 		}
 
-		method : public : Render(x : Int, y : Int) ~ Nil {
+		method : public : Render(x : Int, y : Int, angle : Float := 0) ~ Nil {
 			if(@is_ok) {
-				RenderAll(x, y);
+				RenderAll(x, y, Nil, angle);
 			};
 		}
 	}
