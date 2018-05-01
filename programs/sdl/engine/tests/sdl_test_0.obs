@@ -13,6 +13,7 @@ class Test {
 			y := 0;
 
 			frame := 0;
+			image_index := 0;
 
 			quit := false;
 			while(<>quit) {
@@ -24,21 +25,20 @@ class Test {
 					};
 				};
 
+				# call once per second
+				frame += 1;
+				if(frame >= game->GetFps() * 0.2) {
+					frame := 0;
+					image_index += 1;
+					if(image_index >= image->GetClipCount()) {
+						image_index := 0;
+					};
+				};
+
 				game->Clear();
-				image->Render(x, y, 0);
+				image->Render(x, y, image_index);
 				x += 1;
 				game->Show();
-
-				
-
-				# call once per second
-				if(frame = game->GetFps()) {	
-'.'->Print();				
-					frame := 0;
-				} 
-				else {
-					frame++;
-				};
 
 				game->FrameEnd();
 			};
