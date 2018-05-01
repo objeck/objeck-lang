@@ -3,17 +3,24 @@ use Game;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		game := GameEngine->New(640, 480, "Engine Test");
+		SCREEN_WIDTH := 640;
+		SCREEN_HEIGHT := 480;
+
+		game := GameEngine->New(SCREEN_WIDTH, SCREEN_HEIGHT, "Engine Test");
 		if(game->IsOk()) {
 			e := game->GetEvent();
 			
-			image := game->AddAnimatedImageSprite("../../../../programs/sdl/engine/tests/media/images/walk.png", 6);
+			bg := game->AddImageSprite("../../../../programs/sdl/engine/tests/media/images/hills.png");
+			hero := game->AddAnimatedImageSprite("../../../../programs/sdl/engine/tests/media/images/walk.png", 6);
 
-			x := 0;
-			y := 0;
+			bg_x := 0;
+			bg_y := 0;
+
+			hero_x := 60;
+			hero_y := SCREEN_HEIGHT - (hero->GetHeight() + 20);
 
 			frame := 0;
-			image_index := 0;
+			hero_index := 0;
 
 			quit := false;
 			while(<>quit) {
@@ -29,16 +36,25 @@ class Test {
 				frame += 1;
 				if(frame >= game->GetFps() * 0.2) {
 					frame := 0;
-					image_index += 1;
-					if(image_index >= image->GetClipCount()) {
-						image_index := 0;
+					hero_index += 1;
+					
+					bg_x -= bg->GetWidth() / 25;
+					if(bg_x < -1 * bg->GetWidth()) {
+						bg_x := 0;
+					};
+
+					if(hero_index >= hero->GetClipCount()) {
+						hero_index := 0;
 					};
 				};
 
 				game->Clear();
-				image->Render(x, y, image_index);
-				x += 1;
+				bg->Render(bg_x, 0);
+				bg->Render(bg_x + bg->GetWidth(), 0);
+				hero->Render(hero_x, hero_y, hero_index);
 				game->Show();
+
+				
 
 				game->FrameEnd();
 			};
