@@ -71,32 +71,43 @@ bundle SDL2.Game {
 
 	class TextSprite from Sprite {
 		@font : Font;
-
+		@is_ok : Bool;
 		New(renderer : Renderer, font : Font) {
 			Parent(renderer);
 			@font := font;
 		}
 
-		method : public : RenderedText(text : String, color : Color := Nil) ~ Bool {
-			Free();
+		method : public : RenderedText(text : String, color : Color := Nil) ~ Nil {
+			if(@font <> Nil) {
+				Free();
 
-			if(color = Nil) {
-				color := Color->New(32, 32, 32);
+				if(color = Nil) {
+					color := Color->New(32, 32, 32);
+				};
+
+				# Render text surface
+				textSurface := @font->RenderTextSolid(text, color);
+				if(textSurface->IsNull()) {
+					"Unable to render text surface!"->ErrorLine();
+					@is_ok := false;
+				};
+
+				texture := textSurface->CreateTexture(@renderer);
+				@render_rect->SetW(textSurface->GetW());
+				@render_rect->SetH(textSurface->GetH());
+				
+				@texture := texture;
+				@is_ok := @texture <> Nil;
+			}
+			else {
+				@is_ok := false;
 			};
+		}
 
-			# Render text surface
-			textSurface := @font->RenderTextSolid(text, color);
-			if(textSurface->IsNull()) {
-				"Unable to render text surface!"->ErrorLine();
-				return false;
+		method : public : Render(x : Int, y : Int) ~ Nil {
+			if(@is_ok) {
+				RenderAll(x, y);
 			};
-
-			texture := textSurface->CreateTexture(@renderer);
-			@render_rect->SetW(textSurface->GetW());
-			@render_rect->SetH(textSurface->GetH());
-			
-			@texture := texture;
-			return @texture <> Nil;
 		}
 	}
 
@@ -231,7 +242,7 @@ bundle SDL2.Game {
 			};
 
 			# SHOULD BE A PARAMETER
-			@font := Font->New("images/digital.ttf", 28);
+			@font := Font->New("../../../../programs/sdl/engine/tests/media/lazy.ttf", 24);
 			if(@font->IsNull()) {
 				"Failed to load font!"->ErrorLine();
 				return false;
