@@ -20,7 +20,7 @@ bundle SDL2.Game {
 		method : public : Render(x : Int, y : Int, index : Int) ~ Nil {
 			if(@is_ok & index > -1 & index < @clip_count) {
 				@clip->SetX(@clip_offset * index);
-				RenderAll(x, y, @clip);
+				RenderAll(x, y, @clip, 0.0, Nil, RendererFlip->SDL_FLIP_NONE);
 			};
 		}
 
@@ -88,7 +88,7 @@ bundle SDL2.Game {
 			};
 		}
 	}
-	
+
 	class TextSprite from Sprite {
 		@font : Font;
 		@is_ok : Bool;
@@ -126,7 +126,7 @@ bundle SDL2.Game {
 
 		method : public : Render(x : Int, y : Int) ~ Nil {
 			if(@is_ok) {
-				RenderAll(x, y);
+				RenderAll(x, y, Nil, 0.0, Nil, RendererFlip->SDL_FLIP_NONE);
 			};
 		}
 	}
