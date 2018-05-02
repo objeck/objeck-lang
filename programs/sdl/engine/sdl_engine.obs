@@ -31,9 +31,13 @@ bundle SDL2.Game {
 
 	class ImageSprite from Sprite {
 		@is_ok : Bool;
+		@angle : Float;
+		@flip : RendererFlip;
 
 		New(renderer : Renderer, file : String) {
 			Parent(renderer);
+			@angle := 0;
+			@flip := RendererFlip->SDL_FLIP_NONE;
 			@is_ok := LoadImage(file);
 		}
 
@@ -62,13 +66,29 @@ bundle SDL2.Game {
 			return @texture <> Nil;
 		}
 
-		method : public : Render(x : Int, y : Int, angle : Float := 0) ~ Nil {
+		method : public : SetAngle(angle : Float) ~ Nil {
+			@angle := angle;
+		}
+
+		method : public : GetAngle() ~ Float {
+			return @angle;
+		}
+
+		method : public : SetFlip(flip : RendererFlip) ~ Nil {
+			@flip := flip;
+		}
+
+		method : public : GetFlip() ~ RendererFlip {
+			return @flip;
+		}
+
+		method : public : Render(x : Int, y : Int) ~ Nil {
 			if(@is_ok) {
-				RenderAll(x, y, Nil, angle);
+				RenderAll(x, y, Nil, @angle, Nil, @flip);
 			};
 		}
 	}
-
+	
 	class TextSprite from Sprite {
 		@font : Font;
 		@is_ok : Bool;

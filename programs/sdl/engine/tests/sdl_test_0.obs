@@ -8,6 +8,8 @@ class PlatformDemo {
 	SCREEN_HEIGHT : Int;
 	BLOCK_WIDTH : Int;
 	BLOCK_HEIGHT : Int;
+	VIEW_LEFT : Int;
+	VIEW_RIGHT : Int;
 
 	@bg : ImageSprite;
 	@hero : AnimatedImageSprite;
@@ -27,7 +29,7 @@ class PlatformDemo {
 	
 	@hero_x : Int;
 	@hero_y : Int;
-	@helo_walking : Bool;
+	@helo_walking : Int;
 
 	@platform_grid : Int[,];
 	@frame : Int;
@@ -45,6 +47,9 @@ class PlatformDemo {
 		SCREEN_HEIGHT := 480;
 		BLOCK_WIDTH := 32;
 		BLOCK_HEIGHT := 32;
+
+		VIEW_LEFT := BLOCK_WIDTH * 2;
+		VIEW_RIGHT := BLOCK_WIDTH * 4;
 
 		@game := GameEngine->New(SCREEN_WIDTH, SCREEN_HEIGHT, "Engine Test");
 		@bg := @game->AddImageSprite("../../../../programs/sdl/engine/tests/media/images/hills.png");
@@ -64,7 +69,7 @@ class PlatformDemo {
 		@bg_x := 0;
 		@bg_y := 0;
 
-		@hero_x := BLOCK_WIDTH * 2;
+		@hero_x := VIEW_LEFT;
 		@hero_y := SCREEN_HEIGHT - (@hero->GetHeight() + BLOCK_HEIGHT * 2);
 
 		@frame := 1;
@@ -123,11 +128,11 @@ class PlatformDemo {
 	            }
 
 	            label Scancode->SDL_SCANCODE_LEFT: {
-	            	"-- [left] down --"->PrintLine();
+	            	@helo_walking := -1;
 	            }
 
 	            label Scancode->SDL_SCANCODE_RIGHT: {
-	            	@helo_walking := true;
+	            	@helo_walking := 1;
 	            }        	            
 	        };
 	    }
@@ -141,12 +146,9 @@ class PlatformDemo {
 	            	"-- [down] up --"->PrintLine();
 	            }
 
-	            label Scancode->SDL_SCANCODE_LEFT: {
-	            	"-- [left] up --"->PrintLine();
-	            }
-
+	            label Scancode->SDL_SCANCODE_LEFT:
 	            label Scancode->SDL_SCANCODE_RIGHT: {
-	            	@helo_walking := false;
+	            	@helo_walking := 0;
 	            }
 	        };
 	    };   
@@ -164,7 +166,11 @@ class PlatformDemo {
 				@game_time->RenderedText(@game_time_text);
 			};
 
-			if(@helo_walking) {
+			if(@helo_walking = 1) {
+				if(@hero_x >= VIEW_LEFT - 2 & @hero_x <= VIEW_RIGHT) {
+					@hero_x += 2;
+				};
+
 				if(@frame % 5 = 0) {
 					@hero_index += 1;
 					
@@ -176,6 +182,11 @@ class PlatformDemo {
 					if(@hero_index >= @hero->GetClipCount()) {
 						@hero_index := 0;
 					};
+				};
+			}
+			else if(@helo_walking = -1) {
+				if(@hero_x >= VIEW_LEFT & @hero_x <= VIEW_RIGHT + 2) {
+					@hero_x -= 1;
 				};
 			};
 		}
