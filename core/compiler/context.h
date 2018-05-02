@@ -1101,7 +1101,7 @@ class ContextAnalyzer {
   void AnalyzeDuplicateEntries(vector<Class*>& classes, const int depth);
 
   void AddDefaultParameterMethods(ParsedBundle* bundle, Class* klass, Method* method);
-  int GenerateParameterMethods(ParsedBundle* bundle, Class* klass, Method* method, const int offset);
+  void GenerateParameterMethods(ParsedBundle* bundle, Class* klass, Method* method);
   void AnalyzeMethods(Class* klass, const int depth);
   bool AnalyzeVirtualMethods(Class* impl_class, Class* lib_parent, const int depth);
   bool AnalyzeVirtualMethods(Class* impl_class, LibraryClass* lib_parent, const int depth);

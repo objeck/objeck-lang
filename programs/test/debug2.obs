@@ -1,16 +1,13 @@
-consts Flags {
-	A := 2, B := 4
-}
-
 class Test {
 	function : Main(args : String[]) ~ Nil {
-    	DoIt(13, "foo", 0.0);
+#    	DoIt(13.3, 1, 2, 55.5);
+    	DoIt(13.3);    	
 	}
 
-	function : DoIt(a : Int, b : String := "Hello", c : Float := 1.3, d : Flags := Flags->B) ~ Nil {
-		a->PrintLine();
-		b->PrintLine();
-		c->PrintLine();
-		d->PrintLine();
+#	function : DoIt(a : Float, b : Int, c : Int, d : Float) ~ Nil {
+#	function : DoIt(a : Float, b : Int := 101, c : Int := 102, d : Float := 35.5) ~ Nil {
+	function : DoIt(a : Int, b : Int := 101, c : Int := 102, d : Int := 35.5) ~ Nil {	
+		z := a + b + c + d;
+		z->PrintLine();
 	}
 }

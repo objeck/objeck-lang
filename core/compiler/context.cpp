@@ -303,7 +303,7 @@ bool ContextAnalyzer::Analyze()
     vector<Declaration*> declarations = method->GetDeclarations()->GetDeclarations();
     if(declarations.size() > 0 && declarations[declarations.size() - 1]->GetAssignment()) {
       bool default_params = true;
-      for(int i = (int)declarations.size() - 1; i > -1; i--) {
+      for(int i = (int)declarations.size() - 1; i >= 0; --i) {
         if(declarations[i]->GetAssignment()) {
           if(method->IsVirtual()) {
             ProcessError(method, L"Virtual methods and interfaces cannot contain default parameter values");
@@ -320,12 +320,7 @@ bool ContextAnalyzer::Analyze()
         }
       }
 
-      int start = -1;      
-      const int end = (int)declarations.size();
-      do {
-        start = GenerateParameterMethods(bundle, klass, method, start);
-      }
-      while(start < end);
+      GenerateParameterMethods(bundle, klass, method);
     }
   }
 
@@ -333,14 +328,49 @@ bool ContextAnalyzer::Analyze()
    * Generates alternative methods for
    * method with default parameter values
    ****************************/
-  int ContextAnalyzer::GenerateParameterMethods(ParsedBundle* bundle, Class* klass, Method* method, const int offset) 
+  void ContextAnalyzer::GenerateParameterMethods(ParsedBundle* bundle, Class* klass, Method* method) 
   {
+    // build method
     vector<Declaration*> declarations = method->GetDeclarations()->GetDeclarations();
-    Method* param_method = TreeFactory::Instance()->MakeMethod(method->GetFileName(), method->GetLineNumber(), 
-                                                               method->GetName(), method->GetMethodType(), 
-                                                               method->IsStatic(),  method->IsNative());
-    param_method->SetReturn(method->GetReturn());
+    Method* alt_method = TreeFactory::Instance()->MakeMethod(method->GetFileName(), method->GetLineNumber(), 
+                                                             method->GetName(), method->GetMethodType(), 
+                                                             method->IsStatic(),  method->IsNative());
+    alt_method->SetReturn(method->GetReturn());
 
+    DeclarationList* alt_declarations = TreeFactory::Instance()->MakeDeclarationList();
+    StatementList* alt_statements = TreeFactory::Instance()->MakeStatementList();
+
+    bundle->GetSymbolTableManager()->NewParseScope();
+
+    // build statements
+    for(size_t i = 0; i < declarations.size(); ++i) {
+      Declaration* declaration = declarations[i];
+      if(declaration->GetAssignment()) {
+        alt_statements->AddStatement(declaration->GetAssignment());
+      }
+      else {
+        alt_declarations->AddDeclaration(declaration);
+        bundle->GetSymbolTableManager()->CurrentParseScope()->AddEntry(declaration->GetEntry());
+      }
+    }
+
+    /*
+    vector<Statement*> statements = method->GetStatements()->GetStatements();
+    for(size_t i = 0; i < statements.size(); ++i) {
+      alt_statements->AddStatement(statements[i]);
+    }
+    */
+
+    // set statements
+    alt_method->SetStatements(alt_statements);
+    alt_method->SetDeclarations(alt_declarations);
+    bundle->GetSymbolTableManager()->PreviousParseScope(alt_method->GetParsedName());
+    
+    // add method
+    if(!klass->AddMethod(alt_method)) {
+      ProcessError(method, L"Method or function already overloaded '" + method->GetName() + L"'");
+    }
+/*
     // set declarations
     DeclarationList* param_declarations = TreeFactory::Instance()->MakeDeclarationList();
     bundle->GetSymbolTableManager()->NewParseScope();
@@ -405,6 +435,7 @@ bool ContextAnalyzer::Analyze()
     }
 
     return i;
+*/
   }
 
   /****************************
