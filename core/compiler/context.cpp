@@ -330,39 +330,57 @@ bool ContextAnalyzer::Analyze()
    ****************************/
   void ContextAnalyzer::GenerateParameterMethods(ParsedBundle* bundle, Class* klass, Method* method) 
   {
-    // build method
+    // find inital parameter offset
     vector<Declaration*> declarations = method->GetDeclarations()->GetDeclarations();
-    Method* alt_method = TreeFactory::Instance()->MakeMethod(method->GetFileName(), method->GetLineNumber(), 
-                                                             method->GetName(), method->GetMethodType(), 
-                                                             method->IsStatic(),  method->IsNative());
-    alt_method->SetReturn(method->GetReturn());
+    size_t inital_param_offset = 0;
 
-    DeclarationList* alt_declarations = TreeFactory::Instance()->MakeDeclarationList();
-    StatementList* alt_statements = TreeFactory::Instance()->MakeStatementList();
-
-    bundle->GetSymbolTableManager()->NewParseScope();
-
-    // build statements
-    for(size_t i = 0; i < declarations.size(); ++i) {
-      Declaration* declaration = declarations[i];
-      if(declaration->GetAssignment()) {
-        alt_statements->AddStatement(declaration->GetAssignment());
-      }
-      else {
-        alt_declarations->AddDeclaration(declaration);
-        bundle->GetSymbolTableManager()->CurrentParseScope()->AddEntry(declaration->GetEntry());
+    if(!inital_param_offset) {
+      for(size_t i = 0; i < declarations.size(); ++i) {
+        Declaration* declaration = declarations[i];
+        if(declaration->GetAssignment()) {
+          if(!inital_param_offset) {
+            inital_param_offset = i;
+          }
+        }
       }
     }
 
-    // set statements
-    alt_method->SetStatements(alt_statements);
-    alt_method->SetDeclarations(alt_declarations);
-    alt_method->SetOriginal(method);
-    bundle->GetSymbolTableManager()->PreviousParseScope(alt_method->GetParsedName());
-    
-    // add method
-    if(!klass->AddMethod(alt_method)) {
-      ProcessError(method, L"Method or function already overloaded '" + method->GetName() + L"'");
+    // build alternative methods
+    while(inital_param_offset < declarations.size()) {
+      Method* alt_method = TreeFactory::Instance()->MakeMethod(method->GetFileName(), method->GetLineNumber(),
+                                                               method->GetName(), method->GetMethodType(),
+                                                               method->IsStatic(), method->IsNative());
+      alt_method->SetReturn(method->GetReturn());
+
+      DeclarationList* alt_declarations = TreeFactory::Instance()->MakeDeclarationList();
+      StatementList* alt_statements = TreeFactory::Instance()->MakeStatementList();
+
+      bundle->GetSymbolTableManager()->NewParseScope();
+
+      if(inital_param_offset) {
+        for(size_t i = 0; i < declarations.size(); ++i) {
+          Declaration* declaration = declarations[i];
+          if(i < inital_param_offset) {
+            alt_declarations->AddDeclaration(declaration);
+            bundle->GetSymbolTableManager()->CurrentParseScope()->AddEntry(declaration->GetEntry());
+          }
+          else {
+            alt_statements->AddStatement(declaration->GetAssignment());
+          }
+        }
+        inital_param_offset++;
+      }
+        
+      // set statements
+      alt_method->SetStatements(alt_statements);
+      alt_method->SetDeclarations(alt_declarations);
+      alt_method->SetOriginal(method);
+      bundle->GetSymbolTableManager()->PreviousParseScope(alt_method->GetParsedName());
+
+      // add method
+      if(!klass->AddMethod(alt_method)) {
+        ProcessError(method, L"Method or function already overloaded '" + method->GetName() + L"'");
+      }
     }
   }
 
