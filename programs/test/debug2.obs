@@ -1,16 +1,8 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
 #    	DoIt(13.3, 1, 2, 55.5);
-DoIt(130);  
-    	DoIt(13, 7);    	
-    	DoIt(13, 7, 102);  
-	}
-
-#	function : DoIt(a : Float, b : Int, c : Int, d : Float) ~ Nil {
-#	function : DoIt(a : Float, b : Int := 101, c : Int := 102, d : Float := 35.5) ~ Nil {
-	function : DoIt(a : Int, b : Int := 101, c : Int := 102, d : Int := 35.5) ~ Nil {
-		(a + b)->PrintLine();
-		a->PrintLine();
-		d->PrintLine();
+		Lib->DoIt(130);  
+    	Lib->DoIt(13, 7);    	
+    	Lib->DoIt(13, 7, 102);  
 	}
 }
