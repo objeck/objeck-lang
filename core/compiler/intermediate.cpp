@@ -708,9 +708,12 @@ IntermediateMethod* IntermediateEmitter::EmitMethod(Method* method)
 
       // TODO: Is library
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, 
-                                MTHD_CALL, original->GetClass()->GetId(), 
-                                original->GetId(), 0L));
+      if(is_lib) {
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num,
+                                  MTHD_CALL, original->GetClass()->GetId(),  original->GetId(), 0L));
+      }
+      else {
+      }
     }
 
     // add return statement if one hasn't been added
