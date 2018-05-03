@@ -1861,6 +1861,7 @@ namespace frontend {
     bool is_static;
     bool is_native;
     bool has_and_or;
+    Method* original;
     SymbolTable* symbol_table;
     Class* klass;
 
@@ -1876,6 +1877,7 @@ namespace frontend {
       declarations = NULL;
       id = -1;
       has_and_or = false;
+      original = NULL;
     }
 
     ~Method() {
@@ -2141,6 +2143,18 @@ namespace frontend {
       has_and_or = ao;
     }
 
+    void SetOriginal(Method* o) {
+      original = o;
+    }
+
+    bool IsAlt() {
+      return original;
+    }
+
+    Method* GetOriginal() {
+      return original;
+    }
+    
     bool IsStatic() {
       return is_static;
     }

@@ -687,6 +687,16 @@ IntermediateMethod* IntermediateEmitter::EmitMethod(Method* method)
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
     }
 
+    if(method->IsAlt()) {
+      Method* original = method->GetOriginal();
+
+      const int x = original->GetClass()->GetId();
+      const int y = original->GetId();
+
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, 
+                                MTHD_CALL, x, y, 0L));
+    }
+
     // add return statement if one hasn't been added
     if(!end_return) {
       if(method->GetLeaving()) {

@@ -354,16 +354,10 @@ bool ContextAnalyzer::Analyze()
       }
     }
 
-    /*
-    vector<Statement*> statements = method->GetStatements()->GetStatements();
-    for(size_t i = 0; i < statements.size(); ++i) {
-      alt_statements->AddStatement(statements[i]);
-    }
-    */
-
     // set statements
     alt_method->SetStatements(alt_statements);
     alt_method->SetDeclarations(alt_declarations);
+    alt_method->SetOriginal(method);
     bundle->GetSymbolTableManager()->PreviousParseScope(alt_method->GetParsedName());
     
     // add method
