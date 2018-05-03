@@ -690,11 +690,27 @@ IntermediateMethod* IntermediateEmitter::EmitMethod(Method* method)
     if(method->IsAlt()) {
       Method* original = method->GetOriginal();
 
-      const int x = original->GetClass()->GetId();
-      const int y = original->GetId();
+      vector<Declaration*> original_params = original->GetDeclarations()->GetDeclarations();
+      for(size_t i = 0; i < original_params.size(); ++i) {
+        SymbolEntry* var_entry = original_params[i]->GetEntry();
+        switch(var_entry->GetType()->GetType()) {
+        case frontend::INT_TYPE:
+          imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR,
+                                    var_entry->GetId(), LOCL));
+          break;
 
+        case frontend::FLOAT_TYPE:
+          imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FLOAT_VAR,
+                                    var_entry->GetId(), LOCL));
+          break;
+        }
+      }
+
+      // TODO: Is library
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, 
-                                MTHD_CALL, x, y, 0L));
+                                MTHD_CALL, original->GetClass()->GetId(), 
+                                original->GetId(), 0L));
     }
 
     // add return statement if one hasn't been added
