@@ -709,10 +709,11 @@ IntermediateMethod* IntermediateEmitter::EmitMethod(Method* method)
       // TODO: Is library
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
       if(is_lib) {
-        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num,
-                                  MTHD_CALL, original->GetClass()->GetId(),  original->GetId(), 0L));
+        
       }
       else {
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num,
+                                  MTHD_CALL, original->GetClass()->GetId(), original->GetId(), 0L));
       }
     }
 
