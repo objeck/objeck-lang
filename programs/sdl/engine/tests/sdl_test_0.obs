@@ -265,12 +265,13 @@ class PlatformDemo {
 			x := 0;
 		};
 
+#~
 (-1 * @platform_offset)->PrintLine();
 @hero_x->PrintLine();
 "---"->PrintLine();
 (-1 * (@platform_offset - @hero_x))->PrintLine();
 "==="->PrintLine();
-
+~#
 
 		for(x := 0; x < x_edge; x += 1;) {
 			for(y := 0; y < y_edge; y += 1;) {
