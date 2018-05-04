@@ -213,11 +213,10 @@ class PlatformDemo {
 						};
 					};
 
-					@hero_index -= 1;
-					if(@hero_index < 0) {
-						@hero_index := @hero->GetClipCount() - 1;
+					@hero_index += 1;
+					if(@hero_index >= @hero->GetClipCount()) {
+						@hero_index := 0;
 					};
-
 				};
 			};
 		}
