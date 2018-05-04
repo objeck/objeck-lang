@@ -123,6 +123,7 @@ class PlatformDemo {
 
 	            label Scancode->SDL_SCANCODE_DOWN: {
 	            	"-- [down] down --"->PrintLine();
+	            	@hero->SetFlip(RendererFlip->SDL_FLIP_HORIZONTAL);
 	            }
 
 	            label Scancode->SDL_SCANCODE_LEFT: {
