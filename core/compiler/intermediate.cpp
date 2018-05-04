@@ -711,6 +711,9 @@ IntermediateMethod* IntermediateEmitter::EmitMethod(Method* method)
           imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FUNC_VAR, 
                                     var_entry->GetId(), LOCL));
           break;
+
+        default:
+          break;
         }
       }
 
