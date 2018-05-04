@@ -365,7 +365,9 @@ bool ContextAnalyzer::Analyze()
             bundle->GetSymbolTableManager()->CurrentParseScope()->AddEntry(declaration->GetEntry());
           }
           else {
-            alt_statements->AddStatement(declaration->GetAssignment());
+            Assignment* assignment = declaration->GetAssignment();
+            assignment->GetExpression()->SetEvalType(declaration->GetEntry()->GetType(), true);
+            alt_statements->AddStatement(assignment);
           }
         }
         inital_param_offset++;
