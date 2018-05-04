@@ -184,16 +184,17 @@ class PlatformDemo {
 				};
 
 				if(@frame % 5 = 0) {
+					@hero_index += 1;
+					if(@hero_index >= @hero->GetClipCount()) {
+						@hero_index := 0;
+					};
+				}
+				else if(@frame % 7 = 0) {
 					if(@hero_x > VIEW_RIGHT) {
 						@bg_x -= @bg->GetWidth() / 25;
 						if(@bg_x < -1 * @bg->GetWidth()) {
 							@bg_x := 0;
 						};
-					};
-
-					@hero_index += 1;
-					if(@hero_index >= @hero->GetClipCount()) {
-						@hero_index := 0;
 					};
 				};
 			}
@@ -206,16 +207,17 @@ class PlatformDemo {
 				};
 
 				if(@frame % 5 = 0) {
+					@hero_index += 1;
+					if(@hero_index >= @hero->GetClipCount()) {
+						@hero_index := 0;
+					};
+				}
+				else if(@frame % 7 = 0) {
 					if(@hero_x < VIEW_LEFT) {
 						@bg_x += @bg->GetWidth() / 25;
 						if(@bg_x > 0) {
 							@bg_x := -1 * @bg->GetWidth();
 						};
-					};
-
-					@hero_index += 1;
-					if(@hero_index >= @hero->GetClipCount()) {
-						@hero_index := 0;
 					};
 				};
 			};
@@ -298,8 +300,8 @@ class PlatformDemo {
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
-			[0, 0, 2, 2, 2, 2, 2, 1, 3, 1, 2, 2, 1, 3, 4, 0, 0, 0, 0, 1,]
-			[0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1]];
+			[0, 0, 1, 1, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2, 1, 0, 0, 0, 1,]
+			[0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1]];
 		return platform_grid;
 	}
 
