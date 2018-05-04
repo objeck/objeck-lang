@@ -697,6 +697,7 @@ IntermediateMethod* IntermediateEmitter::EmitMethod(Method* method)
         case frontend::BYTE_TYPE:
         case frontend::CHAR_TYPE:
         case frontend::INT_TYPE:
+        case frontend::CLASS_TYPE:
           imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR,
                                     var_entry->GetId(), LOCL));
           break;
