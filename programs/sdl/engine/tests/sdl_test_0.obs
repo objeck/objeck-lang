@@ -208,11 +208,9 @@ class PlatformDemo {
 				if(@frame % 5 = 0) {
 					if(@hero_x < VIEW_LEFT) {
 						@bg_x += @bg->GetWidth() / 25;
-#~						
-						if(@bg_x >= @bg->GetWidth()) {
-							@bg_x := @bg->GetWidth();
+						if(@bg_x > 0) {
+							@bg_x := -1 * @bg->GetWidth();
 						};
-~#						
 					};
 
 					@hero_index -= 1;
