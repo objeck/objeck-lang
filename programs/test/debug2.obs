@@ -2,7 +2,7 @@ class Test {
 	function : Main(args : String[]) ~ Nil {
 #    	DoIt(13.3, 1, 2, 55.5);
 		Lib->DoIt(130);  
-    	Lib->DoIt(13, 7);    	
+    	Lib->DoIt(13, 7.5);    	
     	Lib->DoIt(13, 7, 102);  
 	}
 }

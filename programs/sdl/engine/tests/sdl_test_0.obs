@@ -50,7 +50,6 @@ class PlatformDemo {
 
 		VIEW_LEFT := BLOCK_WIDTH * 2;
 		VIEW_RIGHT := BLOCK_WIDTH * 4;
-
 		@game := GameEngine->New(SCREEN_WIDTH, SCREEN_HEIGHT, "Engine Test");
 		@bg := @game->AddImageSprite("../../../../programs/sdl/engine/tests/media/images/hills.png");
 		@block1 := @game->AddImageSprite("../../../../programs/sdl/engine/tests/media/images/block1.png");
@@ -77,19 +76,18 @@ class PlatformDemo {
 
 		@game_time_seconds := 120;
 		@game_time_text := "Time: 120";
-		@game_time->RenderedText(@game_time_text);
+		@game_time->RenderedText(@game_time_text, Nil);
 
 		GameCheck()->PrintLine();
 	}
 
 	method : Run() ~ Nil {
+	
 		if(@game->IsOk()) {
 			e := @game->GetEvent();
-
 			quit := false;
 			while(<>quit) {
 				@game->FrameStart();
-
 				# user input
 				while(e->Poll() <> 0) {
 					if(e->GetType() = EventType->SDL_QUIT) {
@@ -163,7 +161,7 @@ class PlatformDemo {
 					@game_time_seconds := 120;
 				};
 				@game_time_text := "Time: {$@game_time_seconds}";
-				@game_time->RenderedText(@game_time_text);
+				@game_time->RenderedText(@game_time_text, Nil);
 			};
 
 			if(@helo_walking = 1) {
