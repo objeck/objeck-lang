@@ -143,9 +143,12 @@ class PlatformDemo {
 			@x_start := -1;
 		};
 
+y_pos := @hero_y / BLOCK_HEIGHT;
 		for(x := @x_start; x < @x_edge; x += 1;) {
-			block_x := (@hero_x / BLOCK_WIDTH + platform_offset / BLOCK_WIDTH) + 1;
-# "{$block_x}"->PrintLine();
+			x_pos := (@hero_x / BLOCK_WIDTH + platform_offset / BLOCK_WIDTH);
+right := @platform_grid[y_pos + 1, x_pos + 1];
+bottom := @platform_grid[y_pos + 2, x_pos];
+"{$block_x}, {$y_pos}: right={$right}, bottom={$bottom}"->PrintLine();
 #			for(y := 0; y < @y_edge; y += 1;) {};
 		};
 	}
