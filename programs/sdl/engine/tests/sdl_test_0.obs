@@ -4,21 +4,25 @@ use SDL2.Game;
 class PlatformDemo {
 	@game : GameEngine;
 
+	# screen stuff
 	SCREEN_WIDTH : Int;
 	SCREEN_HEIGHT : Int;
 	BLOCK_WIDTH : Int;
 	BLOCK_HEIGHT : Int;
-	VIEW_LEFT : Int;
-	VIEW_RIGHT : Int;
-
-	@x_edge : Int;
-	@y_edge : Int;
-	@x_start : Int;
-
+	@frame : Int;
+	
+	# background stuff
 	@bg : ImageSprite;
-	@hero : AnimatedImageSprite;
-	@game_time : TextSprite;
+	@bg_x : Int;
+	@bg_y : Int;
 
+	# hero stuff
+	@hero : AnimatedImageSprite;
+	@hero_index : Int;
+	@hero_x : Int;
+	@hero_y : Int;
+
+	# block stuff
 	@block1 : ImageSprite;
 	@block2 : ImageSprite;
 	@block3 : ImageSprite;
@@ -28,22 +32,14 @@ class PlatformDemo {
 	@fauna3 : ImageSprite;
 	@spikes1 : ImageSprite;
 
+	# gem stuff
 	@gems : AnimatedImageSprite;
 	@gems_index : Int;
 
-	@bg_x : Int;
-	@bg_y : Int;
-	
-	@hero_x : Int;
-	@hero_y : Int;
-	@hero_walking : Int;
-	@helo_flip : Bool;
-
 	@platform_grid : Int[,];
-	@platform_offset : Int;
 
-	@frame : Int;
-	@hero_index : Int;
+	# game timer stuff
+	@game_time : TextSprite;
 	@game_time_seconds : Int;
 	@game_time_text : String;
 	
@@ -55,14 +51,9 @@ class PlatformDemo {
 	New() {
 		SCREEN_WIDTH := 640;
 		SCREEN_HEIGHT := 480;
+
 		BLOCK_WIDTH := 32;
 		BLOCK_HEIGHT := 32;
-
-		VIEW_LEFT := BLOCK_WIDTH * 2;
-		VIEW_RIGHT := BLOCK_WIDTH * 4;
-
-		@x_edge := SCREEN_WIDTH / BLOCK_WIDTH;
-		@y_edge := SCREEN_HEIGHT / BLOCK_HEIGHT;
 
 		@game := GameEngine->New(SCREEN_WIDTH, SCREEN_HEIGHT, "Engine Test");
 
@@ -85,12 +76,14 @@ class PlatformDemo {
 		@bg_x := 0;
 		@bg_y := 0;
 
-		@hero_x := VIEW_LEFT;
-		@hero_y := SCREEN_HEIGHT - (@hero->GetHeight() + BLOCK_HEIGHT * 2);
+		@hero_x := 19 * BLOCK_WIDTH;
+		@hero_y := 13 * BLOCK_HEIGHT;
+
+#		@hero_x := BLOCK_WIDTH;
+#		@hero_y := SCREEN_HEIGHT - (@hero->GetHeight() + BLOCK_HEIGHT * 2);
 
 		@frame := 1;
-		@hero_index := 0;
-
+		
 		@game_time_seconds := 120;
 		@game_time_text := "Time: 120";
 		@game_time->RenderedText(@game_time_text, Nil);
@@ -128,29 +121,7 @@ class PlatformDemo {
 	}
 	
 	method : native : ProcessAi() ~ Nil {
-		platform_offset := -1 * @platform_offset;
-		view_offset += (platform_offset / BLOCK_WIDTH) + 1;
-		
-		@x_edge += view_offset;
-		@x_start := view_offset - 1;
-
-		dims := @platform_grid->Size();
-		if(@x_edge >= dims[1]) {
-			@x_edge := dims[1];
-		};
-
-		if(@x_start < -1) {
-			@x_start := -1;
-		};
-
-y_pos := @hero_y / BLOCK_HEIGHT;
-		for(x := @x_start; x < @x_edge; x += 1;) {
-			x_pos := (@hero_x / BLOCK_WIDTH + platform_offset / BLOCK_WIDTH);
-right := @platform_grid[y_pos + 1, x_pos + 1];
-bottom := @platform_grid[y_pos + 2, x_pos];
-"{$block_x}, {$y_pos}: right={$right}, bottom={$bottom}"->PrintLine();
-#			for(y := 0; y < @y_edge; y += 1;) {};
-		};
+	
 	}
 
 	method : public : HandleInput(e : Event) ~ Nil {
@@ -165,16 +136,10 @@ bottom := @platform_grid[y_pos + 2, x_pos];
 	            }
 
 	            label Scancode->SDL_SCANCODE_LEFT: {
-	            	@hero->SetFlip(RendererFlip->SDL_FLIP_HORIZONTAL);
-	            	@helo_flip := true;
 	            	@hero_walking := -1;
 	            }
 
 	            label Scancode->SDL_SCANCODE_RIGHT: {
-	            	if(@helo_flip) {
-	            		@hero->SetFlip(RendererFlip->SDL_FLIP_NONE);
-	            		@helo_flip := false;
-	            	};
 	            	@hero_walking := 1;
 	            }        	            
 	        };
@@ -199,71 +164,9 @@ bottom := @platform_grid[y_pos + 2, x_pos];
 
 	method : native : ProcessTimeEvent() ~ Nil {		
 		@frame += 1;
+
 		if(@frame <= @game->GetFps()) {
-			if(@frame % @game->GetFps() = 0) {
-				@game_time_seconds -= 1;
-				if(@game_time_seconds < 0) {
-					@game_time_seconds := 120;
-				};
-				@game_time_text := "Time: {$@game_time_seconds}";
-				@game_time->RenderedText(@game_time_text, Nil);
-			};
-
-			if(@frame % 3 = 0) {
-				@gems_index += 1;
-				if(@gems_index >= @gems->GetClipCount()) {
-					@gems_index := 0;
-				};
-			};
-
-			if(@hero_walking = 1) {
-				if(@hero_x >= VIEW_LEFT - 8 & @hero_x <= VIEW_RIGHT) {
-					@hero_x += 8;
-					
-				}
-				else if(@hero_x > VIEW_RIGHT) {
-					@platform_offset -= 8;
-				};
-
-				if(@frame % 3 = 0) {
-					@hero_index += 1;
-					if(@hero_index >= @hero->GetClipCount()) {
-						@hero_index := 0;
-					};
-				}
-				else if(@frame % 5 = 0) {
-					if(@hero_x > VIEW_RIGHT) {
-						@bg_x -= @bg->GetWidth() / 50;
-						if(@bg_x < -1 * @bg->GetWidth()) {
-							@bg_x := 0;
-						};
-					};
-				};
-			}
-			else if(@hero_walking = -1) {
-				if(@hero_x >= VIEW_LEFT) {
-					@platform_offset += 4;
-
-					if(@hero_x >= VIEW_LEFT & @hero_x <= VIEW_RIGHT + 8) {
-						@hero_x -= 4;
-					};
-
-					if(@frame % 3 = 0) {
-						@hero_index += 1;
-						if(@hero_index >= @hero->GetClipCount()) {
-							@hero_index := 0;
-						};
-					}
-					else if(@frame % 10 = 0) {
-						if(@hero_x < VIEW_LEFT) {
-							@bg_x += @bg->GetWidth() / 50;
-							if(@bg_x > 0) {
-								@bg_x := -1 * @bg->GetWidth();
-							};
-						};
-					};
-				};
-			};
+			
 		}
 		else {
 			@frame := 1;
@@ -284,7 +187,7 @@ bottom := @platform_grid[y_pos + 2, x_pos];
 		@hero->Render(@hero_x, @hero_y, @hero_index);
 
 		# random gem
-		@gems->Render(@gems->GetWidth() * 3, @gems->GetHeight() * 2, @gems_index);
+#		@gems->Render(@gems->GetWidth() * 3, @gems->GetHeight() * 2, @gems_index);
 
 		# timer
 		@game_time->Render(16, 16);
@@ -293,35 +196,38 @@ bottom := @platform_grid[y_pos + 2, x_pos];
 	}
 
 	method : native : RenderPlatform() ~ Nil {
-		for(x := @x_start; x < @x_edge; x += 1;) {
-			for(y := 0; y < @y_edge; y += 1;) {
+		x_edge := SCREEN_WIDTH / BLOCK_WIDTH;
+		y_edge := SCREEN_HEIGHT / BLOCK_HEIGHT;
+
+		for(x := 0; x < x_edge; x += 1;) {
+			for(y := 0; y < y_edge; y += 1;) {
 				select(@platform_grid[y, x]) {
 					label 1: {
-						@block1->Render(x * BLOCK_WIDTH + @platform_offset, y * BLOCK_HEIGHT);
+						@block1->Render(x * BLOCK_WIDTH, y * BLOCK_HEIGHT);
 					}
 
 					label 2: {
-						@block2->Render(x * BLOCK_WIDTH + @platform_offset, y * BLOCK_HEIGHT);
+						@block2->Render(x * BLOCK_WIDTH, y * BLOCK_HEIGHT);
 					}
 
 					label 3: {
-						@block3->Render(x * BLOCK_WIDTH + @platform_offset, y * BLOCK_HEIGHT);
+						@block3->Render(x * BLOCK_WIDTH, y * BLOCK_HEIGHT);
 					}
 
 					label 4: {
-						@block4->Render(x * BLOCK_WIDTH + @platform_offset, y * BLOCK_HEIGHT);
+						@block4->Render(x * BLOCK_WIDTH, y * BLOCK_HEIGHT);
 					}
 
 					label 5: {
-						@fauna1->Render(x * BLOCK_WIDTH + @platform_offset, y * BLOCK_HEIGHT);
+						@fauna1->Render(x * BLOCK_WIDTH, y * BLOCK_HEIGHT);
 					}
 
 					label 6: {
-						@fauna2->Render(x * BLOCK_WIDTH + @platform_offset, y * BLOCK_HEIGHT);
+						@fauna2->Render(x * BLOCK_WIDTH, y * BLOCK_HEIGHT);
 					}
 
 					label 7: {
-						@spikes1->Render(x * BLOCK_WIDTH + @platform_offset, y * BLOCK_HEIGHT);
+						@spikes1->Render(x * BLOCK_WIDTH, y * BLOCK_HEIGHT);
 					}
 				};
 			};
@@ -330,21 +236,22 @@ bottom := @platform_grid[y_pos + 2, x_pos];
 
 	method : native : CreatePlatform() ~ Int[,] {
 		platform_grid := [
-			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1 ,0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,]
-			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,]
-			[0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
-			[0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
-			[0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
-			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
-			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
-			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
-			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
-			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
-			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
-			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
-			[0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
-			[0, 0, 1, 1, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 5, 2, 3, 3, 3, 3, 3, 3, 3, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 5, 2, 3, 3, 3, 3, 3, 3, 3, 2, 1, 1, 1, 0, 0, 0,]
-			[0, 4, 5, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 4, 5, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1]];
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]];
+
 		return platform_grid;
 	}
 
