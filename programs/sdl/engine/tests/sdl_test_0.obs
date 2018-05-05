@@ -21,6 +21,8 @@ class PlatformDemo {
 	@hero_index : Int;
 	@hero_x : Int;
 	@hero_y : Int;
+	@hero_direction : Int;
+	@helo_flip : Bool;
 
 	# block stuff
 	@block1 : ImageSprite;
@@ -76,9 +78,8 @@ class PlatformDemo {
 		@bg_x := 0;
 		@bg_y := 0;
 
-		@hero_x := 7 * BLOCK_WIDTH;
-		@hero_y := 4 * BLOCK_HEIGHT;
-@hero_y->PrintLine();		
+		@hero_x := 8 * BLOCK_WIDTH;
+		@hero_y := 8 * BLOCK_HEIGHT;
 
 #		@hero_x := BLOCK_WIDTH;
 #		@hero_y := SCREEN_HEIGHT - (@hero->GetHeight() + BLOCK_HEIGHT * 2);
@@ -137,11 +138,17 @@ class PlatformDemo {
 	            }
 
 	            label Scancode->SDL_SCANCODE_LEFT: {
-	            	@hero_walking := -1;
+	            	@hero->SetFlip(RendererFlip->SDL_FLIP_HORIZONTAL);
+	            	@helo_flip := true;
+	            	@hero_direction := -1;
 	            }
 
 	            label Scancode->SDL_SCANCODE_RIGHT: {
-	            	@hero_walking := 1;
+	            	if(@helo_flip) {
+	            		@hero->SetFlip(RendererFlip->SDL_FLIP_NONE);
+	            		@helo_flip := false;
+	            	};
+	            	@hero_direction := 1;
 	            }        	            
 	        };
 	    }
@@ -157,7 +164,7 @@ class PlatformDemo {
 
 	            label Scancode->SDL_SCANCODE_LEFT:
 	            label Scancode->SDL_SCANCODE_RIGHT: {
-	            	@hero_walking := 0;
+	            	@hero_direction := 0;
 	            }
 	        };
 	    };   
@@ -167,7 +174,26 @@ class PlatformDemo {
 		@frame += 1;
 
 		if(@frame <= @game->GetFps()) {
-			
+			# update time
+			if(@frame % @game->GetFps() = 0) {
+				@game_time_seconds -= 1;
+				if(@game_time_seconds < 0) {
+					@game_time_seconds := 120;
+				};
+				@game_time_text := "Time: {$@game_time_seconds}";
+				@game_time->RenderedText(@game_time_text, Nil);
+			};
+
+			if(@frame % 3 = 0) {
+				if(@hero_direction <> 0) {
+					@hero_index += 1;
+					if(@hero_index >= @hero->GetClipCount()) {
+						@hero_index := 0;
+					};
+				};
+
+				# TODO: more stuff
+			};
 		}
 		else {
 			@frame := 1;
