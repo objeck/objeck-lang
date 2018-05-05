@@ -128,16 +128,15 @@ class PlatformDemo {
 	}
 	
 	method : native : ProcessAi() ~ Nil {
-		# create view
 		platform_offset := -1 * @platform_offset;
 		view_offset += (platform_offset / BLOCK_WIDTH) + 1;
 		
 		@x_edge += view_offset;
 		@x_start := view_offset - 1;
-		dims := @platform_grid->Size();
 
+		dims := @platform_grid->Size();
 		if(@x_edge >= dims[1]) {
-			@x_edge := dims[1] - 1;
+			@x_edge := dims[1];
 		};
 
 		if(@x_start < -1) {
@@ -146,7 +145,7 @@ class PlatformDemo {
 
 		for(x := @x_start; x < @x_edge; x += 1;) {
 			block_x := (@hero_x / BLOCK_WIDTH + platform_offset / BLOCK_WIDTH) + 1;
-"{$block_x}"->PrintLine();
+# "{$block_x}"->PrintLine();
 #			for(y := 0; y < @y_edge; y += 1;) {};
 		};
 	}
@@ -215,7 +214,7 @@ class PlatformDemo {
 			};
 
 			if(@hero_walking = 1) {
-				if(@hero_x >= VIEW_LEFT - 9 & @hero_x <= VIEW_RIGHT) {
+				if(@hero_x >= VIEW_LEFT - 8 & @hero_x <= VIEW_RIGHT) {
 					@hero_x += 8;
 					
 				}
@@ -240,10 +239,10 @@ class PlatformDemo {
 			}
 			else if(@hero_walking = -1) {
 				if(@hero_x >= VIEW_LEFT) {
-					@platform_offset += 8;
+					@platform_offset += 4;
 
-					if(@hero_x >= VIEW_LEFT & @hero_x <= VIEW_RIGHT + 9) {
-						@hero_x -= 8;
+					if(@hero_x >= VIEW_LEFT & @hero_x <= VIEW_RIGHT + 8) {
+						@hero_x -= 4;
 					};
 
 					if(@frame % 3 = 0) {
