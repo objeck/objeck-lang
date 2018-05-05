@@ -174,7 +174,7 @@ class PlatformDemo {
 		@frame += 1;
 
 		if(@frame <= @game->GetFps()) {
-			# update time
+			# update once per second
 			if(@frame % @game->GetFps() = 0) {
 				@game_time_seconds -= 1;
 				if(@game_time_seconds < 0) {
@@ -184,11 +184,26 @@ class PlatformDemo {
 				@game_time->RenderedText(@game_time_text, Nil);
 			};
 
+			# update 3x per second
 			if(@frame % 3 = 0) {
+				# hero moving
 				if(@hero_direction <> 0) {
 					@hero_index += 1;
 					if(@hero_index >= @hero->GetClipCount()) {
 						@hero_index := 0;
+					};
+				};
+				
+				if(@hero_direction = 1) {
+					@bg_x -= @bg->GetWidth() / 50;
+					if(@bg_x < -1 * @bg->GetWidth()) {
+						@bg_x := 0;
+					};
+				}				
+				else if(@hero_direction = -1) {
+					@bg_x += @bg->GetWidth() / 50;
+					if(@bg_x > 0) {
+						@bg_x := -1 * @bg->GetWidth();
 					};
 				};
 
