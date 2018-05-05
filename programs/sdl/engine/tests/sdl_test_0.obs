@@ -145,9 +145,8 @@ class PlatformDemo {
 		};
 
 		for(x := @x_start; x < @x_edge; x += 1;) {
-v0 := (@hero_x) / 32;
-v1 := platform_offset / 32;
-"{$v0}, {$v1}"->PrintLine();
+			block_x := (@hero_x / BLOCK_WIDTH + platform_offset / BLOCK_WIDTH) + 1;
+"{$block_x}"->PrintLine();
 #			for(y := 0; y < @y_edge; y += 1;) {};
 		};
 	}
@@ -240,24 +239,23 @@ v1 := platform_offset / 32;
 				};
 			}
 			else if(@hero_walking = -1) {
-				if(@hero_x >= VIEW_LEFT & @hero_x <= VIEW_RIGHT + 9) {
-					@hero_x -= 8;
-				}
-				else if(@hero_x < VIEW_LEFT) {
-					@platform_offset += 8;
-				};
-
-				if(@frame % 3 = 0) {
-					@hero_index += 1;
-					if(@hero_index >= @hero->GetClipCount()) {
-						@hero_index := 0;
+				if(@hero_x >= VIEW_LEFT) {
+					if(@hero_x >= VIEW_LEFT & @hero_x <= VIEW_RIGHT + 9) {
+						@hero_x -= 8;
 					};
-				}
-				else if(@frame % 10 = 0) {
-					if(@hero_x < VIEW_LEFT) {
-						@bg_x += @bg->GetWidth() / 50;
-						if(@bg_x > 0) {
-							@bg_x := -1 * @bg->GetWidth();
+
+					if(@frame % 3 = 0) {
+						@hero_index += 1;
+						if(@hero_index >= @hero->GetClipCount()) {
+							@hero_index := 0;
+						};
+					}
+					else if(@frame % 10 = 0) {
+						if(@hero_x < VIEW_LEFT) {
+							@bg_x += @bg->GetWidth() / 50;
+							if(@bg_x > 0) {
+								@bg_x := -1 * @bg->GetWidth();
+							};
 						};
 					};
 				};
