@@ -240,6 +240,8 @@ class PlatformDemo {
 			}
 			else if(@hero_walking = -1) {
 				if(@hero_x >= VIEW_LEFT) {
+					@platform_offset += 8;
+
 					if(@hero_x >= VIEW_LEFT & @hero_x <= VIEW_RIGHT + 9) {
 						@hero_x -= 8;
 					};
