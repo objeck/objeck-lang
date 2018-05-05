@@ -497,7 +497,7 @@ void ItermediateOptimizer::CalculateReduction(IntermediateInstruction* instr,
     IntermediateInstruction* top_instr = working_stack.front();
     working_stack.pop_front();
     if(top_instr->GetType() == LOAD_INT_LIT) {
-      if(working_stack.front()->GetType() == LOAD_INT_VAR) {
+      if(working_stack.front()->GetType() == LOAD_INT_VAR && top_instr->GetOperand2() == LOCL) {
         ApplyReduction(top_instr, instr, top_instr, working_stack, outputs);
       } 
       else {
@@ -505,7 +505,7 @@ void ItermediateOptimizer::CalculateReduction(IntermediateInstruction* instr,
       }
     } 
     else if(working_stack.front()->GetType() == LOAD_INT_LIT) {
-      if(top_instr->GetType() == LOAD_INT_VAR) {
+      if(top_instr->GetType() == LOAD_INT_VAR && top_instr->GetOperand2() == LOCL) {
         ApplyReduction(working_stack.front(), instr, top_instr, working_stack, outputs);
       } 
       else {
