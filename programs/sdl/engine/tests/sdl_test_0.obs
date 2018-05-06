@@ -41,6 +41,7 @@ class PlatformDemo {
 	@gems_index : Int;
 
 	@platform_grid : Int[,];
+	@platform_grid_length : Int;
 
 	# game timer stuff
 	@game_time : TextSprite;
@@ -76,6 +77,8 @@ class PlatformDemo {
 		@game_time := @game->AddTextSprite();
 
 		@platform_grid := CreatePlatform();
+		platform_dims := @platform_grid->Size();
+		@platform_grid_length := platform_dims[1];
 
 		@bg_x := 0;
 		@bg_y := 0;
@@ -197,14 +200,16 @@ class PlatformDemo {
 				};
 				
 				if(@hero_direction = 1) {
-					@bg_x -= @bg->GetWidth() / 50;
-					if(@bg_x < -1 * @bg->GetWidth()) {
-						@bg_x := 0;
+					if(@hero_x_block < @platform_grid_length) {
+						@bg_x -= @bg->GetWidth() / 50;
+						if(@bg_x < -1 * @bg->GetWidth()) {
+							@bg_x := 0;
+						};
+						@hero_position += 8;
 					};
-					@hero_position += 8;
 				}				
 				else if(@hero_direction = -1) {
-					if(@hero_x_block > 1) {
+					if(@hero_x_block > -1) {
 						@bg_x += @bg->GetWidth() / 50;
 						if(@bg_x > 0) {
 							@bg_x := -1 * @bg->GetWidth();
@@ -246,36 +251,51 @@ class PlatformDemo {
 	method : native : RenderPlatform() ~ Nil {
 		x_end := SCREEN_WIDTH / BLOCK_WIDTH;
 		y_end := SCREEN_HEIGHT / BLOCK_HEIGHT;
-		
-		for(x := 0; x < x_end; x += 1;) {
+
+		x_start := @hero_x_block - (@hero_x / BLOCK_WIDTH);
+		x_end += x_start + 1;
+
+		@screen_left_edge := x_start < 0;
+		if(@screen_left_edge) {
+			x_start := 0;
+		};
+
+		@screen_right_edge := x_end > @platform_grid_length;
+		if(@screen_right_edge) {
+			x_end := @platform_grid_length;
+		};
+
+# "{$x_start}, {$x_end}"->PrintLine();		
+
+		for(x := x_start; x < x_end; x += 1;) {
 			for(y := 0; y < y_end; y += 1;) {
 				select(@platform_grid[y, x]) {
 					label 1: {
-						@block1->Render(x * BLOCK_WIDTH, y * BLOCK_HEIGHT);
+						@block1->Render(x * BLOCK_WIDTH - @hero_position + @hero_x, y * BLOCK_HEIGHT);
 					}
 
 					label 2: {
-						@block2->Render(x * BLOCK_WIDTH, y * BLOCK_HEIGHT);
+						@block2->Render(x * BLOCK_WIDTH - @hero_position + @hero_x, y * BLOCK_HEIGHT);
 					}
 
 					label 3: {
-						@block3->Render(x * BLOCK_WIDTH, y * BLOCK_HEIGHT);
+						@block3->Render(x * BLOCK_WIDTH - @hero_position + @hero_x, y * BLOCK_HEIGHT);
 					}
 
 					label 4: {
-						@block4->Render(x * BLOCK_WIDTH, y * BLOCK_HEIGHT);
+						@block4->Render(x * BLOCK_WIDTH - @hero_position + @hero_x, y * BLOCK_HEIGHT);
 					}
 
 					label 5: {
-						@fauna1->Render(x * BLOCK_WIDTH, y * BLOCK_HEIGHT);
+						@fauna1->Render(x * BLOCK_WIDTH - @hero_position + @hero_x, y * BLOCK_HEIGHT);
 					}
 
 					label 6: {
-						@fauna2->Render(x * BLOCK_WIDTH, y * BLOCK_HEIGHT);
+						@fauna2->Render(x * BLOCK_WIDTH - @hero_position + @hero_x, y * BLOCK_HEIGHT);
 					}
 
 					label 7: {
-						@spikes1->Render(x * BLOCK_WIDTH, y * BLOCK_HEIGHT);
+						@spikes1->Render(x * BLOCK_WIDTH - @hero_position + @hero_x, y * BLOCK_HEIGHT);
 					}
 				};
 			};
