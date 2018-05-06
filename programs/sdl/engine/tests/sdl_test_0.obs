@@ -28,6 +28,8 @@ class PlatformDemo {
 	@hero_flip : Bool;
 	@hero_jumped : Bool;
 	@hero_jump_height : Int;
+	@hero_x_obstacle : Int;
+	@hero_y_obstacle : Int;
 
 	# block stuff
 	@block1 : ImageSprite;
@@ -139,7 +141,9 @@ class PlatformDemo {
 		if(e->GetType() = EventType->SDL_KEYDOWN & e->GetKey()->GetRepeat() = 0) {
 	        select(e->GetKey()->GetKeysym()->GetScancode()) {    	
 	            label Scancode->SDL_SCANCODE_SPACE: {
-	            	@hero_jumped := true;
+	            	if(@hero_jump_height <= 0) {
+	            		@hero_jumped := true;
+	            	};
 	            	"-- [space] down --"->PrintLine();
 	            }
 
@@ -179,21 +183,21 @@ class PlatformDemo {
 			# handle y movement
 			if(@frame % 2 = 0) {
 				if(@hero_jumped) {
-						@hero_jump_height += BLOCK_HEIGHT / 6;
-						if(@hero_jump_height > 1.2 * BLOCK_HEIGHT) {
-							@hero_jump_height := 1.2 * BLOCK_HEIGHT;
-							@hero_jumped := false;
-						};
-					}
-					else if(<>@hero_jumped & @hero_jump_height > 0) {
-						@hero_jump_height -= BLOCK_HEIGHT / 6;
+					@hero_jump_height += BLOCK_HEIGHT / 6;
+					if(@hero_jump_height > 1.3 * BLOCK_HEIGHT) {
+						@hero_jump_height := 1.3 * BLOCK_HEIGHT;
+						@hero_jumped := false;
 					};
+				}
+				else if(<>@hero_jumped & @hero_jump_height > 0) {
+					@hero_jump_height -= BLOCK_HEIGHT / 6;
+				};
 # @hero_jump_height->PrintLine();
 			};
 
 			# handle x movement
 			if(@frame % 5 = 0) {
-				# hero moving
+				# setup walk frames
 				if(@hero_direction <> 0) {
 					@hero_frame += 1;
 					if(@hero_frame >= @hero->GetClipCount()) {
@@ -201,15 +205,19 @@ class PlatformDemo {
 					};
 				};
 				
+				# walking right
 				if(@hero_direction = 1) {
-					if(@hero_x_block < @platform_grid_length) {
-						@bg_x -= @bg->GetWidth() / 50;
-						if(@bg_x < -1 * @bg->GetWidth()) {
-							@bg_x := 0;
+#					if(@hero_x_obstacle <> 1) {
+						if(@hero_x_block < @platform_grid_length) {
+							@bg_x -= @bg->GetWidth() / 50;
+							if(@bg_x < -1 * @bg->GetWidth()) {
+								@bg_x := 0;
+							};
+							@hero_position += @move_speed;
 						};
-						@hero_position += @move_speed;
-					};
-				}				
+#					};
+				}
+				# walking left
 				else if(@hero_direction = -1) {
 					if(@hero_x_block > -1) {
 						@bg_x += @bg->GetWidth() / 50;
@@ -254,16 +262,23 @@ class PlatformDemo {
 		};
 
 		@hero_x_block := @hero_position / BLOCK_WIDTH;
-		hero_y_block := @hero_y / BLOCK_HEIGHT + @hero->GetHeight() / BLOCK_HEIGHT;
+		hero_y_block := @hero_y / BLOCK_HEIGHT + @hero->GetHeight() / BLOCK_HEIGHT - 
+			@hero_jump_height / BLOCK_HEIGHT;
 
-		# block bel
-		if(@platform_grid[hero_y_block, @hero_x_block] = 0) {
-			"-- Fall --"->PrintLine();
+		# block below
+		if(@platform_grid[hero_y_block, @hero_x_block] = 0 | 
+				@platform_grid[hero_y_block, @hero_x_block] = 7) {
+			"-- Fall Below --"->PrintLine();
 		};
 
 		# right block
 		if(@platform_grid[hero_y_block - 1, @hero_x_block + 1] <> 0) {
-			"-- Hit --"->PrintLine();
+			"-- Hit Right --"->PrintLine();
+		};
+
+		# left block
+		if(@platform_grid[hero_y_block - 1, @hero_x_block] <> 0) {
+			"-- Hit Left --"->PrintLine();
 		};
 
 #~
