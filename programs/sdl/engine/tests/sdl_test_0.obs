@@ -137,7 +137,6 @@ class PlatformDemo {
 					if(e->GetType() = EventType->SDL_QUIT) {
 						quit := true;
 					};
-
 					ProcessInput(e);
 				};
 
@@ -198,6 +197,63 @@ class PlatformDemo {
 	    };   
 	}
 
+	method : native : UpdateModel() ~ Nil {
+		@x_end := SCREEN_WIDTH / BLOCK_WIDTH;
+		@y_end := SCREEN_HEIGHT / BLOCK_HEIGHT;
+
+		@x_start := @hero_map_x_block - (@hero_x / BLOCK_WIDTH);
+		@x_end += @x_start + 1;
+
+		@screen_left_edge := @x_start < 0;
+		if(@screen_left_edge) {
+			@x_start := 0;
+		};
+
+		@screen_right_edge := @x_end > @platform_grid_length;
+		if(@screen_right_edge) {
+			@x_end := @platform_grid_length;
+		};
+
+		@hero_map_x_block := @hero_map_pixel_position / BLOCK_WIDTH;
+		hero_y_block := @hero_y / BLOCK_HEIGHT + @hero->GetHeight() / BLOCK_HEIGHT - 
+			@hero_jump_height / BLOCK_HEIGHT;
+
+		# right block
+		if(@platform_grid[hero_y_block - 1, @hero_map_x_block + 1] <> 0) {
+			@hero_x_obstacle := 1;
+			"-- Hit Right --"->PrintLine();
+		}
+		else {
+			@hero_x_obstacle := 0;
+		};
+
+		# block below
+		select(@platform_grid[hero_y_block, @hero_map_x_block]) {
+			label 0:
+			label 7: {
+				"-- Fall Below --"->PrintLine();
+			}
+
+			other: {
+				if(hero_y_block < 13) {
+					"-- Solid: index={$hero_y_block} --"->PrintLine();
+				};
+			}
+		};
+
+		# block above
+		if(@platform_grid[hero_y_block - 3, @hero_map_x_block] <> 0) {
+			"-- Hit Above --"->PrintLine();
+		};
+
+		
+
+		# left block
+		if(@platform_grid[hero_y_block - 1, @hero_map_x_block] <> 0) {
+			"-- Hit Left --"->PrintLine();
+		};
+	}
+
 	method : native : UpdateTimedEvents() ~ Nil {		
 		@frame += 1;
 
@@ -220,9 +276,9 @@ class PlatformDemo {
 					@hero_jump_height -= BLOCK_HEIGHT / 7;
 
 					@hero_fall_frame += 1;
-						if(@hero_fall_frame >= @hero_fall->GetClipCount()) {
-							@hero_fall_frame := 0;
-						};
+					if(@hero_fall_frame >= @hero_fall->GetClipCount()) {
+						@hero_fall_frame := 0;
+					};
 				};
 			};
 
@@ -240,8 +296,7 @@ class PlatformDemo {
 				
 				# walking right
 				if(@hero_x_direction = 1) {
-# TODO					
-# if(@hero_x_obstacle <> 1) { .. };
+					if(@hero_x_obstacle <> 1) {
 						if(@hero_map_x_block < @platform_grid_length) {
 							@bg_x -= @bg->GetWidth() / 50;
 							if(@bg_x < -1 * @bg->GetWidth()) {
@@ -249,6 +304,7 @@ class PlatformDemo {
 							};
 							@hero_map_pixel_position += @move_speed;
 						};
+					};
 				}
 				# walking left
 				else if(@hero_x_direction = -1) {
@@ -275,56 +331,6 @@ class PlatformDemo {
 		else {
 			@frame := 1;
 		};
-	}
-
-	method : native : UpdateModel() ~ Nil {
-		@x_end := SCREEN_WIDTH / BLOCK_WIDTH;
-		@y_end := SCREEN_HEIGHT / BLOCK_HEIGHT;
-
-		@x_start := @hero_map_x_block - (@hero_x / BLOCK_WIDTH);
-		@x_end += @x_start + 1;
-
-		@screen_left_edge := @x_start < 0;
-		if(@screen_left_edge) {
-			@x_start := 0;
-		};
-
-		@screen_right_edge := @x_end > @platform_grid_length;
-		if(@screen_right_edge) {
-			@x_end := @platform_grid_length;
-		};
-
-		@hero_map_x_block := @hero_map_pixel_position / BLOCK_WIDTH;
-		hero_y_block := @hero_y / BLOCK_HEIGHT + @hero->GetHeight() / BLOCK_HEIGHT - 
-			@hero_jump_height / BLOCK_HEIGHT;
-
-		# block below
-		if(@platform_grid[hero_y_block, @hero_map_x_block] = 0 | 
-				@platform_grid[hero_y_block, @hero_map_x_block] = 7) {
-			"-- Fall Below --"->PrintLine();
-		};
-
-		# block above
-		if(@platform_grid[hero_y_block - 3, @hero_map_x_block] <> 0) {
-			"-- Hit Above --"->PrintLine();
-		};
-
-		# right block
-		if(@platform_grid[hero_y_block - 1, @hero_map_x_block + 1] <> 0) {
-			"-- Hit Right --"->PrintLine();
-		};
-
-		# left block
-		if(@platform_grid[hero_y_block - 1, @hero_map_x_block] <> 0) {
-			"-- Hit Left --"->PrintLine();
-		};
-
-#~
-		# check right
-		if(@platform_grid[hero_y_block - 1, @hero_map_x_block + 1] <> 0) {
-			"STOP"->PrintLine();
-		};
-~#		
 	}
 
 	method : RenderFrame() ~ Nil {
