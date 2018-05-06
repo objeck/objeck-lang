@@ -134,7 +134,7 @@ class PlatformDemo {
 
 					 HandleInput(e);
 				};
-				
+
 				ProcessAi();
 				ProcessTimeEvent();
 				Render();
@@ -200,7 +200,7 @@ class PlatformDemo {
 			if(@frame % 2 = 0) {
 				if(@hero_jumped) {
 					@hero_jump_height += BLOCK_HEIGHT / 6;
-					if(@hero_jump_height > 1.3 * BLOCK_HEIGHT) {
+					if(@hero_jump_height >= 1.3 * BLOCK_HEIGHT) {
 						@hero_jump_height := 1.3 * BLOCK_HEIGHT;
 						@hero_jumped := false;
 
@@ -337,12 +337,10 @@ class PlatformDemo {
 			@hero_jump->Render(@hero_x, @hero_y + hero_jump_height, @hero_jump_frame);
 		}
 		else {
-"###"->PrintLine();
 			@hero_fall->Render(@hero_x, @hero_y + hero_jump_height, @hero_fall_frame);
 		};
 		
-
-#		# random gem
+#		# spinning gem
 #		@gems->Render(@gems->GetWidth() * 3, @gems->GetHeight() * 2, @gems_index);
 
 		# timer
