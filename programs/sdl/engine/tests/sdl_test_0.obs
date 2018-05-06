@@ -130,7 +130,10 @@ class PlatformDemo {
 	
 	method : native : ProcessAi() ~ Nil {
 		@hero_x_block := @hero_position / BLOCK_WIDTH;
-@hero_x_block->PrintLine();		
+# @hero_x_block->PrintLine();
+		if(@hero_x_block > -1 & @hero_x_block < @platform_grid_length) {
+
+		};
 	}
 
 	method : public : HandleInput(e : Event) ~ Nil {
@@ -267,7 +270,7 @@ class PlatformDemo {
 			x_end := @platform_grid_length;
 		};
 
-# "{$x_start}, {$x_end}"->PrintLine();		
+# "window: {$x_start}, {$x_end}"->PrintLine();		
 
 		for(x := x_start; x < x_end; x += 1;) {
 			for(y := 0; y < y_end; y += 1;) {
