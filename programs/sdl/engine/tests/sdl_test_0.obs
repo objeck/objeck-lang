@@ -142,13 +142,11 @@ class PlatformDemo {
 
 					ProcessInput(e);
 				};
-
-				# update environment
-				UpdateModel();
+				
+				# update environment & render
 				UpdateTimedEvents();
-
-				# show frame
-				Render();
+				UpdateModel();
+				RenderFrame();
 
 				@game->FrameEnd();
 			};
@@ -327,7 +325,7 @@ class PlatformDemo {
 ~#		
 	}
 
-	method : Render() ~ Nil {
+	method : RenderFrame() ~ Nil {
 		@game->Clear();
 
 		#background
