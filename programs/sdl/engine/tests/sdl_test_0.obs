@@ -15,6 +15,7 @@ class PlatformDemo {
 	@bg : ImageSprite;
 	@bg_x : Int;
 	@bg_y : Int;
+	@move_speed : Int;
 
 	# hero stuff
 	@hero : AnimatedImageSprite;
@@ -82,6 +83,7 @@ class PlatformDemo {
 
 		@bg_x := 0;
 		@bg_y := 0;
+		@move_speed := 16;
 
 		@hero_x := 2 * BLOCK_WIDTH;
 		@hero_y := SCREEN_HEIGHT - (@hero->GetHeight() + 2 * BLOCK_HEIGHT);
@@ -205,7 +207,7 @@ class PlatformDemo {
 						if(@bg_x < -1 * @bg->GetWidth()) {
 							@bg_x := 0;
 						};
-						@hero_position += 8;
+						@hero_position += @move_speed;
 					};
 				}				
 				else if(@hero_direction = -1) {
@@ -214,7 +216,7 @@ class PlatformDemo {
 						if(@bg_x > 0) {
 							@bg_x := -1 * @bg->GetWidth();
 						};
-						@hero_position -= 8;
+						@hero_position -= @move_speed;
 					};
 				};
 
