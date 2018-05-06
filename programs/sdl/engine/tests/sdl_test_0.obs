@@ -135,6 +135,7 @@ class PlatformDemo {
 		if(e->GetType() = EventType->SDL_KEYDOWN & e->GetKey()->GetRepeat() = 0) {
 	        select(e->GetKey()->GetKeysym()->GetScancode()) {    	
 	            label Scancode->SDL_SCANCODE_UP: {
+	            	@hero_y -= 2 * BLOCK_HEIGHT;
 	            	"-- [up] down --"->PrintLine();
 	            }
 
@@ -160,6 +161,7 @@ class PlatformDemo {
 	    else if(e->GetType() = EventType->SDL_KEYUP & e->GetKey()->GetRepeat() = 0) {
 	        select(e->GetKey()->GetKeysym()->GetScancode()) {
 	        	label Scancode->SDL_SCANCODE_UP: {
+#	        		@hero_y += 1.5 * BLOCK_HEIGHT;
 	        		"-- [up] up --"->PrintLine();
 	            }
 
@@ -248,7 +250,7 @@ class PlatformDemo {
 		if(@platform_grid[hero_y_block, @hero_x_block] = 0) {
 			@hero_y += BLOCK_HEIGHT;
 		};
-		
+
 		# check right
 		if(@platform_grid[hero_y_block - 1, @hero_x_block + 1] <> 0) {
 			"STOP"->PrintLine();
