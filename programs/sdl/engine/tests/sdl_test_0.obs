@@ -125,6 +125,7 @@ class PlatformDemo {
 			quit := false;
 			while(<>quit) {
 				@game->FrameStart();
+				
 				# user input
 				while(e->Poll() <> 0) {
 					if(e->GetType() = EventType->SDL_QUIT) {
@@ -133,7 +134,7 @@ class PlatformDemo {
 
 					 HandleInput(e);
 				};
-
+				
 				ProcessAi();
 				ProcessTimeEvent();
 				Render();
