@@ -19,13 +19,19 @@ class PlatformDemo {
 
 	# hero stuff
 	@hero : AnimatedImageSprite;
-	@hero_frame : Int;
+	@hero_jump : AnimatedImageSprite;
+	@hero_fall : AnimatedImageSprite;
+	@hero_flip : Bool;
+
+	@hero_walk_frame : Int;
+	@hero_jump_frame : Int;
+	@hero_fall_frame : Int;
 	@hero_x : Int;
 	@hero_y : Int;
 	@hero_x_block : Int;
 	@hero_position : Int;
 	@hero_direction : Int;
-	@hero_flip : Bool;
+	
 	@hero_jumped : Bool;
 	@hero_jump_height : Int;
 	@hero_x_obstacle : Int;
@@ -79,7 +85,11 @@ class PlatformDemo {
 		@fauna2 := @game->AddImageSprite("../../../../programs/sdl/engine/tests/media/images/fauna3.png");
 		@fauna3 := @game->AddImageSprite("../../../../programs/sdl/engine/tests/media/images/fauna3.png");
 		@spikes1 := @game->AddImageSprite("../../../../programs/sdl/engine/tests/media/images/spikes1.png");
+		
 		@hero := @game->AddAnimatedImageSprite("../../../../programs/sdl/engine/tests/media/images/walk.png", 6);
+		@hero_jump := @game->AddAnimatedImageSprite("../../../../programs/sdl/engine/tests/media/images/jump.png", 3);
+		@hero_fall := @game->AddAnimatedImageSprite("../../../../programs/sdl/engine/tests/media/images/fall.png", 3);
+
 		@gems := @game->AddAnimatedImageSprite("../../../../programs/sdl/engine/tests/media/images/gems.png", 6);
 
 		@game_time := @game->AddTextSprite();
@@ -149,6 +159,9 @@ class PlatformDemo {
 
 	            label Scancode->SDL_SCANCODE_LEFT: {
 	            	@hero->SetFlip(RendererFlip->SDL_FLIP_HORIZONTAL);
+	            	@hero_jump->SetFlip(RendererFlip->SDL_FLIP_HORIZONTAL);
+	            	@hero_fall->SetFlip(RendererFlip->SDL_FLIP_HORIZONTAL);
+
 	            	@hero_flip := true;
 	            	@hero_direction := -1;
 	            }
@@ -156,6 +169,8 @@ class PlatformDemo {
 	            label Scancode->SDL_SCANCODE_RIGHT: {
 	            	if(@hero_flip) {
 	            		@hero->SetFlip(RendererFlip->SDL_FLIP_NONE);
+	            		@hero_jump->SetFlip(RendererFlip->SDL_FLIP_NONE);
+	            		@hero_fall->SetFlip(RendererFlip->SDL_FLIP_NONE);
 	            		@hero_flip := false;
 	            	};
 	            	@hero_direction := 1;
@@ -187,10 +202,20 @@ class PlatformDemo {
 					if(@hero_jump_height > 1.3 * BLOCK_HEIGHT) {
 						@hero_jump_height := 1.3 * BLOCK_HEIGHT;
 						@hero_jumped := false;
+
+						@hero_jump_frame += 1;
+						if(@hero_jump_frame >= @hero_jump->GetClipCount()) {
+							@hero_jump_frame := 0;
+						};
 					};
 				}
 				else if(<>@hero_jumped & @hero_jump_height > 0) {
 					@hero_jump_height -= BLOCK_HEIGHT / 6;
+
+					@hero_fall_frame += 1;
+						if(@hero_fall_frame >= @hero_fall->GetClipCount()) {
+							@hero_fall_frame := 0;
+						};
 				};
 # @hero_jump_height->PrintLine();
 			};
@@ -199,15 +224,18 @@ class PlatformDemo {
 			if(@frame % 5 = 0) {
 				# setup walk frames
 				if(@hero_direction <> 0) {
-					@hero_frame += 1;
-					if(@hero_frame >= @hero->GetClipCount()) {
-						@hero_frame := 0;
+					if(@hero_jump_height <= 0) {
+						@hero_walk_frame += 1;
+						if(@hero_walk_frame >= @hero->GetClipCount()) {
+							@hero_walk_frame := 0;
+						};
 					};
 				};
 				
 				# walking right
 				if(@hero_direction = 1) {
-#					if(@hero_x_obstacle <> 1) {
+# TODO					
+# if(@hero_x_obstacle <> 1) { .. };
 						if(@hero_x_block < @platform_grid_length) {
 							@bg_x -= @bg->GetWidth() / 50;
 							if(@bg_x < -1 * @bg->GetWidth()) {
@@ -215,7 +243,6 @@ class PlatformDemo {
 							};
 							@hero_position += @move_speed;
 						};
-#					};
 				}
 				# walking left
 				else if(@hero_direction = -1) {
@@ -301,7 +328,18 @@ class PlatformDemo {
 
 		# hero
 		hero_jump_height := -1 * @hero_jump_height;
-		@hero->Render(@hero_x, @hero_y + hero_jump_height, @hero_frame);
+
+		if(@hero_jump_height < 1) {
+			@hero->Render(@hero_x, @hero_y + hero_jump_height, @hero_walk_frame);			
+		}
+		else if(@hero_jumped) {
+			@hero_jump->Render(@hero_x, @hero_y + hero_jump_height, @hero_jump_frame);
+		}
+		else {
+"###"->PrintLine();
+			@hero_fall->Render(@hero_x, @hero_y + hero_jump_height, @hero_fall_frame);
+		};
+		
 
 #		# random gem
 #		@gems->Render(@gems->GetWidth() * 3, @gems->GetHeight() * 2, @gems_index);
