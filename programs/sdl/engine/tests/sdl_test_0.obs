@@ -9,6 +9,7 @@ use SDL2.Game;
 
 class PlatformDemo {
 	@game : GameEngine;
+	@game_check : Bool;
 
 	# screen
 	SCREEN_WIDTH : Int;
@@ -121,14 +122,11 @@ class PlatformDemo {
 		@game_time_text := "Time: 120";
 		@game_time->RenderedText(@game_time_text, Nil);
 
-		if(<>GameCheck()) {
-			"***** Game Check Failed! *****"->ErrorLine();
-		};
+		@game_check := GameCheck();
 	}
 
 	method : Run() ~ Nil {
-	
-		if(@game->IsOk()) {
+		if(@game->IsOk() & @game_check) {
 			e := @game->GetEvent();
 			quit := false;
 			while(<>quit) {
@@ -142,7 +140,7 @@ class PlatformDemo {
 
 					ProcessInput(e);
 				};
-				
+
 				# update environment & render
 				UpdateTimedEvents();
 				UpdateModel();
@@ -150,6 +148,10 @@ class PlatformDemo {
 
 				@game->FrameEnd();
 			};
+		}
+		else {
+			"--- Error Initializing Game Environment ---"->ErrorLine();
+			return;
 		};
 
 		leaving {
