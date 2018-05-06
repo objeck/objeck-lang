@@ -220,37 +220,22 @@ class PlatformDemo {
 
 		# right block
 		if(@platform_grid[hero_y_block - 1, @hero_map_x_block + 1] <> 0) {
-			@hero_x_obstacle := 1;
 			"-- Hit Right --"->PrintLine();
-		}
-		else {
-			@hero_x_obstacle := 0;
+		};
+
+		# left block
+		if(@platform_grid[hero_y_block - 1, @hero_map_x_block] <> 0) {
+			"-- Hit Left --"->PrintLine();
 		};
 
 		# block below
-		select(@platform_grid[hero_y_block, @hero_map_x_block]) {
-			label 0:
-			label 7: {
+		if(@platform_grid[hero_y_block, @hero_map_x_block] = 0) {
 				"-- Fall Below --"->PrintLine();
-			}
-
-			other: {
-				if(hero_y_block < 13) {
-					"-- Solid: index={$hero_y_block} --"->PrintLine();
-				};
-			}
 		};
 
 		# block above
 		if(@platform_grid[hero_y_block - 3, @hero_map_x_block] <> 0) {
 			"-- Hit Above --"->PrintLine();
-		};
-
-		
-
-		# left block
-		if(@platform_grid[hero_y_block - 1, @hero_map_x_block] <> 0) {
-			"-- Hit Left --"->PrintLine();
 		};
 	}
 
@@ -296,14 +281,13 @@ class PlatformDemo {
 				
 				# walking right
 				if(@hero_x_direction = 1) {
-					if(@hero_x_obstacle <> 1) {
-						if(@hero_map_x_block < @platform_grid_length) {
-							@bg_x -= @bg->GetWidth() / 50;
-							if(@bg_x < -1 * @bg->GetWidth()) {
-								@bg_x := 0;
-							};
-							@hero_map_pixel_position += @move_speed;
+#					if(@hero_x_obstacle <> 1) { .. }
+					if(@hero_map_x_block < @platform_grid_length) {
+						@bg_x -= @bg->GetWidth() / 50;
+						if(@bg_x < -1 * @bg->GetWidth()) {
+							@bg_x := 0;
 						};
+						@hero_map_pixel_position += @move_speed;
 					};
 				}
 				# walking left
