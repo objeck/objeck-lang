@@ -209,8 +209,8 @@ bundle SDL2.Game {
 			init_flags := HardwareFlags->SDL_INIT_VIDEO->As(Int) or
 				HardwareFlags->SDL_INIT_AUDIO->As(Int) or 
 				HardwareFlags->SDL_INIT_JOYSTICK->As(Int);
-			@fps := 30;	
-			@frame_rate := 1000 / 30;
+			@fps := 60;	
+			@frame_rate := 1000 / 60;
 			@sprites := Vector->New();
 			
 			@is_ok := Init(screen_width, screen_height, title, init_flags);
