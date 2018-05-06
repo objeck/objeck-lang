@@ -215,8 +215,7 @@ class PlatformDemo {
 		};
 
 		@hero_map_x_block := @hero_map_pixel_position / BLOCK_WIDTH;
-		hero_y_block := @hero_y / BLOCK_HEIGHT + @hero->GetHeight() / BLOCK_HEIGHT - 
-			@hero_jump_height / BLOCK_HEIGHT;
+		hero_y_block := @hero_y / BLOCK_HEIGHT + @hero->GetHeight();
 
 		# right block
 		if(@platform_grid[hero_y_block - 1, @hero_map_x_block + 1] <> 0) {
@@ -255,6 +254,9 @@ class PlatformDemo {
 						if(@hero_jump_frame >= @hero_jump->GetClipCount()) {
 							@hero_jump_frame := 0;
 						};
+					}
+					else {
+						@hero_y -= BLOCK_HEIGHT / 7;
 					};
 				}
 				else if(<>@hero_jumped & @hero_jump_height > 0) {
@@ -264,6 +266,7 @@ class PlatformDemo {
 					if(@hero_fall_frame >= @hero_fall->GetClipCount()) {
 						@hero_fall_frame := 0;
 					};
+					@hero_y += BLOCK_HEIGHT / 7;
 				};
 			};
 
@@ -331,13 +334,13 @@ class PlatformDemo {
 		hero_jump_height := -1 * @hero_jump_height;
 
 		if(@hero_jump_height < 1) {
-			@hero->Render(@hero_x, @hero_y + hero_jump_height, @hero_walk_frame);			
+			@hero->Render(@hero_x, @hero_y, @hero_walk_frame);			
 		}
 		else if(@hero_jumped) {
-			@hero_jump->Render(@hero_x, @hero_y + hero_jump_height, @hero_jump_frame);
+			@hero_jump->Render(@hero_x, @hero_y, @hero_jump_frame);
 		}
 		else {
-			@hero_fall->Render(@hero_x, @hero_y + hero_jump_height, @hero_fall_frame);
+			@hero_fall->Render(@hero_x, @hero_y, @hero_fall_frame);
 		};
 		
 #		# spinning gem
