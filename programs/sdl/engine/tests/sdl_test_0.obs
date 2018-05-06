@@ -218,6 +218,8 @@ class PlatformDemo {
 		hero_y_block := @hero_y / BLOCK_HEIGHT + @hero->GetHeight() / BLOCK_HEIGHT - 
 			@hero_jump_height / BLOCK_HEIGHT;
 
+		#--- Collisions ---
+
 		# right block
 		if(@platform_grid[hero_y_block - 1, @hero_map_x_block + 1] <> 0) {
 			"-- Hit Right --"->PrintLine();
