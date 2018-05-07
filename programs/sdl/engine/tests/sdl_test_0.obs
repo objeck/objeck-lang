@@ -215,9 +215,11 @@ class PlatformDemo {
 		};
 
 		@hero_map_x_block := @hero_map_pixel_position / BLOCK_WIDTH;
-		hero_y_block := @hero_y / BLOCK_HEIGHT + @hero->GetHeight() / BLOCK_HEIGHT;
+		hero_y_block := (@hero_y + @hero->GetHeight()) / BLOCK_HEIGHT;
 
 		#--- Collisions ---
+
+		# NOTE: -2 jump height
 "hero: {$@hero_map_x_block}, {$hero_y_block}"->PrintLine();
 
 #~
