@@ -213,15 +213,13 @@ class PlatformDemo {
 		if(@screen_right_edge) {
 			@x_end := @platform_grid_length;
 		};
-
+		
 		@hero_map_x_block := @hero_map_pixel_position / BLOCK_WIDTH;
-		hero_y_block := (@hero_y + @hero->GetHeight()) / BLOCK_HEIGHT;
+		hero_y_block := (@hero_y + BLOCK_HEIGHT) / BLOCK_HEIGHT;
 
 		#--- Collisions ---
 
-		# NOTE: -2 jump height
-"hero: {$@hero_map_x_block}, {$hero_y_block}"->PrintLine();
-
+		@platform_grid[hero_y_block, @hero_map_x_block]->PrintLine();
 #~
 		# right block
 		if(@platform_grid[hero_y_block - 1, @hero_map_x_block + 1] <> 0) {
