@@ -36,7 +36,10 @@ class PlatformDemo {
 	@hero_fall_frame : Int;
 	@hero_x : Int;
 	@hero_y : Int;
+	
 	@hero_map_x_block : Int;
+	@hero_map_y_block : Int;
+
 	@hero_map_pixel_position : Int;
 	@hero_x_direction : Int;
 	
@@ -213,34 +216,9 @@ class PlatformDemo {
 		if(@screen_right_edge) {
 			@x_end := @platform_grid_length;
 		};
-		
+
 		@hero_map_x_block := @hero_map_pixel_position / BLOCK_WIDTH;
-		hero_y_block := (@hero_y + BLOCK_HEIGHT) / BLOCK_HEIGHT;
-
-		#--- Collisions ---
-
-		@platform_grid[hero_y_block, @hero_map_x_block]->PrintLine();
-#~
-		# right block
-		if(@platform_grid[hero_y_block - 1, @hero_map_x_block + 1] <> 0) {
-			"-- Hit Right --"->PrintLine();
-		};
-
-		# left block
-		if(@platform_grid[hero_y_block - 1, @hero_map_x_block] <> 0) {
-			"-- Hit Left --"->PrintLine();
-		};
-
-		# block below
-		if(@platform_grid[hero_y_block, @hero_map_x_block] = 0) {
-				"-- Fall Below --"->PrintLine();
-		};
-
-		# block above
-		if(@platform_grid[hero_y_block - 3, @hero_map_x_block] <> 0) {
-			"-- Hit Above --"->PrintLine();
-		};
-~#		
+		@hero_map_y_block := (@hero_y + BLOCK_HEIGHT) / BLOCK_HEIGHT;
 	}
 
 	method : native : UpdateTimedEvents() ~ Nil {		
