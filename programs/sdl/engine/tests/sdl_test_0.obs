@@ -227,29 +227,36 @@ class PlatformDemo {
 		if(@frame <= @game->GetFps()) {
 			# handle y movement
 			if(@frame % 2 = 0) {
-				if(@hero_jumped) {
-					@hero_jump_height += BLOCK_HEIGHT / 7;
-					if(@hero_jump_height >= 1.2 * BLOCK_HEIGHT) {
-						@hero_jump_height := 1.2 * BLOCK_HEIGHT;
-						@hero_jumped := false;
+				below := @platform_grid[@hero_map_y_block - 1, @hero_map_x_block];
+				if(@hero_jump_height >= BLOCK_HEIGHT & below > 0) {
+					@hero_jumped := false;
+					@hero_jump_height := 0;
+				}
+				else {
+					if(@hero_jumped) {
+						@hero_jump_height += BLOCK_HEIGHT / 7;
+						if(@hero_jump_height >= 1.2 * BLOCK_HEIGHT) {
+							@hero_jump_height := 1.2 * BLOCK_HEIGHT;
+							@hero_jumped := false;
 
-						@hero_jump_frame += 1;
-						if(@hero_jump_frame >= @hero_jump->GetClipCount()) {
-							@hero_jump_frame := 0;
+							@hero_jump_frame += 1;
+							if(@hero_jump_frame >= @hero_jump->GetClipCount()) {
+								@hero_jump_frame := 0;
+							};
+						}
+						else {
+							@hero_y -= BLOCK_HEIGHT / 7;
 						};
 					}
-					else {
-						@hero_y -= BLOCK_HEIGHT / 7;
-					};
-				}
-				else if(<>@hero_jumped & @hero_jump_height > 0) {
-					@hero_jump_height -= BLOCK_HEIGHT / 7;
+					else if(<>@hero_jumped & @hero_jump_height > 0) {
+						@hero_jump_height -= BLOCK_HEIGHT / 7;
 
-					@hero_fall_frame += 1;
-					if(@hero_fall_frame >= @hero_fall->GetClipCount()) {
-						@hero_fall_frame := 0;
+						@hero_fall_frame += 1;
+						if(@hero_fall_frame >= @hero_fall->GetClipCount()) {
+							@hero_fall_frame := 0;
+						};
+						@hero_y += BLOCK_HEIGHT / 7;
 					};
-					@hero_y += BLOCK_HEIGHT / 7;
 				};
 			};
 
