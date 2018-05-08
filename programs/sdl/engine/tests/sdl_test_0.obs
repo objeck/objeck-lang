@@ -35,10 +35,8 @@ class PlatformDemo {
 	@hero_jump_frame : Int;
 	@hero_fall_frame : Int;
 	@hero_x : Int;
-	@hero_y : Int;
-	
+	@hero_y : Int;	
 	@hero_map_x_block : Int;
-	@hero_map_y_block : Int;
 
 	@hero_map_pixel_position : Int;
 	@hero_x_direction : Int;
@@ -145,7 +143,6 @@ class PlatformDemo {
 
 				# update environment & render
 				UpdateTimedEvents();
-				UpdateModel();
 				RenderFrame();
 
 				@game->FrameEnd();
@@ -200,25 +197,12 @@ class PlatformDemo {
 	    };   
 	}
 
-	method : native : UpdateModel() ~ Nil {
-		@x_end := SCREEN_WIDTH / BLOCK_WIDTH;
-		@y_end := SCREEN_HEIGHT / BLOCK_HEIGHT;
+	method : CanMoveLeft() ~ Bool {
+		return true;
+	}
 
-		@x_start := @hero_map_x_block - (@hero_x / BLOCK_WIDTH);
-		@x_end += @x_start + 1;
-
-		@screen_left_edge := @x_start < 0;
-		if(@screen_left_edge) {
-			@x_start := 0;
-		};
-
-		@screen_right_edge := @x_end > @platform_grid_length;
-		if(@screen_right_edge) {
-			@x_end := @platform_grid_length;
-		};
-
-		@hero_map_x_block := @hero_map_pixel_position / BLOCK_WIDTH;
-		@hero_map_y_block := (@hero_y + BLOCK_HEIGHT) / BLOCK_HEIGHT;
+	method : CanMoveRight() ~ Bool {
+		return true;
 	}
 
 	method : native : UpdateTimedEvents() ~ Nil {		
@@ -227,37 +211,30 @@ class PlatformDemo {
 		if(@frame <= @game->GetFps()) {
 			# handle y movement
 			if(@frame % 2 = 0) {
-				below := @platform_grid[@hero_map_y_block - 1, @hero_map_x_block];
-				if(@hero_jump_height >= BLOCK_HEIGHT & below > 0) {
-					@hero_jumped := false;
-					@hero_jump_height := 0;
-				}
-				else {
-					if(@hero_jumped) {
-						@hero_jump_height += BLOCK_HEIGHT / 7;
-						if(@hero_jump_height >= 1.2 * BLOCK_HEIGHT) {
-							@hero_jump_height := 1.2 * BLOCK_HEIGHT;
-							@hero_jumped := false;
+				if(@hero_jumped) {
+					@hero_jump_height += BLOCK_HEIGHT / 7;
+					if(@hero_jump_height >= 1.2 * BLOCK_HEIGHT) {
+						@hero_jump_height := 1.2 * BLOCK_HEIGHT;
+						@hero_jumped := false;
 
-							@hero_jump_frame += 1;
-							if(@hero_jump_frame >= @hero_jump->GetClipCount()) {
-								@hero_jump_frame := 0;
-							};
-						}
-						else {
-							@hero_y -= BLOCK_HEIGHT / 7;
+						@hero_jump_frame += 1;
+						if(@hero_jump_frame >= @hero_jump->GetClipCount()) {
+							@hero_jump_frame := 0;
 						};
 					}
-					else if(<>@hero_jumped & @hero_jump_height > 0) {
-						@hero_jump_height -= BLOCK_HEIGHT / 7;
-
-						@hero_fall_frame += 1;
-						if(@hero_fall_frame >= @hero_fall->GetClipCount()) {
-							@hero_fall_frame := 0;
-						};
-						@hero_y += BLOCK_HEIGHT / 7;
+					else {
+						@hero_y -= BLOCK_HEIGHT / 7;
 					};
-				};
+				}
+				else if(<>@hero_jumped & @hero_jump_height > 0) {
+					@hero_jump_height -= BLOCK_HEIGHT / 7;
+
+					@hero_fall_frame += 1;
+					if(@hero_fall_frame >= @hero_fall->GetClipCount()) {
+						@hero_fall_frame := 0;
+					};
+					@hero_y += BLOCK_HEIGHT / 7;
+					};
 			};
 
 			# handle x movement
@@ -275,20 +252,18 @@ class PlatformDemo {
 				# walking right
 				if(@hero_x_direction = 1) {
 #					if(@hero_x_obstacle <> 1) { .. }
-					if(@hero_map_x_block < @platform_grid_length) {
-						if(@platform_grid[@hero_map_y_block, @hero_map_x_block + 1] = 0) {
-							@bg_x -= @bg->GetWidth() / 50;
-							if(@bg_x < -1 * @bg->GetWidth()) {
-								@bg_x := 0;
-							};
-							@hero_map_pixel_position += @move_speed;
+					if(CanMoveRight()) {
+						@bg_x -= @bg->GetWidth() / 50;
+						if(@bg_x < -1 * @bg->GetWidth()) {
+							@bg_x := 0;
 						};
+						@hero_map_pixel_position += @move_speed;
 					};
 				}
 				# walking left
 				else if(@hero_x_direction = -1) {
 					if(@hero_map_x_block > -1) {
-						if(@platform_grid[@hero_map_y_block, @hero_map_x_block] = 0) {
+						if(CanMoveLeft()) {
 							@bg_x += @bg->GetWidth() / 50;
 							if(@bg_x > 0) {
 								@bg_x := -1 * @bg->GetWidth();
@@ -347,6 +322,25 @@ class PlatformDemo {
 	}
 
 	method : native : RenderPlatform() ~ Nil {
+		@x_end := SCREEN_WIDTH / BLOCK_WIDTH;
+		@y_end := SCREEN_HEIGHT / BLOCK_HEIGHT;
+
+		@x_start := @hero_map_x_block - (@hero_x / BLOCK_WIDTH);
+		@x_end += @x_start + 1;
+
+		@screen_left_edge := @x_start < 0;
+		if(@screen_left_edge) {
+			@x_start := 0;
+		};
+
+		@screen_right_edge := @x_end > @platform_grid_length;
+		if(@screen_right_edge) {
+			@x_end := @platform_grid_length;
+		};
+
+		@hero_map_x_block := @hero_map_pixel_position / BLOCK_WIDTH;
+		@hero_map_y_block := (@hero_y + BLOCK_HEIGHT) / BLOCK_HEIGHT;
+
 # "view_x: {$@x_start}, {$@x_end}"->PrintLine();
 		for(x := @x_start; x < @x_end; x += 1;) {
 			for(y := 0; y < @y_end; y += 1;) {
