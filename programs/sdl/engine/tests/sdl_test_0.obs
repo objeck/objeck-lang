@@ -269,12 +269,11 @@ class PlatformDemo {
 				if(@hero_x_direction = 1) {
 #					if(@hero_x_obstacle <> 1) { .. }
 					if(@hero_map_x_block < @platform_grid_length) {
-						@bg_x -= @bg->GetWidth() / 50;
-						if(@bg_x < -1 * @bg->GetWidth()) {
-							@bg_x := 0;
-						};
-
-						if(@platform_grid[@hero_map_y_block, @hero_map_x_block + 2] <> 1) {
+						if(@platform_grid[@hero_map_y_block, @hero_map_x_block + 1] = 0) {
+							@bg_x -= @bg->GetWidth() / 50;
+							if(@bg_x < -1 * @bg->GetWidth()) {
+								@bg_x := 0;
+							};
 							@hero_map_pixel_position += @move_speed;
 						};
 					};
@@ -282,12 +281,11 @@ class PlatformDemo {
 				# walking left
 				else if(@hero_x_direction = -1) {
 					if(@hero_map_x_block > -1) {
-						@bg_x += @bg->GetWidth() / 50;
-						if(@bg_x > 0) {
-							@bg_x := -1 * @bg->GetWidth();
-						};
-
-						if(@platform_grid[@hero_map_y_block, @hero_map_x_block - 1] <> 1) {
+						if(@platform_grid[@hero_map_y_block, @hero_map_x_block] = 0) {
+							@bg_x += @bg->GetWidth() / 50;
+							if(@bg_x > 0) {
+								@bg_x := -1 * @bg->GetWidth();
+							};
 							@hero_map_pixel_position -= @move_speed;
 						};
 					};
