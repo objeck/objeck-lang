@@ -273,7 +273,10 @@ class PlatformDemo {
 						if(@bg_x < -1 * @bg->GetWidth()) {
 							@bg_x := 0;
 						};
-						@hero_map_pixel_position += @move_speed;
+
+						if(@platform_grid[@hero_map_y_block, @hero_map_x_block + 2] <> 1) {
+							@hero_map_pixel_position += @move_speed;
+						};
 					};
 				}
 				# walking left
@@ -283,7 +286,10 @@ class PlatformDemo {
 						if(@bg_x > 0) {
 							@bg_x := -1 * @bg->GetWidth();
 						};
-						@hero_map_pixel_position -= @move_speed;
+
+						if(@platform_grid[@hero_map_y_block, @hero_map_x_block - 1] <> 1) {
+							@hero_map_pixel_position -= @move_speed;
+						};
 					};
 				};
 			};
