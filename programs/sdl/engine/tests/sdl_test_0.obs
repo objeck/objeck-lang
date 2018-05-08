@@ -37,6 +37,7 @@ class PlatformDemo {
 	@hero_x : Int;
 	@hero_y : Int;	
 	@hero_map_x_block : Int;
+	@hero_map_y_block : Int;
 
 	@hero_map_pixel_position : Int;
 	@hero_x_direction : Int;
@@ -198,11 +199,19 @@ class PlatformDemo {
 	}
 
 	method : CanMoveLeft() ~ Bool {
-		return true;
+		# right
+		right_top := @platform_grid[@hero_map_y_block -1, @hero_map_x_block - 1];
+		right_bottom := @platform_grid[@hero_map_y_block, @hero_map_x_block - 1];
+
+		return right_top = 0 & right_bottom = 0;
 	}
 
 	method : CanMoveRight() ~ Bool {
-		return true;
+		# right
+		right_top := @platform_grid[@hero_map_y_block -1, @hero_map_x_block + 1];
+		right_bottom := @platform_grid[@hero_map_y_block, @hero_map_x_block + 1];
+
+		return right_top = 0 & right_bottom = 0;
 	}
 
 	method : native : UpdateTimedEvents() ~ Nil {		
@@ -261,14 +270,12 @@ class PlatformDemo {
 				}
 				# walking left
 				else if(@hero_x_direction = -1) {
-					if(@hero_map_x_block > -1) {
-						if(CanMoveLeft()) {
-							@bg_x += @bg->GetWidth() / 50;
-							if(@bg_x > 0) {
-								@bg_x := -1 * @bg->GetWidth();
-							};
-							@hero_map_pixel_position -= @move_speed;
+					if(CanMoveLeft()) {
+						@bg_x += @bg->GetWidth() / 50;
+						if(@bg_x > 0) {
+							@bg_x := -1 * @bg->GetWidth();
 						};
+						@hero_map_pixel_position -= @move_speed;
 					};
 				};
 			};
@@ -390,8 +397,8 @@ class PlatformDemo {
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 			[0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 2, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-			[0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 1, 4, 0, 4, 1, 4, 0, 0, 0, 0,   0, 0, 0, 0, 1, 1, 7, 7, 7, 7, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0]
-			[0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 3,   3, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0]
+			[0, 1, 0, 0, 0, 0, 0, 0, 0, 4, 1, 4, 0, 4, 1, 4, 0, 0, 0, 0,   0, 0, 0, 0, 1, 1, 7, 7, 7, 7, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0]
+			[0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 3,   3, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0]
 			[4, 1, 1, 1, 1, 1, 7, 7, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0,   0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 4]
 		];
 
