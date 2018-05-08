@@ -251,7 +251,6 @@ class PlatformDemo {
 				
 				# walking right
 				if(@hero_x_direction = 1) {
-#					if(@hero_x_obstacle <> 1) { .. }
 					if(CanMoveRight()) {
 						@bg_x -= @bg->GetWidth() / 50;
 						if(@bg_x < -1 * @bg->GetWidth()) {
