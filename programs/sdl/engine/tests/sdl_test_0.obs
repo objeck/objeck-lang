@@ -8,6 +8,8 @@ use SDL2;
 use SDL2.Game;
 
 class PlatformDemo {
+	@debug_msg : static : String;
+
 	@game : GameEngine;
 	@game_check : Bool;
 
@@ -79,6 +81,18 @@ class PlatformDemo {
 		platform->Run();
 	}
 
+	function : Debug(debug_msg : String) ~ Nil {
+		if(@debug_msg = Nil) {
+			@debug_msg := debug_msg;
+			@debug_msg->PrintLine();
+		};
+
+		if(<>debug_msg->Equals(@debug_msg)) {
+			@debug_msg := debug_msg;
+			@debug_msg->PrintLine();
+		};
+	}
+	
 	New() {
 		SCREEN_WIDTH := 640;
 		SCREEN_HEIGHT := 480;
@@ -324,7 +338,7 @@ class PlatformDemo {
 				# bottom left
 				if(x - @x_start = 1 & y = @y_end - 3) {
 					@hero_bounds[2] :=  type;
-# "bottom left: {$x_pos}, {$y_pos}: type={$type}"->PrintLine();
+Debug("bottom left: {$x_pos}, {$y_pos}: type={$type}");
 				};
 
 				# bottom right
