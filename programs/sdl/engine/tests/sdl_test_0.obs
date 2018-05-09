@@ -215,7 +215,7 @@ class PlatformDemo {
 				};
 				
 				# walking right
-				if(@hero_x_direction = 1) {
+				if(@hero_x_direction = 1 & @hero_bounds[3] = 0) {
 					@bg_x -= @bg->GetWidth() / 50;
 					if(@bg_x < -1 * @bg->GetWidth()) {
 						@bg_x := 0;
@@ -223,7 +223,7 @@ class PlatformDemo {
 					@hero_map_pixel_position += @move_speed;
 				}
 				# walking left
-				else if(@hero_x_direction = -1) {
+				else if(@hero_x_direction = -1 &  @hero_bounds[2] = 0) {
 					@bg_x += @bg->GetWidth() / 50;
 					if(@bg_x > 0) {
 						@bg_x := -1 * @bg->GetWidth();
@@ -307,41 +307,42 @@ class PlatformDemo {
 
 				type := @platform_grid[y, x];
 
+# TODO: adjust y based upon hero y
+
 				# top
 				if(x - @x_start = 2 & y = @y_end - 5) {
 					@hero_bounds[0] :=  type;
-"top: {$x_pos}, {$y_pos}: type={$type}"->PrintLine();
+# "top: {$x_pos}, {$y_pos}: type={$type}"->PrintLine();
 				};
 
 				# bottom
 				if(x - @x_start = 2 & y = @y_end - 2) {
 					@hero_bounds[1] :=  type;
-"bottom: {$x_pos}, {$y_pos}: type={$type}"->PrintLine();
+# "bottom: {$x_pos}, {$y_pos}: type={$type}"->PrintLine();
 				};
 
 				# bottom left
 				if(x - @x_start = 1 & y = @y_end - 3) {
 					@hero_bounds[2] :=  type;
-"bottom left: {$x_pos}, {$y_pos}: type={$type}"->PrintLine();
+# "bottom left: {$x_pos}, {$y_pos}: type={$type}"->PrintLine();
 				};
 
 				# bottom right
 				if(x - @x_start = 3 & y = @y_end - 3) {
 					@hero_bounds[3] :=  type;
-"bottom right: {$x_pos}, {$y_pos}: type={$type}"->PrintLine();
+# "bottom right: {$x_pos}, {$y_pos}: type={$type}"->PrintLine();
 				};
 
 				# top left
 				if(x - @x_start = 1 & y = @y_end - 4) {
 					@hero_bounds[4] :=  type;
-"top left: {$x_pos}, {$y_pos}: type={$type}"->PrintLine();
+# "top left: {$x_pos}, {$y_pos}: type={$type}"->PrintLine();
 				};
 
 				# top right
 				if(x - @x_start = 3 & y = @y_end - 4) {
 					@hero_bounds[5] :=  type;
- "top right: {$x_pos}, {$y_pos}: type={$type}"->PrintLine();
-"---"->PrintLine(); 
+# "top right: {$x_pos}, {$y_pos}: type={$type}"->PrintLine();
 				};
 
 				select(type) {
@@ -389,10 +390,10 @@ class PlatformDemo {
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-			[0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-			[0, 6, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-			[0, 5, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-			[0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+			[0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+			[0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 		];
 
