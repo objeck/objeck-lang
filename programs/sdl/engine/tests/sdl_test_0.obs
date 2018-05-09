@@ -34,8 +34,11 @@ class PlatformDemo {
 	@hero_walk_frame : Int;
 	@hero_jump_frame : Int;
 	@hero_fall_frame : Int;
+
 	@hero_x : Int;
 	@hero_y : Int;
+	@hero_bounds : Int[];
+
 	@hero_map_x_block : Int;
 	@hero_map_y_block : Int;
 	@hero_map_pixel_position : Int;
@@ -65,7 +68,7 @@ class PlatformDemo {
 	@x_start : Int;
 	@x_end : Int;
 	@y_end : Int;
-	
+
 	# game timer
 	@game_time : TextSprite;
 	@game_time_seconds : Int;
@@ -110,6 +113,7 @@ class PlatformDemo {
 
 		@hero_x := 2 * BLOCK_WIDTH;
 		@hero_y := SCREEN_HEIGHT - (@hero->GetHeight() + 2 * BLOCK_HEIGHT);
+		@hero_bounds := Int->New[6];
 		@hero_map_pixel_position := @hero_x;
 		@hero_map_x_block := @hero_map_pixel_position / BLOCK_WIDTH;
 
@@ -305,25 +309,41 @@ class PlatformDemo {
 
 				# top
 				if(x - @x_start = 2 & y = @y_end - 5) {
-"top: {$x_pos}, {$y_pos}: type={$type}"->PrintLine();
+					@hero_bounds[0] :=  type;
+# "top: {$x_pos}, {$y_pos}: type={$type}"->PrintLine();
 				};
 
 				# bottom
 				if(x - @x_start = 2 & y = @y_end - 2) {
-"bottom: {$x_pos}, {$y_pos}: type={$type}"->PrintLine();
+					@hero_bounds[1] :=  type;
+# "bottom: {$x_pos}, {$y_pos}: type={$type}"->PrintLine();
 				};
 
-				# left
+				# bottom left
 				if(x - @x_start = 1 & y = @y_end - 3) {
-"left: {$x_pos}, {$y_pos}: type={$type}"->PrintLine();
+					@hero_bounds[2] :=  type;
+# "bottom left: {$x_pos}, {$y_pos}: type={$type}"->PrintLine();
 				};
 
-				# right
+				# bottom right
 				if(x - @x_start = 3 & y = @y_end - 3) {
-"right: {$x_pos}, {$y_pos}: type={$type}"->PrintLine();
+					@hero_bounds[3] :=  type;
+# "bottom right: {$x_pos}, {$y_pos}: type={$type}"->PrintLine();
+				};
+
+				# top left
+				if(x - @x_start = 1 & y = @y_end - 4) {
+					@hero_bounds[4] :=  type;
+# "top left: {$x_pos}, {$y_pos}: type={$type}"->PrintLine();
+				};
+
+				# top right
+				if(x - @x_start = 3 & y = @y_end - 4) {
+					@hero_bounds[5] :=  type;
+# "top right: {$x_pos}, {$y_pos}: type={$type}"->PrintLine();
 "---"->PrintLine();
 				};
-
+				
 				select(type) {
 					label 1: {
 						@block1->Render(x_pos, y_pos);
