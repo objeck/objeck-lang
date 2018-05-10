@@ -336,49 +336,50 @@ class PlatformDemo {
 			
 			for(y := 0; y < @y_end; y += 1;) {
 				y_pos := y * BLOCK_HEIGHT;
+				y_pos_offset := (SCREEN_HEIGHT - (@hero_y + BLOCK_HEIGHT * 2)) / BLOCK_HEIGHT;
+Debug("{$y_pos_offset}");
 
 				type := @platform_grid[y, x];
 
 # TODO: adjust y based upon hero jump
 
 				# top
-				if(x - @x_start = 2 & y = @y_end - 5) {
+				if(x - @x_start = 2 & y = @y_end - y_pos_offset - 3) {
 					@hero_bounds[0] := type;
 # "top: {$x_pos}, {$y_pos}: type={$type}"->PrintLine();
 				};
 
-foo := (SCREEN_HEIGHT - (@hero_y + BLOCK_HEIGHT * 2)) / BLOCK_HEIGHT;
-Debug("{$foo}");
+
 
 				# bottom
-				if(x - @x_start = 2 & y = @y_end - 2) {
+				if(x - @x_start = 2 & y = @y_end - y_pos_offset) {
 					@hero_bounds[1] := type;
 # Debug("bottom: {$x_pos}, {$y_pos}: type={$type}");
 				};
 
 				# bottom left
-				if(x - @x_start = 1 & x_pos % BLOCK_WIDTH = 0 & y = @y_end - 3) {
+				if(x - @x_start = 1 & x_pos % BLOCK_WIDTH = 0 & y = @y_end - y_pos_offset - 1) {
 					@hero_bounds[2] := type;
 # Debug("bottom left: {$x_pos}, {$y_pos}: type={$type}");
 				}
-				else if(x - @x_start = 1 & y = @y_end - 3) {
+				else if(x - @x_start = 1 & y = @y_end - y_pos_offset - 1) {
 					@hero_bounds[2] := 0;
 				};
 
 				# bottom right
-				if(x - @x_start = 3 & y = @y_end - 3) {
+				if(x - @x_start = 3 & y = @y_end - y_pos_offset - 1) {
 					@hero_bounds[3] := type;
 # Debug("bottom right: {$x_pos}, {$y_pos}: type={$type}");
 				};
 
 				# top left
-				if(x - @x_start = 1 & y = @y_end - 4) {
+				if(x - @x_start = 1 & y = @y_end - y_pos_offset - 2) {
 					@hero_bounds[4] := type;
 # "top left: {$x_pos}, {$y_pos}: type={$type}"->PrintLine();
 				};
 
 				# top right
-				if(x - @x_start = 3 & y = @y_end - 4) {
+				if(x - @x_start = 3 & y = @y_end - y_pos_offset - 2) {
 					@hero_bounds[5] := type;
 # "top right: {$x_pos}, {$y_pos}: type={$type}"->PrintLine();
 				};
