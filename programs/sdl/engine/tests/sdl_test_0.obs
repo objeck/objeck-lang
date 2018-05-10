@@ -42,7 +42,6 @@ class PlatformDemo {
 	@hero_bounds : Int[];
 
 	@hero_map_x_block : Int;
-	@hero_map_y_block : Int;
 	@hero_map_pixel_position : Int;
 	@hero_x_direction : Int;
 	
@@ -176,18 +175,18 @@ class PlatformDemo {
 		if(e->GetType() = EventType->SDL_KEYDOWN & e->GetKey()->GetRepeat() = 0) {
 	        select(e->GetKey()->GetKeysym()->GetScancode()) {    	
 	            label Scancode->SDL_SCANCODE_SPACE: {
-	            	if(@hero_jump_height <= 0) {
+	            	if(@hero_jump_height = 0) {
 	            		@hero_jumping := true;
 	            	};
 	            }
 
 	            label Scancode->SDL_SCANCODE_LEFT: {
 	            	@hero->SetFlip(RendererFlip->SDL_FLIP_HORIZONTAL);
-	            	@hero_jump->SetFlip(RendererFlip->SDL_FLIP_HORIZONTAL);
-	            	@hero_fall->SetFlip(RendererFlip->SDL_FLIP_HORIZONTAL);
+		            @hero_jump->SetFlip(RendererFlip->SDL_FLIP_HORIZONTAL);
+		            @hero_fall->SetFlip(RendererFlip->SDL_FLIP_HORIZONTAL);
 
-	            	@hero_flip := true;
-	            	@hero_x_direction := -1;
+		            @hero_flip := true;
+		            @hero_x_direction := -1;
 	            }
 
 	            label Scancode->SDL_SCANCODE_RIGHT: {
@@ -219,7 +218,7 @@ class PlatformDemo {
 			if(@frame % 5 = 0) {
 				# setup walk frames
 				if(@hero_x_direction <> 0) {
-					if(@hero_jump_height <= 0) {
+					if(@hero_jump_height = 0) {
 						@hero_walk_frame += 1;
 						if(@hero_walk_frame >= @hero->GetClipCount()) {
 							@hero_walk_frame := 0;
@@ -236,7 +235,8 @@ class PlatformDemo {
 					@hero_map_pixel_position += @move_speed;
 				}
 				# walking left
-				else if(@hero_x_direction = -1 &  @hero_bounds[2] = 0) {
+				else if(@hero_x_direction = -1 &  @hero_bounds[2] = 0 & 
+						@hero_map_pixel_position > @hero_x) { 
 					@bg_x += @bg->GetWidth() / 50;
 					if(@bg_x > 0) {
 						@bg_x := -1 * @bg->GetWidth();
@@ -253,14 +253,10 @@ class PlatformDemo {
 					if(@hero_jump_height >= 1.5 * BLOCK_HEIGHT) {
 						@hero_jumping := false;
 						@hero_jump_height -= BLOCK_HEIGHT / 8;
-						@hero_y += BLOCK_HEIGHT / 8;
 					};
-
-					@hero_y -= BLOCK_HEIGHT / 8;
 				}
-				else if(@hero_jump_height <> 0) {
+				else if(@hero_jump_height <> 0 #~ & @hero_bounds[1] = 0 ~#) {
 					@hero_jump_height -= BLOCK_HEIGHT / 8;
-					@hero_y += BLOCK_HEIGHT / 8;
 				};
 			};
 
@@ -271,7 +267,7 @@ class PlatformDemo {
 					@game_time_seconds := 120;
 				};
 				@game_time_text := "Time: {$@game_time_seconds}";
-				@game_time->RenderedText(@game_time_text, Nil);
+				@game_time->RenderedText(@game_time_text);
 			};
 		}
 		else {
@@ -293,13 +289,13 @@ class PlatformDemo {
 		hero_jump_height := -1 * @hero_jump_height;
 
 		if(@hero_jump_height < 1) {
-			@hero->Render(@hero_x, @hero_y, @hero_walk_frame);			
+			@hero->Render(@hero_x, @hero_y - @hero_jump_height, @hero_walk_frame);			
 		}
 		else if(@hero_jumping) {
-			@hero_jump->Render(@hero_x, @hero_y, @hero_jump_frame);
+			@hero_jump->Render(@hero_x, @hero_y - @hero_jump_height, @hero_jump_frame);
 		}
 		else {
-			@hero_fall->Render(@hero_x, @hero_y, @hero_fall_frame);
+			@hero_fall->Render(@hero_x, @hero_y - @hero_jump_height, @hero_fall_frame);
 		};
 		
 #		# spinning gem
@@ -329,36 +325,30 @@ class PlatformDemo {
 		};
 		@hero_map_x_block := @hero_map_pixel_position / BLOCK_WIDTH;
 
-#		@hero_map_y_block := (@hero_y + BLOCK_HEIGHT) / BLOCK_HEIGHT;
-# "view_x: {$@x_start}, {$@x_end}"->PrintLine();
 		for(x := @x_start; x < @x_end; x += 1;) {
 			x_pos := x * BLOCK_WIDTH - @hero_map_pixel_position + @hero_x;
 			
 			for(y := 0; y < @y_end; y += 1;) {
 				y_pos := y * BLOCK_HEIGHT;
-				y_pos_offset := (SCREEN_HEIGHT - (@hero_y + BLOCK_HEIGHT * 2)) / BLOCK_HEIGHT;
-# Debug("{$y_pos_offset}");
+				y_pos_offset := (SCREEN_HEIGHT - (@hero_y - @hero_jump_height + BLOCK_HEIGHT * 2)) / BLOCK_HEIGHT;
 
 				type := @platform_grid[y, x];
 
-# TODO: adjust y based upon hero jump
-				
 				# top
 				if(x - @x_start = 2 & y = @y_end - y_pos_offset - 3) {
 					@hero_bounds[0] := type;
-# "top: {$x_pos}, {$y_pos}: type={$type}"->PrintLine();
+# Debug("top: {$x_pos}, {$y_pos}: type={$type}");
 				};
 
 				# bottom
 				if(x - @x_start = 2 & y = @y_end - y_pos_offset) {
 					@hero_bounds[1] := type;
-# Debug("bottom: {$x_pos}, {$y_pos}: type={$type}");
+Debug("bottom: {$x_pos}, {$y_pos}: type={$type}; hero_y={$@hero_y}");
 				};
 
 				# bottom left
-				if(x - @x_start = 1 & x_pos % BLOCK_WIDTH = 28 & y = @y_end - y_pos_offset - 1) {
-foo := x_pos % BLOCK_WIDTH;					
-Debug("bottom left: {$x_pos}, {$y_pos}: foo={$foo}: type={$type}");
+				if(x - @x_start = 2 & y = @y_end - y_pos_offset - 1) {
+# Debug("bottom left: {$x_pos}, {$y_pos}: type={$type}");
 					@hero_bounds[2] := type;
 				};
 
@@ -369,15 +359,15 @@ Debug("bottom left: {$x_pos}, {$y_pos}: foo={$foo}: type={$type}");
 				};
 
 				# top left
-				if(x - @x_start = 1 & y = @y_end - y_pos_offset - 2) {
+				if(x - @x_start = 2 & y = @y_end - y_pos_offset - 2) {
 					@hero_bounds[4] := type;
-# "top left: {$x_pos}, {$y_pos}: type={$type}"->PrintLine();
+# Debug("top left: {$x_pos}, {$y_pos}: type={$type}");
 				};
 
 				# top right
 				if(x - @x_start = 3 & y = @y_end - y_pos_offset - 2) {
 					@hero_bounds[5] := type;
-# "top right: {$x_pos}, {$y_pos}: type={$type}"->PrintLine();
+# Debug("top right: {$x_pos}, {$y_pos}: type={$type}");
 				};
 
 				select(type) {
@@ -426,9 +416,9 @@ Debug("bottom left: {$x_pos}, {$y_pos}: foo={$foo}: type={$type}");
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-			[0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-			[0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+			[0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+			[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 		];
 
