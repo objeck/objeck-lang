@@ -347,10 +347,13 @@ class PlatformDemo {
 # "top: {$x_pos}, {$y_pos}: type={$type}"->PrintLine();
 				};
 
+foo := (SCREEN_HEIGHT - (@hero_y + BLOCK_HEIGHT * 2)) / BLOCK_HEIGHT;
+Debug("{$foo}");
+
 				# bottom
 				if(x - @x_start = 2 & y = @y_end - 2) {
 					@hero_bounds[1] := type;
-# "bottom: {$x_pos}, {$y_pos}: type={$type}"->PrintLine();
+# Debug("bottom: {$x_pos}, {$y_pos}: type={$type}");
 				};
 
 				# bottom left
