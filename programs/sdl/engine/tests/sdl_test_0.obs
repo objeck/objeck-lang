@@ -19,49 +19,6 @@ class PlatformDemo {
 	BLOCK_WIDTH : Int;
 	BLOCK_HEIGHT : Int;
 	@frame : Int;
-	
-	# background
-	@bg : ImageSprite;
-	@bg_x : Int;
-	@bg_y : Int;
-	@move_speed : Int;
-
-	# hero images
-	@hero : AnimatedImageSprite;
-	@hero_jump : AnimatedImageSprite;
-	@hero_fall : AnimatedImageSprite;
-	@hero_flip : Bool;
-
-	# hero positions
-	@hero_walk_frame : Int;
-	@hero_jump_frame : Int;
-	@hero_fall_frame : Int;
-
-	@hero_x : Int;
-	@hero_y : Int;
-	@hero_bounds : Int[];
-
-	@hero_map_x_block : Int;
-	@hero_map_pixel_position : Int;
-	@hero_x_direction : Int;
-	
-	# hero jumping
-	@hero_jumping : Bool;
-	@hero_jump_height : Int;
-
-	# obstacles
-	@block1 : ImageSprite;
-	@block2 : ImageSprite;
-	@block3 : ImageSprite;
-	@block4 : ImageSprite;
-	@fauna1 : ImageSprite;
-	@fauna2 : ImageSprite;
-	@fauna3 : ImageSprite;
-	@spikes1 : ImageSprite;
-
-	# gem stuff
-	@gems : AnimatedImageSprite;
-	@gems_index : Int;
 
 	# game grid
 	@platform_grid : Int[,];
@@ -70,11 +27,17 @@ class PlatformDemo {
 	@x_end : Int;
 	@y_end : Int;
 
-	# game timer
-	@game_time : TextSprite;
-	@game_time_seconds : Int;
-	@game_time_text : String;
-	
+	# player
+	@player_map_x_block : Int;
+	@player_map_pixel_position : Int;
+	@player_x_direction : Int;
+	@player_x : Int;
+	@player_y : Int;
+	@player_bounds : Int[];
+
+	@player_jumping : Bool;
+	@player_jump_height : Int;
+
 	function : Main(args : String[]) ~ Nil {
 		platform := PlatformDemo->New();
 		platform->Run();
@@ -101,34 +64,16 @@ class PlatformDemo {
 
 		@game := GameEngine->New(SCREEN_WIDTH, SCREEN_HEIGHT, "Engine Zero");
 
-		@bg := @game->AddImageSprite("../../../../programs/sdl/engine/tests/media/images/hills.png");
-		@block1 := @game->AddImageSprite("../../../../programs/sdl/engine/tests/media/images/block1.png");
-		@block2 := @game->AddImageSprite("../../../../programs/sdl/engine/tests/media/images/block2.png");
-		@block3 := @game->AddImageSprite("../../../../programs/sdl/engine/tests/media/images/block3.png");
-		@block4 := @game->AddImageSprite("../../../../programs/sdl/engine/tests/media/images/block4.png");
-		@fauna1 := @game->AddImageSprite("../../../../programs/sdl/engine/tests/media/images/fauna1.png");
-		@fauna2 := @game->AddImageSprite("../../../../programs/sdl/engine/tests/media/images/fauna3.png");
-		@fauna3 := @game->AddImageSprite("../../../../programs/sdl/engine/tests/media/images/fauna3.png");
-		@spikes1 := @game->AddImageSprite("../../../../programs/sdl/engine/tests/media/images/spikes1.png");
-		@hero := @game->AddAnimatedImageSprite("../../../../programs/sdl/engine/tests/media/images/walk.png", 6);
-		@hero_jump := @game->AddAnimatedImageSprite("../../../../programs/sdl/engine/tests/media/images/jump.png", 3);
-		@hero_fall := @game->AddAnimatedImageSprite("../../../../programs/sdl/engine/tests/media/images/fall.png", 3);
-		@gems := @game->AddAnimatedImageSprite("../../../../programs/sdl/engine/tests/media/images/gems.png", 6);
-
 		@game_time := @game->AddTextSprite();
 		@platform_grid := CreatePlatform();
 		platform_dims := @platform_grid->Size();
 		@platform_grid_length := platform_dims[1];
 
-		@bg_x := 0;
-		@bg_y := 0;
-		@move_speed := 12;
-
-		@hero_x := 2 * BLOCK_WIDTH;
-		@hero_y := SCREEN_HEIGHT - (@hero->GetHeight() + 2 * BLOCK_HEIGHT);
-		@hero_bounds := Int->New[6];
-		@hero_map_pixel_position := @hero_x;
-		@hero_map_x_block := @hero_map_pixel_position / BLOCK_WIDTH;
+		@player_x := 2 * BLOCK_WIDTH;
+		@player_y := SCREEN_HEIGHT - (@player->GetHeight() + 2 * BLOCK_HEIGHT);
+		@player_bounds := Int->New[6];
+		@player_map_pixel_position := @player_x;
+		@player_map_x_block := @player_map_pixel_position / BLOCK_WIDTH;
 
 		@frame := 1;
 		
@@ -175,28 +120,15 @@ class PlatformDemo {
 		if(e->GetType() = EventType->SDL_KEYDOWN & e->GetKey()->GetRepeat() = 0) {
 	        select(e->GetKey()->GetKeysym()->GetScancode()) {    	
 	            label Scancode->SDL_SCANCODE_SPACE: {
-	            	if(@hero_jump_height = 0) {
-	            		@hero_jumping := true;
-	            	};
+	            	
 	            }
 
 	            label Scancode->SDL_SCANCODE_LEFT: {
-	            	@hero->SetFlip(RendererFlip->SDL_FLIP_HORIZONTAL);
-		            @hero_jump->SetFlip(RendererFlip->SDL_FLIP_HORIZONTAL);
-		            @hero_fall->SetFlip(RendererFlip->SDL_FLIP_HORIZONTAL);
-
-		            @hero_flip := true;
-		            @hero_x_direction := -1;
+	            	
 	            }
 
 	            label Scancode->SDL_SCANCODE_RIGHT: {
-	            	if(@hero_flip) {
-	            		@hero->SetFlip(RendererFlip->SDL_FLIP_NONE);
-	            		@hero_jump->SetFlip(RendererFlip->SDL_FLIP_NONE);
-	            		@hero_fall->SetFlip(RendererFlip->SDL_FLIP_NONE);
-	            		@hero_flip := false;
-	            	};
-	            	@hero_x_direction := 1;
+	            	
 	            }        	            
 	        };
 	    }
@@ -204,7 +136,7 @@ class PlatformDemo {
 	        select(e->GetKey()->GetKeysym()->GetScancode()) {
 	        	label Scancode->SDL_SCANCODE_LEFT:
 	            label Scancode->SDL_SCANCODE_RIGHT: {
-	            	@hero_x_direction := 0;
+	            	@player_x_direction := 0;
 	            }
 	        };
 	    };   
@@ -214,61 +146,6 @@ class PlatformDemo {
 		@frame += 1;
 
 		if(@frame <= @game->GetFps()) {
-			# handle x movement
-			if(@frame % 5 = 0) {
-				# setup walk frames
-				if(@hero_x_direction <> 0) {
-					if(@hero_jump_height = 0) {
-						@hero_walk_frame += 1;
-						if(@hero_walk_frame >= @hero->GetClipCount()) {
-							@hero_walk_frame := 0;
-						};
-					};
-				};
-				
-				# walking right
-				if(@hero_x_direction = 1 & @hero_bounds[3] = 0) {
-					@bg_x -= @bg->GetWidth() / 50;
-					if(@bg_x < -1 * @bg->GetWidth()) {
-						@bg_x := 0;
-					};
-					@hero_map_pixel_position += @move_speed;
-				}
-				# walking left
-				else if(@hero_x_direction = -1 &  @hero_bounds[2] = 0 & 
-						@hero_map_pixel_position > @hero_x) { 
-					@bg_x += @bg->GetWidth() / 50;
-					if(@bg_x > 0) {
-						@bg_x := -1 * @bg->GetWidth();
-					};
-					@hero_map_pixel_position -= @move_speed;
-				};
-			};
-
-			# handle y movement
-			if(@frame % 2 = 0) {
-				if(@hero_jumping) {
-					@hero_jump_height += BLOCK_HEIGHT / 8;
-
-					if(@hero_jump_height >= 1.5 * BLOCK_HEIGHT) {
-						@hero_jumping := false;
-						@hero_jump_height -= BLOCK_HEIGHT / 8;
-					};
-				}
-				else if(@hero_jump_height <> 0 #~ & @hero_bounds[1] = 0 ~#) {
-					@hero_jump_height -= BLOCK_HEIGHT / 8;
-				};
-			};
-
-			# handle timer
-			if(@frame % @game->GetFps() = 0) {
-				@game_time_seconds -= 1;
-				if(@game_time_seconds < 0) {
-					@game_time_seconds := 120;
-				};
-				@game_time_text := "Time: {$@game_time_seconds}";
-				@game_time->RenderedText(@game_time_text);
-			};
 		}
 		else {
 			@frame := 1;
@@ -278,31 +155,12 @@ class PlatformDemo {
 	method : RenderFrame() ~ Nil {
 		@game->Clear();
 
-		#background
-		@bg->Render(@bg_x, 0);
-		@bg->Render(@bg_x + @bg->GetWidth(), 0);
-
 		# platform
 		RenderPlatform();
 
 		# hero
-		hero_jump_height := -1 * @hero_jump_height;
-
-		if(@hero_jump_height < 1) {
-			@hero->Render(@hero_x, @hero_y - @hero_jump_height, @hero_walk_frame);			
-		}
-		else if(@hero_jumping) {
-			@hero_jump->Render(@hero_x, @hero_y - @hero_jump_height, @hero_jump_frame);
-		}
-		else {
-			@hero_fall->Render(@hero_x, @hero_y - @hero_jump_height, @hero_fall_frame);
-		};
-		
-#		# spinning gem
-#		@gems->Render(@gems->GetWidth() * 3, @gems->GetHeight() * 2, @gems_index);
-
-		# timer
-		@game_time->Render(16, 16);
+		player_jump_height := -1 * @player_jump_height;
+		@player->Render(@player_x, @player_y - @player_jump_height);
 
 		@game->Show();
 	}
@@ -311,92 +169,39 @@ class PlatformDemo {
 		@x_end := SCREEN_WIDTH / BLOCK_WIDTH;
 		@y_end := SCREEN_HEIGHT / BLOCK_HEIGHT;
 
-		@x_start := @hero_map_x_block - (@hero_x / BLOCK_WIDTH);
+		@x_start := @player_map_x_block - (@player_x / BLOCK_WIDTH);
 		@x_end += @x_start + 1;
 
-		@screen_left_edge := @x_start < 0;
-		if(@screen_left_edge) {
+		screen_left_edge := @x_start < 0;
+		if(screen_left_edge) {
 			@x_start := 0;
 		};
 
-		@screen_right_edge := @x_end > @platform_grid_length;
-		if(@screen_right_edge) {
+		screen_right_edge := @x_end > @platform_grid_length;
+		if(screen_right_edge) {
 			@x_end := @platform_grid_length;
 		};
-		@hero_map_x_block := @hero_map_pixel_position / BLOCK_WIDTH;
+		@player_map_x_block := @player_map_pixel_position / BLOCK_WIDTH;
 
 		for(x := @x_start; x < @x_end; x += 1;) {
-			x_pos := x * BLOCK_WIDTH - @hero_map_pixel_position + @hero_x;
+			x_pos := x * BLOCK_WIDTH - @player_map_pixel_position + @player_x;
 			
 			for(y := 0; y < @y_end; y += 1;) {
 				y_pos := y * BLOCK_HEIGHT;
-				y_pos_offset := (SCREEN_HEIGHT - (@hero_y - @hero_jump_height + BLOCK_HEIGHT * 2)) / BLOCK_HEIGHT;
-
+				
 				type := @platform_grid[y, x];
-
-				# top
-				if(x - @x_start = 2 & y = @y_end - y_pos_offset - 3) {
-					@hero_bounds[0] := type;
-# Debug("top: {$x_pos}, {$y_pos}: type={$type}");
-				};
-
-				# bottom
-				if(x - @x_start = 2 & y = @y_end - y_pos_offset) {
-					@hero_bounds[1] := type;
-Debug("bottom: {$x_pos}, {$y_pos}: type={$type}; hero_y={$@hero_y}");
-				};
-
-				# bottom left
-				if(x - @x_start = 2 & y = @y_end - y_pos_offset - 1) {
-# Debug("bottom left: {$x_pos}, {$y_pos}: type={$type}");
-					@hero_bounds[2] := type;
-				};
-
-				# bottom right
-				if(x - @x_start = 3 & y = @y_end - y_pos_offset - 1) {
-					@hero_bounds[3] := type;
-# Debug("bottom right: {$x_pos}, {$y_pos}: type={$type}");
-				};
-
-				# top left
-				if(x - @x_start = 2 & y = @y_end - y_pos_offset - 2) {
-					@hero_bounds[4] := type;
-# Debug("top left: {$x_pos}, {$y_pos}: type={$type}");
-				};
-
-				# top right
-				if(x - @x_start = 3 & y = @y_end - y_pos_offset - 2) {
-					@hero_bounds[5] := type;
-# Debug("top right: {$x_pos}, {$y_pos}: type={$type}");
-				};
 
 				select(type) {
 					label 1: {
-						@block1->Render(x_pos, y_pos);
+#						@block1->Render(x_pos, y_pos);
 					}
 
 					label 2: {
-						@block2->Render(x_pos, y_pos);
+#						@block2->Render(x_pos, y_pos);
 					}
 
 					label 3: {
-						@block3->Render(x_pos, y_pos);
-					}
-
-					label 4: {
-						@block4->Render(x_pos, y_pos);
-					}
-
-					label 5: {
-						@fauna1->Render(x_pos, y_pos);
-					}
-
-					label 6: {
-						@fauna2->Render(x_pos, y_pos);
-					}
-
-					label 7: {
-						@spikes1->Render(x_pos, y_pos);
+#						@block3->Render(x_pos, y_pos);
 					}
 				};
 			};
