@@ -215,7 +215,6 @@ class PlatformDemo {
 		@frame += 1;
 
 		if(@frame <= @game->GetFps()) {
-
 			# handle x movement
 			if(@frame % 5 = 0) {
 				# setup walk frames
@@ -263,9 +262,6 @@ class PlatformDemo {
 					@hero_jump_height -= BLOCK_HEIGHT / 8;
 					@hero_y += BLOCK_HEIGHT / 8;
 				};
-# @hero_jumping
-# @hero_jump_height
-
 			};
 
 			# handle timer
