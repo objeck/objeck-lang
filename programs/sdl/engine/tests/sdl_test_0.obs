@@ -229,7 +229,7 @@ class PlatformDemo {
 				};
 				
 				# walking right
-				if(@hero_x_direction = 1 #~ & @hero_bounds[3] = 0 ~#) {
+				if(@hero_x_direction = 1 & @hero_bounds[3] = 0) {
 					@bg_x -= @bg->GetWidth() / 50;
 					if(@bg_x < -1 * @bg->GetWidth()) {
 						@bg_x := 0;
@@ -237,13 +237,35 @@ class PlatformDemo {
 					@hero_map_pixel_position += @move_speed;
 				}
 				# walking left
-				else if(@hero_x_direction = -1 #~ &  @hero_bounds[2] = 0 ~#) {
+				else if(@hero_x_direction = -1 &  @hero_bounds[2] = 0) {
 					@bg_x += @bg->GetWidth() / 50;
 					if(@bg_x > 0) {
 						@bg_x := -1 * @bg->GetWidth();
 					};
 					@hero_map_pixel_position -= @move_speed;
 				};
+			};
+
+			# handle y movement
+			if(@frame % 2 = 0) {
+				if(@hero_jumping) {
+					@hero_jump_height += BLOCK_HEIGHT / 8;
+
+					if(@hero_jump_height >= 1.5 * BLOCK_HEIGHT) {
+						@hero_jumping := false;
+						@hero_jump_height -= BLOCK_HEIGHT / 8;
+						@hero_y += BLOCK_HEIGHT / 8;
+					};
+
+					@hero_y -= BLOCK_HEIGHT / 8;
+				}
+				else if(@hero_jump_height <> 0) {
+					@hero_jump_height -= BLOCK_HEIGHT / 8;
+					@hero_y += BLOCK_HEIGHT / 8;
+				};
+# @hero_jumping
+# @hero_jump_height
+
 			};
 
 			# handle timer
@@ -321,41 +343,44 @@ class PlatformDemo {
 
 				type := @platform_grid[y, x];
 
-# TODO: adjust y based upon hero y
+# TODO: adjust y based upon hero jump
 
 				# top
 				if(x - @x_start = 2 & y = @y_end - 5) {
-					@hero_bounds[0] :=  type;
+					@hero_bounds[0] := type;
 # "top: {$x_pos}, {$y_pos}: type={$type}"->PrintLine();
 				};
 
 				# bottom
 				if(x - @x_start = 2 & y = @y_end - 2) {
-					@hero_bounds[1] :=  type;
+					@hero_bounds[1] := type;
 # "bottom: {$x_pos}, {$y_pos}: type={$type}"->PrintLine();
 				};
 
 				# bottom left
-				if(x - @x_start = 1 & y = @y_end - 3) {
-					@hero_bounds[2] :=  type;
-Debug("bottom left: {$x_pos}, {$y_pos}: type={$type}");
+				if(x - @x_start = 1 & x_pos % BLOCK_WIDTH = 0 & y = @y_end - 3) {
+					@hero_bounds[2] := type;
+# Debug("bottom left: {$x_pos}, {$y_pos}: type={$type}");
+				}
+				else if(x - @x_start = 1 & y = @y_end - 3) {
+					@hero_bounds[2] := 0;
 				};
 
 				# bottom right
 				if(x - @x_start = 3 & y = @y_end - 3) {
-					@hero_bounds[3] :=  type;
-# "bottom right: {$x_pos}, {$y_pos}: type={$type}"->PrintLine();
+					@hero_bounds[3] := type;
+# Debug("bottom right: {$x_pos}, {$y_pos}: type={$type}");
 				};
 
 				# top left
 				if(x - @x_start = 1 & y = @y_end - 4) {
-					@hero_bounds[4] :=  type;
+					@hero_bounds[4] := type;
 # "top left: {$x_pos}, {$y_pos}: type={$type}"->PrintLine();
 				};
 
 				# top right
 				if(x - @x_start = 3 & y = @y_end - 4) {
-					@hero_bounds[5] :=  type;
+					@hero_bounds[5] := type;
 # "top right: {$x_pos}, {$y_pos}: type={$type}"->PrintLine();
 				};
 
@@ -406,7 +431,7 @@ Debug("bottom left: {$x_pos}, {$y_pos}: type={$type}");
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-			[0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+			[0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 			[0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 		];
