@@ -16,6 +16,10 @@ consts Environment  {
 class PlatformDemo {
 	@game : GameEngine;
 	@game_map : Int[,];
+
+	@player : Rectangle;
+	@space : Rectangle;
+	@solid : Rectangle;
 	
 	function : Main(args : String[]) ~ Nil {
 		platform := PlatformDemo->New();
@@ -24,6 +28,12 @@ class PlatformDemo {
 
 	New() {
 		@game := GameEngine->New(Environment->SCREEN_WIDTH, Environment->SCREEN_HEIGHT, "Engine Zero");
+		
+		@player := @game->AddRectangle(Environment->BLOCK_WIDTH, 
+			Environment->BLOCK_HEIGHT->As(Int) * 2);
+		@space := @game->AddRectangle(Environment->BLOCK_WIDTH, Environment->BLOCK_HEIGHT);
+		@solid := @game->AddRectangle(Environment->BLOCK_WIDTH, Environment->BLOCK_HEIGHT);
+
 		@game_map := CreateMap();
 	}
 
@@ -108,6 +118,8 @@ class PlatformDemo {
 		x := dims[1];
 
 		GameEngine->Debug("x={$x}, y={$y}");
+
+		@space->Render(10, 10);
 	}
 
 	method : native : CreateMap() ~ Int[,] {

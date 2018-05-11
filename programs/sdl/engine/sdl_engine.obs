@@ -184,10 +184,12 @@ bundle SDL2.Game {
 	class Rectangle implements Thing {
 		@render_rect : Rect;
 		@renderer : Renderer;
+		@color : Color;
+		@fill : Bool;
 
-		New(renderer : Renderer) {
+		New(renderer : Renderer, w : Int, h : Int) {
 			@renderer := renderer;
-			@render_rect := Rect->New();
+			@render_rect := Rect->New(10, 10, w, h);
 		}
 
 		method : public : Free() ~ Nil {			
@@ -202,12 +204,37 @@ bundle SDL2.Game {
 		}
 
 		method : SetColor(color : Color) ~ Nil {
+			@color := color;
 		}
 
-		method : public : Fill() ~ Nil {
+		method : public : SetFill(fill : Bool) ~ Nil {
+			@fill := fill;
+		}
+
+		method : public : GetFill() ~ Bool {
+			return @fill;
 		}
 
 		method : public : Render(x : Int, y : Int) ~ Nil {
+			if(@color = Nil) {
+				@color := Color->New();
+			};
+
+			@renderer->SetDrawColor(@color->GetR(), @color->GetG(), @color->GetB(), @color->GetA());
+
+			@renderer->DrawRect(@render_rect);
+
+
+			if(@fill) {
+"-- 2 --" ->PrintLine();				
+#				@renderer->DrawRect(@render_rect);
+
+			}
+			else {
+"-- 3 --" ->PrintLine();				
+#				@renderer->FillRect(@render_rect);
+			};
+
 		}
 	}
 
@@ -365,8 +392,8 @@ bundle SDL2.Game {
 			@renderer->Present();
 		}
 
-		method : public : AddRectangle() ~ Rectangle {
-			thing := Rectangle->New(@renderer);
+		method : public : AddRectangle(w : Int, h : Int) ~ Rectangle {
+			thing := Rectangle->New(@renderer, w, h);
 			@things->AddBack(thing);
 
 			return thing;

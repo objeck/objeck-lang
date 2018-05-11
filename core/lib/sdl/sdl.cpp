@@ -1978,6 +1978,23 @@ extern "C" {
     APITools_SetIntValue(context, 0, SDL_SetRenderDrawColor(renderer, r, g, b, a));
   }
 
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_renderer_get_render_draw_color(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+
+    Uint8 r, g, b, a;
+    const int return_value = SDL_GetRenderDrawColor(renderer, &r, &g, &b, &a);
+    
+    APITools_SetIntValue(context, 2, r);
+    APITools_SetIntValue(context, 3, g);
+    APITools_SetIntValue(context, 4, b);
+    APITools_SetIntValue(context, 5, a);
+    
+    APITools_SetIntValue(context, 0, return_value);
+  }
+
   //
   // texture
   //
