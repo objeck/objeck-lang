@@ -131,7 +131,7 @@ bundle SDL2.Game {
 		}
 	}
 
-	class Sprite {
+	class Sprite implements Thing {
 		@texture : Texture;
 		@render_rect : Rect;
 		@renderer : Renderer;
@@ -179,6 +179,38 @@ bundle SDL2.Game {
 		method : public : GetHeight() ~ Int {
 			return @render_rect->GetH();
 		}
+	}
+
+	class Rectangle implements Thing {
+		@render_rect : Rect;
+		@renderer : Renderer;
+
+		New(renderer : Renderer) {
+			@renderer := renderer;
+			@render_rect := Rect->New();
+		}
+
+		method : public : GetWidth() ~ Int {
+			return @render_rect->GetW();
+		}
+
+		method : public : GetHeight() ~ Int {
+			return @render_rect->GetH();
+		}
+
+		method : SetColor(color : Color) ~ Nil {
+		}
+
+		method : public : Fill() ~ Nil {
+		}
+
+		method : public : Render(x : Int, y : Int) ~ Nil {
+		}
+	}
+
+	interface Thing {
+		method : public : virtual : GetWidth() ~ Int;
+		method : public : virtual: GetHeight() ~ Int;
 	}
 
 	class GameEngine {
