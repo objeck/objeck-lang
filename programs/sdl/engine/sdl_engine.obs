@@ -190,6 +190,9 @@ bundle SDL2.Game {
 			@render_rect := Rect->New();
 		}
 
+		method : public : Free() ~ Nil {			
+		}
+
 		method : public : GetWidth() ~ Int {
 			return @render_rect->GetW();
 		}
@@ -210,7 +213,8 @@ bundle SDL2.Game {
 
 	interface Thing {
 		method : public : virtual : GetWidth() ~ Int;
-		method : public : virtual: GetHeight() ~ Int;
+		method : public : virtual : GetHeight() ~ Int;
+		method : public : virtual : Free() ~ Nil;
 	}
 
 	class GameEngine {
@@ -223,31 +227,45 @@ bundle SDL2.Game {
 		@fps : Int;
 		@frame_start : Int;
 
-		@sprites : Vector;
+		@things : Vector;
 
 		@font : Font;
 		@joystick : Joystick;
 
 		@event : Event;
 
+		@debug_msg : static : String;
+
 		New(screen_width : Int, screen_height : Int, title : String, fps : Int, init_flags : Int) {
 			@fps := fps;
 			@frame_rate := 1000 / @fps;
-			@sprites := Vector->New();
+			@things := Vector->New();
 			
 			@is_ok := Init(screen_width, screen_height, title, init_flags);
 		}
+
 		New(screen_width : Int, screen_height : Int, title : String) {
 			init_flags := HardwareFlags->SDL_INIT_VIDEO->As(Int) or
 				HardwareFlags->SDL_INIT_AUDIO->As(Int) or 
 				HardwareFlags->SDL_INIT_JOYSTICK->As(Int);
 			@fps := 60;	
 			@frame_rate := 1000 / 60;
-			@sprites := Vector->New();
+			@things := Vector->New();
 			
 			@is_ok := Init(screen_width, screen_height, title, init_flags);
 		}
 
+		function : Debug(debug_msg : String) ~ Nil {
+			if(@debug_msg = Nil) {
+				@debug_msg := debug_msg;
+				@debug_msg->ErrorLine();
+			}
+			else if(<>debug_msg->Equals(@debug_msg)) {
+				@debug_msg := debug_msg;
+				@debug_msg->ErrorLine();
+			};
+		}
+		
 		method : Init(screen_width : Int, screen_height : Int, title : String, init_flags : Int) ~ Bool {
 			success := true;
 
@@ -347,38 +365,47 @@ bundle SDL2.Game {
 			@renderer->Present();
 		}
 
-		method : public : AddTextSprite() ~ TextSprite {
-			sprite := TextSprite->New(@renderer, @font);
-			@sprites->AddBack(sprite);
+		method : public : AddRectangle() ~ Rectangle {
+			thing := Rectangle->New(@renderer);
+			@things->AddBack(thing);
 
-			return sprite;
+			return thing;
+		}
+
+		method : public : AddTextSprite() ~ TextSprite {
+			thing := TextSprite->New(@renderer, @font);
+			@things->AddBack(thing);
+
+			return thing;
 		}
 
 		method : public : AddImageSprite(file : String) ~ ImageSprite {
-			sprite := ImageSprite->New(@renderer, file);
-			@sprites->AddBack(sprite);
+			thing := ImageSprite->New(@renderer, file);
+			@things->AddBack(thing);
 
-			return sprite;
+			return thing;
 		}
 
 		method : public : AddAnimatedImageSprite(file : String, clip_count : Int) ~ AnimatedImageSprite {
-			sprite := AnimatedImageSprite->New(@renderer, file, clip_count);
-			@sprites->AddBack(sprite);
+			thing := AnimatedImageSprite->New(@renderer, file, clip_count);
+			@things->AddBack(thing);
 
-			return sprite;
+			return thing;
 		}
 
-		method : public : RemoveSprite(sprite : Sprite) ~ Bool {
+		method : public : RemoveSprite(thing : Thing) ~ Bool {
 			found := -1;
 			
-			for(i := 0; i < @sprites->Size() & found < 0; i +=1;) {
-				if(@sprites->Get(i) = sprite) {
+			for(i := 0; i < @things->Size() & found < 0; i +=1;) {
+				if(@things->Get(i) = thing) {
 					found := i;
 				};
 			};
 
 			if(found > -1) {
-				@sprites->Remove(found);
+				@things->Remove(found);
+				thing->Free();
+
 				return true;
 			};
 
@@ -386,9 +413,9 @@ bundle SDL2.Game {
 		}
 
 		method : public : Quit() ~ Nil {
-			each(i : @sprites) {
-				sprite := @sprites->Get(i)->As(Sprite);
-				sprite->Free();
+			each(i : @things) {
+				thing := @things->Get(i)->As(Thing);
+				thing->Free();
 			};
 
 			if(@event <> Nil) {

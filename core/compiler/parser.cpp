@@ -329,7 +329,7 @@ void Parser::ParseBundle(int depth)
   }
   // error
   else {
-    ProcessError(L"Expected 'use', 'bundle', 'class, 'enum', or 'interface'");
+    ProcessError(L"Expected 'use', 'bundle', 'class, 'interface', 'enum' or 'consts'");
   }
 }
 
