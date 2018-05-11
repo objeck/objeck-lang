@@ -28,11 +28,16 @@ class PlatformDemo {
 
 	New() {
 		@game := GameEngine->New(Environment->SCREEN_WIDTH, Environment->SCREEN_HEIGHT, "Engine Zero");
+		@game->SetClearColor(Color->New());
 		
 		@player := @game->AddRectangle(Environment->BLOCK_WIDTH, 
 			Environment->BLOCK_HEIGHT->As(Int) * 2);
+		
 		@space := @game->AddRectangle(Environment->BLOCK_WIDTH, Environment->BLOCK_HEIGHT);
+		@space->SetColor(Color->New(0, 177, 64));
+
 		@solid := @game->AddRectangle(Environment->BLOCK_WIDTH, Environment->BLOCK_HEIGHT);
+		@solid->SetColor(Color->New(204, 0, 0));
 
 		@game_map := CreateMap();
 	}
@@ -114,12 +119,15 @@ class PlatformDemo {
 
 	method : native : RenderPlatform() ~ Nil {
 		dims := @game_map->Size();
-		y := dims[0];
-		x := dims[1];
+		y_end := dims[0];
+		x_end := dims[1];
 
-		GameEngine->Debug("x={$x}, y={$y}");
-
-		@space->Render(10, 10);
+		for(x := 0; x < 20; x += 1;) {
+			for(y := 0; y < y_end; y += 1;) {
+				@space->Render(x * Environment->BLOCK_WIDTH->As(Int), 
+					y * Environment->BLOCK_HEIGHT->As(Int));
+			};
+		};
 	}
 
 	method : native : CreateMap() ~ Int[,] {

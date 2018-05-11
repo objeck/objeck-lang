@@ -189,7 +189,7 @@ bundle SDL2.Game {
 
 		New(renderer : Renderer, w : Int, h : Int) {
 			@renderer := renderer;
-			@render_rect := Rect->New(10, 10, w, h);
+			@render_rect := Rect->New(w, h);
 		}
 
 		method : public : Free() ~ Nil {			
@@ -203,8 +203,12 @@ bundle SDL2.Game {
 			return @render_rect->GetH();
 		}
 
-		method : SetColor(color : Color) ~ Nil {
+		method : public : SetColor(color : Color) ~ Nil {
 			@color := color;
+		}
+
+		method : public : GetColor() ~ Color {
+			return @color;
 		}
 
 		method : public : SetFill(fill : Bool) ~ Nil {
@@ -220,6 +224,8 @@ bundle SDL2.Game {
 				@color := Color->New();
 			};
 
+			@render_rect->SetX(x);
+			@render_rect->SetY(y);
 			@renderer->SetDrawColor(@color->GetR(), @color->GetG(), @color->GetB(), @color->GetA());
 
 			if(@fill) {
@@ -243,6 +249,7 @@ bundle SDL2.Game {
 		@screen_height : Int;
 		@renderer : Renderer;
 
+		@clear_color : Color;
 		@frame_rate : Int;
 		@fps : Int;
 		@frame_start : Int;
@@ -376,8 +383,22 @@ bundle SDL2.Game {
 			};
 		}
 
+		method : public : SetClearColor(color : Color) ~ Nil {
+			@clear_color := color;
+		}
+
+		method : public : GetClearColor() ~ Color {
+			return @clear_color;
+		}
+
 		method : public : Clear() ~ Nil {
-			@renderer->SetDrawColor(0xFF, 0xFF, 0xFF, 0xFF);
+			if(@clear_color = Nil) {
+				@renderer->SetDrawColor(0xFF, 0xFF, 0xFF, 0xFF);
+			}
+			else {
+				@renderer->SetDrawColor(@clear_color->GetR(), @clear_color->GetG(), 
+					@clear_color->GetB(), @clear_color->GetA());
+			};
 			@renderer->Clear();
 		}
 
