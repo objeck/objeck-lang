@@ -7,6 +7,7 @@
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
+ *
  * - Redistributions of source code must retain the above copyright 
  * notice, this list of conditions and the following disclaimer.
  * - Redistributions in binary form must reproduce the above copyright
@@ -541,7 +542,7 @@ extern "C" {
 #endif
   void sdl_surface_fill_rect(VMContext& context) {
     SDL_Surface* surface = (SDL_Surface*)APITools_GetIntValue(context, 1);
-     size_t* rect_obj = APITools_GetObjectValue(context, 2);
+    size_t* rect_obj = APITools_GetObjectValue(context, 2);
     const int color = APITools_GetIntValue(context, 3);
 
     SDL_Rect rect;
@@ -1744,10 +1745,11 @@ extern "C" {
   void sdl_renderer_render_fill_rect(VMContext& context) {
     SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
 
-    const size_t* rect_obj = (size_t*)APITools_GetObjectValue(context, 2);
-    SDL_Rect* rect = (SDL_Rect*)rect_obj[0];
+    size_t* rect_obj = (size_t*)APITools_GetObjectValue(context, 2);
+    SDL_Rect rect;
+    sdl_rect_raw_write(&rect, rect_obj);
 
-    APITools_SetIntValue(context, 0, SDL_RenderFillRect(renderer, rect));
+    APITools_SetIntValue(context, 0, SDL_RenderFillRect(renderer, rect_obj ? &rect : NULL));
   }
 
 #ifdef _WIN32
