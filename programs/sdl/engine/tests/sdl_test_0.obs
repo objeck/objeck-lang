@@ -23,6 +23,7 @@ class PlatformDemo {
 	@solid : Rectangle;
 
 	@player_direction : Int;
+	@player_position : Int;
 	
 	function : Main(args : String[]) ~ Nil {
 		platform := PlatformDemo->New();
@@ -112,11 +113,11 @@ class PlatformDemo {
 			if(@frame % 5 = 0) {
 				# left
 				if(@player_direction = -1) {
-GameEngine->Debug("-- left --");
+					@player_position -= Environment->BLOCK_WIDTH->As(Int) / 8;
 				}
 				# right
 				else if(@player_direction = 1) {
-GameEngine->Debug("-- right --");
+					@player_position += Environment->BLOCK_WIDTH->As(Int) / 8;
 				};
 			};
 		}
@@ -140,6 +141,8 @@ GameEngine->Debug("-- right --");
 		dims := @game_map->Size();
 		y_end := dims[0];
 		x_end := dims[1];
+
+GameEngine->Debug("player={$@player_position}");
 
 		for(x := 0; x < 20; x += 1;) {
 			for(y := 0; y < y_end; y += 1;) {
