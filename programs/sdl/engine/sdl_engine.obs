@@ -222,20 +222,12 @@ bundle SDL2.Game {
 
 			@renderer->SetDrawColor(@color->GetR(), @color->GetG(), @color->GetB(), @color->GetA());
 
-			@renderer->FillRect(@render_rect);
-
-#~			
-
 			if(@fill) {
-"-- 2 --" ->PrintLine();				
-#				@renderer->DrawRect(@render_rect);
-
+				@renderer->FillRect(@render_rect);
 			}
 			else {
-"-- 3 --" ->PrintLine();				
-#				@renderer->FillRect(@render_rect);
+				@renderer->DrawRect(@render_rect);
 			};
-~#
 		}
 	}
 
