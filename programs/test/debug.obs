@@ -1,15 +1,18 @@
 class Test {
-	@a : Int;
+	@a : Bool;
 
 	New() {
-		@a := 32;
 	}
 
 	method : public : Run() ~ Nil {
-		b := 8 * @a;
-		b->PrintLine();
+		if(@a) {
+			"-- false --"->PrintLine();
+		}
+		else {
+			"-- true --"->PrintLine();
+		};
 	}
-
+	
 	function : Main(args : String[]) ~ Nil {
 		Test->New()->Run();
 	}
