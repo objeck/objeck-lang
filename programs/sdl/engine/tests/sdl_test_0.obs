@@ -16,10 +16,13 @@ consts Environment  {
 class PlatformDemo {
 	@game : GameEngine;
 	@game_map : Int[,];
+	@frame : Int;
 
 	@player : Rectangle;
 	@space : Rectangle;
 	@solid : Rectangle;
+
+	@player_direction : Int;
 	
 	function : Main(args : String[]) ~ Nil {
 		platform := PlatformDemo->New();
@@ -32,11 +35,14 @@ class PlatformDemo {
 		
 		@player := @game->AddRectangle(Environment->BLOCK_WIDTH, 
 			Environment->BLOCK_HEIGHT->As(Int) * 2);
-		
+		@player->SetFill(true);
+		@player->SetColor(Color->New(12, 35, 64));
+
 		@space := @game->AddRectangle(Environment->BLOCK_WIDTH, Environment->BLOCK_HEIGHT);
 		@space->SetColor(Color->New(0, 177, 64));
 
 		@solid := @game->AddRectangle(Environment->BLOCK_WIDTH, Environment->BLOCK_HEIGHT);
+		@solid->SetFill(true);
 		@solid->SetColor(Color->New(204, 0, 0));
 
 		@game_map := CreateMap();
@@ -81,11 +87,11 @@ class PlatformDemo {
 	            }
 
 	            label Scancode->SDL_SCANCODE_LEFT: {
-	            	
+	            	@player_direction := -1;
 	            }
 
 	            label Scancode->SDL_SCANCODE_RIGHT: {
-	            	
+	            	@player_direction := 1;	
 	            }        	            
 	        };
 	    }
@@ -93,7 +99,7 @@ class PlatformDemo {
 	        select(e->GetKey()->GetKeysym()->GetScancode()) {
 	        	label Scancode->SDL_SCANCODE_LEFT:
 	            label Scancode->SDL_SCANCODE_RIGHT: {
-
+	            	@player_direction := 0;
 	            }
 	        };
 	    };   
@@ -103,6 +109,16 @@ class PlatformDemo {
 		@frame += 1;
 
 		if(@frame <= @game->GetFps()) {
+			if(@frame % 5 = 0) {
+				# left
+				if(@player_direction = -1) {
+GameEngine->Debug("-- left --");
+				}
+				# right
+				else if(@player_direction = 1) {
+GameEngine->Debug("-- right --");
+				};
+			};
 		}
 		else {
 			@frame := 1;
@@ -114,6 +130,9 @@ class PlatformDemo {
 
 		RenderPlatform();
 
+		@player->Render(Environment->BLOCK_WIDTH->As(Int) * 2,
+			Environment->SCREEN_HEIGHT->As(Int) - Environment->BLOCK_WIDTH->As(Int) * 4);
+
 		@game->Show();
 	}
 
@@ -124,8 +143,14 @@ class PlatformDemo {
 
 		for(x := 0; x < 20; x += 1;) {
 			for(y := 0; y < y_end; y += 1;) {
-				@space->Render(x * Environment->BLOCK_WIDTH->As(Int), 
-					y * Environment->BLOCK_HEIGHT->As(Int));
+				if(@game_map[y, x] = 0) {
+					@space->Render(x * Environment->BLOCK_WIDTH->As(Int), 
+						y * Environment->BLOCK_HEIGHT->As(Int));
+				}
+				else {
+					@solid->Render(x * Environment->BLOCK_WIDTH->As(Int), 
+						y * Environment->BLOCK_HEIGHT->As(Int));
+				};
 			};
 		};
 	}
@@ -143,10 +168,10 @@ class PlatformDemo {
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+			[0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+			[0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+			[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 		];
 
 		return game_map;
