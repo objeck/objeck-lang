@@ -149,11 +149,13 @@ GameEngine->Debug("player={$@player_position}, offset={$view_offset}");
 		for(x := view_offset; x < view_offset + 20; x += 1;) {
 			for(y := 0; y < y_end; y += 1;) {
 				if(@game_map[y, x] = 0) {
-					@space->Render((x - view_offset) * Environment->BLOCK_WIDTH->As(Int), 
+					@space->Render(#~ (x - view_offset) * Environment->BLOCK_WIDTH->As(Int), ~#
+						x * Environment->BLOCK_WIDTH->As(Int) - @player_position,
 						y * Environment->BLOCK_HEIGHT->As(Int));
 				}
 				else {
-					@solid->Render((x - view_offset) * Environment->BLOCK_WIDTH->As(Int), 
+					@solid->Render(#~ (x - view_offset) * Environment->BLOCK_WIDTH->As(Int), ~#
+						x * Environment->BLOCK_WIDTH->As(Int) - @player_position,
 						y * Environment->BLOCK_HEIGHT->As(Int));
 				};
 			};
