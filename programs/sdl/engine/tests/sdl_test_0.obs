@@ -173,8 +173,10 @@ class PlatformDemo {
 
 foo := x * BLOCK_WIDTH - @player_x_position;
 if(x - view_x_offset = 3 & foo = 100) {
-
-GameEngine->Debug("foo={$foo}");
+	if(@game_map[y, x] = 1) {
+bar := y * BLOCK_HEIGHT;
+GameEngine->Debug("foo={$foo}, bar={$bar}");
+};
 }
 else {
 	GameEngine->Debug("nada");
