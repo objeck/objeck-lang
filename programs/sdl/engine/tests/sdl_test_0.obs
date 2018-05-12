@@ -118,7 +118,7 @@ class PlatformDemo {
 	        };
 	    };   
 	}
-
+	
 	method : native : UpdateEvents() ~ Nil {		
 		@frame += 1;
 
@@ -165,13 +165,14 @@ class PlatformDemo {
 		y_end := dims[0];
 		x_end := dims[1];
 
-		view_offset := @player_x_position / BLOCK_WIDTH + 1;
+		view_x_offset := @player_x_position / BLOCK_WIDTH + 1;
 
-# GameEngine->Debug("player={$@player_x_position}, offset={$view_offset}");
+		view_y_offset := ((@player_y_position - @player_y_jump_height) / BLOCK_WIDTH) + 1;
+# GameEngine->Debug("player={$@player_x_position}, offset={$view_x_offset}");
 
-		for(x := view_offset; x < view_offset + 20; x += 1;) {
-			if(x - view_offset = 1) {
-				if(@game_map[12, x] = 1) {
+		for(x := view_x_offset; x < view_x_offset + 20; x += 1;) {
+			if(x - view_x_offset = 1) {
+				if(@game_map[view_y_offset, x] = 1) {
 					@player_can_move_left := false;
 				}
 				else {
@@ -179,25 +180,28 @@ class PlatformDemo {
 				};
 			};
 
-			if(x - view_offset = 2) {
-				if(@game_map[12, x] = 1) {
-GameEngine->Debug("-- CANNOT MOVE RIGHT --");
+			if(x - view_x_offset = 2) {
+				if(@game_map[view_y_offset, x] = 1) {
+# GameEngine->Debug("-- CANNOT MOVE RIGHT --");
 					@player_can_move_right := false;
 				}
 				else {
-GameEngine->Debug("-- CAN MOVE RIGHT --");					
+# GameEngine->Debug("-- CAN MOVE RIGHT --");
 					@player_can_move_right := true;
 				};
 			};
 
+			
+GameEngine->Debug("y_pos={$view_y_offset}");
+
 			for(y := 0; y < y_end; y += 1;) {
 				if(@game_map[y, x] = 0) {
-					@space->Render(#~ (x - view_offset) * BLOCK_WIDTH, ~#
+					@space->Render(#~ (x - view_x_offset) * BLOCK_WIDTH, ~#
 						x * BLOCK_WIDTH - @player_x_position,
 						y * BLOCK_HEIGHT);
 				}
 				else {
-					@solid->Render(#~ (x - view_offset) * BLOCK_WIDTH, ~#
+					@solid->Render(#~ (x - view_x_offset) * BLOCK_WIDTH, ~#
 						x * BLOCK_WIDTH - @player_x_position,
 						y * BLOCK_HEIGHT);
 				};
