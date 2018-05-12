@@ -27,9 +27,6 @@ class PlatformDemo {
 	@player_y_position : Int;
 	@player_y_jumping : Bool;
 	@player_y_jump_height : Int;
-
-	@player_can_move_right : Bool;
-	@player_can_move_left : Bool;
 	
 	function : Main(args : String[]) ~ Nil {
 		platform := PlatformDemo->New();
@@ -50,7 +47,6 @@ class PlatformDemo {
 		@player->SetColor(Color->New(12, 35, 64));
 		@player_y_position := SCREEN_HEIGHT - BLOCK_WIDTH * 4;
 		@player_can_move_right := true;
-		@player_can_move_left := true;
 
 		@space := @game->AddRectangle(BLOCK_WIDTH, BLOCK_HEIGHT);
 		@space->SetColor(Color->New(0, 177, 64));
@@ -127,11 +123,11 @@ class PlatformDemo {
 		if(@frame <= @game->GetFps()) {
 			if(@frame % 2 = 0) {
 				# left
-				if(@player_x_direction = -1 & @player_can_move_left) {
+				if(@player_x_direction = -1) {
 					@player_x_position -= BLOCK_WIDTH / 8;
 				}
 				# right
-				else if(@player_x_direction = 1 & @player_can_move_right) {
+				else if(@player_x_direction = 1) {
 					@player_x_position += BLOCK_WIDTH / 8;
 				};
 
@@ -168,34 +164,11 @@ class PlatformDemo {
 		x_end := dims[1];
 
 		view_x_offset := @player_x_position / BLOCK_WIDTH + 1;
-
 		view_y_offset := ((@player_y_position - @player_y_jump_height) / BLOCK_WIDTH) + 1;
+		
 # GameEngine->Debug("player={$@player_x_position}, offset={$view_x_offset}");
-
+		
 		for(x := view_x_offset; x < view_x_offset + 20; x += 1;) {
-			if(x - view_x_offset = 1) {
-				if(@game_map[view_y_offset, x] = 1) {
-					@player_can_move_left := false;
-				}
-				else {
-					@player_can_move_left := true;
-				};
-			};
-
-			if(x - view_x_offset = 2) {
-				if(@game_map[view_y_offset, x] = 1) {
-# GameEngine->Debug("-- CANNOT MOVE RIGHT --");
-					@player_can_move_right := false;
-				}
-				else {
-# GameEngine->Debug("-- CAN MOVE RIGHT --");
-					@player_can_move_right := true;
-				};
-			};
-
-			
-GameEngine->Debug("y_pos={$view_y_offset}");
-
 			for(y := 0; y < y_end; y += 1;) {
 				if(@game_map[y, x] = 0) {
 					@space->Render(#~ (x - view_x_offset) * BLOCK_WIDTH, ~#
