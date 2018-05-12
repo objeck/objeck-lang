@@ -25,6 +25,9 @@ class PlatformDemo {
 	@player_y_position : Int;
 	@player_y_jumping : Bool;
 	@player_y_jump_height : Int;
+
+	@player_can_move_right : Bool;
+	@player_can_move_left : Bool;
 	
 	function : Main(args : String[]) ~ Nil {
 		platform := PlatformDemo->New();
@@ -44,6 +47,8 @@ class PlatformDemo {
 		@player->SetFill(true);
 		@player->SetColor(Color->New(12, 35, 64));
 		@player_y_position := SCREEN_HEIGHT - BLOCK_WIDTH * 4;
+		@player_can_move_right := true;
+		@player_can_move_left := true;
 
 		@space := @game->AddRectangle(BLOCK_WIDTH, BLOCK_HEIGHT);
 		@space->SetColor(Color->New(0, 177, 64));
@@ -100,7 +105,7 @@ class PlatformDemo {
 	            }
 
 	            label Scancode->SDL_SCANCODE_RIGHT: {
-	            	@player_x_direction := 1;	
+	            	@player_x_direction := 1;
 	            }        	            
 	        };
 	    }
@@ -120,11 +125,11 @@ class PlatformDemo {
 		if(@frame <= @game->GetFps()) {
 			if(@frame % 2 = 0) {
 				# left
-				if(@player_x_direction = -1) {
+				if(@player_x_direction = -1 & @player_can_move_left) {
 					@player_x_position -= BLOCK_WIDTH / 8;
 				}
 				# right
-				else if(@player_x_direction = 1) {
+				else if(@player_x_direction = 1 & @player_can_move_right) {
 					@player_x_position += BLOCK_WIDTH / 8;
 				};
 
@@ -165,16 +170,24 @@ class PlatformDemo {
 # GameEngine->Debug("player={$@player_x_position}, offset={$view_offset}");
 
 		for(x := view_offset; x < view_offset + 20; x += 1;) {
-#~
 			if(x - view_offset = 1) {
-value := @game_map[12, x];
-GameEngine->Debug("back: {$value}");
+				if(@game_map[12, x] = 1) {
+					@player_can_move_left := false;
+				}
+				else {
+					@player_can_move_left := true;
+				};
 			};
-~#
 
 			if(x - view_offset = 2) {
-value := @game_map[12, x];
-GameEngine->Debug("front: {$value}");
+				if(@game_map[12, x] = 1) {
+GameEngine->Debug("-- CANNOT MOVE RIGHT --");
+					@player_can_move_right := false;
+				}
+				else {
+GameEngine->Debug("-- CAN MOVE RIGHT --");					
+					@player_can_move_right := true;
+				};
 			};
 
 			for(y := 0; y < y_end; y += 1;) {
