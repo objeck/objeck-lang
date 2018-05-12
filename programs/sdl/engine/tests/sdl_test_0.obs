@@ -142,11 +142,23 @@ class PlatformDemo {
 		y_end := dims[0];
 		x_end := dims[1];
 
-		view_offset := @player_position / Environment->BLOCK_WIDTH->As(Int);
+		view_offset := @player_position / Environment->BLOCK_WIDTH->As(Int) + 1;
 
-GameEngine->Debug("player={$@player_position}, offset={$view_offset}");
+# GameEngine->Debug("player={$@player_position}, offset={$view_offset}");
 
-		for(x := view_offset + 1; x < view_offset + 20; x += 1;) {
+		for(x := view_offset; x < view_offset + 20; x += 1;) {
+#~
+			if(x - view_offset = 1) {
+value := @game_map[12, x];
+GameEngine->Debug("back: {$value}");
+			};
+~#
+
+			if(x - view_offset = 2) {
+value := @game_map[12, x];
+GameEngine->Debug("front: {$value}");
+			};
+
 			for(y := 0; y < y_end; y += 1;) {
 				if(@game_map[y, x] = 0) {
 					@space->Render(#~ (x - view_offset) * Environment->BLOCK_WIDTH->As(Int), ~#
