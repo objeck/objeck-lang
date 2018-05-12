@@ -16,7 +16,7 @@ class PlatformDemo {
 
 	@game : GameEngine;
 	@game_map : Int[,];
-	@frame : Int;
+	@game_frame : Int;
 
 	@player : Rectangle;
 	@space : Rectangle;
@@ -118,10 +118,10 @@ class PlatformDemo {
 	}
 	
 	method : native : UpdateEvents() ~ Nil {		
-		@frame += 1;
+		@game_frame += 1;
 
-		if(@frame <= @game->GetFps()) {
-			if(@frame % 2 = 0) {
+		if(@game_frame <= @game->GetFps()) {
+			if(@game_frame % 2 = 0) {
 				# left
 				if(@player_x_direction = -1) {
 					@player_x_position -= BLOCK_WIDTH / 8;
@@ -145,7 +145,7 @@ class PlatformDemo {
 			};
 		}
 		else {
-			@frame := 1;
+			@game_frame := 1;
 		};
 	}
 
@@ -165,8 +165,8 @@ class PlatformDemo {
 
 		view_x_offset := @player_x_position / BLOCK_WIDTH + 1;
 		view_y_offset := ((@player_y_position - @player_y_jump_height) / BLOCK_WIDTH) + 1;
-		
-# GameEngine->Debug("player={$@player_x_position}, offset={$view_x_offset}");
+
+GameEngine->Debug("view: {$view_x_offset}, {$view_y_offset}");
 		
 		for(x := view_x_offset; x < view_x_offset + 20; x += 1;) {
 			for(y := 0; y < y_end; y += 1;) {
