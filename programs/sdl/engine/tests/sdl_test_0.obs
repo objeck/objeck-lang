@@ -6,14 +6,12 @@ link: https://github.com/objeck/objeck-lang/blob/master/programs/sdl/engine/test
 use SDL2;
 use SDL2.Game;
 
-consts Environment  {
-	SCREEN_WIDTH := 640,
-	SCREEN_HEIGHT := 480,
-	BLOCK_WIDTH := 32,
-	BLOCK_HEIGHT := 32
-}
-
 class PlatformDemo {
+	SCREEN_WIDTH : static : Int;
+	SCREEN_HEIGHT : static : Int;
+	BLOCK_WIDTH : static : Int;
+	BLOCK_HEIGHT : static : Int;
+
 	@game : GameEngine;
 	@game_map : Int[,];
 	@frame : Int;
@@ -22,8 +20,11 @@ class PlatformDemo {
 	@space : Rectangle;
 	@solid : Rectangle;
 
-	@player_direction : Int;
-	@player_position : Int;
+	@player_x_direction : Int;
+	@player_x_position : Int;
+	@player_y_position : Int;
+	@player_y_jumping : Bool;
+	@player_y_jump_height : Int;
 	
 	function : Main(args : String[]) ~ Nil {
 		platform := PlatformDemo->New();
@@ -31,18 +32,23 @@ class PlatformDemo {
 	}
 
 	New() {
-		@game := GameEngine->New(Environment->SCREEN_WIDTH, Environment->SCREEN_HEIGHT, "Engine Zero");
+		SCREEN_WIDTH := 640;
+		SCREEN_HEIGHT := 480;
+		BLOCK_WIDTH := 32;
+		BLOCK_HEIGHT := 32;
+
+		@game := GameEngine->New(SCREEN_WIDTH, SCREEN_HEIGHT, "Engine Zero");
 		@game->SetClearColor(Color->New());
-		
-		@player := @game->AddRectangle(Environment->BLOCK_WIDTH, 
-			Environment->BLOCK_HEIGHT->As(Int) * 2);
+
+		@player := @game->AddRectangle(BLOCK_WIDTH, 
+			BLOCK_HEIGHT * 2);
 		@player->SetFill(true);
 		@player->SetColor(Color->New(12, 35, 64));
 
-		@space := @game->AddRectangle(Environment->BLOCK_WIDTH, Environment->BLOCK_HEIGHT);
+		@space := @game->AddRectangle(BLOCK_WIDTH, BLOCK_HEIGHT);
 		@space->SetColor(Color->New(0, 177, 64));
 
-		@solid := @game->AddRectangle(Environment->BLOCK_WIDTH, Environment->BLOCK_HEIGHT);
+		@solid := @game->AddRectangle(BLOCK_WIDTH, BLOCK_HEIGHT);
 		@solid->SetFill(true);
 		@solid->SetColor(Color->New(204, 0, 0));
 
@@ -84,15 +90,15 @@ class PlatformDemo {
 		if(e->GetType() = EventType->SDL_KEYDOWN & e->GetKey()->GetRepeat() = 0) {
 	        select(e->GetKey()->GetKeysym()->GetScancode()) {    	
 	            label Scancode->SDL_SCANCODE_SPACE: {
-	            	
+	            	@player_y_jumping := true;
 	            }
 
 	            label Scancode->SDL_SCANCODE_LEFT: {
-	            	@player_direction := -1;
+	            	@player_x_direction := -1;
 	            }
 
 	            label Scancode->SDL_SCANCODE_RIGHT: {
-	            	@player_direction := 1;	
+	            	@player_x_direction := 1;	
 	            }        	            
 	        };
 	    }
@@ -100,7 +106,7 @@ class PlatformDemo {
 	        select(e->GetKey()->GetKeysym()->GetScancode()) {
 	        	label Scancode->SDL_SCANCODE_LEFT:
 	            label Scancode->SDL_SCANCODE_RIGHT: {
-	            	@player_direction := 0;
+	            	@player_x_direction := 0;
 	            }
 	        };
 	    };   
@@ -112,12 +118,23 @@ class PlatformDemo {
 		if(@frame <= @game->GetFps()) {
 			if(@frame % 2 = 0) {
 				# left
-				if(@player_direction = -1) {
-					@player_position -= Environment->BLOCK_WIDTH->As(Int) / 8;
+				if(@player_x_direction = -1) {
+					@player_x_position -= BLOCK_WIDTH / 8;
 				}
 				# right
-				else if(@player_direction = 1) {
-					@player_position += Environment->BLOCK_WIDTH->As(Int) / 8;
+				else if(@player_x_direction = 1) {
+					@player_x_position += BLOCK_WIDTH / 8;
+				};
+
+				if(@player_y_jumping) {
+					@player_y_jump_height += BLOCK_WIDTH / 8;
+					if(@player_y_jump_height >= 1.5 * BLOCK_WIDTH) {
+						@player_y_jumping := false;
+						@player_y_jump_height -= BLOCK_WIDTH / 8;
+					};
+				}
+				else if(@player_y_jump_height <> 0) {
+					@player_y_jump_height -= BLOCK_WIDTH / 8;
 				};
 			};
 		}
@@ -130,9 +147,7 @@ class PlatformDemo {
 		@game->Clear();
 
 		RenderPlatform();
-
-		@player->Render(Environment->BLOCK_WIDTH->As(Int) * 2,
-			Environment->SCREEN_HEIGHT->As(Int) - Environment->BLOCK_WIDTH->As(Int) * 4);
+		@player->Render(BLOCK_WIDTH * 2, SCREEN_HEIGHT - BLOCK_WIDTH * 4 - @player_y_jump_height);
 
 		@game->Show();
 	}
@@ -142,9 +157,9 @@ class PlatformDemo {
 		y_end := dims[0];
 		x_end := dims[1];
 
-		view_offset := @player_position / Environment->BLOCK_WIDTH->As(Int) + 1;
+		view_offset := @player_x_position / BLOCK_WIDTH + 1;
 
-# GameEngine->Debug("player={$@player_position}, offset={$view_offset}");
+# GameEngine->Debug("player={$@player_x_position}, offset={$view_offset}");
 
 		for(x := view_offset; x < view_offset + 20; x += 1;) {
 #~
@@ -161,14 +176,14 @@ GameEngine->Debug("front: {$value}");
 
 			for(y := 0; y < y_end; y += 1;) {
 				if(@game_map[y, x] = 0) {
-					@space->Render(#~ (x - view_offset) * Environment->BLOCK_WIDTH->As(Int), ~#
-						x * Environment->BLOCK_WIDTH->As(Int) - @player_position,
-						y * Environment->BLOCK_HEIGHT->As(Int));
+					@space->Render(#~ (x - view_offset) * BLOCK_WIDTH, ~#
+						x * BLOCK_WIDTH - @player_x_position,
+						y * BLOCK_HEIGHT);
 				}
 				else {
-					@solid->Render(#~ (x - view_offset) * Environment->BLOCK_WIDTH->As(Int), ~#
-						x * Environment->BLOCK_WIDTH->As(Int) - @player_position,
-						y * Environment->BLOCK_HEIGHT->As(Int));
+					@solid->Render(#~ (x - view_offset) * BLOCK_WIDTH, ~#
+						x * BLOCK_WIDTH - @player_x_position,
+						y * BLOCK_HEIGHT);
 				};
 			};
 		};
