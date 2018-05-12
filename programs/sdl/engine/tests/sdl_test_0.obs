@@ -3,6 +3,8 @@ Game demo v0
 link: https://github.com/objeck/objeck-lang/blob/master/programs/sdl/engine/tests/sdl_test_0.obs
 ~#
 
+# TODO: Map pixel pos, to map block
+
 use SDL2;
 use SDL2.Game;
 
