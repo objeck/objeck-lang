@@ -166,19 +166,25 @@ class PlatformDemo {
 		view_x_offset := @player_x_position / BLOCK_WIDTH + 1;
 		view_y_offset := ((@player_y_position - @player_y_jump_height) / BLOCK_WIDTH) + 1;
 
-GameEngine->Debug("view: {$view_x_offset}, {$view_y_offset}");
+# GameEngine->Debug("view: {$view_x_offset}, {$view_y_offset}");
 		
 		for(x := view_x_offset; x < view_x_offset + 20; x += 1;) {
 			for(y := 0; y < y_end; y += 1;) {
+
+foo := x * BLOCK_WIDTH - @player_x_position;
+if(x - view_x_offset = 3 & foo = 100) {
+
+GameEngine->Debug("foo={$foo}");
+}
+else {
+	GameEngine->Debug("nada");
+};
+
 				if(@game_map[y, x] = 0) {
-					@space->Render(#~ (x - view_x_offset) * BLOCK_WIDTH, ~#
-						x * BLOCK_WIDTH - @player_x_position,
-						y * BLOCK_HEIGHT);
+					@space->Render(x * BLOCK_WIDTH - @player_x_position, y * BLOCK_HEIGHT);
 				}
 				else {
-					@solid->Render(#~ (x - view_x_offset) * BLOCK_WIDTH, ~#
-						x * BLOCK_WIDTH - @player_x_position,
-						y * BLOCK_HEIGHT);
+					@solid->Render(x * BLOCK_WIDTH - @player_x_position, y * BLOCK_HEIGHT);
 				};
 			};
 		};
