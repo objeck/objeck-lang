@@ -40,10 +40,10 @@ class PlatformDemo {
 		@game := GameEngine->New(SCREEN_WIDTH, SCREEN_HEIGHT, "Engine Zero");
 		@game->SetClearColor(Color->New());
 
-		@player := @game->AddRectangle(BLOCK_WIDTH, 
-			BLOCK_HEIGHT * 2);
+		@player := @game->AddRectangle(BLOCK_WIDTH, BLOCK_HEIGHT * 2);
 		@player->SetFill(true);
 		@player->SetColor(Color->New(12, 35, 64));
+		@player_y_position := SCREEN_HEIGHT - BLOCK_WIDTH * 4;
 
 		@space := @game->AddRectangle(BLOCK_WIDTH, BLOCK_HEIGHT);
 		@space->SetColor(Color->New(0, 177, 64));
@@ -90,7 +90,9 @@ class PlatformDemo {
 		if(e->GetType() = EventType->SDL_KEYDOWN & e->GetKey()->GetRepeat() = 0) {
 	        select(e->GetKey()->GetKeysym()->GetScancode()) {    	
 	            label Scancode->SDL_SCANCODE_SPACE: {
-	            	@player_y_jumping := true;
+	            	if(@player_y_jump_height = 0) {
+	            		@player_y_jumping := true;
+	            	};
 	            }
 
 	            label Scancode->SDL_SCANCODE_LEFT: {
@@ -126,6 +128,7 @@ class PlatformDemo {
 					@player_x_position += BLOCK_WIDTH / 8;
 				};
 
+				# jump
 				if(@player_y_jumping) {
 					@player_y_jump_height += BLOCK_WIDTH / 8;
 					if(@player_y_jump_height >= 1.5 * BLOCK_WIDTH) {
@@ -147,7 +150,7 @@ class PlatformDemo {
 		@game->Clear();
 
 		RenderPlatform();
-		@player->Render(BLOCK_WIDTH * 2, SCREEN_HEIGHT - BLOCK_WIDTH * 4 - @player_y_jump_height);
+		@player->Render(BLOCK_WIDTH * 2, @player_y_position - @player_y_jump_height);
 
 		@game->Show();
 	}
