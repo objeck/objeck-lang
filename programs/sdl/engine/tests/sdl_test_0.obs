@@ -146,7 +146,7 @@ class PlatformDemo {
 
 GameEngine->Debug("player={$@player_position}, offset={$view_offset}");
 
-		for(x := view_offset; x < view_offset + 20; x += 1;) {
+		for(x := view_offset + 1; x < view_offset + 20; x += 1;) {
 			for(y := 0; y < y_end; y += 1;) {
 				if(@game_map[y, x] = 0) {
 					@space->Render(#~ (x - view_offset) * Environment->BLOCK_WIDTH->As(Int), ~#
