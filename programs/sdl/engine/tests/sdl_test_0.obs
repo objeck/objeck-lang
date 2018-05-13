@@ -169,18 +169,28 @@ class PlatformDemo {
 # GameEngine->Debug("view: {$view_x_offset}, {$view_y_offset}");
 		
 		for(x := view_x_offset; x < view_x_offset + 20; x += 1;) {
-			for(y := 0; y < y_end; y += 1;) {
+			pixel_x := x * BLOCK_WIDTH - @player_x_position;
 
-foo := x * BLOCK_WIDTH - @player_x_position;
-if(x - view_x_offset = 3 & foo = 100) {
-	if(@game_map[y, x] = 1) {
-bar := y * BLOCK_HEIGHT;
-GameEngine->Debug("foo={$foo}, bar={$bar}");
-};
-}
-else {
-	GameEngine->Debug("nada");
-};
+			for(y := 0; y < y_end; y += 1;) {
+				pixel_y := y * BLOCK_HEIGHT;
+				player_y_bottom := @player_y_position - @player_y_jump_height + BLOCK_WIDTH;				
+
+				if(@player_y_jump_height > BLOCK_HEIGHT) {
+GameEngine->Debug("{$@player_y_jump_height}");
+				};
+				
+				if(x - view_x_offset = 1 & pixel_x = 36 & pixel_y = player_y_bottom) {
+					if(@game_map[y, x] = 1) {
+# GameEngine->Debug("left: {$pixel_x}, {$pixel_y}; bottom={$player_y_bottom}");
+					};
+				};
+
+
+				if(x - view_x_offset = 3 & pixel_x = 100 & pixel_y = player_y_bottom) {
+					if(@game_map[y, x] = 1) {
+# GameEngine->Debug("right: x={$pixel_x}, y={$pixel_y}; bottom={$player_y_bottom}");
+					};
+				};
 
 				if(@game_map[y, x] = 0) {
 					@space->Render(x * BLOCK_WIDTH - @player_x_position, y * BLOCK_HEIGHT);
