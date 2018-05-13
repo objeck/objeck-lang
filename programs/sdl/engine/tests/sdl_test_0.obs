@@ -194,7 +194,8 @@ GameEngine->Debug("jump block: {$x}, {$y}, foo={$foo}");
 
 
 if(@print_debug) {
-	GameEngine->Debug("Debug: {$x}, {$y}, foo={$foo}");
+	bar := foo + 1;
+	GameEngine->Debug("Debug: {$x}, {$y}, bar={$bar}; jump={$@player_y_jump_height}");
 	@print_debug := false;
 };
 				
