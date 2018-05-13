@@ -27,6 +27,8 @@ class PlatformDemo {
 	@player_y_position : Int;
 	@player_y_jumping : Bool;
 	@player_y_jump_height : Int;
+
+	@print_debug : Bool;
 	
 	function : Main(args : String[]) ~ Nil {
 		platform := PlatformDemo->New();
@@ -104,7 +106,11 @@ class PlatformDemo {
 
 	            label Scancode->SDL_SCANCODE_RIGHT: {
 	            	@player_x_direction := 1;
-	            }        	            
+	            }
+
+	            label Scancode->SDL_SCANCODE_DOWN: {
+	            	@print_debug := true;
+	            }
 	        };
 	    }
 	    else if(e->GetType() = EventType->SDL_KEYUP & e->GetKey()->GetRepeat() = 0) {
@@ -175,15 +181,22 @@ class PlatformDemo {
 				pixel_y := y * BLOCK_HEIGHT;
 				player_y_bottom := @player_y_position - @player_y_jump_height + BLOCK_WIDTH;				
 
+
 foo := @player_y_position / BLOCK_HEIGHT + 1;
 				if(x - view_x_offset = 2 & @player_y_jump_height > 0 & y = foo) {
 					if(@game_map[y, x] = 1) {
 						@player_y_position -= BLOCK_HEIGHT;
 						@player_y_jump_height := 0;
 						@player_y_jumping := false;
-GameEngine->Debug("block: {$x}, {$y}, foo={$foo}");
+GameEngine->Debug("jump block: {$x}, {$y}, foo={$foo}");
 					};
 				};
+
+
+if(@print_debug) {
+	GameEngine->Debug("Debug: {$x}, {$y}, foo={$foo}");
+	@print_debug := false;
+};
 				
 				if(x - view_x_offset = 1 & pixel_x = 36 & pixel_y = player_y_bottom) {
 					if(@game_map[y, x] = 1) {
