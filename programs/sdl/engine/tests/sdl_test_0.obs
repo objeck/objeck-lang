@@ -176,19 +176,21 @@ class PlatformDemo {
 				player_y_bottom := @player_y_position - @player_y_jump_height + BLOCK_WIDTH;				
 
 				if(@player_y_jump_height > BLOCK_HEIGHT) {
-GameEngine->Debug("{$@player_y_jump_height}");
+					if(@game_map[y, x] = 1) {
+# GameEngine->Debug("test={$@player_y_jump_height}, y={$y}");
+					};
 				};
 				
 				if(x - view_x_offset = 1 & pixel_x = 36 & pixel_y = player_y_bottom) {
 					if(@game_map[y, x] = 1) {
-# GameEngine->Debug("left: {$pixel_x}, {$pixel_y}; bottom={$player_y_bottom}");
+GameEngine->Debug("left: {$pixel_x}, {$pixel_y}; bottom={$player_y_bottom}");
 					};
 				};
 
 
 				if(x - view_x_offset = 3 & pixel_x = 100 & pixel_y = player_y_bottom) {
 					if(@game_map[y, x] = 1) {
-# GameEngine->Debug("right: x={$pixel_x}, y={$pixel_y}; bottom={$player_y_bottom}");
+GameEngine->Debug("right: x={$pixel_x}, y={$pixel_y}; bottom={$player_y_bottom}");
 					};
 				};
 
@@ -217,7 +219,7 @@ GameEngine->Debug("{$@player_y_jump_height}");
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 1,   1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 			[0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 1, 1, 1, 1,   1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0]
-			[0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,   1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+			[0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,   1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 			[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 		];
 
