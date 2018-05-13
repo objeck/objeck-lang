@@ -28,6 +28,9 @@ class PlatformDemo {
 	@player_y_jumping : Bool;
 	@player_y_jump_height : Int;
 
+	@player_can_move_left : Bool;
+	@player_can_move_right : Bool;
+
 	@print_debug : Bool;
 	
 	function : Main(args : String[]) ~ Nil {
@@ -48,6 +51,8 @@ class PlatformDemo {
 		@player->SetFill(true);
 		@player->SetColor(Color->New(12, 35, 64));
 		@player_y_position := SCREEN_HEIGHT - BLOCK_WIDTH * 4;
+		
+		@player_can_move_left := true;
 		@player_can_move_right := true;
 
 		@space := @game->AddRectangle(BLOCK_WIDTH, BLOCK_HEIGHT);
@@ -105,7 +110,9 @@ class PlatformDemo {
 	            }
 
 	            label Scancode->SDL_SCANCODE_RIGHT: {
-	            	@player_x_direction := 1;
+	            	if(@player_can_move_right) {
+	            		@player_x_direction := 1;
+	            	};
 	            }
 
 	            label Scancode->SDL_SCANCODE_DOWN: {
@@ -129,11 +136,11 @@ class PlatformDemo {
 		if(@game_frame <= @game->GetFps()) {
 			if(@game_frame % 2 = 0) {
 				# left
-				if(@player_x_direction = -1) {
+				if(@player_x_direction = -1 & @player_can_move_left) {
 					@player_x_position -= BLOCK_WIDTH / 8;
 				}
 				# right
-				else if(@player_x_direction = 1) {
+				else if(@player_x_direction = 1 & @player_can_move_right) {
 					@player_x_position += BLOCK_WIDTH / 8;
 				};
 
@@ -179,11 +186,10 @@ class PlatformDemo {
 
 			for(y := 0; y < y_end; y += 1;) {
 				pixel_y := y * BLOCK_HEIGHT;
-				player_y_bottom := @player_y_position - @player_y_jump_height + BLOCK_WIDTH;				
-
+				player_y_bottom := @player_y_position - @player_y_jump_height + BLOCK_WIDTH;
 
 foo := @player_y_position / BLOCK_HEIGHT + 1;
-				if(x - view_x_offset = 2 & @player_y_jump_height > 0 & y = foo) {
+				if(x - view_x_offset = 2 & @player_y_jump_height > BLOCK_HEIGHT & y = foo) {
 					if(@game_map[y, x] = 1) {
 						@player_y_position -= BLOCK_HEIGHT;
 						@player_y_jump_height := 0;
@@ -195,20 +201,29 @@ GameEngine->Debug("jump block: {$x}, {$y}, foo={$foo}");
 
 if(@print_debug) {
 	bar := foo + 1;
-	GameEngine->Debug("Debug: {$x}, {$y}, bar={$bar}; jump={$@player_y_jump_height}");
+	GameEngine->Debug("Debug: {$x}, {$y}, bar={$bar}; jump={$@player_y_jump_height}; pixel_y={$pixel_y}");
+	
 	@print_debug := false;
 };
 				
 				if(x - view_x_offset = 1 & pixel_x = 36 & pixel_y = player_y_bottom) {
 					if(@game_map[y, x] = 1) {
+						@player_can_move_left := false;
 # GameEngine->Debug("left: {$pixel_x}, {$pixel_y}; bottom={$player_y_bottom}");
+					}
+					else {
+						@player_can_move_left := true;
 					};
 				};
 
 
 				if(x - view_x_offset = 3 & pixel_x = 100 & pixel_y = player_y_bottom) {
 					if(@game_map[y, x] = 1) {
+						@player_can_move_right := false;
 # GameEngine->Debug("right: x={$pixel_x}, y={$pixel_y}; bottom={$player_y_bottom}");
+					}
+					else {
+						@player_can_move_right := true;
 					};
 				};
 
