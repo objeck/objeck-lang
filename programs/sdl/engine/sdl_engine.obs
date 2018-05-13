@@ -115,6 +115,7 @@ bundle SDL2.Game {
 				texture := textSurface->CreateTexture(@renderer);
 				@render_rect->SetW(textSurface->GetW());
 				@render_rect->SetH(textSurface->GetH());
+				textSurface->Free();
 				
 				@texture := texture;
 				@is_ok := @texture <> Nil;
