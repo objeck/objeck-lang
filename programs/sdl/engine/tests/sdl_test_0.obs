@@ -166,21 +166,18 @@ class PlatformDemo {
 				};
 
 				# jump on block
-				if(@player_y_jump_height >= BLOCK_HEIGHT & (HitLeftBlock() | HitRightBlock())) {
+				if(@player_y_jump_height >= BLOCK_HEIGHT & (<>HitLeftBlock() & <>HitRightBlock())) {
 					@player_y_jumping := false;
 					@player_y_jump_height := 0;
 					@player_y_position -= BLOCK_HEIGHT;
 				};
 
-
-foo := Int->Max(MaxLeftHeight(), MaxRightHeight()) + BLOCK_HEIGHT * 2;
-bar := SCREEN_HEIGHT - @player_y_position;
-GameEngine->Debug("{$foo}, {$bar}");
-				if(foo < bar & @player_y_jump_height = 0) {					
+				max_y_block := Int->Max(MaxLeftHeight(), MaxRightHeight()) + BLOCK_HEIGHT * 2;
+				player_y_block := SCREEN_HEIGHT - @player_y_position;
+				if(max_y_block < player_y_block & @player_y_jump_height = 0) {					
 					@player_y_jump_height := BLOCK_HEIGHT;
 					@player_y_position += BLOCK_HEIGHT;
 				};
-
 				
 #~
 				# fall off block
