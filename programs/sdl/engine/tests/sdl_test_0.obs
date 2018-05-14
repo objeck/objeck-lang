@@ -30,7 +30,7 @@ class PlatformDemo {
 
 	@player_can_move_left : Bool;
 	@player_can_move_right : Bool;
-
+	
 	@print_debug : Bool;
 	
 	function : Main(args : String[]) ~ Nil {
@@ -105,10 +105,14 @@ class PlatformDemo {
 
 	            label Scancode->SDL_SCANCODE_LEFT: {
 	            	@player_x_direction := -1;
+	            	@player_can_move_left := true;
+	            	@player_can_move_right := true;
 	            }
 
 	            label Scancode->SDL_SCANCODE_RIGHT: {
 	            	@player_x_direction := 1;
+            		@player_can_move_left := true;
+            		@player_can_move_right := true;
 	            }
 
 	            label Scancode->SDL_SCANCODE_DOWN: {
@@ -195,9 +199,6 @@ class PlatformDemo {
 					if(@game_map[y, x] = 1) {
 						@player_can_move_left := false;
 # GameEngine->Debug("left: {$pixel_x}, {$pixel_y}; bottom={$player_y_bottom}");
-					}
-					else {
-						@player_can_move_left := true;
 					};
 				};
 
@@ -207,9 +208,6 @@ class PlatformDemo {
 						@player_can_move_right := false;
 						
 # GameEngine->Debug("right: x={$pixel_x}, y={$pixel_y}; bottom={$player_y_bottom}");
-					}
-					else {
-						@player_can_move_right := true;
 					};
 				};
 
@@ -219,25 +217,32 @@ class PlatformDemo {
 
 
 
-
-
-
-
-
-				y_block := @player_y_position / BLOCK_HEIGHT + 2;
-				if(x - view_x_offset = 2 & @player_y_jump_height = 0 & 
-					y = y_block & @player_x_direction = -1) {
+#~
 if(@print_debug) {
 	bar := x - view_x_offset;
 	GameEngine->Debug("x={$x}, bar={$bar}");
 
 	@print_debug := false;
 };
-					if(@game_map[y, x] = 0) {
-						@player_y_position += BLOCK_HEIGHT;
-						@player_x_position -= BLOCK_WIDTH / 8;
+~#
+
+
+				y_block := @player_y_position / BLOCK_HEIGHT + 2;
+
+				
+					if(x - view_x_offset = 2 & @player_y_jump_height = 0 & y = y_block) {
+						if(@game_map[y, x] = 0) {
+							
+							@player_y_position += BLOCK_HEIGHT;
+							@player_y_jump_height := BLOCK_HEIGHT - BLOCK_HEIGHT / 8;
+						};
 					};
-				};
+
+if(@print_debug) {
+o := x - view_x_offset;
+GameEngine->Debug("x={$x}, offset={$o}, y_block={$y_block}");
+@print_debug := false;
+};
 				
 				y_block := @player_y_position / BLOCK_HEIGHT + 1;
 				if(x - view_x_offset = 2 & @player_y_jump_height > BLOCK_HEIGHT & y = y_block) {
