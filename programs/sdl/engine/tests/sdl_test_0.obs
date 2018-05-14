@@ -28,8 +28,8 @@ class PlatformDemo {
 	@player_y_jumping : Bool;
 	@player_y_jump_height : Int;
 
-	lefts : Rect[];
-	rights : Rect[];
+	left_hits : Rect[];
+	right_hits : Rect[];
 
 	@print_debug : Bool;
 	
@@ -62,14 +62,14 @@ class PlatformDemo {
 		@game_map := CreateMap();
 		map_dims := @game_map->Size();
 
-		lefts := Rect->New[map_dims[0]];
-		each(i : lefts) {
-			lefts[i] := Rect->New(BLOCK_WIDTH, BLOCK_HEIGHT);
+		left_hits := Rect->New[map_dims[0]];
+		each(i : left_hits) {
+			left_hits[i] := Rect->New(BLOCK_WIDTH, BLOCK_HEIGHT);
 		};
 
-		rights := Rect->New[map_dims[0]];
-		each(i : rights) {
-			rights[i] := Rect->New(BLOCK_WIDTH, BLOCK_HEIGHT);
+		right_hits := Rect->New[map_dims[0]];
+		each(i : right_hits) {
+			right_hits[i] := Rect->New(BLOCK_WIDTH, BLOCK_HEIGHT);
 		};
 	}
 
@@ -108,7 +108,9 @@ class PlatformDemo {
 		if(e->GetType() = EventType->SDL_KEYDOWN & e->GetKey()->GetRepeat() = 0) {
 	        select(e->GetKey()->GetKeysym()->GetScancode()) {    	
 	            label Scancode->SDL_SCANCODE_SPACE: {
-	            	@player_y_jumping := true;
+	            	if(@player_y_jump_height = 0) {
+	            		@player_y_jumping := true;
+	            	};
 	            }
 
 	            label Scancode->SDL_SCANCODE_LEFT: {
@@ -139,13 +141,13 @@ class PlatformDemo {
 
 		if(@game_frame <= @game->GetFps()) {
 			if(@game_frame % 2 = 0) {
-				# left
+				# move left
 				if(@player_x_direction = -1) {
 					if(<>HitLeftBlock()) {
 						@player_x_position -= BLOCK_WIDTH / 8;
 					};
 				}
-				# right
+				# move right
 				else if(@player_x_direction = 1) {
 					if(<>HitRightBlock()) {
 						@player_x_position += BLOCK_WIDTH / 8;
@@ -157,6 +159,7 @@ class PlatformDemo {
 					@player_y_jump_height += BLOCK_HEIGHT / 8;
 					
 					if(@player_y_jump_height >= 1.5 * BLOCK_HEIGHT) {
+# "-- FIRE 0 --"->PrintLine();
 						@player_y_jumping := false;
 						@player_y_jump_height -= BLOCK_HEIGHT / 8;
 					};
@@ -167,29 +170,19 @@ class PlatformDemo {
 
 				# jump on block
 				if(@player_y_jump_height >= BLOCK_HEIGHT & (<>HitLeftBlock() & <>HitRightBlock())) {
+# "-- FIRE 1 --"->PrintLine();					
 					@player_y_jumping := false;
 					@player_y_jump_height := 0;
 					@player_y_position -= BLOCK_HEIGHT;
 				};
 
+				# fall from block
 				max_y_block := Int->Max(MaxLeftHeight(), MaxRightHeight()) + BLOCK_HEIGHT * 2;
 				player_y_block := SCREEN_HEIGHT - @player_y_position;
 				if(max_y_block < player_y_block & @player_y_jump_height = 0) {					
 					@player_y_jump_height := BLOCK_HEIGHT;
 					@player_y_position += BLOCK_HEIGHT;
 				};
-				
-#~
-				# fall off block
-				if(@player_x_direction = -1) {
-foo := MaxRightHeight();
-GameEngine->Debug("{$foo}");
-				}
-				else if(@player_x_direction = 1) {
-foo := MaxLeftHeight();
-GameEngine->Debug("{$foo}");
-				};
-~#				
 			};
 		}
 		else {
@@ -198,9 +191,9 @@ GameEngine->Debug("{$foo}");
 	}
 
 	method : HitRightBlock() ~ Bool {
-		each(i : rights) {
+		each(i : right_hits) {
 
-			right := rights[i];
+			right := right_hits[i];
 			if(right->HasIntersection(@player->GetRect())) {
 				return true;
 			};
@@ -209,10 +202,10 @@ GameEngine->Debug("{$foo}");
 		return false;
 	}
 
-	method : HitLeftBlock() ~ Bool {
-		each(i : lefts) {
+	method : native : HitLeftBlock() ~ Bool {
+		each(i : left_hits) {
 
-			left := lefts[i];
+			left := left_hits[i];
 			if(left->HasIntersection(@player->GetRect())) {
 				return true;
 			};
@@ -221,11 +214,11 @@ GameEngine->Debug("{$foo}");
 		return false;
 	}
 
-	method : MaxLeftHeight () ~ Int {
+	method : native : MaxLeftHeight () ~ Int {
 		max := 0;
 
-		for(i := lefts->Size() - 1; i >= 0; i -= 1;) {
-			left := lefts[i];
+		for(i := left_hits->Size() - 1; i >= 0; i -= 1;) {
+			left := left_hits[i];
 
 			if(left->GetX() > 0) {
 				max += BLOCK_HEIGHT;
@@ -241,8 +234,8 @@ GameEngine->Debug("{$foo}");
 	method : MaxRightHeight () ~ Int {
 		max := 0;
 
-		for(i := rights->Size() - 1; i >= 0; i -= 1;) {
-			right := rights[i];
+		for(i := right_hits->Size() - 1; i >= 0; i -= 1;) {
+			right := right_hits[i];
 
 			if(right->GetX() > 0) {
 				max += BLOCK_HEIGHT;
@@ -271,9 +264,7 @@ GameEngine->Debug("{$foo}");
 
 		view_x_offset := @player_x_position / BLOCK_WIDTH + 1;
 		view_y_offset := ((@player_y_position - @player_y_jump_height) / BLOCK_WIDTH) + 1;
-
-# GameEngine->Debug("view: {$view_x_offset}, {$view_y_offset}");
-		
+				
 		for(x := view_x_offset; x < view_x_offset + 20; x += 1;) {
 			pixel_x := x * BLOCK_WIDTH - @player_x_position;
 
@@ -282,29 +273,25 @@ GameEngine->Debug("{$foo}");
 
 				if(x - view_x_offset = 1) {
 					if(@game_map[y, x] = 1) {
-						lefts[y]->SetX(pixel_x);
-						lefts[y]->SetY(pixel_y);
-# GameEngine->Debug("back: {$x}, {$y}");
+						left_hits[y]->SetX(pixel_x);
+						left_hits[y]->SetY(pixel_y);
 					}
 					else {
-						lefts[y]->SetX(0);
-						lefts[y]->SetY(0);
+						left_hits[y]->SetX(0);
+						left_hits[y]->SetY(0);
 					};
 				};
 
 				if(x - view_x_offset = 2) {
 					if(@game_map[y, x] = 1) {
-						rights[y]->SetX(pixel_x);
-						rights[y]->SetY(pixel_y);
-# GameEngine->Debug("front: {$x}, {$y}");
+						right_hits[y]->SetX(pixel_x);
+						right_hits[y]->SetY(pixel_y);
 					}
 					else {
-						rights[y]->SetX(0);
-						rights[y]->SetY(0);
+						right_hits[y]->SetX(0);
+						right_hits[y]->SetY(0);
 					};
 				};
-
-				
 
 				if(@game_map[y, x] = 0) {
 					@space->Render(pixel_x, pixel_y);
