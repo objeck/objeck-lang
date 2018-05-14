@@ -133,7 +133,7 @@ class PlatformDemo {
 	        };
 	    };   
 	}
-	
+
 	method : native : UpdateEvents() ~ Nil {		
 		@game_frame += 1;
 
@@ -141,41 +141,68 @@ class PlatformDemo {
 			if(@game_frame % 2 = 0) {
 				# left
 				if(@player_x_direction = -1) {
-					@player_x_position -= BLOCK_WIDTH / 8;
+					if(<>LeftHit()) {
+						@player_x_position -= BLOCK_WIDTH / 8;
+					};
 				}
 				# right
 				else if(@player_x_direction = 1) {
-					hit := false;
-					each(i : rights) {
-
-						right := rights[i];
-						if(right->HasIntersection(@player->GetRect())) {
-							hit := true;
-"000"->PrintLine();							
-						};
-					};
-
-					if(<>hit) {
+					if(<>RightHit()) {
 						@player_x_position += BLOCK_WIDTH / 8;
 					};
 				};
 
 				# jump
 				if(@player_y_jumping) {
-					@player_y_jump_height += BLOCK_WIDTH / 8;
-					if(@player_y_jump_height >= 1.5 * BLOCK_WIDTH) {
+					@player_y_jump_height += BLOCK_HEIGHT / 8;
+					
+					if(@player_y_jump_height >= 1.5 * BLOCK_HEIGHT) {
 						@player_y_jumping := false;
-						@player_y_jump_height -= BLOCK_WIDTH / 8;
+						@player_y_jump_height -= BLOCK_HEIGHT / 8;
 					};
 				}
 				else if(@player_y_jump_height <> 0) {
-					@player_y_jump_height -= BLOCK_WIDTH / 8;
+					@player_y_jump_height -= BLOCK_HEIGHT / 8;
 				};
+
+				# jump on block
+				if(@player_y_jump_height >= BLOCK_HEIGHT & (LeftHit() | RightHit())) {
+					@player_y_jumping := false;
+					@player_y_jump_height := 0;
+					@player_y_position -= BLOCK_HEIGHT;
+				};
+
+				# fall off block
+				
 			};
 		}
 		else {
 			@game_frame := 1;
 		};
+	}
+
+	method : RightHit() ~ Bool {
+		each(i : rights) {
+
+			right := rights[i];
+			if(right->HasIntersection(@player->GetRect())) {
+				return true;
+			};
+		};
+
+		return false;
+	}
+
+	method : LeftHit() ~ Bool {
+		each(i : lefts) {
+
+			left := lefts[i];
+			if(left->HasIntersection(@player->GetRect())) {
+				return true;
+			};
+		};
+
+		return false;
 	}
 
 	method : Render() ~ Nil {
