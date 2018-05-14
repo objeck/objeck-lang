@@ -28,9 +28,9 @@ class PlatformDemo {
 	@player_y_jumping : Bool;
 	@player_y_jump_height : Int;
 
-	@player_can_move_left : Bool;
-	@player_can_move_right : Bool;
-	
+	lefts : Rect[];
+	rights : Rect[];
+
 	@print_debug : Bool;
 	
 	function : Main(args : String[]) ~ Nil {
@@ -52,9 +52,6 @@ class PlatformDemo {
 		@player->SetColor(Color->New(12, 35, 64));
 		@player_y_position := SCREEN_HEIGHT - BLOCK_WIDTH * 4;
 		
-		@player_can_move_left := true;
-		@player_can_move_right := true;
-
 		@space := @game->AddRectangle(BLOCK_WIDTH, BLOCK_HEIGHT);
 		@space->SetColor(Color->New(0, 177, 64));
 
@@ -63,6 +60,17 @@ class PlatformDemo {
 		@solid->SetColor(Color->New(204, 0, 0));
 
 		@game_map := CreateMap();
+		map_dims := @game_map->Size();
+
+		lefts := Rect->New[map_dims[0]];
+		each(i : lefts) {
+			lefts[i] := Rect->New(BLOCK_WIDTH, BLOCK_HEIGHT);
+		};
+
+		rights := Rect->New[map_dims[0]];
+		each(i : rights) {
+			rights[i] := Rect->New(BLOCK_WIDTH, BLOCK_HEIGHT);
+		};
 	}
 
 	method : Run() ~ Nil {
@@ -105,14 +113,10 @@ class PlatformDemo {
 
 	            label Scancode->SDL_SCANCODE_LEFT: {
 	            	@player_x_direction := -1;
-	            	@player_can_move_left := true;
-	            	@player_can_move_right := true;
 	            }
 
 	            label Scancode->SDL_SCANCODE_RIGHT: {
 	            	@player_x_direction := 1;
-            		@player_can_move_left := true;
-            		@player_can_move_right := true;
 	            }
 
 	            label Scancode->SDL_SCANCODE_DOWN: {
@@ -136,12 +140,24 @@ class PlatformDemo {
 		if(@game_frame <= @game->GetFps()) {
 			if(@game_frame % 2 = 0) {
 				# left
-				if(@player_x_direction = -1 & @player_can_move_left) {
+				if(@player_x_direction = -1) {
 					@player_x_position -= BLOCK_WIDTH / 8;
 				}
 				# right
-				else if(@player_x_direction = 1 & @player_can_move_right) {
-					@player_x_position += BLOCK_WIDTH / 8;
+				else if(@player_x_direction = 1) {
+					hit := false;
+					each(i : rights) {
+
+						right := rights[i];
+						if(right->HasIntersection(@player->GetRect())) {
+							hit := true;
+"000"->PrintLine();							
+						};
+					};
+
+					if(<>hit) {
+						@player_x_position += BLOCK_WIDTH / 8;
+					};
 				};
 
 				# jump
@@ -187,17 +203,31 @@ class PlatformDemo {
 			for(y := 0; y < y_end; y += 1;) {
 				pixel_y := y * BLOCK_HEIGHT;
 
-				if(x - view_x_offset = 2) {
+				if(x - view_x_offset = 1) {
 					if(@game_map[y, x] = 1) {
-# GameEngine->Debug("front: {$x}, {$y}");
+						lefts[y]->SetX(pixel_x);
+						lefts[y]->SetY(pixel_y);
+# GameEngine->Debug("back: {$x}, {$y}");
+					}
+					else {
+						lefts[y]->SetX(0);
+						lefts[y]->SetY(0);
 					};
 				};
 
-				if(x - view_x_offset = 1) {
+				if(x - view_x_offset = 2) {
 					if(@game_map[y, x] = 1) {
-GameEngine->Debug("back: {$x}, {$y}");
+						rights[y]->SetX(pixel_x);
+						rights[y]->SetY(pixel_y);
+# GameEngine->Debug("front: {$x}, {$y}");
+					}
+					else {
+						rights[y]->SetX(0);
+						rights[y]->SetY(0);
 					};
 				};
+
+				
 
 				if(@game_map[y, x] = 0) {
 					@space->Render(pixel_x, pixel_y);

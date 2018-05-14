@@ -180,6 +180,10 @@ bundle SDL2.Game {
 		method : public : GetHeight() ~ Int {
 			return @render_rect->GetH();
 		}
+
+		method : public : GetRect() ~ Rect {
+			return @render_rect;
+		}
 	}
 
 	class Rectangle implements Thing {
@@ -202,6 +206,10 @@ bundle SDL2.Game {
 
 		method : public : GetHeight() ~ Int {
 			return @render_rect->GetH();
+		}
+
+		method : public : GetRect() ~ Rect {
+			return @render_rect;
 		}
 
 		method : public : SetColor(color : Color) ~ Nil {
@@ -241,6 +249,7 @@ bundle SDL2.Game {
 	interface Thing {
 		method : public : virtual : GetWidth() ~ Int;
 		method : public : virtual : GetHeight() ~ Int;
+		method : public : virtual : GetRect() ~ Rect;
 		method : public : virtual : Free() ~ Nil;
 	}
 
