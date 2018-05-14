@@ -173,8 +173,15 @@ class PlatformDemo {
 				};
 
 
-				foo := Int->Max(MaxLeftHeight(), MaxRightHeight());
-				GameEngine->Debug("{$foo}");
+foo := Int->Max(MaxLeftHeight(), MaxRightHeight()) + BLOCK_HEIGHT * 2;
+bar := SCREEN_HEIGHT - @player_y_position;
+GameEngine->Debug("{$foo}, {$bar}");
+				if(foo < bar & @player_y_jump_height = 0) {					
+					@player_y_jump_height := BLOCK_HEIGHT;
+					@player_y_position += BLOCK_HEIGHT;
+				};
+
+				
 #~
 				# fall off block
 				if(@player_x_direction = -1) {
