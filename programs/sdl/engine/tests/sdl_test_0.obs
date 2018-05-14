@@ -187,82 +187,23 @@ class PlatformDemo {
 			for(y := 0; y < y_end; y += 1;) {
 				pixel_y := y * BLOCK_HEIGHT;
 
-
-
-
-
-
-
-				
-				player_y_bottom := @player_y_position - @player_y_jump_height + BLOCK_WIDTH;
-				if(x - view_x_offset = 1 & pixel_x = 36 & pixel_y = player_y_bottom) {
+				if(x - view_x_offset = 2) {
 					if(@game_map[y, x] = 1) {
-						@player_can_move_left := false;
-# GameEngine->Debug("left: {$pixel_x}, {$pixel_y}; bottom={$player_y_bottom}");
+# GameEngine->Debug("front: {$x}, {$y}");
 					};
 				};
 
-
-				if(x - view_x_offset = 3 & pixel_x = 100 & pixel_y = player_y_bottom) {
+				if(x - view_x_offset = 1) {
 					if(@game_map[y, x] = 1) {
-						@player_can_move_right := false;
-						
-# GameEngine->Debug("right: x={$pixel_x}, y={$pixel_y}; bottom={$player_y_bottom}");
+GameEngine->Debug("back: {$x}, {$y}");
 					};
 				};
-
-
-
-
-
-
-
-#~
-if(@print_debug) {
-	bar := x - view_x_offset;
-	GameEngine->Debug("x={$x}, bar={$bar}");
-
-	@print_debug := false;
-};
-~#
-
-
-				y_block := @player_y_position / BLOCK_HEIGHT + 2;
-
-				
-					if(x - view_x_offset = 2 & @player_y_jump_height = 0 & y = y_block) {
-						if(@game_map[y, x] = 0) {
-							
-							@player_y_position += BLOCK_HEIGHT;
-							@player_y_jump_height := BLOCK_HEIGHT - BLOCK_HEIGHT / 8;
-						};
-					};
-
-if(@print_debug) {
-o := x - view_x_offset;
-GameEngine->Debug("x={$x}, offset={$o}, y_block={$y_block}");
-@print_debug := false;
-};
-				
-				y_block := @player_y_position / BLOCK_HEIGHT + 1;
-				if(x - view_x_offset = 2 & @player_y_jump_height > BLOCK_HEIGHT & y = y_block) {
-					if(@game_map[y, x] = 1) {
-						@player_y_position -= BLOCK_HEIGHT;
-						@player_y_jump_height := 0;
-						@player_y_jumping := false;
-GameEngine->Debug("jump block: {$x}, {$y}, y_block={$y_block}");
-					};
-				};
-
-
-
-
 
 				if(@game_map[y, x] = 0) {
-					@space->Render(x * BLOCK_WIDTH - @player_x_position, pixel_y);
+					@space->Render(pixel_x, pixel_y);
 				}
 				else {
-					@solid->Render(x * BLOCK_WIDTH - @player_x_position, pixel_y);
+					@solid->Render(pixel_x, pixel_y);
 				};
 			};
 		};
