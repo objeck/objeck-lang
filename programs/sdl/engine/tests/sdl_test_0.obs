@@ -173,11 +173,15 @@ class PlatformDemo {
 				player_y_block := SCREEN_HEIGHT - @player_y_position;
 
 				# jump on block
-				if(@player_y_jump_height > 0 & max_y_block >= player_y_block & (HitLeftBlock() | HitRightBlock())) {
-# "-- FIRE 1 --"->PrintLine();					
+#				if(@player_y_jump_height > 0 & max_y_block >= player_y_block & (HitLeftBlock() | HitRightBlock())) {
+				if(@player_y_jump_height > 0 & max_y_block <= player_y_block + 32 & 
+						(HitLeftBlock() | HitRightBlock())) {
+# "-- FIRE 1 --"->PrintLine();	
+GameEngine->Debug("m={$max_y_block}, p={$player_y_block}");
 					@player_y_jumping := false;
 					@player_y_jump_height := 0;
 					@player_y_position -= BLOCK_HEIGHT;
+
 				};
 
 				
