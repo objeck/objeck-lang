@@ -247,7 +247,7 @@ class PlatformDemo {
 	}
 
 	method : JumpRightBlock() ~ Nil {
-		if(@player_y_jump_height > 0) {
+		if(@player_y_jump_height > 0) { 
 			player_bottom := @player->GetRect()->GetY() + BLOCK_HEIGHT * 2;
 			block := MaxRightBlock();
 			block_top := block->GetY();
@@ -277,41 +277,33 @@ class PlatformDemo {
 	}
 
 	method : native : MaxLeftBlock () ~ Rect {
-		found := -1;
-
-		for(i := @left_blocks->Size() - 1; i >= 0; i -= 1;) {
-			block := @left_blocks[i];
-
-			if(block->GetX() > -1) {
-				found := i;
-			}
-			else {
-				if(found > -1) {
-					return @left_blocks[found];
-				};
-
-				return Nil;
-			};
-		};
-
-		return Nil;
+		return MaxBlock(@left_blocks);
 	}
 
-	method : native : MaxRightBlock () ~ Rect {
-		found := -1;
+	method : MaxRightBlock () ~ Rect {
+		return MaxBlock(@right_blocks);
+	}
 
-		for(i := @right_blocks->Size() - 1; i >= 0; i -= 1;) {
-			block := @right_blocks[i];
+	method : native : MaxBlock(blocks : Rect[]) ~ Rect {
+		found := -1;
+a : Rect;
+b : Rect;
+
+		for(i := blocks->Size() - 1; i >= 0; i -= 1;) {
+			block := blocks[i];
 
 			if(block->GetX() > -1) {
 				found := i;
 			}
 			else {
+				return false ? a : Nil;
+#~				
 				if(found > -1) {
-					return @right_blocks[found];
+					return blocks[found];
 				};
 
 				return Nil;
+~#				
 			};
 		};
 
@@ -386,7 +378,7 @@ class PlatformDemo {
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 1,   1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 1, 1,   1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 			[0, 0, 0, 0, 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 0, 1, 1, 1, 1,   1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0]
 			[0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,   1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 			[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
