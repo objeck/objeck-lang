@@ -28,8 +28,8 @@ class PlatformDemo {
 	@player_y_jumping : Bool;
 	@player_y_jump_height : Int;
 
-	left_hits : Rect[];
-	right_hits : Rect[];
+	@left_blocks : Rect[];
+	@right_blocks : Rect[];
 
 	@print_debug : Bool;
 	
@@ -50,7 +50,7 @@ class PlatformDemo {
 		@player := @game->AddRectangle(BLOCK_WIDTH, BLOCK_HEIGHT * 2);
 		@player->SetFill(true);
 		@player->SetColor(Color->New(12, 35, 64));
-		@player_y_position := SCREEN_HEIGHT - BLOCK_WIDTH * 4;
+		@player_y_position := SCREEN_HEIGHT - BLOCK_WIDTH * 6;
 		
 		@space := @game->AddRectangle(BLOCK_WIDTH, BLOCK_HEIGHT);
 		@space->SetColor(Color->New(0, 177, 64));
@@ -62,14 +62,14 @@ class PlatformDemo {
 		@game_map := CreateMap();
 		map_dims := @game_map->Size();
 
-		left_hits := Rect->New[map_dims[0]];
-		each(i : left_hits) {
-			left_hits[i] := Rect->New(BLOCK_WIDTH, BLOCK_HEIGHT);
+		@left_blocks := Rect->New[map_dims[0]];
+		each(i : @left_blocks) {
+			@left_blocks[i] := Rect->New(BLOCK_WIDTH, BLOCK_HEIGHT);
 		};
 
-		right_hits := Rect->New[map_dims[0]];
-		each(i : right_hits) {
-			right_hits[i] := Rect->New(BLOCK_WIDTH, BLOCK_HEIGHT);
+		@right_blocks := Rect->New[map_dims[0]];
+		each(i : @right_blocks) {
+			@right_blocks[i] := Rect->New(BLOCK_WIDTH, BLOCK_HEIGHT);
 		};
 	}
 
@@ -143,88 +143,86 @@ class PlatformDemo {
 			if(@game_frame % 2 = 0) {
 				# move left
 				if(@player_x_direction = -1) {
-					if(<>HitLeftBlock()) {
+					if(<>HitLeft()) {
 						@player_x_position -= BLOCK_WIDTH / 8;
 					};
 				}
 				# move right
 				else if(@player_x_direction = 1) {
-					if(<>HitRightBlock()) {
+					if(<>HitRight()) {
 						@player_x_position += BLOCK_WIDTH / 8;
 					};
 				};
-
-				# jump
-				if(@player_y_jumping) {
-					@player_y_jump_height += BLOCK_HEIGHT / 8;
-					
-					if(@player_y_jump_height >= 1.5 * BLOCK_HEIGHT) {
-# "-- FIRE 0 --"->PrintLine();
-						@player_y_jumping := false;
-						@player_y_jump_height -= BLOCK_HEIGHT / 8;
-					};
-				}
-				else if(@player_y_jump_height <> 0) {
-					@player_y_jump_height -= BLOCK_HEIGHT / 8;
-				};
-
-				# fall from block
-				max_y_block := Int->Max(MaxLeftHeight(), MaxRightHeight()) + BLOCK_HEIGHT * 2;
-				player_y_block := SCREEN_HEIGHT - @player_y_position;
-
-				# jump on block
-#				if(@player_y_jump_height > 0 & max_y_block >= player_y_block & (HitLeftBlock() | HitRightBlock())) {
-				if(@player_y_jump_height > 0 & max_y_block <= player_y_block + 32 & 
-						(HitLeftBlock() | HitRightBlock())) {
-# "-- FIRE 1 --"->PrintLine();	
-GameEngine->Debug("m={$max_y_block}, p={$player_y_block}");
-					@player_y_jumping := false;
-					@player_y_jump_height := 0;
-					@player_y_position -= BLOCK_HEIGHT;
-
-				};
-
-				
-				if(max_y_block < player_y_block & @player_y_jump_height = 0) {					
-					@player_y_jump_height := BLOCK_HEIGHT;
-					@player_y_position += BLOCK_HEIGHT;
-				};
-			};
+			};	
 		}
 		else {
 			@game_frame := 1;
 		};
 	}
 
-	method : HitRightBlock() ~ Bool {
-		each(i : right_hits) {
+	method : HitRight() ~ Bool {
+		player_left := @player->GetRect()->GetX();
+		player_right := @player->GetRect()->GetX() + BLOCK_WIDTH;
+		player_top := @player->GetRect()->GetY();
+		player_bottom := @player->GetRect()->GetY() + BLOCK_HEIGHT * 2;
 
-			right := right_hits[i];
-			if(right->HasIntersection(@player->GetRect())) {
-				return true;
+		each(i : @right_blocks) {
+			block := @right_blocks[i];
+
+			block_left := block->GetX();
+			if(block_left > -1) {
+				block_right := block->GetX() + BLOCK_WIDTH;
+				block_top := block->GetY();
+				block_bottom := block->GetY() + BLOCK_HEIGHT;
+
+				# check right x-axis
+				if(block_right > player_left) {
+					# check top
+					if(block_bottom > player_top & block_top < player_bottom) {
+						return true;						
+					};
+				};
 			};
 		};
 
 		return false;
 	}
 
-	method : native : HitLeftBlock() ~ Bool {
-		each(i : left_hits) {
+	method : native : HitLeft() ~ Bool {
+		player_left := @player->GetRect()->GetX();
+		player_right := @player->GetRect()->GetX() + BLOCK_WIDTH;
+		player_top := @player->GetRect()->GetY();
+		player_bottom := @player->GetRect()->GetY() + BLOCK_HEIGHT * 2;
 
-			left := left_hits[i];
-			if(left->HasIntersection(@player->GetRect())) {
-				return true;
+		each(i : @left_blocks) {
+			block := @left_blocks[i];
+
+			block_left := block->GetX();
+			if(block_left > -1) {
+				block_right := block->GetX() + BLOCK_WIDTH;
+				block_top := block->GetY();
+				block_bottom := block->GetY() + BLOCK_HEIGHT;
+
+				# check left x-axis
+				if(block_right > player_left) {
+# GameEngine->Debug("-- Boom 3 --");					
+					# check top
+					if(block_bottom > player_top & block_top < player_bottom) {
+						return true;						
+					};
+				};
 			};
 		};
+# GameEngine->Debug("-- None --");
 
 		return false;
 	}
 
-	method : native : MaxLeftHeight () ~ Int {
+	method : native : MaxLeftBlock () ~ Int {
 		max := 0;
 
-		for(i := left_hits->Size() - 1; i >= 0; i -= 1;) {
-			left := left_hits[i];
+		for(i := @left_blocks->Size() - 1; i >= 0; i -= 1;) {
+			left := @left_blocks[i];
 
 			if(left->GetX() > 0) {
 				max += BLOCK_HEIGHT;
@@ -237,11 +235,11 @@ GameEngine->Debug("m={$max_y_block}, p={$player_y_block}");
 		return max;
 	}
 
-	method : MaxRightHeight () ~ Int {
+	method : MaxRightBlock () ~ Int {
 		max := 0;
 
-		for(i := right_hits->Size() - 1; i >= 0; i -= 1;) {
-			right := right_hits[i];
+		for(i := @right_blocks->Size() - 1; i >= 0; i -= 1;) {
+			right := @right_blocks[i];
 
 			if(right->GetX() > 0) {
 				max += BLOCK_HEIGHT;
@@ -279,23 +277,23 @@ GameEngine->Debug("m={$max_y_block}, p={$player_y_block}");
 
 				if(x - view_x_offset = 1) {
 					if(@game_map[y, x] = 1) {
-						left_hits[y]->SetX(pixel_x);
-						left_hits[y]->SetY(pixel_y);
+						@left_blocks[y]->SetX(pixel_x);
+						@left_blocks[y]->SetY(pixel_y);
 					}
 					else {
-						left_hits[y]->SetX(0);
-						left_hits[y]->SetY(0);
+						@left_blocks[y]->SetX(-1);
+						@left_blocks[y]->SetY(-1);
 					};
 				};
 
 				if(x - view_x_offset = 2) {
 					if(@game_map[y, x] = 1) {
-						right_hits[y]->SetX(pixel_x);
-						right_hits[y]->SetY(pixel_y);
+						@right_blocks[y]->SetX(pixel_x);
+						@right_blocks[y]->SetY(pixel_y);
 					}
 					else {
-						right_hits[y]->SetX(0);
-						right_hits[y]->SetY(0);
+						@right_blocks[y]->SetX(-1);
+						@right_blocks[y]->SetY(-1);
 					};
 				};
 
@@ -321,11 +319,11 @@ GameEngine->Debug("m={$max_y_block}, p={$player_y_block}");
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+			[0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 1,   1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-			[0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 1, 1, 1, 1,   1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0]
-			[0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,   1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-			[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+			[0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 1, 1, 1, 1,   1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0]
+			[0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,   1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+			[0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 		];
 
 		return game_map;
