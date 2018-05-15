@@ -50,7 +50,7 @@ class PlatformDemo {
 		@player := @game->AddRectangle(BLOCK_WIDTH, BLOCK_HEIGHT * 2);
 		@player->SetFill(true);
 		@player->SetColor(Color->New(12, 35, 64));
-		@player_y_position := SCREEN_HEIGHT - BLOCK_WIDTH * 6;
+		@player_y_position := SCREEN_HEIGHT - BLOCK_WIDTH * 4;
 		
 		@space := @game->AddRectangle(BLOCK_WIDTH, BLOCK_HEIGHT);
 		@space->SetColor(Color->New(0, 177, 64));
@@ -141,17 +141,33 @@ class PlatformDemo {
 
 		if(@game_frame <= @game->GetFps()) {
 			if(@game_frame % 2 = 0) {
+				# jump
+				if(@player_y_jumping) {
+					@player_y_jump_height += BLOCK_HEIGHT / 8;					
+					if(@player_y_jump_height >= 1.5 * BLOCK_HEIGHT) {
+						@player_y_jumping := false;
+						@player_y_jump_height -= BLOCK_HEIGHT / 8;
+					};
+				}
+				else if(@player_y_jump_height <> 0) {
+					@player_y_jump_height -= BLOCK_HEIGHT / 8;
+				};	
+
 				# move left
 				if(@player_x_direction = -1) {
 					if(<>HitLeft()) {
 						@player_x_position -= BLOCK_WIDTH / 8;
+						JumpLeftBlock();
 					};
+					FallBlock();
 				}
 				# move right
 				else if(@player_x_direction = 1) {
 					if(<>HitRight()) {
 						@player_x_position += BLOCK_WIDTH / 8;
+						JumpRightBlock();
 					};
+					FallBlock();
 				};
 			};	
 		}
@@ -160,7 +176,9 @@ class PlatformDemo {
 		};
 	}
 
-	method : HitRight() ~ Bool {
+	method : native : HitRight() ~ Bool {
+		# TODO: Right Bounds
+
 		player_left := @player->GetRect()->GetX();
 		player_right := @player->GetRect()->GetX() + BLOCK_WIDTH;
 		player_top := @player->GetRect()->GetY();
@@ -176,11 +194,8 @@ class PlatformDemo {
 				block_bottom := block->GetY() + BLOCK_HEIGHT;
 
 				# check right x-axis
-				if(block_right > player_left) {
-					# check top
-					if(block_bottom > player_top & block_top < player_bottom) {
-						return true;						
-					};
+				if(block_right > player_left & block_bottom > player_top & block_top < player_bottom) {
+					return true;
 				};
 			};
 		};
@@ -189,6 +204,10 @@ class PlatformDemo {
 	}
 
 	method : native : HitLeft() ~ Bool {
+		if(@player_x_position / BLOCK_WIDTH = 0) {
+			return true;
+		};
+
 		player_left := @player->GetRect()->GetX();
 		player_right := @player->GetRect()->GetX() + BLOCK_WIDTH;
 		player_top := @player->GetRect()->GetY();
@@ -204,52 +223,105 @@ class PlatformDemo {
 				block_bottom := block->GetY() + BLOCK_HEIGHT;
 
 				# check left x-axis
-				if(block_right > player_left) {
-# GameEngine->Debug("-- Boom 3 --");					
-					# check top
-					if(block_bottom > player_top & block_top < player_bottom) {
-						return true;						
-					};
+				if(block_right > player_left & block_bottom > player_top & block_top < player_bottom) {
+					return true;
 				};
 			};
 		};
-# GameEngine->Debug("-- None --");
 
 		return false;
 	}
 
-	method : native : MaxLeftBlock () ~ Int {
-		max := 0;
+	method : JumpLeftBlock() ~ Nil {
+		if(@player_y_jump_height > 0) {
+			player_bottom := @player->GetRect()->GetY() + BLOCK_HEIGHT * 2;
+			block := MaxLeftBlock();
+			block_top := block->GetY();
 
-		for(i := @left_blocks->Size() - 1; i >= 0; i -= 1;) {
-			left := @left_blocks[i];
-
-			if(left->GetX() > 0) {
-				max += BLOCK_HEIGHT;
-			}
-			else {
-				return max;
-			};
+			if(@player_y_jump_height > BLOCK_HEIGHT & block_top - player_bottom < BLOCK_HEIGHT & player_bottom <= block_top) {
+				@player_y_position -= BLOCK_HEIGHT;
+				@player_y_jumping := false;
+				@player_y_jump_height := 0;
+			};			
 		};
-
-		return max;
 	}
 
-	method : MaxRightBlock () ~ Int {
-		max := 0;
+	method : JumpRightBlock() ~ Nil {
+		if(@player_y_jump_height > 0) {
+			player_bottom := @player->GetRect()->GetY() + BLOCK_HEIGHT * 2;
+			block := MaxRightBlock();
+			block_top := block->GetY();
 
-		for(i := @right_blocks->Size() - 1; i >= 0; i -= 1;) {
-			right := @right_blocks[i];
+			if(@player_y_jump_height > BLOCK_HEIGHT & block_top - player_bottom < BLOCK_HEIGHT & player_bottom <= block_top) {
+				@player_y_position -= BLOCK_HEIGHT;
+				@player_y_jumping := false;
+				@player_y_jump_height := 0;
+			};			
+		};
+	}
 
-			if(right->GetX() > 0) {
-				max += BLOCK_HEIGHT;
+	method : FallBlock() ~ Nil {
+		if(@player_y_jump_height = 0) {
+			player_bottom := @player->GetRect()->GetY() + BLOCK_HEIGHT * 2;
+			player_left := @player->GetRect()->GetX();
+			player_right := @player->GetRect()->GetX() + BLOCK_WIDTH;
+
+			block := MaxRightBlock();
+			foo := MaxLeftBlock();
+			
+			block_left := block->GetX();
+			block_right := block->GetX() + BLOCK_WIDTH;
+			block_top := Int->Min(foo->GetY(), block->GetY());
+			
+GameEngine->Debug("TEST: player=({$player_left},{$player_right}); block=({$block_left},{$block_right})");
+			if(block_top - player_bottom >= BLOCK_HEIGHT) {				
+				@player_y_position += BLOCK_HEIGHT;
+				@player_y_jumping := false;
+				@player_y_jump_height := BLOCK_HEIGHT;
+			};			
+		};
+	}
+
+	method : native : MaxLeftBlock () ~ Rect {
+		found := -1;
+
+		for(i := @left_blocks->Size() - 1; i >= 0; i -= 1;) {
+			block := @left_blocks[i];
+
+			if(block->GetX() > -1) {
+				found := i;
 			}
 			else {
-				return max;
+				if(found > -1) {
+					return @left_blocks[found];
+				};
+
+				return Nil;
 			};
 		};
 
-		return max;
+		return Nil;
+	}
+
+	method : native : MaxRightBlock () ~ Rect {
+		found := -1;
+
+		for(i := @right_blocks->Size() - 1; i >= 0; i -= 1;) {
+			block := @right_blocks[i];
+
+			if(block->GetX() > -1) {
+				found := i;
+			}
+			else {
+				if(found > -1) {
+					return @right_blocks[found];
+				};
+
+				return Nil;
+			};
+		};
+
+		return Nil;
 	}
 
 	method : Render() ~ Nil {
@@ -319,11 +391,11 @@ class PlatformDemo {
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-			[0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 1,   1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-			[0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 1, 1, 1, 1,   1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0]
-			[0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,   1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-			[0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+			[0, 0, 0, 0, 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 0, 1, 1, 1, 1,   1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0]
+			[0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,   1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+			[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 		];
 
 		return game_map;
