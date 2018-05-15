@@ -263,17 +263,11 @@ class PlatformDemo {
 	method : FallBlock() ~ Nil {
 		if(@player_y_jump_height = 0) {
 			player_bottom := @player->GetRect()->GetY() + BLOCK_HEIGHT * 2;
-			player_left := @player->GetRect()->GetX();
-			player_right := @player->GetRect()->GetX() + BLOCK_WIDTH;
-
-			block := MaxRightBlock();
-			foo := MaxLeftBlock();
 			
-			block_left := block->GetX();
-			block_right := block->GetX() + BLOCK_WIDTH;
-			block_top := Int->Min(foo->GetY(), block->GetY());
+			left_block := MaxLeftBlock();
+			right_block := MaxRightBlock();
 			
-GameEngine->Debug("TEST: player=({$player_left},{$player_right}); block=({$block_left},{$block_right})");
+			block_top := Int->Min(left_block->GetY(), right_block->GetY());
 			if(block_top - player_bottom >= BLOCK_HEIGHT) {				
 				@player_y_position += BLOCK_HEIGHT;
 				@player_y_jumping := false;
