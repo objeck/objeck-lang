@@ -296,14 +296,7 @@ b : Rect;
 				found := i;
 			}
 			else {
-				return false ? a : Nil;
-#~				
-				if(found > -1) {
-					return blocks[found];
-				};
-
-				return Nil;
-~#				
+				return found > -1 ? blocks[found] : Nil;
 			};
 		};
 

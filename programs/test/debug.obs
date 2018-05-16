@@ -4,16 +4,12 @@ class Test {
 	New() {
 	}
 
-	method : public : Run() ~ Nil {
-		if(@a) {
-			"-- false --"->PrintLine();
-		}
-		else {
-			"-- true --"->PrintLine();
-		};
+	method : public : Foo() ~ String {
+		a := false;
+		return a ? Nil : "foo";
 	}
 	
 	function : Main(args : String[]) ~ Nil {
-		Test->New()->Run();
+		Test->New()->Foo();
 	}
 }
