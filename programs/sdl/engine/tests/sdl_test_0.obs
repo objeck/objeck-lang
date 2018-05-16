@@ -235,28 +235,34 @@ class PlatformDemo {
 	method : JumpLeftBlock() ~ Nil {
 		if(@player_y_jump_height > 0) {
 			player_bottom := @player->GetRect()->GetY() + BLOCK_HEIGHT * 2;
-			block := MaxLeftBlock();
-			block_top := block->GetY();
 
-			if(@player_y_jump_height > BLOCK_HEIGHT & block_top - player_bottom < BLOCK_HEIGHT & player_bottom <= block_top) {
-				@player_y_position -= BLOCK_HEIGHT;
-				@player_y_jumping := false;
-				@player_y_jump_height := 0;
-			};			
+			block := MaxLeftBlock();
+			if(block <> Nil) {
+				block_top := block->GetY();
+
+				if(@player_y_jump_height > BLOCK_HEIGHT & block_top - player_bottom < BLOCK_HEIGHT & player_bottom <= block_top) {
+					@player_y_position -= BLOCK_HEIGHT;
+					@player_y_jumping := false;
+					@player_y_jump_height := 0;
+				};
+			};
 		};
 	}
 
 	method : JumpRightBlock() ~ Nil {
 		if(@player_y_jump_height > 0) { 
 			player_bottom := @player->GetRect()->GetY() + BLOCK_HEIGHT * 2;
-			block := MaxRightBlock();
-			block_top := block->GetY();
 
-			if(@player_y_jump_height > BLOCK_HEIGHT & block_top - player_bottom < BLOCK_HEIGHT & player_bottom <= block_top) {
-				@player_y_position -= BLOCK_HEIGHT;
-				@player_y_jumping := false;
-				@player_y_jump_height := 0;
-			};			
+			block := MaxRightBlock();
+			if(block <> Nil) {
+				block_top := block->GetY();
+
+				if(@player_y_jump_height > BLOCK_HEIGHT & block_top - player_bottom < BLOCK_HEIGHT & player_bottom <= block_top) {
+					@player_y_position -= BLOCK_HEIGHT;
+					@player_y_jumping := false;
+					@player_y_jump_height := 0;
+				};
+			};
 		};
 	}
 
@@ -266,13 +272,15 @@ class PlatformDemo {
 			
 			left_block := MaxLeftBlock();
 			right_block := MaxRightBlock();
-			
-			block_top := Int->Min(left_block->GetY(), right_block->GetY());
-			if(block_top - player_bottom >= BLOCK_HEIGHT) {				
-				@player_y_position += BLOCK_HEIGHT;
-				@player_y_jumping := false;
-				@player_y_jump_height := BLOCK_HEIGHT;
-			};			
+				
+			if(left_block <> Nil & right_block <> Nil) {
+				block_top := Int->Min(left_block->GetY(), right_block->GetY());
+				if(block_top - player_bottom >= BLOCK_HEIGHT) {				
+					@player_y_position += BLOCK_HEIGHT;
+					@player_y_jumping := false;
+					@player_y_jump_height := BLOCK_HEIGHT;
+				};
+			};
 		};
 	}
 
@@ -285,18 +293,14 @@ class PlatformDemo {
 	}
 
 	method : native : MaxBlock(blocks : Rect[]) ~ Rect {
-		found := -1;
-a : Rect;
-b : Rect;
-
-		for(i := blocks->Size() - 1; i >= 0; i -= 1;) {
+		each(i : blocks) {
 			block := blocks[i];
 
-			if(block->GetX() > -1) {
-				found := i;
-			}
-			else {
-				return found > -1 ? blocks[found] : Nil;
+			block_y := block->GetY();
+			player_y := @player_y_position + BLOCK_HEIGHT;
+
+			if(block_y > -1 & block_y >= player_y) {
+				return block;
 			};
 		};
 
