@@ -349,7 +349,7 @@ bundle SDL2.Game {
 			};
 
 			# SHOULD BE A PARAMETER
-			@font := Font->New("../../../../programs/sdl/engine/tests/media/lazy.ttf", 24);
+			@font := Font->New("../../../../programs/sdl/engine/tests/media/lazy.ttf", 18);
 			if(@font->IsNull()) {
 				"Failed to load font!"->ErrorLine();
 				return false;
