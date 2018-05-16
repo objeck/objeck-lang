@@ -3,8 +3,6 @@ Game demo v0
 link: https://github.com/objeck/objeck-lang/blob/master/programs/sdl/engine/tests/sdl_test_0.obs
 ~#
 
-# TODO: Map pixel pos, to map block
-
 use SDL2;
 use SDL2.Game;
 
@@ -31,8 +29,6 @@ class PlatformDemo {
 	@left_blocks : Rect[];
 	@right_blocks : Rect[];
 
-	@print_debug : Bool;
-	
 	function : Main(args : String[]) ~ Nil {
 		platform := PlatformDemo->New();
 		platform->Run();
@@ -120,10 +116,6 @@ class PlatformDemo {
 	            label Scancode->SDL_SCANCODE_RIGHT: {
 	            	@player_x_direction := 1;
 	            }
-
-	            label Scancode->SDL_SCANCODE_DOWN: {
-	            	@print_debug := true;
-	            }
 	        };
 	    }
 	    else if(e->GetType() = EventType->SDL_KEYUP & e->GetKey()->GetRepeat() = 0) {
@@ -177,7 +169,9 @@ class PlatformDemo {
 	}
 
 	method : native : HitRight() ~ Bool {
-		# TODO: Right Bounds
+		if(@player_x_position / BLOCK_WIDTH > 35) {
+			return true;
+		};
 
 		player_left := @player->GetRect()->GetX();
 		player_right := @player->GetRect()->GetX() + BLOCK_WIDTH;
@@ -318,19 +312,23 @@ class PlatformDemo {
 
 	method : native : RenderPlatform() ~ Nil {
 		dims := @game_map->Size();
-		y_end := dims[0];
-		x_end := dims[1];
 
-		view_x_offset := @player_x_position / BLOCK_WIDTH + 1;
+		view_x_offset := @player_x_position / BLOCK_WIDTH;
 		view_y_offset := ((@player_y_position - @player_y_jump_height) / BLOCK_WIDTH) + 1;
-				
-		for(x := view_x_offset; x < view_x_offset + 20; x += 1;) {
+
+		y_end := dims[0];
+		x_end := view_x_offset + 21;
+		if(x_end > dims[1]) {			
+			x_end := dims[1];	
+		};
+
+		for(x := view_x_offset; x < x_end; x += 1;) {
 			pixel_x := x * BLOCK_WIDTH - @player_x_position;
 
 			for(y := 0; y < y_end; y += 1;) {
 				pixel_y := y * BLOCK_HEIGHT;
 
-				if(x - view_x_offset = 1) {
+				if(x - view_x_offset = 2) {
 					if(@game_map[y, x] = 1) {
 						@left_blocks[y]->SetX(pixel_x);
 						@left_blocks[y]->SetY(pixel_y);
@@ -341,7 +339,7 @@ class PlatformDemo {
 					};
 				};
 
-				if(x - view_x_offset = 2) {
+				if(x - view_x_offset = 3) {
 					if(@game_map[y, x] = 1) {
 						@right_blocks[y]->SetX(pixel_x);
 						@right_blocks[y]->SetY(pixel_y);
@@ -374,7 +372,7 @@ class PlatformDemo {
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 1, 1,   1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 			[0, 0, 0, 0, 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 0, 1, 1, 1, 1,   1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0]
 			[0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,   1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1]
