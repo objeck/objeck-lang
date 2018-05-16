@@ -106,16 +106,16 @@ bundle SDL2.Game {
 				};
 
 				# Render text surface
-				textSurface := @font->RenderTextSolid(text, color);
-				if(textSurface->IsNull()) {
+				text_surface := @font->RenderTextSolid(text, color);
+				if(text_surface->IsNull()) {
 					"Unable to render text surface!"->ErrorLine();
 					@is_ok := false;
 				};
 
-				texture := textSurface->CreateTexture(@renderer);
-				@render_rect->SetW(textSurface->GetW());
-				@render_rect->SetH(textSurface->GetH());
-				textSurface->Free();
+				texture := text_surface->CreateTexture(@renderer);
+				@render_rect->SetW(text_surface->GetW());
+				@render_rect->SetH(text_surface->GetH());
+				text_surface->Free();
 				
 				@texture := texture;
 				@is_ok := @texture <> Nil;
