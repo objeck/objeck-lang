@@ -26,6 +26,11 @@ class PlatformDemo {
 	@player_y_jumping : Bool;
 	@player_y_jump_height : Int;
 
+
+	@text_a : TextSprite;
+	@text_b : TextSprite;
+	@text_color : Color;
+
 	@left_blocks : Rect[];
 	@right_blocks : Rect[];
 
@@ -54,6 +59,10 @@ class PlatformDemo {
 		@solid := @game->AddRectangle(BLOCK_WIDTH, BLOCK_HEIGHT);
 		@solid->SetFill(true);
 		@solid->SetColor(Color->New(204, 0, 0));
+
+		@text_a := @game->AddTextSprite();
+		@text_b := @game->AddTextSprite();
+		@text_color := Color->New(255, 255, 255);
 
 		@game_map := CreateMap();
 		map_dims := @game_map->Size();
@@ -198,7 +207,7 @@ class PlatformDemo {
 	}
 
 	method : native : HitLeft() ~ Bool {
-		if(@player_x_position / BLOCK_WIDTH = 0) {
+		if(@player_x_position <= 8) {
 			return true;
 		};
 
@@ -306,6 +315,9 @@ class PlatformDemo {
 
 		RenderPlatform();
 		@player->Render(BLOCK_WIDTH * 2, @player_y_position - @player_y_jump_height);
+
+		@text_a->RenderedText("Pos: ({$@player_x_position},{$@player_y_position})", @text_color);
+		@text_a->Render(10, 10);
 
 		@game->Show();
 	}
