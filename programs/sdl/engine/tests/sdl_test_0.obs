@@ -154,27 +154,27 @@ class PlatformDemo {
 			if(@game_frame % 2 = 0) {
 				# jump
 				if(@player_y_jumping) {
-					@player_y_jump_height += BLOCK_HEIGHT / 8;					
+					@player_y_jump_height += BLOCK_HEIGHT / 4;					
 					if(@player_y_jump_height >= 1.5 * BLOCK_HEIGHT) {
 						@player_y_jumping := false;
-						@player_y_jump_height -= BLOCK_HEIGHT / 8;
+						@player_y_jump_height -= BLOCK_HEIGHT / 4;
 					};
 				}
 				else if(@player_y_jump_height <> 0) {
-					@player_y_jump_height -= BLOCK_HEIGHT / 8;
+					@player_y_jump_height -= BLOCK_HEIGHT / 4;
 				};	
 
 				# move left
 				if(@player_x_direction = -1) {
 					if(<>HitLeft()) {
-						@player_x_position -= BLOCK_WIDTH / 8;
+						@player_x_position -= BLOCK_WIDTH / 4;
 						JumpLeftBlock();
 					};
 				}
 				# move right
 				else if(@player_x_direction = 1) {
 					if(<>HitRight()) {
-						@player_x_position += BLOCK_WIDTH / 8;
+						@player_x_position += BLOCK_WIDTH / 4;
 						JumpRightBlock();
 					};
 				};
@@ -207,7 +207,7 @@ class PlatformDemo {
 				block_bottom := block->GetY() + BLOCK_HEIGHT;
 
 				# check right x-axis
-				if(block_right > player_left & block_bottom > player_top & block_top < player_bottom) {
+				if(block_right >= player_left & block_bottom > player_top & block_top < player_bottom) {
 					return true;
 				};
 			};
