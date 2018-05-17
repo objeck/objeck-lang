@@ -26,11 +26,9 @@ class PlatformDemo {
 	@player_y_jumping : Bool;
 	@player_y_jump_height : Int;
 
-
-	@text_a : TextSprite;
-	@text_b : TextSprite;
-	@show_debug : Bool;
-	@debug_text : String;
+	
+	@debug_text : TextSprite;
+	@debug_string : String;
 	@text_color : Color;
 
 	@left_blocks : Rect[];
@@ -62,8 +60,7 @@ class PlatformDemo {
 		@solid->SetFill(true);
 		@solid->SetColor(Color->New(204, 0, 0));
 
-		@text_a := @game->AddTextSprite();
-		@text_b := @game->AddTextSprite();
+		@debug_text := @game->AddTextSprite();
 		@text_color := Color->New(255, 255, 255);
 
 		@game_map := CreateMap();
@@ -127,10 +124,6 @@ class PlatformDemo {
 	            label Scancode->SDL_SCANCODE_RIGHT: {
 	            	@player_x_direction := 1;
 	            }
-
-	            label Scancode->SDL_SCANCODE_DOWN: {
-	            	@show_debug := true;
-	            }
 	        };
 	    }
 	    else if(e->GetType() = EventType->SDL_KEYUP & e->GetKey()->GetRepeat() = 0) {
@@ -138,10 +131,6 @@ class PlatformDemo {
 	        	label Scancode->SDL_SCANCODE_LEFT:
 	            label Scancode->SDL_SCANCODE_RIGHT: {
 	            	@player_x_direction := 0;
-	            }
-
-	            label Scancode->SDL_SCANCODE_DOWN: {
-	            	@show_debug := false;
 	            }
 	        };
 	    };   
@@ -208,6 +197,7 @@ class PlatformDemo {
 
 				# check right x-axis
 				if(block_right >= player_left & block_bottom > player_top & block_top < player_bottom) {
+					@player_x_position -= BLOCK_HEIGHT / 8;
 					return true;
 				};
 			};
@@ -238,7 +228,6 @@ class PlatformDemo {
 				# check left x-axis
 				if(block_right > player_left & block_bottom > player_top & block_top < player_bottom) {
 					@player_x_position += BLOCK_HEIGHT / 8;
-					
 					return true;
 				};
 			};
@@ -290,28 +279,6 @@ class PlatformDemo {
 						
 			if(left_block <> Nil & right_block <> Nil) {
 				block_top := Int->Min(left_block->GetY(), right_block->GetY());
-
-
-
-
-
-#			if(@show_debug) {
-				left_left_block := left_block->GetX();
-				left_right_block := left_block->GetX() + BLOCK_WIDTH;
-
-				right_left_block := right_block->GetX();
-				right_right_block := right_block->GetX() + BLOCK_WIDTH;
-
-				foo := block_top - player_bottom;
-				
-				@debug_text := "left=({$left_left_block},{$left_right_block}); right=({$right_left_block},{$right_right_block}); diff={$foo}";				
-#			};
-
-
-
-
-
-
 				if(block_top - player_bottom >= BLOCK_HEIGHT) {				
 					@player_y_position += BLOCK_HEIGHT;
 					@player_y_jumping := false;
@@ -350,14 +317,9 @@ class PlatformDemo {
 		RenderPlatform();
 		@player->Render(BLOCK_WIDTH * 2, @player_y_position - @player_y_jump_height);
 
-		@text_a->RenderedText("Pos: ({$@player_x_position},{$@player_y_position})", @text_color);
-		@text_a->Render(8, 8);
-
-		if(@show_debug & @debug_text <> Nil) {
-			@text_b->RenderedText(@debug_text, @text_color);
-			@text_b->Render(8, 32);
-		};
-
+		@debug_text->RenderedText("Pos: ({$@player_x_position},{$@player_y_position})", @text_color);
+		@debug_text->Render(8, 8);
+		
 		@game->Show();
 	}
 
