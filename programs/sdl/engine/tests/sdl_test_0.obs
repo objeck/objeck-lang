@@ -17,6 +17,8 @@ class PlatformDemo {
 	@game_frame : Int;
 
 	@player : Rectangle;
+	@player_standing : Rectangle;
+	@player_crouched : Rectangle;
 	@space : Rectangle;
 	@solid : Rectangle;
 
@@ -26,7 +28,7 @@ class PlatformDemo {
 	@player_y_jumping : Bool;
 	@player_y_jump_height : Int;
 
-	
+
 	@debug_text : TextSprite;
 	@debug_string : String;
 	@text_color : Color;
@@ -48,11 +50,18 @@ class PlatformDemo {
 		@game := GameEngine->New(SCREEN_WIDTH, SCREEN_HEIGHT, "Engine Zero");
 		@game->SetClearColor(Color->New());
 
-		@player := @game->AddRectangle(BLOCK_WIDTH, BLOCK_HEIGHT * 2);
-		@player->SetFill(true);
-		@player->SetColor(Color->New(12, 35, 64));
-		@player_y_position := SCREEN_HEIGHT - BLOCK_WIDTH * 4;
+		@player_standing := @game->AddRectangle(BLOCK_WIDTH, BLOCK_HEIGHT * 2);
+		@player_standing->SetFill(true);
+		@player_standing->SetColor(Color->New(12, 35, 64));
 		
+		@player_crouched := @game->AddRectangle(BLOCK_WIDTH, BLOCK_HEIGHT);
+		@player_crouched->SetFill(true);
+		@player_crouched->SetColor(Color->New(12, 35, 64));
+		
+		@player := @player_standing;
+		@player_y_position := SCREEN_HEIGHT - BLOCK_WIDTH * 4;
+
+
 		@space := @game->AddRectangle(BLOCK_WIDTH, BLOCK_HEIGHT);
 		@space->SetColor(Color->New(0, 177, 64));
 
@@ -182,18 +191,18 @@ class PlatformDemo {
 		};
 
 		player_left := @player->GetRect()->GetX();
-		player_right := @player->GetRect()->GetX() + BLOCK_WIDTH;
+		player_right := @player->GetRect()->GetX() + @player->GetWidth();
 		player_top := @player->GetRect()->GetY();
-		player_bottom := @player->GetRect()->GetY() + BLOCK_HEIGHT * 2;
+		player_bottom := @player->GetRect()->GetY() + @player->GetHeight();
 
 		each(i : @right_blocks) {
 			block := @right_blocks[i];
 
 			block_left := block->GetX();
 			if(block_left > -1) {
-				block_right := block->GetX() + BLOCK_WIDTH;
+				block_right := block->GetX() + block->GetW();
 				block_top := block->GetY();
-				block_bottom := block->GetY() + BLOCK_HEIGHT;
+				block_bottom := block->GetY() + block->GetH();
 
 				# check right x-axis
 				if(block_right >= player_left & block_bottom > player_top & block_top < player_bottom) {
@@ -212,18 +221,18 @@ class PlatformDemo {
 		};
 
 		player_left := @player->GetRect()->GetX();
-		player_right := @player->GetRect()->GetX() + BLOCK_WIDTH;
+		player_right := @player->GetRect()->GetX() + @player->GetWidth();
 		player_top := @player->GetRect()->GetY();
-		player_bottom := @player->GetRect()->GetY() + BLOCK_HEIGHT * 2;
+		player_bottom := @player->GetRect()->GetY() + @player->GetHeight();
 
 		each(i : @left_blocks) {
 			block := @left_blocks[i];
 
 			block_left := block->GetX();
 			if(block_left > -1) {
-				block_right := block->GetX() + BLOCK_WIDTH;
+				block_right := block->GetX() + block->GetW();
 				block_top := block->GetY();
-				block_bottom := block->GetY() + BLOCK_HEIGHT;
+				block_bottom := block->GetY() + block->GetH();
 
 				# check left x-axis
 				if(block_right > player_left & block_bottom > player_top & block_top < player_bottom) {
@@ -238,7 +247,7 @@ class PlatformDemo {
 
 	method : JumpLeftBlock() ~ Nil {
 		if(@player_y_jump_height > 0) {
-			player_bottom := @player->GetRect()->GetY() + BLOCK_HEIGHT * 2;
+			player_bottom := @player->GetRect()->GetY() + @player->GetHeight();
 
 			block := MaxLeftBlock();
 			if(block <> Nil) {
@@ -255,7 +264,7 @@ class PlatformDemo {
 
 	method : JumpRightBlock() ~ Nil {
 		if(@player_y_jump_height > 0) { 
-			player_bottom := @player->GetRect()->GetY() + BLOCK_HEIGHT * 2;
+			player_bottom := @player->GetRect()->GetY() + @player->GetHeight();
 
 			block := MaxRightBlock();
 			if(block <> Nil) {
@@ -272,7 +281,7 @@ class PlatformDemo {
 
 	method : FallBlock() ~ Nil {
 		if(@player_y_jump_height = 0) {
-			player_bottom := @player->GetRect()->GetY() + BLOCK_HEIGHT * 2;
+			player_bottom := @player->GetRect()->GetY() + @player->GetHeight();
 			
 			left_block := MaxLeftBlock();
 			right_block := MaxRightBlock();
@@ -319,7 +328,7 @@ class PlatformDemo {
 
 		@debug_text->RenderedText("Pos: ({$@player_x_position},{$@player_y_position})", @text_color);
 		@debug_text->Render(8, 8);
-		
+
 		@game->Show();
 	}
 
