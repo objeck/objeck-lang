@@ -237,6 +237,8 @@ class PlatformDemo {
 
 				# check left x-axis
 				if(block_right > player_left & block_bottom > player_top & block_top < player_bottom) {
+					@player_x_position += BLOCK_HEIGHT / 8;
+					
 					return true;
 				};
 			};
