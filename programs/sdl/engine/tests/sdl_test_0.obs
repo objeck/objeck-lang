@@ -18,6 +18,8 @@ class PlatformDemo {
 
 	@player : Rectangle;
 	@player_standing : Rectangle;
+	@player_swinging : Rectangle;
+
 	@space : Rectangle;
 	@solid : Rectangle;
 
@@ -51,10 +53,12 @@ class PlatformDemo {
 		@player_standing := @game->AddRectangle(BLOCK_WIDTH, BLOCK_HEIGHT * 2);
 		@player_standing->SetFill(true);
 		@player_standing->SetColor(Color->New(12, 35, 64));
-		
 		@player := @player_standing;
-		@player_y_position := SCREEN_HEIGHT - BLOCK_WIDTH * 4;
 
+		@player_y_position := SCREEN_HEIGHT - BLOCK_WIDTH * 4;
+		@player_swinging := @game->AddRectangle(BLOCK_WIDTH, BLOCK_HEIGHT / 4);
+		@player_swinging->SetFill(true);
+		@player_swinging->SetColor(Color->New(138, 43, 226));
 
 		@space := @game->AddRectangle(BLOCK_WIDTH, BLOCK_HEIGHT);
 		@space->SetColor(Color->New(0, 177, 64));
@@ -166,23 +170,27 @@ class PlatformDemo {
 				if(@player_x_direction = -1) {
 					if(<>HitLeft()) {
 						@player_x_position -= BLOCK_WIDTH / 4;
-						JumpLeftBlock();
+						PlayerJumpLeft();
 					};
 				}
 				# move right
 				else if(@player_x_direction = 1) {
 					if(<>HitRight()) {
 						@player_x_position += BLOCK_WIDTH / 4;
-						JumpRightBlock();
+						PlayerJumpRight();
 					};
 				};
 
-				FallBlock();
+				PlayerFalling();
 			};	
 		}
 		else {
 			@game_frame := 1;
 		};
+	}
+
+	method : native : HitTop() ~ Bool {
+		return false;
 	}
 
 	method : native : HitRight() ~ Bool {
@@ -245,7 +253,7 @@ class PlatformDemo {
 		return false;
 	}
 
-	method : JumpLeftBlock() ~ Nil {
+	method : PlayerJumpLeft() ~ Nil {
 		if(@player_y_jump_height > 0) {
 			player_bottom := @player->GetRect()->GetY() + @player->GetHeight();
 
@@ -262,7 +270,7 @@ class PlatformDemo {
 		};
 	}
 
-	method : JumpRightBlock() ~ Nil {
+	method : PlayerJumpRight() ~ Nil {
 		if(@player_y_jump_height > 0) { 
 			player_bottom := @player->GetRect()->GetY() + @player->GetHeight();
 
@@ -279,7 +287,7 @@ class PlatformDemo {
 		};
 	}
 
-	method : FallBlock() ~ Nil {
+	method : PlayerFalling() ~ Nil {
 		if(@player_y_jump_height = 0) {
 			player_bottom := @player->GetRect()->GetY() + @player->GetHeight();
 			
@@ -325,6 +333,7 @@ class PlatformDemo {
 
 		RenderPlatform();
 		@player->Render(BLOCK_WIDTH * 2, @player_y_position - @player_y_jump_height);
+		@player_swinging->Render(BLOCK_WIDTH * 3, @player_y_position - @player_y_jump_height);
 
 		@debug_text->RenderedText("Pos: ({$@player_x_position},{$@player_y_position})", @text_color);
 		@debug_text->Render(8, 8);
@@ -373,8 +382,6 @@ class PlatformDemo {
 					};
 				};
 
-GameEngine->Debug("{$@player_x_position}");
-
 				if(x - view_x_offset = 3) {
 					if(@game_map[y, x] = 1) {
 						@right_blocks[y]->SetX(pixel_x);
@@ -407,11 +414,11 @@ GameEngine->Debug("{$@player_x_position}");
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+			[0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0]
-			[0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+			[0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0]
+			[0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 			[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 		];
 
