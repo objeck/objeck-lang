@@ -18,17 +18,14 @@ class PlatformDemo {
 
 	@player : Rectangle;
 	@player_standing : Rectangle;
-	@player_crouched : Rectangle;
 	@space : Rectangle;
 	@solid : Rectangle;
 
-	@player_crouching : Bool;
 	@player_x_direction : Int;
 	@player_x_position : Int;
 	@player_y_position : Int;
 	@player_y_jumping : Bool;
 	@player_y_jump_height : Int;
-
 
 	@debug_text : TextSprite;
 	@debug_string : String;
@@ -54,10 +51,6 @@ class PlatformDemo {
 		@player_standing := @game->AddRectangle(BLOCK_WIDTH, BLOCK_HEIGHT * 2);
 		@player_standing->SetFill(true);
 		@player_standing->SetColor(Color->New(12, 35, 64));
-		
-		@player_crouched := @game->AddRectangle(BLOCK_WIDTH, BLOCK_HEIGHT);
-		@player_crouched->SetFill(true);
-		@player_crouched->SetColor(Color->New(12, 35, 64));
 		
 		@player := @player_standing;
 		@player_y_position := SCREEN_HEIGHT - BLOCK_WIDTH * 4;
@@ -136,9 +129,6 @@ class PlatformDemo {
 	            }
 
 	            label Scancode->SDL_SCANCODE_DOWN: {
-	            	@player_crouching := true;
-					@player := @player_crouched;
-					@player_y_position += BLOCK_HEIGHT;
 	            }
 	        };
 	    }
@@ -150,9 +140,6 @@ class PlatformDemo {
 	            }
 
 	            label Scancode->SDL_SCANCODE_DOWN: {
-	            	@player_crouching := false;
-					@player := @player_standing;
-					@player_y_position -= BLOCK_HEIGHT;
 	            }
 	        };
 	    };   
@@ -342,6 +329,18 @@ class PlatformDemo {
 		@debug_text->RenderedText("Pos: ({$@player_x_position},{$@player_y_position})", @text_color);
 		@debug_text->Render(8, 8);
 
+		@game->GetRenderer()->SetDrawColor(255, 255, 0, 0);
+
+		each(i : @left_blocks) {
+			block := @left_blocks[i];
+			@game->GetRenderer()->DrawRect(block);
+		};
+
+		each(i : @right_blocks) {
+			block := @right_blocks[i];
+			@game->GetRenderer()->DrawRect(block);
+		};
+
 		@game->Show();
 	}
 
@@ -373,6 +372,8 @@ class PlatformDemo {
 						@left_blocks[y]->SetY(-1);
 					};
 				};
+
+GameEngine->Debug("{$@player_x_position}");
 
 				if(x - view_x_offset = 3) {
 					if(@game_map[y, x] = 1) {
@@ -407,10 +408,10 @@ class PlatformDemo {
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-			[0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-			[0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 1, 1,   1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-			[0, 0, 0, 0, 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 0, 1, 1, 1, 1,   1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0]
-			[0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,   1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 			[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 		];
 

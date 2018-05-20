@@ -374,6 +374,10 @@ bundle SDL2.Game {
 			return @is_ok;
 		}		
 
+		method : public : GetRenderer() ~ Renderer {
+			return @renderer;
+		}
+
 		method : public : GetEvent() ~ Event {
 			return @event;
 		}
