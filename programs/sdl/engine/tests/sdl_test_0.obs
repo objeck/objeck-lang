@@ -192,10 +192,30 @@ class PlatformDemo {
 	}
 
 	method : native : HitTop() ~ Bool {
+		left_block := MinLeftBlock();
+		if(left_block <> Nil) {
+			foo := left_block->GetY();
+GameEngine->Debug("left_block={$foo}");				
+		};
+
+		right_block := MinRightBlock();
+		if(right_block <> Nil) {
+			foo := right_block->GetY();
+GameEngine->Debug("right_block={$foo}");				
+		};
+
+		return false;
+	}
+
+	method : MinLeftBlock() ~ Rect {
+		return MinTopBlock(@left_blocks);
+	}
+
+	method : MinRightBlock() ~ Rect {
 		return MinTopBlock(@right_blocks);
 	}
 
-	method : native : MinTopBlock(blocks : Rect[]) ~ Bool {
+	method : native : MinTopBlock(blocks : Rect[]) ~ Rect {
 		each(i : blocks) {
 			block := blocks[i];
 
@@ -205,19 +225,13 @@ class PlatformDemo {
 			player_top := @player->GetRect()->GetY();
 			player_bottom := player_top + @player->GetHeight();
 
-			if(block_top > -1) {
-GameEngine->Debug("player_top={$player_top}, block_bottom={$block_bottom}");
-			};
-#~			
-			player_y := @player_y_position + BLOCK_HEIGHT;
-
-			if(block_y > -1 & block_y >= player_y) {
+			if(block_top > -1 & block_top < player_top & player_top < block_bottom) {
+# GameEngine->Debug("player_top={$player_top}, block_bottom={$block_bottom}");
 				return block;
 			};
-~#			
 		};
 
-		return false;
+		return Nil;
 	}
 
 	method : native : HitRight() ~ Bool {
@@ -442,11 +456,11 @@ GameEngine->Debug("player_top={$player_top}, block_bottom={$block_bottom}");
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-			[0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+			[0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+			[0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0]
-			[0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 			[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 		];
 
