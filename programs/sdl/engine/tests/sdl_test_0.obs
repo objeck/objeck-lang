@@ -203,7 +203,7 @@ class PlatformDemo {
 			block_bottom := block_top + block->GetH();
 			
 			player_top := @player->GetRect()->GetY();
-			player_bottom := @player->GetRect()->GetY() + @player->GetHeight();
+			player_bottom := player_top + @player->GetHeight();
 
 			if(block_top > -1) {
 GameEngine->Debug("player_top={$player_top}, block_bottom={$block_bottom}");
@@ -228,7 +228,7 @@ GameEngine->Debug("player_top={$player_top}, block_bottom={$block_bottom}");
 		player_left := @player->GetRect()->GetX();
 		player_right := @player->GetRect()->GetX() + @player->GetWidth();
 		player_top := @player->GetRect()->GetY();
-		player_bottom := @player->GetRect()->GetY() + @player->GetHeight();
+		player_bottom := player_top + @player->GetHeight();
 
 		each(i : @right_blocks) {
 			block := @right_blocks[i];
@@ -258,7 +258,7 @@ GameEngine->Debug("player_top={$player_top}, block_bottom={$block_bottom}");
 		player_left := @player->GetRect()->GetX();
 		player_right := @player->GetRect()->GetX() + @player->GetWidth();
 		player_top := @player->GetRect()->GetY();
-		player_bottom := @player->GetRect()->GetY() + @player->GetHeight();
+		player_bottom := player_top + @player->GetHeight();
 
 		each(i : @left_blocks) {
 			block := @left_blocks[i];
