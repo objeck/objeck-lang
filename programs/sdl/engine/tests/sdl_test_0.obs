@@ -182,7 +182,6 @@ class PlatformDemo {
 				};
 
 				PlayerFalling();
-
 				HitTop();
 			};	
 		}
@@ -192,16 +191,25 @@ class PlatformDemo {
 	}
 
 	method : native : HitTop() ~ Bool {
+		left_bottom := -1;
 		left_block := MinLeftBlock();
 		if(left_block <> Nil) {
-			foo := left_block->GetY();
-GameEngine->Debug("left_block={$foo}");				
+			left_bottom := left_block->GetY() + left_block->GetH();
 		};
 
+		right_bottom := -1;
 		right_block := MinRightBlock();
 		if(right_block <> Nil) {
-			foo := right_block->GetY();
-GameEngine->Debug("right_block={$foo}");				
+			right_bottom := right_block->GetY() + right_block->GetH();
+		};
+
+		block_bottom := Int->Max(left_bottom, right_bottom);
+		if(block_bottom > -1) {
+			player_top := @player->GetRect()->GetY();
+			if(player_top < block_bottom) {
+				@player_y_jumping := false;
+				@player_y_jump_height := 0;
+			};
 		};
 
 		return false;
@@ -375,7 +383,7 @@ GameEngine->Debug("right_block={$foo}");
 
 		RenderPlatform();
 		@player->Render(BLOCK_WIDTH * 2, @player_y_position - @player_y_jump_height);
-		@player_swinging->Render(BLOCK_WIDTH * 3, @player_y_position - @player_y_jump_height);
+#		@player_swinging->Render(BLOCK_WIDTH * 3, @player_y_position - @player_y_jump_height);
 
 		@debug_text->RenderedText("Pos: ({$@player_x_position},{$@player_y_position})", @text_color);
 		@debug_text->Render(8, 8);
@@ -458,7 +466,7 @@ GameEngine->Debug("right_block={$foo}");
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 			[0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 			[0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+			[0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 			[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
