@@ -190,7 +190,7 @@ class PlatformDemo {
 		};
 	}
 
-	method : native : HitTop() ~ Bool {
+	method : native : HitTop() ~ Nil {
 		left_bottom := -1;
 		left_block := MinLeftBlock();
 		if(left_block <> Nil) {
@@ -211,8 +211,6 @@ class PlatformDemo {
 				@player_y_jump_height := 0;
 			};
 		};
-
-		return false;
 	}
 
 	method : MinLeftBlock() ~ Rect {
