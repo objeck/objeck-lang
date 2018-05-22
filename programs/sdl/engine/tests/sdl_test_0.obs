@@ -18,7 +18,8 @@ class PlatformDemo {
 
 	@player : Rectangle;
 	@player_standing : Rectangle;
-	@player_swinging : Rectangle;
+	
+	@obstacles : Rectangle[];
 
 	@space : Rectangle;
 	@solid : Rectangle;
@@ -56,9 +57,13 @@ class PlatformDemo {
 		@player := @player_standing;
 
 		@player_y_position := SCREEN_HEIGHT - BLOCK_WIDTH * 4;
-		@player_swinging := @game->AddRectangle(BLOCK_WIDTH, BLOCK_HEIGHT / 4);
-		@player_swinging->SetFill(true);
-		@player_swinging->SetColor(Color->New(138, 43, 226));
+		
+		@obstacles := Rectangle->New[3];
+		each(i : @obstacles) {
+			@obstacles[i] := @game->AddRectangle(BLOCK_WIDTH / 2, BLOCK_HEIGHT / 2);
+			@obstacles[i]->SetFill(true);
+			@obstacles[i]->SetColor(Color->New(139, 69, 19));
+		};
 
 		@space := @game->AddRectangle(BLOCK_WIDTH, BLOCK_HEIGHT);
 		@space->SetColor(Color->New(0, 177, 64));
@@ -381,7 +386,10 @@ class PlatformDemo {
 
 		RenderPlatform();
 		@player->Render(BLOCK_WIDTH * 2, @player_y_position - @player_y_jump_height);
-#		@player_swinging->Render(BLOCK_WIDTH * 3, @player_y_position - @player_y_jump_height);
+
+		each(i : @obstacles) {
+			@obstacles[i]->Render(BLOCK_WIDTH * (i + 3), SCREEN_HEIGHT - BLOCK_HEIGHT * (i + 3));
+		};
 
 		@debug_text->RenderedText("Pos: ({$@player_x_position},{$@player_y_position})", @text_color);
 		@debug_text->Render(8, 8);
