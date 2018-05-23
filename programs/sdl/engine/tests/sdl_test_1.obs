@@ -254,7 +254,7 @@ class PlatformDemo {
 				}
 				# walking left
 				else if(@hero_x_direction = -1 &  @hero_bounds[2] = 0 & 
-						@hero_map_pixel_position > @hero_x) { 
+					@hero_map_pixel_position > @hero_x) { 
 					@bg_x += @bg->GetWidth() / 50;
 					if(@bg_x > 0) {
 						@bg_x := -1 * @bg->GetWidth();
