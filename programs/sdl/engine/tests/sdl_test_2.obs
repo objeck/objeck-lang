@@ -1,6 +1,6 @@
 #~
 Game demo v0
-link: https://github.com/objeck/objeck-lang/blob/master/programs/sdl/engine/tests/sdl_test_0.obs
+link: https://github.com/objeck/objeck-lang/blob/master/programs/sdl/engine/tests/sdl_test_2.obs
 ~#
 
 use SDL2;
@@ -16,19 +16,25 @@ class PlatformDemo {
 	@game_map : Int[,];
 	@game_frame : Int;
 
-	@player : Rectangle;
-	@player_standing : Rectangle;
-	@player_crouched : Rectangle;
-	@space : Rectangle;
-	@solid : Rectangle;
+	@background : ImageSprite;
+	@background_x : Int;
 
-	@player_crouching : Bool;
+	@player_walking : AnimatedImageSprite;
+	@player_walk_frame : Int;
+	@player_jumping : AnimatedImageSprite; 
+	@player_falling : AnimatedImageSprite;
+	@player : AnimatedImageSprite;
+	@player_flip : Bool;
+
+	@block1 : ImageSprite;
+
+	@obstacles : Rectangle[];
+	
 	@player_x_direction : Int;
 	@player_x_position : Int;
 	@player_y_position : Int;
 	@player_y_jumping : Bool;
 	@player_y_jump_height : Int;
-
 
 	@debug_text : TextSprite;
 	@debug_string : String;
@@ -49,29 +55,27 @@ class PlatformDemo {
 		BLOCK_HEIGHT := 32;
 
 		@game := GameEngine->New(SCREEN_WIDTH, SCREEN_HEIGHT, "Engine Zero");
-		@game->SetClearColor(Color->New());
 
-		@player_standing := @game->AddRectangle(BLOCK_WIDTH, BLOCK_HEIGHT * 2);
-		@player_standing->SetFill(true);
-		@player_standing->SetColor(Color->New(12, 35, 64));
-		
-		@player_crouched := @game->AddRectangle(BLOCK_WIDTH, BLOCK_HEIGHT);
-		@player_crouched->SetFill(true);
-		@player_crouched->SetColor(Color->New(12, 35, 64));
-		
-		@player := @player_standing;
+		@background := @game->AddImageSprite("../../../../programs/sdl/engine/tests/media/images/hills.png");
+		@block1 := @game->AddImageSprite("../../../../programs/sdl/engine/tests/media/images/block1.png");
+		@player_walking := @game->AddAnimatedImageSprite("../../../../programs/sdl/engine/tests/media/images/walk.png", 6);
+		@player_jumping := @game->AddAnimatedImageSprite("../../../../programs/sdl/engine/tests/media/images/jump.png", 3);
+		@player_falling := @game->AddAnimatedImageSprite("../../../../programs/sdl/engine/tests/media/images/fall.png", 3);
+		@player := @player_walking;
+
 		@player_y_position := SCREEN_HEIGHT - BLOCK_WIDTH * 4;
+		
+		@obstacles := Rectangle->New[8];
+		each(i : @obstacles) {
+			@obstacles[i] := @game->AddRectangle(BLOCK_WIDTH / 2, BLOCK_HEIGHT / 2);
+			@obstacles[i]->SetFill(true);
+			@obstacles[i]->SetColor(Color->New(139, 69, 19));
+		};
 
-
-		@space := @game->AddRectangle(BLOCK_WIDTH, BLOCK_HEIGHT);
-		@space->SetColor(Color->New(0, 177, 64));
-
-		@solid := @game->AddRectangle(BLOCK_WIDTH, BLOCK_HEIGHT);
-		@solid->SetFill(true);
-		@solid->SetColor(Color->New(204, 0, 0));
+		@block1 := @game->AddImageSprite("../../../../programs/sdl/engine/tests/media/images/block1.png");
 
 		@debug_text := @game->AddTextSprite();
-		@text_color := Color->New(255, 255, 255);
+		@text_color := Color->New();
 
 		@game_map := CreateMap();
 		map_dims := @game_map->Size();
@@ -128,17 +132,25 @@ class PlatformDemo {
 	            }
 
 	            label Scancode->SDL_SCANCODE_LEFT: {
+		            @player_walking->SetFlip(RendererFlip->SDL_FLIP_HORIZONTAL);
+					@player_jumping->SetFlip(RendererFlip->SDL_FLIP_HORIZONTAL);
+					@player_falling->SetFlip(RendererFlip->SDL_FLIP_HORIZONTAL);
+					@player_flip := true;
 	            	@player_x_direction := -1;
 	            }
 
 	            label Scancode->SDL_SCANCODE_RIGHT: {
+	            	if(@player_flip) {
+	            		@player_walking->SetFlip(RendererFlip->SDL_FLIP_NONE);
+						@player_jumping->SetFlip(RendererFlip->SDL_FLIP_NONE);
+						@player_falling->SetFlip(RendererFlip->SDL_FLIP_NONE);
+	            		@player_flip := false;
+	            	};
+
 	            	@player_x_direction := 1;
 	            }
 
 	            label Scancode->SDL_SCANCODE_DOWN: {
-	            	@player_crouching := true;
-					@player := @player_crouched;
-					@player_y_position += BLOCK_HEIGHT;
 	            }
 	        };
 	    }
@@ -150,9 +162,6 @@ class PlatformDemo {
 	            }
 
 	            label Scancode->SDL_SCANCODE_DOWN: {
-	            	@player_crouching := false;
-					@player := @player_standing;
-					@player_y_position -= BLOCK_HEIGHT;
 	            }
 	        };
 	    };   
@@ -162,40 +171,113 @@ class PlatformDemo {
 		@game_frame += 1;
 
 		if(@game_frame <= @game->GetFps()) {
+			# update movement
 			if(@game_frame % 2 = 0) {
 				# jump
 				if(@player_y_jumping) {
-					@player_y_jump_height += BLOCK_HEIGHT / 4;					
+					@player_y_jump_height += BLOCK_HEIGHT / 8;					
 					if(@player_y_jump_height >= 1.5 * BLOCK_HEIGHT) {
 						@player_y_jumping := false;
-						@player_y_jump_height -= BLOCK_HEIGHT / 4;
+						@player_y_jump_height -= BLOCK_HEIGHT / 8;
 					};
 				}
 				else if(@player_y_jump_height <> 0) {
-					@player_y_jump_height -= BLOCK_HEIGHT / 4;
+					@player_y_jump_height -= BLOCK_HEIGHT / 8;
 				};	
 
 				# move left
 				if(@player_x_direction = -1) {
 					if(<>HitLeft()) {
-						@player_x_position -= BLOCK_WIDTH / 4;
-						JumpLeftBlock();
+						@background_x += @background->GetWidth() / 50;
+						if(@background_x > 0) {
+							@background_x := -1 * @background->GetWidth();
+						};
+
+						@player_x_position -= BLOCK_WIDTH / 8;
+						PlayerJumpLeft();
 					};
 				}
 				# move right
 				else if(@player_x_direction = 1) {
 					if(<>HitRight()) {
-						@player_x_position += BLOCK_WIDTH / 4;
-						JumpRightBlock();
+						@background_x -= @background->GetWidth() / 50;
+						if(@background_x < -1 * @background->GetWidth()) {
+							@background_x := 0;
+						};
+
+						@player_x_position += BLOCK_WIDTH / 8;
+						PlayerJumpRight();
 					};
 				};
 
-				FallBlock();
-			};	
+				PlayerFalling();
+				HitTop();
+			};
+
+			# walk frames
+			if(@game_frame % 5 = 0) {
+				if(@player_x_direction <> 0) {
+					if(@player_y_jump_height = 0) {
+						@player_walk_frame += 1;
+						if(@player_walk_frame >= @player_walking->GetClipCount()) {
+							@player_walk_frame := 0;
+						};
+					};
+				};
+			};
 		}
 		else {
 			@game_frame := 1;
 		};
+	}
+
+	method : native : HitTop() ~ Nil {
+		left_bottom := -1;
+		left_block := MinLeftBlock();
+		if(left_block <> Nil) {
+			left_bottom := left_block->GetY() + left_block->GetH();
+		};
+
+		right_bottom := -1;
+		right_block := MinRightBlock();
+		if(right_block <> Nil) {
+			right_bottom := right_block->GetY() + right_block->GetH();
+		};
+
+		block_bottom := Int->Max(left_bottom, right_bottom);
+		if(block_bottom > -1) {
+			player_top := @player->GetRect()->GetY();
+			if(player_top < block_bottom) {
+				@player_y_jumping := false;
+				@player_y_jump_height := 0;
+			};
+		};
+	}
+
+	method : MinLeftBlock() ~ Rect {
+		return MinTopBlock(@left_blocks);
+	}
+
+	method : MinRightBlock() ~ Rect {
+		return MinTopBlock(@right_blocks);
+	}
+
+	method : native : MinTopBlock(blocks : Rect[]) ~ Rect {
+		each(i : blocks) {
+			block := blocks[i];
+
+			block_top := block->GetY();
+			block_bottom := block_top + block->GetH();
+			
+			player_top := @player->GetRect()->GetY();
+			player_bottom := player_top + @player->GetHeight();
+
+			if(block_top > -1 & block_top < player_top & player_top < block_bottom) {
+				return block;
+			};
+		};
+
+		return Nil;
 	}
 
 	method : native : HitRight() ~ Bool {
@@ -206,7 +288,7 @@ class PlatformDemo {
 		player_left := @player->GetRect()->GetX();
 		player_right := @player->GetRect()->GetX() + @player->GetWidth();
 		player_top := @player->GetRect()->GetY();
-		player_bottom := @player->GetRect()->GetY() + @player->GetHeight();
+		player_bottom := player_top + @player->GetHeight();
 
 		each(i : @right_blocks) {
 			block := @right_blocks[i];
@@ -219,7 +301,7 @@ class PlatformDemo {
 
 				# check right x-axis
 				if(block_right >= player_left & block_bottom > player_top & block_top < player_bottom) {
-					@player_x_position -= BLOCK_HEIGHT / 8;
+					@player_x_position -= BLOCK_HEIGHT / 16;
 					return true;
 				};
 			};
@@ -236,7 +318,7 @@ class PlatformDemo {
 		player_left := @player->GetRect()->GetX();
 		player_right := @player->GetRect()->GetX() + @player->GetWidth();
 		player_top := @player->GetRect()->GetY();
-		player_bottom := @player->GetRect()->GetY() + @player->GetHeight();
+		player_bottom := player_top + @player->GetHeight();
 
 		each(i : @left_blocks) {
 			block := @left_blocks[i];
@@ -249,7 +331,7 @@ class PlatformDemo {
 
 				# check left x-axis
 				if(block_right > player_left & block_bottom > player_top & block_top < player_bottom) {
-					@player_x_position += BLOCK_HEIGHT / 8;
+					@player_x_position += BLOCK_HEIGHT / 16;
 					return true;
 				};
 			};
@@ -258,7 +340,7 @@ class PlatformDemo {
 		return false;
 	}
 
-	method : JumpLeftBlock() ~ Nil {
+	method : PlayerJumpLeft() ~ Nil {
 		if(@player_y_jump_height > 0) {
 			player_bottom := @player->GetRect()->GetY() + @player->GetHeight();
 
@@ -275,7 +357,7 @@ class PlatformDemo {
 		};
 	}
 
-	method : JumpRightBlock() ~ Nil {
+	method : PlayerJumpRight() ~ Nil {
 		if(@player_y_jump_height > 0) { 
 			player_bottom := @player->GetRect()->GetY() + @player->GetHeight();
 
@@ -292,7 +374,7 @@ class PlatformDemo {
 		};
 	}
 
-	method : FallBlock() ~ Nil {
+	method : PlayerFalling() ~ Nil {
 		if(@player_y_jump_height = 0) {
 			player_bottom := @player->GetRect()->GetY() + @player->GetHeight();
 			
@@ -301,6 +383,7 @@ class PlatformDemo {
 						
 			if(left_block <> Nil & right_block <> Nil) {
 				block_top := Int->Min(left_block->GetY(), right_block->GetY());
+
 				if(block_top - player_bottom >= BLOCK_HEIGHT) {				
 					@player_y_position += BLOCK_HEIGHT;
 					@player_y_jumping := false;
@@ -311,14 +394,14 @@ class PlatformDemo {
 	}
 
 	method : native : MaxLeftBlock () ~ Rect {
-		return MaxBlock(@left_blocks);
+		return MaxBottomBlock(@left_blocks);
 	}
 
 	method : MaxRightBlock () ~ Rect {
-		return MaxBlock(@right_blocks);
+		return MaxBottomBlock(@right_blocks);
 	}
 
-	method : native : MaxBlock(blocks : Rect[]) ~ Rect {
+	method : native : MaxBottomBlock(blocks : Rect[]) ~ Rect {
 		each(i : blocks) {
 			block := blocks[i];
 
@@ -336,12 +419,33 @@ class PlatformDemo {
 	method : Render() ~ Nil {
 		@game->Clear();
 
-		RenderPlatform();
-		@player->Render(BLOCK_WIDTH * 2, @player_y_position - @player_y_jump_height);
+		#background
+		@background->Render(@background_x, 0);
+		@background->Render(@background_x + @background->GetWidth(), 0);
 
+		RenderPlatform();
+
+		if(@player_y_jump_height = 0) {
+			@player := @player_walking;
+			@player->Render(BLOCK_WIDTH * 2, @player_y_position - @player_y_jump_height, @player_walk_frame);			
+		}
+		else if(@player_y_jumping) {
+			@player := @player_jumping;
+			@player_jumping->Render(BLOCK_WIDTH * 2, @player_y_position - @player_y_jump_height, 0);
+		}
+		else {
+			@player := @player_falling;
+			@player->Render(BLOCK_WIDTH * 2, @player_y_position - @player_y_jump_height, 0);
+		};
+
+#~
+		each(i : @obstacles) {
+			@obstacles[i]->Render(BLOCK_WIDTH * (i + 3), SCREEN_HEIGHT - BLOCK_HEIGHT * (i + 3));
+		};
+~#
 		@debug_text->RenderedText("Pos: ({$@player_x_position},{$@player_y_position})", @text_color);
 		@debug_text->Render(8, 8);
-
+		
 		@game->Show();
 	}
 
@@ -364,7 +468,7 @@ class PlatformDemo {
 				pixel_y := y * BLOCK_HEIGHT;
 
 				if(x - view_x_offset = 2) {
-					if(@game_map[y, x] = 1) {
+					if(@game_map[y, x] > 0) {
 						@left_blocks[y]->SetX(pixel_x);
 						@left_blocks[y]->SetY(pixel_y);
 					}
@@ -375,7 +479,7 @@ class PlatformDemo {
 				};
 
 				if(x - view_x_offset = 3) {
-					if(@game_map[y, x] = 1) {
+					if(@game_map[y, x] > 0) {
 						@right_blocks[y]->SetX(pixel_x);
 						@right_blocks[y]->SetY(pixel_y);
 					}
@@ -385,11 +489,8 @@ class PlatformDemo {
 					};
 				};
 
-				if(@game_map[y, x] = 0) {
-					@space->Render(pixel_x, pixel_y);
-				}
-				else {
-					@solid->Render(pixel_x, pixel_y);
+				if(@game_map[y, x] > 0) {
+					@block1->Render(pixel_x, pixel_y);
 				};
 			};
 		};
@@ -407,10 +508,10 @@ class PlatformDemo {
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-			[0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-			[0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 1, 1,   1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-			[0, 0, 0, 0, 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 0, 1, 1, 1, 1,   1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0]
-			[0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,   1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+			[0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+			[0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0,   1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+			[0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0,   1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0]
+			[0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 			[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 		];
 

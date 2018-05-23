@@ -58,7 +58,7 @@ class PlatformDemo {
 
 		@player_y_position := SCREEN_HEIGHT - BLOCK_WIDTH * 4;
 		
-		@obstacles := Rectangle->New[3];
+		@obstacles := Rectangle->New[8];
 		each(i : @obstacles) {
 			@obstacles[i] := @game->AddRectangle(BLOCK_WIDTH / 2, BLOCK_HEIGHT / 2);
 			@obstacles[i]->SetFill(true);
@@ -387,10 +387,11 @@ class PlatformDemo {
 		RenderPlatform();
 		@player->Render(BLOCK_WIDTH * 2, @player_y_position - @player_y_jump_height);
 
+#~
 		each(i : @obstacles) {
 			@obstacles[i]->Render(BLOCK_WIDTH * (i + 3), SCREEN_HEIGHT - BLOCK_HEIGHT * (i + 3));
 		};
-
+~#
 		@debug_text->RenderedText("Pos: ({$@player_x_position},{$@player_y_position})", @text_color);
 		@debug_text->Render(8, 8);
 
@@ -428,7 +429,7 @@ class PlatformDemo {
 				pixel_y := y * BLOCK_HEIGHT;
 
 				if(x - view_x_offset = 2) {
-					if(@game_map[y, x] = 1) {
+					if(@game_map[y, x] > 0) {
 						@left_blocks[y]->SetX(pixel_x);
 						@left_blocks[y]->SetY(pixel_y);
 					}
@@ -439,7 +440,7 @@ class PlatformDemo {
 				};
 
 				if(x - view_x_offset = 3) {
-					if(@game_map[y, x] = 1) {
+					if(@game_map[y, x] > 0) {
 						@right_blocks[y]->SetX(pixel_x);
 						@right_blocks[y]->SetY(pixel_y);
 					}
