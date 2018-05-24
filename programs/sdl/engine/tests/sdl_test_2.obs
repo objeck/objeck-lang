@@ -7,11 +7,6 @@ use SDL2;
 use SDL2.Game;
 
 class PlatformDemo {
-	SCREEN_WIDTH : static : Int;
-	SCREEN_HEIGHT : static : Int;
-	BLOCK_WIDTH : static : Int;
-	BLOCK_HEIGHT : static : Int;
-
 	@game : GameEngine;
 	@game_map : Int[,];
 	@game_frame : Int;
@@ -55,12 +50,7 @@ class PlatformDemo {
 	}
 
 	New() {
-		SCREEN_WIDTH := 640;
-		SCREEN_HEIGHT := 480;
-		BLOCK_WIDTH := 32;
-		BLOCK_HEIGHT := 32;
-
-		@game := GameEngine->New(SCREEN_WIDTH, SCREEN_HEIGHT, "Engine Zero");
+		@game := GameEngine->New(Sizes->SCREEN_WIDTH, Sizes->SCREEN_HEIGHT, "Engine Zero");
 
 		@background := @game->AddImageSprite("../../../../programs/sdl/engine/tests/media/images/hills.png");
 
@@ -74,13 +64,11 @@ class PlatformDemo {
 		@player_falling := @game->AddAnimatedImageSprite("../../../../programs/sdl/engine/tests/media/images/fall.png", 3);
 		@player := @player_walking;
 
-		@player_y_position := SCREEN_HEIGHT - BLOCK_WIDTH * 4;
+		@player_y_position := Sizes->SCREEN_HEIGHT->As(Int) - Sizes->BLOCK_WIDTH->As(Int) * 4;
 
-		@totem_x_position := BLOCK_WIDTH * 10;
-		
 		@block1 := @game->AddImageSprite("../../../../programs/sdl/engine/tests/media/images/block1.png");
 
-		@totem := Totem->New(@game);
+		@totem := Totem->New(@self);
 
 		@debug_text := @game->AddTextSprite();
 		@text_color := Color->New();
@@ -90,13 +78,17 @@ class PlatformDemo {
 
 		@left_blocks := Rect->New[map_dims[0]];
 		each(i : @left_blocks) {
-			@left_blocks[i] := Rect->New(BLOCK_WIDTH, BLOCK_HEIGHT);
+			@left_blocks[i] := Rect->New(Sizes->BLOCK_WIDTH->As(Int), Sizes->BLOCK_HEIGHT->As(Int));
 		};
 
 		@right_blocks := Rect->New[map_dims[0]];
 		each(i : @right_blocks) {
-			@right_blocks[i] := Rect->New(BLOCK_WIDTH, BLOCK_HEIGHT);
+			@right_blocks[i] := Rect->New(Sizes->BLOCK_WIDTH->As(Int), Sizes->BLOCK_HEIGHT->As(Int));
 		};
+	}
+
+	method : public : GetGame() ~ GameEngine {
+		return @game;
 	}
 
 	method : Run() ~ Nil {
@@ -185,14 +177,14 @@ class PlatformDemo {
 
 				# jump
 				if(@player_y_jumping) {
-					@player_y_jump_height += BLOCK_HEIGHT / 8;					
-					if(@player_y_jump_height >= 1.5 * BLOCK_HEIGHT) {
+					@player_y_jump_height += Sizes->BLOCK_HEIGHT->As(Int) / 8;					
+					if(@player_y_jump_height >= Sizes->BLOCK_HEIGHT->As(Int) +  Sizes->BLOCK_HEIGHT->As(Int) / 2) {
 						@player_y_jumping := false;
-						@player_y_jump_height -= BLOCK_HEIGHT / 8;
+						@player_y_jump_height -= Sizes->BLOCK_HEIGHT->As(Int) / 8;
 					};
 				}
 				else if(@player_y_jump_height <> 0) {
-					@player_y_jump_height -= BLOCK_HEIGHT / 8;
+					@player_y_jump_height -= Sizes->BLOCK_HEIGHT->As(Int) / 8;
 				};	
 
 				# move left
@@ -203,7 +195,7 @@ class PlatformDemo {
 							@background_x := -1 * @background->GetWidth();
 						};
 
-						@player_x_position -= BLOCK_WIDTH / 8;
+						@player_x_position -= Sizes->BLOCK_WIDTH->As(Int) / 8;
 						PlayerJumpLeft();
 					};
 				}
@@ -215,25 +207,19 @@ class PlatformDemo {
 							@background_x := 0;
 						};
 
-						@player_x_position += BLOCK_WIDTH / 8;
+						@player_x_position += Sizes->BLOCK_WIDTH->As(Int) / 8;
 						PlayerJumpRight();
 					};
 				};
 
+				@totem->TotemFalling();
 				PlayerFalling();
 				HitTop();
 			};
 
 			# totem
 			if(@game_frame % 4 = 0) {
-				@totem_x_position += BLOCK_WIDTH / 8;
-
-				TotemHitLeft();
-				if(TotemHitRight()) {
-GameEngine->Debug("-- BLOW --");
-				};
-
-				TotemFalling();
+				@totem->UpdateEvents();
 			};
 
 			# walk frames
@@ -304,7 +290,7 @@ GameEngine->Debug("-- BLOW --");
 	}
 
 	method : native : PlayerHitRight() ~ Bool {
-		if(@player_x_position / BLOCK_WIDTH > 35) {
+		if(@player_x_position / Sizes->BLOCK_WIDTH->As(Int) > 35) {
 			return true;
 		};
 
@@ -398,10 +384,10 @@ GameEngine->Debug("-- BLOW --");
 			if(block <> Nil) {
 				block_top := block->GetY();
 
-				if(@player_y_jump_height > BLOCK_HEIGHT & block_top - player_bottom < BLOCK_HEIGHT & player_bottom <= block_top) {
-					@player_y_position -= BLOCK_HEIGHT;
+				if(@player_y_jump_height > Sizes->BLOCK_HEIGHT->As(Int) & block_top - player_bottom < Sizes->BLOCK_HEIGHT->As(Int) & player_bottom <= block_top) {
+					@player_y_position -= Sizes->BLOCK_HEIGHT->As(Int);
 					@player_y_jumping := false;
-					@player_y_jump_height := BLOCK_HEIGHT / 8;
+					@player_y_jump_height := Sizes->BLOCK_HEIGHT->As(Int) / 8;
 				};
 			};
 		};
@@ -415,10 +401,10 @@ GameEngine->Debug("-- BLOW --");
 			if(block <> Nil) {
 				block_top := block->GetY();
 
-				if(@player_y_jump_height > BLOCK_HEIGHT & block_top - player_bottom < BLOCK_HEIGHT & player_bottom <= block_top) {
-					@player_y_position -= BLOCK_HEIGHT;
+				if(@player_y_jump_height > Sizes->BLOCK_HEIGHT->As(Int) & block_top - player_bottom < Sizes->BLOCK_HEIGHT->As(Int) & player_bottom <= block_top) {
+					@player_y_position -= Sizes->BLOCK_HEIGHT->As(Int);
 					@player_y_jumping := false;
-					@player_y_jump_height := BLOCK_HEIGHT / 8;
+					@player_y_jump_height := Sizes->BLOCK_HEIGHT->As(Int) / 8;
 				};
 			};
 		};
@@ -433,48 +419,27 @@ GameEngine->Debug("-- BLOW --");
 						
 			if(left_block <> Nil & right_block <> Nil) {
 				block_top : Int;
-				if(left_block->GetX() = BLOCK_WIDTH * 2) {
+				if(left_block->GetX() = Sizes->BLOCK_WIDTH->As(Int) * 2) {
 					block_top := left_block->GetY();
 				}
 				else {
 					block_top := Int->Min(left_block->GetY(), right_block->GetY());
 				};
 				
-				if(block_top - player_bottom >= BLOCK_HEIGHT) {				
-					@player_y_position += BLOCK_HEIGHT;
+				if(block_top - player_bottom >= Sizes->BLOCK_HEIGHT->As(Int)) {				
+					@player_y_position += Sizes->BLOCK_HEIGHT->As(Int);
 					@player_y_jumping := false;
-					@player_y_jump_height := BLOCK_HEIGHT;
+					@player_y_jump_height := Sizes->BLOCK_HEIGHT->As(Int);
 				};
 			};
 		};
 	}
 
-	method : TotemFalling() ~ Nil {
-		totem_bottom := @totem->GetRect()->GetY() + @totem->GetRect()->GetH();
-		
-		left_block := MaxLeftBlock();
-		right_block := MaxRightBlock();
-					
-		if(left_block <> Nil & right_block <> Nil) {
-			block_top : Int;
-			if(left_block->GetX() = BLOCK_WIDTH * 2) {
-				block_top := left_block->GetY();
-			}
-			else {
-				block_top := Int->Min(left_block->GetY(), right_block->GetY());
-			};
-			
-			if(block_top - totem_bottom >= BLOCK_HEIGHT) {				
-				@totem_y_position += BLOCK_HEIGHT;
-			};
-		};
-	}
-
-	method : native : MaxLeftBlock () ~ Rect {
+	method : public : MaxLeftBlock () ~ Rect {
 		return MaxBottomBlock(@left_blocks);
 	}
 
-	method : MaxRightBlock () ~ Rect {
+	method : public : MaxRightBlock () ~ Rect {
 		return MaxBottomBlock(@right_blocks);
 	}
 
@@ -483,7 +448,7 @@ GameEngine->Debug("-- BLOW --");
 			block := blocks[i];
 
 			block_y := block->GetY();
-			player_y := @player_y_position + BLOCK_HEIGHT;
+			player_y := @player_y_position + Sizes->BLOCK_HEIGHT->As(Int);
 
 			if(block_y > -1 & block_y >= player_y) {
 				return block;
@@ -502,19 +467,19 @@ GameEngine->Debug("-- BLOW --");
 
 		RenderPlatform();
 
-		@totem->Render(@totem_x_position, @totem_y_position);
+		@totem->Render();
 
 		if(@player_y_jump_height = 0) {
 			@player := @player_walking;
-			@player->Render(BLOCK_WIDTH * 2, @player_y_position - @player_y_jump_height, @player_walk_frame);			
+			@player->Render(Sizes->BLOCK_WIDTH->As(Int) * 2, @player_y_position - @player_y_jump_height, @player_walk_frame);			
 		}
 		else if(@player_y_jumping) {
 			@player := @player_jumping;
-			@player_jumping->Render(BLOCK_WIDTH * 2, @player_y_position - @player_y_jump_height, 0);
+			@player_jumping->Render(Sizes->BLOCK_WIDTH->As(Int) * 2, @player_y_position - @player_y_jump_height, 0);
 		}
 		else {
 			@player := @player_falling;
-			@player->Render(BLOCK_WIDTH * 2, @player_y_position - @player_y_jump_height, 0);
+			@player->Render(Sizes->BLOCK_WIDTH->As(Int) * 2, @player_y_position - @player_y_jump_height, 0);
 		};
 
 		@debug_text->RenderedText("Pos: ({$@player_x_position},{$@player_y_position})", @text_color);
@@ -526,8 +491,8 @@ GameEngine->Debug("-- BLOW --");
 	method : native : RenderPlatform() ~ Nil {
 		dims := @game_map->Size();
 
-		view_x_offset := @player_x_position / BLOCK_WIDTH;
-		view_y_offset := ((@player_y_position - @player_y_jump_height) / BLOCK_WIDTH) + 1;
+		view_x_offset := @player_x_position / Sizes->BLOCK_WIDTH->As(Int);
+		view_y_offset := ((@player_y_position - @player_y_jump_height) / Sizes->BLOCK_WIDTH->As(Int)) + 1;
 
 		y_end := dims[0];
 		x_end := view_x_offset + 21;
@@ -536,10 +501,10 @@ GameEngine->Debug("-- BLOW --");
 		};
 
 		for(x := view_x_offset; x < x_end; x += 1;) {
-			pixel_x := x * BLOCK_WIDTH - @player_x_position;
+			pixel_x := x * Sizes->BLOCK_WIDTH->As(Int) - @player_x_position;
 
 			for(y := 0; y < y_end; y += 1;) {
-				pixel_y := y * BLOCK_HEIGHT;
+				pixel_y := y * Sizes->BLOCK_HEIGHT->As(Int);
 
 				if(x - view_x_offset = 2) {
 					if(@game_map[y, x] > 0) {
@@ -563,17 +528,26 @@ GameEngine->Debug("-- BLOW --");
 					};
 				};
 
-				if(@game_map[y, x] = 1) {
-					@block1->Render(pixel_x, pixel_y);
-				}
-				else if(@game_map[y, x] = 2) {
-					@block2->Render(pixel_x, pixel_y);
-				}
-				else if(@game_map[y, x] = 3) {
-					@block3->Render(pixel_x, pixel_y);
-				}
-				else if(@game_map[y, x] = 4) {
-					@block4->Render(pixel_x, pixel_y);
+				select(@game_map[y, x]) {
+					label 1: {
+						@block1->Render(pixel_x, pixel_y);
+#						@totem->UpdateX(pixel_x, pixel_y);
+					}
+
+					label 2: {
+						@block2->Render(pixel_x, pixel_y);	
+#						@totem->UpdateX(pixel_x, pixel_y);
+					}
+
+					label 3: {
+						@block3->Render(pixel_x, pixel_y);	
+#						@totem->UpdateX(pixel_x, pixel_y);
+					}
+
+					label 4: {
+						@block4->Render(pixel_x, pixel_y);	
+						@totem->UpdateX(pixel_x, pixel_y);
+					}					
 				};
 			};
 		};
@@ -604,12 +578,17 @@ GameEngine->Debug("-- BLOW --");
 
 class Totem {
 	@totem : AnimatedImageSprite;
+	@totem_x : Int;
+	@totem_y : Int;
+	@totem_x_direction : Int;
 	@totem_frame : Int;
-	@game : GameEngine;
+	@platform : PlatformDemo;
 
-	New(game : GameEngine) {
-		@game := game;
-		@totem := @game->AddAnimatedImageSprite("../../../../programs/sdl/engine/tests/media/images/totem_walk.png", 7);
+	New(platform : PlatformDemo) {
+		@platform := platform;
+		@totem := @platform->GetGame()->AddAnimatedImageSprite("../../../../programs/sdl/engine/tests/media/images/totem_walk.png", 7);
+		@totem_x := Sizes->BLOCK_WIDTH->As(Int) * 8;
+		@totem_x_direction := 1;
 	}
 
 	method : public : GetRect() ~ Rect {
@@ -623,7 +602,53 @@ class Totem {
 		};
 	}
 
-	method : public : Render(x : Int, y : Int) ~ Nil {
-		@totem->Render(x, y, @totem_frame);
+	method : public : Render() ~ Nil {
+		if(@totem_x_direction = 1) {
+			@totem_x += Sizes->BLOCK_WIDTH->As(Int) / 16;
+		}
+		else {
+			@totem_x -= Sizes->BLOCK_WIDTH->As(Int) / 16;
+		};
+		
+		@totem->Render(@totem_x, @totem_y, @totem_frame);
 	}
+
+	method : public : UpdateX(block_x : Int, block_y : Int) ~ Nil {
+		if(@totem_y = block_y) {
+			if(@totem_x_direction = 1 & @totem_x + Sizes->BLOCK_WIDTH->As(Int) = block_x) {
+				@totem_x_direction := -1;
+			}
+			else if(@totem_x = block_x + Sizes->BLOCK_WIDTH->As(Int)) {
+				@totem_x_direction := 1;
+			};
+		};
+	}
+
+	method : public : TotemFalling() ~ Nil {
+		totem_bottom := GetRect()->GetY() + GetRect()->GetH();
+		
+		left_block := @platform->MaxLeftBlock();
+		right_block := @platform->MaxRightBlock();
+			
+		if(left_block <> Nil & right_block <> Nil) {
+			block_top : Int;
+			if(left_block->GetX() = Sizes->BLOCK_WIDTH->As(Int) * 2) {
+				block_top := left_block->GetY();
+			}
+			else {
+				block_top := Int->Min(left_block->GetY(), right_block->GetY());
+			};
+			
+			if(block_top - totem_bottom >= Sizes->BLOCK_HEIGHT->As(Int)) {				
+				@totem_y += Sizes->BLOCK_HEIGHT->As(Int);
+			};
+		};
+	}
+}
+
+consts Sizes {
+	SCREEN_WIDTH := 640,
+	SCREEN_HEIGHT := 480,
+	BLOCK_WIDTH := 32,
+	BLOCK_HEIGHT := 32
 }
