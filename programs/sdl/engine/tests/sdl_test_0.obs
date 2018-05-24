@@ -161,27 +161,27 @@ class PlatformDemo {
 			if(@game_frame % 2 = 0) {
 				# jump
 				if(@player_y_jumping) {
-					@player_y_jump_height += BLOCK_HEIGHT / 4;					
+					@player_y_jump_height += BLOCK_HEIGHT / 8;					
 					if(@player_y_jump_height >= 1.5 * BLOCK_HEIGHT) {
 						@player_y_jumping := false;
-						@player_y_jump_height -= BLOCK_HEIGHT / 4;
+						@player_y_jump_height -= BLOCK_HEIGHT / 8;
 					};
 				}
 				else if(@player_y_jump_height <> 0) {
-					@player_y_jump_height -= BLOCK_HEIGHT / 4;
+					@player_y_jump_height -= BLOCK_HEIGHT / 8;
 				};	
 
 				# move left
 				if(@player_x_direction = -1) {
 					if(<>HitLeft()) {
-						@player_x_position -= BLOCK_WIDTH / 4;
+						@player_x_position -= BLOCK_WIDTH / 8;
 						PlayerJumpLeft();
 					};
 				}
 				# move right
 				else if(@player_x_direction = 1) {
 					if(<>HitRight()) {
-						@player_x_position += BLOCK_WIDTH / 4;
+						@player_x_position += BLOCK_WIDTH / 8;
 						PlayerJumpRight();
 					};
 				};
@@ -316,7 +316,7 @@ class PlatformDemo {
 				if(@player_y_jump_height > BLOCK_HEIGHT & block_top - player_bottom < BLOCK_HEIGHT & player_bottom <= block_top) {
 					@player_y_position -= BLOCK_HEIGHT;
 					@player_y_jumping := false;
-					@player_y_jump_height := 0;
+					@player_y_jump_height := BLOCK_HEIGHT / 8;
 				};
 			};
 		};
@@ -333,7 +333,7 @@ class PlatformDemo {
 				if(@player_y_jump_height > BLOCK_HEIGHT & block_top - player_bottom < BLOCK_HEIGHT & player_bottom <= block_top) {
 					@player_y_position -= BLOCK_HEIGHT;
 					@player_y_jumping := false;
-					@player_y_jump_height := 0;
+					@player_y_jump_height := BLOCK_HEIGHT / 8;
 				};
 			};
 		};
@@ -348,6 +348,17 @@ class PlatformDemo {
 						
 			if(left_block <> Nil & right_block <> Nil) {
 				block_top := Int->Min(left_block->GetY(), right_block->GetY());
+
+foo := left_block->GetX();
+bar := BLOCK_WIDTH * 2;
+
+
+#~
+				if(foo = bar) {
+					block_top := left_block->GetY();
+				};
+~#
+GameEngine->Debug("0: block={$foo}, player={$bar}");
 
 				if(block_top - player_bottom >= BLOCK_HEIGHT) {				
 					@player_y_position += BLOCK_HEIGHT;
@@ -471,11 +482,11 @@ class PlatformDemo {
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-			[0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-			[0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-			[0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0]
-			[0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+			[0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0]
+			[0, 0, 1, 1, 1, 1, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 			[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 		];
 
