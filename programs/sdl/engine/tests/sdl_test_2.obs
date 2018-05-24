@@ -351,7 +351,7 @@ class PlatformDemo {
 				if(@player_y_jump_height > BLOCK_HEIGHT & block_top - player_bottom < BLOCK_HEIGHT & player_bottom <= block_top) {
 					@player_y_position -= BLOCK_HEIGHT;
 					@player_y_jumping := false;
-					@player_y_jump_height := 0;
+					@player_y_jump_height := BLOCK_HEIGHT / 8;
 				};
 			};
 		};
@@ -368,7 +368,7 @@ class PlatformDemo {
 				if(@player_y_jump_height > BLOCK_HEIGHT & block_top - player_bottom < BLOCK_HEIGHT & player_bottom <= block_top) {
 					@player_y_position -= BLOCK_HEIGHT;
 					@player_y_jumping := false;
-					@player_y_jump_height := 0;
+					@player_y_jump_height := BLOCK_HEIGHT / 8;
 				};
 			};
 		};
@@ -382,8 +382,14 @@ class PlatformDemo {
 			right_block := MaxRightBlock();
 						
 			if(left_block <> Nil & right_block <> Nil) {
-				block_top := Int->Min(left_block->GetY(), right_block->GetY());
-
+				block_top : Int;
+				if(left_block->GetX() = BLOCK_WIDTH * 2) {
+					block_top := left_block->GetY();
+				}
+				else {
+					block_top := Int->Min(left_block->GetY(), right_block->GetY());
+				};
+				
 				if(block_top - player_bottom >= BLOCK_HEIGHT) {				
 					@player_y_position += BLOCK_HEIGHT;
 					@player_y_jumping := false;
