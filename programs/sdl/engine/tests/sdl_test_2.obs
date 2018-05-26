@@ -599,10 +599,10 @@ class Totem {
 
 	method : public : Render() ~ Nil {
 		if(@totem_x_direction = 1) {
-			@totem_x += Sizes->BLOCK_WIDTH / 8;
+			@totem_x += Sizes->BLOCK_WIDTH / 16;
 		}
 		else {
-			@totem_x -= Sizes->BLOCK_WIDTH / 8;
+			@totem_x -= Sizes->BLOCK_WIDTH / 16;
 		};
 		
 		@totem->Render(@totem_x, @totem_y, @totem_frame);
