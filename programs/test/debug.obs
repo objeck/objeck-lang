@@ -1,15 +1,17 @@
+consts Values {
+	A := 2,
+	B := 7,
+	C := 13
+}
+
 class Test {
-	@a : Bool;
-
-	New() {
-	}
-
-	method : public : Foo() ~ String {
-		a := false;
-		return a ? Nil : "foo";
+	function : Foo(v : Int) ~ Nil {
+		v->PrintLine();
 	}
 	
 	function : Main(args : String[]) ~ Nil {
-		Test->New()->Foo();
+		v := 100;
+		v := 89 / Values->A;
+		Foo(v);
 	}
 }
