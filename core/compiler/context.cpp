@@ -3636,8 +3636,15 @@ bool ContextAnalyzer::Analyze()
           break;
 
         case CLASS_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: System.Float and " +
-                       ReplaceSubstring(right->GetClassName(), L"#", L"->"));
+          if(!SearchProgramEnums(right->GetClassName()) &&
+             !linker->SearchEnumLibraries(right->GetClassName(), program->GetUses(current_class->GetFileName()))) {
+            ProcessError(left_expr, L"Invalid operation using classes: System.Float and " +
+                         ReplaceSubstring(right->GetClassName(), L"#", L"->"));
+          }
+          else {
+            right_expr->SetCastType(left, true);
+            expression->SetEvalType(left, true);
+          }
           break;
 
         case BOOLEAN_TYPE:
@@ -3701,8 +3708,15 @@ bool ContextAnalyzer::Analyze()
           break;
 
         case FLOAT_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: " +
-                       ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Float");
+          if(!SearchProgramEnums(left->GetClassName()) &&
+             !linker->SearchEnumLibraries(left->GetClassName(), program->GetUses(current_class->GetFileName()))) {
+            ProcessError(left_expr, L"Invalid operation using classes: " +
+                         ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Float");
+          }
+          else {
+            left_expr->SetCastType(right, true);
+            expression->SetEvalType(right, true);
+          }
           break;
           
         case CLASS_TYPE:
@@ -4084,8 +4098,11 @@ bool ContextAnalyzer::Analyze()
           break;
 
         case CLASS_TYPE:
-          ProcessError(expression, L"Invalid cast with classes: System.Float and " + 
-                       ReplaceSubstring(ReplaceSubstring(right->GetClassName(), L"#", L"->"), L"#", L"->"));
+          if(!SearchProgramEnums(right->GetClassName()) &&
+             !linker->SearchEnumLibraries(right->GetClassName(), program->GetUses(current_class->GetFileName()))) {
+            ProcessError(expression, L"Invalid cast with classes: System.Float and " +
+                         ReplaceSubstring(ReplaceSubstring(right->GetClassName(), L"#", L"->"), L"#", L"->"));
+          }
           break;
 
         case BOOLEAN_TYPE:
