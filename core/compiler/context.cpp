@@ -3504,8 +3504,15 @@ bool ContextAnalyzer::Analyze()
           break;
 
         case CLASS_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: System.Byte and " +
-                       ReplaceSubstring(right->GetClassName(), L"#", L"->"));
+          if(!SearchProgramEnums(right->GetClassName()) &&
+             !linker->SearchEnumLibraries(right->GetClassName(), program->GetUses(current_class->GetFileName()))) {
+            ProcessError(left_expr, L"Invalid operation using classes: System.Byte and " +
+                         ReplaceSubstring(right->GetClassName(), L"#", L"->"));
+          }
+          else {
+            right_expr->SetCastType(left, true);
+            expression->SetEvalType(left, true);
+          }
           break;
 
         case BOOLEAN_TYPE:
@@ -3541,8 +3548,15 @@ bool ContextAnalyzer::Analyze()
           break;
 
         case CLASS_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: System.Char and " +
-                       ReplaceSubstring(right->GetClassName(), L"#", L"->"));
+          if(!SearchProgramEnums(right->GetClassName()) &&
+             !linker->SearchEnumLibraries(right->GetClassName(), program->GetUses(current_class->GetFileName()))) {
+            ProcessError(left_expr, L"Invalid operation using classes: System.Char and " +
+                         ReplaceSubstring(right->GetClassName(), L"#", L"->"));
+          }
+          else {
+            right_expr->SetCastType(left, true);
+            expression->SetEvalType(left, true);
+          }
           break;
 
         case BOOLEAN_TYPE:
@@ -3578,9 +3592,15 @@ bool ContextAnalyzer::Analyze()
           break;
 
         case CLASS_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: System.Int and " + 
-                       ReplaceSubstring(right->GetClassName(), L"#", L"->"));
-
+          if(!SearchProgramEnums(right->GetClassName()) &&
+             !linker->SearchEnumLibraries(right->GetClassName(), program->GetUses(current_class->GetFileName()))) {
+            ProcessError(left_expr, L"Invalid operation using classes: System.Int and " +
+                         ReplaceSubstring(right->GetClassName(), L"#", L"->"));
+          }
+          else {
+            right_expr->SetCastType(left, true);
+            expression->SetEvalType(left, true);
+          }
           break;
 
         case BOOLEAN_TYPE:
@@ -3645,18 +3665,39 @@ bool ContextAnalyzer::Analyze()
           break;
 
         case BYTE_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: " +
-                       ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Byte");
+          if(!SearchProgramEnums(left->GetClassName()) &&
+             !linker->SearchEnumLibraries(left->GetClassName(), program->GetUses(current_class->GetFileName()))) {
+            ProcessError(left_expr, L"Invalid operation using classes: " +
+                         ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Byte");
+          }
+          else {
+            left_expr->SetCastType(right, true);
+            expression->SetEvalType(right, true);
+          }
           break;
 
         case CHAR_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: " +
-                       ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Char");
+          if(!SearchProgramEnums(left->GetClassName()) &&
+             !linker->SearchEnumLibraries(left->GetClassName(), program->GetUses(current_class->GetFileName()))) {
+            ProcessError(left_expr, L"Invalid operation using classes: " +
+                         ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Char");
+          }
+          else {
+            left_expr->SetCastType(right, true);
+            expression->SetEvalType(right, true);
+          }
           break;
 
         case INT_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: " +
-                       ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and Int");
+          if(!SearchProgramEnums(left->GetClassName()) &&
+             !linker->SearchEnumLibraries(left->GetClassName(), program->GetUses(current_class->GetFileName()))) {
+            ProcessError(left_expr, L"Invalid operation using classes: " +
+                         ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and Int");
+          }
+          else {
+            left_expr->SetCastType(right, true);
+            expression->SetEvalType(right, true);
+          }
           break;
 
         case FLOAT_TYPE:
@@ -4096,7 +4137,7 @@ bool ContextAnalyzer::Analyze()
           break;
 
         case FLOAT_TYPE:
-          ProcessError(expression, L"Invalid cast with classes: " + 
+          ProcessError(expression, L"Invalid cast with classes: " +
                        ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Float");
           break;
 
