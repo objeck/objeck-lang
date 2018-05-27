@@ -16,10 +16,10 @@ class PlatformDemo {
 	@game_map : Int[,];
 	@game_frame : Int;
 
-	@player : Rectangle;
+	@player : RectangleShape;
 	
-	@space : Rectangle;
-	@solid : Rectangle;
+	@space : RectangleShape;
+	@solid : RectangleShape;
 
 	@player_x_direction : Int;
 	@player_y_direction : Int;
@@ -41,18 +41,21 @@ class PlatformDemo {
 		@game := GameEngine->New(SCREEN_WIDTH, SCREEN_HEIGHT, "Engine Zero");
 		@game->SetClearColor(Color->New());
 
-		@player := @game->AddRectangle(BLOCK_WIDTH, BLOCK_HEIGHT * 2);
-		@player->SetFill(true);
-		@player->SetColor(Color->New(12, 35, 64));
+		player := @game->AddRectangle(BLOCK_WIDTH, BLOCK_HEIGHT * 2);
+		player->SetFill(true);
+		player->SetColor(Color->New(12, 35, 64));
+		@player := RectangleShape->New(player);
 		
 		@player_y_position := SCREEN_HEIGHT - BLOCK_WIDTH * 4;
 		
-		@space := @game->AddRectangle(BLOCK_WIDTH, BLOCK_HEIGHT);
-		@space->SetColor(Color->New(0, 177, 64));
+		space := @game->AddRectangle(BLOCK_WIDTH, BLOCK_HEIGHT);
+		space->SetColor(Color->New(0, 177, 64));
+		@space := RectangleShape->New(space);
 
-		@solid := @game->AddRectangle(BLOCK_WIDTH, BLOCK_HEIGHT);
-		@solid->SetFill(true);
-		@solid->SetColor(Color->New(204, 0, 0));
+		solid := @game->AddRectangle(BLOCK_WIDTH, BLOCK_HEIGHT);
+		solid->SetFill(true);
+		solid->SetColor(Color->New(204, 0, 0));
+		@solid := RectangleShape->New(solid);
 
 		@game_map := CreateMap();
 	}
@@ -154,9 +157,10 @@ class PlatformDemo {
 		@game->Clear();
 
 		RenderPlatform();
-		@player->Render(BLOCK_WIDTH * 2, @player_y_position);
-		@game->GetRenderer()->SetDrawColor(255, 255, 0, 0);
-
+		
+		@player->Set(BLOCK_WIDTH * 2, @player_y_position);
+		@player->Render();
+		
 		@game->Show();
 	}
 
@@ -179,10 +183,12 @@ class PlatformDemo {
 				pixel_y := y * BLOCK_HEIGHT;
 
 				if(@game_map[y, x] = 0) {
-					@space->Render(pixel_x, pixel_y);
+					@space->Set(pixel_x, pixel_y);
+					@space->Render();
 				}
 				else {
-					@solid->Render(pixel_x, pixel_y);
+					@solid->Set(pixel_x, pixel_y);
+					@solid->Render();
 				};
 			};
 		};
@@ -208,5 +214,40 @@ class PlatformDemo {
 		];
 
 		return game_map;
+	}
+}
+
+class RectangleShape {
+	@x : Int;
+	@y : Int;
+	@rect : Rectangle;
+
+	New(rect : Rectangle) {
+		@rect := rect;
+	}
+
+	method : public : Set(x : Int, y : Int) ~ Nil {
+		@x := x;
+		@y := y;
+	}
+
+	method : public : GetX() ~ Int {
+		return @x;
+	}
+
+	method : public : GetX2() ~ Int {
+		return @x + @rect->GetWidth();
+	}
+
+	method : public : GetY() ~ Int {
+		return @y;
+	}
+
+	method : public : GetY2() ~ Int {
+		return @x + @rect->GetHeight();
+	}
+
+	method : public : Render() ~ Nil {
+		@rect->Render(@x, @y);
 	}
 }
