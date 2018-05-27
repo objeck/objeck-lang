@@ -227,8 +227,7 @@ class RectangleShape {
 	}
 
 	method : public : Set(x : Int, y : Int) ~ Nil {
-		@x := x;
-		@y := y;
+		@x := x; @y := y;
 	}
 
 	method : public : GetX() ~ Int {
@@ -239,6 +238,10 @@ class RectangleShape {
 		return @x + @rect->GetWidth();
 	}
 
+	method : public : GetCenterX() ~ Int {
+		return GetX2() / 2;
+	}
+
 	method : public : GetY() ~ Int {
 		return @y;
 	}
@@ -247,7 +250,27 @@ class RectangleShape {
 		return @x + @rect->GetHeight();
 	}
 
+	method : public : GetCenterY() ~ Int {
+		return GetY2() / 2;
+	}
+
 	method : public : Render() ~ Nil {
 		@rect->Render(@x, @y);
+	}
+
+	method : public : Overlaps(rect : RectangleShape) ~ Bool {
+		if(Int->Abs(GetCenterX() - rect->GetCenterX()) > GetX2()) {
+			return false;
+		};
+
+		if(Int->Abs(GetCenterY() - rect->GetCenterY()) > GetY2()) {
+			return false;
+		};
+		
+		return true;
+	}
+
+	method : public : Contains(x : Int, y : Int) ~ Bool {
+		return false;
 	}
 }
