@@ -26,7 +26,10 @@ class PlatformDemo {
 
 	@player_x_position : Int;
 	@player_y_position : Int;
-	
+
+	@block_left : Bool;
+	@block_right : Bool;
+
 	function : Main(args : String[]) ~ Nil {
 		platform := PlatformDemo->New();
 		platform->Run();
@@ -130,11 +133,11 @@ class PlatformDemo {
 		if(@game_frame <= @game->GetFps()) {
 			if(@game_frame % 2 = 0) {
 				# move left
-				if(@player_x_direction = -1) {
+				if(@player_x_direction = -1 & <>@block_left) {
 					@player_x_position -= BLOCK_WIDTH / 4;
 				}
 				# move right
-				else if(@player_x_direction = 1) {
+				else if(@player_x_direction = 1 & <>@block_right) {
 					@player_x_position += BLOCK_WIDTH / 4;
 				};
 
@@ -191,17 +194,27 @@ class PlatformDemo {
 
 					if(@solid->Overlaps(@player)) {
 						if(@player_x_direction = 1) {
-"-- Hit Right --"->PrintLine();	
+#							@player_x_position := pixel_x - BLOCK_WIDTH;
+#"-- Hit Right --"->PrintLine();	
+							@block_right := true;
 						}
 						else if(@player_x_direction = -1) {
-"-- Hit Left --"->PrintLine();
+#							@player_x_position := pixel_x - BLOCK_WIDTH * 2;
+# "-- Hit Left --"->PrintLine();
+							@block_left := true;
+						}
+						else {
+							@block_right := false;
+							@block_left := false;
 						};
 
 						if(@player_y_direction = 1) {
-"-- Hit Top --"->PrintLine();	
+							@player_y_position := pixel_y - BLOCK_HEIGHT * 2;
+# "-- Hit Top --"->PrintLine();
 						}
 						else if(@player_y_direction = -1) {
-"-- Hit Bottom --"->PrintLine();
+# "-- Hit Bottom --"->PrintLine();
+							@player_y_position := pixel_y + BLOCK_HEIGHT;
 						};
 					};
 
@@ -220,7 +233,7 @@ class PlatformDemo {
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 			[0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
