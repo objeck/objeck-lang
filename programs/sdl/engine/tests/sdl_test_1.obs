@@ -161,7 +161,7 @@ class PlatformDemo {
 		view_y_offset := @player_y_position / Size->BLOCK_HEIGHT;
 
 		y_end := dims[0];
-		x_end := view_x_offset + 21; # TODO: ADJUST
+		x_end := view_x_offset + 21; # TODO: load map from file
 		if(x_end > dims[1]) {			
 			x_end := dims[1];	
 		};
@@ -185,7 +185,7 @@ class PlatformDemo {
 
 				# TODO: check for jumping and falling
 				@player->Set(Size->BLOCK_WIDTH * 2, @player_y_position);
-				
+
 				@player->Render();
 			};
 		};
