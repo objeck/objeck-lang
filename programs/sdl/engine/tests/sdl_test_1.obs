@@ -26,6 +26,8 @@ class PlatformDemo {
 
 	@player_x_position : Int;
 	@player_y_position : Int;
+
+	@player_speed : Int;
 	
 	function : Main(args : String[]) ~ Nil {
 		platform := PlatformDemo->New();
@@ -45,6 +47,7 @@ class PlatformDemo {
 		player->SetFill(true);
 		player->SetColor(Color->New(12, 35, 64));
 		@player := RectangleShape->New(player);
+		@player_speed := BLOCK_WIDTH / 4;
 		
 		@player_y_position := SCREEN_HEIGHT - BLOCK_WIDTH * 4;
 		
@@ -131,20 +134,20 @@ class PlatformDemo {
 			if(@game_frame % 2 = 0) {
 				# move left
 				if(@player_x_direction = -1) {
-					@player_x_position -= BLOCK_WIDTH / 4;
+					@player_x_position -= @player_speed;
 				}
 				# move right
 				else if(@player_x_direction = 1) {
-					@player_x_position += BLOCK_WIDTH / 4;
+					@player_x_position += @player_speed;
 				};
 
 				# move up
 				if(@player_y_direction = -1) {
-					@player_y_position -= BLOCK_WIDTH / 4;
+					@player_y_position -= @player_speed;
 				}
 				# move down
 				else if(@player_y_direction = 1) {
-					@player_y_position += BLOCK_WIDTH / 4;
+					@player_y_position += @player_speed;
 				};
 			};	
 		}
@@ -182,7 +185,7 @@ class PlatformDemo {
 				if(@game_map[y, x] > 0) {
 					@solid->Set(pixel_x, pixel_y);
 					@solid->Render();
-					
+
 					PlayerCollision(@solid);
 				}
 				else {
@@ -200,20 +203,20 @@ class PlatformDemo {
 		if(block->Overlaps(@player)) {
 			# right
 			if(@player_x_direction = 1) {
-				@player_x_position -= BLOCK_WIDTH / 4;
+				@player_x_position -= @player_speed;
 			}
 			# left
 			else if(@player_x_direction = -1) {
-				@player_x_position += BLOCK_WIDTH / 4;
+				@player_x_position += @player_speed;
 			};
 
 			# top
 			if(@player_y_direction = 1) {
-				@player_y_position -= BLOCK_WIDTH / 4;
+				@player_y_position -= @player_speed;
 			}
 			# bottom
 			else if(@player_y_direction = -1) {
-				@player_y_position += BLOCK_WIDTH / 4;
+				@player_y_position += @player_speed;
 			};
 		};
 	}
