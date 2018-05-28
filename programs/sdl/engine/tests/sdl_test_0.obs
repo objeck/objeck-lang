@@ -190,7 +190,19 @@ class PlatformDemo {
 					@solid->Set(pixel_x, pixel_y);
 
 					if(@solid->Overlaps(@player)) {
-"-- Hit --"->PrintLine();
+						if(@player_x_direction = 1) {
+"-- Hit Right --"->PrintLine();	
+						}
+						else if(@player_x_direction = -1) {
+"-- Hit Left --"->PrintLine();
+						};
+
+						if(@player_y_direction = 1) {
+"-- Hit Top --"->PrintLine();	
+						}
+						else if(@player_y_direction = -1) {
+"-- Hit Bottom --"->PrintLine();
+						};
 					};
 
 					@solid->Render();
