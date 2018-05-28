@@ -527,7 +527,7 @@ GameEngine->Debug("foobar");
 					else {
 						if(@totem->GetRect()->HasIntersection(@block4->GetRect())) {
 							@totem_x +ol9p;0['-
-		78u564it9o
+		78u564it9o0-=\ cxzA
 							@totem_dir := 1;
 						};
 					};

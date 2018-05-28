@@ -188,6 +188,11 @@ class PlatformDemo {
 				}
 				else {
 					@solid->Set(pixel_x, pixel_y);
+
+					if(@solid->Overlaps(@player)) {
+"-- Hit --"->PrintLine();
+					};
+
 					@solid->Render();
 				};
 			};
@@ -205,12 +210,12 @@ class PlatformDemo {
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-			[0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0]
-			[0, 0, 1, 1, 1, 1, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-			[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+			[0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 		];
 
 		return game_map;
@@ -218,9 +223,9 @@ class PlatformDemo {
 }
 
 class RectangleShape {
+	@rect : Rectangle;
 	@x : Int;
 	@y : Int;
-	@rect : Rectangle;
 
 	New(rect : Rectangle) {
 		@rect := rect;
@@ -239,7 +244,7 @@ class RectangleShape {
 	}
 
 	method : public : GetCenterX() ~ Int {
-		return GetX2() / 2;
+		return GetY2() / 2;
 	}
 
 	method : public : GetY() ~ Int {
@@ -247,7 +252,7 @@ class RectangleShape {
 	}
 
 	method : public : GetY2() ~ Int {
-		return @x + @rect->GetHeight();
+		return @y + @rect->GetHeight();
 	}
 
 	method : public : GetCenterY() ~ Int {
@@ -259,15 +264,19 @@ class RectangleShape {
 	}
 
 	method : public : Overlaps(rect : RectangleShape) ~ Bool {
-		if(Int->Abs(GetCenterX() - rect->GetCenterX()) > GetX2()) {
-			return false;
-		};
+		right_a := rect->GetX();
+		right_b := GetX2();
 
-		if(Int->Abs(GetCenterY() - rect->GetCenterY()) > GetY2()) {
-			return false;
-		};
+		left_a := GetX();
+		left_b := rect->GetX2();
+
+		top_a := GetY();
+		top_b := rect->GetY2();
+
+		bottom_a := rect->GetY();
+		bottom_b := GetY2();
 		
-		return true;
+		return right_b >= right_a & left_a <= left_b & top_b >= top_a & bottom_a <= bottom_b;
 	}
 
 	method : public : Contains(x : Int, y : Int) ~ Bool {
