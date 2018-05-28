@@ -156,22 +156,19 @@ class PlatformDemo {
 	method : Render() ~ Nil {
 		@game->Clear();
 
-		RenderPlatform();
-		
-		@player->Set(BLOCK_WIDTH * 2, @player_y_position);
-		@player->Render();
+		RenderMap();
 		
 		@game->Show();
 	}
 
-	method : native : RenderPlatform() ~ Nil {
+	method : native : RenderMap() ~ Nil {
 		dims := @game_map->Size();
 
 		view_x_offset := @player_x_position / BLOCK_WIDTH;
 		view_y_offset := @player_y_position / BLOCK_WIDTH;
 
 		y_end := dims[0];
-		x_end := view_x_offset + 21;
+		x_end := view_x_offset + 21; # TODO: ADJUST
 		if(x_end > dims[1]) {			
 			x_end := dims[1];	
 		};
@@ -182,15 +179,14 @@ class PlatformDemo {
 			for(y := 0; y < y_end; y += 1;) {
 				pixel_y := y * BLOCK_HEIGHT;
 
-				if(@game_map[y, x] = 0) {
-					@space->Set(pixel_x, pixel_y);
-					@space->Render();
-				}
-				else {
+				if(@game_map[y, x] > 0) {
 					@solid->Set(pixel_x, pixel_y);
 					@solid->Render();
-					
 					PlayerCollision(@solid, pixel_y);
+				}
+				else {
+					@space->Set(pixel_x, pixel_y);
+					@space->Render();
 				};
 
 				@player->Set(BLOCK_WIDTH * 2, @player_y_position);
