@@ -182,7 +182,8 @@ class PlatformDemo {
 				if(@game_map[y, x] > 0) {
 					@solid->Set(pixel_x, pixel_y);
 					@solid->Render();
-					PlayerCollision(@solid, pixel_y);
+					
+					PlayerCollision(@solid);
 				}
 				else {
 					@space->Set(pixel_x, pixel_y);
@@ -195,7 +196,7 @@ class PlatformDemo {
 		};
 	}
 
-	method : PlayerCollision(block : RectangleShape, pixel_y : Int) ~ Nil {
+	method : PlayerCollision(block : RectangleShape) ~ Nil {
 		if(block->Overlaps(@player)) {
 			# right
 			if(@player_x_direction = 1) {
@@ -208,11 +209,11 @@ class PlatformDemo {
 
 			# top
 			if(@player_y_direction = 1) {
-				@player_y_position := pixel_y - BLOCK_HEIGHT * 2;
+				@player_y_position -= BLOCK_WIDTH / 4;
 			}
 			# bottom
 			else if(@player_y_direction = -1) {
-				@player_y_position := pixel_y + BLOCK_HEIGHT;
+				@player_y_position += BLOCK_WIDTH / 4;
 			};
 		};
 	}
