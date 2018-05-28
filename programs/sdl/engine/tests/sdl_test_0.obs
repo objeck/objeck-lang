@@ -190,21 +190,21 @@ class PlatformDemo {
 					@solid->Set(pixel_x, pixel_y);
 
 					if(@solid->Overlaps(@player)) {
+						# right
 						if(@player_x_direction = 1) {
 							@player_x_position := (x - 3) * BLOCK_WIDTH;
-# "-- Hit Right --"->PrintLine();
 						}
+						# left
 						else if(@player_x_direction = -1) {
 							@player_x_position := (x - 1) * BLOCK_WIDTH;
-#"-- Hit Left --"->PrintLine();
 						};
 
+						# top
 						if(@player_y_direction = 1) {
 							@player_y_position := pixel_y - BLOCK_HEIGHT * 2;
-# "-- Hit Top --"->PrintLine();
 						}
+						# bottom
 						else if(@player_y_direction = -1) {
-# "-- Hit Bottom --"->PrintLine();
 							@player_y_position := pixel_y + BLOCK_HEIGHT;
 						};
 					};
