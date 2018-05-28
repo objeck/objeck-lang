@@ -26,10 +26,7 @@ class PlatformDemo {
 
 	@player_x_position : Int;
 	@player_y_position : Int;
-
-	@block_left : Bool;
-	@block_right : Bool;
-
+	
 	function : Main(args : String[]) ~ Nil {
 		platform := PlatformDemo->New();
 		platform->Run();
@@ -133,11 +130,11 @@ class PlatformDemo {
 		if(@game_frame <= @game->GetFps()) {
 			if(@game_frame % 2 = 0) {
 				# move left
-				if(@player_x_direction = -1 & <>@block_left) {
+				if(@player_x_direction = -1) {
 					@player_x_position -= BLOCK_WIDTH / 4;
 				}
 				# move right
-				else if(@player_x_direction = 1 & <>@block_right) {
+				else if(@player_x_direction = 1) {
 					@player_x_position += BLOCK_WIDTH / 4;
 				};
 
@@ -194,18 +191,12 @@ class PlatformDemo {
 
 					if(@solid->Overlaps(@player)) {
 						if(@player_x_direction = 1) {
-#							@player_x_position := pixel_x - BLOCK_WIDTH;
-#"-- Hit Right --"->PrintLine();	
-							@block_right := true;
+							@player_x_position := (x - 3) * BLOCK_WIDTH;
+# "-- Hit Right --"->PrintLine();
 						}
 						else if(@player_x_direction = -1) {
-#							@player_x_position := pixel_x - BLOCK_WIDTH * 2;
-# "-- Hit Left --"->PrintLine();
-							@block_left := true;
-						}
-						else {
-							@block_right := false;
-							@block_left := false;
+							@player_x_position := (x - 1) * BLOCK_WIDTH;
+#"-- Hit Left --"->PrintLine();
 						};
 
 						if(@player_y_direction = 1) {
