@@ -185,9 +185,13 @@ class PlatformDemo {
 				if(@game_map[y, x] = 0) {
 					@space->Set(pixel_x, pixel_y);
 					@space->Render();
+
+					@player->Set(BLOCK_WIDTH * 2, @player_y_position);
+					@player->Render();
 				}
 				else {
 					@solid->Set(pixel_x, pixel_y);
+					@solid->Render();
 
 					if(@solid->Overlaps(@player)) {
 						# right
@@ -207,9 +211,12 @@ class PlatformDemo {
 						else if(@player_y_direction = -1) {
 							@player_y_position := pixel_y + BLOCK_HEIGHT;
 						};
+
+						
 					};
 
-					@solid->Render();
+					@player->Set(BLOCK_WIDTH * 2, @player_y_position);
+					@player->Render();
 				};
 			};
 		};
