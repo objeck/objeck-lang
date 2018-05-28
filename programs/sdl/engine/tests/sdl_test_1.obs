@@ -177,6 +177,9 @@ class PlatformDemo {
 					@solid->Render();
 
 					PlayerCollision(@solid);
+
+					# TODO: enemy collisions
+ 					EnemyCollisions(@solid);
 				}
 				else {
 					@space->Set(pixel_x, pixel_y);
@@ -189,6 +192,10 @@ class PlatformDemo {
 				@player->Render();
 			};
 		};
+	}
+
+	method : EnemyCollisions(block : RectangleShape) ~ Nil {
+
 	}
 
 	method : PlayerCollision(block : RectangleShape) ~ Nil {
