@@ -185,19 +185,16 @@ class PlatformDemo {
 				if(@game_map[y, x] = 0) {
 					@space->Set(pixel_x, pixel_y);
 					@space->Render();
-
-					@player->Set(BLOCK_WIDTH * 2, @player_y_position);
-					@player->Render();
 				}
 				else {
 					@solid->Set(pixel_x, pixel_y);
 					@solid->Render();
-
+					
 					PlayerCollision(@solid, pixel_y);
-
-					@player->Set(BLOCK_WIDTH * 2, @player_y_position);
-					@player->Render();
 				};
+
+				@player->Set(BLOCK_WIDTH * 2, @player_y_position);
+				@player->Render();
 			};
 		};
 	}
