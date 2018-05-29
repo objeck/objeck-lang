@@ -47,7 +47,7 @@ class PlatformDemo {
 		@space := RectangleShape->New(space);
 
 		test := @game->AddRectangle(Size->BLOCK_WIDTH, Size->BLOCK_HEIGHT);
-		test->SetColor(Color->New(0, 255, 0));
+		test->SetColor(Color->New(255, 255, 51));
 		@test := RectangleShape->New(test);
 
 		solid := @game->AddRectangle(Size->BLOCK_WIDTH, Size->BLOCK_HEIGHT);
@@ -188,21 +188,36 @@ class PlatformDemo {
 				}
 				else {
 					# left player blocks
+					render_space := true;
 					if(x - view_x_offset = 2) {
+						if(pixel_y + Size->BLOCK_HEIGHT > @player_y_position + Size->BLOCK_HEIGHT * 2) {
+							@test->Set(pixel_x, pixel_y);
+							@test->Render();
+							render_space := false;
 
+test_mid := @test->GetCenterX();
+player_mid := @player->GetCenterX();
+GameEngine->Debug("left: test_mid={$test_mid}, player_mid={$player_mid}");
+
+						};
 					}
 					# right player blocks
 					else if(x - view_x_offset = 3) {
 						if(pixel_y + Size->BLOCK_HEIGHT > @player_y_position + Size->BLOCK_HEIGHT * 2) {
-# foo := pixel_y + Size->BLOCK_HEIGHT;
-# bar := @player_y_position + Size->BLOCK_HEIGHT * 2;
-"player_x_position={$@player_x_position}, pixel_x={$pixel_x}\n---"->PrintLine();
+							@test->Set(pixel_x, pixel_y);
+							@test->Render();
+							render_space := false;
+
+test_mid := @test->GetCenterX();
+player_mid := @player->GetCenterX();
+GameEngine->Debug("right: test_mid={$test_mid}, player_mid={$player_mid}");							
 						};
 					};
-
-
-					@space->Set(pixel_x, pixel_y);
-					@space->Render();
+					
+					if(render_space) {
+						@space->Set(pixel_x, pixel_y);
+						@space->Render();
+					};
 				};
 
 				# TODO: check for jumping and falling
@@ -288,7 +303,7 @@ class RectangleShape {
 	}
 
 	method : public : GetCenterX() ~ Int {
-		return GetY2() / 2;
+		return GetX2() / 2;
 	}
 
 	method : public : GetY() ~ Int {
