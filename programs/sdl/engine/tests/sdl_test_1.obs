@@ -15,6 +15,7 @@ class PlatformDemo {
 	
 	@space : RectangleShape;
 	@solid : RectangleShape;
+	@test : RectangleShape;
 
 	@player_x_direction : Int;
 	@player_y_direction : Int;
@@ -44,6 +45,10 @@ class PlatformDemo {
 		space := @game->AddRectangle(Size->BLOCK_WIDTH, Size->BLOCK_HEIGHT);
 		space->SetColor(Color->New(0, 177, 64));
 		@space := RectangleShape->New(space);
+
+		test := @game->AddRectangle(Size->BLOCK_WIDTH, Size->BLOCK_HEIGHT);
+		test->SetColor(Color->New(0, 255, 0));
+		@test := RectangleShape->New(test);
 
 		solid := @game->AddRectangle(Size->BLOCK_WIDTH, Size->BLOCK_HEIGHT);
 		solid->SetFill(true);
@@ -172,6 +177,8 @@ class PlatformDemo {
 			for(y := 0; y < y_end; y += 1;) {
 				pixel_y := y * Size->BLOCK_HEIGHT;
 
+
+
 				if(@game_map[y, x] > 0) {
 					@solid->Set(pixel_x, pixel_y);
 					@solid->Render();
@@ -182,6 +189,20 @@ class PlatformDemo {
  					EnemyCollisions(@solid);
 				}
 				else {
+					# left player blocks
+					if(x - view_x_offset = 2) {
+
+					}
+					# right player blocks
+					else if(x - view_x_offset = 3) {
+						if(pixel_y + Size->BLOCK_HEIGHT > @player_y_position + Size->BLOCK_HEIGHT * 2) {
+foo := pixel_y + Size->BLOCK_HEIGHT;
+bar := @player_y_position + Size->BLOCK_HEIGHT * 2;
+GameEngine->Debug("foo={$foo}, bar={$bar}");
+						};
+					};
+
+
 					@space->Set(pixel_x, pixel_y);
 					@space->Render();
 				};
@@ -236,7 +257,7 @@ class PlatformDemo {
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 			[0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1,   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0]
-			[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+			[1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 		];
 
 		return game_map;
@@ -250,6 +271,10 @@ class RectangleShape {
 
 	New(rect : Rectangle) {
 		@rect := rect;
+	}
+
+	method : public : GetRect() ~ Rectangle {
+		return @rect;
 	}
 
 	method : public : Set(x : Int, y : Int) ~ Nil {
