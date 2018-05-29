@@ -200,20 +200,17 @@ class PlatformDemo {
 							pixel_y + Size->BLOCK_HEIGHT <= @player_y_position + Size->BLOCK_HEIGHT * 3) {
 							@test->Set(pixel_x, pixel_y);
 							@test->Render();
+							
 							@player_falling := true;
-
-GameEngine->Debug("left: pixel_y={$pixel_y}");
-
-#~
-if(@test->GetCenterX() = @player->GetCenterX()) {
-test_mid := @test->GetCenterX();
-player_mid := @player->GetCenterX();
-GameEngine->Debug("left: test_mid={$test_mid}, player_mid={$player_mid}");
-};
-~#
-
-
 							render_space := false;
+
+
+							if(@test->GetCenterX() < @player->GetCenterX() & 
+								@test->GetCenterX() + Size->BLOCK_WIDTH > @player->GetCenterX()) {
+"left: pixel_y={$pixel_y}"->PrintLine();
+							};
+
+							
 						};
 					}
 					# right player blocks
@@ -222,17 +219,13 @@ GameEngine->Debug("left: test_mid={$test_mid}, player_mid={$player_mid}");
 							pixel_y + Size->BLOCK_HEIGHT <= @player_y_position + Size->BLOCK_HEIGHT * 3) {
 							@test->Set(pixel_x, pixel_y);
 							@test->Render();
-							@player_falling := true;
 
-GameEngine->Debug("right: pixel_y={$pixel_y}");
+							@player_falling := true;
 							
-#~
-if(@test->GetCenterX() = @player->GetCenterX()) {
-test_mid := @test->GetCenterX();
-player_mid := @player->GetCenterX();
-GameEngine->Debug("right: test_mid={$test_mid}, player_mid={$player_mid}");
-};
-~#
+							if(@test->GetCenterX() > @player->GetCenterX() & 
+								@test->GetCenterX() + Size->BLOCK_WIDTH > @player->GetCenterX()) {
+"right: pixel_y={$pixel_y}"->PrintLine();
+							};
 
 							render_space := false;
 						};
