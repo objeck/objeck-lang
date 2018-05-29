@@ -177,8 +177,6 @@ class PlatformDemo {
 			for(y := 0; y < y_end; y += 1;) {
 				pixel_y := y * Size->BLOCK_HEIGHT;
 
-
-
 				if(@game_map[y, x] > 0) {
 					@solid->Set(pixel_x, pixel_y);
 					@solid->Render();
@@ -196,9 +194,9 @@ class PlatformDemo {
 					# right player blocks
 					else if(x - view_x_offset = 3) {
 						if(pixel_y + Size->BLOCK_HEIGHT > @player_y_position + Size->BLOCK_HEIGHT * 2) {
-foo := pixel_y + Size->BLOCK_HEIGHT;
-bar := @player_y_position + Size->BLOCK_HEIGHT * 2;
-"foo={$foo}, bar={$bar}\n---"->PrintLine();
+# foo := pixel_y + Size->BLOCK_HEIGHT;
+# bar := @player_y_position + Size->BLOCK_HEIGHT * 2;
+"player_x_position={$@player_x_position}, pixel_x={$pixel_x}\n---"->PrintLine();
 						};
 					};
 
