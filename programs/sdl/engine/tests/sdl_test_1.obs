@@ -25,6 +25,8 @@ class PlatformDemo {
 
 	@player_speed : Int;
 	@player_falling : Bool;
+
+	@foo : Int;
 	
 	function : Main(args : String[]) ~ Nil {
 		platform := PlatformDemo->New();
@@ -204,13 +206,25 @@ class PlatformDemo {
 							@player_falling := true;
 							render_space := false;
 
+block_center := @test->GetCenterX();
+player_center := @player->GetCenterX();
+diff := player_center - block_center;
 
-							if(@test->GetCenterX() < @player->GetCenterX() & 
-								@test->GetCenterX() + Size->BLOCK_WIDTH > @player->GetCenterX()) {
-"left: pixel_y={$pixel_y}"->PrintLine();
-							};
+if(diff = 0 & @foo = 0) {
+	@foo := 1;
+};
 
-							
+if(@foo = 1 & diff = 4) {
+	@foo := 2;
+};
+
+#~
+else if(player_center - block_center = @player_speed & @foo) {
+	@foo := false;
+};
+~#
+GameEngine->Debug("left: block_center={$block_center}, player_center={$player_center}, diff={$diff}");
+
 						};
 					}
 					# right player blocks
@@ -221,13 +235,21 @@ class PlatformDemo {
 							@test->Render();
 
 							@player_falling := true;
-							
-							if(@test->GetCenterX() > @player->GetCenterX() & 
-								@test->GetCenterX() + Size->BLOCK_WIDTH > @player->GetCenterX()) {
-"right: pixel_y={$pixel_y}"->PrintLine();
-							};
-
 							render_space := false;
+							
+block_center := @test->GetCenterX();
+player_center := @player->GetCenterX();
+diff := player_center - block_center;
+
+if(@foo = 1 & diff = 4) {
+	@foo := 2;
+};
+
+						}
+						else {
+							if(@foo = 2) {
+								@foo := 0;
+							};
 						};
 					};
 					
@@ -237,6 +259,9 @@ class PlatformDemo {
 					};
 				};
 
+if(@foo > 0) {
+#	@foo->Print();
+};
 				# TODO: check for jumping and falling
 				@player->Set(Size->BLOCK_WIDTH * 2, @player_y_position);
 
