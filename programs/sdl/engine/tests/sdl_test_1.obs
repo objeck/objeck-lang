@@ -24,6 +24,7 @@ class PlatformDemo {
 	@player_y_position : Int;
 
 	@player_speed : Int;
+	@player_falling : Bool;
 	
 	function : Main(args : String[]) ~ Nil {
 		platform := PlatformDemo->New();
@@ -144,6 +145,11 @@ class PlatformDemo {
 				else if(@player_y_direction = 1) {
 					@player_y_position += @player_speed;
 				};
+
+				# falling
+				if(@player_falling) {
+					@player_y_position += @player_speed;
+				};
 			};	
 		}
 		else {
@@ -193,11 +199,16 @@ class PlatformDemo {
 						if(pixel_y + Size->BLOCK_HEIGHT > @player_y_position + Size->BLOCK_HEIGHT * 2) {
 							@test->Set(pixel_x, pixel_y);
 							@test->Render();
-							render_space := false;
 
+							render_space := false;
+							@player_falling := true;
+#~
+if(@test->GetCenterX() = @player->GetCenterX()) {
 test_mid := @test->GetCenterX();
 player_mid := @player->GetCenterX();
 GameEngine->Debug("left: test_mid={$test_mid}, player_mid={$player_mid}");
+};
+~#
 
 						};
 					}
@@ -206,11 +217,18 @@ GameEngine->Debug("left: test_mid={$test_mid}, player_mid={$player_mid}");
 						if(pixel_y + Size->BLOCK_HEIGHT > @player_y_position + Size->BLOCK_HEIGHT * 2) {
 							@test->Set(pixel_x, pixel_y);
 							@test->Render();
-							render_space := false;
 
+							render_space := false;
+							@player_falling := true;
+
+#~
+if(@test->GetCenterX() = @player->GetCenterX()) {
 test_mid := @test->GetCenterX();
 player_mid := @player->GetCenterX();
-GameEngine->Debug("right: test_mid={$test_mid}, player_mid={$player_mid}");							
+GameEngine->Debug("right: test_mid={$test_mid}, player_mid={$player_mid}");
+};
+~#
+
 						};
 					};
 					
@@ -232,7 +250,7 @@ GameEngine->Debug("right: test_mid={$test_mid}, player_mid={$player_mid}");
 
 	}
 
-	method : PlayerCollision(block : RectangleShape) ~ Nil {
+	method : PlayerCollision(block : RectangleShape) ~ Bool {
 		if(block->Overlaps(@player)) {
 			# right
 			if(@player_x_direction = 1) {
@@ -251,7 +269,11 @@ GameEngine->Debug("right: test_mid={$test_mid}, player_mid={$player_mid}");
 			else if(@player_y_direction = -1) {
 				@player_y_position += @player_speed;
 			};
+
+			return true;
 		};
+
+		return false;
 	}
 
 	method : native : CreateMap() ~ Int[,] {
@@ -269,8 +291,8 @@ GameEngine->Debug("right: test_mid={$test_mid}, player_mid={$player_mid}");
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-			[0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1,   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0]
-			[1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+			[0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1,   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0]
+			[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 		];
 
 		return game_map;
