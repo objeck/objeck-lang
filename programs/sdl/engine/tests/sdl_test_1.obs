@@ -16,6 +16,7 @@ class PlatformDemo {
 	@space : RectangleShape;
 	@solid : RectangleShape;
 	@test : RectangleShape;
+	@test2 : RectangleShape;
 
 	@player_x_direction : Int;
 	@player_y_direction : Int;
@@ -52,6 +53,10 @@ class PlatformDemo {
 		test := @game->AddRectangle(Size->BLOCK_WIDTH, Size->BLOCK_HEIGHT);
 		test->SetColor(Color->New(255, 255, 51));
 		@test := RectangleShape->New(test);
+
+		test2 := @game->AddRectangle(Size->BLOCK_WIDTH, Size->BLOCK_HEIGHT);
+		test2->SetColor(Color->New(255, 255, 250));
+		@test2 := RectangleShape->New(test2);
 
 		solid := @game->AddRectangle(Size->BLOCK_WIDTH, Size->BLOCK_HEIGHT);
 		solid->SetFill(true);
@@ -185,6 +190,7 @@ class PlatformDemo {
 			for(y := 0; y < y_end; y += 1;) {
 				pixel_y := y * Size->BLOCK_HEIGHT;
 
+				# TODO: check for left and right blocks
 				if(@game_map[y, x] > 0) {
 					@solid->Set(pixel_x, pixel_y);
 					@solid->Render();
@@ -197,6 +203,7 @@ class PlatformDemo {
 				else {
 					# left player blocks
 					render_space := true;
+
 					if(x - view_x_offset = 2) {
 						if(pixel_y + Size->BLOCK_HEIGHT > @player_y_position + Size->BLOCK_HEIGHT * 2 & 
 							pixel_y + Size->BLOCK_HEIGHT <= @player_y_position + Size->BLOCK_HEIGHT * 3) {
@@ -205,51 +212,17 @@ class PlatformDemo {
 							
 							@player_falling := true;
 							render_space := false;
-
-block_center := @test->GetCenterX();
-player_center := @player->GetCenterX();
-diff := player_center - block_center;
-
-if(diff = 0 & @foo = 0) {
-	@foo := 1;
-};
-
-if(@foo = 1 & diff = 4) {
-	@foo := 2;
-};
-
-#~
-else if(player_center - block_center = @player_speed & @foo) {
-	@foo := false;
-};
-~#
-GameEngine->Debug("left: block_center={$block_center}, player_center={$player_center}, diff={$diff}");
-
 						};
 					}
 					# right player blocks
 					else if(x - view_x_offset = 3) {
 						if(pixel_y + Size->BLOCK_HEIGHT > @player_y_position + Size->BLOCK_HEIGHT * 2 & 
 							pixel_y + Size->BLOCK_HEIGHT <= @player_y_position + Size->BLOCK_HEIGHT * 3) {
-							@test->Set(pixel_x, pixel_y);
-							@test->Render();
+							@test2->Set(pixel_x, pixel_y);
+							@test2->Render();
 
 							@player_falling := true;
 							render_space := false;
-							
-block_center := @test->GetCenterX();
-player_center := @player->GetCenterX();
-diff := player_center - block_center;
-
-if(@foo = 1 & diff = 4) {
-	@foo := 2;
-};
-
-						}
-						else {
-							if(@foo = 2) {
-								@foo := 0;
-							};
 						};
 					};
 					
@@ -259,9 +232,6 @@ if(@foo = 1 & diff = 4) {
 					};
 				};
 
-if(@foo > 0) {
-#	@foo->Print();
-};
 				# TODO: check for jumping and falling
 				@player->Set(Size->BLOCK_WIDTH * 2, @player_y_position);
 
