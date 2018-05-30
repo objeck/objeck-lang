@@ -210,6 +210,10 @@ class PlatformDemo {
 							@test->Set(pixel_x, pixel_y);
 							@test->Render();
 							
+							if(@test->GetCenterX() = @player->GetCenterX()) {
+"--- FALL DOWN ---"->PrintLine();
+							};
+
 							@player_falling := true;
 							render_space := false;
 						};
@@ -220,7 +224,7 @@ class PlatformDemo {
 							pixel_y + Size->BLOCK_HEIGHT <= @player_y_position + Size->BLOCK_HEIGHT * 3) {
 							@test2->Set(pixel_x, pixel_y);
 							@test2->Render();
-
+							
 							@player_falling := true;
 							render_space := false;
 						};
