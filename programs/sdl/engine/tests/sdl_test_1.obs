@@ -18,16 +18,15 @@ class PlatformDemo {
 	@test : RectangleShape;
 	@test2 : RectangleShape;
 
-	@player_x_direction : Int;
-	@player_y_direction : Int;
-
 	@player_x_position : Int;
 	@player_y_position : Int;
 
-	@player_speed : Int;
+	@player_x_direction : Int;
 	@player_falling : Bool;
+	@player_jumping : Bool;
+	@player_jump_height : Int;
 
-	@foo : Int;
+	@player_speed : Int;
 	
 	function : Main(args : String[]) ~ Nil {
 		platform := PlatformDemo->New();
@@ -108,23 +107,16 @@ class PlatformDemo {
 	            	@player_x_direction := 1;
 	            }
 
-	            label Scancode->SDL_SCANCODE_UP: {
-	            	@player_y_direction := -1;
-	            }
-
-	            label Scancode->SDL_SCANCODE_DOWN: {
-	            	@player_y_direction := 1;
+	            label Scancode->SDL_SCANCODE_SPACE: {
+	            	@player_jumping := true;
 	            }
 	        };
 	    }
 	    else if(e->GetType() = EventType->SDL_KEYUP & e->GetKey()->GetRepeat() = 0) {
 	        select(e->GetKey()->GetKeysym()->GetScancode()) {
 	        	label Scancode->SDL_SCANCODE_LEFT:
-	            label Scancode->SDL_SCANCODE_RIGHT:
-	            label Scancode->SDL_SCANCODE_UP:
-	            label Scancode->SDL_SCANCODE_DOWN: {
+	            label Scancode->SDL_SCANCODE_RIGHT: {
 	            	@player_x_direction := 0;
-	            	@player_y_direction := 0;
 	            }
 	        };
 	    };   
@@ -145,13 +137,17 @@ class PlatformDemo {
 				};
 
 				# move up
-				if(@player_y_direction = -1) {
-					@player_y_position -= @player_speed;
-					@player_falling := false;
-				}
-				# move down
-				else if(@player_y_direction = 1) {
-					@player_y_position += @player_speed;
+				if(@player_jumping) {
+					if(@player_jump_height < 1.5 * Size->BLOCK_HEIGHT) {
+						@player_y_position -= @player_speed;
+						@player_jump_height += @player_speed;
+						@player_falling := false;
+					}
+					else {
+						@player_jump_height := 0;
+						@player_jumping := false;
+						@player_falling := true;
+					};
 				};
 
 				# falling
@@ -260,15 +256,12 @@ class PlatformDemo {
 			};
 
 			# top
-			if(@player_y_direction = -1) {
+			if(@player_jumping) {
 				@player_y_position += @player_speed;
+				@player_jumping := false;
 				@player_falling := true;
 			}
 			# bottom
-			else if(@player_y_direction = 1) {
-				@player_y_position -= @player_speed;
-				@player_falling := false;
-			}
 			else if(@player_falling) {
 				@player_y_position -= @player_speed; # reset
 				@player_falling := false;
