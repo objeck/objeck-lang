@@ -147,6 +147,7 @@ class PlatformDemo {
 				# move up
 				if(@player_y_direction = -1) {
 					@player_y_position -= @player_speed;
+					@player_falling := false;
 				}
 				# move down
 				else if(@player_y_direction = 1) {
@@ -259,12 +260,17 @@ class PlatformDemo {
 			};
 
 			# top
-			if(@player_y_direction = 1) {
-				@player_y_position -= @player_speed;
+			if(@player_y_direction = -1) {
+				@player_y_position += @player_speed;
+				@player_falling := true;
 			}
 			# bottom
-			else if(@player_falling) {
+			else if(@player_y_direction = 1) {
 				@player_y_position -= @player_speed;
+				@player_falling := false;
+			}
+			else if(@player_falling) {
+				@player_y_position -= @player_speed; # reset
 				@player_falling := false;
 			};
 
