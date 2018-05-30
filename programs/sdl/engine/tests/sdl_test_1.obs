@@ -155,7 +155,7 @@ class PlatformDemo {
 
 				# falling
 				if(@player_falling) {
-#					@player_y_position += @player_speed;
+					@player_y_position += @player_speed;
 				};
 			};	
 		}
@@ -207,26 +207,25 @@ class PlatformDemo {
 					if(x - view_x_offset = 2) {
 						if(pixel_y + Size->BLOCK_HEIGHT > @player_y_position + Size->BLOCK_HEIGHT * 2 & 
 							pixel_y + Size->BLOCK_HEIGHT <= @player_y_position + Size->BLOCK_HEIGHT * 3) {
-							@test->Set(pixel_x, pixel_y);
-							@test->Render();
 							
 							if(@test->GetCenterX() = @player->GetCenterX()) {
-"--- FALL DOWN ---"->PrintLine();
+								@player_falling := true;
 							};
 
-							@player_falling := true;
 							render_space := false;
+							@test->Set(pixel_x, pixel_y);
+							@test->Render();
 						};
 					}
 					# right player blocks
 					else if(x - view_x_offset = 3) {
 						if(pixel_y + Size->BLOCK_HEIGHT > @player_y_position + Size->BLOCK_HEIGHT * 2 & 
 							pixel_y + Size->BLOCK_HEIGHT <= @player_y_position + Size->BLOCK_HEIGHT * 3) {
+							
+							render_space := false;
 							@test2->Set(pixel_x, pixel_y);
 							@test2->Render();
 							
-							@player_falling := true;
-							render_space := false;
 						};
 					};
 					
@@ -264,8 +263,9 @@ class PlatformDemo {
 				@player_y_position -= @player_speed;
 			}
 			# bottom
-			else if(@player_y_direction = -1) {
-				@player_y_position += @player_speed;
+			else if(@player_falling) {
+				@player_y_position -= @player_speed;
+				@player_falling := false;
 			};
 
 			return true;
