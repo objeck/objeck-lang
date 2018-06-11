@@ -1,9 +1,9 @@
 use System.API;
 
 #~
-Provides support for SDL
+Provides support for SDL2 game development
 ~#
-bundle SDL2 {
+bundle Game.SDL2 {
 	class Proxy {
 		@lib_proxy : static : DllProxy;
 		

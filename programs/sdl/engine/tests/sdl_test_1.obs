@@ -3,8 +3,8 @@ Game demo v1
 link: https://github.com/objeck/objeck-lang/blob/master/programs/sdl/engine/tests/sdl_test_1.obs
 ~#
 
-use SDL2;
-use SDL2.Game;
+use Game.SDL2;
+use Game.Engine;
 
 class PlatformDemo {
 	@game : GameEngine;
