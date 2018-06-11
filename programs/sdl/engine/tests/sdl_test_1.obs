@@ -266,8 +266,8 @@ class PlatformDemo {
 			if(@player_jumping) {
 				@player_y_position += @player_speed;
 				@player_jumping := false;
-				@player_jump_height := 0;
 				@player_falling := true;
+				@player_jump_height := 0;
 			}
 			# bottom
 			else if(@player_falling) {
