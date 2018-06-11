@@ -11,12 +11,12 @@ class PlatformDemo {
 	@game_map : Int[,];
 	@game_frame : Int;
 
-	@player : RectangleShape;
+	@player : Rectangle;
 	
-	@space : RectangleShape;
-	@solid : RectangleShape;
-	@test : RectangleShape;
-	@test2 : RectangleShape;
+	@space : Rectangle;
+	@solid : Rectangle;
+	@test : Rectangle;
+	@test2 : Rectangle;
 
 	@player_x_position : Int;
 	@player_y_position : Int;
@@ -37,31 +37,26 @@ class PlatformDemo {
 		@game := GameEngine->New(Size->SCREEN_WIDTH, Size->SCREEN_HEIGHT, "Engine One");
 		@game->SetClearColor(Color->New());
 
-		player := @game->AddRectangle(Size->BLOCK_WIDTH, Size->BLOCK_HEIGHT * 2);
-		player->SetFill(true);
-		player->SetColor(Color->New(12, 35, 64));
-		@player := RectangleShape->New(player);
+		@player := @game->AddRectangle(Size->BLOCK_WIDTH, Size->BLOCK_HEIGHT * 2);
+		@player->SetFill(true);
+		@player->SetColor(Color->New(12, 35, 64));
 		@player_speed := Size->BLOCK_WIDTH / 4;
 		
 		@player_y_position := Size->SCREEN_HEIGHT - Size->BLOCK_WIDTH * 4;
 		
-		space := @game->AddRectangle(Size->BLOCK_WIDTH, Size->BLOCK_HEIGHT);
-		space->SetColor(Color->New(0, 177, 64));
-		@space := RectangleShape->New(space);
-
-		test := @game->AddRectangle(Size->BLOCK_WIDTH, Size->BLOCK_HEIGHT);
-		test->SetColor(Color->New(255, 255, 51));
-		@test := RectangleShape->New(test);
-
-		test2 := @game->AddRectangle(Size->BLOCK_WIDTH, Size->BLOCK_HEIGHT);
-		test2->SetColor(Color->New(255, 255, 250));
-		@test2 := RectangleShape->New(test2);
-
-		solid := @game->AddRectangle(Size->BLOCK_WIDTH, Size->BLOCK_HEIGHT);
-		solid->SetFill(true);
-		solid->SetColor(Color->New(204, 0, 0));
-		@solid := RectangleShape->New(solid);
-
+		@space := @game->AddRectangle(Size->BLOCK_WIDTH, Size->BLOCK_HEIGHT);
+		@space->SetColor(Color->New(0, 177, 64));
+		
+		@test := @game->AddRectangle(Size->BLOCK_WIDTH, Size->BLOCK_HEIGHT);
+		@test->SetColor(Color->New(255, 255, 51));
+		
+		@test2 := @game->AddRectangle(Size->BLOCK_WIDTH, Size->BLOCK_HEIGHT);
+		@test2->SetColor(Color->New(255, 255, 250));
+		
+		@solid := @game->AddRectangle(Size->BLOCK_WIDTH, Size->BLOCK_HEIGHT);
+		@solid->SetFill(true);
+		@solid->SetColor(Color->New(204, 0, 0));
+		
 		@game_map := CreateMap();
 	}
 
@@ -190,7 +185,7 @@ class PlatformDemo {
 				pixel_y := y * Size->BLOCK_HEIGHT;
 
 				if(@game_map[y, x] > 0) {
-					@solid->Set(pixel_x, pixel_y);
+					@solid->GetPosition()->Set(pixel_x, pixel_y);
 					@solid->Render();
 
 					PlayerCollision(@solid);
@@ -206,12 +201,12 @@ class PlatformDemo {
 						if(pixel_y + Size->BLOCK_HEIGHT > @player_y_position + Size->BLOCK_HEIGHT * 2 & 
 							pixel_y + Size->BLOCK_HEIGHT <= @player_y_position + Size->BLOCK_HEIGHT * 3) {
 							
-							if(@test->GetCenterX() = @player->GetCenterX()) {
+							if(@test->GetPosition()->GetCenterX() = @player->GetPosition()->GetCenterX()) {
 								@player_falling := true;
 							};
 
 							render_space := false;
-							@test->Set(pixel_x, pixel_y);
+							@test->GetPosition()->Set(pixel_x, pixel_y);
 							@test->Render();
 						};
 					}
@@ -221,31 +216,31 @@ class PlatformDemo {
 							pixel_y + Size->BLOCK_HEIGHT <= @player_y_position + Size->BLOCK_HEIGHT * 3) {
 							
 							render_space := false;
-							@test2->Set(pixel_x, pixel_y);
+							@test2->GetPosition()->Set(pixel_x, pixel_y);
 							@test2->Render();
 							
 						};
 					};
 					
 					if(render_space) {
-						@space->Set(pixel_x, pixel_y);
+						@space->GetPosition()->Set(pixel_x, pixel_y);
 						@space->Render();
 					};
 				};
 
-				@player->Set(Size->BLOCK_WIDTH * 2, @player_y_position);
+				@player->GetPosition()->Set(Size->BLOCK_WIDTH * 2, @player_y_position);
 
 				@player->Render();
 			};
 		};
 	}
 
-	method : EnemyCollisions(block : RectangleShape) ~ Nil {
+	method : EnemyCollisions(block : Rectangle) ~ Nil {
 
 	}
 
-	method : PlayerCollision(block : RectangleShape) ~ Bool {
-		if(block->Overlaps(@player)) {
+	method : PlayerCollision(block : Rectangle) ~ Bool {
+		if(block->GetPosition()->Overlaps(@player->GetPosition())) {
 			# right
 			if(@player_x_direction = 1) {
 				@player_x_position -= @player_speed;
@@ -256,8 +251,8 @@ class PlatformDemo {
 				@player_x_position += @player_speed;
 			};
 
-			player_bottom := @player->GetY2() - @player_speed;
-			block_top := block->GetY();
+			player_bottom := @player->GetPosition()->GetY2() - @player_speed;
+			block_top := block->GetPosition()->GetY();
 			if(player_bottom <> block_top) {
 				@player_x_direction := 0;
 			};
@@ -301,72 +296,6 @@ class PlatformDemo {
 		];
 
 		return game_map;
-	}
-}
-
-class RectangleShape {
-	@rect : Rectangle;
-	@x : Int;
-	@y : Int;
-
-	New(rect : Rectangle) {
-		@rect := rect;
-	}
-
-	method : public : GetRect() ~ Rectangle {
-		return @rect;
-	}
-
-	method : public : Set(x : Int, y : Int) ~ Nil {
-		@x := x; @y := y;
-	}
-
-	method : public : GetX() ~ Int {
-		return @x;
-	}
-
-	method : public : GetX2() ~ Int {
-		return @x + @rect->GetWidth();
-	}
-
-	method : public : GetCenterX() ~ Int {
-		return GetX2() / 2;
-	}
-
-	method : public : GetY() ~ Int {
-		return @y;
-	}
-
-	method : public : GetY2() ~ Int {
-		return @y + @rect->GetHeight();
-	}
-
-	method : public : GetCenterY() ~ Int {
-		return GetY2() / 2;
-	}
-
-	method : public : Render() ~ Nil {
-		@rect->Render(@x, @y);
-	}
-
-	method : public : native : Overlaps(rect : RectangleShape) ~ Bool {
-		right_a := rect->GetX();
-		right_b := GetX2();
-
-		left_a := GetX();
-		left_b := rect->GetX2();
-
-		top_a := GetY();
-		top_b := rect->GetY2();
-
-		bottom_a := rect->GetY();
-		bottom_b := GetY2();
-
-		return right_b > right_a & left_a < left_b & top_b > top_a & bottom_a < bottom_b;
-	}
-
-	method : public : Contains(x : Int, y : Int) ~ Bool {
-		return false;
 	}
 }
 
