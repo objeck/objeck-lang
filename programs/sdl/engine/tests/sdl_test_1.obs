@@ -248,10 +248,6 @@ class PlatformDemo {
 
 	method : PlayerCollision(block : RectangleShape) ~ Bool {
 		if(block->Overlaps(@player)) {
-
-			
-#			@player_x_direction := 0;
-			
 			# right
 			if(@player_x_direction = 1) {
 				@player_x_position -= @player_speed;
@@ -262,17 +258,17 @@ class PlatformDemo {
 				@player_x_position += @player_speed;
 			};
 
-foo := @player->GetY2() - @player_speed;
-bar := block->GetY();
-if(foo <> bar) {
-# "{$foo}, {$bar}"->PrintLine();
-@player_x_direction := 0;
-};
+			player_bottom := @player->GetY2() - @player_speed;
+			block_top := block->GetY();
+			if(player_bottom <> block_top) {
+				@player_x_direction := 0;
+			};
 
 			# top
 			if(@player_jumping) {
 				@player_y_position += @player_speed;
 				@player_jumping := false;
+				@player_jump_height := 0;
 				@player_falling := true;
 			}
 			# bottom
