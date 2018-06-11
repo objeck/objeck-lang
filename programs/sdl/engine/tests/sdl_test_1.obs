@@ -189,7 +189,6 @@ class PlatformDemo {
 			for(y := 0; y < y_end; y += 1;) {
 				pixel_y := y * Size->BLOCK_HEIGHT;
 
-				# TODO: check for left and right blocks
 				if(@game_map[y, x] > 0) {
 					@solid->Set(pixel_x, pixel_y);
 					@solid->Render();
@@ -234,7 +233,6 @@ class PlatformDemo {
 					};
 				};
 
-				# TODO: check for jumping and falling
 				@player->Set(Size->BLOCK_WIDTH * 2, @player_y_position);
 
 				@player->Render();
