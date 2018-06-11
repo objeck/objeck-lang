@@ -1,7 +1,13 @@
-use SDL2;
+use Game.SDL2;
 use Collection;
 
-bundle SDL2.Game {
+#~
+Game engine wrapper around SDL2
+~#
+bundle Game.Engine {
+	#~
+	Animated sprite backed by a sprite sheet.
+	~#
 	class AnimatedImageSprite from ImageSprite {
 		@clip : Rect;
 		@clip_offset : Int;
@@ -17,6 +23,12 @@ bundle SDL2.Game {
 			};
 		}
 
+		#~
+		Renders sprite
+		@param x x-position
+		@param y y-position
+		@param index sprite image index
+		~#
 		method : public : Render(x : Int, y : Int, index : Int) ~ Nil {
 			if(@is_ok & index > -1 & index < @clip_count) {
 				@clip->SetX(@clip_offset * index);
@@ -24,6 +36,10 @@ bundle SDL2.Game {
 			};
 		}
 
+		#~
+		Get number of clips in sprite sheet
+		@return number of clips
+		~#
 		method : public : GetClipCount() ~ Int {
 			return @clip_count;
 		}
