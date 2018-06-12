@@ -211,10 +211,6 @@ bundle Game.Engine {
 			return @position;
 		}
 
-		method : public : Set(x : Int, y : Int) ~ Nil {
-			@position->Set(x, y);
-		}
-
 		method : public : GetX() ~ Int {
 			return @position->GetX();
 		}

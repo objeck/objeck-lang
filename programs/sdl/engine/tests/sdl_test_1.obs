@@ -161,10 +161,10 @@ class PlatformDemo {
 
 				if(@enemy->GetY() > 0) {
 					if(@enemy_x_direction = 1) {
-						@enemy->Set(@enemy->GetX() + @player_speed / 2, @enemy->GetY());
+						@enemy->GetPosition()->Set(@enemy->GetX() + @player_speed / 2, @enemy->GetY());
 					}
 					else if(@enemy_x_direction = -1) {
-						@enemy->Set(@enemy->GetX() - @player_speed / 2, @enemy->GetY());
+						@enemy->GetPosition()->Set(@enemy->GetX() - @player_speed / 2, @enemy->GetY());
 					};
 				};
 			};	
@@ -201,7 +201,7 @@ class PlatformDemo {
 				pixel_y := y * Size->BLOCK_HEIGHT;
 
 				if(@game_map[y, x] = 1) {
-					@block->Set(pixel_x, pixel_y);
+					@block->GetPosition()->Set(pixel_x, pixel_y);
 					@block->Render();
 
 					PlayerCollision(@block);
@@ -209,7 +209,7 @@ class PlatformDemo {
 				}
 				else if(@game_map[y, x] = 2) {
 					if(@enemy->GetY() = 0) {
-						@enemy->Set(pixel_x, pixel_y + Size->BLOCK_HEIGHT / 2);
+						@enemy->GetPosition()->Set(pixel_x, pixel_y + Size->BLOCK_HEIGHT / 2);
 					}
 					else {
 						@enemy->Render();
@@ -227,7 +227,7 @@ class PlatformDemo {
 							};
 
 							render_space := false;
-							@test->Set(pixel_x, pixel_y);
+							@test->GetPosition()->Set(pixel_x, pixel_y);
 							@test->Render();
 						};
 					}
@@ -236,18 +236,18 @@ class PlatformDemo {
 						if(pixel_y + Size->BLOCK_HEIGHT > @player_y_position + Size->BLOCK_HEIGHT * 2 & 
 								pixel_y + Size->BLOCK_HEIGHT <= @player_y_position + Size->BLOCK_HEIGHT * 3) {
 							render_space := false;
-							@test2->Set(pixel_x, pixel_y);
+							@test2->GetPosition()->Set(pixel_x, pixel_y);
 							@test2->Render();
 						};
 					};
 					
 					if(render_space) {
-						@space->Set(pixel_x, pixel_y);
+						@space->GetPosition()->Set(pixel_x, pixel_y);
 						@space->Render();
 					};
 				};
 
-				@player->Set(Size->BLOCK_WIDTH * 2, @player_y_position);
+				@player->GetPosition()->Set(Size->BLOCK_WIDTH * 2, @player_y_position);
 				@player->Render();
 			};
 		};
@@ -257,11 +257,21 @@ class PlatformDemo {
 		if(block->GetPosition()->Overlaps(@enemy->GetPosition())) {
 			if(@enemy_x_direction = 1) {
 				@enemy_x_direction := -1;
-				@enemy->Set(@enemy->GetX() - @player_speed, @enemy->GetY());
+				if(@player_x_direction = 1) {
+					@enemy->GetPosition()->Set(@enemy->GetX() - @player_speed * 2, @enemy->GetY());
+				}
+				else {
+					@enemy->GetPosition()->Set(@enemy->GetX() - @player_speed, @enemy->GetY());
+				};
 			}
 			else if(@enemy_x_direction = -1) {
 				@enemy_x_direction := 1;
-				@enemy->Set(@enemy->GetX() + @player_speed, @enemy->GetY());
+				if(@player_x_direction = -1) {
+					@enemy->GetPosition()->Set(@enemy->GetX() + @player_speed * 2, @enemy->GetY());
+				}
+				else {
+					@enemy->GetPosition()->Set(@enemy->GetX() + @player_speed, @enemy->GetY());
+				};
 			};
 		};
 	}
