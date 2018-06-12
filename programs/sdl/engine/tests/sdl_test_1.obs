@@ -11,17 +11,18 @@ class PlatformDemo {
 	@game_map : Int[,];
 	@game_frame : Int;
 
-	@player : Rectangle;
+	
 	@enemy : Rectangle;
+	@enemy_x_direction : Int;
 	
 	@space : Rectangle;
 	@block : Rectangle;
 	@test : Rectangle;
 	@test2 : Rectangle;
 
+	@player : Rectangle;
 	@player_x_position : Int;
 	@player_y_position : Int;
-
 	@player_x_direction : Int;
 	@player_falling : Bool;
 	@player_jumping : Bool;
@@ -60,7 +61,8 @@ class PlatformDemo {
 
 		@enemy := @game->AddRectangle(Size->BLOCK_WIDTH / 2, Size->BLOCK_HEIGHT / 2);
 		@enemy->SetFill(true);
-		@enemy->SetColor(Color->New(249, 166, 2));		
+		@enemy->SetColor(Color->New(249, 166, 2));
+		@enemy_x_direction := 1;
 		
 		@game_map := CreateMap();
 	}
@@ -158,7 +160,12 @@ class PlatformDemo {
 				};
 
 				if(@enemy->GetY() > 0) {
-					@enemy->Set(@enemy->GetX() + @player_speed / 2, @enemy->GetY());
+					if(@enemy_x_direction = 1) {
+						@enemy->Set(@enemy->GetX() + @player_speed / 2, @enemy->GetY());
+					}
+					else if(@enemy_x_direction = -1) {
+						@enemy->Set(@enemy->GetX() - @player_speed / 2, @enemy->GetY());
+					};
 				};
 			};	
 		}
@@ -248,7 +255,14 @@ class PlatformDemo {
 
 	method : EnemyCollisions(block : Rectangle) ~ Nil {
 		if(block->GetPosition()->Overlaps(@enemy->GetPosition())) {
-"-- Hit --"->PrintLine();
+			if(@enemy_x_direction = 1) {
+				@enemy_x_direction := -1;
+				@enemy->Set(@enemy->GetX() - @player_speed, @enemy->GetY());
+			}
+			else if(@enemy_x_direction = -1) {
+				@enemy_x_direction := 1;
+				@enemy->Set(@enemy->GetX() + @player_speed, @enemy->GetY());
+			};
 		};
 	}
 
