@@ -12,9 +12,10 @@ class PlatformDemo {
 	@game_frame : Int;
 
 	@player : Rectangle;
+	@enemy : Rectangle;
 	
 	@space : Rectangle;
-	@solid : Rectangle;
+	@block : Rectangle;
 	@test : Rectangle;
 	@test2 : Rectangle;
 
@@ -53,9 +54,13 @@ class PlatformDemo {
 		@test2 := @game->AddRectangle(Size->BLOCK_WIDTH, Size->BLOCK_HEIGHT);
 		@test2->SetColor(Color->New(255, 255, 250));
 		
-		@solid := @game->AddRectangle(Size->BLOCK_WIDTH, Size->BLOCK_HEIGHT);
-		@solid->SetFill(true);
-		@solid->SetColor(Color->New(204, 0, 0));
+		@block := @game->AddRectangle(Size->BLOCK_WIDTH, Size->BLOCK_HEIGHT);
+		@block->SetFill(true);
+		@block->SetColor(Color->New(204, 0, 0));
+
+		@enemy := @game->AddRectangle(Size->BLOCK_WIDTH / 2, Size->BLOCK_HEIGHT / 2);
+		@enemy->SetFill(true);
+		@enemy->SetColor(Color->New(249, 166, 2));		
 		
 		@game_map := CreateMap();
 	}
@@ -151,6 +156,10 @@ class PlatformDemo {
 				if(@player_falling) {
 					@player_y_position += @player_speed;
 				};
+
+				if(@enemy->GetY() > 0) {
+					@enemy->Set(@enemy->GetX() + @player_speed / 2, @enemy->GetY());
+				};
 			};	
 		}
 		else {
@@ -184,14 +193,20 @@ class PlatformDemo {
 			for(y := 0; y < y_end; y += 1;) {
 				pixel_y := y * Size->BLOCK_HEIGHT;
 
-				if(@game_map[y, x] > 0) {
-					@solid->GetPosition()->Set(pixel_x, pixel_y);
-					@solid->Render();
+				if(@game_map[y, x] = 1) {
+					@block->Set(pixel_x, pixel_y);
+					@block->Render();
 
-					PlayerCollision(@solid);
-
-					# TODO: enemy collisions
- 					EnemyCollisions(@solid);
+					PlayerCollision(@block);
+ 					EnemyCollisions(@block);
+				}
+				else if(@game_map[y, x] = 2) {
+					if(@enemy->GetY() = 0) {
+						@enemy->Set(pixel_x, pixel_y + Size->BLOCK_HEIGHT / 2);
+					}
+					else {
+						@enemy->Render();
+					};
 				}
 				else {
 					# left player blocks
@@ -199,44 +214,42 @@ class PlatformDemo {
 
 					if(x - view_x_offset = 2) {
 						if(pixel_y + Size->BLOCK_HEIGHT > @player_y_position + Size->BLOCK_HEIGHT * 2 & 
-							pixel_y + Size->BLOCK_HEIGHT <= @player_y_position + Size->BLOCK_HEIGHT * 3) {
-							
+								pixel_y + Size->BLOCK_HEIGHT <= @player_y_position + Size->BLOCK_HEIGHT * 3) {
 							if(@test->GetPosition()->GetCenterX() = @player->GetPosition()->GetCenterX()) {
 								@player_falling := true;
 							};
 
 							render_space := false;
-							@test->GetPosition()->Set(pixel_x, pixel_y);
+							@test->Set(pixel_x, pixel_y);
 							@test->Render();
 						};
 					}
 					# right player blocks
 					else if(x - view_x_offset = 3) {
 						if(pixel_y + Size->BLOCK_HEIGHT > @player_y_position + Size->BLOCK_HEIGHT * 2 & 
-							pixel_y + Size->BLOCK_HEIGHT <= @player_y_position + Size->BLOCK_HEIGHT * 3) {
-							
+								pixel_y + Size->BLOCK_HEIGHT <= @player_y_position + Size->BLOCK_HEIGHT * 3) {
 							render_space := false;
-							@test2->GetPosition()->Set(pixel_x, pixel_y);
+							@test2->Set(pixel_x, pixel_y);
 							@test2->Render();
-							
 						};
 					};
 					
 					if(render_space) {
-						@space->GetPosition()->Set(pixel_x, pixel_y);
+						@space->Set(pixel_x, pixel_y);
 						@space->Render();
 					};
 				};
 
-				@player->GetPosition()->Set(Size->BLOCK_WIDTH * 2, @player_y_position);
-
+				@player->Set(Size->BLOCK_WIDTH * 2, @player_y_position);
 				@player->Render();
 			};
 		};
 	}
 
 	method : EnemyCollisions(block : Rectangle) ~ Nil {
-
+		if(block->GetPosition()->Overlaps(@enemy->GetPosition())) {
+"-- Hit --"->PrintLine();
+		};
 	}
 
 	method : PlayerCollision(block : Rectangle) ~ Bool {
@@ -286,12 +299,12 @@ class PlatformDemo {
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-			[0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-			[0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-			[0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-			[0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1,   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+			[0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0,   0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0]
+			[0, 1, 1, 1, 1, 1, 0, 0, 1, 0, 0, 2, 0, 1, 1, 1, 1, 1, 1, 1,   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0]
 			[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 		];
 

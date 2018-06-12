@@ -45,6 +45,9 @@ bundle Game.Engine {
 		}
 	}
 
+	#~
+	Animated sprite backed by a sprite sheet.
+	~#
 	class ImageSprite from Sprite {
 		@is_ok : Bool;
 		@angle : Float;
@@ -207,6 +210,18 @@ bundle Game.Engine {
 		method : public : GetPosition() ~ Position {
 			return @position;
 		}
+
+		method : public : Set(x : Int, y : Int) ~ Nil {
+			@position->Set(x, y);
+		}
+
+		method : public : GetX() ~ Int {
+			return @position->GetX();
+		}
+
+		method : public : GetY() ~ Int {
+			return @position->GetY();
+		}
 	}
 
 	class Rectangle implements Shape {
@@ -233,6 +248,14 @@ bundle Game.Engine {
 			return @render_rect->GetH();
 		}
 
+		method : public : GetX() ~ Int {
+			return @position->GetX();
+		}
+
+		method : public : GetY() ~ Int {
+			return @position->GetY();
+		}
+
 		method : public : GetPosition() ~ Position {
 			return @position;
 		}
@@ -247,6 +270,10 @@ bundle Game.Engine {
 
 		method : public : SetFill(fill : Bool) ~ Nil {
 			@fill := fill;
+		}
+
+		method : public : Set(x : Int, y : Int) ~ Nil {
+			@position->Set(x, y);
 		}
 
 		method : public : GetFill() ~ Bool {
