@@ -132,17 +132,28 @@ class PlatformDemo {
 					@block->Render();
 				}
 				else if(@game_map[y, x] = 2) {
-					e_x := pixel_x + Size->BLOCK_WIDTH / 2 + @enemy_position;
-					b_x := pixel_x + ((x + 1) * Size->BLOCK_WIDTH);
-
-					if(e_x > b_x) {
-						@enemy_position -= 2;
+					if(@enemy_x_direction = 1) {
+						@enemy_position += 2;
 					}
 					else {
-						@enemy_position += 2;
+						@enemy_position -= 2;
 					};
 
-					@enemy->GetPosition()->Set(e_x, pixel_y + Size->BLOCK_HEIGHT / 2);
+					foo := pixel_x + Size->BLOCK_WIDTH / 2 + @enemy_position;
+					bar := foo / Size->BLOCK_WIDTH;	
+
+					if(@enemy_x_direction = -1) {
+						if(@game_map[y, bar] = 1) {
+							@enemy_x_direction := 1;
+						};
+					}
+					else {
+						if(@game_map[y, bar] = 1) {
+							@enemy_x_direction := -1;
+						};
+					};
+					
+					@enemy->GetPosition()->Set(foo, pixel_y + Size->BLOCK_HEIGHT / 2);
 					@enemy->Render();
 				};
 			};
