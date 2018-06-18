@@ -111,7 +111,7 @@ class PlatformDemo {
 			@player_position -= 4;
 		};
 
-		@enemy_position += 2;
+		
 
 		#--- Render ---
 
@@ -133,13 +133,16 @@ class PlatformDemo {
 				}
 				else if(@game_map[y, x] = 2) {
 					e_x := pixel_x + Size->BLOCK_WIDTH / 2 + @enemy_position;
-					b_x := pixel_x := ((x + 1) * Size->BLOCK_WIDTH) + @player_position;
+					b_x := pixel_x + ((x + 1) * Size->BLOCK_WIDTH);
 
 					if(e_x > b_x) {
-
+						@enemy_position -= 2;
+					}
+					else {
+						@enemy_position += 2;
 					};
 
-					@enemy->GetPosition()->Set(, pixel_y + Size->BLOCK_HEIGHT / 2);
+					@enemy->GetPosition()->Set(e_x, pixel_y + Size->BLOCK_HEIGHT / 2);
 					@enemy->Render();
 				};
 			};
