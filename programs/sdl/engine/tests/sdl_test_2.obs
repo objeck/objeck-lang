@@ -19,6 +19,7 @@ class PlatformDemo {
 
 	@enemy : Rectangle;
 	@enemy_x_direction : Int;
+	@enemy_position : Int;
 
 	function : Main(args : String[]) ~ Nil {
 		platform := PlatformDemo->New();
@@ -110,6 +111,8 @@ class PlatformDemo {
 			@player_position -= 4;
 		};
 
+		@enemy_position += 2;
+
 		#--- Render ---
 
 		@game->Clear();
@@ -129,7 +132,14 @@ class PlatformDemo {
 					@block->Render();
 				}
 				else if(@game_map[y, x] = 2) {
-					@enemy->GetPosition()->Set(pixel_x + Size->BLOCK_WIDTH / 2, pixel_y + Size->BLOCK_HEIGHT / 2);
+					e_x := pixel_x + Size->BLOCK_WIDTH / 2 + @enemy_position;
+					b_x := pixel_x := ((x + 1) * Size->BLOCK_WIDTH) + @player_position;
+
+					if(e_x > b_x) {
+
+					};
+
+					@enemy->GetPosition()->Set(, pixel_y + Size->BLOCK_HEIGHT / 2);
 					@enemy->Render();
 				};
 			};
