@@ -3,24 +3,26 @@ Game demo v1
 link: https://github.com/objeck/objeck-lang/blob/master/programs/sdl/engine/tests/sdl_test_1.obs
 ~#
 
-use SDL2;
-use SDL2.Game;
+use Game.SDL2;
+use Game.Engine;
 
 class PlatformDemo {
 	@game : GameEngine;
 	@game_map : Int[,];
 	@game_frame : Int;
 
-	@player : RectangleShape;
 	
-	@space : RectangleShape;
-	@solid : RectangleShape;
-	@test : RectangleShape;
-	@test2 : RectangleShape;
+	@enemy : Rectangle;
+	@enemy_x_direction : Int;
+	
+	@space : Rectangle;
+	@block : Rectangle;
+	@test : Rectangle;
+	@test2 : Rectangle;
 
+	@player : Rectangle;
 	@player_x_position : Int;
 	@player_y_position : Int;
-
 	@player_x_direction : Int;
 	@player_falling : Bool;
 	@player_jumping : Bool;
@@ -37,31 +39,31 @@ class PlatformDemo {
 		@game := GameEngine->New(Size->SCREEN_WIDTH, Size->SCREEN_HEIGHT, "Engine One");
 		@game->SetClearColor(Color->New());
 
-		player := @game->AddRectangle(Size->BLOCK_WIDTH, Size->BLOCK_HEIGHT * 2);
-		player->SetFill(true);
-		player->SetColor(Color->New(12, 35, 64));
-		@player := RectangleShape->New(player);
+		@player := @game->AddRectangle(Size->BLOCK_WIDTH, Size->BLOCK_HEIGHT * 2);
+		@player->SetFill(true);
+		@player->SetColor(Color->New(12, 35, 64));
 		@player_speed := Size->BLOCK_WIDTH / 4;
 		
 		@player_y_position := Size->SCREEN_HEIGHT - Size->BLOCK_WIDTH * 4;
 		
-		space := @game->AddRectangle(Size->BLOCK_WIDTH, Size->BLOCK_HEIGHT);
-		space->SetColor(Color->New(0, 177, 64));
-		@space := RectangleShape->New(space);
+		@space := @game->AddRectangle(Size->BLOCK_WIDTH, Size->BLOCK_HEIGHT);
+		@space->SetColor(Color->New(0, 177, 64));
+		
+		@test := @game->AddRectangle(Size->BLOCK_WIDTH, Size->BLOCK_HEIGHT);
+		@test->SetColor(Color->New(255, 255, 51));
+		
+		@test2 := @game->AddRectangle(Size->BLOCK_WIDTH, Size->BLOCK_HEIGHT);
+		@test2->SetColor(Color->New(255, 255, 250));
+		
+		@block := @game->AddRectangle(Size->BLOCK_WIDTH, Size->BLOCK_HEIGHT);
+		@block->SetFill(true);
+		@block->SetColor(Color->New(204, 0, 0));
 
-		test := @game->AddRectangle(Size->BLOCK_WIDTH, Size->BLOCK_HEIGHT);
-		test->SetColor(Color->New(255, 255, 51));
-		@test := RectangleShape->New(test);
-
-		test2 := @game->AddRectangle(Size->BLOCK_WIDTH, Size->BLOCK_HEIGHT);
-		test2->SetColor(Color->New(255, 255, 250));
-		@test2 := RectangleShape->New(test2);
-
-		solid := @game->AddRectangle(Size->BLOCK_WIDTH, Size->BLOCK_HEIGHT);
-		solid->SetFill(true);
-		solid->SetColor(Color->New(204, 0, 0));
-		@solid := RectangleShape->New(solid);
-
+		@enemy := @game->AddRectangle(Size->BLOCK_WIDTH / 2, Size->BLOCK_HEIGHT / 2);
+		@enemy->SetFill(true);
+		@enemy->SetColor(Color->New(249, 166, 2));
+		@enemy_x_direction := 1;
+		
 		@game_map := CreateMap();
 	}
 
@@ -156,6 +158,25 @@ class PlatformDemo {
 				if(@player_falling) {
 					@player_y_position += @player_speed;
 				};
+
+				if(@enemy->GetY() > 0) {
+					if(@enemy_x_direction = 1) {
+						if(@player_x_direction = 1) {
+							@enemy->GetPosition()->Set(@enemy->GetX() + @player_speed / 4, @enemy->GetY());
+						}
+						else {
+							@enemy->GetPosition()->Set(@enemy->GetX() + @player_speed / 2, @enemy->GetY());
+						};
+					}
+					else if(@enemy_x_direction = -1) {
+						if(@player_x_direction = -1) {
+							@enemy->GetPosition()->Set(@enemy->GetX() - @player_speed / 4, @enemy->GetY());
+						}
+						else {
+							@enemy->GetPosition()->Set(@enemy->GetX() - @player_speed / 2, @enemy->GetY());
+						};
+					};
+				};
 			};	
 		}
 		else {
@@ -189,15 +210,20 @@ class PlatformDemo {
 			for(y := 0; y < y_end; y += 1;) {
 				pixel_y := y * Size->BLOCK_HEIGHT;
 
-				# TODO: check for left and right blocks
-				if(@game_map[y, x] > 0) {
-					@solid->Set(pixel_x, pixel_y);
-					@solid->Render();
+				if(@game_map[y, x] = 1) {
+					@block->GetPosition()->Set(pixel_x, pixel_y);
+					@block->Render();
 
-					PlayerCollision(@solid);
-
-					# TODO: enemy collisions
- 					EnemyCollisions(@solid);
+					PlayerCollision(@block);
+ 					EnemyCollisions(@block);
+				}
+				else if(@game_map[y, x] = 2) {
+					if(@enemy->GetY() = 0) {
+						@enemy->GetPosition()->Set(pixel_x, pixel_y + Size->BLOCK_HEIGHT / 2);
+					}
+					else {
+						@enemy->Render();
+					};
 				}
 				else {
 					# left player blocks
@@ -205,56 +231,77 @@ class PlatformDemo {
 
 					if(x - view_x_offset = 2) {
 						if(pixel_y + Size->BLOCK_HEIGHT > @player_y_position + Size->BLOCK_HEIGHT * 2 & 
-							pixel_y + Size->BLOCK_HEIGHT <= @player_y_position + Size->BLOCK_HEIGHT * 3) {
-							
-							if(@test->GetCenterX() = @player->GetCenterX()) {
+								pixel_y + Size->BLOCK_HEIGHT <= @player_y_position + Size->BLOCK_HEIGHT * 3) {
+							if(@test->GetPosition()->GetCenterX() = @player->GetPosition()->GetCenterX()) {
 								@player_falling := true;
 							};
 
 							render_space := false;
-							@test->Set(pixel_x, pixel_y);
+							@test->GetPosition()->Set(pixel_x, pixel_y);
 							@test->Render();
 						};
 					}
 					# right player blocks
 					else if(x - view_x_offset = 3) {
 						if(pixel_y + Size->BLOCK_HEIGHT > @player_y_position + Size->BLOCK_HEIGHT * 2 & 
-							pixel_y + Size->BLOCK_HEIGHT <= @player_y_position + Size->BLOCK_HEIGHT * 3) {
-							
+								pixel_y + Size->BLOCK_HEIGHT <= @player_y_position + Size->BLOCK_HEIGHT * 3) {
 							render_space := false;
-							@test2->Set(pixel_x, pixel_y);
+							@test2->GetPosition()->Set(pixel_x, pixel_y);
 							@test2->Render();
-							
 						};
 					};
 					
 					if(render_space) {
-						@space->Set(pixel_x, pixel_y);
+						@space->GetPosition()->Set(pixel_x, pixel_y);
 						@space->Render();
 					};
 				};
 
-				# TODO: check for jumping and falling
-				@player->Set(Size->BLOCK_WIDTH * 2, @player_y_position);
-
+				@player->GetPosition()->Set(Size->BLOCK_WIDTH * 2, @player_y_position);
 				@player->Render();
 			};
 		};
 	}
 
-	method : EnemyCollisions(block : RectangleShape) ~ Nil {
-
+	method : EnemyCollisions(block : Rectangle) ~ Nil {
+		if(block->GetPosition()->Overlaps(@enemy->GetPosition())) {
+			if(@enemy_x_direction = 1) {
+				@enemy_x_direction := -1;
+				if(@player_x_direction = 1) {
+					@enemy->GetPosition()->Set(@enemy->GetX() - @player_speed * 2, @enemy->GetY());
+				}
+				else {
+					@enemy->GetPosition()->Set(@enemy->GetX() - @player_speed, @enemy->GetY());
+				};
+			}
+			else if(@enemy_x_direction = -1) {
+				@enemy_x_direction := 1;
+				if(@player_x_direction = -1) {
+					@enemy->GetPosition()->Set(@enemy->GetX() + @player_speed * 2, @enemy->GetY());
+				}
+				else {
+					@enemy->GetPosition()->Set(@enemy->GetX() + @player_speed, @enemy->GetY());
+				};
+			};
+		};
 	}
 
-	method : PlayerCollision(block : RectangleShape) ~ Bool {
-		if(block->Overlaps(@player)) {
+	method : PlayerCollision(block : Rectangle) ~ Bool {
+		if(block->GetPosition()->Overlaps(@player->GetPosition())) {
 			# right
 			if(@player_x_direction = 1) {
 				@player_x_position -= @player_speed;
+				
 			}
 			# left
 			else if(@player_x_direction = -1) {
 				@player_x_position += @player_speed;
+			};
+
+			player_bottom := @player->GetPosition()->GetY2() - @player_speed;
+			block_top := block->GetPosition()->GetY();
+			if(player_bottom <> block_top) {
+				@player_x_direction := 0;
 			};
 
 			# top
@@ -262,6 +309,7 @@ class PlatformDemo {
 				@player_y_position += @player_speed;
 				@player_jumping := false;
 				@player_falling := true;
+				@player_jump_height := 0;
 			}
 			# bottom
 			else if(@player_falling) {
@@ -285,82 +333,16 @@ class PlatformDemo {
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-			[0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-			[0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-			[0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-			[0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-			[0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1,   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+			[0, 1, 1, 1, 1, 1, 0, 0, 1, 0, 0, 2, 0, 1, 1, 1, 1, 1, 1, 1,   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0]
 			[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 		];
 
 		return game_map;
-	}
-}
-
-class RectangleShape {
-	@rect : Rectangle;
-	@x : Int;
-	@y : Int;
-
-	New(rect : Rectangle) {
-		@rect := rect;
-	}
-
-	method : public : GetRect() ~ Rectangle {
-		return @rect;
-	}
-
-	method : public : Set(x : Int, y : Int) ~ Nil {
-		@x := x; @y := y;
-	}
-
-	method : public : GetX() ~ Int {
-		return @x;
-	}
-
-	method : public : GetX2() ~ Int {
-		return @x + @rect->GetWidth();
-	}
-
-	method : public : GetCenterX() ~ Int {
-		return GetX2() / 2;
-	}
-
-	method : public : GetY() ~ Int {
-		return @y;
-	}
-
-	method : public : GetY2() ~ Int {
-		return @y + @rect->GetHeight();
-	}
-
-	method : public : GetCenterY() ~ Int {
-		return GetY2() / 2;
-	}
-
-	method : public : Render() ~ Nil {
-		@rect->Render(@x, @y);
-	}
-
-	method : public : native : Overlaps(rect : RectangleShape) ~ Bool {
-		right_a := rect->GetX();
-		right_b := GetX2();
-
-		left_a := GetX();
-		left_b := rect->GetX2();
-
-		top_a := GetY();
-		top_b := rect->GetY2();
-
-		bottom_a := rect->GetY();
-		bottom_b := GetY2();
-
-		return right_b > right_a & left_a < left_b & top_b > top_a & bottom_a < bottom_b;
-	}
-
-	method : public : Contains(x : Int, y : Int) ~ Bool {
-		return false;
 	}
 }
 
