@@ -1,7 +1,13 @@
-use SDL2;
+use Game.SDL2;
 use Collection;
 
-bundle SDL2.Game {
+#~
+Game engine wrapper around SDL2
+~#
+bundle Game.Engine {
+	#~
+	Animated sprite backed by a sprite sheet.
+	~#
 	class AnimatedImageSprite from ImageSprite {
 		@clip : Rect;
 		@clip_offset : Int;
@@ -17,6 +23,12 @@ bundle SDL2.Game {
 			};
 		}
 
+		#~
+		Renders sprite
+		@param x x-position
+		@param y y-position
+		@param index sprite image index
+		~#
 		method : public : Render(x : Int, y : Int, index : Int) ~ Nil {
 			if(@is_ok & index > -1 & index < @clip_count) {
 				@clip->SetX(@clip_offset * index);
@@ -24,11 +36,18 @@ bundle SDL2.Game {
 			};
 		}
 
+		#~
+		Get number of clips in sprite sheet
+		@return number of clips
+		~#
 		method : public : GetClipCount() ~ Int {
 			return @clip_count;
 		}
 	}
 
+	#~
+	Animated sprite backed by a sprite sheet.
+	~#
 	class ImageSprite from Sprite {
 		@is_ok : Bool;
 		@angle : Float;
@@ -132,14 +151,16 @@ bundle SDL2.Game {
 		}
 	}
 
-	class Sprite implements Thing {
+	class Sprite implements Shape {
 		@texture : Texture;
 		@render_rect : Rect;
+		@position : Position;
 		@renderer : Renderer;
 
 		New(renderer : Renderer) {
 			@renderer := renderer;
 			@render_rect := Rect->New();
+			@position := Position->New(@render_rect);
 		}
 
 		method : public : Free() ~ Nil {
@@ -173,6 +194,11 @@ bundle SDL2.Game {
 			@renderer->CopyEx(@texture, clip, @render_rect, angle, center, flip);
 		}
 
+		method : public : Render(clip : Rect := Nil, angle : Float := 0.0, 
+				center : Point := Nil, flip : RendererFlip := RendererFlip->SDL_FLIP_NONE) ~ Nil {
+			RenderAll(@position->GetX(), @position->GetY(), clip, angle, center, flip);
+		}
+
 		method : public : GetWidth() ~ Int {
 			return @render_rect->GetW();
 		}
@@ -181,13 +207,22 @@ bundle SDL2.Game {
 			return @render_rect->GetH();
 		}
 
-		method : public : GetRect() ~ Rect {
-			return @render_rect;
+		method : public : GetPosition() ~ Position {
+			return @position;
+		}
+
+		method : public : GetX() ~ Int {
+			return @position->GetX();
+		}
+
+		method : public : GetY() ~ Int {
+			return @position->GetY();
 		}
 	}
 
-	class Rectangle implements Thing {
+	class Rectangle implements Shape {
 		@render_rect : Rect;
+		@position : Position;
 		@renderer : Renderer;
 		@color : Color;
 		@fill : Bool;
@@ -195,6 +230,7 @@ bundle SDL2.Game {
 		New(renderer : Renderer, w : Int, h : Int) {
 			@renderer := renderer;
 			@render_rect := Rect->New(w, h);
+			@position := Position->New(@render_rect);
 		}
 
 		method : public : Free() ~ Nil {			
@@ -208,8 +244,16 @@ bundle SDL2.Game {
 			return @render_rect->GetH();
 		}
 
-		method : public : GetRect() ~ Rect {
-			return @render_rect;
+		method : public : GetX() ~ Int {
+			return @position->GetX();
+		}
+
+		method : public : GetY() ~ Int {
+			return @position->GetY();
+		}
+
+		method : public : GetPosition() ~ Position {
+			return @position;
 		}
 
 		method : public : SetColor(color : Color) ~ Nil {
@@ -224,8 +268,16 @@ bundle SDL2.Game {
 			@fill := fill;
 		}
 
+		method : public : Set(x : Int, y : Int) ~ Nil {
+			@position->Set(x, y);
+		}
+
 		method : public : GetFill() ~ Bool {
 			return @fill;
+		}
+
+		method : public : Render() ~ Nil {
+			Render(@position->GetX(), @position->GetY());
 		}
 
 		method : public : Render(x : Int, y : Int) ~ Nil {
@@ -246,10 +298,72 @@ bundle SDL2.Game {
 		}
 	}
 
-	interface Thing {
+	class Position {
+		@rect : Rect;
+		@x : Int;
+		@y : Int;
+
+		New(rect : Rect) {
+			@rect := rect;
+		}
+
+		method : public : GetRect() ~ Rect {
+			return @rect;
+		}
+
+		method : public : Set(x : Int, y : Int) ~ Nil {
+			@x := x; @y := y;
+		}
+
+		method : public : GetX() ~ Int {
+			return @x;
+		}
+
+		method : public : GetX2() ~ Int {
+			return @x + @rect->GetW();
+		}
+
+		method : public : GetCenterX() ~ Int {
+			return GetX2() / 2;
+		}
+
+		method : public : GetY() ~ Int {
+			return @y;
+		}
+
+		method : public : GetY2() ~ Int {
+			return @y + @rect->GetH();
+		}
+
+		method : public : GetCenterY() ~ Int {
+			return GetY2() / 2;
+		}
+
+		method : public : native : Overlaps(rect : Position) ~ Bool {
+			right_a := rect->GetX();
+			right_b := GetX2();
+
+			left_a := GetX();
+			left_b := rect->GetX2();
+
+			top_a := GetY();
+			top_b := rect->GetY2();
+
+			bottom_a := rect->GetY();
+			bottom_b := GetY2();
+
+			return right_b > right_a & left_a < left_b & top_b > top_a & bottom_a < bottom_b;
+		}
+
+		method : public : Contains(x : Int, y : Int) ~ Bool {
+			return false;
+		}
+	}
+
+	interface Shape {
 		method : public : virtual : GetWidth() ~ Int;
 		method : public : virtual : GetHeight() ~ Int;
-		method : public : virtual : GetRect() ~ Rect;
+		method : public : virtual : GetPosition() ~ Position;
 		method : public : virtual : Free() ~ Nil;
 	}
 
@@ -448,7 +562,7 @@ bundle SDL2.Game {
 			return thing;
 		}
 
-		method : public : RemoveSprite(thing : Thing) ~ Bool {
+		method : public : RemoveSprite(thing : Shape) ~ Bool {
 			found := -1;
 			
 			for(i := 0; i < @things->Size() & found < 0; i +=1;) {
@@ -469,7 +583,7 @@ bundle SDL2.Game {
 
 		method : public : Quit() ~ Nil {
 			each(i : @things) {
-				thing := @things->Get(i)->As(Thing);
+				thing := @things->Get(i)->As(Shape);
 				thing->Free();
 			};
 
