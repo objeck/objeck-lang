@@ -682,8 +682,8 @@ IntermediateMethod* IntermediateEmitter::EmitMethod(Method* method)
     }
 
     // return instance if this is constructor call
-    if(method->GetMethodType() == NEW_PUBLIC_METHOD ||
-       method->GetMethodType() == NEW_PRIVATE_METHOD) {
+    if(!method->IsAlt() && (method->GetMethodType() == NEW_PUBLIC_METHOD ||
+       method->GetMethodType() == NEW_PRIVATE_METHOD)) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
     }
 
