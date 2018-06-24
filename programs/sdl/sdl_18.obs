@@ -3,7 +3,7 @@ Lesson 18
 http://lazyfoo.net/tutorials/SDL/18_key_states/index.php
 ~#
 
-use SDL2;
+use Game.SDL2;
 
 class LTexture {
 	@renderer : Renderer;
@@ -185,7 +185,7 @@ class Test {
 		success := true;
 
 		# Initialize SDL
-		if(Core->Init(Flags->SDL_INIT_VIDEO) < 0) {
+		if(Core->Init(HardwareFlags->SDL_INIT_VIDEO) < 0) {
 			"SDL could not initialize!"->ErrorLine();
 			return false;
 		};
