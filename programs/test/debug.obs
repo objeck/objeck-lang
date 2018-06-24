@@ -5,12 +5,17 @@ consts Values {
 }
 
 class Test {
-	function : Foo(v : Int) ~ Nil {
-		v->PrintLine();
+	function : Foo() ~ Bool {
+		return false;
 	}
 	
 	function : Main(args : String[]) ~ Nil {
-		v :=  Values->A * 1.5;
-		Foo(v);
+		Foo();
+		if(true) {
+			"-- Good --"->PrintLine();
+		}
+		else {
+			"-- Bad --"->PrintLine();
+		};
 	}
 }

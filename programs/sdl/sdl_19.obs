@@ -3,7 +3,7 @@ Lesson 19
 http:# lazyfoo.net/tutorials/SDL/19_gamepads_and_joysticks/index.php
 ~#
 
-use SDL2;
+use Game.SDL2;
 
 consts Screen {
 	SCREEN_WIDTH := 640, 
