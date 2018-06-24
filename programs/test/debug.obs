@@ -1,21 +1,25 @@
-consts Values {
-	A := 8,
-	B := 23,
-	C := 48
-}
-
 class Test {
+	function : Main(args : String[]) ~ Nil {
+		if(<>Foo()) {
+			"-- Good --"->PrintLine();
+			return;
+		};
+
+		if(<>Bar()) {
+			"-- Good --"->PrintLine();
+			return;
+		};
+
+		"Ok"->PrintLine();
+	}
+
 	function : Foo() ~ Bool {
-		return false;
+		return true;
+	}
+
+	function : Bar() ~ Bool {
+		return true;
 	}
 	
-	function : Main(args : String[]) ~ Nil {
-		Foo();
-		if(true) {
-			"-- Good --"->PrintLine();
-		}
-		else {
-			"-- Bad --"->PrintLine();
-		};
-	}
+	
 }
