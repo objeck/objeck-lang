@@ -16,7 +16,7 @@ class PlatformDemo {
 	}
 
 	New() {
-		@game := GameEngine->New(Size->SCREEN_WIDTH, Size->SCREEN_HEIGHT, "Engine Three");
+		@game := GameEngine->New(Values->SCREEN_WIDTH, Values->SCREEN_HEIGHT, "Engine Three");
 		# @game->SetClearColor(Color->New());
 
 		@background := @game->AddImageSprite("images/background.png");
@@ -83,13 +83,13 @@ class PlatformDemo {
 
 	method : native : HandleEvents() ~ Nil {
 		if(@x_vel = 1) {
-			@scrolling_offset -= 2;
+			@scrolling_offset -= Values->SPEED;
 			if(@scrolling_offset < -1 * @background->GetWidth()) {
 				@scrolling_offset := 0;
 			};
 		}
 		else if(@x_vel = -1) {
-			@scrolling_offset += 2;
+			@scrolling_offset += Values->SPEED;
 			if(@scrolling_offset > 0) {
 				@scrolling_offset := -1 * @background->GetWidth();
 			};
@@ -124,9 +124,10 @@ class PlatformDemo {
 	}
 }
 
-consts Size {
+consts Values {
 	SCREEN_WIDTH := 800,
 	SCREEN_HEIGHT := 640,
 	BLOCK_WIDTH := 32,
-	BLOCK_HEIGHT := 32
+	BLOCK_HEIGHT := 32,
+	SPEED := 2
 }
