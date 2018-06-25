@@ -87,6 +87,12 @@ class PlatformDemo {
 			if(@scrolling_offset < -1 * @background->GetWidth()) {
 				@scrolling_offset := 0;
 			};
+		}
+		else if(@x_vel = -1) {
+			@scrolling_offset += 2;
+			if(@scrolling_offset >= 0) {
+				@scrolling_offset := -1 * @background->GetWidth();
+			};
 		};
 	}
 
