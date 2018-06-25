@@ -82,14 +82,14 @@ class PlatformDemo {
 	}
 
 	method : native : HandleEvents() ~ Nil {
-		if(@x_vel = 1) {		
+		if(@x_vel = 1) {
 			@scrolling_offset -= 2;
 			if(@scrolling_offset < -1 * @background->GetWidth()) {
 				@scrolling_offset := 0;
 			};
 		};
 	}
-	
+
 	method : Render() ~ Nil {
 		@background->Render(@scrolling_offset, 0);
 		@background->Render(@scrolling_offset + @background->GetWidth(), 0);
