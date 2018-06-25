@@ -41,7 +41,6 @@ class PlatformDemo {
 
 				HandleEvents();
 				Render();
-				@game->Show();
 
 				@game->FrameEnd();
 			};
@@ -99,6 +98,8 @@ class PlatformDemo {
 	method : Render() ~ Nil {
 		@background->Render(@scrolling_offset, 0);
 		@background->Render(@scrolling_offset + @background->GetWidth(), 0);
+
+		@game->Show();
 	}
 
 	method : native : CreateMap() ~ Int[,] {
