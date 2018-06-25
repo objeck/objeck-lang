@@ -1,0 +1,126 @@
+use Game.SDL2;
+use Game.Engine;
+
+class PlatformDemo {
+	@game : GameEngine;
+	@game_map : Int[,];
+
+	@background : ImageSprite;
+	@scrolling_offset : Int;
+
+	@x_vel : Int;
+	
+	function : Main(args : String[]) ~ Nil {
+		platform := PlatformDemo->New();
+		platform->Run();
+	}
+
+	New() {
+		@game := GameEngine->New(Size->SCREEN_WIDTH, Size->SCREEN_HEIGHT, "Engine Three");
+		# @game->SetClearColor(Color->New());
+
+		@background := @game->AddImageSprite("images/background.png");
+
+		@game_map := CreateMap();
+	}
+
+	method : Run() ~ Nil {
+		if(@game->IsOk()) {
+			e := @game->GetEvent();
+			quit := false;
+			while(<>quit) {
+				@game->FrameStart();
+				
+				# process input
+				while(e->Poll() <> 0) {
+					if(e->GetType() = EventType->SDL_QUIT) {
+						quit := true;
+					};
+					ProcessInput(e);
+				};
+
+				HandleEvents();
+				Render();
+				@game->Show();
+
+				@game->FrameEnd();
+			};
+		}
+		else {
+			"--- Error Initializing Game Environment ---"->ErrorLine();
+			return;
+		};
+
+		leaving {
+			@game->Quit();
+		};
+	}
+	
+	method : public : ProcessInput(e : Event) ~ Nil {
+		if(e->GetType() = EventType->SDL_KEYDOWN & e->GetKey()->GetRepeat() = 0) {
+	        select(e->GetKey()->GetKeysym()->GetScancode()) {    	
+	            label Scancode->SDL_SCANCODE_LEFT: {
+	            	@x_vel := -1;
+	            }
+
+	            label Scancode->SDL_SCANCODE_RIGHT: {
+	            	@x_vel := 1;
+	            }
+
+	            label Scancode->SDL_SCANCODE_SPACE: {
+	            }
+	        };
+	    }
+	    else if(e->GetType() = EventType->SDL_KEYUP & e->GetKey()->GetRepeat() = 0) {
+	        select(e->GetKey()->GetKeysym()->GetScancode()) {
+	        	label Scancode->SDL_SCANCODE_LEFT:
+	            label Scancode->SDL_SCANCODE_RIGHT: {
+	            	@x_vel := 0;
+	            }
+	        };
+	    };   
+	}
+
+	method : native : HandleEvents() ~ Nil {
+		if(@x_vel = 1) {		
+			@scrolling_offset -= 2;
+			if(@scrolling_offset < -1 * @background->GetWidth()) {
+				@scrolling_offset := 0;
+			};
+		};
+	}
+	
+	method : Render() ~ Nil {
+		@background->Render(@scrolling_offset, 0);
+		@background->Render(@scrolling_offset + @background->GetWidth(), 0);
+	}
+
+	method : native : CreateMap() ~ Int[,] {
+		game_map := [
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+		];
+
+		return game_map;
+	}
+}
+
+consts Size {
+	SCREEN_WIDTH := 800,
+	SCREEN_HEIGHT := 640,
+	BLOCK_WIDTH := 32,
+	BLOCK_HEIGHT := 32
+}

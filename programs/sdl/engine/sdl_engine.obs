@@ -65,7 +65,7 @@ bundle Game.Engine {
 
 			surface := Image->Load(file);
 			if(surface->IsNull()) {
-				"Unable to load surface"->ErrorLine();
+				"Unable to load image '{$file}'"->ErrorLine();
 				return false;
 			};
 			# TODO: set colorkey
@@ -76,6 +76,7 @@ bundle Game.Engine {
 				"Unable to create texture!"->ErrorLine();
 				return false;
 			};
+
 			@render_rect->SetW(surface->GetW());
 			@render_rect->SetH(surface->GetH());
 			
@@ -157,8 +158,8 @@ bundle Game.Engine {
 		@position : Position;
 		@renderer : Renderer;
 
-		New(renderer : Renderer) {
-			@renderer := renderer;
+		New(renderer : Renderer) {			
+			@renderer := renderer;			
 			@render_rect := Rect->New();
 			@position := Position->New(@render_rect);
 		}
