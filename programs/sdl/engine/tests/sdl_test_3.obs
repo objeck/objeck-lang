@@ -90,7 +90,7 @@ class PlatformDemo {
 		}
 		else if(@x_vel = -1) {
 			@scrolling_offset += 2;
-			if(@scrolling_offset >= 0) {
+			if(@scrolling_offset > 0) {
 				@scrolling_offset := -1 * @background->GetWidth();
 			};
 		};
