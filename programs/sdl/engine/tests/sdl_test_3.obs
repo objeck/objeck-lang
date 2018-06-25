@@ -4,9 +4,14 @@ use Game.Engine;
 class PlatformDemo {
 	@game : GameEngine;
 	@game_map : Int[,];
+	@frame_count : Int;
 
 	@background : ImageSprite;
-	@scrolling_offset : Int;
+	@background_offset : Int;
+
+	@player : AnimatedImageSprite;
+	@player_frame : Int;
+	@player_rel_x_position : Int;
 
 	@x_vel : Int;
 	
@@ -17,9 +22,10 @@ class PlatformDemo {
 
 	New() {
 		@game := GameEngine->New(Values->SCREEN_WIDTH, Values->SCREEN_HEIGHT, "Engine Three");
-		# @game->SetClearColor(Color->New());
-
+		
 		@background := @game->AddImageSprite("images/background.png");
+		@player := @game->AddAnimatedImageSprite("images/player.png", 4);
+		@player_frame := @player->GetClipCount() - 1;
 
 		@game_map := CreateMap();
 	}
@@ -81,23 +87,51 @@ class PlatformDemo {
 	}
 
 	method : native : HandleEvents() ~ Nil {
+		@frame_count += 1;
+		if(@frame_count >= @game->GetFps()) {
+			@frame_count := 0;
+		};
+
+		if(@x_vel <> 0 & @frame_count % 8 = 0) {
+			@player_frame -= 1;
+			if(@player_frame < 0) {
+				@player_frame :=  @player->GetClipCount() - 1;
+			};
+		};
+
 		if(@x_vel = 1) {
-			@scrolling_offset -= Values->SPEED;
-			if(@scrolling_offset < -1 * @background->GetWidth()) {
-				@scrolling_offset := 0;
+			if(@player->GetFlip() = RendererFlip->SDL_FLIP_HORIZONTAL) {
+				@player->SetFlip(RendererFlip->SDL_FLIP_NONE);
+			};
+
+			@player_rel_x_position += Values->SPEED;
+			if(@player_rel_x_position > Values->SCREEN_WIDTH / 4) {		
+				@player_rel_x_position := Values->SCREEN_WIDTH / 4;
+				@background_offset -= Values->SPEED;
+				if(@background_offset < -1 * @background->GetWidth()) {
+					@background_offset := 0;
+				};
 			};
 		}
 		else if(@x_vel = -1) {
-			@scrolling_offset += Values->SPEED;
-			if(@scrolling_offset > 0) {
-				@scrolling_offset := -1 * @background->GetWidth();
+			@player->SetFlip(RendererFlip->SDL_FLIP_HORIZONTAL);
+
+			@player_rel_x_position -= Values->SPEED;
+			if(@player_rel_x_position < Values->BLOCK_WIDTH) {		
+				@player_rel_x_position := Values->BLOCK_WIDTH;
+				@background_offset += Values->SPEED;
+				if(@background_offset > 0) {
+					@background_offset := -1 * @background->GetWidth();
+				};
 			};
 		};
 	}
 
 	method : Render() ~ Nil {
-		@background->Render(@scrolling_offset, 0);
-		@background->Render(@scrolling_offset + @background->GetWidth(), 0);
+		@background->Render(@background_offset, 0);
+		@background->Render(@background_offset + @background->GetWidth(), 0);
+
+		@player->Render(@player_rel_x_position, Values->SCREEN_HEIGHT - 128, @player_frame);
 
 		@game->Show();
 	}
