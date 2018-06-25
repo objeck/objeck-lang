@@ -140,10 +140,16 @@ class PlatformDemo {
 		@background->Render(@background_offset, 0);
 		@background->Render(@background_offset + @background->GetWidth(), 0);
 		
-		# render blocks
-		# TODO: only render what's in view
+		# calculate camera view
 		dims := @game_map->Size();
-		for(x := 0; x < dims[1]; x += 1;) {
+		start_x := (@player_x_position - @player_x_rel_position) / Values->BLOCK_WIDTH;
+		if(start_x < 0) {
+			start_x := 0;
+		};
+		end_x := start_x + 26; # could be calculated using screen and block width
+
+		# render blocks
+		for(x := start_x; x < end_x; x += 1;) {
 			rel_x := x * Values->BLOCK_WIDTH - (@player_x_position - @player_x_rel_position);
 
 			for(y := 0; y < dims[0]; y += 1;) {
