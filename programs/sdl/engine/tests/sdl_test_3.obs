@@ -31,10 +31,6 @@ class PlatformDemo {
 		@player_frame := @player->GetClipCount() - 1;
 
 		@game_map := CreateMap();
-
-		dims := @game_map->Size();
-dims[0]->PrintLine();
-dims[1]->PrintLine();
 	}
 
 	method : Run() ~ Nil {
@@ -140,9 +136,12 @@ dims[1]->PrintLine();
 	}
 
 	method : Render() ~ Nil {
+		# render background
 		@background->Render(@background_offset, 0);
 		@background->Render(@background_offset + @background->GetWidth(), 0);
 		
+		# render blocks
+		# TODO: only render what's in view
 		dims := @game_map->Size();
 		for(x := 0; x < dims[1]; x += 1;) {
 			rel_x := x * Values->BLOCK_WIDTH - (@player_x_position - @player_x_rel_position);
@@ -158,6 +157,7 @@ dims[1]->PrintLine();
 			};
 		};
 
+		# render player
 		@player->Render(@player_x_rel_position, Values->SCREEN_HEIGHT - 112, @player_frame);
 
 		@game->Show();
