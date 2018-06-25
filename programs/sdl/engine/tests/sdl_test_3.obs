@@ -11,6 +11,7 @@ class PlatformDemo {
 
 	@player : AnimatedImageSprite;
 	@player_frame : Int;
+	@player_x_position : Int;
 	@player_x_rel_position : Int;
 	@player_x_velocity : Int;
 
@@ -30,6 +31,10 @@ class PlatformDemo {
 		@player_frame := @player->GetClipCount() - 1;
 
 		@game_map := CreateMap();
+
+		dims := @game_map->Size();
+dims[0]->PrintLine();
+dims[1]->PrintLine();
 	}
 
 	method : Run() ~ Nil {
@@ -94,20 +99,23 @@ class PlatformDemo {
 			@frame_count := 0;
 		};
 
-		if(@player_x_velocity <> 0 & @frame_count % 8 = 0) {
+		# update walk frame
+		if(@player_x_velocity <> 0 & @frame_count % 5 = 0) {
 			@player_frame -= 1;
 			if(@player_frame < 0) {
 				@player_frame :=  @player->GetClipCount() - 1;
 			};
 		};
 
+		# move right
 		if(@player_x_velocity = 1) {
+			@player_x_position += Values->SPEED;
 			if(@player->GetFlip() = RendererFlip->SDL_FLIP_HORIZONTAL) {
 				@player->SetFlip(RendererFlip->SDL_FLIP_NONE);
 			};
 
 			@player_x_rel_position += Values->SPEED;
-			if(@player_x_rel_position > Values->SCREEN_WIDTH / 4) {		
+			if(@player_x_rel_position > Values->SCREEN_WIDTH / 4) {
 				@player_x_rel_position := Values->SCREEN_WIDTH / 4;
 				@background_offset -= Values->SPEED;
 				if(@background_offset < -1 * @background->GetWidth()) {
@@ -115,12 +123,14 @@ class PlatformDemo {
 				};
 			};
 		}
+		# move left
 		else if(@player_x_velocity = -1) {
+			@player_x_position -= Values->SPEED;
 			@player->SetFlip(RendererFlip->SDL_FLIP_HORIZONTAL);
 
 			@player_x_rel_position -= Values->SPEED;
-			if(@player_x_rel_position < Values->BLOCK_WIDTH) {		
-				@player_x_rel_position := Values->BLOCK_WIDTH;
+			if(@player_x_rel_position < Values->BLOCK_WIDTH * 2) {		
+				@player_x_rel_position := Values->BLOCK_WIDTH * 2;
 				@background_offset += Values->SPEED;
 				if(@background_offset > 0) {
 					@background_offset := -1 * @background->GetWidth();
@@ -134,11 +144,15 @@ class PlatformDemo {
 		@background->Render(@background_offset + @background->GetWidth(), 0);
 		
 		dims := @game_map->Size();
-		for(x := 0; x < dims[0]; x += 1;) {
-			for(y := 0; y < dims[1]; y += 1;) {
+		for(x := 0; x < dims[1]; x += 1;) {
+			rel_x := x * Values->BLOCK_WIDTH - (@player_x_position - @player_x_rel_position);
+
+			for(y := 0; y < dims[0]; y += 1;) {
+				rel_y := y * Values->BLOCK_HEIGHT;
+
 				select(@game_map[y, x]) {
 					label 1: {
-						@block->Render(x * Values->BLOCK_WIDTH, y * Values->BLOCK_HEIGHT);
+						@block->Render(rel_x, rel_y);
 					}
 				};
 			};
@@ -169,8 +183,8 @@ class PlatformDemo {
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
-			[0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
-			[0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
+			[0, 0, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
+			[0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,]
 		];
 
 		return game_map;
