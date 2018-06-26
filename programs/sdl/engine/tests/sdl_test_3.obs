@@ -33,7 +33,7 @@ class PlatformDemo {
 		@player := @game->AddAnimatedImageSprite("images/player.png", 5);
 		@player_frame := @player->GetClipCount() - 1;
 		@player_y_rel_position := Values->SCREEN_HEIGHT - 116;
-		
+
 		@game_map := CreateMap();
 	}
 
@@ -73,10 +73,12 @@ class PlatformDemo {
 	        select(e->GetKey()->GetKeysym()->GetScancode()) {    	
 	            label Scancode->SDL_SCANCODE_LEFT: {
 	            	@player_x_velocity := -1;
+	            	@player_y_velocity := -1;
 	            }
 
 	            label Scancode->SDL_SCANCODE_RIGHT: {
 	            	@player_x_velocity := 1;
+	            	@player_y_velocity := -1;
 	            }
 
 	            label Scancode->SDL_SCANCODE_UP: {
@@ -84,7 +86,7 @@ class PlatformDemo {
 	            }
 
 	            label Scancode->SDL_SCANCODE_DOWN: {
-	            	@player_y_velocity := -1;
+#	            	@player_y_velocity := -1;
 	            }
 
 	            label Scancode->SDL_SCANCODE_SPACE: {
@@ -239,6 +241,7 @@ class PlatformDemo {
 						}
 						else if(@player_y_velocity = -1) {
 							@player_y_rel_position -= Values->SPEED;
+							@player_y_velocity := 0;
 						};
 
 						return true;
