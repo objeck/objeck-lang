@@ -128,10 +128,14 @@ class PlatformDemo {
 
 		if(<>PlayerCollision()) {
 			# update walk frame
-			if(@player_x_velocity <> 0 & @frame_count % 5 = 0) {
-				@player_frame -= 1;
-				if(@player_frame < 0) {
-					@player_frame :=  @player->GetClipCount() - 1;
+			if(@frame_count % 5 = 0) {
+				@player_y_velocity := -1;
+
+				if(@player_x_velocity <> 0) {
+					@player_frame -= 1;
+					if(@player_frame < 0) {
+						@player_frame :=  @player->GetClipCount() - 1;
+					};
 				};
 			}
 			else if(@player_x_velocity = 0) {
@@ -239,6 +243,7 @@ class PlatformDemo {
 						}
 						else if(@player_y_velocity = -1) {
 							@player_y_rel_position -= Values->SPEED;
+							@player_y_velocity := 0;
 						};
 
 						return true;
