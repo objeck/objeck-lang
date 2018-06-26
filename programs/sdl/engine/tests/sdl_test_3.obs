@@ -114,6 +114,13 @@ class PlatformDemo {
 			@frame_count := 0;
 		};
 
+		if(@player_x_velocity = 1) {
+			@player_x_position += Values->SPEED;
+		}
+		else if(@player_x_velocity = -1) {
+			@player_x_position -= Values->SPEED;
+		};
+
 		if(@player_y_velocity = 1) {
 			@player_y_rel_position -= Values->SPEED;
 		}
@@ -121,50 +128,47 @@ class PlatformDemo {
 			@player_y_rel_position += Values->SPEED;
 		};
 
-		# update walk frame
-		if(@player_x_velocity <> 0 & @frame_count % 5 = 0) {
-			@player_frame -= 1;
-			if(@player_frame < 0) {
+		if(<>PlayerCollusion()) {
+			# update walk frame
+			if(@player_x_velocity <> 0 & @frame_count % 5 = 0) {
+				@player_frame -= 1;
+				if(@player_frame < 0) {
+					@player_frame :=  @player->GetClipCount() - 1;
+				};
+			}
+			else if(@player_x_velocity = 0) {
 				@player_frame :=  @player->GetClipCount() - 1;
 			};
-		}
-		else if(@player_x_velocity = 0) {
-			@player_frame :=  @player->GetClipCount() - 1;
-		};
 
-		# move right
-		if(@player_x_velocity = 1) {
-			@player_x_position += Values->SPEED;
-			if(@player->GetFlip() = RendererFlip->SDL_FLIP_HORIZONTAL) {
-				@player->SetFlip(RendererFlip->SDL_FLIP_NONE);
-			};
-
-			@player_x_rel_position += Values->SPEED;
-			if(@player_x_rel_position > Values->SCREEN_WIDTH / 4) {
-				@player_x_rel_position := Values->SCREEN_WIDTH / 4;
-				@background_offset -= Values->SPEED;
-				if(@background_offset < -1 * @background->GetWidth()) {
-					@background_offset := 0;
+			# move right
+			if(@player_x_velocity = 1) {
+				if(@player->GetFlip() = RendererFlip->SDL_FLIP_HORIZONTAL) {
+					@player->SetFlip(RendererFlip->SDL_FLIP_NONE);
 				};
-			};
-		}
-		# move left
-		else if(@player_x_velocity = -1) {
-			@player_x_position -= Values->SPEED;
-			@player->SetFlip(RendererFlip->SDL_FLIP_HORIZONTAL);
 
-			@player_x_rel_position -= Values->SPEED;
-			if(@player_x_rel_position < Values->BLOCK_WIDTH * 2) {		
-				@player_x_rel_position := Values->BLOCK_WIDTH * 2;
-				@background_offset += Values->SPEED;
-				if(@background_offset > 0) {
-					@background_offset := -1 * @background->GetWidth();
+				@player_x_rel_position += Values->SPEED;
+				if(@player_x_rel_position > Values->SCREEN_WIDTH / 4) {
+					@player_x_rel_position := Values->SCREEN_WIDTH / 4;
+					@background_offset -= Values->SPEED;
+					if(@background_offset < -1 * @background->GetWidth()) {
+						@background_offset := 0;
+					};
+				};
+			}
+			# move left
+			else if(@player_x_velocity = -1) {
+				@player->SetFlip(RendererFlip->SDL_FLIP_HORIZONTAL);
+
+				@player_x_rel_position -= Values->SPEED;
+				if(@player_x_rel_position < Values->BLOCK_WIDTH * 2) {		
+					@player_x_rel_position := Values->BLOCK_WIDTH * 2;
+					@background_offset += Values->SPEED;
+					if(@background_offset > 0) {
+						@background_offset := -1 * @background->GetWidth();
+					};
 				};
 			};
 		};
-
-
-		PlayerCollusion();
 	}
 
 	method : Render() ~ Nil {
@@ -224,7 +228,22 @@ class PlatformDemo {
 
 					if(player_rel_x2 > block_rel_x & player_rel_x < block_rel_x2 & 
 						player_rel_y2 > block_rel_y & player_rel_y < block_rel_y2) {
-"--- HIT ---"->PrintLine();
+
+						if(@player_x_velocity = 1) {
+							@player_x_position -= Values->SPEED;
+						}
+						else if(@player_x_velocity = -1) {
+							@player_x_position += Values->SPEED;
+						};
+
+						if(@player_y_velocity = 1) {
+							@player_y_rel_position += Values->SPEED;
+						}
+						else if(@player_y_velocity = -1) {
+							@player_y_rel_position -= Values->SPEED;
+						};
+
+						return true;
 					};
 				};
 			};
@@ -238,8 +257,8 @@ class PlatformDemo {
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
-			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
-			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
+			[0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
+			[0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
