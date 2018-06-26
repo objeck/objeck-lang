@@ -13,7 +13,10 @@ class PlatformDemo {
 	@player_frame : Int;
 	@player_x_position : Int;
 	@player_x_rel_position : Int;
+	@player_y_rel_position : Int;
+	
 	@player_x_velocity : Int;
+	@player_y_velocity : Int;
 
 	@block : ImageSprite;
 	
@@ -27,10 +30,13 @@ class PlatformDemo {
 		
 		@background := @game->AddImageSprite("images/background.png");
 		@block := @game->AddImageSprite("images/block4.png");
-		@player := @game->AddAnimatedImageSprite("images/player.png", 4);
+		@player := @game->AddAnimatedImageSprite("images/player.png", 5);
 		@player_frame := @player->GetClipCount() - 1;
+		@player_y_rel_position := Values->SCREEN_HEIGHT - 116;
 
 		@game_map := CreateMap();
+
+@player->GetHeight()->PrintLine();		
 	}
 
 	method : Run() ~ Nil {
@@ -75,6 +81,14 @@ class PlatformDemo {
 	            	@player_x_velocity := 1;
 	            }
 
+	            label Scancode->SDL_SCANCODE_UP: {
+	            	@player_y_velocity := 1;
+	            }
+
+	            label Scancode->SDL_SCANCODE_DOWN: {
+	            	@player_y_velocity := -1;
+	            }
+
 	            label Scancode->SDL_SCANCODE_SPACE: {
 	            }
 	        };
@@ -84,6 +98,11 @@ class PlatformDemo {
 	        	label Scancode->SDL_SCANCODE_LEFT:
 	            label Scancode->SDL_SCANCODE_RIGHT: {
 	            	@player_x_velocity := 0;
+	            }
+
+	            label Scancode->SDL_SCANCODE_UP:
+	            label Scancode->SDL_SCANCODE_DOWN: {
+	            	@player_y_velocity := 0;
 	            }
 	        };
 	    };   
@@ -95,12 +114,22 @@ class PlatformDemo {
 			@frame_count := 0;
 		};
 
+		if(@player_y_velocity = 1) {
+			@player_y_rel_position -= Values->SPEED;
+		}
+		else if(@player_y_velocity = -1) {
+			@player_y_rel_position += Values->SPEED;
+		};
+
 		# update walk frame
 		if(@player_x_velocity <> 0 & @frame_count % 5 = 0) {
 			@player_frame -= 1;
 			if(@player_frame < 0) {
 				@player_frame :=  @player->GetClipCount() - 1;
 			};
+		}
+		else if(@player_x_velocity = 0) {
+			@player_frame :=  @player->GetClipCount() - 1;
 		};
 
 		# move right
@@ -133,6 +162,9 @@ class PlatformDemo {
 				};
 			};
 		};
+
+
+		PlayerCollusion();
 	}
 
 	method : Render() ~ Nil {
@@ -151,10 +183,8 @@ class PlatformDemo {
 		# render blocks
 		for(x := start_x; x < end_x; x += 1;) {
 			rel_x := x * Values->BLOCK_WIDTH - (@player_x_position - @player_x_rel_position);
-
 			for(y := 0; y < dims[0]; y += 1;) {
 				rel_y := y * Values->BLOCK_HEIGHT;
-
 				select(@game_map[y, x]) {
 					label 1: {
 						@block->Render(rel_x, rel_y);
@@ -164,9 +194,43 @@ class PlatformDemo {
 		};
 
 		# render player
-		@player->Render(@player_x_rel_position, Values->SCREEN_HEIGHT - 112, @player_frame);
+		@player->Render(@player_x_rel_position, @player_y_rel_position, @player_frame);
 
 		@game->Show();
+	}
+
+	method : PlayerCollusion() ~ Bool {
+		# calculate camera view
+		dims := @game_map->Size();
+		start_x := (@player_x_position - @player_x_rel_position) / Values->BLOCK_WIDTH;
+		if(start_x < 0) {
+			start_x := 0;
+		};
+		end_x := start_x + 26; # could be calculated using screen and block width
+
+		# render blocks
+		for(x := start_x; x < end_x; x += 1;) {
+			block_rel_x := x * Values->BLOCK_WIDTH - (@player_x_position - @player_x_rel_position);
+			for(y := 0; y < dims[0]; y += 1;) {
+				block_rel_y := y * Values->BLOCK_HEIGHT;
+				if(@game_map[y, x] =  1) {
+					block_rel_x2 := block_rel_x + Values->BLOCK_WIDTH;
+					block_rel_y2 := block_rel_y + Values->BLOCK_HEIGHT;
+
+					player_rel_y := @player_y_rel_position;
+					player_rel_y2 := player_rel_y + @player->GetHeight();
+					player_rel_x := @player_x_rel_position;
+					player_rel_x2 := player_rel_x + Values->BLOCK_WIDTH;
+
+					if(player_rel_x2 > block_rel_x & player_rel_x < block_rel_x2 & 
+						player_rel_y2 > block_rel_y & player_rel_y < block_rel_y2) {
+"--- HIT ---"->PrintLine();
+					};
+				};
+			};
+		};
+
+		return false;
 	}
 
 	method : native : CreateMap() ~ Int[,] {
@@ -188,7 +252,7 @@ class PlatformDemo {
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
-			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
 			[0, 0, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
 			[0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,]
 		];
