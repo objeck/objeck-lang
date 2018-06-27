@@ -7,6 +7,7 @@ class Platform {
 	@frame_count : Int;
 
 	@player : Player;
+	@enemy : Enemy;
 	@block : ImageSprite;
 	
 	function : Main(args : String[]) ~ Nil {
@@ -19,6 +20,7 @@ class Platform {
 		@game_map := CreateMap();
 		@block := @engine->AddImageSprite("images/block4.png");
 		@player := Player->New(@self);
+		@enemy := Enemy->New(@self);
 	}
 
 	method : public : GetEngine() ~ GameEngine {
@@ -131,6 +133,7 @@ class Platform {
 		};
 
 		@player->HandleEvents();
+		@enemy->HandleEvents();
 	}
 
 	method : Render() ~ Nil {
@@ -160,6 +163,9 @@ class Platform {
 
 		# render player
 		@player->RenderPlayer();
+
+		# render enemy
+		@enemy->Render();
 
 		@engine->Show();
 	}
@@ -201,15 +207,27 @@ consts Values {
 }
 
 class Enemy {
+	@enemy : ImageSprite;
 	@platform : Platform;
+	@game_map : Int[,];
 
 	New(platform : Platform) {
 		@platform := platform;
+		@game_map := @platform->GetMap();
+
+#		@enemy := @engine->AddImageSprite("images/block4.png");
+	}
+
+	method : public : native : HandleEvents() ~ Nil {
+	}
+
+	method : public : Render() ~ Nil {
 	}
 }
 
 class Player {
 	@platform : Platform;
+	@game_map : Int[,];
 	@player : AnimatedImageSprite;
 	@frame : Int;
 	@x_position : Int;
@@ -226,6 +244,7 @@ class Player {
 
 	New(platform : Platform) {
 		@platform := platform;
+		@game_map := @platform->GetMap();
 		@player := @platform->GetEngine()->AddAnimatedImageSprite("images/player.png", 5);
 		@frame := @player->GetClipCount() - 1;
 		@y_rel_position := Values->SCREEN_HEIGHT - 128;
@@ -274,7 +293,6 @@ class Player {
 	}
 
 	method : public : native : HandleEvents() ~ Nil {
-		game_map := @platform->GetMap();
 		frame_count := @platform->GetFrameCount();
 
 		if(@x_velocity = 1) {
@@ -300,7 +318,7 @@ class Player {
 			};
 		};
 
-		if(<>PlayerCollision(game_map)) {
+		if(<>PlayerCollision()) {
 			# update walk frame
 			if(frame_count % 5 = 0) {
 				# apply gravity
@@ -327,7 +345,7 @@ class Player {
 				@x_rel_position += Values->SPEED;
 				if(@x_rel_position > Values->SCREEN_WIDTH / 4) {
 					@x_rel_position := Values->SCREEN_WIDTH / 4;
-					@background_offset -= Values->SPEED;
+					@background_offset -= Values->SPEED / 2;
 					if(@background_offset < -1 * @background->GetWidth()) {
 						@background_offset := 0;
 					};
@@ -338,7 +356,7 @@ class Player {
 				@x_rel_position -= Values->SPEED;
 				if(@x_rel_position < Values->BLOCK_WIDTH * 2) {		
 					@x_rel_position := Values->BLOCK_WIDTH * 2;
-					@background_offset += Values->SPEED;
+					@background_offset += Values->SPEED / 2;
 					if(@background_offset > 0) {
 						@background_offset := -1 * @background->GetWidth();
 					};
@@ -351,9 +369,9 @@ class Player {
 		return @jump_height;
 	}
 
-	method : native : PlayerCollision(game_map : Int[,]) ~ Bool {
+	method : native : PlayerCollision() ~ Bool {
 		# calculate camera view
-		dims := game_map->Size();
+		dims := @game_map->Size();
 		start_x := (@x_position - @x_rel_position) / Values->BLOCK_WIDTH;
 		if(start_x < 0) {
 			start_x := 0;
@@ -365,7 +383,7 @@ class Player {
 			block_rel_x := x * Values->BLOCK_WIDTH - (@x_position - @x_rel_position);
 			for(y := 0; y < dims[0]; y += 1;) {
 				block_rel_y := y * Values->BLOCK_HEIGHT;
-				if(game_map[y, x] =  1) {
+				if(@game_map[y, x] =  1) {
 					block_rel_x2 := block_rel_x + Values->BLOCK_WIDTH;
 					block_rel_y2 := block_rel_y + Values->BLOCK_HEIGHT;
 
