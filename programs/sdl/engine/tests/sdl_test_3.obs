@@ -1,8 +1,8 @@
 use Game.SDL2;
 use Game.Engine;
 
-class PlatformDemo {
-	@game : GameEngine;
+class Platform {
+	@engine : GameEngine;
 	@game_map : Int[,];
 	@frame_count : Int;
 
@@ -12,24 +12,40 @@ class PlatformDemo {
 	@block : ImageSprite;
 	
 	function : Main(args : String[]) ~ Nil {
-		platform := PlatformDemo->New();
+		platform := Platform->New();
 		platform->Run();
 	}
 
 	New() {
-		@game := GameEngine->New(Values->SCREEN_WIDTH, Values->SCREEN_HEIGHT, "Engine Three");
+		@engine := GameEngine->New(Values->SCREEN_WIDTH, Values->SCREEN_HEIGHT, "Engine Three");
 		@game_map := CreateMap();
-		@background := @game->AddImageSprite("images/background.png");
-		@block := @game->AddImageSprite("images/block4.png");
-		@player := Player->New(@game);
+		@background := @engine->AddImageSprite("images/background.png");
+		@block := @engine->AddImageSprite("images/block4.png");
+		@player := Player->New(@self);
+	}
+
+	method : public : GetEngine() ~ GameEngine {
+		return @engine;
+	}
+
+	method : public : GetMap() ~ Int[,] {
+		return @game_map;
+	}
+
+	method : public : GetBackground() ~ ImageSprite {
+		return @background;
+	}
+
+	method : public : GetFrameCount() ~ Int {
+		return @frame_count;
 	}
 
 	method : Run() ~ Nil {
-		if(@game->IsOk()) {
-			e := @game->GetEvent();
+		if(@engine->IsOk()) {
+			e := @engine->GetEvent();
 			quit := false;
 			while(<>quit) {
-				@game->FrameStart();
+				@engine->FrameStart();
 				
 				# process input
 				while(e->Poll() <> 0) {
@@ -42,7 +58,7 @@ class PlatformDemo {
 				HandleEvents();
 				Render();
 
-				@game->FrameEnd();
+				@engine->FrameEnd();
 			};
 		}
 		else {
@@ -51,7 +67,7 @@ class PlatformDemo {
 		};
 
 		leaving {
-			@game->Quit();
+			@engine->Quit();
 		};
 	}
 	
@@ -117,11 +133,11 @@ class PlatformDemo {
 
 	method : native : HandleEvents() ~ Nil {
 		@frame_count += 1;
-		if(@frame_count >= @game->GetFps()) {
+		if(@frame_count >= @engine->GetFps()) {
 			@frame_count := 0;
 		};
 
-		@player->HandleEvents(@game_map, @background, @frame_count);
+		@player->HandleEvents();
 	}
 
 	method : Render() ~ Nil {
@@ -153,7 +169,7 @@ class PlatformDemo {
 		# render player
 		@player->Render();
 
-		@game->Show();
+		@engine->Show();
 	}
 
 	method : native : CreateMap() ~ Int[,] {
@@ -192,8 +208,14 @@ consts Values {
 	SPEED := 2
 }
 
+class Enemy {
+	New(engine : GameEngine) {
+
+	}
+}
+
 class Player {
-	@game : GameEngine;
+	@platform : Platform;
 	@player : AnimatedImageSprite;
 	@frame : Int;
 	@x_position : Int;
@@ -205,10 +227,10 @@ class Player {
 	@jumping : Bool;
 	@jump_height : Int;
 	@last_height : Int;
-
-	New(game : GameEngine) {
-		@game := game;
-		@player := @game->AddAnimatedImageSprite("images/player.png", 5);
+	
+	New(platform : Platform) {
+		@platform := platform;
+		@player := @platform->GetEngine()->AddAnimatedImageSprite("images/player.png", 5);
 		@frame := @player->GetClipCount() - 1;
 		@y_rel_position := Values->SCREEN_HEIGHT - 116;
 	}
@@ -250,13 +272,14 @@ class Player {
 		if(jumping) {
 			@jumping := true;
             @y_velocity := 1;
-      	}
-      	else {
-
       	};
 	}
 
-	method : public : HandleEvents(game_map : Int[,], background : ImageSprite, frame_count : Int) ~ Nil {
+	method : public : native : HandleEvents() ~ Nil {
+		game_map := @platform->GetMap();
+		background := @platform->GetBackground();
+		frame_count := @platform->GetFrameCount();
+
 		if(@x_velocity = 1) {
 			@x_position += Values->SPEED;
 		}
@@ -331,7 +354,7 @@ class Player {
 		return @jump_height;
 	}
 
-	method : PlayerCollision(game_map : Int[,]) ~ Bool {
+	method : native : PlayerCollision(game_map : Int[,]) ~ Bool {
 		# calculate camera view
 		dims := game_map->Size();
 		start_x := (@x_position - @x_rel_position) / Values->BLOCK_WIDTH;
@@ -359,14 +382,14 @@ class Player {
 
 						# top
 						if(@y_velocity = 1) {
-# @game->Debug("--- Bam Top ---, player_x_velocity={$@x_velocity}, player_jump_height={$@jump_height}");							
+# @platform->GetEngine()->Debug("--- Bam Top ---, player_x_velocity={$@x_velocity}, player_jump_height={$@jump_height}");							
 							@y_rel_position += Values->SPEED * 2;
 							@jumping := false;
 							@y_velocity := 0;
 						}
 						# bottom
 						else if(@y_velocity = -1) {
-# @game->Debug("--- Bam Bottom ---, player_x_velocity={$@x_velocity}, player_jump_height={$@jump_height}");
+# @platform->GetEngine()->Debug("--- Bam Bottom ---, player_x_velocity={$@x_velocity}, player_jump_height={$@jump_height}");
 							@y_rel_position -= Values->SPEED * 2;
 							@y_velocity := 0;
 
@@ -377,7 +400,7 @@ class Player {
 
 						# right
 						if(@x_velocity = 1) {
-# @game->Debug("--- Bam Right ---, player_y_velocity={$@y_velocity}, player_jump_height={$@jump_height}");							
+# @platform->GetEngine()->Debug("--- Bam Right ---, player_y_velocity={$@y_velocity}, player_jump_height={$@jump_height}");							
 							@x_position -= Values->SPEED;							
 							if(@jump_height > 0 & @last_height <> @jump_height) {
 								@x_velocity := 0;
@@ -388,7 +411,7 @@ class Player {
 						}
 						# left
 						else if(@x_velocity = -1) {
-# @game->Debug("--- Bam Left ---, player_y_velocity={$@y_velocity}, player_jump_height={$@jump_height}");							
+# @engine->Debug("--- Bam Left ---, player_y_velocity={$@y_velocity}, player_jump_height={$@jump_height}");							
 							@x_position += Values->SPEED;
 							if(@jump_height > 0 & @last_height <> @jump_height) {
 								@x_velocity := 0;
@@ -406,7 +429,7 @@ class Player {
 
 		return false;
 	}
-	
+
 	method : public : Render() ~ Nil {
 		@player->Render(@x_rel_position, @y_rel_position, @frame);
 	}
