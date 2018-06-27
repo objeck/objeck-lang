@@ -8,19 +8,7 @@ class PlatformDemo {
 
 	@background : ImageSprite;
 	@background_offset : Int;
-
-	@player : AnimatedImageSprite;
-	@player_frame : Int;
-	@player_x_position : Int;
-	@player_x_rel_position : Int;
-	@player_y_rel_position : Int;
-	
-	@player_x_velocity : Int;
-	@player_y_velocity : Int;
-	@player_jumping : Bool;
-	@player_jump_height : Int;
-	@player_last_height : Int;
-	
+	@player : Player;
 	@block : ImageSprite;
 	
 	function : Main(args : String[]) ~ Nil {
@@ -30,14 +18,10 @@ class PlatformDemo {
 
 	New() {
 		@game := GameEngine->New(Values->SCREEN_WIDTH, Values->SCREEN_HEIGHT, "Engine Three");
-		
+		@game_map := CreateMap();
 		@background := @game->AddImageSprite("images/background.png");
 		@block := @game->AddImageSprite("images/block4.png");
-		@player := @game->AddAnimatedImageSprite("images/player.png", 5);
-		@player_frame := @player->GetClipCount() - 1;
-		@player_y_rel_position := Values->SCREEN_HEIGHT - 116;
-		
-		@game_map := CreateMap();
+		@player := Player->New(@game);
 	}
 
 	method : Run() ~ Nil {
@@ -72,60 +56,52 @@ class PlatformDemo {
 	}
 	
 	method : public : ProcessInput(e : Event) ~ Nil {
+		# Joystick
 		if(e->GetType() = EventType->SDL_JOYHATMOTION) {
 			if(e->GetJHat()->GetWhich() = 0 ) {
 				select(e->GetJHat()->GetValue()) {
-					# Release
+					# release pad
 					label 0: {
-						@player_x_velocity := 0;
+						@player->SetXVelocity(0);
 					}
 
-					# Right
+					# right pad
 					label 2: {
-						if(@player->GetFlip() = RendererFlip->SDL_FLIP_HORIZONTAL) {
-							@player->SetFlip(RendererFlip->SDL_FLIP_NONE);
-						};
-		            	@player_x_velocity := 1;
+		            	@player->SetXVelocity(1);
 					}
 
-					# Left
+					# left pad
 					label 8: {
-						@player_x_velocity := -1;
-	            		@player->SetFlip(RendererFlip->SDL_FLIP_HORIZONTAL);
+						@player->SetXVelocity(-1);
 					}					
 				};
 			};
 		}
 		else if(e->GetType() = EventType->SDL_JOYBUTTONDOWN) {
-			# A button
+			# 'a' button
 			if(e->GetJButton()->GetButton() = 0) {
-				if(<>@player_jumping) {
-            		@player_jumping := true;
-            		@player_y_velocity := 1;
+				if(<>@player->IsJumping()) {
+            		@player->SetJumping(true);
             	};
-			}
+			};
 			# B button
 			# else if(e->GetJButton()->GetButton() = 1) { ... };
 		}
+		# Keyboard
 		else if(e->GetType() = EventType->SDL_KEYDOWN & e->GetKey()->GetRepeat() = 0) {
 	        select(e->GetKey()->GetKeysym()->GetScancode()) {    	
 	            label Scancode->SDL_SCANCODE_LEFT: {
-	            	@player_x_velocity := -1;
-	            	@player->SetFlip(RendererFlip->SDL_FLIP_HORIZONTAL);
+	            	@player->SetXVelocity(-1);
 	            }
 
 	            label Scancode->SDL_SCANCODE_RIGHT: {
-	            	if(@player->GetFlip() = RendererFlip->SDL_FLIP_HORIZONTAL) {
-						@player->SetFlip(RendererFlip->SDL_FLIP_NONE);
-					};
-	            	@player_x_velocity := 1;
+	            	@player->SetXVelocity(1);
 	            }
 
 	            label Scancode->SDL_SCANCODE_SPACE: {
-	            	if(<>@player_jumping) {
-	            		@player_jumping := true;
-	            		@player_y_velocity := 1;
-	            	};
+	            	if(<>@player->IsJumping()) {
+            			@player->SetJumping(true);
+            		};
 	            }
 	        };
 	    }
@@ -133,7 +109,7 @@ class PlatformDemo {
 	        select(e->GetKey()->GetKeysym()->GetScancode()) {
 	        	label Scancode->SDL_SCANCODE_LEFT:
 	            label Scancode->SDL_SCANCODE_RIGHT: {
-	            	@player_x_velocity := 0;
+	            	@player->SetXVelocity(0);
 	            }
 	        };
 	    };   
@@ -145,76 +121,7 @@ class PlatformDemo {
 			@frame_count := 0;
 		};
 
-		if(@player_x_velocity = 1) {
-			@player_x_position += Values->SPEED;
-		}
-		else if(@player_x_velocity = -1) {
-			@player_x_position -= Values->SPEED;
-		};
-
-		if(@player_y_velocity = 1) {
-			if(@player_jump_height < 1.5 * Values->BLOCK_HEIGHT) {
-				@player_jump_height += Values->SPEED * 2;
-				@player_y_rel_position -= Values->SPEED * 2;
-			}
-			else {
-				@player_jumping := false;
-			};
-		}
-		else if(@player_y_velocity = -1) {
-			@player_y_rel_position += Values->SPEED * 2;
-			if(@player_jump_height > 0) {
-				@player_jump_height -= Values->SPEED * 2;
-			};
-		};
-
-		if(<>PlayerCollision()) {
-			# update walk frame
-			if(@frame_count % 5 = 0) {
-				# apply gravity
-				if(<>@player_jumping) {
-					@player_y_velocity := -1;
-				}
-				else {
-					@player_y_velocity := 1;
-				};
-
-				if(@player_x_velocity <> 0) {
-					@player_frame -= 1;
-					if(@player_frame < 0) {
-						@player_frame :=  @player->GetClipCount() - 1;
-					};
-				};
-			}
-			else if(@player_x_velocity = 0) {
-				@player_frame :=  @player->GetClipCount() - 1;
-			};
-
-			# move right
-			if(@player_x_velocity = 1) {
-				
-
-				@player_x_rel_position += Values->SPEED;
-				if(@player_x_rel_position > Values->SCREEN_WIDTH / 4) {
-					@player_x_rel_position := Values->SCREEN_WIDTH / 4;
-					@background_offset -= Values->SPEED;
-					if(@background_offset < -1 * @background->GetWidth()) {
-						@background_offset := 0;
-					};
-				};
-			}
-			# move left
-			else if(@player_x_velocity = -1) {
-				@player_x_rel_position -= Values->SPEED;
-				if(@player_x_rel_position < Values->BLOCK_WIDTH * 2) {		
-					@player_x_rel_position := Values->BLOCK_WIDTH * 2;
-					@background_offset += Values->SPEED;
-					if(@background_offset > 0) {
-						@background_offset := -1 * @background->GetWidth();
-					};
-				};
-			};
-		};
+		@player->HandleEvents(@game_map, @background, @frame_count);
 	}
 
 	method : Render() ~ Nil {
@@ -224,7 +131,7 @@ class PlatformDemo {
 		
 		# calculate camera view
 		dims := @game_map->Size();
-		start_x := (@player_x_position - @player_x_rel_position) / Values->BLOCK_WIDTH;
+		start_x := @player->GetXStart() / Values->BLOCK_WIDTH;
 		if(start_x < 0) {
 			start_x := 0;
 		};
@@ -232,7 +139,7 @@ class PlatformDemo {
 
 		# render blocks
 		for(x := start_x; x < end_x; x += 1;) {
-			rel_x := x * Values->BLOCK_WIDTH - (@player_x_position - @player_x_rel_position);
+			rel_x := x * Values->BLOCK_WIDTH - @player->GetXStart();
 			for(y := 0; y < dims[0]; y += 1;) {
 				rel_y := y * Values->BLOCK_HEIGHT;
 				select(@game_map[y, x]) {
@@ -244,85 +151,9 @@ class PlatformDemo {
 		};
 
 		# render player
-		@player->Render(@player_x_rel_position, @player_y_rel_position, @player_frame);
+		@player->Render();
 
 		@game->Show();
-	}
-
-	method : PlayerCollision() ~ Bool {
-		# calculate camera view
-		dims := @game_map->Size();
-		start_x := (@player_x_position - @player_x_rel_position) / Values->BLOCK_WIDTH;
-		if(start_x < 0) {
-			start_x := 0;
-		};
-		end_x := start_x + 26; # could be calculated using screen and block width
-
-		# render blocks
-		for(x := start_x; x < end_x; x += 1;) {
-			block_rel_x := x * Values->BLOCK_WIDTH - (@player_x_position - @player_x_rel_position);
-			for(y := 0; y < dims[0]; y += 1;) {
-				block_rel_y := y * Values->BLOCK_HEIGHT;
-				if(@game_map[y, x] =  1) {
-					block_rel_x2 := block_rel_x + Values->BLOCK_WIDTH;
-					block_rel_y2 := block_rel_y + Values->BLOCK_HEIGHT;
-
-					player_rel_y := @player_y_rel_position;
-					player_rel_y2 := player_rel_y + @player->GetHeight();
-					player_rel_x := @player_x_rel_position;
-					player_rel_x2 := player_rel_x + Values->BLOCK_WIDTH;
-
-					if(player_rel_x2 > block_rel_x & player_rel_x < block_rel_x2 & 
-						player_rel_y2 > block_rel_y & player_rel_y < block_rel_y2) {
-
-						# top
-						if(@player_y_velocity = 1) {
-# @game->Debug("--- Bam Top ---, player_x_velocity={$@player_x_velocity}, player_jump_height={$@player_jump_height}");							
-							@player_y_rel_position += Values->SPEED * 2;
-							@player_jumping := false;
-							@player_y_velocity := 0;
-						}
-						# bottom
-						else if(@player_y_velocity = -1) {
-# @game->Debug("--- Bam Bottom ---, player_x_velocity={$@player_x_velocity}, player_jump_height={$@player_jump_height}");
-							@player_y_rel_position -= Values->SPEED * 2;
-							@player_y_velocity := 0;
-
-							if(@player_jump_height > 0 & @player_x_velocity <> 0) {
-								@player_last_height := @player_jump_height;
-							};							
-						};
-
-						# right
-						if(@player_x_velocity = 1) {
-# @game->Debug("--- Bam Right ---, player_y_velocity={$@player_y_velocity}, player_jump_height={$@player_jump_height}");							
-							@player_x_position -= Values->SPEED;							
-							if(@player_jump_height > 0 & @player_last_height <> @player_jump_height) {
-								@player_x_velocity := 0;
-							}
-							else {
-								@player_last_height := 0;
-							};
-						}
-						# left
-						else if(@player_x_velocity = -1) {
-# @game->Debug("--- Bam Left ---, player_y_velocity={$@player_y_velocity}, player_jump_height={$@player_jump_height}");							
-							@player_x_position += Values->SPEED;
-							if(@player_jump_height > 0 & @player_last_height <> @player_jump_height) {
-								@player_x_velocity := 0;
-							}
-							else {
-								@player_last_height := 0;
-							};
-						};
-
-						return true;
-					};
-				};
-			};
-		};
-
-		return false;
 	}
 
 	method : native : CreateMap() ~ Int[,] {
@@ -359,4 +190,224 @@ consts Values {
 	BLOCK_WIDTH := 32,
 	BLOCK_HEIGHT := 32,
 	SPEED := 2
+}
+
+class Player {
+	@game : GameEngine;
+	@player : AnimatedImageSprite;
+	@frame : Int;
+	@x_position : Int;
+	@x_rel_position : Int;
+	@y_rel_position : Int;
+	
+	@x_velocity : Int;
+	@y_velocity : Int;
+	@jumping : Bool;
+	@jump_height : Int;
+	@last_height : Int;
+
+	New(game : GameEngine) {
+		@game := game;
+		@player := @game->AddAnimatedImageSprite("images/player.png", 5);
+		@frame := @player->GetClipCount() - 1;
+		@y_rel_position := Values->SCREEN_HEIGHT - 116;
+	}
+
+	method : public : GetXStart() ~ Int {
+		return @x_position - @x_rel_position;
+	}
+
+	method : public : GetX() ~ Int {
+		return @x_rel_position;
+	}
+
+	method : public : GetY() ~ Int {
+		return @y_rel_position;
+	}	
+
+	method : public : SetXVelocity(player_x_velocity : Int) ~ Nil {
+		@x_velocity := player_x_velocity;
+
+		if(@x_velocity = 1) {
+			if(@player->GetFlip() = RendererFlip->SDL_FLIP_HORIZONTAL) {
+				@player->SetFlip(RendererFlip->SDL_FLIP_NONE);
+			};
+		}
+		else if(@x_velocity = -1) {
+			@player->SetFlip(RendererFlip->SDL_FLIP_HORIZONTAL);
+		};
+	}
+
+	method : public : SetYVelocity(y_velocity : Int) ~ Nil {
+		@y_velocity := y_velocity;
+	}
+
+	method : public : IsJumping() ~ Bool {
+		return @jumping;
+	}
+
+	method : public : SetJumping(jumping : Bool) ~ Nil {
+		if(jumping) {
+			@jumping := true;
+            @y_velocity := 1;
+      	}
+      	else {
+
+      	};
+	}
+
+	method : public : HandleEvents(game_map : Int[,], background : ImageSprite, frame_count : Int) ~ Nil {
+		if(@x_velocity = 1) {
+			@x_position += Values->SPEED;
+		}
+		else if(@x_velocity = -1) {
+			@x_position -= Values->SPEED;
+		};
+
+		if(@y_velocity = 1) {
+			if(@jump_height < 1.5 * Values->BLOCK_HEIGHT) {
+				@jump_height += Values->SPEED * 2;
+				@y_rel_position -= Values->SPEED * 2;
+			}
+			else {
+				@jumping := false;
+			};
+		}
+		else if(@y_velocity = -1) {
+			@y_rel_position += Values->SPEED * 2;
+			if(@jump_height > 0) {
+				@jump_height -= Values->SPEED * 2;
+			};
+		};
+
+		if(<>PlayerCollision(game_map)) {
+			# update walk frame
+			if(frame_count % 5 = 0) {
+				# apply gravity
+				if(<>@jumping) {
+					@y_velocity := -1;
+				}
+				else {
+					@y_velocity := 1;
+				};
+
+				if(@x_velocity <> 0) {
+					@frame -= 1;
+					if(@frame < 0) {
+						@frame :=  @player->GetClipCount() - 1;
+					};
+				};
+			}
+			else if(@x_velocity = 0) {
+				@frame :=  @player->GetClipCount() - 1;
+			};
+
+			# move right
+			if(@x_velocity = 1) {
+				@x_rel_position += Values->SPEED;
+				if(@x_rel_position > Values->SCREEN_WIDTH / 4) {
+					@x_rel_position := Values->SCREEN_WIDTH / 4;
+					background_offset -= Values->SPEED;
+					if(background_offset < -1 * background->GetWidth()) {
+						background_offset := 0;
+					};
+				};
+			}
+			# move left
+			else if(@x_velocity = -1) {
+				@x_rel_position -= Values->SPEED;
+				if(@x_rel_position < Values->BLOCK_WIDTH * 2) {		
+					@x_rel_position := Values->BLOCK_WIDTH * 2;
+					background_offset += Values->SPEED;
+					if(background_offset > 0) {
+						background_offset := -1 * background->GetWidth();
+					};
+				};
+			};
+		};
+	}
+
+	method : public : JumpHeight() ~ Int {
+		return @jump_height;
+	}
+
+	method : PlayerCollision(game_map : Int[,]) ~ Bool {
+		# calculate camera view
+		dims := game_map->Size();
+		start_x := (@x_position - @x_rel_position) / Values->BLOCK_WIDTH;
+		if(start_x < 0) {
+			start_x := 0;
+		};
+		end_x := start_x + 26; # could be calculated using screen and block width
+
+		# render blocks
+		for(x := start_x; x < end_x; x += 1;) {
+			block_rel_x := x * Values->BLOCK_WIDTH - (@x_position - @x_rel_position);
+			for(y := 0; y < dims[0]; y += 1;) {
+				block_rel_y := y * Values->BLOCK_HEIGHT;
+				if(game_map[y, x] =  1) {
+					block_rel_x2 := block_rel_x + Values->BLOCK_WIDTH;
+					block_rel_y2 := block_rel_y + Values->BLOCK_HEIGHT;
+
+					player_rel_y := @y_rel_position;
+					player_rel_y2 := player_rel_y + @player->GetHeight();
+					player_rel_x := @x_rel_position;
+					player_rel_x2 := player_rel_x + Values->BLOCK_WIDTH;
+
+					if(player_rel_x2 > block_rel_x & player_rel_x < block_rel_x2 & 
+						player_rel_y2 > block_rel_y & player_rel_y < block_rel_y2) {
+
+						# top
+						if(@y_velocity = 1) {
+# @game->Debug("--- Bam Top ---, player_x_velocity={$@x_velocity}, player_jump_height={$@jump_height}");							
+							@y_rel_position += Values->SPEED * 2;
+							@jumping := false;
+							@y_velocity := 0;
+						}
+						# bottom
+						else if(@y_velocity = -1) {
+# @game->Debug("--- Bam Bottom ---, player_x_velocity={$@x_velocity}, player_jump_height={$@jump_height}");
+							@y_rel_position -= Values->SPEED * 2;
+							@y_velocity := 0;
+
+							if(@jump_height > 0 & @x_velocity <> 0) {
+								@last_height := @jump_height;
+							};							
+						};
+
+						# right
+						if(@x_velocity = 1) {
+# @game->Debug("--- Bam Right ---, player_y_velocity={$@y_velocity}, player_jump_height={$@jump_height}");							
+							@x_position -= Values->SPEED;							
+							if(@jump_height > 0 & @last_height <> @jump_height) {
+								@x_velocity := 0;
+							}
+							else {
+								@last_height := 0;
+							};
+						}
+						# left
+						else if(@x_velocity = -1) {
+# @game->Debug("--- Bam Left ---, player_y_velocity={$@y_velocity}, player_jump_height={$@jump_height}");							
+							@x_position += Values->SPEED;
+							if(@jump_height > 0 & @last_height <> @jump_height) {
+								@x_velocity := 0;
+							}
+							else {
+								@last_height := 0;
+							};
+						};
+
+						return true;
+					};
+				};
+			};
+		};
+
+		return false;
+	}
+	
+	method : public : Render() ~ Nil {
+		@player->Render(@x_rel_position, @y_rel_position, @frame);
+	}
 }
