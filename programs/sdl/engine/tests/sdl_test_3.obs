@@ -17,8 +17,9 @@ class PlatformDemo {
 	
 	@player_x_velocity : Int;
 	@player_y_velocity : Int;
+	@player_jumping : Bool;
 	@player_jump_height : Int;
-
+	
 	@block : ImageSprite;
 	
 	function : Main(args : String[]) ~ Nil {
@@ -76,12 +77,15 @@ class PlatformDemo {
 	            	@player_x_velocity := -1;
 	            }
 
-	            label Scancode->SDL_SCANCODE_RIGHT: {
+	            label Scancode->SDL_SCANCODE_RIGHT: { 
 	            	@player_x_velocity := 1;
 	            }
 
 	            label Scancode->SDL_SCANCODE_SPACE: {
-	            	@player_y_velocity := 1;
+	            	if(<>@player_jumping) {
+	            		@player_jumping := true;
+	            		@player_y_velocity := 1;
+	            	};
 	            }
 	        };
 	    }
@@ -93,7 +97,6 @@ class PlatformDemo {
 	            }
 
 	            label Scancode->SDL_SCANCODE_SPACE: {
-	            	@player_y_velocity := 0;
 	            }
 	        };
 	    };   
@@ -113,39 +116,27 @@ class PlatformDemo {
 		};
 
 		if(@player_y_velocity = 1) {
-			@player_jump_height += Values->SPEED;
-			@player_y_rel_position -= Values->SPEED;
+			if(@player_jump_height < 1.5 * Values->BLOCK_HEIGHT) {
+				@player_jump_height += Values->SPEED * 2;
+				@player_y_rel_position -= Values->SPEED * 2;
+			}
+			else {
+				@player_jumping := false;
+			};
 		}
 		else if(@player_y_velocity = -1) {
-			@player_y_rel_position += Values->SPEED;
+			@player_y_rel_position += Values->SPEED * 2;
 		};
 
 		if(<>PlayerCollision()) {
 			# update walk frame
 			if(@frame_count % 5 = 0) {
-				if(@player_jump_height > 0 & @player_jump_height < 40) {
-					@player_y_velocity := 1;
-				}
-				else if(@player_jump_height >= 40) {
-					@player_jump_height := 0;
+				# apply gravity
+				if(<>@player_jumping) {
 					@player_y_velocity := -1;
 				}
 				else {
-					@player_y_velocity := -1;
-				};
-			};
-
-			# update walk frame
-			if(@frame_count % 5 = 0) {
-				if(@player_jump_height > 0 & @player_jump_height < 40) {
 					@player_y_velocity := 1;
-				}
-				else if(@player_jump_height >= 40) {
-					@player_jump_height := 0;
-					@player_y_velocity := -1;
-				}
-				else {
-					@player_y_velocity := -1;
 				};
 
 				if(@player_x_velocity <> 0) {
@@ -248,21 +239,26 @@ class PlatformDemo {
 					if(player_rel_x2 > block_rel_x & player_rel_x < block_rel_x2 & 
 						player_rel_y2 > block_rel_y & player_rel_y < block_rel_y2) {
 
+						# left
 						if(@player_x_velocity = 1) {
 							@player_x_position -= Values->SPEED;
 						}
+						# right
 						else if(@player_x_velocity = -1) {
 							@player_x_position += Values->SPEED;
 						};
 
+						# top
 						if(@player_y_velocity = 1) {
-							@player_y_rel_position += Values->SPEED;
+							@player_y_rel_position += Values->SPEED * 2;
+							@player_jumping := false;
 							@player_y_velocity := 0;
-
 						}
+						# bottom
 						else if(@player_y_velocity = -1) {
-							@player_y_rel_position -= Values->SPEED;
+							@player_y_rel_position -= Values->SPEED * 2;
 							@player_y_velocity := 0;
+							@player_jump_height := 0;
 						};
 
 						return true;
@@ -291,7 +287,7 @@ class PlatformDemo {
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
-			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
+			[0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
 			[1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
