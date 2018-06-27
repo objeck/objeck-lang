@@ -5,9 +5,7 @@ class Platform {
 	@engine : GameEngine;
 	@game_map : Int[,];
 	@frame_count : Int;
-
-	@background : ImageSprite;
-	@background_offset : Int;
+	
 	@player : Player;
 	@block : ImageSprite;
 	
@@ -19,7 +17,6 @@ class Platform {
 	New() {
 		@engine := GameEngine->New(Values->SCREEN_WIDTH, Values->SCREEN_HEIGHT, "Engine Three");
 		@game_map := CreateMap();
-		@background := @engine->AddImageSprite("images/background.png");
 		@block := @engine->AddImageSprite("images/block4.png");
 		@player := Player->New(@self);
 	}
@@ -30,10 +27,6 @@ class Platform {
 
 	method : public : GetMap() ~ Int[,] {
 		return @game_map;
-	}
-
-	method : public : GetBackground() ~ ImageSprite {
-		return @background;
 	}
 
 	method : public : GetFrameCount() ~ Int {
@@ -142,8 +135,7 @@ class Platform {
 
 	method : Render() ~ Nil {
 		# render background
-		@background->Render(@background_offset, 0);
-		@background->Render(@background_offset + @background->GetWidth(), 0);
+		@player->RenderBackground();
 		
 		# calculate camera view
 		dims := @game_map->Size();
@@ -167,7 +159,7 @@ class Platform {
 		};
 
 		# render player
-		@player->Render();
+		@player->RenderPlayer();
 
 		@engine->Show();
 	}
@@ -221,18 +213,22 @@ class Player {
 	@x_position : Int;
 	@x_rel_position : Int;
 	@y_rel_position : Int;
-	
 	@x_velocity : Int;
 	@y_velocity : Int;
 	@jumping : Bool;
 	@jump_height : Int;
 	@last_height : Int;
-	
+
+	@background : ImageSprite;
+	@background_offset : Int;
+
 	New(platform : Platform) {
 		@platform := platform;
 		@player := @platform->GetEngine()->AddAnimatedImageSprite("images/player.png", 5);
 		@frame := @player->GetClipCount() - 1;
-		@y_rel_position := Values->SCREEN_HEIGHT - 116;
+		@y_rel_position := Values->SCREEN_HEIGHT - 128;
+
+		@background := @platform->GetEngine()->AddImageSprite("images/background.png");
 	}
 
 	method : public : GetXStart() ~ Int {
@@ -277,7 +273,6 @@ class Player {
 
 	method : public : native : HandleEvents() ~ Nil {
 		game_map := @platform->GetMap();
-		background := @platform->GetBackground();
 		frame_count := @platform->GetFrameCount();
 
 		if(@x_velocity = 1) {
@@ -330,9 +325,9 @@ class Player {
 				@x_rel_position += Values->SPEED;
 				if(@x_rel_position > Values->SCREEN_WIDTH / 4) {
 					@x_rel_position := Values->SCREEN_WIDTH / 4;
-					background_offset -= Values->SPEED;
-					if(background_offset < -1 * background->GetWidth()) {
-						background_offset := 0;
+					@background_offset -= Values->SPEED;
+					if(@background_offset < -1 * @background->GetWidth()) {
+						@background_offset := 0;
 					};
 				};
 			}
@@ -341,9 +336,9 @@ class Player {
 				@x_rel_position -= Values->SPEED;
 				if(@x_rel_position < Values->BLOCK_WIDTH * 2) {		
 					@x_rel_position := Values->BLOCK_WIDTH * 2;
-					background_offset += Values->SPEED;
-					if(background_offset > 0) {
-						background_offset := -1 * background->GetWidth();
+					@background_offset += Values->SPEED;
+					if(@background_offset > 0) {
+						@background_offset := -1 * @background->GetWidth();
 					};
 				};
 			};
@@ -430,7 +425,12 @@ class Player {
 		return false;
 	}
 
-	method : public : Render() ~ Nil {
+	method : public : RenderBackground() ~ Nil {
+		@background->Render(@background_offset, 0);
+		@background->Render(@background_offset + @background->GetWidth(), 0);
+	}
+
+	method : public : RenderPlayer() ~ Nil {
 		@player->Render(@x_rel_position, @y_rel_position, @frame);
 	}
 }
