@@ -75,9 +75,13 @@ class PlatformDemo {
 	        select(e->GetKey()->GetKeysym()->GetScancode()) {    	
 	            label Scancode->SDL_SCANCODE_LEFT: {
 	            	@player_x_velocity := -1;
+	            	@player->SetFlip(RendererFlip->SDL_FLIP_HORIZONTAL);
 	            }
 
-	            label Scancode->SDL_SCANCODE_RIGHT: { 
+	            label Scancode->SDL_SCANCODE_RIGHT: {
+	            	if(@player->GetFlip() = RendererFlip->SDL_FLIP_HORIZONTAL) {
+						@player->SetFlip(RendererFlip->SDL_FLIP_NONE);
+					};
 	            	@player_x_velocity := 1;
 	            }
 
@@ -126,6 +130,9 @@ class PlatformDemo {
 		}
 		else if(@player_y_velocity = -1) {
 			@player_y_rel_position += Values->SPEED * 2;
+			if(@player_jump_height > 0) {
+				@player_jump_height -= Values->SPEED * 2;
+			};
 		};
 
 		if(<>PlayerCollision()) {
@@ -152,9 +159,7 @@ class PlatformDemo {
 
 			# move right
 			if(@player_x_velocity = 1) {
-				if(@player->GetFlip() = RendererFlip->SDL_FLIP_HORIZONTAL) {
-					@player->SetFlip(RendererFlip->SDL_FLIP_NONE);
-				};
+				
 
 				@player_x_rel_position += Values->SPEED;
 				if(@player_x_rel_position > Values->SCREEN_WIDTH / 4) {
@@ -167,8 +172,6 @@ class PlatformDemo {
 			}
 			# move left
 			else if(@player_x_velocity = -1) {
-				@player->SetFlip(RendererFlip->SDL_FLIP_HORIZONTAL);
-
 				@player_x_rel_position -= Values->SPEED;
 				if(@player_x_rel_position < Values->BLOCK_WIDTH * 2) {		
 					@player_x_rel_position := Values->BLOCK_WIDTH * 2;
@@ -239,34 +242,36 @@ class PlatformDemo {
 					if(player_rel_x2 > block_rel_x & player_rel_x < block_rel_x2 & 
 						player_rel_y2 > block_rel_y & player_rel_y < block_rel_y2) {
 
-						# right
-						if(@player_x_velocity = 1) {
-							@player_x_position -= Values->SPEED;
-							if(@player_jump_height > 0) {
-								@player_x_velocity := 0;
-"--- Bam Right ---, AND {$@player_y_velocity}"->PrintLine();
-							};
-						}
-						# left
-						else if(@player_x_velocity = -1) {
-							@player_x_position += Values->SPEED;
-							if(@player_jump_height > 0) {
-								@player_x_velocity := 0;
-"--- Bam Left ---, AND {$@player_y_velocity}"->PrintLine();
-							};
-						};
-
 						# top
 						if(@player_y_velocity = 1) {
+@game->Debug("--- Bam Top ---, player_x_velocity={$@player_x_velocity}, player_jump_height={$@player_jump_height}");							
 							@player_y_rel_position += Values->SPEED * 2;
 							@player_jumping := false;
 							@player_y_velocity := 0;
 						}
 						# bottom
 						else if(@player_y_velocity = -1) {
+@game->Debug("--- Bam Bottom ---, player_x_velocity={$@player_x_velocity}, player_jump_height={$@player_jump_height}");
 							@player_y_rel_position -= Values->SPEED * 2;
 							@player_y_velocity := 0;
-							@player_jump_height := 0;
+#							@player_jump_height := 0;
+						};
+
+						# right
+						if(@player_x_velocity = 1) {
+@game->Debug("--- Bam Right ---, player_y_velocity={$@player_y_velocity}, player_jump_height={$@player_jump_height}");							
+							@player_x_position -= Values->SPEED;
+							if(@player_jump_height > 0) {
+								@player_x_velocity := 0;
+							};
+						}
+						# left
+						else if(@player_x_velocity = -1) {
+@game->Debug("--- Bam Left ---, player_y_velocity={$@player_y_velocity}, player_jump_height={$@player_jump_height}");							
+							@player_x_position += Values->SPEED;
+							if(@player_jump_height > 0) {
+								@player_x_velocity := 0;
+							};
 						};
 
 						return true;
