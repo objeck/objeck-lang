@@ -239,13 +239,21 @@ class PlatformDemo {
 					if(player_rel_x2 > block_rel_x & player_rel_x < block_rel_x2 & 
 						player_rel_y2 > block_rel_y & player_rel_y < block_rel_y2) {
 
-						# left
+						# right
 						if(@player_x_velocity = 1) {
 							@player_x_position -= Values->SPEED;
+							if(@player_jump_height > 0) {
+								@player_x_velocity := 0;
+"--- Bam Right ---, AND {$@player_y_velocity}"->PrintLine();
+							};
 						}
-						# right
+						# left
 						else if(@player_x_velocity = -1) {
 							@player_x_position += Values->SPEED;
+							if(@player_jump_height > 0) {
+								@player_x_velocity := 0;
+"--- Bam Left ---, AND {$@player_y_velocity}"->PrintLine();
+							};
 						};
 
 						# top
