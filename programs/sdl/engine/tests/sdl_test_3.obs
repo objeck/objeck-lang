@@ -103,7 +103,9 @@ class PlatformDemo {
             		@player_jumping := true;
             		@player_y_velocity := 1;
             	};
-			};
+			}
+			# B button
+			# else if(e->GetJButton()->GetButton() = 1) { ... };
 		}
 		else if(e->GetType() = EventType->SDL_KEYDOWN & e->GetKey()->GetRepeat() = 0) {
 	        select(e->GetKey()->GetKeysym()->GetScancode()) {    	
@@ -132,9 +134,6 @@ class PlatformDemo {
 	        	label Scancode->SDL_SCANCODE_LEFT:
 	            label Scancode->SDL_SCANCODE_RIGHT: {
 	            	@player_x_velocity := 0;
-	            }
-
-	            label Scancode->SDL_SCANCODE_SPACE: {
 	            }
 	        };
 	    };   
