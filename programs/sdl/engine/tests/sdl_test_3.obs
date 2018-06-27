@@ -72,7 +72,40 @@ class PlatformDemo {
 	}
 	
 	method : public : ProcessInput(e : Event) ~ Nil {
-		if(e->GetType() = EventType->SDL_KEYDOWN & e->GetKey()->GetRepeat() = 0) {
+		if(e->GetType() = EventType->SDL_JOYHATMOTION) {
+			if(e->GetJHat()->GetWhich() = 0 ) {
+				select(e->GetJHat()->GetValue()) {
+					# Release
+					label 0: {
+						@player_x_velocity := 0;
+					}
+
+					# Right
+					label 2: {
+						if(@player->GetFlip() = RendererFlip->SDL_FLIP_HORIZONTAL) {
+							@player->SetFlip(RendererFlip->SDL_FLIP_NONE);
+						};
+		            	@player_x_velocity := 1;
+					}
+
+					# Left
+					label 8: {
+						@player_x_velocity := -1;
+	            		@player->SetFlip(RendererFlip->SDL_FLIP_HORIZONTAL);
+					}					
+				};
+			};
+		}
+		else if(e->GetType() = EventType->SDL_JOYBUTTONDOWN) {
+			# A button
+			if(e->GetJButton()->GetButton() = 0) {
+				if(<>@player_jumping) {
+            		@player_jumping := true;
+            		@player_y_velocity := 1;
+            	};
+			};
+		}
+		else if(e->GetType() = EventType->SDL_KEYDOWN & e->GetKey()->GetRepeat() = 0) {
 	        select(e->GetKey()->GetKeysym()->GetScancode()) {    	
 	            label Scancode->SDL_SCANCODE_LEFT: {
 	            	@player_x_velocity := -1;
