@@ -5,7 +5,7 @@ class Platform {
 	@engine : GameEngine;
 	@game_map : Int[,];
 	@frame_count : Int;
-	
+
 	@player : Player;
 	@block : ImageSprite;
 	
@@ -201,8 +201,10 @@ consts Values {
 }
 
 class Enemy {
-	New(engine : GameEngine) {
+	@platform : Platform;
 
+	New(platform : Platform) {
+		@platform := platform;
 	}
 }
 
@@ -377,14 +379,12 @@ class Player {
 
 						# top
 						if(@y_velocity = 1) {
-# @platform->GetEngine()->Debug("--- Bam Top ---, player_x_velocity={$@x_velocity}, player_jump_height={$@jump_height}");							
 							@y_rel_position += Values->SPEED * 2;
 							@jumping := false;
 							@y_velocity := 0;
 						}
 						# bottom
 						else if(@y_velocity = -1) {
-# @platform->GetEngine()->Debug("--- Bam Bottom ---, player_x_velocity={$@x_velocity}, player_jump_height={$@jump_height}");
 							@y_rel_position -= Values->SPEED * 2;
 							@y_velocity := 0;
 
@@ -395,7 +395,6 @@ class Player {
 
 						# right
 						if(@x_velocity = 1) {
-# @platform->GetEngine()->Debug("--- Bam Right ---, player_y_velocity={$@y_velocity}, player_jump_height={$@jump_height}");							
 							@x_position -= Values->SPEED;							
 							if(@jump_height > 0 & @last_height <> @jump_height) {
 								@x_velocity := 0;
@@ -406,7 +405,6 @@ class Player {
 						}
 						# left
 						else if(@x_velocity = -1) {
-# @engine->Debug("--- Bam Left ---, player_y_velocity={$@y_velocity}, player_jump_height={$@jump_height}");							
 							@x_position += Values->SPEED;
 							if(@jump_height > 0 & @last_height <> @jump_height) {
 								@x_velocity := 0;
