@@ -23,7 +23,7 @@ class Player {
 		@game_map := @platform->GetMap();
 		@player := @platform->GetEngine()->AddAnimatedImageSprite("images/player.png", 5);
 		@frame := @player->GetClipCount() - 1;
-		@y_rel_position := Values->SCREEN_HEIGHT - 128;
+		@y_rel_position := Values->SCREEN_HEIGHT - 256;
 
 		@background := @platform->GetEngine()->AddImageSprite("images/background.png");
 	}
@@ -40,8 +40,8 @@ class Player {
 		return @y_rel_position;
 	}	
 
-	method : public : SetXVelocity(player_x_velocity : Int) ~ Nil {
-		@x_velocity := player_x_velocity;
+	method : public : SetXVelocity(x_velocity : Int) ~ Nil {
+		@x_velocity := x_velocity;
 
 		if(@x_velocity = 1) {
 			if(@player->GetFlip() = RendererFlip->SDL_FLIP_HORIZONTAL) {
@@ -94,7 +94,7 @@ class Player {
 			};
 		};
 
-		if(<>PlayerCollision()) {
+		if(<>BlockCollision()) {
 			# update walk frame
 			if(frame_count % 5 = 0) {
 				# apply gravity
@@ -145,7 +145,7 @@ class Player {
 		return @jump_height;
 	}
 
-	method : native : PlayerCollision() ~ Bool {
+	method : native : BlockCollision() ~ Bool {
 		# calculate camera view
 		dims := @game_map->Size();
 		start_x := (@x_position - @x_rel_position) / Values->BLOCK_WIDTH;
@@ -163,13 +163,13 @@ class Player {
 					block_rel_x2 := block_rel_x + Values->BLOCK_WIDTH;
 					block_rel_y2 := block_rel_y + Values->BLOCK_HEIGHT;
 
-					player_rel_y := @y_rel_position;
-					player_rel_y2 := player_rel_y + @player->GetHeight();
-					player_rel_x := @x_rel_position;
-					player_rel_x2 := player_rel_x + Values->BLOCK_WIDTH;
+					rel_y := @y_rel_position;
+					rel_y2 := rel_y + @player->GetHeight();
+					rel_x := @x_rel_position;
+					rel_x2 := rel_x + Values->BLOCK_WIDTH;
 
-					if(player_rel_x2 > block_rel_x & player_rel_x < block_rel_x2 & 
-						player_rel_y2 > block_rel_y & player_rel_y < block_rel_y2) {
+					if(rel_x2 > block_rel_x & rel_x < block_rel_x2 & 
+						rel_y2 > block_rel_y & rel_y < block_rel_y2) {
 
 						# top
 						if(@y_velocity = 1) {
