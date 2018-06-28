@@ -118,8 +118,7 @@ class Player {
 				@x_rel_position += Values->SPEED;
 				if(@x_rel_position > Values->SCREEN_WIDTH / 4) {
 					@camera_shift := 1;
-@platform->GetEngine()->Debug("--- SHIFT RIGHT ---");					
-					@x_rel_position := Values->SCREEN_WIDTH / 4;
+				@x_rel_position := Values->SCREEN_WIDTH / 4;
 					@background_offset -= Values->SPEED / 2;
 					if(@background_offset < -1 * @background->GetWidth()) {
 						@background_offset := 0;
@@ -133,7 +132,6 @@ class Player {
 			else if(@x_velocity = -1) {
 				@x_rel_position -= Values->SPEED;
 				if(@x_rel_position < Values->BLOCK_WIDTH * 2) {	
-@platform->GetEngine()->Debug("--- SHIFT LEFT ---");
 					@camera_shift := -1;
 					@x_rel_position := Values->BLOCK_WIDTH * 2;
 					@background_offset += Values->SPEED / 2;
@@ -144,6 +142,9 @@ class Player {
 				else {
 					@camera_shift := 0;
 				};
+			}
+			else {
+				@camera_shift := 0;
 			};
 		};
 	}

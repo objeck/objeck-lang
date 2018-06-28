@@ -133,7 +133,7 @@ class Platform {
 		};
 
 		@player->HandleEvents();
-		@enemy->HandleEvents(@player->GetX(), @player->GetCameraShift());
+		@enemy->HandleEvents(@player);
 	}
 
 	method : Render() ~ Nil {

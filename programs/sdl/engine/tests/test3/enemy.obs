@@ -28,7 +28,7 @@ class Enemy {
 		@y_velocity := y_velocity;
 	}
 
-	method : public : native : HandleEvents(x_position : Int, camera_shift : Int) ~ Nil {
+	method : public : native : HandleEvents(player : Player) ~ Nil {
 		frame_count := @platform->GetFrameCount();
 
 		if(@y_velocity = 1) {
@@ -38,28 +38,32 @@ class Enemy {
 			@y_rel_position += Values->SPEED * 2;
 		};
 
-		if(<>BlockCollision(x_position)) {
+		if(<>BlockCollision(player->GetX())) {
 			if(frame_count % 5 = 0 & <>@at_bottom) {				
 				@y_velocity := -1;
 			};
-
+				
+			camera_shift := player->GetCameraShift();
 			if(@x_velocity = 1) {
+# @platform->GetEngine()->Debug("{$@x_velocity}, {$camera_shift}");					
 				if(camera_shift = 1) {
-					@x_rel_position += Values->SPEED / 4;	
+					@x_rel_position += Values->SPEED / 3;	
 				}
 				else if(camera_shift = -1) {
-					@x_rel_position += Values->SPEED * 4;	
+
+					@x_rel_position += Values->SPEED * 2;	
 				}
 				else {
 					@x_rel_position += Values->SPEED;
 				};
 			}
 			else if(@x_velocity = -1) {
+# @platform->GetEngine()->Debug("{$@x_velocity}, {$camera_shift}");					
 				if(camera_shift = 1) {
-					@x_rel_position -= Values->SPEED * 4;	
+					@x_rel_position -= Values->SPEED * 2;	
 				}
 				else if(camera_shift = -1) {
-					@x_rel_position -= Values->SPEED / 4;	
+					@x_rel_position -= Values->SPEED / 3;	
 				}
 				else {
 					@x_rel_position -= Values->SPEED;
@@ -71,11 +75,11 @@ class Enemy {
 	method : native : BlockCollision(x_position : Int) ~ Bool {
 		# calculate camera view
 		dims := @game_map->Size();
-		start_x := x_position / Values->BLOCK_WIDTH;
+		start_x := x_position / Values->BLOCK_WIDTH - 2;
 		if(start_x < 0) {
 			start_x := 0;
 		};
-		end_x := start_x + 26; # could be calculated using screen and block width
+		end_x := start_x + 28; # could be calculated using screen and block width
 
 		# render blocks
 		for(x := start_x; x < end_x; x += 1;) {
@@ -109,12 +113,12 @@ class Enemy {
 
 						# right
 						if(@x_velocity = 1) {
-							@x_rel_position -= Values->SPEED;
+							@x_rel_position -= Values->SPEED * 2;
 							@x_velocity := -1;
 						}
 						# left
 						else if(@x_velocity = -1) {
-							@x_rel_position += Values->SPEED;
+							@x_rel_position += Values->SPEED * 2;
 							@x_velocity := 1;
 						};
 
