@@ -18,7 +18,7 @@ class Platform {
 	New() {
 		@engine := GameEngine->New(Values->SCREEN_WIDTH, Values->SCREEN_HEIGHT, "Engine Three");
 		@game_map := CreateMap();
-		@block := @engine->AddImageSprite("images/block4.png");
+		@block := @engine->AddImageSprite("images/block.png");
 		@player := Player->New(@self);
 		@enemy := Enemy->New(@self);
 	}
