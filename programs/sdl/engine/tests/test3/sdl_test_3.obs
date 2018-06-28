@@ -18,7 +18,7 @@ class Platform {
 	New() {
 		@engine := GameEngine->New(Values->SCREEN_WIDTH, Values->SCREEN_HEIGHT, "Engine Three");
 		@game_map := CreateMap();
-		@block := @engine->AddImageSprite("images/block.png");
+		@block := @engine->AddImageSprite("images/bar.png");
 		@player := Player->New(@self);
 		@enemy := Enemy->New(@self);
 	}
@@ -142,11 +142,16 @@ class Platform {
 		
 		# calculate camera view
 		dims := @game_map->Size();
+		
 		start_x := @player->GetX() / Values->BLOCK_WIDTH;
 		if(start_x < 0) {
 			start_x := 0;
 		};
+
 		end_x := start_x + 26; # could be calculated using screen and block width
+		if(end_x >= dims[1]) {
+			end_x := dims[1] - 1;
+		};
 
 		# render blocks
 		for(x := start_x; x < end_x; x += 1;) {
