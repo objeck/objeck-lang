@@ -28,7 +28,7 @@ class Enemy {
 		@y_velocity := y_velocity;
 	}
 
-	method : public : native : HandleEvents(x_position : Int) ~ Nil {
+	method : public : native : HandleEvents(x_position : Int, camera_shift : Int) ~ Nil {
 		frame_count := @platform->GetFrameCount();
 
 		if(@y_velocity = 1) {
@@ -39,16 +39,31 @@ class Enemy {
 		};
 
 		if(<>BlockCollision(x_position)) {
-			if(frame_count % 5 = 0 & <>@at_bottom) {
-@platform->GetEngine()->Debug("--- FALLING ---");				
+			if(frame_count % 5 = 0 & <>@at_bottom) {				
 				@y_velocity := -1;
 			};
 
 			if(@x_velocity = 1) {
-				@x_rel_position += Values->SPEED;
+				if(camera_shift = 1) {
+					@x_rel_position += Values->SPEED / 4;	
+				}
+				else if(camera_shift = -1) {
+					@x_rel_position += Values->SPEED * 4;	
+				}
+				else {
+					@x_rel_position += Values->SPEED;
+				};
 			}
 			else if(@x_velocity = -1) {
-				@x_rel_position -= Values->SPEED;
+				if(camera_shift = 1) {
+					@x_rel_position -= Values->SPEED * 4;	
+				}
+				else if(camera_shift = -1) {
+					@x_rel_position -= Values->SPEED / 4;	
+				}
+				else {
+					@x_rel_position -= Values->SPEED;
+				};
 			};
 		};
 	}
@@ -61,7 +76,7 @@ class Enemy {
 			start_x := 0;
 		};
 		end_x := start_x + 26; # could be calculated using screen and block width
-		
+
 		# render blocks
 		for(x := start_x; x < end_x; x += 1;) {
 			block_rel_x := x * Values->BLOCK_WIDTH - x_position;
@@ -83,7 +98,6 @@ class Enemy {
 						if(@y_velocity = 1) {
 							@y_rel_position += Values->SPEED * 2;
 							@y_velocity := 0;
-@platform->GetEngine()->Debug("--- HIT TOP --");
 						}
 						# bottom
 						else if(@y_velocity = -1) {
@@ -91,18 +105,15 @@ class Enemy {
 							@y_velocity := 0;
 							@x_velocity := -1;
 							@at_bottom := true;
-@platform->GetEngine()->Debug("--- HIT BOTTOM --");
 						};
 
 						# right
 						if(@x_velocity = 1) {
-@platform->GetEngine()->Debug("--- HIT RIGHT --");							
 							@x_rel_position -= Values->SPEED;
 							@x_velocity := -1;
 						}
 						# left
 						else if(@x_velocity = -1) {
-@platform->GetEngine()->Debug("--- HIT LEFT --");							
 							@x_rel_position += Values->SPEED;
 							@x_velocity := 1;
 						};
