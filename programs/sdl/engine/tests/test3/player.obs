@@ -28,17 +28,9 @@ class Player {
 		@background := @platform->GetEngine()->AddImageSprite("images/background.png");
 	}
 
-	method : public : GetXStart() ~ Int {
+	method : public : GetX() ~ Int {
 		return @x_position - @x_rel_position;
 	}
-
-	method : public : GetX() ~ Int {
-		return @x_rel_position;
-	}
-
-	method : public : GetY() ~ Int {
-		return @y_rel_position;
-	}	
 
 	method : public : SetXVelocity(x_velocity : Int) ~ Nil {
 		@x_velocity := x_velocity;
