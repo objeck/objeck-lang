@@ -14,6 +14,7 @@ class Player {
 	@jumping : Bool;
 	@jump_height : Int;
 	@last_height : Int;
+	@camera_shift : Int;
 
 	@background : ImageSprite;
 	@background_offset : Int;
@@ -30,6 +31,10 @@ class Player {
 
 	method : public : GetX() ~ Int {
 		return @x_position - @x_rel_position;
+	}
+
+	method : public : GetCameraShift() ~ Int {
+		return @camera_shift;
 	}
 
 	method : public : SetXVelocity(x_velocity : Int) ~ Nil {
@@ -112,22 +117,32 @@ class Player {
 			if(@x_velocity = 1) {
 				@x_rel_position += Values->SPEED;
 				if(@x_rel_position > Values->SCREEN_WIDTH / 4) {
+					@camera_shift := 1;
+@platform->GetEngine()->Debug("--- SHIFT RIGHT ---");					
 					@x_rel_position := Values->SCREEN_WIDTH / 4;
 					@background_offset -= Values->SPEED / 2;
 					if(@background_offset < -1 * @background->GetWidth()) {
 						@background_offset := 0;
 					};
+				}
+				else {
+					@camera_shift := 0;
 				};
 			}
 			# move left
 			else if(@x_velocity = -1) {
 				@x_rel_position -= Values->SPEED;
-				if(@x_rel_position < Values->BLOCK_WIDTH * 2) {		
+				if(@x_rel_position < Values->BLOCK_WIDTH * 2) {	
+@platform->GetEngine()->Debug("--- SHIFT LEFT ---");
+					@camera_shift := -1;
 					@x_rel_position := Values->BLOCK_WIDTH * 2;
 					@background_offset += Values->SPEED / 2;
 					if(@background_offset > 0) {
 						@background_offset := -1 * @background->GetWidth();
 					};
+				}
+				else {
+					@camera_shift := 0;
 				};
 			};
 		};
