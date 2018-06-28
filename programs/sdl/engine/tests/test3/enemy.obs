@@ -1,0 +1,22 @@
+use Game.SDL2;
+use Game.Engine;
+
+class Enemy {
+	@enemy : ImageSprite;
+	@platform : Platform;
+	@game_map : Int[,];
+
+	New(platform : Platform) {
+		@platform := platform;
+		@game_map := @platform->GetMap();
+
+		@enemy := @platform->GetEngine()->AddImageSprite("images/enemy.png");
+	}
+
+	method : public : native : HandleEvents() ~ Nil {
+	}
+
+	method : public : Render() ~ Nil {
+		@enemy->Render(10, 10);
+	}
+}
