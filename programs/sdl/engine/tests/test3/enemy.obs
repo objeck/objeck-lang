@@ -70,8 +70,16 @@ class Enemy {
 				};
 			};
 		};
+
+		if(PlayerCollision(player)) {
+
+		};
 	}
 
+	method : native : PlayerCollision(player : Player) ~ Bool {
+		return false;
+	}
+	
 	method : native : BlockCollision(x_position : Int) ~ Bool {
 		# calculate camera view
 		dims := @game_map->Size();
