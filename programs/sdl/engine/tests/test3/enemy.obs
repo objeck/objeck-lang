@@ -84,6 +84,9 @@ class Enemy {
 
 		rel_y := @y_rel_position;
 		rel_y2 := rel_y + @enemy->GetHeight();
+		if(player->JumpHeight() > 0) {
+			rel_y2 -= 8;
+		}
 		rel_x := @x_rel_position;
 		rel_x2 := rel_x + Values->BLOCK_WIDTH;
 
