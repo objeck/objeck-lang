@@ -73,7 +73,7 @@ class Enemy {
 		};
 
 		if(PlayerCollision(player)) {
-
+			player->SetAlive(false);
 		};
 	}
 
@@ -92,12 +92,9 @@ class Enemy {
 		rel_x2 := rel_x + Values->BLOCK_WIDTH;
 
 		if(rel_x2 > player_rel_x & rel_x < player_rel_x2 & 
-				rel_y2 > player_rel_y & rel_y < player_rel_y2) {
-			player->SetAlive(false);
-# @platform->GetEngine()->Debug("--- PLAYER/ENEMY HIT ---");
+				rel_y2 > player_rel_y & rel_y < player_rel_y2) {			
 			return true;
 		};
-# @platform->GetEngine()->Debug("--- NO HIT ---");
 
 		return false;
 	}
