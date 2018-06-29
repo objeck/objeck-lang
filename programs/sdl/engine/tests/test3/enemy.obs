@@ -11,11 +11,12 @@ class Enemy {
 	@y_velocity : Int;
 	@at_bottom : Bool;
 
-	New(platform : Platform) {
+	New(x : Int, y : Int, platform : Platform) {
 		@platform := platform;
 		@game_map := @platform->GetMap();
 
-		@x_rel_position := Values->BLOCK_WIDTH * 4;
+		@x_rel_position := x;
+		@y_rel_position := y;
 
 		@enemy := @platform->GetEngine()->AddImageSprite("images/enemy.png");
 	}
@@ -86,7 +87,7 @@ class Enemy {
 		rel_y2 := rel_y + @enemy->GetHeight();
 		if(player->JumpHeight() > 0) {
 			rel_y2 -= 8;
-		}
+		};
 		rel_x := @x_rel_position;
 		rel_x2 := rel_x + Values->BLOCK_WIDTH;
 
