@@ -39,7 +39,7 @@ class Enemy {
 			@y_rel_position += Values->SPEED * 2;
 		};
 
-		if(<>BlockCollision(player->GetX())) {
+		if(<>BlockCollision(player->GetAsolX())) {
 			if(frame_count % 5 = 0 & <>@at_bottom) {				
 				@y_velocity := -1;
 			};
@@ -48,7 +48,7 @@ class Enemy {
 			if(@x_velocity = 1) {
 # @platform->GetEngine()->Debug("{$@x_velocity}, {$camera_shift}");					
 				if(camera_shift = 1) {
-					@x_rel_position += Values->SPEED / 3;	
+					@x_rel_position += Values->SPEED / 4;	
 				}
 				else if(camera_shift = -1) {
 
@@ -64,7 +64,7 @@ class Enemy {
 					@x_rel_position -= Values->SPEED * 2;	
 				}
 				else if(camera_shift = -1) {
-					@x_rel_position -= Values->SPEED / 3;	
+					@x_rel_position -= Values->SPEED / 4;	
 				}
 				else {
 					@x_rel_position -= Values->SPEED;
@@ -93,10 +93,11 @@ class Enemy {
 
 		if(rel_x2 > player_rel_x & rel_x < player_rel_x2 & 
 				rel_y2 > player_rel_y & rel_y < player_rel_y2) {
-@platform->GetEngine()->Debug("--- PLAYER/ENEMY HIT ---");
+			player->SetAlive(false);
+# @platform->GetEngine()->Debug("--- PLAYER/ENEMY HIT ---");
 			return true;
 		};
-@platform->GetEngine()->Debug("--- NO HIT ---");
+# @platform->GetEngine()->Debug("--- NO HIT ---");
 
 		return false;
 	}
