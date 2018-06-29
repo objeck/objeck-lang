@@ -15,6 +15,7 @@ class Player {
 	@jump_height : Int;
 	@last_height : Int;
 	@camera_shift : Int;
+	@is_alive : Bool;
 
 	@background : ImageSprite;
 	@background_offset : Int;
@@ -27,9 +28,10 @@ class Player {
 		@y_rel_position := Values->SCREEN_HEIGHT - 256;
 
 		@background := @platform->GetEngine()->AddImageSprite("images/background.png");
+		@is_alive := true;
 	}
 
-	method : public : GetX() ~ Int {
+	method : public : GetAsolX() ~ Int {
 		return @x_position - @x_rel_position;
 	}
 
@@ -51,6 +53,14 @@ class Player {
 
 	method : public : GetCameraShift() ~ Int {
 		return @camera_shift;
+	}
+
+	method : public : IsAlive() ~ Bool {
+		return @is_alive;
+	}
+
+	method : public : SetAlive(is_alive : Bool) ~ Nil {
+		@is_alive := is_alive;
 	}
 
 	method : public : SetXVelocity(x_velocity : Int) ~ Nil {
@@ -84,86 +94,91 @@ class Player {
 	method : public : native : HandleEvents() ~ Nil {
 		frame_count := @platform->GetFrameCount();
 
-		if(@x_velocity = 1) {
-			@x_position += Values->SPEED;
+		if(<>@is_alive) {
+			@y_rel_position += Values->SPEED / 2;
 		}
-		else if(@x_velocity = -1) {
-			@x_position -= Values->SPEED;
-		};
-
-		if(@y_velocity = 1) {
-			if(@jump_height < 2 * Values->BLOCK_HEIGHT) {
-				@jump_height += Values->SPEED * 2;
-				@y_rel_position -= Values->SPEED * 2;
-			}
-			else {
-				@jumping := false;
-			};
-		}
-		else if(@y_velocity = -1) {
-			@y_rel_position += Values->SPEED * 2;
-			if(@jump_height > 0) {
-				@jump_height -= Values->SPEED * 2;
-			};
-		};
-
-		if(<>BlockCollision()) {
-			# update walk frame
-			if(frame_count % 5 = 0) {
-				# apply gravity
-				if(<>@jumping) {
-					@y_velocity := -1;
-				}
-				else {
-					@y_velocity := 1;
-				};
-
-				if(@x_velocity <> 0 & @jump_height = 0) {
-					@frame -= 1;
-					if(@frame < 0) {
-						@frame :=  @player->GetClipCount() - 2;
-					};
-				};
-			}
-			else if(@jump_height > 0 & @x_velocity <> 0) {
-				@frame :=  @player->GetClipCount() - 1;
-			}
-			else if(@x_velocity = 0) {
-				@frame :=  @player->GetClipCount() - 2;
-			};
-
-			# move right
+		else {
 			if(@x_velocity = 1) {
-				@x_rel_position += Values->SPEED;
-				if(@x_rel_position > Values->SCREEN_WIDTH / 4) {
-					@camera_shift := 1;
-					@x_rel_position := Values->SCREEN_WIDTH / 4;
-					@background_offset -= Values->SPEED / 2;
-					if(@background_offset < -1 * @background->GetWidth()) {
-						@background_offset := 0;
-					};
-				}
-				else {
-					@camera_shift := 0;
-				};
+				@x_position += Values->SPEED;
 			}
-			# move left
 			else if(@x_velocity = -1) {
-				@x_rel_position -= Values->SPEED;
-				if(@x_rel_position < Values->BLOCK_WIDTH * 2) {	
-					@camera_shift := -1;
-					@x_rel_position := Values->BLOCK_WIDTH * 2;
-					@background_offset += Values->SPEED / 2;
-					if(@background_offset > 0) {
-						@background_offset := -1 * @background->GetWidth();
+				@x_position -= Values->SPEED;
+			};
+
+			if(@y_velocity = 1) {
+				if(@jump_height < 2 * Values->BLOCK_HEIGHT) {
+					@jump_height += Values->SPEED * 2;
+					@y_rel_position -= Values->SPEED * 2;
+				}
+				else {
+					@jumping := false;
+				};
+			}
+			else if(@y_velocity = -1) {
+				@y_rel_position += Values->SPEED * 2;
+				if(@jump_height > 0) {
+					@jump_height -= Values->SPEED * 2;
+				};
+			};
+
+			if(<>BlockCollision()) {
+				# update walk frame
+				if(frame_count % 5 = 0) {
+					# apply gravity
+					if(<>@jumping) {
+						@y_velocity := -1;
+					}
+					else {
+						@y_velocity := 1;
+					};
+
+					if(@x_velocity <> 0 & @jump_height = 0) {
+						@frame -= 1;
+						if(@frame < 0) {
+							@frame :=  @player->GetClipCount() - 2;
+						};
+					};
+				}
+				else if(@jump_height > 0 & @x_velocity <> 0) {
+					@frame :=  @player->GetClipCount() - 1;
+				}
+				else if(@x_velocity = 0) {
+					@frame :=  @player->GetClipCount() - 2;
+				};
+
+				# move right
+				if(@x_velocity = 1) {
+					@x_rel_position += Values->SPEED;
+					if(@x_rel_position > Values->SCREEN_WIDTH / 4) {
+						@camera_shift := 1;
+						@x_rel_position := Values->SCREEN_WIDTH / 4;
+						@background_offset -= Values->SPEED / 2;
+						if(@background_offset < -1 * @background->GetWidth()) {
+							@background_offset := 0;
+						};
+					}
+					else {
+						@camera_shift := 0;
+					};
+				}
+				# move left
+				else if(@x_velocity = -1) {
+					@x_rel_position -= Values->SPEED;
+					if(@x_rel_position < Values->BLOCK_WIDTH * 2) {	
+						@camera_shift := -1;
+						@x_rel_position := Values->BLOCK_WIDTH * 2;
+						@background_offset += Values->SPEED / 2;
+						if(@background_offset > 0) {
+							@background_offset := -1 * @background->GetWidth();
+						};
+					}
+					else {
+						@camera_shift := 0;
 					};
 				}
 				else {
 					@camera_shift := 0;
 				};
-			}
-			else {
-				@camera_shift := 0;
 			};
 		};
 	}
@@ -173,8 +188,8 @@ class Player {
 	}
 
 	method : native : BlockCollision() ~ Bool {
-		# calculate camera view
 		dims := @game_map->Size();
+
 		start_x := (@x_position - @x_rel_position) / Values->BLOCK_WIDTH;
 		if(start_x < 0) {
 			start_x := 0;
