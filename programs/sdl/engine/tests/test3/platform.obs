@@ -8,10 +8,12 @@ class Platform {
 	@frame_count : Int;
 
 	@player : Player;
-	@enemies : List;
 	@block : ImageSprite;
+	
+	@enemies : List;
+	@bullets : List;
 
-	@shot : Bool;
+	@bullet_fired : Bool;
 	
 	function : Main(args : String[]) ~ Nil {
 		platform := Platform->New();
@@ -24,8 +26,11 @@ class Platform {
 		@block := @engine->AddImageSprite("images/stone.png");
 		@player := Player->New(@self);
 
-		Enemy->Init(@self);
+		Enemy->Init(@self);		
 		@enemies := List->New();
+
+		Bullet->Init(@self);
+		@bullets := List->New();
 	}
 
 	method : public : GetEngine() ~ GameEngine {
@@ -108,7 +113,9 @@ class Platform {
 		else if(e->GetType() = EventType->SDL_KEYDOWN & e->GetKey()->GetRepeat() = 0) {
 	        select(e->GetKey()->GetKeysym()->GetScancode()) {    	
 	        	label Scancode->SDL_SCANCODE_UP: {
-	        		@shot := true;     
+	        		if(<>@bullet_fired) {
+	        			@bullet_fired := true;
+	        		};
 	            }
 
 	            label Scancode->SDL_SCANCODE_LEFT: {
@@ -132,6 +139,8 @@ class Platform {
 	            label Scancode->SDL_SCANCODE_RIGHT: {
 	            	@player->SetXVelocity(0);
 	            }
+
+	            # label Scancode->SDL_SCANCODE_UP: { }
 	        };
 	    };   
 	}
@@ -143,9 +152,10 @@ class Platform {
 		};
 		@player->HandleEvents();
 
-		if(@shot) {
+		if(@bullet_fired & @bullets->Size() < 6) {
 "--- SHOT ---"->PrintLine();
-			@shot := false;
+
+			@bullet_fired := false;
 		};
 
 		@enemies->Rewind();
@@ -153,7 +163,7 @@ class Platform {
 			enemy := @enemies->Get()->As(Enemy);
 			if(enemy->GetRelX() < 0) {
 				@enemies->Remove();
-#  "--- Lost enemy ---"->PrintLine();
+#  "--- Enemy removed ---"->PrintLine();
 			}
 			else {
 				enemy->HandleEvents(@player);
