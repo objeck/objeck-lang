@@ -8,7 +8,7 @@ class Platform {
 	@frame_count : Int;
 
 	@player : Player;
-	@enemies : Vector;
+	@enemies : List;
 	@block : ImageSprite;
 	
 	function : Main(args : String[]) ~ Nil {
@@ -21,7 +21,9 @@ class Platform {
 		@game_map := CreateMap();
 		@block := @engine->AddImageSprite("images/stone.png");
 		@player := Player->New(@self);
-		@enemies := Vector->New();
+
+		Enemy->Init(@self);
+		@enemies := List->New();
 	}
 
 	method : public : GetEngine() ~ GameEngine {
@@ -39,19 +41,6 @@ class Platform {
 	method : Run() ~ Nil {
 		if(@engine->IsOk()) {
 			e := @engine->GetEvent();
-
-			dims := @game_map->Size();
-			for(x := 0; x < dims[1]; x += 1;) {
-				rel_x := x * Values->BLOCK_WIDTH - @player->GetAsolX();
-				for(y := 0; y < dims[0]; y += 1;) {
-					rel_y := y * Values->BLOCK_HEIGHT;
-					select(@game_map[y, x]) {
-						label 2: {
-							@enemies->AddBack(Enemy->New(rel_x, rel_y, @self));
-						}					
-					};
-				};
-			};
 
 			quit := false;
 			while(<>quit) {
@@ -148,8 +137,19 @@ class Platform {
 		};
 		@player->HandleEvents();
 
-		each(i : @enemies) {
-			@enemies->Get(i)->As(Enemy)->HandleEvents(@player);
+		@enemies->Rewind();
+		while(@enemies->More()) {
+			enemy := @enemies->Get()->As(Enemy);
+			# TODO: remove from right
+			if(enemy->GetRelX() < 0) {
+				@enemies->Remove();
+"--- Bye ---"->PrintLine();
+			}
+			else {
+				enemy->HandleEvents(@player);
+			};
+
+			@enemies->Next();
 		};
 	}
 
@@ -159,7 +159,7 @@ class Platform {
 		
 		# calculate camera view
 		dims := @game_map->Size();		
-		start_x := @player->GetAsolX() / Values->BLOCK_WIDTH;
+		start_x := @player->GetMapX() / Values->BLOCK_WIDTH;
 		if(start_x < 0) {
 			start_x := 0;
 		};
@@ -171,13 +171,20 @@ class Platform {
 
 		# render blocks
 		for(x := start_x; x < end_x; x += 1;) {
-			rel_x := x * Values->BLOCK_WIDTH - @player->GetAsolX();
+			rel_x := x * Values->BLOCK_WIDTH - @player->GetMapX();
 			for(y := 0; y < dims[0]; y += 1;) {
 				rel_y := y * Values->BLOCK_HEIGHT;
 				select(@game_map[y, x]) {
 					label 1: {
 						@block->Render(rel_x, rel_y);
-					}					
+					}
+
+					label 2: {
+						if(y < 24) {
+							@enemies->AddBack(Enemy->New(rel_x, rel_y));
+							@game_map[y, x] := 0;
+						};
+					}
 				};
 			};
 		};
@@ -186,8 +193,10 @@ class Platform {
 		@player->RenderPlayer();
 
 		# render enemy
-		each(i : @enemies) {
-			@enemies->Get(i)->As(Enemy)->Render();
+		@enemies->Rewind();
+		while(@enemies->More()) {
+			@enemies->Get()->As(Enemy)->Render();
+			@enemies->Next();
 		};
 
 		@engine->Show();
@@ -209,12 +218,12 @@ class Platform {
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
-			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
-			[0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 1,   1, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
-			[0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1,   1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 2, 0, 0, 0, 0, 2, 0, 1, 0, 0, 2, 0,]
-			[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1,   1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1,]
-			[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
+			[0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2,   0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0,]
+			[0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0,   0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1,]
+			[0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1,   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0,]
+			[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,]
 		];
 
 		return game_map;
