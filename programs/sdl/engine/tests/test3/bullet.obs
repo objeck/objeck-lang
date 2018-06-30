@@ -21,16 +21,16 @@ class Bullet {
 	New(x : Int, y : Int) {
 		@x_rel_position := x;
 		@y_rel_position := y;
+		@y_velocity := 1;
 	}
 
 	method : public : native : HandleEvents(enemy : Enemy, player : Player) ~ Nil {
 		frame_count := @platform->GetFrameCount();
 
+
+"--- REWIND ---"->PrintLine();
 		if(@y_velocity = 1) {
 			@y_rel_position -= Values->SPEED * 2;
-		}
-		else if(@y_velocity = -1) {
-			@y_rel_position += Values->SPEED * 2;
 		};
 
 		if(<>BlockCollision(player->GetMapX())) {
@@ -45,17 +45,6 @@ class Bullet {
 				}
 				else {
 					@x_rel_position += Values->SPEED;
-				};
-			}
-			else if(@x_velocity = -1) {
-				if(camera_shift = 1) {
-					@x_rel_position -= Values->SPEED * 2;	
-				}
-				else if(camera_shift = -1) {
-					@x_rel_position -= Values->SPEED / 4;	
-				}
-				else {
-					@x_rel_position -= Values->SPEED;
 				};
 			};
 		};

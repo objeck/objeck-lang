@@ -94,8 +94,12 @@ class Player {
 	method : public : native : HandleEvents() ~ Nil {
 		frame_count := @platform->GetFrameCount();
 
+		# player died!
 		if(<>@is_alive) {
 			@y_rel_position += Values->SPEED / 2;
+			if(@y_rel_position > Values->SCREEN_HEIGHT) {
+				Runtime->Exit(0);
+			};
 		}
 		else {
 			if(@x_velocity = 1) {

@@ -105,9 +105,13 @@ class Platform {
 				if(<>@player->IsJumping()) {
             		@player->SetJumping(true);
             	};
+			}
+			# 'b' button
+			else if(e->GetJButton()->GetButton() = 1) {
+				if(<>@bullet_fired) {
+        			@bullet_fired := true;
+        		};
 			};
-			# B button
-			# else if(e->GetJButton()->GetButton() = 1) { ... };
 		}
 		# Keyboard
 		else if(e->GetType() = EventType->SDL_KEYDOWN & e->GetKey()->GetRepeat() = 0) {
@@ -139,8 +143,6 @@ class Platform {
 	            label Scancode->SDL_SCANCODE_RIGHT: {
 	            	@player->SetXVelocity(0);
 	            }
-
-	            # label Scancode->SDL_SCANCODE_UP: { }
 	        };
 	    };   
 	}
@@ -154,19 +156,29 @@ class Platform {
 
 		if(@bullet_fired & @bullets->Size() < 6) {
 "--- SHOT ---"->PrintLine();
-
+			@bullets->AddBack(Bullet->New(@player->GetRelX(), @player->GetRelY() + 28));
 			@bullet_fired := false;
 		};
 
 		@enemies->Rewind();
 		while(@enemies->More()) {
-			enemy := @enemies->Get()->As(Enemy);
+			# update enemies
+			enemy := @enemies->Get()->As(Enemy);			
 			if(enemy->GetRelX() < 0) {
 				@enemies->Remove();
 #  "--- Enemy removed ---"->PrintLine();
 			}
 			else {
 				enemy->HandleEvents(@player);
+			};
+
+			# update bullets
+			@bullets->Rewind();
+			while(@bullets->More()) {
+"???"->PrintLine();				
+				bullet := @bullets->Get()->As(Bullet);
+				bullet->HandleEvents(enemy, @player);
+				@bullets->Next();
 			};
 
 			@enemies->Next();
@@ -217,6 +229,14 @@ class Platform {
 		while(@enemies->More()) {
 			@enemies->Get()->As(Enemy)->Render();
 			@enemies->Next();
+		};
+
+
+		# render bullets
+		@bullets->Rewind();
+		while(@bullets->More()) {
+			@bullets->Get()->As(Bullet)->Render();
+			@bullets->Next();
 		};
 
 		@engine->Show();
