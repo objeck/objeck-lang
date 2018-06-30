@@ -175,7 +175,6 @@ class Platform {
 			# update bullets
 			@bullets->Rewind();
 			while(@bullets->More()) {
-"???"->PrintLine();				
 				bullet := @bullets->Get()->As(Bullet);
 				bullet->HandleEvents(enemy, @player);
 				@bullets->Next();
