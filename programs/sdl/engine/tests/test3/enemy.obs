@@ -2,8 +2,8 @@ use Game.SDL2;
 use Game.Engine;
 
 class Enemy {
-	@enemy : ImageSprite;
-	@platform : Platform;
+	@enemy : static : ImageSprite;
+	@platform : static : Platform;
 	@game_map : Int[,];
 	@x_rel_position : Int;
 	@y_rel_position : Int;
@@ -11,14 +11,24 @@ class Enemy {
 	@y_velocity : Int;
 	@at_bottom : Bool;
 
-	New(x : Int, y : Int, platform : Platform) {
-		@platform := platform;
+	New(x : Int, y : Int) {
 		@game_map := @platform->GetMap();
 
 		@x_rel_position := x;
 		@y_rel_position := y;
+	}
 
+	function : Init(platform : Platform) ~ Nil {
+		@platform := platform;
 		@enemy := @platform->GetEngine()->AddImageSprite("images/enemy.png");
+	}
+
+	method : public : GetRelX() ~ Int {	
+		return @x_rel_position;
+	}
+
+	method : public : SetRelX(x_rel_position : Int) ~ Nil {	
+		@x_rel_position := x_rel_position;
 	}
 
 	method : public : SetXVelocity(x_velocity : Int) ~ Nil {
@@ -39,7 +49,7 @@ class Enemy {
 			@y_rel_position += Values->SPEED * 2;
 		};
 
-		if(<>BlockCollision(player->GetAsolX())) {
+		if(<>BlockCollision(player->GetMapX())) {
 			if(frame_count % 5 = 0 & <>@at_bottom) {				
 				@y_velocity := -1;
 			};
@@ -73,7 +83,7 @@ class Enemy {
 		};
 
 		if(PlayerCollision(player)) {
-			player->SetAlive(false);
+#			player->SetAlive(false);
 		};
 	}
 
@@ -138,7 +148,7 @@ class Enemy {
 						else if(@y_velocity = -1) {
 							@y_rel_position -= Values->SPEED * 2;
 							@y_velocity := 0;
-							@x_velocity := -1;
+							@x_velocity := 1;
 							@at_bottom := true;
 						};
 

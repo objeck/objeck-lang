@@ -6,7 +6,7 @@ class Player {
 	@game_map : Int[,];
 	@player : AnimatedImageSprite;
 	@frame : Int;
-	@x_position : Int;
+	@x_map_position : Int;
 	@x_rel_position : Int;
 	@y_rel_position : Int;
 	@x_velocity : Int;
@@ -31,8 +31,8 @@ class Player {
 		@is_alive := true;
 	}
 
-	method : public : GetAsolX() ~ Int {
-		return @x_position - @x_rel_position;
+	method : public : GetMapX() ~ Int {
+		return @x_map_position - @x_rel_position;
 	}
 
 	method : public : GetRelX() ~ Int {
@@ -99,10 +99,10 @@ class Player {
 		}
 		else {
 			if(@x_velocity = 1) {
-				@x_position += Values->SPEED;
+				@x_map_position += Values->SPEED;
 			}
 			else if(@x_velocity = -1) {
-				@x_position -= Values->SPEED;
+				@x_map_position -= Values->SPEED;
 			};
 
 			if(@y_velocity = 1) {
@@ -190,7 +190,7 @@ class Player {
 	method : native : BlockCollision() ~ Bool {
 		dims := @game_map->Size();
 
-		start_x := (@x_position - @x_rel_position) / Values->BLOCK_WIDTH;
+		start_x := (@x_map_position - @x_rel_position) / Values->BLOCK_WIDTH;
 		if(start_x < 0) {
 			start_x := 0;
 		};
@@ -202,7 +202,7 @@ class Player {
 
 		# render blocks
 		for(x := start_x; x < end_x; x += 1;) {
-			block_rel_x := x * Values->BLOCK_WIDTH - (@x_position - @x_rel_position);
+			block_rel_x := x * Values->BLOCK_WIDTH - (@x_map_position - @x_rel_position);
 			for(y := 0; y < dims[0]; y += 1;) {
 				block_rel_y := y * Values->BLOCK_HEIGHT;
 				if(@game_map[y, x] =  1) {
@@ -235,7 +235,7 @@ class Player {
 
 						# right
 						if(@x_velocity = 1) {
-							@x_position -= Values->SPEED;							
+							@x_map_position -= Values->SPEED;							
 							if(@jump_height > 0 & @last_height <> @jump_height) {
 								@x_velocity := 0;
 							}
@@ -245,7 +245,7 @@ class Player {
 						}
 						# left
 						else if(@x_velocity = -1) {
-							@x_position += Values->SPEED;
+							@x_map_position += Values->SPEED;
 							if(@jump_height > 0 & @last_height <> @jump_height) {
 								@x_velocity := 0;
 							}
