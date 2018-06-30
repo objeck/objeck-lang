@@ -26,9 +26,7 @@ class Bullet {
 
 	method : public : native : HandleEvents(enemy : Enemy, player : Player) ~ Nil {
 		frame_count := @platform->GetFrameCount();
-
-
-"--- REWIND ---"->PrintLine();
+		
 		if(@x_velocity = 1) {
 			@x_rel_position += Values->SPEED * 2;
 		};
