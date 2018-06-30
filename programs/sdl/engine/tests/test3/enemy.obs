@@ -4,7 +4,7 @@ use Game.Engine;
 class Enemy {
 	@enemy : static : ImageSprite;
 	@platform : static : Platform;
-	@game_map : Int[,];
+	@game_map : static : Int[,];
 	
 	@x_rel_position : Int;
 	@y_rel_position : Int;
@@ -15,16 +15,15 @@ class Enemy {
 
 	@is_alive : Bool;
 
-	New(x : Int, y : Int) {
-		@game_map := @platform->GetMap();
-
-		@x_rel_position := x;
-		@y_rel_position := y;
-	}
-
 	function : Init(platform : Platform) ~ Nil {
 		@platform := platform;
+		@game_map := @platform->GetMap();
 		@enemy := @platform->GetEngine()->AddImageSprite("images/enemy.png");
+	}
+
+	New(x : Int, y : Int) {
+		@x_rel_position := x;
+		@y_rel_position := y;
 	}
 
 	method : public : GetRelX() ~ Int {	

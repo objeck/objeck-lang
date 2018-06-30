@@ -4,7 +4,7 @@ use Game.Engine;
 class Bullet {
 	@bullet : static : ImageSprite;
 	@platform : static : Platform;
-	@game_map : Int[,];
+	@game_map : static : Int[,];
 	
 	@x_rel_position : Int;
 	@y_rel_position : Int;
@@ -12,16 +12,15 @@ class Bullet {
 	@x_velocity : Int;
 	@y_velocity : Int;
 	
-	New(x : Int, y : Int) {
-		@game_map := @platform->GetMap();
-
-		@x_rel_position := x;
-		@y_rel_position := y;
-	}
-
 	function : Init(platform : Platform) ~ Nil {
 		@platform := platform;
+		@game_map := @platform->GetMap();
 		@bullet := @platform->GetEngine()->AddImageSprite("images/bullet.png");
+	}
+
+	New(x : Int, y : Int) {
+		@x_rel_position := x;
+		@y_rel_position := y;
 	}
 
 	method : public : native : HandleEvents(enemy : Enemy, player : Player) ~ Nil {
@@ -115,24 +114,6 @@ class Bullet {
 
 					if(rel_x2 > block_rel_x & rel_x < block_rel_x2 & 
 						rel_y2 > block_rel_y & rel_y < block_rel_y2) {
-
-						# top
-						if(@y_velocity = 1) {
-							@y_rel_position += Values->SPEED * 2;
-						}
-						# bottom
-						else if(@y_velocity = -1) {
-							@y_rel_position -= Values->SPEED * 2;
-						};
-
-						# right
-						if(@x_velocity = 1) {
-							@x_rel_position -= Values->SPEED * 2;
-						}
-						# left
-						else if(@x_velocity = -1) {
-							@x_rel_position += Values->SPEED * 2;
-						};
 
 						return true;
 					};
