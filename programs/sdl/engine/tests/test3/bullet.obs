@@ -1,8 +1,8 @@
 use Game.SDL2;
 use Game.Engine;
 
-class Enemy {
-	@enemy : static : ImageSprite;
+class Bullet {
+	@bullet : static : ImageSprite;
 	@platform : static : Platform;
 	@game_map : Int[,];
 	
@@ -11,10 +11,7 @@ class Enemy {
 	
 	@x_velocity : Int;
 	@y_velocity : Int;
-	@at_bottom : Bool;
-
-	@is_alive : Bool;
-
+	
 	New(x : Int, y : Int) {
 		@game_map := @platform->GetMap();
 
@@ -24,46 +21,10 @@ class Enemy {
 
 	function : Init(platform : Platform) ~ Nil {
 		@platform := platform;
-		@enemy := @platform->GetEngine()->AddImageSprite("images/enemy.png");
+		@bullet := @platform->GetEngine()->AddImageSprite("images/bullet.png");
 	}
 
-	method : public : GetRelX() ~ Int {	
-		return @x_rel_position;
-	}
-
-	method : public : GetRelY() ~ Int {	
-		return @y_rel_position;
-	}
-
-	method : public : SetRelX(x_rel_position : Int) ~ Nil {	
-		@x_rel_position := x_rel_position;
-	}
-
-	method : public : SetXVelocity(x_velocity : Int) ~ Nil {
-		@x_velocity := x_velocity;
-	}
-
-	method : public : SetYVelocity(y_velocity : Int) ~ Nil {
-		@y_velocity := y_velocity;
-	}
-
-	method : public : IsAlive() ~ Bool {
-		return @is_alive;
-	}
-
-	method : public : SetAlive(is_alive : Bool) ~ Nil {
-		@is_alive := is_alive;
-	}
-
-	method : public : GetHeight() ~ Int {
-		return @enemy->GetHeight();
-	}
-
-	method : public : GetWidth() ~ Int {
-		return @enemy->GetWidth();
-	}
-
-	method : public : native : HandleEvents(player : Player) ~ Nil {
+	method : public : native : HandleEvents(enemy : Enemy, player : Player) ~ Nil {
 		frame_count := @platform->GetFrameCount();
 
 		if(@y_velocity = 1) {
@@ -74,10 +35,6 @@ class Enemy {
 		};
 
 		if(<>BlockCollision(player->GetMapX())) {
-			if(frame_count % 5 = 0 & <>@at_bottom) {				
-				@y_velocity := -1;
-			};
-				
 			camera_shift := player->GetCameraShift();
 			if(@x_velocity = 1) {
 				if(camera_shift = 1) {
@@ -104,27 +61,25 @@ class Enemy {
 			};
 		};
 
-		if(PlayerCollision(player)) {
-			player->SetAlive(false);
+		if(EnemyCollision(enemy)) {
+			enemy->SetAlive(false);
 		};
 	}
 
-	method : native : PlayerCollision(player : Player) ~ Bool {
-		player_rel_x := player->GetRelX();
-		player_rel_y := player->GetRelY();
-		player_rel_x2 := player_rel_x + player->GetWidth();
-		player_rel_y2 := player_rel_y + player->GetHeight();
+
+	method : native : EnemyCollision(enemy : Enemy) ~ Bool {
+		enemy_rel_x := enemy->GetRelX();
+		enemy_rel_y := enemy->GetRelY();
+		enemy_rel_x2 := enemy_rel_x + enemy->GetWidth();
+		enemy_rel_y2 := enemy_rel_y + enemy->GetHeight();
 
 		rel_y := @y_rel_position;
-		rel_y2 := rel_y + @enemy->GetHeight();
-		if(player->JumpHeight() > 0) {
-			rel_y2 -= 8;
-		};
+		rel_y2 := rel_y + @bullet->GetHeight();
 		rel_x := @x_rel_position;
 		rel_x2 := rel_x + Values->BLOCK_WIDTH;
 
-		if(rel_x2 > player_rel_x & rel_x < player_rel_x2 & 
-				rel_y2 > player_rel_y & rel_y < player_rel_y2) {			
+		if(rel_x2 > enemy_rel_x & rel_x < enemy_rel_x2 & 
+				rel_y2 > enemy_rel_y & rel_y < enemy_rel_y2) {			
 			return true;
 		};
 
@@ -154,7 +109,7 @@ class Enemy {
 					block_rel_y2 := block_rel_y + Values->BLOCK_HEIGHT;
 
 					rel_y := @y_rel_position;
-					rel_y2 := rel_y + @enemy->GetHeight();
+					rel_y2 := rel_y + @bullet->GetHeight();
 					rel_x := @x_rel_position;
 					rel_x2 := rel_x + Values->BLOCK_WIDTH;
 
@@ -164,25 +119,19 @@ class Enemy {
 						# top
 						if(@y_velocity = 1) {
 							@y_rel_position += Values->SPEED * 2;
-							@y_velocity := 0;
 						}
 						# bottom
 						else if(@y_velocity = -1) {
 							@y_rel_position -= Values->SPEED * 2;
-							@y_velocity := 0;
-							@x_velocity := 1;
-							@at_bottom := true;
 						};
 
 						# right
 						if(@x_velocity = 1) {
 							@x_rel_position -= Values->SPEED * 2;
-							@x_velocity := -1;
 						}
 						# left
 						else if(@x_velocity = -1) {
 							@x_rel_position += Values->SPEED * 2;
-							@x_velocity := 1;
 						};
 
 						return true;
@@ -195,6 +144,6 @@ class Enemy {
 	}
 
 	method : public : Render() ~ Nil {
-		@enemy->Render(@x_rel_position, @y_rel_position);
+		@bullet->Render(@x_rel_position, @y_rel_position);
 	}
 }
