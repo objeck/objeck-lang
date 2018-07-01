@@ -66,10 +66,7 @@ class Enemy {
 	method : public : native : HandleEvents(player : Player) ~ Nil {
 		frame_count := @platform->GetFrameCount();
 
-		if(<>@is_alive) {
-			@y_rel_position += Values->SPEED / 2;
-		}
-		else {
+		if(@is_alive) {
 			if(@y_velocity = 1) {
 				@y_rel_position -= Values->SPEED * 2;
 			}
