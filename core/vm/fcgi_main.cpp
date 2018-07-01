@@ -100,28 +100,28 @@ int main(const int argc, const char* argv[])
   FCGX_ParamArray envp;
 
   // execute method
-  long* op_stack = new long[CALC_STACK_SIZE];
+  size_t* op_stack = new size_t[CALC_STACK_SIZE];
   long* stack_pos = new long;
 
   while(mthd && (FCGX_Accept(&in, &out, &err, &envp) >= 0)) {
     // create request and response
-    long* req_obj = MemoryManager::AllocateObject(L"FastCgi.Request",  op_stack, *stack_pos, false);
-    long* res_obj = MemoryManager::AllocateObject(L"FastCgi.Response", op_stack, *stack_pos, false);
+    size_t* req_obj = MemoryManager::AllocateObject(L"FastCgi.Request",  op_stack, *stack_pos, false);
+    size_t* res_obj = MemoryManager::AllocateObject(L"FastCgi.Response", op_stack, *stack_pos, false);
 
     if(req_obj && res_obj) {
-      req_obj[0] = (long)in;
-      req_obj[1] = (long)envp;
+      req_obj[0] = (size_t)in;
+      req_obj[1] = (size_t)envp;
 
-      res_obj[0] = (long)out;
-      res_obj[1] = (long)err;
+      res_obj[0] = (size_t)out;
+      res_obj[1] = (size_t)err;
 
       // set method calling parameters
-      op_stack[0] = (long)req_obj;
-      op_stack[1] = (long)res_obj;
+      op_stack[0] = (size_t)req_obj;
+      op_stack[1] = (size_t)res_obj;
       *stack_pos = 2;
 
       // execute method
-      intpr.Execute((long*)op_stack, (long*)stack_pos, 0, mthd, NULL, false);
+      intpr.Execute(op_stack, stack_pos, 0, mthd, NULL, false);
     }
     else {
       wcerr << L">>> Shared library call: Unable to allocate FastCgi.Request or FastCgi.Response <<<" << endl;

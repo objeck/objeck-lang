@@ -1,16 +1,25 @@
-consts Values {
-	A := 8,
-	B := 23,
-	C := 48
-}
-
 class Test {
-	function : Foo(v : Int) ~ Nil {
-		v->PrintLine();
+	function : Main(args : String[]) ~ Nil {
+		if(<>Foo()) {
+			"-- Good --"->PrintLine();
+			return;
+		};
+
+		if(<>Bar()) {
+			"-- Good --"->PrintLine();
+			return;
+		};
+
+		"Ok"->PrintLine();
+	}
+
+	function : Foo() ~ Bool {
+		return true;
+	}
+
+	function : Bar() ~ Bool {
+		return true;
 	}
 	
-	function : Main(args : String[]) ~ Nil {
-		v :=  Values->A * 1.5;
-		Foo(v);
-	}
+	
 }

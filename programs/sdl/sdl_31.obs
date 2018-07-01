@@ -3,7 +3,7 @@ Lesson 31
 http:# lazyfoo.net/tutorials/SDL/31_scrolling_backgrounds/index.php
 ~#
 
-use SDL2;
+use Game.SDL2;
 
 class LTexture {
 	@renderer : Renderer;
@@ -284,9 +284,6 @@ class Test {
 	}
 	
 	function : Init() ~ Bool {
-		# Initialization flag
-		success := true;
-
 		SCREEN_WIDTH := 640;
 		SCREEN_HEIGHT := 480;
 
@@ -332,7 +329,7 @@ class Test {
 	}
 	
 	function : LoadMedia() ~ Bool {
-		if(<>@dot->LoadFromFile("images/dot.bmp")) {
+		if(<>@dot->LoadFromFile("images/dot.png")) {
 			"Failed to load bg image"->ErrorLine();
 			return false;
 		};

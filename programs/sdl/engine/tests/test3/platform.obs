@@ -1,0 +1,280 @@
+use Game.SDL2;
+use Game.Engine;
+use Collection;
+
+class Platform {
+	@engine : GameEngine;
+	@game_map : Int[,];
+	@frame_count : Int;
+
+	@player : Player;
+	@block : ImageSprite;
+	
+	@enemies : List;
+	@bullets : List;
+
+	@bullet_fired : Bool;
+	
+	function : Main(args : String[]) ~ Nil {
+		platform := Platform->New();
+		platform->Run();
+	}
+
+	New() {
+		@engine := GameEngine->New(Values->SCREEN_WIDTH, Values->SCREEN_HEIGHT, "Engine Three");
+		@game_map := CreateMap();
+		@block := @engine->AddImageSprite("images/stone.png");
+		@player := Player->New(@self);
+
+		Enemy->Init(@self);		
+		@enemies := List->New();
+
+		Bullet->Init(@self);
+		@bullets := List->New();
+	}
+
+	method : public : GetEngine() ~ GameEngine {
+		return @engine;
+	}
+
+	method : public : GetMap() ~ Int[,] {
+		return @game_map;
+	}
+
+	method : public : GetFrameCount() ~ Int {
+		return @frame_count;
+	}
+
+	method : Run() ~ Nil {
+		if(@engine->IsOk()) {
+			e := @engine->GetEvent();
+
+			quit := false;
+			while(<>quit) {
+				@engine->FrameStart();
+				
+				# process input
+				while(e->Poll() <> 0) {
+					if(e->GetType() = EventType->SDL_QUIT) {
+						quit := true;
+					};
+					ProcessInput(e);
+				};
+
+				HandleEvents();
+				Render();
+
+				@engine->FrameEnd();
+			};
+		}
+		else {
+			"--- Error Initializing Game Environment ---"->ErrorLine();
+			return;
+		};
+
+		leaving {
+			@engine->Quit();
+		};
+	}
+	
+	method : public : ProcessInput(e : Event) ~ Nil {
+		# Joystick
+		if(e->GetType() = EventType->SDL_JOYHATMOTION) {
+			if(e->GetJHat()->GetWhich() = 0 ) {
+				select(e->GetJHat()->GetValue()) {
+					# release pad
+					label 0: {
+						@player->SetXVelocity(0);
+					}
+
+					# right pad
+					label 2: {
+		            	@player->SetXVelocity(1);
+					}
+
+					# left pad
+					label 8: {
+						@player->SetXVelocity(-1);
+					}					
+				};
+			};
+		}
+		else if(e->GetType() = EventType->SDL_JOYBUTTONDOWN) {
+			# 'a' button
+			if(e->GetJButton()->GetButton() = 0) {
+				if(<>@player->IsJumping()) {
+            		@player->SetJumping(true);
+            	};
+			}
+			# 'b' button
+			else if(e->GetJButton()->GetButton() = 1) {
+				if(<>@bullet_fired) {
+        			@bullet_fired := true;
+        		};
+			};
+		}
+		# Keyboard
+		else if(e->GetType() = EventType->SDL_KEYDOWN & e->GetKey()->GetRepeat() = 0) {
+	        select(e->GetKey()->GetKeysym()->GetScancode()) {    	
+	        	label Scancode->SDL_SCANCODE_UP: {
+	        		if(<>@bullet_fired) {
+	        			@bullet_fired := true;
+	        		};
+	            }
+
+	            label Scancode->SDL_SCANCODE_LEFT: {
+	            	@player->SetXVelocity(-1);
+	            }
+
+	            label Scancode->SDL_SCANCODE_RIGHT: {
+	            	@player->SetXVelocity(1);
+	            }
+
+	            label Scancode->SDL_SCANCODE_SPACE: {
+	            	if(@player->JumpHeight() = 0) {
+            			@player->SetJumping(true);
+            		};
+	            }
+	        };
+	    }
+	    else if(e->GetType() = EventType->SDL_KEYUP & e->GetKey()->GetRepeat() = 0) {
+	        select(e->GetKey()->GetKeysym()->GetScancode()) {
+	        	label Scancode->SDL_SCANCODE_LEFT:
+	            label Scancode->SDL_SCANCODE_RIGHT: {
+	            	@player->SetXVelocity(0);
+	            }
+	        };
+	    };   
+	}
+
+	method : native : HandleEvents() ~ Nil {
+		@frame_count += 1;
+		if(@frame_count >= @engine->GetFps()) {
+			@frame_count := 0;
+		};
+		@player->HandleEvents();
+
+		if(@bullet_fired & @bullets->Size() < 6) {
+"--- SHOT ---"->PrintLine();
+			@bullets->AddBack(Bullet->New(@player->GetRelX() + 14, @player->GetRelY() + 28));
+			@bullet_fired := false;
+		};
+
+		@enemies->Rewind();
+		while(@enemies->More()) {
+			enemy := @enemies->Get()->As(Enemy);			
+			# out of range
+			if(enemy->GetRelX() < 0 | <>enemy->IsAlive()) {
+				@enemies->Remove();
+			}
+			else {
+				enemy->HandleEvents(@player);
+			};
+
+			# check bullet
+			@bullets->Rewind();
+			while(@bullets->More()) {
+				bullet := @bullets->Get()->As(Bullet);
+				bullet->HandleEvents(enemy, @player);
+				if(<>bullet->IsAlive()) {
+					@bullets->Remove();
+				};
+				@bullets->Next();
+			};
+
+			@enemies->Next();
+		};
+	}
+
+	method : Render() ~ Nil {
+		# render background
+		@player->RenderBackground();
+		
+		# calculate camera view
+		dims := @game_map->Size();		
+		start_x := @player->GetMapX() / Values->BLOCK_WIDTH;
+		if(start_x < 0) {
+			start_x := 0;
+		};
+
+		end_x := start_x + 26; # could be calculated using screen and block width
+		if(end_x >= dims[1]) {
+			end_x := dims[1] - 1;
+		};
+
+		# render blocks
+		for(x := start_x; x < end_x; x += 1;) {
+			rel_x := x * Values->BLOCK_WIDTH - @player->GetMapX();
+			for(y := 0; y < dims[0]; y += 1;) {
+				rel_y := y * Values->BLOCK_HEIGHT;
+				select(@game_map[y, x]) {
+					label 1: {
+						@block->Render(rel_x, rel_y);
+					}
+
+					label 2: {
+						if(x < 24) {
+							@enemies->AddBack(Enemy->New(rel_x, rel_y));
+							@game_map[y, x] := 0;
+						};
+					}
+				};
+			};
+		};
+
+		# render player
+		@player->RenderPlayer();
+
+		# render enemy
+		@enemies->Rewind();
+		while(@enemies->More()) {
+			@enemies->Get()->As(Enemy)->Render();
+			@enemies->Next();
+		};
+
+
+		# render bullets
+		@bullets->Rewind();
+		while(@bullets->More()) {
+			@bullets->Get()->As(Bullet)->Render();
+			@bullets->Next();
+		};
+
+		@engine->Show();
+	}
+
+	method : native : CreateMap() ~ Int[,] {
+		game_map := [
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
+			[0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2,   0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0,]
+			[0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0,   0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1,]
+			[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0,]
+			[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,]
+		];
+
+		return game_map;
+	}
+}
+
+consts Values {
+	SCREEN_WIDTH := 800,
+	SCREEN_HEIGHT := 640,
+	BLOCK_WIDTH := 32,
+	BLOCK_HEIGHT := 32,
+	SPEED := 2
+}

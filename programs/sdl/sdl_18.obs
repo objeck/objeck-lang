@@ -3,7 +3,7 @@ Lesson 18
 http://lazyfoo.net/tutorials/SDL/18_key_states/index.php
 ~#
 
-use SDL2;
+use Game.SDL2;
 
 class LTexture {
 	@renderer : Renderer;
@@ -181,11 +181,8 @@ class Test {
 	}
 	
 	function : Init() ~ Bool {
-		# Initialization flag
-		success := true;
-
 		# Initialize SDL
-		if(Core->Init(Flags->SDL_INIT_VIDEO) < 0) {
+		if(Core->Init(HardwareFlags->SDL_INIT_VIDEO) < 0) {
 			"SDL could not initialize!"->ErrorLine();
 			return false;
 		};
@@ -204,15 +201,15 @@ class Test {
 		};
 
 		# Get window surface
-		@renderer := Renderer->New(@window, -1, (RendererFlags->SDL_RENDERER_ACCELERATED->As(Int) 
-			and RendererFlags->SDL_RENDERER_PRESENTVSYNC->As(Int)));
+		@renderer := Renderer->New(@window, -1, (RendererFlags->SDL_RENDERER_ACCELERATED
+			and RendererFlags->SDL_RENDERER_PRESENTVSYNC));
 		if(@renderer->IsNull()) {
 			"Cannot create renderer!"->ErrorLine();
 			return false;
 		};
 		@renderer->SetDrawColor(0xFF, 0xFF, 0xFF, 0xFF);
 
-		img_flags := ImageFlags->IMG_INIT_PNG->As(Int);
+		img_flags := ImageFlags->IMG_INIT_PNG;
 		if((Image->Init(img_flags) and img_flags) = 0) {
 			"SDL image could not initialize!"->ErrorLine();
 			return false;
@@ -223,7 +220,7 @@ class Test {
 		@down_texture := LTexture->New(@renderer);
 		@left_texture := LTexture->New(@renderer);
 		@right_texture := LTexture->New(@renderer);
-		
+ #~ ~#		
 		return true;
 	}
 	

@@ -8,6 +8,10 @@ obc -src ..\..\..\..\programs\sdl\engine\tests\%1.obs -lib collect.obl,sdl.obl,s
 REM devenv ..\..\..\lib\sdl\sdl\sdl.sln  /rebuild
 copy /y ..\..\..\lib\sdl\sdl\Debug\libobjk_sdl.dll ..\lib\native
 copy /y ..\..\..\lib\sdl\lib\x86\*.dll .
+
+rmdir /s /q images
+mkdir images
+xcopy /e ..\..\..\..\programs\sdl\engine\tests\media\images\*.png images\
 obr ..\..\%1.obe
 )
 cd ..\..
