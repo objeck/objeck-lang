@@ -24,6 +24,7 @@ class Enemy {
 	New(x : Int, y : Int) {
 		@x_rel_position := x;
 		@y_rel_position := y;
+		@is_alive := true;
 	}
 
 	method : public : GetRelX() ~ Int {	
@@ -65,46 +66,51 @@ class Enemy {
 	method : public : native : HandleEvents(player : Player) ~ Nil {
 		frame_count := @platform->GetFrameCount();
 
-		if(@y_velocity = 1) {
-			@y_rel_position -= Values->SPEED * 2;
+		if(<>@is_alive) {
+			@y_rel_position += Values->SPEED / 2;
 		}
-		else if(@y_velocity = -1) {
-			@y_rel_position += Values->SPEED * 2;
-		};
-
-		if(<>BlockCollision(player->GetMapX())) {
-			if(frame_count % 5 = 0 & <>@at_bottom) {				
-				@y_velocity := -1;
-			};
-				
-			camera_shift := player->GetCameraShift();
-			if(@x_velocity = 1) {
-				if(camera_shift = 1) {
-					@x_rel_position += Values->SPEED / 4;	
-				}
-				else if(camera_shift = -1) {
-
-					@x_rel_position += Values->SPEED * 2;	
-				}
-				else {
-					@x_rel_position += Values->SPEED;
-				};
+		else {
+			if(@y_velocity = 1) {
+				@y_rel_position -= Values->SPEED * 2;
 			}
-			else if(@x_velocity = -1) {
-				if(camera_shift = 1) {
-					@x_rel_position -= Values->SPEED * 2;	
+			else if(@y_velocity = -1) {
+				@y_rel_position += Values->SPEED * 2;
+			};
+
+			if(<>BlockCollision(player->GetMapX())) {
+			
+				if(frame_count % 5 = 0 & <>@at_bottom) {				
+					@y_velocity := -1;
+				};
+					
+				camera_shift := player->GetCameraShift();
+				if(@x_velocity = 1) {
+					if(camera_shift = 1) {
+						@x_rel_position += Values->SPEED / 4;	
+					}
+					else if(camera_shift = -1) {
+						@x_rel_position += Values->SPEED * 2;	
+					}
+					else {
+						@x_rel_position += Values->SPEED;
+					};
 				}
-				else if(camera_shift = -1) {
-					@x_rel_position -= Values->SPEED / 4;	
-				}
-				else {
-					@x_rel_position -= Values->SPEED;
+				else if(@x_velocity = -1) {
+					if(camera_shift = 1) {
+						@x_rel_position -= Values->SPEED * 2;	
+					}
+					else if(camera_shift = -1) {
+						@x_rel_position -= Values->SPEED / 4;	
+					}
+					else {
+						@x_rel_position -= Values->SPEED;
+					};
 				};
 			};
-		};
 
-		if(PlayerCollision(player)) {
-			player->SetAlive(false);
+			if(PlayerCollision(player)) {
+				player->SetAlive(false);
+			};
 		};
 	}
 

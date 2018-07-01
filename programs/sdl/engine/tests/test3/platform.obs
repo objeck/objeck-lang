@@ -162,21 +162,23 @@ class Platform {
 
 		@enemies->Rewind();
 		while(@enemies->More()) {
-			# update enemies
 			enemy := @enemies->Get()->As(Enemy);			
-			if(enemy->GetRelX() < 0) {
+			# out of range
+			if(enemy->GetRelX() < 0 | <>enemy->IsAlive()) {
 				@enemies->Remove();
-#  "--- Enemy removed ---"->PrintLine();
 			}
 			else {
 				enemy->HandleEvents(@player);
 			};
 
-			# update bullets
+			# check bullet
 			@bullets->Rewind();
 			while(@bullets->More()) {
 				bullet := @bullets->Get()->As(Bullet);
 				bullet->HandleEvents(enemy, @player);
+				if(<>bullet->IsAlive()) {
+					@bullets->Remove();
+				};
 				@bullets->Next();
 			};
 

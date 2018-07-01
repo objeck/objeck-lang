@@ -11,6 +11,8 @@ class Bullet {
 	
 	@x_velocity : Int;
 	@y_velocity : Int;
+
+	@is_alive : Bool;
 	
 	function : Init(platform : Platform) ~ Nil {
 		@platform := platform;
@@ -22,11 +24,16 @@ class Bullet {
 		@x_rel_position := x;
 		@y_rel_position := y;
 		@x_velocity := 1;
+		@is_alive := true;
+	}
+
+	method : public : IsAlive() ~ Bool {
+		return @is_alive;
 	}
 
 	method : public : native : HandleEvents(enemy : Enemy, player : Player) ~ Nil {
 		frame_count := @platform->GetFrameCount();
-		
+
 		if(@x_velocity = 1) {
 			@x_rel_position += Values->SPEED * 2;
 		};
@@ -46,7 +53,17 @@ class Bullet {
 			};
 		};
 
+		if(BlockCollision(player->GetMapX())) {
+			@is_alive := false;
+			@x_rel_position := -1;
+			@y_rel_position := -1;
+
+		};
+
 		if(EnemyCollision(enemy)) {
+			@is_alive := false;
+			@x_rel_position := -1;
+			@y_rel_position := -1;
 			enemy->SetAlive(false);
 		};
 	}
@@ -64,7 +81,8 @@ class Bullet {
 		rel_x2 := rel_x + Values->BLOCK_WIDTH;
 
 		if(rel_x2 > enemy_rel_x & rel_x < enemy_rel_x2 & 
-				rel_y2 > enemy_rel_y & rel_y < enemy_rel_y2) {			
+				rel_y2 > enemy_rel_y & rel_y < enemy_rel_y2) {
+"--- HIT ---"->PrintLine();
 			return true;
 		};
 
