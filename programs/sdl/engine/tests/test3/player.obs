@@ -34,7 +34,7 @@ class Player {
 	method : public : GetFacingLeft() ~ Bool {
 		return @player->GetFlip() = RendererFlip->SDL_FLIP_NONE;
 	}
-	
+
 	method : public : GetMapX() ~ Int {
 		return @x_map_position - @x_rel_position;
 	}
@@ -216,7 +216,7 @@ class Player {
 			block_rel_x := x * Values->BLOCK_WIDTH - (@x_map_position - @x_rel_position);
 			for(y := 0; y < dims[0]; y += 1;) {
 				block_rel_y := y * Values->BLOCK_HEIGHT;
-				if(@game_map[y, x] =  1) {
+				if(@game_map[y, x] =  1 | @game_map[y, x] =  3) {
 					block_rel_x2 := block_rel_x + Values->BLOCK_WIDTH;
 					block_rel_y2 := block_rel_y + Values->BLOCK_HEIGHT;
 
