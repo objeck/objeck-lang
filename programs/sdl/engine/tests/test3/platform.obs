@@ -156,7 +156,7 @@ class Platform {
 
 		if(@bullet_fired & @bullets->Size() < 6) {
 "--- SHOT ---"->PrintLine();
-			@bullets->AddBack(Bullet->New(@player->GetRelX(), @player->GetRelY() + 28));
+			@bullets->AddBack(Bullet->New(@player->GetRelX() + 14, @player->GetRelY() + 28));
 			@bullet_fired := false;
 		};
 
@@ -213,7 +213,7 @@ class Platform {
 					}
 
 					label 2: {
-						if(y < 24) {
+						if(x < 24) {
 							@enemies->AddBack(Enemy->New(rel_x, rel_y));
 							@game_map[y, x] := 0;
 						};
