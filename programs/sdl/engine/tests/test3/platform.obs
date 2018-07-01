@@ -152,37 +152,41 @@ class Platform {
 		if(@frame_count >= @engine->GetFps()) {
 			@frame_count := 0;
 		};
-		@player->HandleEvents();
 
-		if(@bullet_fired & @bullets->Size() < 6) {
-"--- SHOT ---"->PrintLine();
-			@bullets->AddBack(Bullet->New(@player->GetRelX() + 14, @player->GetRelY() + 28));
-			@bullet_fired := false;
-		};
+		if(@player->IsAlive()) {
+			@player->HandleEvents();
 
-		@enemies->Rewind();
-		while(@enemies->More()) {
-			enemy := @enemies->Get()->As(Enemy);			
-			# out of range
-			if(enemy->GetRelX() < 0 | <>enemy->IsAlive()) {
-				@enemies->Remove();
-			}
-			else {
-				enemy->HandleEvents(@player);
+			if(@bullet_fired & @bullets->Size() < 6) {
+	"--- SHOT ---"->PrintLine();
+				@bullets->AddBack(Bullet->New(@player->GetRelX() + 14, 
+					@player->GetRelY() + 28, @player->GetFacingLeft() ? 1 : -1));
+				@bullet_fired := false;
 			};
 
-			# check bullet
-			@bullets->Rewind();
-			while(@bullets->More()) {
-				bullet := @bullets->Get()->As(Bullet);
-				bullet->HandleEvents(enemy, @player);
-				if(<>bullet->IsAlive()) {
-					@bullets->Remove();
+			@enemies->Rewind();
+			while(@enemies->More()) {
+				enemy := @enemies->Get()->As(Enemy);			
+				# out of range
+				if(enemy->GetRelX() < 0 | <>enemy->IsAlive()) {
+					@enemies->Remove();
+				}
+				else {
+					enemy->HandleEvents(@player);
 				};
-				@bullets->Next();
-			};
 
-			@enemies->Next();
+				# check bullet
+				@bullets->Rewind();
+				while(@bullets->More()) {
+					bullet := @bullets->Get()->As(Bullet);
+					bullet->HandleEvents(enemy, @player);
+					if(<>bullet->IsAlive()) {
+						@bullets->Remove();
+					};
+					@bullets->Next();
+				};
+
+				@enemies->Next();
+			};
 		};
 	}
 
@@ -213,7 +217,7 @@ class Platform {
 					}
 
 					label 2: {
-						if(x < 24) {
+						if(y < 24) {
 							@enemies->AddBack(Enemy->New(rel_x, rel_y));
 							@game_map[y, x] := 0;
 						};
