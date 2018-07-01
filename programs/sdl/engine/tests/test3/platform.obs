@@ -131,7 +131,7 @@ class Platform {
 	            }
 
 	            label Scancode->SDL_SCANCODE_SPACE: {
-	            	if(<>@player->IsJumping()) {
+	            	if(@player->JumpHeight() = 0) {
             			@player->SetJumping(true);
             		};
 	            }
