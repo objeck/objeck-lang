@@ -157,7 +157,7 @@ class Platform {
 			@player->HandleEvents();
 
 			if(@bullet_fired & @bullets->Size() < 6) {
-	"--- SHOT ---"->PrintLine();
+	"--- SHOT FIRED ---"->PrintLine();
 				@bullets->AddBack(Bullet->New(@player->GetRelX() + 14, 
 					@player->GetRelY() + 28, @player->GetFacingLeft() ? 1 : -1));
 				@bullet_fired := false;
