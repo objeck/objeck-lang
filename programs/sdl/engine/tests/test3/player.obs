@@ -84,6 +84,10 @@ class Player {
 		return @jumping;
 	}
 
+	method : public : JumpHeight() ~ Int {
+		return @jump_height;
+	}
+
 	method : public : SetJumping(jumping : Bool) ~ Nil {
 		if(jumping) {
 			@jumping := true;
@@ -188,10 +192,6 @@ class Player {
 				};
 			};
 		};
-	}
-
-	method : public : JumpHeight() ~ Int {
-		return @jump_height;
 	}
 
 	method : native : BlockCollision() ~ Bool {
