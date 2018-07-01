@@ -31,6 +31,10 @@ class Player {
 		@is_alive := true;
 	}
 
+	method : public : GetFacingLeft() ~ Bool {
+		return @player->GetFlip() = RendererFlip->SDL_FLIP_NONE;
+	}
+	
 	method : public : GetMapX() ~ Int {
 		return @x_map_position - @x_rel_position;
 	}
