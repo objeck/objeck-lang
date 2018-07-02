@@ -13,7 +13,6 @@ class Player {
 	@y_velocity : Int;
 	@jumping : Bool;
 	@jump_height : Int;
-	@last_height : Int;
 	@camera_shift : Int;
 	@is_alive : Bool;
 
@@ -23,10 +22,10 @@ class Player {
 	New(platform : Platform) {
 		@platform := platform;
 		@game_map := @platform->GetMap();
-		@player := @platform->GetEngine()->AddAnimatedImageSprite("images/walk.png", 9);
+		@player := @platform->GetEngine()->AddAnimatedImageSprite("images/walk.png", 10);
 		@y_rel_position := Values->SCREEN_HEIGHT - 256;
 
-		@background := @platform->GetEngine()->AddImageSprite("images/background.png");
+		@background := @platform->GetEngine()->AddImageSprite("images/hills.png");
 		@is_alive := true;
 	}
 
@@ -103,9 +102,10 @@ class Player {
 
 		# player died!
 		if(<>@is_alive) {
+			@frame := @player->GetClipCount() - 1;
 			@y_rel_position += Values->SPEED / 2;
 			if(@y_rel_position > Values->SCREEN_HEIGHT) {
-				Runtime->Exit(0);
+				@platform->EndGame();
 			};
 		}
 		else {
@@ -133,9 +133,8 @@ class Player {
 			};
 
 			if(<>BlockCollision()) {
-				# update walk frame
 				if(frame_count % 5 = 0) {
-					# apply gravity
+					# gravity
 					if(<>@jumping) {
 						@y_velocity := -1;
 					}
@@ -143,27 +142,27 @@ class Player {
 						@y_velocity := 1;
 					};
 
+					# walking
 					if(@x_velocity <> 0 & @jump_height = 0) {
 						@frame += 1;
-						if(@frame >= @player->GetClipCount() - 3) {
+						if(@frame >= @player->GetClipCount() - 4) {
 							@frame := 0;
 						};
 					};
 				}
-				# jumping
 				else if(@jump_height > 0 & @x_velocity <> 0) {
+					# jumping
 					if(@jumping) {
-						@frame := @player->GetClipCount() - 2;
+						@frame := @player->GetClipCount() - 3;
 					}
+					# falling
 					else {
-						@frame := @player->GetClipCount() - 1;
+						@frame := @player->GetClipCount() - 2;
 					};
 				}
-				# falling
-
-				# stand
+				# standing
 				else if(@x_velocity = 0) {
-					@frame :=  @player->GetClipCount() - 3;
+					@frame :=  @player->GetClipCount() - 4;
 				};
 
 				# move right
@@ -184,6 +183,7 @@ class Player {
 				# move left
 				else if(@x_velocity = -1) {
 					@x_rel_position -= Values->SPEED;
+					# check left bounds
 					if(@x_rel_position < Values->BLOCK_WIDTH * 2) {	
 						@x_velocity := 0;
 #~						
@@ -248,30 +248,23 @@ class Player {
 						else if(@y_velocity = -1) {
 							@y_rel_position -= Values->SPEED * 2;
 							@y_velocity := 0;
-
-							if(@jump_height > 0 & @x_velocity <> 0) {
-								@last_height := @jump_height;
-							};							
+							if(@jump_height > 0) {
+								@jump_height := 0;
+							};
 						};
 
 						# right
 						if(@x_velocity = 1) {
 							@x_map_position -= Values->SPEED;							
-							if(@jump_height > 0 & @last_height <> @jump_height) {
+							if(@jump_height > 0) {
 								@x_velocity := 0;
-							}
-							else {
-								@last_height := 0;
 							};
 						}
 						# left
 						else if(@x_velocity = -1) {
 							@x_map_position += Values->SPEED;
-							if(@jump_height > 0 & @last_height <> @jump_height) {
+							if(@jump_height > 0) {
 								@x_velocity := 0;
-							}
-							else {
-								@last_height := 0;
 							};
 						};
 
