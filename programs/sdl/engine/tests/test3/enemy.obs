@@ -124,13 +124,10 @@ class Enemy {
 		player_rel_x2 := player_rel_x + player->GetWidth();
 		player_rel_y2 := player_rel_y + player->GetHeight();
 
-		rel_y := @y_rel_position;
-		rel_y2 := rel_y + @enemy->GetHeight();
-		if(player->JumpHeight() > 0) {
-			rel_y2 -= 8;
-		};
-		rel_x := @x_rel_position;
-		rel_x2 := rel_x + Values->BLOCK_WIDTH;
+		rel_y := @y_rel_position + 8;
+		rel_y2 := rel_y + @enemy->GetHeight() - 8;
+		rel_x := @x_rel_position + 8;
+		rel_x2 := rel_x + Values->BLOCK_WIDTH - 8;
 
 		if(rel_x2 > player_rel_x & rel_x < player_rel_x2 & 
 				rel_y2 > player_rel_y & rel_y < player_rel_y2) {			
@@ -170,16 +167,16 @@ class Enemy {
 					rel_x2 := rel_x + Values->BLOCK_WIDTH;
 
 					if(rel_x2 > block_rel_x & rel_x < block_rel_x2 & 
-						rel_y2 > block_rel_y & rel_y < block_rel_y2) {
+							rel_y2 > block_rel_y & rel_y < block_rel_y2) {
 
 						# top
 						if(@y_velocity = 1) {
-							@y_rel_position += Values->SPEED * 2;
+							@y_rel_position += Values->SPEED * 3;
 							@y_velocity := 0;
 						}
 						# bottom
 						else if(@y_velocity = -1) {
-							@y_rel_position -= Values->SPEED * 2;
+							@y_rel_position -= Values->SPEED * 3;
 							@y_velocity := 0;
 							@x_velocity := 1;
 							@at_bottom := true;
@@ -187,12 +184,12 @@ class Enemy {
 
 						# right
 						if(@x_velocity = 1) {
-							@x_rel_position -= Values->SPEED * 2;
+							@x_rel_position -= Values->SPEED * 3;
 							@x_velocity := -1;
 						}
 						# left
 						else if(@x_velocity = -1) {
-							@x_rel_position += Values->SPEED * 2;
+							@x_rel_position += Values->SPEED * 3;
 							@x_velocity := 1;
 						};
 
