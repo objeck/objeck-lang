@@ -130,7 +130,7 @@ class Platform {
 			quit_text->RenderedText("(Q)uit");
 
 			@engine->Clear();
-
+			
 			play_text->Render(Values->SCREEN_WIDTH / 2 - play_text->GetWidth() /2, Values->SCREEN_HEIGHT / 2 - 16);
 			quit_text->Render(Values->SCREEN_WIDTH / 2 - quit_text->GetWidth() /2, Values->SCREEN_HEIGHT / 2 + 16);
 
