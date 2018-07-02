@@ -86,7 +86,7 @@ class Platform {
 			@engine->FrameStart();
 			
 			# process input
-			while(e->Poll() <> 0) {
+			if(e->Wait() <> 0) {
 				if(e->GetType() = EventType->SDL_QUIT) {
 					quit := true;
 				}
