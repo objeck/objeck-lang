@@ -226,7 +226,7 @@ class Player {
 				block_rel_y := y * Values->BLOCK_HEIGHT;
 
 				type := @game_map[y, x];
-				if(type > 0 & type < 5) {
+				if(type > 0 & type < 8) {
 					block_rel_x2 := block_rel_x + Values->BLOCK_WIDTH;
 					block_rel_y2 := block_rel_y + Values->BLOCK_HEIGHT;
 
@@ -236,36 +236,54 @@ class Player {
 					rel_x2 := rel_x + @player->GetWidth();
 
 					if(rel_x2 > block_rel_x & rel_x < block_rel_x2 & 
-						rel_y2 > block_rel_y & rel_y < block_rel_y2) {
+							rel_y2 > block_rel_y & rel_y < block_rel_y2) {
+						select(type) {
+							label 1:
+							label 2:
+							label 3:
+							label 4: {
+								# top
+								if(@y_velocity = 1) {
+									@y_rel_position += Values->SPEED * 2;
+									@jumping := false;
+									@y_velocity := 0;
+								}
+								# bottom
+								else if(@y_velocity = -1) {
+									@y_rel_position -= Values->SPEED * 2;
+									@y_velocity := 0;
+									if(@jump_height > 0) {
+										@jump_height := 0;
+									};
+								};
 
-						# top
-						if(@y_velocity = 1) {
-							@y_rel_position += Values->SPEED * 2;
-							@jumping := false;
-							@y_velocity := 0;
-						}
-						# bottom
-						else if(@y_velocity = -1) {
-							@y_rel_position -= Values->SPEED * 2;
-							@y_velocity := 0;
-							if(@jump_height > 0) {
-								@jump_height := 0;
-							};
-						};
+								# right
+								if(@x_velocity = 1) {
+									@x_map_position -= Values->SPEED;							
+									if(@jump_height > 0) {
+										@x_velocity := 0;
+									};
+								}
+								# left
+								else if(@x_velocity = -1) {
+									@x_map_position += Values->SPEED;
+									if(@jump_height > 0) {
+										@x_velocity := 0;
+									};
+								};
+							}
 
-						# right
-						if(@x_velocity = 1) {
-							@x_map_position -= Values->SPEED;							
-							if(@jump_height > 0) {
-								@x_velocity := 0;
-							};
-						}
-						# left
-						else if(@x_velocity = -1) {
-							@x_map_position += Values->SPEED;
-							if(@jump_height > 0) {
-								@x_velocity := 0;
-							};
+							# hamburger
+							label 5: {
+								@platform->GotHamburger();	
+								@game_map[y, x] := 0;					
+							}
+
+							# gem
+							label 6: {
+								@platform->GotGem();	
+								@game_map[y, x] := 0;					
+							}
 						};
 
 						return true;

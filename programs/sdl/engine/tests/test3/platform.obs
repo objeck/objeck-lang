@@ -13,6 +13,12 @@ class Platform {
 	@block2 : ImageSprite;
 	@block3 : ImageSprite;
 	@block4 : ImageSprite;
+
+	@hamburger : AnimatedImageSprite;
+	@hamburger_frame : Int;
+
+	@gem : AnimatedImageSprite;
+	@gem_frame : Int;
 	
 	@enemies : List;
 	@bullets : List;
@@ -31,6 +37,10 @@ class Platform {
 		@block2 := @engine->AddImageSprite("images/block2.png");
 		@block3 := @engine->AddImageSprite("images/block3.png");
 		@block4 := @engine->AddImageSprite("images/block4.png");
+
+		@hamburger := @engine->AddAnimatedImageSprite("images/food.png", 5);
+		@gem := @engine->AddAnimatedImageSprite("images/gems.png", 6);
+		
 		@player := Player->New(@self);
 
 		Enemy->Init(@self);		
@@ -54,6 +64,14 @@ class Platform {
 
 	method : public : EndGame() ~ Nil {
 		@quit := true;
+	}
+
+	method : public : GotHamburger() ~ Nil {
+"--- Got Hamburger ---"->PrintLine();
+	}
+
+	method : public : GotGem() ~ Nil {
+"--- Got Gem ---"->PrintLine();
 	}
 
 	method : Run() ~ Nil {
@@ -124,7 +142,7 @@ class Platform {
         		};
 			};
 		}
-		# Keyboard
+		# keyboard
 		else if(e->GetType() = EventType->SDL_KEYDOWN & e->GetKey()->GetRepeat() = 0) {
 	        select(e->GetKey()->GetKeysym()->GetScancode()) {    	
 	        	label Scancode->SDL_SCANCODE_UP: {
@@ -162,6 +180,20 @@ class Platform {
 		@frame_count += 1;
 		if(@frame_count >= @engine->GetFps()) {
 			@frame_count := 0;
+		};
+
+		if(@frame_count % 5 = 0) {
+			@hamburger_frame += 1;
+			if(@hamburger_frame >= @hamburger->GetClipCount()) {
+				@hamburger_frame := 0;
+			};
+		};
+
+		if(@frame_count % 3 = 0) {
+			@gem_frame += 1;
+			if(@gem_frame >= @gem->GetClipCount()) {
+				@gem_frame := 0;
+			};
 		};
 
 		@player->HandleEvents();
@@ -238,6 +270,14 @@ class Platform {
 					}
 
 					label 5: {
+						@hamburger->Render(rel_x, rel_y, @hamburger_frame);
+					}
+
+					label 6: {
+						@gem->Render(rel_x, rel_y, @gem_frame);
+					}
+
+					label 7: {
 						if(y < 24) {
 							@enemies->AddBack(Enemy->New(rel_x, rel_y));
 							@game_map[y, x] := 0;
@@ -285,9 +325,9 @@ class Platform {
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
-			[0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
-			[0, 0, 0, 0, 0, 0, 3, 3, 3, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0,   0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
-			[0, 4, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 1, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0,   0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
+			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
+			[0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 5, 0, 6, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
 			[2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2,]
 			[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,]
 		];
