@@ -23,8 +23,7 @@ class Player {
 	New(platform : Platform) {
 		@platform := platform;
 		@game_map := @platform->GetMap();
-		@player := @platform->GetEngine()->AddAnimatedImageSprite("images/player.png", 6);
-		@frame := @player->GetClipCount() - 1;
+		@player := @platform->GetEngine()->AddAnimatedImageSprite("images/walk.png", 9);
 		@y_rel_position := Values->SCREEN_HEIGHT - 256;
 
 		@background := @platform->GetEngine()->AddImageSprite("images/background.png");
@@ -145,17 +144,26 @@ class Player {
 					};
 
 					if(@x_velocity <> 0 & @jump_height = 0) {
-						@frame -= 1;
-						if(@frame < 0) {
-							@frame :=  @player->GetClipCount() - 2;
+						@frame += 1;
+						if(@frame >= @player->GetClipCount() - 3) {
+							@frame := 0;
 						};
 					};
 				}
+				# jumping
 				else if(@jump_height > 0 & @x_velocity <> 0) {
-					@frame :=  @player->GetClipCount() - 1;
+					if(@jumping) {
+						@frame := @player->GetClipCount() - 2;
+					}
+					else {
+						@frame := @player->GetClipCount() - 1;
+					};
 				}
+				# falling
+
+				# stand
 				else if(@x_velocity = 0) {
-					@frame :=  @player->GetClipCount() - 2;
+					@frame :=  @player->GetClipCount() - 3;
 				};
 
 				# move right
@@ -216,7 +224,9 @@ class Player {
 			block_rel_x := x * Values->BLOCK_WIDTH - (@x_map_position - @x_rel_position);
 			for(y := 0; y < dims[0]; y += 1;) {
 				block_rel_y := y * Values->BLOCK_HEIGHT;
-				if(@game_map[y, x] =  1 | @game_map[y, x] =  3) {
+
+				type := @game_map[y, x];
+				if(type > 0 & type < 5) {
 					block_rel_x2 := block_rel_x + Values->BLOCK_WIDTH;
 					block_rel_y2 := block_rel_y + Values->BLOCK_HEIGHT;
 

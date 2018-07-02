@@ -2,10 +2,11 @@ use Game.SDL2;
 use Game.Engine;
 
 class Enemy {
-	@enemy : static : ImageSprite;
+	@enemy : static : AnimatedImageSprite;
 	@platform : static : Platform;
 	@game_map : static : Int[,];
 	
+	@frame : Int;
 	@x_rel_position : Int;
 	@y_rel_position : Int;
 	
@@ -18,7 +19,7 @@ class Enemy {
 	function : Init(platform : Platform) ~ Nil {
 		@platform := platform;
 		@game_map := @platform->GetMap();
-		@enemy := @platform->GetEngine()->AddImageSprite("images/enemy.png");
+		@enemy := @platform->GetEngine()->AddAnimatedImageSprite("images/totem_walk.png", 7);
 	}
 
 	New(x : Int, y : Int) {
@@ -75,11 +76,17 @@ class Enemy {
 			};
 
 			if(<>BlockCollision(player->GetMapX())) {
-			
 				if(frame_count % 5 = 0 & <>@at_bottom) {				
 					@y_velocity := -1;
 				};
-					
+
+				if(frame_count % 7 = 0) {
+					@frame += 1;
+					if(@frame >= @enemy->GetClipCount() - 3) {
+						@frame := 0;
+					};
+				};
+
 				camera_shift := player->GetCameraShift();
 				if(@x_velocity = 1) {
 					if(camera_shift = 1) {
@@ -134,8 +141,8 @@ class Enemy {
 	}
 
 	method : native : BlockCollision(x_position : Int) ~ Bool {
-		# calculate camera view
 		dims := @game_map->Size();
+
 		start_x := x_position / Values->BLOCK_WIDTH - 2;
 		if(start_x < 0) {
 			start_x := 0;
@@ -151,7 +158,9 @@ class Enemy {
 			block_rel_x := x * Values->BLOCK_WIDTH - x_position;
 			for(y := 0; y < dims[0]; y += 1;) {
 				block_rel_y := y * Values->BLOCK_HEIGHT;
-				if(@game_map[y, x] =  1) {
+
+				type := @game_map[y, x];
+				if(type > 0 & type < 5) {
 					block_rel_x2 := block_rel_x + Values->BLOCK_WIDTH;
 					block_rel_y2 := block_rel_y + Values->BLOCK_HEIGHT;
 
@@ -197,6 +206,6 @@ class Enemy {
 	}
 
 	method : public : Render() ~ Nil {
-		@enemy->Render(@x_rel_position, @y_rel_position);
+		@enemy->Render(@x_rel_position, @y_rel_position, @frame);
 	}
 }
