@@ -23,9 +23,11 @@ class Platform {
 	@enemies : List;
 	@bullets : List;
 
+	@time : Int;
+	@time_text : TextSprite;
+
 	@score : Int;
 	@score_text : TextSprite;
-
 
 	@bullet_fired : Bool;
 	
@@ -41,8 +43,12 @@ class Platform {
 		@block2 := @engine->AddImageSprite("images/block2.png");
 		@block3 := @engine->AddImageSprite("images/block3.png");
 		@block4 := @engine->AddImageSprite("images/block4.png");
-		@score_text := @engine->AddTextSprite();
 
+		@score_text := @engine->AddTextSprite();
+		@time_text := @engine->AddTextSprite();
+		@time := 90;
+		@time_text->RenderedText("Time: {$@time}");
+		
 		@hamburger := @engine->AddAnimatedImageSprite("images/food.png", 5);
 		@gem := @engine->AddAnimatedImageSprite("images/gems.png", 6);
 		
@@ -188,6 +194,15 @@ class Platform {
 		};
 
 		@score_text->RenderedText("Score: {$@score}");
+		if(@frame_count % @engine->GetFps() = 0) {
+			@time -= 1;
+			if(@time < 0) {
+				@player->SetAlive(false);
+			}
+			else {
+				@time_text->RenderedText("Time: {$@time}");
+			};
+		};
 
 		if(@frame_count % 5 = 0) {
 			@hamburger_frame += 1;
@@ -312,7 +327,8 @@ class Platform {
 			@bullets->Next();
 		};
 
-		@score_text->Render(Values->SCREEN_WIDTH - 128, 16);
+		@time_text->Render(Values->SCREEN_WIDTH - 128, 16);
+		@score_text->Render(Values->SCREEN_WIDTH - 128, 48);
 
 		@engine->Show();
 	}
