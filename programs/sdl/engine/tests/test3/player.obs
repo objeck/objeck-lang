@@ -29,7 +29,7 @@ class Player {
 		@is_alive := true;
 	}
 
-	method : public : GetFacingLeft() ~ Bool {
+	method : public : GetFacingRight() ~ Bool {
 		return @player->GetFlip() = RendererFlip->SDL_FLIP_NONE;
 	}
 

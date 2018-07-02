@@ -311,7 +311,7 @@ class Platform {
 		if(@bullet_fired & @bullets->Size() < 6) {
 "--- SHOT FIRED ---"->PrintLine();
 			@bullets->AddBack(Bullet->New(@player->GetRelX() + 16, 
-				@player->GetRelY() + 32, @player->GetFacingLeft() ? 1 : -1));
+				@player->GetRelY() + 32, @player->GetFacingRight() ? 1 : -1));
 			@bullet_fired := false;
 		};
 
