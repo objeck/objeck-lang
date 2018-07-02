@@ -23,6 +23,10 @@ class Platform {
 	@enemies : List;
 	@bullets : List;
 
+	@score : Int;
+	@score_text : TextSprite;
+
+
 	@bullet_fired : Bool;
 	
 	function : Main(args : String[]) ~ Nil {
@@ -37,6 +41,7 @@ class Platform {
 		@block2 := @engine->AddImageSprite("images/block2.png");
 		@block3 := @engine->AddImageSprite("images/block3.png");
 		@block4 := @engine->AddImageSprite("images/block4.png");
+		@score_text := @engine->AddTextSprite();
 
 		@hamburger := @engine->AddAnimatedImageSprite("images/food.png", 5);
 		@gem := @engine->AddAnimatedImageSprite("images/gems.png", 6);
@@ -67,11 +72,11 @@ class Platform {
 	}
 
 	method : public : GotHamburger() ~ Nil {
-"--- Got Hamburger ---"->PrintLine();
+		@score += 10;
 	}
 
 	method : public : GotGem() ~ Nil {
-"--- Got Gem ---"->PrintLine();
+		@score += 25;
 	}
 
 	method : Run() ~ Nil {
@@ -181,6 +186,8 @@ class Platform {
 		if(@frame_count >= @engine->GetFps()) {
 			@frame_count := 0;
 		};
+
+		@score_text->RenderedText("Score: {$@score}");
 
 		if(@frame_count % 5 = 0) {
 			@hamburger_frame += 1;
@@ -304,6 +311,8 @@ class Platform {
 			@bullets->Get()->As(Bullet)->Render();
 			@bullets->Next();
 		};
+
+		@score_text->Render(Values->SCREEN_WIDTH - 128, 16);
 
 		@engine->Show();
 	}
