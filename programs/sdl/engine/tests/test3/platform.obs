@@ -8,8 +8,10 @@ class Platform {
 	@frame_count : Int;
 
 	@player : Player;
-	@block : ImageSprite;
+	@block1 : ImageSprite;
 	@block2 : ImageSprite;
+	@block3 : ImageSprite;
+	@block4 : ImageSprite;
 	
 	@enemies : List;
 	@bullets : List;
@@ -24,8 +26,10 @@ class Platform {
 	New() {
 		@engine := GameEngine->New(Values->SCREEN_WIDTH, Values->SCREEN_HEIGHT, "Engine Three");
 		@game_map := CreateMap();
-		@block := @engine->AddImageSprite("images/test0.png");
-		@block2 := @engine->AddImageSprite("images/test1.png");
+		@block1 := @engine->AddImageSprite("images/block1.png");
+		@block2 := @engine->AddImageSprite("images/block2.png");
+		@block3 := @engine->AddImageSprite("images/block3.png");
+		@block4 := @engine->AddImageSprite("images/block4.png");
 		@player := Player->New(@self);
 
 		Enemy->Init(@self);		
@@ -159,8 +163,8 @@ class Platform {
 
 		if(@bullet_fired & @bullets->Size() < 6) {
 "--- SHOT FIRED ---"->PrintLine();
-			@bullets->AddBack(Bullet->New(@player->GetRelX() + 14, 
-				@player->GetRelY() + 28, @player->GetFacingLeft() ? 1 : -1));
+			@bullets->AddBack(Bullet->New(@player->GetRelX() + 16, 
+				@player->GetRelY() + 32, @player->GetFacingLeft() ? 1 : -1));
 			@bullet_fired := false;
 		};
 
@@ -213,14 +217,22 @@ class Platform {
 				rel_y := y * Values->BLOCK_HEIGHT;
 				select(@game_map[y, x]) {
 					label 1: {
-						@block->Render(rel_x, rel_y);
-					}
-
-					label 3: {
-						@block2->Render(rel_x, rel_y);
+						@block1->Render(rel_x, rel_y);
 					}
 
 					label 2: {
+						@block2->Render(rel_x, rel_y);
+					}
+
+					label 3: {
+						@block3->Render(rel_x, rel_y);
+					}
+
+					label 4: {
+						@block4->Render(rel_x, rel_y);
+					}
+
+					label 5: {
 						if(y < 24) {
 							@enemies->AddBack(Enemy->New(rel_x, rel_y));
 							@game_map[y, x] := 0;
@@ -269,10 +281,10 @@ class Platform {
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
-			[0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2,   0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0,]
-			[0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0,   0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0,]
-			[1, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,   3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 0, 0, 0, 0, 0, 0, 0, 0, 3, 3, 3, 3, 3, 0,]
-			[3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,   3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,]
+			[0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
+			[0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,]
+			[2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2,]
+			[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,]
 		];
 
 		return game_map;

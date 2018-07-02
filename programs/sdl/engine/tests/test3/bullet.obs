@@ -24,6 +24,7 @@ class Bullet {
 		@x_rel_position := x;
 		@y_rel_position := y;
 		@x_velocity := x_velocity;
+
 		@is_alive := true;
 	}
 
@@ -104,8 +105,8 @@ class Bullet {
 	}
 
 	method : native : BlockCollision(x_position : Int) ~ Bool {
-		# calculate camera view
 		dims := @game_map->Size();
+
 		start_x := x_position / Values->BLOCK_WIDTH - 2;
 		if(start_x < 0) {
 			start_x := 0;
@@ -121,7 +122,9 @@ class Bullet {
 			block_rel_x := x * Values->BLOCK_WIDTH - x_position;
 			for(y := 0; y < dims[0]; y += 1;) {
 				block_rel_y := y * Values->BLOCK_HEIGHT;
-				if(@game_map[y, x] =  1) {
+				
+				type := @game_map[y, x];
+				if(type > 0 & type < 5) {
 					block_rel_x2 := block_rel_x + Values->BLOCK_WIDTH;
 					block_rel_y2 := block_rel_y + Values->BLOCK_HEIGHT;
 
