@@ -379,7 +379,7 @@ bundle Game.Engine {
 		@fps : Int;
 		@frame_start : Int;
 
-		@things : Vector;
+		@shapes : Vector;
 
 		@font : Font;
 		@joystick : Joystick;
@@ -391,7 +391,7 @@ bundle Game.Engine {
 		New(screen_width : Int, screen_height : Int, title : String, fps : Int, init_flags : Int) {
 			@fps := fps;
 			@frame_rate := 1000 / @fps;
-			@things := Vector->New();
+			@shapes := Vector->New();
 			
 			@is_ok := Init(screen_width, screen_height, title, init_flags);
 		}
@@ -402,7 +402,7 @@ bundle Game.Engine {
 				HardwareFlags->SDL_INIT_JOYSTICK->As(Int);
 			@fps := 60;	
 			@frame_rate := 1000 / 60;
-			@things := Vector->New();
+			@shapes := Vector->New();
 			
 			@is_ok := Init(screen_width, screen_height, title, init_flags);
 		}
@@ -536,45 +536,45 @@ bundle Game.Engine {
 		}
 
 		method : public : AddRectangle(w : Int, h : Int) ~ Rectangle {
-			thing := Rectangle->New(@renderer, w, h);
-			@things->AddBack(thing);
+			shape := Rectangle->New(@renderer, w, h);
+			@shapes->AddBack(shape);
 
-			return thing;
+			return shape;
 		}
 
 		method : public : AddTextSprite() ~ TextSprite {
-			thing := TextSprite->New(@renderer, @font);
-			@things->AddBack(thing);
+			shape := TextSprite->New(@renderer, @font);
+			@shapes->AddBack(shape);
 
-			return thing;
+			return shape;
 		}
 
 		method : public : AddImageSprite(file : String) ~ ImageSprite {
-			thing := ImageSprite->New(@renderer, file);
-			@things->AddBack(thing);
+			shape := ImageSprite->New(@renderer, file);
+			@shapes->AddBack(shape);
 
-			return thing;
+			return shape;
 		}
 
 		method : public : AddAnimatedImageSprite(file : String, clip_count : Int) ~ AnimatedImageSprite {
-			thing := AnimatedImageSprite->New(@renderer, file, clip_count);
-			@things->AddBack(thing);
+			shape := AnimatedImageSprite->New(@renderer, file, clip_count);
+			@shapes->AddBack(shape);
 
-			return thing;
+			return shape;
 		}
 
-		method : public : RemoveSprite(thing : Shape) ~ Bool {
+		method : public : RemoveSprite(shape : Shape) ~ Bool {
 			found := -1;
 			
-			for(i := 0; i < @things->Size() & found < 0; i +=1;) {
-				if(@things->Get(i) = thing) {
+			for(i := 0; i < @shapes->Size() & found < 0; i +=1;) {
+				if(@shapes->Get(i) = shape) {
 					found := i;
 				};
 			};
 
 			if(found > -1) {
-				@things->Remove(found);
-				thing->Free();
+				@shapes->Remove(found);
+				shape->Free();
 
 				return true;
 			};
@@ -582,10 +582,17 @@ bundle Game.Engine {
 			return false;
 		}
 
+		method : public : FreeShapes() ~ Nil {
+			each(i : @shapes) {
+				shape := @shapes->Get(i)->As(Shape);
+				shape->Free();
+			};
+		}
+
 		method : public : Quit() ~ Nil {
-			each(i : @things) {
-				thing := @things->Get(i)->As(Shape);
-				thing->Free();
+			each(i : @shapes) {
+				shape := @shapes->Get(i)->As(Shape);
+				shape->Free();
 			};
 
 			if(@event <> Nil) {

@@ -4,7 +4,7 @@ use Collection;
 
 class Platform {
 	@engine : GameEngine;
-	@quit : Bool;
+	@quit_game : Bool;
 	@game_map : Int[,];
 	@frame_count : Int;
 
@@ -33,32 +33,22 @@ class Platform {
 	
 	function : Main(args : String[]) ~ Nil {
 		platform := Platform->New();
-		platform->Run();
+		
+		while(platform->StartGame()) {
+			platform->Run();
+		};
+
+		platform->Free();
 	}
 
 	New() {
 		@engine := GameEngine->New(Values->SCREEN_WIDTH, Values->SCREEN_HEIGHT, "Engine Three");
-		@game_map := CreateMap();
-		@block1 := @engine->AddImageSprite("images/block1.png");
-		@block2 := @engine->AddImageSprite("images/block2.png");
-		@block3 := @engine->AddImageSprite("images/block3.png");
-		@block4 := @engine->AddImageSprite("images/block4.png");
-
-		@score_text := @engine->AddTextSprite();
-		@time_text := @engine->AddTextSprite();
-		@time := 90;
-		@time_text->RenderedText("Time: {$@time}");
-		
-		@hamburger := @engine->AddAnimatedImageSprite("images/food.png", 5);
-		@gem := @engine->AddAnimatedImageSprite("images/gems.png", 6);
-		
-		@player := Player->New(@self);
-
 		Enemy->Init(@self);		
-		@enemies := List->New();
-
 		Bullet->Init(@self);
-		@bullets := List->New();
+	}
+
+	method : Free() ~ Nil {
+		@engine->Quit();
 	}
 
 	method : public : GetEngine() ~ GameEngine {
@@ -74,7 +64,7 @@ class Platform {
 	}
 
 	method : public : EndGame() ~ Nil {
-		@quit := true;
+		@quit_game := true;
 	}
 
 	method : public : GotHamburger() ~ Nil {
@@ -85,18 +75,106 @@ class Platform {
 		@score += 25;
 	}
 
+	method : StartGame() ~ Bool {
+		e := @engine->GetEvent();
+
+		play_text := @engine->AddTextSprite();
+		quit_text := @engine->AddTextSprite();
+
+		quit := false;
+		while(<>quit) {
+			@engine->FrameStart();
+			
+			# process input
+			while(e->Poll() <> 0) {
+				if(e->GetType() = EventType->SDL_QUIT) {
+					quit := true;
+				}
+				else if(e->GetType() = EventType->SDL_JOYHATMOTION) {
+					if(e->GetJHat()->GetWhich() = 0 ) {
+						select(e->GetJHat()->GetValue()) {
+							# up 
+							label 1: {
+							}
+
+							# down
+							label 4: {
+							}			
+						};
+					};
+				}
+				# keyboard
+				else if(e->GetType() = EventType->SDL_KEYDOWN & e->GetKey()->GetRepeat() = 0) {
+			        select(e->GetKey()->GetKeysym()->GetScancode()) {
+			        	# up  	
+			        	label Scancode->SDL_SCANCODE_UP: {
+			            }
+
+			            # down
+						label Scancode->SDL_SCANCODE_DOWN: {
+			            }
+
+			            label Scancode->SDL_SCANCODE_P: {
+			            	return true;
+			            }
+
+			            label Scancode->SDL_SCANCODE_Q:
+			            label Scancode->SDL_SCANCODE_ESCAPE: {
+							return false;
+			            }
+			        };
+				};
+			};
+
+			play_text->RenderedText("(P)lay!");
+			quit_text->RenderedText("(Q)uit");
+
+			@engine->Clear();
+
+			play_text->Render(Values->SCREEN_WIDTH / 2 - play_text->GetWidth() /2, Values->SCREEN_HEIGHT / 2 - 16);
+			quit_text->Render(Values->SCREEN_WIDTH / 2 - quit_text->GetWidth() /2, Values->SCREEN_HEIGHT / 2 + 16);
+
+			@engine->FrameEnd();
+
+			@engine->Show();
+		};
+
+		leaving {
+			@engine->FreeShapes();
+		};
+
+		return false;
+	}
+
 	method : Run() ~ Nil {
 		if(@engine->IsOk()) {
+			@game_map := CreateMap();
+			@block1 := @engine->AddImageSprite("images/block1.png");
+			@block2 := @engine->AddImageSprite("images/block2.png");
+			@block3 := @engine->AddImageSprite("images/block3.png");
+			@block4 := @engine->AddImageSprite("images/block4.png");
+
+			@score_text := @engine->AddTextSprite();
+			@time_text := @engine->AddTextSprite();
+			@time := 45;
+			@time_text->RenderedText("Time: {$@time}");
+			
+			@player := Player->New(@self);
+			@enemies := List->New();
+			@hamburger := @engine->AddAnimatedImageSprite("images/food.png", 5);
+			@gem := @engine->AddAnimatedImageSprite("images/gems.png", 6);
+			@bullets := List->New();
+		
 			e := @engine->GetEvent();
 
-			@quit := false;
-			while(<>@quit) {
+			@quit_game := false;
+			while(<>@quit_game) {
 				@engine->FrameStart();
 				
 				# process input
 				while(e->Poll() <> 0) {
 					if(e->GetType() = EventType->SDL_QUIT) {
-						@quit := true;
+						@quit_game := true;
 					};
 					ProcessInput(e);
 				};
@@ -113,7 +191,7 @@ class Platform {
 		};
 
 		leaving {
-			@engine->Quit();
+			@engine->FreeShapes();
 		};
 	}
 	
@@ -175,6 +253,11 @@ class Platform {
             			@player->SetJumping(true);
             		};
 	            }
+
+	            label Scancode->SDL_SCANCODE_Q:
+	            label Scancode->SDL_SCANCODE_ESCAPE: {
+					@quit_game := true;
+			    }
 	        };
 	    }
 	    else if(e->GetType() = EventType->SDL_KEYUP & e->GetKey()->GetRepeat() = 0) {
