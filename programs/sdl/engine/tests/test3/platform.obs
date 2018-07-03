@@ -473,7 +473,7 @@ class Platform {
 			x_max := map_dims[0]->ToInt();
 			y_max := map_dims[1]->ToInt();
 
-			if(x_max <> 20 | y_max % 25 <> 0) {
+			if(x_max <> Values->SCREEN_BLOCK_HEIGHT | y_max % Values->SCREEN_BLOCK_WIDTH <> 0) {
 				return Nil;
 			};
 
@@ -507,5 +507,6 @@ consts Values {
 	BLOCK_WIDTH := 32,
 	BLOCK_HEIGHT := 32,
 	SCREEN_BLOCK_WIDTH := 25,
+	SCREEN_BLOCK_HEIGHT := 20,
 	SPEED := 2
 }
