@@ -71,15 +71,15 @@ class Bullet {
 
 		if(BlockCollision(player->GetMapX())) {
 			@is_alive := false;
-			@x_rel_position := -1;
-			@y_rel_position := -1;
+			@x_rel_position := -128;
+			@y_rel_position := -128;
 
 		};
 
-		if(EnemyCollision(enemy)) {
+		if(enemy <> Nil & EnemyCollision(enemy)) {
 			@is_alive := false;
-			@x_rel_position := -1;
-			@y_rel_position := -1;
+			@x_rel_position := -128;
+			@y_rel_position := -128;
 			enemy->SetAlive(false);
 		};
 	}
