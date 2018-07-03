@@ -112,10 +112,15 @@ bundle Game.Engine {
 	class TextSprite from Sprite {
 		@font : Font;
 		@is_ok : Bool;
+
 		New(renderer : Renderer, font : Font) {
 			Parent(renderer);
 			@font := font;
 		}
+
+		method : public : SetFont(font : Font) ~ Nil {
+			@font := font;
+		}		
 
 		method : public : RenderedText(text : String, color : Color := Nil) ~ Nil {
 			if(@font <> Nil) {

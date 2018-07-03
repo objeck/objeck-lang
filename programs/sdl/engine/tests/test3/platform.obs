@@ -76,14 +76,23 @@ class Platform {
 	method : StartGame() ~ Bool {
 		e := @engine->GetEvent();
 
+		font := Font->New("../../../../programs/sdl/engine/tests/media/lazy.ttf", 36);
+		red_color := Color->New(255, 0, 0);
+		black_color := Color->New(255, 255, 255);
 		play_text := @engine->AddTextSprite();
+		play_text->SetFont(font);
+
 		quit_text := @engine->AddTextSprite();
+		quit_text->SetFont(font);
+
+		index := 0;
 
 		quit := false;
 		while(<>quit) {
 			@engine->FrameStart();
 			
 			# process input
+			
 			while(e->Poll() <> 0) {
 				if(e->GetType() = EventType->SDL_QUIT) {
 					quit := true;
@@ -91,12 +100,14 @@ class Platform {
 				else if(e->GetType() = EventType->SDL_JOYHATMOTION) {
 					if(e->GetJHat()->GetWhich() = 0 ) {
 						select(e->GetJHat()->GetValue()) {
-							# up 
-							label 1: {
-							}
-
-							# down
+							label 1:
 							label 4: {
+								if(index = 0) {
+									index := 1;
+								}
+								else {
+									index := 0;
+								};
 							}			
 						};
 					};
@@ -104,12 +115,14 @@ class Platform {
 				# keyboard
 				else if(e->GetType() = EventType->SDL_KEYDOWN & e->GetKey()->GetRepeat() = 0) {
 			        select(e->GetKey()->GetKeysym()->GetScancode()) {
-			        	# up  	
-			        	label Scancode->SDL_SCANCODE_UP: {
-			            }
-
-			            # down
-						label Scancode->SDL_SCANCODE_DOWN: {
+			        	label Scancode->SDL_SCANCODE_UP:
+			            label Scancode->SDL_SCANCODE_DOWN: {
+			            	if(index = 0) {
+								index := 1;
+							}
+							else {
+								index := 0;
+							};
 			            }
 
 			            label Scancode->SDL_SCANCODE_P: {
@@ -121,16 +134,28 @@ class Platform {
 							return false;
 			            }
 			        };
+				}
+				else if(e->GetType() = EventType->SDL_JOYBUTTONDOWN) {
+					# 'a' button
+					if(e->GetJButton()->GetButton() = 0) {
+						return index = 0 ? true : false; 
+					};
 				};
 			};
 
-			play_text->RenderedText("(P)lay!");
-			quit_text->RenderedText("(Q)uit");
+			if(index = 0) {
+				play_text->RenderedText("(P)lay!", red_color);
+				quit_text->RenderedText("(Q)uit");
+			}
+			else {
+				play_text->RenderedText("(P)lay!");
+				quit_text->RenderedText("(Q)uit", red_color);
+			};
 
 			@engine->Clear();
 
-			play_text->Render(Values->SCREEN_WIDTH / 2 - play_text->GetWidth() /2, Values->SCREEN_HEIGHT / 2 - 16);
-			quit_text->Render(Values->SCREEN_WIDTH / 2 - quit_text->GetWidth() /2, Values->SCREEN_HEIGHT / 2 + 16);
+			play_text->Render(Values->SCREEN_WIDTH / 2 - play_text->GetWidth() /2, Values->SCREEN_HEIGHT / 2 - 32);
+			quit_text->Render(Values->SCREEN_WIDTH / 2 - quit_text->GetWidth() /2, Values->SCREEN_HEIGHT / 2 + 32);
 
 			@engine->FrameEnd();
 
@@ -309,7 +334,6 @@ class Platform {
 		@player->HandleEvents();
 
 		if(@bullet_fired & @bullets->Size() < 6) {
-"--- SHOT FIRED ---"->PrintLine();
 			@bullets->AddBack(Bullet->New(@player->GetRelX() + 16, 
 				@player->GetRelY() + 32, @player->GetFacingRight() ? 1 : -1));
 			@bullet_fired := false;
