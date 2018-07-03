@@ -125,6 +125,10 @@ class Platform {
 							};
 			            }
 
+			            label Scancode->SDL_SCANCODE_RETURN: {
+			            	return index = 0 ? true : false;
+			            }
+
 			            label Scancode->SDL_SCANCODE_P: {
 			            	return true;
 			            }
