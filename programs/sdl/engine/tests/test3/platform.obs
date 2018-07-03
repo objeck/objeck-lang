@@ -4,6 +4,7 @@ use Collection;
 
 class Platform {
 	@engine : GameEngine;
+	@hard_quit : Bool;
 	@quit_game : Bool;
 	@game_map : Int[,];
 	@frame_count : Int;
@@ -88,14 +89,14 @@ class Platform {
 		index := 0;
 
 		quit := false;
-		while(<>quit) {
+		while(<>quit & <>@hard_quit) {
 			@engine->FrameStart();
 			
 			# process input
 			
 			while(e->Poll() <> 0) {
 				if(e->GetType() = EventType->SDL_QUIT) {
-					quit := true;
+					@hard_quit := true;
 				}
 				else if(e->GetType() = EventType->SDL_JOYHATMOTION) {
 					if(e->GetJHat()->GetWhich() = 0 ) {
@@ -202,13 +203,13 @@ class Platform {
 			e := @engine->GetEvent();
 
 			@quit_game := false;
-			while(<>@quit_game) {
+			while(<>@quit_game & <>@hard_quit) {
 				@engine->FrameStart();
 				
 				# process input
 				while(e->Poll() <> 0) {
 					if(e->GetType() = EventType->SDL_QUIT) {
-						@quit_game := true;
+						@hard_quit := true;
 					};
 					ProcessInput(e);
 				};
@@ -443,9 +444,9 @@ class Platform {
 			@bullets->Next();
 		};
 
-		@time_text->Render(Values->SCREEN_WIDTH - 128, 16);
-		@score_text->Render(Values->SCREEN_WIDTH - 128, 48);
-
+		@score_text->Render(Values->SCREEN_WIDTH - 128, 16);
+		@time_text->Render(Values->SCREEN_WIDTH - 128, 36);
+		
 		@engine->Show();
 	}
 
