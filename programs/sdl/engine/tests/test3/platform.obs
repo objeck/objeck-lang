@@ -22,7 +22,7 @@ class Platform {
 	@gem_frame : Int;
 	
 	@enemies : List;
-	@bullets : List;
+	@bullets : Vector;
 
 	@time : Int;
 	@time_text : TextSprite;
@@ -199,7 +199,7 @@ class Platform {
 				@gem := @engine->AddAnimatedImageSprite("images/gems.png", 6);
 				
 				Bullet->Init(@self);
-				@bullets := List->New();
+				@bullets := Vector->New();
 			
 				e := @engine->GetEvent();
 
@@ -364,14 +364,9 @@ class Platform {
 			};
 
 			# check bullet
-			@bullets->Rewind();
-			while(@bullets->More()) {
-				bullet := @bullets->Get()->As(Bullet);
+			each(i : @bullets) {
+				bullet := @bullets->Get(i)->As(Bullet);
 				bullet->HandleEvents(enemy, @player);
-				if(<>bullet->IsAlive()) {
-					@bullets->Remove();
-				};
-				@bullets->Next();
 			};
 
 			@enemies->Next();
@@ -379,14 +374,9 @@ class Platform {
 
 
 		if(@enemies->Size() = 0) {
-			@bullets->Rewind();
-			while(@bullets->More()) {
-				bullet := @bullets->Get()->As(Bullet);
+			each(i : @bullets) {
+				bullet := @bullets->Get(i)->As(Bullet);
 				bullet->HandleEvents(Nil->As(Enemy), @player);
-				if(<>bullet->IsAlive()) {
-					@bullets->Remove();
-				};
-				@bullets->Next();
 			};
 		};
 	}
@@ -459,10 +449,9 @@ class Platform {
 
 
 		# render bullets
-		@bullets->Rewind();
-		while(@bullets->More()) {
-			@bullets->Get()->As(Bullet)->Render();
-			@bullets->Next();
+		each(i : @bullets) {
+			bullet := @bullets->Get(i)->As(Bullet);
+			bullet->Render();
 		};
 
 		@score_text->Render(Values->SCREEN_WIDTH - 128, 16);
