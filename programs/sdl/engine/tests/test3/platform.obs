@@ -392,9 +392,9 @@ class Platform {
 			start_x := 0;
 		};
 
-		end_x := start_x + 26; # could be calculated using screen and block width
-		if(end_x >= dims[1]) {
-			end_x := dims[1] - 1;
+		end_x := start_x + Values->SCREEN_BLOCK_WIDTH + 1;
+		if(end_x > dims[1]) {
+			end_x := dims[1];
 		};
 
 		# render blocks
@@ -506,5 +506,6 @@ consts Values {
 	SCREEN_HEIGHT := 640,
 	BLOCK_WIDTH := 32,
 	BLOCK_HEIGHT := 32,
+	SCREEN_BLOCK_WIDTH := 25,
 	SPEED := 2
 }
