@@ -173,8 +173,6 @@ class Player {
 				# move right
 				if(@x_velocity = 1) {
 					@x_rel_position += Values->SPEED;
-
-
 					if(@x_map_position > @game_map_end) {
 						@camera_shift := 0;
 						if(@x_rel_position > 0.75 * Values->SCREEN_WIDTH) {
@@ -199,7 +197,7 @@ class Player {
 				else if(@x_velocity = -1) {
 					@x_rel_position -= Values->SPEED;
 					# check left bounds
-					if(@x_rel_position < Values->BLOCK_WIDTH * 2) {	
+					if(@x_rel_position < Values->BLOCK_WIDTH) {	
 						@x_velocity := 0;
 					}
 					else {
