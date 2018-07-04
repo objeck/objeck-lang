@@ -3302,9 +3302,6 @@ bool ContextAnalyzer::Analyze()
       if(IsBooleanExpression(left) || IsBooleanExpression(right)) {
         ProcessError(expression, L"Invalid mathematical operation");
       }
-      else if(IsEnumExpression(left) || IsEnumExpression(right)) {
-        ProcessError(expression, L"Invalid mathematical operation");
-      }
       else if(((cls_type = GetExpressionType(left, depth + 1)) && cls_type->GetType() == CLASS_TYPE) ||
               ((cls_type = GetExpressionType(right, depth + 1)) && cls_type->GetType() == CLASS_TYPE)) {
         ProcessError(expression, L"Invalid mathematical operation");
