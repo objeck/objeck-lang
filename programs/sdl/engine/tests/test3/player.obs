@@ -114,11 +114,6 @@ class Player {
 			};
 		}
 		else {
-			if(@x_map_position > @game_map_end) {
-				@x_map_position -= Values->SPEED;
-				@x_velocity := 0;
-			};
-
 			if(@x_velocity = 1) {
 				@x_map_position += Values->SPEED;
 			}
@@ -178,7 +173,17 @@ class Player {
 				# move right
 				if(@x_velocity = 1) {
 					@x_rel_position += Values->SPEED;
-					if(@x_rel_position > Values->SCREEN_WIDTH / 4) {
+
+
+					if(@x_map_position > @game_map_end) {
+						@camera_shift := 0;
+						if(@x_rel_position > 0.75 * Values->SCREEN_WIDTH) {
+							@x_velocity := 0;
+							@x_map_position -= Values->SPEED;
+							@x_rel_position -= Values->SPEED;
+						};
+					}
+					else if(@x_rel_position > Values->SCREEN_WIDTH / 4) {
 						@camera_shift := 1;
 						@x_rel_position := Values->SCREEN_WIDTH / 4;
 						@background_offset -= Values->SPEED / 2;
@@ -196,14 +201,6 @@ class Player {
 					# check left bounds
 					if(@x_rel_position < Values->BLOCK_WIDTH * 2) {	
 						@x_velocity := 0;
-#~						
-						@camera_shift := -1;
-						@x_rel_position := Values->BLOCK_WIDTH * 2;
-						@background_offset += Values->SPEED / 2;
-						if(@background_offset > 0) {
-							@background_offset := -1 * @background->GetWidth();
-						};
-~#						
 					}
 					else {
 						@camera_shift := 0;
