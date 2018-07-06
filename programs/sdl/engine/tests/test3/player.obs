@@ -13,6 +13,8 @@ class Player {
 	@y_velocity : Int;
 	@jumping : Bool;
 	@jump_height : Int;
+	@fall_height : Int;
+	@last_height : Int;
 	@camera_shift : Int;
 	@game_map_end : Int;
 	@is_alive : Bool;
@@ -27,6 +29,7 @@ class Player {
 		@y_rel_position := Values->SCREEN_HEIGHT - 256;
 
 		@background := @platform->GetEngine()->AddImageSprite("images/hills.png");
+		@fall_height := -1;
 		@is_alive := true;
 		
 		dims := @game_map->Size();
@@ -142,6 +145,7 @@ class Player {
 					# gravity
 					if(<>@jumping) {
 						@y_velocity := -1;
+						@fall_height += 1;
 					}
 					else {
 						@y_velocity := 1;
@@ -154,15 +158,12 @@ class Player {
 							@frame := 0;
 						};
 					}
-					else if(@jump_height > 0 & @x_velocity <> 0) {
-						# jumping
-						if(@jumping) {
-							@frame := @player->GetClipCount() - 3;
-						}
-						# falling
-						else {
-							@frame := @player->GetClipCount() - 2;
-						};
+					else if(@jumping & @jump_height > 0 & @x_velocity <> 0) {
+						@frame := @player->GetClipCount() - 3;
+					}
+					# falling
+					else if(@fall_height > 0) {
+						@frame := @player->GetClipCount() - 2;
 					}
 					# standing
 					else if(@x_velocity = 0) {
@@ -257,23 +258,34 @@ class Player {
 								else if(@y_velocity = -1) {
 									@y_rel_position -= Values->SPEED * 2;
 									@y_velocity := 0;
-									if(@jump_height > 0) {
-										@jump_height := 0;
+									@jump_height := 0;
+									@fall_height := -1;
+
+									if(@jump_height > 0 & @x_velocity <> 0) {
+										@last_height := @jump_height;
 									};
 								};
 
 								# right
 								if(@x_velocity = 1) {
 									@x_map_position -= Values->SPEED;							
-									if(@jump_height > 0) {
+									
+									if(@jump_height > 0 & @last_height <> @jump_height) {
 										@x_velocity := 0;
+									}
+									else {
+										@last_height := 0;
 									};
 								}
 								# left
 								else if(@x_velocity = -1) {
 									@x_map_position += Values->SPEED;
-									if(@jump_height > 0) {
+									
+									if(@jump_height > 0 & @last_height <> @jump_height) {
 										@x_velocity := 0;
+									}
+									else {
+										@last_height := 0;
 									};
 								};
 							}
