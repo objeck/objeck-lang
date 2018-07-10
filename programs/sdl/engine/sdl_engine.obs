@@ -325,10 +325,18 @@ bundle Game.Engine {
 			return @fill;
 		}
 
+		#~
+		Renders an image based upon position instance
+		~#
 		method : public : Render() ~ Nil {
 			Render(@position->GetX(), @position->GetY());
 		}
 
+		#~
+		Renders an image
+		@param x x-position
+		@param y y-position
+		~#
 		method : public : Render(x : Int, y : Int) ~ Nil {
 			if(@color = Nil) {
 				@color := Color->New();
