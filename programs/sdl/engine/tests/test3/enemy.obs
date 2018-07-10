@@ -117,7 +117,7 @@ class Enemy {
 			};
 		};
 	}
-
+	
 	method : native : PlayerCollision(player : Player) ~ Bool {
 		player_rel_x := player->GetRelX();
 		player_rel_y := player->GetRelY();
