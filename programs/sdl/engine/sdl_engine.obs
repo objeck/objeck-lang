@@ -2,11 +2,11 @@ use Game.SDL2;
 use Collection;
 
 #~
-Game engine wrapper around SDL2
+Game wrapper for SDL2
 ~#
 bundle Game.Engine {
 	#~
-	Animated sprite backed by a sprite sheet.
+	Animated sprite sheet
 	~#
 	class AnimatedImageSprite from ImageSprite {
 		@clip : Rect;
@@ -46,7 +46,7 @@ bundle Game.Engine {
 	}
 
 	#~
-	Animated sprite backed by a sprite sheet.
+	Onscreen image
 	~#
 	class ImageSprite from Sprite {
 		@is_ok : Bool;
@@ -60,6 +60,11 @@ bundle Game.Engine {
 			@is_ok := LoadImage(file);
 		}
 
+		#~
+		Loads an image
+		@param file image to load
+		@return true if success, false otherwise
+		~#
 		method : LoadImage(file : String) ~ Bool {
 			Free();
 
@@ -86,22 +91,43 @@ bundle Game.Engine {
 			return @texture <> Nil;
 		}
 
+		#~
+		Sets the image angle
+		@param angle image angle
+		~#
 		method : public : SetAngle(angle : Float) ~ Nil {
 			@angle := angle;
 		}
 
+		#~
+		Gets the image angle
+		@return image angle
+		~#
 		method : public : GetAngle() ~ Float {
 			return @angle;
 		}
 
+		#~
+		Sets flip of image
+		@param flip direction to flip
+		~#
 		method : public : SetFlip(flip : RendererFlip) ~ Nil {
 			@flip := flip;
 		}
 
+		#~
+		Gets image flip
+		@return direction to flip
+		~#
 		method : public : GetFlip() ~ RendererFlip {
 			return @flip;
 		}
 
+		#~
+		Renders an image
+		@param x x-position
+		@param y y-position
+		~#
 		method : public : Render(x : Int, y : Int) ~ Nil {
 			if(@is_ok) {
 				RenderAll(x, y, Nil, @angle, Nil, @flip);
@@ -109,6 +135,9 @@ bundle Game.Engine {
 		}
 	}
 
+	#~
+	Onscreen text
+	~#
 	class TextSprite from Sprite {
 		@font : Font;
 		@is_ok : Bool;
@@ -118,10 +147,19 @@ bundle Game.Engine {
 			@font := font;
 		}
 
+		#~
+		Sets the text font
+		@param font TTF
+		~#
 		method : public : SetFont(font : Font) ~ Nil {
 			@font := font;
 		}		
 
+		#~
+		Renders the set text
+		@param text text to render
+		@param color color of text
+		~#
 		method : public : RenderedText(text : String, color : Color := Nil) ~ Nil {
 			if(@font <> Nil) {
 				Free();
@@ -150,6 +188,11 @@ bundle Game.Engine {
 			};
 		}
 
+		#~
+		Renders an image
+		@param x x-position
+		@param y y-position
+		~#
 		method : public : Render(x : Int, y : Int) ~ Nil {
 			if(@is_ok) {
 				RenderAll(x, y);
