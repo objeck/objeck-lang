@@ -86,6 +86,10 @@ class Player {
 		};
 	}
 
+	method : public : GetFlip() ~ RendererFlip {
+		return @player->GetFlip();
+	}
+
 	method : public : SetYVelocity(y_velocity : Int) ~ Nil {
 		@y_velocity := y_velocity;
 	}
@@ -141,7 +145,7 @@ class Player {
 			};
 
 			if(<>BlockCollision()) {
-				if(frame_count % 5 = 0) {
+				if(frame_count % 10 = 0) {
 					# gravity
 					if(<>@jumping) {
 						@y_velocity := -1;
