@@ -509,6 +509,14 @@ namespace backend {
         instrs.push_back(new StackInstr(line_num, I2F));
         break;
 
+      case S2I:
+        instrs.push_back(new StackInstr(line_num, S2I));
+        break;
+
+      case S2F:
+        instrs.push_back(new StackInstr(line_num, S2F));
+        break;
+
       case SWAP_INT:
         instrs.push_back(new StackInstr(line_num, SWAP_INT));
         break;

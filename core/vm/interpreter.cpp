@@ -461,6 +461,24 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
       PushInt((long)PopFloat(op_stack, stack_pos), op_stack, stack_pos);
       break;
 
+    case S2I: {
+#ifdef _DEBUG
+      wcout << L"stack oper: S2I; call_pos=" << (*call_stack_pos) << endl;
+#endif
+      size_t foo = PopInt(op_stack, stack_pos);
+      wcout << foo << endl;
+    }
+      break;
+
+    case S2F: {
+#ifdef _DEBUG
+      wcout << L"stack oper: S2F; call_pos=" << (*call_stack_pos) << endl;
+#endif
+      FLOAT_VALUE foo = PopFloat(op_stack, stack_pos);
+      wcout << foo << endl;
+    }
+      break;
+
     case SWAP_INT:
 #ifdef _DEBUG
       wcout << L"stack oper: SWAP_INT; call_pos=" << (*call_stack_pos) << endl;

@@ -870,6 +870,14 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
       instrs.push_back(new LibraryInstr(line_num, I2F));
       break;
 
+    case S2I:
+      instrs.push_back(new LibraryInstr(line_num, S2I));
+      break;
+
+    case S2F:
+      instrs.push_back(new LibraryInstr(line_num, S2F));
+      break;
+
     case LOAD_CLS_MEM:
       instrs.push_back(new LibraryInstr(line_num, LOAD_CLS_MEM));
       break;
