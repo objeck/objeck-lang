@@ -549,11 +549,11 @@ namespace backend {
         wcout << L"F2I" << endl;
         break;
 
-      case S2F:
+      case instructions::S2F:
         wcout << L"S2F" << endl;
         break;
 
-      case S2I:
+      case instructions::S2I:
         wcout << L"S2I" << endl;
         break;
 
