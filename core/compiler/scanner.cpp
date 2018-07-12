@@ -139,6 +139,8 @@ void Scanner::LoadKeywords()
   ident_map[L"TypeOf"] = TOKEN_TYPE_OF_ID;
   ident_map[L"critical"] = TOKEN_CRITICAL_ID;
 #ifdef _SYSTEM
+  ident_map[L"S2I"] = S2I;
+  ident_map[L"S2F"] = S2F;
   ident_map[L"LOAD_ARY_SIZE"] = LOAD_ARY_SIZE;
   ident_map[L"CPY_BYTE_ARY"] = CPY_BYTE_ARY;
   ident_map[L"CPY_CHAR_ARY"] = CPY_CHAR_ARY;
@@ -161,7 +163,6 @@ void Scanner::LoadKeywords()
   ident_map[L"LOAD_CLS_BY_INST"] = LOAD_CLS_BY_INST;
   ident_map[L"LOAD_NEW_OBJ_INST"] = LOAD_NEW_OBJ_INST;
   ident_map[L"LOAD_INST_UID"] = LOAD_INST_UID;
-  ident_map[L"LOAD_ARY_SIZE"] = LOAD_ARY_SIZE;
   ident_map[L"LOAD_MULTI_ARY_SIZE"] = LOAD_MULTI_ARY_SIZE;
   // standard i/o
   ident_map[L"STD_IN_STRING"] = STD_IN_STRING;
@@ -347,6 +348,8 @@ void Scanner::CheckIdentifier(int index)
     case TOKEN_NEW_ID:
     case TOKEN_NIL_ID:
 #ifdef _SYSTEM
+    case S2I:
+    case S2F:
     case LOAD_ARY_SIZE:
     case CPY_BYTE_ARY:
     case CPY_CHAR_ARY:

@@ -112,6 +112,8 @@ namespace instructions {
     // conversions
     I2F,
     F2I,
+    S2I,
+    S2F,
     // control
     MTHD_CALL,
     DYN_MTHD_CALL,
