@@ -1,25 +1,6 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		if(<>Foo()) {
-			"-- Good --"->PrintLine();
-			return;
-		};
-
-		if(<>Bar()) {
-			"-- Good --"->PrintLine();
-			return;
-		};
-
-		"Ok"->PrintLine();
+		x := "33"->ToInt();
+		x->PrintLine();	
 	}
-
-	function : Foo() ~ Bool {
-		return true;
-	}
-
-	function : Bar() ~ Bool {
-		return true;
-	}
-	
-	
 }

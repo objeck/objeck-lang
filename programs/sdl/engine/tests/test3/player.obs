@@ -122,10 +122,10 @@ class Player {
 		}
 		else {
 			if(@x_velocity = 1) {
-				@x_map_position += Values->SPEED;
+				@x_map_position += GetSpeed();
 			}
 			else if(@x_velocity = -1) {
-				@x_map_position -= Values->SPEED;
+				@x_map_position -= GetSpeed();
 			};
 
 			if(@y_velocity = 1) {
@@ -177,19 +177,19 @@ class Player {
 				
 				# move right
 				if(@x_velocity = 1) {
-					@x_rel_position += Values->SPEED;
+					@x_rel_position +=  GetSpeed();
 					if(@x_map_position > @game_map_end) {
 						@camera_shift := 0;
 						if(@x_rel_position > 0.75 * Values->SCREEN_WIDTH) {
 							@x_velocity := 0;
-							@x_map_position -= Values->SPEED;
-							@x_rel_position -= Values->SPEED;
+							@x_map_position -=  GetSpeed();
+							@x_rel_position -=  GetSpeed();
 						};
 					}
 					else if(@x_rel_position > Values->SCREEN_WIDTH / 4) {
 						@camera_shift := 1;
 						@x_rel_position := Values->SCREEN_WIDTH / 4;
-						@background_offset -= Values->SPEED / 2;
+						@background_offset -= GetSpeed() / 2;
 						if(@background_offset < -1 * @background->GetWidth()) {
 							@background_offset := 0;
 						};
@@ -200,7 +200,7 @@ class Player {
 				}
 				# move left
 				else if(@x_velocity = -1) {
-					@x_rel_position -= Values->SPEED;
+					@x_rel_position -=  GetSpeed();
 					# check left bounds
 					if(@x_rel_position < Values->BLOCK_WIDTH) {	
 						@x_velocity := 0;
@@ -214,6 +214,14 @@ class Player {
 				};
 			};
 		};
+	}
+
+	method : GetSpeed() ~ Int {
+		if(@jump_height > 0) {
+			return 1.25 * Values->SPEED;
+		};
+
+		return Values->SPEED;
 	}
 
 	method : native : BlockCollision() ~ Bool {
