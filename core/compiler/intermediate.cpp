@@ -1152,12 +1152,10 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     
     //----------- math instructions -----------
   case instructions::S2I:
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 0, INST));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, S2I));
     break;
     
   case instructions::S2F:
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 0, INST));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, S2F));
     break;
     
