@@ -147,6 +147,8 @@ enum ScannerTokenType {
   TOKEN_NIL_ID,
   TOKEN_CRITICAL_ID,
 #ifdef _SYSTEM
+  S2I,
+  S2F,
   LOAD_ARY_SIZE,
   CPY_BYTE_ARY,
   CPY_CHAR_ARY,
