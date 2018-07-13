@@ -437,6 +437,8 @@ namespace Runtime {
     void inline LoadLoclIntVar(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
     void inline LoadClsInstIntVar(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
 
+    void inline Str2Int(size_t* &op_stack, long* &stack_pos);
+    void inline Str2Float(size_t* &op_stack, long* &stack_pos);
     void inline ShlInt(size_t* &op_stack, long* &stack_pos);
     void inline ShrInt(size_t* &op_stack, long* &stack_pos);
     void inline AndInt(size_t* &op_stack, long* &stack_pos);

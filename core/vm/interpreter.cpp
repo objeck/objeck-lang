@@ -50,6 +50,7 @@
 #include "../debugger/debugger.h"
 #endif
 
+#include <sstream>
 #include <math.h>
 
 using namespace Runtime;
@@ -461,31 +462,14 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
       PushInt((long)PopFloat(op_stack, stack_pos), op_stack, stack_pos);
       break;
 
-    case S2I: {
-#ifdef _DEBUG
-      wcout << L"stack oper: S2I; call_pos=" << (*call_stack_pos) << endl;
-#endif
-      size_t base = PopInt(op_stack, stack_pos);
-      size_t* inst = (size_t*)(*frame)->mem[0];
-      if(inst && inst[0]) {
-        wchar_t* str = (wchar_t*)(((size_t*)(size_t*)inst[0]) + 3);
-        PushInt(stoi(str, NULL, base), op_stack, stack_pos);
-      }
-      else {
-        PushInt(0, op_stack, stack_pos);
-      }
-    }
+    case S2I:
+      Str2Int(op_stack, stack_pos);
       break;
-
-    case S2F: {
-#ifdef _DEBUG
-      wcout << L"stack oper: S2F; call_pos=" << (*call_stack_pos) << endl;
-#endif
-      FLOAT_VALUE foo = PopFloat(op_stack, stack_pos);
-      wcout << foo << endl;
-    }
+      
+    case S2F:
+      Str2Float(op_stack, stack_pos);
       break;
-
+      
     case SWAP_INT:
 #ifdef _DEBUG
       wcout << L"stack oper: SWAP_INT; call_pos=" << (*call_stack_pos) << endl;
@@ -776,6 +760,43 @@ void StackInterpreter::CopyClsInstIntVar(StackInstr* instr, size_t* &op_stack, l
   }
   cls_inst_mem[instr->GetOperand()] = TopInt(op_stack, stack_pos);
 }
+
+void StackInterpreter::Str2Int(size_t* &op_stack, long* &stack_pos)
+{
+#ifdef _DEBUG
+  wcout << L"stack oper: S2I; call_pos=" << (*call_stack_pos) << endl;
+#endif
+  
+  size_t base = PopInt(op_stack, stack_pos);
+  size_t* inst = (size_t*)(*frame)->mem[0];
+  if(inst && inst[0]) {
+    wchar_t* str = (wchar_t*)(((size_t*)(size_t*)inst[0]) + 3);
+    PushInt(stoi(str, NULL, base), op_stack, stack_pos);
+  }
+  else {
+    PushInt(0, op_stack, stack_pos);
+  }
+}
+
+void StackInterpreter::Str2Float(size_t* &op_stack, long* &stack_pos)
+{
+#ifdef _DEBUG
+  wcout << L"stack oper: S2F; call_pos=" << (*call_stack_pos) << endl;
+#endif
+  
+  size_t* inst = (size_t*)(*frame)->mem[0];
+  if(inst && inst[0]) {
+    wchar_t* str = (wchar_t*)(((size_t*)(size_t*)inst[0]) + 3);
+    wstringstream ss(str);
+    FLOAT_VALUE value;
+    ss >> value;
+    PushFloat(value, op_stack, stack_pos);
+  }
+  else {
+    PushFloat(0.0, op_stack, stack_pos);
+  }
+}
+  
 
 void StackInterpreter::ShlInt(size_t* &op_stack, long* &stack_pos)
 {

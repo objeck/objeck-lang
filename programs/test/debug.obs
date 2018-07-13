@@ -1,6 +1,6 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		x := "0xfd"->ToInt(16);
+		x := "123"->ToFloat();
 		x->PrintLine();	
 	}
 }
