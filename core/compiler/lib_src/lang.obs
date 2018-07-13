@@ -2227,6 +2227,15 @@ bundle System {
 		@return integer value
 		~#
 		method : public : ToInt() ~ Int {
+			return ToInt(10);
+		}
+
+		#~
+		Parses the string into an integer
+		@param base base radix 
+		@return integer value
+		~#
+		method : public : ToInt(base : Int) ~ Int {
 			S2I;
 		}
 
