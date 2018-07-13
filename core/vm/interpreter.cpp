@@ -767,7 +767,7 @@ void StackInterpreter::Str2Int(size_t* &op_stack, long* &stack_pos)
   wcout << L"stack oper: S2I; call_pos=" << (*call_stack_pos) << endl;
 #endif
   
-  size_t base = PopInt(op_stack, stack_pos);
+  long base = (long)PopInt(op_stack, stack_pos);
   size_t* inst = (size_t*)(*frame)->mem[0];
   if(inst && inst[0]) {
     wchar_t* str = (wchar_t*)(((size_t*)(size_t*)inst[0]) + 3);
