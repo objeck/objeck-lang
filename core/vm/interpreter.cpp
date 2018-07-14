@@ -774,7 +774,14 @@ void StackInterpreter::Str2Int(size_t* &op_stack, long* &stack_pos)
     PushInt(stoi(str, NULL, base), op_stack, stack_pos);
   }
   else {
-    PushInt(0, op_stack, stack_pos);
+    wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
+    StackErrorUnwind();
+#ifdef _DEBUGGER
+    halt = true;
+    return;
+#else
+    exit(1);
+#endif
   }
 }
 
@@ -793,7 +800,14 @@ void StackInterpreter::Str2Float(size_t* &op_stack, long* &stack_pos)
     PushFloat(value, op_stack, stack_pos);
   }
   else {
-    PushFloat(0.0, op_stack, stack_pos);
+    wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
+    StackErrorUnwind();
+#ifdef _DEBUGGER
+    halt = true;
+    return;
+#else
+    exit(1);
+#endif
   }
 }
   
