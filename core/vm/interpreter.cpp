@@ -766,11 +766,11 @@ void StackInterpreter::Str2Int(size_t* &op_stack, long* &stack_pos)
 #ifdef _DEBUG
   wcout << L"stack oper: S2I; call_pos=" << (*call_stack_pos) << endl;
 #endif
-  
+
+  size_t* str_ptr = (size_t*)PopInt(op_stack, stack_pos);
   long base = (long)PopInt(op_stack, stack_pos);
-  size_t* inst = (size_t*)(*frame)->mem[0];
-  if(inst && inst[0]) {
-    wchar_t* str = (wchar_t*)(((size_t*)(size_t*)inst[0]) + 3);
+  if(str_ptr) {
+    wchar_t* str = (wchar_t*)(str_ptr + 3);
     PushInt(stoi(str, NULL, base), op_stack, stack_pos);
   }
   else {
@@ -791,12 +791,12 @@ void StackInterpreter::Str2Float(size_t* &op_stack, long* &stack_pos)
   wcout << L"stack oper: S2F; call_pos=" << (*call_stack_pos) << endl;
 #endif
   
-  size_t* inst = (size_t*)(*frame)->mem[0];
-  if(inst && inst[0]) {
-    wchar_t* str = (wchar_t*)(((size_t*)(size_t*)inst[0]) + 3);
-    wstringstream ss(str);
+  size_t* str_ptr = (size_t*)PopInt(op_stack, stack_pos);
+  if(str_ptr) {
+    wchar_t* str = (wchar_t*)(str_ptr + 3);
+    wstringstream stream(str);
     FLOAT_VALUE value;
-    ss >> value;
+    stream >> value;
     PushFloat(value, op_stack, stack_pos);
   }
   else {

@@ -1,7 +1,6 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		x : String;
-		y := x->ToInt();
-		y->PrintLine();	
+		v := "13.5"->ToFloat();
+		v->PrintLine();	
 	}
 }
