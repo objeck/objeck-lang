@@ -771,6 +771,24 @@ void StackInterpreter::Str2Int(size_t* &op_stack, long* &stack_pos)
   long base = (long)PopInt(op_stack, stack_pos);
   if(str_ptr) {
     wchar_t* str = (wchar_t*)(str_ptr + 3);
+    if(wcslen(str) > 2) {
+      switch(str[1]) {
+      case 'b':
+        PushInt(stoi(str + 2, NULL, 2), op_stack, stack_pos);
+        return;
+
+      case 'o':
+        PushInt(stoi(str + 2, NULL, 8), op_stack, stack_pos);
+        return;
+
+      case 'x':
+        PushInt(stoi(str + 2, NULL, 16), op_stack, stack_pos);
+        return;
+
+      default:
+        break;
+      }
+    }
     PushInt(stoi(str, NULL, base), op_stack, stack_pos);
   }
   else {

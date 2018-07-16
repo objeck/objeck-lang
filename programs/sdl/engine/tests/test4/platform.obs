@@ -337,7 +337,7 @@ class Platform {
 			};
 		};
 
-		if(@frame_count % 3 = 0) {
+		if(@frame_count % 5 = 0) {
 			@gem_frame += 1;
 			if(@gem_frame >= @gem->GetClipCount()) {
 				@gem_frame := 0;
@@ -508,5 +508,5 @@ consts Values {
 	BLOCK_HEIGHT := 32,
 	SCREEN_BLOCK_WIDTH := 25,
 	SCREEN_BLOCK_HEIGHT := 20,
-	SPEED := 2
+	SPEED := 3
 }
