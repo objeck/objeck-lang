@@ -773,14 +773,17 @@ void StackInterpreter::Str2Int(size_t* &op_stack, long* &stack_pos)
     wchar_t* str = (wchar_t*)(str_ptr + 3);
     if(wcslen(str) > 2) {
       switch(str[1]) {
+        // binary
       case 'b':
         PushInt(stoi(str + 2, NULL, 2), op_stack, stack_pos);
         return;
 
+        // octal
       case 'o':
         PushInt(stoi(str + 2, NULL, 8), op_stack, stack_pos);
         return;
 
+        // hexadecimal
       case 'x':
         PushInt(stoi(str + 2, NULL, 16), op_stack, stack_pos);
         return;
