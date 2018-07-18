@@ -101,7 +101,9 @@ class Player {
 	}
 
 	method : public : SetJumping(jumping : Bool) ~ Nil {
-		@is_jumping := true;
+		if(@jump_height = 0) {
+			@is_jumping := true;
+		};
 	}
 
 	method : public : native : HandleEvents() ~ Nil {
@@ -123,15 +125,12 @@ class Player {
 				@x_map_position -= GetSpeed();
 			};
 
-			if(@y_velocity = 1) {
+			if(@y_velocity = 1 & @is_jumping) {
 				@y_rel_position -= Values->SPEED * 2;
-				if(@is_jumping) {
-					@jump_height += Values->SPEED * 2;
-					if(@jump_height > 1.5 * Values->BLOCK_WIDTH) {
-						@is_jumping := false;
-						@jump_height := 0;
-						@y_velocity := -1;
-					};
+				@jump_height += Values->SPEED * 2;
+				if(@jump_height > 1.5 * Values->BLOCK_WIDTH) {
+					@is_jumping := false;
+					@y_velocity := -1;
 				};
 			}
 			else if(@y_velocity = -1) {
@@ -241,24 +240,37 @@ class Player {
 							label 1:
 							label 2:
 							label 3:
-							label 4: {								
+							label 4: {	
 								# top
 								if(@y_velocity = 1) {
+@platform->GetEngine()->Debug("--- Top ---");
+									@y_rel_position += Values->SPEED * 2;
+									@is_jumping := false;
+									@jump_height := 0;
+									@y_velocity := 0;
 								}
 								# bottom
 								else if(@y_velocity = -1) {
-									@y_rel_position := block_rel_y - @player->GetHeight();
+@platform->GetEngine()->Debug("--- Bottom ---");
+#									@y_rel_position := block_rel_y - @player->GetHeight();
+									@y_rel_position -= Values->SPEED * 2;
+									@is_jumping := false;
+									@jump_height := 0;
 									@y_velocity := 0;
 								};
 
 								# right
 								if(@x_velocity = 1) {
+@platform->GetEngine()->Debug("--- Right ---");									
 									@x_map_position -= Values->SPEED;
+									
 								}
 								# left
 								else if(@x_velocity = -1) {
+@platform->GetEngine()->Debug("--- Left ---");									
 									@x_map_position += Values->SPEED;
 								};
+								
 							}
 
 							# hamburger
