@@ -278,10 +278,17 @@ class Platform {
 		else if(e->GetType() = EventType->SDL_KEYDOWN & e->GetKey()->GetRepeat() = 0) {
 	        select(e->GetKey()->GetKeysym()->GetScancode()) {    	
 	        	label Scancode->SDL_SCANCODE_UP: {
+	        		@player->SetYVelocity(1);
+#~	        		
 	        		if(<>@bullet_fired) {
 	        			@bullet_fired := true;
 	        		};
+~#	        		
 	            }
+
+	            label Scancode->SDL_SCANCODE_DOWN: {
+	        		@player->SetYVelocity(-1);
+	        	}
 
 	            label Scancode->SDL_SCANCODE_LEFT: {
 	            	@player->SetXVelocity(-1);
@@ -308,6 +315,11 @@ class Platform {
 	        	label Scancode->SDL_SCANCODE_LEFT:
 	            label Scancode->SDL_SCANCODE_RIGHT: {
 	            	@player->SetXVelocity(0);
+	            }
+
+	            label Scancode->SDL_SCANCODE_UP:
+	            label Scancode->SDL_SCANCODE_DOWN: {
+	            	@player->SetYVelocity(0);
 	            }
 	        };
 	    };   
@@ -461,7 +473,7 @@ class Platform {
 	}
 
 	method : native : CreateMap() ~ Int[,] {
-		reader := System.IO.File.FileReader->New("../../../../programs/sdl/engine/tests/test3/map.dat");
+		reader := System.IO.File.FileReader->New("../../../../programs/sdl/engine/tests/test4/map.dat");
 		leaving {
 			reader->Close();
 		};
