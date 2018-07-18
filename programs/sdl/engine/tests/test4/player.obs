@@ -146,6 +146,7 @@ class Player {
 
 			if(<>BlockCollision()) {
 				if(frame_count % 5 = 0) {
+#~					
 					# gravity
 					if(<>@jumping) {
 						@y_velocity := -1;
@@ -154,6 +155,7 @@ class Player {
 					else {
 						@y_velocity := 1;
 					};
+~#
 
 					# walking
 					if(@x_velocity <> 0 & @jump_height = 0) {
@@ -260,6 +262,7 @@ class Player {
 							label 2:
 							label 3:
 							label 4: {
+#~								
 								# top
 								if(@y_velocity = 1) {
 									@y_rel_position += Values->SPEED * 2;
@@ -300,6 +303,7 @@ class Player {
 										@last_height := 0;
 									};
 								};
+~#															
 							}
 
 							# hamburger
