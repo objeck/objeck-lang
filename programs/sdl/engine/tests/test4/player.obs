@@ -23,7 +23,7 @@ class Player {
 	New(platform : Platform) {
 		@platform := platform;
 		@game_map := @platform->GetMap();
-		@player := @platform->GetEngine()->AddAnimatedImageSprite("images/walk.png", 10);
+		@player := @platform->GetEngine()->AddAnimatedImageSprite("images/walk2.png", 10);
 		@y_rel_position := Values->SCREEN_HEIGHT - 256;
 
 		@background := @platform->GetEngine()->AddImageSprite("images/hills.png");
@@ -142,16 +142,17 @@ class Player {
 
 			if(<>BlockCollision()) {
 				if(frame_count % 5 = 0) {
-#~					
+#~						
 					# jumping
 					if(@is_jumping) {
 						@y_velocity := 1;
 					}
+					# gravity
 					else {
 						@y_velocity := -1;
 					};
 ~#
-
+					
 					# walking
 					if(@x_velocity <> 0) {
 						@frame += 1;
@@ -240,7 +241,34 @@ class Player {
 					rel_x2 := rel_x + @player->GetWidth();
 
 					if(<>(rel_y2 < block_rel_y | rel_y > block_rel_y2 | rel_x > block_rel_x2 | rel_x2 < block_rel_x)) {
-"--- Hit ---"->PrintLine();						
+"Hit"->PrintLine();
+
+#						@x_velocity := 0;
+#						@y_velocity := 0;
+# --------------------------------
+
+						if(rel_y < block_rel_y2 & rel_y2 > block_rel_y2) {
+"-- Top --"->PrintLine();
+							@y_rel_position += Values->SPEED * 2;	
+						}
+						else if(rel_y2 > block_rel_y & rel_y < block_rel_y) {
+"-- Bottom --"->PrintLine();
+							@y_rel_position -= Values->SPEED * 2;
+						};	
+
+# --------------------------------
+
+						if(rel_x <= block_rel_x2 & rel_x2 > block_rel_x2) {
+"-- Left --"->PrintLine();
+							@x_map_position += Values->SPEED;
+						}
+						else if(rel_x2 >= block_rel_x & rel_x < block_rel_x) {
+"-- Right --"->PrintLine();
+							@x_map_position -= Values->SPEED;
+						};
+
+# --------------------------------
+
 					};
 				};
 			};
