@@ -141,8 +141,7 @@ class Player {
 			};
 
 			if(<>BlockCollision()) {
-				if(frame_count % 5 = 0) {
-#~						
+				if(frame_count % 5 = 0) {						
 					# jumping
 					if(@is_jumping) {
 						@y_velocity := 1;
@@ -151,8 +150,7 @@ class Player {
 					else {
 						@y_velocity := -1;
 					};
-~#
-					
+
 					# walking
 					if(@x_velocity <> 0) {
 						@frame += 1;
@@ -249,22 +247,25 @@ class Player {
 
 						if(rel_y < block_rel_y2 & rel_y2 > block_rel_y2) {
 "-- Top --"->PrintLine();
-							@y_rel_position += Values->SPEED * 2;	
+							@y_rel_position += Values->SPEED * 2;
+							@y_velocity := 0;								
 						}
 						else if(rel_y2 > block_rel_y & rel_y < block_rel_y) {
 "-- Bottom --"->PrintLine();
 							@y_rel_position -= Values->SPEED * 2;
-						};	
+							@y_velocity := 0;
+						}
 
 # --------------------------------
 
-						if(rel_x <= block_rel_x2 & rel_x2 > block_rel_x2) {
+						else if(rel_x <= block_rel_x2 & rel_x2 > block_rel_x2) {
 "-- Left --"->PrintLine();
 							@x_map_position += Values->SPEED;
 						}
 						else if(rel_x2 >= block_rel_x & rel_x < block_rel_x) {
 "-- Right --"->PrintLine();
 							@x_map_position -= Values->SPEED;
+							@y_velocity := 0;
 						};
 
 # --------------------------------
