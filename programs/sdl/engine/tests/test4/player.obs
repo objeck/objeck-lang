@@ -125,13 +125,16 @@ class Player {
 				@x_map_position -= GetSpeed();
 			};
 
-			if(@y_velocity = 1 & @is_jumping) {
+			if(@y_velocity = 1 #~ & @is_jumping ~# ) {
+				@y_rel_position -= Values->SPEED * 2;
+#~				
 				@y_rel_position -= Values->SPEED * 2;
 				@jump_height += Values->SPEED * 2;
 				if(@jump_height > 1.5 * Values->BLOCK_WIDTH) {
 					@is_jumping := false;
 					@y_velocity := -1;
 				};
+~#				
 			}
 			else if(@y_velocity = -1) {
 				@y_rel_position += Values->SPEED * 2;
@@ -139,6 +142,7 @@ class Player {
 
 			if(<>BlockCollision()) {
 				if(frame_count % 5 = 0) {
+#~					
 					# jumping
 					if(@is_jumping) {
 						@y_velocity := 1;
@@ -146,6 +150,7 @@ class Player {
 					else {
 						@y_velocity := -1;
 					};
+~#
 
 					# walking
 					if(@x_velocity <> 0) {
@@ -234,59 +239,8 @@ class Player {
 					rel_x := @x_rel_position;
 					rel_x2 := rel_x + @player->GetWidth();
 
-					if(rel_x2 > block_rel_x & rel_x < block_rel_x2 & 
-							rel_y2 > block_rel_y & rel_y < block_rel_y2) {
-						select(type) {
-							label 1:
-							label 2:
-							label 3:
-							label 4: {	
-								# top
-								if(@y_velocity = 1) {
-@platform->GetEngine()->Debug("--- Top ---");
-									@y_rel_position += Values->SPEED * 2;
-									@is_jumping := false;
-									@jump_height := 0;
-									@y_velocity := 0;
-								}
-								# bottom
-								else if(@y_velocity = -1) {
-@platform->GetEngine()->Debug("--- Bottom ---");
-#									@y_rel_position := block_rel_y - @player->GetHeight();
-									@y_rel_position -= Values->SPEED * 2;
-									@is_jumping := false;
-									@jump_height := 0;
-									@y_velocity := 0;
-								};
-
-								# right
-								if(@x_velocity = 1) {
-@platform->GetEngine()->Debug("--- Right ---");									
-									@x_map_position -= Values->SPEED;
-									
-								}
-								# left
-								else if(@x_velocity = -1) {
-@platform->GetEngine()->Debug("--- Left ---");									
-									@x_map_position += Values->SPEED;
-								};
-								
-							}
-
-							# hamburger
-							label 5: {
-								@platform->GotHamburger();	
-								@game_map[y, x] := 0;					
-							}
-
-							# gem
-							label 6: {
-								@platform->GotGem();	
-								@game_map[y, x] := 0;					
-							}
-						};
-
-						return true;
+					if(<>(rel_y2 < block_rel_y | rel_y > block_rel_y2 | rel_x > block_rel_x2 | rel_x2 < block_rel_x)) {
+"--- Hit ---"->PrintLine();						
 					};
 				};
 			};
@@ -304,3 +258,65 @@ class Player {
 		@player->Render(@x_rel_position, @y_rel_position, @frame);
 	}
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#~						
+						select(type) {
+							label 1:
+							label 2:
+							label 3:
+							label 4: {	
+								# top
+								if(@y_velocity = 1) {
+@platform->GetEngine()->Debug("--- Top ---");
+									@y_rel_position += Values->SPEED * 2;
+								}
+								# bottom
+								else if(@y_velocity = -1) {
+@platform->GetEngine()->Debug("--- Bottom ---");									
+									@y_rel_position -= Values->SPEED * 2;
+									@is_jumping := false;
+									@jump_height := 0;
+									@y_velocity := 0;
+								};
+
+								# right
+								if(@x_velocity = 1) {
+@platform->GetEngine()->Debug("--- Right ---");									
+									@x_map_position -= Values->SPEED;
+								}
+								# left
+								else if(@x_velocity = -1) {
+@platform->GetEngine()->Debug("--- Left ---");									
+									@x_map_position += Values->SPEED;
+								};
+							}
+
+							# hamburger
+							label 5: {
+								@platform->GotHamburger();	
+								@game_map[y, x] := 0;					
+							}
+
+							# gem
+							label 6: {
+								@platform->GotGem();	
+								@game_map[y, x] := 0;					
+							}
+						};
+~#

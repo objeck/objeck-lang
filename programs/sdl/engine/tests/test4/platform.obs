@@ -278,7 +278,7 @@ class Platform {
 		else if(e->GetType() = EventType->SDL_KEYDOWN & e->GetKey()->GetRepeat() = 0) {
 	        select(e->GetKey()->GetKeysym()->GetScancode()) {    	
 	        	label Scancode->SDL_SCANCODE_UP: {
-#	        		@player->SetYVelocity(1);
+	        		@player->SetYVelocity(1);
 #~	        		
 	        		if(<>@bullet_fired) {
 	        			@bullet_fired := true;
