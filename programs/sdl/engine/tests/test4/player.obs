@@ -141,7 +141,7 @@ class Player {
 			};
 
 			if(<>BlockCollision()) {
-				if(frame_count % 5 = 0) {						
+				if(frame_count % 5 = 0) {
 					# jumping
 					if(@is_jumping) {
 						@y_velocity := 1;
@@ -229,6 +229,7 @@ class Player {
 				block_rel_y := y * Values->BLOCK_HEIGHT;
 
 				type := @game_map[y, x];
+
 				if(type > 0 & type < 8) {
 					block_rel_x2 := block_rel_x + Values->BLOCK_WIDTH;
 					block_rel_y2 := block_rel_y + Values->BLOCK_HEIGHT;
@@ -245,12 +246,12 @@ class Player {
 #						@y_velocity := 0;
 # --------------------------------
 
-						if(rel_y < block_rel_y2 & rel_y2 > block_rel_y2) {
+						if(@y_velocity = 1) {
 "-- Top --"->PrintLine();
 							@y_rel_position += Values->SPEED * 2;
 							@y_velocity := 0;								
 						}
-						else if(rel_y2 > block_rel_y & rel_y < block_rel_y) {
+						else if(@y_velocity = -1) {
 "-- Bottom --"->PrintLine();
 							@y_rel_position -= Values->SPEED * 2;
 							@y_velocity := 0;
@@ -258,18 +259,18 @@ class Player {
 
 # --------------------------------
 
-						else if(rel_x <= block_rel_x2 & rel_x2 > block_rel_x2) {
+						else if(@x_velocity = -1) {
 "-- Left --"->PrintLine();
 							@x_map_position += Values->SPEED;
 						}
-						else if(rel_x2 >= block_rel_x & rel_x < block_rel_x) {
+						else if(@x_velocity = 1) {
 "-- Right --"->PrintLine();
 							@x_map_position -= Values->SPEED;
-							@y_velocity := 0;
 						};
 
 # --------------------------------
 
+						return true;
 					};
 				};
 			};
