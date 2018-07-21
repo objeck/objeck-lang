@@ -118,6 +118,9 @@ class Player {
 			};
 		}
 		else {
+			# make move and check for collision
+
+			# left and right
 			if(@x_velocity = 1) {
 				@x_map_position += GetSpeed();
 			}
@@ -125,20 +128,23 @@ class Player {
 				@x_map_position -= GetSpeed();
 			};
 
+			# up and down
 			if(@y_velocity = 1) {
-#				@y_rel_position -= Values->SPEED * 2;
-				
+				@y_rel_position -= Values->SPEED * 2;
+#~				
 				@y_rel_position -= Values->SPEED * 2;
 				@jump_height += Values->SPEED * 2;
 				if(@jump_height > 1.5 * Values->BLOCK_WIDTH) {
 					@is_jumping := false;
 					@y_velocity := -1;
-				};				
+				};
+~#								
 			}
 			else if(@y_velocity = -1) {
 				@y_rel_position += Values->SPEED * 2;
 			};
 
+			# check for collision
 			if(<>BlockCollision()) {
 				if(frame_count % 5 = 0) {
 #~					
@@ -229,7 +235,6 @@ class Player {
 				block_rel_y := y * Values->BLOCK_HEIGHT;
 
 				type := @game_map[y, x];
-
 				if(type > 0 & type < 8) {
 					block_rel_x2 := block_rel_x + Values->BLOCK_WIDTH;
 					block_rel_y2 := block_rel_y + Values->BLOCK_HEIGHT;
@@ -239,45 +244,25 @@ class Player {
 					rel_x := @x_rel_position;
 					rel_x2 := rel_x + @player->GetWidth();
 
-					if(<>(rel_y2 < block_rel_y | rel_y > block_rel_y2 | rel_x > block_rel_x2 | rel_x2 < block_rel_x)) {
-"Hit"->PrintLine();
-
+					if(<>(rel_y2 < block_rel_y | rel_y > block_rel_y2 | 
+						rel_x > block_rel_x2 | rel_x2 < block_rel_x)) {
 # --------------------------------
 
-						if(@y_velocity = 1) {
+						if(rel_y < block_rel_y2 & rel_y2 > block_rel_y2) {
 "-- Top --"->PrintLine();
-							@y_rel_position += Values->SPEED * 2;
-							@y_velocity := 0;
-
-							@is_jumping := false;
-							@jump_height := 0;								
 						}
-						else if(@y_velocity = -1) {
+						else if(rel_y2 > block_rel_y & rel_y < block_rel_y) {
 "-- Bottom --"->PrintLine();
-							@y_rel_position -= Values->SPEED * 2;
-							@y_velocity := 0;
-
-							@is_jumping := false;
-							@jump_height := 0;
-						};
+						};	
 
 # --------------------------------
 
-						if(@x_velocity = -1) {
+						if(rel_x <= block_rel_x2 & rel_x2 > block_rel_x2) {
 "-- Left --"->PrintLine();
-							@x_map_position += Values->SPEED;
 						}
-						else if(@x_velocity = 1) {
+						else if(rel_x2 >= block_rel_x & rel_x < block_rel_x) {
 "-- Right --"->PrintLine();
-							@x_map_position -= Values->SPEED;
 						};
-
-#~
-						if(rel_x2 > block_rel_x & rel_x < block_rel_x) {
-							@x_map_position -= Values->SPEED;
-						};
-~#						
-# --------------------------------
 
 						return true;
 					};
@@ -285,7 +270,6 @@ class Player {
 			};
 		};
 
-		@platform->SetHitBlock(false);
 		return false;
 	}
 
@@ -298,53 +282,3 @@ class Player {
 		@player->Render(@x_rel_position, @y_rel_position, @frame);
 	}
 }
-
-
-
-
-
-#~						
-						select(type) {
-							label 1:
-							label 2:
-							label 3:
-							label 4: {	
-								# top
-								if(@y_velocity = 1) {
-@platform->GetEngine()->Debug("--- Top ---");
-									@y_rel_position += Values->SPEED * 2;
-								}
-								# bottom
-								else if(@y_velocity = -1) {
-@platform->GetEngine()->Debug("--- Bottom ---");									
-									@y_rel_position -= Values->SPEED * 2;
-									@is_jumping := false;
-									@jump_height := 0;
-									@y_velocity := 0;
-								};
-
-								# right
-								if(@x_velocity = 1) {
-@platform->GetEngine()->Debug("--- Right ---");									
-									@x_map_position -= Values->SPEED;
-								}
-								# left
-								else if(@x_velocity = -1) {
-@platform->GetEngine()->Debug("--- Left ---");									
-									@x_map_position += Values->SPEED;
-								};
-							}
-
-							# hamburger
-							label 5: {
-								@platform->GotHamburger();	
-								@game_map[y, x] := 0;					
-							}
-
-							# gem
-							label 6: {
-								@platform->GotGem();	
-								@game_map[y, x] := 0;					
-							}
-						};
-~#
