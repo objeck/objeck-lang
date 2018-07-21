@@ -11,8 +11,12 @@ class Player {
 	@y_rel_position : Int;
 	@x_velocity : Int;
 	@y_velocity : Int;
+	
+	@is_falling : Bool;
+
 	@is_jumping : Bool;
 	@jump_height : Int;
+
 	@camera_shift : Int;
 	@game_map_end : Int;
 	@is_alive : Bool;
@@ -33,6 +37,8 @@ class Player {
 		dims := @game_map->Size();
 		@game_map_end := (dims[1] / Values->SCREEN_BLOCK_WIDTH - 1) * 
 			Values->SCREEN_BLOCK_WIDTH * Values->BLOCK_WIDTH + Values->SCREEN_WIDTH / 4;
+
+		@is_falling := true;
 	}
 
 	method : public : GetFacingRight() ~ Bool {
@@ -129,7 +135,10 @@ class Player {
 			};
 
 			# up and down
-			if(@y_velocity = 1) {
+			if(@is_falling) {
+				@y_rel_position += Values->SPEED * 2;
+			}
+			else if(@y_velocity = 1) {
 				@y_rel_position -= Values->SPEED * 2;
 #~				
 				@y_rel_position -= Values->SPEED * 2;
@@ -253,6 +262,10 @@ class Player {
 						}
 						else if(rel_y2 > block_rel_y & rel_y < block_rel_y) {
 "-- Bottom --"->PrintLine();
+							if(@is_falling) {
+								@y_rel_position -= Values->SPEED * 2;
+								@is_falling := false;
+							};
 						};	
 
 # --------------------------------
