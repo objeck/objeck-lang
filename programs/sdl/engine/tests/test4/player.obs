@@ -244,7 +244,7 @@ class Player {
 				block_rel_y := y * Values->BLOCK_HEIGHT;
 
 				type := @game_map[y, x];
-				if(type > 0 & type < 8) {
+				if(type > -1 & type < 8) {
 					block_rel_x2 := block_rel_x + Values->BLOCK_WIDTH;
 					block_rel_y2 := block_rel_y + Values->BLOCK_HEIGHT;
 
@@ -253,8 +253,17 @@ class Player {
 					rel_x := @x_rel_position;
 					rel_x2 := rel_x + @player->GetWidth();
 
-					if(<>(rel_y2 < block_rel_y | rel_y > block_rel_y2 | 
+					if(y + 1 < dims[0]) {
+						if(<>(rel_x > block_rel_x2 | rel_x2 < block_rel_x)) {
+							if(@game_map[y + 1, x] = 0) {
+								@is_falling := true;
+							};
+						};
+					};
+
+					if(type > 0 & <>(rel_y2 < block_rel_y | rel_y > block_rel_y2 | 
 						rel_x > block_rel_x2 | rel_x2 < block_rel_x)) {
+
 # --------------------------------
 
 						if(rel_y < block_rel_y2 & rel_y2 > block_rel_y2) {
@@ -278,6 +287,8 @@ class Player {
 "-- Right --"->PrintLine();
 							@x_map_position -= GetSpeed();
 						};
+
+# --------------------------------
 
 						return true;
 					};
