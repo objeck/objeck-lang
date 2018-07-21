@@ -259,9 +259,11 @@ class Player {
 
 						if(rel_x <= block_rel_x2 & rel_x2 > block_rel_x2) {
 "-- Left --"->PrintLine();
+							@x_map_position += GetSpeed();
 						}
 						else if(rel_x2 >= block_rel_x & rel_x < block_rel_x) {
 "-- Right --"->PrintLine();
+							@x_map_position -= GetSpeed();
 						};
 
 						return true;
