@@ -30,7 +30,7 @@ class Player {
 		@platform := platform;
 		@game_map := @platform->GetMap();
 		@player := @platform->GetEngine()->AddAnimatedImageSprite("images/walk2.png", 10);
-		@y_rel_position := Values->SCREEN_HEIGHT - 512;
+		@y_rel_position := Values->SCREEN_HEIGHT - 256;
 
 		@background := @platform->GetEngine()->AddImageSprite("images/hills.png");
 		@fall_height := -1;
@@ -173,7 +173,6 @@ class Player {
 				if(@jump_height > 1.5 * Values->BLOCK_WIDTH) {
 					@is_jumping := false;
 					@is_falling := true;
-					@jump_height := 0;
 				};								
 			}
 			else if(@y_velocity = -1) {
@@ -308,6 +307,8 @@ class Player {
 							if(@is_falling) {
 								@y_rel_position -= Values->SPEED * 2;
 								@is_falling := false;
+								@jump_height := 0;
+								@y_velocity := 0;
 								@falling_right_tick := -1;
 								@falling_left_tick := -1;
 							};
