@@ -13,7 +13,8 @@ class Player {
 	@y_velocity : Int;
 	
 	@is_falling : Bool;
-	@falling_tick : Int;
+	@falling_left_tick : Int;
+	@falling_right_tick : Int;
 
 	@is_jumping : Bool;
 	@jump_height : Int;
@@ -40,7 +41,8 @@ class Player {
 			Values->SCREEN_BLOCK_WIDTH * Values->BLOCK_WIDTH + Values->SCREEN_WIDTH / 4;
 
 		@is_falling := true;
-		@falling_tick := -1;
+		@falling_right_tick := -1;
+		@falling_left_tick := -1;
 	}
 
 	method : public : GetFacingRight() ~ Bool {
@@ -110,6 +112,7 @@ class Player {
 
 	method : public : SetJumping(jumping : Bool) ~ Nil {
 		if(@jump_height = 0) {
+			@y_velocity := 1;
 			@is_jumping := true;
 		};
 	}
@@ -131,18 +134,30 @@ class Player {
 			# left and right
 			if(@x_velocity = 1) {
 				@x_map_position += GetSpeed();
-				if(@falling_tick > 0) {
-					@falling_tick -= GetSpeed();
-					if(@falling_tick < 0) {
+				
+				if(@falling_right_tick > 0) {
+					@falling_right_tick -= GetSpeed();
+					if(@falling_right_tick < 0) {
 						@is_falling := true;
 					};
-@falling_tick->PrintLine();					
+				};
+
+				if(@falling_left_tick > 0) {
+					@falling_left_tick += GetSpeed();
 				};
 			}
 			else if(@x_velocity = -1) {
 				@x_map_position -= GetSpeed();
-				if(@falling_tick > 0) {
-					@falling_tick += GetSpeed();
+
+				if(@falling_left_tick > 0) {
+					@falling_left_tick -= GetSpeed();
+					if(@falling_left_tick < 0) {
+						@is_falling := true;
+					};
+				};
+
+				if(@falling_right_tick > 0) {
+					@falling_right_tick += GetSpeed();
 				};
 			};
 
@@ -151,15 +166,15 @@ class Player {
 				@y_rel_position += Values->SPEED * 2;
 			}
 			else if(@y_velocity = 1) {
-				@y_rel_position -= Values->SPEED * 2;
-#~				
+#				@y_rel_position -= Values->SPEED * 2;
+				
 				@y_rel_position -= Values->SPEED * 2;
 				@jump_height += Values->SPEED * 2;
 				if(@jump_height > 1.5 * Values->BLOCK_WIDTH) {
 					@is_jumping := false;
-					@y_velocity := -1;
-				};
-~#								
+					@is_falling := true;
+					@jump_height := 0;
+				};								
 			}
 			else if(@y_velocity = -1) {
 				@y_rel_position += Values->SPEED * 2;
@@ -168,16 +183,6 @@ class Player {
 			# check for collision
 			if(<>BlockCollision()) {
 				if(frame_count % 5 = 0) {
-#~					
-					# jumping
-					if(@is_jumping) {
-						@y_velocity := 1;
-					}
-					# gravity
-					else {
-						@y_velocity := -1;
-					};
-~#
 					# walking
 					if(@x_velocity <> 0) {
 						@frame += 1;
@@ -271,8 +276,12 @@ class Player {
 
 					if(<>(rel_y2 < block_rel_y | rel_y > block_rel_y2 | rel_x > block_rel_x2 | rel_x2 < block_rel_x)) {
 @platform->GetEngine()->Debug("-- Air --: x={$rel_x},{$rel_x2}; y={$rel_y},{$rel_y2}");
-						if(@falling_tick < 0) {
-							@falling_tick := Values->BLOCK_WIDTH;
+						if(@x_velocity = 1 & @falling_right_tick < 0) {
+							@falling_right_tick := Values->BLOCK_WIDTH;
+						};
+
+						if(@x_velocity = -1 & @falling_left_tick < 0) {
+							@falling_left_tick := Values->BLOCK_WIDTH;
 						};
 					};
 				};
@@ -299,7 +308,8 @@ class Player {
 							if(@is_falling) {
 								@y_rel_position -= Values->SPEED * 2;
 								@is_falling := false;
-								@falling_tick := -1;
+								@falling_right_tick := -1;
+								@falling_left_tick := -1;
 							};
 						};	
 
