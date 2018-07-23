@@ -42,7 +42,7 @@ class PlatformDemo {
 		@player := @game->AddRectangle(Size->BLOCK_WIDTH, Size->BLOCK_HEIGHT * 2);
 		@player->SetFill(true);
 		@player->SetColor(Color->New(12, 35, 64));
-		@player_speed := Size->BLOCK_WIDTH / 4;
+		@player_speed := Size->BLOCK_WIDTH / 2;
 		
 		@player_y_position := Size->SCREEN_HEIGHT - Size->BLOCK_WIDTH * 4;
 		
@@ -290,12 +290,16 @@ class PlatformDemo {
 		if(block->GetPosition()->Overlaps(@player->GetPosition())) {
 			# right
 			if(@player_x_direction = 1) {
-				@player_x_position -= @player_speed;
+				if(<>@player_falling) {
+					@player_x_position -= @player_speed;
+				};
 				
 			}
 			# left
 			else if(@player_x_direction = -1) {
-				@player_x_position += @player_speed;
+				if(<>@player_falling) {
+					@player_x_position += @player_speed;
+				};
 			};
 
 			player_bottom := @player->GetPosition()->GetY2() - @player_speed;
@@ -313,6 +317,7 @@ class PlatformDemo {
 			}
 			# bottom
 			else if(@player_falling) {
+"--- Bottom ---"->PrintLine();								
 				@player_y_position -= @player_speed; # reset
 				@player_falling := false;
 			};
@@ -337,8 +342,8 @@ class PlatformDemo {
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-			[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-			[0, 1, 1, 1, 1, 1, 0, 0, 1, 0, 0, 2, 0, 1, 1, 1, 1, 1, 1, 1,   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0]
+			[0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+			[0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 			[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 		];
 

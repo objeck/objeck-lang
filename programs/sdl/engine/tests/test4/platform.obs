@@ -31,7 +31,10 @@ class Platform {
 	@score_text : TextSprite;
 
 	@bullet_fired : Bool;
-		
+
+	@hit_left : Bool;
+	@hit_right : Bool;
+
 	function : Main(args : String[]) ~ Nil {
 		platform := Platform->New();
 		
@@ -72,6 +75,14 @@ class Platform {
 
 	method : public : GotGem() ~ Nil {
 		@score += 25;
+	}
+
+	method : public : SetHitRight(hit_right : Bool) ~ Nil {
+		@hit_right := hit_right;
+	}
+
+	method : public : SetHitLeft(hit_left : Bool) ~ Nil {
+		@hit_left := hit_left;
 	}
 
 	method : StartGame() ~ Bool {
@@ -291,11 +302,22 @@ class Platform {
 	        	}
 
 	            label Scancode->SDL_SCANCODE_LEFT: {
-	            	@player->SetXVelocity(-1);
+	            	if(<>@hit_left) {
+	            		@player->SetXVelocity(-1);
+	            	}
+	            	else {
+	            		@player->SetXVelocity(0);
+	            	};
 	            }
 
 	            label Scancode->SDL_SCANCODE_RIGHT: {
-	            	@player->SetXVelocity(1);
+	            	if(<>@hit_right) {
+	            		@player->SetXVelocity(1);
+	            	}
+	            	else {
+	            		@player->SetYVelocity(-1);
+"**** BOOM 2 ****"->PrintLine();	            		
+	            	};
 	            }
 
 	            label Scancode->SDL_SCANCODE_SPACE: {
