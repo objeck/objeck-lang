@@ -274,9 +274,7 @@ class Platform {
 		else if(e->GetType() = EventType->SDL_JOYBUTTONDOWN) {
 			# 'a' button
 			if(e->GetJButton()->GetButton() = 0) {
-				if(@player->JumpHeight() = 0) {
-            		@player->SetJumping(true);
-            	};
+           		@player->Jump();
 			}
 			# 'b' button
 			else if(e->GetJButton()->GetButton() = 1) {
@@ -321,9 +319,7 @@ class Platform {
 	            }
 
 	            label Scancode->SDL_SCANCODE_SPACE: {
-	            	if(@player->JumpHeight() = 0) {
-            			@player->SetJumping(true);
-            		};
+	            	@player->Jump();
 	            }
 
 	            label Scancode->SDL_SCANCODE_Q:
