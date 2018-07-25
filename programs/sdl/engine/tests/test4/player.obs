@@ -184,6 +184,11 @@ class Player {
 			end_x := dims[1] - 1;
 		};
 
+
+		x_player_pos := (@x_map_position + @player->GetWidth() / 2) / Values->BLOCK_WIDTH;
+		y_player_pos := (@y_rel_position + @player->GetHeight() / 2) / Values->BLOCK_HEIGHT;
+@platform->GetEngine()->Debug("--- Playe={$x_player_pos},{$y_player_pos} ---");
+
 		# render blocks
 		for(x := start_x; x < end_x; x += 1;) {
 			block_rel_x := x * Values->BLOCK_WIDTH - (@x_map_position - @x_rel_position);
@@ -197,22 +202,13 @@ class Player {
 				rel_x := @x_rel_position;
 				rel_x2 := rel_x + @player->GetWidth();
 
-				type_below := -1;
-				if(y + 1 < dims[0]) {
-					type_below := @game_map[y + 1, x];
-				};
-				if(type_below > -1) {
-					# y for space below player
-					# y for block below
-					if(<>(rel_x > block_rel_x2 | rel_x2 < block_rel_x)) {
-@platform->GetEngine()->Debug("--- Type_below={$type_below} ---");						
-					};
-				};
+				
 
+				
 				if(<>(rel_y2 < block_rel_y | rel_y > block_rel_y2 | rel_x > block_rel_x2 | rel_x2 < block_rel_x)) {
 					type := @game_map[y, x];
 					if(type > 0) {
-@platform->GetEngine()->Debug("--- Hit: type={$type}; block={$block_rel_x},{$block_rel_y} ---");
+# @platform->GetEngine()->Debug("--- Hit: type={$type}; block={$block_rel_x},{$block_rel_y} ---");
 
 						if(@player_falling) {
 							@player_falling := false;
