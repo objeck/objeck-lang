@@ -201,7 +201,18 @@ class Player {
 
 		x_player_pos := (@x_map_position + @player->GetWidth() / 2) / Values->BLOCK_WIDTH;
 		y_player_pos := (@y_rel_position + @player->GetHeight() / 2) / Values->BLOCK_HEIGHT + 1;
-		type_below := @game_map[y_player_pos, x_player_pos];
+		
+		if(@x_velocity = 1) {
+			x_player_pos -= 1;
+		}
+		else if(@x_velocity = -1) {
+			x_player_pos += 1;
+		};
+
+		type_below := -1;
+		if(x_player_pos > -1) {
+			type_below := @game_map[y_player_pos, x_player_pos];
+		};
 		if(<>@player_jumping & type_below = 0) {
 # @platform->GetEngine()->Debug("--- Player={$x_player_pos},{$y_player_pos}, type={$type} ---");
 			@player_falling := true;
