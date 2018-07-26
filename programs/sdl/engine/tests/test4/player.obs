@@ -23,8 +23,6 @@ class Player {
 	@background : ImageSprite;
 	@background_offset : Int;
 
-	@foo : Bool;
-
 	New(platform : Platform) {
 		@platform := platform;
 		@game_map := @platform->GetMap();
@@ -223,7 +221,8 @@ class Player {
 # @platform->GetEngine()->Debug("--- Hit: type={$type}; block={$block_rel_x},{$block_rel_y} ---");
 
 						if(@player_falling) {
-@platform->GetEngine()->Debug("--- FALLING ---");								
+bar := @player->GetWidth();				
+@platform->GetEngine()->Debug("--- FALLING: bar={$bar} ---");								
 							@player_falling := false;
 							@player_jump_height := 0;
 							@y_rel_position -= GetSpeed();
@@ -241,7 +240,7 @@ class Player {
 							return true;
 						}
 						# right
-						else if(@x_velocity = 1 & <>@foo) {
+						else if(@x_velocity = 1) {
 @platform->GetEngine()->Debug("--- RIGHT ---");								
 							@x_map_position -= GetSpeed();
 							@player_jumping := false;
@@ -264,11 +263,11 @@ class Player {
 		y_player_pos := (@y_rel_position + @player->GetHeight() / 2) / Values->BLOCK_HEIGHT + 1;
 		
 		if(@x_velocity = 1) {
-			x_player_pos := (@x_map_position + @player->GetWidth()) / Values->BLOCK_WIDTH;
+			x_player_pos := (@x_map_position + @player->GetWidth() + 4) / Values->BLOCK_WIDTH;
 			x_player_pos -= 1;
 		}
 		else if(@x_velocity = -1) {
-			x_player_pos := @x_map_position / Values->BLOCK_WIDTH;
+			x_player_pos := (@x_map_position - 4) / Values->BLOCK_WIDTH;
 			x_player_pos += 1;
 		};
 
@@ -279,10 +278,6 @@ class Player {
 		if(<>@player_jumping & type_below = 0) {
 foo := (@x_map_position + @player->GetWidth()) % Values->BLOCK_WIDTH;			
 @platform->GetEngine()->Debug("--- Player: x_pos={$@x_map_position}, mod={$foo} ---");
-			if(foo = 0) {
-				@foo := true;
-				@y_rel_position += GetSpeed();
-			};
 			@player_falling := true;
 		};
 	}
