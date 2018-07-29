@@ -20,10 +20,10 @@ class Player {
 	@game_map_end : Int;
 	@is_alive : Bool;
 
-	@last_player_jump_height : Int;
-
 	@background : ImageSprite;
 	@background_offset : Int;
+
+	@state : Int;
 
 	New(platform : Platform) {
 		@platform := platform;
@@ -105,6 +105,7 @@ class Player {
 	method : public : Jump() ~ Nil {
 		if(@player_jump_height = 0) {
 			@player_jumping := true;
+			@state := 1;
 		};
 	}
 
@@ -125,6 +126,8 @@ class Player {
 				@y_rel_position -= GetSpeed();
 				if(@player_jump_height > 1.25 * @player->GetHeight()) {
 					@player_jumping := false;
+					@player_falling := true;
+					@state := 2;
 				};
 			};
 
@@ -226,46 +229,34 @@ class Player {
 # @platform->GetEngine()->Debug("--- Hit: type={$type}; block={$block_rel_x},{$block_rel_y} ---");
 	
 						if(@player_falling) {
-@platform->GetEngine()->Debug("--- FALLING: falling={$@player_falling}, jumping={$@player_jumping}, height={$@player_jump_height} ---");
+@platform->GetEngine()->Debug("--- FALLING: falling={$@player_falling}, jumping={$@player_jumping}, height={$@player_jump_height}, state={$@state} ---");
 							@player_falling := false;
 							@player_jump_height := 0;
 							@y_rel_position -= GetSpeed();
 
-							if(@player_jump_height > 0 & @x_velocity <> 0) {
-								@last_player_jump_height := @player_jump_height;
+							if(@state = 1 | @state = 2) {
+								@state := 3;
 							};
 						};
 
 						# left
 						if(@x_velocity = -1) {
-@platform->GetEngine()->Debug("--- LEFT: falling={$@player_falling}, jumping={$@player_jumping}, height={$@player_jump_height} ---");							
-#							@x_velocity := 0;
+@platform->GetEngine()->Debug("--- LEFT: falling={$@player_falling}, jumping={$@player_jumping}, height={$@player_jump_height}, state={$@state} ---");
+							@x_velocity := 0;
 							@player_jumping := false;
 							@player_falling := true;
-
-							if(@player_jump_height > 0 & @last_player_jump_height <> @player_jump_height) {
-								@x_map_position += GetSpeed();
-							}
-							else {
-								@last_player_jump_height := 0;
-							};
-
+							@x_map_position += GetSpeed();
 							return true;
 						}
 						# right
 						else if(@x_velocity = 1) {
-@platform->GetEngine()->Debug("--- RIGHT: falling={$@player_falling}, jumping={$@player_jumping}, height={$@player_jump_height} ---");				
-#							@x_velocity := 0;
+@platform->GetEngine()->Debug("--- RIGHT: falling={$@player_falling}, jumping={$@player_jumping}, height={$@player_jump_height}, state={$@state} ---");
+							if(@state <> 3) {
+								@x_map_position -= GetSpeed();
+								@x_velocity := 0;
+							};
 							@player_jumping := false;
 							@player_falling := true;
-
-							if(@player_jump_height > 0 & @last_player_jump_height <> @player_jump_height) {
-								@x_map_position -= GetSpeed();
-							}
-							else {
-								@last_player_jump_height := 0;
-							};
-
 							return true;
 						};
 					};
