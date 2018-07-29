@@ -269,34 +269,61 @@ class Player {
 
 
 						if(hit_bottom & <>hit_right & <>hit_left) {
-@platform->GetEngine()->Debug("--- BOTTOM ---");							
+@platform->GetEngine()->Debug("--- 0 ---");							
 							@player_falling := false;
+							@player_jumping := false;
 							@player_jump_height := 0;
 							@y_rel_position -= GetSpeed();
-						};
-						
-						if(hit_bottom & hit_right & <>@player_jumping & @player_falling) {
+						}
+
+						# falling to right
+						else if(hit_bottom & hit_right & <>@player_jumping & @player_falling) {
+@platform->GetEngine()->Debug("--- 1 ---");														
 							@player_falling := false;
+							@player_jumping := false;
 							@player_jump_height := 0;
 							@y_rel_position -= GetSpeed();	
 							@x_map_position -= GetSpeed();
-#							return true;
-						};
-
-						if(hit_bottom & hit_left & <>@player_jumping & @player_falling) {
+						}
+						# falling to left
+						else if(hit_bottom & hit_left & <>@player_jumping & @player_falling) {
+@platform->GetEngine()->Debug("--- 2 ---");							
 							@player_falling := false;
+							@player_jumping := false;
 							@player_jump_height := 0;
 							@y_rel_position -= GetSpeed();	
 							@x_map_position += GetSpeed();
-#							return true;
-						};
+						}
 
-						if(hit_bottom & hit_right & <>@player_jumping & <>@player_falling) {
+						# left hit in-air
+						else if(hit_left & (@player_jumping | @player_falling)) {
+@platform->GetEngine()->Debug("--- 3 ---");							
+							@player_jumping := false;
+							@player_falling := true;
+							@player_jump_height := 0;
+							@x_map_position += GetSpeed();
+							@x_velocity := 0;
+							return true;
+						}
+
+						# right hit in-air
+						else if(hit_right & (@player_jumping | @player_falling)) {
+@platform->GetEngine()->Debug("--- 2 ---");							
+							@player_jumping := false;
+							@player_falling := true;
+							@player_jump_height := 0;
+							@x_map_position -= GetSpeed();
+							@x_velocity := 0;
+							return true;
+						}
+						
+						# ground to right
+						else if(hit_bottom & hit_right & <>@player_jumping & <>@player_falling) {
 							@x_map_position -= GetSpeed();
 							return true;
-						};
-
-						if(hit_bottom & hit_left & <>@player_jumping & <>@player_falling) {
+						}
+						# ground to left
+						else if(hit_bottom & hit_left & <>@player_jumping & <>@player_falling) {
 							@x_map_position += GetSpeed();
 							return true;
 						};
