@@ -227,12 +227,40 @@ class Player {
 					type := @game_map[y, x];
 					if(type > 0) {
 # @platform->GetEngine()->Debug("--- Hit: type={$type}; block={$block_rel_x},{$block_rel_y} ---");
-	
-						if(@player_falling) {
-@platform->GetEngine()->Debug("--- FALLING: falling={$@player_falling}, jumping={$@player_jumping}, height={$@player_jump_height}, state={$@state} ---");
+
+						# top
+						if(rel_y < block_rel_y2 & rel_y2 > block_rel_y2) {
+						};
+
+						# bottom
+						if(rel_y2 > block_rel_y & rel_y < block_rel_y) {
 							@player_falling := false;
 							@player_jump_height := 0;
 							@y_rel_position -= GetSpeed();
+						};
+
+						# left
+						if(rel_x <= block_rel_x2 & rel_x2 > block_rel_x2) {
+							@x_map_position += GetSpeed();
+							@x_velocity := 0;
+							@player_jumping := false;
+							@player_falling := true;
+							return true;
+						};
+
+						# right
+						if(rel_x2 >= block_rel_x & rel_x < block_rel_x) {
+							@x_map_position -= GetSpeed();
+							@x_velocity := 0;
+							@player_jumping := false;
+							@player_falling := true;
+							return true;
+						};
+
+#~	
+						if(@player_falling) {
+@platform->GetEngine()->Debug("--- FALLING: falling={$@player_falling}, jumping={$@player_jumping}, height={$@player_jump_height}, state={$@state} ---");
+							
 
 							if(@state = 1 | @state = 2) {
 								@state := 3;
@@ -251,14 +279,18 @@ class Player {
 						# right
 						else if(@x_velocity = 1) {
 @platform->GetEngine()->Debug("--- RIGHT: falling={$@player_falling}, jumping={$@player_jumping}, height={$@player_jump_height}, state={$@state} ---");
-							if(@state <> 3) {
+							if(@state < 3) {
 								@x_map_position -= GetSpeed();
 								@x_velocity := 0;
+							}
+							else if(state = 3) {
+								@state := 0;
 							};
 							@player_jumping := false;
 							@player_falling := true;
 							return true;
 						};
+~#						
 					};
 				};
 			};
