@@ -265,7 +265,7 @@ class Player {
 #							return true;
 						};
 
-@platform->GetEngine()->Debug("--- Hit: bottom={$hit_bottom}, top={$hit_top}, left={$hit_left}, right={$hit_right}, height={$@player_jump_height} ---");
+@platform->GetEngine()->Debug("--- Hit: bottom={$hit_bottom}, top={$hit_top}, left={$hit_left}, right={$hit_right}, jumping={$@player_jumping}, falling={$@player_falling} ---");
 
 
 						if(hit_bottom & <>hit_right & <>hit_left) {
@@ -275,6 +275,33 @@ class Player {
 							@y_rel_position -= GetSpeed();
 						};
 						
+						if(hit_bottom & hit_right & <>@player_jumping & @player_falling) {
+							@player_falling := false;
+							@player_jump_height := 0;
+							@y_rel_position -= GetSpeed();	
+							@x_map_position -= GetSpeed();
+#							return true;
+						};
+
+						if(hit_bottom & hit_left & <>@player_jumping & @player_falling) {
+							@player_falling := false;
+							@player_jump_height := 0;
+							@y_rel_position -= GetSpeed();	
+							@x_map_position += GetSpeed();
+#							return true;
+						};
+
+						if(hit_bottom & hit_right & <>@player_jumping & <>@player_falling) {
+							@x_map_position -= GetSpeed();
+							return true;
+						};
+
+						if(hit_bottom & hit_left & <>@player_jumping & <>@player_falling) {
+							@x_map_position += GetSpeed();
+							return true;
+						};
+
+
 #~	
 						if(@player_falling) {
 @platform->GetEngine()->Debug("--- FALLING: falling={$@player_falling}, jumping={$@player_jumping}, height={$@player_jump_height}, state={$@state} ---");
