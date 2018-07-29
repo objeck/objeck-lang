@@ -19,6 +19,8 @@ class Player {
 	@game_map_end : Int;
 	@is_alive : Bool;
 
+	@state : Int;
+
 	@background : ImageSprite;
 	@background_offset : Int;
 
@@ -106,6 +108,7 @@ class Player {
 		if(jumping) {
 			@jumping := true;
             @y_velocity := 1;
+            @state := 1;
       	};
 	}
 
