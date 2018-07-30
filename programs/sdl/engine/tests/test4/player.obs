@@ -23,7 +23,10 @@ class Player {
 	@background : ImageSprite;
 	@background_offset : Int;
 
-	@state : Int;
+	@rel_y : Int;
+	@rel_y2 : Int;
+	@rel_x : Int;
+	@rel_x2 : Int;
 
 	New(platform : Platform) {
 		@platform := platform;
@@ -210,49 +213,61 @@ class Player {
 		# determine if player is falling
 		CheckFalling();
 
+		rel_y := @y_rel_position;
+		rel_y2 := rel_y + @player->GetHeight();
+		rel_x := @x_rel_position;
+		rel_x2 := rel_x + @player->GetWidth();
+
 		# render blocks
 		for(x := start_x; x < end_x; x += 1;) {
 			block_rel_x := x * Values->BLOCK_WIDTH - (@x_map_position - @x_rel_position);
+			block_rel_x2 := block_rel_x + Values->BLOCK_WIDTH;
+
 			for(y := 0; y < dims[0]; y += 1;) {
-				block_rel_y := y * Values->BLOCK_HEIGHT;
-				block_rel_x2 := block_rel_x + Values->BLOCK_WIDTH;
+				block_rel_y := y * Values->BLOCK_HEIGHT;	
 				block_rel_y2 := block_rel_y + Values->BLOCK_HEIGHT;
 
-				rel_y := @y_rel_position;
-				rel_y2 := rel_y + @player->GetHeight();
-				rel_x := @x_rel_position;
-				rel_x2 := rel_x + @player->GetWidth();
-
 				# adjust position
-				if(<>(rel_y2 < block_rel_y | rel_y > block_rel_y2 | rel_x > block_rel_x2 | rel_x2 < block_rel_x)) {
-					type := @game_map[y, x];
-					if(type > 0) {
+				type := @game_map[y, x];
+				if(type > 0) {
+					if(<>(rel_y2 < block_rel_y | rel_y > block_rel_y2 | rel_x > block_rel_x2 | rel_x2 < block_rel_x)) {					
+@platform->GetEngine()->Debug("--- New: rel_y={$rel_y}, rel_y2={$rel_y2}, rel_x={$rel_x}, rel_x2={$rel_x2} ---");
 
 						# top
 						if(rel_y < block_rel_y2 & rel_y2 > block_rel_y2) {
-						};
-
+						}
 						# bottom
-						hit_bottom := false;
-						if(rel_y2 > block_rel_y & rel_y < block_rel_y) {
+						else if(rel_y2 > block_rel_y & rel_y < block_rel_y) {
+							diff_y := Int->Abs(@rel_y - rel_y);
+							diff_y2 := Int->Abs(@rel_y2 - rel_y2);
+
+@platform->GetEngine()->Debug("--- Bottom: diff_y={$diff_y}, diff_y2={$diff_y2} ---");
+Runtime->Exit(1);
+#							@y_rel_position -= GetSpeed();
+							@player_falling := false;
 						};
 
 						# left
-						hit_left := false;
 						if(rel_x <= block_rel_x2 & rel_x2 > block_rel_x2) {
-						};
-
+						}
 						# right
-						if(rel_x2 >= block_rel_x & rel_x < block_rel_x) {
+						else if(rel_x2 >= block_rel_x & rel_x < block_rel_x) {
+							diff_x := Int->Abs(@rel_x - rel_x);
+							diff_x2 := Int->Abs(@rel_x2 - rel_x2);
+
+# @platform->GetEngine()->Debug("--- Right: diff_x={$diff_x}, diff_x2={$diff_x2} ---");
+
 						};						
 					};
-				}
-				# save last position
-				else {
-
 				};
 			};
 		};
+
+		# save last position
+		@rel_y := rel_y;
+		@rel_y2 := rel_y2;
+		@rel_x := rel_x;
+		@rel_x2 := rel_x2;
 
 		return false;
 	}
