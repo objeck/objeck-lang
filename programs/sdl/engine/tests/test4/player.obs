@@ -242,8 +242,8 @@ class Player {
 							diff_y2 := Int->Abs(@rel_y2 - rel_y2);
 
 @platform->GetEngine()->Debug("--- Bottom: diff_y={$diff_y}, diff_y2={$diff_y2} ---");
-Runtime->Exit(1);
-#							@y_rel_position -= GetSpeed();
+# Runtime->Exit(1);
+							@y_rel_position -= diff_y;
 							@player_falling := false;
 						};
 
@@ -255,7 +255,8 @@ Runtime->Exit(1);
 							diff_x := Int->Abs(@rel_x - rel_x);
 							diff_x2 := Int->Abs(@rel_x2 - rel_x2);
 
-# @platform->GetEngine()->Debug("--- Right: diff_x={$diff_x}, diff_x2={$diff_x2} ---");
+							@x_map_position -= diff_x;
+@platform->GetEngine()->Debug("--- Right: diff_x={$diff_x}, diff_x2={$diff_x2} ---");
 
 						};						
 					};
