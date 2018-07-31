@@ -237,17 +237,14 @@ class Player {
 							@y_rel_position -= GetSpeed();
 							@player_falling := false;
 							@player_jump_height := 0;
-							return true;
-						};
-						
+						}
 						# left
-						if(@x_velocity = -1) {
+						else if(@x_velocity = -1) {
 @platform->GetEngine()->Debug("--- Left ---");
 							@x_map_position += GetSpeed();
 							@player_jumping := false;
 							@x_velocity := 0;
 							@player_falling := true;
-							return true;
 						}
 						# right
 						else if(@x_velocity = 1) {
@@ -256,8 +253,9 @@ class Player {
 							@player_jumping := false;
 							@x_velocity := 0;
 							@player_falling := true;
-							return true;
 						};
+
+						return true;
 					};
 				};
 			};
