@@ -231,34 +231,38 @@ class Player {
 				type := @game_map[y, x];
 				if(type > 0) {
 					if(<>(rel_y2 < block_rel_y | rel_y > block_rel_y2 | rel_x > block_rel_x2 | rel_x2 < block_rel_x)) {					
-@platform->GetEngine()->Debug("--- New: rel_y={$rel_y}, rel_y2={$rel_y2}, rel_x={$rel_x}, rel_x2={$rel_x2} ---");
-
-						# top
-						if(rel_y < block_rel_y2 & rel_y2 > block_rel_y2) {
-						}
-						# bottom
-						else if(rel_y2 > block_rel_y & rel_y < block_rel_y) {
-							diff_y := Int->Abs(@rel_y - rel_y);
-							diff_y2 := Int->Abs(@rel_y2 - rel_y2);
-
-@platform->GetEngine()->Debug("--- Bottom: diff_y={$diff_y}, diff_y2={$diff_y2} ---");
-# Runtime->Exit(1);
-							@y_rel_position -= diff_y;
+# @platform->GetEngine()->Debug("--- New: rel_y={$rel_y}, rel_y2={$rel_y2}, rel_x={$rel_x}, rel_x2={$rel_x2} ---");
+						
+						# top and bottom
+						flag := @player_jump_height > 0;
+						if(rel_y2 > block_rel_y & rel_y < block_rel_y) {
+@platform->GetEngine()->Debug("--- Bottom ---");
+							@y_rel_position -= GetSpeed();
 							@player_falling := false;
+							@player_jump_height := 0;
+							flag := true;
 						};
-
+						
 						# left
-						if(rel_x <= block_rel_x2 & rel_x2 > block_rel_x2) {
+						if(@x_velocity = -1) {
+@platform->GetEngine()->Debug("--- Left: falling={$@player_jump_height} ---");
+							@x_map_position += GetSpeed();
+							@player_jumping := false;
+							@x_velocity := 0;
+							@player_falling := true;
+							return true;
 						}
 						# right
-						else if(rel_x2 >= block_rel_x & rel_x < block_rel_x) {
-							diff_x := Int->Abs(@rel_x - rel_x);
-							diff_x2 := Int->Abs(@rel_x2 - rel_x2);
-
-							@x_map_position -= diff_x;
-@platform->GetEngine()->Debug("--- Right: diff_x={$diff_x}, diff_x2={$diff_x2} ---");
-
-						};						
+						else if(@x_velocity = 1 & <>flag) {
+							if(rel_x2 >= block_rel_x & rel_x < block_rel_x) {
+@platform->GetEngine()->Debug("--- Right: falling={$@player_jump_height} ---");
+								@player_jumping := false;
+								@x_map_position -= GetSpeed();
+								@x_velocity := 0;
+								@player_falling := true;
+								return true;
+							};
+						};
 					};
 				};
 			};
@@ -344,4 +348,37 @@ class Player {
 							@player_falling := true;
 							return true;
 						};
+
+
+
+
+
+
+						# top
+						if(rel_y < block_rel_y2 & rel_y2 > block_rel_y2) {
+						};
+
+						# bottom						
+						if(rel_y2 > block_rel_y & rel_y < block_rel_y) {
+@platform->GetEngine()->Debug("--- Bottom ---");
+							if(<>(rel_x2 >= block_rel_x & rel_x < block_rel_x) {
+								@y_rel_position -= GetSpeed();
+							};
+							@player_falling := false;
+						};
+
+						# left
+						if(rel_x <= block_rel_x2 & rel_x2 > block_rel_x2) {
+@platform->GetEngine()->Debug("--- Left ---");
+							@x_map_position += GetSpeed();
+							return true;
+						};
+
+						# right
+						if(rel_x2 >= block_rel_x & rel_x < block_rel_x) {
+@platform->GetEngine()->Debug("--- Right ---");
+							@x_map_position -= GetSpeed();
+							return true;
+						};						
+
 ~#
