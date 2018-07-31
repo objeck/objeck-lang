@@ -232,17 +232,17 @@ class Player {
 # @platform->GetEngine()->Debug("--- New: rel_y={$rel_y}, rel_y2={$rel_y2}, rel_x={$rel_x}, rel_x2={$rel_x2} ---");
 						
 						# top and bottom
-						if(rel_y2 > block_rel_y & rel_y < block_rel_y) {
+						if(@player_falling & rel_y2 > block_rel_y & rel_y < block_rel_y) {
 @platform->GetEngine()->Debug("--- Bottom ---");
 							@y_rel_position -= GetSpeed();
 							@player_falling := false;
 							@player_jump_height := 0;
-							flag := true;
+							return true;
 						};
 						
 						# left
 						if(@x_velocity = -1) {
-@platform->GetEngine()->Debug("--- Left: falling={$@player_jump_height} ---");
+@platform->GetEngine()->Debug("--- Left ---");
 							@x_map_position += GetSpeed();
 							@player_jumping := false;
 							@x_velocity := 0;
@@ -251,9 +251,9 @@ class Player {
 						}
 						# right
 						else if(@x_velocity = 1) {
-@platform->GetEngine()->Debug("--- Right: falling={$@player_falling} ---");
-							@player_jumping := false;
+@platform->GetEngine()->Debug("--- Right ---");
 							@x_map_position -= GetSpeed();
+							@player_jumping := false;
 							@x_velocity := 0;
 							@player_falling := true;
 							return true;
