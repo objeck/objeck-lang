@@ -397,19 +397,19 @@ bundle Game.Engine {
 		}
 
 		method : public : native : Overlaps(rect : Position) ~ Bool {
-			right_a := rect->GetX();
-			right_b := GetX2();
+			y := GetY();
+			rect_y2 := rect->GetY2();
 
-			left_a := GetX();
-			left_b := rect->GetX2();
+			rect_y := rect->GetY();
+			y2 := GetY2();
 
-			top_a := GetY();
-			top_b := rect->GetY2();
+			rect_x := rect->GetX();
+			x2 := GetX2();
 
-			bottom_a := rect->GetY();
-			bottom_b := GetY2();
-
-			return right_b > right_a & left_a < left_b & top_b > top_a & bottom_a < bottom_b;
+			x := GetX();
+			rect_x2 := rect->GetX2();
+			
+			return <>(y2 < rect_y | y > rect_y2 | x > rect_x2 | x2 < rect_x);
 		}
 
 		method : public : Contains(x : Int, y : Int) ~ Bool {
