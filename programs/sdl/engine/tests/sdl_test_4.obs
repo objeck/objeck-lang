@@ -127,7 +127,7 @@ class Player {
 	}
 
 	# TODO
-	method : public : Update()  ~ Nil {
+	method : public : native : Update()  ~ Nil {
 		Gravity();
 
 		# Move left/right
@@ -137,7 +137,15 @@ class Player {
         	platform := @platforms->Get(i)->As(Platform);
 
         	if(platform->Collides(@rect)) {
-"--- HIT ---"->PrintLine();
+        		# moving right
+        		if(@change_x > 0) {
+        			@rect->SetX(10);
+#					@rect->right = block.rect.left;
+                }
+        		# moving left
+                else if(@change_x < 0) {
+#					@rect->left = block.rect.right
+	            };
         	};
         };
 

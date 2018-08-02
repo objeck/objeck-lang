@@ -448,25 +448,27 @@ bundle Game.Engine {
 			return GetY2() / 2;
 		}
 
-		method : public : native : Overlaps(rect : Position) ~ Bool {
+		method : public : native : Overlaps(pos : Position) ~ Bool {
 			y := GetY();
-			rect_y2 := rect->GetY2();
+			pos_y2 := pos->GetY2();
 
-			rect_y := rect->GetY();
+			pos_y := pos->GetY();
 			y2 := GetY2();
 
-			rect_x := rect->GetX();
+			pos_x := pos->GetX();
 			x2 := GetX2();
 
 			x := GetX();
-			rect_x2 := rect->GetX2();
+			pos_x2 := pos->GetX2();
 			
-			return <>(y2 < rect_y | y > rect_y2 | x > rect_x2 | x2 < rect_x);
+			return <>(y2 < pos_y | y > pos_y2 | x > pos_x2 | x2 < pos_x);
 		}
 
+#~
 		method : public : Contains(x : Int, y : Int) ~ Bool {
 			return false;
 		}
+~#		
 	}
 
 	interface Shape {
