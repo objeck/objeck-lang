@@ -267,6 +267,26 @@ bundle Game.Engine {
 		method : public : GetY() ~ Int {
 			return @position->GetY();
 		}
+
+		method : public : Set(x : Int, y : Int) ~ Nil {
+			@position->Set(x, y);
+		}
+
+		method : public : SetX(x : Int) ~ Nil {
+			@position->SetX(x);
+		}
+
+		method : public : SetY(y : Int) ~ Nil {
+			@position->SetY(y);
+		}
+
+		method : public : AddX(x : Int) ~ Nil {
+			@position->AddX(x);
+		}
+
+		method : public : AddY(y : Int) ~ Nil {
+			@position->AddY(y);
+		}
 	}
 
 	class Rectangle implements Shape {
@@ -301,6 +321,26 @@ bundle Game.Engine {
 			return @position->GetY();
 		}
 
+		method : public : Set(x : Int, y : Int) ~ Nil {
+			@position->Set(x, y);
+		}
+
+		method : public : SetX(x : Int) ~ Nil {
+			@position->SetX(x);
+		}
+
+		method : public : SetY(y : Int) ~ Nil {
+			@position->SetY(y);
+		}
+
+		method : public : AddX(x : Int) ~ Nil {
+			@position->AddX(x);
+		}
+
+		method : public : AddY(y : Int) ~ Nil {
+			@position->AddY(y);
+		}
+
 		method : public : GetPosition() ~ Position {
 			return @position;
 		}
@@ -315,10 +355,6 @@ bundle Game.Engine {
 
 		method : public : SetFill(fill : Bool) ~ Nil {
 			@fill := fill;
-		}
-
-		method : public : Set(x : Int, y : Int) ~ Nil {
-			@position->Set(x, y);
 		}
 
 		method : public : GetFill() ~ Bool {
@@ -370,6 +406,22 @@ bundle Game.Engine {
 
 		method : public : Set(x : Int, y : Int) ~ Nil {
 			@x := x; @y := y;
+		}
+
+		method : public : SetX(x : Int) ~ Nil {
+			@x := x;
+		}
+
+		method : public : SetY(y : Int) ~ Nil {
+			@y := y;
+		}
+
+		method : public : AddX(x : Int) ~ Nil {
+			@x += x;
+		}
+
+		method : public : AddY(y : Int) ~ Nil {
+			@y += y;
 		}
 
 		method : public : GetX() ~ Int {

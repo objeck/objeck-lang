@@ -120,8 +120,10 @@ class Player {
 
 	# TODO
 	method : public : Update()  ~ Nil {
-		@rect->Set(10, 10);
+		Gravity();
 
+		# Move left/right
+        @rect->AddY(@change_y);
 		
 	}
 
@@ -131,6 +133,18 @@ class Player {
 
 	# TODO
 	method : public : Gravity()  ~ Nil {
+        if(@change_y = 0) {
+            @change_y := 1;
+        }
+        else {
+            @change_y += .35;
+        };
+ 
+        # See if we are on the ground.
+        if(@rect->GetY() >= Game->SCREEN_HEIGHT - @rect->GetHeight() & @change_y >= 0) {
+            @change_y := 0;
+            @rect->SetY(Game->SCREEN_HEIGHT - @rect->GetHeight());
+        };
 	}
 }
 
