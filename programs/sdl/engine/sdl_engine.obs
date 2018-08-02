@@ -460,9 +460,6 @@ bundle Game.Engine {
 
 			x := GetX();
 			rect_x2 := rect->GetX2();
-
-# "rect: {$x}, {$y}"->PrintLine();
-# "player: {$rect_x}, {$rect_y}"->PrintLine();
 			
 			return <>(y2 < rect_y | y > rect_y2 | x > rect_x2 | x2 < rect_x);
 		}
