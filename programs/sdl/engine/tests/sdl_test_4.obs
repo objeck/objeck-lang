@@ -132,10 +132,8 @@ class Player {
 
 		# Move left/right
         @rect->AddX(@change_x);
-
         each(i : @platforms) {
         	platform := @platforms->Get(i)->As(Platform);
-
         	if(platform->Collides(@rect)) {
         		# moving right
         		if(@change_x > 0) {
@@ -148,9 +146,21 @@ class Player {
         	};
         };
 
-		# Move left/right
+		# Move up/down
         @rect->AddY(@change_y);
-		
+		each(i : @platforms) {
+        	platform := @platforms->Get(i)->As(Platform);
+        	if(platform->Collides(@rect)) {
+        		# moving right
+        		if(@change_y > 0) {
+        			@rect->SetY2(platform->GetY());
+                }
+        		# moving left
+                else if(@change_y < 0) {
+                	@rect->SetY(platform->GetY2());
+	            };
+        	};
+        };				
 	}
 
 	method : public : Draw()  ~ Nil {
@@ -189,6 +199,14 @@ class Platform {
 
 	method : public : GetX2()  ~ Int {
 		return @rect->GetX2();
+	}
+
+	method : public : GetY()  ~ Int {
+		return @rect->GetY();
+	}
+
+	method : public : GetY2()  ~ Int {
+		return @rect->GetY2();
 	}
 
 	method : public : Update()  ~ Nil {
