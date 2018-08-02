@@ -214,7 +214,7 @@ class Enemy {
 	New(platform : Platform) {
 		@platform := platform;
 		@game_map := @platform->GetMap();
-
+		@engine := @platform->GetEngine();
 		@enemy := @engine->AddImageSprite("images/enemy.png");
 	}
 
@@ -246,7 +246,7 @@ class Player {
 	New(platform : Platform) {
 		@platform := platform;
 		@game_map := @platform->GetMap();
-		@player := @platform->GetEngine()->AddAnimatedImageSprite("images/player.png", 5);
+		@player := @platform->GetEngine()->AddAnimatedImageSprite("images/player.png", 6);
 		@frame := @player->GetClipCount() - 1;
 		@y_rel_position := Values->SCREEN_HEIGHT - 128;
 
