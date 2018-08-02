@@ -268,6 +268,14 @@ bundle Game.Engine {
 			return @position->GetY();
 		}
 
+		method : public : GetX2() ~ Int {
+			return @position->GetX2();
+		}
+
+		method : public : GetY2() ~ Int {
+			return @position->GetY2();
+		}
+
 		method : public : Set(x : Int, y : Int) ~ Nil {
 			@position->Set(x, y);
 		}
@@ -278,6 +286,14 @@ bundle Game.Engine {
 
 		method : public : SetY(y : Int) ~ Nil {
 			@position->SetY(y);
+		}
+
+		method : public : SetX2(x2 : Int) ~ Nil {
+			@position->SetX2(x2);
+		}
+		
+		method : public : SetY2(y2 : Int) ~ Nil {
+			@position->SetY2(y2);
 		}
 
 		method : public : AddX(x : Int) ~ Nil {
@@ -321,6 +337,14 @@ bundle Game.Engine {
 			return @position->GetY();
 		}
 
+		method : public : GetX2() ~ Int {
+			return @position->GetX2();
+		}
+
+		method : public : GetY2() ~ Int {
+			return @position->GetY2();
+		}
+
 		method : public : Set(x : Int, y : Int) ~ Nil {
 			@position->Set(x, y);
 		}
@@ -331,6 +355,14 @@ bundle Game.Engine {
 
 		method : public : SetY(y : Int) ~ Nil {
 			@position->SetY(y);
+		}
+
+		method : public : SetX2(x2 : Int) ~ Nil {
+			@position->SetX2(x2);
+		}
+
+		method : public : SetY2(y2 : Int) ~ Nil {
+			@position->SetY2(y2);
 		}
 
 		method : public : AddX(x : Int) ~ Nil {
@@ -404,6 +436,7 @@ bundle Game.Engine {
 			return @rect;
 		}
 
+		# --- Sets
 		method : public : Set(x : Int, y : Int) ~ Nil {
 			@x := x; @y := y;
 		}
@@ -424,6 +457,15 @@ bundle Game.Engine {
 			@y += y;
 		}
 
+		method : public : SetX2(x2 : Int) ~ Nil {
+			@x := x2 - @rect->GetW();
+		}
+
+		method : public : SetY2(y2 : Int) ~ Nil {
+			@y := y2 - @rect->GetH();
+		}
+
+		# --- Gets
 		method : public : GetX() ~ Int {
 			return @x;
 		}

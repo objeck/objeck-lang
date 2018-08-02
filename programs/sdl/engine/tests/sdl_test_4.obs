@@ -139,12 +139,11 @@ class Player {
         	if(platform->Collides(@rect)) {
         		# moving right
         		if(@change_x > 0) {
-        			@rect->SetX(10);
-#					@rect->right = block.rect.left;
+        			@rect->SetX2(platform->GetX());
                 }
         		# moving left
                 else if(@change_x < 0) {
-#					@rect->left = block.rect.right
+                	@rect->SetX(platform->GetX2());
 	            };
         	};
         };
@@ -182,6 +181,14 @@ class Platform {
 		@rect->SetFill(true);
 		@rect->SetColor(Color->New(0, 255, 0));
 		@rect->Set(x, y);
+	}
+
+	method : public : GetX()  ~ Int {
+		return @rect->GetX();
+	}
+
+	method : public : GetX2()  ~ Int {
+		return @rect->GetX2();
 	}
 
 	method : public : Update()  ~ Nil {
