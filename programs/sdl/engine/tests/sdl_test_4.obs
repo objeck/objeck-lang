@@ -21,8 +21,8 @@ class Demo {
 			@player := Player->New(@engine->AddRectangle(40, 60));
 			@level := Level->New(@player, @engine);
 
-			e := @engine->GetEvent();
 			quit := false;
+			e := @engine->GetEvent();
 			while(<>quit) {
 				@engine->FrameStart();
 				@engine->Clear();
@@ -79,9 +79,11 @@ class Demo {
 	       	code := e->GetKey()->GetKeysym()->GetScancode();
 	       	
 	       	if(code = Scancode->SDL_SCANCODE_LEFT & @player->ChangeX() < 0) {
+	       		@player->Stop();
 	        };
 
 	        if(code = Scancode->SDL_SCANCODE_RIGHT & @player->ChangeX() > 0) {
+	        	@player->Stop();
 	        };
 	    };
 	}
@@ -91,6 +93,7 @@ class Player {
 	@rect : Rectangle;
 	@change_x : Float;
 	@change_y : Float;
+	@platforms : Vector;
 
 	New(rect : Rectangle) {
 		@rect := rect;
@@ -98,8 +101,13 @@ class Player {
 		@rect->SetColor(Color->New(255, 0, 0));
 	}
 
+
+	method : public : SetLevel(level : Level)  ~ Nil {
+		@platforms := level->GetPlatforms();
+	}
+
 	method : public : ChangeX()  ~ Int {
-		return 0;
+		return @change_x;
 	}
 
 	method : public : GoLeft()  ~ Nil {
@@ -123,6 +131,17 @@ class Player {
 		Gravity();
 
 		# Move left/right
+        @rect->AddX(@change_x);
+
+        each(i : @platforms) {
+        	platform := @platforms->Get(i)->As(Platform);
+
+        	if(platform->Collides(@rect)) {
+"--- HIT ---"->PrintLine();
+        	};
+        };
+
+		# Move left/right
         @rect->AddY(@change_y);
 		
 	}
@@ -131,7 +150,6 @@ class Player {
 		@rect->Render();
 	}
 
-	# TODO
 	method : public : Gravity()  ~ Nil {
         if(@change_y = 0) {
             @change_y := 1;
@@ -164,6 +182,10 @@ class Platform {
 	method : public : Draw()  ~ Nil {
 		@rect->Render();
 	}
+
+	method : public : Collides(rect : Rectangle) ~ Bool {
+		return @rect->GetPosition()->Overlaps(rect->GetPosition());
+	}
 }
 
 class Level {
@@ -177,6 +199,12 @@ class Level {
 		@platforms->AddBack(Platform->New(500, 500, engine->AddRectangle(210, 70)));
 		@platforms->AddBack(Platform->New(200, 400, engine->AddRectangle(210, 70)));	
 		@platforms->AddBack(Platform->New(600, 300, engine->AddRectangle(210, 70)));
+
+		@player->SetLevel(@self);
+	}
+
+	method : public : GetPlatforms() ~ Vector {
+		return @platforms;
 	}
 
 	method : public : Update()  ~ Nil {
