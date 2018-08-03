@@ -40,6 +40,15 @@ class Demo {
 				@player->Update();
 				@level->Update();
 
+				# check for screen edges
+				if(@player->GetRight() > Game->SCREEN_WIDTH) {
+		            @player->SetRight(Game->SCREEN_WIDTH);
+		        };
+		 
+		        if(@player->GetLeft() < 0) {
+		            @player->SetLeft(0);
+		        };
+
 				# draw
 				@player->Draw();
 				@level->Draw();
@@ -101,6 +110,21 @@ class Player {
 		@rect->SetColor(Color->New(255, 0, 0));
 	}
 
+	method : public : GetLeft() ~ Int {
+		return @rect->GetX();
+	}
+
+	method : public : GetRight() ~ Int {
+		return @rect->GetX2();
+	}
+
+	method : public : SetLeft(x : Int) ~ Nil {
+		@rect->SetX(x);
+	}
+
+	method : public : SetRight(x2 : Int) ~ Nil {
+		@rect->SetX2(x2);
+	}
 
 	method : public : SetLevel(level : Level)  ~ Nil {
 		@platforms := level->GetPlatforms();
@@ -124,9 +148,22 @@ class Player {
 
 	# TODO
 	method : public : Jump()  ~ Nil {
+		@rect->AddY(2);
+
+		bottom := false;
+		each(i : @platforms) {
+        	platform := @platforms->Get(i)->As(Platform);
+        	if(platform->Collides(@rect)) {
+        		bottom := true;
+        	};
+		};
+        @rect->AddY(-2);
+ 
+        if(bottom | @rect->GetY2() >= Game->SCREEN_HEIGHT) {
+			@change_y := -10;
+        };
 	}
 
-	# TODO
 	method : public : native : Update()  ~ Nil {
 		Gravity();
 

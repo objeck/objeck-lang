@@ -503,7 +503,7 @@ bundle Game.Engine {
 			x := GetX();
 			pos_x2 := pos->GetX2();
 			
-			return <>(y2 < pos_y | y > pos_y2 | x > pos_x2 | x2 < pos_x);
+			return <>(y2 <= pos_y | y >= pos_y2 | x >= pos_x2 | x2 <= pos_x);
 		}
 
 #~
