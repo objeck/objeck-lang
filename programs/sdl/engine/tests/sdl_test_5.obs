@@ -124,7 +124,11 @@ class Player {
 		@rect := rect;
 		@rect->SetFill(true);
 		@rect->SetColor(Color->New(255, 0, 0));
-		@rect->SetX(150);
+		@rect->SetX(120);
+	}
+
+	method : public : GetRect() ~ Rectangle {
+		return @rect; 
 	}
 
 	method : public : GetLeft() ~ Int {
@@ -166,14 +170,7 @@ class Player {
 	# TODO
 	method : public : Jump()  ~ Nil {
 		@rect->AddY(2);
-
-		bottom := false;
-		each(i : @platforms) {
-        	platform := @platforms->Get(i)->As(Platform);
-        	if(platform->Collides(@rect)) {
-        		bottom := true;
-        	};
-		};
+		bottom := Level->Collides(@self, @platforms);
         @rect->AddY(-2);
  
         if(bottom | @rect->GetY2() >= Game->SCREEN_HEIGHT) {
@@ -186,20 +183,32 @@ class Player {
 
 		# Move left/right
         @rect->AddX(@change_x);
-        each(i : @platforms) {
-        	platform := @platforms->Get(i)->As(Platform);
-        	if(platform->Collides(@rect)) {
-        		# moving right
-        		if(@change_x > 0) {
-        			@rect->SetX2(platform->GetX());
-                }
-        		# moving left
-                else if(@change_x < 0) {
-                	@rect->SetX(platform->GetX2());
-	            };
-        	};
+
+        collides := Level->Collisions(@self, @platforms);
+        each(i : collides) {
+        	platform := collides->Get(i)->As(Platform);
+			if(@change_x > 0) {
+    			@rect->SetX2(platform->GetX());
+            }
+    		# moving left
+            else if(@change_x < 0) {
+            	@rect->SetX(platform->GetX2());
+            };
         };
 
+        collides := Level->Collisions(@self, @platforms);
+        each(i : collides) {
+        	platform := collides->Get(i)->As(Platform);
+    		# moving right
+    		if(@change_x > 0) {
+    			@rect->SetX2(platform->GetX());
+            }
+    		# moving left
+            else if(@change_x < 0) {
+            	@rect->SetX(platform->GetX2());
+            };
+        };
+				
 		# Move up/down
         @rect->AddY(@change_y);
 		each(i : @platforms) {
@@ -291,13 +300,36 @@ class Level {
 		@platforms->AddBack(Platform->New(500, 500, engine->AddRectangle(210, 70)));
 		@platforms->AddBack(Platform->New(200, 400, engine->AddRectangle(210, 70)));	
 		@platforms->AddBack(Platform->New(600, 300, engine->AddRectangle(210, 70)));
-
 		@platforms->AddBack(Platform->New(850, 600, engine->AddRectangle(210, 70)));
 		@platforms->AddBack(Platform->New(1025, 500, engine->AddRectangle(210, 70)));	
 		@platforms->AddBack(Platform->New(1250, 300, engine->AddRectangle(210, 70)));
 
 		@player->SetLevel(@self);
 	}
+
+	function : Collides(player : Player, obstacles : Vector) ~ Bool {
+		each(i : obstacles) {
+        	obstacle := obstacles->Get(i)->As(Platform);
+        	if(obstacle->Collides(player->GetRect())) {
+        		return true;
+        	};
+        };
+
+        return false;
+	}
+
+	function : Collisions(player : Player, obstacles : Vector) ~ Vector {
+		collides := Vector->New();
+
+		each(i : obstacles) {
+        	obstacle := obstacles->Get(i)->As(Platform);
+        	if(obstacle->Collides(player->GetRect())) {
+        		collides->AddBack(obstacle);
+        	};
+        };
+
+        return collides;
+    }
 
 	method : public : GetShiftX() ~ Int {
 		return @shift_x;
@@ -310,11 +342,6 @@ class Level {
 			platform := @platforms->Get(i)->As(Platform);
 			platform->AddX(shift_x);
 		};
-
-#~
-		for enemy in self.enemy_list:
-			enemy.rect.x += shift_x
-~#			
 	}
 
 	method : public : GetPlatforms() ~ Vector {
