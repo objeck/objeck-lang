@@ -351,13 +351,15 @@ class Level {
 		@player := player;
 		@platforms := Vector->New();
 
-		@platforms->AddBack(MovingPlatform->New(500, 150, engine->AddRectangle(75, 35), player, @self));
-		@platforms->AddBack(Platform->New(200, 400, engine->AddRectangle(210, 70)));	
-		@platforms->AddBack(Platform->New(600, 300, engine->AddRectangle(210, 70)));
+		@platforms->AddBack(MovingPlatform->New(200, 150, engine->AddRectangle(75, 35), player, @self));
+
+		@platforms->AddBack(Platform->New(400, 400, engine->AddRectangle(100, 50)));	
+		@platforms->AddBack(Platform->New(505, 400, engine->AddRectangle(100, 50)));
+#~		
 		@platforms->AddBack(Platform->New(850, 600, engine->AddRectangle(210, 70)));
 		@platforms->AddBack(Platform->New(1025, 500, engine->AddRectangle(210, 70)));	
 		@platforms->AddBack(Platform->New(1250, 300, engine->AddRectangle(210, 70)));
-
+~#
 		@player->SetLevel(@self);
 	}
 
