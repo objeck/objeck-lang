@@ -200,6 +200,9 @@ bundle Game.Engine {
 		}
 	}
 
+	#~
+	Bitmap sprite
+	~#
 	class Sprite implements Shape {
 		@texture : Texture;
 		@render_rect : Rect;
@@ -212,6 +215,9 @@ bundle Game.Engine {
 			@position := Position->New(@render_rect);
 		}
 
+		#~
+		Destroys and frees sprite resources
+		~#
 		method : public : Free() ~ Nil {
 			if(@texture <> Nil)	{
 				@texture->Destroy();
@@ -220,6 +226,12 @@ bundle Game.Engine {
 			};
 		}
 
+		#~
+		Sets the color
+		@param red red
+		@param green green
+		@param blue blue
+		~#
 		method : public : SetColor(red : Int, green : Int, blue : Int) ~ Nil {
 			@texture->SetColorMod(red, green, blue);
 		}
