@@ -414,6 +414,10 @@ class Level {
 		};
 	}
 
+	method : public : Update()  ~ Nil {
+		@platforms : Vector;
+	}
+
 	method : public : Draw()  ~ Nil {
 		each(i : @platforms) {
 			@platforms->Get(i)->As(Platform)->Draw();
