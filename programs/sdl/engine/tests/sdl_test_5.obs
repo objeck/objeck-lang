@@ -222,6 +222,10 @@ class Player {
                 else if(@change_y < 0) {
                 	@rect->SetY(platform->GetY2());
 	            };
+
+	            if(platform->TypeOf(MovingPlatform)) {
+	            	@rect->SetX(platform->As(MovingPlatform)->GetChangeX());
+	            };
         	};
         };				
 	}
@@ -303,6 +307,10 @@ class MovingPlatform from Platform {
 		@player := player;
 	}
 
+	method : public : GetChangeX() ~ Int {
+		return @change_x;
+	}
+
 	method : public : SetLevel(level : Level)  ~ Nil {
 		@level := level;
 	}
@@ -333,34 +341,10 @@ class MovingPlatform from Platform {
 			@change_y *= -1;
 		};
 
-#~ 
-        cur_pos := @rect->GetX() - @level.world_shift
-        if cur_pos < @boundary_left or cur_pos > @boundary_right:
-            @change_x *= -1
-~#
-
-#~      
-        # Check and see if we the player
-        hit = pygame.sprite.collide_rect(self, @player)
-        if hit:
-            # We did hit the player. Shove the player around and
-            # assume he/she won't hit anything else.
- 
-            # Reset our position based on the top/bottom of the object.
-            if @change_y < 0:
-                @player.rect.bottom = @rect.top
-            else:
-                @player.rect.top = @rect.bottom
- 
-        # Check the boundaries and see if we need to reverse
-        # direction.
-        if @rect.bottom > @boundary_bottom or @rect.top < @boundary_top:
-            @change_y *= -1
- 
-        cur_pos = @rect.x - @level.world_shift
-        if cur_pos < @boundary_left or cur_pos > @boundary_right:
-            @change_x *= -1
-~#            		
+		cur_pos := @rect->GetX() - @level->GetShiftX();
+        if(cur_pos < @boundary_left | cur_pos > @boundary_right) {
+			@change_x *= -1;
+        };
 	}
 }
 
