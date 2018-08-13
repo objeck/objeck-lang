@@ -256,7 +256,7 @@ class Platform {
 	New(x : Int, y : Int, rect : Rectangle) {
 		@rect := rect;
 		@rect->SetFill(true);
-		@rect->SetColor(Color->New(0, 255, 0));
+		@rect->SetColor(Color->New(255, 255, 0));
 		@rect->Set(x, y);
 	}
 
@@ -284,6 +284,7 @@ class Platform {
 	}
 
 	method : public : Draw()  ~ Nil {
+"--- draw ---"->PrintLine();		
 		@rect->Render();
 	}
 
@@ -302,9 +303,14 @@ class MovingPlatform from Platform {
     @player : Player;
     @level : Level;
 
-	New(x : Int, y : Int, rect : Rectangle, player : Player) {
+	New(x : Int, y : Int, rect : Rectangle, player : Player, level : Level) {
 		Parent(x, y, rect);
 		@player := player;
+		@level := level;
+
+		@boundary_top := 75;
+    	@boundary_bottom := 550;
+    	@change_y := -1;
 	}
 
 	method : public : GetChangeX() ~ Int {
@@ -338,11 +344,13 @@ class MovingPlatform from Platform {
 		};
 
 		if(@rect->GetY2() > @boundary_bottom | @rect->GetY() < @boundary_top) {
+"--- 0 ---"->PrintLine();			
 			@change_y *= -1;
 		};
 
 		cur_pos := @rect->GetX() - @level->GetShiftX();
         if(cur_pos < @boundary_left | cur_pos > @boundary_right) {
+"--- 1 ---"->PrintLine();        	
 			@change_x *= -1;
         };
 	}
@@ -357,12 +365,12 @@ class Level {
 		@player := player;
 		@platforms := Vector->New();
 
-		@platforms->AddBack(Platform->New(500, 500, engine->AddRectangle(210, 70)));
-		@platforms->AddBack(Platform->New(200, 400, engine->AddRectangle(210, 70)));	
-		@platforms->AddBack(Platform->New(600, 300, engine->AddRectangle(210, 70)));
-		@platforms->AddBack(Platform->New(850, 600, engine->AddRectangle(210, 70)));
-		@platforms->AddBack(Platform->New(1025, 500, engine->AddRectangle(210, 70)));	
-		@platforms->AddBack(Platform->New(1250, 300, engine->AddRectangle(210, 70)));
+		@platforms->AddBack(MovingPlatform->New(500, 100, engine->AddRectangle(210, 70), player, @self));
+#		@platforms->AddBack(Platform->New(200, 400, engine->AddRectangle(210, 70)));	
+#		@platforms->AddBack(Platform->New(600, 300, engine->AddRectangle(210, 70)));
+#		@platforms->AddBack(Platform->New(850, 600, engine->AddRectangle(210, 70)));
+#		@platforms->AddBack(Platform->New(1025, 500, engine->AddRectangle(210, 70)));	
+#		@platforms->AddBack(Platform->New(1250, 300, engine->AddRectangle(210, 70)));
 
 		@player->SetLevel(@self);
 	}
@@ -410,12 +418,14 @@ class Level {
 
 	method : public : Update()  ~ Nil {
 		each(i : @platforms) {
-			@platforms->Get(i)->As(Platform)->Update();
+			platform := @platforms->Get(i);
+			if(platform->TypeOf(MovingPlatform)) {
+				@platforms->Get(i)->As(MovingPlatform)->Update();
+			}
+			else {
+				@platforms->Get(i)->As(Platform)->Update();
+			};
 		};
-	}
-
-	method : public : Update()  ~ Nil {
-		@platforms : Vector;
 	}
 
 	method : public : Draw()  ~ Nil {

@@ -1,6 +1,6 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		v := "0b1011"->ToInt();
-		v->PrintLine();	
+		a := b := 13;
+		b->PrintLine();
 	}
 }
