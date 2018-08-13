@@ -40,31 +40,23 @@ class Demo {
 				@player->Update();
 				@level->Update();
 
+				shift := @level->GetShiftX();
 				if(@player->GetRight() >= 500) {
 					diff := @player->GetRight() - 500;
 					@player->SetRight(500);
-					@level->ShiftWorld(-1 * diff);
+					if(shift > -1500) {
+						@level->ShiftWorld(-1 * diff);
+					};
 		        };
 
 		        if(@player->GetLeft() <= 120) {
 					diff := 120 - @player->GetLeft();
 					@player->SetLeft(120);
-					@level->ShiftWorld(diff);
+					if(shift < 0) {
+						@level->ShiftWorld(diff);
+					};
 				};
-
-				current_position := @player->GetLeft() + @level->GetShiftX();
-
-#~
-				# check for screen edges
-				if(@player->GetRight() > Game->SCREEN_WIDTH) {
-		            @player->SetRight(Game->SCREEN_WIDTH);
-		        };
-		 
-		        if(@player->GetLeft() < 0) {
-		            @player->SetLeft(0);
-		        };
-~#
-
+				
 				# draw
 				@player->Draw();
 				@level->Draw();
@@ -278,7 +270,7 @@ class Platform {
 	method : public : GetY2()  ~ Int {
 		return @rect->GetY2();
 	}
-	
+
 	method : public : Draw()  ~ Nil {
 		@rect->Render();
 	}
