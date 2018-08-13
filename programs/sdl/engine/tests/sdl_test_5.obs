@@ -167,7 +167,6 @@ class Player {
 		@change_x := 0;
 	}
 
-	# TODO
 	method : public : Jump()  ~ Nil {
 		@rect->AddY(2);
 		bottom := Level->Collides(@self, @platforms);
@@ -279,10 +278,7 @@ class Platform {
 	method : public : GetY2()  ~ Int {
 		return @rect->GetY2();
 	}
-
-	method : public : Update()  ~ Nil {
-	}
-
+	
 	method : public : Draw()  ~ Nil {
 		@rect->Render();
 	}
@@ -419,9 +415,6 @@ class Level {
 			platform := @platforms->Get(i);
 			if(platform->TypeOf(MovingPlatform)) {
 				@platforms->Get(i)->As(MovingPlatform)->Update();
-			}
-			else {
-				@platforms->Get(i)->As(Platform)->Update();
 			};
 		};
 	}
