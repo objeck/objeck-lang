@@ -284,7 +284,6 @@ class Platform {
 	}
 
 	method : public : Draw()  ~ Nil {
-"--- draw ---"->PrintLine();		
 		@rect->Render();
 	}
 
@@ -310,7 +309,7 @@ class MovingPlatform from Platform {
 
 		@boundary_top := 75;
     	@boundary_bottom := 550;
-    	@change_y := -1;
+    	@change_y := 1;
 	}
 
 	method : public : GetChangeX() ~ Int {
@@ -344,13 +343,11 @@ class MovingPlatform from Platform {
 		};
 
 		if(@rect->GetY2() > @boundary_bottom | @rect->GetY() < @boundary_top) {
-"--- 0 ---"->PrintLine();			
 			@change_y *= -1;
 		};
 
 		cur_pos := @rect->GetX() - @level->GetShiftX();
         if(cur_pos < @boundary_left | cur_pos > @boundary_right) {
-"--- 1 ---"->PrintLine();        	
 			@change_x *= -1;
         };
 	}
@@ -365,7 +362,7 @@ class Level {
 		@player := player;
 		@platforms := Vector->New();
 
-		@platforms->AddBack(MovingPlatform->New(500, 100, engine->AddRectangle(210, 70), player, @self));
+		@platforms->AddBack(MovingPlatform->New(500, 200, engine->AddRectangle(70, 70), player, @self));
 #		@platforms->AddBack(Platform->New(200, 400, engine->AddRectangle(210, 70)));	
 #		@platforms->AddBack(Platform->New(600, 300, engine->AddRectangle(210, 70)));
 #		@platforms->AddBack(Platform->New(850, 600, engine->AddRectangle(210, 70)));
