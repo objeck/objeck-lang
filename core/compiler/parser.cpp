@@ -210,7 +210,7 @@ void Parser::ParseBundle(int depth)
     NextToken();
     const wstring &ident = ParseBundleName();
     uses.push_back(ident);
-    if(!TOKEN_SEMI_COLON) {
+    if(!Match(TOKEN_SEMI_COLON)) {
       ProcessError(L"Expected ';'", TOKEN_SEMI_COLON);
     }
     NextToken();
@@ -233,7 +233,7 @@ void Parser::ParseBundle(int depth)
       }
       symbol_table = new SymbolTableManager;
       ParsedBundle* bundle = new ParsedBundle(bundle_name, symbol_table);
-      if(!TOKEN_OPEN_BRACE) {
+      if(!Match(TOKEN_OPEN_BRACE)) {
         ProcessError(L"Expected '{'", TOKEN_OPEN_BRACE);
       }
       NextToken();

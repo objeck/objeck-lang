@@ -148,6 +148,7 @@ extern "C" {
   __declspec(dllexport) 
 #endif
   void openssl_encrypt_aes256(VMContext& context) {
+/****
     // get parameters
     size_t* key_array = (size_t*)APITools_GetIntAddress(context, 1)[0];    
     const int key_size =  APITools_GetArraySize(key_array) - 1;
@@ -209,6 +210,7 @@ extern "C" {
     
     size_t* output_holder = APITools_GetIntAddress(context, 0);
     output_holder[0] = (size_t)output_byte_array;
+****/
   }
   
   //
@@ -218,6 +220,7 @@ extern "C" {
   __declspec(dllexport) 
 #endif
   void openssl_decrypt_aes256(VMContext& context) {
+/****
     // get parameters
     size_t* key_array = (size_t*)APITools_GetIntAddress(context, 1)[0];    
     const int key_size =  APITools_GetArraySize(key_array) - 1;
@@ -278,5 +281,6 @@ extern "C" {
     
     size_t* output_holder = APITools_GetIntAddress(context, 0);
     output_holder[0] = (size_t)output_byte_array;
+****/
   }
 }
