@@ -1,6 +1,9 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		a := b := 13;
-		b->PrintLine();
+		b := 13;
+		Foo(b->PrintLine());
+	}
+	
+	function : Foo(a : String) ~ Nil {
 	}
 }

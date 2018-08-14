@@ -2237,6 +2237,9 @@ bool ContextAnalyzer::Analyze()
         }
         // check cast
         if(mthd_params[i]->GetEntry()) {
+          if(expression->GetExpressionType() == METHOD_CALL_EXPR && expression->GetEvalType() && expression->GetEvalType()->GetType() == NIL_TYPE) {
+            ProcessError(static_cast<Expression*>(method_call), L"Invalid operation");
+          }
           AnalyzeRightCast(mthd_params[i]->GetEntry()->GetType(), expression->GetEvalType(), 
                            expression, IsScalar(expression), depth + 1);	
         }
