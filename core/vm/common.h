@@ -72,15 +72,12 @@ using namespace stdext;
 #include <dlfcn.h>
 #include <pwd.h>
 #else
-#include <tr1/unordered_map>
-#include <tr1/unordered_set>
+#include <unordered_map>
+#include <unordered_set>
 #include <pthread.h>
 #include <pwd.h>
 #include <stdint.h>
 #include <iomanip>
-namespace std {
-  using namespace tr1;
-}
 #include <dlfcn.h>
 #endif
 
