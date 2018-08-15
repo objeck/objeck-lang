@@ -49,12 +49,6 @@ int main(const int argc, const char* argv[])
     setlocale(LC_ALL, "en_US.utf8"); 
 #endif
     
-#ifdef _WIN32    
-    // Initialize OpenSSL
-    CRYPTO_malloc_init();
-    SSL_library_init();
-#endif
-    
     return Execute(argc, argv);
   } 
   else {

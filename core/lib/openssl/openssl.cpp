@@ -30,8 +30,7 @@
 
 #include <string.h>
 #include <openssl/sha.h>
-// #include <openssl/evp.h>
-// #include <openssl/aes.h>
+#include <openssl/aes.h>
 #include <openssl/md5.h>
 #include <openssl/ripemd.h>
 #include "../../vm/lib_api.h"
@@ -148,7 +147,6 @@ extern "C" {
   __declspec(dllexport) 
 #endif
   void openssl_encrypt_aes256(VMContext& context) {
-    /*
     // get parameters
     size_t* key_array = (size_t*)APITools_GetIntAddress(context, 1)[0];    
     const int key_size =  APITools_GetArraySize(key_array) - 1;
@@ -162,41 +160,39 @@ extern "C" {
     unsigned char* salt = NULL;
     
     // encrypt
-    EVP_CIPHER_CTX ctx;
     unsigned char iv[32];
     unsigned char key_out[32];
     int result = EVP_BytesToKey(EVP_aes_256_cbc(), EVP_sha1(), salt, key, key_size, 8, key_out, iv);
     if (result != 32) {
-      EVP_CIPHER_CTX_cleanup(&ctx);
       return;
     }
     
     int output_size = input_size + AES_BLOCK_SIZE;     
     unsigned char* output = (unsigned char*)calloc(output_size, sizeof(unsigned char));    
-    EVP_CIPHER_CTX_init(&ctx);
-    if(!EVP_EncryptInit_ex(&ctx, EVP_aes_256_cbc(), NULL, key, iv)) {
-      EVP_CIPHER_CTX_cleanup(&ctx);      
+    EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
+    if(!EVP_EncryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, key, iv)) {
+      EVP_CIPHER_CTX_free(ctx);      
       free(output);
       output = NULL;
       return;
     }
     
-    if(!EVP_EncryptUpdate(&ctx, output, &output_size, input, input_size)) {
-      EVP_CIPHER_CTX_cleanup(&ctx);      
+    if(!EVP_EncryptUpdate(ctx, output, &output_size, input, input_size)) {
+      EVP_CIPHER_CTX_free(ctx);      
       free(output);
       output = NULL;
       return;
     }
     
     int final_size;
-    if(!EVP_EncryptFinal_ex(&ctx, output + output_size, &final_size)) {
-      EVP_CIPHER_CTX_cleanup(&ctx);      
+    if(!EVP_EncryptFinal_ex(ctx, output + output_size, &final_size)) {
+      EVP_CIPHER_CTX_free(ctx);      
       free(output);
       output = NULL;
       return;
     }
     
-    EVP_CIPHER_CTX_cleanup(&ctx);
+    EVP_CIPHER_CTX_free(ctx);
     
     // copy output
     const int total_size = output_size + final_size;
@@ -210,7 +206,6 @@ extern "C" {
     
     size_t* output_holder = APITools_GetIntAddress(context, 0);
     output_holder[0] = (size_t)output_byte_array;
-    */
   }
   
   //
@@ -220,7 +215,6 @@ extern "C" {
   __declspec(dllexport) 
 #endif
   void openssl_decrypt_aes256(VMContext& context) {
-    /*
     // get parameters
     size_t* key_array = (size_t*)APITools_GetIntAddress(context, 1)[0];    
     const int key_size =  APITools_GetArraySize(key_array) - 1;
@@ -234,40 +228,37 @@ extern "C" {
     unsigned char* salt = NULL;
     
     // decrypt
-    EVP_CIPHER_CTX ctx;
     unsigned char iv[32];
     unsigned char key_out[32];
     int result = EVP_BytesToKey(EVP_aes_256_cbc(), EVP_sha1(), salt, key, key_size, 8, key_out, iv);
     if (result != 32) {
-      EVP_CIPHER_CTX_cleanup(&ctx);
       return;
     }
     
-    EVP_CIPHER_CTX_init(&ctx);
-    
-    if(!EVP_DecryptInit_ex(&ctx, EVP_aes_256_cbc(), NULL, key, iv)) {
-      EVP_CIPHER_CTX_cleanup(&ctx);      
+    EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
+    if(!EVP_DecryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, key, iv)) {
+      EVP_CIPHER_CTX_free(ctx);      
       return;
     }
     
     int output_size = input_size + AES_BLOCK_SIZE;   
     unsigned char* output = (unsigned char*)calloc(output_size, sizeof(unsigned char));
-    if(!EVP_DecryptUpdate(&ctx, output, &output_size, input, input_size)) {
-      EVP_CIPHER_CTX_cleanup(&ctx);      
+    if(!EVP_DecryptUpdate(ctx, output, &output_size, input, input_size)) {
+      EVP_CIPHER_CTX_free(ctx);      
       free(output);
       output = NULL;
       return;
     }
   
     int final_size;
-    if(!EVP_DecryptFinal_ex(&ctx, output + output_size, &final_size))  {
-      EVP_CIPHER_CTX_cleanup(&ctx);      
+    if(!EVP_DecryptFinal_ex(ctx, output + output_size, &final_size))  {
+      EVP_CIPHER_CTX_free(ctx);      
       free(output);
       output = NULL;
       return;
     }
     
-    EVP_CIPHER_CTX_cleanup(&ctx);
+    EVP_CIPHER_CTX_free(ctx);
     
     // copy output
     const int total_size = output_size + final_size;
@@ -281,6 +272,5 @@ extern "C" {
     
     size_t* output_holder = APITools_GetIntAddress(context, 0);
     output_holder[0] = (size_t)output_byte_array;
-    */
   }
 }
