@@ -57,10 +57,6 @@ int main(const int argc, const char* argv[])
       status = SYSTEM_ERROR;
     }
     else {
-      // Initialize OpenSSL
-      CRYPTO_malloc_init();
-      SSL_library_init();
-      
       // execute program
       status = Execute(argc, argv);
     }
