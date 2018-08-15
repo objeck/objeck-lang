@@ -26,7 +26,7 @@ mkdir deploy64\lib\native
 cd ..\lib\openssl
 devenv openssl.sln /rebuild "Release|x64"
 copy Release\win64\*.dll ..\..\Release\deploy64\lib\native
-copy ..\win64\bin\*.dll ..\..\Release\deploy64\bin
+copy win\x64\bin\*.dll ..\..\Release\deploy64\bin
 cd ..\..\release
 
 REM odbc support

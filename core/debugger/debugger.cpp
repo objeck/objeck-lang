@@ -1514,12 +1514,6 @@ int main(int argc, char** argv)
     setlocale(LC_CTYPE, "UTF-8");
 #endif
 
-#ifdef _WIN32
-    // Initialize OpenSSL
-    CRYPTO_malloc_init();
-    SSL_library_init();
-#endif
-    
     // reconstruct path
     string buffer;
     for(int i = 1; i < argc; i++) {

@@ -25,8 +25,9 @@ REM openssl support
 mkdir deploy\lib\native
 cd ..\lib\openssl
 devenv openssl.sln /rebuild "Release|x86"
+copy win\x86\bin\*.dll ..\..\Release\deploy\bin
 copy Release\*.dll ..\..\Release\deploy\lib\native
-copy ..\Win32\bin\*.dll ..\..\Release\deploy\bin
+copy win\x86\bin\*.dll ..\..\Release\deploy\bin
 cd ..\..\Release
 
 REM odbc support
