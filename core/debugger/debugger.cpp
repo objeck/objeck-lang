@@ -971,7 +971,7 @@ void Runtime::Debugger::EvaluateByteReference(Reference* reference, int index) {
         }
       }
       // match the dimensions
-      if(expressions.size() == dim) {
+      if((long)expressions.size() == dim) {
         // calculate indices
         array += 2;
         long j = dim - 1;
@@ -1514,9 +1514,11 @@ int main(int argc, char** argv)
     setlocale(LC_CTYPE, "UTF-8");
 #endif
 
+#ifdef _WIN32
     // Initialize OpenSSL
     CRYPTO_malloc_init();
     SSL_library_init();
+#endif
     
     // reconstruct path
     string buffer;
