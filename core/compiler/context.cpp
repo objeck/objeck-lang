@@ -2353,8 +2353,12 @@ bool ContextAnalyzer::Analyze()
         Expression* expression = expr_params[j];
         while(expression->GetMethodCall()) {
           AnalyzeExpressionMethodCall(expression, depth + 1);
+          if(expression->GetExpressionType() == METHOD_CALL_EXPR && expression->GetEvalType() && expression->GetEvalType()->GetType() == NIL_TYPE) {
+            ProcessError(static_cast<Expression*>(method_call), L"Invalid operation");
+          }
           expression = expression->GetMethodCall();
         }
+
         AnalyzeRightCast(method_parms[j], expression, IsScalar(expression), depth + 1);
       }
     }
