@@ -257,7 +257,7 @@ bundle Game.Engine {
 
 		method : public : Render(clip : Rect := Nil, angle : Float := 0.0, 
 				center : Point := Nil, flip : RendererFlip := RendererFlip->SDL_FLIP_NONE) ~ Nil {
-			RenderAll(@position->GetX(), @position->GetY(), clip, angle, center, flip);
+			RenderAll(@position->GetLeft(), @position->GetTop(), clip, angle, center, flip);
 		}
 
 		method : public : GetWidth() ~ Int {
@@ -272,40 +272,40 @@ bundle Game.Engine {
 			return @position;
 		}
 
-		method : public : GetX() ~ Int {
-			return @position->GetX();
+		method : public : GetLeft() ~ Int {
+			return @position->GetLeft();
 		}
 
-		method : public : GetY() ~ Int {
-			return @position->GetY();
+		method : public : GetTop() ~ Int {
+			return @position->GetTop();
 		}
 
-		method : public : GetX2() ~ Int {
-			return @position->GetX2();
+		method : public : GetRight() ~ Int {
+			return @position->GetRight();
 		}
 
-		method : public : GetY2() ~ Int {
-			return @position->GetY2();
+		method : public : GetBottom() ~ Int {
+			return @position->GetBottom();
 		}
 
 		method : public : Set(x : Int, y : Int) ~ Nil {
 			@position->Set(x, y);
 		}
 
-		method : public : SetX(x : Int) ~ Nil {
-			@position->SetX(x);
+		method : public : SetLeft(x : Int) ~ Nil {
+			@position->SetLeft(x);
 		}
 
-		method : public : SetY(y : Int) ~ Nil {
-			@position->SetY(y);
+		method : public : SetTop(y : Int) ~ Nil {
+			@position->SetTop(y);
 		}
 
-		method : public : SetX2(x2 : Int) ~ Nil {
-			@position->SetX2(x2);
+		method : public : SetRight(x2 : Int) ~ Nil {
+			@position->SetRight(x2);
 		}
 		
-		method : public : SetY2(y2 : Int) ~ Nil {
-			@position->SetY2(y2);
+		method : public : SetBottom(y2 : Int) ~ Nil {
+			@position->SetBottom(y2);
 		}
 
 		method : public : AddX(x : Int) ~ Nil {
@@ -341,40 +341,40 @@ bundle Game.Engine {
 			return @render_rect->GetH();
 		}
 
-		method : public : GetX() ~ Int {
-			return @position->GetX();
+		method : public : GetLeft() ~ Int {
+			return @position->GetLeft();
 		}
 
-		method : public : GetY() ~ Int {
-			return @position->GetY();
+		method : public : GetTop() ~ Int {
+			return @position->GetTop();
 		}
 
-		method : public : GetX2() ~ Int {
-			return @position->GetX2();
+		method : public : GetRight() ~ Int {
+			return @position->GetRight();
 		}
 
-		method : public : GetY2() ~ Int {
-			return @position->GetY2();
+		method : public : GetBottom() ~ Int {
+			return @position->GetBottom();
 		}
 
 		method : public : Set(x : Int, y : Int) ~ Nil {
 			@position->Set(x, y);
 		}
 
-		method : public : SetX(x : Int) ~ Nil {
-			@position->SetX(x);
+		method : public : SetLeft(x : Int) ~ Nil {
+			@position->SetLeft(x);
 		}
 
-		method : public : SetY(y : Int) ~ Nil {
-			@position->SetY(y);
+		method : public : SetTop(y : Int) ~ Nil {
+			@position->SetTop(y);
 		}
 
-		method : public : SetX2(x2 : Int) ~ Nil {
-			@position->SetX2(x2);
+		method : public : SetRight(x2 : Int) ~ Nil {
+			@position->SetRight(x2);
 		}
 
-		method : public : SetY2(y2 : Int) ~ Nil {
-			@position->SetY2(y2);
+		method : public : SetBottom(y2 : Int) ~ Nil {
+			@position->SetBottom(y2);
 		}
 
 		method : public : AddX(x : Int) ~ Nil {
@@ -409,7 +409,7 @@ bundle Game.Engine {
 		Renders an image based upon position instance
 		~#
 		method : public : Render() ~ Nil {
-			Render(@position->GetX(), @position->GetY());
+			Render(@position->GetLeft(), @position->GetTop());
 		}
 
 		#~
@@ -453,11 +453,11 @@ bundle Game.Engine {
 			@x := x; @y := y;
 		}
 
-		method : public : SetX(x : Int) ~ Nil {
+		method : public : SetLeft(x : Int) ~ Nil {
 			@x := x;
 		}
 
-		method : public : SetY(y : Int) ~ Nil {
+		method : public : SetTop(y : Int) ~ Nil {
 			@y := y;
 		}
 
@@ -469,51 +469,51 @@ bundle Game.Engine {
 			@y += y;
 		}
 
-		method : public : SetX2(x2 : Int) ~ Nil {
+		method : public : SetRight(x2 : Int) ~ Nil {
 			@x := x2 - @rect->GetW();
 		}
 
-		method : public : SetY2(y2 : Int) ~ Nil {
+		method : public : SetBottom(y2 : Int) ~ Nil {
 			@y := y2 - @rect->GetH();
 		}
 
 		# --- Gets
-		method : public : GetX() ~ Int {
+		method : public : GetLeft() ~ Int {
 			return @x;
 		}
 
-		method : public : GetX2() ~ Int {
+		method : public : GetRight() ~ Int {
 			return @x + @rect->GetW();
 		}
 
 		method : public : GetCenterX() ~ Int {
-			return GetX2() / 2;
+			return GetRight() / 2;
 		}
 
-		method : public : GetY() ~ Int {
+		method : public : GetTop() ~ Int {
 			return @y;
 		}
 
-		method : public : GetY2() ~ Int {
+		method : public : GetBottom() ~ Int {
 			return @y + @rect->GetH();
 		}
 
 		method : public : GetCenterY() ~ Int {
-			return GetY2() / 2;
+			return GetBottom() / 2;
 		}
 
 		method : public : native : Overlaps(pos : Position) ~ Bool {
-			y := GetY();
-			pos_y2 := pos->GetY2();
+			y := GetTop();
+			pos_y2 := pos->GetBottom();
 
-			pos_y := pos->GetY();
-			y2 := GetY2();
+			pos_y := pos->GetTop();
+			y2 := GetBottom();
 
-			pos_x := pos->GetX();
-			x2 := GetX2();
+			pos_x := pos->GetLeft();
+			x2 := GetRight();
 
-			x := GetX();
-			pos_x2 := pos->GetX2();
+			x := GetLeft();
+			pos_x2 := pos->GetRight();
 			
 			return <>(y2 <= pos_y | y >= pos_y2 | x >= pos_x2 | x2 <= pos_x);
 		}
