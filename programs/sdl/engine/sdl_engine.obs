@@ -588,7 +588,6 @@ bundle Game.Engine {
 			@screen_width := screen_width;
 			@screen_height := screen_height;
 
-			# Initialize SDL
 			if(Core->Init(init_flags) < 0) {
 				"SDL could not initialize!"->ErrorLine();
 				return false;
@@ -599,7 +598,6 @@ bundle Game.Engine {
 				return false;
 			};
 
-			# Create window
 			@window := Window->New(title, WindowFlags->SDL_WINDOWPOS_UNDEFINED, 
 				WindowFlags->SDL_WINDOWPOS_UNDEFINED, @screen_width, @screen_height, 
 				WindowFlags->SDL_WINDOW_SHOWN);
@@ -627,8 +625,7 @@ bundle Game.Engine {
 				return false;
 			};
 
-			# SHOULD BE A PARAMETER
-			@font := Font->New("../../../../programs/sdl/engine/tests/media/lazy.ttf", 18);
+			@font := Font->New("../lib/fonts/lazy.ttf", 18);
 			if(@font->IsNull()) {
 				"Failed to load font!"->ErrorLine();
 				return false;
@@ -678,6 +675,10 @@ bundle Game.Engine {
 
 		method : public : SetClearColor(color : Color) ~ Nil {
 			@clear_color := color;
+		}
+
+		method : public : SetFont(font : Font) ~ Nil {
+			@font := font;
 		}
 
 		method : public : GetClearColor() ~ Color {
