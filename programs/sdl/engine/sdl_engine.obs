@@ -625,7 +625,7 @@ bundle Game.Engine {
 				return false;
 			};
 
-			@font := Font->New("../lib/fonts/lazy.ttf", 18);
+			@font := Font->New("../lib/sdl/fonts/lazy.ttf", 18);
 			if(@font->IsNull()) {
 				"Failed to load font!"->ErrorLine();
 				return false;

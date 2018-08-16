@@ -14,10 +14,11 @@ copy ..\debugger\Release\win64\*.exe deploy64\bin
 
 REM libraries
 mkdir deploy64\lib
+mkdir deploy64\lib\sdl
+mkdir deploy64\lib\sdl\fonts
 copy ..\lib\*.obl deploy64\lib
 del deploy64\lib\gtk2.obl
 del deploy64\lib\sdl.obl
-REM del deploy64\lib\query.obl
 del /q deploy64\bin\a.*
 copy ..\vm\misc\*.pem deploy64\lib
 
@@ -34,6 +35,12 @@ cd ..\lib\odbc
 devenv odbc.sln /rebuild "Release|x64"
 copy Release\win64\*.dll ..\..\Release\deploy64\lib\native
 cd ..\..\release
+
+REM sdl
+cd ..\lib\sdl
+copy lib\fonts\*.ttf ..\..\Release\deploy64\lib\sdl\fonts
+copy lib\x64\*.dll ..\..\Release\deploy64\lib\sdl
+cd ..\..\Release
 
 REM copy examples
 mkdir deploy64\examples\
