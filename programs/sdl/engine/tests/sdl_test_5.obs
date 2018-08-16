@@ -40,7 +40,7 @@ class Demo {
 				@player->Update();
 				@level->Update();
 
-				shift := @level->GetShiftX();
+				shift := @level->GetShiftLeft();
 				if(@player->GetRight() >= 500) {
 					diff := @player->GetRight() - 500;
 					@player->SetRight(500);
@@ -95,11 +95,11 @@ class Demo {
 	    else if(e->GetType() = EventType->SDL_KEYUP) {
 	       	code := e->GetKey()->GetKeysym()->GetScancode();
 	       	
-	       	if(code = Scancode->SDL_SCANCODE_LEFT & @player->ChangeX() < 0) {
+	       	if(code = Scancode->SDL_SCANCODE_LEFT & @player->ChangeLeft() < 0) {
 	       		@player->Stop();
 	        };
 
-	        if(code = Scancode->SDL_SCANCODE_RIGHT & @player->ChangeX() > 0) {
+	        if(code = Scancode->SDL_SCANCODE_RIGHT & @player->ChangeLeft() > 0) {
 	        	@player->Stop();
 	        };
 	    };
@@ -116,7 +116,7 @@ class Player {
 		@rect := rect;
 		@rect->SetFill(true);
 		@rect->SetColor(Color->New(255, 0, 0));
-		@rect->SetX(120);
+		@rect->SetLeft(120);
 	}
 
 	method : public : GetRect() ~ Rectangle {
@@ -124,26 +124,26 @@ class Player {
 	}
 
 	method : public : GetLeft() ~ Int {
-		return @rect->GetX();
+		return @rect->GetLeft();
 	}
 
 	method : public : GetRight() ~ Int {
-		return @rect->GetX2();
+		return @rect->GetRight();
 	}
 
 	method : public : SetLeft(x : Int) ~ Nil {
-		@rect->SetX(x);
+		@rect->SetLeft(x);
 	}
 
 	method : public : SetRight(x2 : Int) ~ Nil {
-		@rect->SetX2(x2);
+		@rect->SetRight(x2);
 	}
 
 	method : public : SetLevel(level : Level)  ~ Nil {
 		@platforms := level->GetPlatforms();
 	}
 
-	method : public : ChangeX()  ~ Int {
+	method : public : ChangeLeft()  ~ Int {
 		return @change_x;
 	}
 
@@ -164,13 +164,13 @@ class Player {
 		bottom := Level->Collides(@self, @platforms);
         @rect->AddY(-2);
  
-        if(bottom | @rect->GetY2() >= Game->SCREEN_HEIGHT) {
+        if(bottom | @rect->GetBottom() >= Game->SCREEN_HEIGHT) {
 			@change_y := -10;
         };
 	}
 
 	method : public : native : Update()  ~ Nil {
-		Gravity();
+		GravitTop();
 
 		# Move left/right
         @rect->AddX(@change_x);
@@ -179,11 +179,11 @@ class Player {
         each(i : collides) {
         	platform := collides->Get(i)->As(Platform);
 			if(@change_x > 0) {
-    			@rect->SetX2(platform->GetX());
+    			@rect->SetRight(platform->GetLeft());
             }
     		# moving left
             else if(@change_x < 0) {
-            	@rect->SetX(platform->GetX2());
+            	@rect->SetLeft(platform->GetRight());
             };
         };
 
@@ -192,11 +192,11 @@ class Player {
         	platform := collides->Get(i)->As(Platform);
     		# moving right
     		if(@change_x > 0) {
-    			@rect->SetX2(platform->GetX());
+    			@rect->SetRight(platform->GetLeft());
             }
     		# moving left
             else if(@change_x < 0) {
-            	@rect->SetX(platform->GetX2());
+            	@rect->SetLeft(platform->GetRight());
             };
         };
 				
@@ -207,15 +207,15 @@ class Player {
         	if(platform->Collides(@rect)) {
         		# moving right
         		if(@change_y > 0) {
-        			@rect->SetY2(platform->GetY());
+        			@rect->SetBottom(platform->GetTop());
                 }
         		# moving left
                 else if(@change_y < 0) {
-                	@rect->SetY(platform->GetY2());
+                	@rect->SetTop(platform->GetBottom());
 	            };
 
 	            if(platform->TypeOf(MovingPlatform)) {
-	            	@rect->AddX(platform->As(MovingPlatform)->GetChangeX());
+	            	@rect->AddX(platform->As(MovingPlatform)->GetChangeLeft());
 	            };
         	};
         };				
@@ -225,7 +225,7 @@ class Player {
 		@rect->Render();
 	}
 
-	method : public : Gravity()  ~ Nil {
+	method : public : GravitTop()  ~ Nil {
         if(@change_y = 0) {
             @change_y := 1;
         }
@@ -234,9 +234,9 @@ class Player {
         };
  
         # See if we are on the ground.
-        if(@rect->GetY() >= Game->SCREEN_HEIGHT - @rect->GetHeight() & @change_y >= 0) {
+        if(@rect->GetTop() >= Game->SCREEN_HEIGHT - @rect->GetHeight() & @change_y >= 0) {
             @change_y := 0;
-            @rect->SetY(Game->SCREEN_HEIGHT - @rect->GetHeight());
+            @rect->SetTop(Game->SCREEN_HEIGHT - @rect->GetHeight());
         };
 	}
 }
@@ -255,20 +255,20 @@ class Platform {
 		@rect->AddX(x);
 	}
 
-	method : public : GetX()  ~ Int {
-		return @rect->GetX();
+	method : public : GetLeft()  ~ Int {
+		return @rect->GetLeft();
 	}
 
-	method : public : GetX2()  ~ Int {
-		return @rect->GetX2();
+	method : public : GetRight()  ~ Int {
+		return @rect->GetRight();
 	}
 
-	method : public : GetY()  ~ Int {
-		return @rect->GetY();
+	method : public : GetTop()  ~ Int {
+		return @rect->GetTop();
 	}
 
-	method : public : GetY2()  ~ Int {
-		return @rect->GetY2();
+	method : public : GetBottom()  ~ Int {
+		return @rect->GetBottom();
 	}
 
 	method : public : Draw()  ~ Nil {
@@ -301,7 +301,7 @@ class MovingPlatform from Platform {
     	@change_y := 1;
 	}
 
-	method : public : GetChangeX() ~ Int {
+	method : public : GetChangeLeft() ~ Int {
 		return @change_x;
 	}
 
@@ -314,28 +314,28 @@ class MovingPlatform from Platform {
 
 		if(Collides(@player->GetRect())) {
 			if(@change_x < 0) {
-                @player->GetRect()->SetX2(@rect->GetX());
+                @player->GetRect()->SetRight(@rect->GetLeft());
             }
             else {
-            	@player->GetRect()->SetX(@rect->GetX2());
+            	@player->GetRect()->SetLeft(@rect->GetRight());
  			};
 		};
 
 		@rect->AddY(@change_y);
 		if(Collides(@player->GetRect())) {
 			if(@change_y < 0) {
-                @player->GetRect()->SetY2(@rect->GetY());
+                @player->GetRect()->SetBottom(@rect->GetTop());
 			}
             else {
-				@player->GetRect()->SetY(@rect->GetY2());
+				@player->GetRect()->SetTop(@rect->GetBottom());
             };
 		};
 
-		if(@rect->GetY2() > @boundary_bottom | @rect->GetY() < @boundary_top) {
+		if(@rect->GetBottom() > @boundary_bottom | @rect->GetTop() < @boundary_top) {
 			@change_y *= -1;
 		};
 
-		cur_pos := @rect->GetX() - @level->GetShiftX();
+		cur_pos := @rect->GetLeft() - @level->GetShiftLeft();
         if(cur_pos < @boundary_left | cur_pos > @boundary_right) {
 			@change_x *= -1;
         };
@@ -386,7 +386,7 @@ class Level {
         return collides;
     }
 
-	method : public : GetShiftX() ~ Int {
+	method : public : GetShiftLeft() ~ Int {
 		return @shift_x;
 	}
 
