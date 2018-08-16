@@ -14,7 +14,9 @@ copy ..\debugger\Release\*.exe deploy\bin
 
 REM libraries
 mkdir deploy\lib
-mkdir deploy\lib\fonts
+mkdir deploy\lib\sdl
+mkdir deploy\lib\sdl\fonts
+mkdir deploy\lib\sdl
 copy ..\lib\*.obl deploy\lib
 del deploy\lib\gtk2.obl
 del deploy\lib\sdl.obl
@@ -39,7 +41,8 @@ cd ..\..\Release
 
 REM sdl
 cd ..\lib\sdl
-copy lib\fonts\*.ttf ..\..\Release\deploy\lib\fonts
+copy lib\fonts\*.ttf ..\..\Release\deploy\lib\sdl\fonts
+copy lib\x86\*.dll ..\..\Release\deploy\lib\sdl
 cd ..\..\Release
 
 REM copy examples
