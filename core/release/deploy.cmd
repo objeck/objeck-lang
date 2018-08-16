@@ -20,7 +20,6 @@ mkdir deploy\lib\sdl
 copy ..\lib\*.obl deploy\lib
 del deploy\lib\gtk2.obl
 del deploy\lib\sdl.obl
-REM del deploy\lib\query.obl
 del /q deploy\bin\a.*
 copy ..\vm\misc\*.pem deploy\lib
 
@@ -41,6 +40,8 @@ cd ..\..\Release
 
 REM sdl
 cd ..\lib\sdl
+devenv sdl\sdl.sln /rebuild "Release|x86"
+copy sdl\Release\x86\*.dll ..\..\Release\deploy\lib\native
 copy lib\fonts\*.ttf ..\..\Release\deploy\lib\sdl\fonts
 copy lib\x86\*.dll ..\..\Release\deploy\lib\sdl
 cd ..\..\Release

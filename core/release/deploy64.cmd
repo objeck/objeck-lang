@@ -38,6 +38,8 @@ cd ..\..\release
 
 REM sdl
 cd ..\lib\sdl
+devenv sdl\sdl.sln /rebuild "Release|x64"
+copy sdl\Release\Win32\*.dll ..\..\Release\deploy\lib\native
 copy lib\fonts\*.ttf ..\..\Release\deploy64\lib\sdl\fonts
 copy lib\x64\*.dll ..\..\Release\deploy64\lib\sdl
 cd ..\..\Release
