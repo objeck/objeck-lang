@@ -14,6 +14,7 @@ copy ..\debugger\Release\*.exe deploy\bin
 
 REM libraries
 mkdir deploy\lib
+mkdir deploy\lib\fonts
 copy ..\lib\*.obl deploy\lib
 del deploy\lib\gtk2.obl
 del deploy\lib\sdl.obl
@@ -34,6 +35,11 @@ REM odbc support
 cd ..\lib\odbc
 devenv odbc.sln  /rebuild "Release|x86"
 copy Release\*.dll ..\..\Release\deploy\lib\native
+cd ..\..\Release
+
+REM sdl
+cd ..\lib\sdl
+copy lib\fonts\*.ttf ..\..\Release\deploy\lib\fonts
 cd ..\..\Release
 
 REM copy examples

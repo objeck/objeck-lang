@@ -352,7 +352,6 @@ class Level {
 		@platforms := Vector->New();
 
 		@platforms->AddBack(MovingPlatform->New(200, 150, engine->AddRectangle(75, 35), player, @self));
-
 		@platforms->AddBack(Platform->New(400, 400, engine->AddRectangle(100, 50)));	
 		@platforms->AddBack(Platform->New(505, 400, engine->AddRectangle(100, 50)));
 #~		
