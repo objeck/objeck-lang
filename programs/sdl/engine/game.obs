@@ -4,7 +4,7 @@ use Collection;
 #~
 Game wrapper for SDL2
 ~#
-bundle Game.Engine {
+bundle Game.Framework {
 	#~
 	Animated sprite sheet
 	~#
@@ -532,7 +532,7 @@ bundle Game.Engine {
 		method : public : virtual : Free() ~ Nil;
 	}
 
-	class GameEngine {
+	class GameFramework {
 		@is_ok : Bool;
 		@screen_width : Int;
 		@screen_height : Int;

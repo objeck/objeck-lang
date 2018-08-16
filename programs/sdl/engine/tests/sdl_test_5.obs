@@ -1,9 +1,9 @@
 use Game.SDL2;
-use Game.Engine;
+use Game.Framework;
 use Collection;
 
 class Demo {
-	@engine : GameEngine;
+	@framework : GameFramework;
 	@player : Player;
 	@level : Level;
 
@@ -12,20 +12,20 @@ class Demo {
 	}
 
 	New() {
-		@engine := GameEngine->New(Game->SCREEN_WIDTH, Game->SCREEN_HEIGHT, "Platformer Jumper");
-		@engine->SetClearColor(Color->New(0, 0, 255));
+		@framework := GameFramework->New(Game->SCREEN_WIDTH, Game->SCREEN_HEIGHT, "Platformer Jumper");
+		@framework->SetClearColor(Color->New(0, 0, 255));
 	}
 
 	method : Run() ~ Nil {
-		if(@engine->IsOk()) {
-			@player := Player->New(@engine->AddRectangle(40, 60));
-			@level := Level->New(@player, @engine);
+		if(@framework->IsOk()) {
+			@player := Player->New(@framework->AddRectangle(40, 60));
+			@level := Level->New(@player, @framework);
 
 			quit := false;
-			e := @engine->GetEvent();
+			e := @framework->GetEvent();
 			while(<>quit) {
-				@engine->FrameStart();
-				@engine->Clear();
+				@framework->FrameStart();
+				@framework->Clear();
 				
 				# process input
 				while(e->Poll() <> 0) {
@@ -62,8 +62,8 @@ class Demo {
 				@level->Draw();
 
 				# show
-				@engine->Show();
-				@engine->FrameEnd();
+				@framework->Show();
+				@framework->FrameEnd();
 			};
 		}
 		else {
@@ -72,7 +72,7 @@ class Demo {
 		};
 
 		leaving {
-			@engine->Quit();
+			@framework->Quit();
 		};
 	}
 
@@ -347,17 +347,17 @@ class Level {
 	@platforms : Vector;
 	@shift_x : Int;
 
-	New(player : Player, engine : GameEngine) {
+	New(player : Player, framework : GameFramework) {
 		@player := player;
 		@platforms := Vector->New();
 
-		@platforms->AddBack(MovingPlatform->New(200, 150, engine->AddRectangle(75, 35), player, @self));
-		@platforms->AddBack(Platform->New(400, 400, engine->AddRectangle(100, 50)));	
-		@platforms->AddBack(Platform->New(505, 400, engine->AddRectangle(100, 50)));
+		@platforms->AddBack(MovingPlatform->New(200, 150, framework->AddRectangle(75, 35), player, @self));
+		@platforms->AddBack(Platform->New(400, 400, framework->AddRectangle(100, 50)));	
+		@platforms->AddBack(Platform->New(505, 400, framework->AddRectangle(100, 50)));
 #~		
-		@platforms->AddBack(Platform->New(850, 600, engine->AddRectangle(210, 70)));
-		@platforms->AddBack(Platform->New(1025, 500, engine->AddRectangle(210, 70)));	
-		@platforms->AddBack(Platform->New(1250, 300, engine->AddRectangle(210, 70)));
+		@platforms->AddBack(Platform->New(850, 600, framework->AddRectangle(210, 70)));
+		@platforms->AddBack(Platform->New(1025, 500, framework->AddRectangle(210, 70)));	
+		@platforms->AddBack(Platform->New(1250, 300, framework->AddRectangle(210, 70)));
 ~#
 		@player->SetLevel(@self);
 	}
