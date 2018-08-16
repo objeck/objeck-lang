@@ -41,7 +41,7 @@ cd ..\..\Release
 REM sdl
 cd ..\lib\sdl
 devenv sdl\sdl.sln /rebuild "Release|x86"
-copy sdl\Release\x86\*.dll ..\..\Release\deploy\lib\native
+copy sdl\Release\Win32\*.dll ..\..\Release\deploy\lib\native
 copy lib\fonts\*.ttf ..\..\Release\deploy\lib\sdl\fonts
 copy lib\x86\*.dll ..\..\Release\deploy\lib\sdl
 cd ..\..\Release
