@@ -170,7 +170,7 @@ class Player {
 	}
 
 	method : public : native : Update()  ~ Nil {
-		GravitTop();
+		Gravity();
 
 		# Move left/right
         @rect->AddX(@change_x);
@@ -225,7 +225,7 @@ class Player {
 		@rect->Render();
 	}
 
-	method : public : GravitTop()  ~ Nil {
+	method : public : Gravity()  ~ Nil {
         if(@change_y = 0) {
             @change_y := 1;
         }
