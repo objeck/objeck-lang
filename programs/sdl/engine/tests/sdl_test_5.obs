@@ -155,7 +155,7 @@ class Player {
 		@change_x := 6;
 	}
 
-	method : public : Stop()  ~ Nil {
+	method : public : Stop() ~ Nil {
 		@change_x := 0;
 	}
 
@@ -170,7 +170,7 @@ class Player {
 	}
 
 	method : public : native : Update()  ~ Nil {
-		GravitTop();
+		Gravity();
 
 		# Move left/right
         @rect->AddX(@change_x);
@@ -179,19 +179,6 @@ class Player {
         each(i : collides) {
         	platform := collides->Get(i)->As(Platform);
 			if(@change_x > 0) {
-    			@rect->SetRight(platform->GetLeft());
-            }
-    		# moving left
-            else if(@change_x < 0) {
-            	@rect->SetLeft(platform->GetRight());
-            };
-        };
-
-        collides := Level->Collisions(@self, @platforms);
-        each(i : collides) {
-        	platform := collides->Get(i)->As(Platform);
-    		# moving right
-    		if(@change_x > 0) {
     			@rect->SetRight(platform->GetLeft());
             }
     		# moving left
@@ -214,6 +201,9 @@ class Player {
                 	@rect->SetTop(platform->GetBottom());
 	            };
 
+	            # Stop our vertical movement
+            	@change_y := 0;
+
 	            if(platform->TypeOf(MovingPlatform)) {
 	            	@rect->AddX(platform->As(MovingPlatform)->GetChangeLeft());
 	            };
@@ -225,14 +215,14 @@ class Player {
 		@rect->Render();
 	}
 
-	method : public : GravitTop()  ~ Nil {
+	method : public : Gravity()  ~ Nil {
         if(@change_y = 0) {
             @change_y := 1;
         }
         else {
             @change_y += .35;
         };
- 
+
         # See if we are on the ground.
         if(@rect->GetTop() >= Game->SCREEN_HEIGHT - @rect->GetHeight() & @change_y >= 0) {
             @change_y := 0;
@@ -322,7 +312,7 @@ class MovingPlatform from Platform {
 		};
 
 		@rect->AddY(@change_y);
-		if(Collides(@player->GetRect())) {
+		if(Collides(@player->GetRect())) { 
 			if(@change_y < 0) {
                 @player->GetRect()->SetBottom(@rect->GetTop());
 			}
@@ -351,7 +341,8 @@ class Level {
 		@player := player;
 		@platforms := Vector->New();
 
-		@platforms->AddBack(MovingPlatform->New(200, 150, framework->AddRectangle(75, 35), player, @self));
+#		@platforms->AddBack(MovingPlatform->New(200, 150, framework->AddRectangle(75, 35), player, @self));
+		@platforms->AddBack(Platform->New(200, 500, framework->AddRectangle(100, 50)));	
 		@platforms->AddBack(Platform->New(400, 400, framework->AddRectangle(100, 50)));	
 		@platforms->AddBack(Platform->New(505, 400, framework->AddRectangle(100, 50)));
 #~		
