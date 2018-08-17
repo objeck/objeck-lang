@@ -26,7 +26,7 @@ REM openssl support
 mkdir deploy64\lib\native
 cd ..\lib\openssl
 devenv openssl.sln /rebuild "Release|x64"
-copy Release\win64\*.dll ..\..\Release\deploy64\lib\native
+REM copy Release\win64\*.dll ..\..\Release\deploy64\lib\native
 copy win\x64\bin\*.dll ..\..\Release\deploy64\bin
 cd ..\..\release
 
