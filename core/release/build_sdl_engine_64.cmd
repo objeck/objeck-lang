@@ -7,7 +7,6 @@ obc -src ..\..\..\compiler\lib_src\game.obs -lib collect.obl,sdl.obl -tar lib -d
 obc -src ..\..\..\..\programs\sdl\engine\tests\%1.obs -lib collect.obl,sdl.obl,game.obl -dest ..\..\%1.obe
 
 if NOT %2.==. (
-REM	copy /y ..\..\..\lib\sdl\sdl\Debug\x64\libobjk_sdl.dll ..\lib\native
 	rmdir /s /q images
 	mkdir images
 	xcopy /e ..\..\..\..\programs\sdl\engine\tests\media\images\*.png images\
