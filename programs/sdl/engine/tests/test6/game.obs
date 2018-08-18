@@ -18,6 +18,11 @@ class Demo {
 
 	method : Run() ~ Nil {
 		if(@framework->IsOk()) {
+
+			foo := Rect->New(132, 0, 67, 90);
+			bar := Color->New();
+
+#			@player := Player->New(@framework->AddImageSprite("C:/Users/objec/Documents/Code/objeck-lang/programs/sdl/engine/tests/test6/media/p1_walk.png", bar, foo));
 			@player := Player->New(@framework->AddImageSprite("C:/Users/objec/Documents/Code/objeck-lang/programs/sdl/engine/tests/test6/media/player.png"));
 			@level := Level->New(@player, @framework);
 

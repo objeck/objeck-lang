@@ -9,7 +9,6 @@ bundle Game.Framework {
 	Animated sprite sheet
 	~#
 	class AnimatedImageSprite from ImageSprite {
-		@clip : Rect;
 		@clip_offset : Int;
 		@clip_count : Int;
 
@@ -50,8 +49,17 @@ bundle Game.Framework {
 	~#
 	class ImageSprite from Sprite {
 		@is_ok : Bool;
+		@clip : Rect;
 		@angle : Float;
 		@flip : RendererFlip;
+
+		New(renderer : Renderer, file : String, colorkey : Color, clip : Rect) {
+			Parent(renderer);
+			@clip := clip;
+			@angle := 0;
+			@flip := RendererFlip->SDL_FLIP_NONE;
+			@is_ok := LoadImage(file, colorkey);
+		}
 
 		New(renderer : Renderer, file : String, colorkey : Color) {
 			Parent(renderer);
@@ -96,7 +104,7 @@ bundle Game.Framework {
 
 			@render_rect->SetW(surface->GetW());
 			@render_rect->SetH(surface->GetH());
-			
+		
 			surface->Free();
 
 			@texture := texture;
@@ -150,7 +158,7 @@ bundle Game.Framework {
 		Renders an image based upon position instance
 		~#
 		method : public : Render() ~ Nil {
-			RenderAll(@position->GetLeft(), @position->GetTop(), Nil, @angle, Nil, @flip);
+			RenderAll(@position->GetLeft(), @position->GetTop(), @clip, @angle, Nil, @flip);
 		}
 	}
 
@@ -728,6 +736,20 @@ bundle Game.Framework {
 
 		method : public : AddTextSprite() ~ TextSprite {
 			shape := TextSprite->New(@renderer, @font);
+			@shapes->AddBack(shape);
+
+			return shape;
+		}
+
+		method : public : AddImageSprite(file : String, colorkey : Color, render_rect : Rect) ~ ImageSprite {
+			shape := ImageSprite->New(@renderer, file, colorkey, render_rect);
+			@shapes->AddBack(shape);
+
+			return shape;
+		}
+
+		method : public : AddImageSprite(file : String, colorkey : Color) ~ ImageSprite {
+			shape := ImageSprite->New(@renderer, file, colorkey);
 			@shapes->AddBack(shape);
 
 			return shape;
