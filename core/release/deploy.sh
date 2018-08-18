@@ -5,6 +5,8 @@ rm -rf deploy
 mkdir deploy
 mkdir deploy/bin
 mkdir deploy/lib
+mkdir deploy/lib/sdl
+mkdir deploy/lib/sdl/fonts
 mkdir deploy/lib/native
 mkdir deploy/doc
 
@@ -91,6 +93,8 @@ else
 	./build_linux.sh sdl
 	cp sdl.so ../../release/deploy/lib/native/libobjk_sdl.so
 fi
+cp lib/fonts/*.ttf ../../release/deploy/lib/sdl/fonts
+
 
 if [ ! -z "$1" ] && [ "$1" != "osx" ]; then
 	cd ../fcgi
