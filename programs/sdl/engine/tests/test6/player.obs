@@ -108,7 +108,7 @@ class Player {
 	}
 
 	method : public : Draw()  ~ Nil {
-		index := Int->Abs(@level->GetShift() / 30 % @rect->GetClipCount());
+		index := Int->Abs((@level->GetShift() + @rect->GetLeft()) / 30 % @rect->GetClipCount());
 		@rect->Render(index);
 	}
 
