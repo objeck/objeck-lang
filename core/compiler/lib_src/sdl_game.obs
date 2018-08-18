@@ -133,6 +133,13 @@ bundle Game.Framework {
 				RenderAll(x, y, Nil, @angle, Nil, @flip);
 			};
 		}
+
+		#~
+		Renders an image based upon position instance
+		~#
+		method : public : Render() ~ Nil {
+			RenderAll(@position->GetLeft(), @position->GetTop(), Nil, @angle, Nil, @flip);
+		}
 	}
 
 	#~

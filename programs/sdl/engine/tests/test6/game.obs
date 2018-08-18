@@ -1,0 +1,112 @@
+use Game.SDL2;
+use Game.Framework;
+use Collection;
+
+class Demo {
+	@framework : GameFramework;
+	@player : Player;
+	@level : Level;
+
+	function : Main(args : String[]) ~ Nil {
+		Demo->New()->Run();
+	}
+
+	New() {
+		@framework := GameFramework->New(Game->SCREEN_WIDTH, Game->SCREEN_HEIGHT, "Platformer Jumper");
+		@framework->SetClearColor(Color->New(0, 0, 255));
+	}
+
+	method : Run() ~ Nil {
+		if(@framework->IsOk()) {
+			@player := Player->New(@framework->AddImageSprite("C:/Users/objec/Documents/Code/objeck-lang/programs/sdl/engine/tests/test6/media/player.png"));
+			@level := Level->New(@player, @framework);
+
+			quit := false;
+			e := @framework->GetEvent();
+			while(<>quit) {
+				@framework->FrameStart();
+				@framework->Clear();
+				
+				# process input
+				while(e->Poll() <> 0) {
+					if(e->GetType() = EventType->SDL_QUIT) {
+						quit := true;
+					};
+
+					ProcessInput(e);
+				};
+
+				# update
+				@player->Update();
+				@level->Update();
+
+				shift := @level->GetShiftLeft();
+				if(@player->GetRight() >= 500) {
+					diff := @player->GetRight() - 500;
+					@player->SetRight(500);
+					if(shift > -1500) {
+						@level->ShiftWorld(-1 * diff);
+					};
+		        };
+
+		        if(@player->GetLeft() <= 120) {
+					diff := 120 - @player->GetLeft();
+					@player->SetLeft(120);
+					if(shift < 0) {
+						@level->ShiftWorld(diff);
+					};
+				};
+				
+				# draw
+				@player->Draw();
+				@level->Draw();
+
+				# show
+				@framework->Show();
+				@framework->FrameEnd();
+			};
+		}
+		else {
+			"--- Error Initializing Game Environment ---"->ErrorLine();
+			return;
+		};
+
+		leaving {
+			@framework->Quit();
+		};
+	}
+
+	method : public : ProcessInput(e : Event) ~ Nil {
+		if(e->GetType() = EventType->SDL_KEYDOWN) {
+	        select(e->GetKey()->GetKeysym()->GetScancode()) {    	
+	            label Scancode->SDL_SCANCODE_LEFT: {
+	            	@player->GoLeft();
+	            }
+
+	            label Scancode->SDL_SCANCODE_RIGHT: {
+	            	@player->GoRight();
+	            }
+
+	            label Scancode->SDL_SCANCODE_UP: {
+	            	@player->Jump();
+	            }
+	        };
+	    }
+	    else if(e->GetType() = EventType->SDL_KEYUP) {
+	       	code := e->GetKey()->GetKeysym()->GetScancode();
+	       	
+	       	if(code = Scancode->SDL_SCANCODE_LEFT & @player->ChangeLeft() < 0) {
+	       		@player->Stop();
+	        };
+
+	        if(code = Scancode->SDL_SCANCODE_RIGHT & @player->ChangeLeft() > 0) {
+	        	@player->Stop();
+	        };
+	    };
+	}
+}
+
+consts Game {
+	SCREEN_WIDTH := 800,
+	SCREEN_HEIGHT := 600
+}
