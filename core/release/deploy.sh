@@ -29,7 +29,6 @@ cp obc ../release/deploy/bin
 cp ../lib/*.obl ../release/deploy/lib
 cp ../vm/misc/*.pem ../release/deploy/lib
 rm ../release/deploy/lib/gtk2.obl
-rm ../release/deploy/lib/sdl.obl
 # rm ../release/deploy/lib/query.obl
 
 # build VM
@@ -81,6 +80,16 @@ if [ ! -z "$1" ] && [ "$1" = "osx" ]; then
 else
 	./build_linux.sh openssl
 	cp openssl.so ../../release/deploy/lib/native/libobjk_openssl.so
+fi
+
+cd ../sdl
+
+if [ ! -z "$1" ] && [ "$1" = "osx" ]; then
+	./build_osx_x64.sh sdl
+	cp sdl.dylib ../../release/deploy/lib/native/libobjk_sdl.dylib
+else
+	./build_linux.sh sdl
+	cp sdl.so ../../release/deploy/lib/native/libobjk_sdl.so
 fi
 
 if [ ! -z "$1" ] && [ "$1" != "osx" ]; then
