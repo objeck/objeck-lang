@@ -11,15 +11,14 @@ class Level {
 		@player := player;
 		@platforms := Vector->New();
 
-#		@platforms->AddBack(MovingPlatform->New(200, 150, framework->AddRectangle(75, 35), player, @self));
-		@platforms->AddBack(Platform->New(200, 500, framework->AddRectangle(100, 50)));	
+		@platforms->AddBack(MovingPlatform->New(200, 150, framework->AddRectangle(75, 35), player, @self));
+#		@platforms->AddBack(Platform->New(200, 500, framework->AddRectangle(100, 50)));	
 		@platforms->AddBack(Platform->New(400, 400, framework->AddRectangle(100, 50)));	
 		@platforms->AddBack(Platform->New(505, 400, framework->AddRectangle(100, 50)));
-#~		
 		@platforms->AddBack(Platform->New(850, 600, framework->AddRectangle(210, 70)));
 		@platforms->AddBack(Platform->New(1025, 500, framework->AddRectangle(210, 70)));	
 		@platforms->AddBack(Platform->New(1250, 300, framework->AddRectangle(210, 70)));
-~#
+
 		@player->SetLevel(@self);
 	}
 
@@ -47,7 +46,7 @@ class Level {
         return collides;
     }
 
-	method : public : GetShiftLeft() ~ Int {
+	method : public : GetShift() ~ Int {
 		return @shift_x;
 	}
 

@@ -9,16 +9,19 @@ bundle Game.Framework {
 	Animated sprite sheet
 	~#
 	class AnimatedImageSprite from ImageSprite {
-		@clip_offset : Int;
-		@clip_count : Int;
-
-		New(renderer : Renderer, file : String, clip_count : Int) {
+		@clips : Vector;
+		
+		New(renderer : Renderer, file : String, clips : Vector) {
 			Parent(renderer, file);
-
 			if(@is_ok) {
-				@clip_count := clip_count;
-				@clip_offset := GetWidth() / @clip_count;
-				@clip := Rect->New(0, 0, @clip_offset, GetHeight());
+				@clips := clips;
+			};
+		}
+
+		New(renderer : Renderer, file : String) {
+			Parent(renderer, file);
+			if(@is_ok) {
+				@clips := Vector->New();
 			};
 		}
 
@@ -29,18 +32,36 @@ bundle Game.Framework {
 		@param index sprite image index
 		~#
 		method : public : Render(x : Int, y : Int, index : Int) ~ Nil {
-			if(@is_ok & index > -1 & index < @clip_count) {
-				@clip->SetX(@clip_offset * index);
+			if(@is_ok & index > -1 & index < @clips->Size()) {
+				@clip := @clips->Get(index)->As(Rect);
 				RenderAll(x, y, @clip, @angle, Nil, @flip);
 			};
 		}
 
 		#~
-		Get number of clips in sprite sheet
+		Renders sprite
+		@param index sprite image index
+		~#
+		method : public : Render(index : Int) ~ Nil {
+			if(@is_ok & index > -1 & index < @clips->Size()) {
+				@clip := @clips->Get(index)->As(Rect);
+				RenderAll(@position->GetLeft(), @position->GetTop(), @clip, @angle, Nil, @flip);
+			};
+		}
+
+		#~
+		Adds a clip
+		~#
+		method : public : AddClip(clip : Rect) ~ Nil {
+			@clips->AddBack(clip);
+		}
+
+		#~
+		Get number of clips used in the sprite sheet
 		@return number of clips
 		~#
 		method : public : GetClipCount() ~ Int {
-			return @clip_count;
+			return @clips->Size();
 		}
 	}
 
@@ -762,8 +783,15 @@ bundle Game.Framework {
 			return shape;
 		}
 
-		method : public : AddAnimatedImageSprite(file : String, clip_count : Int) ~ AnimatedImageSprite {
-			shape := AnimatedImageSprite->New(@renderer, file, clip_count);
+		method : public : AddAnimatedImageSprite(file : String, clips : Vector) ~ AnimatedImageSprite {
+			shape := AnimatedImageSprite->New(@renderer, file, clips);
+			@shapes->AddBack(shape);
+
+			return shape;
+		}
+
+		method : public : AddAnimatedImageSprite(file : String) ~ AnimatedImageSprite {
+			shape := AnimatedImageSprite->New(@renderer, file);
 			@shapes->AddBack(shape);
 
 			return shape;

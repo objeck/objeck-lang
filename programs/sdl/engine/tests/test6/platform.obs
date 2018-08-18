@@ -96,7 +96,7 @@ class MovingPlatform from Platform {
 			@change_y *= -1;
 		};
 
-		cur_pos := @rect->GetLeft() - @level->GetShiftLeft();
+		cur_pos := @rect->GetLeft() - @level->GetShift();
         if(cur_pos < @boundary_left | cur_pos > @boundary_right) {
 			@change_x *= -1;
         };
