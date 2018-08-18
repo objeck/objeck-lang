@@ -1,0 +1,104 @@
+use Game.SDL2;
+use Game.Framework;
+use Collection;
+
+class Platform {
+	@rect : Rectangle;
+
+	New(x : Int, y : Int, rect : Rectangle) {
+		@rect := rect;
+		@rect->SetFill(true);
+		@rect->SetColor(Color->New(0, 255, 0));
+		@rect->Set(x, y);
+	}
+
+	method : public : AddX(x : Int)  ~ Nil {
+		@rect->AddX(x);
+	}
+
+	method : public : GetLeft()  ~ Int {
+		return @rect->GetLeft();
+	}
+
+	method : public : GetRight()  ~ Int {
+		return @rect->GetRight();
+	}
+
+	method : public : GetTop()  ~ Int {
+		return @rect->GetTop();
+	}
+
+	method : public : GetBottom()  ~ Int {
+		return @rect->GetBottom();
+	}
+
+	method : public : Draw()  ~ Nil {
+		@rect->Render();
+	}
+
+	method : public : Collides(rect : ImageSprite) ~ Bool {
+		return @rect->GetPosition()->Overlaps(rect->GetPosition());
+	}
+}
+
+class MovingPlatform from Platform {
+	@change_x : Int;
+    @change_y : Int;
+    @boundary_top : Int;
+    @boundary_bottom : Int;
+    @boundary_left : Int;
+    @boundary_right : Int;
+    @player : Player;
+    @level : Level;
+
+	New(x : Int, y : Int, rect : Rectangle, player : Player, level : Level) {
+		Parent(x, y, rect);
+		@rect->SetColor(Color->New(255, 255, 0));
+		@player := player;
+		@level := level;
+
+		@boundary_top := 75;
+    	@boundary_bottom := 550;
+    	@change_y := 1;
+	}
+
+	method : public : GetChangeLeft() ~ Int {
+		return @change_x;
+	}
+
+	method : public : SetLevel(level : Level)  ~ Nil {
+		@level := level;
+	}
+
+	method : public : native : Update()  ~ Nil {
+		@rect->AddX(@change_x);
+
+		if(Collides(@player->GetRect())) {
+			if(@change_x < 0) {
+                @player->GetRect()->SetRight(@rect->GetLeft());
+            }
+            else {
+            	@player->GetRect()->SetLeft(@rect->GetRight());
+ 			};
+		};
+
+		@rect->AddY(@change_y);
+		if(Collides(@player->GetRect())) { 
+			if(@change_y < 0) {
+                @player->GetRect()->SetBottom(@rect->GetTop());
+			}
+            else {
+				@player->GetRect()->SetTop(@rect->GetBottom());
+            };
+		};
+
+		if(@rect->GetBottom() > @boundary_bottom | @rect->GetTop() < @boundary_top) {
+			@change_y *= -1;
+		};
+
+		cur_pos := @rect->GetLeft() - @level->GetShiftLeft();
+        if(cur_pos < @boundary_left | cur_pos > @boundary_right) {
+			@change_x *= -1;
+        };
+	}
+}

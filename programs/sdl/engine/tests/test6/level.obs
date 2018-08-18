@@ -1,0 +1,81 @@
+use Game.SDL2;
+use Game.Framework;
+use Collection;
+
+class Level {
+	@player : Player;
+	@platforms : Vector;
+	@shift_x : Int;
+
+	New(player : Player, framework : GameFramework) {
+		@player := player;
+		@platforms := Vector->New();
+
+#		@platforms->AddBack(MovingPlatform->New(200, 150, framework->AddRectangle(75, 35), player, @self));
+		@platforms->AddBack(Platform->New(200, 500, framework->AddRectangle(100, 50)));	
+		@platforms->AddBack(Platform->New(400, 400, framework->AddRectangle(100, 50)));	
+		@platforms->AddBack(Platform->New(505, 400, framework->AddRectangle(100, 50)));
+#~		
+		@platforms->AddBack(Platform->New(850, 600, framework->AddRectangle(210, 70)));
+		@platforms->AddBack(Platform->New(1025, 500, framework->AddRectangle(210, 70)));	
+		@platforms->AddBack(Platform->New(1250, 300, framework->AddRectangle(210, 70)));
+~#
+		@player->SetLevel(@self);
+	}
+
+	function : Collides(player : Player, obstacles : Vector) ~ Bool {
+		each(i : obstacles) {
+        	obstacle := obstacles->Get(i)->As(Platform);
+        	if(obstacle->Collides(player->GetRect())) {
+        		return true;
+        	};
+        };
+
+        return false;
+	}
+
+	function : Collisions(player : Player, obstacles : Vector) ~ Vector {
+		collides := Vector->New();
+
+		each(i : obstacles) {
+        	obstacle := obstacles->Get(i)->As(Platform);
+        	if(obstacle->Collides(player->GetRect())) {
+        		collides->AddBack(obstacle);
+        	};
+        };
+
+        return collides;
+    }
+
+	method : public : GetShiftLeft() ~ Int {
+		return @shift_x;
+	}
+
+	method : public : ShiftWorld(shift_x : Int) ~ Nil {
+		@shift_x += shift_x;
+
+		each(i : @platforms) {
+			platform := @platforms->Get(i)->As(Platform);
+			platform->AddX(shift_x);
+		};
+	}
+
+	method : public : GetPlatforms() ~ Vector {
+		return @platforms;
+	}
+
+	method : public : Update()  ~ Nil {
+		each(i : @platforms) {
+			platform := @platforms->Get(i);
+			if(platform->TypeOf(MovingPlatform)) {
+				@platforms->Get(i)->As(MovingPlatform)->Update();
+			};
+		};
+	}
+
+	method : public : Draw()  ~ Nil {
+		each(i : @platforms) {
+			@platforms->Get(i)->As(Platform)->Draw();
+		};
+	}
+}
