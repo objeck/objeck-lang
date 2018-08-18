@@ -2,9 +2,9 @@
 
 cd deploy\bin
 set path=..\lib\sdl;%path%
-obc -src ..\..\..\compiler\lib_src\sdl.obs -lib collect.obl -tar lib -dest ..\lib\sdl.obl
-obc -src ..\..\..\compiler\lib_src\game.obs -lib collect.obl,sdl.obl -tar lib -dest ..\lib\game.obl
-obc -src ..\..\..\..\programs\sdl\engine\tests\%1.obs -lib collect.obl,sdl.obl,game.obl -dest ..\..\%1.obe
+obc -src ..\..\..\compiler\lib_src\sdl2.obs -lib collect.obl -tar lib -dest ..\lib\sdl2.obl
+obc -src ..\..\..\compiler\lib_src\sdl_game.obs -lib collect.obl,sdl2.obl -tar lib -dest ..\lib\sdl_game.obl
+obc -src ..\..\..\..\programs\sdl\engine\tests\%1.obs -lib collect.obl,sdl2.obl,sdl_game.obl -dest ..\..\%1.obe
 
 if NOT %2.==. (
 	rmdir /s /q images
