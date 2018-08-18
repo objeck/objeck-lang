@@ -3,17 +3,18 @@ use Game.Framework;
 use Collection;
 
 class Player {
-	@rect : ImageSprite;
+	@rect : AnimatedImageSprite;
 	@change_x : Float;
 	@change_y : Float;
+	@level : Level;
 	@platforms : Vector;
 
-	New(rect : ImageSprite) {
+	New(rect : AnimatedImageSprite) {
 		@rect := rect;
 		@rect->SetLeft(120);
 	}
 
-	method : public : GetRect() ~ ImageSprite {
+	method : public : GetRect() ~ AnimatedImageSprite {
 		return @rect; 
 	}
 
@@ -34,7 +35,8 @@ class Player {
 	}
 
 	method : public : SetLevel(level : Level)  ~ Nil {
-		@platforms := level->GetPlatforms();
+		@level := level;
+		@platforms := @level->GetPlatforms();
 	}
 
 	method : public : ChangeLeft()  ~ Int {
@@ -106,7 +108,8 @@ class Player {
 	}
 
 	method : public : Draw()  ~ Nil {
-		@rect->Render();
+		index := Int->Abs(@level->GetShift() / 30 % @rect->GetClipCount());
+		@rect->Render(index);
 	}
 
 	method : public : Gravity()  ~ Nil {
