@@ -53,11 +53,18 @@ bundle Game.Framework {
 		@angle : Float;
 		@flip : RendererFlip;
 
+		New(renderer : Renderer, file : String, colorkey : Color) {
+			Parent(renderer);
+			@angle := 0;
+			@flip := RendererFlip->SDL_FLIP_NONE;
+			@is_ok := LoadImage(file, colorkey);
+		}
+
 		New(renderer : Renderer, file : String) {
 			Parent(renderer);
 			@angle := 0;
 			@flip := RendererFlip->SDL_FLIP_NONE;
-			@is_ok := LoadImage(file);
+			@is_ok := LoadImage(file, Nil);
 		}
 
 		#~
@@ -65,7 +72,7 @@ bundle Game.Framework {
 		@param file image to load
 		@return true if success, false otherwise
 		~#
-		method : LoadImage(file : String) ~ Bool {
+		method : LoadImage(file : String, colorkey : Color) ~ Bool {
 			Free();
 
 			surface := Image->Load(file);
@@ -73,8 +80,13 @@ bundle Game.Framework {
 				"Unable to load image '{$file}'"->ErrorLine();
 				return false;
 			};
-			# TODO: set colorkey
-			surface->SetColorKey(true, surface->GetPixelFormat()->MapRGB(0, 0xFF, 0xFF));
+			
+			if(colorkey <> Nil) {
+				surface->SetColorKey(true, surface->GetPixelFormat()->MapRGB(colorkey->GetR(), colorkey->GetG(), colorkey->GetB()));
+			}
+			else {
+				surface->SetColorKey(true, surface->GetPixelFormat()->MapRGB(0, 0xFF, 0xFF));
+			};
 
 			texture := surface->CreateTexture(@renderer);
 			if(texture->IsNull()) {
