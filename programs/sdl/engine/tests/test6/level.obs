@@ -73,7 +73,7 @@ class Level {
 			platform->AddX(shift_x);
 		};
 	}
-
+	
 	method : public : GetPlatforms() ~ Vector {
 		return @platforms;
 	}
