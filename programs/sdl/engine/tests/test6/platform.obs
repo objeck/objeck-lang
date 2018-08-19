@@ -3,12 +3,12 @@ use Game.Framework;
 use Collection;
 
 class Platform {
-	@rect : Rectangle;
+	@rect : ImageSprite;
+	@x : Int;
+	@y : Int;
 
-	New(x : Int, y : Int, rect : Rectangle) {
+	New(x : Int, y : Int, rect : ImageSprite) {
 		@rect := rect;
-		@rect->SetFill(true);
-		@rect->SetColor(Color->New(0, 255, 0));
 		@rect->Set(x, y);
 	}
 
@@ -51,9 +51,8 @@ class MovingPlatform from Platform {
     @player : Player;
     @level : Level;
 
-	New(x : Int, y : Int, rect : Rectangle, player : Player, level : Level) {
+	New(x : Int, y : Int, rect : ImageSprite, player : Player, level : Level) {
 		Parent(x, y, rect);
-		@rect->SetColor(Color->New(255, 255, 0));
 		@player := player;
 		@level := level;
 
