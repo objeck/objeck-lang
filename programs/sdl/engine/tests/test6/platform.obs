@@ -5,16 +5,15 @@ use Collection;
 class Platform {
 	@rect : ImageSprite;
 	@x : Int;
-	@y : Int;
 
 	New(x : Int, y : Int, rect : ImageSprite) {
 		@rect := rect;
+		@rect->Set(x, y);
 		@x := x;
-		@y := y;
 	}
 
 	method : public : AddX(x : Int)  ~ Nil {
-		@rect->AddX(x);
+		@x += x;
 	}
 
 	method : public : GetLeft()  ~ Int {
@@ -34,7 +33,7 @@ class Platform {
 	}
 
 	method : public : Draw()  ~ Nil {
-		@rect->Set(@x, @y);
+		@rect->SetLeft(@x);
 		@rect->Render();
 	}
 
@@ -55,7 +54,6 @@ class MovingPlatform from Platform {
 
 	New(x : Int, y : Int, rect : ImageSprite, player : Player, level : Level) {
 		Parent(x, y, rect);
-		@rect->Set(x, y);
 		@player := player;
 		@level := level;
 
@@ -102,9 +100,5 @@ class MovingPlatform from Platform {
         if(cur_pos < @boundary_left | cur_pos > @boundary_right) {
 			@change_x *= -1;
         };
-	}
-
-	method : public : Draw()  ~ Nil {
-		@rect->Render();
 	}
 }
