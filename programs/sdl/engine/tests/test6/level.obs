@@ -11,14 +11,29 @@ class Level {
 		@player := player;
 		@platforms := Vector->New();
 
-		@platforms->AddBack(MovingPlatform->New(200, 150, framework->AddRectangle(75, 35), player, @self));
-#		@platforms->AddBack(Platform->New(200, 500, framework->AddRectangle(100, 50)));	
-		@platforms->AddBack(Platform->New(400, 400, framework->AddRectangle(100, 50)));	
+		black := Color->New(255, 255, 255);
+
+		right_part := framework->AddImageSprite(
+			"../../../../programs/sdl/engine/tests/test6/media/tiles_spritesheet.png",
+			black, Rect->New(8 * 72, 9 * 72, 72, 72));
+		middle_part := framework->AddImageSprite(
+			"../../../../programs/sdl/engine/tests/test6/media/tiles_spritesheet.png",
+			black, Rect->New(7 * 72, 8 * 72, 72, 72));
+		left_part := framework->AddImageSprite(
+			"../../../../programs/sdl/engine/tests/test6/media/tiles_spritesheet.png",
+			black, Rect->New(8 * 72, 7 * 72, 72, 72));
+		
+		@platforms->AddBack(MovingPlatform->New(200, 150, right_part, player, @self));
+		@platforms->AddBack(MovingPlatform->New(270, 150, left_part, player, @self));
+		
+		@platforms->AddBack(Platform->New(0, 500, middle_part));	
+		@platforms->AddBack(Platform->New(70, 500, middle_part));	
+#~		
 		@platforms->AddBack(Platform->New(505, 400, framework->AddRectangle(100, 50)));
 		@platforms->AddBack(Platform->New(850, 600, framework->AddRectangle(210, 70)));
 		@platforms->AddBack(Platform->New(1025, 500, framework->AddRectangle(210, 70)));	
 		@platforms->AddBack(Platform->New(1250, 300, framework->AddRectangle(210, 70)));
-
+~#
 		@player->SetLevel(@self);
 	}
 
