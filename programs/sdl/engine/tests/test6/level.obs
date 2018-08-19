@@ -22,12 +22,12 @@ class Level {
 		left_part := framework->AddImageSprite(
 			"../../../../programs/sdl/engine/tests/test6/media/tiles_spritesheet.png",
 			black, Rect->New(8 * 72, 7 * 72, 72, 72));
-		
+
 		@platforms->AddBack(MovingPlatform->New(200, 150, right_part, player, @self));
 		@platforms->AddBack(MovingPlatform->New(270, 150, left_part, player, @self));
 		
-		@platforms->AddBack(Platform->New(0, 500, middle_part));	
-		@platforms->AddBack(Platform->New(70, 500, middle_part));	
+		@platforms->AddBack(Platform->New(0, 540, middle_part));	
+		@platforms->AddBack(Platform->New(70, 540, middle_part));	
 #~		
 		@platforms->AddBack(Platform->New(505, 400, framework->AddRectangle(100, 50)));
 		@platforms->AddBack(Platform->New(850, 600, framework->AddRectangle(210, 70)));
@@ -89,7 +89,13 @@ class Level {
 
 	method : public : Draw()  ~ Nil {
 		each(i : @platforms) {
-			@platforms->Get(i)->As(Platform)->Draw();
+			platform := @platforms->Get(i);
+			if(platform->TypeOf(MovingPlatform)) {
+				@platforms->Get(i)->As(MovingPlatform)->Draw();
+			}
+			else {
+				@platforms->Get(i)->As(Platform)->Draw();
+			};
 		};
 	}
 }
