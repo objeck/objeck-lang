@@ -28,6 +28,7 @@ class Level {
 		
 		@platforms->AddBack(Platform->New(0, 540, middle_part));	
 		@platforms->AddBack(Platform->New(70, 540, middle_part));	
+		@platforms->AddBack(Platform->New(140, 540, middle_part));
 #~		
 		@platforms->AddBack(Platform->New(505, 400, framework->AddRectangle(100, 50)));
 		@platforms->AddBack(Platform->New(850, 600, framework->AddRectangle(210, 70)));
@@ -73,7 +74,7 @@ class Level {
 			platform->AddX(shift_x);
 		};
 	}
-	
+
 	method : public : GetPlatforms() ~ Vector {
 		return @platforms;
 	}
