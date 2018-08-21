@@ -5,12 +5,12 @@ use Collection;
 class Platform {
 	@pos : Position;
 	@sprite : ImageSprite;
+	@render_rect : Rect;
 
-	New(x : Int, y : Int, sprite : ImageSprite) {
+	New(x : Int, y : Int, sprite : ImageSprite, render_rect : Rect) {
+		@pos := Position->New(x, y, Game->BLOCK_WIDTH, Game->BLOCK_HEIGHT);
 		@sprite := sprite;
-		@pos := Position->New(Rect->New(x, y, 72, 72));
-		@pos->SetLeft(x);
-		@pos->SetTop(y);
+		@render_rect := render_rect;
 	}
 
 	method : public : AddX(x : Int)  ~ Nil {
@@ -35,7 +35,7 @@ class Platform {
 
 	method : public : Draw()  ~ Nil {
 		@sprite->SetPostion(@pos);
-		@sprite->Render();
+		@sprite->Render(@render_rect);
 	}
 
 	method : public : Collides(sprite : ImageSprite) ~ Bool {

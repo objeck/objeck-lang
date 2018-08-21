@@ -500,6 +500,16 @@ bundle Game.Framework {
 			@rect := rect;
 		}
 
+		New(x : Int, y : Int, w : Int, h : Int) {
+			@x := x;
+			@y := y;
+			@rect := Rect->New(0, 0, w, h);
+		}
+
+		New(w : Int, h : Int) {
+			@rect := Rect->New(0, 0, w, h);
+		}
+
 		method : public : GetRect() ~ Rect {
 			return @rect;
 		}
