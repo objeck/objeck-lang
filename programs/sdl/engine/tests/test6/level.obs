@@ -14,17 +14,18 @@ class Level {
 		black_color := Color->New(255, 255, 255);
 		sprite_file := "../../../../programs/sdl/engine/tests/test6/media/tiles_spritesheet.png";
 
-		block_1 := framework->AddImageSprite(sprite_file, black_color, 
-			Rect->New(3 * Game->BLOCK_WIDTH, 0 * Game->BLOCK_HEIGHT, 
-			Game->BLOCK_WIDTH, Game->BLOCK_HEIGHT));
+		sprite_sheet := framework->AddImageSprite(sprite_file, black_color);
+
+		block_1 := Rect->New(3 * Game->BLOCK_WIDTH, 0 * Game->BLOCK_HEIGHT, Game->BLOCK_WIDTH, Game->BLOCK_HEIGHT);
+		block_2 := Rect->New(3 * Game->BLOCK_WIDTH, 2 * Game->BLOCK_HEIGHT, Game->BLOCK_WIDTH, Game->BLOCK_HEIGHT);
 		
 
 #		@platforms->AddBack(MovingPlatform->New(200, 150, right_part, player, @self));
 #		@platforms->AddBack(MovingPlatform->New(270, 150, left_part, player, @self));
 		
-		@platforms->AddBack(Platform->New(10, 500, block_1));	
-		@platforms->AddBack(Platform->New(80, 500, block_1));
-		@platforms->AddBack(Platform->New(150, 550, block_1));
+		@platforms->AddBack(Platform->New(10, 500, sprite_sheet, block_1));	
+		@platforms->AddBack(Platform->New(80, 500, sprite_sheet, block_2));	
+		@platforms->AddBack(Platform->New(150, 550, sprite_sheet, block_1));
 #~		
 		@platforms->AddBack(Platform->New(70, 540, foo));	
 		@platforms->AddBack(Platform->New(140, 540, middle_part));
