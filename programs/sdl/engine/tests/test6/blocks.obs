@@ -3,12 +3,22 @@ use Game.Framework;
 use Collection;
 
 class Block {
+	enum Type {
+		WATER,
+		ROUND_STONE,
+		WOOD_PLANK,
+		MID_GRASS_GROUND,
+		LEFT_GRASS_GROUND,
+		ROUND_GRASS_GROUND
+	}
+
 	@pos : Position;
 	@sprite_sheet : ImageSprite;
 	@render_rect : Rect;
-	@id : Int;
+	@type : Block->Type;
 
-	New(x : Int, y : Int, render_rect : Rect, sprite_sheet : ImageSprite) {
+	New(type : Block->Type, x : Int, y : Int, render_rect : Rect, sprite_sheet : ImageSprite) {
+		@type := type;
 		@pos := Position->New(x, y, render_rect->GetW(), render_rect->GetH());
 		@render_rect := render_rect;
 		@sprite_sheet := sprite_sheet;
@@ -56,14 +66,19 @@ class MovingPlatform from Block {
     @max_left : Int;
     @max_right : Int;
     
-	New(x : Int, y : Int, render_rect : Rect, sprite_sheet : ImageSprite, player : Player, level : Level) {
-		Parent(x, y, render_rect, sprite_sheet);
+	New(type : Block->Type, x : Int, y : Int, render_rect : Rect, sprite_sheet : ImageSprite, player : Player, level : Level) {
+		Parent(type, x, y, render_rect, sprite_sheet);
+		@type := type;
 		@player := player;
 		@level := level;
 
 		@max_top := 75;
     	@max_bottom := 550;
     	@change_y := 1;
+	}
+
+	method : public : GetType() ~ Block->Type {
+		return @type;
 	}
 
 	method : public : GetChangeLeft() ~ Int {
