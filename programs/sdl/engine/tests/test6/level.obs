@@ -6,36 +6,21 @@ use Data.CSV;
 class Level {
 	@player : Player;
 	@platforms : Vector;
+	@sprite_sheet : ImageSprite;
 	@shift_x : Int;
 
-	New(player : Player, framework : GameFramework) {
+	New(player : Player, framework : GameFramework, media_path : String) {
 		@player := player;
 		@platforms := Vector->New();
 
-		black_color := Color->New(0, 0, 0);
-		sprite_file := "../../../../programs/sdl/engine/tests/test6/media/tiles_spritesheet.png";
+		sprite_path := String->New(media_path);
+		sprite_path += "/media/tiles_spritesheet.png";
+		@sprite_sheet := framework->AddImageSprite(sprite_path, Color->New(0, 0, 0));
+				
+		map_path := String->New(media_path);	
+		map_path += "/media/foo.csv";
+		LoadLevel(map_path);
 
-		sprite_sheet := framework->AddImageSprite(sprite_file, black_color);
-
-		ReadMap("../../../../programs/sdl/engine/tests/test6/media/foo.csv", sprite_sheet);
-
-
-#		@platforms->AddBack(MovingPlatform->New(200, 150, right_part, player, @self));
-#		@platforms->AddBack(MovingPlatform->New(270, 150, left_part, player, @self));
-
-#~		
-		@platforms->AddBack(Platform->New(10, 500, block_1, sprite_sheet));
-		@platforms->AddBack(Platform->New(80, 500, block_2, sprite_sheet));
-		@platforms->AddBack(Platform->New(150, 550, block_1, sprite_sheet));
-		
-		@platforms->AddBack(Platform->New(70, 540, foo));	
-		@platforms->AddBack(Platform->New(140, 540, middle_part));
-		
-		@platforms->AddBack(Platform->New(505, 400, framework->AddRectangle(100, 50)));
-		@platforms->AddBack(Platform->New(850, 600, framework->AddRectangle(210, 70)));
-		@platforms->AddBack(Platform->New(1025, 500, framework->AddRectangle(210, 70)));	
-		@platforms->AddBack(Platform->New(1250, 300, framework->AddRectangle(210, 70)));
-~#
 		@player->SetLevel(@self);
 	}
 
@@ -63,9 +48,9 @@ class Level {
         return collides;
     }
 
-    method : public : ReadMap(name : String, sheet : ImageSprite) ~ Nil {
+    method : public : LoadLevel(name : String) ~ Nil {
     	block_3 := Rect->New(3 * Game->BLOCK_WIDTH, 0 * Game->BLOCK_HEIGHT, Game->BLOCK_WIDTH, Game->BLOCK_HEIGHT);
-    	block_6 := Rect->New(6 * Game->BLOCK_WIDTH, 0 * Game->BLOCK_HEIGHT, Game->BLOCK_WIDTH, Game->BLOCK_HEIGHT);
+		block_6 := Rect->New(6 * Game->BLOCK_WIDTH, (0 * Game->BLOCK_HEIGHT) + (Game->BLOCK_HEIGHT / 2 - 3), Game->BLOCK_WIDTH, 6);
     	block_102 := Rect->New(6 * Game->BLOCK_WIDTH, 8 * Game->BLOCK_HEIGHT, Game->BLOCK_WIDTH, Game->BLOCK_HEIGHT);
     	block_103 := Rect->New(7 * Game->BLOCK_WIDTH, 8 * Game->BLOCK_HEIGHT, Game->BLOCK_WIDTH, Game->BLOCK_HEIGHT);
 		block_104 := Rect->New(8 * Game->BLOCK_WIDTH, 8 * Game->BLOCK_HEIGHT, Game->BLOCK_WIDTH, Game->BLOCK_HEIGHT);
@@ -79,28 +64,41 @@ class Level {
     				value := row->Get(j);
     				y := i * (Game->BLOCK_WIDTH - 2);
     				x := j * (Game->BLOCK_HEIGHT - 2);
-"{$value}: {$x}, {$y}"->PrintLine();
 
-					if(value->Equals("3")) {
-    					@platforms->AddBack(Platform->New(x, y, block_3, sheet));
-					}
-					else if(value->Equals("6")) {
-    					@platforms->AddBack(Platform->New(x, y, block_6, sheet));
-					}
-					else if(value->Equals("102")) {
-    					@platforms->AddBack(Platform->New(x, y, block_102, sheet));
-					}
-					else if(value->Equals("103")) {
-    					@platforms->AddBack(Platform->New(x, y, block_103, sheet));
-					}
-					else if(value->Equals("104")) {
-    					@platforms->AddBack(Platform->New(x, y, block_104, sheet));
-					}
-					else if(value->Equals("114")) {
-    					@platforms->AddBack(Platform->New(x, y, block_114, sheet));
+					select(value->ToInt()) {
+						label 3: {
+    						@platforms->AddBack(Platform->New(x, y, block_3, @sprite_sheet));
+						}
+
+						label 6: {
+    						@platforms->AddBack(MovingPlatform->New(x, y, block_6, @sprite_sheet, @player, @self));
+						}
+						
+						label 102: {
+	    					@platforms->AddBack(Platform->New(x, y, block_102, @sprite_sheet));
+						}
+
+						label 103: {
+	    					@platforms->AddBack(Platform->New(x, y, block_103, @sprite_sheet));
+						}
+
+						label 104: {
+	    					@platforms->AddBack(Platform->New(x, y, block_104, @sprite_sheet));
+						}
+
+						label 114: {
+	    					@platforms->AddBack(Platform->New(x, y, block_114, @sprite_sheet));
+						}
+
+						other: {
+"Missing: value={$value}, loc=[{$x},{$y}]"->PrintLine();
+						}
 					};
     			};
     		};
+    	}
+    	else {
+    		"Unable to load map file!"->ErrorLine();
     	};
     }
 
@@ -124,26 +122,21 @@ class Level {
 	method : public : Update()  ~ Nil {
 		each(i : @platforms) {
 			platform := @platforms->Get(i);
-#~			
 			if(platform->TypeOf(MovingPlatform)) {
 				@platforms->Get(i)->As(MovingPlatform)->Update();
 			};
-~#			
 		};
 	}
 
 	method : public : Draw()  ~ Nil {
 		each(i : @platforms) {
-			platform := @platforms->Get(i)->As(Platform);
-			platform->Draw();
-#~			
+			platform := @platforms->Get(i)->As(Platform);			
 			if(platform->TypeOf(MovingPlatform)) {
-				@platforms->Get(i)->As(MovingPlatform)->Draw();
+				platform->As(MovingPlatform)->Draw();
 			}
 			else {
-				@platforms->Get(i)->Draw();
+				platform->Draw();
 			};
-~#			
 		};
 	}
 }
