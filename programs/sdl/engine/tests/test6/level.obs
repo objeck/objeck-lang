@@ -13,6 +13,10 @@ class Level {
 
 		black := Color->New(255, 255, 255);
 
+		foo := framework->AddImageSprite(
+			"../../../../programs/sdl/engine/tests/test6/media/tiles_spritesheet.png",
+			black, Rect->New(8 * 72, 4 * 72, 72, 72));
+
 		right_part := framework->AddImageSprite(
 			"../../../../programs/sdl/engine/tests/test6/media/tiles_spritesheet.png",
 			black, Rect->New(8 * 72, 9 * 72, 72, 72));
@@ -23,13 +27,16 @@ class Level {
 			"../../../../programs/sdl/engine/tests/test6/media/tiles_spritesheet.png",
 			black, Rect->New(8 * 72, 7 * 72, 72, 72));
 
-		@platforms->AddBack(MovingPlatform->New(200, 150, right_part, player, @self));
-		@platforms->AddBack(MovingPlatform->New(270, 150, left_part, player, @self));
+#		@platforms->AddBack(MovingPlatform->New(200, 150, right_part, player, @self));
+#		@platforms->AddBack(MovingPlatform->New(270, 150, left_part, player, @self));
 		
-		@platforms->AddBack(Platform->New(0, 540, middle_part));	
-		@platforms->AddBack(Platform->New(70, 540, middle_part));	
-		@platforms->AddBack(Platform->New(140, 540, middle_part));
+		@platforms->AddBack(Platform->New(10, 500, foo));	
+		@platforms->AddBack(Platform->New(80, 500, foo));
+		@platforms->AddBack(Platform->New(150, 550, foo));
 #~		
+		@platforms->AddBack(Platform->New(70, 540, foo));	
+		@platforms->AddBack(Platform->New(140, 540, middle_part));
+		
 		@platforms->AddBack(Platform->New(505, 400, framework->AddRectangle(100, 50)));
 		@platforms->AddBack(Platform->New(850, 600, framework->AddRectangle(210, 70)));
 		@platforms->AddBack(Platform->New(1025, 500, framework->AddRectangle(210, 70)));	
@@ -82,21 +89,26 @@ class Level {
 	method : public : Update()  ~ Nil {
 		each(i : @platforms) {
 			platform := @platforms->Get(i);
+#~			
 			if(platform->TypeOf(MovingPlatform)) {
 				@platforms->Get(i)->As(MovingPlatform)->Update();
 			};
+~#			
 		};
 	}
 
 	method : public : Draw()  ~ Nil {
 		each(i : @platforms) {
-			platform := @platforms->Get(i);
+			platform := @platforms->Get(i)->As(Platform);
+			platform->Draw();
+#~			
 			if(platform->TypeOf(MovingPlatform)) {
 				@platforms->Get(i)->As(MovingPlatform)->Draw();
 			}
 			else {
-				@platforms->Get(i)->As(Platform)->Draw();
+				@platforms->Get(i)->Draw();
 			};
+~#			
 		};
 	}
 }
