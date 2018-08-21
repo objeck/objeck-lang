@@ -6,6 +6,7 @@ class Demo {
 	@framework : GameFramework;
 	@player : Player;
 	@level : Level;
+	@media_path : String;
 
 	function : Main(args : String[]) ~ Nil {
 		Demo->New()->Run();
@@ -14,11 +15,17 @@ class Demo {
 	New() {
 		@framework := GameFramework->New(Game->SCREEN_WIDTH, Game->SCREEN_HEIGHT, "Platformer Jumper");
 		@framework->SetClearColor(Color->New(0, 0, 255));
+		@media_path := "../../../../programs/sdl/engine/tests/test6";
 	}
 
 	method : Run() ~ Nil {
 		if(@framework->IsOk()) {
-			sprite := @framework->AddAnimatedImageSprite("../../../../programs/sdl/engine/tests/test6/media/p1_walk.png");
+			# load player sprites
+			player_path := String->New(@media_path);
+			player_path += "/media/p1_walk.png";
+			sprite := @framework->AddAnimatedImageSprite(player_path);
+
+			# build clips
 			sprite->AddClip(Rect->New(0, 0, 66, 90));
 			sprite->AddClip(Rect->New(66, 0, 66, 90));
 			sprite->AddClip(Rect->New(132, 0, 67, 90));
@@ -27,8 +34,11 @@ class Demo {
         	sprite->AddClip(Rect->New(132, 93, 72, 90));
         	sprite->AddClip(Rect->New(0, 186, 70, 90));
 
+        	# create player
 			@player := Player->New(sprite);
-			@level := Level->New(@player, @framework);
+
+			# load level
+			@level := Level->New(@player, @framework, @media_path);
 
 			quit := false;
 			e := @framework->GetEvent();

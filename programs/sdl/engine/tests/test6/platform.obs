@@ -4,13 +4,14 @@ use Collection;
 
 class Platform {
 	@pos : Position;
-	@sprite : ImageSprite;
+	@sprite_sheet : ImageSprite;
 	@render_rect : Rect;
+	@id : Int;
 
-	New(x : Int, y : Int, render_rect : Rect, sprite : ImageSprite) {
-		@pos := Position->New(x, y, Game->BLOCK_WIDTH, Game->BLOCK_HEIGHT);
+	New(x : Int, y : Int, render_rect : Rect, sprite_sheet : ImageSprite) {
+		@pos := Position->New(x, y, render_rect->GetW(), render_rect->GetH());
 		@render_rect := render_rect;
-		@sprite := sprite;
+		@sprite_sheet := sprite_sheet;
 	}
 
 	method : public : AddX(x : Int)  ~ Nil {
@@ -34,8 +35,8 @@ class Platform {
 	}
 
 	method : public : Draw()  ~ Nil {
-		@sprite->SetPostion(@pos);
-		@sprite->Render(@render_rect);
+		@sprite_sheet->SetPostion(@pos);
+		@sprite_sheet->Render(@render_rect);
 	}
 
 	method : public : Collides(sprite : ImageSprite) ~ Bool {
@@ -43,24 +44,25 @@ class Platform {
 	}
 }
 
-#~
 class MovingPlatform from Platform {
-	@change_x : Int;
-    @change_y : Int;
-    @boundary_top : Int;
-    @boundary_bottom : Int;
-    @boundary_left : Int;
-    @boundary_right : Int;
-    @player : Player;
+	@player : Player;
     @level : Level;
 
-	New(x : Int, y : Int, rect : ImageSprite, player : Player, level : Level) {
-		Parent(x, y, rect);
+	@change_x : Int;
+    @change_y : Int;
+
+    @max_top : Int;
+    @max_bottom : Int;
+    @max_left : Int;
+    @max_right : Int;
+    
+	New(x : Int, y : Int, render_rect : Rect, sprite_sheet : ImageSprite, player : Player, level : Level) {
+		Parent(x, y, render_rect, sprite_sheet);
 		@player := player;
 		@level := level;
 
-		@boundary_top := 75;
-    	@boundary_bottom := 550;
+		@max_top := 75;
+    	@max_bottom := 550;
     	@change_y := 1;
 	}
 
@@ -73,35 +75,34 @@ class MovingPlatform from Platform {
 	}
 
 	method : public : native : Update()  ~ Nil {
-		@rect->AddX(@change_x);
-
+		@pos->AddX(@change_x);
+		
 		if(Collides(@player->GetRect())) {
 			if(@change_x < 0) {
-                @player->GetRect()->SetRight(@rect->GetLeft());
+                @player->GetRect()->SetRight(@pos->GetLeft());
             }
             else {
-            	@player->GetRect()->SetLeft(@rect->GetRight());
+            	@player->GetRect()->SetLeft(@pos->GetRight());
  			};
 		};
 
-		@rect->AddY(@change_y);
+		@pos->AddY(@change_y);
 		if(Collides(@player->GetRect())) { 
 			if(@change_y < 0) {
-                @player->GetRect()->SetBottom(@rect->GetTop());
+                @player->GetRect()->SetBottom(@pos->GetTop());
 			}
             else {
-				@player->GetRect()->SetTop(@rect->GetBottom());
+				@player->GetRect()->SetTop(@pos->GetBottom());
             };
 		};
 
-		if(@rect->GetBottom() > @boundary_bottom | @rect->GetTop() < @boundary_top) {
+		if(@pos->GetBottom() > @max_bottom | @pos->GetTop() < @max_top) {
 			@change_y *= -1;
 		};
 
-		cur_pos := @rect->GetLeft() - @level->GetShift();
-        if(cur_pos < @boundary_left | cur_pos > @boundary_right) {
+		cur_pos := @pos->GetLeft() - @level->GetShift();
+        if(cur_pos < @max_left | cur_pos > @max_right) {
 			@change_x *= -1;
         };
 	}
 }
-~#
