@@ -1,6 +1,7 @@
 use Game.SDL2;
 use Game.Framework;
 use Collection;
+use Data.CSV;
 
 class Level {
 	@player : Player;
@@ -11,22 +12,22 @@ class Level {
 		@player := player;
 		@platforms := Vector->New();
 
-		black_color := Color->New(255, 255, 255);
+		black_color := Color->New(0, 0, 0);
 		sprite_file := "../../../../programs/sdl/engine/tests/test6/media/tiles_spritesheet.png";
 
 		sprite_sheet := framework->AddImageSprite(sprite_file, black_color);
 
-		block_1 := Rect->New(3 * Game->BLOCK_WIDTH, 0 * Game->BLOCK_HEIGHT, Game->BLOCK_WIDTH, Game->BLOCK_HEIGHT);
-		block_2 := Rect->New(3 * Game->BLOCK_WIDTH, 2 * Game->BLOCK_HEIGHT, Game->BLOCK_WIDTH, Game->BLOCK_HEIGHT);
-		
+		ReadMap("../../../../programs/sdl/engine/tests/test6/media/foo.csv", sprite_sheet);
+
 
 #		@platforms->AddBack(MovingPlatform->New(200, 150, right_part, player, @self));
 #		@platforms->AddBack(MovingPlatform->New(270, 150, left_part, player, @self));
-		
+
+#~		
 		@platforms->AddBack(Platform->New(10, 500, block_1, sprite_sheet));
 		@platforms->AddBack(Platform->New(80, 500, block_2, sprite_sheet));
 		@platforms->AddBack(Platform->New(150, 550, block_1, sprite_sheet));
-#~		
+		
 		@platforms->AddBack(Platform->New(70, 540, foo));	
 		@platforms->AddBack(Platform->New(140, 540, middle_part));
 		
@@ -60,6 +61,47 @@ class Level {
         };
 
         return collides;
+    }
+
+    method : public : ReadMap(name : String, sheet : ImageSprite) ~ Nil {
+    	block_3 := Rect->New(3 * Game->BLOCK_WIDTH, 0 * Game->BLOCK_HEIGHT, Game->BLOCK_WIDTH, Game->BLOCK_HEIGHT);
+    	block_6 := Rect->New(6 * Game->BLOCK_WIDTH, 0 * Game->BLOCK_HEIGHT, Game->BLOCK_WIDTH, Game->BLOCK_HEIGHT);
+    	block_102 := Rect->New(6 * Game->BLOCK_WIDTH, 8 * Game->BLOCK_HEIGHT, Game->BLOCK_WIDTH, Game->BLOCK_HEIGHT);
+    	block_103 := Rect->New(7 * Game->BLOCK_WIDTH, 8 * Game->BLOCK_HEIGHT, Game->BLOCK_WIDTH, Game->BLOCK_HEIGHT);
+		block_104 := Rect->New(8 * Game->BLOCK_WIDTH, 8 * Game->BLOCK_HEIGHT, Game->BLOCK_WIDTH, Game->BLOCK_HEIGHT);
+		block_114 := Rect->New(7 * Game->BLOCK_WIDTH, 8 * Game->BLOCK_HEIGHT, Game->BLOCK_WIDTH, Game->BLOCK_HEIGHT);
+		
+    	table := CsvTable->New(System.IO.File.FileReader->ReadFile(name));
+    	if(table->IsParsed()) {
+    		each(i : table) {
+    			row := table->Get(i);
+    			each(j : row) {
+    				value := row->Get(j);
+    				y := i * (Game->BLOCK_WIDTH - 2);
+    				x := j * (Game->BLOCK_HEIGHT - 2);
+"{$value}: {$x}, {$y}"->PrintLine();
+
+					if(value->Equals("3")) {
+    					@platforms->AddBack(Platform->New(x, y, block_3, sheet));
+					}
+					else if(value->Equals("6")) {
+    					@platforms->AddBack(Platform->New(x, y, block_6, sheet));
+					}
+					else if(value->Equals("102")) {
+    					@platforms->AddBack(Platform->New(x, y, block_102, sheet));
+					}
+					else if(value->Equals("103")) {
+    					@platforms->AddBack(Platform->New(x, y, block_103, sheet));
+					}
+					else if(value->Equals("104")) {
+    					@platforms->AddBack(Platform->New(x, y, block_104, sheet));
+					}
+					else if(value->Equals("114")) {
+    					@platforms->AddBack(Platform->New(x, y, block_114, sheet));
+					};
+    			};
+    		};
+    	};
     }
 
 	method : public : GetShift() ~ Int {
