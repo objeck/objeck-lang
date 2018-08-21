@@ -99,10 +99,11 @@ class Player {
 
 	            # Stop our vertical movement
             	@change_y := 0;
-
+#~
 	            if(platform->TypeOf(MovingPlatform)) {
 	            	@rect->AddX(platform->As(MovingPlatform)->GetChangeLeft());
 	            };
+~#	            
         	};
         };				
 	}

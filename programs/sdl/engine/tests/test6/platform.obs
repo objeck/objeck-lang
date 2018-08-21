@@ -3,45 +3,47 @@ use Game.Framework;
 use Collection;
 
 class Platform {
-	@rect : ImageSprite;
-	@x : Int;
+	@pos : Position;
+	@sprite : ImageSprite;
 
-	New(x : Int, y : Int, rect : ImageSprite) {
-		@rect := rect;
-		@rect->Set(x, y);
-		@x := x;
+	New(x : Int, y : Int, sprite : ImageSprite) {
+		@sprite := sprite;
+		@pos := Position->New(Rect->New(x, y, 72, 72));
+		@pos->SetLeft(x);
+		@pos->SetTop(y);
 	}
 
 	method : public : AddX(x : Int)  ~ Nil {
-		@x += x;
+		@pos->AddX(x);
 	}
 
 	method : public : GetLeft()  ~ Int {
-		return @rect->GetLeft();
+		return @pos->GetLeft();
 	}
 
 	method : public : GetRight()  ~ Int {
-		return @rect->GetRight();
+		return @pos->GetRight();
 	}
 
 	method : public : GetTop()  ~ Int {
-		return @rect->GetTop();
+		return @pos->GetTop();
 	}
 
 	method : public : GetBottom()  ~ Int {
-		return @rect->GetBottom();
+		return @pos->GetBottom();
 	}
 
 	method : public : Draw()  ~ Nil {
-		@rect->SetLeft(@x);
-		@rect->Render();
+		@sprite->SetPostion(@pos);
+		@sprite->Render();
 	}
 
-	method : public : Collides(rect : ImageSprite) ~ Bool {
-		return @rect->GetPosition()->Overlaps(rect->GetPosition());
+	method : public : Collides(sprite : ImageSprite) ~ Bool {
+		return @pos->Overlaps(sprite->GetPosition());
 	}
 }
 
+#~
 class MovingPlatform from Platform {
 	@change_x : Int;
     @change_y : Int;
@@ -102,3 +104,4 @@ class MovingPlatform from Platform {
         };
 	}
 }
+~#

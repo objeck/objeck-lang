@@ -2112,6 +2112,13 @@ bundle Game.SDL2 {
 			@h := h;
 		}
 
+		New(rect : Rect) {
+			@x := rect->GetX();
+			@y := rect->GetY();
+			@w := rect->GetW();
+			@h := rect->GetH();
+		}
+		
 		method : public : GetX() ~ Int {
 			return @x;
 		}

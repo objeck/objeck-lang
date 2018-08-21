@@ -262,6 +262,10 @@ bundle Game.Framework {
 			@render_rect := Rect->New();
 			@position := Position->New(@render_rect);
 		}
+		
+		method : public : SetPostion(position : Position) ~ Nil {
+			@position := position;
+		}
 
 		#~
 		Destroys and frees sprite resources
@@ -376,6 +380,10 @@ bundle Game.Framework {
 			@renderer := renderer;
 			@render_rect := Rect->New(w, h);
 			@position := Position->New(@render_rect);
+		}
+
+		method : public : SetPostion(position : Position) ~ Nil {
+			@position := position;
 		}
 
 		method : public : Free() ~ Nil {			
