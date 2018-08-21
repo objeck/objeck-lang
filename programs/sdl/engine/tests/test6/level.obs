@@ -17,7 +17,6 @@ class Level {
 		block_1 := framework->AddImageSprite(sprite_file, black_color, 
 			Rect->New(3 * Game->BLOCK_WIDTH, 0 * Game->BLOCK_HEIGHT, 
 			Game->BLOCK_WIDTH, Game->BLOCK_HEIGHT));
-
 		
 
 #		@platforms->AddBack(MovingPlatform->New(200, 150, right_part, player, @self));
