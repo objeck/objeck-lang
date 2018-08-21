@@ -7,10 +7,10 @@ class Platform {
 	@sprite : ImageSprite;
 	@render_rect : Rect;
 
-	New(x : Int, y : Int, sprite : ImageSprite, render_rect : Rect) {
+	New(x : Int, y : Int, render_rect : Rect, sprite : ImageSprite) {
 		@pos := Position->New(x, y, Game->BLOCK_WIDTH, Game->BLOCK_HEIGHT);
-		@sprite := sprite;
 		@render_rect := render_rect;
+		@sprite := sprite;
 	}
 
 	method : public : AddX(x : Int)  ~ Nil {
