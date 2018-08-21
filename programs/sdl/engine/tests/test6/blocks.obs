@@ -2,7 +2,7 @@ use Game.SDL2;
 use Game.Framework;
 use Collection;
 
-class Platform {
+class Block {
 	@pos : Position;
 	@sprite_sheet : ImageSprite;
 	@render_rect : Rect;
@@ -44,7 +44,7 @@ class Platform {
 	}
 }
 
-class MovingPlatform from Platform {
+class MovingPlatform from Block {
 	@player : Player;
     @level : Level;
 

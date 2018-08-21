@@ -73,35 +73,35 @@ class Player {
 
         collides := Level->Collisions(@self, @platforms);
         each(i : collides) {
-        	platform := collides->Get(i)->As(Platform);
+        	block := collides->Get(i)->As(Block);
 			if(@change_x > 0) {
-    			@rect->SetRight(platform->GetLeft());
+    			@rect->SetRight(block->GetLeft());
             }
     		# moving left
             else if(@change_x < 0) {
-            	@rect->SetLeft(platform->GetRight());
+            	@rect->SetLeft(block->GetRight());
             };
         };
 				
 		# Move up/down
         @rect->AddY(@change_y);
 		each(i : @platforms) {
-        	platform := @platforms->Get(i)->As(Platform);
-        	if(platform->Collides(@rect)) {
+        	block := @platforms->Get(i)->As(Block);
+        	if(block->Collides(@rect)) {
         		# moving right
         		if(@change_y > 0) {
-        			@rect->SetBottom(platform->GetTop());
+        			@rect->SetBottom(block->GetTop());
                 }
         		# moving left
                 else if(@change_y < 0) {
-                	@rect->SetTop(platform->GetBottom());
+                	@rect->SetTop(block->GetBottom());
 	            };
 
 	            # Stop our vertical movement
             	@change_y := 0;
 #~
-	            if(platform->TypeOf(MovingPlatform)) {
-	            	@rect->AddX(platform->As(MovingPlatform)->GetChangeLeft());
+	            if(block->TypeOf(MovingPlatform)) {
+	            	@rect->AddX(block->As(MovingPlatform)->GetChangeLeft());
 	            };
 ~#	            
         	};
