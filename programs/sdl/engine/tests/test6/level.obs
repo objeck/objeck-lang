@@ -23,9 +23,9 @@ class Level {
 #		@platforms->AddBack(MovingPlatform->New(200, 150, right_part, player, @self));
 #		@platforms->AddBack(MovingPlatform->New(270, 150, left_part, player, @self));
 		
-		@platforms->AddBack(Platform->New(10, 500, sprite_sheet, block_1));	
-		@platforms->AddBack(Platform->New(80, 500, sprite_sheet, block_2));	
-		@platforms->AddBack(Platform->New(150, 550, sprite_sheet, block_1));
+		@platforms->AddBack(Platform->New(10, 500, block_1, sprite_sheet));
+		@platforms->AddBack(Platform->New(80, 500, block_2, sprite_sheet));
+		@platforms->AddBack(Platform->New(150, 550, block_1, sprite_sheet));
 #~		
 		@platforms->AddBack(Platform->New(70, 540, foo));	
 		@platforms->AddBack(Platform->New(140, 540, middle_part));
