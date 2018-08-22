@@ -16,6 +16,7 @@ if not errorlevel 0 goto on_fail
 :on_fail
 cd %prev_dir%
 set path=%old_path%
+set old_path=
 
 if [%1] EQU [brun] (
 	rmdir /s /q images
