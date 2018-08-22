@@ -97,7 +97,7 @@ class Level {
 						}
 
 						label 102: {
-	    					@blocks->AddBack(Block->New(Block->Type->WATER, x, y, block_102, @sprite_sheet));
+	    					@blocks->AddBack(Block->New(Block->Type->WATER, x, y + 24, block_102, @sprite_sheet));
 						}
 
 						label 114: {
