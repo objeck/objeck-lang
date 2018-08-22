@@ -55,10 +55,10 @@ class Level {
 		block_56 := Rect->New(8 * Game->BLOCK_WIDTH, 4 * Game->BLOCK_HEIGHT, Game->BLOCK_WIDTH, Game->BLOCK_HEIGHT);
     	block_91 := Rect->New(7 * Game->BLOCK_WIDTH, 7 * Game->BLOCK_HEIGHT, Game->BLOCK_WIDTH, Game->BLOCK_HEIGHT);
     	block_68 := Rect->New(8 * Game->BLOCK_WIDTH, 5 * Game->BLOCK_HEIGHT, Game->BLOCK_WIDTH, Game->BLOCK_HEIGHT);
-    	block_102 := Rect->New(6 * Game->BLOCK_WIDTH, 8 * Game->BLOCK_HEIGHT, Game->BLOCK_WIDTH, Game->BLOCK_HEIGHT);
+    	block_102 := Rect->New(6 * Game->BLOCK_WIDTH, 9 * Game->BLOCK_HEIGHT, Game->BLOCK_WIDTH, Game->BLOCK_HEIGHT);
     	block_103 := Rect->New(7 * Game->BLOCK_WIDTH, 8 * Game->BLOCK_HEIGHT, Game->BLOCK_WIDTH, Game->BLOCK_HEIGHT);
 		block_104 := Rect->New(8 * Game->BLOCK_WIDTH, 8 * Game->BLOCK_HEIGHT, Game->BLOCK_WIDTH, Game->BLOCK_HEIGHT);
-		block_114 := Rect->New(7 * Game->BLOCK_WIDTH, 8 * Game->BLOCK_HEIGHT, Game->BLOCK_WIDTH, Game->BLOCK_HEIGHT);
+		block_114 := Rect->New(6 * Game->BLOCK_WIDTH, 8 * Game->BLOCK_HEIGHT, Game->BLOCK_WIDTH, Game->BLOCK_HEIGHT);
 		block_128 := Rect->New(8 * Game->BLOCK_WIDTH, 10 * Game->BLOCK_HEIGHT, Game->BLOCK_WIDTH, Game->BLOCK_HEIGHT);
 
     	table := CsvTable->New(System.IO.File.FileReader->ReadFile(name));
