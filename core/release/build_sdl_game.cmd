@@ -1,7 +1,8 @@
 @echo off
 
 cd deploy\bin
-set path=%cd%\..\bin;%cd%\..\lib\sdl;%cd%\..\lib\sdl;;%path%
+set old_path=%path%
+set path=%cd%\..\bin;%cd%\..\lib\sdl;%path%
 set OBJECK_LIB_PATH=%cd%\..\lib
 
 obc -src ..\..\..\compiler\lib_src\sdl2.obs -lib collect.obl -tar lib -dest ..\lib\sdl2.obl
@@ -14,6 +15,7 @@ if not errorlevel 0 goto on_fail
 
 :on_fail
 cd %prev_dir%
+set path=%old_path%
 
 if [%1] EQU [brun] (
 	rmdir /s /q images
