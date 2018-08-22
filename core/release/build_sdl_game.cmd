@@ -15,4 +15,3 @@ if [%1] EQU [brun] (
 	obr ..\..\..\game.obe
 )
 cd ..\..
-
