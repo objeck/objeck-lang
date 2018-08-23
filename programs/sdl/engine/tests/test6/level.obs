@@ -27,12 +27,12 @@ class Level {
 	function : Collides(player : Player, obstacles : Vector) ~ Bool {
 		each(i : obstacles) {
         	obstacle := obstacles->Get(i)->As(Block);
-        	if(obstacle->Collides(player->GetRect())) {
-        		return true;
-        	};
-        };
+			if(obstacle->Collides(player->GetRect())) {
+				return true;
+			};
+		};
 
-        return false;
+		return false;
 	}
 
 	function : Collisions(player : Player, obstacles : Vector) ~ Vector {
