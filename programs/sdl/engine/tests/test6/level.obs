@@ -53,6 +53,11 @@ class Level {
 		block_6 := Rect->New(6 * Game->BLOCK_WIDTH, (0 * Game->BLOCK_HEIGHT) + (Game->BLOCK_HEIGHT / 2 - 3), Game->BLOCK_WIDTH, 6);
 		block_44 := Rect->New(8 * Game->BLOCK_WIDTH, 3 * Game->BLOCK_HEIGHT, Game->BLOCK_WIDTH, Game->BLOCK_HEIGHT);
 		block_56 := Rect->New(8 * Game->BLOCK_WIDTH, 4 * Game->BLOCK_HEIGHT, Game->BLOCK_WIDTH, Game->BLOCK_HEIGHT);
+		
+		block_63 := Rect->New(3 * Game->BLOCK_WIDTH, 5 * Game->BLOCK_HEIGHT, Game->BLOCK_WIDTH, Game->BLOCK_HEIGHT);
+		block_134 := Rect->New(2 * Game->BLOCK_WIDTH, 11 * Game->BLOCK_HEIGHT, Game->BLOCK_WIDTH, Game->BLOCK_HEIGHT);
+		block_39 := Rect->New(3 * Game->BLOCK_WIDTH, 3 * Game->BLOCK_HEIGHT, Game->BLOCK_WIDTH, Game->BLOCK_HEIGHT);
+    	
     	block_91 := Rect->New(7 * Game->BLOCK_WIDTH, 7 * Game->BLOCK_HEIGHT, Game->BLOCK_WIDTH, Game->BLOCK_HEIGHT);
     	block_68 := Rect->New(8 * Game->BLOCK_WIDTH, 5 * Game->BLOCK_HEIGHT, Game->BLOCK_WIDTH, Game->BLOCK_HEIGHT);
     	block_102 := Rect->New(6 * Game->BLOCK_WIDTH, 8 * Game->BLOCK_HEIGHT + 24, Game->BLOCK_WIDTH, Game->BLOCK_HEIGHT - 24);
@@ -82,6 +87,18 @@ class Level {
 
 						label 56: {
     						@blocks->AddBack(Block->New(Block->Type->MID_GRASS_TOP, x, y, block_56, @sprite_sheet));
+						}
+
+						label 134: {
+    						@blocks->AddBack(Block->New(Block->Type->MID_STONE, x, y, block_134, @sprite_sheet));
+						}
+
+						label 39: {
+    						@blocks->AddBack(Block->New(Block->Type->RIGHT_STONE_SLOP_UP, x, y, block_39, @sprite_sheet));
+						}
+
+						label 63: {
+    						@blocks->AddBack(Block->New(Block->Type->LEFT_STONE_SLOP_UP, x, y, block_63, @sprite_sheet));
 						}
 
 						label 68: {
