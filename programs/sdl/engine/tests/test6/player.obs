@@ -75,14 +75,16 @@ class Player {
         each(i : collides) {
         	block := collides->Get(i)->As(Block);
 			if(@change_x > 0) {
-block->GetType()->PrintLine();
-
-    			@rect->SetRight(block->GetLeft());
+				if(block->GetType() = Block->Type->LEFT_STONE_SLOP_UP) {
+"--- Hit Left ---"->PrintLine();
+				}
+				else {
+    				@rect->SetRight(block->GetLeft());
+    			};
             }
     		# moving left
             else if(@change_x < 0) {
-block->GetType()->PrintLine();
-            	
+# block->GetType()->PrintLine();
             	@rect->SetLeft(block->GetRight());
             };
         };
@@ -94,7 +96,15 @@ block->GetType()->PrintLine();
         	if(block->Collides(@rect)) {
         		# moving right
         		if(@change_y > 0) {
-        			@rect->SetBottom(block->GetTop());
+        			if(block->GetType() = Block->Type->LEFT_STONE_SLOP_UP) {
+"--- Hit Top ---"->PrintLine();
+@rect->AddY(-6);
+@rect->AddX(6);
+
+					}
+					else {
+        				@rect->SetBottom(block->GetTop());
+        			};
                 }
         		# moving left
                 else if(@change_y < 0) {
