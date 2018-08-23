@@ -75,10 +75,14 @@ class Player {
         each(i : collides) {
         	block := collides->Get(i)->As(Block);
 			if(@change_x > 0) {
+block->GetType()->PrintLine();
+
     			@rect->SetRight(block->GetLeft());
             }
     		# moving left
             else if(@change_x < 0) {
+block->GetType()->PrintLine();
+            	
             	@rect->SetLeft(block->GetRight());
             };
         };
