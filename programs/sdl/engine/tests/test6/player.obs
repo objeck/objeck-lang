@@ -70,22 +70,24 @@ class Player {
 
 		# Move left/right
         @rect->AddX(@change_x);
-
-        enter_slop := false;
-
         collides := Level->Collisions(@self, @platforms);
         each(i : collides) {
         	block := collides->Get(i)->As(Block);
+        	# moving right
 			if(@change_x > 0) {
 				if(block->GetType() = Block->Type->LEFT_STONE_SLOP_UP) {
+# "--- Up Slope: Right ---"->PrintLine();
 					left := block->GetLeft();
-    				right := block->GetRight();
-    				top := block->GetTop();
-    				bottom := block->GetBottom();
+					right := block->GetRight();
+					top := block->GetTop();
+					bottom := block->GetBottom();
+					px := @rect->GetRight();
+					py := @rect->GetBottom();
 
-#       				if(InsideTriangle(left, bottom, right, bottom, top, right, @rect->GetRight(), @rect->GetBottom())) {
-       					enter_slop := true;
-#					};
+					if(InsideTriangle(left, bottom, right, bottom, right, top, px, py - 1)) {
+"--- Applying Diff ---"->PrintLine();						
+						@rect->AddY(-1 * @change_x);
+					};
 				}
 				else {
     				@rect->SetRight(block->GetLeft());
@@ -93,11 +95,15 @@ class Player {
             }
     		# moving left
             else if(@change_x < 0) {
-# block->GetType()->PrintLine();
-            	@rect->SetLeft(block->GetRight());
+            	if(block->GetType() = Block->Type->LEFT_STONE_SLOP_UP) {
+# "--- Up Slope: Left ---"->PrintLine();
+				}
+				else {
+            		@rect->SetLeft(block->GetRight());
+            	};
             };
         };
-				
+		
 		# Move up/down
         @rect->AddY(@change_y);
 		each(i : @platforms) {
@@ -105,31 +111,22 @@ class Player {
         	if(block->Collides(@rect)) {
         		# moving right
         		if(@change_y > 0) {
-        			if(enter_slop) {
-        				left := block->GetLeft();
-        				right := block->GetRight();
-        				top := block->GetTop();
-        				bottom := block->GetBottom();
-
-        				while(InsideTriangle(left, bottom, right, bottom, top, right, 
-        					@rect->GetRight(), @rect->GetBottom())) {
-"--- Hit Top: ({$left},{$bottom}) ({$right},{$bottom}) ({$top},{$right}) ---"->PrintLine();
-							@rect->AddY(-1);
-							@rect->AddX(1);
-#							@rect->AddX(20);
-        				};
-
+        			if(block->GetType() = Block->Type->LEFT_STONE_SLOP_UP) {
+# "--- Up Slope: Bottom ---"->PrintLine();
 					}
 					else {
-						if(<>(block->GetType() = Block->Type->LEFT_STONE_SLOP_UP)) {
-        					@rect->SetBottom(block->GetTop());
-        				};
+        				@rect->SetBottom(block->GetTop());
         			};
                 }
         		# moving left
                 else if(@change_y < 0) {
-                	@rect->SetTop(block->GetBottom());
-	            };
+                	if(block->GetType() = Block->Type->LEFT_STONE_SLOP_UP) {
+# "--- Up Slope: Top ---"->PrintLine();
+					}
+					else {
+	                	@rect->SetTop(block->GetBottom());
+		            };
+		        };
 
 	            # Stop our vertical movement
             	@change_y := 0;
