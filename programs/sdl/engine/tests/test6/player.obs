@@ -71,12 +71,21 @@ class Player {
 		# Move left/right
         @rect->AddX(@change_x);
 
+        enter_slop := false;
+
         collides := Level->Collisions(@self, @platforms);
         each(i : collides) {
         	block := collides->Get(i)->As(Block);
 			if(@change_x > 0) {
 				if(block->GetType() = Block->Type->LEFT_STONE_SLOP_UP) {
-"--- Hit Left ---"->PrintLine();
+					left := block->GetLeft();
+    				right := block->GetRight();
+    				top := block->GetTop();
+    				bottom := block->GetBottom();
+
+#       				if(InsideTriangle(left, bottom, right, bottom, top, right, @rect->GetRight(), @rect->GetBottom())) {
+       					enter_slop := true;
+#					};
 				}
 				else {
     				@rect->SetRight(block->GetLeft());
@@ -96,16 +105,25 @@ class Player {
         	if(block->Collides(@rect)) {
         		# moving right
         		if(@change_y > 0) {
-        			if(block->GetType() = Block->Type->LEFT_STONE_SLOP_UP) {
+        			if(enter_slop) {
         				left := block->GetLeft();
         				right := block->GetRight();
         				top := block->GetTop();
         				bottom := block->GetBottom();
 
+        				while(InsideTriangle(left, bottom, right, bottom, top, right, 
+        					@rect->GetRight(), @rect->GetBottom())) {
 "--- Hit Top: ({$left},{$bottom}) ({$right},{$bottom}) ({$top},{$right}) ---"->PrintLine();
+							@rect->AddY(-1);
+							@rect->AddX(1);
+#							@rect->AddX(20);
+        				};
+
 					}
 					else {
-        				@rect->SetBottom(block->GetTop());
+						if(<>(block->GetType() = Block->Type->LEFT_STONE_SLOP_UP)) {
+        					@rect->SetBottom(block->GetTop());
+        				};
         			};
                 }
         		# moving left
@@ -122,6 +140,19 @@ class Player {
 ~#	            
         	};
         };				
+	}
+
+	function : InsideTriangle(x1 : Int, y1 : Int, x2 : Int, y2 : Int, x3 : Int, y3 : Int, x : Int, y : Int) ~ Bool {   
+		A := TriangleArea(x1, y1, x2, y2, x3, y3);
+		A1 := TriangleArea(x, y, x2, y2, x3, y3);
+        A2 := TriangleArea(x1, y1, x, y, x3, y3);      
+        A3 := TriangleArea(x1, y1, x2, y2, x, y);
+
+		return (A = A1 + A2 + A3);
+    }
+
+	function : native : TriangleArea(x1 : Int, y1 : Int, x2 : Int, y2 : Int, x3 : Int, y3 : Int) ~ Int {
+       return Int->Abs((x1*(y2-y3) + x2*(y3-y1)+x3*(y1-y2))/2);
 	}
 
 	method : public : Draw()  ~ Nil {
