@@ -1,9 +1,26 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		b := 13;
-		Foo(b->PrintLine());
+		if (Inside(0, 0, 20, 0, 10, 30, 30, 15)) {
+           "Inside"->PrintLine();
+		}
+		else {
+			"Not Inside"->PrintLine();
+		};
 	}
-	
+
+	function : Inside(x1 : Int, y1 : Int, x2 : Int, y2 : Int, x3 : Int, y3 : Int, x : Int, y : Int) ~ Bool {   
+		A := Area (x1, y1, x2, y2, x3, y3);
+		A1 := Area (x, y, x2, y2, x3, y3);
+        A2 := Area (x1, y1, x, y, x3, y3);      
+        A3 := Area (x1, y1, x2, y2, x, y);
+
+		return (A = A1 + A2 + A3);
+    }
+
+	function : Area(x1 : Int, y1 : Int, x2 : Int, y2 : Int, x3 : Int, y3 : Int) ~ Int {
+       return Int->Abs((x1*(y2-y3) + x2*(y3-y1)+x3*(y1-y2))/2);
+	}
+
 	function : Foo(a : String) ~ Nil {
 	}
 }
