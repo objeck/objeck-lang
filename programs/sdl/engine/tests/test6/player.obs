@@ -97,10 +97,12 @@ class Player {
         		# moving right
         		if(@change_y > 0) {
         			if(block->GetType() = Block->Type->LEFT_STONE_SLOP_UP) {
-"--- Hit Top ---"->PrintLine();
-@rect->AddY(-6);
-@rect->AddX(6);
+        				left := block->GetLeft();
+        				right := block->GetRight();
+        				top := block->GetTop();
+        				bottom := block->GetBottom();
 
+"--- Hit Top: ({$left},{$bottom}) ({$right},{$bottom}) ({$top},{$right}) ---"->PrintLine();
 					}
 					else {
         				@rect->SetBottom(block->GetTop());
