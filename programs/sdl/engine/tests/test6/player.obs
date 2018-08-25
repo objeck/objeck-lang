@@ -76,18 +76,7 @@ class Player {
         	# moving right
 			if(@change_x > 0) {
 				if(block->GetType() = Block->Type->LEFT_STONE_SLOP_UP) {
-# "--- Up Slope: Right ---"->PrintLine();
-					left := block->GetLeft();
-					right := block->GetRight();
-					top := block->GetTop();
-					bottom := block->GetBottom();
-					px := @rect->GetRight();
-					py := @rect->GetBottom();
-
-					if(InsideTriangle(left, bottom, right, bottom, right, top, px, py)) {
-"--- Applying Diff from Right ---"->PrintLine();					
-						@rect->AddY(-1 * @change_x);
-					};
+"--- Up Slope: Right ---"->PrintLine();					
 				}
 				else {
     				@rect->SetRight(block->GetLeft());
@@ -112,8 +101,13 @@ class Player {
         		# moving down
         		if(@change_y > 0) {
         			if(block->GetType() = Block->Type->LEFT_STONE_SLOP_UP) {
-        				@rect->AddY(-1 * @change_y);
-"--- Up Slope: Bottom dir={$@change_x} ---"->PrintLine();
+        				UpLeftSlope(block);
+pb := @rect->GetBottom();
+bt := block->GetTop();
+						if(pb - 1 <= bt) {
+# "--- Player: bottom={$pb} {$bt} ---"->PrintLine();
+							@rect->SetBottom(block->GetTop());
+						};
 					}
 					else {
         				@rect->SetBottom(block->GetTop());
@@ -121,12 +115,7 @@ class Player {
                 }
         		# moving up
                 else if(@change_y < 0) {
-                	if(block->GetType() = Block->Type->LEFT_STONE_SLOP_UP) {
-# "--- Up Slope: Top ---"->PrintLine();
-					}
-					else {
-	                	@rect->SetTop(block->GetBottom());
-		            };
+                	@rect->SetTop(block->GetBottom());
 		        };
 
 	            # Stop our vertical movement
@@ -138,6 +127,35 @@ class Player {
 ~#	            
         	};
         };				
+	}
+
+	method : UpLeftSlope(block : Block) ~ Nil {
+		left := block->GetLeft();
+		right := block->GetRight();
+		top := block->GetTop();
+		bottom := block->GetBottom();
+		px := @rect->GetRight();
+		py := @rect->GetBottom();
+
+		# TODO: check different edge when going left to right
+
+		if(@change_x >= 0) {
+			while(InsideTriangle(left, bottom, right, bottom, right, top, px, py)) {				
+				@rect->AddY(-1);				
+				px := @rect->GetRight();
+				py := @rect->GetBottom();
+"Foo"->PrintLine();				
+			};
+		}
+		else if(@change_x < 0) {
+			do {			
+				@rect->AddY(1);				
+				px := @rect->GetRight();
+				py := @rect->GetBottom();
+"Bar"->PrintLine();
+			}
+			while(<>InsideTriangle(left, bottom, right, bottom, right, top, px, py));
+		};
 	}
 
 	function : InsideTriangle(x1 : Int, y1 : Int, x2 : Int, y2 : Int, x3 : Int, y3 : Int, x : Int, y : Int) ~ Bool {   
