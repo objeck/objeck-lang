@@ -61,7 +61,19 @@ class Block {
 	}
 
 	method : public : Collides(sprite : ImageSprite) ~ Bool {
-		return @pos->Overlaps(sprite->GetPosition());
+		if(GetType() = Type->LEFT_STONE_SLOP_UP) {
+    		left := @pos->GetLeft();
+			right := @pos->GetRight();
+			top := @pos->GetTop();
+			bottom := @pos->GetBottom();
+			px := sprite->GetRight();
+			py := sprite->GetBottom();
+			
+			return Player->InsideTriangle(left, bottom, right, bottom, right, top, px, py);
+    	}	
+    	else {		
+			return @pos->Overlaps(sprite->GetPosition());
+		};
 	}
 }
 

@@ -24,10 +24,24 @@ class Level {
 		@player->SetLevel(@self);
 	}
 
-	function : Collides(player : Player, obstacles : Vector) ~ Bool {
-		each(i : obstacles) {
-        	obstacle := obstacles->Get(i)->As(Block);
-			if(obstacle->Collides(player->GetRect())) {
+	function : Collides(player : Player, blocks : Vector) ~ Bool {
+		each(i : blocks) {
+        	block := blocks->Get(i)->As(Block);
+
+        	if(block->GetType() = Block->Type->LEFT_STONE_SLOP_UP) {
+        		left := block->GetLeft();
+				right := block->GetRight();
+				top := block->GetTop();
+				bottom := block->GetBottom();
+				px := player->GetRect()->GetRight();
+				py := player->GetRect()->GetBottom();
+
+				if(Player->InsideTriangle(left, bottom, right, bottom, right, top, px, py)) {
+"--- Foo ---"->PrintLine();
+					return true;
+				};
+        	}	
+        	else if(block->Collides(player->GetRect())) {
 				return true;
 			};
 		};
@@ -35,17 +49,17 @@ class Level {
 		return false;
 	}
 
-	function : Collisions(player : Player, obstacles : Vector) ~ Vector {
+	function : Collisions(player : Player, blocks : Vector) ~ Vector {
 		collides := Vector->New();
 
-		each(i : obstacles) {
-        	obstacle := obstacles->Get(i)->As(Block);
-        	if(obstacle->Collides(player->GetRect())) {
-        		collides->AddBack(obstacle);
+		each(i : blocks) {
+			block := blocks->Get(i)->As(Block);
+			if(block->Collides(player->GetRect())) {
+				collides->AddBack(block);
         	};
-        };
+    	};
 
-        return collides;
+		return collides;
     }
 
     method : public : LoadLevel(name : String) ~ Nil {
