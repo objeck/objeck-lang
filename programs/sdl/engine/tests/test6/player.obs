@@ -81,7 +81,7 @@ class Player {
             }
     		# moving left
             else if(@change_x < 0) {
-            	if(block->GetType() <> Block->Type->LEFT_STONE_SLOP_UP) {
+            	if(block->GetType() <> Block->Type->RIGHT_STONE_SLOP_UP) {
             		@rect->SetLeft(block->GetRight());
             	};
             };
@@ -95,12 +95,14 @@ class Player {
         		# moving down
         		if(@change_y > 0) {
         			if(block->GetType() = Block->Type->LEFT_STONE_SLOP_UP) {
-"--- Boom ---"->PrintLine();
         				UpLeftSlope(block);
-pb := @rect->GetBottom();
-bt := block->GetTop();
-						if(pb - 1 <= bt) {
-# "--- Player: bottom={$pb} {$bt} ---"->PrintLine();
+						if(@rect->GetBottom() - 2 < block->GetTop()) {
+							@rect->SetBottom(block->GetTop());
+						};
+					}
+					else if(block->GetType() = Block->Type->RIGHT_STONE_SLOP_UP) {
+        				UpRightSlope(block);
+						if(@rect->GetBottom() - 2 < block->GetTop()) {
 							@rect->SetBottom(block->GetTop());
 						};
 					}
@@ -124,26 +126,36 @@ bt := block->GetTop();
         };				
 	}
 
+	method : UpRightSlope(block : Block) ~ Nil {
+		
+	}
+
 	method : UpLeftSlope(block : Block) ~ Nil {
 		left := block->GetLeft();
 		right := block->GetRight();
 		top := block->GetTop();
 		bottom := block->GetBottom();
-		px := @rect->GetCenterX();
+
+#		px := @rect->GetCenterX();
+		px := @rect->GetRight();
 		py := @rect->GetBottom();
 
 		# TODO: check different edge when going left to right
 		if(@change_x >= 0) {
 			while(InsideTriangle(left, bottom, right, bottom, right, top, px, py)) {				
-				@rect->AddY(-1);				
-				px := @rect->GetCenterX();
+				@rect->AddY(-1);
+
+#				px := @rect->GetCenterX();
+				px := @rect->GetRight();
 				py := @rect->GetBottom();
 			};
 		}
-		else if(@change_x < 0 & px < right) {
+		else if(@change_x < 0 ) {
 			do {			
-				@rect->AddY(1);				
-				px := @rect->GetCenterX();
+				@rect->AddY(1);
+
+#				px := @rect->GetCenterX();
+				px := @rect->GetRight();
 				py := @rect->GetBottom();
 			}
 			while(<>InsideTriangle(left, bottom, right, bottom, right, top, px, py));
@@ -151,12 +163,12 @@ bt := block->GetTop();
 	}
 
 	function : InsideTriangle(x1 : Int, y1 : Int, x2 : Int, y2 : Int, x3 : Int, y3 : Int, x : Int, y : Int) ~ Bool {   
-		A := TriangleArea(x1, y1, x2, y2, x3, y3);
-		A1 := TriangleArea(x, y, x2, y2, x3, y3);
-        A2 := TriangleArea(x1, y1, x, y, x3, y3);      
-        A3 := TriangleArea(x1, y1, x2, y2, x, y);
+		a := TriangleArea(x1, y1, x2, y2, x3, y3);
+		a1 := TriangleArea(x, y, x2, y2, x3, y3);
+        a2 := TriangleArea(x1, y1, x, y, x3, y3);      
+        a3 := TriangleArea(x1, y1, x2, y2, x, y);
 
-		return (A = A1 + A2 + A3);
+		return (a = a1 + a2 + a3);
     }
 
 	function : native : TriangleArea(x1 : Int, y1 : Int, x2 : Int, y2 : Int, x3 : Int, y3 : Int) ~ Int {
