@@ -340,6 +340,14 @@ bundle Game.Framework {
 			return @position->GetBottom();
 		}
 
+		method : public : GetCenterX() ~ Int {
+			return @position->GetCenterX();
+		}
+
+		method : public : GetCenterY() ~ Int {
+			return @position->GetCenterY();
+		}
+
 		method : public : Set(x : Int, y : Int) ~ Nil {
 			@position->Set(x, y);
 		}
@@ -411,6 +419,14 @@ bundle Game.Framework {
 
 		method : public : GetBottom() ~ Int {
 			return @position->GetBottom();
+		}
+
+		method : public : GetCenterX() ~ Int {
+			return @position->GetCenterX();
+		}
+
+		method : public : GetCenterY() ~ Int {
+			return @position->GetCenterY();
 		}
 
 		method : public : Set(x : Int, y : Int) ~ Nil {

@@ -141,18 +141,17 @@ bt := block->GetTop();
 
 		if(@change_x >= 0) {
 			while(InsideTriangle(left, bottom, right, bottom, right, top, px, py)) {				
-				@rect->AddY(-1);				
+				@rect->AddY(-2);				
 				px := @rect->GetRight();
 				py := @rect->GetBottom();
-"Foo"->PrintLine();				
+# "Foo"->PrintLine();				
 			};
 		}
-		else if(@change_x < 0) {
+		else if(@change_x < 0 & px < right) {
 			do {			
-				@rect->AddY(1);				
+				@rect->AddY(2);				
 				px := @rect->GetRight();
 				py := @rect->GetBottom();
-"Bar"->PrintLine();
 			}
 			while(<>InsideTriangle(left, bottom, right, bottom, right, top, px, py));
 		};
