@@ -101,6 +101,7 @@ class Player {
 						};
 					}
 					else if(block->GetType() = Block->Type->RIGHT_STONE_SLOP_UP) {
+"--- Foo ---"->PrintLine();						
         				UpRightSlope(block);
 						if(@rect->GetBottom() - 2 < block->GetTop()) {
 							@rect->SetBottom(block->GetTop());
@@ -127,7 +128,22 @@ class Player {
 	}
 
 	method : UpRightSlope(block : Block) ~ Nil {
-		
+		left := block->GetLeft();
+		right := block->GetRight();
+		top := block->GetTop();
+		bottom := block->GetBottom();
+
+		px := @rect->GetRight();
+		py := @rect->GetBottom();
+
+		if(@change_x >= 0) {
+			while(InsideTriangle(right, bottom, right, bottom, left, top, px, py)) {
+				@rect->AddY(-1);
+
+				px := @rect->GetRight();
+				py := @rect->GetBottom();
+			};
+		};
 	}
 
 	method : UpLeftSlope(block : Block) ~ Nil {
@@ -136,29 +152,16 @@ class Player {
 		top := block->GetTop();
 		bottom := block->GetBottom();
 
-#		px := @rect->GetCenterX();
 		px := @rect->GetRight();
 		py := @rect->GetBottom();
 
-		# TODO: check different edge when going left to right
 		if(@change_x >= 0) {
-			while(InsideTriangle(left, bottom, right, bottom, right, top, px, py)) {				
+			while(InsideTriangle(left, bottom, right, bottom, right, top, px, py)) {
 				@rect->AddY(-1);
 
-#				px := @rect->GetCenterX();
 				px := @rect->GetRight();
 				py := @rect->GetBottom();
 			};
-		}
-		else if(@change_x < 0 ) {
-			do {			
-				@rect->AddY(1);
-
-#				px := @rect->GetCenterX();
-				px := @rect->GetRight();
-				py := @rect->GetBottom();
-			}
-			while(<>InsideTriangle(left, bottom, right, bottom, right, top, px, py));
 		};
 	}
 
