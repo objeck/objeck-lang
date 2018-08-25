@@ -84,8 +84,8 @@ class Player {
 					px := @rect->GetRight();
 					py := @rect->GetBottom();
 
-					if(InsideTriangle(left, bottom, right, bottom, right, top, px, py - 1)) {
-"--- Applying Diff ---"->PrintLine();						
+					if(InsideTriangle(left, bottom, right, bottom, right, top, px, py)) {
+"--- Applying Diff from Right ---"->PrintLine();					
 						@rect->AddY(-1 * @change_x);
 					};
 				}
@@ -96,7 +96,7 @@ class Player {
     		# moving left
             else if(@change_x < 0) {
             	if(block->GetType() = Block->Type->LEFT_STONE_SLOP_UP) {
-# "--- Up Slope: Left ---"->PrintLine();
+"--- Up Slope: Left ---"->PrintLine();
 				}
 				else {
             		@rect->SetLeft(block->GetRight());
@@ -109,16 +109,17 @@ class Player {
 		each(i : @platforms) {
         	block := @platforms->Get(i)->As(Block);
         	if(block->Collides(@rect)) {
-        		# moving right
+        		# moving down
         		if(@change_y > 0) {
         			if(block->GetType() = Block->Type->LEFT_STONE_SLOP_UP) {
-# "--- Up Slope: Bottom ---"->PrintLine();
+        				@rect->AddY(-1 * @change_y);
+"--- Up Slope: Bottom dir={$@change_x} ---"->PrintLine();
 					}
 					else {
         				@rect->SetBottom(block->GetTop());
         			};
                 }
-        		# moving left
+        		# moving up
                 else if(@change_y < 0) {
                 	if(block->GetType() = Block->Type->LEFT_STONE_SLOP_UP) {
 # "--- Up Slope: Top ---"->PrintLine();
