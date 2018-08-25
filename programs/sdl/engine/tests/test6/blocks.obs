@@ -66,7 +66,7 @@ class Block {
 			right := @pos->GetRight();
 			top := @pos->GetTop();
 			bottom := @pos->GetBottom();
-			px := sprite->GetRight();
+			px := sprite->GetCenterX();
 			py := sprite->GetBottom();
 			
 			return Player->InsideTriangle(left, bottom, right, bottom, right, top, px, py);

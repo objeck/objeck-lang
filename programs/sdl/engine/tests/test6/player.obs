@@ -129,21 +129,21 @@ bt := block->GetTop();
 		right := block->GetRight();
 		top := block->GetTop();
 		bottom := block->GetBottom();
-		px := @rect->GetRight();
+		px := @rect->GetCenterX();
 		py := @rect->GetBottom();
 
 		# TODO: check different edge when going left to right
 		if(@change_x >= 0) {
 			while(InsideTriangle(left, bottom, right, bottom, right, top, px, py)) {				
 				@rect->AddY(-1);				
-				px := @rect->GetRight();
+				px := @rect->GetCenterX();
 				py := @rect->GetBottom();
 			};
 		}
 		else if(@change_x < 0 & px < right) {
 			do {			
 				@rect->AddY(1);				
-				px := @rect->GetRight();
+				px := @rect->GetCenterX();
 				py := @rect->GetBottom();
 			}
 			while(<>InsideTriangle(left, bottom, right, bottom, right, top, px, py));

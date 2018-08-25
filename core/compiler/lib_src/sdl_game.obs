@@ -569,7 +569,7 @@ bundle Game.Framework {
 		}
 
 		method : public : GetCenterX() ~ Int {
-			return GetRight() / 2;
+			return @x + @rect->GetW() / 2;
 		}
 
 		method : public : GetTop() ~ Int {
@@ -581,7 +581,7 @@ bundle Game.Framework {
 		}
 
 		method : public : GetCenterY() ~ Int {
-			return GetBottom() / 2;
+			return @y + @rect->GetH() / 2;
 		}
 
 		method : public : native : Overlaps(pos : Position) ~ Bool {
