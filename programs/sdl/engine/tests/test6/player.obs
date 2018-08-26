@@ -82,6 +82,8 @@ class Player {
     		# moving left
             else if(@change_x < 0) {
             	if(block->GetType() <> Block->Type->RIGHT_STONE_SLOP_UP) {
+bar := block->GetType()->As(Int);            		
+"--- Blah: type={$bar} ---"->PrintLine();
             		@rect->SetLeft(block->GetRight());
             	};
             };
@@ -101,7 +103,6 @@ class Player {
 						};
 					}
 					else if(block->GetType() = Block->Type->RIGHT_STONE_SLOP_UP) {
-"--- Foo ---"->PrintLine();						
         				UpRightSlope(block);
 						if(@rect->GetBottom() - 2 < block->GetTop()) {
 							@rect->SetBottom(block->GetTop());
@@ -136,7 +137,9 @@ class Player {
 		px := @rect->GetRight();
 		py := @rect->GetBottom();
 
-		if(@change_x >= 0) {
+"--- Foo Bar ---"->PrintLine();
+
+		if(@change_x <= 0) {
 			while(InsideTriangle(right, bottom, right, bottom, left, top, px, py)) {
 				@rect->AddY(-1);
 
