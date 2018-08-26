@@ -18,7 +18,7 @@ class Level {
 		@sprite_sheet := framework->AddImageSprite(sprite_path, Color->New(0, 0, 0));
 				
 		map_path := String->New(media_path);	
-		map_path += "/media/foo.csv";
+		map_path += "/media/map.csv";
 		LoadLevel(map_path);
 
 		@player->SetLevel(@self);
