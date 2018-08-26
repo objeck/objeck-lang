@@ -80,10 +80,10 @@ class Block {
 			bottom := @pos->GetBottom();
 
 #			px := sprite->GetCenterX();
-			px := sprite->GetRight();
+			px := sprite->GetLeft();
 			py := sprite->GetBottom();
 			
-			return Player->InsideTriangle(left, bottom, right, bottom, left, top, px, py);
+			return Player->InsideTriangle(right, bottom, left, bottom, left, top, px, py);
 		}
     	else {		
 			return @pos->Overlaps(sprite->GetPosition());
