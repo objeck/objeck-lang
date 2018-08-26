@@ -75,13 +75,13 @@ class Player {
         	block := collides->Get(i)->As(Block);
         	# moving right
 			if(@change_x > 0) {
-				if(block->GetType() <> Block->Type->LEFT_STONE_SLOP_UP) {
+				if(block->GetType() <> Block->Type->LEFT_STONE_SLOP_UP & block->GetType() <> Block->Type->RIGHT_STONE_SLOP_UP) {
     				@rect->SetRight(block->GetLeft());
     			};
             }
     		# moving left
             else if(@change_x < 0) {
-            	if(block->GetType() <> Block->Type->RIGHT_STONE_SLOP_UP) {
+            	if(block->GetType() <> Block->Type->LEFT_STONE_SLOP_UP & block->GetType() <> Block->Type->RIGHT_STONE_SLOP_UP) {
             		@rect->SetLeft(block->GetRight());
             	};
             };
@@ -101,7 +101,6 @@ class Player {
 						};
 					}
 					else if(block->GetType() = Block->Type->RIGHT_STONE_SLOP_UP) {
-"???"->PrintLine();						
         				UpRightSlope(block);
 						if(@rect->GetBottom() - 2 < block->GetTop()) {
 							@rect->SetBottom(block->GetTop());
@@ -133,16 +132,14 @@ class Player {
 		top := block->GetTop();
 		bottom := block->GetBottom();
 
-		px := @rect->GetRight();
+		px := @rect->GetLeft();
 		py := @rect->GetBottom();
 
-"--- Foo Bar ---"->PrintLine();
-
 		if(@change_x <= 0) {
-			while(InsideTriangle(left, bottom, right, bottom, left, top, px, py)) {
+			while(InsideTriangle(right, bottom, left, bottom, left, top, px, py)) {
 				@rect->AddY(-1);
 
-				px := @rect->GetRight();
+				px := @rect->GetLeft();
 				py := @rect->GetBottom();
 			};
 		};
@@ -160,7 +157,7 @@ class Player {
 		if(@change_x >= 0) {
 			while(InsideTriangle(left, bottom, right, bottom, right, top, px, py)) {
 				@rect->AddY(-1);
-
+				
 				px := @rect->GetRight();
 				py := @rect->GetBottom();
 			};
