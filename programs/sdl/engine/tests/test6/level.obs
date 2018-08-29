@@ -50,22 +50,7 @@ class Level {
     }
 
     method : public : LoadLevel(name : String) ~ Nil {
-    	block_3 := Rect->New(3 * Game->BLOCK_WIDTH, 0 * Game->BLOCK_HEIGHT, Game->BLOCK_WIDTH, Game->BLOCK_HEIGHT);
-		block_6 := Rect->New(6 * Game->BLOCK_WIDTH, (0 * Game->BLOCK_HEIGHT) + (Game->BLOCK_HEIGHT / 2 - 3), Game->BLOCK_WIDTH, 6);
-		block_44 := Rect->New(8 * Game->BLOCK_WIDTH, 3 * Game->BLOCK_HEIGHT, Game->BLOCK_WIDTH, Game->BLOCK_HEIGHT);
-		block_56 := Rect->New(8 * Game->BLOCK_WIDTH, 4 * Game->BLOCK_HEIGHT, Game->BLOCK_WIDTH, Game->BLOCK_HEIGHT);
-		
-		block_63 := Rect->New(3 * Game->BLOCK_WIDTH, 5 * Game->BLOCK_HEIGHT, Game->BLOCK_WIDTH, Game->BLOCK_HEIGHT);
-		block_134 := Rect->New(2 * Game->BLOCK_WIDTH, 11 * Game->BLOCK_HEIGHT, Game->BLOCK_WIDTH, Game->BLOCK_HEIGHT);
-		block_39 := Rect->New(3 * Game->BLOCK_WIDTH, 3 * Game->BLOCK_HEIGHT, Game->BLOCK_WIDTH, Game->BLOCK_HEIGHT);
-    	
-    	block_91 := Rect->New(7 * Game->BLOCK_WIDTH, 7 * Game->BLOCK_HEIGHT, Game->BLOCK_WIDTH, Game->BLOCK_HEIGHT);
-    	block_68 := Rect->New(8 * Game->BLOCK_WIDTH, 5 * Game->BLOCK_HEIGHT, Game->BLOCK_WIDTH, Game->BLOCK_HEIGHT);
-    	block_102 := Rect->New(6 * Game->BLOCK_WIDTH, 8 * Game->BLOCK_HEIGHT + 24, Game->BLOCK_WIDTH, Game->BLOCK_HEIGHT - 24);
-    	block_103 := Rect->New(7 * Game->BLOCK_WIDTH, 8 * Game->BLOCK_HEIGHT, Game->BLOCK_WIDTH, Game->BLOCK_HEIGHT);
-		block_104 := Rect->New(8 * Game->BLOCK_WIDTH, 8 * Game->BLOCK_HEIGHT, Game->BLOCK_WIDTH, Game->BLOCK_HEIGHT);
-		block_114 := Rect->New(6 * Game->BLOCK_WIDTH, 9 * Game->BLOCK_HEIGHT, Game->BLOCK_WIDTH, Game->BLOCK_HEIGHT);
-		block_128 := Rect->New(8 * Game->BLOCK_WIDTH, 10 * Game->BLOCK_HEIGHT, Game->BLOCK_WIDTH, Game->BLOCK_HEIGHT);
+    	block_map := IntMap->New();
 
     	table := CsvTable->New(System.IO.File.FileReader->ReadFile(name));
     	if(table->IsParsed()) {
@@ -75,76 +60,22 @@ class Level {
     				value := row->Get(j);
     				y := i * (Game->BLOCK_WIDTH - 2);
     				x := j * (Game->BLOCK_HEIGHT - 2);
-
+    				
     				id := value->ToInt();
-					select(id) {
-						label 3: {
-    						@blocks->AddBack(Block->New(Block->Type->ROUND_STONE, x, y, block_3, @sprite_sheet));
-						}
-
-						label 6: {
-    						@blocks->AddBack(MovingPlatform->New(Block->Type->WOOD_PLANK, x, y, block_6, @sprite_sheet, @player, @self));
-						}
-
-						label 56: {
-    						@blocks->AddBack(Block->New(Block->Type->MID_GRASS_TOP, x, y, block_56, @sprite_sheet));
-						}
-
-						label 134: {
-    						@blocks->AddBack(Block->New(Block->Type->MID_STONE, x, y, block_134, @sprite_sheet));
-						}
-
-						label 39: {
-    						@blocks->AddBack(Block->New(Block->Type->RIGHT_STONE_SLOP_UP, x, y, block_39, @sprite_sheet));
-						}
-
-						label 63: {
-    						@blocks->AddBack(Block->New(Block->Type->LEFT_STONE_SLOP_UP, x, y, block_63, @sprite_sheet));
-						}
-
-						label 68: {
-    						@blocks->AddBack(Block->New(Block->Type->LEFT_GRASS_TOP, x, y, block_68, @sprite_sheet));
-						}
-
-						label 44: {
-    						@blocks->AddBack(Block->New(Block->Type->RIGHT_GRASS_TOP, x, y, block_44, @sprite_sheet));
-						}
-						
-						label 91: {
-	    					@blocks->AddBack(Block->New(Block->Type->ROUND_GRASS_GROUND, x, y, block_91, @sprite_sheet));
-						}
-
-						label 102: {
-	    					@blocks->AddBack(Block->New(Block->Type->WATER, x, y + 24, block_102, @sprite_sheet));
-						}
-
-						label 114: {
-	    					@blocks->AddBack(Block->New(Block->Type->WATER, x, y, block_114, @sprite_sheet));
-						}
-
-						label 103: {
-	    					@blocks->AddBack(Block->New(Block->Type->MID_GRASS_GROUND, x, y, block_103, @sprite_sheet));
-						}
-
-						label 104: {
-	    					@blocks->AddBack(Block->New(Block->Type->LEFT_GRASS_GROUND, x, y, block_104, @sprite_sheet));
-						}
-
-						label 128: {
-							@blocks->AddBack(Block->New(Block->Type->RIGHT_GRASS_GROUND, x, y, block_128, @sprite_sheet));
-						}
-
-						other: {
-							if(id > 0) {
-"Missing: id='{$id}', loc=[{$x},{$y}]"->PrintLine();
-							};
-						}
-					};
-    			};
+    				if(id > -1) {					
+	    				rect := block_map->Find(id)->As(Rect);
+	    				if(rect = Nil) { 
+		    				y_pos := id / 12;
+		    				x_pos := id % 12;
+# "id={$id}: x_pos={$x_pos}, y_pos={$y_pos}"->PrintLine();
+							
+		    				rect := Rect->New(x_pos * Game->BLOCK_WIDTH, y_pos * Game->BLOCK_HEIGHT, Game->BLOCK_WIDTH, Game->BLOCK_HEIGHT);
+		    				block_map->Insert(id, rect);
+		    			};	    			
+		    			@blocks->AddBack(Block->New(id, x, y, rect, @sprite_sheet));
+	    			};
+	    		};
     		};
-    	}
-    	else {
-    		"Unable to load map file!"->ErrorLine();
     	};
     }
 

@@ -77,15 +77,13 @@ class Player {
         	if(block->GetBottom() - @rect->GetTop() > @rect->GetHeight()) {
 	        	# moving right
 				if(@change_x > 0) {
-					if(block->GetType() <> Block->Type->LEFT_STONE_SLOP_UP & block->GetType() <> Block->Type->RIGHT_STONE_SLOP_UP) {
-"--- Blah 1 ---"->PrintLine();						
+					if(<>block->LeftSlope() & <>block->RightSlope()) {
 	    				@rect->SetRight(block->GetLeft());
 	    			};
 	            }
 	    		# moving left
 	            else if(@change_x < 0) {
-	            	if(block->GetType() <> Block->Type->LEFT_STONE_SLOP_UP & block->GetType() <> Block->Type->RIGHT_STONE_SLOP_UP) {
-"--- Blah 2 ---"->PrintLine();
+					if(<>block->LeftSlope() & <>block->RightSlope()) {
 	            		@rect->SetLeft(block->GetRight());
 	            	};
 	            };
@@ -99,31 +97,24 @@ class Player {
         	if(block->Collides(@rect)) {
         		# moving down
         		if(@change_y > 0) {
-        			if(block->GetType() = Block->Type->LEFT_STONE_SLOP_UP) {
-foo := block->GetBottom();
-bar := @rect->GetTop();
-
-"--- Blah 3 [{$foo}, {$bar}] ---"->PrintLine();        				
+        			if(block->LeftSlope()) {
         				UpLeftSlope(block);
 						if(@rect->GetBottom() - 2 < block->GetTop()) {
 							@rect->SetBottom(block->GetTop());
 						};
 					}
-					else if(block->GetType() = Block->Type->RIGHT_STONE_SLOP_UP) {
-"--- Blah 4 ---"->PrintLine();						
+					else if(block->RightSlope()) {
         				UpRightSlope(block);
 						if(@rect->GetBottom() - 2 < block->GetTop()) {
 							@rect->SetBottom(block->GetTop());
 						};
 					}
-					else if(block->GetBottom() - @rect->GetTop() > 100) {
-"--- Blah 5 ---"->PrintLine();						
+					else if(block->GetBottom() - @rect->GetTop() > @rect->GetHeight()) {
         				@rect->SetBottom(block->GetTop());
         			};
                 }
         		# moving up
                 else if(@change_y < 0) {
-"--- Blah 6 ---"->PrintLine();
                 	@rect->SetTop(block->GetBottom());
 		        };
 
