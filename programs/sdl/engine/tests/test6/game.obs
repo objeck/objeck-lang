@@ -126,8 +126,8 @@ class Demo {
 }
 
 consts Game {
-	SCREEN_WIDTH := 840,
-	SCREEN_HEIGHT := 630,
+	SCREEN_WIDTH := 800,
+	SCREEN_HEIGHT := 600,
 	BLOCK_WIDTH := 72,
 	BLOCK_HEIGHT := 72
 }
