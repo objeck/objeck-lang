@@ -75,10 +75,6 @@ class Block {
 			
 			return Player->InsideTriangle(right, bottom, left, bottom, left, top, px, py);
 		}
-		# TODO: account for non-collision or special objects
-		else if(@type = 37) {
-			return false;
-		}
     	else {		
 			return @pos->Overlaps(sprite->GetPosition());
 		};

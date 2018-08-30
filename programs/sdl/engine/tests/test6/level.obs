@@ -42,8 +42,13 @@ class Level {
 		each(i : blocks) {
 			block := blocks->Get(i)->As(Block);
 			if(block->Collides(player->GetRect())) {
-				collides->AddBack(block);
-        	};
+				if(block->GetType() = 37) {
+"--- Hit ---"->PrintLine();					
+				}
+				else {
+					collides->AddBack(block);
+				};
+			};
     	};
 
 		return collides;
