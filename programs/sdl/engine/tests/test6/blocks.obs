@@ -45,7 +45,7 @@ class Block {
 	}
 
 	method : public : LeftSlope()  ~ Bool {
-		return @type = 63 | @type = 42  | @type = 32 | @type = 34 | @type = 105;
+		return @type = 29 | @type = 63 | @type = 42  | @type = 32 | @type = 34 | @type = 105;
 	}
 
 	method : public : RightSlope()  ~ Bool {
@@ -133,13 +133,15 @@ class MovingPlatform from Block {
             };
 		};
 
+#~
 		if(@pos->GetBottom() > @max_bottom | @pos->GetTop() < @max_top) {
 			@change_y *= -1;
 		};
-
+		
 		cur_pos := @pos->GetLeft() - @level->GetShift();
         if(cur_pos < @max_left | cur_pos > @max_right) {
 			@change_x *= -1;
         };
+~#        
 	}
 }
