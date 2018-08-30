@@ -77,8 +77,8 @@ class Demo {
 				};
 				
 				# draw
-				@player->Draw();
 				@level->Draw();
+				@player->Draw();
 
 				# show
 				@framework->Show();
