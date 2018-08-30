@@ -9,6 +9,31 @@
  "tileheight":72,
  "tiles":
     {
+     "123":
+        {
+         "objectgroup":
+            {
+             "draworder":"index",
+             "name":"",
+             "objects":[
+                    {
+                     "height":36,
+                     "id":1,
+                     "name":"",
+                     "rotation":0,
+                     "type":"",
+                     "visible":true,
+                     "width":72,
+                     "x":0,
+                     "y":0
+                    }],
+             "opacity":1,
+             "type":"objectgroup",
+             "visible":true,
+             "x":0,
+             "y":0
+            }
+        },
      "124":
         {
          "objectgroup":
@@ -60,8 +85,8 @@
                      "type":"",
                      "visible":true,
                      "width":0,
-                     "x":25.6363636363636,
-                     "y":94.3636363636364
+                     "x":25.6364,
+                     "y":94.3636
                     }],
              "opacity":1,
              "type":"objectgroup",

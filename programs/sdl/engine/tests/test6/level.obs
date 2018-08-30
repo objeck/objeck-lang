@@ -79,7 +79,7 @@ class Level {
 		    				y_pos := id / 12;
 		    				x_pos := id % 12;
 
-							if(id = 6 | id = 124) {
+							if(id = 6 | id = 124 | id = 123) {
 								attribs := block_attribs->GetAttribs(id);
 
 								a_x := x_pos * Game->BLOCK_WIDTH;
