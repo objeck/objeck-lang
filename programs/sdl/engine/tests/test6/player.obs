@@ -92,8 +92,10 @@ class Player {
 		
 		# Move up/down
         @rect->AddY(@change_y);
-		each(i : @platforms) {
-        	block := @platforms->Get(i)->As(Block);
+		collides := Level->Collisions(@self, @platforms);
+        each(i : collides) {
+        	block := collides->Get(i)->As(Block);
+
         	if(block->Collides(@rect)) {
         		# moving down
         		if(@change_y > 0) {
