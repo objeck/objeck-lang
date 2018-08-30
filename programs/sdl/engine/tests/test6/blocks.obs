@@ -75,8 +75,8 @@ class Block {
 			
 			return Player->InsideTriangle(right, bottom, left, bottom, left, top, px, py);
 		}
+		# TODO: account for non-collision or special objects
 		else if(@type = 37) {
-"--- Torch ---"->PrintLine();
 			return false;
 		}
     	else {		
