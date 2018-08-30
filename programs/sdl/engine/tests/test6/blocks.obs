@@ -53,7 +53,7 @@ class Block {
 	}
 
 	method : public : Collides(sprite : ImageSprite) ~ Bool {
-		if(GetType() = 101) {
+		if(LeftSlope()) {
     		left := @pos->GetLeft();
 			right := @pos->GetRight();
 			top := @pos->GetTop();
@@ -64,7 +64,7 @@ class Block {
 			
 			return Player->InsideTriangle(left, bottom, right, bottom, right, top, px, py);
     	}	
-    	else if(GetType() = 201) {
+    	else if(RightSlope()) {
     		left := @pos->GetLeft();
 			right := @pos->GetRight();
 			top := @pos->GetTop();
@@ -74,6 +74,10 @@ class Block {
 			py := sprite->GetBottom();
 			
 			return Player->InsideTriangle(right, bottom, left, bottom, left, top, px, py);
+		}
+		else if(@type = 37) {
+"--- Torch ---"->PrintLine();
+			return false;
 		}
     	else {		
 			return @pos->Overlaps(sprite->GetPosition());

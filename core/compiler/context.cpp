@@ -918,11 +918,11 @@ bool ContextAnalyzer::Analyze()
 
     // if and else
     if(!next) {
-      return if_ok && else_ok;
+      return if_ok && (else_ok || if_else_ok);
     }
     
     // if, else-if and else
-    if(!nested && if_ok && if_else_ok && next->GetElseStatements()) {
+    if(if_ok && if_else_ok) {
       return true;
     }
     
