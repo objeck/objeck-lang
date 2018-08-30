@@ -1,8 +1,89 @@
+use Data.JSON;
+
 class Test {
+	@root : JSONElement;
+	@tiles : JSONElement;
+
 	function : Main(args : String[]) ~ Nil {
-#    	DoIt(13.3, 1, 2, 55.5);
-		Lib->DoIt(130);  
-    	Lib->DoIt(13, 7.5);    	
-    	Lib->DoIt(13, 7, 102);  
+		if(args->Size() = 1) {
+			test := Test->New(args[0]);
+			test->GetAttribs(124)->ToString()->PrintLine();
+			test->GetAttribs(6)->ToString()->PrintLine();
+		};
+	}
+
+	New(name : String) {		
+		doc := System.IO.File.FileReader->ReadFile(name);
+		if(doc <> Nil) {
+			@root := JSONParser->New(doc)->Parse();
+			@tiles := GetTiles();			
+		}
+		else {
+			"--- Unable to open doc ---"->ErrorLine();
+		};
+	}
+
+	method : GetTiles() ~ JSONElement {		
+		if(@root <> Nil) {
+			tiles := @root->Get("tiles");
+			if(tiles <> Nil & tiles->GetType() = JSONType->OBJECT) {
+				return tiles;
+			}
+			else {
+				"--- Unable to get 'tiles' ---"->ErrorLine();
+			};
+		};
+
+		return Nil;
+	}
+
+	method : public : GetAttribs(id : Int) ~ Attrib {		
+		if(@tiles <> Nil) {
+			attribs := @tiles->Get(id->ToString());
+			if(attribs <> Nil) {
+				x := attribs->FindElements("objectgroup/objects/[0]/x")->GetValue();
+				y := attribs->FindElements("objectgroup/objects/[0]/y")->GetValue();
+				height := attribs->FindElements("objectgroup/objects/[0]/height")->GetValue();
+				width := attribs->FindElements("objectgroup/objects/[0]/width")->GetValue();
+
+				return Attrib->New(x, y, height, width);
+			};
+		};
+
+		return Nil;
+	}
+}
+
+class Attrib {
+	@x : Int;
+	@y : Int;
+	@height : Int;
+	@width : Int;
+
+	New(x : String, y : String, height : String, width : String) {
+		@x := x->ToInt();
+		@y := y->ToInt();
+		@height := height->ToInt();
+		@width := width->ToInt();
+	}
+
+	method : public : GetX() ~ Int {
+		return @x;
+	}
+
+	method : public : GetY() ~ Int {
+		return @y;
+	}
+
+	method : public : GetHeight() ~ Int {
+		return @height;
+	}
+
+	method : public : GetWidth() ~ Int {
+		return @width;
+	}
+
+	method : public : ToString() ~ String {
+		return "{$@x}, {$@y}, {$@height}, {$@width}";
 	}
 }

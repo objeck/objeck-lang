@@ -18,6 +18,10 @@ bundle Data.JSON {
 		@token_pos : Int;
 		@cur_token : Token;
 		
+		#~
+		Creates a new parser
+		@param input JSON input string
+		~#
 		New(input : String) {
 			@input := input;
 			@tokens : Nil;
