@@ -7,6 +7,7 @@ class Demo {
 	@player : Player;
 	@level : Level;
 	@media_path : String;
+	@background : ImageSprite;
 
 	function : Main(args : String[]) ~ Nil {
 		Demo->New()->Run();
@@ -16,6 +17,10 @@ class Demo {
 		@framework := GameFramework->New(Game->SCREEN_WIDTH, Game->SCREEN_HEIGHT, "Platformer Jumper");
 		@framework->SetClearColor(Color->New(0, 0, 255));
 		@media_path := "../../../../programs/sdl/engine/tests/test6";
+
+		background_path := String->New(@media_path);
+		background_path += "/media/background_01.png";
+		@background := @framework->AddImageSprite(background_path);
 	}
 
 	method : Run() ~ Nil {
@@ -63,7 +68,7 @@ class Demo {
 				if(@player->GetRight() >= 500) {
 					diff := @player->GetRight() - 500;
 					@player->SetRight(500);
-					if(shift > -1500) {
+					if(shift > -3000) {
 						@level->ShiftWorld(-1 * diff);
 					};
 		        };
@@ -77,6 +82,7 @@ class Demo {
 				};
 				
 				# draw
+				Background();
 				@level->Draw();
 				@player->Draw();
 
@@ -93,6 +99,12 @@ class Demo {
 		leaving {
 			@framework->Quit();
 		};
+	}
+
+	method : public : Background() ~ Nil {
+		shift := @level->GetShift() / 3;
+		@background->Render(shift, 0);
+		@background->Render(shift + @background->GetWidth(), 0);	
 	}
 
 	method : public : ProcessInput(e : Event) ~ Nil {
