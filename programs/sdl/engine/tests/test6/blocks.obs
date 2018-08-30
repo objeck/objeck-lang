@@ -3,20 +3,29 @@ use Game.Framework;
 use Collection;
 
 class Block {
+	@id : Int;
 	@pos : Position;
 	@sprite_sheet : ImageSprite;
 	@render_rect : Rect;
-	@type : Int;
+	@hide : Bool;
 
 	New(type : Int, x : Int, y : Int, render_rect : Rect, sprite_sheet : ImageSprite) {
-		@type := type;
+		@id := type;
 		@pos := Position->New(x, y, render_rect->GetW(), render_rect->GetH());
 		@render_rect := render_rect;
 		@sprite_sheet := sprite_sheet;
 	}
 
-	method : public : GetType() ~ Int {
-		return @type;
+	method : public : GetId() ~ Int {
+		return @id;
+	}
+
+	method : public : SetHide(hide : Bool) ~ Nil {
+		@hide := hide;
+	}
+
+	method : public : GetHide() ~ Bool {
+		return @hide;
 	}
 
 	method : public : AddX(x : Int)  ~ Nil {
@@ -40,16 +49,18 @@ class Block {
 	}
 
 	method : public : Draw()  ~ Nil {
-		@sprite_sheet->SetPostion(@pos);
-		@sprite_sheet->Render(@render_rect);
+		if(<>@hide) {
+			@sprite_sheet->SetPostion(@pos);
+			@sprite_sheet->Render(@render_rect);
+		};
 	}
 
 	method : public : LeftSlope()  ~ Bool {
-		return @type = 29 | @type = 63 | @type = 42  | @type = 32 | @type = 34 | @type = 105;
+		return @id = 29 | @id = 63 | @id = 42  | @id = 32 | @id = 34 | @id = 105;
 	}
 
 	method : public : RightSlope()  ~ Bool {
-		return @type = 5 | @type = 8 | @type = 39 | @type = 95 | @type = 63;
+		return @id = 5 | @id = 8 | @id = 39 | @id = 95 | @id = 63;
 	}
 
 	method : public : Collides(sprite : ImageSprite) ~ Bool {
@@ -81,7 +92,7 @@ class Block {
 	}
 }
 
-class MovingPlatform from Block {
+class MovingBlock from Block {
 	@player : Player;
     @level : Level;
 
@@ -98,8 +109,8 @@ class MovingPlatform from Block {
 		@player := player;
 		@level := level;
 
-		@max_top := 75;
-    	@max_bottom := 550;
+		@max_top := 100;
+    	@max_bottom := 500;
     	@change_y := 1;
 	}
 
@@ -133,7 +144,6 @@ class MovingPlatform from Block {
             };
 		};
 
-#~
 		if(@pos->GetBottom() > @max_bottom | @pos->GetTop() < @max_top) {
 			@change_y *= -1;
 		};
@@ -142,6 +152,5 @@ class MovingPlatform from Block {
         if(cur_pos < @max_left | cur_pos > @max_right) {
 			@change_x *= -1;
         };
-~#        
 	}
 }
