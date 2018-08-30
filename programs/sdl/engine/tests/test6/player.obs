@@ -7,7 +7,7 @@ class Player {
 	@change_x : Float;
 	@change_y : Float;
 	@level : Level;
-	@platforms : Vector;
+	@blocks : Vector;
 
 	New(rect : AnimatedImageSprite) {
 		@rect := rect;
@@ -36,7 +36,7 @@ class Player {
 
 	method : public : SetLevel(level : Level)  ~ Nil {
 		@level := level;
-		@platforms := @level->GetPlatforms();
+		@blocks := @level->GetBlocks();
 	}
 
 	method : public : ChangeLeft()  ~ Int {
@@ -57,7 +57,7 @@ class Player {
 
 	method : public : Jump()  ~ Nil {
 		@rect->AddY(2);
-		bottom := Level->Collides(@self, @platforms);
+		bottom := Level->Collides(@self, @blocks);
         @rect->AddY(-2);
  
         if(bottom | @rect->GetBottom() >= Game->SCREEN_HEIGHT) {
@@ -70,7 +70,7 @@ class Player {
 
 		# Move left/right
         @rect->AddX(@change_x);
-        collides := Level->Collisions(@self, @platforms);
+        collides := Level->Collisions(@self, @blocks);
         each(i : collides) {
         	block := collides->Get(i)->As(Block);
 
@@ -92,7 +92,7 @@ class Player {
 		
 		# Move up/down
         @rect->AddY(@change_y);
-		collides := Level->Collisions(@self, @platforms);
+		collides := Level->Collisions(@self, @blocks);
         each(i : collides) {
         	block := collides->Get(i)->As(Block);
 
@@ -123,8 +123,8 @@ class Player {
 	            # Stop our vertical movement
             	@change_y := 0;
 #~
-	            if(block->TypeOf(MovingPlatform)) {
-	            	@rect->AddX(block->As(MovingPlatform)->GetChangeLeft());
+	            if(block->TypeOf(MovingBlock)) {
+	            	@rect->AddX(block->As(MovingBlock)->GetChangeLeft());
 	            };
 ~#	            
         	};

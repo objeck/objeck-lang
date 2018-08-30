@@ -42,8 +42,8 @@ class Level {
 		each(i : blocks) {
 			block := blocks->Get(i)->As(Block);
 			if(block->Collides(player->GetRect())) {
-				if(block->GetType() = 37) {
-"--- Hit ---"->PrintLine();					
+				if(block->GetId() = 37) {
+					block->SetHide(true);	
 				}
 				else {
 					collides->AddBack(block);
@@ -76,8 +76,14 @@ class Level {
 							
 		    				rect := Rect->New(x_pos * Game->BLOCK_WIDTH, y_pos * Game->BLOCK_HEIGHT, Game->BLOCK_WIDTH, Game->BLOCK_HEIGHT);
 		    				block_map->Insert(id, rect);
-		    			};	    			
-		    			@blocks->AddBack(Block->New(id, x, y, rect, @sprite_sheet));
+		    			};
+
+		    			if(id = 6 | id = 124) {
+		    				@blocks->AddBack(MovingBlock->New(id, x, y, rect, @sprite_sheet, @player, @self));	
+		    			}
+		    			else {
+		    				@blocks->AddBack(Block->New(id, x, y, rect, @sprite_sheet));
+		    			};
 	    			};
 	    		};
     		};
@@ -97,15 +103,15 @@ class Level {
 		};
 	}
 
-	method : public : GetPlatforms() ~ Vector {
+	method : public : GetBlocks() ~ Vector {
 		return @blocks;
 	}
 
 	method : public : Update()  ~ Nil {
 		each(i : @blocks) {
 			block := @blocks->Get(i);
-			if(block->TypeOf(MovingPlatform)) {
-				@blocks->Get(i)->As(MovingPlatform)->Update();
+			if(block->TypeOf(MovingBlock)) {
+				@blocks->Get(i)->As(MovingBlock)->Update();
 			};
 		};
 	}
@@ -113,8 +119,8 @@ class Level {
 	method : public : Draw()  ~ Nil {
 		each(i : @blocks) {
 			block := @blocks->Get(i)->As(Block);			
-			if(block->TypeOf(MovingPlatform)) {
-				block->As(MovingPlatform)->Draw();
+			if(block->TypeOf(MovingBlock)) {
+				block->As(MovingBlock)->Draw();
 			}
 			else {
 				block->Draw();
