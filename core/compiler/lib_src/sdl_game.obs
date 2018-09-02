@@ -883,6 +883,11 @@ bundle Game.Framework {
 		@x : Float;
 		@y : Float;
 
+		New() {
+			@x := 0.0;
+			@y := 0.0;
+		}
+
 		New(x : Float, y : Float) {
 			@x := x;
 			@y := y;
@@ -928,25 +933,31 @@ bundle Game.Framework {
 			return Vector2->New(-1.0 * @y * v, @x * v);
 		}
 
-	#~
-		method : public : LengthSquared() Float {
-			return @x*@x + @y*@y
+		method : public : MagnitudeSquared() ~ Float {
+			return @x*@x + @y*@y;
 		}
 
-		method : public : Length() Float {
-			return math.Sqrt(self.LengthSquared())
+		method : public : Magnitude() ~ Float {
+			return MagnitudeSquared()->SquareRoot();
 		}
 
-		method : public : Normalize() {
-			self.Mul(1 / self.Length())
+		method : public : Normalize() ~ Nil {
+			mag := Magnitude();
+ 			if(mag <> 0) {
+   				Div(mag);
+			};
 		}
 
-		method : public : Normalized() Vector {
-			return Mul(self, 1/self.Length())
+		method : public : Normalized() ~ Vector2 {
+			mag := Magnitude();
+ 			if(mag <> 0) {
+   				return Div(mag);
+			};
+
+			return Vector2->New();
 		}
 
-
-
+#~
 		func (v Vector) Plus(v2 Vector) Vector {
 			return Add(v, v2)
 		}
@@ -971,5 +982,9 @@ bundle Game.Framework {
 			return Vector{v.X * r, v.Y * r}
 		}
 ~#	
+
+		method : public : ToString() ~ String {
+			return "{$@x}, {$@y}";
+		}
 	}
 }	
