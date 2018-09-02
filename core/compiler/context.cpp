@@ -2238,7 +2238,7 @@ bool ContextAnalyzer::Analyze()
         // check cast
         if(mthd_params[i]->GetEntry()) {
           if(expression->GetExpressionType() == METHOD_CALL_EXPR && expression->GetEvalType() && expression->GetEvalType()->GetType() == NIL_TYPE) {
-            ProcessError(static_cast<Expression*>(method_call), L"Invalid operation");
+            ProcessError(static_cast<Expression*>(method_call), L"Invalid operation with 'Nil' value");
           }
           AnalyzeRightCast(mthd_params[i]->GetEntry()->GetType(), expression->GetEvalType(), 
                            expression, IsScalar(expression), depth + 1);	
@@ -2354,7 +2354,7 @@ bool ContextAnalyzer::Analyze()
         while(expression->GetMethodCall()) {
           AnalyzeExpressionMethodCall(expression, depth + 1);
           if(expression->GetExpressionType() == METHOD_CALL_EXPR && expression->GetEvalType() && expression->GetEvalType()->GetType() == NIL_TYPE) {
-            ProcessError(static_cast<Expression*>(method_call), L"Invalid operation");
+            ProcessError(static_cast<Expression*>(method_call), L"Invalid operation with 'Nil' value");
           }
           expression = expression->GetMethodCall();
         }
@@ -2988,7 +2988,11 @@ bool ContextAnalyzer::Analyze()
         expression = expression->GetMethodCall();
       }
 
+      if(expression->GetExpressionType() == METHOD_CALL_EXPR && expression->GetEvalType() && expression->GetEvalType()->GetType() == NIL_TYPE) {
+        ProcessError(expression, L"Invalid operation with 'Nil' value");
+      }
       AnalyzeRightCast(type, expression, (IsScalar(expression) && type->GetDimension() == 0), depth + 1);      
+      
       if(type->GetType() == CLASS_TYPE && !ResolveClassEnumType(type)) {
         ProcessError(rtrn, L"Undefined class or enum: '" + ReplaceSubstring(type->GetClassName(), L"#", L"->") + L"'");
       }

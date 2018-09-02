@@ -1,24 +1,12 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		if(Foo()) {
-           "Is Foo"->PrintLine();
-		}
-		else {
-			"Not Foo"->PrintLine();
-		};
+		s := Bar();
+		s->PrintLine();
 	}
 
-	function : Foo() ~ Bool {
-		value : Int;
-
-		if(value = 10) {
-			return true;
-		}
-		else if(value = 10) {
-			return true;
-		}
-		else {
-			return true;
-		};
+	function : Foo() ~ Nil {}
+	
+	function : Bar() ~ String {
+		return Foo();
 	}
 }
