@@ -64,31 +64,7 @@ class Block {
 	}
 
 	method : public : Collides(sprite : ImageSprite) ~ Bool {
-		if(LeftSlope()) {
-    		left := @pos->GetLeft();
-			right := @pos->GetRight();
-			top := @pos->GetTop();
-			bottom := @pos->GetBottom();
-
-			px := sprite->GetRight();
-			py := sprite->GetBottom();
-			
-			return Player->InsideTriangle(left, bottom, right, bottom, right, top, px, py);
-    	}	
-    	else if(RightSlope()) {
-    		left := @pos->GetLeft();
-			right := @pos->GetRight();
-			top := @pos->GetTop();
-			bottom := @pos->GetBottom();
-
-			px := sprite->GetLeft();
-			py := sprite->GetBottom();
-			
-			return Player->InsideTriangle(right, bottom, left, bottom, left, top, px, py);
-		}
-    	else {		
-			return @pos->Overlaps(sprite->GetPosition());
-		};
+		return @pos->Overlaps(sprite->GetPosition());
 	}
 }
 
