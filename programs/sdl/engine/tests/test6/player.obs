@@ -99,21 +99,7 @@ class Player {
         	if(block->Collides(@rect)) {
         		# moving down
         		if(@change_y > 0) {
-        			if(block->LeftSlope()) {
-        				UpLeftSlope(block);
-						if(@rect->GetBottom() - 2 < block->GetTop()) {
-							@rect->SetBottom(block->GetTop());
-						};
-					}
-					else if(block->RightSlope()) {
-        				UpRightSlope(block);
-						if(@rect->GetBottom() - 2 < block->GetTop()) {
-							@rect->SetBottom(block->GetTop());
-						};
-					}
-					else if(block->GetBottom() - @rect->GetTop() > @rect->GetHeight()) {
-        				@rect->SetBottom(block->GetTop());
-        			};
+        			@rect->SetBottom(block->GetTop());
                 }
         		# moving up
                 else if(@change_y < 0) {
@@ -131,57 +117,6 @@ class Player {
         };				
 	}
 
-	method : UpRightSlope(block : Block) ~ Nil {
-		left := block->GetLeft();
-		right := block->GetRight();
-		top := block->GetTop();
-		bottom := block->GetBottom();
-
-		px := @rect->GetLeft();
-		py := @rect->GetBottom();
-
-		if(@change_x <= 0) {
-			while(InsideTriangle(right, bottom, left, bottom, left, top, px, py)) {
-				@rect->AddY(-1);
-
-				px := @rect->GetLeft();
-				py := @rect->GetBottom();
-			};
-		};
-	}
-
-	method : UpLeftSlope(block : Block) ~ Nil {
-		left := block->GetLeft();
-		right := block->GetRight();
-		top := block->GetTop();
-		bottom := block->GetBottom();
-
-		px := @rect->GetRight();
-		py := @rect->GetBottom();
-
-		if(@change_x >= 0) {
-			while(InsideTriangle(left, bottom, right, bottom, right, top, px, py)) {
-				@rect->AddY(-1);
-
-				px := @rect->GetRight();
-				py := @rect->GetBottom();
-			};
-		};
-	}
-
-	function : InsideTriangle(x1 : Int, y1 : Int, x2 : Int, y2 : Int, x3 : Int, y3 : Int, x : Int, y : Int) ~ Bool {   
-		a := TriangleArea(x1, y1, x2, y2, x3, y3);
-		a1 := TriangleArea(x, y, x2, y2, x3, y3);
-        a2 := TriangleArea(x1, y1, x, y, x3, y3);      
-        a3 := TriangleArea(x1, y1, x2, y2, x, y);
-
-		return (a = a1 + a2 + a3);
-    }
-
-	function : native : TriangleArea(x1 : Int, y1 : Int, x2 : Int, y2 : Int, x3 : Int, y3 : Int) ~ Int {
-       return Int->Abs((x1*(y2-y3) + x2*(y3-y1)+x3*(y1-y2))/2);
-	}
-
 	method : public : Draw()  ~ Nil {
 		index := Int->Abs((@level->GetShift() + @rect->GetLeft()) / 30 % @rect->GetClipCount());
 		@rect->Render(index);
@@ -192,7 +127,7 @@ class Player {
             @change_y := 1;
         }
         else {
-            @change_y += .35;
+			@change_y += .48;
         };
 
         # See if we are on the ground.
