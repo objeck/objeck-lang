@@ -2424,6 +2424,16 @@ bool ContextAnalyzer::Analyze()
                                           bool is_virtual, bool is_expr, const int depth)
   {
     if(lib_method) {
+      ExpressionList* call_params = method_call->GetCallingParameters();
+      vector<Expression*> expressions = call_params->GetExpressions();
+
+      for(size_t i = 0; i < expressions.size(); ++i) {
+        Expression* expression = expressions[i];
+        if(expression->GetExpressionType() == METHOD_CALL_EXPR && expression->GetEvalType() && expression->GetEvalType()->GetType() == NIL_TYPE) {
+          ProcessError(static_cast<Expression*>(method_call), L"Invalid operation with 'Nil' value");
+        }
+      }
+
       // public/private check
       if((lib_method->GetMethodType() == PRIVATE_METHOD || 
           lib_method->GetMethodType() == NEW_PRIVATE_METHOD) &&

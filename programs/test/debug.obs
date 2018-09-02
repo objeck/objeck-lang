@@ -1,12 +1,10 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		s := Bar();
-		s->PrintLine();
+		Bar(Foo(1.1));
 	}
 
-	function : Foo() ~ Nil {}
+	function : Foo(f : Float) ~ Nil {}
 	
-	function : Bar() ~ String {
-		return Foo();
+	function : Bar(a : String) ~ Nil {
 	}
 }
