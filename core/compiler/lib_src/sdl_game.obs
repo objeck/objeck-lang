@@ -878,7 +878,6 @@ bundle Game.Framework {
 		}
 	}
 
-
 	class Vector2 {
 		@x : Float;
 		@y : Float;
@@ -899,6 +898,14 @@ bundle Game.Framework {
 
 		method : public : GetY() ~ Float {
 			return @y;
+		}
+
+		method : public : SetX(x : Float) ~ Nil {
+			@x := x;
+		}
+
+		method : public : SetY(y : Float) ~ Nil {
+			@y := y;
 		}
 
 		method : public : Add(v2 : Vector2) ~ Nil {
@@ -939,7 +946,7 @@ bundle Game.Framework {
    				Div(mag);
 			};
 		}
-		
+
 		method : public : ToString() ~ String {
 			return "{$@x}, {$@y}";
 		}
