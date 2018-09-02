@@ -925,14 +925,6 @@ bundle Game.Framework {
 			return @x*v2->GetX() + @y*v2->GetY();
 		}
 
-		method : public : Cross(v2 : Vector2) ~ Float {
-			return @x*v2->GetY() - @y*v2->GetX();
-		}
-
-		method : public : CrossF(v : Float) ~ Vector2 {
-			return Vector2->New(-1.0 * @y * v, @x * v);
-		}
-
 		method : public : MagnitudeSquared() ~ Float {
 			return @x*@x + @y*@y;
 		}
@@ -947,42 +939,7 @@ bundle Game.Framework {
    				Div(mag);
 			};
 		}
-
-		method : public : Normalized() ~ Vector2 {
-			mag := Magnitude();
- 			if(mag <> 0) {
-   				return Div(mag);
-			};
-
-			return Vector2->New();
-		}
-
-#~
-		func (v Vector) Plus(v2 Vector) Vector {
-			return Add(v, v2)
-		}
-
-		func (v Vector) Minus(v2 Vector) Vector {
-			return Sub(v, v2)
-		}
-
-		func (v Vector) Times(r Float) Vector {
-			return Mul(v, r)
-		}
-
-		func Add(v, u Vector) Vector {
-			return Vector{v.X + u.X, v.Y + u.Y}
-		}
-
-		func Sub(v, u Vector) Vector {
-			return Vector{v.X - u.X, v.Y - u.Y}
-		}
-
-		func Mul(v Vector, r Float) Vector {
-			return Vector{v.X * r, v.Y * r}
-		}
-~#	
-
+		
 		method : public : ToString() ~ String {
 			return "{$@x}, {$@y}";
 		}
