@@ -908,47 +908,53 @@ bundle Game.Framework {
 			@y := y;
 		}
 
-		method : public : Add(v2 : Vector2) ~ Nil {
-			@x += v2->GetX();
-			@y += v2->GetY();
-		}
-
-		method : public : Sub(v2 : Vector2) ~ Nil {
-			@x -= v2->GetX();
-			@y -= v2->GetY();
-		}
-
-		method : public : Mul(v : Float) ~ Nil {
-			@x *= v;
-			@y *= v;
-		}
-
-		method : public : Div(v : Float) ~ Nil {
-			@x /= v;
-			@y /= v;
-		}
-
-		method : public : Dot(v2 : Vector2) ~ Float {
-			return @x*v2->GetX() + @y*v2->GetY();
-		}
-
 		method : public : MagnitudeSquared() ~ Float {
 			return @x*@x + @y*@y;
 		}
 
 		method : public : Magnitude() ~ Float {
 			return MagnitudeSquared()->SquareRoot();
-		}
+		}		
 
-		method : public : Normalize() ~ Nil {
+		method : public : Normalize() ~ Vector2 {
 			mag := Magnitude();
  			if(mag <> 0) {
-   				Div(mag);
+   				return Div(mag, @self);
 			};
-		}
 
+			return Vector2->New();
+		}
+		
 		method : public : ToString() ~ String {
 			return "{$@x}, {$@y}";
+		}
+
+		function : Add(lhs : Vector2, rhs : Vector2) ~ Vector2 {
+			return Vector2->New(lhs->GetX() + rhs->GetX(), lhs->GetY() + rhs->GetY());
+		}
+
+		function : Sub(lhs : Vector2, rhs : Vector2) ~ Vector2 {
+			return Vector2->New(lhs->GetX() - rhs->GetX(), lhs->GetY() - rhs->GetY());
+		}
+
+		function : Mul(v : Float, rhs : Vector2) ~ Vector2 {
+			return Vector2->New(v * rhs->GetX(), v * rhs->GetY());
+		}
+
+		function : Div(v : Float, rhs : Vector2) ~ Vector2 {
+			return Vector2->New(v / rhs->GetX(), v / rhs->GetY());
+		}
+
+		function : Mul(lhs : Vector2, rhs : Vector2) ~ Vector2 {
+			return Vector2->New(lhs->GetX() * rhs->GetX(), lhs->GetY() * rhs->GetY());
+		}
+
+		function : Div(lhs : Vector2, rhs : Vector2) ~ Vector2 {
+			return Vector2->New(lhs->GetX() / rhs->GetX(), lhs->GetY() / rhs->GetY());
+		}
+
+		function : Dot(lhs : Vector2, rhs : Vector2) ~ Float {
+			return lhs->GetX()*rhs->GetX() + lhs->GetY()*rhs->GetY();
 		}
 	}
 }	
