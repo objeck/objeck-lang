@@ -469,6 +469,14 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
     case S2F:
       Str2Float(op_stack, stack_pos);
       break;
+
+    case I2S:
+      Int2Str(op_stack, stack_pos);
+      break;
+      
+    case F2S:
+      Float2Str(op_stack, stack_pos);
+      break;
       
     case SWAP_INT:
 #ifdef _DEBUG
@@ -831,7 +839,40 @@ void StackInterpreter::Str2Float(size_t* &op_stack, long* &stack_pos)
 #endif
   }
 }
+
+void StackInterpreter::Int2Str(size_t* &op_stack, long* &stack_pos)
+{
+  size_t* obj_ptr = (size_t*)PopInt(op_stack, stack_pos);
+  if(obj_ptr) {
+    size_t* str_ptr = (size_t*)obj_ptr[0];
+    if(str_ptr) {
+      wchar_t* str = (wchar_t*)(str_ptr + 3);
+      const size_t base = PopInt(op_stack, stack_pos);
+      const long value = (long)PopInt(op_stack, stack_pos);
+      
+      wstringstream stream;
+      if(base == 8) {
+	stream << std::hex << value;
+	wstring conv(stream.str());
+	size_t max = conv.size() < 8 ? conv.size() : 8; 
+	wcsncpy(str, conv.c_str(), max);
+	obj_ptr[2] = max;
+      }
+      else {
+	stream << value;
+	wstring conv(stream.str());
+	size_t max = conv.size() < 8 ? conv.size() : 8; 
+	wcsncpy(str, conv.c_str(), max);
+	obj_ptr[2] = max;
+      }
+    }
+  }
+}
+
+void inline StackInterpreter::Float2Str(size_t* &op_stack, long* &stack_pos)
+{
   
+}
 
 void StackInterpreter::ShlInt(size_t* &op_stack, long* &stack_pos)
 {
