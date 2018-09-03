@@ -96,7 +96,7 @@ class Player {
 		@rect->SetColor(Color->New(255, 0, 0));
 		@rect->SetLeft(120);
 
-		@pos := Vector2->New(100, 100);
+		@pos := Vector2->New(Game->SCREEN_WIDTH / 2, Game->SCREEN_HEIGHT / 2);
 		@vol := Vector2->New();
 		@acc := Vector2->New();
 	}
@@ -134,7 +134,7 @@ class Player {
 	}
 
 	method : public : Stop() ~ Nil {
-		@acc->SetX(0.0);
+#		@acc->SetX(0.0);
 #		@vol->SetX(0.0);
 	}
 
@@ -146,11 +146,13 @@ class Player {
 
 	method : public : native : Update()  ~ Nil {
 #		Gravity();
-		
+				
+		@acc->Add( Vector2->Mul(@vol, -0.12) );
+
 		@vol->Add(@acc);
 		@pos->Add(@vol);
-		@pos->Add(Vector2->Div(@acc, 2.0));
-		
+		@pos->Add(Vector2->Add(@vol, Vector2->Div(@acc, 2.0)));
+
 		@rect->Set(@pos);
 	}
 
