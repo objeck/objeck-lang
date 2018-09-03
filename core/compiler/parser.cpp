@@ -1328,6 +1328,18 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       NextToken();
       break;
       
+    case I2S:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+                                                               instructions::I2S);
+      NextToken();
+      break;
+      
+    case F2S:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+                                                               instructions::F2S);
+      NextToken();
+      break;
+      
     case LOAD_ARY_SIZE:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
                                                                instructions::LOAD_ARY_SIZE);

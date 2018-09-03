@@ -1163,6 +1163,19 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 0, INST));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, S2F));
     break;
+
+  case instructions::I2S:
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 0, LOCL));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 1, LOCL));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 2, LOCL));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, I2S));
+    break;
+    
+  case instructions::F2S:
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FLOAT_VAR, 0, LOCL));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 1, LOCL));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, F2S));
+    break;
     
   case instructions::LOAD_INST_UID:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));

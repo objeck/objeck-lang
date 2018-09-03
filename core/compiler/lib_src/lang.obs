@@ -78,56 +78,12 @@ bundle System {
 	}
 	
 	class Number {
-		function : native : IntToString(value : Int, string : String) ~ Nil {
-			values := Int->New[16];
-
-			i := 0;
-			if(value < 0) {
-				value *= -1;
-				string->Append('-');
-			};
-
-			while(value >= 10 & i < 16) {
-				mod := value % 10;
-				values[i] := mod;
-				i += 1;
-				value /= 10;
-			};
-			values[i] := value;
-            
-			while(i >= 0) {
-				string->Append((values[i] + 48)->As(Char));
-				i -= 1;
-			};     
+		function : native : IntToString(value : Int, base : Int, string : String) ~ Nil {
+			I2S; 
 		}
-		
-		function : native : IntToHexString(value : Int, string : String) ~ Nil {
-			values := Int->New[16];
-			
-			i := 0;
-			if(value < 0) {
-				value *= -1;
-				string->Append('-');
-			};
 
-			while(value >= 16 & i < 16) {
-				mod := value % 16;
-				values[i] := mod;
-				i += 1;
-				value /= 16;
-			};
-			values[i] := value;
-            
-			while(i >= 0) {
-				value := values[i];
-				if(value > 9) {	
-					string->Append((value + 55)->As(Char));
-				}
-				else {
-					string->Append((value + 48)->As(Char));
-				};
-				i -= 1;
-			};     
+		function : native : FloatToString(value : Float, string : String) ~ Nil {
+			F2S;
 		}
 	}
 	
@@ -291,7 +247,7 @@ bundle System {
 		~#
 		function : native : ToHexString(b : Byte) ~ String {
 			str := String->New();
-			Number->IntToHexString(b->As(Int), str);
+			Number->IntToString(b->As(Int), 8, str);
 			return str;
 		}
 		
@@ -299,7 +255,7 @@ bundle System {
 			out := String->New();
 			each(i : b) {
 				str := String->New();
-				Number->IntToHexString(b[i]->As(Int), str);
+				Number->IntToString(b[i]->As(Int), 8, str);
 				out->Append(str);
 			};
 			
@@ -313,7 +269,7 @@ bundle System {
 		~#
 		function : native : ToString(b : Byte) ~ String {
 			str := String->New();
-			Number->IntToString(b->As(Int), str);
+			Number->IntToString(b->As(Int), 10, str);
 			return str;
 		}
 		
@@ -711,7 +667,7 @@ bundle System {
 		~#
 		function : native : ToHexString(v : Int) ~ String {
 			str := String->New();
-			Number->IntToHexString(v->As(Int), str);
+			Number->IntToString(v->As(Int), 8, str);
 			return str;
 		}
 		
@@ -719,7 +675,7 @@ bundle System {
 			out := String->New();
 			each(i : v) {
 				str := String->New();
-				Number->IntToHexString(v[i]->As(Int), str);
+				Number->IntToString(v[i]->As(Int), 8, str);
 				out->Append(str);
 			};
 			
@@ -775,7 +731,7 @@ bundle System {
 		~#
 		function : native : ToString(v : Int) ~ String {
 			str := String->New();
-			Number->IntToString(v->As(Int), str);
+			Number->IntToString(v->As(Int), 10, str);
 			return str;
 		}
 
@@ -786,7 +742,7 @@ bundle System {
 		~#
 		function : native : ToCommaString(v : Int) ~ String {
 			str := String->New();
-			Number->IntToString(v->As(Int), str);
+			Number->IntToString(v->As(Int), 10, str);
 
 			count := 1;
 			comma_str : String := "";
@@ -810,7 +766,7 @@ bundle System {
 			out := "[";
 			each(i : v) {
 				str := String->New();
-				Number->IntToString(v[i]->As(Int), str);
+				Number->IntToString(v[i]->As(Int), 10, str);
 				out->Append(str);
 				if(i + 1 < v->Size()) {
 					out->Append(',');
@@ -1073,36 +1029,17 @@ bundle System {
 		@return string representation of the value
 		~#
 		function : native : ToString(f : Float) ~ String {
-			str := String->New();
-			if(f < 0.0) {
-				str->Append('-');
-				f *= -1.0;
-			};
-		
-			zero := 0;
-			remainder := f - f->Floor();
-			if(remainder <> 0.0) {
-				while(remainder < 0.099) {
-					f *= 10.0;
-					remainder := f - f->Floor();
-					zero += 1;
-				};
-			};
-
-			Number->IntToString(f->Floor()->As(Int), str);
-			str->Append('.');
-			for(i := 0; i < zero; i+=1;) {
-				str->Append('0');
-			};
-			Number->IntToString((1001.0 * remainder)->As(Int), str);
-
-			return str;
+			string := String->New();
+			Number->FloatToString(f, string);
+			return string;
 		}
 
 		function : native : ToString(v : Float[]) ~ String {
 			out := "[";
 			each(i : v) {
-				out->Append(ToString(v[i]));
+				string := String->New();
+				Number->FloatToString(v[i], string);
+				out->Append(string);
 				if(i + i < v->Size()) {
 				  out->Append(',');
 				};
