@@ -149,6 +149,8 @@ enum ScannerTokenType {
 #ifdef _SYSTEM
   S2I,
   S2F,
+  I2S,
+  F2S,
   LOAD_ARY_SIZE,
   CPY_BYTE_ARY,
   CPY_CHAR_ARY,

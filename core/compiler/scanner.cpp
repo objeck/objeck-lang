@@ -141,6 +141,8 @@ void Scanner::LoadKeywords()
 #ifdef _SYSTEM
   ident_map[L"S2I"] = S2I;
   ident_map[L"S2F"] = S2F;
+  ident_map[L"I2S"] = I2S;
+  ident_map[L"F2S"] = F2S;
   ident_map[L"LOAD_ARY_SIZE"] = LOAD_ARY_SIZE;
   ident_map[L"CPY_BYTE_ARY"] = CPY_BYTE_ARY;
   ident_map[L"CPY_CHAR_ARY"] = CPY_CHAR_ARY;
@@ -350,6 +352,8 @@ void Scanner::CheckIdentifier(int index)
 #ifdef _SYSTEM
     case S2I:
     case S2F:
+    case I2S:
+    case F2S:
     case LOAD_ARY_SIZE:
     case CPY_BYTE_ARY:
     case CPY_CHAR_ARY:
