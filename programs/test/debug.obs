@@ -2,5 +2,8 @@ class Test {
 	function : Main(args : String[]) ~ Nil {
 		s := 13->ToString();
 		s->PrintLine();
+
+		s := 13.75->ToString();
+		s->PrintLine();
 	}
 }

@@ -871,7 +871,21 @@ void StackInterpreter::Int2Str(size_t* &op_stack, long* &stack_pos)
 
 void inline StackInterpreter::Float2Str(size_t* &op_stack, long* &stack_pos)
 {
-  
+  size_t* obj_ptr = (size_t*)PopInt(op_stack, stack_pos);
+  if(obj_ptr) {
+    size_t* str_ptr = (size_t*)obj_ptr[0];
+    if(str_ptr) {
+      wchar_t* str = (wchar_t*)(str_ptr + 3);
+      const double value = PopFloat(op_stack, stack_pos);
+      
+      wstringstream stream;
+      stream << value;
+      wstring conv(stream.str());
+      const size_t max = conv.size() < 8 ? conv.size() : 8; 
+      wcsncpy(str, conv.c_str(), max);
+      obj_ptr[2] = max;
+    }
+  }
 }
 
 void StackInterpreter::ShlInt(size_t* &op_stack, long* &stack_pos)
