@@ -557,6 +557,14 @@ namespace backend {
         wcout << L"S2I" << endl;
         break;
 
+      case instructions::I2S:
+        wcout << L"I2S" << endl;
+        break;
+
+      case instructions::F2S:
+        wcout << L"F2S" << endl;
+        break;
+
       case RTRN:
         wcout << L"RTRN" << endl;
         break;

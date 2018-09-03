@@ -78,11 +78,11 @@ bundle System {
 	}
 	
 	class Number {
-		function : native : IntToString(value : Int, base : Int, string : String) ~ Nil {
-			I2S; 
+		function : IntToString(value : Int, base : Int, string : String) ~ Nil {
+			I2S;
 		}
 
-		function : native : FloatToString(value : Float, string : String) ~ Nil {
+		function : FloatToString(value : Float, string : String) ~ Nil {
 			F2S;
 		}
 	}
@@ -729,7 +729,7 @@ bundle System {
 		@ignore-params l
 		@return string value
 		~#
-		function : native : ToString(v : Int) ~ String {
+		function : ToString(v : Int) ~ String {
 			str := String->New();
 			Number->IntToString(v->As(Int), 10, str);
 			return str;
