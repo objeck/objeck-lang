@@ -352,6 +352,10 @@ bundle Game.Framework {
 			@position->Set(x, y);
 		}
 
+		method : public : Set(v2 : Vector2) ~ Nil {
+			@position->Set(v2->GetX(), v2->GetY());
+		}
+		
 		method : public : SetLeft(x : Int) ~ Nil {
 			@position->SetLeft(x);
 		}
@@ -431,6 +435,10 @@ bundle Game.Framework {
 
 		method : public : Set(x : Int, y : Int) ~ Nil {
 			@position->Set(x, y);
+		}
+
+		method : public : Set(v2 : Vector2) ~ Nil {
+			@position->Set(v2->GetX(), v2->GetY());
 		}
 
 		method : public : SetLeft(x : Int) ~ Nil {

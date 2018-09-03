@@ -150,12 +150,8 @@ class Player {
 		@vol->Add(@acc);
 		@pos->Add(@vol);
 		@pos->Add(Vector2->Div(@acc, 2.0));
-
-		# Move left/right
-		@rect->SetLeft(@pos->GetX());
-							
-		# Move up/down
-		@rect->SetTop(@pos->GetY());
+		
+		@rect->Set(@pos);
 	}
 
 	method : public : Draw()  ~ Nil {
