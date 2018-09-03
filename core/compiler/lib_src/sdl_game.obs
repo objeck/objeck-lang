@@ -355,7 +355,7 @@ bundle Game.Framework {
 		method : public : Set(v2 : Vector2) ~ Nil {
 			@position->Set(v2->GetX(), v2->GetY());
 		}
-		
+
 		method : public : SetLeft(x : Int) ~ Nil {
 			@position->SetLeft(x);
 		}
@@ -540,7 +540,8 @@ bundle Game.Framework {
 
 		# --- Sets
 		method : public : Set(x : Int, y : Int) ~ Nil {
-			@x := x; @y := y;
+			@x := x - @rect->GetW() / 2;
+			@y := y - @rect->GetH() / 2;
 		}
 
 		method : public : SetLeft(x : Int) ~ Nil {
@@ -955,6 +956,16 @@ bundle Game.Framework {
 		method : public : Div(rhs : Vector2) ~ Nil {
 			@x /= rhs->GetX();
 			@y /= rhs->GetY();
+		}
+
+		method : public : Mul(v : Float) ~ Nil {
+			@x *= v;
+			@y *= v;
+		}
+
+		method : public : Div(v : Float) ~ Nil {
+			@x /= v;
+			@y /= v;
 		}
 
 		function : Add(lhs : Vector2, rhs : Vector2) ~ Vector2 {
