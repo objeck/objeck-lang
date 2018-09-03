@@ -854,14 +854,14 @@ void StackInterpreter::Int2Str(size_t* &op_stack, long* &stack_pos)
       if(base == 8) {
 	stream << std::hex << value;
 	wstring conv(stream.str());
-	size_t max = conv.size() < 8 ? conv.size() : 8; 
+	const size_t max = conv.size() < 8 ? conv.size() : 8; 
 	wcsncpy(str, conv.c_str(), max);
 	obj_ptr[2] = max;
       }
       else {
 	stream << value;
 	wstring conv(stream.str());
-	size_t max = conv.size() < 8 ? conv.size() : 8; 
+	const size_t max = conv.size() < 8 ? conv.size() : 8; 
 	wcsncpy(str, conv.c_str(), max);
 	obj_ptr[2] = max;
       }
