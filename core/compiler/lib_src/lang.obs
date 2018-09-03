@@ -78,11 +78,11 @@ bundle System {
 	}
 	
 	class Number {
-		function : IntToString(value : Int, base : Int, string : String) ~ Nil {
+		function : IntToString(value : Int, base : Int, buffer : Char[]) ~ Nil {
 			I2S;
 		}
 
-		function : FloatToString(value : Float, string : String) ~ Nil {
+		function : FloatToString(value : Float, buffer : Char[]) ~ Nil {
 			F2S;
 		}
 	}
@@ -246,17 +246,17 @@ bundle System {
 		@return hexadecimal string representation of the value
 		~#
 		function : native : ToHexString(b : Byte) ~ String {
-			str := String->New();
-			Number->IntToString(b->As(Int), 8, str);
-			return str;
+			buffer := Char->New[16];
+			Number->IntToString(b->As(Int), 8, buffer);
+			return String->New(buffer);
 		}
 		
 		function : native : ToHexString(b : Byte[]) ~ String {
 			out := String->New();
 			each(i : b) {
-				str := String->New();
-				Number->IntToString(b[i]->As(Int), 8, str);
-				out->Append(str);
+				buffer := Char->New[16];
+				Number->IntToString(b[i]->As(Int), 8, buffer);
+				out->Append(buffer);
 			};
 			
 			return out;
@@ -268,9 +268,9 @@ bundle System {
 		@return string representation of the value
 		~#
 		function : native : ToString(b : Byte) ~ String {
-			str := String->New();
-			Number->IntToString(b->As(Int), 10, str);
-			return str;
+			buffer := Char->New[16];
+			Number->IntToString(b->As(Int), 10, buffer);
+			return String->New(buffer);
 		}
 		
 		function : native : ToString(b : Byte[]) ~ String {
@@ -666,17 +666,17 @@ bundle System {
 		@return hex string value
 		~#
 		function : native : ToHexString(v : Int) ~ String {
-			str := String->New();
-			Number->IntToString(v->As(Int), 8, str);
-			return str;
+			buffer := Char->New[16];
+			Number->IntToString(v->As(Int), 8, buffer);
+			return String->New(buffer);
 		}
 		
 		function : native : ToHexString(v : Int[]) ~ String {
 			out := String->New();
 			each(i : v) {
-				str := String->New();
-				Number->IntToString(v[i]->As(Int), 8, str);
-				out->Append(str);
+				buffer := Char->New[16];
+				Number->IntToString(v[i]->As(Int), 8, buffer);
+				out->Append(buffer);
 			};
 			
 			return out;
@@ -730,9 +730,9 @@ bundle System {
 		@return string value
 		~#
 		function : ToString(v : Int) ~ String {
-			str := String->New();
-			Number->IntToString(v->As(Int), 10, str);
-			return str;
+			buffer := Char->New[16];
+			Number->IntToString(v->As(Int), 10, buffer);
+			return String->New(buffer);
 		}
 
 		#~
@@ -741,8 +741,9 @@ bundle System {
 		@return string value
 		~#
 		function : native : ToCommaString(v : Int) ~ String {
-			str := String->New();
-			Number->IntToString(v->As(Int), 10, str);
+			buffer := Char->New[16];
+			Number->IntToString(v->As(Int), 10, buffer);
+			str := String->New(buffer);
 
 			count := 1;
 			comma_str : String := "";
@@ -765,9 +766,9 @@ bundle System {
 		function : native : ToString(v : Int[]) ~ String {
 			out := "[";
 			each(i : v) {
-				str := String->New();
-				Number->IntToString(v[i]->As(Int), 10, str);
-				out->Append(str);
+				buffer := Char->New[16];
+				Number->IntToString(v[i]->As(Int), 10, buffer);
+				out->Append(buffer);
 				if(i + 1 < v->Size()) {
 					out->Append(',');
 				};
@@ -1029,17 +1030,17 @@ bundle System {
 		@return string representation of the value
 		~#
 		function : native : ToString(f : Float) ~ String {
-			string := String->New();
-			Number->FloatToString(f, string);
-			return string;
+			buffer := Char->New[16];
+			Number->FloatToString(f, buffer);
+			return String->New(buffer);
 		}
 
 		function : native : ToString(v : Float[]) ~ String {
 			out := "[";
 			each(i : v) {
-				string := String->New();
-				Number->FloatToString(v[i], string);
-				out->Append(string);
+				buffer := Char->New[16];
+				Number->FloatToString(v[i], buffer);
+				out->Append(buffer);
 				if(i + i < v->Size()) {
 				  out->Append(',');
 				};
