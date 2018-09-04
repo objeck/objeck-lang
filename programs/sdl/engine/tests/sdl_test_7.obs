@@ -134,8 +134,7 @@ class Player {
 		@acc->Add(f);
 ~#
 		
-		f := Vector2->Mul(@vel, -0.04);
-		@acc->Add(f);
+		@acc->Add(Vector2->Mul(@vel, -0.045));
 
 		# motion
 		@vel->Add(@acc);
