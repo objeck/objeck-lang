@@ -82,7 +82,7 @@ class Demo {
 
 class Player {
 	@rect : Rectangle;
-	@pos : Vector2;
+	@loc : Vector2;
 	@vel : Vector2;
 	@acc : Vector2;
 	
@@ -91,7 +91,7 @@ class Player {
 		@rect->SetFill(true);
 		@rect->SetColor(Color->New(255, 0, 0));
 
-		@pos := Vector2->New(Game->SCREEN_WIDTH / 2, Game->SCREEN_HEIGHT / 2);
+		@loc := Vector2->New(Game->SCREEN_WIDTH / 2, Game->SCREEN_HEIGHT / 2);
 		@vel := Vector2->New();
 		@acc := Vector2->New();
 	}
@@ -113,25 +113,39 @@ class Player {
 	}
 
 	method : public : GoLeft()  ~ Nil {
-		@acc->SetX(-5.7);
+		@acc->SetX(-0.2);
 	}
 
 	method : public : GoRight()  ~ Nil {
-		@acc->SetX(5.7);
+		@acc->SetX(0.2);
 	}
 
 	method : public : Stop() ~ Nil {
-		@vel->SetX(0.0);
+#		@vel->Mul(0);
 	}
 
 	method : public : Update()  ~ Nil {
 #		Gravity();
 
-		@vel->Mul(-0.12);
-		@acc->Add(@vel);
+		# force
+		f := Vector2->New(.005, .05);
+		f->Div(-3.25);
+		@acc->Add(f);
+
+		# motion
 		@vel->Add(@acc);
-		@pos->Add(Vector2->Add(@vel, Vector2->Div(@acc, 2)));
-		@rect->Set(@pos);
+		@loc->Add(@vel);
+		@acc->Mul(0);
+		
+		# scroll back
+		if(@loc->GetX() > Game->SCREEN_WIDTH) {
+			@loc->SetX(0);
+		}
+		else if(@loc->GetX() < 0) {
+			@loc->SetX(Game->SCREEN_WIDTH->As(Float));
+		};
+
+		@rect->Set(@loc);
 	}
 
 	method : public : Draw()  ~ Nil {
