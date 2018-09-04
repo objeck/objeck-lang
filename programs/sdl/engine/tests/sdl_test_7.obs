@@ -113,11 +113,11 @@ class Player {
 	}
 
 	method : public : GoLeft()  ~ Nil {
-		@acc->SetX(-0.2);
+		@acc->SetX(-0.5);
 	}
 
 	method : public : GoRight()  ~ Nil {
-		@acc->SetX(0.2);
+		@acc->SetX(0.5);
 	}
 
 	method : public : Stop() ~ Nil {
@@ -127,9 +127,14 @@ class Player {
 	method : public : Update()  ~ Nil {
 #		Gravity();
 
+#~
 		# force
-		f := Vector2->New(.005, .05);
-		f->Div(-3.25);
+		f := Vector2->New(); # direction
+		f->Div(5.25); # mass
+		@acc->Add(f);
+~#
+		
+		f := Vector2->Mul(@vel, -0.04);
 		@acc->Add(f);
 
 		# motion
@@ -143,6 +148,13 @@ class Player {
 		}
 		else if(@loc->GetX() < 0) {
 			@loc->SetX(Game->SCREEN_WIDTH->As(Float));
+		};
+
+		if(@loc->GetY() > Game->SCREEN_HEIGHT) {
+			@loc->SetY(0);
+		}
+		else if(@loc->GetY() < 0) {
+			@loc->SetY(Game->SCREEN_HEIGHT->As(Float));
 		};
 
 		@rect->Set(@loc);
