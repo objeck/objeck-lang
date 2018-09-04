@@ -65,10 +65,6 @@ class Demo {
 	            label Scancode->SDL_SCANCODE_RIGHT: {
 	            	@player->GoRight();
 	            }
-
-	            label Scancode->SDL_SCANCODE_UP: {
-	            	@player->Jump();
-	            }
 	        };
 	    }
 	    else if(e->GetType() = EventType->SDL_KEYUP) {
@@ -87,17 +83,16 @@ class Demo {
 class Player {
 	@rect : Rectangle;
 	@pos : Vector2;
-	@vol : Vector2;
+	@vel : Vector2;
 	@acc : Vector2;
 	
 	New(rect : Rectangle) {
 		@rect := rect;
 		@rect->SetFill(true);
 		@rect->SetColor(Color->New(255, 0, 0));
-		@rect->SetLeft(120);
 
 		@pos := Vector2->New(Game->SCREEN_WIDTH / 2, Game->SCREEN_HEIGHT / 2);
-		@vol := Vector2->New();
+		@vel := Vector2->New();
 		@acc := Vector2->New();
 	}
 
@@ -113,46 +108,29 @@ class Player {
 		return @rect->GetRight();
 	}
 
-	method : public : SetLeft(x : Int) ~ Nil {
-		@rect->SetLeft(x);
-	}
-
-	method : public : SetRight(x2 : Int) ~ Nil {
-		@rect->SetRight(x2);
-	}
-
 	method : public : ChangeLeft()  ~ Int {
 		return @acc->GetX();
 	}
 
 	method : public : GoLeft()  ~ Nil {
-		@acc->SetX(-0.5);
+		@acc->SetX(-5.7);
 	}
 
 	method : public : GoRight()  ~ Nil {
-		@acc->SetX(0.5);
+		@acc->SetX(5.7);
 	}
 
 	method : public : Stop() ~ Nil {
-#		@acc->SetX(0.0);
-#		@vol->SetX(0.0);
+		@vel->SetX(0.0);
 	}
 
-	method : public : Jump()  ~ Nil {
-        if(@rect->GetBottom() >= Game->SCREEN_HEIGHT) {
-			@change_y := -10;
-        };
-	}
-
-	method : public : native : Update()  ~ Nil {
+	method : public : Update()  ~ Nil {
 #		Gravity();
-				
-		@acc->Add( Vector2->Mul(@vol, -0.12) );
 
-		@vol->Add(@acc);
-		@pos->Add(@vol);
-		@pos->Add(Vector2->Add(@vol, Vector2->Div(@acc, 2.0)));
-
+		@vel->Mul(-0.12);
+		@acc->Add(@vel);
+		@vel->Add(@acc);
+		@pos->Add(Vector2->Add(@vel, Vector2->Div(@acc, 2)));
 		@rect->Set(@pos);
 	}
 
