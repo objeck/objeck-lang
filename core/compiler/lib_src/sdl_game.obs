@@ -992,6 +992,20 @@ bundle Game.Framework {
 			@y /= v;
 		}
 
+		method : public : Limit(v : Float) ~ Nil {
+			Limit(v, v);
+		}
+
+		method : public : Limit(x : Float, y : Float) ~ Nil {
+			if(@x > x) {
+				@x := x;
+			};
+
+			if(@y > y) {
+				@y := y;
+			};
+		}
+
 		function : Add(lhs : Vector2, rhs : Vector2) ~ Vector2 {
 			return Vector2->New(lhs->GetX() + rhs->GetX(), lhs->GetY() + rhs->GetY());
 		}
