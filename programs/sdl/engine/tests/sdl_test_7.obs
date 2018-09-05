@@ -65,6 +65,10 @@ class Demo {
 	            label Scancode->SDL_SCANCODE_RIGHT: {
 	            	@player->GoRight();
 	            }
+
+	            label Scancode->SDL_SCANCODE_UP: {
+	            	@player->Jump();
+	            }
 	        };
 	    }
 	    else if(e->GetType() = EventType->SDL_KEYUP) {
@@ -85,6 +89,7 @@ class Player {
 	@loc : Vector2;
 	@vel : Vector2;
 	@acc : Vector2;
+	@jump : Bool;
 	
 	New(rect : Rectangle) {
 		@rect := rect;
@@ -120,28 +125,41 @@ class Player {
 		@acc->SetX(0.5);
 	}
 
+	method : public : Jump()  ~ Nil {
+		@jump := true;
+	}
+
 	method : public : Stop() ~ Nil {
 #		@vel->Mul(0);
 	}
 
 	method : public : Update()  ~ Nil {
-#		Gravity();
-
 #~
+		Gravity();
+		
 		# force
 		f := Vector2->New(); # direction
 		f->Div(5.25); # mass
 		@acc->Add(f);
 ~#
+
+		if(@jump) {
+"--- Jump ---"->PrintLine();			
+			@acc->SetY(-35);
+			@jump := false;
+		}
+		else {
+			@acc->SetY(0.65);
+		};
 		
-		@acc->Add(Vector2->Mul(@vel, -0.045));
+		@acc->Add(Vector2->Mul(@vel, -0.035));
 
 		# motion
 		@vel->Add(@acc);
 		@loc->Add(@vel);
 		@acc->Mul(0);
 		
-		# scroll back
+		# ceiling
 		if(@loc->GetX() > Game->SCREEN_WIDTH) {
 			@loc->SetX(0);
 		}
@@ -149,14 +167,17 @@ class Player {
 			@loc->SetX(Game->SCREEN_WIDTH->As(Float));
 		};
 
+		# floor
 		if(@loc->GetY() > Game->SCREEN_HEIGHT) {
-			@loc->SetY(0);
+			@loc->SetY(Game->SCREEN_HEIGHT->As(Float));
 		}
 		else if(@loc->GetY() < 0) {
-			@loc->SetY(Game->SCREEN_HEIGHT->As(Float));
+			@loc->SetY(0);
 		};
 
-		@rect->Set(@loc);
+		# set x and y
+		@rect->SetBottom(@loc->GetY());
+		@rect->SetCenterX(@loc->GetX());
 	}
 
 	method : public : Draw()  ~ Nil {
