@@ -372,6 +372,14 @@ bundle Game.Framework {
 			@position->SetBottom(y2);
 		}
 
+		method : public : SetCenterX(x : Int) ~ Nil {
+			@position->SetCenterX(x);
+		}
+		
+		method : public : SetCenterY(y : Int) ~ Nil {
+			@position->SetCenterY(y);
+		}
+
 		method : public : AddX(x : Int) ~ Nil {
 			@position->AddX(x);
 		}
@@ -431,6 +439,14 @@ bundle Game.Framework {
 
 		method : public : GetCenterY() ~ Int {
 			return @position->GetCenterY();
+		}
+
+		method : public : SetCenterX(x : Int) ~ Nil {
+			@position->SetCenterX(x);
+		}
+		
+		method : public : SetCenterY(y : Int) ~ Nil {
+			@position->SetCenterY(y);
 		}
 
 		method : public : Set(x : Int, y : Int) ~ Nil {
@@ -541,6 +557,14 @@ bundle Game.Framework {
 		# --- Sets
 		method : public : Set(x : Int, y : Int) ~ Nil {
 			@x := x - @rect->GetW() / 2;
+			@y := y - @rect->GetH() / 2;
+		}
+
+		method : public : SetCenterX(x : Int) ~ Nil {
+			@x := x - @rect->GetW() / 2;
+		}
+		
+		method : public : SetCenterY(y : Int) ~ Nil {
 			@y := y - @rect->GetH() / 2;
 		}
 
