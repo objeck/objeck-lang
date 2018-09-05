@@ -67,19 +67,22 @@ class Demo {
 	            }
 
 	            label Scancode->SDL_SCANCODE_UP: {
-	            	@player->Jump();
+	            	@player->Jump(true);
 	            }
 	        };
 	    }
 	    else if(e->GetType() = EventType->SDL_KEYUP) {
-	       	code := e->GetKey()->GetKeysym()->GetScancode();
-	       	if(code = Scancode->SDL_SCANCODE_LEFT) {
-	       		@player->Stop();
-	        };
+	       	select(e->GetKey()->GetKeysym()->GetScancode()) {
+		       	label Scancode->SDL_SCANCODE_LEFT: {
+		        }
 
-	        if(code = Scancode->SDL_SCANCODE_RIGHT) {
-	        	@player->Stop();
-	        };
+		        label Scancode->SDL_SCANCODE_RIGHT: {
+		        }
+
+		        label Scancode->SDL_SCANCODE_UP: {
+		        	@player->Jump(false);
+		       	}
+		    };
 	    };
 	}
 }
@@ -90,6 +93,7 @@ class Player {
 	@vel : Vector2;
 	@acc : Vector2;
 	@jump : Bool;
+	@on_surface : Bool;
 	
 	New(rect : Rectangle) {
 		@rect := rect;
@@ -99,6 +103,7 @@ class Player {
 		@loc := Vector2->New(Game->SCREEN_WIDTH / 2, Game->SCREEN_HEIGHT / 2);
 		@vel := Vector2->New();
 		@acc := Vector2->New();
+		@in_air := true;
 	}
 
 	method : public : GetRect() ~ Rectangle {
@@ -125,33 +130,19 @@ class Player {
 		@acc->SetX(0.5);
 	}
 
-	method : public : Jump()  ~ Nil {
-		@jump := true;
-	}
-
-	method : public : Stop() ~ Nil {
-#		@vel->Mul(0);
+	method : public : Jump(state : Bool)  ~ Nil {
+		@jump := state;
 	}
 
 	method : public : Update()  ~ Nil {
-#~
-		Gravity();
-		
-		# force
-		f := Vector2->New(); # direction
-		f->Div(5.25); # mass
-		@acc->Add(f);
-~#
-
 		if(@jump) {
-"--- Jump ---"->PrintLine();			
-			@acc->SetY(-35);
-			@jump := false;
+			@acc->SetY(-1.5);
+			@on_surface := false;
 		}
 		else {
 			@acc->SetY(0.65);
 		};
-		
+
 		@acc->Add(Vector2->Mul(@vel, -0.035));
 
 		# motion
@@ -170,6 +161,7 @@ class Player {
 		# floor
 		if(@loc->GetY() > Game->SCREEN_HEIGHT) {
 			@loc->SetY(Game->SCREEN_HEIGHT->As(Float));
+			@on_surface := true;
 		}
 		else if(@loc->GetY() < 0) {
 			@loc->SetY(0);
@@ -182,23 +174,6 @@ class Player {
 
 	method : public : Draw()  ~ Nil {
 		@rect->Render();
-	}
-
-	method : public : Gravity()  ~ Nil {
-#~		
-        if(@change_y = 0) {
-            @change_y := 1;
-        }
-        else {
-            @change_y += .35;
-        };
-
-        # See if we are on the ground.
-        if(@rect->GetTop() >= Game->SCREEN_HEIGHT - @rect->GetHeight() & @change_y >= 0) {
-            @change_y := 0;
-            @rect->SetTop(Game->SCREEN_HEIGHT - @rect->GetHeight());
-        };
-~#        
 	}
 }
 
