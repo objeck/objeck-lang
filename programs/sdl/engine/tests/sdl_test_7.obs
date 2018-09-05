@@ -93,6 +93,7 @@ class Player {
 	@vel : Vector2;
 	@acc : Vector2;
 	@jump : Bool;
+	@jump_limit : Int;
 	@on_surface : Bool;
 	
 	New(rect : Rectangle) {
@@ -135,15 +136,16 @@ class Player {
 	}
 
 	method : public : Update()  ~ Nil {
-		if(@jump) {
+		if(@jump & @jump_limit < 13) {
 			@acc->SetY(-1.5);
+			@jump_limit += 1;
 			@on_surface := false;
 		}
 		else {
 			@acc->SetY(0.65);
 		};
 
-		@acc->Add(Vector2->Mul(@vel, -0.035));
+		@acc->Add(Vector2->Mul(@vel, -0.045));
 
 		# motion
 		@vel->Add(@acc);
@@ -162,6 +164,7 @@ class Player {
 		if(@loc->GetY() > Game->SCREEN_HEIGHT) {
 			@loc->SetY(Game->SCREEN_HEIGHT->As(Float));
 			@on_surface := true;
+			@jump_limit := 0;			
 		}
 		else if(@loc->GetY() < 0) {
 			@loc->SetY(0);
