@@ -5,6 +5,7 @@ use Collection;
 class Demo {
 	@framework : GameFramework;
 	@player : Player;
+	@platforms : Vector;
 
 	function : Main(args : String[]) ~ Nil {
 		Demo->New()->Run();
@@ -13,11 +14,13 @@ class Demo {
 	New() {
 		@framework := GameFramework->New(Game->SCREEN_WIDTH, Game->SCREEN_HEIGHT, "Accel");
 		@framework->SetClearColor(Color->New(0, 0, 255));
+		@platforms := Vector->New();
 	}
 
 	method : Run() ~ Nil {
 		if(@framework->IsOk()) {
-			@player := Player->New(@framework->AddRectangle(40, 60));
+			@player := Player->New(@framework->AddRectangle(40, 60), @platforms);
+			@platforms->AddBack(Platform->New(120, 535, @framework->AddRectangle(110, 35)));
 
 			quit := false;
 			e := @framework->GetEvent();
@@ -39,6 +42,9 @@ class Demo {
 
 				# draw
 				@player->Draw();
+				each(i : @platforms) {
+					@platforms->Get(i)->As(Platform)->Draw();
+				};
 				
 				# show
 				@framework->Show();
@@ -73,10 +79,9 @@ class Demo {
 	    }
 	    else if(e->GetType() = EventType->SDL_KEYUP) {
 	       	select(e->GetKey()->GetKeysym()->GetScancode()) {
-		       	label Scancode->SDL_SCANCODE_LEFT: {
-		        }
-
+		       	label Scancode->SDL_SCANCODE_LEFT:
 		        label Scancode->SDL_SCANCODE_RIGHT: {
+		        	@player->Stop();
 		        }
 
 		        label Scancode->SDL_SCANCODE_UP: {
@@ -85,6 +90,19 @@ class Demo {
 		    };
 	    };
 	}
+
+	function : Collisions(player : Player, obstacles : Vector) ~ Vector {
+		collides := Vector->New();
+
+		each(i : obstacles) {
+        	obstacle := obstacles->Get(i)->As(Platform);
+        	if(obstacle->Collides(player->GetRect())) {
+        		collides->AddBack(obstacle);
+        	};
+        };
+
+        return collides;
+    }
 }
 
 class Player {
@@ -95,8 +113,9 @@ class Player {
 	@jump : Bool;
 	@jump_limit : Int;
 	@on_surface : Bool;
+	@platforms : Vector;
 	
-	New(rect : Rectangle) {
+	New(rect : Rectangle, platforms : Vector) {
 		@rect := rect;
 		@rect->SetFill(true);
 		@rect->SetColor(Color->New(255, 0, 0));
@@ -105,6 +124,8 @@ class Player {
 		@vel := Vector2->New();
 		@acc := Vector2->New();
 		@in_air := true;
+
+		@platforms := platforms;
 	}
 
 	method : public : GetRect() ~ Rectangle {
@@ -131,13 +152,16 @@ class Player {
 		@acc->SetX(0.5);
 	}
 
+	method : public : Stop()  ~ Nil {
+	}
+
 	method : public : Jump(state : Bool)  ~ Nil {
 		@jump := state;
 	}
 
 	method : public : Update()  ~ Nil {
 		if(@jump & @jump_limit < 13) {
-			@acc->SetY(-1.5);
+			@acc->SetY(-1.3);
 			@jump_limit += 1;
 			@on_surface := false;
 		}
@@ -145,14 +169,13 @@ class Player {
 			@acc->SetY(0.65);
 		};
 
-		@acc->Add(Vector2->Mul(@vel, -0.045));
-
 		# motion
+		@acc->Add(Vector2->Mul(@vel, -0.03));
 		@vel->Add(@acc);
 		@loc->Add(@vel);
 		@acc->Mul(0);
-		
-		# ceiling
+				
+		# hit ceiling
 		if(@loc->GetX() > Game->SCREEN_WIDTH) {
 			@loc->SetX(0);
 		}
@@ -160,7 +183,7 @@ class Player {
 			@loc->SetX(Game->SCREEN_WIDTH->As(Float));
 		};
 
-		# floor
+		# hit floor
 		if(@loc->GetY() > Game->SCREEN_HEIGHT) {
 			@loc->SetY(Game->SCREEN_HEIGHT->As(Float));
 			@on_surface := true;
@@ -170,13 +193,70 @@ class Player {
 			@loc->SetY(0);
 		};
 
+		@rect->SetCenterX(@loc->GetX());
+		collides := Demo->Collisions(@self, @platforms);
+        each(i : collides) {
+        	platform := collides->Get(i)->As(Platform);
+			if(@vel->GetX() > 0.001) {
+    			@rect->SetRight(platform->GetLeft());
+    			@loc->SetX(platform->GetLeft() - @rect->GetWidth() / 2);
+    			@vel->SetX(0);
+            }
+    		# moving left
+            else if(@vel->GetX() < 0.001) {
+            	@rect->SetLeft(platform->GetRight());
+            	@loc->SetX(platform->GetRight() + @rect->GetWidth() / 2);
+            	@vel->SetX(0);
+            };
+        };
+
 		# set x and y
 		@rect->SetBottom(@loc->GetY());
-		@rect->SetCenterX(@loc->GetX());
+
+
 	}
 
 	method : public : Draw()  ~ Nil {
 		@rect->Render();
+	}
+}
+
+class Platform {
+	@rect : Rectangle;
+
+	New(x : Int, y : Int, rect : Rectangle) {
+		@rect := rect;
+		@rect->SetFill(true);
+		@rect->SetColor(Color->New(0, 255, 0));
+		@rect->Set(x, y);
+	}
+
+	method : public : AddX(x : Int)  ~ Nil {
+		@rect->AddX(x);
+	}
+
+	method : public : GetLeft()  ~ Int {
+		return @rect->GetLeft();
+	}
+
+	method : public : GetRight()  ~ Int {
+		return @rect->GetRight();
+	}
+
+	method : public : GetTop()  ~ Int {
+		return @rect->GetTop();
+	}
+
+	method : public : GetBottom()  ~ Int {
+		return @rect->GetBottom();
+	}
+
+	method : public : Draw()  ~ Nil {
+		@rect->Render();
+	}
+
+	method : public : Collides(rect : Rectangle) ~ Bool {
+		return @rect->GetPosition()->Overlaps(rect->GetPosition());
 	}
 }
 
