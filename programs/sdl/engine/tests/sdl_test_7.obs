@@ -145,11 +145,11 @@ class Player {
 	}
 
 	method : public : GoLeft()  ~ Nil {
-		@acc->SetX(-0.5);
+		@acc->SetX(-0.75);
 	}
 
 	method : public : GoRight()  ~ Nil {
-		@acc->SetX(0.5);
+		@acc->SetX(0.75);
 	}
 
 	method : public : Stop()  ~ Nil {
@@ -160,8 +160,8 @@ class Player {
 	}
 
 	method : public : Update()  ~ Nil {
-		if(@jump & @jump_limit < 13) {
-			@acc->SetY(-1.3);
+		if(@jump & @jump_limit < 9) {
+			@acc->SetY(-1.75);
 			@jump_limit += 1;
 			@on_surface := false;
 		}
@@ -170,7 +170,7 @@ class Player {
 		};
 
 		# motion
-		@acc->Add(Vector2->Mul(@vel, -0.03));
+		@acc->Add(Vector2->Mul(@vel, -0.037));
 		@vel->Add(@acc);
 		@loc->Add(@vel);
 		@acc->Mul(0);
@@ -218,6 +218,9 @@ class Player {
         			@rect->SetBottom(platform->GetTop());
         			@loc->SetY(platform->GetTop() + @rect->GetHeight() / 2);
         			@vel->SetY(0);
+
+        			@on_surface := true;
+					@jump_limit := 0;
                 }
         		else if(@vel->GetY() < 0.001) {
                 	@rect->SetTop(platform->GetBottom());
