@@ -202,8 +202,7 @@ class Player {
     			@loc->SetX(platform->GetLeft() - @rect->GetWidth() / 2);
     			@vel->SetX(0);
             }
-    		# moving left
-            else if(@vel->GetX() < 0.001) {
+    		else if(@vel->GetX() < 0.001) {
             	@rect->SetLeft(platform->GetRight());
             	@loc->SetX(platform->GetRight() + @rect->GetWidth() / 2);
             	@vel->SetX(0);
@@ -212,8 +211,21 @@ class Player {
 
 		# set x and y
 		@rect->SetBottom(@loc->GetY());
-
-
+		each(i : @platforms) {
+        	platform := @platforms->Get(i)->As(Platform);
+        	if(platform->Collides(@rect)) {
+        		if(@vel->GetY() > 0.001) {
+        			@rect->SetBottom(platform->GetTop());
+        			@loc->SetY(platform->GetTop() + @rect->GetHeight() / 2);
+        			@vel->SetY(0);
+                }
+        		else if(@vel->GetY() < 0.001) {
+                	@rect->SetTop(platform->GetBottom());
+                	@loc->SetY(platform->GetBottom() - @rect->GetHeight() / 2);
+                	@vel->SetY(0);
+	            };
+	        };
+	    };
 	}
 
 	method : public : Draw()  ~ Nil {
