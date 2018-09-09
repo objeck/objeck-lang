@@ -161,16 +161,17 @@ class Player {
 
 	method : public : Update()  ~ Nil {
 		if(@jump & @jump_limit < 9) {
-			@acc->SetY(-1.75);
+"--- Walk with Me ---"->PrintLine();			
+			@acc->SetY(-.75);
 			@jump_limit += 1;
 			@on_surface := false;
 		}
 		else {
-			@acc->SetY(0.65);
+			@acc->SetY(0.5);
 		};
 
 		# motion
-		@acc->Add(Vector2->Mul(@vel, -0.037));
+		@acc->Add(Vector2->MulX(@vel, -0.037));
 		@vel->Add(@acc);
 		@loc->Add(@vel);
 		@acc->Mul(0);

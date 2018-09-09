@@ -962,6 +962,70 @@ bundle Game.Framework {
 			return "{$@x}, {$@y}";
 		}
 
+		method : public : AddX(rhs : Vector2) ~ Nil {
+			@x += rhs->GetX();
+		}
+
+		method : public : SubX(rhs : Vector2) ~ Nil {
+			@x -= rhs->GetX();
+		}
+
+		method : public : MulX(rhs : Vector2) ~ Nil {
+			@x *= rhs->GetX();
+		}
+
+		method : public : DivX(rhs : Vector2) ~ Nil {
+			@x /= rhs->GetX();
+		}
+
+		method : public : AddX(x : Int) ~ Nil {
+			@x += x;
+		}
+
+		method : public : SubX(x : Int) ~ Nil {
+			@x -= x;
+		}
+
+		method : public : MulX(x : Int) ~ Nil {
+			@x *= x;
+		}
+
+		method : public : DivX(x : Int) ~ Nil {
+			@x /= x;
+		}
+
+		method : public : AddY(rhs : Vector2) ~ Nil {
+			@y += rhs->GetY();
+		}
+
+		method : public : SubY(rhs : Vector2) ~ Nil {
+			@y -= rhs->GetY();
+		}
+
+		method : public : MulY(rhs : Vector2) ~ Nil {
+			@y *= rhs->GetY();
+		}
+
+		method : public : DivY(rhs : Vector2) ~ Nil {
+			@y /= rhs->GetY();
+		}
+
+		method : public : AddY(y : Int) ~ Nil {
+			@y += y;
+		}
+
+		method : public : SubY(y : Int) ~ Nil {
+			@y -= y;
+		}
+
+		method : public : MulY(y : Int) ~ Nil {
+			@y *= y;
+		}
+
+		method : public : DivY(y : Int) ~ Nil {
+			@y /= y;
+		}
+
 		method : public : Add(rhs : Vector2) ~ Nil {
 			@x += rhs->GetX();
 			@y += rhs->GetY();
@@ -1014,6 +1078,14 @@ bundle Game.Framework {
 			return Vector2->New(lhs->GetX() - rhs->GetX(), lhs->GetY() - rhs->GetY());
 		}
 
+		function : Mul(lhs : Vector2, rhs : Vector2) ~ Vector2 {
+			return Vector2->New(lhs->GetX() * rhs->GetX(), lhs->GetY() * rhs->GetY());
+		}
+
+		function : Div(lhs : Vector2, rhs : Vector2) ~ Vector2 {
+			return Vector2->New(lhs->GetX() / rhs->GetX(), lhs->GetY() / rhs->GetY());
+		}
+
 		function : Mul(rhs : Vector2, v : Float) ~ Vector2 {
 			return Vector2->New(rhs->GetX() * v, rhs->GetY() * v);
 		}
@@ -1022,12 +1094,20 @@ bundle Game.Framework {
 			return Vector2->New(rhs->GetX() / v, rhs->GetY() / v);
 		}
 
-		function : Mul(lhs : Vector2, rhs : Vector2) ~ Vector2 {
-			return Vector2->New(lhs->GetX() * rhs->GetX(), lhs->GetY() * rhs->GetY());
+		function : MulX(rhs : Vector2, v : Float) ~ Vector2 {
+			return Vector2->New(rhs->GetX() * v, rhs->GetY());
 		}
 
-		function : Div(lhs : Vector2, rhs : Vector2) ~ Vector2 {
-			return Vector2->New(lhs->GetX() / rhs->GetX(), lhs->GetY() / rhs->GetY());
+		function : DivX(rhs : Vector2, v : Float) ~ Vector2 {
+			return Vector2->New(rhs->GetX() / v, rhs->GetY());
+		}
+
+		function : MulY(rhs : Vector2, v : Float) ~ Vector2 {
+			return Vector2->New(rhs->GetX(), rhs->GetY() * v);
+		}
+
+		function : DivY(rhs : Vector2, v : Float) ~ Vector2 {
+			return Vector2->New(rhs->GetX(), rhs->GetY() / v);
 		}
 
 		function : Dot(lhs : Vector2, rhs : Vector2) ~ Float {
