@@ -20,7 +20,7 @@ class Demo {
 	method : Run() ~ Nil {
 		if(@framework->IsOk()) {
 			@player := Player->New(@framework->AddRectangle(40, 60), @platforms);
-			@platforms->AddBack(Platform->New(120, 535, @framework->AddRectangle(110, 35)));
+			@platforms->AddBack(Platform->New(420, 535, @framework->AddRectangle(110, 35)));
 
 			quit := false;
 			e := @framework->GetEvent();
@@ -160,20 +160,23 @@ class Player {
 	}
 
 	method : public : Update()  ~ Nil {
-		if(@jump & @jump_limit < 9) {
-"--- Walk with Me ---"->PrintLine();			
-			@acc->SetY(-.75);
-			@jump_limit += 1;
-			@on_surface := false;
+		if(@jump) {
+			@acc->SetY(-2.25);
 		}
 		else {
-			@acc->SetY(0.5);
+			@acc->SetY(0.65);
 		};
 
 		# motion
-		@acc->Add(Vector2->MulX(@vel, -0.037));
+		@acc->Add(Vector2->Mul(@vel, -0.037));
 		@vel->Add(@acc);
+v := @vel->GetY();
+
 		@loc->Add(@vel);
+l := @loc->GetY();
+
+"vy={$v}, ly={$l}"->PrintLine();
+
 		@acc->Mul(0);
 				
 		# hit ceiling
@@ -203,7 +206,7 @@ class Player {
     			@loc->SetX(platform->GetLeft() - @rect->GetWidth() / 2);
     			@vel->SetX(0);
             }
-    		else if(@vel->GetX() < 0.001) {
+    		else if(@vel->GetX() < -0.001) {
             	@rect->SetLeft(platform->GetRight());
             	@loc->SetX(platform->GetRight() + @rect->GetWidth() / 2);
             	@vel->SetX(0);
@@ -223,7 +226,7 @@ class Player {
         			@on_surface := true;
 					@jump_limit := 0;
                 }
-        		else if(@vel->GetY() < 0.001) {
+        		else if(@vel->GetY() < -0.001) {
                 	@rect->SetTop(platform->GetBottom());
                 	@loc->SetY(platform->GetBottom() - @rect->GetHeight() / 2);
                 	@vel->SetY(0);
