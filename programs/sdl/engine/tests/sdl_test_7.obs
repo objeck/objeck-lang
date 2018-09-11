@@ -161,7 +161,9 @@ class Player {
 
 	method : public : Update()  ~ Nil {
 		if(@jump) {
-			@acc->SetY(-2.25);
+#			@loc->AddY(-15);
+			@acc->SetY(-1.75);
+			@on_surface := false;
 		}
 		else {
 			@acc->SetY(0.65);
@@ -169,14 +171,18 @@ class Player {
 
 		# motion
 		@acc->Add(Vector2->Mul(@vel, -0.037));
+ax := @acc->GetX();
+ay := @acc->GetY();
 		@vel->Add(@acc);
-v := @vel->GetY();
-
+vx := @vel->GetX();
+vy := @vel->GetY();
 		@loc->Add(@vel);
-l := @loc->GetY();
-
-"vy={$v}, ly={$l}"->PrintLine();
-
+lx := @loc->GetX();
+ly := @loc->GetY();
+		
+"ax={$ax}, vx={$vx}, lx={$lx}"->PrintLine();
+"ay={$ay}, vy={$vy}, ly={$ly}"->PrintLine();
+"--------"->PrintLine();		
 		@acc->Mul(0);
 				
 		# hit ceiling
@@ -201,15 +207,15 @@ l := @loc->GetY();
 		collides := Demo->Collisions(@self, @platforms);
         each(i : collides) {
         	platform := collides->Get(i)->As(Platform);
-			if(@vel->GetX() > 0.001) {
+			if(@on_surface & @vel->GetX() > 0.01) {
     			@rect->SetRight(platform->GetLeft());
     			@loc->SetX(platform->GetLeft() - @rect->GetWidth() / 2);
-    			@vel->SetX(0);
+#    			@vel->SetX(0);
             }
-    		else if(@vel->GetX() < -0.001) {
+    		else if(@on_surface & @vel->GetX() < -0.01) {
             	@rect->SetLeft(platform->GetRight());
             	@loc->SetX(platform->GetRight() + @rect->GetWidth() / 2);
-            	@vel->SetX(0);
+#            	@vel->SetX(0);
             };
         };
 
@@ -218,18 +224,19 @@ l := @loc->GetY();
 		each(i : @platforms) {
         	platform := @platforms->Get(i)->As(Platform);
         	if(platform->Collides(@rect)) {
-        		if(@vel->GetY() > 0.001) {
+        		if(@vel->GetY() > 0.01) {
         			@rect->SetBottom(platform->GetTop());
         			@loc->SetY(platform->GetTop() + @rect->GetHeight() / 2);
-        			@vel->SetY(0);
+#        			@vel->SetY(0);
 
         			@on_surface := true;
 					@jump_limit := 0;
                 }
-        		else if(@vel->GetY() < -0.001) {
+        		else if(@on_surface & @vel->GetY() < -0.01) {
+"--- DAG ---"->PrintLine();
                 	@rect->SetTop(platform->GetBottom());
                 	@loc->SetY(platform->GetBottom() - @rect->GetHeight() / 2);
-                	@vel->SetY(0);
+#                	@vel->SetY(0);
 	            };
 	        };
 	    };
