@@ -21,6 +21,7 @@ class Demo {
 		if(@framework->IsOk()) {
 			@player := Player->New(@framework->AddRectangle(40, 60), @platforms);
 			@platforms->AddBack(Platform->New(420, 535, @framework->AddRectangle(110, 35)));
+			@platforms->AddBack(Platform->New(300, 475, @framework->AddRectangle(110, 35)));
 
 			quit := false;
 			e := @framework->GetEvent();
