@@ -75,6 +75,10 @@ class Demo {
 	            label Scancode->SDL_SCANCODE_UP: {
 	            	@player->Jump(true);
 	            }
+
+	            label Scancode->SDL_SCANCODE_D: {
+	           		@player->Dump();
+	           	}
 	        };
 	    }
 	    else if(e->GetType() = EventType->SDL_KEYUP) {
@@ -112,7 +116,6 @@ class Player {
 	@acc : Vector2;
 	@jump : Bool;
 	@jump_limit : Int;
-	@on_surface : Bool;
 	@platforms : Vector;
 	
 	New(rect : Rectangle, platforms : Vector) {
@@ -160,10 +163,9 @@ class Player {
 	}
 
 	method : public : Update()  ~ Nil {
-		if(@jump) {
-#			@loc->AddY(-15);
-			@acc->SetY(-1.75);
-			@on_surface := false;
+		if(@jump & @jump_limit < 4) {
+			@acc->SetY(-5.3);
+			@jump_limit += 1;
 		}
 		else {
 			@acc->SetY(0.65);
@@ -171,75 +173,77 @@ class Player {
 
 		# motion
 		@acc->Add(Vector2->Mul(@vel, -0.037));
-ax := @acc->GetX();
-ay := @acc->GetY();
-		@vel->Add(@acc);
-vx := @vel->GetX();
-vy := @vel->GetY();
+		@vel->Add( Vector2->Mul(@acc, 0.85) );
 		@loc->Add(@vel);
-lx := @loc->GetX();
-ly := @loc->GetY();
-		
-"ax={$ax}, vx={$vx}, lx={$lx}"->PrintLine();
-"ay={$ay}, vy={$vy}, ly={$ly}"->PrintLine();
-"--------"->PrintLine();		
 		@acc->Mul(0);
-				
-		# hit ceiling
-		if(@loc->GetX() > Game->SCREEN_WIDTH) {
-			@loc->SetX(0);
-		}
-		else if(@loc->GetX() < 0) {
-			@loc->SetX(Game->SCREEN_WIDTH->As(Float));
-		};
-
-		# hit floor
-		if(@loc->GetY() > Game->SCREEN_HEIGHT) {
-			@loc->SetY(Game->SCREEN_HEIGHT->As(Float));
-			@on_surface := true;
-			@jump_limit := 0;			
-		}
-		else if(@loc->GetY() < 0) {
-			@loc->SetY(0);
-		};
-
+		
 		@rect->SetCenterX(@loc->GetX());
 		collides := Demo->Collisions(@self, @platforms);
         each(i : collides) {
         	platform := collides->Get(i)->As(Platform);
-			if(@on_surface & @vel->GetX() > 0.01) {
+			if(@vel->GetX() > 0.01) {
     			@rect->SetRight(platform->GetLeft());
     			@loc->SetX(platform->GetLeft() - @rect->GetWidth() / 2);
-#    			@vel->SetX(0);
             }
-    		else if(@on_surface & @vel->GetX() < -0.01) {
+    		else if(@vel->GetX() < -0.01) {
             	@rect->SetLeft(platform->GetRight());
             	@loc->SetX(platform->GetRight() + @rect->GetWidth() / 2);
-#            	@vel->SetX(0);
             };
         };
 
 		# set x and y
-		@rect->SetBottom(@loc->GetY());
+		@rect->SetBottom(@loc->GetY() - @rect->GetHeight() / 2);
 		each(i : @platforms) {
         	platform := @platforms->Get(i)->As(Platform);
         	if(platform->Collides(@rect)) {
         		if(@vel->GetY() > 0.01) {
         			@rect->SetBottom(platform->GetTop());
         			@loc->SetY(platform->GetTop() + @rect->GetHeight() / 2);
-#        			@vel->SetY(0);
-
-        			@on_surface := true;
 					@jump_limit := 0;
                 }
-        		else if(@on_surface & @vel->GetY() < -0.01) {
-"--- DAG ---"->PrintLine();
+        		else if(@vel->GetY() < -0.01) {
                 	@rect->SetTop(platform->GetBottom());
                 	@loc->SetY(platform->GetBottom() - @rect->GetHeight() / 2);
-#                	@vel->SetY(0);
 	            };
 	        };
 	    };
+
+
+
+#~
+	    # hit ceiling
+		if(@loc->GetX() > Game->SCREEN_WIDTH) {
+			@loc->SetX(0);
+		}
+		else if(@loc->GetX() < 0) {
+			@loc->SetX(Game->SCREEN_WIDTH->As(Float));
+		};
+~#
+
+		# hit floor
+		if(@rect->GetBottom() > Game->SCREEN_HEIGHT) {
+			@rect->SetBottom(Game->SCREEN_HEIGHT);
+        	@loc->SetY(Game->SCREEN_HEIGHT + @rect->GetHeight() / 2);
+			@jump_limit := 0;			
+		}
+		else if(@loc->GetY() < 0) {
+			@loc->SetY(0);
+		};
+	}
+
+	method : public : Dump() ~ Nil {
+		ax := @acc->GetX();
+		ay := @acc->GetY();
+
+		vx := @vel->GetX();
+		vy := @vel->GetY();
+
+		lx := @loc->GetX();
+		ly := @loc->GetY();
+				
+		"x=[acc={$ax}, vel={$vx}, loc={$lx}]"->PrintLine();
+		"y=[acc={$ay}, vel={$vy}, loc={$ly}]"->PrintLine();
+		"--------"->PrintLine();
 	}
 
 	method : public : Draw()  ~ Nil {
