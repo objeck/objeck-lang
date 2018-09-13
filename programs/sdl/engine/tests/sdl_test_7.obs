@@ -22,6 +22,8 @@ class Demo {
 			@player := Player->New(@framework->AddRectangle(40, 60), @platforms);
 			@platforms->AddBack(Platform->New(420, 535, @framework->AddRectangle(110, 35)));
 			@platforms->AddBack(Platform->New(300, 475, @framework->AddRectangle(110, 35)));
+			@platforms->AddBack(Platform->New(220, 375, @framework->AddRectangle(110, 35)));
+
 
 			quit := false;
 			e := @framework->GetEvent();
@@ -117,6 +119,8 @@ class Player {
 	@acc : Vector2;
 	@jump : Bool;
 	@jump_limit : Int;
+	@y_dir : Int;
+
 	@platforms : Vector;
 	
 	New(rect : Rectangle, platforms : Vector) {
@@ -127,7 +131,6 @@ class Player {
 		@loc := Vector2->New(Game->SCREEN_WIDTH / 2, Game->SCREEN_HEIGHT / 2);
 		@vel := Vector2->New();
 		@acc := Vector2->New();
-		@in_air := true;
 
 		@platforms := platforms;
 	}
@@ -166,7 +169,8 @@ class Player {
 	method : public : Update()  ~ Nil {
 		if(@jump & @jump_limit < 4) {
 			@acc->SetY(-5.3);
-			@jump_limit += 1;
+			@jump_limit += 1;		
+			@y_dir := 1;
 		}
 		else {
 			@acc->SetY(0.65);
@@ -178,6 +182,7 @@ class Player {
 		@loc->Add(@vel);
 		@acc->Mul(0);
 		
+		# reposition x
 		@rect->SetCenterX(@loc->GetX());
 		collides := Demo->Collisions(@self, @platforms);
         each(i : collides) {
@@ -185,50 +190,55 @@ class Player {
 			if(@vel->GetX() > 0.01) {
     			@rect->SetRight(platform->GetLeft());
     			@loc->SetX(platform->GetLeft() - @rect->GetWidth() / 2);
+    			@vel->MulX(0);
             }
     		else if(@vel->GetX() < -0.01) {
             	@rect->SetLeft(platform->GetRight());
             	@loc->SetX(platform->GetRight() + @rect->GetWidth() / 2);
+            	@vel->MulX(0);
             };
         };
 
-		# set x and y
+		# reposition y
 		@rect->SetBottom(@loc->GetY() - @rect->GetHeight() / 2);
 		each(i : @platforms) {
         	platform := @platforms->Get(i)->As(Platform);
         	if(platform->Collides(@rect)) {
-        		if(@vel->GetY() > 0.01) {
+        		if(@vel->GetY() < 0.5) {
+					@rect->SetTop(platform->GetBottom() + 2);
+                	@loc->SetY(platform->GetBottom() + @rect->GetHeight() / 2 + 2);
+       				@vel->MulY(-5.3);
+					@jump_limit := 4;
+
+
+	            }
+	            else if(@vel->GetY() > 0.5) {
         			@rect->SetBottom(platform->GetTop());
         			@loc->SetY(platform->GetTop() + @rect->GetHeight() / 2);
+					@vel->MulY(0);
 					@jump_limit := 0;
-                }
-        		else if(@vel->GetY() < -0.01) {
-                	@rect->SetTop(platform->GetBottom());
-                	@loc->SetY(platform->GetBottom() - @rect->GetHeight() / 2);
-	            };
+                };
 	        };
 	    };
 
-
-
-#~
-	    # hit ceiling
+	    # wrap around side
 		if(@loc->GetX() > Game->SCREEN_WIDTH) {
 			@loc->SetX(0);
 		}
 		else if(@loc->GetX() < 0) {
 			@loc->SetX(Game->SCREEN_WIDTH->As(Float));
 		};
-~#
 
 		# hit floor
 		if(@rect->GetBottom() > Game->SCREEN_HEIGHT) {
 			@rect->SetBottom(Game->SCREEN_HEIGHT);
         	@loc->SetY(Game->SCREEN_HEIGHT + @rect->GetHeight() / 2);
-			@jump_limit := 0;			
+			@jump_limit := 0;
+			@vel->MulY(0);
 		}
 		else if(@loc->GetY() < 0) {
 			@loc->SetY(0);
+			@vel->MulY(0);
 		};
 	}
 
