@@ -121,6 +121,8 @@ class Player {
 	@jump_limit : Int;
 	@y_dir : Int;
 
+	@foo : Bool;
+
 	@platforms : Vector;
 	
 	New(rect : Rectangle, platforms : Vector) {
@@ -167,19 +169,26 @@ class Player {
 	}
 
 	method : public : Update()  ~ Nil {
-		if(@jump & @jump_limit < 3) {
-			@acc->SetY(-5.3);
-			@jump_limit += 1;		
-			@y_dir := 1;
+		if(@foo) {
+			@acc->SetY(85);
+			@foo := false;
 		}
 		else {
-			@acc->SetY(0.65);
+			if(@jump & @jump_limit < 3) {
+				@acc->SetY(-5.3);
+				@jump_limit += 1;		
+				@y_dir := 1;
+			}
+			else {
+				@acc->SetY(0.65);
+			};
 		};
 
 		# motion
 		@acc->Add(Vector2->MulX(Vector2->MulY(@vel, -0.0135), -0.0321));
 		@vel->Add(Vector2->Mul(@acc, 0.85));
 		@loc->Add(@vel);
+# Dump();		
 		@acc->Mul(0);
 		
 		# reposition x
@@ -204,16 +213,18 @@ class Player {
 		each(i : @platforms) {
         	platform := @platforms->Get(i)->As(Platform);
         	if(platform->Collides(@rect)) {
-        		if(@vel->GetY() < 0.5) {
+        		if(@vel->GetY() < 0.01) {
 					@rect->SetTop(platform->GetBottom());
                 	@loc->SetY(platform->GetBottom() + @rect->GetHeight() / 2);
-       				@vel->SetY(62);
+       				@acc->SetY(1115.3);
 					@jump_limit := 3;
+					@foo := true;
+"--- BOOM ---"->PrintLine();
 	            }
-	            else if(@vel->GetY() > 0.5) {
+	            else if(@vel->GetY() > 0.01) {
         			@rect->SetBottom(platform->GetTop());
         			@loc->SetY(platform->GetTop() + @rect->GetHeight() / 2);
-					@vel->MulY(0);
+					@vel->SetY(0);
 					@jump_limit := 0;
                 };
 	        };
@@ -232,11 +243,11 @@ class Player {
 			@rect->SetBottom(Game->SCREEN_HEIGHT);
         	@loc->SetY(Game->SCREEN_HEIGHT + @rect->GetHeight() / 2);
 			@jump_limit := 0;
-			@vel->MulY(0);
+			@vel->SetY(0);
 		}
 		else if(@loc->GetY() < 0) {
 			@loc->SetY(0);
-			@vel->MulY(0);
+			@vel->SetY(0);
 		};
 	}
 
