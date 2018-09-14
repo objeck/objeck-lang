@@ -21,10 +21,9 @@ class Demo {
 		if(@framework->IsOk()) {
 			@player := Player->New(@framework->AddRectangle(40, 60), @platforms);
 			@platforms->AddBack(Platform->New(420, 535, @framework->AddRectangle(110, 35)));
-			@platforms->AddBack(Platform->New(320, 475, @framework->AddRectangle(120, 35)));
+			@platforms->AddBack(Platform->New(340, 475, @framework->AddRectangle(120, 35)));
 			@platforms->AddBack(Platform->New(220, 385, @framework->AddRectangle(210, 35)));
 			@platforms->AddBack(Platform->New(520, 285, @framework->AddRectangle(210, 35)));
-
 
 			quit := false;
 			e := @framework->GetEvent();
@@ -120,10 +119,7 @@ class Player {
 	@acc : Vector2;
 	@jump : Bool;
 	@jump_limit : Int;
-	@y_dir : Int;
-
-	@foo : Bool;
-
+	@hit_top : Bool;
 	@platforms : Vector;
 	
 	New(rect : Rectangle, platforms : Vector) {
@@ -165,34 +161,32 @@ class Player {
 	method : public : Stop()  ~ Nil {
 	}
 
-	method : public : Jump(state : Bool)  ~ Nil {
-		@jump := state;
+	method : public : Jump(jump : Bool)  ~ Nil {
+		@jump := jump;
 	}
 
 	method : public : Update()  ~ Nil {
-		if(@foo) {
-			@acc->SetY(85);
-			@foo := false;
+		if(@hit_top) {
+			@acc->SetY(90);
+			@hit_top := false;
 		}
 		else {
 			if(@jump & @jump_limit < 3) {
 				@acc->SetY(-5.3);
 				@jump_limit += 1;		
-				@y_dir := 1;
 			}
 			else {
 				@acc->SetY(0.65);
 			};
 		};
 
-		# motion
+		# movement equations
 		@acc->Add(Vector2->MulX(Vector2->MulY(@vel, -0.0135), -0.0447));
 		@vel->Add(Vector2->Mul(@acc, 0.83));
 		@loc->Add(@vel);
-# Dump();		
-		@acc->Mul(0);
+		@acc->Zero();
 		
-		# reposition x
+		# reposition 'x'
 		@rect->SetCenterX(@loc->GetX());
 		collides := Demo->Collisions(@self, @platforms);
         each(i : collides) {
@@ -209,7 +203,7 @@ class Player {
             };
         };
 
-		# reposition y
+		# reposition 'y'
 		@rect->SetBottom(@loc->GetY() - @rect->GetHeight() / 2);
 		each(i : @platforms) {
         	platform := @platforms->Get(i)->As(Platform);
@@ -217,9 +211,8 @@ class Player {
         		if(@vel->GetY() < 0.01) {
 					@rect->SetTop(platform->GetBottom());
                 	@loc->SetY(platform->GetBottom() + @rect->GetHeight() / 2);
-       				@acc->SetY(1115.3);
 					@jump_limit := 3;
-					@foo := true;
+					@hit_top := true;
 	            }
 	            else if(@vel->GetY() > 0.01) {
         			@rect->SetBottom(platform->GetTop());
