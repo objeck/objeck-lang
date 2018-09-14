@@ -21,8 +21,9 @@ class Demo {
 		if(@framework->IsOk()) {
 			@player := Player->New(@framework->AddRectangle(40, 60), @platforms);
 			@platforms->AddBack(Platform->New(420, 535, @framework->AddRectangle(110, 35)));
-			@platforms->AddBack(Platform->New(300, 475, @framework->AddRectangle(110, 35)));
-			@platforms->AddBack(Platform->New(220, 375, @framework->AddRectangle(110, 35)));
+			@platforms->AddBack(Platform->New(320, 475, @framework->AddRectangle(120, 35)));
+			@platforms->AddBack(Platform->New(220, 385, @framework->AddRectangle(210, 35)));
+			@platforms->AddBack(Platform->New(520, 285, @framework->AddRectangle(210, 35)));
 
 
 			quit := false;
@@ -185,8 +186,8 @@ class Player {
 		};
 
 		# motion
-		@acc->Add(Vector2->MulX(Vector2->MulY(@vel, -0.0135), -0.0321));
-		@vel->Add(Vector2->Mul(@acc, 0.85));
+		@acc->Add(Vector2->MulX(Vector2->MulY(@vel, -0.0135), -0.0447));
+		@vel->Add(Vector2->Mul(@acc, 0.83));
 		@loc->Add(@vel);
 # Dump();		
 		@acc->Mul(0);
@@ -219,7 +220,6 @@ class Player {
        				@acc->SetY(1115.3);
 					@jump_limit := 3;
 					@foo := true;
-"--- BOOM ---"->PrintLine();
 	            }
 	            else if(@vel->GetY() > 0.01) {
         			@rect->SetBottom(platform->GetTop());
