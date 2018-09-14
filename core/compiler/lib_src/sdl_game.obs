@@ -1070,6 +1070,11 @@ bundle Game.Framework {
 			};
 		}
 
+		method : public : Zero() ~ Nil {
+			@x := 0.0;
+			@y := 0.0;
+		}
+		
 		function : Add(lhs : Vector2, rhs : Vector2) ~ Vector2 {
 			return Vector2->New(lhs->GetX() + rhs->GetX(), lhs->GetY() + rhs->GetY());
 		}
