@@ -167,7 +167,7 @@ class Player {
 	}
 
 	method : public : Update()  ~ Nil {
-		if(@jump & @jump_limit < 4) {
+		if(@jump & @jump_limit < 3) {
 			@acc->SetY(-5.3);
 			@jump_limit += 1;		
 			@y_dir := 1;
@@ -177,8 +177,8 @@ class Player {
 		};
 
 		# motion
-		@acc->Add(Vector2->Mul(@vel, -0.037));
-		@vel->Add( Vector2->Mul(@acc, 0.85) );
+		@acc->Add(Vector2->MulX(Vector2->MulY(@vel, -0.0135), -0.0321));
+		@vel->Add(Vector2->Mul(@acc, 0.85));
 		@loc->Add(@vel);
 		@acc->Mul(0);
 		
@@ -205,12 +205,10 @@ class Player {
         	platform := @platforms->Get(i)->As(Platform);
         	if(platform->Collides(@rect)) {
         		if(@vel->GetY() < 0.5) {
-					@rect->SetTop(platform->GetBottom() + 2);
-                	@loc->SetY(platform->GetBottom() + @rect->GetHeight() / 2 + 2);
-       				@vel->MulY(-5.3);
-					@jump_limit := 4;
-
-
+					@rect->SetTop(platform->GetBottom());
+                	@loc->SetY(platform->GetBottom() + @rect->GetHeight() / 2);
+       				@vel->SetY(62);
+					@jump_limit := 3;
 	            }
 	            else if(@vel->GetY() > 0.5) {
         			@rect->SetBottom(platform->GetTop());
