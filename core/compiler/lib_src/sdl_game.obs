@@ -66,7 +66,7 @@ bundle Game.Framework {
 	}
 
 	#~
-	Onscreen image
+	On-screen image
 	~#
 	class ImageSprite from Sprite {
 		@is_ok : Bool;
@@ -263,6 +263,10 @@ bundle Game.Framework {
 			@position := Position->New(@render_rect);
 		}
 		
+		#~
+		Sets the current 'x' position
+		@param position new position
+		~#
 		method : public : SetPostion(position : Position) ~ Nil {
 			@position := position;
 		}
@@ -288,10 +292,18 @@ bundle Game.Framework {
 			@texture->SetColorMod(red, green, blue);
 		}
 
+		#~
+		Sets blend mode
+		@param blending blend mode
+		~#
 		method : public : SetBlendMode(blending : BlendMode) ~ Nil {
 			@texture->SetBlendMode(blending);
 		}
-		
+
+		#~
+		Sets alpah
+		@param alpha setting
+		~#		
 		method : public : SetAlpha(alpha : Int) ~ Nil {
 			@texture->SetAlphaMod(alpha );
 		}
@@ -307,83 +319,167 @@ bundle Game.Framework {
 			@renderer->CopyEx(@texture, clip, @render_rect, angle, center, flip);
 		}
 
+		#~
+		Renders sprite
+		@param clip clipping rectangle
+		@param angle clipping rectangle
+		@param center center point
+		@param flip flip direction
+		~#
 		method : public : Render(clip : Rect := Nil, angle : Float := 0.0, 
 				center : Point := Nil, flip : RendererFlip := RendererFlip->SDL_FLIP_NONE) ~ Nil {
 			RenderAll(@position->GetLeft(), @position->GetTop(), clip, angle, center, flip);
 		}
 
+		#~
+		Gets sprite width
+		@return sprite width
+		~#
 		method : public : GetWidth() ~ Int {
 			return @render_rect->GetW();
 		}
 
+		#~
+		Gets sprite height
+		@return sprite height
+		~#
 		method : public : GetHeight() ~ Int {
 			return @render_rect->GetH();
 		}
 
+		#~
+		Gets sprite position
+		@return sprite position
+		~#
 		method : public : GetPosition() ~ Position {
 			return @position;
 		}
 
+		#~
+		Gets left position
+		@return left position
+		~#
 		method : public : GetLeft() ~ Int {
 			return @position->GetLeft();
 		}
 
+		#~
+		Gets top position
+		@return top position
+		~#
 		method : public : GetTop() ~ Int {
 			return @position->GetTop();
 		}
 
+		#~
+		Gets right position
+		@return right position
+		~#
 		method : public : GetRight() ~ Int {
 			return @position->GetRight();
 		}
 
+		#~
+		Gets bottom position
+		@return bottom position
+		~#
 		method : public : GetBottom() ~ Int {
 			return @position->GetBottom();
 		}
 
+		#~
+		Gets the center 'x' position
+		@return center 'x' position
+		~#
 		method : public : GetCenterX() ~ Int {
 			return @position->GetCenterX();
 		}
 
+		#~
+		Gets the center 'y' position
+		@return center 'y' position
+		~#
 		method : public : GetCenterY() ~ Int {
 			return @position->GetCenterY();
 		}
 
+		#~
+		Sets position
+		@param x x-position 
+		@param y y-position 
+		~#
 		method : public : Set(x : Int, y : Int) ~ Nil {
 			@position->Set(x, y);
 		}
 
+		#~
+		Sets position
+		@param v2 vector position 
+		~#
 		method : public : Set(v2 : Vector2) ~ Nil {
 			@position->Set(v2->GetX(), v2->GetY());
 		}
 
+		#~
+		Sets left position
+		@param x left position
+		~#
 		method : public : SetLeft(x : Int) ~ Nil {
 			@position->SetLeft(x);
 		}
 
+		#~
+		Sets top position
+		@param y top position
+		~#
 		method : public : SetTop(y : Int) ~ Nil {
 			@position->SetTop(y);
 		}
 
+		#~
+		Sets right position
+		@param x2 right position
+		~#
 		method : public : SetRight(x2 : Int) ~ Nil {
 			@position->SetRight(x2);
 		}
 		
+		#~
+		Sets bottom position
+		@param y2 bottom position
+		~#
 		method : public : SetBottom(y2 : Int) ~ Nil {
 			@position->SetBottom(y2);
 		}
 
+		#~
+		Sets center 'x' position
+		@param x center 'x' position
+		~#
 		method : public : SetCenterX(x : Int) ~ Nil {
 			@position->SetCenterX(x);
 		}
 		
+		#~
+		Sets center 'y' position
+		@param y center 'y' position
+		~#
 		method : public : SetCenterY(y : Int) ~ Nil {
 			@position->SetCenterY(y);
 		}
 
+		#~
+		Adds increments the current 'x' position
+		@param x increment to the current 'x' position
+		~#
 		method : public : AddX(x : Int) ~ Nil {
 			@position->AddX(x);
 		}
 
+		#~
+		Adds increments the current 'y' position
+		@param x increment to the current 'y' position
+		~#
 		method : public : AddY(y : Int) ~ Nil {
 			@position->AddY(y);
 		}
@@ -402,6 +498,10 @@ bundle Game.Framework {
 			@position := Position->New(@render_rect);
 		}
 
+		#~
+		Sets the current 'x' position
+		@param position new position
+		~#
 		method : public : SetPostion(position : Position) ~ Nil {
 			@position := position;
 		}
@@ -409,30 +509,58 @@ bundle Game.Framework {
 		method : public : Free() ~ Nil {			
 		}
 
+		#~
+		Gets sprite width
+		@return sprite width
+		~#
 		method : public : GetWidth() ~ Int {
 			return @render_rect->GetW();
 		}
 
+		#~
+		Gets sprite height
+		@return sprite height
+		~#
 		method : public : GetHeight() ~ Int {
 			return @render_rect->GetH();
 		}
 
+		#~
+		Gets left position
+		@return left position
+		~#
 		method : public : GetLeft() ~ Int {
 			return @position->GetLeft();
 		}
 
+		#~
+		Gets top position
+		@return top position
+		~#
 		method : public : GetTop() ~ Int {
 			return @position->GetTop();
 		}
 
+		#~
+		Gets right position
+		@return right position
+		~#
 		method : public : GetRight() ~ Int {
 			return @position->GetRight();
 		}
 
+		#~
+		Gets bottom position
+		@return bottom position
+		~#
 		method : public : GetBottom() ~ Int {
 			return @position->GetBottom();
 		}
 
+		#~
+		Gets the center 'x' position
+		@return center 'x' position
+		~#
 		method : public : GetCenterX() ~ Int {
 			return @position->GetCenterX();
 		}
@@ -441,62 +569,123 @@ bundle Game.Framework {
 			return @position->GetCenterY();
 		}
 
+		#~
+		Sets center 'y' position
+		@param y center 'y' position
+		~#
 		method : public : SetCenterX(x : Int) ~ Nil {
 			@position->SetCenterX(x);
 		}
 		
+		#~
+		Sets center 'y' position
+		@param y center 'y' position
+		~#
 		method : public : SetCenterY(y : Int) ~ Nil {
 			@position->SetCenterY(y);
 		}
 
+		#~
+		Sets position
+		@param x x-position 
+		@param y y-position 
+		~#
 		method : public : Set(x : Int, y : Int) ~ Nil {
 			@position->Set(x, y);
 		}
 
+		#~
+		Sets position
+		@param v2 vector position 
+		~#
 		method : public : Set(v2 : Vector2) ~ Nil {
 			@position->Set(v2->GetX(), v2->GetY());
 		}
 
+		#~
+		Sets left position
+		@param x left position
+		~#
 		method : public : SetLeft(x : Int) ~ Nil {
 			@position->SetLeft(x);
 		}
 
+		#~
+		Sets top position
+		@param y top position
+		~#
 		method : public : SetTop(y : Int) ~ Nil {
 			@position->SetTop(y);
 		}
 
+		#~
+		Sets right position
+		@param x2 right position
+		~#
 		method : public : SetRight(x2 : Int) ~ Nil {
 			@position->SetRight(x2);
 		}
 
+		#~
+		Sets bottom position
+		@param y2 bottom position
+		~#
 		method : public : SetBottom(y2 : Int) ~ Nil {
 			@position->SetBottom(y2);
 		}
 
+		#~
+		Adds increments the current 'x' position
+		@param x increment to the current 'x' position
+		~#
 		method : public : AddX(x : Int) ~ Nil {
 			@position->AddX(x);
 		}
 
+		#~
+		Adds increments the current 'y' position
+		@param x increment to the current 'y' position
+		~#
 		method : public : AddY(y : Int) ~ Nil {
 			@position->AddY(y);
 		}
 
+		#~
+		Gets sprite position
+		@return sprite position
+		~#
 		method : public : GetPosition() ~ Position {
 			return @position;
 		}
 
+		#~
+		Sets rectangle color
+		@param color color
+		~#
 		method : public : SetColor(color : Color) ~ Nil {
 			@color := color;
 		}
 
+		#~
+		Gets rectangle color
+		@return color
+		~#
 		method : public : GetColor() ~ Color {
 			return @color;
 		}
 
+		#~
+		Sets color fill
+		@param fill if true, color fills rectangle; false otherwise
+		~#
 		method : public : SetFill(fill : Bool) ~ Nil {
 			@fill := fill;
 		}
 
+		#~
+		Sets color fill
+		@return if true, color fills rectangle; false otherwise
+		~#
 		method : public : GetFill() ~ Bool {
 			return @fill;
 		}
