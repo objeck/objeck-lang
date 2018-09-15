@@ -731,87 +731,171 @@ bundle Game.Framework {
 		@x : Int;
 		@y : Int;
 
+		#~
+		Creates a new rectangle with given size
+		@param rect position
+		~#
 		New(rect : Rect) {
 			@rect := rect;
 		}
 
+		#~
+		Creates a new rectangle with given position and size
+		@param x x-position
+		@param y y-position
+		@param w width
+		@param h height
+		~#
 		New(x : Int, y : Int, w : Int, h : Int) {
 			@x := x;
 			@y := y;
 			@rect := Rect->New(0, 0, w, h);
 		}
 
+		#~
+		Creates a new rectangle with given size
+		@param w width
+		@param h height
+		~#
 		New(w : Int, h : Int) {
 			@rect := Rect->New(0, 0, w, h);
 		}
 
+		#~
+		Gets bounding size
+		@return size and rectangle
+		~#
 		method : public : GetRect() ~ Rect {
 			return @rect;
 		}
 
-		# --- Sets
+		#~
+		Set center position
+		@param x x-position
+		@param y y-position
+		~#
 		method : public : Set(x : Int, y : Int) ~ Nil {
 			@x := x - @rect->GetW() / 2;
 			@y := y - @rect->GetH() / 2;
 		}
 
+		#~
+		Set center x-position
+		@param x x-position
+		~#
 		method : public : SetCenterX(x : Int) ~ Nil {
 			@x := x - @rect->GetW() / 2;
 		}
 		
+		#~
+		Set center y-position
+		@param y y-position
+		~#
 		method : public : SetCenterY(y : Int) ~ Nil {
 			@y := y - @rect->GetH() / 2;
 		}
 
+		#~
+		Sets left position
+		@param x x-position
+		~#
 		method : public : SetLeft(x : Int) ~ Nil {
 			@x := x;
 		}
 
+		#~
+		Sets top position
+		@param y top position
+		~#
 		method : public : SetTop(y : Int) ~ Nil {
 			@y := y;
 		}
 
+		#~
+		Adds increments the current 'x' position
+		@param x increment to the current 'x' position
+		~#
 		method : public : AddX(x : Int) ~ Nil {
 			@x += x;
 		}
 
+		#~
+		Adds increments the current 'y' position
+		@param x increment to the current 'y' position
+		~#
 		method : public : AddY(y : Int) ~ Nil {
 			@y += y;
 		}
 
+		#~
+		Sets right position
+		@param x2 right position
+		~#
 		method : public : SetRight(x2 : Int) ~ Nil {
 			@x := x2 - @rect->GetW();
 		}
 
+		#~
+		Sets bottom position
+		@param y2 bottom position
+		~#
 		method : public : SetBottom(y2 : Int) ~ Nil {
 			@y := y2 - @rect->GetH();
 		}
 
-		# --- Gets
+		#~
+		Gets left position
+		@return left position
+		~#
 		method : public : GetLeft() ~ Int {
 			return @x;
 		}
 
+		#~
+		Gets right position
+		@return right position
+		~#
 		method : public : GetRight() ~ Int {
 			return @x + @rect->GetW();
 		}
 
+		#~
+		Gets the center 'x' position
+		@return center 'x' position
+		~#
 		method : public : GetCenterX() ~ Int {
 			return @x + @rect->GetW() / 2;
 		}
 
+		#~
+		Gets top position
+		@return top position
+		~#
 		method : public : GetTop() ~ Int {
 			return @y;
 		}
 
+		#~
+		Gets bottom position
+		@return bottom position
+		~#
 		method : public : GetBottom() ~ Int {
 			return @y + @rect->GetH();
 		}
 
+		#~
+		Gets the center 'y' position
+		@return center 'y' position
+		~#
 		method : public : GetCenterY() ~ Int {
 			return @y + @rect->GetH() / 2;
 		}
 
+		#~
+		Determines if position overlaps rectangle
+		@param pos position to test 
+		@return true of overlap, false otherwise
+		~#
 		method : public : native : Overlaps(pos : Position) ~ Bool {
 			y := GetTop();
 			pos_y2 := pos->GetBottom();
