@@ -184,7 +184,7 @@ bundle Game.Framework {
 	}
 
 	#~
-	Onscreen text
+	On-screen text
 	~#
 	class TextSprite from Sprite {
 		@font : Font;
@@ -485,6 +485,9 @@ bundle Game.Framework {
 		}
 	}
 
+	#~
+	Rectangle shape
+	~#
 	class Rectangle implements Shape {
 		@render_rect : Rect;
 		@position : Position;
@@ -720,6 +723,9 @@ bundle Game.Framework {
 		}
 	}
 
+	#~
+	Shape position
+	~#
 	class Position {
 		@rect : Rect;
 		@x : Int;
