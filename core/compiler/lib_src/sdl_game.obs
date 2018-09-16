@@ -51,6 +51,7 @@ bundle Game.Framework {
 
 		#~
 		Adds a clip
+		@param clip clip
 		~#
 		method : public : AddClip(clip : Rect) ~ Nil {
 			@clips->AddBack(clip);
@@ -99,6 +100,7 @@ bundle Game.Framework {
 		#~
 		Loads an image
 		@param file image to load
+		@param colorkey key color
 		@return true if success, false otherwise
 		~#
 		method : LoadImage(file : String, colorkey : Color) ~ Bool {
@@ -478,7 +480,7 @@ bundle Game.Framework {
 
 		#~
 		Adds increments the current 'y' position
-		@param x increment to the current 'y' position
+		@param y increment to the current 'y' position
 		~#
 		method : public : AddY(y : Int) ~ Nil {
 			@position->AddY(y);
@@ -574,7 +576,7 @@ bundle Game.Framework {
 
 		#~
 		Sets center 'y' position
-		@param y center 'y' position
+		@param x center 'y' position
 		~#
 		method : public : SetCenterX(x : Int) ~ Nil {
 			@position->SetCenterX(x);
@@ -647,7 +649,7 @@ bundle Game.Framework {
 
 		#~
 		Adds increments the current 'y' position
-		@param x increment to the current 'y' position
+		@param y increment to the current 'y' position
 		~#
 		method : public : AddY(y : Int) ~ Nil {
 			@position->AddY(y);
@@ -821,7 +823,7 @@ bundle Game.Framework {
 
 		#~
 		Adds increments the current 'y' position
-		@param x increment to the current 'y' position
+		@param y increment to the current 'y' position
 		~#
 		method : public : AddY(y : Int) ~ Nil {
 			@y += y;
@@ -912,13 +914,41 @@ bundle Game.Framework {
 			return <>(y2 <= pos_y | y >= pos_y2 | x >= pos_x2 | x2 <= pos_x);
 		}
 
-#~
-		method : public : Contains(x : Int, y : Int) ~ Bool {
-			return false;
+		#~
+		Determines if position intersect line
+		@param x1 'x' start position
+		@param y1 'y' start position
+		@param x2 'x' end position
+		@param y2 'y' end position
+		@return true of intersection, false otherwise
+		~#
+		method : public : IntersectsLine(x1 : Int, y1 : Int, x2 : Int, y2 : Int) ~ Bool {
+			return @rect->IntersectAndLine(IntHolder->New(x1), IntHolder->New(y1), IntHolder->New(x2), IntHolder->New(y2));
 		}
-~#		
+
+		#~
+		Determines if position a point
+		@param p point
+		@return true of intersection, false otherwise
+		~#
+		method : public : Contains(p : Point) ~ Bool {
+			return @rect->PointIn(p);
+		}
+
+		#~
+		Determines if position a point
+		@param x x-position
+		@param y y-position
+		@return true of intersection, false otherwise
+		~#
+		method : public : Contains(x : Int, y : Int) ~ Bool {
+			return @rect->PointIn(Point->New(x, y));
+		}
 	}
 
+	#~
+	Generic shape
+	~#
 	interface Shape {
 		method : public : virtual : GetWidth() ~ Int;
 		method : public : virtual : GetHeight() ~ Int;
@@ -926,6 +956,9 @@ bundle Game.Framework {
 		method : public : virtual : Free() ~ Nil;
 	}
 
+	#~
+	Game framework
+	~#
 	class GameFramework {
 		@is_ok : Bool;
 		@screen_width : Int;
@@ -946,6 +979,14 @@ bundle Game.Framework {
 
 		@debug_msg : static : String;
 
+		#~
+		Initializes game framework
+		@param screen_width screen width
+		@param screen_height screen height
+		@param title screen title
+		@param fps frame per second
+		@param init_flags initialization flags
+		~#
 		New(screen_width : Int, screen_height : Int, title : String, fps : Int, init_flags : Int) {
 			@fps := fps;
 			@frame_rate := 1000 / @fps;
@@ -954,6 +995,12 @@ bundle Game.Framework {
 			@is_ok := Init(screen_width, screen_height, title, init_flags);
 		}
 
+		#~
+		Initializes game framework
+		@param screen_width screen width
+		@param screen_height screen height
+		@param title screen title
+		~#
 		New(screen_width : Int, screen_height : Int, title : String) {
 			init_flags := HardwareFlags->SDL_INIT_VIDEO->As(Int) or
 				HardwareFlags->SDL_INIT_AUDIO->As(Int) or 
@@ -965,6 +1012,10 @@ bundle Game.Framework {
 			@is_ok := Init(screen_width, screen_height, title, init_flags);
 		}
 
+		#~
+		Prints debug message
+		@param debug_msg message
+		~#
 		function : Debug(debug_msg : String) ~ Nil {
 			if(@debug_msg = Nil) {
 				@debug_msg := debug_msg;
@@ -1040,14 +1091,26 @@ bundle Game.Framework {
 			return true;
 		}
 
+		#~
+		Initialization status flag
+		@return true if initialized, false otherwise
+		~#
 		method : public : IsOk() ~ Bool {
 			return @is_ok;
 		}		
 
+		#~
+		Gets the framework renderer
+		@return framework renderer
+		~#
 		method : public : GetRenderer() ~ Renderer {
 			return @renderer;
 		}
 
+		#~
+		Gets the framework event
+		@return framework event
+		~#
 		method : public : GetEvent() ~ Event {
 			return @event;
 		}
