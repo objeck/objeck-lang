@@ -1115,14 +1115,23 @@ bundle Game.Framework {
 			return @event;
 		}
 
+		#~
+		Sets the start frame
+		~#
 		method : public : FrameStart() ~ Nil {
 			@frame_start := Timer->GetTicks();
 		}
 
+		#~
+		Gets the frame per second
+		~#
 		method : public : GetFps() ~ Int {
 			return @fps;
 		}
 
+		#~
+		Sets the end frame
+		~#
 		method : public : FrameEnd() ~ Nil {
 			end := @frame_start - Timer->GetTicks();
 			if(end < @frame_rate) {
@@ -1130,18 +1139,33 @@ bundle Game.Framework {
 			};
 		}
 
+		#~
+		Sets the clear color
+		@param color clear color
+		~#
 		method : public : SetClearColor(color : Color) ~ Nil {
 			@clear_color := color;
 		}
 
+		#~
+		Sets the game font
+		@param font game font
+		~#
 		method : public : SetFont(font : Font) ~ Nil {
 			@font := font;
 		}
 
+		#~
+		Gets the clear color
+		@return clear color
+		~#
 		method : public : GetClearColor() ~ Color {
 			return @clear_color;
 		}
 
+		#~
+		Clears the scene
+		~#
 		method : public : Clear() ~ Nil {
 			if(@clear_color = Nil) {
 				@renderer->SetDrawColor(0xFF, 0xFF, 0xFF, 0xFF);
@@ -1153,6 +1177,9 @@ bundle Game.Framework {
 			@renderer->Clear();
 		}
 
+		#~
+		Shows the scene
+		~#
 		method : public : Show() ~ Nil {
 			@renderer->Present();
 		}
