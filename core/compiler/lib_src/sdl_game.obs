@@ -266,7 +266,7 @@ bundle Game.Framework {
 		}
 		
 		#~
-		Sets the current 'x' position
+		Sets the current x-position
 		@param position new position
 		~#
 		method : public : SetPostion(position : Position) ~ Nil {
@@ -390,16 +390,16 @@ bundle Game.Framework {
 		}
 
 		#~
-		Gets the center 'x' position
-		@return center 'x' position
+		Gets the center x-position
+		@return center x-position
 		~#
 		method : public : GetCenterX() ~ Int {
 			return @position->GetCenterX();
 		}
 
 		#~
-		Gets the center 'y' position
-		@return center 'y' position
+		Gets the center y-position
+		@return center y-position
 		~#
 		method : public : GetCenterY() ~ Int {
 			return @position->GetCenterY();
@@ -455,32 +455,32 @@ bundle Game.Framework {
 		}
 
 		#~
-		Sets center 'x' position
-		@param x center 'x' position
+		Sets center x-position
+		@param x center x-position
 		~#
 		method : public : SetCenterX(x : Int) ~ Nil {
 			@position->SetCenterX(x);
 		}
 		
 		#~
-		Sets center 'y' position
-		@param y center 'y' position
+		Sets center y-position
+		@param y center y-position
 		~#
 		method : public : SetCenterY(y : Int) ~ Nil {
 			@position->SetCenterY(y);
 		}
 
 		#~
-		Adds increments the current 'x' position
-		@param x increment to the current 'x' position
+		Increments the current x-position
+		@param x increment to the current x-position
 		~#
 		method : public : AddX(x : Int) ~ Nil {
 			@position->AddX(x);
 		}
 
 		#~
-		Adds increments the current 'y' position
-		@param y increment to the current 'y' position
+		Increments the current y-position
+		@param y increment to the current y-position
 		~#
 		method : public : AddY(y : Int) ~ Nil {
 			@position->AddY(y);
@@ -504,7 +504,7 @@ bundle Game.Framework {
 		}
 
 		#~
-		Sets the current 'x' position
+		Sets the current x-position
 		@param position new position
 		~#
 		method : public : SetPostion(position : Position) ~ Nil {
@@ -563,8 +563,8 @@ bundle Game.Framework {
 		}
 
 		#~
-		Gets the center 'x' position
-		@return center 'x' position
+		Gets the center x-position
+		@return center x-position
 		~#
 		method : public : GetCenterX() ~ Int {
 			return @position->GetCenterX();
@@ -575,16 +575,16 @@ bundle Game.Framework {
 		}
 
 		#~
-		Sets center 'y' position
-		@param x center 'y' position
+		Sets center y-position
+		@param x center y-position
 		~#
 		method : public : SetCenterX(x : Int) ~ Nil {
 			@position->SetCenterX(x);
 		}
 		
 		#~
-		Sets center 'y' position
-		@param y center 'y' position
+		Sets center y-position
+		@param y center y-position
 		~#
 		method : public : SetCenterY(y : Int) ~ Nil {
 			@position->SetCenterY(y);
@@ -640,16 +640,16 @@ bundle Game.Framework {
 		}
 
 		#~
-		Adds increments the current 'x' position
-		@param x increment to the current 'x' position
+		Increments the current x-position
+		@param x increment to the current x-position
 		~#
 		method : public : AddX(x : Int) ~ Nil {
 			@position->AddX(x);
 		}
 
 		#~
-		Adds increments the current 'y' position
-		@param y increment to the current 'y' position
+		Increments the current y-position
+		@param y increment to the current y-position
 		~#
 		method : public : AddY(y : Int) ~ Nil {
 			@position->AddY(y);
@@ -814,16 +814,16 @@ bundle Game.Framework {
 		}
 
 		#~
-		Adds increments the current 'x' position
-		@param x increment to the current 'x' position
+		Increments the current x-position
+		@param x increment to the current x-position
 		~#
 		method : public : AddX(x : Int) ~ Nil {
 			@x += x;
 		}
 
 		#~
-		Adds increments the current 'y' position
-		@param y increment to the current 'y' position
+		Increments the current y-position
+		@param y increment to the current y-position
 		~#
 		method : public : AddY(y : Int) ~ Nil {
 			@y += y;
@@ -862,8 +862,8 @@ bundle Game.Framework {
 		}
 
 		#~
-		Gets the center 'x' position
-		@return center 'x' position
+		Gets the center x-position
+		@return center x-position
 		~#
 		method : public : GetCenterX() ~ Int {
 			return @x + @rect->GetW() / 2;
@@ -886,8 +886,8 @@ bundle Game.Framework {
 		}
 
 		#~
-		Gets the center 'y' position
-		@return center 'y' position
+		Gets the center y-position
+		@return center y-position
 		~#
 		method : public : GetCenterY() ~ Int {
 			return @y + @rect->GetH() / 2;
@@ -1184,6 +1184,12 @@ bundle Game.Framework {
 			@renderer->Present();
 		}
 
+		#~
+		Adds a rectangle to the framework
+		@param w rectangle width
+		@param h rectangle height
+		@return rectangle
+		~#
 		method : public : AddRectangle(w : Int, h : Int) ~ Rectangle {
 			shape := Rectangle->New(@renderer, w, h);
 			@shapes->AddBack(shape);
@@ -1191,6 +1197,10 @@ bundle Game.Framework {
 			return shape;
 		}
 
+		#~
+		Adds a text sprite to the framework
+		@return text sprite
+		~#
 		method : public : AddTextSprite() ~ TextSprite {
 			shape := TextSprite->New(@renderer, @font);
 			@shapes->AddBack(shape);
@@ -1198,6 +1208,13 @@ bundle Game.Framework {
 			return shape;
 		}
 
+		#~
+		Adds an image sprite to the framework
+		@param file file path to image asset
+		@param colorkey image color key
+		@param render_rect bounding rectangle to render
+		@return image sprite
+		~#
 		method : public : AddImageSprite(file : String, colorkey : Color, render_rect : Rect) ~ ImageSprite {
 			shape := ImageSprite->New(@renderer, file, colorkey, render_rect);
 			@shapes->AddBack(shape);
@@ -1205,6 +1222,12 @@ bundle Game.Framework {
 			return shape;
 		}
 
+		#~
+		Adds an image sprite to the framework
+		@param file file path to image asset
+		@param colorkey image color key
+		@return image sprite
+		~#
 		method : public : AddImageSprite(file : String, colorkey : Color) ~ ImageSprite {
 			shape := ImageSprite->New(@renderer, file, colorkey);
 			@shapes->AddBack(shape);
@@ -1212,6 +1235,11 @@ bundle Game.Framework {
 			return shape;
 		}
 
+		#~
+		Adds an image sprite to the framework
+		@param file file path to image asset
+		@return image sprite
+		~#
 		method : public : AddImageSprite(file : String) ~ ImageSprite {
 			shape := ImageSprite->New(@renderer, file);
 			@shapes->AddBack(shape);
@@ -1219,6 +1247,12 @@ bundle Game.Framework {
 			return shape;
 		}
 
+		#~
+		Adds an image sprite to the framework
+		@param file file path to image asset
+		@param clips vector of rendering rectangles
+		@return animated image sprite
+		~#
 		method : public : AddAnimatedImageSprite(file : String, clips : Vector) ~ AnimatedImageSprite {
 			shape := AnimatedImageSprite->New(@renderer, file, clips);
 			@shapes->AddBack(shape);
@@ -1226,6 +1260,11 @@ bundle Game.Framework {
 			return shape;
 		}
 
+		#~
+		Adds an image sprite to the framework
+		@param file file path to image asset
+		@return animated image sprite
+		~#
 		method : public : AddAnimatedImageSprite(file : String) ~ AnimatedImageSprite {
 			shape := AnimatedImageSprite->New(@renderer, file);
 			@shapes->AddBack(shape);
@@ -1233,6 +1272,11 @@ bundle Game.Framework {
 			return shape;
 		}
 
+		#~
+		Remove shape from framework
+		@param shape shape to remove
+		@return true if successful, false otherwise
+		~#
 		method : public : RemoveSprite(shape : Shape) ~ Bool {
 			found := -1;
 			
@@ -1252,6 +1296,9 @@ bundle Game.Framework {
 			return false;
 		}
 
+		#~
+		Removes all shapes
+		~#
 		method : public : FreeShapes() ~ Nil {
 			each(i : @shapes) {
 				shape := @shapes->Get(i)->As(Shape);
@@ -1259,6 +1306,9 @@ bundle Game.Framework {
 			};
 		}
 
+		#~
+		Closes the framework
+		~#
 		method : public : Quit() ~ Nil {
 			each(i : @shapes) {
 				shape := @shapes->Get(i)->As(Shape);
@@ -1280,44 +1330,83 @@ bundle Game.Framework {
 		}
 	}
 
+	#~
+	2D floating-point vector
+	~#
 	class Vector2 {
 		@x : Float;
 		@y : Float;
 
+		#~
+		Creates a new vector
+		~#
 		New() {
 			@x := 0.0;
 			@y := 0.0;
 		}
 
+		#~
+		Creates a new vector
+		@param x x-position
+		@param y y-position
+		~#
 		New(x : Float, y : Float) {
 			@x := x;
 			@y := y;
 		}
 
+		#~
+		Gets the x-position
+		@return x-position
+		~#
 		method : public : GetX() ~ Float {
 			return @x;
 		}
 
+		#~
+		Gets the y-position
+		@return y-position
+		~#
 		method : public : GetY() ~ Float {
 			return @y;
 		}
 
+		#~
+		Sets the x-position
+		@param x x-position
+		~#
 		method : public : SetX(x : Float) ~ Nil {
 			@x := x;
 		}
 
+		#~
+		Sets the y-position
+		@param y-position
+		~#
 		method : public : SetY(y : Float) ~ Nil {
 			@y := y;
 		}
 
+		#~
+		Calculates the magnitude squared
+		@return magnitude squared
+		~#
 		method : public : MagnitudeSquared() ~ Float {
 			return @x*@x + @y*@y;
 		}
 
+		#~
+		Calculates the magnitude 
+		@return magnitude 
+		~#
 		method : public : Magnitude() ~ Float {
 			return MagnitudeSquared()->SquareRoot();
 		}		
 
+		#~
+		Normalizes a unit vector
+		@return normalized vector 
+		~#
 		method : public : Normalize() ~ Vector2 {
 			mag := Magnitude();
  			if(mag <> 0) {
@@ -1327,108 +1416,209 @@ bundle Game.Framework {
 			return Vector2->New();
 		}
 
+		#~
+		String representation of vector
+		@return string representation
+		~#
 		method : public : ToString() ~ String {
 			return "{$@x}, {$@y}";
 		}
 
+		#~
+		Increments the current x-position
+		@param rhs increment to the current x-position
+		~#
 		method : public : AddX(rhs : Vector2) ~ Nil {
 			@x += rhs->GetX();
 		}
 
+		#~
+		Decrements the current x-position
+		@param rhs decrements to the current x-position
+		~#
 		method : public : SubX(rhs : Vector2) ~ Nil {
 			@x -= rhs->GetX();
 		}
 
+		#~
+		Multiplies the current x-position
+		@param rhs value to multiply to the current x-position
+		~#
 		method : public : MulX(rhs : Vector2) ~ Nil {
 			@x *= rhs->GetX();
 		}
 
+		#~
+		Divides the current x-position
+		@param rhs value to divide by the current x-position
+		~#
 		method : public : DivX(rhs : Vector2) ~ Nil {
 			@x /= rhs->GetX();
 		}
 
+		#~
+		Increments the current x-position
+		@param x increment to the current x-position
+		~#
 		method : public : AddX(x : Int) ~ Nil {
 			@x += x;
 		}
 
+		#~
+		Decrements the current x-position
+		@param x decrements to the current x-position
+		~#
 		method : public : SubX(x : Int) ~ Nil {
 			@x -= x;
 		}
 
+		#~
+		Multiplies the current x-position
+		@param x value to multiply to the current x-position
+		~#
 		method : public : MulX(x : Int) ~ Nil {
 			@x *= x;
 		}
 
+		#~
+		Divides the current x-position
+		@param x value to divide by the current x-position
+		~#
 		method : public : DivX(x : Int) ~ Nil {
 			@x /= x;
 		}
 
+		#~
+		Increments the current y-position
+		@param rhs increment to the current y-position
+		~#
 		method : public : AddY(rhs : Vector2) ~ Nil {
 			@y += rhs->GetY();
 		}
 
+		#~
+		Decrements the current y-position
+		@param rhs decrements to the current y-position
+		~#
 		method : public : SubY(rhs : Vector2) ~ Nil {
 			@y -= rhs->GetY();
 		}
 
+		#~
+		Multiplies the current y-position
+		@param rhs value to multiply to the current y-position
+		~#
 		method : public : MulY(rhs : Vector2) ~ Nil {
 			@y *= rhs->GetY();
 		}
 
+		#~
+		Divides the current y-position
+		@param rhs value to divide by the current y-position
+		~#
 		method : public : DivY(rhs : Vector2) ~ Nil {
 			@y /= rhs->GetY();
 		}
 
+		#~
+		Increments the current y-position
+		@param y increment to the current y-position
+		~#
 		method : public : AddY(y : Int) ~ Nil {
 			@y += y;
 		}
 
+		#~
+		Decrements the current y-position
+		@param y decrements to the current y-position
+		~#
 		method : public : SubY(y : Int) ~ Nil {
 			@y -= y;
 		}
 
+		#~
+		Multiplies the current y-position
+		@param y value to multiply to the current y-position
+		~#
 		method : public : MulY(y : Int) ~ Nil {
 			@y *= y;
 		}
 
+		#~
+		Divides the current y-position
+		@param y value to divide by the current y-position
+		~#
 		method : public : DivY(y : Int) ~ Nil {
 			@y /= y;
 		}
 
+		#~
+		Adds to current vector
+		@param rhs vector to add
+		~#
 		method : public : Add(rhs : Vector2) ~ Nil {
 			@x += rhs->GetX();
 			@y += rhs->GetY();
 		}
 
+		#~
+		Subtracts from current vector
+		@param rhs vector to subtract
+		~#
 		method : public : Sub(rhs : Vector2) ~ Nil {
 			@x -= rhs->GetX();
 			@y -= rhs->GetY();
 		}
 
+		#~
+		Multiples current vector
+		@param rhs vector to multiply
+		~#
 		method : public : Mul(rhs : Vector2) ~ Nil {
 			@x *= rhs->GetX();
 			@y *= rhs->GetY();
 		}
 
+		#~
+		Divides current vector
+		@param rhs vector to divide
+		~#
 		method : public : Div(rhs : Vector2) ~ Nil {
 			@x /= rhs->GetX();
 			@y /= rhs->GetY();
 		}
 
+		#~
+		Multiples current vector
+		@param v v to multiply by
+		~#
 		method : public : Mul(v : Float) ~ Nil {
 			@x *= v;
 			@y *= v;
 		}
 
+		#~
+		Divides current vector
+		@param v v to divide by
+		~#
 		method : public : Div(v : Float) ~ Nil {
 			@x /= v;
 			@y /= v;
 		}
 
+		#~
+		Sets vector limit
+		@param v limit
+		~#
 		method : public : Limit(v : Float) ~ Nil {
 			Limit(v, v);
 		}
 
+		#~
+		Sets vector limit
+		@param x x-limit
+		@param y y-limit
+		~#
 		method : public : Limit(x : Float, y : Float) ~ Nil {
 			if(@x > x) {
 				@x := x;
@@ -1439,6 +1629,9 @@ bundle Game.Framework {
 			};
 		}
 
+		#~
+		Sets vector to zero
+		~#
 		method : public : Zero() ~ Nil {
 			@x := 0.0;
 			@y := 0.0;
