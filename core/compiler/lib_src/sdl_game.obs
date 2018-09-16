@@ -950,9 +950,27 @@ bundle Game.Framework {
 	Generic shape
 	~#
 	interface Shape {
+		#~
+		Gets sprite width
+		@return sprite width
+		~#
 		method : public : virtual : GetWidth() ~ Int;
+
+		#~
+		Gets sprite height
+		@return sprite height
+		~#
 		method : public : virtual : GetHeight() ~ Int;
+
+		#~
+		Gets sprite position
+		@return sprite position
+		~#
 		method : public : virtual : GetPosition() ~ Position;
+
+		#~
+		Called by framework to free resource
+		~#
 		method : public : virtual : Free() ~ Nil;
 	}
 
@@ -1637,46 +1655,112 @@ bundle Game.Framework {
 			@y := 0.0;
 		}
 		
+		#~
+		Add two vectors
+		@param lhs left vector
+		@param rhs right vector
+		@return new vector
+		~#
 		function : Add(lhs : Vector2, rhs : Vector2) ~ Vector2 {
 			return Vector2->New(lhs->GetX() + rhs->GetX(), lhs->GetY() + rhs->GetY());
 		}
 
+		#~
+		Subtract two vectors
+		@param lhs left vector
+		@param rhs right vector
+		@return new vector
+		~#
 		function : Sub(lhs : Vector2, rhs : Vector2) ~ Vector2 {
 			return Vector2->New(lhs->GetX() - rhs->GetX(), lhs->GetY() - rhs->GetY());
 		}
 
+		#~
+		Multiplies two vectors
+		@param lhs left vector
+		@param rhs right vector
+		@return new vector
+		~#
 		function : Mul(lhs : Vector2, rhs : Vector2) ~ Vector2 {
 			return Vector2->New(lhs->GetX() * rhs->GetX(), lhs->GetY() * rhs->GetY());
 		}
 
+		#~
+		Divides two vectors
+		@param lhs left vector
+		@param rhs right vector
+		@return new vector
+		~#
 		function : Div(lhs : Vector2, rhs : Vector2) ~ Vector2 {
 			return Vector2->New(lhs->GetX() / rhs->GetX(), lhs->GetY() / rhs->GetY());
 		}
 
+		#~
+		Multiplies a vector by a value
+		@param rhs vector
+		@param v value to multiple by
+		@return new vector
+		~#
 		function : Mul(rhs : Vector2, v : Float) ~ Vector2 {
 			return Vector2->New(rhs->GetX() * v, rhs->GetY() * v);
 		}
 
+		#~
+		Divides a vector by a value
+		@param rhs vector
+		@param v value to divides by
+		@return new vector
+		~#
 		function : Div(rhs : Vector2, v : Float) ~ Vector2 {
 			return Vector2->New(rhs->GetX() / v, rhs->GetY() / v);
 		}
 
+		#~
+		Multiplies x-vector component by a value
+		@param rhs vector
+		@param v value to multiple by
+		@return new vector
+		~#
 		function : MulX(rhs : Vector2, v : Float) ~ Vector2 {
 			return Vector2->New(rhs->GetX() * v, rhs->GetY());
 		}
 
+		#~
+		Divides x-vector component by a value
+		@param rhs vector
+		@param v value to multiple by
+		@return new vector
+		~#
 		function : DivX(rhs : Vector2, v : Float) ~ Vector2 {
 			return Vector2->New(rhs->GetX() / v, rhs->GetY());
 		}
 
+		#~
+		Multiplies y-vector component by a value
+		@param rhs vector
+		@param v value to multiply by
+		@return new vector
+		~#
 		function : MulY(rhs : Vector2, v : Float) ~ Vector2 {
 			return Vector2->New(rhs->GetX(), rhs->GetY() * v);
 		}
 
+		#~
+		Divides y-vector component by a value
+		@param rhs vector
+		@param v value to divide by
+		@return new vector
+		~#
 		function : DivY(rhs : Vector2, v : Float) ~ Vector2 {
 			return Vector2->New(rhs->GetX(), rhs->GetY() / v);
 		}
 
+		#~
+		Calculates the dot product
+		@param rhs right vector
+		@param lhs left vector
+		@return dot product
+		~#
 		function : Dot(lhs : Vector2, rhs : Vector2) ~ Float {
 			return lhs->GetX()*rhs->GetX() + lhs->GetY()*rhs->GetY();
 		}
