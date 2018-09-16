@@ -2067,6 +2067,11 @@ bundle Game.SDL2 {
 		@x : Int;
 		@y : Int;
 		
+		New(x : Int, y : Int) {
+			@x := x;
+			@y := y;
+		}
+
 		New() {
 			@x := 0;
 			@y := 0;
@@ -2195,6 +2200,18 @@ bundle Game.SDL2 {
 			array_args[5] := Y2;
 
 			Proxy->GetDllProxy()->CallFunction("sdl_rect_intersect_and_line", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get() = 0 ? false : true;
+		}
+
+		method : public : PointIn(p : Point) ~ Bool {
+			array_args := Base->New[3];
+			array_args[0] := IntHolder->New();
+			array_args[1] := @self;
+			array_args[2] := p;
+
+			Proxy->GetDllProxy()->CallFunction("sdl_rect_point_in_rect", array_args);
 
 			value := array_args[0]->As(IntHolder);
 			return value->Get() = 0 ? false : true;

@@ -840,6 +840,21 @@ extern "C" {
     APITools_SetIntValue(context, 0, SDL_IntersectRectAndLine(rect_obj ? &rect : NULL, &X1, &Y1, &X2, &Y2));
   }
 
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_rect_point_in_rect(VMContext& context) {
+    SDL_Rect rect;
+    size_t* rect_obj = APITools_GetObjectValue(context, 1);
+    sdl_rect_raw_write(&rect, rect_obj);
+
+    SDL_Point point;
+    size_t* point_obj = (size_t*)APITools_GetObjectValue(context, 2);
+    sdl_point_raw_write(&point, point_obj);
+
+    APITools_SetIntValue(context, 0, SDL_PointInRect(point_obj ? &point : NULL, rect_obj ? &rect : NULL));
+  }
+
   //
   // Display
   //
