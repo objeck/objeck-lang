@@ -258,13 +258,34 @@ bundle Game.Framework {
 		@render_rect : Rect;
 		@position : Position;
 		@renderer : Renderer;
+		@scale : Float;
+		@scaled : Bool;
 
 		New(renderer : Renderer) {			
 			@renderer := renderer;			
 			@render_rect := Rect->New();
 			@position := Position->New(@render_rect);
+			@scale := 1.0;
+			@scaled := true;
 		}
 		
+		#~
+		Sets scaling percentage 
+		@param scale scaling percentage 
+		~#
+		method : public : SetScale(scale : Float) ~ Nil {
+			@scale := scale;
+			@scaled := false;
+		}
+
+		#~
+		Gets scaling percentage 
+		@return scaling percentage 
+		~#
+		method : public : GetScale() ~ Float {
+			return @scale;
+		}
+
 		#~
 		Sets the current x-position
 		@param position new position
@@ -314,10 +335,24 @@ bundle Game.Framework {
 				center : Point := Nil, flip : RendererFlip := RendererFlip->SDL_FLIP_NONE) ~ Nil {
 			@render_rect->SetX(x);
 			@render_rect->SetY(y);
+
+			if(<>@scaled) {
+				format := IntHolder->New();
+				access := IntHolder->New();
+				width := IntHolder->New();
+				height := IntHolder->New();
+				@texture->Query(format, access, width, height);
+
+				@render_rect->SetW(width->Get() * @scale);
+				@render_rect->SetH(height->Get() * @scale);
+				@scaled := true;
+			};
+
 			if(clip <> Nil)	{
 				@render_rect->SetW(clip->GetW());
 				@render_rect->SetH(clip->GetH());
 			};
+
 			@renderer->CopyEx(@texture, clip, @render_rect, angle, center, flip);
 		}
 

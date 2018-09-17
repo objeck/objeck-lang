@@ -612,24 +612,6 @@ bundle Game.SDL2 {
 			return -1;
 		}
 		
-		method : public : UpdateSurfaceRects(rects : Rect[], numrects : Int) ~ Int {
-#~			
-			if(@window <> 0) {
-				array_args := Base->New[4];
-				array_args[0] := IntHolder->New();
-				array_args[1] := IntHolder->New(@window);
-				array_args[2] := rects;
-				array_args[3] := IntHolder->New(numrects);
-
-				Proxy->GetDllProxy()->CallFunction("sdl_window_update_surface_rects", array_args);
-
-				value := array_args[0]->As(IntHolder);
-				return value->Get();
-			};
-~#			
-			return -1;
-		}
-		
 		method : public : SetGrab(grabbed : Bool) ~ Nil {
 			if(@window <> 0) {
 				array_args := Base->New[2];

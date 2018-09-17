@@ -19,7 +19,7 @@ class Demo {
 
 	method : Run() ~ Nil {
 		if(@framework->IsOk()) {
-			@player := Player->New(@framework->AddRectangle(40, 60), @platforms);
+			@player := Player->New(@framework->AddImageSprite("D:\\Temp\\walk_1.png"), @platforms);
 			@platforms->AddBack(Platform->New(420, 535, @framework->AddRectangle(110, 35)));
 			@platforms->AddBack(Platform->New(340, 475, @framework->AddRectangle(120, 35)));
 			@platforms->AddBack(Platform->New(220, 385, @framework->AddRectangle(210, 35)));
@@ -113,20 +113,19 @@ class Demo {
 }
 
 class Player {
-	@rect : Rectangle;
+	@rect : ImageSprite;
 	@loc : Vector2;
 	@vel : Vector2;
 	@acc : Vector2;
-	@jump : Bool;
-	@jump_limit : Int;
+	@jumped : Bool;
+	@jump_max : Int;
 	@hit_top : Bool;
 	@platforms : Vector;
 	
-	New(rect : Rectangle, platforms : Vector) {
+	New(rect : ImageSprite, platforms : Vector) {
 		@rect := rect;
-		@rect->SetFill(true);
-		@rect->SetColor(Color->New(255, 0, 0));
-
+		@rect->SetScale(0.20);
+		
 		@loc := Vector2->New(Game->SCREEN_WIDTH / 2, Game->SCREEN_HEIGHT / 2);
 		@vel := Vector2->New();
 		@acc := Vector2->New();
@@ -134,8 +133,8 @@ class Player {
 		@platforms := platforms;
 	}
 
-	method : public : GetRect() ~ Rectangle {
-		return @rect; 
+	method : public : GetRect() ~ ImageSprite {
+		return @rect;
 	}
 
 	method : public : GetLeft() ~ Int {
@@ -161,19 +160,19 @@ class Player {
 	method : public : Stop()  ~ Nil {
 	}
 
-	method : public : Jump(jump : Bool)  ~ Nil {
-		@jump := jump;
+	method : public : Jump(jumped : Bool)  ~ Nil {
+		@jumped := jumped;
 	}
 
 	method : public : Update()  ~ Nil {
 		if(@hit_top) {
-			@acc->SetY(90);
+			@acc->SetY(120);
 			@hit_top := false;
 		}
 		else {
-			if(@jump & @jump_limit < 3) {
+			if(@jumped & @jump_max < 3) {
 				@acc->SetY(-5.3);
-				@jump_limit += 1;		
+				@jump_max += 1;		
 			}
 			else {
 				@acc->SetY(0.65);
@@ -211,14 +210,14 @@ class Player {
         		if(@vel->GetY() < 0.01) {
 					@rect->SetTop(platform->GetBottom());
                 	@loc->SetY(platform->GetBottom() + @rect->GetHeight() / 2);
-					@jump_limit := 3;
+					@jump_max := 3;
 					@hit_top := true;
 	            }
 	            else if(@vel->GetY() > 0.01) {
         			@rect->SetBottom(platform->GetTop());
         			@loc->SetY(platform->GetTop() + @rect->GetHeight() / 2);
 					@vel->SetY(0);
-					@jump_limit := 0;
+					@jump_max := 0;
                 };
 	        };
 	    };
@@ -235,7 +234,7 @@ class Player {
 		if(@rect->GetBottom() > Game->SCREEN_HEIGHT) {
 			@rect->SetBottom(Game->SCREEN_HEIGHT);
         	@loc->SetY(Game->SCREEN_HEIGHT + @rect->GetHeight() / 2);
-			@jump_limit := 0;
+			@jump_max := 0;
 			@vel->SetY(0);
 		}
 		else if(@loc->GetY() < 0) {
@@ -298,7 +297,7 @@ class Platform {
 		@rect->Render();
 	}
 
-	method : public : Collides(rect : Rectangle) ~ Bool {
+	method : public : Collides(rect : ImageSprite) ~ Bool {
 		return @rect->GetPosition()->Overlaps(rect->GetPosition());
 	}
 }
