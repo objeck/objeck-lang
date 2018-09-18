@@ -324,7 +324,7 @@ bundle Game.Framework {
 		}
 
 		#~
-		Sets alpah
+		Sets alpha
 		@param alpha setting
 		~#		
 		method : public : SetAlpha(alpha : Int) ~ Nil {
@@ -335,7 +335,7 @@ bundle Game.Framework {
 				center : Point := Nil, flip : RendererFlip := RendererFlip->SDL_FLIP_NONE) ~ Nil {
 			@render_rect->SetX(x);
 			@render_rect->SetY(y);
-
+			
 			if(<>@scaled) {
 				format := IntHolder->New();
 				access := IntHolder->New();
@@ -347,10 +347,10 @@ bundle Game.Framework {
 				@render_rect->SetH(height->Get() * @scale);
 				@scaled := true;
 			};
-
+			
 			if(clip <> Nil)	{
-				@render_rect->SetW(clip->GetW());
-				@render_rect->SetH(clip->GetH());
+				@render_rect->SetW(clip->GetW() * @scale);
+				@render_rect->SetH(clip->GetH() * @scale);
 			};
 
 			@renderer->CopyEx(@texture, clip, @render_rect, angle, center, flip);

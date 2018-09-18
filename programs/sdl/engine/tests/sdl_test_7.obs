@@ -19,7 +19,13 @@ class Demo {
 
 	method : Run() ~ Nil {
 		if(@framework->IsOk()) {
-			@player := Player->New(@framework->AddImageSprite("D:\\Temp\\walk_1.png"), @platforms);
+			clips := Vector->New();
+			clips->AddBack(Rect->New(0, 0, 342, 354));
+			clips->AddBack(Rect->New(342, 0, 342, 354));
+			clips->AddBack(Rect->New(648, 0, 342, 354));
+			clips->AddBack(Rect->New(1026, 0, 342, 354));
+
+			@player := Player->New(@framework->AddAnimatedImageSprite("D:\\Temp\\bar\\player.png", clips), @platforms);
 			@platforms->AddBack(Platform->New(420, 535, @framework->AddRectangle(110, 35)));
 			@platforms->AddBack(Platform->New(340, 475, @framework->AddRectangle(120, 35)));
 			@platforms->AddBack(Platform->New(220, 385, @framework->AddRectangle(210, 35)));
@@ -113,7 +119,7 @@ class Demo {
 }
 
 class Player {
-	@rect : ImageSprite;
+	@rect : AnimatedImageSprite;
 	@loc : Vector2;
 	@vel : Vector2;
 	@acc : Vector2;
@@ -122,7 +128,7 @@ class Player {
 	@hit_top : Bool;
 	@platforms : Vector;
 	
-	New(rect : ImageSprite, platforms : Vector) {
+	New(rect : AnimatedImageSprite, platforms : Vector) {
 		@rect := rect;
 		@rect->SetScale(0.20);
 		
@@ -133,7 +139,7 @@ class Player {
 		@platforms := platforms;
 	}
 
-	method : public : GetRect() ~ ImageSprite {
+	method : public : GetRect() ~ AnimatedImageSprite {
 		return @rect;
 	}
 
@@ -145,15 +151,19 @@ class Player {
 		return @rect->GetRight();
 	}
 
-	method : public : ChangeLeft()  ~ Int {
-		return @acc->GetX();
-	}
-
 	method : public : GoLeft()  ~ Nil {
+		if(@rect->GetFlip() = RendererFlip->SDL_FLIP_NONE) {
+			@rect->SetFlip(RendererFlip->SDL_FLIP_HORIZONTAL);
+		};
+
 		@acc->SetX(-0.75);
 	}
 
 	method : public : GoRight()  ~ Nil {
+		if(@rect->GetFlip() = RendererFlip->SDL_FLIP_HORIZONTAL) {
+			@rect->SetFlip(RendererFlip->SDL_FLIP_NONE);
+		};
+
 		@acc->SetX(0.75);
 	}
 
@@ -259,7 +269,8 @@ class Player {
 	}
 
 	method : public : Draw()  ~ Nil {
-		@rect->Render();
+		index := Int->Abs(@rect->GetLeft() / 50 % @rect->GetClipCount());
+		@rect->Render(index);
 	}
 }
 
@@ -297,7 +308,7 @@ class Platform {
 		@rect->Render();
 	}
 
-	method : public : Collides(rect : ImageSprite) ~ Bool {
+	method : public : Collides(rect : AnimatedImageSprite) ~ Bool {
 		return @rect->GetPosition()->Overlaps(rect->GetPosition());
 	}
 }
