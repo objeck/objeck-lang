@@ -2578,6 +2578,14 @@ bundle System {
 		}
 		
 		#~
+		Returns the installation directory
+		@return installation directory
+		~#
+		function : GetInstallDir() ~ String {
+			return GetProperty("install_dir");
+		}
+		
+		#~
 		Fetches a runtime property 
 		@param key property key
 		@return runtime property 
