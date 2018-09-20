@@ -2411,13 +2411,34 @@ void StackInterpreter::ProcessDllLoad(StackInstr* instr)
     exit(1);
 #endif
   }
-    
+  
+  wstring path_str;
 #ifdef _OBJECK_NATIVE_LIB_PATH
-  wstring path_str = BytesToUnicode(_OBJECK_NATIVE_LIB_PATH);
+  char* lib_path = getenv("OBJECK_LIB_PATH");
+#ifdef _WIN32
+  if(lib_path) {
+    path_str += BytesToUnicode(lib_path);
+    path_str += L"\\native\\";
+  }
+  else {
+    path_str += L"..\\lib\\native\\";
+  }
 #else
-  wstring path_str = L"..";
+  if(lib_path) {
+    path_str += BytesToUnicode(lib_path);
+    path_str += L"/native/";
+  }
+  else {
+    path_str += L"../lib/native/";
+  }
 #endif
-  path_str += L"/lib/native/";
+#else
+#ifdef _WIN32
+  path_str += L"..\\lib\\native\\";
+#else
+  path_str += L"../lib/native/";
+#endif
+#endif
   size_t* array = (size_t*)str_obj[0];
   const wstring post_path_str((wchar_t*)(array + 3));
   path_str += post_path_str;
