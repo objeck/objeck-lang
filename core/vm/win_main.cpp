@@ -45,8 +45,8 @@ int main(const int argc, const char* argv[])
 {
   if(argc > 1) {
     // enable Unicode console support
-    _setmode(_fileno(stdin), _O_U16TEXT);
-    _setmode(_fileno(stdout), _O_U16TEXT);
+    _setmode(_fileno(stdin), _O_U8TEXT);
+    _setmode(_fileno(stdout), _O_U8TEXT);
 
     // initialize Winsock
     WSADATA data;

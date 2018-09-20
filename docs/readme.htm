@@ -186,8 +186,9 @@ Windows support (new)</span></p>
 <p class=MsoListParagraphCxSpMiddle style='margin-bottom:0in;margin-bottom:
 .0001pt;text-indent:-.25in;line-height:normal;text-autospace:none'><span
 style='font-family:"Calibri",sans-serif'>2.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-</span></span><span style='font-family:"Calibri",sans-serif'>Rearchitected JIT compilers
-for all platforms (64-bit Windows, Linux and macOS; 32-bit Windows and Linux)</span></p>
+</span></span><span style='font-family:"Calibri",sans-serif'>Rearchitected JIT
+compilers for all platforms (64-bit Windows, Linux and macOS; 32-bit Windows
+and Linux)</span></p>
 
 <p class=MsoListParagraphCxSpMiddle style='margin-bottom:0in;margin-bottom:
 .0001pt;text-indent:-.25in;line-height:normal;text-autospace:none'><span
@@ -204,14 +205,13 @@ style='font-family:"Calibri",sans-serif'>4.<span style='font:7.0pt "Times New Ro
 normal;text-autospace:none'><span style='font-family:"Calibri",sans-serif'>&nbsp;</span></p>
 
 <p class=MsoNormal><span style='font-family:"Calibri",sans-serif'>Please refer
-to the </span><a href="http://www.objeck.org"><span style='font-family:"Calibri",sans-serif'>project
-website</span></a><span style='font-family:"Calibri",sans-serif'> for
-additional information about the language. The Programmer’s Guide is located
-the “doc” directory. Additional examples are available on the </span><a
-href="http://rosettacode.org/wiki/Category:Objeck"><span style='font-family:
-"Calibri",sans-serif'>Rosetta Code website</span></a><span style='font-family:
-"Calibri",sans-serif'>. Please submit bugs to </span><a
-href="mailto:objeck@gmail.com"><span style='font-family:"Calibri",sans-serif'>objeck@gmail.com</span></a><a
+to the <span class=MsoHyperlink><span style='font-family:"Calibri",sans-serif'><a
+href="http://www.objeck.org">project website</a></span></span> for additional information
+about the language. The Programmer’s Guide is located the “doc” directory. Additional
+examples are available on the <span class=MsoHyperlink><span style='font-family:
+"Calibri",sans-serif'><a href="http://rosettacode.org/wiki/Category:Objeck">Rosetta
+Code website</a></span></span>. Please submit bugs to <span class=MsoHyperlink><span
+style='font-family:"Calibri",sans-serif'><a href="mailto:objeck@gmail.com">objeck@gmail.com</a></span></span></span><a
 href="mailto:randy@objeck.org"></a><a href="mailto:objeck@gmail.com"></a><span
 style='font-family:"Calibri",sans-serif'>, bug reports are greatly
 appreciated!!</span></p>
@@ -253,9 +253,9 @@ programs</span></h2>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
 normal;text-autospace:none'><span style='font-family:"Calibri",sans-serif'>In
-order to compile programs outside of the “bin” directory the “OBJECK_LIB_PATH” environment
-variable must be set. When this variable is set all library files must be in
-the directory specified. </span></p>
+order to compile programs outside of the “bin” directory the “OBJECK_LIB_PATH”
+environment variable must be set. When this variable is set all library files
+must be in the directory specified. </span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
 normal;text-autospace:none'><span style='font-family:"Calibri",sans-serif'>&nbsp;</span></p>
@@ -277,12 +277,12 @@ setting the environment paths in Windows:</span></p>
 margin-left:.5in;margin-bottom:.0001pt;text-indent:-.25in;line-height:normal;
 text-autospace:none'><span style='font-family:"Calibri",sans-serif'>1.<span
 style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span></span><span
-style='font-family:"Calibri",sans-serif'>set OBJECK_LIB_PATH=C:\Users\Administrator\objeck-lang\bin</span></p>
+style='font-family:"Calibri",sans-serif'>set OBJECK_LIB_PATH=C:\Users\Administrator\objeck-lang\lib</span></p>
 
 <ol style='margin-top:0in' start=2 type=1>
  <li class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
      normal;text-autospace:none'><span style='font-family:"Calibri",sans-serif'>set
-     PATH=%PATH%;C:\ Users\Administrator\ objeck-lang\lib</span></li>
+     PATH=%PATH%;C:\ Users\Administrator\ objeck-lang\bin</span></li>
 </ol>
 
 <p class=MsoNormal style='margin-top:0in;margin-right:0in;margin-bottom:0in;
@@ -301,7 +301,7 @@ style='font-family:"Calibri",sans-serif'>obc -src ..\examples\hello.obs -dest
 hello.obe </span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
-normal;text-autospace:none'><span style='font-family:"Calibri",sans-serif'>                               –OR-
+normal;text-autospace:none'><span style='font-family:"Calibri",sans-serif'>                              –OR-
 </span></p>
 
 <p class=MsoNormal style='margin-top:0in;margin-right:0in;margin-bottom:0in;
@@ -340,12 +340,12 @@ normal;text-autospace:none'><span style='font-family:"Calibri",sans-serif'>&nbsp
 normal;text-autospace:none'><span style='font-family:"Calibri",sans-serif'>For
 OS X (10.9 or greater), you’ll need to install OpenSSL in order to use
 encryption APIs as well as iODBC to enable database support. Please refer to
-the following </span><a href="http://mac-dev-env.patrickbougie.com/openssl"><span
-style='font-family:"Calibri",sans-serif'>link</span></a><span style='font-family:
-"Calibri",sans-serif'> for OpenSSL directions and this </span><a
-href="http://www.iodbc.org/dataspace/iodbc/wiki/iODBC/ODBCMacOSX"><span
-style='font-family:"Calibri",sans-serif'>link</span></a><span style='font-family:
-"Calibri",sans-serif'> for about ODBC support.</span></p>
+the following <span class=MsoHyperlink><span style='font-family:"Calibri",sans-serif'><a
+href="http://mac-dev-env.patrickbougie.com/openssl">link</a></span></span> for
+OpenSSL directions and this <span class=MsoHyperlink><span style='font-family:
+"Calibri",sans-serif'><a
+href="http://www.iodbc.org/dataspace/iodbc/wiki/iODBC/ODBCMacOSX">link</a></span></span>
+for about ODBC support.</span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
 normal;text-autospace:none'><span style='font-family:"Calibri",sans-serif'>&nbsp;</span></p>
@@ -354,10 +354,10 @@ normal;text-autospace:none'><span style='font-family:"Calibri",sans-serif'>&nbsp
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
 normal;text-autospace:none'><span style='font-family:"Calibri",sans-serif'>The
-Objeck source repository is located </span><a
-href="http://github.com/objeck/objeck-lang"><span style='font-family:"Calibri",sans-serif'>here</span></a><span
-style='font-family:"Calibri",sans-serif'> and the source can be fetch using the
-following command GIT command:</span></p>
+Objeck source repository is located <span class=MsoHyperlink><span
+style='font-family:"Calibri",sans-serif'><a
+href="http://github.com/objeck/objeck-lang">here</a></span></span> and the
+source can be fetch using the following command GIT command:</span></p>
 
 <p class=MsoListParagraphCxSpFirst style='text-indent:-.25in'><span
 style='line-height:107%;font-family:Symbol'>·<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
@@ -387,10 +387,10 @@ normal;text-autospace:none'><b><span style='font-family:"Calibri",sans-serif'>&n
 <p class=MsoListParagraphCxSpFirst style='text-indent:-.25in'><span
 style='line-height:107%;font-family:Symbol'>·<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span><span style='line-height:107%;font-family:"Calibri",sans-serif'>On
-32-bit Windows, the ODBC driver must be a 32-bit for </span><a
-href="http://stackoverflow.com/questions/1134827/how-do-i-use-a-32-bit-odbc-driver-on-64-bit-server-2008-when-the-installer-doesn"><span
-style='line-height:107%;font-family:"Calibri",sans-serif'>compatibility</span></a><span
-style='line-height:107%;font-family:"Calibri",sans-serif'>. </span></p>
+32-bit Windows, the ODBC driver must be a 32-bit for <span class=MsoHyperlink><span
+style='font-family:"Calibri",sans-serif'><a
+href="http://stackoverflow.com/questions/1134827/how-do-i-use-a-32-bit-odbc-driver-on-64-bit-server-2008-when-the-installer-doesn">compatibility</a></span></span>.
+</span></p>
 
 <p class=MsoListParagraphCxSpMiddle style='text-indent:-.25in'><span
 style='line-height:107%;font-family:Symbol'>·<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
@@ -405,10 +405,9 @@ design, the regular expression class performs greedy pattern matching.</span></p
 <p class=MsoListParagraphCxSpLast style='text-indent:-.25in'><span
 style='line-height:107%;font-family:Symbol'>·<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span><span style='line-height:107%;font-family:"Calibri",sans-serif'>All
-unit tests executed successfully but I'm sure there are some bugs. Send an </span><a
-href="mailto:objeck@gmail.com"><span style='line-height:107%;font-family:"Calibri",sans-serif'>e-mail</span></a><span
-style='line-height:107%;font-family:"Calibri",sans-serif'> we’ll get them
-sorted.</span></p>
+unit tests executed successfully but I'm sure there are some bugs. Send an <span
+class=MsoHyperlink><span style='font-family:"Calibri",sans-serif'><a
+href="mailto:objeck@gmail.com">e-mail</a></span></span> we’ll get them sorted.</span></p>
 
 </div>
 
