@@ -50,7 +50,7 @@ int Compile(map<const wstring, wstring> &arguments, list<wstring> &argument_opti
 {
   // set UTF-8 environment
 #ifdef _WIN32
-  _setmode(_fileno(stdout), _O_U16TEXT);
+  _setmode(_fileno(stdout), _O_U8TEXT);
 #else
   setlocale(LC_ALL, "");
   setlocale(LC_CTYPE, "UTF-8");
