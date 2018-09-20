@@ -1122,8 +1122,15 @@ bundle Game.Framework {
 				"SDL_ttf could not initialize!"->ErrorLine();
 				return false;
 			};
+			
+			font_path := Runtime->GetProperty("install_dir");
+			if(font_path = Nil) {
+				"Failed to load font!"->ErrorLine();
+				return false;
+			};
+			font_path += "/lib/sdl/fonts/lazy.ttf";
 
-			@font := Font->New("../lib/sdl/fonts/lazy.ttf", 18);
+			@font := Font->New(font_path, 18);
 			if(@font->IsNull()) {
 				"Failed to load font!"->ErrorLine();
 				return false;

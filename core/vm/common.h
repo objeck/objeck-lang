@@ -64,6 +64,7 @@
 #include <process.h>
 #include <unordered_map>
 #include <unordered_set>
+#include <userenv.h>
 using namespace stdext;
 #elif _OSX
 #include <unordered_map>
@@ -1076,6 +1077,21 @@ class StackProgram {
     properties_map.insert(pair<wstring, wstring>(key, value));
     LeaveCriticalSection(&prop_cs);
   }
+
+  static BOOL GetUserDirectory(char* buf, DWORD len) {
+    HANDLE handle;
+
+    if (!OpenProcessToken(GetCurrentProcess(), TOKEN_READ, &handle)) {
+      return FALSE;
+    }
+
+    if (!GetUserProfileDirectory(handle, buf, &len)) {
+      return FALSE;
+    }
+
+    CloseHandle(handle);
+    return TRUE;
+  }
 #else
   static wstring GetProperty(const wstring& key) {
     wstring value;
@@ -1106,30 +1122,29 @@ class StackProgram {
     // load system proprieties
 #ifdef _WIN32  
     char user_dir[MAX_PATH];
-    if(System::GetUserDirectory(user_dir, MAX_PATH)) {
+    if(GetUserDirectory(user_dir, MAX_PATH)) {
       properties_map.insert(pair<wstring, wstring>(L"user_dir", BytesToUnicode(user_dir)));
     }
-  
+
     char tmp_dir[MAX_PATH];
     if(GetTempPath(MAX_PATH, tmp_dir)) {
       properties_map.insert(pair<wstring, wstring>(L"tmp_dir", BytesToUnicode(tmp_dir)));
     }
-    
+
     char install_path[MAX_PATH];
     DWORD status = GetModuleFileNameA(NULL, install_path, sizeof(install_path));
     if(status > 0) {
       string exe_path(install_path);
       size_t install_index = exe_path.find_last_of('\\');
       if(install_index != string::npos) {
-	exe_path = exe_path.substr(0, install_index);
-	install_index = exe_path.find_last_of('\\');
-	if(install_index != string::npos) {
-	  wstring install_dir = BytesToUnicode(exe_path.substr(0, install_index));
-	  properties_map.insert(pair<wstring, wstring>(L"install_dir", install_dir));
-	}
+        exe_path = exe_path.substr(0, install_index);
+        install_index = exe_path.find_last_of('\\');
+        if(install_index != string::npos) {
+          wstring install_dir = BytesToUnicode(exe_path.substr(0, install_index));
+          properties_map.insert(pair<wstring, wstring>(L"install_dir", install_dir));
+        }
       }
     }
-
 #else
     struct passwd* user = getpwuid(getuid());
     if(user) {
