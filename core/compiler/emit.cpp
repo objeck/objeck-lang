@@ -187,14 +187,14 @@ void IntermediateProgram::Write(bool emit_lib, bool is_debug, bool is_web, ofstr
   }
   
   wcout << L"Compiled " << num_src_classes
-        << (num_src_classes > 1 ? " source classes" : " source class");
+        << (num_src_classes > 1 ? L" source classes" : L" source class");
   if(is_debug) {
-    wcout << " with debug symbols";
+    wcout << L" with debug symbols";
   }
   wcout << L'.' << endl;
   
   wcout << L"Linked " << num_lib_classes
-        << (num_lib_classes > 1 ? " library classes." : " library class.") << endl;
+        << (num_lib_classes > 1 ? L" library classes." : L" library class.") << endl;
 }
 
 /****************************
