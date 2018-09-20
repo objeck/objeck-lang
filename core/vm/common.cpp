@@ -84,10 +84,9 @@ void ObjectSerializer::CheckObject(size_t* mem, bool is_obj, long depth) {
       if(!WasSerialized(mem)) {
 #ifdef _DEBUG
         long mem_size = cls->GetInstanceMemorySize();
-
+	
 #if defined(_WIN64) || defined(_X64)
-        mem_size
-          ;
+        mem_size *= 2;
 #endif
         for(int i = 0; i < depth; i++) {
           wcout << L"\t";
