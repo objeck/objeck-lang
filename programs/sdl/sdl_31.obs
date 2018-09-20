@@ -329,7 +329,7 @@ class Test {
 	}
 	
 	function : LoadMedia() ~ Bool {
-		if(<>@dot->LoadFromFile("images/dot.png")) {
+		if(<>@dot->LoadFromFile("images/dot.bmp")) {
 			"Failed to load bg image"->ErrorLine();
 			return false;
 		};
