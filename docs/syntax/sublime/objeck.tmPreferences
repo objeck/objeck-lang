@@ -5,7 +5,7 @@
    <key>name</key>
    <string>Symbol List</string>
    <key>scope</key>
-   <string>source.objeck-obs meta.function.objeck-obs, source.python meta.class.objeck-obs</string>
+   <string>source.objeck-obs meta.function.objeck-obs, source.objeck meta.class.objeck-obs</string>
    <key>settings</key>
    <dict>
       <key>showInSymbolList</key>
