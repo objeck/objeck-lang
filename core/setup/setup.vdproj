@@ -5073,7 +5073,7 @@
                             "Condition" = "8:"
                             "Transitive" = "11:FALSE"
                             "ValueTypes" = "3:1"
-                            "Value" = "8:%PATH%;[TARGETDIR]bin"
+                            "Value" = "8:%PATH%;[TARGETDIR]bin;[TARGETDIR]lib\\sdl"
                             }
                         }
                     }
