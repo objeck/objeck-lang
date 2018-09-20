@@ -84,6 +84,22 @@ void StackInterpreter::Initialize(StackProgram* p)
   if(GetTempPath(MAX_PATH, tmp_dir)) { 
     program->SetProperty(L"tmp_dir", BytesToUnicode(tmp_dir));
   }
+
+  char install_path[MAX_PATH];
+  DWORD status = GetModuleFileNameA(NULL, install_path, sizeof(install_path));
+  if(status > 0) {
+    string exe_path(install_path);
+    size_t install_index = exe_path.find_last_of('\\');
+    if(install_index != string::npos) {
+      exe_path = exe_path.substr(0, install_index);
+      install_index = exe_path.find_last_of('\\');
+      if(install_index != string::npos) {
+        wstring install_dir = BytesToUnicode(exe_path.substr(0, install_index));
+        program->SetProperty(L"install_dir", install_dir);
+      }
+    }
+  }
+
 #else
   struct passwd* user = getpwuid(getuid());
   if(user) {
@@ -93,6 +109,21 @@ void StackInterpreter::Initialize(StackProgram* p)
   const char* tmp_dir = P_tmpdir;
   if(tmp_dir) {
     program->SetProperty(L"tmp_dir", BytesToUnicode(tmp_dir));
+  }
+
+  char install_path[MAX_PATH];
+  ssize_t status = ::readlink("/proc/self/exe", install_path, sizeof(install_path) - 1);
+  if(status != -1) {
+    string exe_path(install_path);
+    size_t install_index = exe_path.find_last_of('\\');
+    if(install_index != string::npos) {
+      exe_path = exe_path.substr(0, install_index);
+      install_index = exe_path.find_last_of('\\');
+      if(install_index != string::npos) {
+        wstring install_dir = BytesToUnicode(exe_path.substr(0, install_index));
+        program->SetProperty(L"install_dir", install_dir);
+      }
+    }
   }
 #endif
 
