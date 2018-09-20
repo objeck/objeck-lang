@@ -1,6 +1,4 @@
 {
-	"path": "$path;C:/Users/objec/Documents/Code/objeck-lang/core/release/deploy/bin/",
-	"encoding": "utf_16_le",
 	"cmd": ["obc", "-src", "$file", "-lib", "collect.obl,sdl2.obl,sdl_game.obl", "-dest", "$file_base_name.obe"],
 	"selector": "source.objeck-obs",
 	"file_regex": "^(..[^:]*):([0-9]+):?([0-9]+)?:? (.*)$"
