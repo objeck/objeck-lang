@@ -1,3 +1,8 @@
+#~~
+SDL2 wrapper
+Copyright (c) 2017-2018 Randy Hollines
+~~#
+
 use System.API;
 
 #~
