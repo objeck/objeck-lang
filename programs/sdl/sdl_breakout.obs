@@ -1,4 +1,4 @@
-use SDL2;
+use Game.SDL2;
 
 class Sprite {
 	@renderer : Renderer;
@@ -36,7 +36,7 @@ class Sprite {
 	method : public : LoadFromFile(path : String) ~ Bool {
 		loadedSurface := Image->Load(path);
 		if(loadedSurface->IsNull()) {
-			"Unable to load surface"->ErrorLine();
+			"Unable to load image {$path}"->ErrorLine();
 			return false;
 		};
 
@@ -672,7 +672,7 @@ class Paddle {
 	method : LoadTexture(path : String) ~ Texture {
 		loadedSurface := Image->Load(path);
 		if(loadedSurface->IsNull()) {
-			"Unable to load surface"->ErrorLine();
+			"Unable to load image: {$path}"->ErrorLine();
 			return Nil;
 		};
 
