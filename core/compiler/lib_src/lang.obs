@@ -1,6 +1,6 @@
 #~
 Objeck system classes.
-Copyright (c) 2008-2014 Randy Hollines
+Copyright (c) 2008-2018 Randy Hollines
 note: compile compiler with -D_SYSTEM flag
 ~#	
 
@@ -2586,7 +2586,7 @@ bundle System {
 		}
 		
 		#~
-		Fetches a runtime property 
+		Fetches a runtime property. System properties include: 'user_dir', tmp_dir and 'install_dir'.
 		@param key property key
 		@return runtime property 
 		~#

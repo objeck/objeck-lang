@@ -1,3 +1,8 @@
+#~~
+Objeck 2D gaming support
+Copyright (c) 2018 Randy Hollines
+~~#
+
 use Game.SDL2;
 use Collection;
 
@@ -108,7 +113,7 @@ bundle Game.Framework {
 
 			surface := Image->Load(file);
 			if(surface->IsNull()) {
-				"Unable to load image '{$file}'"->ErrorLine();
+				"Unable to load image '{$file}'!"->ErrorLine();
 				return false;
 			};
 			
@@ -1132,7 +1137,7 @@ bundle Game.Framework {
 
 			@font := Font->New(font_path, 18);
 			if(@font->IsNull()) {
-				"Failed to load font!"->ErrorLine();
+				"Failed to load font '{$font_path}'!"->ErrorLine();
 				return false;
 			};
 

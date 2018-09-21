@@ -25,7 +25,7 @@ class Demo {
 			clips->AddBack(Rect->New(648, 0, 342, 354));
 			clips->AddBack(Rect->New(1026, 0, 342, 354));
 
-			@player := Player->New(@framework->AddAnimatedImageSprite("D:\\Temp\\bar\\player.png", clips), @platforms);
+			@player := Player->New(@framework->AddAnimatedImageSprite("C:\\Users\\objec\\Documents\\Code\\objeck-lang\\programs\\sdl\\engine\\tests\\media\\images\\player.png", clips), @platforms);
 			@platforms->AddBack(Platform->New(420, 535, @framework->AddRectangle(110, 35)));
 			@platforms->AddBack(Platform->New(340, 475, @framework->AddRectangle(120, 35)));
 			@platforms->AddBack(Platform->New(220, 385, @framework->AddRectangle(210, 35)));
@@ -182,7 +182,7 @@ class Player {
 		else {
 			if(@jumped & @jump_max < 3) {
 				@acc->SetY(-5.3);
-				@jump_max += 1;		
+				@jump_max += 1;
 			}
 			else {
 				@acc->SetY(0.65);
