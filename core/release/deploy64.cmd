@@ -18,7 +18,6 @@ mkdir deploy64\lib\sdl
 mkdir deploy64\lib\sdl\fonts
 copy ..\lib\*.obl deploy64\lib
 del deploy64\lib\gtk2.obl
-del deploy64\lib\sdl.obl
 del /q deploy64\bin\a.*
 copy ..\vm\misc\*.pem deploy64\lib
 
@@ -26,8 +25,8 @@ REM openssl support
 mkdir deploy64\lib\native
 cd ..\lib\openssl
 devenv openssl.sln /rebuild "Release|x64"
-REM copy Release\win64\*.dll ..\..\Release\deploy64\lib\native
-copy win\x64\bin\*.dll ..\..\Release\deploy64\bin
+copy Release\win64\*.dll ..\..\Release\deploy64\lib\native
+REM copy win\x64\bin\*.dll ..\..\Release\deploy64\bin
 cd ..\..\release
 
 REM odbc support
@@ -73,7 +72,7 @@ if [%1] NEQ [deploy] goto end
 	copy ..\..\docs\uninstall.vbs "%USERPROFILE%\Desktop\objeck-lang-win64\doc"
 	copy ..\setup64
 	devenv setup.sln /rebuild
-	signtool sign /f "D:\Dropbox\Personal\signing keys\2016\randy_hollines.pfx" /p %2 /d "Objeck Toolchain" /t http://timestamp.verisign.com/scripts/timstamp.dll Release\setup.msi
+	signtool sign /f "D:\Dropbox\Personal\signing keys\2016\randy_hollines.pfx" /p %2 /d "Objeck Toolchain" /t http://timestamp.verisign.com/scripts/timstamp.dll Release64\setup.msi
 	copy Release64\setup.msi "%USERPROFILE%\Desktop\objeck-lang-win64.msi"
 	
 	rmdir /s /q "%USERPROFILE%\Desktop\Release64"
