@@ -20,11 +20,12 @@ class Demo {
 	method : Run() ~ Nil {
 		if(@framework->IsOk()) {
 			clips := Vector->New();
-			clips->AddBack(Rect->New(0, 0, 342, 354));
+			clips->AddBack(Rect->New(0, 0, 32, 52));
+#~			
 			clips->AddBack(Rect->New(342, 0, 342, 354));
 			clips->AddBack(Rect->New(648, 0, 342, 354));
 			clips->AddBack(Rect->New(1026, 0, 342, 354));
-
+~#
 			@player := Player->New(@framework->AddAnimatedImageSprite("C:\\Users\\objec\\Documents\\Code\\objeck-lang\\programs\\sdl\\engine\\tests\\media\\images\\player.png", clips), @platforms);
 			@platforms->AddBack(Platform->New(420, 535, @framework->AddRectangle(110, 35)));
 			@platforms->AddBack(Platform->New(340, 475, @framework->AddRectangle(120, 35)));
@@ -129,9 +130,7 @@ class Player {
 	@platforms : Vector;
 	
 	New(rect : AnimatedImageSprite, platforms : Vector) {
-		@rect := rect;
-		@rect->SetScale(0.20);
-		
+		@rect := rect;		
 		@loc := Vector2->New(Game->SCREEN_WIDTH / 2, Game->SCREEN_HEIGHT / 2);
 		@vel := Vector2->New();
 		@acc := Vector2->New();
