@@ -5,7 +5,7 @@ use Collection;
 class Demo {
 	@framework : GameFramework;
 	@player : Player;
-	@platforms : Vector;
+	@level : Level;
 
 	function : Main(args : String[]) ~ Nil {
 		Demo->New()->Run();
@@ -14,24 +14,13 @@ class Demo {
 	New() {
 		@framework := GameFramework->New(Game->SCREEN_WIDTH, Game->SCREEN_HEIGHT, "Accel");
 		@framework->SetClearColor(Color->New(0, 0, 255));
-		@platforms := Vector->New();
 	}
 
 	method : Run() ~ Nil {
 		if(@framework->IsOk()) {
-			clips := Vector->New();
-			clips->AddBack(Rect->New(0, 0, 32, 52));
-#~			
-			clips->AddBack(Rect->New(342, 0, 342, 354));
-			clips->AddBack(Rect->New(648, 0, 342, 354));
-			clips->AddBack(Rect->New(1026, 0, 342, 354));
-~#
-			@player := Player->New(@framework->AddAnimatedImageSprite("C:\\Users\\objec\\Documents\\Code\\objeck-lang\\programs\\sdl\\engine\\tests\\media\\images\\player.png", clips), @platforms);
-			@platforms->AddBack(Platform->New(420, 535, @framework->AddRectangle(110, 35)));
-			@platforms->AddBack(Platform->New(340, 475, @framework->AddRectangle(120, 35)));
-			@platforms->AddBack(Platform->New(220, 385, @framework->AddRectangle(210, 35)));
-			@platforms->AddBack(Platform->New(520, 285, @framework->AddRectangle(210, 35)));
-
+			@player := Player->New(@framework);
+			@level := Level->New(@player, @framework);
+			
 			quit := false;
 			e := @framework->GetEvent();
 			while(<>quit) {
@@ -49,12 +38,28 @@ class Demo {
 
 				# update
 				@player->Update();
+				@level->Update();
+
+				shift := @level->GetShiftLeft();
+				if(@player->GetRight() >= 500) {
+					diff := @player->GetRight() - 500;
+					@player->SetRight(500);
+					if(shift > -1500) {
+						@level->ShiftWorld(-1 * diff);
+					};
+		        };
+
+		        if(@player->GetLeft() <= 120) {
+					diff := 120 - @player->GetLeft();
+					@player->SetLeft(120);
+					if(shift < 0) {
+						@level->ShiftWorld(diff);
+					};
+				};
 
 				# draw
 				@player->Draw();
-				each(i : @platforms) {
-					@platforms->Get(i)->As(Platform)->Draw();
-				};
+				@level->Draw();
 				
 				# show
 				@framework->Show();
@@ -129,13 +134,21 @@ class Player {
 	@hit_top : Bool;
 	@platforms : Vector;
 	
-	New(rect : AnimatedImageSprite, platforms : Vector) {
-		@rect := rect;		
+	New(framework : GameFramework) {
+		clips := Vector->New();
+		clips->AddBack(Rect->New(0, 0, 32, 52));
+		clips->AddBack(Rect->New(32, 0, 32, 52));
+		clips->AddBack(Rect->New(64, 0, 32, 52));
+		clips->AddBack(Rect->New(96, 0, 32, 52));
+		@rect := framework->AddAnimatedImageSprite("C:\\Users\\objec\\Documents\\Code\\objeck-lang\\programs\\sdl\\engine\\tests\\media\\images\\player.png", clips);
+		
 		@loc := Vector2->New(Game->SCREEN_WIDTH / 2, Game->SCREEN_HEIGHT / 2);
 		@vel := Vector2->New();
 		@acc := Vector2->New();
+	}
 
-		@platforms := platforms;
+	method : public : SetLevel(level : Level) ~ Nil {
+		@platforms := level->GetPlatforms();
 	}
 
 	method : public : GetRect() ~ AnimatedImageSprite {
@@ -143,11 +156,19 @@ class Player {
 	}
 
 	method : public : GetLeft() ~ Int {
-		return @rect->GetLeft();
+		return @loc->GetX() - @rect->GetWidth() / 2;
 	}
 
 	method : public : GetRight() ~ Int {
-		return @rect->GetRight();
+		return @loc->GetX() + @rect->GetWidth() / 2;
+	}
+
+	method : public : SetLeft(x : Int) ~ Nil {
+		@loc->SetX(x + @rect->GetWidth() / 2);
+	}
+
+	method : public : SetRight(x : Int) ~ Nil {
+		@loc->SetX(x - @rect->GetWidth() / 2);
 	}
 
 	method : public : GoLeft()  ~ Nil {
@@ -189,8 +210,8 @@ class Player {
 		};
 
 		# movement equations
-		@acc->Add(Vector2->MulX(Vector2->MulY(@vel, -0.0135), -0.0447));
-		@vel->Add(Vector2->Mul(@acc, 0.83));
+		@acc->Add(Vector2->Mul(@vel, -0.125));
+		@vel->Add(Vector2->Mul(@acc, 0.75));
 		@loc->Add(@vel);
 		@acc->Zero();
 		
@@ -268,7 +289,7 @@ class Player {
 	}
 
 	method : public : Draw()  ~ Nil {
-		index := Int->Abs(@rect->GetLeft() / 50 % @rect->GetClipCount());
+		index := Int->Abs(@rect->GetLeft() / 30 % @rect->GetClipCount());
 		@rect->Render(index);
 	}
 }
@@ -309,6 +330,85 @@ class Platform {
 
 	method : public : Collides(rect : AnimatedImageSprite) ~ Bool {
 		return @rect->GetPosition()->Overlaps(rect->GetPosition());
+	}
+}
+
+class Level {
+	@player : Player;
+	@platforms : Vector;
+	@shift_x : Int;
+
+	New(player : Player, framework : GameFramework) {
+		@player := player;
+		@platforms := Vector->New();
+
+#		@platforms->AddBack(MovingPlatform->New(200, 150, framework->AddRectangle(75, 35), player, @self));		
+		@platforms->AddBack(Platform->New(420, 535, framework->AddRectangle(110, 35)));
+		@platforms->AddBack(Platform->New(340, 475, framework->AddRectangle(120, 35)));
+		@platforms->AddBack(Platform->New(220, 385, framework->AddRectangle(210, 35)));
+		@platforms->AddBack(Platform->New(520, 285, framework->AddRectangle(210, 35)));
+
+		@player->SetLevel(@self);
+	}
+
+	function : Collides(player : Player, obstacles : Vector) ~ Bool {
+		each(i : obstacles) {
+        	obstacle := obstacles->Get(i)->As(Platform);
+        	if(obstacle->Collides(player->GetRect())) {
+        		return true;
+        	};
+        };
+
+        return false;
+	}
+
+	function : Collisions(player : Player, obstacles : Vector) ~ Vector {
+		collides := Vector->New();
+
+		each(i : obstacles) {
+        	obstacle := obstacles->Get(i)->As(Platform);
+        	if(obstacle->Collides(player->GetRect())) {
+        		collides->AddBack(obstacle);
+        	};
+        };
+
+        return collides;
+    }
+
+	method : public : GetShiftLeft() ~ Int {
+		return @shift_x;
+	}
+
+	method : public : ShiftWorld(shift_x : Int) ~ Nil {
+		@shift_x += shift_x;
+
+shift_x->PrintLine();
+
+		each(i : @platforms) {
+			platform := @platforms->Get(i)->As(Platform);
+			platform->AddX(shift_x);
+		};
+	}
+
+	method : public : GetPlatforms() ~ Vector {
+		return @platforms;
+	}
+
+	method : public : Update()  ~ Nil {
+		each(i : @platforms) {
+			platform := @platforms->Get(i);
+#~			
+			if(platform->TypeOf(MovingPlatform)) {
+				@platforms->Get(i)->As(MovingPlatform)->Update();
+			};
+~#			
+		};
+	}
+
+	method : public : Draw()  ~ Nil {
+		each(i : @platforms) {
+			@platforms->Get(i)->As(Platform)->Draw();
+		};
 	}
 }
 
