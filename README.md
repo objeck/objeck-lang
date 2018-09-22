@@ -33,6 +33,7 @@ Notable features:
   *  JSON and XML parsers
   *  Encryption
   *  ODBC
+  *  2D Gaming
 * Garbage collection
 * JIT support (IA-32 and AMD64)
 
