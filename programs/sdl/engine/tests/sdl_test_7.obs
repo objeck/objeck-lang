@@ -169,7 +169,7 @@ class Player {
 
 	method : public : Stop()  ~ Nil {
 	}
-
+	
 	method : public : Jump(jumped : Bool)  ~ Nil {
 		@jumped := jumped;
 	}

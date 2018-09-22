@@ -1,9 +1,9 @@
 use Game.SDL2;
-use Game.Engine;
+use Game.Framework;
 use Collection;
 
 class Demo {
-	@engine : GameEngine;
+	@engine : GameFramework;
 	@player : Player;
 	@level : Level;
 
@@ -12,7 +12,7 @@ class Demo {
 	}
 
 	New() {
-		@engine := GameEngine->New(Game->SCREEN_WIDTH, Game->SCREEN_HEIGHT, "Platformer Jumper");
+		@engine := GameFramework->New(Game->SCREEN_WIDTH, Game->SCREEN_HEIGHT, "Platformer Jumper");
 		@engine->SetClearColor(Color->New(0, 0, 255));
 	}
 
@@ -262,7 +262,7 @@ class Level {
 	@player : Player;
 	@platforms : Vector;
 
-	New(player : Player, engine : GameEngine) {
+	New(player : Player, engine : GameFramework) {
 		@player := player;
 		@platforms := Vector->New();
 
