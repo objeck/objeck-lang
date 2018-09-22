@@ -210,7 +210,7 @@ class Player {
 		};
 
 		# movement equations
-		@acc->Add(Vector2->Mul(@vel, -0.125));
+		@acc->Add(Vector2->Mul(@vel, -0.0625));
 		@vel->Add(Vector2->Mul(@acc, 0.75));
 		@loc->Add(@vel);
 		@acc->Zero();
@@ -343,10 +343,10 @@ class Level {
 		@platforms := Vector->New();
 
 #		@platforms->AddBack(MovingPlatform->New(200, 150, framework->AddRectangle(75, 35), player, @self));		
-		@platforms->AddBack(Platform->New(420, 535, framework->AddRectangle(110, 35)));
-		@platforms->AddBack(Platform->New(340, 475, framework->AddRectangle(120, 35)));
-		@platforms->AddBack(Platform->New(220, 385, framework->AddRectangle(210, 35)));
-		@platforms->AddBack(Platform->New(520, 285, framework->AddRectangle(210, 35)));
+		@platforms->AddBack(Platform->New(620, 535, framework->AddRectangle(110, 20)));
+		@platforms->AddBack(Platform->New(740, 475, framework->AddRectangle(120, 15)));
+		@platforms->AddBack(Platform->New(820, 385, framework->AddRectangle(210, 20)));
+		@platforms->AddBack(Platform->New(900, 285, framework->AddRectangle(210, 15)));
 
 		@player->SetLevel(@self);
 	}
@@ -381,8 +381,6 @@ class Level {
 
 	method : public : ShiftWorld(shift_x : Int) ~ Nil {
 		@shift_x += shift_x;
-
-shift_x->PrintLine();
 
 		each(i : @platforms) {
 			platform := @platforms->Get(i)->As(Platform);
