@@ -563,7 +563,12 @@ bundle System {
 		@return random number within range
 		~#
 		function : Random(min : Int, max : Int) ~ Int {
-			return min + (Float->Random() * 1000000.0)->As(Int) % (max - min);
+			diff := max - min + 1;
+			if(diff <= 0) {
+				return min;
+			};
+
+			return min + (Float->Random() * 1000000.0)->As(Int) % diff;
 		}
 
 		#~
@@ -572,6 +577,11 @@ bundle System {
 		@return random number within range
 		~#
 		function : Random(max : Int) ~ Int {
+			max += 1;
+			if(max <= 0) {
+				return 0;
+			};
+
 			return (Float->Random() * 1000000.0)->As(Int) % max;
 		}
 		
