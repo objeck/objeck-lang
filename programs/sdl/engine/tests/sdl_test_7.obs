@@ -356,7 +356,7 @@ class MovingPlatform from Platform {
 
 	New(x : Int, y : Int, rect : Rectangle, player : Player, level : Level) {
 		Parent(x, y, rect);
-		@rect->SetColor(Color->New(207,181,59));
+		@rect->SetColor(Color->New(207, 181, 59));
 		@player := player;
 		@level := level;
 
@@ -466,16 +466,27 @@ class Level {
 		@player := player;
 		@player->SetLevel(@self);
 
-		@platforms := Vector->New();
-		@platforms->AddBack(MovingPlatform->New(200, 450, framework->AddRectangle(80, 20), player, @self));		
-		@platforms->AddBack(Platform->New(620, 535, framework->AddRectangle(110, 20)));
-		@platforms->AddBack(Platform->New(700, 485, framework->AddRectangle(120, 15)));
-		@platforms->AddBack(Platform->New(820, 450, framework->AddRectangle(210, 20)));
-		@platforms->AddBack(Platform->New(1025, 545, framework->AddRectangle(210, 15)));
+		@platforms := GeneratePlatforms(framework);
+		@gems := GenerateGems(base_path, framework);
+	}
+
+	method : GeneratePlatforms(framework : GameFramework) ~ Vector {
+		platforms := Vector->New();
+
+		platforms->AddBack(MovingPlatform->New(200, 450, framework->AddRectangle(80, 20), @player, @self));		
+		platforms->AddBack(Platform->New(620, 535, framework->AddRectangle(110, 20)));
+		platforms->AddBack(Platform->New(700, 485, framework->AddRectangle(120, 15)));
+		platforms->AddBack(Platform->New(820, 450, framework->AddRectangle(210, 20)));
+		platforms->AddBack(Platform->New(1025, 545, framework->AddRectangle(210, 15)));
+
+		return platforms;
+	}
+
+	method : GenerateGems(base_path : String, framework : GameFramework) ~ Vector {
+		gems := Vector->New();
 
 		gems_path := String->New(base_path);
 		gems_path += "/images/gems.png";
-		@gems := Vector->New();
 
 		clips := Vector->New();
 		clips->AddBack(Rect->New(0, 0, 32, 32));
@@ -484,8 +495,11 @@ class Level {
 		clips->AddBack(Rect->New(96, 0, 32, 32));
 		clips->AddBack(Rect->New(128, 0, 32, 32));
 		clips->AddBack(Rect->New(160, 0, 32, 32));
-		gems_image := framework->AddAnimatedImageSprite(gems_path, clips);
-		@gems->AddBack(Gem->New(600, 500, gems_image));		
+		
+		gems->AddBack(Gem->New(600, 500, framework->AddAnimatedImageSprite(gems_path, clips)));		
+		gems->AddBack(Gem->New(500, 400, framework->AddAnimatedImageSprite(gems_path, clips)));
+
+		return gems;
 	}
 
 	method : public : GetShift() ~ Int {
