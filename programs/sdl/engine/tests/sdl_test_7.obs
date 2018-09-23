@@ -40,18 +40,18 @@ class Demo {
 				@player->Update();
 				@level->Update();
 
-				shift := @level->GetShiftLeft();
-				if(@player->GetRight() >= 500) {
-					diff := @player->GetRight() - 500;
-					@player->SetRight(500);
-					if(shift > -1500) {
+				shift := @level->GetShift();
+				if(@player->GetRight() >= Game->PLAYER_BOX_MAX) {
+					diff := @player->GetRight() - Game->PLAYER_BOX_MAX;
+					@player->SetRight(Game->PLAYER_BOX_MAX);
+					if(shift > Game->WIDTH_MAX) {
 						@level->ShiftWorld(-1 * diff);
 					};
 		        };
 
-		        if(@player->GetLeft() <= 120) {
-					diff := 120 - @player->GetLeft();
-					@player->SetLeft(120);
+		        if(@player->GetLeft() <= Game->PLAYER_BOX_MIN) {
+					diff := Game->PLAYER_BOX_MIN - @player->GetLeft();
+					@player->SetLeft(Game->PLAYER_BOX_MIN);
 					if(shift < 0) {
 						@level->ShiftWorld(diff);
 					};
@@ -132,7 +132,7 @@ class Player {
 	@jumped : Bool;
 	@jump_max : Int;
 	@hit_top : Bool;
-	@platforms : Vector;
+	@level : Level;
 	
 	New(framework : GameFramework) {
 		clips := Vector->New();
@@ -148,7 +148,7 @@ class Player {
 	}
 
 	method : public : SetLevel(level : Level) ~ Nil {
-		@platforms := level->GetPlatforms();
+		@level := level;
 	}
 
 	method : public : GetRect() ~ AnimatedImageSprite {
@@ -216,8 +216,10 @@ class Player {
 		@acc->Zero();
 		
 		# reposition 'x'
+		platforms := @level->GetPlatforms();
+
 		@rect->SetCenterX(@loc->GetX());
-		collides := Demo->Collisions(@self, @platforms);
+		collides := Demo->Collisions(@self, platforms);
         each(i : collides) {
         	platform := collides->Get(i)->As(Platform);
 			if(@vel->GetX() > 0.01) {
@@ -234,8 +236,8 @@ class Player {
 
 		# reposition 'y'
 		@rect->SetBottom(@loc->GetY() - @rect->GetHeight() / 2);
-		each(i : @platforms) {
-        	platform := @platforms->Get(i)->As(Platform);
+		each(i : platforms) {
+        	platform := platforms->Get(i)->As(Platform);
         	if(platform->Collides(@rect)) {
         		if(@vel->GetY() < 0.01) {
 					@rect->SetTop(platform->GetBottom());
@@ -289,7 +291,8 @@ class Player {
 	}
 
 	method : public : Draw()  ~ Nil {
-		index := Int->Abs(@rect->GetLeft() / 30 % @rect->GetClipCount());
+		offset := @level->GetShift() + @loc->GetX();
+		index := Int->Abs((offset / 15)->As(Int) % @rect->GetClipCount());
 		@rect->Render(index);
 	}
 }
@@ -375,7 +378,7 @@ class Level {
         return collides;
     }
 
-	method : public : GetShiftLeft() ~ Int {
+	method : public : GetShift() ~ Int {
 		return @shift_x;
 	}
 
@@ -411,6 +414,9 @@ class Level {
 }
 
 consts Game {
+	PLAYER_BOX_MIN := 120,
+	PLAYER_BOX_MAX := 500,
 	SCREEN_WIDTH := 800,
-	SCREEN_HEIGHT := 600
+	SCREEN_HEIGHT := 600,
+	WIDTH_MAX := -1600
 }
