@@ -110,10 +110,6 @@ class Demo {
 	            label Scancode->SDL_SCANCODE_UP: {
 	            	@player->Jump(true);
 	            }
-
-	            label Scancode->SDL_SCANCODE_D: {
-	           		@player->Dump();
-	           	}
 	        };
 	    }
 	    else if(e->GetType() = EventType->SDL_KEYUP) {
@@ -207,6 +203,7 @@ class Player {
 	}
 
 	method : public : Update()  ~ Nil {
+		# movement logic
 		if(@hit_top) {
 			@acc->SetY(80);
 			@hit_top := false;
@@ -221,29 +218,18 @@ class Player {
 			};
 		};
 
-		# movement equations
 		@acc->Add(Vector2->Mul(@vel, -0.0625));
 		@vel->Add(Vector2->Mul(@acc, 0.75));
 		@loc->Add(@vel);
 		@acc->Zero();
 		
-		UpdatePlatforms();
-		UpdateGems();
-
-	    # hit floor
-		if(@rect->GetBottom() > Game->SCREEN_HEIGHT) {
-			@rect->SetBottom(Game->SCREEN_HEIGHT);
-        	@loc->SetY(Game->SCREEN_HEIGHT + @rect->GetHeight() / 2);
-			@jump_max := 0;
-			@vel->SetY(0);
-		}
-		else if(@loc->GetY() < 0) {
-			@loc->SetY(0);
-			@vel->SetY(0);
-		};
+		# collisions
+		CheckPlatforms();
+		CheckGems();
+		CheckFloorCeiling();
 	}
 
-	method : public : UpdatePlatforms() ~ Nil {
+	method : public : CheckPlatforms() ~ Nil {
 		platforms := @level->GetPlatforms();
 
 		# reposition 'x'
@@ -283,7 +269,7 @@ class Player {
         };
 	}
 
-	method : public : UpdateGems() ~ Nil {
+	method : public : CheckGems() ~ Nil {
 		collides := Level->GemsCollisions(@self, @level->GetGems());
         each(i : collides) {
     		gem := collides->Get(i)->As(Gem);
@@ -291,23 +277,24 @@ class Player {
     	};
     }
 
-	method : public : Dump() ~ Nil {
-		ax := @acc->GetX();
-		ay := @acc->GetY();
-
-		vx := @vel->GetX();
-		vy := @vel->GetY();
-
-		lx := @loc->GetX();
-		ly := @loc->GetY();
-				
-		"x=[acc={$ax}, vel={$vx}, loc={$lx}]"->PrintLine();
-		"y=[acc={$ay}, vel={$vy}, loc={$ly}]"->PrintLine();
-		"--------"->PrintLine();
-	}
+    method : public : CheckFloorCeiling() ~ Nil {
+    	if(@rect->GetBottom() > Game->SCREEN_HEIGHT) {
+			@rect->SetBottom(Game->SCREEN_HEIGHT);
+        	@loc->SetY(Game->SCREEN_HEIGHT + @rect->GetHeight() / 2);
+			@jump_max := 0;
+			@vel->SetY(0);
+		}
+		else if(@loc->GetY() < 0) {
+			@loc->SetY(0);
+			@vel->SetY(0);
+		};
+    }
 
 	method : public : Draw()  ~ Nil {
-		if(@vel->GetX() > 0.075 | @vel->GetX() < -0.075) {
+		if(@jump_max > 0) {
+			@rect->Render(5);
+		}
+		else if(@vel->GetX() > 0.075 | @vel->GetX() < -0.075) {
 			offset := @level->GetShift() + @loc->GetX();
 			index := Int->Abs((offset / 15)->As(Int) % 4);
 			@rect->Render(index);
