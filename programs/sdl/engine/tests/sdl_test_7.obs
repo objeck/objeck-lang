@@ -365,9 +365,9 @@ class Level {
 
 #		@platforms->AddBack(MovingPlatform->New(200, 150, framework->AddRectangle(75, 35), player, @self));		
 		@platforms->AddBack(Platform->New(620, 535, framework->AddRectangle(110, 20)));
-		@platforms->AddBack(Platform->New(740, 475, framework->AddRectangle(120, 15)));
-		@platforms->AddBack(Platform->New(820, 385, framework->AddRectangle(210, 20)));
-		@platforms->AddBack(Platform->New(900, 285, framework->AddRectangle(210, 15)));
+		@platforms->AddBack(Platform->New(700, 485, framework->AddRectangle(120, 15)));
+		@platforms->AddBack(Platform->New(820, 450, framework->AddRectangle(210, 20)));
+		@platforms->AddBack(Platform->New(1025, 545, framework->AddRectangle(210, 15)));
 
 		@player->SetLevel(@self);
 	}
