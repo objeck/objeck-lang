@@ -2748,12 +2748,12 @@ bool ContextAnalyzer::Analyze()
 
         case CLASS_TYPE:
           if(!IsEnumExpression(expression)) {
-            ProcessError(expression, L"Expected Byte, Char, Int or Enum class");
+            ProcessError(expression, L"Expected Byte, Char, Int or Enum class type");
           }
           break;
 
         default:
-          ProcessError(expression, L"Expected Byte, Char, Int or Enum class");
+          ProcessError(expression, L"Expected Byte, Char, Int or Enum class type");
           break;
         }
       }
@@ -3336,12 +3336,12 @@ bool ContextAnalyzer::Analyze()
           case CHAR_TYPE:
             break;
           default:
-            ProcessError(expression, L"Expected Byte, Char or Int class");
+            ProcessError(expression, L"Expected Byte, Char, Int or Enum class type");
             break;
           }
         }
         else {
-          ProcessError(expression, L"Expected Byte, Char or Int class");
+          ProcessError(expression, L"Expected Byte, Char, Int Enum class type");
         }
       }
 
@@ -3353,12 +3353,12 @@ bool ContextAnalyzer::Analyze()
           case CHAR_TYPE:
             break;
           default:
-            ProcessError(expression, L"Expected Byte, Char or Int class");
+            ProcessError(expression, L"Expected Byte, Char, Int Enum class type");
             break;
           }
         }
         else {
-          ProcessError(expression, L"Expected Byte, Char or Int class");
+          ProcessError(expression, L"Expected Byte, Char, Int Enum class type");
         }
       }
       break;
