@@ -4,6 +4,7 @@ use Collection;
 
 class Demo {
 	@framework : GameFramework;
+	@base_path : String;
 	@player : Player;
 	@background : ImageSprite;
 	@level : Level;
@@ -15,15 +16,17 @@ class Demo {
 	New() {
 		@framework := GameFramework->New(Game->SCREEN_WIDTH, Game->SCREEN_HEIGHT, "Accel");
 		@framework->SetClearColor(Color->New(0, 0, 255));
+		@base_path := "C:\\Users\\objec\\Documents\\Code\\objeck-lang\\programs\\sdl\\engine\\tests\\media";
 
-		background_path := "C:\\Users\\objec\\Documents\\Code\\objeck-lang\\programs\\sdl\\engine\\tests\\media\\images\\background.png";
+		background_path := String->New(@base_path);
+		background_path += "/images/background.png";
 		@background := @framework->AddImageSprite(background_path);
 	}
 
 	method : Run() ~ Nil {
 		if(@framework->IsOk()) {
-			@player := Player->New(@framework);
-			@level := Level->New(@player, @framework);
+			@player := Player->New(@framework, @base_path);
+			@level := Level->New(@player, @framework, @base_path);
 			
 			quit := false;
 			e := @framework->GetEvent();
@@ -120,19 +123,6 @@ class Demo {
 		    };
 	    };
 	}
-
-	function : Collisions(player : Player, obstacles : Vector) ~ Vector {
-		collides := Vector->New();
-
-		each(i : obstacles) {
-        	obstacle := obstacles->Get(i)->As(Platform);
-        	if(obstacle->Collides(player->GetRect())) {
-        		collides->AddBack(obstacle);
-        	};
-        };
-
-        return collides;
-    }
 }
 
 class Player {
@@ -145,7 +135,7 @@ class Player {
 	@hit_top : Bool;
 	@level : Level;
 	
-	New(framework : GameFramework) {
+	New(framework : GameFramework, base_path : String) {
 		clips := Vector->New();
 		clips->AddBack(Rect->New(0, 0, 32, 52));
 		clips->AddBack(Rect->New(32, 0, 32, 52));
@@ -153,7 +143,10 @@ class Player {
 		clips->AddBack(Rect->New(96, 0, 32, 52));
 		clips->AddBack(Rect->New(128, 0, 32, 52));
 		clips->AddBack(Rect->New(160, 0, 32, 52));
-		@rect := framework->AddAnimatedImageSprite("C:\\Users\\objec\\Documents\\Code\\objeck-lang\\programs\\sdl\\engine\\tests\\media\\images\\player.png", clips);
+
+		player_path := String->New(base_path);
+		player_path += "/images/player.png";
+		@rect := framework->AddAnimatedImageSprite(player_path, clips);
 		
 		@loc := Vector2->New(Game->SCREEN_WIDTH / 2, Game->SCREEN_HEIGHT / 2);
 		@vel := Vector2->New();
@@ -209,7 +202,7 @@ class Player {
 
 	method : public : Update()  ~ Nil {
 		if(@hit_top) {
-			@acc->SetY(120);
+			@acc->SetY(80);
 			@hit_top := false;
 		}
 		else {
@@ -232,7 +225,7 @@ class Player {
 		platforms := @level->GetPlatforms();
 
 		@rect->SetCenterX(@loc->GetX());
-		collides := Demo->Collisions(@self, platforms);
+		collides := Level->Collisions(@self, platforms);
         each(i : collides) {
         	platform := collides->Get(i)->As(Platform);
 			if(@vel->GetX() > 0.01) {
@@ -249,8 +242,9 @@ class Player {
 
 		# reposition 'y'
 		@rect->SetBottom(@loc->GetY() - @rect->GetHeight() / 2);
-		each(i : platforms) {
-        	platform := platforms->Get(i)->As(Platform);
+		collides := Level->Collisions(@self, platforms);
+        each(i : collides) {
+        	platform := collides->Get(i)->As(Platform);
         	if(platform->Collides(@rect)) {
         		if(@vel->GetY() < 0.01) {
 					@rect->SetTop(platform->GetBottom());
@@ -267,15 +261,7 @@ class Player {
 	        };
 	    };
 
-	    # wrap around side
-		if(@loc->GetX() > Game->SCREEN_WIDTH) {
-			@loc->SetX(0);
-		}
-		else if(@loc->GetX() < 0) {
-			@loc->SetX(Game->SCREEN_WIDTH->As(Float));
-		};
-
-		# hit floor
+	    # hit floor
 		if(@rect->GetBottom() > Game->SCREEN_HEIGHT) {
 			@rect->SetBottom(Game->SCREEN_HEIGHT);
         	@loc->SetY(Game->SCREEN_HEIGHT + @rect->GetHeight() / 2);
@@ -354,47 +340,127 @@ class Platform {
 	}
 }
 
+class MovingPlatform from Platform {
+	@change_x : Int;
+    @change_y : Int;
+    @boundary_top : Int;
+    @boundary_bottom : Int;
+    @boundary_left : Int;
+    @boundary_right : Int;
+    @player : Player;
+    @level : Level;
+
+	New(x : Int, y : Int, rect : Rectangle, player : Player, level : Level) {
+		Parent(x, y, rect);
+		@rect->SetColor(Color->New(207,181,59));
+		@player := player;
+		@level := level;
+		
+		@boundary_top := 400;
+    	@boundary_bottom := 580;
+    	@change_y := 1;
+	}
+
+	method : public : GetChangeLeft() ~ Int {
+		return @change_x;
+	}
+
+	method : public : SetLevel(level : Level)  ~ Nil {
+		@level := level;
+	}
+
+	method : public : native : Update()  ~ Nil {
+		@rect->AddX(@change_x);
+
+		if(Collides(@player->GetRect())) {
+			if(@change_x < 0) {
+                @player->GetRect()->SetRight(@rect->GetLeft());
+            }
+            else {
+            	@player->GetRect()->SetLeft(@rect->GetRight());
+ 			};
+		};
+
+		@rect->AddY(@change_y);
+		if(Collides(@player->GetRect())) { 
+			if(@change_y < 0) {
+                @player->GetRect()->SetBottom(@rect->GetTop());
+			}
+            else {
+				@player->GetRect()->SetTop(@rect->GetBottom());
+            };
+		};
+
+		if(@rect->GetBottom() > @boundary_bottom | @rect->GetTop() < @boundary_top) {
+			@change_y *= -1;
+		};
+
+		cur_pos := @rect->GetLeft() - @level->GetShift();
+        if(cur_pos < @boundary_left | cur_pos > @boundary_right) {
+			@change_x *= -1;
+        };
+	}
+}
+
+class Token {
+	@rect : ImageSprite;
+
+	New(x : Int, y : Int, rect : ImageSprite) {
+		@rect := rect;
+		@rect->Set(x, y);
+	}
+
+	method : public : AddX(x : Int)  ~ Nil {
+		@rect->AddX(x);
+	}
+
+	method : public : GetLeft()  ~ Int {
+		return @rect->GetLeft();
+	}
+
+	method : public : GetRight()  ~ Int {
+		return @rect->GetRight();
+	}
+
+	method : public : GetTop()  ~ Int {
+		return @rect->GetTop();
+	}
+
+	method : public : GetBottom()  ~ Int {
+		return @rect->GetBottom();
+	}
+
+	method : public : Draw()  ~ Nil {
+		@rect->Render();
+	}
+
+	method : public : Collides(rect : ImageSprite) ~ Bool {
+		return @rect->GetPosition()->Overlaps(rect->GetPosition());
+	}
+}
+
 class Level {
 	@player : Player;
 	@platforms : Vector;
+	@tokens : Vector;
 	@shift_x : Int;
 
-	New(player : Player, framework : GameFramework) {
+	New(player : Player, framework : GameFramework, base_path : String) {
 		@player := player;
-		@platforms := Vector->New();
+		@player->SetLevel(@self);
 
-#		@platforms->AddBack(MovingPlatform->New(200, 150, framework->AddRectangle(75, 35), player, @self));		
+		@platforms := Vector->New();
+		@platforms->AddBack(MovingPlatform->New(200, 450, framework->AddRectangle(80, 20), player, @self));		
 		@platforms->AddBack(Platform->New(620, 535, framework->AddRectangle(110, 20)));
 		@platforms->AddBack(Platform->New(700, 485, framework->AddRectangle(120, 15)));
 		@platforms->AddBack(Platform->New(820, 450, framework->AddRectangle(210, 20)));
 		@platforms->AddBack(Platform->New(1025, 545, framework->AddRectangle(210, 15)));
 
-		@player->SetLevel(@self);
+		token_path := String->New(base_path);
+		token_path += "/images/token.png";
+		@tokens := Vector->New();
+		@tokens->AddBack(Token->New(200, 150, framework->AddImageSprite(token_path)));		
 	}
-
-	function : Collides(player : Player, obstacles : Vector) ~ Bool {
-		each(i : obstacles) {
-        	obstacle := obstacles->Get(i)->As(Platform);
-        	if(obstacle->Collides(player->GetRect())) {
-        		return true;
-        	};
-        };
-
-        return false;
-	}
-
-	function : Collisions(player : Player, obstacles : Vector) ~ Vector {
-		collides := Vector->New();
-
-		each(i : obstacles) {
-        	obstacle := obstacles->Get(i)->As(Platform);
-        	if(obstacle->Collides(player->GetRect())) {
-        		collides->AddBack(obstacle);
-        	};
-        };
-
-        return collides;
-    }
 
 	method : public : GetShift() ~ Int {
 		return @shift_x;
@@ -413,14 +479,25 @@ class Level {
 		return @platforms;
 	}
 
+	function : Collisions(player : Player, obstacles : Vector) ~ Vector {
+		collides := Vector->New();
+
+		each(i : obstacles) {
+        	obstacle := obstacles->Get(i)->As(Platform);
+        	if(obstacle->Collides(player->GetRect())) {
+        		collides->AddBack(obstacle);
+        	};
+        };
+
+        return collides;
+    }
+
 	method : public : Update()  ~ Nil {
 		each(i : @platforms) {
 			platform := @platforms->Get(i);
-#~			
 			if(platform->TypeOf(MovingPlatform)) {
 				@platforms->Get(i)->As(MovingPlatform)->Update();
 			};
-~#			
 		};
 	}
 
