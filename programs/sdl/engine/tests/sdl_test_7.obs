@@ -30,6 +30,7 @@ class Demo {
 			
 			quit := false;
 			e := @framework->GetEvent();
+			frame_count := 0;
 			while(<>quit) {
 				@framework->FrameStart();
 				@framework->Clear();
@@ -67,11 +68,16 @@ class Demo {
 				# draw
 				Background();
 				@player->Draw();
-				@level->Draw();
+				@level->Draw(frame_count);
 				
 				# show
 				@framework->Show();
 				@framework->FrameEnd();
+				
+				frame_count += 1;
+				if(frame_count >= @framework->GetFps()) {
+					frame_count := 0;
+				};
 			};
 		}
 		else {
@@ -441,8 +447,9 @@ class Gem {
 		return @rect->GetBottom();
 	}
 
-	method : public : Draw()  ~ Nil {
-		@rect->Render(0);
+	method : public : Draw(frame_count : Int)  ~ Nil {
+		index := frame_count / 6 % @rect->GetClipCount();
+		@rect->Render(index);
 	}
 
 	method : public : Collides(rect : ImageSprite) ~ Bool {
@@ -473,11 +480,11 @@ class Level {
 
 		clips := Vector->New();
 		clips->AddBack(Rect->New(0, 0, 32, 32));
-		clips->AddBack(Rect->New(32, 0, 32, 52));
-		clips->AddBack(Rect->New(64, 0, 32, 52));
-		clips->AddBack(Rect->New(96, 0, 32, 52));
-		clips->AddBack(Rect->New(128, 0, 32, 52));
-		clips->AddBack(Rect->New(160, 0, 32, 52));
+		clips->AddBack(Rect->New(32, 0, 32, 32));
+		clips->AddBack(Rect->New(64, 0, 32, 32));
+		clips->AddBack(Rect->New(96, 0, 32, 32));
+		clips->AddBack(Rect->New(128, 0, 32, 32));
+		clips->AddBack(Rect->New(160, 0, 32, 32));
 		gems_image := framework->AddAnimatedImageSprite(gems_path, clips);
 		@gems->AddBack(Gem->New(600, 500, gems_image));		
 	}
@@ -543,13 +550,13 @@ class Level {
 		};
 	}
 
-	method : public : Draw()  ~ Nil {
+	method : public : Draw(frame_count : Int)  ~ Nil {
 		each(i : @platforms) {
 			@platforms->Get(i)->As(Platform)->Draw();
 		};
 
 		each(i : @gems) {
-			@gems->Get(i)->As(Gem)->Draw();
+			@gems->Get(i)->As(Gem)->Draw(frame_count);
 		};
 	}
 }
