@@ -321,7 +321,7 @@ class Platform {
 	New(x : Int, y : Int, rect : Rectangle) {
 		@rect := rect;
 		@rect->SetFill(true);
-		@rect->SetColor(Color->New(0, 255, 0));
+		@rect->SetColor(Color->New(50, 51, 52));
 		@rect->Set(x, y);
 	}
 
