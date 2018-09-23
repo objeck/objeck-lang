@@ -473,13 +473,46 @@ class Level {
 	method : GeneratePlatforms(framework : GameFramework) ~ Vector {
 		platforms := Vector->New();
 
+		width := 110;
+		heigth := 20;
+
+
+		x_pos := 75;
+		platforms->AddBack(Platform->New(x_pos, 525, framework->AddRectangle(width, heigth)));
+		x_pos += 110 + GetRandomInt(10, 20);
+
+		for(i := 0; i < 10; i += 1;) {
+			prev := platforms->Get(i)->As(Platform);
+			x_offset := GetRandomInt(10, 35);
+
+			y_pos : Int;
+			if(i % 2 = 0) {
+				y_pos := prev->GetTop() + GetRandomInt(30, 40);
+			}
+			else {
+				y_pos := prev->GetTop() - GetRandomInt(30, 40);
+			};
+
+y_pos->PrintLine();
+
+			platforms->AddBack(Platform->New(x_pos + x_offset, y_pos, framework->AddRectangle(width, heigth)));
+#~
 		platforms->AddBack(MovingPlatform->New(200, 450, framework->AddRectangle(80, 20), @player, @self));		
 		platforms->AddBack(Platform->New(620, 535, framework->AddRectangle(110, 20)));
 		platforms->AddBack(Platform->New(700, 485, framework->AddRectangle(120, 15)));
 		platforms->AddBack(Platform->New(820, 450, framework->AddRectangle(210, 20)));
 		platforms->AddBack(Platform->New(1025, 545, framework->AddRectangle(210, 15)));
+~#
+
+			x_pos += 110 + GetRandomInt(10, 20);
+
+		};
 
 		return platforms;
+	}
+
+	method : GetRandomInt(min : Int, max : Int) ~ Int {
+		return min + (Float->Random() * 10000.0)->As(Int) % (max - min);
 	}
 
 	method : GenerateGems(base_path : String, framework : GameFramework) ~ Vector {

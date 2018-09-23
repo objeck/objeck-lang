@@ -557,6 +557,25 @@ bundle System {
 		}
 
 		#~
+		Returns a random number within the given range
+		@param min minimal value
+		@param max maximal value
+		@return random number within range
+		~#
+		function : Random(min : Int, max : Int) ~ Int {
+			return min + (Float->Random() * 1000000.0)->As(Int) % (max - min);
+		}
+
+		#~
+		Returns a random number between 0 and max
+		@param max maximal value
+		@return random number within range
+		~#
+		function : Random(max : Int) ~ Int {
+			return min + (Float->Random() * 1000000.0)->As(Int) % max;
+		}
+		
+		#~
 		Returns the smallest integer value
 		@param l value to compare
 		@param r value to compare
