@@ -150,7 +150,7 @@ class Player {
 		player_path += "/images/player.png";
 		@rect := framework->AddAnimatedImageSprite(player_path, clips);
 		
-		@loc := Vector2->New(Game->SCREEN_WIDTH / 2, Game->SCREEN_HEIGHT / 2);
+		@loc := Vector2->New(Game->PLAYER_BOX_MIN->As(Float), Game->SCREEN_HEIGHT / 2);
 		@vel := Vector2->New();
 		@acc := Vector2->New();
 	}
@@ -476,43 +476,40 @@ class Level {
 		width := 110;
 		heigth := 20;
 
-
-		x_pos := 75;
+		x_pos := Game->PLAYER_BOX_MIN * 2;
 		platforms->AddBack(Platform->New(x_pos, 525, framework->AddRectangle(width, heigth)));
-		x_pos += 110 + GetRandomInt(10, 20);
+		x_pos += 110 + Int->Random(10, 20);
 
-		for(i := 0; i < 10; i += 1;) {
+		flip : Int;
+		for(i := 0; i < 20; i += 1;) {
 			prev := platforms->Get(i)->As(Platform);
-			x_offset := GetRandomInt(10, 35);
+			x_offset := Int->Random(10, 35);
+
+foo := Int->Random(2,4);
+foo->PrintLine();
 
 			y_pos : Int;
-			if(i % 2 = 0) {
-				y_pos := prev->GetTop() + GetRandomInt(30, 40);
+			flip := Int->Random(3);
+			if(flip = 0) {
+				y_pos := prev->GetTop() + Int->Random(30, 50);
 			}
 			else {
-				y_pos := prev->GetTop() - GetRandomInt(30, 40);
+				y_pos := prev->GetTop() - Int->Random(30, 40);
 			};
 
-y_pos->PrintLine();
-
 			platforms->AddBack(Platform->New(x_pos + x_offset, y_pos, framework->AddRectangle(width, heigth)));
-#~
-		platforms->AddBack(MovingPlatform->New(200, 450, framework->AddRectangle(80, 20), @player, @self));		
-		platforms->AddBack(Platform->New(620, 535, framework->AddRectangle(110, 20)));
-		platforms->AddBack(Platform->New(700, 485, framework->AddRectangle(120, 15)));
-		platforms->AddBack(Platform->New(820, 450, framework->AddRectangle(210, 20)));
-		platforms->AddBack(Platform->New(1025, 545, framework->AddRectangle(210, 15)));
-~#
+# platforms->AddBack(MovingPlatform->New(200, 450, framework->AddRectangle(80, 20), @player, @self));		
 
-			x_pos += 110 + GetRandomInt(10, 20);
-
+			flip := Int->Random(3);
+			if(flip = 0) {
+				x_pos += 110 + Int->Random(10, 25);
+			}
+			else {
+				x_pos += 110 - Int->Random(10, 20);
+			};
 		};
 
 		return platforms;
-	}
-
-	method : GetRandomInt(min : Int, max : Int) ~ Int {
-		return min + (Float->Random() * 10000.0)->As(Int) % (max - min);
 	}
 
 	method : GenerateGems(base_path : String, framework : GameFramework) ~ Vector {
