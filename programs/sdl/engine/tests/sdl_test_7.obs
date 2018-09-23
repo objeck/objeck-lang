@@ -140,6 +140,8 @@ class Player {
 		clips->AddBack(Rect->New(32, 0, 32, 52));
 		clips->AddBack(Rect->New(64, 0, 32, 52));
 		clips->AddBack(Rect->New(96, 0, 32, 52));
+		clips->AddBack(Rect->New(128, 0, 32, 52));
+		clips->AddBack(Rect->New(160, 0, 32, 52));
 		@rect := framework->AddAnimatedImageSprite("C:\\Users\\objec\\Documents\\Code\\objeck-lang\\programs\\sdl\\engine\\tests\\media\\images\\player.png", clips);
 		
 		@loc := Vector2->New(Game->SCREEN_WIDTH / 2, Game->SCREEN_HEIGHT / 2);
@@ -291,9 +293,14 @@ class Player {
 	}
 
 	method : public : Draw()  ~ Nil {
-		offset := @level->GetShift() + @loc->GetX();
-		index := Int->Abs((offset / 15)->As(Int) % @rect->GetClipCount());
-		@rect->Render(index);
+		if(@vel->GetX() > 0.075 | @vel->GetX() < -0.075) {
+			offset := @level->GetShift() + @loc->GetX();
+			index := Int->Abs((offset / 15)->As(Int) % 4);
+			@rect->Render(index);
+		}
+		else {
+			@rect->Render(4);
+		};
 	}
 }
 
