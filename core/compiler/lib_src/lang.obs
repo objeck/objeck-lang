@@ -572,7 +572,7 @@ bundle System {
 		@return random number within range
 		~#
 		function : Random(max : Int) ~ Int {
-			return min + (Float->Random() * 1000000.0)->As(Int) % max;
+			return (Float->Random() * 1000000.0)->As(Int) % max;
 		}
 		
 		#~
