@@ -221,11 +221,28 @@ class Player {
 		@loc->Add(@vel);
 		@acc->Zero();
 		
-		# reposition 'x'
+		UpdatePlatforms();
+		UpdateGems();
+
+	    # hit floor
+		if(@rect->GetBottom() > Game->SCREEN_HEIGHT) {
+			@rect->SetBottom(Game->SCREEN_HEIGHT);
+        	@loc->SetY(Game->SCREEN_HEIGHT + @rect->GetHeight() / 2);
+			@jump_max := 0;
+			@vel->SetY(0);
+		}
+		else if(@loc->GetY() < 0) {
+			@loc->SetY(0);
+			@vel->SetY(0);
+		};
+	}
+
+	method : public : UpdatePlatforms() ~ Nil {
 		platforms := @level->GetPlatforms();
 
+		# reposition 'x'
 		@rect->SetCenterX(@loc->GetX());
-		collides := Level->Collisions(@self, platforms);
+		collides := Level->PlatformCollisions(@self, platforms);
         each(i : collides) {
         	platform := collides->Get(i)->As(Platform);
 			if(@vel->GetX() > 0.01) {
@@ -242,37 +259,31 @@ class Player {
 
 		# reposition 'y'
 		@rect->SetBottom(@loc->GetY() - @rect->GetHeight() / 2);
-		collides := Level->Collisions(@self, platforms);
+		collides := Level->PlatformCollisions(@self, platforms);
         each(i : collides) {
         	platform := collides->Get(i)->As(Platform);
-        	if(platform->Collides(@rect)) {
-        		if(@vel->GetY() < 0.01) {
-					@rect->SetTop(platform->GetBottom());
-                	@loc->SetY(platform->GetBottom() + @rect->GetHeight() / 2);
-					@jump_max := 3;
-					@hit_top := true;
-	            }
-	            else if(@vel->GetY() > 0.01) {
-        			@rect->SetBottom(platform->GetTop());
-        			@loc->SetY(platform->GetTop() + @rect->GetHeight() / 2);
-					@vel->SetY(0);
-					@jump_max := 0;
-                };
-	        };
-	    };
-
-	    # hit floor
-		if(@rect->GetBottom() > Game->SCREEN_HEIGHT) {
-			@rect->SetBottom(Game->SCREEN_HEIGHT);
-        	@loc->SetY(Game->SCREEN_HEIGHT + @rect->GetHeight() / 2);
-			@jump_max := 0;
-			@vel->SetY(0);
-		}
-		else if(@loc->GetY() < 0) {
-			@loc->SetY(0);
-			@vel->SetY(0);
-		};
+       		if(@vel->GetY() < 0.01) {
+				@rect->SetTop(platform->GetBottom());
+            	@loc->SetY(platform->GetBottom() + @rect->GetHeight() / 2);
+				@jump_max := 3;
+				@hit_top := true;
+            }
+            else if(@vel->GetY() > 0.01) {
+    			@rect->SetBottom(platform->GetTop());
+    			@loc->SetY(platform->GetTop() + @rect->GetHeight() / 2);
+				@vel->SetY(0);
+				@jump_max := 0;
+            };
+        };
 	}
+
+	method : public : UpdateGems() ~ Nil {
+		collides := Level->GemsCollisions(@self, @level->GetGems());
+        each(i : collides) {
+    		gem := collides->Get(i)->As(Gem);
+"--- Hit me, I gotcha! ---"->PrintLine();    		
+    	};
+    }
 
 	method : public : Dump() ~ Nil {
 		ax := @acc->GetX();
@@ -355,7 +366,7 @@ class MovingPlatform from Platform {
 		@rect->SetColor(Color->New(207,181,59));
 		@player := player;
 		@level := level;
-		
+
 		@boundary_top := 400;
     	@boundary_bottom := 580;
     	@change_y := 1;
@@ -402,10 +413,10 @@ class MovingPlatform from Platform {
 	}
 }
 
-class Token {
-	@rect : ImageSprite;
+class Gem {
+	@rect : AnimatedImageSprite;
 
-	New(x : Int, y : Int, rect : ImageSprite) {
+	New(x : Int, y : Int, rect : AnimatedImageSprite) {
 		@rect := rect;
 		@rect->Set(x, y);
 	}
@@ -431,7 +442,7 @@ class Token {
 	}
 
 	method : public : Draw()  ~ Nil {
-		@rect->Render();
+		@rect->Render(0);
 	}
 
 	method : public : Collides(rect : ImageSprite) ~ Bool {
@@ -442,7 +453,7 @@ class Token {
 class Level {
 	@player : Player;
 	@platforms : Vector;
-	@tokens : Vector;
+	@gems : Vector;
 	@shift_x : Int;
 
 	New(player : Player, framework : GameFramework, base_path : String) {
@@ -456,10 +467,19 @@ class Level {
 		@platforms->AddBack(Platform->New(820, 450, framework->AddRectangle(210, 20)));
 		@platforms->AddBack(Platform->New(1025, 545, framework->AddRectangle(210, 15)));
 
-		token_path := String->New(base_path);
-		token_path += "/images/token.png";
-		@tokens := Vector->New();
-		@tokens->AddBack(Token->New(200, 150, framework->AddImageSprite(token_path)));		
+		gems_path := String->New(base_path);
+		gems_path += "/images/gems.png";
+		@gems := Vector->New();
+
+		clips := Vector->New();
+		clips->AddBack(Rect->New(0, 0, 32, 32));
+		clips->AddBack(Rect->New(32, 0, 32, 52));
+		clips->AddBack(Rect->New(64, 0, 32, 52));
+		clips->AddBack(Rect->New(96, 0, 32, 52));
+		clips->AddBack(Rect->New(128, 0, 32, 52));
+		clips->AddBack(Rect->New(160, 0, 32, 52));
+		gems_image := framework->AddAnimatedImageSprite(gems_path, clips);
+		@gems->AddBack(Gem->New(600, 500, gems_image));		
 	}
 
 	method : public : GetShift() ~ Int {
@@ -473,13 +493,22 @@ class Level {
 			platform := @platforms->Get(i)->As(Platform);
 			platform->AddX(shift_x);
 		};
+
+		each(i : @gems) {
+			platform := @gems->Get(i)->As(Gem);
+			platform->AddX(shift_x);
+		};
 	}
 
 	method : public : GetPlatforms() ~ Vector {
 		return @platforms;
 	}
 
-	function : Collisions(player : Player, obstacles : Vector) ~ Vector {
+	method : public : GetGems() ~ Vector {
+		return @gems;
+	}
+
+	function : PlatformCollisions(player : Player, obstacles : Vector) ~ Vector {
 		collides := Vector->New();
 
 		each(i : obstacles) {
@@ -492,11 +521,24 @@ class Level {
         return collides;
     }
 
+    function : GemsCollisions(player : Player, obstacles : Vector) ~ Vector {
+		collides := Vector->New();
+
+		each(i : obstacles) {
+        	obstacle := obstacles->Get(i)->As(Gem);
+        	if(obstacle->Collides(player->GetRect())) {
+        		collides->AddBack(obstacle);
+        	};
+        };
+
+        return collides;
+    }
+
 	method : public : Update()  ~ Nil {
 		each(i : @platforms) {
 			platform := @platforms->Get(i);
 			if(platform->TypeOf(MovingPlatform)) {
-				@platforms->Get(i)->As(MovingPlatform)->Update();
+				platform->As(MovingPlatform)->Update();
 			};
 		};
 	}
@@ -504,6 +546,10 @@ class Level {
 	method : public : Draw()  ~ Nil {
 		each(i : @platforms) {
 			@platforms->Get(i)->As(Platform)->Draw();
+		};
+
+		each(i : @gems) {
+			@gems->Get(i)->As(Gem)->Draw();
 		};
 	}
 }
