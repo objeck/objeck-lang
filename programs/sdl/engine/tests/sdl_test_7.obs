@@ -287,7 +287,7 @@ class Player {
 		collides := Level->GemsCollisions(@self, @level->GetGems());
         each(i : collides) {
     		gem := collides->Get(i)->As(Gem);
-"--- Hit me, I gotcha! ---"->PrintLine();    		
+    		gem->Hide();
     	};
     }
 
@@ -421,10 +421,15 @@ class MovingPlatform from Platform {
 
 class Gem {
 	@rect : AnimatedImageSprite;
+	@hide : Bool;
 
 	New(x : Int, y : Int, rect : AnimatedImageSprite) {
 		@rect := rect;
 		@rect->Set(x, y);
+	}
+
+	method : public : Hide() ~ Nil {
+		@hide := true;
 	}
 
 	method : public : AddX(x : Int)  ~ Nil {
@@ -448,12 +453,19 @@ class Gem {
 	}
 
 	method : public : Draw(frame_count : Int)  ~ Nil {
-		index := frame_count / 6 % @rect->GetClipCount();
-		@rect->Render(index);
+		if(<>@hide) {
+			index := frame_count / 6 % @rect->GetClipCount();
+			@rect->Render(index);
+		};
 	}
 
 	method : public : Collides(rect : ImageSprite) ~ Bool {
-		return @rect->GetPosition()->Overlaps(rect->GetPosition());
+		if(@hide) {
+			return false;
+		}
+		else {
+			return @rect->GetPosition()->Overlaps(rect->GetPosition());
+		};
 	}
 }
 
