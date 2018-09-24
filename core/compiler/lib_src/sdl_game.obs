@@ -631,12 +631,21 @@ bundle Game.Framework {
 		}
 
 		#~
-		Sets position
+		Sets left upper position
 		@param x x-position 
 		@param y y-position 
 		~#
 		method : public : Set(x : Int, y : Int) ~ Nil {
 			@position->Set(x, y);
+		}
+
+		#~
+		Sets center position
+		@param x x-position 
+		@param y y-position 
+		~#
+		method : public : SetCenter(x : Int, y : Int) ~ Nil {
+			@position->SetCenter(x, y);
 		}
 
 		#~
@@ -812,7 +821,7 @@ bundle Game.Framework {
 		}
 
 		#~
-		Set left upper position
+		Set upper left position
 		@param x x-position
 		@param y y-position
 		~#
