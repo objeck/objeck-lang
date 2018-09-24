@@ -2,6 +2,9 @@ use Game.SDL2;
 use Game.Framework;
 use Collection;
 
+# TODO: add music/effects
+# TODO: add ending
+
 class Game {
 	@framework : GameFramework;
 	@base_path : String;
