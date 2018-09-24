@@ -112,9 +112,14 @@ class Game {
 					}
 					else {
 						@timer -= 1;
-						buffer := "Time: ";
-						buffer += @timer->ToString();
-						@timer_text->RenderedText(buffer);
+						if(@timer < 0) {
+							Over();
+						}
+						else {
+							buffer := "Time: ";
+							buffer += @timer->ToString();
+							@timer_text->RenderedText(buffer);
+						};
 					};
 
 					frame_count := 0;
@@ -704,12 +709,12 @@ class Level {
 	}
 
 	method : public : Draw(frame_count : Int)  ~ Nil {
-		each(i : @platforms) {
-			@platforms->Get(i)->As(Platform)->Draw();
-		};
-
 		each(i : @gems) {
 			@gems->Get(i)->As(Gem)->Draw(frame_count);
+		};
+
+		each(i : @platforms) {
+			@platforms->Get(i)->As(Platform)->Draw();
 		};
 	}
 }
