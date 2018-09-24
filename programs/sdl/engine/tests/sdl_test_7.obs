@@ -2,31 +2,48 @@ use Game.SDL2;
 use Game.Framework;
 use Collection;
 
-class Demo {
+class Game {
 	@framework : GameFramework;
 	@base_path : String;
 	@player : Player;
 	@background : ImageSprite;
 	@level : Level;
 
+	@timer : Int;
+	@timer_text : TextSprite;
+
+	@score : Int;
+	@score_text : TextSprite;
+
 	function : Main(args : String[]) ~ Nil {
-		Demo->New()->Run();
+		Game->New()->Run();
 	}
 
 	New() {
-		@framework := GameFramework->New(Game->SCREEN_WIDTH, Game->SCREEN_HEIGHT, "Accel");
+		@framework := GameFramework->New(GameConsts->SCREEN_WIDTH, GameConsts->SCREEN_HEIGHT, "Accel");
 		@framework->SetClearColor(Color->New(0, 0, 255));
 		@base_path := "C:\\Users\\objec\\Documents\\Code\\objeck-lang\\programs\\sdl\\engine\\tests\\media";
 
 		background_path := String->New(@base_path);
 		background_path += "/images/background.png";
 		@background := @framework->AddImageSprite(background_path);
+
+		@timer := 45;
+		buffer := "Time: ";
+		buffer += @timer->ToString();
+		@timer_text := @framework->AddTextSprite();
+		@timer_text->RenderedText(buffer);	
+
+		@score_text := @framework->AddTextSprite();
+		buffer := "Score: ";
+		buffer += @score->ToString();
+		@score_text->RenderedText(buffer);
 	}
 
 	method : Run() ~ Nil {
 		if(@framework->IsOk()) {
-			@player := Player->New(@framework, @base_path);
-			@level := Level->New(@player, @framework, @base_path);
+			@player := Player->New(@self);
+			@level := Level->New(@self);
 			
 			quit := false;
 			e := @framework->GetEvent();
@@ -49,17 +66,17 @@ class Demo {
 				@level->Update();
 
 				shift := @level->GetShift();
-				if(@player->GetRight() >= Game->PLAYER_BOX_MAX) {
-					diff := @player->GetRight() - Game->PLAYER_BOX_MAX;
-					@player->SetRight(Game->PLAYER_BOX_MAX);
-					if(shift > Game->WIDTH_MAX) {
+				if(@player->GetRight() >= GameConsts->PLAYER_BOX_MAX) {
+					diff := @player->GetRight() - GameConsts->PLAYER_BOX_MAX;
+					@player->SetRight(GameConsts->PLAYER_BOX_MAX);
+					if(shift > GameConsts->WIDTH_MAX) {
 						@level->ShiftWorld(-1 * diff);
 					};
 		        };
 
-		        if(@player->GetLeft() <= Game->PLAYER_BOX_MIN) {
-					diff := Game->PLAYER_BOX_MIN - @player->GetLeft();
-					@player->SetLeft(Game->PLAYER_BOX_MIN);
+		        if(@player->GetLeft() <= GameConsts->PLAYER_BOX_MIN) {
+					diff := GameConsts->PLAYER_BOX_MIN - @player->GetLeft();
+					@player->SetLeft(GameConsts->PLAYER_BOX_MIN);
 					if(shift < 0) {
 						@level->ShiftWorld(diff);
 					};
@@ -69,6 +86,8 @@ class Demo {
 				Background();
 				@player->Draw();
 				@level->Draw(frame_count);
+				@timer_text->Render(640, 20);
+				@score_text->Render(640, 48);
 				
 				# show
 				@framework->Show();
@@ -76,12 +95,17 @@ class Demo {
 				
 				frame_count += 1;
 				if(frame_count >= @framework->GetFps()) {
+					@timer -= 1;
+
+					buffer := "Time: ";
+					buffer += @timer->ToString();
+					@timer_text->RenderedText(buffer);
 					frame_count := 0;
 				};
 			};
 		}
 		else {
-			"--- Error Initializing Game Environment ---"->ErrorLine();
+			"--- Error Initializing GameConsts Environment ---"->ErrorLine();
 			return;
 		};
 
@@ -90,13 +114,32 @@ class Demo {
 		};
 	}
 
-	method : public : Background() ~ Nil {
+	method : public : GetFramework() ~ GameFramework {
+		return @framework;
+	}
+
+	method : public : GetPlayer() ~ Player {
+		return @player;
+	}
+
+	method : public : GetBasePath() ~ String {
+		return @base_path;
+	}
+
+	method : public : AddScore(points : Int) ~ Nil {
+		@score += points;
+		buffer := "Score: ";
+		buffer += @score->ToString();
+		@score_text->RenderedText(buffer);
+	}
+
+	method : Background() ~ Nil {
 		shift := @level->GetShift() / 3;
 		@background->Render(shift, 0);
 		@background->Render(shift + @background->GetWidth(), 0);	
 	}
 
-	method : public : ProcessInput(e : Event) ~ Nil {
+	method : ProcessInput(e : Event) ~ Nil {
 		if(e->GetType() = EventType->SDL_KEYDOWN) {
 	        select(e->GetKey()->GetKeysym()->GetScancode()) {    	
 	            label Scancode->SDL_SCANCODE_LEFT: {
@@ -129,6 +172,7 @@ class Demo {
 
 class Player {
 	@rect : AnimatedImageSprite;
+	@game : Game;
 	@loc : Vector2;
 	@vel : Vector2;
 	@acc : Vector2;
@@ -137,7 +181,12 @@ class Player {
 	@hit_top : Bool;
 	@level : Level;
 	
-	New(framework : GameFramework, base_path : String) {
+	New(game : Game) {
+		@game := game;
+
+		framework := game->GetFramework();
+		base_path := game->GetBasePath();
+
 		clips := Vector->New();
 		clips->AddBack(Rect->New(0, 0, 32, 52));
 		clips->AddBack(Rect->New(32, 0, 32, 52));
@@ -150,7 +199,7 @@ class Player {
 		player_path += "/images/player.png";
 		@rect := framework->AddAnimatedImageSprite(player_path, clips);
 		
-		@loc := Vector2->New(Game->PLAYER_BOX_MIN->As(Float), Game->SCREEN_HEIGHT / 2);
+		@loc := Vector2->New(GameConsts->PLAYER_BOX_MIN->As(Float), GameConsts->SCREEN_HEIGHT / 2);
 		@vel := Vector2->New();
 		@acc := Vector2->New();
 	}
@@ -234,7 +283,7 @@ class Player {
 
 		# reposition 'x'
 		@rect->SetCenterX(@loc->GetX());
-		collides := Level->PlatformCollisions(@self, platforms);
+		collides := @level->PlatformCollisions(@self, platforms);
         each(i : collides) {
         	platform := collides->Get(i)->As(Platform);
 			if(@vel->GetX() > 0.01) {
@@ -251,7 +300,7 @@ class Player {
 
 		# reposition 'y'
 		@rect->SetBottom(@loc->GetY() - @rect->GetHeight() / 2);
-		collides := Level->PlatformCollisions(@self, platforms);
+		collides := @level->PlatformCollisions(@self, platforms);
         each(i : collides) {
         	platform := collides->Get(i)->As(Platform);
        		if(@vel->GetY() < 0.01) {
@@ -274,13 +323,14 @@ class Player {
         each(i : collides) {
     		gem := collides->Get(i)->As(Gem);
     		gem->Hide();
+    		@game->AddScore(15);
     	};
     }
 
     method : public : CheckFloorCeiling() ~ Nil {
-    	if(@rect->GetBottom() > Game->SCREEN_HEIGHT) {
-			@rect->SetBottom(Game->SCREEN_HEIGHT);
-        	@loc->SetY(Game->SCREEN_HEIGHT + @rect->GetHeight() / 2);
+    	if(@rect->GetBottom() > GameConsts->SCREEN_HEIGHT) {
+			@rect->SetBottom(GameConsts->SCREEN_HEIGHT);
+        	@loc->SetY(GameConsts->SCREEN_HEIGHT + @rect->GetHeight() / 2);
 			@jump_max := 0;
 			@vel->SetY(0);
 		}
@@ -424,7 +474,7 @@ class Gem {
 
 	New(x : Int, y : Int, rect : AnimatedImageSprite) {
 		@rect := rect;
-		@rect->SetCenter(x, y);
+		@rect->Set(x, y);
 	}
 
 	method : public : Hide() ~ Nil {
@@ -469,15 +519,20 @@ class Gem {
 }
 
 class Level {
+	@game : Game;
 	@player : Player;
 	@platforms : Vector;
 	@gems : Vector;
 	@shift_x : Int;
 
-	New(player : Player, framework : GameFramework, base_path : String) {
-		@player := player;
+	New(game : Game) {
+		@game := game;
+
+		@player := game->GetPlayer();
 		@player->SetLevel(@self);
 
+		base_path := @game->GetBasePath();
+		framework := game->GetFramework();
 		@platforms := GeneratePlatforms(framework);
 		@gems := GenerateGems(base_path, framework);
 	}
@@ -488,11 +543,10 @@ class Level {
 		width := 110;
 		height := 20;
 
-		x_base_pos := Game->PLAYER_BOX_MIN + Game->PLAYER_BOX_MIN / 2;
+		x_base_pos := GameConsts->PLAYER_BOX_MIN + GameConsts->PLAYER_BOX_MIN / 2;
 		platforms->AddBack(Platform->New(x_base_pos, 525, framework->AddRectangle(width, height)));
 		x_base_pos += 110 + Int->Random(10, 20);
 
-		overlap := false;
 		flip : Int;
 		for(i := 0; i < 11; i += 1;) {
 			prev_plat := platforms->Get(i)->As(Platform);
@@ -587,7 +641,7 @@ class Level {
 		return @gems;
 	}
 
-	function : PlatformCollisions(player : Player, obstacles : Vector) ~ Vector {
+	method : public : PlatformCollisions(player : Player, obstacles : Vector) ~ Vector {
 		collides := Vector->New();
 
 		each(i : obstacles) {
@@ -600,7 +654,7 @@ class Level {
         return collides;
     }
 
-    function : GemsCollisions(player : Player, obstacles : Vector) ~ Vector {
+    method : public : GemsCollisions(player : Player, obstacles : Vector) ~ Vector {
 		collides := Vector->New();
 
 		each(i : obstacles) {
@@ -633,7 +687,7 @@ class Level {
 	}
 }
 
-consts Game {
+consts GameConsts {
 	PLAYER_BOX_MIN := 120,
 	PLAYER_BOX_MAX := 500,
 	SCREEN_WIDTH := 800,
