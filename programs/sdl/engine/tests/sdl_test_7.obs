@@ -255,6 +255,7 @@ class Game {
 class Player {
 	@rect : AnimatedImageSprite;
 	@game : Game;
+	@dir : Int;
 	@loc : Vector2;
 	@vel : Vector2;
 	@acc : Vector2;
@@ -311,22 +312,21 @@ class Player {
 	}
 
 	method : public : GoLeft()  ~ Nil {
+		@dir := -1;
 		if(@rect->GetFlip() = RendererFlip->SDL_FLIP_NONE) {
 			@rect->SetFlip(RendererFlip->SDL_FLIP_HORIZONTAL);
 		};
-
-		@acc->SetX(-0.75);
 	}
 
 	method : public : GoRight()  ~ Nil {
+		@dir := 1;
 		if(@rect->GetFlip() = RendererFlip->SDL_FLIP_HORIZONTAL) {
 			@rect->SetFlip(RendererFlip->SDL_FLIP_NONE);
 		};
-
-		@acc->SetX(0.75);
 	}
 
 	method : public : Stop()  ~ Nil {
+		@dir := 0;
 	}
 	
 	method : public : Jump(jumped : Bool)  ~ Nil {
@@ -334,6 +334,8 @@ class Player {
 	}
 
 	method : public : Update()  ~ Nil {
+		@acc->SetX(@dir * 0.50);
+
 		# movement logic
 		if(@hit_top) {
 			@acc->SetY(80);
@@ -349,7 +351,7 @@ class Player {
 			};
 		};
 
-		@acc->Add(Vector2->Mul(@vel, -0.0625));
+		@acc->Add(Vector2->Mul(@vel, -0.0925));
 		@vel->Add(Vector2->Mul(@acc, 0.75));
 		@loc->Add(@vel);
 		@acc->Zero();
@@ -368,12 +370,12 @@ class Player {
 		collides := @level->PlatformCollisions(@self, platforms);
         each(i : collides) {
         	platform := collides->Get(i)->As(Platform);
-			if(@vel->GetX() > 0.01) {
+			if(@dir = 1) {
     			@rect->SetRight(platform->GetLeft());
     			@loc->SetX(platform->GetLeft() - @rect->GetWidth() / 2);
     			@vel->MulX(0);
             }
-    		else if(@vel->GetX() < -0.01) {
+    		else if(@dir = -1) {
             	@rect->SetLeft(platform->GetRight());
             	@loc->SetX(platform->GetRight() + @rect->GetWidth() / 2);
             	@vel->MulX(0);
@@ -426,13 +428,14 @@ class Player {
 		if(@jump_max > 0) {
 			@rect->Render(5);
 		}
-		else if(@vel->GetX() > 0.075 | @vel->GetX() < -0.075) {
+
+		else if(@dir = 0) {
+			@rect->Render(4);
+		}
+		else {
 			offset := @level->GetShift() + @loc->GetX();
 			index := Int->Abs((offset / 15)->As(Int) % 4);
 			@rect->Render(index);
-		}
-		else {
-			@rect->Render(4);
 		};
 	}
 }
