@@ -446,12 +446,21 @@ bundle Game.Framework {
 		}
 
 		#~
-		Sets position
+		Sets upper left position
 		@param x x-position 
 		@param y y-position 
 		~#
 		method : public : Set(x : Int, y : Int) ~ Nil {
 			@position->Set(x, y);
+		}
+
+		#~
+		Sets cener position
+		@param x x-position 
+		@param y y-position 
+		~#
+		method : public : SetCenter(x : Int, y : Int) ~ Nil {
+			@position->SetCenter(x, y);
 		}
 
 		#~
@@ -1154,7 +1163,7 @@ bundle Game.Framework {
 			};
 			font_path += "/lib/sdl/fonts/lazy.ttf";
 
-			@font := Font->New(font_path, 18);
+			@font := Font->New(font_path, 24);
 			if(@font->IsNull()) {
 				"Failed to load font '{$font_path}'!"->ErrorLine();
 				return false;
