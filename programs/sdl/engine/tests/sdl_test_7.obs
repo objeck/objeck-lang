@@ -191,7 +191,7 @@ class Game {
 				select(e->GetJHat()->GetValue()) {
 					# release pad
 					label 0: {
-#						@player->Stop();
+						@player->Stop();
 					}
 
 					# right pad

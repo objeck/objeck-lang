@@ -1118,7 +1118,8 @@ class StackProgram {
 #endif
 
   static void InitializeProprieties() {
-    // load system proprieties
+    // install directory
+#ifdef _DEBUG
 #ifdef _WIN32
     char buff[MAX_PATH];
     _getcwd(buff, MAX_PATH);
@@ -1135,7 +1136,41 @@ class StackProgram {
       wstring install_dir = cwd.substr(0, cwd_index);
       properties_map.insert(pair<wstring, wstring>(L"install_dir", install_dir));
     }
+#else
+#ifdef _WIN32  
+    char install_path[MAX_PATH];
+    DWORD status = GetModuleFileNameA(NULL, install_path, sizeof(install_path));
+    if(status > 0) {
+      string exe_path(install_path);
+      size_t install_index = exe_path.find_last_of('\\');
+      if(install_index != string::npos) {
+        exe_path = exe_path.substr(0, install_index);
+        install_index = exe_path.find_last_of('\\');
+        if(install_index != string::npos) {
+          wstring install_dir = BytesToUnicode(exe_path.substr(0, install_index));
+          properties_map.insert(pair<wstring, wstring>(L"install_dir", install_dir));
+        }
+      }
+    }
+#else
+    char install_path[SMALL_BUFFER_MAX];
+    ssize_t status = ::readlink("/proc/self/exe", install_path, sizeof(install_path) - 1);
+    if(status != -1) {
+      string exe_path(install_path);
+      size_t install_index = exe_path.find_last_of('/');
+      if(install_index != string::npos) {
+        exe_path = exe_path.substr(0, install_index);
+        install_index = exe_path.find_last_of('/');
+        if(install_index != string::npos) {
+          wstring install_dir = BytesToUnicode(exe_path.substr(0, install_index));
+          properties_map.insert(pair<wstring, wstring>(L"install_dir", install_dir));
+        }
+      }
+    }
+#endif
+#endif
 
+    // user and temp directories
 #ifdef _WIN32  
     char user_dir[MAX_PATH];
     if(GetUserDirectory(user_dir, MAX_PATH)) {
