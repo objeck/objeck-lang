@@ -368,9 +368,9 @@ bundle Game.Framework {
 		@param center center point
 		@param flip flip direction
 		~#
-		method : public : Render(clip : Rect := Nil, angle : Float := 0.0, 
+		method : public : Render(x : Int, y : Int, clip : Rect := Nil, angle : Float := 0.0, 
 				center : Point := Nil, flip : RendererFlip := RendererFlip->SDL_FLIP_NONE) ~ Nil {
-			RenderAll(@position->GetLeft(), @position->GetTop(), clip, angle, center, flip);
+			RenderAll(x, y, clip, angle, center, flip);
 		}
 
 		#~
