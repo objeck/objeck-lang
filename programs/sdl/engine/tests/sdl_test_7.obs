@@ -98,7 +98,7 @@ class Game {
 				Background();
 				@player->Draw();
 				@level->Draw(frame_count);
-				Fire();
+				Fire(frame_count);
 				@timer_text->Render(640, 20);
 				@score_text->Render(640, 48);
 				
@@ -166,10 +166,17 @@ class Game {
 		@background->Render(shift + @background->GetWidth(), 0);	
 	}
 
-	method : Fire() ~ Nil {
-		shift := @level->GetShift() / 3;
-		@fire->Render(shift, GameConsts->SCREEN_HEIGHT - 64);
-		@fire->Render(shift + @fire->GetWidth(), GameConsts->SCREEN_HEIGHT - 64);	
+	method : Fire(frame_count : Int) ~ Nil {
+		if(frame_count % 10 = 0) {
+			shift := @level->GetShift() / 3 + 10;
+			@fire->Render(shift, GameConsts->SCREEN_HEIGHT - 64);
+			@fire->Render(shift + @fire->GetWidth(), GameConsts->SCREEN_HEIGHT - 64);
+		}
+		else {
+			shift := @level->GetShift() / 3;
+			@fire->Render(shift, GameConsts->SCREEN_HEIGHT - 64);
+			@fire->Render(shift + @fire->GetWidth(), GameConsts->SCREEN_HEIGHT - 64);
+		};	
 	}
 
 	method : ProcessInput(e : Event) ~ Nil {
