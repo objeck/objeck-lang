@@ -424,7 +424,7 @@ class Gem {
 
 	New(x : Int, y : Int, rect : AnimatedImageSprite) {
 		@rect := rect;
-		@rect->Set(x, y);
+		@rect->SetCenter(x, y);
 	}
 
 	method : public : Hide() ~ Nil {
