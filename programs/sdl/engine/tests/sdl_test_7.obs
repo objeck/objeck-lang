@@ -13,6 +13,8 @@ class Game {
 
 	@background : ImageSprite;
 	@fire : ImageSprite;
+	@fire_clip1 : Rect;
+	@fire_clip2 : Rect;
 
 	@level : Level;
 	@timer : Int;
@@ -39,6 +41,8 @@ class Game {
 		fire_path := String->New(@base_path);
 		fire_path += "/images/fire.png";
 		@fire := @framework->AddImageSprite(fire_path);
+		@fire_clip1 := Rect->New(0, 0, 800,	64);
+		@fire_clip2 := Rect->New(10, 0, 800, 64);
 
 		@timer := 45;
 		buffer := "Time: ";
@@ -167,15 +171,16 @@ class Game {
 	}
 
 	method : Fire(frame_count : Int) ~ Nil {
+		shift := @level->GetShift() / 3;
+		y_pos := GameConsts->SCREEN_HEIGHT - 64;
+
 		if(frame_count % 10 = 0) {
-			shift := @level->GetShift() / 3 + 10;
-			@fire->Render(shift, GameConsts->SCREEN_HEIGHT - 64);
-			@fire->Render(shift + @fire->GetWidth(), GameConsts->SCREEN_HEIGHT - 64);
+			@fire->Render(shift, y_pos, @fire_clip1);
+			@fire->Render(shift + @fire->GetWidth(), y_pos, @fire_clip1);
 		}
 		else {
-			shift := @level->GetShift() / 3;
-			@fire->Render(shift, GameConsts->SCREEN_HEIGHT - 64);
-			@fire->Render(shift + @fire->GetWidth(), GameConsts->SCREEN_HEIGHT - 64);
+			@fire->Render(shift, y_pos, @fire_clip2);
+			@fire->Render(shift + @fire->GetWidth(), y_pos, @fire_clip2);
 		};	
 	}
 
