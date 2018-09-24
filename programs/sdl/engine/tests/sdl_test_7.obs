@@ -494,7 +494,7 @@ class Level {
 
 		overlap := false;
 		flip : Int;
-		for(i := 0; i < 15; i += 1;) {
+		for(i := 0; i < 11; i += 1;) {
 			prev_plat := platforms->Get(i)->As(Platform);
 			height := Int->Random(10, 25);
 
@@ -544,16 +544,18 @@ class Level {
 		each(i : @platforms) {
 			platform := @platforms->Get(i)->As(Platform);
 			
-			offset : Int;
+			x_offset : Int;
 			value := Int->Random(10, 30);
 			if(i % 2 = 0) {
-				offset := platform->GetWidth() / 2 + value;
+				x_offset := platform->GetWidth() / 2 + value;
 			}
 			else {
-				offset := platform->GetWidth() / 2 - value;
+				x_offset := platform->GetWidth() / 2 - value;
 			};
 
-			gems->AddBack(Gem->New(platform->GetLeft() + offset, 500, framework->AddAnimatedImageSprite(gems_path, clips)));		
+			y_offset := platform->GetTop() - 32 - Int->Random(10, 100);
+
+			gems->AddBack(Gem->New(platform->GetLeft() + x_offset, y_offset, framework->AddAnimatedImageSprite(gems_path, clips)));		
 		};
 
 		return gems;
