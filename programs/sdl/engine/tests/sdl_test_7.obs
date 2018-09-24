@@ -6,9 +6,11 @@ class Game {
 	@framework : GameFramework;
 	@base_path : String;
 	@player : Player;
-	@background : ImageSprite;
-	@level : Level;
 
+	@background : ImageSprite;
+	@fire : ImageSprite;
+
+	@level : Level;
 	@timer : Int;
 	@timer_text : TextSprite;
 
@@ -27,6 +29,10 @@ class Game {
 		background_path := String->New(@base_path);
 		background_path += "/images/background.png";
 		@background := @framework->AddImageSprite(background_path);
+
+		fire_path := String->New(@base_path);
+		fire_path += "/images/fire.png";
+		@fire := @framework->AddImageSprite(fire_path);
 
 		@timer := 45;
 		buffer := "Time: ";
@@ -86,6 +92,7 @@ class Game {
 				Background();
 				@player->Draw();
 				@level->Draw(frame_count);
+				Fire();
 				@timer_text->Render(640, 20);
 				@score_text->Render(640, 48);
 				
@@ -134,9 +141,15 @@ class Game {
 	}
 
 	method : Background() ~ Nil {
-		shift := @level->GetShift() / 3;
+		shift := @level->GetShift() / 2;
 		@background->Render(shift, 0);
 		@background->Render(shift + @background->GetWidth(), 0);	
+	}
+
+	method : Fire() ~ Nil {
+		shift := @level->GetShift() / 3;
+		@fire->Render(shift, GameConsts->SCREEN_HEIGHT - 64);
+		@fire->Render(shift + @fire->GetWidth(), GameConsts->SCREEN_HEIGHT - 64);	
 	}
 
 	method : ProcessInput(e : Event) ~ Nil {
