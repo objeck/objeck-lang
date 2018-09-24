@@ -17,6 +17,8 @@ class Game {
 	@score : Int;
 	@score_text : TextSprite;
 
+	@game_over : Bool;
+
 	function : Main(args : String[]) ~ Nil {
 		Game->New()->Run();
 	}
@@ -102,11 +104,16 @@ class Game {
 				
 				frame_count += 1;
 				if(frame_count >= @framework->GetFps()) {
-					@timer -= 1;
+					if(@game_over) {
+						@timer_text->RenderedText("Game Over!");
+					}
+					else {
+						@timer -= 1;
+						buffer := "Time: ";
+						buffer += @timer->ToString();
+						@timer_text->RenderedText(buffer);
+					};
 
-					buffer := "Time: ";
-					buffer += @timer->ToString();
-					@timer_text->RenderedText(buffer);
 					frame_count := 0;
 				};
 			};
@@ -138,6 +145,10 @@ class Game {
 		buffer := "Score: ";
 		buffer += @score->ToString();
 		@score_text->RenderedText(buffer);
+	}
+
+	method : public : Over() ~ Nil {
+		@game_over := true;
 	}
 
 	method : Background() ~ Nil {
@@ -342,10 +353,10 @@ class Player {
 
     method : public : CheckFloorCeiling() ~ Nil {
     	if(@rect->GetBottom() > GameConsts->SCREEN_HEIGHT) {
-			@rect->SetBottom(GameConsts->SCREEN_HEIGHT);
-        	@loc->SetY(GameConsts->SCREEN_HEIGHT + @rect->GetHeight() / 2);
-			@jump_max := 0;
+			@rect->SetBottom(GameConsts->SCREEN_HEIGHT + @rect->GetHeight() / 2);
+        	@loc->SetY(GameConsts->SCREEN_HEIGHT + @rect->GetHeight());
 			@vel->SetY(0);
+			@game->Over();
 		}
 		else if(@loc->GetY() < 0) {
 			@loc->SetY(0);
