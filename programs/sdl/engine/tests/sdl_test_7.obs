@@ -185,7 +185,44 @@ class Game {
 	}
 
 	method : ProcessInput(e : Event) ~ Nil {
-		if(e->GetType() = EventType->SDL_KEYDOWN) {
+		# Joystick
+		if(e->GetType() = EventType->SDL_JOYHATMOTION) {
+			if(e->GetJHat()->GetWhich() = 0 ) {
+				select(e->GetJHat()->GetValue()) {
+					# release pad
+					label 0: {
+#						@player->Stop();
+					}
+
+					# right pad
+					label 2: {
+		            	@player->GoRight();
+					}
+
+					# left pad
+					label 8: {
+						@player->GoLeft();
+					}					
+				};
+			};
+		}
+		else if(e->GetType() = EventType->SDL_JOYBUTTONDOWN) {
+			# 'a' button
+			if(e->GetJButton()->GetButton() = 0) {
+				@player->Jump(true);
+			};
+			# B button
+			# else if(e->GetJButton()->GetButton() = 1) { ... };
+		}
+		else if(e->GetType() = EventType->SDL_JOYBUTTONUP) {
+			# 'a' button
+			if(e->GetJButton()->GetButton() = 0) {
+				@player->Jump(false);
+			};
+			# B button
+			# else if(e->GetJButton()->GetButton() = 1) { ... };
+		}
+		else if(e->GetType() = EventType->SDL_KEYDOWN) {
 	        select(e->GetKey()->GetKeysym()->GetScancode()) {    	
 	            label Scancode->SDL_SCANCODE_LEFT: {
 	            	@player->GoLeft();
