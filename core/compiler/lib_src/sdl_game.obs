@@ -817,8 +817,8 @@ bundle Game.Framework {
 		@param y y-position
 		~#
 		method : public : Set(x : Int, y : Int) ~ Nil {
-			@x := x - @rect->GetW() / 2;
-			@y := y - @rect->GetH() / 2;
+			@x := x;
+			@y := y;
 		}
 
 		#~

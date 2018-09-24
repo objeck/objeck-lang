@@ -335,6 +335,10 @@ class Platform {
 		return @rect->GetBottom();
 	}
 
+	method : public : GetWidth()  ~ Int {
+		return @rect->GetWidth();
+	}
+
 	method : public : Draw()  ~ Nil {
 		@rect->Render();
 	}
@@ -360,8 +364,16 @@ class MovingPlatform from Platform {
 		@player := player;
 		@level := level;
 
-		@boundary_top := 400;
-    	@boundary_bottom := 580;
+		@boundary_top := y - 200;
+		if(@boundary_top < 60) {
+			@boundary_top := 80;
+		};
+
+    	@boundary_bottom := y + 200;
+    	if(@boundary_bottom > 560) {
+			@boundary_bottom := 560;
+		};
+
     	@change_y := 1;
 	}
 
@@ -474,42 +486,45 @@ class Level {
 		platforms := Vector->New();
 
 		width := 110;
-		heigth := 20;
+		height := 20;
 
-		x_pos := Game->PLAYER_BOX_MIN * 2;
-		platforms->AddBack(Platform->New(x_pos, 525, framework->AddRectangle(width, heigth)));
-		x_pos += 110 + Int->Random(10, 20);
+		x_base_pos := Game->PLAYER_BOX_MIN + Game->PLAYER_BOX_MIN / 2;
+		platforms->AddBack(Platform->New(x_base_pos, 525, framework->AddRectangle(width, height)));
+		x_base_pos += 110 + Int->Random(10, 20);
 
+		overlap := false;
 		flip : Int;
-		for(i := 0; i < 20; i += 1;) {
-			prev := platforms->Get(i)->As(Platform);
+		for(i := 0; i < 15; i += 1;) {
+			prev_plat := platforms->Get(i)->As(Platform);
+			height := Int->Random(10, 25);
+
 			x_offset := Int->Random(10, 35);
+			y_pos := GetYPos(prev_plat, 20, 40);
 
-foo := Int->Random(2,4);
-foo->PrintLine();
-
-			y_pos : Int;
-			flip := Int->Random(3);
+			flip := Int->Random(1);				
 			if(flip = 0) {
-				y_pos := prev->GetTop() + Int->Random(30, 50);
+				platforms->AddBack(Platform->New(x_base_pos + x_offset, y_pos, framework->AddRectangle(width, height)));					
 			}
 			else {
-				y_pos := prev->GetTop() - Int->Random(30, 40);
-			};
+				platforms->AddBack(MovingPlatform->New(x_base_pos + x_offset, y_pos, framework->AddRectangle(width, height), @player, @self));
+			};			
 
-			platforms->AddBack(Platform->New(x_pos + x_offset, y_pos, framework->AddRectangle(width, heigth)));
-# platforms->AddBack(MovingPlatform->New(200, 450, framework->AddRectangle(80, 20), @player, @self));		
-
-			flip := Int->Random(3);
-			if(flip = 0) {
-				x_pos += 110 + Int->Random(10, 25);
-			}
-			else {
-				x_pos += 110 - Int->Random(10, 20);
-			};
+			x_base_pos += 110 + Int->Random(45, 60);
 		};
 
 		return platforms;
+	}
+
+	method : GetYPos(prev_plat : Platform, min : Int, max : Int) ~ Int {
+		y_pos := prev_plat->GetTop() + Int->Random(min, max);
+		if(y_pos < 60) {
+			y_pos += Int->Random(60, 80);
+		}
+		else if(y_pos > 540) {
+			y_pos -= Int->Random(60, 80);
+		};
+
+		return y_pos;
 	}
 
 	method : GenerateGems(base_path : String, framework : GameFramework) ~ Vector {
@@ -525,9 +540,21 @@ foo->PrintLine();
 		clips->AddBack(Rect->New(96, 0, 32, 32));
 		clips->AddBack(Rect->New(128, 0, 32, 32));
 		clips->AddBack(Rect->New(160, 0, 32, 32));
-		
-		gems->AddBack(Gem->New(600, 500, framework->AddAnimatedImageSprite(gems_path, clips)));		
-		gems->AddBack(Gem->New(500, 400, framework->AddAnimatedImageSprite(gems_path, clips)));
+
+		each(i : @platforms) {
+			platform := @platforms->Get(i)->As(Platform);
+			
+			offset : Int;
+			value := Int->Random(10, 30);
+			if(i % 2 = 0) {
+				offset := platform->GetWidth() / 2 + value;
+			}
+			else {
+				offset := platform->GetWidth() / 2 - value;
+			};
+
+			gems->AddBack(Gem->New(platform->GetLeft() + offset, 500, framework->AddAnimatedImageSprite(gems_path, clips)));		
+		};
 
 		return gems;
 	}
