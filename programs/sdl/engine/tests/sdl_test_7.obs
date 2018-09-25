@@ -43,7 +43,7 @@ class Game {
 		@fire_clip1 := Rect->New(0, 0, 800,	64);
 		@fire_clip2 := Rect->New(10, 0, 800, 64);
 
-		@timer := 3;
+		@timer := 25;
 		buffer := "Time: ";
 		buffer += @timer->ToString();
 		@timer_text := @framework->AddTextSprite();
@@ -430,6 +430,15 @@ class Player {
     	};
     }
 
+    method : public : CheckSpiders() ~ Nil {
+		collides := Level->GemsCollisions(@self, @level->GetSpiders());
+        each(i : collides) {
+    		gem := collides->Get(i)->As(Gem);
+    		gem->Hide();
+    		@game->AddScore(15);
+    	};
+    }
+
     method : public : CheckFloorCeiling() ~ Nil {
     	if(@rect->GetTop() > GameConsts->SCREEN_HEIGHT) {
 			@rect->SetTop(GameConsts->SCREEN_HEIGHT);
@@ -621,11 +630,76 @@ class Gem {
 	}
 }
 
+class Spider {
+	@rect : ImageSprite;
+	@hide : Bool;
+	@base_y : Int;
+	@dir : Int;
+
+	New(x : Int, y : Int, rect : ImageSprite) {
+		@rect := rect;
+		@base_y := y;
+		@rect->Set(x, y);
+		@dir := -1;
+	}
+
+	method : public : Hide() ~ Nil {
+		@hide := true;
+	}
+
+	method : public : AddX(x : Int)  ~ Nil {
+		@rect->AddX(x);
+	}
+
+	method : public : GetLeft()  ~ Int {
+		return @rect->GetLeft();
+	}
+
+	method : public : GetRight()  ~ Int {
+		return @rect->GetRight();
+	}
+
+	method : public : GetTop()  ~ Int {
+		return @rect->GetTop();
+	}
+
+	method : public : GetBottom()  ~ Int {
+		return @rect->GetBottom();
+	}
+
+	method : public : Update()  ~ Nil {	
+		if(@rect->GetTop() < @base_y - 100) {
+			@dir := 1;
+		}
+		else if(@rect->GetTop() > @base_y) {
+			@dir := -1;
+		};
+
+		@rect->AddY(@dir * 2);
+	}
+
+	method : public : Draw()  ~ Nil {
+		if(<>@hide) {
+			@rect->Render();
+		};
+	}
+
+	method : public : Collides(rect : ImageSprite) ~ Bool {
+		if(@hide) {
+			return false;
+		}
+		else {
+			return @rect->GetPosition()->Overlaps(rect->GetPosition());
+		};
+	}
+}
+
 class Level {
 	@game : Game;
 	@player : Player;
 	@platforms : Vector;
 	@gems : Vector;
+	@spiders : Vector;
 	@shift_x : Int;
 	@game_over : Bool;
 
@@ -639,6 +713,7 @@ class Level {
 		framework := game->GetFramework();
 		@platforms := GeneratePlatforms(framework);
 		@gems := GenerateGems(base_path, framework);
+		@spiders := GeneratSpiders(base_path, framework);
 	}
 
 	method : public : GameOver() ~ Nil {
@@ -724,6 +799,34 @@ class Level {
 		return gems;
 	}
 
+	method : GeneratSpiders(base_path : String, framework : GameFramework) ~ Vector {
+		spiders := Vector->New();
+
+		spider_path := String->New(base_path);
+		spider_path += "/images/spider.png";
+
+		each(i : @platforms) {
+			platform := @platforms->Get(i)->As(Platform);
+			
+			if(<>platform->TypeOf(MovingPlatform)) {
+				x_offset : Int;
+				value := Int->Random(10, 30);
+				if(i % 2 = 0) {
+					x_offset := platform->GetWidth() / 2 + value;
+				}
+				else {
+					x_offset := platform->GetWidth() / 2 - value;
+				};
+
+				y_offset := platform->GetTop() - 18;
+
+				spiders->AddBack(Spider->New(platform->GetLeft() + x_offset, y_offset, framework->AddAnimatedImageSprite(spider_path)));
+			};
+		};
+
+		return spiders;
+	}
+
 	method : public : GetShift() ~ Int {
 		return @shift_x;
 	}
@@ -740,6 +843,11 @@ class Level {
 			platform := @gems->Get(i)->As(Gem);
 			platform->AddX(shift_x);
 		};
+
+		each(i : @spiders) {
+			platform := @spiders->Get(i)->As(Spider);
+			platform->AddX(shift_x);
+		};
 	}
 
 	method : public : GetPlatforms() ~ Vector {
@@ -748,6 +856,10 @@ class Level {
 
 	method : public : GetGems() ~ Vector {
 		return @gems;
+	}
+
+	method : public : GetSpiders() ~ Vector {
+		return @spiders;
 	}
 
 	method : public : PlatformCollisions(player : Player, obstacles : Vector) ~ Vector {
@@ -776,12 +888,29 @@ class Level {
         return collides;
     }
 
+    method : public : SpiderCollisions(player : Player, obstacles : Vector) ~ Vector {
+		collides := Vector->New();
+
+		each(i : obstacles) {
+        	obstacle := obstacles->Get(i)->As(Spider);
+        	if(obstacle->Collides(player->GetRect())) {
+        		collides->AddBack(obstacle);
+        	};
+        };
+
+        return collides;
+    }
+
 	method : public : Update()  ~ Nil {
 		each(i : @platforms) {
 			platform := @platforms->Get(i);
 			if(platform->TypeOf(MovingPlatform)) {
 				platform->As(MovingPlatform)->Update();
 			};
+		};
+
+		each(i : @spiders) {
+			@spiders->Get(i)->As(Spider)->Update();
 		};
 	}
 
@@ -793,6 +922,10 @@ class Level {
 
 			each(i : @platforms) {
 				@platforms->Get(i)->As(Platform)->Draw();
+			};
+
+			each(i : @spiders) {
+				@spiders->Get(i)->As(Spider)->Draw();
 			};
 		};
 	}
