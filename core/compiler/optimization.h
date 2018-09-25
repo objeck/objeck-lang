@@ -113,6 +113,11 @@ class ItermediateOptimizer {
       return false;
     }
 
+    // don't inline parameter calls
+    if(mthd_called->GetName().find(current_method->GetName()) != string::npos) {
+      return false;
+    }
+
     // don't inline method calls for primitive objects
     const wstring called_cls_name = mthd_called->GetClass()->GetName();
     if(called_cls_name.find(L'$') != wstring::npos) {
