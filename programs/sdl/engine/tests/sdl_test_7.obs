@@ -43,7 +43,7 @@ class Game {
 		@fire_clip1 := Rect->New(0, 0, 800,	64);
 		@fire_clip2 := Rect->New(10, 0, 800, 64);
 
-		@timer := 45;
+		@timer := 3;
 		buffer := "Time: ";
 		buffer += @timer->ToString();
 		@timer_text := @framework->AddTextSprite();
@@ -161,6 +161,8 @@ class Game {
 
 	method : public : GameOver() ~ Nil {
 		@game_over := true;
+		@player->GameOver();
+		@level->GameOver();
 	}
 
 	method : Background() ~ Nil {
@@ -262,6 +264,7 @@ class Player {
 	@jump_max : Int;
 	@hit_top : Bool;
 	@level : Level;
+	@game_over : Bool;
 	
 	New(game : Game) {
 		@game := game;
@@ -284,6 +287,10 @@ class Player {
 		@loc := Vector2->New(GameConsts->PLAYER_BOX_MIN->As(Float), GameConsts->SCREEN_HEIGHT / 2);
 		@vel := Vector2->New();
 		@acc := Vector2->New();
+	}
+
+	method : public : GameOver() ~ Nil {
+		@game_over := true;
 	}
 
 	method : public : SetLevel(level : Level) ~ Nil {
@@ -312,14 +319,16 @@ class Player {
 
 	method : public : GoLeft()  ~ Nil {
 		@dir := -1;
-		if(@rect->GetFlip() = RendererFlip->SDL_FLIP_NONE) {
+		
+		if(<>@game_over & @rect->GetFlip() = RendererFlip->SDL_FLIP_NONE) {
 			@rect->SetFlip(RendererFlip->SDL_FLIP_HORIZONTAL);
 		};
 	}
 
 	method : public : GoRight()  ~ Nil {
 		@dir := 1;
-		if(@rect->GetFlip() = RendererFlip->SDL_FLIP_HORIZONTAL) {
+
+		if(<>@game_over & @rect->GetFlip() = RendererFlip->SDL_FLIP_HORIZONTAL) {
 			@rect->SetFlip(RendererFlip->SDL_FLIP_NONE);
 		};
 	}
@@ -333,6 +342,22 @@ class Player {
 	}
 
 	method : public : Update()  ~ Nil {
+		if(@game_over) {
+			if(@rect->GetTop() < GameConsts->SCREEN_HEIGHT) {
+				@rect->AddY(1);
+			};
+		}
+		else {
+			Movement();		
+			CheckPlatforms();
+			CheckGems();
+			
+		};
+
+		CheckFloorCeiling();
+	}
+
+	method : Movement() ~ Nil {
 		@acc->SetX(@dir * 0.50);
 
 		# movement logic
@@ -354,11 +379,6 @@ class Player {
 		@vel->Add(Vector2->Mul(@acc, 0.75));
 		@loc->Add(@vel);
 		@acc->Zero();
-		
-		# collisions
-		CheckPlatforms();
-		CheckGems();
-		CheckFloorCeiling();
 	}
 
 	method : public : CheckPlatforms() ~ Nil {
@@ -411,9 +431,8 @@ class Player {
     }
 
     method : public : CheckFloorCeiling() ~ Nil {
-    	if(@rect->GetBottom() > GameConsts->SCREEN_HEIGHT) {
-			@rect->SetBottom(GameConsts->SCREEN_HEIGHT + @rect->GetHeight() / 2);
-        	@loc->SetY(GameConsts->SCREEN_HEIGHT + @rect->GetHeight());
+    	if(@rect->GetTop() > GameConsts->SCREEN_HEIGHT) {
+			@rect->SetTop(GameConsts->SCREEN_HEIGHT);
 			@vel->SetY(0);
 			@game->GameOver();
 		}
@@ -428,7 +447,7 @@ class Player {
 			@rect->Render(5);
 		}
 
-		else if(@dir = 0) {
+		else if(@dir = 0 | @game_over) {
 			@rect->Render(4);
 		}
 		else {
@@ -608,6 +627,7 @@ class Level {
 	@platforms : Vector;
 	@gems : Vector;
 	@shift_x : Int;
+	@game_over : Bool;
 
 	New(game : Game) {
 		@game := game;
@@ -619,6 +639,10 @@ class Level {
 		framework := game->GetFramework();
 		@platforms := GeneratePlatforms(framework);
 		@gems := GenerateGems(base_path, framework);
+	}
+
+	method : public : GameOver() ~ Nil {
+		@game_over := true;
 	}
 
 	method : GeneratePlatforms(framework : GameFramework) ~ Vector {
@@ -653,7 +677,7 @@ class Level {
 
 		return platforms;
 	}
-	
+
 	method : GetYPos(prev_plat : Platform, min : Int, max : Int) ~ Int {
 		y_pos := prev_plat->GetTop() + Int->Random(min, max);
 		if(y_pos < 60) {
@@ -762,12 +786,14 @@ class Level {
 	}
 
 	method : public : Draw(frame_count : Int)  ~ Nil {
-		each(i : @gems) {
-			@gems->Get(i)->As(Gem)->Draw(frame_count);
-		};
+		if(<>@game_over) {
+			each(i : @gems) {
+				@gems->Get(i)->As(Gem)->Draw(frame_count);
+			};
 
-		each(i : @platforms) {
-			@platforms->Get(i)->As(Platform)->Draw();
+			each(i : @platforms) {
+				@platforms->Get(i)->As(Platform)->Draw();
+			};
 		};
 	}
 }
