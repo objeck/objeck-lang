@@ -2,7 +2,6 @@ use Game.SDL2;
 use Game.Framework;
 use Collection;
 
-# TODO: add joystick
 # TODO: add music/effects
 # TODO: add ending
 
