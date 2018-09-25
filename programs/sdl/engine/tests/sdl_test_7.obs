@@ -117,7 +117,7 @@ class Game {
 					else {
 						@timer -= 1;
 						if(@timer < 0) {
-							Over();
+							GameOver();
 						}
 						else {
 							buffer := "Time: ";
@@ -159,7 +159,7 @@ class Game {
 		@score_text->RenderedText(buffer);
 	}
 
-	method : public : Over() ~ Nil {
+	method : public : GameOver() ~ Nil {
 		@game_over := true;
 	}
 
@@ -415,7 +415,7 @@ class Player {
 			@rect->SetBottom(GameConsts->SCREEN_HEIGHT + @rect->GetHeight() / 2);
         	@loc->SetY(GameConsts->SCREEN_HEIGHT + @rect->GetHeight());
 			@vel->SetY(0);
-			@game->Over();
+			@game->GameOver();
 		}
 		else if(@loc->GetY() < 0) {
 			@loc->SetY(0);
@@ -632,7 +632,7 @@ class Level {
 		x_base_pos += 110 + Int->Random(10, 20);
 
 		flip : Int;
-		for(i := 0; i < 11; i += 1;) {
+		for(i := 0; i < 10; i += 1;) {
 			prev_plat := platforms->Get(i)->As(Platform);
 			height := Int->Random(10, 25);
 
@@ -649,10 +649,11 @@ class Level {
 
 			x_base_pos += 110 + Int->Random(45, 60);
 		};
+		platforms->AddBack(Platform->New(1950, 525, framework->AddRectangle(110, 20)));
 
 		return platforms;
 	}
-
+	
 	method : GetYPos(prev_plat : Platform, min : Int, max : Int) ~ Int {
 		y_pos := prev_plat->GetTop() + Int->Random(min, max);
 		if(y_pos < 60) {
