@@ -635,8 +635,10 @@ class Spider {
 	@hide : Bool;
 	@base_y : Int;
 	@x_dir : Int;
+	@x_offset : Int;
+	@x_flip : Bool;
 	@y_dir : Int;
-	@offset : Int;
+	@y_offset : Int;
 	@game_over : Bool;
 
 	New(x : Int, y : Int, rect : ImageSprite) {
@@ -644,8 +646,7 @@ class Spider {
 		@base_y := y;
 		@rect->Set(x, y);
 		@y_dir := -1;
-		@x_dir := -1;
-		@offset := Int->Random(20, 60);
+		@x_offset := Int->Random(20, 60);
 	}
 
 	method : public : GameOver() ~ Nil {
@@ -677,14 +678,31 @@ class Spider {
 	}
 
 	method : public : Update()  ~ Nil {	
-		if(@rect->GetTop() < @base_y - 100 - @offset) {
+		if(@x_dir <> 0) {
+			@x_offset += 1;
+			if(@x_offset > 10) {
+				@x_dir := 0;
+				@y_dir := -1;
+				@x_offset := 0;
+			};
+		}
+		else if(@rect->GetTop() < @base_y - 100 - @x_offset) {
 			@y_dir := 1;
 		}
-		else if(@rect->GetTop() > @base_y) {
-			@y_dir := -1;
-			@xdir *= -1;
+		else if(@rect->GetTop() >= @base_y) {
+			@y_dir := 0;
+
+			if(@x_flip) {
+				@x_dir := -1;
+				@x_flip := false;
+			}
+			else {
+				@x_dir := 1;
+				@x_flip := true;
+			};
 		};
 		
+		@rect->AddX(@x_dir * 2);
 		@rect->AddY(@y_dir * 2);
 	}
 
