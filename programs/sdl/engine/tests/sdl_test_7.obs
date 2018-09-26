@@ -10,6 +10,8 @@ class Game {
 	@base_path : String;
 	@player : Player;
 
+	@music : static : MixMusic;
+
 	@background : ImageSprite;
 	@fire : ImageSprite;
 	@fire_clip1 : Rect;
@@ -53,6 +55,14 @@ class Game {
 		buffer := "Score: ";
 		buffer += @score->ToString();
 		@score_text->RenderedText(buffer);
+
+		music_path := String->New(@base_path);
+		music_path += "/audio/music.wav";
+		@music := MixMusic->New(music_path);
+		if(@music->IsNull()) {
+			"--- Cannot load music: '{$music_path}'! ---"->PrintLine();
+		};
+		@music->FadeInMusic(-1, 6000);
 	}
 
 	method : Run() ~ Nil {
