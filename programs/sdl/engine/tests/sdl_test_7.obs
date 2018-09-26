@@ -43,7 +43,7 @@ class Game {
 		@fire_clip1 := Rect->New(0, 0, 800,	64);
 		@fire_clip2 := Rect->New(10, 0, 800, 64);
 
-		@timer := 25;
+		@timer := 45;
 		buffer := "Time: ";
 		buffer += @timer->ToString();
 		@timer_text := @framework->AddTextSprite();
@@ -435,6 +435,7 @@ class Player {
         each(i : collides) {
     		spider := collides->Get(i)->As(Spider);
     		spider->Hide();
+    		GameOver();
     	};
     }
 
@@ -635,6 +636,7 @@ class Spider {
 	@base_y : Int;
 	@dir : Int;
 	@offset : Int;
+	@game_over : Bool;
 
 	New(x : Int, y : Int, rect : ImageSprite) {
 		@rect := rect;
@@ -642,6 +644,10 @@ class Spider {
 		@rect->Set(x, y);
 		@dir := -1;
 		@offset := Int->Random(20, 60);
+	}
+
+	method : public : GameOver() ~ Nil {
+		@game_over := true;
 	}
 
 	method : public : Hide() ~ Nil {
@@ -781,20 +787,23 @@ class Level {
 		clips->AddBack(Rect->New(160, 0, 32, 32));
 
 		each(i : @platforms) {
-			platform := @platforms->Get(i)->As(Platform);
-			
-			x_offset : Int;
-			value := Int->Random(10, 30);
-			if(i % 2 = 0) {
-				x_offset := platform->GetWidth() / 2 + value;
-			}
-			else {
-				x_offset := platform->GetWidth() / 2 - value;
+			hardness := Int->Random(3);
+			if(hardness % 3 = 0) {
+				platform := @platforms->Get(i)->As(Platform);
+				
+				x_offset : Int;
+				value := Int->Random(10, 30);
+				if(i % 2 = 0) {
+					x_offset := platform->GetWidth() / 2 + value;
+				}
+				else {
+					x_offset := platform->GetWidth() / 2 - value;
+				};
+
+				y_offset := platform->GetTop() - 32 - Int->Random(10, 100);
+
+				gems->AddBack(Gem->New(platform->GetLeft() + x_offset, y_offset, framework->AddAnimatedImageSprite(gems_path, clips)));
 			};
-
-			y_offset := platform->GetTop() - 32 - Int->Random(10, 100);
-
-			gems->AddBack(Gem->New(platform->GetLeft() + x_offset, y_offset, framework->AddAnimatedImageSprite(gems_path, clips)));		
 		};
 
 		return gems;
@@ -807,21 +816,24 @@ class Level {
 		spider_path += "/images/spider.png";
 
 		each(i : @platforms) {
-			platform := @platforms->Get(i)->As(Platform);
-			
-			if(<>platform->TypeOf(MovingPlatform)) {
-				x_offset : Int;
-				value := Int->Random(10, 30);
-				if(i % 2 = 0) {
-					x_offset := platform->GetWidth() / 2 + value;
-				}
-				else {
-					x_offset := platform->GetWidth() / 2 - value;
+			hardness := Int->Random(3);
+			if(hardness % 3 = 0) {
+				platform := @platforms->Get(i)->As(Platform);
+				
+				if(<>platform->TypeOf(MovingPlatform)) {
+					x_offset : Int;
+					value := Int->Random(10, 30);
+					if(i % 2 = 0) {
+						x_offset := platform->GetWidth() / 2 + value;
+					}
+					else {
+						x_offset := platform->GetWidth() / 2 - value;
+					};
+
+					y_offset := platform->GetTop() - 18;
+
+					spiders->AddBack(Spider->New(platform->GetLeft() + x_offset, y_offset, framework->AddAnimatedImageSprite(spider_path)));
 				};
-
-				y_offset := platform->GetTop() - 18;
-
-				spiders->AddBack(Spider->New(platform->GetLeft() + x_offset, y_offset, framework->AddAnimatedImageSprite(spider_path)));
 			};
 		};
 
@@ -895,7 +907,6 @@ class Level {
 		each(i : obstacles) {
         	obstacle := obstacles->Get(i)->As(Spider);
         	if(obstacle->Collides(player->GetRect())) {
-"--- Hit Spider ---"->PrintLine();        		
         		collides->AddBack(obstacle);
         	};
         };
