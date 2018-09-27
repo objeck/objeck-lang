@@ -65,7 +65,7 @@ class Game {
 		if(@music->IsNull()) {
 			"--- Cannot load music: '{$music_path}'! ---"->PrintLine();
 		};
-		@music->PlayMusic(-1);
+		@music->FadeInMusic(-1, 2000);
 
 		gem_path := String->New(@base_path);
 		gem_path += "/audio/gem.wav";
@@ -208,8 +208,8 @@ class Game {
 	}
 
 	method : public : GameOver() ~ Nil {
-		@die_chunk->PlayChannel(3, 0);
-		MixMusic->Halt();
+		MixMusic->Pause();
+		@die_chunk->PlayChannel(-1, 0);
 		@game_over := true;
 		@player->GameOver();
 		@level->GameOver();
