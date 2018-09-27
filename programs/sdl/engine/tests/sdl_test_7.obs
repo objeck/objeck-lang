@@ -2,7 +2,6 @@ use Game.SDL2;
 use Game.Framework;
 use Collection;
 
-# TODO: add music/effects
 # TODO: add ending
 
 class Game {
@@ -12,6 +11,9 @@ class Game {
 
 	@music : MixMusic;
 	@gem_chunk : MixChunk;
+	@start_chunk : MixChunk;
+	@won_chunk : MixChunk;
+	@die_chunk : MixChunk;
 
 	@background : ImageSprite;
 	@fire : ImageSprite;
@@ -26,8 +28,6 @@ class Game {
 	@score_text : TextSprite;
 
 	@game_over : Bool;
-
-	@end : Platform;
 
 	function : Main(args : String[]) ~ Nil {
 		Game->New()->Run();
@@ -72,6 +72,28 @@ class Game {
 		@gem_chunk := MixChunk->New(gem_path);
 		if(@gem_chunk->IsNull()) {
 			"--- Cannot load music: '{$gem_path}'! ---"->PrintLine();
+		};
+
+		start_path := String->New(@base_path);
+		start_path += "/audio/start.wav";
+		@start_chunk := MixChunk->New(start_path);
+		if(@start_chunk->IsNull()) {
+			"--- Cannot load music: '{$start_path}'! ---"->PrintLine();
+		};
+		@start_chunk->PlayChannel(1, 0);
+
+		won_path := String->New(@base_path);
+		won_path += "/audio/luck.wav";
+		@won_chunk := MixChunk->New(won_path);
+		if(@won_chunk->IsNull()) {
+			"--- Cannot load music: '{$won_path}'! ---"->PrintLine();
+		};
+
+		die_path := String->New(@base_path);
+		die_path += "/audio/die_chunk.wav";
+		@die_chunk := MixChunk->New(die_path);
+		if(@die_chunk->IsNull()) {
+			"--- Cannot load music: '{$die_path}'! ---"->PrintLine();
 		};
 	}
 
@@ -177,10 +199,15 @@ class Game {
 		buffer := "Score: ";
 		buffer += @score->ToString();
 		@score_text->RenderedText(buffer);
-		@gem_chunk->PlayChannel(-1, 0);
+		@gem_chunk->PlayChannel(2, 0);
+	}
+
+	method : public : Won() ~ Nil {
+		@won_chunk->PlayChannel(3, 0);
 	}
 
 	method : public : GameOver() ~ Nil {
+		@won_chunk->PlayChannel(3, 0);
 		@game_over := true;
 		@player->GameOver();
 		@level->GameOver();
@@ -420,12 +447,6 @@ class Player {
             	@loc->SetX(platform->GetRight() + @rect->GetWidth() / 2);
             	@vel->MulX(0);
             };
-
-#~
-            if(platform = @end) {
-            	"--- END ---"->PrintLine();
-            };
- ~#           
         };
 
 		# reposition 'y'
@@ -445,11 +466,6 @@ class Player {
 				@vel->SetY(0);
 				@jump_max := 0;
             };
-#~
-            if(platform = @end) {
-            	"--- END ---"->PrintLine();
-            };
-~#            
         };
 	}
 
@@ -762,6 +778,7 @@ class Level {
 	@spiders : Vector;
 	@shift_x : Int;
 	@game_over : Bool;
+	@end : Platform;
 
 	New(game : Game) {
 		@game := game;
@@ -935,6 +952,9 @@ class Level {
 		each(i : obstacles) {
         	obstacle := obstacles->Get(i)->As(Platform);
         	if(obstacle->Collides(player->GetRect())) {
+        		if(obstacle = @end) {
+        			@game->Won();
+        		};
         		collides->AddBack(obstacle);
         	};
         };
