@@ -65,7 +65,7 @@ class Game {
 		if(@music->IsNull()) {
 			"--- Cannot load music: '{$music_path}'! ---"->PrintLine();
 		};
-		@music->FadeInMusic(-1, 6000);
+		@music->FadeInMusic(-1, 2000);
 
 		gem_path := String->New(@base_path);
 		gem_path += "/audio/gem.wav";
@@ -90,7 +90,7 @@ class Game {
 		};
 
 		die_path := String->New(@base_path);
-		die_path += "/audio/die_chunk.wav";
+		die_path += "/audio/die.wav";
 		@die_chunk := MixChunk->New(die_path);
 		if(@die_chunk->IsNull()) {
 			"--- Cannot load music: '{$die_path}'! ---"->PrintLine();
@@ -203,11 +203,13 @@ class Game {
 	}
 
 	method : public : Won() ~ Nil {
+		@music->Pause();
 		@won_chunk->PlayChannel(3, 0);
 	}
 
 	method : public : GameOver() ~ Nil {
-		@won_chunk->PlayChannel(3, 0);
+		@music->Pause();
+		@die_chunk->PlayChannel(3, 0);
 		@game_over := true;
 		@player->GameOver();
 		@level->GameOver();
@@ -488,7 +490,7 @@ class Player {
     }
 
     method : public : CheckFloorCeiling() ~ Nil {
-    	if(@rect->GetTop() > GameConsts->SCREEN_HEIGHT) {
+    	if(@rect->GetTop() >= GameConsts->SCREEN_HEIGHT) {
 			@rect->SetTop(GameConsts->SCREEN_HEIGHT);
 			@vel->SetY(0);
 			@game->GameOver();
@@ -725,7 +727,7 @@ class Spider {
 		return @rect->GetBottom();
 	}
 
-	method : public : Update()  ~ Nil {	
+	method : public : native : Update()  ~ Nil {	
 		if(@x_dir <> 0) {
 			@x_offset += 1;
 			if(@x_offset > 10) {
