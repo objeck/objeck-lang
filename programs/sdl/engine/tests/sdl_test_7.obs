@@ -10,7 +10,8 @@ class Game {
 	@base_path : String;
 	@player : Player;
 
-	@music : static : MixMusic;
+	@music : MixMusic;
+	@gem_chunk : MixChunk;
 
 	@background : ImageSprite;
 	@fire : ImageSprite;
@@ -25,6 +26,8 @@ class Game {
 	@score_text : TextSprite;
 
 	@game_over : Bool;
+
+	@end : Platform;
 
 	function : Main(args : String[]) ~ Nil {
 		Game->New()->Run();
@@ -63,6 +66,13 @@ class Game {
 			"--- Cannot load music: '{$music_path}'! ---"->PrintLine();
 		};
 		@music->FadeInMusic(-1, 6000);
+
+		gem_path := String->New(@base_path);
+		gem_path += "/audio/gem.wav";
+		@gem_chunk := MixChunk->New(gem_path);
+		if(@gem_chunk->IsNull()) {
+			"--- Cannot load music: '{$gem_path}'! ---"->PrintLine();
+		};
 	}
 
 	method : Run() ~ Nil {
@@ -167,6 +177,7 @@ class Game {
 		buffer := "Score: ";
 		buffer += @score->ToString();
 		@score_text->RenderedText(buffer);
+		@gem_chunk->PlayChannel(-1, 0);
 	}
 
 	method : public : GameOver() ~ Nil {
@@ -409,6 +420,12 @@ class Player {
             	@loc->SetX(platform->GetRight() + @rect->GetWidth() / 2);
             	@vel->MulX(0);
             };
+
+#~
+            if(platform = @end) {
+            	"--- END ---"->PrintLine();
+            };
+ ~#           
         };
 
 		# reposition 'y'
@@ -428,6 +445,11 @@ class Player {
 				@vel->SetY(0);
 				@jump_max := 0;
             };
+#~
+            if(platform = @end) {
+            	"--- END ---"->PrintLine();
+            };
+~#            
         };
 	}
 
@@ -786,7 +808,8 @@ class Level {
 
 			x_base_pos += 110 + Int->Random(45, 60);
 		};
-		platforms->AddBack(Platform->New(1950, 525, framework->AddRectangle(110, 20)));
+		@end := Platform->New(1950, 525, framework->AddRectangle(110, 20));
+		platforms->AddBack(@end);
 
 		return platforms;
 	}
