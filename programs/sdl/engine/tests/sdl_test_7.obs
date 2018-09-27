@@ -203,12 +203,10 @@ class Game {
 	}
 
 	method : public : Won() ~ Nil {
-		@music->Pause();
 		@won_chunk->PlayChannel(3, 0);
 	}
 
 	method : public : GameOver() ~ Nil {
-		MixMusic->Pause();
 		@die_chunk->PlayChannel(-1, 0);
 		@game_over := true;
 		@player->GameOver();
