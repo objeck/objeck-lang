@@ -491,7 +491,7 @@ class Player {
 
     method : public : CheckSign() ~ Nil {
     	if(@level->SignCollision(@self)) {
-
+    		@game->Won();
     	};
 	}
 
@@ -787,7 +787,7 @@ class Spider {
 	}
 }
 
-class Post {
+class SignPost {
 	@rect : ImageSprite;
 	@hide : Bool;
 
@@ -844,7 +844,7 @@ class Level {
 	@spiders : Vector;
 	@shift_x : Int;
 	@game_over : Bool;
-	@end_post : Post;
+	@end_post : SignPost;
 
 	New(game : Game) {
 		@game := game;
@@ -857,8 +857,6 @@ class Level {
 		@platforms := GeneratePlatforms(base_path, framework);
 		@gems := GenerateGems(base_path, framework);
 		@spiders := GeneratSpiders(base_path, framework);
-			@end_post : Post;
-
 	}
 
 	method : public : GameOver() ~ Nil {
@@ -875,7 +873,6 @@ class Level {
 		platforms->AddBack(Platform->New(x_base_pos, 525, framework->AddRectangle(width, height)));
 		x_base_pos += 110 + Int->Random(10, 20);
 
-		flip : Int;
 		for(i := 0; i < 10; i += 1;) {
 			prev_plat := platforms->Get(i)->As(Platform);
 			height := Int->Random(10, 25);
@@ -883,8 +880,7 @@ class Level {
 			x_offset := Int->Random(10, 35);
 			y_pos := NextYPos(prev_plat, 20, 40);
 
-			flip := Int->Random(1);				
-			if(flip = 0) {
+			if(Int->Random(1) = 0) {
 				platforms->AddBack(Platform->New(x_base_pos + x_offset, y_pos, framework->AddRectangle(width, height)));					
 			}
 			else {
@@ -898,7 +894,7 @@ class Level {
 
 		sign_path := String->New(base_path);
 		sign_path += "/images/sign.png";
-		@end_post := Post->New(2000, 480, framework->AddAnimatedImageSprite(sign_path));
+		@end_post := SignPost->New(1990, 462, framework->AddAnimatedImageSprite(sign_path));
 
 		return platforms;
 	}
@@ -943,9 +939,10 @@ class Level {
 					x_offset := platform->GetWidth() / 2 - value;
 				};
 
+				x_offset += platform->GetLeft();
 				y_offset := platform->GetTop() - 32 - Int->Random(10, 100);
 
-				gems->AddBack(Gem->New(platform->GetLeft() + x_offset, y_offset, framework->AddAnimatedImageSprite(gems_path, clips)));
+				gems->AddBack(Gem->New(x_offset, y_offset, framework->AddAnimatedImageSprite(gems_path, clips)));
 			};
 		};
 
@@ -1004,18 +1001,8 @@ class Level {
 			platform := @spiders->Get(i)->As(Spider);
 			platform->AddX(shift_x);
 		};
-	}
 
-	method : public : GetPlatforms() ~ Vector {
-		return @platforms;
-	}
-
-	method : public : GetGems() ~ Vector {
-		return @gems;
-	}
-
-	method : public : GetSpiders() ~ Vector {
-		return @spiders;
+		@end_post->AddX(shift_x);
 	}
 
 	method : public : SignCollision(player : Player) ~ Bool {
