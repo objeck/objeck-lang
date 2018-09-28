@@ -340,6 +340,7 @@ class Player {
 		clips->AddBack(Rect->New(96, 0, 32, 52));
 		clips->AddBack(Rect->New(128, 0, 32, 52));
 		clips->AddBack(Rect->New(160, 0, 32, 52));
+		clips->AddBack(Rect->New(192, 0, 32, 52));
 
 		player_path := String->New(base_path);
 		player_path += "/images/player.png";
@@ -413,6 +414,7 @@ class Player {
 			CheckPlatforms();
 			CheckGems();
 			CheckSpiders();
+			CheckSign();
 		};
 
 		CheckFloorCeiling();
@@ -517,11 +519,13 @@ class Player {
     }
 
 	method : public : Draw()  ~ Nil {
-		if(@jump_max > 0) {
+		if(@game_over) {
+			@rect->Render(6);
+		}
+		else if(@jump_max > 0) {
 			@rect->Render(5);
 		}
-
-		else if(@dir = 0 | @game_over) {
+		else if(@dir = 0) {
 			@rect->Render(4);
 		}
 		else {
