@@ -5,43 +5,56 @@ use Collection;
 # TODO: next level 1-5
 
 class Game {
+	# game framework
 	@framework : GameFramework;
 	@initialized : Bool;
 	@base_path : String;
 
+	# player
 	@player : Player;
 
+	# music and sound bites
 	@music : MixMusic;
 	@gem_chunk : MixChunk;
 	@start_chunk : MixChunk;
+	
 	@won_chunk : MixChunk;
-	@die_chunk : MixChunk;
+	@won_channel : Int;
 
+	@die_chunk : MixChunk;
+	@die_channel : Int;
+
+	# background image
 	@background : ImageSprite;
 	@lava : ImageSprite;
 	@lava_clip1 : Rect;
 	@lava_clip2 : Rect;
 
+	# game level
 	@level : Level;
 	@timer : Int;
 	@timer_text : TextSprite;
+	@hardness : Int;
 
+	# scores
 	@score : Int;
 	@score_text : TextSprite;
 
 	@high_score : Int;
 	@high_score_text : TextSprite;
 
+	# status flags
 	@game_over : Bool;
-
 	@quit : Bool;
 	@hard_quit : Bool;
 
 	function : Main(args : String[]) ~ Nil {
 		game := Game->New();
-		while(game->StartGame()) {
-			game->Run();
+
+		while(game->TileScreen()) {
+			game->Play();
 		};
+		
 		game->Quit();
 	}
 
@@ -91,9 +104,12 @@ class Game {
 			"--- Cannot load music: '{$die_path}'! ---"->ErrorLine();
 			@initialized := false;
 		};
+
+		@won_channel := -1;
+		@die_channel := -1;
 	}
 
-	method : StartGame() ~ Bool {
+	method : TileScreen() ~ Bool {
 		e := @framework->GetEvent();
 
 		@high_score_text := @framework->AddTextSprite();
@@ -123,14 +139,13 @@ class Game {
 		quit_text->SetFont(font);
 
 		index := 0;
-
 		quit := false;
 		while(<>quit & <>@hard_quit) {
 			@framework->FrameStart();
 			
 			# process input
-			
 			while(e->Poll() <> 0) {
+				# joystick
 				if(e->GetType() = EventType->SDL_QUIT) {
 					@hard_quit := true;
 				}
@@ -170,7 +185,6 @@ class Game {
 			            	return true;
 			            }
 
-			            label Scancode->SDL_SCANCODE_Q:
 			            label Scancode->SDL_SCANCODE_ESCAPE: {
 							return false;
 			            }
@@ -197,7 +211,7 @@ class Game {
 
 			@high_score_text->Render(620, 20);
 
-			if(<>@die_chunk->IsPlaying()) {
+			if((@won_channel < 0 & @die_channel < 0) | (<>Mixer->Playing(@won_channel) & <>Mixer->Playing(@die_channel))) {
 				play_text->Render(GameConsts->SCREEN_WIDTH / 2 - play_text->GetWidth() /2, GameConsts->SCREEN_HEIGHT / 2 - 32);
 				quit_text->Render(GameConsts->SCREEN_WIDTH / 2 - quit_text->GetWidth() /2, GameConsts->SCREEN_HEIGHT / 2 + 32);
 			};
@@ -214,13 +228,13 @@ class Game {
 		return false;
 	}
 
-	method : Run() ~ Nil {
+	method : Play() ~ Nil {
 		if(@initialized) {
 			@quit := false;
 			@score := 0;
 
 			@player := Player->New(@self);
-			@level := Level->New(@self);
+			@level := Level->New(@self, @hardness);
 			
 			e := @framework->GetEvent();
 			frame_count := 0;
@@ -308,7 +322,7 @@ class Game {
 			};
 		}
 		else {
-			"--- Error Initializing GameConsts Environment ---"->ErrorLine();
+			"--- Error Initializing Environment ---"->ErrorLine();
 			return;
 		};
 
@@ -361,17 +375,20 @@ class Game {
 	}
 
 	method : public : Won() ~ Nil {
-		@won_chunk->PlayChannel(-1, 0);
+		@won_channel := @won_chunk->PlayChannel(-1, 0);
 		
+		MixMusic->Pause();
 		if(@score > @high_score) {
 			@high_score := @score;
 		};
+		@hardness += 1;
 
 		@quit := true;
 	}
 
 	method : public : GameOver() ~ Nil {
-		@die_chunk->PlayChannel(-1, 0);
+		@die_channel := @die_chunk->PlayChannel(-1, 0);
+
 		@player->GameOver();
 		@level->GameOver();
 		MixMusic->Pause();
@@ -379,6 +396,7 @@ class Game {
 		if(@score > @high_score) {
 			@high_score := @score;
 		};
+		@hardness := 1;
 
 		@quit := true;
 	}
@@ -451,6 +469,10 @@ class Game {
 	            label Scancode->SDL_SCANCODE_UP: {
 	            	@player->Jump(true);
 	            }
+
+	            label Scancode->SDL_SCANCODE_ESCAPE: {
+	            	GameOver();
+		        }
 	        };
 	    }
 	    else if(e->GetType() = EventType->SDL_KEYUP) {
@@ -1003,9 +1025,11 @@ class Level {
 	@shift_x : Int;
 	@game_over : Bool;
 	@end_post : SignPost;
+	@hardness : Int;
 
-	New(game : Game) {
+	New(game : Game, hardness : Int) {
 		@game := game;
+		@hardness := hardness;
 
 		@player := game->GetPlayer();
 		@player->SetLevel(@self);
