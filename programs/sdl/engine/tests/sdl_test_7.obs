@@ -2,7 +2,6 @@ use Game.SDL2;
 use Game.Framework;
 use Collection;
 
-# TODO: title screen w/ high score
 # TODO: next level 1-5
 
 class Game {
@@ -30,39 +29,28 @@ class Game {
 	@score : Int;
 	@score_text : TextSprite;
 
+	@high_score : Int;
+	@high_score_text : TextSprite;
+
 	@game_over : Bool;
 
+	@quit : Bool;
+	@hard_quit : Bool;
+
 	function : Main(args : String[]) ~ Nil {
-		Game->New()->Run();
+		game := Game->New();
+		while(game->StartGame()) {
+			game->Run();
+		};
+		game->Quit();
 	}
 
 	New() {
 		@initialized := true;
 
 		@framework := GameFramework->New(GameConsts->SCREEN_WIDTH, GameConsts->SCREEN_HEIGHT, "Secret Platform");
-		@framework->SetClearColor(Color->New(0, 0, 255));
+		@framework->SetClearColor(Color->New(255, 255, 255));
 		@base_path := "C:\\Users\\objec\\Documents\\Code\\objeck-lang\\programs\\sdl\\engine\\tests\\media";
-
-		background_path := String->New(@base_path);
-		background_path += "/images/background.png";
-		@background := @framework->AddImageSprite(background_path);
-
-		fire_path := String->New(@base_path);
-		fire_path += "/images/fire.png";
-		@lava := @framework->AddImageSprite(fire_path);
-		@lava_clip1 := Rect->New(0, 0, 800,	64);
-		@lava_clip2 := Rect->New(10, 0, 800, 64);
-
-		@timer := GameConsts->LEVEL_TIME;
-		buffer := "Time: ";
-		buffer += @timer->ToString();
-		@timer_text := @framework->AddTextSprite();
-		@timer_text->RenderedText(buffer);	
-
-		@score_text := @framework->AddTextSprite();
-		buffer := "Score: ";
-		buffer += @score->ToString();
-		@score_text->RenderedText(buffer);
 
 		music_path := String->New(@base_path);
 		music_path += "/audio/music.wav";
@@ -71,7 +59,6 @@ class Game {
 			"--- Cannot load music: '{$music_path}'! ---"->ErrorLine();
 			@initialized := false;
 		};
-		@music->FadeInMusic(-1, 2000);
 
 		gem_path := String->New(@base_path);
 		gem_path += "/audio/gem.wav";
@@ -88,7 +75,6 @@ class Game {
 			"--- Cannot load music: '{$start_path}'! ---"->ErrorLine();
 			@initialized := false;
 		};
-		@start_chunk->PlayChannel(-1, 0);
 
 		won_path := String->New(@base_path);
 		won_path += "/audio/luck.wav";
@@ -107,24 +93,177 @@ class Game {
 		};
 	}
 
+	method : StartGame() ~ Bool {
+		e := @framework->GetEvent();
+
+		@high_score_text := @framework->AddTextSprite();
+		buffer := "High Score: ";
+		buffer += @high_score->ToString();
+		@high_score_text->RenderedText(buffer);
+
+		font_path := Runtime->GetProperty("install_dir");
+		if(font_path = Nil) {
+			"Failed to load font!"->ErrorLine();
+			return false;
+		};
+		font_path += "/lib/sdl/fonts/lazy.ttf";
+
+		font := Font->New(font_path, 36);
+		if(font->IsNull()) {
+			"Failed to load font '{$font_path}'!"->ErrorLine();
+			return false;
+		};
+
+		red_color := Color->New(255, 0, 0);
+		black_color := Color->New(255, 255, 255);
+		play_text := @framework->AddTextSprite();
+		play_text->SetFont(font);
+
+		quit_text := @framework->AddTextSprite();
+		quit_text->SetFont(font);
+
+		index := 0;
+
+		quit := false;
+		while(<>quit & <>@hard_quit) {
+			@framework->FrameStart();
+			
+			# process input
+			
+			while(e->Poll() <> 0) {
+				if(e->GetType() = EventType->SDL_QUIT) {
+					@hard_quit := true;
+				}
+				else if(e->GetType() = EventType->SDL_JOYHATMOTION) {
+					if(e->GetJHat()->GetWhich() = 0 ) {
+						select(e->GetJHat()->GetValue()) {
+							label 1:
+							label 4: {
+								if(index = 0) {
+									index := 1;
+								}
+								else {
+									index := 0;
+								};
+							}			
+						};
+					};
+				}
+				# keyboard
+				else if(e->GetType() = EventType->SDL_KEYDOWN & e->GetKey()->GetRepeat() = 0) {
+			        select(e->GetKey()->GetKeysym()->GetScancode()) {
+			        	label Scancode->SDL_SCANCODE_UP:
+			            label Scancode->SDL_SCANCODE_DOWN: {
+			            	if(index = 0) {
+								index := 1;
+							}
+							else {
+								index := 0;
+							};
+			            }
+
+			            label Scancode->SDL_SCANCODE_RETURN: {
+			            	return index = 0 ? true : false;
+			            }
+
+			            label Scancode->SDL_SCANCODE_P: {
+			            	return true;
+			            }
+
+			            label Scancode->SDL_SCANCODE_Q:
+			            label Scancode->SDL_SCANCODE_ESCAPE: {
+							return false;
+			            }
+			        };
+				}
+				else if(e->GetType() = EventType->SDL_JOYBUTTONDOWN) {
+					# 'a' button
+					if(e->GetJButton()->GetButton() = 0) {
+						return index = 0 ? true : false; 
+					};
+				};
+			};
+
+			if(index = 0) {
+				play_text->RenderedText("(P)lay!", red_color);
+				quit_text->RenderedText("(Q)uit");
+			}
+			else {
+				play_text->RenderedText("(P)lay!");
+				quit_text->RenderedText("(Q)uit", red_color);
+			};
+
+			@framework->Clear();
+
+			@high_score_text->Render(620, 20);
+
+			if(<>@die_chunk->IsPlaying()) {
+				play_text->Render(GameConsts->SCREEN_WIDTH / 2 - play_text->GetWidth() /2, GameConsts->SCREEN_HEIGHT / 2 - 32);
+				quit_text->Render(GameConsts->SCREEN_WIDTH / 2 - quit_text->GetWidth() /2, GameConsts->SCREEN_HEIGHT / 2 + 32);
+			};
+
+			@framework->FrameEnd();
+
+			@framework->Show();
+		};
+
+		leaving {
+			@framework->FreeShapes();
+		};
+
+		return false;
+	}
+
 	method : Run() ~ Nil {
-		if(@framework->IsOk() & @initialized) {
+		if(@initialized) {
+			@quit := false;
+			@score := 0;
+
 			@player := Player->New(@self);
 			@level := Level->New(@self);
 			
-			quit := false;
 			e := @framework->GetEvent();
 			frame_count := 0;
 
+			@start_chunk->PlayChannel(-1, 0);
+
+			if(MixMusic->Playing()) {
+				MixMusic->Resume();
+			}
+			else {
+				@music->FadeInMusic(-1, 2000);
+			};
+
+			background_path := String->New(@base_path);
+			background_path += "/images/background.png";
+			@background := @framework->AddImageSprite(background_path);
+
+			fire_path := String->New(@base_path);
+			fire_path += "/images/fire.png";
+			@lava := @framework->AddImageSprite(fire_path);
+			@lava_clip1 := Rect->New(0, 0, 800,	64);
+			@lava_clip2 := Rect->New(10, 0, 800, 64);
+
+			@timer := GameConsts->LEVEL_TIME;
+			buffer := "Time: ";
+			buffer += @timer->ToString();
+			@timer_text := @framework->AddTextSprite();
+			@timer_text->RenderedText(buffer);	
+
+			@score_text := @framework->AddTextSprite();
+			buffer := "Score: ";
+			buffer += @score->ToString();
+			@score_text->RenderedText(buffer);
+
 			# start game loop
-			while(<>quit) {
+			while(<>@quit & <>@hard_quit) {
 				@framework->FrameStart();
 				@framework->Clear();
 				
 				# process user input
 				while(e->Poll() <> 0) {
 					if(e->GetType() = EventType->SDL_QUIT) {
-						quit := true;
+						@hard_quit := true;
 					};
 
 					ProcessInput(e);
@@ -174,8 +313,12 @@ class Game {
 		};
 
 		leaving {
-			@framework->Quit();
+			@framework->FreeShapes();
 		};
+	}
+
+	method : Quit() ~ Nil {
+		@framework->Quit();
 	}
 
 	method : public : UpdateView() ~ Nil {
@@ -218,19 +361,26 @@ class Game {
 	}
 
 	method : public : Won() ~ Nil {
-		if(<>@game_over) {
-			@won_chunk->PlayChannel(-1, 0);
-			@game_over := true;
+		@won_chunk->PlayChannel(-1, 0);
+		
+		if(@score > @high_score) {
+			@high_score := @score;
 		};
+
+		@quit := true;
 	}
 
 	method : public : GameOver() ~ Nil {
-		if(<>@game_over) {
-			@die_chunk->PlayChannel(-1, 0);
-			@player->GameOver();
-			@level->GameOver();
-			@game_over := true;
+		@die_chunk->PlayChannel(-1, 0);
+		@player->GameOver();
+		@level->GameOver();
+		MixMusic->Pause();
+
+		if(@score > @high_score) {
+			@high_score := @score;
 		};
+
+		@quit := true;
 	}
 
 	method : DrawBackground() ~ Nil {
