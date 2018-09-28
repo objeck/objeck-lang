@@ -217,7 +217,10 @@ class Game {
 	}
 
 	method : public : Won() ~ Nil {
-		@won_chunk->PlayChannel(-1, 0);
+		if(<>@game_over) {
+			@won_chunk->PlayChannel(-1, 0);
+			@game_over := true;
+		};
 	}
 
 	method : public : GameOver() ~ Nil {
