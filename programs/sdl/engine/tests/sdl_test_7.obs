@@ -6,7 +6,9 @@ use Collection;
 
 class Game {
 	@framework : GameFramework;
+	@initialized : Bool;
 	@base_path : String;
+
 	@player : Player;
 
 	@music : MixMusic;
@@ -16,9 +18,9 @@ class Game {
 	@die_chunk : MixChunk;
 
 	@background : ImageSprite;
-	@fire : ImageSprite;
-	@fire_clip1 : Rect;
-	@fire_clip2 : Rect;
+	@lava : ImageSprite;
+	@lava_clip1 : Rect;
+	@lava_clip2 : Rect;
 
 	@level : Level;
 	@timer : Int;
@@ -34,6 +36,8 @@ class Game {
 	}
 
 	New() {
+		@initialized := true;
+
 		@framework := GameFramework->New(GameConsts->SCREEN_WIDTH, GameConsts->SCREEN_HEIGHT, "Accel");
 		@framework->SetClearColor(Color->New(0, 0, 255));
 		@base_path := "C:\\Users\\objec\\Documents\\Code\\objeck-lang\\programs\\sdl\\engine\\tests\\media";
@@ -44,11 +48,11 @@ class Game {
 
 		fire_path := String->New(@base_path);
 		fire_path += "/images/fire.png";
-		@fire := @framework->AddImageSprite(fire_path);
-		@fire_clip1 := Rect->New(0, 0, 800,	64);
-		@fire_clip2 := Rect->New(10, 0, 800, 64);
+		@lava := @framework->AddImageSprite(fire_path);
+		@lava_clip1 := Rect->New(0, 0, 800,	64);
+		@lava_clip2 := Rect->New(10, 0, 800, 64);
 
-		@timer := 45;
+		@timer := GameConsts->LEVEL_TIME;
 		buffer := "Time: ";
 		buffer += @timer->ToString();
 		@timer_text := @framework->AddTextSprite();
@@ -63,7 +67,8 @@ class Game {
 		music_path += "/audio/music.wav";
 		@music := MixMusic->New(music_path);
 		if(@music->IsNull()) {
-			"--- Cannot load music: '{$music_path}'! ---"->PrintLine();
+			"--- Cannot load music: '{$music_path}'! ---"->ErrorLine();
+			@initialized := false;
 		};
 		@music->FadeInMusic(-1, 2000);
 
@@ -71,45 +76,51 @@ class Game {
 		gem_path += "/audio/gem.wav";
 		@gem_chunk := MixChunk->New(gem_path);
 		if(@gem_chunk->IsNull()) {
-			"--- Cannot load music: '{$gem_path}'! ---"->PrintLine();
+			"--- Cannot load music: '{$gem_path}'! ---"->ErrorLine();
+			@initialized := false;
 		};
 
 		start_path := String->New(@base_path);
 		start_path += "/audio/start.wav";
 		@start_chunk := MixChunk->New(start_path);
 		if(@start_chunk->IsNull()) {
-			"--- Cannot load music: '{$start_path}'! ---"->PrintLine();
+			"--- Cannot load music: '{$start_path}'! ---"->ErrorLine();
+			@initialized := false;
 		};
-		@start_chunk->PlayChannel(1, 0);
+		@start_chunk->PlayChannel(-1, 0);
 
 		won_path := String->New(@base_path);
 		won_path += "/audio/luck.wav";
 		@won_chunk := MixChunk->New(won_path);
 		if(@won_chunk->IsNull()) {
-			"--- Cannot load music: '{$won_path}'! ---"->PrintLine();
+			"--- Cannot load music: '{$won_path}'! ---"->ErrorLine();
+			@initialized := false;
 		};
 
 		die_path := String->New(@base_path);
 		die_path += "/audio/die.wav";
 		@die_chunk := MixChunk->New(die_path);
 		if(@die_chunk->IsNull()) {
-			"--- Cannot load music: '{$die_path}'! ---"->PrintLine();
+			"--- Cannot load music: '{$die_path}'! ---"->ErrorLine();
+			@initialized := false;
 		};
 	}
 
 	method : Run() ~ Nil {
-		if(@framework->IsOk()) {
+		if(@framework->IsOk() & @initialized) {
 			@player := Player->New(@self);
 			@level := Level->New(@self);
 			
 			quit := false;
 			e := @framework->GetEvent();
 			frame_count := 0;
+
+			# start game loop
 			while(<>quit) {
 				@framework->FrameStart();
 				@framework->Clear();
 				
-				# process input
+				# process user input
 				while(e->Poll() <> 0) {
 					if(e->GetType() = EventType->SDL_QUIT) {
 						quit := true;
@@ -118,32 +129,16 @@ class Game {
 					ProcessInput(e);
 				};
 
-				# update
+				# update model
 				@player->Update();
 				@level->Update();
-
-				shift := @level->GetShift();
-				if(@player->GetRight() >= GameConsts->PLAYER_BOX_MAX) {
-					diff := @player->GetRight() - GameConsts->PLAYER_BOX_MAX;
-					@player->SetRight(GameConsts->PLAYER_BOX_MAX);
-					if(shift > GameConsts->WIDTH_MAX) {
-						@level->ShiftWorld(-1 * diff);
-					};
-		        };
-
-		        if(@player->GetLeft() <= GameConsts->PLAYER_BOX_MIN) {
-					diff := GameConsts->PLAYER_BOX_MIN - @player->GetLeft();
-					@player->SetLeft(GameConsts->PLAYER_BOX_MIN);
-					if(shift < 0) {
-						@level->ShiftWorld(diff);
-					};
-				};
+				UpdateView();
 
 				# draw
-				Background();
-				@player->Draw();
+				DrawBackground();
 				@level->Draw(frame_count);
-				Fire(frame_count);
+				@player->Draw();
+				DrawLava(frame_count);
 				@timer_text->Render(640, 20);
 				@score_text->Render(640, 48);
 				
@@ -182,6 +177,25 @@ class Game {
 		};
 	}
 
+	method : public : UpdateView() ~ Nil {
+		shift := @level->GetShift();
+		if(@player->GetRight() >= GameConsts->PLAYER_BOX_MAX) {
+			diff := @player->GetRight() - GameConsts->PLAYER_BOX_MAX;
+			@player->SetRight(GameConsts->PLAYER_BOX_MAX);
+			if(shift > GameConsts->WIDTH_MAX) {
+				@level->ShiftView(-1 * diff);
+			};
+        };
+
+        if(@player->GetLeft() <= GameConsts->PLAYER_BOX_MIN) {
+			diff := GameConsts->PLAYER_BOX_MIN - @player->GetLeft();
+			@player->SetLeft(GameConsts->PLAYER_BOX_MIN);
+			if(shift < 0) {
+				@level->ShiftView(diff);
+			};
+		};
+	}
+
 	method : public : GetFramework() ~ GameFramework {
 		return @framework;
 	}
@@ -199,42 +213,44 @@ class Game {
 		buffer := "Score: ";
 		buffer += @score->ToString();
 		@score_text->RenderedText(buffer);
-		@gem_chunk->PlayChannel(2, 0);
+		@gem_chunk->PlayChannel(-1, 0);
 	}
 
 	method : public : Won() ~ Nil {
-		@won_chunk->PlayChannel(3, 0);
+		@won_chunk->PlayChannel(-1, 0);
 	}
 
 	method : public : GameOver() ~ Nil {
-		@die_chunk->PlayChannel(-1, 0);
-		@game_over := true;
-		@player->GameOver();
-		@level->GameOver();
+		if(<>@game_over) {
+			@die_chunk->PlayChannel(-1, 0);
+			@player->GameOver();
+			@level->GameOver();
+			@game_over := true;
+		};
 	}
 
-	method : Background() ~ Nil {
+	method : DrawBackground() ~ Nil {
 		shift := @level->GetShift() / 2;
 		@background->Render(shift, 0);
 		@background->Render(shift + @background->GetWidth(), 0);	
 	}
 
-	method : Fire(frame_count : Int) ~ Nil {
+	method : DrawLava(frame_count : Int) ~ Nil {
 		shift := @level->GetShift() / 3;
 		y_pos := GameConsts->SCREEN_HEIGHT - 64;
 
 		if(frame_count % 10 = 0) {
-			@fire->Render(shift, y_pos, @fire_clip1);
-			@fire->Render(shift + @fire->GetWidth(), y_pos, @fire_clip1);
+			@lava->Render(shift, y_pos, @lava_clip1);
+			@lava->Render(shift + @lava->GetWidth(), y_pos, @lava_clip1);
 		}
 		else {
-			@fire->Render(shift, y_pos, @fire_clip2);
-			@fire->Render(shift + @fire->GetWidth(), y_pos, @fire_clip2);
+			@lava->Render(shift, y_pos, @lava_clip2);
+			@lava->Render(shift + @lava->GetWidth(), y_pos, @lava_clip2);
 		};	
 	}
 
 	method : ProcessInput(e : Event) ~ Nil {
-		# Joystick
+		# joystick
 		if(e->GetType() = EventType->SDL_JOYHATMOTION) {
 			if(e->GetJHat()->GetWhich() = 0 ) {
 				select(e->GetJHat()->GetValue()) {
@@ -256,15 +272,12 @@ class Game {
 			};
 		}
 		else if(e->GetType() = EventType->SDL_JOYBUTTONDOWN) {
-			# 'a' button
 			if(e->GetJButton()->GetButton() = 0) {
 				@player->Jump(true);
 			};
-			# B button
 			# else if(e->GetJButton()->GetButton() = 1) { ... };
 		}
 		else if(e->GetType() = EventType->SDL_JOYBUTTONUP) {
-			# 'a' button
 			if(e->GetJButton()->GetButton() = 0) {
 				@player->Jump(false);
 			};
@@ -430,11 +443,9 @@ class Player {
 	}
 
 	method : public : CheckPlatforms() ~ Nil {
-		platforms := @level->GetPlatforms();
-
-		# reposition 'x'
+		# reposition x-axis
 		@rect->SetCenterX(@loc->GetX());
-		collides := @level->PlatformCollisions(@self, platforms);
+		collides := @level->PlatformCollisions(@self);
         each(i : collides) {
         	platform := collides->Get(i)->As(Platform);
 			if(@dir = 1) {
@@ -449,9 +460,9 @@ class Player {
             };
         };
 
-		# reposition 'y'
+		# reposition y-axis
 		@rect->SetBottom(@loc->GetY() - @rect->GetHeight() / 2);
-		collides := @level->PlatformCollisions(@self, platforms);
+		collides := @level->PlatformCollisions(@self);
         each(i : collides) {
         	platform := collides->Get(i)->As(Platform);
        		if(@vel->GetY() < 0.01) {
@@ -470,16 +481,22 @@ class Player {
 	}
 
 	method : public : CheckGems() ~ Nil {
-		collides := Level->GemsCollisions(@self, @level->GetGems());
+		collides := @level->GemsCollisions(@self);
         each(i : collides) {
     		gem := collides->Get(i)->As(Gem);
     		gem->Hide();
-    		@game->AddScore(15);
+    		@game->AddScore(GameConsts->GEM_VALUE);
     	};
     }
 
+    method : public : CheckSign() ~ Nil {
+    	if(@level->SignCollision(@self)) {
+
+    	};
+	}
+
     method : public : CheckSpiders() ~ Nil {
-		collides := Level->SpiderCollisions(@self, @level->GetSpiders());
+		collides := @level->SpiderCollisions(@self);
         each(i : collides) {
     		spider := collides->Get(i)->As(Spider);
     		spider->Hide();
@@ -770,6 +787,55 @@ class Spider {
 	}
 }
 
+class Post {
+	@rect : ImageSprite;
+	@hide : Bool;
+
+	New(x : Int, y : Int, rect : ImageSprite) {
+		@rect := rect;
+		@rect->Set(x, y);
+	}
+
+	method : public : Hide() ~ Nil {
+		@hide := true;
+	}
+
+	method : public : AddX(x : Int)  ~ Nil {
+		@rect->AddX(x);
+	}
+
+	method : public : GetLeft()  ~ Int {
+		return @rect->GetLeft();
+	}
+
+	method : public : GetRight()  ~ Int {
+		return @rect->GetRight();
+	}
+
+	method : public : GetTop()  ~ Int {
+		return @rect->GetTop();
+	}
+
+	method : public : GetBottom()  ~ Int {
+		return @rect->GetBottom();
+	}
+
+	method : public : Draw()  ~ Nil {
+		if(<>@hide) {
+			@rect->Render();
+		};
+	}
+
+	method : public : Collides(rect : ImageSprite) ~ Bool {
+		if(@hide) {
+			return false;
+		}
+		else {
+			return @rect->GetPosition()->Overlaps(rect->GetPosition());
+		};
+	}
+}
+
 class Level {
 	@game : Game;
 	@player : Player;
@@ -778,7 +844,7 @@ class Level {
 	@spiders : Vector;
 	@shift_x : Int;
 	@game_over : Bool;
-	@end : Platform;
+	@end_post : Post;
 
 	New(game : Game) {
 		@game := game;
@@ -788,16 +854,18 @@ class Level {
 
 		base_path := @game->GetBasePath();
 		framework := game->GetFramework();
-		@platforms := GeneratePlatforms(framework);
+		@platforms := GeneratePlatforms(base_path, framework);
 		@gems := GenerateGems(base_path, framework);
 		@spiders := GeneratSpiders(base_path, framework);
+			@end_post : Post;
+
 	}
 
 	method : public : GameOver() ~ Nil {
 		@game_over := true;
 	}
 
-	method : GeneratePlatforms(framework : GameFramework) ~ Vector {
+	method : GeneratePlatforms(base_path : String, framework : GameFramework) ~ Vector {
 		platforms := Vector->New();
 
 		width := 110;
@@ -813,7 +881,7 @@ class Level {
 			height := Int->Random(10, 25);
 
 			x_offset := Int->Random(10, 35);
-			y_pos := GetYPos(prev_plat, 20, 40);
+			y_pos := NextYPos(prev_plat, 20, 40);
 
 			flip := Int->Random(1);				
 			if(flip = 0) {
@@ -825,13 +893,17 @@ class Level {
 
 			x_base_pos += 110 + Int->Random(45, 60);
 		};
-		@end := Platform->New(1950, 525, framework->AddRectangle(110, 20));
-		platforms->AddBack(@end);
+		last_plat := Platform->New(1950, 525, framework->AddRectangle(110, 20));
+		platforms->AddBack(last_plat);
+
+		sign_path := String->New(base_path);
+		sign_path += "/images/sign.png";
+		@end_post := Post->New(2000, 480, framework->AddAnimatedImageSprite(sign_path));
 
 		return platforms;
 	}
 
-	method : GetYPos(prev_plat : Platform, min : Int, max : Int) ~ Int {
+	method : NextYPos(prev_plat : Platform, min : Int, max : Int) ~ Int {
 		y_pos := prev_plat->GetTop() + Int->Random(min, max);
 		if(y_pos < 60) {
 			y_pos += Int->Random(60, 80);
@@ -915,7 +987,7 @@ class Level {
 		return @shift_x;
 	}
 
-	method : public : ShiftWorld(shift_x : Int) ~ Nil {
+	method : public : ShiftView(shift_x : Int) ~ Nil {
 		@shift_x += shift_x;
 
 		each(i : @platforms) {
@@ -946,15 +1018,29 @@ class Level {
 		return @spiders;
 	}
 
-	method : public : PlatformCollisions(player : Player, obstacles : Vector) ~ Vector {
+	method : public : SignCollision(player : Player) ~ Bool {
+		return @end_post->Collides(player->GetRect());
+	}
+
+	method : public : PlatformCollisions(player : Player) ~ Vector {
 		collides := Vector->New();
 
-		each(i : obstacles) {
-        	obstacle := obstacles->Get(i)->As(Platform);
+		each(i : @platforms) {
+        	obstacle := @platforms->Get(i)->As(Platform);
         	if(obstacle->Collides(player->GetRect())) {
-        		if(obstacle = @end) {
-        			@game->Won();
-        		};
+         		collides->AddBack(obstacle);
+        	};
+        };
+
+        return collides;
+    }
+
+    method : public : GemsCollisions(player : Player) ~ Vector {
+		collides := Vector->New();
+
+		each(i : @gems) {
+        	obstacle := @gems->Get(i)->As(Gem);
+        	if(obstacle->Collides(player->GetRect())) {
         		collides->AddBack(obstacle);
         	};
         };
@@ -962,24 +1048,11 @@ class Level {
         return collides;
     }
 
-    method : public : GemsCollisions(player : Player, obstacles : Vector) ~ Vector {
+    method : public : SpiderCollisions(player : Player) ~ Vector {
 		collides := Vector->New();
 
-		each(i : obstacles) {
-        	obstacle := obstacles->Get(i)->As(Gem);
-        	if(obstacle->Collides(player->GetRect())) {
-        		collides->AddBack(obstacle);
-        	};
-        };
-
-        return collides;
-    }
-
-    method : public : SpiderCollisions(player : Player, obstacles : Vector) ~ Vector {
-		collides := Vector->New();
-
-		each(i : obstacles) {
-        	obstacle := obstacles->Get(i)->As(Spider);
+		each(i : @spiders) {
+        	obstacle := @spiders->Get(i)->As(Spider);
         	if(obstacle->Collides(player->GetRect())) {
         		collides->AddBack(obstacle);
         	};
@@ -1014,11 +1087,15 @@ class Level {
 			each(i : @spiders) {
 				@spiders->Get(i)->As(Spider)->Draw();
 			};
+
+			@end_post->Draw();
 		};
 	}
 }
 
 consts GameConsts {
+	LEVEL_TIME := 45,
+	GEM_VALUE := 15,
 	PLAYER_BOX_MIN := 120,
 	PLAYER_BOX_MAX := 500,
 	SCREEN_WIDTH := 800,
