@@ -50,12 +50,12 @@ class Game {
 	@quit : Bool;
 	@hard_quit : Bool;
 
-	@level_lock : static : ThreadMutex;
+	@level_mutex : static : ThreadMutex;
 
 	function : Main(args : String[]) ~ Nil {
 		game := Game->New();
 
-		@level_lock := ThreadMutex->New("level_lock");
+		@level_mutex := ThreadMutex->New("level_lock");
 		while(game->TileScreen()) {
 			game->Play();
 		};
@@ -410,7 +410,7 @@ class Game {
 			@quit := true;
 		};
 		
-		critical(@level_lock) {
+		critical(@level_mutex) {
 			@current_level += 1;
 			@level := Level->New(@self, @current_level);
 
@@ -1207,7 +1207,7 @@ class Level {
 			};
 		};
 
-"--- {$total} ---"->PrintLine();				
+# "--- {$total} ---"->PrintLine();				
 
 		return spiders;
 	}
