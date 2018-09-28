@@ -1,6 +1,7 @@
 use Game.SDL2;
 use Game.Framework;
 use Collection;
+use System.Concurrency;
 
 # TODO: next level 1-5
 
@@ -48,9 +49,12 @@ class Game {
 	@quit : Bool;
 	@hard_quit : Bool;
 
+	@level_lock : static : ThreadMutex;
+
 	function : Main(args : String[]) ~ Nil {
 		game := Game->New();
 
+		@level_lock := ThreadMutex->New("level_lock");
 		while(game->TileScreen()) {
 			game->Play();
 		};
@@ -112,8 +116,6 @@ class Game {
 
 	method : TileScreen() ~ Bool {
 		e := @framework->GetEvent();
-
-@hardness->PrintLine();
 
 		@high_score_text := @framework->AddTextSprite();
 		buffer := "High Score: ";
@@ -212,7 +214,7 @@ class Game {
 
 			@framework->Clear();
 
-			@high_score_text->Render(620, 20);
+			@high_score_text->Render(600, 20);
 
 			if((@won_channel < 0 & @die_channel < 0) | (<>Mixer->Playing(@won_channel) & <>Mixer->Playing(@die_channel))) {
 				play_text->Render(GameConsts->SCREEN_WIDTH / 2 - play_text->GetWidth() /2, GameConsts->SCREEN_HEIGHT / 2 - 32);
@@ -272,7 +274,9 @@ class Game {
 			@timer_text->RenderedText(buffer);	
 
 			@score_text := @framework->AddTextSprite();
-			buffer := "Score: ";
+			buffer := "Level: ";
+			buffer += @hardness;
+			buffer += ", Score: ";
 			buffer += @score->ToString();
 			@score_text->RenderedText(buffer);
 
@@ -300,8 +304,8 @@ class Game {
 				@level->Draw(frame_count);
 				@player->Draw();
 				DrawLava(frame_count);
-				@timer_text->Render(640, 20);
-				@score_text->Render(640, 48);
+				@timer_text->Render(685, 10);
+				@score_text->Render(10, 10);
 				
 				# show
 				@framework->Show();
@@ -375,7 +379,9 @@ class Game {
 
 	method : public : AddScore(points : Int) ~ Nil {
 		@score += points;
-		buffer := "Score: ";
+		buffer := "Level: ";
+		buffer += @hardness;
+		buffer += ", Score: ";
 		buffer += @score->ToString();
 		@score_text->RenderedText(buffer);
 		@gem_chunk->PlayChannel(-1, 0);
@@ -388,9 +394,20 @@ class Game {
 		if(@score > @high_score) {
 			@high_score := @score;
 		};
-		@hardness += 1;
+		
+		critical(@level_lock) {
+			@hardness += 1;
+			@level := Level->New(@self, @hardness);
 
-		@quit := true;
+			buffer := "Level: ";
+			buffer += @hardness;
+			buffer += ", Score: ";
+			buffer += @score->ToString();
+			@score_text->RenderedText(buffer);
+
+			@player->Won();
+			@timer := GameConsts->LEVEL_TIME;
+		};
 	}
 
 	method : public : GameOver() ~ Nil {
@@ -536,6 +553,10 @@ class Player {
 
 	method : public : GameOver() ~ Nil {
 		@game_over := true;
+	}
+
+	method : public : Won() ~ Nil {
+		@loc := Vector2->New(GameConsts->PLAYER_BOX_MIN->As(Float), GameConsts->SCREEN_HEIGHT / 2);
 	}
 
 	method : public : SetLevel(level : Level) ~ Nil {
@@ -892,10 +913,12 @@ class Spider {
 	@y_dir : Int;
 	@y_offset : Int;
 	@game_over : Bool;
+	@hardness : Int;
 
-	New(x : Int, y : Int, rect : ImageSprite) {
+	New(x : Int, y : Int, rect : ImageSprite, hardness : Int) {
 		@rect := rect;
 		@base_y := y;
+		@hardness := Int->Random(3) + hardness;
 		@rect->Set(x, y);
 		@y_dir := -1;
 		@x_offset := Int->Random(20, 60);
@@ -932,13 +955,13 @@ class Spider {
 	method : public : native : Update()  ~ Nil {	
 		if(@x_dir <> 0) {
 			@x_offset += 1;
-			if(@x_offset > 10) {
+			if(@x_offset > @hardness) {
 				@x_dir := 0;
 				@y_dir := -1;
 				@x_offset := 0;
 			};
 		}
-		else if(@rect->GetTop() < @base_y - 100 - @x_offset) {
+		else if(@rect->GetTop() < @base_y - (140 - @hardness) - @x_offset) {
 			@y_dir := 1;
 		}
 		else if(@rect->GetTop() >= @base_y) {
@@ -1144,9 +1167,12 @@ class Level {
 		spider_path := String->New(base_path);
 		spider_path += "/images/spider.png";
 
-		each(i : @platforms) {
-			hardness := Int->Random(3);
-			if(hardness % 3 = 0) {
+		total := 0;
+		for(i := 0; i < @platforms->Size() - 1; i+= 1;) {
+			value :=  5 - @hardness;
+			hardness := Int->Random(value);
+			if(hardness % value = 0) {
+				total += 1;
 				platform := @platforms->Get(i)->As(Platform);
 				
 				if(<>platform->TypeOf(MovingPlatform)) {
@@ -1161,10 +1187,12 @@ class Level {
 
 					y_offset := platform->GetTop() - 18;
 
-					spiders->AddBack(Spider->New(platform->GetLeft() + x_offset, y_offset, framework->AddAnimatedImageSprite(spider_path)));
+					spiders->AddBack(Spider->New(platform->GetLeft() + x_offset, y_offset, framework->AddAnimatedImageSprite(spider_path), @hardness));
 				};
 			};
 		};
+
+# "--- {$total} ---"->PrintLine();				
 
 		return spiders;
 	}
