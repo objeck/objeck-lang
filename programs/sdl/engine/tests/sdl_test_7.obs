@@ -214,7 +214,7 @@ class Game {
 
 			@framework->Clear();
 
-			@high_score_text->Render(600, 20);
+			@high_score_text->Render(10, 10);
 
 			if((@won_channel < 0 & @die_channel < 0) | (<>Mixer->Playing(@won_channel) & <>Mixer->Playing(@die_channel))) {
 				play_text->Render(GameConsts->SCREEN_WIDTH / 2 - play_text->GetWidth() /2, GameConsts->SCREEN_HEIGHT / 2 - 32);
