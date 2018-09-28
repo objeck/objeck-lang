@@ -107,10 +107,13 @@ class Game {
 
 		@won_channel := -1;
 		@die_channel := -1;
+		@hardness := 1;
 	}
 
 	method : TileScreen() ~ Bool {
 		e := @framework->GetEvent();
+
+@hardness->PrintLine();
 
 		@high_score_text := @framework->AddTextSprite();
 		buffer := "High Score: ";
@@ -214,6 +217,10 @@ class Game {
 			if((@won_channel < 0 & @die_channel < 0) | (<>Mixer->Playing(@won_channel) & <>Mixer->Playing(@die_channel))) {
 				play_text->Render(GameConsts->SCREEN_WIDTH / 2 - play_text->GetWidth() /2, GameConsts->SCREEN_HEIGHT / 2 - 32);
 				quit_text->Render(GameConsts->SCREEN_WIDTH / 2 - quit_text->GetWidth() /2, GameConsts->SCREEN_HEIGHT / 2 + 32);
+			}
+			else {
+				play_text->RenderedText("Game Over!", red_color);
+				play_text->Render(GameConsts->SCREEN_WIDTH / 2 - play_text->GetWidth() /2, GameConsts->SCREEN_HEIGHT / 2 - 32);
 			};
 
 			@framework->FrameEnd();
