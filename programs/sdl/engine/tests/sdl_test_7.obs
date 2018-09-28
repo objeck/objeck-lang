@@ -2,7 +2,8 @@ use Game.SDL2;
 use Game.Framework;
 use Collection;
 
-# TODO: add ending
+# TODO: title screen w/ high score
+# TODO: next level 1-5
 
 class Game {
 	@framework : GameFramework;
