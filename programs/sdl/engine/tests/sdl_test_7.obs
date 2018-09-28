@@ -38,7 +38,7 @@ class Game {
 	New() {
 		@initialized := true;
 
-		@framework := GameFramework->New(GameConsts->SCREEN_WIDTH, GameConsts->SCREEN_HEIGHT, "Accel");
+		@framework := GameFramework->New(GameConsts->SCREEN_WIDTH, GameConsts->SCREEN_HEIGHT, "Secret Platform");
 		@framework->SetClearColor(Color->New(0, 0, 255));
 		@base_path := "C:\\Users\\objec\\Documents\\Code\\objeck-lang\\programs\\sdl\\engine\\tests\\media";
 
