@@ -5,7 +5,7 @@ Event Driven Programming
 http://lazyfoo.net/tutorials/SDL/03_event_driven_programming/index.php
 ~#
 
-use SDL;
+use Game.SDL2;
 
 class Test {
 	@window : static : Window;
@@ -33,15 +33,15 @@ class Test {
 				while( <>quit )
 				{
 					# Handle events on queue
-					while( Core->PollEvent( e ) <> 0 ) {
+					while( e->Poll() <> 0 ) {
 						# User requests quit
-						if( e->Type() = Flags->SDL_QUIT->As(Int) ) {
+						if( e->GetType() = EventType->SDL_QUIT ) {
 							quit := true;
 						};
 					};
 
 					# Apply the image
-					@x_out->Blit( Nil, @screen_surface, Nil );
+					@x_out->UpperBlit( Nil, @screen_surface, Nil );
 				
 					# Update the surface
 					@window->UpdateSurface();
@@ -57,21 +57,21 @@ class Test {
 		success := true;
 		
 		# Initialize SDL
-		if(Core->Init(Flags->SDL_INIT_VIDEO->As(Int)) < 0) {
+		if(Core->Init(HardwareFlags->SDL_INIT_VIDEO->As(Int)) < 0) {
 			"SDL could not initialize!"->ErrorLine();
 			success := false;
 		}
 		else {
 			# Create window
-			@window := Window->New( "SDL Tutorial", Flags->SDL_WINDOW_POS_UNDEFINED->As(Int), 
-				Flags->SDL_WINDOW_POS_UNDEFINED->As(Int), 640, 480, Flags->SDL_WINDOW_SHOWN->As(Int));
-			if(<>@window->Ok())	{
+			@window := Window->New( "SDL Tutorial", WindowFlags->SDL_WINDOWPOS_UNDEFINED, 
+				WindowFlags->SDL_WINDOWPOS_UNDEFINED, 640, 480, WindowFlags->SDL_WINDOW_SHOWN);
+			if( @window = Nil )	{
 				"Window could not be created!"->ErrorLine();
 				success := false;
 			} 
 			else {
 				# Get window surface
-				@screen_surface := Surface->New(@window);
+				@screen_surface := @window->GetSurface();
 			};
 		};
 		
@@ -84,8 +84,8 @@ class Test {
 
 		# Load splash image
 		image := "images/x.bmp";
-		@x_out := Core->LoadBmp( image );
-		if( <>@x_out->Ok() ) {
+		@x_out := Surface->LoadBMP( image );
+		if(@x_out = Nil ) {
 			"Unable to load image {$image}"->PrintLine();
 			success := false;
 		};
