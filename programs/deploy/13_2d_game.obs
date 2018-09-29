@@ -1,9 +1,12 @@
+#~
+# compiler: obc -src 13_2d_game.obs -lib collect.obl,sdl_game.obl,sdl2.obl -dest game2d.obe
+# run: obr game2d.obe
+~#
+
+use System.Concurrency;
+use Collection;
 use Game.SDL2;
 use Game.Framework;
-use Collection;
-use System.Concurrency;
-
-# TODO: next level 1-5
 
 class Game {
 	# game framework
@@ -1207,9 +1210,7 @@ class Level {
 				};
 			};
 		};
-
-# "--- {$total} ---"->PrintLine();				
-
+		
 		return spiders;
 	}
 
