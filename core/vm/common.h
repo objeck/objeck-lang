@@ -32,7 +32,6 @@
 #ifndef __COMMON_H__
 #define __COMMON_H__
 
-#include <direct.h>
 #include <algorithm>
 #include <iostream>
 #include <iomanip>
@@ -59,6 +58,7 @@
 #endif
 
 #ifdef _WIN32
+#include <direct.h>
 #include <windows.h>
 #include <process.h>
 #include <unordered_map>
