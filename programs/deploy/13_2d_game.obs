@@ -645,7 +645,7 @@ class Player {
 	}
 
 	method : Movement() ~ Nil {
-		@acc->SetX(@dir * 0.50);
+		@acc->SetX(@dir * 0.5);
 
 		# movement logic
 		if(@hit_top) {
@@ -1318,7 +1318,7 @@ class Level {
 					spider->Draw();
 				};
 			};
-			
+
 			if(<>(@end_post->GetRight() < 0 | @end_post->GetLeft() > GameConsts->SCREEN_WIDTH)) {
 				@end_post->Draw();
 			};
