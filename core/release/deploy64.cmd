@@ -47,7 +47,11 @@ REM copy examples
 mkdir deploy64\examples\
 mkdir deploy64\examples\doc\
 mkdir deploy64\examples\tiny\
+mkdir deploy64\examples\media\
+del  /s /q ..\..\programs\*.obe
 xcopy /e ..\..\programs\deploy\*.obs deploy64\examples\
+xcopy /e ..\..\programs\deploy\media\*.png deploy64\examples\media\
+xcopy /e ..\..\programs\deploy\media\*.wav deploy64\examples\media\
 xcopy /e ..\..\programs\doc\* deploy64\examples\doc\
 xcopy /e ..\..\programs\tiny\* deploy64\examples\tiny\
 del  /s /q ..\..\programs\tiny\*.obe
