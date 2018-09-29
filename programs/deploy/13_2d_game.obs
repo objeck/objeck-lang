@@ -1299,18 +1299,29 @@ class Level {
 	method : public : Draw(frame_count : Int)  ~ Nil {
 		if(<>@game_over) {
 			each(i : @gems) {
-				@gems->Get(i)->As(Gem)->Draw(frame_count);
+				gem := @gems->Get(i)->As(Gem);
+				if(<>(gem->GetRight() < 0 | gem->GetLeft() > GameConsts->SCREEN_WIDTH)) {
+					gem->Draw(frame_count);
+				};
 			};
 
 			each(i : @platforms) {
-				@platforms->Get(i)->As(Platform)->Draw();
+				platform := @platforms->Get(i)->As(Platform);
+				if(<>(platform->GetRight() < 0 | platform->GetLeft() > GameConsts->SCREEN_WIDTH)) {
+					platform->Draw();
+				};
 			};
 
 			each(i : @spiders) {
-				@spiders->Get(i)->As(Spider)->Draw();
+				spider := @spiders->Get(i)->As(Spider);
+				if(<>(spider->GetRight() < 0 | spider->GetLeft() > GameConsts->SCREEN_WIDTH)) {
+					spider->Draw();
+				};
 			};
-
-			@end_post->Draw();
+			
+			if(<>(@end_post->GetRight() < 0 | @end_post->GetLeft() > GameConsts->SCREEN_WIDTH)) {
+				@end_post->Draw();
+			};
 		};
 	}
 }
