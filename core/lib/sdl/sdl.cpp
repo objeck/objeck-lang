@@ -2490,6 +2490,161 @@ extern "C" {
     Mix_FreeMusic(music);
   }
 
+  // platform
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_platform_get(VMContext& context) {
+    const string value = SDL_GetPlatform();
+    const wstring return_value(value.begin(), value.end());
+    APITools_SetStringValue(context, 0, return_value);
+  }
+
+  // cpu
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_cpu_get_count(VMContext& context) {
+    const int return_value = SDL_GetCPUCount();
+    APITools_SetIntValue(context, 0, return_value);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_cpu_get_cache_line_size(VMContext& context) {
+    const int return_value = SDL_GetCPUCacheLineSize();
+    APITools_SetIntValue(context, 0, return_value);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_cpu_hasrdtsc(VMContext& context) {
+    const int return_value = SDL_HasRDTSC();
+    APITools_SetIntValue(context, 0, return_value);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_cpu_has_alti_vec(VMContext& context) {
+    const int return_value = SDL_HasAltiVec();
+    APITools_SetIntValue(context, 0, return_value);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_cpu_hasmmx(VMContext& context) {
+    const int return_value = SDL_HasMMX();
+    APITools_SetIntValue(context, 0, return_value);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_cpu_has3d_now(VMContext& context) {
+    const int return_value = SDL_Has3DNow();
+    APITools_SetIntValue(context, 0, return_value);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_cpu_hassse(VMContext& context) {
+    const int return_value = SDL_HasSSE();
+    APITools_SetIntValue(context, 0, return_value);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_cpu_hassse2(VMContext& context) {
+    const int return_value = SDL_HasSSE2();
+    APITools_SetIntValue(context, 0, return_value);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_cpu_hassse3(VMContext& context) {
+    const int return_value = SDL_HasSSE3();
+    APITools_SetIntValue(context, 0, return_value);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_cpu_hassse41(VMContext& context) {
+    const int return_value = SDL_HasSSE41();
+    APITools_SetIntValue(context, 0, return_value);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_cpu_hassse42(VMContext& context) {
+    const int return_value = SDL_HasSSE42();
+    APITools_SetIntValue(context, 0, return_value);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_cpu_hasavx(VMContext& context) {
+    const int return_value = SDL_HasAVX();
+    APITools_SetIntValue(context, 0, return_value);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_cpu_hasavx2(VMContext& context) {
+    const int return_value = SDL_HasAVX2();
+    APITools_SetIntValue(context, 0, return_value);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_cpu_hasneon(VMContext& context) {
+    const int return_value = SDL_HasNEON();
+    APITools_SetIntValue(context, 0, return_value);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_cpu_get_systemram(VMContext& context) {
+    const int return_value = SDL_GetSystemRAM();
+    APITools_SetIntValue(context, 0, return_value);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_filesystem_get_base_path(VMContext& context) {
+    const string value = SDL_GetBasePath();
+    const wstring return_value(value.begin(), value.end());
+    APITools_SetStringValue(context, 0, return_value);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_filesystem_get_pref_path(VMContext& context) {
+    const wstring w_org = APITools_GetStringValue(context, 1);
+    const string org(w_org.begin(), w_org.end());
+
+    const wstring w_app = APITools_GetStringValue(context, 2);
+    const string app(w_app.begin(), w_app.end());
+
+    const string value = SDL_GetPrefPath(org.c_str(), app.c_str());
+
+    const wstring return_value(value.begin(), value.end());
+    APITools_SetStringValue(context, 0, return_value);
+  }
 
 
 
