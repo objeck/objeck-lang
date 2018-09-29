@@ -195,6 +195,7 @@ class Game {
 			            	return true;
 			            }
 
+			            label Scancode->SDL_SCANCODE_Q:
 			            label Scancode->SDL_SCANCODE_ESCAPE: {
 							return false;
 			            }
