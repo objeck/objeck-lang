@@ -50,7 +50,11 @@ REM copy examples
 mkdir deploy\examples\
 mkdir deploy\examples\doc\
 mkdir deploy\examples\tiny\
+mkdir deploy\examples\media\
+del  /s /q ..\..\programs\*.obe
 xcopy /e ..\..\programs\deploy\*.obs deploy\examples\
+xcopy /e ..\..\programs\deploy\media\*.png deploy\examples\media\
+xcopy /e ..\..\programs\deploy\media\*.wav deploy\examples\media\
 xcopy /e ..\..\programs\doc\* deploy\examples\doc\
 xcopy /e ..\..\programs\tiny\* deploy\examples\tiny\
 del  /s /q ..\..\programs\tiny\*.obe

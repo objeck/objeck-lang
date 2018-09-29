@@ -68,10 +68,11 @@ class Game {
 
 		@framework := GameFramework->New(GameConsts->SCREEN_WIDTH, GameConsts->SCREEN_HEIGHT, "Secret Platform");
 		@framework->SetClearColor(Color->New(255, 255, 255));
-		@base_path := "C:\\Users\\objec\\Documents\\Code\\objeck-lang\\programs\\sdl\\engine\\tests\\media";
+		@base_path := Runtime->GetProperty("install_dir");
+		@base_path += "/examples";
 
 		music_path := String->New(@base_path);
-		music_path += "/audio/music.wav";
+		music_path += "/media/music.wav";
 		@music := MixMusic->New(music_path);
 		if(@music->IsNull()) {
 			"--- Cannot load music: '{$music_path}'! ---"->ErrorLine();
@@ -79,7 +80,7 @@ class Game {
 		};
 
 		gem_path := String->New(@base_path);
-		gem_path += "/audio/gem.wav";
+		gem_path += "/media/gem.wav";
 		@gem_chunk := MixChunk->New(gem_path);
 		if(@gem_chunk->IsNull()) {
 			"--- Cannot load music: '{$gem_path}'! ---"->ErrorLine();
@@ -87,7 +88,7 @@ class Game {
 		};
 
 		start_path := String->New(@base_path);
-		start_path += "/audio/start.wav";
+		start_path += "/media/start.wav";
 		@start_chunk := MixChunk->New(start_path);
 		if(@start_chunk->IsNull()) {
 			"--- Cannot load music: '{$start_path}'! ---"->ErrorLine();
@@ -95,7 +96,7 @@ class Game {
 		};
 
 		won_path := String->New(@base_path);
-		won_path += "/audio/luck.wav";
+		won_path += "/media/luck.wav";
 		@won_chunk := MixChunk->New(won_path);
 		if(@won_chunk->IsNull()) {
 			"--- Cannot load music: '{$won_path}'! ---"->ErrorLine();
@@ -103,7 +104,7 @@ class Game {
 		};
 
 		die_path := String->New(@base_path);
-		die_path += "/audio/die.wav";
+		die_path += "/media/die.wav";
 		@die_chunk := MixChunk->New(die_path);
 		if(@die_chunk->IsNull()) {
 			"--- Cannot load music: '{$die_path}'! ---"->ErrorLine();
@@ -123,12 +124,12 @@ class Game {
 		buffer += @high_score->ToString();
 		@high_score_text->RenderedText(buffer);
 
-		font_path := Runtime->GetProperty("install_dir");
+		font_path := String->New(@base_path);
 		if(font_path = Nil) {
 			"Failed to load font!"->ErrorLine();
 			return false;
 		};
-		font_path += "/lib/sdl/fonts/lazy.ttf";
+		font_path += "/../lib/sdl/fonts/lazy.ttf";
 
 		font := Font->New(font_path, 36);
 		if(font->IsNull()) {
@@ -264,11 +265,11 @@ class Game {
 			};
 
 			background_path := String->New(@base_path);
-			background_path += "/images/background.png";
+			background_path += "/media/background.png";
 			@background := @framework->AddImageSprite(background_path);
 
 			fire_path := String->New(@base_path);
-			fire_path += "/images/fire.png";
+			fire_path += "/media/fire.png";
 			@lava := @framework->AddImageSprite(fire_path);
 			@lava_clip1 := Rect->New(0, 0, 800,	64);
 			@lava_clip2 := Rect->New(10, 0, 800, 64);
@@ -558,7 +559,7 @@ class Player {
 		clips->AddBack(Rect->New(192, 0, 32, 52));
 
 		player_path := String->New(base_path);
-		player_path += "/images/player.png";
+		player_path += "/media/player.png";
 		@rect := framework->AddAnimatedImageSprite(player_path, clips);
 		
 		@loc := Vector2->New(GameConsts->PLAYER_BOX_MIN->As(Float), GameConsts->SCREEN_HEIGHT / 2);
@@ -1120,7 +1121,7 @@ class Level {
 		platforms->AddBack(last_plat);
 
 		sign_path := String->New(base_path);
-		sign_path += "/images/sign.png";
+		sign_path += "/media/sign.png";
 		@end_post := SignPost->New(1990, 462, framework->AddAnimatedImageSprite(sign_path));
 
 		return platforms;
@@ -1142,7 +1143,7 @@ class Level {
 		gems := Vector->New();
 
 		gems_path := String->New(base_path);
-		gems_path += "/images/gems.png";
+		gems_path += "/media/gems.png";
 
 		clips := Vector->New();
 		clips->AddBack(Rect->New(0, 0, 32, 32));
@@ -1180,7 +1181,7 @@ class Level {
 		spiders := Vector->New();
 
 		spider_path := String->New(base_path);
-		spider_path += "/images/spider.png";
+		spider_path += "/media/spider.png";
 
 		total := 0;
 		for(i := 0; i < @platforms->Size() - 1; i+= 1;) {
