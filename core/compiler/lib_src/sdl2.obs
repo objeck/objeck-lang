@@ -1417,6 +1417,32 @@ bundle Game.SDL2 {
 		}		
 	}
 
+	class TextInputEvent {
+		@type : Int;
+	    @timestamp : Int;
+	    @windowID : Int;
+	    @text : String;
+
+	    New() {			
+		}
+
+		method : public : GetType() ~ Int {
+			return @type;
+		}
+
+		method : public : GetTimestamp() ~ Int {
+			return @timestamp;
+		}
+
+		method : public : GetWindowID() ~ Int {
+			return @windowID;
+		}
+
+		method : public : GetText() ~ String {
+			return @text;
+		}
+	}
+	
 	#~
 	Event class
 	~#
@@ -1424,6 +1450,7 @@ bundle Game.SDL2 {
 		@event : Int;
 		@key : KeyboardEvent;
 		@axis : JoyAxisEvent;
+		@text : TextInputEvent;
 		@hat : JoyHatEvent;
 		@jbutton : JoyButtonEvent;
 		@motion : MouseMotionEvent;
@@ -1489,6 +1516,30 @@ bundle Game.SDL2 {
 				};
 
 				return @key;
+			};
+			
+			return Nil;
+		}
+
+		method : public : GetTextInput() ~ TextInputEvent {
+			if(@event <> 0) {
+				if(@text = Nil) {
+					@text := TextInputEvent->New();
+				};
+				
+				array_args := Base->New[3];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@event);
+				array_args[2] := @text;
+				
+				Proxy->GetDllProxy()->CallFunction("sdl_text_key", array_args);
+
+				value := array_args[0]->As(IntHolder);
+				if(value->Get() < 0) {
+					return Nil;
+				};
+
+				return @text;
 			};
 			
 			return Nil;

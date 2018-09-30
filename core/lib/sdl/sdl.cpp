@@ -1472,6 +1472,28 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
+  void sdl_text_key(VMContext& context) {
+    SDL_Event* event = (SDL_Event*)APITools_GetIntValue(context, 1);
+    if(event->type == SDL_TEXTINPUT) {
+      size_t* text_obj = APITools_GetObjectValue(context, 2);
+      text_obj[0] = event->text.type;
+      text_obj[1] = event->text.timestamp;
+      text_obj[2] = event->text.windowID;
+
+      const string text = event->text.text;
+      const wstring w_text(text.begin(), text.end());
+      text_obj[3] = (size_t)APITools_CreateStringValue(context, w_text);
+
+      APITools_SetIntValue(context, 0, 0);
+    }
+    else {
+      APITools_SetIntValue(context, 0, -1);
+    }
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
   void sdl_mouse_motion(VMContext& context) {
     SDL_Event* event = (SDL_Event*)APITools_GetIntValue(context, 1);
     if(event->type == SDL_MOUSEMOTION) {

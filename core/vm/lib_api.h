@@ -382,7 +382,7 @@ void APITools_SetStringValue(VMContext &context, int index, const wstring &value
 }
 
 // get the requested string value from an Object[].
-wchar_t* APITools_GetStringValue(VMContext &context, int index) {
+const wchar_t* APITools_GetStringValue(VMContext &context, int index) {
   size_t* data_array = context.data_array;
   if(data_array && index < (int)data_array[0]) {
     data_array += ARRAY_HEADER_OFFSET;
