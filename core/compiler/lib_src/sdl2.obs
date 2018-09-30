@@ -3895,11 +3895,11 @@ bundle Game.SDL2 {
 	}
 
 	class Power {
-		method : public : GetInfo(secs : Int, pct : Int) ~ PowerState {
+		method : public : GetInfo(secs : IntHolder, pct : IntHolder) ~ PowerState {
 			array_args := Base->New[3];
 			array_args[0] := IntHolder->New();
-			array_args[1] := IntHolder->New(secs);
-			array_args[2] := IntHolder->New(pct);
+			array_args[1] := secs;
+			array_args[2] := pct;
 
 			Proxy->GetDllProxy()->CallFunction("sdl_power_get_info", array_args);
 
