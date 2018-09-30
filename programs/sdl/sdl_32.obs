@@ -165,9 +165,14 @@ class Test {
 						input_text->Pop();
 						render_text := true;
 					}
-					else if( e->GetKey()->GetKeysym()->GetScancode() = Scancode->SDL_SCANCODE_C) {
-mod := Keyboard->GetModState()->As(Int);						
-"--- Copy mod={$mod} ---"->PrintLine();						
+					else if( e->GetKey()->GetKeysym()->GetScancode() = Scancode->SDL_SCANCODE_C & 
+							Keyboard->GetModState() and Keymod->KMOD_LCTRL <> 0) {
+						Clipboard->SetClipboardText(input_text);
+					}
+					else if( e->GetKey()->GetKeysym()->GetScancode() = Scancode->SDL_SCANCODE_V & 
+							Keyboard->GetModState() and Keymod->KMOD_LCTRL <> 0) {
+						input_text := Clipboard->GetClipboardText();
+						render_text := true;
 					};
 				}
 				else if( e->GetType() = EventType->SDL_TEXTINPUT ) {
