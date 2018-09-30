@@ -3903,7 +3903,7 @@ bundle Game.SDL2 {
 
 			Proxy->GetDllProxy()->CallFunction("sdl_power_get_info", array_args);
 
-			return array_args[0]->As();
+			return array_args[0]->As(PowerState);
 		}
 	}
 }
