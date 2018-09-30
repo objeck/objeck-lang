@@ -59,7 +59,7 @@ class Test {
 		secs := IntHolder->New();
 		pct := IntHolder->New();
 
-		Power->GetInfo(secs, pct);
+		Power->GetInfo(secs, pct)->PrintLine();
 
 		secs->Get()->PrintLine();
 		pct->Get()->PrintLine();
