@@ -3890,12 +3890,16 @@ bundle Game.SDL2 {
 		}
 	}
 
-	enum PowerState {
-
+	enum PowererState {
+		SDL_POWERSTATE_UNKNOWN,
+	    SDL_POWERSTATE_ON_BATTERY,
+	    SDL_POWERSTATE_NO_BATTERY,
+	    SDL_POWERSTATE_CHARGING,
+	    SDL_POWERSTATE_CHARGED
 	}
 
 	class Power {
-		function : GetInfo(secs : IntHolder, pct : IntHolder) ~ PowerState {
+		function : GetInfo(secs : IntHolder, pct : IntHolder) ~ Int {
 			array_args := Base->New[3];
 			array_args[0] := IntHolder->New();
 			array_args[1] := secs;
@@ -3903,7 +3907,8 @@ bundle Game.SDL2 {
 
 			Proxy->GetDllProxy()->CallFunction("sdl_power_get_info", array_args);
 
-			return array_args[0]->As(PowerState);
+			value := array_args[0]->As(IntHolder);
+			return value->As(IntHolder)->Get();
 		}
 	}
 }

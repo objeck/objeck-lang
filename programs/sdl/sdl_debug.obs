@@ -55,7 +55,14 @@ class Test {
 	
 	function : Regulate() ~ Nil {
 #		Filesystem->GetBasePath()->PrintLine();
-		CPU->GetCount()->PrintLine();
+		
+		secs := IntHolder->New();
+		pct := IntHolder->New();
+
+		Power->GetInfo(secs, pct);
+
+		secs->Get()->PrintLine();
+		pct->Get()->PrintLine();
 	}
 
 	function : Init() ~ Bool {
