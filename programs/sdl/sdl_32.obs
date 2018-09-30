@@ -164,6 +164,10 @@ class Test {
 						#lop off character
 						input_text->Pop();
 						render_text := true;
+					}
+					else if( e->GetKey()->GetKeysym()->GetScancode() = Scancode->SDL_SCANCODE_C) {
+mod := Keyboard->GetModState()->As(Int);						
+"--- Copy mod={$mod} ---"->PrintLine();						
 					};
 				}
 				else if( e->GetType() = EventType->SDL_TEXTINPUT ) {
