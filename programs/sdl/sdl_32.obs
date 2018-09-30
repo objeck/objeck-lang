@@ -126,12 +126,15 @@ class Test {
 			"Failed to initialize!"->ErrorLine();
 			return;
 		};
+
+		@input_text_texture := LTexture->New(@renderer, @font);
+		@prompt_text_texture := LTexture->New(@renderer, @font);
 		
 		# Load media
 		if( <>LoadMedia() ) {
 			"Failed to load media!"->ErrorLine();
 			return;
-		};
+		};		
 
 		FRAME_RATE := 1000 / Screen->FPS->As(Int);
 			
@@ -154,6 +157,11 @@ class Test {
 				}
 				# Special key input
 				else if( e->GetType() = EventType->SDL_KEYDOWN ) {
+"-- Hit 0 --"->PrintLine();					
+				}
+				else if( e->GetType() = EventType->SDL_TEXTINPUT ) {
+					e->GetTextInput()->GetText()->PrintLine();
+"-- Hit 1 --"->PrintLine();					
 				};
 			};
 			
@@ -187,6 +195,24 @@ class Test {
 			"SDL could not initialize!"->ErrorLine();
 			return false;
 		};
+
+		if(Font->Init() < 0) {
+			"SDL_ttf could not initialize!"->ErrorLine();
+			return false;
+		};
+
+		font_path := Runtime->GetProperty("install_dir");
+		if(font_path = Nil) {
+			"Failed to load font!"->ErrorLine();
+			return false;
+		};
+		font_path += "/lib/sdl/fonts/lazy.ttf";
+
+		@font := Font->New(font_path, 24);
+		if(@font->IsNull()) {
+			"Failed to load font '{$font_path}'!"->ErrorLine();
+			return false;
+		};
 		
 		if(<>Hints->Set("SDL_RENDER_SCALE_QUALITY", "1")) {
 			"Warning: Linear texture filtering not enabled!"->ErrorLine();
@@ -216,27 +242,11 @@ class Test {
 			"SDL image could not initialize!"->ErrorLine();
 			return false;
 		};
-
-		@input_text_texture := LTexture->New(@renderer, @font);
-		@prompt_text_texture := LTexture->New(@renderer, @font);
 		
 		return true;
 	}
 	
 	function : LoadMedia() ~ Bool {
-		font_path := Runtime->GetProperty("install_dir");
-		if(font_path = Nil) {
-			"Failed to load font!"->ErrorLine();
-			return false;
-		};
-		font_path += "/lib/sdl/fonts/lazy.ttf";
-
-		@font := Font->New(font_path, 24);
-		if(@font->IsNull()) {
-			"Failed to load font '{$font_path}'!"->ErrorLine();
-			return false;
-		};
-
 		color := Color->New();
 		if(<>@prompt_text_texture->LoadFromRenderedText( "Enter Text:", color )) {
 			"Failed to render text"->ErrorLine();

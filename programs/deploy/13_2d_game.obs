@@ -673,7 +673,7 @@ class Player {
 		@rect->SetCenterX(@loc->GetX());
 		collides := @level->PlatformCollisions(@self);
         each(i : collides) {
-        	platform := collides->Get(i)->As(Platform);
+        	platform := collides->Get(i)->As(StaticPlatform);
 			if(@dir = 1) {
     			@rect->SetRight(platform->GetLeft());
     			@loc->SetX(platform->GetLeft() - @rect->GetWidth() / 2);
@@ -690,7 +690,7 @@ class Player {
 		@rect->SetBottom(@loc->GetY() - @rect->GetHeight() / 2);
 		collides := @level->PlatformCollisions(@self);
         each(i : collides) {
-        	platform := collides->Get(i)->As(Platform);
+        	platform := collides->Get(i)->As(StaticPlatform);
        		if(@vel->GetY() < 0.01) {
 				@rect->SetTop(platform->GetBottom());
             	@loc->SetY(platform->GetBottom() + @rect->GetHeight() / 2);
@@ -760,7 +760,7 @@ class Player {
 	}
 }
 
-class Platform {
+class StaticPlatform {
 	@rect : Rectangle;
 
 	New(x : Int, y : Int, rect : Rectangle) {
@@ -803,7 +803,7 @@ class Platform {
 	}
 }
 
-class MovingPlatform from Platform {
+class MovingPlatform from StaticPlatform {
 	@change_x : Int;
     @change_y : Int;
     @boundary_top : Int;
@@ -1102,18 +1102,18 @@ class Level {
 		height := 20;
 
 		x_base_pos := GameConsts->PLAYER_BOX_MIN + GameConsts->PLAYER_BOX_MIN / 2;
-		platforms->AddBack(Platform->New(x_base_pos, 525, framework->AddRectangle(width, height)));
+		platforms->AddBack(StaticPlatform->New(x_base_pos, 525, framework->AddRectangle(width, height)));
 		x_base_pos += 110 + Int->Random(10, 20);
 
 		for(i := 0; i < 10; i += 1;) {
-			prev_plat := platforms->Get(i)->As(Platform);
+			prev_plat := platforms->Get(i)->As(StaticPlatform);
 			height := Int->Random(10, 25);
 
 			x_offset := Int->Random(10, 35);
 			y_pos := NextYPos(prev_plat, 20, 40);
 
 			if(Int->Random(1) = 0) {
-				platforms->AddBack(Platform->New(x_base_pos + x_offset, y_pos, framework->AddRectangle(width, height)));					
+				platforms->AddBack(StaticPlatform->New(x_base_pos + x_offset, y_pos, framework->AddRectangle(width, height)));					
 			}
 			else {
 				platforms->AddBack(MovingPlatform->New(x_base_pos + x_offset, y_pos, framework->AddRectangle(width, height), @player, @self));
@@ -1121,7 +1121,7 @@ class Level {
 
 			x_base_pos += 110 + Int->Random(45, 60);
 		};
-		last_plat := Platform->New(1950, 525, framework->AddRectangle(110, 20));
+		last_plat := StaticPlatform->New(1950, 525, framework->AddRectangle(110, 20));
 		platforms->AddBack(last_plat);
 
 		sign_path := String->New(base_path);
@@ -1131,7 +1131,7 @@ class Level {
 		return platforms;
 	}
 
-	method : NextYPos(prev_plat : Platform, min : Int, max : Int) ~ Int {
+	method : NextYPos(prev_plat : StaticPlatform, min : Int, max : Int) ~ Int {
 		y_pos := prev_plat->GetTop() + Int->Random(min, max);
 		if(y_pos < 60) {
 			y_pos += Int->Random(60, 80);
@@ -1160,7 +1160,7 @@ class Level {
 		each(i : @platforms) {
 			flip := Int->Random(3);
 			if(flip % 3 = 0) {
-				platform := @platforms->Get(i)->As(Platform);
+				platform := @platforms->Get(i)->As(StaticPlatform);
 				
 				x_offset : Int;
 				value := Int->Random(10, 30);
@@ -1193,7 +1193,7 @@ class Level {
 			flip := Int->Random(value);
 			if(flip % value = 0) {
 				total += 1;
-				platform := @platforms->Get(i)->As(Platform);
+				platform := @platforms->Get(i)->As(StaticPlatform);
 				
 				if(<>platform->TypeOf(MovingPlatform)) {
 					x_offset : Int;
@@ -1223,7 +1223,7 @@ class Level {
 		@shift_x += shift_x;
 
 		each(i : @platforms) {
-			platform := @platforms->Get(i)->As(Platform);
+			platform := @platforms->Get(i)->As(StaticPlatform);
 			platform->AddX(shift_x);
 		};
 
@@ -1248,7 +1248,7 @@ class Level {
 		collides := Vector->New();
 
 		each(i : @platforms) {
-        	obstacle := @platforms->Get(i)->As(Platform);
+        	obstacle := @platforms->Get(i)->As(StaticPlatform);
         	if(obstacle->Collides(player->GetRect())) {
          		collides->AddBack(obstacle);
         	};
@@ -1306,7 +1306,7 @@ class Level {
 			};
 
 			each(i : @platforms) {
-				platform := @platforms->Get(i)->As(Platform);
+				platform := @platforms->Get(i)->As(StaticPlatform);
 				if(<>(platform->GetRight() < 0 | platform->GetLeft() > GameConsts->SCREEN_WIDTH)) {
 					platform->Draw();
 				};
