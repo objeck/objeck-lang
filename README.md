@@ -32,7 +32,8 @@ Notable features:
   *  RegEx
   *  JSON and XML parsers
   *  Encryption
-  *  Data access
+  *  Database access
+  *  Data structure querying
   *  2D Gaming
 * Garbage collection
 * JIT support (IA-32 and AMD64)
