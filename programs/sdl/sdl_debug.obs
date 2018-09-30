@@ -59,7 +59,7 @@ class Test {
 		secs := IntHolder->New();
 		pct := IntHolder->New();
 
-		Power->GetInfo(secs, pct)->PrintLine();
+		(Power->GetInfo(secs, pct) = PowererState->SDL_POWERSTATE_CHARGING)->PrintLine();
 
 		secs->Get()->PrintLine();
 		pct->Get()->PrintLine();
