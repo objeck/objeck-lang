@@ -136,6 +136,8 @@ class Test {
 			return;
 		};		
 
+		input_text := "";
+		text_color := Color->New();
 		FRAME_RATE := 1000 / Screen->FPS->As(Int);
 			
 		# Main loop flag
@@ -148,6 +150,7 @@ class Test {
 		Keyboard->StartTextInput();
 		while(<>quit) {
 			start := Timer->GetTicks();
+			render_text := false;
 
 			# Handle events on queue
 			while( e->Poll() <> 0 ) {
@@ -157,11 +160,29 @@ class Test {
 				}
 				# Special key input
 				else if( e->GetType() = EventType->SDL_KEYDOWN ) {
-"-- Hit 0 --"->PrintLine();					
+					if( e->GetKey()->GetKeysym()->GetScancode() = Scancode->SDL_SCANCODE_BACKSPACE) {
+						#lop off character
+						input_text->Pop();
+						render_text := true;
+					};
 				}
 				else if( e->GetType() = EventType->SDL_TEXTINPUT ) {
-					e->GetTextInput()->GetText()->PrintLine();
-"-- Hit 1 --"->PrintLine();					
+					input_text += e->GetTextInput()->GetText();
+					render_text := true;
+				};
+			};
+
+			# Rerender text if needed
+			if( render_text ) {
+				# Text is not empty
+				if( input_text->Size() > 0 ) {
+					# Render new text
+					@input_text_texture->LoadFromRenderedText( input_text, text_color );
+				}
+				#Text is empty
+				else {
+						#Render space texture
+					@input_text_texture->LoadFromRenderedText( " ", text_color );
 				};
 			};
 			
