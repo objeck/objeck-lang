@@ -2646,6 +2646,20 @@ extern "C" {
     APITools_SetStringValue(context, 0, return_value);
   }
 
+  // power
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_power_get_info(VMContext& context) {
+    int secs; int pct;
+
+    const int return_value = SDL_GetPowerInfo(&secs, &pct);
+
+    APITools_SetIntValue(context, 0, return_value);
+    APITools_SetIntValue(context, 1, secs);
+    APITools_SetIntValue(context, 2, pct);
+  }
+
 
 
 

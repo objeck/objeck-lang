@@ -3889,4 +3889,21 @@ bundle Game.SDL2 {
 			return array_args[0]->As(String);
 		}
 	}
+
+	enum PowerState {
+
+	}
+
+	class Power {
+		method : public : GetInfo(secs : Int, pct : Int) ~ PowerState {
+			array_args := Base->New[3];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(secs);
+			array_args[2] := IntHolder->New(pct);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_power_get_info", array_args);
+
+			return array_args[0]->As();
+		}
+	}
 }

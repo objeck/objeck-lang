@@ -1,4 +1,4 @@
-use SDL2;
+use Game.SDL2;
 
 consts Screen {
 	WIDTH := 640,
@@ -54,13 +54,8 @@ class Test {
 	}
 	
 	function : Regulate() ~ Nil {
-		a := Rect->New(0, 0, 32, 32);
-		b := Rect->New(31, 0, 32, 32);
-		c := Rect->New();
-
-		a->Union(b, c);
-
-		c->GetW()->PrintLine();
+#		Filesystem->GetBasePath()->PrintLine();
+		CPU->GetCount()->PrintLine();
 	}
 
 	function : Init() ~ Bool {
