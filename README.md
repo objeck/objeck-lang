@@ -32,7 +32,7 @@ Notable features:
   *  RegEx
   *  JSON and XML parsers
   *  Encryption
-  *  ODBC
+  *  Data access
   *  2D Gaming
 * Garbage collection
 * JIT support (IA-32 and AMD64)
