@@ -3895,7 +3895,7 @@ bundle Game.SDL2 {
 	}
 
 	class Power {
-		method : public : GetInfo(secs : IntHolder, pct : IntHolder) ~ PowerState {
+		function : GetInfo(secs : IntHolder, pct : IntHolder) ~ PowerState {
 			array_args := Base->New[3];
 			array_args[0] := IntHolder->New();
 			array_args[1] := secs;
