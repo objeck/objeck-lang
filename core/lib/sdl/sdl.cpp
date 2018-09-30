@@ -2228,8 +2228,63 @@ extern "C" {
   }
 
   //
+  // Clipboard
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_power_set_clipboard_text(VMContext& context) {
+    const wstring w_text = APITools_GetStringValue(context, 1);
+    const string text(w_text.begin(), w_text.end());
+    const int return_value = SDL_SetClipboardText(text.c_str());
+    APITools_SetIntValue(context, 0, return_value);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_power_get_clipboard_text(VMContext& context) {
+    const string return_value = SDL_GetClipboardText();
+    const wstring w_return_value(return_value.begin(), return_value.end());
+    APITools_SetStringValue(context, 0, w_return_value);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_power_has_clipboard_text(VMContext& context) {
+    const int return_value = SDL_HasClipboardText();
+    APITools_SetIntValue(context, 0, return_value);
+  }
+
+  //
   // Keyboard
   //
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_keyboard_start_text_input(VMContext& context) {
+    SDL_StartTextInput();
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_keyboard_stop_text_input(VMContext& context) {
+    SDL_StopTextInput();
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_keyboard_set_text_input_rect(VMContext& context) {
+    size_t* rect_obj = APITools_GetObjectValue(context, 0);
+
+    SDL_Rect rect;
+    SDL_SetTextInputRect(&rect);
+    sdl_rect_raw_read(&rect, rect_obj);
+  }
 
   #ifdef _WIN32
   __declspec(dllexport)

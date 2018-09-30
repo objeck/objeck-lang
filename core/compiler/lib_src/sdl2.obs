@@ -1084,6 +1084,52 @@ bundle Game.SDL2 {
 			value := array_args[0]->As(IntHolder);
 	        return value->Get()->As(Keymod);
 		}
+
+		function : StartTextInput() ~ Nil {
+			Proxy->GetDllProxy()->CallFunction("sdl_keyboard_start_text_input", Nil->As(Base[]));
+		}
+
+		function : StopTextInput() ~ Nil {
+			Proxy->GetDllProxy()->CallFunction("sdl_keyboard_stop_text_input", Nil->As(Base[]));
+		}
+
+		function : SetTextInputRect(rect : Rect) ~ Nil {
+			array_args := Base->New[1];
+		    array_args[0] := rect;
+		    Proxy->GetDllProxy()->CallFunction("sdl_keyboard_set_text_input_rect", array_args);
+		}
+	}
+
+	class Clipboard {
+		function : SetClipboardText(text : String) ~ Int {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := text;
+
+			Proxy->GetDllProxy()->CallFunction("sdl_power_set_clipboard_text", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+
+		function : GetClipboardText() ~ String {
+			array_args := Base->New[1];
+			array_args[0] := Nil;
+
+			Proxy->GetDllProxy()->CallFunction("sdl_power_get_clipboard_text", array_args);
+
+			return array_args[0]->As(String);
+		}
+
+		function : HasClipboardText() ~ Bool {
+			array_args := Base->New[1];
+			array_args[0] := IntHolder->New();
+
+			Proxy->GetDllProxy()->CallFunction("sdl_power_has_clipboard_text", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get() = 0 ? false : true;
+		}
 	}
 
 	class Joystick {

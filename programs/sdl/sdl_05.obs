@@ -5,7 +5,7 @@ Optimized Surface Loading and Soft Stretching
 http://lazyfoo.net/tutorials/SDL/05_optimized_surface_loading_and_soft_stretching/index.php
 ~#
 
-use SDL;
+use Game.SDL2;
 
 class Test {
 	@window : static : Window;
@@ -35,7 +35,7 @@ class Test {
 					# Handle events on queue
 					while( e->Poll() <> 0 ) {
 						# User requests quit
-						if( e->GetType() = Flags->SDL_QUIT->As(Int) ) {
+						if( e->GetType() = EventType->SDL_QUIT ) {
 							quit := true;
 						};
 					};
@@ -62,14 +62,15 @@ class Test {
 		success := true;
 		
 		# Initialize SDL
-		if(Core->Init(Flags->SDL_INIT_VIDEO->As(Int)) < 0) {
+		if(Core->Init(HardwareFlags->SDL_INIT_VIDEO) < 0) {
 			"SDL could not initialize!"->ErrorLine();
 			success := false;
 		}
 		else {
 			# Create window
-			@window := Window->New( "SDL Tutorial", Flags->SDL_WINDOW_POS_UNDEFINED->As(Int), 
-				Flags->SDL_WINDOW_POS_UNDEFINED->As(Int), 640, 480, Flags->SDL_WINDOW_SHOWN->As(Int));
+			# Create window
+			@window := Window->New( "SDL Tutorial", WindowFlags->SDL_WINDOWPOS_UNDEFINED, 
+				WindowFlags->SDL_WINDOWPOS_UNDEFINED, 640, 480, WindowFlags->SDL_WINDOW_SHOWN);
 			# Get window surface
 			@screen_surface := @window->GetSurface();
 		};
