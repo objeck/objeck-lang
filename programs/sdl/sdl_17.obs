@@ -3,7 +3,7 @@ Lesson 17
 http:# lazyfoo.net/tutorials/SDL/17_mouse_events/index.php
 ~#
 
-use SDL2;
+use Game.SDL2;
 
 class LButton {
 	@position : Point;

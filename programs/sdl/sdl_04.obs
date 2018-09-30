@@ -5,7 +5,7 @@ Key Presses
 http://lazyfoo.net/tutorials/SDL/04_key_presses/index.php
 ~#
 
-use SDL;
+use Game.SDL2;
 
 class Test {
 	# Key press surfaces constants
@@ -50,27 +50,27 @@ class Test {
 					# Handle events on queue
 					while( e->Poll() <> 0 ) {
 						# User requests quit
-						if( e->GetType() = Flags->SDL_QUIT->As(Int) ) {
+						if( e->GetType() = EventType->SDL_QUIT ) {
 							quit := true;
 						}
 						# User presses a key
-						else if( e->GetType() = Flags->SDL_KEY_DOWN->As(Int) ) {
+						else if( e->GetType() = EventType->SDL_KEYDOWN  ) {
 							# Select surfaces based on key press
 							select( e->GetKey()->GetKeysym()->GetScancode() )
 							{							
-								label Scancode->SCANCODE_UP: {
+								label Scancode->SDL_SCANCODE_UP: {
 									@current_surface := @key_press_surfaces[ KeyPressSurfaces->KEY_PRESS_SURFACE_UP ];
 								}
 
-								label Scancode->SCANCODE_DOWN: {
+								label Scancode->SDL_SCANCODE_DOWN: {
 									@current_surface := @key_press_surfaces[ KeyPressSurfaces->KEY_PRESS_SURFACE_DOWN ];
 								}
 
-								label Scancode->SCANCODE_LEFT: {
+								label Scancode->SDL_SCANCODE_LEFT: {
 									@current_surface := @key_press_surfaces[ KeyPressSurfaces->KEY_PRESS_SURFACE_LEFT ];
 								}
 
-								label Scancode->SCANCODE_RIGHT: {
+								label Scancode->SDL_SCANCODE_RIGHT: {
 									@current_surface := @key_press_surfaces[ KeyPressSurfaces->KEY_PRESS_SURFACE_RIGHT ];
 								}
 
@@ -98,14 +98,14 @@ class Test {
 		success := true;
 		
 		# Initialize SDL
-		if(Core->Init(Flags->SDL_INIT_VIDEO->As(Int)) < 0) {
+		if(Core->Init(HardwareFlags->SDL_INIT_VIDEO) < 0) {
 			"SDL could not initialize!"->ErrorLine();
 			success := false;
 		}
 		else {
 			# Create window
-			@window := Window->New( "SDL Tutorial", Flags->SDL_WINDOW_POS_UNDEFINED->As(Int), 
-				Flags->SDL_WINDOW_POS_UNDEFINED->As(Int), 640, 480, Flags->SDL_WINDOW_SHOWN->As(Int));
+			@window := Window->New( "SDL Tutorial", WindowFlags->SDL_WINDOWPOS_UNDEFINED, 
+				WindowFlags->SDL_WINDOWPOS_UNDEFINED, 640, 480, WindowFlags->SDL_WINDOW_SHOWN);
 			# Get window surface
 			@screen_surface := @window->GetSurface();
 		};
@@ -163,7 +163,7 @@ class Test {
 	
 	function : Close() ~ Nil {
 		# Deallocate surfaces
-		for( i := 0; i < KeyPressSurfaces->KEY_PRESS_SURFACE_TOTAL->As(Int); i++; ) {
+		for( i := 0; i < KeyPressSurfaces->KEY_PRESS_SURFACE_TOTAL; i++; ) {
 			@key_press_surfaces[ i ]->Free();
 			@key_press_surfaces[ i ] := Nil;
 		};
