@@ -282,7 +282,7 @@ extern "C" {
   __declspec(dllexport)
 #endif
   void sdl_surface_free(VMContext& context) {
-    SDL_Surface* surface = (SDL_Surface*)APITools_GetIntValue(context, 1);
+    SDL_Surface* surface = (SDL_Surface*)APITools_GetIntValue(context, 0);
     SDL_FreeSurface(surface);
   }
 
