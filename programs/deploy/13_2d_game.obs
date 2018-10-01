@@ -427,7 +427,7 @@ class Game {
 			@score_text->RenderedText(buffer);
 
 			@player->Won();
-			@timer := GameConsts->LEVEL_TIME - @current_level * 3;
+			@timer := GameConsts->LEVEL_TIME - @current_level * GameConsts->TIMER_DEC;
 		};
 	}
 
@@ -577,7 +577,7 @@ class Player {
 	}
 
 	method : public : Won() ~ Nil {
-		@loc := Vector2->New(GameConsts->PLAYER_BOX_MIN->As(Float), GameConsts->SCREEN_HEIGHT / 2);
+		@loc := Vector2->New(GameConsts->PLAYER_BOX_MIN->As(Float) + 75, GameConsts->SCREEN_HEIGHT / 2);
 	}
 
 	method : public : SetLevel(level : Level) ~ Nil {
@@ -1189,7 +1189,7 @@ class Level {
 		spider_path += "/media/spider.png";
 
 		total := 0;
-		for(i := 0; i < @platforms->Size() - 1; i+= 1;) {
+		for(i := 1; i < @platforms->Size() - 1; i+= 1;) {
 			value :=  GameConsts->MAX_LEVELS - @current_level;
 			flip := Int->Random(value);
 			if(flip % value = 0) {
@@ -1328,6 +1328,7 @@ class Level {
 }
 
 consts GameConsts {
+	TIMER_DEC := 2,
 	MAX_LEVELS := 5,
 	LEVEL_TIME := 45,
 	SEC_POINTS := 3,

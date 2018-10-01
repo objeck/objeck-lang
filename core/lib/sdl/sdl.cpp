@@ -2728,8 +2728,7 @@ extern "C" {
   __declspec(dllexport)
 #endif
   void sdl_power_get_info(VMContext& context) {
-    int secs; int pct;
-
+    int secs, pct;
     const SDL_PowerState return_value = SDL_GetPowerInfo(&secs, &pct);
 
     APITools_SetIntValue(context, 0, return_value);
