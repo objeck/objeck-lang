@@ -1397,16 +1397,14 @@ bundle Game.Framework {
 				shape := @shapes->Get(i)->As(Shape);
 				shape->Free();
 			};
+			@shapes->Empty();
 		}
 
 		#~
 		Closes the framework
 		~#
 		method : public : Quit() ~ Nil {
-			each(i : @shapes) {
-				shape := @shapes->Get(i)->As(Shape);
-				shape->Free();
-			};
+			FreeShapes();
 
 			if(@event <> Nil) {
 				@event->Free();
