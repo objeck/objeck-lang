@@ -1838,6 +1838,7 @@ extern "C" {
 
     SDL_Rect rect;
     SDL_RenderGetViewport(renderer, &rect);
+    sdl_rect_raw_read(&rect, rect_obj);
   }
 
 #ifdef _WIN32
