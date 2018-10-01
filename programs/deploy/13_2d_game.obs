@@ -371,7 +371,7 @@ class Game {
 		if(@player->GetRight() >= GameConsts->PLAYER_BOX_MAX) {
 			diff := @player->GetRight() - GameConsts->PLAYER_BOX_MAX;
 			@player->SetRight(GameConsts->PLAYER_BOX_MAX);
-			if(shift > GameConsts->WIDTH_MAX) {
+			if(shift > GameConsts->LEVEL_WIDTH_MAX) {
 				@level->ShiftView(-1 * diff);
 			};
         };
@@ -428,7 +428,7 @@ class Game {
 			@current_level += 1;
 			@level := Level->New(@self, @current_level);
 
-			@score += @timer * GameConsts->SEC_POINTS;
+			@score += @timer * GameConsts->TIME_POINTS;
 			buffer := "Level: ";
 			buffer += @current_level;
 			buffer += ", Score: ";
@@ -436,7 +436,7 @@ class Game {
 			@score_text->RenderedText(buffer);
 
 			@player->Won();
-			@timer := GameConsts->LEVEL_TIME - @current_level * GameConsts->TIMER_DEC;
+			@timer := GameConsts->LEVEL_TIME - @current_level * GameConsts->LEVEL_DEC_TIME;
 		};
 	}
 
@@ -535,7 +535,7 @@ class Game {
 	            label Scancode->SDL_SCANCODE_ESCAPE: {
 	            	GameOver();
 		        }
-		        
+
 		        label Scancode->SDL_SCANCODE_SPACE: {
 			        if(@paused) {
 						@paused := false;
@@ -1354,14 +1354,14 @@ class Level {
 }
 
 consts GameConsts {
-	TIMER_DEC := 2,
 	MAX_LEVELS := 5,
 	LEVEL_TIME := 45,
-	SEC_POINTS := 3,
+	LEVEL_DEC_TIME := 2,
+	LEVEL_WIDTH_MAX := -1600,
+	TIME_POINTS := 3,
 	GEM_POINTS := 15,
 	PLAYER_BOX_MIN := 120,
 	PLAYER_BOX_MAX := 500,
 	SCREEN_WIDTH := 800,
-	SCREEN_HEIGHT := 600,
-	WIDTH_MAX := -1600
+	SCREEN_HEIGHT := 600
 }
