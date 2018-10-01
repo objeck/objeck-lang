@@ -6183,8 +6183,8 @@
         {
         "Name" = "8:Microsoft Visual Studio"
         "ProductName" = "8:Objeck"
-        "ProductCode" = "8:{2CDBA2C4-C79C-4178-B549-81EA9F9C2161}"
-        "PackageCode" = "8:{80442A58-ACDA-4803-8076-419827862D9C}"
+        "ProductCode" = "8:{2896047C-0771-4F47-B9FC-F69DE26DEF53}"
+        "PackageCode" = "8:{F59F4587-290B-4245-880D-8C83FE45574F}"
         "UpgradeCode" = "8:{A1931BE6-A793-4ECE-B303-66B69408440F}"
         "AspNetVersion" = "8:"
         "RestartWWWService" = "11:FALSE"
@@ -6201,7 +6201,7 @@
         "Keywords" = "8:Objeck,Programming,Language"
         "ARPCOMMENTS" = "8:Simple, object-oriented and functional"
         "ARPURLINFOABOUT" = "8:http://www.objeck.org/"
-        "ARPPRODUCTICON" = "8:"
+        "ARPPRODUCTICON" = "8:_4C71C8F56DFB480F889A2B2D61F8641A"
         "ARPIconIndex" = "3:0"
         "SearchPath" = "8:"
         "UseSystemSearchPath" = "11:TRUE"
@@ -6692,7 +6692,7 @@
                             "ContextData" = "8:"
                             "Attributes" = "3:0"
                             "Setting" = "3:2"
-                            "Value" = "8:All rights reserved © 2008-2017 Randy Hollines."
+                            "Value" = "8:All rights reserved © 2008-2018 Randy Hollines."
                             "DefaultValue" = "8:#1202"
                             "UsePlugInResources" = "11:TRUE"
                             }
