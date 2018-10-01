@@ -150,11 +150,6 @@ class Game {
 
 		index := 0;
 		quit := false;
-
-		play_text->RenderedText("(P)lay!", red_color);
-		quit_text->RenderedText("(Q)uit");
-
-		update := false;
 		while(<>quit & <>@hard_quit) {
 			@framework->FrameStart();
 			
@@ -171,11 +166,9 @@ class Game {
 							label 4: {
 								if(index = 0) {
 									index := 1;
-									update := true;
 								}
 								else {
 									index := 0;
-									update := true;
 								};
 							}			
 						};
@@ -188,11 +181,9 @@ class Game {
 			            label Scancode->SDL_SCANCODE_DOWN: {
 			            	if(index = 0) {
 								index := 1;
-								update := true;
 							}
 							else {
 								index := 0;
-								update := true;
 							};
 			            }
 
@@ -218,18 +209,15 @@ class Game {
 				};
 			};
 
-			if(update) {
-				if(index = 0) {
-					play_text->RenderedText("(P)lay!", red_color);
-					quit_text->RenderedText("(Q)uit");
-				}
-				else {
-					play_text->RenderedText("(P)lay!");
-					quit_text->RenderedText("(Q)uit", red_color);
-				};
-				update := false;
+			if(index = 0) {
+				play_text->RenderedText("(P)lay!", red_color);
+				quit_text->RenderedText("(Q)uit");
+			}
+			else {
+				play_text->RenderedText("(P)lay!");
+				quit_text->RenderedText("(Q)uit", red_color);
 			};
-			
+
 			@framework->Clear();
 
 			@high_score_text->Render(10, 10);
@@ -366,6 +354,11 @@ class Game {
 	}
 
 	method : Quit() ~ Nil {
+		@music->Free();
+		@gem_chunk->Free();
+		@start_chunk->Free();
+		@won_chunk->Free();
+		@die_chunk->Free();
 		@framework->Quit();
 	}
 
