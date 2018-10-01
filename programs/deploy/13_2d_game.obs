@@ -548,7 +548,7 @@ class Player {
 	@vel : Vector2;
 	@acc : Vector2;
 	@jumped : Bool;
-	@jump_max : Int;
+	@jump_max : Float;
 	@hit_top : Bool;
 	@level : Level;
 	@game_over : Bool;
@@ -659,9 +659,9 @@ class Player {
 			@hit_top := false;
 		}
 		else {
-			if(@jumped & @jump_max < 3) {
+			if(@jumped & @jump_max < 2.75) {
 				@acc->SetY(-5.3);
-				@jump_max += 1;
+				@jump_max += 0.83;
 			}
 			else {
 				@acc->SetY(0.65);
@@ -700,14 +700,14 @@ class Player {
        		if(@vel->GetY() < 0.01) {
 				@rect->SetTop(platform->GetBottom());
             	@loc->SetY(platform->GetBottom() + @rect->GetHeight() / 2);
-				@jump_max := 3;
+				@jump_max := 3.0;
 				@hit_top := true;
             }
             else if(@vel->GetY() > 0.01) {
     			@rect->SetBottom(platform->GetTop());
     			@loc->SetY(platform->GetTop() + @rect->GetHeight() / 2);
 				@vel->SetY(0);
-				@jump_max := 0;
+				@jump_max := 0.0;
             };
         };
 	}
@@ -752,7 +752,7 @@ class Player {
 		if(@game_over) {
 			@rect->Render(6);
 		}
-		else if(@jump_max > 0) {
+		else if(@jump_max > 0.0) {
 			@rect->Render(5);
 		}
 		else if(@dir = 0) {
