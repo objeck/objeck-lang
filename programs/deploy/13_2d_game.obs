@@ -419,6 +419,7 @@ class Game {
 			@current_level += 1;
 			@level := Level->New(@self, @current_level);
 
+			@score += @timer * GameConsts->SEC_POINTS;
 			buffer := "Level: ";
 			buffer += @current_level;
 			buffer += ", Score: ";
@@ -1329,6 +1330,7 @@ class Level {
 consts GameConsts {
 	MAX_LEVELS := 5,
 	LEVEL_TIME := 45,
+	SEC_POINTS := 3,
 	GEM_POINTS := 15,
 	PLAYER_BOX_MIN := 120,
 	PLAYER_BOX_MAX := 500,
