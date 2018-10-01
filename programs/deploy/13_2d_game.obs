@@ -535,6 +535,15 @@ class Game {
 	            label Scancode->SDL_SCANCODE_ESCAPE: {
 	            	GameOver();
 		        }
+		        
+		        label Scancode->SDL_SCANCODE_SPACE: {
+			        if(@paused) {
+						@paused := false;
+					}
+					else {
+						@paused := true;
+					};
+				}
 	        };
 	    }
 	    else if(e->GetType() = EventType->SDL_KEYUP) {
