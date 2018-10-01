@@ -496,6 +496,9 @@ class Game {
 		else if(e->GetType() = EventType->SDL_JOYBUTTONDOWN) {
 			if(e->GetJButton()->GetButton() = 0) {
 				@player->Jump(true);
+			}
+			else {
+e->GetJButton()->GetButton()->PrintLine();
 			};
 			# else if(e->GetJButton()->GetButton() = 1) { ... };
 		}
