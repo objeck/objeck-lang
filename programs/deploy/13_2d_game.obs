@@ -52,6 +52,7 @@ class Game {
 	@won_game : Bool;
 	@quit : Bool;
 	@hard_quit : Bool;
+	@paused : Bool;
 
 	@level_mutex : static : ThreadMutex;
 
@@ -296,6 +297,7 @@ class Game {
 				@framework->FrameStart();
 				@framework->Clear();
 				
+				
 				# process user input
 				while(e->Poll() <> 0) {
 					if(e->GetType() = EventType->SDL_QUIT) {
@@ -305,41 +307,43 @@ class Game {
 					ProcessInput(e);
 				};
 
-				# update model
-				@player->Update();
-				@level->Update();
-				UpdateView();
+				if(<>@paused) {	
+					# update model
+					@player->Update();
+					@level->Update();
+					UpdateView();
 
-				# draw
-				DrawBackground();
-				@level->Draw(frame_count);
-				@player->Draw();
-				DrawLava(frame_count);
-				@timer_text->Render(685, 10);
-				@score_text->Render(10, 10);
-				
-				# show
-				@framework->Show();
-				@framework->FrameEnd();
-				
-				frame_count += 1;
-				if(frame_count >= @framework->GetFps()) {
-					if(@game_over) {
-						@timer_text->RenderedText("Game Over!");
-					}
-					else {
-						@timer -= 1;
-						if(@timer < 0) {
-							GameOver();
+					# draw
+					DrawBackground();
+					@level->Draw(frame_count);
+					@player->Draw();
+					DrawLava(frame_count);
+					@timer_text->Render(685, 10);
+					@score_text->Render(10, 10);
+					
+					# show
+					@framework->Show();
+					@framework->FrameEnd();
+					
+					frame_count += 1;
+					if(frame_count >= @framework->GetFps()) {
+						if(@game_over) {
+							@timer_text->RenderedText("Game Over!");
 						}
 						else {
-							buffer := "Time: ";
-							buffer += @timer->ToString();
-							@timer_text->RenderedText(buffer);
+							@timer -= 1;
+							if(@timer < 0) {
+								GameOver();
+							}
+							else {
+								buffer := "Time: ";
+								buffer += @timer->ToString();
+								@timer_text->RenderedText(buffer);
+							};
 						};
-					};
 
-					frame_count := 0;
+						frame_count := 0;
+					};
 				};
 			};
 		}
@@ -497,8 +501,13 @@ class Game {
 			if(e->GetJButton()->GetButton() = 0) {
 				@player->Jump(true);
 			}
-			else {
-e->GetJButton()->GetButton()->PrintLine();
+			else if(e->GetJButton()->GetButton() = 7) {
+				if(@paused) {
+					@paused := false;
+				}
+				else {
+					@paused := true;
+				};
 			};
 			# else if(e->GetJButton()->GetButton() = 1) { ... };
 		}
