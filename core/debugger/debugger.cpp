@@ -1499,8 +1499,8 @@ int main(int argc, char** argv)
   if(argc >= 3) {
 #ifdef _WIN32
     // enable Unicode console support
-    _setmode(_fileno(stdin), _O_U16TEXT);
-    _setmode(_fileno(stdout), _O_U16TEXT);
+    _setmode(_fileno(stdin), _O_U8TEXT);
+    _setmode(_fileno(stdout), _O_U8TEXT);
 
     WSADATA data;
     int version = MAKEWORD(2, 2);
