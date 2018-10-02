@@ -1,5 +1,5 @@
 #~
-# compile: obc -src 5_functions.obs -dest func.obe
+# compile: obc -src functions_5.obs -dest func.obe
 # run: obr func.obe
 ~#
 

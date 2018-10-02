@@ -1,5 +1,5 @@
 #~
-# compile: obc -src 9_http_regex.obs -lib regex.obl,collect.obl -dest http_regex.obe
+# compile: obc -src http_regex_9.obs -lib regex.obl,collect.obl -dest http_regex.obe
 # run: obr http_regex.obe http://www.objeck.org
 # note: takes a few seconds to run
 ~#

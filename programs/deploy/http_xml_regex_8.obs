@@ -1,5 +1,5 @@
 ﻿#~
-# compile: obc -src 8_http_xml.obs -lib xml.obl,regex.obl,collect.obl -dest lang_rank.obe
+# compile: obc -src http_xml_8.obs -lib xml.obl,regex.obl,collect.obl -dest lang_rank.obe
 # run: obr lang_rank.obe
 # note: takes a few seconds to run
 ~#

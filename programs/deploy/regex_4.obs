@@ -1,5 +1,5 @@
 #~
-# compile: obc -src 4_regex.obs -lib regex.obl,collect.obl -dest regex.obe
+# compile: obc -src regex_4.obs -lib regex.obl,collect.obl -dest regex.obe
 # run: obr regex.obe
 ~#
 

@@ -1,5 +1,5 @@
 ﻿#~
-# compile: obc -src 3_json.obs -lib json.obl,collect.obl -dest json.obe
+# compile: obc -src json_3.obs -lib json.obl,collect.obl -dest json.obe
 # run: obr json.obe
 ~#
 
