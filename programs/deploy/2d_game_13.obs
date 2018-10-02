@@ -1,5 +1,5 @@
 #~
-# compiler: obc -src 13_2d_game.obs -lib collect.obl,sdl_game.obl,sdl2.obl -dest game2d.obe
+# compiler: obc -src 2d_game_13.obs -lib collect.obl,sdl_game.obl,sdl2.obl -dest game2d.obe
 # run: obr game2d.obe
 ~#
 

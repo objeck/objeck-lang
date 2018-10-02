@@ -1,5 +1,5 @@
 #~
-# compile: obc -src 0_hello.obs -dest hello.obe
+# compile: obc -src hello_0.obs -dest hello.obe
 # run: obr hello.obe
 ~#
 
