@@ -4,7 +4,7 @@ CC=g++
 SRC=tree.o scanner.o parser.o debugger.o
 OBJ_LIBS=../vm/compiler.a ../vm/jit_amd_lp64.a ../vm/memory.a
 VM_PATH=../vm
-MEM_PATH=../vm/arch/posix
+MEM_PATH=../vm/arch
 JIT_PATH=../vm/arch/jit/amd64
 EXE=obd
 
