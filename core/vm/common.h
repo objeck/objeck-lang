@@ -66,6 +66,7 @@
 #include <userenv.h>
 using namespace stdext;
 #elif _OSX
+#include <mach-o/dyld.h>
 #include <unordered_map>
 #include <pthread.h>
 #include <stdint.h>
@@ -1153,8 +1154,16 @@ class StackProgram {
       }
     }
 #else
+		ssize_t status = 0;
     char install_path[SMALL_BUFFER_MAX];
-    ssize_t status = ::readlink("/proc/self/exe", install_path, sizeof(install_path) - 1);
+#ifdef _OSX
+		uint32_t size = SMALL_BUFFER_MAX;
+		if(_NSGetExecutablePath(install_path, &size) != 0) {
+			status = -1;
+		}
+#else
+    status = ::readlink("/proc/self/exe", install_path, sizeof(install_path) - 1);
+#endif
     if(status != -1) {
       string exe_path(install_path);
       size_t install_index = exe_path.find_last_of('/');
