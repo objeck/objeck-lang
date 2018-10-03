@@ -1092,7 +1092,7 @@ bundle Game.Framework {
 				HardwareFlags->SDL_INIT_AUDIO->As(Int) or 
 				HardwareFlags->SDL_INIT_JOYSTICK->As(Int);
 			@fps := 60;	
-			@frame_rate := 1000 / 60;
+			@frame_rate := 1000 / @fps;
 			@shapes := Vector->New();
 			
 			@is_ok := Init(screen_width, screen_height, title, init_flags);
@@ -1226,7 +1226,7 @@ bundle Game.Framework {
 		Sets the end frame
 		~#
 		method : public : FrameEnd() ~ Nil {
-			end := @frame_start - Timer->GetTicks();
+			end := Timer->GetTicks() - @frame_start;
 			if(end < @frame_rate) {
 				Timer->Delay(@frame_rate - end);
 			};
