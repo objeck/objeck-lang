@@ -1226,9 +1226,7 @@ bundle Game.Framework {
 		Sets the end frame
 		~#
 		method : public : FrameEnd() ~ Nil {
-"---"->PrintLine();			
 			end := Timer->GetTicks() - @frame_start;
-end->PrintLine();			
 			if(end < @frame_rate) {
 				
 				Timer->Delay(@frame_rate - end);
