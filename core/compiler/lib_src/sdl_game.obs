@@ -1138,7 +1138,7 @@ bundle Game.Framework {
 			};
 
 			@renderer := Renderer->New(@window, -1, 
-				RendererFlags->SDL_RENDERER_ACCELERATED and RendererFlags->SDL_RENDERER_PRESENTVSYNC);
+				RendererFlags->SDL_RENDERER_ACCELERATED or RendererFlags->SDL_RENDERER_PRESENTVSYNC);
 			if(@renderer->IsNull()) {
 				"Cannot create renderer!"->ErrorLine();
 				return false;
