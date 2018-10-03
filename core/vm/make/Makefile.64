@@ -1,6 +1,6 @@
 # ARGS=-g -Wall -pthread -D_X64 -D_JIT_SERIAL -D_DEBUG -Wno-unused-function -std=c++11
 # ARGS=-g -Wall -pthread -D_X64 -D_JIT_SERIAL -D_DTIMING -Wno-unused-function
-ARGS=-O3 -Wall -pthread -D_X64 -Wno-unused-function -std=c++11
+ARGS=-O3 -Wall -pthread -D_X64 -D_OBJECK_NATIVE_LIB_PATH -Wno-unused-function -std=c++11
 
 CC=g++
 SRC=common.o interpreter.o loader.o vm.o posix_main.o 
