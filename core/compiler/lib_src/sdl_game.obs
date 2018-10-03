@@ -121,7 +121,7 @@ bundle Game.Framework {
 				surface->SetColorKey(true, surface->GetPixelFormat()->MapRGB(colorkey->GetR(), colorkey->GetG(), colorkey->GetB()));
 			}
 			else {
-				surface->SetColorKey(true, surface->GetPixelFormat()->MapRGB(0, 0xFF, 0xFF));
+				surface->SetColorKey(true, surface->GetPixelFormat()->MapRGB(0xFF, 0, 0xFF));
 			};
 
 			texture := surface->CreateTexture(@renderer);
