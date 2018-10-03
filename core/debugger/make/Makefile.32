@@ -1,6 +1,6 @@
 # ARGS=-g -D_DEBUGGER -Wall -pthread
 # ARGS=-g -D_DEBUG -D_DEBUGGER -Wall -pthread
-ARGS=-O3 -Wall -Wno-unused-function -std=c++11 -Wno-strict-overflow -Wall -D_DEBUGGER -Wall -pthread
+ARGS=-O3 -Wall -Wno-unused-function -std=c++11 -Wno-strict-overflow -Wall -D_OBJECK_NATIVE_LIB_PATH -D_DEBUGGER -Wall -pthread
 
 CC=g++
 SRC=tree.o scanner.o parser.o debugger.o

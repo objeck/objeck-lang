@@ -1,5 +1,5 @@
 # ARGS=-g -D_SANITIZE -pthread -Wall -Wno-unused-function -std=c++11
-ARGS=-O3 -pthread -Wall -Wno-unused-function -std=c++11
+ARGS=-O3 -D_OBJECK_NATIVE_LIB_PATH -pthread -Wall -Wno-unused-function -std=c++11
 # ARGS=-pg -O3 -pthread -Wall -Wno-unused-function -std=c++11
 # ARGS=-g -D_DEBUG -Wall -pthread -Wall -Wno-unused-function -std=c++11
 
