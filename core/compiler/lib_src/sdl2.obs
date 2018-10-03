@@ -2057,12 +2057,21 @@ bundle Game.SDL2 {
 			@r := 0;
 			@g := 0;
 			@b := 0;
+			@a := 255;
 		}
 
 		New(r : Int, g : Int, b : Int) {
 			@r := r;
 			@g := g;
 			@b := b;
+			@a := 255;
+		}
+
+		New(r : Int, g : Int, b : Int, a : Int) {
+			@r := r;
+			@g := g;
+			@b := b;
+			@a := a;
 		}
 
 		method : public : GetR() ~ Int {
