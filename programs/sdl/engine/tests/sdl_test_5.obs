@@ -177,7 +177,7 @@ class Player {
 
         collides := Level->Collisions(@self, @platforms);
         each(i : collides) {
-        	platform := collides->Get(i)->As(Platform);
+        	platform := collides->Get(i)->As(StaticPlatform);
 			if(@change_x > 0) {
     			@rect->SetRight(platform->GetLeft());
             }
@@ -190,7 +190,7 @@ class Player {
 		# Move up/down
         @rect->AddY(@change_y);
 		each(i : @platforms) {
-        	platform := @platforms->Get(i)->As(Platform);
+        	platform := @platforms->Get(i)->As(StaticPlatform);
         	if(platform->Collides(@rect)) {
         		# moving right
         		if(@change_y > 0) {
@@ -231,7 +231,7 @@ class Player {
 	}
 }
 
-class Platform {
+class StaticPlatform {
 	@rect : Rectangle;
 
 	New(x : Int, y : Int, rect : Rectangle) {
@@ -270,7 +270,7 @@ class Platform {
 	}
 }
 
-class MovingPlatform from Platform {
+class MovingPlatform from StaticPlatform {
 	@change_x : Int;
     @change_y : Int;
     @boundary_top : Int;
@@ -342,20 +342,20 @@ class Level {
 		@platforms := Vector->New();
 
 		@platforms->AddBack(MovingPlatform->New(200, 150, framework->AddRectangle(75, 35), player, @self));
-		@platforms->AddBack(Platform->New(600, 500, framework->AddRectangle(100, 50)));	
-		@platforms->AddBack(Platform->New(400, 400, framework->AddRectangle(100, 50)));	
-		@platforms->AddBack(Platform->New(1005, 400, framework->AddRectangle(100, 50)));
+		@platforms->AddBack(StaticPlatform->New(600, 500, framework->AddRectangle(100, 50)));	
+		@platforms->AddBack(StaticPlatform->New(400, 400, framework->AddRectangle(100, 50)));	
+		@platforms->AddBack(StaticPlatform->New(1005, 400, framework->AddRectangle(100, 50)));
 #~		
-		@platforms->AddBack(Platform->New(850, 600, framework->AddRectangle(210, 70)));
-		@platforms->AddBack(Platform->New(1025, 500, framework->AddRectangle(210, 70)));	
-		@platforms->AddBack(Platform->New(1250, 300, framework->AddRectangle(210, 70)));
+		@platforms->AddBack(StaticPlatform->New(850, 600, framework->AddRectangle(210, 70)));
+		@platforms->AddBack(StaticPlatform->New(1025, 500, framework->AddRectangle(210, 70)));	
+		@platforms->AddBack(StaticPlatform->New(1250, 300, framework->AddRectangle(210, 70)));
 ~#
 		@player->SetLevel(@self);
 	}
 
 	function : Collides(player : Player, obstacles : Vector) ~ Bool {
 		each(i : obstacles) {
-        	obstacle := obstacles->Get(i)->As(Platform);
+        	obstacle := obstacles->Get(i)->As(StaticPlatform);
         	if(obstacle->Collides(player->GetRect())) {
         		return true;
         	};
@@ -368,7 +368,7 @@ class Level {
 		collides := Vector->New();
 
 		each(i : obstacles) {
-        	obstacle := obstacles->Get(i)->As(Platform);
+        	obstacle := obstacles->Get(i)->As(StaticPlatform);
         	if(obstacle->Collides(player->GetRect())) {
         		collides->AddBack(obstacle);
         	};
@@ -385,7 +385,7 @@ class Level {
 		@shift_x += shift_x;
 
 		each(i : @platforms) {
-			platform := @platforms->Get(i)->As(Platform);
+			platform := @platforms->Get(i)->As(StaticPlatform);
 			platform->AddX(shift_x);
 		};
 	}
@@ -405,7 +405,7 @@ class Level {
 
 	method : public : Draw()  ~ Nil {
 		each(i : @platforms) {
-			@platforms->Get(i)->As(Platform)->Draw();
+			@platforms->Get(i)->As(StaticPlatform)->Draw();
 		};
 	}
 }
