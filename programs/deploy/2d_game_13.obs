@@ -414,12 +414,13 @@ class Game {
 	method : public : Won() ~ Nil {
 		@won_channel := @won_chunk->PlayChannel(-1, 0);
 		
-		MixMusic->Pause();
+		
 		if(@score > @high_score) {
 			@high_score := @score;
 		};
 
 		if(@current_level >= GameConsts->MAX_LEVELS) {
+			MixMusic->Pause();
 			@won_game := true;
 			@quit := true;
 		};
