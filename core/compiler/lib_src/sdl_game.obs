@@ -1248,7 +1248,7 @@ bundle Game.Framework {
 		method : public : SetFont(font : Font) ~ Nil {
 			@font := font;
 		}
-
+		
 		#~
 		Gets the clear color
 		@return clear color
