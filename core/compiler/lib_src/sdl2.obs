@@ -6,7 +6,7 @@ Copyright (c) 2017-2018 Randy Hollines
 use System.API;
 
 #~
-Provides support for SDL2 game development
+SDL2 wrapper
 ~#
 bundle Game.SDL2 {
 	class Proxy {
@@ -21,6 +21,9 @@ bundle Game.SDL2 {
 		}
 	}
 	
+	#~
+	Hardware flags
+	~#
 	consts HardwareFlags {
 		SDL_INIT_TIMER := 0x00000001,
 		SDL_INIT_AUDIO := 0x00000010,
@@ -31,9 +34,11 @@ bundle Game.SDL2 {
 		SDL_INIT_EVENTS := 0x00004000
 	}
 
+	#~
+	Window flags
+	~#
 	consts WindowFlags {
 		SDL_WINDOWPOS_UNDEFINED := 0x1FFF0000,
-		###
 	    SDL_WINDOW_FULLSCREEN := 0x00000001,
 	    SDL_WINDOW_OPENGL := 0x00000002,
 	    SDL_WINDOW_SHOWN := 0x00000004,
@@ -56,6 +61,9 @@ bundle Game.SDL2 {
 	    SDL_WINDOW_VULKAN := 0x10000000
 	}
 
+	#~
+	Event types
+	~#
 	consts EventType {
 		SDL_QUIT := 0x100,
 		SDL_APP_TERMINATING := 0x101,
@@ -107,7 +115,7 @@ bundle Game.SDL2 {
 	}
 	
 	#~
-	Display class
+	Video display 
 	~#
 	class Display {
 		function : GetNumVideoDrivers() ~ Int {
@@ -258,7 +266,7 @@ bundle Game.SDL2 {
 	}
 	
 	#~
-	Windows class
+	Main window
 	~#
 	class Window {
 		@window : Int;
@@ -741,6 +749,9 @@ bundle Game.SDL2 {
 		}
 	}
 	
+	#~
+	Keyboard scan codes
+	~#
 	consts Scancode {
 		SDL_SCANCODE_UNKNOWN := 0,
 		SDL_SCANCODE_A := 4,
@@ -985,6 +996,9 @@ bundle Game.SDL2 {
 		SDL_SCANCODE_APP2 := 284
 	}
 
+	#~
+	Keyboard modifier codes
+	~#
 	consts Keymod {
 		KMOD_NONE := 0x0000,
 	    KMOD_LSHIFT := 0x0001,
@@ -1012,21 +1026,33 @@ bundle Game.SDL2 {
 		New() {
 		}
 		
+		#~
+		Gets the scan code
+		@return scan code 
+		~#
 		method : public : GetScancode() ~ Int {
 			return @scancode;
 		}
 		
+		#~
+		Gets the symbol
+		@return symbol
+		~#
 		method : public : GetSym() ~ Int {
 			return @sym;
 		}
 		
+		#~
+		Gets the modifier
+		@return modifier
+		~#
 		method : public : GetMod() ~ Int {
 			return @mod;
 		}
 	}
 	
 	#~
-	KeyboardEvent associated with an Event
+	Keyboard event
 	~#
 	class KeyboardEvent {
 		@type : Int;
@@ -2105,6 +2131,10 @@ bundle Game.SDL2 {
 		method : public : SetA(a : Int) ~ Nil {
 			@a := a;
 		}
+
+		method : public : ToString() {
+			return "#{$r}, #{$g}, #{$b}, #{$a}";
+		}
 	}
 	
 	class DisplayMode {
@@ -2191,15 +2221,26 @@ bundle Game.SDL2 {
 		}
 	}
 
+	#~
+	SDL rectangle
+	~#
 	class Rect {
 		@x : Int;
 		@y : Int;
 		@w : Int;
 		@h : Int;
 		
+		#~
+		Creates a new rectangle
+		~#
 		New() {
 		}
 		
+		#~
+		Creates a new rectangle
+		@param w width
+		@param h height
+		~#
 		New(w : Int, h : Int) {
 			@x := 0;
 			@y := 0;
@@ -2207,6 +2248,13 @@ bundle Game.SDL2 {
 			@h := h;
 		}
 
+		#~
+		Creates a new rectangle
+		@param x x-location
+		@param y y-location
+		@param w width
+		@param h height
+		~#
 		New(x : Int, y : Int, w : Int, h : Int) {
 			@x := x;
 			@y := y;
@@ -2214,6 +2262,10 @@ bundle Game.SDL2 {
 			@h := h;
 		}
 
+		#~
+		Creates a new rectangle
+		@param rect rect to copy
+		~#
 		New(rect : Rect) {
 			@x := rect->GetX();
 			@y := rect->GetY();
@@ -2221,26 +2273,50 @@ bundle Game.SDL2 {
 			@h := rect->GetH();
 		}
 		
+		#~
+		Get X
+		@return x-position
+		~#
 		method : public : GetX() ~ Int {
 			return @x;
 		}
 		
+		#~
+		Get Y
+		@return y-position
+		~#
 		method : public : GetY() ~ Int {
 			return @y;
 		}
 		
+		#~
+		Get height
+		@return height
+		~#
 		method : public : GetH() ~ Int {
 			return @h;
 		}
 		
+		#~
+		Get width
+		@return width
+		~#
 		method : public : GetW() ~ Int {
 			return @w;
 		}
 		
+		#~
+		Set's x-position
+		@param x x-position
+		~#
 		method : public : SetX(x : Int) ~ Nil {
 			@x := x;
 		}
 		
+		#~
+		Set's y-position
+		@param y y-position
+		~#
 		method : public : SetY(y : Int) ~ Nil {
 			@y := y;
 		}
