@@ -1,11 +1,11 @@
-ARGS=-pthread -O3 -Wall -D_X64 -D_DEBUGGER -D_NO_JIT -Wno-unused-function -std=c++11
-# ARGS=-pthread -g -Wall -D_X64 -D_DEBUGGER
-# ARGS=-pthread -g -Wall -D_X64 -D_DEBUG -D_DEBUGGER
+ARGS=-pthread -O3 -Wall -D_X64 -D_DEBUGGER -D_OBJECK_NATIVE_LIB_PATH -D_NO_JIT -Wno-unused-function -std=c++11
+# ARGS=-pthread -g -Wall -D_X64 -D_DEBUGGER -D_OBJECK_NATIVE_LIB_PATH
+# ARGS=-pthread -g -Wall -D_X64 -D_DEBUG -D_DEBUGGER D_OBJECK_NATIVE_LIB_PATH
 
 CC=g++
 SRC=common.o interpreter.o loader.o vm.o posix_main.o 
 OBJ_LIBS=jit_amd_lp64.a memory.a
-MEM_PATH=arch/posix
+MEM_PATH=arch
 JIT_PATH=arch/jit/amd64
 LIB=compiler.a
 
