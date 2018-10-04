@@ -189,15 +189,18 @@ class Game {
 			            }
 
 			            label Scancode->SDL_SCANCODE_RETURN: {
+			            	@won_game := false;
 			            	return index = 0 ? true : false;
 			            }
 
 			            label Scancode->SDL_SCANCODE_P: {
+			            	@won_game := false;
 			            	return true;
 			            }
 
 			            label Scancode->SDL_SCANCODE_Q:
 			            label Scancode->SDL_SCANCODE_ESCAPE: {
+			            	@won_game := false;
 							return false;
 			            }
 			        };
@@ -205,6 +208,7 @@ class Game {
 				else if(e->GetType() = EventType->SDL_JOYBUTTONDOWN) {
 					# 'a' button
 					if(e->GetJButton()->GetButton() = 0) {
+						@won_game := false;
 						return index = 0 ? true : false; 
 					};
 				};
@@ -230,7 +234,6 @@ class Game {
 			else if(@won_game) {
 				play_text->RenderedText("Winner!", red_color);
 				play_text->Render(GameConsts->SCREEN_WIDTH / 2 - play_text->GetWidth() /2, GameConsts->SCREEN_HEIGHT / 2 - 32);
-				@won_game := false;
 			}
 			else {
 				play_text->RenderedText("Game Over!", red_color);
@@ -244,8 +247,9 @@ class Game {
 
 		leaving {
 			@framework->FreeShapes();
-		};
+		};	
 
+		@won_game := false;	
 		return false;
 	}
 
