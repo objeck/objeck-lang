@@ -2132,8 +2132,8 @@ bundle Game.SDL2 {
 			@a := a;
 		}
 
-		method : public : ToString() {
-			return "#{$r}, #{$g}, #{$b}, #{$a}";
+		method : public : ToString() ~ String {
+			return "#{$@r}, #{$@g}, #{$@b}, #{$@a}";
 		}
 	}
 	
