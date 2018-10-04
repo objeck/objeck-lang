@@ -1,12 +1,12 @@
-# ARGS=-g -Wall -pthread -D_X64 -D_DEBUG -D_DEBUGGER
-# ARGS=-g -Wall -pthread -D_X64 -D_DEBUGGER
+# ARGS=-g -Wall -pthread -D_X64 -D_DEBUG -D_DEBUGGER D_OBJECK_NATIVE_LIB_PATH
+# ARGS=-g -Wall -pthread -D_X64 -D_DEBUGGER -D_OBJECK_NATIVE_LIB_PATH
 ARGS=-O3 -Wall -Wall -Wno-unused-function -std=c++11 -Wno-strict-overflow -pthread -D_X64 -D_OBJECK_NATIVE_LIB_PATH -D_DEBUGGER
 
 CC=g++
 SRC=tree.o scanner.o parser.o debugger.o
 OBJ_LIBS=../vm/compiler.a ../vm/jit_amd_lp64.a ../vm/memory.a
 VM_PATH=../vm
-MEM_PATH=../vm/arch/posix
+MEM_PATH=../vm/arch
 JIT_PATH=../vm/arch/jit/amd64
 EXE=obd
 
