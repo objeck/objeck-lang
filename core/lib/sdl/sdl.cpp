@@ -1632,6 +1632,13 @@ extern "C" {
   __declspec(dllexport)
 #endif
   void sdl_event_flush(VMContext& context) {
+    SDL_PumpEvents();
+  }
+
+  #ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_event_pump(VMContext& context) {
     SDL_FlushEvent((int)APITools_GetIntValue(context, 0));
   }
 

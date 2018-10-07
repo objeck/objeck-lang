@@ -1715,9 +1715,8 @@ bundle Game.SDL2 {
 			return Nil;
 		}
 				
-		function : Pumps() ~ Nil {
-			array_args := Base->New[0];
-			Proxy->GetDllProxy()->CallFunction("sdl_event_pumps", array_args);
+		function : Pump() ~ Nil {
+			Proxy->GetDllProxy()->CallFunction("sdl_event_pump", Nil->As(Base[]));
 		}
 		
 		method : public : Peeps(numevents : Int, action : EventAction, minType : Int, maxType : Int) ~ Int {
