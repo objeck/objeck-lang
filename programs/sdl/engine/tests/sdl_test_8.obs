@@ -26,7 +26,6 @@ class Demo {
 		@follower->SetFill(true);
 		@follower->SetColor(Color->New(255, 0, 0));
 		@follower_vel := Vector2->New();
-		@follower_acc := Vector2->New();
 		@follower_pos := Vector2->New(25, 25);
 
 		@mouse_pos := Vector2->New();
@@ -99,11 +98,10 @@ class Demo {
 	}
 
 	method : public : Update() ~ Nil {
-		dir := Vector2->Sub(@mouse_pos, @follower_pos);
-		dir->Normalize();
-		dir->Mul(0.25);
+		@follower_acc := Vector2->Sub(@mouse_pos, @follower_pos);
+		@follower_acc->Normalize();
+		@follower_acc->Mul(0.25);
 
-		@follower_acc := dir;
 		@follower_vel->Add(@follower_acc);
 		@follower_vel->Limit(2.75);
 		@follower_pos->Add(@follower_vel);
