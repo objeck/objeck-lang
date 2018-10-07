@@ -1472,8 +1472,18 @@ bundle Game.Framework {
 		}
 
 		#~
+		Sets the x and y positions
+		@param x x-position
+		@param y y-position
+		~#
+		method : public : Set(x : Float, y : Float) ~ Nil {
+			@x := x;
+			@y := y;
+		}
+
+		#~
 		Sets the y-position
-		@param y-position
+		@param y y-position
 		~#
 		method : public : SetY(y : Float) ~ Nil {
 			@y := y;

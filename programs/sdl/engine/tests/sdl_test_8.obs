@@ -4,9 +4,13 @@ use Collection;
 
 class Demo {
 	@framework : GameFramework;
-	@follower : Rectangle;
+
+	@mouse_pos : Vector2;
 	@x_pos : IntHolder;
 	@y_pos : IntHolder;
+
+	@follower : Rectangle;
+	@follower_pos : Vector2;
 
 	function : Main(args : String[]) ~ Nil {
 		Demo->New()->Run();
@@ -19,7 +23,9 @@ class Demo {
 		@follower := @framework->AddRectangle(15, 15);
 		@follower->SetFill(true);
 		@follower->SetColor(Color->New(255, 0, 0));
+		@follower_pos := Vector2->New(25, 25);
 
+		@mouse_pos := Vector2->New();
 		@x_pos := IntHolder->New();
 		@y_pos := IntHolder->New();
 	}
@@ -43,10 +49,10 @@ class Demo {
 				};
 
 				# update
-				@follower->SetCenter(@x_pos->Get(), @y_pos->Get());
+				Update();
 							
 				# draw
-				@follower->Render();
+				Draw();
 			
 				# show
 				@framework->Show();
@@ -64,6 +70,7 @@ class Demo {
 	}
 
 	method : public : ProcessInput(e : Event) ~ Nil {
+#~		
 		if(e->GetType() = EventType->SDL_KEYDOWN) {
 	        select(e->GetKey()->GetKeysym()->GetScancode()) {    	
 	            label Scancode->SDL_SCANCODE_LEFT: {
@@ -76,9 +83,25 @@ class Demo {
 	            }
 	        };
 	    }
-	    else if(e->GetType() = EventType->SDL_MOUSEMOTION) {
+	    else 
+~#
+	    if(e->GetType() = EventType->SDL_MOUSEMOTION) {
 			Cursor->GetMouseState(@x_pos, @y_pos);
+
+			@mouse_pos->SetX(@x_pos->Get());
+			@mouse_pos->SetY(@y_pos->Get());
+
 		};
+	}
+
+	method : public : Update() ~ Nil {
+#		@follower->SetCenter(@x_pos->Get(), @y_pos->Get());
+
+		@follower->SetCenter(@follower_pos->GetX(), @follower_pos->GetY());
+	}
+
+	method : public : Draw() ~ Nil {
+		@follower->Render();
 	}
 }
 
