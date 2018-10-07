@@ -1126,6 +1126,11 @@ class StackProgram {
     _getcwd(buff, MAX_PATH);
     wstring cwd = BytesToUnicode(buff);
     size_t cwd_index = cwd.find_last_of(L'\\');
+#elif _OSX
+		uint32_t size = SMALL_BUFFER_MAX;
+		if(_NSGetExecutablePath(install_path, &size) != 0) {
+			status = -1;
+		}
 #else
     char buff[SMALL_BUFFER_MAX];
     _getcwd(buff, SMALL_BUFFER_MAX);
