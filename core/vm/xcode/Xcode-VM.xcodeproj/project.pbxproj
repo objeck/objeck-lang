@@ -15,8 +15,8 @@
 		255B2D771966EFB700AF1F2E /* vm.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 255B2D711966EFB700AF1F2E /* vm.cpp */; };
 		25DC32161FF1A7FE0040A5BE /* jit_amd_lp64.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 25DC32141FF1A7FE0040A5BE /* jit_amd_lp64.cpp */; };
 		ED0340C9216A6B920091732E /* memory.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED0340C8216A6B920091732E /* memory.cpp */; };
-		ED0340CC216A6E030091732E /* libcrypto.a in Frameworks */ = {isa = PBXBuildFile; fileRef = ED0340CA216A6E030091732E /* libcrypto.a */; };
-		ED0340CD216A6E030091732E /* libssl.a in Frameworks */ = {isa = PBXBuildFile; fileRef = ED0340CB216A6E030091732E /* libssl.a */; };
+		ED0340DB216A760F0091732E /* libssl.1.1.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = ED0340D7216A760F0091732E /* libssl.1.1.dylib */; };
+		ED0340DD216A760F0091732E /* libcrypto.1.1.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = ED0340D9216A760F0091732E /* libcrypto.1.1.dylib */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -50,8 +50,8 @@
 		25DC32151FF1A7FE0040A5BE /* jit_amd_lp64.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = jit_amd_lp64.h; path = ../../arch/jit/amd64/jit_amd_lp64.h; sourceTree = "<group>"; };
 		ED0340C7216A6B920091732E /* memory.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = memory.h; path = ../../arch/memory.h; sourceTree = "<group>"; };
 		ED0340C8216A6B920091732E /* memory.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = memory.cpp; path = ../../arch/memory.cpp; sourceTree = "<group>"; };
-		ED0340CA216A6E030091732E /* libcrypto.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libcrypto.a; path = ../../../../../../../../usr/local/lib/libcrypto.a; sourceTree = "<group>"; };
-		ED0340CB216A6E030091732E /* libssl.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libssl.a; path = ../../../../../../../../usr/local/lib/libssl.a; sourceTree = "<group>"; };
+		ED0340D7216A760F0091732E /* libssl.1.1.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libssl.1.1.dylib; path = ../../../../../../../../usr/local/lib/libssl.1.1.dylib; sourceTree = "<group>"; };
+		ED0340D9216A760F0091732E /* libcrypto.1.1.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libcrypto.1.1.dylib; path = ../../../../../../../../usr/local/lib/libcrypto.1.1.dylib; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -59,8 +59,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				ED0340CC216A6E030091732E /* libcrypto.a in Frameworks */,
-				ED0340CD216A6E030091732E /* libssl.a in Frameworks */,
+				ED0340DB216A760F0091732E /* libssl.1.1.dylib in Frameworks */,
+				ED0340DD216A760F0091732E /* libcrypto.1.1.dylib in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -111,8 +111,8 @@
 		25DC32171FF1A92A0040A5BE /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
-				ED0340CA216A6E030091732E /* libcrypto.a */,
-				ED0340CB216A6E030091732E /* libssl.a */,
+				ED0340D9216A760F0091732E /* libcrypto.1.1.dylib */,
+				ED0340D7216A760F0091732E /* libssl.1.1.dylib */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -143,7 +143,7 @@
 		255B2D551966EF5400AF1F2E /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 0920;
+				LastUpgradeCheck = 1000;
 				ORGANIZATIONNAME = "Randy Hollines";
 			};
 			buildConfigurationList = 255B2D581966EF5400AF1F2E /* Build configuration list for PBXProject "Xcode-VM" */;
@@ -193,12 +193,14 @@
 				CLANG_WARN_BOOL_CONVERSION = YES;
 				CLANG_WARN_COMMA = YES;
 				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
 				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
 				CLANG_WARN_EMPTY_BODY = YES;
 				CLANG_WARN_ENUM_CONVERSION = YES;
 				CLANG_WARN_INFINITE_RECURSION = YES;
 				CLANG_WARN_INT_CONVERSION = YES;
 				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
 				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
 				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
 				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
@@ -243,12 +245,14 @@
 				CLANG_WARN_BOOL_CONVERSION = YES;
 				CLANG_WARN_COMMA = YES;
 				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
 				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
 				CLANG_WARN_EMPTY_BODY = YES;
 				CLANG_WARN_ENUM_CONVERSION = YES;
 				CLANG_WARN_INFINITE_RECURSION = YES;
 				CLANG_WARN_INT_CONVERSION = YES;
 				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
 				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
 				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
 				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
@@ -285,7 +289,6 @@
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					_OSX,
 					_X64,
-					"DEBUG=1",
 					_DEBUG,
 				);
 				GCC_WARN_64_TO_32_BIT_CONVERSION = NO;
@@ -295,9 +298,8 @@
 				"HEADER_SEARCH_PATHS[arch=*]" = /usr/local/include;
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
-					"$(SDKROOT)/usr/lib/dtrace",
 					"$(SDKROOT)/usr/lib/system",
-					/usr/local/ssl/lib,
+					/usr/local/lib,
 				);
 				PRELINK_LIBS = "";
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -313,7 +315,6 @@
 					"$(DEVELOPER_FRAMEWORKS_DIR)",
 				);
 				GCC_PREPROCESSOR_DEFINITIONS = (
-					_DEBUG,
 					_OSX,
 					_X64,
 				);
@@ -324,9 +325,8 @@
 				"HEADER_SEARCH_PATHS[arch=*]" = /usr/local/include;
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
-					"$(SDKROOT)/usr/lib/dtrace",
 					"$(SDKROOT)/usr/lib/system",
-					/usr/local/ssl/lib,
+					/usr/local/lib,
 				);
 				PRELINK_LIBS = "";
 				PRODUCT_NAME = "$(TARGET_NAME)";
