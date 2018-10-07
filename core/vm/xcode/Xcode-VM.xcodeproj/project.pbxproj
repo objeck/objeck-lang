@@ -13,10 +13,10 @@
 		255B2D751966EFB700AF1F2E /* loader.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 255B2D6E1966EFB700AF1F2E /* loader.cpp */; };
 		255B2D761966EFB700AF1F2E /* posix_main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 255B2D701966EFB700AF1F2E /* posix_main.cpp */; };
 		255B2D771966EFB700AF1F2E /* vm.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 255B2D711966EFB700AF1F2E /* vm.cpp */; };
-		25601A951FF1A98C006A6933 /* libssl.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 25601A931FF1A98C006A6933 /* libssl.a */; };
-		25601A961FF1A98C006A6933 /* libcrypto.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 25601A941FF1A98C006A6933 /* libcrypto.a */; };
-		25DC32131FF1A7E50040A5BE /* memory.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 25DC32111FF1A7E50040A5BE /* memory.cpp */; };
 		25DC32161FF1A7FE0040A5BE /* jit_amd_lp64.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 25DC32141FF1A7FE0040A5BE /* jit_amd_lp64.cpp */; };
+		ED0340C9216A6B920091732E /* memory.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED0340C8216A6B920091732E /* memory.cpp */; };
+		ED0340CC216A6E030091732E /* libcrypto.a in Frameworks */ = {isa = PBXBuildFile; fileRef = ED0340CA216A6E030091732E /* libcrypto.a */; };
+		ED0340CD216A6E030091732E /* libssl.a in Frameworks */ = {isa = PBXBuildFile; fileRef = ED0340CB216A6E030091732E /* libssl.a */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -46,13 +46,12 @@
 		255B2D701966EFB700AF1F2E /* posix_main.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = posix_main.cpp; path = ../../posix_main.cpp; sourceTree = "<group>"; };
 		255B2D711966EFB700AF1F2E /* vm.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = vm.cpp; path = ../../vm.cpp; sourceTree = "<group>"; };
 		255B2D721966EFB700AF1F2E /* vm.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = vm.h; path = ../../vm.h; sourceTree = "<group>"; };
-		25601A911FF1A966006A6933 /* lib */ = {isa = PBXFileReference; lastKnownFileType = folder; name = lib; path = ../../../../../../../../usr/local/ssl/lib; sourceTree = "<group>"; };
-		25601A931FF1A98C006A6933 /* libssl.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libssl.a; path = ../../../../../../../../usr/local/ssl/lib/libssl.a; sourceTree = "<group>"; };
-		25601A941FF1A98C006A6933 /* libcrypto.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libcrypto.a; path = ../../../../../../../../usr/local/ssl/lib/libcrypto.a; sourceTree = "<group>"; };
-		25DC32111FF1A7E50040A5BE /* memory.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = memory.cpp; path = ../../arch/posix/memory.cpp; sourceTree = "<group>"; };
-		25DC32121FF1A7E50040A5BE /* memory.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = memory.h; path = ../../arch/posix/memory.h; sourceTree = "<group>"; };
 		25DC32141FF1A7FE0040A5BE /* jit_amd_lp64.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = jit_amd_lp64.cpp; path = ../../arch/jit/amd64/jit_amd_lp64.cpp; sourceTree = "<group>"; };
 		25DC32151FF1A7FE0040A5BE /* jit_amd_lp64.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = jit_amd_lp64.h; path = ../../arch/jit/amd64/jit_amd_lp64.h; sourceTree = "<group>"; };
+		ED0340C7216A6B920091732E /* memory.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = memory.h; path = ../../arch/memory.h; sourceTree = "<group>"; };
+		ED0340C8216A6B920091732E /* memory.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = memory.cpp; path = ../../arch/memory.cpp; sourceTree = "<group>"; };
+		ED0340CA216A6E030091732E /* libcrypto.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libcrypto.a; path = ../../../../../../../../usr/local/lib/libcrypto.a; sourceTree = "<group>"; };
+		ED0340CB216A6E030091732E /* libssl.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libssl.a; path = ../../../../../../../../usr/local/lib/libssl.a; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -60,8 +59,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				25601A951FF1A98C006A6933 /* libssl.a in Frameworks */,
-				25601A961FF1A98C006A6933 /* libcrypto.a in Frameworks */,
+				ED0340CC216A6E030091732E /* libcrypto.a in Frameworks */,
+				ED0340CD216A6E030091732E /* libssl.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -90,10 +89,10 @@
 		255B2D5F1966EF5400AF1F2E /* Xcode-VM */ = {
 			isa = PBXGroup;
 			children = (
+				ED0340C8216A6B920091732E /* memory.cpp */,
+				ED0340C7216A6B920091732E /* memory.h */,
 				25DC32141FF1A7FE0040A5BE /* jit_amd_lp64.cpp */,
 				25DC32151FF1A7FE0040A5BE /* jit_amd_lp64.h */,
-				25DC32111FF1A7E50040A5BE /* memory.cpp */,
-				25DC32121FF1A7E50040A5BE /* memory.h */,
 				255B2D691966EFB700AF1F2E /* common.cpp */,
 				255B2D6A1966EFB700AF1F2E /* common.h */,
 				255B2D6B1966EFB700AF1F2E /* interpreter.cpp */,
@@ -112,9 +111,8 @@
 		25DC32171FF1A92A0040A5BE /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
-				25601A941FF1A98C006A6933 /* libcrypto.a */,
-				25601A931FF1A98C006A6933 /* libssl.a */,
-				25601A911FF1A966006A6933 /* lib */,
+				ED0340CA216A6E030091732E /* libcrypto.a */,
+				ED0340CB216A6E030091732E /* libssl.a */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -172,10 +170,10 @@
 			files = (
 				255B2D771966EFB700AF1F2E /* vm.cpp in Sources */,
 				255B2D741966EFB700AF1F2E /* interpreter.cpp in Sources */,
-				25DC32131FF1A7E50040A5BE /* memory.cpp in Sources */,
 				255B2D751966EFB700AF1F2E /* loader.cpp in Sources */,
 				25DC32161FF1A7FE0040A5BE /* jit_amd_lp64.cpp in Sources */,
 				255B2D761966EFB700AF1F2E /* posix_main.cpp in Sources */,
+				ED0340C9216A6B920091732E /* memory.cpp in Sources */,
 				255B2D731966EFB700AF1F2E /* common.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -294,7 +292,7 @@
 				GCC_WARN_ABOUT_DEPRECATED_FUNCTIONS = NO;
 				GCC_WARN_UNINITIALIZED_AUTOS = YES;
 				GCC_WARN_UNUSED_FUNCTION = NO;
-				"HEADER_SEARCH_PATHS[arch=*]" = /usr/local/ssl/include;
+				"HEADER_SEARCH_PATHS[arch=*]" = /usr/local/include;
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(SDKROOT)/usr/lib/dtrace",
@@ -323,7 +321,7 @@
 				GCC_WARN_ABOUT_DEPRECATED_FUNCTIONS = NO;
 				GCC_WARN_UNINITIALIZED_AUTOS = YES;
 				GCC_WARN_UNUSED_FUNCTION = NO;
-				"HEADER_SEARCH_PATHS[arch=*]" = /usr/local/ssl/include;
+				"HEADER_SEARCH_PATHS[arch=*]" = /usr/local/include;
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(SDKROOT)/usr/lib/dtrace",
