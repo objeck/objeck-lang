@@ -1121,27 +1121,37 @@ class StackProgram {
   static void InitializeProprieties() {
     // install directory
 #ifdef _DEBUG
-#ifdef _WIN32
-    char buff[MAX_PATH];
-    _getcwd(buff, MAX_PATH);
-    wstring cwd = BytesToUnicode(buff);
-    size_t cwd_index = cwd.find_last_of(L'\\');
-#elif _OSX
-		uint32_t size = SMALL_BUFFER_MAX;
-		if(_NSGetExecutablePath(install_path, &size) != 0) {
-			status = -1;
-		}
-#else
-    char buff[SMALL_BUFFER_MAX];
-    _getcwd(buff, SMALL_BUFFER_MAX);
-    getcwd(buff, SMALL_BUFFER_MAX);
-    wstring cwd = BytesToUnicode(buff);
-    size_t install_index = cwd.find_last_of(L'/');
-#endif
-    if(cwd_index != string::npos) {
-      wstring install_dir = cwd.substr(0, cwd_index);
+#ifdef _WIN32  
+  char install_path[MAX_PATH];
+  DWORD status = GetModuleFileNameA(NULL, install_path, sizeof(install_path));
+  if(status > 0) {
+    string exe_path(install_path);
+    size_t install_index = exe_path.find_last_of('\\');
+    if(install_index != string::npos) {
+      wstring install_dir = BytesToUnicode(exe_path.substr(0, install_index));
       properties_map.insert(pair<wstring, wstring>(L"install_dir", install_dir));
     }
+  }
+#else
+  ssize_t status = 0;
+  char install_path[SMALL_BUFFER_MAX];
+#ifdef _OSX
+  uint32_t size = SMALL_BUFFER_MAX;
+  if(_NSGetExecutablePath(install_path, &size) != 0) {
+    status = -1;
+  }
+#else
+  status = ::readlink("/proc/self/exe", install_path, sizeof(install_path) - 1);
+#endif
+  if(status != -1) {
+    string exe_path(install_path);
+    size_t install_index = exe_path.find_last_of('/');
+    if(install_index != string::npos) {
+      wstring install_dir = BytesToUnicode(exe_path.substr(0, install_index));
+      properties_map.insert(pair<wstring, wstring>(L"install_dir", install_dir));
+    }
+  }
+#endif
 #else
 #ifdef _WIN32  
     char install_path[MAX_PATH];
