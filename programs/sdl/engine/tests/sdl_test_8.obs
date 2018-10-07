@@ -97,7 +97,16 @@ class Demo {
 	method : public : Update() ~ Nil {
 #		@follower->SetCenter(@x_pos->Get(), @y_pos->Get());
 
-		@follower->SetCenter(@follower_pos->GetX(), @follower_pos->GetY());
+		angle := Vector2->Sub(@mouse_pos, @follower_pos);
+		angle->Normalize();
+		angle->Mul(0.75);
+
+#~
+x := angle->GetX();
+y := angle->GetY();
+"{$x}, {$y}"->PrintLine();
+~#
+		@follower->SetCenter(angle->GetX(), angle->GetY());
 	}
 
 	method : public : Draw() ~ Nil {
