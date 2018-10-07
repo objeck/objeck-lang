@@ -3101,22 +3101,7 @@ MethodCall* Parser::ParseMethodCall(const wstring &ident, int depth)
       }
     }
     else if(Match(TOKEN_TYPE_OF_ID)) {
-      Variable* variable = ParseVariable(ident, depth + 1);
-
-      NextToken();
-      if(!Match(TOKEN_OPEN_PAREN)) {
-        ProcessError(L"Expected '('", TOKEN_OPEN_PAREN);
-      }
-      NextToken();
-
-      if(variable) {
-        variable->SetTypeOf(ParseType(depth + 1));
-      }
-
-      if(!Match(TOKEN_CLOSED_PAREN)) {
-        ProcessError(L"Expected ')'", TOKEN_CLOSED_PAREN);
-      }
-      NextToken();
+      ProcessError(L"TypeOf(..) is not a statement", TOKEN_CLOSED_PAREN);
     }
     else {
       ProcessError(L"Expected identifier", TOKEN_SEMI_COLON);
