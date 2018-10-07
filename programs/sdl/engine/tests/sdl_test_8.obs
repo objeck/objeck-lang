@@ -4,6 +4,7 @@ use Collection;
 
 class Demo {
 	@framework : GameFramework;
+	@follower : Rectangle;
 	@x_pos : IntHolder;
 	@y_pos : IntHolder;
 
@@ -14,6 +15,11 @@ class Demo {
 	New() {
 		@framework := GameFramework->New(Game->SCREEN_WIDTH, Game->SCREEN_HEIGHT, "Platformer Demo");
 		@framework->SetClearColor(Color->New(0, 0, 255));
+
+		@follower := @framework->AddRectangle(15, 15);
+		@follower->SetFill(true);
+		@follower->SetColor(Color->New(255, 0, 0));
+
 		@x_pos := IntHolder->New();
 		@y_pos := IntHolder->New();
 	}
@@ -37,8 +43,10 @@ class Demo {
 				};
 
 				# update
+				@follower->SetCenter(@x_pos->Get(), @y_pos->Get());
 							
 				# draw
+				@follower->Render();
 			
 				# show
 				@framework->Show();
@@ -70,9 +78,6 @@ class Demo {
 	    }
 	    else if(e->GetType() = EventType->SDL_MOUSEMOTION) {
 			Cursor->GetMouseState(@x_pos, @y_pos);
-@x_pos->Get()->PrintLine();
-@y_pos->Get()->PrintLine();
-
 		};
 	}
 }
