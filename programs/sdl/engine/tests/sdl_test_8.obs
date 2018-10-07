@@ -99,24 +99,16 @@ class Demo {
 	}
 
 	method : public : Update() ~ Nil {
-#		@follower->SetCenter(@x_pos->Get(), @y_pos->Get());
+		dir := Vector2->Sub(@mouse_pos, @follower_pos);
+		dir->Normalize();
+		dir->Mul(0.25);
 
-		angle := Vector2->Sub(@mouse_pos, @follower_pos);
-		angle->Normalize();
-		angle->Mul(0.75);
-
-
-
-		@follower_acc->Add(angle);
+		@follower_acc := dir;
 		@follower_vel->Add(@follower_acc);
+		@follower_vel->Limit(2.75);
 		@follower_pos->Add(@follower_vel);
 		@follower_acc->Zero();
 
-#~
-x := angle->GetX();
-y := angle->GetY();
-"{$x}, {$y}"->PrintLine();
-~#
 		@follower->SetCenter(@follower_pos->GetX(), @follower_pos->GetY());
 	}
 
