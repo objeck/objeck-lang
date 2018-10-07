@@ -10,6 +10,8 @@ class Demo {
 	@y_pos : IntHolder;
 
 	@follower : Rectangle;
+	@follower_vel : Vector2;
+	@follower_acc : Vector2;
 	@follower_pos : Vector2;
 
 	function : Main(args : String[]) ~ Nil {
@@ -23,6 +25,8 @@ class Demo {
 		@follower := @framework->AddRectangle(15, 15);
 		@follower->SetFill(true);
 		@follower->SetColor(Color->New(255, 0, 0));
+		@follower_vel := Vector2->New();
+		@follower_acc := Vector2->New();
 		@follower_pos := Vector2->New(25, 25);
 
 		@mouse_pos := Vector2->New();
@@ -101,12 +105,19 @@ class Demo {
 		angle->Normalize();
 		angle->Mul(0.75);
 
+
+
+		@follower_acc->Add(angle);
+		@follower_vel->Add(@follower_acc);
+		@follower_pos->Add(@follower_vel);
+		@follower_acc->Zero();
+
 #~
 x := angle->GetX();
 y := angle->GetY();
 "{$x}, {$y}"->PrintLine();
 ~#
-		@follower->SetCenter(angle->GetX(), angle->GetY());
+		@follower->SetCenter(@follower_pos->GetX(), @follower_pos->GetY());
 	}
 
 	method : public : Draw() ~ Nil {
