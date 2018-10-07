@@ -1,0 +1,73 @@
+use Game.SDL2;
+use Game.Framework;
+use Collection;
+
+class Demo {
+	@framework : GameFramework;
+	
+	function : Main(args : String[]) ~ Nil {
+		Demo->New()->Run();
+	}
+
+	New() {
+		@framework := GameFramework->New(Game->SCREEN_WIDTH, Game->SCREEN_HEIGHT, "Platformer Demo");
+		@framework->SetClearColor(Color->New(0, 0, 255));
+	}
+
+	method : Run() ~ Nil {
+		if(@framework->IsOk()) {
+
+			quit := false;
+			e := @framework->GetEvent();
+			while(<>quit) {
+				@framework->FrameStart();
+				@framework->Clear();
+				
+				# process input
+				while(e->Poll() <> 0) {
+					if(e->GetType() = EventType->SDL_QUIT) {
+						quit := true;
+					};
+
+					ProcessInput(e);
+				};
+
+				# update
+							
+				# draw
+			
+				# show
+				@framework->Show();
+				@framework->FrameEnd();
+			};
+		}
+		else {
+			"--- Error Initializing Game Environment ---"->ErrorLine();
+			return;
+		};
+
+		leaving {
+			@framework->Quit();
+		};
+	}
+
+	method : public : ProcessInput(e : Event) ~ Nil {
+		if(e->GetType() = EventType->SDL_KEYDOWN) {
+	        select(e->GetKey()->GetKeysym()->GetScancode()) {    	
+	            label Scancode->SDL_SCANCODE_LEFT: {
+	            }
+	        };
+	    }
+	    else if(e->GetType() = EventType->SDL_KEYUP) {
+	       	select(e->GetKey()->GetKeysym()->GetScancode()) {    	
+	            label Scancode->SDL_SCANCODE_LEFT: {
+	            }
+	        };
+	    };
+	}
+}
+
+consts Game {
+	SCREEN_WIDTH := 800,
+	SCREEN_HEIGHT := 600
+}
