@@ -1,10 +1,6 @@
-use System.IO.File;
-
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		dir := Runtime->GetProperty("install_dir");
-		dir += "/lib/sdl/fonts/hella.ttf";
-		dir->PrintLine();
-		File->Exists(dir)->PrintLine();
+		x := IntHolder->New(13);
+		x->TypeOf(IntHolder)->PrintLine();
 	}
 }
