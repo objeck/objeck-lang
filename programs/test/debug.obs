@@ -2,5 +2,6 @@ class Test {
 	function : Main(args : String[]) ~ Nil {
 		x := IntHolder->New(13);
 		x->TypeOf(IntHolder)->PrintLine();
+#		b := x->TypeOf(IntHolder);
 	}
 }
