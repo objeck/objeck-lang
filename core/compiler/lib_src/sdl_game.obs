@@ -1129,9 +1129,14 @@ bundle Game.Framework {
 				return false;
 			};
 
+			if(<>Hints->Set("SDL_HINT_VIDEO_HIGHDPI_DISABLED", "1")) {
+				"Warning: Linear texture filtering not enabled!"->ErrorLine();
+				return false;
+			};
+
 			@window := Window->New(title, WindowFlags->SDL_WINDOWPOS_UNDEFINED, 
 				WindowFlags->SDL_WINDOWPOS_UNDEFINED, @screen_width, @screen_height, 
-				WindowFlags->SDL_WINDOW_SHOWN or WindowFlags->SDL_WINDOW_ALLOW_HIGHDPI);
+				WindowFlags->SDL_WINDOW_SHOWN);
 			if(@window->IsNull()) {
 				"Cannot create window!"->ErrorLine();
 				return false;

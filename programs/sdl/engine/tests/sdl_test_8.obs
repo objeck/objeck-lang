@@ -35,16 +35,10 @@ class Demo {
 
 	method : Run() ~ Nil {
 		if(@framework->IsOk()) {
-
-			
-
 			quit := false;
 			e := @framework->GetEvent();
 			while(<>quit) {
 				@framework->FrameStart();
-
-Event->Pump();
-				
 				@framework->Clear();
 				
 				# process input
@@ -95,14 +89,7 @@ Event->Pump();
 ~#
 	    if(e->GetType() = EventType->SDL_MOUSEMOTION) {
 			Cursor->GetMouseState(@x_pos, @y_pos);
-#~
-x := @x_pos->Get();
-y := @x_pos->Get();
-"{$x}, {$y}"->PrintLine();
-~#
-			@mouse_pos->SetX(@x_pos->Get());
-			@mouse_pos->SetY(@y_pos->Get());
-
+			@mouse_pos->Set(@x_pos->Get(), @y_pos->Get());
 		};
 	}
 
@@ -116,12 +103,7 @@ y := @x_pos->Get();
 		@follower_pos->Add(@follower_vel);
 		@follower_acc->Zero();
 
-x := @follower_pos->GetX();
-y := @follower_pos->GetY();
-"{$x}, {$y}"->PrintLine();
-
 		@follower->SetCenter(@follower_pos->GetX(), @follower_pos->GetY());
-#		@follower->SetCenter(790, 590);
 	}
 
 	method : public : Draw() ~ Nil {
