@@ -1209,6 +1209,146 @@ bundle System {
 	}
 
 	#~
+	Holds an character value
+	~#
+	class CharHolder implements Compare {
+		@value : Char;
+
+		#~
+		Default constructor
+		~#
+		New() {
+			Parent();
+			@value := 0;
+		}
+
+		#~
+		Copy constructor
+		@param value character value
+		~#
+		New(value : Char) {
+			Parent();
+			@value := value;
+		}
+
+		#~
+		Get character value
+		@return character value
+		~#
+		method : public : Get() ~ Char {
+			return @value;
+		}
+		
+		#~
+		Set character value
+		@param value character value		
+		~#
+		method : public : Set(value : Char) ~ Nil {
+			@value := value;
+		}
+
+		#~
+		Compares two objects
+		@param rhs compare object
+		@return 0 if equal, -1 if right-hand side i greater, 1 if left-hand side is greater
+		~#
+		method : public : native : Compare(rhs : System.Compare) ~ Char {
+			# check class type
+			if(GetClassID() <> rhs->GetClassID()) {
+				return -1;
+			};
+			
+			right : CharHolder := rhs->As(CharHolder);
+			if(@value = right->Get()) {
+				return 0;
+			}
+			else if(@value < right->Get()) {
+				return -1;
+			};
+			
+			return 1;
+		}
+
+		#~
+		Returns a unique hash ID for a character
+		@return hash ID
+		~#
+		method : public : HashID() ~ Char {
+			return @value;
+		}
+	}
+
+	#~
+	Holds an byte value
+	~#
+	class ByteHolder implements Compare {
+		@value : Byte;
+
+		#~
+		Default constructor
+		~#
+		New() {
+			Parent();
+			@value := 0;
+		}
+
+		#~
+		Copy constructor
+		@param value byte value
+		~#
+		New(value : Byte) {
+			Parent();
+			@value := value;
+		}
+
+		#~
+		Get byte value
+		@return byte value
+		~#
+		method : public : Get() ~ Byte {
+			return @value;
+		}
+		
+		#~
+		Set byte value
+		@param value byte value		
+		~#
+		method : public : Set(value : Byte) ~ Nil {
+			@value := value;
+		}
+
+		#~
+		Compares two objects
+		@param rhs compare object
+		@return 0 if equal, -1 if right-hand side i greater, 1 if left-hand side is greater
+		~#
+		method : public : native : Compare(rhs : System.Compare) ~ Byte {
+			# check class type
+			if(GetClassID() <> rhs->GetClassID()) {
+				return -1;
+			};
+			
+			right : ByteHolder := rhs->As(ByteHolder);
+			if(@value = right->Get()) {
+				return 0;
+			}
+			else if(@value < right->Get()) {
+				return -1;
+			};
+			
+			return 1;
+		}
+
+		#~
+		Returns a unique hash ID for a byte
+		@return hash ID
+		~#
+		method : public : HashID() ~ Byte {
+			return @value;
+		}
+	}
+
+	#~
 	Holds an integer array
 	~#
 	class IntArrayHolder {

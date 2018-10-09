@@ -9,7 +9,7 @@ class Demo {
 	@x_pos : IntHolder;
 	@y_pos : IntHolder;
 
-	@follower : Rectangle;
+	@follower : ImageSprite;
 	@follower_vel : Vector2;
 	@follower_acc : Vector2;
 	@follower_pos : Vector2;
@@ -22,9 +22,7 @@ class Demo {
 		@framework := GameFramework->New(Game->SCREEN_WIDTH, Game->SCREEN_HEIGHT, "Platformer Demo");
 		@framework->SetClearColor(Color->New(0, 0, 255));
 
-		@follower := @framework->AddRectangle(15, 15);
-		@follower->SetFill(true);
-		@follower->SetColor(Color->New(255, 0, 0));
+		@follower := @framework->AddImageSprite("media/image/arrow.png");
 		@follower_vel := Vector2->New();
 		@follower_pos := Vector2->New(25, 25);
 
@@ -91,6 +89,8 @@ class Demo {
 			Cursor->GetMouseState(@x_pos, @y_pos);
 			@mouse_pos->Set(@x_pos->Get(), @y_pos->Get());
 		};
+
+		c : Char;
 	}
 
 	method : public : Update() ~ Nil {
@@ -113,7 +113,7 @@ angle->PrintLine();
 	}
 
 	method : public : Draw() ~ Nil {
-		@follower->Render();
+		@follower->Render(10, 10);
 	}
 }
 
