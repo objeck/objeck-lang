@@ -4,6 +4,7 @@ use Collection;
 
 class Demo {
 	@framework : GameFramework;
+	@quit : Bool;
 
 	@mouse_pos : Vector2;
 	@x_pos : IntHolder;
@@ -24,7 +25,8 @@ class Demo {
 
 		@follower := @framework->AddImageSprite("media/images/arrow.png");
 		@follower_vel := Vector2->New();
-		@follower_pos := Vector2->New(25, 25);
+		@follower_pos := Vector2->New(400, 300);
+		@follower->SetCenter(@follower_pos->GetX(), @follower_pos->GetY());
 
 		@mouse_pos := Vector2->New();
 		@x_pos := IntHolder->New();
@@ -33,30 +35,15 @@ class Demo {
 
 	method : Run() ~ Nil {
 		if(@framework->IsOk()) {
-			quit := false;
 			e := @framework->GetEvent();
-			while(<>quit) {
-				@framework->FrameStart();
-				@framework->Clear();
+			while(<>@quit) {
+				Start();
 				
-				# process input
-				while(e->Poll() <> 0) {
-					if(e->GetType() = EventType->SDL_QUIT) {
-						quit := true;
-					};
-
-					ProcessInput(e);
-				};
-
-				# update
+				Input(e);
 				Update();
-							
-				# draw
 				Draw();
-			
-				# show
-				@framework->Show();
-				@framework->FrameEnd();
+				
+ 				End();
 			};
 		}
 		else {
@@ -69,25 +56,27 @@ class Demo {
 		};
 	}
 
-	method : public : ProcessInput(e : Event) ~ Nil {
-#~		
-		if(e->GetType() = EventType->SDL_KEYDOWN) {
-	        select(e->GetKey()->GetKeysym()->GetScancode()) {    	
-	            label Scancode->SDL_SCANCODE_LEFT: {
-	            }
-	        };
-	    }
-	    else if(e->GetType() = EventType->SDL_KEYUP) {
-	       	select(e->GetKey()->GetKeysym()->GetScancode()) {    	
-	            label Scancode->SDL_SCANCODE_LEFT: {
-	            }
-	        };
-	    }
-	    else 
-~#
-	    if(e->GetType() = EventType->SDL_MOUSEMOTION) {
-			Cursor->GetMouseState(@x_pos, @y_pos);
-			@mouse_pos->Set(@x_pos->Get(), @y_pos->Get());
+	method : Start() ~ Nil {
+		@framework->FrameStart();
+		@framework->Clear();
+	}
+
+	method : End() ~ Nil {
+		@framework->Show();
+		@framework->FrameEnd();
+	}
+
+	method : Input(e : Event) ~ Nil {
+		# process input
+		while(e->Poll() <> 0) {
+			if(e->GetType() = EventType->SDL_QUIT) {
+				@quit := true;
+			};
+
+		    if(e->GetType() = EventType->SDL_MOUSEMOTION) {
+				Cursor->GetMouseState(@x_pos, @y_pos);
+				@mouse_pos->Set(@x_pos->Get(), @y_pos->Get());
+			};
 		};
 	}
 
