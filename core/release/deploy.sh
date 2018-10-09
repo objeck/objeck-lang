@@ -1,5 +1,10 @@
 #!/bin/sh
 
+if [ $# -eq 0 ]; then
+	echo "os: linux=32|64; macos=osx"
+	exit 1
+fi
+
 # setup directories
 rm -rf deploy
 mkdir deploy
