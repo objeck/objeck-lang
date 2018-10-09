@@ -103,6 +103,14 @@ bundle Game.Framework {
 		}
 
 		#~
+		Initialization status flag
+		@return true if initialized, false otherwise
+		~#
+		method : public : IsOk() ~ Bool {
+			return @is_ok;
+		}
+
+		#~
 		Loads an image
 		@param file image to load
 		@param colorkey key color
@@ -200,6 +208,14 @@ bundle Game.Framework {
 		New(renderer : Renderer, font : Font) {
 			Parent(renderer);
 			@font := font;
+		}
+
+		#~
+		Initialization status flag
+		@return true if initialized, false otherwise
+		~#
+		method : public : IsOk() ~ Bool {
+			return @is_ok;
 		}
 
 		#~
@@ -1195,7 +1211,13 @@ bundle Game.Framework {
 		~#
 		method : public : IsOk() ~ Bool {
 			return @is_ok;
-		}		
+		}
+
+		method : public : SetOk(success : Bool) ~ Nil {
+			if(@is_ok & <>success) {
+				@is_ok := false;
+			};
+		}
 
 		#~
 		Gets the framework renderer
@@ -1302,6 +1324,7 @@ bundle Game.Framework {
 		~#
 		method : public : AddTextSprite() ~ TextSprite {
 			shape := TextSprite->New(@renderer, @font);
+			SetOk(shape->IsOk());
 			@shapes->AddBack(shape);
 
 			return shape;
@@ -1316,6 +1339,7 @@ bundle Game.Framework {
 		~#
 		method : public : AddImageSprite(file : String, colorkey : Color, render_rect : Rect) ~ ImageSprite {
 			shape := ImageSprite->New(@renderer, file, colorkey, render_rect);
+			SetOk(shape->IsOk());
 			@shapes->AddBack(shape);
 
 			return shape;
@@ -1329,6 +1353,7 @@ bundle Game.Framework {
 		~#
 		method : public : AddImageSprite(file : String, colorkey : Color) ~ ImageSprite {
 			shape := ImageSprite->New(@renderer, file, colorkey);
+			SetOk(shape->IsOk());
 			@shapes->AddBack(shape);
 
 			return shape;
@@ -1341,6 +1366,7 @@ bundle Game.Framework {
 		~#
 		method : public : AddImageSprite(file : String) ~ ImageSprite {
 			shape := ImageSprite->New(@renderer, file);
+			SetOk(shape->IsOk());
 			@shapes->AddBack(shape);
 
 			return shape;
@@ -1354,6 +1380,7 @@ bundle Game.Framework {
 		~#
 		method : public : AddAnimatedImageSprite(file : String, clips : Vector) ~ AnimatedImageSprite {
 			shape := AnimatedImageSprite->New(@renderer, file, clips);
+			SetOk(shape->IsOk());
 			@shapes->AddBack(shape);
 
 			return shape;
@@ -1366,6 +1393,7 @@ bundle Game.Framework {
 		~#
 		method : public : AddAnimatedImageSprite(file : String) ~ AnimatedImageSprite {
 			shape := AnimatedImageSprite->New(@renderer, file);
+			SetOk(shape->IsOk());
 			@shapes->AddBack(shape);
 
 			return shape;
