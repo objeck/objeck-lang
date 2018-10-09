@@ -96,6 +96,12 @@ class Demo {
 	method : public : Update() ~ Nil {
 		@follower_acc := Vector2->Sub(@mouse_pos, @follower_pos);
 		@follower_acc->Normalize();
+
+		angle := Float->ArcTan2(-1 * @mouse_pos->GetY(), @mouse_pos->GetX());
+		angle := -1 * Float->ToDegrees(angle);
+angle->PrintLine();
+
+
 		@follower_acc->Mul(2.25);
 
 		@follower_vel->Add(@follower_acc);
