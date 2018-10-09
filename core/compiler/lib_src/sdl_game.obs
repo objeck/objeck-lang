@@ -1540,17 +1540,14 @@ bundle Game.Framework {
 
 		#~
 		Normalizes a unit vector
-		@return normalized vector 
 		~#
-		method : public : Normalize() ~ Vector2 {
+		method : public : Normalize() ~ Nil {
 			mag := Magnitude();
- 			if(mag <> 0) {
-   				return Div(@self, mag);
-			};
-
-			return Vector2->New();
-		}
-
+ 			if(mag <> 0.0) {
+ 				Div(mag);
+ 			};
+ 		}
+ 		
 		#~
 		String representation of vector
 		@return string representation
