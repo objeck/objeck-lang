@@ -1,0 +1,13 @@
+class Actor from Component {
+	New(owner : Actor, update_order : Int) {
+		Parent(owner, update_order);
+	}
+
+	method : public : Update(delta_time : Float) ~ Nil {
+
+	}
+
+	method : public : AddComponent(component : Component) ~ Nil {
+
+	}
+}
