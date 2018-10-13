@@ -20,6 +20,29 @@ class Actor {
 		@components := Vector->New();
 	}
 
+	method : public : Free() ~ Nil {
+#~
+		mGame->RemoveActor(this);
+		// Need to delete components
+		// Because ~Component calls RemoveComponent, need a different style loop
+		while (!mComponents.empty())
+		{
+			delete mComponents.back();
+		}
+~#			
+	}
+
+	# Getters/setters
+	method : public : GetPosition() ~ Vector2 { return @position; }
+	method : public : SetPosition(position : Vector2) ~ Nil { @position := position; }
+	method : public : GetScale() ~ Float { return @scale; }
+	method : public : SetScale(scale : Float) ~ Nil { @scale := scale; }
+	method : public : GetRotation() ~ Float { return @rotation; }
+	method : public : SetRotation(rotation : Float) ~ Nil { @rotation := rotation; }
+	method : public : GetState() ~ State { return @state; }
+	method : public : SetState(state : State) ~ Nil { @state := state; }
+	method : public : GetGame() ~ Game { return @game; }
+
 	method : public : Update(delta_time : Float) ~ Nil {
 		if(@state = State->EActive) {
 			UpdateComponents(delta_time);
