@@ -18,8 +18,8 @@ class Actor from Component {
 
 		found := false;	i : Int;
 		for(i := 0; <>found & i < @components->Size(); i += 1;) {
-			check := @components->Get(i)->As(Component);
-			if(order < check->GetUpdateOrder()) {
+			compare := @components->Get(i)->As(Component);
+			if(order < compare->GetUpdateOrder()) {
 				found := true;
 			};
 		};
@@ -28,6 +28,16 @@ class Actor from Component {
 	}
 
 	method : public : RemoveComponent(component : Component) ~ Nil {
+		found := false;	i : Int;
+		for(i := 0; <>found & i < @components->Size(); i += 1;) {
+			compare := @components->Get(i)->As(Component);
+			if(compare = component) {
+				found := true;
+			};
+		};
 
+		if(found) {
+			@components->Remove(i);
+		};
 	}
 }
