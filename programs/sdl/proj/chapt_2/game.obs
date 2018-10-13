@@ -1,4 +1,8 @@
 class Game {
+	New() {
+
+	}
+	
 	function : Main(args : String[]) ~ Nil {
 		"--- Solid wall of sound! ---"->PrintLine();
 	}
