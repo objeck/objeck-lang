@@ -10,4 +10,8 @@ class Actor from Component {
 	method : public : AddComponent(component : Component) ~ Nil {
 
 	}
+
+	method : public : RemoveComponent(component : Component) ~ Nil {
+		
+	}
 }
