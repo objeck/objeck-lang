@@ -1,6 +1,12 @@
+use Collection;
+
 class Actor from Component {
+	@components : Vector;
+
 	New(owner : Actor, update_order : Int) {
 		Parent(owner, update_order);
+
+		@components := Vector->New();
 	}
 
 	method : public : Update(delta_time : Float) ~ Nil {
@@ -8,10 +14,20 @@ class Actor from Component {
 	}
 
 	method : public : AddComponent(component : Component) ~ Nil {
+		order := component->GetUpdateOrder();
 
+		found := false;	i : Int;
+		for(i := 0; <>found & i < @components->Size(); i += 1;) {
+			check := @components->Get(i)->As(Component);
+			if(order < check->GetUpdateOrder()) {
+				found := true;
+			};
+		};
+
+		@components->Set(component, i);
 	}
 
 	method : public : RemoveComponent(component : Component) ~ Nil {
-		
+
 	}
 }
