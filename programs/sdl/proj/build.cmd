@@ -7,7 +7,7 @@ if "%~1" == "" goto ERROR
 	set PATH=%PATH%;..\..\..\core\release\deploy\bin
 	set OBJECK_LIB_PATH=..\..\..\core\release\deploy\lib
 
-	obc -src %1\component.obs,%1\actor.obs,%1\game.obs -lib collect.obl,sdl2.obl -dest %1.obe
+	obc -src %1\component.obs,%1\actor.obs,%1\game.obs -lib collect.obl,sdl2.obl,sdl_game.obl -dest %1.obe
 
 	if [%2] == [deploy] goto END
 		obr %1.obe

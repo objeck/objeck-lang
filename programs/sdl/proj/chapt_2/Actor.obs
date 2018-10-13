@@ -1,16 +1,39 @@
 use Collection;
+use Game.Framework;
 
-class Actor from Component {
+class Actor {
+	@state : State;
+	@position : Vector2;
+	@scale : Float;
+	@rotation : Float;
 	@components : Vector;
+	@game : Game;
 
-	New(owner : Actor, update_order : Int) {
-		Parent(owner, update_order);
+	enum State {
+		EActive,
+		EPaused,
+		EDead
+	}
 
+	New(game : Game) {
+		@game := game;
 		@components := Vector->New();
 	}
 
 	method : public : Update(delta_time : Float) ~ Nil {
+		if(@state = State->EActive) {
+			UpdateComponents(delta_time);
+			UpdateActor(delta_time);
+		};
+	}
 
+	method : UpdateComponents(delta_time : Float) ~ Nil {
+		each(i : @components) {
+			@components->Get(i)->As(Component)->Update(delta_time);
+		};
+	}
+
+	method : UpdateActor(delta_time : Float) ~ Nil {
 	}
 
 	method : public : AddComponent(component : Component) ~ Nil {
