@@ -8,6 +8,8 @@ class Game {
 	}
 
 	method : public : RemoveActor(actor : Actor) ~ Nil {
-		
 	}
-} 
+
+	method : public : RemoveSprite(sprite : SpriteComponent) ~ Nil {
+	}
+}
