@@ -1,3 +1,4 @@
+use Collection;
 use Game.Framework;
 
 class Ship from Actor {
@@ -7,17 +8,16 @@ class Ship from Actor {
 	New(game : Game) {
 		Parent(game);
 
-#~
-		// Create an animated sprite component
-		AnimSpriteComponent* asc = new AnimSpriteComponent(this);
-		std::vector<SDL_Texture*> anims = {
-			game->GetTexture("Assets/Ship01.png"),
-			game->GetTexture("Assets/Ship02.png"),
-			game->GetTexture("Assets/Ship03.png"),
-			game->GetTexture("Assets/Ship04.png"),
-		};
+		# Create an animated sprite component
+		asc := AnimSpriteComponent->New(@self);
+
+		anims := Vector->New();
+		anims->AddBack(game->GetTexture("Assets/Ship01.png"));
+		anims->AddBack(game->GetTexture("Assets/Ship02.png"));
+		anims->AddBack(game->GetTexture("Assets/Ship03.png"));
+		anims->AddBack(game->GetTexture("Assets/Ship04.png"));
+		
 		asc->SetAnimTextures(anims);
-~#
 	}
 
 	method : public : UpdateActor(delta_time : Float) ~ Nil {
