@@ -28,16 +28,16 @@ class SpriteComponent from Component {
 		if(@texture <> Nil) {
 			w : Int := @text_width * GetOwner()->GetScale();
 			h : Int := @text_height * GetOwner()->GetScale();
-			x : Int := GetOwner()->GetPosition()->GetX() - w / 2;
-			y : Int := GetOwner()->GetPosition()->GetY() - h / 2;
+			x : Int := GetOwner()->GetPosition()->GetX() - w / 2.0;
+			y : Int := GetOwner()->GetPosition()->GetY() - h / 2.0;
 			dest_rect := Rect->New(x, y, w, h);
 
 			renderer->CopyEx(
 				@texture, 
-				Nil->As(Rect), 
+				Nil, 
 				dest_rect, 
 				-1.0 * GetOwner()->GetRotation()->ToDegrees(),
-				Nil->As(Point), 
+				Nil, 
 				RendererFlip->SDL_FLIP_NONE);
 		};
 	}
