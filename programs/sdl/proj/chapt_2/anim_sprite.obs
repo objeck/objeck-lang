@@ -1,4 +1,5 @@
 use Collection;
+use Game.SDL2;
 
 class AnimSpriteComponent from SpriteComponent {
 	# All textures in the animation
@@ -26,22 +27,26 @@ class AnimSpriteComponent from SpriteComponent {
 			# Update the current frame based on frame rate
 			# and delta time
 			@curr_frame += @anim_fps * delta_time;
-#~			
+
 			# Wrap current frame if needed
-			while (mCurrFrame >= mAnimTextures.size())
-			{
-				mCurrFrame -= mAnimTextures.size();
-			}
+			while (@curr_frame >= @anim_textures->Size()) {
+				@curr_frame -= @anim_textures->Size();
+			};
 
 			# Set the current texture
-			SetTexture(mAnimTextures[static_cast<int>(mCurrFrame)]);
-~#		
+			SetTexture(@anim_textures->Get(@curr_frame)->As(Texture));
 		};
 	}
 
 	# Set the textures used for animation
 	method : public : SetAnimTextures(textures : Vector) ~ Nil {
+		@anim_textures := textures;
 
+		if(@anim_textures->Size() > 0) {
+			# Set the active texture to first frame
+			@curr_frame := 0.0;
+			SetTexture(@anim_textures->Get(0)->As(Texture));
+		};
 	}
 
 	# Set/get the animation FPS
