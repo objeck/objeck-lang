@@ -102,16 +102,16 @@ class Game {
 		index := @pending_actors->Find(actor);
 		if(index > -1) {
 			# Swap to end of vector and pop off (avoid erase copies)
-#			std::iter_swap(iter, mPendingActors.end() - 1);
-#			mPendingActors.pop_back();
+			@pending_actors->Swap(index, @pending_actors->Size() - 1);
+			@pending_actors->RemoveBack();
 		};
-		
+
 		# Is it in actors?
 		index := @actors->Find(actor);
 		if(index > -1) {
 			# Swap to end of vector and pop off (avoid erase copies)
-#			std::iter_swap(iter, mActors.end() - 1);
-#			mActors.pop_back();
+			@actors->Swap(index, @actors->Size() - 1);
+			@actors->RemoveBack();
 		};		
 	}
 
