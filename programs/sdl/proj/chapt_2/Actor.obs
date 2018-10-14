@@ -21,15 +21,10 @@ class Actor {
 	}
 
 	method : public : Free() ~ Nil {
-#~
-		mGame->RemoveActor(this);
-		// Need to delete components
-		// Because ~Component calls RemoveComponent, need a different style loop
-		while (!mComponents.empty())
-		{
-			delete mComponents.back();
-		}
-~#			
+		@game->RemoveActor(@self);
+		each(i : @components) {
+			@components->Get(i)->As(Component)->Free();
+		};
 	}
 
 	# Getters/setters
