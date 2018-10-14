@@ -20,7 +20,7 @@ class Game {
 	@is_running : Bool;
 
 	# Track if we're updating actors right now
-	@updating_actors : Bool;
+	@is_updating_actors : Bool;
 
 	# Game-specific
 	@ship : Ship;
@@ -78,19 +78,81 @@ class Game {
 	}
 
 	method : public : Shutdown() ~ Nil {
+		UnloadData();
+
+		@renderer->Destroy();
+		@window->Destroy();
+
+		Image->Quit();
+		Core->Quit();
 	}
 
 	method : public : AddActor(actor : Actor) ~ Nil {
+		# If we're updating actors, need to add to pending
+		if(@is_updating_actors) {
+			@pending_actors->AddBack(actor);
+		}
+		else {
+			@actors->AddBack(actor);
+		};
 	}
 
 	method : public : RemoveActor(actor : Actor) ~ Nil {
+#~
+		# Is it in pending actors?
+		auto iter = std::find(mPendingActors.begin(), mPendingActors.end(), actor);
+		if (iter != mPendingActors.end())
+		{
+			# Swap to end of vector and pop off (avoid erase copies)
+			std::iter_swap(iter, mPendingActors.end() - 1);
+			mPendingActors.pop_back();
+		}
+
+		# Is it in actors?
+		iter = std::find(mActors.begin(), mActors.end(), actor);
+		if (iter != mActors.end())
+		{
+			# Swap to end of vector and pop off (avoid erase copies)
+			std::iter_swap(iter, mActors.end() - 1);
+			mActors.pop_back();
+		}
+~#		
 	}
 
 	method : public : AddSprite(sprite : SpriteComponent) ~ Nil {
+		# Find the insertion point in the sorted vector
+		# (The first element with a higher draw order than me)
+		draw_order := sprite->GetDrawOrder();
+		
+		found := false;
+		i : Int;
+		for(i := 0; i < @sprites->Size(); i += 1;) {
+			sprite := @sprites->Get(i)->As(SpriteComponent);
+			if(draw_order < sprite->GetDrawOrder()) {
+				found := true;
+			};
+		};
+
+		# Inserts element before position of iterator
+		@sprites->Set(sprite, i);		
 	}
 
 	method : public : RemoveSprite(sprite : SpriteComponent) ~ Nil {
+		# (We can't swap because it ruins ordering)
+		index := @sprites->Find(sprite);
+		if(index > -1) {
+			@sprites->Remove(index);
+		};
 	}
+
+	method : ProcessInput() ~ Nil {	
+	}
+
+	method : UpdateGame() ~ Nil {	
+	}
+
+	method : GenerateOutput() ~ Nil {	
+	}	
 
 	method : public : GetTexture(file_name : String) ~ Texture {
 		# Is the texture already in the map?
@@ -158,11 +220,5 @@ class Game {
 		};
 
 		@textures->Empty();
-	}
-
-#~
-	void ProcessInput();
-	void UpdateGame();
-	void GenerateOutput();	
-~#		
+	}	
 }

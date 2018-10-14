@@ -1318,6 +1318,20 @@ bundle Collection {
 		Adds a vector of values to the end of the vector
 		@param values values to append 
 		~#
+		method : public : Find(value : Base) ~ Int {
+			for(i := 0; i < @size; i+= 1;) {
+				if(@values[i] = value) {
+					return i;
+				};
+			};
+
+			return -1;
+		}
+		
+		#~
+		Adds a vector of values to the end of the vector
+		@param values values to append 
+		~#
 		method : public : AddBack(values : Vector) ~ Nil {
 			max := values->Size() + @size;
 			if(max >= @values->Size()) {
