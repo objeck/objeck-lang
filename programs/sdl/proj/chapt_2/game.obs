@@ -98,25 +98,21 @@ class Game {
 	}
 
 	method : public : RemoveActor(actor : Actor) ~ Nil {
-#~
 		# Is it in pending actors?
-		auto iter = std::find(mPendingActors.begin(), mPendingActors.end(), actor);
-		if (iter != mPendingActors.end())
-		{
+		index := @pending_actors->Find(actor);
+		if(index > -1) {
 			# Swap to end of vector and pop off (avoid erase copies)
-			std::iter_swap(iter, mPendingActors.end() - 1);
-			mPendingActors.pop_back();
-		}
-
+#			std::iter_swap(iter, mPendingActors.end() - 1);
+#			mPendingActors.pop_back();
+		};
+		
 		# Is it in actors?
-		iter = std::find(mActors.begin(), mActors.end(), actor);
-		if (iter != mActors.end())
-		{
+		index := @actors->Find(actor);
+		if(index > -1) {
 			# Swap to end of vector and pop off (avoid erase copies)
-			std::iter_swap(iter, mActors.end() - 1);
-			mActors.pop_back();
-		}
-~#		
+#			std::iter_swap(iter, mActors.end() - 1);
+#			mActors.pop_back();
+		};		
 	}
 
 	method : public : AddSprite(sprite : SpriteComponent) ~ Nil {

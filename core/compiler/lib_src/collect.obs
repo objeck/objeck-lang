@@ -248,6 +248,24 @@ bundle Collection {
 		}
 
 		#~
+		Swap two values in the vector
+		@param a first value
+		@param b second value
+		@return true if values were swapped
+		~#
+		method : public : Swap(a : Int, b : Int) ~ Bool {
+			if(a < -1 | b < -1 | a > @size | b > @size) {
+				return false;
+			};
+			
+			temp := @values[a];
+			@values[a] := @values[b];
+			@values[b] := temp;
+			
+			return true;
+		}
+
+		#~
 		Adds a vector of values to the end of the vector
 		@param values values to append 
 		~#
@@ -598,6 +616,20 @@ bundle Collection {
 
 			return val;
 		}
+
+		method : public : ToString() ~ String {
+			buffer := "[";
+			
+			for(i := 0; i < @size; i += 1;) {
+				buffer->Append(@values[i]);
+				if(i + 1 < @size) {
+					buffer->Append(',');
+				};
+			};
+			buffer->Append(']');
+
+			return buffer;
+		}
 	}
 	
 	#~
@@ -632,6 +664,24 @@ bundle Collection {
 			@values := Float->New[values->Size() + values->Size() / 2];
 			@size := values->Size();
 			Runtime->Copy(@values, 0, values, 0, @size);
+		}
+
+		#~
+		Swap two values in the vector
+		@param a first value
+		@param b second value
+		@return true if values were swapped
+		~#
+		method : public : Swap(a : Int, b : Int) ~ Bool {
+			if(a < -1 | b < -1 | a > @size | b > @size) {
+				return false;
+			};
+			
+			temp := @values[a];
+			@values[a] := @values[b];
+			@values[b] := temp;
+			
+			return true;
 		}
 
 		method : native : Expand() ~ Nil {
@@ -984,6 +1034,20 @@ bundle Collection {
 
 			return val;
 		}
+	
+		method : public : ToString() ~ String {
+			buffer := "[";
+			
+			for(i := 0; i < @size; i += 1;) {
+				buffer->Append(@values[i]);
+				if(i + 1 < @size) {
+					buffer->Append(',');
+				};
+			};
+			buffer->Append(']');
+
+			return buffer;
+		}
 	}
 	
 	#~
@@ -1026,6 +1090,24 @@ bundle Collection {
 				Runtime->Copy(temp, 0, @values, 0, @size);
 				@values := temp;
 			};
+		}
+
+		#~
+		Swap two values in the vector
+		@param a first value
+		@param b second value
+		@return true if values were swapped
+		~#
+		method : public : Swap(a : Int, b : Int) ~ Bool {
+			if(a < -1 | b < -1 | a > @size | b > @size) {
+				return false;
+			};
+			
+			temp := @values[a];
+			@values[a] := @values[b];
+			@values[b] := temp;
+			
+			return true;
 		}
 
 		#~
