@@ -2,6 +2,25 @@ use Collection;
 use Game.SDL2;
 
 class Game {
+	# All the actors in the game
+	@actors : Vector;
+	# Any pending actors
+	@pending_actors : Vector;
+
+	# All the sprite components drawn
+	@sprites : Vector;
+
+	@window : Window;
+	@renderer : Renderer;
+	@ticks_count : Int;
+	@is_running : Bool;
+
+	# Track if we're updating actors right now
+	@updating_actors : Bool;
+
+	# Game-specific
+	@ship : Ship;
+
 	New() {
 
 	}
@@ -10,14 +29,37 @@ class Game {
 		"--- Solid wall of sound! ---"->PrintLine();
 	}
 
+	method : public : Initialize() ~ Bool {
+		return false;
+	}
+
+	method : public : RunLoop() ~ Nil {
+	}
+
+	method : public : Shutdown() ~ Nil {
+	}
+
+	method : public : AddActor(actor : Actor) ~ Nil {
+	}
+
 	method : public : RemoveActor(actor : Actor) ~ Nil {
+	}
+
+	method : public : AddSprite(sprite : SpriteComponent) ~ Nil {
 	}
 
 	method : public : RemoveSprite(sprite : SpriteComponent) ~ Nil {
 	}
 
-
 	method : public : GetTexture(file_name : String) ~ Texture {
 		return Nil;
 	}
+
+#~
+	void ProcessInput();
+	void UpdateGame();
+	void GenerateOutput();
+	void LoadData();
+	void UnloadData();
+~#		
 }
