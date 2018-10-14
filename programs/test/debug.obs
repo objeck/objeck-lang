@@ -1,7 +1,15 @@
+use Collection;
+
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		x := IntHolder->New(13);
-		x->TypeOf(IntHolder)->PrintLine();
-#		b := x->TypeOf(IntHolder);
+		v := IntVector->New();
+		v->AddBack(1);
+		v->AddBack(2);
+		v->AddBack(3);
+		v->AddBack(4);
+
+		v->Swap(0, 5)->PrintLine();
+
+		v->ToString()->PrintLine();
 	}
 }
