@@ -1,0 +1,46 @@
+use Collection;
+use Game.SDL2;
+use Game.Framework;
+
+class BGSpriteComponent from Component {
+	@bg_textures : Vector;
+	@screen_size : Vector2;
+	@scroll_speed : Float;
+
+	New(owner : Actor, draw_order : Int) {
+		Parent(owner, 10);
+
+		@bg_textures := Vector->New();
+		@screen_size := Vector2->New();
+	}
+
+	method : public : Update(delta_time : Float) ~ Nil {
+		@parent->Update(delta_time);
+
+		each(i : @bg_textures) {
+			bg := @bg_textures->Get(i)->As(BGTexture);
+			
+			# Update the x offset
+			bg->GetOffset()->AddX(@scroll_speed * delta_time);
+
+			# If this is completely off the screen, reset offset to
+			# the right of the last bg texture
+			if(bg->GetOffset()->GetX() < -1 * @screen_size->GetX()) {
+				bg->GetOffset()->SetX((@bg_textures->Size() - 1) * @screen_size->GetX() - 1);
+			};
+		};
+	}
+
+	method : public : Draw(renderer : Renderer) ~ Nil {
+	}
+
+	# Set the textures used for the background
+	method : public : SetBGTextures(textures : Vector) ~ Nil {
+	
+	}
+
+	# Get/set screen size and scroll speed
+	method : public : SetScreenSize(size : Vector2) ~ Nil { @screen_size := size; }
+	method : public : SetScrollSpeed(speed : Float) ~ Nil { @scroll_speed := speed; }
+	method : public : GetScrollSpeed() ~ Float { return @scroll_speed; }	
+}

@@ -1,0 +1,60 @@
+
+use Game.SDL2;
+
+class SpriteComponent from Component {
+	@texture : Texture;
+	@draw_order : Int;
+	@text_width : Int;
+	@text_height : Int;
+
+	New(owner : Actor) {
+		Parent(owner, 100);
+	}
+
+	New(owner : Actor, draw_order : Int) {
+		Parent(owner, draw_order);
+	}
+
+	method : public : Free() ~ Nil {
+		@parent->As(Component)->Free();
+		GetOwner()->GetGame()->RemoveSprite(@self);
+	}
+
+	method : public : Update(delta_time : Float) ~ Nil {
+	}
+
+	# (Lower draw order corresponds with further back)
+	method : public : Draw(renderer : Renderer) ~ Nil {
+		if(@texture <> Nil) {
+			w : Int := @text_width * GetOwner()->GetScale();
+			h : Int := @text_height * GetOwner()->GetScale();
+			x : Int := GetOwner()->GetPosition()->GetX() - w / 2;
+			y : Int := GetOwner()->GetPosition()->GetY() - h / 2;
+			dest_rect := Rect->New(x, y, w, h);
+
+			renderer->CopyEx(
+				@texture, 
+				Nil->As(Rect), 
+				dest_rect, 
+				-1.0 * GetOwner()->GetRotation()->ToDegrees(),
+				Nil->As(Point), 
+				RendererFlip->SDL_FLIP_NONE);
+		};
+	}
+
+	method : public : SetTexture(texture : Texture) ~ Nil {
+		@texture := texture;
+
+		w := IntHolder->New();
+		h := IntHolder->New();
+		
+		texture->Query(Nil, Nil, w, h);
+
+		@text_width := w->Get();
+		@text_height := h->Get();
+	}
+
+	method : public : GetDrawOrder() ~ Int { return @draw_order; }
+	method : public : GetTexHeight() ~ Int { return @text_height; }
+	method : public : GetTexWidth() ~ Int { return @text_width; }
+}
