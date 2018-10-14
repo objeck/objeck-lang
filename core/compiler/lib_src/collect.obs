@@ -253,7 +253,7 @@ bundle Collection {
 		@param b second value
 		@return true if values were swapped
 		~#
-		method : public : Swap(a : Int, b : Int) ~ Bool {
+		method : public : native : Swap(a : Int, b : Int) ~ Bool {
 			if(a < -1 | b < -1 | a > @size | b > @size) {
 				return false;
 			};
@@ -672,7 +672,7 @@ bundle Collection {
 		@param b second value
 		@return true if values were swapped
 		~#
-		method : public : Swap(a : Int, b : Int) ~ Bool {
+		method : public : native : Swap(a : Int, b : Int) ~ Bool {
 			if(a < -1 | b < -1 | a > @size | b > @size) {
 				return false;
 			};
@@ -1098,7 +1098,7 @@ bundle Collection {
 		@param b second value
 		@return true if values were swapped
 		~#
-		method : public : Swap(a : Int, b : Int) ~ Bool {
+		method : public : native : Swap(a : Int, b : Int) ~ Bool {
 			if(a < -1 | b < -1 | a > @size | b > @size) {
 				return false;
 			};
@@ -1456,7 +1456,7 @@ bundle Collection {
 		@param b second value
 		@return true if values were swapped
 		~#
-		method : public : Swap(a : Int, b : Int) ~ Bool {
+		method : public : native : Swap(a : Int, b : Int) ~ Bool {
 			if(a < -1 | b < -1 | a > @size | b > @size) {
 				return false;
 			};
