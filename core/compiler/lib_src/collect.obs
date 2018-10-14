@@ -1315,8 +1315,8 @@ bundle Collection {
 		}
 
 		#~
-		Adds a vector of values to the end of the vector
-		@param values values to append 
+		Removes an element from the vector
+		@param value value to remove
 		~#
 		method : public : Find(value : Base) ~ Int {
 			for(i := 0; i < @size; i+= 1;) {
@@ -1366,6 +1366,24 @@ bundle Collection {
 			};
 	
 			return Nil;
+		}
+
+		#~
+		Swap two values in the vector
+		@param a first value
+		@param b second value
+		@return true if values were swapped
+		~#
+		method : public : Swap(a : Int, b : Int) ~ Bool {
+			if(a < -1 | b < -1 | a > @size | b > @size) {
+				return false;
+			};
+			
+			temp := @values[a];
+			@values[a] := @values[b];
+			@values[b] := temp;
+			
+			return true;
 		}
 		
 		#~
