@@ -32,6 +32,23 @@ class BGSpriteComponent from Component {
 	}
 
 	method : public : Draw(renderer : Renderer) ~ Nil {
+		each(i : @bg_textures) {
+			bg := @bg_textures->Get(i)->As(BGTexture);
+
+			# Assume screen size dimensions
+			w : Int := @screen_size->GetX();
+			h : Int := @screen_size->GetY();
+			# Center the rectangle around the position of the owner
+			x : Int := GetOwner()->GetPosition()->GetX() - w / 2.0 + bg->GetOffset()->GetX();
+			y : Int := GetOwner()->GetPosition()->GetY() - h / 2.0 + bg->GetOffset()->GetY();
+			dest_rect := Rect->New(x, y, w, h);
+
+			# Draw this background
+			renderer->Copy(
+				bg->GetTexture(),
+				Nil,
+				dest_rect);
+		};
 	}
 
 	# Set the textures used for the background
