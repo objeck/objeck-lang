@@ -1,7 +1,10 @@
 use Collection;
 use Game.SDL2;
+use Game.Framework;
 
 class Game {
+	@textures : StringMap;
+
 	# All the actors in the game
 	@actors : Vector;
 	# Any pending actors
@@ -11,6 +14,7 @@ class Game {
 	@sprites : Vector;
 
 	@window : Window;
+	@title : String;
 	@renderer : Renderer;
 	@ticks_count : Int;
 	@is_running : Bool;
@@ -21,16 +25,53 @@ class Game {
 	# Game-specific
 	@ship : Ship;
 
-	New() {
-
+	New(title : String) {
+		@tite := title;
+		@textures := StringMap->New();
 	}
 
 	function : Main(args : String[]) ~ Nil {
-		"--- Solid wall of sound! ---"->PrintLine();
+		game := Game->New("Game Programming in C++ (Chapter 2)");
 	}
 
 	method : public : Initialize() ~ Bool {
-		return false;
+		if(<>Hints->Set("SDL_RENDER_SCALE_QUALITY", "1")) {
+			"Warning: Linear texture filtering not enabled!"->ErrorLine();
+			return false;
+		};
+
+		if(<>Hints->Set("SDL_HINT_VIDEO_HIGHDPI_DISABLED", "1")) {
+			"Warning: Linear texture filtering not enabled!"->ErrorLine();
+			return false;
+		};
+
+		@window := Window->New(@title, WindowFlags->SDL_WINDOWPOS_UNDEFINED, 
+			WindowFlags->SDL_WINDOWPOS_UNDEFINED, 1024, 768, 
+			WindowFlags->SDL_WINDOW_SHOWN);
+		if(@window->IsNull()) {
+			"Cannot create window!"->ErrorLine();
+			return false;
+		};
+
+		@renderer := Renderer->New(@window, -1, 
+			RendererFlags->SDL_RENDERER_ACCELERATED or RendererFlags->SDL_RENDERER_PRESENTVSYNC);
+		if(@renderer->IsNull()) {
+			"Cannot create renderer!"->ErrorLine();
+			return false;
+		};
+		@renderer->SetDrawColor(0xFF, 0xFF, 0xFF, 0xFF);
+
+		img_flags := ImageFlags->IMG_INIT_PNG;
+		if((Image->Init(img_flags) and img_flags) = 0) {
+			"SDL image could not initialize!"->ErrorLine();
+			return false;
+		};
+
+		LoadData();
+
+		@ticks_count := Timer->GetTicks();
+
+		return true;
 	}
 
 	method : public : RunLoop() ~ Nil {
@@ -55,11 +96,51 @@ class Game {
 		return Nil;
 	}
 
+	method : LoadData() ~ Nil {
+		# Create player's ship
+		@ship := Ship->New(@self);
+		@ship->SetPosition(Vector2->New(100.0, 384.0));
+		@ship->SetScale(1.5);
+
+		# Create actor for the background (this doesn't need a subclass)
+		temp := Actor->New(@self);
+		temp->SetPosition(Vector2->New(512.0, 384.0));
+		
+		# Create the "far back" background
+		bg := BGSpriteComponent->New(temp);
+		bg->SetScreenSize(Vector2->New(1024.0, 768.0));
+		bgtexs := Vector->New();
+		bgtexs->AddBack(GetTexture("Assets/Farback01.png"));
+		bgtexs->AddBack(GetTexture("Assets/Farback02.png"));
+		bg->SetBGTextures(bgtexs);
+		bg->SetScrollSpeed(-100.0);
+
+		# Create the closer background
+		bg := BGSpriteComponent->New(temp, 50);
+		bg->SetScreenSize(Vector2->New(1024.0, 768.0));
+		bgtexs := Vector->New();
+		bgtexs->AddBack(GetTexture("Assets/Stars.png"));
+		bgtexs->AddBack(GetTexture("Assets/Stars.png"));
+		bg->SetBGTextures(bgtexs);
+		bg->SetScrollSpeed(-200.0);
+	}
+
+	method : UnloadData() ~ Nil {
+		each(i : @actors) {
+			@actors->Get(i)->As(Actor)->Free();
+		};
+
+		textures := @textures->GetValues();
+		each(i : textures) {
+			textures->Get(i)->As(Actor)->Free();
+		};
+
+		@textures->Empty();
+	}
+
 #~
 	void ProcessInput();
 	void UpdateGame();
-	void GenerateOutput();
-	void LoadData();
-	void UnloadData();
+	void GenerateOutput();	
 ~#		
 }

@@ -7,8 +7,15 @@ class BGSpriteComponent from Component {
 	@screen_size : Vector2;
 	@scroll_speed : Float;
 
-	New(owner : Actor, draw_order : Int) {
+	New(owner : Actor) {
 		Parent(owner, 10);
+
+		@bg_textures := Vector->New();
+		@screen_size := Vector2->New();
+	}
+
+	New(owner : Actor, draw_order : Int) {
+		Parent(owner, draw_order);
 
 		@bg_textures := Vector->New();
 		@screen_size := Vector2->New();
