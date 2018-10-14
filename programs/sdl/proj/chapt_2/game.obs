@@ -93,7 +93,29 @@ class Game {
 	}
 
 	method : public : GetTexture(file_name : String) ~ Texture {
-		return Nil;
+		# Is the texture already in the map?
+		tex := @textures->Find(file_name);
+		if(tex <> Nil) {
+			return tex->As(Texture);
+		}
+		else {
+			surface := Image->Load(file_name);
+			if(surface->IsNull()) {
+				"Unable to load image '{$file_name}'!"->ErrorLine();
+				return Nil;
+			};
+			
+			texture := surface->CreateTexture(@renderer);
+			if(texture->IsNull()) {
+				"Unable to create texture!"->ErrorLine();
+				return Nil;
+			};
+			surface->Free();
+
+			@textures->Insert(file_name, tex);
+
+			return tex;
+		};
 	}
 
 	method : LoadData() ~ Nil {
