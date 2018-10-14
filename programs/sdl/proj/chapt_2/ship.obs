@@ -1,0 +1,8 @@
+class Ship from Actor {
+	@right_speed : Float;
+	@down_speed : Float;
+
+	New(game : Game) {
+		Parent(game);
+	}
+}
