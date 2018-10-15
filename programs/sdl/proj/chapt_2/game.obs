@@ -1,3 +1,14 @@
+#~
+Credit: https://github.com/gameprogcpp/code/tree/master/Chapter02
+# ----------------------------------------------------------------
+# From Game Programming in C++ by Sanjay Madhav
+# Copyright (C) 2017 Sanjay Madhav. All rights reserved.
+# 
+# Released under the BSD License
+# See LICENSE in root directory for full details.
+# ----------------------------------------------------------------
+~#
+
 use Collection;
 use Game.SDL2;
 use Game.Framework;
@@ -160,7 +171,43 @@ class Game {
 		@ship->ProcessKeyboard(state);
 	}
 
-	method : UpdateGame() ~ Nil {	
+	method : UpdateGame() ~ Nil {
+		# Compute delta time
+		# Wait until 16ms has elapsed since last frame
+		while(<>Timer->Passed(Timer->GetTicks(), @ticks_count + 16)) {};
+
+		delta_time : Float := (Timer->GetTicks() - @ticks_count) / 1000.0;
+		if(delta_time > 0.05) {
+			delta_time := 0.05;
+		};
+		ticks_count := Timer->GetTicks();
+
+		# Update all actors
+		@is_updating_actors := true;
+		each(i : @actors) {
+			@actors->Get(i)->As(Actor)->Update(delta_time);
+		};
+		@is_updating_actors := false;
+
+		# Move any pending actors to mActors
+		each(i : @pending_actors) {
+			@actors->AddBack(@pending_actors->Get(i));
+		};
+		@pending_actors->Empty();
+
+		# Add any dead actors to a temp vector
+		dead_actors := Vector->New();
+		each(i : actors) {
+			actor := actors->Get(i)->As(Actor);
+			if(actor->GetState() = Actor->State->EDead) {
+				dead_actors->AddBack(actor);
+			};
+		};
+		
+		# Delete dead actors (which removes them from mActors)
+		each(i : dead_actors) {
+			dead_actors->Get(i)->As(Actor)-Free();
+		};
 	}
 
 	method : GenerateOutput() ~ Nil {
