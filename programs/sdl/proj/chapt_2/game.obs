@@ -53,24 +53,37 @@ class Game {
 	}
 
 	method : public : Initialize() ~ Bool {
+		init_flags := HardwareFlags->SDL_INIT_VIDEO or
+			HardwareFlags->SDL_INIT_AUDIO or 
+			HardwareFlags->SDL_INIT_JOYSTICK;
+
+		if(Core->Init(init_flags) < 0) {
+			"SDL could not initialize!"->ErrorLine();
+			return false;
+		};
+
 		if(<>Hints->Set("SDL_RENDER_SCALE_QUALITY", "1")) {
 			"Warning: Linear texture filtering not enabled!"->ErrorLine();
 			return false;
 		};
 
+"-0-"->PrintLine();	
 		if(<>Hints->Set("SDL_HINT_VIDEO_HIGHDPI_DISABLED", "1")) {
 			"Warning: Linear texture filtering not enabled!"->ErrorLine();
 			return false;
 		};
-
+		
+"-1-"->PrintLine();	
 		@window := Window->New(@title, WindowFlags->SDL_WINDOWPOS_UNDEFINED, 
-			WindowFlags->SDL_WINDOWPOS_UNDEFINED, 1024, 768, 
+			WindowFlags->SDL_WINDOWPOS_UNDEFINED, 800, 600, 
 			WindowFlags->SDL_WINDOW_SHOWN);
 		if(@window->IsNull()) {
+"-2'-"->PrintLine();			
 			"Cannot create window!"->ErrorLine();
 			return false;
 		};
 
+"-3-"->PrintLine();			
 		@renderer := Renderer->New(@window, -1, 
 			RendererFlags->SDL_RENDERER_ACCELERATED or RendererFlags->SDL_RENDERER_PRESENTVSYNC);
 		if(@renderer->IsNull()) {
@@ -79,13 +92,19 @@ class Game {
 		};
 		@renderer->SetDrawColor(0xFF, 0xFF, 0xFF, 0xFF);
 
+"-2-"->PrintLine();			
+
 		img_flags := ImageFlags->IMG_INIT_PNG;
 		if((Image->Init(img_flags) and img_flags) = 0) {
 			"SDL image could not initialize!"->ErrorLine();
 			return false;
 		};
 
+"-3-"->PrintLine();			
+
 		LoadData();
+
+"-4-"->PrintLine();			
 
 		@ticks_count := Timer->GetTicks();
 
