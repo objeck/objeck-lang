@@ -3524,7 +3524,7 @@ bundle Game.SDL2 {
 			Proxy->GetDllProxy()->CallFunction("sdl_timer_delay", array_args);
 		}
 
-		function : Passed(a : Int, b : Int) ~ Int {
+		function : Passed(a : Int, b : Int) ~ Bool {
 			array_args := Base->New[3];
 			array_args[0] := IntHolder->New();
 			array_args[1] := IntHolder->New(a);
@@ -3533,7 +3533,7 @@ bundle Game.SDL2 {
 			Proxy->GetDllProxy()->CallFunction("sdl_ticks_passed", array_args);
 
 			value := array_args[0]->As(IntHolder);
-			return value->Get();
+			return value->Get() = 0 ? false : true;
 		}
 	}
 
