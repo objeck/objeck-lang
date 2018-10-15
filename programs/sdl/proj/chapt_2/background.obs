@@ -23,6 +23,7 @@ class BGSpriteComponent from SpriteComponent {
 
 		@bg_textures := Vector->New();
 		@screen_size := Vector2->New();
+		owner->AddComponent(@self);
 	}
 
 	New(owner : Actor, draw_order : Int) {
