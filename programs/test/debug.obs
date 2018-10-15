@@ -1,15 +1,11 @@
-use Collection;
+use Game.SDL2;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		v := IntVector->New();
-		v->AddBack(1);
-		v->AddBack(2);
-		v->AddBack(3);
-		v->AddBack(4);
+		timeout := Timer->GetTicks() + 4000;
+		while(<>Timer->Passed(Timer->GetTicks(), timeout)) {
+		};
 
-		v->Swap(0, 5)->PrintLine();
-
-		v->ToString()->PrintLine();
+		"All done"->PrintLine();
 	}
 }
