@@ -2177,7 +2177,16 @@ extern "C" {
     const Uint32 ms = (int)APITools_GetIntValue(context, 0);
     SDL_Delay(ms);
   }
-  
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_ticks_passed(VMContext& context) {
+    const Uint32 a = (int)APITools_GetIntValue(context, 1);
+    const Uint32 b = (int)APITools_GetIntValue(context, 2);
+    APITools_SetIntValue(context, 0, SDL_TICKS_PASSED(a, b));
+  }
+
   //
   // Font
   //

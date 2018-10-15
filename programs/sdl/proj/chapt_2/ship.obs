@@ -57,7 +57,7 @@ class Ship from Actor {
 		SetPosition(pos);
 	}
 
-	method : public : ProcessKeyboard(state : Int[]) ~ Nil {
+	method : public : ProcessKeyboard(state : Byte[]) ~ Nil {
 		@right_speed := 0.0;
 		@down_speed := 0.0;
 

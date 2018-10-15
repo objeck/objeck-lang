@@ -3523,6 +3523,18 @@ bundle Game.SDL2 {
 			
 			Proxy->GetDllProxy()->CallFunction("sdl_timer_delay", array_args);
 		}
+
+		function : Passed(a : Int, b : Int) ~ Int {
+			array_args := Base->New[3];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(a);
+			array_args[2] := IntHolder->New(b);
+			
+			Proxy->GetDllProxy()->CallFunction("sdl_ticks_passed", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
 	}
 
 	class Font {
