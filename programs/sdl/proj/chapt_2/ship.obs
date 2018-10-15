@@ -33,8 +33,8 @@ class Ship from Actor {
 	}
 
 	method : public : UpdateActor(delta_time : Float) ~ Nil {
-		@parent->UpdateActor(delta_time);
-				
+#		@parent->UpdateActor(delta_time);
+
 		# Update position based on speeds and delta time
 		pos := GetPosition();
 		pos->AddX(@right_speed * delta_time);
