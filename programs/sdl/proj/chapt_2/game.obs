@@ -17,6 +17,7 @@ class Game {
 	@title : String;
 	@renderer : Renderer;
 	@ticks_count : Int;
+	@event : Event;
 	@is_running : Bool;
 
 	# Track if we're updating actors right now
@@ -28,6 +29,7 @@ class Game {
 	New(title : String) {
 		@tite := title;
 		@textures := StringMap->New();
+		@event := Event->New();
 	}
 
 	function : Main(args : String[]) ~ Nil {
@@ -141,13 +143,36 @@ class Game {
 		};
 	}
 
-	method : ProcessInput() ~ Nil {	
+	method : ProcessInput() ~ Nil {
+		while(@event->Poll() <> 0 ) {
+			# User requests quit
+			if(@event->GetType() = EventType->SDL_QUIT) {
+				@is_running := false;
+			};
+		};
+
+		state := Keyboard->GetState();
+		if(state[Scancode->SDL_SCANCODE_ESCAPE] <> 0) {
+			@is_running := false;
+		};
+
+		# Process ship input
+		@ship->ProcessKeyboard(state);
 	}
 
 	method : UpdateGame() ~ Nil {	
 	}
 
-	method : GenerateOutput() ~ Nil {	
+	method : GenerateOutput() ~ Nil {
+		@renderer->SetDrawColor(0, 0, 0, 255);
+		@renderer->Clear();
+
+		each(i : @sprites) {
+			sprite := @sprites->Get(i)->As(SpriteComponent);
+			sprite->Draw(@renderer);
+		};
+
+		@renderer->Present();
 	}	
 
 	method : public : GetTexture(file_name : String) ~ Texture {
