@@ -214,7 +214,13 @@ i->PrintLine()
 		@is_updating_actors := true;
 		each(i : @actors) {
 			# ship and background
-			@actors->Get(i)->As(Ship)->UpdateActor(delta_time);
+			actor := @actors->Get(i);
+			if(actor->TypeOf(Ship)) {
+				actor->As(Ship)->UpdateActor(delta_time);
+			}
+			else if(actor->TypeOf(Actor)) {
+				actor->As(Actor)->Update(delta_time);
+			};
 		};
 		@is_updating_actors := false;
 
@@ -306,6 +312,7 @@ i->PrintLine()
 		bg->SetScrollSpeed(-200.0);
 
 		AddActor(@ship);
+		AddActor(temp);
 	}
 
 	method : UnloadData() ~ Nil {
