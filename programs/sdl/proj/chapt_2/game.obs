@@ -45,6 +45,11 @@ class Game {
 
 	function : Main(args : String[]) ~ Nil {
 		game := Game->New("Game Programming in C++ (Chapter 2)");
+		success := game->Initialize();
+		if(success) {
+			game->RunLoop();
+		};
+		game->Shutdown();
 	}
 
 	method : public : Initialize() ~ Bool {
