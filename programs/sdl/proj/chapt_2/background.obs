@@ -13,7 +13,7 @@ use Collection;
 use Game.SDL2;
 use Game.Framework;
 
-class BGSpriteComponent from Component {
+class BGSpriteComponent from SpriteComponent {
 	@bg_textures : Vector;
 	@screen_size : Vector2;
 	@scroll_speed : Float;

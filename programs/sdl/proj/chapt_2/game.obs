@@ -38,8 +38,13 @@ class Game {
 	@ship : Ship;
 
 	New(title : String) {
-		@tite := title;
+		@title := title;
 		@textures := StringMap->New();
+
+		@actors := Vector->New();
+		@pending_actors := Vector->New();
+		@sprites := Vector->New();
+
 		@event := Event->New();
 	}
 
@@ -67,23 +72,19 @@ class Game {
 			return false;
 		};
 
-"-0-"->PrintLine();	
 		if(<>Hints->Set("SDL_HINT_VIDEO_HIGHDPI_DISABLED", "1")) {
 			"Warning: Linear texture filtering not enabled!"->ErrorLine();
 			return false;
 		};
 		
-"-1-"->PrintLine();	
 		@window := Window->New(@title, WindowFlags->SDL_WINDOWPOS_UNDEFINED, 
 			WindowFlags->SDL_WINDOWPOS_UNDEFINED, 800, 600, 
 			WindowFlags->SDL_WINDOW_SHOWN);
 		if(@window->IsNull()) {
-"-2'-"->PrintLine();			
 			"Cannot create window!"->ErrorLine();
 			return false;
 		};
 
-"-3-"->PrintLine();			
 		@renderer := Renderer->New(@window, -1, 
 			RendererFlags->SDL_RENDERER_ACCELERATED or RendererFlags->SDL_RENDERER_PRESENTVSYNC);
 		if(@renderer->IsNull()) {
@@ -92,26 +93,20 @@ class Game {
 		};
 		@renderer->SetDrawColor(0xFF, 0xFF, 0xFF, 0xFF);
 
-"-2-"->PrintLine();			
-
 		img_flags := ImageFlags->IMG_INIT_PNG;
 		if((Image->Init(img_flags) and img_flags) = 0) {
 			"SDL image could not initialize!"->ErrorLine();
 			return false;
 		};
 
-"-3-"->PrintLine();			
-
 		LoadData();
-
-"-4-"->PrintLine();			
-
 		@ticks_count := Timer->GetTicks();
 
 		return true;
 	}
 
 	method : public : RunLoop() ~ Nil {
+		@is_running := true;
 		while(@is_running) {
 			ProcessInput();
 			UpdateGame();
@@ -161,7 +156,8 @@ class Game {
 		# Find the insertion point in the sorted vector
 		# (The first element with a higher draw order than me)
 		draw_order := sprite->GetDrawOrder();
-		
+
+#~
 		found := false;
 		i : Int;
 		for(i := 0; i < @sprites->Size(); i += 1;) {
@@ -171,8 +167,11 @@ class Game {
 			};
 		};
 
+i->PrintLine()
 		# Inserts element before position of iterator
 		@sprites->Set(sprite, i);		
+~#
+		@sprites->AddBack(sprite);		
 	}
 
 	method : public : RemoveSprite(sprite : SpriteComponent) ~ Nil {
@@ -253,9 +252,9 @@ class Game {
 
 	method : public : GetTexture(file_name : String) ~ Texture {
 		# Is the texture already in the map?
-		tex := @textures->Find(file_name);
-		if(tex <> Nil) {
-			return tex->As(Texture);
+		texture := @textures->Find(file_name)->As(Texture);
+		if(texture <> Nil) {
+			return texture;
 		}
 		else {
 			surface := Image->Load(file_name);
@@ -271,9 +270,9 @@ class Game {
 			};
 			surface->Free();
 
-			@textures->Insert(file_name, tex);
+			@textures->Insert(file_name, texture);
 
-			return tex;
+			return texture;
 		};
 	}
 
@@ -313,7 +312,7 @@ class Game {
 
 		textures := @textures->GetValues();
 		each(i : textures) {
-			textures->Get(i)->As(Actor)->Free();
+			textures->Get(i)->As(Texture)->Destroy();
 		};
 
 		@textures->Empty();

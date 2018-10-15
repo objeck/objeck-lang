@@ -36,6 +36,7 @@ class SpriteComponent from Component {
 	# (Lower draw order corresponds with further back)
 	method : public : Draw(renderer : Renderer) ~ Nil {
 		if(@texture <> Nil) {
+"WTF"->PrintLine();			
 			w : Int := @text_width * GetOwner()->GetScale();
 			h : Int := @text_height * GetOwner()->GetScale();
 			x : Int := GetOwner()->GetPosition()->GetX() - w / 2.0;
@@ -61,7 +62,7 @@ class SpriteComponent from Component {
 		texture->Query(Nil, Nil, w, h);
 
 		@text_width := w->Get();
-		@text_height := h->Get();
+		@text_height := h->Get();		
 	}
 
 	method : public : GetDrawOrder() ~ Int { return @draw_order; }
