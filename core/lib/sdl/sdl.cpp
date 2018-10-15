@@ -2078,12 +2078,21 @@ extern "C" {
 #endif
   void sdl_texture_query(VMContext& context) {
     SDL_Texture* texture = (SDL_Texture*)APITools_GetIntValue(context, 1);
-    
-    Uint32 format; int access, w, h;
-    APITools_SetIntValue(context, 0, SDL_QueryTexture(texture, &format, &access, &w, &h));
 
-    APITools_SetIntValue(context, 2, format);
-    APITools_SetIntValue(context, 3, access);
+    size_t* format_obj = APITools_GetObjectValue(context, 2);
+    size_t* access_obj = APITools_GetObjectValue(context, 3);
+
+    Uint32 format; int access, w, h;
+    APITools_SetIntValue(context, 0, SDL_QueryTexture(texture, format_obj ? &format : NULL, access_obj ? &access : NULL, &w, &h));
+
+    if(format_obj) {
+      APITools_SetIntValue(context, 2, format);
+    }
+
+    if(access_obj) {
+      APITools_SetIntValue(context, 3, access);
+    }
+
     APITools_SetIntValue(context, 4, w);
     APITools_SetIntValue(context, 5, h);
   }

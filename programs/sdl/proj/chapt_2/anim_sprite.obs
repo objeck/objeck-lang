@@ -56,7 +56,7 @@ class AnimSpriteComponent from SpriteComponent {
 		if(@anim_textures->Size() > 0) {
 			# Set the active texture to first frame
 			@curr_frame := 0.0;
-			SetTexture(@anim_textures->Get(0)->As(Texture));
+			SetTexture(tex);
 		};
 	}
 

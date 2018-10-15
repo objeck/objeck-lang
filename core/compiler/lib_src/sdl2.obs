@@ -3397,7 +3397,7 @@ bundle Game.SDL2 {
 				array_args[5] := h;
 
 				Proxy->GetDllProxy()->CallFunction("sdl_texture_query", array_args);
-
+			
 				value := array_args[0]->As(IntHolder);
 				return value->Get();
 			};
