@@ -213,6 +213,7 @@ i->PrintLine()
 		# Update all actors
 		@is_updating_actors := true;
 		each(i : @actors) {
+			# ship and background
 			@actors->Get(i)->As(Actor)->Update(delta_time);
 		};
 		@is_updating_actors := false;
