@@ -303,6 +303,8 @@ i->PrintLine()
 		bgtexs->AddBack(GetTexture("Assets/Stars.png"));
 		bg->SetBGTextures(bgtexs);
 		bg->SetScrollSpeed(-200.0);
+
+		AddActor(temp);
 	}
 
 	method : UnloadData() ~ Nil {

@@ -29,11 +29,12 @@ class Ship from Actor {
 		anims->AddBack(game->GetTexture("Assets/Ship04.png"));
 
 		asc->SetAnimTextures(anims);
+		game->AddSprite(asc);
 	}
 
 	method : public : UpdateActor(delta_time : Float) ~ Nil {
 		@parent->UpdateActor(delta_time);
-		
+				
 		# Update position based on speeds and delta time
 		pos := GetPosition();
 		pos->AddX(@right_speed * delta_time);
@@ -63,17 +64,17 @@ class Ship from Actor {
 
 		# right/left
 		if(state[Scancode->SDL_SCANCODE_D] <> 0) {
-			mRightSpeed += 250.0;
+			@right_speed += 250.0;
 		}
 		else if(state[Scancode->SDL_SCANCODE_A] <> 0) {
-			mRightSpeed -= 250.0;
+			@right_speed -= 250.0;
 		}
 		# up/down
 		else if(state[Scancode->SDL_SCANCODE_S] <> 0) {
-			mDownSpeed += 300.0;
+			@down_speed += 300.0;
 		}
 		else if(state[Scancode->SDL_SCANCODE_W] <> 0) {
-			mDownSpeed -= 300.0;
+			@down_speed -= 300.0;
 		};
 	}
 
