@@ -53,9 +53,11 @@ class AnimSpriteComponent from SpriteComponent {
 	method : public : SetAnimTextures(textures : Vector) ~ Nil {
 		@anim_textures := textures;
 
+
 		if(@anim_textures->Size() > 0) {
 			# Set the active texture to first frame
 			@curr_frame := 0.0;
+			tex := @anim_textures->Get(0)->As(Texture);
 			SetTexture(tex);
 		};
 	}

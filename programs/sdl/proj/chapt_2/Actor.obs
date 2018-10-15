@@ -50,7 +50,7 @@ class Actor {
 	method : public : GetGame() ~ Game { return @game; }
 
 	method : public : Update(delta_time : Float) ~ Nil {
-		if(@state = State->EActive) {
+		if(@state = State->EActive) {			
 			UpdateComponents(delta_time);
 			UpdateActor(delta_time);
 		};
@@ -63,6 +63,7 @@ class Actor {
 	}
 
 	method : UpdateActor(delta_time : Float) ~ Nil {
+#		"bits on floor"->PrintLine();
 	}
 
 	method : public : AddComponent(component : Component) ~ Nil {
