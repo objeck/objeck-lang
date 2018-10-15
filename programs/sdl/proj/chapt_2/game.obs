@@ -88,6 +88,11 @@ class Game {
 	}
 
 	method : public : RunLoop() ~ Nil {
+		while(@is_running) {
+			ProcessInput();
+			UpdateGame();
+			GenerateOutput();
+		};
 	}
 
 	method : public : Shutdown() ~ Nil {
@@ -197,16 +202,16 @@ class Game {
 
 		# Add any dead actors to a temp vector
 		dead_actors := Vector->New();
-		each(i : actors) {
-			actor := actors->Get(i)->As(Actor);
+		each(i : @actors) {
+			actor := @actors->Get(i)->As(Actor);
 			if(actor->GetState() = Actor->State->EDead) {
 				dead_actors->AddBack(actor);
 			};
 		};
-		
+
 		# Delete dead actors (which removes them from mActors)
 		each(i : dead_actors) {
-			dead_actors->Get(i)->As(Actor)-Free();
+			dead_actors->Get(i)->As(Actor)->Free();
 		};
 	}
 
