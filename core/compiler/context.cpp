@@ -1585,7 +1585,6 @@ bool ContextAnalyzer::Analyze()
     else { 
       wstring encoding;
       // local call
-      wstring variable_name = method_call->GetVariableName();
       Class* klass = AnalyzeProgramMethodCall(method_call, encoding, depth);
       if(klass) {
         if(method_call->IsFunctionDefinition()) {
@@ -1608,6 +1607,7 @@ bool ContextAnalyzer::Analyze()
         return;
       }
 
+      const wstring variable_name = method_call->GetVariableName();
       SymbolEntry* entry = GetEntry(method_call, variable_name, depth);
       if(entry) {
         if(method_call->GetVariable()) {
@@ -1910,7 +1910,12 @@ bool ContextAnalyzer::Analyze()
 					}
           encoding += L",";
           
-        } else {
+        }
+        else if(method_call->GetVariable() && method_call->GetVariable()->GetCastType() && 
+                method_call->GetVariable()->GetCastType()->GetType() == CLASS_TYPE) {
+          klass = SearchProgramClasses(method_call->GetVariable()->GetCastType()->GetClassName());
+        }
+        else {
           klass = SearchProgramClasses(entry->GetType()->GetClassName());
         }
       }
@@ -1940,7 +1945,7 @@ bool ContextAnalyzer::Analyze()
   LibraryClass* ContextAnalyzer::AnalyzeLibraryMethodCall(MethodCall* method_call, wstring &encoding, const int depth)
   {
     LibraryClass* klass = NULL;
-    wstring variable_name = method_call->GetVariableName();
+    const wstring variable_name = method_call->GetVariableName();
 
     // external method
     SymbolEntry* entry = GetEntry(method_call, variable_name, depth);
@@ -4615,7 +4620,7 @@ bool ContextAnalyzer::Analyze()
         else {
           encoded_name += L"o.";
           // search program
-          wstring klass_name = variable->GetName();
+          const wstring klass_name = variable->GetName();
           Class* klass = program->GetClass(klass_name);
           if(!klass) {
             vector<wstring> uses = program->GetUses(current_class->GetFileName());
