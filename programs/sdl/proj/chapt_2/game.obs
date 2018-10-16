@@ -214,7 +214,7 @@ i->PrintLine()
 		@is_updating_actors := true;
 		each(i : @actors) {
 			# ship and background
-			actor := @actors->Get(i);
+			actor := @actors->Get(i)->As(Actor);
 			if(actor->TypeOf(Ship)) {
 				actor->As(Ship)->UpdateActor(delta_time);
 			}
