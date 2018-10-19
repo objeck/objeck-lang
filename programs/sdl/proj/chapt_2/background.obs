@@ -51,8 +51,8 @@ class BGSpriteComponent from SpriteComponent {
 	}
 
 	method : public : Draw(renderer : Renderer) ~ Nil {
-"--- Drawing Background ---"->PrintLine();		
 		each(i : @bg_textures) {
+"--- Drawing Background ---"->PrintLine();		
 			bg := @bg_textures->Get(i)->As(BGTexture);
 
 			# Assume screen size dimensions
