@@ -34,14 +34,17 @@ class SpriteComponent from Component {
 	}
 
 	# (Lower draw order corresponds with further back)
-	method : public : Draw(renderer : Renderer) ~ Nil {
+	method : public : Draw(renderer : Renderer) ~ Nil {		
 		if(@texture <> Nil) {
+"--- Drawing Background ---"->PrintLine();		
+
+
 			w : Int := @text_width * GetOwner()->GetScale();
 			h : Int := @text_height * GetOwner()->GetScale();
 			x : Int := GetOwner()->GetPosition()->GetX() - w / 2.0;
 			y : Int := GetOwner()->GetPosition()->GetY() - h / 2.0;
 			dest_rect := Rect->New(x, y, w, h);
-
+			
 			renderer->CopyEx(
 				@texture, 
 				Nil, 
