@@ -2131,6 +2131,7 @@ bool ContextAnalyzer::Analyze()
           Type* method_type = NULL;
           if(method_parms[j]->GetEntry() && method_parms[j]->GetEntry()->GetType()) {
             method_type = method_parms[j]->GetEntry()->GetType();
+            ResolveClassEnumType(method_type);
           }
           // add poarameter match
           match->AddParameterMatch(MatchCallingParameter(expr_params[j], method_type, klass, NULL, depth));
@@ -2247,8 +2248,10 @@ bool ContextAnalyzer::Analyze()
           if(expression->GetExpressionType() == METHOD_CALL_EXPR && expression->GetEvalType() && expression->GetEvalType()->GetType() == NIL_TYPE) {
             ProcessError(static_cast<Expression*>(method_call), L"Invalid operation with 'Nil' value");
           }
-          AnalyzeRightCast(mthd_params[i]->GetEntry()->GetType(), expression->GetEvalType(), 
-                           expression, IsScalar(expression), depth + 1);	
+
+          Type* left = mthd_params[i]->GetEntry()->GetType();
+          ResolveClassEnumType(left);
+          AnalyzeRightCast(left, expression->GetEvalType(), expression, IsScalar(expression), depth + 1);	
         }
       }
 
