@@ -252,12 +252,7 @@ i->PrintLine()
 		each(i : @actors) {
 			@actors->Get(i)->As(Actor)->Draw(@renderer);
 		};
-
-		each(i : @sprites) {
-			sprite := @sprites->Get(i)->As(SpriteComponent);
-			sprite->Draw(@renderer);
-		};
-
+		
 		@renderer->Present();
 	}	
 
