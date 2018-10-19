@@ -249,6 +249,10 @@ i->PrintLine()
 		@renderer->SetDrawColor(0, 0, 0, 255);
 		@renderer->Clear();
 
+		each(i : @actors) {
+			@actors->Get(i)->As(Actor)->Draw(@renderer);
+		};
+
 		each(i : @sprites) {
 			sprite := @sprites->Get(i)->As(SpriteComponent);
 			sprite->Draw(@renderer);

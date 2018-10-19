@@ -51,8 +51,19 @@ class Actor {
 
 	method : public : Update(delta_time : Float) ~ Nil {
 		if(@state = State->EActive) {			
-			UpdateComponents(delta_time);
-			UpdateActor(delta_time);
+#			UpdateComponents(delta_time);
+#			UpdateActor(delta_time);
+		};
+	}
+
+	method : public : Draw(renderer : Renderer) ~ Nil {
+		each(i : @components) {
+			component := @components->Get(i);
+			if(component->TypeOf(SpriteComponent)) {
+"--- DRAW ---"->PrintLine();				
+				foo := component->As(SpriteComponent);
+				foo->Draw(renderer);
+			};
 		};
 	}
 
@@ -69,6 +80,8 @@ class Actor {
 	method : public : AddComponent(component : Component) ~ Nil {
 		order := component->GetUpdateOrder();
 
+"--- Added ---"->PrintLine();
+#~
 		found := false;	i : Int;
 		for(i := 0; <>found & i < @components->Size(); i += 1;) {
 			compare := @components->Get(i)->As(Component);
@@ -78,6 +91,8 @@ class Actor {
 		};
 
 		@components->Set(component, i);
+~#
+		@components->AddBack(component);		
 	}
 
 	method : public : RemoveComponent(component : Component) ~ Nil {
