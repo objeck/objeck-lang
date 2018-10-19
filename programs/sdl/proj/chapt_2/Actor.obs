@@ -60,7 +60,7 @@ class Actor {
 		each(i : @components) {
 			component := @components->Get(i)->As(Component);
 			if(component->TypeOf(BGSpriteComponent)) {
-				component->As(BGSpriteComponent)->Draw(renderer);
+				component->As(SpriteComponent)->Draw(renderer);
 			};
 		};
 	}
