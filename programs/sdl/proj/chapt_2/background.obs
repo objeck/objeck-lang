@@ -73,7 +73,7 @@ class BGSpriteComponent from SpriteComponent {
 
 	# Set the textures used for the background
 	method : public : SetBGTextures(textures : Vector) ~ Nil {
-	
+		@bg_textures := textures;
 	}
 
 	# Get/set screen size and scroll speed
