@@ -2151,8 +2151,10 @@ bool ContextAnalyzer::Analyze()
           AnalyzeExpressionMethodCall(expression, depth + 1);
           expression = expression->GetMethodCall();
         }
-        AnalyzeRightCast(method_parms[j]->GetEntry()->GetType(), expression, 
-                         IsScalar(expression), depth + 1);
+
+        Type* left = method_parms[j]->GetEntry()->GetType();
+        ResolveClassEnumType(left);
+        AnalyzeRightCast(left, expression, IsScalar(expression), depth + 1);
       }
     }
     else {
