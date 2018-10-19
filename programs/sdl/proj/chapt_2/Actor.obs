@@ -58,11 +58,9 @@ class Actor {
 
 	method : public : Draw(renderer : Renderer) ~ Nil {
 		each(i : @components) {
-			component := @components->Get(i);
-			if(component->TypeOf(SpriteComponent)) {
-"--- DRAW ---"->PrintLine();				
-				foo := component->As(SpriteComponent);
-				foo->Draw(renderer);
+			component := @components->Get(i)->As(Component);
+			if(component->TypeOf(BGSpriteComponent)) {
+				component->As(BGSpriteComponent)->Draw(renderer);
 			};
 		};
 	}
