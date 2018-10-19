@@ -51,8 +51,8 @@ class Actor {
 
 	method : public : Update(delta_time : Float) ~ Nil {
 		if(@state = State->EActive) {			
-#			UpdateComponents(delta_time);
-#			UpdateActor(delta_time);
+			UpdateComponents(delta_time);
+			UpdateActor(delta_time);
 		};
 	}
 
