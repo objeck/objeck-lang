@@ -3475,13 +3475,13 @@ bundle Collection {
 		Get a collection of keys
 		@return vector of keys
 		~#
-		method : public : GetKeys() ~  Collection.Vector {
+		method : public : GetKeys() ~  Collection.CompareVector {
 			vector := Vector->New();
 			GetKeys(@root, vector);
 			return vector;
 		}
 		
-		method : native : GetKeys(node :  Collection.TreeNode, vector :  Collection.Vector) ~ Nil {
+		method : native : GetKeys(node :  Collection.TreeNode, vector :  Collection.CompareVector) ~ Nil {
 			if(node <> Nil) {
 				# process left 
 				GetKeys(node->GetLeft(), vector);
