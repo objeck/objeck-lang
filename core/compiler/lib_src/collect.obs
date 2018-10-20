@@ -2957,9 +2957,10 @@ bundle Collection {
 		#~
 		Removes a value from the map
 		@param key key for value to remove
+		@return true if removed, false otherwise
 		~#
-		method : public : Remove(key : Int) ~ Nil {
-			@map->Remove(IntHolder->New(key));
+		method : public : Remove(key : Int) ~ Bool {
+			return @map->Remove(IntHolder->New(key));
 		}
     
 		#~
@@ -3081,9 +3082,10 @@ bundle Collection {
 		#~
 		Removes a value from the map
 		@param key key for value to remove
+		@return true if removed, false otherwise		
 		~#
-		method : public : Remove(key : Float) ~ Nil {
-			@map->Remove(FloatHolder->New(key));
+		method : public : Remove(key : Float) ~ Bool {
+			return @map->Remove(FloatHolder->New(key));
 		}
     
 	   	#~
@@ -3275,9 +3277,10 @@ bundle Collection {
 		#~
 		Removes a value from the map
 		@param key key for value to remove
+		@return true if removed, false otherwise		
 		~#
-		method : public : Remove(key : String) ~ Nil {
-			@map->Remove(key);
+		method : public : Remove(key : String) ~ Bool {
+			return @map->Remove(key);
 		}
     
     	#~
@@ -3557,12 +3560,15 @@ bundle Collection {
 		Removes a value from the map
 		@param key key for value to remove
 		~#
-		method : public : Remove(key : Compare) ~ Nil {
+		method : public : Remove(key : Compare) ~ Bool {
 			@found := true;
 			@root := Remove(key, @root);
 			if(@found) {
 				@size := @size - 1;
+				return true;
 			};
+
+			return false;
 		}
 		
 		method : native : Remove(key : Compare, node :  Collection.TreeNode) ~  Collection.TreeNode {
@@ -3695,9 +3701,10 @@ bundle Collection {
 		#~
 		Removes a key from the set
 		@param key key for value to remove
+		@return true if removed, false otherwise		
 		~#
-		method : public : Remove(key : Int) ~ Nil {
-			@map->Remove(IntHolder->New(key));
+		method : public : Remove(key : Int) ~ Bool {
+			return @map->Remove(IntHolder->New(key));
 		}
     
     	#~
@@ -3792,9 +3799,10 @@ bundle Collection {
 		#~
 		Removes a key from the set
 		@param key key for value to remove
+		@return true if removed, false otherwise		
 		~#
-		method : public : Remove(key : Float) ~ Nil {
-			@map->Remove(FloatHolder->New(key));
+		method : public : Remove(key : Float) ~ Bool {
+			return @map->Remove(FloatHolder->New(key));
 		}
     
     	#~
@@ -3889,9 +3897,10 @@ bundle Collection {
 		#~
 		Removes a key from the set
 		@param key key for value to remove
+		@return true if removed, false otherwise		
 		~#
-		method : public : Remove(key : String) ~ Nil {
-			@map->Remove(key);
+		method : public : Remove(key : String) ~ Bool {
+			return @map->Remove(key);
 		}
     
     	#~
@@ -3978,9 +3987,10 @@ bundle Collection {
 		#~
 		Removes a key from the set
 		@param key key for value to remove
+		@return true if removed, false otherwise		
 		~#
-		method : public : Remove(key : Compare) ~ Nil {
-			@map->Remove(key);
+		method : public : Remove(key : Compare) ~ Bool {
+			return @map->Remove(key);
 		}
     
     	#~
@@ -4049,9 +4059,10 @@ bundle Collection {
 		#~
 		Removes a value from the hash
 		@param key key for value to remove
+		@return true if removed, false otherwise		
 		~#
-		method : public : Remove(key : String) ~ Nil {
-			@hash->Remove(key);
+		method : public : Remove(key : String) ~ Bool {
+			return @hash->Remove(key);
 		}
     
     	#~
