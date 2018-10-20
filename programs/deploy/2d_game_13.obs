@@ -598,7 +598,7 @@ class Player {
 		player_path += "/media/player.png";
 		@rect := framework->AddAnimatedImageSprite(player_path, clips);
 		
-		@loc := Vector2->New(GameConsts->PLAYER_BOX_MIN->As(Float), GameConsts->SCREEN_HEIGHT / 2);
+		@loc := Vector2->New(GameConsts->PLAYER_BOX_MIN->As(Float), GameConsts->SCREEN_HEIGHT / 2.0);
 		@vel := Vector2->New();
 		@acc := Vector2->New();
 	}
@@ -905,199 +905,6 @@ class MovingPlatform from StaticPlatform {
 	}
 }
 
-class Gem {
-	@rect : AnimatedImageSprite;
-	@hide : Bool;
-
-	New(x : Int, y : Int, rect : AnimatedImageSprite) {
-		@rect := rect;
-		@rect->Set(x, y);
-	}
-
-	method : public : Hide() ~ Nil {
-		@hide := true;
-	}
-
-	method : public : AddX(x : Int)  ~ Nil {
-		@rect->AddX(x);
-	}
-
-	method : public : GetLeft()  ~ Int {
-		return @rect->GetLeft();
-	}
-
-	method : public : GetRight()  ~ Int {
-		return @rect->GetRight();
-	}
-
-	method : public : GetTop()  ~ Int {
-		return @rect->GetTop();
-	}
-
-	method : public : GetBottom()  ~ Int {
-		return @rect->GetBottom();
-	}
-
-	method : public : Draw(frame_count : Int)  ~ Nil {
-		if(<>@hide) {
-			index := frame_count / 6 % @rect->GetClipCount();
-			@rect->Render(index);
-		};
-	}
-
-	method : public : Collides(rect : ImageSprite) ~ Bool {
-		if(@hide) {
-			return false;
-		}
-		else {
-			return @rect->GetPosition()->Overlaps(rect->GetPosition());
-		};
-	}
-}
-
-class Spider {
-	@rect : ImageSprite;
-	@hide : Bool;
-	@base_y : Int;
-	@x_dir : Int;
-	@x_offset : Int;
-	@x_flip : Bool;
-	@y_dir : Int;
-	@y_offset : Int;
-	@game_over : Bool;
-	@current_level : Int;
-
-	New(x : Int, y : Int, rect : ImageSprite, hardness : Int) {
-		@rect := rect;
-		@base_y := y;
-		@current_level := Int->Random(3) + hardness;
-		@rect->Set(x, y);
-		@y_dir := -1;
-		@x_offset := Int->Random(20, 60);
-	}
-
-	method : public : GameOver() ~ Nil {
-		@game_over := true;
-	}
-
-	method : public : Hide() ~ Nil {
-		@hide := true;
-	}
-
-	method : public : AddX(x : Int)  ~ Nil {
-		@rect->AddX(x);
-	}
-
-	method : public : GetLeft()  ~ Int {
-		return @rect->GetLeft();
-	}
-
-	method : public : GetRight()  ~ Int {
-		return @rect->GetRight();
-	}
-
-	method : public : GetTop()  ~ Int {
-		return @rect->GetTop();
-	}
-
-	method : public : GetBottom()  ~ Int {
-		return @rect->GetBottom();
-	}
-
-	method : public : native : Update()  ~ Nil {	
-		if(@x_dir <> 0) {
-			@x_offset += 1;
-			if(@x_offset > @current_level) {
-				@x_dir := 0;
-				@y_dir := -1;
-				@x_offset := 0;
-			};
-		}
-		else if(@rect->GetTop() < @base_y - (140 - @current_level) - @x_offset) {
-			@y_dir := 1;
-		}
-		else if(@rect->GetTop() >= @base_y) {
-			@y_dir := 0;
-
-			if(@x_flip) {
-				@x_dir := -1;
-				@x_flip := false;
-			}
-			else {
-				@x_dir := 1;
-				@x_flip := true;
-			};
-		};
-		
-		@rect->AddX(@x_dir * 2);
-		@rect->AddY(@y_dir * 2);
-	}
-
-	method : public : Draw()  ~ Nil {
-		if(<>@hide) {
-			@rect->Render();
-		};
-	}
-
-	method : public : Collides(rect : ImageSprite) ~ Bool {
-		if(@hide) {
-			return false;
-		}
-		else {
-			return @rect->GetPosition()->Overlaps(rect->GetPosition());
-		};
-	}
-}
-
-class SignPost {
-	@rect : ImageSprite;
-	@hide : Bool;
-
-	New(x : Int, y : Int, rect : ImageSprite) {
-		@rect := rect;
-		@rect->Set(x, y);
-	}
-
-	method : public : Hide() ~ Nil {
-		@hide := true;
-	}
-
-	method : public : AddX(x : Int)  ~ Nil {
-		@rect->AddX(x);
-	}
-
-	method : public : GetLeft()  ~ Int {
-		return @rect->GetLeft();
-	}
-
-	method : public : GetRight()  ~ Int {
-		return @rect->GetRight();
-	}
-
-	method : public : GetTop()  ~ Int {
-		return @rect->GetTop();
-	}
-
-	method : public : GetBottom()  ~ Int {
-		return @rect->GetBottom();
-	}
-
-	method : public : Draw()  ~ Nil {
-		if(<>@hide) {
-			@rect->Render();
-		};
-	}
-
-	method : public : Collides(rect : ImageSprite) ~ Bool {
-		if(@hide) {
-			return false;
-		}
-		else {
-			return @rect->GetPosition()->Overlaps(rect->GetPosition());
-		};
-	}
-}
-
 class Level {
 	@game : Game;
 	@player : Player;
@@ -1347,13 +1154,211 @@ class Level {
 			each(i : @spiders) {
 				spider := @spiders->Get(i)->As(Spider);
 				if(<>(spider->GetRight() < 0 | spider->GetLeft() > GameConsts->SCREEN_WIDTH)) {
-					spider->Draw();
+					spider->Draw(frame_count);
 				};
 			};
 
 			if(<>(@end_post->GetRight() < 0 | @end_post->GetLeft() > GameConsts->SCREEN_WIDTH)) {
-				@end_post->Draw();
+				@end_post->Draw(frame_count);
 			};
+		};
+	}
+}
+
+interface Actor {
+	method : virtual : public : Draw(frame_count : Int)  ~ Nil;
+	method : virtual : public : Collides(rect : ImageSprite) ~ Bool;
+}
+
+class Gem implements Actor {
+	@rect : AnimatedImageSprite;
+	@hide : Bool;
+
+	New(x : Int, y : Int, rect : AnimatedImageSprite) {
+		@rect := rect;
+		@rect->Set(x, y);
+	}
+
+	method : public : Hide() ~ Nil {
+		@hide := true;
+	}
+
+	method : public : AddX(x : Int)  ~ Nil {
+		@rect->AddX(x);
+	}
+
+	method : public : GetLeft()  ~ Int {
+		return @rect->GetLeft();
+	}
+
+	method : public : GetRight()  ~ Int {
+		return @rect->GetRight();
+	}
+
+	method : public : GetTop()  ~ Int {
+		return @rect->GetTop();
+	}
+
+	method : public : GetBottom()  ~ Int {
+		return @rect->GetBottom();
+	}
+
+	method : public : Draw(frame_count : Int)  ~ Nil {
+		if(<>@hide) {
+			index := frame_count / 6 % @rect->GetClipCount();
+			@rect->Render(index);
+		};
+	}
+
+	method : public : Collides(rect : ImageSprite) ~ Bool {
+		if(@hide) {
+			return false;
+		}
+		else {
+			return @rect->GetPosition()->Overlaps(rect->GetPosition());
+		};
+	}
+}
+
+class Spider implements Actor {
+	@rect : ImageSprite;
+	@hide : Bool;
+	@base_y : Int;
+	@x_dir : Int;
+	@x_offset : Int;
+	@x_flip : Bool;
+	@y_dir : Int;
+	@y_offset : Int;
+	@game_over : Bool;
+	@current_level : Int;
+
+	New(x : Int, y : Int, rect : ImageSprite, hardness : Int) {
+		@rect := rect;
+		@base_y := y;
+		@current_level := Int->Random(3) + hardness;
+		@rect->Set(x, y);
+		@y_dir := -1;
+		@x_offset := Int->Random(20, 60);
+	}
+
+	method : public : GameOver() ~ Nil {
+		@game_over := true;
+	}
+
+	method : public : Hide() ~ Nil {
+		@hide := true;
+	}
+
+	method : public : AddX(x : Int)  ~ Nil {
+		@rect->AddX(x);
+	}
+
+	method : public : GetLeft()  ~ Int {
+		return @rect->GetLeft();
+	}
+
+	method : public : GetRight()  ~ Int {
+		return @rect->GetRight();
+	}
+
+	method : public : GetTop()  ~ Int {
+		return @rect->GetTop();
+	}
+
+	method : public : GetBottom()  ~ Int {
+		return @rect->GetBottom();
+	}
+
+	method : public : native : Update()  ~ Nil {	
+		if(@x_dir <> 0) {
+			@x_offset += 1;
+			if(@x_offset > @current_level) {
+				@x_dir := 0;
+				@y_dir := -1;
+				@x_offset := 0;
+			};
+		}
+		else if(@rect->GetTop() < @base_y - (140 - @current_level) - @x_offset) {
+			@y_dir := 1;
+		}
+		else if(@rect->GetTop() >= @base_y) {
+			@y_dir := 0;
+
+			if(@x_flip) {
+				@x_dir := -1;
+				@x_flip := false;
+			}
+			else {
+				@x_dir := 1;
+				@x_flip := true;
+			};
+		};
+		
+		@rect->AddX(@x_dir * 2);
+		@rect->AddY(@y_dir * 2);
+	}
+
+	method : public : Draw(frame_count : Int)  ~ Nil {
+		if(<>@hide) {
+			@rect->Render();
+		};
+	}
+
+	method : public : Collides(rect : ImageSprite) ~ Bool {
+		if(@hide) {
+			return false;
+		}
+		else {
+			return @rect->GetPosition()->Overlaps(rect->GetPosition());
+		};
+	}
+}
+
+class SignPost implements Actor {
+	@rect : ImageSprite;
+	@hide : Bool;
+
+	New(x : Int, y : Int, rect : ImageSprite) {
+		@rect := rect;
+		@rect->Set(x, y);
+	}
+
+	method : public : Hide() ~ Nil {
+		@hide := true;
+	}
+
+	method : public : AddX(x : Int)  ~ Nil {
+		@rect->AddX(x);
+	}
+
+	method : public : GetLeft()  ~ Int {
+		return @rect->GetLeft();
+	}
+
+	method : public : GetRight()  ~ Int {
+		return @rect->GetRight();
+	}
+
+	method : public : GetTop()  ~ Int {
+		return @rect->GetTop();
+	}
+
+	method : public : GetBottom()  ~ Int {
+		return @rect->GetBottom();
+	}
+
+	method : public : Draw(frame_count : Int)  ~ Nil {
+		if(<>@hide) {
+			@rect->Render();
+		};
+	}
+
+	method : public : Collides(rect : ImageSprite) ~ Bool {
+		if(@hide) {
+			return false;
+		}
+		else {
+			return @rect->GetPosition()->Overlaps(rect->GetPosition());
 		};
 	}
 }
