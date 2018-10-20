@@ -42,4 +42,8 @@ class MultiMap {
 	method : public : GetValues() ~ Vector {
 		return Nil;
 	}	
+
+	method : public : Size() ~ Int {
+		return 0;
+	}
 }
