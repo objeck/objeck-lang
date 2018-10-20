@@ -4,48 +4,148 @@ class Test {
 	function : Main(args : String[]) ~ Nil {
 		mm := MultiMap->New();
 				
-		mm->Insert(IntHolder->New(12));
-		mm->Insert(IntHolder->New(14));
-		mm->Insert(IntHolder->New(5));
-		mm->Insert(IntHolder->New(12));
-		mm->Insert(IntHolder->New(10));
-		mm->Insert(IntHolder->New(12));
-		mm->Insert(IntHolder->New(10));
+		mm->Insert(IntHolder->New(12), "aa");
+		mm->Insert(IntHolder->New(14), "bb");
+		mm->Insert(IntHolder->New(5), "cc");
+		mm->Insert(IntHolder->New(12), "dd");
+		mm->Insert(IntHolder->New(10), "ee");
+		mm->Insert(IntHolder->New(12), "ff");
+		mm->Insert(IntHolder->New(10), "gg");
 
-		mm->Find(IntHolder->New(12))->Size()->PrintLine();
+		vv := mm->Find(IntHolder->New(12));
+		each(i : vv) {
+			v := vv->Get(i)->As(String);
+			v->PrintLine();
+		};
 	}
 }
 
 class MultiMap {
 	@map : Map;
 
+	#~
+	Default constructor 
+	~#
 	New() {
 		@map := Map->New();
 	}
 
-	method : public : Insert(value : Compare) ~ Nil {
-		values := Find(value);
+	#~
+	Inserts a value into the map
+	@param key key
+	@param value value
+	~#
+	method : public : Insert(key : Compare, value : Base) ~ Nil {
+		values := Find(key);
 		if(values = Nil) {
-			values := CompareVector->New();
-			@map->Insert(value, values);
+			values := Vector->New();
+			@map->Insert(key, values);
 		};
 
 		values->AddBack(value);
 	}
 
-	method : public : Find(value : Compare) ~ CompareVector {
-		return @map->Find(value)->As(CompareVector);
+	#~
+	Checks for a value in a map
+	@param key search key
+	@return true if found, false otherwise
+	~#	
+	method : public : Find(key : Compare) ~ Vector {
+		return @map->Find(key)->As(Vector);
 	}
 
-	method : public : GetKeys() ~ Vector {
+	#~
+	Get a collection of keys
+	@return vector of keys
+	~#
+	method : public : GetKeys() ~ CompareVector {
 		return @map->GetKeys();
 	}
 
-	method : public : GetValues() ~ Vector {
-		return Nil;
-	}	
+	#~
+	Gets a collection of values
+	@return vector of values
+	~#
+	method : public : GetValues() ~ CompareVector {
+		values := CompareVector->New();
 
+		keys := @map->GetKeys();
+		each(i : keys) {
+			key := keys->Get(i)->As(Compare);
+			local_values := @map->Find(key)->As(CompareVector);
+			each(j : local_values) {
+				values->AddBack(local_values->Get(j));
+			};
+		};
+
+		return values;
+	}
+
+	#~
+	Checks to see if the queue is empty
+	@return true if empty, false otherwise
+	~#
+	method : public : native : IsEmpty() ~ Bool {
+		return @map->Size() = 0;
+	}
+
+	#~
+	Clears the set
+	~#
+	method : public : Empty() ~ Nil {
+		@map->Empty();
+	}
+
+	#~
+	Checks for a value in a map
+	@param key search key
+	@return true if found, false otherwise
+	~#
+	method : public : Has(key : Compare) ~ Bool {
+		return Find(key) <> Nil;
+	}
+
+	#~
+	Uses the given function to filter out values
+	@param f function to use a filter. If the function evaluates to true the value is added to the collection.
+	@return filter vector
+	~#
+	method : public : Filter(f : (Compare) ~ Bool) ~ MultiMap {
+		filtered := MultiMap->New();
+			
+		keys := GetKeys();
+		each(i : keys) {
+			key := keys->Get(i);
+			if(f(key)) {
+				value := Find(key);
+				filtered->Insert(key, value);
+			};
+		};
+		
+		return filtered;
+	}
+
+	#~
+	Removes a set of values from the map
+	@param key key for values to remove
+	~#
+	method : public : Remove(key : Compare) ~ Bool {
+		return @map->Remove(key);
+	}
+	
+	#~
+	Size of unique keys
+	@return size of unique keys
+	~#
 	method : public : Size() ~ Int {
-		return 0;
+		return @map->Size();
+	}
+
+	#~
+	Size of values
+	@return size of values
+	~#
+	method : public : TotalSize() ~ Int {
+		return @map->GetValues()->Size();
 	}
 }
