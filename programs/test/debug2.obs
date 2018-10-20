@@ -11,6 +11,8 @@ class Test {
 		mm->Insert(IntHolder->New(10));
 		mm->Insert(IntHolder->New(12));
 		mm->Insert(IntHolder->New(10));
+
+		mm->Find(IntHolder->New(12))->Size()->PrintLine();
 	}
 }
 
@@ -36,7 +38,7 @@ class MultiMap {
 	}
 
 	method : public : GetKeys() ~ Vector {
-		return Nil;
+		return @map->GetKeys();
 	}
 
 	method : public : GetValues() ~ Vector {
