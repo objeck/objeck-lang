@@ -27,7 +27,7 @@
       <property name="mimetypes">text/x-c;text/x-csrc;image/x-xpixmap</property>
       <property name="globs">*.obs</property>
       <property name="line-comment-start">#</property>
-      <property name="block-comment-start">#~</property>
+      <property name="ff">#~</property>
       <property name="block-comment-end">~#</property>
     </metadata>
 
@@ -62,18 +62,18 @@
                 <context ref="gtk-doc:inline-docs-section"/>
 
                 <!-- Comments -->
-                <context id="comment" style-ref="comment" end-at-line-end="true" class="comment" class-disabled="no-spell-check">
-                 <start>#</start>
-                    <include>
-                      <context ref="def:in-line-comment"/>
-                    </include>
-                </context>
-
                 <context id="comment-multiline" style-ref="comment" class="comment" class-disabled="no-spell-check">
                     <start>#~</start>
                     <end>~#</end>
                     <include>
                         <context ref="def:in-comment"/>
+                    </include>
+                </context>
+
+		<context id="comment" style-ref="comment" end-at-line-end="true" class="comment" class-disabled="no-spell-check">
+                 <start>#</start>
+                    <include>
+                      <context ref="def:in-line-comment"/>
                     </include>
                 </context>
 
