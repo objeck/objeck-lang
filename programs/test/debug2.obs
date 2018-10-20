@@ -12,10 +12,14 @@ class Test {
 		mm->Insert(IntHolder->New(12), "ff");
 		mm->Insert(IntHolder->New(10), "gg");
 
+		mm->Remove(IntHolder->New(12));
+
 		vv := mm->Find(IntHolder->New(12));
-		each(i : vv) {
-			v := vv->Get(i)->As(String);
-			v->PrintLine();
+		if(vv <> Nil) {
+			each(i : vv) {
+				v := vv->Get(i)->As(String);
+				v->PrintLine();
+			};
 		};
 	}
 }
