@@ -1,89 +1,45 @@
-use Data.JSON;
+use Collection;
 
 class Test {
-	@root : JSONElement;
-	@tiles : JSONElement;
-
 	function : Main(args : String[]) ~ Nil {
-		if(args->Size() = 1) {
-			test := Test->New(args[0]);
-			test->GetAttribs(124)->ToString()->PrintLine();
-			test->GetAttribs(6)->ToString()->PrintLine();
-		};
-	}
-
-	New(name : String) {		
-		doc := System.IO.File.FileReader->ReadFile(name);
-		if(doc <> Nil) {
-			@root := JSONParser->New(doc)->Parse();
-			@tiles := GetTiles();			
-		}
-		else {
-			"--- Unable to open doc ---"->ErrorLine();
-		};
-	}
-
-	method : GetTiles() ~ JSONElement {		
-		if(@root <> Nil) {
-			tiles := @root->Get("tiles");
-			if(tiles <> Nil & tiles->GetType() = JSONType->OBJECT) {
-				return tiles;
-			}
-			else {
-				"--- Unable to get 'tiles' ---"->ErrorLine();
-			};
-		};
-
-		return Nil;
-	}
-
-	method : public : GetAttribs(id : Int) ~ Attrib {		
-		if(@tiles <> Nil) {
-			attribs := @tiles->Get(id->ToString());
-			if(attribs <> Nil) {
-				x := attribs->FindElements("objectgroup/objects/[0]/x")->GetValue();
-				y := attribs->FindElements("objectgroup/objects/[0]/y")->GetValue();
-				height := attribs->FindElements("objectgroup/objects/[0]/height")->GetValue();
-				width := attribs->FindElements("objectgroup/objects/[0]/width")->GetValue();
-
-				return Attrib->New(x, y, height, width);
-			};
-		};
-
-		return Nil;
+		mm := MultiMap->New();
+				
+		mm->Insert(IntHolder->New(12));
+		mm->Insert(IntHolder->New(14));
+		mm->Insert(IntHolder->New(5));
+		mm->Insert(IntHolder->New(12));
+		mm->Insert(IntHolder->New(10));
+		mm->Insert(IntHolder->New(12));
+		mm->Insert(IntHolder->New(10));
 	}
 }
 
-class Attrib {
-	@x : Int;
-	@y : Int;
-	@height : Int;
-	@width : Int;
+class MultiMap {
+	@map : Map;
 
-	New(x : String, y : String, height : String, width : String) {
-		@x := x->ToInt();
-		@y := y->ToInt();
-		@height := height->ToInt();
-		@width := width->ToInt();
+	New() {
+		@map := Map->New();
 	}
 
-	method : public : GetX() ~ Int {
-		return @x;
+	method : public : Insert(value : Compare) ~ Nil {
+		values := Find(value);
+		if(values = Nil) {
+			values := CompareVector->New();
+			@map->Insert(value, values);
+		};
+
+		values->AddBack(value);
 	}
 
-	method : public : GetY() ~ Int {
-		return @y;
+	method : public : Find(value : Compare) ~ CompareVector {
+		return @map->Find(value)->As(CompareVector);
 	}
 
-	method : public : GetHeight() ~ Int {
-		return @height;
+	method : public : GetKeys() ~ Vector {
+		return Nil;
 	}
 
-	method : public : GetWidth() ~ Int {
-		return @width;
-	}
-
-	method : public : ToString() ~ String {
-		return "{$@x}, {$@y}, {$@height}, {$@width}";
-	}
+	method : public : GetValues() ~ Vector {
+		return Nil;
+	}	
 }
