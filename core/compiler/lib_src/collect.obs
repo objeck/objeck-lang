@@ -3729,7 +3729,8 @@ bundle Collection {
 		method : public : GetValues() ~ CompareVector {
 			values := CompareVector->New();
 
-			keys := @map->GetKeys()->Sort();
+			keys := @map->GetKeys();
+			keys->Sort();
 			each(i : keys) {
 				key := keys->Get(i)->As(Compare);
 				local_values := @map->Find(key)->As(CompareVector);

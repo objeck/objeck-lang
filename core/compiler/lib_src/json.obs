@@ -565,7 +565,7 @@ bundle Data.JSON {
 		Gets the names of object attributes
 		@return object attribute names
 		~#
-		method : public : GetNames() ~ Vector {
+		method : public : GetNames() ~ CompareVector {
 			if(@map_elems <> Nil) {
 				return @map_elems->GetKeys();
 			};
