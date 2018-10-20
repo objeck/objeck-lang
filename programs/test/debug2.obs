@@ -21,6 +21,13 @@ class Test {
 				v->PrintLine();
 			};
 		};
+
+		keys := mm->GetKeys();
+		keys->Sort();
+		each(i : keys) {
+			key := keys->Get(i)->As(IntHolder);
+			key->Get()->PrintLine();
+		};
 	}
 }
 
