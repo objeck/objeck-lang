@@ -1019,7 +1019,7 @@ bool ContextAnalyzer::Analyze()
       break;
 
     case BREAK_STMT:
-      if(!in_loop) {
+      if(in_loop <= 0) {
         ProcessError(statement, L"Breaks are only allowed in loops.");
       }
       break;
@@ -2936,9 +2936,9 @@ bool ContextAnalyzer::Analyze()
     // update
     AnalyzeStatement(for_stmt->GetUpdateStatement(), depth + 1);
     // statements
-    in_loop = true;
+    in_loop++;
     AnalyzeStatements(for_stmt->GetStatements(), depth + 1);
-    in_loop = false;
+    in_loop--;
     current_table->PreviousScope();
   }
 
@@ -2953,12 +2953,12 @@ bool ContextAnalyzer::Analyze()
 
     // 'do/while' statements
     current_table->NewScope();
-    in_loop = true;
+    in_loop++;
     vector<Statement*> statements = do_while_stmt->GetStatements()->GetStatements();
     for(size_t i = 0; i < statements.size(); ++i) {
       AnalyzeStatement(statements[i], depth + 2);
     }
-    in_loop = false;
+    in_loop--;
 
     // expression
     Expression* expression = do_while_stmt->GetExpression();
@@ -2985,9 +2985,9 @@ bool ContextAnalyzer::Analyze()
       ProcessError(expression, L"Expected Bool expression");
     }
     // 'while' statements
-    in_loop = true;
+    in_loop++;
     AnalyzeStatements(while_stmt->GetStatements(), depth + 1);
-    in_loop = false;
+    in_loop--;
   }
 
   /****************************

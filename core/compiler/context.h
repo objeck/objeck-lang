@@ -293,7 +293,7 @@ class ContextAnalyzer {
   int char_str_index;
   int int_str_index;
   int float_str_index;
-  bool in_loop;
+  int in_loop;
   vector<Class*> anonymous_classes;
 
   void Show(const wstring &msg, const int line_num, int depth) {
@@ -1187,7 +1187,7 @@ class ContextAnalyzer {
     linker = new Linker(lib_path);
     program->SetLinker(linker);
     char_str_index = int_str_index = float_str_index= 0;
-    in_loop = false;
+    in_loop = 0;
     
     // setup type map
     type_map[L"$Byte"] = BYTE_TYPE;
