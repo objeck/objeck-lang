@@ -1178,6 +1178,52 @@ bundle System {
 		}
 
 		#~
+		Increments value by 1
+		~#
+		method : public : Inc() ~ Nil {
+			@value += 1;
+		}
+
+		#~
+		Adds to value
+		@param value value to add to	
+		~#
+		method : public : Add(value : Int) ~ Nil {
+			@value += value;
+		}
+
+		#~
+		Decrements value by 1
+		~#
+		method : public : Dec() ~ Nil {
+			@value -= 1;
+		}
+
+		#~
+		Subtract from value
+		@param value value to subtract by	
+		~#
+		method : public : Sub(value : Int) ~ Nil {
+			@value -= value;
+		}
+
+		#~
+		Multiply to value
+		@param value value to multiply by	
+		~#
+		method : public : Mul(value : Int) ~ Nil {
+			@value *= value;
+		}
+
+		#~
+		Divide by value
+		@param value value to divide by		
+		~#
+		method : public : Div(value : Int) ~ Nil {
+			@value /= value;
+		}
+		
+		#~
 		Compares two objects
 		@param rhs compare object
 		@return 0 if equal, -1 if right-hand side i greater, 1 if left-hand side is greater
@@ -1450,7 +1496,39 @@ bundle System {
 		method : public : Set(value : Float) ~ Nil {
 			@value := value;
 		}
+		
+		#~
+		Adds to value
+		@param value value to add to	
+		~#
+		method : public : Add(value : Float) ~ Nil {
+			@value += value;
+		}
 
+		#~
+		Subtract from value
+		@param value value to subtract by	
+		~#
+		method : public : Sub(value : Float) ~ Nil {
+			@value -= value;
+		}
+
+		#~
+		Multiply to value
+		@param value value to multiply by	
+		~#
+		method : public : Mul(value : Float) ~ Nil {
+			@value *= value;
+		}
+
+		#~
+		Divide by value
+		@param value value to divide by		
+		~#
+		method : public : Div(value : Float) ~ Nil {
+			@value /= value;
+		}
+		
 		#~
 		Compares two objects
 		@param rhs compare object
