@@ -141,6 +141,7 @@
                     <keyword>else</keyword>
                     <keyword>do</keyword>
                     <keyword>while</keyword>
+                    <keyword>break</keyword>
                     <keyword>use</keyword>
                     <keyword>bundle</keyword>
                     <keyword>native</keyword>

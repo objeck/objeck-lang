@@ -1,11 +1,25 @@
-use Game.SDL2;
+use System.IO.File;
+use Collection;
 
-class Test {
+class Abbreviations  {
 	function : Main(args : String[]) ~ Nil {
-		timeout := Timer->GetTicks() + 4000;
-		while(<>Timer->Passed(Timer->GetTicks(), timeout)) {
+		if(args->Size() = 1) {
+			Go(args[0]);
+		};
+	}
+
+	function : Go(file : String) ~ Nil {
+		reader := FileReader->New(file);
+
+		line := reader->ReadString();
+		while(line <> Nil) {
+			days := line->Split(" ");
+days->Size()->PrintLine();
 		};
 
-		"All done"->PrintLine();
+
+		leaving {
+			reader->Close();
+		};
 	}
 }
