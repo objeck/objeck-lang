@@ -13,7 +13,7 @@ bundle Game.Framework {
 	#~
 	Animated sprite sheet
 	~#
-	class AnimatedImageSprite frfrom ImageSprite {
+	class AnimatedImageSprite from ImageSprite {
 		@clips : Vector;
 		
 		New(renderer : Renderer, file : String, clips : Vector) {
