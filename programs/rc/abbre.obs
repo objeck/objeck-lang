@@ -28,8 +28,7 @@ class Abbreviations  {
 				};
 
 				len := 1;
-				done := false;
-            	while(<>done) {
+            	while(true) {
 					cache->Empty();
                 	each(i : days) {
 						day := days[i];
@@ -52,7 +51,7 @@ class Abbreviations  {
 
 	                if(cache->Size() = 7) {
 						"{$len} {$line}"->PrintLine();
-						done := true;
+						break;
 					};
 					len += 1;
 	            };
