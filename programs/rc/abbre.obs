@@ -46,7 +46,7 @@ class Abbreviations  {
 	                    	cache->Insert(sd, IntHolder->New(1));
 	                    }
 	                    else {
-	                    	count->Set(count->Get() + 1);
+	                    	count->Inc();
 	                    };
 	                };
 
