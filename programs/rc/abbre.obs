@@ -10,8 +10,11 @@ class Abbreviations  {
 
 	function : Go(file : String) ~ Nil {
 		reader := FileReader->New(file);
-		cache := StringMap->New();
+		leaving {
+			reader->Close();
+		};
 
+		cache := StringMap->New();
 		line := reader->ReadString();
 		while(line <> Nil) {
 			if(line->Size() > 0) {
@@ -58,10 +61,6 @@ class Abbreviations  {
 			};
 
 			line := reader->ReadString();
-		};
-
-		leaving {
-			reader->Close();
 		};
 	}
 }
