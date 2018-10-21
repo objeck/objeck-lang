@@ -3,7 +3,7 @@
  * objeck.php
  * --------
  * Author: Randy Hollines (objeck@gmail.com)
- * Copyright: (c) 2014 Randy Hollines (http://www.objeck.org)
+ * Copyright: (c) 2014-2018 Randy Hollines (http://www.objeck.org)
  * Release Version: 0.0.4
  * Date Started: 2010/07/02
  *
@@ -22,6 +22,9 @@
  *
  * 2014/9/2 (v0.0.4)
  *  -  Added keywords : 'use', and 'critical'
+ *
+ * 2018/10/21 (v0.0.5)
+ *  -  Added keywords : 'leaving', and 'break'
  *************************************************************************************
  *
  *     This file is part of GeSHi.
@@ -49,7 +52,7 @@ $language_data = array(
     'CASE_KEYWORDS' => GESHI_CAPS_NO_CHANGE,
     'QUOTEMARKS' => array('"'),
     'ESCAPE_CHAR' => '\\',
-    'KEYWORDS' => array(1 => array('virtual', 'use', 'if', 'else', 'critical', 'break', 'do', 'while', 'use', 'bundle', 'native', 'static', 'leaving', 'public', 'private', 'class', 'interface', 'function', 'method', 'select', 'other', 'enum', 'for', 'each', 'label', 'return', 'implements', 'from', 'and', 'or', 'xor'), 2 => array('Byte', 'Int', 'Nil', 'Float', 'Char', 'Bool', 'String'), 3 => array('true', 'false')
+    'KEYWORDS' => array(1 => array('virtual', 'use', 'if', 'else', 'critical', 'break', 'do', 'break', 'while', 'use', 'bundle', 'native', 'static', 'leaving', 'public', 'private', 'class', 'interface', 'function', 'method', 'select', 'other', 'enum', 'for', 'each', 'label', 'return', 'implements', 'from', 'and', 'or', 'xor'), 2 => array('Byte', 'Int', 'Nil', 'Float', 'Char', 'Bool', 'String'), 3 => array('true', 'false')
         ),
     'SYMBOLS' => array(
         1 => array(

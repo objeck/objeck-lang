@@ -12,9 +12,9 @@ class Test {
 		mm->Insert(IntHolder->New(12), "ff");
 		mm->Insert(IntHolder->New(10), "gg");
 
-		mm->Remove(IntHolder->New(12));
+#		mm->Remove(IntHolder->New(12));
 
-		vv := mm->Find(IntHolder->New(12));
+		vv := mm->Find(IntHolder->New(10));
 		if(vv <> Nil) {
 			each(i : vv) {
 				v := vv->Get(i)->As(String);
@@ -28,135 +28,5 @@ class Test {
 			key := keys->Get(i)->As(IntHolder);
 			key->Get()->PrintLine();
 		};
-	}
-}
-
-class MultiMap {
-	@map : Map;
-
-	#~
-	Default constructor 
-	~#
-	New() {
-		@map := Map->New();
-	}
-
-	#~
-	Inserts a value into the map
-	@param key key
-	@param value value
-	~#
-	method : public : Insert(key : Compare, value : Base) ~ Nil {
-		values := Find(key);
-		if(values = Nil) {
-			values := Vector->New();
-			@map->Insert(key, values);
-		};
-
-		values->AddBack(value);
-	}
-
-	#~
-	Checks for a value in a map
-	@param key search key
-	@return true if found, false otherwise
-	~#	
-	method : public : Find(key : Compare) ~ Vector {
-		return @map->Find(key)->As(Vector);
-	}
-
-	#~
-	Get a collection of keys
-	@return vector of keys
-	~#
-	method : public : GetKeys() ~ CompareVector {
-		return @map->GetKeys();
-	}
-
-	#~
-	Gets a collection of values
-	@return vector of values
-	~#
-	method : public : GetValues() ~ CompareVector {
-		values := CompareVector->New();
-
-		keys := @map->GetKeys();
-		each(i : keys) {
-			key := keys->Get(i)->As(Compare);
-			local_values := @map->Find(key)->As(CompareVector);
-			each(j : local_values) {
-				values->AddBack(local_values->Get(j));
-			};
-		};
-
-		return values;
-	}
-
-	#~
-	Checks to see if the queue is empty
-	@return true if empty, false otherwise
-	~#
-	method : public : native : IsEmpty() ~ Bool {
-		return @map->Size() = 0;
-	}
-
-	#~
-	Clears the set
-	~#
-	method : public : Empty() ~ Nil {
-		@map->Empty();
-	}
-
-	#~
-	Checks for a value in a map
-	@param key search key
-	@return true if found, false otherwise
-	~#
-	method : public : Has(key : Compare) ~ Bool {
-		return Find(key) <> Nil;
-	}
-
-	#~
-	Uses the given function to filter out values
-	@param f function to use a filter. If the function evaluates to true the value is added to the collection.
-	@return filter vector
-	~#
-	method : public : Filter(f : (Compare) ~ Bool) ~ MultiMap {
-		filtered := MultiMap->New();
-			
-		keys := GetKeys();
-		each(i : keys) {
-			key := keys->Get(i);
-			if(f(key)) {
-				value := Find(key);
-				filtered->Insert(key, value);
-			};
-		};
-		
-		return filtered;
-	}
-
-	#~
-	Removes a set of values from the map
-	@param key key for values to remove
-	~#
-	method : public : Remove(key : Compare) ~ Bool {
-		return @map->Remove(key);
-	}
-	
-	#~
-	Size of unique keys
-	@return size of unique keys
-	~#
-	method : public : Size() ~ Int {
-		return @map->Size();
-	}
-
-	#~
-	Size of values
-	@return size of values
-	~#
-	method : public : TotalSize() ~ Int {
-		return @map->GetValues()->Size();
 	}
 }

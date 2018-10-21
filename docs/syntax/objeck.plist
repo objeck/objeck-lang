@@ -21,6 +21,7 @@
 		<string>else</string>
 		<string>do</string>
 		<string>while</string>
+		<string>break</string>
 		<string>bundle</string>
 		<string>native</string>
 		<string>static</string>

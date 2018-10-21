@@ -157,9 +157,7 @@ bundle Game.Framework {
 
 			@render_rect->SetW(surface->GetW());
 			@render_rect->SetH(surface->GetH());
-		
-#			surface->Free();
-
+			
 			@texture := texture;
 			return @texture <> Nil;
 		}
