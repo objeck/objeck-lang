@@ -1234,22 +1234,26 @@ class HangingPlatform implements Actor {
 	@ring : ImageSprite;
 	@y : Float;
 	@x : Float;
+
 	@dir : Int;
+	@y_diff : Float;
 
 	New(x : Int, y : Int, log : ImageSprite, ring : ImageSprite) {
+		angle := 15;
+
 		@log := log;
 		@ring := ring;
 
 		@log->Set(x, y);
-		@log->SetAngle(15);
+		@log->SetAngle(angle);
 
 		@x := x;
-		@y := y - 5.0;
+		@y := y;
 
 		@dir := 1;
+		@ring->Set(@x + 5, @y);
 
-		@ring->Set(@x, @y);
-		@ring->SetAngle(5);
+		@y_diff := Float->Tan(Float->ToRadians(angle));
 	}
 
 	method : public : AddX(x : Int)  ~ Nil {
@@ -1274,21 +1278,21 @@ class HangingPlatform implements Actor {
 	}
 
     method : public : native : Update()  ~ Nil {
-    	if(@x >= 155 & @x <= 290) {
+    	if(@x >= 162 & @x <= 278) {
     		@x += @dir;
     	}
-    	else if(@x > 290) {
-    		@x := 290;
+    	else if(@x > 278) {
+    		@x := 278;
     		@dir := -1;
     	}
-    	else if(@x < 155) {
-    		@x := 155;
+    	else if(@x < 162) {
+    		@x := 162;
     		@dir := 1;
     	};
 
     	@ring->SetCenterX(@x);
 
-    	@y += @dir * 0.2679; # tan(15) make dynamic
+    	@y += @dir * @y_diff; # 0.2679; # tan(15) make dynamic
     	@ring->SetCenterY(@y);
 	}
 
