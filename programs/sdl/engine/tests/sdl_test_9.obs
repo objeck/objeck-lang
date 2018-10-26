@@ -1002,7 +1002,7 @@ class Level {
 		ring_path := String->New(base_path);
 		ring_path += "/media/ring.png";
 
-		x_offset := 165;
+		x_offset := 155;
 		y_offset := 360;
 
 		logs->AddBack(HangingPlatform->New(x_offset, y_offset, 
@@ -1274,15 +1274,15 @@ class HangingPlatform implements Actor {
 	}
 
     method : public : native : Update()  ~ Nil {
-    	if(@x >= 165 & @x <= 270) {
+    	if(@x >= 155 & @x <= 290) {
     		@x += @dir;
     	}
-    	else if(@x > 270) {
-    		@x := 270;
+    	else if(@x > 290) {
+    		@x := 290;
     		@dir := -1;
     	}
-    	else if(@x < 165) {
-    		@x := 165;
+    	else if(@x < 155) {
+    		@x := 155;
     		@dir := 1;
     	};
 
