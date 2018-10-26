@@ -1250,15 +1250,15 @@ class HangingPlatform implements Actor {
 		@log->SetAngle(angle);
 
 		@ring_x := x;
-		@ring_y := y;
+		@ring_y := y + 5;
 
 		@ring_dir := 1;
-		@ring->Set(@ring_x + 5, @ring_y);
+		@ring->Set(@ring_x + 2, @ring_y);
 
 		@ring_y_diff := Float->Tan(Float->ToRadians(angle));
 
-width := @log->GetWidth() * Float->Cos(Float->ToRadians(angle));
-"--- WITDH {$width} ---"->PrintLine();	
+		@log_x_start := x + 15;
+		@log_x_end := @log_x_start + @log->GetWidth() * Float->Cos(Float->ToRadians(angle)) - 20;
 	}
 
 	method : public : AddX(x : Int)  ~ Nil {
@@ -1283,21 +1283,21 @@ width := @log->GetWidth() * Float->Cos(Float->ToRadians(angle));
 	}
 
     method : public : native : Update()  ~ Nil {
-    	if(@ring_x >= 162 & @ring_x <= 278) {
+    	if(@ring_x >= @log_x_start & @ring_x <= @log_x_end) {
     		@ring_x += @ring_dir;
     	}
-    	else if(@ring_x > 278) {
-    		@ring_x := 278;
+    	else if(@ring_x > @log_x_end) {
+    		@ring_x := @log_x_end;
     		@ring_dir := -1;
     	}
-    	else if(@ring_x < 162) {
-    		@ring_x := 162;
+    	else if(@ring_x < @log_x_start) {
+    		@ring_x := @log_x_start;
     		@ring_dir := 1;
     	};
 
     	@ring->SetCenterX(@ring_x);
 
-    	@ring_y += @ring_dir * @ring_y_diff; # 0.2679; # tan(15) make dynamic
+    	@ring_y += @ring_dir * @ring_y_diff;
     	@ring->SetCenterY(@ring_y);
 	}
 
