@@ -266,7 +266,7 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, long 
 #if defined(_WIN64) || defined(_X64)
     // TODO: memory size is doubled the compiler assumes that integers are 4-bytes.
     // In 64-bit mode integers and floats are 8-bytes.  This approach allocates more
-    // memory for floats (a.k.a doubles) than needed.
+    // memory for floats (a.k.a double) than needed.
     size *= 2;
 #endif
 
@@ -828,7 +828,7 @@ void* MemoryManager::CollectMemory(void* arg)
       uncollected_count = 0;
     }
   }
-  // collected memory; ajust constraints
+  // collected memory; adjust constraints
   else if(mem_max_size != MEM_MAX) {
     if(collected_count < COLLECTED_COUNT) {
       collected_count++;
