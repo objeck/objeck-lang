@@ -1334,10 +1334,9 @@ bar := -1 * xx * Float->Sin(m) + yy * Float->Cos(m);
     		@grip_x := @beam_x_start;
     		@grip_dir := 1;
     	};
-
-    	@grip->SetCenterX(@grip_x_diff + @grip_x);
     	@grip_y += @grip_dir * @grip_y_diff;
-    	@grip->SetCenterY(@grip_y);
+    	
+    	@grip->Set(@grip_x_diff + @grip_x, @grip_y);
 	}
 
 	method : public : Draw(frame_count : Int)  ~ Nil {
