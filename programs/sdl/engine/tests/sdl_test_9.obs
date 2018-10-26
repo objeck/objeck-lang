@@ -1288,7 +1288,7 @@ class HangingPlatform implements Actor {
 
     	@ring->SetCenterX(@x);
 
-    	@y += @dir * 0.2605;
+    	@y += @dir * 0.2679; # tan(15) make dynamic
     	@ring->SetCenterY(@y);
 	}
 
