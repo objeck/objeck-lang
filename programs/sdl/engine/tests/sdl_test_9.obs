@@ -1259,14 +1259,20 @@ class HangingPlatform implements Actor {
 	@grip_y_diff : Float;
 
 	New(x : Int, y : Int, beam : ImageSprite, handle_grip : ImageSprite) {
-		angle := 30;
+		angle := 65;
 
 		@beam := beam;
 		@grip := handle_grip;
+
+# foo := @beam->GetHeight() * Float->Cos(Float->ToRadians(angle));		
+foo := @beam->GetWidth() * Float->Cos(Float->ToRadians(angle));		
+bar := @beam->GetWidth() * Float->Sin(Float->ToRadians(angle));		
+
+# "[{$foo}, {$bar}]"->PrintLine();
 # 75 == +/-50
 # 30 == +/-15
 		
-		@beam->Set(x - 15, y + 15);
+		@beam->Set(x + bar, y + foo);
 		@beam->SetAngle(angle);
 
 		@grip_dir := 1;
