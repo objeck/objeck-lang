@@ -76,7 +76,6 @@ bundle Game.Framework {
 	~#
 	class ImageSprite from Sprite {
 		@is_ok : Bool;
-		@surface_cache : static : StringMap;
 		@clip : Rect;
 		@angle : Float;
 		@flip : RendererFlip;
@@ -87,20 +86,6 @@ bundle Game.Framework {
 			@angle := 0;
 			@flip := RendererFlip->SDL_FLIP_NONE;
 			@is_ok := LoadImage(file, colorkey);
-		}
-
-		function : Init() ~ Nil {
-			if(@surface_cache = Nil) {
-				@surface_cache := StringMap->New();
-			};
-		}
-
-		function : Free() ~ Nil {
-			surfaces := @surface_cache->GetValues();
-			each(i : surfaces) {
-				surface := surfaces->Get(i)->As(Surface);
-				surface->Free();
-			};
 		}
 
 		New(renderer : Renderer, file : String, colorkey : Color) {
@@ -132,14 +117,10 @@ bundle Game.Framework {
 		@return true if success, false otherwise
 		~#
 		method : LoadImage(file : String, colorkey : Color) ~ Bool {
-			surface := @surface_cache->Find(file)->As(Surface);
-			if(surface = Nil) {
-				surface := Image->Load(file);
-				if(surface->IsNull()) {
-					"Unable to load image '{$file}'!"->ErrorLine();
-					return false;
-				};
-				@surface_cache->Insert(file, surface);
+			surface := Image->Load(file);
+			if(surface->IsNull()) {
+				"Unable to load image '{$file}'!"->ErrorLine();
+				return false;
 			};
 
 			if(colorkey <> Nil) {
@@ -1214,9 +1195,7 @@ bundle Game.Framework {
 				"Warning: No joysticks connected!"->ErrorLine();
 			};
 			@joystick := Joystick->New(0);
-
 			@event := Event->New();
-			ImageSprite->Init();
 			
 			return true;
 		}
@@ -1464,8 +1443,6 @@ bundle Game.Framework {
 				@joystick->Free();
 			};
 			
-			ImageSprite->Free();
-
 			Image->Quit();
 			Font->Quit();
 			Mixer->Quit();
