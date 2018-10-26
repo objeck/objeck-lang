@@ -646,7 +646,7 @@ class Player {
 	}
 
 	method : public : GoRight()  ~ Nil {
-		@ring_dir := 1;
+		@player_dir := 1;
 
 		if(<>@game_over & @rect->GetFlip() = RendererFlip->SDL_FLIP_HORIZONTAL) {
 			@rect->SetFlip(RendererFlip->SDL_FLIP_NONE);
@@ -681,7 +681,7 @@ class Player {
 
 	method : Movement() ~ Nil {
 		if(@hanging_platform <> Nil) {
-			@loc->Set(@hanging_platform->GetLeft(), @hanging_platform->GetBottom());
+			@loc->Set(@hanging_platform->GetLeft(), @hanging_platform->GetBottom() + @hanging_platform->GetHeight() + @rect->GetHeight() / 2);
 		}
 		else {
 			@acc->SetX(@player_dir * 0.5);
@@ -795,7 +795,7 @@ class Player {
     }
 
 	method : public : Draw()  ~ Nil {
-		if(@game_over) {
+		if(@game_over | @hanging_platform) { # CHANGE ME
 			@rect->Render(6);
 		}
 		else if(@jump_max > 0.0) {
@@ -1249,6 +1249,7 @@ class HangingPlatform implements Actor {
 	@ring_y : Float;
 	@ring_x : Float;
 	@ring_dir : Int;
+	@ring_x_diff : Float;
 	@ring_y_diff : Float;
 
 	New(x : Int, y : Int, log : ImageSprite, ring : ImageSprite) {
@@ -1274,7 +1275,7 @@ class HangingPlatform implements Actor {
 
 	method : public : AddX(x : Int)  ~ Nil {
 		@log->AddX(x);
-		@ring->AddX(x);
+		@ring_x_diff += x;
 	}
 
 	method : public : GetLeft()  ~ Int {
@@ -1293,6 +1294,14 @@ class HangingPlatform implements Actor {
 		return @ring->GetBottom();
 	}
 
+	method : public : GetHeight()  ~ Int {
+		return @ring->GetHeight();
+	}
+
+	method : public : GetWidth()  ~ Int {
+		return @ring->GetWidth();
+	}
+
     method : public : native : Update()  ~ Nil {
     	if(@ring_x >= @log_x_start & @ring_x <= @log_x_end) {
     		@ring_x += @ring_dir;
@@ -1306,8 +1315,7 @@ class HangingPlatform implements Actor {
     		@ring_dir := 1;
     	};
 
-    	@ring->SetCenterX(@ring_x);
-
+    	@ring->SetCenterX(@ring_x_diff + @ring_x);
     	@ring_y += @ring_dir * @ring_y_diff;
     	@ring->SetCenterY(@ring_y);
 	}
