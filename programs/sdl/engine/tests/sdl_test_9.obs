@@ -670,6 +670,7 @@ class Player {
 			CheckPlatforms();
 			CheckGems();
 			CheckSpiders();
+			CheckHangingPlatforms();
 			CheckSign();
 		};
 
@@ -759,6 +760,14 @@ class Player {
     		spider := collides->Get(i)->As(Spider);
     		spider->Hide();
     		GameOver();
+    	};
+    }
+
+    method : public : CheckHangingPlatforms() ~ Nil {
+		collides := @level->HangingPlatformCollisions(@self);
+        each(i : collides) {
+    		hanging_platform := collides->Get(i)->As(HangingPlatform);
+"--- HIT ---"->PrintLine();
     	};
     }
 
@@ -928,6 +937,7 @@ class Level {
 		framework := game->GetFramework();
 		@platforms := GeneratePlatforms(base_path, framework);
 		@gems := GenerateGems(base_path, framework);
+		@hanging_platforms := GenerateHangingPlatform(base_path, framework);
 		@spiders := GeneratSpiders(base_path, framework);
 	}
 
@@ -989,10 +999,15 @@ class Level {
 		log_path := String->New(base_path);
 		log_path += "/media/log.png";
 
-		x_offset := 40;
-		y_offset := 40;
+		ring_path := String->New(base_path);
+		ring_path += "/media/ring.png";
 
-		logs->AddBack(HangingPlatform->New(x_offset, y_offset, framework->AddImageSprite(log_path)));
+		x_offset := 165;
+		y_offset := 360;
+
+		logs->AddBack(HangingPlatform->New(x_offset, y_offset, 
+			framework->AddImageSprite(log_path),
+			framework->AddImageSprite(ring_path)));
 
 		return logs;
 	}
@@ -1086,6 +1101,11 @@ class Level {
 			platform->AddX(shift_x);
 		};
 
+		each(i : @hanging_platforms) {
+			hanging_platform := @hanging_platforms->Get(i)->As(HangingPlatform);
+			hanging_platform->AddX(shift_x);
+		};
+
 		each(i : @spiders) {
 			platform := @spiders->Get(i)->As(Spider);
 			platform->AddX(shift_x);
@@ -1124,6 +1144,19 @@ class Level {
         return collides;
     }
 
+    method : public : HangingPlatformCollisions(player : Player) ~ Vector {
+		collides := Vector->New();
+
+		each(i : @hanging_platforms) {
+        	obstacle := @hanging_platforms->Get(i)->As(HangingPlatform);
+        	if(obstacle->Collides(player->GetRect())) {
+        		collides->AddBack(obstacle);
+        	};
+        };
+
+        return collides;
+    }
+
     method : public : SpiderCollisions(player : Player) ~ Vector {
 		collides := Vector->New();
 
@@ -1147,6 +1180,10 @@ class Level {
 
 		each(i : @spiders) {
 			@spiders->Get(i)->As(Spider)->Update();
+		};
+
+		each(i : @hanging_platforms) {
+			@hanging_platforms->Get(i)->As(HangingPlatform)->Update();
 		};
 	}
 
@@ -1173,6 +1210,13 @@ class Level {
 				};
 			};
 
+			each(i : @hanging_platforms) {
+				hanging_platform := @hanging_platforms->Get(i)->As(HangingPlatform);
+				if(<>(hanging_platform->GetRight() < 0 | hanging_platform->GetLeft() > GameConsts->SCREEN_WIDTH)) {
+					hanging_platform->Draw(frame_count);
+				};
+			};
+
 			if(<>(@end_post->GetRight() < 0 | @end_post->GetLeft() > GameConsts->SCREEN_WIDTH)) {
 				@end_post->Draw(frame_count);
 			};
@@ -1186,39 +1230,75 @@ interface Actor {
 }
 
 class HangingPlatform implements Actor {
-	@rect : ImageSprite;
+	@log : ImageSprite;
+	@ring : ImageSprite;
+	@y : Float;
+	@x : Float;
+	@dir : Int;
 
-	New(x : Int, y : Int, rect : ImageSprite) {
-		@rect := rect;
-		@rect->Set(x, y);
+	New(x : Int, y : Int, log : ImageSprite, ring : ImageSprite) {
+		@log := log;
+		@ring := ring;
+
+		@log->Set(x, y);
+		@log->SetAngle(15);
+
+		@x := x;
+		@y := y - 5.0;
+
+		@dir := 1;
+
+		@ring->Set(@x, @y);
+		@ring->SetAngle(5);
 	}
 
 	method : public : AddX(x : Int)  ~ Nil {
-		@rect->AddX(x);
+		@log->AddX(x);
+		@ring->AddX(x);
 	}
 
 	method : public : GetLeft()  ~ Int {
-		return @rect->GetLeft();
+		return @ring->GetLeft();
 	}
 
 	method : public : GetRight()  ~ Int {
-		return @rect->GetRight();
+		return @ring->GetRight();
 	}
 
 	method : public : GetTop()  ~ Int {
-		return @rect->GetTop();
+		return @ring->GetTop();
 	}
 
 	method : public : GetBottom()  ~ Int {
-		return @rect->GetBottom();
+		return @ring->GetBottom();
+	}
+
+    method : public : native : Update()  ~ Nil {
+    	if(@x >= 165 & @x <= 270) {
+    		@x += @dir;
+    	}
+    	else if(@x > 270) {
+    		@x := 270;
+    		@dir := -1;
+    	}
+    	else if(@x < 165) {
+    		@x := 165;
+    		@dir := 1;
+    	};
+
+    	@ring->SetCenterX(@x);
+
+    	@y += @dir * 0.2605;
+    	@ring->SetCenterY(@y);
 	}
 
 	method : public : Draw(frame_count : Int)  ~ Nil {
-		@rect->Render();
+		@log->Render();
+		@ring->Render();
 	}
 
 	method : public : Collides(rect : ImageSprite) ~ Bool {
-		return @rect->GetPosition()->Overlaps(rect->GetPosition());
+		return @ring->GetPosition()->Overlaps(rect->GetPosition());
 	}
 }
 
