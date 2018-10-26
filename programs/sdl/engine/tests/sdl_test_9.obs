@@ -681,7 +681,7 @@ class Player {
 
 	method : Movement() ~ Nil {
 		if(@hanging_platform <> Nil) {
-			@loc->Set(10, 10);
+			@loc->Set(@hanging_platform->GetLeft(), @hanging_platform->GetBottom());
 		}
 		else {
 			@acc->SetX(@player_dir * 0.5);
@@ -771,13 +771,15 @@ class Player {
     }
 
     method : public : CheckHangingPlatforms() ~ Nil {
-		collides := @level->HangingPlatformCollisions(@self);
-        each(i : collides) {
-    		@hanging_platform := collides->Get(i)->As(HangingPlatform);
-    		return;
-    	};
+    	if(@hanging_platform = Nil) {
+			collides := @level->HangingPlatformCollisions(@self);
+	        each(i : collides) {
+	    		@hanging_platform := collides->Get(i)->As(HangingPlatform);
+	    		return;
+	       	};
 
-    	@hanging_platform := Nil;
+	       	@hanging_platform := Nil;
+	    };
     }
 
     method : public : CheckFloorCeiling() ~ Nil {
