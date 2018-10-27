@@ -117,6 +117,8 @@ bundle Game.Framework {
 		@return true if success, false otherwise
 		~#
 		method : LoadImage(file : String, colorkey : Color) ~ Bool {
+			Free();
+			
 			surface := Image->Load(file);
 			if(surface->IsNull()) {
 				"Unable to load image '{$file}'!"->ErrorLine();
@@ -139,6 +141,7 @@ bundle Game.Framework {
 			@render_rect->SetW(surface->GetW());
 			@render_rect->SetH(surface->GetH());
 			
+			surface->Free();
 			@texture := texture;
 			return @texture <> Nil;
 		}
