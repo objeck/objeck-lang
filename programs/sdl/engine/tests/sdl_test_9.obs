@@ -1019,8 +1019,8 @@ class Level {
 		ring_path := String->New(base_path);
 		ring_path += "/media/ring.png";
 
-		x_offset := 155;
-		y_offset := 360;
+		x_offset := 400;
+		y_offset := 225;
 
 		logs->AddBack(HangingPlatform->New(x_offset, y_offset, 
 			framework->AddImageSprite(log_path),
@@ -1259,7 +1259,7 @@ class HangingPlatform implements Actor {
 	@grip_y_diff : Float;
 
 	New(x : Int, y : Int, beam : ImageSprite, handle_grip : ImageSprite) {
-		angle := Int->Random(0, 60);
+		angle := Int->Random(5, 45);
 
 		@beam := beam;
 		@grip := handle_grip;
