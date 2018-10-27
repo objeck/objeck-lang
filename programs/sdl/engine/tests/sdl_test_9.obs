@@ -1259,38 +1259,35 @@ class HangingPlatform implements Actor {
 	@grip_y_diff : Float;
 
 	New(x : Int, y : Int, beam : ImageSprite, handle_grip : ImageSprite) {
-		angle := 0;
+		angle := Int->Random(0, 60);
 
 		@beam := beam;
 		@grip := handle_grip;
 
-#~
-# "[{$foo}, {$bar}]"->PrintLine();
-# 75 == +/-50
-# 30 == +/-15
-	
-m := Float->ToRadians(angle);
+		rad_angle := Float->ToRadians(angle);
+		sin_angle := Float->Sin(rad_angle);
+		cos_angle := Float->Cos(rad_angle);
 
-xx := @grip->GetWidth() / 2 + @grip->GetWidth();
-yy := @grip->GetHeight() / 2 + @grip->GetHeight();
+		center_x := x + @beam->GetWidth() / 2;
+		center_y := y + @beam->GetHeight() / 2;
 
-foo := xx * Float->Cos(m) + yy * Float->Sin(m);
-bar := -1 * xx * Float->Sin(m) + yy * Float->Cos(m);
+		tran_x := center_x + (x - center_x) * cos_angle - (y - center_y) * sin_angle;
+		tran_y := center_y + (x - center_x) * sin_angle + (y - center_y) * cos_angle;
 
-"[{$x}, {$y}]"->PrintLine();
-"[{$foo}, {$bar}]"->PrintLine();
-~#
+# "old=[{$x},{$y}], new=[{$tran_x},{$tran_y}]"->PrintLine();
+
 		@beam->Set(x, y);
 		@beam->SetAngle(angle);
 
 		@grip_dir := 1;
-		@grip_y_diff := Float->Tan(Float->ToRadians(angle));
-		@grip_x := x;
-		@grip_y := y;
+		@grip_y_diff := Float->Tan(rad_angle);
+		@grip_x := tran_x;
+		@grip_y := tran_y;
 		@grip->Set(@grip_x, @grip_y);
 
-		@beam_x_start := x;
-		@beam_x_end := @beam_x_start + @beam->GetWidth() * Float->Cos(Float->ToRadians(angle));
+		@beam_x_start := tran_x;
+		@beam_x_end := @beam_x_start + @beam->GetWidth() * 
+			Float->Cos(Float->ToRadians(angle)) - @grip->GetWidth();
 	}
 
 	method : public : AddX(x : Int)  ~ Nil {
