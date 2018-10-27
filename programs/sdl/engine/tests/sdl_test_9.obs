@@ -1022,7 +1022,9 @@ class Level {
 		x_offset := 100;
 		y_offset := Int->Random(200, 275);
 		for(i := 0; i < 3; i += 1;) {
-			logs->AddBack(HangingPlatform->New(x_offset, y_offset, framework->AddImageSprite(log_path), framework->AddImageSprite(ring_path)));
+			logs->AddBack(HangingPlatform->New(x_offset, y_offset, 
+				framework->AddImageSprite(log_path), 
+				framework->AddImageSprite(ring_path)));
 			x_offset += 600;
 		};
 
