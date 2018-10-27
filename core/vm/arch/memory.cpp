@@ -45,8 +45,7 @@ vector<StackFrame*> MemoryManager::jit_frames;
 stack<char*> MemoryManager::cache_pool_16;
 stack<char*> MemoryManager::cache_pool_32;
 stack<char*> MemoryManager::cache_pool_64;
-stack<char*> MemoryManager::cache_pool_256;
-stack<char*> MemoryManager::cache_pool_512;
+stack<char*> MemoryManager::cache_pool_128;
 vector<size_t*> MemoryManager::allocated_memory;
 
 bool MemoryManager::initialized;
@@ -54,6 +53,11 @@ size_t MemoryManager::allocation_size;
 size_t MemoryManager::mem_max_size;
 size_t MemoryManager::uncollected_count;
 size_t MemoryManager::collected_count;
+
+#ifdef _MEM_LOGGING
+ofstream MemoryManager::mem_logger;
+long MemoryManager::mem_cycle = 0L;
+#endif
 
 // operation locks
 #ifdef _WIN32
@@ -79,6 +83,11 @@ void MemoryManager::Initialize(StackProgram* p)
   mem_max_size = MEM_MAX;
   uncollected_count = 0;
 
+#ifdef _MEM_LOGGING
+  mem_logger.open("mem_log.csv");
+  mem_logger << "cycle,oper,type,addr,size" << endl;
+#endif
+
 #ifdef _WIN32
   InitializeCriticalSection(&jit_frame_lock);
   InitializeCriticalSection(&pda_frame_lock);
@@ -88,24 +97,20 @@ void MemoryManager::Initialize(StackProgram* p)
   InitializeCriticalSection(&marked_sweep_lock);
 #endif
 
-  for(int i = 0; i < POOL_SIZE; ++i) {
+  for(int i = 0; i < POOL_SIZE_16; ++i) {
     cache_pool_16.push((char*)calloc(16, sizeof(char)));
   }
 
-  for(int i = 0; i < POOL_SIZE; ++i) {
+  for(int i = 0; i < POOL_SIZE_32; ++i) {
     cache_pool_32.push((char*)calloc(32, sizeof(char)));
   }
 
-  for(int i = 0; i < POOL_SIZE; ++i) {
+  for(int i = 0; i < POOL_SIZE_64; ++i) {
     cache_pool_64.push((char*)calloc(64, sizeof(char)));
   }
 
-  for(int i = 0; i < POOL_SIZE; ++i) {
-    cache_pool_256.push((char*)calloc(256, sizeof(char)));
-  }
-
-  for(int i = 0; i < POOL_SIZE; ++i) {
-    cache_pool_512.push((char*)calloc(512, sizeof(char)));
+  for(int i = 0; i < POOL_SIZE_128; ++i) {
+    cache_pool_128.push((char*)calloc(128, sizeof(char)));
   }
 
   initialized = true;
@@ -280,17 +285,10 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, long 
     bool is_cached = false;
 #endif
     const size_t alloc_size = size * 2 + sizeof(size_t) * EXTRA_BUF_SIZE;
-    if(cache_pool_512.size() > 0 && alloc_size <= 512 && alloc_size > 256) {
-      mem = (size_t*)cache_pool_512.top();
-      cache_pool_512.pop();
-      mem[EXTRA_BUF_SIZE + CACHE_SIZE] = 512;
-#ifdef _DEBUG
-      is_cached = true;
-#endif
-    }
-    else if(cache_pool_256.size() > 0 && alloc_size <= 256 && alloc_size > 64) {
-      mem = (size_t*)cache_pool_256.top();
-      cache_pool_256.pop();
+    
+    if(cache_pool_128.size() > 0 && alloc_size <= 128 && alloc_size > 64) {
+      mem = (size_t*)cache_pool_128.top();
+      cache_pool_128.pop();
       mem[EXTRA_BUF_SIZE + CACHE_SIZE] = 256;
 #ifdef _DEBUG
       is_cached = true;
@@ -338,8 +336,12 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, long 
     MUTEX_UNLOCK(&allocated_lock);
 #endif
 
+#ifdef _MEM_LOGGING
+    mem_logger << mem_cycle << ",alloc,obj," << mem << "," << size << endl;
+#endif
+
 #ifdef _DEBUG
-    wcout << L"# allocating object: cached=" << (is_cached ? "true" : "false")  << ", addr=" << mem << L"(" 
+    wcout << L"# allocating object: cached=" << (is_cached ? L"true" : L"false")  << L", addr=" << mem << L"(" 
           << (size_t)mem << L"), size=" << size << L" byte(s), used=" << allocation_size << L" byte(s) #"
           << endl;
 #endif
@@ -385,17 +387,10 @@ size_t* MemoryManager::AllocateArray(const long size, const MemoryType type,  si
   bool is_cached = false;
 #endif
   const size_t alloc_size = calc_size + sizeof(size_t) * EXTRA_BUF_SIZE;
-  if(cache_pool_512.size() > 0 && alloc_size <= 512 && alloc_size > 256) {
-    mem = (size_t*)cache_pool_512.top();
-    cache_pool_512.pop();
-    mem[EXTRA_BUF_SIZE + CACHE_SIZE] = 512;
-#ifdef _DEBUG
-    is_cached = true;
-#endif
-  }
-  else if(cache_pool_256.size() > 0 && alloc_size <= 256 && alloc_size > 64) {
-    mem = (size_t*)cache_pool_256.top();
-    cache_pool_256.pop();
+  
+  if(cache_pool_128.size() > 0 && alloc_size <= 128 && alloc_size > 64) {
+    mem = (size_t*)cache_pool_128.top();
+    cache_pool_128.pop();
     mem[EXTRA_BUF_SIZE + CACHE_SIZE] = 256;
 #ifdef _DEBUG
     is_cached = true;
@@ -442,8 +437,12 @@ size_t* MemoryManager::AllocateArray(const long size, const MemoryType type,  si
   MUTEX_UNLOCK(&allocated_lock);
 #endif
 
+#ifdef _MEM_LOGGING
+  mem_logger << mem_cycle << ",alloc,array," << mem << "," << size << endl;
+#endif
+
 #ifdef _DEBUG
-  wcout << L"# allocating array: cached=" << (is_cached ? "true" : "false") << ", addr=" << mem 
+  wcout << L"# allocating array: cached=" << (is_cached ? L"true" : L"false") << L", addr=" << mem 
         << L"(" << (size_t)mem << L"), size=" << calc_size << L" byte(s), used=" << allocation_size 
 		    << L" byte(s) #" << endl;
 #endif
@@ -744,24 +743,17 @@ void* MemoryManager::CollectMemory(void* arg)
       // account for deallocated memory
       allocation_size -= mem_size;
 
+#ifdef _MEM_LOGGING
+      mem_logger << mem_cycle << ",dealloc," << (mem[SIZE_OR_CLS] ? "obj," : "array,") << mem << "," << mem_size << endl;
+#endif
+
       // cache or free memory
       size_t* tmp = mem - EXTRA_BUF_SIZE;
       switch(mem[CACHE_SIZE]) {
-      case 512:	  
-        if(cache_pool_512.size() < POOL_SIZE + 1) {
-          memset(tmp, 0, 512);
-          cache_pool_512.push((char*)tmp);
-#ifdef _DEBUG
-          wcout << L"# caching memory: addr=" << mem << L"(" << (size_t)mem << L"), size="
-                << mem_size << L" byte(s) #" << endl;
-#endif
-        }
-        break;
-
-      case 256:
-        if(cache_pool_256.size() < POOL_SIZE + 1) {
+      case 128:
+        if(cache_pool_128.size() < POOL_SIZE_128 + 1) {
           memset(tmp, 0, 256);
-          cache_pool_256.push((char*)tmp);
+          cache_pool_128.push((char*)tmp);
 #ifdef _DEBUG
           wcout << L"# caching memory: addr=" << mem << L"(" << (size_t)mem << L"), size="
                 << mem_size << L" byte(s) #" << endl;
@@ -770,7 +762,7 @@ void* MemoryManager::CollectMemory(void* arg)
         break;
 
       case 64:
-        if(cache_pool_64.size() < POOL_SIZE + 1) {
+        if(cache_pool_64.size() < POOL_SIZE_64 + 1) {
           memset(tmp, 0, 64);
           cache_pool_64.push((char*)tmp);
 #ifdef _DEBUG
@@ -781,7 +773,7 @@ void* MemoryManager::CollectMemory(void* arg)
         break;
 
       case 32:
-        if(cache_pool_32.size() < POOL_SIZE + 1) {
+        if(cache_pool_32.size() < POOL_SIZE_32 + 1) {
           memset(tmp, 0, 32);
           cache_pool_32.push((char*)tmp);
 #ifdef _DEBUG
@@ -792,7 +784,7 @@ void* MemoryManager::CollectMemory(void* arg)
         break;
 
       case 16:
-        if(cache_pool_16.size() < POOL_SIZE + 1) {
+        if(cache_pool_16.size() < POOL_SIZE_16 + 1) {
           memset(tmp, 0, 16);
           cache_pool_16.push((char*)tmp);
 #ifdef _DEBUG
@@ -846,6 +838,10 @@ void* MemoryManager::CollectMemory(void* arg)
   allocated_memory = live_memory;
 #ifndef _GC_SERIAL
   MUTEX_UNLOCK(&allocated_lock);
+#endif
+
+#ifdef _MEM_LOGGING
+  mem_cycle++;
 #endif
 
 #ifdef _DEBUG

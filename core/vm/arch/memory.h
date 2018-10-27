@@ -43,7 +43,11 @@
 
 #define UNCOLLECTED_COUNT 11
 #define COLLECTED_COUNT 29
-#define POOL_SIZE 128
+
+#define POOL_SIZE_16 8192
+#define POOL_SIZE_32 4096
+#define POOL_SIZE_64 4096
+#define POOL_SIZE_128 1024
 
 #define EXTRA_BUF_SIZE 4
 #define MARKED_FLAG -1
@@ -93,8 +97,7 @@ class MemoryManager {
   static stack<char*> cache_pool_16;
   static stack<char*> cache_pool_32;
   static stack<char*> cache_pool_64;
-  static stack<char*> cache_pool_256;
-  static stack<char*> cache_pool_512;
+  static stack<char*> cache_pool_128;
   
 #ifdef _WIN32
   static CRITICAL_SECTION jit_frame_lock;
@@ -122,6 +125,10 @@ class MemoryManager {
   static inline bool MarkMemory(size_t* mem);
   static inline bool MarkValidMemory(size_t* mem);
 
+#ifdef _MEM_LOGGING
+  static ofstream mem_logger;
+  static long mem_cycle;
+#endif
   
 #ifdef _WIN32
   // mark memory
@@ -166,6 +173,10 @@ class MemoryManager {
   static void Initialize(StackProgram* p);
 
   static void Clear() {
+#ifdef _MEM_LOGGING
+    mem_logger.close();
+#endif
+
     while(!allocated_memory.empty()) {
       size_t* temp = allocated_memory.front();
       allocated_memory.erase(allocated_memory.begin());      
@@ -196,16 +207,9 @@ class MemoryManager {
       mem = NULL;
     }
 
-    while(!cache_pool_256.empty()) {
-      char* mem = cache_pool_256.top();
-      cache_pool_256.pop();
-      free(mem);
-      mem = NULL;
-    }
-
-    while(!cache_pool_512.empty()) {
-      char* mem = cache_pool_512.top();
-      cache_pool_512.pop();
+    while(!cache_pool_128.empty()) {
+      char* mem = cache_pool_128.top();
+      cache_pool_128.pop();
       free(mem);
       mem = NULL;
     }
