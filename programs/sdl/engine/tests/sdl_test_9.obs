@@ -1019,12 +1019,12 @@ class Level {
 		ring_path := String->New(base_path);
 		ring_path += "/media/ring.png";
 
-		x_offset := 400;
-		y_offset := 225;
-
-		logs->AddBack(HangingPlatform->New(x_offset, y_offset, 
-			framework->AddImageSprite(log_path),
-			framework->AddImageSprite(ring_path)));
+		x_offset := 100;
+		y_offset := Int->Random(200, 275);
+		for(i := 0; i < 3; i += 1;) {
+			logs->AddBack(HangingPlatform->New(x_offset, y_offset, framework->AddImageSprite(log_path), framework->AddImageSprite(ring_path)));
+			x_offset += 600;
+		};
 
 		return logs;
 	}
@@ -1229,7 +1229,7 @@ class Level {
 
 			each(i : @hanging_platforms) {
 				hanging_platform := @hanging_platforms->Get(i)->As(HangingPlatform);
-				if(<>(hanging_platform->GetRight() < 0 | hanging_platform->GetLeft() > GameConsts->SCREEN_WIDTH)) {
+				if(<>(hanging_platform->GetRight() < -300 | hanging_platform->GetLeft() > GameConsts->SCREEN_WIDTH + 300)) {
 					hanging_platform->Draw(frame_count);
 				};
 			};
@@ -1259,7 +1259,7 @@ class HangingPlatform implements Actor {
 	@grip_y_diff : Float;
 
 	New(x : Int, y : Int, beam : ImageSprite, handle_grip : ImageSprite) {
-		angle := Int->Random(5, 45);
+		angle := Int->Random(0, 35);
 
 		@beam := beam;
 		@grip := handle_grip;
