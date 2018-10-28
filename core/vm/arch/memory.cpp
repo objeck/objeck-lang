@@ -289,7 +289,7 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, long 
     if(cache_pool_128.size() > 0 && alloc_size <= 128 && alloc_size > 64) {
       mem = (size_t*)cache_pool_128.top();
       cache_pool_128.pop();
-      mem[EXTRA_BUF_SIZE + CACHE_SIZE] = 128;
+      mem[EXTRA_BUF_SIZE + CACHE_SIZE] = 256;
 #ifdef _DEBUG
       is_cached = true;
 #endif
@@ -391,7 +391,7 @@ size_t* MemoryManager::AllocateArray(const long size, const MemoryType type,  si
   if(cache_pool_128.size() > 0 && alloc_size <= 128 && alloc_size > 64) {
     mem = (size_t*)cache_pool_128.top();
     cache_pool_128.pop();
-    mem[EXTRA_BUF_SIZE + CACHE_SIZE] = 128;
+    mem[EXTRA_BUF_SIZE + CACHE_SIZE] = 256;
 #ifdef _DEBUG
     is_cached = true;
 #endif
@@ -752,7 +752,7 @@ void* MemoryManager::CollectMemory(void* arg)
       switch(mem[CACHE_SIZE]) {
       case 128:
         if(cache_pool_128.size() < POOL_SIZE_128 + 1) {
-          memset(tmp, 0, 128);
+          memset(tmp, 0, 256);
           cache_pool_128.push((char*)tmp);
 #ifdef _DEBUG
           wcout << L"# caching memory: addr=" << mem << L"(" << (size_t)mem << L"), size="
