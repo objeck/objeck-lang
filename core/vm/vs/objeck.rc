@@ -58,7 +58,7 @@ BEGIN
             VALUE "FileDescription", "Objeck Virtual Machine"
             VALUE "FileVersion", "4.1.1"
             VALUE "InternalName", "obr"
-            VALUE "LegalCopyright", "Copyright (C) 2008-2017"
+            VALUE "LegalCopyright", "Copyright (C) 2008-2018"
             VALUE "OriginalFilename", "obr.exe"
             VALUE "ProductName", "Objeck Runtime"
             VALUE "ProductVersion", "4.1.1"
