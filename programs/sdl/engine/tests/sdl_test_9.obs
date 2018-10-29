@@ -595,6 +595,7 @@ class Player {
 		clips->AddBack(Rect->New(128, 0, 32, 52));
 		clips->AddBack(Rect->New(160, 0, 32, 52));
 		clips->AddBack(Rect->New(192, 0, 32, 52));
+		clips->AddBack(Rect->New(224, 0, 32, 52));
 
 		player_path := String->New(base_path);
 		player_path += "/media/player.png";
@@ -638,18 +639,22 @@ class Player {
 	}
 
 	method : public : GoLeft()  ~ Nil {
-		@player_dir := -1;
-		
-		if(<>@game_over & @rect->GetFlip() = RendererFlip->SDL_FLIP_NONE) {
-			@rect->SetFlip(RendererFlip->SDL_FLIP_HORIZONTAL);
+		if(@hanging_platform = Nil) {
+			@player_dir := -1;
+			
+			if(<>@game_over & @rect->GetFlip() = RendererFlip->SDL_FLIP_NONE) {
+				@rect->SetFlip(RendererFlip->SDL_FLIP_HORIZONTAL);
+			};
 		};
 	}
 
 	method : public : GoRight()  ~ Nil {
-		@player_dir := 1;
+		if(@hanging_platform = Nil) {
+			@player_dir := 1;
 
-		if(<>@game_over & @rect->GetFlip() = RendererFlip->SDL_FLIP_HORIZONTAL) {
-			@rect->SetFlip(RendererFlip->SDL_FLIP_NONE);
+			if(<>@game_over & @rect->GetFlip() = RendererFlip->SDL_FLIP_HORIZONTAL) {
+				@rect->SetFlip(RendererFlip->SDL_FLIP_NONE);
+			};
 		};
 	}
 
@@ -681,12 +686,14 @@ class Player {
 
 	method : Movement() ~ Nil {
 		if(@hanging_platform <> Nil) {
+			base_bottom := @hanging_platform->GetBottom() + @hanging_platform->GetHeight();
 			if(@jumped) {
-				@loc->AddY(20);
+				@jumped := false;
+				@loc->Set(@hanging_platform->GetLeft(), base_bottom + @rect->GetHeight());
 				@hanging_platform := Nil;
 			}
 			else {
-				@loc->Set(@hanging_platform->GetLeft(), @hanging_platform->GetBottom() + @hanging_platform->GetHeight() + @rect->GetHeight() / 2);
+				@loc->Set(@hanging_platform->GetLeft(), base_bottom + @rect->GetHeight() / 2);
 			};
 		}
 		else {
@@ -801,8 +808,11 @@ class Player {
     }
 
 	method : public : Draw()  ~ Nil {
-		if(@game_over | @hanging_platform <> Nil) { # CHANGE ME
+		if(@game_over) {
 			@rect->Render(6);
+		}
+		else if(@hanging_platform <> Nil) {
+			@rect->Render(7);
 		}
 		else if(@jump_max > 0.0) {
 			@rect->Render(5);

@@ -67,7 +67,7 @@ BEGIN
             VALUE "FileDescription", "Objeck Compiler"
             VALUE "FileVersion", "4.1.1"
             VALUE "InternalName", "obc"
-            VALUE "LegalCopyright", "Copyright (C) 2008-2017"
+            VALUE "LegalCopyright", "Copyright (C) 2008-2018"
             VALUE "OriginalFilename", "obc.exe"
             VALUE "ProductName", "Objeck Compiler"
             VALUE "ProductVersion", "4.1.1"
