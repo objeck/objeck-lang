@@ -1030,7 +1030,7 @@ class Level {
 		ring_path += "/media/ring.png";
 
 		x_offset := 100;
-		y_offset := Int->Random(200, 275);
+		y_offset := Int->Random(225, 275);
 		for(i := 0; i < 3; i += 1;) {
 			logs->AddBack(HangingPlatform->New(x_offset, y_offset, 
 				framework->AddImageSprite(log_path), 
