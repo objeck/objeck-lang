@@ -812,7 +812,7 @@ class Player {
 			@rect->Render(6);
 		}
 		else if(@hanging_platform <> Nil) {
-			@rect->Render(7);
+			@rect->Render(5);
 		}
 		else if(@jump_max > 0.0) {
 			@rect->Render(5);
