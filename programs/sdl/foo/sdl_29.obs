@@ -112,10 +112,7 @@ class Circle {
 	@y : Int;
 	@r : Int;
 
-	New(x : Int, y : Int, r : Int) {
-		@x := x;
-		@y := y;
-		@r := r;
+	New() {
 	}
 
 	method : public : GetX() ~ Int {
@@ -158,7 +155,8 @@ class Dot {
 	    @dot_texture := dot_texture;
 
 		# Set collision circle size
-		@collider->SetR(Screen->DOT_WIDTH / 2);
+		@collider := Circle->New();
+		@collider->SetR(Consts->DOT_WIDTH / 2);
 
 	    # Initialize the velocity
 	    @velX := 0;
@@ -180,19 +178,19 @@ class Dot {
 	        # Adjust the velocity
 	        select(e->GetKey()->GetKeysym()->GetScancode()) {    	
 	            label Scancode->SDL_SCANCODE_UP: {
-	            	@velY -= Screen->DOT_VEL;
+	            	@velY -= Consts->DOT_VEL;
 	            }
 
 	            label Scancode->SDL_SCANCODE_DOWN: {
-	            	@velY += Screen->DOT_VEL;
+	            	@velY += Consts->DOT_VEL;
 	            }
 
 	            label Scancode->SDL_SCANCODE_LEFT: {
-	            	@velX -= Screen->DOT_VEL;
+	            	@velX -= Consts->DOT_VEL;
 	            }
 
 	            label Scancode->SDL_SCANCODE_RIGHT: {
-	            	@velX += Screen->DOT_VEL;
+	            	@velX += Consts->DOT_VEL;
 	            }        	            
 	        };
 	    }
@@ -201,19 +199,19 @@ class Dot {
 	        # Adjust the velocity
 	        select(e->GetKey()->GetKeysym()->GetScancode()) {
 	        	label Scancode->SDL_SCANCODE_UP: {
-	            	@velY += Screen->DOT_VEL;
+	            	@velY += Consts->DOT_VEL;
 	            }
 
 	            label Scancode->SDL_SCANCODE_DOWN: {
-	            	@velY -= Screen->DOT_VEL;
+	            	@velY -= Consts->DOT_VEL;
 	            }
 
 	            label Scancode->SDL_SCANCODE_LEFT: {
-	            	@velX += Screen->DOT_VEL;
+	            	@velX += Consts->DOT_VEL;
 	            }
 
 	            label Scancode->SDL_SCANCODE_RIGHT: {
-	            	@velX -= Screen->DOT_VEL;
+	            	@velX -= Consts->DOT_VEL;
 	            }
 	        };
 	    };   
@@ -230,7 +228,7 @@ class Dot {
 		ShiftColliders();
 
 	    # If the dot collided or went too far to the left or right
-		if( ( @posX - @collider->GetR() < 0 ) | ( @posX + @collider->GetR() > Screen->WIDTH ) | 
+		if( ( @posX - @collider->GetR() < 0 ) | ( @posX + @collider->GetR() > Consts->SCREEN_WIDTH ) | 
 			CheckCollision( @collider, square ) | CheckCollision( @collider, circle ) )
 	    {
 	        # Move back
@@ -243,7 +241,7 @@ class Dot {
 		ShiftColliders();
 
 	    # If the dot collided or went too far up or down
-	    if( ( @posY - @collider->GetR() < 0 ) | ( @posY + @collider->GetR() > Screen->HEIGHT ) | 
+	    if( ( @posY - @collider->GetR() < 0 ) | ( @posY + @collider->GetR() > Consts->SCREEN_HEIGHT ) | 
 	    	CheckCollision( @collider, square ) | CheckCollision( @collider, circle ) )
 		{
 	        # Move back
@@ -277,13 +275,13 @@ class Dot {
 		cX : Int; cY : Int;
 
 	    # Find closest x offset
-	    if( a->GetX() < b->GetX() )
+	    if( a->GetX() + a->GetR() < b->GetX() )
 	    {
-	        cX := b->GetX();
-	    }
-	    else if( a->GetX() > b->GetX() + b->GetW() )
+	        cX := b->GetX() - a->GetR();
+	    } 
+	    else if( a->GetX() >= b->GetX() + b->GetW() )
 	    {
-	        cX := b->GetX() + b->GetW();
+	        cX := b->GetX() + b->GetW() - a->GetR();
 	    }
 	    else
 	    {
@@ -291,13 +289,13 @@ class Dot {
 	    };
 
 	    # Find closest y offset
-	    if( a->GetY() < b->GetY() )
+	    if( a->GetY() + a->GetR() < b->GetY() )
 	    {
-	        cY := b->GetY();
+	        cY := b->GetY() - a->GetR();
 	    }
-	    else if( a->GetY() > b->GetY() + b->GetH() )
+	    else if( a->GetY() >= b->GetY() + b->GetH() )
 	    {
-	        cY := b->GetY() + b->GetH();
+	        cY := b->GetY() + b->GetH() - a->GetR();
 	    }
 	    else
 	    {
@@ -334,7 +332,8 @@ class Test {
 	@renderer : static : Renderer;
 	@dot_texture : static : LTexture;
 	@dot : static : Dot;
-	
+	@otherDot : static : Dot;
+
 	function : Main(args : String[]) ~ Nil {
 		# Start up SDL and create window
 		if( <>Init() ) {
@@ -348,15 +347,18 @@ class Test {
 			return;
 		};
 
-		scrolling_offset := 0;
-
-		FRAME_RATE := 1000 / Screen->FPS->As(Int);
+		FRAME_RATE := 1000 / Consts->FPS;
 			
 		# Main loop flag
 		quit := false;
 
 		# Event handler
 		e := Event->New();
+
+		wall := Rect->New(300, 40, 40, 400);
+
+		@dot := Dot->New(Consts->DOT_WIDTH / 2, Consts->DOT_HEIGHT / 2, @dot_texture);
+		@otherDot := Dot->New(Consts->SCREEN_WIDTH / 4, Consts->SCREEN_HEIGHT / 4, @dot_texture);
 
 		# While application is running
 		while(<>quit) {
@@ -373,23 +375,19 @@ class Test {
 				@dot->HandleEvent(e);
 			};
 
-#			@dot->Move();
-			
+			# Move the dot and check collision
+			@dot->Move( wall, @otherDot->GetCollider() );
+
 			@renderer->SetDrawColor(0xFF, 0xFF, 0xFF, 0xFF);
 			@renderer->Clear();
 
+			# Render wall
+			@renderer->SetDrawColor( 0x00, 0x00, 0x00, 0xFF );		
+			@renderer->DrawRect( wall );
 
-			# Scroll background
-			scrolling_offset -= 1;
-			if(scrolling_offset < -1 * @dot_texture->GetWidth()) {
-				scrolling_offset := 0;
-			};
-
-			# Render background
-			@dot_texture->Render(scrolling_offset, 0);
-			@dot_texture->Render(scrolling_offset + @dot_texture->GetWidth(), 0);
-
+			# Render dots
 			@dot->Render();
+			@otherDot->Render();
 
 			# Update screen
 			@renderer->Present();
@@ -420,7 +418,7 @@ class Test {
 		# Create window
 		@window := Window->New("SDL Tutorial", 
 			WindowFlags->SDL_WINDOWPOS_UNDEFINED, WindowFlags->SDL_WINDOWPOS_UNDEFINED, 
-			Screen->WIDTH, Screen->HEIGHT, WindowFlags->SDL_WINDOW_SHOWN);
+			Consts->SCREEN_WIDTH, Consts->SCREEN_HEIGHT, WindowFlags->SDL_WINDOW_SHOWN);
 		if(@window->IsNull()) {
 			"Cannot create window!"->ErrorLine();
 			return false;
@@ -442,14 +440,13 @@ class Test {
 		};
 
 		@dot_texture := LTexture->New(@renderer);
-		@dot := Dot->New(Screen->DOT_WIDTH / 2, Screen->DOT_HEIGHT / 2, @dot_texture);
-		
+				
 		return true;
 	}
 	
 	function : LoadMedia() ~ Bool {
-		if(<>@dot_texture->LoadFromFile("images/bg.bmp")) {
-			"Failed to load bg image"->ErrorLine();
+		if(<>@dot_texture->LoadFromFile("images/dot.bmp")) {
+			"Failed to load image"->ErrorLine();
 			return false;
 		};
 
@@ -478,6 +475,7 @@ class Test {
 	function : Close() ~ Nil {
 		@dot_texture->Free();
 		@dot->Free();
+		@otherDot->Free();
 
 		@renderer->Destroy();
 		@window->Destroy();
@@ -487,11 +485,11 @@ class Test {
 	}
 }
 
-consts Screen {
-	DOT_VEL := 1,
+consts Consts {
+	DOT_VEL := 2,
 	DOT_WIDTH := 20,
 	DOT_HEIGHT := 20,
-	WIDTH := 640,
-	HEIGHT := 480,
+	SCREEN_WIDTH := 640,
+	SCREEN_HEIGHT := 480,
 	FPS := 60
 }
