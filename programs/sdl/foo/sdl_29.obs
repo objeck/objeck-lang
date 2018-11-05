@@ -219,6 +219,10 @@ class Dot {
 	    };   
 	}
 
+	method : public : GetCollider() ~ Circle {
+		return @collider;
+	}
+
 	# Moves the dot
 	method : public : Move(square : Rect, circle : Circle) ~ Nil {
 		# Move the dot left or right
@@ -258,19 +262,57 @@ class Dot {
 		# Calculate total radius squared
 		totalRadiusSquared := a->GetR() + b->GetR();
 		totalRadiusSquared := totalRadiusSquared * totalRadiusSquared;
-#~
+
 	    # If the distance between the centers of the circles is less than the sum of their radii
-	    if( DistanceSquared( a.x, a.y, b.x, b.y ) < ( totalRadiusSquared ) ) {
+	    if( DistanceSquared( a->GetX(), a->GetY(), b->GetX(), b->GetY() ) < ( totalRadiusSquared ) ) {
 	        # The circles have collided
 	        return true;
 	    };
-~#
+
 	    # If not
 	    return false;
 	}
 
 	method : CheckCollision( a : Circle, b : Rect ) ~ Bool {
-		return false;
+		cX : Int; cY : Int;
+
+	    # Find closest x offset
+	    if( a->GetX() < b->GetX() )
+	    {
+	        cX := b->GetX();
+	    }
+	    else if( a->GetX() > b->GetX() + b->GetW() )
+	    {
+	        cX := b->GetX() + b->GetW();
+	    }
+	    else
+	    {
+	        cX := a->GetX();
+	    };
+
+	    # Find closest y offset
+	    if( a->GetY() < b->GetY() )
+	    {
+	        cY := b->GetY();
+	    }
+	    else if( a->GetY() > b->GetY() + b->GetH() )
+	    {
+	        cY := b->GetY() + b->GetH();
+	    }
+	    else
+	    {
+	        cY := a->GetY();
+	    };
+
+	    # If the closest point is inside the circle
+	    if( DistanceSquared( a->GetX(), a->GetY(), cX, cY ) < a->GetR() * a->GetR() )
+	    {
+	        # This box and the circle have collided
+	        return true;
+	    };
+
+	    # If the shapes have not collided
+	    return false;
 	}
 
 	# Show the dot
@@ -290,7 +332,7 @@ class Dot {
 class Test {
 	@window : static : Window;
 	@renderer : static : Renderer;
-	@bg_texture : static : LTexture;
+	@dot_texture : static : LTexture;
 	@dot : static : Dot;
 	
 	function : Main(args : String[]) ~ Nil {
@@ -339,13 +381,13 @@ class Test {
 
 			# Scroll background
 			scrolling_offset -= 1;
-			if(scrolling_offset < -1 * @bg_texture->GetWidth()) {
+			if(scrolling_offset < -1 * @dot_texture->GetWidth()) {
 				scrolling_offset := 0;
 			};
 
 			# Render background
-			@bg_texture->Render(scrolling_offset, 0);
-			@bg_texture->Render(scrolling_offset + @bg_texture->GetWidth(), 0);
+			@dot_texture->Render(scrolling_offset, 0);
+			@dot_texture->Render(scrolling_offset + @dot_texture->GetWidth(), 0);
 
 			@dot->Render();
 
@@ -399,19 +441,14 @@ class Test {
 			return false;
 		};
 
-		@bg_texture := LTexture->New(@renderer);
-#		@dot := Dot->New(LTexture->New(@renderer));
+		@dot_texture := LTexture->New(@renderer);
+		@dot := Dot->New(Screen->DOT_WIDTH / 2, Screen->DOT_HEIGHT / 2, @dot_texture);
 		
 		return true;
 	}
 	
 	function : LoadMedia() ~ Bool {
-		if(<>@dot->LoadFromFile("images/dot.bmp")) {
-			"Failed to load bg image"->ErrorLine();
-			return false;
-		};
-
-		if(<>@bg_texture->LoadFromFile("images/bg.png")) {
+		if(<>@dot_texture->LoadFromFile("images/bg.bmp")) {
 			"Failed to load bg image"->ErrorLine();
 			return false;
 		};
@@ -439,7 +476,7 @@ class Test {
 	}
 	
 	function : Close() ~ Nil {
-		@bg_texture->Free();
+		@dot_texture->Free();
 		@dot->Free();
 
 		@renderer->Destroy();
