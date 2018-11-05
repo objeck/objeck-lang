@@ -122,8 +122,16 @@ class Circle {
 		return @x;
 	}
 
+	method : public : SetX(x : Int) ~ Nil {
+		@x := x;
+	}
+
 	method : public : GetY() ~ Int {
 		return @y;
+	}
+
+	method : public : SetY(y : Int) ~ Nil {
+		@y := y;
 	}
 
 	method : public : GetR() ~ Int {
@@ -142,7 +150,6 @@ class Dot {
 	@velX : Int; 
 	@velY : Int;
 	@collider : Circle ;
-	DOT_VEL : Int;
 
 	New(x : Int, y : Int, dot_texture : LTexture) {
 		# Initialize the offsets
@@ -162,7 +169,8 @@ class Dot {
 	}
 
 	method : ShiftColliders() ~ Nil {
-
+		@collider->SetX(@posX);
+		@collider->SetY(@posY);
 	}
 
 	# Takes key presses and adjusts the dot's velocity
@@ -172,19 +180,19 @@ class Dot {
 	        # Adjust the velocity
 	        select(e->GetKey()->GetKeysym()->GetScancode()) {    	
 	            label Scancode->SDL_SCANCODE_UP: {
-	            	@velY -= DOT_VEL;
+	            	@velY -= Screen->DOT_VEL;
 	            }
 
 	            label Scancode->SDL_SCANCODE_DOWN: {
-	            	@velY += DOT_VEL;
+	            	@velY += Screen->DOT_VEL;
 	            }
 
 	            label Scancode->SDL_SCANCODE_LEFT: {
-	            	@velX -= DOT_VEL;
+	            	@velX -= Screen->DOT_VEL;
 	            }
 
 	            label Scancode->SDL_SCANCODE_RIGHT: {
-	            	@velX += DOT_VEL;
+	            	@velX += Screen->DOT_VEL;
 	            }        	            
 	        };
 	    }
@@ -193,46 +201,79 @@ class Dot {
 	        # Adjust the velocity
 	        select(e->GetKey()->GetKeysym()->GetScancode()) {
 	        	label Scancode->SDL_SCANCODE_UP: {
-	            	@velY += DOT_VEL;
+	            	@velY += Screen->DOT_VEL;
 	            }
 
 	            label Scancode->SDL_SCANCODE_DOWN: {
-	            	@velY -= DOT_VEL;
+	            	@velY -= Screen->DOT_VEL;
 	            }
 
 	            label Scancode->SDL_SCANCODE_LEFT: {
-	            	@velX += DOT_VEL;
+	            	@velX += Screen->DOT_VEL;
 	            }
 
 	            label Scancode->SDL_SCANCODE_RIGHT: {
-	            	@velX -= DOT_VEL;
+	            	@velX -= Screen->DOT_VEL;
 	            }
 	        };
 	    };   
 	}
 
 	# Moves the dot
-	method : public : Move() ~ Nil {
+	method : public : Move(square : Rect, circle : Circle) ~ Nil {
 		# Move the dot left or right
 	    @posX += @velX;
+		ShiftColliders();
 
-	    # If the dot went too far to the left or right
-	    if( ( @posX < 0 ) | ( @posX + @dot_texture->GetWidth() > Screen->WIDTH->As(Int) ) ) {
+	    # If the dot collided or went too far to the left or right
+		if( ( @posX - @collider->GetR() < 0 ) | ( @posX + @collider->GetR() > Screen->WIDTH ) | 
+			CheckCollision( @collider, square ) | CheckCollision( @collider, circle ) )
+	    {
 	        # Move back
 	        @posX -= @velX;
+			ShiftColliders();
 	    };
 
 	    # Move the dot up or down
 	    @posY += @velY;
+		ShiftColliders();
 
-	    # If the dot went too far up or down
-	    if( ( @posY < 0 ) | ( @posY + @dot_texture->GetHeight() > Screen->HEIGHT->As(Int) ) ) {
+	    # If the dot collided or went too far up or down
+	    if( ( @posY - @collider->GetR() < 0 ) | ( @posY + @collider->GetR() > Screen->HEIGHT ) | 
+	    	CheckCollision( @collider, square ) | CheckCollision( @collider, circle ) )
+		{
 	        # Move back
 	        @posY -= @velY;
+			ShiftColliders();
 	    };
 	}
 
-	# Shows the dot1 on the screen
+	method : DistanceSquared( x1 : Int, y1 : Int, x2 : Int, y2 : Int ) ~ Int {
+		deltaX := x2 - x1;
+		deltaY := y2 - y1;
+		return deltaX*deltaX + deltaY*deltaY;
+	}
+
+	method : CheckCollision( a : Circle, b : Circle ) ~ Bool {
+		# Calculate total radius squared
+		totalRadiusSquared := a->GetR() + b->GetR();
+		totalRadiusSquared := totalRadiusSquared * totalRadiusSquared;
+#~
+	    # If the distance between the centers of the circles is less than the sum of their radii
+	    if( DistanceSquared( a.x, a.y, b.x, b.y ) < ( totalRadiusSquared ) ) {
+	        # The circles have collided
+	        return true;
+	    };
+~#
+	    # If not
+	    return false;
+	}
+
+	method : CheckCollision( a : Circle, b : Rect ) ~ Bool {
+		return false;
+	}
+
+	# Show the dot
 	method : public : Render() ~ Nil {
 		@dot_texture->Render(@posX, @posY);
 	}
@@ -290,7 +331,7 @@ class Test {
 				@dot->HandleEvent(e);
 			};
 
-			@dot->Move();
+#			@dot->Move();
 			
 			@renderer->SetDrawColor(0xFF, 0xFF, 0xFF, 0xFF);
 			@renderer->Clear();
@@ -323,9 +364,6 @@ class Test {
 	}
 	
 	function : Init() ~ Bool {
-		SCREEN_WIDTH := 640;
-		SCREEN_HEIGHT := 480;
-
 		# Initialize SDL
 		if(Core->Init(HardwareFlags->SDL_INIT_VIDEO) < 0) {
 			"SDL could not initialize!"->ErrorLine();
@@ -340,7 +378,7 @@ class Test {
 		# Create window
 		@window := Window->New("SDL Tutorial", 
 			WindowFlags->SDL_WINDOWPOS_UNDEFINED, WindowFlags->SDL_WINDOWPOS_UNDEFINED, 
-			Screen->WIDTH->As(Int), Screen->HEIGHT->As(Int), WindowFlags->SDL_WINDOW_SHOWN);
+			Screen->WIDTH, Screen->HEIGHT, WindowFlags->SDL_WINDOW_SHOWN);
 		if(@window->IsNull()) {
 			"Cannot create window!"->ErrorLine();
 			return false;
@@ -413,6 +451,7 @@ class Test {
 }
 
 consts Screen {
+	DOT_VEL := 1,
 	DOT_WIDTH := 20,
 	DOT_HEIGHT := 20,
 	WIDTH := 640,
