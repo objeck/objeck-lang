@@ -241,7 +241,6 @@ class Test {
 		e := Event->New();
 
 		camera := Rect->New(0, 0, Consts->SCREEN_WIDTH, Consts->SCREEN_HEIGHT );
-
 		@dot := Dot->New(0, 0, @dot_texture);
 
 		# While application is running
@@ -261,9 +260,6 @@ class Test {
 
 			# Move the dot and check collision
 			@dot->Move();
-
-
-
 
 			# Center the camera over the dot
 			camera->SetX(( @dot->GetPosX() + Consts->DOT_WIDTH / 2 ) - Consts->SCREEN_WIDTH / 2);
