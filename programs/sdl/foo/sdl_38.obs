@@ -141,7 +141,8 @@ class Particle {
 	    @frame := rand() % 5;
 
 	    # Set type
-	    select( rand() % 3 ) {
+bar := rand() % 3;	    
+	    select( bar ) {
 	        label 0: { @texture := @redTexture; }
 	        label 1: { @texture := @greenTexture; }
 	        label 2: { @texture := @blueTexture; }
@@ -155,9 +156,7 @@ class Particle {
 	# Shows the particle
 	method : public : Render() ~ Nil {
 		# Show image
-"-- 0 --"->PrintLine();		
 		@texture->Render( @posX, @posY );
-"-- 1 --"->PrintLine();		
 
 	    # Show shimmer
 	    if( @frame % 2 = 0 ) {
@@ -414,9 +413,6 @@ class Test {
 			"SDL image could not initialize!"->ErrorLine();
 			return false;
 		};
-		
-		@dot_texture := LTexture->New(@renderer);
-		@dot := Dot->New(0, 0, @dot_texture);
 
 		@redTexture := LTexture->New(@renderer);
 		@greenTexture := LTexture->New(@renderer);
@@ -424,6 +420,9 @@ class Test {
 		@shimmerTexture := LTexture->New(@renderer);
 		
 		Particle->Init(@redTexture, @greenTexture, @blueTexture, @shimmerTexture);
+
+		@dot_texture := LTexture->New(@renderer);
+		@dot := Dot->New(0, 0, @dot_texture);
 
 		return true;
 	}
@@ -503,6 +502,6 @@ consts Consts {
 	TOTAL_PARTICLES := 20,
 	DOT_WIDTH := 20,
 	DOT_HEIGHT := 20,
-	DOT_VEL := 10,
+	DOT_VEL := 5,
 	FPS := 60
 }
