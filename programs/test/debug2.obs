@@ -2,31 +2,19 @@ use Collection;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		mm := MultiMap->New();
-				
-		mm->Insert(IntHolder->New(12), "aa");
-		mm->Insert(IntHolder->New(14), "bb");
-		mm->Insert(IntHolder->New(5), "cc");
-		mm->Insert(IntHolder->New(12), "dd");
-		mm->Insert(IntHolder->New(10), "ee");
-		mm->Insert(IntHolder->New(12), "ff");
-		mm->Insert(IntHolder->New(10), "gg");
+#~		
+		bar := rand() % 3;	    
+	    select( bar ) {
+~#
 
-#		mm->Remove(IntHolder->New(12));
+	    select( rand() % 3 ) {
+	        label 0: { "-- 0 --"->PrintLine(); }
+	        label 1: { "-- 1 --"->PrintLine(); }
+	        label 2: { "-- 2 --"->PrintLine(); }
+	    };
+	}
 
-		vv := mm->Find(IntHolder->New(10));
-		if(vv <> Nil) {
-			each(i : vv) {
-				v := vv->Get(i)->As(String);
-				v->PrintLine();
-			};
-		};
-
-		keys := mm->GetKeys();
-		keys->Sort();
-		each(i : keys) {
-			key := keys->Get(i)->As(IntHolder);
-			key->Get()->PrintLine();
-		};
+	function : rand() ~ Int {
+		return Int->Random(0, 32767);
 	}
 }
