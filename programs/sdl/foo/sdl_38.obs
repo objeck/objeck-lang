@@ -141,8 +141,7 @@ class Particle {
 	    @frame := rand() % 5;
 
 	    # Set type
-bar := rand() % 3;	    
-	    select( bar ) {
+	    select( rand() % 3 ) {
 	        label 0: { @texture := @redTexture; }
 	        label 1: { @texture := @greenTexture; }
 	        label 2: { @texture := @blueTexture; }
