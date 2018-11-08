@@ -104,7 +104,10 @@ SelectNode* SelectArrayTree::divide(int start, int end)
 void SelectArrayTree::Emit()
 {
   emitter->cur_line_num = select->GetLineNumber();
-  
+      
+  emitter->EmitExpression(select->GetAssignment()->GetExpression());
+  emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, STOR_INT_VAR, 0, LOCL));
+
   int end_label = ++emitter->unconditional_label;
   Emit(root, end_label);
   // write statements
@@ -140,20 +143,20 @@ void SelectArrayTree::Emit(SelectNode* node, int end_label)
   if(node != NULL) {
     SelectNode* left = node->GetLeft();
     SelectNode* right = node->GetRight();
-
+    
     emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, LBL, node->GetId()));
     if(node->GetOperation() == CASE_LESS) {
       const int value = node->GetValue();
       // evaluate less then
       emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, LOAD_INT_LIT, value));
-      emitter->EmitExpression(select->GetExpression());
+      emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, LOAD_INT_VAR, 0, LOCL));
       emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, LES_INT));
     } 
     else if(node->GetOperation() == CASE_EQUAL) {
       const int value = node->GetValue();
       // evaluate equal to
       emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, LOAD_INT_LIT, value));
-      emitter->EmitExpression(select->GetExpression());
+      emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, LOAD_INT_VAR, 0, LOCL));
       emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, EQL_INT));
       // true
       emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, JMP, value_label_map[value], true));
@@ -169,13 +172,13 @@ void SelectArrayTree::Emit(SelectNode* node, int end_label)
       // evaluate equal to
       const int value = node->GetValue();
       emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, LOAD_INT_LIT, value));
-      emitter->EmitExpression(select->GetExpression());
+      emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, LOAD_INT_VAR, 0, LOCL));
       emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, EQL_INT));
       // true
       emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, JMP, value_label_map[value], true));
       // evaluate less then
       emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, LOAD_INT_LIT, node->GetValue2()));
-      emitter->EmitExpression(select->GetExpression());
+      emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, LOAD_INT_VAR, 0, LOCL));
       emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, LES_INT));
     }
 
@@ -2100,7 +2103,8 @@ void IntermediateEmitter::EmitSelect(Select* select_stmt)
   if(select_stmt->GetLabelStatements().size() > 1) {
     SelectArrayTree tree(select_stmt, this);
     tree.Emit();
-  } else {
+  } 
+  else {
     // get statement and value
     map<int, StatementList*> label_statements = select_stmt->GetLabelStatements();
     map<int, StatementList*>::iterator iter = label_statements.begin();
@@ -2114,15 +2118,18 @@ void IntermediateEmitter::EmitSelect(Select* select_stmt)
       other_label = ++conditional_label;
     }
 
+    /*
     // emit code
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, value));
     EmitExpression(select_stmt->GetExpression());
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, EQL_INT));
     if(select_stmt->GetOther()) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, JMP, other_label, false));
-    } else {
+    } 
+    else {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, JMP, end_label, false));
     }
+    */
 
     // label statements
     vector<Statement*> statements = statement_list->GetStatements();

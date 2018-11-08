@@ -1025,6 +1025,7 @@ bool ContextAnalyzer::Analyze()
       break;
 
     case SELECT_STMT:
+      current_method->SetAndOr(true);
       AnalyzeSelect(static_cast<Select*>(statement), depth);
       break;
 
@@ -2821,7 +2822,7 @@ bool ContextAnalyzer::Analyze()
   void ContextAnalyzer::AnalyzeSelect(Select* select_stmt, const int depth)
   {
     // expression
-    Expression* expression = select_stmt->GetExpression();
+    Expression* expression = select_stmt->GetAssignment()->GetExpression();
     AnalyzeExpression(expression, depth + 1);
     if(!IsIntegerExpression(expression)) {
       ProcessError(expression, L"Expected integer expression");
