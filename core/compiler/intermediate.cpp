@@ -2117,11 +2117,10 @@ void IntermediateEmitter::EmitSelect(Select* select_stmt)
     if(select_stmt->GetOther()) {
       other_label = ++conditional_label;
     }
-
-    /*
+    
     // emit code
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, value));
-    EmitExpression(select_stmt->GetExpression());
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 0, LOCL));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, EQL_INT));
     if(select_stmt->GetOther()) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, JMP, other_label, false));
@@ -2129,7 +2128,6 @@ void IntermediateEmitter::EmitSelect(Select* select_stmt)
     else {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, JMP, end_label, false));
     }
-    */
 
     // label statements
     vector<Statement*> statements = statement_list->GetStatements();
