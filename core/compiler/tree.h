@@ -75,6 +75,7 @@ namespace frontend {
   class Enum;
   class OperationAssignment;
   class ParsedProgram;
+  class Assignment;
 
   /****************************
    * StatementType enum
@@ -1467,17 +1468,17 @@ namespace frontend {
    ****************************/
   class Select : public Statement {
     friend class TreeFactory;
-    Expression* eval_expression;
+    Assignment* eval_assignment;
     map<int, StatementList*> label_statements;
     vector<StatementList*> statement_lists;
     map<ExpressionList*, StatementList*> statement_map;
     StatementList* other;
 
-  Select(const wstring &f, const int l, Expression* e, 
+  Select(const wstring &f, const int l, Assignment* e,
          map<ExpressionList*, StatementList*> s, 
          vector<StatementList*> sl, StatementList* o) :
     Statement(f, l) {
-      eval_expression = e;
+      eval_assignment = e;
       statement_map = s;
       statement_lists = sl;
       other = o;
@@ -1499,8 +1500,8 @@ namespace frontend {
       return SELECT_STMT;
     }
 
-    Expression* GetExpression() {
-      return eval_expression;
+    Assignment* GetAssignment() {
+      return eval_assignment;
     }
 
     map<ExpressionList*, StatementList*> GetStatements() {
@@ -3071,10 +3072,10 @@ namespace frontend {
       return tmp;
     }
 
-    Select* MakeSelect(const wstring &file_name, const int line_num, Expression* eval_expression,
+    Select* MakeSelect(const wstring &file_name, const int line_num, Assignment* eval_assignment,
                        map<ExpressionList*, StatementList*> statement_map, 
                        vector<StatementList*> statement_lists, StatementList* other) {
-      Select* tmp = new Select(file_name, line_num, eval_expression, 
+      Select* tmp = new Select(file_name, line_num, eval_assignment,
                                statement_map, statement_lists, other);
       statements.push_back(tmp);
       return tmp;

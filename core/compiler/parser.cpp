@@ -3627,12 +3627,14 @@ Select* Parser::ParseSelect(int depth)
   }
   NextToken();
 
+  Variable* variable = TreeFactory::Instance()->MakeVariable(L"", -1, L"#");
+  Assignment* eval_assignment = TreeFactory::Instance()->MakeAssignment(L"", -1, variable, eval_expression);
+
   if(!Match(TOKEN_OPEN_BRACE)) {
     ProcessError(L"Expected '('", TOKEN_OPEN_BRACE);
   }
   NextToken();
-
-
+  
   StatementList* other = NULL;
   vector<StatementList*> statement_lists;
   map<ExpressionList*, StatementList*> statement_map;
@@ -3691,7 +3693,7 @@ Select* Parser::ParseSelect(int depth)
   }
   NextToken();
 
-  return TreeFactory::Instance()->MakeSelect(file_name, line_num, eval_expression,
+  return TreeFactory::Instance()->MakeSelect(file_name, line_num, eval_assignment,
                                              statement_map, statement_lists, other);
 }
 
