@@ -3627,8 +3627,8 @@ Select* Parser::ParseSelect(int depth)
   }
   NextToken();
 
-  Variable* variable = TreeFactory::Instance()->MakeVariable(L"", -1, L"#");
-  Assignment* eval_assignment = TreeFactory::Instance()->MakeAssignment(L"", -1, variable, eval_expression);
+  Variable* variable = TreeFactory::Instance()->MakeVariable(file_name, -1, L"#");
+  Assignment* eval_assignment = TreeFactory::Instance()->MakeAssignment(file_name, -1, variable, eval_expression);
 
   if(!Match(TOKEN_OPEN_BRACE)) {
     ProcessError(L"Expected '('", TOKEN_OPEN_BRACE);
