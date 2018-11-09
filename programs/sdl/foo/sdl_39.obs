@@ -145,19 +145,18 @@ class Tile {
 
 	# Get the tile type
 	method : public : GetType() ~ Int {
-		return 0;
+		return @type;
 	}
 
 	# Get the collision box
 	method : public : GetBox() ~ Rect {
-		return Nil;
+		return @box;
 	}
 }
 
 class Dot {
 	@dot_texture : LTexture;
-	@posX : Int;
-	@posY : Int;
+	@box : Rect;
 	@velX : Int; 
 	@velY : Int;
 
@@ -218,35 +217,32 @@ class Dot {
 	    };   
 	}
 
-	method : public : GetPosX() ~ Int {
-		return @posX;
-	}
-
-	method : public : GetPosY() ~ Int {
-		return @posY;
-	}
-
 	# Moves the dot
-	method : public : Move() ~ Nil {
+	method : public : Move(tiles : Tile[]) ~ Nil {
 		# Move the dot left or right
-	    @posX += @velX;
+	    @box->AddX(@velX);
 
-	    # If the dot went too far to the left or right
-	    if( ( @posX < 0 ) | ( @posX + Consts->DOT_WIDTH > Consts->LEVEL_WIDTH ) )
+	    # If the dot went too far to the left or right or touched a wall
+	    if( ( @box->GetX() < 0 ) | ( @box->GetX() + Consts->DOT_WIDTH > Consts->LEVEL_WIDTH ) | TouchesWall( @box, tiles ) )
 	    {
-	        # Move back
-	        @posX -= @velX;
+	        # move back
+	        @box->SubX(@velX);
 	    };
 
 	    # Move the dot up or down
-	    @posY += @velY;
+	    @box->AddY(@velY);
 
-	    # If the dot went too far up or down
-	    if( ( @posY < 0 ) | ( @posY + Consts->DOT_HEIGHT > Consts->LEVEL_HEIGHT ) )
+	    # If the dot went too far up or down or touched a wall
+	    if( ( @box->GetY() < 0 ) | ( @box->GetY() + Consts->DOT_HEIGHT > Consts->LEVEL_HEIGHT ) | TouchesWall( @box, tiles ) )
 	    {
-	        # Move back
-	        @posY -= @velY;
+	        # move back
+	        @box->SubY(@velY);
 	    };
+	}
+
+	# Checks collision box against set of tiles
+	method : TouchesWall( box : Rect, tiles : Tile[] ) ~ Bool {
+		return false;
 	}
 
 	# Show the dot
