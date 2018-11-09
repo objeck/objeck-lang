@@ -137,7 +137,7 @@ class Tile {
 	# Shows the tile
 	method : public : Render(camera : Rect) ~ Nil {
 		# If the tile is on screen
-	    if( Test->CheckCollision( camera, @box ) ) {
+	    if( Game->CheckCollision( camera, @box ) ) {
 	        # Show the tile
 	        @tileTexture->Render( @box->GetX() - camera->GetX(), @box->GetY() - camera->GetY(), @tileClips[ @type ] );
 	    };
@@ -240,27 +240,63 @@ class Dot {
 	    };
 	}
 
+	# Centers the camera over the dot
+	method : public : SetCamera( camera : Rect ) ~ Nil {
+		# Center the camera over the dot
+		camera->SetX( ( @box->GetX() + Consts->DOT_WIDTH / 2 ) - Consts->SCREEN_WIDTH / 2);
+		camera->SetY( ( @box->GetY() + Consts->DOT_HEIGHT / 2 ) - Consts->SCREEN_HEIGHT / 2);
+
+		# Keep the camera in bounds
+		if( camera->GetX() < 0 )
+		{ 
+			camera->SetX(0);
+		};
+		if( camera->GetY() < 0 )
+		{
+			camera->SetY(0);
+		};
+		if( camera->GetX() > Consts->LEVEL_WIDTH - camera->GetW() )
+		{
+			camera->SetX(Consts->LEVEL_WIDTH - camera->GetW());
+		};
+		if( camera->GetY() > Consts->LEVEL_HEIGHT - camera->GetH() )
+		{
+			camera->SetY(Consts->LEVEL_HEIGHT - camera->GetH());
+		};
+	}
+
 	# Checks collision box against set of tiles
 	method : TouchesWall( box : Rect, tiles : Tile[] ) ~ Bool {
-		return false;
+		# Go through the tiles
+	    for( i := 0; i < Consts->TOTAL_TILES; i += 1; )
+	    {
+	    	tile := tiles[ i ];
+	        # If the tile is a wall type tile
+	        if( ( tile->GetType() >= Consts->TILE_CENTER ) & ( tile->GetType() <= Consts->TILE_TOPLEFT ) )
+	        {
+	            # If the collision box touches the wall tile
+	            if( Game->CheckCollision( box, tile->GetBox() ) )
+	            {
+	                return true;
+	            };
+	        };
+	    };
+
+	    # If no wall tiles were touched
+	    return false;
 	}
 
 	# Show the dot
 	method : public : Render(camera : Rect) ~ Nil {
 		@dot_texture->Render(@box->GetX() - camera->GetX(), @box->GetY() - camera->GetY());
 	}
-
-	method : public : Free() ~ Nil {
-		@dot_texture->Free();
-	}
 }
 
-class Test {
+class Game {
 	@window : static : Window;
 	@renderer : static : Renderer;
 	@dot_texture : static : LTexture;
-	@dot : static : Dot;
-	@bg_texture : static : LTexture;
+	@tile_texture : static : LTexture;
 
 	function : Main(args : String[]) ~ Nil {
 		# Start up SDL and create window
@@ -270,7 +306,8 @@ class Test {
 		};
 		
 		# Load media
-		if( <>LoadMedia() ) {
+		tileSet := Tile->New[ Consts->TOTAL_TILES ];
+		if( <>LoadMedia(tileSet) ) {
 			"Failed to load media!"->ErrorLine();
 			return;
 		};
@@ -284,7 +321,7 @@ class Test {
 		e := Event->New();
 
 		camera := Rect->New(0, 0, Consts->SCREEN_WIDTH, Consts->SCREEN_HEIGHT );
-		@dot := Dot->New(0, 0, @dot_texture);
+		dot := Dot->New(0, 0, @dot_texture);
 
 		# While application is running
 		while(<>quit) {
@@ -298,7 +335,7 @@ class Test {
 				};
 
 				# Handle input for the dot
-				@dot->HandleEvent(e);
+				dot->HandleEvent(e);
 			};
 #~
 			# Move the dot and check collision
@@ -332,7 +369,7 @@ class Test {
 			@renderer->SetDrawColor(0xFF, 0xFF, 0xFF, 0xFF);
 			@renderer->Clear();
 
-			@bg_texture->Render(0, 0, camera);
+			@tile_texture->Render(0, 0, camera);
 			@dot->Render(camera->GetX(), camera->GetY());
 ~#
 			# Update screen
@@ -386,25 +423,36 @@ class Test {
 		};
 
 		@dot_texture := LTexture->New(@renderer);
-		@bg_texture := LTexture->New(@renderer);
+		@tile_texture := LTexture->New(@renderer);
 				
 		return true;
 	}
 	
-	function : LoadMedia() ~ Bool {
+	function : LoadMedia(tiles : Tile[]) ~ Bool {
+		# Load dot texture
 		if(<>@dot_texture->LoadFromFile("images/dot.bmp")) {
 			"Failed to load image"->ErrorLine();
 			return false;
 		};
 
-		if(<>@bg_texture->LoadFromFile("images/bg.png")) {
+		# Load tile texture
+		if(<>@tile_texture->LoadFromFile("images/tiles.png")) {
 			"Failed to load image"->ErrorLine();
+			return false;
+		};
+
+		if( <>SetTiles( tiles ) ) {
+			"Failed to load tile set!\n"->PrintLine();
 			return false;
 		};
 
 		return true;
 	}
-	
+
+	function : SetTiles( tiles : Tile[] ) ~ Bool {
+		return false;
+	}
+		
 	function : LoadTexture(path : String) ~ Texture {
 		# Load image at specified path
 		loadedSurface := Image->Load(path);
@@ -464,8 +512,7 @@ class Test {
 
 	function : Close() ~ Nil {
 		@dot_texture->Free();
-		@dot->Free();
-		@bg_texture->Free();
+		@tile_texture->Free();
 
 		@renderer->Destroy();
 		@window->Destroy();
