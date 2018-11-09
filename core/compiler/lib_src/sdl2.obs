@@ -2343,7 +2343,23 @@ bundle Game.SDL2 {
 		method : public : AddW(w : Int) ~ Nil {
 			@w += w;
 		}
+
+		method : public : SubX(x : Int) ~ Nil {
+			@x -= x;
+		}
 		
+		method : public : SubY(y : Int) ~ Nil {
+			@y -= y;
+		}
+		
+		method : public : SubH(h : Int) ~ Nil {
+			@h -= h;
+		}
+		
+		method : public : SubW(w : Int) ~ Nil {
+			@w -= w;
+		}
+				
 		method : public : ToString() ~ String {
 			return "[{$@x}, {$@y}, {$@w}, {$@h}]";
 		}
