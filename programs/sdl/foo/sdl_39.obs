@@ -1,6 +1,6 @@
 #~
-Lesson 30
-http://lazyfoo.net/tutorials/SDL/30_scrolling/index.php
+Lesson 39
+http:# lazyfoo.net/tutorials/SDL/39_tiling/index.php
 ~#
 
 use Game.SDL2;
@@ -104,6 +104,53 @@ class LTexture {
 
 	method : public : GetHeight() ~ Int {
 		return @render_quad->GetH();
+	}
+}
+
+class Tile {
+	# The attributes of the tile
+	@box : Rect;
+
+	# The tile type
+	@type : Int;
+
+	@tileClips : Rect[];
+	@tileTexture : LTexture;
+
+	# Initializes position and type
+	New(x : Int, y : Int, tileType : Int, tileClips : Rect[], tileTexture : LTexture) {
+		# Get the offsets
+	    @box->SetX(x);
+	    @box->SetY(y);
+
+	    # Set the collision box
+	    @box->SetW(Consts->TILE_WIDTH);
+	    @box->SetH(Consts->TILE_HEIGHT);
+
+	    # Get the tile type
+	    @type := tileType;
+
+	    @tileClips := tileClips;
+	    @tileTexture := tileTexture;
+	}
+
+	# Shows the tile
+	method : public : Render(camera : Rect) ~ Nil {
+		# If the tile is on screen
+	    if( Test->CheckCollision( camera, @box ) ) {
+	        # Show the tile
+	        @tileTexture->Render( @box->GetX() - camera->GetX(), @box->GetY() - camera->GetY(), @tileClips[ @type ] );
+	    };
+	}
+
+	# Get the tile type
+	method : public : GetType() ~ Int {
+		return 0;
+	}
+
+	# Get the collision box
+	method : public : GetBox() ~ Rect {
+		return Nil;
 	}
 }
 
@@ -381,6 +428,44 @@ class Test {
 		return texture;
 	}
 	
+	function : CheckCollision( a : Rect, b : Rect ) ~ Bool {
+	    # Calculate the sides of rect A
+	    leftA := a->GetX();
+	    rightA := a->GetX() + a->GetW();
+	    topA := a->GetY();
+	    bottomA := a->GetY() + a->GetH();
+
+	    # Calculate the sides of rect B
+	    leftB := b->GetX();
+	    rightB := b->GetX() + b->GetW();
+	    topB := b->GetY();
+	    bottomB := b->GetY() + b->GetH();
+
+	    # If any of the sides from A are outside of B
+	    if( bottomA <= topB )
+	    {
+	        return false;
+	    };
+
+	    if( topA >= bottomB )
+	    {
+	        return false;
+	    };
+
+	    if( rightA <= leftB )
+	    {
+	        return false;
+	    };
+
+	    if( leftA >= rightB )
+	    {
+	        return false;
+	    };
+
+	    # If none of the sides from A are outside B
+	    return true;
+	}
+
 	function : Close() ~ Nil {
 		@dot_texture->Free();
 		@dot->Free();
@@ -395,12 +480,35 @@ class Test {
 }
 
 consts Consts {
-	DOT_VEL := 10,
-	DOT_WIDTH := 20,
-	DOT_HEIGHT := 20,
+	# Screen dimension constants
 	SCREEN_WIDTH := 640,
 	SCREEN_HEIGHT := 480,
 	LEVEL_WIDTH := 1280,
 	LEVEL_HEIGHT := 960,
+
+	# Tile constants
+	TILE_WIDTH := 80,
+	TILE_HEIGHT := 80,
+	TOTAL_TILES := 192,
+	TOTAL_TILE_SPRITES := 12,
+
+	# The different tile sprites
+	TILE_RED := 0,
+	TILE_GREEN := 1,
+	TILE_BLUE := 2,
+	TILE_CENTER := 3,
+	TILE_TOP := 4,
+	TILE_TOPRIGHT := 5,
+	TILE_RIGHT := 6,
+	TILE_BOTTOMRIGHT := 7,
+	TILE_BOTTOM := 8,
+	TILE_BOTTOMLEFT := 9,
+	TILE_LEFT := 10,
+	TILE_TOPLEFT := 11,
+
+	DOT_VEL := 10,
+	DOT_WIDTH := 20,
+	DOT_HEIGHT := 20,
+
 	FPS := 60
 }
