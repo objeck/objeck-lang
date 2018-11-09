@@ -4,6 +4,8 @@ http:# lazyfoo.net/tutorials/SDL/39_tiling/index.php
 ~#
 
 use Game.SDL2;
+use Collection;
+use System.IO.File;
 
 class LTexture {
 	@renderer : Renderer;
@@ -450,9 +452,44 @@ class Game {
 	}
 
 	function : SetTiles( tiles : Tile[] ) ~ Bool {
+		numbers := ReadFile("C:\\Users\\objec\\Desktop\\39_tiling\\lazy.map");
+		
+
 		return false;
 	}
-		
+
+	function : ReadFile(file : String) ~ Int[,] {
+		numbers := Int->New[Consts->TILE_WIDTH_MAX, Consts->TILE_HEIGHT_MAX];
+		dims := numbers->Size();
+
+		width := dims[0];
+		height := dims[1];
+
+		for(i := 0; i < height; i +=1;) {
+			for(j := 0; j < width; j +=1;) {
+
+			};
+		};
+
+		#~
+		reader := FileReader->New(file);
+		leaving {
+			reader->Close();
+		};
+
+		line := reader->ReadString();
+		while(line <> Nil) {
+			tokens := line->Split(" ");
+			each(i : tokens) {
+				numbers->AddBack(token);
+			};
+
+			line := reader->ReadString();
+		};
+~#
+		return numbers;
+	}
+
 	function : LoadTexture(path : String) ~ Texture {
 		# Load image at specified path
 		loadedSurface := Image->Load(path);
@@ -523,6 +560,9 @@ class Game {
 }
 
 consts Consts {
+	TILE_WIDTH_MAX := 16,
+	TILE_HEIGHT_MAX := 12,
+	
 	# Screen dimension constants
 	SCREEN_WIDTH := 640,
 	SCREEN_HEIGHT := 480,
