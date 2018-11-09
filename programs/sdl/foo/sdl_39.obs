@@ -458,35 +458,26 @@ class Game {
 		return false;
 	}
 
-	function : ReadFile(file : String) ~ Int[,] {
-		numbers := Int->New[Consts->TILE_WIDTH_MAX, Consts->TILE_HEIGHT_MAX];
-		dims := numbers->Size();
-
-		width := dims[0];
-		height := dims[1];
-
-		for(i := 0; i < height; i +=1;) {
-			for(j := 0; j < width; j +=1;) {
-
-			};
-		};
-
-		#~
-		reader := FileReader->New(file);
+	function : ReadFile(file : String) ~ Int[] {
+		reader := FileReader->New(file #~"C:\\Users\\objec\\Desktop\\39_tiling\\lazy.map"~#);
 		leaving {
 			reader->Close();
 		};
 
-		line := reader->ReadString();
-		while(line <> Nil) {
-			tokens := line->Split(" ");
-			each(i : tokens) {
-				numbers->AddBack(token);
-			};
+		numbers := Int->New[Consts->TOTAL_TILES];
 
+		index := 0;
+		line := reader->ReadString();			
+		for(i := 0; i < numbers->Size(); i +=1;) {
+			tokens := line->Split(" ");
+			for(j := 0; j < tokens->Size(); j +=1;) {
+				numbers[index] := tokens[j]->ToInt();
+				index += 1;
+			};
+			
 			line := reader->ReadString();
 		};
-~#
+
 		return numbers;
 	}
 
