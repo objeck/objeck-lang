@@ -1,18 +1,29 @@
+use System.IO.File;
+
 class Test {
 	function : Main(args : String[]) ~ Nil {
-#~		
-		bar := rand() % 3;	    
-	    select( bar ) {
-~#
 
-	    select( rand() % 3 ) {
-	        label 0: { "-- 0 --"->PrintLine(); }
-	        label 1: { "-- 1 --"->PrintLine(); }
-	        label 2: { "-- 2 --"->PrintLine(); }
-	    };
-	}
 
-	function : rand() ~ Int {
-		return Int->Random(0, 32767);
+
+		reader := FileReader->New("C:\\Users\\objec\\Desktop\\39_tiling\\lazy.map");
+		leaving {
+			reader->Close();
+		};
+
+		numbers := Int->New[16, 12];
+		dims := numbers->Size();
+
+		width := dims[0];
+		height := dims[1];
+
+		line := reader->ReadString();			
+		for(i := 0; i < height; i +=1;) {
+			tokens := line->Split(" ");
+			for(j := 0; j < width; j +=1;) {
+				number := tokens[j]->ToInt();
+				number->PrintLine();
+			};
+			line := reader->ReadString();
+		};
 	}
 }
