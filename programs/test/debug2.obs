@@ -2,9 +2,6 @@ use System.IO.File;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-
-
-
 		reader := FileReader->New("C:\\Users\\objec\\Desktop\\39_tiling\\lazy.map");
 		leaving {
 			reader->Close();
@@ -12,7 +9,6 @@ class Test {
 
 		numbers := Int->New[16, 12];
 		dims := numbers->Size();
-
 		width := dims[0];
 		height := dims[1];
 
@@ -23,6 +19,7 @@ class Test {
 				number := tokens[j]->ToInt();
 				number->PrintLine();
 			};
+			
 			line := reader->ReadString();
 		};
 	}
