@@ -4,7 +4,6 @@ http:# lazyfoo.net/tutorials/SDL/39_tiling/index.php
 ~#
 
 use Game.SDL2;
-use Collection;
 use System.IO.File;
 
 class LTexture {
@@ -443,7 +442,7 @@ class Game {
 	}
 
 	function : SetTiles( tiles : Tile[] ) ~ Bool {
-		numbers := ReadFile("C:\\Users\\objec\\Desktop\\39_tiling\\lazy.map");
+		numbers := ReadFile("images/lazy.map");
 		if(numbers = Nil) {
 			"Error loading map: Unexpected end of file!"->ErrorLine();
 			return false;
