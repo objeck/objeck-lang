@@ -121,6 +121,8 @@ class Tile {
 
 	# Initializes position and type
 	New(x : Int, y : Int, tileType : Int, tileClips : Rect[], tileTexture : LTexture) {
+		@box := Rect->New();
+
 		# Get the offsets
 	    @box->SetX(x);
 	    @box->SetY(y);
@@ -163,6 +165,8 @@ class Dot {
 	@velY : Int;
 
 	New(x : Int, y : Int, dot_texture : LTexture) {
+		@box := Rect->New();
+
 		# Initialize the offsets
 	    @posX := x;
 	    @posY := y;
@@ -410,7 +414,10 @@ class Game {
 		@dot_texture := LTexture->New(@renderer);
 		@tile_texture := LTexture->New(@renderer);
 		@tileClips := Rect->New[Consts->TOTAL_TILE_SPRITES];
-		
+		each(i : @tileClips) {
+			@tileClips[i] := Rect->New();
+		};
+
 		return true;
 	}
 	
@@ -428,7 +435,7 @@ class Game {
 		};
 
 		if( <>SetTiles( tiles ) ) {
-			"Failed to load tile set!\n"->PrintLine();
+			"Failed to load tile set!"->ErrorLine();
 			return false;
 		};
 
@@ -533,7 +540,7 @@ class Game {
 		@tileClips[ Consts->TILE_BOTTOMRIGHT ]->SetW(Consts->TILE_WIDTH);
 		@tileClips[ Consts->TILE_BOTTOMRIGHT ]->SetH(Consts->TILE_HEIGHT);
 
-		return false;
+		return true;
 	}
 
 	function : ReadFile(file : String) ~ Int[] {
@@ -550,9 +557,9 @@ class Game {
 
 		index := 0;
 		line := reader->ReadString();			
-		for(i := 0; i < numbers->Size(); i +=1;) {
+		for(i := 0; i < Consts->TILE_HEIGHT_MAX; i +=1;) {
 			tokens := line->Split(" ");
-			for(j := 0; j < tokens->Size(); j +=1;) {
+			for(j := 0; j < Consts->TILE_WIDTH_MAX; j +=1;) {
 				numbers[index] := tokens[j]->ToInt();
 				index += 1;
 			};
