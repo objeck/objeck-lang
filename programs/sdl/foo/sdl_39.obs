@@ -299,6 +299,7 @@ class Game {
 	@renderer : static : Renderer;
 	@dot_texture : static : LTexture;
 	@tile_texture : static : LTexture;
+	@tileClips : static : Rect[];
 
 	function : Main(args : String[]) ~ Nil {
 		# Start up SDL and create window
@@ -339,41 +340,23 @@ class Game {
 				# Handle input for the dot
 				dot->HandleEvent(e);
 			};
-#~
-			# Move the dot and check collision
-			@dot->Move();
 
-			# Center the camera over the dot
-			camera->SetX(( @dot->GetPosX() + Consts->DOT_WIDTH / 2 ) - Consts->SCREEN_WIDTH / 2);
-			camera->SetY(( @dot->GetPosY() + Consts->DOT_HEIGHT / 2 ) - Consts->SCREEN_HEIGHT / 2);
-
-			# Keep the camera in bounds
-			if( camera->GetX() < 0 )
-			{ 
-				camera->SetX(0);
-			};
-			
-			if( camera->GetY() < 0 )
-			{
-				camera->SetY(0);
-			};
-			
-			if( camera->GetX() > Consts->LEVEL_WIDTH - camera->GetW() )
-			{
-				camera->SetX(Consts->LEVEL_WIDTH - camera->GetW());
-			};
-
-			if( camera->GetY() > Consts->LEVEL_HEIGHT - camera->GetH() )
-			{
-				camera->SetY(Consts->LEVEL_HEIGHT - camera->GetH());
-			};
+			# Move the dot
+			dot->Move( tileSet );
+			dot->SetCamera( camera );
 
 			@renderer->SetDrawColor(0xFF, 0xFF, 0xFF, 0xFF);
 			@renderer->Clear();
 
-			@tile_texture->Render(0, 0, camera);
-			@dot->Render(camera->GetX(), camera->GetY());
-~#
+			# Render level
+			for( i := 0; i < Consts->TOTAL_TILES; i += 1; )
+			{
+				tileSet[ i ]->Render( camera );
+			};
+
+			# Render dot
+			dot->Render(camera);
+
 			# Update screen
 			@renderer->Present();
 
@@ -426,7 +409,8 @@ class Game {
 
 		@dot_texture := LTexture->New(@renderer);
 		@tile_texture := LTexture->New(@renderer);
-				
+		@tileClips := Rect->New[Consts->TOTAL_TILE_SPRITES];
+		
 		return true;
 	}
 	
@@ -453,15 +437,113 @@ class Game {
 
 	function : SetTiles( tiles : Tile[] ) ~ Bool {
 		numbers := ReadFile("C:\\Users\\objec\\Desktop\\39_tiling\\lazy.map");
-		
+		if(numbers = Nil) {
+			"Error loading map: Unexpected end of file!"->ErrorLine();
+			return false;
+		};
+
+		x := 0; y := 0;
+		each(i : numbers) {
+			tileType := numbers[i];
+
+			# If the number is a valid tile number
+			if( ( tileType >= 0 ) & ( tileType < Consts->TOTAL_TILE_SPRITES ) )
+			{
+				tiles[ i ] := Tile->New( x, y, tileType, @tileClips, @tile_texture);
+			}
+			# If we don't recognize the tile type
+			else
+			{
+				# Stop loading map
+				"Error loading map: Invalid tile type at %d!"->ErrorLine();
+				return false;
+			};
+
+			# Move to next tile spot
+			x += Consts->TILE_WIDTH;
+
+			# If we've gone too far
+			if( x >= Consts->LEVEL_WIDTH )
+			{
+				# Move back
+				x := 0;
+
+				# Move to the next row
+				y += Consts->TILE_HEIGHT;
+			};
+		};
+
+		@tileClips[ Consts->TILE_RED ]->SetX(0);
+		@tileClips[ Consts->TILE_RED ]->SetY(0);
+		@tileClips[ Consts->TILE_RED ]->SetW(Consts->TILE_WIDTH);
+		@tileClips[ Consts->TILE_RED ]->SetH(Consts->TILE_HEIGHT);
+
+		@tileClips[ Consts->TILE_GREEN ]->SetX(0);
+		@tileClips[ Consts->TILE_GREEN ]->SetY(80);
+		@tileClips[ Consts->TILE_GREEN ]->SetW(Consts->TILE_WIDTH);
+		@tileClips[ Consts->TILE_GREEN ]->SetH(Consts->TILE_HEIGHT);
+
+		@tileClips[ Consts->TILE_BLUE ]->SetX(0);
+		@tileClips[ Consts->TILE_BLUE ]->SetY(160);
+		@tileClips[ Consts->TILE_BLUE ]->SetW(Consts->TILE_WIDTH);
+		@tileClips[ Consts->TILE_BLUE ]->SetH(Consts->TILE_HEIGHT);
+
+		@tileClips[ Consts->TILE_TOPLEFT ]->SetX(80);
+		@tileClips[ Consts->TILE_TOPLEFT ]->SetY(0);
+		@tileClips[ Consts->TILE_TOPLEFT ]->SetW(Consts->TILE_WIDTH);
+		@tileClips[ Consts->TILE_TOPLEFT ]->SetH(Consts->TILE_HEIGHT);
+
+		@tileClips[ Consts->TILE_LEFT ]->SetX(80);
+		@tileClips[ Consts->TILE_LEFT ]->SetY(80);
+		@tileClips[ Consts->TILE_LEFT ]->SetW(Consts->TILE_WIDTH);
+		@tileClips[ Consts->TILE_LEFT ]->SetH(Consts->TILE_HEIGHT);
+
+		@tileClips[ Consts->TILE_BOTTOMLEFT ]->SetX(80);
+		@tileClips[ Consts->TILE_BOTTOMLEFT ]->SetY(160);
+		@tileClips[ Consts->TILE_BOTTOMLEFT ]->SetW(Consts->TILE_WIDTH);
+		@tileClips[ Consts->TILE_BOTTOMLEFT ]->SetH(Consts->TILE_HEIGHT);
+
+		@tileClips[ Consts->TILE_TOP ]->SetX(160);
+		@tileClips[ Consts->TILE_TOP ]->SetY(0);
+		@tileClips[ Consts->TILE_TOP ]->SetW(Consts->TILE_WIDTH);
+		@tileClips[ Consts->TILE_TOP ]->SetH(Consts->TILE_HEIGHT);
+
+		@tileClips[ Consts->TILE_CENTER ]->SetX(160);
+		@tileClips[ Consts->TILE_CENTER ]->SetY(80);
+		@tileClips[ Consts->TILE_CENTER ]->SetW(Consts->TILE_WIDTH);
+		@tileClips[ Consts->TILE_CENTER ]->SetH(Consts->TILE_HEIGHT);
+
+		@tileClips[ Consts->TILE_BOTTOM ]->SetX(160);
+		@tileClips[ Consts->TILE_BOTTOM ]->SetY(160);
+		@tileClips[ Consts->TILE_BOTTOM ]->SetW(Consts->TILE_WIDTH);
+		@tileClips[ Consts->TILE_BOTTOM ]->SetH(Consts->TILE_HEIGHT);
+
+		@tileClips[ Consts->TILE_TOPRIGHT ]->SetX(240);
+		@tileClips[ Consts->TILE_TOPRIGHT ]->SetY(0);
+		@tileClips[ Consts->TILE_TOPRIGHT ]->SetW(Consts->TILE_WIDTH);
+		@tileClips[ Consts->TILE_TOPRIGHT ]->SetH(Consts->TILE_HEIGHT);
+
+		@tileClips[ Consts->TILE_RIGHT ]->SetX(240);
+		@tileClips[ Consts->TILE_RIGHT ]->SetY(80);
+		@tileClips[ Consts->TILE_RIGHT ]->SetW(Consts->TILE_WIDTH);
+		@tileClips[ Consts->TILE_RIGHT ]->SetH(Consts->TILE_HEIGHT);
+
+		@tileClips[ Consts->TILE_BOTTOMRIGHT ]->SetX(240);
+		@tileClips[ Consts->TILE_BOTTOMRIGHT ]->SetY(160);
+		@tileClips[ Consts->TILE_BOTTOMRIGHT ]->SetW(Consts->TILE_WIDTH);
+		@tileClips[ Consts->TILE_BOTTOMRIGHT ]->SetH(Consts->TILE_HEIGHT);
 
 		return false;
 	}
 
 	function : ReadFile(file : String) ~ Int[] {
-		reader := FileReader->New(file #~"C:\\Users\\objec\\Desktop\\39_tiling\\lazy.map"~#);
+		reader := FileReader->New(file);
 		leaving {
 			reader->Close();
+		};
+
+		if(<>reader->IsOpen()) {
+			return Nil;
 		};
 
 		numbers := Int->New[Consts->TOTAL_TILES];
