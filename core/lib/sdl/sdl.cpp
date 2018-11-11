@@ -2124,6 +2124,13 @@ extern "C" {
     APITools_SetIntValue(context, 0, return_value);
   }
 
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_texture_unlock(VMContext& context) {
+    SDL_Texture* texture = (SDL_Texture*)APITools_GetIntValue(context, 0);
+    SDL_UnlockTexture(texture);
+  }
 
 #ifdef _WIN32
   __declspec(dllexport)
