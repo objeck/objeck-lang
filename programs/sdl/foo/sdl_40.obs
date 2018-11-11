@@ -102,6 +102,9 @@ class Test {
 			return Nil;
 		};
 
+		formattedSurface := loadedSurface->Convert( @window->GetPixelFormat(), 0 );
+		
+
 		texture := loadedSurface->CreateTexture(@renderer);
 		loadedSurface->Free();
 		

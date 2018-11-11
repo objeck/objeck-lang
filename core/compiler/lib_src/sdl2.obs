@@ -2877,7 +2877,24 @@ bundle Game.SDL2 {
 			
 			return Nil;
 		}
-		
+
+		method : public : ConvertFormat(format : Int, flags : Int) ~ Surface {
+			if(@surface <> 0) {
+				array_args := Base->New[4];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@surface);
+				array_args[2] := IntHolder->New(format);
+				array_args[3] := IntHolder->New(flags);
+
+				Proxy->GetDllProxy()->CallFunction("sdl_surface_convert_format", array_args);
+
+				value := array_args[0]->As(IntHolder);
+				return Surface->New(value->Get());
+			};
+			
+			return Nil;
+		}
+
 		method : public : FillRect(rect : Rect, color : Int) ~ Int {
 			if(@surface <> 0) {
 				array_args := Base->New[4];
@@ -3437,13 +3454,13 @@ bundle Game.SDL2 {
 			return -1;
 		}
 
-		method : public : Unlock() ~ Int {
+		method : public : Unlock() ~ Nil {
 			if(@texture <> 0) {
 				array_args := Base->New[1];
 				array_args[0] := IntHolder->New(@texture);
 
 				Proxy->GetDllProxy()->CallFunction("sdl_texture_unlock", array_args);
-			}
+			};
 		}
 
 		method : public : SetColorMod(r : Int, g : Int, b : Int) ~ Int {
