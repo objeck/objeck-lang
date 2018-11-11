@@ -2393,7 +2393,7 @@ extern "C" {
     }
     */
 
-    // create 'ByteArrayHolder' instance
+    // create 'ByteArrayHolder' holder
     size_t* byte_obj = context.alloc_obj(L"System.ByteArrayHolder", context.op_stack, *context.stack_pos, false);
     byte_obj[0] = (size_t)array;
     
