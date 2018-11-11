@@ -2120,17 +2120,16 @@ extern "C" {
     
     void* pixels; int pitch;
     const int return_value = SDL_LockTexture(texture, rect_obj ? &rect : NULL, &pixels, &pitch);
-    APITools_SetIntValue(context, 3, pitch);
 
     int width, height;
     SDL_QueryTexture(texture, NULL, NULL, &width, &height);
 #ifdef _DEBUG
-    assert(pitch / 4 == width);
+    assert(pitch / sizeof(Uint32) == width);
 #endif
     const int pixel_size = pitch * height;
 
-    size_t* array = APITools_MakeByteArray(context, pixel_size);
-    Uint8* byte_array = (Uint8*)(array + 3);
+    size_t* array = APITools_MakeIntArray(context, pixel_size);
+    Uint32* byte_array = (Uint32*)(array + 3);
     memcpy(byte_array, pixels, pixel_size);
 
     size_t* pixels_obj = APITools_GetObjectValue(context, 0);
