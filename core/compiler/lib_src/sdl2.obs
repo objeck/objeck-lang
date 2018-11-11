@@ -3444,20 +3444,21 @@ bundle Game.SDL2 {
 			return -1;
 		}
 
-		method : public : Lock(rect : Rect, pixels : Byte[]) ~ Int {
+		method : public : Lock(rect : Rect, pitch : IntHolder) ~ Byte[] {
 			if(@texture <> 0) {
-				array_args := Base->New[3];
-				array_args[0] := IntHolder->New();
+				array_args := Base->New[4];
+				array_args[0] := ByteArrayHolder->New(Nil->As(Byte[]));
 				array_args[1] := IntHolder->New(@texture);
-				array_args[2] := ByteArrayHolder->New(pixels);
+				array_args[2] := rect;
+				array_args[3] := pitch;
 
 				Proxy->GetDllProxy()->CallFunction("sdl_texture_lock", array_args);
 
-				value := array_args[0]->As(IntHolder);
+				value := array_args[0]->As(ByteArrayHolder);
 				return value->Get();
 			};
 
-			return -1;
+			return Nil;
 		}
 
 		method : public : Unlock() ~ Nil {

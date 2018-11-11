@@ -112,7 +112,9 @@ class Test {
 			TextureAccess->SDL_TEXTUREACCESS_STREAMING,
 			formattedSurface->GetW(), formattedSurface->GetH() );
 
-		# LOCK
+		# Lock texture for manipulation
+		pitch_holder := IntHolder->New();
+		pixels := newTexture->Lock(Nil, pitch_holder );
 
 		texture := loadedSurface->CreateTexture(@renderer);
 		loadedSurface->Free();
