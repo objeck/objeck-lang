@@ -90,7 +90,7 @@ class Test {
 	}
 	
 	function : LoadMedia() ~ Bool {
-		@texture := LoadTexture( "images/texture.png" );
+		@texture := LoadTexture( #~ "images/texture.png" ~# "C:/Users/objec/Documents/Code/objeck-lang/programs/sdl/foo/images/texture.png" );
 		return @texture <> Nil ? true : false;
 	}
 	
@@ -102,8 +102,9 @@ class Test {
 			return Nil;
 		};
 
-		formattedSurface := loadedSurface->Convert( @window->GetPixelFormat(), 0 );
-		
+"---  0 ---"->PrintLine();		
+		formattedSurface := loadedSurface->ConvertFormat( @window->GetPixelFormat(), 0 );
+"---  1 ---"->PrintLine();		
 
 		texture := loadedSurface->CreateTexture(@renderer);
 		loadedSurface->Free();
