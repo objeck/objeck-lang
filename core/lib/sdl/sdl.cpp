@@ -530,6 +530,17 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
+  void sdl_surface_convert_format(VMContext& context) {
+    SDL_Surface* surface = (SDL_Surface*)APITools_GetIntValue(context, 1);
+    const int pixel_format = (int)APITools_GetIntValue(context, 2);
+    const int flags = (int)APITools_GetIntValue(context, 3);
+
+    APITools_SetIntValue(context, 0, (size_t)SDL_ConvertSurfaceFormat(surface, pixel_format, flags));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
   void sdl_pixelformat_maprgb(VMContext& context) {
     size_t* pixel_format_obj = APITools_GetObjectValue(context, 1);
 
