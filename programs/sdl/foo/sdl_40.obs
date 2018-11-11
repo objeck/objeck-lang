@@ -102,9 +102,17 @@ class Test {
 			return Nil;
 		};
 
-"---  0 ---"->PrintLine();		
 		formattedSurface := loadedSurface->ConvertFormat( @window->GetPixelFormat(), 0 );
-"---  1 ---"->PrintLine();		
+		if(formattedSurface->IsNull()) {
+			"Unable to convert loaded surface to display format!"->ErrorLine();
+			return Nil;
+		};
+
+		newTexture := Texture->New(@renderer, @window->GetPixelFormat(), 
+			TextureAccess->SDL_TEXTUREACCESS_STREAMING,
+			formattedSurface->GetW(), formattedSurface->GetH() );
+
+		# LOCK
 
 		texture := loadedSurface->CreateTexture(@renderer);
 		loadedSurface->Free();
