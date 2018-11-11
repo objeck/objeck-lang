@@ -3007,6 +3007,12 @@ bundle Game.SDL2 {
 			return -1;
 		}
 	}
+
+	enum TextureAccess {
+	    SDL_TEXTUREACCESS_STATIC,
+	    SDL_TEXTUREACCESS_STREAMING,
+	    SDL_TEXTUREACCESS_TARGET
+	}
 	
 	consts BlendMode {
 		SDL_BLENDMODE_NONE := 0x00000000,
