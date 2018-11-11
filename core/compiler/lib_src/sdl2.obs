@@ -3421,6 +3421,22 @@ bundle Game.SDL2 {
 			return -1;
 		}
 
+		method : public : Lock(rect : Rect, pixels : Byte[]) ~ Int {
+			if(@texture <> 0) {
+				array_args := Base->New[5];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@texture);
+				array_args[1] := ByteArrayHolder->New(pixels);
+
+				Proxy->GetDllProxy()->CallFunction("sdl_texture_lock", array_args);
+
+				value := array_args[0]->As(IntHolder);
+				return value->Get();
+			};
+
+			return -1;
+		}
+
 		method : public : SetColorMod(r : Int, g : Int, b : Int) ~ Int {
 			if(@texture <> 0) {
 				array_args := Base->New[5];

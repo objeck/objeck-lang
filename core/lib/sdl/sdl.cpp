@@ -2100,6 +2100,34 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
+  void sdl_texture_lock(VMContext& context) {
+    SDL_Texture* texture = (SDL_Texture*)APITools_GetIntValue(context, 1);
+
+    size_t* rect_obj = APITools_GetObjectValue(context, 2);
+    SDL_Rect rect;
+    sdl_rect_raw_write(&rect, rect_obj);
+
+    size_t* pixels_obj = APITools_GetObjectValue(context, 3);
+
+    void* pixels; int pitch;
+    const int return_value = SDL_LockTexture(texture, rect_obj ? &rect : NULL, &pixels, &pitch);
+    
+    int width, height;
+    SDL_QueryTexture(texture, NULL, NULL, &width, &height);
+    const int pixel_size = pitch * height;
+
+    size_t* array = APITools_MakeByteArray(context, pixel_size);
+    Uint8* byte_array = (Uint8*)(array + 3);
+    memcpy(byte_array, pixels, pixel_size);
+    pixels_obj[0] = (size_t)array;
+
+    APITools_SetIntValue(context, 0, return_value);
+  }
+
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
   void sdl_texture_set_color_mod(VMContext& context) {
     SDL_Texture* texture = (SDL_Texture*)APITools_GetIntValue(context, 1);
     const int r = (int)APITools_GetIntValue(context, 2);
@@ -2358,7 +2386,7 @@ extern "C" {
     }
     */
 
-    // create 'System.String' object instance
+    // create 'ByteArrayHolder' instance
     size_t* byte_obj = context.alloc_obj(L"System.ByteArrayHolder", context.op_stack, *context.stack_pos, false);
     byte_obj[0] = (size_t)array;
     
