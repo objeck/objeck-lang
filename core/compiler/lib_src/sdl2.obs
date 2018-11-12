@@ -2463,6 +2463,21 @@ bundle Game.SDL2 {
 			value := array_args[0]->As(IntHolder);
 			return value->Get();
 		}
+
+		method : public : MapRGBA(r : Int, g : Int, b : Int, a : Int) ~ Int {
+			array_args := Base->New[6];
+			array_args[0] := IntHolder->New();
+			array_args[1] := @self;
+			array_args[2] := IntHolder->New(r);
+			array_args[3] := IntHolder->New(g);
+			array_args[4] := IntHolder->New(b);
+			array_args[5] := IntHolder->New(a);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_pixelformat_maprgba", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
 		
 		method : public : GetFormat() ~ Int {
 			return @format;

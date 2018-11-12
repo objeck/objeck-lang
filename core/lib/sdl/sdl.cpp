@@ -571,6 +571,24 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
+  void sdl_pixelformat_maprgba(VMContext& context) {
+    size_t* pixel_format_obj = APITools_GetObjectValue(context, 1);
+
+    SDL_PixelFormat pixel_format;
+    sdl_pixel_format_raw_write(&pixel_format, pixel_format_obj);
+
+    const int r = (int)APITools_GetIntValue(context, 2);
+    const int g = (int)APITools_GetIntValue(context, 3);
+    const int b = (int)APITools_GetIntValue(context, 4);
+    const int a = (int)APITools_GetIntValue(context, 5);
+
+    const int return_value = SDL_MapRGBA(pixel_format_obj ? &pixel_format : NULL, r, g, b, a);
+    APITools_SetIntValue(context, 0, return_value);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
   void sdl_surface_fill_rect(VMContext& context) {
     SDL_Surface* surface = (SDL_Surface*)APITools_GetIntValue(context, 1);
     size_t* rect_obj = APITools_GetObjectValue(context, 2);
