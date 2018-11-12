@@ -1839,6 +1839,19 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
+  void sdl_renderer_create_texture(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+    const int format = (int)APITools_GetIntValue(context, 2);
+    const int access = (int)APITools_GetIntValue(context, 3);
+    const int w = (int)APITools_GetIntValue(context, 4);
+    const int h = (int)APITools_GetIntValue(context, 5);
+
+    APITools_SetIntValue(context, 0, (size_t)SDL_CreateTexture(renderer, format, access, w, h));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
    void sdl_renderer_get_num_render_drivers(VMContext& context) {
     const int return_value = SDL_GetNumRenderDrivers();
     APITools_SetIntValue(context, 0, return_value);

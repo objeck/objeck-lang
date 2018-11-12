@@ -3196,6 +3196,27 @@ bundle Game.SDL2 {
 		    return -1;
 		}
 
+
+		method : public : CreateTexture(format : Int, access : Int, w : Int, h : Int) ~ Texture {
+			if(@renderer <> 0) {
+		        array_args := Base->New[6];
+		        array_args[0] := IntHolder->New();
+		        array_args[1] := IntHolder->New(@renderer);
+		        array_args[2] := IntHolder->New(format);
+		        array_args[3] := IntHolder->New(access);
+		        array_args[4] := IntHolder->New(w);
+		        array_args[5] := IntHolder->New(h);
+
+		        Proxy->GetDllProxy()->CallFunction("sdl_renderer_create_texture", array_args);
+
+		        value := array_args[0]->As(IntHolder);
+		        return Texture->New(value->Get());
+		    };
+
+		    return Nil;
+		}
+
+
 		method : public : GetRenderDrawColor(r : IntHolder, g : IntHolder, b : IntHolder, a : IntHolder) ~ Int {
 			array_args := Base->New[6];
 			array_args[0] := IntHolder->New();
