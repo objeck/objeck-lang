@@ -3447,6 +3447,10 @@ bundle Game.SDL2 {
 		@pitch : Int;
 		@height : Int;
 
+		method : public : IsNull() ~ Bool {
+			return @data = 0;
+		}
+
 		method : public : Get(index : Int) ~ Int {
 			if(@data <> 0) {
 				array_args := Base->New[3];

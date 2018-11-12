@@ -1,6 +1,6 @@
 #~
 Lesson 40
-http:# http://lazyfoo.net/tutorials/SDL/40_texture_manipulation/index.php
+http:# http:# lazyfoo.net/tutorials/SDL/40_texture_manipulation/index.php
 ~#
 
 use Game.SDL2;
@@ -12,6 +12,7 @@ class LTexture {
 	@render_quad : Rect;
 	@window : Window;
 	@pixels : PixelData;
+	@pitch : Int;
 	@width : Int;
 	@heigth : Int;
 
@@ -56,7 +57,7 @@ class LTexture {
 			"Unable to convert loaded surface to display format!"->ErrorLine();
 			return false;
 		};
-		
+
 		newTexture := @renderer->CreateTexture(@window->GetPixelFormat(), 
 			TextureAccess->SDL_TEXTUREACCESS_STREAMING, 
 			formattedSurface->GetW(), formattedSurface->GetH() );
@@ -66,6 +67,7 @@ class LTexture {
 		};
 
 		@pixels := newTexture->Lock(Nil);
+		@pitch := @pixels->GetPitch();
 		surface_pixels := formattedSurface->GetPixels();
 		@pixels->Copy(surface_pixels);
 		newTexture->Unlock();
@@ -79,6 +81,46 @@ class LTexture {
 
 		@texture := newTexture;
 		return @texture <> Nil;
+	}
+
+	method : public : Lock() ~ Bool {
+		# Texture is already locked
+		if( @pixels <> Nil )
+		{
+			"Texture is already locked"->PrintLine();
+			return false;
+		}
+		# Lock texture
+		else
+		{
+			@pixels :=@texture->Lock(Nil);
+			if(@pixels->IsNull())
+			{
+				"Unable to lock texture!"->PrintLine();
+				return false;
+			};
+			@pitch := @pixels->GetPitch();
+		};
+
+		return true;
+	}
+
+	method : public : Unlock() ~ Bool {
+		# Texture is not locked
+		if( @pixels = Nil )
+		{
+			"Texture is not locked!"->PrintLine();
+			return false;
+		}
+		# Unlock texture
+		else
+		{
+			@texture->Unlock(  );
+			@pixels := Nil;
+			@pitch := 0;
+		};
+
+		return true;
 	}
 
 	# Deallocates texture
