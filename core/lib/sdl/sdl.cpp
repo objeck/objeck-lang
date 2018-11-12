@@ -368,6 +368,19 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
+  void sdl_surface_pixels(VMContext& context) {
+    SDL_Surface* surface = (SDL_Surface*)APITools_GetIntValue(context, 1);
+    
+    size_t* pixel_obj = context.alloc_obj(L"Game.SDL2.PixelData", context.op_stack, *context.stack_pos, false);
+    pixel_obj[0] = (size_t)surface->pixels;
+    pixel_obj[1] = (size_t)surface->pitch;
+    pixel_obj[2] = (size_t)surface->h;
+    APITools_SetObjectValue(context, 0, pixel_obj);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
   void sdl_surface_loadbmp(VMContext& context) {
     const wstring w_file = APITools_GetStringValue(context, 1);
     const string file(w_file.begin(), w_file.end());
