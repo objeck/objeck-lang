@@ -131,6 +131,14 @@ class LTexture {
 		return @height;
 	}
 
+	method : public : GetPitch() ~ Int {
+		return @pitch;
+	}
+
+	method : public : GetPixels() ~ PixelData {
+		return @pixels;
+	}
+
 	# Deallocates texture
 	method : public : Free() ~ Nil {
 		if(@texture <> Nil)	{
@@ -203,14 +211,15 @@ class Test {
 				if(e->GetType() = EventType->SDL_QUIT) {
 					quit := true;
 				};
-
-				# Handle input for the dot
-				
 			};
 
 			@renderer->SetDrawColor(0xFF, 0xFF, 0xFF, 0xFF);
 			@renderer->Clear();
-			
+
+			# Render stick figure
+			@foo_texture->Render( ( Consts->SCREEN_WIDTH - @foo_texture->GetWidth() ) / 2, 
+				( Consts->SCREEN_HEIGHT - @foo_texture->GetHeight() ) / 2 );
+						
 			# Update screen
 			@renderer->Present();
 
@@ -218,7 +227,6 @@ class Test {
 			if(end < FRAME_RATE) {
 				Timer->Delay(FRAME_RATE - end);
 			};
-			frame += 1;
 		};
 
 		e->Free();
@@ -272,26 +280,39 @@ class Test {
 			return false;
 		};
 
+		# Lock texture
+		if(<> @foo_texture->Lock() )
+		{
+			"Unable to lock Foo' texture!"->ErrorLine();
+			return false;
+		};
+
+		# Allocate format from window
+		format := @window->GetPixelFormat();
+		mappingFormat := PixelFormat->New( format );
+
+		# Get pixel data
+		pixels := @foo_texture->GetPixels();
+		pixelCount := ( @foo_texture->GetPitch() / 4 ) * @foo_texture->GetHeight();
+
+		# Map colors
+		colorKey := mappingFormat->MapRGB( 0, 0xFF, 0xFF );
+		transparent := mappingFormat->MapRGBA( 0xFF, 0xFF, 0xFF, 0x00 );
+
+		# Color key pixels
+pixelCount->PrintLine();		
+		for( i := 0; i < pixelCount; i+=1; )
+		{
+			if( pixels->Get(i) = colorKey )
+			{
+				pixels->Set(i, transparent);
+			};
+		};
+
+		# Unlock texture
+		@foo_texture->Unlock();
+
 		return true;
-	}
-	
-	function : LoadTexture(path : String) ~ Texture {
-		# Load image at specified path
-		loadedSurface := Image->Load(path);
-		if(loadedSurface->IsNull()) {
-			"Unable to load surface"->ErrorLine();
-			return Nil;
-		};
-
-		texture := loadedSurface->CreateTexture(@renderer);
-		if(texture->IsNull()) {
-			"Unable to create texture!"->ErrorLine();
-			return Nil;
-		};
-
-		loadedSurface->Free();
-		
-		return texture;
 	}
 	
 	function : Close() ~ Nil {
