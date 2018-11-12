@@ -3397,11 +3397,11 @@ bundle Game.SDL2 {
 		@pitch : Int;
 		@height : Int;
 
-		method : Get(index : Int) ~ Int {
+		method : public : Get(index : Int) ~ Int {
 			if(@data <> 0) {
 				array_args := Base->New[3];
 				array_args[0] := IntHolder->New();
-				array_args[1] := IntHolder->New(@data);
+				array_args[1] := @self;
 				array_args[2] := IntHolder->New(index);
 
 				Proxy->GetDllProxy()->CallFunction("sdl_pixeldata_get", array_args);
@@ -3413,11 +3413,11 @@ bundle Game.SDL2 {
 			return -1;
 		}
 
-		method : Set(index : Int, value : Int) ~ Bool {
+		method : public : Set(index : Int, value : Int) ~ Bool {
 			if(@data <> 0) {
 				array_args := Base->New[4];
 				array_args[0] := IntHolder->New();
-				array_args[1] := IntHolder->New(@data);
+				array_args[1] := @self;
 				array_args[2] := IntHolder->New(index);
 				array_args[3] := IntHolder->New(value);
 
@@ -3433,7 +3433,7 @@ bundle Game.SDL2 {
 		method : public : GetPitch() ~ Int {
 			return @pitch;
 		}
-		
+
 		method : public : GetHeight() ~ Int {
 			return @height;
 		}

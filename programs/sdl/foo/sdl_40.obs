@@ -117,6 +117,7 @@ class Test {
 		pixels := newTexture->Lock( rect );
 pixels->GetPitch()->ErrorLine();
 pixels->GetHeight()->ErrorLine();
+pixels->Get(13)->ErrorLine();
 		
 		texture := loadedSurface->CreateTexture(@renderer);
 		loadedSurface->Free();
