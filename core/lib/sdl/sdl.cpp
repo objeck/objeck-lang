@@ -2074,7 +2074,7 @@ extern "C" {
   }
 
   //
-  // texture
+  // pixeldata
   //
 #ifdef _WIN32
   __declspec(dllexport)
@@ -2105,6 +2105,28 @@ extern "C" {
       Uint32* pixels = (Uint32*)pixels_obj[0];
       const int value = (int)APITools_GetIntValue(context, 3);
       pixels[index] = value;
+      APITools_SetIntValue(context, 0, 1);
+    }
+    else {
+      APITools_SetIntValue(context, 0, 0);
+    }
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_pixeldata_copy(VMContext& context) {
+    size_t* to_obj = APITools_GetObjectValue(context, 1);
+    size_t* from_obj = APITools_GetObjectValue(context, 2);
+
+    const Uint32 to_size = to_obj[1] * to_obj[2];
+    void* to = (void*)to_obj[0];
+
+    const Uint32 from_size = from_obj[1] * from_obj[2];
+    void* from = (void*)from_obj[0];
+    
+    if(to && from && from_size <= to_size) {
+      memcpy(to, from, from_size);
       APITools_SetIntValue(context, 0, 1);
     }
     else {
