@@ -114,10 +114,16 @@ class Test {
 
 		# Lock texture for manipulation
 		rect := Rect->New(10, 10, 10, 10);
-		pixels := newTexture->Lock( rect );
-pixels->GetPitch()->ErrorLine();
-pixels->GetHeight()->ErrorLine();
-pixels->Get(13)->ErrorLine();
+		p1 := newTexture->Lock( rect );
+p1->GetPitch()->ErrorLine();
+p1->GetHeight()->ErrorLine();
+p1->Get(13)->ErrorLine();
+
+		p1 := formattedSurface->GetPixels();
+p1->GetPitch()->ErrorLine();
+p1->GetHeight()->ErrorLine();
+p1->Get(13)->ErrorLine();		
+		newTexture->Unlock();
 		
 		texture := loadedSurface->CreateTexture(@renderer);
 		loadedSurface->Free();

@@ -2622,6 +2622,20 @@ bundle Game.SDL2 {
 			
 			return -1;
 		}
+
+		method : public : GetPixels() ~ PixelData {
+			if(@surface <> 0) {
+				array_args := Base->New[2];
+				array_args[0] := Nil;
+				array_args[1] := IntHolder->New(@surface);
+
+				Proxy->GetDllProxy()->CallFunction("sdl_surface_pixels", array_args);
+
+				return array_args[0]->As(PixelData);
+			};
+
+			return Nil;
+		}
 		
 		method : public : Lock() ~ Int {
 			if(@surface <> 0) {
@@ -3008,12 +3022,6 @@ bundle Game.SDL2 {
 		}
 	}
 
-	enum TextureAccess {
-	    SDL_TEXTUREACCESS_STATIC,
-	    SDL_TEXTUREACCESS_STREAMING,
-	    SDL_TEXTUREACCESS_TARGET
-	}
-	
 	consts BlendMode {
 		SDL_BLENDMODE_NONE := 0x00000000,
 		SDL_BLENDMODE_BLEND := 0x00000001,
@@ -3437,6 +3445,12 @@ bundle Game.SDL2 {
 		method : public : GetHeight() ~ Int {
 			return @height;
 		}
+	}
+
+	enum TextureAccess {
+	    SDL_TEXTUREACCESS_STATIC,
+	    SDL_TEXTUREACCESS_STREAMING,
+	    SDL_TEXTUREACCESS_TARGET
 	}
 
 	class Texture {
