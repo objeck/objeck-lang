@@ -163,7 +163,7 @@ bundle System {
 		~#
 		function : ErrorLine(b : Byte) ~ Nil {
 			STD_ERR_BYTE;
-			'\n'->Print();
+			'\n'->Error();
 		}
 
 		function : Size(b : Byte[]) ~ Int {
@@ -481,7 +481,7 @@ bundle System {
 		~#
 		function : ErrorLine(c : Char) ~ Nil {
 			STD_ERR_CHAR;
-			'\n'->Print();
+			'\n'->Error();
 		}
 
 		function : native :  Error(c : Char[]) ~ Nil {
@@ -490,7 +490,7 @@ bundle System {
 
 		function : native :  ErrorLine(c : Char[]) ~ Nil {
 			STD_ERR_CHAR_ARY;
-			'\n'->Print();
+			'\n'->Error();
 		}
 		
 		function : Size(c : Char[]) ~ Int {
@@ -657,7 +657,7 @@ bundle System {
 		~#
 		function : ErrorLine(i : Int) ~ Nil {
 			STD_ERR_INT;
-			'\n'->Print();
+			'\n'->Error();
 		}
 
 		function : Size(i : Int[]) ~ Int {
@@ -1038,7 +1038,7 @@ bundle System {
 		~#
 		function : ErrorLine(f : Float) ~ Nil {
 			STD_ERR_FLOAT;
-			'\n'->Print();
+			'\n'->Error();
 		}
 		
 		function : Size(f : Float[]) ~ Int {
