@@ -119,12 +119,17 @@ p1->GetPitch()->ErrorLine();
 p1->GetHeight()->ErrorLine();
 p1->Get(13)->ErrorLine();
 
-		p1 := formattedSurface->GetPixels();
-p1->GetPitch()->ErrorLine();
-p1->GetHeight()->ErrorLine();
-p1->Get(13)->ErrorLine();		
+		p2 := formattedSurface->GetPixels();
+p2->GetPitch()->ErrorLine();
+p2->GetHeight()->ErrorLine();
+p2->Get(13)->ErrorLine();		
+
+		p1->Copy(p2);
+
+p1->Get(13)->ErrorLine();
+
 		newTexture->Unlock();
-		
+
 		texture := loadedSurface->CreateTexture(@renderer);
 		loadedSurface->Free();
 		
