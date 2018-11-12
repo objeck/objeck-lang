@@ -14,7 +14,7 @@ class LTexture {
 	@pixels : PixelData;
 	@pitch : Int;
 	@width : Int;
-	@heigth : Int;
+	@height : Int;
 
 	New(renderer : Renderer, window : Window, font : Font := Nil) {
 		@renderer := renderer;
@@ -123,6 +123,14 @@ class LTexture {
 		return true;
 	}
 
+	method : public : GetWidth() ~ Int {
+		return @width;
+	}
+
+	method : public : GetHeight() ~ Int {
+		return @height;
+	}
+
 	# Deallocates texture
 	method : public : Free() ~ Nil {
 		if(@texture <> Nil)	{
@@ -156,15 +164,6 @@ class LTexture {
 		};
 
 		@renderer->CopyEx(@texture, clip, @render_quad, angle, center, flip);
-	}
-
-	# Gets image dimensions
-	method : public : GetWidth() ~ Int {
-		return @render_quad->GetW();
-	}
-
-	method : public : GetHeight() ~ Int {
-		return @render_quad->GetH();
 	}
 }
 
