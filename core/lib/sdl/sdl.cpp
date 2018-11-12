@@ -2066,6 +2066,45 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
+  void sdl_pixeldata_get(VMContext& context) {
+    size_t* pixels_obj = APITools_GetObjectValue(context, 1);
+    const int index = (int)APITools_GetIntValue(context, 2);
+    const int max_pixels = (pixels_obj[1] / sizeof(Uint32)) * pixels_obj[2];
+
+    if(index < max_pixels) {
+      Uint32* pixels = (Uint32*)pixels_obj[0];
+      APITools_SetIntValue(context, 0, pixels[index]);
+    }
+    else {
+      APITools_SetIntValue(context, 0, -1);
+    }
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_pixeldata_set(VMContext& context) {
+    size_t* pixels_obj = APITools_GetObjectValue(context, 1);
+    const int index = (int)APITools_GetIntValue(context, 2);
+    const int max_pixels = (pixels_obj[1] / sizeof(Uint32)) * pixels_obj[2];
+
+    if (index < max_pixels) {
+      Uint32* pixels = (Uint32*)pixels_obj[0];
+      const int value = (int)APITools_GetIntValue(context, 3);
+      pixels[index] = value;
+      APITools_SetIntValue(context, 0, 1);
+    }
+    else {
+      APITools_SetIntValue(context, 0, 0);
+    }
+  }
+
+  //
+  // texture
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
   void sdl_texture_create(VMContext& context) {
     size_t* renderer_obj = APITools_GetObjectValue(context, 1);
     SDL_Renderer* renderer = (SDL_Renderer*)renderer_obj[0];
@@ -2118,11 +2157,9 @@ extern "C" {
     SDL_Rect rect;
     sdl_rect_raw_write(&rect, rect_obj);
     
-    void* pixels; int pitch;
-    const int return_value = SDL_LockTexture(texture, rect_obj ? &rect : NULL, &pixels, &pitch);
-    
     // create PixelData
-    if(!return_value) {
+    void* pixels; int pitch;
+    if(!SDL_LockTexture(texture, rect_obj ? &rect : NULL, &pixels, &pitch)) {
       int width, height;
       SDL_QueryTexture(texture, NULL, NULL, &width, &height);
 #ifdef _DEBUG
