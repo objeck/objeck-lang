@@ -1,6 +1,6 @@
 #~~
 SDL2 wrapper
-Copyright (c) 2017-2018 Randy Hollines
+Copyright (c) 2017-2019 Randy Hollines
 ~~#
 
 use System.API;
@@ -2448,6 +2448,7 @@ bundle Game.SDL2 {
 	    @a_shift : Int;
 
 		New() {
+			# TODO: SDL_AllocFormat, SDL_FreeFormat
 		}
 
 		method : public : MapRGB(r : Int, g : Int, b : Int) ~ Int {
