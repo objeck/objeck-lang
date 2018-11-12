@@ -130,6 +130,11 @@ p1->Get(13)->ErrorLine();
 
 		newTexture->Unlock();
 
+
+format := @window->GetPixelFormat();
+mappingFormat := PixelFormat->New( format );
+mappingFormat->GetBytesPerPixel()->ErrorLine();
+
 		texture := loadedSurface->CreateTexture(@renderer);
 		loadedSurface->Free();
 		
