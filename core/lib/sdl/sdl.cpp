@@ -589,6 +589,18 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
+  void sdl_pixelformat_alloc(VMContext& context) {
+    size_t* pixel_format_obj = APITools_GetObjectValue(context, 0);
+    const int format = (int)APITools_GetIntValue(context, 1);
+
+    SDL_PixelFormat* pixel_format = SDL_AllocFormat(format);
+    sdl_pixel_format_raw_read(pixel_format, pixel_format_obj);
+    SDL_FreeFormat(pixel_format);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
   void sdl_surface_fill_rect(VMContext& context) {
     SDL_Surface* surface = (SDL_Surface*)APITools_GetIntValue(context, 1);
     size_t* rect_obj = APITools_GetObjectValue(context, 2);
