@@ -3392,6 +3392,53 @@ bundle Game.SDL2 {
 	    SDL_RENDERER_TARGETTEXTURE := 0x00000008
 	}
 
+	class PixelData {
+		@data : Int;
+		@pitch : Int;
+		@height : Int;
+
+		method : Get(index : Int) ~ Int {
+			if(@data <> 0) {
+				array_args := Base->New[3];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@data);
+				array_args[2] := IntHolder->New(index);
+
+				Proxy->GetDllProxy()->CallFunction("sdl_pixeldata_get", array_args);
+
+				value := array_args[0]->As(IntHolder);
+				return value->Get();
+			};
+
+			return -1;
+		}
+
+		method : Set(index : Int, value : Int) ~ Bool {
+			if(@data <> 0) {
+				array_args := Base->New[4];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@data);
+				array_args[2] := IntHolder->New(index);
+				array_args[3] := IntHolder->New(value);
+
+				Proxy->GetDllProxy()->CallFunction("sdl_pixeldata_set", array_args);
+
+				return_value := array_args[0]->As(IntHolder);
+				return return_value->Get() = 0 ? false : true;
+			};
+
+			return false;
+		}
+
+		method : public : GetPitch() ~ Int {
+			return @pitch;
+		}
+		
+		method : public : GetHeight() ~ Int {
+			return @height;
+		}
+	}
+
 	class Texture {
 		@texture : Int;
 
@@ -3444,17 +3491,16 @@ bundle Game.SDL2 {
 			return -1;
 		}
 
-		method : public : Lock(rect : Rect) ~ Int[] {
+		method : public : Lock(rect : Rect) ~ PixelData {
 			if(@texture <> 0) {
 				array_args := Base->New[3];
-				array_args[0] := IntArrayHolder->New(Nil->As(Int[]));
+				array_args[0] := Nil;
 				array_args[1] := IntHolder->New(@texture);
 				array_args[2] := rect;
 
 				Proxy->GetDllProxy()->CallFunction("sdl_texture_lock", array_args);
 
-				value := array_args[0]->As(IntArrayHolder);
-				return value->Get();
+				return array_args[0]->As(PixelData);
 			};
 
 			return Nil;

@@ -113,9 +113,11 @@ class Test {
 			formattedSurface->GetW(), formattedSurface->GetH() );
 
 		# Lock texture for manipulation
-		pitch_holder := IntHolder->New();
-		pixels := newTexture->Lock(Nil, pitch_holder );
-
+		rect := Rect->New(10, 10, 10, 10);
+		pixels := newTexture->Lock( rect );
+pixels->GetPitch()->ErrorLine();
+pixels->GetHeight()->ErrorLine();
+		
 		texture := loadedSurface->CreateTexture(@renderer);
 		loadedSurface->Free();
 		

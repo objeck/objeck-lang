@@ -43,7 +43,7 @@ bundle System {
 		~#
 		function : ErrorLine(b : Bool) ~ Nil {
 			STD_ERR_BOOL;
-			'\n'->Print();
+			'\n'->Error();
 		}
 
 		function : Size(b : Bool[]) ~ Int {
