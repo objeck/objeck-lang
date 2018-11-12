@@ -51,11 +51,15 @@ class LTexture {
 		formattedSurface := loadedSurface->ConvertFormat(@window->GetPixelFormat(), 0);
 		if(formattedSurface->IsNull()) {
 			"Unable to convert loaded surface to display format!"->ErrorLine();
+			return false;
 		};
 
 		newTexture := @renderer->CreateTexture(@window->GetPixelFormat(), TextureAccess->SDL_TEXTUREACCESS_STREAMING, 
 			formattedSurface->GetW(), formattedSurface->GetH() );
-
+		if(newTexture->IsNull()) {
+			"Unable to create blank texture!"->ErrorLine();
+			return false;
+		};
 
 #		@texture := texture;
 		return @texture <> Nil;
