@@ -11,6 +11,9 @@ class LTexture {
 	@texture : Texture;
 	@render_quad : Rect;
 	@window : Window;
+	@pixels : PixelData;
+	@width : Int;
+	@heigth : Int;
 
 	New(renderer : Renderer, window : Window, font : Font := Nil) {
 		@renderer := renderer;
@@ -53,15 +56,28 @@ class LTexture {
 			"Unable to convert loaded surface to display format!"->ErrorLine();
 			return false;
 		};
-
-		newTexture := @renderer->CreateTexture(@window->GetPixelFormat(), TextureAccess->SDL_TEXTUREACCESS_STREAMING, 
+		
+		newTexture := @renderer->CreateTexture(@window->GetPixelFormat(), 
+			TextureAccess->SDL_TEXTUREACCESS_STREAMING, 
 			formattedSurface->GetW(), formattedSurface->GetH() );
 		if(newTexture->IsNull()) {
 			"Unable to create blank texture!"->ErrorLine();
 			return false;
 		};
 
-#		@texture := texture;
+		@pixels := newTexture->Lock(Nil);
+		surface_pixels := formattedSurface->GetPixels();
+		@pixels->Copy(surface_pixels);
+		newTexture->Unlock();
+		@pixels := Nil;
+
+		@width := formattedSurface->GetW();
+		@height := formattedSurface->GetH();
+
+		formattedSurface->Free();
+		loadedSurface->Free();
+
+		@texture := newTexture;
 		return @texture <> Nil;
 	}
 
@@ -210,7 +226,7 @@ class Test {
 	}
 	
 	function : LoadMedia() ~ Bool {
-		if(<>@foo_texture->LoadFromFile("images/dot.bmp")) {
+		if(<>@foo_texture->LoadFromFile("images/foo.png")) {
 			"Failed to load image"->ErrorLine();
 			return false;
 		};
