@@ -2447,6 +2447,9 @@ bundle Game.SDL2 {
 	    @b_shift : Int;
 	    @a_shift : Int;
 
+	    New() {
+	    }
+
 		New(format : Int) {
 			# TODO: SDL_AllocFormat, SDL_FreeFormat
 			array_args := Base->New[2];

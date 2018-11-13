@@ -83,6 +83,33 @@ class LTexture {
 		return @texture <> Nil;
 	}
 
+	# Loads image at specified path
+	method : public : LoadFromFileKeyed(path : String) ~ Bool {
+		Free();
+
+		# Load image at specified path
+		loadedSurface := Image->Load(path);
+		if(loadedSurface->IsNull()) {
+			"Unable to load surface"->ErrorLine();
+			return false;
+		};
+
+		loadedSurface->SetColorKey(true, loadedSurface->GetPixelFormat()->MapRGB(0, 0xFF, 0xFF));
+
+		texture := loadedSurface->CreateTexture(@renderer);
+		if(texture->IsNull()) {
+			"Unable to create texture!"->ErrorLine();
+			return false;
+		};
+		@render_quad->SetW(loadedSurface->GetW());
+		@render_quad->SetH(loadedSurface->GetH());
+		
+		loadedSurface->Free();
+
+		@texture := texture;
+		return @texture <> Nil;
+	}
+
 	method : public : Lock() ~ Bool {
 		# Texture is already locked
 		if( @pixels <> Nil )
@@ -298,7 +325,7 @@ class Test {
 		pixelCount := ( @foo_texture->GetPitch() / 4 ) * @foo_texture->GetHeight();
 
 		# Map colors
-		colorKey := mappingFormat->MapRGB( 0, 0xFF, 0xFF );
+		colorKey := mappingFormat->MapRGB( 0, 0xFF, 0xFF );		
 		transparent := mappingFormat->MapRGBA( 0xFF, 0xFF, 0xFF, 0x00 );
 
 		# Color key pixels

@@ -564,8 +564,7 @@ extern "C" {
     const int g = (int)APITools_GetIntValue(context, 3);
     const int b = (int)APITools_GetIntValue(context, 4);
 
-    const int return_value = SDL_MapRGB(pixel_format_obj ? &pixel_format : NULL, r, g, b);
-    APITools_SetIntValue(context, 0, return_value);
+    APITools_SetIntValue(context, 0, SDL_MapRGB(pixel_format_obj ? &pixel_format : NULL, r, g, b));
   }
 
 #ifdef _WIN32
@@ -582,8 +581,7 @@ extern "C" {
     const int b = (int)APITools_GetIntValue(context, 4);
     const int a = (int)APITools_GetIntValue(context, 5);
 
-    const int return_value = SDL_MapRGBA(pixel_format_obj ? &pixel_format : NULL, r, g, b, a);
-    APITools_SetIntValue(context, 0, return_value);
+    APITools_SetIntValue(context, 0, SDL_MapRGBA(pixel_format_obj ? &pixel_format : NULL, r, g, b, a));
   }
 
 #ifdef _WIN32
@@ -2124,8 +2122,8 @@ extern "C" {
 #endif
   void sdl_pixeldata_get(VMContext& context) {
     size_t* pixels_obj = APITools_GetObjectValue(context, 1);
-    const int index = (int)APITools_GetIntValue(context, 2);
-    const int max_pixels = (pixels_obj[1] / sizeof(Uint32)) * pixels_obj[2];
+    const Uint32 index = (int)APITools_GetIntValue(context, 2);
+    const Uint32 max_pixels = (pixels_obj[1] / sizeof(Uint32)) * pixels_obj[2];
 
     if(index < max_pixels) {
       Uint32* pixels = (Uint32*)pixels_obj[0];
@@ -2141,13 +2139,12 @@ extern "C" {
 #endif
   void sdl_pixeldata_set(VMContext& context) {
     size_t* pixels_obj = APITools_GetObjectValue(context, 1);
-    const int index = (int)APITools_GetIntValue(context, 2);
-    const int max_pixels = (pixels_obj[1] / sizeof(Uint32)) * pixels_obj[2];
+    const Uint32 index = (int)APITools_GetIntValue(context, 2);
+    const Uint32 max_pixels = (pixels_obj[1] / sizeof(Uint32)) * pixels_obj[2];
 
     if (index < max_pixels) {
       Uint32* pixels = (Uint32*)pixels_obj[0];
-      const int value = (int)APITools_GetIntValue(context, 3);
-      pixels[index] = value;
+      pixels[index] = APITools_GetIntValue(context, 3);;
       APITools_SetIntValue(context, 0, 1);
     }
     else {
