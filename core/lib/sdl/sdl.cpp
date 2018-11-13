@@ -2163,12 +2163,12 @@ extern "C" {
     size_t* from_obj = APITools_GetObjectValue(context, 2);
 
     const Uint32 to_size = to_obj[1] * to_obj[2];
-    void* to = (void*)to_obj[0];
+    void* to = (void*)(to_obj[0]);
 
     const Uint32 from_size = from_obj[1] * from_obj[2];
-    void* from = (void*)from_obj[0];
+    void* from = (void*)(from_obj[0]);
     
-    if(to && from && from_size <= to_size) {
+    if(to && from && to_size >= from_size) {
       memcpy(to, from, from_size);
       APITools_SetIntValue(context, 0, 1);
     }
