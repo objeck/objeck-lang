@@ -165,6 +165,8 @@ class LTexture {
 			angle : Float := 0.0, center : Point := Nil, flip : RendererFlip := RendererFlip->SDL_FLIP_NONE) ~ Nil {
 		@render_quad->SetX(x);
 		@render_quad->SetY(y);
+		@render_quad->SetW(@width);
+		@render_quad->SetH(@height);
 
 		if(clip <> Nil)	{
 			@render_quad->SetW(clip->GetW());
@@ -274,7 +276,7 @@ class Test {
 		return true;
 	}
 	
-	function : LoadMedia() ~ Bool {
+	function : native : LoadMedia() ~ Bool {
 		if(<>@foo_texture->LoadFromFile("images/foo.png")) {
 			"Failed to load image"->ErrorLine();
 			return false;
@@ -300,7 +302,6 @@ class Test {
 		transparent := mappingFormat->MapRGBA( 0xFF, 0xFF, 0xFF, 0x00 );
 
 		# Color key pixels
-pixelCount->PrintLine();		
 		for( i := 0; i < pixelCount; i+=1; )
 		{
 			if( pixels->Get(i) = colorKey )
