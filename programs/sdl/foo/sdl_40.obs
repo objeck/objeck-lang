@@ -189,7 +189,8 @@ class LTexture {
 
 	# Renders texture at given point
 	method : public : Render(x : Int, y : Int, clip : Rect := Nil, 
-			angle : Float := 0.0, center : Point := Nil, flip : RendererFlip := RendererFlip->SDL_FLIP_NONE) ~ Nil {
+			angle : Float := 0.0, center : Point := Nil, 
+			flip : RendererFlip := RendererFlip->SDL_FLIP_NONE) ~ Nil {
 		@render_quad->SetX(x);
 		@render_quad->SetY(y);
 		@render_quad->SetW(@width);
