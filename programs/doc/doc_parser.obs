@@ -765,7 +765,7 @@ class ClassBlock from DocBlock {
 		return @funcs->Find(name)->As(Vector);
 	}
 
-	method : public : GetFunctionNames() ~ Vector {
+	method : public : GetFunctionNames() ~ CompareVector {
 		return @funcs->GetKeys();
 	}
 

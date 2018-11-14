@@ -587,20 +587,31 @@ bundle Game.SDL2 {
 			return -1;
 		}
 		
+		#~
+		Shut down the video subsystem
+		~#
 		function : VideoQuit() ~ Nil {
 			array_args := Base->New[0];
 			Proxy->GetDllProxy()->CallFunction("sdl_display_video_quit", array_args);
 		}
 		
+		#~
+		Name of the currently initialized video driver
+		@return name of the current video driver
+		~#
 		function : GetCurrentVideoDriver() ~ String {
 			array_args := Base->New[1];
 			array_args[0] := Nil;
 
 			Proxy->GetDllProxy()->CallFunction("sdl_display_get_current_video_driver", array_args);
 
-			return array_args[0];
+			return array_args[0]->As(String);
 		}
 		
+		#~
+		Get the number of available video displays
+		@return number >= 1 or a negative error code on failure
+		~#
 		function : GetNumVideoDisplays() ~ Int {
 			array_args := Base->New[1];
 			array_args[0] := IntHolder->New();
@@ -611,6 +622,11 @@ bundle Game.SDL2 {
 			return value->Get();
 		}
 		
+		#~
+		Get the name of a display in UTF-8 encoding
+		@param displayIndex the index of display from which the name should be queried
+		@return the name of a display
+		~#
 		function : GetDisplayName(displayIndex : Int) ~ String {
 			array_args := Base->New[2];
 			array_args[0] := Nil;
@@ -621,6 +637,12 @@ bundle Game.SDL2 {
 			return array_args[0];
 		}
 		
+		#~
+		Get the desktop area represented by a display, with the primary display located at 0,0
+		@param displayIndex the index of the display to query
+		@param rect the SDL_Rect structure filled in with the display bounds
+		@return 0 on success or a negative error code on failure
+		~#
 		function : GetDisplayBounds(displayIndex : Int, rect : Rect) ~ Int {
 			if(rect <> Nil) {
 				array_args := Base->New[3];
@@ -637,6 +659,11 @@ bundle Game.SDL2 {
 			return -1;
 		}
 		
+		#~
+		Get the number of available display modes
+		@param displayIndex the index of the display to query
+		@return number >= 1 on success or a negative error code on failure
+		~#
 		function : GetNumDisplayModes(displayIndex : Int) ~ Int {
 			array_args := Base->New[2];
 			array_args[0] := IntHolder->New();
@@ -648,6 +675,13 @@ bundle Game.SDL2 {
 			return value->Get();
 		}
 		
+		#~
+		Get information about a specific display mode
+		@param displayIndex the index of the display to query
+		@param modeIndex the index of the display mode to query
+		@param mode an DisplayMode class filled in with the mode at modeIndex
+		@return Returns 0 on success or a negative error code on failure
+		~#
 		function : GetDisplayMode(displayIndex : Int, modeIndex : Int, mode : DisplayMode) ~ Int {
 			if(mode <> Nil) {
 				array_args := Base->New[4];
@@ -665,6 +699,12 @@ bundle Game.SDL2 {
 			return -1;
 		}
 		
+		#~
+		Get information about the current display mode
+		@param displayIndex the index of the display to query
+		@param mode an DisplayMode class filled in with the current display mode
+		@return Returns 0 on success or a negative error code on failure
+		~#
 		function : GetCurrentDisplayMode(displayIndex : Int, mode : DisplayMode) ~ Int {
 			if(mode <> Nil) {
 				array_args := Base->New[3];
@@ -681,6 +721,13 @@ bundle Game.SDL2 {
 			return -1;
 		}
 		
+		#~
+		Get the closest match to the requested display mode
+		@param displayIndex the index of the display to query
+		@param mode an SDL_DisplayMode structure containing the desired display mode
+		@param closest an SDL_DisplayMode structure filled in with the closest match of the available display modes
+		@return true of success, false otherwise 
+		~#
 		function : GetClosestDisplayMode(displayIndex : Int, mode : DisplayMode, closest : DisplayMode) ~ Bool {
 			if(mode <> Nil & closest <> Nil) {
 				array_args := Base->New[4];
@@ -709,6 +756,15 @@ bundle Game.SDL2 {
 			@window := window;
 		}
 		
+		#~
+		Creates a window with the specified position, dimensions, and flags
+		@param title the title of the window, in UTF-8 encoding
+		@param x the x position of the window, WindowFlags->SDL_WINDOWPOS_CENTERED, or WindowFlags->SDL_WINDOWPOS_UNDEFINED
+		@param y the y position of the window, WindowFlags->SDL_WINDOWPOS_CENTERED, or WindowFlags->SDL_WINDOWPOS_UNDEFINED
+		@param w the width of the window, in screen coordinates
+		@param h the height of the window, in screen coordinates
+		@param flags 0, or one or more WindowFlags OR'd together
+		~#
 		New(title : String, x : Int, y : Int, w : Int, h : Int, flags : Int) {
 			array_args := Base->New[7];
 			array_args[0] := IntHolder->New();
