@@ -1,7 +1,7 @@
 /***************************************************************************
  * SDL support for Objeck
  *
- * Copyright (c) 2015-2018, Randy Hollines
+ * Copyright (c) 2015-2019, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -179,8 +179,7 @@ extern "C" {
 #endif
   void sdl_core_init(VMContext& context) {
     const int flags = (int)APITools_GetIntValue(context, 1);
-    const int return_value = (int)SDL_Init(flags);
-    APITools_SetIntValue(context, 0, return_value);
+    APITools_SetIntValue(context, 0, SDL_Init(flags));
   }
 
 #ifdef _WIN32
@@ -1790,8 +1789,7 @@ extern "C" {
   #endif
   void sdl_image_init(VMContext& context) {
     const int flags = (int)APITools_GetIntValue(context, 1);
-    const int return_value = IMG_Init(flags);
-    APITools_SetIntValue(context, 0, return_value);
+    APITools_SetIntValue(context, 0, IMG_Init(flags));
   }
 
 #ifdef _WIN32
@@ -1851,8 +1849,7 @@ extern "C" {
   __declspec(dllexport)
 #endif
    void sdl_renderer_get_num_render_drivers(VMContext& context) {
-    const int return_value = SDL_GetNumRenderDrivers();
-    APITools_SetIntValue(context, 0, return_value);
+    APITools_SetIntValue(context, 0, SDL_GetNumRenderDrivers());
   }
 
 #ifdef _WIN32
@@ -2023,8 +2020,7 @@ extern "C" {
 #endif
   void sdl_renderer_render_clear(VMContext& context) {
     SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
-    const int return_value = SDL_RenderClear(renderer);
-    APITools_SetIntValue(context, 0, return_value);
+    APITools_SetIntValue(context, 0, SDL_RenderClear(renderer));
   }
 
 #ifdef _WIN32
@@ -2343,8 +2339,7 @@ extern "C" {
   __declspec(dllexport)
 #endif
   void sdl_timer_delay(VMContext& context) {
-    const Uint32 ms = (int)APITools_GetIntValue(context, 0);
-    SDL_Delay(ms);
+    SDL_Delay(APITools_GetIntValue(context, 0));
   }
 
 #ifdef _WIN32
@@ -2451,8 +2446,7 @@ extern "C" {
   void sdl_power_set_clipboard_text(VMContext& context) {
     const wstring w_text = APITools_GetStringValue(context, 1);
     const string text(w_text.begin(), w_text.end());
-    const int return_value = SDL_SetClipboardText(text.c_str());
-    APITools_SetIntValue(context, 0, return_value);
+    APITools_SetIntValue(context, 0, SDL_SetClipboardText(text.c_str()));
   }
 
 #ifdef _WIN32
@@ -2468,8 +2462,7 @@ extern "C" {
   __declspec(dllexport)
 #endif
   void sdl_power_has_clipboard_text(VMContext& context) {
-    const int return_value = SDL_HasClipboardText();
-    APITools_SetIntValue(context, 0, return_value);
+    APITools_SetIntValue(context, 0, SDL_HasClipboardText());
   }
 
   //
