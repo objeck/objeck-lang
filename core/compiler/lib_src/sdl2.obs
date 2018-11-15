@@ -3483,7 +3483,7 @@ bundle Game.SDL2 {
 			return Surface->New(value->Get());
 		}
 	}
-	
+
 	#~
 	Rendering state
 	~#
@@ -3794,6 +3794,9 @@ bundle Game.SDL2 {
 		}
 	}
 
+	#~
+	Contains information on the capabilities of a render driver or the current render context
+	~#
 	class RendererInfo {
 		@name : String;
 	    @flags : Int;
@@ -3831,6 +3834,9 @@ bundle Game.SDL2 {
 		}
 	}
 
+	#~
+	Raw pixel data for surfaces and textures
+	~#
 	class PixelData {
 		@data : Int;
 		@pitch : Int;
@@ -3898,6 +3904,9 @@ bundle Game.SDL2 {
 		}
 	}
 
+	#~
+	Efficient, driver-specific representation of pixel data.
+	~#
 	class Texture {
 		@texture : Int;
 
@@ -4075,6 +4084,9 @@ bundle Game.SDL2 {
 		}
 	}
 	
+	#~
+	SDL time management routines
+	~#
 	class Timer {
 		function : GetTicks() ~ Int {
 			array_args := Base->New[1];
@@ -4106,6 +4118,9 @@ bundle Game.SDL2 {
 		}
 	}
 
+	#~
+	TrueType font rendering
+	~#
 	class Font {
 		@font : Int;
 
@@ -4167,6 +4182,9 @@ bundle Game.SDL2 {
 		}
 	}
 
+	#~
+	Mouse cursor operations
+	~#
 	class Cursor {
 		function : GetGlobalMouseState(x : IntHolder, y : IntHolder) ~ Int {
 			array_args := Base->New[3];
@@ -4193,6 +4211,9 @@ bundle Game.SDL2 {
 		}
 	}
 
+	#~
+	Portable sound mixing library
+	~#
 	class Mixer {
 		consts Flags {
 			MIX_DEFAULT_FORMAT := 0x8010,
@@ -4270,6 +4291,9 @@ bundle Game.SDL2 {
 		}
 	}
 
+	#~
+	Format for an audio chunk
+	~#
 	class MixChunk {
 	    @mix_chunk : Int;
 
@@ -4344,6 +4368,9 @@ bundle Game.SDL2 {
 		}
 	}
 
+	#~
+	Music operations
+	~#
 	class MixMusic {
 		@mix_music : Int;
 
@@ -4467,6 +4494,9 @@ bundle Game.SDL2 {
 		}
 	}
 
+	#~
+	Platform specific queries
+	~#
 	class Platform {
 		function : Get() ~ String {
 			array_args := Base->New[1];
@@ -4478,6 +4508,9 @@ bundle Game.SDL2 {
 		}
 	}
 
+	#~
+	Operations for gathering information about the processor's features
+	~#
 	class CPU {
 		function : GetCount() ~ Int {
 			array_args := Base->New[1];
@@ -4630,6 +4663,9 @@ bundle Game.SDL2 {
 		}
 	}
 
+	#~
+	Filesystem helper functions
+	~#
 	class Filesystem {
 		function : GetBasePath() ~ String {
 			array_args := Base->New[1];
@@ -4652,6 +4688,9 @@ bundle Game.SDL2 {
 		}
 	}
 
+	#~
+	Power management routines
+	~#
 	class Power {
 		function : GetInfo(secs : IntHolder, pct : IntHolder) ~ Int {
 			array_args := Base->New[3];
