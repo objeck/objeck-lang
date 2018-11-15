@@ -22,6 +22,14 @@ bundle Game.SDL2 {
 	}
 
 	#~
+	SDL button state
+	~#
+	enum KeyState {
+		SDL_PRESSED,
+		SDL_RELEASED
+	}
+
+	#~
 	SDL event action
 	~#
 	enum EventAction {
@@ -81,6 +89,32 @@ bundle Game.SDL2 {
 	    SDL_TEXTUREACCESS_STATIC,
 	    SDL_TEXTUREACCESS_STREAMING,
 	    SDL_TEXTUREACCESS_TARGET
+	}
+
+	#~
+	Mouse motion values
+	~#
+	consts MouseButtonValue {
+		SDL_BUTTON_LEFT := 1,
+		SDL_BUTTON_MIDDLE := 2,
+		SDL_BUTTON_RIGHT := 3,
+		SDL_BUTTON_X1 := 4,
+		SDL_BUTTON_X2 := 5
+	}
+
+	#~
+	Joystick hat values
+	~#
+	consts JoystickHatValue {
+		SDL_HAT_CENTERED := 0x00,
+		SDL_HAT_UP := 0x01,
+		SDL_HAT_RIGHT := 0x02,
+		SDL_HAT_DOWN := 0x04,
+		SDL_HAT_LEFT := 0x08,
+		SDL_HAT_RIGHTUP := 3,
+		SDL_HAT_RIGHTDOWN := 6,
+		SDL_HAT_LEFTUP := 9,
+		SDL_HAT_LEFTDOWN := 12
 	}
 
 	#~
@@ -1445,7 +1479,7 @@ bundle Game.SDL2 {
 		@type : Int;
 		@timestamp : Int;
 		@windowID : Int;
-		@state : Int;
+		@state : KeyState;
 		@repeat : Int;
 		@keysym : Keysym;
 		
@@ -1479,9 +1513,9 @@ bundle Game.SDL2 {
 		
 		#~
 		Get the state of the key
-		@return 0 for released or 1 for pressed
+		@return KeyState->SDL_PRESSED or KeyState->SDL_RELEASED
 		~#
-		method : public : GetState() ~ Int {
+		method : public : GetState() ~ KeyState {
 			return @state;
 		}
 		
@@ -1734,8 +1768,6 @@ bundle Game.SDL2 {
 		}
 	}
 
-#----- TODO -----
-
 	#~
 	Joysticks hat event
 	~#
@@ -1744,28 +1776,48 @@ bundle Game.SDL2 {
 		@timestamp : Int;
 		@which : Int;
 		@hat : Int;
-		@value : Int;
+		@value : JoystickHatValue;
 
 		New() {			
 		}
 
+		#~
+		Event type
+		@return EventType->SDL_JOYHATMOTION
+		~#
 		method : public : GetType() ~ Int {
 			return @type;
 		}
 
+		#~
+		Timestamp of the event
+		@return event timestamp
+		~#
 		method : public : GetTimestamp() ~ Int {
 			return @timestamp;
 		}
 
+		#~
+		Instance ID of the joystick that reported the event
+		@return joystick ID
+		~#
 		method : public : GetWhich() ~ Int {
 			return @which;
 		}
 
+		#~
+		Index of the hat that changed
+		@return hat index
+		~#
 		method : public : GetHat() ~ Int {
 			return @hat;
 		}
 		
-		method : public : GetValue() ~ Int {
+		#~
+		New position of the hat
+		@return hat value
+		~#
+		method : public : GetValue() ~ JoystickHatValue {
 			return @value;
 		}
 	}
@@ -1778,28 +1830,48 @@ bundle Game.SDL2 {
     	@timestamp : Int;
     	@which : Int;
     	@button : Int;
-    	@state : Int;
+    	@state : KeyState;
 
     	New() {			
 		}
 
+		#~
+		Event type
+		@return EventType->SDL_JOYBUTTONDOWN or EventType->SDL_JOYBUTTONUP
+		~#
 		method : public : GetType() ~ Int {
 			return @type;
 		}
 
+		#~
+		Timestamp of the event
+		@return event timestamp
+		~#
 		method : public : GetTimestamp() ~ Int {
 			return @timestamp;
 		}
 
+		#~
+		Instance ID of the joystick that reported the event
+		@return joystick ID
+		~#
 		method : public : GetWhich() ~ Int {
 			return @which;
 		}
 
+		#~
+		Index of the button that changed
+		@return button index
+		~#
 		method : public : GetButton() ~ Int {
 			return @button;
 		}
 		
-		method : public : GetState() ~ Int {
+		#~
+		State of the button
+		@return KeyState->SDL_PRESSED or KeyState->SDL_RELEASED
+		~#
+		method : public : GetState() ~ KeyState {
 			return @state;
 		}
 	}
@@ -1821,38 +1893,73 @@ bundle Game.SDL2 {
 	    New() {			
 		}
 
+		#~
+		Event type
+		@return EventType->SDL_MOUSEMOTION
+		~#
 		method : public : GetType() ~ Int {
 			return @type;
 		}
 
+		#~
+		Timestamp of the event
+		@return event timestamp
+		~#
 		method : public : GetTimestamp() ~ Int {
 			return @timestamp;
 		}
 
+		#~
+		Window with mouse focus, if any
+		@return window ID
+		~#
 		method : public : GetWindowID() ~ Int {
 			return @windowID;
 		}
 
+		#~
+		Mouse instance id or -1
+		~#
 		method : public : GetWhich() ~ Int {
 			return @which;
 		}
 
+		#~
+		State of the button
+		@return button state
+		~#
 		method : public : GetState() ~ Int {
 			return @state;
 		}
 
+		#~
+		X coordinate, relative to window
+		@return X coordinate
+		~#
 		method : public : GetX() ~ Int {
 			return @x;
 		}
 
+		#~
+		Y coordinate, relative to window
+		@return Y coordinate
+		~#
 		method : public : GetY() ~ Int {
 			return @y;
 		}
 
+		#~
+		Relative motion in the X direction
+		@return X direction
+		~#
 		method : public : GetRelX() ~ Int {
 			return @xrel;
 		}
 
+		#~
+		Relative motion in the Y direction
+		@return Y direction
+		~#
 		method : public : GetRelY() ~ Int {
 			return @yrel;
 		}
@@ -1865,9 +1972,9 @@ bundle Game.SDL2 {
 		@type : Int;
 	    @timestamp : Int;
 	    @windowID : Int;
-	    @which : Int;
+	    @which : MouseButtonValue;
 	    @button : Int;
-	    @state : Int;
+	    @state : KeyState;
 	    @clicks : Int;
 	    @x : Int;
 	    @y : Int;
@@ -1875,42 +1982,79 @@ bundle Game.SDL2 {
 	    New() {			
 		}
 
+		#~
+		Event type
+		@return EventType->SDL_MOUSEBUTTONDOWN or EventType->SDL_MOUSEBUTTONUP
+		~#
 		method : public : GetType() ~ Int {
 			return @type;
 		}
 
+		#~
+		Timestamp of the event
+		@return event timestamp
+		~#
 		method : public : GetTimestamp() ~ Int {
 			return @timestamp;
 		}
 
+		#~
+		Window with mouse focus, if any
+		@return window ID
+		~#
 		method : public : GetWindowID() ~ Int {
 			return @windowID;
 		}
 
+		#~
+		Mouse instance id or -1
+		~#
 		method : public : GetWhich() ~ Int {
 			return @which;
 		}
 
-		method : public : GetButton() ~ Int {
+		#~
+		Button that changed
+		@return changed button
+		~#
+		method : public : GetButton() ~ MouseButtonValue {
 			return @button;
 		}
 
-		method : public : GetState() ~ Int {
+		#~
+		State of the button
+		@return button state
+		~#
+		method : public : GetState() ~ KeyState {
 			return @state;
 		}
 
+		#~
+		Number of clicks
+		@return 1 for single-click, 2 for double-click, etc.
+		~#
 		method : public : GetClicks() ~ Int {
 			return @clicks;
 		}
 
+		#~
+		X coordinate, relative to window
+		@return X coordinate
+		~#
 		method : public : GetX() ~ Int {
 			return @x;
 		}
 
+		#~
+		Y coordinate, relative to window
+		@return Y coordinate
+		~#
 		method : public : GetY() ~ Int {
 			return @y;
 		}
 	}
+
+#----- TODO -----
 
 	#~
 	Mouse wheel event
