@@ -156,6 +156,7 @@ bundle Game.SDL2 {
 	    SDL_WINDOW_INPUT_GRABBED := 0x00000100,
 	    SDL_WINDOW_INPUT_FOCUS := 0x00000200,
 	    SDL_WINDOW_MOUSE_FOCUS := 0x00000400,
+	    SDL_WINDOW_FULLSCREEN_DESKTOP := 4097,
 	    SDL_WINDOW_FOREIGN := 0x00000800,
 	    SDL_WINDOW_ALLOW_HIGHDPI := 0x00002000,
 	    SDL_WINDOW_MOUSE_CAPTURE := 0x00004000,
@@ -895,6 +896,7 @@ bundle Game.SDL2 {
 		
 		#~
 		Get the numeric ID of a window, for logging purposes
+		@param id window ID
 		@return the ID of the window on success or 0 on failure
 		~#
 		method : public : GetFromID(id : Int) ~ Window {
@@ -1072,6 +1074,11 @@ bundle Game.SDL2 {
 			};
 		}
 		
+		#~
+		Get the maximum size of a window's client area
+		@param w pointer filled in with the maximum width of the window,
+		@param h pointer filled in with the maximum height of the window
+		~#
 		method : public : GetMaximumSize(w : IntHolder, h : IntHolder) ~ Nil {
 			if(@window <> 0) {
 				array_args := Base->New[3];
@@ -1083,6 +1090,10 @@ bundle Game.SDL2 {
 			};
 		}
 		
+		#~
+		Set the border state of a window
+		@param bordered false to remove border, true to add border
+		~#
 		method : public : SetBordered(bordered : Bool) ~ Nil {
 			if(@window <> 0) {
 				array_args := Base->New[2];
@@ -1093,6 +1104,9 @@ bundle Game.SDL2 {
 			};
 		}
 		
+		#~
+		Show a window
+		~#
 		method : public : Show() ~ Nil {
 			if(@window <> 0) {
 				array_args := Base->New[1];
@@ -1102,6 +1116,9 @@ bundle Game.SDL2 {
 			};
 		}
 		
+		#~
+		Hide a window
+		~#
 		method : public : Hide() ~ Nil {
 			if(@window <> 0) {
 				array_args := Base->New[1];
@@ -1111,6 +1128,9 @@ bundle Game.SDL2 {
 			};
 		}
 		
+		#~
+		Raise a window above other windows and set the input focus
+		~#
 		method : public : Raise() ~ Nil {
 			if(@window <> 0) {
 				array_args := Base->New[1];
@@ -1120,6 +1140,9 @@ bundle Game.SDL2 {
 			};
 		}
 		
+		#~
+		Make a window as large as possible
+		~#
 		method : public : Maximize() ~ Nil {
 			if(@window <> 0) {
 				array_args := Base->New[1];
@@ -1129,6 +1152,9 @@ bundle Game.SDL2 {
 			};
 		}
 		
+		#~
+		Minimize a window to an iconic representation
+		~#
 		method : public : Minimize() ~ Nil {
 			if(@window <> 0) {
 				array_args := Base->New[1];
@@ -1138,6 +1164,9 @@ bundle Game.SDL2 {
 			};
 		}
 		
+		#~
+		Restore the size and position of a minimized or maximized window
+		~#
 		method : public : Restore() ~ Nil {
 			if(@window <> 0) {
 				array_args := Base->New[1];
@@ -1148,6 +1177,10 @@ bundle Game.SDL2 {
 			};
 		}
 		
+		#~
+		Set a window's full-screen state
+		@param flags WindowFlags->SDL_WINDOW_FULLSCREEN, WindowFlags->SDL_WINDOW_FULLSCREEN_DESKTOP or 0
+		~#
 		method : public : SetFullscreen(flags : Int) ~ Int {
 			if(@window <> 0) {
 				array_args := Base->New[3];
@@ -1164,6 +1197,10 @@ bundle Game.SDL2 {
 			return -1;
 		}
 		
+		#~
+		Get the SDL surface associated with the window
+		@return surface associated with the window, or NULL on failure
+		~#
 		method : public : GetSurface() ~ Surface {
 			if(@window <> 0) {
 				array_args := Base->New[2];
@@ -1179,6 +1216,9 @@ bundle Game.SDL2 {
 			return Nil;
 		}
 		
+		#~
+		Use this function to copy the window surface to the screen
+		~#
 		method : public : UpdateSurface() ~ Int {
 			if(@window <> 0) {
 				array_args := Base->New[2];
@@ -1194,6 +1234,23 @@ bundle Game.SDL2 {
 			return -1;
 		}
 		
+		method : public : UpdateSurfaceRects(rects : Rect[], numrects : Int) ~ Int {
+			if(@window <> 0) {
+				array_args := Base->New[4];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@window);
+				array_args[2] := rects;
+				array_args[3] := IntHolder->New(numrects);
+
+				Proxy->GetDllProxy()->CallFunction("sdl_window_update_surface_rects", array_args);
+
+				value := array_args[0]->As(IntHolder);
+				return value->Get();
+			};
+		
+			return -1;
+		}
+
 		method : public : SetGrab(grabbed : Bool) ~ Nil {
 			if(@window <> 0) {
 				array_args := Base->New[2];
