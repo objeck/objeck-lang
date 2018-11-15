@@ -1268,6 +1268,11 @@ bundle Game.SDL2 {
 			return false;
 		}
 		
+		#~
+		Sets the brightness (gamma multiplier) for the display that owns a given window
+		@param brightness the brightness (gamma multiplier) value to set where 0.0 is completely dark and 1.0 is normal brightness
+		@return 0 on success or a negative error code on failure
+		~#
 		method : public : SetBrightness(brightness : Float) ~ Int {
 			if(@window <> 0) {
 				array_args := Base->New[3];
@@ -1284,6 +1289,10 @@ bundle Game.SDL2 {
 			return -1;
 		}
 		
+		#~
+		Gets the brightness (gamma multiplier) for the display that owns a given window
+		@return brightness for the display where 0.0 is completely dark and 1.0 is normal brightness
+		~#
 		method : public : GetBrightness() ~ Float {
 			if(@window <> 0) {
 				array_args := Base->New[2];
@@ -1299,6 +1308,13 @@ bundle Game.SDL2 {
 			return 0.0;
 		}
 		
+		#~
+		Sets the gamma ramp for the display that owns a given window
+		@param red a 256 element array of 16-bit quantities representing the translation table for the red channel
+		@param green a 256 element array of 16-bit quantities representing the translation table for the green channel
+		@param blue a 256 element array of 16-bit quantities representing the translation table for the blue channel,
+		@return 0 on success or a negative error code on failure
+		~#
 		method : public : SetGammaRamp(red : IntHolder, green : IntHolder, blue : IntHolder) ~ Int {
 			if(@window <> 0) {
 				array_args := Base->New[5];
@@ -1317,6 +1333,13 @@ bundle Game.SDL2 {
 			return -1;
 		}
 		
+		#~
+		Gets the gamma ramp for the display that owns a given window
+		@param red a 256 element array of 16-bit quantities representing the translation table for the red channel
+		@param green a 256 element array of 16-bit quantities representing the translation table for the green channel
+		@param blue a 256 element array of 16-bit quantities representing the translation table for the blue channel,
+		@return 0 on success or a negative error code on failure
+		~#
 		method : public : GetGammaRamp(red : IntHolder, green : IntHolder, blue : IntHolder) ~ Int {
 			if(@window <> 0) {
 				array_args := Base->New[5];
@@ -1335,6 +1358,9 @@ bundle Game.SDL2 {
 			return -1;
 		}
 		
+		#~
+		Destroy a window
+		~#
 		method : public : Destroy() ~ Nil {
 			if(@window <> 0) {
 				array_args := Base->New[1];
@@ -1344,6 +1370,10 @@ bundle Game.SDL2 {
 			};
 		}
 		
+		#~
+		Check whether the screensaver is currently enabled
+		@return Returns true if the screensaver is enabled, false if it is disabled
+		~#
 		function : IsScreenSaverEnabled() ~ Bool {
 			array_args := Base->New[1];
 			array_args[0] := IntHolder->New();
@@ -1354,12 +1384,18 @@ bundle Game.SDL2 {
 			return value->Get() = 0 ? false : true;
 		}
 		
+		#~
+		Allow the screen to be blanked by a screen saver
+		~#
 		function : EnableScreenSaver() ~ Nil {
 			array_args := Base->New[0];
 			Proxy->GetDllProxy()->CallFunction("sdl_window_enable_screen_saver", array_args);
 
 		}
 		
+		#~
+		Prevent the screen from being blanked by a screen saver
+		~#
 		function : DisableScreenSaver() ~ Nil {
 			array_args := Base->New[0];
 			Proxy->GetDllProxy()->CallFunction("sdl_window_disable_screen_saver", array_args);
@@ -1417,30 +1453,56 @@ bundle Game.SDL2 {
 			@keysym := Keysym->New();
 		}
 		
+		#~
+		Get the event type
+		@return EventType->SDL_KEYDOWN or EventType->SDL_KEYUP
+		~#
 		method : public : GetType() ~ Int {
 			return @type;
 		}
 		
+		#~
+		Get the event type
+		@return EventType->SDL_KEYDOWN or EventType->SDL_KEYUP
+		~#
 		method : public : GetTimestamp() ~ Int {
 			return @timestamp;
 		}
 		
+		#~
+		Get the timestamp of the event
+		@return timestamp of the event
+		~#
 		method : public : GetWindowID() ~ Int {
 			return @windowID;
 		}
 		
+		#~
+		Get the state of the key
+		@return 0 for released or 1 for pressed
+		~#
 		method : public : GetState() ~ Int {
 			return @state;
 		}
 		
+		#~
+		Get key repeat
+		@return non-zero if this is a key repeat
+		~#
 		method : public : GetRepeat() ~ Int {
 			return @repeat;
 		}
 		
+		#~
+		The Keysym instance representing the key that was pressed or released
+		@return key that was pressed or released
+		~#
 		method : public : GetKeysym() ~ Keysym {
 			return @keysym;
 		}
 	}
+
+	#----- TODO -----
 
 	#~
 	Handles keyboard operations
