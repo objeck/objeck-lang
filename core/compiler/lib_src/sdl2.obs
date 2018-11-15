@@ -2676,6 +2676,10 @@ bundle Game.SDL2 {
 			
 			return array_args[0]->As(String);
 		}
+		
+		function : ClearError() ~ Nil {
+			Proxy->GetDllProxy()->CallFunction("sdl_core_clear_error", Nil->As(Base[]));
+		}
 	}
 		
 	#~
