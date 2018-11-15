@@ -1561,8 +1561,6 @@ bundle Game.SDL2 {
 		}
 	}
 
-#----- TODO -----
-
 	#~
 	Clipboard handling
 	~#
@@ -1611,6 +1609,8 @@ bundle Game.SDL2 {
 		}
 	}
 
+#----- TODO -----
+	
 	#~
 	Handles inputs from joysticks
 	~#
