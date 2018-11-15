@@ -1502,12 +1502,17 @@ bundle Game.SDL2 {
 		}
 	}
 
-	#----- TODO -----
-
 	#~
 	Handles keyboard operations
 	~#
 	class Keyboard {
+		#~
+		Get a snapshot of the current state of the keyboard
+		@return pointer to an array of key states. A value 
+		of 1 means that the key is pressed and a value of 0 
+		means that it is not. Indexes into this array are 
+		obtained by using SDL_Scancode values
+		~#
 		function : GetState() ~ Byte[] {
 	        array_args := Base->New[1];
 	        
@@ -1517,6 +1522,10 @@ bundle Game.SDL2 {
 	        return value->Get();
 		}
 
+		#~
+		Get the current key modifier state for the keyboard
+		@return OR'd combination of the modifier keys for the keyboard
+		~#
 		function : GetModState() ~ Keymod {
 			array_args := Base->New[1];
 			array_args[0] := IntHolder->New();
@@ -1527,20 +1536,32 @@ bundle Game.SDL2 {
 	        return value->Get()->As(Keymod);
 		}
 
+		#~
+		Start accepting Unicode text input events
+		~#
 		function : StartTextInput() ~ Nil {
 			Proxy->GetDllProxy()->CallFunction("sdl_keyboard_start_text_input", Nil->As(Base[]));
 		}
 
+		#~
+		Stop accepting Unicode text input events
+		~#
 		function : StopTextInput() ~ Nil {
 			Proxy->GetDllProxy()->CallFunction("sdl_keyboard_stop_text_input", Nil->As(Base[]));
 		}
 
+		#~
+		Set the rectangle used to type Unicode text inputs
+		@param rect Rect structure representing the rectangle to receive text
+		~#
 		function : SetTextInputRect(rect : Rect) ~ Nil {
 			array_args := Base->New[1];
 		    array_args[0] := rect;
 		    Proxy->GetDllProxy()->CallFunction("sdl_keyboard_set_text_input_rect", array_args);
 		}
 	}
+
+#----- TODO -----
 
 	#~
 	Clipboard handling
