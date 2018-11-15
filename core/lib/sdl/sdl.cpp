@@ -971,7 +971,7 @@ extern "C" {
   void sdl_display_get_display_name(VMContext& context) {
     const int displayIndex = (int)APITools_GetIntValue(context, 1);
     const string value = SDL_GetDisplayName(displayIndex);
-    const wstring w_value(value.begin(), value.end());
+    const wstring w_value = BytesToUnicode(value);
     APITools_SetStringValue(context, 0, w_value);
   }
 
@@ -1070,7 +1070,7 @@ extern "C" {
 #endif
   void sdl_window_create(VMContext& context) {
     const wstring w_title = APITools_GetStringValue(context, 1);
-    const string title(w_title.begin(), w_title.end());
+    const string title = UnicodeToBytes(w_title);
     const int x = (int)APITools_GetIntValue(context, 2);
     const int y = (int)APITools_GetIntValue(context, 3);
     const int w = (int)APITools_GetIntValue(context, 4);
@@ -1160,7 +1160,7 @@ extern "C" {
   void sdl_window_set_title(VMContext& context) {
     SDL_Window* window = (SDL_Window*)APITools_GetIntValue(context, 0);
     const wstring w_title = APITools_GetStringValue(context, 1);
-    const string title(w_title.begin(), w_title.end());
+    const string title = UnicodeToBytes(w_title);
     SDL_SetWindowTitle(window, title.c_str());
   }
 
@@ -2429,7 +2429,7 @@ extern "C" {
 #endif
   void sdl_power_set_clipboard_text(VMContext& context) {
     const wstring w_text = APITools_GetStringValue(context, 1);
-    const string text(w_text.begin(), w_text.end());
+    const string text = UnicodeToBytes(w_text);
     APITools_SetIntValue(context, 0, SDL_SetClipboardText(text.c_str()));
   }
 
@@ -2437,9 +2437,10 @@ extern "C" {
   __declspec(dllexport)
 #endif
   void sdl_power_get_clipboard_text(VMContext& context) {
-    const string return_value = SDL_GetClipboardText();
-    const wstring w_return_value(return_value.begin(), return_value.end());
-    APITools_SetStringValue(context, 0, w_return_value);
+    char* text_ptr = SDL_GetClipboardText();
+    const wstring w_text = BytesToUnicode(text_ptr);
+    APITools_SetStringValue(context, 0, w_text);
+    SDL_free(text_ptr);
   }
 
 #ifdef _WIN32

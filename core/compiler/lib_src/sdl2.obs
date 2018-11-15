@@ -1567,6 +1567,11 @@ bundle Game.SDL2 {
 	Clipboard handling
 	~#
 	class Clipboard {
+		#~
+		Put UTF-8 text into the clipboard.
+		@param text the text to store in the clipboard
+		@return 0 on success or a negative error code on failure
+		~#
 		function : SetClipboardText(text : String) ~ Int {
 			array_args := Base->New[2];
 			array_args[0] := IntHolder->New();
@@ -1578,6 +1583,10 @@ bundle Game.SDL2 {
 			return value->Get();
 		}
 
+		#~
+		Get UTF-8 text from the clipboard
+		@return clipboard text on success or NULL on failure
+		~#
 		function : GetClipboardText() ~ String {
 			array_args := Base->New[1];
 			array_args[0] := Nil;
@@ -1587,6 +1596,10 @@ bundle Game.SDL2 {
 			return array_args[0]->As(String);
 		}
 
+		#~
+		Flag indicating whether the clipboard exists and contains a text string that is non-empty
+		@return true if the clipboard has text, or false if it does not
+		~#
 		function : HasClipboardText() ~ Bool {
 			array_args := Base->New[1];
 			array_args[0] := IntHolder->New();
