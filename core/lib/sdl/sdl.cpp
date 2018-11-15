@@ -105,6 +105,13 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
+  void sdl_core_clear_error(VMContext& context) {
+    SDL_ClearError();
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
   void sdl_core_gl_set_swap_interval(VMContext& context) {
     const int interval = (int)APITools_GetIntValue(context, 1);
     APITools_SetIntValue(context, 0, SDL_GL_SetSwapInterval(interval));
