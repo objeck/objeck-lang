@@ -22,6 +22,14 @@ bundle Game.SDL2 {
 	}
 
 	#~
+	SDL mouse wheel direction
+	~#
+	enum MouseWheelDirection {
+	    SDL_MOUSEWHEEL_NORMAL,
+	    SDL_MOUSEWHEEL_FLIPPED
+    }
+
+	#~
 	SDL button state
 	~#
 	enum KeyState {
@@ -2054,8 +2062,6 @@ bundle Game.SDL2 {
 		}
 	}
 
-#----- TODO -----
-
 	#~
 	Mouse wheel event
 	~#
@@ -2066,40 +2072,69 @@ bundle Game.SDL2 {
 	    @which : Int;
 	    @x : Int;
 	    @y : Int;
-	    @direction : Int;
+	    @direction : MouseWheelDirection;
 
 	    New() {			
 		}
 
+		#~
+		Event type
+		@return EventType->SDL_MOUSEWHEEL
+		~#
 		method : public : GetType() ~ Int {
 			return @type;
 		}
 
+		#~
+		Timestamp of the event
+		@return event timestamp
+		~#
 		method : public : GetTimestamp() ~ Int {
 			return @timestamp;
 		}
 
+		#~
+		Window with mouse focus, if any
+		@return window ID
+		~#
 		method : public : GetWindowID() ~ Int {
 			return @windowID;
 		}
 
+		#~
+		Mouse instance id or -1
+		~#
 		method : public : GetWhich() ~ Int {
 			return @which;
 		}
 
+		#~
+		Amount scrolled horizontally, positive to the right and negative to the left
+		@return horizontally scrolled value
+		~#
 		method : public : GetX() ~ Int {
 			return @x;
 		}
 
+		#~
+		Amount scrolled vertically, positive away from the user and negative toward the user
+		@return vertically scrolled value
+		~#
 		method : public : GetY() ~ Int {
 			return @y;
 		}
 
-		method : public : GetDirection() ~ Int {
+		#~
+		Mouse wheel scroll direction
+		@return SDL_MOUSEWHEEL_NORMAL or SDL_MOUSEWHEEL_FLIPPED
+		~#
+		method : public : GetDirection() ~ MouseWheelDirection {
 			return @direction;
 		}		
 	}
 
+#----- TODO -----
+	
 	#~
 	Text input event
 	~#
