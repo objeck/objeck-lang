@@ -1680,8 +1680,6 @@ bundle Game.SDL2 {
 		}
 	}
 
-#----- TODO -----
-
 	#~
 	Joysticks axis event
 	~#
@@ -1695,26 +1693,48 @@ bundle Game.SDL2 {
 		New() {			
 		}
 
+		#~
+		Event type
+		@return EventType->SDL_JOYAXISMOTION
+		~#
 		method : public : GetType() ~ Int {
 			return @type;
 		}
 
+		#~
+		Timestamp of the event
+		@return event timestamp
+		~#
 		method : public : GetTimestamp() ~ Int {
 			return @timestamp;
 		}
 
+		#~
+		Instance ID of the joystick that reported the event
+		@return joystick ID
+		~#
 		method : public : GetWhich() ~ Int {
 			return @which;
 		}
 
+		#~
+		Index of the axis that changed
+		@return axis index
+		~#
 		method : public : GetAxis() ~ Int {
 			return @axis;
 		}
 		
+		#~
+		Current position of the axis (range: -32768 to 32767)
+		@return axis position
+		~#
 		method : public : GetValue() ~ Int {
 			return @value;
 		}
 	}
+
+#----- TODO -----
 
 	#~
 	Joysticks hat event
