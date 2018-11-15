@@ -1608,15 +1608,17 @@ bundle Game.SDL2 {
 			return value->Get() = 0 ? false : true;
 		}
 	}
-
-#----- TODO -----
-	
+		
 	#~
 	Handles inputs from joysticks
 	~#
 	class Joystick {
 		@joystick : Int;
 
+		#~
+		Open a joystick for use
+		@param device_index index of the joystick to query
+		~#
 		New(device_index : Int) {
 			array_args := Base->New[2];
 	        array_args[0] := IntHolder->New();
@@ -1628,10 +1630,17 @@ bundle Game.SDL2 {
 	        @joystick := value->Get();
 		}
 
+		#~
+		Determines if the underlying SDL C-struct is NULL
+		@return true if NULL, false otherwise
+		~#
 		method : public : IsNull() ~ Bool {
 			return @joystick = 0;
 		}
 
+		#~
+		Close joystick previously opened
+		~#
 		method : public : Free() ~ Nil {
 			if(@joystick <> 0) {
 				array_args := Base->New[1];
@@ -1642,6 +1651,10 @@ bundle Game.SDL2 {
 			}; 
 	    }
 
+	    #~
+	    Count of the number of joysticks attached to the system
+	    @return number of attached joysticks on success or a negative error code on failure
+	    ~#
 	    function : Number() ~ Int {
 	        array_args := Base->New[1];
 	        array_args[0] := IntHolder->New();
@@ -1652,6 +1665,10 @@ bundle Game.SDL2 {
 	        return value->Get();
 		}
 
+		#~
+		Get the implementation dependent name of a joystick
+		@return name of the selected joystick. If no name can be found, this function returns NULL,
+		~#
 		method : public : GetName() ~ String {
 	        array_args := Base->New[2];
 	        array_args[0] := Nil;
@@ -1662,6 +1679,8 @@ bundle Game.SDL2 {
 	        return array_args[0];
 		}
 	}
+
+#----- TODO -----
 
 	#~
 	Joysticks axis event
