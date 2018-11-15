@@ -1347,15 +1347,6 @@ extern "C" {
     SDL_Window* window = (SDL_Window*)APITools_GetIntValue(context, 1);
     APITools_SetIntValue(context, 0, SDL_UpdateWindowSurface(window));
   }
-
-#ifdef _WIN32
-  __declspec(dllexport)
-#endif
-  void sdl_window_update_surface_rects(VMContext& context) {
-    SDL_Window* window = (SDL_Window*)APITools_GetIntValue(context, 1);
-    
-    const size_t* rects_obj = APITools_GetObjectValue(context, 2);
-  }
   
 #ifdef _WIN32
   __declspec(dllexport)
