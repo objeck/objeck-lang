@@ -3453,8 +3453,9 @@ bundle Game.SDL2 {
 		}
 	}
 
-	
-
+	#~
+	Image loading operations
+	~#
 	class Image {
 		function : Init(flags : Int) ~ Int {
 	        array_args := Base->New[2];
@@ -3482,7 +3483,10 @@ bundle Game.SDL2 {
 			return Surface->New(value->Get());
 		}
 	}
-
+	
+	#~
+	Rendering state
+	~#
 	class Renderer {
 		@renderer : Int;
 
