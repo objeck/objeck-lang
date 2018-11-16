@@ -1,6 +1,6 @@
 #~
 Objeck HTML code documentation system
-Copyright (c) 2014 Randy Hollines
+Copyright (c) 2014-2018 Randy Hollines
 ~#
 
 use System.IO;
@@ -155,10 +155,14 @@ class DocParser {
 			SetBundle(bundle_block);
 		}
 		else {
-			IO.Console->Print("*** Unable to parse bundle block. text='")->Print(block)->PrintLine("' ***");
+			"*** Unable to parse bundle block. text='{$block}' ***"->ErrorLine();
 		};
 
 		block := "";
+	}
+
+	method : public : native : ParseConst(block : String) ~ Nil {
+
 	}
 
 	method : public : native : ParseEnum(block : String) ~ Nil {
@@ -172,12 +176,13 @@ class DocParser {
 		
 		enum_block := EnumBlock->New(block);
 		if(enum_block->IsParsed()) {
-IO.Console->Print("\tProcessed enum: name='")->Print(enum_block->GetName())->PrintLine("'");
+			block_name := enum_block->GetName();
+			"\tProcessed enum: name='{$block_name}'"->PrintLine();
 			enum_block->SetBundleName(@bundle_block->GetName());
 			@bundle_block->AddEnum(enum_block);
 		}
 		else {
-			IO.Console->Print("*** Unable to parse enum block. Text='")->Print(block)->PrintLine("' ***");
+			"*** Unable to parse enum block. Text='{$block}' ***"->ErrorLine();
 		};
 
 		block := "";
@@ -195,24 +200,26 @@ IO.Console->Print("\tProcessed enum: name='")->Print(enum_block->GetName())->Pri
 
 		if(name->Equals("class")) {
 			@class_inf_block := ClassBlock->New(block, false);
+			class_inf_name := @class_inf_block->GetName();
 			if(@class_inf_block->IsParsed()) {
 				@class_inf_block->SetBundleName(@bundle_block->GetName());
-IO.Console->Print("\tProcessed class: name='")->Print(@class_inf_block->GetName())->PrintLine("'");
+				"\tProcessed class: name='{$class_inf_name}'"->PrintLine();
 				@bundle_block->AddClass(@class_inf_block);
 			}
 			else {
-				IO.Console->Print("*** Unable to parse class block. Text='")->Print(block)->PrintLine("' ***");
+				"*** Unable to parse class block. Text='{$block}' ***"->ErrorLine();
 			};
 		}
 		else if(name->Equals("interface")) {
 			@class_inf_block := ClassBlock->New(block, true);
 			if(@class_inf_block->IsParsed()) {
-				@class_inf_block->SetBundleName(@bundle_block->GetName());
-IO.Console->Print("\tProcessed interface: name='")->Print(@class_inf_block->GetName())->PrintLine("'");
+				class_inf_name := @bundle_block->GetName();
+				@class_inf_block->SetBundleName(class_inf_name);
+				"\tProcessed interface: name='{$class_inf_name}'"->PrintLine();
 				@bundle_block->AddInterface(@class_inf_block);
 			}
 			else {
-				IO.Console->Print("*** Unable to parse interface block. Text='")->Print(block)->PrintLine("' ***");
+				"*** Unable to parse interface block. Text='{$block}' ***"->ErrorLine();
 			};
 		}
 		else if(@class_inf_block <> Nil & @class_inf_block->IsParsed()) {
@@ -266,7 +273,7 @@ IO.Console->Print("\tProcessed interface: name='")->Print(@class_inf_block->GetN
 				return false;
 			};	
 			@buffer_index := 0;	
-file->PrintLine();
+			file->PrintLine();
 
 			state := 0;
 			start := 0;
@@ -292,6 +299,9 @@ file->PrintLine();
 					else if(ident->Equals("enum")) {
 						ParseEnum(block);
 					}
+					else if(ident->Equals("const")) {
+						ParseConst(block);
+					}
 					else if(ident->Equals("function") | ident->Equals("method") | ident->Equals("New")) {
 						ParseClassFunction(ident, block);
 					};
@@ -312,7 +322,6 @@ file->PrintLine();
 					ident := ParseIdent();
 					if(ident->Equals("bundle")) {
 						@bundle_name := ParseIdent();
-# IO.Console->Print("bundle: name=")->Print(@bundle_name)->Print(", level=")->PrintLine(@level);
 						if(@bundle_name->Size() > 0) {
 							bundle_block := BundleBlock->New();
 							bundle_block->SetName(@bundle_name);
@@ -550,7 +559,6 @@ class BundleBlock from DocBlock {
 	}
 
 	method: public : AddInterface(inf_block : ClassBlock) ~ Nil {
-#		@interfaces->Insert(inf_block->GetName(), inf_block);
 		@classes->Insert(inf_block->GetName(), inf_block);
 	}
 

@@ -1529,8 +1529,7 @@ extern "C" {
       text_obj[1] = event->text.timestamp;
       text_obj[2] = event->text.windowID;
 
-      const string text = event->text.text;
-      const wstring w_text(text.begin(), text.end());
+      const wstring w_text = BytesToUnicode(event->text.text);
       text_obj[3] = (size_t)APITools_CreateStringValue(context, w_text);
 
       APITools_SetIntValue(context, 0, 0);
