@@ -2132,9 +2132,7 @@ bundle Game.SDL2 {
 			return @direction;
 		}		
 	}
-
-#----- TODO -----
-	
+		
 	#~
 	Text input event
 	~#
@@ -2147,22 +2145,40 @@ bundle Game.SDL2 {
 	    New() {			
 		}
 
+		#~
+		Event type
+		@return EventType->SDL_TEXTINPUT
+		~#
 		method : public : GetType() ~ Int {
 			return @type;
 		}
 
+		#~
+		Timestamp of the event
+		@return event timestamp
+		~#
 		method : public : GetTimestamp() ~ Int {
 			return @timestamp;
 		}
 
+		#~
+		Window with mouse focus, if any
+		@return window ID
+		~#
 		method : public : GetWindowID() ~ Int {
 			return @windowID;
 		}
 
+		#~
+		Get input text
+		@return input text
+		~#
 		method : public : GetText() ~ String {
 			return @text;
 		}
 	}
+
+#----- TODO -----
 	
 	#~
 	SDL event
@@ -2676,7 +2692,7 @@ bundle Game.SDL2 {
 			
 			return array_args[0]->As(String);
 		}
-		
+
 		function : ClearError() ~ Nil {
 			Proxy->GetDllProxy()->CallFunction("sdl_core_clear_error", Nil->As(Base[]));
 		}
