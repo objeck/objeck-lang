@@ -2656,6 +2656,10 @@ bundle Game.SDL2 {
 	SDL core operations
 	~#
 	class Core {
+		#~
+		Initialize the SDL library. This must be called before using most other SDL functions.
+		@param flags subsystem initialization flags
+		~#
 		function : Init(flags : Int) ~ Int {
 			array_args := Base->New[2];
 			array_args[0] := IntHolder->New();
@@ -2666,6 +2670,10 @@ bundle Game.SDL2 {
 			return value->Get();
 		}
 
+		#~
+		Initialize specific SDL subsystems
+		@param flags subsystem initialization flags
+		~#
 		function : InitSubSystem(flags : Int) ~ Int {
 			array_args := Base->New[2];
 			array_args[0] := IntHolder->New();
@@ -2676,6 +2684,10 @@ bundle Game.SDL2 {
 			return value->Get();
 		}
 		
+		#~
+		Shut down specific SDL subsystems.
+		@param flags subsystem initialization flags
+		~#
 		function : QuitSubSystem(flags : Int) ~ Nil {
 			array_args := Base->New[1];
 			array_args[0] := IntHolder->New(flags);
@@ -2683,6 +2695,10 @@ bundle Game.SDL2 {
 			Proxy->GetDllProxy()->CallFunction("sdl_core_quit_sub_system", array_args);
 		}
 		
+		#~
+		Mask of the specified subsystems which have previously been initialized
+		@param flags subsystem initialization flags
+		~#
 		function : WasInit(flags : Int) ~ Int {
 			array_args := Base->New[2];
 			array_args[0] := IntHolder->New();
@@ -2693,11 +2709,19 @@ bundle Game.SDL2 {
 			return value->Get();
 		}
 		
+		#~
+		Clean up all initialized subsystems. You should call it upon all exit conditions.
+		~#
 		function : Quit() ~ Nil {
 			array_args := Base->New[0];
 			Proxy->GetDllProxy()->CallFunction("sdl_core_quit", array_args);
 		}
 		
+		#~
+		dynamically load an OpenGL library
+		@param path the platform dependent OpenGL library name, 
+			or Nil to open the default OpenGL library
+		~#
 		function : GLLoadLibrary(path : String) ~ Int {
 			array_args := Base->New[2];
 			array_args[0] := IntHolder->New();
@@ -2709,11 +2733,19 @@ bundle Game.SDL2 {
 			return value->Get();
 		}
 		
+		#~
+		Unload the OpenGL library previously loaded
+		~#
 		function : GLUnloadLibrary() ~ Nil {
 			array_args := Base->New[0];
 			Proxy->GetDllProxy()->CallFunction("sdl_core_gl_unload_library", array_args);
 		}
 		
+		#~
+		Check if an OpenGL extension is supported for the current context
+		@param extension the name of the extension to check
+		@return true if the extension is supported, false otherwise
+		~#
 		function : GLExtensionSupported(extension : String) ~ Bool {
 			array_args := Base->New[2];
 			array_args[0] := IntHolder->New();
@@ -2725,11 +2757,20 @@ bundle Game.SDL2 {
 			return value->Get() = 0 ? false : true;
 		}
 		
+		#~
+		Reset all previously set OpenGL context attributes to their default values
+		~#
 		function : GLResetAttributes() ~ Nil {
 			array_args := Base->New[0];
 			Proxy->GetDllProxy()->CallFunction("sdl_core_gl_reset_attributes", array_args);
 		}
 		
+		#~
+		Set an OpenGL window attribute before window creation
+		@param attr the OpenGL attribute to set; see Remarks for details
+		@param value the desired value for the attribute
+		@return 0 on success or a negative error code on failure
+		~#
 		function : GLSetAttribute(attr : GLattr, value : Int) ~ Int {
 			array_args := Base->New[3];
 			array_args[0] := IntHolder->New();
@@ -2742,6 +2783,12 @@ bundle Game.SDL2 {
 			return rtrn_value->Get();
 		}
 		
+		#~
+		Get the actual value for an attribute from the current context
+		@param attr the SDL_GLattr structure to query
+		@param value pointer filled in with the current value of attr
+		@return 0 on success or a negative error code on failure
+		~#
 		function : GLGetAttribute(attr : GLattr, value : IntHolder) ~ Int {
 			array_args := Base->New[3];
 			array_args[0] := IntHolder->New();
@@ -2754,7 +2801,11 @@ bundle Game.SDL2 {
 			return value->Get();
 		}
 		
-		function : GLGetCurrent() ~ Window {
+		#~
+		Get the currently active OpenGL window
+		@return active window
+		~#
+		function : GLGetCurrentWindow() ~ Window {
 			array_args := Base->New[1];
 			array_args[0] := IntHolder->New();
 
@@ -2764,6 +2815,12 @@ bundle Game.SDL2 {
 			return Window->New(value->Get());
 		}
 		
+		#~
+		Set the swap interval for the current OpenGL context
+		@param interval 0 for immediate updates, 1 for updates 
+		synchronized with the vertical retrace, -1 for adaptive vsync
+		@return 0 on success or -1 if setting the swap interval is not supported
+		~#
 		function : GLSetSwapInterval(interval : Int) ~ Int {
 			array_args := Base->New[2];
 			array_args[0] := IntHolder->New();
@@ -2775,6 +2832,13 @@ bundle Game.SDL2 {
 			return value->Get();
 		}
 		
+		#~
+		Get the swap interval for the current OpenGL context
+		@return 0 if there is no vertical retrace synchronization, 
+		1 if the buffer swap is synchronized with the vertical retrace, 
+		and -1 if late swaps happen immediately instead of waiting for 
+		the next retrace;
+		~#
 		function : GLGetSwapInterval() ~ Int {
 			array_args := Base->New[1];
 			array_args[0] := IntHolder->New();
@@ -2785,6 +2849,10 @@ bundle Game.SDL2 {
 			return value->Get();
 		}
 
+		#~
+		Retrieve a message about the last error that occurred
+		@return message with information about the specific error that occurred
+		~#
 		function : GetError() ~ String {
 			array_args := Base->New[1];
 			array_args[0] := Nil;
@@ -2794,6 +2862,9 @@ bundle Game.SDL2 {
 			return array_args[0]->As(String);
 		}
 
+		#~
+		Clear any previous error message
+		~#
 		function : ClearError() ~ Nil {
 			Proxy->GetDllProxy()->CallFunction("sdl_core_clear_error", Nil->As(Base[]));
 		}
@@ -2803,7 +2874,14 @@ bundle Game.SDL2 {
 	Configuration management 
 	~#
 	class Hints {
-		method : public : SetWithPriority(name : String, value : String, priority : HintPriority) ~ Bool {
+		#~
+		Set a hint with a specific priority
+		@param name the hint to set; see the list of hints on CategoryHints for details
+		@param value the value of the hint variable
+		@param priority the SDL_HintPriority level for the hint
+		@return true if the hint was set, false otherwise
+		~#
+		function : public : SetWithPriority(name : String, value : String, priority : HintPriority) ~ Bool {
 			array_args := Base->New[4];
 			array_args[0] := IntHolder->New();
 			array_args[1] := name;
@@ -2815,6 +2893,12 @@ bundle Game.SDL2 {
 			return rvalue->Get() = 0 ? false : true;
 		}
 		
+		#~
+		Set a hint with normal priority.
+		@param name the hint to set; see the list of hints on CategoryHints for details
+		@param value the value of the hint variable
+		@return true if the hint was set, false otherwise
+		~#
 		function : Set(name : String, value : String) ~ Bool {
 			array_args := Base->New[3];
 			array_args[0] := IntHolder->New();
@@ -2827,6 +2911,11 @@ bundle Game.SDL2 {
 			return rvalue->Get() = 0 ? false : true;
 		}
 		
+		#~
+		Get the value of a hint.
+		@param name the hint to query
+		@return the string value of a hint
+		~#
 		function : Get(name : String) ~ String {
 			array_args := Base->New[2];
 			array_args[0] := Nil;
@@ -2837,6 +2926,9 @@ bundle Game.SDL2 {
 			return array_args[0]->As(String);
 		}
 
+		#~
+		Clear all hints
+		~#
 		function : Clear() ~ Nil {
 			array_args := Base->New[0];
 			Proxy->GetDllProxy()->CallFunction("sdl_hints_clear", array_args);
@@ -2852,6 +2944,9 @@ bundle Game.SDL2 {
 		@b : Int;
 		@a : Int;
 		
+		#~
+		Default black color
+		~#
 		New() {
 			@r := 0;
 			@g := 0;
@@ -2859,6 +2954,12 @@ bundle Game.SDL2 {
 			@a := 255;
 		}
 
+		#~
+		RGB Color with alpha set to 255
+		@param r red
+		@param g green
+		@param b blue
+		~#
 		New(r : Int, g : Int, b : Int) {
 			@r := r;
 			@g := g;
@@ -2866,6 +2967,13 @@ bundle Game.SDL2 {
 			@a := 255;
 		}
 
+		#~
+		RGBA color
+		@param r red
+		@param g green
+		@param b blue
+		@param a alpha
+		~#
 		New(r : Int, g : Int, b : Int, a : Int) {
 			@r := r;
 			@g := g;
@@ -2873,38 +2981,74 @@ bundle Game.SDL2 {
 			@a := a;
 		}
 
+		#~
+		Get red
+		@return red
+		~#
 		method : public : GetR() ~ Int {
 			return @r;
 		}
 		
+		#~
+		Set red
+		@param r red
+		~#
 		method : public : SetR(r : Int) ~ Nil {
 			@r := r;
 		}
 
+		#~
+		Get green
+		@return green
+		~#
 		method : public : GetG() ~ Int {
 			return @g;
 		}
 		
+		#~
+		Set green
+		@param g green
+		~#
 		method : public : SetG(g : Int) ~ Nil {
 			@g := g;
 		}
 
+		#~
+		Get blue
+		@return blue
+		~#
 		method : public : GetB() ~ Int {
 			return @b;
 		}
 		
+		#~
+		Set blue
+		@param b blue
+		~#
 		method : public : SetB(b : Int) ~ Nil {
 			@b := b;
 		}
 
+		#~
+		Get alpha
+		@return alpha
+		~#
 		method : public : GetA() ~ Int {
 			return @a;
 		}
 		
+		#~
+		Set alpha
+		@param a alpha
+		~#
 		method : public : SetA(a : Int) ~ Nil {
 			@a := a;
 		}
 
+		#~
+		String RGBA representation
+		@return string representation
+		~#
 		method : public : ToString() ~ String {
 			return "#{$@r}, #{$@g}, #{$@b}, #{$@a}";
 		}

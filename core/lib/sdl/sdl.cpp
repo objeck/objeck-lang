@@ -168,10 +168,14 @@ extern "C" {
   __declspec(dllexport)
 #endif
   void sdl_core_gl_load_library(VMContext& context) {
-    const wstring w_path = APITools_GetStringValue(context, 1);
-    const string path(w_path.begin(), w_path.end());
-    const int return_value = SDL_GL_LoadLibrary(path.c_str());
-    APITools_SetIntValue(context, 0, return_value);
+    const wchar_t* w_path = APITools_GetStringValue(context, 1);
+    if(w_path) {
+      const string path = UnicodeToBytes(w_path);
+      APITools_SetIntValue(context, 0, SDL_GL_LoadLibrary(path.c_str()));
+    }
+    else {
+      APITools_SetIntValue(context, 0, SDL_GL_LoadLibrary(NULL));
+    }
   }
 
 #ifdef _WIN32
