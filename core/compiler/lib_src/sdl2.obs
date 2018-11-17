@@ -3416,7 +3416,7 @@ bundle Game.SDL2 {
 		}
 		
 		#~
-		calculate the intersection of two rectangles
+		Calculate the intersection of two rectangles
 		@param B rectangle to compare
 		@param result Rect filled in with the intersection of rectangles A and B
 		@return Returns true if there is an intersection, false otherwise.
@@ -3434,8 +3434,12 @@ bundle Game.SDL2 {
 			return value->Get() = 0 ? false : true;
 		}
 
-#----- TODO -----
-		
+		#~
+		Calculate the union of two rectangles
+		@param B rectangle to compare
+		@param result Rect filled in with the union of rectangles A and B
+		@return Returns true if there is an union, false otherwise.
+		~#
 		method : public : Union(B : Rect, result : Rect) ~ Nil {
 			array_args := Base->New[3];
 			array_args[0] := @self;
@@ -3445,6 +3449,8 @@ bundle Game.SDL2 {
 			Proxy->GetDllProxy()->CallFunction("sdl_rect_union", array_args);
 		}
 		
+#----- TODO -----
+
 		method : public : IntersectAndLine(X1 : IntHolder, Y1 :IntHolder, X2 : IntHolder, Y2 : IntHolder) ~ Bool {
 			array_args := Base->New[6];
 			array_args[0] := IntHolder->New();
