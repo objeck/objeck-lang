@@ -2650,8 +2650,6 @@ bundle Game.SDL2 {
 		}
 	}
 	
-#----- TODO -----
-
 	#~
 	SDL core operations
 	~#
@@ -3153,32 +3151,60 @@ bundle Game.SDL2 {
 		@x : Int;
 		@y : Int;
 		
+		#~
+		Constructor
+		@param x x position
+		@param y y position
+		~#		
 		New(x : Int, y : Int) {
 			@x := x;
 			@y := y;
 		}
 
+		#~
+		Constructor set x and y to 0
+		~#
 		New() {
 			@x := 0;
 			@y := 0;
 		}
 		
+		#~
+		Get x
+		@return x position
+		~#
 		method : public : GetX() ~ Int {
 			return @x;
 		}
 		
+		#~
+		Get y
+		@return y position
+		~#
 		method : public : GetY() ~ Int {
 			return @y;
 		}
 		
+		#~
+		Set x
+		@param x x position
+		~#
 		method : public : SetX(x : Int) ~ Nil {
 			@x := x;
 		}
 		
+		#~
+		Set y
+		@param y y position
+		~#
 		method : public : SetY(y : Int) ~ Nil {
 			@y := y;
 		}
 
+		#~
+		String representation of point
+		@return string representation
+		~#
 		method : public : ToString() ~ String {
 			return "[{$@x}, {$@y}]";
 		}
@@ -3269,7 +3295,7 @@ bundle Game.SDL2 {
 		}
 		
 		#~
-		Set's x-position
+		Set x-position
 		@param x x-position
 		~#
 		method : public : SetX(x : Int) ~ Nil {
@@ -3277,57 +3303,106 @@ bundle Game.SDL2 {
 		}
 		
 		#~
-		Set's y-position
+		Set y-position
 		@param y y-position
 		~#
 		method : public : SetY(y : Int) ~ Nil {
 			@y := y;
 		}
 		
+		#~
+		Set height 
+		@param h height
+		~#
 		method : public : SetH(h : Int) ~ Nil {
 			@h := h;
 		}
 		
+		#~
+		Set width 
+		@param w width
+		~#
 		method : public : SetW(w : Int) ~ Nil {
 			@w := w;
 		}
 
+		#~
+		Add to current x position
+		@param x value to add
+		~#
 		method : public : AddX(x : Int) ~ Nil {
 			@x += x;
 		}
 		
+		#~
+		Add to current y position
+		@param y value to add
+		~#
 		method : public : AddY(y : Int) ~ Nil {
 			@y += y;
 		}
 		
+		#~
+		Add to current height
+		@param h value to add
+		~#
 		method : public : AddH(h : Int) ~ Nil {
 			@h += h;
 		}
 		
+		#~
+		Add to current width
+		@param w value to add
+		~#
 		method : public : AddW(w : Int) ~ Nil {
 			@w += w;
 		}
 
+		#~
+		Subtracts from current x position
+		@param x value to subtract
+		~#
 		method : public : SubX(x : Int) ~ Nil {
 			@x -= x;
 		}
 		
+		#~
+		Subtracts from current y position
+		@param y value to subtract
+		~#
 		method : public : SubY(y : Int) ~ Nil {
 			@y -= y;
 		}
 		
+		#~
+		Subtracts from current height 
+		@param h value to subtract
+		~#
 		method : public : SubH(h : Int) ~ Nil {
 			@h -= h;
 		}
 		
+		#~
+		Subtracts from current width 
+		@param w value to subtract
+		~#
 		method : public : SubW(w : Int) ~ Nil {
 			@w -= w;
 		}
-				
+		
+		#~
+		String representation of rect
+		@return string representation
+		~#
 		method : public : ToString() ~ String {
 			return "[{$@x}, {$@y}, {$@w}, {$@h}]";
 		}
 		
+		#~
+		Determines if two rectangles intersects
+		@param B rectangle to compare
+		@return true if intersection
+		~#
 		method : public : HasIntersection(B : Rect) ~ Bool {
 			array_args := Base->New[3];
 			array_args[0] := IntHolder->New();
@@ -3340,6 +3415,12 @@ bundle Game.SDL2 {
 			return value->Get() = 0 ? false : true;
 		}
 		
+		#~
+		calculate the intersection of two rectangles
+		@param B rectangle to compare
+		@param result Rect filled in with the intersection of rectangles A and B
+		@return Returns true if there is an intersection, false otherwise.
+		~#
 		method : public : Intersect(B : Rect, result : Rect) ~ Bool {
 			array_args := Base->New[4];
 			array_args[0] := IntHolder->New();
@@ -3352,6 +3433,8 @@ bundle Game.SDL2 {
 			value := array_args[0]->As(IntHolder);
 			return value->Get() = 0 ? false : true;
 		}
+
+#----- TODO -----
 		
 		method : public : Union(B : Rect, result : Rect) ~ Nil {
 			array_args := Base->New[3];
