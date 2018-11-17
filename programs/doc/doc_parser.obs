@@ -78,7 +78,7 @@ class SnippetParser {
 			enums := bundle_block->GetEnums();
 			enum_keys := enums->GetKeys();
 			each(j : enum_keys) {
-				eenum := enums->Find(enum_keys->Get(j)->As(String))->As(EnumSnippet);
+				eenum := enums->Find(enum_keys->Get(j)->As(String))->As(EnumConstSnippet);
 				if(eenum <> Nil) {
 					all_enums->AddBack(eenum);
 				};
@@ -161,8 +161,14 @@ class SnippetParser {
 		block := "";
 	}
 
-	method : public : native : ParseEnum(block : String) ~ Nil {
-		block->Append(" enum ");
+	method : public : native : ParseEnumConst(block : String, is_consts : Bool) ~ Nil {
+		if(is_consts) {
+			block->Append(" consts ");
+		}
+		else {
+			block->Append(" enum ");
+		};
+
 		while(@cur_char <> '\0' & @cur_char <> '}') {
 			block->Append(@cur_char);
 			CheckLevel();
@@ -170,38 +176,20 @@ class SnippetParser {
 		};
 		block->Append(" }");					
 		
-		enum_block := EnumSnippet->New(block);
+		enum_block := EnumConstSnippet->New(block, is_consts);
 		if(enum_block->IsParsed()) {
 			block_name := enum_block->GetName();
-			"\tProcessed enum: name='{$block_name}'"->PrintLine();
+			if(is_consts) {
+				"\tProcessed consts: name='{$block_name}'"->PrintLine();
+			}
+			else {
+				"\tProcessed enum: name='{$block_name}'"->PrintLine();
+			};
 			enum_block->SetBundleName(@bundle_block->GetName());
 			@bundle_block->AddEnum(enum_block);
 		}
 		else {
-			"*** Unable to parse enum block. Text='{$block}' ***"->ErrorLine();
-		};
-
-		block := "";
-	}
-
-	method : public : native : ParseConst(block : String) ~ Nil {
-		block->Append(" const ");
-		while(@cur_char <> '\0' & @cur_char <> '}') {
-			block->Append(@cur_char);
-			CheckLevel();
-			NextChar();
-		};
-		block->Append(" }");					
-		
-		const_block := ConstSnippet->New(block);
-		if(const_block->IsParsed()) {
-			block_name := const_block->GetName();
-			"\tProcessed const: name='{$block_name}'"->PrintLine();
-			const_block->SetBundleName(@bundle_block->GetName());
-			@bundle_block->AddConst(const_block);
-		}
-		else {
-			"*** Unable to parse const block. Text='{$block}' ***"->ErrorLine();
+			"*** Unable to parse enum/consts block. Text='{$block}' ***"->ErrorLine();
 		};
 
 		block := "";
@@ -219,8 +207,8 @@ class SnippetParser {
 
 		if(name->Equals("class")) {
 			@class_inf_block := ClassSnippet->New(block, false);
-			class_inf_name := @class_inf_block->GetName();
 			if(@class_inf_block->IsParsed()) {
+				class_inf_name := @class_inf_block->GetName();
 				@class_inf_block->SetBundleName(@bundle_block->GetName());
 				"\tProcessed class: name='{$class_inf_name}'"->PrintLine();
 				@bundle_block->AddClass(@class_inf_block);
@@ -316,13 +304,10 @@ class SnippetParser {
 						ParseClassFunction(ident, block);
 					}
 					else if(ident->Equals("enum")) {
-						ParseEnum(block);
+						ParseEnumConst(block, false);
 					}
-					else if(ident->Equals("const")) {
-						ParseConst(block);
-					}
-					else if(ident->Equals("const")) {
-						ParseConst(block);
+					else if(ident->Equals("consts")) {
+						ParseEnumConst(block, true);
 					}
 					else if(ident->Equals("function") | ident->Equals("method") | ident->Equals("New")) {
 						ParseClassFunction(ident, block);
@@ -539,7 +524,6 @@ class BundleSnippet from Snippet {
 		@classes := StringMap->New();
 		@interfaces := StringMap->New();
 		@enums := StringMap->New();
-		@const := StringMap->New();
 	}
 
 	New(buffer : String) {
@@ -548,7 +532,6 @@ class BundleSnippet from Snippet {
 		@interfaces := StringMap->New();
 		@enums := StringMap->New();
 		@parsed := Parse();
-		@const := StringMap->New();
 	}
 	
 	method : public : IsParsed() ~ Bool {
@@ -575,12 +558,8 @@ class BundleSnippet from Snippet {
 		return @classes;
 	}
 
-	method: public : AddEnum(enum_block : EnumSnippet) ~ Nil {
+	method: public : AddEnum(enum_block : EnumConstSnippet) ~ Nil {
 		@enums->Insert(enum_block->GetName(), enum_block);
-	}
-
-	method: public : AddConst(const_block : ConstSnippet) ~ Nil {
-		@const->Insert(const_block->GetName(), const_block);
 	}
 
 	method: public : GetEnums() ~ StringMap {
@@ -616,16 +595,18 @@ class BundleSnippet from Snippet {
 	}
 }
 
-class EnumSnippet from Snippet {
+class EnumConstSnippet from Snippet {
 	@name : String;
+	@is_consts : Bool;
 	@id : String;
 	@desc : String;
 	@klass : String;
 	@items : Vector;
 	@block_name : String;
 	
-	New(buffer : String) {
+	New(buffer : String, is_consts : Bool) {
 		Parent(buffer);
+		@is_consts := is_consts;
 		@items := Vector->New();
 		@parsed := Parse();
 	}
@@ -636,6 +617,10 @@ class EnumSnippet from Snippet {
 
 	method : public : GetName() ~ String {
 		return @name;
+	}
+
+	method : public : IsConsts() ~ Bool {
+		return @is_consts;
 	}
 	
 	method : public : GetId() ~ String {
@@ -679,12 +664,12 @@ class EnumSnippet from Snippet {
 			};
 		};
 		
-
 		if(<>MatchCommentEnd()) {
 			return false;
 		};
 
-		if(<>MatchIdent("enum")) {
+		idents := ["enum", "consts"];
+		if(<>(MatchEitherIdent(idents))) {
 			return false;
 		};
 
@@ -700,7 +685,7 @@ class EnumSnippet from Snippet {
 			@name := name;
 		};
 		
-		if(MatchChar(':')) {
+		if(<>@is_consts & MatchChar(':')) {
 			if(MatchChar('=')) {
 				@id := ParseIdent();
 				if(@id->Size() = 0) {
@@ -715,7 +700,7 @@ class EnumSnippet from Snippet {
 		if(<>MatchChar('{')) {
 			return false;
 		};
-	
+
 		# items
 		while(@cur_char <> '}') {
 			item_name := ParseIdent();
@@ -723,122 +708,25 @@ class EnumSnippet from Snippet {
 				return false;
 			};
 
-			@items->AddBack(item_name);
-			MatchChar(',');
-		};
-		
-		return true;
-	}
-}
-
-class ConstSnippet from Snippet {
-	@name : String;
-	@id : String;
-	@desc : String;
-	@klass : String;
-	@items : Vector;
-	@block_name : String;
-	
-	New(buffer : String) {
-		Parent(buffer);
-		@items := Vector->New();
-		@parsed := Parse();
-	}
-
-	method : public : IsParsed() ~ Bool {
-		return @parsed;
-	}
-
-	method : public : GetName() ~ String {
-		return @name;
-	}
-	
-	method : public : GetId() ~ String {
-		return @id;
-	}
-
-	method : public : GetClass() ~ String {
-		return @klass;
-	}
-
-	method : public : GetItems() ~ Vector {
-		return @items;
-	}
-
-	method : public : GetDesc() ~ String {
-		return @desc;
-	}
-	
-	method : public : SetBundleName(block_name : String) ~ Nil {
-		@block_name := block_name;
-	}
-
-	method : public : GetBundleName() ~ String {
-		return @block_name;
-	}
-
-	method : native : Parse() ~ Bool {
-		if(<>MatchCommentStart()) {
-			return false;
-		};
-		@desc := ParseDesc();	
-
-		# parse tags		
-		type := ParseIdent();
-		if(type->Size() > 0) {
-			if(type->Equals("@class")) {
-				@klass := ParseIdent();
-				if(@klass->Size() = 0) {
+			if(@is_consts) {
+#				item_name += " := ";
+				if(<>MatchChar(':')) {
 					return false;
 				};
-			};
-		};
-		
 
-		if(<>MatchCommentEnd()) {
-			return false;
-		};
-
-		if(<>MatchIdent("enum")) {
-			return false;
-		};
-
-		@name := ParseIdent();
-		if(@name->Size() = 0) {
-			return false;
-		};
-
-		if(@klass <> Nil) {
-			name := @klass;
-			name += "->";
-			name += @name;
-			@name := name;
-		};
-		
-		if(MatchChar(':')) {
-			if(MatchChar('=')) {
-				@id := ParseIdent();
-				if(@id->Size() = 0) {
+				if(<>MatchChar('=')) {
 					return false;
 				};
-			}
-			else {
-				return false;
-			};
-		};
-		
-		if(<>MatchChar('{')) {
-			return false;
-		};
-	
-		# items
-		while(@cur_char <> '}') {
-			item_name := ParseIdent();
-			if(item_name->Size() = 0) {
-				return false;
+				value := ParseIdent();
+
+				if(value->Size() = 0) {
+					return false;
+				};
+#				item_name += value;
 			};
 
 			@items->AddBack(item_name);
+
 			MatchChar(',');
 		};
 		
