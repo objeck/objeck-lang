@@ -709,7 +709,7 @@ class EnumConstSnippet from Snippet {
 			};
 
 			if(@is_consts) {
-#				item_name += " := ";
+				item_name += " = ";
 				if(<>MatchChar(':')) {
 					return false;
 				};
@@ -722,7 +722,7 @@ class EnumConstSnippet from Snippet {
 				if(value->Size() = 0) {
 					return false;
 				};
-#				item_name += value;
+				item_name += value->ToInt();
 			};
 
 			@items->AddBack(item_name);
