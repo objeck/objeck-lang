@@ -214,6 +214,10 @@ bundle Game.SDL2 {
 	Event types
 	~#
 	consts EventType {
+		SDL_QUERY := -1,
+		SDL_IGNORE := 0,
+		SDL_DISABLE := 0,
+		SDL_ENABLE := 1,
 		SDL_QUIT := 0x100,
 		SDL_APP_TERMINATING := 0x101,
 	    SDL_APP_LOWMEMORY := 0x102,
@@ -2178,8 +2182,6 @@ bundle Game.SDL2 {
 		}
 	}
 
-#----- TODO -----
-	
 	#~
 	SDL event
 	~#
@@ -2194,6 +2196,9 @@ bundle Game.SDL2 {
 		@mbutton : MouseButtonEvent;
 		@wheel : MouseWheelEvent;
 		
+		#~
+		Create a new event instance
+		~#
 		New() {
 			array_args := Base->New[1];
 			array_args[0] := IntHolder->New();
@@ -2202,14 +2207,22 @@ bundle Game.SDL2 {
 			@event := value->Get();
 		}
 		
+
 		New : private (events : Int) {
 			@event := events;
 		}
 
+		#~
+		Determines if the underlying SDL C-struct is NULL
+		@return true if NULL, false otherwise
+		~#
 		method : public : IsNull() ~ Bool {
 			return @event = 0;
 		}
 		
+		#~
+		Frees the event
+		~#
 		method : public : Free() ~ Nil {
 			if(@event <> 0) {
 				array_args := Base->New[1];
@@ -2219,6 +2232,10 @@ bundle Game.SDL2 {
 			};
 		}
 		
+		#~
+		Event type
+		@return type
+		~#
 		method : public : GetType() ~ EventType {
 			if(@event <> 0) {
 				array_args := Base->New[2];
@@ -2234,6 +2251,10 @@ bundle Game.SDL2 {
 			return -1;
 		}
 		
+		#~
+		Get keyboard event
+		@return keyboard event
+		~#
 		method : public : GetKey() ~ KeyboardEvent {
 			if(@event <> 0) {
 				if(@key = Nil) {
@@ -2258,6 +2279,10 @@ bundle Game.SDL2 {
 			return Nil;
 		}
 
+		#~
+		Get text input event
+		@return text input event
+		~#
 		method : public : GetTextInput() ~ TextInputEvent {
 			if(@event <> 0) {
 				if(@text = Nil) {
@@ -2282,30 +2307,10 @@ bundle Game.SDL2 {
 			return Nil;
 		}
 
-		method : public : GetJAxis() ~ JoyAxisEvent {
-			if(@event <> 0) {
-				if(@axis = Nil) {
-					@axis := JoyAxisEvent->New();
-				};
-				
-				array_args := Base->New[3];
-				array_args[0] := IntHolder->New();
-				array_args[1] := IntHolder->New(@event);
-				array_args[2] := @axis;
-				
-				Proxy->GetDllProxy()->CallFunction("sdl_axis_key", array_args);
-
-				value := array_args[0]->As(IntHolder);
-				if(value->Get() < 0) {
-					return Nil;
-				};
-
-				return @axis;
-			};
-			
-			return Nil;
-		}
-
+		#~
+		Get mouse motion event
+		@return mouse motion event
+		~#
 		method : public : GetMouseMotion() ~ MouseMotionEvent {
 			if(@event <> 0) {
 				if(@motion = Nil) {
@@ -2330,6 +2335,10 @@ bundle Game.SDL2 {
 			return Nil;
 		}
 
+		#~
+		Get mouse wheel event
+		@return mouse wheel event
+		~#
 		method : public : GetMouseWheel() ~ MouseWheelEvent {
 			if(@event <> 0) {
 				if(@wheel = Nil) {
@@ -2354,6 +2363,38 @@ bundle Game.SDL2 {
 			return Nil;
 		}
 
+		#~
+		Get joystick axis event
+		@return joystick axis event
+		~#
+		method : public : GetJAxis() ~ JoyAxisEvent {
+			if(@event <> 0) {
+				if(@axis = Nil) {
+					@axis := JoyAxisEvent->New();
+				};
+				
+				array_args := Base->New[3];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@event);
+				array_args[2] := @axis;
+				
+				Proxy->GetDllProxy()->CallFunction("sdl_axis_key", array_args);
+
+				value := array_args[0]->As(IntHolder);
+				if(value->Get() < 0) {
+					return Nil;
+				};
+
+				return @axis;
+			};
+			
+			return Nil;
+		}
+
+		#~
+		Get joystick button event
+		@return joystick button event
+		~#
 		method : public : GetJButton() ~ JoyButtonEvent {
 			if(@event <> 0) {
 				if(@jbutton = Nil) {
@@ -2378,30 +2419,10 @@ bundle Game.SDL2 {
 			return Nil;
 		}
 
-		method : public : GetMButton() ~ MouseButtonEvent {
-			if(@event <> 0) {
-				if(@mbutton = Nil) {
-					@mbutton := MouseButtonEvent->New();
-				};
-				
-				array_args := Base->New[3];
-				array_args[0] := IntHolder->New();
-				array_args[1] := IntHolder->New(@event);
-				array_args[2] := @mbutton;
-				
-				Proxy->GetDllProxy()->CallFunction("sdl_mbutton_key", array_args);
-
-				value := array_args[0]->As(IntHolder);
-				if(value->Get() < 0) {
-					return Nil;
-				};
-
-				return @mbutton;
-			};
-			
-			return Nil;
-		}
-
+		#~
+		Get joystick hat event
+		@return joystick hat event
+		~#
 		method : public : GetJHat() ~ JoyHatEvent {
 			if(@event <> 0) {
 				if(@hat = Nil) {
@@ -2425,11 +2446,51 @@ bundle Game.SDL2 {
 			
 			return Nil;
 		}
+
+		#~
+		Get mouse button event
+		@return mouse button event
+		~#
+		method : public : GetMButton() ~ MouseButtonEvent {
+			if(@event <> 0) {
+				if(@mbutton = Nil) {
+					@mbutton := MouseButtonEvent->New();
+				};
 				
+				array_args := Base->New[3];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@event);
+				array_args[2] := @mbutton;
+				
+				Proxy->GetDllProxy()->CallFunction("sdl_mbutton_key", array_args);
+
+				value := array_args[0]->As(IntHolder);
+				if(value->Get() < 0) {
+					return Nil;
+				};
+
+				return @mbutton;
+			};
+			
+			return Nil;
+		}
+				
+		#~
+		Pump the event loop, gathering events from the input devices
+		~#
 		function : Pump() ~ Nil {
 			Proxy->GetDllProxy()->CallFunction("sdl_event_pump", Nil->As(Base[]));
 		}
 		
+		#~
+		Check the event queue for messages and optionally return them
+		@param vents destination buffer for the retrieved events
+		@param numevents if action is SDL_ADDEVENT, the number of events to add back to the event queue; if action is SDL_PEEKEVENT or SDL_GETEVENT, the maximum number of events to retrieve
+		@param action action to take; see Remarks for details
+		@param minType minimum value of the event type to be considered; SDL_FIRSTEVENT is a safe choice
+		@param maxType maximum value of the event type to be considered; SDL_LASTEVENT is a safe choice
+		@return number of events actually stored or a negative error code on failure
+		~#
 		method : public : Peeps(numevents : Int, action : EventAction, minType : Int, maxType : Int) ~ Int {
 			if(@event <> 0) {
 				array_args := Base->New[6];
@@ -2449,6 +2510,11 @@ bundle Game.SDL2 {
 			return -1;
 		}
 		
+		#~
+		Check for the existence of certain event types in the event queue
+		@param type the type of event to be queried
+		@return true if events matching type are present, false otherwise
+		~# 
 		function : Has(type : Int) ~ Bool {
 			array_args := Base->New[2];
 			array_args[0] := IntHolder->New();
@@ -2460,12 +2526,19 @@ bundle Game.SDL2 {
 			return value->Get() = 0 ? false : true;
 		}
 		
+		#~
+		Clear events from the event queue
+		@param type the type of event to be cleared
+		~#
 		function : Flush(type : Int) ~ Nil {
 			array_args := Base->New[1];
 			array_args[0] := IntHolder->New(type);
 			Proxy->GetDllProxy()->CallFunction("sdl_event_flush", array_args);
 		}
 		
+		#~
+		Poll for currently pending events
+		~#
 		method : public : Poll() ~ Int {
 			if(@event <> 0) {
 				array_args := Base->New[2];
@@ -2481,6 +2554,10 @@ bundle Game.SDL2 {
 			return -1;
 		}
 		
+		#~
+		Waits indefinitely for the next available event.
+		@return 1, or 0 if there was an error while waiting for events
+ 		~#
 		method : public : Wait() ~ Int {
 			if(@event <> 0) {
 				array_args := Base->New[2];
@@ -2496,6 +2573,11 @@ bundle Game.SDL2 {
 			return -1;
 		}
 		
+		#~
+		Waits until the specified timeout (in milliseconds) for the next available event
+		@param timeout The timeout (in milliseconds) to wait for next event
+		@return 1, or 0 if there was an error while waiting for events
+ 		~#
 		method : public : WaitTimeout(timeout : Int) ~ Int {
 			if(@event <> 0) {
 				array_args := Base->New[3];
@@ -2512,6 +2594,11 @@ bundle Game.SDL2 {
 			return -1;
 		}
 		
+		#~
+		Add an event to the event queue
+ 		@return 1 on success, 0 if the event was filtered, or -1 if 
+ 		the event queue was full or there was some other error.
+ 		~#
 		method : public : Push() ~ Int {
 			if(@event <> 0) {
 				array_args := Base->New[2];
@@ -2527,6 +2614,13 @@ bundle Game.SDL2 {
 			return -1;
 		}
 		
+		#~
+ 		Allows you to set the state of processing certain events.
+ 		@param type the type of event; see SDL_EventType for details
+		@param state how to process the event; see Remarks for details
+		@return SDL_DISABLE or SDL_ENABLE, representing the 
+		processing state of the event before this function makes any changes to it
+ 		~#
 		function : State(type : Int, state : Int) ~ Int {
 			array_args := Base->New[3];
 			array_args[0] := IntHolder->New();
@@ -2539,6 +2633,11 @@ bundle Game.SDL2 {
 			return value->Get();
 		}
 		
+		#~
+		Allocate a set of user-defined events, and return the beginning 
+		event number for that set of events
+		@param numevents the number of events to be allocated
+		~#
 		function : Registers(numevents : Int) ~ Int {
 			array_args := Base->New[2];
 			array_args[0] := IntHolder->New();
@@ -2551,6 +2650,8 @@ bundle Game.SDL2 {
 		}
 	}
 	
+#----- TODO -----
+
 	#~
 	SDL core operations
 	~#
