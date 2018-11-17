@@ -25,7 +25,7 @@ bundle Game.SDL2 {
 	SDL mouse wheel direction
 	~#
 	enum MouseWheelDirection {
-	    SDL_MOUSEWHEEL_NORMAL,
+	    SDL_MOUSEWHEEL_NORMAL,`
 	    SDL_MOUSEWHEEL_FLIPPED
     }
 
@@ -3055,7 +3055,7 @@ bundle Game.SDL2 {
 	}
 	
 	#~
-	Description of a display mode
+	Contains the description of a display mode
 	~#
 	class DisplayMode {
 		@format : Int;
@@ -3066,6 +3066,14 @@ bundle Game.SDL2 {
 	    New() {
 	    }
 
+	    #~
+	    Constructor
+		@param format one of the SDL_PixelFormatEnum values; see Remarks for details
+		@param w width, in screen coordinates
+		@param h height, in screen coordinates
+		@param refresh_rate refresh rate (in Hz), or 0 for unspecified
+		@param driverdata driver-specific data, initialize to 0
+		~#
 		New(format : Int, w : Int, h : Int, refresh_rate : Int) {
 			@format := format;
 			@w := w;
@@ -3073,34 +3081,66 @@ bundle Game.SDL2 {
 			@refresh_rate := refresh_rate;
 		}
 
+		#~
+		Get the format
+		@return format
+		~#
 		method : public : GetFormat() ~ Int {
 			return @format;
 		}
 
+		#~
+		Set the format
+		@param format format
+		~#
 		method : public : SetFormat(format : Int) ~ Nil {
 			@format := format;
 		}
 
+		#~
+		Get width
+		@return width
+		~#
 		method : public : GetW() ~ Int {
 			return @w;
 		}
 
+		#~
+		Set width
+		@param w width
+		~#
 		method : public : SetW(w : Int) ~ Nil {
 			@w := w;
 		}
 
+		#~
+		Get height
+		@return height
+		~#
 		method : public : GetH() ~ Int {
 			return @h;
 		}
 
+		#~
+		Set height
+		@param h height
+		~#
 		method : public : SetH(h : Int) ~ Nil {
 			@h := h;
 		}
 
+		#~
+		Get refresh rate
+		@return refresh rate
+		~#
 		method : public : GetRefreshRate() ~ Int {
 			return @refresh_rate;
 		}
 
+		#~
+		Set refresh rate
+		@param refresh_rate refresh rate
+		~#
 		method : public : SetRefreshRate(refresh_rate : Int) ~ Nil {
 			@refresh_rate := refresh_rate;
 		}
@@ -3375,7 +3415,6 @@ bundle Game.SDL2 {
 	    }
 
 		New(format : Int) {
-			# TODO: SDL_AllocFormat, SDL_FreeFormat
 			array_args := Base->New[2];
 			array_args[0] := @self;
 			array_args[1] := IntHolder->New(format);
