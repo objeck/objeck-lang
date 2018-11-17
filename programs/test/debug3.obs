@@ -1,34 +1,21 @@
-use System.IO.File;
-use System.IO;
 
-class Test {
-  function : Main(args : String[]) ~ Nil {
-    cc := Base->New[5];
-    cc[0] := IntHolder->New(13);
-    cc[1] := "Objeck";
-    cc[2] := IntHolder->New(-1);
-    cc[3] := FloatHolder->New(13.13);
-    cc[4] := IntHolder->New(7);
-
-    serializer := Serializer->New();
-    serializer->Write(cc);
-    out := FileWriter->New("out.dat");
-    out->WriteBuffer(serializer->Serialize());
-    out->Close();
-
-    data := FileReader->ReadBinaryFile("out.dat");
-    deserializer := Deserializer->New(data);
-    cc2 := deserializer->ReadObjectArray();
-    cc2->Size()->PrintLine();
-	c := cc2[1];
-	c->As(String)->PrintLine();
-		
 #~
-	v := cc2[3]->As(FloatHolder);
-	v->Get()->PrintLine();
-~#	
+Foo Const!
+~#
+consts Foo {
+    aa := 3,
+    bb := 0x6,
+    cf := 13
+}
 
-	v := cc2[3];
-	v->As(FloatHolder)->Get()->PrintLine();
-  }
+#~
+Test
+~#
+class Test {
+    #~
+    Main
+    @param args the args
+    ~#
+    function : Main(args : String[]) ~ Nil {
+    }
 }

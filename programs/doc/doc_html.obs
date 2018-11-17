@@ -92,7 +92,7 @@ class HtmlMaker {
 			enum_keys := enums->GetKeys();
 			each(j : enum_keys) {
 				##  enum
-				enum_block := enums->Find(enum_keys->Get(j)->As(String))->As(EnumSnippet);
+				enum_block := enums->Find(enum_keys->Get(j)->As(String))->As(EnumConstSnippet);
 				if(enum_block <> Nil) {
 					CreateEnumHtml(enum_block, class_header);
 				};
@@ -182,7 +182,7 @@ class HtmlMaker {
 				enum_keys := enums->GetKeys();
 				each(j : enum_keys) {
 					##  enum
-					enum_block := enums->Find(enum_keys->Get(j)->As(String))->As(EnumSnippet);
+					enum_block := enums->Find(enum_keys->Get(j)->As(String))->As(EnumConstSnippet);
 					if(enum_block <> Nil) {
 						sec_b += "<li><a href='";
 						
@@ -195,8 +195,13 @@ class HtmlMaker {
 						sec_b->Append(link_name->ToLower());
 						sec_b += "' target='main'>";
 						sec_b->Append(enum_block->GetName());
-						sec_b->Append('#');
-						
+						if(enum_block->IsConsts()) {
+							sec_b->Append("##");
+						}
+						else {
+							sec_b->Append('#');
+						};
+
 						sec_b += "</a></li>";
 						
 					};
@@ -326,7 +331,7 @@ class HtmlMaker {
 	#~
 	DOC ME
 	~#
-	method : CreateEnumHtml(enum_block : EnumSnippet, header : String) ~ Nil {
+	method : CreateEnumHtml(enum_block : EnumConstSnippet, header : String) ~ Nil {
 		##  class description
 		html := String->New(header);
 		sec_b := "<h2>@enum_name</h2><p>@enum_desc</p>";
@@ -452,10 +457,10 @@ class HtmlMaker {
 	#~
 	DOC ME
 	~#
-	method : GetBundleEnum(bundle_name : String, enum_name : String) ~ EnumSnippet {
+	method : GetBundleEnum(bundle_name : String, enum_name : String) ~ EnumConstSnippet {
 		lookup_bundle := @parser->GetBundles()->Find(bundle_name)->As(BundleSnippet);		
 		if(lookup_bundle <> Nil) {
-			return lookup_bundle->GetEnums()->Find(enum_name)->As(EnumSnippet);
+			return lookup_bundle->GetEnums()->Find(enum_name)->As(EnumConstSnippet);
 		}
 		else {
 			return Nil;
