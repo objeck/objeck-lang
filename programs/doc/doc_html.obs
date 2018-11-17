@@ -7,10 +7,10 @@ use System.IO.File;
 use Collection;
 
 class HtmlMaker {
-	@parser : DocParser;
+	@parser : SnippetParser;
 	@css_path : String;
 	@version : String;
-	@bundle_block : BundleBlock;
+	@bundle_block : BundleSnippet;
 	
 	#~
 	DOC ME
@@ -18,7 +18,7 @@ class HtmlMaker {
 	New(args : String[]) {
 		@css_path := args[0];
 		@version := args[1];
-		@parser := DocParser->New(args);
+		@parser := SnippetParser->New(args);
 	}
 	
 	#~
@@ -76,12 +76,12 @@ class HtmlMaker {
 		bundles := @parser->GetBundles();
 		bundle_keys := bundles->GetKeys();
 		each(i : bundle_keys) {
-			@bundle_block := bundles->Find(bundle_keys->Get(i)->As(String))->As(BundleBlock);
+			@bundle_block := bundles->Find(bundle_keys->Get(i)->As(String))->As(BundleSnippet);
 			##  classes
 			classes := @bundle_block->GetClasses();
 			class_keys := classes->GetKeys();
 			each(j : class_keys) {
-				class_block := classes->Find(class_keys->Get(j)->As(String))->As(ClassBlock);
+				class_block := classes->Find(class_keys->Get(j)->As(String))->As(ClassSnippet);
 				if(class_block <> Nil) {
 					CreateClassHtml(class_block, class_header);
 				};
@@ -92,7 +92,7 @@ class HtmlMaker {
 			enum_keys := enums->GetKeys();
 			each(j : enum_keys) {
 				##  enum
-				enum_block := enums->Find(enum_keys->Get(j)->As(String))->As(EnumBlock);
+				enum_block := enums->Find(enum_keys->Get(j)->As(String))->As(EnumSnippet);
 				if(enum_block <> Nil) {
 					CreateEnumHtml(enum_block, class_header);
 				};
@@ -112,7 +112,7 @@ class HtmlMaker {
 
 		bundle_keys := bundles->GetKeys();
 		each(i : bundle_keys) {
-			bundle_block := bundles->Find(bundle_keys->Get(i)->As(String))->As(BundleBlock);
+			bundle_block := bundles->Find(bundle_keys->Get(i)->As(String))->As(BundleSnippet);
 			if(bundle_block->GetDesc() <> Nil) {
 				html += "<tr><td>@bundle_name</td><td>@bundle_desc</td></tr>";
 				sec_a := "<a href='classes.html#";
@@ -142,7 +142,7 @@ class HtmlMaker {
 		##  bundles
 		bundle_keys := bundles->GetKeys();
 		each(i : bundle_keys) {
-			bundle_block := bundles->Find(bundle_keys->Get(i)->As(String))->As(BundleBlock);
+			bundle_block := bundles->Find(bundle_keys->Get(i)->As(String))->As(BundleSnippet);
 			##  class description
 			if(bundle_block->IsParsed()) {
 				sec_a := "<a id='@short_link'><strong>@bundle_name</strong>";
@@ -155,7 +155,7 @@ class HtmlMaker {
 				class_keys := classes->GetKeys();			
 				each(j : class_keys) {
 					##  class
-					class_block := classes->Find(class_keys->Get(j)->As(String))->As(ClassBlock);
+					class_block := classes->Find(class_keys->Get(j)->As(String))->As(ClassSnippet);
 					if(class_block->IsParsed()) {
 						sec_b += "<li><a href='";
 						
@@ -182,7 +182,7 @@ class HtmlMaker {
 				enum_keys := enums->GetKeys();
 				each(j : enum_keys) {
 					##  enum
-					enum_block := enums->Find(enum_keys->Get(j)->As(String))->As(EnumBlock);
+					enum_block := enums->Find(enum_keys->Get(j)->As(String))->As(EnumSnippet);
 					if(enum_block <> Nil) {
 						sec_b += "<li><a href='";
 						
@@ -217,7 +217,7 @@ class HtmlMaker {
 	#~
 	DOC ME
 	~#
-	method : CreateClassHtml(class_block : ClassBlock, header : String) ~ Nil {
+	method : CreateClassHtml(class_block : ClassSnippet, header : String) ~ Nil {
 		##  class description
 		html := String->New(header);
 		
@@ -326,7 +326,7 @@ class HtmlMaker {
 	#~
 	DOC ME
 	~#
-	method : CreateEnumHtml(enum_block : EnumBlock, header : String) ~ Nil {
+	method : CreateEnumHtml(enum_block : EnumSnippet, header : String) ~ Nil {
 		##  class description
 		html := String->New(header);
 		sec_b := "<h2>@enum_name</h2><p>@enum_desc</p>";
@@ -366,7 +366,7 @@ class HtmlMaker {
 	DOC ME
 	~#
 	method : GetTypeLink(type_name : String) ~ String {
-		class_block : ClassBlock;
+		class_block : ClassSnippet;
 		
 		full_name := type_name;
 		index := type_name->FindLast('.');
@@ -439,10 +439,10 @@ class HtmlMaker {
 	#~
 	DOC ME
 	~#
-	method : GetBundleClass(bundle_name : String, class_name : String) ~ ClassBlock {
-		lookup_bundle := @parser->GetBundles()->Find(bundle_name)->As(BundleBlock);		
+	method : GetBundleClass(bundle_name : String, class_name : String) ~ ClassSnippet {
+		lookup_bundle := @parser->GetBundles()->Find(bundle_name)->As(BundleSnippet);		
 		if(lookup_bundle <> Nil) {
-			return lookup_bundle->GetClasses()->Find(class_name)->As(ClassBlock);
+			return lookup_bundle->GetClasses()->Find(class_name)->As(ClassSnippet);
 		}
 		else {
 			return Nil;
@@ -452,10 +452,10 @@ class HtmlMaker {
 	#~
 	DOC ME
 	~#
-	method : GetBundleEnum(bundle_name : String, enum_name : String) ~ EnumBlock {
-		lookup_bundle := @parser->GetBundles()->Find(bundle_name)->As(BundleBlock);		
+	method : GetBundleEnum(bundle_name : String, enum_name : String) ~ EnumSnippet {
+		lookup_bundle := @parser->GetBundles()->Find(bundle_name)->As(BundleSnippet);		
 		if(lookup_bundle <> Nil) {
-			return lookup_bundle->GetEnums()->Find(enum_name)->As(EnumBlock);
+			return lookup_bundle->GetEnums()->Find(enum_name)->As(EnumSnippet);
 		}
 		else {
 			return Nil;
@@ -477,7 +477,7 @@ class HtmlMaker {
 			html += sec_d;
 
 			each(k : funcs) {
-				func := funcs->Get(k)->As(FuncBlock);
+				func := funcs->Get(k)->As(FuncSnippet);
 				sec_e := "<p><strong>@func_desc</strong></p><code>@func_signature</code>";
 				sec_e := sec_e->ReplaceAll("@func_signature", func->GetSignature());
 				sec_e := sec_e->ReplaceAll("@func_desc", func->GetDesc());
@@ -492,8 +492,8 @@ class HtmlMaker {
 					sec_f += "Description</th></tr>";
 			
 					each(l : params) {
-						param := params->Get(l)->As(DocType);
-						param_tag := param_tags->Find(param->GetName())->As(DocTag);
+						param := params->Get(l)->As(SnippetType);
+						param_tag := param_tags->Find(param->GetName())->As(SnippetTag);
 						if(param_tag <> Nil & <>param_tag->IsIgnore()) {
 							sec_f += "<tr><td>@param_name</td><td>@param_type</td><td>@param_desc</td></tr>";
 							sec_f := sec_f->ReplaceAll("@param_name", param_tag->GetName());

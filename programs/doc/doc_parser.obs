@@ -7,17 +7,17 @@ use System.IO;
 use System.IO.File;
 use Collection;
 
-class DocParser {
+class SnippetParser {
 	@buffer : String;
 	@buffer_index : Int;
 	@cur_char : Char;
 	@nxt_char : Char;
 	@files : String[];
 	@bundles : StringMap;
-	@class_inf_block : ClassBlock;
+	@class_inf_block : ClassSnippet;
 	@level : Int;
 	@class_level : Int;
-	@bundle_block : BundleBlock;
+	@bundle_block : BundleSnippet;
 	@in_comment : Bool;
 	@in_lit : Bool;
 	
@@ -36,11 +36,11 @@ class DocParser {
 		
 		bundle_keys := @bundles->GetKeys();
 		each(i : bundle_keys) {
-			bundle_block := @bundles->Find(bundle_keys->Get(i)->As(String))->As(BundleBlock);
+			bundle_block := @bundles->Find(bundle_keys->Get(i)->As(String))->As(BundleSnippet);
 			classes := bundle_block->GetClasses();
 			class_keys := classes->GetKeys();
 			each(j : class_keys) {
-				klass := classes->Find(class_keys->Get(j)->As(String))->As(ClassBlock);
+				klass := classes->Find(class_keys->Get(j)->As(String))->As(ClassSnippet);
 				if(klass <> Nil) {
 					all_classes->AddBack(klass);
 				};
@@ -55,11 +55,11 @@ class DocParser {
 		
 		bundle_keys := @bundles->GetKeys();
 		each(i : bundle_keys) {
-			bundle_block := @bundles->Find(bundle_keys->Get(i)->As(String))->As(BundleBlock);
+			bundle_block := @bundles->Find(bundle_keys->Get(i)->As(String))->As(BundleSnippet);
 			interfaces := bundle_block->GetInterfaces();
 			inf_keys := interfaces->GetKeys();
 			each(j : inf_keys) {
-				inf := interfaces->Find(inf_keys->Get(j)->As(String))->As(ClassBlock);
+				inf := interfaces->Find(inf_keys->Get(j)->As(String))->As(ClassSnippet);
 				if(inf <> Nil) {
 					all_interfaces->AddBack(inf);
 				};
@@ -74,11 +74,11 @@ class DocParser {
 		
 		bundle_keys := @bundles->GetKeys();
 		each(i : bundle_keys) {
-			bundle_block := @bundles->Find(bundle_keys->Get(i)->As(String))->As(BundleBlock);
+			bundle_block := @bundles->Find(bundle_keys->Get(i)->As(String))->As(BundleSnippet);
 			enums := bundle_block->GetEnums();
 			enum_keys := enums->GetKeys();
 			each(j : enum_keys) {
-				eenum := enums->Find(enum_keys->Get(j)->As(String))->As(EnumBlock);
+				eenum := enums->Find(enum_keys->Get(j)->As(String))->As(EnumSnippet);
 				if(eenum <> Nil) {
 					all_enums->AddBack(eenum);
 				};
@@ -150,7 +150,7 @@ class DocParser {
 		};
 		block->Append(" {");
 		
-		bundle_block := BundleBlock->New(block);
+		bundle_block := BundleSnippet->New(block);
 		if(bundle_block->IsParsed()) {
 			SetBundle(bundle_block);
 		}
@@ -159,10 +159,6 @@ class DocParser {
 		};
 
 		block := "";
-	}
-
-	method : public : native : ParseConst(block : String) ~ Nil {
-
 	}
 
 	method : public : native : ParseEnum(block : String) ~ Nil {
@@ -174,7 +170,7 @@ class DocParser {
 		};
 		block->Append(" }");					
 		
-		enum_block := EnumBlock->New(block);
+		enum_block := EnumSnippet->New(block);
 		if(enum_block->IsParsed()) {
 			block_name := enum_block->GetName();
 			"\tProcessed enum: name='{$block_name}'"->PrintLine();
@@ -183,6 +179,29 @@ class DocParser {
 		}
 		else {
 			"*** Unable to parse enum block. Text='{$block}' ***"->ErrorLine();
+		};
+
+		block := "";
+	}
+
+	method : public : native : ParseConst(block : String) ~ Nil {
+		block->Append(" const ");
+		while(@cur_char <> '\0' & @cur_char <> '}') {
+			block->Append(@cur_char);
+			CheckLevel();
+			NextChar();
+		};
+		block->Append(" }");					
+		
+		const_block := ConstSnippet->New(block);
+		if(const_block->IsParsed()) {
+			block_name := const_block->GetName();
+			"\tProcessed const: name='{$block_name}'"->PrintLine();
+			const_block->SetBundleName(@bundle_block->GetName());
+			@bundle_block->AddConst(const_block);
+		}
+		else {
+			"*** Unable to parse const block. Text='{$block}' ***"->ErrorLine();
 		};
 
 		block := "";
@@ -199,7 +218,7 @@ class DocParser {
 		block->Append(" {");
 
 		if(name->Equals("class")) {
-			@class_inf_block := ClassBlock->New(block, false);
+			@class_inf_block := ClassSnippet->New(block, false);
 			class_inf_name := @class_inf_block->GetName();
 			if(@class_inf_block->IsParsed()) {
 				@class_inf_block->SetBundleName(@bundle_block->GetName());
@@ -211,7 +230,7 @@ class DocParser {
 			};
 		}
 		else if(name->Equals("interface")) {
-			@class_inf_block := ClassBlock->New(block, true);
+			@class_inf_block := ClassSnippet->New(block, true);
 			if(@class_inf_block->IsParsed()) {
 				class_inf_name := @bundle_block->GetName();
 				@class_inf_block->SetBundleName(class_inf_name);
@@ -243,14 +262,14 @@ class DocParser {
 			else if(@cur_char = '}') {
 				@level -= 1;
 				if(@level = 0) {
-					@bundle_block := @bundles->Find("Default")->As(BundleBlock);
+					@bundle_block := @bundles->Find("Default")->As(BundleSnippet);
 				};
 			};
 		};
 	}
 
-	method : SetBundle(bundle_block : BundleBlock) ~ Nil {
-		found := @bundles->Find(bundle_block->GetName())->As(BundleBlock);
+	method : SetBundle(bundle_block : BundleSnippet) ~ Nil {
+		found := @bundles->Find(bundle_block->GetName())->As(BundleSnippet);
 		if(found <> Nil) {
 			@bundle_block := found;
 		}
@@ -277,7 +296,7 @@ class DocParser {
 
 			state := 0;
 			start := 0;
-			bundle_block := BundleBlock->New();
+			bundle_block := BundleSnippet->New();
 			bundle_block->SetName("Default");
 			SetBundle(bundle_block);
 
@@ -298,6 +317,9 @@ class DocParser {
 					}
 					else if(ident->Equals("enum")) {
 						ParseEnum(block);
+					}
+					else if(ident->Equals("const")) {
+						ParseConst(block);
 					}
 					else if(ident->Equals("const")) {
 						ParseConst(block);
@@ -323,7 +345,7 @@ class DocParser {
 					if(ident->Equals("bundle")) {
 						@bundle_name := ParseIdent();
 						if(@bundle_name->Size() > 0) {
-							bundle_block := BundleBlock->New();
+							bundle_block := BundleSnippet->New();
 							bundle_block->SetName(@bundle_name);
 							SetBundle(bundle_block);
 						};
@@ -339,7 +361,7 @@ class DocParser {
 	}
 }
 
-class DocBlock {
+class Snippet {
 	@buffer : String;
 	@buffer_index : Int;
 	@cur_char : Char;
@@ -504,18 +526,20 @@ class DocBlock {
 	method : virtual : Parse() ~ Bool;
 }
 
-class BundleBlock from DocBlock {
+class BundleSnippet from Snippet {
 	@name : String;
 	@desc : String;
 	@classes : StringMap;
 	@interfaces : StringMap;
 	@enums : StringMap;
+	@const : StringMap;
 
 	New() {
 		Parent("");
 		@classes := StringMap->New();
 		@interfaces := StringMap->New();
 		@enums := StringMap->New();
+		@const := StringMap->New();
 	}
 
 	New(buffer : String) {
@@ -524,6 +548,7 @@ class BundleBlock from DocBlock {
 		@interfaces := StringMap->New();
 		@enums := StringMap->New();
 		@parsed := Parse();
+		@const := StringMap->New();
 	}
 	
 	method : public : IsParsed() ~ Bool {
@@ -542,7 +567,7 @@ class BundleBlock from DocBlock {
 		@name := name;
 	}
 
-	method: public : AddClass(class_block : ClassBlock) ~ Nil {
+	method: public : AddClass(class_block : ClassSnippet) ~ Nil {
 		@classes->Insert(class_block->GetName(), class_block);
 	}
 
@@ -550,15 +575,19 @@ class BundleBlock from DocBlock {
 		return @classes;
 	}
 
-	method: public : AddEnum(enum_block : EnumBlock) ~ Nil {
+	method: public : AddEnum(enum_block : EnumSnippet) ~ Nil {
 		@enums->Insert(enum_block->GetName(), enum_block);
+	}
+
+	method: public : AddConst(const_block : ConstSnippet) ~ Nil {
+		@const->Insert(const_block->GetName(), const_block);
 	}
 
 	method: public : GetEnums() ~ StringMap {
 		return @enums;
 	}
 
-	method: public : AddInterface(inf_block : ClassBlock) ~ Nil {
+	method: public : AddInterface(inf_block : ClassSnippet) ~ Nil {
 		@classes->Insert(inf_block->GetName(), inf_block);
 	}
 
@@ -587,7 +616,7 @@ class BundleBlock from DocBlock {
 	}
 }
 
-class EnumBlock from DocBlock {
+class EnumSnippet from Snippet {
 	@name : String;
 	@id : String;
 	@desc : String;
@@ -702,7 +731,122 @@ class EnumBlock from DocBlock {
 	}
 }
 
-class ClassBlock from DocBlock {
+class ConstSnippet from Snippet {
+	@name : String;
+	@id : String;
+	@desc : String;
+	@klass : String;
+	@items : Vector;
+	@block_name : String;
+	
+	New(buffer : String) {
+		Parent(buffer);
+		@items := Vector->New();
+		@parsed := Parse();
+	}
+
+	method : public : IsParsed() ~ Bool {
+		return @parsed;
+	}
+
+	method : public : GetName() ~ String {
+		return @name;
+	}
+	
+	method : public : GetId() ~ String {
+		return @id;
+	}
+
+	method : public : GetClass() ~ String {
+		return @klass;
+	}
+
+	method : public : GetItems() ~ Vector {
+		return @items;
+	}
+
+	method : public : GetDesc() ~ String {
+		return @desc;
+	}
+	
+	method : public : SetBundleName(block_name : String) ~ Nil {
+		@block_name := block_name;
+	}
+
+	method : public : GetBundleName() ~ String {
+		return @block_name;
+	}
+
+	method : native : Parse() ~ Bool {
+		if(<>MatchCommentStart()) {
+			return false;
+		};
+		@desc := ParseDesc();	
+
+		# parse tags		
+		type := ParseIdent();
+		if(type->Size() > 0) {
+			if(type->Equals("@class")) {
+				@klass := ParseIdent();
+				if(@klass->Size() = 0) {
+					return false;
+				};
+			};
+		};
+		
+
+		if(<>MatchCommentEnd()) {
+			return false;
+		};
+
+		if(<>MatchIdent("enum")) {
+			return false;
+		};
+
+		@name := ParseIdent();
+		if(@name->Size() = 0) {
+			return false;
+		};
+
+		if(@klass <> Nil) {
+			name := @klass;
+			name += "->";
+			name += @name;
+			@name := name;
+		};
+		
+		if(MatchChar(':')) {
+			if(MatchChar('=')) {
+				@id := ParseIdent();
+				if(@id->Size() = 0) {
+					return false;
+				};
+			}
+			else {
+				return false;
+			};
+		};
+		
+		if(<>MatchChar('{')) {
+			return false;
+		};
+	
+		# items
+		while(@cur_char <> '}') {
+			item_name := ParseIdent();
+			if(item_name->Size() = 0) {
+				return false;
+			};
+
+			@items->AddBack(item_name);
+			MatchChar(',');
+		};
+		
+		return true;
+	}
+}
+
+class ClassSnippet from Snippet {
 	@name : String;
 	@block_name : String;
 	@from_class : String;
@@ -755,7 +899,7 @@ class ClassBlock from DocBlock {
 	}
 
 	method : public : AddFunction(block : String) ~ Bool {
-		func := FuncBlock->New(block);
+		func := FuncSnippet->New(block);
 		if(func->IsParsed()) {
 			funcs := @funcs->Find(func->GetName())->As(Vector);
 			if(funcs = Nil) {
@@ -846,13 +990,13 @@ class ClassBlock from DocBlock {
 	}
 }
 
-class FuncBlock from DocBlock {
+class FuncSnippet from Snippet {
 	@name : String;
 	@signature : String;
 	@desc : String;
 	@tags : StringMap;
-	@return_type : DocType;
-	@return_tag : DocTag;
+	@return_type : SnippetType;
+	@return_tag : SnippetTag;
 	@func_types : Vector;
 	@is_func : Bool;
 	@is_private : Bool;
@@ -876,11 +1020,11 @@ class FuncBlock from DocBlock {
 	function : Initialize() ~ Nil {
 		if(@types = Nil) {
 			@types := StringMap->New();
-			@types->Insert("Byte", IntHolder->New(DocType->Type->BYTE->As(Int)));
-			@types->Insert("Char", IntHolder->New(DocType->Type->CHAR->As(Int)));
-			@types->Insert("Int", IntHolder->New(DocType->Type->INT->As(Int)));
-			@types->Insert("Float", IntHolder->New(DocType->Type->FLOAT->As(Int)));
-			@types->Insert("Nil", IntHolder->New(DocType->Type->NIL->As(Int)));
+			@types->Insert("Byte", IntHolder->New(SnippetType->Type->BYTE->As(Int)));
+			@types->Insert("Char", IntHolder->New(SnippetType->Type->CHAR->As(Int)));
+			@types->Insert("Int", IntHolder->New(SnippetType->Type->INT->As(Int)));
+			@types->Insert("Float", IntHolder->New(SnippetType->Type->FLOAT->As(Int)));
+			@types->Insert("Nil", IntHolder->New(SnippetType->Type->NIL->As(Int)));
 		};
 	}
 	
@@ -928,8 +1072,8 @@ class FuncBlock from DocBlock {
 
 			if(<>@ignore_params) {
 				each(i : @func_types) {
-					func_type := @func_types->Get(i)->As(DocType);
-					param_tag := @tags->Find(func_type->GetName())->As(DocTag);
+					func_type := @func_types->Get(i)->As(SnippetType);
+					param_tag := @tags->Find(func_type->GetName())->As(SnippetTag);
 					if(param_tag <> Nil & <>param_tag->IsIgnore()) {
 						@signature->Append(func_type->GetName());
 						@signature->Append(':');
@@ -954,11 +1098,11 @@ class FuncBlock from DocBlock {
 		return @signature;
 	}
 
-	method : public : GetReturnTag() ~ DocTag {
+	method : public : GetReturnTag() ~ SnippetTag {
 		return @return_tag;
 	}
 
-	method : public : GetReturnType() ~ DocType {
+	method : public : GetReturnType() ~ SnippetType {
 		return @return_type;
 	}
 
@@ -1000,7 +1144,7 @@ class FuncBlock from DocBlock {
 					if(tag_desc->Size() = 0) {
 						return false;
 					};
-					tag := DocTag->New(tag_name, tag_desc, false);
+					tag := SnippetTag->New(tag_name, tag_desc, false);
 					@tags->Insert(tag->GetName(), tag);
 				}
 				else if(type->Equals("@ignore-param")) {
@@ -1008,7 +1152,7 @@ class FuncBlock from DocBlock {
 					if(tag_name->Size() = 0) {
 						return false;
 					};
-					tag := DocTag->New(tag_name, "", true);
+					tag := SnippetTag->New(tag_name, "", true);
 					@tags->Insert(tag->GetName(), tag);
 				}
 				else if(type->Equals("@ignore-params")) {
@@ -1019,7 +1163,7 @@ class FuncBlock from DocBlock {
 					if(tag_desc->Size() = 0) {
 						return false;
 					};
-					@return_tag := DocTag->New(tag_desc);
+					@return_tag := SnippetTag->New(tag_desc);
 				}
 				else {
 					return false;
@@ -1114,27 +1258,25 @@ class FuncBlock from DocBlock {
 			rtrn_name := ParseIdent();
 			if(rtrn_name->Size() = 0) {
 				return false;
-			};
-#			rtrn_name := GetShortName(rtrn_name);
-		
+			};		
 			rtrn_type := @types->Find(rtrn_name)->As(IntHolder);
 			if(rtrn_type <> Nil) {
-				@return_type := DocType->New("", rtrn_name, rtrn_type->Get()->As(DocType->Type));
+				@return_type := SnippetType->New("", rtrn_name, rtrn_type->Get()->As(SnippetType->Type));
 			}
 			else {
-				@return_type := DocType->New("", rtrn_name, DocType->Type->CLASS);
+				@return_type := SnippetType->New("", rtrn_name, SnippetType->Type->CLASS);
 			};
 		};
 		
 		return true;
 	}
 	
-	method : ParseType(param_name : String, type_name : String) ~ DocType {
+	method : ParseType(param_name : String, type_name : String) ~ SnippetType {
 		if(MatchChar('(')) {
 			type_name->Append('(');
 
 			if(ParseFuncType(type_name)) {
-				return DocType->New(GetShortName(param_name), type_name, DocType->Type->FUNC);
+				return SnippetType->New(GetShortName(param_name), type_name, SnippetType->Type->FUNC);
 			}
 			else {
 				return Nil;
@@ -1149,10 +1291,10 @@ class FuncBlock from DocBlock {
 		
 			param_type := @types->Find(type_name)->As(IntHolder);
 			if(param_type <> Nil) {
-				return DocType->New(param_name, type_name, param_type->Get()->As(DocType->Type));
+				return SnippetType->New(param_name, type_name, param_type->Get()->As(SnippetType->Type));
 			}
 			else {
-				return DocType->New(param_name, type_name, DocType->Type->CLASS);
+				return SnippetType->New(param_name, type_name, SnippetType->Type->CLASS);
 			};
 		};
 	}
@@ -1187,7 +1329,7 @@ class FuncBlock from DocBlock {
 	}
 }
 
-class DocTag {
+class SnippetTag {
 	enum Type {
 		PARAM,
 		RETURN
@@ -1211,7 +1353,7 @@ class DocTag {
 		@desc := desc;
 	}
 	
-	method : public : GetType() ~ DocTag->Type {
+	method : public : GetType() ~ SnippetTag->Type {
 		return @type;
 	}
 
@@ -1228,7 +1370,7 @@ class DocTag {
 	}
 }
 
-class DocType {
+class SnippetType {
 	enum Type {
 		BYTE,
 		CHAR,
@@ -1241,7 +1383,7 @@ class DocType {
 	
 	@name : String;
 	@type_name : String;		
-	@type : DocType->Type;
+	@type : SnippetType->Type;
 	
 	New(name : String, type_name : String, type : Type) {
 		@name := name;
