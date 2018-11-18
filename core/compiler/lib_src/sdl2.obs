@@ -3939,8 +3939,12 @@ bundle Game.SDL2 {
 			return -1;
 		}
 		
-#----- TODO -----
-
+		#~
+		Set the color key (transparent pixel) in a surface
+		@param flag true to enable color key, false to disable color key
+		@param key the transparent pixel
+		@return 0 on success or a negative error code on failure
+		~#
 		method : public : SetColorKey(flag : Bool, key : Int) ~ Int {
 			if(@surface <> 0) {
 				array_args := Base->New[4];
@@ -3958,6 +3962,11 @@ bundle Game.SDL2 {
 			return -1;
 		}
 		
+		#~
+		Get the color key (transparent pixel) for a surface
+		@param key a pointer filled in with the transparent pixel
+		@return 0 on success or a negative error code on failure
+		~#
 		method : public : GetColorKey(key : IntHolder) ~ Int {
 			if(@surface <> 0) {
 				array_args := Base->New[3];
@@ -3974,6 +3983,13 @@ bundle Game.SDL2 {
 			return -1;
 		}
 		
+		#~
+		Set an additional color value multiplied into blit operation
+		@param r the red color value multiplied into blit operations
+		@param g the green color value multiplied into blit operations
+		@param b the blue color value multiplied into blit operations
+		@return 0 on success or a negative error code on failure
+		~#
 		method : public : SetColorMod(r : Int, g : Int, b : Int) ~ Int {
 			if(@surface <> 0) {
 				array_args := Base->New[5];
@@ -3992,6 +4008,13 @@ bundle Game.SDL2 {
 			return -1;
 		}
 		
+		#~
+		Get the additional color value multiplied into blit operations
+		@param r pointer filled in with the current red color value
+		@param g pointer filled in with the current green color value
+		@param b pointer filled in with the current blue color value
+		@return 0 on success or a negative error code on failure
+		~#
 		method : public : GetColorMod(r : IntHolder, g : IntHolder, b : IntHolder) ~ Int {
 			if(@surface <> 0) {		
 				array_args := Base->New[5];
@@ -4011,6 +4034,11 @@ bundle Game.SDL2 {
 			return -1;
 		}
 		
+		#~
+		Set an additional alpha value used in blit operations
+		@param alpha alpha value multiplied into blit operations
+		@return 0 on success or a negative error code on failure
+		~#
 		method : public : SetAlphaMod(alpha : Int) ~ Int {
 			if(@surface <> 0) {
 				array_args := Base->New[3];
@@ -4027,6 +4055,11 @@ bundle Game.SDL2 {
 			return -1;
 		}
 		
+		#~
+		Get the additional alpha value used in blit operations
+		@param alpha pointer filled in with the current alpha value
+		@return 0 on success or a negative error code on failure
+		~#
 		method : public : GetAlphaMod(alpha : IntHolder) ~ Int {
 			if(@surface <> 0) {
 				array_args := Base->New[3];
@@ -4043,6 +4076,11 @@ bundle Game.SDL2 {
 			return -1;
 		}
 		
+		#~
+		set the blend mode used for blit operations
+		@param blendMode BlendMode to use for blit blending
+		@return 0 on success or a negative error code on failure
+		~#
 		method : public : SetBlendMode(blendMode : BlendMode) ~ Int {
 			if(@surface <> 0) {
 				array_args := Base->New[3];
@@ -4059,6 +4097,11 @@ bundle Game.SDL2 {
 			return -1;
 		}
 		
+		#~
+		get the blend mode used for blit operations
+		@param blendMode pointer filled in with the current BlendMode
+		@return 0 on success or a negative error code on failure
+		~#
 		method : public : GetBlendMode(blendMode : IntHolder) ~ Int {
 			if(@surface <> 0) {
 				array_args := Base->New[3];
@@ -4074,7 +4117,11 @@ bundle Game.SDL2 {
 			
 			return -1;
 		}
-		
+
+		#~
+		Get the clipping rectangle for a surface
+		@param rect Rect filled in with the clipping rectangle for the surface
+		~#
 		method : public : GetClipRect(rect : Rect) ~ Nil {
 			if(@surface <> 0) {
 				array_args := Base->New[2];
@@ -4085,6 +4132,13 @@ bundle Game.SDL2 {
 			};
 		}
 		
+		#~
+		Set the clipping rectangle for a surface
+		@param rect Rect structure representing the clipping rectangle, or 
+		Nil to disable clipping
+		@return Returns true if the rectangle intersects the surface, 
+		otherwise false and blits will be completely clipped
+		~#
 		method : public : SetClipRect(rect : Rect) ~ Bool {
 			if(@surface <> 0) {
 				array_args := Base->New[3];
@@ -4101,6 +4155,13 @@ bundle Game.SDL2 {
 			return false;
 		}
 		
+		#~
+		Copy an existing surface into a new one that is optimized for blitting 
+		to a surface of a specified pixel format
+		@param fmt PixelFormat structure that the new surface is optimized for
+		@param flags flags are unused and should be set to 0
+		@return new SDL_Surface structure that is created
+		~#
 		method : public : Convert(fmt : PixelFormat, flags : Int) ~ Surface {
 			if(@surface <> 0) {
 				array_args := Base->New[4];
@@ -4118,6 +4179,12 @@ bundle Game.SDL2 {
 			return Nil;
 		}
 
+		#~
+		Copy an existing surface to a new surface of the specified format
+		@param format one of the enumerated values in SDL_PixelFormatEnum; see Remarks for details
+		@param flags the flags are unused and should be set to 0
+		@return the new surface
+		~#
 		method : public : ConvertFormat(format : Int, flags : Int) ~ Surface {
 			if(@surface <> 0) {
 				array_args := Base->New[4];
@@ -4135,6 +4202,13 @@ bundle Game.SDL2 {
 			return Nil;
 		}
 
+		#~
+		perform a fast fill of a rectangle with a specific color
+		@param rect Rect structure representing the rectangle to fill, or Nil 
+		to fill the entire surface
+		@param color color to fill with
+		@return 0 on success or a negative error code on failure
+		~#
 		method : public : FillRect(rect : Rect, color : Int) ~ Int {
 			if(@surface <> 0) {
 				array_args := Base->New[4];
@@ -4152,7 +4226,15 @@ bundle Game.SDL2 {
 			return -1;
 		}
 		
-		method : public : UpperBlit(srcrect : Rect, dst : Surface, dstrect : Rect) ~ Int {
+		#~
+		Perform a fast surface copy to a destination surface
+		@param srcrect the SDL_Rect structure representing the rectangle to be copied, or NULL 
+		to copy the entire surface
+		@param dst the SDL_Surface structure that is the blit target
+		@param dstrect the SDL_Rect structure representing the rectangle that is copied into
+		@return 0 if the blit is successful or a negative error code on failure
+		~#
+		method : public : Blit(srcrect : Rect, dst : Surface, dstrect : Rect) ~ Int {
 			if(@surface <> 0) {
 				array_args := Base->New[5];
 				array_args[0] := IntHolder->New();
@@ -4170,6 +4252,14 @@ bundle Game.SDL2 {
 			return -1;
 		}
 		
+		#~
+		Perform low-level surface blitting only
+		@param srcrect the SDL_Rect structure representing the rectangle to be copied, or NULL 
+		to copy the entire surface
+		@param dst the SDL_Surface structure that is the blit target
+		@param dstrect the SDL_Rect structure representing the rectangle that is copied into
+		@return 0 if the blit is successful or a negative error code on failure
+		~#
 		method : public : LowerBlit(srcrect : Rect, dst : Surface, dstrect : Rect) ~ Int {
 			if(@surface <> 0) {
 				array_args := Base->New[5];
@@ -4188,7 +4278,15 @@ bundle Game.SDL2 {
 			return -1;
 		}
 		
-		method : public : SoftStretch(srcrect : Rect, dst : Surface, dstrect : Rect) ~ Int {
+		#~
+		Scaled surface copy to a destination surface
+		@param srcrect the SDL_Rect structure representing the rectangle to be copied, or NULL 
+		to copy the entire surface
+		@param dst the SDL_Surface structure that is the blit target
+		@param dstrect the SDL_Rect structure representing the rectangle that is copied into
+		@return 0 if the blit is successful or a negative error code on failure
+		~#
+		method : public : BlitScaled(srcrect : Rect, dst : Surface, dstrect : Rect) ~ Int {
 			if(@surface <> 0) {
 				array_args := Base->New[5];
 				array_args[0] := IntHolder->New();
@@ -4198,7 +4296,7 @@ bundle Game.SDL2 {
 				array_args[4] := dstrect;
 
 				@lib_proxy := Proxy->GetDllProxy();
-				@lib_proxy->CallFunction("sdl_surface_soft_stretch", array_args);
+				@lib_proxy->CallFunction("sdl_surface_blit_scaled", array_args);
 
 				value := array_args[0]->As(IntHolder);
 				return value->Get();
@@ -4207,28 +4305,14 @@ bundle Game.SDL2 {
 			return -1;
 		}
 		
-		method : public : BlitScaled(srcrect : Rect, dst : Surface, dstrect : Rect) ~ Int {
-			return UpperBlitScaled(srcrect, dst, dstrect);
-		}
-		
-		method : public : UpperBlitScaled(srcrect : Rect, dst : Surface, dstrect : Rect) ~ Int {
-			if(@surface <> 0) {
-				array_args := Base->New[5];
-				array_args[0] := IntHolder->New();
-				array_args[1] := IntHolder->New(@surface);
-				array_args[2] := srcrect;
-				array_args[3] := dst;
-				array_args[4] := dstrect;
-
-				Proxy->GetDllProxy()->CallFunction("sdl_surface_upper_blit_scaled", array_args);
-
-				value := array_args[0]->As(IntHolder);
-				return value->Get();
-			};
-
-			return -1;
-		}
-		
+		#~
+		Perform low-level surface scaled blitting only
+		@param srcrect the SDL_Rect structure representing the rectangle to be copied, or NULL 
+		to copy the entire surface
+		@param dst the SDL_Surface structure that is the blit target
+		@param dstrect the SDL_Rect structure representing the rectangle that is copied into
+		@return 0 if the blit is successful or a negative error code on failure
+		~#
 		method : public : LowerBlitScaled(srcrect : Rect, dst : Surface, dstrect : Rect) ~ Int {
 			if(@surface <> 0) {
 				array_args := Base->New[5];
@@ -4247,6 +4331,8 @@ bundle Game.SDL2 {
 			return -1;
 		}
 	}
+
+#----- TODO -----
 
 	#~
 	Image loading operations
