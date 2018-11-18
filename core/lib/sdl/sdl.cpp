@@ -637,7 +637,7 @@ extern "C" {
     SDL_Rect dstrect;
     sdl_rect_raw_write(&dstrect, dstrect_obj);
 
-    APITools_SetIntValue(context, 0, SDL_UpperBlit(surface, 
+    APITools_SetIntValue(context, 0, SDL_BlitSurface(surface,
       srcrect_obj ? &srcrect : NULL, dst, dstrect_obj ? &dstrect : NULL));
   }
 
@@ -665,7 +665,7 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void sdl_surface_soft_stretch(VMContext& context) {
+  void sdl_surface_blit_scaled(VMContext& context) {
     SDL_Surface* surface = (SDL_Surface*)APITools_GetIntValue(context, 1);
 
     size_t* srcrect_obj = APITools_GetObjectValue(context, 2);
@@ -679,28 +679,8 @@ extern "C" {
     SDL_Rect dstrect;
     sdl_rect_raw_write(&dstrect, dstrect_obj);
 
-    APITools_SetIntValue(context, 0, SDL_LowerBlit(surface, 
+    APITools_SetIntValue(context, 0, SDL_BlitScaled(surface,
       srcrect_obj ? &srcrect : NULL, dst, dstrect_obj ? &dstrect : NULL));
-  }
-
-#ifdef _WIN32
-  __declspec(dllexport)
-#endif
-  void sdl_surface_upper_blit_scaled(VMContext& context) {
-    SDL_Surface* surface = (SDL_Surface*)APITools_GetIntValue(context, 1);
-
-    size_t* srcrect_obj = APITools_GetObjectValue(context, 2);
-    SDL_Rect srcrect;
-    sdl_rect_raw_write(&srcrect, srcrect_obj);
-
-    const size_t* dst_obj = APITools_GetObjectValue(context, 3);
-    SDL_Surface* dst = dst_obj ? (SDL_Surface*)dst_obj[0] : NULL;
-
-    size_t* dstrect_obj = APITools_GetObjectValue(context, 4);
-    SDL_Rect dstrect;
-    sdl_rect_raw_write(&dstrect, dstrect_obj);
-
-    APITools_SetIntValue(context, 0, SDL_UpperBlitScaled(surface, srcrect_obj ? &srcrect : NULL, dst, dstrect_obj ? &dstrect : NULL));
   }
 
 #ifdef _WIN32
