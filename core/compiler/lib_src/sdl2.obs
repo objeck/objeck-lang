@@ -25,7 +25,7 @@ bundle Game.SDL2 {
 	SDL mouse wheel direction
 	~#
 	enum MouseWheelDirection {
-	    SDL_MOUSEWHEEL_NORMAL,`
+	    SDL_MOUSEWHEEL_NORMAL,
 	    SDL_MOUSEWHEEL_FLIPPED
     }
 
@@ -3449,8 +3449,14 @@ bundle Game.SDL2 {
 			Proxy->GetDllProxy()->CallFunction("sdl_rect_union", array_args);
 		}
 		
-#----- TODO -----
-
+		#~
+		Calculate the intersection of a rectangle and line segment
+		@param X1 a pointer to the starting X-coordinate of the line
+		@param Y1 a pointer to the starting Y-coordinate of the line
+		@param X2 a pointer to the ending X-coordinate of the line
+		@param Y2 a pointer to the ending Y-coordinate of the line
+		@return true if there is an intersection, false otherwise
+		~#
 		method : public : IntersectAndLine(X1 : IntHolder, Y1 :IntHolder, X2 : IntHolder, Y2 : IntHolder) ~ Bool {
 			array_args := Base->New[6];
 			array_args[0] := IntHolder->New();
@@ -3466,6 +3472,11 @@ bundle Game.SDL2 {
 			return value->Get() = 0 ? false : true;
 		}
 
+		#~
+		Check if a point resides inside a rectangle
+		@param p an SDL_Point which is the point
+		@return true if there is an intersection, false otherwise
+		~#
 		method : public : PointIn(p : Point) ~ Bool {
 			array_args := Base->New[3];
 			array_args[0] := IntHolder->New();
@@ -3483,7 +3494,7 @@ bundle Game.SDL2 {
 	PixelFormat class
 	~#
 	class PixelFormat {
-		@format : Int;
+		@format : PixelValue;
 		@palette : Int;
 		@bits_per_pixel : Int;
 		@bytes_per_pixel : Int;
@@ -3511,6 +3522,13 @@ bundle Game.SDL2 {
 			Proxy->GetDllProxy()->CallFunction("sdl_pixelformat_alloc", array_args);
 		}
 
+		#~
+		Map an RGB triple to an opaque pixel value for a given pixel format
+		@param r the red component of the pixel in the range 0-255
+		@param g the green component of the pixel in the range 0-255
+		@param b the blue component of the pixel in the range 0-255
+		@return returns a pixel value
+		~#
 		method : public : MapRGB(r : Int, g : Int, b : Int) ~ Int {
 			array_args := Base->New[5];
 			array_args[0] := IntHolder->New();
@@ -3525,6 +3543,14 @@ bundle Game.SDL2 {
 			return value->Get();
 		}
 
+		#~
+		Map an RGBA quadruple to a pixel value for a given pixel format
+		@param r the red component of the pixel in the range 0-255
+		@param g the green component of the pixel in the range 0-255
+		@param b the blue component of the pixel in the range 0-255
+		@param a the alpha component of the pixel in the range 0-255
+		@return returns a pixel value
+		~#
 		method : public : MapRGBA(r : Int, g : Int, b : Int, a : Int) ~ Int {
 			array_args := Base->New[6];
 			array_args[0] := IntHolder->New();
@@ -3540,63 +3566,120 @@ bundle Game.SDL2 {
 			return value->Get();
 		}
 		
-		method : public : GetFormat() ~ Int {
+		#~
+		Get pixel format
+		@return pixel format
+		~#
+		method : public : GetFormat() ~ PixelValue {
 			return @format;
 		}
 		
+		#~
+		Set pixel format
+		@param format pixel format
+		~#
 		method : public : SetFormat(format : Int) ~ Nil {
 			@format := format;
 		}
 		
+		#~
+		Get the number of significant bits in a pixel value
+		@return bits per pixel
+		~#
 		method : public : GetBitsPerPixel() ~ Int {
 			return @bits_per_pixel;
 		}
 		
+		#~
+		Set bits per pixel
+		@param bits_per_pixel bits per pixel
+		~#
 		method : public : SetBitsPerPixel(bits_per_pixel : Int) ~ Nil {
 			@bits_per_pixel := bits_per_pixel;
 		}
 		
+		#~
+		Get the number of bytes required to hold a pixel value
+		@return bytes per pixel
+		~#
 		method : public : GetBytesPerPixel() ~ Int {
 			return @bytes_per_pixel;
 		}
 		
+		#~
+		Set bytes per pixel
+		@param bytes_per_pixel bytes per pixel
+		~#
 		method : public : SetBytesPerPixel(bytes_per_pixel : Int) ~ Nil {
 			@bytes_per_pixel := bytes_per_pixel;
 		}
 		
+		#~
+		Get mask representing the location of the red component of the pixel
+		@return pixel mask
+		~#
 		method : public : GetRmask() ~ Int {
 			return @r_mask;
 		}
 		
+		#~
+		Set red mask
+		@param r_mask red mask
+		~#
 		method : public : SetRmask(r_mask : Int) ~ Nil {
 			@r_mask := r_mask;
 		}
 		
+		#~
+		Get mask representing the location of the green component of the pixel
+		@return pixel mask
+		~#
 		method : public : GetGmask() ~ Int {
 			return @g_mask;
 		}
 		
+		#~
+		Set green mask
+		@param g_mask green mask
+		~#
 		method : public : SetGmask(g_mask : Int) ~ Nil {
 			@g_mask := g_mask;
 		}
 		
+		#~
+		Get mask representing the location of the blue component of the pixel
+		@return pixel mask
+		~#
 		method : public : GetBmask() ~ Int {
 			return @b_mask;
 		}
 		
+		#~
+		Set blue mask
+		@param b_mask blue mask
+		~#
 		method : public : SetBmask(b_mask : Int) ~ Nil {
 			@b_mask := b_mask;
 		}
 		
+		#~
+		Get mask representing the location of the alpha component of the 
+		pixel or 0 if the pixel format doesn't have any alpha information
+		@return pixel mask
+		~#
 		method : public : GetAmask() ~ Int {
 			return @a_mask;
 		}
 		
+		#~
+		Set alpha mask
+		@param a_mask alpha mask
+		~#
 		method : public : SetAmask(a_mask : Int) ~ Nil {
 			@a_mask := a_mask;
 		}
 	}
-	
+
 	#~
 	Core class
 	~#
@@ -3607,6 +3690,17 @@ bundle Game.SDL2 {
 			@surface := surface;
 		}
 		
+		#~
+		Creates new RGB surface
+		@param flags the flags are unused and should be set to 0
+		@param width the width of the surface
+		@param height the height of the surface
+		@param depth the depth of the surface in bits; see Remarks for details
+		@param Rmask the red mask for the pixels
+		@param Gmask the green mask for the pixels
+		@param Bmask the blue mask for the pixels
+		@param Amask the alpha mask for the pixels
+		~#
 		New(flags : Int, width : Int, height : Int, depth : Int, Rmask : Int, Gmask : Int, Bmask : Int, Amask : Int) {
 			array_args := Base->New[9];
 			array_args[0] := IntHolder->New();
@@ -3624,10 +3718,17 @@ bundle Game.SDL2 {
 			@surface := value->Get();
 		}
 		
+		#~
+		Determines if the underlying SDL C-struct is NULL
+		@return true if NULL, false otherwise
+		~#
 		method : public : IsNull() ~ Bool {
 			return @surface = 0;
 		}
 
+		#~
+		Frees the event
+		~#
 		method : public : Free() ~ Nil {
 			if(@surface <> 0) {
 				array_args := Base->New[1];
@@ -3638,6 +3739,10 @@ bundle Game.SDL2 {
 			};
 		}
 		
+		#~
+		Get pixel format
+		@return pixel format
+		~#
 		method : public : GetPixelFormat() ~ PixelFormat {
 			if(@surface <> 0) {
 				pixel_format := PixelFormat->New();
@@ -3654,6 +3759,10 @@ bundle Game.SDL2 {
 			return Nil;
 		}
 
+		#~
+		Get width
+		@return width
+		~#
 		method : public : GetW() ~ Int {
 			if(@surface <> 0) {
 				array_args := Base->New[2];
@@ -3669,6 +3778,10 @@ bundle Game.SDL2 {
 			return -1;
 		}
 
+		#~
+		Get height
+		@return height
+		~#
 		method : public : GetH() ~ Int {
 			if(@surface <> 0) {
 				array_args := Base->New[2];
@@ -3684,6 +3797,10 @@ bundle Game.SDL2 {
 			return -1;
 		}
 
+		#~
+		Get length of a row of pixels in bytes
+		@return pitch
+		~#
 		method : public : GetPitch() ~ Int {
 			if(@surface <> 0) {
 				array_args := Base->New[2];
@@ -3699,6 +3816,10 @@ bundle Game.SDL2 {
 			return -1;
 		}
 
+		#~
+		Get raw pixels
+		@return raw pixels
+		~#
 		method : public : GetPixels() ~ PixelData {
 			if(@surface <> 0) {
 				array_args := Base->New[2];
@@ -3713,6 +3834,9 @@ bundle Game.SDL2 {
 			return Nil;
 		}
 		
+		#~
+		Set up a surface for directly accessing the pixels
+		~#
 		method : public : Lock() ~ Int {
 			if(@surface <> 0) {
 				array_args := Base->New[2];
@@ -3728,6 +3852,9 @@ bundle Game.SDL2 {
 			return -1;
 		}
 		
+		#~
+		Release a surface after directly accessing the pixels
+		~#
 		method : public : Unlock() ~ Nil {
 			if(@surface <> 0) {
 				array_args := Base->New[1];
@@ -3736,6 +3863,11 @@ bundle Game.SDL2 {
 			};
 		}
 
+		#~
+		Create a texture from an existing surface
+		@param renderer the rendering context
+		@return newly created texture
+		~#
 		method : public : CreateTexture(renderer : Renderer) ~ Texture {
 			if(@surface <> 0 & renderer <> Nil) {
 				array_args := Base->New[3];
@@ -3752,6 +3884,11 @@ bundle Game.SDL2 {
 			return Nil;
 		}
 		
+		#~
+		Load a surface from a BMP file.
+		@param file the file containing a BMP image
+		@return newly created texture
+		~#
 		function : LoadBMP(file : String) ~ Surface {
 			array_args := Base->New[2];
 			array_args[0] := IntHolder->New();
@@ -3762,6 +3899,12 @@ bundle Game.SDL2 {
 			return Surface->New(value->Get());
 		}
 		
+		#~
+		save a surface to a BMP file
+		@param surface Surface instance containing the image to be saved
+		@param file file to be saved to
+		@return 0 on success or a negative error code on failure
+		~#
 		function : SaveBMP(surface : Surface, file : String) ~ Int {
 			array_args := Base->New[3];
 			array_args[0] := IntHolder->New();
@@ -3775,6 +3918,11 @@ bundle Game.SDL2 {
 			return value->Get();
 		}
 		
+		#~
+		Set the RLE acceleration hint for a surface
+		@param flag 0 to disable, non-zero to enable RLE acceleration
+		@return 0 on success or a negative error code on failure
+		~#
 		method : public : SetRLE(flag : Int) ~ Int {
 			if(@surface <> 0) {
 				array_args := Base->New[3];
@@ -3791,6 +3939,8 @@ bundle Game.SDL2 {
 			return -1;
 		}
 		
+#----- TODO -----
+
 		method : public : SetColorKey(flag : Bool, key : Int) ~ Int {
 			if(@surface <> 0) {
 				array_args := Base->New[4];

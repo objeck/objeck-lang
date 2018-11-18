@@ -169,7 +169,7 @@ class HtmlMaker {
 						sec_b += "' target='main'>";
 						if(class_block->IsInterface()) {
 							sec_b->Append(class_block->GetName());
-							sec_b->Append('*');
+							sec_b->Append('@');
 						}
 						else {
 							sec_b->Append(class_block->GetName());
@@ -196,10 +196,10 @@ class HtmlMaker {
 						sec_b += "' target='main'>";
 						sec_b->Append(enum_block->GetName());
 						if(enum_block->IsConsts()) {
-							sec_b->Append("##");
+							sec_b->Append('#');
 						}
 						else {
-							sec_b->Append('#');
+							sec_b->Append('*');
 						};
 
 						sec_b += "</a></li>";
