@@ -838,8 +838,8 @@ bundle Game.SDL2 {
 
 		#~
 		Get the size of a window's underlying drawable in pixels (for use with glViewport).
-		@param w a pointer to variable for storing the width in pixels
-		@param h a pointer to variable for storing the height in pixels
+		@param w a holder to variable for storing the width in pixels
+		@param h a holder to variable for storing the height in pixels
 		~#
 		method : public : GLGetDrawableSize(w : IntHolder, h : IntHolder) ~ Nil {
 			if(@window <> 0) {
@@ -3451,10 +3451,10 @@ bundle Game.SDL2 {
 		
 		#~
 		Calculate the intersection of a rectangle and line segment
-		@param X1 a pointer to the starting X-coordinate of the line
-		@param Y1 a pointer to the starting Y-coordinate of the line
-		@param X2 a pointer to the ending X-coordinate of the line
-		@param Y2 a pointer to the ending Y-coordinate of the line
+		@param X1 a holder to the starting X-coordinate of the line
+		@param Y1 a holder to the starting Y-coordinate of the line
+		@param X2 a holder to the ending X-coordinate of the line
+		@param Y2 a holder to the ending Y-coordinate of the line
 		@return true if there is an intersection, false otherwise
 		~#
 		method : public : IntersectAndLine(X1 : IntHolder, Y1 :IntHolder, X2 : IntHolder, Y2 : IntHolder) ~ Bool {
@@ -3964,7 +3964,7 @@ bundle Game.SDL2 {
 		
 		#~
 		Get the color key (transparent pixel) for a surface
-		@param key a pointer filled in with the transparent pixel
+		@param key a holder filled in with the transparent pixel
 		@return 0 on success or a negative error code on failure
 		~#
 		method : public : GetColorKey(key : IntHolder) ~ Int {
@@ -4057,7 +4057,7 @@ bundle Game.SDL2 {
 		
 		#~
 		Get the additional alpha value used in blit operations
-		@param alpha pointer filled in with the current alpha value
+		@param alpha holder filled in with the current alpha value
 		@return 0 on success or a negative error code on failure
 		~#
 		method : public : GetAlphaMod(alpha : IntHolder) ~ Int {
@@ -4570,7 +4570,7 @@ bundle Game.SDL2 {
 		@param r pointer filled in with the red value used to draw on the rendering target
 		@param g pointer filled in with the green value used to draw on the rendering target
 		@param b pointer filled in with the blue value used to draw on the rendering target
-		@param a pointer filled in with the alpha value used to draw on the rendering target
+		@param a holder filled in with the alpha value used to draw on the rendering target
 		@return 0 on success or a negative error code on failure
 		~#
 		method : public : GetRenderDrawColor(r : IntHolder, g : IntHolder, b : IntHolder, a : IntHolder) ~ Int {
@@ -4773,7 +4773,7 @@ bundle Game.SDL2 {
 		@param dstrect the destination SDL_Rect structure or Nil for the entire rendering target
 		@param angle an angle in degrees that indicates the rotation that will be applied to dstrect, 
 		rotating it in a clockwise direction
-		@param center a pointer to a point indicating the point around which dstrect will be rotated 
+		@param center a holder to a point indicating the point around which dstrect will be rotated 
 		(if Nil, rotation will be done around dstrect.w/2, dstrect.h/2)
 		@param flip a SDL_RendererFlip value stating which flipping actions should be performed on the texture
 		@return 0 on success or a negative error code on failure
@@ -4973,14 +4973,25 @@ bundle Game.SDL2 {
 		}
 	}
 
-#----- TODO -----
-
 	#~
 	Efficient, driver-specific representation of pixel data.
 	~#
 	class Texture {
 		@texture : Int;
 
+		New(texture : Int) {
+			@texture := texture;
+		}
+
+		#~
+		Create a texture for a rendering context
+		@param renderer the rendering context
+		@param format one of the enumerated values in SDL_PixelFormatEnum; see Remarks for details
+		@param access one of the enumerated values in SDL_TextureAccess; see Remarks for details
+		@param w the width of the texture in pixels
+		@param h the height of the texture in pixels
+		@return created texture
+		~#
 		New(renderer : Renderer, format : Int, access : Int, w : Int, h : Int) {
 			array_args := Base->New[6];
 			array_args[0] := IntHolder->New();
@@ -4996,10 +5007,9 @@ bundle Game.SDL2 {
 			@texture := value->Get();
 		}
 
-		New(texture : Int) {
-			@texture := texture;
-		}
-
+		#~
+		Destroy the specified texture
+		~#
 		method : public : Destroy() ~ Nil {
 			array_args := Base->New[1];
 			array_args[0] := IntHolder->New(@texture);
@@ -5015,6 +5025,14 @@ bundle Game.SDL2 {
 			return @texture = 0;
 		}
 
+		#~
+		Query the attributes of a texture
+		@param format a holder filled in with the raw format of the texture
+		@param access a holder filled in with the actual access to the texture (one of the SDL_TextureAccess values)
+		@param w a holder filled in with the width of the texture in pixels
+		@param h a holder filled in with the height of the texture in pixels
+		@return 0 on success or a negative error code on failure
+		~#
 		method : public : Query(format : IntHolder, access : IntHolder, w : IntHolder, h : IntHolder) ~ Int {
 			if(@texture <> 0) {
 				array_args := Base->New[6];
@@ -5034,6 +5052,11 @@ bundle Game.SDL2 {
 			return -1;
 		}
 
+		#~
+		Lock a portion of the texture for write-only pixel access
+		@param rect an SDL_Rect structure representing the area to lock for access; NULL to lock the entire texture
+		@return access to raw pixel data
+		~#
 		method : public : Lock(rect : Rect) ~ PixelData {
 			if(@texture <> 0) {
 				array_args := Base->New[3];
@@ -5049,6 +5072,9 @@ bundle Game.SDL2 {
 			return Nil;
 		}
 
+		#~
+		Unlock a texture, uploading the changes to video memory, if needed.
+		~#
 		method : public : Unlock() ~ Nil {
 			if(@texture <> 0) {
 				array_args := Base->New[1];
@@ -5058,6 +5084,13 @@ bundle Game.SDL2 {
 			};
 		}
 
+		#~
+		set an additional color value multiplied into render copy operations
+		@param r the red color value multiplied into copy operations
+		@param g the green color value multiplied into copy operations
+		@param b the blue color value multiplied into copy operations
+		@return 0 on success or a negative error code on failure
+		~#
 		method : public : SetColorMod(r : Int, g : Int, b : Int) ~ Int {
 			if(@texture <> 0) {
 				array_args := Base->New[5];
@@ -5076,6 +5109,13 @@ bundle Game.SDL2 {
 			return -1;
 		}
 
+		#~
+		Get the additional color value multiplied into render copy operations.
+		@param r a holder filled in with the current red color value
+		@param g a holder filled in with the current green color value
+		@param b a holder filled in with the current blue color value
+		@return 0 on success or a negative error code on failure
+		~#
 		method : public : GetColorMod(r : IntHolder, g : IntHolder, b : IntHolder) ~ Int {
 			if(@texture <> 0) {
 				array_args := Base->New[5];
@@ -5094,6 +5134,11 @@ bundle Game.SDL2 {
 			return -1;
 		}
 
+		#~
+		Set an additional alpha value multiplied into render copy operations.
+		@param alpha the source alpha value multiplied into copy operations
+		@return 0 on success or a negative error code on failure
+		~#
 		method : public : SetAlphaMod(alpha : Int) ~ Int {
 			if(@texture <> 0) {
 				array_args := Base->New[3];
@@ -5110,6 +5155,11 @@ bundle Game.SDL2 {
 			return -1;
 		}
 
+		#~
+		Get the additional alpha value multiplied into render copy operations.
+		@param alpha a holder filled in with the current alpha value
+		@return 0 on success or a negative error code on failure
+		~#
 		method : public : GetAlphaMod(alpha : IntHolder) ~ Int {
 			if(@texture <> 0) {
 				array_args := Base->New[3];
@@ -5126,6 +5176,11 @@ bundle Game.SDL2 {
 			return -1;
 		}
 
+		#~
+		Set the blend mode for a texture
+		@param blendMode the BlendMode to use for texture blending
+		@return 0 on success or a negative error code on failure
+		~#
 		method : public : SetBlendMode(blendMode : BlendMode) ~ Int {
 			if(@texture <> 0) {
 				array_args := Base->New[3];
@@ -5142,6 +5197,11 @@ bundle Game.SDL2 {
 			return -1;
 		}
 
+		#~
+		get the blend mode used for texture copy operations
+		@param blendMode a holder filled in with the current BlendMode
+		@return 0 on success or a negative error code on failure
+		~#
 		method : public : GetBlendMode(blendMode : IntHolder) ~ Int {
 			if(@texture <> 0) {
 				array_args := Base->New[3];
@@ -5159,8 +5219,6 @@ bundle Game.SDL2 {
 		}
 	}
 	
-#----- TODO END -----
-
 	#~
 	SDL time management routines
 	~#
@@ -5417,6 +5475,12 @@ bundle Game.SDL2 {
 	Mouse cursor operations
 	~#
 	class Cursor {
+		#~
+		Get the current state of the mouse in relation to the desktop
+		@param x filled in with the current X coord relative to the desktop
+		@param y filled in with the current Y coord relative to the desktop
+		@return current button state as a bitmask
+		~#
 		function : GetGlobalMouseState(x : IntHolder, y : IntHolder) ~ Int {
 			array_args := Base->New[3];
 			array_args[0] := IntHolder->New();
@@ -5429,6 +5493,12 @@ bundle Game.SDL2 {
 			return value->Get();
 		}
 
+		#~
+		Retrieve the current state of the mouse
+		@param x coordinate of the mouse cursor position relative to the focus window
+		@param y coordinate of the mouse cursor position relative to the focus window
+		@return current button state as a bitmask
+		~#
 		function : GetMouseState(x : IntHolder, y : IntHolder) ~ Int {
 	        array_args := Base->New[3];
 	        array_args[0] := IntHolder->New();
@@ -5729,6 +5799,10 @@ bundle Game.SDL2 {
 	Platform specific queries
 	~#
 	class Platform {
+		#~
+		Get the name of the platform
+		@return platform name
+		~#
 		function : Get() ~ String {
 			array_args := Base->New[1];
 			array_args[0] := Nil;
@@ -5739,6 +5813,8 @@ bundle Game.SDL2 {
 		}
 	}
 
+#----- TODO -----
+	
 	#~
 	Operations for gathering information about the processor's features
 	~#
@@ -5894,10 +5970,16 @@ bundle Game.SDL2 {
 		}
 	}
 
+#----- TODO END -----
+
 	#~
 	Filesystem helper functions
 	~#
 	class Filesystem {
+		#~
+		Get the directory where the application was run from. This is where the application data directory is.
+		@return an absolute path in UTF-8 encoding to the application data directory
+		~#
 		function : GetBasePath() ~ String {
 			array_args := Base->New[1];
 			array_args[0] := Nil;
@@ -5907,6 +5989,14 @@ bundle Game.SDL2 {
 			return array_args[0]->As(String);
 		}
 
+		#~
+		Use this function to get the "pref dir". This is meant to be where the application 
+		can write personal files (Preferences and save games, etc.) that are specific to 
+		the application. This directory is unique per user and per application.
+		@param org the name of your organization
+		@param app the name of your application
+		@return UTF-8 string of the user directory in platform-dependent notation
+		~#
 		function : GetPrefPath(org : String, app : String) ~ String {
 			array_args := Base->New[3];
 			array_args[0] := Nil;
@@ -5923,6 +6013,12 @@ bundle Game.SDL2 {
 	Power management routines
 	~#
 	class Power {
+		#~
+		Get the current power supply details.
+		@param secs seconds of battery life left
+		@param pct percentage of battery life left, between 0 and 100
+		@return state of the battery, if any
+		~#
 		function : GetInfo(secs : IntHolder, pct : IntHolder) ~ Int {
 			array_args := Base->New[3];
 			array_args[0] := IntHolder->New();
