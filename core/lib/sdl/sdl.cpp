@@ -2952,7 +2952,7 @@ extern "C" {
 #endif
   void sdl_filesystem_get_base_path(VMContext& context) {
     const string value = SDL_GetBasePath();
-    const wstring return_value(value.begin(), value.end());
+    const wstring return_value = BytesToUnicode(value);
     APITools_SetStringValue(context, 0, return_value);
   }
 
@@ -2968,7 +2968,7 @@ extern "C" {
 
     const string value = SDL_GetPrefPath(org.c_str(), app.c_str());
 
-    const wstring return_value(value.begin(), value.end());
+    const wstring return_value = BytesToUnicode(value);
     APITools_SetStringValue(context, 0, return_value);
   }
 
