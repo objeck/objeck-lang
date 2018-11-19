@@ -2831,16 +2831,14 @@ extern "C" {
   __declspec(dllexport)
 #endif
   void sdl_cpu_get_count(VMContext& context) {
-    const int return_value = SDL_GetCPUCount();
-    APITools_SetIntValue(context, 0, return_value);
+    APITools_SetIntValue(context, 0, SDL_GetCPUCount());
   }
 
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
   void sdl_cpu_get_cache_line_size(VMContext& context) {
-    const int return_value = SDL_GetCPUCacheLineSize();
-    APITools_SetIntValue(context, 0, return_value);
+    APITools_SetIntValue(context, 0, SDL_GetCPUCacheLineSize());
   }
 
 #ifdef _WIN32
