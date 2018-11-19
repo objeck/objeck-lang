@@ -4343,7 +4343,7 @@ bundle Game.SDL2 {
 		~#
 		function : Init(flags : Int) ~ Int {
 	        array_args := Base->New[2];
-	        array_args[0] := IntHolder/->New();
+	        array_args[0] := IntHolder->New();
 	        array_args[1] := IntHolder->New(flags);
 
 	        Proxy->GetDllProxy()->CallFunction("sdl_image_init", array_args);
@@ -4811,8 +4811,6 @@ bundle Game.SDL2 {
 		}
 	}
 
-#----- TODO -----
-
 	#~
 	Contains information on the capabilities of a render driver or the current render context
 	~#
@@ -4828,26 +4826,50 @@ bundle Game.SDL2 {
 			@texture_formats := Int->New[16];
 		}
 
+		#~
+		Get the name of the renderer
+		@return renderer name
+		~#
 		method : public : GetName() ~ String {
 			return @name;
 		}
 
+		#~
+		Get a mask of supported renderer flags
+		@return renderer flags
+		~#
 		method : public : GetFlags() ~ Int {
 			return @flags;
 		}
 
+		#~
+		Get the number of available texture formats
+		@return texture format number
+		~#
 		method : public : GetNumTextureFormats() ~ Int {
 			return @num_texture_formats;
 		}
 
+		#~
+		Get the available texture formats
+		@return texture formats
+		~#
 		method : public : GetTextureFormats() ~ Int[] {
 			return @texture_formats;
 		}
 
+		#~
+		Get the the maximum texture width
+		@return maximum texture width
+		~#
 		method : public : GetMaxTextureWidth() ~ Int {
 			return @max_texture_width;
 		}
 
+		#~
+		Get the the maximum texture height
+		@return maximum texture height
+		~#
 		method : public : GetMaxTextureHeight() ~ Int {
 			return @max_texture_height;
 		}
@@ -4951,6 +4973,8 @@ bundle Game.SDL2 {
 		}
 	}
 
+#----- TODO -----
+
 	#~
 	Efficient, driver-specific representation of pixel data.
 	~#
@@ -4983,6 +5007,10 @@ bundle Game.SDL2 {
 			Proxy->GetDllProxy()->CallFunction("sdl_texture_destroy", array_args);
 		}
 		
+		#~
+		Determines if the underlying SDL C-struct is NULL
+		@return true if NULL, false otherwise
+		~#
 		method : public : IsNull() ~ Bool {
 			return @texture = 0;
 		}
@@ -5131,10 +5159,16 @@ bundle Game.SDL2 {
 		}
 	}
 	
+#----- TODO END -----
+
 	#~
 	SDL time management routines
 	~#
 	class Timer {
+		#~
+		Get the number of milliseconds since the SDL library initialization
+		@return value representing the number of milliseconds since the SDL library initialized
+		~#
 		function : GetTicks() ~ Int {
 			array_args := Base->New[1];
 			array_args[0] := IntHolder->New();
@@ -5145,6 +5179,10 @@ bundle Game.SDL2 {
 			return value->Get();
 		}
 
+		#~
+		Wait a specified number of milliseconds before returning
+		@param ms number of milliseconds to delay
+		~#
 		function : Delay(ms : Int) ~ Nil {
 			array_args := Base->New[1];
 			array_args[0] := IntHolder->New(ms);
@@ -5152,6 +5190,12 @@ bundle Game.SDL2 {
 			Proxy->GetDllProxy()->CallFunction("sdl_timer_delay", array_args);
 		}
 
+		#~
+		Compares SDL ticks values
+		@param a the first ticks values
+		@param b the second ticks values
+		@return true if A has passed B, false otherwise
+		~#
 		function : Passed(a : Int, b : Int) ~ Bool {
 			array_args := Base->New[3];
 			array_args[0] := IntHolder->New();
@@ -5171,6 +5215,9 @@ bundle Game.SDL2 {
 	class Font {
 		@font : Int;
 
+		#~
+		Initialize the TrueType font APIs
+		~#
 		function : Init() ~ Int {
 			array_args := Base->New[1];
 	        array_args[0] := IntHolder->New();
@@ -5181,11 +5228,19 @@ bundle Game.SDL2 {
 	        return value->Get();
 		}
 
+		#~
+		Shutdown and cleanup the TrueType font APIs
+		~#
 		function : Quit() ~ Nil {
         	array_args := Base->New[0];
         	Proxy->GetDllProxy()->CallFunction("sdl_font_quit", array_args);
 		}
 		
+		#~
+		Load file for use as a font, this can load TTF and FON files.
+		@param file file name to load font from.
+		@param ptsize Point size (based on 72DPI) to load font as
+		~#
 		New(file : String, ptsize : Int) {
 	        array_args := Base->New[3];
 	        array_args[0] := IntHolder->New();
@@ -5198,6 +5253,13 @@ bundle Game.SDL2 {
 	        @font := value->Get();
 		}
 
+		#~
+		Load file for use as a font, this can load TTF and FON files.
+		@param file file name to load font from.
+		@param ptsize Point size (based on 72DPI) to load font as
+		@param index choose a font face from a file containing multiple 
+		font faces. The first face is always index 0.
+		~#
 		New(file : String, ptsize : Int, index : Int) {
 	        array_args := Base->New[4];
 	        array_args[0] := IntHolder->New();
@@ -5211,10 +5273,20 @@ bundle Game.SDL2 {
 	        @font := value->Get();        
 		}
 
+		#~
+		Determines if the underlying SDL C-struct is NULL
+		@return true if NULL, false otherwise
+		~#
 		method : public : IsNull() ~ Bool {
 			return @font = 0;
 		}
 
+		#~
+		Render the LATIN1 encoded text blended
+		@param text the LATIN1 null terminated string to render.
+		@param fg the color to render the text in. This becomes colormap index 1.
+		@return Surface instance, caller responsible for freeing
+		~#
 		method : public : RenderTextSolid(text : String, fg : Color) ~ Surface {
 	        array_args := Base->New[4];
 	        array_args[0] := IntHolder->New();
@@ -5222,7 +5294,119 @@ bundle Game.SDL2 {
 	        array_args[2] := text;
 	        array_args[3] := fg;
 
-	        Proxy->GetDllProxy()->CallFunction("sdl_font_render_text_solid", array_args);
+	        Proxy->GetDllProxy()->CallFunction("sdl_font_render_text_blended", array_args);
+
+	        value := array_args[0]->As(IntHolder);
+	        return Surface->New(value->Get());
+		}
+
+		#~
+		Render the UTF8 encoded text blended
+		@param text the LATIN1 null terminated string to render.
+		@param fg the color to render the text in. This becomes colormap index 1.
+		@return Surface instance, caller responsible for freeing
+		~#
+		method : public : RenderUTF8Solid(text : String, fg : Color) ~ Surface {
+	        array_args := Base->New[4];
+	        array_args[0] := IntHolder->New();
+	        array_args[1] := IntHolder->New(@font);
+	        array_args[2] := text;
+	        array_args[3] := fg;
+
+	        Proxy->GetDllProxy()->CallFunction("sdl_font_render_utf8_blended", array_args);
+
+	        value := array_args[0]->As(IntHolder);
+	        return Surface->New(value->Get());
+		}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+		#~
+		Render the LATIN1 encoded text blended
+		@param text the LATIN1 null terminated string to render.
+		@param fg the color to render the text in. This becomes colormap index 1.
+		@return Surface instance, caller responsible for freeing
+		~#
+		method : public : RenderTextBlended(text : String, fg : Color) ~ Surface {
+	        array_args := Base->New[4];
+	        array_args[0] := IntHolder->New();
+	        array_args[1] := IntHolder->New(@font);
+	        array_args[2] := text;
+	        array_args[3] := fg;
+
+	        Proxy->GetDllProxy()->CallFunction("sdl_font_render_text_blended", array_args);
+
+	        value := array_args[0]->As(IntHolder);
+	        return Surface->New(value->Get());
+		}
+
+		#~
+		Render the UTF8 encoded text blended
+		@param text the LATIN1 null terminated string to render.
+		@param fg the color to render the text in. This becomes colormap index 1.
+		@return Surface instance, caller responsible for freeing
+		~#
+		method : public : RenderUTF8Blended(text : String, fg : Color) ~ Surface {
+	        array_args := Base->New[4];
+	        array_args[0] := IntHolder->New();
+	        array_args[1] := IntHolder->New(@font);
+	        array_args[2] := text;
+	        array_args[3] := fg;
+
+	        Proxy->GetDllProxy()->CallFunction("sdl_font_render_utf8_blended", array_args);
+
+	        value := array_args[0]->As(IntHolder);
+	        return Surface->New(value->Get());
+		}
+
+		#~
+		Render the LATIN1 encoded text shaded
+		@param text the LATIN1 null terminated string to render.
+		@param fg the color to render the text in. This becomes colormap index 1.
+		@param bg the color to render the background box in. This becomes colormap index 0.
+		@return Surface instance, caller responsible for freeing
+		~#
+		method : public : RenderTextShaded(text : String, fg : Color, bg : Color) ~ Surface {
+	        array_args := Base->New[5];
+	        array_args[0] := IntHolder->New();
+	        array_args[1] := IntHolder->New(@font);
+	        array_args[2] := text;
+	        array_args[3] := fg;
+	        array_args[4] := fg;
+
+	        Proxy->GetDllProxy()->CallFunction("sdl_font_render_text_shaded", array_args);
+
+	        value := array_args[0]->As(IntHolder);
+	        return Surface->New(value->Get());
+		}
+
+		#~
+		Render the UTF8 encoded text shaded
+		@param text the LATIN1 null terminated string to render.
+		@param fg the color to render the text in. This becomes colormap index 1.
+		@param bg the color to render the background box in. This becomes colormap index 0.
+		@return Surface instance, caller responsible for freeing
+		~#
+		method : public : RenderUTF8Shaded(text : String, fg : Color, bg : Color) ~ Surface {
+	        array_args := Base->New[5];
+	        array_args[0] := IntHolder->New();
+	        array_args[1] := IntHolder->New(@font);
+	        array_args[2] := text;
+	        array_args[3] := fg;
+	        array_args[4] := bg;
+
+	        Proxy->GetDllProxy()->CallFunction("sdl_font_render_utf8_shaded", array_args);
 
 	        value := array_args[0]->As(IntHolder);
 	        return Surface->New(value->Get());
