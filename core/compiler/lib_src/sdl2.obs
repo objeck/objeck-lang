@@ -5522,6 +5522,16 @@ bundle Game.SDL2 {
 			MIX_MAX_VOLUME := 128
 		}
 
+		#~
+		Initialize the mixer API
+		@param frequency output sampling frequency in samples per second (Hz).
+		you might use MIX_DEFAULT_FREQUENCY(22050) since that is a good value for most games.
+		@param format output sample format.
+		@param channels Number of sound channels in output.
+		Set to 2 for stereo, 1 for mono. This has nothing to do with mixing channels.
+		@param chunksize bytes used per output sample.
+		@return 0 on success, -1 on errors
+		~#
 		function : OpenAudio(frequency : Int, format : Int, channels : Int, chunksize : Int) ~ Bool {
 			array_args := Base->New[5];
 			array_args[0] := IntHolder->New();
@@ -5536,11 +5546,20 @@ bundle Game.SDL2 {
 			return value->Get() = 0;
 		}
 
+		#~
+		Shutdown and cleanup the mixer API
+		~#
 		function : Quit() ~ Nil {
 			array_args := Base->New[0];
 			Proxy->GetDllProxy()->CallFunction("sdl_mix_quit", array_args);
 		}
 
+		#~
+		Gradually fade out which channel over ms milliseconds starting from now.
+		@param which channel to fade out, or -1 to fade all channels out.
+		@param ms milliseconds of time that the fade-out effect should take to go to silence, starting now.
+		@return the number of channels set to fade out
+		~#
 		function : FadeOutChannel(which : Int, ms : Int) ~ Int {
 			array_args := Base->New[3];
 			array_args[0] := IntHolder->New();
@@ -5553,6 +5572,11 @@ bundle Game.SDL2 {
 			return value->Get();
 		}
 
+		#~
+		Halt channel playback, or all channels
+		@param channel to stop playing, or -1 for all channels
+		@return always returns zero
+		~#
 		function : HaltChannel(channel : Int) ~ Int {
 			array_args := Base->New[2];
 			array_args[0] := IntHolder->New();
@@ -5564,6 +5588,11 @@ bundle Game.SDL2 {
 			return value->Get();
 		}
 
+		#~
+		Tells you if music is actively playing, or not
+		@param channel music channel
+		@return true if music is playing, false otherwise
+		~#
 		function : Playing(channel : Int) ~ Bool {
 			array_args := Base->New[2];
 			array_args[0] := IntHolder->New();
@@ -5575,10 +5604,21 @@ bundle Game.SDL2 {
 			return value->Get() <> 0;
 		}
 
+		#~
+		Gets the current volume
+		@param channel Channel to set mix volume for. -1 will set the volume for all allocated channels.
+		@return current volume of the channel
+		~#
 		function : GetVolume(channel : Int) ~ Int {
 			return Volume(channel, -1);
 		}
 
+		#~
+		Sets the current volume
+		@param channel Channel to set mix volume for. -1 will set the volume for all allocated channels.
+		@param volume the volume to use from 0 to 128
+		@return current volume of the channel
+		~#
 		function : Volume(channel : Int, volume : Int) ~ Int {
 			array_args := Base->New[3];
 			array_args[0] := IntHolder->New();
@@ -5598,6 +5638,10 @@ bundle Game.SDL2 {
 	class MixChunk {
 	    @mix_chunk : Int;
 
+	    #~
+	    Load file for use as a sample
+	    @param file file name to load sample from
+	    ~#
 	    New(file : String) {
 	    	array_args := Base->New[2];
 			array_args[0] := IntHolder->New();
@@ -5609,14 +5653,32 @@ bundle Game.SDL2 {
 			@mix_chunk := value->Get();
 	    }
 
+	    #~
+		Determines if the underlying SDL C-struct is NULL
+		@return true if NULL, false otherwise
+		~#
 	    method : public : IsNull() ~ Bool {
 			return @mix_chunk = 0;
 		}
 
+		#~
+		Play chunk on channel
+		@param channel to play on, or -1 for the first free unreserved channel.
+		@param loops number of loops, -1 is infinite loops. Passing one here 
+		plays the sample twice
+		@return the channel the sample is played on
+		~#
 	    method : public : PlayChannel(channel : Int, loops : Int) ~ Int {
 	    	return PlayChannelTimed(channel, loops, -1);
 	    }
 
+		#~
+		Play chunk on channel
+		@param channel to play on, or -1 for the first free unreserved channel.
+		@param loops Number of loops, -1 is infinite loops
+		@param ticks millisecond limit to play sample, at most
+		@return the channel the sample is played on
+		~#
 	    method : public : PlayChannelTimed(channel : Int, loops : Int, ticks : Int) ~ Int {
 	    	if(@mix_chunk <> 0) {
 				array_args := Base->New[5];
@@ -5635,10 +5697,29 @@ bundle Game.SDL2 {
 			return -1;
 		}
 
+		#~
+		Fade in sample
+		@param channel channel to play on, or -1 for the first free unreserved channel.
+		@param loops number of loops, -1 is infinite loops.
+		Passing one here plays the sample twice (1 loop).
+		@param ms milliseconds of time that the fade-in effect should take to go from 
+		silence to full volume.
+		@return channel the sample is played on
+		~#
 		method : public : FadeInChannel(channel : Int, loops : Int, ms : Int) ~ Int {
 			return FadeInChannelTimed(channel, loops, ms, -1);
 		}
-
+		
+		#~
+		Fade in sample
+		@param channel channel to play on, or -1 for the first free unreserved channel.
+		@param loops number of loops, -1 is infinite loops.
+		Passing one here plays the sample twice (1 loop).
+		@param ms milliseconds of time that the fade-in effect should take to go from 
+		silence to full volume.
+		@param ticks millisecond limit to play sample, at most
+		@return channel the sample is played on
+		~#
 		method : public : FadeInChannelTimed(channel : Int, loops : Int, ms : Int, ticks : Int) ~ Int {
 			if(@mix_chunk <> 0) {
 				array_args := Base->New[6];
@@ -5658,6 +5739,9 @@ bundle Game.SDL2 {
 			return -1;
 		}
 
+		#~
+		Free the memory used in chunk, and free chunk itself as well.
+		~#
 	    method : public : Free() ~ Nil {
 	    	if(@mix_chunk <> 0) {
 				array_args := Base->New[1];
