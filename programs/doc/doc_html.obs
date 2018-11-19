@@ -525,7 +525,9 @@ class HtmlMaker {
 					sec_g += "<div style='padding: 5px 10px; font-size: 13px'>Return</div>";
 					sec_g += "<table class='doc-table'><tr><th>Type</th><th>Description</th></tr><tr>";
 					sec_g += "<td>@return_type</td><td>@return_desc</td></tr></table>";
-					sec_g := sec_g->ReplaceAll("@return_type", GetTypeLink(func->GetReturnType()->GetTypeName()));
+					if(func->GetReturnType() <> Nil) {
+						sec_g := sec_g->ReplaceAll("@return_type", GetTypeLink(func->GetReturnType()->GetTypeName()));
+					};
 					sec_g := sec_g->ReplaceAll("@return_desc", func->GetReturnTag()->GetDesc());
 					sec_g += "<br/>";
 				};

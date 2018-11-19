@@ -4376,8 +4376,6 @@ bundle Game.SDL2 {
 		}
 	}
 
-#----- TODO -----
-
 	#~
 	Rendering state
 	~#
@@ -4388,6 +4386,14 @@ bundle Game.SDL2 {
 			@renderer := renderer;
 		}
 
+		#~
+		Create a 2D rendering context for a window
+		@param window window context
+		@param index the index of the rendering driver to initialize, 
+		or -1 to initialize the first one supporting the requested flags
+		@param flags 0, or one or more SDL_RendererFlags OR'd together
+		@return rendering context
+		~#
 		New(window : Window, index : Int, flags : Int) {
 	        array_args := Base->New[4];
 	        array_args[0] := IntHolder->New();
@@ -4401,6 +4407,9 @@ bundle Game.SDL2 {
 			@renderer := value->Get();
 		}
 
+		#~
+		Destroy the rendering context for a window and free associated textures
+		~#
 		method : public : Destroy() ~ Nil {
 			array_args := Base->New[1];
 			array_args[0] := IntHolder->New(@renderer);
@@ -4409,10 +4418,18 @@ bundle Game.SDL2 {
 
 		}
 
+		#~
+		Determines if the underlying SDL C-struct is NULL
+		@return true if NULL, false otherwise
+		~#
 		method : public : IsNull() ~ Bool {
 			return @renderer = 0;
 		}
 
+		#~
+		Get the number of 2D rendering drivers available for the current display
+		@return a number >= 0 on success or a negative error code on failure
+		~#
 		function : GetNumRenderDrivers() ~ Int {
 			array_args := Base->New[1];
 			array_args[0] := IntHolder->New();
@@ -4423,6 +4440,12 @@ bundle Game.SDL2 {
 			return value->Get();
 		}
 
+		#~
+		Fill a rectangle on the current rendering target with the drawing color
+		@param rect Rect representing the rectangle to fill, or NULL for the 
+		entire rendering target
+		@return 0 on success or a negative error code on failure
+		~#
 		method : public : FillRect(rect : Rect) ~ Int {
 			if(@renderer <> 0) {
 				array_args := Base->New[3];
@@ -4439,6 +4462,12 @@ bundle Game.SDL2 {
 			return -1;
 		}
 
+		#~
+		Get information about a specific 2D rendering driver for the current display
+		@param index index of the driver to query information about
+		@param info RendererInfo to be filled with information on the rendering driver
+		@return 0 on success or a negative error code on failure
+		~#
 		function : GetRenderDriverInfo(index : Int, info : RendererInfo) ~ Int {
 			array_args := Base->New[3];
 			array_args[0] := IntHolder->New();
@@ -4451,6 +4480,11 @@ bundle Game.SDL2 {
 			return value->Get();
 		}
 
+		#~
+		Create a 2D software rendering context for a surface
+		@paam surface Surface representing the surface where rendering is done
+		@return valid rendering context
+		~#
 		function : CreateSoftwareRenderer(surface : Surface) ~ Renderer {
 			array_args := Base->New[2];
 			array_args[0] := IntHolder->New();
@@ -4462,6 +4496,10 @@ bundle Game.SDL2 {
 	        return Renderer->New(value->Get());
 		}
 
+		#~
+		Get the renderer associated with a window
+		@param window the window to query
+		~#
 		function : Get(window : Window) ~ Renderer {
 			array_args := Base->New[2];
 			array_args[0] := IntHolder->New();
@@ -4473,6 +4511,14 @@ bundle Game.SDL2 {
 	        return Renderer->New(value->Get());
 		}
 
+		#~
+		Set the color used for drawing operations (Rect, Line and Clear)
+		@param r the red value used to draw on the rendering target
+		@param g the green value used to draw on the rendering target
+		@param b the blue value used to draw on the rendering target
+		@param a the alpha value used to draw on the rendering target
+		@return 0 on success or a negative error code on failure
+		~#
 		method : public : SetDrawColor(r : Int, g : Int, b : Int, a : Int) ~ Int {
 			if(@renderer <> 0) {
 		        array_args := Base->New[6];
@@ -4492,7 +4538,14 @@ bundle Game.SDL2 {
 		    return -1;
 		}
 
-
+		#~
+		Create a texture for a rendering context
+		@param format one of the enumerated values in PixelFormatEnum
+		@param access one of the enumerated values in TextureAccess
+		@param w the width of the texture in pixels
+		@param h the height of the texture in pixels
+		@return created texture
+		~#
 		method : public : CreateTexture(format : Int, access : Int, w : Int, h : Int) ~ Texture {
 			if(@renderer <> 0) {
 		        array_args := Base->New[6];
@@ -4512,7 +4565,14 @@ bundle Game.SDL2 {
 		    return Nil;
 		}
 
-
+		#~
+		Get the color used for drawing operations (Rect, Line and Clear)
+		@param r pointer filled in with the red value used to draw on the rendering target
+		@param g pointer filled in with the green value used to draw on the rendering target
+		@param b pointer filled in with the blue value used to draw on the rendering target
+		@param a pointer filled in with the alpha value used to draw on the rendering target
+		@return 0 on success or a negative error code on failure
+		~#
 		method : public : GetRenderDrawColor(r : IntHolder, g : IntHolder, b : IntHolder, a : IntHolder) ~ Int {
 			array_args := Base->New[6];
 			array_args[0] := IntHolder->New();
@@ -4528,6 +4588,12 @@ bundle Game.SDL2 {
 			return value->Get();
 		}
 
+		#~
+		Draw a point on the current rendering target
+		@param x the x coordinate of the point
+		@param y the y coordinate of the point
+		@return 0 on success or a negative error code on failure
+		~#
 		method : public : DrawPoint(x : Int, y : Int) ~ Int {
 			if(@renderer <> 0) {
 				array_args := Base->New[4];
@@ -4545,6 +4611,14 @@ bundle Game.SDL2 {
 			return -1;
 		}
 
+		#~
+		Draw a line on the current rendering target
+		@param x1 the x coordinate of the start point
+		@param y1 the y coordinate of the start point
+		@param x2 the x coordinate of the end point
+		@param y2 the y coordinate of the end point
+		@return 0 on success or a negative error code on failure
+		~#
 		method : public : DrawLine(x1 : Int, y1 : Int, x2 : Int, y2 : Int) ~ Int {
 			if(@renderer <> 0) {
 				array_args := Base->New[6];
@@ -4564,6 +4638,12 @@ bundle Game.SDL2 {
 			return -1;
 		}
 
+		#~
+		Draw a rectangle on the current rendering target
+		@param rect Rect representing the rectangle to draw, 
+		or Nil to outline the entire rendering target
+		@return 0 on success or a negative error code on failure
+		~#
 		method : public : DrawRect(rect : Rect) ~ Int {
 			if(@renderer <> 0) {
 				array_args := Base->New[3];
@@ -4581,6 +4661,10 @@ bundle Game.SDL2 {
 			return -1;
 		}
 
+		#~
+		Get the drawing area for the current target
+		@paam rect Rect filled in with the current drawing area
+		~#
 		method : public : GetViewport(rect : Rect) ~ Nil {
 			if(@renderer <> 0) {
 				array_args := Base->New[2];
@@ -4592,6 +4676,12 @@ bundle Game.SDL2 {
 			};
 		}
 
+		#~
+		set the drawing area for rendering on the current target
+		@param rect Rect representing the drawing area, or Nil to 
+		set the viewport to the entire target
+		@return 0 on success or a negative error code on failure
+		~#
 		method : public : SetViewport(rect : Rect) ~ Int {
 			if(@renderer <> 0) {
 				array_args := Base->New[3];
@@ -4609,6 +4699,12 @@ bundle Game.SDL2 {
 			return -1;
 		}
 
+		#~
+		Get information about a rendering context
+		@param info an RendererInfo filled with information about 
+		the current renderer
+		@return 0 on success or a negative error code on failure
+		~#
 		method : public : GetInfo(info : RendererInfo) ~ Int {
 			if(@renderer <> 0) {
 				array_args := Base->New[3];
@@ -4625,6 +4721,9 @@ bundle Game.SDL2 {
 			return -1;
 		}
 
+		#~
+		Clear the current rendering target with the drawing color
+		~#
 		method : public : Clear() ~ Int {
 			if(@renderer <> 0) {
 				array_args := Base->New[2];
@@ -4640,6 +4739,14 @@ bundle Game.SDL2 {
 			return -1;
 		}
 
+		#~
+		Copy a portion of the texture to the current rendering target
+		@param texture the source texture; see Remarks for details
+		@param srcrect the source SDL_Rect structure or Nil for the entire texture
+		@param dstrect the destination SDL_Rect structure or Nil for the entire 
+		rendering target; the texture will be stretched to fill the given rectangle
+		@return 0 on success or a negative error code on failure
+		~#
 		method : public : Copy(texture : Texture, srcrect : Rect, dstrect : Rect) ~ Int {
 			if(@renderer <> 0) {
 				array_args := Base->New[5];
@@ -4658,6 +4765,19 @@ bundle Game.SDL2 {
 			return -1;
 		}
 
+		#~
+		Copy a portion of the texture to the current rendering target, optionally rotating it by angle 
+		around the given center and also flipping it top-bottom and/or left-right
+		@param texture the source texture; see Remarks for details
+		@param srcrect the source SDL_Rect structure or Nil for the entire texture
+		@param dstrect the destination SDL_Rect structure or Nil for the entire rendering target
+		@param angle an angle in degrees that indicates the rotation that will be applied to dstrect, 
+		rotating it in a clockwise direction
+		@param center a pointer to a point indicating the point around which dstrect will be rotated 
+		(if Nil, rotation will be done around dstrect.w/2, dstrect.h/2)
+		@param flip a SDL_RendererFlip value stating which flipping actions should be performed on the texture
+		@return 0 on success or a negative error code on failure
+		~#
 		method : public : CopyEx(texture : Texture, srcrect : Rect, dstrect : Rect, angle : Float, center : Point, flip : RendererFlip) ~ Int {
 			if(@renderer <> 0) {
 				array_args := Base->New[8];
@@ -4680,6 +4800,9 @@ bundle Game.SDL2 {
 			return -1;
 		}
 
+		#~
+		Update the screen with any rendering performed since the previous call
+		~#
 		method : public : Present() ~ Nil {
 			array_args := Base->New[1];
 			array_args[0] := IntHolder->New(@renderer);
@@ -4687,6 +4810,8 @@ bundle Game.SDL2 {
 			Proxy->GetDllProxy()->CallFunction("sdl_renderer_render_present", array_args);
 		}
 	}
+
+#----- TODO -----
 
 	#~
 	Contains information on the capabilities of a render driver or the current render context
@@ -4736,10 +4861,19 @@ bundle Game.SDL2 {
 		@pitch : Int;
 		@height : Int;
 
+		#~
+		Determines if the underlying SDL C-struct is NULL
+		@return true if NULL, false otherwise
+		~#
 		method : public : IsNull() ~ Bool {
 			return @data = 0;
 		}
 
+		#~
+		Get pixel value for index
+		@param index index to get
+		@return pixel value for index
+		~#
 		method : public : Get(index : Int) ~ Int {
 			if(@data <> 0) {
 				array_args := Base->New[3];
@@ -4756,6 +4890,12 @@ bundle Game.SDL2 {
 			return -1;
 		}
 
+		#~
+		Set pixel value for index
+		@param index index to set
+		@param value value to set
+		@return true if set, false otherwise
+		~#
 		method : public : Set(index : Int, value : Int) ~ Bool {
 			if(@data <> 0) {
 				array_args := Base->New[4];
@@ -4773,6 +4913,11 @@ bundle Game.SDL2 {
 			return false;
 		}
 
+		#~
+		Copies raw pixel data
+		@param data data to copy
+		@return true if copied, false otherwise
+		~#
 		method : public : Copy(data : PixelData) ~ Bool {
 			if(@data <> 0) {
 				array_args := Base->New[3];
@@ -4789,10 +4934,18 @@ bundle Game.SDL2 {
 			return false;
 		}
 
+		#~
+		Gets the pitch
+		@return pitch value
+		~#
 		method : public : GetPitch() ~ Int {
 			return @pitch;
 		}
 
+		#~
+		Gets the height
+		@return height value
+		~#
 		method : public : GetHeight() ~ Int {
 			return @height;
 		}
