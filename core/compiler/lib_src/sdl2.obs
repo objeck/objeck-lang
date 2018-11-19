@@ -5917,6 +5917,10 @@ bundle Game.SDL2 {
 			return value->Get();
 		}
 
+		#~
+		Determine the L1 cache line size of the CPU
+		@return L1 cache line size of the CPU, in bytes.
+		~#
 		function : GetCacheLineSize() ~ Int {
 			array_args := Base->New[1];
 			array_args[0] := IntHolder->New();
@@ -5927,6 +5931,10 @@ bundle Game.SDL2 {
 			return value->Get();
 		}
 
+		#~
+		Determine whether the CPU has the RDTSC instruction
+		@return true if the CPU has the RDTSC instruction or false if not
+		~#
 		function : HasRDTSC() ~ Bool {
 			array_args := Base->New[1];
 			array_args[0] := IntHolder->New();
