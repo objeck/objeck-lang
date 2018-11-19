@@ -5819,6 +5819,10 @@ bundle Game.SDL2 {
 	Operations for gathering information about the processor's features
 	~#
 	class CPU {
+		#~
+		Get the number of CPU cores available
+		@return the total number of logical CPU cores
+		~#
 		function : GetCount() ~ Int {
 			array_args := Base->New[1];
 			array_args[0] := IntHolder->New();
@@ -5969,9 +5973,7 @@ bundle Game.SDL2 {
 			return value->Get();
 		}
 	}
-
-#----- TODO END -----
-
+	
 	#~
 	Filesystem helper functions
 	~#
