@@ -2320,8 +2320,8 @@ extern "C" {
   __declspec(dllexport)
 #endif
   void sdl_ticks_passed(VMContext& context) {
-    const Uint32 a = (int)APITools_GetIntValue(context, 1);
-    const Uint32 b = (int)APITools_GetIntValue(context, 2);
+    const Uint32 a = APITools_GetIntValue(context, 1);
+    const Uint32 b = APITools_GetIntValue(context, 2);
     APITools_SetIntValue(context, 0, SDL_TICKS_PASSED(a, b));
   }
 
@@ -2381,6 +2381,94 @@ extern "C" {
     sdl_color_raw_write(&fg, fg_obj);
 
     APITools_SetIntValue(context, 0, (size_t)TTF_RenderText_Solid(font, text.c_str(), fg));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_font_render_utf8_solid(VMContext& context) {
+    TTF_Font* font = (TTF_Font*)APITools_GetIntValue(context, 1);
+
+    const wstring wtext = APITools_GetStringValue(context, 2);
+    const string text(wtext.begin(), wtext.end());
+
+    SDL_Color fg;
+    size_t* fg_obj = APITools_GetObjectValue(context, 3);
+    sdl_color_raw_write(&fg, fg_obj);
+
+    APITools_SetIntValue(context, 0, (size_t)TTF_RenderUTF8_Solid(font, text.c_str(), fg));
+  }
+   
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_font_render_text_blended(VMContext& context) {
+    TTF_Font* font = (TTF_Font*)APITools_GetIntValue(context, 1);
+
+    const wstring wtext = APITools_GetStringValue(context, 2);
+    const string text(wtext.begin(), wtext.end());
+
+    SDL_Color fg;
+    size_t* fg_obj = APITools_GetObjectValue(context, 3);
+    sdl_color_raw_write(&fg, fg_obj);
+
+    APITools_SetIntValue(context, 0, (size_t)TTF_RenderText_Blended(font, text.c_str(), fg));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_font_render_utf8_blended(VMContext& context) {
+    TTF_Font* font = (TTF_Font*)APITools_GetIntValue(context, 1);
+
+    const wstring wtext = APITools_GetStringValue(context, 2);
+    const string text(wtext.begin(), wtext.end());
+
+    SDL_Color fg;
+    size_t* fg_obj = APITools_GetObjectValue(context, 3);
+    sdl_color_raw_write(&fg, fg_obj);
+
+    APITools_SetIntValue(context, 0, (size_t)TTF_RenderUTF8_Blended(font, text.c_str(), fg));
+  }
+  
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+    void sdl_font_render_text_shaded(VMContext& context) {
+    TTF_Font* font = (TTF_Font*)APITools_GetIntValue(context, 1);
+
+    const wstring wtext = APITools_GetStringValue(context, 2);
+    const string text(wtext.begin(), wtext.end());
+
+    SDL_Color fg;
+    size_t* fg_obj = APITools_GetObjectValue(context, 3);
+    sdl_color_raw_write(&fg, fg_obj);
+
+    SDL_Color bg;
+    size_t* bg_obj = APITools_GetObjectValue(context, 4);
+    sdl_color_raw_write(&bg, bg_obj);
+
+    APITools_SetIntValue(context, 0, (size_t)TTF_RenderText_Shaded(font, text.c_str(), fg, bg));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+    void sdl_font_render_utf8_shaded(VMContext& context) {
+    TTF_Font* font = (TTF_Font*)APITools_GetIntValue(context, 1);
+
+    const wstring wtext = APITools_GetStringValue(context, 2);
+    const string text(wtext.begin(), wtext.end());
+
+    SDL_Color fg;
+    size_t* fg_obj = APITools_GetObjectValue(context, 3);
+    sdl_color_raw_write(&fg, fg_obj);
+
+    SDL_Color bg;
+    size_t* bg_obj = APITools_GetObjectValue(context, 4);
+    sdl_color_raw_write(&bg, bg_obj);
+
+    APITools_SetIntValue(context, 0, (size_t)TTF_RenderUTF8_Shaded(font, text.c_str(), fg, bg));
   }
 
   //
