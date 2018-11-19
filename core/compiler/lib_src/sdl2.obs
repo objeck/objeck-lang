@@ -5945,6 +5945,10 @@ bundle Game.SDL2 {
 			return value->Get() = 0 ? false : true;
 		}
 
+		#~
+		Determine whether the CPU has AltiVec features
+		@return true if present, false otherwise
+		~#
 		function : HasAltiVec() ~ Bool {
 			array_args := Base->New[1];
 			array_args[0] := IntHolder->New();
@@ -5955,6 +5959,10 @@ bundle Game.SDL2 {
 			return value->Get() = 0 ? false : true;
 		}
 
+		#~
+		Determine whether the CPU has MMX features
+		@return true if present, false otherwise
+		~#
 		function : HasMMX() ~ Bool {
 			array_args := Base->New[1];
 			array_args[0] := IntHolder->New();
@@ -5965,6 +5973,10 @@ bundle Game.SDL2 {
 			return value->Get() = 0 ? false : true;
 		}
 
+		#~
+		Determine whether the CPU has 3DNow! features
+		@return true if present, false otherwise
+		~#
 		function : Has3DNow() ~ Bool {
 			array_args := Base->New[1];
 			array_args[0] := IntHolder->New();
@@ -5975,6 +5987,10 @@ bundle Game.SDL2 {
 			return value->Get() = 0 ? false : true;
 		}
 
+		#~
+		Determine whether the CPU has SSE features
+		@return true if present, false otherwise
+		~#
 		function : HasSSE() ~ Bool {
 			array_args := Base->New[1];
 			array_args[0] := IntHolder->New();
@@ -5985,6 +6001,10 @@ bundle Game.SDL2 {
 			return value->Get() = 0 ? false : true;
 		}
 
+		#~
+		Determine whether the CPU has SSE2 features
+		@return true if present, false otherwise
+		~#
 		function : HasSSE2() ~ Bool {
 			array_args := Base->New[1];
 			array_args[0] := IntHolder->New();
@@ -5995,6 +6015,10 @@ bundle Game.SDL2 {
 			return value->Get() = 0 ? false : true;
 		}
 
+		#~
+		Determine whether the CPU has SSE3 features
+		@return true if present, false otherwise
+		~#
 		function : HasSSE3() ~ Bool {
 			array_args := Base->New[1];
 			array_args[0] := IntHolder->New();
@@ -6015,6 +6039,10 @@ bundle Game.SDL2 {
 			return value->Get() = 0 ? false : true;
 		}
 
+		#~
+		Determine whether the CPU has SSE 4.2 features
+		@return true if present, false otherwise
+		~#
 		function : HasSSE42() ~ Bool {
 			array_args := Base->New[1];
 			array_args[0] := IntHolder->New();
@@ -6025,6 +6053,10 @@ bundle Game.SDL2 {
 			return value->Get() = 0 ? false : true;
 		}
 
+		#~
+		Determine whether the CPU has AVX features
+		@return true if present, false otherwise
+		~#
 		function : HasAVX() ~ Bool {
 			array_args := Base->New[1];
 			array_args[0] := IntHolder->New();
@@ -6035,6 +6067,10 @@ bundle Game.SDL2 {
 			return value->Get() = 0 ? false : true;
 		}
 
+		#~
+		Determine whether the CPU has AVX2 features
+		@return true if present, false otherwise
+		~#
 		function : HasAVX2() ~ Bool {
 			array_args := Base->New[1];
 			array_args[0] := IntHolder->New();
@@ -6045,6 +6081,10 @@ bundle Game.SDL2 {
 			return value->Get() = 0 ? false : true;
 		}
 
+		#~
+		Determine whether the CPU has NEON features
+		@return true if present, false otherwise
+		~#
 		function : HasNEON() ~ Bool {
 			array_args := Base->New[1];
 			array_args[0] := IntHolder->New();
@@ -6055,6 +6095,10 @@ bundle Game.SDL2 {
 			return value->Get() = 0 ? false : true;
 		}
 
+		#~
+		Get the amount of RAM configured in the system
+		@return amount of RAM in MB
+		~#
 		function : GetSystemRAM() ~ Int {
 			array_args := Base->New[1];
 			array_args[0] := IntHolder->New();
