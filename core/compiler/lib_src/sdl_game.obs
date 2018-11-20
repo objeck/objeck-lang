@@ -72,6 +72,72 @@ bundle Game.Framework {
 	}
 
 	#~
+	Titled image sprite
+	~#
+	class TitledImageSprite {
+		@texture : Texture;
+		@renderer : Renderer;
+		@width : Int;
+		@height : Int;
+		@scale : Float;
+		@scaled : Bool;
+
+		New(renderer : Renderer, file : String) {
+			@scale := 1.0;
+			@scaled := true;
+
+			LoadImage(file, Nil);
+		}
+
+		#~
+		Destroys and frees sprite resources
+		~#
+		method : public : Free() ~ Nil {
+			if(@texture <> Nil)	{
+				@texture->Destroy();
+			};
+		}
+
+		#~
+		Loads an image
+		@param file image to load
+		@param colorkey key color
+		@return true if success, false otherwise
+		~#
+		method : LoadImage(file : String, colorkey : Color) ~ Bool {
+			Free();
+			
+			surface := Image->Load(file);
+			if(surface->IsNull()) {
+				"Unable to load image '{$file}'!"->ErrorLine();
+				return false;
+			};
+
+			if(colorkey <> Nil) {
+				surface->SetColorKey(true, surface->GetPixelFormat()->MapRGB(colorkey->GetR(), colorkey->GetG(), colorkey->GetB()));
+			}
+			else {
+				surface->SetColorKey(true, surface->GetPixelFormat()->MapRGB(0, 0xFF, 0xFF));
+			};
+
+			texture := surface->CreateTexture(@renderer);
+			if(texture->IsNull()) {
+				"Unable to create texture!"->ErrorLine();
+				return false;
+			};
+
+			@width := surface->GetW();
+			@height := surface->GetH();
+			
+			surface->Free();
+			@texture := texture;
+			return @texture <> Nil;
+		}
+
+
+	}
+
+	#~
 	On-screen image
 	~#
 	class ImageSprite from Sprite {
