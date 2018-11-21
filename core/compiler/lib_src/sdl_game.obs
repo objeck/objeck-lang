@@ -77,16 +77,26 @@ bundle Game.Framework {
 	class TitledImageSprite {
 		@texture : Texture;
 		@renderer : Renderer;
+		@is_ok : Bool;
 		@width : Int;
 		@height : Int;
-		@scale : Float;
-		@scaled : Bool;
+		@shapes : Vector;
 
 		New(renderer : Renderer, file : String) {
+			@renderer := renderer;
 			@scale := 1.0;
 			@scaled := true;
+			@shapes := Vector->New();
 
-			LoadImage(file, Nil);
+			@is_ok := LoadImage(file, Nil);
+		}
+
+		#~
+		Initialization status flag
+		@return true if initialized, false otherwise
+		~#
+		method : public : IsOk() ~ Bool {
+			return @is_ok;
 		}
 
 		#~
@@ -96,6 +106,12 @@ bundle Game.Framework {
 			if(@texture <> Nil)	{
 				@texture->Destroy();
 			};
+
+			each(i : @shapes) {
+				shape := @shapes->Get(i)->As(Shape);
+				shape->Free();
+			};
+			@shapes->Empty();
 		}
 
 		#~
@@ -134,7 +150,21 @@ bundle Game.Framework {
 			return @texture <> Nil;
 		}
 
+		method : public : AddTile(x : Int, y : Int) ~ ImageSprite {
+			sprite := ImageSprite->New(@renderer, @texture);
+			sprite->SetPostion(Position->New(x, y, @width, @height));
+			@shapes->AddBack(sprite);
 
+			return sprite;
+		}
+
+		method : public : Render() ~ Nil {
+			each(i : @shapes) {
+				shape := @shapes->Get(i)->As(ImageSprite);
+				shape->Render();
+			};
+		}
+		
 	}
 
 	#~
@@ -149,23 +179,31 @@ bundle Game.Framework {
 		New(renderer : Renderer, file : String, colorkey : Color, clip : Rect) {
 			Parent(renderer);
 			@clip := clip;
-			@angle := 0;
+			@angle := 0.0;
 			@flip := RendererFlip->SDL_FLIP_NONE;
 			@is_ok := LoadImage(file, colorkey);
 		}
 
 		New(renderer : Renderer, file : String, colorkey : Color) {
 			Parent(renderer);
-			@angle := 0;
+			@angle := 0.0;
 			@flip := RendererFlip->SDL_FLIP_NONE;
 			@is_ok := LoadImage(file, colorkey);
 		}
 
 		New(renderer : Renderer, file : String) {
 			Parent(renderer);
-			@angle := 0;
+			@angle := 0.0;
 			@flip := RendererFlip->SDL_FLIP_NONE;
 			@is_ok := LoadImage(file, Nil);
+		}
+
+		New(renderer : Renderer, texture : Texture) {
+			Parent(renderer);
+			@texture := texture;
+			@angle := 0.0;
+			@flip := RendererFlip->SDL_FLIP_NONE;
+			@is_ok := true;
 		}
 
 		#~
@@ -1138,6 +1176,7 @@ bundle Game.Framework {
 		@frame_start : Int;
 
 		@shapes : Vector;
+		@tiles : Vector;
 
 		@font : Font;
 		@joystick : Joystick;
@@ -1158,7 +1197,8 @@ bundle Game.Framework {
 			@fps := fps;
 			@frame_rate := 1000 / @fps;
 			@shapes := Vector->New();
-			
+			@tiles := Vector->New();
+						
 			@is_ok := Init(screen_width, screen_height, title, init_flags);
 		}
 
@@ -1169,12 +1209,13 @@ bundle Game.Framework {
 		@param title screen title
 		~#
 		New(screen_width : Int, screen_height : Int, title : String) {
-			init_flags := HardwareFlags->SDL_INIT_VIDEO->As(Int) or
-				HardwareFlags->SDL_INIT_AUDIO->As(Int) or 
-				HardwareFlags->SDL_INIT_JOYSTICK->As(Int);
+			init_flags := HardwareFlags->SDL_INIT_VIDEO or
+				HardwareFlags->SDL_INIT_AUDIO or 
+				HardwareFlags->SDL_INIT_JOYSTICK;
 			@fps := 60;	
 			@frame_rate := 1000 / @fps;
 			@shapes := Vector->New();
+			@tiles := Vector->New();
 
 			@is_ok := Init(screen_width, screen_height, title, init_flags);
 		}
@@ -1231,7 +1272,7 @@ bundle Game.Framework {
 			};
 			@renderer->SetDrawColor(0xFF, 0xFF, 0xFF, 0xFF);
 
-			img_flags := ImageFlags->IMG_INIT_PNG->As(Int);
+			img_flags := ImageFlags->IMG_INIT_PNG;
 			if((Image->Init(img_flags) and img_flags) = 0) {
 				"SDL image could not initialize!"->ErrorLine();
 				return false;
@@ -1423,6 +1464,14 @@ bundle Game.Framework {
 			return shape;
 		}
 
+		method : public : AddTitledImageSprite(file : String) ~ TitledImageSprite {
+			shape := TitledImageSprite->New(@renderer, file);
+			SetOk(shape->IsOk());
+			@tiles->AddBack(shape);
+
+			return shape;
+		}
+
 		#~
 		Adds an image sprite to the framework
 		@param file file path to image asset
@@ -1496,6 +1545,12 @@ bundle Game.Framework {
 				shape->Free();
 			};
 			@shapes->Empty();
+
+			each(i : @tiles) {
+				shape := @tiles->Get(i)->As(TitledImageSprite);
+				shape->Free();
+			};
+			@tiles->Empty();
 		}
 
 		#~
