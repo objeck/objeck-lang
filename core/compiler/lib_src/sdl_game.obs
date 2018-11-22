@@ -74,10 +74,12 @@ bundle Game.Framework {
 	#~
 	Titled image sprite
 	~#
-	class TitledImageSprite {
+	class TitledImageSprite implements Shape {
 		@texture : Texture;
 		@renderer : Renderer;
 		@is_ok : Bool;
+		@x : Int;
+		@y : Int;
 		@width : Int;
 		@height : Int;
 		@shapes : List;
@@ -106,6 +108,30 @@ bundle Game.Framework {
 			};
 
 			@shapes->Empty();
+		}
+
+		#~
+		Gets sprite width
+		@return sprite width
+		~#
+		method : public : GetWidth() ~ Int {
+			return @width;
+		}
+
+		#~
+		Gets sprite height
+		@return sprite height
+		~#
+		method : public : GetHeight() ~ Int {
+			return @height;
+		}
+
+		#~
+		Gets relative sprite positions from original creation
+		@return relative sprite position
+		~#
+		method : public : GetPosition() ~ Position {
+			return Position->New(@x, @y, @width, @height);
 		}
 
 		#~
@@ -187,6 +213,7 @@ bundle Game.Framework {
 				while(@shapes->More()) {
 					shape := @shapes->Get()->As(ImageSprite);
 					shape->GetPosition()->AddX(x);
+					@x += x;
 					@shapes->Next();
 				};
 			};
@@ -202,6 +229,7 @@ bundle Game.Framework {
 				while(@shapes->More()) {
 					shape := @shapes->Get()->As(ImageSprite);
 					shape->GetPosition()->AddY(y);
+					@y += y;
 					@shapes->Next();
 				};
 			};
@@ -1229,7 +1257,6 @@ bundle Game.Framework {
 		@frame_start : Int;
 
 		@shapes : Vector;
-		@tiles : Vector;
 
 		@font : Font;
 		@joystick : Joystick;
@@ -1250,7 +1277,6 @@ bundle Game.Framework {
 			@fps := fps;
 			@frame_rate := 1000 / @fps;
 			@shapes := Vector->New();
-			@tiles := Vector->New();
 						
 			@is_ok := Init(screen_width, screen_height, title, init_flags);
 		}
@@ -1268,7 +1294,6 @@ bundle Game.Framework {
 			@fps := 60;	
 			@frame_rate := 1000 / @fps;
 			@shapes := Vector->New();
-			@tiles := Vector->New();
 
 			@is_ok := Init(screen_width, screen_height, title, init_flags);
 		}
@@ -1526,7 +1551,7 @@ bundle Game.Framework {
 		method : public : AddTitledImageSprite(file : String, colorkey : Color) ~ TitledImageSprite {
 			shape := TitledImageSprite->New(@renderer, file, colorkey);
 			SetOk(shape->IsOk());
-			@tiles->AddBack(shape);
+			@shapes->AddBack(shape);
 
 			return shape;
 		}
@@ -1603,13 +1628,8 @@ bundle Game.Framework {
 				shape := @shapes->Get(i)->As(Shape);
 				shape->Free();
 			};
+			
 			@shapes->Empty();
-
-			each(i : @tiles) {
-				shape := @tiles->Get(i)->As(TitledImageSprite);
-				shape->Free();
-			};
-			@tiles->Empty();
 		}
 
 		#~
