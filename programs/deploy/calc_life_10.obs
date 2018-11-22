@@ -1,6 +1,6 @@
 #~
 # compile: obc -src calc_life_10.obs -dest life.obe
-# run: obr life.obe
+# run: obr calc_life_10.obe
 ~#
 
 use System.IO;
