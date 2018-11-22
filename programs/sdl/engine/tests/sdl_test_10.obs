@@ -21,7 +21,6 @@ class Demo {
 	}
 
 	method : Run() ~ Nil {
-		foo := @framework->AddImageSprite("media/images/block1.png");
 		if(@framework->IsOk()) {
 			e := @framework->GetEvent();
 			@quit := false;
@@ -41,7 +40,6 @@ class Demo {
 		};
 
 		leaving {
-			@tile->Free();
 			@framework->Quit();
 		};
 	}
