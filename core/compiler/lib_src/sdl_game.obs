@@ -89,6 +89,13 @@ bundle Game.Framework {
 			@is_ok := LoadImage(file, Nil);
 		}
 
+		New(renderer : Renderer, file : String, colorkey : Color) {
+			@renderer := renderer;
+			@shapes := List->New();
+
+			@is_ok := LoadImage(file, colorkey);
+		}
+
 		#~
 		Initialization status flag
 		@return true if initialized, false otherwise
@@ -104,13 +111,7 @@ bundle Game.Framework {
 			if(@texture <> Nil)	{
 				@texture->Destroy();
 			};
-
-			@shapes->Rewind();
-			while(@shapes->More()) {
-				shape := @shapes->Get()->As(ImageSprite);
-				shape->Free();
-				@shapes->Next();
-			};
+			
 			@shapes->Empty();
 		}
 
