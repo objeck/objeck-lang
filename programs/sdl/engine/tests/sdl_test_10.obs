@@ -16,7 +16,8 @@ class Demo {
 		@framework->SetClearColor(Color->New(0, 0, 255));
 		@tile := @framework->AddTitledImageSprite("media/images/block1.png");
 		@tile->AddTile(10, 10);
-		@tile->AddTile(100, 100);	
+		@tile->AddTile(100, 100);
+		@tile->AddTile(150, 150);	
 	}
 
 	method : Run() ~ Nil {
