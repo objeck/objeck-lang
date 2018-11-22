@@ -223,7 +223,7 @@ bundle Game.Framework {
 	}
 
 	#~
-	On-screen image
+	Sprite image
 	~#
 	class ImageSprite from Sprite {
 		@is_ok : Bool;
@@ -357,7 +357,7 @@ bundle Game.Framework {
 	}
 
 	#~
-	On-screen text
+	Rendered TTF text
 	~#
 	class TextSprite from Sprite {
 		@font : Font;
@@ -2057,4 +2057,4 @@ bundle Game.Framework {
 			return lhs->GetX()*rhs->GetX() + lhs->GetY()*rhs->GetY();
 		}
 	}
-}	
+}
