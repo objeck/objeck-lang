@@ -16,20 +16,22 @@ class Demo {
 		@framework->SetClearColor(Color->New(0, 0, 255));
 		@tile := @framework->AddTitledImageSprite("media/images/block1.png");
 		@tile->AddTile(10, 10);
-		@tile->AddTile(30, 30);	
+		@tile->AddTile(100, 100);	
 	}
 
 	method : Run() ~ Nil {
+		foo := @framework->AddImageSprite("media/images/block1.png");
 		if(@framework->IsOk()) {
 			e := @framework->GetEvent();
 			@quit := false;
 			while(<>@quit) {
 				Start();
-				
+
+#				foo->Render(100, 100);
+
 				Input(e);
 				Update();
-				Draw();
-				
+				Draw();				
  				End();
 			};
 		}
@@ -63,11 +65,11 @@ class Demo {
 		    if(e->GetType() = EventType->SDL_KEYDOWN) {
 		        select(e->GetKey()->GetKeysym()->GetScancode()) {    	
 		            label Scancode->SDL_SCANCODE_LEFT: {
-		            	"--- Left ---"->PrintLine();
+		            	@tile->AddX(-3);
 		            }
 
 		            label Scancode->SDL_SCANCODE_RIGHT: {
-		            	"--- Right ---"->PrintLine();
+		            	@tile->AddX(3);
 		            }
 		        };
 		    }

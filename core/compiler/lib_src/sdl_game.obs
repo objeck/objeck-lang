@@ -80,13 +80,11 @@ bundle Game.Framework {
 		@is_ok : Bool;
 		@width : Int;
 		@height : Int;
-		@shapes : Vector;
+		@shapes : List;
 
 		New(renderer : Renderer, file : String) {
 			@renderer := renderer;
-			@scale := 1.0;
-			@scaled := true;
-			@shapes := Vector->New();
+			@shapes := List->New();
 
 			@is_ok := LoadImage(file, Nil);
 		}
@@ -107,9 +105,11 @@ bundle Game.Framework {
 				@texture->Destroy();
 			};
 
-			each(i : @shapes) {
-				shape := @shapes->Get(i)->As(Shape);
+			@shapes->Rewind();
+			while(@shapes->More()) {
+				shape := @shapes->Get()->As(ImageSprite);
 				shape->Free();
+				@shapes->Next();
 			};
 			@shapes->Empty();
 		}
@@ -158,13 +158,60 @@ bundle Game.Framework {
 			return sprite;
 		}
 
-		method : public : Render() ~ Nil {
-			each(i : @shapes) {
-				shape := @shapes->Get(i)->As(ImageSprite);
-				shape->Render();
+		method : public : RemoveTile(sprite : ImageSprite) ~ Bool {
+			@shapes->Rewind();
+			while(@shapes->More()) {
+				shape := @shapes->Get()->As(ImageSprite);
+				if(sprite = shape) {
+					@shapes->Remove();
+					return true;
+				};
+				@shapes->Next();
+			};
+
+			return false;
+		}
+
+		#~
+		Increments the current x-position
+		@param x increment to the current x-position
+		~#
+		method : public : AddX(x : Int) ~ Nil {
+			if(@is_ok) {	
+				@shapes->Rewind();
+				while(@shapes->More()) {
+					shape := @shapes->Get()->As(ImageSprite);
+					shape->GetPosition()->AddX(x);
+					@shapes->Next();
+				};
 			};
 		}
-		
+
+		#~
+		Increments the current y-position
+		@param y increment to the current y-position
+		~#
+		method : public : AddY(y : Int) ~ Nil {
+			if(@is_ok) {	
+				@shapes->Rewind();
+				while(@shapes->More()) {
+					shape := @shapes->Get()->As(ImageSprite);
+					shape->GetPosition()->AddY(y);
+					@shapes->Next();
+				};
+			};
+		}
+
+		method : public : Render() ~ Nil {
+			if(@is_ok) {	
+				@shapes->Rewind();
+				while(@shapes->More()) {
+					shape := @shapes->Get()->As(ImageSprite);
+					shape->Render();
+					@shapes->Next();
+				};
+			};
+		}
 	}
 
 	#~
@@ -201,9 +248,9 @@ bundle Game.Framework {
 		New(renderer : Renderer, texture : Texture) {
 			Parent(renderer);
 			@texture := texture;
+			@is_ok := true;
 			@angle := 0.0;
 			@flip := RendererFlip->SDL_FLIP_NONE;
-			@is_ok := true;
 		}
 
 		#~
@@ -390,7 +437,6 @@ bundle Game.Framework {
 			@render_rect := Rect->New();
 			@position := Position->New(@render_rect);
 			@scale := 1.0;
-			@scaled := true;
 		}
 		
 		#~
@@ -466,12 +512,11 @@ bundle Game.Framework {
 				width := IntHolder->New();
 				height := IntHolder->New();
 				@texture->Query(format, access, width, height);
-
 				@render_rect->SetW(width->Get() * @scale);
 				@render_rect->SetH(height->Get() * @scale);
 				@scaled := true;
 			};
-			
+
 			if(clip <> Nil)	{
 				@render_rect->SetW(clip->GetW() * @scale);
 				@render_rect->SetH(clip->GetH() * @scale);
