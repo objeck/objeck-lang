@@ -14,7 +14,7 @@ class Demo {
 	New() {
 		@framework := GameFramework->New(Game->SCREEN_WIDTH, Game->SCREEN_HEIGHT, "Platformer Demo");
 		@framework->SetClearColor(Color->New(0, 0, 255));
-		@tile := @framework->AddTitledImageSprite("media/images/block1.png");
+		@tile := @framework->AddTitledImageSprite("media/images/block1.png", Nil);
 		@tile->AddTile(10, 10);
 		@tile->AddTile(100, 100);
 		@tile->AddTile(150, 150);	
