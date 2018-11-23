@@ -2092,8 +2092,8 @@ extern "C" {
 #endif
   void sdl_pixeldata_get(VMContext& context) {
     size_t* pixels_obj = APITools_GetObjectValue(context, 1);
-    const Uint32 index = (int)APITools_GetIntValue(context, 2);
-    const Uint32 max_pixels = (pixels_obj[1] / sizeof(Uint32)) * pixels_obj[2];
+    const Uint32 index = (Uint32)APITools_GetIntValue(context, 2);
+    const Uint32 max_pixels = ((Uint32)pixels_obj[1] / sizeof(Uint32)) * (Uint32)pixels_obj[2];
 
     if(index < max_pixels) {
       Uint32* pixels = (Uint32*)pixels_obj[0];
@@ -2109,12 +2109,12 @@ extern "C" {
 #endif
   void sdl_pixeldata_set(VMContext& context) {
     size_t* pixels_obj = APITools_GetObjectValue(context, 1);
-    const Uint32 index = (int)APITools_GetIntValue(context, 2);
-    const Uint32 max_pixels = (pixels_obj[1] / sizeof(Uint32)) * pixels_obj[2];
+    const Uint32 index = (Uint32)APITools_GetIntValue(context, 2);
+    const Uint32 max_pixels = ((Uint32)pixels_obj[1] / sizeof(Uint32)) * (Uint32)pixels_obj[2];
 
     if (index < max_pixels) {
       Uint32* pixels = (Uint32*)pixels_obj[0];
-      pixels[index] = APITools_GetIntValue(context, 3);;
+      pixels[index] = (Uint32)APITools_GetIntValue(context, 3);;
       APITools_SetIntValue(context, 0, 1);
     }
     else {
@@ -2129,10 +2129,10 @@ extern "C" {
     size_t* to_obj = APITools_GetObjectValue(context, 1);
     size_t* from_obj = APITools_GetObjectValue(context, 2);
 
-    const Uint32 to_size = to_obj[1] * to_obj[2];
+    const Uint32 to_size = (Uint32)to_obj[1] * (Uint32)to_obj[2];
     void* to = (void*)(to_obj[0]);
 
-    const Uint32 from_size = from_obj[1] * from_obj[2];
+    const Uint32 from_size = (Uint32)from_obj[1] * (Uint32)from_obj[2];
     void* from = (void*)(from_obj[0]);
     
     if(to && from && to_size >= from_size) {
@@ -2313,15 +2313,15 @@ extern "C" {
   __declspec(dllexport)
 #endif
   void sdl_timer_delay(VMContext& context) {
-    SDL_Delay(APITools_GetIntValue(context, 0));
+    SDL_Delay((Uint32)APITools_GetIntValue(context, 0));
   }
 
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
   void sdl_ticks_passed(VMContext& context) {
-    const Uint32 a = APITools_GetIntValue(context, 1);
-    const Uint32 b = APITools_GetIntValue(context, 2);
+    const Uint32 a = (Uint32)APITools_GetIntValue(context, 1);
+    const Uint32 b = (Uint32)APITools_GetIntValue(context, 2);
     APITools_SetIntValue(context, 0, SDL_TICKS_PASSED(a, b));
   }
 

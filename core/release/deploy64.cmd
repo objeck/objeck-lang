@@ -67,7 +67,7 @@ call code_doc64.cmd
 
 REM finished
 if [%1] NEQ [deploy] goto end
-	rmdir /q /s deploy64\doc
+	rmdir /q /s deploy64\examples\doc
 	mkdir "%USERPROFILE%\Desktop\objeck-lang-win64"
 	xcopy /e deploy64 "%USERPROFILE%\Desktop\objeck-lang-win64"
 	mkdir "%USERPROFILE%\Desktop\objeck-lang-win64\doc\icons"
