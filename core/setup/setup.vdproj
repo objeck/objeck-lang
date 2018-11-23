@@ -5987,7 +5987,7 @@
         "RemovePreviousVersions" = "11:TRUE"
         "DetectNewerInstalledVersion" = "11:TRUE"
         "InstallAllUsers" = "11:TRUE"
-        "ProductVersion" = "8:4.1.0"
+        "ProductVersion" = "8:4.1.1"
         "Manufacturer" = "8:Randy Hollines"
         "ARPHELPTELEPHONE" = "8:"
         "ARPHELPLINK" = "8:"
