@@ -173,7 +173,7 @@ bundle Game.Framework {
 		#~
 		Adds a tile at the specified location
 		@param x x coordinate
-		@param x x coordinate
+		@param y y coordinate
 		@return image sprite
 		~#
 		method : public : AddTile(x : Int, y : Int) ~ ImageSprite {
