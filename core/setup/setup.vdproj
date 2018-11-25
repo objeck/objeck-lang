@@ -21,6 +21,12 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_018A3D11B9544EC7BC910A7098F22BA3"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_028DFAD567BE4B0DBB9C2D9DA87B95DC"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -52,12 +58,6 @@
         "Entry"
         {
         "MsmKey" = "8:_04EAF5AA0951474691116654C93B28E5"
-        "OwnerKey" = "8:_UNDEFINED"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
-        "MsmKey" = "8:_05A447002C8D42CC8B49864167568039"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -129,19 +129,7 @@
         }
         "Entry"
         {
-        "MsmKey" = "8:_0CB5981DE0BD447D90D3290B9CAEFB0A"
-        "OwnerKey" = "8:_UNDEFINED"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
         "MsmKey" = "8:_0F822AE1346E4C18AF07732580B9C45B"
-        "OwnerKey" = "8:_UNDEFINED"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
-        "MsmKey" = "8:_1059DE8B13584B73BDE4920329FEA65E"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -171,6 +159,12 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_14F5FA39862644F3B8E718CB4B8D2E66"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_155C86DC69AC44EF8FE723BC1C20AA08"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -183,19 +177,7 @@
         }
         "Entry"
         {
-        "MsmKey" = "8:_17A9ABFFC60448C68D954515E7F37966"
-        "OwnerKey" = "8:_UNDEFINED"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
         "MsmKey" = "8:_1980EE9F1E5D4B6B9BD3F73D3E225E48"
-        "OwnerKey" = "8:_UNDEFINED"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
-        "MsmKey" = "8:_1AAE186967604AB7BB67FA8078C51600"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -256,6 +238,12 @@
         "Entry"
         {
         "MsmKey" = "8:_2B21CFD6B86E45BCA7EC72EEC8B1058E"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_2B840AB2646B4B32916C5D5A856FC300"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -328,6 +316,24 @@
         "Entry"
         {
         "MsmKey" = "8:_37879174EE3548E9B9AEFD54FD73575A"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_3830BA0C256C46278BF1D7BCAE977D83"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_38A756B32BE34280990BB006E17090DE"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_3AD850E65639410A99A95F33EF37BA2D"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -507,6 +513,12 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_563F5CA9443644E09556AD481B22FC3A"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_5763D801DEA34A858CDBF9C18234B269"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -532,12 +544,6 @@
         "Entry"
         {
         "MsmKey" = "8:_5F4487BAF0F94BFD81FB7BB2CA5293E3"
-        "OwnerKey" = "8:_UNDEFINED"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
-        "MsmKey" = "8:_5FBC056ABBF943429DB1A81105E50FB6"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -615,12 +621,6 @@
         }
         "Entry"
         {
-        "MsmKey" = "8:_69FC6202312447C08AB93C3900D9D629"
-        "OwnerKey" = "8:_UNDEFINED"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
         "MsmKey" = "8:_6B2207B0171F4E618E729BC6CCFE02F7"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -664,12 +664,6 @@
         "Entry"
         {
         "MsmKey" = "8:_73863469CF6D432BBD2C1CEC804DCA85"
-        "OwnerKey" = "8:_UNDEFINED"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
-        "MsmKey" = "8:_74D7A7E673D54B3589D9CFCAB45D5D20"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -783,12 +777,6 @@
         }
         "Entry"
         {
-        "MsmKey" = "8:_8534AC2B66E24156883B05FB8699C456"
-        "OwnerKey" = "8:_UNDEFINED"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
         "MsmKey" = "8:_899E3DCF7F854E6CB6B84B138FF75A36"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -796,12 +784,6 @@
         "Entry"
         {
         "MsmKey" = "8:_89CB5BE7AFF947D6A329F9F0143BB661"
-        "OwnerKey" = "8:_UNDEFINED"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
-        "MsmKey" = "8:_89D4A035D6B3419894783F4F3F875A59"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -849,6 +831,18 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_8DC7F722151843708456771FF59EB328"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_908E9E5728F4452580E9D3A939958735"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_91C111309A3C493697E9B46DB3A96195"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -880,6 +874,12 @@
         "Entry"
         {
         "MsmKey" = "8:_A4273317E96744ACA4A862B4908DB9FE"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_A5FD35E3C65143A381B708060B3F9B6D"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -957,12 +957,6 @@
         }
         "Entry"
         {
-        "MsmKey" = "8:_BB596FAA958545FFAC2DC44D619E2092"
-        "OwnerKey" = "8:_UNDEFINED"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
         "MsmKey" = "8:_BCC2BC27D40D473BB21B8124DD46E010"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -993,6 +987,12 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_C240F75906204EAFBA567F6FE81F37BA"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_C2BF1FA59DF5437E913EE153DE4C315C"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -1000,12 +1000,6 @@
         "Entry"
         {
         "MsmKey" = "8:_C36E4828E7054738A190E51BA27A609C"
-        "OwnerKey" = "8:_UNDEFINED"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
-        "MsmKey" = "8:_C5DA4E9C03304212A308A760098B5A8C"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -1161,6 +1155,12 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_E6394A1C973848F6A271073FA0151E50"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_E6788A79768E4F859215DD91BE4CDB3D"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -1239,6 +1239,12 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_F486362E5AA846B29E6D6F8814A7BC4C"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_F512C892EF144E59B3C8DA8D8860FC70"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -1282,12 +1288,6 @@
         "Entry"
         {
         "MsmKey" = "8:_F9E99CE9EFF14D8B93E14765A2DF4614"
-        "OwnerKey" = "8:_UNDEFINED"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
-        "MsmKey" = "8:_FA70D9B3C00247AD92B1D7E86B835944"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -1425,6 +1425,26 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_018A3D11B9544EC7BC910A7098F22BA3"
+            {
+            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\media\\ring.png"
+            "TargetName" = "8:ring.png"
+            "Tag" = "8:"
+            "Folder" = "8:_35E7757BEC5F43B7B701FBF089152E9F"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_028DFAD567BE4B0DBB9C2D9DA87B95DC"
             {
             "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\lib\\sdl\\libwebp-7.dll"
@@ -1531,26 +1551,6 @@
             "TargetName" = "8:objeck.lang"
             "Tag" = "8:"
             "Folder" = "8:_5833C2C832D947E2B7929CDF622F3B3A"
-            "Condition" = "8:"
-            "Transitive" = "11:FALSE"
-            "Vital" = "11:TRUE"
-            "ReadOnly" = "11:FALSE"
-            "Hidden" = "11:FALSE"
-            "System" = "11:FALSE"
-            "Permanent" = "11:FALSE"
-            "SharedLegacy" = "11:FALSE"
-            "PackageAs" = "3:1"
-            "Register" = "3:1"
-            "Exclude" = "11:FALSE"
-            "IsDependency" = "11:FALSE"
-            "IsolateTo" = "8:"
-            }
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_05A447002C8D42CC8B49864167568039"
-            {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\Release\\objeck-lang-win32\\examples\\media\\log.png"
-            "TargetName" = "8:log.png"
-            "Tag" = "8:"
-            "Folder" = "8:_35E7757BEC5F43B7B701FBF089152E9F"
             "Condition" = "8:"
             "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
@@ -1785,52 +1785,12 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_0CB5981DE0BD447D90D3290B9CAEFB0A"
-            {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\Release\\objeck-lang-win32\\examples\\media\\music.wav"
-            "TargetName" = "8:music.wav"
-            "Tag" = "8:"
-            "Folder" = "8:_35E7757BEC5F43B7B701FBF089152E9F"
-            "Condition" = "8:"
-            "Transitive" = "11:FALSE"
-            "Vital" = "11:TRUE"
-            "ReadOnly" = "11:FALSE"
-            "Hidden" = "11:FALSE"
-            "System" = "11:FALSE"
-            "Permanent" = "11:FALSE"
-            "SharedLegacy" = "11:FALSE"
-            "PackageAs" = "3:1"
-            "Register" = "3:1"
-            "Exclude" = "11:FALSE"
-            "IsDependency" = "11:FALSE"
-            "IsolateTo" = "8:"
-            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_0F822AE1346E4C18AF07732580B9C45B"
             {
             "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\tiny\\compiler\\compiler.obs"
             "TargetName" = "8:compiler.obs"
             "Tag" = "8:"
             "Folder" = "8:_AA1C9CDA5D1F4585B08763C682A60760"
-            "Condition" = "8:"
-            "Transitive" = "11:FALSE"
-            "Vital" = "11:TRUE"
-            "ReadOnly" = "11:FALSE"
-            "Hidden" = "11:FALSE"
-            "System" = "11:FALSE"
-            "Permanent" = "11:FALSE"
-            "SharedLegacy" = "11:FALSE"
-            "PackageAs" = "3:1"
-            "Register" = "3:1"
-            "Exclude" = "11:FALSE"
-            "IsDependency" = "11:FALSE"
-            "IsolateTo" = "8:"
-            }
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_1059DE8B13584B73BDE4920329FEA65E"
-            {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\Release\\objeck-lang-win32\\examples\\media\\background.png"
-            "TargetName" = "8:background.png"
-            "Tag" = "8:"
-            "Folder" = "8:_35E7757BEC5F43B7B701FBF089152E9F"
             "Condition" = "8:"
             "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
@@ -1925,6 +1885,26 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_14F5FA39862644F3B8E718CB4B8D2E66"
+            {
+            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\media\\die.wav"
+            "TargetName" = "8:die.wav"
+            "Tag" = "8:"
+            "Folder" = "8:_35E7757BEC5F43B7B701FBF089152E9F"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_155C86DC69AC44EF8FE723BC1C20AA08"
             {
             "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\web.fastcgi-response.html"
@@ -1965,52 +1945,12 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_17A9ABFFC60448C68D954515E7F37966"
-            {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\Release\\objeck-lang-win32\\examples\\media\\luck.wav"
-            "TargetName" = "8:luck.wav"
-            "Tag" = "8:"
-            "Folder" = "8:_35E7757BEC5F43B7B701FBF089152E9F"
-            "Condition" = "8:"
-            "Transitive" = "11:FALSE"
-            "Vital" = "11:TRUE"
-            "ReadOnly" = "11:FALSE"
-            "Hidden" = "11:FALSE"
-            "System" = "11:FALSE"
-            "Permanent" = "11:FALSE"
-            "SharedLegacy" = "11:FALSE"
-            "PackageAs" = "3:1"
-            "Register" = "3:1"
-            "Exclude" = "11:FALSE"
-            "IsDependency" = "11:FALSE"
-            "IsolateTo" = "8:"
-            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_1980EE9F1E5D4B6B9BD3F73D3E225E48"
             {
             "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\data.csv-csvcolumn.html"
             "TargetName" = "8:data.csv-csvcolumn.html"
             "Tag" = "8:"
             "Folder" = "8:_60D761D617D5461DB0109F759806BF86"
-            "Condition" = "8:"
-            "Transitive" = "11:FALSE"
-            "Vital" = "11:TRUE"
-            "ReadOnly" = "11:FALSE"
-            "Hidden" = "11:FALSE"
-            "System" = "11:FALSE"
-            "Permanent" = "11:FALSE"
-            "SharedLegacy" = "11:FALSE"
-            "PackageAs" = "3:1"
-            "Register" = "3:1"
-            "Exclude" = "11:FALSE"
-            "IsDependency" = "11:FALSE"
-            "IsolateTo" = "8:"
-            }
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_1AAE186967604AB7BB67FA8078C51600"
-            {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\Release\\objeck-lang-win32\\examples\\media\\gem.wav"
-            "TargetName" = "8:gem.wav"
-            "Tag" = "8:"
-            "Folder" = "8:_35E7757BEC5F43B7B701FBF089152E9F"
             "Condition" = "8:"
             "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
@@ -2211,6 +2151,26 @@
             "TargetName" = "8:build.sh"
             "Tag" = "8:"
             "Folder" = "8:_65C054A7251F4A5A9D2B3EF99FC46ACB"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_2B840AB2646B4B32916C5D5A856FC300"
+            {
+            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\media\\background.png"
+            "TargetName" = "8:background.png"
+            "Tag" = "8:"
+            "Folder" = "8:_35E7757BEC5F43B7B701FBF089152E9F"
             "Condition" = "8:"
             "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
@@ -2451,6 +2411,66 @@
             "TargetName" = "8:fib.t"
             "Tag" = "8:"
             "Folder" = "8:_3B836520E3DC4B5098FD9C5767B0CBB1"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_3830BA0C256C46278BF1D7BCAE977D83"
+            {
+            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\media\\log.png"
+            "TargetName" = "8:log.png"
+            "Tag" = "8:"
+            "Folder" = "8:_35E7757BEC5F43B7B701FBF089152E9F"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_38A756B32BE34280990BB006E17090DE"
+            {
+            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\media\\spider.png"
+            "TargetName" = "8:spider.png"
+            "Tag" = "8:"
+            "Folder" = "8:_35E7757BEC5F43B7B701FBF089152E9F"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_3AD850E65639410A99A95F33EF37BA2D"
+            {
+            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\media\\start.wav"
+            "TargetName" = "8:start.wav"
+            "Tag" = "8:"
+            "Folder" = "8:_35E7757BEC5F43B7B701FBF089152E9F"
             "Condition" = "8:"
             "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
@@ -3045,6 +3065,26 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_563F5CA9443644E09556AD481B22FC3A"
+            {
+            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\media\\sign.png"
+            "TargetName" = "8:sign.png"
+            "Tag" = "8:"
+            "Folder" = "8:_35E7757BEC5F43B7B701FBF089152E9F"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_5763D801DEA34A858CDBF9C18234B269"
             {
             "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\tiny\\programs\\hello.t"
@@ -3131,26 +3171,6 @@
             "TargetName" = "8:data.xml-xmlelement.html"
             "Tag" = "8:"
             "Folder" = "8:_60D761D617D5461DB0109F759806BF86"
-            "Condition" = "8:"
-            "Transitive" = "11:FALSE"
-            "Vital" = "11:TRUE"
-            "ReadOnly" = "11:FALSE"
-            "Hidden" = "11:FALSE"
-            "System" = "11:FALSE"
-            "Permanent" = "11:FALSE"
-            "SharedLegacy" = "11:FALSE"
-            "PackageAs" = "3:1"
-            "Register" = "3:1"
-            "Exclude" = "11:FALSE"
-            "IsDependency" = "11:FALSE"
-            "IsolateTo" = "8:"
-            }
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_5FBC056ABBF943429DB1A81105E50FB6"
-            {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\Release\\objeck-lang-win32\\examples\\media\\die.wav"
-            "TargetName" = "8:die.wav"
-            "Tag" = "8:"
-            "Folder" = "8:_35E7757BEC5F43B7B701FBF089152E9F"
             "Condition" = "8:"
             "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
@@ -3405,26 +3425,6 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_69FC6202312447C08AB93C3900D9D629"
-            {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\Release\\objeck-lang-win32\\examples\\media\\fire.png"
-            "TargetName" = "8:fire.png"
-            "Tag" = "8:"
-            "Folder" = "8:_35E7757BEC5F43B7B701FBF089152E9F"
-            "Condition" = "8:"
-            "Transitive" = "11:FALSE"
-            "Vital" = "11:TRUE"
-            "ReadOnly" = "11:FALSE"
-            "Hidden" = "11:FALSE"
-            "System" = "11:FALSE"
-            "Permanent" = "11:FALSE"
-            "SharedLegacy" = "11:FALSE"
-            "PackageAs" = "3:1"
-            "Register" = "3:1"
-            "Exclude" = "11:FALSE"
-            "IsDependency" = "11:FALSE"
-            "IsolateTo" = "8:"
-            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_6B2207B0171F4E618E729BC6CCFE02F7"
             {
             "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\lib\\sdl\\libFLAC-8.dll"
@@ -3571,26 +3571,6 @@
             "TargetName" = "8:libmpg123-0.dll"
             "Tag" = "8:"
             "Folder" = "8:_568609DB66724274A54750715A3CAD76"
-            "Condition" = "8:"
-            "Transitive" = "11:FALSE"
-            "Vital" = "11:TRUE"
-            "ReadOnly" = "11:FALSE"
-            "Hidden" = "11:FALSE"
-            "System" = "11:FALSE"
-            "Permanent" = "11:FALSE"
-            "SharedLegacy" = "11:FALSE"
-            "PackageAs" = "3:1"
-            "Register" = "3:1"
-            "Exclude" = "11:FALSE"
-            "IsDependency" = "11:FALSE"
-            "IsolateTo" = "8:"
-            }
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_74D7A7E673D54B3589D9CFCAB45D5D20"
-            {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\Release\\objeck-lang-win32\\examples\\media\\gems.png"
-            "TargetName" = "8:gems.png"
-            "Tag" = "8:"
-            "Folder" = "8:_35E7757BEC5F43B7B701FBF089152E9F"
             "Condition" = "8:"
             "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
@@ -3965,26 +3945,6 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_8534AC2B66E24156883B05FB8699C456"
-            {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\Release\\objeck-lang-win32\\examples\\media\\sign.png"
-            "TargetName" = "8:sign.png"
-            "Tag" = "8:"
-            "Folder" = "8:_35E7757BEC5F43B7B701FBF089152E9F"
-            "Condition" = "8:"
-            "Transitive" = "11:FALSE"
-            "Vital" = "11:TRUE"
-            "ReadOnly" = "11:FALSE"
-            "Hidden" = "11:FALSE"
-            "System" = "11:FALSE"
-            "Permanent" = "11:FALSE"
-            "SharedLegacy" = "11:FALSE"
-            "PackageAs" = "3:1"
-            "Register" = "3:1"
-            "Exclude" = "11:FALSE"
-            "IsDependency" = "11:FALSE"
-            "IsolateTo" = "8:"
-            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_899E3DCF7F854E6CB6B84B138FF75A36"
             {
             "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\system-float.html"
@@ -4011,26 +3971,6 @@
             "TargetName" = "8:system-char.html"
             "Tag" = "8:"
             "Folder" = "8:_60D761D617D5461DB0109F759806BF86"
-            "Condition" = "8:"
-            "Transitive" = "11:FALSE"
-            "Vital" = "11:TRUE"
-            "ReadOnly" = "11:FALSE"
-            "Hidden" = "11:FALSE"
-            "System" = "11:FALSE"
-            "Permanent" = "11:FALSE"
-            "SharedLegacy" = "11:FALSE"
-            "PackageAs" = "3:1"
-            "Register" = "3:1"
-            "Exclude" = "11:FALSE"
-            "IsDependency" = "11:FALSE"
-            "IsolateTo" = "8:"
-            }
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_89D4A035D6B3419894783F4F3F875A59"
-            {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\Release\\objeck-lang-win32\\examples\\media\\start.wav"
-            "TargetName" = "8:start.wav"
-            "Tag" = "8:"
-            "Folder" = "8:_35E7757BEC5F43B7B701FBF089152E9F"
             "Condition" = "8:"
             "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
@@ -4185,6 +4125,46 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_8DC7F722151843708456771FF59EB328"
+            {
+            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\media\\player.png"
+            "TargetName" = "8:player.png"
+            "Tag" = "8:"
+            "Folder" = "8:_35E7757BEC5F43B7B701FBF089152E9F"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_908E9E5728F4452580E9D3A939958735"
+            {
+            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\media\\gems.png"
+            "TargetName" = "8:gems.png"
+            "Tag" = "8:"
+            "Folder" = "8:_35E7757BEC5F43B7B701FBF089152E9F"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_91C111309A3C493697E9B46DB3A96195"
             {
             "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\lib\\sdl\\libmodplug-1.dll"
@@ -4291,6 +4271,26 @@
             "TargetName" = "8:database.odbc-date.html"
             "Tag" = "8:"
             "Folder" = "8:_60D761D617D5461DB0109F759806BF86"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_A5FD35E3C65143A381B708060B3F9B6D"
+            {
+            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\media\\luck.wav"
+            "TargetName" = "8:luck.wav"
+            "Tag" = "8:"
+            "Folder" = "8:_35E7757BEC5F43B7B701FBF089152E9F"
             "Condition" = "8:"
             "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
@@ -4545,26 +4545,6 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_BB596FAA958545FFAC2DC44D619E2092"
-            {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\Release\\objeck-lang-win32\\examples\\media\\player.png"
-            "TargetName" = "8:player.png"
-            "Tag" = "8:"
-            "Folder" = "8:_35E7757BEC5F43B7B701FBF089152E9F"
-            "Condition" = "8:"
-            "Transitive" = "11:FALSE"
-            "Vital" = "11:TRUE"
-            "ReadOnly" = "11:FALSE"
-            "Hidden" = "11:FALSE"
-            "System" = "11:FALSE"
-            "Permanent" = "11:FALSE"
-            "SharedLegacy" = "11:FALSE"
-            "PackageAs" = "3:1"
-            "Register" = "3:1"
-            "Exclude" = "11:FALSE"
-            "IsDependency" = "11:FALSE"
-            "IsolateTo" = "8:"
-            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_BCC2BC27D40D473BB21B8124DD46E010"
             {
             "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\lib\\sdl\\libvorbis-0.dll"
@@ -4665,6 +4645,26 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_C240F75906204EAFBA567F6FE81F37BA"
+            {
+            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\media\\fire.png"
+            "TargetName" = "8:fire.png"
+            "Tag" = "8:"
+            "Folder" = "8:_35E7757BEC5F43B7B701FBF089152E9F"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_C2BF1FA59DF5437E913EE153DE4C315C"
             {
             "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\tiny\\vm\\interpreter.obs"
@@ -4691,26 +4691,6 @@
             "TargetName" = "8:collection-floatlist.html"
             "Tag" = "8:"
             "Folder" = "8:_60D761D617D5461DB0109F759806BF86"
-            "Condition" = "8:"
-            "Transitive" = "11:FALSE"
-            "Vital" = "11:TRUE"
-            "ReadOnly" = "11:FALSE"
-            "Hidden" = "11:FALSE"
-            "System" = "11:FALSE"
-            "Permanent" = "11:FALSE"
-            "SharedLegacy" = "11:FALSE"
-            "PackageAs" = "3:1"
-            "Register" = "3:1"
-            "Exclude" = "11:FALSE"
-            "IsDependency" = "11:FALSE"
-            "IsolateTo" = "8:"
-            }
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_C5DA4E9C03304212A308A760098B5A8C"
-            {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\Release\\objeck-lang-win32\\examples\\media\\spider.png"
-            "TargetName" = "8:spider.png"
-            "Tag" = "8:"
-            "Folder" = "8:_35E7757BEC5F43B7B701FBF089152E9F"
             "Condition" = "8:"
             "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
@@ -5225,6 +5205,26 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_E6394A1C973848F6A271073FA0151E50"
+            {
+            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\media\\gem.wav"
+            "TargetName" = "8:gem.wav"
+            "Tag" = "8:"
+            "Folder" = "8:_35E7757BEC5F43B7B701FBF089152E9F"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_E6788A79768E4F859215DD91BE4CDB3D"
             {
             "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\system.io-deserializer.html"
@@ -5485,6 +5485,26 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_F486362E5AA846B29E6D6F8814A7BC4C"
+            {
+            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\media\\music.wav"
+            "TargetName" = "8:music.wav"
+            "Tag" = "8:"
+            "Folder" = "8:_35E7757BEC5F43B7B701FBF089152E9F"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_F512C892EF144E59B3C8DA8D8860FC70"
             {
             "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\collection-hash.html"
@@ -5631,26 +5651,6 @@
             "TargetName" = "8:hello_0.obs"
             "Tag" = "8:"
             "Folder" = "8:_6A9F017843C34F2C885994D02F8A0B49"
-            "Condition" = "8:"
-            "Transitive" = "11:FALSE"
-            "Vital" = "11:TRUE"
-            "ReadOnly" = "11:FALSE"
-            "Hidden" = "11:FALSE"
-            "System" = "11:FALSE"
-            "Permanent" = "11:FALSE"
-            "SharedLegacy" = "11:FALSE"
-            "PackageAs" = "3:1"
-            "Register" = "3:1"
-            "Exclude" = "11:FALSE"
-            "IsDependency" = "11:FALSE"
-            "IsolateTo" = "8:"
-            }
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_FA70D9B3C00247AD92B1D7E86B835944"
-            {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\Release\\objeck-lang-win32\\examples\\media\\ring.png"
-            "TargetName" = "8:ring.png"
-            "Tag" = "8:"
-            "Folder" = "8:_35E7757BEC5F43B7B701FBF089152E9F"
             "Condition" = "8:"
             "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
