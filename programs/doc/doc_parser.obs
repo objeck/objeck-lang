@@ -306,7 +306,7 @@ class SnippetParser {
 			};	
 			@buffer_index := 0;	
 
-			"File: '{$file}'"->PrintLine();
+			"['{$file}']"->PrintLine();
 			@uses := CompareVector->New();
 
 			state := 0;
