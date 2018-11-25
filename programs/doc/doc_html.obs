@@ -397,17 +397,13 @@ class HtmlMaker {
 		if(class_block = Nil) {		
 			class_block := GetBundleClass("System", type_name);
 		};
-		
-		if(class_block = Nil) {
-			class_block := GetBundleClass("System.Introspection", type_name);
-		};
-		
-		if(class_block = Nil) {
-			class_block := GetBundleClass("System.IO", type_name);
-		};
-		
-		if(class_block = Nil) {
-			class_block := GetBundleClass("Collection", type_name);
+
+		uses := @bundle_block->GetUses();
+		for(i := 0; class_block = Nil & i < uses->Size(); i += 1;) {
+			use_name := uses->Get(i)->As(String);
+			if(class_block = Nil) {		
+				class_block := GetBundleClass(use_name, type_name);
+			};
 		};
 		
 		if(class_block = Nil) {

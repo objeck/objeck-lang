@@ -13,6 +13,7 @@ class SnippetParser {
 	@cur_char : Char;
 	@nxt_char : Char;
 	@files : String[];
+	@uses : CompareVector;
 	@bundles : StringMap;
 	@class_inf_block : ClassSnippet;
 	@level : Int;
@@ -141,6 +142,30 @@ class SnippetParser {
 		
 		return ident->Trim();
 	}
+
+	method : public : native : ParseUse(block : String) ~ Nil {
+		block := " use ";
+		while(@cur_char <> '\0' & @cur_char <> '#') {
+			block->Append(@cur_char);
+			NextChar();
+		};
+		block->Append(' ');
+
+		use_lines := block->Split(";");
+		each(i : use_lines) {
+			use_line := use_lines[i]->Trim();
+			use_parts := use_line->Split(" ");
+			if(use_parts <> Nil & use_parts->Size() = 2) {
+				use_part := use_parts[1]->Trim();
+				if(use_part->EndsWith(';')) {
+					use_part->Pop();
+				};
+				@uses->AddBack(use_part);
+			};
+		};
+		
+		block := "";		
+	}
 	
 	method : public : native : ParseBundle(block : String) ~ Nil {
 		block->Append(" bundle ");
@@ -150,7 +175,7 @@ class SnippetParser {
 		};
 		block->Append(" {");
 		
-		bundle_block := BundleSnippet->New(block);
+		bundle_block := BundleSnippet->New(block, @uses);
 		if(bundle_block->IsParsed()) {
 			SetBundle(bundle_block);
 		}
@@ -280,11 +305,13 @@ class SnippetParser {
 				return false;
 			};	
 			@buffer_index := 0;	
-			file->PrintLine();
+
+			"File: '{$file}'"->PrintLine();
+			@uses := CompareVector->New();
 
 			state := 0;
 			start := 0;
-			bundle_block := BundleSnippet->New();
+			bundle_block := BundleSnippet->New(@uses);
 			bundle_block->SetName("Default");
 			SetBundle(bundle_block);
 
@@ -292,13 +319,14 @@ class SnippetParser {
 			NextChar();
 			ParseWhiteSpace();
 			while(@cur_char <> '\0') {
-				
-			
 				# states 1-3 for outer classes and enums
 				if(state = 2) {
 					ident := ParseIdent();
 					if(ident->Equals("bundle")) {
 						ParseBundle(block);				
+					}
+					else if(ident->Equals("use")) {
+						ParseUse(block);				
 					}
 					else if(ident->Equals("class") | ident->Equals("interface")) {
 						ParseClassFunction(ident, block);
@@ -330,7 +358,7 @@ class SnippetParser {
 					if(ident->Equals("bundle")) {
 						@bundle_name := ParseIdent();
 						if(@bundle_name->Size() > 0) {
-							bundle_block := BundleSnippet->New();
+							bundle_block := BundleSnippet->New(@uses);
 							bundle_block->SetName(@bundle_name);
 							SetBundle(bundle_block);
 						};
@@ -518,16 +546,19 @@ class BundleSnippet from Snippet {
 	@interfaces : StringMap;
 	@enums : StringMap;
 	@const : StringMap;
+	@uses : CompareVector;
 
-	New() {
+	New(uses : CompareVector) {
 		Parent("");
+		@uses := uses;
 		@classes := StringMap->New();
 		@interfaces := StringMap->New();
 		@enums := StringMap->New();
 	}
 
-	New(buffer : String) {
+	New(buffer : String, uses : CompareVector) {
 		Parent(buffer);
+		@uses := uses;
 		@classes := StringMap->New();
 		@interfaces := StringMap->New();
 		@enums := StringMap->New();
@@ -544,6 +575,10 @@ class BundleSnippet from Snippet {
 
 	method : public : GetDesc() ~ String {
 		return @desc;
+	}
+
+	method : public : GetUses() ~ CompareVector {
+		return @uses;
 	}
 
 	method : public : SetName(name : String) ~ Nil {
