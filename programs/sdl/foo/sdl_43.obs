@@ -1,6 +1,6 @@
 #~
-Lesson 40
-http:# http:# lazyfoo.net/tutorials/SDL/40_texture_manipulation/index.php
+Lesson 43
+http://lazyfoo.net/tutorials/SDL/43_render_to_texture/index.php
 ~#
 
 use Game.SDL2;
@@ -234,7 +234,7 @@ class LTexture {
 class Test {
 	@window : static : Window;
 	@renderer : static : Renderer;
-	@foo_texture : static : LTexture;
+	@target_texture : static : LTexture;
 
 	function : Main(args : String[]) ~ Nil {
 		# Start up SDL and create window
@@ -257,6 +257,9 @@ class Test {
 		# Event handler
 		e := Event->New();
 
+		angle := 0.0;
+		screenCenter := Point->New(Consts->SCREEN_WIDTH / 2, Consts->SCREEN_HEIGHT / 2);
+
 		# While application is running
 		while(<>quit) {
 			start := Timer->GetTicks();
@@ -269,13 +272,50 @@ class Test {
 				};
 			};
 
+			# rotate
+			angle += 2;
+			if( angle > 360 )
+			{
+				angle -= 360;
+			};
+
+			# Set self as render target
+			@target_texture->SetTarget();
+
+			# Clean screen
 			@renderer->SetDrawColor(0xFF, 0xFF, 0xFF, 0xFF);
 			@renderer->Clear();
 
-			# Render stick figure
-			@foo_texture->Render( ( Consts->SCREEN_WIDTH - @foo_texture->GetWidth() ) / 2, 
-				( Consts->SCREEN_HEIGHT - @foo_texture->GetHeight() ) / 2 );
-						
+			# Render red filled quad
+			fillRect := Rect->New(Consts->SCREEN_WIDTH / 4, Consts->SCREEN_HEIGHT / 4, 
+				Consts->SCREEN_WIDTH / 2, Consts->SCREEN_HEIGHT / 2);
+			@renderer->SetDrawColor( 0xFF, 0x00, 0x00, 0xFF );		
+			@renderer->FillRect( fillRect );
+
+			# Render green outlined quad
+			outlineRect := Rect->New(Consts->SCREEN_WIDTH / 6, Consts->SCREEN_HEIGHT / 6, 
+				Consts->SCREEN_WIDTH * 2 / 3, Consts->SCREEN_HEIGHT * 2 / 3 );
+			@renderer->SetDrawColor( 0x00, 0xFF, 0x00, 0xFF );		
+			@renderer->FillRect( outlineRect );
+
+			# Draw blue horizontal line
+			@renderer->SetDrawColor( 0x00, 0x00, 0xFF, 0xFF );		
+			@renderer->DrawLine( 0, Consts->SCREEN_HEIGHT / 2, Consts->SCREEN_WIDTH, 
+				Consts->SCREEN_HEIGHT / 2 );
+
+			# Draw vertical line of yellow dots
+			@renderer->SetDrawColor( 0xFF, 0xFF, 0x00, 0xFF );
+			for( i := 0; i < Consts->SCREEN_HEIGHT; i += 4; )
+			{
+				@renderer->DrawPoint( Consts->SCREEN_WIDTH / 2, i );
+			};
+
+			# Reset render target
+			@renderer->SetTarget(Nil);
+
+			# Show rendered to texture
+			@target_texture->Render( 0, 0, Nil, angle, screenCenter );
+
 			# Update screen
 			@renderer->Present();
 
@@ -325,53 +365,24 @@ class Test {
 			return false;
 		};
 
-		@foo_texture := LTexture->New(@renderer, @window);
+		@target_texture := LTexture->New(@renderer, @window);
 				
 		return true;
 	}
 	
 	function : native : LoadMedia() ~ Bool {
-		if(<>@foo_texture->LoadFromFile("images/foo.png")) {
-			"Failed to load image"->ErrorLine();
+		# Load texture target
+		if(<>@target_texture->CreateBlank(Consts->SCREEN_WIDTH, Consts->SCREEN_HEIGHT, 
+				TextureAccess->SDL_TEXTUREACCESS_TARGET)) {
+			"Failed to create target texture!"->ErrorLine();
 			return false;
 		};
-
-		# Lock texture
-		if(<> @foo_texture->Lock() )
-		{
-			"Unable to lock Foo' texture!"->ErrorLine();
-			return false;
-		};
-
-		# Allocate format from window
-		format := @window->GetPixelFormat();
-		mappingFormat := PixelFormat->New( format );
-
-		# Get pixel data
-		pixels := @foo_texture->GetPixels();
-		pixelCount := ( @foo_texture->GetPitch() / 4 ) * @foo_texture->GetHeight();
-
-		# Map colors
-		colorKey := mappingFormat->MapRGB( 0, 0xFF, 0xFF );		
-		transparent := mappingFormat->MapRGBA( 0xFF, 0xFF, 0xFF, 0x00 );
-
-		# Color key pixels
-		for( i := 0; i < pixelCount; i+=1; )
-		{
-			if( pixels->Get(i) = colorKey )
-			{
-				pixels->Set(i, transparent);
-			};
-		};
-
-		# Unlock texture
-		@foo_texture->Unlock();
 
 		return true;
 	}
 	
 	function : Close() ~ Nil {
-		@foo_texture->Free();
+		@target_texture->Free();
 		@renderer->Destroy();
 		@window->Destroy();
 
