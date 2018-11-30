@@ -170,17 +170,18 @@ class LTexture {
 		return @pixels->Get(x ,y);
 	}
 
-	method : public : CreateBlank(width : Int, height : Int) ~ Bool {
-		return CreateBlank(width, height, TextureAccess->SDL_TEXTUREACCESS_STREAMING);
+	method : public : Copy(pixels : PixelData) ~ Nil {
+		@pixels->Copy(pixels);
 	}
 	
-	method : public : CreateBlank(width : Int, height : Int, access : TextureAccess) ~ Bool {
+	method : public : CreateBlank(width : Int, height : Int, 
+			access : TextureAccess := TextureAccess->SDL_TEXTUREACCESS_STREAMING) ~ Bool {
 		@texture := Texture->New(@renderer, PixelValue->SDL_PIXELFORMAT_RGBA8888, access, width, height);
 		if(@texture->IsNull()) {
 			"Unable to create blank texture!"->ErrorLine();
 			return false;
 		};
-		
+
 		@width := width;
 		@height := height;
 
