@@ -4944,6 +4944,16 @@ bundle Game.SDL2 {
 
 			return -1;
 		}
+		
+		#~
+		Get pixel value for x and y offset
+		@param x x-offset
+		@param y y-offset
+		@return pixel value for index
+		~#
+		method : public : Get(x : Int, y : Int) ~ Int {
+			return Get((y * (@pitch / 4)) + x);
+		}
 
 		#~
 		Set pixel value for index
