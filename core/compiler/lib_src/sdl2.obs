@@ -4441,6 +4441,39 @@ bundle Game.SDL2 {
 		}
 
 		#~
+		Set a texture as the current rendering target.
+		@param texture the targeted texture, which must be created 
+		with the SDL_TEXTUREACCESS_TARGET flag, or Nil for the default render target
+		@return 0 on success or a negative error code on failure
+		~#
+		method : public : SetTarget(texture : Texture) ~ Int {
+			array_args := Base->New[3];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@renderer);
+			array_args[2] := texture;
+
+			Proxy->GetDllProxy()->CallFunction("sdl_renderer_set_target", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+
+		#~
+		Get the current render target.
+		@return current target
+		~#
+		method : public : GetTarget() ~ Texture {
+			array_args := Base->New[2];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@renderer);
+
+			Proxy->GetDllProxy()->CallFunction("sdl_renderer_get_target", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return Texture->New(value->Get());
+		}
+
+		#~
 		Fill a rectangle on the current rendering target with the drawing color
 		@param rect Rect representing the rectangle to fill, or NULL for the 
 		entire rendering target
