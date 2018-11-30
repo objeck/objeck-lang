@@ -1829,6 +1829,26 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
+  void sdl_renderer_set_target(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+
+    const size_t* texture_obj = APITools_GetObjectValue(context, 2);
+    SDL_Texture* texture = texture_obj ? (SDL_Texture*)texture_obj[0] : NULL;
+
+    APITools_SetIntValue(context, 0, SDL_SetRenderTarget(renderer, texture));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_renderer_get_target(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+    APITools_SetIntValue(context, 0, (size_t)SDL_GetRenderTarget(renderer));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
   void sdl_renderer_render_fill_rect(VMContext& context) {
     SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
 
