@@ -1,21 +1,18 @@
-
-#~
-Foo Const!
-~#
 consts Foo {
-    aa := 3,
-    bb := 0x6,
-    cf := 13
+	aa := 3,
+	bb := 0x6,
+	cf := 13
 }
 
-#~
-Test
-~#
 class Test {
-    #~
-    Main
-    @param args the args
-    ~#
-    function : Main(args : String[]) ~ Nil {
-    }
+	function : Main(args : String[]) ~ Nil {
+ 	}
+
+	function : Bar(v : Int, foo : Foo := Foo->bb) ~ Bool {
+		if(v = 13) {
+			return false;
+		};
+
+		return true;
+	}		
 }

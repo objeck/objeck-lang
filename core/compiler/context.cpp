@@ -816,7 +816,7 @@ bool ContextAnalyzer::Analyze()
       if(current_method->GetMethodType() != NEW_PUBLIC_METHOD &&
          current_method->GetMethodType() != NEW_PRIVATE_METHOD &&
          current_method->GetReturn()->GetType() != NIL_TYPE) {
-        if(!AnalyzeReturnPaths(current_method->GetStatements(), depth + 1)) {
+        if(!AnalyzeReturnPaths(current_method->GetStatements(), depth + 1) && !current_method->IsAlt()) {
           ProcessError(current_method, L"All method/function paths must return a value");
         }
       }
@@ -882,7 +882,9 @@ bool ContextAnalyzer::Analyze()
         return true;
         
       default:
-        ProcessError(current_method, L"All method/function paths must return a value");
+	if(!current_method->IsAlt()) {
+	  ProcessError(current_method, L"All method/function paths must return a value");
+	}
         break;
       }
     }
