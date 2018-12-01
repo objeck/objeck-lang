@@ -68,6 +68,7 @@ using namespace stdext;
 #elif _OSX
 #include <mach-o/dyld.h>
 #include <unordered_map>
+#include <unordered_set>
 #include <pthread.h>
 #include <stdint.h>
 #include <dlfcn.h>

@@ -84,13 +84,8 @@ struct ClassMethodId {
 class MemoryManager {
   static bool initialized;
   static StackProgram* prgm;
-#ifdef _OSX
-  static unordered_map<StackFrameMonitor*, StackFrameMonitor*> pda_monitors; // deleted elsewhere
-  static unordered_map<StackFrame**, StackFrame**> pda_frames;
-#else
   static unordered_set<StackFrameMonitor*> pda_monitors; // deleted elsewhere
   static unordered_set<StackFrame**> pda_frames;
-#endif
   static vector<StackFrame*> jit_frames; // deleted elsewhere
   static vector<size_t*> allocated_memory;
   
