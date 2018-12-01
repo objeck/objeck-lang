@@ -34,13 +34,8 @@
 
 StackProgram* MemoryManager::prgm;
 
-#ifdef _OSX
-unordered_map<StackFrame**, StackFrame**> MemoryManager::pda_frames;
-unordered_map<StackFrameMonitor*, StackFrameMonitor*> MemoryManager::pda_monitors;
-#else
 unordered_set<StackFrame**> MemoryManager::pda_frames;
 unordered_set<StackFrameMonitor*> MemoryManager::pda_monitors;
-#endif
 vector<StackFrame*> MemoryManager::jit_frames;
 stack<char*> MemoryManager::cache_pool_16;
 stack<char*> MemoryManager::cache_pool_32;
@@ -191,12 +186,7 @@ void MemoryManager::AddPdaMethodRoot(StackFrame** frame)
 #ifndef _GC_SERIAL
   MUTEX_LOCK(&pda_frame_lock);
 #endif
-
-#ifdef _OSX
-  pda_frames.insert(pair<StackFrame**, StackFrame**>(frame, frame));
-#else
   pda_frames.insert(frame);
-#endif
   
 #ifndef _GC_SERIAL
   MUTEX_UNLOCK(&pda_frame_lock);
@@ -227,12 +217,7 @@ void MemoryManager::AddPdaMethodRoot(StackFrameMonitor* monitor)
 #ifndef _GC_SERIAL
   MUTEX_LOCK(&pda_monitor_lock);
 #endif
-
-#ifdef _OSX
-  pda_monitors.insert(pair<StackFrameMonitor*, StackFrameMonitor*>(monitor, monitor));
-#else
   pda_monitors.insert(monitor);
-#endif
   
 #ifndef _GC_SERIAL
   MUTEX_UNLOCK(&pda_monitor_lock);
@@ -1128,15 +1113,9 @@ void* MemoryManager::CheckPdaRoots(void* arg)
 #endif		
   wcout << L"memory types:" <<  endl;
 #endif
-  
-#ifdef _OSX
-  for(unordered_map<StackFrame**, StackFrame**>::iterator iter = pda_frames.begin(); iter != pda_frames.end(); ++iter) {
-    StackFrame** frame = iter->first;
-#else
+
   for(unordered_set<StackFrame**>::iterator iter = pda_frames.begin(); iter != pda_frames.end(); ++iter) {
     StackFrame** frame = *iter;
-#endif
-    
     if(*frame) {
       if((*frame)->jit_mem) {
 #ifndef _GC_SERIAL
@@ -1172,15 +1151,9 @@ void* MemoryManager::CheckPdaRoots(void* arg)
 #endif
 
     // look at pda methods
-#ifdef _OSX
-  unordered_map<StackFrameMonitor*, StackFrameMonitor*>::iterator pda_iter;
-  for(pda_iter = pda_monitors.begin(); pda_iter != pda_monitors.end(); ++pda_iter) {
-    StackFrameMonitor* monitor = pda_iter->first;
-#else
   unordered_set<StackFrameMonitor*>::iterator pda_iter;
   for(pda_iter = pda_monitors.begin(); pda_iter != pda_monitors.end(); ++pda_iter) {
     StackFrameMonitor* monitor = *pda_iter;
-#endif
     // gather stack frames
     long call_stack_pos = *(monitor->call_stack_pos);
 
