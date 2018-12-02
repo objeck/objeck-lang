@@ -81,8 +81,7 @@ namespace Runtime {
     // call stack and current frame pointer
     StackFrame** call_stack;
     long* call_stack_pos;
-    bool clean_call_stack;
-
+    
     StackFrame** frame;
     StackFrameMonitor* monitor;
 
@@ -594,7 +593,6 @@ namespace Runtime {
       // setup frame
       call_stack = c;
       call_stack_pos = cp;
-      clean_call_stack = false;
       frame = new StackFrame*;
       monitor = NULL;
       
@@ -606,7 +604,6 @@ namespace Runtime {
       call_stack = new StackFrame*[CALL_STACK_SIZE];
       call_stack_pos = new long;
       *call_stack_pos = -1;
-      clean_call_stack = true;
       frame = new StackFrame*;
 
       // register monitor
@@ -624,7 +621,6 @@ namespace Runtime {
       call_stack = new StackFrame*[CALL_STACK_SIZE];
       call_stack_pos = new long;
       *call_stack_pos = -1;
-      clean_call_stack = true;
       frame = new StackFrame*;
 
       // register monitor
@@ -645,7 +641,6 @@ namespace Runtime {
       call_stack = new StackFrame*[CALL_STACK_SIZE];
       call_stack_pos = new long;
       *call_stack_pos = -1;
-      clean_call_stack = true;
       frame = new StackFrame*;
 
       // register monitor
@@ -661,6 +656,13 @@ namespace Runtime {
       if(monitor) {
         MemoryManager::RemovePdaMethodRoot(monitor);
 
+        for(size_t i = 0; i < CALL_STACK_SIZE; ++i) {
+          StackFrame* temp = call_stack[i];
+          if(temp) {
+            delete temp;
+            temp = NULL;
+          }
+        }
         delete[] call_stack;
         call_stack = NULL;
 
@@ -672,18 +674,6 @@ namespace Runtime {
       }
       else {
         MemoryManager::RemovePdaMethodRoot(frame);
-      }
-
-      if(clean_call_stack) {
-        for(size_t i = 0; i < CALL_STACK_SIZE; ++i) {
-          StackFrame* temp_frame = call_stack[i];
-          if(temp_frame) {
-            delete temp_frame;
-            temp_frame = NULL;
-          }
-        }
-        delete[] call_stack;
-        call_stack = NULL;
       }
 
       delete frame;
