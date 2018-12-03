@@ -656,13 +656,6 @@ namespace Runtime {
       if(monitor) {
         MemoryManager::RemovePdaMethodRoot(monitor);
 
-        for(size_t i = 0; i < CALL_STACK_SIZE; ++i) {
-          StackFrame* temp = call_stack[i];
-          if(temp) {
-            delete temp;
-            temp = NULL;
-          }
-        }
         delete[] call_stack;
         call_stack = NULL;
 

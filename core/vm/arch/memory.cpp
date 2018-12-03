@@ -686,7 +686,6 @@ void* MemoryManager::CollectMemory(void* arg)
 
 #endif
   vector<size_t*> live_memory;
-  live_memory.reserve(allocated_memory.size());
   for(size_t i = 0; i < allocated_memory.size(); ++i) {
     size_t* mem = allocated_memory[i];
 

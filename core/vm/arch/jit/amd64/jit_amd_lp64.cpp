@@ -974,7 +974,7 @@ void JitCompilerIA64::ProcessLoadCharElement(StackInstr* instr) {
   move_mem16_reg(0, elem_holder->GetRegister(), holder->GetRegister());
 #else
   move_mem32_reg(0, elem_holder->GetRegister(), holder->GetRegister());
-#endif  
+#endif
   ReleaseRegister(elem_holder);
   working_stack.push_front(new RegInstr(holder));
 }
