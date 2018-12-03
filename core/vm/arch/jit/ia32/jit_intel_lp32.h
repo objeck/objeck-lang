@@ -359,11 +359,11 @@ namespace Runtime {
   class JitCompilerIA32 {
     static StackProgram* program;
     static PageManager* page_manager;
-
     deque<RegInstr*> working_stack;
     vector<RegisterHolder*> aval_regs;
     list<RegisterHolder*> used_regs;
     stack<RegisterHolder*> aux_regs;
+    RegisterHolder* reg_eax;
     vector<RegisterHolder*> aval_xregs;
     list<RegisterHolder*> used_xregs;
     unordered_map<int32_t, StackInstr*> jump_table;
@@ -719,7 +719,7 @@ namespace Runtime {
 #ifdef _DEBUG
           wcout << L">>> No general registers avaiable! <<<" << endl;
 #endif
-          aux_regs.push(new RegisterHolder(EAX));
+          aux_regs.push(reg_eax);
           holder = aux_regs.top();
           aux_regs.pop();
         }
@@ -1658,10 +1658,11 @@ namespace Runtime {
 
         floats_index = instr_index = code_index = epilog_index = instr_count = 0;
         // general use registers
+        reg_eax = new RegisterHolder(EAX);
         aval_regs.push_back(new RegisterHolder(EDX));
         aval_regs.push_back(new RegisterHolder(ECX));
         aval_regs.push_back(new RegisterHolder(EBX));
-        aval_regs.push_back(new RegisterHolder(EAX));
+        aval_regs.push_back(reg_eax);
         // aux general use registers
         aux_regs.push(new RegisterHolder(EDI));
         aux_regs.push(new RegisterHolder(ESI));
