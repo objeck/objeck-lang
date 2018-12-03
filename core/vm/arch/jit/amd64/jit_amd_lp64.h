@@ -429,11 +429,11 @@ namespace Runtime {
   class JitCompilerIA64 {
     static StackProgram* program;
     static PageManager* page_manager;
-
     deque<RegInstr*> working_stack;
     vector<RegisterHolder*> aval_regs;
     list<RegisterHolder*> used_regs;
     stack<RegisterHolder*> aux_regs;
+    RegisterHolder* rax_reg;
     vector<RegisterHolder*> aval_xregs;
     list<RegisterHolder*> used_xregs;
     unordered_map<long, StackInstr*> jump_table; // jump addresses
@@ -1043,7 +1043,7 @@ namespace Runtime {
 #ifdef _DEBUG
           wcout << L">>> No general registers avaiable! <<<" << endl;
 #endif
-          aux_regs.push(new RegisterHolder(RAX));
+          aux_regs.push(rax_reg);
           holder = aux_regs.top();
           aux_regs.pop();
         }
@@ -1998,12 +1998,13 @@ namespace Runtime {
 #endif		
         floats_index = instr_index = code_index = epilog_index = instr_count = 0;
 
+        rax_reg = new RegisterHolder(RAX);
 #ifdef _WIN64
         // general use registers
         aval_regs.push_back(new RegisterHolder(RDX));
         aval_regs.push_back(new RegisterHolder(RCX));
         aval_regs.push_back(new RegisterHolder(RBX));
-        aval_regs.push_back(new RegisterHolder(RAX));
+        aval_regs.push_back(rax_reg);
         // aux general use registers
         aux_regs.push(new RegisterHolder(RSI));
         aux_regs.push(new RegisterHolder(RDI));
@@ -2022,7 +2023,7 @@ namespace Runtime {
         //	aval_regs.push_back(new RegisterHolder(RDX));
         //	aval_regs.push_back(new RegisterHolder(RCX));
         aval_regs.push_back(new RegisterHolder(RBX));
-        aval_regs.push_back(new RegisterHolder(RAX));
+        aval_regs.push_back(rax_reg);
         // aux general use registers
         //        aux_regs.push(new RegisterHolder(RDI));
         //        aux_regs.push(new RegisterHolder(RSI));
@@ -2117,6 +2118,8 @@ namespace Runtime {
 #endif
         // store compiled code
         method->SetNativeCode(new NativeCode(page_manager->GetPage(code, code_index), code_index, floats));
+        
+        
         
         free(code);
         code = NULL;
