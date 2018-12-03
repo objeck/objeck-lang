@@ -1,7 +1,7 @@
 /***************************************************************************
 * VM memory manager. Implements a "mark and sweep" collection algorithm.
 *
-* Copyright (c) 2008-2018, Randy Hollines
+* Copyright (c) 2008-2019, Randy Hollines
 * All rights reserved.
 *
 * Redistribution and use in source and binary forms, with or without
@@ -794,7 +794,7 @@ void* MemoryManager::CollectMemory(void* arg)
   MUTEX_UNLOCK(&marked_lock);
 #endif  
 
-  // did not collect memory; ajust constraints
+  // did not collect memory; adjust constraints
   if(live_memory.size() >= allocated_memory.size() - 1) {
     if(uncollected_count < UNCOLLECTED_COUNT) {
       uncollected_count++;
