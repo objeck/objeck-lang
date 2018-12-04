@@ -143,11 +143,12 @@ inline bool MemoryManager::MarkValidMemory(size_t* mem)
     MUTEX_LOCK(&allocated_lock);
 #endif
     if(std::binary_search(allocated_memory.begin(), allocated_memory.end(), mem)) {
+#ifndef _GC_SERIAL
+      MUTEX_UNLOCK(&allocated_lock);
+#endif
+      
       // check if memory has been marked
       if(mem[MARKED_FLAG]) {
-#ifndef _GC_SERIAL
-        MUTEX_UNLOCK(&allocated_lock);
-#endif
         return false;
       }
 
@@ -158,7 +159,6 @@ inline bool MemoryManager::MarkValidMemory(size_t* mem)
       mem[MARKED_FLAG] = 1L;
 #ifndef _GC_SERIAL
       MUTEX_UNLOCK(&marked_lock);      
-      MUTEX_UNLOCK(&allocated_lock);
 #endif
       return true;
     } 
@@ -1051,10 +1051,10 @@ void* MemoryManager::CheckJitRoots(void* arg)
             // mark data
             if(MarkValidMemory((size_t*)(*mem))) {
               size_t* array = (size_t*)(*mem);
-              const long size = (long)array[0];
-              const long dim = (long)array[1];
+              const size_t size = array[0];
+              const size_t dim = array[1];
               size_t* objects = (size_t*)(array + 2 + dim);
-              for(long k = 0; k < size; ++k) {
+              for(size_t k = 0; k < size; ++k) {
                 CheckObject((size_t*)objects[k], true, 2);
               }
             }
@@ -1380,10 +1380,10 @@ void MemoryManager::CheckMemory(size_t* mem, StackDclr** dclrs, const long dcls_
       // mark data
       if(MarkValidMemory((size_t*)(*mem))) {
         size_t* array = (size_t*)(*mem);
-        const long size = (long)array[0];
-        const long dim = (long)array[1];
+        const size_t size = array[0];
+        const size_t dim = array[1];
         size_t* objects = (size_t*)(array + 2 + dim);
-        for(long k = 0; k < size; k++) {
+        for(size_t k = 0; k < size; ++k) {
           CheckObject((size_t*)objects[k], true, 2);
         }
       }
@@ -1441,11 +1441,11 @@ void MemoryManager::CheckObject(size_t* mem, bool is_obj, long depth)
         if(std::binary_search(allocated_memory.begin(), allocated_memory.end(), mem) && 
           (mem[TYPE] == NIL_TYPE || mem[TYPE] == INT_TYPE)) {
             size_t* array = mem;
-            const long size = (long)array[0];
-            const long dim = (long)array[1];
+            const size_t size = array[0];
+            const size_t dim = array[1];
             size_t* objects = (size_t*)(array + 2 + dim);
-            for(long k = 0; k < size; k++) {
-              CheckObject((size_t*)objects[k], false, 2);
+            for(size_t i = 0; i < size; ++i) {
+              CheckObject((size_t*)objects[i], false, 2);
             }
         }
       }

@@ -1,7 +1,7 @@
 /***************************************************************************
  * VM common.
  *
- * Copyright (c) 2008-2018, Randy Hollines
+ * Copyright (c) 2008-2019, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -110,8 +110,8 @@ void ObjectSerializer::CheckObject(size_t* mem, bool is_obj, long depth) {
       // primitive or object array
       if(!WasSerialized(mem)) {
         size_t* array = (mem);
-        const long size = (long)array[0];
-        const long dim = (long)array[1];
+        const size_t size = array[0];
+        const size_t dim = array[1];
         size_t* objects = (size_t*)(array + 2 + dim);
 
 #ifdef _DEBUG
@@ -121,7 +121,7 @@ void ObjectSerializer::CheckObject(size_t* mem, bool is_obj, long depth) {
         wcout << L"\t----- SERIALIZE: size=" << (size * sizeof(INT_VALUE)) << L" -----" << endl;
 #endif
 
-        for(long k = 0; k < size; k++) {
+        for(size_t k = 0; k < size; ++k) {
           CheckObject((size_t*)objects[k], false, 2);
         }
       }
