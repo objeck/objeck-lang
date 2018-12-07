@@ -11,7 +11,7 @@ use Collection;
 
 class RosettaRank {
 	function : Main(args : String[]) ~ Nil {
-		langs := GetLanguages();
+		langs := GetLanguages ();
 		langs_counts := GetLanguageRank(langs);
 		
 		keys := langs_counts->GetKeys();
