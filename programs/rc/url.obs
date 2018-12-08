@@ -1,11 +1,33 @@
-class Arithmetic {
+class Test {
 	function : Main(args : String[]) ~ Nil {
-		ParseUrl("foo://example.com:8042/over/there?name=ferret#nose:")->PrintLine();
-		ParseUrl("urn:oasis:names:specification:docbook:dtd:xml:4.1.2:")->PrintLine();
-		ParseUrl("http://www.ietf.org/rfc/rfc2396.txt#header1")->PrintLine();
+		urls := [
+			"foo://example.com:8042/over/there?name=ferret#nose:", 
+			"urn:oasis:names:specification:docbook:dtd:xml:4.1.2:",
+			"http://www.ietf.org/rfc/rfc2396.txt#header1"
+		];
+
+		each(i : urls) {
+			url := Url->New(urls[i]);
+			url->IsParsed()->PrintLine();
+		};
+	}
+}
+
+class Url {
+	@parsed : Bool;
+	@scheme : String;
+	@host : String;
+	@port : String;
+
+	New(url : String) {
+		@parsed := ParseUrl(url);
 	}
 
-	function : ParseUrl(url : String) ~ Bool {
+	method : public : IsParsed() ~ Bool {
+		return @parsed;
+	}
+
+	method : ParseUrl(url : String) ~ Bool {
 "url='{$url}'"->PrintLine();
 		
 		scheme_index := url->Find(':');
@@ -13,8 +35,8 @@ class Arithmetic {
 			"--- No scheme ---"->ErrorLine();
 			return false;
 		};
-		scheme := url->SubString(0, scheme_index);
-"\tscheme='{$scheme}'"->PrintLine();
+		@scheme := url->SubString(0, scheme_index);
+"\tscheme='{$@scheme}'"->PrintLine();
 
 		scheme_index += 1;
 		rest := url->SubString(scheme_index, url->Size() - scheme_index);
@@ -27,33 +49,33 @@ class Arithmetic {
 
 				# parse host
 				if(i = 1) {
-					host := part;
+					@host := part;
 					port : String;
 
-					port_index := host->FindLast(':');
+					port_index := @host->FindLast(':');
 					if(port_index > -1) {
 						port_index += 1;
-						port := host->SubString(port_index, host->Size() - port_index);
+						@port := @host->SubString(port_index, @host->Size() - port_index);
 
 						for(j := 0; port <> Nil & j < port->Size(); j += 1;) {
 							if(<>port->Get(j)->IsDigit()) {
-								port := Nil;
+								@port := Nil;
 							};
 						};
 
 						if(port <> Nil) {
-							host := host->SubString(0, port_index - 1);
+							@host := @host->SubString(0, port_index - 1);
 						};
 
 					};
 
-					if(host->Size() > 0 & host->Get(0) = '/') {
-						host := host->SubString(1, host->Size() - 1);
+					if(@host->Size() > 0 & @host->Get(0) = '/') {
+						@host := @host->SubString(1, @host->Size() - 1);
 					};
-"\thost='{$host}'"->PrintLine();
+"\thost='{$@host}'"->PrintLine();
 
 					if(port <> Nil) {
-"\tport='{$port}'"->PrintLine();
+"\tport='{$@port}'"->PrintLine();
 					};
 				}
 				# parse last
