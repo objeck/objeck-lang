@@ -13,7 +13,8 @@ class Test {
 			"news:comp.infosystems.www.servers.unix",
 			"tel:+1-816-555-1212",
 			"telnet://192.0.2.16:80/",
-			"urn:oasis:names:specification:docbook:dtd:xml:4.1.2"];
+			"urn:oasis:names:specification:docbook:dtd:xml:4.1.2",
+			"http://example.com/?a=1&b=2+2&c=3&c=4&d=%65%6e%63%6F%64%65%64:"];
 
 		each(i : urls) {
 			url := Url->New(urls[i]);
