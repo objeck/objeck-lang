@@ -4431,7 +4431,7 @@ HTTP and HTTPS client support
 ~#
 bundle Web.HTTP {
 	#~
-	URL
+	URL parser, encoder and decoder
 	~#
 	class Url {
 		@parsed : Bool;
@@ -4552,72 +4552,78 @@ bundle Web.HTTP {
 			scheme_index += 1;
 			rest := url->SubString(scheme_index, url->Size() - scheme_index);
 
-			@path := "";
-			parts := rest->Split("/");
-			if(parts->Size() > 0) {
-				each(i : parts) {
-					part := parts[i];
+			if(<>rest->StartsWith("//")) {
+				@path := rest;
+			}
+			else {
+				@path := "";
+				
+				parts := rest->Split("/");
+				if(parts->Size() > 0) {
+					each(i : parts) {
+						part := parts[i];
 
-					# parse host
-					if(i = 1) {
-						@host := part;
-						port : String;
+						# parse host
+						if(i = 1) {
+							@host := part;
+							
+							port_index := @host->Find(':');
+							if(port_index > -1) {
+								port_start := port_index + 1;
+								port_end := port_start;
+								while(port_end < @host->Size() & @host->Get(port_end)->IsDigit()) {
+									port_end += 1;
+								};
 
-						port_index := @host->FindLast(':');
-						if(port_index > -1) {
-							port_index += 1;
-							port := @host->SubString(port_index, @host->Size() - port_index);
-
-							for(j := 0; port <> Nil & j < port->Size(); j += 1;) {
-								if(<>port->Get(j)->IsDigit()) {
-									port := Nil;
+								# adjust path and host
+								if(port_end > port_start) {
+									port := @host->SubString(port_start, port_end - port_start);
+									@path += @host->SubString(port_end, @host->Size() - port_end);
+									@host := @host->SubString(0, port_index);
+									@port := port->ToInt();
 								};
 							};
 
-							if(port <> Nil) {
-								@host := @host->SubString(0, port_index - 1);
-								@port := port->ToInt();
-							};
-
-						};
-
-						if(@host->Size() > 0 & @host->Get(0) = '/') {
-							@host := @host->SubString(1, @host->Size() - 1);
-						};
-					}
-					# parse last
-					else if(i = parts->Size() - 1) {
-						last := part;
-						query_index := last->FindLast('?');
-						if(query_index > -1) {
-							query_index += 1;
-							@query := last->SubString(query_index, last->Size() - query_index);
-							part := last->SubString(0, query_index - 1);
-
-							@frag := ParseFragment(@query);
-							if(@frag <> Nil) {
-								@query := @query->SubString(0, @query->Size() - @frag->Size() - 1);							
+							if(@host->Size() > 0 & @host->Get(0) = '/') {
+								@host := @host->SubString(1, @host->Size() - 1);
 							};
 						}
-						else {
-							@frag := ParseFragment(last);
-							if(@frag <> Nil) {
-								part := last->SubString(0, last->Size() - @frag->Size() - 1);							
-							};
-						};
+						# parse last
+						else if(i = parts->Size() - 1) {
+							last := part;
 
-						@path += '/';
-						@path += part;
-					}
-					# append path
-					else if(i > 1) {
-						@path += '/';
-						@path += part;
+							# parse query and fragment
+							query_index := last->FindLast('?');
+							if(query_index > -1) {
+								query_index += 1;
+								@query := last->SubString(query_index, last->Size() - query_index);
+								part := last->SubString(0, query_index - 1);
+
+								@frag := ParseFragment(@query);
+								if(@frag <> Nil) {
+									@query := @query->SubString(0, @query->Size() - @frag->Size() - 1);							
+								};
+							}
+							else {
+								@frag := ParseFragment(last);
+								if(@frag <> Nil) {
+									part := last->SubString(0, last->Size() - @frag->Size() - 1);							
+								};
+							};
+
+							@path += '/';
+							@path += part;
+						}
+						# append path
+						else if(i > 1) {
+							@path += '/';
+							@path += part;
+						};
 					};
+				}
+				else {
+					@path := rest;
 				};
-			}
-			else {
-				@path := rest;
 			};
 
 			return true;
@@ -4633,6 +4639,149 @@ bundle Web.HTTP {
 
 			return Nil;
 		} 
+
+		#~
+		General encoding for HTML or XML strings
+		@param str string to encode 
+		@return encoded string 
+		~#
+		function : native : Encode(str : String) ~ String {
+			buffer := String->New();
+			each(i : str) {
+				c := str->Get(i);
+				select(c) {
+					label ' ': {
+						buffer->Append("%20");
+					}
+
+					label ';': {
+						buffer->Append("%3B");
+					}
+
+					label '=': {
+						buffer->Append("%3D");
+					}
+
+					label '$': {
+						buffer->Append("%26");
+					}
+
+					label ',': {
+						buffer->Append("%2C");
+					}
+
+					label '<': {
+						buffer->Append("%3C");
+					}
+
+					label '>': {
+						buffer->Append("%3E");
+					}
+
+					label '^': {
+						buffer->Append("%5E");
+					}
+
+					label '`': {
+						buffer->Append("%60");
+					}
+
+					label '\\': {
+						buffer->Append("%5C");
+					}
+
+					label '[': {
+						buffer->Append("%5B");
+					}
+
+					label ']': {
+						buffer->Append("%5D");
+					}
+
+					label '{': {
+						buffer->Append("%7B");
+					}
+
+					label '}': {
+						buffer->Append("%7D");
+					}
+
+					label '|': {
+						buffer->Append("%7C");
+					}
+
+					label '"': {
+						buffer->Append("%22");
+					}
+
+					label ':': {
+						buffer->Append("%3A");
+					}
+
+					label '/': {
+						buffer->Append("%2F");
+					}
+
+					label '#': {
+						buffer->Append("%23");
+					}
+
+					label '?': {
+						buffer->Append("%3F");
+					}
+
+					label '&': {
+						buffer->Append("%24");
+					}
+
+					label '@': {
+						buffer->Append("%40");
+					}
+
+					label '%': {
+						buffer->Append("%25");
+					}
+
+					label '+': {
+						buffer->Append("%2B");
+					}
+
+					label '~': {
+						buffer->Append("%7E");
+					}
+
+					other: {
+						buffer->Append(c);
+					}
+				};
+			};
+			
+			return buffer;
+		}
+
+		#~
+		General decoding for HTML or XML strings		
+		@param str encoded string
+		@return decoded string
+		~#
+		function : native : Decode(str : String) ~ String {
+			buffer := String->New();
+			each(i : str) {
+				c := str->Get(i);
+				if(c = '%' & i + 2 < str->Size()) {
+					value := "0x";
+					value->Append(str->Get(i + 1));
+					value->Append(str->Get(i + 2));
+					buffer->Append(value->ToInt()->As(Char));
+					i += 2;
+				}
+				else {
+					buffer->Append(c);
+				};
+			};
+
+			return buffer;
+		}
 
 		#~
 		String representation of URL
@@ -5423,154 +5572,6 @@ bundle Web.HTTP {
 			};	
 			
 			return content;
-		}
-	}
-		
-	#~
-	HTTP utilities
-	~#
-	class UrlUtility {
-		#~
-		General encoding for HTML or XML strings
-		@param str string to encode 
-		@return encoded string 
-		~#
-		function : native : Encode(str : String) ~ String {
-			buffer := String->New();
-			each(i : str) {
-				c := str->Get(i);
-				select(c) {
-					label ' ': {
-						buffer->Append("%20");
-					}
-
-					label ';': {
-						buffer->Append("%3B");
-					}
-
-					label '=': {
-						buffer->Append("%3D");
-					}
-
-					label '$': {
-						buffer->Append("%26");
-					}
-
-					label ',': {
-						buffer->Append("%2C");
-					}
-
-					label '<': {
-						buffer->Append("%3C");
-					}
-
-					label '>': {
-						buffer->Append("%3E");
-					}
-
-					label '^': {
-						buffer->Append("%5E");
-					}
-
-					label '`': {
-						buffer->Append("%60");
-					}
-
-					label '\\': {
-						buffer->Append("%5C");
-					}
-
-					label '[': {
-						buffer->Append("%5B");
-					}
-
-					label ']': {
-						buffer->Append("%5D");
-					}
-
-					label '{': {
-						buffer->Append("%7B");
-					}
-
-					label '}': {
-						buffer->Append("%7D");
-					}
-
-					label '|': {
-						buffer->Append("%7C");
-					}
-
-					label '"': {
-						buffer->Append("%22");
-					}
-
-					label ':': {
-						buffer->Append("%3A");
-					}
-
-					label '/': {
-						buffer->Append("%2F");
-					}
-
-					label '#': {
-						buffer->Append("%23");
-					}
-
-					label '?': {
-						buffer->Append("%3F");
-					}
-
-					label '&': {
-						buffer->Append("%24");
-					}
-
-					label '@': {
-						buffer->Append("%40");
-					}
-
-					label '%': {
-						buffer->Append("%25");
-					}
-
-					label '+': {
-						buffer->Append("%2B");
-					}
-
-					label '~': {
-						buffer->Append("%7E");
-					}
-
-					other: {
-						buffer->Append(c);
-					}
-				};
-			};
-			
-			return buffer;
-		}
-
-		#~
-		General decoding for HTML or XML strings		
-		@param str encoded string
-		@return decoded string
-		~#
-		function : native : Decode(str : String) ~ String {
-			buffer := String->New();
-			each(i : str) {
-				c := str->Get(i);
-				if(c = '%' & i + 2 < str->Size()) {
-					value := "0x";
-					value->Append(str->Get(i + 1));
-					value->Append(str->Get(i + 2));
-					buffer->Append(value->ToInt()->As(Char));
-					i += 2;
-				}
-				else {
-					buffer->Append(c);
-				};
-			};
-
-			return buffer;
 		}
 	}
 }
