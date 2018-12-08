@@ -1,44 +1,107 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		urls := [
-			"foo://example.com:8042/over/there?name=ferret#nose:", 
-			"urn:oasis:names:specification:docbook:dtd:xml:4.1.2:",
-			"http://www.ietf.org/rfc/rfc2396.txt#header1"
+			"foo://example.com:8042/over/there?name=ferret#nose",
+			"urn:example:animal:ferret:nose",
+			"jdbc:mysql://test_user:ouupppssss@localhost:3306/sakila?profileSQL=true",
+			"ftp://ftp.is.co.za/rfc/rfc1808.txt",
+			"http://www.ietf.org/rfc/rfc2396.txt#header1",
+			"ldap://[2001:db8::7]/c=GB?objectClass=one&objectClass=two",
+			"mailto:John.Doe@example.com",
+			"news:comp.infosystems.www.servers.unix",
+			"tel:+1-816-555-1212",
+			"telnet://192.0.2.16:80/",
+			"urn:oasis:names:specification:docbook:dtd:xml:4.1.2"
 		];
 
 		each(i : urls) {
 			url := Url->New(urls[i]);
-			url->IsParsed()->PrintLine();
+			if(url->Parsed()) {
+				url->ToString()->PrintLine();
+			};
 		};
 	}
 }
 
 class Url {
 	@parsed : Bool;
+	@url : String;
 	@scheme : String;
 	@host : String;
-	@port : String;
+	@port : Int;
+	@query : String;
 	@frag : String;
 	@path : String;
 
 	New(url : String) {
+		@url := url;
+		@port := -1;
 		@parsed := ParseUrl(url);
 	}
 
-	method : public : IsParsed() ~ Bool {
+	method : public : Parsed() ~ Bool {
 		return @parsed;
 	}
 
+	method : public : GetUrl() ~ String {
+		return @url;
+	}
+
+	method : public : GetScheme() ~ String {
+		if(@parsed) {
+			return @scheme;
+		};
+
+		return Nil;
+	}
+
+	method : public : GetHost() ~ String {
+		if(@parsed) {
+			return @host;
+		};
+
+		return Nil;
+	}
+
+	method : public : GetQuery() ~ String {
+		if(@parsed) {
+			return @query;
+		};
+
+		return Nil;
+	}
+
+	method : public : GetPort() ~ Int {
+		if(@parsed) {
+			return @port;
+		};
+
+		return -1;
+	}
+
+	method : public : GetFragment() ~ String {
+		if(@parsed) {
+			return @frag;
+		};
+
+		return Nil;
+	}
+
+	method : public : GetPath() ~ String {
+		if(@parsed) {
+			return @path;
+		};
+
+		return Nil;
+	}
+
 	method : ParseUrl(url : String) ~ Bool {
-"url='{$url}'"->PrintLine();
-		
 		scheme_index := url->Find(':');
 		if(scheme_index < 0) {
 			"--- No scheme ---"->ErrorLine();
 			return false;
 		};
 		@scheme := url->SubString(0, scheme_index);
-"\tscheme='{$@scheme}'"->PrintLine();
 
 		scheme_index += 1;
 		rest := url->SubString(scheme_index, url->Size() - scheme_index);
@@ -57,27 +120,23 @@ class Url {
 					port_index := @host->FindLast(':');
 					if(port_index > -1) {
 						port_index += 1;
-						@port := @host->SubString(port_index, @host->Size() - port_index);
+						port := @host->SubString(port_index, @host->Size() - port_index);
 
 						for(j := 0; port <> Nil & j < port->Size(); j += 1;) {
 							if(<>port->Get(j)->IsDigit()) {
-								@port := Nil;
+								port := Nil;
 							};
 						};
 
 						if(port <> Nil) {
 							@host := @host->SubString(0, port_index - 1);
+							@port := port->ToInt();
 						};
 
 					};
 
 					if(@host->Size() > 0 & @host->Get(0) = '/') {
 						@host := @host->SubString(1, @host->Size() - 1);
-					};
-"\thost='{$@host}'"->PrintLine();
-
-					if(port <> Nil) {
-"\tport='{$@port}'"->PrintLine();
 					};
 				}
 				# parse last
@@ -86,21 +145,18 @@ class Url {
 					query_index := last->FindLast('?');
 					if(query_index > -1) {
 						query_index += 1;
-						query := last->SubString(query_index, last->Size() - query_index);
+						@query := last->SubString(query_index, last->Size() - query_index);
 						part := last->SubString(0, query_index - 1);
 
-						@frag := ParseFragment(query);
+						@frag := ParseFragment(@query);
 						if(@frag <> Nil) {
-							query := query->SubString(0, query->Size() - @frag->Size() - 1);							
-"\tfrag='{$@frag}'"->PrintLine();
+							@query := @query->SubString(0, @query->Size() - @frag->Size() - 1);							
 						};
-"\tquery='{$query}'"->PrintLine();
 					}
 					else {
 						@frag := ParseFragment(last);
 						if(@frag <> Nil) {
 							part := last->SubString(0, last->Size() - @frag->Size() - 1);							
-"\tfrag='{$@frag}'"->PrintLine();
 						};
 					};
 
@@ -118,7 +174,6 @@ class Url {
 			@path := rest;
 		};
 
-"\tpath='{$@path}'"->PrintLine();
 		return true;
 	}
 
@@ -132,4 +187,34 @@ class Url {
 
 		return Nil;
 	} 
+
+	method : public : ToString() ~ String {
+		buffer := "{$@url}\n";
+
+		if(@scheme <> Nil) {
+			buffer += "\tscheme='{$@scheme}'\n";
+		};
+
+		if(@host <> Nil) {
+			buffer += "\thost='{$@host}'\n";
+		};
+
+		if(@path <> Nil) {
+			buffer += "\tpath='{$@path}'\n";
+		};
+		
+		if(@port > -1) {
+			buffer += "\tport='{$@port}'\n";
+		};
+
+		if(@query <> Nil) {
+			buffer += "\tquery='{$@query}'\n";
+		};
+		
+		if(@frag <> Nil) {
+			buffer += "\tfragment='{$@frag}'\n";
+		};
+				
+		return buffer;			
+	}
 }
