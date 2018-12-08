@@ -4431,6 +4431,244 @@ HTTP and HTTPS client support
 ~#
 bundle Web.HTTP {
 	#~
+	URL
+	~#
+	class Url {
+		@parsed : Bool;
+		@url : String;
+		@scheme : String;
+		@host : String;
+		@port : Int;
+		@query : String;
+		@frag : String;
+		@path : String;
+
+		#~
+		Parsed URL into components 
+		~#
+		New(url : String) {
+			@url := url;
+			@port := -1;
+			@parsed := ParseUrl(url);
+		}
+
+		#~
+		Determines if given URL has been parsed correctly
+		@return true if parsed, false otherwise
+		~#
+		method : public : Parsed() ~ Bool {
+			return @parsed;
+		}
+
+		#~
+		Gets original URL
+		@return original URL
+		~#
+		method : public : GetUrl() ~ String {
+			return @url;
+		}
+
+		#~
+		Gets scheme
+		@return scheme, Nil if not present
+		~#
+		method : public : GetScheme() ~ String {
+			if(@parsed) {
+				return @scheme;
+			};
+
+			return Nil;
+		}
+
+		#~
+		Gets host
+		@return host, Nil if not present
+		~#
+		method : public : GetHost() ~ String {
+			if(@parsed) {
+				return @host;
+			};
+
+			return Nil;
+		}
+
+		#~
+		Gets scheme
+		@return scheme, Nil if not present
+		~#
+		method : public : GetQuery() ~ String {
+			if(@parsed) {
+				return @query;
+			};
+
+			return Nil;
+		}
+
+		#~
+		Gets port
+		@return por, -1 if not present
+		~#
+		method : public : GetPort() ~ Int {
+			if(@parsed) {
+				return @port;
+			};
+
+			return -1;
+		}
+
+		#~
+		Gets fragment
+		@return fragment, Nil if not present
+		~#
+		method : public : GetFragment() ~ String {
+			if(@parsed) {
+				return @frag;
+			};
+
+			return Nil;
+		}
+
+		#~
+		Gets path
+		@return path, Nil if not present
+		~#
+		method : public : GetPath() ~ String {
+			if(@parsed) {
+				return @path;
+			};
+
+			return Nil;
+		}
+
+		method : ParseUrl(url : String) ~ Bool {
+			scheme_index := url->Find(':');
+			if(scheme_index < 0) {
+				"--- No scheme ---"->ErrorLine();
+				return false;
+			};
+			@scheme := url->SubString(0, scheme_index);
+
+			scheme_index += 1;
+			rest := url->SubString(scheme_index, url->Size() - scheme_index);
+
+			@path := "";
+			parts := rest->Split("/");
+			if(parts->Size() > 0) {
+				each(i : parts) {
+					part := parts[i];
+
+					# parse host
+					if(i = 1) {
+						@host := part;
+						port : String;
+
+						port_index := @host->FindLast(':');
+						if(port_index > -1) {
+							port_index += 1;
+							port := @host->SubString(port_index, @host->Size() - port_index);
+
+							for(j := 0; port <> Nil & j < port->Size(); j += 1;) {
+								if(<>port->Get(j)->IsDigit()) {
+									port := Nil;
+								};
+							};
+
+							if(port <> Nil) {
+								@host := @host->SubString(0, port_index - 1);
+								@port := port->ToInt();
+							};
+
+						};
+
+						if(@host->Size() > 0 & @host->Get(0) = '/') {
+							@host := @host->SubString(1, @host->Size() - 1);
+						};
+					}
+					# parse last
+					else if(i = parts->Size() - 1) {
+						last := part;
+						query_index := last->FindLast('?');
+						if(query_index > -1) {
+							query_index += 1;
+							@query := last->SubString(query_index, last->Size() - query_index);
+							part := last->SubString(0, query_index - 1);
+
+							@frag := ParseFragment(@query);
+							if(@frag <> Nil) {
+								@query := @query->SubString(0, @query->Size() - @frag->Size() - 1);							
+							};
+						}
+						else {
+							@frag := ParseFragment(last);
+							if(@frag <> Nil) {
+								part := last->SubString(0, last->Size() - @frag->Size() - 1);							
+							};
+						};
+
+						@path += '/';
+						@path += part;
+					}
+					# append path
+					else if(i > 1) {
+						@path += '/';
+						@path += part;
+					};
+				};
+			}
+			else {
+				@path := rest;
+			};
+
+			return true;
+		}
+
+		method : ParseFragment(part : String) ~ String {
+			frag_index := part->FindLast('#');
+			if(frag_index > -1) {
+				frag_index += 1;
+				frag := part->SubString(frag_index, part->Size() - frag_index);
+				return frag;
+			};
+
+			return Nil;
+		} 
+
+		#~
+		String representation of URL
+		@return string representation of URL
+		~#
+		method : public : ToString() ~ String {
+			buffer := "{$@url}\n";
+
+			if(@scheme <> Nil) {
+				buffer += "\tscheme='{$@scheme}'\n";
+			};
+
+			if(@host <> Nil) {
+				buffer += "\thost='{$@host}'\n";
+			};
+
+			if(@path <> Nil) {
+				buffer += "\tpath='{$@path}'\n";
+			};
+			
+			if(@port > -1) {
+				buffer += "\tport='{$@port}'\n";
+			};
+
+			if(@query <> Nil) {
+				buffer += "\tquery='{$@query}'\n";
+			};
+			
+			if(@frag <> Nil) {
+				buffer += "\tfragment='{$@frag}'\n";
+			};
+					
+			return buffer;			
+		}
+	}
+
+	#~
 	HTTP client
 	~#
 	class HttpClient {
