@@ -4444,7 +4444,8 @@ bundle Web.HTTP {
 		@path : String;
 
 		#~
-		Parsed URL into components 
+		Parsed URL into components
+		@param url raw URl
 		~#
 		New(url : String) {
 			@url := url;
