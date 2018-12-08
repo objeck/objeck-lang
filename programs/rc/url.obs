@@ -1,25 +1,25 @@
 class Arithmetic {
 	function : Main(args : String[]) ~ Nil {
 		ParseUrl("foo://example.com:8042/over/there?name=ferret#nose:")->PrintLine();
-"---"->PrintLine();
-
 		ParseUrl("urn:oasis:names:specification:docbook:dtd:xml:4.1.2:")->PrintLine();
-"---"->PrintLine();
+		ParseUrl("http://www.ietf.org/rfc/rfc2396.txt#header1")->PrintLine();
 	}
 
 	function : ParseUrl(url : String) ~ Bool {
+"url='{$url}'"->PrintLine();
+		
 		scheme_index := url->Find(':');
 		if(scheme_index < 0) {
 			"--- No scheme ---"->ErrorLine();
 			return false;
 		};
 		scheme := url->SubString(0, scheme_index);
-"scheme='{$scheme}'"->PrintLine();
+"\tscheme='{$scheme}'"->PrintLine();
 
 		scheme_index += 1;
 		rest := url->SubString(scheme_index, url->Size() - scheme_index);
-"rest='{$rest}'"->PrintLine();
 
+		full_path := "";
 		parts := rest->Split("/");
 		if(parts->Size() > 0) {
 			each(i : parts) {
@@ -46,6 +46,10 @@ class Arithmetic {
 						};
 
 					};
+
+					if(host->Size() > 0 & host->Get(0) = '/') {
+						host := host->SubString(1, host->Size() - 1);
+					};
 "\thost='{$host}'"->PrintLine();
 
 					if(port <> Nil) {
@@ -54,21 +58,54 @@ class Arithmetic {
 				}
 				# parse last
 				else if(i = parts->Size() - 1) {
-"\tlast='/{$part}'"->PrintLine();
+					last := part;
+					query_index := last->FindLast('?');
+					if(query_index > -1) {
+						query_index += 1;
+						query := last->SubString(query_index, last->Size() - query_index);
+						part := last->SubString(0, query_index - 1);
+
+						frag := ParseFragment(query);
+						if(frag <> Nil) {
+							query := query->SubString(0, query->Size() - frag->Size() - 1);							
+"\tfrag='{$frag}'"->PrintLine();
+						};
+"\tquery='{$query}'"->PrintLine();
+					}
+					else {
+						frag := ParseFragment(last);
+						if(frag <> Nil) {
+							part := last->SubString(0, last->Size() - frag->Size() - 1);							
+"\tfrag='{$frag}'"->PrintLine();
+						};
+					};
+
+					full_path += '/';
+					full_path += part;
 				}
 				# append path
 				else if(i > 1) {
-"\tpart='/{$part}'"->PrintLine();
+					full_path += '/';
+					full_path += part;
 				};
 			};
 		}
 		else {
-			path := rest;
-"\tpath='{$path}'"->PrintLine();
+			full_path := rest;
 		};
 
-"\tquery=''"->PrintLine();
-
+"\tpath='{$full_path}'"->PrintLine();
 		return true;
 	}
+
+	function : ParseFragment(part : String) ~ String {
+		frag_index := part->FindLast('#');
+		if(frag_index > -1) {
+			frag_index += 1;
+			frag := part->SubString(frag_index, part->Size() - frag_index);
+			return frag;
+		};
+
+		return Nil;
+	} 
 }
