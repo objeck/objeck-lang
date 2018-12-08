@@ -18,6 +18,8 @@ class Url {
 	@scheme : String;
 	@host : String;
 	@port : String;
+	@frag : String;
+	@path : String;
 
 	New(url : String) {
 		@parsed := ParseUrl(url);
@@ -41,7 +43,7 @@ class Url {
 		scheme_index += 1;
 		rest := url->SubString(scheme_index, url->Size() - scheme_index);
 
-		full_path := "";
+		@path := "";
 		parts := rest->Split("/");
 		if(parts->Size() > 0) {
 			each(i : parts) {
@@ -87,40 +89,40 @@ class Url {
 						query := last->SubString(query_index, last->Size() - query_index);
 						part := last->SubString(0, query_index - 1);
 
-						frag := ParseFragment(query);
-						if(frag <> Nil) {
-							query := query->SubString(0, query->Size() - frag->Size() - 1);							
-"\tfrag='{$frag}'"->PrintLine();
+						@frag := ParseFragment(query);
+						if(@frag <> Nil) {
+							query := query->SubString(0, query->Size() - @frag->Size() - 1);							
+"\tfrag='{$@frag}'"->PrintLine();
 						};
 "\tquery='{$query}'"->PrintLine();
 					}
 					else {
-						frag := ParseFragment(last);
-						if(frag <> Nil) {
-							part := last->SubString(0, last->Size() - frag->Size() - 1);							
-"\tfrag='{$frag}'"->PrintLine();
+						@frag := ParseFragment(last);
+						if(@frag <> Nil) {
+							part := last->SubString(0, last->Size() - @frag->Size() - 1);							
+"\tfrag='{$@frag}'"->PrintLine();
 						};
 					};
 
-					full_path += '/';
-					full_path += part;
+					@path += '/';
+					@path += part;
 				}
 				# append path
 				else if(i > 1) {
-					full_path += '/';
-					full_path += part;
+					@path += '/';
+					@path += part;
 				};
 			};
 		}
 		else {
-			full_path := rest;
+			@path := rest;
 		};
 
-"\tpath='{$full_path}'"->PrintLine();
+"\tpath='{$@path}'"->PrintLine();
 		return true;
 	}
 
-	function : ParseFragment(part : String) ~ String {
+	method : ParseFragment(part : String) ~ String {
 		frag_index := part->FindLast('#');
 		if(frag_index > -1) {
 			frag_index += 1;
