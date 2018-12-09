@@ -1876,7 +1876,7 @@ bundle System {
 		Returns a character array representation of the String
 		@return character array
 		~#
-		method : public : native : ToCharArray() ~ Char[] {
+		method : public : ToCharArray() ~ Char[] {
 			array : Char[] := Char->New[@pos];
 			Runtime->Copy(array, 0, @string, 0, @pos);
 			return array;
