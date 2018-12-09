@@ -1878,10 +1878,7 @@ bundle System {
 		~#
 		method : public : native : ToCharArray() ~ Char[] {
 			array : Char[] := Char->New[@pos];
-			for(i : Int := 0; i < @pos; i += 1;) {
-				array[i] := @string[i];
-			};
-
+			Runtime->Copy(array, 0, @string, 0, @pos);
 			return array;
 		}
 		
