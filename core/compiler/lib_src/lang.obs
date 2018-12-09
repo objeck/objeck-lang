@@ -2684,10 +2684,15 @@ bundle System {
 			};
 
 			array : Char[] := Char->New[length];
+
+
+			Runtime->Copy(array, 0, @string, offset, length);
+
+#~			
 			for(i : Int := 0; i < length; i += 1;) {
 				array[i] := @string[i + offset];
 			};
-
+~#
 			return String->New(array);
 		}
 	
