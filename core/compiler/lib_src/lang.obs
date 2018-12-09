@@ -2673,7 +2673,7 @@ bundle System {
 		@param length max length of sub-string
 		@return sub-string
 		~#
-		method : public : native : SubString(offset : Int, length : Int) ~ String {
+		method : public : SubString(offset : Int, length : Int) ~ String {
 			if(offset < 0 | offset > @pos) {
 				return Nil;
 			};
@@ -2684,15 +2684,8 @@ bundle System {
 			};
 
 			array : Char[] := Char->New[length];
-
-
 			Runtime->Copy(array, 0, @string, offset, length);
 
-#~			
-			for(i : Int := 0; i < length; i += 1;) {
-				array[i] := @string[i + offset];
-			};
-~#
 			return String->New(array);
 		}
 	
