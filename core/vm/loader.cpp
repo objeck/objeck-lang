@@ -234,7 +234,7 @@ void Loader::LoadClasses()
     // read class types
     const int cls_num_dclrs = ReadInt();
     StackDclr** cls_dclrs = new StackDclr*[cls_num_dclrs];
-    for(int i = 0; i < cls_num_dclrs; ++i) {
+    for(int j = 0; j < cls_num_dclrs; ++j) {
       // set type
       int type = ReadInt();
       // set name
@@ -242,15 +242,15 @@ void Loader::LoadClasses()
       if(is_debug) {
         name = ReadString();
       }
-      cls_dclrs[i] = new StackDclr;
-      cls_dclrs[i]->name = name;
-      cls_dclrs[i]->type = (ParamType)type;
+      cls_dclrs[j] = new StackDclr;
+      cls_dclrs[j]->name = name;
+      cls_dclrs[j]->type = (ParamType)type;
     }
 
     // read instance types
     const int inst_num_dclrs = ReadInt();
     StackDclr** inst_dclrs = new StackDclr*[inst_num_dclrs];
-    for(int i = 0; i < inst_num_dclrs; ++i) {
+    for(int j = 0; j < inst_num_dclrs; ++j) {
       // set type
       int type = ReadInt();
       // set name
@@ -258,9 +258,9 @@ void Loader::LoadClasses()
       if(is_debug) {
         name = ReadString();
       }
-      inst_dclrs[i] = new StackDclr;
-      inst_dclrs[i]->name = name;
-      inst_dclrs[i]->type = (ParamType)type;
+      inst_dclrs[j] = new StackDclr;
+      inst_dclrs[j]->name = name;
+      inst_dclrs[j]->type = (ParamType)type;
     }
 
     cls_hierarchy[id] = pid;
