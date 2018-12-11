@@ -2681,7 +2681,9 @@ bundle System {
 			};
 
 			array : Char[] := Char->New[length];
-			Runtime->Copy(array, 0, @string, offset, length);
+			if(<>Runtime->Copy(array, 0, @string, offset, length)) {
+				return Nil;
+			};
 
 			return String->New(array);
 		}
