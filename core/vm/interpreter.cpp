@@ -80,7 +80,7 @@ void StackInterpreter::Initialize(StackProgram* p)
 
 #ifndef _SANITIZE
   // allocate 256K frames
-  for(int i = 0; i < CALL_STACK_SIZE * 16; i++) {
+  for(size_t i = 0; i < FRAME_CACHE_SIZE; ++i) {
     StackFrame* frame = new StackFrame();
     frame->mem = (size_t*)calloc(LOCAL_SIZE, sizeof(size_t));
     cached_frames.push(frame);
