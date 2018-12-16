@@ -54,6 +54,7 @@ namespace Runtime {
   class Debugger;
 #endif
   
+#define FRAME_CACHE_SIZE 24
 #define CALL_STACK_SIZE 1024
 #define OP_STACK_SIZE 256
 
