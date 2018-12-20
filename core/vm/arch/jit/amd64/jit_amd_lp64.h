@@ -2018,8 +2018,8 @@ namespace Runtime {
 #endif
 #else
         // general use registers
-        //	aval_regs.push_back(new RegisterHolder(RDX));
-        //	aval_regs.push_back(new RegisterHolder(RCX));
+        aval_regs.push_back(new RegisterHolder(RDX));
+        aval_regs.push_back(new RegisterHolder(RCX));
         aval_regs.push_back(new RegisterHolder(RBX));
         aval_regs.push_back(rax_reg);
         // aux general use registers
