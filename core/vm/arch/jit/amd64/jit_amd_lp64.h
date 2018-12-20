@@ -2119,8 +2119,6 @@ namespace Runtime {
         // store compiled code
         method->SetNativeCode(new NativeCode(page_manager->GetPage(code, code_index), code_index, floats));
         
-        
-        
         free(code);
         code = NULL;
 
@@ -2177,10 +2175,6 @@ namespace Runtime {
         << method->GetParamCount() << L"; code=" << (size_t*)code << L"; code_index="
         << code_index << L" ===" << endl;
       assert((*stack_pos) >= method->GetParamCount());
-
-      if(method->GetName() == L"System.String:Append:c*,") {
-        wcout << L"..." << endl;
-      }
 #endif
 
       // execute
