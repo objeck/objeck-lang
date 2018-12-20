@@ -1842,8 +1842,6 @@ namespace Runtime {
         StackInstr* instr = value->second;
         // instance reference
         if(instr->GetOperand2() == INST || instr->GetOperand2() == CLS) {
-          // note: all instance variables are allocted in 4-byte blocks,
-          // for floats the assembler allocates 2 4-byte blocks
           instr->SetOperand3(instr->GetOperand() * sizeof(size_t));
         }
         // local reference
