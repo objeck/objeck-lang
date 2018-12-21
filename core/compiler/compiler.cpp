@@ -86,7 +86,7 @@ int Compile(map<const wstring, wstring> &arguments, list<wstring> &argument_opti
       wcerr << usage << endl << endl;
       return COMMAND_ERROR;
     }
-    run_string = L"bundle Default { class Run { function : Main(args : wstring[]) ~ Nil {";
+    run_string = L"bundle Default { class Run { function : Main(args : String[]) ~ Nil {";
     run_string += arguments[L"run"];
     run_string += L"} } }";
     argument_options.remove(L"run");

@@ -187,7 +187,7 @@ void Parser::ParseFile(const wstring &file_name)
  ****************************/
 void Parser::ParseProgram()
 {
-  scanner = new Scanner(run_prgm, true);
+  scanner = new Scanner(run_prgm, false, true);
   NextToken();
   ParseBundle(0);
   // clean up
