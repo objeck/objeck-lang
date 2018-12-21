@@ -52,7 +52,7 @@ int main(int argc, char* argv[])
   usage += L"Usage: obc -src <source files> <options> -dest <output file>\n\n";
   usage += L"Options:\n";
   usage += L"  -src:   [input]  source files (separated by ',')\n";
-  usage += L"  -in:    [input]  inline code instead of source files\n";
+  usage += L"  -in:    [input]  inlined code instead of source files\n";
   usage += L"  -lib:   [input]  linked libraries (separated by ',')\n";
   usage += L"  -ver:   [input]  displays the compiler version number\n";
   usage += L"  -tar:   [output] target type 'lib' for linkable library or 'exe' for\n";
@@ -60,8 +60,8 @@ int main(int argc, char* argv[])
   usage += L"  -dest:  [output] file name\n";
   usage += L"  -opt:   [option] compiler optimizations s0-s3 (s3 being the most aggressive)\n";
   usage += L"          default is s3\n";
-  usage += L"  -alt:   [option] allows use of C++ like syntax verses the UML like default\n";
-  usage += L"  -debug: [option] compile with debug symbols";
+  usage += L"  -alt:   [option/end] allows use of C++ like syntax verses the UML like default\n";
+  usage += L"  -debug: [option/end] compile with debug symbols";
   usage += L"\n\nExample: \"obc -src ../examples/hello.obs -dest hello.obe\"\n\nVersion: ";
   usage += VERSION_STRING;
   
