@@ -53,10 +53,10 @@ Scanner::Scanner(wstring f, bool j, bool p)
   if(p) {
     buffer_pos = 0;
     is_first_token = true;
-    buffer_size = f.size();
-    buffer = new wchar_t[buffer_size + 1];
+    buffer_size = f.size() + 1;
+    buffer = new wchar_t[buffer_size];
 #ifdef _WIN32
-	wcscpy_s(buffer, f.size(), f.c_str());
+	  wcscpy_s(buffer, buffer_size, f.c_str());
 #else
     wcscpy(buffer, f.c_str());
 #endif

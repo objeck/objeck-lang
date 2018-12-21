@@ -213,7 +213,7 @@ class Parser {
   Parser(const wstring &p, bool a, const wstring &r) {
     src_path = p;
     alt_syntax = a;
-    run_prgm = wstring(r.begin(), r.end());
+    run_prgm = r;
     program = new ParsedProgram;
     LoadErrorCodes();
     current_class = NULL;
