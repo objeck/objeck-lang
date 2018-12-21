@@ -1,7 +1,7 @@
 /***************************************************************************
  * Shared library API header file
  *
- * Copyright (c) 2011-2013, Randy Hollines
+ * Copyright (c) 2011-2018, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in sohurce and binary forms, with or without
