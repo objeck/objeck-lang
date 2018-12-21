@@ -365,7 +365,7 @@ size_t* APITools_CreateStringValue(VMContext &context, const wstring &value) {
   // copy string
   wchar_t* char_array_ptr = (wchar_t*)(char_array + 3);
 #ifdef _WIN32
-  wcsncpy_s(char_array_ptr, char_array_size, value.c_str(), char_array_size);
+  wcsncpy_s(char_array_ptr, char_array_size + 1, value.c_str(), value.size());
 #else
   wcsncpy(char_array_ptr, value.c_str(), char_array_size);
 #endif
