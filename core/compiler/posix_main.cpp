@@ -52,6 +52,7 @@ int main(int argc, char* argv[])
   usage += L"Usage: obc -src <source files> <options> -dest <output file>\n\n";
   usage += L"Options:\n";
   usage += L"  -src:   [input]  source files (separated by ',')\n";
+  usage += L"  -in:    [input]  inline code instead of source files\n";
   usage += L"  -lib:   [input]  linked libraries (separated by ',')\n";
   usage += L"  -ver:   [input]  displays the compiler version number\n";
   usage += L"  -tar:   [output] target type 'lib' for linkable library or 'exe' for\n";

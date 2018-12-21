@@ -81,15 +81,15 @@ int Compile(map<const wstring, wstring> &arguments, list<wstring> &argument_opti
   wstring run_string;
   result = arguments.find(L"src");
   if(result == arguments.end()) {
-    result = arguments.find(L"run");
+    result = arguments.find(L"in");
     if(result == arguments.end()) {
       wcerr << usage << endl << endl;
       return COMMAND_ERROR;
     }
     run_string = L"bundle Default { class Run { function : Main(args : String[]) ~ Nil {";
-    run_string += arguments[L"run"];
+    run_string += arguments[L"in"];
     run_string += L"} } }";
-    argument_options.remove(L"run");
+    argument_options.remove(L"in");
   }
   else {
     argument_options.remove(L"src");
