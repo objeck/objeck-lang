@@ -364,7 +364,11 @@ size_t* APITools_CreateStringValue(VMContext &context, const wstring &value) {
 
   // copy string
   wchar_t* char_array_ptr = (wchar_t*)(char_array + 3);
+#ifdef _WIN32
+  wcsncpy_s(char_array_ptr, char_array_size, value.c_str(), char_array_size);
+#else
   wcsncpy(char_array_ptr, value.c_str(), char_array_size);
+#endif
 
   // create 'System.String' object instance
   size_t* str_obj = context.alloc_obj(L"System.String", context.op_stack, *context.stack_pos, false);
