@@ -925,7 +925,11 @@ size_t* TrapProcessor::CreateStringObject(const wstring &value_str, StackProgram
 
   // copy wstring
   wchar_t* char_array_ptr = (wchar_t*)(char_array + 3);
+#ifdef _WIN32
+  wcsncpy_s(char_array_ptr, char_array_size + 1, value_str.c_str(), char_array_size);
+#else
   wcsncpy(char_array_ptr, value_str.c_str(), char_array_size);
+#endif
 
   // create 'System.String' object instance
   size_t* str_obj = MemoryManager::AllocateObject(program->GetStringObjectId(),
@@ -1777,7 +1781,11 @@ bool TrapProcessor::ConvertBytesToUnicode(StackProgram* program, size_t* inst, s
 
   // copy wstring
   wchar_t* char_array_ptr = (wchar_t*)(char_array + 3);
+#ifdef _WIN32
+  wcsncpy_s(char_array_ptr, char_array_size + 1, out.c_str(), char_array_size);
+#else
   wcsncpy(char_array_ptr, out.c_str(), char_array_size);
+#endif
 
   // push result
   PushInt((size_t)char_array, op_stack, stack_pos);
@@ -1805,7 +1813,11 @@ bool TrapProcessor::ConvertUnicodeToBytes(StackProgram* program, size_t* inst, s
 
   // copy bytes
   char* byte_array_ptr = (char*)(byte_array + 3);
+#ifdef _WIN32
+  strncpy_s(byte_array_ptr, byte_array_size + 1, out.c_str(), byte_array_size);
+#else
   strncpy(byte_array_ptr, out.c_str(), byte_array_size);
+#endif
 
   // push result
   PushInt((size_t)byte_array, op_stack, stack_pos);
@@ -2058,7 +2070,11 @@ bool TrapProcessor::StdInString(StackProgram* program, size_t* inst, size_t* &op
     wcin.getline(buffer, max);
     // copy to dest
     wchar_t* dest = (wchar_t*)(array + 3);
+#ifdef _WIN32
+    wcsncpy_s(dest, array[0], buffer, max);
+#else
     wcsncpy(dest, buffer, max);
+#endif
     // clean up
     delete[] buffer;
     buffer = NULL;
@@ -2519,7 +2535,11 @@ bool TrapProcessor::SockTcpInString(StackProgram* program, size_t* inst, size_t*
       const wstring in = BytesToUnicode(buffer);
       wchar_t* out = (wchar_t*)(array + 3);
       const long max = (long)array[2];
+#ifdef _WIN32
+      wcsncpy_s(out, array[0], in.c_str(), max);
+#else
       wcsncpy(out, in.c_str(), max);
+#endif
     }
   }
 
@@ -2640,7 +2660,11 @@ bool TrapProcessor::SockTcpSslInString(StackProgram* program, size_t* inst, size
       const wstring in = BytesToUnicode(buffer);
       wchar_t* out = (wchar_t*)(array + 3);
       const long max = (long)array[2];
+#ifdef _WIN32
+      wcsncpy_s(out, array[0], in.c_str(), max);
+#else
       wcsncpy(out, in.c_str(), max);
+#endif
     }
   }
 
@@ -2989,7 +3013,11 @@ bool TrapProcessor::FileInString(StackProgram* program, size_t* inst, size_t* &o
       const wstring in = BytesToUnicode(buffer);
       wchar_t* out = (wchar_t*)(array + 3);
       const long max = (long)array[2];
+#ifdef _WIN32
+      wcsncpy_s(out, array[0], in.c_str(), max);
+#else
       wcsncpy(out, in.c_str(), max);
+#endif
     }
   }
 
@@ -3085,7 +3113,11 @@ bool TrapProcessor::SockTcpInCharAry(StackProgram* program, size_t* inst, size_t
     if(read > -1) {
       byte_buffer[read] = '\0';
       wstring in = BytesToUnicode(byte_buffer);
+#ifdef _WIN32
+      wcsncpy_s(buffer, array[0], in.c_str(), in.size());
+#else
       wcsncpy(buffer, in.c_str(), in.size());
+#endif
       PushInt(in.size(), op_stack, stack_pos);
     }
     else {
@@ -3212,7 +3244,11 @@ bool TrapProcessor::SockTcpSslInCharAry(StackProgram* program, size_t* inst, siz
     if(read > -1) {
       byte_buffer[read] = '\0';
       wstring in = BytesToUnicode(byte_buffer);
+#ifdef _WIN32
+      wcsncpy_s(buffer, array[0], in.c_str(), in.size());
+#else
       wcsncpy(buffer, in.c_str(), in.size());
+#endif
       PushInt(in.size(), op_stack, stack_pos);
     }
     else {
@@ -3327,7 +3363,11 @@ bool TrapProcessor::FileInCharAry(StackProgram* program, size_t* inst, size_t* &
     const wstring in(BytesToUnicode(byte_buffer));
 
     // copy
+#ifdef _WIN32
+    wcsncpy_s(out, array[0], in.c_str(), array[2]);
+#else
     wcsncpy(out, in.c_str(), array[2]);
+#endif
 
     // clean up
     delete[] byte_buffer;
