@@ -147,17 +147,13 @@ static map<const wstring, wstring> ParseCommnadLine(const wstring &path_string) 
 static wstring GetLibraryPath() {
   wstring path;
 
-#ifdef _OBJECK_LIB_PATH
-  const char* path_str_ptr = _OBJECK_LIB_PATH;
-#else
-  #ifdef _WIN32
+#ifdef _WIN32
   char* path_str_ptr; size_t len;
   if(_dupenv_s(&path_str_ptr, &len, "OBJECK_LIB_PATH")) {
     return L"";
   }
 #else
   const char* path_str_ptr = getenv("OBJECK_LIB_PATH");
-#endif
 #endif
   if(path_str_ptr && strlen(path_str_ptr) > 0) {
     string path_str(path_str_ptr);
