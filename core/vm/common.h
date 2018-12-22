@@ -1634,6 +1634,34 @@ enum TimeInterval {
 };
 
 class TrapProcessor {
+  static inline bool GetTime(struct tm* &curr_time, time_t raw_time, bool is_gmt) {
+#ifdef _WIN32
+    struct tm temp_time;
+    if(is_gmt) {
+      if(gmtime_s(&temp_time, &raw_time)) {
+        wcerr << L">>> Unable to get GMT time <<<" << endl;
+        return false;
+      }
+    }
+    else {
+      if(localtime_s(&temp_time, &raw_time)) {
+        wcerr << L">>> Unable to get GMT time <<<" << endl;
+        return false;
+      }
+    }
+    curr_time = &temp_time;
+#else
+    if(is_gmt) {
+      curr_time = gmtime(&raw_time);
+    }
+    else {
+      curr_time = localtime(&raw_time);
+    }
+#endif
+
+    return curr_time != NULL;
+  }
+
   //
   // pops an integer from the calculation stack.  this code
   // in normally inlined and there's a macro version available.
