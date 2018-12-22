@@ -64,6 +64,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <userenv.h>
+#include <cstring>
 using namespace stdext;
 #elif _OSX
 #include <mach-o/dyld.h>

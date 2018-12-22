@@ -417,8 +417,12 @@ namespace Runtime {
 
       // copy wstring
       wchar_t* char_array_ptr = (wchar_t*)(char_array + 3);
+#ifdef _WIN32
+      wcsncpy_s(char_array_ptr, char_array_size + 1, value_str.c_str(), char_array_size);
+#else
       wcsncpy(char_array_ptr, value_str.c_str(), char_array_size);
-      
+#endif
+
       // create 'System.String' object instance
       size_t* str_obj = MemoryManager::AllocateObject(program->GetStringObjectId(), op_stack, *stack_pos, false);
       str_obj[0] = (size_t)char_array;

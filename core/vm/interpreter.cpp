@@ -806,13 +806,22 @@ void StackInterpreter::Int2Str(size_t* &op_stack, long* &stack_pos)
       stream << std::hex << value;
       wstring conv(stream.str());
       const size_t max = conv.size() < 16 ? conv.size() : 16; 
+
+#ifdef _WIN32
+      wcsncpy_s(str, str_ptr[0], conv.c_str(), max);
+#else
       wcsncpy(str, conv.c_str(), max);
+#endif
     }
     else {
       stream << value;
       wstring conv(stream.str());
       const size_t max = conv.size() < 16 ? conv.size() : 16; 
+#ifdef _WIN32
+      wcsncpy_s(str, str_ptr[0], conv.c_str(), max);
+#else
       wcsncpy(str, conv.c_str(), max);
+#endif
     }
   }
 }
@@ -828,7 +837,11 @@ void inline StackInterpreter::Float2Str(size_t* &op_stack, long* &stack_pos)
     stream << value;
     wstring conv(stream.str());
     const size_t max = conv.size() < 16 ? conv.size() : 16; 
+#ifdef _WIN32
+    wcsncpy_s(str, str_ptr[0], conv.c_str(), max);
+#else
     wcsncpy(str, conv.c_str(), max);
+#endif
   }
 }
 

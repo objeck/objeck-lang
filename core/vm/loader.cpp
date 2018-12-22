@@ -141,7 +141,12 @@ void Loader::Load()
     const wstring value = ReadString();
     wchar_t* char_string = new wchar_t[value.size() + 1];
     // copy string
+#ifdef _WIN32
+    wcscpy_s(char_string, value.size() + 1, value.c_str());
+#else
     wcscpy(char_string, value.c_str());
+#endif
+
 #ifdef _DEBUG
     wcout << L"Loaded static character string[" << i << L"]: '" << char_string << L"'" << endl;
 #endif
