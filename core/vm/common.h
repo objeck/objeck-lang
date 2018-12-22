@@ -88,7 +88,7 @@ using namespace stdext;
 #include <sys/types.h>
 #endif
 
-#define SMALL_BUFFER_MAX 511
+#define SMALL_BUFFER_MAX 383
 #define LARGE_BUFFER_MAX 4095
 #define CALC_STACK_SIZE 512
 #define CACERT_PEM_FILE "cacert.pem"
