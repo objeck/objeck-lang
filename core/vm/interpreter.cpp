@@ -2380,9 +2380,17 @@ void StackInterpreter::ProcessDllLoad(StackInstr* instr)
   
   wstring path_str;
 #ifdef _OBJECK_NATIVE_LIB_PATH
-  char* lib_path = getenv("OBJECK_LIB_PATH");
+  char* lib_path = NULL;
+
 #ifdef _WIN32
+  size_t  len;
+  if(_dupenv_s(&lib_path, &len, "pathext")) {
+#else
+  lib_path = getenv("OBJECK_LIB_PATH");
   if(lib_path) {
+#endif
+  
+#ifdef _WIN32
     path_str += BytesToUnicode(lib_path);
     path_str += L"\\native\\";
   }
