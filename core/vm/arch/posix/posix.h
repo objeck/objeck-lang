@@ -315,11 +315,11 @@ class IPSecureSocket {
       SSL_CTX_free(ctx);
       return false;
     }
-
+    
     wstring path = GetLibraryPath();
     string cert_path(path.begin(), path.end());
-    cert_path += "cacert-2016-11-02.pem";
-
+    cert_path += CACERT_PEM_FILE;
+    
     if(!SSL_CTX_load_verify_locations(ctx, cert_path.c_str(), NULL)) {
       BIO_free_all(bio);
       SSL_CTX_free(ctx);
@@ -334,7 +334,7 @@ class IPSecureSocket {
       BIO_free_all(bio);
       SSL_CTX_free(ctx);
       return false;
-    }    
+    }
     ssl_address += ":";
     ssl_address += UnicodeToBytes(IntToString(port));
     BIO_set_conn_hostname(bio, ssl_address.c_str());
@@ -344,7 +344,7 @@ class IPSecureSocket {
       SSL_CTX_free(ctx);
       return false;
     }
-
+    
     if(BIO_do_handshake(bio) <= 0) {
       BIO_free_all(bio);
       SSL_CTX_free(ctx);
@@ -357,8 +357,9 @@ class IPSecureSocket {
       SSL_CTX_free(ctx);
       return false;
     }
-
-    if(SSL_get_verify_result(ssl) != X509_V_OK) {
+    
+    const int status = SSL_get_verify_result(ssl);
+    if(status != X509_V_OK && status != X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT) {
       BIO_free_all(bio);
       SSL_CTX_free(ctx);
       X509_free(cert);

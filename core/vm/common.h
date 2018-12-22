@@ -91,6 +91,7 @@ using namespace stdext;
 #define SMALL_BUFFER_MAX 511
 #define LARGE_BUFFER_MAX 4095
 #define CALC_STACK_SIZE 512
+#define CACERT_PEM_FILE "cacert.pem"
 
 #ifdef _WIN32
 #define MUTEX_LOCK EnterCriticalSection
