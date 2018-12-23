@@ -355,7 +355,7 @@ Enum* Parser::ParseEnum(int depth)
 
   size_t index = enum_scope_name.find('#');
   if(index != wstring::npos) {
-    const wstring use_name = enum_scope_name.substr(0, index);
+    const wstring use_name = enum_scope_name.substr(0, index + 1);
     program->AddUse(use_name, file_name);
   }
   
