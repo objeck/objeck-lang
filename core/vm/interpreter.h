@@ -56,7 +56,7 @@ namespace Runtime {
   
 #define FRAME_CACHE_SIZE 24
 #define CALL_STACK_SIZE 1024
-#define OP_STACK_SIZE 256
+#define OP_STACK_SIZE 128
 
   // holds the calling context for async
   // method calls
