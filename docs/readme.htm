@@ -432,25 +432,38 @@ normal'><span style='font-family:"Calibri",sans-serif'>&nbsp;</span></p>
 <h2><span style='font-size:12.0pt;line-height:107%'>Release notes</span></h2>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
-normal'><span style='font-family:"Calibri",sans-serif'>Performance and security
-enhancements</span></p>
+normal'><span style='font-family:"Calibri",sans-serif'>Performance, bug and
+security enhancements.</span></p>
+
+<p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
+normal'><span style='font-family:"Calibri",sans-serif'>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
+normal'><span style='font-family:"Calibri",sans-serif'>Highlights:</span></p>
 
 <p class=MsoListParagraphCxSpFirst style='margin-bottom:0in;margin-bottom:.0001pt;
 text-indent:-.25in;line-height:normal'><span style='font-family:"Calibri",sans-serif'>1.<span
 style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span></span><span
-style='font-family:"Calibri",sans-serif'>VM memory usage reduced by 40%-50%</span></p>
+style='font-family:"Calibri",sans-serif'>VM memory usage reduced by 40%-50%
+(new)</span></p>
 
 <p class=MsoListParagraphCxSpMiddle style='margin-bottom:0in;margin-bottom:
 .0001pt;text-indent:-.25in;line-height:normal'><span style='font-family:"Calibri",sans-serif'>2.<span
 style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span></span><span
+style='font-family:"Calibri",sans-serif'>General VM tuning and runtime security
+improvements (new)</span></p>
+
+<p class=MsoListParagraphCxSpMiddle style='margin-bottom:0in;margin-bottom:
+.0001pt;text-indent:-.25in;line-height:normal'><span style='font-family:"Calibri",sans-serif'>3.<span
+style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span></span><span
 style='font-family:"Calibri",sans-serif'>Fixed secure socket code for Linux and
-macOS</span></p>
+macOS (fix)</span></p>
 
 <p class=MsoListParagraphCxSpLast style='margin-bottom:0in;margin-bottom:.0001pt;
-text-indent:-.25in;line-height:normal'><span style='font-family:"Calibri",sans-serif'>3.<span
+text-indent:-.25in;line-height:normal'><span style='font-family:"Calibri",sans-serif'>4.<span
 style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span></span><span
-style='font-family:"Calibri",sans-serif'>General VM tuning and runtime security
-improvements</span></p>
+style='font-family:"Calibri",sans-serif'>Resolved compiler issue impacting the
+'Query.Structured' library (fix)</span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
 normal'><span style='font-family:"Calibri",sans-serif'>&nbsp;</span></p>
@@ -547,8 +560,8 @@ name="__DdeLink__299_2284694977">OBJECK_LIB</a>_PATH=C:\Users\&lt;account&gt;\ob
 margin-left:.5in;margin-bottom:.0001pt;text-indent:-.25in;line-height:normal'><span
 style='font-family:"Calibri",sans-serif'>2.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span><span style='font-family:"Calibri",sans-serif'>set
-PATH=%PATH%;C:\ Users\&lt;account&gt;\ objeck-lang\bin; C:\ Users\&lt;account&gt;\
-objeck-lang\lib\sdl</span></p>
+PATH=%PATH%;C:\ Users\&lt;account&gt;\ objeck-lang\bin; C:\
+Users\&lt;account&gt;\ objeck-lang\lib\sdl</span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
 normal'><span style='font-family:"Calibri",sans-serif'>&nbsp;</span></p>
@@ -601,8 +614,8 @@ that has library dependencies:</span></p>
 
 <p class=MsoNormal style='margin-top:0in;margin-right:0in;margin-bottom:0in;
 margin-left:.5in;margin-bottom:.0001pt;text-indent:-.25in;line-height:normal'><span
-style='font-family:"Calibri",sans-serif'>1.    obc -src ..\examples\xml_path.obs
--lib collect.obl,xml.obl -dest xml_path.obe</span></p>
+style='font-family:"Calibri",sans-serif'>1.    obc -src
+..\examples\xml_path.obs -lib collect.obl,xml.obl -dest xml_path.obe</span></p>
 
 <p class=MsoNormal style='margin-top:0in;margin-right:0in;margin-bottom:0in;
 margin-left:.5in;margin-bottom:.0001pt;text-indent:-.25in;line-height:normal'><span
@@ -639,10 +652,11 @@ is below.</span></p>
 margin-left:.5in;margin-bottom:.0001pt;text-indent:-.25in;line-height:normal'><span
 style='font-family:"Calibri",sans-serif'>1.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span><span style='font-family:"Calibri",sans-serif'>sudo apt install
-libsdl1.2debian libsdl-gfx1.2-5 libsdl-gfx1.2-dev libsdl-gfx1.2-doc libsdl-image1.2
-libsdl-image1.2-dbg libsdl-image1.2-dev libsdl-mixer1.2 libsdl-mixer1.2-dbg
-libsdl-mixer1.2-dev libsdl-net1.2 libsdl-net1.2-dbg libsdl-net1.2-dev
-libsdl-sound1.2 libsdl-sound1.2-dev libsdl-ttf2.0-0 libsdl-ttf2.0-dev</span></p>
+libsdl1.2debian libsdl-gfx1.2-5 libsdl-gfx1.2-dev libsdl-gfx1.2-doc
+libsdl-image1.2 libsdl-image1.2-dbg libsdl-image1.2-dev libsdl-mixer1.2
+libsdl-mixer1.2-dbg libsdl-mixer1.2-dev libsdl-net1.2 libsdl-net1.2-dbg
+libsdl-net1.2-dev libsdl-sound1.2 libsdl-sound1.2-dev libsdl-ttf2.0-0
+libsdl-ttf2.0-dev</span></p>
 
 <p class=MsoNormal style='margin-top:0in;margin-right:0in;margin-bottom:0in;
 margin-left:.5in;margin-bottom:.0001pt;line-height:normal'><span
