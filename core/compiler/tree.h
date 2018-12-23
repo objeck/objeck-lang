@@ -3299,8 +3299,12 @@ namespace frontend {
     }
 
     bool HasBundleName(const wstring &name) {
-      vector<wstring>::iterator found = find(bundle_names.begin(), bundle_names.end(), name);
-      return found != bundle_names.end();
+      if(name.back() != L'#') {
+        vector<wstring>::iterator found = find(bundle_names.begin(), bundle_names.end(), name);
+        return found != bundle_names.end();
+      }
+
+      return true;
     }
 
     const vector<wstring> GetUses() {
