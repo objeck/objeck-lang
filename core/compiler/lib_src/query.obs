@@ -939,16 +939,12 @@ bundle Query.Structured {
 			};			
 			NextToken();
 
-TokenType()->PrintLine();
-Token->Type->INT->PrintLine();
-
 			if(TokenType() = Token->Type->SELECT) {
 				NextToken();				
 				term := ParseSelect();
 			}
 			else if(TokenType() = Token->Type->FROM) {
 				NextToken();
-"--- 2 ---"->PrintLine();
 				term := ParseFrom();
 			};
 
@@ -1025,7 +1021,7 @@ Token->Type->INT->PrintLine();
 		}
 
 		method : ParseFrom() ~ Term {
-"--- From ---"->PrintLine();
+# "--- From ---"->PrintLine();
 
 			if(TokenType() <> Token->Type->REF) {
 				return Nil;
@@ -1291,16 +1287,14 @@ Token->Type->INT->PrintLine();
 							string->Append(@line->Get(i));
 							i += 1;
 						};
-string->ToLower()->PrintLine();						
-						result := reserved->Find("select")->As(Token);
+
+						result := reserved->Find(string->ToLower())->As(Token);
 						if(result <> Nil) {
-result->GetType()->PrintLine();							
 							tokens->AddBack(result);
 						}
 						else {
 							tokens->AddBack(Token->New(string));
 						};
-"----"->PrintLine();						
 					}
 					# number
 					else if(@line->Get(i)->IsDigit() = true) {
@@ -1501,14 +1495,14 @@ result->GetType()->PrintLine();
 			@value := "";
 		}
 		
-		New(value : Int) {
-			@type := Type->INT;
-			@value := IntHolder->New(value);
-		}
-		
 		New(value : Float) {
 			@type := Type->FLOAT;
 			@value := FloatHolder->New(value);
+		}
+
+		New(value : Int) {
+			@type := Type->INT;
+			@value := IntHolder->New(value);
 		}
 		
 		method : public : GetType() ~ Type {
