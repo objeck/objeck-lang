@@ -1,25 +1,14 @@
-use System.IO.File;
-use Collection;
+enum Values {
+	A,
+	B
+}
 
-class Abbreviations  {
-	function : Main(args : String[]) ~ Nil {
-		if(args->Size() = 1) {
-			Go(args[0]);
-		};
+class Test2  {
+	function : Foo(v : Values) ~ Nil {
+		"--- Values ---"->PrintLine();
 	}
 
-	function : Go(file : String) ~ Nil {
-		reader := FileReader->New(file);
-
-		line := reader->ReadString();
-		while(line <> Nil) {
-			days := line->Split(" ");
-days->Size()->PrintLine();
-		};
-
-
-		leaving {
-			reader->Close();
-		};
+	function : Foo(v : Int) ~ Nil {
+		"--- Int ---"->PrintLine();
 	}
 }
