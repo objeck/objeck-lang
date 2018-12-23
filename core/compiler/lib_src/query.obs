@@ -938,12 +938,17 @@ bundle Query.Structured {
 				return Nil;
 			};			
 			NextToken();
+
+TokenType()->PrintLine();
+Token->Type->INT->PrintLine();
+
 			if(TokenType() = Token->Type->SELECT) {
 				NextToken();				
 				term := ParseSelect();
 			}
 			else if(TokenType() = Token->Type->FROM) {
 				NextToken();
+"--- 2 ---"->PrintLine();
 				term := ParseFrom();
 			};
 
@@ -1020,7 +1025,7 @@ bundle Query.Structured {
 		}
 
 		method : ParseFrom() ~ Term {
-# "--- From ---"->PrintLine();
+"--- From ---"->PrintLine();
 
 			if(TokenType() <> Token->Type->REF) {
 				return Nil;
@@ -1286,14 +1291,16 @@ bundle Query.Structured {
 							string->Append(@line->Get(i));
 							i += 1;
 						};
-					
-						result := reserved->Find(string->ToLower())->As(Token);
+string->ToLower()->PrintLine();						
+						result := reserved->Find("select")->As(Token);
 						if(result <> Nil) {
+result->GetType()->PrintLine();							
 							tokens->AddBack(result);
 						}
 						else {
 							tokens->AddBack(Token->New(string));
 						};
+"----"->PrintLine();						
 					}
 					# number
 					else if(@line->Get(i)->IsDigit() = true) {
