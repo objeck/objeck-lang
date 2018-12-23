@@ -352,6 +352,12 @@ Enum* Parser::ParseEnum(int depth)
   }
   NextToken();
   const wstring enum_scope_name = GetEnumScopeName(enum_name);
+
+  size_t index = enum_scope_name.find('#');
+  if(index != wstring::npos) {
+    const wstring use_name = enum_scope_name.substr(0, index);
+    program->AddUse(use_name, file_name);
+  }
   
 #ifdef _DEBUG
   Show(L"[Enum: name='" + enum_scope_name + L"']", depth);

@@ -776,6 +776,9 @@ class ContextAnalyzer {
         vector<wstring> uses = program->GetUses();
         for(size_t i = 0; !eenum && i < uses.size(); ++i) {
           eenum = program->GetEnum(uses[i] + L"." + eenum_name);
+          if(!eenum) {
+            eenum = program->GetEnum(uses[i] + L"#" + eenum_name);
+          }
         }
       }
     }

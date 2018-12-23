@@ -2127,6 +2127,7 @@ bool ContextAnalyzer::Analyze()
       // match parameter sizes
       vector<Type*> parms_types;
       vector<Declaration*> method_parms = candidates[i]->GetDeclarations()->GetDeclarations();
+
       if(expr_params.size() == method_parms.size()) {
         MethodCallSelection* match = new MethodCallSelection(candidates[i]);
         for(size_t j = 0; j < expr_params.size(); j++) {	  
@@ -2136,7 +2137,7 @@ bool ContextAnalyzer::Analyze()
             method_type = method_parms[j]->GetEntry()->GetType();
             ResolveClassEnumType(method_type);
           }
-          // add poarameter match
+          // add parameter match
           match->AddParameterMatch(MatchCallingParameter(expr_params[j], method_type, klass, NULL, depth));
         }
         matches.push_back(match);

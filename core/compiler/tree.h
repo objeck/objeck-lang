@@ -3282,6 +3282,12 @@ namespace frontend {
       TypeFactory::Instance()->Clear();
     }
 
+    void AddUse(wstring u, const wstring &f) {
+      vector<wstring> uses;
+      uses.push_back(u);
+      AddUses(uses, f);
+    }
+
     void AddUses(vector<wstring> &u, const wstring &f) {
       for(size_t i = 0; i < u.size(); ++i) {
         vector<wstring>::iterator found = find(uses.begin(), uses.end(), u[i]);
