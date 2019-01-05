@@ -30,9 +30,7 @@
  ***************************************************************************/
 
 #include "common.h"
-#ifndef _SCRIPTER
 #include "loader.h"
-#endif
 #include "interpreter.h"
 #include "../shared/version.h"
 
@@ -59,17 +57,6 @@ pthread_mutex_t StackProgram::prop_mutex = PTHREAD_MUTEX_INITIALIZER;
 unordered_map<wstring, StackMethod*> StackMethod::virutal_cache;
 map<wstring, wstring> StackProgram::properties_map;
 
-#ifdef _SCRIPTER
-StackProgram* Scripter::program;
-
-/****************************
-* Scripter class
-****************************/
-StackProgram* Scripter::GetProgram() {
-  return program;
-}
-#endif
-
 /********************************
  * ObjectSerializer struct
  ********************************/
@@ -91,7 +78,7 @@ void ObjectSerializer::CheckObject(size_t* mem, bool is_obj, long depth) {
         for(int i = 0; i < depth; i++) {
           wcout << L"\t";
         }
-        wcout << L"\t----- SERIALIZING object: cls_id=" << cls->GetId() << L", mem_id="
+        wcout << L"\t----- SERIALIZING object: cls_id=" << cls->GetId() << L", name='" << cls->GetName() << L"', mem_id="
           << cur_id << L", size=" << mem_size << L" byte(s) -----" << endl;
 #endif
         CheckMemory(mem, cls->GetInstanceDeclarations(), cls->GetNumberInstanceDeclarations(), depth);
@@ -363,12 +350,12 @@ void ObjectSerializer::Serialize(size_t* inst) {
  ********************************/
 size_t* ObjectDeserializer::DeserializeObject() {
   INT_VALUE obj_id = DeserializeInt();
-#ifdef _SCRIPTER
-  cls = Scripter::GetProgram()->GetClass(obj_id);
-#else
   cls = Loader::GetProgram()->GetClass(obj_id);
-#endif
   if(cls) {
+#ifdef _DEBUG
+    wcout << L"--- DESERIALIZING object: cls_id=" << obj_id << L", name='" << cls->GetName() << L"' ---" << endl;
+#endif
+    
     INT_VALUE mem_id = DeserializeInt();
     if(mem_id < 0) {
       instance = MemoryManager::AllocateObject(cls->GetId(), op_stack, *stack_pos, false);
@@ -396,14 +383,14 @@ size_t* ObjectDeserializer::DeserializeObject() {
       case CHAR_PARM:
         instance[instance_pos++] = DeserializeChar();
 #ifdef _DEBUG
-        wcout << L"--- deserialization: char value=" << instance[instance_pos - 1] << L" ---" << endl;
+        wcout << L"--- DESERIALIZING char: value=" << instance[instance_pos - 1] << L" ---" << endl;
 #endif
         break;
 
       case INT_PARM:
         instance[instance_pos++] = DeserializeInt();
 #ifdef _DEBUG
-        wcout << L"--- deserialization: int value=" << instance[instance_pos - 1] << L" ---" << endl;
+        wcout << L"--- DESERIALIZING int: value=" << instance[instance_pos - 1] << L" ---" << endl;
 #endif
         break;
 
@@ -412,7 +399,7 @@ size_t* ObjectDeserializer::DeserializeObject() {
         FLOAT_VALUE value = DeserializeFloat();
         memcpy(&instance[instance_pos], &value, sizeof(value));
 #ifdef _DEBUG
-        wcout << L"--- deserialization: float value=" << value << L" ---" << endl;
+        wcout << L"--- DESERIALIZING float: value=" << value << L" ---" << endl;
 #endif
         instance_pos += 2;
       }
@@ -439,7 +426,7 @@ size_t* ObjectDeserializer::DeserializeObject() {
             memcpy(byte_array_ptr, buffer + buffer_offset, byte_array_size);
             buffer_offset += byte_array_size;
 #ifdef _DEBUG
-            wcout << L"--- deserialization: byte array; value=" << byte_array << ", size=" << byte_array_size << L" ---" << endl;
+            wcout << L"--- DESERIALIZING: byte array; value=" << byte_array << ", size=" << byte_array_size << L" ---" << endl;
 #endif
             // update cache
             mem_cache[-mem_id] = byte_array;
@@ -477,7 +464,7 @@ size_t* ObjectDeserializer::DeserializeObject() {
             delete[] in;
             in = NULL;
 #ifdef _DEBUG
-            wcout << L"--- deserialization: char array; value=" << out << ", size="
+            wcout << L"--- DESERIALIZING: char array; value=" << out << ", size="
               << char_array_size << L" ---" << endl;
 #endif
             char_array_size = char_array_size_dim = (long)out.size();
@@ -529,7 +516,7 @@ size_t* ObjectDeserializer::DeserializeObject() {
               array_ptr[i] = DeserializeInt();
             }
 #ifdef _DEBUG
-            wcout << L"--- deserialization: int array; value=" << array << ",  size=" << array_size << L" ---" << endl;
+            wcout << L"--- DESERIALIZING: int array; value=" << array << ",  size=" << array_size << L" ---" << endl;
 #endif
             // update cache
             mem_cache[-mem_id] = array;
@@ -568,7 +555,7 @@ size_t* ObjectDeserializer::DeserializeObject() {
             memcpy(array_ptr, buffer + buffer_offset, array_size * sizeof(FLOAT_VALUE));
             buffer_offset += array_size * sizeof(FLOAT_VALUE);
 #ifdef _DEBUG
-            wcout << L"--- deserialization: float array; value=" << array << ", size=" << array_size << L" ---" << endl;
+            wcout << L"--- DESERIALIZING: float array; value=" << array << ", size=" << array_size << L" ---" << endl;
 #endif
             // update cache
             mem_cache[-mem_id] = array;
@@ -617,7 +604,7 @@ size_t* ObjectDeserializer::DeserializeObject() {
               }
             }
 #ifdef _DEBUG
-            wcout << L"--- deserialization: object array; value=" << array << ",  size="
+            wcout << L"--- DESERIALIZING: object array; value=" << array << ",  size="
               << array_size << L" ---" << endl;
 #endif
             // update cache
@@ -662,12 +649,7 @@ size_t* ObjectDeserializer::DeserializeObject() {
  ********************************/
 #ifndef _UTILS
 void APITools_MethodCall(size_t* op_stack, long *stack_pos, size_t* instance, int cls_id, int mthd_id) {
-#ifdef _SCRIPTER
-  StackClass* cls = Scripter::GetProgram()->GetClass(cls_id);
-#else
   StackClass* cls = Loader::GetProgram()->GetClass(cls_id);
-#endif
-
   if(cls) {
     StackMethod* mthd = cls->GetMethod(mthd_id);
     if(mthd) {
@@ -688,11 +670,7 @@ void APITools_MethodCall(size_t* op_stack, long *stack_pos, size_t* instance, in
 void APITools_MethodCall(size_t* op_stack, long* stack_pos, size_t* instance,
                          const wchar_t* cls_id, const wchar_t* mthd_id)
 {
-#ifdef _SCRIPTER
-  StackClass* cls = Scripter::GetProgram()->GetClass(cls_id);
-#else
   StackClass* cls = Loader::GetProgram()->GetClass(cls_id);
-#endif
   if(cls) {
     StackMethod* mthd = cls->GetMethod(mthd_id);
     if(mthd) {
@@ -713,11 +691,7 @@ void APITools_MethodCall(size_t* op_stack, long* stack_pos, size_t* instance,
 void APITools_MethodCallId(size_t* op_stack, long *stack_pos, size_t* instance,
                            const int cls_id, const int mthd_id)
 {
-#ifdef _SCRIPTER
-  StackClass* cls = Scripter::GetProgram()->GetClass(cls_id);
-#else
   StackClass* cls = Loader::GetProgram()->GetClass(cls_id);
-#endif
   if(cls) {
     StackMethod* mthd = cls->GetMethod(mthd_id);
     if(mthd) {

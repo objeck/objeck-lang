@@ -1430,25 +1430,6 @@ struct StackFrame {
   long jit_offset;
 };
 
-#ifdef _SCRIPTER
-/********************************
-* Scripting specific classes
-********************************/
-class Scripter {
-  static StackProgram* program;
-  vector<wstring> arguments;
-
-public:
-  Scripter() {
-  }
-
-  ~Scripter() {
-  }
-
-  static StackProgram* GetProgram();
-};
-#endif
-
 /********************************
  * ObjectSerializer class
  ********************************/
