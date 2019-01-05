@@ -66,8 +66,16 @@ void ObjectSerializer::CheckObject(size_t* mem, bool is_obj, long depth) {
     StackClass* cls = MemoryManager::GetClass(mem);
     if(cls) {
       // write id
-      SerializeInt(cls->GetId());
-
+      //SerializeInt(cls->GetId());
+      
+      
+      // TODO: convert to bytes
+      const wstring cls_name = cls->GetName();
+      const int cls_name_size = (INT_VALUE)cls_name.size();
+      SerializeInt(cls_name_size);
+      SerializeBytes(cls_name.c_str(), cls_name_size);
+      
+      
       if(!WasSerialized(mem)) {
 #ifdef _DEBUG
         long mem_size = cls->GetInstanceMemorySize();
@@ -220,6 +228,7 @@ void ObjectSerializer::CheckMemory(size_t* mem, StackDclr** dclrs, const long dc
             SerializeInt(array_size);
 
             // values
+            // TODO: conver this to bytes
             SerializeBytes(buffer.c_str(), array_size);
           }
         }
@@ -349,11 +358,26 @@ void ObjectSerializer::Serialize(size_t* inst) {
  * ObjectDeserializer class
  ********************************/
 size_t* ObjectDeserializer::DeserializeObject() {
-  INT_VALUE obj_id = DeserializeInt();
-  cls = Loader::GetProgram()->GetClass(obj_id);
+  // TODO: clean up code
+  // INT_VALUE obj_id = DeserializeInt();
+  
+  // TODO: clean code
+  const int char_array_size = DeserializeInt();
+  
+  // copy content
+  char* in = new char[char_array_size + 1];
+  memcpy(in, buffer + buffer_offset, char_array_size);
+  buffer_offset += char_array_size;
+  in[char_array_size] = '\0';
+  const wstring out = BytesToUnicode(in);
+  // clean up
+  delete[] in;
+  in = NULL;
+  
+  cls = Loader::GetProgram()->GetClass(out);
   if(cls) {
 #ifdef _DEBUG
-    wcout << L"--- DESERIALIZING object: cls_id=" << obj_id << L", name='" << cls->GetName() << L"' ---" << endl;
+    wcout << L"--- DESERIALIZING object: name='" << cls->GetName() << L"' ---" << endl;
 #endif
     
     INT_VALUE mem_id = DeserializeInt();
