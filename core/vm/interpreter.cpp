@@ -732,28 +732,34 @@ void StackInterpreter::Str2Int(size_t* &op_stack, long* &stack_pos)
   long base = (long)PopInt(op_stack, stack_pos);
   if(str_ptr) {
     wchar_t* str = (wchar_t*)(str_ptr + 3);
-    if(wcslen(str) > 2) {
-      switch(str[1]) {
-        // binary
-      case 'b':
-        PushInt(stoi(str + 2, NULL, 2), op_stack, stack_pos);
-        return;
+    try {
+      if(wcslen(str) > 2) {
+        switch(str[1]) {
+          // binary
+        case 'b':
+          PushInt(stoi(str + 2, NULL, 2), op_stack, stack_pos);
+          return;
 
-        // octal
-      case 'o':
-        PushInt(stoi(str + 2, NULL, 8), op_stack, stack_pos);
-        return;
+          // octal
+        case 'o':
+          PushInt(stoi(str + 2, NULL, 8), op_stack, stack_pos);
+          return;
 
-        // hexadecimal
-      case 'x':
-        PushInt(stoi(str + 2, NULL, 16), op_stack, stack_pos);
-        return;
+          // hexadecimal
+        case 'x':
+          PushInt(stoi(str + 2, NULL, 16), op_stack, stack_pos);
+          return;
 
-      default:
-        break;
+        default:
+          break;
+        }
       }
+      PushInt(stoi(str, NULL, base), op_stack, stack_pos);
     }
-    PushInt(stoi(str, NULL, base), op_stack, stack_pos);
+    catch(std::invalid_argument &e) {
+      // TODO: should this be caught or thrown?
+      PushInt(0, op_stack, stack_pos);
+    }
   }
   else {
     wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
@@ -806,7 +812,6 @@ void StackInterpreter::Int2Str(size_t* &op_stack, long* &stack_pos)
       stream << std::hex << value;
       wstring conv(stream.str());
       const size_t max = conv.size() < 16 ? conv.size() : 16; 
-
 #ifdef _WIN32
       wcsncpy_s(str, str_ptr[0], conv.c_str(), max);
 #else
