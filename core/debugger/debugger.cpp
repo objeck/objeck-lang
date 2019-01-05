@@ -138,10 +138,18 @@ void Runtime::Debugger::ProcessArgs(Load* load) {
 #endif
 
   wchar_t *state;
+#ifdef _WIN32
   wchar_t* token = wcstok_s(buffer, L" ", &state);
+#else
+  wchar_t* token = wcstok(buffer, L" ", &state);
+#endif
   while(token) {
     arguments.push_back(token);
+#ifdef _WIN32
     token = wcstok_s(NULL, L" ", &state);
+#else
+    token = wcstok(NULL, L" ", &state);
+#endif
   }
   wcout << L"program arguments sets." << endl;
 
