@@ -353,19 +353,19 @@ void ObjectSerializer::Serialize(size_t* inst) {
 size_t* ObjectDeserializer::DeserializeObject() {
   // read object id
   const long char_array_size = DeserializeInt();
-  char* in = new char[char_array_size + 1];
-  memcpy(in, buffer + buffer_offset, char_array_size);
+  char* temp = new char[char_array_size + 1];
+  memcpy(temp, buffer + buffer_offset, char_array_size);
   buffer_offset += char_array_size;
-  in[char_array_size] = '\0';
-  const wstring out = BytesToUnicode(in);
+  temp[char_array_size] = '\0';
+  const wstring cls_name = BytesToUnicode(temp);
   // clean up
-  delete[] in;
-  in = NULL;
+  delete[] temp;
+  temp = NULL;
   
-  cls = Loader::GetProgram()->GetClass(out);
+  cls = Loader::GetProgram()->GetClass(cls_name);
   if(cls) {
 #ifdef _DEBUG
-    wcout << L"--- DESERIALIZING object: name='" << cls->GetName() << L"' ---" << endl;
+    wcout << L"--- DESERIALIZING object: name='" << cls_name << L"' ---" << endl;
 #endif
     
     INT_VALUE mem_id = DeserializeInt();
@@ -382,7 +382,7 @@ size_t* ObjectDeserializer::DeserializeObject() {
     }
   }
   else {
-    wcerr << L">>> Unable to deserialize class " << out << L", class appears to not be linked <<<" << endl;
+    wcerr << L">>> Unable to deserialize class " << cls_name << L", class appears to not be linked <<<" << endl;
     exit(1);
   }
 
