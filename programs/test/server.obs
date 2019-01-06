@@ -18,23 +18,12 @@ class SocketServer {
 	}
 
 	function : ReadFile() ~ Nil {
-		file := FileReader->New("/Users/randyhollines/Documents/Temp/data.dat");
-		leaving {
-			file->Close();
-		};
-
-		size := 185; # file->ReadString()->ToInt();
-		if(size > 0) {
-size->PrintLine();			
-			bytes := Byte->New[size];
-			file->ReadBuffer(0, size, bytes);
-
-			deserializer := Deserializer->New(bytes);
-			values := deserializer->ReadObject()->As(StringMap);
+		bytes := FileReader->ReadBinaryFile("/Users/randyhollines/Documents/Temp/data.dat");
+		deserializer := Deserializer->New(bytes);
+		values := deserializer->ReadObject()->As(StringMap);
 values->Size()->PrintLine();
 name := values->Find("name")->As(String);
 name->PrintLine();
-		};
 	}
 
 	function : ReadSocket() ~ Nil {
