@@ -21,9 +21,10 @@ class SocketServer {
 		bytes := FileReader->ReadBinaryFile("D:/Code/objeck-lang/programs/test/data.dat");
 		deserializer := Deserializer->New(bytes);
 		values := deserializer->ReadObject()->As(StringMap);
-values->Size()->PrintLine();
-name := values->Find("name")->As(String);
-name->PrintLine();
+
+		values->Size()->PrintLine();
+		name := values->Find("name")->As(String);
+		name->PrintLine();
 	}
 
 	function : ReadSocket() ~ Nil {
@@ -41,12 +42,12 @@ name->PrintLine();
 
 				deserializer := Deserializer->New(bytes);
 				values := deserializer->ReadObject()->As(StringMap);
+				
 				values->Size()->PrintLine();
 				name := values->Find("name")->As(String);				
 				name->PrintLine();
-
-#				age := values->Find("age")->As(IntHolder);
-#				age->Get()->PrintLine();
+				age := values->Find("age")->As(IntHolder);
+				age->Get()->PrintLine();
 			};
 		};
 		
