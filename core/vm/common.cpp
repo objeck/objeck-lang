@@ -65,16 +65,11 @@ void ObjectSerializer::CheckObject(size_t* mem, bool is_obj, long depth) {
     SerializeByte(1);
     StackClass* cls = MemoryManager::GetClass(mem);
     if(cls) {
-      // write id
-      //SerializeInt(cls->GetId());
-      
-      
-      // TODO: convert to bytes
-      const wstring cls_name = cls->GetName();
-      const int cls_name_size = (INT_VALUE)cls_name.size();
+      // write object id
+      const string cls_name = UnicodeToBytes(cls->GetName());
+      const long cls_name_size = (long)cls_name.size();
       SerializeInt(cls_name_size);
       SerializeBytes(cls_name.c_str(), cls_name_size);
-      
       
       if(!WasSerialized(mem)) {
 #ifdef _DEBUG
@@ -219,16 +214,14 @@ void ObjectSerializer::CheckMemory(size_t* mem, StackDclr** dclrs, const long dc
             const string buffer = UnicodeToBytes((wchar_t*)(array + 3));
             const long array_size = (long)buffer.size();
 #ifdef _DEBUG
-            wcout << L"\t" << i << L": ----- serializing char array: mem_id=" << cur_id << L", size="
-              << array_size << L" byte(s) -----" << endl;
-#endif	  
+            wcout << L"\t" << i << L": ----- serializing char array: value='" << ((wchar_t*)(array + 3)) << L", mem_id=" << cur_id << L", size=" << array_size << L" byte(s) -----" << endl;
+#endif
             // write metadata
             SerializeInt(array_size);
             SerializeInt((INT_VALUE)array[1]);
             SerializeInt(array_size);
-
+            
             // values
-            // TODO: conver this to bytes
             SerializeBytes(buffer.c_str(), array_size);
           }
         }
@@ -358,13 +351,8 @@ void ObjectSerializer::Serialize(size_t* inst) {
  * ObjectDeserializer class
  ********************************/
 size_t* ObjectDeserializer::DeserializeObject() {
-  // TODO: clean up code
-  // INT_VALUE obj_id = DeserializeInt();
-  
-  // TODO: clean code
-  const int char_array_size = DeserializeInt();
-  
-  // copy content
+  // read object id
+  const long char_array_size = DeserializeInt();
   char* in = new char[char_array_size + 1];
   memcpy(in, buffer + buffer_offset, char_array_size);
   buffer_offset += char_array_size;
@@ -493,9 +481,7 @@ size_t* ObjectDeserializer::DeserializeObject() {
 #endif
             char_array_size = char_array_size_dim = (long)out.size();
             size_t* char_array = MemoryManager::AllocateArray(char_array_size +
-              ((char_array_dim + 2) *
-                                                              sizeof(size_t)), CHAR_ARY_TYPE,
-                                                              op_stack, *stack_pos, false);
+              ((char_array_dim + 2) * sizeof(size_t)), CHAR_ARY_TYPE, op_stack, *stack_pos, false);
             char_array[0] = char_array_size;
             char_array[1] = char_array_dim;
             char_array[2] = char_array_size_dim;
