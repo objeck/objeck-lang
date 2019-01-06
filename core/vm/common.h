@@ -1265,7 +1265,7 @@ class StackProgram {
     if(cls_cls_id < 0) {
       StackClass* cls = GetClass(L"System.Introspection.Class");
       if(!cls) {
-        cerr << ">>> Internal error: unable to find class: System.Introspection.Class <<<" << endl;
+        wcerr << L">>> Internal error: unable to find class: System.Introspection.Class <<<" << endl;
         exit(1);
       }
       cls_cls_id = cls->GetId();
@@ -1278,7 +1278,7 @@ class StackProgram {
     if(mthd_cls_id < 0) {
       StackClass* cls = GetClass(L"System.Introspection.Method");
       if(!cls) {
-        cerr << ">>> Internal error: unable to find class: System.Introspection.Method <<<" << endl;
+        wcerr << L">>> Internal error: unable to find class: System.Introspection.Method <<<" << endl;
         exit(1);
       }
       mthd_cls_id = cls->GetId();
@@ -1291,7 +1291,7 @@ class StackProgram {
     if(sock_cls_id < 0) {
       StackClass* cls = GetClass(L"System.IO.Net.TCPSocket");
       if(!cls) {
-        cerr << ">>> Internal error: unable to find class: Net.TCPSocket <<<" << endl;
+        wcerr << L">>> Internal error: unable to find class: Net.TCPSocket <<<" << endl;
         exit(1);
       }
       sock_cls_id = cls->GetId();
@@ -1304,7 +1304,7 @@ class StackProgram {
     if(data_type_cls_id < 0) {
       StackClass* cls = GetClass(L"System.Introspection.DataType");
       if(!cls) {
-        cerr << ">>> Internal error: unable to find class: System.Introspection.DataType <<<" << endl;
+        wcerr << L">>> Internal error: unable to find class: System.Introspection.DataType <<<" << endl;
         exit(1);
       }
       data_type_cls_id = cls->GetId();
