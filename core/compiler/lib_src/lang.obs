@@ -4158,7 +4158,7 @@ bundle System.IO {
 		#~
 		Create a byte stream of the objects that 
 		have been serialized
-		@return f byte stream of the objects that have been serialized
+		@return byte stream of the objects that have been serialized
 		~#
 		method : public : Serialize() ~ Byte[] {
 			temp := Byte->New[@pos];
