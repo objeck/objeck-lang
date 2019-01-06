@@ -24,7 +24,7 @@ class Client {
 	}
 
 	function : WriteFile(bytes : Byte[]) ~ Nil {
-		file := FileWriter->New("/Users/randyhollines/Documents/Temp/data.dat");
+		file := FileWriter->New("D:/Code/objeck-lang/programs/test/data.dat");
 		leaving {
 			file->Close();
 		};
@@ -35,14 +35,17 @@ class Client {
 	function : WriteSocket(bytes : Byte[]) ~ Nil {
 		client := TCPSocket->New("localhost", 4660);
 		leaving {
+			client->Flush();
 			client->Close();
 		};
 
 		if(client->IsOpen()) {
 			size := bytes->Size();
 			size_str := size->ToString();
+			size_str += '\n';
+size_str->PrintLine();
 			client->WriteString(size_str);
-			client->WriteBuffer(0, size, bytes);
+			client->WriteBuffer(0, size, bytes)->PrintLine();
 		};
 	}	
 }
