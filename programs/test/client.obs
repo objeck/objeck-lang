@@ -42,8 +42,6 @@ class Client {
 		if(client->IsOpen()) {
 			size := bytes->Size();
 			size_str := size->ToString();
-			size_str += '\n';
-size_str->PrintLine();
 			client->WriteString(size_str);
 			client->WriteBuffer(0, size, bytes)->PrintLine();
 		};

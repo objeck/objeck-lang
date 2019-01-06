@@ -6,7 +6,7 @@ use System.IO.Net;
 class SocketServer {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
-			dummy := IntHolder->New(0);
+#			dummy := IntHolder->New(0);
 
 			if(args[0]->Equals("socket")) {
 				ReadSocket();
@@ -36,15 +36,17 @@ name->PrintLine();
 			client := server->Accept();
 			size := client->ReadString()->ToInt();
 			if(size > 0) {
-size->PrintLine();				
 				bytes := Byte->New[size];
 				client->ReadBuffer(0, size, bytes);
 
 				deserializer := Deserializer->New(bytes);
 				values := deserializer->ReadObject()->As(StringMap);
 				values->Size()->PrintLine();
-#				name := values->Find("name")->As(String);
-#				name->PrintLine();
+				name := values->Find("name")->As(String);				
+				name->PrintLine();
+
+#				age := values->Find("age")->As(IntHolder);
+#				age->Get()->PrintLine();
 			};
 		};
 		

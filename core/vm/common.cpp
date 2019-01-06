@@ -382,7 +382,8 @@ size_t* ObjectDeserializer::DeserializeObject() {
     }
   }
   else {
-    return NULL;
+    wcerr << L">>> Unable to deserialize class " << out << L", class appears to not be linked <<<" << endl;
+    exit(1);
   }
 
   long dclr_pos = 0;
@@ -667,12 +668,12 @@ void APITools_MethodCall(size_t* op_stack, long *stack_pos, size_t* instance, in
       intpr.Execute(op_stack, stack_pos, 0, mthd, instance, false);
     }
     else {
-      cerr << L">>> DLL call: Unable to locate method; id=" << mthd_id << L" <<<" << endl;
+      wcerr << L">>> DLL call: Unable to locate method; id=" << mthd_id << L" <<<" << endl;
       exit(1);
     }
   }
   else {
-    cerr << L">>> DLL call: Unable to locate class; id=" << cls_id << L" <<<" << endl;
+    wcerr << L">>> DLL call: Unable to locate class; id=" << cls_id << L" <<<" << endl;
     exit(1);
   }
 }
@@ -709,12 +710,12 @@ void APITools_MethodCallId(size_t* op_stack, long *stack_pos, size_t* instance,
       intpr.Execute(op_stack, stack_pos, 0, mthd, instance, false);
     }
     else {
-      cerr << L">>> DLL call: Unable to locate method; id=: " << mthd_id << L" <<<" << endl;
+      wcerr << L">>> DLL call: Unable to locate method; id=: " << mthd_id << L" <<<" << endl;
       exit(1);
     }
   }
   else {
-    cerr << L">>> DLL call: Unable to locate class; id=" << cls_id << L" <<<" << endl;
+    wcerr << L">>> DLL call: Unable to locate class; id=" << cls_id << L" <<<" << endl;
     exit(1);
   }
 }
@@ -2464,6 +2465,7 @@ bool TrapProcessor::SockTcpOutString(StackProgram* program, size_t* inst, size_t
     if((long)sock > -1) {
       const string data = UnicodeToBytes(wdata);
       IPSocket::WriteBytes(data.c_str(), (int)data.size(), sock);
+      IPSocket::WriteByte(0, sock);
     }
   }
 
@@ -2485,7 +2487,7 @@ bool TrapProcessor::SockTcpInString(StackProgram* program, size_t* inst, size_t*
       bool end_line = false;
       do {
         value = IPSocket::ReadByte(sock, status);
-        if(value != '\r' && value != '\n' && index < LARGE_BUFFER_MAX && status > 0) {
+        if(value != '\0' && value != '\r' && value != '\n' && index < LARGE_BUFFER_MAX && status > 0) {
           buffer[index++] = value;
         }
         else {
@@ -2589,6 +2591,7 @@ bool TrapProcessor::SockTcpSslOutString(StackProgram* program, size_t* inst, siz
     if(instance[3]) {
       const string out = UnicodeToBytes(data);
       IPSecureSocket::WriteBytes(out.c_str(), (int)out.size(), ctx, bio);
+      IPSecureSocket::WriteByte(0, ctx, bio);
     }
   }
 
@@ -2610,7 +2613,7 @@ bool TrapProcessor::SockTcpSslInString(StackProgram* program, size_t* inst, size
       bool end_line = false;
       do {
         value = IPSecureSocket::ReadByte(ctx, bio, status);
-        if(value != '\r' && value != '\n' && index < LARGE_BUFFER_MAX && status > 0) {
+        if(value != '\0' && value != '\r' && value != '\n' && index < LARGE_BUFFER_MAX && status > 0) {
           buffer[index++] = value;
         }
         else {
