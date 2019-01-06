@@ -1,0 +1,52 @@
+use Collection;
+use System.IO;
+use System.IO.File;
+use System.IO.Net;
+
+class Client {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() = 1) {
+			values := StringMap->New();
+			values->Insert("name", "Objeck");
+			values->Insert("age", IntHolder->New(10));
+
+			serializer := Serializer->New();
+			serializer->Write(values);
+			bytes := serializer->Serialize();
+
+			if(args[0]->Equals("socket")) {
+				WriteSocket(bytes);
+			}
+			else {
+				WriteFile(bytes);
+			};
+		};
+	}
+
+	function : WriteFile(bytes : Byte[]) ~ Nil {
+		file := FileWriter->New("/Users/randyhollines/Documents/Temp/data.dat");
+		leaving {
+			file->Close();
+		};
+
+		size := bytes->Size();
+#		size_str := size->ToString();
+#		file->WriteString(size_str);
+		file->WriteBuffer(0, size, bytes);
+size->PrintLine();		
+	}
+
+	function : WriteSocket(bytes : Byte[]) ~ Nil {
+		client := TCPSocket->New("localhost", 4660);
+		leaving {
+			client->Close();
+		};
+
+		if(client->IsOpen()) {
+			size := bytes->Size();
+			size_str := size->ToString();
+			client->WriteString(size_str);
+			client->WriteBuffer(0, size, bytes);
+		};
+	}	
+}

@@ -1,0 +1,62 @@
+use Collection;
+use System.IO;
+use System.IO.File;
+use System.IO.Net;
+
+class SocketServer {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() = 1) {
+			dummy := IntHolder->New(0);
+
+			if(args[0]->Equals("socket")) {
+				ReadSocket();
+			}
+			else {
+				ReadFile();
+			};
+		};
+	}
+
+	function : ReadFile() ~ Nil {
+		file := FileReader->New("/Users/randyhollines/Documents/Temp/data.dat");
+		leaving {
+			file->Close();
+		};
+
+		size := 185; # file->ReadString()->ToInt();
+		if(size > 0) {
+size->PrintLine();			
+			bytes := Byte->New[size];
+			file->ReadBuffer(0, size, bytes);
+
+			deserializer := Deserializer->New(bytes);
+			values := deserializer->ReadObject()->As(StringMap);
+values->Size()->PrintLine();
+name := values->Find("name")->As(String);
+name->PrintLine();
+		};
+	}
+
+	function : ReadSocket() ~ Nil {
+		server := TCPSocketServer->New(4660);
+		leaving {
+			server->Close();
+		};
+
+		if(server->Listen(5)) {
+			client := server->Accept();
+			size := client->ReadString()->ToInt();
+			if(size > 0) {
+				bytes := Byte->New[size];
+				client->ReadBuffer(0, size, bytes);
+
+				deserializer := Deserializer->New(bytes);
+				values := deserializer->ReadObject()->As(StringMap);
+				values->Size()->PrintLine();
+#				name := values->Find("name")->As(String);
+#				name->PrintLine();
+			};
+		};
+		
+	}
+}
