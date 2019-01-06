@@ -18,7 +18,7 @@ class SocketServer {
 	}
 
 	function : ReadFile() ~ Nil {
-		bytes := FileReader->ReadBinaryFile("/Users/randyhollines/Documents/Temp/data.dat");
+		bytes := FileReader->ReadBinaryFile("D:/Code/objeck-lang/programs/test/data.dat");
 		deserializer := Deserializer->New(bytes);
 		values := deserializer->ReadObject()->As(StringMap);
 values->Size()->PrintLine();
@@ -36,6 +36,7 @@ name->PrintLine();
 			client := server->Accept();
 			size := client->ReadString()->ToInt();
 			if(size > 0) {
+size->PrintLine();				
 				bytes := Byte->New[size];
 				client->ReadBuffer(0, size, bytes);
 
