@@ -192,6 +192,9 @@ enum ScannerTokenType {
   STD_ERR_FLOAT,
   STD_ERR_CHAR_ARY,
   STD_ERR_BYTE_ARY,
+  // compress
+  COMPRESS_BYTES,
+  UNCOMPRESS_BYTES,
   // file open/close
   FILE_OPEN_READ,
   FILE_OPEN_APPEND,
