@@ -2870,26 +2870,26 @@ bool TrapProcessor::CompressBytes(StackProgram* program, size_t* inst, size_t* &
   char* out = (char*)calloc(in_len, sizeof(char));
   
   // create compressor
-  z_stream defstream;
-  defstream.zalloc = Z_NULL;
-  defstream.zfree = Z_NULL;
-  defstream.opaque = Z_NULL;
+  z_stream compress;
+  compress.zalloc = Z_NULL;
+  compress.zfree = Z_NULL;
+  compress.opaque = Z_NULL;
   
   // set input
-  defstream.avail_in = (uInt)in_len;
-  defstream.next_in = (Bytef*)in;
+  compress.avail_in = (uInt)in_len;
+  compress.next_in = (Bytef*)in;
   
   // set output
-  defstream.avail_out = (uInt)in_len;
-  defstream.next_out = (Bytef*)out;
+  compress.avail_out = (uInt)in_len;
+  compress.next_out = (Bytef*)out;
   
   // compress
-  deflateInit(&defstream, Z_BEST_COMPRESSION);
-  deflate(&defstream, Z_FINISH);
-  deflateEnd(&defstream);
+  deflateInit(&compress, Z_BEST_COMPRESSION);
+  deflate(&compress, Z_FINISH);
+  deflateEnd(&compress);
 
   // create character array
-  const long byte_array_size = (long)defstream.total_out;
+  const long byte_array_size = (long)compress.total_out;
   const long byte_array_dim = 1;
   size_t* byte_array = MemoryManager::AllocateArray(byte_array_size + 1 +
     ((byte_array_dim + 2) * sizeof(size_t)), CHAR_ARY_TYPE, op_stack, *stack_pos, false);
