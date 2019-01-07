@@ -2858,44 +2858,71 @@ bool TrapProcessor::DeserlFloatAry(StackProgram* program, size_t* inst, size_t* 
 
 bool TrapProcessor::CompressBytes(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
-  // original string len = 36
-  char a[50] = "Hello Hello Hello Hello Hello Hello!";
+  size_t* array = (size_t*)PopInt(op_stack, stack_pos);
+  if (!array) {
+    wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
+    return false;
+  }
 
-  // placeholder for the compressed (deflated) version of "a" 
-  char b[50];
-
-  // placeholder for the UNcompressed (inflated) version of "b"
-  char c[50];
-
-
-  printf("Uncompressed size is: %lu\n", strlen(a));
-  printf("Uncompressed string is: %s\n", a);
-
-
-  printf("\n----------\n\n");
-
-  // STEP 1.
-  // deflate a into b. (that is, compress a into b)
-
-  // zlib struct
+  // setup buffers
+  char* in = (char*)(array + 3);
+  const size_t in_len = array[2];
+  char* out = new char[in_len];
+  
+  // create compressor
   z_stream defstream;
   defstream.zalloc = Z_NULL;
   defstream.zfree = Z_NULL;
   defstream.opaque = Z_NULL;
-  // setup "a" as the input and "b" as the compressed output
-  defstream.avail_in = (uInt)strlen(a) + 1; // size of input, string + terminator
-  defstream.next_in = (Bytef *)a; // input char array
-  defstream.avail_out = (uInt)sizeof(b); // size of output
-  defstream.next_out = (Bytef *)b; // output char array
-
-  // the actual compression work.
+  
+  // set input
+  defstream.avail_in = (uInt)in_len;
+  defstream.next_in = (Bytef*)in;
+  
+  // set output
+  defstream.avail_out = (uInt)in_len;
+  defstream.next_out = (Bytef*)out;
+  
+  // compress
   deflateInit(&defstream, Z_BEST_COMPRESSION);
   deflate(&defstream, Z_FINISH);
   deflateEnd(&defstream);
 
+  /*
+  const wstring out = BytesToUnicode((char*)(array + 3));
+
+  // create character array
+  const long char_array_size = (long)out.size();
+  const long char_array_dim = 1;
+  size_t* char_array = MemoryManager::AllocateArray(char_array_size + 1 +
+    ((char_array_dim + 2) *
+      sizeof(size_t)),
+    CHAR_ARY_TYPE,
+    op_stack, *stack_pos,
+    false);
+  char_array[0] = char_array_size + 1;
+  char_array[1] = char_array_dim;
+  char_array[2] = char_array_size;
+
+  // copy wstring
+  wchar_t* char_array_ptr = (wchar_t*)(char_array + 3);
+#ifdef _WIN32
+  wcsncpy_s(char_array_ptr, char_array_size + 1, out.c_str(), char_array_size);
+#else
+  wcsncpy(char_array_ptr, out.c_str(), char_array_size);
+#endif
+
+  // push result
+  PushInt((size_t)char_array, op_stack, stack_pos);
+  
+
   // This is one way of getting the size of the output
   printf("Compressed size is: %lu\n", strlen(b));
   printf("Compressed string is: %s\n", b);
+  */
+
+  delete[] out;
+  out = NULL;
 
   return false;
 }
