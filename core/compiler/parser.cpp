@@ -1568,6 +1568,18 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       NextToken();
       break;
 
+    case COMPRESS_BYTES:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+                                                               instructions::COMPRESS_BYTES);
+      NextToken();
+      break;
+
+    case UNCOMPRESS_BYTES:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+                                                               instructions::UNCOMPRESS_BYTES);
+      NextToken();
+      break;
+            
     case FILE_OPEN_READ:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
                                                                instructions::FILE_OPEN_READ);

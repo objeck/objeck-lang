@@ -184,6 +184,9 @@ void Scanner::LoadKeywords()
   ident_map[L"STD_ERR_FLOAT"] = STD_ERR_FLOAT;
   ident_map[L"STD_ERR_CHAR_ARY"] = STD_ERR_CHAR_ARY;
   ident_map[L"STD_ERR_BYTE_ARY"] = STD_ERR_BYTE_ARY;
+  // compression
+  ident_map[L"COMPRESS_BYTES"] = COMPRESS_BYTES;
+  ident_map[L"UNCOMPRESS_BYTES"] = UNCOMPRESS_BYTES;
   // file i/o
   ident_map[L"FILE_OPEN_READ"] = FILE_OPEN_READ;
   ident_map[L"FILE_OPEN_APPEND"] = FILE_OPEN_APPEND;
@@ -393,6 +396,8 @@ void Scanner::CheckIdentifier(int index)
     case STD_ERR_CHAR:
     case STD_ERR_INT:
     case STD_ERR_FLOAT:
+		case COMPRESS_BYTES:
+		case UNCOMPRESS_BYTES:
     case FILE_OPEN_READ:
     case FILE_OPEN_APPEND:
     case FILE_CLOSE:
