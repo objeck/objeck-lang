@@ -1,6 +1,6 @@
 class Test  {
 	function : Main(args : String[]) ~ Nil {
-		in := "Hello World, Hello World Again!"->ToByteArray();
+		in := "Hello Hello Hello Hello Hello Hello!"->ToByteArray();
 		out := Byte->Compress(in);
 	}
 }

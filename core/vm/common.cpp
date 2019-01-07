@@ -2859,7 +2859,7 @@ bool TrapProcessor::DeserlFloatAry(StackProgram* program, size_t* inst, size_t* 
 bool TrapProcessor::CompressBytes(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
-  if (!array) {
+  if(!array) {
     wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
     return false;
   }
@@ -2867,7 +2867,7 @@ bool TrapProcessor::CompressBytes(StackProgram* program, size_t* inst, size_t* &
   // setup buffers
   char* in = (char*)(array + 3);
   const size_t in_len = array[2];
-  char* out = new char[in_len];
+  char* out = (char*)calloc(in_len, sizeof(char));
   
   // create compressor
   z_stream defstream;
@@ -2921,7 +2921,7 @@ bool TrapProcessor::CompressBytes(StackProgram* program, size_t* inst, size_t* &
   printf("Compressed string is: %s\n", b);
   */
 
-  delete[] out;
+  free(out);
   out = NULL;
 
   return false;
