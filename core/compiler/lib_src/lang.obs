@@ -92,12 +92,30 @@ bundle System {
 	~#
 	class $Byte {
 		#~
+		Compresses a byte stream using zlib
+		@param in bytes to compress 
+		@return compressed bytes
+		~#
+		function : Compress(in : Byte[]) ~ Byte[] {
+			COMPRESS_BYTES;
+		}
+
+		#~
+		Uncompresses a byte stream using zlib
+		@param in bytes to uncompress 
+		@return uncompressed bytes
+		~#
+		function : Uncompress(in : Byte[]) ~ Byte[] {
+			UNCOMPRESS_BYTES;
+		}
+		
+		#~
 		Returns the smallest byte value
 		@param l value to compare
 		@param r value to compare
 		@return smallest byte value
 		~#
-		function : native : Min(l : Byte, r : Byte) ~ Byte {
+		function : Min(l : Byte, r : Byte) ~ Byte {
 			if(l < r) {
 				return l;
 			};
@@ -111,7 +129,7 @@ bundle System {
 		@param r value to compare
 		@return largest byte value
 		~#
-		function : native : Max(l : Byte, r : Byte) ~ Byte {
+		function : Max(l : Byte, r : Byte) ~ Byte {
 			if(l > r) {
 				return l;
 			};
