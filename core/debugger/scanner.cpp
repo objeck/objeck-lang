@@ -153,7 +153,7 @@ void Scanner::CheckIdentifier(int index)
 void Scanner::ReadLine(const wstring &line)
 {
   buffer_pos = 0;
-  const int buffer_max = line.size() + 1;
+  const int buffer_max = (int)line.size() + 1;
   buffer = new wchar_t[buffer_max];
 #ifdef _WIN32
   wcsncpy_s(buffer, buffer_max, line.c_str(), line.size());

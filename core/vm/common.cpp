@@ -1539,6 +1539,12 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
     case DESERL_FLOAT_ARY:
       return DeserlFloatAry(program, inst, op_stack, stack_pos, frame);
 
+    case COMPRESS_BYTES:
+      return CompressBytes(program, inst, op_stack, stack_pos, frame);
+
+    case UNCOMPRESS_BYTES:
+      return UncompressBytes(program, inst, op_stack, stack_pos, frame);
+
     case FILE_OPEN_READ:
       return FileOpenRead(program, inst, op_stack, stack_pos, frame);
 
@@ -2848,6 +2854,16 @@ bool TrapProcessor::DeserlFloatAry(StackProgram* program, size_t* inst, size_t* 
   }
 
   return true;
+}
+
+bool TrapProcessor::CompressBytes(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+{
+  return false;
+}
+
+bool TrapProcessor::UncompressBytes(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+{
+  return false;
 }
 
 bool TrapProcessor::FileOpenRead(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
