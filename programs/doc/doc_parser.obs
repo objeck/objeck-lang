@@ -1258,7 +1258,7 @@ class SnippetTag {
 		RETURN
 	}	
 	
-	@type : Type;
+	@type : SnippetTag->Type;
 	@name : String;
 	@desc : String;
 	@ignore : Bool;
@@ -1308,7 +1308,7 @@ class SnippetType {
 	@type_name : String;		
 	@type : SnippetType->Type;
 	
-	New(name : String, type_name : String, type : Type) {
+	New(name : String, type_name : String, type : SnippetType->Type) {
 		@name := name;
 		@type_name := type_name;
 		@type := type;
@@ -1322,7 +1322,7 @@ class SnippetType {
 		return @type_name;
 	}
 
-	method : public : GetType() ~ Type {
+	method : public : GetType() ~ SnippetType->Type {
 		return @type;
 	}
 }
