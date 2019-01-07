@@ -2888,43 +2888,30 @@ bool TrapProcessor::CompressBytes(StackProgram* program, size_t* inst, size_t* &
   deflate(&defstream, Z_FINISH);
   deflateEnd(&defstream);
 
-  /*
-  const wstring out = BytesToUnicode((char*)(array + 3));
-
   // create character array
-  const long char_array_size = (long)out.size();
-  const long char_array_dim = 1;
-  size_t* char_array = MemoryManager::AllocateArray(char_array_size + 1 +
-    ((char_array_dim + 2) *
-      sizeof(size_t)),
-    CHAR_ARY_TYPE,
-    op_stack, *stack_pos,
-    false);
-  char_array[0] = char_array_size + 1;
-  char_array[1] = char_array_dim;
-  char_array[2] = char_array_size;
-
-  // copy wstring
-  wchar_t* char_array_ptr = (wchar_t*)(char_array + 3);
-#ifdef _WIN32
-  wcsncpy_s(char_array_ptr, char_array_size + 1, out.c_str(), char_array_size);
-#else
-  wcsncpy(char_array_ptr, out.c_str(), char_array_size);
-#endif
-
-  // push result
-  PushInt((size_t)char_array, op_stack, stack_pos);
+  const long byte_array_size = (long)defstream.total_out;
+  const long byte_array_dim = 1;
+  size_t* byte_array = MemoryManager::AllocateArray(byte_array_size + 1 +
+    ((byte_array_dim + 2) * sizeof(size_t)), CHAR_ARY_TYPE, op_stack, *stack_pos, false);
+  byte_array[0] = byte_array_size + 1;
+  byte_array[1] = byte_array_dim;
+  byte_array[2] = byte_array_size;
   
-
-  // This is one way of getting the size of the output
-  printf("Compressed size is: %lu\n", strlen(b));
-  printf("Compressed string is: %s\n", b);
-  */
+  // copy wstring
+  char* byte_array_ptr = (char*)(byte_array + 3);
+#ifdef _WIN32
+  strncpy_s(byte_array_ptr, byte_array_size + 1, out, byte_array_size);
+#else
+  strncpy(byte_array_ptr, out.c_str(), byte_array_size);
+#endif
 
   free(out);
   out = NULL;
 
-  return false;
+  // push result
+  PushInt((size_t)byte_array, op_stack, stack_pos);
+
+  return true;
 }
 
 bool TrapProcessor::UncompressBytes(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
