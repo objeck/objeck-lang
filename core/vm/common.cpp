@@ -2859,44 +2859,31 @@ bool TrapProcessor::DeserlFloatAry(StackProgram* program, size_t* inst, size_t* 
 bool TrapProcessor::CompressBytes(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
-  if(!array) {
+  if (!array) {
     wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
     return false;
   }
 
   // setup buffers
-  char* in = (char*)(array + 3);
-  const size_t in_len = array[2];
-  char* out = (char*)calloc(in_len, sizeof(char));
-  
-  // create compressor
-  z_stream compress;
-  compress.zalloc = Z_NULL;
-  compress.zfree = Z_NULL;
-  compress.opaque = Z_NULL;
-  
-  // set input
-  compress.avail_in = (uInt)in_len;
-  compress.next_in = (Bytef*)in;
-  
-  // set output
-  compress.avail_out = (uInt)in_len;
-  compress.next_out = (Bytef*)out;
-  
-  // compress
-  deflateInit(&compress, Z_BEST_COMPRESSION);
-  deflate(&compress, Z_FINISH);
-  deflateEnd(&compress);
+  const char* in = (char*)(array + 3);
+  const uLong in_len = (uLong)array[2];
+    
+  uLong out_len;
+  char* out = Compress(in, in_len, out_len);
+  if(!out) {
+    PushInt(0, op_stack, stack_pos);
+    return false;
+  }
 
   // create character array
-  const long byte_array_size = (long)compress.total_out;
+  const long byte_array_size = (long)out_len;
   const long byte_array_dim = 1;
   size_t* byte_array = MemoryManager::AllocateArray(byte_array_size + 1 +
     ((byte_array_dim + 2) * sizeof(size_t)), CHAR_ARY_TYPE, op_stack, *stack_pos, false);
   byte_array[0] = byte_array_size + 1;
   byte_array[1] = byte_array_dim;
   byte_array[2] = byte_array_size;
-  
+
   // copy wstring
   char* byte_array_ptr = (char*)(byte_array + 3);
 #ifdef _WIN32
@@ -2904,19 +2891,53 @@ bool TrapProcessor::CompressBytes(StackProgram* program, size_t* inst, size_t* &
 #else
   strncpy(byte_array_ptr, out.c_str(), byte_array_size);
 #endif
-
   free(out);
   out = NULL;
-
-  // push result
+    
   PushInt((size_t)byte_array, op_stack, stack_pos);
-
   return true;
 }
 
 bool TrapProcessor::UncompressBytes(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
-  return false;
+  size_t* array = (size_t*)PopInt(op_stack, stack_pos);
+  if(!array) {
+    wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
+    return false;
+  }
+
+  // setup buffers
+  const char* in = (char*)(array + 3);
+  const uLong in_len = (uLong)array[2];
+
+  uLong out_len;
+  char* out = Uncompress(in, in_len, out_len);
+  if(!out) {
+    PushInt(0, op_stack, stack_pos);
+    return false;
+  }
+
+  // create character array
+  const long byte_array_size = (long)out_len;
+  const long byte_array_dim = 1;
+  size_t* byte_array = MemoryManager::AllocateArray(byte_array_size + 1 +
+    ((byte_array_dim + 2) * sizeof(size_t)), CHAR_ARY_TYPE, op_stack, *stack_pos, false);
+  byte_array[0] = byte_array_size + 1;
+  byte_array[1] = byte_array_dim;
+  byte_array[2] = byte_array_size;
+
+  // copy wstring
+  char* byte_array_ptr = (char*)(byte_array + 3);
+#ifdef _WIN32
+  strncpy_s(byte_array_ptr, byte_array_size + 1, out, byte_array_size);
+#else
+  strncpy(byte_array_ptr, out.c_str(), byte_array_size);
+#endif
+  free(out);
+  out = NULL;
+
+  PushInt((size_t)byte_array, op_stack, stack_pos);
+  return true;
 }
 
 bool TrapProcessor::FileOpenRead(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
