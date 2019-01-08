@@ -1794,7 +1794,7 @@ bool TrapProcessor::ConvertUnicodeToBytes(StackProgram* program, size_t* inst, s
 #else
   strncpy(byte_array_ptr, out.c_str(), byte_array_size);
 #endif
-
+  
   // push result
   PushInt((size_t)byte_array, op_stack, stack_pos);
 
@@ -2879,18 +2879,14 @@ bool TrapProcessor::CompressBytes(StackProgram* program, size_t* inst, size_t* &
   const long byte_array_size = (long)out_len;
   const long byte_array_dim = 1;
   size_t* byte_array = MemoryManager::AllocateArray(byte_array_size + 1 +
-    ((byte_array_dim + 2) * sizeof(size_t)), CHAR_ARY_TYPE, op_stack, *stack_pos, false);
+    ((byte_array_dim + 2) * sizeof(size_t)), BYTE_ARY_TYPE, op_stack, *stack_pos, false);
   byte_array[0] = byte_array_size + 1;
   byte_array[1] = byte_array_dim;
   byte_array[2] = byte_array_size;
 
   // copy wstring
   char* byte_array_ptr = (char*)(byte_array + 3);
-#ifdef _WIN32
-  strncpy_s(byte_array_ptr, byte_array_size + 1, out, byte_array_size);
-#else
-  strncpy(byte_array_ptr, out.c_str(), byte_array_size);
-#endif
+  memcpy(byte_array_ptr, out, byte_array_size);
   free(out);
   out = NULL;
     
@@ -2921,18 +2917,14 @@ bool TrapProcessor::UncompressBytes(StackProgram* program, size_t* inst, size_t*
   const long byte_array_size = (long)out_len;
   const long byte_array_dim = 1;
   size_t* byte_array = MemoryManager::AllocateArray(byte_array_size + 1 +
-    ((byte_array_dim + 2) * sizeof(size_t)), CHAR_ARY_TYPE, op_stack, *stack_pos, false);
+    ((byte_array_dim + 2) * sizeof(size_t)), BYTE_ARY_TYPE, op_stack, *stack_pos, false);
   byte_array[0] = byte_array_size + 1;
   byte_array[1] = byte_array_dim;
   byte_array[2] = byte_array_size;
 
   // copy wstring
   char* byte_array_ptr = (char*)(byte_array + 3);
-#ifdef _WIN32
-  strncpy_s(byte_array_ptr, byte_array_size + 1, out, byte_array_size);
-#else
-  strncpy(byte_array_ptr, out.c_str(), byte_array_size);
-#endif
+  memcpy(byte_array_ptr, out, byte_array_size);
   free(out);
   out = NULL;
 
