@@ -1752,6 +1752,75 @@ class TrapProcessor {
     return v;
   }
 
+  //
+  // compresses a stream
+  //
+  static char* Compress(const char* src, uLong src_len, uLong &out_len) {
+    const uLong buffer_max = compressBound(src_len);
+    char* buffer = (char*)calloc(buffer_max, sizeof(char));
+
+    int status = compress((Bytef*)buffer, &out_len, (Bytef*)src, src_len);
+    if(status == Z_OK && out_len < buffer_max) {
+      return buffer;
+    }
+    else {
+      free(buffer);
+      buffer = NULL;
+      return NULL;
+    }
+  }
+
+  //
+  // compresses a stream
+  //
+  static char* Uncompress(const char* src, uLong src_len, uLong &out_len) {
+    const int buffer_max = 16;
+    char buffer[buffer_max];
+
+    z_stream stream;
+    stream.zalloc = Z_NULL;
+    stream.zfree = Z_NULL;
+    stream.opaque = Z_NULL;
+
+    stream.avail_in = src_len;
+    stream.next_in = (Bytef*)src;
+
+    inflateInit(&stream);
+    stream.avail_out = buffer_max;
+    stream.next_out = (Bytef*)&buffer;
+
+    while(true) {
+      int status = inflate(&stream, Z_NO_FLUSH);
+      if(status == Z_STREAM_END) {
+        if(stream.avail_in == 0) {
+          break;
+        }
+      }
+
+      stream.avail_out = buffer_max;
+    }
+    
+    inflateEnd(&stream);
+
+
+    /*
+    const uLong buffer_max = 1024; // uncompressBound(src_len);
+    char* buffer = (char*)calloc(buffer_max, sizeof(char));
+
+    int status = uncompress((Bytef*)buffer, &out_len, (Bytef*)src, src_len);
+    if(status == Z_OK && out_len < buffer_max) {
+      return buffer;
+    }
+    else {
+      free(buffer);
+      buffer = NULL;
+      return NULL;
+    }
+    */
+
+    return NULL;
+  }
+
   // main trap functions
   static bool LoadClsInstId(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
   static bool LoadNewObjInst(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame);
