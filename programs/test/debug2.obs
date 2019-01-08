@@ -1,11 +1,14 @@
 class Test  {
 	function : Main(args : String[]) ~ Nil {
-		in := "Hello Hello Hello Hello Hello Hello, Hello Hello Hello Hello Hello Hello, Hello Hello Hello Hello Hello Hello, Hello Hello Hello Hello Hello Hello, Hello Hello Hello Hello Hello Hello!"->ToByteArray();
+		in := "Hello Hello Hello Hello Hello Hello, Hello Hello Hello Hello Hello Hello, Hello Hello Hello Hello Hello Hello, Hello Hello Hello Hello Hello Hello, Hello Hello Hello Hello Hello Hello!";
 		
-		out := Byte->Compress(in);
+		out := Byte->Compress(in->ToByteArray());
 		out->Size()->PrintLine();
 
 		out := Byte->Uncompress(out);
 		out->Size()->PrintLine();
+
+		in2 := String->New(out);
+		in->Equals(in2)->PrintLine();
 	}
 }

@@ -6,7 +6,7 @@ use System.IO.Net;
 class SocketServer {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
-#			dummy := IntHolder->New(0);
+			dummy := IntHolder->New(0);
 
 			if(args[0]->Equals("socket")) {
 				ReadSocket();
@@ -19,6 +19,9 @@ class SocketServer {
 
 	function : ReadFile() ~ Nil {
 		bytes := FileReader->ReadBinaryFile("D:/Code/objeck-lang/programs/test/data.dat");
+bytes->Size()->PrintLine();		
+		bytes := Byte->Uncompress(bytes);
+bytes->Size()->PrintLine();		
 		deserializer := Deserializer->New(bytes);
 		values := deserializer->ReadObject()->As(StringMap);
 

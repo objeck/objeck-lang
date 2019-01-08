@@ -24,6 +24,9 @@ class Client {
 	}
 
 	function : WriteFile(bytes : Byte[]) ~ Nil {
+		bytes := Byte->Compress(bytes);
+bytes->Size()->PrintLine();		
+		
 		file := FileWriter->New("D:/Code/objeck-lang/programs/test/data.dat");
 		leaving {
 			file->Close();
