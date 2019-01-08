@@ -1756,40 +1756,18 @@ class TrapProcessor {
   // compresses a stream
   //
   static char* Compress(const char* src, uLong src_len, uLong &out_len) {
-    const char* str = src;
-    const uLongf str_len = strlen(str) + 1;
-
-    char* in_buffer = (char*)calloc(1024, sizeof(char));
-    uLongf in_buffer_len = 1024;
-    int err = compress((Bytef*)in_buffer, &in_buffer_len, (Bytef*)str, str_len);
-
-    char* out_buffer = (char*)calloc(1024, sizeof(char));
-    uLongf out_buffer_len = 1024;
-    err = uncompress((Bytef*)out_buffer, &out_buffer_len, (Bytef*)in_buffer, in_buffer_len);
-    
-    delete[] in_buffer;
-    in_buffer = NULL;
-
-    delete[] out_buffer;
-    out_buffer = NULL;
-
-    /*
     const uLong buffer_max = compressBound(src_len);
     char* buffer = (char*)calloc(buffer_max, sizeof(char));
 
     out_len = buffer_max;
-    int status = compress((Bytef*)buffer, &out_len, (Bytef*)src, src_len);
-    if(status == Z_OK && out_len < buffer_max) {
-      return buffer;
-    }
-    else {
+    const int status = compress((Bytef*)buffer, &out_len, (Bytef*)src, src_len);
+    if(status != Z_OK) {
       free(buffer);
       buffer = NULL;
       return NULL;
     }
-    */
-
-    return NULL;
+    
+    return buffer;
   }
 
   //
@@ -1800,17 +1778,14 @@ class TrapProcessor {
     char* buffer = (char*)calloc(buffer_max, sizeof(char));
 
     out_len = buffer_max;
-    int status = uncompress((Bytef*)buffer, &out_len, (Bytef*)src, src_len);
-    if((status == Z_OK || Z_DATA_ERROR) && out_len < buffer_max) {
-      return buffer;
-    }
-    else {
+    const int status = uncompress((Bytef*)buffer, &out_len, (Bytef*)src, src_len);
+    if(status != Z_OK) {
       free(buffer);
       buffer = NULL;
       return NULL;
     }
-    
-    return NULL;
+
+    return buffer;
   }
 
   // main trap functions
