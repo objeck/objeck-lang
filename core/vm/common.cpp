@@ -3438,7 +3438,7 @@ bool TrapProcessor::FileInByteAry(StackProgram* program, size_t* inst, size_t* &
   if(array && instance && (FILE*)instance[0] && offset > -1 && offset + num <= (long)array[0]) {
     FILE* file = (FILE*)instance[0];
     char* buffer = (char*)(array + 3);
-    const int status = fread(buffer + offset, 1, num, file);
+    const size_t status = fread(buffer + offset, 1, num, file);
     PushInt(status, op_stack, stack_pos);
   }
   else {
