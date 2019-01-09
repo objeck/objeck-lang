@@ -11,7 +11,7 @@ JIT_PATH=arch/jit/ia32
 EXE=obr
 
 $(EXE): $(SRC) $(OBJ_LIBS)
-	$(CC) -m32 -o $(EXE) $(SRC) $(OBJ_LIBS) -lssl -lcrypto -ldl -pthread
+	$(CC) -m32 -o $(EXE) $(SRC) $(OBJ_LIBS) -lssl -lcrypto -ldl -lz -pthread
 #	$(CC) -m32 -o $(EXE) $(SRC) $(OBJ_LIBS) -lssl -lcrypto -ldl -pthread -pg
 
 memory.a:

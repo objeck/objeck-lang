@@ -28,7 +28,8 @@ bytes->Size()->PrintLine();
 		bytes := Byte->Compress(bytes);
 bytes->Size()->PrintLine();		
 		
-		file := FileWriter->New("D:/Code/objeck-lang/programs/test/data.dat");
+#		file := FileWriter->New("D:/Code/objeck-lang/programs/test/data.dat");
+		file := FileWriter->New("/tmp/data.dat");
 		leaving {
 			file->Close();
 		};
