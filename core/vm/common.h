@@ -1774,18 +1774,37 @@ class TrapProcessor {
   // compresses a stream
   //
   static char* Uncompress(const char* src, uLong src_len, uLong &out_len) {
-    const uLong buffer_max = src_len * 10; // stream.total_out + 1;
-    char* buffer = (char*)calloc(buffer_max, sizeof(char));
+    const uLong buffer_limit = 8388608; // 8 MB
 
-    out_len = buffer_max;
-    const int status = uncompress((Bytef*)buffer, &out_len, (Bytef*)src, src_len);
-    if(status != Z_OK) {
-      free(buffer);
-      buffer = NULL;
-      return NULL;
-    }
+    uLong buffer_max = src_len << 2;
+		char* buffer = (char*)calloc(buffer_max, sizeof(char));
 
-    return buffer;
+    bool success = false;
+		do {
+      out_len = buffer_max;
+      const int status = uncompress((Bytef*)buffer, &out_len, (Bytef*)src, src_len);
+			switch(status) {
+				case Z_OK: // caller frees buffer
+					return buffer;
+
+				case Z_BUF_ERROR:
+					free(buffer);
+					buffer_max <<= 2;
+					buffer = (char*)calloc(buffer_max, sizeof(char));
+					break;
+
+				case Z_MEM_ERROR:
+				case Z_DATA_ERROR:
+					free(buffer);
+					buffer = NULL;
+					return NULL;
+			}
+		}
+		while(buffer_max < buffer_limit && !success);
+
+		free(buffer);
+		buffer = NULL;
+    return NULL;
   }
 
   // main trap functions
