@@ -10,7 +10,7 @@ JIT_PATH= arch/jit/amd64
 EXE= obr
 
 $(EXE): $(SRC) $(OBJ_LIBS)
-	$(CC) -m64 -o $(EXE) $(SRC) $(OBJ_LIBS) -lssl -lcrypto -ldl -pthread
+	$(CC) -m64 -o $(EXE) $(SRC) $(OBJ_LIBS) -lssl -lcrypto -ldl -lz -pthread
 
 memory.a:
 	cd $(MEM_PATH); make -f Makefile.64

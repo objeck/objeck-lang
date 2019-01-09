@@ -18,7 +18,8 @@ class SocketServer {
 	}
 
 	function : ReadFile() ~ Nil {
-		bytes := FileReader->ReadBinaryFile("D:/Code/objeck-lang/programs/test/data.dat");
+#		bytes := FileReader->ReadBinaryFile("D:/Code/objeck-lang/programs/test/data.dat");
+		bytes := FileReader->ReadBinaryFile("/tmp/data.dat");
 bytes->Size()->PrintLine();		
 		bytes := Byte->Uncompress(bytes);
 bytes->Size()->PrintLine();		
