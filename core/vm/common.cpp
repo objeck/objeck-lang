@@ -67,22 +67,14 @@ void ObjectSerializer::CheckObject(size_t* mem, bool is_obj, long depth) {
     if(cls) {
       // write object id
       const string cls_name = UnicodeToBytes(cls->GetName());
-      const long cls_name_size = (long)cls_name.size();
+      const INT_VALUE cls_name_size = (INT_VALUE)cls_name.size();
       SerializeInt(cls_name_size);
       SerializeBytes(cls_name.c_str(), cls_name_size);
       
       if(!WasSerialized(mem)) {
 #ifdef _DEBUG
-        long mem_size = cls->GetInstanceMemorySize();
-	
-#if defined(_WIN64) || defined(_X64)
-        mem_size *= 2;
-#endif
-        for(int i = 0; i < depth; i++) {
-          wcout << L"\t";
-        }
         wcout << L"\t----- SERIALIZING object: cls_id=" << cls->GetId() << L", name='" << cls->GetName() << L"', mem_id="
-          << cur_id << L", size=" << mem_size << L" byte(s) -----" << endl;
+          << cur_id << L" -----" << endl;
 #endif
         CheckMemory(mem, cls->GetInstanceDeclarations(), cls->GetNumberInstanceDeclarations(), depth);
       }
@@ -212,7 +204,7 @@ void ObjectSerializer::CheckMemory(size_t* mem, StackDclr** dclrs, const long dc
           if(!WasSerialized((size_t*)(*mem))) {
             // convert
             const string buffer = UnicodeToBytes((wchar_t*)(array + 3));
-            const long array_size = (long)buffer.size();
+            const INT_VALUE array_size = (INT_VALUE)buffer.size();
 #ifdef _DEBUG
             wcout << L"\t" << i << L": ----- serializing char array: value='" << ((wchar_t*)(array + 3)) << L", mem_id=" << cur_id << L", size=" << array_size << L" byte(s) -----" << endl;
 #endif
@@ -352,7 +344,7 @@ void ObjectSerializer::Serialize(size_t* inst) {
  ********************************/
 size_t* ObjectDeserializer::DeserializeObject() {
   // read object id
-  const long char_array_size = DeserializeInt();
+  const INT_VALUE char_array_size = DeserializeInt();
   char* temp = new char[char_array_size + 1];
   memcpy(temp, buffer + buffer_offset, char_array_size);
   buffer_offset += char_array_size;
@@ -3446,7 +3438,8 @@ bool TrapProcessor::FileInByteAry(StackProgram* program, size_t* inst, size_t* &
   if(array && instance && (FILE*)instance[0] && offset > -1 && offset + num <= (long)array[0]) {
     FILE* file = (FILE*)instance[0];
     char* buffer = (char*)(array + 3);
-    PushInt(fread(buffer + offset, 1, num, file), op_stack, stack_pos);
+    const int status = fread(buffer + offset, 1, num, file);
+    PushInt(status, op_stack, stack_pos);
   }
   else {
     PushInt(-1, op_stack, stack_pos);
