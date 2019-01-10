@@ -4179,9 +4179,7 @@ bundle System.IO {
 		@return byte stream of the objects that have been serialized
 		~#
 		method : public : Serialize() ~ Byte[] {
-			temp := Byte->New[@pos];
-			Runtime->Copy(temp, 0, @buffer, 0, @pos);
-			return temp;
+			return Byte->Compress(@buffer);
 		}
 	}
 	
@@ -4198,7 +4196,7 @@ bundle System.IO {
 		~#
 		New(buffer : Byte[]) {
 			Parent();
-			@buffer := buffer;
+			@buffer := Byte->Uncompress(buffer);
 			@pos := 0;
 		}
 
