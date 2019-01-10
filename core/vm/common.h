@@ -1202,12 +1202,20 @@ class StackProgram {
 #ifdef _WIN32  
     char user_dir[MAX_PATH];
     if(GetUserDirectory(user_dir, MAX_PATH)) {
-      properties_map.insert(pair<wstring, wstring>(L"user_dir", BytesToUnicode(user_dir)));
+      wstring user_dir_value = BytesToUnicode(user_dir);
+      if(user_dir_value.back() == L'/' || user_dir_value.back() == L'\\') {
+        user_dir_value.pop_back();
+      }
+      properties_map.insert(pair<wstring, wstring>(L"user_dir", user_dir_value));
     }
 
     char tmp_dir[MAX_PATH];
     if(GetTempPath(MAX_PATH, tmp_dir)) {
-      properties_map.insert(pair<wstring, wstring>(L"tmp_dir", BytesToUnicode(tmp_dir)));
+      wstring tmp_dir_value = BytesToUnicode(tmp_dir);
+      if(tmp_dir_value.back() == L'/' || tmp_dir_value.back() == L'\\') {
+        tmp_dir_value.pop_back();
+      }
+      properties_map.insert(pair<wstring, wstring>(L"tmp_dir", tmp_dir_value));
     }
 #else
     struct passwd* user = getpwuid(getuid());
