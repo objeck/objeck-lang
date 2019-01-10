@@ -18,17 +18,22 @@ class SocketServer {
 	}
 
 	function : ReadFile() ~ Nil {
-#		bytes := FileReader->ReadBinaryFile("D:/Code/objeck-lang/programs/test/data.dat");
 		bytes := FileReader->ReadBinaryFile("/tmp/data.dat");
-bytes->Size()->PrintLine();		
-		bytes := Byte->Uncompress(bytes);
-bytes->Size()->PrintLine();		
+		size := bytes->Size();
+		file_name := Runtime->GetTempDir();
+		file_name += "/data.dat";
+		"server: file='={$file_name}', size={$size}"->PrintLine();
+		
 		deserializer := Deserializer->New(bytes);
 		values := deserializer->ReadObject()->As(StringMap);
 
 		values->Size()->PrintLine();
+
 		name := values->Find("name")->As(String);
 		name->PrintLine();
+
+		pi := values->Find("pi")->As(FloatHolder);
+		pi->Get()->PrintLine();
 	}
 
 	function : ReadSocket() ~ Nil {
@@ -48,10 +53,15 @@ bytes->Size()->PrintLine();
 				values := deserializer->ReadObject()->As(StringMap);
 				
 				values->Size()->PrintLine();
+
 				name := values->Find("name")->As(String);				
 				name->PrintLine();
+
 				age := values->Find("age")->As(IntHolder);
 				age->Get()->PrintLine();
+
+				pi := values->Find("pi")->As(FloatHolder);
+				pi->Get()->PrintLine();
 			};
 		};
 		
