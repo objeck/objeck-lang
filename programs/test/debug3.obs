@@ -1,7 +1,0 @@
-use System.IO.File;
-
-class Test {
-	function : Main(args : String[]) ~ Nil {
-		File->ModifiedTime("debug3.obs")->ToString()->PrintLine();
- 	}
-}
