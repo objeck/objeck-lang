@@ -135,6 +135,9 @@ class Loader {
 #ifdef _DEBUG
       wcout << L"file in: compressed=" << buffer_size << L", uncompressed=" << dest_len << L" ---" << endl;
 #endif
+      free(buffer);
+      buffer = NULL;
+
       return out;
     }
     else {
