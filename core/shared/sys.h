@@ -376,6 +376,9 @@ public:
     wcout << L"file out: compressed=" << dest_len << L", uncompressed=" << out_buffer.size() << L" ---" << endl;
 #endif
     file_out.write(compressed, dest_len);
+    free(compressed);
+    compressed = NULL;
+
     file_out.close();
 
     return true;
