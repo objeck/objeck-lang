@@ -1,7 +1,7 @@
 /***************************************************************************
  * Defines how the intermediate code is written to output files
  *
- * Copyright (c) 2008-2018, Randy Hollines
+ * Copyright (c) 2008-2019, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -88,11 +88,9 @@ void FileEmitter::Emit()
     }
   }
   
-  const string open_filename(file_name.begin(), file_name.end());
-  ofstream file_out(open_filename.c_str(), ofstream::binary);
-  if(file_out && file_out.is_open()) {
-    program->Write(emit_lib, is_debug, is_web, file_out);
-    file_out.close();
+  OutputStream out_stream(file_name);
+  program->Write(emit_lib, is_debug, is_web, out_stream);
+  if(out_stream.WriteFile()) {
     wcout << L"Wrote target file: '" << file_name << L"'" << endl;
   }
   else {
@@ -103,19 +101,19 @@ void FileEmitter::Emit()
 /****************************
  * IntermediateProgram class
  ****************************/
-void IntermediateProgram::Write(bool emit_lib, bool is_debug, bool is_web, ofstream &file_out) {
+void IntermediateProgram::Write(bool emit_lib, bool is_debug, bool is_web, OutputStream& out_stream) {
   // version
-  WriteInt(VER_NUM, file_out);
+  WriteInt(VER_NUM, out_stream);
 
   // magic number
   if(emit_lib) {
-    WriteInt(MAGIC_NUM_LIB, file_out);
+    WriteInt(MAGIC_NUM_LIB, out_stream);
   }
   else if(is_web) {
-    WriteInt(MAGIC_NUM_WEB, file_out);
+    WriteInt(MAGIC_NUM_WEB, out_stream);
   }
   else {
-    WriteInt(MAGIC_NUM_EXE, file_out);
+    WriteInt(MAGIC_NUM_EXE, out_stream);
   }
 
   // write wstring id
@@ -123,59 +121,59 @@ void IntermediateProgram::Write(bool emit_lib, bool is_debug, bool is_web, ofstr
 #ifdef _DEBUG
     assert(string_cls_id > 0);
 #endif
-    WriteInt(string_cls_id, file_out);
+    WriteInt(string_cls_id, out_stream);
   }
 
   // write float strings
-  WriteInt((int)float_strings.size(), file_out);
+  WriteInt((int)float_strings.size(), out_stream);
   for(size_t i = 0; i < float_strings.size(); ++i) {
     frontend::FloatStringHolder* holder = float_strings[i];
-    WriteInt(holder->length, file_out);
+    WriteInt(holder->length, out_stream);
     for(int j = 0; j < holder->length; ++j) {
-      WriteDouble(holder->value[j], file_out);
+      WriteDouble(holder->value[j], out_stream);
     }
   }
   
   // write int strings
-  WriteInt((int)int_strings.size(), file_out);
+  WriteInt((int)int_strings.size(), out_stream);
   for(size_t i = 0; i < int_strings.size(); ++i) {
     frontend::IntStringHolder* holder = int_strings[i];
-    WriteInt(holder->length, file_out);
+    WriteInt(holder->length, out_stream);
     for(int j = 0; j < holder->length; ++j) {
-      WriteInt(holder->value[j], file_out);
+      WriteInt(holder->value[j], out_stream);
     }
   }
   
   // write char strings
-  WriteInt((int)char_strings.size(), file_out);
+  WriteInt((int)char_strings.size(), out_stream);
   for(size_t i = 0; i < char_strings.size(); ++i) {
-    WriteString(char_strings[i], file_out);
+    WriteString(char_strings[i], out_stream);
   }
 
   // write bundle names
   if(emit_lib) {
-    WriteInt((int)bundle_names.size(), file_out);
+    WriteInt((int)bundle_names.size(), out_stream);
     for(size_t i = 0; i < bundle_names.size(); ++i) {
-      WriteString(bundle_names[i], file_out);
+      WriteString(bundle_names[i], out_stream);
     }
   }
 
   // program start
   if(!emit_lib) {
-    WriteInt(class_id, file_out);
-    WriteInt(method_id, file_out);
+    WriteInt(class_id, out_stream);
+    WriteInt(method_id, out_stream);
   }
   
   // program enums
   if(emit_lib) {
-    WriteInt((int)enums.size(), file_out);
+    WriteInt((int)enums.size(), out_stream);
     for(size_t i = 0; i < enums.size(); ++i) {
-      enums[i]->Write(file_out);
+      enums[i]->Write(out_stream);
     }
   }
   
   // program classes
-  WriteInt((int)classes.size(), file_out);
+  WriteInt((int)classes.size(), out_stream);
   for(size_t i = 0; i < classes.size(); ++i) {
     if(classes[i]->IsLibrary()) {
       num_lib_classes++;
@@ -183,7 +181,7 @@ void IntermediateProgram::Write(bool emit_lib, bool is_debug, bool is_web, ofstr
     else {
       num_src_classes++;
     }
-    classes[i]->Write(emit_lib, file_out);
+    classes[i]->Write(emit_lib, out_stream);
   }
   
   wcout << L"Compiled " << num_src_classes
@@ -200,102 +198,102 @@ void IntermediateProgram::Write(bool emit_lib, bool is_debug, bool is_web, ofstr
 /****************************
  * Class class
  ****************************/
-void IntermediateClass::Write(bool emit_lib, ofstream &file_out) {
+void IntermediateClass::Write(bool emit_lib, OutputStream& out_stream) {
   // write id and name
-  WriteInt(id, file_out);
-  WriteString(name, file_out);
-  WriteInt(pid, file_out);
-  WriteString(parent_name, file_out);
+  WriteInt(id, out_stream);
+  WriteString(name, out_stream);
+  WriteInt(pid, out_stream);
+  WriteString(parent_name, out_stream);
 
   // interface ids
-  WriteInt((int)interface_ids.size(), file_out);
+  WriteInt((int)interface_ids.size(), out_stream);
   for(size_t i = 0; i < interface_ids.size(); ++i) {
-    WriteInt(interface_ids[i], file_out);
+    WriteInt(interface_ids[i], out_stream);
   }
 
   // interface names
   if(emit_lib) {
-    WriteInt((int)interface_names.size(), file_out);
+    WriteInt((int)interface_names.size(), out_stream);
     for(size_t i = 0; i < interface_names.size(); ++i) {
-      WriteString(interface_names[i], file_out);
+      WriteString(interface_names[i], out_stream);
     }
-    WriteInt(is_interface, file_out);
+    WriteInt(is_interface, out_stream);
   }
   
-  WriteInt(is_virtual, file_out);
-  WriteInt(is_debug, file_out);
+  WriteInt(is_virtual, out_stream);
+  WriteInt(is_debug, out_stream);
   if(is_debug) {
-    WriteString(file_name, file_out);
+    WriteString(file_name, out_stream);
   }
 
   // write local space size
-  WriteInt(cls_space, file_out);
-  WriteInt(inst_space, file_out);
-  cls_entries->Write(is_debug, file_out);
-  inst_entries->Write(is_debug, file_out);
+  WriteInt(cls_space, out_stream);
+  WriteInt(inst_space, out_stream);
+  cls_entries->Write(is_debug, out_stream);
+  inst_entries->Write(is_debug, out_stream);
 
   // write methods
-  WriteInt((int)methods.size(), file_out);
+  WriteInt((int)methods.size(), out_stream);
   for(size_t i = 0; i < methods.size(); ++i) {
-    methods[i]->Write(emit_lib, is_debug, file_out);
+    methods[i]->Write(emit_lib, is_debug, out_stream);
   }
 }
 
 /****************************
  * Method class
  **************************/
-void IntermediateMethod::Write(bool emit_lib, bool is_debug, ofstream &file_out) {
+void IntermediateMethod::Write(bool emit_lib, bool is_debug, OutputStream& out_stream) {
   // write attributes
-  WriteInt(id, file_out);
+  WriteInt(id, out_stream);
   
   if(emit_lib) {
-    WriteInt(type, file_out);
+    WriteInt(type, out_stream);
   }
   
-  WriteInt(is_virtual, file_out);
-  WriteInt(has_and_or, file_out);
+  WriteInt(is_virtual, out_stream);
+  WriteInt(has_and_or, out_stream);
   
   if(emit_lib) {
-    WriteInt(is_native, file_out);
-    WriteInt(is_function, file_out);
+    WriteInt(is_native, out_stream);
+    WriteInt(is_function, out_stream);
   }
   
-  WriteString(name, file_out);
-  WriteString(rtrn_name, file_out);
+  WriteString(name, out_stream);
+  WriteString(rtrn_name, out_stream);
 
   // write local space size
-  WriteInt(params, file_out);
-  WriteInt(space, file_out);
-  entries->Write(is_debug, file_out);
+  WriteInt(params, out_stream);
+  WriteInt(space, out_stream);
+  entries->Write(is_debug, out_stream);
 
   // write statements
   uint32_t num_instrs = 0;
   for(size_t i = 0; i < blocks.size(); ++i) {
     num_instrs += (int)blocks[i]->GetInstructions().size();
   }
-  WriteUnsigned(num_instrs, file_out);
+  WriteUnsigned(num_instrs, out_stream);
 
   for(size_t i = 0; i < blocks.size(); ++i) {
-    blocks[i]->Write(is_debug, file_out);
+    blocks[i]->Write(is_debug, out_stream);
   }
 }
 
 /****************************
 * IntermediateBlock class
 ****************************/
-void IntermediateBlock::Write(bool is_debug, ofstream &file_out) {
+void IntermediateBlock::Write(bool is_debug, OutputStream& out_stream) {
   for(size_t i = 0; i < instructions.size(); ++i) {
-    instructions[i]->Write(is_debug, file_out);
+    instructions[i]->Write(is_debug, out_stream);
   }
 }
 
 /****************************
  * Instruction class
  ****************************/
-void IntermediateInstruction::Write(bool is_debug, ofstream &file_out) {
-  WriteByte(type, file_out);
+void IntermediateInstruction::Write(bool is_debug, OutputStream& out_stream) {
+  WriteByte(type, out_stream);
   if(is_debug) {
-    WriteInt(line_num, file_out);
+    WriteInt(line_num, out_stream);
   }
 
   switch(type) {
@@ -309,35 +307,35 @@ void IntermediateInstruction::Write(bool is_debug, ofstream &file_out) {
   case OBJ_TYPE_OF:
   case TRAP:
   case TRAP_RTRN:
-    WriteInt(operand, file_out);
+    WriteInt(operand, out_stream);
     break;
 
   case LOAD_CHAR_LIT:
-    WriteChar(operand, file_out);
+    WriteChar(operand, out_stream);
     break;
 
   case instructions::ASYNC_MTHD_CALL:
   case MTHD_CALL:
-    WriteInt(operand, file_out);
-    WriteInt(operand2, file_out);
-    WriteInt(operand3, file_out);
+    WriteInt(operand, out_stream);
+    WriteInt(operand2, out_stream);
+    WriteInt(operand3, out_stream);
     break;
 
   case LIB_NEW_OBJ_INST:
   case LIB_OBJ_INST_CAST:
   case LIB_OBJ_TYPE_OF:
-    WriteString(operand5, file_out);
+    WriteString(operand5, out_stream);
     break;
 
   case LIB_MTHD_CALL:
-    WriteInt(operand3, file_out);
-    WriteString(operand5, file_out);
-    WriteString(operand6, file_out);
+    WriteInt(operand3, out_stream);
+    WriteString(operand5, out_stream);
+    WriteString(operand6, out_stream);
     break;
 
   case LIB_FUNC_DEF:
-    WriteString(operand5, file_out);
-    WriteString(operand6, file_out);
+    WriteString(operand5, out_stream);
+    WriteString(operand6, out_stream);
     break;
 
   case JMP:
@@ -359,16 +357,16 @@ void IntermediateInstruction::Write(bool is_debug, ofstream &file_out) {
   case STOR_CHAR_ARY_ELM:
   case STOR_INT_ARY_ELM:
   case STOR_FLOAT_ARY_ELM:
-    WriteInt(operand, file_out);
-    WriteInt(operand2, file_out);
+    WriteInt(operand, out_stream);
+    WriteInt(operand2, out_stream);
     break;
 
   case LOAD_FLOAT_LIT:
-    WriteDouble(operand4, file_out);
+    WriteDouble(operand4, out_stream);
     break;
 
   case LBL:
-    WriteInt(operand, file_out);
+    WriteInt(operand, out_stream);
     break;
 
   default:
@@ -379,20 +377,20 @@ void IntermediateInstruction::Write(bool is_debug, ofstream &file_out) {
 /****************************
  * IntermediateEnumItem class
  ****************************/
-void IntermediateEnumItem::Write(ofstream &file_out) {
-  WriteString(name, file_out);
-  WriteInt(id, file_out);
+void IntermediateEnumItem::Write(OutputStream& out_stream) {
+  WriteString(name, out_stream);
+  WriteInt(id, out_stream);
 }
 
 /****************************
  * Enum class
  ****************************/
-void IntermediateEnum::Write(ofstream &file_out) {
-  WriteString(name, file_out);
-  WriteInt(offset, file_out);
+void IntermediateEnum::Write(OutputStream& out_stream) {
+  WriteString(name, out_stream);
+  WriteInt(offset, out_stream);
   // write items
-  WriteInt((int)items.size(), file_out);
+  WriteInt((int)items.size(), out_stream);
   for(size_t i = 0; i < items.size(); ++i) {
-    items[i]->Write(file_out);
+    items[i]->Write(out_stream);
   }
 }

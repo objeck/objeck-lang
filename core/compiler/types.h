@@ -309,18 +309,12 @@ namespace backend {
   class IntermediateDeclarations {
     vector<IntermediateDeclaration*> declarations;
 
-    void WriteInt(int value, ofstream &file_out) {
-      file_out.write((char*)&value, sizeof(value));
+    void WriteInt(int value, OutputStream &out_stream) {
+      out_stream.WriteInt(value);
     }
 
-    void WriteString(const wstring &in, ofstream &file_out) {
-      string out;
-      if(!UnicodeToBytes(in, out)) {
-        wcerr << L">>> Unable to write unicode string <<<" << endl;
-        exit(1);
-      }
-      WriteInt((int)out.size(), file_out);
-      file_out.write(out.c_str(), out.size());
+    void WriteString(const wstring &in, OutputStream &out_stream) {
+      out_stream.WriteString(in);
     }
 
   public:
@@ -407,13 +401,13 @@ namespace backend {
       }
     }
     
-    void Write(bool is_debug, ofstream &file_out) {
-      WriteInt((int)declarations.size(), file_out);
+    void Write(bool is_debug, OutputStream &out_stream) {
+      WriteInt((int)declarations.size(), out_stream);
       for(size_t i = 0; i < declarations.size(); ++i) {
         IntermediateDeclaration* entry = declarations[i];
-        WriteInt(entry->GetType(), file_out);
+        WriteInt(entry->GetType(), out_stream);
         if(is_debug) {
-          WriteString(entry->GetName(), file_out);
+          WriteString(entry->GetName(), out_stream);
         }
       }
     }
