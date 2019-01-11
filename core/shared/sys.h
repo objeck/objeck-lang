@@ -352,7 +352,7 @@ static bool CharacterToBytes(wchar_t in, string &out) {
   ****************************/
 class OutputStream {
   wstring file_name;
-  vector<unsigned char> out_buffer;
+  vector<char> out_buffer;
 
 public:
   OutputStream(const wstring &n) {
@@ -369,7 +369,10 @@ public:
       wcerr << L"Unable to write file: '" << file_name << L"'" << endl;
       return false;
     }
-    file_out.write((char*)out_buffer.data(), out_buffer.size());
+
+    uLong dest_len;
+    char* compressed = Compress(out_buffer.data(), (uLong)out_buffer.size(), dest_len);
+    file_out.write(compressed, dest_len);
     file_out.close();
 
     return true;
@@ -395,14 +398,14 @@ public:
   }
 
   inline void WriteInt(int32_t value) {
-    unsigned char temp[sizeof(value)];
+    char temp[sizeof(value)];
     memcpy(temp, &value, sizeof(value));
     std::copy(begin(temp), end(temp), std::back_inserter(out_buffer));
     // file_out.write((char*)&value, sizeof(value));
   }
 
   inline void WriteUnsigned(uint32_t value) {
-    unsigned char temp[sizeof(value)];
+    char temp[sizeof(value)];
     memcpy(temp, &value, sizeof(value));
     std::copy(begin(temp), end(temp), std::back_inserter(out_buffer));
     // file_out.write((char*)&value, sizeof(value));
@@ -429,7 +432,7 @@ public:
   }
 
   inline void WriteDouble(FLOAT_VALUE value) {
-    unsigned char temp[sizeof(value)];
+    char temp[sizeof(value)];
     memcpy(temp, &value, sizeof(value));
     std::copy(begin(temp), end(temp), std::back_inserter(out_buffer));
     // file_out.write((char*)&value, sizeof(value));
