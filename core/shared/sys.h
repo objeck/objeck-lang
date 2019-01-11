@@ -372,6 +372,9 @@ public:
 
     uLong dest_len;
     char* compressed = Compress(out_buffer.data(), (uLong)out_buffer.size(), dest_len);
+#ifdef _DEBUG
+    wcout << L"file out: compressed=" << dest_len << L", uncompressed=" << out_buffer.size() << L" ---" << endl;
+#endif
     file_out.write(compressed, dest_len);
     file_out.close();
 
