@@ -951,13 +951,23 @@ class Library {
       in.read(buffer, buffer_size);
       // close file
       in.close();
+      
+      uLong dest_len;
+      char* out = OutputStream::Uncompress(buffer, (uLong)buffer_size, dest_len);
+#ifdef _DEBUG
+      wcout << L"--- file in: compressed=" << buffer_size << L", uncompressed=" << dest_len << L" ---" << endl;
+#endif
+      free(buffer);
+      buffer = NULL;
+      
+      return out;
     } 
     else {
       wcout << L"Unable to open file: " << filename << endl;
       exit(1);
     }
-
-    return buffer;
+    
+    return NULL;
   }
 
   void ReadFile(const wstring &file) {

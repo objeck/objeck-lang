@@ -133,8 +133,9 @@ class Loader {
       uLong dest_len;
       char* out = OutputStream::Uncompress(buffer, (uLong)buffer_size, dest_len);
 #ifdef _DEBUG
-      wcout << L"file in: compressed=" << buffer_size << L", uncompressed=" << dest_len << L" ---" << endl;
+      wcout << L"--- file in: compressed=" << buffer_size << L", uncompressed=" << dest_len << L" ---" << endl;
 #endif
+      
       free(buffer);
       buffer = NULL;
 

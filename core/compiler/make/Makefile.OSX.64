@@ -6,7 +6,7 @@ SRC=types.o tree.o scanner.o parser.o linker.o context.o intermediate.o optimiza
 EXE=obc
 
 $(EXE): $(SRC)
-	$(CC) -m64 -o $(EXE) $(SRC)
+	$(CC) -m64 -o $(EXE) $(SRC) -lz
 
 %.o: %.cpp
 	$(CC) -m64 $(ARGS) -c $< 
