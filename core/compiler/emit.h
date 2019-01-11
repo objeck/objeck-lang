@@ -1,7 +1,7 @@
 /***************************************************************************
 * Defines how the intermediate code is written to output files
 *
-* Copyright (c) 2008-2018, Randy Hollines
+* Copyright (c) 2008-2019, Randy Hollines
 * All rights reserved.
 *
 * Redistribution and use in source and binary forms, with or without
@@ -59,47 +59,28 @@ namespace backend {
     }
 
   protected:
-    inline void WriteString(const wstring &in, ofstream &file_out) {
-      string out;
-      if(!UnicodeToBytes(in, out)) {
-        wcerr << L">>> Unable to write unicode string <<<" << endl;
-        exit(1);
-      }
-      WriteInt((int)out.size(), file_out);
-      file_out.write(out.c_str(), out.size());
+    inline void WriteString(const wstring &in, OutputStream& out_stream) {
+      out_stream.WriteString(in);
     }
 
-    inline void WriteByte(char value, ofstream &file_out) {
-      file_out.write(&value, sizeof(value));
+    inline void WriteByte(char value, OutputStream& out_stream) {
+      out_stream.WriteByte(value);
     }
 
-    inline void WriteInt(int32_t value, ofstream &file_out) {
-      file_out.write((char*)&value, sizeof(value));
+    inline void WriteInt(int32_t value, OutputStream& out_stream) {
+      out_stream.WriteInt(value);
     }
 
-    inline void WriteUnsigned(uint32_t value, ofstream &file_out) {
-      file_out.write((char*)&value, sizeof(value));
+    inline void WriteUnsigned(uint32_t value, OutputStream& out_stream) {
+      out_stream.WriteUnsigned(value);
     }
 
-    inline void WriteChar(wchar_t value, ofstream &file_out) {
-      string buffer;
-      if(!CharacterToBytes(value, buffer)) {
-        wcerr << L">>> Unable to write character <<<" << endl;
-        exit(1);
-      }
-
-      // write bytes
-      if(buffer.size()) {
-        WriteInt((int)buffer.size(), file_out);
-        file_out.write(buffer.c_str(), buffer.size());
-      }
-      else {
-        WriteInt(0, file_out);
-      }
+    inline void WriteChar(wchar_t value, OutputStream& out_stream) {
+      out_stream.WriteChar(value);
     }
 
-    inline void WriteDouble(FLOAT_VALUE value, ofstream &file_out) {
-      file_out.write((char*)&value, sizeof(value));
+    inline void WriteDouble(FLOAT_VALUE value, OutputStream& out_stream) {
+      out_stream.WriteDouble(value);
     }
   };
 
@@ -198,7 +179,7 @@ namespace backend {
       operand3 = o3;
     }
 
-    void Write(bool is_debug, ofstream &file_out);
+    void Write(bool is_debug, OutputStream& out_stream);
 
     void Debug() {
       switch(type) {
@@ -756,7 +737,7 @@ namespace backend {
       return instructions.size() == 0;
     }
 
-    void Write(bool is_debug, ofstream &file_out);
+    void Write(bool is_debug, OutputStream& out_stream);
 
     void Debug() {
       if(instructions.size() > 0) {
@@ -907,7 +888,7 @@ namespace backend {
       blocks = b;
     }
 
-    void Write(bool emit_lib, bool is_debug, ofstream &file_out);
+    void Write(bool emit_lib, bool is_debug, OutputStream& out_stream);
 
     void Debug() {
       wcout << L"---------------------------------------------------------" << endl;
@@ -1077,7 +1058,7 @@ namespace backend {
       return methods;
     }
 
-    void Write(bool emit_lib, ofstream &file_out);
+    void Write(bool emit_lib, OutputStream& out_stream);
 
     void Debug() {
       wcout << L"=========================================================" << endl;
@@ -1123,7 +1104,7 @@ namespace backend {
       id = i->GetId();
     }
 
-    void Write(ofstream &file_out);
+    void Write(OutputStream& out_stream);
 
     void Debug() {
       wcout << L"Item: name='" << name << L"'; id='" << id << endl;
@@ -1171,7 +1152,7 @@ namespace backend {
       items.push_back(i);
     }
 
-    void Write(ofstream &file_out);
+    void Write(OutputStream& out_stream);
 
     void Debug() {
       wcout << L"=========================================================" << endl;
@@ -1302,7 +1283,7 @@ namespace backend {
       string_cls_id = i;
     }
 
-    void Write(bool emit_lib, bool is_debug, bool is_web, ofstream &file_out);
+    void Write(bool emit_lib, bool is_debug, bool is_web, OutputStream& out_stream);
 
     void Debug() {
       wcout << L"Strings:" << endl;

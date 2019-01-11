@@ -2861,7 +2861,7 @@ bool TrapProcessor::CompressBytes(StackProgram* program, size_t* inst, size_t* &
   const uLong in_len = (uLong)array[2];
     
   uLong out_len;
-  char* out = Compress(in, in_len, out_len);
+  char* out = OutputStream::Compress(in, in_len, out_len);
   if(!out) {
     PushInt(0, op_stack, stack_pos);
     return false;
@@ -2899,7 +2899,7 @@ bool TrapProcessor::UncompressBytes(StackProgram* program, size_t* inst, size_t*
   const uLong in_len = (uLong)array[2];
 
   uLong out_len;
-  char* out = Uncompress(in, in_len, out_len);
+  char* out = OutputStream::Uncompress(in, in_len, out_len);
   if(!out) {
     PushInt(0, op_stack, stack_pos);
     return false;

@@ -35,8 +35,11 @@
 #include <windows.h>
 #include <stdint.h>
 #endif
-#include <string>
+#include <zlib.h>
 #include <string.h>
+#include <fstream>
+#include <string>
+#include <vector>
 #include <map>
 
 // memory size for local stack frames
@@ -343,4 +346,148 @@ static bool CharacterToBytes(wchar_t in, string &out) {
   
   return true;
 }
+
+/****************************
+  * TODO
+  ****************************/
+class OutputStream {
+  wstring file_name;
+  vector<unsigned char> out_buffer;
+
+public:
+  OutputStream(const wstring &n) {
+    file_name = n;
+  }
+
+  ~OutputStream() {
+  }
+
+  bool WriteFile() {
+    const string open_filename(file_name.begin(), file_name.end());
+    ofstream file_out(open_filename.c_str(), ofstream::binary);
+    if(!file_out.is_open()) {
+      wcerr << L"Unable to write file: '" << file_name << L"'" << endl;
+      return false;
+    }
+    file_out.write((char*)out_buffer.data(), out_buffer.size());
+    file_out.close();
+
+    return true;
+  }
+
+  inline void WriteString(const wstring &in) {
+    string out;
+    if(!UnicodeToBytes(in, out)) {
+      wcerr << L">>> Unable to write unicode string <<<" << endl;
+      exit(1);
+    }
+    WriteInt((int)out.size());
+
+    for(size_t i = 0; i < out.size(); ++i) {
+      out_buffer.push_back(out[i]);
+    }
+    // file_out.write(out.c_str(), out.size());
+  }
+
+  inline void WriteByte(char value) {
+    out_buffer.push_back(value);
+    // file_out.write(&value, sizeof(value));
+  }
+
+  inline void WriteInt(int32_t value) {
+    unsigned char temp[sizeof(value)];
+    memcpy(temp, &value, sizeof(value));
+    std::copy(begin(temp), end(temp), std::back_inserter(out_buffer));
+    // file_out.write((char*)&value, sizeof(value));
+  }
+
+  inline void WriteUnsigned(uint32_t value) {
+    unsigned char temp[sizeof(value)];
+    memcpy(temp, &value, sizeof(value));
+    std::copy(begin(temp), end(temp), std::back_inserter(out_buffer));
+    // file_out.write((char*)&value, sizeof(value));
+  }
+
+  inline void WriteChar(wchar_t value) {
+    string buffer;
+    if(!CharacterToBytes(value, buffer)) {
+      wcerr << L">>> Unable to write character <<<" << endl;
+      exit(1);
+    }
+
+    // write bytes
+    if(buffer.size()) {
+      WriteInt((int)buffer.size());
+      for(size_t i = 0; i < buffer.size(); ++i) {
+        out_buffer.push_back(buffer[i]);
+      }
+      // file_out.write(buffer.c_str(), buffer.size());
+    }
+    else {
+      WriteInt(0);
+    }
+  }
+
+  inline void WriteDouble(FLOAT_VALUE value) {
+    unsigned char temp[sizeof(value)];
+    memcpy(temp, &value, sizeof(value));
+    std::copy(begin(temp), end(temp), std::back_inserter(out_buffer));
+    // file_out.write((char*)&value, sizeof(value));
+  }
+
+  //
+  // compresses a stream
+  //
+  static char* Compress(const char* src, uLong src_len, uLong &out_len) {
+    const uLong buffer_max = compressBound(src_len);
+    char* buffer = (char*)calloc(buffer_max, sizeof(char));
+
+    out_len = buffer_max;
+    const int status = compress((Bytef*)buffer, &out_len, (Bytef*)src, src_len);
+    if(status != Z_OK) {
+      free(buffer);
+      buffer = NULL;
+      return NULL;
+    }
+
+    return buffer;
+  }
+
+  //
+  // compresses a stream
+  //
+  static char* Uncompress(const char* src, uLong src_len, uLong &out_len) {
+    const uLong buffer_limit = 67108864; // 64 MB
+
+    uLong buffer_max = src_len << 2;
+    char* buffer = (char*)calloc(buffer_max, sizeof(char));
+
+    bool success = false;
+    do {
+      out_len = buffer_max;
+      const int status = uncompress((Bytef*)buffer, &out_len, (Bytef*)src, src_len);
+      switch(status) {
+      case Z_OK: // caller frees buffer
+        return buffer;
+
+      case Z_BUF_ERROR:
+        free(buffer);
+        buffer_max <<= 1;
+        buffer = (char*)calloc(buffer_max, sizeof(char));
+        break;
+
+      case Z_MEM_ERROR:
+      case Z_DATA_ERROR:
+        free(buffer);
+        buffer = NULL;
+        return NULL;
+      }
+    } while(buffer_max < buffer_limit && !success);
+
+    free(buffer);
+    buffer = NULL;
+    return NULL;
+  }
+};
+
 #endif
