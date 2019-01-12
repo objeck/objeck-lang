@@ -197,11 +197,7 @@ namespace Runtime {
     bool FileExists(const wstring &file_name, bool is_exe = false) {
       const string name(file_name.begin(), file_name.end());
       const string ending = ".obl";
-      if(ending.size() > name.size()) && !std::equal(ending.rbegin(), ending.rend(), name.rbegin()) {
-        return false;
-      }
-
-      if(!name.ends_with(L".obe")) {
+      if(ending.size() > name.size() && !std::equal(ending.rbegin(), ending.rend(), name.rbegin())) {
         return false;
       }
 
