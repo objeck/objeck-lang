@@ -1537,6 +1537,9 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
     case UNCOMPRESS_BYTES:
       return UncompressBytes(program, inst, op_stack, stack_pos, frame);
 
+    case CRC32_BYTES:
+      return CRC32Bytes(program, inst, op_stack, stack_pos, frame);
+
     case FILE_OPEN_READ:
       return FileOpenRead(program, inst, op_stack, stack_pos, frame);
 
@@ -2884,6 +2887,21 @@ bool TrapProcessor::CompressBytes(StackProgram* program, size_t* inst, size_t* &
     
   PushInt((size_t)byte_array, op_stack, stack_pos);
   return true;
+}
+
+bool TrapProcessor::CRC32Bytes(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+{
+  size_t* array = (size_t*)PopInt(op_stack, stack_pos);
+  if(!array) {
+    wcerr << L">>> Atempting to dereference a 'Nil' memory instance <<<" << endl;
+    return false;
+  }
+
+  // setup buffers
+  const char* in = (char*)(array + 3);
+  const uLong in_len = (uLong)array[2];
+  
+  return false;
 }
 
 bool TrapProcessor::UncompressBytes(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)

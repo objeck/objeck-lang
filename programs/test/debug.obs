@@ -1,14 +1,7 @@
-enum Values {
-	A,
-	B
-}
-
-class Test2  {
-	function : Foo(v : Values) ~ Nil {
-		"--- Values ---"->PrintLine();
-	}
-
-	function : Foo(v : Int) ~ Nil {
-		"--- Int ---"->PrintLine();
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		bytes := "Ain't nuttin but a G thing"->ToByteArray();
+		compressed := bytes->Compress();
+		compressed->Size()->PrintLine();
 	}
 }
