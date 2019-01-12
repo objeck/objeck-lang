@@ -2900,8 +2900,12 @@ bool TrapProcessor::CRC32Bytes(StackProgram* program, size_t* inst, size_t* &op_
   // setup buffers
   const char* in = (char*)(array + 3);
   const uLong in_len = (uLong)array[2];
+
+  // caculate CRC
+  const uLong crc = crc32(0, (Bytef*)in, in_len);
+  PushInt(crc, op_stack, stack_pos);
   
-  return false;
+  return true;
 }
 
 bool TrapProcessor::UncompressBytes(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)

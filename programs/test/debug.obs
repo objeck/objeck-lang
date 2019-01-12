@@ -3,5 +3,6 @@ class Test {
 		bytes := "Ain't nuttin but a G thing"->ToByteArray();
 		compressed := bytes->Compress();
 		compressed->Size()->PrintLine();
+		bytes->CRC32()->PrintLine();
 	}
 }
