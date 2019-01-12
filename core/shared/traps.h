@@ -88,6 +88,7 @@ namespace instructions {
     // compression
     COMPRESS_BYTES,
     UNCOMPRESS_BYTES,
+    CRC32_BYTES,
     // file i/o
     FILE_OPEN_READ,
     FILE_OPEN_APPEND,

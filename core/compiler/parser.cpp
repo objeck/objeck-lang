@@ -1579,7 +1579,13 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
                                                                instructions::UNCOMPRESS_BYTES);
       NextToken();
       break;
-            
+
+    case CRC32_BYTES:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+        instructions::CRC32_BYTES);
+      NextToken();
+      break;
+
     case FILE_OPEN_READ:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
                                                                instructions::FILE_OPEN_READ);

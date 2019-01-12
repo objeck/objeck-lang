@@ -93,7 +93,7 @@ bundle System {
 	class $Byte {
 		#~
 		Compresses a byte stream using zlib
-		@param in bytes to compress 
+		@ignore-params
 		@return compressed bytes
 		~#
 		function : Compress(in : Byte[]) ~ Byte[] {
@@ -102,11 +102,20 @@ bundle System {
 
 		#~
 		Uncompresses a byte stream using zlib
-		@param in bytes to uncompress 
+		@ignore-params
 		@return uncompressed bytes
 		~#
 		function : Uncompress(in : Byte[]) ~ Byte[] {
 			UNCOMPRESS_BYTES;
+		}
+
+		#~
+		Calculates the signed CRC32 value for the stream
+		@ignore-params
+		@return signed CRC32
+		~#
+		function : CRC32(in : Byte[]) ~ Byte[] {
+			CRC32_BYTES;
 		}
 		
 		#~
