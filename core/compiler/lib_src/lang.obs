@@ -114,7 +114,7 @@ bundle System {
 		@ignore-params
 		@return signed CRC32
 		~#
-		function : CRC32(in : Byte[]) ~ Byte[] {
+		function : CRC32(in : Byte[]) ~ Int {
 			CRC32_BYTES;
 		}
 		
