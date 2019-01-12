@@ -196,6 +196,15 @@ namespace Runtime {
     // checks to see if a file exists
     bool FileExists(const wstring &file_name, bool is_exe = false) {
       const string name(file_name.begin(), file_name.end());
+      const string ending = ".obl";
+      if(ending.size() > name.size()) && !std::equal(ending.rbegin(), ending.rend(), name.rbegin()) {
+        return false;
+      }
+
+      if(!name.ends_with(L".obe")) {
+        return false;
+      }
+
       ifstream touch(name.c_str(), ios::binary);
       if(touch.is_open()) {
 /*
