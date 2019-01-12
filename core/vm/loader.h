@@ -132,13 +132,16 @@ class Loader {
 
       uLong dest_len;
       char* out = OutputStream::Uncompress(buffer, (uLong)buffer_size, dest_len);
+      if(!out) {
+        wcerr << L"Unable to uncompress file: " << filename << endl;
+        exit(1);
+      }
 #ifdef _DEBUG
-      wcout << L"--- file in: compressed=" << buffer_size << L", uncompressed=" << dest_len << L" ---" << endl;
+      std::wcout << L"--- file in: compressed=" << buffer_size << L", uncompressed=" << dest_len << L" ---" << std::endl;
 #endif
       
       free(buffer);
       buffer = NULL;
-
       return out;
     }
     else {

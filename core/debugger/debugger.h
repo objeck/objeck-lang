@@ -198,6 +198,7 @@ namespace Runtime {
       const string name(file_name.begin(), file_name.end());
       ifstream touch(name.c_str(), ios::binary);
       if(touch.is_open()) {
+/*
         if(is_exe) {
           int magic_num;
           // version
@@ -207,6 +208,7 @@ namespace Runtime {
           touch.close();
           return magic_num == MAGIC_NUM_EXE;
         }
+*/
         touch.close();
         return true;
       }
