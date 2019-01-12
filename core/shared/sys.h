@@ -348,8 +348,8 @@ static bool CharacterToBytes(wchar_t in, string &out) {
 }
 
 /****************************
-  * TODO
-  ****************************/
+ * Byte output stream
+ ****************************/
 class OutputStream {
   wstring file_name;
   vector<char> out_buffer;
@@ -372,6 +372,11 @@ public:
 
     uLong dest_len;
     char* compressed = Compress(out_buffer.data(), (uLong)out_buffer.size(), dest_len);
+    if(!compressed) {
+      wcerr << L"Unable to compress file: '" << file_name << L"'" << endl;
+      file_out.close();
+      return false;
+    }
 #ifdef _DEBUG
     wcout << L"--- file out: compressed=" << dest_len << L", uncompressed=" << out_buffer.size() << L" ---" << endl;
 #endif
@@ -468,7 +473,7 @@ public:
   static char* Uncompress(const char* src, uLong src_len, uLong &out_len) {
     const uLong buffer_limit = 67108864; // 64 MB
 
-    uLong buffer_max = src_len << 2;
+    uLong buffer_max = src_len << 3;
     char* buffer = (char*)calloc(buffer_max, sizeof(char));
 
     bool success = false;
