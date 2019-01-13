@@ -1,12 +1,8 @@
 class MD5 {
    function : Main(args : String[]) ~ Nil {
-   	buffer := Char->New[16];
-	Number->IntToString(13, 8, buffer);
-	buffer->PrintLine();
-#~   	
+   
       in := "The quick brown fox jumped over the lazy dog's back"->ToByteArray();
       hash := Encryption.Hash->MD5(in);
       hash->ToHexString()->PrintLine();
-~#      
    }
 }
