@@ -1,8 +1,5 @@
-class Test {
+class CRC32 {
 	function : Main(args : String[]) ~ Nil {
-		bytes := "Ain't nuttin but a G thing"->ToByteArray();
-		compressed := bytes->Compress();
-		compressed->Size()->PrintLine();
-		bytes->CRC32()->PrintLine();
+		"The quick brown fox jumps over the lazy dog"->ToByteArray()->CRC32()->PrintLine();
 	}
 }
