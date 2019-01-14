@@ -1,6 +1,6 @@
 #~~
 # XML parsing library
-# Copyright (c) 2010-2012 Randy Hollines
+# Copyright (c) 2010-2019 Randy Hollines
 ~~#
 
 use Collection;
@@ -204,9 +204,18 @@ bundle Data.XML {
 		}
 		
 		#~
-		Find an XML element
+		Finds matching XML elements
 		@param path search string
 		@return matching XML elements
+		~#
+		method : public : FindElements(path : String) ~ Vector {
+			return @root->FindElements(path);
+		}
+
+		#~
+		Find first matching XML element
+		@param path search string
+		@return matching XML element
 		~#
 		method : public : FindElements(path : String) ~ Vector {
 			return @root->FindElements(path);
