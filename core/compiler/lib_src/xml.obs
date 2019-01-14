@@ -627,7 +627,7 @@ bundle Data.XML {
 						data->Append(@buffer[i]);
 					};
 					
-# Console->Print("cdata: ")->PrintLine(data);					
+# IO.Console->Print("cdata: ")->PrintLine(data);					
 						
 					return XmlElement->New(XmlElement->Type->CDATA, Nil->As(String), 
 						Nil->As(StringHash), data);
@@ -653,7 +653,7 @@ bundle Data.XML {
 				};
 			};
 			
-# Console->GetInstance()->Print("name: ")->PrintLine(tag_name); 
+# IO.Console->GetInstance()->Print("name: ")->PrintLine(tag_name); 
 		  
 			# look for attributes
 			IgnoreWhiteSpace();
@@ -668,7 +668,7 @@ bundle Data.XML {
 				attribs := StringHash->New();
 				while(attrib_key <> Nil) {	
 			
-# Console->Print("key: ")->PrintLine(attrib_key);    
+# IO.Console->Print("key: ")->PrintLine(attrib_key);    
 					
 					IgnoreWhiteSpace();
 					if(Unmatch('=')) {
@@ -685,7 +685,7 @@ bundle Data.XML {
 						return Nil;
 					};
 			
-# Console->Print("value: ")->PrintLine(attrib_value);    
+# IO.Console->Print("value: ")->PrintLine(attrib_value);    
 			
 					attrib := XmlAttribute->New(attrib_key, attrib_value);
 					attribs->Insert(attrib->GetName(), attrib);
@@ -900,7 +900,13 @@ bundle Data.XML {
 			@type := type;
 			@attribs := attribs;
 			@content := content;
-			SetNames(name);
+
+			if(type = XmlElement->Type->CDATA) {
+				SetNames("text()");
+			}
+			else {
+				SetNames(name);
+			};
 		}
 		
 		method : SetNames(name : String) ~ Nil {
@@ -1561,6 +1567,21 @@ bundle Data.XML {
 								i += 1;
 							};
 							
+							if(i < max & in->Get(i) = ';') {
+								out->Append(str_num->ToInt()->As(Char));
+								i += 1;
+							}
+							else {
+								out->Append(str_num);
+							};
+						}
+						else if(i < max & in->Get(i)->IsDigit()) {
+							str_num := "";
+							while(i < max & (in->Get(i)->IsDigit())) {
+								str_num->Append(in->Get(i));
+								i += 1;
+							};
+
 							if(i < max & in->Get(i) = ';') {
 								out->Append(str_num->ToInt()->As(Char));
 								i += 1;
