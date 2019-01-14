@@ -65,13 +65,13 @@ void ContextAnalyzer::ProcessErrorAlternativeMethods(wstring &message)
 /****************************
  * Emits an error
  ****************************/
-void ContextAnalyzer::ProcessError(const wstring &msg)
+void ContextAnalyzer::ProcessError(const wstring &fn, const wstring &msg)
 {
 #ifdef _DEBUG
   wcout << L"\tError: " << msg << endl;
 #endif
-
-  errors.insert(pair<int, wstring>(0, msg));
+  
+  errors.insert(pair<int, wstring>(1, fn + L":1: " + msg));
 }
 
 /****************************
@@ -114,11 +114,12 @@ bool ContextAnalyzer::Analyze()
 #endif
 
   // check uses
+  const wstring file_name = program->GetFileName();
   vector<wstring> program_uses = program->GetUses();
   for(size_t i = 0; i < program_uses.size(); ++i) {
     const wstring& name = program_uses[i];
     if(!program->HasBundleName(name) && !linker->HasBundleName(name)) {
-      ProcessError(L"Bundle name '" + name + L"' not defined in program or linked libraries");
+      ProcessError(file_name, L"Bundle name '" + name + L"' not defined in program or linked libraries");
     }
   }
 
@@ -235,11 +236,11 @@ bool ContextAnalyzer::Analyze()
     
     // check for entry points
     if(!main_found && !is_lib && !is_web) {
-      ProcessError(L"The 'Main(args)' function was not defined");
+      ProcessError(program->GetFileName(), L"The 'Main(args)' function was not defined");
     }
 
     if(is_web && !web_found) {
-      ProcessError(L"The 'Request(args)' function was not defined");
+      ProcessError(program->GetFileName(), L"The 'Request(args)' function was not defined");
     } 
 
     return CheckErrors();

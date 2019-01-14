@@ -1094,7 +1094,7 @@ class ContextAnalyzer {
   // error processing
   void ProcessError(ParseNode* n, const wstring &msg);
   void ProcessErrorAlternativeMethods(wstring &message);
-  void ProcessError(const wstring &msg);
+  void ProcessError(const wstring &fn, const wstring &msg);
   bool CheckErrors();
 
   // context operations
