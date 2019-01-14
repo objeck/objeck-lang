@@ -4,6 +4,7 @@
 ~#
 
 use Web.HTTP;
+use System.IO.File;
 use Data.XML;
 use Collection;
 
@@ -40,7 +41,7 @@ class RSS {
 			description := GetContent(item->GetFirstChild("description"));
 			pubDate := GetContent(item->GetFirstChild("pubDate"));
 
-			"title='{$title}', link='{$link}', date='{$pubDate}'"->PrintLine();
+			"title='{$title}'\r\nlink='{$link}'\r\ndate='{$pubDate}'"->PrintLine();
 			if(description <> Nil) {
 				"description=\"{$description}\""->PrintLine();
 			};
@@ -50,7 +51,7 @@ class RSS {
 
 	function : GetMatch(path : String, parser : XmlParser) ~ String {
 		matches := parser->FindElements(path);
-		if(matches->Size() = 1) {			
+		if(matches->Size() > 0) {			
 			return GetContent(matches->Get(0)->As(XmlElement));
 		};
 		
@@ -71,14 +72,27 @@ class RSS {
 		};	
 	}
 
-	function : FetchXml(url : String) ~ String {
+	function : FetchXml(path : String) ~ String {
 		xml := "";
 
-		client := HttpsClient->New();
-		lines := client->Get(url);
-		each(i : lines) {
-			xml += lines->Get(i)->As(String);
+		if(path->StartsWith("http")) {
+			client := HttpClient->New();
+			lines := client->Get(path);
+			each(i : lines) {
+				xml += lines->Get(i)->As(String);
+			};
+		}
+		else if(path->StartsWith("https")) {
+			client := HttpsClient->New();
+			lines := client->Get(path);
+			each(i : lines) {
+				xml += lines->Get(i)->As(String);
+			};
+		}
+		else {
+			xml := FileReader->ReadFile(path);
 		};
+# xml->PrintLine();
 
 		return xml;
 	}
