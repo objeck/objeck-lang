@@ -1,0 +1,39 @@
+#~
+# compile: obc -src http_xml_8.obs -lib xml.obl,regex.obl,collect.obl -dest lang_rank.obe
+# run: obr lang_rank.obe
+# note: takes a few seconds to run
+~#
+
+use System.IO.File;
+use Data.XML;
+use Collection;
+
+class RSS {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() = 1) {
+			xml := FetchXml(args[0]);
+			if(xml <> Nil) {	
+				parser := XmlParser->New(xml);
+				if(parser->Parse()) {
+					GetContent("/rss/channel/title", parser)->PrintLine();
+					GetContent("/rss/channel/link", parser)->PrintLine();
+					GetContent("/rss/channel/description/text()", parser)->PrintLine();
+				};
+			};
+		};
+	}
+	
+	function : GetContent(path : String, parser : XmlParser) ~ String {
+		results := parser->FindElements(path);
+		if(results->Size() = 1) {			
+			result := results->Get(0)->As(XmlElement);
+			return XmlElement->DecodeString(result->GetContent());
+		};
+		
+		return Nil;
+	}
+
+	function : FetchXml(name : String) ~ String {
+		return FileReader->ReadFile(name);
+	}
+}
