@@ -204,7 +204,7 @@ bundle Data.XML {
 		}
 		
 		#~
-		Finds matching XML elements
+		Finds matching XML elements using xpath like syntax. Supports 'first()', 'last()' and '[cdata]' functions.
 		@param path search string
 		@return matching XML elements
 		~#
@@ -1315,9 +1315,9 @@ bundle Data.XML {
 		}
 		
 		#~
-		Finds all elements that match the XPath-like expression 
-		@param path element name
-		@return found elements
+		Finds matching XML elements using xpath like syntax. Supports 'first()', 'last()' and '[cdata]' functions.
+		@param path search string
+		@return matching XML elements
 		~#
 		method : public : FindElements(path : String) ~ Vector {
 			children := Vector->New();
