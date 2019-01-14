@@ -911,7 +911,7 @@ bundle Data.XML {
 			@content := content;
 
 			if(type = XmlElement->Type->CDATA) {
-				SetNames("text()");
+				SetNames("[cdata]");
 			}
 			else {
 				SetNames(name);
@@ -1394,6 +1394,22 @@ bundle Data.XML {
 					
 					label '\r': {
 						out->Append("&#xD;");
+					}
+
+					label '<': {
+						out->Append("&lt;");
+					}
+
+					label '>': {
+						out->Append("&gt;");
+					}
+					
+					label '&': {
+						out->Append("&amp;");
+					}
+
+					label '"': {
+						out->Append("&quot;");
 					}
 					
 					other: {
