@@ -1157,7 +1157,7 @@ bundle Data.XML {
 		#~
 		Get the first element that matchs the given filter
 		@param name element name
-		@return child elements
+		@return first match, Nil otherwise
 		~#
 		method : public : native : GetFirstChild(name : String) ~ XmlElement {
 			filtered := GetChildren(name);
@@ -1171,7 +1171,7 @@ bundle Data.XML {
 		#~
 		Get the last element that matchs the given filter
 		@param name element name
-		@return child elements
+		@return last match, Nil otherwise
 		~#
 		method : public : native : GetLastChild(name : String) ~ XmlElement {
 			filtered := GetChildren(name);
