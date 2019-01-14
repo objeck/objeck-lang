@@ -213,15 +213,6 @@ bundle Data.XML {
 		}
 
 		#~
-		Find first matching XML element
-		@param path search string
-		@return matching XML element
-		~#
-		method : public : FindElements(path : String) ~ Vector {
-			return @root->FindElements(path);
-		}
-		
-		#~
 		Parses the XML document
 		@return true if parsed, false otherwise
 		~# 
@@ -1168,15 +1159,13 @@ bundle Data.XML {
 		@param name element name
 		@return child elements
 		~#
-		method : public : native : GetFirstChild(name : String) ~ Vector {
-			first := Vector->New();
-			
+		method : public : native : GetFirstChild(name : String) ~ XmlElement {
 			filtered := GetChildren(name);
 			if(filtered->Size() > 0) {
-				first->AddBack(filtered->Get(0));
+				return filtered->Get(0)->As(XmlElement);
 			};
 			
-			return first;
+			return Nil;
 		}
 		
 		#~
@@ -1184,15 +1173,13 @@ bundle Data.XML {
 		@param name element name
 		@return child elements
 		~#
-		method : public : native : GetLastChild(name : String) ~ Vector {
-			first := Vector->New();
-			
+		method : public : native : GetLastChild(name : String) ~ XmlElement {
 			filtered := GetChildren(name);
 			if(filtered->Size() > 0) {
-				first->AddBack(filtered->Get(filtered->Size() - 1));
+				return filtered->Get(filtered->Size() - 1)->As(XmlElement);
 			};
 			
-			return first;
+			return Nil;
 		}
 		
 		#~
@@ -1290,10 +1277,24 @@ bundle Data.XML {
 			expr := GetElementExpression(filter);
 			if(expr <> Nil) {
 				if(expr->Equals("first()")) {
-					return element->GetFirstChild(GetElementName(filter));
+					matches := Vector->New();
+
+					match := element->GetFirstChild(GetElementName(filter));
+					if(match <> Nil) {
+						matches->AddBack(match);
+					};
+
+					return matches;
 				}
 				else if(expr->Equals("last()")) {
-					return element->GetLastChild(GetElementName(filter));
+					matches := Vector->New();
+
+					match := element->GetLastChild(GetElementName(filter));
+					if(match <> Nil) {
+						matches->AddBack(match);
+					};
+					
+					return matches;
 				}
 				else {
 					if(expr->Size() > 0) {
