@@ -3281,6 +3281,14 @@ namespace frontend {
       TreeFactory::Instance()->Clear();
       TypeFactory::Instance()->Clear();
     }
+    
+    wstring GetFileName() const {
+      if(file_uses.size() > 0) {
+        return file_uses.begin()->first;
+      }
+      
+      return L"unknown";
+    }
 
     void AddUse(wstring u, const wstring &f) {
       vector<wstring> uses;
