@@ -1,10 +1,9 @@
 #~
-# compile: obc -src http_xml_8.obs -lib xml.obl,regex.obl,collect.obl -dest lang_rank.obe
-# run: obr lang_rank.obe
-# note: takes a few seconds to run
+# compile: obc -src rss_https_xml_15.obs -lib xml.obl,collect.obl -dest rss_https_xml_15.obe
+# run: obr rss_https_xml_15.obe "https://www.techmeme.com/feed.xml"
 ~#
 
-use System.IO.File;
+use Web.HTTP;
 use Data.XML;
 use Collection;
 
@@ -15,25 +14,72 @@ class RSS {
 			if(xml <> Nil) {	
 				parser := XmlParser->New(xml);
 				if(parser->Parse()) {
-					GetContent("/rss/channel/title", parser)->PrintLine();
-					GetContent("/rss/channel/link", parser)->PrintLine();
-					GetContent("/rss/channel/description/text()", parser)->PrintLine();
+					GetMetaData(parser);
+					GetPosts(parser);
 				};
 			};
 		};
 	}
 	
-	function : GetContent(path : String, parser : XmlParser) ~ String {
-		results := parser->FindElements(path);
-		if(results->Size() = 1) {			
-			result := results->Get(0)->As(XmlElement);
-			return XmlElement->DecodeString(result->GetContent());
+	function : GetMetaData(parser : XmlParser) ~ Nil {
+		title := GetMatch("/rss/channel/title", parser);
+		description := GetMatch("/rss/channel/description", parser);
+		link := GetMatch("/rss/channel/link", parser);
+
+		"title='{$title}', link='{$link}'"->PrintLine();
+		"description=\"{$description}\""->PrintLine();
+		"---"->PrintLine();
+	}
+
+	function : GetPosts(parser : XmlParser) ~ Nil {
+		items := parser->FindElements("/rss/channel/item");
+		each(i : items) {
+			item := items->Get(i)->As(XmlElement);
+			title := GetContent(item->GetFirstChild("title"));
+			link := GetContent(item->GetFirstChild("link"));
+			description := GetContent(item->GetFirstChild("description"));
+			pubDate := GetContent(item->GetFirstChild("pubDate"));
+
+			"title='{$title}', link='{$link}', date='{$pubDate}'"->PrintLine();
+			if(description <> Nil) {
+				"description=\"{$description}\""->PrintLine();
+			};
+			"---"->PrintLine();
+		};
+	}
+
+	function : GetMatch(path : String, parser : XmlParser) ~ String {
+		matches := parser->FindElements(path);
+		if(matches->Size() = 1) {			
+			return GetContent(matches->Get(0)->As(XmlElement));
 		};
 		
 		return Nil;
 	}
 
-	function : FetchXml(name : String) ~ String {
-		return FileReader->ReadFile(name);
+	function : GetContent(elem : XmlElement) ~ String {
+		if(elem = Nil) {
+			return Nil;
+		};
+
+		cdata := elem->GetFirstChild("[cdata]");
+		if(cdata <> Nil) {
+			return XmlElement->DecodeString(cdata->GetContent());
+		}
+		else {
+			return XmlElement->DecodeString(elem->GetContent());
+		};	
+	}
+
+	function : FetchXml(url : String) ~ String {
+		xml := "";
+
+		client := HttpsClient->New();
+		lines := client->Get(url);
+		each(i : lines) {
+			xml += lines->Get(i)->As(String);
+		};
+
+		return xml;
 	}
 }
