@@ -75,7 +75,7 @@ class RSS {
 	function : FetchXml(path : String) ~ String {
 		xml := "";
 
-		if(path->StartsWith("http")) {
+		if(path->StartsWith("http:")) {
 			client := HttpClient->New();
 			lines := client->Get(path);
 			each(i : lines) {
