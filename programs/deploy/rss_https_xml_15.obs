@@ -15,24 +15,31 @@ class RSS {
 			if(xml <> Nil) {	
 				parser := XmlParser->New(xml);
 				if(parser->Parse()) {
-					GetMetaData(parser);
-					GetPosts(parser);
+					html := "<html><body>";
+					GetMetaData(html, parser);
+					GetPosts(html, parser);
+					html += "</body></html>";
+					html->PrintLine();
 				};
 			};
 		};
 	}
 	
-	function : GetMetaData(parser : XmlParser) ~ Nil {
+	function : GetMetaData(html : String, parser : XmlParser) ~ Nil {
 		title := GetMatch("/rss/channel/title", parser);
 		description := GetMatch("/rss/channel/description", parser);
 		link := GetMatch("/rss/channel/link", parser);
 
-		"title='{$title}', link='{$link}'"->PrintLine();
-		"description=\"{$description}\""->PrintLine();
-		"---"->PrintLine();
+		html += "<h3><a href='";
+		html += link;
+		html += "'>";
+		html += title;
+		html += "</a></h3><p>";
+		html += description;
+		html += "</p>";
 	}
 
-	function : GetPosts(parser : XmlParser) ~ Nil {
+	function : GetPosts(html : String, parser : XmlParser) ~ Nil {
 		items := parser->FindElements("/rss/channel/item");
 		each(i : items) {
 			item := items->Get(i)->As(XmlElement);
@@ -41,11 +48,35 @@ class RSS {
 			description := GetContent(item->GetFirstChild("description"));
 			pubDate := GetContent(item->GetFirstChild("pubDate"));
 
-			"title='{$title}'\r\nlink='{$link}'\r\ndate='{$pubDate}'"->PrintLine();
-			if(description <> Nil) {
-				"description=\"{$description}\""->PrintLine();
+			if(description <> Nil & (description->Find("href") > -1 | description->Find("HREF") > -1)) {
+				html += "<b>";
+				html += pubDate;
+				html += "</b></br><p>";
+				html += description;
+				html += "</p>";
+			}
+			else if(description <> Nil) {
+				html += "<b>";
+				html += pubDate;
+				html += "</b></br><h3><a href='";
+				html += link;
+				html += "'>";
+				html += title;
+				html += "</a></h3></br>";
+
+				html += "<p>";
+				html += description;
+				html += "</p>";
+			}
+			else {
+				html += "<b>";
+				html += pubDate;
+				html += "</b></br><h3><a href='";
+				html += link;
+				html += "'>";
+				html += title;
+				html += "</a></h3></br>";
 			};
-			"---"->PrintLine();
 		};
 	}
 
@@ -65,7 +96,7 @@ class RSS {
 
 		cdata := elem->GetFirstChild("[cdata]");
 		if(cdata <> Nil) {
-			return XmlElement->DecodeString(cdata->GetContent());
+			return cdata->GetContent();
 		}
 		else {
 			return XmlElement->DecodeString(elem->GetContent());
@@ -82,7 +113,7 @@ class RSS {
 				xml += lines->Get(i)->As(String);
 			};
 		}
-		else if(path->StartsWith("https")) {
+		else if(path->StartsWith("https:")) {
 			client := HttpsClient->New();
 			lines := client->Get(path);
 			each(i : lines) {
@@ -92,7 +123,6 @@ class RSS {
 		else {
 			xml := FileReader->ReadFile(path);
 		};
-# xml->PrintLine();
 
 		return xml;
 	}
