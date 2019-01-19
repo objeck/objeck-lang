@@ -19,7 +19,12 @@ class RSS {
 					GetMetaData(html, parser);
 					GetPosts(html, parser);
 					html += "</body></html>";
-					html->PrintLine();
+
+					out := FileWriter->New("out.html");
+					out->WriteString(html);
+					out->Close();
+
+					"Success!"->PrintLine();
 				};
 			};
 		};
@@ -123,6 +128,7 @@ class RSS {
 		else {
 			xml := FileReader->ReadFile(path);
 		};
+# xml->PrintLine();
 
 		return xml;
 	}
