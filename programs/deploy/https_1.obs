@@ -8,10 +8,12 @@ use Web.HTTP;
 class HttpsTest {
 	function : Main(args : String[]) ~ Nil {
 		client := HttpsClient->New();
-		lines := client->Get("https://www.google.com");
-		each(i : lines) {
-			lines->Get(i)->As(String)->Print();
+		html := client->GetAll("https://www.nasa.gov");
+		if(html = Nil) {
+			"--- Unable to fetch URL ---"->ErrorLine();
+		}
+		else {
+			html->PrintLine();
 		};
-		IO.Console->PrintLine();
 	}
 }

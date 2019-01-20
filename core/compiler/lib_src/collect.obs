@@ -5012,6 +5012,10 @@ bundle Web.HTTP {
 			document := "";
 			
 			lines := Get(url);
+			if(line = Nil) {
+				return Nil;
+			};
+
 			each(i : lines) {
 				document->Append(lines->Get(i)->As(String));
 			};
@@ -5387,6 +5391,10 @@ bundle Web.HTTP {
 			document := "";
 			
 			lines := Get(url);
+			if(line = Nil) {
+				return Nil;
+			};
+			
 			each(i : lines) {
 				document->Append(lines->Get(i)->As(String));
 			};
