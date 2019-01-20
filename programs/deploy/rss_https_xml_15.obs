@@ -1,6 +1,6 @@
 #~
 # compile: obc -src rss_https_xml_15.obs -lib xml.obl,collect.obl -dest rss_https_xml_15.obe
-# run: obr rss_https_xml_15.obe "https://www.techmeme.com/feed.xml"
+# run: obr rss_https_xml_15.obe "https://www.techmeme.com/feed.xml" <filename>
 ~#
 
 use Web.HTTP;
@@ -10,7 +10,7 @@ use Collection;
 
 class RSS {
 	function : Main(args : String[]) ~ Nil {
-		if(args->Size() = 1) {
+		if(args->Size() > 0) {
 			xml := FetchXml(args[0]);
 			if(xml <> Nil) {	
 				parser := XmlParser->New(xml);
@@ -19,17 +19,26 @@ class RSS {
 					GetMetaData(html, parser);
 					GetPosts(html, parser);
 					html += "</body></html>";
-
-					out := FileWriter->New("out.html");
-					out->WriteString(html);
-					out->Close();
-
-					"Success!"->PrintLine();
+					if(args->Size() = 2) {
+						WriteHtml(html, args[1]);
+					}
+					else {
+						html->PrintLine();
+					};
 				};
 			};
 		};
 	}
 	
+	function : WriteHtml(html : String, file : String) ~ Nil {
+		out := FileWriter->New(file);
+		leaving {
+			out->Close();
+		};
+		out->WriteString(html);
+		"Wrote file: {$file}..."->PrintLine();
+	}
+
 	function : GetMetaData(html : String, parser : XmlParser) ~ Nil {
 		title := GetMatch("/rss/channel/title", parser);
 		description := GetMatch("/rss/channel/description", parser);
@@ -128,7 +137,6 @@ class RSS {
 		else {
 			xml := FileReader->ReadFile(path);
 		};
-# xml->PrintLine();
 
 		return xml;
 	}
