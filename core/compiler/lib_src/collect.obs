@@ -5012,7 +5012,7 @@ bundle Web.HTTP {
 			document := "";
 			
 			lines := Get(url);
-			if(line = Nil) {
+			if(lines = Nil) {
 				return Nil;
 			};
 
@@ -5391,7 +5391,7 @@ bundle Web.HTTP {
 			document := "";
 			
 			lines := Get(url);
-			if(line = Nil) {
+			if(lines = Nil) {
 				return Nil;
 			};
 			
