@@ -339,6 +339,12 @@ class IPSecureSocket {
     ssl_address += UnicodeToBytes(IntToString(port));
     BIO_set_conn_hostname(bio, ssl_address.c_str());
     
+    if(!SSL_set_tlsext_host_name(ssl, address)) {
+      BIO_free_all(bio);
+      SSL_CTX_free(ctx);
+      return false;
+    }
+    
     if(BIO_do_connect(bio) <= 0) {
       BIO_free_all(bio);
       SSL_CTX_free(ctx);
