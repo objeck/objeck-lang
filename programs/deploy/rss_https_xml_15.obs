@@ -11,6 +11,7 @@ use Collection;
 class RSS {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() > 0) {
+"-- 0 --"->PrintLine();
 			xml := FetchXml(args[0]);
 			if(xml <> Nil) {	
 				parser := XmlParser->New(xml);
@@ -128,15 +129,18 @@ class RSS {
 			};
 		}
 		else if(path->StartsWith("https:")) {
+"-- 1 --"->PrintLine();			
 			client := HttpsClient->New();
 			lines := client->Get(path);
 			each(i : lines) {
 				xml += lines->Get(i)->As(String);
 			};
+"-- 3 --"->PrintLine();			
 		}
 		else {
 			xml := FileReader->ReadFile(path);
 		};
+xml->PrintLine();
 
 		return xml;
 	}
