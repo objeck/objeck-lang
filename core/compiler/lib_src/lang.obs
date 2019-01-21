@@ -1870,7 +1870,7 @@ bundle System {
 		New(array : Byte[]) {
 			Parent();
 
-			char_array := ToUnicode(array);
+			char_array := array->ToUnicode();
 			if(char_array->Size() < 8) {
 				@max := 8;
 			}
@@ -1901,7 +1901,7 @@ bundle System {
 				tmp := Byte->New[offset - max];
 				Runtime->Copy(tmp, 0, array, offset, max);
 
-				char_array := ToUnicode(array);
+				char_array := array->ToUnicode();
 				if(char_array->Size() < 8) {
 					@max := 8;
 				}
