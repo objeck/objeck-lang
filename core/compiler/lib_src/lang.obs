@@ -1844,7 +1844,7 @@ bundle System {
 		New(array : Char[], offset : Int, max : Int) {
 			Parent();
 
-			if(offset - max < 1) {
+			if(offset + max > array->Size()) {
 				@max := 8;
 				@string := Char->New[@max];
 				@pos := 0;
@@ -1854,11 +1854,11 @@ bundle System {
 					@max := 8;
 				}
 				else {
-					@max := offset - max;
+					@max := offset - array->Size();
 				};
-
 				@string := Char->New[@max];
 				@pos := 0;
+
 				Append(array, offset, max);
 			};
 		}
@@ -1892,13 +1892,13 @@ bundle System {
 		New(array : Byte[], offset : Int, max : Int) {
 			Parent();
 
-			if(offset - max < 1) {
+			if(offset + max > array->Size()) {
 				@max := 8;
 				@string := Char->New[@max];
 				@pos := 0;
 			}
 			else {
-				tmp := Byte->New[offset - max];
+				tmp := Byte->New[offset - array->Size()];
 				Runtime->Copy(tmp, 0, array, offset, max);
 
 				char_array := array->ToUnicode();
@@ -1906,7 +1906,7 @@ bundle System {
 					@max := 8;
 				}
 				else {
-					@max := char_array->Size();
+					@max := offset - char_array->Size();
 				};
 				
 				@string := Char->New[@max];
