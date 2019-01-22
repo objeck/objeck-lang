@@ -1859,7 +1859,7 @@ bundle System {
 		
 		#~
 		Copy constructor
-		@param array array to be copied
+		@param bytes array to be copied
 		~#
 		New(bytes : Byte[]) {
 			Parent();
@@ -1880,7 +1880,7 @@ bundle System {
 
 		#~
 		Copy constructor
-		@param array array to be copied
+		@param bytes array to be copied
 		@param offset offset array index offset
 		@param max max number of characters to copy
 		~#
