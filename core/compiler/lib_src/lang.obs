@@ -1848,7 +1848,7 @@ bundle System {
 				@max := 8;
 			}
 			else {
-				@max := offset - array->Size();
+				@max := array->Size() - offset;
 			};
 
 			@string := Char->New[@max];
@@ -1892,7 +1892,7 @@ bundle System {
 				@max := 8;
 			}
 			else {
-				@max := offset - array->Size();
+				@max := array->Size() - offset;
 			};
 
 			@string := Char->New[@max];
