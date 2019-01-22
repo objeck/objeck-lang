@@ -1848,7 +1848,7 @@ bundle System {
 				@max := 8;
 			}
 			else {
-				@max := array->Size();
+				@max := offset - array->Size();
 			};
 
 			@string := Char->New[@max];
@@ -1861,9 +1861,10 @@ bundle System {
 		Copy constructor
 		@param array array to be copied
 		~#
-		New(array : Byte[]) {
+		New(bytes : Byte[]) {
 			Parent();
-
+			
+			array := bytes->ToUnicode();
 			if(array->Size() < 8) {
 				@max := 8;
 			}
@@ -1883,14 +1884,15 @@ bundle System {
 		@param offset offset array index offset
 		@param max max number of characters to copy
 		~#
-		New(array : Byte[], offset : Int, max : Int) {
+		New(bytes : Byte[], offset : Int, max : Int) {
 			Parent();
 
+			array := bytes->ToUnicode();
 			if(array->Size() < 8) {
 				@max := 8;
 			}
 			else {
-				@max := array->Size();
+				@max := offset - array->Size();
 			};
 
 			@string := Char->New[@max];
