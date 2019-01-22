@@ -121,23 +121,15 @@ class RSS {
 		xml := "";
 
 		if(path->StartsWith("http:")) {
-			client := HttpClient->New();
-			lines := client->Get(path);
-			each(i : lines) {
-				xml += lines->Get(i)->As(String);
-			};
+			xml := HttpClient->New()->GetAll(path);
 		}
 		else if(path->StartsWith("https:")) {
-			client := HttpsClient->New();
-			lines := client->Get(path);
-			each(i : lines) {
-				xml += lines->Get(i)->As(String);
-			};
+			xml := HttpsClient->New()->GetAll(path);
 		}
 		else {
 			xml := FileReader->ReadFile(path);
 		};
-		
+
 		return xml;
 	}
 }
