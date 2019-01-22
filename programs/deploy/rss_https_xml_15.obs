@@ -137,8 +137,7 @@ class RSS {
 		else {
 			xml := FileReader->ReadFile(path);
 		};
-xml->PrintLine();
-
+		
 		return xml;
 	}
 }
