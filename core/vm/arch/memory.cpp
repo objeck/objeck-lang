@@ -337,6 +337,11 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, long 
 
 size_t* MemoryManager::AllocateArray(const long size, const MemoryType type,  size_t* op_stack, long stack_pos, bool collect)
 {
+  if(size < 0) {
+    wcerr << L">>> Invalid allocation size: " << size << L" <<<" << endl;
+    exit(1);
+  }
+
   size_t calc_size;
   size_t* mem;
   switch(type) {
@@ -357,9 +362,8 @@ size_t* MemoryManager::AllocateArray(const long size, const MemoryType type,  si
     break;
 
   default:
-    wcerr << L"internal error" << endl;
+    wcerr << L">>> Invalid memory allocation <<<" << endl;
     exit(1);
-    break;
   }
 
   // collect memory
