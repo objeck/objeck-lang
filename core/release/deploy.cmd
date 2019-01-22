@@ -86,5 +86,6 @@ if [%1] NEQ [deploy] goto end
 	rmdir /s /q "%USERPROFILE%\Desktop\Release"
 	mkdir "%USERPROFILE%\Desktop\Release"
 	move "%USERPROFILE%\Desktop\objeck-lang-win32" "%USERPROFILE%\Desktop\Release"
+	%ZIP_BIN%\7z.exe a -r -tzip "%USERPROFILE%\Desktop\Release\objeck-lang-win32.zip" "%USERPROFILE%\Desktop\Release\objeck-lang-win32\*"
 	move "%USERPROFILE%\Desktop\objeck-lang-win32.msi" "%USERPROFILE%\Desktop\Release"
 :end

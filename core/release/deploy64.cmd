@@ -46,6 +46,8 @@ REM copy examples
 mkdir deploy64\examples\
 mkdir deploy64\examples\doc\
 mkdir deploy64\examples\tiny\
+set ZIP_BIN="\Program Files\7-Zip"
+
 mkdir deploy64\examples\media\
 del  /s /q ..\..\programs\*.obe
 xcopy /e ..\..\programs\deploy\*.obs deploy64\examples\
@@ -82,5 +84,6 @@ if [%1] NEQ [deploy] goto end
 	rmdir /s /q "%USERPROFILE%\Desktop\Release64"
 	mkdir "%USERPROFILE%\Desktop\Release64"
 	move "%USERPROFILE%\Desktop\objeck-lang-win64" "%USERPROFILE%\Desktop\Release64"
+	%ZIP_BIN%\7z.exe a -r -tzip "%USERPROFILE%\Desktop\Release64\objeck-lang-win64.zip" "%USERPROFILE%\Desktop\Release64\objeck-lang-win64\*"
 	move "%USERPROFILE%\Desktop\objeck-lang-win64.msi" "%USERPROFILE%\Desktop\Release64"
 :end
