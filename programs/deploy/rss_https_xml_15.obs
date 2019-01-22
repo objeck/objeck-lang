@@ -26,6 +26,9 @@ class RSS {
 						html->PrintLine();
 					};
 				};
+			}
+			else {
+				"--- Unable to fetch XML ---"->ErrorLine();
 			};
 		};
 	}
