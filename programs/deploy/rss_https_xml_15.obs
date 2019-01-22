@@ -47,11 +47,11 @@ class RSS {
 		description := GetMatch("/rss/channel/description", parser);
 		link := GetMatch("/rss/channel/link", parser);
 
-		html += "<h3><a href='";
+		html += "<b><a href='";
 		html += link;
 		html += "'>";
 		html += title;
-		html += "</a></h3><p>";
+		html += "</a></b></br><p>";
 		html += description;
 		html += "</p>";
 	}
@@ -66,33 +66,31 @@ class RSS {
 			pubDate := GetContent(item->GetFirstChild("pubDate"));
 
 			if(description <> Nil & (description->Find("href") > -1 | description->Find("HREF") > -1)) {
-				html += "<b>";
+				html += "<p><h3>";
 				html += pubDate;
-				html += "</b></br><p>";
+				html += "</h3>";
 				html += description;
 				html += "</p>";
 			}
 			else if(description <> Nil) {
-				html += "<b>";
+				html += "<p><h3>";
 				html += pubDate;
-				html += "</b></br><h3><a href='";
+				html += "</h3><b><a href='";
 				html += link;
 				html += "'>";
 				html += title;
-				html += "</a></h3></br>";
-
-				html += "<p>";
+				html += "</a></b></br>";
 				html += description;
 				html += "</p>";
 			}
 			else {
-				html += "<b>";
+				html += "<p><h3>";
 				html += pubDate;
-				html += "</b></br><h3><a href='";
+				html += "</h3><b><a href='";
 				html += link;
 				html += "'>";
 				html += title;
-				html += "</a></h3></br>";
+				html += "</a></b></br></p>";
 			};
 		};
 	}
