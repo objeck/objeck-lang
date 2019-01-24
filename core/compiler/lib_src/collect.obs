@@ -4439,8 +4439,8 @@ bundle Web.HTTP {
 		@scheme : String;
 		@host : String;
 		@port : Int;
-		@query : String;
 		@frag : String;
+		@query : String;
 		@path : String;
 
 		#~
@@ -4504,7 +4504,7 @@ bundle Web.HTTP {
 
 			return Nil;
 		}
-
+		
 		#~
 		Gets port
 		@return por, -1 if not present
@@ -4542,103 +4542,98 @@ bundle Web.HTTP {
 		}
 
 		method : ParseUrl(url : String) ~ Bool {
+# "-- url='{$url}' --"->PrintLine();
 			scheme_index := url->Find(':');
 			if(scheme_index < 0) {
 				"--- No scheme ---"->ErrorLine();
 				return false;
 			};
 			@scheme := url->SubString(0, scheme_index);
+# "\t-- scheme='{$@scheme}' --"->PrintLine();
 
 			scheme_index += 1;
 			rest := url->SubString(scheme_index, url->Size() - scheme_index);
+# "\t-- rest='{$rest}' --"->PrintLine();
 
-			if(<>rest->StartsWith("//")) {
-				@path := rest;
-			}
-			else {
-				@path := "";
-				
-				parts := rest->Split("/");
-				if(parts->Size() > 0) {
-					each(i : parts) {
-						part := parts[i];
-
-						# parse host
-						if(i = 1) {
-							@host := part;
-							
-							port_index := @host->Find(':');
-							if(port_index > -1) {
-								port_start := port_index + 1;
-								port_end := port_start;
-								while(port_end < @host->Size() & @host->Get(port_end)->IsDigit()) {
-									port_end += 1;
-								};
-
-								# adjust path and host
-								if(port_end > port_start) {
-									port := @host->SubString(port_start, port_end - port_start);
-									@path += @host->SubString(port_end, @host->Size() - port_end);
-									@host := @host->SubString(0, port_index);
-									@port := port->ToInt();
-								};
-							};
-
-							if(@host->Size() > 0 & @host->Get(0) = '/') {
-								@host := @host->SubString(1, @host->Size() - 1);
-							};
-						}
-						# parse last
-						else if(i = parts->Size() - 1) {
-							last := part;
-
-							# parse query and fragment
-							query_index := last->FindLast('?');
-							if(query_index > -1) {
-								query_index += 1;
-								@query := last->SubString(query_index, last->Size() - query_index);
-								part := last->SubString(0, query_index - 1);
-
-								@frag := ParseFragment(@query);
-								if(@frag <> Nil) {
-									@query := @query->SubString(0, @query->Size() - @frag->Size() - 1);							
-								};
-							}
-							else {
-								@frag := ParseFragment(last);
-								if(@frag <> Nil) {
-									part := last->SubString(0, last->Size() - @frag->Size() - 1);							
-								};
-							};
-
-							@path += '/';
-							@path += part;
-						}
-						# append path
-						else if(i > 1) {
-							@path += '/';
-							@path += part;
-						};
-					};
+			if(rest->StartsWith("//")) {
+				parts := rest->SubString(2, rest->Size() - 2)->Split("/");
+				if(parts->Size() = 0) {
+					ParsePart(rest->SubString(2, rest->Size() - 2), 0, false);
 				}
 				else {
-					@path := rest;
+					each(i : parts) {
+						ParsePart(parts[i], i, i = parts->Size() - 1);
+					};
 				};
+			}
+			else {
+				@path := rest;
 			};
 
 			return true;
 		}
 
-		method : ParseFragment(part : String) ~ String {
-			frag_index := part->FindLast('#');
-			if(frag_index > -1) {
-				frag_index += 1;
-				frag := part->SubString(frag_index, part->Size() - frag_index);
-				return frag;
-			};
+		method : ParsePart(part : String, index : Int, last : Bool) ~ Nil {
+# "\t-- part='{$part}' --"->PrintLine();
+			# host and port
+			if(index = 0) {
+				if(part->StartsWith('[') | part->StartsWith('(')) {
+					@host := part;
+				}
+				else {
+					port_index := part->Find(':');
+					if(port_index > -1) {
+						@host := part->SubString(port_index);
+						port_index += 1;
+						port_str := part->SubString(port_index, part->Size() - port_index);
+						@port := port_str->ToInt();
+					}
+					else {
+						@host := part;
+					};
+				};
+			}
+			# path, query and fragment
+			else {
+				if(@path = Nil) {
+					@path := "";
+				};
+				@path += '/';
 
-			return Nil;
-		} 
+				# query and fragment
+				if(last) {
+					sub_part : String;
+					frag_index := part->Find('#');
+					if(frag_index > -1) {
+						sub_part := part->SubString(frag_index);
+# "\t-- sub_part='{$sub_part}' --"->PrintLine();							
+						frag_index += 1;
+						@frag := part->SubString(frag_index, part->Size() - frag_index);
+					}
+					else {
+						sub_part := part;
+					};
+
+					query_index := sub_part->Find('?');
+					if(query_index > -1) {
+						# add to path
+						if(query_index > 0)	{
+							@path += sub_part->SubString(query_index);
+						};
+						query_index += 1;
+
+						@query := sub_part->SubString(query_index, sub_part->Size() - query_index);
+					}
+					else {
+						@path += sub_part;
+					};
+				}
+				# path
+				else {
+					@path += part;
+				};
+			};
+		}
 
 		#~
 		General encoding for HTML or XML strings
