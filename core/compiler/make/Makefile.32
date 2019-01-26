@@ -5,7 +5,7 @@ SRC=types.o tree.o scanner.o parser.o linker.o context.o intermediate.o optimiza
 EXE=obc
 
 $(EXE): $(SRC)
-	$(CC) -m32 -o $(EXE) $(SRC) -lz
+	$(CC) -m32 -o $(EXE) $(SRC) -lz -static-libstdc++ -static-libgcc
 
 %.o: %.cpp
 	$(CC) -m32 $(ARGS) -c $< 
