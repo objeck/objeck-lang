@@ -11,8 +11,7 @@ JIT_PATH=arch/jit/ia32
 EXE=obr
 
 $(EXE): $(SRC) $(OBJ_LIBS)
-	$(CC) -m32 -o $(EXE) $(SRC) $(OBJ_LIBS) -lssl -lcrypto -ldl -lz -pthread
-#	$(CC) -m32 -o $(EXE) $(SRC) $(OBJ_LIBS) -lssl -lcrypto -ldl -pthread -pg
+	$(CC) -m32 -o $(EXE) $(SRC) $(OBJ_LIBS) -lssl -lcrypto -ldl -lz -pthread -static-libstdc++ -static-libgcc
 
 memory.a:
 	cd $(MEM_PATH); make -f Makefile.32	
