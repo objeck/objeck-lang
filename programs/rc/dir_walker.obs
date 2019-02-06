@@ -5,7 +5,9 @@ class Test {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 2) {
 			regex := RegEx->New(args[1]);
-			DescendDir(args[0], regex);
+			if(regex->IsOk()) {
+				DescendDir(args[0], regex);
+			};
 		};
 	}
 
