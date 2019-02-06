@@ -120,6 +120,18 @@ class File {
   }
 
  public:
+  static string FullPathName(const string name) {
+    TCHAR  buffer[BUFSIZE] = TEXT("");
+    TCHAR  buf[BUFSIZE] = TEXT("");
+    TCHAR** lppPart = { NULL };
+
+    if(!GetFullPathName(name.c_str(), BUFSIZE, buffer, lppPart)) {
+      return "";
+    }
+
+    return buffer;
+  }
+
   static long FileSize(const char* name) {
     struct _stat buf;
     if(_stat(name, &buf)) {

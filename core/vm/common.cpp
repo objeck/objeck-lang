@@ -3667,7 +3667,23 @@ bool TrapProcessor::FileSize(StackProgram* program, size_t* inst, size_t* &op_st
 
 bool TrapProcessor::FileFullPath(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
-  return false;
+  size_t* array = (size_t*)PopInt(op_stack, stack_pos);
+  if(array) {
+    array = (size_t*)array[0];
+    const wstring wname((wchar_t*)(array + 3));
+    const string name(wname.begin(), wname.end());
+    string full_path = File::FullPathName(name);
+    if(full_path.size() > 0) {
+      const wstring wfull_path(full_path.begin(), full_path.end());
+      const size_t str_obj = (size_t)CreateStringObject(wfull_path, program, op_stack, stack_pos);
+      PushInt(str_obj, op_stack, stack_pos);
+    }
+    else {
+      PushInt(0, op_stack, stack_pos);
+    }
+  }
+
+  return true;
 }
 
 bool TrapProcessor::FileAccountOwner(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
