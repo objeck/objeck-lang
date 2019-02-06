@@ -1,37 +1,28 @@
 use System.IO.File;
-use Collection;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		DescendDir("misc");
+		if(args->Size() = 2) {
+			DescendDir(args[0], args[1]);
+		};
 	}
 
-	function : DescendDir(path : String) ~ Nil {
-		dirs := Vector->New();
-
+	function : DescendDir(path : String, pattern : String) ~ Nil {
 		files := Directory->List(path);
 		each(i : files) {
 			file := files[i];
-			
 			if(<>file->StartsWith('.')) {
-				dir_file := "./";
-				dir_file += file;
-dir_file->PrintLine();					
+				dir_path := String->New(path);
+				dir_path += '/';
+				dir_path += file;
 				
-				if(Directory->Exists(dir_file)) {
-					dirs->AddBack(dir_file);
+				if(Directory->Exists(dir_path)) {
+					DescendDir(dir_path, pattern);
+				}
+				else if(File->Exists(dir_path) & dir_path->EndsWith(pattern)) {
+					dir_path->PrintLine();
 				};
 			};
 		};
-
-		if(dirs->Size() > 0) {
-			each(i : dirs) {
-				dir := dirs->Get(i)->As(String);
-"-- Decending into: {$dir} --"->PrintLine();				
-				DescendDir(dir);
-			};
-		};
-
 	}
 }
-
