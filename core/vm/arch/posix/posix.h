@@ -156,18 +156,17 @@ class File {
     if(mkdir(name, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) < 0) {
       return false;
     }
-
+    
     return true;
   }
 
   static bool IsDir(const char* name) {
-    DIR* dir = opendir(name);
-    if(!dir) {
+    struct stat buf;
+    if(stat(name, &buf)) {
       return false;
     }
-    closedir(dir);
-
-    return true;
+    
+    return S_IFDIR & buf.st_mode;
   }
 
   static vector<string> ListDir(const char* path) {
