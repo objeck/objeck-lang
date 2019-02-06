@@ -173,7 +173,7 @@ class File {
       return false;
     }
 
-    return true;
+    return _S_IFREG & buf.st_mode;
   }
   
   static bool FileReadOnly(const char* name) {

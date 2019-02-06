@@ -78,8 +78,8 @@ class File {
     if(stat(name, &buf)) {
       return false;
     }
-    
-    return true;
+
+    return S_IFREG & buf.st_mode;
   }
   
   static bool FileReadOnly(const char* name) {
