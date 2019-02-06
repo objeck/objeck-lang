@@ -3,5 +3,7 @@ use System.IO.File;
 class Test {
 	function : Main(args : System.String[]) ~ Nil {
 		File->GetFullName(".")->PrintLine();
+		Directory->Exists(".")->PrintLine();
+		File->Exists(".")->PrintLine();
 	}
 }
