@@ -20,7 +20,7 @@ class Test {
 					DescendDir(dir_path, pattern);
 				}
 				else if(File->Exists(dir_path) & dir_path->EndsWith(pattern)) {
-					dir_path->PrintLine();
+					File->GetFullName(dir_path)->PrintLine();
 				};
 			};
 		};

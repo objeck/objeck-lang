@@ -121,11 +121,10 @@ class File {
 
  public:
   static string FullPathName(const string name) {
-    TCHAR  buffer[BUFSIZE] = TEXT("");
-    TCHAR  buf[BUFSIZE] = TEXT("");
-    TCHAR** lppPart = { NULL };
+    char buffer[BUFSIZE] = "";
+    char* part = NULL;
 
-    if(!GetFullPathName(name.c_str(), BUFSIZE, buffer, lppPart)) {
+    if(!GetFullPathName(name.c_str(), BUFSIZE, buffer, &part)) {
       return "";
     }
 
