@@ -55,6 +55,15 @@
  ****************************/
 class File {
  public:
+  static string FullPathName(const string name) {
+    char buffer[PATH_MAX] = "";
+    if(!realpath(name.c_str(), buffer)) {
+      return "";
+    }
+    
+    return buffer;
+  }
+  
   static long FileSize(const char* name) {
     struct stat buf;
     if(stat(name, &buf)) {
