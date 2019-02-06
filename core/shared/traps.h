@@ -111,6 +111,7 @@ namespace instructions {
     FILE_CAN_READ_ONLY,
     FILE_CAN_READ_WRITE,
     FILE_SIZE,
+    FILE_FULL_PATH,
     FILE_REWIND,
     FILE_SEEK,
     FILE_EOF,

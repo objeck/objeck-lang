@@ -1700,6 +1700,12 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       NextToken();
       break;
 
+    case FILE_FULL_PATH:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+                                                               instructions::FILE_FULL_PATH);
+      NextToken();
+      break;
+
     case FILE_SEEK:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
                                                                instructions::FILE_SEEK);
