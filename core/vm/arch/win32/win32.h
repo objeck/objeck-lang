@@ -237,7 +237,12 @@ class File {
   }
 
   static bool IsDir(const char* name) {
-    return PathIsDirectory(name);
+    struct _stat buf;
+    if(_stat(name, &buf)) {
+      return false;
+    }
+
+    return _S_IFDIR & buf.st_mode;
   }
 
   static vector<string> ListDir(const char* p) {
