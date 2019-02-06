@@ -62,6 +62,14 @@ bundle Query.RegEx {
 
 			Parse();
 		}
+
+		#~
+		Check of the regex was parsed correctly
+		@return true if parsed, false otherwise
+		~#
+		method : public : IsOk() ~ Bool {
+			return @error = Nil;
+		}
 		
 		#~
 		Looks for an exact regex match

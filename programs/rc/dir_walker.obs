@@ -1,13 +1,15 @@
 use System.IO.File;
+use Query.RegEx;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 2) {
-			DescendDir(args[0], args[1]);
+			regex := RegEx->New(args[1]);
+			DescendDir(args[0], regex);
 		};
 	}
 
-	function : DescendDir(path : String, pattern : String) ~ Nil {
+	function : DescendDir(path : String, regex : RegEx) ~ Nil {
 		files := Directory->List(path);
 		each(i : files) {
 			file := files[i];
@@ -17,10 +19,13 @@ class Test {
 				dir_path += file;
 				
 				if(Directory->Exists(dir_path)) {
-					DescendDir(dir_path, pattern);
+					DescendDir(dir_path, regex);
 				}
-				else if(File->Exists(dir_path) & dir_path->EndsWith(pattern)) {
-					File->GetFullName(dir_path)->PrintLine();
+				else if(File->Exists(dir_path)) {
+					full_name := File->GetFullName(dir_path);
+					if(regex->MatchExact(full_name)) {
+						full_name->PrintLine();
+					};
 				};
 			};
 		};
