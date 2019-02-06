@@ -1,51 +1,7 @@
-bundle Default {
-	class Foo {
-		@float_array : Float[];
-		@int_array : Float[];
-		@float_value : Float;
-		@int_value : Int;
-		
-		New(size : Int) {
-			@float_array := Float->New[size];
-			@int_array := Float->New[size];
-			@float_value := 0.0;
-			@int_value := 13;
-			
-			for(i : Int := 0; i < @float_array->Size(); i := i + 1;) {
-				@float_array[i] := i * 3.5;
-			};
-			
-			for(i : Int := 0; i < @int_array->Size(); i := i + 1;) {
-#				@int_array[i] := @float_array[i] * 10;
-				@int_array[i] := @float_array[i] * 10;
-			};
-		}
-		
-		method : public : GetFloatValue(i : Int) ~ Float {
-			return @float_array[i] * @float_array[i];
-		}
-		
-		method : public : GetIntValue(i : Int) ~ Int {
-			return @int_array[i];
-		}
-	}
-		
-	class Test {
-		function : Main(args : System.String[]) ~ Nil {
-			Run();
-			Blah();
-		}
-		
-		function : Blah() ~ Nil {
-			"Blah"->PrintLine();
-		}
-		
-		function : Run() ~ Nil {
-			max : Int := 16;
-			f : Foo := Foo->New(max);
-			f->GetFloatValue(max - 1)->PrintLine();
-			f->GetIntValue(max / 2)->PrintLine();
-			"End."->PrintLine();
-		}
+use System.IO.File;
+
+class Test {
+	function : Main(args : System.String[]) ~ Nil {
+		File->GetFullName(".")->PrintLine();
 	}
 }
