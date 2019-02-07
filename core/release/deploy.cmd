@@ -19,7 +19,6 @@ mkdir deploy\lib\sdl\fonts
 mkdir deploy\lib\sdl
 copy ..\lib\*.obl deploy\lib
 del deploy\lib\gtk2.obl
-del deploy\lib\sdl.obl
 del /q deploy\bin\a.*
 copy ..\vm\misc\*.pem deploy\lib
 
