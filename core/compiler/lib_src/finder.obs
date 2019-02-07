@@ -1,0 +1,47 @@
+use System.IO.File;
+use Query.RegEx;
+use Collection;
+
+#~
+Supports processing of semi-structured data
+~#
+bundle Query.Structured {
+	#~
+	Supports string data queries
+	~#
+	class Finder {
+		@regex : RegEx;
+
+		New(expr : String) {
+			@regex := RegEx->New(expr);
+		}
+
+		method : public : FindFiles(path : String) ~ Vector {
+			matches := Vector->New();
+			FindFiles(path, matches);
+			return matches;
+		}
+
+		method : FindFiles(path : String, matches : Vector) ~ Nil {
+			files := Directory->List(path);
+			each(i : files) {
+				file := files[i];
+				if(<>file->StartsWith('.')) {
+					dir_path := String->New(path);
+					dir_path += '/';
+					dir_path += file;
+					
+					if(Directory->Exists(dir_path)) {
+						FindFiles(dir_path, matches);
+					}
+					else if(File->Exists(dir_path)) {
+						full_name := File->GetFullName(dir_path);
+						if(@regex->MatchExact(full_name)) {
+							matches->AddBack(full_name);
+						};
+					};
+				};
+			};
+		}
+	}
+}

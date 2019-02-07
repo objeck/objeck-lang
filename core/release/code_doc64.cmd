@@ -4,7 +4,7 @@ cd deploy64\bin
 rmdir /s /q ..\html 
 mkdir ..\html
 obc -src ..\examples\doc\doc_html.obs,..\examples\doc\doc_parser.obs -lib collect.obl -dest ..\..\code_doc.obe
-obr ..\..\code_doc.obe ..\examples\doc\templates 4.1.8 ..\..\..\compiler\lib_src\lang.obs ..\..\..\compiler\lib_src\collect.obs ..\..\..\compiler\lib_src\regex.obs ..\..\..\compiler\lib_src\json.obs ..\..\..\compiler\lib_src\xml.obs ..\..\..\compiler\lib_src\encrypt.obs ..\..\..\compiler\lib_src\odbc.obs ..\..\..\compiler\lib_src\fcgi.obs ..\..\..\compiler\lib_src\odbc.obs ..\..\..\compiler\lib_src\csv.obs ..\..\..\compiler\lib_src\query.obs ..\..\..\compiler\lib_src\sdl2.obs ..\..\..\compiler\lib_src\sdl_game.obs
+obr ..\..\code_doc.obe ..\examples\doc\templates 4.1.8 ..\..\..\compiler\lib_src\lang.obs ..\..\..\compiler\lib_src\collect.obs ..\..\..\compiler\lib_src\regex.obs ..\..\..\compiler\lib_src\json.obs ..\..\..\compiler\lib_src\xml.obs ..\..\..\compiler\lib_src\encrypt.obs ..\..\..\compiler\lib_src\odbc.obs ..\..\..\compiler\lib_src\fcgi.obs ..\..\..\compiler\lib_src\odbc.obs ..\..\..\compiler\lib_src\csv.obs ..\..\..\compiler\lib_src\query.obs ..\..\..\compiler\lib_src\finder.obs ..\..\..\compiler\lib_src\sdl2.obs ..\..\..\compiler\lib_src\sdl_game.obs
 rmdir /s /q ..\doc\api
 mkdir ..\doc\api
 copy ..\..\..\..\programs\doc\templates\index.html ..\doc\api

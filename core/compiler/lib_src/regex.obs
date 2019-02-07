@@ -29,9 +29,9 @@ bundle Query.RegEx {
 		<li>digit &#8208; \d</li>
 		<li>white space &#8208; \s</li>
 		<li>repeat &#8208; {least, most}
-	</ul>	
-	
+	</ul>		
 	~#
+	
 	class RegEx {
 		# parsing
 		@tokens : Char[];
