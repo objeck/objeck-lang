@@ -236,7 +236,7 @@ class File {
     return L"";
   }
 
-  static bool IsDir(const char* name) {
+  static bool DirExists(const char* name) {
     struct _stat buf;
     if(_stat(name, &buf)) {
       return false;

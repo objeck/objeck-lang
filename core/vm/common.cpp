@@ -3889,7 +3889,7 @@ bool TrapProcessor::DirExists(StackProgram* program, size_t* inst, size_t* &op_s
     array = (size_t*)array[0];
     const wstring wname((wchar_t*)(array + 3));
     const string name(wname.begin(), wname.end());
-    PushInt(File::IsDir(name.c_str()), op_stack, stack_pos);
+    PushInt(File::DirExists(name.c_str()), op_stack, stack_pos);
   }
   else {
     PushInt(0, op_stack, stack_pos);
