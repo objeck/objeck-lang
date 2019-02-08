@@ -160,7 +160,7 @@ class File {
     return true;
   }
 
-  static bool DirExists((const char* name) {
+  static bool DirExists(const char* name) {
     struct stat buf;
     if(stat(name, &buf)) {
       return false;
