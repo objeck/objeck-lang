@@ -1,0 +1,9 @@
+class Babbage  {
+	function : Main(args : String[]) ~ Nil {
+		states := ["sleep", "get hungry", "get bored", "poop", "age"];
+		for(i := 0; i < 10; i += 1;) {
+			cur_state := states[Int->Random(3)];
+			cur_state->PrintLine();
+		};
+	}
+}
