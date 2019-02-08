@@ -12,13 +12,26 @@ bundle Query.Structured {
 	class Finder {
 		@regex : RegEx;
 
+		#~
+		Default constructor
+		@param expr regex expression
+		~#
 		New(expr : String) {
 			@regex := RegEx->New(expr);
 		}
 
+		#~
+		Finds matching files in a given directory
+		@param path root directory to start searching
+		@return matching file names
+		~#
 		method : public : FindFiles(path : String) ~ Vector {
 			matches := Vector->New();
-			FindFiles(path, matches);
+
+			if(@regex->IsOk()) {
+				FindFiles(path, matches);
+			};
+			
 			return matches;
 		}
 
