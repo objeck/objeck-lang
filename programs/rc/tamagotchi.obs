@@ -37,15 +37,16 @@ class Game {
 				Input(e);
 
 				if(count = 300) {
-					
+					@gotchi->Live();
 #					Update();	
 					count := 0;
 					@gotchi->IsAlive();
-					@gotchi->Live();
 				};
 
 				Draw();
+
 				count += 1;
+				
 				End();
 			};
 		}
@@ -149,6 +150,7 @@ class Tamagotchi  {
 	New(game : Game) {
 		@game := game;
 		@state_labels := ["Hungry", "Bored", "Poop!", "Sleep..."];
+		Live();
 	}
 
 	method : public : GetState() ~ Int {	
