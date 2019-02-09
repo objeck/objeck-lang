@@ -27,13 +27,16 @@ class Tamagotchi  {
 	method : Life() ~ Nil {
 		NextState();
 
-		state_lablel := @state_labels[@state];
-		"{$state_lablel}, Neglect={$@neglect} [hour={$@hour}, age={$@age}]"->PrintLine();
-
+		ShowNeed();
 		if(@state <> States->SLEEP) {
 			UpdateAction(System.IO.Console->ReadString());
 			ShowStatus();
 		};					
+	}
+	
+	method : ShowNeed() ~ Nil {
+		state_lablel := @state_labels[@state];
+		"{$state_lablel}, Neglect={$@neglect} [hour={$@hour}, age={$@age}]"->PrintLine();
 	}
 
 	method : ShowStatus() ~ Nil {
