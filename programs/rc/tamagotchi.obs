@@ -30,17 +30,22 @@ class Game {
 			@gotchi := Tamagotchi->New(@self);
 
 			e := @framework->GetEvent();
+			count := 0;
 			while(<>@quit) {
 				Start();
 			
 				Input(e);
-				@gotchi->Life();
-#~				
-				Update();
-				Draw();
-~#				
 
-				@gotchi->IsAlive();
+				if(count = 300) {
+				@gotchi->Live();
+	#~				
+					Update();
+					Draw();
+	~#				
+
+					@gotchi->IsAlive();
+					count := 0;
+				};
 
 				End();
 			};
@@ -139,7 +144,7 @@ class Tamagotchi  {
 		return @neglect;
 	}
 
-	method : public : Life() ~ Nil {
+	method : public : Live() ~ Nil {
 		NextState();
 
 		ShowNeed();
