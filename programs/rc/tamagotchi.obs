@@ -32,7 +32,26 @@ class Tamagotchi  {
 
 		if(@state <> States->SLEEP) {
 			UpdateAction(System.IO.Console->ReadString());
+			ShowStatus();
 		};					
+	}
+
+	method : ShowStatus() ~ Nil {
+		if(@neglect < .75) {
+			"\tYippie!"->PrintLine();
+		}
+		else if(@neglect < 1.0) {
+			"\tMuh..."->PrintLine();	
+		}
+		else if(@neglect < 1.25) {
+			"\tFeeling Sick!"->PrintLine();
+		}
+		else if(@neglect < 1.75) {
+			"\tNeed help..."->PrintLine();	
+		}
+		else {
+			"\t<Death!>"->PrintLine();	
+		};
 	}
 
 	method : IsAlive() ~ Bool {
@@ -48,7 +67,7 @@ class Tamagotchi  {
 						@neglect -= .5;
 					};
 
-					"\tFeed"->PrintLine();
+					"\tVeggie Burger!"->PrintLine();
 				}
 
 				label 'p': {
@@ -56,7 +75,7 @@ class Tamagotchi  {
 						@neglect -= .25;
 					};
 
-					"\tPlay"->PrintLine();
+					"\tPlayground..."->PrintLine();
 				}
 
 				label 'c': {
@@ -64,7 +83,7 @@ class Tamagotchi  {
 						@neglect -= .75;
 					};
 
-					"\tClean"->PrintLine();
+					"\tWipes, New Diper!"->PrintLine();
 				}
 			};
 		};
