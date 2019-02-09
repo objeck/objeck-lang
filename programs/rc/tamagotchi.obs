@@ -57,8 +57,7 @@ class Game {
 				@quit := true;
 			};
 		};
-
-		@gotchi->Life();
+		
 		select(@gotchi->GetState()) {
 			label Tamagotchi->States->HUNGRY: {
 				@hungry_img->Render();		
@@ -83,6 +82,7 @@ class Game {
 	}
 
 	method : public : Update() ~ Nil {
+		@gotchi->Life();
 		@gotchi->IsAlive();
 		
 	}
