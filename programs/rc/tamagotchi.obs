@@ -31,22 +31,19 @@ class Game {
 
 			e := @framework->GetEvent();
 			count := 0;
-			while(<>@quit) {
+			while(<>@quit & @gotchi->IsAlive()) {
 				Start();
 			
 				Input(e);
 
 				if(count = 300) {
-				@gotchi->Live();
-	#~				
-					Update();
-					Draw();
-	~#				
-
-					@gotchi->IsAlive();
+					@gotchi->Live();
+#					Update();	
 					count := 0;
 				};
 
+				Draw();
+				count += 1;
 				End();
 			};
 		}
@@ -88,7 +85,23 @@ class Game {
 	}
 
 	method : public : Draw() ~ Nil {
-		
+		select(@gotchi->GetState()) {
+			label Tamagotchi->States->HUNGRY: {
+				ShowHungry();
+			}
+
+			label Tamagotchi->States->BORED: {
+				ShowBored();		
+			}
+
+			label Tamagotchi->States->POOP: {
+				ShowPoop();			
+			}
+
+			label Tamagotchi->States->SLEEP: {
+				ShowSleep();
+			}
+		};
 	}
 
 	method : public : Update() ~ Nil {
@@ -150,7 +163,7 @@ class Tamagotchi  {
 		ShowNeed();
 		if(@state <> States->SLEEP) {
 			# random wait period
-			UpdateAction("feed"#~System.IO.Console->ReadString()~#);
+			UpdateAction(System.IO.Console->ReadString());
 			ShowStatus();
 		};					
 	}
@@ -158,25 +171,6 @@ class Tamagotchi  {
 	method : ShowNeed() ~ Nil {
 		state_lablel := @state_labels[@state];
 		"{$state_lablel}, Neglect={$@neglect} [hour={$@hour}, age={$@age}]"->PrintLine();
-
-		select(@state) {
-			label Tamagotchi->States->HUNGRY: {
-				@game->ShowHungry();
-			}
-
-			label Tamagotchi->States->BORED: {
-				@game->ShowBored();		
-			}
-
-			label Tamagotchi->States->POOP: {
-				@game->ShowPoop();			
-			}
-
-			label Tamagotchi->States->SLEEP: {
-				@game->ShowSleep();
-			}
-		};
-
 	}
 
 	method : ShowStatus() ~ Nil {
