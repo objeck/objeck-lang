@@ -1,3 +1,74 @@
+use Game.SDL2;
+use Game.Framework;
+
+class Game {
+	@framework : GameFramework;
+	@quit : Bool;
+	@gotchi : Tamagotchi;
+
+	New() {
+		@framework := GameFramework->New(Meta->SCREEN_WIDTH, Meta->SCREEN_HEIGHT, "Tamagotchi");
+		@framework->SetClearColor(Color->New(255, 255, 255));
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		game := Game->New();
+		game->Run();
+	}
+
+	method : Run() ~ Nil {
+		if(@framework->IsOk()) {
+			@gotchi := Tamagotchi->New();
+
+			e := @framework->GetEvent();
+			while(<>@quit) {
+				Start();
+				
+				Input(e);
+				Update();
+				Draw();
+				
+				End();
+			};
+		}
+		else {
+			"--- Error Initializing Game Environment ---"->ErrorLine();
+			return;
+		};
+
+		leaving {
+			@framework->Quit();
+		};
+	}
+
+	method : Input(e : Event) ~ Nil {
+		# process input
+		while(e->Poll() <> 0) {
+			if(e->GetType() = EventType->SDL_QUIT) {
+				@quit := true;
+			};
+		};
+	}
+
+	method : public : Draw() ~ Nil {
+		
+	}
+
+	method : public : Update() ~ Nil {
+		
+	}
+
+	method : Start() ~ Nil {
+		@framework->FrameStart();
+		@framework->Clear();
+	}
+
+	method : End() ~ Nil {
+		@framework->Show();
+		@framework->FrameEnd();
+	}
+}
+
 class Tamagotchi  {
 	@state : Int;
 	@state_labels : String[];
@@ -12,6 +83,7 @@ class Tamagotchi  {
 		SLEEP
 	}
 
+#~
 	function : Main(args : String[]) ~ Nil {
 		gotchi := Tamagotchi->New();
 		do {
@@ -19,12 +91,21 @@ class Tamagotchi  {
 		}
 		while(gotchi->IsAlive());
 	}
+~#
 
 	New() {
 		@state_labels := ["Hungry", "Bored", "Poop!", "Sleep..."];
 	}
 
-	method : Life() ~ Nil {
+	method : public : GetState() ~ Int {	
+		return @state;
+	}
+
+	method : public : GetNeglecte() ~ Float {	
+		return @neglect;
+	}
+
+	method : public : Life() ~ Nil {
 		NextState();
 
 		ShowNeed();
@@ -131,4 +212,9 @@ class Tamagotchi  {
 			@age += 1;
 		};
 	}
+}
+
+consts Meta {
+	SCREEN_WIDTH := 240,
+	SCREEN_HEIGHT := 160
 }
