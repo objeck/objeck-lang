@@ -13,8 +13,11 @@ class Tamagotchi  {
 	}
 
 	function : Main(args : String[]) ~ Nil {
-		tamagotchi := Tamagotchi->New();
-		tamagotchi->Life();
+		gotchi := Tamagotchi->New();
+		do {
+			gotchi->Life();
+		}
+		while(gotchi->IsAlive());
 	}
 
 	New() {
@@ -22,18 +25,19 @@ class Tamagotchi  {
 	}
 
 	method : Life() ~ Nil {
-		for(i := 0; i < 48; i += 1;) {
-			NextState();
+		NextState();
 
-			state_lablel := @state_labels[@state];
-			"{$state_lablel}, Neglect={$@neglect} [hour={$@hour}, age={$@age}]"->PrintLine();
+		state_lablel := @state_labels[@state];
+		"{$state_lablel}, Neglect={$@neglect} [hour={$@hour}, age={$@age}]"->PrintLine();
 
-			if(@state <> States->SLEEP) {
-				UpdateAction(System.IO.Console->ReadString());
-			};
+		if(@state <> States->SLEEP) {
+			UpdateAction(System.IO.Console->ReadString());
+		};					
+	}
 
-			NextHour();			
-		};
+	method : IsAlive() ~ Bool {
+		NextHour();
+		return @age < 4;
 	}
 
 	method : UpdateAction(action : String) ~ Nil {
@@ -89,7 +93,7 @@ class Tamagotchi  {
 		};
 
 		if(@neglect < 0.0) {
-			@neglect := 0.9;
+			@neglect := 0.0;
 		};
 	}
 
