@@ -18,15 +18,15 @@ class Tamagotchi  {
 	}
 
 	New() {
-		@state_labels := ["hungry", "bored", "poop", "sleep"];
+		@state_labels := ["Hungry", "Bored", "Poop!", "Sleep..."];
 	}
 
 	method : Life() ~ Nil {
 		for(i := 0; i < 48; i += 1;) {
 			NextState();
-			
+
 			state_lablel := @state_labels[@state];
-			"age={$@age}, hour={$@hour}, state={$state_lablel}"->PrintLine();
+			"{$state_lablel}, Neglect={$@neglect} [hour={$@hour}, age={$@age}]"->PrintLine();
 
 			if(@state <> States->SLEEP) {
 				UpdateAction(System.IO.Console->ReadString());
@@ -40,14 +40,26 @@ class Tamagotchi  {
 		if(action->Size() > 0) {
 			select(action->Get(0)) {
 				label 'f': {
+					if(@state = States->HUNGRY) {
+						@neglect -= .5;
+					};
+
 					"\tFeed"->PrintLine();
 				}
 
 				label 'p': {
+					if(@state = States->BORED) {
+						@neglect -= .25;
+					};
+
 					"\tPlay"->PrintLine();
 				}
 
 				label 'c': {
+					if(@state = States->POOP) {
+						@neglect -= .75;
+					};
+
 					"\tClean"->PrintLine();
 				}
 			};
@@ -57,9 +69,28 @@ class Tamagotchi  {
 	method : NextState() ~ Nil {
 		if(<>IsAwake()) {
 			@state := States->SLEEP;
+			@neglect -= .1;
+		}
+		else {
+			@state := Int->Random(States->SLEEP);
+			select(@state) {
+				label States->HUNGRY: {
+					@neglect += .5;
+				}
+
+				label States->BORED: {
+					@neglect += .25;
+				}
+
+				label States->POOP: {
+					@neglect += .75;
+				}
+			};
 		};
 
-		@state := Int->Random(States->SLEEP);
+		if(@neglect < 0.0) {
+			@neglect := 0.9;
+		};
 	}
 
 	method : IsAwake() ~ Bool {
