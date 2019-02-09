@@ -37,9 +37,6 @@ class Game {
 				Input(e);
 
 				if(count = 300) {
-					@gotchi->NextState();
-					Draw();
-
 					@gotchi->Live();
 #					Update();	
 					count := 0;
@@ -165,7 +162,7 @@ class Tamagotchi  {
 	}
 
 	method : public : Live() ~ Nil {
-		
+		NextState();
 
 		ShowNeed();
 		if(@state <> States->SLEEP) {
@@ -233,7 +230,7 @@ class Tamagotchi  {
 		};
 	}
 
-	method : public : NextState() ~ Nil {
+	method : NextState() ~ Nil {
 		if(<>IsAwake()) {
 			@state := States->SLEEP;
 			@neglect -= .1;
