@@ -31,7 +31,7 @@ class Game {
 
 			e := @framework->GetEvent();
 			count := 0;
-			while(<>@quit & @gotchi->IsAlive()) {
+			while(<>@quit) {
 				Start();
 			
 				Input(e);
@@ -40,6 +40,7 @@ class Game {
 					@gotchi->Live();
 #					Update();	
 					count := 0;
+					@gotchi->IsAlive();
 				};
 
 				Draw();
