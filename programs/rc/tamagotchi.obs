@@ -1,36 +1,76 @@
 class Tamagotchi  {
 	@state : Int;
-	@states : String[];
+	@state_labels : String[];
 	@age : Int;
 	@hour : Int;
+	@neglect : Float;
+
+	enum States {
+		HUNGRY, 
+		BORED,
+		POOP,
+		SLEEP
+	}
 
 	function : Main(args : String[]) ~ Nil {
 		tamagotchi := Tamagotchi->New();
-		tamagotchi->Alive();
+		tamagotchi->Life();
 	}
 
 	New() {
-		@states := ["sleep", "hungry", "bored", "poop", "age"];
+		@state_labels := ["hungry", "bored", "poop", "sleep"];
 	}
 
-	method : Alive() ~ Nil {
-		for(i := 0; i < 100; i += 1;) {
-			@state := Int->Random(3);
-			state := @states[@state];
+	method : Life() ~ Nil {
+		for(i := 0; i < 48; i += 1;) {
+			NextState();
+			
+			state_lablel := @state_labels[@state];
+			"age={$@age}, hour={$@hour}, state={$state_lablel}"->PrintLine();
 
-			if(Awake()) {
-				"age={$@age}, hour={$@hour}, state={$state}"->PrintLine();
+			if(@state <> States->SLEEP) {
+				UpdateAction(System.IO.Console->ReadString());
 			};
 
-			@hour += 1;
-			if(@hour = 24) {
-				@hour := 0;
-				@age += 1;
+			NextHour();			
+		};
+	}
+
+	method : UpdateAction(action : String) ~ Nil {
+		if(action->Size() > 0) {
+			select(action->Get(0)) {
+				label 'f': {
+					"\tFeed"->PrintLine();
+				}
+
+				label 'p': {
+					"\tPlay"->PrintLine();
+				}
+
+				label 'c': {
+					"\tClean"->PrintLine();
+				}
 			};
 		};
 	}
 
-	method : Awake() ~ Bool {
+	method : NextState() ~ Nil {
+		if(<>IsAwake()) {
+			@state := States->SLEEP;
+		};
+
+		@state := Int->Random(States->SLEEP);
+	}
+
+	method : IsAwake() ~ Bool {
 		return @hour > 7 & @hour < 23;
+	}
+
+	method : NextHour() ~ Nil {
+		@hour += 1;
+		if(@hour = 24) {
+			@hour := 0;
+			@age += 1;
+		};
 	}
 }
