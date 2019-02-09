@@ -1,9 +1,36 @@
-class Babbage  {
+class Tamagotchi  {
+	@state : Int;
+	@states : String[];
+	@age : Int;
+	@hour : Int;
+
 	function : Main(args : String[]) ~ Nil {
-		states := ["sleep", "get hungry", "get bored", "poop", "age"];
-		for(i := 0; i < 10; i += 1;) {
-			cur_state := states[Int->Random(3)];
-			cur_state->PrintLine();
+		tamagotchi := Tamagotchi->New();
+		tamagotchi->Alive();
+	}
+
+	New() {
+		@states := ["sleep", "hungry", "bored", "poop", "age"];
+	}
+
+	method : Alive() ~ Nil {
+		for(i := 0; i < 100; i += 1;) {
+			@state := Int->Random(3);
+			state := @states[@state];
+
+			if(Awake()) {
+				"age={$@age}, hour={$@hour}, state={$state}"->PrintLine();
+			};
+
+			@hour += 1;
+			if(@hour = 24) {
+				@hour := 0;
+				@age += 1;
+			};
 		};
+	}
+
+	method : Awake() ~ Bool {
+		return @hour > 7 & @hour < 23;
 	}
 }
