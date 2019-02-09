@@ -29,11 +29,12 @@ class Tamagotchi  {
 
 		ShowNeed();
 		if(@state <> States->SLEEP) {
+			# random wait period
 			UpdateAction(System.IO.Console->ReadString());
 			ShowStatus();
 		};					
 	}
-	
+
 	method : ShowNeed() ~ Nil {
 		state_lablel := @state_labels[@state];
 		"{$state_lablel}, Neglect={$@neglect} [hour={$@hour}, age={$@age}]"->PrintLine();
