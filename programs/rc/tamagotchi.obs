@@ -27,16 +27,21 @@ class Game {
 
 	method : Run() ~ Nil {
 		if(@framework->IsOk()) {
-			@gotchi := Tamagotchi->New();
+			@gotchi := Tamagotchi->New(@self);
 
 			e := @framework->GetEvent();
 			while(<>@quit) {
 				Start();
-				
+			
 				Input(e);
+				@gotchi->Life();
+#~				
 				Update();
 				Draw();
-				
+~#				
+
+				@gotchi->IsAlive();
+
 				End();
 			};
 		}
@@ -61,29 +66,27 @@ class Game {
 		
 	}
 
+	method : public : ShowHungry() ~ Nil {	
+		@hungry_img->Render();	
+	}
+
+	method : public : ShowBored() ~ Nil {	
+		@bored_img->Render();	
+	}
+
+	method : public : ShowPoop() ~ Nil {	
+		@poop_img->Render();	
+	}
+
+	method : public : ShowSleep() ~ Nil {	
+		@sleep_img->Render();	
+	}
+
 	method : public : Draw() ~ Nil {
-		select(@gotchi->GetState()) {
-			label Tamagotchi->States->HUNGRY: {
-				@hungry_img->Render();		
-			}
-
-			label Tamagotchi->States->BORED: {
-				@bored_img->Render();		
-			}
-
-			label Tamagotchi->States->POOP: {
-				@poop_img->Render();		
-			}
-
-			label Tamagotchi->States->SLEEP: {
-				@sleep_img->Render();		
-			}
-		};
+		
 	}
 
 	method : public : Update() ~ Nil {
-		@gotchi->Life();
-		@gotchi->IsAlive();
 		
 	}
 
@@ -104,6 +107,7 @@ class Tamagotchi  {
 	@age : Int;
 	@hour : Int;
 	@neglect : Float;
+	@game : Game;
 
 	enum States {
 		HUNGRY, 
@@ -122,7 +126,8 @@ class Tamagotchi  {
 	}
 ~#
 
-	New() {
+	New(game : Game) {
+		@game := game;
 		@state_labels := ["Hungry", "Bored", "Poop!", "Sleep..."];
 	}
 
@@ -130,7 +135,7 @@ class Tamagotchi  {
 		return @state;
 	}
 
-	method : public : GetNeglecte() ~ Float {	
+	method : public : GetNeglect() ~ Float {	
 		return @neglect;
 	}
 
@@ -140,7 +145,7 @@ class Tamagotchi  {
 		ShowNeed();
 		if(@state <> States->SLEEP) {
 			# random wait period
-			UpdateAction(System.IO.Console->ReadString());
+			UpdateAction("feed"#~System.IO.Console->ReadString()~#);
 			ShowStatus();
 		};					
 	}
@@ -148,6 +153,25 @@ class Tamagotchi  {
 	method : ShowNeed() ~ Nil {
 		state_lablel := @state_labels[@state];
 		"{$state_lablel}, Neglect={$@neglect} [hour={$@hour}, age={$@age}]"->PrintLine();
+
+		select(@state) {
+			label Tamagotchi->States->HUNGRY: {
+				@game->ShowHungry();
+			}
+
+			label Tamagotchi->States->BORED: {
+				@game->ShowBored();		
+			}
+
+			label Tamagotchi->States->POOP: {
+				@game->ShowPoop();			
+			}
+
+			label Tamagotchi->States->SLEEP: {
+				@game->ShowSleep();
+			}
+		};
+
 	}
 
 	method : ShowStatus() ~ Nil {
