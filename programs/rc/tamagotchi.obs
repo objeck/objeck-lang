@@ -58,6 +58,10 @@ class Game {
 			};
 		};
 		
+		
+	}
+
+	method : public : Draw() ~ Nil {
 		select(@gotchi->GetState()) {
 			label Tamagotchi->States->HUNGRY: {
 				@hungry_img->Render();		
@@ -75,10 +79,6 @@ class Game {
 				@sleep_img->Render();		
 			}
 		};
-	}
-
-	method : public : Draw() ~ Nil {
-		
 	}
 
 	method : public : Update() ~ Nil {
