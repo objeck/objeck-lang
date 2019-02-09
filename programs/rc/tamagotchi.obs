@@ -5,10 +5,19 @@ class Game {
 	@framework : GameFramework;
 	@quit : Bool;
 	@gotchi : Tamagotchi;
+	@hungry_img : ImageSprite;
+	@bored_img : ImageSprite;
+	@poop_img : ImageSprite;
+	@sleep_img : ImageSprite;
 
 	New() {
 		@framework := GameFramework->New(Meta->SCREEN_WIDTH, Meta->SCREEN_HEIGHT, "Tamagotchi");
 		@framework->SetClearColor(Color->New(255, 255, 255));
+
+		@hungry_img := @framework->AddImageSprite("img/hungry.png");
+		@bored_img := @framework->AddImageSprite("img/bored.png");
+		@poop_img := @framework->AddImageSprite("img/poop.png");
+		@sleep_img := @framework->AddImageSprite("img/sleep.png");
 	}
 
 	function : Main(args : String[]) ~ Nil {
@@ -48,6 +57,25 @@ class Game {
 				@quit := true;
 			};
 		};
+
+		@gotchi->Life();
+		select(@gotchi->GetState()) {
+			label Tamagotchi->States->HUNGRY: {
+				@hungry_img->Render();		
+			}
+
+			label Tamagotchi->States->BORED: {
+				@bored_img->Render();		
+			}
+
+			label Tamagotchi->States->POOP: {
+				@poop_img->Render();		
+			}
+
+			label Tamagotchi->States->SLEEP: {
+				@sleep_img->Render();		
+			}
+		};
 	}
 
 	method : public : Draw() ~ Nil {
@@ -55,6 +83,7 @@ class Game {
 	}
 
 	method : public : Update() ~ Nil {
+		@gotchi->IsAlive();
 		
 	}
 
@@ -139,7 +168,7 @@ class Tamagotchi  {
 		};
 	}
 
-	method : IsAlive() ~ Bool {
+	method : public : IsAlive() ~ Bool {
 		NextHour();
 		return @age < 4;
 	}
