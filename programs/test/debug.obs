@@ -5,6 +5,9 @@ class CRC32 {
 			label 101: {
 				"-- 101 --"->PrintLine();
 			}
-		};
+
+			label 102: {
+				"-- 102 --"->PrintLine();
+			}		};
 	}
 }
