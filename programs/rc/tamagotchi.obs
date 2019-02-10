@@ -31,16 +31,15 @@ class Game {
 
 			e := @framework->GetEvent();
 			count := 0;
-			while(<>@quit) {
+			while(<>@quit & @gotchi->IsAlive()) {
 				Start();
 			
 				Input(e);
 
-				if(count = 300) {
+				if(count = 90) {
 					@gotchi->Live();
 #					Update();	
 					count := 0;
-					@gotchi->IsAlive();
 				};
 
 				Draw();
@@ -167,9 +166,11 @@ class Tamagotchi  {
 		ShowNeed();
 		if(@state <> States->SLEEP) {
 			# random wait period
-			UpdateAction(System.IO.Console->ReadString());
+#			UpdateAction(System.IO.Console->ReadString());
 			ShowStatus();
-		};					
+		};	
+
+		NextHour();				
 	}
 
 	method : ShowNeed() ~ Nil {
@@ -190,14 +191,13 @@ class Tamagotchi  {
 		else if(@neglect < 1.75) {
 			"\tNeed help..."->PrintLine();	
 		}
-		else {
+		else if(@neglect > 2.0) {
 			"\t<Death!>"->PrintLine();	
 		};
 	}
 
 	method : public : IsAlive() ~ Bool {
-		NextHour();
-		return @age < 4;
+		return @age < 4 & @neglect < 2.0;
 	}
 
 	method : UpdateAction(action : String) ~ Nil {
