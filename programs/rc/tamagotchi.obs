@@ -10,10 +10,13 @@ class Game {
 	@poop_img : ImageSprite;
 	@sleep_img : ImageSprite;
 	@status : Rectangle;
+	@action : Rectangle;
+	@action_count : Int;
 
 	New() {
 		@framework := GameFramework->New(Meta->SCREEN_WIDTH, Meta->SCREEN_HEIGHT, "Tamagotchi");
 		@status := @framework->AddRectangle(32, 64);
+		@action := @framework->AddRectangle(32, 64);
 		@hungry_img := @framework->AddImageSprite("img/hungry.png");
 		@bored_img := @framework->AddImageSprite("img/bored.png");
 		@poop_img := @framework->AddImageSprite("img/poop.png");
@@ -29,7 +32,7 @@ class Game {
 		if(@framework->IsOk()) {
 			@gotchi := Tamagotchi->New(@self);
 			@status->SetFill(true);
-			@status->SetColor(Color->New(0, 255, 0));
+			@action->SetFill(true);
 
 			e := @framework->GetEvent();
 			count := 0;
@@ -110,8 +113,19 @@ class Game {
 		else {
 			@status->SetColor(Color->New(255, 0, 0));
 		};
-
 		@status->Render(192, 80);
+
+		action := @gotchi->GetAction();
+		if(action < 0) {
+			@action->SetColor(Color->New(255, 0, 0));
+		}
+		else if(action > 0) {
+			@action->SetColor(Color->New(0, 255, 0));
+		}
+		else {
+			@action->SetColor(Color->New(192, 192, 192));
+		};
+		@action->Render(16, 80);
 	}
 
 	method : public : Update() ~ Nil {
@@ -136,6 +150,7 @@ class Tamagotchi  {
 	@hour : Int;
 	@neglect : Float;
 	@game : Game;
+	@action : Int;
 
 	enum States {
 		HUNGRY, 
@@ -148,6 +163,17 @@ class Tamagotchi  {
 		@game := game;
 		@state_labels := ["Hungry", "Bored", "Poop!", "Sleep..."];
 		Update();
+	}
+
+	method : public : GetAction() ~ Int {
+		if(@action < 0) {
+			@action += 1;
+		}
+		else if(@action > 0) {
+			@action -= 1;
+		};
+
+		return @action;
 	}
 
 	method : public : GetState() ~ Int {	
@@ -178,25 +204,31 @@ class Tamagotchi  {
 			label 'f': {
 				if(@state = States->HUNGRY) {
 					@neglect -= .5;
+					@action := 15;
+				}
+				else {
+					@action := -15;
 				};
-
-				"\tVeggie Burger!"->PrintLine();
 			}
 
 			label 'p': {
 				if(@state = States->BORED) {
 					@neglect -= .25;
+					@action := 15;
+				}
+				else {
+					@action := -15;
 				};
-
-				"\tPlayground..."->PrintLine();
 			}
 
 			label 'c': {
 				if(@state = States->POOP) {
 					@neglect -= .75;
+					@action := 15;
+				}
+				else {
+					@action := -15;
 				};
-
-				"\tWipes, New Diper!"->PrintLine();
 			}
 		};
 	}
