@@ -8,6 +8,15 @@ class CRC32 {
 
 			label 102: {
 				"-- 102 --"->PrintLine();
-			}		};
+			}		
+		};
+
+		buffer := "foo";
+		buffer += Bar()->ToString();
+		buffer->PrintLine();
+	}
+
+	function : Bar() ~ Int {
+		return 13;
 	}
 }
