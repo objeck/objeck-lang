@@ -1507,7 +1507,6 @@ bundle Game.Framework {
 		~#
 		method : public : AddTextSprite() ~ TextSprite {
 			shape := TextSprite->New(@renderer, @font);
-			SetOk(shape->IsOk());
 			@shapes->AddBack(shape);
 
 			return shape;

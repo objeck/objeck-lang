@@ -4,23 +4,34 @@ use Game.Framework;
 class Game {
 	@framework : GameFramework;
 	@quit : Bool;
+
 	@gotchi : Tamagotchi;
+	
 	@hungry_img : ImageSprite;
 	@bored_img : ImageSprite;
 	@poop_img : ImageSprite;
+
 	@sleep_img : ImageSprite;
-	@status : Rectangle;
-	@action : Rectangle;
-	@action_count : Int;
+	@happy_img : ImageSprite;
+	@ok_img : ImageSprite;
+	@sad_img : ImageSprite;
+
+	@age_text : TextSprite;
+	@age : Int;
 
 	New() {
 		@framework := GameFramework->New(Meta->SCREEN_WIDTH, Meta->SCREEN_HEIGHT, "Tamagotchi");
-		@status := @framework->AddRectangle(32, 64);
-		@action := @framework->AddRectangle(32, 64);
+		
 		@hungry_img := @framework->AddImageSprite("img/hungry.png");
 		@bored_img := @framework->AddImageSprite("img/bored.png");
 		@poop_img := @framework->AddImageSprite("img/poop.png");
+
 		@sleep_img := @framework->AddImageSprite("img/sleep.png");
+		@happy_img := @framework->AddImageSprite("img/happy.png");
+		@ok_img := @framework->AddImageSprite("img/ok.png");
+		@sad_img := @framework->AddImageSprite("img/sad.png");
+
+
 	}
 
 	function : Main(args : String[]) ~ Nil {
@@ -31,9 +42,10 @@ class Game {
 	method : Run() ~ Nil {
 		if(@framework->IsOk()) {
 			@gotchi := Tamagotchi->New(@self);
-			@status->SetFill(true);
-			@action->SetFill(true);
 
+					@age_text := @framework->AddTextSprite();
+#		@age_text->RenderedText("Age: 0");
+			
 			e := @framework->GetEvent();
 			count := 0;
 			while(<>@quit & @gotchi->IsAlive()) {
@@ -85,17 +97,54 @@ class Game {
 	}
 
 	method : public : Draw() ~ Nil {
+		action := @gotchi->GetAction();
+		neglect := @gotchi->GetNeglect();
+		age := @gotchi->GetAge();
+
 		select(@gotchi->GetState()) {
 			label Tamagotchi->States->HUNGRY: {
-				@hungry_img->Render();	
+				if(action) {
+					@hungry_img->Render();	
+				}
+				else if(neglect < 1.0) {
+					@happy_img->Render();
+				}
+				else if(neglect < 2.0) {
+					@ok_img->Render();
+				}
+				else {
+					@sad_img->Render();
+				};
 			}
 
 			label Tamagotchi->States->BORED: {
-				@bored_img->Render();	
+				if(action) {
+					@bored_img->Render();
+				}	
+				else if(neglect < 1.0) {
+					@happy_img->Render();
+				}
+				else if(neglect < 2.0) {
+					@ok_img->Render();
+				}
+				else {
+					@sad_img->Render();
+				};
 			}
 
 			label Tamagotchi->States->POOP: {
-				@poop_img->Render();	
+				if(action) {
+					@poop_img->Render();
+				}	
+				else if(neglect < 1.0) {
+					@happy_img->Render();
+				}
+				else if(neglect < 2.0) {
+					@ok_img->Render();
+				}
+				else {
+					@sad_img->Render();
+				};
 			}
 
 			label Tamagotchi->States->SLEEP: {
@@ -103,29 +152,10 @@ class Game {
 			}
 		};
 
-		neglect := @gotchi->GetNeglect();
-		if(neglect < 1.0) {
-			@status->SetColor(Color->New(0, 255, 0));
-		}
-		else if(neglect < 2.0) {
-			@status->SetColor(Color->New(255, 255, 0));
-		}
-		else {
-			@status->SetColor(Color->New(255, 0, 0));
-		};
-		@status->Render(192, 80);
-
-		action := @gotchi->GetAction();
-		if(action < 0) {
-			@action->SetColor(Color->New(255, 0, 0));
-		}
-		else if(action > 0) {
-			@action->SetColor(Color->New(0, 255, 0));
-		}
-		else {
-			@action->SetColor(Color->New(192, 192, 192));
-		};
-		@action->Render(16, 80);
+		buffer := "Age: ";
+		buffer += age->ToString();
+		@age_text->RenderedText(buffer);
+		@age_text->Render(10, 10);
 	}
 
 	method : public : Update() ~ Nil {
@@ -150,7 +180,7 @@ class Tamagotchi  {
 	@hour : Int;
 	@neglect : Float;
 	@game : Game;
-	@action : Int;
+	@action : Bool;
 
 	enum States {
 		HUNGRY, 
@@ -165,15 +195,13 @@ class Tamagotchi  {
 		Update();
 	}
 
-	method : public : GetAction() ~ Int {
-		if(@action < 0) {
-			@action += 1;
-		}
-		else if(@action > 0) {
-			@action -= 1;
-		};
+	method : public : GetAge() ~ Int {
+		return @age;
+	}
 
+	method : public : GetAction() ~ Bool {
 		return @action;
+		
 	}
 
 	method : public : GetState() ~ Int {	
@@ -204,31 +232,22 @@ class Tamagotchi  {
 			label 'f': {
 				if(@state = States->HUNGRY) {
 					@neglect -= .5;
-					@action := 15;
-				}
-				else {
-					@action := -15;
 				};
+				@action := false;
 			}
 
 			label 'p': {
 				if(@state = States->BORED) {
 					@neglect -= .25;
-					@action := 15;
-				}
-				else {
-					@action := -15;
 				};
+				@action := false;
 			}
 
 			label 'c': {
 				if(@state = States->POOP) {
 					@neglect -= .75;
-					@action := 15;
-				}
-				else {
-					@action := -15;
 				};
+				@action := false;
 			}
 		};
 	}
@@ -237,20 +256,24 @@ class Tamagotchi  {
 		if(<>IsAwake()) {
 			@state := States->SLEEP;
 			@neglect -= .1;
+			@action := false;
 		}
 		else {
 			@state := Int->Random(States->SLEEP);
 			select(@state) {
 				label States->HUNGRY: {
 					@neglect += .5;
+					@action := true;
 				}
 
 				label States->BORED: {
 					@neglect += .25;
+					@action := true;
 				}
 
 				label States->POOP: {
 					@neglect += .75;
+					@action := true;
 				}
 			};
 		};
