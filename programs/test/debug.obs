@@ -1,22 +1,14 @@
-class CRC32 {
+class Test {
 	function : Main(args : String[]) ~ Nil {
 		a := 101;
 		select(a) {
 			label 101: {
-				"-- 101 --"->PrintLine();
+				"Foo Bar"->PrintLine();
 			}
 
-			label 102: {
-				"-- 102 --"->PrintLine();
-			}		
+			other: {
+				"-- Other --"->PrintLine();	
+			}
 		};
-
-		buffer := "foo";
-		buffer += Bar()->ToString();
-		buffer->PrintLine();
-	}
-
-	function : Bar() ~ Int {
-		return 13;
 	}
 }
