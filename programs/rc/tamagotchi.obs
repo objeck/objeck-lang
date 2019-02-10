@@ -35,17 +35,13 @@ class Game {
 				Start();
 			
 				Input(e);
-
-				if(count = 90) {
-					@gotchi->Live();
-#					Update();	
+				if(count = 120) {
+					@gotchi->Update();
 					count := 0;
 				};
 
-				Draw();
-
+				Draw();				
 				count += 1;
-				
 				End();
 			};
 		}
@@ -64,44 +60,43 @@ class Game {
 		while(e->Poll() <> 0) {
 			if(e->GetType() = EventType->SDL_QUIT) {
 				@quit := true;
+			}
+			else if(e->GetType() = EventType->SDL_KEYDOWN & e->GetKey()->GetRepeat() = 0) {
+				select(e->GetKey()->GetKeysym()->GetScancode()) {
+					label Scancode->SDL_SCANCODE_F: {
+						@gotchi->Input('f');
+					}
+
+					label Scancode->SDL_SCANCODE_P: {
+						@gotchi->Input('p');
+					}
+
+					label Scancode->SDL_SCANCODE_C: {
+						@gotchi->Input('c');
+					}
+				};
 			};
 		};
 		
 		
 	}
 
-	method : public : ShowHungry() ~ Nil {	
-		@hungry_img->Render();	
-	}
-
-	method : public : ShowBored() ~ Nil {	
-		@bored_img->Render();	
-	}
-
-	method : public : ShowPoop() ~ Nil {	
-		@poop_img->Render();	
-	}
-
-	method : public : ShowSleep() ~ Nil {	
-		@sleep_img->Render();	
-	}
-
 	method : public : Draw() ~ Nil {
 		select(@gotchi->GetState()) {
 			label Tamagotchi->States->HUNGRY: {
-				ShowHungry();
+				@hungry_img->Render();	
 			}
 
 			label Tamagotchi->States->BORED: {
-				ShowBored();		
+				@bored_img->Render();	
 			}
 
 			label Tamagotchi->States->POOP: {
-				ShowPoop();			
+				@poop_img->Render();	
 			}
 
 			label Tamagotchi->States->SLEEP: {
-				ShowSleep();
+				@sleep_img->Render();	
 			}
 		};
 	}
@@ -136,20 +131,10 @@ class Tamagotchi  {
 		SLEEP
 	}
 
-#~
-	function : Main(args : String[]) ~ Nil {
-		gotchi := Tamagotchi->New();
-		do {
-			gotchi->Life();
-		}
-		while(gotchi->IsAlive());
-	}
-~#
-
 	New(game : Game) {
 		@game := game;
 		@state_labels := ["Hungry", "Bored", "Poop!", "Sleep..."];
-		Live();
+		Update();
 	}
 
 	method : public : GetState() ~ Int {	
@@ -160,7 +145,7 @@ class Tamagotchi  {
 		return @neglect;
 	}
 
-	method : public : Live() ~ Nil {
+	method : public : Update() ~ Nil {
 		NextState();
 
 		ShowNeed();
@@ -200,33 +185,31 @@ class Tamagotchi  {
 		return @age < 4 & @neglect < 2.0;
 	}
 
-	method : UpdateAction(action : String) ~ Nil {
-		if(action->Size() > 0) {
-			select(action->Get(0)) {
-				label 'f': {
-					if(@state = States->HUNGRY) {
-						@neglect -= .5;
-					};
+	method : public : Input(action : Char) ~ Nil {
+		select(action) {
+			label 'f': {
+				if(@state = States->HUNGRY) {
+					@neglect -= .5;
+				};
 
-					"\tVeggie Burger!"->PrintLine();
-				}
+				"\tVeggie Burger!"->PrintLine();
+			}
 
-				label 'p': {
-					if(@state = States->BORED) {
-						@neglect -= .25;
-					};
+			label 'p': {
+				if(@state = States->BORED) {
+					@neglect -= .25;
+				};
 
-					"\tPlayground..."->PrintLine();
-				}
+				"\tPlayground..."->PrintLine();
+			}
 
-				label 'c': {
-					if(@state = States->POOP) {
-						@neglect -= .75;
-					};
+			label 'c': {
+				if(@state = States->POOP) {
+					@neglect -= .75;
+				};
 
-					"\tWipes, New Diper!"->PrintLine();
-				}
-			};
+				"\tWipes, New Diper!"->PrintLine();
+			}
 		};
 	}
 
