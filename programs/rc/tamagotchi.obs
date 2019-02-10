@@ -31,7 +31,8 @@ class Game {
 		@ok_img := @framework->AddImageSprite("img/ok.png");
 		@sad_img := @framework->AddImageSprite("img/sad.png");
 
-
+		@age_text := @framework->AddTextSprite();
+		@age_text->RenderedText("Age: 0");
 	}
 
 	function : Main(args : String[]) ~ Nil {
@@ -42,10 +43,7 @@ class Game {
 	method : Run() ~ Nil {
 		if(@framework->IsOk()) {
 			@gotchi := Tamagotchi->New(@self);
-
-					@age_text := @framework->AddTextSprite();
-#		@age_text->RenderedText("Age: 0");
-			
+						
 			e := @framework->GetEvent();
 			count := 0;
 			while(<>@quit & @gotchi->IsAlive()) {
@@ -99,59 +97,37 @@ class Game {
 	method : public : Draw() ~ Nil {
 		action := @gotchi->GetAction();
 		neglect := @gotchi->GetNeglect();
-		age := @gotchi->GetAge();
+		
+		if(action) {
+			select(@gotchi->GetState()) {
+				label Tamagotchi->States->HUNGRY: {
+					@hungry_img->Render(0, 40);
+				}
 
-		select(@gotchi->GetState()) {
-			label Tamagotchi->States->HUNGRY: {
-				if(action) {
-					@hungry_img->Render();	
+				label Tamagotchi->States->BORED: {
+					@bored_img->Render(0, 40);
 				}
-				else if(neglect < 1.0) {
-					@happy_img->Render();
-				}
-				else if(neglect < 2.0) {
-					@ok_img->Render();
-				}
-				else {
-					@sad_img->Render();
-				};
-			}
 
-			label Tamagotchi->States->BORED: {
-				if(action) {
-					@bored_img->Render();
-				}	
-				else if(neglect < 1.0) {
-					@happy_img->Render();
+				label Tamagotchi->States->POOP: {
+					@poop_img->Render(0, 40);
 				}
-				else if(neglect < 2.0) {
-					@ok_img->Render();
-				}
-				else {
-					@sad_img->Render();
-				};
-			}
 
-			label Tamagotchi->States->POOP: {
-				if(action) {
-					@poop_img->Render();
-				}	
-				else if(neglect < 1.0) {
-					@happy_img->Render();
+				label Tamagotchi->States->SLEEP: {
+					@sleep_img->Render(0, 40);	
 				}
-				else if(neglect < 2.0) {
-					@ok_img->Render();
-				}
-				else {
-					@sad_img->Render();
-				};
-			}
-
-			label Tamagotchi->States->SLEEP: {
-				@sleep_img->Render();	
-			}
+			};
+		}
+		else if(neglect < 1.0) {
+			@happy_img->Render(0, 40);
+		}
+		else if(neglect < 2.0) {
+			@ok_img->Render(0, 40);
+		}
+		else {
+			@sad_img->Render(0, 40);
 		};
 
+		age := @gotchi->GetAge();
 		buffer := "Age: ";
 		buffer += age->ToString();
 		@age_text->RenderedText(buffer);
@@ -298,6 +274,6 @@ class Tamagotchi  {
 
 consts Meta {
 	SCREEN_WIDTH := 240,
-	SCREEN_HEIGHT := 160,
+	SCREEN_HEIGHT := 200,
 	TICKS := 240
 }
