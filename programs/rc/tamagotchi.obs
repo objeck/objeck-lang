@@ -9,11 +9,11 @@ class Game {
 	@bored_img : ImageSprite;
 	@poop_img : ImageSprite;
 	@sleep_img : ImageSprite;
+	@status : Rectangle;
 
 	New() {
 		@framework := GameFramework->New(Meta->SCREEN_WIDTH, Meta->SCREEN_HEIGHT, "Tamagotchi");
-		@framework->SetClearColor(Color->New(255, 255, 255));
-
+		@status := @framework->AddRectangle(32, 64);
 		@hungry_img := @framework->AddImageSprite("img/hungry.png");
 		@bored_img := @framework->AddImageSprite("img/bored.png");
 		@poop_img := @framework->AddImageSprite("img/poop.png");
@@ -28,6 +28,8 @@ class Game {
 	method : Run() ~ Nil {
 		if(@framework->IsOk()) {
 			@gotchi := Tamagotchi->New(@self);
+			@status->SetFill(true);
+			@status->SetColor(Color->New(0, 255, 0));
 
 			e := @framework->GetEvent();
 			count := 0;
@@ -35,7 +37,7 @@ class Game {
 				Start();
 			
 				Input(e);
-				if(count = 120) {
+				if(count = Meta->TICKS) {
 					@gotchi->Update();
 					count := 0;
 				};
@@ -77,8 +79,6 @@ class Game {
 				};
 			};
 		};
-		
-		
 	}
 
 	method : public : Draw() ~ Nil {
@@ -99,6 +99,19 @@ class Game {
 				@sleep_img->Render();	
 			}
 		};
+
+		neglect := @gotchi->GetNeglect();
+		if(neglect < 1.0) {
+			@status->SetColor(Color->New(0, 255, 0));
+		}
+		else if(neglect < 2.0) {
+			@status->SetColor(Color->New(255, 255, 0));
+		}
+		else {
+			@status->SetColor(Color->New(255, 0, 0));
+		};
+
+		@status->Render(192, 80);
 	}
 
 	method : public : Update() ~ Nil {
@@ -147,14 +160,7 @@ class Tamagotchi  {
 
 	method : public : Update() ~ Nil {
 		NextState();
-
 		ShowNeed();
-		if(@state <> States->SLEEP) {
-			# random wait period
-#			UpdateAction(System.IO.Console->ReadString());
-			ShowStatus();
-		};	
-
 		NextHour();				
 	}
 
@@ -163,26 +169,8 @@ class Tamagotchi  {
 		"{$state_lablel}, Neglect={$@neglect} [hour={$@hour}, age={$@age}]"->PrintLine();
 	}
 
-	method : ShowStatus() ~ Nil {
-		if(@neglect < .75) {
-			"\tYippie!"->PrintLine();
-		}
-		else if(@neglect < 1.0) {
-			"\tMuh..."->PrintLine();	
-		}
-		else if(@neglect < 1.25) {
-			"\tFeeling Sick!"->PrintLine();
-		}
-		else if(@neglect < 1.75) {
-			"\tNeed help..."->PrintLine();	
-		}
-		else if(@neglect > 2.0) {
-			"\t<Death!>"->PrintLine();	
-		};
-	}
-
 	method : public : IsAlive() ~ Bool {
-		return @age < 4 & @neglect < 2.0;
+		return @age < 4 & @neglect < 3.0;
 	}
 
 	method : public : Input(action : Char) ~ Nil {
@@ -255,5 +243,6 @@ class Tamagotchi  {
 
 consts Meta {
 	SCREEN_WIDTH := 240,
-	SCREEN_HEIGHT := 160
+	SCREEN_HEIGHT := 160,
+	TICKS := 240
 }
