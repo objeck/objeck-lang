@@ -2833,8 +2833,8 @@ bool ContextAnalyzer::Analyze()
     }
     // labels and expressions
     map<ExpressionList*, StatementList*> statements = select_stmt->GetStatements();
-    if(statements.size() < 2) {
-      ProcessError(expression, L"Select statement must have at least 2 labels, consider if/else instead");
+    if(statements.size() < 1) {
+      ProcessError(expression, L"Select statement must have at least one label");
     }
 
     map<ExpressionList*, StatementList*>::iterator iter;
