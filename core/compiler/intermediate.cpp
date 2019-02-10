@@ -3873,9 +3873,14 @@ void IntermediateEmitter::EmitStringConcat(OperationAssignment* assignment)
 {
   EmitExpression(assignment->GetExpression());
   EmitVariable(assignment->GetVariable());
+
+  Expression* expression = assignment->GetExpression();
+  while(expression->GetMethodCall()) {
+    expression = expression->GetMethodCall();
+  }
   
   // append 'Char'  
-  if(assignment->GetExpression()->GetEvalType()->GetType() == CHAR_TYPE) {
+  if(expression->GetEvalType()->GetType() == CHAR_TYPE) {
     LibraryMethod* string_append_method = string_cls->GetMethod(L"System.String:Append:c,");
 #ifdef _DEBUG
     assert(string_append_method);
@@ -3893,7 +3898,7 @@ void IntermediateEmitter::EmitStringConcat(OperationAssignment* assignment)
     }
   }
   // append 'Byte'  
-  else if(assignment->GetExpression()->GetEvalType()->GetType() == BYTE_TYPE) {
+  else if(expression->GetEvalType()->GetType() == BYTE_TYPE) {
     LibraryMethod* string_append_method = string_cls->GetMethod(L"System.String:Append:b,");
 #ifdef _DEBUG
     assert(string_append_method);
@@ -3911,7 +3916,7 @@ void IntermediateEmitter::EmitStringConcat(OperationAssignment* assignment)
     }
   }
   // append 'Int'  
-  else if(assignment->GetExpression()->GetEvalType()->GetType() == frontend::INT_TYPE) {
+  else if(expression->GetEvalType()->GetType() == frontend::INT_TYPE) {
     LibraryMethod* string_append_method = string_cls->GetMethod(L"System.String:Append:i,");
 #ifdef _DEBUG
     assert(string_append_method);
@@ -3929,7 +3934,7 @@ void IntermediateEmitter::EmitStringConcat(OperationAssignment* assignment)
     }
   }
   // append 'Float'  
-  else if(assignment->GetExpression()->GetEvalType()->GetType() == frontend::FLOAT_TYPE) {
+  else if(expression->GetEvalType()->GetType() == frontend::FLOAT_TYPE) {
     LibraryMethod* string_append_method = string_cls->GetMethod(L"System.String:Append:f,");
 #ifdef _DEBUG
     assert(string_append_method);
@@ -3947,7 +3952,7 @@ void IntermediateEmitter::EmitStringConcat(OperationAssignment* assignment)
     }
   }
   // append 'Bool'  
-  else if(assignment->GetExpression()->GetEvalType()->GetType() == BOOLEAN_TYPE) {
+  else if(expression->GetEvalType()->GetType() == BOOLEAN_TYPE) {
     LibraryMethod* string_append_method = string_cls->GetMethod(L"System.String:Append:l,");
 #ifdef _DEBUG
     assert(string_append_method);

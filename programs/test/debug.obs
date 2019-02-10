@@ -1,14 +1,11 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		a := 101;
-		select(a) {
-			label 101: {
-				"Foo Bar"->PrintLine();
-			}
+		b := "";
+		b += Foo()->ToString();
+		b->PrintLine();
+	}
 
-			other: {
-				"-- Other --"->PrintLine();	
-			}
-		};
+	function : Foo() ~ Int {
+		return 13;
 	}
 }
