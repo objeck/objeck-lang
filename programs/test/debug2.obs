@@ -1,5 +1,17 @@
-class Babbage  {
+class Test {
 	function : Main(args : String[]) ~ Nil {
-		"😮"->PrintLine();
+		select(101) {
+			label 101: {
+				"Foo Bar"->PrintLine();
+			}
+
+			label 103: {
+				"Foo Bar"->PrintLine();
+			}
+
+			label 105: {
+				"Foo Bar"->PrintLine();
+			}
+		};
 	}
 }
