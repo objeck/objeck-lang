@@ -16,6 +16,9 @@ class Game {
 	@ok_img : ImageSprite;
 	@sad_img : ImageSprite;
 
+	@heart_img : ImageSprite;
+	@heart_scale : Float;
+
 	@age_text : TextSprite;
 	@age : Int;
 
@@ -30,6 +33,10 @@ class Game {
 		@happy_img := @framework->AddImageSprite("img/happy.png");
 		@ok_img := @framework->AddImageSprite("img/ok.png");
 		@sad_img := @framework->AddImageSprite("img/sad.png");
+
+		@heart_img := @framework->AddImageSprite("img/heart.png");
+		@heart_scale := .5;
+		@heart_img->SetScale(@heart_scale);
 
 		@age_text := @framework->AddTextSprite();
 		@age_text->RenderedText("Age: 0");
@@ -55,7 +62,7 @@ class Game {
 					count := 0;
 				};
 
-				Draw();				
+				Draw(count);				
 				count += 1;
 				End();
 			};
@@ -94,7 +101,7 @@ class Game {
 		};
 	}
 
-	method : public : Draw() ~ Nil {
+	method : public : Draw(count : Int) ~ Nil {
 		action := @gotchi->GetAction();
 		neglect := @gotchi->GetNeglect();
 		
@@ -129,13 +136,23 @@ class Game {
 
 		age := @gotchi->GetAge();
 		buffer := "Age: ";
-		buffer += age->ToString();
+		buffer += age;
 		@age_text->RenderedText(buffer);
 		@age_text->Render(10, 10);
-	}
 
-	method : public : Update() ~ Nil {
-		
+		if(count % 20 = 0) {
+			if(@heart_scale = .5) {
+				@heart_scale := .33;
+			}
+			else if(@heart_scale = .33) {
+				@heart_scale := .25;
+			}
+			else if(@heart_scale = .25) {
+				@heart_scale := .5;
+			};
+		};
+		@heart_img->SetScale(@heart_scale);
+		@heart_img->Render(208, 10);
 	}
 
 	method : Start() ~ Nil {
