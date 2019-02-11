@@ -105,7 +105,10 @@ class Game {
 		action := @gotchi->GetAction();
 		neglect := @gotchi->GetNeglect();
 		
-		if(action) {
+		if(@gotchi->GetState() = Tamagotchi->States->SLEEP) {
+			@sleep_img->Render(0, 40);	
+		}	
+		else if(action) {
 			select(@gotchi->GetState()) {
 				label Tamagotchi->States->HUNGRY: {
 					@hungry_img->Render(0, 40);
@@ -117,10 +120,6 @@ class Game {
 
 				label Tamagotchi->States->POOP: {
 					@poop_img->Render(0, 40);
-				}
-
-				label Tamagotchi->States->SLEEP: {
-					@sleep_img->Render(0, 40);	
 				}
 			};
 		}
