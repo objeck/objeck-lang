@@ -1257,6 +1257,8 @@ bundle Game.Framework {
 		@frame_start : Int;
 
 		@shapes : Vector;
+		@mix_chunks : Vector;
+		@music : MixMusic;
 
 		@font : Font;
 		@joystick : Joystick;
@@ -1277,6 +1279,7 @@ bundle Game.Framework {
 			@fps := fps;
 			@frame_rate := 1000 / @fps;
 			@shapes := Vector->New();
+			@mix_chunks := Vector->New();
 						
 			@is_ok := Init(screen_width, screen_height, title, init_flags);
 		}
@@ -1294,7 +1297,8 @@ bundle Game.Framework {
 			@fps := 60;	
 			@frame_rate := 1000 / @fps;
 			@shapes := Vector->New();
-
+			@mix_chunks := Vector->New();
+			
 			@is_ok := Init(screen_width, screen_height, title, init_flags);
 		}
 
@@ -1489,6 +1493,30 @@ bundle Game.Framework {
 		}
 
 		#~
+		Adds a sound mix chunk
+		@param file file path to sound asset 
+		@return mix chunk
+		~#
+		method : AddMixChunk(file : String) ~ MixChunk {
+			chunk := MixChunk->New(file);
+			SetOk(<>chunk->IsNull());
+			@mix_chunks->AddBack(chunk);
+
+			return chunk;
+		}
+
+		#~
+		Adds music chunk
+		@param file file path to sound asset 
+		@return music chunk
+		~#
+		method : SetMusicChunk(file : String) ~ MixMusic {
+			@music := MixMusic->New(file);
+			SetOk(<>@music->IsNull());
+			return @music;
+		}
+		
+		#~
 		Adds a rectangle to the framework
 		@param w rectangle width
 		@param h rectangle height
@@ -1620,6 +1648,30 @@ bundle Game.Framework {
 		}
 
 		#~
+		Remove chunk from framework
+		@param chunk chunk to remove
+		@return true if successful, false otherwise
+		~#
+		method : public : RemoveChunk(mix_chunks : MixChunk) ~ Bool {
+			found := -1;
+			
+			for(i := 0; i < @mix_chunks->Size() & found < 0; i +=1;) {
+				if(@mix_chunks->Get(i) = mix_chunks) {
+					found := i;
+				};
+			};
+
+			if(found > -1) {
+				@mix_chunks->Remove(found);
+				mix_chunks->Free();
+
+				return true;
+			};
+
+			return false;
+		}
+
+		#~
 		Removes all shapes
 		~#
 		method : public : FreeShapes() ~ Nil {
@@ -1627,15 +1679,36 @@ bundle Game.Framework {
 				shape := @shapes->Get(i)->As(Shape);
 				shape->Free();
 			};
-			
 			@shapes->Empty();
 		}
 
+		#~
+		Removes all mix chunks
+		~#
+		method : public : FreeMixChunks() ~ Nil {
+			each(i : @mix_chunks) {
+				chunk := @mix_chunks->Get(i)->As(MixChunk);
+				chunk->Free();
+			};
+			@mix_chunks->Empty();
+		}
+
+		#~
+		Free music
+		~#
+		method : public : FreeMusic() ~ Nil {
+			if(@music <> Nil) {
+				@music->Halt();
+				@music->Free();
+			};
+		}
+		
 		#~
 		Closes the framework
 		~#
 		method : public : Quit() ~ Nil {
 			FreeShapes();
+			FreeMixChunks();
 
 			if(@event <> Nil) {
 				@event->Free();
