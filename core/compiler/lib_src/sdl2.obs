@@ -5813,11 +5813,18 @@ bundle Game.SDL2 {
 			@mix_music := value->Get();
 		}
 
-		
+		#~
+		Determines if the underlying SDL C-struct is NULL
+		@return true if NULL, false otherwise
+		~#
 		method : public : IsNull() ~ Bool {
 			return @mix_music = 0;
 		}
 
+		#~
+		Plays music
+		@return true on success, false otherwise
+		~#
 		function : Playing() ~ Bool {
 			array_args := Base->New[1];
 			array_args[0] := IntHolder->New();
@@ -5828,6 +5835,10 @@ bundle Game.SDL2 {
 			return value->Get() = 1;
 		}
 
+		#~
+		Pauses music
+		@return true on success, false otherwise
+		~#
 		function : Paused() ~ Bool {
 			array_args := Base->New[1];
 			array_args[0] := IntHolder->New();
@@ -5838,25 +5849,42 @@ bundle Game.SDL2 {
 			return value->Get() = 1;
 		}
 
+		#~
+		Resumes music
+		~#
 		function : Resume() ~ Nil {
 			array_args := Base->New[0];			
 			Proxy->GetDllProxy()->CallFunction("sdl_mixer_resume_music", array_args);
 		}
 
+		#~
+		Pauses music
+		~#
 		function : Pause() ~ Nil {
 			array_args := Base->New[0];			
 			Proxy->GetDllProxy()->CallFunction("sdl_mixer_pause_music", array_args);
 		}
 
+		#~
+		Halts music
+		~#
 		function : Halt() ~ Nil {
 			array_args := Base->New[0];
 			Proxy->GetDllProxy()->CallFunction("sdl_mixer_halt_music", array_args);
 		}
 
+		#~
+		Gets music volume between 0 - 128
+		~#
 		function : GetVolumeMusic() ~ Int {
 			return VolumeMusic(-1);
 		}
 
+		#~
+		Sets music volume 
+		@param volume volume between 0 - 128
+		@return set volume
+		~#
 		function : VolumeMusic(volume : Int) ~ Int {
 			array_args := Base->New[2];
 			array_args[0] := IntHolder->New();
@@ -5868,6 +5896,11 @@ bundle Game.SDL2 {
 			return value->Get();
 		}
 
+		#~
+		Plays music
+		@param loops number of loops to play or -1 for infinite 
+		@return channel music is playing on
+		~#
 		method : public : PlayMusic(loops : Int) ~ Int {
 			if(@mix_music <> 0) {
 				array_args := Base->New[3];
@@ -5884,6 +5917,11 @@ bundle Game.SDL2 {
 			return -1;
 		}
 
+		#~
+		Fades in music
+		@param ms millisecond delay
+		@return channel music is playing on
+		~#
 		method : public : FadeInMusic(loops : Int, ms : Int) ~ Int {
 			if(@mix_music <> 0) {
 				array_args := Base->New[4];
@@ -5902,8 +5940,9 @@ bundle Game.SDL2 {
 		}
 
 		#~
-		Fades music out
-		@param ms millsecond fade
+		Fades out music
+		@param ms millisecond delay
+		@return number of channels fading out
 		~#
 		function : FadeOutMusic(ms : Int) ~ Int {
 			array_args := Base->New[2];
