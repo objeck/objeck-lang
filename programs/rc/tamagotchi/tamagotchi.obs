@@ -374,6 +374,5 @@ class Tamagotchi  {
 consts Meta {
 	SCREEN_WIDTH := 240,
 	SCREEN_HEIGHT := 200,
-	WAIT := 5,
-	BEAT := 30
+	WAIT := 5
 }
