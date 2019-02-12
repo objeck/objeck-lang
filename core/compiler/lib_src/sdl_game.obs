@@ -1442,7 +1442,6 @@ bundle Game.Framework {
 		method : public : FrameEnd() ~ Nil {
 			end := Timer->GetTicks() - @frame_start;
 			if(end < @frame_rate) {
-				
 				Timer->Delay(@frame_rate - end);
 			};
 		}
