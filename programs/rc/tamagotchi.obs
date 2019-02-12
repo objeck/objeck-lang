@@ -6,7 +6,7 @@ class Game {
 	@quit : Bool;
 
 	@gotchi : Tamagotchi;
-	
+		
 	@hungry_img : ImageSprite;
 	@bored_img : ImageSprite;
 	@poop_img : ImageSprite;
@@ -16,14 +16,19 @@ class Game {
 	@ok_img : ImageSprite;
 	@sad_img : ImageSprite;
 
-	@heart_img : ImageSprite;
-	@heart_scale : Float;
+	@morning_img : ImageSprite;
+	@day_img : ImageSprite;
+	@night_img : ImageSprite;
+	@night_dark_img : ImageSprite;
+
+	@action_chunk : MixChunk;
 
 	@age_text : TextSprite;
 	@age : Int;
 
 	New() {
 		@framework := GameFramework->New(Meta->SCREEN_WIDTH, Meta->SCREEN_HEIGHT, "Tamagotchi");
+		@framework->SetClearColor(Color->New(240,248,255));
 		
 		@hungry_img := @framework->AddImageSprite("img/hungry.png");
 		@bored_img := @framework->AddImageSprite("img/bored.png");
@@ -34,9 +39,19 @@ class Game {
 		@ok_img := @framework->AddImageSprite("img/ok.png");
 		@sad_img := @framework->AddImageSprite("img/sad.png");
 
-		@heart_img := @framework->AddImageSprite("img/heart.png");
-		@heart_scale := .5;
-		@heart_img->SetScale(@heart_scale);
+		@morning_img := @framework->AddImageSprite("img/morning.png");
+		@morning_img->SetScale(0.5);
+
+		@day_img := @framework->AddImageSprite("img/day.png");
+		@day_img->SetScale(0.5);
+
+		@night_img := @framework->AddImageSprite("img/night.png");
+		@night_img->SetScale(0.5);
+
+		@night_dark_img := @framework->AddImageSprite("img/night_dark.png");
+		@night_dark_img->SetScale(0.5);
+
+		@action_chunk := MixChunk->New("img/action.wav");
 
 		@age_text := @framework->AddTextSprite();
 		@age_text->RenderedText("Age: 0");
@@ -57,12 +72,12 @@ class Game {
 				Start();
 			
 				Input(e);
-				if(count = Meta->TICKS) {
+				if(count = @gotchi->GetTicks()) {
 					@gotchi->Update();
 					count := 0;
 				};
 
-				Draw(count);				
+				Draw();				
 				count += 1;
 				End();
 			};
@@ -73,8 +88,13 @@ class Game {
 		};
 
 		leaving {
+			@action_chunk->Free();
 			@framework->Quit();
 		};
+	}
+
+	method : public : ActionSound() ~ Nil {
+		@action_chunk->PlayChannel(-1, 0);
 	}
 
 	method : Input(e : Event) ~ Nil {
@@ -101,7 +121,7 @@ class Game {
 		};
 	}
 
-	method : public : Draw(count : Int) ~ Nil {
+	method : public : Draw() ~ Nil {
 		action := @gotchi->GetAction();
 		neglect := @gotchi->GetNeglect();
 		
@@ -139,19 +159,19 @@ class Game {
 		@age_text->RenderedText(buffer);
 		@age_text->Render(10, 10);
 
-		if(count % 20 = 0) {
-			if(@heart_scale = .5) {
-				@heart_scale := .33;
-			}
-			else if(@heart_scale = .33) {
-				@heart_scale := .25;
-			}
-			else if(@heart_scale = .25) {
-				@heart_scale := .5;
-			};
+		hour := @gotchi->GetHour();
+		if(hour >= 6 & hour <= 10) {
+			@morning_img->Render(208, 10);
+		}
+		else if(hour >= 10 & hour <= 18) {
+			@day_img->Render(208, 10);
+		}
+		else if(hour >= 18 & hour <= 20) {
+			@night_img->Render(208, 10);
+		}
+		else {
+			@night_dark_img->Render(208, 10);
 		};
-		@heart_img->SetScale(@heart_scale);
-		@heart_img->Render(208, 10);
 	}
 
 	method : Start() ~ Nil {
@@ -167,12 +187,12 @@ class Game {
 
 class Tamagotchi  {
 	@state : Int;
-	@state_labels : String[];
 	@age : Int;
 	@hour : Int;
 	@neglect : Float;
 	@game : Game;
 	@action : Bool;
+	@ticks : Int;
 
 	enum States {
 		HUNGRY, 
@@ -183,8 +203,16 @@ class Tamagotchi  {
 
 	New(game : Game) {
 		@game := game;
-		@state_labels := ["Hungry", "Bored", "Poop!", "Sleep..."];
+		@hour := Int->Random(25);
 		Update();
+	}
+
+	method : public : GetHour() ~ Int {
+		return @hour;
+	}
+
+	method : public : GetTicks() ~ Int {
+		return @ticks;
 	}
 
 	method : public : GetAge() ~ Int {
@@ -193,7 +221,6 @@ class Tamagotchi  {
 
 	method : public : GetAction() ~ Bool {
 		return @action;
-		
 	}
 
 	method : public : GetState() ~ Int {	
@@ -206,13 +233,7 @@ class Tamagotchi  {
 
 	method : public : Update() ~ Nil {
 		NextState();
-		ShowNeed();
-		NextHour();				
-	}
-
-	method : ShowNeed() ~ Nil {
-		state_lablel := @state_labels[@state];
-		"{$state_lablel}, Neglect={$@neglect} [hour={$@hour}, age={$@age}]"->PrintLine();
+		NextHour();	
 	}
 
 	method : public : IsAlive() ~ Bool {
@@ -223,21 +244,21 @@ class Tamagotchi  {
 		select(action) {
 			label 'f': {
 				if(@state = States->HUNGRY) {
-					@neglect -= .5;
+					@neglect -= .6;
 				};
 				@action := false;
 			}
 
 			label 'p': {
 				if(@state = States->BORED) {
-					@neglect -= .25;
+					@neglect -= .35;
 				};
 				@action := false;
 			}
 
 			label 'c': {
 				if(@state = States->POOP) {
-					@neglect -= .75;
+					@neglect -= .85;
 				};
 				@action := false;
 			}
@@ -245,6 +266,8 @@ class Tamagotchi  {
 	}
 
 	method : NextState() ~ Nil {
+		@game->ActionSound();
+
 		if(<>IsAwake()) {
 			@state := States->SLEEP;
 			@neglect -= .1;
@@ -273,6 +296,8 @@ class Tamagotchi  {
 		if(@neglect < 0.0) {
 			@neglect := 0.0;
 		};
+
+"hour={$@hour}, neglect={$@neglect}"->PrintLine();
 	}
 
 	method : IsAwake() ~ Bool {
@@ -285,11 +310,14 @@ class Tamagotchi  {
 			@hour := 0;
 			@age += 1;
 		};
+		@ticks := Int->Random(Meta->TICKS - Meta->TICKS / 3, Meta->TICKS + Meta->TICKS / 3);
 	}
 }
 
 consts Meta {
 	SCREEN_WIDTH := 240,
 	SCREEN_HEIGHT := 200,
-	TICKS := 240
+	TICKS := 20000,
+#	TICKS := 2700,
+	BEAT := 30
 }
