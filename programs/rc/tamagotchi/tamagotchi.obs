@@ -3,6 +3,8 @@ use Collection;
 use Game.Framework;
 
 class Game {
+	@gotchi : Tamagotchi;
+
 	enum Faces {
 		BORED,
 		POOP,
@@ -23,8 +25,6 @@ class Game {
 	@framework : GameFramework;
 	@quit : Bool;
 
-	@gotchi : Tamagotchi;
-	
 	@faces : AnimatedImageSprite;
 	@face_clips : Vector;
 
@@ -33,6 +33,9 @@ class Game {
 
 	@action_chunk : MixChunk;
 	@sleep_chunk : MixChunk;
+	@eat_chunk : MixChunk;
+	@play_chunk : MixChunk;
+	@clean_chunk : MixChunk;
 
 	@age_text : TextSprite;
 	@age : Int;
@@ -64,6 +67,9 @@ class Game {
 
 		@action_chunk := MixChunk->New("media/action.wav");
 		@sleep_chunk := MixChunk->New("media/sleep.wav");
+		@eat_chunk := MixChunk->New("media/eat.wav");
+		@play_chunk := MixChunk->New("media/play.wav");
+		@clean_chunk := MixChunk->New("media/clean.wav");
 
 		@age_text := @framework->AddTextSprite();
 		@age_text->RenderedText("Age: 0");
@@ -81,13 +87,20 @@ class Game {
 			wait := Meta->WAIT;
 		};
 
-wait->PrintLine();
-
 		game := Game->New(wait);
 		game->Run();
 	}
 
 	method : Run() ~ Nil {
+		leaving {
+			@action_chunk->Free();
+			@sleep_chunk->Free();
+			@eat_chunk->Free();
+			@play_chunk->Free();
+			@clean_chunk->Free();
+			@framework->Quit();
+		};
+
 		if(@framework->IsOk()) {
 			@gotchi := Tamagotchi->New(@self);
 						
@@ -101,21 +114,15 @@ wait->PrintLine();
 					@gotchi->Update();
 					count := 0;
 				};
-
-				Draw();				
+				Draw();
 				count += 1;
+
 				End();
 			};
 		}
 		else {
 			"--- Error Initializing Game Environment ---"->ErrorLine();
 			return;
-		};
-
-		leaving {
-			@action_chunk->Free();
-			@sleep_chunk->Free();
-			@framework->Quit();
 		};
 	}
 
@@ -129,6 +136,18 @@ wait->PrintLine();
 
 	method : public : SleepSound() ~ Nil {
 		@sleep_chunk->PlayChannel(-1, 0);
+	}
+
+	method : public : EatSound() ~ Nil {
+		@eat_chunk->PlayChannel(-1, 0);
+	}
+
+	method : public : PlaySound() ~ Nil {
+		@play_chunk->PlayChannel(-1, 0);
+	}
+
+	method : public : CleanSound() ~ Nil {
+		@clean_chunk->PlayChannel(-1, 0);
 	}
 
 	method : Input(e : Event) ~ Nil {
@@ -278,6 +297,7 @@ class Tamagotchi  {
 			label 'f': {
 				if(@state = States->HUNGRY) {
 					@neglect -= .6;
+					@game->EatSound();
 				};
 				@action := false;
 			}
@@ -285,6 +305,7 @@ class Tamagotchi  {
 			label 'p': {
 				if(@state = States->BORED) {
 					@neglect -= .35;
+					@game->PlaySound();
 				};
 				@action := false;
 			}
@@ -292,6 +313,7 @@ class Tamagotchi  {
 			label 'c': {
 				if(@state = States->POOP) {
 					@neglect -= .85;
+					@game->CleanSound();
 				};
 				@action := false;
 			}
@@ -299,7 +321,8 @@ class Tamagotchi  {
 	}
 
 	method : NextState() ~ Nil {
-		if(<>IsAwake()) {
+		@state := Int->Random(States->SLEEP);
+		if(<>IsAwake() | @state = States->SLEEP) {
 			@state := States->SLEEP;
 			@neglect -= .1;
 			@action := false;
@@ -307,7 +330,6 @@ class Tamagotchi  {
 			@game->SleepSound();
 		}
 		else {
-			@state := Int->Random(States->SLEEP);
 			select(@state) {
 				label States->HUNGRY: {
 					@neglect += .5;
@@ -346,8 +368,6 @@ class Tamagotchi  {
 		};
 		wait := @game->GetWait();
 		@wait := Int->Random(wait - wait / 3, wait + wait / 3);
-@wait->PrintLine();
-		
 	}
 }
 
