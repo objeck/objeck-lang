@@ -1,5 +1,5 @@
-use Collection;
 use Game.SDL2;
+use Collection;
 use Game.Framework;
 
 class Game {
@@ -13,7 +13,7 @@ class Game {
 		SLEEP
 	}
 
-	enum TimeOfDay {
+	enum DayTime {
 		MORNING,
 		EVENING,
 		NIGHT,
@@ -32,14 +32,18 @@ class Game {
 	@tod_clips : Vector;
 
 	@action_chunk : MixChunk;
+	@sleep_chunk : MixChunk;
 
 	@age_text : TextSprite;
 	@age : Int;
 
-	New() {
+	@wait : Int;
+
+	New(wait : Int) {
 		@framework := GameFramework->New(Meta->SCREEN_WIDTH, Meta->SCREEN_HEIGHT, "Tamagotchi");
 		@framework->SetClearColor(Color->New(240, 248, 255));
-		
+		@wait := wait * @framework->GetFps() * 60; # minutes
+
 		@face_clips := Vector->New();
 		@face_clips->AddBack(Rect->New(0, 0, 240, 160));
 		@face_clips->AddBack(Rect->New(240, 0, 240, 160));
@@ -59,13 +63,27 @@ class Game {
 		@tod->SetScale(0.5);
 
 		@action_chunk := MixChunk->New("media/action.wav");
+		@sleep_chunk := MixChunk->New("media/sleep.wav");
 
 		@age_text := @framework->AddTextSprite();
 		@age_text->RenderedText("Age: 0");
 	}
 
 	function : Main(args : String[]) ~ Nil {
-		game := Game->New();
+		wait : Int;
+		if(args->Size() = 1) {
+			wait := args[0]->ToInt();
+			if(wait = 0) {
+				wait := Meta->WAIT;
+			};
+		}
+		else {
+			wait := Meta->WAIT;
+		};
+
+wait->PrintLine();
+
+		game := Game->New(wait);
 		game->Run();
 	}
 
@@ -79,7 +97,7 @@ class Game {
 				Start();
 			
 				Input(e);
-				if(count = @gotchi->GetTicks()) {
+				if(count = @gotchi->GetWait()) {
 					@gotchi->Update();
 					count := 0;
 				};
@@ -96,12 +114,21 @@ class Game {
 
 		leaving {
 			@action_chunk->Free();
+			@sleep_chunk->Free();
 			@framework->Quit();
 		};
 	}
 
+	method : public : GetWait() ~ Int {
+		return @wait;
+	}
+
 	method : public : ActionSound() ~ Nil {
 		@action_chunk->PlayChannel(-1, 0);
+	}
+
+	method : public : SleepSound() ~ Nil {
+		@sleep_chunk->PlayChannel(-1, 0);
 	}
 
 	method : Input(e : Event) ~ Nil {
@@ -167,16 +194,16 @@ class Game {
 
 		hour := @gotchi->GetHour();
 		if(hour >= 6 & hour <= 10) {
-			@tod->Render(208, 10, TimeOfDay->MORNING);
+			@tod->Render(208, 10, DayTime->MORNING);
 		}
 		else if(hour >= 10 & hour <= 18) {
-			@tod->Render(208, 10, TimeOfDay->DAY);
+			@tod->Render(208, 10, DayTime->DAY);
 		}
 		else if(hour >= 18 & hour <= 20) {
-			@tod->Render(208, 10, TimeOfDay->EVENING);
+			@tod->Render(208, 10, DayTime->EVENING);
 		}
 		else {
-			@tod->Render(208, 10, TimeOfDay->NIGHT);
+			@tod->Render(208, 10, DayTime->NIGHT);
 		};
 	}
 
@@ -198,7 +225,7 @@ class Tamagotchi  {
 	@neglect : Float;
 	@game : Game;
 	@action : Bool;
-	@ticks : Int;
+	@wait : Int;
 
 	enum States {
 		HUNGRY, 
@@ -217,8 +244,8 @@ class Tamagotchi  {
 		return @hour;
 	}
 
-	method : public : GetTicks() ~ Int {
-		return @ticks;
+	method : public : GetWait() ~ Int {
+		return @wait;
 	}
 
 	method : public : GetAge() ~ Int {
@@ -272,12 +299,12 @@ class Tamagotchi  {
 	}
 
 	method : NextState() ~ Nil {
-		@game->ActionSound();
-
 		if(<>IsAwake()) {
 			@state := States->SLEEP;
 			@neglect -= .1;
 			@action := false;
+
+			@game->SleepSound();
 		}
 		else {
 			@state := Int->Random(States->SLEEP);
@@ -297,13 +324,14 @@ class Tamagotchi  {
 					@action := true;
 				}
 			};
+
+			@game->ActionSound();
 		};
 
 		if(@neglect < 0.0) {
 			@neglect := 0.0;
 		};
-
-"hour={$@hour}, neglect={$@neglect}"->PrintLine();
+		# "hour={$@hour}, neglect={$@neglect}"->PrintLine();
 	}
 
 	method : IsAwake() ~ Bool {
@@ -316,14 +344,16 @@ class Tamagotchi  {
 			@hour := 0;
 			@age += 1;
 		};
-		@ticks := Int->Random(Meta->TICKS - Meta->TICKS / 3, Meta->TICKS + Meta->TICKS / 3);
+		wait := @game->GetWait();
+		@wait := Int->Random(wait - wait / 3, wait + wait / 3);
+@wait->PrintLine();
+		
 	}
 }
 
 consts Meta {
 	SCREEN_WIDTH := 240,
 	SCREEN_HEIGHT := 200,
-#	TICKS := 20000,
-	TICKS := 2700,
+	WAIT := 5,
 	BEAT := 30
 }
