@@ -1,25 +1,35 @@
+use Collection;
 use Game.SDL2;
 use Game.Framework;
 
 class Game {
+	enum Faces {
+		BORED,
+		POOP,
+		HUNGRY,
+		HAPPY,
+		OK,
+		SAD,
+		SLEEP
+	}
+
+	enum TimeOfDay {
+		MORNING,
+		EVENING,
+		NIGHT,
+		DAY
+	}
+
 	@framework : GameFramework;
 	@quit : Bool;
 
 	@gotchi : Tamagotchi;
-		
-	@hungry_img : ImageSprite;
-	@bored_img : ImageSprite;
-	@poop_img : ImageSprite;
+	
+	@faces : AnimatedImageSprite;
+	@face_clips : Vector;
 
-	@sleep_img : ImageSprite;
-	@happy_img : ImageSprite;
-	@ok_img : ImageSprite;
-	@sad_img : ImageSprite;
-
-	@morning_img : ImageSprite;
-	@day_img : ImageSprite;
-	@night_img : ImageSprite;
-	@night_dark_img : ImageSprite;
+	@tod : AnimatedImageSprite;
+	@tod_clips : Vector;
 
 	@action_chunk : MixChunk;
 
@@ -30,26 +40,23 @@ class Game {
 		@framework := GameFramework->New(Meta->SCREEN_WIDTH, Meta->SCREEN_HEIGHT, "Tamagotchi");
 		@framework->SetClearColor(Color->New(240, 248, 255));
 		
-		@hungry_img := @framework->AddImageSprite("media/hungry.png");
-		@bored_img := @framework->AddImageSprite("media/bored.png");
-		@poop_img := @framework->AddImageSprite("media/poop.png");
+		@face_clips := Vector->New();
+		@face_clips->AddBack(Rect->New(0, 0, 240, 160));
+		@face_clips->AddBack(Rect->New(240, 0, 240, 160));
+		@face_clips->AddBack(Rect->New(480, 0, 240, 160));
+		@face_clips->AddBack(Rect->New(720, 0, 240, 160));
+		@face_clips->AddBack(Rect->New(960, 0, 240, 160));
+		@face_clips->AddBack(Rect->New(1200, 0, 240, 160));
+		@face_clips->AddBack(Rect->New(1440, 0, 240, 160));
+		@faces := @framework->AddAnimatedImageSprite("media/faces.png", @face_clips);
 
-		@sleep_img := @framework->AddImageSprite("media/sleep.png");
-		@happy_img := @framework->AddImageSprite("media/happy.png");
-		@ok_img := @framework->AddImageSprite("media/ok.png");
-		@sad_img := @framework->AddImageSprite("media/sad.png");
-
-		@morning_img := @framework->AddImageSprite("media/morning.png");
-		@morning_img->SetScale(0.5);
-
-		@day_img := @framework->AddImageSprite("media/day.png");
-		@day_img->SetScale(0.5);
-
-		@night_img := @framework->AddImageSprite("media/night.png");
-		@night_img->SetScale(0.5);
-
-		@night_dark_img := @framework->AddImageSprite("media/night_dark.png");
-		@night_dark_img->SetScale(0.5);
+		@tod_clips := Vector->New();
+		@tod_clips->AddBack(Rect->New(0, 0, 48, 48));
+		@tod_clips->AddBack(Rect->New(48, 0, 48, 48));
+		@tod_clips->AddBack(Rect->New(96, 0, 48, 48));
+		@tod_clips->AddBack(Rect->New(144, 0, 48, 48));
+		@tod := @framework->AddAnimatedImageSprite("media/tod.png", @tod_clips);
+		@tod->SetScale(0.5);
 
 		@action_chunk := MixChunk->New("media/action.wav");
 
@@ -126,31 +133,30 @@ class Game {
 		neglect := @gotchi->GetNeglect();
 		
 		if(@gotchi->GetState() = Tamagotchi->States->SLEEP) {
-			@sleep_img->Render(0, 40);	
+			@faces->Render(0, 40, Faces->SLEEP);
 		}	
 		else if(action) {
 			select(@gotchi->GetState()) {
 				label Tamagotchi->States->HUNGRY: {
-					@hungry_img->Render(0, 40);
+					@faces->Render(0, 40, Faces->HUNGRY);
 				}
 
 				label Tamagotchi->States->BORED: {
-					@bored_img->Render(0, 40);
+					@faces->Render(0, 40, Faces->BORED);
 				}
 
 				label Tamagotchi->States->POOP: {
-					@poop_img->Render(0, 40);
+					@faces->Render(0, 40, Faces->POOP);
 				}
 			};
 		}
 		else if(neglect < 1.0) {
-			@happy_img->Render(0, 40);
+			@faces->Render(0, 40, Faces->HAPPY);
 		}
 		else if(neglect < 2.0) {
-			@ok_img->Render(0, 40);
-		}
+			@faces->Render(0, 40, Faces->OK);		}
 		else {
-			@sad_img->Render(0, 40);
+			@faces->Render(0, 40, Faces->SAD);
 		};
 
 		age := @gotchi->GetAge();
@@ -161,16 +167,16 @@ class Game {
 
 		hour := @gotchi->GetHour();
 		if(hour >= 6 & hour <= 10) {
-			@morning_img->Render(208, 10);
+			@tod->Render(208, 10, TimeOfDay->MORNING);
 		}
 		else if(hour >= 10 & hour <= 18) {
-			@day_img->Render(208, 10);
+			@tod->Render(208, 10, TimeOfDay->DAY);
 		}
 		else if(hour >= 18 & hour <= 20) {
-			@night_img->Render(208, 10);
+			@tod->Render(208, 10, TimeOfDay->EVENING);
 		}
 		else {
-			@night_dark_img->Render(208, 10);
+			@tod->Render(208, 10, TimeOfDay->NIGHT);
 		};
 	}
 
@@ -317,7 +323,7 @@ class Tamagotchi  {
 consts Meta {
 	SCREEN_WIDTH := 240,
 	SCREEN_HEIGHT := 200,
-	TICKS := 20000,
-#	TICKS := 2700,
+#	TICKS := 20000,
+	TICKS := 2700,
 	BEAT := 30
 }
