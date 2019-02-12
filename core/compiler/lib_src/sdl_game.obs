@@ -1497,7 +1497,7 @@ bundle Game.Framework {
 		@param file file path to sound asset 
 		@return mix chunk
 		~#
-		method : AddMixChunk(file : String) ~ MixChunk {
+		method : public : AddMixChunk(file : String) ~ MixChunk {
 			chunk := MixChunk->New(file);
 			SetOk(<>chunk->IsNull());
 			@mix_chunks->AddBack(chunk);
@@ -1510,7 +1510,7 @@ bundle Game.Framework {
 		@param file file path to sound asset 
 		@return music chunk
 		~#
-		method : SetMusicChunk(file : String) ~ MixMusic {
+		method : public : SetMusicChunk(file : String) ~ MixMusic {
 			@music := MixMusic->New(file);
 			SetOk(<>@music->IsNull());
 			return @music;
@@ -1652,7 +1652,7 @@ bundle Game.Framework {
 		@param chunk chunk to remove
 		@return true if successful, false otherwise
 		~#
-		method : public : RemoveChunk(mix_chunks : MixChunk) ~ Bool {
+		method : public : RemoveMixChunk(mix_chunks : MixChunk) ~ Bool {
 			found := -1;
 			
 			for(i := 0; i < @mix_chunks->Size() & found < 0; i +=1;) {

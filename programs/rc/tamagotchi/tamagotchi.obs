@@ -65,7 +65,7 @@ class Game {
 		@tod := @framework->AddAnimatedImageSprite("media/tod.png", @tod_clips);
 		@tod->SetScale(0.5);
 
-		@action_chunk := MixChunk->New("media/action.wav");
+		@action_chunk := @framework->AddMixChunk("media/action.wav");
 		@sleep_chunk := MixChunk->New("media/sleep.wav");
 		@eat_chunk := MixChunk->New("media/eat.wav");
 		@play_chunk := MixChunk->New("media/play.wav");
