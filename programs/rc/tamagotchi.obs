@@ -30,28 +30,28 @@ class Game {
 		@framework := GameFramework->New(Meta->SCREEN_WIDTH, Meta->SCREEN_HEIGHT, "Tamagotchi");
 		@framework->SetClearColor(Color->New(240,248,255));
 		
-		@hungry_img := @framework->AddImageSprite("img/hungry.png");
-		@bored_img := @framework->AddImageSprite("img/bored.png");
-		@poop_img := @framework->AddImageSprite("img/poop.png");
+		@hungry_img := @framework->AddImageSprite("media/hungry.png");
+		@bored_img := @framework->AddImageSprite("media/bored.png");
+		@poop_img := @framework->AddImageSprite("media/poop.png");
 
-		@sleep_img := @framework->AddImageSprite("img/sleep.png");
-		@happy_img := @framework->AddImageSprite("img/happy.png");
-		@ok_img := @framework->AddImageSprite("img/ok.png");
-		@sad_img := @framework->AddImageSprite("img/sad.png");
+		@sleep_img := @framework->AddImageSprite("media/sleep.png");
+		@happy_img := @framework->AddImageSprite("media/happy.png");
+		@ok_img := @framework->AddImageSprite("media/ok.png");
+		@sad_img := @framework->AddImageSprite("media/sad.png");
 
-		@morning_img := @framework->AddImageSprite("img/morning.png");
+		@morning_img := @framework->AddImageSprite("media/morning.png");
 		@morning_img->SetScale(0.5);
 
-		@day_img := @framework->AddImageSprite("img/day.png");
+		@day_img := @framework->AddImageSprite("media/day.png");
 		@day_img->SetScale(0.5);
 
-		@night_img := @framework->AddImageSprite("img/night.png");
+		@night_img := @framework->AddImageSprite("media/night.png");
 		@night_img->SetScale(0.5);
 
-		@night_dark_img := @framework->AddImageSprite("img/night_dark.png");
+		@night_dark_img := @framework->AddImageSprite("media/night_dark.png");
 		@night_dark_img->SetScale(0.5);
 
-		@action_chunk := MixChunk->New("img/action.wav");
+		@action_chunk := MixChunk->New("media/action.wav");
 
 		@age_text := @framework->AddTextSprite();
 		@age_text->RenderedText("Age: 0");
