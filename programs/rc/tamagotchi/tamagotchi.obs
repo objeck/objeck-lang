@@ -26,10 +26,7 @@ class Game {
 	@quit : Bool;
 
 	@faces : AnimatedImageSprite;
-	@face_clips : Vector;
-
-	@tod : AnimatedImageSprite;
-	@tod_clips : Vector;
+	@time_of_day : AnimatedImageSprite;
 
 	@action_chunk : MixChunk;
 	@sleep_chunk : MixChunk;
@@ -40,36 +37,34 @@ class Game {
 	@age_text : TextSprite;
 	@age : Int;
 
-	@wait : Int;
+	@wait_mins : Int;
 
 	New(wait : Int) {
 		@framework := GameFramework->New(Meta->SCREEN_WIDTH, Meta->SCREEN_HEIGHT, "Tamagotchi");
 		@framework->SetClearColor(Color->New(240, 248, 255));
-		@wait := wait * @framework->GetFps() * 60; # minutes
+		@wait_mins := wait * @framework->GetFps() * 60; # minutes
+				
+		@faces := @framework->AddAnimatedImageSprite("media/faces.png");
+		@faces->AddClip(Rect->New(0, 0, 240, 160));
+		@faces->AddClip(Rect->New(240, 0, 240, 160));
+		@faces->AddClip(Rect->New(480, 0, 240, 160));
+		@faces->AddClip(Rect->New(720, 0, 240, 160));
+		@faces->AddClip(Rect->New(960, 0, 240, 160));
+		@faces->AddClip(Rect->New(1200, 0, 240, 160));
+		@faces->AddClip(Rect->New(1440, 0, 240, 160));
 
-		@face_clips := Vector->New();
-		@face_clips->AddBack(Rect->New(0, 0, 240, 160));
-		@face_clips->AddBack(Rect->New(240, 0, 240, 160));
-		@face_clips->AddBack(Rect->New(480, 0, 240, 160));
-		@face_clips->AddBack(Rect->New(720, 0, 240, 160));
-		@face_clips->AddBack(Rect->New(960, 0, 240, 160));
-		@face_clips->AddBack(Rect->New(1200, 0, 240, 160));
-		@face_clips->AddBack(Rect->New(1440, 0, 240, 160));
-		@faces := @framework->AddAnimatedImageSprite("media/faces.png", @face_clips);
-
-		@tod_clips := Vector->New();
-		@tod_clips->AddBack(Rect->New(0, 0, 48, 48));
-		@tod_clips->AddBack(Rect->New(48, 0, 48, 48));
-		@tod_clips->AddBack(Rect->New(96, 0, 48, 48));
-		@tod_clips->AddBack(Rect->New(144, 0, 48, 48));
-		@tod := @framework->AddAnimatedImageSprite("media/tod.png", @tod_clips);
-		@tod->SetScale(0.5);
+		@time_of_day := @framework->AddAnimatedImageSprite("media/tod.png");
+		@time_of_day->AddClip(Rect->New(0, 0, 48, 48));
+		@time_of_day->AddClip(Rect->New(48, 0, 48, 48));
+		@time_of_day->AddClip(Rect->New(96, 0, 48, 48));
+		@time_of_day->AddClip(Rect->New(144, 0, 48, 48));
+		@time_of_day->SetScale(0.5);
 
 		@action_chunk := @framework->AddMixChunk("media/action.wav");
-		@sleep_chunk := MixChunk->New("media/sleep.wav");
-		@eat_chunk := MixChunk->New("media/eat.wav");
-		@play_chunk := MixChunk->New("media/play.wav");
-		@clean_chunk := MixChunk->New("media/clean.wav");
+		@sleep_chunk := @framework->AddMixChunk("media/sleep.wav");
+		@eat_chunk := @framework->AddMixChunk("media/eat.wav");
+		@play_chunk := @framework->AddMixChunk("media/play.wav");
+		@clean_chunk := @framework->AddMixChunk("media/clean.wav");
 
 		@age_text := @framework->AddTextSprite();
 		@age_text->RenderedText("Age: 0");
@@ -93,11 +88,6 @@ class Game {
 
 	method : Run() ~ Nil {
 		leaving {
-			@action_chunk->Free();
-			@sleep_chunk->Free();
-			@eat_chunk->Free();
-			@play_chunk->Free();
-			@clean_chunk->Free();
 			@framework->Quit();
 		};
 
@@ -127,7 +117,7 @@ class Game {
 	}
 
 	method : public : GetWait() ~ Int {
-		return @wait;
+		return @wait_mins;
 	}
 
 	method : public : ActionSound() ~ Nil {
@@ -200,7 +190,8 @@ class Game {
 			@faces->Render(0, 40, Faces->HAPPY);
 		}
 		else if(neglect < 2.0) {
-			@faces->Render(0, 40, Faces->OK);		}
+			@faces->Render(0, 40, Faces->OK);
+		}
 		else {
 			@faces->Render(0, 40, Faces->SAD);
 		};
@@ -213,16 +204,16 @@ class Game {
 
 		hour := @gotchi->GetHour();
 		if(hour >= 6 & hour <= 10) {
-			@tod->Render(208, 10, DayTime->MORNING);
+			@time_of_day->Render(208, 10, DayTime->MORNING);
 		}
 		else if(hour >= 10 & hour <= 18) {
-			@tod->Render(208, 10, DayTime->DAY);
+			@time_of_day->Render(208, 10, DayTime->DAY);
 		}
 		else if(hour >= 18 & hour <= 20) {
-			@tod->Render(208, 10, DayTime->EVENING);
+			@time_of_day->Render(208, 10, DayTime->EVENING);
 		}
 		else {
-			@tod->Render(208, 10, DayTime->NIGHT);
+			@time_of_day->Render(208, 10, DayTime->NIGHT);
 		};
 	}
 
@@ -244,7 +235,7 @@ class Tamagotchi  {
 	@neglect : Float;
 	@game : Game;
 	@action : Bool;
-	@wait : Int;
+	@wait_mins : Int;
 
 	enum States {
 		HUNGRY, 
@@ -264,7 +255,7 @@ class Tamagotchi  {
 	}
 
 	method : public : GetWait() ~ Int {
-		return @wait;
+		return @wait_mins;
 	}
 
 	method : public : GetAge() ~ Int {
@@ -367,7 +358,7 @@ class Tamagotchi  {
 			@age += 1;
 		};
 		wait := @game->GetWait();
-		@wait := Int->Random(wait - wait / 3, wait + wait / 3);
+		@wait_mins := Int->Random(wait - wait / 3, wait + wait / 3);
 	}
 }
 
