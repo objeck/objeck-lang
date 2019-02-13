@@ -5919,6 +5919,7 @@ bundle Game.SDL2 {
 
 		#~
 		Fades in music
+		@param loops number of loops to play or -1 for infinite 
 		@param ms millisecond delay
 		@return channel music is playing on
 		~#
