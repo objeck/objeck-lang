@@ -1648,7 +1648,7 @@ bundle Game.Framework {
 
 		#~
 		Remove chunk from framework
-		@param chunk chunk to remove
+		@param mix_chunks chunk to remove
 		@return true if successful, false otherwise
 		~#
 		method : public : RemoveMixChunk(mix_chunks : MixChunk) ~ Bool {

@@ -107,7 +107,8 @@ class HtmlMaker {
 	~#
 	method : CreateBundleIndexHtml(bundles : StringMap, class_header : String) ~ Nil {
 		html := String->New(class_header);
-		html += "<h2><center>Objeck APIs</center></h2><h3><center>{$@version}</center></h3>";
+		html += "<div class='header'><h1>Objeck</h1><strong>a programming language</strong>";
+		html += "<p><small>v{$@version}</small></p></div><hr/>";
 		html += "<table class='doc-table'><tr><th>Bundle</th><th>Description</th></tr>";
 
 		bundle_keys := bundles->GetKeys();
