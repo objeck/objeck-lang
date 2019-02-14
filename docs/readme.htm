@@ -423,8 +423,8 @@ ul
 <h1><span style='font-size:24.0pt;line-height:107%;font-family:"Agency FB",sans-serif'>Objeck
 Programming Language</span></h1>
 
-<p class=MsoSubtitle><span style='font-size:10.0pt;line-height:107%'>v4.1.7; January
-22, 2019</span></p>
+<p class=MsoSubtitle><span style='font-size:10.0pt;line-height:107%'>v4.1.8; February
+14, 2019</span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
 normal'><span style='font-family:"Calibri",sans-serif'>&nbsp;</span></p>
@@ -432,8 +432,8 @@ normal'><span style='font-family:"Calibri",sans-serif'>&nbsp;</span></p>
 <h2><span style='font-size:12.0pt;line-height:107%'>Release notes</span></h2>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
-normal'><span style='font-family:"Calibri",sans-serif'>New functionality and
-minor bug fixes.</span></p>
+normal'><span style='font-family:"Calibri",sans-serif'>Bug fixes and minor
+enhancements.</span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
 normal'><span style='font-family:"Calibri",sans-serif'>&nbsp;</span></p>
@@ -449,14 +449,20 @@ style='font-family:"Calibri",sans-serif'>Added an RSS reader class (new)</span><
 <p class=MsoListParagraphCxSpMiddle style='margin-bottom:0in;margin-bottom:
 .0001pt;text-indent:-.25in;line-height:normal'><span style='font-family:"Calibri",sans-serif'>2.<span
 style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span></span><span
-style='font-family:"Calibri",sans-serif'>Enhanced error handling for memory
-allocation (new)</span></p>
+style='font-family:"Calibri",sans-serif'>Enhanced the SDL2 gaming framework so
+that it managers sound resources (new)</span></p>
+
+<p class=MsoListParagraphCxSpMiddle style='margin-bottom:0in;margin-bottom:
+.0001pt;text-indent:-.25in;line-height:normal'><span style='font-family:"Calibri",sans-serif'>3.<span
+style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span></span><span
+style='font-family:"Calibri",sans-serif'>Resolved an issue with select
+statement that only have one label (fix)</span></p>
 
 <p class=MsoListParagraphCxSpLast style='margin-bottom:0in;margin-bottom:.0001pt;
-text-indent:-.25in;line-height:normal'><span style='font-family:"Calibri",sans-serif'>3.<span
+text-indent:-.25in;line-height:normal'><span style='font-family:"Calibri",sans-serif'>4.<span
 style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span></span><span
-style='font-family:"Calibri",sans-serif'>Improved the robustness of
-TCPSecureSocket Connect method, improving HttpsClient compatibility (fix)</span></p>
+style='font-family:"Calibri",sans-serif'>Fixed string append for nested method
+calls with casting (fix)</span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
 normal'><span style='font-family:"Calibri",sans-serif'>&nbsp;</span></p>
@@ -470,8 +476,8 @@ style='font-family:"Calibri",sans-serif'><a
 href="http://rosettacode.org/wiki/Category:Objeck">Rosetta Code website</a></span></span>.
 Please submit bugs to <span class=InternetLink><span style='font-family:"Calibri",sans-serif'><a
 href="mailto:objeck@gmail.com">objeck@gmail.com</a></span></span><a
-href="mailto:objeck@gmail.com"><span style='text-decoration:none'>, bug reports
-are greatly appreciated!!</span></a></span></p>
+href="mailto:objeck@gmail.com"><span style='color:windowtext;text-decoration:
+none'>, bug reports are greatly appreciated!!</span></a></span></p>
 
 <h2><span style='font-size:12.0pt;line-height:107%'>Package directories</span></h2>
 
@@ -565,8 +571,7 @@ environment paths in macOS and Linux:</span></p>
 
 <ol style='margin-top:0in' start=1 type=1>
  <li class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
-     normal'><span style='font-family:"Calibri",sans-serif'>export
-     PATH=$PATH:/home/&lt;account&gt;/objeck-lang/bin</span></li>
+     normal'><span style='font-family:"Calibri",sans-serif'>export PATH=$PATH:/home/&lt;account&gt;/objeck-lang/bin</span></li>
  <li class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
      normal'><span style='font-family:"Calibri",sans-serif'>export OBJECK_LIB_PATH=/home/&lt;account&gt;/objeck-lang/lib</span></li>
 </ol>
@@ -646,10 +651,9 @@ margin-left:.5in;margin-bottom:.0001pt;text-indent:-.25in;line-height:normal'><s
 style='font-family:"Calibri",sans-serif'>1.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span><span style='font-family:"Calibri",sans-serif'>sudo apt install
 libsdl1.2debian libsdl-gfx1.2-5 libsdl-gfx1.2-dev libsdl-gfx1.2-doc
-libsdl-image1.2 libsdl-image1.2-dbg libsdl-image1.2-dev libsdl-mixer1.2
-libsdl-mixer1.2-dbg libsdl-mixer1.2-dev libsdl-net1.2 libsdl-net1.2-dbg
-libsdl-net1.2-dev libsdl-sound1.2 libsdl-sound1.2-dev libsdl-ttf2.0-0
-libsdl-ttf2.0-dev</span></p>
+libsdl-image1.2 libsdl-image1.2-dbg libsdl-image1.2-dev libsdl-mixer1.2 libsdl-mixer1.2-dbg
+libsdl-mixer1.2-dev libsdl-net1.2 libsdl-net1.2-dbg libsdl-net1.2-dev
+libsdl-sound1.2 libsdl-sound1.2-dev libsdl-ttf2.0-0 libsdl-ttf2.0-dev</span></p>
 
 <p class=MsoNormal style='margin-top:0in;margin-right:0in;margin-bottom:0in;
 margin-left:.5in;margin-bottom:.0001pt;line-height:normal'><span
@@ -687,23 +691,8 @@ repository is located <span class=InternetLink><span style='font-family:"Calibri
 href="http://github.com/objeck/objeck-lang">here</a></span></span> and the
 source can be fetch using the following command GIT command:</span></p>
 
-<p class=MsoListParagraphCxSpFirst style='text-indent:-.25in'><span
-style='line-height:107%;font-family:Symbol'>·<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-</span></span><span style='line-height:107%;font-family:"Calibri",sans-serif'>mkdir
-objeck</span></p>
-
-<p class=MsoListParagraphCxSpMiddle style='text-indent:-.25in'><span
-style='line-height:107%;font-family:Symbol'>·<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-</span></span><span style='line-height:107%;font-family:"Calibri",sans-serif'>cd
-objeck</span></p>
-
-<p class=MsoListParagraphCxSpMiddle style='text-indent:-.25in'><span
-style='line-height:107%;font-family:Symbol'>·<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-</span></span><span style='line-height:107%;font-family:"Calibri",sans-serif'>git
-init</span></p>
-
-<p class=MsoListParagraphCxSpLast style='text-indent:-.25in'><span
-style='line-height:107%;font-family:Symbol'>·<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<p class=MsoListParagraph style='text-indent:-.25in'><span style='line-height:
+107%;font-family:Symbol'>·<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span><span style='line-height:107%;font-family:"Calibri",sans-serif'>git
 clone https://github.com/objeck/objeck-lang.git</span></p>
 

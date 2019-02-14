@@ -1455,6 +1455,12 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_E018D822FB6A4E959970A5BA60187172"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_E19DD24E8F0A49A18751B7114F60421C"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -6583,6 +6589,26 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_E018D822FB6A4E959970A5BA60187172"
+            {
+            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win64\\doc\\getting_started.url"
+            "TargetName" = "8:getting_started.url"
+            "Tag" = "8:"
+            "Folder" = "8:_C9090D9EC01345AFBA1A5F08BF580D47"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_E19DD24E8F0A49A18751B7114F60421C"
             {
             "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win64\\doc\\api\\game.sdl2-display.html"
@@ -7618,7 +7644,7 @@
         "Name" = "8:Microsoft Visual Studio"
         "ProductName" = "8:Objeck"
         "ProductCode" = "8:{72E5F417-0251-443B-BDAE-094F5E0EC940}"
-        "PackageCode" = "8:{ADF30506-12CE-41FB-8A72-F636996CCB19}"
+        "PackageCode" = "8:{744200A3-DEC9-4206-871E-44CA5E270C40}"
         "UpgradeCode" = "8:{A1931BE6-A793-4ECE-B303-66B69408440F}"
         "AspNetVersion" = "8:"
         "RestartWWWService" = "11:FALSE"
@@ -7782,20 +7808,6 @@
             "Icon" = "8:_C0A47B13C490427E90DB8784F396B840"
             "Feature" = "8:"
             }
-            "{970C0BB2-C7D0-45D7-ABFA-7EC378858BC0}:_7EC966129AF049D9BD2458524D56CDC7"
-            {
-            "Name" = "8:Programmer's Guide"
-            "Arguments" = "8:"
-            "Description" = "8:"
-            "ShowCmd" = "3:1"
-            "IconIndex" = "3:0"
-            "Transitive" = "11:FALSE"
-            "Target" = "8:_0DB3A2D513794FA4AB6FB40E122162D7"
-            "Folder" = "8:_B2F81F9212A3458C9610859D4110C49D"
-            "WorkingFolder" = "8:"
-            "Icon" = "8:_C0A47B13C490427E90DB8784F396B840"
-            "Feature" = "8:"
-            }
             "{970C0BB2-C7D0-45D7-ABFA-7EC378858BC0}:_85E8B274633F424FAC91249F69ADD95F"
             {
             "Name" = "8:Examples"
@@ -7836,6 +7848,20 @@
             "Folder" = "8:_B2F81F9212A3458C9610859D4110C49D"
             "WorkingFolder" = "8:_8EB462F2784A421E99849541CC462494"
             "Icon" = "8:_39F7FFF3AED4493981A4C98459862D33"
+            "Feature" = "8:"
+            }
+            "{970C0BB2-C7D0-45D7-ABFA-7EC378858BC0}:_B7ECE7D902434006B5D5C97316C6E35E"
+            {
+            "Name" = "8:Programmer's Guide"
+            "Arguments" = "8:"
+            "Description" = "8:"
+            "ShowCmd" = "3:1"
+            "IconIndex" = "3:0"
+            "Transitive" = "11:FALSE"
+            "Target" = "8:_E018D822FB6A4E959970A5BA60187172"
+            "Folder" = "8:_B2F81F9212A3458C9610859D4110C49D"
+            "WorkingFolder" = "8:_C9090D9EC01345AFBA1A5F08BF580D47"
+            "Icon" = "8:"
             "Feature" = "8:"
             }
         }
