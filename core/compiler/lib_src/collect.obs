@@ -4427,7 +4427,7 @@ bundle Collection {
 }
 
 #~
-HTTP and HTTPS client support
+Web client support
 ~#
 bundle Web.HTTP {
 	#~
