@@ -8,9 +8,11 @@ HTTP and HTTPS client support
 ~#
 bundle Web.HTTP {
 	#~
-	Supports string data queries
+	Reader for RSS feeds
 	~#
 	class RSSReader {
+		@channel : RSSChannel;
+		@posts : Vector;
 		@is_ok : Bool;
 
 		New(url : String) {
@@ -18,11 +20,23 @@ bundle Web.HTTP {
 			if(xml->Size() > 0) {
 				parser := XmlParser->New(xml);
 				if(parser->Parse()) {
-					GetChannelData(parser);
-					GetPosts(parser);
+					@channel := GetChannelData(parser);
+					@posts := GetPosts(parser);
 					@is_ok := true;
 				};
 			};
+		}
+
+		method : public : GetChannel() ~ RSSChannel {			
+			return @channel;
+		}
+
+		method : public : GetPosts() ~ Vector {
+			if(@is_ok) {
+				return @posts;
+			};
+
+			return Nil;
 		}
 
 		method : public : IsOk() ~ Bool {
@@ -33,15 +47,17 @@ bundle Web.HTTP {
 			title := GetMatch("/rss/channel/title", parser);
 			description := GetMatch("/rss/channel/description", parser);
 			link := GetMatch("/rss/channel/link", parser);
-			
+
 			if(title <> Nil & description <> Nil & link <> Nil) {
 				return RSSChannel->New(title, description, link);
 			};
-			
+
 			return Nil;
 		}
 
-		method : GetPosts(parser : XmlParser) ~ RSSPost {
+		method : GetPosts(parser : XmlParser) ~ Vector {
+			posts := Vector->New();
+
 			items := parser->FindElements("/rss/channel/item");
 			each(i : items) {
 				item := items->Get(i)->As(XmlElement);
@@ -50,36 +66,15 @@ bundle Web.HTTP {
 				description := GetContent(item->GetFirstChild("description"));
 				pubDate := GetContent(item->GetFirstChild("pubDate"));
 
-				if(description <> Nil & (description->Find("href") > -1 | description->Find("HREF") > -1)) {
-					html += "<p><h3>";
-					html += pubDate;
-					html += "</h3>";
-					html += description;
-					html += "</p>";
+				if(title <> Nil & description <> Nil & link <> Nil & pubDate <> Nil) {
+					posts->AddBack(RSSPost->New(title, description, link, pubDate));
 				}
-				else if(description <> Nil) {
-					html += "<p><h3>";
-					html += pubDate;
-					html += "</h3><b><a href='";
-					html += link;
-					html += "'>";
-					html += title;
-					html += "</a></b></br>";
-					html += description;
-					html += "</p>";
-				}
-				else {
-					html += "<p><h3>";
-					html += pubDate;
-					html += "</h3><b><a href='";
-					html += link;
-					html += "'>";
-					html += title;
-					html += "</a></b></br></p>";
+				else if(title <> Nil & description <> Nil & link <> Nil) {
+					posts->AddBack(RSSPost->New(title, description, link));
 				};
 			};
 
-			return Nil;
+			return posts;
 		}
 
 		method : GetMatch(path : String, parser : XmlParser) ~ String {
@@ -131,7 +126,6 @@ bundle Web.HTTP {
 			@title := title;
 			@description := description;
 			@link := link;
-
 		}
 
 		method : public : GetTitle() ~ String {
@@ -158,6 +152,12 @@ bundle Web.HTTP {
 			@description := description;
 			@link := link;
 			@date := date;
+		}
+
+		New(title : String, description : String, link : String) {
+			@title := title;
+			@description := description;
+			@link := link;
 		}
 
 		method : public : GetTitle() ~ String {
