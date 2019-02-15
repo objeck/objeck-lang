@@ -1,5 +1,5 @@
 #~
-# compile: obc -src rss_https_xml_15.obs -lib finder.obl,xml.obl,collect.obl -dest rss_https_xml_15.obe
+# compile: obc -src rss_https_xml_15.obs -lib xml.obl,collect.obl -dest rss_https_xml_15.obe
 # run: obr rss_https_xml_15.obe "https://www.techmeme.com/feed.xml" <filename>
 ~#
 
