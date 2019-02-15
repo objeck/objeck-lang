@@ -1,6 +1,6 @@
 #~~
-Simple tabular query library
-Copyright (c) 2017-2018 Randy Hollines
+Tabular query and web libraries
+Copyright (c) 2017-2019 Randy Hollines
 ~~#
 
 use Collection;
@@ -1850,6 +1850,9 @@ bundle Web.HTTP {
 		}
 	}
 
+	#~
+	RSS post
+	~#
 	class RSSPost {
 		@title : String;
 		@description : String;
