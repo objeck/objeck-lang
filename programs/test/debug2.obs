@@ -1,17 +1,9 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		select(101) {
-			label 101: {
-				"Foo Bar"->PrintLine();
-			}
+		Sigmoid(1.9646)->PrintLine();
+	}
 
-			label 103: {
-				"Foo Bar"->PrintLine();
-			}
-
-			label 105: {
-				"Foo Bar"->PrintLine();
-			}
-		};
+	function : Sigmoid(x : Float) ~ Float {
+		return 1.0 / (1.0 + Float->Power(Float->E(), -1.0 * x));
 	}
 }
