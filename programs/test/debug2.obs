@@ -3,7 +3,7 @@ class Test {
 		Sigmoid(1.9646)->PrintLine();
 	}
 
-	function : Sigmoid(x : Float) ~ Float {
+	function : native : Sigmoid(x : Float) ~ Float {
 		return 1.0 / (1.0 + Float->Power(Float->E(), -1.0 * x));
 	}
 }
