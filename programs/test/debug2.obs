@@ -1,52 +1,76 @@
-class Test {
+class BasicAi {
 	function : Main(args : String[]) ~ Nil {
 		a := [
 			[1.0, 2.0]
-			];
+			[3.0, 4.0]];
 
-# [3.0, 4.0]
-
-#~
 		b := [
 			[5.0, 6.0]
 			[7.0, 8.0]];
-~#
-
+#~
 		b := [
 			[5.0, 6.0, 7.0]
 			[8.0, 9.0, 10.0]];
+~#
 
 		Sigmoid(1.9646)->PrintLine();
-		DotProduct(a, b);
+		m := DotProduct(a, b);
+		if(m <> Nil) {
+			Show(m);
+		};
 	}
 
 	function : native : Sigmoid(x : Float) ~ Float {
 		return 1.0 / (1.0 + Float->Power(Float->E(), -1.0 * x));
 	}
 
-	function : native : DotProduct(a : Float[,], b : Float[,]) ~ Nil {
+	function : Show(m : Float[,]) ~ Nil {
+		dims := m->Size();
+		rows := dims[0];
+		cols := dims[1];
+
+		for(r := 0; r < rows; r +=1;) {
+			'['->Print();
+			for(c := 0; c < cols; c +=1;) {
+				m[r,c]->Print();
+				if(c + 1 < cols) {
+					", "->Print();
+				}
+				else {
+					
+				};
+			};
+			']'->PrintLine();
+		};
+	}
+
+	function : native : DotProduct(a : Float[,], b : Float[,]) ~ Float[,] {
 		a_dims := a->Size();
 		a_rows := a_dims[0];
 		a_cols := a_dims[1];
-"A: rows={$a_rows}, cols={$a_cols}"->PrintLine();
+# "A: rows={$a_rows}, cols={$a_cols}"->PrintLine();
 
 		b_dims := b->Size();
 		b_rows := b_dims[0];
 		b_cols := b_dims[1];
-"B: rows={$b_rows}, cols={$b_cols}"->PrintLine();
+# "B: rows={$b_rows}, cols={$b_cols}"->PrintLine();
 
 		if(a_cols <> b_rows) {
-			return;
+			return Nil;
 		};
 
+		result := Float->New[a_rows,b_cols];
 		for(ac := 0; ac < a_rows; ac +=1;) {
 			for(bc := 0; bc < b_cols; bc +=1;) {
+				sum := 0;
 				for(rc := 0; rc < b_rows; rc +=1;) {
-					a[ac,rc]->PrintLine();
-					b[rc,bc]->PrintLine();
+					sum += a[ac,rc] * b[rc,bc];
 				};
-	"---"->PrintLine();
+# "--- {$ac},{$bc}: {$sum} ---"->PrintLine();
+				result[ac,bc] := sum;
 			};
 		};
+
+		return result;
 	}
 }
