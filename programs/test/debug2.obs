@@ -1,60 +1,56 @@
 class BasicAi {
 	function : Main(args : String[]) ~ Nil {
-		a := [
+		w0 := [
 			[0.9, 0.3, 0.4]
 			[0.2, 0.8, 0.2]
 			[0.1, 0.5, 0.6]];
 
-#~
-		weights := [
-			[5.0, 6.0, 7.0]
-			[8.0, 9.0, 10.0]];
-~#
+		w1 := [
+			[0.3, 0.7, 0.5]
+			[0.6, 0.5, 0.2]
+			[0.8, 0.1, 0.9]];
 
-		b := [
+		i0 := [
 			[0.9]
 			[0.1]
 			[0.8]];
 
 		
-		x := DotProduct(a, b);
-		if(x <> Nil) {
-			Show(x);
+		i1 := DotProduct(w0, i0);
+		if(i1 <> Nil) {
+#			Show(i1);
+			i2 := DotProduct(w1, i1);
+			if(i2 <> Nil) {
+				Show(i2);
+			};
 		};
-
-		Sigmoid(1.9646)->PrintLine();
-		
 	}
 
 	function : native : DotProduct(a : Float[,], b : Float[,]) ~ Float[,] {
-		input_dims := a->Size();
-		input_rows := input_dims[0];
-		input_cols := input_dims[1];
-# "A: rows={$input_rows}, cols={$input_cols}"->PrintLine();
+		a_dims := a->Size();
+		a_rows := a_dims[0];
+		a_cols := a_dims[1];
 
-		weight_dims := b->Size();
-		weight_rows := weight_dims[0];
-		weight_cols := weight_dims[1];
-# "B: rows={$weight_rows}, cols={$weight_cols}"->PrintLine();
+		b_dims := b->Size();
+		b_rows := b_dims[0];
+		b_cols := b_dims[1];
 
-		if(input_cols <> weight_rows) {
+		if(a_cols <> b_rows) {
 			return Nil;
 		};
 
-		x_result := Float->New[input_rows,weight_cols];
-		for(input_col := 0; input_col < input_rows; input_col += 1;) {
-			for(weight_col := 0; weight_col < weight_cols; weight_col += 1;) {
+		c := Float->New[a_rows,b_cols];
+		for(input_col := 0; input_col < a_rows; input_col += 1;) {
+			for(weight_col := 0; weight_col < b_cols; weight_col += 1;) {
 				x_sum := 0.0;
-				for(x_col := 0; x_col < weight_rows; x_col += 1;) {
+				for(x_col := 0; x_col < b_rows; x_col += 1;) {
 					x_sum += a[input_col, x_col] * b[x_col, weight_col];
 				};
-# "--- {$input_col},{$weight_col}: {$x_sum} ---"->PrintLine();
-#				x_result[input_col, weight_col] := x_sum;
-				x_result[input_col, weight_col] := Sigmoid(x_sum);
+				c[input_col, weight_col] := Sigmoid(x_sum);
 			};
 		};
 
-		return x_result;
+		return c;
 	}
 
 	function : native : Sigmoid(x : Float) ~ Float {
