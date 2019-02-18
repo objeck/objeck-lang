@@ -23,30 +23,6 @@ class BasicAi {
 		
 	}
 
-	function : native : Sigmoid(x : Float) ~ Float {
-		return 1.0 / (1.0 + Float->Power(Float->E(), -1.0 * x));
-	}
-
-	function : Show(m : Float[,]) ~ Nil {
-		dims := m->Size();
-		rows := dims[0];
-		cols := dims[1];
-
-		for(r := 0; r < rows; r +=1;) {
-			'['->Print();
-			for(c := 0; c < cols; c +=1;) {
-				m[r,c]->Print();
-				if(c + 1 < cols) {
-					", "->Print();
-				}
-				else {
-					
-				};
-			};
-			']'->PrintLine();
-		};
-	}
-
 	function : native : DotProduct(b : Float[,], a : Float[,]) ~ Float[,] {
 		input_dims := a->Size();
 		input_rows := input_dims[0];
@@ -75,5 +51,29 @@ class BasicAi {
 		};
 
 		return x_result;
+	}
+
+	function : native : Sigmoid(x : Float) ~ Float {
+		return 1.0 / (1.0 + Float->Power(Float->E(), -1.0 * x));
+	}
+
+	function : Show(m : Float[,]) ~ Nil {
+		dims := m->Size();
+		rows := dims[0];
+		cols := dims[1];
+
+		for(r := 0; r < rows; r +=1;) {
+			'['->Print();
+			for(c := 0; c < cols; c +=1;) {
+				m[r,c]->Print();
+				if(c + 1 < cols) {
+					", "->Print();
+				}
+				else {
+					
+				};
+			};
+			']'->PrintLine();
+		};
 	}
 }
