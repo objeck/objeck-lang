@@ -1,23 +1,26 @@
 class BasicAi {
 	function : Main(args : String[]) ~ Nil {
-		a := [
-			[1.0, 2.0]
-			[3.0, 4.0]];
-
-		b := [
-			[5.0, 6.0]
-			[7.0, 8.0]];
+		weights := [
+			[0.2, 0.001]
+			[1.0, 0.25]];
 #~
-		b := [
+		weights := [
 			[5.0, 6.0, 7.0]
 			[8.0, 9.0, 10.0]];
 ~#
 
-		Sigmoid(1.9646)->PrintLine();
-		m := DotProduct(a, b);
-		if(m <> Nil) {
-			Show(m);
+		inputs := [
+			[1.0, 2.0]
+			[3.0, 4.0]];
+
+		
+		x := DotProduct(weights, inputs);
+		if(x <> Nil) {
+			Show(x);
 		};
+
+		Sigmoid(1.9646)->PrintLine();
+		
 	}
 
 	function : native : Sigmoid(x : Float) ~ Float {
@@ -44,33 +47,33 @@ class BasicAi {
 		};
 	}
 
-	function : native : DotProduct(a : Float[,], b : Float[,]) ~ Float[,] {
-		a_dims := a->Size();
-		a_rows := a_dims[0];
-		a_cols := a_dims[1];
-# "A: rows={$a_rows}, cols={$a_cols}"->PrintLine();
+	function : native : DotProduct(b : Float[,], a : Float[,]) ~ Float[,] {
+		input_dims := a->Size();
+		input_rows := input_dims[0];
+		input_cols := input_dims[1];
+# "A: rows={$input_rows}, cols={$input_cols}"->PrintLine();
 
-		b_dims := b->Size();
-		b_rows := b_dims[0];
-		b_cols := b_dims[1];
-# "B: rows={$b_rows}, cols={$b_cols}"->PrintLine();
+		weight_dims := b->Size();
+		weight_rows := weight_dims[0];
+		weight_cols := weight_dims[1];
+# "B: rows={$weight_rows}, cols={$weight_cols}"->PrintLine();
 
-		if(a_cols <> b_rows) {
+		if(input_cols <> weight_rows) {
 			return Nil;
 		};
 
-		result := Float->New[a_rows,b_cols];
-		for(ac := 0; ac < a_rows; ac +=1;) {
-			for(bc := 0; bc < b_cols; bc +=1;) {
-				sum := 0;
-				for(rc := 0; rc < b_rows; rc +=1;) {
-					sum += a[ac,rc] * b[rc,bc];
+		x_result := Float->New[input_rows,weight_cols];
+		for(input_col := 0; input_col < input_rows; input_col += 1;) {
+			for(weight_col := 0; weight_col < weight_cols; weight_col += 1;) {
+				x_sum := 0.0;
+				for(x_col := 0; x_col < weight_rows; x_col += 1;) {
+					x_sum += a[input_col, x_col] * b[x_col, weight_col];
 				};
-# "--- {$ac},{$bc}: {$sum} ---"->PrintLine();
-				result[ac,bc] := sum;
+# "--- {$input_col},{$weight_col}: {$x_sum} ---"->PrintLine();
+				x_result[input_col, weight_col] := Sigmoid(x_sum);
 			};
 		};
 
-		return result;
+		return x_result;
 	}
 }
