@@ -1,0 +1,79 @@
+class BasicAi {
+	function : Main(args : String[]) ~ Nil {
+		w0 := [
+			[0.9, 0.3, 0.4]
+			[0.2, 0.8, 0.2]
+			[0.1, 0.5, 0.6]];
+
+		w1 := [
+			[0.3, 0.7, 0.5]
+			[0.6, 0.5, 0.2]
+			[0.8, 0.1, 0.9]];
+
+		i0 := [
+			[0.9]
+			[0.1]
+			[0.8]];
+
+		
+		i1 := DotProduct(w0, i0);
+		if(i1 <> Nil) {
+#			Show(i1);
+			i2 := DotProduct(w1, i1);
+			if(i2 <> Nil) {
+				Show(i2);
+			};
+		};
+	}
+
+	function : native : DotProduct(a : Float[,], b : Float[,]) ~ Float[,] {
+		a_dims := a->Size();
+		a_rows := a_dims[0];
+		a_cols := a_dims[1];
+
+		b_dims := b->Size();
+		b_rows := b_dims[0];
+		b_cols := b_dims[1];
+
+		if(a_cols <> b_rows) {
+			return Nil;
+		};
+
+		c := Float->New[a_rows,b_cols];
+		for(input_col := 0; input_col < a_rows; input_col += 1;) {
+			for(weight_col := 0; weight_col < b_cols; weight_col += 1;) {
+				x_sum := 0.0;
+				for(x_col := 0; x_col < b_rows; x_col += 1;) {
+					x_sum += a[input_col, x_col] * b[x_col, weight_col];
+				};
+				c[input_col, weight_col] := Sigmoid(x_sum);
+			};
+		};
+
+		return c;
+	}
+
+	function : native : Sigmoid(x : Float) ~ Float {
+		return 1.0 / (1.0 + Float->Power(Float->E(), -1.0 * x));
+	}
+
+	function : Show(m : Float[,]) ~ Nil {
+		dims := m->Size();
+		rows := dims[0];
+		cols := dims[1];
+
+		for(r := 0; r < rows; r +=1;) {
+			'['->Print();
+			for(c := 0; c < cols; c +=1;) {
+				m[r,c]->Print();
+				if(c + 1 < cols) {
+					", "->Print();
+				}
+				else {
+					
+				};
+			};
+			']'->PrintLine();
+		};
+	}
+}
