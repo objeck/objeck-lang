@@ -1,20 +1,20 @@
 class BasicAi {
 	function : Main(args : String[]) ~ Nil {
-		weights := [
-			[5.0, 6.0]
-			[7.0, 8.0]];
+		a := [
+			[3.0, 4.0, 2.0]];
 #~
 		weights := [
 			[5.0, 6.0, 7.0]
 			[8.0, 9.0, 10.0]];
 ~#
 
-		inputs := [
-			[1.0, 2.0]
-			[3.0, 4.0]];
+		b := [
+			[13.0, 9.0, 7.0, 15.0]
+			[8.0, 7.0, 4.0, 6.0]
+			[6.0, 4.0, 0.0, 3.0]];
 
 		
-		x := DotProduct(weights, inputs);
+		x := DotProduct(a, b);
 		if(x <> Nil) {
 			Show(x);
 		};
@@ -23,7 +23,7 @@ class BasicAi {
 		
 	}
 
-	function : native : DotProduct(b : Float[,], a : Float[,]) ~ Float[,] {
+	function : native : DotProduct(a : Float[,], b : Float[,]) ~ Float[,] {
 		input_dims := a->Size();
 		input_rows := input_dims[0];
 		input_cols := input_dims[1];
@@ -46,7 +46,8 @@ class BasicAi {
 					x_sum += a[input_col, x_col] * b[x_col, weight_col];
 				};
 # "--- {$input_col},{$weight_col}: {$x_sum} ---"->PrintLine();
-				x_result[input_col, weight_col] := Sigmoid(x_sum);
+				x_result[input_col, weight_col] := x_sum;
+#				x_result[input_col, weight_col] := Sigmoid(x_sum);
 			};
 		};
 
