@@ -40,13 +40,13 @@ class BasicAi {
 		};
 
 		c := Float->New[a_rows,b_cols];
-		for(input_col := 0; input_col < a_rows; input_col += 1;) {
-			for(weight_col := 0; weight_col < b_cols; weight_col += 1;) {
-				x_sum := 0.0;
+		for(a_col := 0; a_col < a_rows; a_col += 1;) {
+			for(b_col := 0; b_col < b_cols; b_col += 1;) {
+				cx := 0.0;
 				for(x_col := 0; x_col < b_rows; x_col += 1;) {
-					x_sum += a[input_col, x_col] * b[x_col, weight_col];
+					cx += a[a_col, x_col] * b[x_col, b_col];
 				};
-				c[input_col, weight_col] := Sigmoid(x_sum);
+				c[a_col, b_col] := Sigmoid(cx);
 			};
 		};
 
