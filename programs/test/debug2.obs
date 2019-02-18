@@ -2,18 +2,20 @@ class Test {
 	function : Main(args : String[]) ~ Nil {
 		a := [
 			[1.0, 2.0]
-			[3.0, 4.0]];
+			];
 
-
-		b := [
-			[5.0, 6.0]
-			[7.0, 8.0]];
+# [3.0, 4.0]
 
 #~
 		b := [
+			[5.0, 6.0]
+			[7.0, 8.0]];
+~#
+
+		b := [
 			[5.0, 6.0, 7.0]
 			[8.0, 9.0, 10.0]];
-~#
+
 		Sigmoid(1.9646)->PrintLine();
 		DotProduct(a, b);
 	}
@@ -23,19 +25,25 @@ class Test {
 	}
 
 	function : native : DotProduct(a : Float[,], b : Float[,]) ~ Nil {
+		a_dims := a->Size();
+		a_rows := a_dims[0];
+		a_cols := a_dims[1];
+"A: rows={$a_rows}, cols={$a_cols}"->PrintLine();
+
 		b_dims := b->Size();
 		b_rows := b_dims[0];
 		b_cols := b_dims[1];
-				
-"rows={$b_rows}, cols={$b_cols}"->PrintLine();
+"B: rows={$b_rows}, cols={$b_cols}"->PrintLine();
 
-		for(g := 0; g < b_cols; g +=1;) {
-		
-			for(c := 0; c < b_cols; c +=1;) {
-				
-				for(r := 0; r < b_rows; r +=1;) {
-					a[g,r]->PrintLine();
-					b[r,c]->PrintLine();
+		if(a_cols <> b_rows) {
+			return;
+		};
+
+		for(ac := 0; ac < a_rows; ac +=1;) {
+			for(bc := 0; bc < b_cols; bc +=1;) {
+				for(rc := 0; rc < b_rows; rc +=1;) {
+					a[ac,rc]->PrintLine();
+					b[rc,bc]->PrintLine();
 				};
 	"---"->PrintLine();
 			};
