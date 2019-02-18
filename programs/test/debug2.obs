@@ -49,8 +49,8 @@ class BasicAi {
 					x_sum += a[input_col, x_col] * b[x_col, weight_col];
 				};
 # "--- {$input_col},{$weight_col}: {$x_sum} ---"->PrintLine();
-				x_result[input_col, weight_col] := x_sum;
-#				x_result[input_col, weight_col] := Sigmoid(x_sum);
+#				x_result[input_col, weight_col] := x_sum;
+				x_result[input_col, weight_col] := Sigmoid(x_sum);
 			};
 		};
 
