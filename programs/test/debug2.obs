@@ -1,9 +1,44 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
+		a := [
+			[1.0, 2.0]
+			[3.0, 4.0]];
+
+
+		b := [
+			[5.0, 6.0]
+			[7.0, 8.0]];
+
+#~
+		b := [
+			[5.0, 6.0, 7.0]
+			[8.0, 9.0, 10.0]];
+~#
 		Sigmoid(1.9646)->PrintLine();
+		DotProduct(a, b);
 	}
 
 	function : native : Sigmoid(x : Float) ~ Float {
 		return 1.0 / (1.0 + Float->Power(Float->E(), -1.0 * x));
+	}
+
+	function : native : DotProduct(a : Float[,], b : Float[,]) ~ Nil {
+		b_dims := b->Size();
+		b_rows := b_dims[0];
+		b_cols := b_dims[1];
+				
+"rows={$b_rows}, cols={$b_cols}"->PrintLine();
+
+		for(g := 0; g < b_cols; g +=1;) {
+		
+			for(c := 0; c < b_cols; c +=1;) {
+				
+				for(r := 0; r < b_rows; r +=1;) {
+					a[g,r]->PrintLine();
+					b[r,c]->PrintLine();
+				};
+	"---"->PrintLine();
+			};
+		};
 	}
 }
