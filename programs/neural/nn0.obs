@@ -18,12 +18,26 @@ class BasicAi {
 		
 		i1 := DotProduct(w0, i0);
 		if(i1 <> Nil) {
-#			Show(i1);
 			i2 := DotProduct(w1, i1);
 			if(i2 <> Nil) {
 				Show(i2);
 			};
 		};
+	}
+
+	function : native : Transpose(a : Float[,]) ~ Float[,] {
+		dim := a->Size();
+		rows := dim[0];
+		cols := dim[1];
+
+		b := Float->New[cols, rows];
+		for(r := 0; r < rows; r += 1;) {
+			for(c := 0; c < cols; c += 1;) {
+				b[c,r] := a[r,c];
+			};
+		};
+		
+		return b;
 	}
 
 	function : native : DotProduct(a : Float[,], b : Float[,]) ~ Float[,] {
