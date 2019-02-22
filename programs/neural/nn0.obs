@@ -92,12 +92,9 @@ class BasicAi {
 	function : Generate2D(mean : Float, variance : Float, rows : Int, cols : Int) ~ Float[,] {
 		m := Float->New[rows, cols];
 
-"{$rows}, {$cols}"->PrintLine();
-
 		for(i := 0; i < rows; i += 1;) {
 			for(j := 0; j < cols; j += 1;) {
-"{$i}, {$j}"->PrintLine();
-#				m[i,j] := Generate(mean, variance);
+				m[i,j] := Generate(mean, variance);
 			};
 		};
 
@@ -105,8 +102,8 @@ class BasicAi {
 	}
 
 	function : Generate(mean : Float, variance : Float) ~ Float {
-		return  (-2.0 * variance * Float->Random()->Log())->SquareRoot() * 
-		(2.0 * Float->Pi() * Float->Random())->Cos() + mean;
+#		return  (-2.0 * variance * Float->Random()->Log())->SquareRoot() * (2.0 * Float->Pi() * Float->Random())->Cos() + mean;
+		return 1.1;
 	}
 
 	function : Generate(n : Int) ~ Float[] {
