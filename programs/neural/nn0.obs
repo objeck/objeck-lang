@@ -31,7 +31,7 @@ class BasicAi {
 ~#		
 
 		for(i := 1; i < 100; i += 1;) {
-			Generate(50, 10)->PrintLine();
+			Generate(0.0, Float->Power(3.0, -0.5))->PrintLine();
 		};
 	}
 	
@@ -79,6 +79,18 @@ class BasicAi {
 
 	function : native : Sigmoid(x : Float) ~ Float {
 		return 1.0 / (1.0 + Float->Power(Float->E(), -1.0 * x));
+	}
+
+	function : Generate2D(mean : Float, variance : Float, rows : Int, cols : Int) ~ Float[,] {
+		m := Float->New[rows, cols];
+
+		for(i := 0; i < rows; i += 1;) {
+			for(j := 0; j < cols; j += 1;) {
+				m[i,j] := Generate(mean, variance);
+			};
+		};
+
+		return m;
 	}
 
 	function : Generate(mean : Float, variance : Float) ~ Float {
