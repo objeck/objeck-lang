@@ -1,5 +1,19 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		Int->Random(3)->PrintLine();
+		Foo(1.1, 2.2, 3, 2);
+	}
+
+	function : Foo(mean : Float, variance : Float, cols : Int, rows : Int) ~ Nil {
+		m := Float->New[rows, cols];
+
+		for(i := 0; i < rows; i += 1;) {
+			for(j := 0; j < cols; j += 1;) {
+				m[i,j] := Bar(mean, variance);
+			};
+		};
+	}
+	
+	function : Bar(mean : Float, variance : Float) ~ Float {
+		return mean * variance;
 	}
 }
