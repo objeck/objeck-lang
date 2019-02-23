@@ -643,17 +643,13 @@ IntermediateBlock* ItermediateOptimizer::InlineMethod(IntermediateBlock* inputs)
       IntermediateMethod* mthd_called = program->GetClass(instr->GetOperand())->GetMethod(instr->GetOperand2());
       // checked called method to determine if it can be inlined
       if(CanInlineMethod(mthd_called, inlined_mthds, lbl_jmp_offsets)) {
-        int local_instr_offset = 1;
         vector<IntermediateDeclaration*> entries = mthd_called->GetEntries()->GetParameters();
+        int local_instr_offset = (int)entries.size() + 1;
         for(size_t j = 0; j < entries.size(); ++j) {
           if(entries[j]->GetType() == FLOAT_PARM) {
-            local_instr_offset += 2;
-          }
-          else {
             local_instr_offset++;
           }
         }
-
         if(current_method->HasAndOr() || mthd_called->HasAndOr()) {
           local_instr_offset++;
         }
@@ -673,7 +669,7 @@ IntermediateBlock* ItermediateOptimizer::InlineMethod(IntermediateBlock* inputs)
         if(mthd_called->HasAndOr()) {
           current_method->GetEntries()->AddParameter(new IntermediateDeclaration(L"", INT_PARM));
         }
-	            
+        
         for(size_t j = 0; j < entries.size(); ++j) {
           current_method->GetEntries()->AddParameter(new IntermediateDeclaration(entries[j]->GetName(), entries[j]->GetType()));
         }
