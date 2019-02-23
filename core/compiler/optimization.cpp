@@ -384,7 +384,7 @@ IntermediateBlock* ItermediateOptimizer::InstructionReplacement(IntermediateBloc
 
     case STOR_INT_VAR:
     case STOR_FLOAT_VAR:
-      if(!working_stack.empty() && working_stack.front()->GetType() == STOR_INT_VAR) {
+      if(!working_stack.empty() && (working_stack.front()->GetType() == STOR_INT_VAR && working_stack.front()->GetType() == STOR_FLOAT_VAR)) {
         // order matters...
         while(!working_stack.empty()) {
           outputs->AddInstruction(working_stack.back());
@@ -643,7 +643,17 @@ IntermediateBlock* ItermediateOptimizer::InlineMethod(IntermediateBlock* inputs)
       IntermediateMethod* mthd_called = program->GetClass(instr->GetOperand())->GetMethod(instr->GetOperand2());
       // checked called method to determine if it can be inlined
       if(CanInlineMethod(mthd_called, inlined_mthds, lbl_jmp_offsets)) {
-        int local_instr_offset = (int)current_method->GetEntries()->GetParameters().size() + 1; // GetLastLocalOffset(current_method, outputs) + 2;
+        int local_instr_offset = 1;
+        vector<IntermediateDeclaration*> entries = mthd_called->GetEntries()->GetParameters();
+        for(size_t j = 0; j < entries.size(); ++j) {
+          if(entries[j]->GetType() == FLOAT_PARM) {
+            local_instr_offset += 2;
+          }
+          else {
+            local_instr_offset++;
+          }
+        }
+
         if(current_method->HasAndOr() || mthd_called->HasAndOr()) {
           local_instr_offset++;
         }
@@ -663,8 +673,7 @@ IntermediateBlock* ItermediateOptimizer::InlineMethod(IntermediateBlock* inputs)
         if(mthd_called->HasAndOr()) {
           current_method->GetEntries()->AddParameter(new IntermediateDeclaration(L"", INT_PARM));
         }
-	
-        vector<IntermediateDeclaration*> entries = mthd_called->GetEntries()->GetParameters();
+	            
         for(size_t j = 0; j < entries.size(); ++j) {
           current_method->GetEntries()->AddParameter(new IntermediateDeclaration(entries[j]->GetName(), entries[j]->GetType()));
         }
