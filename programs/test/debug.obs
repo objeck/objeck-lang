@@ -8,6 +8,7 @@ class Test {
 
 		for(i := 0; i < rows; i += 1;) {
 			for(j := 0; j < cols; j += 1;) {
+#				m[i,j] := 3.5;;
 				m[i,j] := Bar(variance);
 			};
 		};
