@@ -643,7 +643,20 @@ IntermediateBlock* ItermediateOptimizer::InlineMethod(IntermediateBlock* inputs)
       IntermediateMethod* mthd_called = program->GetClass(instr->GetOperand())->GetMethod(instr->GetOperand2());
       // checked called method to determine if it can be inlined
       if(CanInlineMethod(mthd_called, inlined_mthds, lbl_jmp_offsets)) {
-        int local_instr_offset = (int)current_method->GetEntries()->GetParameters().size() + 1; // GetLastLocalOffset(current_method, outputs) + 2;
+	IntermediateDeclarations* current_entries = current_method->GetEntries();
+
+	int local_instr_offset = 1;
+	vector<IntermediateDeclaration*> current_dclrs = current_entries->GetParameters();
+	for(size_t j = 0; j < current_dclrs.size(); ++j) {
+	  if(current_dclrs[j]->GetType() == FLOAT_PARM) {
+	    local_instr_offset += 2;
+	  }
+	  else {
+	    local_instr_offset++;
+	  }
+	}
+	
+	//	int local_instr_offset = (int)current_entries->GetParameters().size() + 1;
         if(current_method->HasAndOr() || mthd_called->HasAndOr()) {
           local_instr_offset++;
         }
@@ -659,14 +672,14 @@ IntermediateBlock* ItermediateOptimizer::InlineMethod(IntermediateBlock* inputs)
         outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, STOR_INT_VAR,
                                                                                  local_instr_offset - 1, LOCL));
 
-        current_method->GetEntries()->AddParameter(new IntermediateDeclaration(L"", OBJ_PARM));
+	current_entries->AddParameter(new IntermediateDeclaration(L"", OBJ_PARM));
         if(mthd_called->HasAndOr()) {
-          current_method->GetEntries()->AddParameter(new IntermediateDeclaration(L"", INT_PARM));
+          current_entries->AddParameter(new IntermediateDeclaration(L"", INT_PARM));
         }
 	
         vector<IntermediateDeclaration*> entries = mthd_called->GetEntries()->GetParameters();
         for(size_t j = 0; j < entries.size(); ++j) {
-          current_method->GetEntries()->AddParameter(new IntermediateDeclaration(entries[j]->GetName(), entries[j]->GetType()));
+	  current_entries->AddParameter(new IntermediateDeclaration(entries[j]->GetName(), entries[j]->GetType()));
         }
 
         // inline instructions
