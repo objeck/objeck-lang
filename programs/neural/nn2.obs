@@ -16,7 +16,7 @@ class NeuralNetwork {
 			[1.0]
 			[0.5]
 			[-1.5]];
-			
+
 		# create instance of neural network
 		n := NeuralNetwork->New(input_nodes,hidden_nodes,output_nodes, learning_rate);
 		Show(n->Query(inputs));
@@ -37,6 +37,26 @@ class NeuralNetwork {
 		hidden_outputs := DotSigmoid(@weight_inputs_hidden, inputs);
 		# calculate the signals emerging from final output layer
 		return DotSigmoid(@weight_outputs_hidden, hidden_outputs);
+	}
+
+	method : Train(inputs : Float[,], targets : Float[,]) ~ Nil {
+		# calculate signals into hidden layer
+        hidden_outputs := DotSigmoid(@weight_inputs_hidden, inputs);
+        # calculate signals into final output layer
+        final_outputs  := DotSigmoid(@weight_outputs_hidden, hidden_outputs);
+
+#~
+		# output layer error is the (target - actual)
+        output_errors = targets - final_outputs
+        # hidden layer error is the output_errors, split by weights, recombined at hidden nodes
+        hidden_errors = numpy.dot(self.who.T, output_errors) 
+        
+        # update the weights for the links between the hidden and output layers
+        self.who += self.lr * numpy.dot((output_errors * final_outputs * (1.0 - final_outputs)), numpy.transpose(hidden_outputs))
+        
+        # update the weights for the links between the input and hidden layers
+        self.wih += self.lr * numpy.dot((hidden_errors * hidden_outputs * (1.0 - hidden_outputs)), numpy.transpose(inputs))
+~#
 	}
 
 	method : native : Transpose(a : Float[,]) ~ Float[,] {
