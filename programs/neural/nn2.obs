@@ -44,10 +44,10 @@ class NeuralNetwork {
         hidden_outputs := DotSigmoid(@weight_inputs_hidden, inputs);
         # calculate signals into final output layer
         final_outputs  := DotSigmoid(@weight_outputs_hidden, hidden_outputs);
-
+        # output layer error is the (target - actual)
+        output_errors := Subtract(targets, final_outputs);
 #~
-		# output layer error is the (target - actual)
-        output_errors = targets - final_outputs
+		
         # hidden layer error is the output_errors, split by weights, recombined at hidden nodes
         hidden_errors = numpy.dot(self.who.T, output_errors) 
         
