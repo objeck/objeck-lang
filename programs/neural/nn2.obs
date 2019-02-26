@@ -19,7 +19,7 @@ class NeuralNetwork {
 
 		# create instance of neural network
 		n := NeuralNetwork->New(input_nodes,hidden_nodes,output_nodes, learning_rate);
-		Show(n->Query(inputs));
+		ToString(n->Query(inputs))->PrintLine();
 	}
 	
 	New(input_nodes : Float, hidden_nodes : Float, output_nodes : Float, learning_rate : Float) {
@@ -28,8 +28,10 @@ class NeuralNetwork {
 		@output_nodes  := output_nodes;
 		@learning_rate := learning_rate;
 
-		@weight_inputs_hidden := Generate2D(0.0, Float->Power(@input_nodes, -0.5), @hidden_nodes, @input_nodes);
-		@weight_outputs_hidden := Generate2D(0.0, Float->Power(@input_nodes, -0.5), @output_nodes, @input_nodes);
+		@weight_inputs_hidden := RandomNormal(0.0, Float->Power(@input_nodes, -0.5), 
+			@hidden_nodes, @input_nodes);
+		@weight_outputs_hidden := RandomNormal(0.0, Float->Power(@input_nodes, -0.5), 
+			@output_nodes, @input_nodes);
 	}
 
 	method : Query(inputs : Float[,]) ~ Float[,] {
@@ -39,7 +41,7 @@ class NeuralNetwork {
 		return DotSigmoid(@weight_outputs_hidden, hidden_outputs);
 	}
 
-	method : Train(inputs : Float[,], targets : Float[,]) ~ Nil {
+	method : Train(inputs : Float[,], targets : Float[,], learning_rate : Float) ~ Nil {
 		# calculate signals into hidden layer
         hidden_outputs := DotSigmoid(@weight_inputs_hidden, inputs);
         # calculate signals into final output layer
@@ -49,28 +51,78 @@ class NeuralNetwork {
         # hidden layer error is the output_errors, split by weights, recombined at hidden nodes
 		hidden_errors := Dot(Transpose(@weight_outputs_hidden), output_errors); 
 
+		Add(@weight_inputs_hidden, DeltaUpdate(output_errors, hidden_outputs, inputs, learning_rate));
+		Add(@weight_outputs_hidden, DeltaUpdate(output_errors, hidden_outputs, output_errors, learning_rate));
+		
 #~
         # update the weights for the links between the hidden and output layers
-        self.who += self.lr * numpy.dot((output_errors * final_outputs * (1.0 - final_outputs)), numpy.transpose(hidden_outputs))
+        self.who += self.lr * numpy.dot((output_errors * final_outputs * 
+        	(1.0 - final_outputs)), numpy.transpose(hidden_outputs))
         
         # update the weights for the links between the input and hidden layers
-        self.wih += self.lr * numpy.dot((hidden_errors * hidden_outputs * (1.0 - hidden_outputs)), numpy.transpose(inputs))
+        self.wih += self.lr * numpy.dot((hidden_errors * hidden_outputs * 
+        	(1.0 - hidden_outputs)), numpy.transpose(inputs))
 ~#
 	}
 
-	method : native : Transpose(a : Float[,]) ~ Float[,] {
-		dim := a->Size();
-		rows := dim[0];
-		cols := dim[1];
+	method : native : DeltaUpdate(errors : Float[,], inputs : Float[,], outputs : Float[,], learning_rate : Float) ~ Float[,] {
+		factor := Multiple(errors, Multiple(outputs, Subtract(1.0, outputs)));
+		return Multiple(learning_rate, Dot(factor, Transpose(inputs)));
+	}
 
-		b := Float->New[cols, rows];
-		for(r := 0; r < rows; r += 1;) {
-			for(c := 0; c < cols; c += 1;) {
-				b[c,r] := a[r,c];
+	# ----------
+
+	method : native : Add(x : Float, b : Float[,]) ~ Float[,] {
+		b_dims := b->Size();
+		b_rows := b_dims[0];
+		b_cols := b_dims[1];
+
+		c := Float->New[b_rows, b_cols];
+		for(i := 0; i < b_rows; i += 1;) {
+			for(j := 0; j < b_cols; j += 1;) {
+				c[i,j] := x + b[i,j];
 			};
 		};
 
-		return b;
+		return c;
+	}
+
+	method : native : Add(a : Float[,], b : Float[,]) ~ Float[,] {
+		a_dims := a->Size();
+		a_rows := a_dims[0];
+		a_cols := a_dims[1];
+
+		b_dims := b->Size();
+		b_rows := b_dims[0];
+		b_cols := b_dims[1];
+
+		if( a_rows <> b_rows | a_cols <> b_cols) {
+			return Nil;
+		};
+
+		c := Float->New[a_rows, b_cols];
+		for(i := 0; i < a_rows; i += 1;) {
+			for(j := 0; j < b_cols; j += 1;) {
+				c[i,j] := a[i,j] + b[i,j];
+			};
+		};
+
+		return c;
+	}
+
+	method : native : Subtract(x : Float, b : Float[,]) ~ Float[,] {
+		b_dims := b->Size();
+		b_rows := b_dims[0];
+		b_cols := b_dims[1];
+
+		c := Float->New[b_rows, b_cols];
+		for(i := 0; i < b_rows; i += 1;) {
+			for(j := 0; j < b_cols; j += 1;) {
+				c[i,j] := x - b[i,j];
+			};
+		};
+
+		return c;
 	}
 
 	method : native : Subtract(a : Float[,], b : Float[,]) ~ Float[,] {
@@ -96,7 +148,7 @@ class NeuralNetwork {
 		return c;
 	}
 
-	method : native : Add(x : Float, b : Float[,]) ~ Float[,] {
+	method : native : Multiple(x : Float, b : Float[,]) ~ Float[,] {
 		b_dims := b->Size();
 		b_rows := b_dims[0];
 		b_cols := b_dims[1];
@@ -104,7 +156,7 @@ class NeuralNetwork {
 		c := Float->New[b_rows, b_cols];
 		for(i := 0; i < b_rows; i += 1;) {
 			for(j := 0; j < b_cols; j += 1;) {
-				c[i,j] := x - b[i,j];
+				c[i,j] := x * b[i,j];
 			};
 		};
 
@@ -134,7 +186,22 @@ class NeuralNetwork {
 		return c;
 	}
 
-	method : native : DotSigmoid(a : Float[,], b : Float[,]) ~ Float[,] {
+	method : native : Divide(x : Float, b : Float[,]) ~ Float[,] {
+		b_dims := b->Size();
+		b_rows := b_dims[0];
+		b_cols := b_dims[1];
+
+		c := Float->New[b_rows, b_cols];
+		for(i := 0; i < b_rows; i += 1;) {
+			for(j := 0; j < b_cols; j += 1;) {
+				c[i,j] := x / b[i,j];
+			};
+		};
+
+		return c;
+	}
+
+	method : native : Divide(a : Float[,], b : Float[,]) ~ Float[,] {
 		a_dims := a->Size();
 		a_rows := a_dims[0];
 		a_cols := a_dims[1];
@@ -143,22 +210,33 @@ class NeuralNetwork {
 		b_rows := b_dims[0];
 		b_cols := b_dims[1];
 
-		if(a_cols <> b_rows) {
+		if( a_rows <> b_rows | a_cols <> b_cols) {
 			return Nil;
 		};
 
 		c := Float->New[a_rows, b_cols];
-		for(a_col := 0; a_col < a_rows; a_col += 1;) {
-			for(b_col := 0; b_col < b_cols; b_col += 1;) {
-				cx := 0.0;
-				for(x_col := 0; x_col < b_rows; x_col += 1;) {
-					cx += a[a_col, x_col] * b[x_col, b_col];
-				};
-				c[a_col, b_col] := Sigmoid(cx);
+		for(i := 0; i < a_rows; i += 1;) {
+			for(j := 0; j < b_cols; j += 1;) {
+				c[i,j] := a[i,j] / b[i,j];
 			};
 		};
 
 		return c;
+	}
+
+	method : native : Transpose(a : Float[,]) ~ Float[,] {
+		dim := a->Size();
+		rows := dim[0];
+		cols := dim[1];
+
+		b := Float->New[cols, rows];
+		for(r := 0; r < rows; r += 1;) {
+			for(c := 0; c < cols; c += 1;) {
+				b[c,r] := a[r,c];
+			};
+		};
+
+		return b;
 	}
 
 	method : native : Dot(a : Float[,], b : Float[,]) ~ Float[,] {
@@ -192,23 +270,50 @@ class NeuralNetwork {
 		return 1.0 / (1.0 + Float->Power(Float->E(), -1.0 * x));
 	}
 
-	method : Generate2D(mean : Float, variance : Float, rows : Int, cols : Int) ~ Float[,] {
+	method : native : DotSigmoid(a : Float[,], b : Float[,]) ~ Float[,] {
+		a_dims := a->Size();
+		a_rows := a_dims[0];
+		a_cols := a_dims[1];
+
+		b_dims := b->Size();
+		b_rows := b_dims[0];
+		b_cols := b_dims[1];
+
+		if(a_cols <> b_rows) {
+			return Nil;
+		};
+
+		c := Float->New[a_rows, b_cols];
+		for(a_col := 0; a_col < a_rows; a_col += 1;) {
+			for(b_col := 0; b_col < b_cols; b_col += 1;) {
+				cx := 0.0;
+				for(x_col := 0; x_col < b_rows; x_col += 1;) {
+					cx += a[a_col, x_col] * b[x_col, b_col];
+				};
+				c[a_col, b_col] := Sigmoid(cx);
+			};
+		};
+
+		return c;
+	}
+
+	method : RandomNormal(mean : Float, variance : Float, rows : Int, cols : Int) ~ Float[,] {
 		m := Float->New[rows, cols];
 
 		for(i := 0; i < rows; i += 1;) {
 			for(j := 0; j < cols; j += 1;) {
-				m[i,j] := Generate(mean, variance);
+				m[i,j] := RandomNormal(mean, variance);
 			};
 		};
 
 		return m;
 	}
 
-	method : Generate(mean : Float, variance : Float) ~ Float {
+	method : RandomNormal(mean : Float, variance : Float) ~ Float {
 		return  (-2.0 * variance * Float->Random()->Log())->SquareRoot() * (2.0 * Float->Pi() * Float->Random())->Cos() + mean;
 	}
 
-	method : Generate(n : Int) ~ Float[] {
+	method : RandomNormal(n : Int) ~ Float[] {
 		m := n + n % 2;
 		values := Float->New[m];
  		
@@ -232,23 +337,24 @@ class NeuralNetwork {
     	return values;
     }
 
-	function : Show(m : Float[,]) ~ Nil {
+	function : ToString(m : Float[,]) ~ String {
+		buffer := "";
+
 		dims := m->Size();
 		rows := dims[0];
 		cols := dims[1];
 
 		for(r := 0; r < rows; r +=1;) {
-			'['->Print();
+			buffer->Append('[');
 			for(c := 0; c < cols; c +=1;) {
-				m[r,c]->Print();
+				buffer->Append(m[r,c]);
 				if(c + 1 < cols) {
-					", "->Print();
-				}
-				else {
-					
+					buffer->Append(", ");
 				};
 			};
-			']'->PrintLine();
+			buffer->Append(']');
 		};
+
+		return buffer;
 	}
 }
