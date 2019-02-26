@@ -17,8 +17,19 @@ class NeuralNetwork {
 			[0.5]
 			[-1.5]];
 
+		targets := [
+			[0.5]
+			[0.5]
+			[0.5]];
+
 		# create instance of neural network
 		n := NeuralNetwork->New(input_nodes,hidden_nodes,output_nodes, learning_rate);
+
+		for(i := 0; i < 10000; i += 1;) {
+			n->Query(inputs);
+			n->Train(inputs, targets, learning_rate);
+		};
+
 		ToString(n->Query(inputs))->PrintLine();
 	}
 	
@@ -51,8 +62,8 @@ class NeuralNetwork {
         # hidden layer error is the output_errors, split by weights, recombined at hidden nodes
 		hidden_errors := Dot(Transpose(@weight_outputs_hidden), output_errors); 
 
-		Add(@weight_inputs_hidden, DeltaUpdate(output_errors, hidden_outputs, inputs, learning_rate));
-		Add(@weight_outputs_hidden, DeltaUpdate(output_errors, hidden_outputs, output_errors, learning_rate));
+		weight_inputs_hidden := Add(@weight_inputs_hidden, DeltaUpdate(output_errors, hidden_outputs, inputs, learning_rate));
+		@weight_outputs_hidden := Add(@weight_outputs_hidden, DeltaUpdate(output_errors, hidden_outputs, output_errors, learning_rate));
 		
 #~
         # update the weights for the links between the hidden and output layers
@@ -352,7 +363,7 @@ class NeuralNetwork {
 					buffer->Append(", ");
 				};
 			};
-			buffer->Append(']');
+			buffer->Append("]\n");
 		};
 
 		return buffer;
