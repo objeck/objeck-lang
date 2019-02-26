@@ -46,11 +46,10 @@ class NeuralNetwork {
         final_outputs  := DotSigmoid(@weight_outputs_hidden, hidden_outputs);
         # output layer error is the (target - actual)
         output_errors := Subtract(targets, final_outputs);
-#~
-		
         # hidden layer error is the output_errors, split by weights, recombined at hidden nodes
-        hidden_errors = numpy.dot(self.who.T, output_errors) 
-        
+		hidden_errors := Dot(Transpose(@weight_outputs_hidden), output_errors); 
+
+#~
         # update the weights for the links between the hidden and output layers
         self.who += self.lr * numpy.dot((output_errors * final_outputs * (1.0 - final_outputs)), numpy.transpose(hidden_outputs))
         
@@ -156,6 +155,33 @@ class NeuralNetwork {
 					cx += a[a_col, x_col] * b[x_col, b_col];
 				};
 				c[a_col, b_col] := Sigmoid(cx);
+			};
+		};
+
+		return c;
+	}
+
+	method : native : Dot(a : Float[,], b : Float[,]) ~ Float[,] {
+		a_dims := a->Size();
+		a_rows := a_dims[0];
+		a_cols := a_dims[1];
+
+		b_dims := b->Size();
+		b_rows := b_dims[0];
+		b_cols := b_dims[1];
+
+		if(a_cols <> b_rows) {
+			return Nil;
+		};
+
+		c := Float->New[a_rows, b_cols];
+		for(a_col := 0; a_col < a_rows; a_col += 1;) {
+			for(b_col := 0; b_col < b_cols; b_col += 1;) {
+				cx := 0.0;
+				for(x_col := 0; x_col < b_rows; x_col += 1;) {
+					cx += a[a_col, x_col] * b[x_col, b_col];
+				};
+				c[a_col, b_col] := cx;
 			};
 		};
 
