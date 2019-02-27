@@ -7,113 +7,101 @@ class NeuralNetwork {
 	@weight_outputs_hidden : Float[,];
 
 	function : Main(args : String[]) ~ Nil {
-		input_nodes := 3;
-		hidden_nodes := 3;
-		output_nodes := 3;
-		learning_rate := 0.3;
+#~		
+		a := [
+			[1.0, 3.0, -5.0]];
 
+		b := [
+			[4.0, 7.7]
+			[-2.0, 8.0]
+			[-1.0, 9.0]];
+
+		ToString(Dot(a,b))->PrintLine();
+		ToString(Dot(b,a))->PrintLine();
+~#
+
+		input_nodes := 2;
+		hidden_nodes := 2;
+		output_nodes := 1;
+		learning_rate := 0.5;
+
+		# ---
 		i0 := [
-			[0.5]
-			[0.0]
-			[0.5]];
+			[0.0, 0.0]];
 
 		t0 := [
-			[0.5]
-			[0.0]
-			[0.0]];
+			[0.0, 0.0]];
 
 		# ---
-
 		i1 := [
-			[0.5]
-			[0.5]
-			[0.0]];
+			[0.7, 0.7]];
 
 		t1 := [
-			[0.5]
-			[0.0]
-			[0.0]];
+			[1.0, 1.0]];
 
 		# ---
-
 		i2 := [
-			[0.0]
-			[0.5]
-			[0.5]];
+			[0.7, 0.0]];
 
 		t2 := [
-			[0.5]
-			[0.0]
-			[0.0]];
+			[0.0, 0.0]];
 
 		# ---
-
 		i3 := [
-			[0.0]
-			[0.0]
-			[0.5]];
+			[0.0, 0.7]];
 
 		t3 := [
-			[0.0]
-			[0.0]
-			[0.0]];
+			[0.0, 0.0]];
+
+		#~ ---
+		i1 := [
+			[0.0, 1.0, 1.0]];
+
+		t1 := [
+			[1.0, 1.0, 1.0]];
 
 		# ---
+		i2 := [
+			[1.0, 0.0, 1.0]];
 
+		t2 := [
+			[1.0, 1.0, 1.0]];
+
+		# ---
+		i3 := [
+			[0.0, 0.0, 0.0]];
+
+		t3 := [
+			[0.0, 0.0, 0.0]];
+
+		# ---
 		i4 := [
-			[0.0]
-			[0.0]
-			[0.5]];
+			[1.0, 0.0, 0.0]];
 
 		t4 := [
-			[0.0]
-			[0.0]
-			[0.0]];
+			[0.0, 0.0, 0.0]];
 
 		# ---
-
 		i5 := [
-			[0.5]
-			[0.0]
-			[0.0]];
+			[0.0, 1.0, 0.0]];
 
 		t5 := [
-			[0.0]
-			[0.0]
-			[0.0]];
+			[0.0, 0.0, 0.0]];
 
 		# ---
-
 		i6 := [
-			[0.0]
-			[0.5]
-			[0.0]];
+			[0.0, 0.0, 1.0]];
 
 		t6 := [
-			[0.0]
-			[0.0]
-			[0.0]];
-
-		# ---
-
-		i7 := [
-			[0.0]
-			[0.0]
-			[0.0]];
-
-		t7 := [
-			[0.0]
-			[0.0]
-			[0.0]];
-
-		# ---
-
+			[0.0, 0.0, 0.0]];
+~#
 		# create instance of neural network
-		n := NeuralNetwork->New(input_nodes,hidden_nodes,output_nodes, learning_rate);
-		for(i := 0; i < 1000; i += 1;) {
+		n := NeuralNetwork->New(input_nodes, hidden_nodes, output_nodes, learning_rate);
+		for(i := 0; i < 100; i += 1;) {
 			inputs : Float[,];
 			targets : Float[,];
-			select(i % 8) {
+			s := i % 4;
+			select(s) {
 				label 0: {
 					inputs := i0;
 					targets := t0;
@@ -133,7 +121,7 @@ class NeuralNetwork {
 					inputs := i3;
 					targets := t3;
 				}
-
+#~
 				label 4: {
 					inputs := i4;
 					targets := t4;
@@ -148,21 +136,14 @@ class NeuralNetwork {
 					inputs := i6;
 					targets := t6;
 				}
-
-				label 7: {
-					inputs := i7;
-					targets := t7;
-				}
+~#				
 			};
 			n->Train(inputs, targets, learning_rate);
 		};
 
-		test := [
-			[10.0]
-			[0.0]
-			[0.5]];
+		test :=[
+			[0.7, 0.7]];
 		ToString(n->Query(test))->Print();
-
 	}
 	
 	New(input_nodes : Float, hidden_nodes : Float, output_nodes : Float, learning_rate : Float) {
@@ -185,33 +166,63 @@ class NeuralNetwork {
 	}
 
 	method : Train(inputs : Float[,], targets : Float[,], learning_rate : Float) ~ Nil {
+if(@weight_outputs_hidden = Nil) {
+	"******** @weight_outputs_hidden NULL"->PrintLine();
+};
+
 		# calculate signals into hidden layer
         hidden_outputs := DotSigmoid(@weight_inputs_hidden, inputs);
         # calculate signals into final output layer
         final_outputs  := DotSigmoid(@weight_outputs_hidden, hidden_outputs);
         # output layer error is the (target - actual)
         output_errors := Subtract(targets, final_outputs);
-# ToString(output_errors)->Print();        
         # hidden layer error is the output_errors, split by weights, recombined at hidden nodes
 		hidden_errors := Dot(Transpose(@weight_outputs_hidden), output_errors); 
 
-		@weight_inputs_hidden := Add(@weight_inputs_hidden, DeltaUpdate(output_errors, hidden_outputs, inputs, learning_rate));
-		@weight_outputs_hidden := Add(@weight_outputs_hidden, DeltaUpdate(output_errors, hidden_outputs, output_errors, learning_rate));
-		
-#~
-        # update the weights for the links between the hidden and output layers
-        self.who += self.lr * numpy.dot((output_errors * final_outputs * 
-        	(1.0 - final_outputs)), numpy.transpose(hidden_outputs))
-        
-        # update the weights for the links between the input and hidden layers
-        self.wih += self.lr * numpy.dot((hidden_errors * hidden_outputs * 
-        	(1.0 - hidden_outputs)), numpy.transpose(inputs))
-~#
+
+
+if(hidden_outputs = Nil) {
+	"******** hidden_outputs NULL"->PrintLine();
+};
+
+if(hidden_errors = Nil) {
+	"******** hidden_errors NULL"->PrintLine();
+};
+
+if(output_errors = Nil) {
+	"******** output_errors NULL"->PrintLine();
+};
+
+if(final_outputs = Nil) {
+	"******** final_outputs NULL"->PrintLine();
+};
+
+
+
+# self.wih += self.lr * numpy.dot((hidden_errors * hidden_outputs * (1.0 - hidden_outputs)), numpy.transpose(inputs))
+x := DeltaUpdate(learning_rate, hidden_errors, hidden_outputs, inputs);
+if(x = Nil) {
+	"******** x"->PrintLine();
+};
+ToString(x)->Print();
+
+if(@weight_inputs_hidden = Nil) {
+	"******** @weight_inputs_hidden"->PrintLine();
+};
+		y := Add(@weight_inputs_hidden, x);
+
+if(y = Nil) {
+	"******** y"->PrintLine();
+};
+
+@weight_inputs_hidden := y;
+
+# self.who += self.lr * numpy.dot((output_errors * final_outputs * (1.0 - final_outputs)), numpy.transpose(hidden_outputs))
+		@weight_outputs_hidden := Add(@weight_outputs_hidden, DeltaUpdate(learning_rate, output_errors, final_outputs, hidden_outputs));		
 	}
 
-	method : native : DeltaUpdate(errors : Float[,], inputs : Float[,], outputs : Float[,], learning_rate : Float) ~ Float[,] {
-		factor := Multiple(errors, Multiple(outputs, Subtract(1.0, outputs)));
-		return Multiple(learning_rate, Dot(factor, Transpose(inputs)));
+	method : native : DeltaUpdate(rate : Float, errors : Float[,], outputs : Float[,], inputs : Float[,]) ~ Float[,] {
+		return Multiple(rate, Dot(Multiple(errors, Multiple(outputs, Subtract(1.0, outputs))), Transpose(inputs)));
 	}
 
 	# ----------
@@ -241,6 +252,8 @@ class NeuralNetwork {
 		b_cols := b_dims[1];
 
 		if( a_rows <> b_rows | a_cols <> b_cols) {
+"Add = A: [{$a_rows},{$a_cols}], B: [{$b_rows},{$b_cols}]"->PrintLine();		
+
 			return Nil;
 		};
 
@@ -383,16 +396,16 @@ class NeuralNetwork {
 		return b;
 	}
 
-	method : native : Dot(a : Float[,], b : Float[,]) ~ Float[,] {
+	function : native : Dot(a : Float[,], b : Float[,]) ~ Float[,] {
 		a_dims := a->Size();
 		a_rows := a_dims[0];
 		a_cols := a_dims[1];
-
 		b_dims := b->Size();
 		b_rows := b_dims[0];
 		b_cols := b_dims[1];
 
-		if(a_cols <> b_rows) {
+		if(a_cols <> b_rows & a_rows <> b_cols) {
+"Dot = A: [{$a_rows},{$a_cols}], B: [{$b_rows},{$b_cols}]"->PrintLine();		
 			return Nil;
 		};
 
@@ -423,7 +436,11 @@ class NeuralNetwork {
 		b_rows := b_dims[0];
 		b_cols := b_dims[1];
 
-		if(a_cols <> b_rows) {
+
+"\tDotSigmoid = A: [{$a_rows},{$a_cols}], B: [{$b_rows},{$b_cols}]"->PrintLine();
+
+
+		if(a_cols <> b_rows & a_rows <> b_cols) {
 			return Nil;
 		};
 
