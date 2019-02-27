@@ -22,82 +22,57 @@ class NeuralNetwork {
 
 		input_nodes := 2;
 		hidden_nodes := 2;
-		output_nodes := 1;
-		learning_rate := 0.5;
+		output_nodes := 2;
+		learning_rate := 0.35;
 
 		# ---
 		i0 := [
+			[0.0, 0.0]
 			[0.0, 0.0]];
 
 		t0 := [
+			[0.0, 0.0]
 			[0.0, 0.0]];
 
 		# ---
 		i1 := [
-			[0.7, 0.7]];
+			[1.0, 0.0]
+			[0.0, 0.0]];
 
 		t1 := [
-			[1.0, 1.0]];
+			[0.0, 0.0]
+			[0.0, 1.0]];
 
 		# ---
 		i2 := [
-			[0.7, 0.0]];
+			[0.0, 1.0]
+			[0.0, 0.0]];
 
 		t2 := [
-			[0.0, 0.0]];
+			[0.0, 0.0]
+			[1.0, 0.0]];
 
 		# ---
 		i3 := [
-			[0.0, 0.7]];
+			[0.0, 0.0]
+			[1.0, 0.0]];
 
 		t3 := [
+			[0.0, 1.0]
 			[0.0, 0.0]];
-
-		#~ ---
-		i1 := [
-			[0.0, 1.0, 1.0]];
-
-		t1 := [
-			[1.0, 1.0, 1.0]];
-
-		# ---
-		i2 := [
-			[1.0, 0.0, 1.0]];
-
-		t2 := [
-			[1.0, 1.0, 1.0]];
-
-		# ---
-		i3 := [
-			[0.0, 0.0, 0.0]];
-
-		t3 := [
-			[0.0, 0.0, 0.0]];
 
 		# ---
 		i4 := [
-			[1.0, 0.0, 0.0]];
+			[0.0, 0.0]
+			[0.0, 1.0]];
 
 		t4 := [
-			[0.0, 0.0, 0.0]];
+			[1.0, 0.0]
+			[0.0, 0.0]];
 
-		# ---
-		i5 := [
-			[0.0, 1.0, 0.0]];
-
-		t5 := [
-			[0.0, 0.0, 0.0]];
-
-		# ---
-		i6 := [
-			[0.0, 0.0, 1.0]];
-
-		t6 := [
-			[0.0, 0.0, 0.0]];
-~#
 		# create instance of neural network
 		n := NeuralNetwork->New(input_nodes, hidden_nodes, output_nodes, learning_rate);
-		for(i := 0; i < 100; i += 1;) {
+		for(i := 0; i < 1000; i += 1;) {
 			inputs : Float[,];
 			targets : Float[,];
 			s := i % 4;
@@ -121,28 +96,18 @@ class NeuralNetwork {
 					inputs := i3;
 					targets := t3;
 				}
-#~
+
 				label 4: {
 					inputs := i4;
 					targets := t4;
 				}
-
-				label 5: {
-					inputs := i5;
-					targets := t5;
-				}
-
-				label 6: {
-					inputs := i6;
-					targets := t6;
-				}
-~#				
 			};
 			n->Train(inputs, targets, learning_rate);
 		};
 
 		test :=[
-			[0.7, 0.7]];
+			[0.0, 1.0]
+			[0.0, 0.0]];
 		ToString(n->Query(test))->Print();
 	}
 	
@@ -166,10 +131,6 @@ class NeuralNetwork {
 	}
 
 	method : Train(inputs : Float[,], targets : Float[,], learning_rate : Float) ~ Nil {
-if(@weight_outputs_hidden = Nil) {
-	"******** @weight_outputs_hidden NULL"->PrintLine();
-};
-
 		# calculate signals into hidden layer
         hidden_outputs := DotSigmoid(@weight_inputs_hidden, inputs);
         # calculate signals into final output layer
@@ -177,46 +138,10 @@ if(@weight_outputs_hidden = Nil) {
         # output layer error is the (target - actual)
         output_errors := Subtract(targets, final_outputs);
         # hidden layer error is the output_errors, split by weights, recombined at hidden nodes
-		hidden_errors := Dot(Transpose(@weight_outputs_hidden), output_errors); 
-
-
-
-if(hidden_outputs = Nil) {
-	"******** hidden_outputs NULL"->PrintLine();
-};
-
-if(hidden_errors = Nil) {
-	"******** hidden_errors NULL"->PrintLine();
-};
-
-if(output_errors = Nil) {
-	"******** output_errors NULL"->PrintLine();
-};
-
-if(final_outputs = Nil) {
-	"******** final_outputs NULL"->PrintLine();
-};
-
-
+		hidden_errors := Dot(Transpose(@weight_outputs_hidden), output_errors);
 
 # self.wih += self.lr * numpy.dot((hidden_errors * hidden_outputs * (1.0 - hidden_outputs)), numpy.transpose(inputs))
-x := DeltaUpdate(learning_rate, hidden_errors, hidden_outputs, inputs);
-if(x = Nil) {
-	"******** x"->PrintLine();
-};
-ToString(x)->Print();
-
-if(@weight_inputs_hidden = Nil) {
-	"******** @weight_inputs_hidden"->PrintLine();
-};
-		y := Add(@weight_inputs_hidden, x);
-
-if(y = Nil) {
-	"******** y"->PrintLine();
-};
-
-@weight_inputs_hidden := y;
-
+		@weight_inputs_hidden := Add(@weight_inputs_hidden, DeltaUpdate(learning_rate, hidden_errors, hidden_outputs, inputs));
 # self.who += self.lr * numpy.dot((output_errors * final_outputs * (1.0 - final_outputs)), numpy.transpose(hidden_outputs))
 		@weight_outputs_hidden := Add(@weight_outputs_hidden, DeltaUpdate(learning_rate, output_errors, final_outputs, hidden_outputs));		
 	}
@@ -252,7 +177,7 @@ if(y = Nil) {
 		b_cols := b_dims[1];
 
 		if( a_rows <> b_rows | a_cols <> b_cols) {
-"Add = A: [{$a_rows},{$a_cols}], B: [{$b_rows},{$b_cols}]"->PrintLine();		
+# "Add = A: [{$a_rows},{$a_cols}], B: [{$b_rows},{$b_cols}]"->PrintLine();		
 
 			return Nil;
 		};
@@ -405,7 +330,7 @@ if(y = Nil) {
 		b_cols := b_dims[1];
 
 		if(a_cols <> b_rows & a_rows <> b_cols) {
-"Dot = A: [{$a_rows},{$a_cols}], B: [{$b_rows},{$b_cols}]"->PrintLine();		
+# "Dot = A: [{$a_rows},{$a_cols}], B: [{$b_rows},{$b_cols}]"->PrintLine();		
 			return Nil;
 		};
 
@@ -437,7 +362,7 @@ if(y = Nil) {
 		b_cols := b_dims[1];
 
 
-"\tDotSigmoid = A: [{$a_rows},{$a_cols}], B: [{$b_rows},{$b_cols}]"->PrintLine();
+# "DotSigmoid = A: [{$a_rows},{$a_cols}], B: [{$b_rows},{$b_cols}]"->PrintLine();
 
 
 		if(a_cols <> b_rows & a_rows <> b_cols) {
