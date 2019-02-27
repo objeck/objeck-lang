@@ -12,25 +12,157 @@ class NeuralNetwork {
 		output_nodes := 3;
 		learning_rate := 0.3;
 
-		inputs := [
-			[1.0]
+		i0 := [
 			[0.5]
-			[-1.5]];
+			[0.0]
+			[0.5]];
 
-		targets := [
+		t0 := [
 			[0.5]
+			[0.0]
+			[0.0]];
+
+		# ---
+
+		i1 := [
+			[0.5]
+			[0.5]
+			[0.0]];
+
+		t1 := [
+			[0.5]
+			[0.0]
+			[0.0]];
+
+		# ---
+
+		i2 := [
+			[0.0]
 			[0.5]
 			[0.5]];
 
+		t2 := [
+			[0.5]
+			[0.0]
+			[0.0]];
+
+		# ---
+
+		i3 := [
+			[0.0]
+			[0.0]
+			[0.5]];
+
+		t3 := [
+			[0.0]
+			[0.0]
+			[0.0]];
+
+		# ---
+
+		i4 := [
+			[0.0]
+			[0.0]
+			[0.5]];
+
+		t4 := [
+			[0.0]
+			[0.0]
+			[0.0]];
+
+		# ---
+
+		i5 := [
+			[0.5]
+			[0.0]
+			[0.0]];
+
+		t5 := [
+			[0.0]
+			[0.0]
+			[0.0]];
+
+		# ---
+
+		i6 := [
+			[0.0]
+			[0.5]
+			[0.0]];
+
+		t6 := [
+			[0.0]
+			[0.0]
+			[0.0]];
+
+		# ---
+
+		i7 := [
+			[0.0]
+			[0.0]
+			[0.0]];
+
+		t7 := [
+			[0.0]
+			[0.0]
+			[0.0]];
+
+		# ---
+
 		# create instance of neural network
 		n := NeuralNetwork->New(input_nodes,hidden_nodes,output_nodes, learning_rate);
+		for(i := 0; i < 1000; i += 1;) {
+			inputs : Float[,];
+			targets : Float[,];
+			select(i % 8) {
+				label 0: {
+					inputs := i0;
+					targets := t0;
+				}
 
-		for(i := 0; i < 10000; i += 1;) {
-			n->Query(inputs);
+				label 1: {
+					inputs := i1;
+					targets := t1;
+				}
+
+				label 2: {
+					inputs := i2;
+					targets := t2;
+				}
+
+				label 3: {
+					inputs := i3;
+					targets := t3;
+				}
+
+				label 4: {
+					inputs := i4;
+					targets := t4;
+				}
+
+				label 5: {
+					inputs := i5;
+					targets := t5;
+				}
+
+				label 6: {
+					inputs := i6;
+					targets := t6;
+				}
+
+				label 7: {
+					inputs := i7;
+					targets := t7;
+				}
+			};
 			n->Train(inputs, targets, learning_rate);
 		};
 
-		ToString(n->Query(inputs))->PrintLine();
+		test := [
+			[10.0]
+			[0.0]
+			[0.5]];
+		ToString(n->Query(test))->Print();
+
 	}
 	
 	New(input_nodes : Float, hidden_nodes : Float, output_nodes : Float, learning_rate : Float) {
@@ -59,10 +191,11 @@ class NeuralNetwork {
         final_outputs  := DotSigmoid(@weight_outputs_hidden, hidden_outputs);
         # output layer error is the (target - actual)
         output_errors := Subtract(targets, final_outputs);
+# ToString(output_errors)->Print();        
         # hidden layer error is the output_errors, split by weights, recombined at hidden nodes
 		hidden_errors := Dot(Transpose(@weight_outputs_hidden), output_errors); 
 
-		weight_inputs_hidden := Add(@weight_inputs_hidden, DeltaUpdate(output_errors, hidden_outputs, inputs, learning_rate));
+		@weight_inputs_hidden := Add(@weight_inputs_hidden, DeltaUpdate(output_errors, hidden_outputs, inputs, learning_rate));
 		@weight_outputs_hidden := Add(@weight_outputs_hidden, DeltaUpdate(output_errors, hidden_outputs, output_errors, learning_rate));
 		
 #~
