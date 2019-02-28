@@ -44,7 +44,7 @@ class NeuralNetwork {
 
 		network := NeuralNetwork->New(input_nodes, hidden_nodes, output_nodes, learning_rate);
 
-		for(i := 0; i < 5000; i += 1;) {
+		for(i := 0; i < 2500; i += 1;) {
 			inputs : Float[,];	targets : Float[,];
 			select(i % 4) {
 				label 0: {
@@ -72,11 +72,12 @@ class NeuralNetwork {
 		};
 
 		in := [
-			[0.0]
-			[1.0]];
+			[1.75]
+			[0.25]];
 		out := network->Query(in);
 
-		Matrix2D->Divide(out, 0.5)->ToString()->Print();
+		out->ToString()->Print();
+#		Matrix2D->Divide(out, 0.5)->ToString()->Print();
 	}
 	
 	New(input_nodes : Float, hidden_nodes : Float, output_nodes : Float, learning_rate : Float) {
@@ -108,12 +109,12 @@ class NeuralNetwork {
         # hidden layer error is the output_errors, split by weights, recombined at hidden nodes
 		hidden_errors := Matrix2D->Dot(Matrix2D->Transpose(@weight_outputs_hidden), output_errors);
 		# update the weights for the links between the input and hidden layers
-		@weight_inputs_hidden := Matrix2D->Add(@weight_inputs_hidden, AdjustWeights(learning_rate, hidden_errors, hidden_outputs, inputs));
+		@weight_inputs_hidden := Matrix2D->Add(@weight_inputs_hidden, Adjust(learning_rate, hidden_errors, hidden_outputs, inputs));
 		# update the weights for the links between the hidden and output layers
-		@weight_outputs_hidden := Matrix2D->Add(@weight_outputs_hidden, AdjustWeights(learning_rate, output_errors, final_outputs, hidden_outputs));		
+		@weight_outputs_hidden := Matrix2D->Add(@weight_outputs_hidden, Adjust(learning_rate, output_errors, final_outputs, hidden_outputs));		
 	}
 
-	method : AdjustWeights(rate : Float, errors : Float[,], outputs : Float[,], inputs : Float[,]) ~ Float[,] {
+	method : Adjust(rate : Float, errors : Float[,], outputs : Float[,], inputs : Float[,]) ~ Float[,] {
 		return Matrix2D->Multiple(rate, Matrix2D->Dot(Matrix2D->Multiple(errors, Matrix2D->Multiple(outputs, Matrix2D->Subtract(1.0, outputs))), Matrix2D->Transpose(inputs)));
 	}
 }
