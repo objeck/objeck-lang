@@ -3930,7 +3930,7 @@ bundle System.Matrix {
 
 		#~
 		Generates a random 2D array of values from 0.0 to 1.0
-		@param row rows
+		@param rows rows
 		@param cols columns
 		@return updated matrix
 		~#
@@ -3950,7 +3950,7 @@ bundle System.Matrix {
 		Generates a random normal distribution of values
 		@param mean center of values
 		@param variance variance in values
-		@param row rows
+		@param rows rows
 		@param cols columns
 		@return updated matrix
 		~#
