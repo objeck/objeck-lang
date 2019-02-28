@@ -3526,6 +3526,9 @@ bundle System.Concurrency {
 Provides support for matrix math
 ~#
 bundle System.Matrix {
+	#~
+	Encapsulates 2D matrix operations
+	~#
 	class Matrix2D {
 		#~
 		Adds a constant to a matrix
@@ -3864,10 +3867,20 @@ bundle System.Matrix {
 			return c;
 		}
 
+		#~
+		Sigmoid 'S' function
+		@param x input value
+		@return Sigmoid value
+		~#
 		function : native : Sigmoid(x : Float) ~ Float {
 			return 1.0 / (1.0 + Float->Power(Float->E(), -1.0 * x));
 		}
 
+		#~
+		Applies the Sigmoid function to all elements
+		@param b matrix
+		@return updated matrix
+		~#
 		function : native : Sigmoid(b : Float[,]) ~ Float[,] {
 			b_dims := b->Size();
 			b_rows := b_dims[0];
@@ -3883,6 +3896,11 @@ bundle System.Matrix {
 			return c;
 		}
 		
+		#~
+		Calculates the Dot Product applying while applying the Sigmoid function to all elements
+		@param b matrix
+		@return updated matrix
+		~#
 		function : native : DotSigmoid(a : Float[,], b : Float[,]) ~ Float[,] {
 			a_dims := a->Size();
 			a_rows := a_dims[0];
@@ -3910,6 +3928,12 @@ bundle System.Matrix {
 			return c;
 		}
 
+		#~
+		Generates a random 2D array of values from 0.0 to 1.0
+		@param row rows
+		@param cols columns
+		@return updated matrix
+		~#
 		function : Random(rows : Int, cols : Int) ~ Float[,] {
 			m := Float->New[rows, cols];
 
@@ -3922,6 +3946,14 @@ bundle System.Matrix {
 			return m;
 		}
 		
+		#~
+		Generates a random normal distribution of values
+		@param mean center of values
+		@param variance variance in values
+		@param row rows
+		@param cols columns
+		@return updated matrix
+		~#
 		function : RandomNormal(mean : Float, variance : Float, rows : Int, cols : Int) ~ Float[,] {
 			m := Float->New[rows, cols];
 
@@ -3934,32 +3966,14 @@ bundle System.Matrix {
 			return m;
 		}
 
+		#~
+		Generates a random normal value
+		@param mean center of values
+		@param variance variance in values
+		@return updated matrix
+		~#
 		function : RandomNormal(mean : Float, variance : Float) ~ Float {
 			return  (-2.0 * variance * Float->Random()->Log())->SquareRoot() * (2.0 * Float->Pi() * Float->Random())->Cos() + mean;
-		}
-
-		function : RandomNormal(n : Int) ~ Float[] {
-			m := n + n % 2;
-			values := Float->New[m];
-	 		
-		    for(i := 0; i < m; i += 2;) {
-		        x : Float;
-		        y : Float;
-		        rsq : Float;
-		        
-		        do {
-		            x := 2.0 * Float->Random() - 1.0;
-		            y := 2.0 * Float->Random() - 1.0;
-		            rsq := x * x + y * y;
-		        }
-		        while(rsq >= 1.0 | rsq = 0.0);
-		        
-		        f := (-2.0 * rsq->Log() / rsq)->SquareRoot();
-		        values[i] := x * f;
-		        values[i + 1] := y * f;
-		    };
-
-			return values;
 		}
 	}
 }
