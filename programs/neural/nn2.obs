@@ -12,92 +12,6 @@ class NeuralNetwork {
 		output_nodes := 1;
 		learning_rate := 0.5;
 
-#~
-		# ---
-		i0 := [
-			[0.0, 0.0]
-			[0.0, 0.0]];
-
-		t0 := [
-			[0.0, 0.0]
-			[0.0, 0.0]];
-
-		# ---
-		i1 := [
-			[1.0, 0.0]
-			[0.0, 0.0]];
-
-		t1 := [
-			[0.0, 0.0]
-			[0.0, 1.0]];
-
-		# ---
-		i2 := [
-			[0.0, 1.0]
-			[0.0, 0.0]];
-
-		t2 := [
-			[0.0, 0.0]
-			[1.0, 0.0]];
-
-		# ---
-		i3 := [
-			[0.0, 0.0]
-			[1.0, 0.0]];
-
-		t3 := [
-			[0.0, 1.0]
-			[0.0, 0.0]];
-
-		# ---
-		i4 := [
-			[0.0, 0.0]
-			[0.0, 1.0]];
-
-		t4 := [
-			[1.0, 0.0]
-			[0.0, 0.0]];
-
-		# create instance of neural network
-		n := NeuralNetwork->New(input_nodes, hidden_nodes, output_nodes, learning_rate);
-		for(i := 0; i < 1000; i += 1;) {
-			inputs : Float[,];
-			targets : Float[,];
-			s := i % 4;
-			select(s) {
-				label 0: {
-					inputs := i0;
-					targets := t0;
-				}
-
-				label 1: {
-					inputs := i1;
-					targets := t1;
-				}
-
-				label 2: {
-					inputs := i2;
-					targets := t2;
-				}
-
-				label 3: {
-					inputs := i3;
-					targets := t3;
-				}
-
-				label 4: {
-					inputs := i4;
-					targets := t4;
-				}
-			};
-			n->Train(inputs, targets, learning_rate);
-		};
-
-		test :=[
-			[0.0, 1.0]
-			[0.0, 0.0]];
-		ToString(n->Query(test))->Print();
-~#	
 		i0 :=[
 			[0.0]
 			[0.0]];
@@ -157,7 +71,7 @@ class NeuralNetwork {
 
 		in := [
 			[0.0]
-			[0.0]];
+			[1.0]];
 
 		ToString(network->Query(in))->Print();
 	}
@@ -190,10 +104,9 @@ class NeuralNetwork {
         output_errors := Subtract(targets, final_outputs);
         # hidden layer error is the output_errors, split by weights, recombined at hidden nodes
 		hidden_errors := Dot(Transpose(@weight_outputs_hidden), output_errors);
-
-# self.wih += self.lr * numpy.dot((hidden_errors * hidden_outputs * (1.0 - hidden_outputs)), numpy.transpose(inputs))
+		# update the weights for the links between the input and hidden layers
 		@weight_inputs_hidden := Add(@weight_inputs_hidden, DeltaUpdate(learning_rate, hidden_errors, hidden_outputs, inputs));
-# self.who += self.lr * numpy.dot((output_errors * final_outputs * (1.0 - final_outputs)), numpy.transpose(hidden_outputs))
+		# update the weights for the links between the hidden and output layers
 		@weight_outputs_hidden := Add(@weight_outputs_hidden, DeltaUpdate(learning_rate, output_errors, final_outputs, hidden_outputs));		
 	}
 
