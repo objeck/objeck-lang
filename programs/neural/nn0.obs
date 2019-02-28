@@ -1,209 +1,111 @@
 class BasicAi {
 	function : Main(args : String[]) ~ Nil {
-#~		
-		w0 := [
-			[0.9, 0.3, 0.4]
-			[0.2, 0.8, 0.2]
-			[0.1, 0.5, 0.6]];
-			
-		w1 := [
-			[0.3, 0.7, 0.5]
-			[0.6, 0.5, 0.2]
-			[0.8, 0.1, 0.9]];
-			
-		w0 := Generate2D(0.0, Float->Power(3.0, -0.5), 3, 3);
-		w1 := Generate2D(0.0, Float->Power(3.0, -0.5), 3, 3);
-
-		i0 := [
-			[1.0]
-			[0.5]
-			[-1.5]];
-
-		i1 := Dot(w0, i0);
-		if(i1 <> Nil) {
-			i2 := Dot(w1, i1);
-			if(i2 <> Nil) {
-				Show(i2);
-			};
-		};
-~#		
-
 		a := [
-			[5.0, -3.5]				
-			[-2.0, 2.0]];
-
+			[1.0, 2.0]
+			[3.0, 4.0]];
+			
 		b := [
-			[3.0, -1.5]				
-			[3.7, -2.1]];
+			[5.0, 6.0, 7.0]
+			[8.0, 9.0, 10.0]];
 
-		c := Subtract(a, b);
-		Show(c);					
+		c := [
+			[1.0, 2.0]
+			[3.0, 4.0]];
+			
+		d := [
+			[5.0, 6.0]
+			[7.0, 8.0]
+			[9.0, 10.0]
+			[9.0, 10.0]
+			[9.0, 10.0]];
+
+#		x := Concatenate(c, d);
+#		x->ToString()->PrintLine();
+
+		x := Split(d, 3);
+		x->ToString()->PrintLine();
 	}
-	
-	function : native : Transpose(a : Float[,]) ~ Float[,] {
-		dim := a->Size();
-		rows := dim[0];
-		cols := dim[1];
 
-		b := Float->New[cols, rows];
-		for(r := 0; r < rows; r += 1;) {
-			for(c := 0; c < cols; c += 1;) {
-				b[c,r] := a[r,c];
-			};
-		};
-
-		return b;
-	}
-
-	function : native : Subtract(a : Float[,], b : Float[,]) ~ Float[,] {
-		a_dims := a->Size();
-		a_rows := a_dims[0];
-		a_cols := a_dims[1];
-
+	function : Split(b : Float[,], index : Int, is_row : Bool := true) ~ Float[,] {
 		b_dims := b->Size();
 		b_rows := b_dims[0];
 		b_cols := b_dims[1];
 
-		if( a_rows <> b_rows | a_cols <> b_cols) {
-			return Nil;
-		};
+# "B: [{$b_rows},{$b_cols}, {$is_row}]"->PrintLine();
 
-		c := Float->New[a_rows, b_cols];
-		for(i := 0; i < a_rows; i += 1;) {
-			for(j := 0; j < b_cols; j += 1;) {
-				c[i,j] := a[i,j] - b[i,j];
+		c : Float[,];
+		if(is_row) {
+			if(index < 0 | index >= b_rows) {
+				return Nil;
 			};
-		};
-
-		return c;
-	}
-
-	function : native : Add(x : Float, b : Float[,]) ~ Float[,] {
-		b_dims := b->Size();
-		b_rows := b_dims[0];
-		b_cols := b_dims[1];
-
-		c := Float->New[b_rows, b_cols];
-		for(i := 0; i < b_rows; i += 1;) {
-			for(j := 0; j < b_cols; j += 1;) {
-				c[i,j] := x - b[i,j];
-			};
-		};
-
-		return c;
-	}
-
-	function : native : Multiple(a : Float[,], b : Float[,]) ~ Float[,] {
-		a_dims := a->Size();
-		a_rows := a_dims[0];
-		a_cols := a_dims[1];
-
-		b_dims := b->Size();
-		b_rows := b_dims[0];
-		b_cols := b_dims[1];
-
-		if( a_rows <> b_rows | a_cols <> b_cols) {
-			return Nil;
-		};
-
-		c := Float->New[a_rows, b_cols];
-		for(i := 0; i < a_rows; i += 1;) {
-			for(j := 0; j < b_cols; j += 1;) {
-				c[i,j] := a[i,j] * b[i,j];
-			};
-		};
-
-		return c;
-	}
-
-	function : native : Dot(a : Float[,], b : Float[,]) ~ Float[,] {
-		a_dims := a->Size();
-		a_rows := a_dims[0];
-		a_cols := a_dims[1];
-
-		b_dims := b->Size();
-		b_rows := b_dims[0];
-		b_cols := b_dims[1];
-
-		if(a_cols <> b_rows) {
-			return Nil;
-		};
-
-		c := Float->New[a_rows, b_cols];
-		for(a_col := 0; a_col < a_rows; a_col += 1;) {
-			for(b_col := 0; b_col < b_cols; b_col += 1;) {
-				cx := 0.0;
-				for(x_col := 0; x_col < b_rows; x_col += 1;) {
-					cx += a[a_col, x_col] * b[x_col, b_col];
-				};
-				c[a_col, b_col] := Sigmoid(cx);
-			};
-		};
-
-		return c;
-	}
-
-	function : native : Sigmoid(x : Float) ~ Float {
-		return 1.0 / (1.0 + Float->Power(Float->E(), -1.0 * x));
-	}
-
-	function : Generate2D(mean : Float, variance : Float, rows : Int, cols : Int) ~ Float[,] {
-		m := Float->New[rows, cols];
-
-		for(i := 0; i < rows; i += 1;) {
-			for(j := 0; j < cols; j += 1;) {
-				m[i,j] := Generate(mean, variance);
-			};
-		};
-
-		return m;
-	}
-
-	function : Generate(mean : Float, variance : Float) ~ Float {
-		return  (-2.0 * variance * Float->Random()->Log())->SquareRoot() * (2.0 * Float->Pi() * Float->Random())->Cos() + mean;
-	}
-
-	function : Generate(n : Int) ~ Float[] {
-		m := n + n % 2;
-		values := Float->New[m];
- 		
-        for(i := 0; i < m; i += 2;) {
-            x : Float;
-            y : Float;
-            rsq : Float;
-            
-            do {
-                x := 2.0 * Float->Random() - 1.0;
-                y := 2.0 * Float->Random() - 1.0;
-                rsq := x * x + y * y;
-            }
-            while(rsq >= 1.0 | rsq = 0.0);
-            
-            f := (-2.0 * rsq->Log() / rsq)->SquareRoot();
-            values[i] := x * f;
-            values[i + 1] := y * f;
-        };
-
-    	return values;
-    }
-
-	function : Show(m : Float[,]) ~ Nil {
-		dims := m->Size();
-		rows := dims[0];
-		cols := dims[1];
-
-		for(r := 0; r < rows; r +=1;) {
-			'['->Print();
-			for(c := 0; c < cols; c +=1;) {
-				m[r,c]->Print();
-				if(c + 1 < cols) {
-					", "->Print();
-				}
-				else {
-					
+			
+			c := Float->New[index, b_cols];
+			for(row := 0; row < index; row += 1;) {
+				for(col := 0; col < b_cols; col += 1;) {
+					c[row, col] := b[row, col];
 				};
 			};
-			']'->PrintLine();
+		}
+		else {
+
 		};
+
+		return c;
+	}
+
+	function : Concatenate(a : Float[,], b : Float[,], is_row : Bool := true) ~ Float[,] {
+		a_dims := a->Size();
+		a_rows := a_dims[0];
+		a_cols := a_dims[1];
+
+		b_dims := b->Size();
+		b_rows := b_dims[0];
+		b_cols := b_dims[1];
+
+# "A: [{$a_rows},{$a_cols}], B: [{$b_rows},{$b_cols}]"->PrintLine();
+
+		c : Float[,];
+		if(is_row) {
+			if(a_cols <> b_cols) {
+				return Nil;
+			};
+
+			c_rows := a_rows + b_rows;
+			c := Float->New[c_rows, a_cols];
+
+			for(row := 0; row < a_rows; row += 1;) {
+				for(col := 0; col < a_cols; col += 1;) {
+					c[row, col] := a[row, col];
+				};
+			};
+
+			for(row := 0; row < b_rows; row += 1;) {
+				for(col := 0; col < b_cols; col += 1;) {
+					c[row + a_rows, col] := b[row, col];
+				};
+			};
+		}
+		else {
+			if(a_rows <> b_rows) {
+				return Nil;
+			};
+
+			c_cols := a_cols + b_cols;
+			c := Float->New[a_rows, c_cols];
+
+			for(row := 0; row < a_rows; row += 1;) {
+				for(col := 0; col < a_cols; col += 1;) {
+					c[row, col] := a[row, col];
+				};
+			};
+
+			for(row := 0; row < b_rows; row += 1;) {
+				for(col := 0; col < b_cols; col += 1;) {
+					c[row, col + a_cols] := b[row, col];
+				};
+			};
+		};
+
+		return c;
 	}
 }
