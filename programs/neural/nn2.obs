@@ -42,7 +42,7 @@ class NeuralNetwork {
 
 		network := NeuralNetwork->New(input_nodes, hidden_nodes, output_nodes, learning_rate);
 
-		for(i := 0; i < 1000; i += 1;) {
+		for(i := 0; i < 5000; i += 1;) {
 			inputs : Float[,];	targets : Float[,];
 			select(i % 4) {
 				label 0: {
@@ -70,10 +70,11 @@ class NeuralNetwork {
 		};
 
 		in := [
-			[0.0]
+			[1.0]
 			[1.0]];
+		out := network->Query(in);
 
-		ToString(network->Query(in))->Print();
+		ToString(out)->Print();
 	}
 	
 	New(input_nodes : Float, hidden_nodes : Float, output_nodes : Float, learning_rate : Float) {
