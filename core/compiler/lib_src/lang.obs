@@ -1105,6 +1105,33 @@ bundle System {
 			return out;
 		}
 		
+		function : ToString(v : Float[,]) ~ String {
+			buffer := "";
+
+			dims := v->Size();
+			rows := dims[0];
+			cols := dims[1];
+
+			for(r := 0; r < rows; r +=1;) {
+				buffer->Append('[');
+				for(c := 0; c < cols; c +=1;) {
+					buffer->Append(v[r,c]);
+					if(c + 1 < cols) {
+						buffer->Append(", ");
+					};
+				};
+
+				if(r + 1 < rows) {
+					buffer->Append("]\n");
+				}
+				else {
+					buffer->Append(']');
+				};
+			};
+
+			return buffer;
+		}
+		
 		function : native :  Sort(v : Float[]) ~ Float[] {
 			size := v->Size();
 			if(size <= 1) {
@@ -3491,6 +3518,364 @@ bundle System.Concurrency {
 		~#
 		method : public : GetName() ~ String {
 			return @name;
+		}
+	}
+}
+
+#~
+Provides support for matrix math
+~#
+bundle System.Matrix {
+	class Matrix2D {
+		function : native : Add(x : Float, b : Float[,]) ~ Float[,] {
+			b_dims := b->Size();
+			b_rows := b_dims[0];
+			b_cols := b_dims[1];
+
+			c := Float->New[b_rows, b_cols];
+			for(i := 0; i < b_rows; i += 1;) {
+				for(j := 0; j < b_cols; j += 1;) {
+					c[i,j] := x + b[i,j];
+				};
+			};
+
+			return c;
+		}
+
+		function : native : Add(b : Float[,], x : Float) ~ Float[,] {
+			b_dims := b->Size();
+			b_rows := b_dims[0];
+			b_cols := b_dims[1];
+
+			c := Float->New[b_rows, b_cols];
+			for(i := 0; i < b_rows; i += 1;) {
+				for(j := 0; j < b_cols; j += 1;) {
+					c[i,j] := b[i,j] + x;
+				};
+			};
+
+			return c;
+		}
+		
+		function : native : Add(a : Float[,], b : Float[,]) ~ Float[,] {
+			a_dims := a->Size();
+			a_rows := a_dims[0];
+			a_cols := a_dims[1];
+
+			b_dims := b->Size();
+			b_rows := b_dims[0];
+			b_cols := b_dims[1];
+
+			if( a_rows <> b_rows | a_cols <> b_cols) {
+				return Nil;
+			};
+
+			c := Float->New[a_rows, b_cols];
+			for(i := 0; i < a_rows; i += 1;) {
+				for(j := 0; j < b_cols; j += 1;) {
+					c[i,j] := a[i,j] + b[i,j];
+				};
+			};
+
+			return c;
+		}
+
+		function : native : Subtract(x : Float, b : Float[,]) ~ Float[,] {
+			b_dims := b->Size();
+			b_rows := b_dims[0];
+			b_cols := b_dims[1];
+
+			c := Float->New[b_rows, b_cols];
+			for(i := 0; i < b_rows; i += 1;) {
+				for(j := 0; j < b_cols; j += 1;) {
+					c[i,j] := x - b[i,j];
+				};
+			};
+
+			return c;
+		}
+		
+		function : native : Subtract(b : Float[,], x : Float) ~ Float[,] {
+			b_dims := b->Size();
+			b_rows := b_dims[0];
+			b_cols := b_dims[1];
+
+			c := Float->New[b_rows, b_cols];
+			for(i := 0; i < b_rows; i += 1;) {
+				for(j := 0; j < b_cols; j += 1;) {
+					c[i,j] := b[i,j] - x;
+				};
+			};
+
+			return c;
+		}
+
+		method : native : Subtract(a : Float[,], b : Float[,]) ~ Float[,] {
+			a_dims := a->Size();
+			a_rows := a_dims[0];
+			a_cols := a_dims[1];
+
+			b_dims := b->Size();
+			b_rows := b_dims[0];
+			b_cols := b_dims[1];
+
+			if( a_rows <> b_rows | a_cols <> b_cols) {
+				return Nil;
+			};
+
+			c := Float->New[a_rows, b_cols];
+			for(i := 0; i < a_rows; i += 1;) {
+				for(j := 0; j < b_cols; j += 1;) {
+					c[i,j] := a[i,j] - b[i,j];
+				};
+			};
+
+			return c;
+		}
+
+		function : native : Multiple(x : Float, b : Float[,]) ~ Float[,] {
+			b_dims := b->Size();
+			b_rows := b_dims[0];
+			b_cols := b_dims[1];
+
+			c := Float->New[b_rows, b_cols];
+			for(i := 0; i < b_rows; i += 1;) {
+				for(j := 0; j < b_cols; j += 1;) {
+					c[i,j] := x * b[i,j];
+				};
+			};
+
+			return c;
+		}
+
+		function : native : Multiple(b : Float[,], x : Float) ~ Float[,] {
+			b_dims := b->Size();
+			b_rows := b_dims[0];
+			b_cols := b_dims[1];
+
+			c := Float->New[b_rows, b_cols];
+			for(i := 0; i < b_rows; i += 1;) {
+				for(j := 0; j < b_cols; j += 1;) {
+					c[i,j] := b[i,j] * x;
+				};
+			};
+
+			return c;
+		}
+		
+		method : native : Multiple(a : Float[,], b : Float[,]) ~ Float[,] {
+			a_dims := a->Size();
+			a_rows := a_dims[0];
+			a_cols := a_dims[1];
+
+			b_dims := b->Size();
+			b_rows := b_dims[0];
+			b_cols := b_dims[1];
+
+			if( a_rows <> b_rows | a_cols <> b_cols) {
+				return Nil;
+			};
+
+			c := Float->New[a_rows, b_cols];
+			for(i := 0; i < a_rows; i += 1;) {
+				for(j := 0; j < b_cols; j += 1;) {
+					c[i,j] := a[i,j] * b[i,j];
+				};
+			};
+
+			return c;
+		}
+
+		function : native : Divide(b : Float[,], x : Float) ~ Float[,] {
+			b_dims := b->Size();
+			b_rows := b_dims[0];
+			b_cols := b_dims[1];
+
+			c := Float->New[b_rows, b_cols];
+			for(i := 0; i < b_rows; i += 1;) {
+				for(j := 0; j < b_cols; j += 1;) {
+					c[i,j] := b[i,j] / x;
+				};
+			};
+
+			return c;
+		}
+
+		function : native : Divide(x : Float, b : Float[,]) ~ Float[,] {
+			b_dims := b->Size();
+			b_rows := b_dims[0];
+			b_cols := b_dims[1];
+
+			c := Float->New[b_rows, b_cols];
+			for(i := 0; i < b_rows; i += 1;) {
+				for(j := 0; j < b_cols; j += 1;) {
+					c[i,j] := b[i,j] / x;
+				};
+			};
+
+			return c;
+		}
+
+		function : native : Divide(a : Float[,], b : Float[,]) ~ Float[,] {
+			a_dims := a->Size();
+			a_rows := a_dims[0];
+			a_cols := a_dims[1];
+
+			b_dims := b->Size();
+			b_rows := b_dims[0];
+			b_cols := b_dims[1];
+
+			if( a_rows <> b_rows | a_cols <> b_cols) {
+				return Nil;
+			};
+
+			c := Float->New[a_rows, b_cols];
+			for(i := 0; i < a_rows; i += 1;) {
+				for(j := 0; j < b_cols; j += 1;) {
+					c[i,j] := a[i,j] / b[i,j];
+				};
+			};
+
+			return c;
+		}
+
+		function : native : Transpose(a : Float[,]) ~ Float[,] {
+			dim := a->Size();
+			rows := dim[0];
+			cols := dim[1];
+
+			b := Float->New[cols, rows];
+			for(r := 0; r < rows; r += 1;) {
+				for(c := 0; c < cols; c += 1;) {
+					b[c,r] := a[r,c];
+				};
+			};
+
+			return b;
+		}
+
+		function : native : Dot(a : Float[,], b : Float[,]) ~ Float[,] {
+			a_dims := a->Size();
+			a_rows := a_dims[0];
+			a_cols := a_dims[1];
+			b_dims := b->Size();
+			b_rows := b_dims[0];
+			b_cols := b_dims[1];
+
+			if(a_cols <> b_rows & a_rows <> b_cols) {
+				return Nil;
+			};
+
+			c := Float->New[a_rows, b_cols];
+			for(a_col := 0; a_col < a_rows; a_col += 1;) {
+				for(b_col := 0; b_col < b_cols; b_col += 1;) {
+					cx := 0.0;
+					for(x_col := 0; x_col < b_rows; x_col += 1;) {
+						cx += a[a_col, x_col] * b[x_col, b_col];
+					};
+					c[a_col, b_col] := cx;
+				};
+			};
+
+			return c;
+		}
+
+		function : native : Sigmoid(x : Float) ~ Float {
+			return 1.0 / (1.0 + Float->Power(Float->E(), -1.0 * x));
+		}
+
+		function : native : Sigmoid(b : Float[,]) ~ Float[,] {
+			b_dims := b->Size();
+			b_rows := b_dims[0];
+			b_cols := b_dims[1];
+
+			c := Float->New[b_rows, b_cols];
+			for(i := 0; i < b_rows; i += 1;) {
+				for(j := 0; j < b_cols; j += 1;) {
+					c[i,j] := Sigmoid(b[i,j]);
+				};
+			};
+
+			return c;
+		}
+		
+		function : native : DotSigmoid(a : Float[,], b : Float[,]) ~ Float[,] {
+			a_dims := a->Size();
+			a_rows := a_dims[0];
+			a_cols := a_dims[1];
+
+			b_dims := b->Size();
+			b_rows := b_dims[0];
+			b_cols := b_dims[1];
+			
+			if(a_cols <> b_rows & a_rows <> b_cols) {
+				return Nil;
+			};
+
+			c := Float->New[a_rows, b_cols];
+			for(a_col := 0; a_col < a_rows; a_col += 1;) {
+				for(b_col := 0; b_col < b_cols; b_col += 1;) {
+					cx := 0.0;
+					for(x_col := 0; x_col < b_rows; x_col += 1;) {
+						cx += a[a_col, x_col] * b[x_col, b_col];
+					};
+					c[a_col, b_col] := Sigmoid(cx);
+				};
+			};
+
+			return c;
+		}
+
+		function : Random(rows : Int, cols : Int) ~ Float[,] {
+			m := Float->New[rows, cols];
+
+			for(i := 0; i < rows; i += 1;) {
+				for(j := 0; j < cols; j += 1;) {
+					m[i,j] := Float->Random();
+				};
+			};
+			
+			return m;
+		}
+		
+		function : RandomNormal(mean : Float, variance : Float, rows : Int, cols : Int) ~ Float[,] {
+			m := Float->New[rows, cols];
+
+			for(i := 0; i < rows; i += 1;) {
+				for(j := 0; j < cols; j += 1;) {
+					m[i,j] := RandomNormal(mean, variance);
+				};
+			};
+
+			return m;
+		}
+
+		function : RandomNormal(mean : Float, variance : Float) ~ Float {
+			return  (-2.0 * variance * Float->Random()->Log())->SquareRoot() * (2.0 * Float->Pi() * Float->Random())->Cos() + mean;
+		}
+
+		function : RandomNormal(n : Int) ~ Float[] {
+			m := n + n % 2;
+			values := Float->New[m];
+	 		
+		    for(i := 0; i < m; i += 2;) {
+		        x : Float;
+		        y : Float;
+		        rsq : Float;
+		        
+		        do {
+		            x := 2.0 * Float->Random() - 1.0;
+		            y := 2.0 * Float->Random() - 1.0;
+		            rsq := x * x + y * y;
+		        }
+		        while(rsq >= 1.0 | rsq = 0.0);
+		        
+		        f := (-2.0 * rsq->Log() / rsq)->SquareRoot();
+		        values[i] := x * f;
+		        values[i + 1] := y * f;
+		    };
+
+			return values;
 		}
 	}
 }
