@@ -3720,7 +3720,7 @@ bundle System.Matrix {
 		@param b matrix
 		@return updated matrix
 		~#
-		method : native : Multiple(a : Float[,], b : Float[,]) ~ Float[,] {
+		function : native : Multiple(a : Float[,], b : Float[,]) ~ Float[,] {
 			a_dims := a->Size();
 			a_rows := a_dims[0];
 			a_cols := a_dims[1];
