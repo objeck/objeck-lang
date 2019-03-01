@@ -474,7 +474,6 @@ class Snippet {
 				label '{':
 				label '}':
 				label ':':
-				label ',':
 				label '(':
 				label ')':
 				label '~':
@@ -490,7 +489,12 @@ class Snippet {
 			};
 		};
 		
-		return ident->Trim();
+		ident := ident->Trim();
+		if(ident->EndsWith(',')) {
+			ident->Pop();
+		};
+		
+		return ident;
 	}
 	
 	method : ParseDesc() ~ String {
