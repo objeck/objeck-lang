@@ -288,5 +288,9 @@ Variable* Variable::Copy() {
 }
 
 Declaration* Declaration::Copy() {
+  if(assignment) {
+    return TreeFactory::Instance()->MakeDeclaration(file_name, line_num, entry->Copy(), assignment);
+  }
+
   return TreeFactory::Instance()->MakeDeclaration(file_name, line_num, entry->Copy());
 }
