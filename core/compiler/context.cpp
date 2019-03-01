@@ -362,16 +362,17 @@ bool ContextAnalyzer::Analyze()
         for(size_t i = 0; i < declarations.size(); ++i) {
           Declaration* declaration = declarations[i];
           if(i < inital_param_offset) {
-            alt_declarations->AddDeclaration(declaration);
             Type* type = declaration->GetEntry()->GetType();
             if(type->GetType() == FLOAT_TYPE && type->GetDimension() > 0) {
-              SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(L"", -1, declaration->GetEntry()->GetName(),
+              SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(L"", -1, declaration->GetEntry()->GetName(), 
                 TypeFactory::Instance()->MakeType(INT_TYPE), false, true);
+              declaration = TreeFactory::Instance()->MakeDeclaration(L"", -1, entry);
               bundle->GetSymbolTableManager()->CurrentParseScope()->AddEntry(entry);
             }
             else {
               bundle->GetSymbolTableManager()->CurrentParseScope()->AddEntry(declaration->GetEntry());
             }
+            alt_declarations->AddDeclaration(declaration);
           }
           else {
             Assignment* assignment = declaration->GetAssignment();
