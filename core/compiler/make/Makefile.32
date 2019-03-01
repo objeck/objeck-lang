@@ -1,11 +1,11 @@
 CC=g++
-# ARGS=-g -D_DEBUG -Wall -Wno-unused-function
-ARGS=-O3 -Wall -Wno-unused-function
+ARGS=-g -D_DEBUG -Wall -Wno-unused-function
+# ARGS=-O3 -Wall -Wno-unused-function
 SRC=types.o tree.o scanner.o parser.o linker.o context.o intermediate.o optimization.o emit.o compiler.o posix_main.o
 EXE=obc
 
 $(EXE): $(SRC)
-	$(CC) -m32 -o $(EXE) $(SRC) -lz -static-libstdc++ -static-libgcc
+	$(CC) -m32 -o $(EXE) $(SRC) -lz
 
 %.o: %.cpp
 	$(CC) -m32 $(ARGS) -c $< 
