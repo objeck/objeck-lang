@@ -363,7 +363,15 @@ bool ContextAnalyzer::Analyze()
           Declaration* declaration = declarations[i];
           if(i < inital_param_offset) {
             alt_declarations->AddDeclaration(declaration);
-            bundle->GetSymbolTableManager()->CurrentParseScope()->AddEntry(declaration->GetEntry());
+            Type* type = declaration->GetEntry()->GetType();
+            if(type->GetType() == FLOAT_TYPE && type->GetDimension() > 0) {
+              SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(L"", -1, declaration->GetEntry()->GetName(),
+                TypeFactory::Instance()->MakeType(INT_TYPE), false, true);
+              bundle->GetSymbolTableManager()->CurrentParseScope()->AddEntry(entry);
+            }
+            else {
+              bundle->GetSymbolTableManager()->CurrentParseScope()->AddEntry(declaration->GetEntry());
+            }
           }
           else {
             Assignment* assignment = declaration->GetAssignment();

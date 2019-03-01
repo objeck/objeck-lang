@@ -3186,33 +3186,13 @@ namespace frontend {
 
   struct int_string_comp {
     bool operator() (IntStringHolder* lhs, IntStringHolder* rhs) const {
-      if(lhs->length != rhs->length) {
-        return true;
-      }
-
-      for(int i = 0; i < lhs->length; i++) {
-        if(lhs->value[i] != rhs->value[i]) {
-          return true;
-        }
-      }
-
-      return false;
+      return tie(lhs->length, lhs->value) < tie(rhs->length, rhs->value);
     }
   };
 
   struct float_string_comp {
     bool operator() (FloatStringHolder* lhs, FloatStringHolder* rhs) const {
-      if(lhs->length != rhs->length) {
-        return true;
-      }
-
-      for(int i = 0; i < lhs->length; i++) {
-        if(lhs->value[i] != rhs->value[i]) {
-          return true;
-        }
-      }
-
-      return false;
+      return tie(lhs->length, lhs->value) < tie(rhs->length, rhs->value);
     }
   };
 
