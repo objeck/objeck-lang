@@ -693,6 +693,8 @@ IntermediateMethod* IntermediateEmitter::EmitMethod(Method* method)
     if(method->IsAlt()) {
       Method* original = method->GetOriginal();
       vector<Declaration*> original_params = original->GetDeclarations()->GetDeclarations();
+
+      const int diff_offset = original->HasAndOr() ? 1 : 0;
       for(size_t i = 0; i < original_params.size(); ++i) {
         SymbolEntry* var_entry = original_params[i]->GetEntry();
         switch(var_entry->GetType()->GetType()) {
@@ -701,18 +703,20 @@ IntermediateMethod* IntermediateEmitter::EmitMethod(Method* method)
         case frontend::CHAR_TYPE:
         case frontend::INT_TYPE:
         case frontend::CLASS_TYPE:
-          imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR,
-                                    var_entry->GetId(), LOCL));
+          imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, var_entry->GetId() - diff_offset, LOCL));
           break;
 
         case frontend::FLOAT_TYPE:
-          imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FLOAT_VAR,
-                                    var_entry->GetId(), LOCL));
+          if(var_entry->GetType()->GetDimension() > 0) {
+            imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, var_entry->GetId() - diff_offset, LOCL));
+          }
+          else {
+            imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FLOAT_VAR, var_entry->GetId() - diff_offset, LOCL));
+          }
           break;
 
         case frontend::FUNC_TYPE:
-          imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FUNC_VAR, 
-                                    var_entry->GetId(), LOCL));
+          imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FUNC_VAR, var_entry->GetId() - diff_offset, LOCL));
           break;
 
         default:
@@ -723,12 +727,10 @@ IntermediateMethod* IntermediateEmitter::EmitMethod(Method* method)
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
 
       if(is_lib) {
-        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0,
-                                  original->GetClass()->GetName(), original->GetEncodedName()));
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0, original->GetClass()->GetName(), original->GetEncodedName()));
       }
       else {
-        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num,
-                                  MTHD_CALL, original->GetClass()->GetId(), original->GetId(), 0L));
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL, original->GetClass()->GetId(), original->GetId(), 0L));
       }
     }
 
