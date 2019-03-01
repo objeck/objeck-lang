@@ -1,3 +1,5 @@
+use System.Matrix;
+
 class BasicAi {
 	function : Main(args : String[]) ~ Nil {
 		a := [
@@ -19,104 +21,10 @@ class BasicAi {
 			[9.0, 10.0]
 			[9.0, 10.0]];
 
-#		x := Concatenate(c, d);
+#		x := Matrix2D->Concatenate(c, d);
 #		x->ToString()->PrintLine();
 
-		x := Split(b, 2, 1, false);
+		x := Matrix2D->Split(b, 2, 1, false);
 		x->ToString()->PrintLine();
-	}
-
-	function : Split(b : Float[,], offset : Int, count : Int, is_row : Bool := true) ~ Float[,] {
-		b_dims := b->Size();
-		b_rows := b_dims[0];
-		b_cols := b_dims[1];
-		
-# "B: [{$b_rows},{$b_cols}, {$is_row}]"->PrintLine();
-
-		c : Float[,];
-		if(is_row) {
-			if(count + offset <= 0 | count + offset > b_rows) {
-				return Nil;
-			};
-
-			c := Float->New[count, b_cols];
-			count := count + offset;
-			for(row := offset; row < count; row += 1;) {
-				for(col := 0; col < b_cols; col += 1;) {
-					c[row - offset, col] := b[row, col];
-				};
-			};
-		}
-		else {
-			if(count + offset <= 0 | count + offset > b_cols) {
-				return Nil;
-			};
-
-			c := Float->New[b_rows, count];
-			count := count + offset;
-			for(row := 0; row < b_rows; row += 1;) {
-				for(col := offset; col < count; col += 1;) {
-					c[row, col - offset] := b[row, col];
-				};
-			};
-		};
-
-		return c;
-	}
-
-	function : Concatenate(a : Float[,], b : Float[,], is_row : Bool := true) ~ Float[,] {
-		a_dims := a->Size();
-		a_rows := a_dims[0];
-		a_cols := a_dims[1];
-
-		b_dims := b->Size();
-		b_rows := b_dims[0];
-		b_cols := b_dims[1];
-
-# "A: [{$a_rows},{$a_cols}], B: [{$b_rows},{$b_cols}]"->PrintLine();
-
-		c : Float[,];
-		if(is_row) {
-			if(a_cols <> b_cols) {
-				return Nil;
-			};
-
-			c_rows := a_rows + b_rows;
-			c := Float->New[c_rows, a_cols];
-
-			for(row := 0; row < a_rows; row += 1;) {
-				for(col := 0; col < a_cols; col += 1;) {
-					c[row, col] := a[row, col];
-				};
-			};
-
-			for(row := 0; row < b_rows; row += 1;) {
-				for(col := 0; col < b_cols; col += 1;) {
-					c[row + a_rows, col] := b[row, col];
-				};
-			};
-		}
-		else {
-			if(a_rows <> b_rows) {
-				return Nil;
-			};
-
-			c_cols := a_cols + b_cols;
-			c := Float->New[a_rows, c_cols];
-
-			for(row := 0; row < a_rows; row += 1;) {
-				for(col := 0; col < a_cols; col += 1;) {
-					c[row, col] := a[row, col];
-				};
-			};
-
-			for(row := 0; row < b_rows; row += 1;) {
-				for(col := 0; col < b_cols; col += 1;) {
-					c[row, col + a_cols] := b[row, col];
-				};
-			};
-		};
-
-		return c;
 	}
 }
