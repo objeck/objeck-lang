@@ -48,7 +48,7 @@ class BasicAi {
 					lines->AddBack(line);
 					line := "";
 				}
-				else {
+				else if(buffer[i] <> '\r') {
 					line += buffer[i];
 				};
 			};

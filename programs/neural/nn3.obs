@@ -12,7 +12,7 @@ class NeuralNetwork {
 		input_nodes := 2;
 		hidden_nodes := 2;
 		output_nodes := 1;
-		learning_rate := 0.3;
+		learning_rate := 0.35;
 
 		# ---
 		i0 := [
@@ -24,8 +24,8 @@ class NeuralNetwork {
 
 		# ---
 		i1 := [
-			[0.01]
-			[0.01]];
+			[0.99]
+			[0.99]];
 
 		t1 := [
 			[0.99]];
@@ -48,7 +48,7 @@ class NeuralNetwork {
 
 		network := NeuralNetwork->New(input_nodes, hidden_nodes, output_nodes, learning_rate);
 
-		for(i := 0; i < 2500; i += 1;) {
+		for(i := 0; i < 2000; i += 1;) {
 			inputs : Float[,];	targets : Float[,];
 			select(i % 4) {
 				label 0: {
@@ -76,8 +76,8 @@ class NeuralNetwork {
 		};
 
 		in := [
-			[0.012]
-			[0.011]];
+			[0.91]
+			[0.86]];
 		out := network->Query(in);
 		
  		Matrix2D->Divide(out, 0.5)->ToString()->Print();
