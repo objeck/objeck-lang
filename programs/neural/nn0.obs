@@ -7,13 +7,34 @@ class BasicAi {
 		if(args->Size() = 1) {
 			lines := ReadLines(args[0]);
 			each(i : lines) {
-				matrix := ToMatrix(lines->Get(i)->As(String));
-				matrix->ToString()->PrintLine();
+				matrix := GetInput(lines->Get(i)->As(String));
+				dim := matrix->Size();
+				rows := dim[0];
+				cols := dim[0];
+				"{$rows}, {$cols}"->PrintLine();
 			};
+
+			targets := GetTarget(3);
+			targets->ToString()->PrintLine();
 		};
 	}
 
-	function : ToMatrix(line : String) ~ Float[,] {
+	function : GetTarget(number : Int) ~ Float[,] {
+		if(number < 0 | number > 9) {
+			return Nil;
+		};
+
+		targets := Float->New[1, 10];
+		for(j := 0; j < 10; j += 1;) {
+			targets[0, j] := 0.1;
+		};
+
+		targets[0, number] := 0.99;
+
+		return targets;
+	}
+
+	function : GetInput(line : String) ~ Float[,] {
 		matrix := Float->New[28, 28];
 
 		row := -1; col := 0;
