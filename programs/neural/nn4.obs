@@ -66,12 +66,13 @@ class NeuralNetwork {
 	}
 
 	method : Train(inputs : Float[,], targets : Float[,], rate : Float) ~ Nil {
-DebugMeta(@weight_inputs_hidden, inputs);
 		# calculate signals into hidden layer
         hidden_outputs := Matrix2D->DotSigmoid(@weight_inputs_hidden, inputs);
         # calculate signals into final output layer
         final_outputs  := Matrix2D->DotSigmoid(@weight_outputs_hidden, hidden_outputs);
         # output layer error is the (target - actual)
+DebugMeta(targets, final_outputs);
+
         output_errors := Matrix2D->Subtract(targets, final_outputs);
         # hidden layer error is the output_errors, split by weights, recombined at hidden nodes
 		hidden_errors := Matrix2D->Dot(Matrix2D->Transpose(@weight_outputs_hidden), output_errors);
@@ -92,11 +93,14 @@ DebugMeta(@weight_inputs_hidden, inputs);
 		a_rows := a_dims[0];
 		a_cols := a_dims[1];
 
+		"A: [{$a_rows},{$a_cols}]"->PrintLine();
+
 		b_dims := b->Size();
 		b_rows := b_dims[0];
 		b_cols := b_dims[1];
 
-		"A: [{$a_rows},{$a_cols}]; B: [{$b_rows},{$b_cols}]"->PrintLine();
+		"B: [{$b_rows},{$b_cols}]"->PrintLine();
+		"---"->PrintLine();
 	}
 
 	function : GetTarget(number : Int) ~ Float[,] {
@@ -115,7 +119,7 @@ DebugMeta(@weight_inputs_hidden, inputs);
 	}
 
 	function : GetInput(line : String, value : IntHolder) ~ Float[,] {
-		matrix := Float->New[28, 28];
+		matrix := Float->New[784, 1];
 
 		row := -1; col := 0;
 		values := line->Split(",");
@@ -124,11 +128,7 @@ DebugMeta(@weight_inputs_hidden, inputs);
 		value->Set(index->ToInt());
 
 		for(i := 1; i < values->Size(); i += 1;) {
-			col := (i - 1) % 28;
-			if(col = 0) {
-				row += 1;
-			};
-			matrix[row, col] := values[i]->ToFloat() / 255.0 * 0.99 + 0.01;
+			matrix[i - 1, 0] := values[i]->ToFloat() / 255.0 * 0.99 + 0.01;
 		};
 
 		return matrix;

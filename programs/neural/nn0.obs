@@ -14,7 +14,7 @@ class BasicAi {
 				input := GetInput(lines->Get(i)->As(String), value);
 				dim := input->Size();
 				rows := dim[0];
-				cols := dim[0];
+				cols := dim[1];
 				number := value->Get(); 
 
 				"{$rows}, {$cols}: {$number}"->PrintLine();
@@ -25,6 +25,18 @@ class BasicAi {
 
 			
 		};
+	}
+
+	function : DebugMeta(a : Float[,], b : Float[,]) ~ Nil {
+		a_dims := a->Size();
+		a_rows := a_dims[0];
+		a_cols := a_dims[1];
+
+		b_dims := b->Size();
+		b_rows := b_dims[0];
+		b_cols := b_dims[1];
+
+		"A: [{$a_rows},{$a_cols}]; B: [{$b_rows},{$b_cols}]"->PrintLine();
 	}
 
 	function : GetTarget(number : Int) ~ Float[,] {
@@ -43,7 +55,7 @@ class BasicAi {
 	}
 
 	function : GetInput(line : String, value : IntHolder) ~ Float[,] {
-		matrix := Float->New[28, 28];
+		matrix := Float->New[784, 1];
 
 		row := -1; col := 0;
 		values := line->Split(",");
@@ -52,11 +64,7 @@ class BasicAi {
 		value->Set(index->ToInt());
 
 		for(i := 1; i < values->Size(); i += 1;) {
-			col := (i - 1) % 28;
-			if(col = 0) {
-				row += 1;
-			};
-			matrix[row, col] := values[i]->ToFloat() / 255.0 * 0.99 + 0.01;
+			matrix[i - 1, 0] := values[i]->ToFloat() / 255.0 * 0.99 + 0.01;
 		};
 
 		return matrix;
