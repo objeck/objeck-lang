@@ -43,12 +43,6 @@ class NeuralNetwork {
 			test_output := network->Query(test_input);
 			value->Get()->PrintLine();
 			test_output->ToString()->PrintLine();
-
-#~
-			in : Float[,]; # CHANGE ME
-			out := network->Query(in);
-			out->ToString()->Print();
-~#
 	 	};
 	}
 	
