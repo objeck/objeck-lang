@@ -28,12 +28,8 @@ class NeuralNetwork {
 				each(i : lines) {
 					input := GetInput(lines->Get(i)->As(String), value);
 					number := value->Get(); 
-
-					"value: {$number}"->PrintLine();
+					"number: {$number}"->PrintLine();
 					target := GetTarget(number);
-					target->ToString()->PrintLine();
-					"---"->PrintLine();
-
 					network->Train(input, target, learning_rate);
 				};
 			};
