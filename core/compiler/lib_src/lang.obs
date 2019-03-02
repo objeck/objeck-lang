@@ -3898,6 +3898,7 @@ bundle System.Matrix {
 		
 		#~
 		Calculates the Dot Product applying while applying the Sigmoid function to all elements
+		@param a matrix
 		@param b matrix
 		@return updated matrix
 		~#
@@ -3980,9 +3981,9 @@ bundle System.Matrix {
 		Splits a matrix
 		@param b matrix
 		@param offset offset index
+		@param count number of rows to split
 		@param is_row true for row split, false for column
 		@return copied matrix
-		@
 		~#
 		function : Split(b : Float[,], offset : Int, count : Int, is_row : Bool) ~ Float[,] {
 			b_dims := b->Size();
@@ -4026,7 +4027,6 @@ bundle System.Matrix {
 		@param b right matrix
 		@param is_row true concatenate by rows, false for columns
 		@return concatenated matrix
-		@
 		~#
 		function : Concatenate(a : Float[,], b : Float[,], is_row : Bool) ~ Float[,] {
 			a_dims := a->Size();
