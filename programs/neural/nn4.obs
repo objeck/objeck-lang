@@ -13,25 +13,36 @@ class NeuralNetwork {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
 			lines := ReadLines(args[0]);
+			lines := ReadLines(args[0]);
+			lines->Size()->PrintLine();
+			"---"->PrintLine();
 
 			input_nodes := 784;
 			hidden_nodes := 100;
 			output_nodes := 10;
 			learning_rate := 0.3;
-
+			
+			value := IntHolder->New();
 			network := NeuralNetwork->New(input_nodes, hidden_nodes, output_nodes, learning_rate);
+			for(i := 0; i < 100; i += 1;) {
+				each(i : lines) {
+					input := GetInput(lines->Get(i)->As(String), value);
+					number := value->Get(); 
 
-			for(i := 0; i < 2000; i += 1;) {
-				inputs : Float[,]; # CHANGE ME
-				targets : Float[,]; # CHANGE ME
+					"value: {$number}"->PrintLine();
+					target := GetTarget(number);
+					target->ToString()->PrintLine();
+					"---"->PrintLine();
 
-				network->Train(inputs, targets, learning_rate);
+					network->Train(input, target, learning_rate);
+				};
 			};
 
+#~
 			in : Float[,]; # CHANGE ME
 			out := network->Query(in);
-			
-	 		Matrix2D->Divide(out, 0.5)->ToString()->Print();
+			out->ToString()->Print();
+~#
 	 	};
 	}
 	
@@ -90,17 +101,21 @@ class NeuralNetwork {
 		return targets;
 	}
 
-	function : GetInput(line : String) ~ Float[,] {
+	function : GetInput(line : String, value : IntHolder) ~ Float[,] {
 		matrix := Float->New[28, 28];
 
 		row := -1; col := 0;
 		values := line->Split(",");
-		each(count : values) {
-			col := count % 28;
+
+		index := values[0];
+		value->Set(index->ToInt());
+
+		for(i := 1; i < values->Size(); i += 1;) {
+			col := (i - 1) % 28;
 			if(col = 0) {
 				row += 1;
 			};
-			matrix[row, col] := values[count]->ToFloat() / 255.0 * 0.99 + 0.01;
+			matrix[row, col] := values[i]->ToFloat() / 255.0 * 0.99 + 0.01;
 		};
 
 		return matrix;
