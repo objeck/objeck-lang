@@ -24,7 +24,7 @@ class NeuralNetwork {
 
 			value := IntHolder->New();
 			network := NeuralNetwork->New(input_nodes, hidden_nodes, output_nodes, learning_rate);
-			for(i := 0; i < 100; i += 1;) {
+			for(i := 0; i < 10; i += 1;) {
 				each(i : lines) {
 					train_input := GetInput(lines->Get(i)->As(String), value);
 					number := value->Get(); 
@@ -38,6 +38,11 @@ class NeuralNetwork {
 			test_size := lines->Size();
 			"test set: {$test_size}"->PrintLine();
 			"---"->PrintLine();
+
+			test_input := GetInput(lines->Get(0)->As(String), value);
+			test_output := network->Query(test_input);
+			value->Get()->PrintLine();
+			test_output->ToString()->PrintLine();
 
 #~
 			in : Float[,]; # CHANGE ME
