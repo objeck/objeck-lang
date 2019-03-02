@@ -11,10 +11,10 @@ class NeuralNetwork {
 	@weight_outputs_hidden : Float[,];
 
 	function : Main(args : String[]) ~ Nil {
-		if(args->Size() = 1) {
+		if(args->Size() = 2) {
 			lines := ReadLines(args[0]);
-			lines := ReadLines(args[0]);
-			lines->Size()->PrintLine();
+			train_size := lines->Size();
+			"train set: {$train_size}"->PrintLine();
 			"---"->PrintLine();
 
 			input_nodes := 784;
@@ -26,13 +26,18 @@ class NeuralNetwork {
 			network := NeuralNetwork->New(input_nodes, hidden_nodes, output_nodes, learning_rate);
 			for(i := 0; i < 100; i += 1;) {
 				each(i : lines) {
-					input := GetInput(lines->Get(i)->As(String), value);
+					train_input := GetInput(lines->Get(i)->As(String), value);
 					number := value->Get(); 
-					"number: {$number}"->PrintLine();
-					target := GetTarget(number);
-					network->Train(input, target, learning_rate);
+					train_target := GetTrainTarget(number);
+					network->Train(train_input, train_target, learning_rate);
 				};
 			};
+
+
+			lines := ReadLines(args[1]);
+			test_size := lines->Size();
+			"test set: {$test_size}"->PrintLine();
+			"---"->PrintLine();
 
 #~
 			in : Float[,]; # CHANGE ME
@@ -97,7 +102,7 @@ class NeuralNetwork {
 		"---"->PrintLine();
 	}
 
-	function : GetTarget(number : Int) ~ Float[,] {
+	function : GetTrainTarget(number : Int) ~ Float[,] {
 		if(number < 0 | number > 9) {
 			return Nil;
 		};
