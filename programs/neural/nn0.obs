@@ -6,16 +6,24 @@ class BasicAi {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 1) {
 			lines := ReadLines(args[0]);
+			lines->Size()->PrintLine();
+			"---"->PrintLine();
+
+			value := IntHolder->New();
 			each(i : lines) {
-				matrix := GetInput(lines->Get(i)->As(String));
-				dim := matrix->Size();
+				input := GetInput(lines->Get(i)->As(String), value);
+				dim := input->Size();
 				rows := dim[0];
 				cols := dim[0];
-				"{$rows}, {$cols}"->PrintLine();
+				number := value->Get(); 
+
+				"{$rows}, {$cols}: {$number}"->PrintLine();
+				target := GetTarget(number);
+				target->ToString()->PrintLine();
+				"---"->PrintLine();
 			};
 
-			targets := GetTarget(3);
-			targets->ToString()->PrintLine();
+			
 		};
 	}
 
@@ -34,17 +42,21 @@ class BasicAi {
 		return targets;
 	}
 
-	function : GetInput(line : String) ~ Float[,] {
+	function : GetInput(line : String, value : IntHolder) ~ Float[,] {
 		matrix := Float->New[28, 28];
 
 		row := -1; col := 0;
 		values := line->Split(",");
-		each(count : values) {
-			col := count % 28;
+
+		index := values[0];
+		value->Set(index->ToInt());
+
+		for(i := 1; i < values->Size(); i += 1;) {
+			col := (i - 1) % 28;
 			if(col = 0) {
 				row += 1;
 			};
-			matrix[row, col] := values[count]->ToFloat() / 255.0 * 0.99 + 0.01;
+			matrix[row, col] := values[i]->ToFloat() / 255.0 * 0.99 + 0.01;
 		};
 
 		return matrix;
