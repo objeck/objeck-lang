@@ -21,7 +21,7 @@ class NeuralNetwork {
 			hidden_nodes := 100;
 			output_nodes := 10;
 			learning_rate := 0.3;
-			
+
 			value := IntHolder->New();
 			network := NeuralNetwork->New(input_nodes, hidden_nodes, output_nodes, learning_rate);
 			for(i := 0; i < 100; i += 1;) {
@@ -66,6 +66,7 @@ class NeuralNetwork {
 	}
 
 	method : Train(inputs : Float[,], targets : Float[,], rate : Float) ~ Nil {
+DebugMeta(@weight_inputs_hidden, inputs);
 		# calculate signals into hidden layer
         hidden_outputs := Matrix2D->DotSigmoid(@weight_inputs_hidden, inputs);
         # calculate signals into final output layer
@@ -85,6 +86,18 @@ class NeuralNetwork {
 	}
 
 	# ---
+
+	function : DebugMeta(a : Float[,], b : Float[,]) ~ Nil {
+		a_dims := a->Size();
+		a_rows := a_dims[0];
+		a_cols := a_dims[1];
+
+		b_dims := b->Size();
+		b_rows := b_dims[0];
+		b_cols := b_dims[1];
+
+		"A: [{$a_rows},{$a_cols}]; B: [{$b_rows},{$b_cols}]"->PrintLine();
+	}
 
 	function : GetTarget(number : Int) ~ Float[,] {
 		if(number < 0 | number > 9) {
