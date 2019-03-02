@@ -16,35 +16,35 @@ class NeuralNetwork {
 
 		# ---
 		i0 := [
-			[0.0]
-			[0.0]];
+			[0.01]
+			[0.01]];
 
 		t0 := [
-			[0.0]];
+			[0.01]];
 
 		# ---
 		i1 := [
-			[1.0]
-			[1.0]];
+			[0.01]
+			[0.01]];
 
 		t1 := [
-			[1.0]];
+			[0.99]];
 
 		# ---
 		i2 := [
-			[1.0]
-			[0.0]];
+			[0.99]
+			[0.01]];
 
 		t2 :=[
-			[0.0]];
+			[0.01]];
 
 		# ---
 		i3 := [
-			[0.0]
-			[1.0]];
+			[0.01]
+			[0.99]];
 
 		t3 := [
-			[0.0]];
+			[0.01]];
 
 		network := NeuralNetwork->New(input_nodes, hidden_nodes, output_nodes, learning_rate);
 
@@ -76,8 +76,8 @@ class NeuralNetwork {
 		};
 
 		in := [
-			[0.975]
-			[0.985]];
+			[0.012]
+			[0.011]];
 		out := network->Query(in);
 		
  		Matrix2D->Divide(out, 0.5)->ToString()->Print();
@@ -89,9 +89,9 @@ class NeuralNetwork {
 		@output_nodes  := output_nodes;
 		@learning_rate := learning_rate;
 
-		@weight_inputs_hidden := Matrix2D->RandomNormal(0.0, Float->Power(@input_nodes, -0.5), 
+		@weight_inputs_hidden := Matrix2D->RandomNormal(0.01, Float->Power(@input_nodes, -0.5), 
 			@hidden_nodes, @input_nodes);
-		@weight_outputs_hidden := Matrix2D->RandomNormal(0.0, Float->Power(@input_nodes, -0.5), 
+		@weight_outputs_hidden := Matrix2D->RandomNormal(0.01, Float->Power(@input_nodes, -0.5), 
 			@output_nodes, @input_nodes);
 	}
 
@@ -118,6 +118,6 @@ class NeuralNetwork {
 	}
 
 	method : Adjust(rate : Float, errors : Float[,], outputs : Float[,], inputs : Float[,]) ~ Float[,] {
-		return Matrix2D->Multiple(rate, Matrix2D->Dot(Matrix2D->Multiple(errors, Matrix2D->Multiple(outputs, Matrix2D->Subtract(1.0, outputs))), Matrix2D->Transpose(inputs)));
+		return Matrix2D->Multiple(rate, Matrix2D->Dot(Matrix2D->Multiple(errors, Matrix2D->Multiple(outputs, Matrix2D->Subtract(0.99, outputs))), Matrix2D->Transpose(inputs)));
 	}
 }
