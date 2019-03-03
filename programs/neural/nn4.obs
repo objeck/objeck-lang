@@ -63,7 +63,7 @@ class NeuralNetwork {
 			each(i : inputs) {
 				test_input := ParseInput(inputs->Get(i)->As(String), value);
 				test_output := network->Query(test_input);
-#				ShowQuery(test_output, value->Get());
+				ShowQuery(test_output, value->Get());
 			};
 	 	}
 	 	else if(args->Size() = 1) {
@@ -78,7 +78,7 @@ class NeuralNetwork {
 			each(i : inputs) {
 				test_input := ParseInput(inputs->Get(i)->As(String), value);
 				test_output := network->Query(test_input);
-#				ShowQuery(test_output, value->Get());
+				ShowQuery(test_output, value->Get());
 			};
 	 	};
 	}
@@ -143,7 +143,7 @@ class NeuralNetwork {
 			};
 			writer->WriteString("\n");
 		};
-@weight_inputs_hidden->ToString()->PrintLine();
+# @weight_inputs_hidden->ToString()->PrintLine();
 
 		# ---
 
@@ -163,7 +163,7 @@ class NeuralNetwork {
 			};
 			writer->WriteString("\n");
 		};
-@weight_outputs_hidden->ToString()->PrintLine();		
+# @weight_outputs_hidden->ToString()->PrintLine();		
 	}
 
 	# ---
@@ -192,7 +192,7 @@ class NeuralNetwork {
 				@weight_inputs_hidden[i - 1, j] := col[j]->ToFloat();
 			};
 		};
-@weight_inputs_hidden->ToString()->PrintLine();
+# @weight_inputs_hidden->ToString()->PrintLine();
 
 		# ---
 
@@ -218,7 +218,7 @@ class NeuralNetwork {
 				@weight_outputs_hidden[i - 2 - old_row, j] := col[j]->ToFloat();
 			};
 		};
-@weight_outputs_hidden->ToString()->PrintLine();
+# @weight_outputs_hidden->ToString()->PrintLine();
 	}
 
 	# ---
