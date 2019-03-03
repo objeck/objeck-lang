@@ -9,6 +9,7 @@ class NeuralNetwork {
 	@learning_rate : Float;
 	@weight_inputs_hidden : Float[,];
 	@weight_outputs_hidden : Float[,];
+	@state : Int;
 
 	function : Main(args : String[]) ~ Nil {
 		input_nodes := 784;
@@ -24,31 +25,13 @@ class NeuralNetwork {
 			
 			network := NeuralNetwork->New(input_nodes, hidden_nodes, output_nodes, learning_rate);
 			for(i := 0; i < 1; i += 1;) {
-				state := 0;
 				each(i : inputs) {
-					if(i % 25 = 0) {
-						if(state = 0) {
-							"\b|"->Print();
-						}
-						else if(state = 1) {
-							"\b/"->Print();
-						}
-						else if(state = 2) {
-							"\b—"->Print();
-						}
-						else if(state = 3) {
-							"\b\\"->Print();
-						};
-
-						state += 1;
-						if(state > 3) {
-							state := 0;
-						};
-					};
 					train_input := ParseInput(inputs->Get(i)->As(String), value);
 					number := value->Get(); 
 					train_target := GetTrainingTarget(number);
 					network->Train(train_input, train_target, learning_rate);
+					# show update
+					network->Spinner(i);
 				};
 				'\n'->Print();
 			};
@@ -58,7 +41,7 @@ class NeuralNetwork {
 			inputs := LoadInput(args[1]);
 			size := inputs->Size();
 			"---"->PrintLine();
-			"{$size} test input(s)"->PrintLine();
+			"Testing {$size} input(s)"->PrintLine();
 			
 			each(i : inputs) {
 				test_input := ParseInput(inputs->Get(i)->As(String), value);
@@ -67,13 +50,12 @@ class NeuralNetwork {
 			};
 	 	}
 	 	else if(args->Size() = 1) {
-	 		network := NeuralNetwork->New(input_nodes, hidden_nodes, output_nodes, learning_rate);
-	 		network->Load();
+	 		network := NeuralNetwork->New(learning_rate);
 
 	 		inputs := LoadInput(args[0]);
 			size := inputs->Size();
 			"---"->PrintLine();
-			"{$size} test input(s)"->PrintLine();
+			"Testing {$size} input(s)"->PrintLine();
 			
 			each(i : inputs) {
 				test_input := ParseInput(inputs->Get(i)->As(String), value);
@@ -83,6 +65,11 @@ class NeuralNetwork {
 	 	};
 	}
 	
+	New(learning_rate : Float) {
+		@learning_rate := learning_rate;
+ 		Load();
+	}
+
 	New(input_nodes : Float, hidden_nodes : Float, output_nodes : Float, learning_rate : Float) {
 		@input_nodes  := input_nodes;
 		@hidden_nodes  := hidden_nodes;
@@ -93,6 +80,28 @@ class NeuralNetwork {
 			@hidden_nodes, @input_nodes);
 		@weight_outputs_hidden := Matrix2D->RandomNormal(0.01, Float->Power(@input_nodes, -0.5), 
 			@output_nodes, @hidden_nodes);
+	}
+
+	method : Spinner(count : Int) ~ Nil {
+		if(count % 25 = 0) {
+			if(@state = 0) {
+				"\b|"->Print();
+			}
+			else if(@state = 1) {
+				"\b/"->Print();
+			}
+			else if(@state = 2) {
+				"\b—"->Print();
+			}
+			else if(@state = 3) {
+				"\b\\"->Print();
+			};
+
+			@state += 1;
+			if(@state > 3) {
+				@state := 0;
+			};
+		};
 	}
 
 	method : Query(inputs : Float[,]) ~ Float[,] {
@@ -130,7 +139,7 @@ class NeuralNetwork {
 		dims := @weight_inputs_hidden->Size();
 		rows := dims[0];
 		cols := dims[1];
-		"Storing input weights: {$rows},{$cols}"->PrintLine();
+		"Storing input weights: {$rows}x{$cols}"->PrintLine();
 
 		writer->WriteString("{$rows},{$cols}\n");
 		for(i := 0; i < rows; i += 1;) {
@@ -150,7 +159,7 @@ class NeuralNetwork {
 		dims := @weight_outputs_hidden->Size();
 		rows := dims[0];
 		cols := dims[1];
-		"Storing output weights: {$rows},{$cols}"->PrintLine();
+		"Storing output weights: {$rows}x{$cols}"->PrintLine();
 
 		writer->WriteString("{$rows},{$cols}\n");
 		for(i := 0; i < rows; i += 1;) {
