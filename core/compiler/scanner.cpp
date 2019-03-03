@@ -680,6 +680,15 @@ void Scanner::ParseToken(int index)
         case L'r':
           break;
 
+        case L'b':
+          break;
+
+        case L'a':
+          break;
+
+        case L'f':
+          break;
+
         case L't':
           break;
 

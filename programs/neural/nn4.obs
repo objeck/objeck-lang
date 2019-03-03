@@ -12,10 +12,9 @@ class NeuralNetwork {
 
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 2) {
-			lines := ReadLines(args[0]);
-			train_size := lines->Size();
-			"training set: {$train_size}"->PrintLine();
-			"---"->PrintLine();
+			inputs := LoadInput(args[0]);
+			size := inputs->Size();
+			"Training: {$size} sample(s)"->PrintLine();
 
 			input_nodes := 784;
 			hidden_nodes := 100;
@@ -25,21 +24,41 @@ class NeuralNetwork {
 			value := IntHolder->New();
 			network := NeuralNetwork->New(input_nodes, hidden_nodes, output_nodes, learning_rate);
 			for(i := 0; i < 1; i += 1;) {
-				each(i : lines) {
-					train_input := GetInput(lines->Get(i)->As(String), value);
+				state := 0;
+				each(i : inputs) {
+					if(i % 25 = 0) {
+						if(state = 0) {
+							"\b|"->Print();
+						}
+						else if(state = 1) {
+							"\b/"->Print();
+						}
+						else if(state = 2) {
+							"\b—"->Print();
+						}
+						else if(state = 3) {
+							"\b\\"->Print();
+						};
+
+						state += 1;
+						if(state > 3) {
+							state := 0;
+						};
+					};
+					train_input := ParseInput(inputs->Get(i)->As(String), value);
 					number := value->Get(); 
-					train_target := GetTrainTarget(number);
+					train_target := GetTrainingTarget(number);
 					network->Train(train_input, train_target, learning_rate);
 				};
 			};
 
-			lines := ReadLines(args[1]);
-			test_size := lines->Size();
-			"testing set: {$test_size}"->PrintLine();
+			inputs := LoadInput(args[1]);
+			size := inputs->Size();
 			"---"->PrintLine();
-
-			each(i : lines) {
-				test_input := GetInput(lines->Get(i)->As(String), value);
+			"tests: {$size} input(s)"->PrintLine();
+			
+			each(i : inputs) {
+				test_input := ParseInput(inputs->Get(i)->As(String), value);
 				test_output := network->Query(test_input);
 				ShowQuery(test_output, value->Get());
 			};
@@ -123,14 +142,14 @@ class NeuralNetwork {
 		"---"->PrintLine();
 	}
 
-	function : GetTrainTarget(number : Int) ~ Float[,] {
+	function : GetTrainingTarget(number : Int) ~ Float[,] {
 		if(number < 0 | number > 9) {
 			return Nil;
 		};
 
 		targets := Float->New[10, 1];
 		for(j := 0; j < 10; j += 1;) {
-			targets[j, 0] := 0.1;
+			targets[j, 0] := 0.01;
 		};
 		targets[number, 0] := 0.99;
 
@@ -153,7 +172,7 @@ class NeuralNetwork {
 		return index;
 	}
 
-	function : GetInput(line : String, value : IntHolder) ~ Float[,] {
+	function : ParseInput(line : String, value : IntHolder) ~ Float[,] {
 		matrix := Float->New[784, 1];
 
 		row := -1; col := 0;
@@ -169,15 +188,15 @@ class NeuralNetwork {
 		return matrix;
 	}
 
-	function : ReadLines(file : String) ~ Vector {
-		lines := Vector->New();
+	function : LoadInput(file : String) ~ Vector {
+		inputs := Vector->New();
 
 		reader := FileReader->New(file);
 		leaving {
 			reader->Close();
 		};
 
-		buffer_size := 4096;
+		buffer_size := 4096 * 4;
 		buffer := Char->New[buffer_size + 1];
 
 		line := "";
@@ -185,7 +204,7 @@ class NeuralNetwork {
 			read := reader->ReadBuffer(0, buffer_size, buffer);
 			for(i := 0; i < read; i += 1;) {
 				if(buffer[i] = '\n') {
-					lines->AddBack(line);
+					inputs->AddBack(line);
 					line := "";
 				}
 				else if(buffer[i] <> '\r') {
@@ -194,6 +213,6 @@ class NeuralNetwork {
 			};
 		};
 
-		return lines;
+		return inputs;
 	}
 }
