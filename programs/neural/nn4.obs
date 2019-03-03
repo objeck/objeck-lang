@@ -63,7 +63,7 @@ class NeuralNetwork {
 			each(i : inputs) {
 				test_input := ParseInput(inputs->Get(i)->As(String), value);
 				test_output := network->Query(test_input);
-				ShowQuery(test_output, value->Get());
+#				ShowQuery(test_output, value->Get());
 			};
 	 	}
 	 	else if(args->Size() = 1) {
@@ -78,7 +78,7 @@ class NeuralNetwork {
 			each(i : inputs) {
 				test_input := ParseInput(inputs->Get(i)->As(String), value);
 				test_output := network->Query(test_input);
-				ShowQuery(test_output, value->Get());
+#				ShowQuery(test_output, value->Get());
 			};
 	 	};
 	}
@@ -145,18 +145,20 @@ class NeuralNetwork {
 				@weight_inputs_hidden[i - 1, j] := col[j]->ToFloat();
 			};
 		};
+@weight_inputs_hidden->ToString()->PrintLine();
 
 		# ---
 
 		line := lines->Get(i)->As(String);
 		dims := line->Split(",");
 
+		old_row := rows;
 		rows := dims[0]->ToInt();
 		cols := dims[1]->ToInt();
 		"Loading output weights: {$rows}, {$cols}"->PrintLine();
 
 		@weight_outputs_hidden := Float->New[rows, cols];
-		for(i := i + 1; i <= rows; i += 1;) {
+		for(i := i + 1; i <= rows + old_row; i += 1;) {
 			line := lines->Get(i)->As(String);
 			col := line->Split(",");
 			if(col->Size() <> cols) {
@@ -166,9 +168,10 @@ class NeuralNetwork {
 			};
 
 			for(j := 0; j < cols; j += 1;) {
-				@weight_outputs_hidden[i - 1, j] := col[j]->ToFloat();
+				@weight_outputs_hidden[i - 1 - old_row, j] := col[j]->ToFloat();
 			};
 		};
+@weight_outputs_hidden->ToString()->PrintLine();
 	}
 
 	method : Store() ~ Nil {
@@ -180,8 +183,7 @@ class NeuralNetwork {
 		dims := @weight_inputs_hidden->Size();
 		rows := dims[0];
 		cols := dims[1];
-		"Storing input weights: {$rows}, {$cols}"->PrintLine();
-
+		"Storing input weights: {$rows},{$cols}"->PrintLine();
 
 		writer->WriteString("{$rows},{$cols}\n");
 		for(i := 0; i < rows; i += 1;) {
@@ -194,13 +196,14 @@ class NeuralNetwork {
 			};
 			writer->WriteString("\n");
 		};
+@weight_inputs_hidden->ToString()->PrintLine();
 
 		# ---
 
 		dims := @weight_outputs_hidden->Size();
 		rows := dims[0];
 		cols := dims[1];
-		"Storing output weights: {$rows}, {$cols}"->PrintLine();
+		"Storing output weights: {$rows},{$cols}"->PrintLine();
 
 		writer->WriteString("{$rows},{$cols}\n");
 		for(i := 0; i < rows; i += 1;) {
@@ -213,6 +216,8 @@ class NeuralNetwork {
 			};
 			writer->WriteString("\n");
 		};
+
+@weight_outputs_hidden->ToString()->PrintLine();		
 	}
 
 	# ---
@@ -221,7 +226,7 @@ class NeuralNetwork {
 		"---"->PrintLine();
 		expected->PrintLine();
 		"---"->PrintLine();
-		
+
 		result := LargestIndex(b);
 
 		b_dims := b->Size();
