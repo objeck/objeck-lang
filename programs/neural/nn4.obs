@@ -63,7 +63,7 @@ class NeuralNetwork {
 			each(i : inputs) {
 				test_input := ParseInput(inputs->Get(i)->As(String), value);
 				test_output := network->Query(test_input);
-				ShowQuery(test_output, value->Get());
+				TestQuery(test_output, value->Get());
 			};
 	 	}
 	 	else if(args->Size() = 1) {
@@ -78,7 +78,7 @@ class NeuralNetwork {
 			each(i : inputs) {
 				test_input := ParseInput(inputs->Get(i)->As(String), value);
 				test_output := network->Query(test_input);
-				ShowQuery(test_output, value->Get());
+				TestQuery(test_output, value->Get());
 			};
 	 	};
 	}
@@ -223,7 +223,7 @@ class NeuralNetwork {
 
 	# ---
 
-	function : ShowQuery(b : Float[,], expected : Int) ~ Nil {
+	function : TestQuery(b : Float[,], expected : Int) ~ Nil {
 		"---"->PrintLine();
 		expected->PrintLine();
 		"---"->PrintLine();
