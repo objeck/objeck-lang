@@ -73,7 +73,7 @@ class NeuralNetwork {
 	 		inputs := LoadInput(args[0]);
 			size := inputs->Size();
 			"---"->PrintLine();
-			"tests: {$size} input(s)"->PrintLine();
+			"{$size} test input(s)"->PrintLine();
 			
 			each(i : inputs) {
 				test_input := ParseInput(inputs->Get(i)->As(String), value);
@@ -121,59 +121,6 @@ class NeuralNetwork {
 		return Matrix2D->Multiple(rate, Matrix2D->Dot(Matrix2D->Multiple(errors, Matrix2D->Multiple(outputs, Matrix2D->Subtract(0.99, outputs))), Matrix2D->Transpose(inputs)));
 	}
 
-	method : Load() ~ Nil {
-		lines := LoadInput("train.dat");
-
-		line := lines->Get(0)->As(String);
-		dims := line->Split(",");
-
-		rows := dims[0]->ToInt();
-		cols := dims[1]->ToInt();
-		"Loading input weights: {$rows}, {$cols}"->PrintLine();
-
-		i : Int;
-		@weight_inputs_hidden := Float->New[rows, cols];
-		for(i := 1; i <= rows; i += 1;) {
-			line := lines->Get(i)->As(String);
-			col := line->Split(",");
-			if(col->Size() <> cols) {
-				"Invalid Row!"->ErrorLine();
-				Runtime->Exit(1);
-			};
-
-			for(j := 0; j < cols; j += 1;) {
-				@weight_inputs_hidden[i - 1, j] := col[j]->ToFloat();
-			};
-		};
-@weight_inputs_hidden->ToString()->PrintLine();
-
-		# ---
-
-		line := lines->Get(i)->As(String);
-		dims := line->Split(",");
-
-		old_row := rows;
-		rows := dims[0]->ToInt();
-		cols := dims[1]->ToInt();
-		"Loading output weights: {$rows}, {$cols}"->PrintLine();
-
-		@weight_outputs_hidden := Float->New[rows, cols];
-		for(i := i + 1; i <= rows + old_row; i += 1;) {
-			line := lines->Get(i)->As(String);
-			col := line->Split(",");
-			if(col->Size() <> cols) {
-				error := col->Size();
-				"Invalid row size: {$error}!"->ErrorLine();
-				Runtime->Exit(1);
-			};
-
-			for(j := 0; j < cols; j += 1;) {
-				@weight_outputs_hidden[i - 1 - old_row, j] := col[j]->ToFloat();
-			};
-		};
-@weight_outputs_hidden->ToString()->PrintLine();
-	}
-
 	method : Store() ~ Nil {
 		writer := FileWriter->New("train.dat");
 		leaving {
@@ -216,8 +163,62 @@ class NeuralNetwork {
 			};
 			writer->WriteString("\n");
 		};
-
 @weight_outputs_hidden->ToString()->PrintLine();		
+	}
+
+	# ---
+
+	method : Load() ~ Nil {
+		lines := LoadInput("train.dat");
+
+		line := lines->Get(0)->As(String);
+		dims := line->Split(",");
+
+		rows := dims[0]->ToInt();
+		cols := dims[1]->ToInt();
+		"Loading input weights: {$rows}, {$cols}"->PrintLine();
+
+		i : Int;
+		@weight_inputs_hidden := Float->New[rows, cols];
+		for(i := 1; i <= rows; i += 1;) {
+			line := lines->Get(i)->As(String);
+			col := line->Split(",");
+			if(col->Size() <> cols) {
+				"Invalid Row!"->ErrorLine();
+				Runtime->Exit(1);
+			};
+
+			for(j := 0; j < cols; j += 1;) {
+				@weight_inputs_hidden[i - 1, j] := col[j]->ToFloat();
+			};
+		};
+@weight_inputs_hidden->ToString()->PrintLine();
+
+		# ---
+
+		line := lines->Get(i)->As(String);
+		dims := line->Split(",");
+
+		old_row := rows;
+		rows := dims[0]->ToInt();
+		cols := dims[1]->ToInt();
+		"Loading output weights: {$rows}, {$cols}"->PrintLine();
+
+		@weight_outputs_hidden := Float->New[rows, cols];
+		for(i := i + 1; i <= rows + old_row + 1; i += 1;) {
+			line := lines->Get(i)->As(String);
+			col := line->Split(",");
+			if(col->Size() <> cols) {
+				error := col->Size();
+				"Invalid row size: {$error}!"->ErrorLine();
+				Runtime->Exit(1);
+			};
+
+			for(j := 0; j < cols; j += 1;) {
+				@weight_outputs_hidden[i - 2 - old_row, j] := col[j]->ToFloat();
+			};
+		};
+@weight_outputs_hidden->ToString()->PrintLine();
 	}
 
 	# ---
