@@ -11,17 +11,17 @@ class NeuralNetwork {
 	@weight_outputs_hidden : Float[,];
 
 	function : Main(args : String[]) ~ Nil {
+		input_nodes := 784;
+		hidden_nodes := 200;
+		output_nodes := 10;
+		learning_rate := 0.2;
+
+		value := IntHolder->New();
 		if(args->Size() = 2) {
 			inputs := LoadInput(args[0]);
 			size := inputs->Size();
-			"Training: {$size} sample(s)"->PrintLine();
-
-			input_nodes := 784;
-			hidden_nodes := 100;
-			output_nodes := 10;
-			learning_rate := 0.3;
-
-			value := IntHolder->New();
+			"Training with {$size} sample(s)"->PrintLine();
+			
 			network := NeuralNetwork->New(input_nodes, hidden_nodes, output_nodes, learning_rate);
 			for(i := 0; i < 1; i += 1;) {
 				state := 0;
@@ -50,9 +50,27 @@ class NeuralNetwork {
 					train_target := GetTrainingTarget(number);
 					network->Train(train_input, train_target, learning_rate);
 				};
+				'\n'->Print();
 			};
 
+			network->Store();
+
 			inputs := LoadInput(args[1]);
+			size := inputs->Size();
+			"---"->PrintLine();
+			"{$size} test input(s)"->PrintLine();
+			
+			each(i : inputs) {
+				test_input := ParseInput(inputs->Get(i)->As(String), value);
+				test_output := network->Query(test_input);
+				ShowQuery(test_output, value->Get());
+			};
+	 	}
+	 	else if(args->Size() = 1) {
+	 		network := NeuralNetwork->New(input_nodes, hidden_nodes, output_nodes, learning_rate);
+	 		network->Load();
+
+	 		inputs := LoadInput(args[0]);
 			size := inputs->Size();
 			"---"->PrintLine();
 			"tests: {$size} input(s)"->PrintLine();
@@ -86,12 +104,12 @@ class NeuralNetwork {
 
 	method : Train(inputs : Float[,], targets : Float[,], rate : Float) ~ Nil {
 		# calculate signals into hidden layer
-        hidden_outputs := Matrix2D->DotSigmoid(@weight_inputs_hidden, inputs);        
-        # calculate signals into final output layer
-        final_outputs  := Matrix2D->DotSigmoid(@weight_outputs_hidden, hidden_outputs);        
-        # output layer error is the (target - actual)
-        output_errors := Matrix2D->Subtract(targets, final_outputs);
-        # hidden layer error is the output_errors, split by weights, recombined at hidden nodes
+		hidden_outputs := Matrix2D->DotSigmoid(@weight_inputs_hidden, inputs);        
+		# calculate signals into final output layer
+		final_outputs  := Matrix2D->DotSigmoid(@weight_outputs_hidden, hidden_outputs);        
+		# output layer error is the (target - actual)
+		output_errors := Matrix2D->Subtract(targets, final_outputs);
+		# hidden layer error is the output_errors, split by weights, recombined at hidden nodes
 		hidden_errors := Matrix2D->Dot(Matrix2D->Transpose(@weight_outputs_hidden), output_errors);
 		# update the weights for the links between the input and hidden layers
 		@weight_inputs_hidden := Matrix2D->Add(@weight_inputs_hidden, Adjust(rate, hidden_errors, hidden_outputs, inputs));
@@ -103,13 +121,107 @@ class NeuralNetwork {
 		return Matrix2D->Multiple(rate, Matrix2D->Dot(Matrix2D->Multiple(errors, Matrix2D->Multiple(outputs, Matrix2D->Subtract(0.99, outputs))), Matrix2D->Transpose(inputs)));
 	}
 
+	method : Load() ~ Nil {
+		lines := LoadInput("train.dat");
+
+		line := lines->Get(0)->As(String);
+		dims := line->Split(",");
+
+		rows := dims[0]->ToInt();
+		cols := dims[1]->ToInt();
+		"Loading input weights: {$rows}, {$cols}"->PrintLine();
+
+		i : Int;
+		@weight_inputs_hidden := Float->New[rows, cols];
+		for(i := 1; i <= rows; i += 1;) {
+			line := lines->Get(i)->As(String);
+			col := line->Split(",");
+			if(col->Size() <> cols) {
+				"Invalid Row!"->ErrorLine();
+				Runtime->Exit(1);
+			};
+
+			for(j := 0; j < cols; j += 1;) {
+				@weight_inputs_hidden[i - 1, j] := col[j]->ToFloat();
+			};
+		};
+
+		# ---
+
+		line := lines->Get(i)->As(String);
+		dims := line->Split(",");
+
+		rows := dims[0]->ToInt();
+		cols := dims[1]->ToInt();
+		"Loading output weights: {$rows}, {$cols}"->PrintLine();
+
+		@weight_outputs_hidden := Float->New[rows, cols];
+		for(i := i + 1; i <= rows; i += 1;) {
+			line := lines->Get(i)->As(String);
+			col := line->Split(",");
+			if(col->Size() <> cols) {
+				error := col->Size();
+				"Invalid row size: {$error}!"->ErrorLine();
+				Runtime->Exit(1);
+			};
+
+			for(j := 0; j < cols; j += 1;) {
+				@weight_outputs_hidden[i - 1, j] := col[j]->ToFloat();
+			};
+		};
+	}
+
+	method : Store() ~ Nil {
+		writer := FileWriter->New("train.dat");
+		leaving {
+			writer->Close();
+		};
+
+		dims := @weight_inputs_hidden->Size();
+		rows := dims[0];
+		cols := dims[1];
+		"Storing input weights: {$rows}, {$cols}"->PrintLine();
+
+
+		writer->WriteString("{$rows},{$cols}\n");
+		for(i := 0; i < rows; i += 1;) {
+			for(j := 0; j < cols; j += 1;) {
+				value := @weight_inputs_hidden[i,j]->ToString();
+				writer->WriteString("{$value}");
+				if(j + 1 < cols) {
+					writer->WriteString(",");
+				};
+			};
+			writer->WriteString("\n");
+		};
+
+		# ---
+
+		dims := @weight_outputs_hidden->Size();
+		rows := dims[0];
+		cols := dims[1];
+		"Storing output weights: {$rows}, {$cols}"->PrintLine();
+
+		writer->WriteString("{$rows},{$cols}\n");
+		for(i := 0; i < rows; i += 1;) {
+			for(j := 0; j < cols; j += 1;) {
+				value := @weight_outputs_hidden[i,j]->ToString();
+				writer->WriteString("{$value}");
+				if(j + 1 < cols) {
+					writer->WriteString(",");
+				};
+			};
+			writer->WriteString("\n");
+		};
+	}
+
 	# ---
 
 	function : ShowQuery(b : Float[,], expected : Int) ~ Nil {
-		"==="->PrintLine();
+		"---"->PrintLine();
 		expected->PrintLine();
 		"---"->PrintLine();
-
+		
 		result := LargestIndex(b);
 
 		b_dims := b->Size();
@@ -142,7 +254,7 @@ class NeuralNetwork {
 		"---"->PrintLine();
 	}
 
-	function : GetTrainingTarget(number : Int) ~ Float[,] {
+	function : native : GetTrainingTarget(number : Int) ~ Float[,] {
 		if(number < 0 | number > 9) {
 			return Nil;
 		};
@@ -156,7 +268,7 @@ class NeuralNetwork {
 		return targets;
 	}
 
-	function : LargestIndex(b : Float[,]) ~ Int {
+	function : native : LargestIndex(b : Float[,]) ~ Int {
 		test := 0.0;
 		index := 0;
 
