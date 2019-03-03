@@ -33,16 +33,16 @@ class NeuralNetwork {
 				};
 			};
 
-
 			lines := ReadLines(args[1]);
 			test_size := lines->Size();
 			"test set: {$test_size}"->PrintLine();
 			"---"->PrintLine();
 
-			test_input := GetInput(lines->Get(0)->As(String), value);
-			test_output := network->Query(test_input);
-			value->Get()->PrintLine();
-			test_output->ToString()->PrintLine();
+			each(i : lines) {
+				test_input := GetInput(lines->Get(i)->As(String), value);
+				test_output := network->Query(test_input);
+				ShowQuery(test_output, value->Get());
+			};
 	 	};
 	}
 	
@@ -85,6 +85,23 @@ class NeuralNetwork {
 	}
 
 	# ---
+
+	function : ShowQuery(b : Float[,], expected : Int) ~ Nil {
+		"==="->PrintLine();
+		expected->PrintLine();
+		"---"->PrintLine();
+
+		b_dims := b->Size();
+		for(i := 0; i < b_dims[0]; i += 1;) {
+			probability := b[i,0];
+			if(i = expected) {
+				"{$i}:\t*[{$probability}]"->PrintLine();
+			}
+			else {
+				"{$i}:\t [{$probability}]"->PrintLine();
+			};
+		};
+	}
 
 	function : DebugMeta(a : Float[,], b : Float[,]) ~ Nil {
 		a_dims := a->Size();
