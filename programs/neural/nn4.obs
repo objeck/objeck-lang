@@ -1,5 +1,6 @@
 use System.IO.File;
 use System.Matrix;
+use System.Time;
 use Collection;
 
 class NeuralNetwork {
@@ -19,6 +20,9 @@ class NeuralNetwork {
 
 		value := IntHolder->New();
 		if(args->Size() = 2) {
+			timer := Timer->New();
+
+			timer->Start();
 			inputs := LoadInput(args[0]);
 			size := inputs->Size();
 			"Training with {$size} sample(s)"->PrintLine();
@@ -30,24 +34,36 @@ class NeuralNetwork {
 					number := value->Get(); 
 					train_target := GetTrainingTarget(number);
 					network->Train(train_input, train_target, learning_rate);
-					# show update
-					network->Spinner(i);
+					# show progress
+					network->Spin(i);
 				};
 				'\n'->Print();
 			};
-
 			network->Store();
+			timer->End();
+			elapsed := timer->GetElapsedTime();
+			"Traing time: {$elapsed} second(s)"->PrintLine();
 
-			inputs := LoadInput(args[1]);
-			size := inputs->Size();
 			"---"->PrintLine();
+
+			timer->Start();
+			inputs := LoadInput(args[1]);
+			size := inputs->Size();			
 			"Testing {$size} input(s)"->PrintLine();
 			
+			correct_count := 0;
 			each(i : inputs) {
 				test_input := ParseInput(inputs->Get(i)->As(String), value);
 				test_output := network->Query(test_input);
-				TestQuery(test_output, value->Get());
+				if(TestQuery(test_output, value->Get(), false)) {
+					correct_count += 1;
+				};
 			};
+			timer->End();
+			elapsed := timer->GetElapsedTime();
+			raw_correct := 100.0 * correct_count->As(Float) / size->As(Float);
+			correct := raw_correct->As(Int);
+			"\nTest time: {$elapsed} second(s), correct: {$correct}%"->PrintLine();
 	 	}
 	 	else if(args->Size() = 1) {
 	 		network := NeuralNetwork->New(learning_rate);
@@ -55,13 +71,24 @@ class NeuralNetwork {
 	 		inputs := LoadInput(args[0]);
 			size := inputs->Size();
 			"---"->PrintLine();
-			"Testing {$size} input(s)"->PrintLine();
+			"\nTesting {$size} input(s)"->PrintLine();
 			
+			timer := Timer->New();
+			timer->Start();
+
+			correct_count := 0;
 			each(i : inputs) {
 				test_input := ParseInput(inputs->Get(i)->As(String), value);
 				test_output := network->Query(test_input);
-				TestQuery(test_output, value->Get());
+				if(TestQuery(test_output, value->Get())) {
+					correct_count += 1;
+				};
 			};
+			timer->End();
+			elapsed := timer->GetElapsedTime();
+			raw_correct := 100.0 * correct_count->As(Float) / size->As(Float);
+			correct := raw_correct->As(Int);
+			"\nTest time: {$elapsed} second(s), correct: {$correct}%"->PrintLine();
 	 	};
 	}
 	
@@ -82,7 +109,7 @@ class NeuralNetwork {
 			@output_nodes, @hidden_nodes);
 	}
 
-	method : Spinner(count : Int) ~ Nil {
+	method : Spin(count : Int) ~ Nil {
 		if(count % 25 = 0) {
 			if(@state = 0) {
 				"\b|"->Print();
@@ -139,7 +166,6 @@ class NeuralNetwork {
 		dims := @weight_inputs_hidden->Size();
 		rows := dims[0];
 		cols := dims[1];
-		"Storing input weights: {$rows}x{$cols}"->PrintLine();
 
 		writer->WriteString("{$rows},{$cols}\n");
 		for(i := 0; i < rows; i += 1;) {
@@ -153,13 +179,13 @@ class NeuralNetwork {
 			writer->WriteString("\n");
 		};
 # @weight_inputs_hidden->ToString()->PrintLine();
+		"Stored input weights: {$rows}x{$cols}"->PrintLine();
 
 		# ---
 
 		dims := @weight_outputs_hidden->Size();
 		rows := dims[0];
 		cols := dims[1];
-		"Storing output weights: {$rows}x{$cols}"->PrintLine();
 
 		writer->WriteString("{$rows},{$cols}\n");
 		for(i := 0; i < rows; i += 1;) {
@@ -172,7 +198,8 @@ class NeuralNetwork {
 			};
 			writer->WriteString("\n");
 		};
-# @weight_outputs_hidden->ToString()->PrintLine();		
+# @weight_outputs_hidden->ToString()->PrintLine();
+		"Stored output weights: {$rows}x{$cols}"->PrintLine();
 	}
 
 	# ---
@@ -232,26 +259,37 @@ class NeuralNetwork {
 
 	# ---
 
-	function : TestQuery(b : Float[,], expected : Int) ~ Nil {
-		"---"->PrintLine();
-		expected->PrintLine();
-		"---"->PrintLine();
+	function : TestQuery(test : Float[,], expect : Int, verbose : Bool := true) ~ Bool {		
+		result := LargestIndex(test);
 
-		result := LargestIndex(b);
-
-		b_dims := b->Size();
-		for(i := 0; i < b_dims[0]; i += 1;) {
-			probability := b[i,0];
-			if(i = expected) {
-				"{$i}:\t*[{$probability}]"->PrintLine();
-			}
-			else if(i = result) {
-				"{$i}:\t-[{$probability}]"->PrintLine();
+		if(verbose) {
+			"---"->PrintLine();
+			expect->PrintLine();
+			"---"->PrintLine();
+			rows := test->Size();
+			for(i := 0; i < rows[0]; i += 1;) {
+				probability := test[i,0];
+				if(i = expect) {
+					"{$i}:\t*[{$probability}]"->PrintLine();
+				}
+				else if(i = result) {
+					"{$i}:\t-[{$probability}]"->PrintLine();
+				}
+				else {
+					"{$i}:\t [{$probability}]"->PrintLine();
+				};
+			};
+		}
+		else {
+			if(result = expect) {
+				"{$expect},"->Print();
 			}
 			else {
-				"{$i}:\t [{$probability}]"->PrintLine();
+				"{$expect}*,"->Print();
 			};
 		};
+
+		return result = expect;
 	}
 
 	function : DebugMeta(a : Float[,], b : Float[,]) ~ Nil {
