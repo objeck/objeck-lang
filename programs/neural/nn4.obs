@@ -25,7 +25,7 @@ class NeuralNetwork {
 			timer->Start();
 			inputs := LoadInput(args[0]);
 			size := inputs->Size();
-			"Training with {$size} sample(s)"->PrintLine();
+			"[Training with {$size} sample(s)]"->PrintLine();
 			
 			count := 0;
 			max := epoch * size;
@@ -37,7 +37,7 @@ class NeuralNetwork {
 					train_target := GetTrainingTarget(number);
 					network->Train(train_input, train_target, learning_rate);
 					# show progress
-					network->Show(count, max);
+					network->ShowProgress(count, max);
 					count += 1;
 				};
 			};
@@ -46,14 +46,14 @@ class NeuralNetwork {
 			network->Store();
 			timer->End();
 			elapsed := timer->GetElapsedTime();
-			"Traing time: {$elapsed} second(s)"->PrintLine();
+			"[Time: {$elapsed} second(s)]"->PrintLine();
 
 			"---"->PrintLine();
 
 			timer->Start();
 			inputs := LoadInput(args[1]);
 			size := inputs->Size();			
-			"Testing {$size} input(s)"->PrintLine();
+			"[Testing {$size} input(s)]"->PrintLine();
 			
 			correct_count := 0;
 			each(i : inputs) {
@@ -66,7 +66,7 @@ class NeuralNetwork {
 			timer->End();
 			elapsed := timer->GetElapsedTime();
 			raw_correct := 100.0 * correct_count->As(Float) / size->As(Float);
-			"\nTest time: {$elapsed} second(s), correct: {$raw_correct}%"->PrintLine();
+			"\n[Time: {$elapsed} second(s), correct: {$raw_correct}%]"->PrintLine();
 	 	}
 	 	else if(args->Size() = 1) {
 	 		network := NeuralNetwork->New(learning_rate);
@@ -74,7 +74,7 @@ class NeuralNetwork {
 	 		inputs := LoadInput(args[0]);
 			size := inputs->Size();
 			"---"->PrintLine();
-			"\nTesting {$size} input(s)"->PrintLine();
+			"[Testing {$size} input(s)]"->PrintLine();
 			
 			timer := Timer->New();
 			timer->Start();
@@ -91,7 +91,7 @@ class NeuralNetwork {
 			elapsed := timer->GetElapsedTime();
 			raw_correct := 100.0 * correct_count->As(Float) / size->As(Float);
 			correct := raw_correct->As(Int);
-			"\nTest time: {$elapsed} second(s), correct: {$correct}%"->PrintLine();
+			"\n[Time: {$elapsed} second(s), correct: {$correct}%]"->PrintLine();
 	 	};
 	}
 	
@@ -110,74 +110,6 @@ class NeuralNetwork {
 			@hidden_nodes, @input_nodes);
 		@weight_outputs_hidden := Matrix2D->RandomNormal(0.01, Float->Power(@input_nodes, -0.5), 
 			@output_nodes, @hidden_nodes);
-	}
-
-	method : native : Show(count : Int, max : Int) ~ Nil {
-		done := (count->As(Float) / max->As(Float));
-
-		if(done > 0.995) {
-			"\b100%\b\b\b"->Print();
-		}
-		else if(done > 0.95 & done <= 0.995) {
-			"\b95%\b\b"->Print();	
-		}
-		else if(done > 0.90 & done <= 0.95) {
-			"\b90%\b\b"->Print();	
-		}
-		else if(done > 0.85 & done <= 0.90) {
-			"\b85%\b\b"->Print();	
-		}
-		else if(done > 0.80 & done <= 0.85) {
-			"\b80%\b\b"->Print();	
-		}
-		else if(done > 0.75 & done <= 0.80) {
-			"\b75%\b\b"->Print();	
-		}
-		else if(done > 0.70 & done <= 0.75) {
-			"\b70%\b\b"->Print();	
-		}
-		else if(done > 0.65 & done <= 0.70) {
-			"\b65%\b\b"->Print();	
-		}
-		else if(done > 0.60 & done <= 0.65) {
-			"\b60%\b\b"->Print();	
-		}
-		else if(done > 0.55 & done <= 0.60) {
-			"\b55%\b\b"->Print();	
-		}
-		else if(done > 0.50 & done <= 0.55) {
-			"\b50%\b\b"->Print();	
-		}
-		else if(done > 0.45 & done <= 0.50) {
-			"\b45%\b\b"->Print();	
-		}
-		else if(done > 0.40 & done <= 0.45) {
-			"\b40%\b\b"->Print();	
-		}
-		else if(done > 0.35 & done <= 0.40) {
-			"\b35%\b\b"->Print();	
-		}
-		else if(done > 0.30 & done <= 0.35) {
-			"\b30%\b\b"->Print();	
-		}
-		else if(done > 0.25 & done <= 0.30) {
-			"\b25%\b\b"->Print();	
-		}
-		else if(done > 0.20 & done <= 0.25) {
-			"\b20%\b\b"->Print();	
-		}
-		else if(done > 0.15 & done <= 0.20) {
-			"\b15%\b\b"->Print();	
-		}
-		else if(done > 0.10 & done <= 0.15) {
-			"\b10%\b\b"->Print();	
-		}
-		else if(done > 0.5 & done <= 0.10) {
-			"\b5%\b"->Print();	
-		}
-		else {
-			"\b0%\b"->Print();	
-		};
 	}
 
 	method : Query(inputs : Float[,]) ~ Float[,] {
@@ -249,8 +181,6 @@ class NeuralNetwork {
 		"[Stored output weights: {$rows}x{$cols}]"->PrintLine();
 	}
 
-	# ---
-
 	method : Load() ~ Nil {
 		lines := LoadInput("train.dat");
 
@@ -275,9 +205,6 @@ class NeuralNetwork {
 				@weight_inputs_hidden[i - 1, j] := col[j]->ToFloat();
 			};
 		};
-# @weight_inputs_hidden->ToString()->PrintLine();
-
-		# ---
 
 		line := lines->Get(i)->As(String);
 		dims := line->Split(",");
@@ -301,7 +228,6 @@ class NeuralNetwork {
 				@weight_outputs_hidden[i - 2 - old_row, j] := col[j]->ToFloat();
 			};
 		};
-# @weight_outputs_hidden->ToString()->PrintLine();
 	}
 
 	# ---
@@ -426,5 +352,73 @@ class NeuralNetwork {
 		};
 
 		return inputs;
+	}
+
+	function : ShowProgress(count : Int, max : Int) ~ Nil {
+		done := (count->As(Float) / max->As(Float));
+
+		if(done > 0.995) {
+			"\b100%\b\b\b"->Print();
+		}
+		else if(done > 0.95 & done <= 0.995) {
+			"\b95%\b\b"->Print();	
+		}
+		else if(done > 0.90 & done <= 0.95) {
+			"\b90%\b\b"->Print();	
+		}
+		else if(done > 0.85 & done <= 0.90) {
+			"\b85%\b\b"->Print();	
+		}
+		else if(done > 0.80 & done <= 0.85) {
+			"\b80%\b\b"->Print();	
+		}
+		else if(done > 0.75 & done <= 0.80) {
+			"\b75%\b\b"->Print();	
+		}
+		else if(done > 0.70 & done <= 0.75) {
+			"\b70%\b\b"->Print();	
+		}
+		else if(done > 0.65 & done <= 0.70) {
+			"\b65%\b\b"->Print();	
+		}
+		else if(done > 0.60 & done <= 0.65) {
+			"\b60%\b\b"->Print();	
+		}
+		else if(done > 0.55 & done <= 0.60) {
+			"\b55%\b\b"->Print();	
+		}
+		else if(done > 0.50 & done <= 0.55) {
+			"\b50%\b\b"->Print();	
+		}
+		else if(done > 0.45 & done <= 0.50) {
+			"\b45%\b\b"->Print();	
+		}
+		else if(done > 0.40 & done <= 0.45) {
+			"\b40%\b\b"->Print();	
+		}
+		else if(done > 0.35 & done <= 0.40) {
+			"\b35%\b\b"->Print();	
+		}
+		else if(done > 0.30 & done <= 0.35) {
+			"\b30%\b\b"->Print();	
+		}
+		else if(done > 0.25 & done <= 0.30) {
+			"\b25%\b\b"->Print();	
+		}
+		else if(done > 0.20 & done <= 0.25) {
+			"\b20%\b\b"->Print();	
+		}
+		else if(done > 0.15 & done <= 0.20) {
+			"\b15%\b\b"->Print();	
+		}
+		else if(done > 0.10 & done <= 0.15) {
+			"\b10%\b\b"->Print();	
+		}
+		else if(done > 0.5 & done <= 0.10) {
+			"\b5%\b"->Print();	
+		}
+		else {
+			"\b0%\b"->Print();	
+		};
 	}
 }
