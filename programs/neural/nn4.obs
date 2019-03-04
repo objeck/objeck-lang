@@ -10,13 +10,13 @@ class NeuralNetwork {
 	@learning_rate : Float;
 	@weight_inputs_hidden : Float[,];
 	@weight_outputs_hidden : Float[,];
-	@state : Int;
 
 	function : Main(args : String[]) ~ Nil {
 		input_nodes := 784;
 		hidden_nodes := 200;
 		output_nodes := 10;
 		learning_rate := 0.2;
+		epoch := 7;
 
 		value := IntHolder->New();
 		if(args->Size() = 2) {
@@ -27,18 +27,22 @@ class NeuralNetwork {
 			size := inputs->Size();
 			"Training with {$size} sample(s)"->PrintLine();
 			
+			count := 0;
+			max := epoch * size;
 			network := NeuralNetwork->New(input_nodes, hidden_nodes, output_nodes, learning_rate);
-			for(i := 0; i < 1; i += 1;) {
+			for(i := 0; i < 7; i += 1;) {
 				each(i : inputs) {
 					train_input := ParseInput(inputs->Get(i)->As(String), value);
 					number := value->Get(); 
 					train_target := GetTrainingTarget(number);
 					network->Train(train_input, train_target, learning_rate);
 					# show progress
-					network->Spin(i);
+					network->Show(count, max);
+					count += 1;
 				};
-				'\n'->Print();
 			};
+			'\n'->Print();
+
 			network->Store();
 			timer->End();
 			elapsed := timer->GetElapsedTime();
@@ -62,8 +66,7 @@ class NeuralNetwork {
 			timer->End();
 			elapsed := timer->GetElapsedTime();
 			raw_correct := 100.0 * correct_count->As(Float) / size->As(Float);
-			correct := raw_correct->As(Int);
-			"\nTest time: {$elapsed} second(s), correct: {$correct}%"->PrintLine();
+			"\nTest time: {$elapsed} second(s), correct: {$raw_correct}%"->PrintLine();
 	 	}
 	 	else if(args->Size() = 1) {
 	 		network := NeuralNetwork->New(learning_rate);
@@ -109,25 +112,71 @@ class NeuralNetwork {
 			@output_nodes, @hidden_nodes);
 	}
 
-	method : Spin(count : Int) ~ Nil {
-		if(count % 25 = 0) {
-			if(@state = 0) {
-				"\b|"->Print();
-			}
-			else if(@state = 1) {
-				"\b/"->Print();
-			}
-			else if(@state = 2) {
-				"\b—"->Print();
-			}
-			else if(@state = 3) {
-				"\b\\"->Print();
-			};
+	method : native : Show(count : Int, max : Int) ~ Nil {
+		done := (count->As(Float) / max->As(Float));
 
-			@state += 1;
-			if(@state > 3) {
-				@state := 0;
-			};
+		if(done > 0.995) {
+			"\b100%\b\b\b"->Print();
+		}
+		else if(done > 0.95 & done <= 0.995) {
+			"\b95%\b\b"->Print();	
+		}
+		else if(done > 0.90 & done <= 0.95) {
+			"\b90%\b\b"->Print();	
+		}
+		else if(done > 0.85 & done <= 0.90) {
+			"\b85%\b\b"->Print();	
+		}
+		else if(done > 0.80 & done <= 0.85) {
+			"\b80%\b\b"->Print();	
+		}
+		else if(done > 0.75 & done <= 0.80) {
+			"\b75%\b\b"->Print();	
+		}
+		else if(done > 0.70 & done <= 0.75) {
+			"\b70%\b\b"->Print();	
+		}
+		else if(done > 0.65 & done <= 0.70) {
+			"\b65%\b\b"->Print();	
+		}
+		else if(done > 0.60 & done <= 0.65) {
+			"\b60%\b\b"->Print();	
+		}
+		else if(done > 0.55 & done <= 0.60) {
+			"\b55%\b\b"->Print();	
+		}
+		else if(done > 0.50 & done <= 0.55) {
+			"\b50%\b\b"->Print();	
+		}
+		else if(done > 0.45 & done <= 0.50) {
+			"\b45%\b\b"->Print();	
+		}
+		else if(done > 0.40 & done <= 0.45) {
+			"\b40%\b\b"->Print();	
+		}
+		else if(done > 0.35 & done <= 0.40) {
+			"\b35%\b\b"->Print();	
+		}
+		else if(done > 0.30 & done <= 0.35) {
+			"\b30%\b\b"->Print();	
+		}
+		else if(done > 0.25 & done <= 0.30) {
+			"\b25%\b\b"->Print();	
+		}
+		else if(done > 0.20 & done <= 0.25) {
+			"\b20%\b\b"->Print();	
+		}
+		else if(done > 0.15 & done <= 0.20) {
+			"\b15%\b\b"->Print();	
+		}
+		else if(done > 0.10 & done <= 0.15) {
+			"\b10%\b\b"->Print();	
+		}
+		else if(done > 0.5 & done <= 0.10) {
+			"\b5%\b"->Print();	
+		}
+		else {
+			"\b0%\b"->Print();	
 		};
 	}
 
@@ -178,8 +227,7 @@ class NeuralNetwork {
 			};
 			writer->WriteString("\n");
 		};
-# @weight_inputs_hidden->ToString()->PrintLine();
-		"Stored input weights: {$rows}x{$cols}"->PrintLine();
+		"[Stored input weights: {$rows}x{$cols}]"->PrintLine();
 
 		# ---
 
@@ -198,8 +246,7 @@ class NeuralNetwork {
 			};
 			writer->WriteString("\n");
 		};
-# @weight_outputs_hidden->ToString()->PrintLine();
-		"Stored output weights: {$rows}x{$cols}"->PrintLine();
+		"[Stored output weights: {$rows}x{$cols}]"->PrintLine();
 	}
 
 	# ---
