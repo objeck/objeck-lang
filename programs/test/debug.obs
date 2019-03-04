@@ -1,20 +1,7 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		Foo(0.5, 3, 2);
-	}
-
-	function : Foo(variance : Float, cols : Int, rows : Int) ~ Nil {
-		m := Float->New[rows, cols];
-
-		for(i := 0; i < rows; i += 1;) {
-			for(j := 0; j < cols; j += 1;) {
-#				m[i,j] := 3.5;;
-				m[i,j] := Bar(variance);
-			};
-		};
-	}
-
-	function : Bar(variance : Float) ~ Float {
-		return variance * 3.5;
+		b := true;
+		i := 25;
+		i += b ? 100 : 1;
 	}
 }
