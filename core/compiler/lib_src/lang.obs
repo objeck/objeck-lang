@@ -3410,7 +3410,7 @@ bundle System.Time {
 		}
 		
 		#~
-		Gets the elapsed time
+		Gets the elapsed time in seconds
 		~#
 		method : public : GetElapsedTime() ~ Float {
 			TIMER_ELAPSED;
