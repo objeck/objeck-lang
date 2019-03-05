@@ -77,6 +77,7 @@ namespace instructions {
     STD_OUT_CHAR_ARY,
     STD_OUT_BYTE_ARY_LEN,
     STD_OUT_CHAR_ARY_LEN,
+    STD_FLUSH,
     // standard error i/o
     STD_ERR_BOOL,
     STD_ERR_BYTE,
@@ -85,6 +86,7 @@ namespace instructions {
     STD_ERR_FLOAT,
     STD_ERR_CHAR_ARY,
     STD_ERR_BYTE_ARY,
+    STD_ERR_FLUSH,
     // compression
     COMPRESS_BYTES,
     UNCOMPRESS_BYTES,

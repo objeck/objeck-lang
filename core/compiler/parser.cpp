@@ -1531,7 +1531,19 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
                                                                instructions::STD_ERR_BYTE_ARY);
       NextToken();
       break;
+
+    case STD_FLUSH:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+                                                               instructions::STD_FLUSH);
+      NextToken();
+      break;
       
+    case STD_ERR_FLUSH:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+                                                               instructions::STD_ERR_FLUSH);
+      NextToken();
+      break;
+
     case LOAD_MULTI_ARY_SIZE:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
                                                                instructions::LOAD_MULTI_ARY_SIZE);

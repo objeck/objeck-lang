@@ -184,6 +184,7 @@ enum ScannerTokenType {
   STD_OUT_BYTE_ARY_LEN,
   STD_OUT_CHAR_ARY_LEN,
   STD_IN_STRING,
+  STD_FLUSH,
   // standard error i/o
   STD_ERR_BOOL,
   STD_ERR_BYTE,
@@ -192,6 +193,7 @@ enum ScannerTokenType {
   STD_ERR_FLOAT,
   STD_ERR_CHAR_ARY,
   STD_ERR_BYTE_ARY,
+  STD_ERR_FLUSH,
   CRC32_BYTES,
   // compress
   COMPRESS_BYTES,
