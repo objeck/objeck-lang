@@ -18,6 +18,7 @@ class FreeMemoryManager {
       raw_mem = *iter;
       const size_t alloc_size = raw_mem[0];
       if(alloc_size >= size && alloc_size < size + SIZE_DELTA) {
+        wcout << "Cached: size=" << size << L" alloc_size=" << alloc_size << endl;
         found = true;
       }
     }
@@ -25,19 +26,23 @@ class FreeMemoryManager {
     // remove
     if(found) {
       pool.remove(*iter);
+      return raw_mem;
     }
 
-    return raw_mem;
+    return NULL;
   }
 
   void FreePool() {
-    wcout << L"Freeing..." << endl;
+    wcout << L"Freeing" << endl;
 
     while(!pool.empty()) {
       size_t* raw_mem = pool.front();
       pool.pop_front();
 
       const size_t alloc_size = raw_mem[0];
+
+      wcout << L"\tOld: alloc_size=" << alloc_size << endl;
+
       free(raw_mem);
       raw_mem = NULL;
       alloc_pool_size -= alloc_size;
@@ -67,11 +72,10 @@ public:
       raw_mem = (size_t*)calloc(alloc_size, sizeof(char));
       raw_mem[0] = alloc_size;
 
-      wcout << L"Get: raw=" << raw_mem << L", size=" << size << L", alloc=" << alloc_pool_size << L", max=" << pool_max_size << endl;
+      wcout << "New: size=" << size << L" alloc_size=" << alloc_size << endl; 
     }
-    else {
-      wcout << L"Get Cached: raw=" << raw_mem << L", size=" << size << L", alloc=" << alloc_pool_size << L", max=" << pool_max_size << endl;
-    }
+
+    wcout << L"\tGet: raw=" << raw_mem << L", size=" << size << L", alloc=" << alloc_pool_size << L", max=" << pool_max_size << endl;
     
     return raw_mem + 1;
   }
@@ -82,7 +86,7 @@ public:
     alloc_pool_size -= alloc_size;
     pool.push_back(raw_mem);
 
-    wcout << L"Free: alloc=" << alloc_pool_size << L", max=" << pool_max_size << endl;
+    wcout << L"Free: alloc=" << alloc_size << L", max=" << pool_max_size << L", pool=" << pool.size() << endl;
   }
 };
 
