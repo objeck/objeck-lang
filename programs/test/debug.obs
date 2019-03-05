@@ -1,7 +1,8 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		b := true;
+		b := false;
 		i := 25;
 		i += b ? 100 : 1;
+		i->PrintLine();
 	}
 }
