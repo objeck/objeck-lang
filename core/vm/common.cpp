@@ -1366,6 +1366,9 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
     case STD_IN_STRING:
       return StdInString(program, inst, op_stack, stack_pos, frame);
 
+    case STD_FLUSH:
+      return StdErrFlush(program, inst, op_stack, stack_pos, frame);
+      
     case STD_ERR_BOOL:
       return StdErrBool(program, inst, op_stack, stack_pos, frame);
 
@@ -1387,6 +1390,9 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
     case STD_ERR_BYTE_ARY:
       return StdErrByteAry(program, inst, op_stack, stack_pos, frame);
 
+    case STD_ERR_FLUSH:
+      return StdFlush(program, inst, op_stack, stack_pos, frame);
+    
     case EXIT:
       return Exit(program, inst, op_stack, stack_pos, frame);
 
@@ -1918,6 +1924,16 @@ bool TrapProcessor::CpyFloatStrAry(StackProgram* program, size_t* inst, size_t* 
   return true;
 }
 
+bool TrapProcessor::StdFlush(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+{
+#ifdef _DEBUG
+  wcout << L"  STD_FLUSH" << endl;
+#endif
+  
+  wcout.flush();
+  return true;
+}
+
 bool TrapProcessor::StdOutBool(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
 {
 #ifdef _DEBUG
@@ -2054,6 +2070,16 @@ bool TrapProcessor::StdInString(StackProgram* program, size_t* inst, size_t* &op
     buffer = NULL;
   }
 
+  return true;
+}
+
+bool TrapProcessor::StdErrFlush(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+{
+#ifdef _DEBUG
+  wcout << L"  STD_ERR_FLUSH" << endl;
+#endif
+  
+  wcerr.flush();
   return true;
 }
 

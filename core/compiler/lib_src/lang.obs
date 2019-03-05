@@ -4225,8 +4225,17 @@ bundle System.IO {
 		function : public : WriteErrorBuffer(offset : Int, num : Int, buffer : Char[]) ~ Bool {
 			STD_ERR_BYTE_ARY;
 		}
+
+		function : ErrorFlush() ~ Nil {
+			STD_ERR_FLUSH;
+		}
 		
+		function : Flush() ~ Nil {
+			STD_FLUSH;
+		}
+
 		#~
+
 		Writes a value
 		@param b value
 		@return I/O console instance
