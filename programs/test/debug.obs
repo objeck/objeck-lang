@@ -1,8 +1,12 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		b := false;
+		a := false;
 		i := 25;
-		i += b ? 100 : 1;
+		i += a ? 100 : 1;
 		i->PrintLine();
+
+		b := ["fooz","barley"];
+		x := b[0]->Size()->ToString();
+		x->PrintLine();
 	}
 }
