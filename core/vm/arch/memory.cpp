@@ -38,6 +38,9 @@ unordered_set<StackFrame**> MemoryManager::pda_frames;
 unordered_set<StackFrameMonitor*> MemoryManager::pda_monitors;
 vector<StackFrame*> MemoryManager::jit_frames;
 vector<size_t*> MemoryManager::allocated_memory;
+list<size_t*> MemoryManager::free_memory_cache;
+size_t MemoryManager::free_memory_cache_size;
+
 
 bool MemoryManager::initialized;
 size_t MemoryManager::allocation_size;
@@ -73,6 +76,7 @@ void MemoryManager::Initialize(StackProgram* p)
   allocation_size = 0;
   mem_max_size = MEM_MAX;
   uncollected_count = 0;
+  free_memory_cache_size = 0;
 
 #ifdef _MEM_LOGGING
   mem_logger.open("mem_log.csv");
@@ -322,8 +326,8 @@ size_t* MemoryManager::AllocateArray(const long size, const MemoryType type,  si
   bool is_cached = false;
 #endif
   const size_t alloc_size = calc_size + sizeof(size_t) * EXTRA_BUF_SIZE;
-  
-  mem = (size_t*)calloc(alloc_size, sizeof(char));
+
+  mem = GetMemory(alloc_size, op_stack, stack_pos);
   mem[EXTRA_BUF_SIZE + CACHE_SIZE] = -1;
   mem[EXTRA_BUF_SIZE + TYPE] = type;
   mem[EXTRA_BUF_SIZE + SIZE_OR_CLS] = calc_size;
@@ -356,12 +360,19 @@ size_t* MemoryManager::AllocateArray(const long size, const MemoryType type,  si
 
 
 size_t* MemoryManager::GetMemory(size_t size, size_t* op_stack, long stack_pos) {
-  return (size_t*)calloc(size, sizeof(char));
+  size_t* mem = GetFreeMemory(size);
+  if(mem) {
+    return mem;
+  }
+
+  size_t alloc_size = size + sizeof(size_t);
+  size_t* raw_mem = (size_t*)calloc(alloc_size, sizeof(char));
+  raw_mem[0] = size;
+  return raw_mem + 1;
 }
 
 void MemoryManager::ReleaseMemory(size_t* mem) {
-  free(mem);
-  mem = NULL;
+  AddFreeMemory(mem - 1);
 }
 
 

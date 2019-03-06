@@ -37,6 +37,7 @@
 // basic vm tuning parameters
 #if defined(_WIN64) || defined(_X64)
 #define MEM_MAX 1048576 * 3
+// #define MEM_MAX 4096 * 3
 #else
 #define MEM_MAX 1048576 * 2
 #endif
@@ -44,16 +45,12 @@
 #define UNCOLLECTED_COUNT 11
 #define COLLECTED_COUNT 29
 
-#define POOL_SIZE_16 8192
-#define POOL_SIZE_32 4096
-#define POOL_SIZE_64 4096
-#define POOL_SIZE_128 1024
-
 #define EXTRA_BUF_SIZE 4
 #define MARKED_FLAG -1
 #define SIZE_OR_CLS -2
 #define TYPE -3
-#define CACHE_SIZE -4
+#define CACHE_SIZE -4 // TODO REMOVE
+#define DELTA_CACHE_SIZE 128
 
 struct StackOperMemory {
   size_t* op_stack;
@@ -88,6 +85,8 @@ class MemoryManager {
   static unordered_set<StackFrame**> pda_frames;
   static vector<StackFrame*> jit_frames; // deleted elsewhere
   static vector<size_t*> allocated_memory;
+  static list<size_t*> free_memory_cache;
+  static size_t free_memory_cache_size;
     
 #ifdef _WIN32
   static CRITICAL_SECTION jit_frame_lock;
@@ -162,6 +161,58 @@ class MemoryManager {
   static size_t* GetMemory(size_t alloc_size, size_t* op_stack, long stack_pos);
   static void ReleaseMemory(size_t* mem);
 
+  static void AddFreeMemory(size_t* raw_mem) {
+    if(free_memory_cache_size > MEM_MAX) {
+      ClearFreeMemory();
+      free(raw_mem);
+      raw_mem = NULL;
+    }
+    else {
+      const size_t size = raw_mem[0];
+      free_memory_cache_size += size;
+      free_memory_cache.push_back(raw_mem);
+    }
+  }
+
+  static size_t* GetFreeMemory(size_t size) {
+    bool found = false;
+    std::list<size_t*>::iterator iter = free_memory_cache.begin();
+    for(; !found && iter != free_memory_cache.end(); ++iter) {
+      size_t* check_mem = *iter;
+      const size_t cached_size = check_mem[0];
+      if(cached_size >= size && cached_size < size + DELTA_CACHE_SIZE) {
+        found = true;
+      }
+    }
+
+    if(found) {
+      --iter;
+      size_t* raw_mem = *iter;
+      free_memory_cache.erase(iter);
+
+      const size_t size = raw_mem[0];
+      free_memory_cache_size -= size;
+      memset(raw_mem + 1, 0, size);
+      return raw_mem + 1;
+    }
+
+    return NULL;
+  }
+
+  static void ClearFreeMemory() {
+    while(!free_memory_cache.empty()) {
+      size_t* raw_mem = free_memory_cache.front();
+      free_memory_cache.pop_front();
+
+      const size_t size = raw_mem[0];
+      free_memory_cache_size -= size;
+
+      free(raw_mem);
+      raw_mem = NULL;
+    }
+  }
+
+
  public:
   static void Initialize(StackProgram* p);
 
@@ -169,6 +220,8 @@ class MemoryManager {
 #ifdef _MEM_LOGGING
     mem_logger.close();
 #endif
+
+    ClearFreeMemory();
 
     while(!allocated_memory.empty()) {
       size_t* temp = allocated_memory.front();
