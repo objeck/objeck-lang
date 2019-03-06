@@ -157,7 +157,7 @@ class MemoryManager {
     return NULL;
   }
 
-  static size_t* GetMemory(size_t alloc_size, size_t* op_stack, long stack_pos);
+  static size_t* GetMemory(size_t alloc_size);
   static void ReleaseMemory(size_t* mem);
 
   static void AddFreeMemory(size_t* raw_mem) {

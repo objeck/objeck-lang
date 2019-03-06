@@ -255,7 +255,7 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, long 
 #endif
     const size_t alloc_size = size * 2 + sizeof(size_t) * EXTRA_BUF_SIZE;
     
-    mem = GetMemory(alloc_size, op_stack, stack_pos);
+    mem = GetMemory(alloc_size);
     mem[EXTRA_BUF_SIZE + TYPE] = NIL_TYPE;
     mem[EXTRA_BUF_SIZE + SIZE_OR_CLS] = (size_t)cls;
     mem += EXTRA_BUF_SIZE;
@@ -326,7 +326,7 @@ size_t* MemoryManager::AllocateArray(const long size, const MemoryType type,  si
 #endif
   const size_t alloc_size = calc_size + sizeof(size_t) * EXTRA_BUF_SIZE;
 
-  mem = GetMemory(alloc_size, op_stack, stack_pos);
+  mem = GetMemory(alloc_size);
   mem[EXTRA_BUF_SIZE + TYPE] = type;
   mem[EXTRA_BUF_SIZE + SIZE_OR_CLS] = calc_size;
   mem += EXTRA_BUF_SIZE;
@@ -353,11 +353,7 @@ size_t* MemoryManager::AllocateArray(const long size, const MemoryType type,  si
   return mem;
 }
 
-
-
-
-
-size_t* MemoryManager::GetMemory(size_t size, size_t* op_stack, long stack_pos) {
+size_t* MemoryManager::GetMemory(size_t size) {
   size_t* mem = GetFreeMemory(size);
   if(mem) {
     return mem;
@@ -372,9 +368,6 @@ size_t* MemoryManager::GetMemory(size_t size, size_t* op_stack, long stack_pos) 
 void MemoryManager::ReleaseMemory(size_t* mem) {
   AddFreeMemory(mem - 1);
 }
-
-
-
 
 size_t* MemoryManager::ValidObjectCast(size_t* mem, long to_id, int* cls_hierarchy, int** cls_interfaces)
 {
