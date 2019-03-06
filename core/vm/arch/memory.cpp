@@ -37,11 +37,8 @@ StackProgram* MemoryManager::prgm;
 unordered_set<StackFrame**> MemoryManager::pda_frames;
 unordered_set<StackFrameMonitor*> MemoryManager::pda_monitors;
 vector<StackFrame*> MemoryManager::jit_frames;
-stack<char*> MemoryManager::cache_pool_16;
-stack<char*> MemoryManager::cache_pool_32;
-stack<char*> MemoryManager::cache_pool_64;
-stack<char*> MemoryManager::cache_pool_128;
 vector<size_t*> MemoryManager::allocated_memory;
+
 
 bool MemoryManager::initialized;
 size_t MemoryManager::allocation_size;
@@ -91,22 +88,6 @@ void MemoryManager::Initialize(StackProgram* p)
   InitializeCriticalSection(&marked_lock);
   InitializeCriticalSection(&marked_sweep_lock);
 #endif
-
-  for(int i = 0; i < POOL_SIZE_16; ++i) {
-    cache_pool_16.push((char*)calloc(16, sizeof(char)));
-  }
-
-  for(int i = 0; i < POOL_SIZE_32; ++i) {
-    cache_pool_32.push((char*)calloc(32, sizeof(char)));
-  }
-
-  for(int i = 0; i < POOL_SIZE_64; ++i) {
-    cache_pool_64.push((char*)calloc(64, sizeof(char)));
-  }
-
-  for(int i = 0; i < POOL_SIZE_128; ++i) {
-    cache_pool_128.push((char*)calloc(128, sizeof(char)));
-  }
 
   initialized = true;
 }
@@ -271,42 +252,8 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, long 
 #endif
     const size_t alloc_size = size * 2 + sizeof(size_t) * EXTRA_BUF_SIZE;
     
-    if(cache_pool_128.size() > 0 && alloc_size <= 128 && alloc_size > 64) {
-      mem = (size_t*)cache_pool_128.top();
-      cache_pool_128.pop();
-      mem[EXTRA_BUF_SIZE + CACHE_SIZE] = 128;
-#ifdef _DEBUG
-      is_cached = true;
-#endif
-    }
-    else if(cache_pool_64.size() > 0 && alloc_size <= 64 && alloc_size > 32) {
-      mem = (size_t*)cache_pool_64.top();
-      cache_pool_64.pop();
-      mem[EXTRA_BUF_SIZE + CACHE_SIZE] = 64;
-#ifdef _DEBUG
-      is_cached = true;
-#endif
-    }
-    else if(cache_pool_32.size() > 0 && alloc_size <= 32 && alloc_size > 16) {
-      mem = (size_t*)cache_pool_32.top();
-      cache_pool_32.pop();
-      mem[EXTRA_BUF_SIZE + CACHE_SIZE] = 32;
-#ifdef _DEBUG
-      is_cached = true;
-#endif
-    }
-    else if(cache_pool_16.size() > 0 && alloc_size <= 16) {
-      mem = (size_t*)cache_pool_16.top();
-      cache_pool_16.pop();
-      mem[EXTRA_BUF_SIZE + CACHE_SIZE] = 16;
-#ifdef _DEBUG
-      is_cached = true;
-#endif
-    } 
-    else {
-      mem = (size_t*)calloc(alloc_size, sizeof(char));
-      mem[EXTRA_BUF_SIZE + CACHE_SIZE] = -1;
-    }
+    mem = (size_t*)calloc(alloc_size, sizeof(char));
+    mem[EXTRA_BUF_SIZE + CACHE_SIZE] = -1;
     mem[EXTRA_BUF_SIZE + TYPE] = NIL_TYPE;
     mem[EXTRA_BUF_SIZE + SIZE_OR_CLS] = (size_t)cls;
     mem += EXTRA_BUF_SIZE;
@@ -377,42 +324,8 @@ size_t* MemoryManager::AllocateArray(const long size, const MemoryType type,  si
 #endif
   const size_t alloc_size = calc_size + sizeof(size_t) * EXTRA_BUF_SIZE;
   
-  if(cache_pool_128.size() > 0 && alloc_size <= 128 && alloc_size > 64) {
-    mem = (size_t*)cache_pool_128.top();
-    cache_pool_128.pop();
-    mem[EXTRA_BUF_SIZE + CACHE_SIZE] = 128;
-#ifdef _DEBUG
-    is_cached = true;
-#endif
-  }
-  else if(cache_pool_64.size() > 0 && alloc_size <= 64 && alloc_size > 32) {
-    mem = (size_t*)cache_pool_64.top();
-    cache_pool_64.pop();
-    mem[EXTRA_BUF_SIZE + CACHE_SIZE] = 64;
-#ifdef _DEBUG
-    is_cached = true;
-#endif
-  }
-  else if(cache_pool_32.size() > 0 && alloc_size <= 32 && alloc_size > 16) {
-    mem = (size_t*)cache_pool_32.top();
-    cache_pool_32.pop();
-    mem[EXTRA_BUF_SIZE + CACHE_SIZE] = 32;
-#ifdef _DEBUG
-    is_cached = true;
-#endif
-  }
-  else if(cache_pool_16.size() > 0 && alloc_size <= 16) {
-    mem = (size_t*)cache_pool_16.top();
-    cache_pool_16.pop();
-    mem[EXTRA_BUF_SIZE + CACHE_SIZE] = 16;
-#ifdef _DEBUG
-    is_cached = true;
-#endif
-  } 
-  else {    
-    mem = (size_t*)calloc(alloc_size, sizeof(char));
-    mem[EXTRA_BUF_SIZE + CACHE_SIZE] = -1;
-  }
+  mem = (size_t*)calloc(alloc_size, sizeof(char));
+  mem[EXTRA_BUF_SIZE + CACHE_SIZE] = -1;
   mem[EXTRA_BUF_SIZE + TYPE] = type;
   mem[EXTRA_BUF_SIZE + SIZE_OR_CLS] = calc_size;
   mem += EXTRA_BUF_SIZE;
@@ -737,60 +650,12 @@ void* MemoryManager::CollectMemory(void* arg)
 
       // cache or free memory
       size_t* tmp = mem - EXTRA_BUF_SIZE;
-      switch(mem[CACHE_SIZE]) {
-      case 128:
-        if(cache_pool_128.size() < POOL_SIZE_128 + 1) {
-          memset(tmp, 0, 128);
-          cache_pool_128.push((char*)tmp);
+      free(tmp);
+      tmp = NULL;
 #ifdef _DEBUG
-          wcout << L"# caching memory: addr=" << mem << L"(" << (size_t)mem << L"), size="
-                << mem_size << L" byte(s) #" << endl;
-#endif
-        }
-        break;
-
-      case 64:
-        if(cache_pool_64.size() < POOL_SIZE_64 + 1) {
-          memset(tmp, 0, 64);
-          cache_pool_64.push((char*)tmp);
-#ifdef _DEBUG
-          wcout << L"# caching memory: addr=" << mem << L"(" << (size_t)mem << L"), size="
-                << mem_size << L" byte(s) #" << endl;
-#endif
-        }
-        break;
-
-      case 32:
-        if(cache_pool_32.size() < POOL_SIZE_32 + 1) {
-          memset(tmp, 0, 32);
-          cache_pool_32.push((char*)tmp);
-#ifdef _DEBUG
-          wcout << L"# caching memory: addr=" << mem << L"(" << (size_t)mem << L"), size="
-                << mem_size << L" byte(s) #" << endl;
-#endif
-        }
-        break;
-
-      case 16:
-        if(cache_pool_16.size() < POOL_SIZE_16 + 1) {
-          memset(tmp, 0, 16);
-          cache_pool_16.push((char*)tmp);
-#ifdef _DEBUG
-          wcout << L"# caching memory: addr=" << mem << L"(" << (size_t)mem
-                << L"), size=" << mem_size << L" byte(s) #" << endl;
-#endif
-        }
-        break;
-
-      default:
-        free(tmp);
-        tmp = NULL;
-#ifdef _DEBUG
-        wcout << L"# freeing memory: addr=" << mem << L"(" << (size_t)mem
-              << L"), size=" << mem_size << L" byte(s) #" << endl;
-#endif
-        break;
-      }
+      wcout << L"# freeing memory: addr=" << mem << L"(" << (size_t)mem
+            << L"), size=" << mem_size << L" byte(s) #" << endl;
+#endif      
     }
   }
 

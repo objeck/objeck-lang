@@ -88,12 +88,7 @@ class MemoryManager {
   static unordered_set<StackFrame**> pda_frames;
   static vector<StackFrame*> jit_frames; // deleted elsewhere
   static vector<size_t*> allocated_memory;
-  
-  static stack<char*> cache_pool_16;
-  static stack<char*> cache_pool_32;
-  static stack<char*> cache_pool_64;
-  static stack<char*> cache_pool_128;
-  
+    
 #ifdef _WIN32
   static CRITICAL_SECTION jit_frame_lock;
   static CRITICAL_SECTION pda_frame_lock;
@@ -180,34 +175,6 @@ class MemoryManager {
       temp = NULL;
     }
     allocated_memory.clear();
-
-    while(!cache_pool_16.empty()) {
-      char* mem = cache_pool_16.top();
-      cache_pool_16.pop();
-      free(mem);
-      mem = NULL;
-    }
-
-    while(!cache_pool_32.empty()) {
-      char* mem = cache_pool_32.top();
-      cache_pool_32.pop();
-      free(mem);
-      mem = NULL;
-    }
-
-    while(!cache_pool_64.empty()) {
-      char* mem = cache_pool_64.top();
-      cache_pool_64.pop();
-      free(mem);
-      mem = NULL;
-    }
-
-    while(!cache_pool_128.empty()) {
-      char* mem = cache_pool_128.top();
-      cache_pool_128.pop();
-      free(mem);
-      mem = NULL;
-    }
     
 #ifdef _WIN32
     DeleteCriticalSection(&jit_frame_lock);
