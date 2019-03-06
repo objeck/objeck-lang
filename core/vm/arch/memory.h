@@ -45,11 +45,10 @@
 #define UNCOLLECTED_COUNT 11
 #define COLLECTED_COUNT 29
 
-#define EXTRA_BUF_SIZE 4
+#define EXTRA_BUF_SIZE 3
 #define MARKED_FLAG -1
 #define SIZE_OR_CLS -2
 #define TYPE -3
-#define CACHE_SIZE -4 // TODO REMOVE
 #define DELTA_CACHE_SIZE 128
 
 struct StackOperMemory {
@@ -164,8 +163,6 @@ class MemoryManager {
   static void AddFreeMemory(size_t* raw_mem) {
     if(free_memory_cache_size > mem_max_size) {
       ClearFreeMemory();
-//      free(raw_mem);
-//      raw_mem = NULL;
     }
     
     const size_t size = raw_mem[0];
@@ -209,6 +206,9 @@ class MemoryManager {
       free(raw_mem);
       raw_mem = NULL;
     }
+#ifdef _DEBUG
+    assert(free_memory_cache_size == 0);
+#endif
   }
 
 
