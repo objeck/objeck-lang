@@ -162,16 +162,15 @@ class MemoryManager {
   static void ReleaseMemory(size_t* mem);
 
   static void AddFreeMemory(size_t* raw_mem) {
-    if(free_memory_cache_size > MEM_MAX) {
+    if(free_memory_cache_size > mem_max_size) {
       ClearFreeMemory();
-      free(raw_mem);
-      raw_mem = NULL;
+//      free(raw_mem);
+//      raw_mem = NULL;
     }
-    else {
-      const size_t size = raw_mem[0];
-      free_memory_cache_size += size;
-      free_memory_cache.push_back(raw_mem);
-    }
+    
+    const size_t size = raw_mem[0];
+    free_memory_cache_size += size;
+    free_memory_cache.push_back(raw_mem);
   }
 
   static size_t* GetFreeMemory(size_t size) {
