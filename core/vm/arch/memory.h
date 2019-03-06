@@ -159,6 +159,9 @@ class MemoryManager {
     return NULL;
   }
 
+  static size_t* GetMemory(size_t alloc_size, size_t* op_stack, long stack_pos);
+  static void ReleaseMemory(size_t* mem);
+
  public:
   static void Initialize(StackProgram* p);
 

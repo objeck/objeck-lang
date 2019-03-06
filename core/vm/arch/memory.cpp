@@ -39,7 +39,6 @@ unordered_set<StackFrameMonitor*> MemoryManager::pda_monitors;
 vector<StackFrame*> MemoryManager::jit_frames;
 vector<size_t*> MemoryManager::allocated_memory;
 
-
 bool MemoryManager::initialized;
 size_t MemoryManager::allocation_size;
 size_t MemoryManager::mem_max_size;
@@ -252,7 +251,7 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, long 
 #endif
     const size_t alloc_size = size * 2 + sizeof(size_t) * EXTRA_BUF_SIZE;
     
-    mem = (size_t*)calloc(alloc_size, sizeof(char));
+    mem = GetMemory(alloc_size, op_stack, stack_pos);
     mem[EXTRA_BUF_SIZE + CACHE_SIZE] = -1;
     mem[EXTRA_BUF_SIZE + TYPE] = NIL_TYPE;
     mem[EXTRA_BUF_SIZE + SIZE_OR_CLS] = (size_t)cls;
@@ -351,6 +350,22 @@ size_t* MemoryManager::AllocateArray(const long size, const MemoryType type,  si
 
   return mem;
 }
+
+
+
+
+
+size_t* MemoryManager::GetMemory(size_t size, size_t* op_stack, long stack_pos) {
+  return (size_t*)calloc(size, sizeof(char));
+}
+
+void MemoryManager::ReleaseMemory(size_t* mem) {
+  free(mem);
+  mem = NULL;
+}
+
+
+
 
 size_t* MemoryManager::ValidObjectCast(size_t* mem, long to_id, int* cls_hierarchy, int** cls_interfaces)
 {
@@ -650,8 +665,7 @@ void* MemoryManager::CollectMemory(void* arg)
 
       // cache or free memory
       size_t* tmp = mem - EXTRA_BUF_SIZE;
-      free(tmp);
-      tmp = NULL;
+      ReleaseMemory(tmp);
 #ifdef _DEBUG
       wcout << L"# freeing memory: addr=" << mem << L"(" << (size_t)mem
             << L"), size=" << mem_size << L" byte(s) #" << endl;
