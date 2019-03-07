@@ -355,91 +355,23 @@ class NeuralNetwork {
 	}
 
 	function : ShowProgress(count : Int, max : Int) ~ Nil {
-		done := (count->As(Float) / max->As(Float));
-
-		if(done > 0.995) {
+		done := ((count->As(Float) / max->As(Float)) * 100.0)->As(Int);
+		
+		if(done = 100.0) {
 			"\b100%\b\b\b"->Print();
 			System.IO.Console->Flush();
 		}
-		else if(done > 0.95 & done <= 0.995) {
-			"\b95%\b\b"->Print();	
+		else if(done < 100.0 & done > 9.0) {
+			"\b{$done}%\b\b"->Print();	
 			System.IO.Console->Flush();
 		}
-		else if(done > 0.90 & done <= 0.95) {
-			"\b90%\b\b"->Print();	
-			System.IO.Console->Flush();
-		}
-		else if(done > 0.85 & done <= 0.90) {
-			"\b85%\b\b"->Print();	
-			System.IO.Console->Flush();
-		}
-		else if(done > 0.80 & done <= 0.85) {
-			"\b80%\b\b"->Print();	
-			System.IO.Console->Flush();
-		}
-		else if(done > 0.75 & done <= 0.80) {
-			"\b75%\b\b"->Print();	
-			System.IO.Console->Flush();
-		}
-		else if(done > 0.70 & done <= 0.75) {
-			"\b70%\b\b"->Print();	
-			System.IO.Console->Flush();
-		}
-		else if(done > 0.65 & done <= 0.70) {
-			"\b65%\b\b"->Print();	
-			System.IO.Console->Flush();
-		}
-		else if(done > 0.60 & done <= 0.65) {
-			"\b60%\b\b"->Print();	
-			System.IO.Console->Flush();
-		}
-		else if(done > 0.55 & done <= 0.60) {
-			"\b55%\b\b"->Print();	
-			System.IO.Console->Flush();
-		}
-		else if(done > 0.50 & done <= 0.55) {
-			"\b50%\b\b"->Print();	
-			System.IO.Console->Flush();
-		}
-		else if(done > 0.45 & done <= 0.50) {
-			"\b45%\b\b"->Print();	
-			System.IO.Console->Flush();
-		}
-		else if(done > 0.40 & done <= 0.45) {
-			"\b40%\b\b"->Print();	
-			System.IO.Console->Flush();
-		}
-		else if(done > 0.35 & done <= 0.40) {
-			"\b35%\b\b"->Print();	
-			System.IO.Console->Flush();
-		}
-		else if(done > 0.30 & done <= 0.35) {
-			"\b30%\b\b"->Print();	
-			System.IO.Console->Flush();
-		}
-		else if(done > 0.25 & done <= 0.30) {
-			"\b25%\b\b"->Print();	
-			System.IO.Console->Flush();
-		}
-		else if(done > 0.20 & done <= 0.25) {
-			"\b20%\b\b"->Print();	
-			System.IO.Console->Flush();
-		}
-		else if(done > 0.15 & done <= 0.20) {
-			"\b15%\b\b"->Print();	
-			System.IO.Console->Flush();
-		}
-		else if(done > 0.10 & done <= 0.15) {
-			"\b10%\b\b"->Print();	
-			System.IO.Console->Flush();
-		}
-		else if(done > 0.5 & done <= 0.10) {
-			"\b5%\b"->Print();	
+		else if(done >= 1.0) {
+			"\b{$done}%\b"->Print();	
 			System.IO.Console->Flush();
 		}
 		else {
 			"\b0%\b"->Print();	
 			System.IO.Console->Flush();
-		};
+		};		
 	}
 }
