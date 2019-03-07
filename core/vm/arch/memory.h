@@ -365,10 +365,10 @@ class MemoryManager {
       if(all) {
         delete free_cache;
         free_cache = NULL;
+
+        free_memory_cache.clear();
       }
     }
-
-    free_memory_cache.clear();
   }
   
  public:
