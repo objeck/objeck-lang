@@ -38,7 +38,10 @@ unordered_set<StackFrame**> MemoryManager::pda_frames;
 unordered_set<StackFrameMonitor*> MemoryManager::pda_monitors;
 vector<StackFrame*> MemoryManager::jit_frames;
 vector<size_t*> MemoryManager::allocated_memory;
-list<size_t*> MemoryManager::free_memory_cache;
+
+// TODO
+// list<size_t*> MemoryManager::free_memory_cache;
+map<size_t, list<size_t*>*> MemoryManager::free_memory_cache;
 size_t MemoryManager::free_memory_cache_size;
 
 
