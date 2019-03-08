@@ -816,7 +816,7 @@ void* MemoryManager::CollectMemory(void* arg)
     else {
       mem_max_size = (mem_max_size >> 1) / 2;
       if(mem_max_size <= 0) {
-        mem_max_size = MEM_MAX;
+        mem_max_size = MEM_MAX << 3;
       }
       collected_count = 0;
     }
