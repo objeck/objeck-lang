@@ -36,18 +36,32 @@
 
 // basic vm tuning parameters
 #if defined(_WIN64) || defined(_X64)
-#define MEM_MAX 1048576 * 3
-#else
 #define MEM_MAX 1048576 * 2
+#else
+#define MEM_MAX 1048576
 #endif
 
 #define UNCOLLECTED_COUNT 11
 #define COLLECTED_COUNT 29
 
 #define POOL_SIZE_16 8192
-#define POOL_SIZE_32 4096
+#define POOL_SIZE_32 8192
 #define POOL_SIZE_64 4096
-#define POOL_SIZE_128 1024
+#define POOL_SIZE_128 2048
+#define POOL_SIZE_256 2048
+#define POOL_SIZE_512 2048
+#define POOL_SIZE_1024 1024
+#define POOL_SIZE_2048 1024
+#define POOL_SIZE_4096 512
+#define POOL_SIZE_8192 512
+#define POOL_SIZE_16384 256
+#define POOL_SIZE_32768 256
+#define POOL_SIZE_65536 128
+#define POOL_SIZE_131072 128
+#define POOL_SIZE_262144 64
+#define POOL_SIZE_524288 64
+#define POOL_SIZE_1048576 64
+#define POOL_SIZE_2097152 32
 
 #define EXTRA_BUF_SIZE 4
 #define MARKED_FLAG -1
@@ -93,7 +107,21 @@ class MemoryManager {
   static stack<char*> cache_pool_32;
   static stack<char*> cache_pool_64;
   static stack<char*> cache_pool_128;
-  
+  static stack<char*> cache_pool_256;
+  static stack<char*> cache_pool_512;
+  static stack<char*> cache_pool_1024;
+  static stack<char*> cache_pool_2048;
+  static stack<char*> cache_pool_4096;
+  static stack<char*> cache_pool_8192;
+  static stack<char*> cache_pool_16384;
+  static stack<char*> cache_pool_32768;
+  static stack<char*> cache_pool_65536;
+  static stack<char*> cache_pool_131072;
+  static stack<char*> cache_pool_262144;
+  static stack<char*> cache_pool_524288;
+  static stack<char*> cache_pool_1048576;
+  static stack<char*> cache_pool_2097152;
+
 #ifdef _WIN32
   static CRITICAL_SECTION jit_frame_lock;
   static CRITICAL_SECTION pda_frame_lock;
@@ -205,6 +233,41 @@ class MemoryManager {
     while(!cache_pool_128.empty()) {
       char* mem = cache_pool_128.top();
       cache_pool_128.pop();
+      free(mem);
+      mem = NULL;
+    }
+
+    while(!cache_pool_256.empty()) {
+      char* mem = cache_pool_256.top();
+      cache_pool_256.pop();
+      free(mem);
+      mem = NULL;
+    }
+
+    while(!cache_pool_512.empty()) {
+      char* mem = cache_pool_512.top();
+      cache_pool_512.pop();
+      free(mem);
+      mem = NULL;
+    }
+
+    while(!cache_pool_1024.empty()) {
+      char* mem = cache_pool_1024.top();
+      cache_pool_1024.pop();
+      free(mem);
+      mem = NULL;
+    }
+
+    while(!cache_pool_2048.empty()) {
+      char* mem = cache_pool_2048.top();
+      cache_pool_2048.pop();
+      free(mem);
+      mem = NULL;
+    }
+
+    while(!cache_pool_4096.empty()) {
+      char* mem = cache_pool_4096.top();
+      cache_pool_4096.pop();
       free(mem);
       mem = NULL;
     }

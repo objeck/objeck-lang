@@ -41,6 +41,21 @@ stack<char*> MemoryManager::cache_pool_16;
 stack<char*> MemoryManager::cache_pool_32;
 stack<char*> MemoryManager::cache_pool_64;
 stack<char*> MemoryManager::cache_pool_128;
+stack<char*> MemoryManager::cache_pool_256;
+stack<char*> MemoryManager::cache_pool_512;
+stack<char*> MemoryManager::cache_pool_1024;
+stack<char*> MemoryManager::cache_pool_2048;
+stack<char*> MemoryManager::cache_pool_4096;
+stack<char*> MemoryManager::cache_pool_8192;
+stack<char*> MemoryManager::cache_pool_16384;
+stack<char*> MemoryManager::cache_pool_32768;
+stack<char*> MemoryManager::cache_pool_65536;
+stack<char*> MemoryManager::cache_pool_131072;
+stack<char*> MemoryManager::cache_pool_262144;
+stack<char*> MemoryManager::cache_pool_524288;
+stack<char*> MemoryManager::cache_pool_1048576;
+stack<char*> MemoryManager::cache_pool_2097152;
+
 vector<size_t*> MemoryManager::allocated_memory;
 
 bool MemoryManager::initialized;
@@ -106,6 +121,62 @@ void MemoryManager::Initialize(StackProgram* p)
 
   for(int i = 0; i < POOL_SIZE_128; ++i) {
     cache_pool_128.push((char*)calloc(128, sizeof(char)));
+  }
+
+  for(int i = 0; i < POOL_SIZE_256; ++i) {
+    cache_pool_256.push((char*)calloc(256, sizeof(char)));
+  }
+
+  for(int i = 0; i < POOL_SIZE_512; ++i) {
+    cache_pool_512.push((char*)calloc(512, sizeof(char)));
+  }
+
+  for(int i = 0; i < POOL_SIZE_1024; ++i) {
+    cache_pool_1024.push((char*)calloc(1024, sizeof(char)));
+  }
+
+  for(int i = 0; i < POOL_SIZE_2048; ++i) {
+    cache_pool_2048.push((char*)calloc(2048, sizeof(char)));
+  }
+
+  for(int i = 0; i < POOL_SIZE_4096; ++i) {
+    cache_pool_4096.push((char*)calloc(4096, sizeof(char)));
+  }
+
+  for(int i = 0; i < POOL_SIZE_8192; ++i) {
+    cache_pool_8192.push((char*)calloc(8192, sizeof(char)));
+  }
+
+  for(int i = 0; i < POOL_SIZE_16384; ++i) {
+    cache_pool_16384.push((char*)calloc(16384, sizeof(char)));
+  }
+
+  for(int i = 0; i < POOL_SIZE_32768; ++i) {
+    cache_pool_32768.push((char*)calloc(32768, sizeof(char)));
+  }
+
+  for(int i = 0; i < POOL_SIZE_65536; ++i) {
+    cache_pool_65536.push((char*)calloc(65536, sizeof(char)));
+  }
+
+  for(int i = 0; i < POOL_SIZE_131072; ++i) {
+    cache_pool_131072.push((char*)calloc(131072, sizeof(char)));
+  }
+
+  for(int i = 0; i < POOL_SIZE_262144; ++i) {
+    cache_pool_262144.push((char*)calloc(262144, sizeof(char)));
+  }
+
+  for(int i = 0; i < POOL_SIZE_524288; ++i) {
+    cache_pool_524288.push((char*)calloc(524288, sizeof(char)));
+  }
+
+  for(int i = 0; i < POOL_SIZE_1048576; ++i) {
+    cache_pool_1048576.push((char*)calloc(1048576, sizeof(char)));
+  }
+
+  for(int i = 0; i < POOL_SIZE_2097152; ++i) {
+    cache_pool_2097152.push((char*)calloc(2097152, sizeof(char)));
   }
 
   initialized = true;
@@ -271,7 +342,119 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, long 
 #endif
     const size_t alloc_size = size * 2 + sizeof(size_t) * EXTRA_BUF_SIZE;
     
-    if(cache_pool_128.size() > 0 && alloc_size <= 128 && alloc_size > 64) {
+    if(cache_pool_2097152.size() > 0 && alloc_size <= 2097152 && alloc_size > 1048576) {
+      mem = (size_t*)cache_pool_2097152.top();
+      cache_pool_2097152.pop();
+      mem[EXTRA_BUF_SIZE + CACHE_SIZE] = 2097152;
+#ifdef _DEBUG
+      is_cached = true;
+#endif
+    }
+    else if(cache_pool_1048576.size() > 0 && alloc_size <= 1048576 && alloc_size > 524288) {
+      mem = (size_t*)cache_pool_1048576.top();
+      cache_pool_1048576.pop();
+      mem[EXTRA_BUF_SIZE + CACHE_SIZE] = 1048576;
+#ifdef _DEBUG
+      is_cached = true;
+#endif
+    }
+    else if(cache_pool_524288.size() > 0 && alloc_size <= 524288 && alloc_size > 262144) {
+      mem = (size_t*)cache_pool_524288.top();
+      cache_pool_524288.pop();
+      mem[EXTRA_BUF_SIZE + CACHE_SIZE] = 524288;
+#ifdef _DEBUG
+      is_cached = true;
+#endif
+    }
+    else if(cache_pool_262144.size() > 0 && alloc_size <= 262144 && alloc_size > 131072) {
+      mem = (size_t*)cache_pool_262144.top();
+      cache_pool_262144.pop();
+      mem[EXTRA_BUF_SIZE + CACHE_SIZE] = 262144;
+#ifdef _DEBUG
+      is_cached = true;
+#endif
+    }
+    else if(cache_pool_131072.size() > 0 && alloc_size <= 131072 && alloc_size > 65536) {
+      mem = (size_t*)cache_pool_131072.top();
+      cache_pool_131072.pop();
+      mem[EXTRA_BUF_SIZE + CACHE_SIZE] = 131072;
+#ifdef _DEBUG
+      is_cached = true;
+#endif
+    }
+    else if(cache_pool_65536.size() > 0 && alloc_size <= 65536 && alloc_size > 32768) {
+    mem = (size_t*)cache_pool_65536.top();
+    cache_pool_65536.pop();
+    mem[EXTRA_BUF_SIZE + CACHE_SIZE] = 65536;
+#ifdef _DEBUG
+    is_cached = true;
+#endif
+    }
+    else if(cache_pool_32768.size() > 0 && alloc_size <= 32768 && alloc_size > 16384) {
+    mem = (size_t*)cache_pool_32768.top();
+    cache_pool_32768.pop();
+    mem[EXTRA_BUF_SIZE + CACHE_SIZE] = 32768;
+#ifdef _DEBUG
+    is_cached = true;
+#endif
+    }
+    else if(cache_pool_16384.size() > 0 && alloc_size <= 16384 && alloc_size > 8192) {
+    mem = (size_t*)cache_pool_16384.top();
+    cache_pool_16384.pop();
+    mem[EXTRA_BUF_SIZE + CACHE_SIZE] = 16384;
+#ifdef _DEBUG
+    is_cached = true;
+#endif
+    }
+    else if(cache_pool_8192.size() > 0 && alloc_size <= 8192 && alloc_size > 4096) {
+    mem = (size_t*)cache_pool_8192.top();
+    cache_pool_8192.pop();
+    mem[EXTRA_BUF_SIZE + CACHE_SIZE] = 8192;
+#ifdef _DEBUG
+    is_cached = true;
+#endif
+    }
+    else if(cache_pool_4096.size() > 0 && alloc_size <= 4096 && alloc_size > 2048) {
+      mem = (size_t*)cache_pool_4096.top();
+      cache_pool_4096.pop();
+      mem[EXTRA_BUF_SIZE + CACHE_SIZE] = 4096;
+#ifdef _DEBUG
+      is_cached = true;
+#endif
+    }
+    else if(cache_pool_2048.size() > 0 && alloc_size <= 2048 && alloc_size > 1024) {
+      mem = (size_t*)cache_pool_2048.top();
+      cache_pool_2048.pop();
+      mem[EXTRA_BUF_SIZE + CACHE_SIZE] = 2048;
+#ifdef _DEBUG
+      is_cached = true;
+#endif
+    }
+    else if(cache_pool_1024.size() > 0 && alloc_size <= 1024 && alloc_size > 512) {
+      mem = (size_t*)cache_pool_1024.top();
+      cache_pool_1024.pop();
+      mem[EXTRA_BUF_SIZE + CACHE_SIZE] = 1024;
+#ifdef _DEBUG
+      is_cached = true;
+#endif
+    }
+    else if(cache_pool_512.size() > 0 && alloc_size <= 512 && alloc_size > 256) {
+      mem = (size_t*)cache_pool_512.top();
+      cache_pool_512.pop();
+      mem[EXTRA_BUF_SIZE + CACHE_SIZE] = 512;
+#ifdef _DEBUG
+      is_cached = true;
+#endif
+    }
+    else if(cache_pool_256.size() > 0 && alloc_size <= 256 && alloc_size > 128) {
+      mem = (size_t*)cache_pool_256.top();
+      cache_pool_256.pop();
+      mem[EXTRA_BUF_SIZE + CACHE_SIZE] = 256;
+#ifdef _DEBUG
+      is_cached = true;
+#endif
+    }
+    else if(cache_pool_128.size() > 0 && alloc_size <= 128 && alloc_size > 64) {
       mem = (size_t*)cache_pool_128.top();
       cache_pool_128.pop();
       mem[EXTRA_BUF_SIZE + CACHE_SIZE] = 128;
@@ -377,7 +560,119 @@ size_t* MemoryManager::AllocateArray(const long size, const MemoryType type,  si
 #endif
   const size_t alloc_size = calc_size + sizeof(size_t) * EXTRA_BUF_SIZE;
   
-  if(cache_pool_128.size() > 0 && alloc_size <= 128 && alloc_size > 64) {
+  if(cache_pool_2097152.size() > 0 && alloc_size <= 2097152 && alloc_size > 1048576) {
+    mem = (size_t*)cache_pool_2097152.top();
+    cache_pool_2097152.pop();
+    mem[EXTRA_BUF_SIZE + CACHE_SIZE] = 2097152;
+#ifdef _DEBUG
+    is_cached = true;
+#endif
+  }
+  else if(cache_pool_1048576.size() > 0 && alloc_size <= 1048576 && alloc_size > 524288) {
+    mem = (size_t*)cache_pool_1048576.top();
+    cache_pool_1048576.pop();
+    mem[EXTRA_BUF_SIZE + CACHE_SIZE] = 1048576;
+#ifdef _DEBUG
+    is_cached = true;
+#endif
+  }
+  else if(cache_pool_524288.size() > 0 && alloc_size <= 524288 && alloc_size > 262144) {
+    mem = (size_t*)cache_pool_524288.top();
+    cache_pool_524288.pop();
+    mem[EXTRA_BUF_SIZE + CACHE_SIZE] = 524288;
+#ifdef _DEBUG
+    is_cached = true;
+#endif
+  }
+  else if(cache_pool_262144.size() > 0 && alloc_size <= 262144 && alloc_size > 131072) {
+    mem = (size_t*)cache_pool_262144.top();
+    cache_pool_262144.pop();
+    mem[EXTRA_BUF_SIZE + CACHE_SIZE] = 262144;
+#ifdef _DEBUG
+    is_cached = true;
+#endif
+  }
+  else if(cache_pool_131072.size() > 0 && alloc_size <= 131072 && alloc_size > 65536) {
+    mem = (size_t*)cache_pool_131072.top();
+    cache_pool_131072.pop();
+    mem[EXTRA_BUF_SIZE + CACHE_SIZE] = 131072;
+#ifdef _DEBUG
+    is_cached = true;
+#endif
+  }
+  else if(cache_pool_65536.size() > 0 && alloc_size <= 65536 && alloc_size > 32768) {
+    mem = (size_t*)cache_pool_65536.top();
+    cache_pool_65536.pop();
+    mem[EXTRA_BUF_SIZE + CACHE_SIZE] = 65536;
+#ifdef _DEBUG
+    is_cached = true;
+#endif
+  }
+  else if(cache_pool_32768.size() > 0 && alloc_size <= 32768 && alloc_size > 16384) {
+    mem = (size_t*)cache_pool_32768.top();
+    cache_pool_32768.pop();
+    mem[EXTRA_BUF_SIZE + CACHE_SIZE] = 32768;
+#ifdef _DEBUG
+    is_cached = true;
+#endif
+  }
+  else if(cache_pool_16384.size() > 0 && alloc_size <= 16384 && alloc_size > 8192) {
+    mem = (size_t*)cache_pool_16384.top();
+    cache_pool_16384.pop();
+    mem[EXTRA_BUF_SIZE + CACHE_SIZE] = 16384;
+#ifdef _DEBUG
+    is_cached = true;
+#endif
+  }
+  else if(cache_pool_8192.size() > 0 && alloc_size <= 8192 && alloc_size > 4096) {
+    mem = (size_t*)cache_pool_8192.top();
+    cache_pool_8192.pop();
+    mem[EXTRA_BUF_SIZE + CACHE_SIZE] = 8192;
+#ifdef _DEBUG
+    is_cached = true;
+#endif
+  }
+  else if(cache_pool_4096.size() > 0 && alloc_size <= 4096 && alloc_size > 2048) {
+    mem = (size_t*)cache_pool_4096.top();
+    cache_pool_4096.pop();
+    mem[EXTRA_BUF_SIZE + CACHE_SIZE] = 4096;
+#ifdef _DEBUG
+    is_cached = true;
+#endif
+  }
+  else if(cache_pool_2048.size() > 0 && alloc_size <= 2048 && alloc_size > 1024) {
+    mem = (size_t*)cache_pool_2048.top();
+    cache_pool_2048.pop();
+    mem[EXTRA_BUF_SIZE + CACHE_SIZE] = 2048;
+#ifdef _DEBUG
+    is_cached = true;
+#endif
+  }
+  else if(cache_pool_1024.size() > 0 && alloc_size <= 1024 && alloc_size > 512) {
+    mem = (size_t*)cache_pool_1024.top();
+    cache_pool_1024.pop();
+    mem[EXTRA_BUF_SIZE + CACHE_SIZE] = 1024;
+#ifdef _DEBUG
+    is_cached = true;
+#endif
+  }
+  else if(cache_pool_512.size() > 0 && alloc_size <= 512 && alloc_size > 256) {
+    mem = (size_t*)cache_pool_512.top();
+    cache_pool_512.pop();
+    mem[EXTRA_BUF_SIZE + CACHE_SIZE] = 512;
+#ifdef _DEBUG
+    is_cached = true;
+#endif
+  }
+  else if(cache_pool_256.size() > 0 && alloc_size <= 256 && alloc_size > 128) {
+    mem = (size_t*)cache_pool_256.top();
+    cache_pool_256.pop();
+    mem[EXTRA_BUF_SIZE + CACHE_SIZE] = 256;
+#ifdef _DEBUG
+    is_cached = true;
+#endif
+  }
+  else if(cache_pool_128.size() > 0 && alloc_size <= 128 && alloc_size > 64) {
     mem = (size_t*)cache_pool_128.top();
     cache_pool_128.pop();
     mem[EXTRA_BUF_SIZE + CACHE_SIZE] = 128;
@@ -738,6 +1033,176 @@ void* MemoryManager::CollectMemory(void* arg)
       // cache or free memory
       size_t* tmp = mem - EXTRA_BUF_SIZE;
       switch(mem[CACHE_SIZE]) {
+      case 2097152:
+        if(cache_pool_2097152.size() < POOL_SIZE_2097152 + 1) {
+          memset(tmp, 0, 2097152);
+          cache_pool_2097152.push((char*)tmp);
+#ifdef _DEBUG
+          wcout << L"# caching memory: addr=" << mem << L"(" << (size_t)mem << L"), size="
+            << mem_size << L" byte(s) #" << endl;
+#endif
+        }
+        break;
+
+      case 1048576:
+        if(cache_pool_1048576.size() < POOL_SIZE_1048576 + 1) {
+          memset(tmp, 0, 1048576);
+          cache_pool_1048576.push((char*)tmp);
+#ifdef _DEBUG
+          wcout << L"# caching memory: addr=" << mem << L"(" << (size_t)mem << L"), size="
+            << mem_size << L" byte(s) #" << endl;
+#endif
+        }
+        break;
+
+      case 524288:
+        if(cache_pool_524288.size() < POOL_SIZE_524288 + 1) {
+          memset(tmp, 0, 524288);
+          cache_pool_524288.push((char*)tmp);
+#ifdef _DEBUG
+          wcout << L"# caching memory: addr=" << mem << L"(" << (size_t)mem << L"), size="
+            << mem_size << L" byte(s) #" << endl;
+#endif
+        }
+        break;
+
+
+      case 262144:
+        if(cache_pool_262144.size() < POOL_SIZE_262144 + 1) {
+          memset(tmp, 0, 262144);
+          cache_pool_262144.push((char*)tmp);
+#ifdef _DEBUG
+          wcout << L"# caching memory: addr=" << mem << L"(" << (size_t)mem << L"), size="
+            << mem_size << L" byte(s) #" << endl;
+#endif
+        }
+        break;
+
+
+      case 131072:
+        if(cache_pool_131072.size() < POOL_SIZE_131072 + 1) {
+          memset(tmp, 0, 131072);
+          cache_pool_131072.push((char*)tmp);
+#ifdef _DEBUG
+          wcout << L"# caching memory: addr=" << mem << L"(" << (size_t)mem << L"), size="
+            << mem_size << L" byte(s) #" << endl;
+#endif
+        }
+        break;
+
+
+      case 65536:
+        if(cache_pool_65536.size() < POOL_SIZE_65536 + 1) {
+          memset(tmp, 0, 65536);
+          cache_pool_65536.push((char*)tmp);
+#ifdef _DEBUG
+          wcout << L"# caching memory: addr=" << mem << L"(" << (size_t)mem << L"), size="
+            << mem_size << L" byte(s) #" << endl;
+#endif
+        }
+        break;
+
+
+      case 32768:
+        if(cache_pool_32768.size() < POOL_SIZE_32768 + 1) {
+          memset(tmp, 0, 32768);
+          cache_pool_32768.push((char*)tmp);
+#ifdef _DEBUG
+          wcout << L"# caching memory: addr=" << mem << L"(" << (size_t)mem << L"), size="
+            << mem_size << L" byte(s) #" << endl;
+#endif
+        }
+        break;
+
+
+      case 16384:
+        if(cache_pool_16384.size() < POOL_SIZE_16384 + 1) {
+          memset(tmp, 0, 16384);
+          cache_pool_16384.push((char*)tmp);
+#ifdef _DEBUG
+          wcout << L"# caching memory: addr=" << mem << L"(" << (size_t)mem << L"), size="
+            << mem_size << L" byte(s) #" << endl;
+#endif
+        }
+        break;
+
+
+      case 8192:
+        if(cache_pool_8192.size() < POOL_SIZE_8192 + 1) {
+          memset(tmp, 0, 8192);
+          cache_pool_8192.push((char*)tmp);
+#ifdef _DEBUG
+          wcout << L"# caching memory: addr=" << mem << L"(" << (size_t)mem << L"), size="
+            << mem_size << L" byte(s) #" << endl;
+#endif
+        }
+        break;
+
+
+
+
+
+
+
+
+
+
+
+      case 4096:
+        if(cache_pool_4096.size() < POOL_SIZE_4096 + 1) {
+          memset(tmp, 0, 4096);
+          cache_pool_4096.push((char*)tmp);
+#ifdef _DEBUG
+          wcout << L"# caching memory: addr=" << mem << L"(" << (size_t)mem << L"), size="
+            << mem_size << L" byte(s) #" << endl;
+#endif
+        }
+        break;
+
+      case 2048:
+        if(cache_pool_2048.size() < POOL_SIZE_2048 + 1) {
+          memset(tmp, 0, 2048);
+          cache_pool_2048.push((char*)tmp);
+#ifdef _DEBUG
+          wcout << L"# caching memory: addr=" << mem << L"(" << (size_t)mem << L"), size="
+            << mem_size << L" byte(s) #" << endl;
+#endif
+        }
+        break;
+
+      case 1024:
+        if(cache_pool_1024.size() < POOL_SIZE_1024 + 1) {
+          memset(tmp, 0, 1024);
+          cache_pool_1024.push((char*)tmp);
+#ifdef _DEBUG
+          wcout << L"# caching memory: addr=" << mem << L"(" << (size_t)mem << L"), size="
+            << mem_size << L" byte(s) #" << endl;
+#endif
+        }
+        break;
+
+      case 512:
+        if(cache_pool_512.size() < POOL_SIZE_512 + 1) {
+          memset(tmp, 0, 512);
+          cache_pool_512.push((char*)tmp);
+#ifdef _DEBUG
+          wcout << L"# caching memory: addr=" << mem << L"(" << (size_t)mem << L"), size="
+            << mem_size << L" byte(s) #" << endl;
+#endif
+        }
+        break;
+
+      case 256:
+        if(cache_pool_256.size() < POOL_SIZE_256 + 1) {
+          memset(tmp, 0, 256);
+          cache_pool_256.push((char*)tmp);
+#ifdef _DEBUG
+          wcout << L"# caching memory: addr=" << mem << L"(" << (size_t)mem << L"), size="
+            << mem_size << L" byte(s) #" << endl;
+#endif
+        }
+        break;
+
       case 128:
         if(cache_pool_128.size() < POOL_SIZE_128 + 1) {
           memset(tmp, 0, 128);
@@ -804,7 +1269,7 @@ void* MemoryManager::CollectMemory(void* arg)
       uncollected_count++;
     } 
     else {
-      mem_max_size <<= 3;
+      mem_max_size <<= 2;
       uncollected_count = 0;
     }
   }
@@ -814,9 +1279,9 @@ void* MemoryManager::CollectMemory(void* arg)
       collected_count++;
     } 
     else {
-      mem_max_size = (mem_max_size >> 1) / 2;
+      mem_max_size = (mem_max_size >> 1) / 3;
       if(mem_max_size <= 0) {
-        mem_max_size = MEM_MAX;
+        mem_max_size = MEM_MAX << 3;
       }
       collected_count = 0;
     }
