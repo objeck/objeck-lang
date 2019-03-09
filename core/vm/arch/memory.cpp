@@ -495,14 +495,14 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, long 
     mem += EXTRA_BUF_SIZE;
 
     // record
-#ifndef _GC_SERIAL
-    MUTEX_LOCK(&allocated_lock);
-#endif
+// #ifndef _GC_SERIAL
+//    MUTEX_LOCK(&allocated_lock);
+// #endif
     allocation_size += size;
     allocated_memory.push_back(mem);
-#ifndef _GC_SERIAL
-    MUTEX_UNLOCK(&allocated_lock);
-#endif
+// #ifndef _GC_SERIAL
+//    MUTEX_UNLOCK(&allocated_lock);
+// #endif
 
 #ifdef _MEM_LOGGING
     mem_logger << mem_cycle << ",alloc,obj," << mem << "," << size << endl;
@@ -712,14 +712,14 @@ size_t* MemoryManager::AllocateArray(const long size, const MemoryType type,  si
   mem[EXTRA_BUF_SIZE + SIZE_OR_CLS] = calc_size;
   mem += EXTRA_BUF_SIZE;
 
-#ifndef _GC_SERIAL
-  MUTEX_LOCK(&allocated_lock);
-#endif
+// #ifndef _GC_SERIAL
+// MUTEX_LOCK(&allocated_lock);
+// #endif
   allocation_size += calc_size;
   allocated_memory.push_back(mem);
-#ifndef _GC_SERIAL
-  MUTEX_UNLOCK(&allocated_lock);
-#endif
+// #ifndef _GC_SERIAL
+//   MUTEX_UNLOCK(&allocated_lock);
+// #endif
 
 #ifdef _MEM_LOGGING
   mem_logger << mem_cycle << ",alloc,array," << mem << "," << size << endl;
@@ -1269,7 +1269,7 @@ void* MemoryManager::CollectMemory(void* arg)
       uncollected_count++;
     } 
     else {
-      mem_max_size <<= 2;
+      mem_max_size <<= 3;
       uncollected_count = 0;
     }
   }
@@ -1279,7 +1279,7 @@ void* MemoryManager::CollectMemory(void* arg)
       collected_count++;
     } 
     else {
-      mem_max_size = (mem_max_size >> 1) / 3;
+      mem_max_size = (mem_max_size >> 1) / 2;
       if(mem_max_size <= 0) {
         mem_max_size = MEM_MAX << 3;
       }

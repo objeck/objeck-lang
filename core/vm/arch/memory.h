@@ -36,7 +36,7 @@
 
 // basic vm tuning parameters
 #if defined(_WIN64) || defined(_X64)
-#define MEM_MAX 1048576 * 2
+#define MEM_MAX 1048576 * 3
 #else
 #define MEM_MAX 1048576
 #endif
@@ -44,12 +44,12 @@
 #define UNCOLLECTED_COUNT 11
 #define COLLECTED_COUNT 29
 
-#define POOL_SIZE_16 8192
-#define POOL_SIZE_32 8192
-#define POOL_SIZE_64 4096
+#define POOL_SIZE_16 4096
+#define POOL_SIZE_32 2048
+#define POOL_SIZE_64 2048
 #define POOL_SIZE_128 2048
 #define POOL_SIZE_256 2048
-#define POOL_SIZE_512 2048
+#define POOL_SIZE_512 1024
 #define POOL_SIZE_1024 1024
 #define POOL_SIZE_2048 1024
 #define POOL_SIZE_4096 512
@@ -60,8 +60,8 @@
 #define POOL_SIZE_131072 128
 #define POOL_SIZE_262144 64
 #define POOL_SIZE_524288 64
-#define POOL_SIZE_1048576 64
-#define POOL_SIZE_2097152 32
+#define POOL_SIZE_1048576 32
+#define POOL_SIZE_2097152 16
 
 #define EXTRA_BUF_SIZE 4
 #define MARKED_FLAG -1
