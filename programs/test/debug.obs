@@ -1,12 +1,9 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		a := false;
-		i := 25;
-		i += a ? 100 : 1;
-		i->PrintLine();
+		Foo(13.5)->PrintLine();
+	}
 
-		b := ["fooz","barley"];
-		x := b[0]->Size()->ToString();
-		x->PrintLine();
+	function : native : Foo(f : Float) ~ Float {
+		return f->Sin() * 3.5;
 	}
 }
