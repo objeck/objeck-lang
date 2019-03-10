@@ -415,7 +415,14 @@ void JitCompilerIA32::ProcessInstructions() {
 #endif
       ProcessFloatCalculation(instr);
       break;
-
+      
+    case SIN_FLOAT:
+#ifdef _DEBUG
+      wcout << L"SIN_FLOAT: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
+#endif
+      ProcessFloatOperation(instr);
+      break;
+      
     case LES_FLOAT:
     case GTR_FLOAT:
     case LES_EQL_FLOAT:
@@ -1884,7 +1891,7 @@ void JitCompilerIA32::ProcessIntCalculation(StackInstr* instruction) {
   right = NULL;
 }
 
-void JitCompilerIA32::ProcessFloatCalculation(StackInstr* instruction) {
+ void JitCompilerIA32::ProcessFloatCalculation(StackInstr* instruction) {
   RegInstr* left = working_stack.front();
   working_stack.pop_front();
   
@@ -2093,6 +2100,65 @@ void JitCompilerIA32::ProcessFloatCalculation(StackInstr* instruction) {
   delete right;
   right = NULL;
 }
+
+
+
+
+
+
+
+
+
+
+
+void JitCompilerIA32::ProcessFloatOperation(StackInstr* instruction) {
+  RegInstr* left = working_stack.front();
+  working_stack.pop_front();
+
+  InstructionType type = instruction->GetType();
+  switch(left->GetType()) {
+    // intermidate
+  case IMM_FLOAT: {
+    RegisterHolder* left_holder = GetXmmRegister();
+    move_imm_xreg(left, left_holder->GetRegister());
+  }
+    break; 
+
+    // register
+  case REG_FLOAT: {
+    RegisterHolder* left_holder = left->GetRegister();    
+  }
+    break;
+    
+    // memory
+  case MEM_FLOAT: {
+    RegisterHolder* holder = GetXmmRegister();
+    move_mem_xreg(left->GetOperand(), EBP, holder->GetRegister());
+  }
+    break;
+    
+  default:
+    break;
+  }
+  
+  delete left;
+  left = NULL;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 void JitCompilerIA32::move_reg_reg(Register src, Register dest) {
   if(src != dest) {
