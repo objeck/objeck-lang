@@ -9,7 +9,7 @@
  *
  * - Redistributions of source code must retain the above copyright
  * notice, this list of conditions and the following disclaimer.
- * - Redistributions in binary form must reproduce the above copyright
+ * - Redistributions in binary form must reproduceC the above copyright
  * notice, this list of conditions and the following disclaimer in
  * the documentation and/or other materials provided with the distribution.
  * - Neither the name of the Objeck team nor the names of its
@@ -118,8 +118,13 @@ class ItermediateOptimizer {
       return false;
     }
 
+    const wstring called_cls_name = mthd_called->GetName();
+    if(called_cls_name == L"System.$Float:Sin:f,") {
+      return true;
+    }
+    
     // don't inline method calls for primitive objects
-    const wstring called_cls_name = mthd_called->GetClass()->GetName();
+
     if(called_cls_name.find(L'$') != wstring::npos) {
       return false;
     }
