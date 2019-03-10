@@ -44,11 +44,10 @@
 #define UNCOLLECTED_COUNT 11
 #define COLLECTED_COUNT 29
 
-#define EXTRA_BUF_SIZE 4
+#define EXTRA_BUF_SIZE 3
 #define MARKED_FLAG -1
 #define SIZE_OR_CLS -2
 #define TYPE -3
-#define CACHE_SIZE -4
 
 struct StackOperMemory {
   size_t* op_stack;
