@@ -253,7 +253,6 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, long 
     const size_t alloc_size = size * 2 + sizeof(size_t) * EXTRA_BUF_SIZE;
     
     mem = (size_t*)calloc(alloc_size, sizeof(char));
-    mem[EXTRA_BUF_SIZE + CACHE_SIZE] = -1;
     mem[EXTRA_BUF_SIZE + TYPE] = NIL_TYPE;
     mem[EXTRA_BUF_SIZE + SIZE_OR_CLS] = (size_t)cls;
     mem += EXTRA_BUF_SIZE;
@@ -325,7 +324,6 @@ size_t* MemoryManager::AllocateArray(const long size, const MemoryType type,  si
   const size_t alloc_size = calc_size + sizeof(size_t) * EXTRA_BUF_SIZE;
   
   mem = (size_t*)calloc(alloc_size, sizeof(char));
-  mem[EXTRA_BUF_SIZE + CACHE_SIZE] = -1;
   mem[EXTRA_BUF_SIZE + TYPE] = type;
   mem[EXTRA_BUF_SIZE + SIZE_OR_CLS] = calc_size;
   mem += EXTRA_BUF_SIZE;
