@@ -420,6 +420,7 @@ void JitCompilerIA32::ProcessInstructions() {
     case COS_FLOAT:
     case TAN_FLOAT:
     case SQRT_FLOAT:
+    case POW_FLOAT:
 #ifdef _DEBUG
       wcout << L"SIN_FLOAT: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
@@ -2112,25 +2113,49 @@ void JitCompilerIA32::ProcessFloatOperation(StackInstr* instruction) {
 #ifdef _DEBUG
   assert(left->GetType() == MEM_FLOAT);
 #endif
-
-  RegisterHolder* holder = GetXmmRegister();
-  fld_mem(left->GetOperand(), EBP);
-  
+    
   switch(type) {
-  case SIN_FLOAT:  
+  case SIN_FLOAT:
+    fld_mem(left->GetOperand(), EBP);
     fsin();
     break;
     
   case COS_FLOAT:
+    fld_mem(left->GetOperand(), EBP);
     fcos();
     break;
 
   case TAN_FLOAT:
+    fld_mem(left->GetOperand(), EBP);
     ftan();
     break;
-
+    
   case SQRT_FLOAT:
+    fld_mem(left->GetOperand(), EBP);
     fsqrt();
+    break;
+
+  case POW_FLOAT: {
+    RegInstr* right = working_stack.front();
+    working_stack.pop_front();
+#ifdef _DEBUG
+    assert(right->GetType() == MEM_FLOAT);
+#endif
+
+    push_mem(left->GetOperand() + sizeof(int32_t), EBP);
+    push_mem(left->GetOperand(), EBP);
+    push_mem(right->GetOperand() + sizeof(int32_t), EBP);
+    push_mem(right->GetOperand(), EBP);
+    
+    double (*foo)(double, double) = pow;
+    RegisterHolder* call_holder = GetRegister();
+    move_imm_reg((int32_t)foo, call_holder->GetRegister());
+    call_reg(call_holder->GetRegister());
+    ReleaseRegister(call_holder);
+
+    add_imm_reg(16, ESP);
+    // fld_mem(left->GetOperand(), EBP);    
+  }
     break;
     
   default:
@@ -2140,6 +2165,7 @@ void JitCompilerIA32::ProcessFloatOperation(StackInstr* instruction) {
     break;
   }
   
+  RegisterHolder* holder = GetXmmRegister();
   fstp_mem(left->GetOperand(), EBP);
   move_mem_xreg(left->GetOperand(), EBP, holder->GetRegister());
   working_stack.push_front(new RegInstr(holder));

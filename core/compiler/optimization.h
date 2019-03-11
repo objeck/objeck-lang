@@ -124,6 +124,7 @@ class ItermediateOptimizer {
 			if(called_cls_name == L"System.$Float:Sin:f," ||
 			   called_cls_name == L"System.$Float:Cos:f," ||
 			   called_cls_name == L"System.$Float:Tan:f," ||
+			   called_cls_name == L"System.$Float:Power:f,f," ||
 				 called_cls_name == L"System.$Float:SquareRoot:f,") {
 				return true;
 			}
