@@ -422,7 +422,7 @@ void JitCompilerIA32::ProcessInstructions() {
     case SQRT_FLOAT:
     case POW_FLOAT:
 #ifdef _DEBUG
-      wcout << L"SIN_FLOAT: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
+      wcout << L"FLOAT SIN/COS/TAN/SQRT/POW: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
       ProcessFloatOperation(instr);
       break;
@@ -2154,7 +2154,6 @@ void JitCompilerIA32::ProcessFloatOperation(StackInstr* instruction) {
     ReleaseRegister(call_holder);
 
     add_imm_reg(16, ESP);
-    // fld_mem(left->GetOperand(), EBP);    
   }
     break;
     
