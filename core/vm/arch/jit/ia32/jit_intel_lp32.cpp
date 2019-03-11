@@ -2140,7 +2140,6 @@ void JitCompilerIA32::ProcessFloatOperation(StackInstr* instruction) {
   }
   
   fstp_mem(left->GetOperand(), EBP);
-  fld_mem(left->GetOperand(), EBP);
   move_mem_xreg(left->GetOperand(), EBP, holder->GetRegister());
   working_stack.push_front(new RegInstr(holder));
       
@@ -3922,6 +3921,11 @@ void JitCompilerIA32::fstp_mem(int32_t offset, Register src) {
   AddMachineCode(ModRM(src, EBX));
   // write value
   AddImm(offset);
+}
+
+void JitCompilerIA32::fsin() {
+  AddMachineCode(0xd9);
+  AddMachineCode(0xfe);
 }
 
 void JitCompilerIA32::fcos() {

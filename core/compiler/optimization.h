@@ -117,15 +117,15 @@ class ItermediateOptimizer {
     if(mthd_called->GetName().find(current_method->GetName()) != string::npos) {
       return false;
     }
-
-    const wstring called_cls_name = mthd_called->GetName();
-    if(called_cls_name == L"System.$Float:Sin:f,") {
-      return true;
-    }
     
     // don't inline method calls for primitive objects
-
+    const wstring called_cls_name = mthd_called->GetName();
     if(called_cls_name.find(L'$') != wstring::npos) {
+			if(called_cls_name == L"System.$Float:Sin:f," ||
+				 called_cls_name == L"System.$Float:Cos:f,") {
+				return true;
+			}
+
       return false;
     }
     
