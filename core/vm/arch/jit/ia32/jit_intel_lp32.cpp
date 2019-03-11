@@ -417,6 +417,9 @@ void JitCompilerIA32::ProcessInstructions() {
       break;
       
     case SIN_FLOAT:
+    case COS_FLOAT:
+    case TAN_FLOAT:
+    case SQRT_FLOAT:
 #ifdef _DEBUG
       wcout << L"SIN_FLOAT: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
@@ -2101,16 +2104,6 @@ void JitCompilerIA32::ProcessIntCalculation(StackInstr* instruction) {
   right = NULL;
 }
 
-
-
-
-
-
-
-
-
-
-
 void JitCompilerIA32::ProcessFloatOperation(StackInstr* instruction) {
   RegInstr* left = working_stack.front();
   working_stack.pop_front();
@@ -2131,6 +2124,14 @@ void JitCompilerIA32::ProcessFloatOperation(StackInstr* instruction) {
   case COS_FLOAT:
     fcos();
     break;
+
+  case TAN_FLOAT:
+    ftan();
+    break;
+
+  case SQRT_FLOAT:
+    fsqrt();
+    break;
     
   default:
 #ifdef _DEBUG
@@ -2146,21 +2147,6 @@ void JitCompilerIA32::ProcessFloatOperation(StackInstr* instruction) {
   delete left;
   left = NULL;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 void JitCompilerIA32::move_reg_reg(Register src, Register dest) {
   if(src != dest) {
@@ -3931,6 +3917,18 @@ void JitCompilerIA32::fsin() {
 void JitCompilerIA32::fcos() {
   AddMachineCode(0xd9);
   AddMachineCode(0xff);
+}
+
+void JitCompilerIA32::ftan() {
+  AddMachineCode(0xd9);
+  AddMachineCode(0xf2);
+  AddMachineCode(0xdd);
+  AddMachineCode(0xd8);
+}
+
+void JitCompilerIA32::fsqrt() {
+  AddMachineCode(0xd9);
+  AddMachineCode(0xfa);
 }
 
 /********************************

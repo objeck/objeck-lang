@@ -122,7 +122,9 @@ class ItermediateOptimizer {
     const wstring called_cls_name = mthd_called->GetName();
     if(called_cls_name.find(L'$') != wstring::npos) {
 			if(called_cls_name == L"System.$Float:Sin:f," ||
-				 called_cls_name == L"System.$Float:Cos:f,") {
+			   called_cls_name == L"System.$Float:Cos:f," ||
+			   called_cls_name == L"System.$Float:Tan:f," ||
+				 called_cls_name == L"System.$Float:SquareRoot:f,") {
 				return true;
 			}
 
