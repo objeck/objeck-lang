@@ -2116,37 +2116,34 @@ void JitCompilerIA32::ProcessFloatOperation(StackInstr* instruction) {
   working_stack.pop_front();
 
   InstructionType type = instruction->GetType();
-  switch(left->GetType()) {
-    // intermidate
-  case IMM_FLOAT: {
-    RegisterHolder* left_holder = GetXmmRegister();
-    move_imm_xreg(left, left_holder->GetRegister());
-  }
-    break; 
+#ifdef _DEBUG
+  assert(left->GetType() == MEM_FLOAT);
+#endif
 
-    // register
-  case REG_FLOAT: {
-    RegisterHolder* left_holder = left->GetRegister();    
-  }
+  RegisterHolder* holder = GetXmmRegister();
+  fld_mem(left->GetOperand(), EBP);
+  
+  switch(type) {
+  case SIN_FLOAT:  
+    fsin();
     break;
     
-    // memory
-  case MEM_FLOAT: {
-    RegisterHolder* holder = GetXmmRegister();
-    // move_mem_xreg(left->GetOperand(), EBP, holder->GetRegister());
-    fld_mem(left->GetOperand(), EBP);
-    fsin();
-    fstp_mem(left->GetOperand(), EBP);
-    fld_mem(left->GetOperand(), EBP);
-    move_mem_xreg(left->GetOperand(), EBP, holder->GetRegister());
-    working_stack.push_front(new RegInstr(holder));    
-  }
+  case COS_FLOAT:
+    fcos();
     break;
     
   default:
+#ifdef _DEBUG
+    assert(false);
+#endif
     break;
   }
   
+  fstp_mem(left->GetOperand(), EBP);
+  fld_mem(left->GetOperand(), EBP);
+  move_mem_xreg(left->GetOperand(), EBP, holder->GetRegister());
+  working_stack.push_front(new RegInstr(holder));
+      
   delete left;
   left = NULL;
 }
@@ -3901,6 +3898,8 @@ void JitCompilerIA32::xor_mem_reg(int32_t offset, Register src, Register dest) {
   AddImm(offset);
 }
 
+// --- x87 ---
+
 void JitCompilerIA32::fld_mem(int32_t offset, Register src) {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [fld " << offset << L"(%" 
@@ -3925,9 +3924,9 @@ void JitCompilerIA32::fstp_mem(int32_t offset, Register src) {
   AddImm(offset);
 }
 
-void JitCompilerIA32::fsin() {
+void JitCompilerIA32::fcos() {
   AddMachineCode(0xd9);
-  AddMachineCode(0xfe);
+  AddMachineCode(0xff);
 }
 
 /********************************
