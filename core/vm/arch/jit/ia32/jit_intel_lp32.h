@@ -848,6 +848,9 @@ namespace Runtime {
     void xor_reg_reg(Register src, Register dest);
     void xor_mem_reg(int32_t offset, Register src, Register dest);
 
+    //
+    void fld_mem(int32_t offset, Register src);
+
     // add instructions
     void add_imm_mem(int32_t imm, int32_t offset, Register dest);    
     void add_imm_reg(int32_t imm, Register reg);    
