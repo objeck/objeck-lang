@@ -2136,8 +2136,9 @@ void JitCompilerIA32::ProcessFloatOperation(StackInstr* instruction) {
     // move_mem_xreg(left->GetOperand(), EBP, holder->GetRegister());
     fld_mem(left->GetOperand(), EBP);
     fsin();
-    
-    
+    fstp_mem(left->GetOperand(), EBP);
+    fld_mem(left->GetOperand(), EBP);
+    move_mem_xreg(left->GetOperand(), EBP, holder->GetRegister());
     working_stack.push_front(new RegInstr(holder));    
   }
     break;
@@ -3908,6 +3909,18 @@ void JitCompilerIA32::fld_mem(int32_t offset, Register src) {
   // encode
   AddMachineCode(0xdd);
   AddMachineCode(ModRM(src, EAX));
+  // write value
+  AddImm(offset);
+}
+
+void JitCompilerIA32::fstp_mem(int32_t offset, Register src) {
+#ifdef _DEBUG
+  wcout << L"  " << (++instr_count) << L": [fld " << offset << L"(%" 
+        << GetRegisterName(src) << L")]" << endl;
+#endif
+  // encode
+  AddMachineCode(0xdd);
+  AddMachineCode(ModRM(src, EBX));
   // write value
   AddImm(offset);
 }
