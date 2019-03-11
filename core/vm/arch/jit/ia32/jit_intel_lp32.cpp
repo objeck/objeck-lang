@@ -2133,9 +2133,12 @@ void JitCompilerIA32::ProcessFloatOperation(StackInstr* instruction) {
     // memory
   case MEM_FLOAT: {
     RegisterHolder* holder = GetXmmRegister();
-    move_mem_xreg(left->GetOperand(), EBP, holder->GetRegister());
+    // move_mem_xreg(left->GetOperand(), EBP, holder->GetRegister());
     fld_mem(left->GetOperand(), EBP);
-    working_stack.push_front(left);
+    fsin();
+    
+    
+    working_stack.push_front(new RegInstr(holder));    
   }
     break;
     
@@ -2143,8 +2146,8 @@ void JitCompilerIA32::ProcessFloatOperation(StackInstr* instruction) {
     break;
   }
   
-  //  delete left;
-  //  left = NULL;
+  delete left;
+  left = NULL;
 }
 
 
@@ -3907,6 +3910,11 @@ void JitCompilerIA32::fld_mem(int32_t offset, Register src) {
   AddMachineCode(ModRM(src, EAX));
   // write value
   AddImm(offset);
+}
+
+void JitCompilerIA32::fsin() {
+  AddMachineCode(0xd9);
+  AddMachineCode(0xfe);
 }
 
 /********************************
