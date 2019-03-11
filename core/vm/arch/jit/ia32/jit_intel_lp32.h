@@ -850,6 +850,7 @@ namespace Runtime {
 
     //
     void fld_mem(int32_t offset, Register src);
+    void fstp_mem(int32_t offset, Register src);
     void fsin();
 
     // add instructions
