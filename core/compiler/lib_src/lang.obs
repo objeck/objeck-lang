@@ -148,7 +148,7 @@ bundle System {
 
 		#~
 		Returns the absolute value
-		@ignore-params l
+		@ignore-params
 		@return absolute value
 		~#
 		function : native : Abs(v : Byte) ~ Byte {
@@ -642,7 +642,7 @@ bundle System {
 
 		#~
 		Returns the absolute value
-		@ignore-params l
+		@ignore-params
 		@return absolute value
 		~#
 		function : native : Abs(v : Int) ~ Int {
@@ -701,7 +701,7 @@ bundle System {
 
 		#~
 		Returns the binary string value
-		@ignore-params l
+		@ignore-params
 		@return binary string value
 		~#
 		
@@ -718,7 +718,7 @@ bundle System {
 		
 		#~
 		Returns the hex string value
-		@ignore-params l
+		@ignore-params
 		@return hex string value
 		~#
 		function : native : ToHexString(v : Int) ~ String {
@@ -782,7 +782,7 @@ bundle System {
 		
 		#~
 		Returns the string value
-		@ignore-params l
+		@ignore-params
 		@return string value
 		~#
 		function : ToString(v : Int) ~ String {
@@ -793,7 +793,7 @@ bundle System {
 
 		#~
 		Returns a comma formatted string value
-		@ignore-params l
+		@ignore-params
 		@return string value
 		~#
 		function : native : ToCommaString(v : Int) ~ String {
@@ -902,7 +902,7 @@ bundle System {
 
 		#~
 		Returns the absolute value
-		@ignore-params l
+		@ignore-params
 		@return absolute value
 		~#
 		function : native : Abs(v : Float) ~ Float {
@@ -915,7 +915,7 @@ bundle System {
 		
 		#~
 		Calculates the floor value
-		@ignore-params l
+		@ignore-params
 		@return floor value
 		~#
 		function : Floor(f : Float) ~ Float {
@@ -924,7 +924,7 @@ bundle System {
 		
 		#~
 		Calculates the ceiling value
-		@ignore-params l
+		@ignore-params
 		@return ceiling value
 		~#
 		function : Ceiling(f : Float) ~ Float {
@@ -933,7 +933,7 @@ bundle System {
 		
 		#~
 		Calculates the sine value
-		@ignore-params l
+		@ignore-params
 		@return sine value
 		~#
 		function : Sin(f : Float) ~ Float {
@@ -942,7 +942,7 @@ bundle System {
 		
 		#~
 		Calculates the cosine value
-		@ignore-params l
+		@ignore-params
 		@return cosine value
 		~#
 		function : Cos(f : Float) ~ Float {
@@ -951,7 +951,7 @@ bundle System {
 		
 		#~
 		Calculates the tangent value
-		@ignore-params l
+		@ignore-params
 		@return tangent value
 		~#
 		function : Tan(f : Float) ~ Float {
@@ -960,7 +960,7 @@ bundle System {
 
 		#~
 		Calculates the arc-sine value
-		@ignore-params l
+		@ignore-params
 		@return arc-sine value
 		~#
 		function : ArcSin(f : Float) ~ Float {
@@ -969,7 +969,7 @@ bundle System {
 		
 		#~
 		Calculates the cosine value
-		@ignore-params l
+		@ignore-params
 		@return cosine value
 		~#
 		function : ArcCos(f : Float) ~ Float {
@@ -999,7 +999,7 @@ bundle System {
 		Calculates the log value
 		#~
 		Calculates the log value
-		@ignore-params l
+		@ignore-params
 		@return log value
 		~#
 		function : Log(f : Float) ~ Float {
@@ -1008,7 +1008,7 @@ bundle System {
 		
 		#~
 		Calculates the natural log value
-		@ignore-params l
+		@ignore-params
 		@return natural log value
 		~#
 		function : SquareRoot(f : Float) ~ Float {
