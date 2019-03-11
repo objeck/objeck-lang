@@ -467,6 +467,7 @@ namespace Runtime {
     RegInstr* ProcessIntFold(long left_imm, long right_imm, InstructionType type);
     void ProcessIntCalculation(StackInstr* instruction);
     void ProcessFloatCalculation(StackInstr* instruction);
+    void ProcessFloatOperation(StackInstr* instruction);
     void ProcessReturn(long params = -1);
     void ProcessStackCallback(long instr_id, StackInstr* instr, long &instr_index, long params);
     void ProcessFunctionCallParameter();
@@ -1176,6 +1177,14 @@ namespace Runtime {
     void xor_imm_reg(long imm, Register reg);
     void xor_reg_reg(Register src, Register dest);
     void xor_mem_reg(long offset, Register src, Register dest);
+
+    // float functions
+    void fld_mem(int32_t offset, Register src);
+    void fstp_mem(int32_t offset, Register src);
+    void fsin();
+    void fcos();
+    void ftan();
+    void fsqrt();
 
     // add instructions
     void add_imm_mem(long imm, long offset, Register dest);
