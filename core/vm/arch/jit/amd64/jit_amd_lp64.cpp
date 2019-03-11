@@ -21,12 +21,12 @@
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR 
  * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
  * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, 
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED 
+ * SPECIAL, RXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED 
  * TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
  *  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF 
  * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING 
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS 
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * SOFTWARE, RVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
 #include "jit_amd_lp64.h"
@@ -452,6 +452,17 @@ void JitCompilerIA64::ProcessInstructions() {
       wcout << L"FLOAT ADD/SUB/MUL/DIV/: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
       ProcessFloatCalculation(instr);
+      break;
+
+    case SIN_FLOAT:
+    case COS_FLOAT:
+    case TAN_FLOAT:
+    case SQRT_FLOAT:
+    case POW_FLOAT:
+#ifdef _DEBUG
+      wcout << L"FLOAT SIN/COS/TAN/SQRT/POW: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
+#endif
+      ProcessFloatOperation(instr);
       break;
 
     case LES_FLOAT:
@@ -2159,6 +2170,74 @@ void JitCompilerIA64::ProcessFloatCalculation(StackInstr* instruction) {
     
   delete right;
   right = NULL;
+}
+
+void JitCompilerIA64::ProcessFloatOperation(StackInstr* instruction) {
+  RegInstr* left = working_stack.front();
+  working_stack.pop_front();
+
+  InstructionType type = instruction->GetType();
+#ifdef _DEBUG
+  assert(left->GetType() == MEM_FLOAT);
+#endif
+
+  switch(type) {
+  case SIN_FLOAT:
+    fld_mem(left->GetOperand(), RBP);
+    fsin();
+    break;
+
+  case COS_FLOAT:
+    fld_mem(left->GetOperand(), RBP);
+    fcos();
+    break;
+
+  case TAN_FLOAT:
+    fld_mem(left->GetOperand(), RBP);
+    ftan();
+    break;
+
+  case SQRT_FLOAT:
+    fld_mem(left->GetOperand(), RBP);
+    fsqrt();
+    break;
+
+  case POW_FLOAT: {
+    RegInstr* right = working_stack.front();
+    working_stack.pop_front();
+#ifdef _DEBUG
+    assert(right->GetType() == MEM_FLOAT);
+#endif
+
+    push_mem(left->GetOperand() + sizeof(int32_t), RBP);
+    push_mem(left->GetOperand(), RBP);
+    push_mem(right->GetOperand() + sizeof(int32_t), RBP);
+    push_mem(right->GetOperand(), RBP);
+
+    double(*foo)(double, double) = pow;
+    RegisterHolder* call_holder = GetRegister();
+    move_imm_reg((size_t)foo, call_holder->GetRegister());
+    call_reg(call_holder->GetRegister());
+    ReleaseRegister(call_holder);
+
+    add_imm_reg(16, RSP);
+  }
+                  break;
+
+  default:
+#ifdef _DEBUG
+    assert(false);
+#endif
+    break;
+  }
+
+  RegisterHolder* holder = GetXmmRegister();
+  fstp_mem(left->GetOperand(), RBP);
+  move_mem_xreg(left->GetOperand(), RBP, holder->GetRegister());
+  working_stack.push_front(new RegInstr(holder));
+
+  delete left;
+  left = NULL;
 }
 
 /////////////////// OPERATIONS ///////////////////
@@ -4039,6 +4118,54 @@ void JitCompilerIA64::xor_mem_reg(long offset, Register src, Register dest) {
   AddMachineCode(ModRM(src, dest));
   // write value
   AddImm(offset);
+}
+
+// --- x87 ---
+
+void JitCompilerIA64::fld_mem(int32_t offset, Register src) {
+#ifdef _DEBUG
+  wcout << L"  " << (++instr_count) << L": [fld " << offset << L"(%"
+    << GetRegisterName(src) << L")]" << endl;
+#endif
+  // encode
+  AddMachineCode(0xdd);
+  AddMachineCode(ModRM(src, RAX));
+  // write value
+  AddImm(offset);
+}
+
+void JitCompilerIA64::fstp_mem(int32_t offset, Register src) {
+#ifdef _DEBUG
+  wcout << L"  " << (++instr_count) << L": [fld " << offset << L"(%"
+    << GetRegisterName(src) << L")]" << endl;
+#endif
+  // encode
+  AddMachineCode(0xdd);
+  AddMachineCode(ModRM(src, RBX));
+  // write value
+  AddImm(offset);
+}
+
+void JitCompilerIA64::fsin() {
+  AddMachineCode(0xd9);
+  AddMachineCode(0xfe);
+}
+
+void JitCompilerIA64::fcos() {
+  AddMachineCode(0xd9);
+  AddMachineCode(0xff);
+}
+
+void JitCompilerIA64::ftan() {
+  AddMachineCode(0xd9);
+  AddMachineCode(0xf2);
+  AddMachineCode(0xdd);
+  AddMachineCode(0xd8);
+}
+
+void JitCompilerIA64::fsqrt() {
+  AddMachineCode(0xd9);
+  AddMachineCode(0xfa);
 }
 
 /********************************
