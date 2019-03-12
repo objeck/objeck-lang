@@ -2206,30 +2206,20 @@ void JitCompilerIA64::ProcessFloatOperation(StackInstr* instruction) {
     fsqrt();
     break;
 
-    // TODO
-  case ASIN_FLOAT: {
-    double(*func_ptr)(double) = asin;
-    holder = call_xfunc(func_ptr, left);
-  }
+  case ASIN_FLOAT:
+    holder = call_xfunc(asin, left);
     break;
 
-    // TODO
-  case ACOS_FLOAT: {
-    double(*func_ptr)(double) = acos;
-    holder = call_xfunc(func_ptr, left);
-  }
+  case ACOS_FLOAT:
+    holder = call_xfunc(acos, left);
     break;
 
-  case ATAN2_FLOAT: {
-    double(*func_ptr)(double, double) = atan2;
-    holder = call_xfunc2(func_ptr, left);
-  }
+  case ATAN2_FLOAT:
+    holder = call_xfunc2(atan2, left);
     break;
 
-  case POW_FLOAT: {
-    double(*func_ptr)(double, double) = pow;
-    holder = call_xfunc2(func_ptr, left);
-  }
+  case POW_FLOAT:
+    holder = call_xfunc2(pow, left);
     break;
 
   default:
@@ -2753,7 +2743,7 @@ RegisterHolder* JitCompilerIA64::call_xfunc2(double(*func_ptr)(double, double), 
   call_reg(call_holder->GetRegister());
   ReleaseRegister(call_holder);
 
-  RegisterHolder* result_holder = GetRegister();
+  RegisterHolder* result_holder = GetXmmRegister();
   move_mem_xreg(TMP_XMM_1, RBP, XMM1);
   if(result_holder->GetRegister() != XMM0) {
     move_xreg_xreg(XMM0, result_holder->GetRegister());
