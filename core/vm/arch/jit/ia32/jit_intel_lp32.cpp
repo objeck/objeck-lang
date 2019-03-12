@@ -420,6 +420,9 @@ void JitCompilerIA32::ProcessInstructions() {
     case COS_FLOAT:
     case TAN_FLOAT:
     case SQRT_FLOAT:
+    case ASIN_FLOAT:
+    case ACOS_FLOAT:
+    case ATAN2_FLOAT:
     case POW_FLOAT:
 #ifdef _DEBUG
       wcout << L"FLOAT SIN/COS/TAN/SQRT/POW: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
@@ -2135,25 +2138,23 @@ void JitCompilerIA32::ProcessFloatOperation(StackInstr* instruction) {
     fsqrt();
     break;
 
-  case POW_FLOAT: {
-    RegInstr* right = working_stack.front();
-    working_stack.pop_front();
-#ifdef _DEBUG
-    assert(right->GetType() == MEM_FLOAT);
-#endif
-
-    push_mem(left->GetOperand() + sizeof(int32_t), EBP);
-    push_mem(left->GetOperand(), EBP);
-    push_mem(right->GetOperand() + sizeof(int32_t), EBP);
-    push_mem(right->GetOperand(), EBP);
+    // TODO
+  case ASIN_FLOAT:
+    break;
     
-    double (*pow_ptr)(double, double) = pow;
-    RegisterHolder* call_holder = GetRegister();
-    move_imm_reg((int32_t)pow_ptr, call_holder->GetRegister());
-    call_reg(call_holder->GetRegister());
-    ReleaseRegister(call_holder);
-
-    add_imm_reg(16, ESP);
+    // TODO
+  case ACOS_FLOAT:
+    break;
+    
+  case ATAN2_FLOAT: {
+    double (*func_ptr)(double, double) = atan2;
+    call_xfunc2(func_ptr, left);
+  }
+    break;
+    
+  case POW_FLOAT: {
+    double (*func_ptr)(double, double) = pow;
+    call_xfunc2(func_ptr, left);
   }
     break;
     
@@ -2806,6 +2807,32 @@ void JitCompilerIA32::loop(int32_t offset)
 {
   AddMachineCode(0xe2);
   AddMachineCode(offset);
+}
+
+void JitCompilerIA32::call_xfunc(double (*func_ptr)(double), RegInstr* left)
+{
+  
+}
+
+void JitCompilerIA32::call_xfunc2(double (*func_ptr)(double, double), RegInstr* left)
+{
+  RegInstr* right = working_stack.front();
+  working_stack.pop_front();
+#ifdef _DEBUG
+  assert(right->GetType() == MEM_FLOAT);
+#endif
+
+  push_mem(left->GetOperand() + sizeof(int32_t), EBP);
+  push_mem(left->GetOperand(), EBP);
+  push_mem(right->GetOperand() + sizeof(int32_t), EBP);
+  push_mem(right->GetOperand(), EBP);
+  
+  RegisterHolder* call_holder = GetRegister();
+  move_imm_reg((int32_t)func_ptr, call_holder->GetRegister());
+  call_reg(call_holder->GetRegister());
+  ReleaseRegister(call_holder);
+  
+  add_imm_reg(16, ESP);
 }
 
 void JitCompilerIA32::math_mem_xreg(int32_t offset, Register dest, InstructionType type) {
