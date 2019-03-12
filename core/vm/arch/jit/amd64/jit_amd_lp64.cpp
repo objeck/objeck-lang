@@ -460,6 +460,7 @@ void JitCompilerIA64::ProcessInstructions() {
     case SQRT_FLOAT:
     case ASIN_FLOAT:
     case ACOS_FLOAT:
+    case LOG_FLOAT:
     case ATAN2_FLOAT:
     case POW_FLOAT:
 #ifdef _DEBUG
@@ -2212,6 +2213,10 @@ void JitCompilerIA64::ProcessFloatOperation(StackInstr* instruction) {
 
   case ACOS_FLOAT:
     holder = call_xfunc(acos, left);
+    break;
+
+  case LOG_FLOAT:
+    holder = call_xfunc(log, left);
     break;
 
   case ATAN2_FLOAT:
