@@ -1,7 +1,7 @@
 /***************************************************************************
  * JIT compiler for the Windows AMD64 architecture.
  *
- * Copyright (c) 2008-2018 Randy Hollines
+ * Copyright (c) 2008-2019 Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without 
@@ -458,9 +458,12 @@ void JitCompilerIA64::ProcessInstructions() {
     case COS_FLOAT:
     case TAN_FLOAT:
     case SQRT_FLOAT:
+    case ASIN_FLOAT:
+    case ACOS_FLOAT:
+    case ATAN2_FLOAT:
     case POW_FLOAT:
 #ifdef _DEBUG
-      wcout << L"FLOAT SIN/COS/TAN/SQRT/POW: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
+      wcout << L"FLOAT SIN/COS/TAN/SQRT/ASIN/ACOS/ATAN2/POW: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
       ProcessFloatOperation(instr);
       break;
@@ -2181,7 +2184,7 @@ void JitCompilerIA64::ProcessFloatOperation(StackInstr* instruction) {
   assert(left->GetType() == MEM_FLOAT);
 #endif
 
-  bool fun_call = false;
+  RegisterHolder* holder = NULL;
   switch(type) {
   case SIN_FLOAT:
     fld_mem(left->GetOperand(), RBP);
@@ -2203,10 +2206,23 @@ void JitCompilerIA64::ProcessFloatOperation(StackInstr* instruction) {
     fsqrt();
     break;
 
+    // TODO
+  case ASIN_FLOAT:
+    break;
+
+    // TODO
+  case ACOS_FLOAT:
+    break;
+
+  case ATAN2_FLOAT: {
+    double(*func_ptr)(double, double) = atan2;
+    holder = call_xfun2(func_ptr, left);
+  }
+    break;
+
   case POW_FLOAT: {
-    fun_call = true;
     double(*func_ptr)(double, double) = pow;
-    call_xfun2(func_ptr, left);
+    holder = call_xfun2(func_ptr, left);
   }
     break;
 
@@ -2217,15 +2233,8 @@ void JitCompilerIA64::ProcessFloatOperation(StackInstr* instruction) {
     break;
   }
 
-  RegisterHolder* holder = GetXmmRegister();
-  if(fun_call) {
-    move_mem_xreg(TMP_XMM_1, RBP, XMM1);
-    if(holder->GetRegister() != XMM0) {
-      move_xreg_xreg(XMM0, holder->GetRegister());
-      move_mem_xreg(TMP_XMM_0, RBP, XMM0);
-    }
-  }
-  else {
+  if(!holder) {
+    holder = GetXmmRegister();
     fstp_mem(left->GetOperand(), RBP);
     move_mem_xreg(left->GetOperand(), RBP, holder->GetRegister());
   }
@@ -2699,7 +2708,7 @@ void JitCompilerIA64::loop(long offset)
   AddMachineCode((unsigned char)offset);
 }
 
-void JitCompilerIA64::call_xfun2(double(*func_ptr)(double, double), RegInstr* left)
+RegisterHolder* JitCompilerIA64::call_xfun2(double(*func_ptr)(double, double), RegInstr* left)
 {
   RegInstr* right = working_stack.front();
   working_stack.pop_front();
@@ -2718,6 +2727,20 @@ void JitCompilerIA64::call_xfun2(double(*func_ptr)(double, double), RegInstr* le
   move_imm_reg((size_t)func_ptr, call_holder->GetRegister());
   call_reg(call_holder->GetRegister());
   ReleaseRegister(call_holder);
+
+  RegisterHolder* result_holder = GetRegister();
+  move_mem_xreg(TMP_XMM_1, RBP, XMM1);
+  if(result_holder->GetRegister() != XMM0) {
+    move_xreg_xreg(XMM0, result_holder->GetRegister());
+    move_mem_xreg(TMP_XMM_0, RBP, XMM0);
+  }
+
+  return result_holder;
+}
+
+RegisterHolder* JitCompilerIA64::call_xfun(double(*func_ptr)(double), RegInstr* left)
+{
+  return NULL;
 }
 
 void JitCompilerIA64::math_imm_reg(long imm, Register reg, InstructionType type) 
