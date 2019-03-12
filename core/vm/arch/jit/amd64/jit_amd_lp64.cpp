@@ -2181,6 +2181,7 @@ void JitCompilerIA64::ProcessFloatOperation(StackInstr* instruction) {
   assert(left->GetType() == MEM_FLOAT);
 #endif
 
+  bool fun_call = false;
   switch(type) {
   case SIN_FLOAT:
     fld_mem(left->GetOperand(), RBP);
@@ -2203,26 +2204,11 @@ void JitCompilerIA64::ProcessFloatOperation(StackInstr* instruction) {
     break;
 
   case POW_FLOAT: {
-    RegInstr* right = working_stack.front();
-    working_stack.pop_front();
-#ifdef _DEBUG
-    assert(right->GetType() == MEM_FLOAT);
-#endif
-
-    push_mem(left->GetOperand() + sizeof(int32_t), RBP);
-    push_mem(left->GetOperand(), RBP);
-    push_mem(right->GetOperand() + sizeof(int32_t), RBP);
-    push_mem(right->GetOperand(), RBP);
-
-    double(*foo)(double, double) = pow;
-    RegisterHolder* call_holder = GetRegister();
-    move_imm_reg((size_t)foo, call_holder->GetRegister());
-    call_reg(call_holder->GetRegister());
-    ReleaseRegister(call_holder);
-
-    add_imm_reg(16, RSP);
+    fun_call = true;
+    double(*func_ptr)(double, double) = pow;
+    call_xfun2(func_ptr, left);
   }
-                  break;
+    break;
 
   default:
 #ifdef _DEBUG
@@ -2232,8 +2218,17 @@ void JitCompilerIA64::ProcessFloatOperation(StackInstr* instruction) {
   }
 
   RegisterHolder* holder = GetXmmRegister();
-  fstp_mem(left->GetOperand(), RBP);
-  move_mem_xreg(left->GetOperand(), RBP, holder->GetRegister());
+  if(fun_call) {
+    move_mem_xreg(TMP_XMM_1, RBP, XMM1);
+    if(holder->GetRegister() != XMM0) {
+      move_xreg_xreg(XMM0, holder->GetRegister());
+      move_mem_xreg(TMP_XMM_0, RBP, XMM0);
+    }
+  }
+  else {
+    fstp_mem(left->GetOperand(), RBP);
+    move_mem_xreg(left->GetOperand(), RBP, holder->GetRegister());
+  }
   working_stack.push_front(new RegInstr(holder));
 
   delete left;
@@ -2703,6 +2698,28 @@ void JitCompilerIA64::loop(long offset)
   AddMachineCode(0xe2);
   AddMachineCode((unsigned char)offset);
 }
+
+void JitCompilerIA64::call_xfun2(double(*func_ptr)(double, double), RegInstr* left)
+{
+  RegInstr* right = working_stack.front();
+  working_stack.pop_front();
+
+#ifdef _DEBUG
+  assert(right->GetType() == MEM_FLOAT);
+#endif
+
+  move_xreg_mem(XMM1, TMP_XMM_1, RBP);
+  move_mem_xreg(left->GetOperand(), RBP, XMM1);
+
+  move_xreg_mem(XMM0, TMP_XMM_0, RBP);
+  move_mem_xreg(right->GetOperand(), RBP, XMM0);
+  
+  RegisterHolder* call_holder = GetRegister();
+  move_imm_reg((size_t)func_ptr, call_holder->GetRegister());
+  call_reg(call_holder->GetRegister());
+  ReleaseRegister(call_holder);
+}
+
 void JitCompilerIA64::math_imm_reg(long imm, Register reg, InstructionType type) 
 {
   switch(type) {

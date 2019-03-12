@@ -2147,9 +2147,9 @@ void JitCompilerIA32::ProcessFloatOperation(StackInstr* instruction) {
     push_mem(right->GetOperand() + sizeof(int32_t), EBP);
     push_mem(right->GetOperand(), EBP);
     
-    double (*foo)(double, double) = pow;
+    double (*pow_ptr)(double, double) = pow;
     RegisterHolder* call_holder = GetRegister();
-    move_imm_reg((int32_t)foo, call_holder->GetRegister());
+    move_imm_reg((int32_t)pow_ptr, call_holder->GetRegister());
     call_reg(call_holder->GetRegister());
     ReleaseRegister(call_holder);
 
