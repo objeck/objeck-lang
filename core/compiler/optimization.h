@@ -121,17 +121,21 @@ class ItermediateOptimizer {
     // don't inline method calls for primitive objects
     const wstring called_cls_name = mthd_called->GetName();
     if(called_cls_name.find(L'$') != wstring::npos) {
-      if(called_cls_name == L"System.$Float:Sin:f," ||
-	 called_cls_name == L"System.$Float:Cos:f," ||
-	 called_cls_name == L"System.$Float:Tan:f," ||
-	 called_cls_name == L"System.$Float:SquareRoot:f," ||
-	 called_cls_name == L"System.$Float:ArcSin:f," ||
-	 called_cls_name == L"System.$Float:ArcCos:f," ||
-	 called_cls_name == L"System.$Float:ArcTan2:f,f," ||
-	 called_cls_name == L"System.$Float:Power:f,f,") {
-	return true;
+      // inline of 'System.$Float' methods
+      if(mthd_called->GetClass()->GetName() == L"System.$Float") {
+        if(called_cls_name == L"System.$Float:Sin:f," ||
+           called_cls_name == L"System.$Float:Cos:f," ||
+           called_cls_name == L"System.$Float:Tan:f," ||
+           called_cls_name == L"System.$Float:SquareRoot:f," ||
+           called_cls_name == L"System.$Float:Log:f," ||
+           called_cls_name == L"System.$Float:ArcSin:f," ||
+           called_cls_name == L"System.$Float:ArcCos:f," ||
+           called_cls_name == L"System.$Float:ArcTan2:f,f," ||
+           called_cls_name == L"System.$Float:Power:f,f,") {
+          return true;
+        }
       }
-      
+
       return false;
     }
     
