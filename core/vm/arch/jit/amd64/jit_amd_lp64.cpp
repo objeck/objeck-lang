@@ -2207,11 +2207,17 @@ void JitCompilerIA64::ProcessFloatOperation(StackInstr* instruction) {
     break;
 
     // TODO
-  case ASIN_FLOAT:
+  case ASIN_FLOAT: {
+    double(*func_ptr)(double) = asin;
+    holder = call_xfunc(func_ptr, left);
+  }
     break;
 
     // TODO
-  case ACOS_FLOAT:
+  case ACOS_FLOAT: {
+    double(*func_ptr)(double) = acos;
+    holder = call_xfunc(func_ptr, left);
+  }
     break;
 
   case ATAN2_FLOAT: {
@@ -2708,6 +2714,25 @@ void JitCompilerIA64::loop(long offset)
   AddMachineCode((unsigned char)offset);
 }
 
+RegisterHolder* JitCompilerIA64::call_xfunc(double(*func_ptr)(double), RegInstr* left)
+{
+  move_xreg_mem(XMM0, TMP_XMM_0, RBP);
+  move_mem_xreg(left->GetOperand(), RBP, XMM0);
+
+  RegisterHolder* call_holder = GetRegister();
+  move_imm_reg((size_t)func_ptr, call_holder->GetRegister());
+  call_reg(call_holder->GetRegister());
+  ReleaseRegister(call_holder);
+  
+  RegisterHolder* result_holder = GetXmmRegister();
+  if(result_holder->GetRegister() != XMM0) {
+    move_xreg_xreg(XMM0, result_holder->GetRegister());
+    move_mem_xreg(TMP_XMM_0, RBP, XMM0);
+  }
+
+  return result_holder;
+}
+
 RegisterHolder* JitCompilerIA64::call_xfunc2(double(*func_ptr)(double, double), RegInstr* left)
 {
   RegInstr* right = working_stack.front();
@@ -2723,7 +2748,7 @@ RegisterHolder* JitCompilerIA64::call_xfunc2(double(*func_ptr)(double, double), 
   move_xreg_mem(XMM0, TMP_XMM_0, RBP);
   move_mem_xreg(right->GetOperand(), RBP, XMM0);
   
-  RegisterHolder* call_holder = GetRegister();
+  RegisterHolder* call_holder = GetXmmRegister();
   move_imm_reg((size_t)func_ptr, call_holder->GetRegister());
   call_reg(call_holder->GetRegister());
   ReleaseRegister(call_holder);
@@ -2736,11 +2761,6 @@ RegisterHolder* JitCompilerIA64::call_xfunc2(double(*func_ptr)(double, double), 
   }
 
   return result_holder;
-}
-
-RegisterHolder* JitCompilerIA64::call_xfunc(double(*func_ptr)(double), RegInstr* left)
-{
-  return NULL;
 }
 
 void JitCompilerIA64::math_imm_reg(long imm, Register reg, InstructionType type) 
