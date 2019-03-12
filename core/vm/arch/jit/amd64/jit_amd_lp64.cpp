@@ -2216,13 +2216,13 @@ void JitCompilerIA64::ProcessFloatOperation(StackInstr* instruction) {
 
   case ATAN2_FLOAT: {
     double(*func_ptr)(double, double) = atan2;
-    holder = call_xfun2(func_ptr, left);
+    holder = call_xfunc2(func_ptr, left);
   }
     break;
 
   case POW_FLOAT: {
     double(*func_ptr)(double, double) = pow;
-    holder = call_xfun2(func_ptr, left);
+    holder = call_xfunc2(func_ptr, left);
   }
     break;
 
@@ -2708,7 +2708,7 @@ void JitCompilerIA64::loop(long offset)
   AddMachineCode((unsigned char)offset);
 }
 
-RegisterHolder* JitCompilerIA64::call_xfun2(double(*func_ptr)(double, double), RegInstr* left)
+RegisterHolder* JitCompilerIA64::call_xfunc2(double(*func_ptr)(double, double), RegInstr* left)
 {
   RegInstr* right = working_stack.front();
   working_stack.pop_front();
@@ -2738,7 +2738,7 @@ RegisterHolder* JitCompilerIA64::call_xfun2(double(*func_ptr)(double, double), R
   return result_holder;
 }
 
-RegisterHolder* JitCompilerIA64::call_xfun(double(*func_ptr)(double), RegInstr* left)
+RegisterHolder* JitCompilerIA64::call_xfunc(double(*func_ptr)(double), RegInstr* left)
 {
   return NULL;
 }
