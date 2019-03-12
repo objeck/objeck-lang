@@ -5,7 +5,7 @@ class Test {
 
 	function : native : Foo(f : Float) ~ Float {
 #		return f->Sin() * 3.5;
-#		return 313.15->Sin();
-		return Float->Power(2.0, 3.0);
+		return 313.15->Sin();
+#		return Float->Power(2.0, 3.0);
 	}
 }

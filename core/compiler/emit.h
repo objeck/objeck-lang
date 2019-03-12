@@ -510,6 +510,10 @@ namespace backend {
         wcout << L"ATAN_FLOAT" << endl;
         break;
 
+      case instructions::ATAN2_FLOAT:
+        wcout << L"ATAN2_FLOAT" << endl;
+        break;
+
       case instructions::LOG_FLOAT:
         wcout << L"LOG_FLOAT" << endl;
         break;
