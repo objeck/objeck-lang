@@ -140,7 +140,6 @@ class ItermediateOptimizer {
       return false;
     }
 
-    // const wstring curr_mthd_name = current_method->GetName();
     // don't inline into "main" since it's not JTI compiled
     const wstring curr_mthd_name = current_method->GetName();
     if(curr_mthd_name.find(L":Main:o.System.String*,") != wstring::npos) {
