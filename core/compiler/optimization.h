@@ -130,12 +130,39 @@ class ItermediateOptimizer {
            called_cls_name == L"System.$Float:Log:f," ||
            called_cls_name == L"System.$Float:ArcSin:f," ||
            called_cls_name == L"System.$Float:ArcCos:f," ||
+	   called_cls_name == L"System.$Float:Abs:f," ||
            called_cls_name == L"System.$Float:ArcTan2:f,f," ||
-           called_cls_name == L"System.$Float:Power:f,f,") {
+           called_cls_name == L"System.$Float:Power:f,f," ||
+	   called_cls_name == L"System.$Float:Max:f,f," ||
+	   called_cls_name == L"System.$Float:Min:f,f," ||
+	   called_cls_name == L"System.$Float:Pi:" ||
+	   called_cls_name == L"System.$Float:E:") {
           return true;
         }
       }
-
+      else if(mthd_called->GetClass()->GetName() == L"System.$Int") {
+        if(called_cls_name == L"System.$Int:Max:i,i," ||
+	   called_cls_name == L"System.$Int:Min:i,i," ||
+	   called_cls_name == L"System.$Int:Factorial:i," ||
+	   called_cls_name == L"System.$Int:Abs:i,") {
+	  return true;
+	}
+      }
+      else if(mthd_called->GetClass()->GetName() == L"System.$Char") {
+        if(called_cls_name == L"System.$Char:Max:c,c," ||
+	   called_cls_name == L"System.$Char:Min:c,c," ||
+	   called_cls_name == L"System.$Char:Abs:c,") {
+	  return true;
+	}
+      }
+      else if(mthd_called->GetClass()->GetName() == L"System.$Byte") {
+        if(called_cls_name == L"System.$Byte:Max:b,b," ||
+	   called_cls_name == L"System.$Byte:Min:b,b," ||
+	   called_cls_name == L"System.$Byte:Abs:b,") {
+	  return true;
+	}
+      }
+      
       return false;
     }
     
