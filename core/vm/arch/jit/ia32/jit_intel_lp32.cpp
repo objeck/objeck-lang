@@ -424,6 +424,7 @@ void JitCompilerIA32::ProcessInstructions() {
     case ACOS_FLOAT:
     case ATAN2_FLOAT:
     case POW_FLOAT:
+    case LOG_FLOAT:
 #ifdef _DEBUG
       wcout << L"FLOAT SIN/COS/TAN/SQRT/POW: regs=" << aval_regs.size() << L"," << aux_regs.size() << endl;
 #endif
@@ -2138,24 +2139,24 @@ void JitCompilerIA32::ProcessFloatOperation(StackInstr* instruction) {
     fsqrt();
     break;
 
-    // TODO
   case ASIN_FLOAT:
+    call_xfunc(asin, left);
     break;
-    
-    // TODO
+
   case ACOS_FLOAT:
+    call_xfunc(acos, left);
+    break;
+
+  case LOG_FLOAT:
+    call_xfunc(log, left);
+    break;
+
+  case ATAN2_FLOAT:
+    call_xfunc2(atan2, left);
     break;
     
-  case ATAN2_FLOAT: {
-    double (*func_ptr)(double, double) = atan2;
-    call_xfunc2(func_ptr, left);
-  }
-    break;
-    
-  case POW_FLOAT: {
-    double (*func_ptr)(double, double) = pow;
-    call_xfunc2(func_ptr, left);
-  }
+  case POW_FLOAT:
+    call_xfunc2(pow, left);
     break;
     
   default:
