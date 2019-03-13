@@ -1,11 +1,11 @@
+use System.Matrix;
+
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		Foo(13.5)->PrintLine();
 	}
 
 	function : native : Foo(f : Float) ~ Float {
-		return Float->Power(3.5, f->Sin() * 3.5);
-#		return 0.015->ArcSin();
-#		return Float->Power(2.0, 3.0);
+		return Matrix2D->Sigmoid(0.345);
 	}
 }
