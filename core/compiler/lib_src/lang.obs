@@ -2895,6 +2895,14 @@ bundle System {
 		}
 		
 		#~
+		Set floating point display precision. Valid values are a number, 'fixed' or 'scientific'.
+		@param value property value
+		~#
+		function : SetPrecision(value : String) ~ Nil {
+			SetProperty("precision");
+		}
+
+		#~
 		Sets a runtime property 
 		@param key property key
 		@param value property value
