@@ -2,10 +2,7 @@ use System.Matrix;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		Foo(13.5)->PrintLine();
-	}
-
-	function : native : Foo(f : Float) ~ Float {
-		return Matrix2D->Sigmoid(0.345);
+		Runtime->SetProperty("precision", "scientific");
+		5.6008->PrintLine();
 	}
 }
