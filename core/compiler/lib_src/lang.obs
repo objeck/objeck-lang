@@ -2899,7 +2899,7 @@ bundle System {
 		@param value property value
 		~#
 		function : SetPrecision(value : String) ~ Nil {
-			SetProperty("precision");
+			SetProperty("precision", value);
 		}
 
 		#~
