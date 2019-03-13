@@ -1979,7 +1979,24 @@ bool TrapProcessor::StdOutFloat(StackProgram* program, size_t* inst, size_t* &op
 #ifdef _DEBUG
   wcout << L"  STD_OUT_FLOAT" << endl;
 #endif
-  wcout << setprecision(6) << PopFloat(op_stack, stack_pos);
+
+  const FLOAT_VALUE value = PopFloat(op_stack, stack_pos);
+  const wstring precision = program->GetProperty(L"precision");
+  if(precision.size() > 0) {
+    if(precision == L"fixed") {
+      wcout << std::fixed;
+    }
+    else if(precision == L"scientific") {
+      wcout << std::scientific;
+    }
+    else {
+      wcout << setprecision(stoi(precision));
+    }
+    wcout << value;
+  }
+  else {
+    wcout << setprecision(6) << value;
+  }
 
   return true;
 }
@@ -2128,7 +2145,24 @@ bool TrapProcessor::StdErrFloat(StackProgram* program, size_t* inst, size_t* &op
 #ifdef _DEBUG
   wcout << L"  STD_ERR_FLOAT" << endl;
 #endif
-  wcerr << setprecision(6) << PopFloat(op_stack, stack_pos);
+
+  const FLOAT_VALUE value = PopFloat(op_stack, stack_pos);;
+  const wstring precision = program->GetProperty(L"precision");
+  if(precision.size() > 0) {
+    if(precision == L"fixed") {
+      wcerr << std::fixed;
+    }
+    else if(precision == L"scientific") {
+      wcerr << std::scientific;
+    }
+    else {
+      wcerr << setprecision(stoi(precision));
+    }
+    wcerr << value;
+  }
+  else {
+    wcerr << setprecision(6) << value;
+  }
 
   return true;
 }
