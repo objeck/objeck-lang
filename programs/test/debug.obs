@@ -4,8 +4,8 @@ class Test {
 	}
 
 	function : native : Foo(f : Float) ~ Float {
-#		return f->Sin() * 3.5;
-		return 0.015->ArcSin();
+		return Float->Power(3.5, f->Sin() * 3.5);
+#		return 0.015->ArcSin();
 #		return Float->Power(2.0, 3.0);
 	}
 }
