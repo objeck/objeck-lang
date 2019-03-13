@@ -2,7 +2,7 @@ use System.Matrix;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		Runtime->SetProperty("precision", "scientific");
+		Runtime->SetProperty("precision", "2");
 		5.6008->PrintLine();
 	}
 }
