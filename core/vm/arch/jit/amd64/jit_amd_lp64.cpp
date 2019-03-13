@@ -2743,7 +2743,7 @@ RegisterHolder* JitCompilerIA64::call_xfunc2(double(*func_ptr)(double, double), 
   move_xreg_mem(XMM0, TMP_XMM_0, RBP);
   move_mem_xreg(right->GetOperand(), RBP, XMM0);
   
-  RegisterHolder* call_holder = GetXmmRegister();
+  RegisterHolder* call_holder = GetRegister();
   move_imm_reg((size_t)func_ptr, call_holder->GetRegister());
   call_reg(call_holder->GetRegister());
   ReleaseRegister(call_holder);
