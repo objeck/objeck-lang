@@ -217,7 +217,7 @@ class Emitter {
 					expressions ← node → GetStatements();
 					each(j : expressions) {
 						left := expressions → Get(j) → As(ParseNode);
-						select(left->GetType()) {
+						select(left → GetType()) {
 							label ParseNode → Type → PUTS:
 							label ParseNode → Type → PUTI:
 							label ParseNode → Type → PUTC: {
@@ -226,7 +226,7 @@ class Emitter {
 							
 							label ParseNode → Type → PUTVI:
 							label ParseNode → Type → PUTVC: {
-								Expression(left->GetLeft());
+								Expression(left → GetLeft());
 								Expression(left);
 							}
 						};
@@ -241,7 +241,7 @@ class Emitter {
 				
 				label ParseNode → Type → PUTVI:
 				label ParseNode → Type → PUTVC: {
-					Expression(node->GetLeft());
+					Expression(node → GetLeft());
 					Expression(node);
 				}
 				

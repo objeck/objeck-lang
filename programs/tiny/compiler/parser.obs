@@ -557,9 +557,9 @@ class Parser {
 				return Nil;
 			};
 			
-			if(right->GetType() = ParseNode → Type → MUL | right->GetType() = ParseNode → Type → DIV | right->GetType() = ParseNode → Type → MOD) {
-				temp := ParseNode → New(ParseNode → Type → MUL, left, right->GetLeft());
-				return ParseNode → New(right->GetType(), temp, right->GetRight());
+			if(right → GetType() = ParseNode → Type → MUL | right → GetType() = ParseNode → Type → DIV | right → GetType() = ParseNode → Type → MOD) {
+				temp := ParseNode → New(ParseNode → Type → MUL, left, right → GetLeft());
+				return ParseNode → New(right → GetType(), temp, right → GetRight());
 			}
 			else {
 				return ParseNode → New(ParseNode → Type → MUL, left, right);
@@ -573,9 +573,9 @@ class Parser {
 				return Nil;
 			};
 			
-			if(right->GetType() = ParseNode → Type → MUL | right->GetType() = ParseNode → Type → DIV | right->GetType() = ParseNode → Type → MOD) {
-				temp := ParseNode → New(ParseNode → Type → DIV, left, right->GetLeft());
-				return ParseNode → New(right->GetType(), temp, right->GetRight());
+			if(right → GetType() = ParseNode → Type → MUL | right → GetType() = ParseNode → Type → DIV | right → GetType() = ParseNode → Type → MOD) {
+				temp := ParseNode → New(ParseNode → Type → DIV, left, right → GetLeft());
+				return ParseNode → New(right → GetType(), temp, right → GetRight());
 			}
 			else {
 				return ParseNode → New(ParseNode → Type → DIV, left, right);
@@ -589,9 +589,9 @@ class Parser {
 				return Nil;
 			};
 			
-			if(right->GetType() = ParseNode → Type → MUL | right->GetType() = ParseNode → Type → DIV | right->GetType() = ParseNode → Type → MOD) {
-				temp := ParseNode → New(ParseNode → Type → MOD, left, right->GetLeft());
-				return ParseNode → New(right->GetType(), temp, right->GetRight());
+			if(right → GetType() = ParseNode → Type → MUL | right → GetType() = ParseNode → Type → DIV | right → GetType() = ParseNode → Type → MOD) {
+				temp := ParseNode → New(ParseNode → Type → MOD, left, right → GetLeft());
+				return ParseNode → New(right → GetType(), temp, right → GetRight());
 			}
 			else {
 				return ParseNode → New(ParseNode → Type → MOD, left, right);
@@ -643,7 +643,7 @@ class Parser {
 				};
 				
 				node ← ParseNode → New(ParseNode → Type → NOT);
-				node->SetLeft(left);
+				node → SetLeft(left);
 			}
 			
 			label Token → Type → SUB: {
@@ -660,7 +660,7 @@ class Parser {
 					};
 					
 					node ← ParseNode → New(ParseNode → Type → NEG);
-					node->SetLeft(left);
+					node → SetLeft(left);
 				};
 			}
 			
@@ -698,7 +698,7 @@ class Parser {
 }
 
 class ParseNode {
-	@type : Type;
+	@type : ParseNode → Type;
 	@value : Int;
 	@left : ParseNode;
 	@right : ParseNode;
@@ -733,22 +733,22 @@ class ParseNode {
 		NUM
 	}
 	
-	New(type : Type, statements : Vector) {
+	New(type : ParseNode → Type, statements : Vector) {
 		@type ← type;
 		@statements ← statements;
 	}
 	
-	New(type : Type) {
+	New(type : ParseNode → Type) {
 		@type ← type;
 	}
 	
-	New(type : Type, left : ParseNode, right : ParseNode) {
+	New(type : ParseNode → Type, left : ParseNode, right : ParseNode) {
 		@type ← type;
 		@left ← left;
 		@right ← right;
 	}
 	
-	New(type : Type, value : Int) {
+	New(type : ParseNode → Type, value : Int) {
 		@type ← type;
 		@value ← value;
 	}

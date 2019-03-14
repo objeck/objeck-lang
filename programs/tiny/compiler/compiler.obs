@@ -9,6 +9,7 @@ class Compiler {
 				if(parser → Parse()) {
 					emitter ← Emitter → New(parser → GetStatements(), scanner → GetStrings());
 					emitter → Emit();
+					"Compiled to: instrs.e"->PrintLine();			
 				};
 			};
 		};

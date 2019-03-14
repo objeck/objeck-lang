@@ -1,5 +1,5 @@
 class Instruction {
-	@type : Type;
+	@type : Instruction → Type;
 	@value : Int;
 	
 	enum Type ← -96 {
@@ -29,16 +29,16 @@ class Instruction {
 		MOD
 	}
 	
-	New(type : Type) {
+	New(type : Instruction → Type) {
 		@type ← type;
 	}
 	
-	New(type : Type, value : Int) {
+	New(type : Instruction → Type, value : Int) {
 		@type ← type;
 		@value ← value;
 	}
 	
-	method : public : GetType() ~ Type {
+	method : public : GetType() ~ Instruction → Type {
 		return @type;
 	}
 	
