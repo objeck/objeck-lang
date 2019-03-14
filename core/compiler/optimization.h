@@ -56,6 +56,7 @@ using namespace backend;
  ****************************/
 class ItermediateOptimizer {
   IntermediateProgram* program;
+  set<wstring> can_inline;
   int optimization_level;
   int unconditional_label;
   IntermediateMethod* current_method;
@@ -121,48 +122,9 @@ class ItermediateOptimizer {
     // don't inline method calls for primitive objects
     const wstring called_cls_name = mthd_called->GetName();
     if(called_cls_name.find(L'$') != wstring::npos) {
-      // inline of 'System.$Float' methods
-      if(mthd_called->GetClass()->GetName() == L"System.$Float") {
-        if(called_cls_name == L"System.$Float:Sin:f," ||
-           called_cls_name == L"System.$Float:Cos:f," ||
-           called_cls_name == L"System.$Float:Tan:f," ||
-           called_cls_name == L"System.$Float:SquareRoot:f," ||
-           called_cls_name == L"System.$Float:Log:f," ||
-           called_cls_name == L"System.$Float:Ceiling:f," ||
-           called_cls_name == L"System.$Float:Floor:f," ||
-           called_cls_name == L"System.$Float:ArcSin:f," ||
-           called_cls_name == L"System.$Float:ArcCos:f," ||
-	         called_cls_name == L"System.$Float:Abs:f," ||
-           called_cls_name == L"System.$Float:ArcTan2:f,f," ||
-           called_cls_name == L"System.$Float:Power:f,f," ||
-	         called_cls_name == L"System.$Float:Max:f,f," ||
-           called_cls_name == L"System.$Float:Min:f,f," ||
-           called_cls_name == L"System.$Float:Pi:" ||
-           called_cls_name == L"System.$Float:E:") {
-          return true;
-        }
-      }
-      else if(mthd_called->GetClass()->GetName() == L"System.$Int") {
-        if(called_cls_name == L"System.$Int:Max:i,i," ||
-	         called_cls_name == L"System.$Int:Min:i,i," ||
-           called_cls_name == L"System.$Int:Factorial:i," ||
-           called_cls_name == L"System.$Int:Abs:i,") {
-          return true;
-        }
-      }
-      else if(mthd_called->GetClass()->GetName() == L"System.$Char") {
-        if(called_cls_name == L"System.$Char:Max:c,c," ||
-           called_cls_name == L"System.$Char:Min:c,c," ||
-           called_cls_name == L"System.$Char:Abs:c,") {
-	        return true;
-	      }
-      }
-      else if(mthd_called->GetClass()->GetName() == L"System.$Byte") {
-        if(called_cls_name == L"System.$Byte:Max:b,b," ||
-           called_cls_name == L"System.$Byte:Min:b,b," ||
-           called_cls_name == L"System.$Byte:Abs:b,") {
-          return true;
-	      }
+      set<wstring>::iterator result = can_inline.find(mthd_called->GetClass()->GetName());
+      if(result != can_inline.end()) {
+        return true;
       }
       
       return false;
@@ -369,6 +331,37 @@ class ItermediateOptimizer {
         optimization_level = 3;
       }
     }
+    
+    // primitive 'Float'
+    can_inline.insert(L"System.$Float:Sin:f,");
+    can_inline.insert(L"System.$Float:Cos:f,");
+    can_inline.insert(L"System.$Float:Tan:f,");
+    can_inline.insert(L"System.$Float:SquareRoot:f,");
+    can_inline.insert(L"System.$Float:Log:f,");
+    can_inline.insert(L"System.$Float:Ceiling:f,");
+    can_inline.insert(L"System.$Float:Floor:f,");
+    can_inline.insert(L"System.$Float:ArcSin:f,");
+    can_inline.insert(L"System.$Float:ArcCos:f,");
+    can_inline.insert(L"System.$Float:Abs:f,");
+    can_inline.insert(L"System.$Float:ArcTan2:f,f,");
+    can_inline.insert(L"System.$Float:Power:f,f,");
+    can_inline.insert(L"System.$Float:Max:f,f,");
+    can_inline.insert(L"System.$Float:Min:f,f,");
+    can_inline.insert(L"System.$Float:Pi:");
+    can_inline.insert(L"System.$Float:E:");
+    // primitive 'Int'
+    can_inline.insert(L"System.$Int:Max:i,i,");
+    can_inline.insert(L"System.$Int:Min:i,i,");
+    can_inline.insert(L"System.$Int:Factorial:i,");
+    can_inline.insert(L"System.$Int:Abs:i,");
+    // primitive 'Char'
+    can_inline.insert(L"System.$Char:Max:c,c,");
+    can_inline.insert(L"System.$Char:Min:c,c,");
+    can_inline.insert(L"System.$Char:Abs:c,");
+    // primitive 'Byte'
+    can_inline.insert(L"System.$Byte:Max:b,b,");
+    can_inline.insert(L"System.$Byte:Min:b,b,");
+    can_inline.insert(L"System.$Byte:Abs:b,");
   }
   
   ~ItermediateOptimizer() {
