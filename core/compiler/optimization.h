@@ -120,9 +120,8 @@ class ItermediateOptimizer {
     }
     
     // don't inline method calls for primitive objects
-    const wstring called_cls_name = mthd_called->GetName();
-    if(called_cls_name.find(L'$') != wstring::npos) {
-      set<wstring>::iterator result = can_inline.find(mthd_called->GetClass()->GetName());
+    if(mthd_called->GetClass()->GetName().find(L'$') != wstring::npos) {
+      set<wstring>::iterator result = can_inline.find(mthd_called->GetName());
       if(result != can_inline.end()) {
         return true;
       }
