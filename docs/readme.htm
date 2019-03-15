@@ -1,7 +1,7 @@
 <html>
 
 <head>
-<meta http-equiv=Content-Type content="text/html; charset=utf-8">
+<meta http-equiv=Content-Type content="text/html; charset=windows-1252">
 <meta name=Generator content="Microsoft Word 15 (filtered)">
 <style>
 <!--
@@ -19,14 +19,13 @@
 	{font-family:"Century Gothic";
 	panose-1:2 11 5 2 2 2 2 2 2 4;}
 @font-face
-	{font-family:"Liberation Sans";
-	panose-1:2 11 6 4 2 2 2 2 2 4;}
+	{font-family:"Liberation Sans";}
 @font-face
 	{font-family:"Noto Sans CJK SC Regular";
-	panose-1:2 11 6 4 2 2 2 2 2 4;}
+	panose-1:0 0 0 0 0 0 0 0 0 0;}
 @font-face
 	{font-family:"Lohit Devanagari";
-	panose-1:2 11 6 4 2 2 2 2 2 4;}
+	panose-1:0 0 0 0 0 0 0 0 0 0;}
 @font-face
 	{font-family:"Agency FB";
 	panose-1:2 11 5 3 2 2 2 2 2 4;}
@@ -401,8 +400,7 @@ p.Index, li.Index, div.Index
 	font-size:11.0pt;
 	font-family:"Century Gothic",sans-serif;}
 .MsoChpDefault
-	{font-size:11.0pt;
-	font-family:"Century Gothic",sans-serif;}
+	{font-family:"Century Gothic",sans-serif;}
 @page WordSection1
 	{size:8.5in 11.0in;
 	margin:1.0in 1.0in 1.0in 1.0in;}
@@ -425,8 +423,8 @@ ul
 <h1><span style='font-size:24.0pt;line-height:107%;font-family:"Agency FB",sans-serif'>Objeck
 Programming Language</span></h1>
 
-<p class=MsoSubtitle><span style='font-size:10.0pt;line-height:107%'>v4.1.9; March
-9, 2019</span></p>
+<p class=MsoSubtitle><span style='font-size:10.0pt;line-height:107%'>v4.1.10; March
+15, 2019</span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
 normal'><span style='font-family:"Calibri",sans-serif'>&nbsp;</span></p>
@@ -434,8 +432,8 @@ normal'><span style='font-family:"Calibri",sans-serif'>&nbsp;</span></p>
 <h2><span style='font-size:12.0pt;line-height:107%'>Release notes</span></h2>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
-normal'><span style='font-family:"Calibri",sans-serif'>Bug fixes and minor
-enhancements.</span></p>
+normal'><span style='font-family:"Calibri",sans-serif'>Optimizations and speed
+increases.</span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
 normal'><span style='font-family:"Calibri",sans-serif'>&nbsp;</span></p>
@@ -445,76 +443,78 @@ normal'><span style='font-family:"Calibri",sans-serif'>Highlights:</span></p>
 
 <p class=MsoListParagraphCxSpFirst style='margin-bottom:0in;margin-bottom:.0001pt;
 text-indent:-.25in;line-height:normal'><span style='font-family:"Calibri",sans-serif'>1.<span
-style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp; </span></span><span
-style='font-family:"Calibri",sans-serif'>Added a matrix math library (new)</span></p>
+style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span></span><span
+style='font-family:"Calibri",sans-serif'>JIT support for floating point
+functions (pow, sin, cos, log, etc.) [new]</span></p>
 
 <p class=MsoListParagraphCxSpMiddle style='margin-bottom:0in;margin-bottom:
 .0001pt;text-indent:-.25in;line-height:normal'><span style='font-family:"Calibri",sans-serif'>2.<span
-style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp; </span></span><span
-style='font-family:"Calibri",sans-serif'>Code incorrectly generated for
-overload functions with default parameter values (fix)</span></p>
+style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span></span><span
+style='font-family:"Calibri",sans-serif'>More aggressive method inlining,
+general increased performance [new]</span></p>
 
 <p class=MsoListParagraphCxSpLast style='margin-bottom:0in;margin-bottom:.0001pt;
 text-indent:-.25in;line-height:normal'><span style='font-family:"Calibri",sans-serif'>3.<span
-style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp; </span></span><span
-style='font-family:"Calibri",sans-serif'>Conditional expressions used in ‚Äò+=‚Äô statements
-generated compiler errors (fix)</span></p>
+style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span></span><span
+style='font-family:"Calibri",sans-serif'>Fixed code examples [bug]</span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
 normal'><span style='font-family:"Calibri",sans-serif'>&nbsp;</span></p>
 
 <p class=MsoNormal><span style='font-family:"Calibri",sans-serif'>Please refer
-to the <span class=InternetLink><span style='font-family:"Calibri",sans-serif'><a
-href="http://www.objeck.org/">project website</a></span></span> for additional
-information about the language. The Programmer‚Äôs Guide is located the ‚Äúdoc‚Äù
-directory. Additional examples are available on the <span class=InternetLink><span
-style='font-family:"Calibri",sans-serif'><a
-href="http://rosettacode.org/wiki/Category:Objeck">Rosetta Code website</a></span></span>.
-Please submit bugs to <span class=InternetLink><span style='font-family:"Calibri",sans-serif'><a
-href="mailto:objeck@gmail.com">objeck@gmail.com</a></span></span><a
-href="mailto:objeck@gmail.com"><span style='color:windowtext;text-decoration:
-none'>, bug reports are greatly appreciated!!</span></a></span></p>
+to the </span><a href="http://www.objeck.org/"><span class=InternetLink><span
+style='font-family:"Calibri",sans-serif'>project website</span></span></a><span
+style='font-family:"Calibri",sans-serif'> for additional information about the
+language. The Programmerís Guide is located the ìdocî directory. Additional
+examples are available on the </span><a
+href="http://rosettacode.org/wiki/Category:Objeck"><span class=InternetLink><span
+style='font-family:"Calibri",sans-serif'>Rosetta Code website</span></span></a><span
+style='font-family:"Calibri",sans-serif'>. Please submit bugs to </span><a
+href="mailto:objeck@gmail.com"><span class=InternetLink><span style='font-family:
+"Calibri",sans-serif'>objeck@gmail.com</span></span></a><a
+href="mailto:objeck@gmail.com"><span style='font-family:"Calibri",sans-serif;
+color:windowtext;text-decoration:none'>, bug reports are greatly appreciated!!</span></a></p>
 
 <h2><span style='font-size:12.0pt;line-height:107%'>Package directories</span></h2>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
-normal'><span style='font-family:"Calibri",sans-serif'>bin/ ‚Äì compiler,
+normal'><span style='font-family:"Calibri",sans-serif'>bin/ ñ compiler,
 debugger and VM </span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
-normal'><span style='font-family:"Calibri",sans-serif'>doc/ ‚Äì general
+normal'><span style='font-family:"Calibri",sans-serif'>doc/ ñ general
 documentation</span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
-normal'><span style='font-family:"Calibri",sans-serif'>doc/api/ ‚Äì class library
+normal'><span style='font-family:"Calibri",sans-serif'>doc/api/ ñ class library
 documentation</span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
-normal'><span style='font-family:"Calibri",sans-serif'>doc/syntax ‚Äì files to
+normal'><span style='font-family:"Calibri",sans-serif'>doc/syntax ñ files to
 enable syntax highlighting for supported editors</span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
-normal'><span style='font-family:"Calibri",sans-serif'>examples/ ‚Äì source code
+normal'><span style='font-family:"Calibri",sans-serif'>examples/ ñ source code
 examples including a 2D game</span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
-normal'><span style='font-family:"Calibri",sans-serif'>examples/doc ‚Äì source
+normal'><span style='font-family:"Calibri",sans-serif'>examples/doc ñ source
 code for self-documentation system</span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
-normal'><span style='font-family:"Calibri",sans-serif'>examples/tiny ‚Äì ‚Äútiny‚Äù
+normal'><span style='font-family:"Calibri",sans-serif'>examples/tiny ñ ìtinyî
 language compiler and VM</span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
-normal'><span style='font-family:"Calibri",sans-serif'>lib/ ‚Äì supporting
+normal'><span style='font-family:"Calibri",sans-serif'>lib/ ñ supporting
 language libraries </span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
-normal'><span style='font-family:"Calibri",sans-serif'>lib/native/ ‚Äì native OS
+normal'><span style='font-family:"Calibri",sans-serif'>lib/native/ ñ native OS
 shared libraries </span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
-normal'><span style='font-family:"Calibri",sans-serif'>lib/sdl/ ‚Äì host SDL
+normal'><span style='font-family:"Calibri",sans-serif'>lib/sdl/ ñ host SDL
 shared libraries</span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
@@ -525,7 +525,7 @@ programs</span></h2>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
 normal'><span style='font-family:"Calibri",sans-serif'>In order to compile
-programs outside of the ‚Äúbin‚Äù directory the ‚ÄúOBJECK_LIB_PATH‚Äù environment
+programs outside of the ìbinî directory the ìOBJECK_LIB_PATHî environment
 variable must be set. When this variable is set all library files must be in
 the directory specified. </span></p>
 
@@ -547,13 +547,13 @@ environment paths in Windows:</span></p>
 
 <p class=MsoNormal style='margin-top:0in;margin-right:0in;margin-bottom:0in;
 margin-left:.5in;margin-bottom:.0001pt;text-indent:-.25in;line-height:normal'><span
-style='font-family:"Calibri",sans-serif'>1.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;
+style='font-family:"Calibri",sans-serif'>1.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span><span style='font-family:"Calibri",sans-serif'>set <a
 name="__DdeLink__299_2284694977">OBJECK_LIB</a>_PATH=C:\Users\&lt;account&gt;\objeck-lang\lib</span></p>
 
 <p class=MsoNormal style='margin-top:0in;margin-right:0in;margin-bottom:0in;
 margin-left:.5in;margin-bottom:.0001pt;text-indent:-.25in;line-height:normal'><span
-style='font-family:"Calibri",sans-serif'>2.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;
+style='font-family:"Calibri",sans-serif'>2.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span><span style='font-family:"Calibri",sans-serif'>set
 PATH=%PATH%;C:\ Users\&lt;account&gt;\ objeck-lang\bin; C:\
 Users\&lt;account&gt;\ objeck-lang\lib\sdl</span></p>
@@ -567,7 +567,8 @@ environment paths in macOS and Linux:</span></p>
 
 <ol style='margin-top:0in' start=1 type=1>
  <li class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
-     normal'><span style='font-family:"Calibri",sans-serif'>export PATH=$PATH:/home/&lt;account&gt;/objeck-lang/bin</span></li>
+     normal'><span style='font-family:"Calibri",sans-serif'>export
+     PATH=$PATH:/home/&lt;account&gt;/objeck-lang/bin</span></li>
  <li class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
      normal'><span style='font-family:"Calibri",sans-serif'>export OBJECK_LIB_PATH=/home/&lt;account&gt;/objeck-lang/lib</span></li>
 </ol>
@@ -580,24 +581,24 @@ normal'><span style='font-family:"Calibri",sans-serif'>Simple compile/execute:</
 
 <p class=MsoNormal style='margin-top:0in;margin-right:0in;margin-bottom:0in;
 margin-left:.5in;margin-bottom:.0001pt;text-indent:-.25in;line-height:normal'><span
-style='font-family:"Calibri",sans-serif'>1.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;
+style='font-family:"Calibri",sans-serif'>1.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span><span style='font-family:"Calibri",sans-serif'>obc -src
 ..\examples\hello.obs -dest hello.obe </span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
-normal'><span style='font-family:"Calibri",sans-serif'>¬†¬†¬†¬†¬†¬†¬†¬†¬†¬†¬†¬†¬†¬†¬†¬†¬†¬†¬†¬†¬†¬†¬† ‚ÄìOR-
+normal'><span style='font-family:"Calibri",sans-serif'>††††††††††††††††††††††††††††† ñOR-
 </span></p>
 
 <p class=MsoNormal style='margin-top:0in;margin-right:0in;margin-bottom:0in;
 margin-left:.5in;margin-bottom:.0001pt;text-indent:-.25in;line-height:normal'><span
-style='font-family:"Calibri",sans-serif'>1.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;
+style='font-family:"Calibri",sans-serif'>1.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span><span style='font-family:"Calibri",sans-serif'>obc -src
 'C:\Program Files\Objeck\objeck-lang\examples\encrypt.obs' -lib encrypt.obl
 -dest hello.obe</span></p>
 
 <p class=MsoNormal style='margin-top:0in;margin-right:0in;margin-bottom:0in;
 margin-left:.5in;margin-bottom:.0001pt;text-indent:-.25in;line-height:normal'><span
-style='font-family:"Calibri",sans-serif'>2.¬†¬† obr hello.obe</span></p>
+style='font-family:"Calibri",sans-serif'>2.††† obr hello.obe</span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
 normal'><span style='font-family:"Calibri",sans-serif'>&nbsp;</span></p>
@@ -608,26 +609,26 @@ that has library dependencies:</span></p>
 
 <p class=MsoNormal style='margin-top:0in;margin-right:0in;margin-bottom:0in;
 margin-left:.5in;margin-bottom:.0001pt;text-indent:-.25in;line-height:normal'><span
-style='font-family:"Calibri",sans-serif'>1.¬†¬† obc -src ..\examples\xml_path.obs
--lib collect.obl,xml.obl -dest xml_path.obe</span></p>
+style='font-family:"Calibri",sans-serif'>1.††† obc -src
+..\examples\xml_path.obs -lib collect.obl,xml.obl -dest xml_path.obe</span></p>
 
 <p class=MsoNormal style='margin-top:0in;margin-right:0in;margin-bottom:0in;
 margin-left:.5in;margin-bottom:.0001pt;text-indent:-.25in;line-height:normal'><span
-style='font-family:"Calibri",sans-serif'>2.¬†¬† obr xml.obe </span></p>
+style='font-family:"Calibri",sans-serif'>2.††† obr xml.obe </span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
 normal'><span style='font-family:"Calibri",sans-serif'>&nbsp;</span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
 normal'><span style='font-family:"Calibri",sans-serif'>For OS X (10.9 or
-greater), you‚Äôll need to install OpenSSL in order to use encryption APIs as
-well as iODBC to enable database support. Please refer to the following <span
-class=InternetLink><span style='font-family:"Calibri",sans-serif'><a
-href="http://mac-dev-env.patrickbougie.com/openssl">link</a></span></span> for
-OpenSSL directions and this <span class=InternetLink><span style='font-family:
-"Calibri",sans-serif'><a
-href="http://www.iodbc.org/dataspace/iodbc/wiki/iODBC/ODBCMacOSX">link</a></span></span>
-for about ODBC support.</span></p>
+greater), youíll need to install OpenSSL in order to use encryption APIs as
+well as iODBC to enable database support. Please refer to the following </span><a
+href="http://mac-dev-env.patrickbougie.com/openssl"><span class=InternetLink><span
+style='font-family:"Calibri",sans-serif'>link</span></span></a><span
+style='font-family:"Calibri",sans-serif'> for OpenSSL directions and this </span><a
+href="http://www.iodbc.org/dataspace/iodbc/wiki/iODBC/ODBCMacOSX"><span
+class=InternetLink><span style='font-family:"Calibri",sans-serif'>link</span></span></a><span
+style='font-family:"Calibri",sans-serif'> for about ODBC support.</span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
 normal'><span style='font-family:"Calibri",sans-serif'>&nbsp;</span></p>
@@ -635,21 +636,22 @@ normal'><span style='font-family:"Calibri",sans-serif'>&nbsp;</span></p>
 <h2><span style='font-size:12.0pt;line-height:107%'>SDL Support</span></h2>
 
 <p class=MsoNormal><span style='font-family:"Calibri",sans-serif'>The 2D gaming
-framework is built around <span class=MsoHyperlink><a
-href="https://www.libsdl.org/download-2.0.php">SDL2</a></span> (&gt;=2.0.9).
-The Windows distributions contains required DLLs. Support for other platforms
-is below.</span></p>
+framework is built around </span><a
+href="https://www.libsdl.org/download-2.0.php"><span style='font-family:"Calibri",sans-serif'>SDL2</span></a><span
+style='font-family:"Calibri",sans-serif'> (&gt;=2.0.9). The Windows
+distributions contains required DLLs. Support for other platforms is below.</span></p>
 
 <p class=MsoNormal><span style='font-family:"Calibri",sans-serif'>For Linux:</span></p>
 
 <p class=MsoNormal style='margin-top:0in;margin-right:0in;margin-bottom:0in;
 margin-left:.5in;margin-bottom:.0001pt;text-indent:-.25in;line-height:normal'><span
-style='font-family:"Calibri",sans-serif'>1.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;
+style='font-family:"Calibri",sans-serif'>1.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span><span style='font-family:"Calibri",sans-serif'>sudo apt install
 libsdl1.2debian libsdl-gfx1.2-5 libsdl-gfx1.2-dev libsdl-gfx1.2-doc
-libsdl-image1.2 libsdl-image1.2-dbg libsdl-image1.2-dev libsdl-mixer1.2 libsdl-mixer1.2-dbg
-libsdl-mixer1.2-dev libsdl-net1.2 libsdl-net1.2-dbg libsdl-net1.2-dev
-libsdl-sound1.2 libsdl-sound1.2-dev libsdl-ttf2.0-0 libsdl-ttf2.0-dev</span></p>
+libsdl-image1.2 libsdl-image1.2-dbg libsdl-image1.2-dev libsdl-mixer1.2
+libsdl-mixer1.2-dbg libsdl-mixer1.2-dev libsdl-net1.2 libsdl-net1.2-dbg
+libsdl-net1.2-dev libsdl-sound1.2 libsdl-sound1.2-dev libsdl-ttf2.0-0
+libsdl-ttf2.0-dev</span></p>
 
 <p class=MsoNormal style='margin-top:0in;margin-right:0in;margin-bottom:0in;
 margin-left:.5in;margin-bottom:.0001pt;line-height:normal'><span
@@ -659,36 +661,39 @@ style='font-family:"Calibri",sans-serif'>&nbsp;</span></p>
 
 <p class=MsoListParagraphCxSpFirst style='text-indent:-.25in'>1.<span
 style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp; </span><span
-style='line-height:107%;font-family:"Calibri",sans-serif'>Refer to this <span
-class=InternetLink><span style='font-family:"Calibri",sans-serif'><a
-href="http://lazyfoo.net/tutorials/SDL/01_hello_SDL/mac/index.php">link</a></span></span>
-for core SDL2 libraries. Ensure you download </span><span style='font-family:
-"Calibri",sans-serif'>2.0.9</span><span style='line-height:107%;font-family:
-"Calibri",sans-serif'> or greater.</span></p>
+style='line-height:107%;font-family:"Calibri",sans-serif'>Refer to this </span><a
+href="http://lazyfoo.net/tutorials/SDL/01_hello_SDL/mac/index.php"><span
+class=InternetLink><span style='line-height:107%;font-family:"Calibri",sans-serif'>link</span></span></a><span
+style='line-height:107%;font-family:"Calibri",sans-serif'> for core SDL2
+libraries. Ensure you download </span><span style='font-family:"Calibri",sans-serif'>2.0.9</span><span
+style='line-height:107%;font-family:"Calibri",sans-serif'> or greater.</span></p>
 
 <p class=MsoListParagraphCxSpLast style='text-indent:-.25in'>2.<span
 style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp; </span><span
-style='font-family:"Calibri",sans-serif'>Other libraries for <span
-class=InternetLink><span style='font-family:"Calibri",sans-serif'><a
-href="https://www.libsdl.org/projects/SDL_image/">images</a></span></span>, <span
-class=InternetLink><span style='font-family:"Calibri",sans-serif'><a
-href="https://www.libsdl.org/projects/SDL_ttf/">fonts</a></span></span> and <span
-class=InternetLink><span style='font-family:"Calibri",sans-serif'><a
-href="https://www.libsdl.org/projects/SDL_mixer/">sound</a></span></span> are
-required. These libraries may need to be resigned for example ‚Äúcd
-/Library/Frameworks/SDL2_mixer.framework;</span> <span style='font-family:"Calibri",sans-serif'>codesign
--f -s - SDL2_mixer‚Äù. </span></p>
+style='font-family:"Calibri",sans-serif'>Other libraries for </span><a
+href="https://www.libsdl.org/projects/SDL_image/"><span class=InternetLink><span
+style='font-family:"Calibri",sans-serif'>images</span></span></a><span
+style='font-family:"Calibri",sans-serif'>, </span><a
+href="https://www.libsdl.org/projects/SDL_ttf/"><span class=InternetLink><span
+style='font-family:"Calibri",sans-serif'>fonts</span></span></a><span
+style='font-family:"Calibri",sans-serif'> and </span><a
+href="https://www.libsdl.org/projects/SDL_mixer/"><span class=InternetLink><span
+style='font-family:"Calibri",sans-serif'>sound</span></span></a><span
+style='font-family:"Calibri",sans-serif'> are required. These libraries may
+need to be resigned for example ìcd /Library/Frameworks/SDL2_mixer.framework;</span>
+<span style='font-family:"Calibri",sans-serif'>codesign -f -s - SDL2_mixerî. </span></p>
 
 <h2><span style='font-size:12.0pt;line-height:107%'>Source code</span></h2>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
 normal'><span style='font-family:"Calibri",sans-serif'>The Objeck source
-repository is located <span class=InternetLink><span style='font-family:"Calibri",sans-serif'><a
-href="http://github.com/objeck/objeck-lang">here</a></span></span> and the
-source can be fetch using the following command GIT command:</span></p>
+repository is located </span><a href="http://github.com/objeck/objeck-lang"><span
+class=InternetLink><span style='font-family:"Calibri",sans-serif'>here</span></span></a><span
+style='font-family:"Calibri",sans-serif'> and the source can be fetch using the
+following command GIT command:</span></p>
 
 <p class=MsoListParagraph style='text-indent:-.25in'><span style='line-height:
-107%;font-family:Symbol'>¬∑<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+107%;font-family:Symbol'>∑<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span><span style='line-height:107%;font-family:"Calibri",sans-serif'>git
 clone https://github.com/objeck/objeck-lang.git</span></p>
 
@@ -698,29 +703,31 @@ normal'><b><span style='font-family:"Calibri",sans-serif'>&nbsp;</span></b></p>
 <h2><span style='font-size:12.0pt;line-height:107%'>Known bugs and limitations</span></h2>
 
 <p class=MsoListParagraphCxSpFirst style='text-indent:-.25in'><span
-style='font-family:Symbol'>¬∑<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+style='font-family:Symbol'>∑<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span><span style='line-height:107%;font-family:"Calibri",sans-serif'>On
-32-bit Windows, the ODBC driver must be a 32-bit for <span class=InternetLink><span
-style='font-family:"Calibri",sans-serif'><a
-href="http://stackoverflow.com/questions/1134827/how-do-i-use-a-32-bit-odbc-driver-on-64-bit-server-2008-when-the-installer-doesn">compatibility</a></span></span>.
-</span></p>
+32-bit Windows, the ODBC driver must be a 32-bit for </span><a
+href="http://stackoverflow.com/questions/1134827/how-do-i-use-a-32-bit-odbc-driver-on-64-bit-server-2008-when-the-installer-doesn"><span
+class=InternetLink><span style='line-height:107%;font-family:"Calibri",sans-serif'>compatibility</span></span></a><span
+style='line-height:107%;font-family:"Calibri",sans-serif'>. </span></p>
 
 <p class=MsoListParagraphCxSpMiddle style='text-indent:-.25in'><span
-style='line-height:107%;font-family:Symbol'>¬∑<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+style='line-height:107%;font-family:Symbol'>∑<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span><span style='line-height:107%;font-family:"Calibri",sans-serif'>The
 XML parser class does not support DTDs or DOCTYPE tags</span></p>
 
 <p class=MsoListParagraphCxSpMiddle style='text-indent:-.25in'><span
-style='line-height:107%;font-family:Symbol'>¬∑<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+style='line-height:107%;font-family:Symbol'>∑<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span><span style='line-height:107%;font-family:"Calibri",sans-serif'>By
 design, the regular expression class performs greedy pattern matching.</span></p>
 
 <p class=MsoListParagraphCxSpLast style='text-indent:-.25in'><span
-style='font-family:Symbol'>¬∑<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+style='font-family:Symbol'>∑<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span><span style='line-height:107%;font-family:"Calibri",sans-serif'>All
-unit tests executed successfully but I'm sure there‚Äôs bugs. Send an <span
-class=InternetLink><span style='font-family:"Calibri",sans-serif'><a
-href="mailto:objeck@gmail.com">e-mail</a></span></span> I‚Äôll get them sorted.</span></p>
+unit tests executed successfully but I'm sure thereís bugs. Send an </span><a
+href="mailto:objeck@gmail.com"><span class=InternetLink><span style='line-height:
+107%;font-family:"Calibri",sans-serif'>e-mail</span></span></a><span
+style='line-height:107%;font-family:"Calibri",sans-serif'> Iíll get them
+sorted.</span></p>
 
 </div>
 
