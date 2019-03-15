@@ -1,3 +1,8 @@
+#~
+Translsated from Tariq Rashid book
+Make Your Own Neural Network
+~#
+
 use System.IO.File;
 use System.Matrix;
 use System.Time;
