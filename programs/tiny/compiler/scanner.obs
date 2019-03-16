@@ -337,7 +337,7 @@ class Scanner {
 
 class Token {
 	@@line_num : Int;
-	@type : Type;
+	@type : Token → Type;
 	@name : String;
 	@value : Int;
 
@@ -378,13 +378,13 @@ class Token {
 		OTHER
 	}
 	
-	New(@line_num : Int, type : Type, name : String) {
+	New(@line_num : Int, type : Token → Type, name : String) {
 		@@line_num ← @line_num;
 		@type ← type;
 		@name ← name;
 	}
 	
-	New(@line_num : Int, type : Type, name : String, value : Int) {
+	New(@line_num : Int, type : Token → Type, name : String, value : Int) {
 		@@line_num ← @line_num;
 		@type ← type;
 		@value ← value;
@@ -395,7 +395,7 @@ class Token {
 		return @@line_num;
 	}
 	
-	method : public : GetType() ~ Type {
+	method : public : GetType() ~ Token → Type {
 		return @type;
 	}
 	
