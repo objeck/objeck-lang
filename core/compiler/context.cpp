@@ -39,7 +39,7 @@
 void ContextAnalyzer::ProcessError(ParseNode* node, const wstring &msg)
 {
 #ifdef _DEBUG
-  wcout << L"\tError: " << node->GetFileName() << L":" << node->GetLineNumber()
+  GetLogger() << L"\tError: " << node->GetFileName() << L":" << node->GetLineNumber()
         << L": " << msg << endl;
 #endif
   
@@ -68,7 +68,7 @@ void ContextAnalyzer::ProcessErrorAlternativeMethods(wstring &message)
 void ContextAnalyzer::ProcessError(const wstring &fn, const wstring &msg)
 {
 #ifdef _DEBUG
-  wcout << L"\tError: " << msg << endl;
+  GetLogger() << L"\tError: " << msg << endl;
 #endif
   
   errors.insert(pair<int, wstring>(1, fn + L":1: " + msg));
@@ -104,7 +104,7 @@ bool ContextAnalyzer::CheckErrors()
 bool ContextAnalyzer::Analyze()
 {
 #ifdef _DEBUG
-  wcout << L"\n--------- Contextual Analysis ---------" << endl;
+  GetLogger() << L"\n--------- Contextual Analysis ---------" << endl;
 #endif
   int class_id = 0;
 
@@ -2182,7 +2182,7 @@ bool ContextAnalyzer::Analyze()
                                           bool is_expr, wstring &encoding, const int depth)
   {   
 #ifdef _DEBUG
-    wcout << L"Checking program class call: |" << klass->GetName() << L":" 
+    GetLogger() << L"Checking program class call: |" << klass->GetName() << L":" 
           << (method_call->GetMethodName().size() > 0 ? 
               method_call->GetMethodName() : method_call->GetVariableName())
           << L"|" << endl;
@@ -2396,7 +2396,7 @@ bool ContextAnalyzer::Analyze()
                                           bool is_expr, wstring &encoding, bool is_parent, const int depth)
   {      
 #ifdef _DEBUG
-    wcout << L"Checking library encoded name: |" << klass->GetName() << L":" 
+    GetLogger() << L"Checking library encoded name: |" << klass->GetName() << L":" 
           << method_call->GetMethodName() << L"|" << endl;
 #endif
 
@@ -4549,7 +4549,7 @@ bool ContextAnalyzer::Analyze()
         const wstring encoded_name = L"m." + EncodeFunctionType(type->GetFunctionParameters(),
                                                                 type->GetFunctionReturn());
 #ifdef _DEBUG
-        wcout << L"Encoded function declaration: |" << encoded_name << L"|" << endl;
+        GetLogger() << L"Encoded function declaration: |" << encoded_name << L"|" << endl;
 #endif
         type->SetClassName(encoded_name);
       }

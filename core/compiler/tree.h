@@ -49,6 +49,7 @@
 #include <assert.h>
 #include "linker.h"
 #include "../shared/instrs.h"
+#include "../shared/logger.h"
 #ifdef _MEMCHECK
 #include <mcheck.h>
 #endif

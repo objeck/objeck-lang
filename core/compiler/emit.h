@@ -184,450 +184,450 @@ namespace backend {
     void Debug() {
       switch(type) {
       case SWAP_INT:
-        wcout << L"SWAP_INT" << endl;
+        GetLogger() << L"SWAP_INT" << endl;
         break;
 
       case POP_INT:
-        wcout << L"POP_INT" << endl;
+        GetLogger() << L"POP_INT" << endl;
         break;
 
       case POP_FLOAT:
-        wcout << L"POP_FLOAT" << endl;
+        GetLogger() << L"POP_FLOAT" << endl;
         break;
 
       case LOAD_INT_LIT:
-        wcout << L"LOAD_INT_LIT: value=" << operand << endl;
+        GetLogger() << L"LOAD_INT_LIT: value=" << operand << endl;
         break;
 
       case LOAD_CHAR_LIT:
-        wcout << L"LOAD_CHAR_LIT value='" << (wchar_t)operand << L"'" << endl;
+        GetLogger() << L"LOAD_CHAR_LIT value='" << (wchar_t)operand << L"'" << endl;
         break;
 
       case DYN_MTHD_CALL:
-        wcout << L"DYN_MTHD_CALL num_params=" << operand 
+        GetLogger() << L"DYN_MTHD_CALL num_params=" << operand 
           << L", rtrn_type=" << operand2 << endl;
         break;
 
       case SHL_INT:
-        wcout << L"SHL_INT" << endl;
+        GetLogger() << L"SHL_INT" << endl;
         break;
 
       case SHR_INT:
-        wcout << L"SHR_INT" << endl;
+        GetLogger() << L"SHR_INT" << endl;
         break;
 
       case LOAD_FLOAT_LIT:
-        wcout << L"LOAD_FLOAT_LIT: value=" << operand4 << endl;
+        GetLogger() << L"LOAD_FLOAT_LIT: value=" << operand4 << endl;
         break;
 
       case LOAD_FUNC_VAR:
-        wcout << L"LOAD_FUNC_VAR: id=" << operand << L", local="
+        GetLogger() << L"LOAD_FUNC_VAR: id=" << operand << L", local="
           << (operand2 == LOCL ? "true" : "false") << endl;
         break;
 
       case LOAD_INT_VAR:
-        wcout << L"LOAD_INT_VAR: id=" << operand << L", local="
+        GetLogger() << L"LOAD_INT_VAR: id=" << operand << L", local="
           << (operand2 == LOCL ? "true" : "false") << endl;
         break;
 
       case LOAD_FLOAT_VAR:
-        wcout << L"LOAD_FLOAT_VAR: id=" << operand << L", local="
+        GetLogger() << L"LOAD_FLOAT_VAR: id=" << operand << L", local="
           << (operand2 == LOCL ? "true" : "false") << endl;
         break;
 
       case LOAD_BYTE_ARY_ELM:
-        wcout << L"LOAD_BYTE_ARY_ELM: dimension=" << operand
+        GetLogger() << L"LOAD_BYTE_ARY_ELM: dimension=" << operand
           << L", local=" << (operand2 == LOCL ? "true" : "false") << endl;
         break;
 
       case LOAD_CHAR_ARY_ELM:
-        wcout << L"LOAD_CHAR_ARY_ELM: dimension=" << operand
+        GetLogger() << L"LOAD_CHAR_ARY_ELM: dimension=" << operand
           << L", local=" << (operand2 == LOCL ? "true" : "false") << endl;
         break;
 
       case LOAD_INT_ARY_ELM:
-        wcout << L"LOAD_INT_ARY_ELM: dimension=" << operand
+        GetLogger() << L"LOAD_INT_ARY_ELM: dimension=" << operand
           << L", local=" << (operand2 == LOCL ? "true" : "false") << endl;
         break;
 
       case LOAD_FLOAT_ARY_ELM:
-        wcout << L"LOAD_FLOAT_ARY_ELM: dimension=" << operand
+        GetLogger() << L"LOAD_FLOAT_ARY_ELM: dimension=" << operand
           << L", local=" << (operand2 == LOCL ? "true" : "false") << endl;
         break;
 
       case LOAD_CLS_MEM:
-        wcout << L"LOAD_CLS_MEM" << endl;
+        GetLogger() << L"LOAD_CLS_MEM" << endl;
         break;
 
       case LOAD_INST_MEM:
-        wcout << L"LOAD_INST_MEM" << endl;
+        GetLogger() << L"LOAD_INST_MEM" << endl;
         break;
 
       case STOR_FUNC_VAR:
-        wcout << L"STOR_FUNC_VAR: id=" << operand << L", local="
+        GetLogger() << L"STOR_FUNC_VAR: id=" << operand << L", local="
           << (operand2 == LOCL ? "true" : "false") << endl;
         break;
 
       case STOR_INT_VAR:
-        wcout << L"STOR_INT_VAR: id=" << operand << L", local="
+        GetLogger() << L"STOR_INT_VAR: id=" << operand << L", local="
           << (operand2 == LOCL ? "true" : "false") << endl;
         break;
 
       case STOR_FLOAT_VAR:
-        wcout << L"STOR_FLOAT_VAR: id=" << operand << L", local="
+        GetLogger() << L"STOR_FLOAT_VAR: id=" << operand << L", local="
           << (operand2 == LOCL ? "true" : "false") << endl;
         break;
 
       case COPY_FUNC_VAR:
-        wcout << L"COPY_FUNC_VAR: id=" << operand << L", local="
+        GetLogger() << L"COPY_FUNC_VAR: id=" << operand << L", local="
           << (operand2 == LOCL ? "true" : "false") << endl;
         break;
 
       case COPY_INT_VAR:
-        wcout << L"COPY_INT_VAR: id=" << operand << L", local="
+        GetLogger() << L"COPY_INT_VAR: id=" << operand << L", local="
           << (operand2 == LOCL ? "true" : "false") << endl;
         break;
 
       case COPY_FLOAT_VAR:
-        wcout << L"COPY_FLOAT_VAR: id=" << operand << L", local="
+        GetLogger() << L"COPY_FLOAT_VAR: id=" << operand << L", local="
           << (operand2 == LOCL ? "true" : "false") << endl;
         break;
 
       case STOR_BYTE_ARY_ELM:
-        wcout << L"STOR_BYTE_ARY_ELM: dimension=" << operand
+        GetLogger() << L"STOR_BYTE_ARY_ELM: dimension=" << operand
           << L", local=" << (operand2 == LOCL ? "true" : "false") << endl;
         break;
 
       case STOR_CHAR_ARY_ELM:
-        wcout << L"STOR_CHAR_ARY_ELM: dimension=" << operand
+        GetLogger() << L"STOR_CHAR_ARY_ELM: dimension=" << operand
           << L", local=" << (operand2 == LOCL ? "true" : "false") << endl;
         break;
 
       case STOR_INT_ARY_ELM:
-        wcout << L"STOR_INT_ARY_ELM: dimension=" << operand
+        GetLogger() << L"STOR_INT_ARY_ELM: dimension=" << operand
           << L", local=" << (operand2 == LOCL ? "true" : "false") << endl;
         break;
 
       case STOR_FLOAT_ARY_ELM:
-        wcout << L"STOR_FLOAT_ARY_ELM: dimension=" << operand
+        GetLogger() << L"STOR_FLOAT_ARY_ELM: dimension=" << operand
           << L", local=" << (operand2 == LOCL ? "true" : "false") << endl;
         break;
 
       case instructions::ASYNC_MTHD_CALL:
-        wcout << L"ASYNC_MTHD_CALL: class=" << operand << L", method="
+        GetLogger() << L"ASYNC_MTHD_CALL: class=" << operand << L", method="
           << operand2 << L"; native=" << (operand3 ? "true" : "false") << endl;
         break;
 
       case instructions::DLL_LOAD:
-        wcout << L"DLL_LOAD" << endl;
+        GetLogger() << L"DLL_LOAD" << endl;
         break;
 
       case instructions::DLL_UNLOAD:
-        wcout << L"DLL_UNLOAD" << endl;
+        GetLogger() << L"DLL_UNLOAD" << endl;
         break;
 
       case instructions::DLL_FUNC_CALL:
-        wcout << L"DLL_FUNC_CALL" << endl;
+        GetLogger() << L"DLL_FUNC_CALL" << endl;
         break;
 
       case instructions::THREAD_JOIN:
-        wcout << L"THREAD_JOIN" << endl;
+        GetLogger() << L"THREAD_JOIN" << endl;
         break;
 
       case instructions::THREAD_SLEEP:
-        wcout << L"THREAD_SLEEP" << endl;
+        GetLogger() << L"THREAD_SLEEP" << endl;
         break;
 
       case instructions::THREAD_MUTEX:
-        wcout << L"THREAD_MUTEX" << endl;
+        GetLogger() << L"THREAD_MUTEX" << endl;
         break;
 
       case CRITICAL_START:
-        wcout << L"CRITICAL_START" << endl;
+        GetLogger() << L"CRITICAL_START" << endl;
         break;
 
       case CRITICAL_END:
-        wcout << L"CRITICAL_END" << endl;
+        GetLogger() << L"CRITICAL_END" << endl;
         break;
 
       case AND_INT:
-        wcout << L"AND_INT" << endl;
+        GetLogger() << L"AND_INT" << endl;
         break;
 
       case OR_INT:
-        wcout << L"OR_INT" << endl;
+        GetLogger() << L"OR_INT" << endl;
         break;
 
       case ADD_INT:
-        wcout << L"ADD_INT" << endl;
+        GetLogger() << L"ADD_INT" << endl;
         break;
 
       case SUB_INT:
-        wcout << L"SUB_INT" << endl;
+        GetLogger() << L"SUB_INT" << endl;
         break;
 
       case MUL_INT:
-        wcout << L"MUL_INT" << endl;
+        GetLogger() << L"MUL_INT" << endl;
         break;
 
       case DIV_INT:
-        wcout << L"DIV_INT" << endl;
+        GetLogger() << L"DIV_INT" << endl;
         break;
 
       case MOD_INT:
-        wcout << L"MOD_INT" << endl;
+        GetLogger() << L"MOD_INT" << endl;
         break;
 
       case BIT_AND_INT:
-        wcout << L"BIT_AND_INT" << endl;
+        GetLogger() << L"BIT_AND_INT" << endl;
         break;
 
       case BIT_OR_INT:
-        wcout << L"BIT_OR_INT" << endl;
+        GetLogger() << L"BIT_OR_INT" << endl;
         break;
 
       case BIT_XOR_INT:
-        wcout << L"BIT_XOR_INT" << endl;
+        GetLogger() << L"BIT_XOR_INT" << endl;
         break;
 
       case EQL_INT:
-        wcout << L"EQL_INT" << endl;
+        GetLogger() << L"EQL_INT" << endl;
         break;
 
       case NEQL_INT:
-        wcout << L"NEQL_INT" << endl;
+        GetLogger() << L"NEQL_INT" << endl;
         break;
 
       case LES_INT:
-        wcout << L"LES_INT" << endl;
+        GetLogger() << L"LES_INT" << endl;
         break;
 
       case GTR_INT:
-        wcout << L"GTR_INT" << endl;
+        GetLogger() << L"GTR_INT" << endl;
         break;
 
       case LES_EQL_INT:
-        wcout << L"LES_EQL_INT" << endl;
+        GetLogger() << L"LES_EQL_INT" << endl;
         break;
 
       case GTR_EQL_INT:
-        wcout << L"GTR_EQL_INT" << endl;
+        GetLogger() << L"GTR_EQL_INT" << endl;
         break;
 
       case ADD_FLOAT:
-        wcout << L"ADD_FLOAT" << endl;
+        GetLogger() << L"ADD_FLOAT" << endl;
         break;
 
       case SUB_FLOAT:
-        wcout << L"SUB_FLOAT" << endl;
+        GetLogger() << L"SUB_FLOAT" << endl;
         break;
 
       case MUL_FLOAT:
-        wcout << L"MUL_FLOAT" << endl;
+        GetLogger() << L"MUL_FLOAT" << endl;
         break;
 
       case DIV_FLOAT:
-        wcout << L"DIV_FLOAT" << endl;
+        GetLogger() << L"DIV_FLOAT" << endl;
         break;
 
       case EQL_FLOAT:
-        wcout << L"EQL_FLOAT" << endl;
+        GetLogger() << L"EQL_FLOAT" << endl;
         break;
 
       case NEQL_FLOAT:
-        wcout << L"NEQL_FLOAT" << endl;
+        GetLogger() << L"NEQL_FLOAT" << endl;
         break;
 
       case LES_EQL_FLOAT:
-        wcout << L"LES_EQL_FLOAT" << endl;
+        GetLogger() << L"LES_EQL_FLOAT" << endl;
         break;
 
       case LES_FLOAT:
-        wcout << L"LES_FLOAT" << endl;
+        GetLogger() << L"LES_FLOAT" << endl;
         break;
 
       case GTR_FLOAT:
-        wcout << L"GTR_FLOAT" << endl;
+        GetLogger() << L"GTR_FLOAT" << endl;
         break;
 
       case GTR_EQL_FLOAT:
-        wcout << L"LES_EQL_FLOAT" << endl;
+        GetLogger() << L"LES_EQL_FLOAT" << endl;
         break;
 
       case instructions::FLOR_FLOAT:
-        wcout << L"FLOR_FLOAT" << endl;
+        GetLogger() << L"FLOR_FLOAT" << endl;
         break;
 
       case instructions::LOAD_ARY_SIZE:
-        wcout << L"LOAD_ARY_SIZE" << endl;
+        GetLogger() << L"LOAD_ARY_SIZE" << endl;
         break;
 
       case instructions::CPY_BYTE_ARY:
-        wcout << L"CPY_BYTE_ARY" << endl;
+        GetLogger() << L"CPY_BYTE_ARY" << endl;
         break;
 
       case instructions::CPY_CHAR_ARY:
-        wcout << L"CPY_CHAR_ARY" << endl;
+        GetLogger() << L"CPY_CHAR_ARY" << endl;
         break;
 
       case instructions::CPY_INT_ARY:
-        wcout << L"CPY_INT_ARY" << endl;
+        GetLogger() << L"CPY_INT_ARY" << endl;
         break;
 
       case instructions::CPY_FLOAT_ARY:
-        wcout << L"CPY_FLOAT_ARY" << endl;
+        GetLogger() << L"CPY_FLOAT_ARY" << endl;
         break;
 
       case instructions::CEIL_FLOAT:
-        wcout << L"CEIL_FLOAT" << endl;
+        GetLogger() << L"CEIL_FLOAT" << endl;
         break;
 
       case instructions::RAND_FLOAT:
-        wcout << L"RAND_FLOAT" << endl;
+        GetLogger() << L"RAND_FLOAT" << endl;
         break;
 
       case instructions::SIN_FLOAT:
-        wcout << L"SIN_FLOAT" << endl;
+        GetLogger() << L"SIN_FLOAT" << endl;
         break;
 
       case instructions::COS_FLOAT:
-        wcout << L"COS_FLOAT" << endl;
+        GetLogger() << L"COS_FLOAT" << endl;
         break;
 
       case instructions::TAN_FLOAT:
-        wcout << L"TAN_FLOAT" << endl;
+        GetLogger() << L"TAN_FLOAT" << endl;
         break;
 
       case instructions::ASIN_FLOAT:
-        wcout << L"ASIN_FLOAT" << endl;
+        GetLogger() << L"ASIN_FLOAT" << endl;
         break;
 
       case instructions::ACOS_FLOAT:
-        wcout << L"ACOS_FLOAT" << endl;
+        GetLogger() << L"ACOS_FLOAT" << endl;
         break;
 
       case instructions::ATAN_FLOAT:
-        wcout << L"ATAN_FLOAT" << endl;
+        GetLogger() << L"ATAN_FLOAT" << endl;
         break;
 
       case instructions::ATAN2_FLOAT:
-        wcout << L"ATAN2_FLOAT" << endl;
+        GetLogger() << L"ATAN2_FLOAT" << endl;
         break;
 
       case instructions::LOG_FLOAT:
-        wcout << L"LOG_FLOAT" << endl;
+        GetLogger() << L"LOG_FLOAT" << endl;
         break;
 
       case instructions::POW_FLOAT:
-        wcout << L"POW_FLOAT" << endl;
+        GetLogger() << L"POW_FLOAT" << endl;
         break;
 
       case instructions::SQRT_FLOAT:
-        wcout << L"SQRT_FLOAT" << endl;
+        GetLogger() << L"SQRT_FLOAT" << endl;
         break;
 
       case I2F:
-        wcout << L"I2F" << endl;
+        GetLogger() << L"I2F" << endl;
         break;
 
       case F2I:
-        wcout << L"F2I" << endl;
+        GetLogger() << L"F2I" << endl;
         break;
 
       case instructions::S2F:
-        wcout << L"S2F" << endl;
+        GetLogger() << L"S2F" << endl;
         break;
 
       case instructions::S2I:
-        wcout << L"S2I" << endl;
+        GetLogger() << L"S2I" << endl;
         break;
 
       case instructions::I2S:
-        wcout << L"I2S" << endl;
+        GetLogger() << L"I2S" << endl;
         break;
 
       case instructions::F2S:
-        wcout << L"F2S" << endl;
+        GetLogger() << L"F2S" << endl;
         break;
 
       case RTRN:
-        wcout << L"RTRN" << endl;
+        GetLogger() << L"RTRN" << endl;
         break;
 
       case MTHD_CALL:
-        wcout << L"MTHD_CALL: class=" << operand << L", method="
+        GetLogger() << L"MTHD_CALL: class=" << operand << L", method="
           << operand2 << L"; native=" << (operand3 ? "true" : "false") << endl;
         break;
 
       case LIB_NEW_OBJ_INST:
-        wcout << L"LIB_NEW_OBJ_INST: class='" << operand5 << L"'" << endl;
+        GetLogger() << L"LIB_NEW_OBJ_INST: class='" << operand5 << L"'" << endl;
         break;
 
       case LIB_OBJ_TYPE_OF:
-        wcout << L"LIB_OBJ_TYPE_OF: class='" << operand5 << L"'" << endl;
+        GetLogger() << L"LIB_OBJ_TYPE_OF: class='" << operand5 << L"'" << endl;
         break;
 	
       case LIB_OBJ_INST_CAST:
-        wcout << L"LIB_OBJ_INST_CAST: to_class='" << operand5 << L"'" << endl;
+        GetLogger() << L"LIB_OBJ_INST_CAST: to_class='" << operand5 << L"'" << endl;
         break;
 
       case LIB_MTHD_CALL:
-        wcout << L"LIB_MTHD_CALL: class='" << operand5 << L"', method='"
+        GetLogger() << L"LIB_MTHD_CALL: class='" << operand5 << L"', method='"
           << operand6 << L"'; native=" << (operand3 ? "true" : "false") << endl;
         break;
 
       case LIB_FUNC_DEF:
-        wcout << L"LIB_FUNC_DEF: class='" << operand5 << L"', method='" 
+        GetLogger() << L"LIB_FUNC_DEF: class='" << operand5 << L"', method='" 
           << operand6 << L"'" << endl;
         break;
 
       case LBL:
-        wcout << L"LBL: id=" << operand << endl;
+        GetLogger() << L"LBL: id=" << operand << endl;
         break;
 
       case JMP:
         if(operand2 == -1) {
-          wcout << L"JMP: id=" << operand << endl;
+          GetLogger() << L"JMP: id=" << operand << endl;
         } else {
-          wcout << L"JMP: id=" << operand << L" conditional="
+          GetLogger() << L"JMP: id=" << operand << L" conditional="
             << (operand2 ? "true" : "false") << endl;
         }
         break;
 
       case OBJ_INST_CAST:
-        wcout << L"OBJ_INST_CAST: to=" << operand << endl;
+        GetLogger() << L"OBJ_INST_CAST: to=" << operand << endl;
         break;
 
       case OBJ_TYPE_OF:
-        wcout << L"OBJ_TYPE_OF: check=" << operand << endl;
+        GetLogger() << L"OBJ_TYPE_OF: check=" << operand << endl;
         break;
 
       case NEW_FLOAT_ARY:
-        wcout << L"NEW_FLOAT_ARY: dimension=" << operand << endl;
+        GetLogger() << L"NEW_FLOAT_ARY: dimension=" << operand << endl;
         break;
 
       case NEW_INT_ARY:
-        wcout << L"NEW_INT_ARY: dimension=" << operand << endl;
+        GetLogger() << L"NEW_INT_ARY: dimension=" << operand << endl;
         break;
 
       case NEW_BYTE_ARY:
-        wcout << L"NEW_BYTE_ARY: dimension=" << operand << endl;
+        GetLogger() << L"NEW_BYTE_ARY: dimension=" << operand << endl;
         break;
 
       case NEW_CHAR_ARY:
-        wcout << L"NEW_CHAR_ARY: dimension=" << operand << endl;
+        GetLogger() << L"NEW_CHAR_ARY: dimension=" << operand << endl;
         break;
 
       case NEW_OBJ_INST:
-        wcout << L"NEW_OBJ_INST: class=" << operand << endl;
+        GetLogger() << L"NEW_OBJ_INST: class=" << operand << endl;
         break;
 
       case TRAP:
-        wcout << L"TRAP: args=" << operand << endl;
+        GetLogger() << L"TRAP: args=" << operand << endl;
         break;
 
       case TRAP_RTRN:
-        wcout << L"TRAP_RTRN: args=" << operand << endl;
+        GetLogger() << L"TRAP_RTRN: args=" << operand << endl;
         break;
 
       default:
@@ -748,7 +748,7 @@ namespace backend {
         for(size_t i = 0; i < instructions.size(); ++i) {
           instructions[i]->Debug();
         }
-        wcout << L"--" << endl;
+        GetLogger() << L"--" << endl;
       }
     }
   };
@@ -895,13 +895,13 @@ namespace backend {
     void Write(bool emit_lib, bool is_debug, OutputStream& out_stream);
 
     void Debug() {
-      wcout << L"---------------------------------------------------------" << endl;
-      wcout << L"Method: id=" << id << L"; name='" << name << L"'; return='" << rtrn_name
+      GetLogger() << L"---------------------------------------------------------" << endl;
+      GetLogger() << L"Method: id=" << id << L"; name='" << name << L"'; return='" << rtrn_name
         << L"';\n  blocks=" << blocks.size() << L"; is_function=" << is_function << L"; num_params="
         << params << L"; mem_size=" << space << endl;
-      wcout << L"---------------------------------------------------------" << endl;
+      GetLogger() << L"---------------------------------------------------------" << endl;
       entries->Debug(has_and_or);
-      wcout << L"---------------------------------------------------------" << endl;
+      GetLogger() << L"---------------------------------------------------------" << endl;
       for(size_t i = 0; i < blocks.size(); ++i) {
         blocks[i]->Debug();
       }
@@ -1065,21 +1065,21 @@ namespace backend {
     void Write(bool emit_lib, OutputStream& out_stream);
 
     void Debug() {
-      wcout << L"=========================================================" << endl;
-      wcout << L"Class: id=" << id << L"; name='" << name << L"'; parent='" << parent_name
+      GetLogger() << L"=========================================================" << endl;
+      GetLogger() << L"Class: id=" << id << L"; name='" << name << L"'; parent='" << parent_name
             << L"'; pid=" << pid << L";\n interface=" << (is_interface ? L"true" : L"false") 
             << L"; virtual=" << is_virtual << L"; num_methods=" << methods.size() 
             << L"; class_mem_size=" << cls_space << L";\n instance_mem_size=" 
             << inst_space << L"; is_debug=" << (is_debug  ? L"true" : L"false") << endl;      
-      wcout << endl << "Interfaces:" << endl;
+      GetLogger() << endl << "Interfaces:" << endl;
       for(size_t i = 0; i < interface_names.size(); ++i) {
-        wcout << L"\t" << interface_names[i] << endl;
+        GetLogger() << L"\t" << interface_names[i] << endl;
       }      
-      wcout << L"=========================================================" << endl;
+      GetLogger() << L"=========================================================" << endl;
       cls_entries->Debug(false);
-      wcout << L"---------------------------------------------------------" << endl;
+      GetLogger() << L"---------------------------------------------------------" << endl;
       inst_entries->Debug(false);
-      wcout << L"=========================================================" << endl;
+      GetLogger() << L"=========================================================" << endl;
       for(size_t i = 0; i < blocks.size(); ++i) {
         blocks[i]->Debug();
       }
@@ -1111,7 +1111,7 @@ namespace backend {
     void Write(OutputStream& out_stream);
 
     void Debug() {
-      wcout << L"Item: name='" << name << L"'; id='" << id << endl;
+      GetLogger() << L"Item: name='" << name << L"'; id='" << id << endl;
     }
   };
 
@@ -1159,9 +1159,9 @@ namespace backend {
     void Write(OutputStream& out_stream);
 
     void Debug() {
-      wcout << L"=========================================================" << endl;
-      wcout << L"Enum: name='" << name << L"'; items=" << items.size() << endl;
-      wcout << L"=========================================================" << endl;
+      GetLogger() << L"=========================================================" << endl;
+      GetLogger() << L"Enum: name='" << name << L"'; items=" << items.size() << endl;
+      GetLogger() << L"=========================================================" << endl;
 
       for(size_t i = 0; i < items.size(); ++i) {
         items[i]->Debug();
@@ -1290,14 +1290,14 @@ namespace backend {
     void Write(bool emit_lib, bool is_debug, bool is_web, OutputStream& out_stream);
 
     void Debug() {
-      wcout << L"Strings:" << endl;
+      GetLogger() << L"Strings:" << endl;
       for(size_t i = 0; i < char_strings.size(); ++i) {
-        wcout << L"wstring id=" << i << L", size='" << ToString((int)char_strings[i].size())
+        GetLogger() << L"wstring id=" << i << L", size='" << ToString((int)char_strings[i].size())
               << L"': '" << char_strings[i] << L"'" << endl;
       }
-      wcout << endl;
+      GetLogger() << endl;
 
-      wcout << L"Program: enums=" << enums.size() << L", classes="
+      GetLogger() << L"Program: enums=" << enums.size() << L", classes="
             << classes.size() << L"; start=" << class_id << L"," << method_id << endl;
       // enums
       for(size_t i = 0; i < enums.size(); ++i) {

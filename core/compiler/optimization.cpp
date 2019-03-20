@@ -36,7 +36,7 @@ using namespace backend;
 void ItermediateOptimizer::Optimize()
 {
 #ifdef _DEBUG
-  wcout << L"\n--------- Optimizing Code ---------" << endl;
+  GetLogger() << L"\n--------- Optimizing Code ---------" << endl;
 #endif
 
   // classes...
@@ -47,7 +47,7 @@ void ItermediateOptimizer::Optimize()
     for(size_t j = 0; j < methods.size(); j++) {
       current_method = methods[j];
 #ifdef _DEBUG
-      wcout << L"Optimizing method, pass 1: name='" << current_method->GetName() << "'" << endl;
+      GetLogger() << L"Optimizing method, pass 1: name='" << current_method->GetName() << "'" << endl;
 #endif
       current_method->SetBlocks(OptimizeMethod(current_method->GetBlocks()));
     }
@@ -55,7 +55,7 @@ void ItermediateOptimizer::Optimize()
     for(size_t j = 0; j < methods.size(); j++) {
       current_method = methods[j];
 #ifdef _DEBUG
-      wcout << L"Optimizing method, pass 2: name='" << current_method->GetName() << "'" << endl;
+      GetLogger() << L"Optimizing method, pass 2: name='" << current_method->GetName() << "'" << endl;
 #endif
       current_method->SetBlocks(InlineMethod(current_method->GetBlocks()));
     }
@@ -67,7 +67,7 @@ vector<IntermediateBlock*> ItermediateOptimizer::InlineMethod(vector<Intermediat
   if(optimization_level > 2) {
     // inline methods
 #ifdef _DEBUG
-    wcout << L"  Method inlining..." << endl;
+    GetLogger() << L"  Method inlining..." << endl;
 #endif
     vector<IntermediateBlock*> outputs;
     while(!inputs.empty()) {
@@ -90,7 +90,7 @@ vector<IntermediateBlock*> ItermediateOptimizer::OptimizeMethod(vector<Intermedi
 {
   // clean up jump addresses
 #ifdef _DEBUG
-  wcout << L"  Clean up jumps..." << endl;
+  GetLogger() << L"  Clean up jumps..." << endl;
 #endif
 
   vector<IntermediateBlock*> jump_blocks;
@@ -107,7 +107,7 @@ vector<IntermediateBlock*> ItermediateOptimizer::OptimizeMethod(vector<Intermedi
   vector<IntermediateBlock*> useless_instrs_blocks;
   // remove useless instructions
 #ifdef _DEBUG
-  wcout << L"  Clean up Instructions..." << endl;
+  GetLogger() << L"  Clean up Instructions..." << endl;
 #endif
   while(!jump_blocks.empty()) {
     IntermediateBlock* tmp = jump_blocks.front();
@@ -123,7 +123,7 @@ vector<IntermediateBlock*> ItermediateOptimizer::OptimizeMethod(vector<Intermedi
     vector<IntermediateBlock*> getter_setter_blocks;
     // getter/setter inlining
 #ifdef _DEBUG
-    wcout << L"  Getter/setter inlining..." << endl;
+    GetLogger() << L"  Getter/setter inlining..." << endl;
 #endif
     while(!useless_instrs_blocks.empty()) {
       IntermediateBlock* tmp = useless_instrs_blocks.front();
@@ -136,7 +136,7 @@ vector<IntermediateBlock*> ItermediateOptimizer::OptimizeMethod(vector<Intermedi
         
     // fold integers
 #ifdef _DEBUG
-    wcout << L"  Folding integers..." << endl;
+    GetLogger() << L"  Folding integers..." << endl;
 #endif
     vector<IntermediateBlock*> folded_int_blocks;
     while(!getter_setter_blocks.empty()) {
@@ -150,7 +150,7 @@ vector<IntermediateBlock*> ItermediateOptimizer::OptimizeMethod(vector<Intermedi
     
     // fold floats
 #ifdef _DEBUG
-    wcout << L"  Folding floats..." << endl;
+    GetLogger() << L"  Folding floats..." << endl;
 #endif
     while(!folded_int_blocks.empty()) {
       IntermediateBlock* tmp = folded_int_blocks.front();
@@ -169,7 +169,7 @@ vector<IntermediateBlock*> ItermediateOptimizer::OptimizeMethod(vector<Intermedi
   if(optimization_level > 1) {
     // reduce strength
 #ifdef _DEBUG
-    wcout << L"  Strength reduction..." << endl;
+    GetLogger() << L"  Strength reduction..." << endl;
 #endif
     while(!folded_float_blocks.empty()) {
       IntermediateBlock* tmp = folded_float_blocks.front();
@@ -188,7 +188,7 @@ vector<IntermediateBlock*> ItermediateOptimizer::OptimizeMethod(vector<Intermedi
   if(optimization_level > 2) {
     // instruction replacement
 #ifdef _DEBUG
-    wcout << L"  Instruction replacement..." << endl;
+    GetLogger() << L"  Instruction replacement..." << endl;
 #endif
     while(!strength_reduced_blocks.empty()) {
       IntermediateBlock* tmp = strength_reduced_blocks.front();

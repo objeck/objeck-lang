@@ -297,11 +297,11 @@ class ContextAnalyzer {
   vector<Class*> anonymous_classes;
 
   void Show(const wstring &msg, const int line_num, int depth) {
-    wcout << setw(4) << line_num << L": ";
+    GetLogger() << setw(4) << line_num << L": ";
     for(int i = 0; i < depth; i++) {
-      wcout << L"  ";
+      GetLogger() << L"  ";
     }
-    wcout << msg << endl;
+    GetLogger() << msg << endl;
   }
 
   wstring ToString(int v) {
