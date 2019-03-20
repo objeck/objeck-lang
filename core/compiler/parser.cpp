@@ -215,7 +215,7 @@ void Parser::ParseBundle(int depth)
     }
     NextToken();
 #ifdef _DEBUG
-    Show(L"search: " + ident, depth);
+    Debug(L"search: " + ident, depth);
 #endif
   }
 
@@ -240,7 +240,7 @@ void Parser::ParseBundle(int depth)
 
       current_bundle = bundle;
 #ifdef _DEBUG
-      Show(L"bundle: '" + current_bundle->GetName() + L"'", depth);
+      Debug(L"bundle: '" + current_bundle->GetName() + L"'", depth);
 #endif
 
       // parse classes, interfaces and enums
@@ -291,7 +291,7 @@ void Parser::ParseBundle(int depth)
 
     current_bundle = bundle;    
 #ifdef _DEBUG
-    Show(L"bundle: '" + current_bundle->GetName() + L"'", depth);
+    Debug(L"bundle: '" + current_bundle->GetName() + L"'", depth);
 #endif
 
     // parse classes, interfaces and enums
@@ -360,7 +360,7 @@ Enum* Parser::ParseEnum(int depth)
   }
   
 #ifdef _DEBUG
-  Show(L"[Enum: name='" + enum_scope_name + L"']", depth);
+  Debug(L"[Enum: name='" + enum_scope_name + L"']", depth);
 #endif
 
   int offset = 0;
@@ -511,7 +511,7 @@ Class* Parser::ParseClass(const wstring &bundle_name, int depth)
   NextToken();
 
 #ifdef _DEBUG
-  Show(L"[Class: name='" + cls_name + L"']", depth);
+  Debug(L"[Class: name='" + cls_name + L"']", depth);
 #endif
 
   // from id
@@ -652,7 +652,7 @@ Class* Parser::ParseInterface(const wstring &bundle_name, int depth)
   NextToken();
 
 #ifdef _DEBUG
-  Show(L"[Interface: name='" + cls_name + L"']", depth);
+  Debug(L"[Interface: name='" + cls_name + L"']", depth);
 #endif
 
   if(!Match(TOKEN_OPEN_BRACE)) {
@@ -812,7 +812,7 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
   }
 
 #ifdef _DEBUG
-  Show(L"(Method/Function/New: name='" + method_name + L"')", depth);
+  Debug(L"(Method/Function/New: name='" + method_name + L"')", depth);
 #endif
 
   Method* method = TreeFactory::Instance()->MakeMethod(file_name, line_num, method_name,
@@ -865,7 +865,7 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
 StatementList* Parser::ParseStatementList(int depth)
 {
 #ifdef _DEBUG
-  Show(L"Statement List", depth);
+  Debug(L"Statement List", depth);
 #endif
 
   // statement list
@@ -895,7 +895,7 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
   const wstring &file_name = GetFileName();
 
 #ifdef _DEBUG
-  Show(L"Statement", depth);
+  Debug(L"Statement", depth);
 #endif
 
   Statement* statement = NULL;
@@ -2090,7 +2090,7 @@ StaticArray* Parser::ParseStaticArray(int depth) {
   const wstring &file_name = GetFileName();
 
 #ifdef _DEBUG
-  Show(L"Static Array", depth);
+  Debug(L"Static Array", depth);
 #endif
 
   NextToken();
@@ -2200,7 +2200,7 @@ Variable* Parser::ParseVariable(const wstring &ident, int depth)
   const wstring &file_name = GetFileName();
 
 #ifdef _DEBUG
-  Show(L"Variable", depth);
+  Debug(L"Variable", depth);
 #endif
 
   Variable* variable = TreeFactory::Instance()->MakeVariable(file_name, line_num, ident);
@@ -2218,7 +2218,7 @@ Declaration* Parser::ParseDeclaration(const wstring &ident, int depth)
   const wstring &file_name = GetFileName();
 
 #ifdef _DEBUG
-  Show(L"Declaration", depth);
+  Debug(L"Declaration", depth);
 #endif
 
   if(!Match(TOKEN_COLON)) {
@@ -2237,7 +2237,7 @@ Declaration* Parser::ParseDeclaration(const wstring &ident, int depth)
                                                                   current_method != NULL);
 
 #ifdef _DEBUG
-    Show(L"Adding variable: '" + scope_name + L"'", depth + 2);
+    Debug(L"Adding variable: '" + scope_name + L"'", depth + 2);
 #endif
 
     bool was_added = symbol_table->CurrentParseScope()->AddEntry(entry);
@@ -2278,7 +2278,7 @@ Declaration* Parser::ParseDeclaration(const wstring &ident, int depth)
                                                                   current_method != NULL);
 
 #ifdef _DEBUG
-    Show(L"Adding variable: '" + scope_name + L"'", depth + 2);
+    Debug(L"Adding variable: '" + scope_name + L"'", depth + 2);
 #endif
 
     bool was_added = symbol_table->CurrentParseScope()->AddEntry(entry);
@@ -2306,7 +2306,7 @@ Declaration* Parser::ParseDeclaration(const wstring &ident, int depth)
 DeclarationList* Parser::ParseDecelerationList(int depth)
 {
 #ifdef _DEBUG
-  Show(L"Declaration Parameters", depth);
+  Debug(L"Declaration Parameters", depth);
 #endif
 
   if(!Match(TOKEN_OPEN_PAREN)) {
@@ -2350,7 +2350,7 @@ DeclarationList* Parser::ParseDecelerationList(int depth)
 ExpressionList* Parser::ParseExpressionList(int depth, ScannerTokenType open, ScannerTokenType closed)
 {
 #ifdef _DEBUG
-  Show(L"Calling Parameters", depth);
+  Debug(L"Calling Parameters", depth);
 #endif
 
   ExpressionList* expressions = TreeFactory::Instance()->MakeExpressionList();
@@ -2444,7 +2444,7 @@ Expression* Parser::ParseExpression(int depth)
   const wstring &file_name = GetFileName();
 
 #ifdef _DEBUG
-  Show(L"Expression", depth);
+  Debug(L"Expression", depth);
 #endif
 
   Expression* expression = NULL;
@@ -2458,7 +2458,7 @@ Expression* Parser::ParseExpression(int depth)
     //
     if(Match(TOKEN_QUESTION)) {
 #ifdef _DEBUG
-      Show(L"Ternary conditional", depth);
+      Debug(L"Ternary conditional", depth);
 #endif   
       NextToken();
       Expression* if_expression = ParseLogic(depth + 1);
@@ -2485,7 +2485,7 @@ Expression* Parser::ParseLogic(int depth)
   const wstring &file_name = GetFileName();
 
 #ifdef _DEBUG
-  Show(L"Boolean logic", depth);
+  Debug(L"Boolean logic", depth);
 #endif
   
   Expression* left;
@@ -2545,7 +2545,7 @@ Expression* Parser::ParseMathLogic(int depth)
   const wstring &file_name = GetFileName();
 
 #ifdef _DEBUG
-  Show(L"Boolean math", depth);
+  Debug(L"Boolean math", depth);
 #endif
 
   Expression* left = ParseTerm(depth + 1);
@@ -2603,7 +2603,7 @@ Expression* Parser::ParseTerm(int depth)
   const wstring &file_name = GetFileName();
 
 #ifdef _DEBUG
-  Show(L"Term", depth);
+  Debug(L"Term", depth);
 #endif
 
   Expression* left = ParseFactor(depth + 1);
@@ -2664,7 +2664,7 @@ Expression* Parser::ParseFactor(int depth)
   const wstring &file_name = GetFileName();
 
 #ifdef _DEBUG
-  Show(L"Factor", depth);
+  Debug(L"Factor", depth);
 #endif
 
   Expression* left = ParseSimpleExpression(depth + 1);
@@ -2786,7 +2786,7 @@ Expression* Parser::ParseSimpleExpression(int depth)
   const wstring &file_name = GetFileName();
 
 #ifdef _DEBUG
-  Show(L"Simple expression", depth);
+  Debug(L"Simple expression", depth);
 #endif
 
   Expression* expression = NULL;
@@ -3053,7 +3053,7 @@ MethodCall* Parser::ParseMethodCall(int depth)
   const wstring &file_name = GetFileName();
 
 #ifdef _DEBUG
-  Show(L"Parent call", depth);
+  Debug(L"Parent call", depth);
 #endif
 
   NextToken();
@@ -3070,7 +3070,7 @@ MethodCall* Parser::ParseMethodCall(const wstring &ident, int depth)
   const wstring &file_name = GetFileName();
 
 #ifdef _DEBUG
-  Show(L"Method call", depth);
+  Debug(L"Method call", depth);
 #endif
 
   MethodCall* method_call = NULL;
@@ -3185,7 +3185,7 @@ MethodCall* Parser::ParseMethodCall(const wstring &ident, int depth)
 void Parser::ParseMethodCall(Expression* expression, int depth)
 {
 #ifdef _DEBUG
-  Show(L"Method call", depth);
+  Debug(L"Method call", depth);
 #endif
 
   NextToken();
@@ -3357,7 +3357,7 @@ If* Parser::ParseIf(int depth)
   const wstring &file_name = GetFileName();
 
 #ifdef _DEBUG
-  Show(L"If", depth);
+  Debug(L"If", depth);
 #endif
 
   NextToken();
@@ -3404,7 +3404,7 @@ DoWhile* Parser::ParseDoWhile(int depth)
   const wstring &file_name = GetFileName();
 
 #ifdef _DEBUG
-  Show(L"Do/While", depth);
+  Debug(L"Do/While", depth);
 #endif
 
   NextToken();
@@ -3440,7 +3440,7 @@ While* Parser::ParseWhile(int depth)
   const wstring &file_name = GetFileName();
 
 #ifdef _DEBUG
-  Show(L"While", depth);
+  Debug(L"While", depth);
 #endif
 
   NextToken();
@@ -3483,7 +3483,7 @@ CriticalSection* Parser::ParseCritical(int depth)
   const wstring &file_name = GetFileName();
 
 #ifdef _DEBUG
-  Show(L"Critical Section", depth);
+  Debug(L"Critical Section", depth);
 #endif
 
   NextToken();
@@ -3521,7 +3521,7 @@ For* Parser::ParseEach(int depth)
   const wstring &file_name = GetFileName();
 
 #ifdef _DEBUG
-  Show(L"Each", depth);
+  Debug(L"Each", depth);
 #endif
 
   NextToken();
@@ -3546,7 +3546,7 @@ For* Parser::ParseEach(int depth)
                                                                 current_method != NULL);
 
 #ifdef _DEBUG
-  Show(L"Adding variable: '" + count_scope_name + L"'", depth + 2);
+  Debug(L"Adding variable: '" + count_scope_name + L"'", depth + 2);
 #endif
 
   bool was_added = symbol_table->CurrentParseScope()->AddEntry(entry);
@@ -3612,7 +3612,7 @@ For* Parser::ParseFor(int depth)
   const wstring &file_name = GetFileName();
 
 #ifdef _DEBUG
-  Show(L"For", depth);
+  Debug(L"For", depth);
 #endif
 
   NextToken();
@@ -3654,7 +3654,7 @@ Select* Parser::ParseSelect(int depth)
   const wstring &file_name = GetFileName();
 
 #ifdef _DEBUG
-  Show(L"Select", depth);
+  Debug(L"Select", depth);
 #endif
 
   NextToken();
@@ -3748,7 +3748,7 @@ Return* Parser::ParseReturn(int depth)
   const wstring &file_name = GetFileName();
   
 #ifdef _DEBUG
-  Show(L"Return", depth);
+  Debug(L"Return", depth);
 #endif
   
   NextToken();
@@ -3769,7 +3769,7 @@ Leaving* Parser::ParseLeaving(int depth)
   const wstring &file_name = GetFileName();
   
 #ifdef _DEBUG
-  Show(L"Leaving", depth);
+  Debug(L"Leaving", depth);
 #endif
   
   NextToken();
@@ -3789,7 +3789,7 @@ Assignment* Parser::ParseAssignment(Variable* variable, int depth)
   const wstring &file_name = GetFileName();
 
 #ifdef _DEBUG
-  Show(L"Assignment", depth);
+  Debug(L"Assignment", depth);
 #endif
 
   NextToken();
@@ -3805,7 +3805,7 @@ Assignment* Parser::ParseAssignment(Variable* variable, int depth)
 Type* Parser::ParseType(int depth)
 {
 #ifdef _DEBUG
-  Show(L"Data Type", depth);
+  Debug(L"Data Type", depth);
 #endif
 
   Type* type = NULL;
