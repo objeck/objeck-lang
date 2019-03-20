@@ -161,7 +161,7 @@ class ItermediateOptimizer {
     }
 
     bool found_rtrn = false;
-    for(size_t j = 0; j < mthd_called_instrs.size(); j++) {
+    for(size_t j = 0; j < mthd_called_instrs.size(); ++j) {
       IntermediateInstruction* mthd_called_instr = mthd_called_instrs[j];
       switch(mthd_called_instr->GetType()) {
       case instructions::LOAD_INT_VAR:

@@ -233,7 +233,7 @@ void IntermediateEmitter::Translate()
   vector<ParsedBundle*> bundles = parsed_program->GetBundles();
   for(size_t i = 0; i < bundles.size(); ++i) {
     vector<Class*> classes = bundles[i]->GetClasses();
-    for(size_t j = 0; j < classes.size(); j++) {
+    for(size_t j = 0; j < classes.size(); ++j) {
       classes[j]->SetId(class_id++);
     }
   }
@@ -309,7 +309,7 @@ void IntermediateEmitter::EmitStrings()
       for(size_t i = 0; i < char_str_insts.size(); ++i) {
         // check for dups
         bool found = false;
-        for(size_t j = 0; !found && j < lib_char_string_values.size(); j++) {
+        for(size_t j = 0; !found && j < lib_char_string_values.size(); ++j) {
           if(char_str_insts[i]->value == lib_char_string_values[j]) {
             found = true;
           }
@@ -324,7 +324,7 @@ void IntermediateEmitter::EmitStrings()
       for(size_t i = 0; i < int_str_insts.size(); ++i) {
         // check for dups
         bool found = false;
-        for(size_t j = 0; !found && j < lib_int_string_values.size(); j++) {
+        for(size_t j = 0; !found && j < lib_int_string_values.size(); ++j) {
           if(IntStringHolderEqual(int_str_insts[i]->value, lib_int_string_values[j])) {
             found = true;
           }
@@ -339,7 +339,7 @@ void IntermediateEmitter::EmitStrings()
       for(size_t i = 0; i < float_str_insts.size(); ++i) {
         // check for dups
         bool found = false;
-        for(size_t j = 0; !found && j < lib_float_string_values.size(); j++) {
+        for(size_t j = 0; !found && j < lib_float_string_values.size(); ++j) {
           if(FloatStringHolderEqual(float_str_insts[i]->value, lib_float_string_values[j])) {
             found = true;
           }
@@ -355,7 +355,7 @@ void IntermediateEmitter::EmitStrings()
     for(size_t i = 0; i < lib_char_string_values.size(); ++i) {
       // check for dups
       bool found = false;
-      for(size_t j = 0; !found && j < char_string_values.size(); j++) {
+      for(size_t j = 0; !found && j < char_string_values.size(); ++j) {
         if(lib_char_string_values[i] == char_string_values[j]) {
           found = true;
         }
@@ -368,7 +368,7 @@ void IntermediateEmitter::EmitStrings()
     for(size_t i = 0; i < lib_int_string_values.size(); ++i) {
       // check for dups
       bool found = false;
-      for(size_t j = 0; !found && j < int_string_values.size(); j++) {
+      for(size_t j = 0; !found && j < int_string_values.size(); ++j) {
         if(IntStringHolderEqual(lib_int_string_values[i], int_string_values[j])) {
           found = true;
         }
@@ -381,7 +381,7 @@ void IntermediateEmitter::EmitStrings()
     for(size_t i = 0; i < lib_float_string_values.size(); ++i) {
       // check for dups
       bool found = false;
-      for(size_t j = 0; !found && j < float_string_values.size(); j++) {
+      for(size_t j = 0; !found && j < float_string_values.size(); ++j) {
         if(FloatStringHolderEqual(lib_float_string_values[i], float_string_values[j])) {
           found = true;
         }
@@ -398,10 +398,10 @@ void IntermediateEmitter::EmitStrings()
       vector<CharStringInstruction*> char_str_insts = iter->second->GetCharStringInstructions();
       for(size_t i = 0; i < char_str_insts.size(); ++i) {
         bool found = false;
-        for(size_t j = 0; !found && j < char_string_values.size(); j++) {
+        for(size_t j = 0; !found && j < char_string_values.size(); ++j) {
           if(char_str_insts[i]->value == char_string_values[j]) {
             vector<LibraryInstr*> instrs = char_str_insts[i]->instrs;
-            for(size_t k = 0; k < instrs.size(); k++) {
+            for(size_t k = 0; k < instrs.size(); ++k) {
               instrs[k]->SetOperand((int)j);
             }
             found = true;
@@ -415,10 +415,10 @@ void IntermediateEmitter::EmitStrings()
       vector<IntStringInstruction*> int_str_insts = iter->second->GetIntStringInstructions();
       for(size_t i = 0; i < int_str_insts.size(); ++i) {
         bool found = false;
-        for(size_t j = 0; !found && j < int_string_values.size(); j++) {
+        for(size_t j = 0; !found && j < int_string_values.size(); ++j) {
           if(IntStringHolderEqual(int_str_insts[i]->value, int_string_values[j])) {
             vector<LibraryInstr*> instrs = int_str_insts[i]->instrs;
-            for(size_t k = 0; k < instrs.size(); k++) {
+            for(size_t k = 0; k < instrs.size(); ++k) {
               instrs[k]->SetOperand((int)j);
             }
             found = true;
@@ -432,10 +432,10 @@ void IntermediateEmitter::EmitStrings()
       vector<FloatStringInstruction*> float_str_insts = iter->second->GetFloatStringInstructions();
       for(size_t i = 0; i < float_str_insts.size(); ++i) {
         bool found = false;
-        for(size_t j = 0; !found && j < float_string_values.size(); j++) {
+        for(size_t j = 0; !found && j < float_string_values.size(); ++j) {
           if(FloatStringHolderEqual(float_str_insts[i]->value, float_string_values[j])) {
             vector<LibraryInstr*> instrs = float_str_insts[i]->instrs;
-            for(size_t k = 0; k < instrs.size(); k++) {
+            for(size_t k = 0; k < instrs.size(); ++k) {
               instrs[k]->SetOperand((int)j);
             }
             found = true;
@@ -466,7 +466,7 @@ void IntermediateEmitter::EmitBundles()
     bundle_names.push_back(parsed_bundle->GetName());
     // emit enums
     vector<Enum*> enums = parsed_bundle->GetEnums();
-    for(size_t j = 0; j < enums.size(); j++) {
+    for(size_t j = 0; j < enums.size(); ++j) {
       IntermediateEnum* eenum = EmitEnum(enums[j]);
       if(eenum) {
         imm_program->AddEnum(eenum);
@@ -474,7 +474,7 @@ void IntermediateEmitter::EmitBundles()
     }
     // emit classes
     vector<Class*> classes = parsed_bundle->GetClasses();
-    for(size_t j = 0; j < classes.size(); j++) {
+    for(size_t j = 0; j < classes.size(); ++j) {
       if(is_lib || classes[j]->GetCalled()) {
         IntermediateClass* klass = EmitClass(classes[j]);
         if(klass) {

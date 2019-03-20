@@ -45,7 +45,10 @@
 #include "../shared/instrs.h"
 #include "../shared/sys.h"
 #include "../shared/traps.h"
+
+#ifdef _DEBUG
 #include "../shared/logger.h"
+#endif
 
 using namespace std;
 
@@ -340,6 +343,7 @@ namespace backend {
       return declarations;
     }
     
+#ifdef _DEBUG
     void Debug(bool has_and_or) {
       if(declarations.size() > 0) {
 	int index = has_and_or ? 1 : 0;
@@ -401,7 +405,8 @@ namespace backend {
         GetLogger() << L"memory types: none" << endl;
       }
     }
-    
+#endif
+
     void Write(bool is_debug, OutputStream &out_stream) {
       WriteInt((int)declarations.size(), out_stream);
       for(size_t i = 0; i < declarations.size(); ++i) {

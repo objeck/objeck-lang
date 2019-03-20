@@ -449,7 +449,7 @@ class Scanner {
 
   // warning message
   void ProcessWarning() {
-    GetLogger() << GetToken()->GetFileName() << ":" << GetToken()->GetLineNumber() + 1
+    wcout << GetToken()->GetFileName() << ":" << GetToken()->GetLineNumber() + 1
 	  << ": Parse warning: Unknown token: '" << cur_char << "'" << endl;
   }
 

@@ -181,6 +181,7 @@ namespace backend {
 
     void Write(bool is_debug, OutputStream& out_stream);
 
+#ifdef _DEBUG
     void Debug() {
       switch(type) {
       case SWAP_INT:
@@ -634,6 +635,7 @@ namespace backend {
         break;
       }
     }
+#endif 
   };
 
   /****************************
@@ -743,6 +745,7 @@ namespace backend {
 
     void Write(bool is_debug, OutputStream& out_stream);
 
+#ifdef _DEBUG
     void Debug() {
       if(instructions.size() > 0) {
         for(size_t i = 0; i < instructions.size(); ++i) {
@@ -751,6 +754,7 @@ namespace backend {
         GetLogger() << L"--" << endl;
       }
     }
+#endif
   };
 
   /****************************
@@ -894,6 +898,7 @@ namespace backend {
 
     void Write(bool emit_lib, bool is_debug, OutputStream& out_stream);
 
+#ifdef _DEBUG
     void Debug() {
       GetLogger() << L"---------------------------------------------------------" << endl;
       GetLogger() << L"Method: id=" << id << L"; name='" << name << L"'; return='" << rtrn_name
@@ -906,6 +911,7 @@ namespace backend {
         blocks[i]->Debug();
       }
     }
+#endif
   };
 
   /****************************
@@ -1064,6 +1070,7 @@ namespace backend {
 
     void Write(bool emit_lib, OutputStream& out_stream);
 
+#ifdef _DEBUG
     void Debug() {
       GetLogger() << L"=========================================================" << endl;
       GetLogger() << L"Class: id=" << id << L"; name='" << name << L"'; parent='" << parent_name
@@ -1088,6 +1095,7 @@ namespace backend {
         methods[i]->Debug();
       }
     }
+#endif
   };
 
   /****************************
@@ -1110,9 +1118,11 @@ namespace backend {
 
     void Write(OutputStream& out_stream);
 
+#ifdef _DEBUG
     void Debug() {
       GetLogger() << L"Item: name='" << name << L"'; id='" << id << endl;
     }
+#endif
   };
 
   /****************************
@@ -1158,6 +1168,7 @@ namespace backend {
 
     void Write(OutputStream& out_stream);
 
+#ifdef _DEBUG
     void Debug() {
       GetLogger() << L"=========================================================" << endl;
       GetLogger() << L"Enum: name='" << name << L"'; items=" << items.size() << endl;
@@ -1167,6 +1178,7 @@ namespace backend {
         items[i]->Debug();
       }
     }
+#endif
   };
 
   /****************************
@@ -1289,6 +1301,7 @@ namespace backend {
 
     void Write(bool emit_lib, bool is_debug, bool is_web, OutputStream& out_stream);
 
+#ifdef _DEBUG
     void Debug() {
       GetLogger() << L"Strings:" << endl;
       for(size_t i = 0; i < char_strings.size(); ++i) {
@@ -1308,6 +1321,7 @@ namespace backend {
         classes[i]->Debug();
       }
     }
+#endif
 
     inline wstring ToString(int v) {
       wostringstream str;

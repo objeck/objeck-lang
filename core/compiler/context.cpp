@@ -128,10 +128,10 @@ bool ContextAnalyzer::Analyze()
   for(size_t i = 0; i < bundles.size(); ++i) {
     ParsedBundle* bundle = bundles[i];
     vector<Class*> classes = bundle->GetClasses();
-    for(size_t j = 0; j < classes.size(); j++) {
+    for(size_t j = 0; j < classes.size(); ++j) {
       Class* klass = classes[j];
       vector<Method*> methods = klass->GetMethods();
-      for(size_t k = 0; k < methods.size(); k++) {
+      for(size_t k = 0; k < methods.size(); ++k) {
         AddDefaultParameterMethods(bundle, klass, methods[k]);
       }
     }
@@ -139,10 +139,10 @@ bool ContextAnalyzer::Analyze()
   // re-encode method signatures; i.e. fully expand class names
   for(size_t i = 0; i < bundles.size(); ++i) {
     vector<Class*> classes = bundles[i]->GetClasses();
-    for(size_t j = 0; j < classes.size(); j++) {
+    for(size_t j = 0; j < classes.size(); ++j) {
       Class* klass = classes[j];
       vector<Method*> methods = klass->GetMethods();
-      for(size_t k = 0; k < methods.size(); k++) {
+      for(size_t k = 0; k < methods.size(); ++k) {
         methods[k]->EncodeSignature(klass, program, linker);
       }
     }
@@ -152,7 +152,7 @@ bool ContextAnalyzer::Analyze()
   for(size_t i = 0; i < bundles.size(); ++i) {
     bundle = bundles[i];
     vector<Class*> classes = bundle->GetClasses();    
-    for(size_t j = 0; j < classes.size(); j++) {
+    for(size_t j = 0; j < classes.size(); ++j) {
       Class* klass = classes[j];
       wstring parent_name = klass->GetParentName();
 #ifdef _SYSTEM
@@ -194,18 +194,18 @@ bool ContextAnalyzer::Analyze()
 
       // process enums
       vector<Enum*> enums = bundle->GetEnums();
-      for(size_t j = 0; j < enums.size(); j++) {
+      for(size_t j = 0; j < enums.size(); ++j) {
         AnalyzeEnum(enums[j], 0);
       }
       // process classes
       vector<Class*> classes = bundle->GetClasses();
-      for(size_t j = 0; j < classes.size(); j++) {
+      for(size_t j = 0; j < classes.size(); ++j) {
         AnalyzeClass(classes[j], class_id++, 0);
       }
       // check for duplicate instance and class level variables
       AnalyzeDuplicateEntries(classes, 0);
       // process class methods
-      for(size_t j = 0; j < classes.size(); j++) {
+      for(size_t j = 0; j < classes.size(); ++j) {
         AnalyzeMethods(classes[j], 0);
       }
     }
@@ -1778,7 +1778,7 @@ bool ContextAnalyzer::Analyze()
     }
 
     // dimension
-    for(int i = 0; i < dimension; i++) {
+    for(int i = 0; i < dimension; ++i) {
       encoding += L'*';
     }
 
@@ -1909,7 +1909,7 @@ bool ContextAnalyzer::Analyze()
             !method_call->GetVariable()->GetIndices())) {
           klass = program->GetClass(BASE_ARRAY_CLASS_ID);
           encoding = L"o.System.Base";
-				  for(int i = 0; i < entry->GetType()->GetDimension(); i++) { 	
+				  for(int i = 0; i < entry->GetType()->GetDimension(); ++i) { 	
             encoding += L"*";
 					}
           encoding += L",";
@@ -1961,7 +1961,7 @@ bool ContextAnalyzer::Analyze()
 
         klass = linker->SearchClassLibraries(BASE_ARRAY_CLASS_ID, program->GetUses(current_class->GetFileName()));
         encoding = L"o.System.Base";
-        for(int i = 0; i < entry->GetType()->GetDimension(); i++) {
+        for(int i = 0; i < entry->GetType()->GetDimension(); ++i) {
           encoding += L"*";
         }
         encoding += L",";				 
@@ -2131,7 +2131,7 @@ bool ContextAnalyzer::Analyze()
 
       if(expr_params.size() == method_parms.size()) {
         MethodCallSelection* match = new MethodCallSelection(candidates[i]);
-        for(size_t j = 0; j < expr_params.size(); j++) {	  
+        for(size_t j = 0; j < expr_params.size(); ++j) {	  
           // get method type
           Type* method_type = NULL;
           if(method_parms[j]->GetEntry() && method_parms[j]->GetEntry()->GetType()) {
@@ -2151,7 +2151,7 @@ bool ContextAnalyzer::Analyze()
     if(method) {
       // check casts on final candidate
       vector<Declaration*> method_parms = method->GetDeclarations()->GetDeclarations();
-      for(size_t j = 0; j < expr_params.size(); j++) {
+      for(size_t j = 0; j < expr_params.size(); ++j) {
         Expression* expression = expr_params[j];
         while(expression->GetMethodCall()) {
           AnalyzeExpressionMethodCall(expression, depth + 1);
@@ -2350,7 +2350,7 @@ bool ContextAnalyzer::Analyze()
       vector<Type*> method_parms = candidates[i]->GetDeclarationTypes();      
       if(expr_params.size() == method_parms.size()) {
         LibraryMethodCallSelection* match = new LibraryMethodCallSelection(candidates[i]);
-        for(size_t j = 0; j < expr_params.size(); j++) {
+        for(size_t j = 0; j < expr_params.size(); ++j) {
           int compare = MatchCallingParameter(expr_params[j], method_parms[j], NULL, klass, depth);
           match->AddParameterMatch(compare);
         }
@@ -2364,7 +2364,7 @@ bool ContextAnalyzer::Analyze()
     if(lib_method) {
       // check casts on final candidate
       vector<Type*> method_parms = lib_method->GetDeclarationTypes();
-      for(size_t j = 0; j < expr_params.size(); j++) {
+      for(size_t j = 0; j < expr_params.size(); ++j) {
         Expression* expression = expr_params[j];
         while(expression->GetMethodCall()) {
           AnalyzeExpressionMethodCall(expression, depth + 1);
@@ -2508,7 +2508,7 @@ bool ContextAnalyzer::Analyze()
         for(size_t i = 0; i < func_params.size(); ++i) {
           // encode parameter
           dyn_func_params += EncodeType(func_params[i]);
-          for(int j = 0; j < type->GetDimension(); j++) {
+          for(int j = 0; j < type->GetDimension(); ++j) {
             dyn_func_params += L'*';
           }
           dyn_func_params += L',';
@@ -4660,7 +4660,7 @@ bool ContextAnalyzer::Analyze()
         if(variable->GetIndices()) {
           vector<Expression*> indices = variable->GetIndices()->GetExpressions();
           variable->GetEvalType()->SetDimension((int)indices.size());
-          for(size_t j = 0; j < indices.size(); j++) {
+          for(size_t j = 0; j < indices.size(); ++j) {
             encoded_name += L'*';
           }
         }
@@ -4686,7 +4686,7 @@ bool ContextAnalyzer::Analyze()
       encoded_name += EncodeType(func_params[i]);
 
       // encode dimension
-      for(int j = 0; j < func_params[i]->GetDimension(); j++) {
+      for(int j = 0; j < func_params[i]->GetDimension(); ++j) {
         encoded_name += L'*';
       }
       encoded_name += L',';
@@ -4696,7 +4696,7 @@ bool ContextAnalyzer::Analyze()
     encoded_name += L")~";
     encoded_name += EncodeType(func_rtrn);
     // encode dimension
-    for(int i = 0; func_rtrn && i < func_rtrn->GetDimension(); i++) {
+    for(int i = 0; func_rtrn && i < func_rtrn->GetDimension(); ++i) {
       encoded_name += L'*';
     }
 
@@ -4732,7 +4732,7 @@ bool ContextAnalyzer::Analyze()
         encoded_name += EncodeType(type);
 
         // encode dimension
-        for(int j = 0; !IsScalar(expression) && j < type->GetDimension(); j++) {
+        for(int j = 0; !IsScalar(expression) && j < type->GetDimension(); ++j) {
           encoded_name += L'*';
         }
         encoded_name += L',';

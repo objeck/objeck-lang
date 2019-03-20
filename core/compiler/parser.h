@@ -122,11 +122,11 @@ class Parser {
   }
 
   void Show(const wstring &msg, int depth) {
-    GetLogger() << setw(4) << GetLineNumber() << L": ";
-    for(int i = 0; i < depth; i++) {
-      GetLogger() << L"  ";
+    wcout << setw(4) << GetLineNumber() << L": ";
+    for(int i = 0; i < depth; ++i) {
+      wcout << L"  ";
     }
-    GetLogger() << msg << endl;
+    wcout << msg << endl;
   }
 
   inline wstring ToString(int v) {
