@@ -39,7 +39,7 @@ using namespace std;
 
 extern wofstream* logger;
 
-static void OpenLogger(const wstring name) {
+static void OpenLogger(const string name) {
   logger = new wofstream(name);
 }
 
