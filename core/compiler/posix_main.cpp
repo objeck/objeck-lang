@@ -102,8 +102,17 @@ int main(int argc, char* argv[])
     for(map<const wstring, wstring>::iterator intr = arguments.begin(); intr != arguments.end(); ++intr) {
       argument_options.push_back(intr->first);
     }
+    
+#ifdef _DEBUG
+    OpenLogger(L"debug.dat");
+#endif
+
     // compile source
     status = Compile(arguments, argument_options, usage);
+
+#ifdef _DEBUG
+    CloseLogger();
+#endif
   } 
   else {
     wcerr << usage << endl << endl;

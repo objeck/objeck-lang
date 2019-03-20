@@ -518,14 +518,14 @@ IntermediateClass* IntermediateEmitter::EmitClass(Class* klass)
   
   // entries
 #ifdef _DEBUG
-  wcout << L"---------- Intermediate ---------" << endl;
-  wcout << L"Class variables (class): name=" << klass->GetName() << endl;
+  GetLogger() << L"---------- Intermediate ---------" << endl;
+  GetLogger() << L"Class variables (class): name=" << klass->GetName() << endl;
 #endif
   IntermediateDeclarations* cls_entries = new IntermediateDeclarations;
   int cls_space = CalculateEntrySpace(cls_entries, true);
   
 #ifdef _DEBUG
-  wcout << L"Class variables (instance): name=" << klass->GetName() << endl;
+  GetLogger() << L"Class variables (instance): name=" << klass->GetName() << endl;
 #endif
   IntermediateDeclarations* inst_entries = new IntermediateDeclarations;
   int inst_space = CalculateEntrySpace(inst_entries, false);
@@ -607,7 +607,7 @@ IntermediateMethod* IntermediateEmitter::EmitMethod(Method* method)
   IntermediateDeclarations* entries = new IntermediateDeclarations;
 
 #ifdef _DEBUG
-  wcout << L"Method variables (local): name=" << method->GetName() << endl;
+  GetLogger() << L"Method variables (local): name=" << method->GetName() << endl;
 #endif
   int space = CalculateEntrySpace(entries, false);
   if(space > LOCAL_SIZE) {
@@ -4376,14 +4376,14 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index,
         case frontend::BOOLEAN_TYPE:
           if(entry->GetType()->GetDimension() > 0) {
 #ifdef _DEBUG
-            wcout << L"\t" << index << L": INT_ARY_PARM: name=" << entry->GetName()
+            GetLogger() << L"\t" << index << L": INT_ARY_PARM: name=" << entry->GetName()
                   << L", dim=" << entry->GetType()->GetDimension() << endl;
 #endif
             declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_ARY_PARM));
           } 
           else {
 #ifdef _DEBUG
-            wcout << L"\t" << index << L": INT_PARM: name=" << entry->GetName() << endl;
+            GetLogger() << L"\t" << index << L": INT_PARM: name=" << entry->GetName() << endl;
 #endif
             declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
           }
@@ -4394,13 +4394,13 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index,
         case frontend::BYTE_TYPE:
           if(entry->GetType()->GetDimension() > 0) {
 #ifdef _DEBUG
-            wcout << L"\t" << index << L": BYTE_ARY_PARM: name=" << entry->GetName() << endl;
+            GetLogger() << L"\t" << index << L": BYTE_ARY_PARM: name=" << entry->GetName() << endl;
 #endif
             declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), BYTE_ARY_PARM));
           } 
           else {
 #ifdef _DEBUG
-            wcout << L"\t" << index << L": INT_PARM: name=" << entry->GetName() << endl;
+            GetLogger() << L"\t" << index << L": INT_PARM: name=" << entry->GetName() << endl;
 #endif
             declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
           }
@@ -4411,14 +4411,14 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index,
         case frontend::INT_TYPE:
           if(entry->GetType()->GetDimension() > 0) {
 #ifdef _DEBUG
-            wcout << L"\t" << index << L": INT_ARY_PARM: name=" << entry->GetName()
+            GetLogger() << L"\t" << index << L": INT_ARY_PARM: name=" << entry->GetName()
                   << L", dim=" << entry->GetType()->GetDimension() << endl;
 #endif
             declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_ARY_PARM));
           } 
           else {
 #ifdef _DEBUG
-            wcout << L"\t" << index << L": INT_PARM: name=" << entry->GetName() << endl;
+            GetLogger() << L"\t" << index << L": INT_PARM: name=" << entry->GetName() << endl;
 #endif
             declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
           }
@@ -4429,13 +4429,13 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index,
         case frontend::CHAR_TYPE:
           if(entry->GetType()->GetDimension() > 0) {
 #ifdef _DEBUG
-            wcout << L"\t" << index << L": CHAR_ARY_PARM: name=" << entry->GetName() << endl;
+            GetLogger() << L"\t" << index << L": CHAR_ARY_PARM: name=" << entry->GetName() << endl;
 #endif
             declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), CHAR_ARY_PARM));
           } 
           else {
 #ifdef _DEBUG
-            wcout << L"\t" << index << L": CHAR_PARM: name=" << entry->GetName() << endl;
+            GetLogger() << L"\t" << index << L": CHAR_PARM: name=" << entry->GetName() << endl;
 #endif
             declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), CHAR_PARM));
           }
@@ -4448,25 +4448,25 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index,
           if(entry->GetType()->GetDimension() > 0) {
             if(parsed_program->GetClass(entry->GetType()->GetClassName())) {
 #ifdef _DEBUG
-              wcout << L"\t" << index << L": OBJ_ARY_PARM: name=" << entry->GetName() << endl;
+              GetLogger() << L"\t" << index << L": OBJ_ARY_PARM: name=" << entry->GetName() << endl;
 #endif
               declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), OBJ_ARY_PARM));
             } 
             else if(SearchProgramEnums(entry->GetType()->GetClassName())) {
 #ifdef _DEBUG
-              wcout << L"\t" << index << L": INT_ARY_PARM: name=" << entry->GetName() << endl;
+              GetLogger() << L"\t" << index << L": INT_ARY_PARM: name=" << entry->GetName() << endl;
 #endif
               declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_ARY_PARM));
             } 
             else if(parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetClassName(), parsed_program->GetUses())) {
 #ifdef _DEBUG
-              wcout << L"\t" << index << L": INT_ARY_PARM: name=" << entry->GetName() << endl;
+              GetLogger() << L"\t" << index << L": INT_ARY_PARM: name=" << entry->GetName() << endl;
 #endif
               declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_ARY_PARM));
             } 
             else {
 #ifdef _DEBUG
-              wcout << L"\t" << index << L": OBJ_ARY_PARM: name=" << entry->GetName() << endl;
+              GetLogger() << L"\t" << index << L": OBJ_ARY_PARM: name=" << entry->GetName() << endl;
 #endif
               declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), OBJ_ARY_PARM));
             }
@@ -4475,25 +4475,25 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index,
           else {
             if(SearchProgramClasses(entry->GetType()->GetClassName())) {
 #ifdef _DEBUG
-              wcout << L"\t" << index << L": OBJ_PARM: name=" << entry->GetName() << endl;
+              GetLogger() << L"\t" << index << L": OBJ_PARM: name=" << entry->GetName() << endl;
 #endif
               declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), OBJ_PARM));
             } 
             else if(SearchProgramEnums(entry->GetType()->GetClassName())) {
 #ifdef _DEBUG
-              wcout << L"\t" << index << L": INT_PARM: name=" << entry->GetName() << endl;
+              GetLogger() << L"\t" << index << L": INT_PARM: name=" << entry->GetName() << endl;
 #endif
               declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
             } 
             else if(parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetClassName(), parsed_program->GetUses())) {
 #ifdef _DEBUG
-              wcout << L"\t" << index << L": INT_PARM: name=" << entry->GetName() << endl;
+              GetLogger() << L"\t" << index << L": INT_PARM: name=" << entry->GetName() << endl;
 #endif
               declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
             } 
             else {
 #ifdef _DEBUG
-              wcout << L"\t" << index << L": OBJ_PARM: name=" << entry->GetName() << endl;
+              GetLogger() << L"\t" << index << L": OBJ_PARM: name=" << entry->GetName() << endl;
 #endif
               declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), OBJ_PARM));
             }
@@ -4505,7 +4505,7 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index,
         case frontend::FLOAT_TYPE:
           if(entry->GetType()->GetDimension() > 0) {
 #ifdef _DEBUG
-            wcout << L"\t" << index << L": FLOAT_ARY_PARM: name=" << entry->GetName() << endl;
+            GetLogger() << L"\t" << index << L": FLOAT_ARY_PARM: name=" << entry->GetName() << endl;
 #endif
             declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), FLOAT_ARY_PARM));
             entry->SetId(index++);
@@ -4513,7 +4513,7 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index,
           } 
           else {
 #ifdef _DEBUG
-            wcout << L"\t" << index << L": FLOAT_PARM: name=" << entry->GetName() << endl;
+            GetLogger() << L"\t" << index << L": FLOAT_PARM: name=" << entry->GetName() << endl;
 #endif
             declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), FLOAT_PARM));
             entry->SetId(index);
@@ -4524,7 +4524,7 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index,
 	  
         case frontend::FUNC_TYPE:          
 #ifdef _DEBUG
-          wcout << L"\t" << index << L": FUNC_PARM: name=" << entry->GetName() << endl;
+          GetLogger() << L"\t" << index << L": FUNC_PARM: name=" << entry->GetName() << endl;
 #endif
           declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), FUNC_PARM));
           entry->SetId(index);

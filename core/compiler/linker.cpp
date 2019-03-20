@@ -230,7 +230,7 @@ vector<LibraryClass*> LibraryClass::GetLibraryChildren()
 void Library::Load()
 {
 #ifdef _DEBUG
-  wcout << L"=== Loading file: '" << lib_path << L"' ===" << endl;
+  GetLogger() << L"=== Loading file: '" << lib_path << L"' ===" << endl;
 #endif
   LoadFile(lib_path);
 }
@@ -268,11 +268,11 @@ void Library::LoadFile(const wstring &file_name)
       holder->value[j] = ReadDouble();
     }
 #ifdef _DEBUG
-    wcout << L"float string: id=" << i << L"; value=";
+    GetLogger() << L"float string: id=" << i << L"; value=";
     for(int j = 0; j < holder->length; j++) {
-      wcout << holder->value[j] << L",";
+      GetLogger() << holder->value[j] << L",";
     }
-    wcout << endl;
+    GetLogger() << endl;
 #endif
     FloatStringInstruction* str_instr = new FloatStringInstruction;
     str_instr->value = holder;
@@ -288,11 +288,11 @@ void Library::LoadFile(const wstring &file_name)
       holder->value[j] = ReadInt();
     }
 #ifdef _DEBUG
-    wcout << L"int string: id=" << i << L"; value=";
+    GetLogger() << L"int string: id=" << i << L"; value=";
     for(int j = 0; j < holder->length; j++) {
-      wcout << holder->value[j] << L",";
+      GetLogger() << holder->value[j] << L",";
     }
-    wcout << endl;
+    GetLogger() << endl;
 #endif
     IntStringInstruction* str_instr = new IntStringInstruction;
     str_instr->value = holder;

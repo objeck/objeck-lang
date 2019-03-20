@@ -62,8 +62,8 @@ Scanner::Scanner(wstring f, bool j, bool p)
 #endif
     
 #ifdef _DEBUG
-    wcout << L"---------- Source (inline) ---------" << endl;
-    wcout << buffer << endl;
+    GetLogger() << L"---------- Source (inline) ---------" << endl;
+    GetLogger() << buffer << endl;
 #endif
   }
   else {
@@ -540,8 +540,8 @@ void Scanner::ReadFile()
   buffer = LoadFileBuffer(filename, buffer_size);
   
 #ifdef _DEBUG
-  wcout << L"---------- Source ---------" << endl;
-  wcout << buffer << endl;
+  GetLogger() << L"---------- Source ---------" << endl;
+  GetLogger() << buffer << endl;
 #endif
 }
 

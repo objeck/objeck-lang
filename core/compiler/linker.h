@@ -46,6 +46,7 @@
 #include "types.h"
 #include "../shared/instrs.h"
 #include "../shared/sys.h"
+#include "../shared/logger.h"
 
 using namespace std;
 
@@ -959,7 +960,7 @@ class Library {
         exit(1);
       }
 #ifdef _DEBUG
-      std::wcout << L"--- file in: compressed=" << buffer_size << L", uncompressed=" << dest_len << L" ---" << std::endl;
+      GetLogger() << L"--- file in: compressed=" << buffer_size << L", uncompressed=" << dest_len << L" ---" << std::endl;
 #endif
 
       free(buffer);
@@ -967,7 +968,7 @@ class Library {
       return out;
     } 
     else {
-      wcout << L"Unable to open file: " << filename << endl;
+      GetLogger() << L"Unable to open file: " << filename << endl;
       exit(1);
     }
     
@@ -1131,11 +1132,11 @@ class Linker {
 
  public:
   static void Show(const wstring &msg, const int line_num, int depth) {
-    wcout << setw(4) << line_num << L": ";
+    GetLogger() << setw(4) << line_num << L": ";
     for(int i = 0; i < depth; i++) {
-      wcout << L"  ";
+      GetLogger() << L"  ";
     }
-    wcout << msg << endl;
+    GetLogger() << msg << endl;
   }
 
   static wstring ToString(int v) {
@@ -1279,7 +1280,7 @@ class Linker {
 
   void Load() {
 #ifdef _DEBUG
-    wcout << L"--------- Linking Libraries ---------" << endl;
+    GetLogger() << L"--------- Linking Libraries ---------" << endl;
 #endif
 
     // set library path
@@ -1313,7 +1314,7 @@ class Linker {
       libraries.insert(pair<wstring, Library*>(file_path, library));
       paths.push_back(file_path);
 #ifdef _DEBUG
-      wcout << L"--------- End Linking ---------" << endl;
+      GetLogger() << L"--------- End Linking ---------" << endl;
 #endif
     }
 

@@ -62,7 +62,7 @@ IntermediateFactory* IntermediateFactory::Instance()
 void FileEmitter::Emit()
 {
 #ifdef _DEBUG
-  wcout << L"\n--------- Emitting Target Code ---------" << endl;
+  GetLogger() << L"\n--------- Emitting Target Code ---------" << endl;
   program->Debug();
 #endif
 
@@ -91,7 +91,7 @@ void FileEmitter::Emit()
   OutputStream out_stream(file_name);
   program->Write(emit_lib, is_debug, is_web, out_stream);
   if(out_stream.WriteFile()) {
-    wcout << L"Wrote target file: '" << file_name << L"'" << endl;
+    GetLogger() << L"Wrote target file: '" << file_name << L"'" << endl;
   }
   else {
     wcerr << L"Unable to write file: '" << file_name << L"'" << endl;

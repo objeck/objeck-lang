@@ -60,7 +60,7 @@ void Parser::ProcessError(ScannerTokenType type)
 {
   wstring msg = error_msgs[type];
 #ifdef _DEBUG
-  wcout << L"\tError: " << GetFileName() << L":" << GetLineNumber() << L": "
+  GetLogger() << L"\tError: " << GetFileName() << L":" << GetLineNumber() << L": "
         << msg << endl;
 #endif
 
@@ -74,7 +74,7 @@ void Parser::ProcessError(ScannerTokenType type)
 void Parser::ProcessError(const wstring &msg)
 {
 #ifdef _DEBUG
-  wcout << L"\tError: " << GetFileName() << L":" << GetLineNumber() << L": "
+  GetLogger() << L"\tError: " << GetFileName() << L":" << GetLineNumber() << L": "
         << msg << endl;
 #endif
 
@@ -89,7 +89,7 @@ void Parser::ProcessError(const wstring &msg)
 void Parser::ProcessError(const wstring &msg, ScannerTokenType sync, int offset)
 {
 #ifdef _DEBUG
-  wcout << L"\tError: " << GetFileName() << L":" << GetLineNumber() << L": "
+  GetLogger() << L"\tError: " << GetFileName() << L":" << GetLineNumber() << L": "
         << msg << endl;
 #endif
 
@@ -108,7 +108,7 @@ void Parser::ProcessError(const wstring &msg, ScannerTokenType sync, int offset)
 void Parser::ProcessError(const wstring &msg, ParseNode* node)
 {
 #ifdef _DEBUG
-  wcout << L"\tError: " << node->GetFileName() << L":" << node->GetLineNumber()
+  GetLogger() << L"\tError: " << node->GetFileName() << L":" << node->GetLineNumber()
         << L": " << msg << endl;
 #endif
 
@@ -145,7 +145,7 @@ bool Parser::CheckErrors()
 bool Parser::Parse()
 {
 #ifdef _DEBUG
-  wcout << "\n---------- Scanning/Parsing ---------" << endl;
+  GetLogger() << L"\n---------- Scanning/Parsing ---------" << endl;
 #endif
 
   // parses source path

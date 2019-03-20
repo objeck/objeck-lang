@@ -45,6 +45,7 @@
 #include "../shared/instrs.h"
 #include "../shared/sys.h"
 #include "../shared/traps.h"
+#include "../shared/logger.h"
 
 using namespace std;
 
@@ -342,9 +343,9 @@ namespace backend {
     void Debug(bool has_and_or) {
       if(declarations.size() > 0) {
 	int index = has_and_or ? 1 : 0;
-	wcout << L"memory types:" << endl;	
+	GetLogger() << L"memory types:" << endl;	
 	if(has_and_or) {
-	  wcout << L"  0: INT_PARM" << endl;
+	  GetLogger() << L"  0: INT_PARM" << endl;
 	}
 	
         for(size_t i = 0; i < declarations.size(); ++i, ++index) {	 
@@ -352,43 +353,43 @@ namespace backend {
  	 
           switch(entry->GetType()) {	
           case instructions::CHAR_PARM:	 
-            wcout << L"  " << index << L": CHAR_PARM" << endl;	 
+            GetLogger() << L"  " << index << L": CHAR_PARM" << endl;	 
             break;
 	    
           case instructions::INT_PARM:	 
-            wcout << L"  " << index << L": INT_PARM" << endl;	 
+            GetLogger() << L"  " << index << L": INT_PARM" << endl;	 
             break;	 
  	 
           case instructions::FLOAT_PARM:	 
-            wcout << L"  " << index << L": FLOAT_PARM" << endl;	 
+            GetLogger() << L"  " << index << L": FLOAT_PARM" << endl;	 
             break;	 
  	 
           case instructions::BYTE_ARY_PARM:	 
-            wcout << L"  " << index << L": BYTE_ARY_PARM" << endl;	 
+            GetLogger() << L"  " << index << L": BYTE_ARY_PARM" << endl;	 
             break;	 
  	 
           case instructions::CHAR_ARY_PARM:	 
-            wcout << L"  " << index << L": CHAR_ARY_PARM" << endl;	 
+            GetLogger() << L"  " << index << L": CHAR_ARY_PARM" << endl;	 
             break;
 
           case instructions::INT_ARY_PARM:	 
-            wcout << L"  " << index << L": INT_ARY_PARM" << endl;	 
+            GetLogger() << L"  " << index << L": INT_ARY_PARM" << endl;	 
             break;	 
  	 
           case instructions::FLOAT_ARY_PARM:	 
-            wcout << L"  " << index << L": FLOAT_ARY_PARM" << endl;	 
+            GetLogger() << L"  " << index << L": FLOAT_ARY_PARM" << endl;	 
             break;	 
  	 
           case instructions::OBJ_PARM:	 
-            wcout << L"  " << index << L": OBJ_PARM" << endl;	 
+            GetLogger() << L"  " << index << L": OBJ_PARM" << endl;	 
             break;
 	     
           case instructions::OBJ_ARY_PARM:	 
-            wcout << L"  " << index << L": OBJ_ARY_PARM" << endl;	 
+            GetLogger() << L"  " << index << L": OBJ_ARY_PARM" << endl;	 
             break;
 	    
           case instructions::FUNC_PARM:	 
-            wcout << L"  " << index << L": FUNC_PARM" << endl;	 
+            GetLogger() << L"  " << index << L": FUNC_PARM" << endl;	 
             break;
  	 
           default:	 
@@ -397,7 +398,7 @@ namespace backend {
         }	 
       }	
       else {
-        wcout << L"memory types: none" << endl;
+        GetLogger() << L"memory types: none" << endl;
       }
     }
     

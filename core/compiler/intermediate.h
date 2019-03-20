@@ -354,11 +354,11 @@ class IntermediateEmitter {
   }
 
   void Show(const wstring &msg, const int line_num, int depth) {
-    wcout << setw(4) << line_num << ": ";
+    GetLogger() << setw(4) << line_num << ": ";
     for(int i = 0; i < depth; i++) {
-      wcout << "  ";
+      GetLogger() << L"  ";
     }
-    wcout << msg << endl;
+    GetLogger() << msg << endl;
   }
 
   wstring ToString(int v) {

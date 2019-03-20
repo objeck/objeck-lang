@@ -156,6 +156,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\shared\logger.cpp" />
     <ClCompile Include="..\compiler.cpp" />
     <ClCompile Include="..\context.cpp" />
     <ClCompile Include="..\emit.cpp" />
@@ -167,9 +168,11 @@
     <ClCompile Include="..\scanner.cpp" />
     <ClCompile Include="..\tree.cpp" />
     <ClCompile Include="..\types.cpp" />
+    <ClCompile Include="Source.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\shared\instrs.h" />
+    <ClInclude Include="..\..\shared\logger.h" />
     <ClInclude Include="..\..\shared\sys.h" />
     <ClInclude Include="..\..\shared\traps.h" />
     <ClInclude Include="..\..\shared\version.h" />
