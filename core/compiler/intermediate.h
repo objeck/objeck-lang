@@ -353,14 +353,6 @@ class IntermediateEmitter {
     return eenum;
   }
 
-  void Show(const wstring &msg, const int line_num, int depth) {
-    wcout << setw(4) << line_num << ": ";
-    for(int i = 0; i < depth; ++i) {
-      wcout << L"  ";
-    }
-    wcout << msg << endl;
-  }
-
   wstring ToString(int v) {
     wostringstream str;
     str << v;
