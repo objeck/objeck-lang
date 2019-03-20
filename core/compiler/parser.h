@@ -121,12 +121,12 @@ class Parser {
     return scope_name;
   }
 
-  void Show(const wstring &msg, int depth) {
-    wcout << setw(4) << GetLineNumber() << L": ";
+  void Debug(const wstring &msg, int depth) {
+    GetLogger() << setw(4) << GetLineNumber() << L": ";
     for(int i = 0; i < depth; ++i) {
-      wcout << L"  ";
+      GetLogger() << L"  ";
     }
-    wcout << msg << endl;
+    GetLogger() << msg << endl;
   }
 
   inline wstring ToString(int v) {
