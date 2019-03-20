@@ -42,6 +42,8 @@
 #include <vector>
 #include <map>
 
+#include "logger.h"
+
 // memory size for local stack frames
 #define LOCAL_SIZE 512
 #define INT_VALUE int32_t
@@ -372,7 +374,7 @@ public:
       return false;
     }
 #ifdef _DEBUG
-    wcout << L"--- file out: compressed=" << dest_len << L", uncompressed=" << out_buffer.size() << L" ---" << endl;
+    GetLogger() << L"--- file out: compressed=" << dest_len << L", uncompressed=" << out_buffer.size() << L" ---" << endl;
 #endif
     file_out.write(compressed, dest_len);
     free(compressed);
