@@ -253,7 +253,7 @@ bool ContextAnalyzer::Analyze()
   {
 #ifdef _DEBUG
     wstring msg = L"[enum: name='" + eenum->GetName() + L"']";
-    Show(msg, eenum->GetLineNumber(), depth);
+    Debug(msg, eenum->GetLineNumber(), depth);
 #endif
 
     if(!SearchProgramEnums(eenum->GetName()) &&
@@ -395,7 +395,7 @@ bool ContextAnalyzer::Analyze()
 #ifdef _DEBUG
     wstring msg = L"[class: name='" + klass->GetName() + L"'; id=" + ToString(id) +
       L"; virtual=" + ToString(klass->IsVirtual()) + L"]";
-    Show(msg, klass->GetLineNumber(), depth);
+    Debug(msg, klass->GetLineNumber(), depth);
 #endif
     
     current_class = klass;
@@ -440,7 +440,7 @@ bool ContextAnalyzer::Analyze()
   {
 #ifdef _DEBUG
     wstring msg = L"[class: name='" + klass->GetName() + L"]";
-    Show(msg, klass->GetLineNumber(), depth);
+    Debug(msg, klass->GetLineNumber(), depth);
 #endif
 
     current_class = klass;
@@ -772,7 +772,7 @@ bool ContextAnalyzer::Analyze()
 #ifdef _DEBUG
     wstring msg = L"(method: name='" + method->GetName() +
       L"; parsed='" + method->GetParsedName() + L"')";
-    Show(msg, method->GetLineNumber(), depth);
+    Debug(msg, method->GetLineNumber(), depth);
 #endif
 
     method->SetId(id);
@@ -1066,31 +1066,31 @@ bool ContextAnalyzer::Analyze()
 
     case NIL_LIT_EXPR:
 #ifdef _DEBUG
-      Show(L"nil literal", expression->GetLineNumber(), depth);
+      Debug(L"nil literal", expression->GetLineNumber(), depth);
 #endif
       break;
 
     case BOOLEAN_LIT_EXPR:
 #ifdef _DEBUG
-      Show(L"boolean literal", expression->GetLineNumber(), depth);
+      Debug(L"boolean literal", expression->GetLineNumber(), depth);
 #endif
       break;
 
     case CHAR_LIT_EXPR:
 #ifdef _DEBUG
-      Show(L"character literal", expression->GetLineNumber(), depth);
+      Debug(L"character literal", expression->GetLineNumber(), depth);
 #endif
       break;
 
     case INT_LIT_EXPR:
 #ifdef _DEBUG
-      Show(L"integer literal", expression->GetLineNumber(), depth);
+      Debug(L"integer literal", expression->GetLineNumber(), depth);
 #endif
       break;
 
     case FLOAT_LIT_EXPR:
 #ifdef _DEBUG
-      Show(L"float literal", expression->GetLineNumber(), depth);
+      Debug(L"float literal", expression->GetLineNumber(), depth);
 #endif
       break;
 
@@ -1142,7 +1142,7 @@ bool ContextAnalyzer::Analyze()
   void ContextAnalyzer::AnalyzeConditional(Cond* conditional, const int depth) 
   {
 #ifdef _DEBUG
-    Show(L"conditional expression", conditional->GetLineNumber(), depth);
+    Debug(L"conditional expression", conditional->GetLineNumber(), depth);
 #endif
 
     // check expressions
@@ -1180,7 +1180,7 @@ bool ContextAnalyzer::Analyze()
   void ContextAnalyzer::AnalyzeCharacterString(CharacterString* char_str, const int depth) 
   {
 #ifdef _DEBUG
-    Show(L"character string literal", char_str->GetLineNumber(), depth);
+    Debug(L"character string literal", char_str->GetLineNumber(), depth);
 #endif
 
     int var_start = -1;
@@ -1199,7 +1199,7 @@ bool ContextAnalyzer::Analyze()
           var_start = (int)i;
           const wstring token = str.substr(str_start, i - str_start);
 #ifdef _DEBUG
-          Show(L"substring 0: value=|" + token + L"|", char_str->GetLineNumber(), depth + 1);
+          Debug(L"substring 0: value=|" + token + L"|", char_str->GetLineNumber(), depth + 1);
 #endif
           char_str->AddSegment(token);	
         }
@@ -1237,7 +1237,7 @@ bool ContextAnalyzer::Analyze()
           var_start = (int)i;
           const wstring token = str.substr(str_start, i - str_start + 1);
 #ifdef _DEBUG
-          Show(L"substring 1: value=|" + token + L"|", char_str->GetLineNumber(), depth + 1);
+          Debug(L"substring 1: value=|" + token + L"|", char_str->GetLineNumber(), depth + 1);
 #endif
           char_str->AddSegment(token);
         }
@@ -1390,7 +1390,7 @@ bool ContextAnalyzer::Analyze()
 #ifdef _DEBUG
       wstring msg = L"variable reference: name='" + variable->GetName() + L"' local=" +
         (entry->IsLocal() ? L"true" : L"false");
-      Show(msg, variable->GetLineNumber(), depth);
+      Debug(msg, variable->GetLineNumber(), depth);
 #endif
 
       const wstring& name = variable->GetName();
@@ -1468,7 +1468,7 @@ bool ContextAnalyzer::Analyze()
     wstring msg = L"method/function call: class=" + method_call->GetVariableName() +
       L"; method=" + method_call->GetMethodName() + L"; call_type=" +
       ToString(method_call->GetCallType());
-    Show(msg, (static_cast<Expression*>(method_call))->GetLineNumber(), depth);
+    Debug(msg, (static_cast<Expression*>(method_call))->GetLineNumber(), depth);
 #endif
 
     //
@@ -2796,7 +2796,7 @@ bool ContextAnalyzer::Analyze()
   void ContextAnalyzer::AnalyzeIf(If* if_stmt, const int depth)
   {
 #ifdef _DEBUG
-    Show(L"if/else-if/else", if_stmt->GetLineNumber(), depth);
+    Debug(L"if/else-if/else", if_stmt->GetLineNumber(), depth);
 #endif
 
     // expression
@@ -2953,7 +2953,7 @@ bool ContextAnalyzer::Analyze()
   void ContextAnalyzer::AnalyzeDoWhile(DoWhile* do_while_stmt, const int depth)
   {
 #ifdef _DEBUG
-    Show(L"do/while", do_while_stmt->GetLineNumber(), depth);
+    Debug(L"do/while", do_while_stmt->GetLineNumber(), depth);
 #endif
 
     // 'do/while' statements
@@ -2980,7 +2980,7 @@ bool ContextAnalyzer::Analyze()
   void ContextAnalyzer::AnalyzeWhile(While* while_stmt, const int depth)
   {
 #ifdef _DEBUG
-    Show(L"while", while_stmt->GetLineNumber(), depth);
+    Debug(L"while", while_stmt->GetLineNumber(), depth);
 #endif
 
     // expression
@@ -3001,7 +3001,7 @@ bool ContextAnalyzer::Analyze()
   void ContextAnalyzer::AnalyzeReturn(Return* rtrn, const int depth)
   {
 #ifdef _DEBUG
-    Show(L"return", rtrn->GetLineNumber(), depth);
+    Debug(L"return", rtrn->GetLineNumber(), depth);
 #endif
 
     Expression* expression = rtrn->GetExpression();
@@ -3038,7 +3038,7 @@ bool ContextAnalyzer::Analyze()
   void ContextAnalyzer::AnalyzeLeaving(Leaving* leaving_stmt, const int depth)
   {
 #ifdef _DEBUG
-    Show(L"leaving", leaving_stmt->GetLineNumber(), depth);
+    Debug(L"leaving", leaving_stmt->GetLineNumber(), depth);
 #endif
     
     const int level = current_table->GetDepth();
@@ -3062,7 +3062,7 @@ bool ContextAnalyzer::Analyze()
   void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType type, const int depth)
   {
 #ifdef _DEBUG
-    Show(L"assignment", assignment->GetLineNumber(), depth);
+    Debug(L"assignment", assignment->GetLineNumber(), depth);
 #endif
 
     Variable* variable = assignment->GetVariable();

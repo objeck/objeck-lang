@@ -296,12 +296,12 @@ class ContextAnalyzer {
   int in_loop;
   vector<Class*> anonymous_classes;
 
-  void Show(const wstring &msg, const int line_num, int depth) {
-    wcout << setw(4) << line_num << L": ";
+  void Debug(const wstring &msg, const int line_num, int depth) {
+    GetLogger() << setw(4) << line_num << L": ";
     for(int i = 0; i < depth; ++i) {
-      wcout << L"  ";
+      GetLogger() << L"  ";
     }
-    wcout << msg << endl;
+    GetLogger() << msg << endl;
   }
 
   wstring ToString(int v) {
@@ -992,7 +992,7 @@ class ContextAnalyzer {
   
   void AnalyzeCharacterStringVariable(SymbolEntry* entry, CharacterString* char_str, int depth) {
 #ifdef _DEBUG
-    Show(L"variable=|" + entry->GetName() + L"|", char_str->GetLineNumber(), depth + 1);
+    Debug(L"variable=|" + entry->GetName() + L"|", char_str->GetLineNumber(), depth + 1);
 #endif
     if(!entry->GetType() || entry->GetType()->GetDimension() > 0) {
       ProcessError(char_str, L"Invalid function variable type or dimension size");
