@@ -60,19 +60,19 @@ int Compile(map<const wstring, wstring> &arguments, list<wstring> &argument_opti
   map<const wstring, wstring>::iterator result = arguments.find(L"ver");
   if(result != arguments.end()) {
 #if defined(_WIN64) && defined(_WIN32)
-    GetLogger() << VERSION_STRING << L" Objeck (x86-64 Windows)" << endl;
+    wcout << VERSION_STRING << L" Objeck (x86-64 Windows)" << endl;
 #elif _WIN32
-    GetLogger() << VERSION_STRING << L" Objeck (x86 Windows)" << endl;
+    wcout << VERSION_STRING << L" Objeck (x86 Windows)" << endl;
 #elif _OSX
-    GetLogger() << VERSION_STRING << L" Objeck (x86-64 macOS)" << endl;
+    wcout << VERSION_STRING << L" Objeck (x86-64 macOS)" << endl;
 #elif _X64
-    GetLogger() << VERSION_STRING << L" Objeck (x86-64 Linux)" << endl;
+    wcout << VERSION_STRING << L" Objeck (x86-64 Linux)" << endl;
 #else
-    GetLogger() << VERSION_STRING << L" Objeck (x86 Linux)" << endl;
+    wcout << VERSION_STRING << L" Objeck (x86 Linux)" << endl;
 #endif 
-    GetLogger() << L"Copyright(c) 2008-2018, Randy Hollines\n";
-    GetLogger() << L"This is free software; see the source for copying conditions.There is NO\n";
-    GetLogger() << L"warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n";
+    wcout << L"Copyright(c) 2008-2018, Randy Hollines\n";
+    wcout << L"This is free software; see the source for copying conditions.There is NO\n";
+    wcout << L"warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n";
     argument_options.remove(L"ver");
     exit(0);
   }

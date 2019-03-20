@@ -44,14 +44,8 @@
 
 // memory size for local stack frames
 #define LOCAL_SIZE 512
-
-#ifdef _MINGW
-#define INT_VALUE int
-#define FLOAT_VALUE double
-#else
 #define INT_VALUE int32_t
 #define FLOAT_VALUE double
-#endif
 
 using namespace std;
 

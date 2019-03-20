@@ -77,7 +77,7 @@ void SymbolEntry::SetId(int i)
 {
   if(id < 0) {
     id = i;
-    for(size_t j = 0; j < variables.size(); j++) {
+    for(size_t j = 0; j < variables.size(); ++j) {
       variables[j]->SetId(i);
     }
   }
@@ -196,7 +196,7 @@ wstring Method::EncodeType(Type* type, Class* klass, ParsedProgram* program, Lin
       break;
     }
     // dimension
-    for(int i = 0; i < type->GetDimension(); i++) {
+    for(int i = 0; i < type->GetDimension(); ++i) {
       name += L'*';
     }
   }
@@ -250,8 +250,8 @@ ExpressionList* StaticArray::GetAllElements() {
       ExpressionList* temp = TreeFactory::Instance()->MakeExpressionList();
       vector<Expression*> elements = all_elements->GetExpressions();
       // update indices
-      for(int i = 0; i < cur_width; i++) {
-	for(int j = 0; j < cur_height; j++) {
+      for(int i = 0; i < cur_width; ++i) {
+	for(int j = 0; j < cur_height; ++j) {
 	  const int index = j * cur_width + i;
 	  temp->AddExpression(elements[index]);
 	}

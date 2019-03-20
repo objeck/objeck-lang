@@ -44,7 +44,7 @@ Scanner::Scanner(wstring f, bool j, bool p)
   alt_syntax = j;
   cur_char = L'\0';
   // create tokens
-  for(int i = 0; i < LOOK_AHEAD; i++) {
+  for(int i = 0; i < LOOK_AHEAD; ++i) {
     tokens[i] = new Token;
   }
   // load identifiers into map
@@ -84,7 +84,7 @@ Scanner::~Scanner()
     buffer = NULL;
   }
   // delete token array
-  for(int i = 0; i < LOOK_AHEAD; i++) {
+  for(int i = 0; i < LOOK_AHEAD; ++i) {
     delete tokens[i];
     tokens[i] = NULL;
   }
@@ -552,14 +552,14 @@ void Scanner::NextToken()
 {
   if(is_first_token) {
     NextChar();
-    for(int i = 0; i < LOOK_AHEAD; i++) {
+    for(int i = 0; i < LOOK_AHEAD; ++i) {
       ParseToken(i);
     }
     is_first_token = false;
   } 
   else {
     int i = 1;
-    for(; i < LOOK_AHEAD; i++) {
+    for(; i < LOOK_AHEAD; ++i) {
       tokens[i - 1]->Copy(tokens[i]);
     }
     ParseToken(i - 1);

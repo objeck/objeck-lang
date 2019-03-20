@@ -44,7 +44,7 @@ void ItermediateOptimizer::Optimize()
   for(size_t i = 0; i < klasses.size(); ++i) {
     // methods...
     vector<IntermediateMethod*> methods = klasses[i]->GetMethods();
-    for(size_t j = 0; j < methods.size(); j++) {
+    for(size_t j = 0; j < methods.size(); ++j) {
       current_method = methods[j];
 #ifdef _DEBUG
       GetLogger() << L"Optimizing method, pass 1: name='" << current_method->GetName() << "'" << endl;
@@ -52,7 +52,7 @@ void ItermediateOptimizer::Optimize()
       current_method->SetBlocks(OptimizeMethod(current_method->GetBlocks()));
     }
     
-    for(size_t j = 0; j < methods.size(); j++) {
+    for(size_t j = 0; j < methods.size(); ++j) {
       current_method = methods[j];
 #ifdef _DEBUG
       GetLogger() << L"Optimizing method, pass 2: name='" << current_method->GetName() << "'" << endl;
@@ -682,7 +682,7 @@ IntermediateBlock* ItermediateOptimizer::InlineMethod(IntermediateBlock* inputs)
         }
 
         // inline instructions
-        for(size_t j = 0; j < mthd_called_instrs.size() - 1; j++) {
+        for(size_t j = 0; j < mthd_called_instrs.size() - 1; ++j) {
           IntermediateInstruction* mthd_called_instr = mthd_called_instrs[j];
           switch(mthd_called_instr->GetType()) {
           case LOAD_INT_VAR:

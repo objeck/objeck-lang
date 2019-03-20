@@ -45,7 +45,7 @@ void Linker::ResloveExternalClass(LibraryClass* klass)
   map<const wstring, LibraryMethod*>::iterator mthd_iter;
   for(mthd_iter = methods.begin(); mthd_iter != methods.end(); ++mthd_iter) {
     vector<LibraryInstr*> instrs =  mthd_iter->second->GetInstructions();
-    for(size_t j = 0; j < instrs.size(); j++) {
+    for(size_t j = 0; j < instrs.size(); ++j) {
       LibraryInstr* instr = instrs[j];
       // check library call
       switch(instr->GetType()) {
@@ -105,7 +105,7 @@ void Linker::ResolveExternalMethodCalls()
       map<const wstring, LibraryMethod*>::iterator mthd_iter;
       for(mthd_iter = methods.begin(); mthd_iter != methods.end(); ++mthd_iter) {
         vector<LibraryInstr*> instrs =  mthd_iter->second->GetInstructions();
-        for(size_t j = 0; j < instrs.size(); j++) {
+        for(size_t j = 0; j < instrs.size(); ++j) {
           LibraryInstr* instr = instrs[j];
 
           switch(instr->GetType()) {
@@ -260,16 +260,16 @@ void Library::LoadFile(const wstring &file_name)
 
   // read float strings
   const int num_float_strings = ReadInt();
-  for(int i = 0; i < num_float_strings; i++) {
+  for(int i = 0; i < num_float_strings; ++i) {
     frontend::FloatStringHolder* holder = new frontend::FloatStringHolder;
     holder->length = ReadInt();
     holder->value = new FLOAT_VALUE[holder->length];
-    for(int j = 0; j < holder->length; j++) {
+    for(int j = 0; j < holder->length; ++j) {
       holder->value[j] = ReadDouble();
     }
 #ifdef _DEBUG
     GetLogger() << L"float string: id=" << i << L"; value=";
-    for(int j = 0; j < holder->length; j++) {
+    for(int j = 0; j < holder->length; ++j) {
       GetLogger() << holder->value[j] << L",";
     }
     GetLogger() << endl;
@@ -280,16 +280,16 @@ void Library::LoadFile(const wstring &file_name)
   }
   // read int strings
   const int num_int_strings = ReadInt();
-  for(int i = 0; i < num_int_strings; i++) {
+  for(int i = 0; i < num_int_strings; ++i) {
     frontend::IntStringHolder* holder = new frontend::IntStringHolder;
     holder->length = ReadInt();
     holder->value = new INT_VALUE[holder->length];
-    for(int j = 0; j < holder->length; j++) {
+    for(int j = 0; j < holder->length; ++j) {
       holder->value[j] = ReadInt();
     }
 #ifdef _DEBUG
     GetLogger() << L"int string: id=" << i << L"; value=";
-    for(int j = 0; j < holder->length; j++) {
+    for(int j = 0; j < holder->length; ++j) {
       GetLogger() << holder->value[j] << L",";
     }
     GetLogger() << endl;
@@ -300,11 +300,11 @@ void Library::LoadFile(const wstring &file_name)
   }
   // read char wstrings
   const int num_char_strings = ReadInt();
-  for(int i = 0; i < num_char_strings; i++) {
+  for(int i = 0; i < num_char_strings; ++i) {
     const wstring &char_str_value = ReadString();
 #ifdef _DEBUG
     const wstring &msg = L"char string: id=" + Linker::ToString(i) + L"; value='" + char_str_value + L"'";
-    Linker::Show(msg, -1, 0);
+    Linker::Debug(msg, -1, 0);
 #endif
     CharStringInstruction* str_instr = new CharStringInstruction;
     str_instr->value = char_str_value;
@@ -313,12 +313,12 @@ void Library::LoadFile(const wstring &file_name)
 
   // read bundle names
   const int num_bundle_name = ReadInt();
-  for(int i = 0; i < num_bundle_name; i++) {
+  for(int i = 0; i < num_bundle_name; ++i) {
     const wstring &str_value = ReadString();
     bundle_names.push_back(str_value);
 #ifdef _DEBUG
     const wstring &msg = L"bundle name='" + str_value + L"'";
-    Linker::Show(msg, -1, 0);
+    Linker::Debug(msg, -1, 0);
 #endif
   }
 
@@ -333,19 +333,19 @@ void Library::LoadFile(const wstring &file_name)
 void Library::LoadEnums()
 {
   const int number = ReadInt();
-  for(int i = 0; i < number; i++) {
+  for(int i = 0; i < number; ++i) {
     // read enum
     const wstring &enum_name = ReadString();
 #ifdef _DEBUG
     const wstring& msg = L"[enum: name='" + enum_name + L"']";
-    Linker::Show(msg, 0, 1);
+    Linker::Debug(msg, 0, 1);
 #endif
     const INT_VALUE enum_offset = ReadInt();
     LibraryEnum* eenum = new LibraryEnum(enum_name, enum_offset);
 
     // read enum items
     const INT_VALUE num_items = ReadInt();
-    for(int i = 0; i < num_items; i++) {
+    for(int i = 0; i < num_items; ++i) {
       const wstring &item_name = ReadString();
       const INT_VALUE item_id = ReadInt();
       eenum->AddItem(new LibraryEnumItem(item_name, item_id, eenum));
@@ -362,7 +362,7 @@ void Library::LoadClasses()
 {
   // we ignore all class ids
   const int number = ReadInt();
-  for(int i = 0; i < number; i++) {
+  for(int i = 0; i < number; ++i) {
     // id
     ReadInt();
     const wstring &name = ReadString();
@@ -373,14 +373,14 @@ void Library::LoadClasses()
 
     // read interface ids
     const int interface_size = ReadInt();
-    for(int i = 0; i < interface_size; i++) {
+    for(int i = 0; i < interface_size; ++i) {
       ReadInt();
     }
 
     // read interface names
     vector<wstring> interface_names;
     const int interface_names_size = ReadInt();
-    for(int i = 0; i < interface_names_size; i++) {
+    for(int i = 0; i < interface_names_size; ++i) {
       interface_names.push_back(ReadString());
     }
 
@@ -406,7 +406,7 @@ void Library::LoadClasses()
       L"; class_mem_size=" + Linker::ToString(cls_space) +
       L"; instance_mem_size=" + Linker::ToString(inst_space) + 
       L"; is_debug=" + Linker::ToString(is_debug) + L"]";
-    Linker::Show(msg, 0, 1);
+    Linker::Debug(msg, 0, 1);
 #endif
 
     LibraryClass* cls = new LibraryClass(name, parent_name, interface_names, is_interface, is_virtual, 
@@ -425,7 +425,7 @@ void Library::LoadClasses()
 void Library::LoadMethods(LibraryClass* cls, bool is_debug)
 {
   int number = ReadInt();
-  for(int i = 0; i < number; i++) {
+  for(int i = 0; i < number; ++i) {
     int id = ReadInt();
     frontend::MethodType type = (frontend::MethodType)ReadInt();
     bool is_virtual = ReadInt() != 0;
@@ -440,7 +440,7 @@ void Library::LoadMethods(LibraryClass* cls, bool is_debug)
     // read type parameters
     backend::IntermediateDeclarations* entries = new backend::IntermediateDeclarations;
     int num_params = ReadInt();
-    for(int i = 0; i < num_params; i++) {
+    for(int i = 0; i < num_params; ++i) {
       instructions::ParamType type = (instructions::ParamType)ReadInt();
       wstring var_name;
       if(is_debug) {
@@ -453,7 +453,7 @@ void Library::LoadMethods(LibraryClass* cls, bool is_debug)
     const wstring &msg = L"(method: name=" + name + L"; id=" + Linker::ToString(id) + L"; num_params: " +
       Linker::ToString(params) + L"; mem_size=" + Linker::ToString(mem_size) + L"; is_native=" +
       Linker::ToString(is_native) +  L"; is_debug=" + Linker::ToString(is_debug) + L"]";
-    Linker::Show(msg, 0, 2);
+    Linker::Debug(msg, 0, 2);
 #endif
 
     LibraryMethod* mthd = new LibraryMethod(id, name, rtrn_name, type, is_virtual, has_and_or,
@@ -619,7 +619,7 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
       const wstring& cls_name = ReadString();
 #ifdef _DEBUG
       const wstring &msg = L"LIB_OBJ_INST_CAST: class=" + cls_name;
-      Linker::Show(msg, 0, 3);
+      Linker::Debug(msg, 0, 3);
 #endif
       instrs.push_back(new LibraryInstr(line_num, LIB_OBJ_INST_CAST, cls_name));
     }
@@ -629,7 +629,7 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
       const wstring& cls_name = ReadString();
 #ifdef _DEBUG
       const wstring &msg = L"LIB_NEW_OBJ_INST: class=" + cls_name;
-      Linker::Show(msg, 0, 3);
+      Linker::Debug(msg, 0, 3);
 #endif
       instrs.push_back(new LibraryInstr(line_num, LIB_NEW_OBJ_INST, cls_name));
     }
@@ -639,7 +639,7 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
       const wstring& cls_name = ReadString();
 #ifdef _DEBUG
       const wstring &msg = L"LIB_OBJ_TYPE_OF: class=" + cls_name;
-      Linker::Show(msg, 0, 3);
+      Linker::Debug(msg, 0, 3);
 #endif
       instrs.push_back(new LibraryInstr(line_num, LIB_OBJ_TYPE_OF, cls_name));
     }
@@ -651,7 +651,7 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
       const wstring& mthd_name = ReadString();
 #ifdef _DEBUG
       const wstring &msg = L"LIB_MTHD_CALL: class=" + cls_name + L", method=" + mthd_name;
-      Linker::Show(msg, 0, 3);
+      Linker::Debug(msg, 0, 3);
 #endif
       instrs.push_back(new LibraryInstr(line_num, LIB_MTHD_CALL, is_native, cls_name, mthd_name));
     }
@@ -662,7 +662,7 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
       const wstring& mthd_name = ReadString();
 #ifdef _DEBUG
       const wstring &msg = L"LIB_FUNC_DEF: class=" + cls_name + L", method=" + mthd_name;
-      Linker::Show(msg, 0, 3);
+      Linker::Debug(msg, 0, 3);
 #endif
       instrs.push_back(new LibraryInstr(line_num, LIB_FUNC_DEF, -1, cls_name, mthd_name));
       instrs.push_back(new LibraryInstr(line_num, LOAD_INT_LIT, -1));

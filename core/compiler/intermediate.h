@@ -354,11 +354,11 @@ class IntermediateEmitter {
   }
 
   void Show(const wstring &msg, const int line_num, int depth) {
-    GetLogger() << setw(4) << line_num << ": ";
-    for(int i = 0; i < depth; i++) {
-      GetLogger() << L"  ";
+    wcout << setw(4) << line_num << ": ";
+    for(int i = 0; i < depth; ++i) {
+      wcout << L"  ";
     }
-    GetLogger() << msg << endl;
+    wcout << msg << endl;
   }
 
   wstring ToString(int v) {
@@ -389,7 +389,7 @@ class IntermediateEmitter {
       return false;
     }
     
-    for(int i = 0; i < lhs->length; i++) {
+    for(int i = 0; i < lhs->length; ++i) {
       if(lhs->value[i] != rhs->value[i]) {
 	return false;
       }
@@ -403,7 +403,7 @@ class IntermediateEmitter {
       return false;
     }
     
-    for(int i = 0; i < lhs->length; i++) {
+    for(int i = 0; i < lhs->length; ++i) {
       if(lhs->value[i] != rhs->value[i]) {
 	return false;
       }

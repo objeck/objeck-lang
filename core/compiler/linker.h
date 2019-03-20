@@ -46,7 +46,10 @@
 #include "types.h"
 #include "../shared/instrs.h"
 #include "../shared/sys.h"
+
+#ifdef _DEBUG
 #include "../shared/logger.h"
+#endif
 
 using namespace std;
 
@@ -968,7 +971,7 @@ class Library {
       return out;
     } 
     else {
-      GetLogger() << L"Unable to open file: " << filename << endl;
+      wcerr << L"Unable to open file: " << filename << endl;
       exit(1);
     }
     
@@ -996,7 +999,7 @@ class Library {
   backend::IntermediateDeclarations* LoadEntries(bool is_debug) {
     backend::IntermediateDeclarations* entries = new backend::IntermediateDeclarations;
     int num_params = ReadInt();
-    for(int i = 0; i < num_params; i++) {
+    for(int i = 0; i < num_params; ++i) {
       instructions::ParamType type = (instructions::ParamType)ReadInt();
       wstring var_name;
       if(is_debug) {
@@ -1131,13 +1134,15 @@ class Linker {
   vector<wstring> paths;
 
  public:
-  static void Show(const wstring &msg, const int line_num, int depth) {
+#ifdef _DEBUG
+  static void Debug(const wstring &msg, const int line_num, int depth) {
     GetLogger() << setw(4) << line_num << L": ";
-    for(int i = 0; i < depth; i++) {
+    for(int i = 0; i < depth; ++i) {
       GetLogger() << L"  ";
     }
     GetLogger() << msg << endl;
   }
+#endif
 
   static wstring ToString(int v) {
     wostringstream str;
@@ -1268,7 +1273,7 @@ class Linker {
     }
 
     for(size_t i = 0; i < enums.size(); ++i) {
-      for(size_t j = 0; j < uses.size(); j++) {
+      for(size_t j = 0; j < uses.size(); ++j) {
         if(enums[i]->GetName() == uses[j] + L"." + name) {
           return enums[i];
         }

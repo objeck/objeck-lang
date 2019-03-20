@@ -49,9 +49,9 @@
 #include <assert.h>
 #include "linker.h"
 #include "../shared/instrs.h"
+
+#ifdef _DEBUG
 #include "../shared/logger.h"
-#ifdef _MEMCHECK
-#include <mcheck.h>
 #endif
 
 #define SELF_ID L"@self"
@@ -1898,7 +1898,7 @@ namespace frontend {
         encoded_name += EncodeType(func_params[i], klass, program, linker);
 
         // encode dimension   
-        for(int j = 0; j < func_params[i]->GetDimension(); j++) {
+        for(int j = 0; j < func_params[i]->GetDimension(); ++j) {
           encoded_name += L'*';
         }    
         encoded_name += L',';
@@ -1955,7 +1955,7 @@ namespace frontend {
         }
 
         // dimension
-        for(int i = 0; i < type->GetDimension(); i++) {
+        for(int i = 0; i < type->GetDimension(); ++i) {
           name += L'*';
         }
       }
