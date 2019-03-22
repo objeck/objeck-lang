@@ -2191,10 +2191,9 @@ bool ContextAnalyzer::Analyze()
     // calling parameters
     ExpressionList* call_params = method_call->GetCallingParameters();
     AnalyzeExpressions(call_params, depth + 1);
-
-    Method* method = ResolveMethodCall(klass, method_call, depth);
-
+    
     // note: find system based methods and call with function parameters (i.e. $Int, $Float)
+    Method* method = ResolveMethodCall(klass, method_call, depth);
     if(!method) {
       const wstring encoded_name = klass->GetName() + L":" + method_call->GetMethodName() + L":" + encoding +
         EncodeMethodCall(method_call->GetCallingParameters(), depth);
@@ -2226,7 +2225,6 @@ bool ContextAnalyzer::Analyze()
     if(method) {
       // look for implicit casts
       vector<Declaration*> mthd_params = method->GetDeclarations()->GetDeclarations();
-      ExpressionList* call_params = method_call->GetCallingParameters();
       vector<Expression*> expressions = call_params->GetExpressions();
 
 #ifndef _SYSTEM
@@ -2501,31 +2499,35 @@ bool ContextAnalyzer::Analyze()
     if(entry && entry->GetType() && entry->GetType()->GetType() == FUNC_TYPE) {
       // generate parameter strings
       Type* type = entry->GetType();
-      wstring dyn_func_params = type->GetClassName();
-      if(dyn_func_params.size() == 0) {
+      wstring dyn_func_params_str = type->GetClassName();
+      if(dyn_func_params_str.size() == 0) {
         vector<Type*>& func_params = type->GetFunctionParameters();
         AnalyzeDynamicFunctionParameters(type->GetFunctionParameters(), static_cast<Expression*>(method_call)); 
         for(size_t i = 0; i < func_params.size(); ++i) {
           // encode parameter
-          dyn_func_params += EncodeType(func_params[i]);
+          dyn_func_params_str += EncodeType(func_params[i]);
           for(int j = 0; j < type->GetDimension(); ++j) {
-            dyn_func_params += L'*';
+            dyn_func_params_str += L'*';
           }
-          dyn_func_params += L',';
+          dyn_func_params_str += L',';
         }
       }
       else {
-        size_t start = dyn_func_params.find('(');
-        size_t end = dyn_func_params.find(')', start + 1);
+        size_t start = dyn_func_params_str.find('(');
+        size_t end = dyn_func_params_str.find(')', start + 1);
         if(start != wstring::npos && end != wstring::npos) {
-          dyn_func_params = dyn_func_params.substr(start + 1, end - start - 1);
+          dyn_func_params_str = dyn_func_params_str.substr(start + 1, end - start - 1);
         }
       }
       type->SetFunctionParameterCount((int)method_call->GetCallingParameters()->GetExpressions().size());
 
+      // method call parameters
+      ExpressionList* call_params = method_call->GetCallingParameters();
+      AnalyzeExpressions(call_params, depth + 1);
+
       // check parameters again dynamic definition
-      const wstring call_params = EncodeMethodCall(method_call->GetCallingParameters(), depth);
-      if(dyn_func_params != call_params) {
+      const wstring call_params_str = EncodeMethodCall(method_call->GetCallingParameters(), depth);
+      if(dyn_func_params_str != call_params_str) {
         ProcessError(static_cast<Expression*>(method_call),
                      L"Undefined function/method call: '" + method_call->GetMethodName() +
                      L"(..)'\n\tEnsure the object and it's calling parameters are properly casted");
@@ -4708,8 +4710,6 @@ bool ContextAnalyzer::Analyze()
    ****************************/
   wstring ContextAnalyzer::EncodeMethodCall(ExpressionList* calling_params, const int depth)
   {
-    AnalyzeExpressions(calling_params, depth + 1);
-
     wstring encoded_name;
     vector<Expression*> expressions = calling_params->GetExpressions();
     for(size_t i = 0; i < expressions.size(); ++i) {
