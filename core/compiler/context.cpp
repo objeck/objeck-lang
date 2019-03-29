@@ -4350,6 +4350,10 @@ bool ContextAnalyzer::Analyze()
   
   void ContextAnalyzer::AnalyzeClassCast(Type* left, Type* right, Expression* expression, const int depth)
   {
+    Class* left_class = NULL;
+    LibraryEnum* left_lib_enum = NULL;
+    LibraryClass* left_lib_class = NULL;
+
     //
     // program enum
     //
@@ -4357,7 +4361,7 @@ bool ContextAnalyzer::Analyze()
     if(!left_enum) {
       left_enum = SearchProgramEnums(current_class->GetName() + L"#" + left->GetClassName());
     }
-    
+
     if(left && right && left_enum) {
       // program
       Enum* right_enum = SearchProgramEnums(right->GetClassName());
@@ -4384,8 +4388,7 @@ bool ContextAnalyzer::Analyze()
     //
     // program class
     //
-    else if(left && right && SearchProgramClasses(left->GetClassName())) {
-      Class* left_class = SearchProgramClasses(left->GetClassName());
+    else if(left && right && (left_class = SearchProgramClasses(left->GetClassName()))) {
       // program
       Class* right_class = SearchProgramClasses(right->GetClassName());
       if(right_class) {
@@ -4409,8 +4412,8 @@ bool ContextAnalyzer::Analyze()
         else {
           expression->SetToClass(left_class);
           ProcessError(expression, L"Invalid cast between classes: '" +
-                       ReplaceSubstring(left->GetClassName(), L"#", L"->") + L"' and '" +
-                       ReplaceSubstring(right->GetClassName(), L"#", L"->") + L"'");
+            ReplaceSubstring(left->GetClassName(), L"#", L"->") + L"' and '" +
+            ReplaceSubstring(right->GetClassName(), L"#", L"->") + L"'");
         }
       }
       // library
@@ -4432,10 +4435,10 @@ bool ContextAnalyzer::Analyze()
         else {
           expression->SetToClass(left_class);
           ProcessError(expression, L"Invalid cast between classes: '" +
-                       ReplaceSubstring(left->GetClassName(), L"#", L"->") + L"' and '" +
-                       ReplaceSubstring(right->GetClassName(), L"#", L"->") + L"'");
+            ReplaceSubstring(left->GetClassName(), L"#", L"->") + L"' and '" +
+            ReplaceSubstring(right->GetClassName(), L"#", L"->") + L"'");
         }
-      } 
+      }
       else {
         ProcessError(expression, L"Invalid cast between class, enum or Nil");
       }
@@ -4443,8 +4446,7 @@ bool ContextAnalyzer::Analyze()
     //
     // enum libary
     //
-    else if(left && right && linker->SearchEnumLibraries(left->GetClassName(), program->GetUses(current_class->GetFileName()))) {
-      LibraryEnum* left_lib_enum = linker->SearchEnumLibraries(left->GetClassName(), program->GetUses(current_class->GetFileName()));
+    else if(left && right && (left_lib_enum = linker->SearchEnumLibraries(left->GetClassName(), program->GetUses(current_class->GetFileName())))) {
       // program
       Enum* right_enum = SearchProgramEnums(right->GetClassName());
       if(right_enum) {
@@ -4462,7 +4464,7 @@ bool ContextAnalyzer::Analyze()
           const wstring right_str = ReplaceSubstring(right_lib_enum->GetName(), L"#", L"->");
           ProcessError(expression, L"Invalid cast between enums: '" + left_str + L"' and '" + right_str + L"'");
         }
-      } 
+      }
       else {
         ProcessError(expression, L"Invalid cast between enum and class");
       }
@@ -4470,8 +4472,7 @@ bool ContextAnalyzer::Analyze()
     //
     // class libary
     //
-    else if(left && right && linker->SearchClassLibraries(left->GetClassName(), program->GetUses(current_class->GetFileName()))) {
-      LibraryClass* left_lib_class = linker->SearchClassLibraries(left->GetClassName(), program->GetUses(current_class->GetFileName()));
+    else if(left && right && (left_lib_class = linker->SearchClassLibraries(left->GetClassName(), program->GetUses(current_class->GetFileName())))) {
       // program
       Class* right_class = SearchProgramClasses(right->GetClassName());
       if(right_class) {
@@ -4493,8 +4494,8 @@ bool ContextAnalyzer::Analyze()
         }
         // invalid cast
         else {
-          ProcessError(expression, L"Invalid cast between classes: '" + ReplaceSubstring(left->GetClassName(), L"#", L"->") + 
-                       L"' and '" + ReplaceSubstring(right->GetClassName(), L"#", L"->") + L"'");
+          ProcessError(expression, L"Invalid cast between classes: '" + ReplaceSubstring(left->GetClassName(), L"#", L"->") +
+            L"' and '" + ReplaceSubstring(right->GetClassName(), L"#", L"->") + L"'");
         }
       }
       // libary
@@ -4519,16 +4520,16 @@ bool ContextAnalyzer::Analyze()
         // downcast
         else {
           ProcessError(expression, L"Invalid cast between classes: '" + left_lib_class->GetName() + L"' and '" +
-                       right_lib_class->GetName() + L"'");
+            right_lib_class->GetName() + L"'");
         }
-      } 
+      }
       else {
         ProcessError(expression, L"Invalid cast between class, enum or Nil");
       }
     }
     else {
       ProcessError(expression, L"Invalid class, enum or method call context\n\tEnsure all required libraries have been included");
-    } 
+    }
   }
 
   /****************************
