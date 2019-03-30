@@ -9,11 +9,13 @@ class Duplicate {
 			each(i : file_sets) {
 				file_set := file_sets->Get(i)->As(Vector);
 				if(file_set->Size() > 1) {
+					"Duplicates:"->PrintLine();
 					"----"->PrintLine();
 					each(j : file_set) {
 						file_set->Get(j)->As(FileMeta)->ToString()->PrintLine();
 					};
 				};
+				'\n'->Print();
 			};
 		};
 	}
