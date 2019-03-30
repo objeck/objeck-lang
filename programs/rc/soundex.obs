@@ -31,8 +31,8 @@ class SoundEx {
 				return "1";
 			}
 
-		    label 'C': label 'G': 
-		    label 'J': label 'K':
+			label 'C': label 'G': 
+			label 'J': label 'K':
 			label 'Q': label 'S': 
 			label 'X': label 'Z': {
 				return "2";
