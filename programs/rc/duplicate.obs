@@ -5,7 +5,7 @@ use Collection;
 class Duplicate {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 2) {
-			file_sets := Sort(Duplicates(args[0], args[1]->ToInt()));
+			file_sets := SortDups(GetDups(args[0], args[1]->ToInt()));
 			each(i : file_sets) {
 				file_set := file_sets->Get(i)->As(Vector);
 				if(file_set->Size() > 1) {
@@ -18,7 +18,7 @@ class Duplicate {
 		};
 	}
 
-	function : Sort(unsorted : Vector) ~ Vector {
+	function : SortDups(unsorted : Vector) ~ Vector {
 		sorted := IntMap->New();
 
 		each(i : unsorted) {
@@ -30,7 +30,7 @@ class Duplicate {
 		return sorted->GetValues();
 	}
 
-	function : Duplicates(dir : String, size : Int) ~ Vector {
+	function : GetDups(dir : String, size : Int) ~ Vector {
 		duplicates := StringMap->New();
 
 		files := Directory->List(dir);
@@ -40,18 +40,20 @@ class Duplicate {
 			file_name += files[i];
 
 			file_size := File->Size(file_name);
-			file_date := File->ModifiedTime(file_name);
-			file_hash := file_size->ToString();
-			file_hash += ':';
-			file_hash += Encryption.Hash->MD5(FileReader->ReadBinaryFile(file_name))->ToString();
-			file_meta := FileMeta->New(file_name, file_size, file_date, file_hash);
+			if(file_size >= size) {
+				file_date := File->ModifiedTime(file_name);
+				file_hash := file_size->ToString();
+				file_hash += ':';
+				file_hash += Encryption.Hash->MD5(FileReader->ReadBinaryFile(file_name))->ToString();
+				file_meta := FileMeta->New(file_name, file_size, file_date, file_hash);
 
-			file_set := duplicates->Find(file_hash)->As(Vector);
-			if(file_set = Nil) {
-				file_set := Vector->New();
-				duplicates->Insert(file_hash, file_set);
+				file_set := duplicates->Find(file_hash)->As(Vector);
+				if(file_set = Nil) {
+					file_set := Vector->New();
+					duplicates->Insert(file_hash, file_set);
+				};
+				file_set->AddBack(file_meta);
 			};
-			file_set->AddBack(file_meta);
 		};
 
 		return duplicates->GetValues();
