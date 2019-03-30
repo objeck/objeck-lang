@@ -1,0 +1,98 @@
+use System.IO.File;
+use System.Time;
+use Collection;
+
+class Duplicate {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() = 2) {
+			duplicates := Sort(Duplicates(args[0], args[1]->ToInt()));
+			
+		};
+	}
+
+	function : Sort(duplicates : StringMap) ~ CompareVector {
+		values := CompareVector->New();
+
+		duplicate_values := duplicates->GetValues();
+		each(i : duplicate_values) {
+			duplicate_set := duplicate_values->Get(i)->As(Vector);
+duplicate_set->Size()->PrintLine();
+		};
+
+		return values;
+	}
+
+	function : Duplicates(dir : String, size : Int) ~ StringMap {
+		duplicates := StringMap->New();
+
+		files := Directory->List(dir);
+		each(i : files) {
+			file_name := String->New(dir);
+			file_name += '/';
+			file_name += files[i];
+
+			file_size := File->Size(file_name);
+			file_date := File->ModifiedTime(file_name);
+			file_hash := file_size->ToString();
+			file_hash += ':';
+			file_hash += Encryption.Hash->MD5(FileReader->ReadBinaryFile(file_name))->ToString();
+			file_meta := FileMeta->New(file_name, file_size, file_date);
+
+			file_set := duplicates->Find(file_hash)->As(Vector);
+			if(file_set = Nil) {
+				file_set := Vector->New();
+				duplicates->Insert(file_hash, file_set);
+			};
+			file_set->AddBack(file_meta);
+file_name->PrintLine();
+
+		};
+
+		return duplicates;
+	}
+}
+
+class FileMeta implements Compare {
+	@name : String;
+	@size : Int;
+	@date : Date;
+
+	New(name : String, size : Int, date : Date) {
+		@name := name;
+		@size := size;
+		@date := date;
+	}
+
+	method : public : Compare(rhs : Compare) ~ Int {
+		if(GetClassID() <> rhs->GetClassID()) {
+        	return -1;
+      	};
+
+      	right := rhs->As(FileMeta);
+      	if(@size < right->GetSize()) {
+      		return -1;
+      	}
+      	else if(@size > right->GetSize()) {
+      		return 1;
+      	}
+      	else {
+      		return 0;
+      	};
+	}
+
+	method : public : HashID() ~ Int {
+		return HashID();
+	}
+
+	method : GetName() ~ String {
+		return @name;
+	}
+
+	method : GetSize() ~ Int {
+		return @size;
+	}
+
+	method : GetDate() ~ Date {
+		return @date;
+	}
+}

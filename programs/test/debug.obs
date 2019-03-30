@@ -1,10 +1,13 @@
-use System.Matrix;
+use Collection;
+use Encryption;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		i := 5;
-		while(i-- <> 0) {
-			(3*4/2+4)->PrintLine();
-		};
+		Foo();
+	}
+
+	function : Foo() ~ Nil {
+		b : Byte[];
+		Hash->MD5(b);
 	}
 }
