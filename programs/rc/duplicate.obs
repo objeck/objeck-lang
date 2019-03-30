@@ -5,24 +5,32 @@ use Collection;
 class Duplicate {
 	function : Main(args : String[]) ~ Nil {
 		if(args->Size() = 2) {
-			duplicates := Sort(Duplicates(args[0], args[1]->ToInt()));
-			
+			file_sets := Sort(Duplicates(args[0], args[1]->ToInt()));
+			each(i : file_sets) {
+				file_set := file_sets->Get(i)->As(Vector);
+				if(file_set->Size() > 1) {
+					"----"->PrintLine();
+					each(j : file_set) {
+						file_set->Get(j)->As(FileMeta)->ToString()->PrintLine();
+					};
+				};
+			};
 		};
 	}
 
-	function : Sort(duplicates : StringMap) ~ CompareVector {
-		values := CompareVector->New();
+	function : Sort(unsorted : Vector) ~ Vector {
+		sorted := IntMap->New();
 
-		duplicate_values := duplicates->GetValues();
-		each(i : duplicate_values) {
-			duplicate_set := duplicate_values->Get(i)->As(Vector);
-duplicate_set->Size()->PrintLine();
+		each(i : unsorted) {
+			value := unsorted->Get(i)->As(Vector);
+			key := value->Get(0)->As(FileMeta)->GetSize();
+			sorted->Insert(key, value);
 		};
 
-		return values;
+		return sorted->GetValues();
 	}
 
-	function : Duplicates(dir : String, size : Int) ~ StringMap {
+	function : Duplicates(dir : String, size : Int) ~ Vector {
 		duplicates := StringMap->New();
 
 		files := Directory->List(dir);
@@ -36,7 +44,7 @@ duplicate_set->Size()->PrintLine();
 			file_hash := file_size->ToString();
 			file_hash += ':';
 			file_hash += Encryption.Hash->MD5(FileReader->ReadBinaryFile(file_name))->ToString();
-			file_meta := FileMeta->New(file_name, file_size, file_date);
+			file_meta := FileMeta->New(file_name, file_size, file_date, file_hash);
 
 			file_set := duplicates->Find(file_hash)->As(Vector);
 			if(file_set = Nil) {
@@ -44,55 +52,31 @@ duplicate_set->Size()->PrintLine();
 				duplicates->Insert(file_hash, file_set);
 			};
 			file_set->AddBack(file_meta);
-file_name->PrintLine();
-
 		};
 
-		return duplicates;
+		return duplicates->GetValues();
 	}
 }
 
-class FileMeta implements Compare {
+class FileMeta {
 	@name : String;
 	@size : Int;
 	@date : Date;
+	@hash : String;
 
-	New(name : String, size : Int, date : Date) {
+	New(name : String, size : Int, date : Date, hash : String) {
 		@name := name;
 		@size := size;
 		@date := date;
+		@has := hash;
 	}
 
-	method : public : Compare(rhs : Compare) ~ Int {
-		if(GetClassID() <> rhs->GetClassID()) {
-        	return -1;
-      	};
-
-      	right := rhs->As(FileMeta);
-      	if(@size < right->GetSize()) {
-      		return -1;
-      	}
-      	else if(@size > right->GetSize()) {
-      		return 1;
-      	}
-      	else {
-      		return 0;
-      	};
-	}
-
-	method : public : HashID() ~ Int {
-		return HashID();
-	}
-
-	method : GetName() ~ String {
-		return @name;
-	}
-
-	method : GetSize() ~ Int {
+	method : public : GetSize() ~ Int {
 		return @size;
 	}
 
-	method : GetDate() ~ Date {
-		return @date;
+	method : public : ToString() ~ String {
+		date_str := @date->ToShortString();
+		return "{$@name}, {$@size}, {$date_str}";
 	}
 }
