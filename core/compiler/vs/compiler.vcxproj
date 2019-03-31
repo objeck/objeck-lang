@@ -168,7 +168,6 @@
     <ClCompile Include="..\scanner.cpp" />
     <ClCompile Include="..\tree.cpp" />
     <ClCompile Include="..\types.cpp" />
-    <ClCompile Include="Source.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\shared\instrs.h" />

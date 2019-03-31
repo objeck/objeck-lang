@@ -48,9 +48,6 @@
     <ClCompile Include="..\types.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Source.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\shared\logger.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
