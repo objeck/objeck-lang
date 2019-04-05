@@ -427,7 +427,7 @@ bundle Data.CSV {
 					};
 					token := row->SubString(start, index - start);
 					if(token = Nil) {
-						token = "";
+						token := "";
 					};
 					columns->AddBack(token->ReplaceAll("ˑ", "\"\""));
 # IO.Console->Print("normal = |")->Print(token->ReplaceAll("ˑ", "\"\""))->PrintLine("|");					
