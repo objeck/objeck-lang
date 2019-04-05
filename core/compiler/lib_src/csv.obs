@@ -426,9 +426,10 @@ bundle Data.CSV {
 						index += 1;
 					};
 					token := row->SubString(start, index - start);
-					if(token <> Nil) {
-						columns->AddBack(token->ReplaceAll("ˑ", "\"\""));
+					if(token = Nil) {
+						token = "";
 					};
+					columns->AddBack(token->ReplaceAll("ˑ", "\"\""));
 # IO.Console->Print("normal = |")->Print(token->ReplaceAll("ˑ", "\"\""))->PrintLine("|");					
 				};
 			
