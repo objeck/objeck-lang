@@ -436,7 +436,7 @@ class IPSecureSocket {
     }
 
     wstring path = GetLibraryPath();
-    string cert_path(path.begin(), path.end());
+    string cert_path = UnicodeToBytes(path);
     cert_path += CACERT_PEM_FILE;
 
     if(!SSL_CTX_load_verify_locations(ctx, cert_path.c_str(), NULL)) {

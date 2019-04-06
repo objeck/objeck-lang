@@ -359,7 +359,7 @@ public:
   }
 
   bool WriteFile() {
-    const string open_filename(file_name.begin(), file_name.end());
+    const string open_filename = UnicodeToBytes(file_name);
     ofstream file_out(open_filename.c_str(), ofstream::binary);
     if(!file_out.is_open()) {
       wcerr << L"Unable to write file: '" << file_name << L"'" << endl;

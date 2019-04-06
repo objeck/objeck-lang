@@ -2416,7 +2416,7 @@ void StackInterpreter::ProcessDllLoad(StackInstr* instr)
   const wstring post_path_str((wchar_t*)(array + 3));
   path_str += post_path_str;
   
-  string dll_string(path_str.begin(), path_str.end());
+  string dll_string = UnicodeToBytes(path_str);
   if(dll_string.size() == 0) {
     wcerr << L">>> Name of runtime shared library was not specified! <<<" << endl;
 #ifdef _DEBUGGER
@@ -2562,7 +2562,7 @@ void StackInterpreter::ProcessDllCall(StackInstr* instr, size_t* &op_stack, long
   HINSTANCE dll_handle = (HINSTANCE)instance[1];
   if(dll_handle) {
     // get function pointer
-    const string str(wstr.begin(), wstr.end());
+    const string str =   UnicodeToBytes(wstr);
     ext_func = (lib_func_def)GetProcAddress(dll_handle, str.c_str());
     if(!ext_func) {
       wcerr << L">>> Runtime error calling function: " << wstr << " <<<" << endl;
@@ -2588,7 +2588,7 @@ void StackInterpreter::ProcessDllCall(StackInstr* instr, size_t* &op_stack, long
   // load function
   void* dll_handle = (void*)instance[1];
   if(dll_handle) {
-    const string str(wstr.begin(), wstr.end());
+    const string str = UnicodeToBytes(wstr);
     ext_func = (lib_func_def)dlsym(dll_handle, str.c_str());
     char* error;
     if((error = dlerror()) != NULL)  {
