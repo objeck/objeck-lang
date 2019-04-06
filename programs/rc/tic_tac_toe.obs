@@ -23,7 +23,7 @@ class TicTacToe {
 		quit := false;
 		do {
 			move := PlayerMove();
-			if(LegalMove(move)) {
+			if(LegalMove(move, 'X')) {
 				if(<>CheckWinner('X')) {
 					if(CheckTie()) {
 						"\n=> Tie."->PrintLine();
@@ -83,19 +83,25 @@ class TicTacToe {
 				@board[0, 2] := 'O';
 			};
 			@opening := false;
+		}
+		else {
+			move := (Int->Random(8) + '0')->As(Char);
+			while(<>LegalMove(move, 'O') & <>CheckTie()) {
+				move := (Int->Random(8) + '0')->As(Char);
+			};
 		};
 	}
 
-	method : LegalMove(move : Char) ~ Bool {
+	method : LegalMove(move : Char, player: Char) ~ Bool {
 		if(move >= '1' & move <= '9') {
 			index := (move - '1')->As(Int);
 			j := index / 3; i := index % 3;
 
-			if(@board[i, j] = 'X' | @board[i, j] = 'O') {
+			if(@board[i, j] = player | @board[i, j] = 'O') {
 				return false;
 			};
 
-			@board[i, j] := 'X';
+			@board[i, j] := player;
 			return true;
 		}
 		else {
