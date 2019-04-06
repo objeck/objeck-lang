@@ -1,5 +1,6 @@
 class TicTacToe {
 	@board : Char[,];
+	@opening : Bool;
 
 	function : Main(args : String[]) ~ Nil {
 		game := TicTacToe->New();
@@ -13,6 +14,7 @@ class TicTacToe {
 			i := index % 3;
 			@board[i, j] := '1' + index; 
 		};
+		@opening := true;
 	}
 
 	method : Play() ~ Nil {
@@ -23,17 +25,17 @@ class TicTacToe {
 			move := PlayerMove();
 			if(LegalMove(move)) {
 				CheckWinner('X');
-#				CpuMove();
-#				CheckWinner('O');
+				CpuMove();
+				CheckWinner('O');
+				Draw();
 			}
 			else if(move = 'q') {
 				quit := true;
 			}
 			else {
 				"*** Invalid Move ***"->PrintLine();
+				Draw();
 			};
-
-			Draw();
 		}
 		while(<>quit);
 	}
@@ -48,7 +50,18 @@ class TicTacToe {
 	}
 
 	method : CpuMove() ~ Nil {
-		
+		if(<>@opening) {
+			if(@board[1, 1] <> 'X' & @board[1, 1] <> 'O') {
+				@board[1, 1] := 'O';
+			}
+			else if(@board[0, 0] <> 'X' & @board[0, 0] <> 'O') {
+				@board[0, 0] := 'O';
+			}
+			else if(@board[0, 2] <> 'X' & @board[0, 2] <> 'O') {
+				@board[0, 2] := 'O';
+			};
+			@opening := false;
+		};
 	}
 
 	method : LegalMove(move : Char) ~ Bool {
