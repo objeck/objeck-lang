@@ -43,6 +43,7 @@
 #endif
 #include <stdio.h>
 #include "../../vm/lib_api.h"
+#include "../../shared/sys.h"
 
 using namespace std;
 
@@ -159,7 +160,7 @@ extern "C" {
 #endif
   void sdl_core_gl_extension_supported(VMContext& context) {
     const wstring w_extension = APITools_GetStringValue(context, 1);
-    const string extension(w_extension.begin(), w_extension.end());
+    const string extension = UnicodeToBytes(w_extension);
     const int return_value = SDL_GL_ExtensionSupported(extension.c_str());
     APITools_SetIntValue(context, 0, return_value);
   }
@@ -234,10 +235,10 @@ extern "C" {
 #endif
   void sdl_hints_set_hint_with_priority(VMContext& context) {
     const wstring w_name = APITools_GetStringValue(context, 1);
-    const string name(w_name.begin(), w_name.end());
+    const string name = UnicodeToBytes(w_name);
 
     const wstring w_value = APITools_GetStringValue(context, 2);
-    const string value(w_value.begin(), w_value.end());
+    const string value = UnicodeToBytes(w_value);
 
     const int priority = (int)APITools_GetIntValue(context, 3);
 
@@ -250,10 +251,10 @@ extern "C" {
 #endif
   void sdl_hints_set_hint(VMContext& context) {
     const wstring w_name = APITools_GetStringValue(context, 1);
-    const string name(w_name.begin(), w_name.end());
+    const string name = UnicodeToBytes(w_name);
 
     const wstring w_value = APITools_GetStringValue(context, 2);
-    const string value(w_value.begin(), w_value.end());
+    const string value = UnicodeToBytes(w_value);
 
     const int return_value = SDL_SetHint(name.c_str(), value.c_str());
     APITools_SetIntValue(context, 0, return_value);
@@ -264,7 +265,7 @@ extern "C" {
 #endif
   void sdl_hints_get_hint(VMContext& context) {
     const wstring w_name = APITools_GetStringValue(context, 1);
-    const string name(w_name.begin(), w_name.end());
+    const string name = UnicodeToBytes(w_name);
     const string return_value = SDL_GetHint(name.c_str());
 
     const wstring w_return_value(return_value.begin(), return_value.end());
@@ -393,7 +394,7 @@ extern "C" {
 #endif
   void sdl_surface_loadbmp(VMContext& context) {
     const wstring w_file = APITools_GetStringValue(context, 1);
-    const string file(w_file.begin(), w_file.end());
+    const string file = UnicodeToBytes(w_file);
 
     SDL_Surface* surface = SDL_LoadBMP(file.c_str());
     APITools_SetIntValue(context, 0, (size_t)surface);
@@ -406,7 +407,7 @@ extern "C" {
     const size_t* surface_obj = APITools_GetObjectValue(context, 1);
     SDL_Surface* surface = surface_obj ? (SDL_Surface*)surface_obj[0] : NULL;
     const wstring w_file = APITools_GetStringValue(context, 2);
-    const string file(w_file.begin(), w_file.end());
+    const string file = UnicodeToBytes(w_file);
 
     APITools_SetIntValue(context, 0, SDL_SaveBMP(surface, file.c_str()));
   }
@@ -929,7 +930,7 @@ extern "C" {
 #endif
   void sdl_display_video_init(VMContext& context) {
     const wstring w_driver_name = APITools_GetStringValue(context, 1);
-    const string driver_name(w_driver_name.begin(), w_driver_name.end());
+    const string driver_name = UnicodeToBytes(w_driver_name);
     APITools_SetIntValue(context, 0, SDL_VideoInit(driver_name.c_str()));
   }
 
@@ -1778,7 +1779,7 @@ extern "C" {
   #endif
   void sdl_image_load(VMContext& context) {
     const wstring wfile = APITools_GetStringValue(context, 1);
-    const string file(wfile.begin(), wfile.end());
+    const string file = UnicodeToBytes(wfile);
     APITools_SetIntValue(context, 0, (size_t)IMG_Load(file.c_str()));
   }
 
@@ -2367,7 +2368,7 @@ extern "C" {
 #endif
   void sdl_font_open(VMContext& context) {
     const wstring wfile = APITools_GetStringValue(context, 1);
-    const string file(wfile.begin(), wfile.end());
+    const string file = UnicodeToBytes(wfile);
     const int ptsize = (int)APITools_GetIntValue(context, 2);
 
     TTF_Font* return_value = TTF_OpenFont(file.c_str(), ptsize);
@@ -2379,7 +2380,7 @@ extern "C" {
 #endif
   void sdl_font_open_index(VMContext& context) {
     const wstring wfile = APITools_GetStringValue(context, 1);
-    const string file(wfile.begin(), wfile.end());
+    const string file = UnicodeToBytes(wfile);
     const int ptsize = (int)APITools_GetIntValue(context, 2);
     const int index = (int)APITools_GetIntValue(context, 3);
 
@@ -2394,7 +2395,7 @@ extern "C" {
     TTF_Font* font = (TTF_Font*)APITools_GetIntValue(context, 1);
     
     const wstring wtext = APITools_GetStringValue(context, 2);
-    const string text(wtext.begin(), wtext.end());
+    const string text = UnicodeToBytes(wtext);
 
     SDL_Color fg;
     size_t* fg_obj = APITools_GetObjectValue(context, 3);
@@ -2410,7 +2411,7 @@ extern "C" {
     TTF_Font* font = (TTF_Font*)APITools_GetIntValue(context, 1);
 
     const wstring wtext = APITools_GetStringValue(context, 2);
-    const string text(wtext.begin(), wtext.end());
+    const string text = UnicodeToBytes(wtext);
 
     SDL_Color fg;
     size_t* fg_obj = APITools_GetObjectValue(context, 3);
@@ -2426,7 +2427,7 @@ extern "C" {
     TTF_Font* font = (TTF_Font*)APITools_GetIntValue(context, 1);
 
     const wstring wtext = APITools_GetStringValue(context, 2);
-    const string text(wtext.begin(), wtext.end());
+    const string text = UnicodeToBytes(wtext);
 
     SDL_Color fg;
     size_t* fg_obj = APITools_GetObjectValue(context, 3);
@@ -2442,7 +2443,7 @@ extern "C" {
     TTF_Font* font = (TTF_Font*)APITools_GetIntValue(context, 1);
 
     const wstring wtext = APITools_GetStringValue(context, 2);
-    const string text(wtext.begin(), wtext.end());
+    const string text = UnicodeToBytes(wtext);
 
     SDL_Color fg;
     size_t* fg_obj = APITools_GetObjectValue(context, 3);
@@ -2458,7 +2459,7 @@ extern "C" {
     TTF_Font* font = (TTF_Font*)APITools_GetIntValue(context, 1);
 
     const wstring wtext = APITools_GetStringValue(context, 2);
-    const string text(wtext.begin(), wtext.end());
+    const string text = UnicodeToBytes(wtext);
 
     SDL_Color fg;
     size_t* fg_obj = APITools_GetObjectValue(context, 3);
@@ -2478,7 +2479,7 @@ extern "C" {
     TTF_Font* font = (TTF_Font*)APITools_GetIntValue(context, 1);
 
     const wstring wtext = APITools_GetStringValue(context, 2);
-    const string text(wtext.begin(), wtext.end());
+    const string text = UnicodeToBytes(wtext);
 
     SDL_Color fg;
     size_t* fg_obj = APITools_GetObjectValue(context, 3);
@@ -2671,7 +2672,7 @@ extern "C" {
 #endif
   void sdl_mixer_load_wav(VMContext& context) {
     const wstring w_file = APITools_GetStringValue(context, 1);
-    const string extension(w_file.begin(), w_file.end());
+    const string extension = UnicodeToBytes(w_file);
 
     APITools_SetIntValue(context, 0, (size_t)Mix_LoadWAV(extension.c_str()));
   }
@@ -2732,7 +2733,7 @@ extern "C" {
 #endif
   void sdl_mixer_load_mus(VMContext& context) {
     const wstring w_file = APITools_GetStringValue(context, 1);
-    const string file(w_file.begin(), w_file.end());
+    const string file = UnicodeToBytes(w_file);
 
     Mix_Music* music = Mix_LoadMUS(file.c_str());
     APITools_SetIntValue(context, 0, (size_t)music);
@@ -2979,10 +2980,10 @@ extern "C" {
 #endif
   void sdl_filesystem_get_pref_path(VMContext& context) {
     const wstring w_org = APITools_GetStringValue(context, 1);
-    const string org(w_org.begin(), w_org.end());
+    const string org = UnicodeToBytes(w_org);
 
     const wstring w_app = APITools_GetStringValue(context, 2);
-    const string app(w_app.begin(), w_app.end());
+    const string app = UnicodeToBytes(w_app);
 
     const string value = SDL_GetPrefPath(org.c_str(), app.c_str());
 
