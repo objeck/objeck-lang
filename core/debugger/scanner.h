@@ -239,7 +239,7 @@ class Scanner {
     wstring wident(buffer, start_pos, length);
     // set token
     tokens[index]->SetType(TOKEN_FLOAT_LIT);
-    const string ident(wident.begin(), wident.end());
+    const string ident = UnicodeToBytes(wident);
     tokens[index]->SetFloatLit(atof(ident.c_str()));
   }
 
