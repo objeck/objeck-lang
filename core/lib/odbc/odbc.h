@@ -38,6 +38,7 @@
 #include <sql.h>
 #include <sqlext.h>
 #include "../../vm/lib_api.h"
+#include "../../shared/sys.h"
 
 #define SQL_OK status == SQL_SUCCESS || status == SQL_SUCCESS_WITH_INFO
 #define SQL_FAIL status != SQL_SUCCESS && status != SQL_SUCCESS_WITH_INFO

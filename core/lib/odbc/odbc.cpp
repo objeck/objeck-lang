@@ -83,9 +83,9 @@ extern "C" {
           << wusername << L", password=" << wpassword << L" ###" << endl;
 #endif
 		
-    const string ds(wds.begin(), wds.end());
-    const string username(wusername.begin(), wusername.end());
-    const string password(wpassword.begin(), wpassword.end());
+    const string ds = UnicodeToBytes(wds);
+    const string username = UnicodeToBytes(wusername);
+    const string password = UnicodeToBytes(wpassword);
 		
     SQLRETURN status = SQLAllocHandle(SQL_HANDLE_DBC, env, &conn);
     if(SQL_FAIL) {
@@ -156,7 +156,7 @@ extern "C" {
       return;
     }
 		
-    const string sql(wsql.begin(), wsql.end());
+    const string sql = UnicodeToBytes(wsql);
     status = SQLExecDirect(stmt, (SQLCHAR*)sql.c_str(), SQL_NTS);
     if(SQL_FAIL) {
       // ShowError(SQL_HANDLE_STMT, stmt);
@@ -230,7 +230,7 @@ extern "C" {
       return;
     }
 		
-    const string sql(wsql.begin(), wsql.end());
+    const string sql = UnicodeToBytes(wsql);
     status = SQLPrepare(stmt, (SQLCHAR*)sql.c_str(), SQL_NTS);
     if(SQL_FAIL) {
       // ShowError(SQL_HANDLE_STMT, stmt);
@@ -334,7 +334,7 @@ extern "C" {
       return;
     }
 		
-    const string sql(wsql.begin(), wsql.end());
+    const string sql = UnicodeToBytes(wsql);
     status = SQLPrepare(stmt, (SQLCHAR*)sql.c_str(), SQL_NTS);
     if(SQL_FAIL) {
       // ShowError(SQL_HANDLE_STMT, stmt);

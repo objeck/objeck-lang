@@ -34,6 +34,7 @@
 #ifdef _WIN32
 #include <windows.h>
 #include <stdint.h>
+#define ZLIB_WINAPI
 #endif
 #include <zlib.h>
 #include <string.h>
