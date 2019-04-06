@@ -944,7 +944,7 @@ class Library {
   char* LoadFileBuffer(wstring filename, size_t& buffer_size) {
     char* buffer = NULL;
     // open file
-    string open_filename(filename.begin(), filename.end());
+    const string open_filename = UnicodeToBytes(filename);
     ifstream in(open_filename.c_str(), ifstream::binary);
     if(in.good()) {
       // get file size

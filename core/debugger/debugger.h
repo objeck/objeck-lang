@@ -70,7 +70,7 @@ namespace Runtime {
       file_name = fn;
       cur_line_num = l;
 
-      const string name(fn.begin(), fn.end());
+      const string name = UnicodeToBytes(fn);
       ifstream file_in (name.c_str());
       while(file_in.good()) {
         string line;
@@ -195,7 +195,7 @@ namespace Runtime {
 
     // checks to see if a file exists
     bool FileExists(const wstring &file_name, bool is_exe = false) {
-      const string name(file_name.begin(), file_name.end());
+      const string name = UnicodeToBytes(file_name);
       const string ending = ".obl";
       if(ending.size() > name.size() && !std::equal(ending.rbegin(), ending.rend(), name.rbegin())) {
         return false;
@@ -223,7 +223,7 @@ namespace Runtime {
 
     // checks to see if a directory exists
     bool DirectoryExists(const wstring &wdir_name) {
-      const string dir_name(wdir_name.begin(), wdir_name.end());
+      const string dir_name = UnicodeToBytes(wdir_name);
 #ifdef _WIN32
       HANDLE file = CreateFile(dir_name.c_str(), GENERIC_READ,
         FILE_SHARE_READ, NULL, OPEN_EXISTING,

@@ -2349,7 +2349,7 @@ bool TrapProcessor::SockTcpResolveName(StackProgram* program, size_t* inst, size
   array = (size_t*)array[0];
   if(array) {
     const wstring wname((wchar_t*)(array + 3));
-    const string name(wname.begin(), wname.end());
+    const string name =  UnicodeToBytes(wname);
     vector<string> addrs = IPSocket::Resolve(name.c_str());
 
     // create 'System.String' object array
@@ -2417,7 +2417,7 @@ bool TrapProcessor::SockTcpConnect(StackProgram* program, size_t* inst, size_t* 
   if(array && instance) {
     array = (size_t*)array[0];
     const wstring waddr((wchar_t*)(array + 3));
-    const string addr(waddr.begin(), waddr.end());
+    const string addr = UnicodeToBytes(waddr);
     SOCKET sock = IPSocket::Open(addr.c_str(), port);
 #ifdef _DEBUG
     wcout << L"# socket connect: addr='" << waddr << L":" << port << L"'; instance="
@@ -2589,7 +2589,7 @@ bool TrapProcessor::SockTcpSslConnect(StackProgram* program, size_t* inst, size_
   if(array && instance) {
     array = (size_t*)array[0];
     const wstring waddr((wchar_t*)(array + 3));
-    const string addr(waddr.begin(), waddr.end());
+    const string addr = UnicodeToBytes(waddr);
 
     IPSecureSocket::Close((SSL_CTX*)instance[0], (BIO*)instance[1], (X509*)instance[2]);
 
@@ -3016,7 +3016,7 @@ bool TrapProcessor::FileOpenRead(StackProgram* program, size_t* inst, size_t* &o
   if(array && instance) {
     array = (size_t*)array[0];
     const wstring name((wchar_t*)(array + 3));
-    const string filename(name.begin(), name.end());
+    const string filename = UnicodeToBytes(name);
     FILE* file = File::FileOpen(filename.c_str(), "rb");
 #ifdef _DEBUG
     wcout << L"# file open: name='" << name << L"'; instance=" << instance << L"("
@@ -3036,7 +3036,7 @@ bool TrapProcessor::FileOpenAppend(StackProgram* program, size_t* inst, size_t* 
   if(array && instance) {
     array = (size_t*)array[0];
     const wstring name((wchar_t*)(array + 3));
-    const string filename(name.begin(), name.end());
+    const string filename = UnicodeToBytes(name);
     FILE* file = File::FileOpen(filename.c_str(), "ab");
 #ifdef _DEBUG
     wcout << L"# file open: name='" << name << L"'; instance=" << instance << L"("
@@ -3056,7 +3056,7 @@ bool TrapProcessor::FileOpenWrite(StackProgram* program, size_t* inst, size_t* &
   if(array && instance) {
     array = (size_t*)array[0];
     const wstring name((wchar_t*)(array + 3));
-    const string filename(name.begin(), name.end());
+    const string filename = UnicodeToBytes(name);
     FILE* file = File::FileOpen(filename.c_str(), "wb");
 #ifdef _DEBUG
     wcout << L"# file open: name='" << name << L"'; instance=" << instance << L"("
@@ -3076,7 +3076,7 @@ bool TrapProcessor::FileOpenReadWrite(StackProgram* program, size_t* inst, size_
   if(array && instance) {
     array = (size_t*)array[0];
     const wstring name((wchar_t*)(array + 3));
-    const string filename(name.begin(), name.end());
+    const string filename = UnicodeToBytes(name);
     FILE* file = File::FileOpen(filename.c_str(), "w+b");
 #ifdef _DEBUG
     wcout << L"# file open: name='" << name << L"'; instance=" << instance << L"("
@@ -3651,7 +3651,7 @@ bool TrapProcessor::FileCanWriteOnly(StackProgram* program, size_t* inst, size_t
   if(array) {
     array = (size_t*)array[0];
     const wstring wname((wchar_t*)(array + 3));
-    const string name(wname.begin(), wname.end());
+    const string name =  UnicodeToBytes(wname);
     PushInt(File::FileWriteOnly(name.c_str()), op_stack, stack_pos);
   }
   else {
@@ -3667,7 +3667,7 @@ bool TrapProcessor::FileCanReadOnly(StackProgram* program, size_t* inst, size_t*
   if(array) {
     array = (size_t*)array[0];
     const wstring wname((wchar_t*)(array + 3));
-    const string name(wname.begin(), wname.end());
+    const string name =  UnicodeToBytes(wname);
     PushInt(File::FileReadOnly(name.c_str()), op_stack, stack_pos);
   }
   else {
@@ -3683,7 +3683,7 @@ bool TrapProcessor::FileCanReadWrite(StackProgram* program, size_t* inst, size_t
   if(array) {
     array = (size_t*)array[0];
     const wstring wname((wchar_t*)(array + 3));
-    const string name(wname.begin(), wname.end());
+    const string name =  UnicodeToBytes(wname);
     PushInt(File::FileReadWrite(name.c_str()), op_stack, stack_pos);
   }
   else {
@@ -3699,7 +3699,7 @@ bool TrapProcessor::FileExists(StackProgram* program, size_t* inst, size_t* &op_
   if(array) {
     array = (size_t*)array[0];
     const wstring wname((wchar_t*)(array + 3));
-    const string name(wname.begin(), wname.end());
+    const string name =  UnicodeToBytes(wname);
     PushInt(File::FileExists(name.c_str()), op_stack, stack_pos);
   }
   else {
@@ -3715,7 +3715,7 @@ bool TrapProcessor::FileSize(StackProgram* program, size_t* inst, size_t* &op_st
   if(array) {
     array = (size_t*)array[0];
     const wstring wname((wchar_t*)(array + 3));
-    const string name(wname.begin(), wname.end());
+    const string name =  UnicodeToBytes(wname);
     PushInt(File::FileSize(name.c_str()), op_stack, stack_pos);
   }
   else {
@@ -3731,7 +3731,7 @@ bool TrapProcessor::FileFullPath(StackProgram* program, size_t* inst, size_t* &o
   if(array) {
     array = (size_t*)array[0];
     const wstring wname((wchar_t*)(array + 3));
-    const string name(wname.begin(), wname.end());
+    const string name =  UnicodeToBytes(wname);
     string full_path = File::FullPathName(name);
     if(full_path.size() > 0) {
       const wstring wfull_path(full_path.begin(), full_path.end());
@@ -3752,7 +3752,7 @@ bool TrapProcessor::FileAccountOwner(StackProgram* program, size_t* inst, size_t
   if(array) {
     array = (size_t*)array[0];
     const wstring wname((wchar_t*)(array + 3));
-    const string name(wname.begin(), wname.end());
+    const string name =  UnicodeToBytes(wname);
     ProcessFileOwner(name.c_str(), true, program, op_stack, stack_pos);
   }
   else {
@@ -3768,7 +3768,7 @@ bool TrapProcessor::FileGroupOwner(StackProgram* program, size_t* inst, size_t* 
   if(array) {
     array = (size_t*)array[0];
     const wstring wname((wchar_t*)(array + 3));
-    const string name(wname.begin(), wname.end());
+    const string name =  UnicodeToBytes(wname);
     ProcessFileOwner(name.c_str(), false, program, op_stack, stack_pos);
   }
   else {
@@ -3784,7 +3784,7 @@ bool TrapProcessor::FileDelete(StackProgram* program, size_t* inst, size_t* &op_
   if(array) {
     array = (size_t*)array[0];
     const wstring wname((wchar_t*)(array + 3));
-    const string name(wname.begin(), wname.end());
+    const string name =  UnicodeToBytes(wname);
     if(remove(name.c_str()) != 0) {
       PushInt(0, op_stack, stack_pos);
     }
@@ -3815,8 +3815,8 @@ bool TrapProcessor::FileRename(StackProgram* program, size_t* inst, size_t* &op_
   from = (size_t*)from[0];
   const wstring wfrom_name((wchar_t*)(from + 3));
 
-  const string to_name(wto_name.begin(), wto_name.end());
-  const string from_name(wfrom_name.begin(), wfrom_name.end());
+  const string to_name = UnicodeToBytes(wto_name);
+  const string from_name = UnicodeToBytes(wfrom_name);
   if(rename(from_name.c_str(), to_name.c_str()) != 0) {
     PushInt(0, op_stack, stack_pos);
   }
@@ -3834,7 +3834,7 @@ bool TrapProcessor::FileCreateTime(StackProgram* program, size_t* inst, size_t* 
   if(array) {
     array = (size_t*)array[0];
     const wstring wname((wchar_t*)(array + 3));
-    const string name(wname.begin(), wname.end());
+    const string name =  UnicodeToBytes(wname);
     time_t raw_time = File::FileCreatedTime(name.c_str());
     if(raw_time > 0) {
       struct tm* curr_time;
@@ -3867,7 +3867,7 @@ bool TrapProcessor::FileModifiedTime(StackProgram* program, size_t* inst, size_t
   if(array) {
     array = (size_t*)array[0];
     const wstring wname((wchar_t*)(array + 3));
-    const string name(wname.begin(), wname.end());
+    const string name =  UnicodeToBytes(wname);
     time_t raw_time = File::FileModifiedTime(name.c_str());
     if(raw_time > 0) {
       struct tm* curr_time;
@@ -3900,7 +3900,7 @@ bool TrapProcessor::FileAccessedTime(StackProgram* program, size_t* inst, size_t
   if(array) {
     array = (size_t*)array[0];
     const wstring wname((wchar_t*)(array + 3));
-    const string name(wname.begin(), wname.end());
+    const string name =  UnicodeToBytes(wname);
     time_t raw_time = File::FileAccessedTime(name.c_str());
     if(raw_time > 0) {
       struct tm* curr_time;
@@ -3932,7 +3932,7 @@ bool TrapProcessor::DirCreate(StackProgram* program, size_t* inst, size_t* &op_s
   if(array) {
     array = (size_t*)array[0];
     const wstring wname((wchar_t*)(array + 3));
-    const string name(wname.begin(), wname.end());
+    const string name =  UnicodeToBytes(wname);
     PushInt(File::MakeDir(name.c_str()), op_stack, stack_pos);
   }
   else {
@@ -3948,7 +3948,7 @@ bool TrapProcessor::DirExists(StackProgram* program, size_t* inst, size_t* &op_s
   if(array) {
     array = (size_t*)array[0];
     const wstring wname((wchar_t*)(array + 3));
-    const string name(wname.begin(), wname.end());
+    const string name =  UnicodeToBytes(wname);
     PushInt(File::DirExists(name.c_str()), op_stack, stack_pos);
   }
   else {
@@ -3964,7 +3964,7 @@ bool TrapProcessor::DirList(StackProgram* program, size_t* inst, size_t* &op_sta
   array = (size_t*)array[0];
   if(array) {
     const wstring wname((wchar_t*)(array + 3));
-    const string name(wname.begin(), wname.end());
+    const string name =  UnicodeToBytes(wname);
     vector<string> files = File::ListDir(name.c_str());
 
     // create 'System.String' object array

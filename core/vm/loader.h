@@ -117,7 +117,7 @@ class Loader {
   // loads a file into memory
   char* LoadFileBuffer(wstring filename, size_t &buffer_size) {
     char* buffer;
-    string open_filename(filename.begin(), filename.end());
+    const string open_filename = UnicodeToBytes(filename);
     
     ifstream in(open_filename.c_str(), ios_base::in | ios_base::binary | ios_base::ate);
     if(in.good()) {
