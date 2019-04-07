@@ -104,7 +104,8 @@ class ItermediateOptimizer {
 
   bool CanInlineMethod(IntermediateMethod* mthd_called, set<IntermediateMethod*> &inlined_mthds, set<int> &lbl_jmp_offsets) {
     // don't inline the same method more then once, since you'll have label/jump conflicts
-    set<IntermediateMethod*>::iterator found = inlined_mthds.find(mthd_called);
+
+	  set<IntermediateMethod*>::iterator found = inlined_mthds.find(mthd_called);
     if(found != inlined_mthds.end()) {
       return false;
     }
@@ -122,11 +123,9 @@ class ItermediateOptimizer {
     // don't inline method calls for primitive objects
     if(mthd_called->GetClass()->GetName().find(L'$') != wstring::npos) {
       set<wstring>::iterator result = can_inline.find(mthd_called->GetName());
-      if(result != can_inline.end()) {
-        return true;
-      }
-      
-      return false;
+      if(result == can_inline.end()) {
+        return false;
+      };
     }
     
     // methods are in the same class, such that instance and class
