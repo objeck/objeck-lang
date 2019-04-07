@@ -1,14 +1,14 @@
 class TicTacToe {
-	enum Result {
+	@board : Char[,];
+	@opening : Bool;
+
+	enum Status {
 		PLAYING,
 		TIE,
 		PLAYER_WIN,
 		CPU_WIN,
 		QUIT
 	}
-
-	@board : Char[,];
-	@opening : Bool;
 
 	function : Main(args : String[]) ~ Nil {
 		cpu_score := 0;
@@ -17,11 +17,16 @@ class TicTacToe {
 		for(i :=0; i < 7; i += 1;) {
 			game := TicTacToe->New();
 			result := game->Play();
-			if(result = Result->PLAYER_WIN) {
+			if(result = Status->PLAYER_WIN) {
 				player_score += 1;
+				"\n=> Player Wins!"->PrintLine();
 			}
-			else if(result = Result->CPU_WIN) {
+			else if(result = Status->CPU_WIN) {
 				cpu_score += 1;
+				"\n=> CPU Wins!"->PrintLine();
+			}
+			else if(result = Status->TIE) {							
+				"\n=> Tie."->PrintLine();
 			}
 			else {
 				break;
@@ -32,12 +37,13 @@ class TicTacToe {
 	}
 
 	New() {
-		@board := Char->New[3,3];
+		@board := Char->New[3, 3];
 		for(index := 0; index < 9; index += 1;) {
 			j := index / 3;
 			i := index % 3;
 			@board[i, j] := '1' + index; 
 		};
+
 		@opening := true;
 	}
 
@@ -45,46 +51,42 @@ class TicTacToe {
 		"\n*** NEW ***"->PrintLine();
 		Draw();
 
-		result := Result->PLAYING;
+		result := Status->PLAYING;
 		do {
 			move := PlayerMove();
 			if(LegalMove(move, 'X')) {
 				if(<>CheckWinner('X')) {
 					if(CheckTie()) {
-						"\n=> Tie."->PrintLine();
-						result := Result->TIE;
+						result := Status->TIE;
 					};
 				}
 				else {
-					"\n=> Player Wins!"->PrintLine();
-					result := Result->PLAYER_WIN;
+					result := Status->PLAYER_WIN;
 				};
 				
 				if(result = 0) {
 					CpuMove();				
 					if(<>CheckWinner('O')) {
 						if(CheckTie()) {
-							"\n=> Tie."->PrintLine();
-							result := Result->TIE;
+							result := Status->TIE;
 						};
 					}
 					else {
-						"\n=> CPU Wins!"->PrintLine();
-						result := Result->CPU_WIN;
+						result := Status->CPU_WIN;
 					};
 				};
 
 				Draw();
 			}
 			else if(move = 'q') {
-				result := Result->QUIT;
+				result := Status->QUIT;
 			}
 			else {
 				"\n=> Illegal Move"->PrintLine();
 				Draw();
 			};
 		}
-		while(result = Result->PLAYING);
+		while(result = Status->PLAYING);
 
 		return result;
 	}
@@ -112,9 +114,9 @@ class TicTacToe {
 			@opening := false;
 		}
 		else {
-			move := (Int->Random(8) + '0')->As(Char);
+			move := (Int->Random(8) + '1')->As(Char);
 			while(<>CheckTie() & <>LegalMove(move, 'O')) {
-				move := (Int->Random(8) + '0')->As(Char);
+				move := (Int->Random(8) + '1')->As(Char);
 			};
 		};
 	}
