@@ -1,25 +1,24 @@
 class TicTacToe {
 	@board : Char[,];
-	@opening : Bool;
+	@cpu_opening : Bool;
 
 	enum Status {
 		PLAYING,
+		QUIT,
+		INVALID_MOVE,
 		TIE,
 		PLAYER_WIN,
-		CPU_WIN,
-		INVALID_MOVE,
-		QUIT
+		CPU_WIN
 	}
 
 	function : Main(args : String[]) ~ Nil {
 		cpu_score := 0;
 		player_score := 0;
 
-		players_turn := true;
 		for(i :=0; i < 5; i += 1;) {
 			game := TicTacToe->New();
-			result := game->Play(players_turn);
-			players_turn := players_turn ? false : true;
+			result := game->Play();
+
 			if(result = Status->PLAYER_WIN) {
 				player_score += 1;
 				"\n=> Player Wins!"->PrintLine();
@@ -47,17 +46,25 @@ class TicTacToe {
 			@board[i, j] := '1' + index; 
 		};
 
-		@opening := true;
+		@cpu_opening := true;
 	}
 
-	method : Play(players_turn : Bool) ~ Status {
-		"\n*** NEW ***\n"->PrintLine();
-		Draw();
+	method : Play() ~ Status {
+		players_turn := Int->Random(1) = 1 ? true : false;
+
+		if(players_turn) {
+			@cpu_opening := false;
+			"\n*** NEW (Player) ***\n"->PrintLine();
+			Draw();
+		}
+		else {
+			"\n*** NEW (CPU) ***\n"->PrintLine();
+		};
 
 		playing := true;
 		do {
 			status : Status;
-			
+
 			if(players_turn) { 
 				status := PlayerMove();
 				players_turn := false;
@@ -67,23 +74,31 @@ class TicTacToe {
 				players_turn := true;
 			};
 
-			if(status = Status->INVALID_MOVE) {
-				"\n=> Invalid Move"->PrintLine();
-			}
-			else if(status = Status->PLAYER_WIN) {
-				return Status->PLAYER_WIN;
-			}
-			else if(status = Status->CPU_WIN) {
-				return Status->CPU_WIN;
-			}
-			else if(status = Status->TIE) {
-				return Status->TIE;
-			}
-			else if(status = Status->QUIT) {
-				playing := false;
+			if(players_turn) {
+				Draw();
 			};
 
-			Draw();
+			select(status) {
+				label Status->INVALID_MOVE: {
+					"\n=> Invalid Move"->PrintLine();
+				}
+
+				label Status->PLAYER_WIN: {
+					return Status->PLAYER_WIN;
+				}
+
+				label Status->CPU_WIN: {
+					return Status->CPU_WIN;
+				}
+
+				label Status->TIE: {
+					return Status->TIE;
+				}
+
+				label Status->QUIT: {
+					playing := false;
+				}
+			};			
 		}
 		while(playing);
 
@@ -118,8 +133,26 @@ class TicTacToe {
 	}
 
 	method : CpuMove() ~ Status {
-		BestMove(CopyBoard());
-		
+		if(@cpu_opening) {
+			select(Int->Random(2)) {
+				label 0: {
+					@board[0, 0] := 'O';
+				}
+
+				label 1: {
+					@board[1, 1] := 'O';
+				}
+
+				label 2: {
+					@board[2, 2] := 'O';
+				}
+			};
+			@cpu_opening := false;
+		}
+		else {
+			BestMove(CopyBoard());
+		};
+
 		if(CheckWinner(@board, 'O')) {
 			return Status->CPU_WIN;
 		}
@@ -129,13 +162,6 @@ class TicTacToe {
 		else {
 			return Status->PLAYING;
 		};
-
-#~
-		move := (Int->Random(8) + '1')->As(Char);
-		while(<>CheckTie() & <>LegalMove(move, 'O')) {
-			move := (Int->Random(8) + '1')->As(Char);
-		};		
-~#		
 	}
 
 	method : Minimax(board : Char[,], depth : Int, is_max : Bool) ~ Int {
@@ -154,8 +180,6 @@ class TicTacToe {
 				for(j := 0; j < 3; j += 1;) {
 					if(board[i,j] <> 'X' & board[i,j] <>'O') { 
 						test := board[i,j];
-# "-- 2: {$test} ---"->PrintLine();
-
 						board[i,j] := 'O'; 	  
 						best := Int->Max(best, Minimax(board, depth + 1, is_max ? false : true)); 
 						board[i,j] := test; 
@@ -171,7 +195,6 @@ class TicTacToe {
 				for(j := 0; j < 3; j += 1;) {
 					if(board[i,j] <> 'X' & board[i,j] <>'O') { 
 						test := board[i,j];
-# "-- 1: {$test} ---"->PrintLine();
 						board[i,j] := 'X'; 	  
 						best := Int->Min(best, Minimax(board, depth + 1, is_max ? false : true)); 
 						board[i,j] := test; 
@@ -187,7 +210,6 @@ class TicTacToe {
     	best := -1000; # empty 
     	best_i := -1;
     	best_j := -1;
-"### In: {$best_i}, {$best_j} ####"->PrintLine();
 
     	for(i := 0; i < 3; i += 1;) { 
 			for(j := 0; j < 3; j += 1;) {
@@ -196,7 +218,7 @@ class TicTacToe {
 					board[i,j] := 'O';	  
 					move := Int->Max(best, Minimax(board, 0, false)); 
 					board[i,j] := test;
-# "-- 0: {$test} ---"->PrintLine();
+
 					if(move > best) { 
 						best_i := i;
     					best_j := j;
@@ -207,8 +229,6 @@ class TicTacToe {
 		};
 
 		@board[best_i, best_j] := 'O';
-
-"### Out: {$best}: {$best_i}, {$best_j} ####"->PrintLine();
     }
 
     method : Evaluate(board : Char[,]) ~ Int {
@@ -332,6 +352,6 @@ class TicTacToe {
 		" {$b1} | {$b2} | {$b3} "->PrintLine();
 		"---|---|---"->PrintLine();
 		" {$c1} | {$c2} | {$c3} "->PrintLine();
-		"==========="->PrintLine();
+		"===========\n"->PrintLine();
 	}
 }
