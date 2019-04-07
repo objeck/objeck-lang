@@ -1,10 +1,34 @@
 class TicTacToe {
+	enum Result {
+		PLAYING,
+		TIE,
+		PLAYER_WIN,
+		CPU_WIN,
+		QUIT
+	}
+
 	@board : Char[,];
 	@opening : Bool;
 
 	function : Main(args : String[]) ~ Nil {
-		game := TicTacToe->New();
-		game->Play();
+		cpu_score := 0;
+		player_score := 0;
+
+		for(i :=0; i < 7; i += 1;) {
+			game := TicTacToe->New();
+			result := game->Play();
+			if(result = Result->PLAYER_WIN) {
+				player_score += 1;
+			}
+			else if(result = Result->CPU_WIN) {
+				cpu_score += 1;
+			}
+			else {
+				break;
+			};
+		};
+
+		"\nHuman={$player_score}, CPU={$cpu_score}"->PrintLine();
 	}
 
 	New() {
@@ -17,51 +41,52 @@ class TicTacToe {
 		@opening := true;
 	}
 
-	method : Play() ~ Nil {
+	method : Play() ~ Int {
+		"\n*** NEW ***"->PrintLine();
 		Draw();
 
-		quit := false;
+		result := Result->PLAYING;
 		do {
 			move := PlayerMove();
 			if(LegalMove(move, 'X')) {
 				if(<>CheckWinner('X')) {
 					if(CheckTie()) {
 						"\n=> Tie."->PrintLine();
-						quit := true;
+						result := Result->TIE;
 					};
 				}
 				else {
 					"\n=> Player Wins!"->PrintLine();
-					quit := true;
+					result := Result->PLAYER_WIN;
 				};
 				
-				if(<>quit) {
+				if(result = 0) {
 					CpuMove();				
 					if(<>CheckWinner('O')) {
 						if(CheckTie()) {
 							"\n=> Tie."->PrintLine();
-							quit := true;
+							result := Result->TIE;
 						};
 					}
 					else {
-						"\n=> CPU Wins! #digitalboggie"->PrintLine();
-						quit := true;
+						"\n=> CPU Wins!"->PrintLine();
+						result := Result->CPU_WIN;
 					};
 				};
 
 				Draw();
 			}
 			else if(move = 'q') {
-				quit := true;
+				result := Result->QUIT;
 			}
 			else {
 				"\n=> Illegal Move"->PrintLine();
 				Draw();
 			};
 		}
-		while(<>quit);
+		while(result = Result->PLAYING);
 
-		"\nGoodbye, human!"->PrintLine();
+		return result;
 	}
 
 	method : PlayerMove() ~ Char {
@@ -89,7 +114,6 @@ class TicTacToe {
 		else {
 			move := (Int->Random(8) + '0')->As(Char);
 			while(<>CheckTie() & <>LegalMove(move, 'O')) {
-"Thinking..."->PrintLine();				
 				move := (Int->Random(8) + '0')->As(Char);
 			};
 		};
