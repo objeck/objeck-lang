@@ -48,7 +48,7 @@ class TicTacToe {
 	}
 
 	method : Play() ~ Int {
-		"\n*** NEW ***"->PrintLine();
+		"\n*** NEW ***\n"->PrintLine();
 		Draw();
 
 		result := Status->PLAYING;
