@@ -7,6 +7,7 @@ class TicTacToe {
 		TIE,
 		PLAYER_WIN,
 		CPU_WIN,
+		INVALID_MOVE,
 		QUIT
 	}
 
@@ -14,9 +15,11 @@ class TicTacToe {
 		cpu_score := 0;
 		player_score := 0;
 
+		players_turn := true;
 		for(i :=0; i < 5; i += 1;) {
 			game := TicTacToe->New();
-			result := game->Play();
+			result := game->Play(players_turn);
+			players_turn := players_turn ? false : true;
 			if(result = Status->PLAYER_WIN) {
 				player_score += 1;
 				"\n=> Player Wins!"->PrintLine();
@@ -47,61 +50,86 @@ class TicTacToe {
 		@opening := true;
 	}
 
-	method : Play() ~ Int {
+	method : Play(players_turn : Bool) ~ Status {
 		"\n*** NEW ***\n"->PrintLine();
 		Draw();
 
-		result := Status->PLAYING;
+		playing := true;
 		do {
-			move := PlayerMove();
-			if(LegalMove(move, 'X')) {
-				if(<>CheckWinner(@board, 'X')) {
-					if(CheckTie()) {
-						result := Status->TIE;
-					};
-				}
-				else {
-					result := Status->PLAYER_WIN;
-				};
-				
-				if(result = 0) {
-					CpuMove();				
-					if(<>CheckWinner(@board, 'O')) {
-						if(CheckTie()) {
-							result := Status->TIE;
-						};
-					}
-					else {
-						result := Status->CPU_WIN;
-					};
-				};
-
-				Draw();
-			}
-			else if(move = 'q') {
-				result := Status->QUIT;
+			status : Status;
+			if(players_turn) { 
+				status := PlayerMove();
+				players_turn := false;
 			}
 			else {
-				"\n=> Illegal Move"->PrintLine();
-				Draw();
+				status := CpuMove();
+				players_turn := true;
 			};
+
+			if(status = Status->INVALID_MOVE) {
+				"\n=> Invalid Move"->PrintLine();
+			}
+			else if(status = Status->PLAYER_WIN) {
+				return Status->PLAYER_WIN;
+			}
+			else if(status = Status->CPU_WIN) {
+				return Status->CPU_WIN;
+			}
+			else if(status = Status->TIE) {
+				return Status->TIE;
+			}
+			else if(status = Status->QUIT) {
+				playing := false;
+			};
+
+			Draw();
 		}
-		while(result = Status->PLAYING);
+		while(playing);
 
-		return result;
-	}
+		return Status->QUIT;
+	}					
 
-	method : PlayerMove() ~ Char {
+	method : PlayerMove() ~ Status {
 		move := System.IO.Console->ReadString();
-		if(move->Size() > 0) {
-			return move->Get(0);
+		if(move->Size() = 0) {
+			return Status->INVALID_MOVE;
 		};
 
-		return '\0';
+		option := move->Get(0);
+		if(option = 'q') {
+			return Status->QUIT;
+		};
+
+
+		if(LegalMove(option, 'X')) {
+			if(CheckWinner(@board, 'X')) {
+				return Status->PLAYER_WIN;
+			}
+			else if(CheckTie()) {
+				return Status->TIE;
+			}
+			else {
+				return Status->PLAYING;
+			};
+		}
+		else {
+			return Status->INVALID_MOVE;
+		};
 	}
 
-	method : CpuMove() ~ Nil {
+	method : CpuMove() ~ Status {
 		BestMove(CopyBoard());
+		
+		if(CheckWinner(@board, 'O')) {
+			return Status->CPU_WIN;
+		}
+		else if(CheckTie()) {
+			return Status->TIE;
+		}
+		else {
+			return Status->PLAYING;
+		};
+
 #~
 		move := (Int->Random(8) + '1')->As(Char);
 		while(<>CheckTie() & <>LegalMove(move, 'O')) {
