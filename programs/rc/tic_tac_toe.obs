@@ -3,12 +3,12 @@ class TicTacToe {
 	@cpu_opening : Bool;
 
 	enum Status {
+		INVALID_MOVE,
 		PLAYING,
 		QUIT,
-		INVALID_MOVE,
 		TIE,
-		PLAYER_WIN,
-		CPU_WIN
+		CPU_WIN,
+		PLAYER_WIN
 	}
 
 	function : Main(args : String[]) ~ Nil {
@@ -117,10 +117,10 @@ class TicTacToe {
 		};
 
 		if(LegalMove(option, 'X')) {
-			if(CheckWinner(@board, 'X')) {
+			if(IsWinner(@board, 'X')) {
 				return Status->PLAYER_WIN;
 			}
-			else if(CheckTie()) {
+			else if(IsTied()) {
 				return Status->TIE;
 			}
 			else {
@@ -150,13 +150,13 @@ class TicTacToe {
 			@cpu_opening := false;
 		}
 		else {
-			BestMove(CopyBoard());
+			BestCpuMove(CopyBoard());
 		};
 
-		if(CheckWinner(@board, 'O')) {
+		if(IsWinner(@board, 'O')) {
 			return Status->CPU_WIN;
 		}
-		else if(CheckTie()) {
+		else if(IsTied()) {
 			return Status->TIE;
 		}
 		else {
@@ -165,12 +165,12 @@ class TicTacToe {
 	}
 
 	method : Minimax(board : Char[,], depth : Int, is_max : Bool) ~ Int {
-    	score := Evaluate(board); 
+    	score := EvaluateMove(board); 
   		if(score = 10 | score = -10) {
         	return score; 
   		};
 
-  		if(CheckTie()) {
+  		if(IsTied()) {
   			return 0;
   		};
 
@@ -206,7 +206,7 @@ class TicTacToe {
 		};
     }
 
-    method : BestMove(board : Char[,]) ~ Nil {
+    method : BestCpuMove(board : Char[,]) ~ Nil {
     	best := -1000; # empty 
     	best_i := -1;
     	best_j := -1;
@@ -231,18 +231,18 @@ class TicTacToe {
 		@board[best_i, best_j] := 'O';
     }
 
-    method : Evaluate(board : Char[,]) ~ Int {
-    	if(CheckWinner(board, 'O')) {
+    method : EvaluateMove(board : Char[,]) ~ Int {
+    	if(IsWinner(board, 'O')) {
     		return 10;
     	}
-    	else if(CheckWinner(board, 'X')) {
+    	else if(IsWinner(board, 'X')) {
     		return -10;
     	}
     	else {
     		return 0;
     	};
     }
-
+    
     method : CopyBoard() ~ Char[,] {
     	board := Char->New[3, 3];
 
@@ -272,7 +272,7 @@ class TicTacToe {
 		};
 	}
 
-	method : CheckWinner(board : Char[,], player : Char) ~ Bool {
+	method : IsWinner(board : Char[,], player : Char) ~ Bool {
 		# --- diagonal --- 
 		check := 0;
 		for(i := 0; i < 3; i += 1;) {
@@ -329,7 +329,7 @@ class TicTacToe {
 		return false;
 	}
 
-	method : CheckTie() ~ Bool {
+	method : IsTied() ~ Bool {
 		for(i := 0; i < 3; i += 1;) {
 			for(j := 0; j < 3; j += 1;) {
 				if(@board[i, j] <> 'X' & @board[i, j] <> 'O') {
