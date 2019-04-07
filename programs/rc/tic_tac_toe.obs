@@ -57,6 +57,7 @@ class TicTacToe {
 		playing := true;
 		do {
 			status : Status;
+			
 			if(players_turn) { 
 				status := PlayerMove();
 				players_turn := false;
@@ -99,7 +100,6 @@ class TicTacToe {
 		if(option = 'q') {
 			return Status->QUIT;
 		};
-
 
 		if(LegalMove(option, 'X')) {
 			if(CheckWinner(@board, 'X')) {
