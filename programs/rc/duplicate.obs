@@ -72,7 +72,7 @@ class FileMeta {
 		@name := name;
 		@size := size;
 		@date := date;
-		@has := hash;
+		@hash := hash;
 	}
 
 	method : public : GetSize() ~ Int {
