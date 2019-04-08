@@ -181,7 +181,7 @@ class TicTacToe {
 					if(board[i,j] <> 'X' & board[i,j] <>'O') { 
 						test := board[i,j];
 						board[i,j] := 'O'; 	  
-						best := Int->Max(best, Minimax(board, depth + 1, is_max ? false : true)); 
+						best := Int->Max(best, Minimax(board, depth + 1, false)); 
 						board[i,j] := test; 
 					}; 
 				};
@@ -196,7 +196,7 @@ class TicTacToe {
 					if(board[i,j] <> 'X' & board[i,j] <>'O') { 
 						test := board[i,j];
 						board[i,j] := 'X'; 	  
-						best := Int->Min(best, Minimax(board, depth + 1, is_max ? false : true)); 
+						best := Int->Min(best, Minimax(board, depth + 1, true)); 
 						board[i,j] := test; 
 					}; 
 				};
