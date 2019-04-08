@@ -11,6 +11,11 @@ class TicTacToe {
 		PLAYER_WIN
 	}
 
+	consts Weights {
+		MIN := -1000,
+		MAX := 1000
+	}
+
 	function : Main(args : String[]) ~ Nil {
 		cpu_score := 0;
 		player_score := 0;
@@ -175,7 +180,7 @@ class TicTacToe {
   		};
 
 		if(is_max) { 
-        	best := -1000; # empty 
+        	best := Weights->MIN; # empty 
         	for(i := 0; i < 3; i += 1;) { 
 				for(j := 0; j < 3; j += 1;) {
 					if(board[i,j] <> 'X' & board[i,j] <>'O') { 
@@ -195,7 +200,7 @@ class TicTacToe {
 			return best;
 		}
 		else {
-			best := 1000; # empty 
+			best := Weights->MAX; # empty 
         	for(i := 0; i < 3; i += 1;) { 
 				for(j := 0; j < 3; j += 1;) {
 					if(board[i,j] <> 'X' & board[i,j] <>'O') { 
@@ -217,7 +222,7 @@ class TicTacToe {
     }
 
     method : BestCpuMove(board : Char[,]) ~ Nil {
-    	best := -1000; # empty 
+    	best := Weights->MIN; # empty 
     	best_i := -1;
     	best_j := -1;
 
@@ -226,7 +231,7 @@ class TicTacToe {
 				if(board[i,j] <> 'X' & board[i,j] <> 'O') { 
 					test := board[i,j];
 					board[i,j] := 'O';	  
-					move := Int->Max(best, Minimax(board, 0, false, -1000, 1000)); 
+					move := Int->Max(best, Minimax(board, 0, false, Weights->MIN, Weights->MAX)); 
 					board[i,j] := test;
 
 					if(move > best) { 
