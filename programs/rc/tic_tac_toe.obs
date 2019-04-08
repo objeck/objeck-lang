@@ -180,7 +180,7 @@ class TicTacToe {
   		};
 
 		if(is_max) { 
-        	best := Weights->MIN; # empty 
+        	best := Weights->MIN;
         	for(i := 0; i < 3; i += 1;) { 
 				for(j := 0; j < 3; j += 1;) {
 					if(board[i,j] <> 'X' & board[i,j] <>'O') { 
@@ -200,7 +200,7 @@ class TicTacToe {
 			return best;
 		}
 		else {
-			best := Weights->MAX; # empty 
+			best := Weights->MAX;
         	for(i := 0; i < 3; i += 1;) { 
 				for(j := 0; j < 3; j += 1;) {
 					if(board[i,j] <> 'X' & board[i,j] <>'O') { 
