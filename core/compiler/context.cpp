@@ -3109,6 +3109,18 @@ bool ContextAnalyzer::Analyze()
         }
       }
     }
+	  else if(variable->GetEvalType() && variable->GetEvalType()->GetType() == CLASS_TYPE && expression->GetExpressionType() == METHOD_CALL_EXPR) {
+      MethodCall* method_call = static_cast<MethodCall*>(expression);
+      if(method_call->GetEnumItem()) {
+        SymbolEntry* entry = variable->GetEntry();
+        if(entry) {
+          Type* to_type = expression->GetEvalType();
+          AnalyzeVariableCast(to_type, expression);
+          variable->SetTypes(to_type);
+          entry->SetType(to_type);
+        }
+      }
+	  }
 
     Type* eval_type = variable->GetEvalType();
     
