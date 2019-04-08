@@ -325,7 +325,7 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
             wcout << L"cannot reference scalar variable" << endl;
           }
           else {
-            wcout << L"print: type=Int, value=" << reference->GetIntValue() << endl;
+            wcout << L"print: type=Int, value=" << (long)reference->GetIntValue() << endl;
           }
           break;
 
@@ -1181,7 +1181,7 @@ Command* Runtime::Debugger::ProcessCommand(const wstring &line) {
     case QUIT_COMMAND:
       ClearBreaks();
       ClearProgram();
-      wcout << L"goodbye." << endl;
+      wcout << L"\nGoodbye..." << endl;
       exit(0);
       break;
 
