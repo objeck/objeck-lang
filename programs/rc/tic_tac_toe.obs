@@ -164,7 +164,7 @@ class TicTacToe {
 		};
 	}
 
-	method : Minimax(board : Char[,], depth : Int, is_max : Bool) ~ Int {
+	method : Minimax(board : Char[,], depth : Int, is_max : Bool, alpha : Int, beta : Int) ~ Int {
     	score := EvaluateMove(board); 
   		if(score = 10 | score = -10) {
         	return score; 
@@ -181,8 +181,13 @@ class TicTacToe {
 					if(board[i,j] <> 'X' & board[i,j] <>'O') { 
 						test := board[i,j];
 						board[i,j] := 'O'; 	  
-						best := Int->Max(best, Minimax(board, depth + 1, false)); 
-						board[i,j] := test; 
+						best := Int->Max(best, Minimax(board, depth + 1, false, alpha, beta)); 
+						alpha := Int->Max(alpha, best);
+						board[i,j] := test;
+
+						if(beta <= alpha) { 
+							return best;
+						};  
 					}; 
 				};
 			};
@@ -196,8 +201,13 @@ class TicTacToe {
 					if(board[i,j] <> 'X' & board[i,j] <>'O') { 
 						test := board[i,j];
 						board[i,j] := 'X'; 	  
-						best := Int->Min(best, Minimax(board, depth + 1, true)); 
-						board[i,j] := test; 
+						best := Int->Min(best, Minimax(board, depth + 1, true, alpha, beta));
+						beta := Int->Min(beta, best);
+						board[i,j] := test;
+
+						if(beta <= alpha) { 
+							return best;
+						}; 
 					}; 
 				};
 			};
@@ -216,7 +226,7 @@ class TicTacToe {
 				if(board[i,j] <> 'X' & board[i,j] <> 'O') { 
 					test := board[i,j];
 					board[i,j] := 'O';	  
-					move := Int->Max(best, Minimax(board, 0, false)); 
+					move := Int->Max(best, Minimax(board, 0, false, -1000, 1000)); 
 					board[i,j] := test;
 
 					if(move > best) { 
