@@ -757,7 +757,9 @@ void StackInterpreter::Str2Int(size_t* &op_stack, long* &stack_pos)
       PushInt(stoi(str, NULL, base), op_stack, stack_pos);
     }
     catch(std::invalid_argument &e) {
-      // TODO: should this be caught or thrown?
+#ifdef _WIN32    
+      UNREFERENCED_PARAMETER(e);
+#endif
       PushInt(0, op_stack, stack_pos);
     }
   }

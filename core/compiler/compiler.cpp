@@ -70,7 +70,7 @@ int Compile(map<const wstring, wstring> &arguments, list<wstring> &argument_opti
 #else
     wcout << VERSION_STRING << L" Objeck (x86 Linux)" << endl;
 #endif 
-    wcout << L"Copyright(c) 2008-2018, Randy Hollines\n";
+    wcout << L"Copyright(c) 2008-2019, Randy Hollines\n";
     wcout << L"This is free software; see the source for copying conditions.There is NO\n";
     wcout << L"warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n";
     argument_options.remove(L"ver");
