@@ -1,10 +1,10 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		x := 10;
+#		x := 10;
 
 #		a := x;
-		a := b := x;
-#		a := b := c := x;
+#		a := b := x;
+		a := b := c := x;
 #		a := b := c := d := x;
 	}
 }

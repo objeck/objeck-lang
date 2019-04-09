@@ -3791,29 +3791,34 @@ Assignment* Parser::ParseAssignment(Variable* variable, int depth)
 #ifdef _DEBUG
   Debug(L"Assignment", depth);
 #endif
-
+  stack<Expression*> expressions;
+  expressions.push(variable);
+  
   NextToken();
-  Assignment* assignment = TreeFactory::Instance()->MakeAssignment(file_name, line_num, variable, 
-                                                                   ParseExpression(depth + 1));
-  if(assignment && Match(TOKEN_ASSIGN)) {
-    Variable* right = NULL;
-    while(Match(TOKEN_ASSIGN) && !Match(TOKEN_END_OF_STREAM)) {
-      NextToken();
-
-      if(!Match(TOKEN_IDENT)) {
-        ProcessError(TOKEN_IDENT);
-      }
-      const wstring ident = scanner->GetToken()->GetIdentifier();
-      NextToken();
-
-      right = ParseVariable(ident, depth + 1);
-    }
-
-    assignment = TreeFactory::Instance()->MakeAssignment(file_name, line_num, assignment, right,
-                                                         ParseExpression(depth + 1));
+  Expression* expression = ParseExpression(depth + 1);
+  if(expression) {
+    expressions.push(expression);
+  }
+  else {
+    return NULL;
   }
 
-  return assignment;
+  while(Match(TOKEN_ASSIGN) && !Match(TOKEN_END_OF_STREAM)) {
+    NextToken();
+
+    expression = ParseExpression(depth + 1);
+    if(expression) {
+      expressions.push(expression);
+    }
+    else {
+      return NULL;
+    }
+  }
+
+  return NULL;
+
+  // Assignment* assignment = TreeFactory::Instance()->MakeAssignment(file_name, line_num, variable, 
+  // return assignment;
 }
 
 /****************************
