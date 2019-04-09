@@ -3793,24 +3793,36 @@ Assignment* Parser::ParseAssignment(Variable* variable, int depth)
 #endif
 
   NextToken();
-  Assignment* assignment = TreeFactory::Instance()->MakeAssignment(file_name, line_num, variable,
+  Assignment* assignment = TreeFactory::Instance()->MakeAssignment(file_name, line_num, variable, 
                                                                    ParseExpression(depth + 1));
-
-  if(Match(TOKEN_ASSIGN)) {
+  vector<Expression*> expressions;
+  if(assignment && Match(TOKEN_ASSIGN)) {
     NextToken();
+    expressions.push_back(assignment->GetVariable());
+    
+    Variable* right = NULL;
+    if(Match(TOKEN_IDENT)) {
+      expressions.push_back(assignment->GetExpression());
 
-    while(Match(TOKEN_IDENT) && !Match(TOKEN_END_OF_STREAM)) {
-      const wstring ident = scanner->GetToken()->GetIdentifier();
-      NextToken();
+      while(Match(TOKEN_IDENT) && !Match(TOKEN_END_OF_STREAM)) {
+        const wstring ident = scanner->GetToken()->GetIdentifier();
+        NextToken();
 
-      Variable* temp = ParseVariable(ident, depth + 1);
-      if(!Match(TOKEN_ASSIGN)) {
-        ProcessError(TOKEN_ASSIGN);
+        right = ParseVariable(ident, depth + 1);
+        expressions.push_back(right);
+        if(!Match(TOKEN_ASSIGN)) {
+          ProcessError(TOKEN_ASSIGN);
+        }
+        NextToken();
       }
-      NextToken();
     }
-    Expression* expression = ParseExpression(depth + 1);
-    wcout << expression << endl;
+
+    if(!right) {
+      right = static_cast<Variable*>(assignment->GetExpression());
+    }
+
+    assignment = TreeFactory::Instance()->MakeAssignment(file_name, line_num, right,
+                                                         ParseExpression(depth + 1));
   }
 
   return assignment;
