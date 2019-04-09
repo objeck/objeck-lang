@@ -1723,11 +1723,20 @@ namespace frontend {
   class Assignment : public Statement {
   protected:
     friend class TreeFactory;
+    Assignment* child;
     Variable* variable;
     Expression* expression;
 
-  Assignment(const wstring &f, const int l, Variable* v, Expression* e) :
-    Statement(f, l) {
+    Assignment(const wstring& f, const int l, Assignment* c, Variable* v, Expression* e) :
+      Statement(f, l) {
+      child = c;
+      variable = v;
+      expression = e;
+    }
+
+    Assignment(const wstring& f, const int l, Variable* v, Expression* e) :
+      Statement(f, l) {
+      child = NULL;
       variable = v;
       expression = e;
     }
@@ -1736,6 +1745,10 @@ namespace frontend {
     }
 
   public:
+    Assignment* GetChild() {
+      return child;
+    }
+
     Variable* GetVariable() {
       return variable;
     }
@@ -3094,6 +3107,13 @@ namespace frontend {
       return tmp;
     }
     
+    Assignment* MakeAssignment(const wstring& file_name, const int line_num,
+                               Assignment* child, Variable* variable, Expression* expression) {
+      Assignment* tmp = new Assignment(file_name, line_num, child, variable, expression);
+      statements.push_back(tmp);
+      return tmp;
+    }
+
     Assignment* MakeAssignment(const wstring &file_name, const int line_num,
                                Variable* variable, Expression* expression) {
       Assignment* tmp = new Assignment(file_name, line_num, variable, expression);

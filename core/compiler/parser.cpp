@@ -3795,33 +3795,21 @@ Assignment* Parser::ParseAssignment(Variable* variable, int depth)
   NextToken();
   Assignment* assignment = TreeFactory::Instance()->MakeAssignment(file_name, line_num, variable, 
                                                                    ParseExpression(depth + 1));
-  vector<Expression*> expressions;
   if(assignment && Match(TOKEN_ASSIGN)) {
-    NextToken();
-    expressions.push_back(assignment->GetVariable());
-    
     Variable* right = NULL;
-    if(Match(TOKEN_IDENT)) {
-      expressions.push_back(assignment->GetExpression());
+    while(Match(TOKEN_ASSIGN) && !Match(TOKEN_END_OF_STREAM)) {
+      NextToken();
 
-      while(Match(TOKEN_IDENT) && !Match(TOKEN_END_OF_STREAM)) {
-        const wstring ident = scanner->GetToken()->GetIdentifier();
-        NextToken();
-
-        right = ParseVariable(ident, depth + 1);
-        expressions.push_back(right);
-        if(!Match(TOKEN_ASSIGN)) {
-          ProcessError(TOKEN_ASSIGN);
-        }
-        NextToken();
+      if(!Match(TOKEN_IDENT)) {
+        ProcessError(TOKEN_IDENT);
       }
+      const wstring ident = scanner->GetToken()->GetIdentifier();
+      NextToken();
+
+      right = ParseVariable(ident, depth + 1);
     }
 
-    if(!right) {
-      right = static_cast<Variable*>(assignment->GetExpression());
-    }
-
-    assignment = TreeFactory::Instance()->MakeAssignment(file_name, line_num, right,
+    assignment = TreeFactory::Instance()->MakeAssignment(file_name, line_num, assignment, right,
                                                          ParseExpression(depth + 1));
   }
 
