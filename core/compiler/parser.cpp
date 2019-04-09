@@ -3796,6 +3796,23 @@ Assignment* Parser::ParseAssignment(Variable* variable, int depth)
   Assignment* assignment = TreeFactory::Instance()->MakeAssignment(file_name, line_num, variable,
                                                                    ParseExpression(depth + 1));
 
+  if(Match(TOKEN_ASSIGN)) {
+    NextToken();
+
+    while(Match(TOKEN_IDENT) && !Match(TOKEN_END_OF_STREAM)) {
+      const wstring ident = scanner->GetToken()->GetIdentifier();
+      NextToken();
+
+      Variable* temp = ParseVariable(ident, depth + 1);
+      if(!Match(TOKEN_ASSIGN)) {
+        ProcessError(TOKEN_ASSIGN);
+      }
+      NextToken();
+    }
+    Expression* expression = ParseExpression(depth + 1);
+    wcout << expression << endl;
+  }
+
   return assignment;
 }
 

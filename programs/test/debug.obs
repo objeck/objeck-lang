@@ -1,13 +1,5 @@
-use Collection;
-use Encryption;
-
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		Foo();
-	}
-
-	function : Foo() ~ Nil {
-		b : Byte[];
-		Hash->MD5(b);
+		a := b := 10;
 	}
 }
