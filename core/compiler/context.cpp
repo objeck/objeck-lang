@@ -992,12 +992,13 @@ bool ContextAnalyzer::Analyze()
     case ASSIGN_STMT: {
       Assignment* assignment = static_cast<Assignment*>(statement);
       if(assignment->GetChild()) {
+        // build stack assignments
         stack<Assignment*> assignments;
         while(assignment) {
           assignments.push(assignment);
           assignment = assignment->GetChild();
         }
-
+        // process assignments
         while(!assignments.empty()) {
           AnalyzeAssignment(assignments.top(), statement->GetStatementType(), depth);
           assignments.pop();
