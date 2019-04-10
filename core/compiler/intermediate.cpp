@@ -3656,6 +3656,10 @@ void IntermediateEmitter::EmitIndices(ExpressionList* indices)
  ****************************/
 void IntermediateEmitter::EmitAssignment(Assignment* assignment)
 {
+  while(assignment->GetChild()) {
+    EmitAssignment(assignment->GetChild());
+  }
+
   cur_line_num = assignment->GetLineNumber();
 
   // expression
