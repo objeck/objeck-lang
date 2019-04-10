@@ -778,7 +778,26 @@ void IntermediateEmitter::EmitStatement(Statement* statement)
     }
     break;
     
-  case ASSIGN_STMT:
+  case ASSIGN_STMT: {
+    Assignment* assignment = static_cast<Assignment*>(statement);
+    if(assignment->GetChild()) {
+      stack<Assignment*> assignments;
+      while(assignment) {
+        assignments.push(assignment);
+        assignment = assignment->GetChild();
+      }
+
+      while(!assignments.empty()) {
+        EmitAssignment(assignments.top());
+        assignments.pop();
+      }
+    }
+    else {
+      EmitAssignment(assignment);
+    }
+  }
+    break;
+
   case SUB_ASSIGN_STMT:
   case MUL_ASSIGN_STMT:
   case DIV_ASSIGN_STMT:
@@ -3656,10 +3675,6 @@ void IntermediateEmitter::EmitIndices(ExpressionList* indices)
  ****************************/
 void IntermediateEmitter::EmitAssignment(Assignment* assignment)
 {
-  while(assignment->GetChild()) {
-    EmitAssignment(assignment->GetChild());
-  }
-
   cur_line_num = assignment->GetLineNumber();
 
   // expression

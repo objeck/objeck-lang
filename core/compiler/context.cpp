@@ -989,8 +989,24 @@ bool ContextAnalyzer::Analyze()
       AnalyzeAssignment(static_cast<Assignment*>(statement), statement->GetStatementType(), depth);      
       break;
 
-    case ASSIGN_STMT:
-      AnalyzeAssignment(static_cast<Assignment*>(statement), statement->GetStatementType(), depth);
+    case ASSIGN_STMT: {
+      Assignment* assignment = static_cast<Assignment*>(statement);
+      if(assignment->GetChild()) {
+        stack<Assignment*> assignments;
+        while(assignment) {
+          assignments.push(assignment);
+          assignment = assignment->GetChild();
+        }
+
+        while(!assignments.empty()) {
+          AnalyzeAssignment(assignments.top(), statement->GetStatementType(), depth);
+          assignments.pop();
+        }
+      }
+      else {
+        AnalyzeAssignment(assignment, statement->GetStatementType(), depth);
+      }
+    }
       break;
 
     case SIMPLE_STMT:

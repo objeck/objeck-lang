@@ -6,5 +6,10 @@ class Test {
 #		a := b := 999;
 #		a := b := c := x;
 		a := b := c := d := "Foo Bar";
+
+		a->PrintLine();
+		d->PrintLine();
+		(a = d)->PrintLine();
+		(a->Equals(d))->PrintLine();
 	}
 }
