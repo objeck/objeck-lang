@@ -5,11 +5,13 @@ class Test {
 #		a := x;
 #		a := b := 999;
 #		a := b := c := x;
-		a := b := c := d := "Foo Bar";
+		a := b := c := d := 13;
 
 		a->PrintLine();
 		d->PrintLine();
+
 		(a = d)->PrintLine();
-		(a->Equals(d))->PrintLine();
+		d++;
+		(a = d)->PrintLine();
 	}
 }

@@ -781,12 +781,13 @@ void IntermediateEmitter::EmitStatement(Statement* statement)
   case ASSIGN_STMT: {
     Assignment* assignment = static_cast<Assignment*>(statement);
     if(assignment->GetChild()) {
+      // build stack assignments
       stack<Assignment*> assignments;
       while(assignment) {
         assignments.push(assignment);
         assignment = assignment->GetChild();
       }
-
+      // process assignments
       while(!assignments.empty()) {
         EmitAssignment(assignments.top());
         assignments.pop();
