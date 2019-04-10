@@ -3790,38 +3790,40 @@ Assignment* Parser::ParseAssignment(Variable* variable, int depth)
 
   NextToken();
   Expression* expression = ParseExpression(depth + 1);
-  if(expression) {
-    expressions.push(expression);
-  }
-  else {
+  if(!expression) {
     return NULL;
   }
+  expressions.push(expression);
 
   while(Match(TOKEN_ASSIGN) && !Match(TOKEN_END_OF_STREAM)) {
     NextToken();
 
     expression = ParseExpression(depth + 1);
-    if(expression) {
-      expressions.push(expression);
-    }
-    else {
+    if(!expression) {
       return NULL;
     }
+    expressions.push(expression);
   }
 
+  Assignment* assignment = NULL;
   while(!expressions.empty()) {
     Expression* right = expressions.top();
     expressions.pop();
 
-    if(right->GetExpressionType() != VAR_EXPR) {
+    Expression* left = expressions.top();
+    if(left->GetExpressionType() != VAR_EXPR) {
       ProcessError(L"Expected variable in statement", TOKEN_SEMI_COLON);
     }
 
-    Variable* left = static_cast<Variable*>(expressions.top());
-    Assignment* assignment = TreeFactory::Instance()->MakeAssignment(file_name, line_num, left, right);
+    Variable* variable = static_cast<Variable*>(left);
+    assignment = TreeFactory::Instance()->MakeAssignment(file_name, line_num, assignment, variable, right);
+
+    if(expressions.size() == 1) {
+      expressions.pop();
+    }
   }
 
-  return NULL;
+  return assignment;
 }
 
 /****************************
