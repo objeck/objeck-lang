@@ -3455,12 +3455,6 @@ While* Parser::ParseWhile(int depth)
   }
   NextToken();
 
-/* 
-  symbol_table->CurrentParseScope()->NewParseScope();
-  StatementList* statements = ParseStatementList(depth + 1);
-  symbol_table->CurrentParseScope()->PreviousParseScope();
-*/
-
   StatementList* statements;
   symbol_table->CurrentParseScope()->NewParseScope();
   if(!Match(TOKEN_OPEN_BRACE)) {
@@ -3786,14 +3780,14 @@ Leaving* Parser::ParseLeaving(int depth)
 Assignment* Parser::ParseAssignment(Variable* variable, int depth)
 {
   const int line_num = GetLineNumber();
-  const wstring &file_name = GetFileName();
+  const wstring& file_name = GetFileName();
 
 #ifdef _DEBUG
   Debug(L"Assignment", depth);
 #endif
   stack<Expression*> expressions;
   expressions.push(variable);
-  
+
   NextToken();
   Expression* expression = ParseExpression(depth + 1);
   if(expression) {
@@ -3815,10 +3809,19 @@ Assignment* Parser::ParseAssignment(Variable* variable, int depth)
     }
   }
 
-  return NULL;
+  while(!expressions.empty()) {
+    Expression* right = expressions.top();
+    expressions.pop();
 
-  // Assignment* assignment = TreeFactory::Instance()->MakeAssignment(file_name, line_num, variable, 
-  // return assignment;
+    if(right->GetExpressionType() != VAR_EXPR) {
+      ProcessError(L"Expected variable in statement", TOKEN_SEMI_COLON);
+    }
+
+    Variable* left = static_cast<Variable*>(expressions.top());
+    Assignment* assignment = TreeFactory::Instance()->MakeAssignment(file_name, line_num, left, right);
+  }
+
+  return NULL;
 }
 
 /****************************
