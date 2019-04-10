@@ -2,9 +2,9 @@ class Test {
 	function : Main(args : String[]) ~ Nil {
 		x := 10;
 
-		a := x;
-		a := b := 999;
+#		a := x;
+#		a := b := 999;
 #		a := b := c := x;
-#		a := b := c := d := x;
+		a := b := c := d := "Foo Bar";
 	}
 }
