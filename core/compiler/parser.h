@@ -158,6 +158,36 @@ class Parser {
     return name;
   }
 
+  Declaration* AddDeclaration(const wstring& ident, Type* type, bool is_static, const int line_num, const wstring& file_name, int depth) {
+    // add entry
+    wstring scope_name = GetScopeName(ident);
+    SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num,
+                                                                  scope_name, type, is_static,
+                                                                  current_method != NULL);
+
+#ifdef _DEBUG
+    Debug(L"Adding variable: '" + scope_name + L"'", depth + 2);
+#endif
+
+    bool was_added = symbol_table->CurrentParseScope()->AddEntry(entry);
+    if(!was_added) {
+      ProcessError(L"Variable already defined in this scope: '" + ident + L"'");
+    }
+
+    Declaration* declaration;
+    if(Match(TOKEN_ASSIGN)) {
+      Variable* variable = ParseVariable(ident, depth + 1);
+      // FYI: can not specify array indices here
+      declaration = TreeFactory::Instance()->MakeDeclaration(file_name, line_num, entry,
+                                                             ParseAssignment(variable, depth + 1));
+    }
+    else {
+      declaration = TreeFactory::Instance()->MakeDeclaration(file_name, line_num, entry);
+    }
+
+    return declaration;
+  }
+
   // error processing
   void LoadErrorCodes();
   void ProcessError(const ScannerTokenType type);
@@ -195,7 +225,7 @@ class Parser {
   CriticalSection* ParseCritical(int depth);
   Return* ParseReturn(int depth);
   Leaving* ParseLeaving(int depth);
-  Declaration* ParseDeclaration(const wstring &ident, int depth);
+  Declaration* ParseDeclaration(const wstring &name, int depth);
   DeclarationList* ParseDecelerationList(int depth);
   ExpressionList* ParseExpressionList(int depth, ScannerTokenType open = TOKEN_OPEN_PAREN,
                                       ScannerTokenType close = TOKEN_CLOSED_PAREN);
