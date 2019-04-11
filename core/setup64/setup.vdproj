@@ -39,6 +39,12 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_042090644C724E2CA290A4A273D0C206"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_042608F01D494FD4AC15342129E8A019"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -1885,6 +1891,26 @@
             "TargetName" = "8:interpreter.obs"
             "Tag" = "8:"
             "Folder" = "8:_6FCAC2AE2F6447DBA79B76A9CF9E9204"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_042090644C724E2CA290A4A273D0C206"
+            {
+            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win64\\examples\\tic_tac_toe_16.obs"
+            "TargetName" = "8:tic_tac_toe_16.obs"
+            "Tag" = "8:"
+            "Folder" = "8:_1FD623C2D3774267BF3A9CA5065A2B1F"
             "Condition" = "8:"
             "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
@@ -7774,7 +7800,7 @@
         "Name" = "8:Microsoft Visual Studio"
         "ProductName" = "8:Objeck"
         "ProductCode" = "8:{72E5F417-0251-443B-BDAE-094F5E0EC940}"
-        "PackageCode" = "8:{744200A3-DEC9-4206-871E-44CA5E270C40}"
+        "PackageCode" = "8:{D47178DE-CAC0-4CAA-B799-41D7A00207EB}"
         "UpgradeCode" = "8:{A1931BE6-A793-4ECE-B303-66B69408440F}"
         "AspNetVersion" = "8:"
         "RestartWWWService" = "11:FALSE"
