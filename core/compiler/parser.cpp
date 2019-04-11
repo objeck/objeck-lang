@@ -1286,7 +1286,13 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
                                                                instructions::SET_SYS_PROP);
       NextToken();
       break;
-
+      
+    case ASSERT_TRUE:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+                                                               instructions::ASSERT_TRUE);
+      NextToken();
+      break;
+      
     case EXIT:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
                                                                instructions::EXIT);

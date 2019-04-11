@@ -321,6 +321,7 @@ enum ScannerTokenType {
   GET_VERSION,
   GET_SYS_PROP,
   SET_SYS_PROP,
+  ASSERT_TRUE,
   EXIT
 #endif
 };

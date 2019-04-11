@@ -1392,7 +1392,10 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
 
     case STD_ERR_FLUSH:
       return StdFlush(program, inst, op_stack, stack_pos, frame);
-    
+      
+    case ASSERT_TRUE:
+      return AssertTrue(program, inst, op_stack, stack_pos, frame);
+      
     case EXIT:
       return Exit(program, inst, op_stack, stack_pos, frame);
 
@@ -2208,6 +2211,16 @@ bool TrapProcessor::StdErrByteAry(StackProgram* program, size_t* inst, size_t* &
     PushInt(0, op_stack, stack_pos);
   }
 
+  return true;
+}
+
+bool TrapProcessor::AssertTrue(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
+{
+  if(!PopInt(op_stack, stack_pos)) {
+    wcerr << L">>> Assert failed! <<<" << endl;
+    return false;
+  }
+  
   return true;
 }
 

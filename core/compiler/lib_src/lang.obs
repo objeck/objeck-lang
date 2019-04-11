@@ -2846,6 +2846,15 @@ bundle System {
 		}
 		
 		#~
+		Asserts runtime value to be true. If false,
+		program exits with stack trace.
+		@param assert value to assert
+		~#
+		function : Assert(assert : Bool) ~ Nil {
+			ASSERT_TRUE;
+		}
+		
+		#~
 		Returns an OS platform string
 		@return OS platform string
 		~#
