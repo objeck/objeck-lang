@@ -1800,16 +1800,19 @@ namespace frontend {
     friend class TreeFactory;
     SymbolEntry* entry;
     Assignment* assignment;
+    Declaration* child;
 
-  Declaration(const wstring &f, const int l, SymbolEntry* e, Assignment* a) :
+  Declaration(const wstring &f, const int l, SymbolEntry* e, Declaration* c, Assignment* a) :
     Statement(f, l) {
       entry = e;
+      child = c;
       assignment = a;
     }
 
-  Declaration(const wstring &f, const int l, SymbolEntry* e) :
+  Declaration(const wstring &f, const int l, SymbolEntry* e, Declaration* c) :
     Statement(f, l) {
       entry = e;
+      child = c;
       assignment = NULL;
     }
 
@@ -1820,6 +1823,10 @@ namespace frontend {
   public:
     SymbolEntry* GetEntry() {
       return entry;
+    }
+
+    Declaration* GetChild() {
+      return child;
     }
 
     Assignment* GetAssignment() {
@@ -2967,14 +2974,21 @@ namespace frontend {
       return tmp;
     }
 
-    Declaration* MakeDeclaration(const wstring &file_name, const int line_num, SymbolEntry* entry, Assignment* assign) {
-      Declaration* tmp = new Declaration(file_name, line_num, entry, assign);
+    Declaration* MakeDeclaration(const wstring &file_name, const int line_num, SymbolEntry* entry, 
+                                 Declaration* child, Assignment* assign) {
+      Declaration* tmp = new Declaration(file_name, line_num, entry, child, assign);
       statements.push_back(tmp);
       return tmp;
     }
 
-    Declaration* MakeDeclaration(const wstring &file_name, const int line_num, SymbolEntry* entry) {
-      Declaration* tmp = new Declaration(file_name, line_num, entry);
+    Declaration* MakeDeclaration(const wstring& file_name, const int line_num, SymbolEntry* entry, Assignment* assign) {
+      Declaration* tmp = new Declaration(file_name, line_num, entry, NULL, assign);
+      statements.push_back(tmp);
+      return tmp;
+    }
+
+    Declaration* MakeDeclaration(const wstring &file_name, const int line_num, SymbolEntry* entry, Declaration* child) {
+      Declaration* tmp = new Declaration(file_name, line_num, entry, child);
       statements.push_back(tmp);
       return tmp;
     }
