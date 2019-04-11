@@ -2894,14 +2894,12 @@ Expression* Parser::ParseSimpleExpression(int depth)
 
     case TOKEN_IDENT: {
       const wstring& ident = scanner->GetToken()->GetIdentifier();
-      Variable* update_left = ParseVariable(ident, depth + 1);
+      Variable* left = ParseVariable(ident, depth + 1);
+      Expression* right = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, -1);
+      CalculatedExpression* calc = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, 
+                                                                                     MUL_EXPR, left, right);
+      expression = calc;
       NextToken();
-
-      Expression* update_right = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, -1);
-      CalculatedExpression* calc_expression = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, MUL_EXPR);
-      calc_expression->SetLeft(update_left);
-      calc_expression->SetRight(update_right);
-      expression = calc_expression;
     }
       break;
 

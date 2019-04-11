@@ -960,9 +960,14 @@ namespace frontend {
     Expression* left;
     Expression* right;
 
-  CalculatedExpression(const wstring &f, int l, ExpressionType t) :
-    Expression(f, l) {
+    CalculatedExpression(const wstring &f, int l, ExpressionType t) : Expression(f, l) {
       left = right = NULL;
+      type = t;
+    }
+
+    CalculatedExpression(const wstring& f, int l, ExpressionType t, Expression* lhs, Expression* rhs) : Expression(f, l) {
+      left = lhs;
+      right = rhs;
       type = t;
     }
 
@@ -2990,6 +2995,13 @@ namespace frontend {
     Declaration* MakeDeclaration(const wstring &file_name, const int line_num, SymbolEntry* entry, Declaration* child) {
       Declaration* tmp = new Declaration(file_name, line_num, entry, child);
       statements.push_back(tmp);
+      return tmp;
+    }
+
+    CalculatedExpression* MakeCalculatedExpression(const wstring& file_name, int line_num, 
+                                                   ExpressionType type, Expression* lhs, Expression* rhs) {
+      CalculatedExpression* tmp = new CalculatedExpression(file_name, line_num, type, lhs, rhs);
+      expressions.push_back(tmp);
       return tmp;
     }
 
