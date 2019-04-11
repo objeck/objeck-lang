@@ -2284,7 +2284,7 @@ Declaration* Parser::ParseDeclaration(const wstring &name, bool is_stmt, int dep
       }
 
       // apply assignment statement to other variables
-      if(temp) {
+      if(temp && !declaration->GetAssignment()) {
         Variable* left = ParseVariable(ident, depth + 1);
         Assignment* assignment = TreeFactory::Instance()->MakeAssignment(file_name, line_num, left, temp->GetExpression());
         declaration->SetAssignment(assignment);
