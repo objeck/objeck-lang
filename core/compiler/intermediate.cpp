@@ -760,8 +760,25 @@ void IntermediateEmitter::EmitStatement(Statement* statement)
   cur_line_num = statement->GetLineNumber();
   
   switch(statement->GetStatementType()) {
-  case DECLARATION_STMT:
-    EmitDeclaration(static_cast<Declaration*>(statement));
+  case DECLARATION_STMT: {
+    Declaration* declaration = static_cast<Declaration*>(statement);
+    if(declaration->GetChild()) {
+      // build stack declarations
+      stack<Declaration*> declarations;
+      while(declaration) {
+        declarations.push(declaration);
+        declaration = declaration->GetChild();
+      }
+      // process declarations
+      while(!declarations.empty()) {
+        EmitDeclaration(declarations.top());
+        declarations.pop();
+      }
+    }
+    else {
+      EmitDeclaration(static_cast<Declaration*>(statement));
+    }
+  }
     break;
     
   case METHOD_CALL_STMT:

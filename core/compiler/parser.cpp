@@ -604,7 +604,7 @@ Class* Parser::ParseClass(const wstring &bundle_name, int depth)
       const wstring &ident = scanner->GetToken()->GetIdentifier();
       NextToken();
 
-      klass->AddStatement(ParseDeclaration(ident, depth + 1));
+      klass->AddStatement(ParseDeclaration(ident, false, depth + 1));
       if(!Match(TOKEN_SEMI_COLON)) {
         ProcessError(L"Expected ';'", TOKEN_SEMI_COLON);
       }
@@ -906,7 +906,8 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
 
     switch(GetToken()) {
     case TOKEN_COLON:
-      statement = ParseDeclaration(ident, depth + 1);
+    case TOKEN_COMMA:
+      statement = ParseDeclaration(ident, true, depth + 1);
       break;
 
     case TOKEN_ASSESSOR:
@@ -2212,7 +2213,7 @@ Variable* Parser::ParseVariable(const wstring &ident, int depth)
 /****************************
  * Parses a declaration.
  ****************************/
-Declaration* Parser::ParseDeclaration(const wstring &name, int depth)
+Declaration* Parser::ParseDeclaration(const wstring &name, bool is_stmt, int depth)
 {
   const int line_num = GetLineNumber();
   const wstring &file_name = GetFileName();
@@ -2220,6 +2221,25 @@ Declaration* Parser::ParseDeclaration(const wstring &name, int depth)
 #ifdef _DEBUG
   Debug(L"Declaration", depth);
 #endif
+  
+  vector<wstring> idents;
+  idents.push_back(name);
+
+  // parse additional names
+  if(is_stmt) {
+    while(Match(TOKEN_COMMA) && !Match(TOKEN_END_OF_STREAM)) {
+      NextToken();
+
+      if(!Match(TOKEN_IDENT)) {
+        ProcessError(TOKEN_IDENT);
+      }
+      // identifier
+      const wstring& ident = scanner->GetToken()->GetIdentifier();
+      idents.push_back(ident);
+
+      NextToken();
+    }
+  }
 
   if(!Match(TOKEN_COLON)) {
     ProcessError(TOKEN_COLON);
@@ -2228,8 +2248,13 @@ Declaration* Parser::ParseDeclaration(const wstring &name, int depth)
 
   Declaration* declaration = NULL;
   if(Match(TOKEN_OPEN_PAREN)) {
+    // type
     Type* type = ParseType(depth + 1);
-    declaration = AddDeclaration(name, type, false, line_num, file_name, depth);
+
+    // add declarations
+    for(size_t i = 0; i < idents.size(); ++i) {
+      declaration = AddDeclaration(name, type, false, declaration, line_num, file_name, depth);
+    }
   }
   else {    
     // static
@@ -2246,7 +2271,11 @@ Declaration* Parser::ParseDeclaration(const wstring &name, int depth)
     
     // type
     Type* type = ParseType(depth + 1);
-    declaration = AddDeclaration(name, type, is_static, line_num, file_name, depth);
+
+    // add declarations
+    for(size_t i = 0; i < idents.size(); ++i) {
+      declaration = AddDeclaration(idents[i], type, is_static, declaration, line_num, file_name, depth);
+    }
   }
 
   return declaration;
@@ -2275,7 +2304,7 @@ DeclarationList* Parser::ParseDecelerationList(int depth)
     const wstring& ident = scanner->GetToken()->GetIdentifier();
     NextToken();
 
-    declarations->AddDeclaration(ParseDeclaration(ident, depth + 1));
+    declarations->AddDeclaration(ParseDeclaration(ident, false, depth + 1));
 
     if(Match(TOKEN_COMMA)) {
       NextToken();
@@ -3271,7 +3300,7 @@ void Parser::ParseAnonymousClass(MethodCall* method_call, int depth)
       const wstring &ident = scanner->GetToken()->GetIdentifier();
       NextToken();
 
-      klass->AddStatement(ParseDeclaration(ident, depth + 1));
+      klass->AddStatement(ParseDeclaration(ident, false, depth + 1));
       if(!Match(TOKEN_SEMI_COLON)) {
         ProcessError(L"Expected ';'", TOKEN_SEMI_COLON);
       }

@@ -969,8 +969,25 @@ bool ContextAnalyzer::Analyze()
     case SYSTEM_STMT:
       break;
 
-    case DECLARATION_STMT:
-      AnalyzeDeclaration(static_cast<Declaration*>(statement), current_class, depth);
+    case DECLARATION_STMT: {
+      Declaration* declaration = static_cast<Declaration*>(statement);
+      if(declaration->GetChild()) {
+        // build stack declarations
+        stack<Declaration*> declarations;
+        while(declaration) {
+          declarations.push(declaration);
+          declaration = declaration->GetChild();
+        }
+        // process declarations
+        while(!declarations.empty()) {
+          AnalyzeDeclaration(declarations.top(), current_class, depth);
+          declarations.pop();
+        }
+      }
+      else {
+        AnalyzeDeclaration(static_cast<Declaration*>(statement), current_class, depth);
+      }
+    }
       break;
 
     case METHOD_CALL_STMT:

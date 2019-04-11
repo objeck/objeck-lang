@@ -158,7 +158,8 @@ class Parser {
     return name;
   }
 
-  Declaration* AddDeclaration(const wstring& ident, Type* type, bool is_static, const int line_num, const wstring& file_name, int depth) {
+  Declaration* AddDeclaration(const wstring& ident, Type* type, bool is_static, Declaration* child,
+                              const int line_num, const wstring& file_name, int depth) {
     // add entry
     wstring scope_name = GetScopeName(ident);
     SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num,
@@ -178,11 +179,11 @@ class Parser {
     if(Match(TOKEN_ASSIGN)) {
       Variable* variable = ParseVariable(ident, depth + 1);
       // FYI: can not specify array indices here
-      declaration = TreeFactory::Instance()->MakeDeclaration(file_name, line_num, entry,
+      declaration = TreeFactory::Instance()->MakeDeclaration(file_name, line_num, entry, child,
                                                              ParseAssignment(variable, depth + 1));
     }
     else {
-      declaration = TreeFactory::Instance()->MakeDeclaration(file_name, line_num, entry);
+      declaration = TreeFactory::Instance()->MakeDeclaration(file_name, line_num, entry, child);
     }
 
     return declaration;
@@ -225,7 +226,7 @@ class Parser {
   CriticalSection* ParseCritical(int depth);
   Return* ParseReturn(int depth);
   Leaving* ParseLeaving(int depth);
-  Declaration* ParseDeclaration(const wstring &name, int depth);
+  Declaration* ParseDeclaration(const wstring &name, bool is_stmt, int depth);
   DeclarationList* ParseDecelerationList(int depth);
   ExpressionList* ParseExpressionList(int depth, ScannerTokenType open = TOKEN_OPEN_PAREN,
                                       ScannerTokenType close = TOKEN_CLOSED_PAREN);
