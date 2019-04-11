@@ -1,17 +1,28 @@
-class Test {
+class FofG {
+	@f : static : (Int) ~ Int;
+	@g : static : (Int) ~ Int;
+	
 	function : Main(args : String[]) ~ Nil {
-		x := 10;
+		compose := Composer(F(Int) ~ Int, G(Int) ~ Int);
+		compose(13)->PrintLine();
+	}
+	
+	function : F(a : Int) ~ Int {
+		return a + 14;
+	}
 
-#		a := x;
-#		a := b := 999;
-#		a := b := c := x;
-		a := b := c := d := 13;
-
-		a->PrintLine();
-		d->PrintLine();
-
-		(a = d)->PrintLine();
-		d++;
-		(a = d)->PrintLine();
+	function : G(a : Int) ~ Int {
+		return a + 15;
+	}
+	
+	function : native : Compose(x : Int) ~ Int {
+		return @f(@g(x));
+	}
+	
+	function : Composer(f : (Int) ~ Int, g : (Int) ~ Int) ~ (Int) ~ Int {
+		@f := f;
+		@g := g;
+		return Compose(Int) ~ Int;
 	}
 }
+

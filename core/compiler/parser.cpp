@@ -2212,7 +2212,7 @@ Variable* Parser::ParseVariable(const wstring &ident, int depth)
 /****************************
  * Parses a declaration.
  ****************************/
-Declaration* Parser::ParseDeclaration(const wstring &ident, int depth)
+Declaration* Parser::ParseDeclaration(const wstring &name, int depth)
 {
   const int line_num = GetLineNumber();
   const wstring &file_name = GetFileName();
@@ -2222,38 +2222,14 @@ Declaration* Parser::ParseDeclaration(const wstring &ident, int depth)
 #endif
 
   if(!Match(TOKEN_COLON)) {
-    ProcessError(L"Expected ','", TOKEN_COLON);
+    ProcessError(TOKEN_COLON);
   }
   NextToken();
 
-  Declaration* declaration;
+  Declaration* declaration = NULL;
   if(Match(TOKEN_OPEN_PAREN)) {
     Type* type = ParseType(depth + 1);
-
-    // add entry
-    wstring scope_name = GetScopeName(ident);
-    SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num,
-                                                                  scope_name, type, false,
-                                                                  current_method != NULL);
-
-#ifdef _DEBUG
-    Debug(L"Adding variable: '" + scope_name + L"'", depth + 2);
-#endif
-
-    bool was_added = symbol_table->CurrentParseScope()->AddEntry(entry);
-    if(!was_added) {
-      ProcessError(L"Variable already defined in this scope: '" + ident + L"'");
-    }
-
-    if(Match(TOKEN_ASSIGN)) {
-      Variable* variable = ParseVariable(ident, depth + 1);
-      // FYI: can not specify array indices here
-      declaration = TreeFactory::Instance()->MakeDeclaration(file_name, line_num, entry,
-                                                             ParseAssignment(variable, depth + 1));
-    }
-    else {
-      declaration = TreeFactory::Instance()->MakeDeclaration(file_name, line_num, entry);
-    }
+    declaration = AddDeclaration(name, type, false, line_num, file_name, depth);
   }
   else {    
     // static
@@ -2263,38 +2239,14 @@ Declaration* Parser::ParseDeclaration(const wstring &ident, int depth)
       NextToken();
 
       if(!Match(TOKEN_COLON)) {
-        ProcessError(L"Expected ','", TOKEN_COLON);
+        ProcessError(TOKEN_COLON);
       }
       NextToken();
     }
-
+    
     // type
     Type* type = ParseType(depth + 1);
-
-    // add entry
-    wstring scope_name = GetScopeName(ident);
-    SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num,
-                                                                  scope_name, type, is_static,
-                                                                  current_method != NULL);
-
-#ifdef _DEBUG
-    Debug(L"Adding variable: '" + scope_name + L"'", depth + 2);
-#endif
-
-    bool was_added = symbol_table->CurrentParseScope()->AddEntry(entry);
-    if(!was_added) {
-      ProcessError(L"Variable already defined in this scope: '" + ident + L"'");
-    }
-
-    if(Match(TOKEN_ASSIGN)) {
-      Variable* variable = ParseVariable(ident, depth + 1);
-      // FYI: can not specify array indices here
-      declaration = TreeFactory::Instance()->MakeDeclaration(file_name, line_num, entry,
-                                                             ParseAssignment(variable, depth + 1));
-    } 
-    else {
-      declaration = TreeFactory::Instance()->MakeDeclaration(file_name, line_num, entry);
-    }
+    declaration = AddDeclaration(name, type, is_static, line_num, file_name, depth);
   }
 
   return declaration;
