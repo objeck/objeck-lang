@@ -1,21 +1,7 @@
-class Foo {
-	@value : Int;
-
-	New() {
-		@value := Int->Random(10);
-	}
-
-	method : public : ToString() ~ String {
-		return @value->ToString();
-	}
-}
-
 class Test {
 	function : Main(args : String[]) ~ Nil {
-#		x, y, z : Int := 13;
-		x, y, z : Foo := Foo->New();
-#		x : Int;
-		
-		"{$x}, {$x}, {$x}"->PrintLine();
+		a := -10;
+		b := -a * 100;
+		"{$b}"->PrintLine();
 	}
 }
