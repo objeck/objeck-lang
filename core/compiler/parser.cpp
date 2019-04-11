@@ -2273,8 +2273,22 @@ Declaration* Parser::ParseDeclaration(const wstring &name, bool is_stmt, int dep
     Type* type = ParseType(depth + 1);
 
     // add declarations
+    Assignment* temp = NULL;
     for(size_t i = 0; i < idents.size(); ++i) {
-      declaration = AddDeclaration(idents[i], type, is_static, declaration, line_num, file_name, depth);
+      const wstring& ident = idents[i];
+      declaration = AddDeclaration(ident, type, is_static, declaration, line_num, file_name, depth);
+
+      // found assignment
+      if(declaration->GetAssignment()) {
+        temp = declaration->GetAssignment();
+      }
+
+      // apply assignment statement to other variables
+      if(temp) {
+        Variable* left = ParseVariable(ident, depth + 1);
+        Assignment* assignment = TreeFactory::Instance()->MakeAssignment(file_name, line_num, left, temp->GetExpression());
+        declaration->SetAssignment(assignment);
+      }
     }
   }
 

@@ -1838,6 +1838,10 @@ namespace frontend {
       return assignment;
     }
 
+    void SetAssignment(Assignment* a) {
+      assignment = a;
+    }
+
     Declaration* Copy();
 
     const StatementType GetStatementType() {
