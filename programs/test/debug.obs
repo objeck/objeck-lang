@@ -1,7 +1,7 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		a := -10;
-		b := -a * 100;
+		a := 13.5;
+		b := -a * 13;
 		"{$b}"->PrintLine();
 	}
 }
