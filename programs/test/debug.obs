@@ -1,7 +1,7 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		a, b, c : Int := Int->Random(10);
-#		b := -a * 13;
-		"{$a} {$b} {$c}"->PrintLine();
+		a, b : Float := 13.5;
+		b += -a * 13;
+		"{$b}"->PrintLine();
 	}
 }
