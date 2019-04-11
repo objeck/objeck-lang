@@ -1,22 +1,11 @@
-class TicTacToe {
-	enum Foo {
-		PLUG_ONE,
-		PLUG_TWO,
-		PLAYER_WIN
-	}
-
-	consts Bar {
-		SNICKERS := 100,
-		HEATH := -13
-	}
-
+class Test {
 	function : Main(args : String[]) ~ Nil {
-		foo : Foo := Foo->PLUG_TWO;
-		bar : Bar := Bar->HEATH;
-#		foo := Foo->PLUG_TWO;
-#		bar := Bar->HEATH;	
+		Foo();
+	}
 
-		sum := foo->As(Int) + bar->As(Int);
-		"{$sum}"->PrintLine();
+	function : Foo() ~ Nil {
+		Runtime->Assert(true);
+		a := 13;
+		(-a)->PrintLine();
 	}
 }

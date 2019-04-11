@@ -176,7 +176,8 @@ namespace instructions {
     GET_VERSION,
     GET_SYS_PROP,
     SET_SYS_PROP,
-    EXIT,
+    ASSERT_TRUE,
+    EXIT
   } 
   Traps;
 }
