@@ -7,9 +7,6 @@
     <ClCompile Include="..\interpreter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\arch\jit\amd64\jit_amd_lp64.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\loader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -22,6 +19,7 @@
     <ClCompile Include="..\win_main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\arch\jit\ia32\jit_intel_lp32.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\common.h">
@@ -45,15 +43,13 @@
     <ClInclude Include="..\lib_api.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\arch\jit\amd64\jit_amd_lp64.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\interpreter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\shared\sys.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\arch\jit\ia32\jit_intel_lp32.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Header Files">
