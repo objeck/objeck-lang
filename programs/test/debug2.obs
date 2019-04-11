@@ -4,7 +4,7 @@ class Test {
 	}
 
 	function : Foo() ~ Nil {
-		Runtime->Assert(true);
+		Runtime->Assert(false);
 		a := 13;
 		(-a)->PrintLine();
 	}
