@@ -3115,18 +3115,21 @@ MethodCall* Parser::ParseMethodCall(const wstring &ident, int depth)
       NextToken();
       // new array
       if(Match(TOKEN_OPEN_BRACKET)) {
-        ExpressionList* expressions = ParseExpressionList(depth + 1, TOKEN_OPEN_BRACKET,
-                                                          TOKEN_CLOSED_BRACKET);
-        method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, NEW_ARRAY_CALL,
-                                                              ident, expressions);
+        ExpressionList* expressions = ParseExpressionList(depth + 1, TOKEN_OPEN_BRACKET, TOKEN_CLOSED_BRACKET);
+        method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, NEW_ARRAY_CALL, ident, expressions);
       }
       // new object
       else {
         method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, NEW_INST_CALL, ident,
                                                               ParseExpressionList(depth + 1));
-        if(Match(TOKEN_OPEN_BRACE) || Match(TOKEN_IMPLEMENTS_ID)) {
+				// anonymous class
+				if(Match(TOKEN_LES)) {
+					vector<wstring> generic_dclrs = ParseGenerics();
+					method_call->SetGenerics(generic_dclrs);
+				}
+				else if(Match(TOKEN_OPEN_BRACE) || Match(TOKEN_IMPLEMENTS_ID)) {
           ParseAnonymousClass(method_call, depth);
-        } 
+        }
       }
     }
     else if(Match(TOKEN_AS_ID)) {

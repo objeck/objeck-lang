@@ -179,6 +179,8 @@ class Parser {
 					ProcessError(L"Expected ',' or '>'");
 				}
 			}
+
+			NextToken();
 		}
 
 		return generic_names;
