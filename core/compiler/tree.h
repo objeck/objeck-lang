@@ -2297,15 +2297,17 @@ namespace frontend {
     bool was_called;
     bool is_interface;
     MethodCall* anonymous_call;
-    vector<wstring> interface_strings;
+		vector<wstring> generic_strings;
+		vector<wstring> interface_strings;
 
-  Class(const wstring &f, const int l, const wstring &n, 
-        const wstring &p, vector<wstring> e, bool i) : ParseNode(f, l) {
+		Class(const wstring &f, const int l, const wstring &n, const wstring &p, 
+				vector<wstring> g, vector<wstring> e, bool i) : ParseNode(f, l) {
       name = n;
       parent_name = p;
       is_interface = i;
       id = -1;
       parent = NULL;
+			generic_strings = g;
       interface_strings = e;
       lib_parent = NULL;
       is_virtual = false;
@@ -2313,6 +2315,21 @@ namespace frontend {
       anonymous_call = NULL;
       symbol_table = NULL;
     }
+
+		Class(const wstring& f, const int l, const wstring& n, const wstring& p,
+					vector<wstring> e, bool i) : ParseNode(f, l) {
+			name = n;
+			parent_name = p;
+			is_interface = i;
+			id = -1;
+			parent = NULL;
+			interface_strings = e;
+			lib_parent = NULL;
+			is_virtual = false;
+			was_called = false;
+			anonymous_call = NULL;
+			symbol_table = NULL;
+		}
 
     ~Class() {
     } 
@@ -2910,12 +2927,19 @@ namespace frontend {
     }
 
     Class* MakeClass(const wstring &file_name, const int line_num, const wstring &name, 
-                     const wstring &parent_name, vector<wstring> enforces, 
-                     bool is_interface) {
-      Class* tmp = new Class(file_name, line_num, name, parent_name, enforces, is_interface);
+                     const wstring &parent_name, vector<wstring> generics, 
+										 vector<wstring> interfaces, bool is_interface) {
+      Class* tmp = new Class(file_name, line_num, name, parent_name, generics, interfaces, is_interface);
       nodes.push_back(tmp);
       return tmp;
     }
+
+		Class* MakeClass(const wstring& file_name, const int line_num, const wstring& name,
+										 const wstring& parent_name, vector<wstring> interfaces, bool is_interface) {
+			Class* tmp = new Class(file_name, line_num, name, parent_name, interfaces, is_interface);
+			nodes.push_back(tmp);
+			return tmp;
+		}
 
     Method* MakeMethod(const wstring &file_name, const int line_num, const wstring &name, MethodType type, bool is_function, bool is_native) {
       Method* tmp = new Method(file_name, line_num, name, type, is_function, is_native);
