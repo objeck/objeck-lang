@@ -158,6 +158,32 @@ class Parser {
     return name;
   }
 
+	vector<wstring> ParseGenerics() {
+		vector<wstring> generic_names;
+		if(Match(TOKEN_LES)) {
+			NextToken();
+
+			while(!Match(TOKEN_GTR) && !Match(TOKEN_END_OF_STREAM)) {
+				if(!Match(TOKEN_IDENT)) {
+					ProcessError(TOKEN_IDENT);
+				}
+				// identifier
+				const wstring generic_name = scanner->GetToken()->GetIdentifier();
+				generic_names.push_back(generic_name);
+				NextToken();
+
+				if(Match(TOKEN_COMMA) && !Match(TOKEN_GTR, SECOND_INDEX)) {
+					NextToken();
+				}
+				else if(!Match(TOKEN_GTR)) {
+					ProcessError(L"Expected ',' or '>'");
+				}
+			}
+		}
+
+		return generic_names;
+	}
+	
   Declaration* AddDeclaration(const wstring& ident, Type* type, bool is_static, Declaration* child,
                               const int line_num, const wstring& file_name, int depth) {
     // add entry
