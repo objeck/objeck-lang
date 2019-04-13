@@ -572,7 +572,7 @@ Class* Parser::ParseClass(const wstring &bundle_name, int depth)
   }
 
   Class* klass = TreeFactory::Instance()->MakeClass(file_name, line_num, cls_name, parent_cls_name, 
-                                                    interface_names, false);
+																										generic_names, interface_names, false);
   current_class = klass;
 
   // add '@self' entry
