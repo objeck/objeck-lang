@@ -515,27 +515,7 @@ Class* Parser::ParseClass(const wstring &bundle_name, int depth)
 #endif
 
   // generics ids
-  vector<wstring> generic_names;
-  if(Match(TOKEN_LES)) {
-	  NextToken();
-
-	  while(!Match(TOKEN_GTR) && !Match(TOKEN_END_OF_STREAM)) {
-		  if(!Match(TOKEN_IDENT)) {
-			  ProcessError(TOKEN_IDENT);
-		  }
-		  // identifier
-		  const wstring generic_name = scanner->GetToken()->GetIdentifier();
-			generic_names.push_back(generic_name);
-		  NextToken();
-
-		  if(Match(TOKEN_COMMA) && !Match(TOKEN_GTR, SECOND_INDEX)) {
-			  NextToken();
-		  }
-		  else if(!Match(TOKEN_GTR)) {
-				ProcessError(L"Expected ',' or '>'");
-		  }
-	  }
-  }
+	vector<wstring> &generic_names = ParseGenerics();
 
   // from id
   wstring parent_cls_name;
