@@ -126,6 +126,7 @@ namespace frontend {
     vector<Type*> func_params;
     Type* func_rtrn;
     int func_param_count;
+		vector<wstring> generic_dclrs;
     
     Type(Type* t) {
       if(t) {
@@ -174,6 +175,14 @@ namespace frontend {
     const EntryType GetType() {
       return type;
     }
+
+		void SetGenerics(vector<wstring>& g) {
+			generic_dclrs = g;
+		}
+
+		vector<wstring> SetGenerics() {
+			return generic_dclrs;
+		}
 
     void SetDimension(int d) {
       dimension = d;

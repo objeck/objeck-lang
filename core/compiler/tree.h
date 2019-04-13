@@ -2542,7 +2542,7 @@ namespace frontend {
     bool is_func_def;
     bool is_dyn_func_call;
     SymbolEntry* dyn_func_entry;
-		vector<wstring> generics_dclrs;
+		vector<wstring> generic_dclrs;
 
   MethodCall(const wstring &f, const int l, MethodCallType t,
              const wstring &v, ExpressionList* e) :
@@ -2669,11 +2669,11 @@ namespace frontend {
     }
 
 		void SetGenerics(vector<wstring>& g) {
-			generics_dclrs = g;
+			generic_dclrs = g;
 		}
 
-		vector<wstring> GetGenerics() {
-			return generics_dclrs;
+		vector<wstring> SetGenerics() {
+			return generic_dclrs;
 		}
 
     bool IsFunctionDefinition() {

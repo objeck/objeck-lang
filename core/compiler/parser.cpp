@@ -3933,6 +3933,11 @@ Type* Parser::ParseType(int depth)
   }
 
   if(type) {
+		if(Match(TOKEN_LES)) {
+			vector<wstring> generic_names = ParseGenerics();
+			type->SetGenerics(generic_names);
+		}
+		
     int dimension = 0;
 
     if(Match(TOKEN_OPEN_BRACKET)) {
