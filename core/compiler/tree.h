@@ -2542,6 +2542,7 @@ namespace frontend {
     bool is_func_def;
     bool is_dyn_func_call;
     SymbolEntry* dyn_func_entry;
+		vector<wstring> generics_dclrs;
 
   MethodCall(const wstring &f, const int l, MethodCallType t,
              const wstring &v, ExpressionList* e) :
@@ -2615,8 +2616,7 @@ namespace frontend {
       anonymous_klass = NULL;
     }
 
-  MethodCall(const wstring &f, const int l, const wstring &v, const wstring &m) 
-    : Statement(f, l), Expression(f, l) {
+		MethodCall(const wstring &f, const int l, const wstring &v, const wstring &m) : Statement(f, l), Expression(f, l) {
       variable_name = v;
       call_type = ENUM_CALL;
       method_name = m;
@@ -2636,8 +2636,7 @@ namespace frontend {
       anonymous_klass = NULL;
     }
     
-  MethodCall(const wstring &f, const int l, Variable* v, const wstring &m, ExpressionList* e) 
-    : Statement(f, l), Expression(f, l) {
+		MethodCall(const wstring &f, const int l, Variable* v, const wstring &m, ExpressionList* e)  : Statement(f, l), Expression(f, l) {
       variable = v;
       call_type = METHOD_CALL;
       method_name = m;
@@ -2668,6 +2667,14 @@ namespace frontend {
     Type* GetFunctionReturn() {
       return func_rtrn;
     }
+
+		void SetGenerics(vector<wstring>& g) {
+			generics_dclrs = g;
+		}
+
+		vector<wstring> GetGenerics() {
+			return generics_dclrs;
+		}
 
     bool IsFunctionDefinition() {
       return is_func_def;
