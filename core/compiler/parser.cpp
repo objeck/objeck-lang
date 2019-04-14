@@ -60,8 +60,7 @@ void Parser::ProcessError(ScannerTokenType type)
 {
   wstring msg = error_msgs[type];
 #ifdef _DEBUG
-  GetLogger() << L"\tError: " << GetFileName() << L":" << GetLineNumber() << L": "
-        << msg << endl;
+  GetLogger() << L"\tError: " << GetFileName() << L":" << GetLineNumber() << L": " << msg << endl;
 #endif
 
   const wstring &str_line_num = ToString(GetLineNumber());
