@@ -1415,6 +1415,7 @@ bundle Collection {
 		@param values values to append 
 		~#
 		method : public : AddBack(values : Vector) ~ Nil {
+			max := values->Size() + @size;
 			Expand();
 			temp := values->ToArray();
 			Runtime->Copy(@values, @size, temp, 0, temp->Size());
