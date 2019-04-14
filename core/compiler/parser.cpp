@@ -514,8 +514,14 @@ Class* Parser::ParseClass(const wstring &bundle_name, int depth)
   Debug(L"[Class: name='" + cls_name + L"']", depth);
 #endif
 
-  // generics ids
+  // generic ids
 	vector<wstring> &generic_names = ParseGenerics();
+	for(size_t i = 0; i < generic_names.size(); ++i) {
+		if(bundle_name.size() > 0) {
+			generic_names[i].insert(0, L".");
+			generic_names[i].insert(0, bundle_name);
+		}
+	}
 
   // from id
   wstring parent_cls_name;
