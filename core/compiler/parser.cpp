@@ -515,7 +515,7 @@ Class* Parser::ParseClass(const wstring &bundle_name, int depth)
 #endif
 
   // generic ids
-	vector<wstring> &generic_names = ParseGenerics();
+	vector<wstring> generic_names = ParseGenerics();
 	for(size_t i = 0; i < generic_names.size(); ++i) {
 		if(bundle_name.size() > 0) {
 			generic_names[i].insert(0, L".");
