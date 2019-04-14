@@ -4435,11 +4435,7 @@ bool ContextAnalyzer::Analyze()
     // program class
     //
     else if(left && right && (left_class = SearchProgramClasses(left->GetClassName()))) {
-			//
-			// TODO: look up local class generic
-			//
-
-      // program
+			// program
       Class* right_class = SearchProgramClasses(right->GetClassName());
       if(right_class) {
         // downcast
@@ -4466,7 +4462,7 @@ bool ContextAnalyzer::Analyze()
             ReplaceSubstring(right->GetClassName(), L"#", L"->") + L"'");
         }
       }
-      // library
+			// library
       else if(linker->SearchClassLibraries(right->GetClassName(), program->GetUses(current_class->GetFileName()))) {
         LibraryClass* right_lib_class = linker->SearchClassLibraries(right->GetClassName(), program->GetUses(current_class->GetFileName()));
         // downcast
@@ -4493,6 +4489,21 @@ bool ContextAnalyzer::Analyze()
         ProcessError(expression, L"Invalid cast between class, enum or Nil");
       }
     }
+		//
+		// generic class
+		//
+		else if(left && right && (left_class = current_class->GetGeneric(left->GetClassName()))) {
+			// program
+			Class* right_class = current_class->GetGeneric(right->GetClassName());
+			if(right_class) {
+				if(left_class->GetName() == right_class->GetName()) {
+					return;
+				}
+			}
+			else {
+				ProcessError(expression, L"Invalid cast between generic and class");
+			}
+		}
     //
     // enum libary
     //
