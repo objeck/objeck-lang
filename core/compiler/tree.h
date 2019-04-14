@@ -2294,27 +2294,47 @@ namespace frontend {
     vector<LibraryClass*> lib_interfaces;
     vector<Class*> children;
     bool is_virtual;
+		bool is_generic;
     bool was_called;
     bool is_interface;
     MethodCall* anonymous_call;
-		vector<wstring> generic_strings;
 		vector<wstring> interface_strings;
+		map<wstring, Class*> generic_classes;
 
-		Class(const wstring &f, const int l, const wstring &n, const wstring &p, 
-				vector<wstring> g, vector<wstring> e, bool i) : ParseNode(f, l) {
-      name = n;
-      parent_name = p;
-      is_interface = i;
-      id = -1;
-      parent = NULL;
-			generic_strings = g;
-      interface_strings = e;
-      lib_parent = NULL;
-      is_virtual = false;
-      was_called = false;
-      anonymous_call = NULL;
-      symbol_table = NULL;
+		Class(const wstring& f, const int l, const wstring& n, const wstring& p,
+					vector<wstring> g, vector<wstring> e, bool i) : ParseNode(f, l) {
+			name = n;
+			parent_name = p;
+			is_interface = i;
+			id = -1;
+			parent = NULL;
+			interface_strings = e;
+			lib_parent = NULL;
+			is_virtual = false;
+			is_generic = false;
+			was_called = false;
+			anonymous_call = NULL;
+			symbol_table = NULL;
+
+			for(size_t i = 0; i < g.size(); ++i) {
+				const wstring generic_name = g[i];
+				generic_classes[generic_name] = new Class(f, l, generic_name, L"", true);
+			}
     }
+
+		Class(const wstring& f, const int l, const wstring& n, const wstring& p, bool z) : ParseNode(f, l) {
+			name = n;
+			parent_name = p;
+			is_interface = true;
+			id = -1;
+			parent = NULL;
+			lib_parent = NULL;
+			is_virtual = false;
+			is_generic = z;
+			was_called = false;
+			anonymous_call = NULL;
+			symbol_table = NULL;
+		}
 
 		Class(const wstring& f, const int l, const wstring& n, const wstring& p,
 					vector<wstring> e, bool i) : ParseNode(f, l) {
@@ -2326,12 +2346,21 @@ namespace frontend {
 			interface_strings = e;
 			lib_parent = NULL;
 			is_virtual = false;
+			is_generic = false;
 			was_called = false;
 			anonymous_call = NULL;
 			symbol_table = NULL;
 		}
 
     ~Class() {
+			map<wstring, Class*>::iterator iter;
+			for(iter = generic_classes.begin(); iter != generic_classes.end(); ++iter) {
+				Class* tmp = iter->second;
+				if(tmp) {
+					delete tmp;
+					tmp = NULL;
+				}
+			}
     } 
 
   public:
@@ -2355,8 +2384,17 @@ namespace frontend {
       return interface_strings;
     }
 
-		vector<wstring> GetGenerics() {
-			return generic_strings;
+		bool HasGenerics() {
+			return generic_classes.size() > 0;
+		}
+
+		Class* GetGeneric(const wstring &n) {
+			map<wstring, Class*>::iterator result = generic_classes.find(n);
+			if(result != generic_classes.end()) {
+				return result->second;
+			}
+
+			return NULL;
 		}
 
     const wstring GetName() const {
@@ -2411,6 +2449,10 @@ namespace frontend {
     bool IsInterface() {
       return is_interface;
     }
+
+		bool IsGeneric() {
+			return is_generic;
+		}
 
     void AddStatement(Statement* s) {
       statements.push_back(s);
@@ -2948,6 +2990,12 @@ namespace frontend {
 		Class* MakeClass(const wstring& file_name, const int line_num, const wstring& name,
 										 const wstring& parent_name, vector<wstring> interfaces, bool is_interface) {
 			Class* tmp = new Class(file_name, line_num, name, parent_name, interfaces, is_interface);
+			nodes.push_back(tmp);
+			return tmp;
+		}
+
+		Class* MakeClass(const wstring& file_name, const int line_num, const wstring& name, const wstring& parent_name) {
+			Class* tmp = new Class(file_name, line_num, name, parent_name, false);
 			nodes.push_back(tmp);
 			return tmp;
 		}
