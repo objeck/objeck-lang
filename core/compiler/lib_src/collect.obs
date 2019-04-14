@@ -441,13 +441,13 @@ bundle Collection {
 		#~
 		Sorts the values in the vector
 		~#
-		method : public : native : Sort() ~ Nil {
+		method : public : Sort() ~ Nil {
 			a : Int[] := @values;
 			b : Int[] := Int->New[@size];
 			MergeSort(0, @size - 1, a, b);
 		}
 		
-		method : native : MergeSort(low : Int, hi : Int, a : Int[], b : Int[]) ~ Nil {
+		method : MergeSort(low : Int, hi : Int, a : Int[], b : Int[]) ~ Nil {
 			if(low < hi) {
 				mid := (low + hi) / 2;
 				MergeSort(low, mid, a, b);
@@ -533,7 +533,7 @@ bundle Collection {
 		Converts the vector into an integer array
 		@return integer array
 		~#
-		method : public : native : ToArray() ~ Int[] {
+		method : public : ToArray() ~ Int[] {
 			array : Int[] := Int->New[@size];
 			Runtime->Copy(array, 0, @values, 0, @size);
 			return array;
@@ -672,7 +672,7 @@ bundle Collection {
 		@param b second value
 		@return true if values were swapped
 		~#
-		method : public : native : Swap(a : Int, b : Int) ~ Bool {
+		method : public : Swap(a : Int, b : Int) ~ Bool {
 			if(a < -1 | b < -1 | a > @size | b > @size) {
 				return false;
 			};
@@ -684,7 +684,7 @@ bundle Collection {
 			return true;
 		}
 
-		method : native : Expand() ~ Nil {
+		method : Expand() ~ Nil {
 			if(@size >= @values->Size()) {
 				temp : Float[] := Float->New[@size * 2];
 				Runtime->Copy(temp, 0, @values, 0, @size);
@@ -861,13 +861,13 @@ bundle Collection {
 		#~
 		Sorts the values in the vector
 		~#
-		method : public : native : Sort() ~ Nil {
+		method : public : Sort() ~ Nil {
 			a : Float[] := @values;
 			b : Float[] := Float->New[@size];
 			MergeSort(0, @size - 1, a, b);
 		}
 		
-		method : native : MergeSort(low : Int, hi : Int, a : Float[], b : Float[]) ~ Nil {
+		method : MergeSort(low : Int, hi : Int, a : Float[], b : Float[]) ~ Nil {
 			if(low < hi) {
 				mid := (low + hi) / 2;
 				MergeSort(low, mid, a, b);
@@ -953,7 +953,7 @@ bundle Collection {
 		Converts the vector into an float array
 		@return float array
 		~#
-		method : public : native : ToArray() ~ Float[] {
+		method : public : ToArray() ~ Float[] {
 			array : Float[] := Float->New[@size];
 			Runtime->Copy(array, 0, @values, 0, @size);
 			return array;
@@ -1084,7 +1084,7 @@ bundle Collection {
 			@size := values->Size();
 		}
 
-		method : native : Expand() ~ Nil {
+		method : Expand() ~ Nil {
 			if(@size >= @values->Size()) {
 				temp : Compare[] := Compare->New[@size * 2];
 				Runtime->Copy(temp, 0, @values, 0, @size);
@@ -1098,7 +1098,7 @@ bundle Collection {
 		@param b second value
 		@return true if values were swapped
 		~#
-		method : public : native : Swap(a : Int, b : Int) ~ Bool {
+		method : public : Swap(a : Int, b : Int) ~ Bool {
 			if(a < -1 | b < -1 | a > @size | b > @size) {
 				return false;
 			};
@@ -1229,7 +1229,7 @@ bundle Collection {
 			MergeSort(0, @size - 1, a, b);
 		}
 		
-		method : native : MergeSort(low : Int, hi : Int, a : Compare[], b : Compare[]) ~ Nil {
+		method : MergeSort(low : Int, hi : Int, a : Compare[], b : Compare[]) ~ Nil {
 			if(low < hi) {
 				mid := (low + hi) / 2;
 				MergeSort(low, mid, a, b);
@@ -1275,7 +1275,7 @@ bundle Collection {
 		@param value value to search for
 		@return index of found value, -1 if not found
 		~#
-		method : public : native : Find(value : Compare) ~ Int {
+		method : public : Find(value : Compare) ~ Int {
          for(i := 0; i < @size; i += 1;) {
             if(@values[i]->Compare(value) = 0) {
                return i;
@@ -1347,7 +1347,7 @@ bundle Collection {
 		Converts the vector into an object array
 		@return object array
 		~#
-		method : public : native : ToArray() ~ Compare[] {
+		method : public : ToArray() ~ Compare[] {
 			array : Compare[] := Compare->New[@size];
 			Runtime->Copy(array, 0, @values, 0, @size);
 			return array;
@@ -1388,7 +1388,7 @@ bundle Collection {
 			@size := values->Size();
 		}
 
-		method : native : Expand() ~ Nil {
+		method : Expand() ~ Nil {
 			if(@size >= @values->Size()) {
 				temp : Base[] := Base->New[@size * 2];
 				Runtime->Copy(temp, 0, @values, 0, @size);
@@ -1415,13 +1415,7 @@ bundle Collection {
 		@param values values to append 
 		~#
 		method : public : AddBack(values : Vector) ~ Nil {
-			max := values->Size() + @size;
-			if(max >= @values->Size()) {
-				temp : Base[] := Base->New[max + max / 2];
-				Runtime->Copy(temp, 0, @values, 0, @size);
-				@values := temp;
-			};
-			
+			Expand();
 			temp := values->ToArray();
 			Runtime->Copy(@values, @size, temp, 0, temp->Size());
 			@size := max;
@@ -1456,7 +1450,7 @@ bundle Collection {
 		@param b second value
 		@return true if values were swapped
 		~#
-		method : public : native : Swap(a : Int, b : Int) ~ Bool {
+		method : public : Swap(a : Int, b : Int) ~ Bool {
 			if(a < -1 | b < -1 | a > @size | b > @size) {
 				return false;
 			};
@@ -1542,7 +1536,7 @@ bundle Collection {
 		Converts the vector into an object array
 		@return objeck array
 		~#
-		method : public : native : ToArray() ~ Base[] {
+		method : public : ToArray() ~ Base[] {
 			array : Base[] := Base->New[@size];
 			Runtime->Copy(array, 0, @values, 0, @size);
 			return array;
@@ -1566,7 +1560,7 @@ bundle Collection {
 		Pushes a value onto the stack
 		@value value to push
 		~#
-		method : public: native : Push(value : Int) ~ Nil {
+		method : public: Push(value : Int) ~ Nil {
 			@values->AddBack(value);
 		}
 		
@@ -1574,7 +1568,7 @@ bundle Collection {
 		Pushes a value from the stack
 		@return popped valued, 0 if stack is empty
 		~#
-		method : public: native : Pop() ~ Int {
+		method : public: Pop() ~ Int {
 			if(@values->Size() > 0) {
 				value : Int := @values->Get(@values->Size() - 1);
 				@values->RemoveBack();
@@ -1589,7 +1583,7 @@ bundle Collection {
 		Check the top of the stack
 		@return value on the top of stack, 0 if stack is empty
 		~#
-		method : public: native : Top() ~ Int {
+		method : public: Top() ~ Int {
 			if(@values->Size() > 0) {
 				return @values->Get(@values->Size() - 1);
 			};
@@ -1638,7 +1632,7 @@ bundle Collection {
 		Pushes a value onto the stack
 		@value value to push
 		~#
-		method : public : native : Push(value : Float) ~ Nil {
+		method : public : Push(value : Float) ~ Nil {
 			@values->AddBack(value);
 		}
 		
@@ -1646,7 +1640,7 @@ bundle Collection {
 		Pushes a value from the stack
 		@return popped valued, 0.0 if stack is empty
 		~#
-		method : public: native : Pop() ~ Float {
+		method : public: Pop() ~ Float {
 			if(@values->Size() > 0) {
 				value : Float := @values->Get(@values->Size() - 1);
 				@values->RemoveBack();
@@ -1661,7 +1655,7 @@ bundle Collection {
 		Check the top of the stack
 		@return value on the top of stack, 0 if stack is empty
 		~#
-		method : public: native : Top() ~ Float {
+		method : public: Top() ~ Float {
 			if(@values->Size() > 0) {
 				return @values->Get(@values->Size() - 1);
 			};
@@ -1710,7 +1704,7 @@ bundle Collection {
 		Pushes a value onto the stack
 		@value value to push
 		~#
-		method : public: native : Push(value : Base) ~ Nil {
+		method : public: Push(value : Base) ~ Nil {
 			@values->AddBack(value);
 		}
 		
@@ -1718,7 +1712,7 @@ bundle Collection {
 		Pushes a value from the stack
 		@return popped valued, Nil if stack is empty
 		~#
-		method : public : native : Pop() ~ Base {
+		method : public : Pop() ~ Base {
 			if(@values->Size() > 0) {
 				value : Base := @values->Get(@values->Size() - 1);
 				@values->RemoveBack();
@@ -1733,7 +1727,7 @@ bundle Collection {
 		Check the top of the stack
 		@return value on the top of stack, Nil if stack is empty
 		~#
-		method : public: native : Top() ~ Base {
+		method : public: Top() ~ Base {
 			if(@values->Size() > 0) {
 				return @values->Get(@values->Size() - 1);
 			};
@@ -2736,7 +2730,7 @@ bundle Collection {
 		Adds a value to the back of the queue
 		@param value value to add
 		~#
-		method : public: native : Add(value : Float) ~ Nil {
+		method : public: Add(value : Float) ~ Nil {
 			@queue->AddBack(value);
 		}
 		
@@ -2744,11 +2738,11 @@ bundle Collection {
 		Removes a value from the front of the queue
 		@return value removed
 		~#
-		method : public : native : Remove() ~ Float {
+		method : public : Remove() ~ Float {
 			if(@queue->Size() > 0) {
-                value := @queue->Front();
+				value := @queue->Front();
 				@queue->RemoveFront();
-                return value;
+				return value;
 			};
 			
 			return 0.0;
@@ -2758,7 +2752,7 @@ bundle Collection {
 		Get the value from the head of the queue
 		@return head value, 0.0 if queue is empty
 		~#
-		method : public: native : Head() ~ Float {
+		method : public: Head() ~ Float {
 			if(@queue->Size() > 0) {
 				return @queue->Front();
 			};
@@ -2807,7 +2801,7 @@ bundle Collection {
 		Adds a value to the back of the queue
 		@param value value to add
 		~#
-		method : public: native : Add(value : Int) ~ Nil {
+		method : public: Add(value : Int) ~ Nil {
 			@queue->AddBack(value);
 		}
 		
@@ -2815,11 +2809,11 @@ bundle Collection {
 		Removes a value from the front of the queue
 		@return value removed
 		~#
-		method : public : native : Remove() ~ Int {
+		method : public : Remove() ~ Int {
 			if(@queue->Size() > 0) {
-                value := @queue->Front();				
-                @queue->RemoveFront();
-                return value;
+				value := @queue->Front();				
+				@queue->RemoveFront();
+				return value;
 			};
 			
 			return 0;
@@ -2878,7 +2872,7 @@ bundle Collection {
 		Adds a value to the back of the queue
 		@param value value to add
 		~#
-		method : public: native : Add(value : Compare) ~ Nil {
+		method : public: Add(value : Compare) ~ Nil {
 			@queue->AddBack(value);
 		}
 		
@@ -2886,7 +2880,7 @@ bundle Collection {
 		Removes a value from the front of the queue
 		@return value removed
 		~#
-		method : public : native : Remove() ~ Compare {
+		method : public : Remove() ~ Compare {
 			if(@queue->Size() > 0) {
 				value := @queue->Front();
 				@queue->RemoveFront();
@@ -2900,7 +2894,7 @@ bundle Collection {
 		Get the value from the head of the queue
 		@return head value, Nil if queue is empty
 		~#
-		method : public: native : Head() ~ Compare {
+		method : public: Head() ~ Compare {
 			if(@queue->Size() > 0) {
 				return @queue->Front();
 			};
@@ -2986,7 +2980,7 @@ bundle Collection {
 		Get a collection of keys
 		@return vector of keys
 		~#
-		method : public : native : GetKeys() ~ IntVector {
+		method : public : GetKeys() ~ IntVector {
 			keys := IntVector->New();
 			holder_keys := @map->GetKeys();
 			for(i := 0; i < holder_keys->Size(); i += 1;) {
@@ -3111,7 +3105,7 @@ bundle Collection {
 		Get a collection of keys
 		@return vector of keys
 		~#
-		method : public: native : GetKeys() ~ FloatVector {
+		method : public: GetKeys() ~ FloatVector {
 			keys := FloatVector->New();
 			holder_keys := @map->GetKeys();
 			for(i := 0; i < holder_keys->Size(); i += 1;) {
@@ -3321,7 +3315,7 @@ bundle Collection {
 		#~
 		Clears the map
 		~#
-		method : public : native : Empty() ~ Nil {
+		method : public : Empty() ~ Nil {
 			@map->Empty();
 		}
 
@@ -3329,7 +3323,7 @@ bundle Collection {
 		Checks to see if the map is empty
 		@return true if empty, false otherwise
 		~#
-		method : public : native : IsEmpty() ~ Bool {
+		method : public : IsEmpty() ~ Bool {
 			return @map->IsEmpty();
 		}
 
@@ -3357,7 +3351,7 @@ bundle Collection {
 		Size of map
 		@return size of queue
 		~#
-		method : public : native : Size() ~ Int {
+		method : public : Size() ~ Int {
 			return @map->Size();
 		}
 	}
@@ -3399,7 +3393,7 @@ bundle Collection {
 		Size of queue
 		@return size of queue
 		~#
-		method : public : native : Size() ~ Int {
+		method : public : Size() ~ Int {
 			return @size;
 		}
 		
@@ -3407,14 +3401,14 @@ bundle Collection {
 		Checks to see if the queue is empty
 		@return true if empty, false otherwise
 		~#
-		method : public : native : IsEmpty() ~ Bool {
+		method : public : IsEmpty() ~ Bool {
 			return @size = 0;
 		}
 
 		#~
 		Clears the queue
 		~#
-		method : public : native : Empty() ~ Nil {
+		method : public : Empty() ~ Nil {
 			@root := Nil;
 			@last := Nil;
 			@Removed := Nil;
@@ -3484,7 +3478,7 @@ bundle Collection {
 			return vector;
 		}
 		
-		method : native : GetKeys(node :  Collection.TreeNode, vector :  Collection.CompareVector) ~ Nil {
+		method : GetKeys(node :  Collection.TreeNode, vector :  Collection.CompareVector) ~ Nil {
 			if(node <> Nil) {
 				# process left 
 				GetKeys(node->GetLeft(), vector);
@@ -3507,7 +3501,7 @@ bundle Collection {
 			return vector;
 		}
 
-		method : native : GetValues(node :  Collection.TreeNode, vector :  Collection.Vector) ~ Nil {
+		method : GetValues(node :  Collection.TreeNode, vector :  Collection.Vector) ~ Nil {
 			if(node <> Nil) {
 				# process left 
 				GetValues(node->GetLeft(), vector);
@@ -3525,7 +3519,7 @@ bundle Collection {
 		@param key key
 		@param value value
 		~#
-		method : public : native : Insert(key : Compare, value : Base) ~ Nil {
+		method : public : Insert(key : Compare, value : Base) ~ Nil {
 			if(@root = Nil) {
 				@root := Insert(key, value, Nil->As( Collection.TreeNode));
 			}
@@ -3534,7 +3528,7 @@ bundle Collection {
 			};
 		}
 		
-		method : native : Insert(key : Compare, value : Base, node :  Collection.TreeNode) ~  Collection.TreeNode {
+		method : Insert(key : Compare, value : Base, node :  Collection.TreeNode) ~  Collection.TreeNode {
 			if(node = Nil) {
 				node := TreeNode->New(key, value, 1);
 				@size := @size + 1;
@@ -3613,7 +3607,7 @@ bundle Collection {
 			return node;
 		}
 		
-		method : native : Predecessor(node :  Collection.TreeNode) ~ Compare {
+		method : Predecessor(node :  Collection.TreeNode) ~ Compare {
 			if(node->GetLeft() <> Nil) {
 				left : TreeNode := node->GetLeft();
 				while(left->GetLeft() <> Nil) {
@@ -3626,7 +3620,7 @@ bundle Collection {
 			return node->GetKey();
 		}
 
-		method : native : Successor(node :  Collection.TreeNode) ~ Compare {
+		method : Successor(node :  Collection.TreeNode) ~ Compare {
 			if(node->GetRight() <> Nil) {
 				right : TreeNode := node->GetRight();
 				while(right->GetRight() <> Nil) {
@@ -3639,7 +3633,7 @@ bundle Collection {
 			return node->GetKey();
 		}
 
-		 method : native : DecreaseLevel(node :  Collection.TreeNode) ~ TreeNode {
+		 method : DecreaseLevel(node :  Collection.TreeNode) ~ TreeNode {
 			if(node->GetLeft() <> Nil & node->GetRight() <> Nil) {
 				left : Int := node->GetLeft()->GetLevel();
 				right : Int := node->GetRight()->GetLevel();
@@ -3746,7 +3740,7 @@ bundle Collection {
 		Checks to see if the queue is empty
 		@return true if empty, false otherwise
 		~#
-		method : public : native : IsEmpty() ~ Bool {
+		method : public : IsEmpty() ~ Bool {
 			return @map->Size() = 0;
 		}
 
@@ -3877,7 +3871,7 @@ bundle Collection {
 		Checks to see if the map is empty
 		@return true if empty, false otherwise
 		~#
-		method : public : native : IsEmpty() ~ Bool {
+		method : public : IsEmpty() ~ Bool {
 			return @map->IsEmpty();
 		}
 
@@ -3904,7 +3898,7 @@ bundle Collection {
 		Size of map
 		@return size of queue
 		~#
-		method : public : native : Size() ~ Int {
+		method : public : Size() ~ Int {
 			return @map->Size();
 		}
 	}
@@ -3975,7 +3969,7 @@ bundle Collection {
 		Checks to see if the map is empty
 		@return true if empty, false otherwise
 		~#
-		method : public : native : IsEmpty() ~ Bool {
+		method : public : IsEmpty() ~ Bool {
 			return @map->IsEmpty();
 		}
 
@@ -4002,7 +3996,7 @@ bundle Collection {
 		Size of map
 		@return size of queue
 		~#
-		method : public : native : Size() ~ Int {
+		method : public : Size() ~ Int {
 			return @map->Size();
 		}
 	}
@@ -4057,7 +4051,7 @@ bundle Collection {
 		#~
 		Clears the set
 		~#
-		method : public : native : Empty() ~ Nil {
+		method : public : Empty() ~ Nil {
 			@map->Empty();
 		}
 
@@ -4065,7 +4059,7 @@ bundle Collection {
 		Checks to see if the map is empty
 		@return true if empty, false otherwise
 		~#
-		method : public : native : IsEmpty() ~ Bool {
+		method : public : IsEmpty() ~ Bool {
 			return @map->IsEmpty();
 		}
 
@@ -4092,7 +4086,7 @@ bundle Collection {
 		Size of map
 		@return size of queue
 		~#
-		method : public : native : Size() ~ Int {
+		method : public : Size() ~ Int {
 			return @map->Size();
 		}
 	}
@@ -4147,7 +4141,7 @@ bundle Collection {
 		#~
 		Clears the set
 		~#
-		method : public : native : Empty() ~ Nil {
+		method : public : Empty() ~ Nil {
 			@map->Empty();
 		}
 
@@ -4155,7 +4149,7 @@ bundle Collection {
 		Checks to see if the map is empty
 		@return true if empty, false otherwise
 		~#
-		method : public : native : IsEmpty() ~ Bool {
+		method : public : IsEmpty() ~ Bool {
 			return @map->IsEmpty();
 		}
 		
@@ -4163,7 +4157,7 @@ bundle Collection {
 		Size of map
 		@return size of queue
 		~#
-		method : public : native : Size() ~ Int {
+		method : public : Size() ~ Int {
 			return @map->Size();
 		}
 	}
@@ -4236,7 +4230,7 @@ bundle Collection {
 		#~
 		Clears the map
 		~#
-		method : public : native : Empty() ~ Nil {
+		method : public : Empty() ~ Nil {
 			@hash->Empty();
 		}
 	
@@ -4244,7 +4238,7 @@ bundle Collection {
 		Size of map
 		@return size of queue
 		~#
-		method : public : native : Size() ~ Int {
+		method : public : Size() ~ Int {
 			return @hash->Size();
 		}
 	}
@@ -4309,7 +4303,7 @@ bundle Collection {
 		@param key search key
 		@return true if found, false otherwise
 		~#
-		method : public : native : Has(key : Compare) ~ Bool {
+		method : public : Has(key : Compare) ~ Bool {
 			result := Find(key);
 			return result <> Nil;
 		}
@@ -4408,7 +4402,7 @@ bundle Collection {
 			@value := value;
 		}
 
-		method : public : native : Compare(rhs : Compare) ~ Int {		
+		method : public : Compare(rhs : Compare) ~ Int {		
 			return @key->Compare(rhs);
 		}
 
@@ -4416,11 +4410,11 @@ bundle Collection {
 			return @key->HashID();
 		}
 		
-		method : public : native : GetKey() ~ Compare {
+		method : public : GetKey() ~ Compare {
 			return @key;
 		}
 
-		method : public : native : Get() ~ Base {
+		method : public : Get() ~ Base {
 			return @value;
 		}
 	}
