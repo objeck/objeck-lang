@@ -2355,6 +2355,10 @@ namespace frontend {
       return interface_strings;
     }
 
+		vector<wstring> GetGenerics() {
+			return generic_strings;
+		}
+
     const wstring GetName() const {
       return name;
     }

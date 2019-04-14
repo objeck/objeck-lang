@@ -880,6 +880,16 @@ class ContextAnalyzer {
       return true;
     }
 
+		// look up generic types
+		const vector<wstring> generic_dclrs = current_class->GetGenerics();
+		if(generic_dclrs.size() > 0) {
+			vector<wstring>::const_iterator found = find(generic_dclrs.begin(), generic_dclrs.end(), type->GetClassName());
+			if(found != generic_dclrs.end()) {
+				type->SetClassName(*found);
+				return true;
+			}
+		}
+
     Enum* eenum = SearchProgramEnums(type->GetClassName());
     if(eenum) {
       type->SetClassName(type->GetClassName());

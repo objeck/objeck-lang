@@ -1,6 +1,6 @@
-class TestG1<A,B> {
+class Test<A> {
 	function : Main(args : String[]) ~ Nil {
-		n : Test<String, FooBar > := Test->New()<String,FooBar>;
+		t : Test<String> := Test->New()<String>;
 	}
 
 	function : Swap(a : A, aa : A) ~ Nil {
