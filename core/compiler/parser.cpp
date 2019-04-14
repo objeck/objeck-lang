@@ -678,9 +678,7 @@ Class* Parser::ParseInterface(const wstring &bundle_name, int depth)
     ProcessError(L"Class has already been defined");
   }
 
-  vector<wstring> interface_strings;
-  Class* klass = TreeFactory::Instance()->MakeClass(file_name, line_num, cls_name, L"", 
-                                                    interface_strings, true);
+  Class* klass = TreeFactory::Instance()->MakeClass(file_name, line_num, cls_name, L"");
   current_class = klass;
 
   while(!Match(TOKEN_CLOSED_BRACE) && !Match(TOKEN_END_OF_STREAM)) {

@@ -4435,6 +4435,10 @@ bool ContextAnalyzer::Analyze()
     // program class
     //
     else if(left && right && (left_class = SearchProgramClasses(left->GetClassName()))) {
+			//
+			// TODO: look up local class generic
+			//
+
       // program
       Class* right_class = SearchProgramClasses(right->GetClassName());
       if(right_class) {
