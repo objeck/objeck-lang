@@ -1,7 +1,7 @@
 /***************************************************************************
  * Language parse tree.
  *
- * Copyright (c) 2008-201, Randy Hollines
+ * Copyright (c) 2008-2019, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and uses in source and binary forms, with or without
@@ -2718,8 +2718,12 @@ namespace frontend {
 			generic_dclrs = g;
 		}
 
-		vector<wstring> SetGenerics() {
+		vector<wstring> GetGenerics() {
 			return generic_dclrs;
+		}
+
+		bool HasGenerics() {
+			return generic_dclrs.size() > 0;
 		}
 
     bool IsFunctionDefinition() {
