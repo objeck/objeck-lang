@@ -2353,7 +2353,7 @@ bool ContextAnalyzer::Analyze()
 				if(valid_generics) {
 					Class* klass = method_call->GetMethod()->GetClass();
 
-					// TODO: WIP
+					// TODO: have generic and concrete
 					wcout << klass->GetName() << endl;
 				}
 			}
