@@ -1,4 +1,8 @@
 class Test<A> {
+	New() {
+
+	}
+	
 	function : Main(args : String[]) ~ Nil {
 		t : Test<String> := Test->New()<String>;
 	}

@@ -1589,8 +1589,7 @@ bool ContextAnalyzer::Analyze()
             AddMethodParameter(method_call, entry, depth + 1);
           }
           else {
-            ProcessError(static_cast<Expression*>(method_call), L"Invalid '@self' reference for variable: '" + 
-                         item_name + L"'");
+            ProcessError(static_cast<Expression*>(method_call), L"Invalid '@self' reference for variable: '" + item_name + L"'");
           }
         }
         //
@@ -1602,13 +1601,12 @@ bool ContextAnalyzer::Analyze()
             AddMethodParameter(method_call, entry, depth + 1);
           }
           else {
-            ProcessError(static_cast<Expression*>(method_call), L"Invalid '@parent' reference for variable: '" + 
-                         item_name + L"'");
+            ProcessError(static_cast<Expression*>(method_call), L"Invalid '@parent' reference for variable: '" + item_name + L"'");
           }
         }
         else {	  
           ProcessError(static_cast<Expression*>(method_call), L"Undefined or incompatible enum type: '" + 
-                       ReplaceSubstring(enum_name, L"#", L"->") + L"'");
+											 ReplaceSubstring(enum_name, L"#", L"->") + L"'");
         }
       }
       
@@ -2337,6 +2335,28 @@ bool ContextAnalyzer::Analyze()
         method_call->GetMethodCall()->SetEvalType(method->GetReturn(), false);
 
       }
+
+			// instance from generic definition
+			if(method_call->GetCallType() == NEW_INST_CALL && method_call->HasGenerics()) {
+				bool valid_generics = true;
+				const vector<wstring> generic_names = method_call->GetGenerics();
+				for(size_t i = 0; i < generic_names.size(); ++i) {
+					const wstring cls_name = generic_names[i];
+					if(!SearchProgramClasses(cls_name) &&
+						 !linker->SearchClassLibraries(cls_name, program->GetUses(current_class->GetFileName()))) {
+						ProcessError(static_cast<Expression*>(method_call), L"Undefined class: '" + cls_name + L"'");
+						valid_generics = false;
+					}
+				}
+
+				// add concrete class definition
+				if(valid_generics) {
+					Class* klass = method_call->GetMethod()->GetClass();
+
+					// TODO: WIP
+					wcout << klass->GetName() << endl;
+				}
+			}
 
       // enum check
       if(method_call->GetMethodCall() && method_call->GetMethodCall()->GetCallType() == ENUM_CALL) {

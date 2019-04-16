@@ -1,7 +1,7 @@
 /***************************************************************************
  * Language parser.
  *
- * Copyright (c) 2008-2018, Randy Hollines
+ * Copyright (c) 2008-2019, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -73,13 +73,11 @@ void Parser::ProcessError(ScannerTokenType type)
 void Parser::ProcessError(const wstring &msg)
 {
 #ifdef _DEBUG
-  GetLogger() << L"\tError: " << GetFileName() << L":" << GetLineNumber() << L": "
-        << msg << endl;
+  GetLogger() << L"\tError: " << GetFileName() << L":" << GetLineNumber() << L": " << msg << endl;
 #endif
 
   const wstring &str_line_num = ToString(GetLineNumber());
-  errors.insert(pair<int, wstring>(GetLineNumber(), GetFileName() + L":" + 
-                                   str_line_num + L": " + msg));
+  errors.insert(pair<int, wstring>(GetLineNumber(), GetFileName() + L":" + str_line_num + L": " + msg));
 }
 
 /****************************
