@@ -126,7 +126,7 @@ namespace frontend {
     vector<Type*> func_params;
     Type* func_rtrn;
     int func_param_count;
-		vector<wstring> generic_dclrs;
+		vector<Type*> generic_dclrs;
     
     Type(Type* t) {
       if(t) {
@@ -176,11 +176,9 @@ namespace frontend {
       return type;
     }
 
-		void SetGenerics(vector<wstring>& g) {
-			generic_dclrs = g;
-		}
+		void SetGenerics(const vector<wstring>& g);
 
-		vector<wstring> SetGenerics() {
+		vector<Type*> GetGenerics() {
 			return generic_dclrs;
 		}
 

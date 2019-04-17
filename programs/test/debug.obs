@@ -5,6 +5,7 @@ class Test<A> {
 	
 	function : Main(args : String[]) ~ Nil {
 		t : Test<String> := Test->New()<String>;
+		t->Swap("foo", "bar");
 	}
 
 	function : Swap(a : A, aa : A) ~ Nil {

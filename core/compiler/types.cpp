@@ -34,6 +34,15 @@
 using namespace frontend;
 
 /****************************
+ * Type class
+ ****************************/
+void Type::SetGenerics(const vector<wstring>& g) {
+	for(size_t i = 0; i < g.size(); ++i) {
+		generic_dclrs.push_back(TypeFactory::Instance()->MakeType(CLASS_TYPE, g[i]));
+	}
+}
+
+/****************************
  * TypeFactory class
  ****************************/
 TypeFactory* TypeFactory::instance;

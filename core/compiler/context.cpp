@@ -2153,7 +2153,7 @@ bool ContextAnalyzer::Analyze()
     ExpressionList* calling_params = method_call->GetCallingParameters();
     vector<Expression*> expr_params = calling_params->GetExpressions();
     vector<Method*> candidates = klass->GetAllUnqualifiedMethods(method_name);
-
+		
     // save all valid candidates
     vector<MethodCallSelection*> matches;
     for(size_t i = 0; i < candidates.size(); ++i) {
@@ -2167,7 +2167,14 @@ bool ContextAnalyzer::Analyze()
           // get method type
           Type* method_type = NULL;
           if(method_parms[j]->GetEntry() && method_parms[j]->GetEntry()->GetType()) {
-            method_type = method_parms[j]->GetEntry()->GetType();
+						if(klass->IsGeneric()) {
+							// TODO: map generic to concreate
+//							const vector<Type*> foo_bar = method_call->GetEntry()->GetType()->GetGenerics();
+							method_type = TypeFactory::Instance()->MakeType(CLASS_TYPE, L"String");
+						}
+						else {
+							method_type = method_parms[j]->GetEntry()->GetType();
+						}
             ResolveClassEnumType(method_type);
           }
           // add parameter match
@@ -2352,9 +2359,7 @@ bool ContextAnalyzer::Analyze()
 				// add concrete class definition
 				if(valid_generics) {
 					Class* klass = method_call->GetMethod()->GetClass();
-
-					// TODO: have generic and concrete
-					wcout << klass->GetName() << endl;
+					method_call->GetEvalType()->SetGenerics(generic_names);
 				}
 			}
 
@@ -4512,11 +4517,10 @@ bool ContextAnalyzer::Analyze()
 		//
 		// generic class
 		//
-		else if(left && right && (left_class = current_class->GetGeneric(left->GetClassName()))) {
+		else if(left && right && current_class->HasGeneric(left->GetClassName())) {
 			// program
-			Class* right_class = current_class->GetGeneric(right->GetClassName());
-			if(right_class) {
-				if(left_class->GetName() == right_class->GetName()) {
+			if(current_class->HasGeneric(right->GetClassName())) {
+				if(left->GetClassName() == right->GetClassName()) {
 					return;
 				}
 			}
