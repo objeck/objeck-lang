@@ -2299,8 +2299,8 @@ namespace frontend {
     bool is_interface;
     MethodCall* anonymous_call;
 		vector<wstring> interface_strings;
-		map<wstring, Class*> generic_classes;
-
+		vector<wstring>  generic_strings;
+		
 		Class(const wstring& f, const int l, const wstring& n, const wstring& p,
 					vector<wstring> g, vector<wstring> e, bool i) : ParseNode(f, l) {
 			name = n;
@@ -2311,15 +2311,11 @@ namespace frontend {
 			interface_strings = e;
 			lib_parent = NULL;
 			is_virtual = false;
-			is_generic = false;
+			is_generic = g.size() > 0;
 			was_called = false;
 			anonymous_call = NULL;
 			symbol_table = NULL;
-
-			for(size_t i = 0; i < g.size(); ++i) {
-				const wstring generic_name = g[i];
-				generic_classes[generic_name] = new Class(f, l, generic_name, L"", true);
-			}
+			generic_strings = g;
     }
 
 		Class(const wstring& f, const int l, const wstring& n, const wstring& p, bool z) : ParseNode(f, l) {
@@ -2353,14 +2349,6 @@ namespace frontend {
 		}
 
     ~Class() {
-			map<wstring, Class*>::iterator iter;
-			for(iter = generic_classes.begin(); iter != generic_classes.end(); ++iter) {
-				Class* tmp = iter->second;
-				if(tmp) {
-					delete tmp;
-					tmp = NULL;
-				}
-			}
     } 
 
   public:
@@ -2384,17 +2372,22 @@ namespace frontend {
       return interface_strings;
     }
 
-		bool HasGenerics() {
-			return generic_classes.size() > 0;
+		vector<wstring> GetGenericNames() {
+			return generic_strings;
 		}
 
-		Class* GetGeneric(const wstring &n) {
-			map<wstring, Class*>::iterator result = generic_classes.find(n);
-			if(result != generic_classes.end()) {
-				return result->second;
+		bool HasGenerics() {
+			return generic_strings.size() > 0;
+		}
+
+		bool HasGeneric(const wstring &n) {
+			for(size_t i = 0; i < generic_strings.size(); ++i) {
+				if(generic_strings[i] == n) {
+					return true;
+				}
 			}
 
-			return NULL;
+			return false;
 		}
 
     const wstring GetName() const {

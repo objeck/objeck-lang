@@ -882,7 +882,7 @@ class ContextAnalyzer {
 
 		// look up generic types
 		if(current_class->HasGenerics()) {
-			if(current_class->GetGeneric(type->GetClassName())) {
+			if(current_class->HasGeneric(type->GetClassName())) {
 				type->SetClassName(type->GetClassName());
 				return true;
 			}
@@ -1176,7 +1176,7 @@ class ContextAnalyzer {
   void AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* method_call,
                          bool is_virtual, bool is_expr, const int depth);
   wstring EncodeMethodCall(ExpressionList* calling_params, const int depth);
-  Method* ResolveMethodCall(Class* klass, MethodCall* method_call, const int depth);
+	Method* ResolveMethodCall(Class* klass, MethodCall* method_call, const int depth);
   LibraryMethod* ResolveMethodCall(LibraryClass* klass, MethodCall* method_call, const int depth);
   int MatchCallingParameter(Expression* calling_param, Type* method_type,
                             Class* klass, LibraryClass* lib_klass, const int depth);
