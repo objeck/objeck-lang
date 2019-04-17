@@ -1793,6 +1793,11 @@ bool ContextAnalyzer::Analyze()
         klass = SearchProgramClasses(cls_name);
         lib_klass = linker->SearchClassLibraries(cls_name, program->GetUses(current_class->GetFileName()));
 
+				// hack, hack, look up current klass
+				if(!klass && !lib_klass && current_class->IsGeneric()) {
+
+				}
+
         if(!klass && !lib_klass) {
           if(SearchProgramEnums(cls_name) || linker->SearchEnumLibraries(cls_name, program->GetUses(current_class->GetFileName()))) {
             klass = program->GetClass(INT_CLASS_ID);
@@ -2208,7 +2213,6 @@ bool ContextAnalyzer::Analyze()
 				else {
 					left = method_parms[j]->GetEntry()->GetType();
 				}
-
 
         ResolveClassEnumType(left);
         AnalyzeRightCast(left, expression, IsScalar(expression), depth + 1);
