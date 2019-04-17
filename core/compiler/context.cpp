@@ -2167,15 +2167,17 @@ bool ContextAnalyzer::Analyze()
           // get method type
           Type* method_type = NULL;
           if(method_parms[j]->GetEntry() && method_parms[j]->GetEntry()->GetType()) {
+						
+						// TODO: hacky, hack, hack
 						if(klass->IsGeneric()) {
-							// TODO: map generic to concreate
 //							const vector<Type*> foo_bar = method_call->GetEntry()->GetType()->GetGenerics();
 							method_type = TypeFactory::Instance()->MakeType(CLASS_TYPE, L"String");
 						}
 						else {
 							method_type = method_parms[j]->GetEntry()->GetType();
 						}
-            ResolveClassEnumType(method_type);
+            
+						ResolveClassEnumType(method_type);
           }
           // add parameter match
           match->AddParameterMatch(MatchCallingParameter(expr_params[j], method_type, klass, NULL, depth));
@@ -2197,7 +2199,17 @@ bool ContextAnalyzer::Analyze()
           expression = expression->GetMethodCall();
         }
 
-        Type* left = method_parms[j]->GetEntry()->GetType();
+				// TODO: hacky, hack, hack
+				Type* left = NULL;
+				if(klass->IsGeneric()) {
+					//							const vector<Type*> foo_bar = method_call->GetEntry()->GetType()->GetGenerics();
+					left = TypeFactory::Instance()->MakeType(CLASS_TYPE, L"String");
+				}
+				else {
+					left = method_parms[j]->GetEntry()->GetType();
+				}
+
+
         ResolveClassEnumType(left);
         AnalyzeRightCast(left, expression, IsScalar(expression), depth + 1);
       }
@@ -2291,7 +2303,15 @@ bool ContextAnalyzer::Analyze()
             ProcessError(static_cast<Expression*>(method_call), L"Invalid operation with 'Nil' value");
           }
 
-          Type* left = mthd_params[i]->GetEntry()->GetType();
+					// TODO: hacky, hack, hack
+					Type* left = NULL;
+					if(klass->IsGeneric()) {
+						left = TypeFactory::Instance()->MakeType(CLASS_TYPE, L"System.String");
+					}
+					else {
+						left = mthd_params[i]->GetEntry()->GetType();
+					}
+
           ResolveClassEnumType(left);
           AnalyzeRightCast(left, expression->GetEvalType(), expression, IsScalar(expression), depth + 1);	
         }
