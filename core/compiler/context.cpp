@@ -4495,11 +4495,11 @@ bool ContextAnalyzer::Analyze()
 							Type* right_concrete = right_concretes[i];
 
 							if(!ResolveClassEnumType(left_concrete)) {
-								ProcessError(expression, L"Undefined class: '" + left_concretes[i]->GetClassName() + L"'");
+								ProcessError(expression, L"Undefined class: '" + left_concrete->GetClassName() + L"'");
 							}
 
 							if(!ResolveClassEnumType(right_concrete)) {
-								ProcessError(expression, L"Undefined class: '" + right_concretes[i]->GetClassName() + L"'");
+								ProcessError(expression, L"Undefined class: '" + right_concrete->GetClassName() + L"'");
 							}
 
 							if(left_concrete->GetClassName() != right_concrete->GetClassName()) {
