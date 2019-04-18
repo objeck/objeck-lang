@@ -1,15 +1,23 @@
-class Test<A> {
-	New() {
+class Foo {
+	function : Main(args : String[]) ~ Nil {
+		b : Bar<String> := Bar->New()<String>;
+		b->Set("foo");
+		s : String := b->Get();
+	}
+}
 
+class Bar<A> {
+	@aa : A;
+
+	New() {
 	}
 	
-	function : Main(args : String[]) ~ Nil {
-		t : Test<String> := Test->New()<String>;
-		t->Swap("foo", "bar")->PrintLine();
+	method : public : Set(a : A) ~ Nil {
+		@aa := a;
+	}
+	
+	method : public : Get() ~ A {
+		return @aa;
 	}
 
-	function : Swap(a : A, aa : A) ~ A {
-		aa := a;
-		return aa;
-	}
 }
