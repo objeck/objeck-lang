@@ -44,119 +44,119 @@ using namespace frontend;
  * Parsers source files.
  ****************************/
 class Parser {
-  bool alt_syntax;
-  ParsedProgram* program;
-  ParsedBundle* current_bundle;
-  Class* current_class;
-  Method* current_method;
-  Method* prev_method;
-  Scanner* scanner;
-  SymbolTableManager* symbol_table;
-  map<ScannerTokenType, wstring> error_msgs;
-  map<int, wstring> errors;
-  wstring src_path;
-  wstring run_prgm;
-  unsigned int anonymous_class_id;
-  
-  inline void NextToken() {
-    scanner->NextToken();
-  }
+	bool alt_syntax;
+	ParsedProgram* program;
+	ParsedBundle* current_bundle;
+	Class* current_class;
+	Method* current_method;
+	Method* prev_method;
+	Scanner* scanner;
+	SymbolTableManager* symbol_table;
+	map<ScannerTokenType, wstring> error_msgs;
+	map<int, wstring> errors;
+	wstring src_path;
+	wstring run_prgm;
+	unsigned int anonymous_class_id;
 
-  inline bool Match(ScannerTokenType type, int index = 0) {
-    return scanner->GetToken(index)->GetType() == type;
-  }
+	inline void NextToken() {
+		scanner->NextToken();
+	}
 
-  inline bool IsBasicType(ScannerTokenType type) {
-    switch(GetToken()) {
-    case TOKEN_BOOLEAN_ID:
-    case TOKEN_BYTE_ID:
-    case TOKEN_INT_ID:
-    case TOKEN_FLOAT_ID:
-    case TOKEN_CHAR_ID:
-      return true;
+	inline bool Match(ScannerTokenType type, int index = 0) {
+		return scanner->GetToken(index)->GetType() == type;
+	}
 
-    default:
-      break;
-    }
+	inline bool IsBasicType(ScannerTokenType type) {
+		switch(GetToken()) {
+		case TOKEN_BOOLEAN_ID:
+		case TOKEN_BYTE_ID:
+		case TOKEN_INT_ID:
+		case TOKEN_FLOAT_ID:
+		case TOKEN_CHAR_ID:
+			return true;
 
-    return false;
-  }
+		default:
+			break;
+		}
 
-  inline ScannerTokenType GetToken(int index = 0) {
-    return scanner->GetToken(index)->GetType();
-  }
+		return false;
+	}
 
-  inline int GetLineNumber() {
-    return scanner->GetToken()->GetLineNumber();
-  }
+	inline ScannerTokenType GetToken(int index = 0) {
+		return scanner->GetToken(index)->GetType();
+	}
 
-  inline const wstring GetFileName() {
-    return scanner->GetToken()->GetFileName();
-  }
+	inline int GetLineNumber() {
+		return scanner->GetToken()->GetLineNumber();
+	}
 
-  inline const wstring GetScopeName(const wstring &ident) {
-    wstring scope_name;
-    if(current_method) {
-      scope_name = current_method->GetName() + L":" + ident;
-    } 
-    else if(current_class) {
-      scope_name = current_class->GetName() + L":" + ident;
-    }
-    else {
-      scope_name = ident;
-    }
-    
-    return scope_name;
-  }
+	inline const wstring GetFileName() {
+		return scanner->GetToken()->GetFileName();
+	}
 
-  inline const wstring GetEnumScopeName(const wstring &ident) {
-    wstring scope_name;
-    if(current_class) {
-      scope_name = current_class->GetName() + L"#" + ident;
-    }
-    else {
-      scope_name = ident;
-    }
-    
-    return scope_name;
-  }
+	inline const wstring GetScopeName(const wstring& ident) {
+		wstring scope_name;
+		if(current_method) {
+			scope_name = current_method->GetName() + L":" + ident;
+		}
+		else if(current_class) {
+			scope_name = current_class->GetName() + L":" + ident;
+		}
+		else {
+			scope_name = ident;
+		}
 
-  void Debug(const wstring &msg, int depth) {
-    GetLogger() << setw(4) << GetLineNumber() << L": ";
-    for(int i = 0; i < depth; ++i) {
-      GetLogger() << L"  ";
-    }
-    GetLogger() << msg << endl;
-  }
+		return scope_name;
+	}
 
-  inline wstring ToString(int v) {
-    wostringstream str;
-    str << v;
-    return str.str();
-  }
+	inline const wstring GetEnumScopeName(const wstring& ident) {
+		wstring scope_name;
+		if(current_class) {
+			scope_name = current_class->GetName() + L"#" + ident;
+		}
+		else {
+			scope_name = ident;
+		}
 
-  inline wstring ParseBundleName() {
-    wstring name;
-    if(Match(TOKEN_IDENT)) {
-      while(Match(TOKEN_IDENT) && !Match(TOKEN_END_OF_STREAM)) {
-        name += scanner->GetToken()->GetIdentifier();
-        NextToken();
-        if(Match(TOKEN_PERIOD)) {
-          name += L'.';
-          NextToken();
-        }
-        else if(Match(TOKEN_IDENT)) {
-          ProcessError(L"Expected period", TOKEN_SEMI_COLON);
-          NextToken();
-        }
-      }
-    } 
-    else {
-      ProcessError(TOKEN_IDENT);
-    }
-    
-    return name;
-  }
+		return scope_name;
+	}
+
+	void Debug(const wstring& msg, int depth) {
+		GetLogger() << setw(4) << GetLineNumber() << L": ";
+		for(int i = 0; i < depth; ++i) {
+			GetLogger() << L"  ";
+		}
+		GetLogger() << msg << endl;
+	}
+
+	inline wstring ToString(int v) {
+		wostringstream str;
+		str << v;
+		return str.str();
+	}
+
+	inline wstring ParseBundleName() {
+		wstring name;
+		if(Match(TOKEN_IDENT)) {
+			while(Match(TOKEN_IDENT) && !Match(TOKEN_END_OF_STREAM)) {
+				name += scanner->GetToken()->GetIdentifier();
+				NextToken();
+				if(Match(TOKEN_PERIOD)) {
+					name += L'.';
+					NextToken();
+				}
+				else if(Match(TOKEN_IDENT)) {
+					ProcessError(L"Expected period", TOKEN_SEMI_COLON);
+					NextToken();
+				}
+			}
+		}
+		else {
+			ProcessError(TOKEN_IDENT);
+		}
+
+		return name;
+	}
 
 	vector<wstring> ParseGenerics() {
 		vector<wstring> generic_names;
@@ -185,113 +185,113 @@ class Parser {
 
 		return generic_names;
 	}
-	
-  Declaration* AddDeclaration(const wstring& ident, Type* type, bool is_static, Declaration* child,
-                              const int line_num, const wstring& file_name, int depth) {
-    // add entry
-    wstring scope_name = GetScopeName(ident);
-    SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num,
-                                                                  scope_name, type, is_static,
-                                                                  current_method != NULL);
+
+	Declaration* AddDeclaration(const wstring& ident, Type* type, bool is_static, Declaration* child,
+															const int line_num, const wstring& file_name, int depth) {
+		// add entry
+		wstring scope_name = GetScopeName(ident);
+		SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num,
+																																	scope_name, type, is_static,
+																																	current_method != NULL);
 
 #ifdef _DEBUG
-    Debug(L"Adding variable: '" + scope_name + L"'", depth + 2);
+		Debug(L"Adding variable: '" + scope_name + L"'", depth + 2);
 #endif
 
-    bool was_added = symbol_table->CurrentParseScope()->AddEntry(entry);
-    if(!was_added) {
-      ProcessError(L"Variable already defined in this scope: '" + ident + L"'");
-    }
+		bool was_added = symbol_table->CurrentParseScope()->AddEntry(entry);
+		if(!was_added) {
+			ProcessError(L"Variable already defined in this scope: '" + ident + L"'");
+		}
 
-    Declaration* declaration;
-    if(Match(TOKEN_ASSIGN)) {
-      Variable* variable = ParseVariable(ident, depth + 1);
-      // FYI: can not specify array indices here
-      declaration = TreeFactory::Instance()->MakeDeclaration(file_name, line_num, entry, child,
-                                                             ParseAssignment(variable, depth + 1));
-    }
-    else {
-      declaration = TreeFactory::Instance()->MakeDeclaration(file_name, line_num, entry, child);
-    }
+		Declaration* declaration;
+		if(Match(TOKEN_ASSIGN)) {
+			Variable* variable = ParseVariable(ident, depth + 1);
+			// FYI: can not specify array indices here
+			declaration = TreeFactory::Instance()->MakeDeclaration(file_name, line_num, entry, child,
+																														 ParseAssignment(variable, depth + 1));
+		}
+		else {
+			declaration = TreeFactory::Instance()->MakeDeclaration(file_name, line_num, entry, child);
+		}
 
-    return declaration;
-  }
+		return declaration;
+	}
 
-  // error processing
-  void LoadErrorCodes();
-  void ProcessError(const ScannerTokenType type);
-  void ProcessError(const wstring &msg);
-  void ProcessError(const wstring &msg, ParseNode* node);
-  void ProcessError(const wstring &msg, const ScannerTokenType sync, int offset = 0);
-  bool CheckErrors();
+	// error processing
+	void LoadErrorCodes();
+	void ProcessError(const ScannerTokenType type);
+	void ProcessError(const wstring & msg);
+	void ProcessError(const wstring & msg, ParseNode * node);
+	void ProcessError(const wstring & msg, const ScannerTokenType sync, int offset = 0);
+	bool CheckErrors();
 
-  // parsing operations
-  void ParseFile(const wstring& file_name);
-  void ParseProgram();
-  void ParseBundle(int depth);
-  wstring ParseBundleName(int depth);
-  Class* ParseClass(const wstring &bundle_id, int depth);
-  Class* ParseInterface(const wstring &bundle_id, int depth);
-  Method* ParseMethod(bool is_function, bool virtual_required, int depth);
-  Variable* ParseVariable(const wstring &ident, int depth);
-  MethodCall* ParseMethodCall(int depth);
-  MethodCall* ParseMethodCall(const wstring &ident, int depth);
-  void ParseMethodCall(Expression* expression, int depth);
-  MethodCall* ParseMethodCall(Variable* variable, int depth);
-  void ParseAnonymousClass(MethodCall* method_call, int depth);
-  StatementList* ParseStatementList(int depth);
-  Statement* ParseStatement(int depth, bool semi_colon = true);
-  Assignment* ParseAssignment(Variable* variable, int depth);
-  StaticArray* ParseStaticArray(int depth);
-  If* ParseIf(int depth);
-  DoWhile* ParseDoWhile(int depth);
-  While* ParseWhile(int depth);
-  Select* ParseSelect(int depth);
-  Enum* ParseEnum(int depth);
-  Enum* ParseConsts(int depth);
-  For* ParseFor(int depth);
-  For* ParseEach(int depth);
-  CriticalSection* ParseCritical(int depth);
-  Return* ParseReturn(int depth);
-  Leaving* ParseLeaving(int depth);
-  Declaration* ParseDeclaration(const wstring &name, bool is_stmt, int depth);
-  DeclarationList* ParseDecelerationList(int depth);
-  ExpressionList* ParseExpressionList(int depth, ScannerTokenType open = TOKEN_OPEN_PAREN,
-                                      ScannerTokenType close = TOKEN_CLOSED_PAREN);
-  ExpressionList* ParseIndices(int depth);
-  void ParseCastTypeOf(Expression* expression, int depth);
-  Type* ParseType(int depth);
-  Expression* ParseExpression(int depth);
-  Expression* ParseLogic(int depth);
-  Expression* ParseMathLogic(int depth);
-  Expression* ParseTerm(int depth);
-  Expression* ParseFactor(int depth);
-  Expression* ParseSimpleExpression(int depth);
-  
- public:
-  Parser(const wstring &p, bool a, const wstring &r) {
-    src_path = p;
-    alt_syntax = a;
-    run_prgm = r;
-    program = new ParsedProgram;
-    LoadErrorCodes();
-    current_class = NULL;
-    current_method = prev_method = NULL;
-    anonymous_class_id = 0;
-  }
+	// parsing operations
+	void ParseFile(const wstring & file_name);
+	void ParseProgram();
+	void ParseBundle(int depth);
+	wstring ParseBundleName(int depth);
+	Class * ParseClass(const wstring & bundle_id, int depth);
+	Class * ParseInterface(const wstring & bundle_id, int depth);
+	Method * ParseMethod(bool is_function, bool virtual_required, int depth);
+	Variable * ParseVariable(const wstring & ident, int depth);
+	MethodCall * ParseMethodCall(int depth);
+	MethodCall * ParseMethodCall(const wstring & ident, int depth);
+	void ParseMethodCall(Expression * expression, int depth);
+	MethodCall * ParseMethodCall(Variable * variable, int depth);
+	void ParseAnonymousClass(MethodCall * method_call, int depth);
+	StatementList * ParseStatementList(int depth);
+	Statement * ParseStatement(int depth, bool semi_colon = true);
+	Assignment * ParseAssignment(Variable * variable, int depth);
+	StaticArray * ParseStaticArray(int depth);
+	If * ParseIf(int depth);
+	DoWhile * ParseDoWhile(int depth);
+	While * ParseWhile(int depth);
+	Select * ParseSelect(int depth);
+	Enum * ParseEnum(int depth);
+	Enum * ParseConsts(int depth);
+	For * ParseFor(int depth);
+	For * ParseEach(int depth);
+	CriticalSection * ParseCritical(int depth);
+	Return * ParseReturn(int depth);
+	Leaving * ParseLeaving(int depth);
+	Declaration * ParseDeclaration(const wstring & name, bool is_stmt, int depth);
+	DeclarationList * ParseDecelerationList(int depth);
+	ExpressionList * ParseExpressionList(int depth, ScannerTokenType open = TOKEN_OPEN_PAREN,
+																			 ScannerTokenType close = TOKEN_CLOSED_PAREN);
+	ExpressionList * ParseIndices(int depth);
+	void ParseCastTypeOf(Expression * expression, int depth);
+	Type * ParseType(int depth);
+	Expression * ParseExpression(int depth);
+	Expression * ParseLogic(int depth);
+	Expression * ParseMathLogic(int depth);
+	Expression * ParseTerm(int depth);
+	Expression * ParseFactor(int depth);
+	Expression * ParseSimpleExpression(int depth);
 
-  ~Parser() {
-  }
+public:
+	Parser(const wstring & p, bool a, const wstring & r) {
+		src_path = p;
+		alt_syntax = a;
+		run_prgm = r;
+		program = new ParsedProgram;
+		LoadErrorCodes();
+		current_class = NULL;
+		current_method = prev_method = NULL;
+		anonymous_class_id = 0;
+	}
 
-  bool Parse();
+	~Parser() {
+	}
 
-  ParsedProgram* GetProgram() {
-    return program;
-  }
+	bool Parse();
 
-  SymbolTableManager* GetSymbolTable() {
-    return symbol_table;
-  }
+	ParsedProgram* GetProgram() {
+		return program;
+	}
+
+	SymbolTableManager* GetSymbolTable() {
+		return symbol_table;
+	}
 };
 
 #endif

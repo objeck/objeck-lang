@@ -880,9 +880,9 @@ class ContextAnalyzer {
       return true;
     }
 
-		// look up generic types
+		// look up generic type
 		if(current_class->HasGenerics()) {
-			if(current_class->HasGeneric(type->GetClassName())) {
+			if(current_class->GetGenericClass(type->GetClassName())) {
 				type->SetClassName(type->GetClassName());
 				return true;
 			}

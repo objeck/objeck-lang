@@ -136,6 +136,7 @@ namespace frontend {
         func_rtrn = t->func_rtrn;
         func_params = t->func_params;
         func_param_count = -1;
+				generic_dclrs = t->generic_dclrs;
       }
     }
     

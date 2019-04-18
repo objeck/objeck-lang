@@ -673,9 +673,9 @@ class LibraryClass {
   wstring file_name;
   
  public:
-  LibraryClass(const wstring &n, const wstring &p, vector<wstring> in, bool is_inf, bool is_vrtl, int cs, int is, 
-	       backend::IntermediateDeclarations* ce, backend::IntermediateDeclarations* ie, Library* l, 
-	       const wstring &fn, bool d) {
+  LibraryClass(const wstring &n, const wstring &p, vector<wstring> in, bool is_inf, bool is_vrtl, 
+							 int cs, int is, backend::IntermediateDeclarations* ce, backend::IntermediateDeclarations* ie, 
+							 Library* l, const wstring &fn, bool d) {
     name = n;
     parent_name = p;
     interface_names = in;

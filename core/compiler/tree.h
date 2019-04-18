@@ -1,7 +1,7 @@
 /***************************************************************************
  * Language parse tree.
  *
- * Copyright (c) 2008-2019, Randy Hollines
+ * Copyright (c) 2008-201, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and uses in source and binary forms, with or without
@@ -2294,61 +2294,67 @@ namespace frontend {
     vector<LibraryClass*> lib_interfaces;
     vector<Class*> children;
     bool is_virtual;
-		bool is_generic;
     bool was_called;
     bool is_interface;
     MethodCall* anonymous_call;
-		vector<wstring> interface_strings;
-		vector<wstring>  generic_strings;
-		
-		Class(const wstring& f, const int l, const wstring& n, const wstring& p,
-					vector<wstring> g, vector<wstring> e, bool i) : ParseNode(f, l) {
-			name = n;
-			parent_name = p;
-			is_interface = i;
-			id = -1;
-			parent = NULL;
-			interface_strings = e;
-			lib_parent = NULL;
-			is_virtual = false;
-			is_generic = g.size() > 0;
-			was_called = false;
-			anonymous_call = NULL;
-			symbol_table = NULL;
-			generic_strings = g;
+		vector<wstring> interface_names;
+		vector<wstring> generic_names;
+		map<const wstring, Class*> generic_classes;
+		bool is_generic;
+
+		Class(const wstring &f, const int l, const wstring &n, const wstring &p, 
+					vector<wstring> &e, vector<wstring> g, bool i) : ParseNode(f, l) {
+      name = n;
+      parent_name = p;
+      is_interface = i;
+      id = -1;
+      parent = NULL;
+      interface_names = e;
+			generic_names = g;
+      lib_parent = NULL;
+      is_virtual = is_generic = was_called = false;
+      anonymous_call = NULL;
+      symbol_table = NULL;
+
+			for(size_t i = 0; i < g.size(); ++i) {
+				const wstring generic_name = g[i];
+				generic_classes[generic_name] = new Class(f, l, generic_name, true);
+			}
     }
 
-		Class(const wstring& f, const int l, const wstring& n, const wstring& p, bool z) : ParseNode(f, l) {
+		Class(const wstring& f, const int l, const wstring& n, 
+					const wstring& p, vector<wstring> &e) : ParseNode(f, l) {
 			name = n;
 			parent_name = p;
-			is_interface = true;
+			is_interface = false;
 			id = -1;
 			parent = NULL;
+			interface_names = e;
 			lib_parent = NULL;
-			is_virtual = false;
-			is_generic = z;
-			was_called = false;
+			is_virtual = is_generic = was_called = false;
 			anonymous_call = NULL;
 			symbol_table = NULL;
 		}
 
-		Class(const wstring& f, const int l, const wstring& n, const wstring& p,
-					vector<wstring> e, bool i) : ParseNode(f, l) {
+		Class(const wstring& f, const int l, const wstring& n, bool g) : ParseNode(f, l) {
 			name = n;
-			parent_name = p;
-			is_interface = i;
+			is_interface = true;
 			id = -1;
 			parent = NULL;
-			interface_strings = e;
 			lib_parent = NULL;
-			is_virtual = false;
-			is_generic = false;
-			was_called = false;
+			is_virtual = was_called = false;
+			is_generic = g;
 			anonymous_call = NULL;
 			symbol_table = NULL;
 		}
 
     ~Class() {
+			map<wstring, Class*>::iterator iter;
+			for(iter = generic_classes.begin(); iter != generic_classes.end(); ++iter) {
+				Class* tmp = iter->second;
+				delete tmp;
+				tmp = NULL;
+			}
     } 
 
   public:
@@ -2369,26 +2375,8 @@ namespace frontend {
     }
 
     vector<wstring> GetInterfaceNames() {
-      return interface_strings;
+      return interface_names;
     }
-
-		vector<wstring> GetGenericNames() {
-			return generic_strings;
-		}
-
-		bool HasGenerics() {
-			return generic_strings.size() > 0;
-		}
-
-		bool HasGeneric(const wstring &n) {
-			for(size_t i = 0; i < generic_strings.size(); ++i) {
-				if(generic_strings[i] == n) {
-					return true;
-				}
-			}
-
-			return false;
-		}
 
     const wstring GetName() const {
       return name;
@@ -2443,8 +2431,35 @@ namespace frontend {
       return is_interface;
     }
 
+		bool HasGenerics() {
+			return generic_names.size() > 0;
+		}
+
+		int GenericIndex(const wstring &n) {
+			for(size_t i = 0; i < generic_names.size(); ++i) {
+				if(n == generic_names[i]) {
+					return (int)i;
+				}
+			}
+
+			return -1;
+		}
+
 		bool IsGeneric() {
 			return is_generic;
+		}
+
+		vector<wstring> GetGenericNames() {
+			return generic_names;
+		}
+
+		Class* GetGenericClass(const wstring& n) {
+			map<const wstring, Class*>::iterator result = generic_classes.find(n);
+			if(result != generic_classes.end()) {
+				return result->second;
+			}
+
+			return NULL;
 		}
 
     void AddStatement(Statement* s) {
@@ -2581,7 +2596,7 @@ namespace frontend {
     bool is_func_def;
     bool is_dyn_func_call;
     SymbolEntry* dyn_func_entry;
-		vector<wstring> generic_dclrs;
+		vector<wstring> concrete_names;
 
   MethodCall(const wstring &f, const int l, MethodCallType t,
              const wstring &v, ExpressionList* e) :
@@ -2632,10 +2647,9 @@ namespace frontend {
       SetEvalType(array_type, false);
     }
 
-  MethodCall(const wstring &f, const int l,
+		MethodCall(const wstring &f, const int l,
              const wstring &v, const wstring &m,
-             ExpressionList* e) :
-    Statement(f, l), Expression(f, l) {
+             ExpressionList* e) : Statement(f, l), Expression(f, l) {
       variable_name = v;
       call_type = METHOD_CALL;
       method_name = m;
@@ -2675,7 +2689,7 @@ namespace frontend {
       anonymous_klass = NULL;
     }
     
-		MethodCall(const wstring &f, const int l, Variable* v, const wstring &m, ExpressionList* e)  : Statement(f, l), Expression(f, l) {
+		MethodCall(const wstring &f, const int l, Variable* v, const wstring &m, ExpressionList* e) : Statement(f, l), Expression(f, l) {
       variable = v;
       call_type = METHOD_CALL;
       method_name = m;
@@ -2706,18 +2720,6 @@ namespace frontend {
     Type* GetFunctionReturn() {
       return func_rtrn;
     }
-
-		void SetGenerics(vector<wstring>& g) {
-			generic_dclrs = g;
-		}
-
-		vector<wstring> GetGenerics() {
-			return generic_dclrs;
-		}
-
-		bool HasGenerics() {
-			return generic_dclrs.size() > 0;
-		}
 
     bool IsFunctionDefinition() {
       return is_func_def;
@@ -2779,6 +2781,18 @@ namespace frontend {
     const wstring GetMethodName() const {
       return method_name;
     }
+
+		const vector<wstring> GetConcreteNames() {
+			return concrete_names;
+		}
+
+		bool HasConcreteNames() {
+			return concrete_names.size() > 0;
+		}
+
+		void SetConcreteNames(vector<wstring> &g) {
+			concrete_names  = g;
+		}
 
     const ExpressionType GetExpressionType() {
       return METHOD_CALL_EXPR;
@@ -2977,27 +2991,28 @@ namespace frontend {
     }
 
     Class* MakeClass(const wstring &file_name, const int line_num, const wstring &name, 
-                     const wstring &parent_name, vector<wstring> generics, 
-										 vector<wstring> interfaces, bool is_interface) {
-      Class* tmp = new Class(file_name, line_num, name, parent_name, generics, interfaces, is_interface);
+										 const wstring &parent_name, vector<wstring> interfaces, 
+										 vector<wstring> generics, bool is_interface) {
+      Class* tmp = new Class(file_name, line_num, name, parent_name, interfaces, generics, is_interface);
       nodes.push_back(tmp);
       return tmp;
     }
 
-		Class* MakeClass(const wstring& file_name, const int line_num, const wstring& name,
-										 const wstring& parent_name, vector<wstring> interfaces, bool is_interface) {
-			Class* tmp = new Class(file_name, line_num, name, parent_name, interfaces, is_interface);
+		Class* MakeClass(const wstring& file_name, const int line_num, const wstring& name, 
+										 const wstring& parent_name, vector<wstring> interfaces) {
+			Class* tmp = new Class(file_name, line_num, name, parent_name, interfaces);
 			nodes.push_back(tmp);
 			return tmp;
 		}
 
-		Class* MakeClass(const wstring& file_name, const int line_num, const wstring& name, const wstring& parent_name) {
-			Class* tmp = new Class(file_name, line_num, name, parent_name, false);
+		Class* MakeClass(const wstring& file_name, const int line_num, const wstring& name, bool is_generic) {
+			Class* tmp = new Class(file_name, line_num, name, is_generic);
 			nodes.push_back(tmp);
 			return tmp;
 		}
 
-    Method* MakeMethod(const wstring &file_name, const int line_num, const wstring &name, MethodType type, bool is_function, bool is_native) {
+    Method* MakeMethod(const wstring &file_name, const int line_num, const wstring &name, 
+											 MethodType type, bool is_function, bool is_native) {
       Method* tmp = new Method(file_name, line_num, name, type, is_function, is_native);
       nodes.push_back(tmp);
       return tmp;
