@@ -1,9 +1,13 @@
 class Foo {
 	function : Main(args : String[]) ~ Nil {
 		b : Bar<String> := Bar->New()<String>;
+
+#		b : Bar<IntHolder> := Bar->New();
+#~		
 		b->Set("foo");
 		s : String := b->Get();
 		s->PrintLine();
+~#
 	}
 }
 

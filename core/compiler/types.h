@@ -183,6 +183,10 @@ namespace frontend {
 			return generic_dclrs;
 		}
 
+		bool HasGenerics() {
+			return generic_dclrs.size() > 0;
+		}
+
     void SetDimension(int d) {
       dimension = d;
     }
