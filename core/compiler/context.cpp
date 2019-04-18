@@ -2172,16 +2172,14 @@ bool ContextAnalyzer::Analyze()
           // get method type
           Type* method_type = NULL;
           if(method_parms[j]->GetEntry() && method_parms[j]->GetEntry()->GetType()) {
-						
-						// TODO: hacky, hack, hack
+						// get type
+						method_type = method_parms[j]->GetEntry()->GetType();
+
+						// TODO: adding generics
+						// get concrete type if needed
 						if(klass->HasGenerics()) {
-//							const vector<Type*> foo_bar = method_call->GetEntry()->GetType()->GetGenerics();
-							method_type = TypeFactory::Instance()->MakeType(CLASS_TYPE, L"String");
+							method_type = RelsolveGenericType(method_type, method_call, klass);
 						}
-						else {
-							method_type = method_parms[j]->GetEntry()->GetType();
-						}
-            
 						ResolveClassEnumType(method_type);
           }
           // add parameter match
@@ -2204,14 +2202,10 @@ bool ContextAnalyzer::Analyze()
           expression = expression->GetMethodCall();
         }
 
-				// TODO: hacky, hack, hack
-				Type* left = NULL;
+				// TODO: adding generics
+				Type* left = method_parms[j]->GetEntry()->GetType();
 				if(klass->HasGenerics()) {
-					//							const vector<Type*> foo_bar = method_call->GetEntry()->GetType()->GetGenerics();
-					left = TypeFactory::Instance()->MakeType(CLASS_TYPE, L"String");
-				}
-				else {
-					left = method_parms[j]->GetEntry()->GetType();
+					left = RelsolveGenericType(left, method_call, klass);
 				}
 
         ResolveClassEnumType(left);
@@ -2308,14 +2302,10 @@ bool ContextAnalyzer::Analyze()
           }
 
 					// TODO: hacky, hack, hack
-					Type* left = NULL;
+					Type* left = mthd_params[i]->GetEntry()->GetType();
 					if(klass->HasGenerics()) {
-						left = TypeFactory::Instance()->MakeType(CLASS_TYPE, L"System.String");
+						left = RelsolveGenericType(left, method_call, klass);
 					}
-					else {
-						left = mthd_params[i]->GetEntry()->GetType();
-					}
-
           ResolveClassEnumType(left);
           AnalyzeRightCast(left, expression->GetEvalType(), expression, IsScalar(expression), depth + 1);	
         }
@@ -2359,14 +2349,11 @@ bool ContextAnalyzer::Analyze()
 			// TODO: adding generics
 			// map generic to concrete
 			Type* eval_type = method_call->GetEvalType();
-			if(klass->HasGenerics() && method_call->GetEntry()) {
-				int generic_index = klass->GenericIndex(eval_type->GetClassName());
-				if(generic_index > -1) {
-					eval_type = method_call->GetEntry()->GetType()->GetGenerics()[generic_index];
-					method_call->SetEvalType(eval_type, false);
-				}
+			if(klass->HasGenerics()) {
+				eval_type = RelsolveGenericType(eval_type, method_call, klass);
+				method_call->SetEvalType(eval_type, false);
 			}
-
+			
       if(eval_type->GetType() == CLASS_TYPE && !ResolveClassEnumType(eval_type, klass)) {
         ProcessError(static_cast<Expression*>(method_call), L"Undefined class or enum: '" + 
                      ReplaceSubstring(eval_type->GetClassName(), L"#", L"->") + L"'");
