@@ -1,3 +1,4 @@
+# what about enums, jigga?
 class Foo {
 	function : Main(args : String[]) ~ Nil {
 		b := Bar->New()<String>;
