@@ -4485,6 +4485,39 @@ bool ContextAnalyzer::Analyze()
 			// program
       Class* right_class = SearchProgramClasses(right->GetClassName());
       if(right_class) {
+				// generics
+				if(left->HasGenerics() == right->HasGenerics()) {
+					const vector<Type*> left_concretes = left->GetGenerics();
+					const vector<Type*> right_concretes = right->GetGenerics();
+					if(left_concretes.size() == right_concretes.size()) {
+						for(size_t i = 0; i < left_concretes.size(); ++i) {
+							Type* left_concrete = left_concretes[i];
+							Type* right_concrete = right_concretes[i];
+
+							if(!ResolveClassEnumType(left_concrete)) {
+								ProcessError(expression, L"Undefined class: '" + left_concretes[i]->GetClassName() + L"'");
+							}
+
+							if(!ResolveClassEnumType(right_concrete)) {
+								ProcessError(expression, L"Undefined class: '" + right_concretes[i]->GetClassName() + L"'");
+							}
+
+							if(left_concrete->GetClassName() != right_concrete->GetClassName()) {
+								ProcessError(expression, L"Generics parameters size mismatch");
+							}
+
+							return;
+						}
+					}
+					else {
+						ProcessError(expression, L"Invalid cast between generics: '" +
+												 ReplaceSubstring(left->GetClassName(), L"#", L"->") + L"' and '" +
+												 ReplaceSubstring(right->GetClassName(), L"#", L"->") + L"'");
+					}
+				}
+				else {
+					ProcessError(expression, L"Invalid cast between generic and concrete class");
+				}
         // downcast
         if(ValidDownCast(left_class->GetName(), right_class, NULL)) {
           left_class->SetCalled(true);
