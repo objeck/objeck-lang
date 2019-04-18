@@ -4505,9 +4505,9 @@ bool ContextAnalyzer::Analyze()
 							if(left_concrete->GetClassName() != right_concrete->GetClassName()) {
 								ProcessError(expression, L"Generics parameters size mismatch");
 							}
-
-							return;
 						}
+
+						return;
 					}
 					else {
 						ProcessError(expression, L"Invalid cast between generics: '" +
