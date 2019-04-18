@@ -3,6 +3,7 @@ class Foo {
 		b : Bar<String> := Bar->New()<String>;
 		b->Set("foo");
 		s : String := b->Get();
+		s->PrintLine();
 	}
 }
 
