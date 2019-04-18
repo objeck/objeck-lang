@@ -2301,7 +2301,7 @@ bool ContextAnalyzer::Analyze()
             ProcessError(static_cast<Expression*>(method_call), L"Invalid operation with 'Nil' value");
           }
 
-					// TODO: hacky, hack, hack
+					// TODO: adding generics
 					Type* left = mthd_params[i]->GetEntry()->GetType();
 					if(klass->HasGenerics()) {
 						left = RelsolveGenericType(left, method_call, klass);
