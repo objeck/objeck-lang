@@ -2325,27 +2325,29 @@ bool ContextAnalyzer::Analyze()
         }
 
         if(!found) {
-          ProcessError(static_cast<Expression*>(method_call),
-                       L"Cannot reference a private method from this context");
+          ProcessError(static_cast<Expression*>(method_call), L"Cannot reference a private method from this context");
         }
       }
       // static check
       if(!is_expr && InvalidStatic(method_call, method)) {
-        ProcessError(static_cast<Expression*>(method_call),
-                     L"Cannot reference an instance method from this context");
+        ProcessError(static_cast<Expression*>(method_call), L"Cannot reference an instance method from this context");
       }
       // cannot create an instance of a virutal class
       if((method->GetMethodType() == NEW_PUBLIC_METHOD ||
           method->GetMethodType() == NEW_PRIVATE_METHOD) &&
          klass->IsVirtual() && current_class->GetParent() != klass) {
-        ProcessError(static_cast<Expression*>(method_call),
-                     L"Cannot create an instance of a virutal class");
+        ProcessError(static_cast<Expression*>(method_call), L"Cannot create an instance of a virutal class");
       }
       // associate method
       klass->SetCalled(true);
       method_call->SetOriginalClass(klass);
       method_call->SetMethod(method);
       
+			if((method->GetMethodType() == NEW_PUBLIC_METHOD || method->GetMethodType() == NEW_PRIVATE_METHOD) &&
+				 klass->HasGenerics() && !method_call->HasConcreteNames()) {
+				ProcessError(static_cast<Expression*>(method_call), L"Cannot create an instance of a generic class");
+			}
+
 			// TODO: adding generics
 			// map generic to concrete
 			Type* eval_type = method_call->GetEvalType();

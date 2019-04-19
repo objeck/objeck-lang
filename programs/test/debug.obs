@@ -1,14 +1,15 @@
 # what about enums, jigga?
 class Foo {
 	function : Main(args : String[]) ~ Nil {
-		b := Bar->New()<String>;
-#		b : Bar<String> := Bar->New()<String>;
+#		b := Bar->New()<String>;
+		b : Bar<String> := Bar->New()<String>;
+#		b : Bar := Bar->New();
 #		b : Bar := Bar->New()<IntHolder>;
-
+#~
 		b->Set("foo bar");
 		s : String := b->Get();
 		s->PrintLine();
-
+~#
 	}
 }
 
