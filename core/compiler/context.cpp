@@ -2333,9 +2333,8 @@ bool ContextAnalyzer::Analyze()
         ProcessError(static_cast<Expression*>(method_call), L"Cannot reference an instance method from this context");
       }
       // cannot create an instance of a virutal class
-      if((method->GetMethodType() == NEW_PUBLIC_METHOD ||
-          method->GetMethodType() == NEW_PRIVATE_METHOD) &&
-         klass->IsVirtual() && current_class->GetParent() != klass) {
+      if((method->GetMethodType() == NEW_PUBLIC_METHOD || method->GetMethodType() == NEW_PRIVATE_METHOD) &&
+				 klass->IsVirtual() && current_class->GetParent() != klass) {
         ProcessError(static_cast<Expression*>(method_call), L"Cannot create an instance of a virutal class");
       }
       // associate method
