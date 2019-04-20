@@ -512,7 +512,7 @@ Class* Parser::ParseClass(const wstring & bundle_name, int depth)
 #endif
 
 	// generic ids
-	vector<Class*> generic_names = ParseGenericClasses(bundle_name, line_num, file_name);
+	vector<Class*> generic_names = ParseGenericClasses(bundle_name, depth);
 	
 	// from id
 	wstring parent_cls_name;
@@ -2216,6 +2216,82 @@ Variable* Parser::ParseVariable(const wstring & ident, int depth)
 }
 
 /****************************
+ * Parses generic types
+ ****************************/
+vector<Type*> Parser::ParseGenericTypes(int depth) 
+{
+	vector<Type*> generic_types;
+
+	if(Match(TOKEN_LES)) {
+		NextToken();
+
+		while(!Match(TOKEN_GTR) && !Match(TOKEN_END_OF_STREAM)) {
+			if(!Match(TOKEN_IDENT)) {
+				ProcessError(TOKEN_IDENT);
+			}
+			// identifier
+			const wstring generic_name = scanner->GetToken()->GetIdentifier();
+			generic_types.push_back(TypeFactory::Instance()->MakeType(CLASS_TYPE, generic_name));
+			NextToken();
+
+			if(Match(TOKEN_COMMA) && !Match(TOKEN_GTR, SECOND_INDEX)) {
+				NextToken();
+			}
+			else if(!Match(TOKEN_GTR)) {
+				ProcessError(L"Expected ',' or '>'");
+			}
+		}
+
+		NextToken();
+	}
+
+	return generic_types;
+}
+
+/****************************
+ * Parses generic classes
+ ****************************/
+vector<Class*> Parser::ParseGenericClasses(const wstring& bundle_name, int depth) 
+{
+	const int line_num = GetLineNumber();
+	const wstring& file_name = GetFileName();
+
+	vector<Class*> generic_classes;
+
+	if(Match(TOKEN_LES)) {
+		NextToken();
+
+		while(!Match(TOKEN_GTR) && !Match(TOKEN_END_OF_STREAM)) {
+			if(!Match(TOKEN_IDENT)) {
+				ProcessError(TOKEN_IDENT);
+			}
+
+			// identifier
+			wstring generic_name = scanner->GetToken()->GetIdentifier();
+			for(size_t i = 0; i < generic_classes.size(); ++i) {
+				if(bundle_name.size() > 0) {
+					generic_name.insert(0, L".");
+					generic_name.insert(0, bundle_name);
+				}
+			}
+			generic_classes.push_back(TreeFactory::Instance()->MakeClass(file_name, line_num, generic_name, true));
+			NextToken();
+
+			if(Match(TOKEN_COMMA) && !Match(TOKEN_GTR, SECOND_INDEX)) {
+				NextToken();
+			}
+			else if(!Match(TOKEN_GTR)) {
+				ProcessError(L"Expected ',' or '>'");
+			}
+		}
+
+		NextToken();
+	}
+
+	return generic_classes;
+}
+
+/****************************
  * Parses a declaration.
  ****************************/
 Declaration* Parser::ParseDeclaration(const wstring & name, bool is_stmt, int depth)
@@ -3118,7 +3194,7 @@ MethodCall* Parser::ParseMethodCall(const wstring & ident, int depth)
 				method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, NEW_ARRAY_CALL, ident, expressions);
 				// anonymous class
 				if(Match(TOKEN_LES)) {
-					vector<Type*> generic_dclrs = ParseGenericTypes();
+					vector<Type*> generic_dclrs = ParseGenericTypes(depth);
 					method_call->SetConcreteTypes(generic_dclrs);
 				}
 			}
@@ -3128,7 +3204,7 @@ MethodCall* Parser::ParseMethodCall(const wstring & ident, int depth)
 																															ParseExpressionList(depth + 1));
 				// anonymous class
 				if(Match(TOKEN_LES)) {
-					vector<Type*> generic_dclrs = ParseGenericTypes();
+					vector<Type*> generic_dclrs = ParseGenericTypes(depth);
 					method_call->SetConcreteTypes(generic_dclrs);
 				}
 				else if(Match(TOKEN_OPEN_BRACE) || Match(TOKEN_IMPLEMENTS_ID)) {
@@ -3938,7 +4014,7 @@ Type* Parser::ParseType(int depth)
 
 	if(type) {
 		if(Match(TOKEN_LES)) {
-			vector<Type*> generic_types = ParseGenericTypes();
+			vector<Type*> generic_types = ParseGenericTypes(depth);
 			type->SetGenerics(generic_types);
 		}
 
