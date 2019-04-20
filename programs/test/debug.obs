@@ -9,6 +9,11 @@ class Foo {
 		b->Set("foo bar");
 		s : IntHolder := b->Get();
 		s->Get()->PrintLine();
+
+		bb := Bar->New[2]<String, IntHolder>;
+		bb->Size()->PrintLine();
+		bb[1] := b;
+		bb[0] := "Bar->New(IntHolder->New(7))<String, IntHolder>";
 	}
 }
 
