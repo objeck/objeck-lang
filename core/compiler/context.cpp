@@ -1864,6 +1864,10 @@ bool ContextAnalyzer::Analyze()
         }
       }
     }
+		// generics
+		if(method_call->HasConcreteNames() && method_call->GetEvalType()) {
+			method_call->GetEvalType()->SetGenerics(method_call->GetConcreteNames());
+		}
   }
 
   /*********************************
