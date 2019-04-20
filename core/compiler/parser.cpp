@@ -2334,7 +2334,7 @@ Declaration* Parser::ParseDeclaration(const wstring & name, bool is_stmt, int de
 
 		// add declarations
 		for(size_t i = 0; i < idents.size(); ++i) {
-			declaration = AddDeclaration(name, type, false, declaration, line_num, file_name, depth);
+			declaration = AddDeclaration(name, type, false, declaration, depth);
 		}
 	}
 	else {
@@ -2357,7 +2357,7 @@ Declaration* Parser::ParseDeclaration(const wstring & name, bool is_stmt, int de
 		Assignment * temp = NULL;
 		for(size_t i = 0; i < idents.size(); ++i) {
 			const wstring& ident = idents[i];
-			declaration = AddDeclaration(ident, type, is_static, declaration, line_num, file_name, depth);
+			declaration = AddDeclaration(ident, type, is_static, declaration, depth);
 
 			// found assignment
 			if(declaration->GetAssignment()) {
