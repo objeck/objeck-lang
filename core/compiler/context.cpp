@@ -2352,12 +2352,13 @@ bool ContextAnalyzer::Analyze()
 			Type* eval_type = method_call->GetEvalType();
 			if(klass->HasGenerics()) {
 				eval_type = RelsolveGenericType(eval_type, method_call, klass);
+				eval_type->SetGenerics(method_call->GetConcreteNames());
 				method_call->SetEvalType(eval_type, false);
 			}
 			
       if(eval_type->GetType() == CLASS_TYPE && !ResolveClassEnumType(eval_type, klass)) {
         ProcessError(static_cast<Expression*>(method_call), L"Undefined class or enum: '" + 
-                     ReplaceSubstring(eval_type->GetClassName(), L"#", L"->") + L"'");
+										 ReplaceSubstring(eval_type->GetClassName(), L"#", L"->") + L"'");
       }
       
       if(method_call->GetMethodCall()) {
@@ -2377,12 +2378,6 @@ bool ContextAnalyzer::Analyze()
 						ProcessError(static_cast<Expression*>(method_call), L"Undefined class: '" + cls_name + L"'");
 						valid_concrete_classes = false;
 					}
-				}
-				
-				// add concrete class definition
-				if(valid_concrete_classes) {
-					Class* klass = method_call->GetMethod()->GetClass();
-					method_call->GetEvalType()->SetGenerics(concrete_names);
 				}
 			}
 
@@ -4504,7 +4499,9 @@ bool ContextAnalyzer::Analyze()
 							}
 
 							if(left_concrete->GetClassName() != right_concrete->GetClassName()) {
-								ProcessError(expression, L"Generics parameters size mismatch");
+								ProcessError(expression, L"Generic parameter type mismatch: '" + 
+														 left_concrete->GetClassName() + L"' and '" + 
+														 right_concrete->GetClassName() + L"'");
 							}
 						}
 
@@ -4690,7 +4687,7 @@ bool ContextAnalyzer::Analyze()
       if(entry->GetType() && entry->GetType()->GetType() == CLASS_TYPE) {
         // resolve class name
         if(!ResolveClassEnumType(entry->GetType(), klass)) {
-          ProcessError(entry, L"Undefined class or enum: '" + ReplaceSubstring(entry->GetType()->GetClassName(), L"#", L"->") + L"'");
+          ProcessError(entry, L"Undefined class or enum: '" + ReplaceSubstring(entry->GetType()->GetClassName(), L"#", L"->") + L"'\n\tIf generic ensure concrete types are properly defined.");
         }
       }
       else if(entry->GetType() && entry->GetType()->GetType() == FUNC_TYPE) {

@@ -878,13 +878,14 @@ class ContextAnalyzer {
   
   inline bool ResolveClassEnumType(Type* type, Class* context_klass) {
     Class* klass = SearchProgramClasses(type->GetClassName());
-    if(klass) {
-      klass->SetCalled(true);
-      type->SetClassName(klass->GetName());
-      return true;
+    if(klass && type->GetGenerics().size() == klass->GetGenericNames().size()) {
+			klass->SetCalled(true);
+			type->SetClassName(klass->GetName());
+			return true;
     }
-
+		
     LibraryClass* lib_klass = linker->SearchClassLibraries(type->GetClassName(), program->GetUses());
+		// TODO: update for generics
     if(lib_klass) {
       lib_klass->SetCalled(true);
       type->SetClassName(lib_klass->GetName());
