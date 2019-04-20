@@ -2,7 +2,7 @@
 class Foo {
 	function : Main(args : String[]) ~ Nil {
 #		b := Bar->New()<String>;
-		b : Bar<String, IntHolder> := Bar->New(IntHolder->New(13))<String, IntHolder>;
+		b : Bar<String, IntHolder> := Bar->New("IntHolder->New(13)")<String, IntHolder>;
 #		b : Bar := Bar->New();
 #		b : Bar := Bar->New()<IntHolder>;
 
