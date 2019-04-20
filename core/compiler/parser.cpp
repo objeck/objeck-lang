@@ -512,14 +512,8 @@ Class* Parser::ParseClass(const wstring & bundle_name, int depth)
 #endif
 
 	// generic ids
-	vector<wstring> generic_names = ParseGenerics();
-	for(size_t i = 0; i < generic_names.size(); ++i) {
-		if(bundle_name.size() > 0) {
-			generic_names[i].insert(0, L".");
-			generic_names[i].insert(0, bundle_name);
-		}
-	}
-
+	vector<Class*> generic_names = ParseGenericClasses(bundle_name, line_num, file_name);
+	
 	// from id
 	wstring parent_cls_name;
 	if(Match(TOKEN_FROM_ID)) {
@@ -3124,8 +3118,8 @@ MethodCall* Parser::ParseMethodCall(const wstring & ident, int depth)
 				method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, NEW_ARRAY_CALL, ident, expressions);
 				// anonymous class
 				if(Match(TOKEN_LES)) {
-					vector<wstring> generic_dclrs = ParseGenerics();
-					method_call->SetConcreteNames(generic_dclrs);
+					vector<Type*> generic_dclrs = ParseGenericTypes();
+					method_call->SetConcreteTypes(generic_dclrs);
 				}
 			}
 			// new object
@@ -3134,8 +3128,8 @@ MethodCall* Parser::ParseMethodCall(const wstring & ident, int depth)
 																															ParseExpressionList(depth + 1));
 				// anonymous class
 				if(Match(TOKEN_LES)) {
-					vector<wstring> generic_dclrs = ParseGenerics();
-					method_call->SetConcreteNames(generic_dclrs);
+					vector<Type*> generic_dclrs = ParseGenericTypes();
+					method_call->SetConcreteTypes(generic_dclrs);
 				}
 				else if(Match(TOKEN_OPEN_BRACE) || Match(TOKEN_IMPLEMENTS_ID)) {
 					ParseAnonymousClass(method_call, depth);
@@ -3944,8 +3938,8 @@ Type* Parser::ParseType(int depth)
 
 	if(type) {
 		if(Match(TOKEN_LES)) {
-			vector<wstring> generic_names = ParseGenerics();
-			type->SetGenerics(generic_names);
+			vector<Type*> generic_types = ParseGenericTypes();
+			type->SetGenerics(generic_types);
 		}
 
 		int dimension = 0;

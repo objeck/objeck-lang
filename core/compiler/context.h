@@ -617,7 +617,7 @@ class ContextAnalyzer {
 				const int concrete_index = klass->GenericIndex(generic_type->GetClassName());
 				if(concrete_index > -1 && method_call->GetEntry()) {
 					const vector<Type*> concrete_types = method_call->GetEntry()->GetType()->GetGenerics();
-					if(concrete_index < concrete_types.size()) {
+					if(concrete_index < (int)concrete_types.size()) {
 						return concrete_types[concrete_index];
 					}
 				}
@@ -625,9 +625,9 @@ class ContextAnalyzer {
 			else if(method_call->GetCallType() == NEW_INST_CALL && method_call->HasConcreteNames()) {
 				const int concrete_index = klass->GenericIndex(generic_type->GetClassName());
 				if(concrete_index > -1) {
-					const vector<wstring> concrete_names = method_call->GetConcreteNames();
-					if(concrete_index < concrete_names.size()) {
-						return TypeFactory::Instance()->MakeType(CLASS_TYPE, concrete_names[concrete_index]);
+					const vector<Type*> concrete_types = method_call->GetConcreteNames();
+					if(concrete_index < (int)concrete_types.size()) {
+						return concrete_types[concrete_index];
 					}
 				}
 			}
