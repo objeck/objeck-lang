@@ -158,8 +158,9 @@ class Parser {
 		return name;
 	}
 
-	vector<wstring> ParseGenerics() {
-		vector<wstring> generic_names;
+	vector<Type*> ParseGenericTypes() {
+		vector<Type*> generic_types;
+
 		if(Match(TOKEN_LES)) {
 			NextToken();
 
@@ -169,7 +170,7 @@ class Parser {
 				}
 				// identifier
 				const wstring generic_name = scanner->GetToken()->GetIdentifier();
-				generic_names.push_back(generic_name);
+				generic_types.push_back(TypeFactory::Instance()->MakeType(CLASS_TYPE, generic_name));
 				NextToken();
 
 				if(Match(TOKEN_COMMA) && !Match(TOKEN_GTR, SECOND_INDEX)) {
@@ -183,7 +184,43 @@ class Parser {
 			NextToken();
 		}
 
-		return generic_names;
+		return generic_types;
+	}
+
+	vector<Class*> ParseGenericClasses(const wstring& bundle_name, const int line_num, const wstring& file_name) {
+		vector<Class*> generic_classes;
+
+		if(Match(TOKEN_LES)) {
+			NextToken();
+
+			while(!Match(TOKEN_GTR) && !Match(TOKEN_END_OF_STREAM)) {
+				if(!Match(TOKEN_IDENT)) {
+					ProcessError(TOKEN_IDENT);
+				}
+
+				// identifier
+				wstring generic_name = scanner->GetToken()->GetIdentifier();
+				for(size_t i = 0; i < generic_classes.size(); ++i) {
+					if(bundle_name.size() > 0) {
+						generic_name.insert(0, L".");
+						generic_name.insert(0, bundle_name);
+					}
+				}
+				generic_classes.push_back(TreeFactory::Instance()->MakeClass(file_name, line_num, generic_name, true));
+				NextToken();
+
+				if(Match(TOKEN_COMMA) && !Match(TOKEN_GTR, SECOND_INDEX)) {
+					NextToken();
+				}
+				else if(!Match(TOKEN_GTR)) {
+					ProcessError(L"Expected ',' or '>'");
+				}
+			}
+
+			NextToken();
+		}
+
+		return generic_classes;
 	}
 
 	Declaration* AddDeclaration(const wstring& ident, Type* type, bool is_static, Declaration* child,

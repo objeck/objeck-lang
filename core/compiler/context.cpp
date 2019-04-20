@@ -2368,9 +2368,10 @@ bool ContextAnalyzer::Analyze()
 			// TODO: adding generics
 			// validate concrete declarations
 			if(method_call->GetCallType() == NEW_INST_CALL && method_call->HasConcreteNames()) {
-				const vector<wstring> concrete_names = method_call->GetConcreteNames();
-				for(size_t i = 0; i < concrete_names.size(); ++i) {
-					const wstring cls_name = concrete_names[i];
+				const vector<Type*> concrete_types = method_call->GetConcreteNames();
+				for(size_t i = 0; i < concrete_types.size(); ++i) {
+					Type* type = concrete_types[i];
+					const wstring cls_name = type->GetClassName();
 					if(!SearchProgramClasses(cls_name) &&
 						 !linker->SearchClassLibraries(cls_name, program->GetUses(current_class->GetFileName()))) {
 						ProcessError(static_cast<Expression*>(method_call), L"Undefined class: '" + cls_name + L"'");

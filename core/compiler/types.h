@@ -126,7 +126,7 @@ namespace frontend {
     vector<Type*> func_params;
     Type* func_rtrn;
     int func_param_count;
-		vector<Type*> generic_dclrs;
+		vector<Type*> generic_types;
     
     Type(Type* t) {
       if(t) {
@@ -136,7 +136,7 @@ namespace frontend {
         func_rtrn = t->func_rtrn;
         func_params = t->func_params;
         func_param_count = -1;
-				generic_dclrs = t->generic_dclrs;
+				generic_types = t->generic_types;
       }
     }
     
@@ -177,14 +177,16 @@ namespace frontend {
       return type;
     }
 
-		void SetGenerics(const vector<wstring>& g);
+		void SetGenerics(const vector<Type*>& g) {
+			generic_types = g;
+		}
 
 		vector<Type*> GetGenerics() {
-			return generic_dclrs;
+			return generic_types;
 		}
 
 		bool HasGenerics() {
-			return generic_dclrs.size() > 0;
+			return generic_types.size() > 0;
 		}
 
     void SetDimension(int d) {

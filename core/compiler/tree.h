@@ -2294,16 +2294,15 @@ namespace frontend {
     vector<LibraryClass*> lib_interfaces;
     vector<Class*> children;
     bool is_virtual;
-    bool was_called;
+		bool is_generic;
+		bool was_called;
     bool is_interface;
     MethodCall* anonymous_call;
 		vector<wstring> interface_names;
-		vector<wstring> generic_names;
-		map<const wstring, Class*> generic_classes;
-		bool is_generic;
+		vector<Class*> generic_names;
 
 		Class(const wstring &f, const int l, const wstring &n, const wstring &p, 
-					vector<wstring> &e, vector<wstring> g, bool i) : ParseNode(f, l) {
+					vector<wstring> &e, vector<Class*> g, bool i) : ParseNode(f, l) {
       name = n;
       parent_name = p;
       is_interface = i;
@@ -2311,15 +2310,10 @@ namespace frontend {
       parent = NULL;
       interface_names = e;
 			generic_names = g;
-      lib_parent = NULL;
+			lib_parent = NULL;
       is_virtual = is_generic = was_called = false;
       anonymous_call = NULL;
       symbol_table = NULL;
-
-			for(size_t i = 0; i < g.size(); ++i) {
-				const wstring generic_name = g[i];
-				generic_classes[generic_name] = new Class(f, l, generic_name, true);
-			}
     }
 
 		Class(const wstring& f, const int l, const wstring& n, 
@@ -2349,12 +2343,6 @@ namespace frontend {
 		}
 
     ~Class() {
-			map<wstring, Class*>::iterator iter;
-			for(iter = generic_classes.begin(); iter != generic_classes.end(); ++iter) {
-				Class* tmp = iter->second;
-				delete tmp;
-				tmp = NULL;
-			}
     } 
 
   public:
@@ -2437,7 +2425,7 @@ namespace frontend {
 
 		int GenericIndex(const wstring &n) {
 			for(size_t i = 0; i < generic_names.size(); ++i) {
-				if(n == generic_names[i]) {
+				if(n == generic_names[i]->GetName()) {
 					return (int)i;
 				}
 			}
@@ -2445,21 +2433,21 @@ namespace frontend {
 			return -1;
 		}
 
+		Class* GetGenericClass(const wstring& n) {
+			const int index = GenericIndex(n);
+			if(index > -1) {
+				return generic_names[index];
+			}
+
+			return NULL;
+		}
+
 		bool IsGeneric() {
 			return is_generic;
 		}
 
-		vector<wstring> GetGenericNames() {
+		vector<Class*> GetGenericNames() {
 			return generic_names;
-		}
-
-		Class* GetGenericClass(const wstring& n) {
-			map<const wstring, Class*>::iterator result = generic_classes.find(n);
-			if(result != generic_classes.end()) {
-				return result->second;
-			}
-
-			return NULL;
 		}
 
     void AddStatement(Statement* s) {
@@ -2596,7 +2584,7 @@ namespace frontend {
     bool is_func_def;
     bool is_dyn_func_call;
     SymbolEntry* dyn_func_entry;
-		vector<wstring> concrete_names;
+		vector<Type*> concrete_types;
 
   MethodCall(const wstring &f, const int l, MethodCallType t,
              const wstring &v, ExpressionList* e) :
@@ -2782,16 +2770,16 @@ namespace frontend {
       return method_name;
     }
 
-		const vector<wstring> GetConcreteNames() {
-			return concrete_names;
+		const vector<Type*> GetConcreteNames() {
+			return concrete_types;
 		}
 
 		bool HasConcreteNames() {
-			return concrete_names.size() > 0;
+			return concrete_types.size() > 0;
 		}
 
-		void SetConcreteNames(vector<wstring> &g) {
-			concrete_names  = g;
+		void SetConcreteTypes(vector<Type*> &c) {
+			concrete_types  = c;
 		}
 
     const ExpressionType GetExpressionType() {
@@ -2992,7 +2980,7 @@ namespace frontend {
 
     Class* MakeClass(const wstring &file_name, const int line_num, const wstring &name, 
 										 const wstring &parent_name, vector<wstring> interfaces, 
-										 vector<wstring> generics, bool is_interface) {
+										 vector<Class*> generics, bool is_interface) {
       Class* tmp = new Class(file_name, line_num, name, parent_name, interfaces, generics, is_interface);
       nodes.push_back(tmp);
       return tmp;
