@@ -610,11 +610,26 @@ class ContextAnalyzer {
     return type;
   }
 
+	// TODO: adding generics
 	Type* RelsolveGenericType(Type* generic_type, MethodCall* method_call, Class* klass) {
-		if(klass->HasGenerics() && method_call->GetEntry()) {
-			const int concrete_index = klass->GenericIndex(generic_type->GetClassName());
-			if(concrete_index > -1 && method_call->GetEntry()) {
-				return method_call->GetEntry()->GetType()->GetGenerics()[concrete_index];
+		if(klass->HasGenerics()) {
+			if(method_call->GetEntry()) {
+				const int concrete_index = klass->GenericIndex(generic_type->GetClassName());
+				if(concrete_index > -1 && method_call->GetEntry()) {
+					const vector<Type*> concrete_types = method_call->GetEntry()->GetType()->GetGenerics();
+					if(concrete_index < concrete_types.size()) {
+						return concrete_types[concrete_index];
+					}
+				}
+			}
+			else if(method_call->GetCallType() == NEW_INST_CALL && method_call->HasConcreteNames()) {
+				const int concrete_index = klass->GenericIndex(generic_type->GetClassName());
+				if(concrete_index > -1) {
+					const vector<wstring> concrete_names = method_call->GetConcreteNames();
+					if(concrete_index < concrete_names.size()) {
+						return TypeFactory::Instance()->MakeType(CLASS_TYPE, concrete_names[concrete_index]);
+					}
+				}
 			}
 		}
 
