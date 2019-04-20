@@ -158,78 +158,12 @@ class Parser {
 		return name;
 	}
 
-	vector<Type*> ParseGenericTypes() {
-		vector<Type*> generic_types;
-
-		if(Match(TOKEN_LES)) {
-			NextToken();
-
-			while(!Match(TOKEN_GTR) && !Match(TOKEN_END_OF_STREAM)) {
-				if(!Match(TOKEN_IDENT)) {
-					ProcessError(TOKEN_IDENT);
-				}
-				// identifier
-				const wstring generic_name = scanner->GetToken()->GetIdentifier();
-				generic_types.push_back(TypeFactory::Instance()->MakeType(CLASS_TYPE, generic_name));
-				NextToken();
-
-				if(Match(TOKEN_COMMA) && !Match(TOKEN_GTR, SECOND_INDEX)) {
-					NextToken();
-				}
-				else if(!Match(TOKEN_GTR)) {
-					ProcessError(L"Expected ',' or '>'");
-				}
-			}
-
-			NextToken();
-		}
-
-		return generic_types;
-	}
-
-	vector<Class*> ParseGenericClasses(const wstring& bundle_name, const int line_num, const wstring& file_name) {
-		vector<Class*> generic_classes;
-
-		if(Match(TOKEN_LES)) {
-			NextToken();
-
-			while(!Match(TOKEN_GTR) && !Match(TOKEN_END_OF_STREAM)) {
-				if(!Match(TOKEN_IDENT)) {
-					ProcessError(TOKEN_IDENT);
-				}
-
-				// identifier
-				wstring generic_name = scanner->GetToken()->GetIdentifier();
-				for(size_t i = 0; i < generic_classes.size(); ++i) {
-					if(bundle_name.size() > 0) {
-						generic_name.insert(0, L".");
-						generic_name.insert(0, bundle_name);
-					}
-				}
-				generic_classes.push_back(TreeFactory::Instance()->MakeClass(file_name, line_num, generic_name, true));
-				NextToken();
-
-				if(Match(TOKEN_COMMA) && !Match(TOKEN_GTR, SECOND_INDEX)) {
-					NextToken();
-				}
-				else if(!Match(TOKEN_GTR)) {
-					ProcessError(L"Expected ',' or '>'");
-				}
-			}
-
-			NextToken();
-		}
-
-		return generic_classes;
-	}
-
 	Declaration* AddDeclaration(const wstring& ident, Type* type, bool is_static, Declaration* child,
 															const int line_num, const wstring& file_name, int depth) {
 		// add entry
 		wstring scope_name = GetScopeName(ident);
-		SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num,
-																																	scope_name, type, is_static,
-																																	current_method != NULL);
+		SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num, scope_name, 
+																																	type, is_static, current_method != NULL);
 
 #ifdef _DEBUG
 		Debug(L"Adding variable: '" + scope_name + L"'", depth + 2);
@@ -243,7 +177,6 @@ class Parser {
 		Declaration* declaration;
 		if(Match(TOKEN_ASSIGN)) {
 			Variable* variable = ParseVariable(ident, depth + 1);
-			// FYI: can not specify array indices here
 			declaration = TreeFactory::Instance()->MakeDeclaration(file_name, line_num, entry, child,
 																														 ParseAssignment(variable, depth + 1));
 		}
@@ -266,44 +199,45 @@ class Parser {
 	void ParseFile(const wstring & file_name);
 	void ParseProgram();
 	void ParseBundle(int depth);
-	wstring ParseBundleName(int depth);
-	Class * ParseClass(const wstring & bundle_id, int depth);
-	Class * ParseInterface(const wstring & bundle_id, int depth);
-	Method * ParseMethod(bool is_function, bool virtual_required, int depth);
-	Variable * ParseVariable(const wstring & ident, int depth);
-	MethodCall * ParseMethodCall(int depth);
-	MethodCall * ParseMethodCall(const wstring & ident, int depth);
+	Class* ParseClass(const wstring & bundle_id, int depth);
+	Class* ParseInterface(const wstring & bundle_id, int depth);
+	Method* ParseMethod(bool is_function, bool virtual_required, int depth);
+	Variable* ParseVariable(const wstring & ident, int depth);
+	vector<Type*> ParseGenericTypes(int depth);
+	vector<Class*> ParseGenericClasses(const wstring& bundle_name, int depth);
+	MethodCall* ParseMethodCall(int depth);
+	MethodCall* ParseMethodCall(const wstring & ident, int depth);
 	void ParseMethodCall(Expression * expression, int depth);
-	MethodCall * ParseMethodCall(Variable * variable, int depth);
+	MethodCall* ParseMethodCall(Variable * variable, int depth);
 	void ParseAnonymousClass(MethodCall * method_call, int depth);
-	StatementList * ParseStatementList(int depth);
-	Statement * ParseStatement(int depth, bool semi_colon = true);
-	Assignment * ParseAssignment(Variable * variable, int depth);
-	StaticArray * ParseStaticArray(int depth);
-	If * ParseIf(int depth);
-	DoWhile * ParseDoWhile(int depth);
-	While * ParseWhile(int depth);
-	Select * ParseSelect(int depth);
-	Enum * ParseEnum(int depth);
-	Enum * ParseConsts(int depth);
-	For * ParseFor(int depth);
-	For * ParseEach(int depth);
-	CriticalSection * ParseCritical(int depth);
-	Return * ParseReturn(int depth);
-	Leaving * ParseLeaving(int depth);
-	Declaration * ParseDeclaration(const wstring & name, bool is_stmt, int depth);
-	DeclarationList * ParseDecelerationList(int depth);
-	ExpressionList * ParseExpressionList(int depth, ScannerTokenType open = TOKEN_OPEN_PAREN,
+	StatementList* ParseStatementList(int depth);
+	Statement* ParseStatement(int depth, bool semi_colon = true);
+	Assignment* ParseAssignment(Variable * variable, int depth);
+	StaticArray* ParseStaticArray(int depth);
+	If* ParseIf(int depth);
+	DoWhile* ParseDoWhile(int depth);
+	While* ParseWhile(int depth);
+	Select* ParseSelect(int depth);
+	Enum* ParseEnum(int depth);
+	Enum* ParseConsts(int depth);
+	For* ParseFor(int depth);
+	For* ParseEach(int depth);
+	CriticalSection* ParseCritical(int depth);
+	Return* ParseReturn(int depth);
+	Leaving* ParseLeaving(int depth);
+	Declaration* ParseDeclaration(const wstring & name, bool is_stmt, int depth);
+	DeclarationList* ParseDecelerationList(int depth);
+	ExpressionList* ParseExpressionList(int depth, ScannerTokenType open = TOKEN_OPEN_PAREN,
 																			 ScannerTokenType close = TOKEN_CLOSED_PAREN);
-	ExpressionList * ParseIndices(int depth);
+	ExpressionList* ParseIndices(int depth);
 	void ParseCastTypeOf(Expression * expression, int depth);
-	Type * ParseType(int depth);
-	Expression * ParseExpression(int depth);
-	Expression * ParseLogic(int depth);
-	Expression * ParseMathLogic(int depth);
-	Expression * ParseTerm(int depth);
-	Expression * ParseFactor(int depth);
-	Expression * ParseSimpleExpression(int depth);
+	Type* ParseType(int depth);
+	Expression* ParseExpression(int depth);
+	Expression* ParseLogic(int depth);
+	Expression* ParseMathLogic(int depth);
+	Expression* ParseTerm(int depth);
+	Expression* ParseFactor(int depth);
+	Expression* ParseSimpleExpression(int depth);
 
 public:
 	Parser(const wstring & p, bool a, const wstring & r) {
