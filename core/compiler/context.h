@@ -1,7 +1,7 @@
 /***************************************************************************
  * Performs contextual analysis.
  *
- * Copyright (c) 2008-2018, Randy Hollines
+ * Copyright (c) 2008-2019, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -900,7 +900,7 @@ class ContextAnalyzer {
     }
 		
     LibraryClass* lib_klass = linker->SearchClassLibraries(type->GetClassName(), program->GetUses());
-		// TODO: update for generics
+		// TODO: adding generics
     if(lib_klass) {
       lib_klass->SetCalled(true);
       type->SetClassName(lib_klass->GetName());
