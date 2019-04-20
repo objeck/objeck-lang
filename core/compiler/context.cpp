@@ -1793,11 +1793,6 @@ bool ContextAnalyzer::Analyze()
         klass = SearchProgramClasses(cls_name);
         lib_klass = linker->SearchClassLibraries(cls_name, program->GetUses(current_class->GetFileName()));
 
-				// hack, hack, look up current klass
-				if(!klass && !lib_klass && current_class->HasGenerics()) {
-
-				}
-
         if(!klass && !lib_klass) {
           if(SearchProgramEnums(cls_name) || linker->SearchEnumLibraries(cls_name, program->GetUses(current_class->GetFileName()))) {
             klass = program->GetClass(INT_CLASS_ID);
@@ -1864,7 +1859,7 @@ bool ContextAnalyzer::Analyze()
         }
       }
     }
-		// generics
+		// TODO: adding generics
 		if(method_call->HasConcreteNames() && method_call->GetEvalType()) {
 			method_call->GetEvalType()->SetGenerics(method_call->GetConcreteNames());
 		}
@@ -2304,7 +2299,6 @@ bool ContextAnalyzer::Analyze()
           if(expression->GetExpressionType() == METHOD_CALL_EXPR && expression->GetEvalType() && expression->GetEvalType()->GetType() == NIL_TYPE) {
             ProcessError(static_cast<Expression*>(method_call), L"Invalid operation with 'Nil' value");
           }
-
 					// TODO: adding generics
 					Type* left = mthd_params[i]->GetEntry()->GetType();
 					if(klass->HasGenerics()) {
@@ -2346,6 +2340,7 @@ bool ContextAnalyzer::Analyze()
       method_call->SetOriginalClass(klass);
       method_call->SetMethod(method);
       
+			// TODO: adding generics
 			if((method->GetMethodType() == NEW_PUBLIC_METHOD || method->GetMethodType() == NEW_PRIVATE_METHOD) &&
 				 klass->HasGenerics() && !method_call->HasConcreteNames()) {
 				ProcessError(static_cast<Expression*>(method_call), L"Cannot create an instance of a generic class");
@@ -4483,7 +4478,7 @@ bool ContextAnalyzer::Analyze()
 			// program
       Class* right_class = SearchProgramClasses(right->GetClassName());
       if(right_class) {
-				// generics
+				// TODO: adding generics
 				if(left->HasGenerics() == right->HasGenerics()) {
 					const vector<Type*> left_concretes = left->GetGenerics();
 					const vector<Type*> right_concretes = right->GetGenerics();
