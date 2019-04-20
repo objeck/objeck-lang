@@ -158,8 +158,10 @@ class Parser {
 		return name;
 	}
 
-	Declaration* AddDeclaration(const wstring& ident, Type* type, bool is_static, Declaration* child,
-															const int line_num, const wstring& file_name, int depth) {
+	Declaration* AddDeclaration(const wstring& ident, Type* type, bool is_static, Declaration* child,	int depth) {
+		const int line_num = GetLineNumber();
+		const wstring& file_name = GetFileName();
+
 		// add entry
 		wstring scope_name = GetScopeName(ident);
 		SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num, scope_name, 
