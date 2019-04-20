@@ -2,29 +2,30 @@
 class Foo {
 	function : Main(args : String[]) ~ Nil {
 #		b := Bar->New()<String>;
-		b : Bar<String> := Bar->New()<String>;
+		b : Bar<String, IntHolder> := Bar->New(IntHolder->New(13))<String, IntHolder>;
 #		b : Bar := Bar->New();
 #		b : Bar := Bar->New()<IntHolder>;
 
 		b->Set("foo bar");
-		s : String := b->Get();
-		s->PrintLine();
-
+		s : IntHolder := b->Get();
+		s->Get()->PrintLine();
 	}
 }
 
-class Bar<A> {
+class Bar<A, B> {
 	@aa : A;
+	@bb : B;
 
-	New() {
+	New(bb : B) {
+		@bb := bb;
 	}
 	
 	method : public : Set(a : A) ~ Nil {
 		@aa := a;
 	}
 	
-	method : public : Get() ~ A {
-		return @aa;
+	method : public : Get() ~ B {
+		return @bb;
 	}
 
 }
