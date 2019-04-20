@@ -2369,14 +2369,12 @@ bool ContextAnalyzer::Analyze()
 			// TODO: adding generics
 			// validate concrete declarations
 			if(method_call->GetCallType() == NEW_INST_CALL && method_call->HasConcreteNames()) {
-				bool valid_concrete_classes = true;
 				const vector<wstring> concrete_names = method_call->GetConcreteNames();
 				for(size_t i = 0; i < concrete_names.size(); ++i) {
 					const wstring cls_name = concrete_names[i];
 					if(!SearchProgramClasses(cls_name) &&
 						 !linker->SearchClassLibraries(cls_name, program->GetUses(current_class->GetFileName()))) {
 						ProcessError(static_cast<Expression*>(method_call), L"Undefined class: '" + cls_name + L"'");
-						valid_concrete_classes = false;
 					}
 				}
 			}
