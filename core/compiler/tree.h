@@ -2362,9 +2362,13 @@ namespace frontend {
       return was_called;
     }
 
-    vector<wstring> GetInterfaceNames() {
-      return interface_names;
+    void AddInterfaceName(const wstring &n) {
+			interface_names.push_back(n);
     }
+
+		vector<wstring> GetInterfaceNames() {
+			return interface_names;
+		}
 
     const wstring GetName() const {
       return name;

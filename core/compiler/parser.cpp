@@ -2262,20 +2262,32 @@ vector<Class*> Parser::ParseGenericClasses(const wstring& bundle_name, int depth
 		NextToken();
 
 		while(!Match(TOKEN_GTR) && !Match(TOKEN_END_OF_STREAM)) {
+			// identifier
 			if(!Match(TOKEN_IDENT)) {
 				ProcessError(TOKEN_IDENT);
 			}
-
-			// identifier
 			wstring generic_name = scanner->GetToken()->GetIdentifier();
+			NextToken();
+
+			Class* klass = TreeFactory::Instance()->MakeClass(file_name, line_num, generic_name, true);
 			for(size_t i = 0; i < generic_classes.size(); ++i) {
 				if(bundle_name.size() > 0) {
 					generic_name.insert(0, L".");
 					generic_name.insert(0, bundle_name);
 				}
 			}
-			generic_classes.push_back(TreeFactory::Instance()->MakeClass(file_name, line_num, generic_name, true));
-			NextToken();
+			generic_classes.push_back(klass);
+			
+			if(Match(TOKEN_COLON)) {
+				NextToken();
+
+				if(!Match(TOKEN_IDENT)) {
+					ProcessError(TOKEN_IDENT);
+				}
+				const wstring interface_name = scanner->GetToken()->GetIdentifier();
+				klass->AddInterfaceName(interface_name);
+				NextToken();
+			}
 
 			if(Match(TOKEN_COMMA) && !Match(TOKEN_GTR, SECOND_INDEX)) {
 				NextToken();
