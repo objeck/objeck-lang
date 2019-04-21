@@ -17,7 +17,7 @@ class Foo {
 	}
 }
 
-class Bar<A, B> {
+class Bar<A : Compare, B> {
 	@aa : A;
 	@bb : B;
 
