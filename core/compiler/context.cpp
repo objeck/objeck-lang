@@ -2372,12 +2372,20 @@ bool ContextAnalyzer::Analyze()
 			// validate concrete declarations
 			if(method_call->GetCallType() == NEW_INST_CALL && method_call->HasConcreteNames()) {
 				const vector<Type*> concrete_types = method_call->GetConcreteNames();
-				for(size_t i = 0; i < concrete_types.size(); ++i) {
-					Type* type = concrete_types[i];
-					const wstring cls_name = type->GetClassName();
-					if(!SearchProgramClasses(cls_name) &&
-						 !linker->SearchClassLibraries(cls_name, program->GetUses(current_class->GetFileName()))) {
-						ProcessError(static_cast<Expression*>(method_call), L"Undefined class: '" + cls_name + L"'");
+				const vector<Class*> generic_classes = method_call->GetMethod()->GetClass()->GetGenericClasses();
+				if(concrete_types.size() == generic_classes.size()) {
+					for(size_t i = 0; i < concrete_types.size(); ++i) {
+						Type* right = concrete_types[i];
+						// generic that defines an interface
+						if(generic_classes[i]->GetInterfaceNames().size() == 1) {
+							Type* left = TypeFactory::Instance()->MakeType(CLASS_TYPE, generic_classes[i]->GetInterfaceNames()[0]);
+							AnalyzeClassCast(left, right, method_call, depth);
+						}
+						const wstring cls_name = right->GetClassName();
+						if(!SearchProgramClasses(cls_name) &&
+							 !linker->SearchClassLibraries(cls_name, program->GetUses(current_class->GetFileName()))) {
+							ProcessError(static_cast<Expression*>(method_call), L"Undefined class: '" + cls_name + L"'");
+						}
 					}
 				}
 			}
