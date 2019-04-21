@@ -2377,9 +2377,9 @@ bool ContextAnalyzer::Analyze()
 					for(size_t i = 0; i < concrete_types.size(); ++i) {
 						Type* right = concrete_types[i];
 						// generic that defines an interface
-						if(generic_classes[i]->GetInterfaceNames().size() == 1) {
+						if(generic_classes[i]->HasInterfaceNames()) {
 							Type* left = TypeFactory::Instance()->MakeType(CLASS_TYPE, generic_classes[i]->GetInterfaceNames()[0]);
-							AnalyzeClassCast(left, right, method_call, depth);
+							AnalyzeClassCast(left, right, method_call, true, depth);
 						}
 						const wstring cls_name = right->GetClassName();
 						if(!SearchProgramClasses(cls_name) &&
@@ -3857,7 +3857,7 @@ bool ContextAnalyzer::Analyze()
               linker->SearchEnumLibraries(left->GetClassName(), program->GetUses(current_class->GetFileName()))) &&
              (SearchProgramEnums(right->GetClassName()) || 
               linker->SearchEnumLibraries(right->GetClassName(), program->GetUses(current_class->GetFileName())))) {
-            AnalyzeClassCast(left, right, left_expr, depth + 1);            
+            AnalyzeClassCast(left, right, left_expr, false, depth + 1);            
           }
           else if((!SearchProgramClasses(left->GetClassName()) && 
                    !linker->SearchClassLibraries(left->GetClassName(), program->GetUses(current_class->GetFileName()))) ||
@@ -4443,10 +4443,10 @@ bool ContextAnalyzer::Analyze()
       right = expression->GetEvalType();
     }
     
-    AnalyzeClassCast(left, right, expression, depth + 1);
+    AnalyzeClassCast(left, right, expression, false, depth);
   }
   
-  void ContextAnalyzer::AnalyzeClassCast(Type* left, Type* right, Expression* expression, const int depth)
+  void ContextAnalyzer::AnalyzeClassCast(Type* left, Type* right, Expression* expression, bool generic_check, const int depth)
   {
     Class* left_class = NULL;
     LibraryEnum* left_lib_enum = NULL;
@@ -4529,7 +4529,7 @@ bool ContextAnalyzer::Analyze()
         if(ValidDownCast(left_class->GetName(), right_class, NULL)) {
           left_class->SetCalled(true);
           right_class->SetCalled(true);
-          if(left_class->IsInterface()) {
+          if(left_class->IsInterface() && !generic_check) {
             expression->SetToClass(left_class);
           }
           return;
@@ -4554,7 +4554,7 @@ bool ContextAnalyzer::Analyze()
         LibraryClass* right_lib_class = linker->SearchClassLibraries(right->GetClassName(), program->GetUses(current_class->GetFileName()));
         // downcast
         if(ValidDownCast(left_class->GetName(), NULL, right_lib_class)) {
-          if(left_class->IsInterface()) {
+          if(left_class->IsInterface() && !generic_check) {
             expression->SetToClass(left_class);
           }
           return;
@@ -4634,7 +4634,7 @@ bool ContextAnalyzer::Analyze()
         if(ValidDownCast(left_lib_class->GetName(), right_class, NULL)) {
           left_lib_class->SetCalled(true);
           right_class->SetCalled(true);
-          if(left_lib_class->IsInterface()) {
+          if(left_lib_class->IsInterface() && !generic_check) {
             expression->SetToLibraryClass(left_lib_class);
           }
           return;
@@ -4659,7 +4659,7 @@ bool ContextAnalyzer::Analyze()
         if(ValidDownCast(left_lib_class->GetName(), NULL, right_lib_class)) {
           left_lib_class->SetCalled(true);
           right_lib_class->SetCalled(true);
-          if(left_lib_class->IsInterface()) {
+          if(left_lib_class->IsInterface() && !generic_check) {
             expression->SetToLibraryClass(left_lib_class);
           }
           return;
