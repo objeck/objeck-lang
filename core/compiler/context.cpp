@@ -2377,8 +2377,8 @@ bool ContextAnalyzer::Analyze()
 					for(size_t i = 0; i < concrete_types.size(); ++i) {
 						Type* right = concrete_types[i];
 						// generic that defines an interface
-						if(generic_classes[i]->HasInterfaceNames()) {
-							Type* left = TypeFactory::Instance()->MakeType(CLASS_TYPE, generic_classes[i]->GetInterfaceNames()[0]);
+						if(generic_classes[i]->HasGenericInterface()) {
+							Type* left = generic_classes[i]->GetGenericInterface();
 							AnalyzeClassCast(left, right, method_call, true, depth);
 						}
 						const wstring cls_name = right->GetClassName();
@@ -4452,6 +4452,21 @@ bool ContextAnalyzer::Analyze()
     LibraryEnum* left_lib_enum = NULL;
     LibraryClass* left_lib_class = NULL;
 
+		// TODO: adding generics
+		Class* temp = NULL;
+		if(temp = current_class->GetGenericClass(left->GetClassName())) {
+			if(temp->HasGenericInterface()) {
+				left = temp->GetGenericInterface();
+			}
+		}
+
+		// TODO: adding generics
+		if(temp = current_class->GetGenericClass(right->GetClassName())) {
+			if(temp->HasGenericInterface()) {
+				right = temp->GetGenericInterface();
+			}
+		}
+
     //
     // program enum
     //
@@ -4579,9 +4594,10 @@ bool ContextAnalyzer::Analyze()
 		//
 		// generic class
 		//
-		else if(left && right && current_class->GetGenericClass(left->GetClassName())) {
+		else if(left && right && (left_class = current_class->GetGenericClass(left->GetClassName()))) {
 			// program
-			if(current_class->GetGenericClass(right->GetClassName())) {
+			Class* right_class = current_class->GetGenericClass(right->GetClassName());
+			if(right_class) {
 				if(left->GetClassName() == right->GetClassName()) {
 					return;
 				}

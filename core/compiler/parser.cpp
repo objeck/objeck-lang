@@ -2285,7 +2285,7 @@ vector<Class*> Parser::ParseGenericClasses(const wstring& bundle_name, int depth
 					ProcessError(TOKEN_IDENT);
 				}
 				const wstring interface_name = scanner->GetToken()->GetIdentifier();
-				klass->AddInterfaceName(interface_name);
+				klass->SetGenericInterface(interface_name);
 				NextToken();
 			}
 
