@@ -2299,7 +2299,7 @@ namespace frontend {
     bool is_interface;
     MethodCall* anonymous_call;
 		vector<wstring> interface_names;
-		vector<Class*> generic_names;
+		vector<Class*> generic_classes;
 
 		Class(const wstring &f, const int l, const wstring &n, const wstring &p, 
 					vector<wstring> &e, vector<Class*> g, bool i) : ParseNode(f, l) {
@@ -2309,7 +2309,7 @@ namespace frontend {
       id = -1;
       parent = NULL;
       interface_names = e;
-			generic_names = g;
+			generic_classes = g;
 			lib_parent = NULL;
       is_virtual = is_generic = was_called = false;
       anonymous_call = NULL;
@@ -2424,12 +2424,12 @@ namespace frontend {
     }
 
 		bool HasGenerics() {
-			return generic_names.size() > 0;
+			return generic_classes.size() > 0;
 		}
 
 		int GenericIndex(const wstring &n) {
-			for(size_t i = 0; i < generic_names.size(); ++i) {
-				if(n == generic_names[i]->GetName()) {
+			for(size_t i = 0; i < generic_classes.size(); ++i) {
+				if(n == generic_classes[i]->GetName()) {
 					return (int)i;
 				}
 			}
@@ -2437,10 +2437,14 @@ namespace frontend {
 			return -1;
 		}
 
+		const vector<Class*> GetGenericClasses() {
+			return generic_classes;
+		}
+
 		Class* GetGenericClass(const wstring& n) {
 			const int index = GenericIndex(n);
 			if(index > -1) {
-				return generic_names[index];
+				return generic_classes[index];
 			}
 
 			return NULL;
@@ -2451,7 +2455,7 @@ namespace frontend {
 		}
 
 		vector<Class*> GetGenericNames() {
-			return generic_names;
+			return generic_classes;
 		}
 
     void AddStatement(Statement* s) {
