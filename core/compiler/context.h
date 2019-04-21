@@ -909,9 +909,19 @@ class ContextAnalyzer {
 
 		// look up generic type
 		if(context_klass->HasGenerics()) {
-			if(context_klass->GetGenericClass(type->GetClassName())) {
-				type->SetClassName(type->GetClassName());
-				return true;
+			klass = context_klass->GetGenericClass(type->GetClassName());
+			if(klass) {
+				if(klass->HasInterfaceNames()) {
+					Type* inf_type = TypeFactory::Instance()->MakeType(CLASS_TYPE, klass->GetInterfaceNames()[0]);
+					if(ResolveClassEnumType(inf_type)) {
+						type->SetClassName(inf_type->GetClassName());
+						return true;
+					}
+				}
+				else {
+					type->SetClassName(type->GetClassName());
+					return true;
+				}
 			}
 		}
 
@@ -1165,7 +1175,7 @@ class ContextAnalyzer {
   void AnalyzeCast(Expression* expression, const int depth);
   
   void AnalyzeClassCast(Type* left, Expression* expression, const int depth);
-  void AnalyzeClassCast(Type* left, Type* right, Expression* expression, const int depth);
+  void AnalyzeClassCast(Type* left, Type* right, Expression* expression, bool generic_check, const int depth);
 
   void AnalyzeAssignment(Assignment* assignment, StatementType type, const int depth);
   void AnalyzeSimpleStatement(SimpleStatement* simple, const int depth);

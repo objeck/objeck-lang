@@ -2370,6 +2370,10 @@ namespace frontend {
 			return interface_names;
 		}
 
+		bool HasInterfaceNames() {
+			return interface_names.size() > 0;
+		}
+
     const wstring GetName() const {
       return name;
     }
