@@ -4454,14 +4454,14 @@ bool ContextAnalyzer::Analyze()
 
 		// TODO: adding generics
 		Class* temp = NULL;
-		if(temp = current_class->GetGenericClass(left->GetClassName())) {
+		if((temp = current_class->GetGenericClass(left->GetClassName()))) {
 			if(temp->HasGenericInterface()) {
 				left = temp->GetGenericInterface();
 			}
 		}
 
 		// TODO: adding generics
-		if(temp = current_class->GetGenericClass(right->GetClassName())) {
+		if((temp = current_class->GetGenericClass(right->GetClassName()))) {
 			if(temp->HasGenericInterface()) {
 				right = temp->GetGenericInterface();
 			}
