@@ -19,7 +19,7 @@ class Foo {
 }
 
 # TODO: use 'Compare' internally
-class Bar<A : Compare, B> {
+class Bar<A : String, B> {
 	@aa : A;
 	@bb : B;
 
@@ -29,7 +29,7 @@ class Bar<A : Compare, B> {
 	
 	method : public : Set(a : A) ~ Nil {
 		@aa := a;
-		x := @aa->HashID() + 3;
+		x := @aa->Size();
 		x->PrintLine();
 	}
 	
