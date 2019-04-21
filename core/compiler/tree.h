@@ -2300,6 +2300,7 @@ namespace frontend {
     MethodCall* anonymous_call;
 		vector<wstring> interface_names;
 		vector<Class*> generic_classes;
+		Type* generic_interface;
 
 		Class(const wstring &f, const int l, const wstring &n, const wstring &p, 
 					vector<wstring> &e, vector<Class*> g, bool i) : ParseNode(f, l) {
@@ -2314,6 +2315,7 @@ namespace frontend {
       is_virtual = is_generic = was_called = false;
       anonymous_call = NULL;
       symbol_table = NULL;
+			generic_interface = NULL;
     }
 
 		Class(const wstring& f, const int l, const wstring& n, 
@@ -2328,6 +2330,7 @@ namespace frontend {
 			is_virtual = is_generic = was_called = false;
 			anonymous_call = NULL;
 			symbol_table = NULL;
+			generic_interface = NULL;
 		}
 
 		Class(const wstring& f, const int l, const wstring& n, bool g) : ParseNode(f, l) {
@@ -2340,6 +2343,7 @@ namespace frontend {
 			is_generic = g;
 			anonymous_call = NULL;
 			symbol_table = NULL;
+			generic_interface = NULL;
 		}
 
     ~Class() {
@@ -2362,18 +2366,22 @@ namespace frontend {
       return was_called;
     }
 
-    void AddInterfaceName(const wstring &n) {
-			interface_names.push_back(n);
+    void SetGenericInterface(const wstring &n) {
+			generic_interface = TypeFactory::Instance()->MakeType(CLASS_TYPE, n);
     }
+
+		Type* GetGenericInterface() {
+			return generic_interface;
+		}
+
+		bool HasGenericInterface() {
+			return generic_interface != NULL;
+		}
 
 		vector<wstring> GetInterfaceNames() {
 			return interface_names;
 		}
-
-		bool HasInterfaceNames() {
-			return interface_names.size() > 0;
-		}
-
+		
     const wstring GetName() const {
       return name;
     }

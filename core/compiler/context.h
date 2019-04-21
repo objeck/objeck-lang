@@ -911,8 +911,8 @@ class ContextAnalyzer {
 		if(context_klass->HasGenerics()) {
 			klass = context_klass->GetGenericClass(type->GetClassName());
 			if(klass) {
-				if(klass->HasInterfaceNames()) {
-					Type* inf_type = TypeFactory::Instance()->MakeType(CLASS_TYPE, klass->GetInterfaceNames()[0]);
+				if(klass->HasGenericInterface()) {
+					Type* inf_type = klass->GetGenericInterface();
 					if(ResolveClassEnumType(inf_type)) {
 						type->SetClassName(inf_type->GetClassName());
 						return true;

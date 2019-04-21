@@ -29,8 +29,9 @@ class Bar<A : String, B> {
 	
 	method : public : Set(a : A) ~ Nil {
 		@aa := a;
-		x := @aa->Size();
-		x->PrintLine();
+		x := A->New[3];
+		x[0] := String->New("Hello");
+#		x[0]->PrintLine();
 	}
 	
 	method : public : Get() ~ B {
