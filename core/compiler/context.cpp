@@ -422,6 +422,7 @@ bool ContextAnalyzer::Analyze()
         ProcessError(klass, L"Classes cannot be derived from interfaces");
       }
     }
+
     // check interfaces
     AnalyzeInterfaces(klass, depth);
 
@@ -484,7 +485,6 @@ bool ContextAnalyzer::Analyze()
     for(size_t i = 0; i < interface_names.size(); ++i) {
       const wstring& interface_name = interface_names[i];
       Class* inf_klass = SearchProgramClasses(interface_name);
-
       if(inf_klass) {
         if(!inf_klass->IsInterface()) {
           ProcessError(klass, L"Expected an interface type");
@@ -500,8 +500,7 @@ bool ContextAnalyzer::Analyze()
         }
         // ensure implementation
         if(!AnalyzeVirtualMethods(klass, inf_klass, depth)) {
-          ProcessError(klass, L"Not all methods have been implemented for the interface: " +
-                       inf_klass->GetName());
+          ProcessError(klass, L"Not all methods have been implemented for the interface: " + inf_klass->GetName());
         }
         else {
           // add interface
@@ -1613,11 +1612,15 @@ bool ContextAnalyzer::Analyze()
       // next call
       AnalyzeExpressionMethodCall(method_call, depth + 1);
     }
+		//
     // parent call
+		//
     else if(method_call->GetCallType() == PARENT_CALL) {
       AnalyzeParentCall(method_call, depth);
     }
-    // method/function
+    //
+		// method/function
+		//
     else { 
       wstring encoding;
       // local call
