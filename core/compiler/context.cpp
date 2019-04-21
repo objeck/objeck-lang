@@ -1958,8 +1958,13 @@ bool ContextAnalyzer::Analyze()
                 method_call->GetVariable()->GetCastType()->GetType() == CLASS_TYPE) {
           klass = SearchProgramClasses(method_call->GetVariable()->GetCastType()->GetClassName());
         }
-        else {
-          klass = SearchProgramClasses(entry->GetType()->GetClassName());
+				/* /* TODO: generics WIP
+				else if(current_class->HasGenericInterface()) {
+					klass = SearchProgramClasses(current_class->GetGenericInterface()->GetClassName());
+				}
+				*/
+				else {
+					klass = SearchProgramClasses(entry->GetType()->GetClassName());
         }
       }
       // static method call
@@ -2011,6 +2016,19 @@ bool ContextAnalyzer::Analyze()
         klass = linker->SearchClassLibraries(method_call->GetVariable()->GetCastType()->GetClassName(), program->GetUses(current_class->GetFileName()));	
         method_call->SetTypes(entry->GetType());
       }
+			/* TODO: generics WIP
+			else if(current_class->HasGenerics()) {
+				Class* generic_class = current_class->GetGenericClass(entry->GetType()->GetClassName());
+				if(generic_class) {
+					if(generic_class->HasGenericInterface()) {
+
+					}
+					else {
+						klass = generic_class;
+					}
+				}
+			}
+			*/
       else {
         klass = linker->SearchClassLibraries(entry->GetType()->GetClassName(), program->GetUses(current_class->GetFileName()));
       }
