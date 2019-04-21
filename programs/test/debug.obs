@@ -17,6 +17,7 @@ class Foo {
 	}
 }
 
+# TODO: use 'Compare' internally
 class Bar<A : Compare, B> {
 	@aa : A;
 	@bb : B;
