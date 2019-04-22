@@ -161,6 +161,14 @@ wstring Method::EncodeType(Type* type, Class* klass, ParsedProgram* program, Lin
         }
       }
       
+			// search libaraires      
+			if(name == L"o.") {
+				prgm_klass = klass->GetGenericClass(type_klass_name);
+				if(prgm_klass) {
+					name += prgm_klass->GetName();
+				}
+			}
+
       // search libaraires      
       if(name == L"o.") {
         LibraryClass* lib_klass = linker->SearchClassLibraries(type_klass_name, program->GetUses());
@@ -180,7 +188,10 @@ wstring Method::EncodeType(Type* type, Class* klass, ParsedProgram* program, Lin
             }
           }
         }
-      }      
+      } 
+#ifdef _DEBUG
+			assert(name != L"o.");
+#endif
     }
       break;
       

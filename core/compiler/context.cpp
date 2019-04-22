@@ -2056,7 +2056,7 @@ bool ContextAnalyzer::Analyze()
         if(calling_type->GetType() == method_type->GetType()) {
           // class/enum arrays
           if(calling_type->GetType() == CLASS_TYPE && 
-             IsClassEnumParameterMatch(calling_type, method_type) &&
+             IsClassEnumParameterMatch(calling_type, method_type, klass, lib_klass) &&
              calling_type->GetDimension() == method_type->GetDimension()) {
             return 0;
           }
@@ -2106,17 +2106,30 @@ bool ContextAnalyzer::Analyze()
           case CLASS_TYPE: {
             if(method_type->GetType() == CLASS_TYPE) {
               // calculate exact match
-              if(IsClassEnumParameterMatch(calling_type, method_type)) {
+              if(IsClassEnumParameterMatch(calling_type, method_type, klass, lib_klass)) {
                 return 0;
               }	      
               // calculate relative match
               const wstring &from_klass_name = calling_type->GetClassName();
               Class* from_klass = SearchProgramClasses(from_klass_name);
-              LibraryClass* from_lib_klass = linker->SearchClassLibraries(from_klass_name, 
-                                                                          program->GetUses(current_class->GetFileName()));	      
-              Class* to_klass = SearchProgramClasses(method_type->GetClassName());
-              LibraryClass* to_lib_klass = linker->SearchClassLibraries(method_type->GetClassName(), 
-                                                                        program->GetUses(current_class->GetFileName()));
+							if(!from_klass && klass) {
+								from_klass = klass->GetGenericClass(from_klass_name);
+							}
+							LibraryClass* from_lib_klass = linker->SearchClassLibraries(from_klass_name, program->GetUses(current_class->GetFileName()));
+							if(!from_lib_klass && lib_klass) {
+								from_lib_klass = lib_klass->GetGenericClass(from_klass_name);
+							}
+
+							const wstring& to_klass_name = method_type->GetClassName();
+              Class* to_klass = SearchProgramClasses(to_klass_name);
+							if(!to_klass && klass) {
+								to_klass = klass->GetGenericClass(to_klass_name);
+							}
+              LibraryClass* to_lib_klass = linker->SearchClassLibraries(to_klass_name, program->GetUses(current_class->GetFileName()));
+							if(!to_lib_klass && lib_klass) {
+								to_lib_klass = lib_klass->GetGenericClass(to_klass_name);
+							}
+
               if(to_klass) {
                 return ValidDownCast(to_klass->GetName(), from_klass, from_lib_klass) ? 1 : -1;
               }
