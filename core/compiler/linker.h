@@ -656,7 +656,7 @@ class LibraryClass {
   wstring name;
   wstring parent_name;
 	vector<wstring>interface_names;
-	vector<wstring>generic_names;
+	vector<wstring>generic_name_types;
 	vector<int>interface_ids;
   int cls_space;
   int inst_space;
@@ -680,7 +680,7 @@ class LibraryClass {
     name = n;
     parent_name = p;
     interface_names = in;
-		generic_names = gen;
+		generic_name_types = gen;
     is_interface = is_inf;
     is_virtual = is_vrtl;
     cls_space = cs;
@@ -688,6 +688,18 @@ class LibraryClass {
     cls_entries = ce;
     inst_entries = ie;
     library = l;
+
+		for(size_t i = 0; i < generic_name_types.size(); ++i) {
+			const wstring generic_name_type = generic_name_types[i];
+			size_t end = generic_name_type.find_first_of(L'|');
+			
+			const wstring generic_name = generic_name_type.substr(0, end);
+			wstring concrete_name;
+			end++;
+			if(end < generic_name_type.size()) {
+				concrete_name = generic_name_type.substr(end, generic_name_type.size() - end);
+			}
+		}
     
     // force runtime linking of these classes
     if(name == L"System.Introspection.Class" || 
