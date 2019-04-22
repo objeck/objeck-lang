@@ -1832,9 +1832,9 @@ bool ContextAnalyzer::Analyze()
   {
 		Class* generic_class = current_class->GetGenericClass(method_call->GetEvalType()->GetClassName());
 		if(generic_class && generic_class->HasGenericInterface() && method_call->GetEvalType()) {
-			const int dim = method_call->GetEvalType()->GetDimension();
-			method_call->SetEvalType(generic_class->GetGenericInterface(), true);
-			method_call->GetEvalType()->SetDimension(dim);
+			const int dimension = method_call->GetEvalType()->GetDimension();
+			method_call->SetEvalType(generic_class->GetGenericInterface(), false);
+			method_call->GetEvalType()->SetDimension(dimension);
 		}
 
 		// get parameters
