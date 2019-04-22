@@ -18,7 +18,7 @@ class Foo {
 }
 
 # TODO: use 'Compare' internally
-class Bar<A : String, B> {
+class Bar<A : Compare, B> {
 	@aa : A;
 	@bb : B;
 
@@ -30,7 +30,7 @@ class Bar<A : String, B> {
 		@aa := a;
 		x := A->New[3];
 		x[0] := String->New("Hello");
-		x[0]->PrintLine();
+		# x[0]->PrintLine();
 		y := x[0]->As(String);
 		y->PrintLine();
 		x[1] := x[0];
