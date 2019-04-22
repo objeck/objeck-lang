@@ -192,99 +192,98 @@ class LibraryMethod {
   vector<frontend::Type*> declarations;
   backend::IntermediateDeclarations* entries;
   
-  void ParseParameters() {
-    const wstring &method_name = name;
-    size_t start = method_name.find_last_of(':'); 	
-    if(start != wstring::npos) {
-      const wstring &parameters = method_name.substr(start + 1);
-      size_t index = 0;
+	void ParseParameters() {
+		const wstring& method_name = name;
+		size_t start = method_name.find_last_of(':');
+		if(start != wstring::npos) {
+			const wstring& parameters = method_name.substr(start + 1);
+			size_t index = 0;
 
-      while(index < parameters.size()) {
-	frontend::Type* type = NULL;
-	int dimension = 0;
-	switch(parameters[index]) {
-	case 'l':
-	  type = frontend::TypeFactory::Instance()->MakeType(frontend::BOOLEAN_TYPE);
-	  index++;
-	  break;
-	  
-	case 'b':
-	  type = frontend::TypeFactory::Instance()->MakeType(frontend::BYTE_TYPE);
-	  index++;
-	  break;
+			while(index < parameters.size()) {
+				frontend::Type* type = NULL;
+				int dimension = 0;
+				switch(parameters[index]) {
+				case 'l':
+					type = frontend::TypeFactory::Instance()->MakeType(frontend::BOOLEAN_TYPE);
+					index++;
+					break;
 
-	case 'i':
-	  type = frontend::TypeFactory::Instance()->MakeType(frontend::INT_TYPE);
-	  index++;
-	  break;
+				case 'b':
+					type = frontend::TypeFactory::Instance()->MakeType(frontend::BYTE_TYPE);
+					index++;
+					break;
 
-	case 'f':
-	  type = frontend::TypeFactory::Instance()->MakeType(frontend::FLOAT_TYPE);
-	  index++;
-	  break;
+				case 'i':
+					type = frontend::TypeFactory::Instance()->MakeType(frontend::INT_TYPE);
+					index++;
+					break;
 
-	case 'c':
-	  type = frontend::TypeFactory::Instance()->MakeType(frontend::CHAR_TYPE);
-	  index++;
-	  break;
+				case 'f':
+					type = frontend::TypeFactory::Instance()->MakeType(frontend::FLOAT_TYPE);
+					index++;
+					break;
 
-	case 'n':
-	  type = frontend::TypeFactory::Instance()->MakeType(frontend::NIL_TYPE);
-	  index++;
-	  break;
-	  
-	case 'm': {
-	  start = index;
-	  while(index < parameters.size() && parameters[index] != '~') {
-	    index++;
-	  }
-	  index++;
-	  while(index < parameters.size() && parameters[index] != '*' && 
-		parameters[index] != ',') {
-	    index++;
-	  }	
-	  size_t end = index;
-	  const wstring &name = parameters.substr(start, end - start);
-	  // TODO: convenient alternative/kludge to paring the function types. This
-	  // works because the contextual analyzer does string encoding and then 
-	  // checking of function types.
-	  type = frontend::TypeFactory::Instance()->MakeType(frontend::FUNC_TYPE, name); 
-	}
-	  break;
+				case 'c':
+					type = frontend::TypeFactory::Instance()->MakeType(frontend::CHAR_TYPE);
+					index++;
+					break;
 
-	case 'o': {
-	  index += 2;
-	  start = index;
-	  while(index < parameters.size() && parameters[index] != '*' && 
-		parameters[index] != ',') {
-	    index++;
-	  }	
-	  size_t end = index;
-	  const wstring &name = parameters.substr(start, end - start);
-	  type = frontend::TypeFactory::Instance()->MakeType(frontend::CLASS_TYPE, name);               
-	}
-	  break;
-	}
-	
-	// set dimension
-	while(index < parameters.size() && parameters[index] == '*') {
-	  dimension++;
-	  index++;
-	}
-	
-	if(type) {
-	  type->SetDimension(dimension);
-	}
-	
-	// add declaration
-	declarations.push_back(type);
+				case 'n':
+					type = frontend::TypeFactory::Instance()->MakeType(frontend::NIL_TYPE);
+					index++;
+					break;
+
+				case 'm': {
+					start = index;
+					while(index < parameters.size() && parameters[index] != '~') {
+						index++;
+					}
+					index++;
+					while(index < parameters.size() && parameters[index] != '*' &&
+								parameters[index] != ',') {
+						index++;
+					}
+					size_t end = index;
+					const wstring& name = parameters.substr(start, end - start);
+					// TODO: convenient alternative/kludge to paring the function types. This
+					// works because the contextual analyzer does string encoding and then 
+					// checking of function types.
+					type = frontend::TypeFactory::Instance()->MakeType(frontend::FUNC_TYPE, name);
+				}
+					break;
+
+				case 'o': {
+					index += 2;
+					start = index;
+					while(index < parameters.size() && parameters[index] != '*' && parameters[index] != ',') {
+						index++;
+					}
+					size_t end = index;
+					const wstring& cls_name = parameters.substr(start, end - start);
+					type = frontend::TypeFactory::Instance()->MakeType(frontend::CLASS_TYPE, cls_name);
+				}
+					break;
+				}
+
+				// set dimension
+				while(index < parameters.size() && parameters[index] == '*') {
+					dimension++;
+					index++;
+				}
+
+				if(type) {
+					type->SetDimension(dimension);
+				}
+
+				// add declaration
+				declarations.push_back(type);
 #ifdef _DEBUG
-	assert(parameters[index] == ',');
+				assert(parameters[index] == ',');
 #endif
-	index++;
-      }
-    }
-  }
+				index++;
+			}
+		}
+	}
   
   void ParseReturn() {
     size_t index = 0;
@@ -808,6 +807,15 @@ class LibraryClass {
 
 	const vector<LibraryClass*> GetGenericClasses() {
 		return generic_classes;
+	}
+
+	LibraryClass* GetGenericClass(const wstring& n) {
+		const int index = GenericIndex(n);
+		if(index > -1) {
+			return generic_classes[index];
+		}
+
+		return NULL;
 	}
 
 	frontend::Type* GetGenericInterface() {

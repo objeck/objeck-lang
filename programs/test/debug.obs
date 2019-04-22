@@ -1,11 +1,13 @@
 # what about enums, jigga?
 class Foo {
 	function : Main(args : String[]) ~ Nil {
+#		m := StringMap->New();
+#		m->Insert("foo", FloatHolder->New(13.5));
 #		b := Bar->New()<String>;
 		b : Bar<String, IntHolder> := Bar->New(IntHolder->New(13))<String, IntHolder>;
 #		b : Bar := Bar->New();
 #		b : Bar := Bar->New()<IntHolder>;
-
+#~
 		b->Set("foo bar");
 		s : IntHolder := b->Get();
 		s->Get()->PrintLine();
@@ -14,5 +16,6 @@ class Foo {
 		bb->Size()->PrintLine();
 		bb[1] := b;
 		bb[0] := Bar->New(IntHolder->New(7))<String, IntHolder>;
+~#		
 	}
 }
