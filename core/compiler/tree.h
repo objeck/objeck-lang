@@ -187,8 +187,8 @@ namespace frontend {
     ~ScopeTable() {
       // clean up
       while(!children.empty()) {
-        ScopeTable* tmp = children.front();
-        children.erase(children.begin());
+        ScopeTable* tmp = children.back();
+        children.pop_back();
         // delete
         delete tmp;
         tmp = NULL;
@@ -825,8 +825,8 @@ namespace frontend {
 
     ~CharacterString() {      
       while(!segments.empty()) {
-        CharacterStringSegment* tmp = segments.front();
-        segments.erase(segments.begin());
+        CharacterStringSegment* tmp = segments.back();
+        segments.pop_back();
         // delete
         delete tmp;
         tmp = NULL;
@@ -2928,32 +2928,32 @@ namespace frontend {
 
     void Clear() {
       while(!nodes.empty()) {
-        ParseNode* tmp = nodes.front();
-        nodes.erase(nodes.begin());
+        ParseNode* tmp = nodes.back();
+        nodes.pop_back();
         // delete
         delete tmp;
         tmp = NULL;
       }
 
       while(!expressions.empty()) {
-        Expression* tmp = expressions.front();
-        expressions.erase(expressions.begin());
+        Expression* tmp = expressions.back();
+        expressions.pop_back();
         // delete
         delete tmp;
         tmp = NULL;
       }
 
       while(!statements.empty()) {
-        Statement* tmp = statements.front();
-        statements.erase(statements.begin());
+        Statement* tmp = statements.back();
+        statements.pop_back();
         // delete
         delete tmp;
         tmp = NULL;
       }
 
       while(!declaration_lists.empty()) {
-        DeclarationList* tmp = declaration_lists.front();
-        declaration_lists.erase(declaration_lists.begin());
+        DeclarationList* tmp = declaration_lists.back();
+        declaration_lists.pop_back();
         // delete
         delete tmp;
         tmp = NULL;
@@ -2961,32 +2961,32 @@ namespace frontend {
       declaration_lists.clear();
 
       while(!statement_lists.empty()) {
-        StatementList* tmp = statement_lists.front();
-        statement_lists.erase(statement_lists.begin());
+        StatementList* tmp = statement_lists.back();
+        statement_lists.pop_back();
         // delete
         delete tmp;
         tmp = NULL;
       }
 
       while(!expression_lists.empty()) {
-        ExpressionList* tmp = expression_lists.front();
-        expression_lists.erase(expression_lists.begin());
+        ExpressionList* tmp = expression_lists.back();
+        expression_lists.pop_back();
         // delete
         delete tmp;
         tmp = NULL;
       }
 
       while(!calls.empty()) {
-        MethodCall* tmp = calls.front();
-        calls.erase(calls.begin());
+        MethodCall* tmp = calls.back();
+        calls.pop_back();
         // delete
         delete tmp;
         tmp = NULL;
       }
 
       while(!entries.empty()) {
-        SymbolEntry* tmp = entries.front();
-        entries.erase(entries.begin());
+        SymbolEntry* tmp = entries.back();
+        entries.pop_back();
         // delete
         delete tmp;
         tmp = NULL;
@@ -3397,8 +3397,8 @@ namespace frontend {
     ~ParsedProgram() {
       // clean up
       while(!bundles.empty()) {
-        ParsedBundle* tmp = bundles.front();
-        bundles.erase(bundles.begin());
+        ParsedBundle* tmp = bundles.back();
+        bundles.pop_back();
         // delete
         delete tmp;
         tmp = NULL;
@@ -3406,16 +3406,16 @@ namespace frontend {
 
       /*
         while(!int_strings.empty()) {
-        IntStringHolder* tmp = int_strings.front();
-        int_strings.erase(int_strings.begin());
+        IntStringHolder* tmp = int_strings.back();
+        int_strings.pop_back();
         // delete
         delete tmp;
         tmp = NULL;
         }
 
         while(!float_strings.empty()) {
-        FloatStringHolder* tmp = float_strings.front();
-        float_strings.erase(float_strings.begin());
+        FloatStringHolder* tmp = float_strings.back();
+        float_strings.pop_back();
         // delete
         delete tmp;
         tmp = NULL;

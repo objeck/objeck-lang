@@ -636,6 +636,32 @@ class ContextAnalyzer {
 		return generic_type;
 	}
 
+	// TODO: adding generics
+	Type* RelsolveGenericType(Type* generic_type, MethodCall* method_call, LibraryClass* klass) {
+		if(klass->HasGenerics()) {
+			if(method_call->GetEntry()) {
+				const int concrete_index = klass->GenericIndex(generic_type->GetClassName());
+				if(concrete_index > -1 && method_call->GetEntry()) {
+					const vector<Type*> concrete_types = method_call->GetEntry()->GetType()->GetGenerics();
+					if(concrete_index < (int)concrete_types.size()) {
+						return concrete_types[concrete_index];
+					}
+				}
+			}
+			else if(method_call->GetCallType() == NEW_INST_CALL && method_call->HasConcreteNames()) {
+				const int concrete_index = klass->GenericIndex(generic_type->GetClassName());
+				if(concrete_index > -1) {
+					const vector<Type*> concrete_types = method_call->GetConcreteNames();
+					if(concrete_index < (int)concrete_types.size()) {
+						return concrete_types[concrete_index];
+					}
+				}
+			}
+		}
+
+		return generic_type;
+	}
+
   // checks for a valid downcast
   bool ValidDownCast(const wstring &cls_name, Class* class_tmp, LibraryClass* lib_class_tmp) {
     if(cls_name == L"System.Base") {

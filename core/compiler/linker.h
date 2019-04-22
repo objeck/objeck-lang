@@ -666,17 +666,26 @@ class LibraryClass {
   backend::IntermediateDeclarations* inst_entries;
   bool is_interface;
   bool is_virtual;
+	bool is_generic;
   Library* library;
   vector<LibraryClass*> lib_children;
   vector<frontend::ParseNode*> children;
   bool was_called;
   bool is_debug;
   wstring file_name;
+	vector<LibraryClass*> generic_classes;
+	frontend::Type* generic_interface;
   
  public:
-  LibraryClass(const wstring &n, const wstring &p, vector<wstring> in, bool is_inf, vector<wstring> gen, bool is_vrtl,
-							 int cs, int is, backend::IntermediateDeclarations* ce, backend::IntermediateDeclarations* ie, 
-							 Library* l, const wstring &fn, bool d) {
+	 LibraryClass(const wstring& n, const wstring& g) {
+		 name = n;
+		 generic_interface = frontend::TypeFactory::Instance()->MakeType(frontend::CLASS_TYPE, g);
+		 is_generic = true;
+	 }
+	
+		LibraryClass(const wstring &n, const wstring &p, vector<wstring> in, bool is_inf, vector<wstring> gen, bool is_vrtl,
+								 int cs, int is, backend::IntermediateDeclarations* ce, backend::IntermediateDeclarations* ie, 
+								 Library* l, const wstring &fn, bool d) {
     name = n;
     parent_name = p;
     interface_names = in;
@@ -688,6 +697,8 @@ class LibraryClass {
     cls_entries = ce;
     inst_entries = ie;
     library = l;
+		is_generic = false;
+		generic_interface = NULL;
 
 		for(size_t i = 0; i < generic_name_types.size(); ++i) {
 			const wstring generic_name_type = generic_name_types[i];
@@ -699,6 +710,8 @@ class LibraryClass {
 			if(end < generic_name_type.size()) {
 				concrete_name = generic_name_type.substr(end, generic_name_type.size() - end);
 			}
+
+			generic_classes.push_back(new LibraryClass(generic_name, concrete_name));
 		}
     
     // force runtime linking of these classes
@@ -723,8 +736,16 @@ class LibraryClass {
       tmp = NULL;
     }
     methods.clear();
-        
-    lib_children.clear();
+
+		lib_children.clear();
+
+		while(!generic_classes.empty()) {
+			LibraryClass* tmp = generic_classes.back();
+			generic_classes.pop_back();
+			// delete
+			delete tmp;
+			tmp = NULL;
+		}
   }
   
   void SetId(int i) {
@@ -770,6 +791,32 @@ class LibraryClass {
   bool IsInterface() {
     return is_interface;
   }
+
+	bool HasGenerics() {
+		return generic_classes.size() > 0;
+	}
+
+	int GenericIndex(const wstring& n) {
+		for(size_t i = 0; i < generic_classes.size(); ++i) {
+			if(n == generic_classes[i]->GetName()) {
+				return (int)i;
+			}
+		}
+
+		return -1;
+	}
+
+	const vector<LibraryClass*> GetGenericClasses() {
+		return generic_classes;
+	}
+
+	frontend::Type* GetGenericInterface() {
+		return generic_interface;
+	}
+
+	bool HasGenericInterface() {
+		return generic_interface != NULL;
+	}
 
   const wstring& GetParentName() const {
     return parent_name;
