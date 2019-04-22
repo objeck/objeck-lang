@@ -31,9 +31,9 @@ class Bar<A : String, B> {
 		x := A->New[3];
 		x[0] := String->New("Hello");
 		x[0]->PrintLine();
-#		y := x[0]->As(String);
-#		y->PrintLine();
-#		x[1] := x[0];
+		y := x[0]->As(String);
+		y->PrintLine();
+		x[1] := x[0];
 	}
 	
 	method : public : Get() ~ B {
