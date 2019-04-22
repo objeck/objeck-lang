@@ -655,8 +655,9 @@ class LibraryClass {
   int id;
   wstring name;
   wstring parent_name;
-  vector<wstring>interface_names;
-  vector<int>interface_ids;
+	vector<wstring>interface_names;
+	vector<wstring>generic_names;
+	vector<int>interface_ids;
   int cls_space;
   int inst_space;
   map<const wstring, LibraryMethod*> methods;
@@ -673,12 +674,13 @@ class LibraryClass {
   wstring file_name;
   
  public:
-  LibraryClass(const wstring &n, const wstring &p, vector<wstring> in, bool is_inf, bool is_vrtl, 
+  LibraryClass(const wstring &n, const wstring &p, vector<wstring> in, bool is_inf, vector<wstring> gen, bool is_vrtl,
 							 int cs, int is, backend::IntermediateDeclarations* ce, backend::IntermediateDeclarations* ie, 
 							 Library* l, const wstring &fn, bool d) {
     name = n;
     parent_name = p;
     interface_names = in;
+		generic_names = gen;
     is_interface = is_inf;
     is_virtual = is_vrtl;
     cls_space = cs;

@@ -210,14 +210,20 @@ void IntermediateClass::Write(bool emit_lib, OutputStream& out_stream) {
   for(size_t i = 0; i < interface_ids.size(); ++i) {
     WriteInt(interface_ids[i], out_stream);
   }
-
-  // interface names
+	
   if(emit_lib) {
+		// interface names
     WriteInt((int)interface_names.size(), out_stream);
     for(size_t i = 0; i < interface_names.size(); ++i) {
       WriteString(interface_names[i], out_stream);
     }
     WriteInt(is_interface, out_stream);
+
+		// generic names
+		WriteInt((int)generic_classes.size(), out_stream);
+		for(size_t i = 0; i < generic_classes.size(); ++i) {
+			WriteString(generic_classes[i], out_stream);
+		}
   }
   
   WriteInt(is_virtual, out_stream);

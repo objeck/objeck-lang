@@ -385,6 +385,14 @@ void Library::LoadClasses()
     }
 
     bool is_interface = ReadInt() != 0;
+
+		// read generic names
+		vector<wstring> generic_names;
+		const int generic_names_size = ReadInt();
+		for(int i = 0; i < generic_names_size; ++i) {
+			generic_names.push_back(ReadString());
+		}
+
     bool is_virtual = ReadInt() != 0;
     bool is_debug = ReadInt() != 0;
     wstring file_name;
@@ -409,7 +417,7 @@ void Library::LoadClasses()
     Linker::Debug(msg, 0, 1);
 #endif
 
-    LibraryClass* cls = new LibraryClass(name, parent_name, interface_names, is_interface, is_virtual, 
+    LibraryClass* cls = new LibraryClass(name, parent_name, interface_names, is_interface, generic_names, is_virtual,
                                          cls_space, inst_space, cls_entries, inst_entries, this, 
                                          file_name, is_debug);
     // load method

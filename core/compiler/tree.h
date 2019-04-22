@@ -2453,6 +2453,22 @@ namespace frontend {
 			return generic_classes;
 		}
 
+		const vector<wstring> GetGenericStrings() {
+			vector<wstring> generic_strings;
+
+			for(size_t i = 0; i < generic_classes.size(); ++i) {
+				Class* generic_class = generic_classes[i];
+				wstring generic_string = generic_class->GetName();
+				generic_string += L'|';
+				if(generic_class->HasGenericInterface()) {
+					generic_string += generic_class->GetGenericInterface()->GetClassName();
+				}
+				generic_strings.push_back(generic_string);
+			}
+
+			return generic_strings;
+		}
+
 		Class* GetGenericClass(const wstring& n) {
 			const int index = GenericIndex(n);
 			if(index > -1) {
