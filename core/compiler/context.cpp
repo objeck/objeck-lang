@@ -2056,7 +2056,7 @@ bool ContextAnalyzer::Analyze()
         if(calling_type->GetType() == method_type->GetType()) {
           // class/enum arrays
           if(calling_type->GetType() == CLASS_TYPE && 
-             IsClassEnumParameterMatch(calling_type, method_type, klass, lib_klass) &&
+             IsClassEnumParameterMatch(calling_type, method_type) &&
              calling_type->GetDimension() == method_type->GetDimension()) {
             return 0;
           }
@@ -2106,34 +2106,22 @@ bool ContextAnalyzer::Analyze()
           case CLASS_TYPE: {
             if(method_type->GetType() == CLASS_TYPE) {
               // calculate exact match
-              if(IsClassEnumParameterMatch(calling_type, method_type, klass, lib_klass)) {
+              if(IsClassEnumParameterMatch(calling_type, method_type)) {
                 return 0;
               }	      
               // calculate relative match
               const wstring &from_klass_name = calling_type->GetClassName();
               Class* from_klass = SearchProgramClasses(from_klass_name);
-							if(!from_klass && klass) {
-								from_klass = klass->GetGenericClass(from_klass_name);
-							}
-							LibraryClass* from_lib_klass = linker->SearchClassLibraries(from_klass_name, program->GetUses(current_class->GetFileName()));
-							if(!from_lib_klass && lib_klass) {
-								from_lib_klass = lib_klass->GetGenericClass(from_klass_name);
-							}
-
+              LibraryClass* from_lib_klass = linker->SearchClassLibraries(from_klass_name, program->GetUses(current_class->GetFileName()));	      
+              
 							const wstring& to_klass_name = method_type->GetClassName();
-              Class* to_klass = SearchProgramClasses(to_klass_name);
-							if(!to_klass && klass) {
-								to_klass = klass->GetGenericClass(to_klass_name);
-							}
-              LibraryClass* to_lib_klass = linker->SearchClassLibraries(to_klass_name, program->GetUses(current_class->GetFileName()));
-							if(!to_lib_klass && lib_klass) {
-								to_lib_klass = lib_klass->GetGenericClass(to_klass_name);
+							Class* to_klass = SearchProgramClasses(to_klass_name);
+							if(to_klass) {
+								return ValidDownCast(to_klass->GetName(), from_klass, from_lib_klass) ? 1 : -1;
 							}
 
-              if(to_klass) {
-                return ValidDownCast(to_klass->GetName(), from_klass, from_lib_klass) ? 1 : -1;
-              }
-              else if(to_lib_klass) {
+              LibraryClass* to_lib_klass = linker->SearchClassLibraries(to_klass_name, program->GetUses(current_class->GetFileName()));
+              if(to_lib_klass) {
                 return ValidDownCast(to_lib_klass->GetName(), from_klass, from_lib_klass) ? 1 : -1;
               }
             }
@@ -2455,7 +2443,16 @@ bool ContextAnalyzer::Analyze()
       if(expr_params.size() == method_parms.size()) {
         LibraryMethodCallSelection* match = new LibraryMethodCallSelection(candidates[i]);
         for(size_t j = 0; j < expr_params.size(); ++j) {
-          int compare = MatchCallingParameter(expr_params[j], method_parms[j], NULL, klass, depth);
+
+					// TODO: adding generics
+					// get concrete type if needed
+					Type* method_type = method_parms[j];
+					if(klass->HasGenerics()) {
+						method_type = RelsolveGenericType(method_type, method_call, klass);
+						ResolveClassEnumType(method_type);
+					}
+					
+          const int compare = MatchCallingParameter(expr_params[j], method_type, NULL, klass, depth);
           match->AddParameterMatch(compare);
         }
         matches.push_back(match);
@@ -2478,7 +2475,12 @@ bool ContextAnalyzer::Analyze()
           expression = expression->GetMethodCall();
         }
 
-        AnalyzeRightCast(method_parms[j], expression, IsScalar(expression), depth + 1);
+				// TODO: adding generics
+				Type* left = method_parms[j];
+				if(klass->HasGenerics()) {
+					left = RelsolveGenericType(left, method_call, klass);
+				}
+        AnalyzeRightCast(left, expression, IsScalar(expression), depth + 1);
       }
     }
     else {
