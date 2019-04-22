@@ -980,18 +980,11 @@ class ContextAnalyzer {
     return false;
   }
 
-  bool IsClassEnumParameterMatch(Type* calling_type, Type* method_type, Class* klass, LibraryClass* lib_klass) {
+  bool IsClassEnumParameterMatch(Type* calling_type, Type* method_type) {
     const wstring &from_klass_name = calling_type->GetClassName();
-    
-		Class* from_klass = SearchProgramClasses(from_klass_name);
-		if(!from_klass && klass) {
-			from_klass = klass->GetGenericClass(from_klass_name);
-		}
-    LibraryClass* from_lib_klass = linker->SearchClassLibraries(from_klass_name, program->GetUses());
-		if(!from_lib_klass && lib_klass) {
-			from_lib_klass = lib_klass->GetGenericClass(from_klass_name);
-		}
-
+    Class* from_klass = SearchProgramClasses(from_klass_name);
+    LibraryClass* from_lib_klass = linker->SearchClassLibraries(from_klass_name, 
+                                                                program->GetUses());
     // resolve to_klass name
     wstring to_klass_name;
     Class* to_klass = SearchProgramClasses(method_type->GetClassName());
