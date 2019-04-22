@@ -2584,12 +2584,22 @@ bool ContextAnalyzer::Analyze()
         ProcessError(static_cast<Expression*>(method_call), L"Invalid enum reference");
       }
 
-	  if (lib_method->GetReturn()->GetType() == NIL_TYPE && method_call->GetCastType()) {
-		  ProcessError(static_cast<Expression*>(method_call), L"Cannot cast a Nil return value");
-	  }
-      
-      // next call
-      AnalyzeExpressionMethodCall(method_call, depth + 1);
+			if(lib_method->GetReturn()->GetType() == NIL_TYPE && method_call->GetCastType()) {
+				ProcessError(static_cast<Expression*>(method_call), L"Cannot cast a Nil return value");
+			}
+
+			// TODO: adding generics
+			// map generic to concrete
+			LibraryClass* lib_klass = lib_method->GetLibraryClass();
+			Type* eval_type = method_call->GetEvalType();
+			if(lib_klass->HasGenerics()) {
+				eval_type = RelsolveGenericType(eval_type, method_call, lib_klass);
+				eval_type->SetGenerics(method_call->GetConcreteNames());
+				method_call->SetEvalType(eval_type, false);
+			}
+
+			// next call
+			AnalyzeExpressionMethodCall(method_call, depth + 1);
     }
     else {
       AnalyzeDynamicFunctionCall(method_call, depth + 1);
