@@ -924,7 +924,7 @@ namespace backend {
     vector<int> interface_ids;
     wstring parent_name;
     vector<wstring> interface_names;
-		vector<frontend::Class*> generic_classes;
+		vector<wstring> generic_classes;
     int cls_space;
     int inst_space;
     vector<IntermediateBlock*> blocks;
@@ -941,7 +941,7 @@ namespace backend {
   public:
     IntermediateClass(int i, const wstring &n, int pi, const wstring &p, 
 											vector<int> infs, vector<wstring> in, bool is_inf,
-											vector<frontend::Class*> gen, bool is_vrtl, int cs, int is, 
+											vector<wstring> gen, bool is_vrtl, int cs, int is,
 											IntermediateDeclarations* ce, IntermediateDeclarations* ie, 
 											const wstring &fn, bool d) {
       id = i;
@@ -1072,7 +1072,7 @@ namespace backend {
     }
 
     void Write(bool emit_lib, OutputStream& out_stream);
-
+		
 #ifdef _DEBUG
     void Debug() {
       GetLogger() << L"=========================================================" << endl;
