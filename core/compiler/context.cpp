@@ -1830,7 +1830,14 @@ bool ContextAnalyzer::Analyze()
    ****************************/
   void ContextAnalyzer::AnalyzeNewArrayCall(MethodCall* method_call, const int depth)
   {
-    // get parameters
+		Class* generic_class = current_class->GetGenericClass(method_call->GetEvalType()->GetClassName());
+		if(generic_class && generic_class->HasGenericInterface() && method_call->GetEvalType()) {
+			const int dim = method_call->GetEvalType()->GetDimension();
+			method_call->SetEvalType(generic_class->GetGenericInterface(), true);
+			method_call->GetEvalType()->SetDimension(dim);
+		}
+
+		// get parameters
     ExpressionList* call_params = method_call->GetCallingParameters();
     AnalyzeExpressions(call_params, depth + 1);
     // check indexes
@@ -1958,11 +1965,6 @@ bool ContextAnalyzer::Analyze()
                 method_call->GetVariable()->GetCastType()->GetType() == CLASS_TYPE) {
           klass = SearchProgramClasses(method_call->GetVariable()->GetCastType()->GetClassName());
         }
-				/* /* TODO: generics WIP
-				else if(current_class->HasGenericInterface()) {
-					klass = SearchProgramClasses(current_class->GetGenericInterface()->GetClassName());
-				}
-				*/
 				else {
 					klass = SearchProgramClasses(entry->GetType()->GetClassName());
         }
@@ -2016,19 +2018,6 @@ bool ContextAnalyzer::Analyze()
         klass = linker->SearchClassLibraries(method_call->GetVariable()->GetCastType()->GetClassName(), program->GetUses(current_class->GetFileName()));	
         method_call->SetTypes(entry->GetType());
       }
-			/* TODO: generics WIP
-			else if(current_class->HasGenerics()) {
-				Class* generic_class = current_class->GetGenericClass(entry->GetType()->GetClassName());
-				if(generic_class) {
-					if(generic_class->HasGenericInterface()) {
-
-					}
-					else {
-						klass = generic_class;
-					}
-				}
-			}
-			*/
       else {
         klass = linker->SearchClassLibraries(entry->GetType()->GetClassName(), program->GetUses(current_class->GetFileName()));
       }
@@ -4470,6 +4459,7 @@ bool ContextAnalyzer::Analyze()
     LibraryEnum* left_lib_enum = NULL;
     LibraryClass* left_lib_class = NULL;
 
+		/*
 		// TODO: adding generics
 		Class* temp = NULL;
 		if((temp = current_class->GetGenericClass(left->GetClassName()))) {
@@ -4484,6 +4474,7 @@ bool ContextAnalyzer::Analyze()
 				right = temp->GetGenericInterface();
 			}
 		}
+		*/
 
     //
     // program enum
