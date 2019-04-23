@@ -644,18 +644,23 @@ class ContextAnalyzer {
 	// TODO: adding generics
 	Type* RelsolveGenericType(Type* generic_type, MethodCall* method_call, LibraryClass* klass) {
 		if(klass->HasGenerics()) {
-			if(method_call->GetEntry()) {
-				const int concrete_index = klass->GenericIndex(generic_type->GetClassName());
-				if(concrete_index > -1 && method_call->GetEntry()) {
+			const wstring generic_name = generic_type->GetClassName();
+			const int concrete_index = klass->GenericIndex(generic_name);
+
+			if(concrete_index > -1) {
+				if(method_call->GetEntry()) {
 					const vector<Type*> concrete_types = method_call->GetEntry()->GetType()->GetGenerics();
 					if(concrete_index < (int)concrete_types.size()) {
 						return concrete_types[concrete_index];
 					}
 				}
-			}
-			else if(method_call->GetCallType() == NEW_INST_CALL && method_call->HasConcreteNames()) {
-				const int concrete_index = klass->GenericIndex(generic_type->GetClassName());
-				if(concrete_index > -1) {
+				else if(method_call->GetVariable() && method_call->GetVariable()->GetEntry()) {
+					const vector<Type*> concrete_types = method_call->GetVariable()->GetEntry()->GetType()->GetGenerics();
+					if(concrete_index < (int)concrete_types.size()) {
+						return concrete_types[concrete_index];
+					}
+				}
+				else if(method_call->GetCallType() == NEW_INST_CALL && method_call->HasConcreteNames()) {
 					const vector<Type*> concrete_types = method_call->GetConcreteNames();
 					if(concrete_index < (int)concrete_types.size()) {
 						return concrete_types[concrete_index];
