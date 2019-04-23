@@ -1,0 +1,33 @@
+class FooBar {
+	function : Main(args : String[]) ~ Nil {
+		pairs := Pair->New[3]<String, IntHolder>;
+		pairs[0] := Pair->New("Hello", IntHolder->New(13))<String, IntHolder>;
+		pairs[0]->GetValue()->Get()->PrintLine();
+		p : Pair<String, IntHolder> := pairs[0];
+		(p = pairs[0])->PrintLine();
+	}
+}
+
+class Pair<Key : Compare, Value> {
+	@key : Key;
+	@value : Value;
+	@left : Pair;
+	@right : Pair;
+
+	New(key : Key, value : Value) {
+		@key := key;
+		@value := value;
+	}
+
+	method : public : GetValue() ~ Value {
+		return @value;
+	}
+
+	method : public : GetLeft() ~ Pair {
+		return @left;
+	}
+
+	method : public : SetLeft(left : Pair) ~ Nil {
+		@left := left;
+	}
+}
