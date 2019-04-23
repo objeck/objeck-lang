@@ -39,6 +39,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <unordered_map>
 #include <iostream>
 #include <iomanip>
 #include <sstream>
@@ -1199,6 +1200,13 @@ class Library {
  ********************************/
 class Linker {
   map<const wstring, Library*> libraries;
+
+	vector<LibraryClass*> all_classes;
+	unordered_map<wstring, LibraryClass*> all_classes_map;
+
+	vector<LibraryEnum*> all_enums;
+	unordered_map<wstring, LibraryEnum*> all_enums_map;
+
   wstring master_path;
   vector<wstring> paths;
 
@@ -1259,46 +1267,66 @@ class Linker {
     return libraries;
   }
 
+	// returns all classes including duplicates
+	unordered_map<wstring, LibraryClass*> GetAllClassesMap() {
+		if(all_classes_map.empty()) {
+			vector<LibraryClass*> klasses = GetAllClasses();
+			for(size_t i = 0; i < klasses.size(); ++i) {
+				LibraryClass* klass = klasses[i];
+				all_classes_map[klass->GetName()] = klass;
+			}
+		}
+
+		return all_classes_map;
+	}
+
   // returns all classes including duplicates
   vector<LibraryClass*> GetAllClasses() {
-    vector<LibraryClass*> all_libraries;
+		if(all_classes.empty()) {
+			map<const wstring, Library*>::iterator iter;
+			for(iter = libraries.begin(); iter != libraries.end(); ++iter) {
+				vector<LibraryClass*> classes = iter->second->GetClasses();
+				for(size_t i = 0; i < classes.size(); ++i) {
+					all_classes.push_back(classes[i]);
+				}
+			}
+		}
 
-    map<const wstring, Library*>::iterator iter;
-    for(iter = libraries.begin(); iter != libraries.end(); ++iter) {
-      vector<LibraryClass*> classes = iter->second->GetClasses();
-      for(size_t i = 0; i < classes.size(); ++i) {
-        all_libraries.push_back(classes[i]);
-      }
-    }
-
-    return all_libraries;
+    return all_classes;
   }
+
+	// returns all enums including duplicates
+	unordered_map<wstring, LibraryEnum*> GetAllEnumsMap() {
+		if(all_enums_map.empty()) {
+			vector<LibraryEnum*> enums = GetAllEnums();
+			for(size_t i = 0; i < enums.size(); ++i) {
+				LibraryEnum* klass = enums[i];
+				all_enums_map[klass->GetName()] = klass;
+			}
+		}
+
+		return all_enums_map;
+	}
 
   // returns all enums including duplicates
   vector<LibraryEnum*> GetAllEnums() {
-    vector<LibraryEnum*> all_libraries;
+		if(all_enums.empty()) {
+			map<const wstring, Library*>::iterator iter;
+			for(iter = libraries.begin(); iter != libraries.end(); ++iter) {
+				vector<LibraryEnum*> enums = iter->second->GetEnums();
+				for(size_t i = 0; i < enums.size(); ++i) {
+					all_enums.push_back(enums[i]);
+				}
+			}
+		}
 
-    map<const wstring, Library*>::iterator iter;
-    for(iter = libraries.begin(); iter != libraries.end(); ++iter) {
-      vector<LibraryEnum*> enums = iter->second->GetEnums();
-      for(size_t i = 0; i < enums.size(); ++i) {
-        all_libraries.push_back(enums[i]);
-      }
-    }
-
-    return all_libraries;
+    return all_enums;
   }
 
   // TODO: finds the first class match; note multiple matches may exist
   LibraryClass* SearchClassLibraries(const wstring &name) {
-    vector<LibraryClass*> classes = GetAllClasses();
-    for(size_t i = 0; i < classes.size(); ++i) {
-      if(classes[i]->GetName() == name) {
-        return classes[i];
-      }
-    }
-
-    return NULL;
+		unordered_map<wstring, LibraryClass*> klass_map = GetAllClassesMap();
+		return klass_map[name];
   }
 
   bool HasBundleName(const wstring& name) {
@@ -1314,42 +1342,38 @@ class Linker {
 
   // TODO: finds the first class match; note multiple matches may exist
   LibraryClass* SearchClassLibraries(const wstring &name, vector<wstring> uses) {
-    vector<LibraryClass*> classes = GetAllClasses();
-    for(size_t i = 0; i < classes.size(); ++i) {
-      if(classes[i]->GetName() == name) {
-        return classes[i];
-      }
-    }
+		unordered_map<wstring, LibraryClass*> klass_map = GetAllClassesMap();
+		LibraryClass* klass = klass_map[name];
+		if(klass) {
+			return klass;
+		}
 
-    for(size_t i = 0; i < classes.size(); ++i) {
-      for(size_t j = 0; j < uses.size(); ++j) {
-        if(classes[i]->GetName() == uses[j] + L"." + name) {
-          return classes[i];
-        }
-      }
-    }
+		for(size_t i = 0; i < uses.size(); ++i) {
+			klass = klass_map[uses[i] + L"." + name];
+			if(klass) {
+				return klass;
+			}
+		}
 
-    return NULL;
+		return NULL;
   }
 
   // TODO: finds the first enum match; note multiple matches may exist
   LibraryEnum* SearchEnumLibraries(const wstring &name, vector<wstring> uses) {
-    vector<LibraryEnum*> enums = GetAllEnums();
-    for(size_t i = 0; i < enums.size(); ++i) {
-      if(enums[i]->GetName() == name) {
-        return enums[i];
-      }
-    }
+		unordered_map<wstring, LibraryEnum*> enum_map = GetAllEnumsMap();
+		LibraryEnum* eenum = enum_map[name];
+		if(eenum) {
+			return eenum;
+		}
 
-    for(size_t i = 0; i < enums.size(); ++i) {
-      for(size_t j = 0; j < uses.size(); ++j) {
-        if(enums[i]->GetName() == uses[j] + L"." + name) {
-          return enums[i];
-        }
-      }
-    }
+		for(size_t i = 0; i < uses.size(); ++i) {
+			eenum = enum_map[uses[i] + L"." + name];
+			if(eenum) {
+				return eenum;
+			}
+		}
 
-    return NULL;
+		return NULL;
   }
 
   void Load() {
