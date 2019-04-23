@@ -2362,7 +2362,9 @@ bool ContextAnalyzer::Analyze()
 			Type* eval_type = method_call->GetEvalType();
 			if(klass->HasGenerics()) {
 				eval_type = RelsolveGenericType(eval_type, method_call, klass);
-				eval_type->SetGenerics(method_call->GetConcreteNames());
+				if(!eval_type->HasGenerics()) {
+					eval_type->SetGenerics(method_call->GetConcreteNames());
+				}
 				method_call->SetEvalType(eval_type, false);
 			}
 			
@@ -2594,7 +2596,9 @@ bool ContextAnalyzer::Analyze()
 			Type* eval_type = method_call->GetEvalType();
 			if(lib_klass->HasGenerics()) {
 				eval_type = RelsolveGenericType(eval_type, method_call, lib_klass);
-				eval_type->SetGenerics(method_call->GetConcreteNames());
+				if(!eval_type->HasGenerics()) {
+					eval_type->SetGenerics(method_call->GetConcreteNames());
+				}
 				method_call->SetEvalType(eval_type, false);
 			}
 

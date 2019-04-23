@@ -929,7 +929,7 @@ class ContextAnalyzer {
   
   inline bool ResolveClassEnumType(Type* type, Class* context_klass) {
     Class* klass = SearchProgramClasses(type->GetClassName());
-    if(klass && ((klass == current_class) || (type->GetGenerics().size() == klass->GetGenericNames().size()))) {
+    if(klass) {
 			klass->SetCalled(true);
 			type->SetClassName(klass->GetName());
 			return true;

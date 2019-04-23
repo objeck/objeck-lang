@@ -2230,10 +2230,14 @@ vector<Type*> Parser::ParseGenericTypes(int depth)
 			if(type) {
 				if(type->GetType() != CLASS_TYPE) {
 					ProcessError(L"Generic cannot be of type basic");
+					return generic_types;
 				}
 				else {
 					generic_types.push_back(type);
 				}
+			}
+			else {
+				return generic_types;
 			}
 
 			if(Match(TOKEN_COMMA) && !Match(TOKEN_GTR, SECOND_INDEX)) {
@@ -2241,6 +2245,7 @@ vector<Type*> Parser::ParseGenericTypes(int depth)
 			}
 			else if(!Match(TOKEN_GTR)) {
 				ProcessError(L"Expected ',' or '>'");
+				return generic_types;
 			}
 		}
 
