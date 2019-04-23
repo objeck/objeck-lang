@@ -44,6 +44,7 @@
 #include <stack>
 #include <queue>
 #include <map>
+#include <unordered_map>
 #include <exception>
 #include <stdlib.h>
 #include <assert.h>
@@ -3293,9 +3294,9 @@ namespace frontend {
   class ParsedBundle {
     wstring name;
     SymbolTableManager* symbol_table;
-    map<const wstring, Enum*> enums;
+		unordered_map<wstring, Enum*> enums;
     vector<Enum*> enum_list;
-    map<const wstring, Class*> classes;
+		unordered_map<wstring, Class*> classes;
     vector<Class*> class_list;
 
   public:
@@ -3319,7 +3320,7 @@ namespace frontend {
     }
 
     Enum* GetEnum(const wstring &e) {
-      map<const wstring, Enum*>::iterator result = enums.find(e);
+			unordered_map<wstring, Enum*>::iterator result = enums.find(e);
       if(result != enums.end()) {
         return result->second;
       }
@@ -3333,7 +3334,7 @@ namespace frontend {
     }
 
     Class* GetClass(const wstring &n) {
-      map<const wstring, Class*>::iterator result = classes.find(n);
+			unordered_map<wstring, Class*>::iterator result = classes.find(n);
       if(result != classes.end()) {
         return result->second;
       }
