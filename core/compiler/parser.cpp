@@ -2226,13 +2226,15 @@ vector<Type*> Parser::ParseGenericTypes(int depth)
 		NextToken();
 
 		while(!Match(TOKEN_GTR) && !Match(TOKEN_END_OF_STREAM)) {
-			if(!Match(TOKEN_IDENT)) {
-				ProcessError(TOKEN_IDENT);
+			Type* type = ParseType(depth + 1);
+			if(type) {
+				if(type->GetType() != CLASS_TYPE) {
+					ProcessError(L"Generic cannot be of type basic");
+				}
+				else {
+					generic_types.push_back(type);
+				}
 			}
-			// identifier
-			const wstring generic_name = scanner->GetToken()->GetIdentifier();
-			generic_types.push_back(TypeFactory::Instance()->MakeType(CLASS_TYPE, generic_name));
-			NextToken();
 
 			if(Match(TOKEN_COMMA) && !Match(TOKEN_GTR, SECOND_INDEX)) {
 				NextToken();
