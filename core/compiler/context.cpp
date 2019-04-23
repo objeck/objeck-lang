@@ -1927,7 +1927,7 @@ bool ContextAnalyzer::Analyze()
         AnalyzeMethodCall(lib_klass, method_call, true, encoding, false, depth);
       } 
       else {
-        ProcessError(static_cast<Expression*>(method_call), L"Undefined class");
+        ProcessError(static_cast<Expression*>(method_call), L"Undefined class or generic reference");
       }
     }
   }
@@ -4572,7 +4572,8 @@ bool ContextAnalyzer::Analyze()
 					}
 				}
 				else {
-					ProcessError(expression, L"Invalid cast between generic and concrete class");
+					ProcessError(expression, L"Invalid generic class definition '" + 
+											 ReplaceSubstring(right->GetClassName(), L"#", L"->") + L"' or cast to concrete");
 				}
         // downcast
         if(ValidDownCast(left_class->GetName(), right_class, NULL)) {

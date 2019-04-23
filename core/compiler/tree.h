@@ -3553,7 +3553,6 @@ namespace frontend {
       holder->value = float_array;
       holder->length = (int)float_elements.size();
 
-
       map<FloatStringHolder*, int, float_string_comp>::iterator result = float_string_ids.find(holder);
       if(result != float_string_ids.end()) {
         delete[] holder->value;
