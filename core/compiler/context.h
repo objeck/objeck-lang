@@ -635,6 +635,16 @@ class ContextAnalyzer {
 						return concrete_types[concrete_index];
 					}
 				}
+				// nested call, maybe reevaluate?
+				else if(method_call->GetPreviousExpression() && method_call->GetPreviousExpression()->GetExpressionType() == METHOD_CALL_EXPR) {
+					MethodCall* prev_method_call = static_cast<MethodCall*>(method_call->GetPreviousExpression());
+					if(prev_method_call->GetEvalType()) {
+						const vector<Type*> concrete_types = prev_method_call->GetEvalType()->GetGenerics();
+						if(concrete_index < (int)concrete_types.size()) {
+							return concrete_types[concrete_index];
+						}
+					}
+				}
 			}
 		}
 
