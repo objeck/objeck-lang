@@ -615,8 +615,17 @@ class ContextAnalyzer {
 		if(klass->HasGenerics()) {
 			if(method_call->GetEntry()) {
 				const int concrete_index = klass->GenericIndex(generic_type->GetClassName());
-				if(concrete_index > -1 && method_call->GetEntry()) {
+				if(concrete_index > -1) {
 					const vector<Type*> concrete_types = method_call->GetEntry()->GetType()->GetGenerics();
+					if(concrete_index < (int)concrete_types.size()) {
+						return concrete_types[concrete_index];
+					}
+				}
+			}
+			else if(method_call->GetVariable() && method_call->GetVariable()->GetEntry()) {
+				const int concrete_index = klass->GenericIndex(generic_type->GetClassName());
+				if(concrete_index > -1) {
+					const vector<Type*> concrete_types = method_call->GetVariable()->GetEntry()->GetType()->GetGenerics();
 					if(concrete_index < (int)concrete_types.size()) {
 						return concrete_types[concrete_index];
 					}
