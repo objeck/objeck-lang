@@ -3,7 +3,7 @@ class Foo {
 		pairs := Pair->New[3]<String, Bar<String> >;
 		pairs[0] := Pair->New("Hello", Bar->New("World")<String>)<String, Bar<String> >;
 		b := pairs[0];
-		y := b->GetValue()->Get();
+		y : String := b->GetValue()->Get();
 #		y : Bar<String> := b->GetValue(); # ->Get()->PrintLine();
 #		y->Get()->PrintLine();
 	}
