@@ -1,4 +1,4 @@
-class FooBar {
+class Foo {
 	function : Main(args : String[]) ~ Nil {
 		pairs := Pair->New[3]<String, IntHolder>;
 		pairs[0] := Pair->New("Hello", IntHolder->New(13))<String, IntHolder>;
@@ -6,6 +6,10 @@ class FooBar {
 		p : Pair<String, IntHolder> := pairs[0];
 		(p = pairs[0])->PrintLine();
 	}
+}
+
+class Bar from Pair {
+	
 }
 
 class Pair<Key : Compare, Value> {

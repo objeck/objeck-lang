@@ -413,8 +413,8 @@ bool ContextAnalyzer::Analyze()
     
     // check parent class
     Class* parent_klass = klass->GetParent();
-    if(parent_klass && parent_klass->IsInterface()) {
-      ProcessError(klass, L"Classes cannot be derived from interfaces");
+    if(parent_klass && (parent_klass->IsInterface() || parent_klass->HasGenerics())) {
+      ProcessError(klass, L"Class '" + klass->GetName() + L"' cannot be derived from a generic or interface");
     }
     else {
       LibraryClass* parent_lib_klass = klass->GetLibraryParent();
