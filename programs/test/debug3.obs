@@ -9,7 +9,7 @@ class Foo {
 }
 
 class Bar from Pair {
-	
+
 }
 
 class Pair<Key : Compare, Value> {
@@ -34,4 +34,9 @@ class Pair<Key : Compare, Value> {
 	method : public : SetLeft(left : Pair) ~ Nil {
 		@left := left;
 	}
+}
+
+# TODO NESTED?
+class Values<Value> {
+	New() {}
 }
