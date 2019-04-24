@@ -936,13 +936,13 @@ class ContextAnalyzer {
     }
 		
     LibraryClass* lib_klass = linker->SearchClassLibraries(type->GetClassName(), program->GetUses());
-		// TODO: adding generics
     if(lib_klass) {
       lib_klass->SetCalled(true);
       type->SetClassName(lib_klass->GetName());
       return true;
     }
 
+		// TODO: adding generics
 		// look up generic type
 		if(context_klass->HasGenerics()) {
 			klass = context_klass->GetGenericClass(type->GetClassName());
@@ -990,19 +990,28 @@ class ContextAnalyzer {
     return false;
   }
 
-  bool IsClassEnumParameterMatch(Type* calling_type, Type* method_type) {
-    const wstring &from_klass_name = calling_type->GetClassName();
-    Class* from_klass = SearchProgramClasses(from_klass_name);
+	// TODO: crappy code, wow!
+	bool IsClassEnumParameterMatch(Type* calling_type, Type* method_type) {
+		const wstring& from_klass_name = calling_type->GetClassName();
+
+		LibraryClass* from_lib_klass = NULL;
+		Class* from_klass = SearchProgramClasses(from_klass_name);
 		if(!from_klass && current_class->HasGenerics()) {
 			from_klass = current_class->GetGenericClass(from_klass_name);
 		}
-    LibraryClass* from_lib_klass = linker->SearchClassLibraries(from_klass_name, program->GetUses());
+
+		if(!from_klass) {
+			 from_lib_klass = linker->SearchClassLibraries(from_klass_name, program->GetUses());
+		}
 
     // resolve to class name
     wstring to_klass_name;
     Class* to_klass = SearchProgramClasses(method_type->GetClassName());
 		if(!to_klass && current_class->HasGenerics()) {
 			to_klass = current_class->GetGenericClass(method_type->GetClassName());
+			if(to_klass) {
+				to_klass_name = to_klass->GetName();
+			}
 		}
 
 		if(!to_klass) {
@@ -1010,9 +1019,6 @@ class ContextAnalyzer {
       if(to_lib_klass) {
         to_klass_name = to_lib_klass->GetName();
       }
-    }
-    else {
-      to_klass_name = to_klass->GetName();
     }
 
     // check enum types
