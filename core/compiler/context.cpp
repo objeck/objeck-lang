@@ -3147,8 +3147,9 @@ bool ContextAnalyzer::Analyze()
         ProcessError(rtrn, L"Undefined class or enum: '" + ReplaceSubstring(type->GetClassName(), L"#", L"->") + L"'");
       }
 
+			// TODO: generic fix!
 			if(current_class->HasGenerics() && current_class->GetName() == type->GetClassName()) {
-				ProcessError(rtrn, L"Generic classes cannot return untyped references\n\tConsider a copy constructor");
+				ProcessError(rtrn, L"Generic classes cannot return untyped references\n\tConsider using a copy constructor");
 			}
     }
     else if(type->GetType() != NIL_TYPE) {
@@ -4496,22 +4497,17 @@ bool ContextAnalyzer::Analyze()
     LibraryEnum* left_lib_enum = NULL;
     LibraryClass* left_lib_class = NULL;
 
-		/*
-		// TODO: adding generics
-		Class* temp = NULL;
-		if((temp = current_class->GetGenericClass(left->GetClassName()))) {
-			if(temp->HasGenericInterface()) {
-				left = temp->GetGenericInterface();
+		if(current_class->HasGenerics()) {
+			Class* left_tmp = current_class->GetGenericClass(left->GetClassName());
+			if(left_tmp && left_tmp->HasGenericInterface()) {
+				left = left_tmp->GetGenericInterface();
 			}
-		}
 
-		// TODO: adding generics
-		if((temp = current_class->GetGenericClass(right->GetClassName()))) {
-			if(temp->HasGenericInterface()) {
-				right = temp->GetGenericInterface();
+			Class* right_tmp = current_class->GetGenericClass(right->GetClassName());
+			if(right_tmp && right_tmp->HasGenericInterface()) {
+				right = right_tmp->GetGenericInterface();
 			}
 		}
-		*/
 
     //
     // program enum
@@ -4583,7 +4579,7 @@ bool ContextAnalyzer::Analyze()
 												 ReplaceSubstring(right->GetClassName(), L"#", L"->") + L"'");
 					}
 				}
-				else {
+				else if(left_class->GetName() != right_class->GetName()) {
 					ProcessError(expression, L"Invalid generic class definition '" + 
 											 ReplaceSubstring(right->GetClassName(), L"#", L"->") + L"' or cast to concrete");
 				}
