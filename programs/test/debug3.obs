@@ -3,8 +3,8 @@ class Foo {
 		pairs := Pair->New[3]<String, Bar<String> >;
 		pairs[0] := Pair->New("Hello", Bar->New("World")<String>)<String, Bar<String> >;
 		b := pairs[0];
-		y : String := b->GetValue()->Get();
-#		y : Bar<String> := b->GetValue(); # ->Get()->PrintLine();
+#		y : String := b->GetValue()->Get();
+		y : Bar<IntHolder> := b->GetValue()->Get()->PrintLine();
 #		y->Get()->PrintLine();
 	}
 }
@@ -43,9 +43,4 @@ class Pair<Key : Compare, Value> {
 	method : public : SetLeft(left : Pair) ~ Nil {
 		@left := left;
 	}
-}
-
-# TODO NESTED?
-class Values<Value> {
-	New() {}
 }

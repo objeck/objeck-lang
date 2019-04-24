@@ -3351,6 +3351,9 @@ bool ContextAnalyzer::Analyze()
          !method_call->IsFunctionDefinition()) {
         ProcessError(expression, L"Invalid assignment method '" + method_call->GetMethod()->GetName() + L"(..)' does not return a value");
       }
+			else if(method_call->GetEvalType() && method_call->GetEvalType()->GetType() == NIL_TYPE) {
+				ProcessError(expression, L"Invalid assignment call does not return a value");
+			}
     }
   }
 
