@@ -190,7 +190,7 @@ wstring Method::EncodeType(Type* type, Class* klass, ParsedProgram* program, Lin
         }
       } 
 #ifdef _DEBUG
-			assert(name != L"o.");
+			// assert(name != L"o.");
 #endif
     }
       break;
