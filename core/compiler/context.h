@@ -611,6 +611,7 @@ class ContextAnalyzer {
   }
 
 	// TODO: adding generics
+	// generic type erasure 
 	Type* RelsolveGenericType(Type* generic_type, MethodCall* method_call, Class* klass) {
 		if(klass->HasGenerics()) {
 			const wstring generic_name = generic_type->GetClassName();
