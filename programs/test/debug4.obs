@@ -28,6 +28,7 @@ class Pair<Key : Compare, Value> {
 	@value : Value;
 	@left : Pair;
 	@right : Pair;
+	@stack : Value[];
 
 	New(key : Key, value : Value) {
 		@key := key;
