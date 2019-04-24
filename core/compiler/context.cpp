@@ -3146,6 +3146,10 @@ bool ContextAnalyzer::Analyze()
       if(type->GetType() == CLASS_TYPE && !ResolveClassEnumType(type)) {
         ProcessError(rtrn, L"Undefined class or enum: '" + ReplaceSubstring(type->GetClassName(), L"#", L"->") + L"'");
       }
+
+			if(current_class->HasGenerics() && current_class->GetName() == type->GetClassName()) {
+				ProcessError(rtrn, L"Generic classes cannot return untyped references\n\tConsider a copy constructor");
+			}
     }
     else if(type->GetType() != NIL_TYPE) {
       ProcessError(rtrn, L"Invalid return statement");

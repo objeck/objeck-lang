@@ -8,8 +8,8 @@ class Foo {
 		p->Apply(Bar(IntHolder) ~ IntHolder);
 		p->GetValue()->Get()->PrintLine();
 
-		d := p->DoIt(IntHolder->New(101));
-		d->GetValue()->Get()->PrintLine();
+#		d := p->DoIt(IntHolder->New(101));
+#		d->GetValue()->Get()->PrintLine();
 
 	}
 
@@ -29,20 +29,16 @@ class Pair<Key : Compare, Value> {
 		@value := value;
 	}
 
+	New(p : Pair) {
+		@value := p->GetValue();
+	}
+
 	method : public : GetValue() ~ Value {
 		return @value;
 	}
 
-	method : public : GetLeft() ~ Pair {
-		return @left;
-	}
-
 	method : public : SetLeft(left : Pair) ~ Nil {
 		@left := left;
-	}
-
-	method : public : DoIt(value : Value) ~ Pair {
-		return @self;
 	}
 
 	method : public : Apply(f : (Value) ~ Value) ~ Nil {
