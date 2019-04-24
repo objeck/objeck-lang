@@ -4,7 +4,7 @@ class Foo {
 		pairs[0] := Pair->New("Hello", Bar->New("World")<String>)<String, Bar<String> >;
 		b := pairs[0];
 #		y : String := b->GetValue()->Get();
-		y : Bar<IntHolder> := b->GetValue()->Get()->PrintLine();
+		y : Bar<IntHolder> := b->GetValue()->Get();
 #		y->Get()->PrintLine();
 	}
 }
