@@ -1870,8 +1870,9 @@ bool ContextAnalyzer::Analyze()
       }
     }
 		// TODO: adding generics
-		if(method_call->HasConcreteNames() && method_call->GetEvalType()) {
-			method_call->GetEvalType()->SetGenerics(method_call->GetConcreteNames());
+		if(method_call->HasConcreteNames() && method_call->GetEvalType() && 
+			 !method_call->GetEvalType()->HasGenerics()) {
+			method_call->GetEvalType()->SetGenerics(method_call->GetConcreteTypes());
 		}
   }
 
@@ -2215,10 +2216,9 @@ bool ContextAnalyzer::Analyze()
 
 				// TODO: adding generics
 				Type* left = method_parms[j]->GetEntry()->GetType();
-				if(klass->HasGenerics()) {
-					left = RelsolveGenericType(left, method_call, klass, NULL);
+				if(klass->HasGenerics() && !left->HasGenerics()) {
+					left = RelsolveGenericCall(left, method_call, klass, method);
 				}
-
         ResolveClassEnumType(left);
         AnalyzeRightCast(left, expression, IsScalar(expression), depth + 1);
       }
@@ -2314,7 +2314,7 @@ bool ContextAnalyzer::Analyze()
 					// TODO: adding generics
 					Type* left = mthd_params[i]->GetEntry()->GetType();
 					if(klass->HasGenerics()) {
-						left = RelsolveGenericType(left, method_call, klass, NULL);
+						left = RelsolveGenericCall(left, method_call, klass, method);
 					}
           ResolveClassEnumType(left);
           AnalyzeRightCast(left, expression->GetEvalType(), expression, IsScalar(expression), depth + 1);	
@@ -2364,7 +2364,7 @@ bool ContextAnalyzer::Analyze()
 			if(klass->HasGenerics()) {
 				eval_type = RelsolveGenericType(eval_type, method_call, klass, NULL);
 				if(!eval_type->HasGenerics()) {
-					eval_type->SetGenerics(method_call->GetConcreteNames());
+					eval_type->SetGenerics(method_call->GetConcreteTypes());
 				}
 				method_call->SetEvalType(eval_type, false);
 			}
@@ -2382,7 +2382,7 @@ bool ContextAnalyzer::Analyze()
 			// TODO: adding generics
 			// validate concrete declarations
 			if(method_call->HasConcreteNames()) {
-				const vector<Type*> concrete_types = method_call->GetConcreteNames();
+				const vector<Type*> concrete_types = method_call->GetConcreteTypes();
 				const vector<Class*> generic_classes = method_call->GetMethod()->GetClass()->GetGenericClasses();
 				if(concrete_types.size() == generic_classes.size()) {
 					for(size_t i = 0; i < concrete_types.size(); ++i) {
@@ -2481,7 +2481,7 @@ bool ContextAnalyzer::Analyze()
 				// TODO: adding generics
 				Type* left = method_parms[j];
 				if(klass->HasGenerics()) {
-					left = RelsolveGenericType(left, method_call, NULL, klass);
+					left = RelsolveGenericCall(left, method_call, klass, lib_method);
 				}
         AnalyzeRightCast(left, expression, IsScalar(expression), depth + 1);
       }
@@ -2596,11 +2596,7 @@ bool ContextAnalyzer::Analyze()
 			LibraryClass* lib_klass = lib_method->GetLibraryClass();
 			Type* eval_type = method_call->GetEvalType();
 			if(lib_klass->HasGenerics()) {
-				eval_type = RelsolveGenericType(eval_type, method_call, NULL, lib_klass);
-				if(!eval_type->HasGenerics()) {
-					eval_type->SetGenerics(method_call->GetConcreteNames());
-				}
-				method_call->SetEvalType(eval_type, false);
+				eval_type = RelsolveGenericCall(eval_type, method_call, lib_klass, lib_method);
 			}
 
 			// next call

@@ -8,16 +8,16 @@ class Foo {
 		p->Apply(Bar(IntHolder) ~ IntHolder);
 		p->GetValue()->Get()->PrintLine();
 
-		x := Pair->New(p)<String, IntHolder>;
-		x->SetValue(IntHolder->New(99));
+		Pair->New(p)<String, IntHolder>;
+#		x->SetValue(IntHolder->New(99));
 
-		c : Pair<String, IntHolder> := p->Clone()<String, IntHolder>;
+		c : Pair<String, IntHolder> := p->Clone()<String, String>;
 #~
 		d := p->DoIt(IntHolder->New(101));
 		x->GetValue()->Get()->PrintLine();
 ~#
 		p->GetKey()->PrintLine();
-		x->GetKey()->PrintLine();
+#		x->GetKey()->PrintLine();
 	}
 
 	function : Bar(v : IntHolder) ~ IntHolder {

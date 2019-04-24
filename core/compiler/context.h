@@ -650,7 +650,7 @@ class ContextAnalyzer {
 						}
 					}
 					else if(method_call->GetCallType() == NEW_INST_CALL && method_call->HasConcreteNames()) {
-						const vector<Type*> concrete_types = method_call->GetConcreteNames();
+						const vector<Type*> concrete_types = method_call->GetConcreteTypes();
 						if(concrete_index < (int)concrete_types.size()) {
 							return concrete_types[concrete_index];
 						}
@@ -1186,6 +1186,32 @@ class ContextAnalyzer {
     
     return s;
   }
+	
+	Type* RelsolveGenericCall(Type* left, MethodCall* method_call, Class* klass, Method* method) {
+		left = RelsolveGenericType(left, method_call, klass, NULL);
+		if(!left->HasGenerics() && method_call->HasConcreteNames() &&
+			(method->GetMethodType() == NEW_PUBLIC_METHOD ||
+			 method->GetMethodType() == NEW_PRIVATE_METHOD)) {
+			left = TypeFactory::Instance()->MakeType(left);
+			left->SetGenerics(method_call->GetConcreteTypes());
+			method_call->SetEvalType(left, false);
+		}
+
+		return left;
+	}
+
+	Type* RelsolveGenericCall(Type* left, MethodCall* method_call, LibraryClass* klass, LibraryMethod* method) {
+		left = RelsolveGenericType(left, method_call, NULL, klass);
+		if(!left->HasGenerics() && method_call->HasConcreteNames() &&
+			(method->GetMethodType() == NEW_PUBLIC_METHOD ||
+			 method->GetMethodType() == NEW_PRIVATE_METHOD)) {
+			left = TypeFactory::Instance()->MakeType(left);
+			left->SetGenerics(method_call->GetConcreteTypes());
+			method_call->SetEvalType(left, false);
+		}
+
+		return left;
+	}
 
   // error processing
   void ProcessError(ParseNode* n, const wstring &msg);

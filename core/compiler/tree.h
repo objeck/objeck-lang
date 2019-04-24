@@ -2807,7 +2807,7 @@ namespace frontend {
       return method_name;
     }
 
-		const vector<Type*> GetConcreteNames() {
+		const vector<Type*> GetConcreteTypes() {
 			return concrete_types;
 		}
 
