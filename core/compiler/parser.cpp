@@ -3194,11 +3194,18 @@ MethodCall* Parser::ParseMethodCall(const wstring & ident, int depth)
 			if(Match(TOKEN_OPEN_PAREN)) {
 				method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, ident, method_ident,
 																															ParseExpressionList(depth + 1));
+				// function
 				if(Match(TOKEN_TILDE)) {
 					NextToken();
 					Type* func_rtrn = ParseType(depth + 1);
 					method_call->SetFunctionReturn(func_rtrn);
 				}
+				// anonymous class
+				else if(Match(TOKEN_LES)) {
+					vector<Type*> generic_dclrs = ParseGenericTypes(depth);
+					method_call->SetConcreteTypes(generic_dclrs);
+				}
+
 			}
 			else {
 				method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, ident, method_ident);
