@@ -2381,7 +2381,7 @@ bool ContextAnalyzer::Analyze()
 
 			// TODO: adding generics
 			// validate concrete declarations
-			if(method_call->GetCallType() == NEW_INST_CALL && method_call->HasConcreteNames()) {
+			if(method_call->HasConcreteNames()) {
 				const vector<Type*> concrete_types = method_call->GetConcreteNames();
 				const vector<Class*> generic_classes = method_call->GetMethod()->GetClass()->GetGenericClasses();
 				if(concrete_types.size() == generic_classes.size()) {
@@ -3146,11 +3146,12 @@ bool ContextAnalyzer::Analyze()
       if(type->GetType() == CLASS_TYPE && !ResolveClassEnumType(type)) {
         ProcessError(rtrn, L"Undefined class or enum: '" + ReplaceSubstring(type->GetClassName(), L"#", L"->") + L"'");
       }
-
-			// TODO: generic fix!
+			/*
+			// TODO: generic remove
 			if(current_class->HasGenerics() && current_class->GetName() == type->GetClassName()) {
 				ProcessError(rtrn, L"Generic classes cannot return untyped references\n\tConsider using a copy constructor");
 			}
+			*/
     }
     else if(type->GetType() != NIL_TYPE) {
       ProcessError(rtrn, L"Invalid return statement");
@@ -4579,9 +4580,9 @@ bool ContextAnalyzer::Analyze()
 												 ReplaceSubstring(right->GetClassName(), L"#", L"->") + L"'");
 					}
 				}
-				else if(left_class->GetName() != right_class->GetName()) {
+				else if(left_class != current_class && right_class != current_class) {
 					ProcessError(expression, L"Invalid generic class definition '" + 
-											 ReplaceSubstring(right->GetClassName(), L"#", L"->") + L"' or cast to concrete");
+											 ReplaceSubstring(right->GetClassName(), L"#", L"->") + L"' or concrete cast");
 				}
         // downcast
         if(ValidDownCast(left_class->GetName(), right_class, NULL)) {

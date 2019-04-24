@@ -11,9 +11,11 @@ class Foo {
 		x := Pair->New(p)<String, IntHolder>;
 		x->SetValue(IntHolder->New(99));
 
-#		d := p->DoIt(IntHolder->New(101));
+		c : Pair<String, IntHolder> := p->Clone()<String, IntHolder>;
+#~
+		d := p->DoIt(IntHolder->New(101));
 		x->GetValue()->Get()->PrintLine();
-
+~#
 		p->GetKey()->PrintLine();
 		x->GetKey()->PrintLine();
 	}
@@ -38,6 +40,10 @@ class Pair<Key : Compare, Value> {
 	New(p : Pair) {
 		@value := p->GetValue();
 		@key := p->GetKey();
+	}
+
+	method : public : Clone() ~ Pair {	
+		return @self;
 	}
 
 	method : public : GetValue() ~ Value {
