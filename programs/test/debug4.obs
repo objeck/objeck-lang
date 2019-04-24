@@ -8,9 +8,14 @@ class Foo {
 		p->Apply(Bar(IntHolder) ~ IntHolder);
 		p->GetValue()->Get()->PrintLine();
 
-#		d := p->DoIt(IntHolder->New(101));
-#		d->GetValue()->Get()->PrintLine();
+		x := Pair->New(p)<String, IntHolder>;
+		x->SetValue(IntHolder->New(99));
 
+#		d := p->DoIt(IntHolder->New(101));
+		x->GetValue()->Get()->PrintLine();
+
+		p->GetKey()->PrintLine();
+		x->GetKey()->PrintLine();
 	}
 
 	function : Bar(v : IntHolder) ~ IntHolder {
@@ -31,14 +36,19 @@ class Pair<Key : Compare, Value> {
 
 	New(p : Pair) {
 		@value := p->GetValue();
+		@key := p->GetKey();
 	}
 
 	method : public : GetValue() ~ Value {
 		return @value;
 	}
 
-	method : public : SetLeft(left : Pair) ~ Nil {
-		@left := left;
+	method : public : GetKey() ~ Key {
+		return @key;
+	}
+
+	method : public : SetValue(value : Value) ~ Nil {
+		@value := value;
 	}
 
 	method : public : Apply(f : (Value) ~ Value) ~ Nil {
