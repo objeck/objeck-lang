@@ -1028,17 +1028,16 @@ class ContextAnalyzer {
 
       wstring to_enum_name;	
       Enum* to_enum = SearchProgramEnums(method_type->GetClassName());
-      if(!to_enum) {
-        LibraryEnum* to_lib_enum = linker->SearchEnumLibraries(method_type->GetClassName(),
-                                                               program->GetUses());
+			if(to_enum) {
+				to_enum_name = to_enum->GetName();
+			}
+			else {
+        LibraryEnum* to_lib_enum = linker->SearchEnumLibraries(method_type->GetClassName(), program->GetUses());
         if(to_lib_enum) {
           to_enum_name = to_lib_enum->GetName();
         }
       }
-      else {
-        to_enum_name = to_enum->GetName();
-      }
-
+      
       // look for exact class match
       if(from_enum && from_enum->GetName() == to_enum_name) {
         return true;
