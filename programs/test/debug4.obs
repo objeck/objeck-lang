@@ -1,0 +1,51 @@
+class Foo {
+	function : Main(args : String[]) ~ Nil {
+		p := Pair->New("foo", IntHolder->New(13))<String, IntHolder>;
+		f := Bar(IntHolder) ~ IntHolder;
+#		p->Apply(f);
+
+		p->GetValue()->Get()->PrintLine();
+		p->Apply(Bar(IntHolder) ~ IntHolder);
+		p->GetValue()->Get()->PrintLine();
+
+		d := p->DoIt(IntHolder->New(101));
+		d->GetValue()->Get()->PrintLine();
+
+	}
+
+	function : Bar(v : IntHolder) ~ IntHolder {
+		return IntHolder->New(v->Get() * 3);
+	}
+}
+
+class Pair<Key : Compare, Value> {
+	@key : Key;
+	@value : Value;
+	@left : Pair;
+	@right : Pair;
+
+	New(key : Key, value : Value) {
+		@key := key;
+		@value := value;
+	}
+
+	method : public : GetValue() ~ Value {
+		return @value;
+	}
+
+	method : public : GetLeft() ~ Pair {
+		return @left;
+	}
+
+	method : public : SetLeft(left : Pair) ~ Nil {
+		@left := left;
+	}
+
+	method : public : DoIt(value : Value) ~ Pair {
+		return @self;
+	}
+
+	method : public : Apply(f : (Value) ~ Value) ~ Nil {
+		@value := f(@value);
+	}
+}

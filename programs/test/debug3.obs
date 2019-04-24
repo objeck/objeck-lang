@@ -4,13 +4,8 @@ class Foo {
 		pairs[0] := Pair->New("Hello", Bar->New("World")<String>)<String, Bar<String> >;
 		b := pairs[0];
 #		y : String := b->GetValue()->Get();
-		z : Bar := Fu();
 		y := b->GetValue()->Get();
 #		->Get()->PrintLine();
-	}
-
-	function : Fu() ~ Nil {
-		
 	}
 }
 
@@ -47,5 +42,9 @@ class Pair<Key : Compare, Value> {
 
 	method : public : SetLeft(left : Pair) ~ Nil {
 		@left := left;
+	}
+
+	method : public : Apply(f : (Value) ~ Value) ~ Pair {
+		return Nil;
 	}
 }

@@ -2140,7 +2140,7 @@ bool ContextAnalyzer::Analyze()
             const wstring calling_type_name = calling_type->GetClassName();
             wstring method_type_name = method_type->GetClassName();
             if(method_type_name.size() == 0) {
-              AnalyzeDynamicFunctionParameters(method_type->GetFunctionParameters(), calling_param); 
+              AnalyzeDynamicFunctionParameters(method_type->GetFunctionParameters(), calling_param);
               method_type_name = L"m." + EncodeFunctionType(method_type->GetFunctionParameters(),
                                                             method_type->GetFunctionReturn());
               method_type->SetClassName(method_type_name);
@@ -2188,12 +2188,13 @@ bool ContextAnalyzer::Analyze()
 						// TODO: adding generics
 						// get concrete type if needed
 						if(klass->HasGenerics()) {
-							method_type = RelsolveGenericType(method_type, method_call, klass);
+							method_type = RelsolveGenericType(method_type, method_call, klass, NULL);
 						}
 						ResolveClassEnumType(method_type);
           }
           // add parameter match
-          match->AddParameterMatch(MatchCallingParameter(expr_params[j], method_type, klass, NULL, depth));
+					const int compare = MatchCallingParameter(expr_params[j], method_type, klass, NULL, depth);
+          match->AddParameterMatch(compare);
         }
         matches.push_back(match);
       }
@@ -2215,7 +2216,7 @@ bool ContextAnalyzer::Analyze()
 				// TODO: adding generics
 				Type* left = method_parms[j]->GetEntry()->GetType();
 				if(klass->HasGenerics()) {
-					left = RelsolveGenericType(left, method_call, klass);
+					left = RelsolveGenericType(left, method_call, klass, NULL);
 				}
 
         ResolveClassEnumType(left);
@@ -2313,7 +2314,7 @@ bool ContextAnalyzer::Analyze()
 					// TODO: adding generics
 					Type* left = mthd_params[i]->GetEntry()->GetType();
 					if(klass->HasGenerics()) {
-						left = RelsolveGenericType(left, method_call, klass);
+						left = RelsolveGenericType(left, method_call, klass, NULL);
 					}
           ResolveClassEnumType(left);
           AnalyzeRightCast(left, expression->GetEvalType(), expression, IsScalar(expression), depth + 1);	
@@ -2361,7 +2362,7 @@ bool ContextAnalyzer::Analyze()
 			// map generic to concrete
 			Type* eval_type = method_call->GetEvalType();
 			if(klass->HasGenerics()) {
-				eval_type = RelsolveGenericType(eval_type, method_call, klass);
+				eval_type = RelsolveGenericType(eval_type, method_call, klass, NULL);
 				if(!eval_type->HasGenerics()) {
 					eval_type->SetGenerics(method_call->GetConcreteNames());
 				}
@@ -2450,7 +2451,7 @@ bool ContextAnalyzer::Analyze()
 					// get concrete type if needed
 					Type* method_type = method_parms[j];
 					if(klass->HasGenerics()) {
-						method_type = RelsolveGenericType(method_type, method_call, klass);
+						method_type = RelsolveGenericType(method_type, method_call, NULL, klass);
 						ResolveClassEnumType(method_type);
 					}
 					
@@ -2480,7 +2481,7 @@ bool ContextAnalyzer::Analyze()
 				// TODO: adding generics
 				Type* left = method_parms[j];
 				if(klass->HasGenerics()) {
-					left = RelsolveGenericType(left, method_call, klass);
+					left = RelsolveGenericType(left, method_call, NULL, klass);
 				}
         AnalyzeRightCast(left, expression, IsScalar(expression), depth + 1);
       }
@@ -2595,7 +2596,7 @@ bool ContextAnalyzer::Analyze()
 			LibraryClass* lib_klass = lib_method->GetLibraryClass();
 			Type* eval_type = method_call->GetEvalType();
 			if(lib_klass->HasGenerics()) {
-				eval_type = RelsolveGenericType(eval_type, method_call, lib_klass);
+				eval_type = RelsolveGenericType(eval_type, method_call, NULL, lib_klass);
 				if(!eval_type->HasGenerics()) {
 					eval_type->SetGenerics(method_call->GetConcreteNames());
 				}
@@ -4760,9 +4761,9 @@ bool ContextAnalyzer::Analyze()
       else if(entry->GetType() && entry->GetType()->GetType() == FUNC_TYPE) {
         // resolve function name
         Type* type = entry->GetType();
-        AnalyzeDynamicFunctionParameters(type->GetFunctionParameters(), entry);
+        AnalyzeDynamicFunctionParameters(type->GetFunctionParameters(), entry, klass);
         const wstring encoded_name = L"m." + EncodeFunctionType(type->GetFunctionParameters(),
-                                                                type->GetFunctionReturn());
+																																type->GetFunctionReturn());
 #ifdef _DEBUG
         GetLogger() << L"Encoded function declaration: |" << encoded_name << L"|" << endl;
 #endif
