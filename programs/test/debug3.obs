@@ -7,6 +7,8 @@ class Foo {
 		y := b->GetValue()->Get();
 #		->Get()->PrintLine();
 	}
+
+	
 }
 
 class Bar<E> {
