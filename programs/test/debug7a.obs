@@ -2,9 +2,6 @@ class Vector<T> {
 	@values : T[];
 	@size : Int;
 	
-	#~
-	Default constructor 
-	~#
 	New() {
 		@values := T->New[2];
 		@size := 0;

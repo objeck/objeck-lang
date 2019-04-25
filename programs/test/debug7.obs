@@ -5,13 +5,13 @@ class Foo {
 		a->AddBack(FloatHolder->New(33.3));
 		a->AddBack(FloatHolder->New(75));
 		a->Size()->PrintLine();
-
+		
 		b := a->Apply(Bar(FloatHolder) ~ FloatHolder)<FloatHolder>;
-
+		
 		# a->Get(1)->Get()->PrintLine();
 		# b->Get(1)->Get()->PrintLine();
 	}
-
+	
 	function : Bar(h : FloatHolder) ~ FloatHolder {
 		v := h->Get();
 		return FloatHolder->New(v * 3.5);
