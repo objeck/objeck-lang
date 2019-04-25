@@ -1,9 +1,5 @@
 # version string
-<<<<<<< HEAD
-$version = "4.1.12"
-=======
 $version = "5.0.0"
->>>>>>> origin/generic_types
 
 # alternative strings
 $version_number = $version.Replace(".", "")
