@@ -33,17 +33,17 @@
 #include "linker.h"
 #include "../shared/instrs.h"
 
-/****************************
- * Emits an error
- ****************************/
-void ContextAnalyzer::ProcessError(ParseNode* node, const wstring &msg)
+ /****************************
+  * Emits an error
+  ****************************/
+void ContextAnalyzer::ProcessError(ParseNode* node, const wstring& msg)
 {
 #ifdef _DEBUG
   GetLogger() << L"\tError: " << node->GetFileName() << L":" << node->GetLineNumber()
-	      << L": " << msg << endl;
+    << L": " << msg << endl;
 #endif
-  
-  const wstring &str_line_num = ToString(node->GetLineNumber());
+
+  const wstring& str_line_num = ToString(node->GetLineNumber());
   errors.insert(pair<int, wstring>(node->GetLineNumber(), node->GetFileName() + L":" + str_line_num + L": " + msg));
 }
 
@@ -51,7 +51,7 @@ void ContextAnalyzer::ProcessError(ParseNode* node, const wstring &msg)
  * Formats possible alternative
  * methods
  ****************************/
-void ContextAnalyzer::ProcessErrorAlternativeMethods(wstring &message)
+void ContextAnalyzer::ProcessErrorAlternativeMethods(wstring & message)
 {
   if(alt_error_method_names.size() > 0) {
     message += L"\n\tPossible alternative(s):\n";
@@ -65,12 +65,12 @@ void ContextAnalyzer::ProcessErrorAlternativeMethods(wstring &message)
 /****************************
  * Emits an error
  ****************************/
-void ContextAnalyzer::ProcessError(const wstring &fn, const wstring &msg)
+void ContextAnalyzer::ProcessError(const wstring & fn, const wstring & msg)
 {
 #ifdef _DEBUG
   GetLogger() << L"\tError: " << msg << endl;
 #endif
-  
+
   errors.insert(pair<int, wstring>(1, fn + L":1: " + msg));
 }
 
@@ -151,4787 +151,4788 @@ bool ContextAnalyzer::Analyze()
   // associate re-encoded method signatures with methods
   for(size_t i = 0; i < bundles.size(); ++i) {
     bundle = bundles[i];
-    vector<Class*> classes = bundle->GetClasses();    
+    vector<Class*> classes = bundle->GetClasses();
     for(size_t j = 0; j < classes.size(); ++j) {
       Class* klass = classes[j];
       wstring parent_name = klass->GetParentName();
 #ifdef _SYSTEM
       if(parent_name.size() == 0 && klass->GetName() != SYSTEM_BASE_NAME) {
 #else
-        if(parent_name.size() == 0) {
+      if(parent_name.size() == 0) {
 #endif
-          parent_name = SYSTEM_BASE_NAME;
-          klass->SetParentName(SYSTEM_BASE_NAME);
-        }
-
-        if(parent_name.size()) {
-          Class* parent = SearchProgramClasses(parent_name);
-          if(parent) {
-            klass->SetParent(parent);
-            parent->AddChild(klass);
-          } 
-          else {
-            LibraryClass* lib_parent = linker->SearchClassLibraries(parent_name, program->GetUses(klass->GetFileName()));
-            if(lib_parent) {
-              klass->SetLibraryParent(lib_parent);
-              lib_parent->AddChild(klass);
-            } 
-            else {
-              ProcessError(klass, L"Attempting to inherent from an undefined class type");
-            }
-          }
-        }
-        // associate methods
-        classes[j]->AssociateMethods();
+        parent_name = SYSTEM_BASE_NAME;
+        klass->SetParentName(SYSTEM_BASE_NAME);
       }
-    }
 
-    // process bundles
-    bundles = program->GetBundles();
-    for(size_t i = 0; i < bundles.size(); ++i) {
-      bundle = bundles[i];
-      symbol_table = bundle->GetSymbolTableManager();
-
-      // process enums
-      vector<Enum*> enums = bundle->GetEnums();
-      for(size_t j = 0; j < enums.size(); ++j) {
-        AnalyzeEnum(enums[j], 0);
-      }
-      // process classes
-      vector<Class*> classes = bundle->GetClasses();
-      for(size_t j = 0; j < classes.size(); ++j) {
-        AnalyzeClass(classes[j], class_id++, 0);
-      }
-      // check for duplicate instance and class level variables
-      AnalyzeDuplicateEntries(classes, 0);
-      // process class methods
-      for(size_t j = 0; j < classes.size(); ++j) {
-        AnalyzeMethods(classes[j], 0);
-      }
-    }
-    
-    // process anonymous classes
-    for(size_t i = 0; i < anonymous_classes.size(); ++i) {
-      Class* anonymous_class = anonymous_classes[i];
-      MethodCall* anonymous_call = anonymous_class->GetAnonymousCall();
-      
-      bool found = false;      
-      if(anonymous_call->GetMethod()) {
-        const wstring calling_name = anonymous_call->GetMethod()->GetEncodedName();	
-        if(anonymous_class->GetMethod(calling_name)) {
-          found = true;
-        }
-      }
-      else if(anonymous_call->GetLibraryMethod()) {
-        const wstring calling_name = anonymous_call->GetLibraryMethod()->GetName();
-        if(anonymous_class->GetMethod(calling_name)) {
-          found = true;
-        }
-      }
-      
-      if(!found) {
-        ProcessError(anonymous_class, L"Callers 'New(..)' method signature not defined in anonymous class");
-      }
-    }
-    
-    // check for entry points
-    if(!main_found && !is_lib && !is_web) {
-      ProcessError(program->GetFileName(), L"The 'Main(args)' function was not defined");
-    }
-
-    if(is_web && !web_found) {
-      ProcessError(program->GetFileName(), L"The 'Request(args)' function was not defined");
-    } 
-
-    return CheckErrors();
-  }
-
-  /****************************
-   * Analyzes a class
-   ****************************/
-  void ContextAnalyzer::AnalyzeEnum(Enum* eenum, const int depth)
-  {
-#ifdef _DEBUG
-    wstring msg = L"[enum: name='" + eenum->GetName() + L"']";
-    Debug(msg, eenum->GetLineNumber(), depth);
-#endif
-
-    if(!HasProgramLibraryEnum(eenum->GetName())) {
-      ProcessError(eenum, L"Undefined enum: '" + ReplaceSubstring(eenum->GetName(), L"#", L"->") + L"'");
-    }
-    
-    if(linker->SearchClassLibraries(eenum->GetName(), program->GetUses(eenum->GetFileName())) ||       
-       linker->SearchEnumLibraries(eenum->GetName(), program->GetUses(eenum->GetFileName()))) {
-      ProcessError(eenum, L"Enum '" + ReplaceSubstring(eenum->GetName(), L"#", L"->") + 
-                   L"' defined in program and shared libraries");
-    }
-  }
-  
-  /****************************
-   * Checks for duplicate instance 
-   * and class level variables
-   ****************************/
-  void ContextAnalyzer::AnalyzeDuplicateEntries(vector<Class*>& classes, const int depth)
-  {
-    for(size_t i = 0; i < classes.size(); ++i) {
-      // declarations
-      Class* klass = classes[i];
-      vector<Statement*> statements = klass->GetStatements();
-      for(size_t j = 0; j < statements.size(); ++j) {
-        Declaration* declaration = static_cast<Declaration*>(statements[j]);
-        SymbolEntry* entry = declaration->GetEntry();
-        if(entry) {
-          // duplicate parent
-          if(DuplicateParentEntries(entry, klass)) {
-            size_t offset = entry->GetName().find(L':');
-            ++offset;
-            const wstring short_name = entry->GetName().substr(offset, entry->GetName().size() - offset);
-            ProcessError(declaration, L"Declaration name '" + short_name + L"' defined in a parent class");
-          }
-        }
-      }
-    }
-  }
-
-  /****************************
-   * Expands and validates methods with
-   * default parameters
-   ****************************/
-  void ContextAnalyzer::AddDefaultParameterMethods(ParsedBundle* bundle, Class* klass, Method* method) 
-  {
-    // declarations
-    vector<Declaration*> declarations = method->GetDeclarations()->GetDeclarations();
-    if(declarations.size() > 0 && declarations[declarations.size() - 1]->GetAssignment()) {
-      bool default_params = true;
-      for(int i = (int)declarations.size() - 1; i >= 0; --i) {
-        if(declarations[i]->GetAssignment()) {
-          if(method->IsVirtual()) {
-            ProcessError(method, L"Virtual methods and interfaces cannot contain default parameter values");
-            return;
-          }
-
-          if(!default_params) {
-            ProcessError(declarations[0], L"Only trailing parameters may have default values");
-            return;
-          }
+      if(parent_name.size()) {
+        Class* parent = SearchProgramClasses(parent_name);
+        if(parent) {
+          klass->SetParent(parent);
+          parent->AddChild(klass);
         }
         else {
-          default_params = false;
-        }
-      }
-
-      GenerateParameterMethods(bundle, klass, method);
-    }
-  }
-
-  /****************************
-   * Generates alternative methods for
-   * method with default parameter values
-   ****************************/
-  void ContextAnalyzer::GenerateParameterMethods(ParsedBundle* bundle, Class* klass, Method* method) 
-  {
-    // find inital parameter offset
-    vector<Declaration*> declarations = method->GetDeclarations()->GetDeclarations();
-    size_t inital_param_offset = 0;
-
-    if(!inital_param_offset) {
-      for(size_t i = 0; i < declarations.size(); ++i) {
-        Declaration* declaration = declarations[i];
-        if(declaration->GetAssignment()) {
-          if(!inital_param_offset) {
-            inital_param_offset = i;
-          }
-        }
-      }
-    }
-
-    // build alternative methods
-    while(inital_param_offset < declarations.size()) {
-      Method* alt_method = TreeFactory::Instance()->MakeMethod(method->GetFileName(), method->GetLineNumber(),
-                                                               method->GetName(), method->GetMethodType(),
-                                                               method->IsStatic(), method->IsNative());
-      alt_method->SetReturn(method->GetReturn());
-
-      DeclarationList* alt_declarations = TreeFactory::Instance()->MakeDeclarationList();
-      StatementList* alt_statements = TreeFactory::Instance()->MakeStatementList();
-
-      bundle->GetSymbolTableManager()->NewParseScope();
-
-      if(inital_param_offset) {
-        for(size_t i = 0; i < declarations.size(); ++i) {
-          Declaration* declaration = declarations[i]->Copy();
-          if(i < inital_param_offset) {
-            alt_declarations->AddDeclaration(declaration);
-            bundle->GetSymbolTableManager()->CurrentParseScope()->AddEntry(declaration->GetEntry());
+          LibraryClass* lib_parent = linker->SearchClassLibraries(parent_name, program->GetUses(klass->GetFileName()));
+          if(lib_parent) {
+            klass->SetLibraryParent(lib_parent);
+            lib_parent->AddChild(klass);
           }
           else {
-            Assignment* assignment = declaration->GetAssignment();
-            assignment->GetExpression()->SetEvalType(declaration->GetEntry()->GetType(), true);
-            alt_statements->AddStatement(assignment);
+            ProcessError(klass, L"Attempting to inherent from an undefined class type");
           }
         }
-        inital_param_offset++;
       }
-        
-      // set statements
-      alt_method->SetStatements(alt_statements);
-      alt_method->SetDeclarations(alt_declarations);
-      alt_method->SetOriginal(method);
-      bundle->GetSymbolTableManager()->PreviousParseScope(alt_method->GetParsedName());
+      // associate methods
+      classes[j]->AssociateMethods();
+    }
+  }
 
-      // add method
-      if(!klass->AddMethod(alt_method)) {
-        ProcessError(method, L"Method or function already overloaded '" + method->GetName() + L"'");
+  // process bundles
+  bundles = program->GetBundles();
+  for(size_t i = 0; i < bundles.size(); ++i) {
+    bundle = bundles[i];
+    symbol_table = bundle->GetSymbolTableManager();
+
+    // process enums
+    vector<Enum*> enums = bundle->GetEnums();
+    for(size_t j = 0; j < enums.size(); ++j) {
+      AnalyzeEnum(enums[j], 0);
+    }
+    // process classes
+    vector<Class*> classes = bundle->GetClasses();
+    for(size_t j = 0; j < classes.size(); ++j) {
+      AnalyzeClass(classes[j], class_id++, 0);
+    }
+    // check for duplicate instance and class level variables
+    AnalyzeDuplicateEntries(classes, 0);
+    // process class methods
+    for(size_t j = 0; j < classes.size(); ++j) {
+      AnalyzeMethods(classes[j], 0);
+    }
+  }
+
+  // process anonymous classes
+  for(size_t i = 0; i < anonymous_classes.size(); ++i) {
+    Class* anonymous_class = anonymous_classes[i];
+    MethodCall* anonymous_call = anonymous_class->GetAnonymousCall();
+
+    bool found = false;
+    if(anonymous_call->GetMethod()) {
+      const wstring calling_name = anonymous_call->GetMethod()->GetEncodedName();
+      if(anonymous_class->GetMethod(calling_name)) {
+        found = true;
+      }
+    }
+    else if(anonymous_call->GetLibraryMethod()) {
+      const wstring calling_name = anonymous_call->GetLibraryMethod()->GetName();
+      if(anonymous_class->GetMethod(calling_name)) {
+        found = true;
+      }
+    }
+
+    if(!found) {
+      ProcessError(anonymous_class, L"Callers 'New(..)' method signature not defined in anonymous class");
+    }
+  }
+
+  // check for entry points
+  if(!main_found && !is_lib && !is_web) {
+    ProcessError(program->GetFileName(), L"The 'Main(args)' function was not defined");
+  }
+
+  if(is_web && !web_found) {
+    ProcessError(program->GetFileName(), L"The 'Request(args)' function was not defined");
+  }
+
+  return CheckErrors();
+}
+
+/****************************
+ * Analyzes a class
+ ****************************/
+void ContextAnalyzer::AnalyzeEnum(Enum * eenum, const int depth)
+{
+#ifdef _DEBUG
+  wstring msg = L"[enum: name='" + eenum->GetName() + L"']";
+  Debug(msg, eenum->GetLineNumber(), depth);
+#endif
+
+  if(!HasProgramLibraryEnum(eenum->GetName())) {
+    ProcessError(eenum, L"Undefined enum: '" + ReplaceSubstring(eenum->GetName(), L"#", L"->") + L"'");
+  }
+
+  if(linker->SearchClassLibraries(eenum->GetName(), program->GetUses(eenum->GetFileName())) ||
+     linker->SearchEnumLibraries(eenum->GetName(), program->GetUses(eenum->GetFileName()))) {
+    ProcessError(eenum, L"Enum '" + ReplaceSubstring(eenum->GetName(), L"#", L"->") +
+                 L"' defined in program and shared libraries");
+  }
+}
+
+/****************************
+ * Checks for duplicate instance
+ * and class level variables
+ ****************************/
+void ContextAnalyzer::AnalyzeDuplicateEntries(vector<Class*> & classes, const int depth)
+{
+  for(size_t i = 0; i < classes.size(); ++i) {
+    // declarations
+    Class* klass = classes[i];
+    vector<Statement*> statements = klass->GetStatements();
+    for(size_t j = 0; j < statements.size(); ++j) {
+      Declaration* declaration = static_cast<Declaration*>(statements[j]);
+      SymbolEntry* entry = declaration->GetEntry();
+      if(entry) {
+        // duplicate parent
+        if(DuplicateParentEntries(entry, klass)) {
+          size_t offset = entry->GetName().find(L':');
+          ++offset;
+          const wstring short_name = entry->GetName().substr(offset, entry->GetName().size() - offset);
+          ProcessError(declaration, L"Declaration name '" + short_name + L"' defined in a parent class");
+        }
+      }
+    }
+  }
+}
+
+/****************************
+ * Expands and validates methods with
+ * default parameters
+ ****************************/
+void ContextAnalyzer::AddDefaultParameterMethods(ParsedBundle * bundle, Class * klass, Method * method)
+{
+  // declarations
+  vector<Declaration*> declarations = method->GetDeclarations()->GetDeclarations();
+  if(declarations.size() > 0 && declarations[declarations.size() - 1]->GetAssignment()) {
+    bool default_params = true;
+    for(int i = (int)declarations.size() - 1; i >= 0; --i) {
+      if(declarations[i]->GetAssignment()) {
+        if(method->IsVirtual()) {
+          ProcessError(method, L"Virtual methods and interfaces cannot contain default parameter values");
+          return;
+        }
+
+        if(!default_params) {
+          ProcessError(declarations[0], L"Only trailing parameters may have default values");
+          return;
+        }
+      }
+      else {
+        default_params = false;
+      }
+    }
+
+    GenerateParameterMethods(bundle, klass, method);
+  }
+}
+
+/****************************
+ * Generates alternative methods for
+ * method with default parameter values
+ ****************************/
+void ContextAnalyzer::GenerateParameterMethods(ParsedBundle * bundle, Class * klass, Method * method)
+{
+  // find inital parameter offset
+  vector<Declaration*> declarations = method->GetDeclarations()->GetDeclarations();
+  size_t inital_param_offset = 0;
+
+  if(!inital_param_offset) {
+    for(size_t i = 0; i < declarations.size(); ++i) {
+      Declaration* declaration = declarations[i];
+      if(declaration->GetAssignment()) {
+        if(!inital_param_offset) {
+          inital_param_offset = i;
+        }
       }
     }
   }
 
-  /****************************
-   * Analyzes a class
-   ****************************/
-  void ContextAnalyzer::AnalyzeClass(Class* klass, const int id, const int depth)
-  {
+  // build alternative methods
+  while(inital_param_offset < declarations.size()) {
+    Method* alt_method = TreeFactory::Instance()->MakeMethod(method->GetFileName(), method->GetLineNumber(),
+                                                             method->GetName(), method->GetMethodType(),
+                                                             method->IsStatic(), method->IsNative());
+    alt_method->SetReturn(method->GetReturn());
+
+    DeclarationList* alt_declarations = TreeFactory::Instance()->MakeDeclarationList();
+    StatementList* alt_statements = TreeFactory::Instance()->MakeStatementList();
+
+    bundle->GetSymbolTableManager()->NewParseScope();
+
+    if(inital_param_offset) {
+      for(size_t i = 0; i < declarations.size(); ++i) {
+        Declaration* declaration = declarations[i]->Copy();
+        if(i < inital_param_offset) {
+          alt_declarations->AddDeclaration(declaration);
+          bundle->GetSymbolTableManager()->CurrentParseScope()->AddEntry(declaration->GetEntry());
+        }
+        else {
+          Assignment* assignment = declaration->GetAssignment();
+          assignment->GetExpression()->SetEvalType(declaration->GetEntry()->GetType(), true);
+          alt_statements->AddStatement(assignment);
+        }
+      }
+      inital_param_offset++;
+    }
+
+    // set statements
+    alt_method->SetStatements(alt_statements);
+    alt_method->SetDeclarations(alt_declarations);
+    alt_method->SetOriginal(method);
+    bundle->GetSymbolTableManager()->PreviousParseScope(alt_method->GetParsedName());
+
+    // add method
+    if(!klass->AddMethod(alt_method)) {
+      ProcessError(method, L"Method or function already overloaded '" + method->GetName() + L"'");
+    }
+  }
+}
+
+/****************************
+ * Analyzes a class
+ ****************************/
+void ContextAnalyzer::AnalyzeClass(Class * klass, const int id, const int depth)
+{
 #ifdef _DEBUG
-    wstring msg = L"[class: name='" + klass->GetName() + L"'; id=" + ToString(id) +
-      L"; virtual=" + ToString(klass->IsVirtual()) + L"]";
-    Debug(msg, klass->GetLineNumber(), depth);
+  wstring msg = L"[class: name='" + klass->GetName() + L"'; id=" + ToString(id) +
+    L"; virtual=" + ToString(klass->IsVirtual()) + L"]";
+  Debug(msg, klass->GetLineNumber(), depth);
 #endif
-    
-    current_class = klass;
-    current_class->SetCalled(true);
-    klass->SetSymbolTable(symbol_table->GetSymbolTable(current_class->GetName()));
-    if(!HasProgramLibraryClass(klass->GetName())) {
-      ProcessError(klass, L"Undefined class: '" + klass->GetName() + L"'");
+
+  current_class = klass;
+  current_class->SetCalled(true);
+  klass->SetSymbolTable(symbol_table->GetSymbolTable(current_class->GetName()));
+  if(!HasProgramLibraryClass(klass->GetName())) {
+    ProcessError(klass, L"Undefined class: '" + klass->GetName() + L"'");
+  }
+
+  if(linker->SearchClassLibraries(klass->GetName(), program->GetUses(current_class->GetFileName())) ||
+     linker->SearchEnumLibraries(klass->GetName(), program->GetUses(current_class->GetFileName()))) {
+    ProcessError(klass, L"Class '" + klass->GetName() + L"' defined in shared libraries");
+  }
+
+  // check parent class
+  Class* parent_klass = klass->GetParent();
+  if(parent_klass && (parent_klass->IsInterface() || parent_klass->HasGenerics())) {
+    ProcessError(klass, L"Class '" + klass->GetName() + L"' cannot be derived from a generic or interface");
+  }
+  else {
+    LibraryClass* parent_lib_klass = klass->GetLibraryParent();
+    if(parent_lib_klass && parent_lib_klass->IsInterface()) {
+      ProcessError(klass, L"Classes cannot be derived from interfaces");
     }
-    
-    if(linker->SearchClassLibraries(klass->GetName(), program->GetUses(current_class->GetFileName())) ||       
-       linker->SearchEnumLibraries(klass->GetName(), program->GetUses(current_class->GetFileName()))) {
-      ProcessError(klass, L"Class '" + klass->GetName() + L"' defined in shared libraries");
+  }
+
+  // check interfaces
+  AnalyzeInterfaces(klass, depth);
+
+  // declarations
+  vector<Statement*> statements = klass->GetStatements();
+  for(size_t i = 0; i < statements.size(); ++i) {
+    current_method = NULL;
+    AnalyzeDeclaration(static_cast<Declaration*>(statements[i]), current_class, depth + 1);
+  }
+}
+
+/****************************
+ * Analyzes methods
+ ****************************/
+void ContextAnalyzer::AnalyzeMethods(Class * klass, const int depth)
+{
+#ifdef _DEBUG
+  wstring msg = L"[class: name='" + klass->GetName() + L"]";
+  Debug(msg, klass->GetLineNumber(), depth);
+#endif
+
+  current_class = klass;
+  current_table = symbol_table->GetSymbolTable(current_class->GetName());
+
+  // methods
+  vector<Method*> methods = klass->GetMethods();
+  for(size_t i = 0; i < methods.size(); ++i) {
+    AnalyzeMethod(methods[i], (int)i, depth + 1);
+  }
+
+  // look for parent virutal methods
+  if(current_class->GetParent() && current_class->GetParent()->IsVirtual()) {
+    if(!AnalyzeVirtualMethods(current_class, current_class->GetParent(), depth)) {
+      ProcessError(current_class, L"Not all virtual methods have been implemented for the class/interface: " +
+                   current_class->GetParent()->GetName());
     }
-    
-    // check parent class
-    Class* parent_klass = klass->GetParent();
-    if(parent_klass && (parent_klass->IsInterface() || parent_klass->HasGenerics())) {
-      ProcessError(klass, L"Class '" + klass->GetName() + L"' cannot be derived from a generic or interface");
+  }
+  else if(current_class->GetLibraryParent() && current_class->GetLibraryParent()->IsVirtual()) {
+    if(!AnalyzeVirtualMethods(current_class, current_class->GetLibraryParent(), depth)) {
+      ProcessError(current_class, L"Not all virtual methods have been implemented for the class/interface: " +
+                   current_class->GetLibraryParent()->GetName());
+    }
+  }
+
+  // collect anonymous classes
+  if(klass->GetAnonymousCall()) {
+    anonymous_classes.push_back(klass);
+  }
+}
+
+/****************************
+ * Checks for interface
+ * implementations
+ ****************************/
+void ContextAnalyzer::AnalyzeInterfaces(Class * klass, const int depth)
+{
+  vector<wstring> interface_names = klass->GetInterfaceNames();
+  vector<Class*> interfaces;
+  vector<LibraryClass*> lib_interfaces;
+  for(size_t i = 0; i < interface_names.size(); ++i) {
+    const wstring& interface_name = interface_names[i];
+    Class* inf_klass = SearchProgramClasses(interface_name);
+    if(inf_klass) {
+      if(!inf_klass->IsInterface()) {
+        ProcessError(klass, L"Expected an interface type");
+        return;
+      }
+
+      // ensure interface methods are virtual
+      vector<Method*> methods = inf_klass->GetMethods();
+      for(size_t i = 0; i < methods.size(); ++i) {
+        if(!methods[i]->IsVirtual()) {
+          ProcessError(methods[i], L"Interface method must be defined as 'virtual'");
+        }
+      }
+      // ensure implementation
+      if(!AnalyzeVirtualMethods(klass, inf_klass, depth)) {
+        ProcessError(klass, L"Not all methods have been implemented for the interface: " + inf_klass->GetName());
+      }
+      else {
+        // add interface
+        inf_klass->SetCalled(true);
+        inf_klass->AddChild(klass);
+        interfaces.push_back(inf_klass);
+      }
     }
     else {
-      LibraryClass* parent_lib_klass = klass->GetLibraryParent();
-      if(parent_lib_klass && parent_lib_klass->IsInterface()) {
-        ProcessError(klass, L"Classes cannot be derived from interfaces");
-      }
-    }
-
-    // check interfaces
-    AnalyzeInterfaces(klass, depth);
-
-    // declarations
-    vector<Statement*> statements = klass->GetStatements();
-    for(size_t i = 0; i < statements.size(); ++i) {
-      current_method = NULL;
-      AnalyzeDeclaration(static_cast<Declaration*>(statements[i]), current_class, depth + 1);
-    }
-  }
-
-  /****************************
-   * Analyzes methods
-   ****************************/
-  void ContextAnalyzer::AnalyzeMethods(Class* klass, const int depth)
-  {
-#ifdef _DEBUG
-    wstring msg = L"[class: name='" + klass->GetName() + L"]";
-    Debug(msg, klass->GetLineNumber(), depth);
-#endif
-
-    current_class = klass;
-    current_table = symbol_table->GetSymbolTable(current_class->GetName());
-
-    // methods
-    vector<Method*> methods = klass->GetMethods();
-    for(size_t i = 0; i < methods.size(); ++i) {
-      AnalyzeMethod(methods[i], (int)i, depth + 1);
-    }
-
-    // look for parent virutal methods
-    if(current_class->GetParent() && current_class->GetParent()->IsVirtual()) {
-      if(!AnalyzeVirtualMethods(current_class, current_class->GetParent(), depth)) {
-        ProcessError(current_class, L"Not all virtual methods have been implemented for the class/interface: " +
-                     current_class->GetParent()->GetName());
-      }
-    }
-    else if(current_class->GetLibraryParent() && current_class->GetLibraryParent()->IsVirtual()) {
-      if(!AnalyzeVirtualMethods(current_class, current_class->GetLibraryParent(), depth)) {
-        ProcessError(current_class, L"Not all virtual methods have been implemented for the class/interface: " +
-                     current_class->GetLibraryParent()->GetName());
-      }
-    }
-    
-    // collect anonymous classes
-    if(klass->GetAnonymousCall()) {
-      anonymous_classes.push_back(klass);
-    }
-  }
-
-  /****************************
-   * Checks for interface
-   * implementations
-   ****************************/
-  void ContextAnalyzer::AnalyzeInterfaces(Class* klass, const int depth)
-  {
-    vector<wstring> interface_names = klass->GetInterfaceNames();
-    vector<Class*> interfaces;
-    vector<LibraryClass*> lib_interfaces;
-    for(size_t i = 0; i < interface_names.size(); ++i) {
-      const wstring& interface_name = interface_names[i];
-      Class* inf_klass = SearchProgramClasses(interface_name);
-      if(inf_klass) {
-        if(!inf_klass->IsInterface()) {
+      LibraryClass* inf_lib_klass = linker->SearchClassLibraries(interface_name, program->GetUses(current_class->GetFileName()));
+      if(inf_lib_klass) {
+        if(!inf_lib_klass->IsInterface()) {
           ProcessError(klass, L"Expected an interface type");
           return;
         }
 
         // ensure interface methods are virtual
-        vector<Method*> methods = inf_klass->GetMethods();
-        for(size_t i = 0; i < methods.size(); ++i) {
-          if(!methods[i]->IsVirtual()) {
-            ProcessError(methods[i], L"Interface method must be defined as 'virtual'");
+        map<const wstring, LibraryMethod*> lib_methods = inf_lib_klass->GetMethods();
+        map<const wstring, LibraryMethod*>::iterator iter;
+        for(iter = lib_methods.begin(); iter != lib_methods.end(); ++iter) {
+          LibraryMethod* lib_method = iter->second;
+          if(!lib_method->IsVirtual()) {
+            ProcessError(klass, L"Interface method must be defined as 'virtual'");
           }
         }
         // ensure implementation
-        if(!AnalyzeVirtualMethods(klass, inf_klass, depth)) {
-          ProcessError(klass, L"Not all methods have been implemented for the interface: " + inf_klass->GetName());
+        if(!AnalyzeVirtualMethods(klass, inf_lib_klass, depth)) {
+          ProcessError(klass, L"Not all methods have been implemented for the interface: " +
+                       inf_lib_klass->GetName());
         }
         else {
           // add interface
-          inf_klass->SetCalled(true);
-          inf_klass->AddChild(klass);
-          interfaces.push_back(inf_klass);
+          inf_lib_klass->SetCalled(true);
+          inf_lib_klass->AddChild(klass);
+          lib_interfaces.push_back(inf_lib_klass);
         }
       }
       else {
-        LibraryClass* inf_lib_klass = linker->SearchClassLibraries(interface_name, program->GetUses(current_class->GetFileName()));
-        if(inf_lib_klass) {
-          if(!inf_lib_klass->IsInterface()) {
-            ProcessError(klass, L"Expected an interface type");
-            return;
-          }
+        ProcessError(klass, L"Undefined interface: '" + interface_name + L"'");
+      }
+    }
+  }
+  // save interfaces
+  klass->SetInterfaces(interfaces);
+  klass->SetLibraryInterfaces(lib_interfaces);
+}
 
-          // ensure interface methods are virtual
-          map<const wstring, LibraryMethod*> lib_methods = inf_lib_klass->GetMethods();
-          map<const wstring, LibraryMethod*>::iterator iter;
-          for(iter = lib_methods.begin(); iter != lib_methods.end(); ++iter) {
-            LibraryMethod* lib_method = iter->second;
-            if(!lib_method->IsVirtual()) {
-              ProcessError(klass, L"Interface method must be defined as 'virtual'");
+/****************************
+ * Checks for virutal method
+ * implementations
+ ****************************/
+bool ContextAnalyzer::AnalyzeVirtualMethods(Class * impl_class, Class * virtual_class, const int depth)
+{
+  // get virutal methods
+  bool virtual_methods_defined = true;
+  vector<Method*> virtual_class_methods = virtual_class->GetMethods();
+  for(size_t i = 0; i < virtual_class_methods.size(); ++i) {
+    if(virtual_class_methods[i]->IsVirtual()) {
+      // validate that methods have been implemented
+      Method* virtual_method = virtual_class_methods[i];
+      wstring virtual_method_name = virtual_method->GetEncodedName();
+
+      // search for implementation method via signature
+      Method* impl_method = NULL;
+      LibraryMethod* lib_impl_method = NULL;
+      int offset = (int)virtual_method_name.find_first_of(':');
+      if(offset > -1) {
+        wstring encoded_name = impl_class->GetName() + virtual_method_name.substr(offset);
+        impl_method = impl_class->GetMethod(encoded_name);
+        if(!impl_method && impl_class->GetParent()) {
+          Class* parent_class = impl_class->GetParent();
+          while(!impl_method && !lib_impl_method && parent_class) {
+            encoded_name = parent_class->GetName() + virtual_method_name.substr(offset);
+            impl_method = parent_class->GetMethod(encoded_name);
+            // update	    
+            if(!impl_method && parent_class->GetLibraryParent()) {
+              LibraryClass* lib_parent_class = parent_class->GetLibraryParent();
+              encoded_name = lib_parent_class->GetName() + virtual_method_name.substr(offset);
+              lib_impl_method = lib_parent_class->GetMethod(encoded_name);
+              break;
             }
-          }
-          // ensure implementation
-          if(!AnalyzeVirtualMethods(klass, inf_lib_klass, depth)) {
-            ProcessError(klass, L"Not all methods have been implemented for the interface: " +
-                         inf_lib_klass->GetName());
-          }	  
-          else {
-            // add interface
-            inf_lib_klass->SetCalled(true);
-            inf_lib_klass->AddChild(klass);
-            lib_interfaces.push_back(inf_lib_klass);
+            parent_class = parent_class->GetParent();
           }
         }
-        else {
-          ProcessError(klass, L"Undefined interface: '" + interface_name + L"'");
+        else if(impl_class->GetLibraryParent()) {
+          LibraryClass* lib_parent_class = impl_class->GetLibraryParent();
+          encoded_name = lib_parent_class->GetName() + virtual_method_name.substr(offset);
+          lib_impl_method = lib_parent_class->GetMethod(encoded_name);
         }
       }
+
+      // validate method
+      if(impl_method) {
+        AnalyzeVirtualMethod(impl_class, impl_method->GetMethodType(), impl_method->GetReturn(),
+                             impl_method->IsStatic(), impl_method->IsVirtual(), virtual_method);
+      }
+      else if(lib_impl_method) {
+        AnalyzeVirtualMethod(impl_class, lib_impl_method->GetMethodType(), lib_impl_method->GetReturn(),
+                             lib_impl_method->IsStatic(), lib_impl_method->IsVirtual(), virtual_method);
+      }
+      else {
+        // unable to find method via signature
+        virtual_methods_defined = false;
+      }
     }
-    // save interfaces
-    klass->SetInterfaces(interfaces);
-    klass->SetLibraryInterfaces(lib_interfaces);
   }
 
-  /****************************
-   * Checks for virutal method
-   * implementations
-   ****************************/
-  bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, Class* virtual_class, const int depth)
-  {
-    // get virutal methods
-    bool virtual_methods_defined = true;
-    vector<Method*> virtual_class_methods = virtual_class->GetMethods();
-    for(size_t i = 0; i < virtual_class_methods.size(); ++i) {
-      if(virtual_class_methods[i]->IsVirtual()) {
-        // validate that methods have been implemented
-        Method* virtual_method = virtual_class_methods[i];
-        wstring virtual_method_name = virtual_method->GetEncodedName();
+  return virtual_methods_defined;
+}
 
-        // search for implementation method via signature
-        Method* impl_method = NULL;
-        LibraryMethod* lib_impl_method = NULL;
-        int offset = (int)virtual_method_name.find_first_of(':');
-        if(offset > -1) {
-          wstring encoded_name = impl_class->GetName() + virtual_method_name.substr(offset);
-          impl_method = impl_class->GetMethod(encoded_name);	
-          if(!impl_method && impl_class->GetParent()) {
-            Class* parent_class = impl_class->GetParent();
-            while(!impl_method && !lib_impl_method && parent_class) {
-              encoded_name = parent_class->GetName() + virtual_method_name.substr(offset);
-              impl_method = parent_class->GetMethod(encoded_name);	      
-              // update	    
-              if(!impl_method && parent_class->GetLibraryParent()) {
-                LibraryClass* lib_parent_class = parent_class->GetLibraryParent();
-                encoded_name = lib_parent_class->GetName() + virtual_method_name.substr(offset);
-                lib_impl_method = lib_parent_class->GetMethod(encoded_name);
-                break;
-              }
-              parent_class = parent_class->GetParent();
+/****************************
+ * Analyzes virtual method, which
+ * are made when compiling shared
+ * libraries.
+ ****************************/
+void ContextAnalyzer::AnalyzeVirtualMethod(Class * impl_class, MethodType impl_mthd_type, Type * impl_return,
+                                           bool impl_is_static, bool impl_is_virtual, Method * virtual_method)
+{
+  // check method types
+  if(impl_mthd_type != virtual_method->GetMethodType()) {
+    ProcessError(impl_class, L"Not all virtual methods have been defined for class/interface: " +
+                 virtual_method->GetClass()->GetName());
+  }
+  // check method returns
+  Type* virtual_return = virtual_method->GetReturn();
+  if(impl_return->GetType() != virtual_return->GetType()) {
+    ProcessError(impl_class, L"Not all virtual methods have been defined for class/interface: " +
+                 virtual_method->GetClass()->GetName());
+  }
+  else if(impl_return->GetType() == CLASS_TYPE &&
+          impl_return->GetClassName() != virtual_return->GetClassName()) {
+    Class* impl_cls = SearchProgramClasses(impl_return->GetClassName());
+    Class* virtual_cls = SearchProgramClasses(virtual_return->GetClassName());
+    if(impl_cls && virtual_cls && impl_cls != virtual_cls) {
+      LibraryClass* impl_lib_cls = linker->SearchClassLibraries(impl_return->GetClassName(),
+                                                                program->GetUses(current_class->GetFileName()));
+      LibraryClass* virtual_lib_cls = linker->SearchClassLibraries(virtual_return->GetClassName(),
+                                                                   program->GetUses(current_class->GetFileName()));
+      if(impl_lib_cls && virtual_lib_cls && impl_lib_cls != virtual_lib_cls) {
+        ProcessError(impl_class, L"Not all virtual methods have been defined for class/interface: " +
+                     virtual_method->GetClass()->GetName());
+      }
+    }
+  }
+  // check function vs. method
+  if(impl_is_static != virtual_method->IsStatic() || impl_is_virtual) {
+    ProcessError(impl_class, L"Not all virtual methods have been defined for class/interface: " +
+                 virtual_method->GetClass()->GetName());
+  }
+}
+
+/****************************
+ * Analyzes virtual method, which
+ * are made when compiling shared
+ * libraries.
+ ****************************/
+bool ContextAnalyzer::AnalyzeVirtualMethods(Class * impl_class, LibraryClass * lib_virtual_class, const int depth)
+{
+  bool virtual_methods_defined = true;
+
+  // virutal methods
+  map<const wstring, LibraryMethod*>::iterator iter;
+  map<const wstring, LibraryMethod*> lib_virtual_class_methods = lib_virtual_class->GetMethods();
+  for(iter = lib_virtual_class_methods.begin(); iter != lib_virtual_class_methods.end(); ++iter) {
+    LibraryMethod* virtual_method = iter->second;
+    if(virtual_method->IsVirtual()) {
+      wstring virtual_method_name = virtual_method->GetName();
+
+      // validate that methods have been implemented
+      Method* impl_method = NULL;
+      LibraryMethod* lib_impl_method = NULL;
+      int offset = (int)virtual_method_name.find_first_of(':');
+      if(offset > -1) {
+        wstring encoded_name = impl_class->GetName() + virtual_method_name.substr(offset);
+        impl_method = impl_class->GetMethod(encoded_name);
+        if(!impl_method && impl_class->GetParent()) {
+          Class* parent_class = impl_class->GetParent();
+          while(!impl_method && !lib_impl_method && parent_class) {
+            encoded_name = parent_class->GetName() + virtual_method_name.substr(offset);
+            impl_method = parent_class->GetMethod(encoded_name);
+            // update	    
+            if(!impl_method && parent_class->GetLibraryParent()) {
+              LibraryClass* lib_parent_class = parent_class->GetLibraryParent();
+              encoded_name = lib_parent_class->GetName() + virtual_method_name.substr(offset);
+              lib_impl_method = lib_parent_class->GetMethod(encoded_name);
+              break;
             }
-          }
-          else if(impl_class->GetLibraryParent()) {
-            LibraryClass* lib_parent_class = impl_class->GetLibraryParent();
-            encoded_name = lib_parent_class->GetName() + virtual_method_name.substr(offset);
-            lib_impl_method = lib_parent_class->GetMethod(encoded_name);
+            parent_class = parent_class->GetParent();
           }
         }
-
-        // validate method
-        if(impl_method) {
-          AnalyzeVirtualMethod(impl_class, impl_method->GetMethodType(), impl_method->GetReturn(), 
-                               impl_method->IsStatic(), impl_method->IsVirtual(), virtual_method);
-        }
-        else if(lib_impl_method) {
-          AnalyzeVirtualMethod(impl_class, lib_impl_method->GetMethodType(), lib_impl_method->GetReturn(), 
-                               lib_impl_method->IsStatic(), lib_impl_method->IsVirtual(), virtual_method);
-        }
-        else {
-          // unable to find method via signature
-          virtual_methods_defined = false;
+        else if(impl_class->GetLibraryParent()) {
+          LibraryClass* lib_parent_class = impl_class->GetLibraryParent();
+          encoded_name = lib_parent_class->GetName() + virtual_method_name.substr(offset);
+          lib_impl_method = lib_parent_class->GetMethod(encoded_name);
         }
       }
-    }
 
-    return virtual_methods_defined;
-  }
-
-  /****************************
-   * Analyzes virtual method, which
-   * are made when compiling shared 
-   * libraries.
-   ****************************/
-  void ContextAnalyzer::AnalyzeVirtualMethod(Class* impl_class, MethodType impl_mthd_type, Type* impl_return, 
-                                             bool impl_is_static, bool impl_is_virtual, Method* virtual_method) 
-  {
-    // check method types
-    if(impl_mthd_type != virtual_method->GetMethodType()) {
-      ProcessError(impl_class, L"Not all virtual methods have been defined for class/interface: " +
-                   virtual_method->GetClass()->GetName());
-    }
-    // check method returns
-    Type* virtual_return = virtual_method->GetReturn();
-    if(impl_return->GetType() != virtual_return->GetType()) {
-      ProcessError(impl_class, L"Not all virtual methods have been defined for class/interface: " +
-                   virtual_method->GetClass()->GetName());
-    }
-    else if(impl_return->GetType() == CLASS_TYPE &&
-            impl_return->GetClassName() != virtual_return->GetClassName()) {
-      Class* impl_cls = SearchProgramClasses(impl_return->GetClassName());
-      Class* virtual_cls = SearchProgramClasses(virtual_return->GetClassName());
-      if(impl_cls && virtual_cls && impl_cls != virtual_cls) {
-        LibraryClass* impl_lib_cls = linker->SearchClassLibraries(impl_return->GetClassName(),
-                                                                  program->GetUses(current_class->GetFileName()));
-        LibraryClass* virtual_lib_cls = linker->SearchClassLibraries(virtual_return->GetClassName(),
-                                                                     program->GetUses(current_class->GetFileName()));
-        if(impl_lib_cls && virtual_lib_cls && impl_lib_cls != virtual_lib_cls) {
-          ProcessError(impl_class, L"Not all virtual methods have been defined for class/interface: " +
-                       virtual_method->GetClass()->GetName());
-        }
+      // validate method
+      if(impl_method) {
+        AnalyzeVirtualMethod(impl_class, impl_method->GetMethodType(), impl_method->GetReturn(),
+                             impl_method->IsStatic(), impl_method->IsVirtual(), virtual_method);
       }
-    }
-    // check function vs. method
-    if(impl_is_static != virtual_method->IsStatic() || impl_is_virtual) {
-      ProcessError(impl_class, L"Not all virtual methods have been defined for class/interface: " +
-                   virtual_method->GetClass()->GetName());
+      else if(lib_impl_method) {
+        AnalyzeVirtualMethod(impl_class, lib_impl_method->GetMethodType(), lib_impl_method->GetReturn(),
+                             lib_impl_method->IsStatic(), lib_impl_method->IsVirtual(), virtual_method);
+      }
+      else {
+        // unable to find method via signature
+        virtual_methods_defined = false;
+      }
     }
   }
 
-  /****************************
-   * Analyzes virtual method, which
-   * are made when compiling shared 
-   * libraries.
-   ****************************/
-  bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, LibraryClass* lib_virtual_class, const int depth)
-  {
-    bool virtual_methods_defined = true;
+  return virtual_methods_defined;
+}
 
-    // virutal methods
-    map<const wstring, LibraryMethod*>::iterator iter;
-    map<const wstring, LibraryMethod*> lib_virtual_class_methods = lib_virtual_class->GetMethods();
-    for(iter = lib_virtual_class_methods.begin(); iter != lib_virtual_class_methods.end(); ++iter) {
-      LibraryMethod* virtual_method = iter->second;
-      if(virtual_method->IsVirtual()) {
-        wstring virtual_method_name = virtual_method->GetName();
-
-        // validate that methods have been implemented
-        Method* impl_method = NULL;
-        LibraryMethod* lib_impl_method = NULL;
-        int offset = (int)virtual_method_name.find_first_of(':');
-        if(offset > -1) {
-          wstring encoded_name = impl_class->GetName() + virtual_method_name.substr(offset);
-          impl_method = impl_class->GetMethod(encoded_name);	
-          if(!impl_method && impl_class->GetParent()) {
-            Class* parent_class = impl_class->GetParent();
-            while(!impl_method && !lib_impl_method && parent_class) {
-              encoded_name = parent_class->GetName() + virtual_method_name.substr(offset);
-              impl_method = parent_class->GetMethod(encoded_name);	    
-              // update	    
-              if(!impl_method && parent_class->GetLibraryParent()) {
-                LibraryClass* lib_parent_class = parent_class->GetLibraryParent();
-                encoded_name = lib_parent_class->GetName() + virtual_method_name.substr(offset);
-                lib_impl_method = lib_parent_class->GetMethod(encoded_name);
-                break;
-              }
-              parent_class = parent_class->GetParent();
-            }
-          }
-          else if(impl_class->GetLibraryParent()) {
-            LibraryClass* lib_parent_class = impl_class->GetLibraryParent();
-            encoded_name = lib_parent_class->GetName() + virtual_method_name.substr(offset);
-            lib_impl_method = lib_parent_class->GetMethod(encoded_name);
-          }
-        }
-
-        // validate method
-        if(impl_method) {
-          AnalyzeVirtualMethod(impl_class, impl_method->GetMethodType(), impl_method->GetReturn(), 
-                               impl_method->IsStatic(), impl_method->IsVirtual(), virtual_method);
-        }
-        else if(lib_impl_method) {
-          AnalyzeVirtualMethod(impl_class, lib_impl_method->GetMethodType(), lib_impl_method->GetReturn(), 
-                               lib_impl_method->IsStatic(), lib_impl_method->IsVirtual(), virtual_method);
-        }
-        else {
-          // unable to find method via signature
-          virtual_methods_defined = false;
-        } 
+/****************************
+ * Analyzes virtual method, which
+ * are made when compiling shared
+ * libraries.
+ ****************************/
+void ContextAnalyzer::AnalyzeVirtualMethod(Class * impl_class, MethodType impl_mthd_type, Type * impl_return,
+                                           bool impl_is_static, bool impl_is_virtual, LibraryMethod * virtual_method)
+{
+  // check method types
+  if(impl_mthd_type != virtual_method->GetMethodType()) {
+    ProcessError(impl_class, L"Not all virtual methods have been defined for class/interface: " +
+                 virtual_method->GetLibraryClass()->GetName());
+  }
+  // check method returns
+  Type* virtual_return = virtual_method->GetReturn();
+  if(impl_return->GetType() != virtual_return->GetType()) {
+    ProcessError(impl_class, L"Not all virtual methods have been defined for class/interface: " +
+                 virtual_method->GetLibraryClass()->GetName());
+  }
+  else if(impl_return->GetType() == CLASS_TYPE &&
+          impl_return->GetClassName() != virtual_return->GetClassName()) {
+    Class* impl_cls = SearchProgramClasses(impl_return->GetClassName());
+    Class* virtual_cls = SearchProgramClasses(virtual_return->GetClassName());
+    if(impl_cls && virtual_cls && impl_cls != virtual_cls) {
+      LibraryClass* impl_lib_cls = linker->SearchClassLibraries(impl_return->GetClassName(),
+                                                                program->GetUses(current_class->GetFileName()));
+      LibraryClass* virtual_lib_cls = linker->SearchClassLibraries(virtual_return->GetClassName(),
+                                                                   program->GetUses(current_class->GetFileName()));
+      if(impl_lib_cls && virtual_lib_cls && impl_lib_cls != virtual_lib_cls) {
+        ProcessError(impl_class, L"Not all virtual methods have been defined for class/interface: " +
+                     virtual_method->GetLibraryClass()->GetName());
       }
     }
-
-    return virtual_methods_defined;
   }
-
-  /****************************
-   * Analyzes virtual method, which
-   * are made when compiling shared 
-   * libraries.
-   ****************************/
-  void ContextAnalyzer::AnalyzeVirtualMethod(Class* impl_class, MethodType impl_mthd_type, Type* impl_return, 
-                                             bool impl_is_static, bool impl_is_virtual, LibraryMethod* virtual_method) 
-  {
-    // check method types
-    if(impl_mthd_type != virtual_method->GetMethodType()) {
-      ProcessError(impl_class, L"Not all virtual methods have been defined for class/interface: " +
-                   virtual_method->GetLibraryClass()->GetName());
-    }
-    // check method returns
-    Type* virtual_return = virtual_method->GetReturn();
-    if(impl_return->GetType() != virtual_return->GetType()) {
-      ProcessError(impl_class, L"Not all virtual methods have been defined for class/interface: " +
-                   virtual_method->GetLibraryClass()->GetName());
-    }
-    else if(impl_return->GetType() == CLASS_TYPE &&
-            impl_return->GetClassName() != virtual_return->GetClassName()) {
-      Class* impl_cls = SearchProgramClasses(impl_return->GetClassName());
-      Class* virtual_cls = SearchProgramClasses(virtual_return->GetClassName());
-      if(impl_cls && virtual_cls && impl_cls != virtual_cls) {
-        LibraryClass* impl_lib_cls = linker->SearchClassLibraries(impl_return->GetClassName(),
-                                                                  program->GetUses(current_class->GetFileName()));
-        LibraryClass* virtual_lib_cls = linker->SearchClassLibraries(virtual_return->GetClassName(),
-                                                                     program->GetUses(current_class->GetFileName()));
-        if(impl_lib_cls && virtual_lib_cls && impl_lib_cls != virtual_lib_cls) {
-          ProcessError(impl_class, L"Not all virtual methods have been defined for class/interface: " +
-                       virtual_method->GetLibraryClass()->GetName());
-        }
-      }
-    }
-    // check function vs. method
-    if(impl_is_static != virtual_method->IsStatic()) {
-      ProcessError(impl_class, L"Not all virtual methods have been defined for class/interface: " +
-                   virtual_method->GetLibraryClass()->GetName());
-    }
-    // check virtual
-    if(impl_is_virtual) {
-      ProcessError(impl_class, L"Implementation method cannot be virtual");
-    }
+  // check function vs. method
+  if(impl_is_static != virtual_method->IsStatic()) {
+    ProcessError(impl_class, L"Not all virtual methods have been defined for class/interface: " +
+                 virtual_method->GetLibraryClass()->GetName());
   }
+  // check virtual
+  if(impl_is_virtual) {
+    ProcessError(impl_class, L"Implementation method cannot be virtual");
+  }
+}
 
 
-  /****************************
-   * Analyzes a method
-   ****************************/
-  void ContextAnalyzer::AnalyzeMethod(Method* method, const int id, const int depth)
-  {
+/****************************
+ * Analyzes a method
+ ****************************/
+void ContextAnalyzer::AnalyzeMethod(Method * method, const int id, const int depth)
+{
 #ifdef _DEBUG
-    wstring msg = L"(method: name='" + method->GetName() +
-      L"; parsed='" + method->GetParsedName() + L"')";
-    Debug(msg, method->GetLineNumber(), depth);
+  wstring msg = L"(method: name='" + method->GetName() +
+    L"; parsed='" + method->GetParsedName() + L"')";
+  Debug(msg, method->GetLineNumber(), depth);
 #endif
 
-    method->SetId(id);
-    current_method = method;
-    current_table = symbol_table->GetSymbolTable(current_method->GetParsedName());
-    method->SetSymbolTable(current_table);
+  method->SetId(id);
+  current_method = method;
+  current_table = symbol_table->GetSymbolTable(current_method->GetParsedName());
+  method->SetSymbolTable(current_table);
 
-    // declarations
-    vector<Declaration*> declarations = current_method->GetDeclarations()->GetDeclarations();
-    for(size_t i = 0; i < declarations.size(); ++i) {
-      AnalyzeDeclaration(declarations[i], current_class, depth + 1);
+  // declarations
+  vector<Declaration*> declarations = current_method->GetDeclarations()->GetDeclarations();
+  for(size_t i = 0; i < declarations.size(); ++i) {
+    AnalyzeDeclaration(declarations[i], current_class, depth + 1);
+  }
+
+  // process statements if function/method is not virtual
+  if(!current_method->IsVirtual()) {
+    // statements
+    vector<Statement*> statements = current_method->GetStatements()->GetStatements();
+    for(size_t i = 0; i < statements.size(); ++i) {
+      AnalyzeStatement(statements[i], depth + 1);
     }
 
-    // process statements if function/method is not virtual
-    if(!current_method->IsVirtual()) {
-      // statements
-      vector<Statement*> statements = current_method->GetStatements()->GetStatements();
-      for(size_t i = 0; i < statements.size(); ++i) {
-        AnalyzeStatement(statements[i], depth + 1);
+    // check for parent call
+    if((current_method->GetMethodType() == NEW_PUBLIC_METHOD ||
+       current_method->GetMethodType() == NEW_PRIVATE_METHOD) &&
+       (current_class->GetParent() || (current_class->GetLibraryParent() &&
+       current_class->GetLibraryParent()->GetName() != SYSTEM_BASE_NAME))) {
+      if(statements.size() == 0 || statements.front()->GetStatementType() != METHOD_CALL_STMT) {
+        if(!current_class->IsInterface()) {
+          ProcessError(current_method, L"Parent call required");
+        }
+      }
+      else {
+        MethodCall* mthd_call = static_cast<MethodCall*>(statements.front());
+        if(mthd_call->GetCallType() != PARENT_CALL && !current_class->IsInterface()) {
+          ProcessError(current_method, L"Parent call required");
+        }
+      }
+    }
+
+#ifndef _SYSTEM
+    // check for return
+    if(current_method->GetMethodType() != NEW_PUBLIC_METHOD &&
+       current_method->GetMethodType() != NEW_PRIVATE_METHOD &&
+       current_method->GetReturn()->GetType() != NIL_TYPE) {
+      if(!AnalyzeReturnPaths(current_method->GetStatements(), depth + 1) && !current_method->IsAlt()) {
+        ProcessError(current_method, L"All method/function paths must return a value");
+      }
+    }
+#endif
+
+    // check program main
+    const wstring main_str = current_class->GetName() + L":Main:o.System.String*,";
+    if(current_method->GetEncodedName() == main_str) {
+      if(main_found) {
+        ProcessError(current_method, L"The 'Main(args)' function has already been defined");
+      }
+      else if(current_method->IsStatic()) {
+        current_class->SetCalled(true);
+        program->SetStart(current_class, current_method);
+        main_found = true;
       }
 
-      // check for parent call
-      if((current_method->GetMethodType() == NEW_PUBLIC_METHOD ||
-          current_method->GetMethodType() == NEW_PRIVATE_METHOD) &&
-         (current_class->GetParent() || (current_class->GetLibraryParent() &&
-                                         current_class->GetLibraryParent()->GetName() != SYSTEM_BASE_NAME))) {
-        if(statements.size() == 0 || statements.front()->GetStatementType() != METHOD_CALL_STMT) {
-          if(!current_class->IsInterface()) {
-            ProcessError(current_method, L"Parent call required");
-          }
-        }
-        else {
-          MethodCall* mthd_call = static_cast<MethodCall*>(statements.front());
-          if(mthd_call->GetCallType() != PARENT_CALL && !current_class->IsInterface()) {
-            ProcessError(current_method, L"Parent call required");
-          }
-        }
+      if(main_found && (is_lib | is_web)) {
+        ProcessError(current_method, L"Libraries and web applications may not define a 'Main(args)' function");
       }
-      
-#ifndef _SYSTEM
-      // check for return
-      if(current_method->GetMethodType() != NEW_PUBLIC_METHOD &&
-         current_method->GetMethodType() != NEW_PRIVATE_METHOD &&
-         current_method->GetReturn()->GetType() != NIL_TYPE) {
-        if(!AnalyzeReturnPaths(current_method->GetStatements(), depth + 1) && !current_method->IsAlt()) {
-          ProcessError(current_method, L"All method/function paths must return a value");
-        }
-      }
-#endif
-      
-      // check program main
-      const wstring main_str = current_class->GetName() + L":Main:o.System.String*,";
-      if(current_method->GetEncodedName() ==  main_str) {
-        if(main_found) {
-          ProcessError(current_method, L"The 'Main(args)' function has already been defined");
+    }
+    // web program
+    else if(is_web) {
+      const wstring web_str = current_class->GetName() + L":Request:o.FastCgi.Request,o.FastCgi.Response,";
+      if(current_method->GetEncodedName() == web_str) {
+        if(web_found) {
+          ProcessError(current_method, L"The 'Request(args)' function has already been defined");
         }
         else if(current_method->IsStatic()) {
           current_class->SetCalled(true);
           program->SetStart(current_class, current_method);
-          main_found = true;
+          web_found = true;
         }
 
-        if(main_found && (is_lib | is_web)) {
-          ProcessError(current_method, L"Libraries and web applications may not define a 'Main(args)' function");
-        }
-      }
-      // web program
-      else if(is_web) {
-        const wstring web_str = current_class->GetName() + L":Request:o.FastCgi.Request,o.FastCgi.Response,";
-        if(current_method->GetEncodedName() ==  web_str) {	
-          if(web_found) {
-            ProcessError(current_method, L"The 'Request(args)' function has already been defined");
-          } 
-          else if(current_method->IsStatic()) {
-            current_class->SetCalled(true);
-            program->SetStart(current_class, current_method);
-            web_found = true;
-          }
-
-          if(web_found && (is_lib | main_found)) {
-            ProcessError(current_method, L"Web applications may not be define a 'Main(args)' function or be compiled as a library");
-          }
+        if(web_found && (is_lib | main_found)) {
+          ProcessError(current_method, L"Web applications may not be define a 'Main(args)' function or be compiled as a library");
         }
       }
     }
   }
+}
 
-  /****************************
-   * Analyzes method return 
-   * paths
-   ****************************/
-  bool ContextAnalyzer::AnalyzeReturnPaths(StatementList* statement_list, const int depth)
-  {
-    vector<Statement*> statements = statement_list->GetStatements();
-    if(statements.size() == 0) {
-      ProcessError(current_method, L"All method/function paths must return a value");      
-    }
-    else {
-      Statement* last_statement = statements.back();
-      switch(last_statement->GetStatementType()) {
-      case SELECT_STMT:
-        return AnalyzeReturnPaths(static_cast<Select*>(last_statement), depth + 1);
-        
-      case IF_STMT:
-        return AnalyzeReturnPaths(static_cast<If*>(last_statement), false, depth + 1);
-        
-      case RETURN_STMT:
-        return true;
-        
-      default:
-	if(!current_method->IsAlt()) {
-	  ProcessError(current_method, L"All method/function paths must return a value");
-	}
-        break;
-      }
-    }
-    
-    return false;
+/****************************
+ * Analyzes method return
+ * paths
+ ****************************/
+bool ContextAnalyzer::AnalyzeReturnPaths(StatementList * statement_list, const int depth)
+{
+  vector<Statement*> statements = statement_list->GetStatements();
+  if(statements.size() == 0) {
+    ProcessError(current_method, L"All method/function paths must return a value");
   }
+  else {
+    Statement* last_statement = statements.back();
+    switch(last_statement->GetStatementType()) {
+    case SELECT_STMT:
+      return AnalyzeReturnPaths(static_cast<Select*>(last_statement), depth + 1);
 
-  bool ContextAnalyzer::AnalyzeReturnPaths(If* if_stmt, bool nested, const int depth)
-  {
-    bool if_ok = false;
-    bool if_else_ok = false;
-    bool else_ok = false;
-
-    // 'if' statements
-    StatementList* if_list = if_stmt->GetIfStatements();
-    if(if_list) {
-      if_ok = AnalyzeReturnPaths(if_list, depth + 1);
-    }
-    
-    If* next = if_stmt->GetNext();
-    if(next) {
-      if_else_ok = AnalyzeReturnPaths(next, true, depth);
-    }
-    
-    // 'else'
-    StatementList* else_list = if_stmt->GetElseStatements();
-    if(else_list) {
-      else_ok = AnalyzeReturnPaths(else_list, depth + 1);
-    }
-    else if (!if_else_ok){
-      return false;
-    }
-
-    // if and else
-    if(!next) {
-      return if_ok && (else_ok || if_else_ok);
-    }
-    
-    // if, else-if and else
-    if(if_ok && if_else_ok) {
-      return true;
-    }
-    
-    return false;
-  }
-  
-  bool ContextAnalyzer::AnalyzeReturnPaths(Select* select_stmt, const int depth)
-  {
-    map<ExpressionList*, StatementList*> statements = select_stmt->GetStatements();
-    map<int, StatementList*> label_statements;
-    for(map<ExpressionList*, StatementList*>::iterator iter = statements.begin(); 
-        iter != statements.end(); ++iter) {
-      if(!AnalyzeReturnPaths(iter->second, depth + 1)) {
-        return false;
-      }
-    }
-    
-    return true;
-  }
-  
-  /****************************
-   * Analyzes a statements
-   ****************************/
-  void ContextAnalyzer::AnalyzeStatements(StatementList* statement_list, const int depth)
-  {
-    current_table->NewScope();
-    vector<Statement*> statements = statement_list->GetStatements();
-    for(size_t i = 0; i < statements.size(); ++i) {
-      AnalyzeStatement(statements[i], depth + 1);
-    }
-    current_table->PreviousScope();
-  }
-
-  /****************************
-   * Analyzes a statement
-   ****************************/
-  void ContextAnalyzer::AnalyzeStatement(Statement* statement, const int depth)
-  {
-    switch(statement->GetStatementType()) {
-    case EMPTY_STMT:
-    case SYSTEM_STMT:
-      break;
-
-    case DECLARATION_STMT: {
-      Declaration* declaration = static_cast<Declaration*>(statement);
-      if(declaration->GetChild()) {
-        // build stack declarations
-        stack<Declaration*> declarations;
-        while(declaration) {
-          declarations.push(declaration);
-          declaration = declaration->GetChild();
-        }
-        // process declarations
-        while(!declarations.empty()) {
-          AnalyzeDeclaration(declarations.top(), current_class, depth);
-          declarations.pop();
-        }
-      }
-      else {
-        AnalyzeDeclaration(static_cast<Declaration*>(statement), current_class, depth);
-      }
-    }
-      break;
-
-    case METHOD_CALL_STMT:
-      AnalyzeMethodCall(static_cast<MethodCall*>(statement), depth);
-      AnalyzeCast(static_cast<MethodCall*>(statement), depth + 1);
-      break;
-
-
-    case ADD_ASSIGN_STMT:
-      AnalyzeAssignment(static_cast<Assignment*>(statement), statement->GetStatementType(), depth);      
-      break;
-
-    case SUB_ASSIGN_STMT:
-    case MUL_ASSIGN_STMT:
-    case DIV_ASSIGN_STMT:
-      AnalyzeAssignment(static_cast<Assignment*>(statement), statement->GetStatementType(), depth);      
-      break;
-
-    case ASSIGN_STMT: {
-      Assignment* assignment = static_cast<Assignment*>(statement);
-      if(assignment->GetChild()) {
-        // build stack assignments
-        stack<Assignment*> assignments;
-        while(assignment) {
-          assignments.push(assignment);
-          assignment = assignment->GetChild();
-        }
-        // process assignments
-        while(!assignments.empty()) {
-          AnalyzeAssignment(assignments.top(), statement->GetStatementType(), depth);
-          assignments.pop();
-        }
-      }
-      else {
-        AnalyzeAssignment(assignment, statement->GetStatementType(), depth);
-      }
-    }
-      break;
-
-    case SIMPLE_STMT:
-      AnalyzeSimpleStatement(static_cast<SimpleStatement*>(statement), depth);
-      break;
+    case IF_STMT:
+      return AnalyzeReturnPaths(static_cast<If*>(last_statement), false, depth + 1);
 
     case RETURN_STMT:
-      AnalyzeReturn(static_cast<Return*>(statement), depth);
-      break;
-      
-    case LEAVING_STMT:
-      AnalyzeLeaving(static_cast<Leaving*>(statement), depth);
-      break;
-      
-    case IF_STMT:
-      AnalyzeIf(static_cast<If*>(statement), depth);
-      break;
-
-    case DO_WHILE_STMT:
-      AnalyzeDoWhile(static_cast<DoWhile*>(statement), depth);
-      break;
-
-    case WHILE_STMT:
-      AnalyzeWhile(static_cast<While*>(statement), depth);
-      break;
-
-    case FOR_STMT:
-      AnalyzeFor(static_cast<For*>(statement), depth);
-      break;
-
-    case BREAK_STMT:
-      if(in_loop <= 0) {
-        ProcessError(statement, L"Breaks are only allowed in loops.");
-      }
-      break;
-
-    case SELECT_STMT:
-      current_method->SetAndOr(true);
-      AnalyzeSelect(static_cast<Select*>(statement), depth);
-      break;
-
-    case CRITICAL_STMT:
-      AnalyzeCritical(static_cast<CriticalSection*>(statement), depth);
-      break;
+      return true;
 
     default:
-      ProcessError(statement, L"Undefined statement");
+      if(!current_method->IsAlt()) {
+        ProcessError(current_method, L"All method/function paths must return a value");
+      }
       break;
     }
   }
 
-  /****************************
-   * Analyzes an expression
-   ****************************/
-  void ContextAnalyzer::AnalyzeExpression(Expression* expression, const int depth)
-  {
-    switch(expression->GetExpressionType()) {
-    case STAT_ARY_EXPR:
-      AnalyzeStaticArray(static_cast<StaticArray*>(expression), depth);
-      break;
+  return false;
+}
 
-    case CHAR_STR_EXPR:
-      AnalyzeCharacterString(static_cast<CharacterString*>(expression), depth + 1);
-      break;
+bool ContextAnalyzer::AnalyzeReturnPaths(If * if_stmt, bool nested, const int depth)
+{
+  bool if_ok = false;
+  bool if_else_ok = false;
+  bool else_ok = false;
 
-    case COND_EXPR:
-      AnalyzeConditional(static_cast<Cond*>(expression), depth);
-      break;
-
-    case METHOD_CALL_EXPR:
-      AnalyzeMethodCall(static_cast<MethodCall*>(expression), depth);
-      break;
-
-    case NIL_LIT_EXPR:
-#ifdef _DEBUG
-      Debug(L"nil literal", expression->GetLineNumber(), depth);
-#endif
-      break;
-
-    case BOOLEAN_LIT_EXPR:
-#ifdef _DEBUG
-      Debug(L"boolean literal", expression->GetLineNumber(), depth);
-#endif
-      break;
-
-    case CHAR_LIT_EXPR:
-#ifdef _DEBUG
-      Debug(L"character literal", expression->GetLineNumber(), depth);
-#endif
-      break;
-
-    case INT_LIT_EXPR:
-#ifdef _DEBUG
-      Debug(L"integer literal", expression->GetLineNumber(), depth);
-#endif
-      break;
-
-    case FLOAT_LIT_EXPR:
-#ifdef _DEBUG
-      Debug(L"float literal", expression->GetLineNumber(), depth);
-#endif
-      break;
-
-    case VAR_EXPR:
-      AnalyzeVariable(static_cast<Variable*>(expression), depth);
-      break;
-
-    case AND_EXPR:
-    case OR_EXPR:
-      current_method->SetAndOr(true);
-      AnalyzeCalculation(static_cast<CalculatedExpression*>(expression), depth + 1);
-      break;
-
-    case EQL_EXPR:
-    case NEQL_EXPR:
-    case LES_EXPR:
-    case GTR_EXPR:
-    case LES_EQL_EXPR:
-    case GTR_EQL_EXPR:
-    case ADD_EXPR:
-    case SUB_EXPR:
-    case MUL_EXPR:
-    case DIV_EXPR:
-    case MOD_EXPR:
-    case SHL_EXPR:
-    case SHR_EXPR:
-    case BIT_AND_EXPR:
-    case BIT_OR_EXPR:
-    case BIT_XOR_EXPR:
-      AnalyzeCalculation(static_cast<CalculatedExpression*>(expression), depth + 1);
-      break;
-
-    default:
-      ProcessError(expression, L"Undefined expression");
-      break;
-    }
-
-    // check expression method call
-    AnalyzeExpressionMethodCall(expression, depth + 1);
-
-    // check cast
-    AnalyzeCast(expression, depth + 1);
+  // 'if' statements
+  StatementList* if_list = if_stmt->GetIfStatements();
+  if(if_list) {
+    if_ok = AnalyzeReturnPaths(if_list, depth + 1);
   }
 
-  /****************************
-   * Analyzes a ternary
-   * conditional
-   ****************************/
-  void ContextAnalyzer::AnalyzeConditional(Cond* conditional, const int depth) 
-  {
-#ifdef _DEBUG
-    Debug(L"conditional expression", conditional->GetLineNumber(), depth);
-#endif
+  If * next = if_stmt->GetNext();
+  if(next) {
+    if_else_ok = AnalyzeReturnPaths(next, true, depth);
+  }
 
-    // check expressions
-    AnalyzeExpression(conditional->GetCondExpression(), depth + 1);
-    Expression* if_conditional = conditional->GetExpression();
-    AnalyzeExpression(if_conditional, depth + 1);
-    Expression* else_conditional = conditional->GetElseExpression();
-    AnalyzeExpression(else_conditional, depth + 1);
+  // 'else'
+  StatementList* else_list = if_stmt->GetElseStatements();
+  if(else_list) {
+    else_ok = AnalyzeReturnPaths(else_list, depth + 1);
+  }
+  else if(!if_else_ok) {
+    return false;
+  }
 
-    Type* if_type = GetExpressionType(if_conditional, depth + 1);
-    Type* else_type = GetExpressionType(else_conditional, depth + 1);
+  // if and else
+  if(!next) {
+    return if_ok && (else_ok || if_else_ok);
+  }
 
-    // validate types
-    if(if_type) {
-      if(if_type->GetType() == CLASS_TYPE && else_type->GetType() == CLASS_TYPE) {
-        AnalyzeClassCast(if_conditional->GetEvalType(), else_conditional, depth + 1);
+  // if, else-if and else
+  if(if_ok && if_else_ok) {
+    return true;
+  }
+
+  return false;
+}
+
+bool ContextAnalyzer::AnalyzeReturnPaths(Select * select_stmt, const int depth)
+{
+  map<ExpressionList*, StatementList*> statements = select_stmt->GetStatements();
+  map<int, StatementList*> label_statements;
+  for(map<ExpressionList*, StatementList*>::iterator iter = statements.begin();
+      iter != statements.end(); ++iter) {
+    if(!AnalyzeReturnPaths(iter->second, depth + 1)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+/****************************
+ * Analyzes a statements
+ ****************************/
+void ContextAnalyzer::AnalyzeStatements(StatementList * statement_list, const int depth)
+{
+  current_table->NewScope();
+  vector<Statement*> statements = statement_list->GetStatements();
+  for(size_t i = 0; i < statements.size(); ++i) {
+    AnalyzeStatement(statements[i], depth + 1);
+  }
+  current_table->PreviousScope();
+}
+
+/****************************
+ * Analyzes a statement
+ ****************************/
+void ContextAnalyzer::AnalyzeStatement(Statement * statement, const int depth)
+{
+  switch(statement->GetStatementType()) {
+  case EMPTY_STMT:
+  case SYSTEM_STMT:
+    break;
+
+  case DECLARATION_STMT: {
+    Declaration* declaration = static_cast<Declaration*>(statement);
+    if(declaration->GetChild()) {
+      // build stack declarations
+      stack<Declaration*> declarations;
+      while(declaration) {
+        declarations.push(declaration);
+        declaration = declaration->GetChild();
       }
-      else if(else_type && (if_type->GetType() != else_type->GetType() &&    
-			    !((if_type->GetType() == CLASS_TYPE && else_type->GetType() == NIL_TYPE) ||
-			      (if_type->GetType() == NIL_TYPE && else_type->GetType() == CLASS_TYPE)))) {
-        ProcessError(conditional, L"'?' invalid type mismatch");
+      // process declarations
+      while(!declarations.empty()) {
+        AnalyzeDeclaration(declarations.top(), current_class, depth);
+        declarations.pop();
       }
-      // set eval type
-      conditional->SetEvalType(if_conditional->GetEvalType(), true);
-      current_method->SetAndOr(true);
     }
     else {
-      ProcessError(conditional, L"Invalid 'if' statement");
+      AnalyzeDeclaration(static_cast<Declaration*>(statement), current_class, depth);
     }
   }
-  
-  /****************************
-   * Analyzes a character literal
-   ****************************/
-  void ContextAnalyzer::AnalyzeCharacterString(CharacterString* char_str, const int depth) 
-  {
-#ifdef _DEBUG
-    Debug(L"character string literal", char_str->GetLineNumber(), depth);
-#endif
+                         break;
 
-    int var_start = -1;
-    int str_start = 0;
-    const wstring &str = char_str->GetString(); 
+  case METHOD_CALL_STMT:
+    AnalyzeMethodCall(static_cast<MethodCall*>(statement), depth);
+    AnalyzeCast(static_cast<MethodCall*>(statement), depth + 1);
+    break;
 
-    // empty wstring segment
-    if(str.empty()) {
-      char_str->AddSegment(L"");
+
+  case ADD_ASSIGN_STMT:
+    AnalyzeAssignment(static_cast<Assignment*>(statement), statement->GetStatementType(), depth);
+    break;
+
+  case SUB_ASSIGN_STMT:
+  case MUL_ASSIGN_STMT:
+  case DIV_ASSIGN_STMT:
+    AnalyzeAssignment(static_cast<Assignment*>(statement), statement->GetStatementType(), depth);
+    break;
+
+  case ASSIGN_STMT: {
+    Assignment* assignment = static_cast<Assignment*>(statement);
+    if(assignment->GetChild()) {
+      // build stack assignments
+      stack<Assignment*> assignments;
+      while(assignment) {
+        assignments.push(assignment);
+        assignment = assignment->GetChild();
+      }
+      // process assignments
+      while(!assignments.empty()) {
+        AnalyzeAssignment(assignments.top(), statement->GetStatementType(), depth);
+        assignments.pop();
+      }
     }
-    else {   
-      // process segment
-      for(size_t i = 0; i < str.size(); ++i) {
-        // variable start
-        if(str[i] == L'{' && i + 1 < str.size() && str[i + 1] == L'$') {      
-          var_start = (int)i;
-          const wstring token = str.substr(str_start, i - str_start);
-#ifdef _DEBUG
-          Debug(L"substring 0: value=|" + token + L"|", char_str->GetLineNumber(), depth + 1);
-#endif
-          char_str->AddSegment(token);	
-        }
+    else {
+      AnalyzeAssignment(assignment, statement->GetStatementType(), depth);
+    }
+  }
+                    break;
 
-        // variable end
-        if(var_start > -1) {
-          if(str[i] == L'}') {
-            const wstring token = str.substr(var_start + 2, i - var_start - 2);
-            SymbolEntry* entry = GetEntry(token);
-            if(entry) {
-              AnalyzeCharacterStringVariable(entry, char_str, depth);
-            }
-            else {
-              ProcessError(char_str, L"Undefined variable: '" + token + L"'");
-            }	  
-            // update
-            var_start = -1;
-            str_start = (int)i + 1;
+  case SIMPLE_STMT:
+    AnalyzeSimpleStatement(static_cast<SimpleStatement*>(statement), depth);
+    break;
+
+  case RETURN_STMT:
+    AnalyzeReturn(static_cast<Return*>(statement), depth);
+    break;
+
+  case LEAVING_STMT:
+    AnalyzeLeaving(static_cast<Leaving*>(statement), depth);
+    break;
+
+  case IF_STMT:
+    AnalyzeIf(static_cast<If*>(statement), depth);
+    break;
+
+  case DO_WHILE_STMT:
+    AnalyzeDoWhile(static_cast<DoWhile*>(statement), depth);
+    break;
+
+  case WHILE_STMT:
+    AnalyzeWhile(static_cast<While*>(statement), depth);
+    break;
+
+  case FOR_STMT:
+    AnalyzeFor(static_cast<For*>(statement), depth);
+    break;
+
+  case BREAK_STMT:
+    if(in_loop <= 0) {
+      ProcessError(statement, L"Breaks are only allowed in loops.");
+    }
+    break;
+
+  case SELECT_STMT:
+    current_method->SetAndOr(true);
+    AnalyzeSelect(static_cast<Select*>(statement), depth);
+    break;
+
+  case CRITICAL_STMT:
+    AnalyzeCritical(static_cast<CriticalSection*>(statement), depth);
+    break;
+
+  default:
+    ProcessError(statement, L"Undefined statement");
+    break;
+  }
+}
+
+/****************************
+ * Analyzes an expression
+ ****************************/
+void ContextAnalyzer::AnalyzeExpression(Expression * expression, const int depth)
+{
+  switch(expression->GetExpressionType()) {
+  case STAT_ARY_EXPR:
+    AnalyzeStaticArray(static_cast<StaticArray*>(expression), depth);
+    break;
+
+  case CHAR_STR_EXPR:
+    AnalyzeCharacterString(static_cast<CharacterString*>(expression), depth + 1);
+    break;
+
+  case COND_EXPR:
+    AnalyzeConditional(static_cast<Cond*>(expression), depth);
+    break;
+
+  case METHOD_CALL_EXPR:
+    AnalyzeMethodCall(static_cast<MethodCall*>(expression), depth);
+    break;
+
+  case NIL_LIT_EXPR:
+#ifdef _DEBUG
+    Debug(L"nil literal", expression->GetLineNumber(), depth);
+#endif
+    break;
+
+  case BOOLEAN_LIT_EXPR:
+#ifdef _DEBUG
+    Debug(L"boolean literal", expression->GetLineNumber(), depth);
+#endif
+    break;
+
+  case CHAR_LIT_EXPR:
+#ifdef _DEBUG
+    Debug(L"character literal", expression->GetLineNumber(), depth);
+#endif
+    break;
+
+  case INT_LIT_EXPR:
+#ifdef _DEBUG
+    Debug(L"integer literal", expression->GetLineNumber(), depth);
+#endif
+    break;
+
+  case FLOAT_LIT_EXPR:
+#ifdef _DEBUG
+    Debug(L"float literal", expression->GetLineNumber(), depth);
+#endif
+    break;
+
+  case VAR_EXPR:
+    AnalyzeVariable(static_cast<Variable*>(expression), depth);
+    break;
+
+  case AND_EXPR:
+  case OR_EXPR:
+    current_method->SetAndOr(true);
+    AnalyzeCalculation(static_cast<CalculatedExpression*>(expression), depth + 1);
+    break;
+
+  case EQL_EXPR:
+  case NEQL_EXPR:
+  case LES_EXPR:
+  case GTR_EXPR:
+  case LES_EQL_EXPR:
+  case GTR_EQL_EXPR:
+  case ADD_EXPR:
+  case SUB_EXPR:
+  case MUL_EXPR:
+  case DIV_EXPR:
+  case MOD_EXPR:
+  case SHL_EXPR:
+  case SHR_EXPR:
+  case BIT_AND_EXPR:
+  case BIT_OR_EXPR:
+  case BIT_XOR_EXPR:
+    AnalyzeCalculation(static_cast<CalculatedExpression*>(expression), depth + 1);
+    break;
+
+  default:
+    ProcessError(expression, L"Undefined expression");
+    break;
+  }
+
+  // check expression method call
+  AnalyzeExpressionMethodCall(expression, depth + 1);
+
+  // check cast
+  AnalyzeCast(expression, depth + 1);
+}
+
+/****************************
+ * Analyzes a ternary
+ * conditional
+ ****************************/
+void ContextAnalyzer::AnalyzeConditional(Cond * conditional, const int depth)
+{
+#ifdef _DEBUG
+  Debug(L"conditional expression", conditional->GetLineNumber(), depth);
+#endif
+
+  // check expressions
+  AnalyzeExpression(conditional->GetCondExpression(), depth + 1);
+  Expression * if_conditional = conditional->GetExpression();
+  AnalyzeExpression(if_conditional, depth + 1);
+  Expression * else_conditional = conditional->GetElseExpression();
+  AnalyzeExpression(else_conditional, depth + 1);
+
+  Type * if_type = GetExpressionType(if_conditional, depth + 1);
+  Type * else_type = GetExpressionType(else_conditional, depth + 1);
+
+  // validate types
+  if(if_type) {
+    if(if_type->GetType() == CLASS_TYPE && else_type->GetType() == CLASS_TYPE) {
+      AnalyzeClassCast(if_conditional->GetEvalType(), else_conditional, depth + 1);
+    }
+    else if(else_type && (if_type->GetType() != else_type->GetType() &&
+            !((if_type->GetType() == CLASS_TYPE && else_type->GetType() == NIL_TYPE) ||
+            (if_type->GetType() == NIL_TYPE && else_type->GetType() == CLASS_TYPE)))) {
+      ProcessError(conditional, L"'?' invalid type mismatch");
+    }
+    // set eval type
+    conditional->SetEvalType(if_conditional->GetEvalType(), true);
+    current_method->SetAndOr(true);
+  }
+  else {
+    ProcessError(conditional, L"Invalid 'if' statement");
+  }
+}
+
+/****************************
+ * Analyzes a character literal
+ ****************************/
+void ContextAnalyzer::AnalyzeCharacterString(CharacterString * char_str, const int depth)
+{
+#ifdef _DEBUG
+  Debug(L"character string literal", char_str->GetLineNumber(), depth);
+#endif
+
+  int var_start = -1;
+  int str_start = 0;
+  const wstring& str = char_str->GetString();
+
+  // empty wstring segment
+  if(str.empty()) {
+    char_str->AddSegment(L"");
+  }
+  else {
+    // process segment
+    for(size_t i = 0; i < str.size(); ++i) {
+      // variable start
+      if(str[i] == L'{' && i + 1 < str.size() && str[i + 1] == L'$') {
+        var_start = (int)i;
+        const wstring token = str.substr(str_start, i - str_start);
+#ifdef _DEBUG
+        Debug(L"substring 0: value=|" + token + L"|", char_str->GetLineNumber(), depth + 1);
+#endif
+        char_str->AddSegment(token);
+      }
+
+      // variable end
+      if(var_start > -1) {
+        if(str[i] == L'}') {
+          const wstring token = str.substr(var_start + 2, i - var_start - 2);
+          SymbolEntry * entry = GetEntry(token);
+          if(entry) {
+            AnalyzeCharacterStringVariable(entry, char_str, depth);
           }
-          else if(i + 1 == str.size()) {
-            const wstring token = str.substr(var_start + 1, i - var_start);
-            SymbolEntry* entry = GetEntry(token);
-            if(entry) {
-              AnalyzeCharacterStringVariable(entry, char_str, depth);
-            }
-            else {
-              ProcessError(char_str, L"Undefined variable: '" + token + L"'");
-            }	  
-            // update
-            var_start = -1;
-            str_start = (int)i + 1;
+          else {
+            ProcessError(char_str, L"Undefined variable: '" + token + L"'");
           }
+          // update
+          var_start = -1;
+          str_start = (int)i + 1;
         }
         else if(i + 1 == str.size()) {
-          var_start = (int)i;
-          const wstring token = str.substr(str_start, i - str_start + 1);
+          const wstring token = str.substr(var_start + 1, i - var_start);
+          SymbolEntry * entry = GetEntry(token);
+          if(entry) {
+            AnalyzeCharacterStringVariable(entry, char_str, depth);
+          }
+          else {
+            ProcessError(char_str, L"Undefined variable: '" + token + L"'");
+          }
+          // update
+          var_start = -1;
+          str_start = (int)i + 1;
+        }
+      }
+      else if(i + 1 == str.size()) {
+        var_start = (int)i;
+        const wstring token = str.substr(str_start, i - str_start + 1);
 #ifdef _DEBUG
-          Debug(L"substring 1: value=|" + token + L"|", char_str->GetLineNumber(), depth + 1);
+        Debug(L"substring 1: value=|" + token + L"|", char_str->GetLineNumber(), depth + 1);
 #endif
-          char_str->AddSegment(token);
-        }
+        char_str->AddSegment(token);
       }
     }
-
-    // tag literal strings
-    vector<CharacterStringSegment*> segments = char_str->GetSegments();
-    for(size_t i = 0; i < segments.size(); ++i) {
-      if(segments[i]->GetType() == STRING) {
-        int id = program->GetCharStringId(segments[i]->GetString());
-        if(id > -1) {
-          segments[i]->SetId(id);
-        }
-        else {
-          segments[i]->SetId(char_str_index);
-          program->AddCharString(segments[i]->GetString(), char_str_index);
-          char_str_index++;
-        }
-      }
-    }
-
-    // create temporary variable for concat of strings and variables
-    if(segments.size() > 1) {
-      Type* type = TypeFactory::Instance()->MakeType(CLASS_TYPE, L"System.String");
-      const wstring scope_name = current_method->GetName() + L":#concat#";
-      SymbolEntry* entry = current_table->GetEntry(scope_name);
-      if(!entry) {
-        entry = TreeFactory::Instance()->MakeSymbolEntry(char_str->GetFileName(),
-                                                         char_str->GetLineNumber(),
-                                                         scope_name, type, false, true);
-        current_table->AddEntry(entry, true);
-      }
-      char_str->SetConcat(entry);
-    }
-
-#ifndef _SYSTEM
-    LibraryClass* lib_klass = linker->SearchClassLibraries(L"System.String", program->GetUses(current_class->GetFileName()));
-    if(lib_klass) {
-      lib_klass->SetCalled(true);
-    }
-    else {
-      ProcessError(char_str, L"Internal compiler error.");
-    }
-#endif
-
-    char_str->SetProcessed();
   }
 
-  /****************************
-   * Analyzes a static array
-   ****************************/
-  void ContextAnalyzer::AnalyzeStaticArray(StaticArray* array, const int depth) 
-  {
-    // TOOD: support for 3d or 4d initialization
-    if(array->GetDimension() > 2) {
-      ProcessError(array, L"Invalid static array declaration.");
-      return;
-    }
-
-    if(!array->IsMatchingTypes()) {
-      ProcessError(array, L"Array element types do not match.");
-      return;
-    }
-
-    if(!array->IsMatchingLenghts()) {
-      ProcessError(array, L"Array dimension lengths do not match.");
-      return;
-    }
-
-    Type* type = TypeFactory::Instance()->MakeType(array->GetType());  
-    type->SetDimension(array->GetDimension());
-    if(type->GetType() == CLASS_TYPE) {
-      type->SetClassName(L"System.String");
-    }
-    array->SetEvalType(type, false);
-
-    // ensure that element sizes match dimensions
-    vector<Expression*> all_elements = array->GetAllElements()->GetExpressions();
-    switch(array->GetType()) {
-    case INT_TYPE: {
-      int id = program->GetIntStringId(all_elements);
+  // tag literal strings
+  vector<CharacterStringSegment*> segments = char_str->GetSegments();
+  for(size_t i = 0; i < segments.size(); ++i) {
+    if(segments[i]->GetType() == STRING) {
+      int id = program->GetCharStringId(segments[i]->GetString());
       if(id > -1) {
-        array->SetId(id);
+        segments[i]->SetId(id);
       }
       else {
-        array->SetId(int_str_index);
-        program->AddIntString(all_elements, int_str_index);
-        int_str_index++;
-      }
-    }
-      break;
-
-    case FLOAT_TYPE: {
-      int id = program->GetFloatStringId(all_elements);
-      if(id > -1) {
-        array->SetId(id);
-      }
-      else {
-        array->SetId(float_str_index);
-        program->AddFloatString(all_elements, float_str_index);
-        float_str_index++;
-      }
-    }
-      break;
-
-    case CHAR_TYPE: {
-      // copy wstring elements
-      wstring str;
-      for(size_t i = 0; i < all_elements.size(); ++i) {
-        str += static_cast<CharacterLiteral*>(all_elements[i])->GetValue();
-      }
-      // associate char wstring
-      int id = program->GetCharStringId(str);
-      if(id > -1) {
-        array->SetId(id);
-      }
-      else {
-        array->SetId(char_str_index);
-        program->AddCharString(str, char_str_index);
+        segments[i]->SetId(char_str_index);
+        program->AddCharString(segments[i]->GetString(), char_str_index);
         char_str_index++;
       }
     }
-      break;
+  }
 
-    case CLASS_TYPE:
-      for(size_t i = 0; i < all_elements.size(); ++i) {
-        AnalyzeCharacterString(static_cast<CharacterString*>(all_elements[i]), depth + 1);
-      }
-      break;
-
-    default:
-      ProcessError(array, L"Invalid type for static array.");
-      break;
+  // create temporary variable for concat of strings and variables
+  if(segments.size() > 1) {
+    Type* type = TypeFactory::Instance()->MakeType(CLASS_TYPE, L"System.String");
+    const wstring scope_name = current_method->GetName() + L":#concat#";
+    SymbolEntry* entry = current_table->GetEntry(scope_name);
+    if(!entry) {
+      entry = TreeFactory::Instance()->MakeSymbolEntry(char_str->GetFileName(),
+                                                       char_str->GetLineNumber(),
+                                                       scope_name, type, false, true);
+      current_table->AddEntry(entry, true);
     }
+    char_str->SetConcat(entry);
   }
 
-  /****************************
-   * Analyzes a variable
-   ****************************/
-  void ContextAnalyzer::AnalyzeVariable(Variable* variable, const int depth) 
-  {
-    AnalyzeVariable(variable, GetEntry(variable->GetName()), depth); 
+#ifndef _SYSTEM
+  LibraryClass* lib_klass = linker->SearchClassLibraries(L"System.String", program->GetUses(current_class->GetFileName()));
+  if(lib_klass) {
+    lib_klass->SetCalled(true);
   }
-
-  void ContextAnalyzer::AnalyzeVariable(Variable* variable, SymbolEntry* entry, const int depth)
-  {
-    // explicitly defined variable
-    if(entry) {
-#ifdef _DEBUG
-      wstring msg = L"variable reference: name='" + variable->GetName() + L"' local=" +
-        (entry->IsLocal() ? L"true" : L"false");
-      Debug(msg, variable->GetLineNumber(), depth);
+  else {
+    ProcessError(char_str, L"Internal compiler error.");
+  }
 #endif
 
-      const wstring& name = variable->GetName();
-      if(HasProgramLibraryEnum(name) || HasProgramLibraryClass(name)) {
-        ProcessError(variable, L"Variable '" + name + L"' already used to define a class, enum or function\n\tIf passing a function reference ensure the full signature is provided");
-      }
+  char_str->SetProcessed();
+}
 
-      // associate variable and entry
-      if(!variable->GetEvalType()) {
-        variable->SetTypes(entry->GetType());
-        variable->SetEntry(entry);
-        entry->AddVariable(variable);
-      }
+/****************************
+ * Analyzes a static array
+ ****************************/
+void ContextAnalyzer::AnalyzeStaticArray(StaticArray * array, const int depth)
+{
+  // TOOD: support for 3d or 4d initialization
+  if(array->GetDimension() > 2) {
+    ProcessError(array, L"Invalid static array declaration.");
+    return;
+  }
 
-      // array parameters
-      ExpressionList* indices = variable->GetIndices();
-      if(indices) {
-        // check dimensions
-        if(entry->GetType() && entry->GetType()->GetDimension() == (int)indices->GetExpressions().size()) {
-          AnalyzeIndices(indices, depth + 1);
-        }
-        else {
-          ProcessError(variable, L"Dimension size mismatch or uninitialized type");
-        }
-      }
-      
-      // static check
-      if(InvalidStatic(entry)) {
-        ProcessError(variable, L"Cannot reference an instance variable from this context");
-      }
+  if(!array->IsMatchingTypes()) {
+    ProcessError(array, L"Array element types do not match.");
+    return;
+  }
+
+  if(!array->IsMatchingLenghts()) {
+    ProcessError(array, L"Array dimension lengths do not match.");
+    return;
+  }
+
+  Type* type = TypeFactory::Instance()->MakeType(array->GetType());
+  type->SetDimension(array->GetDimension());
+  if(type->GetType() == CLASS_TYPE) {
+    type->SetClassName(L"System.String");
+  }
+  array->SetEvalType(type, false);
+
+  // ensure that element sizes match dimensions
+  vector<Expression*> all_elements = array->GetAllElements()->GetExpressions();
+  switch(array->GetType()) {
+  case INT_TYPE: {
+    int id = program->GetIntStringId(all_elements);
+    if(id > -1) {
+      array->SetId(id);
     }
-    // dynamic defined variable
-    else if(current_method) {
-      const wstring scope_name = current_method->GetName() + L":" + variable->GetName();
-      SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(variable->GetFileName(),
-                                                                    variable->GetLineNumber(),
-                                                                    scope_name,
-                                                                    TypeFactory::Instance()->MakeType(VAR_TYPE),
-                                                                    false, true);
-      current_table->AddEntry(entry, true);
+    else {
+      array->SetId(int_str_index);
+      program->AddIntString(all_elements, int_str_index);
+      int_str_index++;
+    }
+  }
+                 break;
 
-      // link entry and variable
+  case FLOAT_TYPE: {
+    int id = program->GetFloatStringId(all_elements);
+    if(id > -1) {
+      array->SetId(id);
+    }
+    else {
+      array->SetId(float_str_index);
+      program->AddFloatString(all_elements, float_str_index);
+      float_str_index++;
+    }
+  }
+                   break;
+
+  case CHAR_TYPE: {
+    // copy wstring elements
+    wstring str;
+    for(size_t i = 0; i < all_elements.size(); ++i) {
+      str += static_cast<CharacterLiteral*>(all_elements[i])->GetValue();
+    }
+    // associate char wstring
+    int id = program->GetCharStringId(str);
+    if(id > -1) {
+      array->SetId(id);
+    }
+    else {
+      array->SetId(char_str_index);
+      program->AddCharString(str, char_str_index);
+      char_str_index++;
+    }
+  }
+                  break;
+
+  case CLASS_TYPE:
+    for(size_t i = 0; i < all_elements.size(); ++i) {
+      AnalyzeCharacterString(static_cast<CharacterString*>(all_elements[i]), depth + 1);
+    }
+    break;
+
+  default:
+    ProcessError(array, L"Invalid type for static array.");
+    break;
+  }
+}
+
+/****************************
+ * Analyzes a variable
+ ****************************/
+void ContextAnalyzer::AnalyzeVariable(Variable * variable, const int depth)
+{
+  AnalyzeVariable(variable, GetEntry(variable->GetName()), depth);
+}
+
+void ContextAnalyzer::AnalyzeVariable(Variable * variable, SymbolEntry * entry, const int depth)
+{
+  // explicitly defined variable
+  if(entry) {
+#ifdef _DEBUG
+    wstring msg = L"variable reference: name='" + variable->GetName() + L"' local=" +
+      (entry->IsLocal() ? L"true" : L"false");
+    Debug(msg, variable->GetLineNumber(), depth);
+#endif
+
+    const wstring & name = variable->GetName();
+    if(HasProgramLibraryEnum(name) || HasProgramLibraryClass(name)) {
+      ProcessError(variable, L"Variable '" + name + L"' already used to define a class, enum or function\n\tIf passing a function reference ensure the full signature is provided");
+    }
+
+    // associate variable and entry
+    if(!variable->GetEvalType()) {
       variable->SetTypes(entry->GetType());
       variable->SetEntry(entry);
       entry->AddVariable(variable);
     }
-    // undefined variable (at class level)
-    else {
-      ProcessError(variable, L"Undefined variable: '" +  variable->GetName() + L"'");
+
+    // array parameters
+    ExpressionList* indices = variable->GetIndices();
+    if(indices) {
+      // check dimensions
+      if(entry->GetType() && entry->GetType()->GetDimension() == (int)indices->GetExpressions().size()) {
+        AnalyzeIndices(indices, depth + 1);
+      }
+      else {
+        ProcessError(variable, L"Dimension size mismatch or uninitialized type");
+      }
     }
 
-    if(variable->GetPreStatement() && variable->GetPostStatement()) {
-      ProcessError(variable, L"Variable cannot have pre and pos operations");
-    }
-    else if(variable->GetPreStatement() && !variable->IsPreStatementChecked()) {
-      OperationAssignment* pre_stmt = variable->GetPreStatement();
-      variable->PreStatementChecked();
-      AnalyzeAssignment(pre_stmt, pre_stmt->GetStatementType(), depth + 1);
-    }
-    else if(variable->GetPostStatement() && !variable->IsPostStatementChecked()) {
-      OperationAssignment* post_stmt = variable->GetPostStatement();
-      variable->PostStatementChecked();
-      AnalyzeAssignment(post_stmt, post_stmt->GetStatementType(), depth + 1);
+    // static check
+    if(InvalidStatic(entry)) {
+      ProcessError(variable, L"Cannot reference an instance variable from this context");
     }
   }
-  
-  /****************************
-   * Analyzes a method call
-   ****************************/
-  void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth)
-  {
+  // dynamic defined variable
+  else if(current_method) {
+    const wstring scope_name = current_method->GetName() + L":" + variable->GetName();
+    SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(variable->GetFileName(),
+                                                                  variable->GetLineNumber(),
+                                                                  scope_name,
+                                                                  TypeFactory::Instance()->MakeType(VAR_TYPE),
+                                                                  false, true);
+    current_table->AddEntry(entry, true);
+
+    // link entry and variable
+    variable->SetTypes(entry->GetType());
+    variable->SetEntry(entry);
+    entry->AddVariable(variable);
+  }
+  // undefined variable (at class level)
+  else {
+    ProcessError(variable, L"Undefined variable: '" + variable->GetName() + L"'");
+  }
+
+  if(variable->GetPreStatement() && variable->GetPostStatement()) {
+    ProcessError(variable, L"Variable cannot have pre and pos operations");
+  }
+  else if(variable->GetPreStatement() && !variable->IsPreStatementChecked()) {
+    OperationAssignment* pre_stmt = variable->GetPreStatement();
+    variable->PreStatementChecked();
+    AnalyzeAssignment(pre_stmt, pre_stmt->GetStatementType(), depth + 1);
+  }
+  else if(variable->GetPostStatement() && !variable->IsPostStatementChecked()) {
+    OperationAssignment* post_stmt = variable->GetPostStatement();
+    variable->PostStatementChecked();
+    AnalyzeAssignment(post_stmt, post_stmt->GetStatementType(), depth + 1);
+  }
+}
+
+/****************************
+ * Analyzes a method call
+ ****************************/
+void ContextAnalyzer::AnalyzeMethodCall(MethodCall * method_call, const int depth)
+{
 #ifdef _DEBUG
-    wstring msg = L"method/function call: class=" + method_call->GetVariableName() +
-      L"; method=" + method_call->GetMethodName() + L"; call_type=" +
-      ToString(method_call->GetCallType());
-    Debug(msg, (static_cast<Expression*>(method_call))->GetLineNumber(), depth);
+  wstring msg = L"method/function call: class=" + method_call->GetVariableName() +
+    L"; method=" + method_call->GetMethodName() + L"; call_type=" +
+    ToString(method_call->GetCallType());
+  Debug(msg, (static_cast<Expression*>(method_call))->GetLineNumber(), depth);
 #endif
 
+  //
+  // new array call
+  //
+  if(method_call->GetCallType() == NEW_ARRAY_CALL) {
+    AnalyzeNewArrayCall(method_call, depth);
+  }
+  //
+  // enum call
+  //
+  else if(method_call->GetCallType() == ENUM_CALL) {
+    const wstring variable_name = method_call->GetVariableName();
+    const wstring method_name = method_call->GetMethodName();
+
     //
-    // new array call
+    // check library enum reference; fully qualified name
     //
-    if(method_call->GetCallType() == NEW_ARRAY_CALL) {
-      AnalyzeNewArrayCall(method_call, depth);
+    LibraryEnum* lib_eenum = linker->SearchEnumLibraries(variable_name + L"#" + method_name,
+                                                         program->GetUses(current_class->GetFileName()));
+    if(!lib_eenum) {
+      lib_eenum = linker->SearchEnumLibraries(variable_name, program->GetUses(current_class->GetFileName()));
     }
-    //
-    // enum call
-    //
-    else if(method_call->GetCallType() == ENUM_CALL) {
-      const wstring variable_name = method_call->GetVariableName();
-      const wstring method_name = method_call->GetMethodName();
-      
+
+    if(lib_eenum && method_call->GetMethodCall()) {
+      const wstring item_name = method_call->GetMethodCall()->GetVariableName();
+      ResolveEnumCall(lib_eenum, item_name, method_call);
+    }
+    else if(lib_eenum) {
+      ResolveEnumCall(lib_eenum, method_name, method_call);
+    }
+    else {
       //
-      // check library enum reference; fully qualified name
+      // check program enum reference
       //
-      LibraryEnum* lib_eenum = linker->SearchEnumLibraries(variable_name + L"#" + method_name, 
-                                                           program->GetUses(current_class->GetFileName()));
-      if(!lib_eenum) {
-        lib_eenum = linker->SearchEnumLibraries(variable_name, program->GetUses(current_class->GetFileName()));
+      wstring enum_name; wstring item_name;
+      if(variable_name == current_class->GetName() && method_call->GetMethodCall()) {
+        enum_name = method_name;
+        item_name = method_call->GetMethodCall()->GetVariableName();
       }
-      
-      if(lib_eenum &&  method_call->GetMethodCall()) {
-        const wstring item_name = method_call->GetMethodCall()->GetVariableName();
-        ResolveEnumCall(lib_eenum, item_name, method_call);
-      } 
-      else if(lib_eenum) {
-        ResolveEnumCall(lib_eenum, method_name, method_call);        
+      else {
+        enum_name = variable_name;
+        item_name = method_name;
       }
-      else {       
-        //
-        // check program enum reference
-        //
-        wstring enum_name; wstring item_name;
-        if(variable_name == current_class->GetName() && method_call->GetMethodCall()) {
-          enum_name = method_name;
-          item_name = method_call->GetMethodCall()->GetVariableName();
-        }
-        else {
-          enum_name = variable_name;
-          item_name = method_name;
-        }
-        
-        // check fully qualified name
-        Enum* eenum = SearchProgramEnums(enum_name + L"#" + item_name);
-        if(eenum && method_call->GetMethodCall()) {
-          item_name = method_call->GetMethodCall()->GetVariableName();
-        }
-        
+
+      // check fully qualified name
+      Enum* eenum = SearchProgramEnums(enum_name + L"#" + item_name);
+      if(eenum && method_call->GetMethodCall()) {
+        item_name = method_call->GetMethodCall()->GetVariableName();
+      }
+
+      if(!eenum) {
+        // local nested reference
+        eenum = SearchProgramEnums(current_class->GetName() + L"#" + enum_name);
         if(!eenum) {
-          // local nested reference
-          eenum = SearchProgramEnums(current_class->GetName() + L"#" + enum_name);
-          if(!eenum) {
-            // standalone reference
-            eenum = SearchProgramEnums(enum_name);
-          }
-        }
-        
-        if(eenum) {
-          EnumItem* item = eenum->GetItem(item_name);
-          if(item) {
-            if(method_call->GetMethodCall()) {
-              method_call->GetMethodCall()->SetEnumItem(item, eenum->GetName());
-              method_call->SetEvalType(TypeFactory::Instance()->MakeType(CLASS_TYPE, eenum->GetName()), false);
-              method_call->GetMethodCall()->SetEvalType(method_call->GetEvalType(), false);
-            }
-            else {
-              method_call->SetEnumItem(item, eenum->GetName());
-              method_call->SetEvalType(TypeFactory::Instance()->MakeType(CLASS_TYPE, eenum->GetName()), false);
-            }
-          } 
-          else {
-            ProcessError(static_cast<Expression*>(method_call), L"Undefined enum item: '" + item_name + L"'");
-          }
-        }
-        //
-        // check '@self' reference
-        //
-        else if(enum_name == SELF_ID) {
-          SymbolEntry* entry = GetEntry(item_name);
-          if(entry && !entry->IsLocal() && !entry->IsStatic()) {
-            AddMethodParameter(method_call, entry, depth + 1);
-          }
-          else {
-            ProcessError(static_cast<Expression*>(method_call), L"Invalid '@self' reference for variable: '" + item_name + L"'");
-          }
-        }
-        //
-        // check '@parent' reference
-        //
-        else if(enum_name == PARENT_ID) {
-          SymbolEntry* entry = GetEntry(item_name, true);
-          if(entry && !entry->IsLocal() && !entry->IsStatic()) {
-            AddMethodParameter(method_call, entry, depth + 1);
-          }
-          else {
-            ProcessError(static_cast<Expression*>(method_call), L"Invalid '@parent' reference for variable: '" + item_name + L"'");
-          }
-        }
-        else {	  
-          ProcessError(static_cast<Expression*>(method_call), L"Undefined or incompatible enum type: '" + 
-		       ReplaceSubstring(enum_name, L"#", L"->") + L"'");
+          // standalone reference
+          eenum = SearchProgramEnums(enum_name);
         }
       }
-      
-      // next call
-      AnalyzeExpressionMethodCall(method_call, depth + 1);
+
+      if(eenum) {
+        EnumItem* item = eenum->GetItem(item_name);
+        if(item) {
+          if(method_call->GetMethodCall()) {
+            method_call->GetMethodCall()->SetEnumItem(item, eenum->GetName());
+            method_call->SetEvalType(TypeFactory::Instance()->MakeType(CLASS_TYPE, eenum->GetName()), false);
+            method_call->GetMethodCall()->SetEvalType(method_call->GetEvalType(), false);
+          }
+          else {
+            method_call->SetEnumItem(item, eenum->GetName());
+            method_call->SetEvalType(TypeFactory::Instance()->MakeType(CLASS_TYPE, eenum->GetName()), false);
+          }
+        }
+        else {
+          ProcessError(static_cast<Expression*>(method_call), L"Undefined enum item: '" + item_name + L"'");
+        }
+      }
+      //
+      // check '@self' reference
+      //
+      else if(enum_name == SELF_ID) {
+        SymbolEntry* entry = GetEntry(item_name);
+        if(entry && !entry->IsLocal() && !entry->IsStatic()) {
+          AddMethodParameter(method_call, entry, depth + 1);
+        }
+        else {
+          ProcessError(static_cast<Expression*>(method_call), L"Invalid '@self' reference for variable: '" + item_name + L"'");
+        }
+      }
+      //
+      // check '@parent' reference
+      //
+      else if(enum_name == PARENT_ID) {
+        SymbolEntry* entry = GetEntry(item_name, true);
+        if(entry && !entry->IsLocal() && !entry->IsStatic()) {
+          AddMethodParameter(method_call, entry, depth + 1);
+        }
+        else {
+          ProcessError(static_cast<Expression*>(method_call), L"Invalid '@parent' reference for variable: '" + item_name + L"'");
+        }
+      }
+      else {
+        ProcessError(static_cast<Expression*>(method_call), L"Undefined or incompatible enum type: '" +
+                     ReplaceSubstring(enum_name, L"#", L"->") + L"'");
+      }
     }
-    //
-    // parent call
-    //
-    else if(method_call->GetCallType() == PARENT_CALL) {
-      AnalyzeParentCall(method_call, depth);
+
+    // next call
+    AnalyzeExpressionMethodCall(method_call, depth + 1);
+  }
+  //
+  // parent call
+  //
+  else if(method_call->GetCallType() == PARENT_CALL) {
+    AnalyzeParentCall(method_call, depth);
+  }
+  //
+  // method/function
+  //
+  else {
+    wstring encoding;
+    // local call
+    Class* klass = AnalyzeProgramMethodCall(method_call, encoding, depth);
+    if(klass) {
+      if(method_call->IsFunctionDefinition()) {
+        AnalyzeFunctionReference(klass, method_call, encoding, depth);
+      }
+      else {
+        AnalyzeMethodCall(klass, method_call, false, encoding, depth);
+      }
+      return;
     }
-    //
-    // method/function
-    //
-    else { 
-      wstring encoding;
-      // local call
-      Class* klass = AnalyzeProgramMethodCall(method_call, encoding, depth);
+    // library call
+    LibraryClass* lib_klass = AnalyzeLibraryMethodCall(method_call, encoding, depth);
+    if(lib_klass) {
+      if(method_call->IsFunctionDefinition()) {
+        AnalyzeFunctionReference(lib_klass, method_call, encoding, depth);
+      }
+      else {
+        AnalyzeMethodCall(lib_klass, method_call, false, encoding, false, depth);
+      }
+      return;
+    }
+
+    const wstring variable_name = method_call->GetVariableName();
+    SymbolEntry* entry = GetEntry(method_call, variable_name, depth);
+    if(entry) {
+      if(method_call->GetVariable()) {
+        bool is_enum_call = false;
+        if(!AnalyzeExpressionMethodCall(method_call->GetVariable(), encoding,
+           klass, lib_klass, is_enum_call)) {
+          ProcessError(static_cast<Expression*>(method_call), L"Invalid class type or assignment");
+        }
+      }
+      else {
+        if(!AnalyzeExpressionMethodCall(entry, encoding, klass, lib_klass)) {
+          ProcessError(static_cast<Expression*>(method_call), L"Invalid class type or assignment");
+        }
+      }
+
+      // check method call
       if(klass) {
-        if(method_call->IsFunctionDefinition()) {
-          AnalyzeFunctionReference(klass, method_call, encoding, depth);
-        }
-        else {
-          AnalyzeMethodCall(klass, method_call, false, encoding, depth);
-        }
-        return;
+        AnalyzeMethodCall(klass, method_call, false, encoding, depth);
       }
-      // library call
-      LibraryClass* lib_klass = AnalyzeLibraryMethodCall(method_call, encoding, depth);
-      if(lib_klass) {
-        if(method_call->IsFunctionDefinition()) {
-          AnalyzeFunctionReference(lib_klass, method_call, encoding, depth);
-        }
-        else {
-          AnalyzeMethodCall(lib_klass, method_call, false, encoding, false, depth);
-        }
-        return;
+      else if(lib_klass) {
+        AnalyzeMethodCall(lib_klass, method_call, false, encoding, false, depth);
       }
-
-      const wstring variable_name = method_call->GetVariableName();
-      SymbolEntry* entry = GetEntry(method_call, variable_name, depth);
-      if(entry) {
-        if(method_call->GetVariable()) {
-          bool is_enum_call = false;
-          if(!AnalyzeExpressionMethodCall(method_call->GetVariable(), encoding,
-                                          klass, lib_klass, is_enum_call)) {
-            ProcessError(static_cast<Expression*>(method_call), L"Invalid class type or assignment");
-          }
-        } else {
-          if(!AnalyzeExpressionMethodCall(entry, encoding, klass, lib_klass)) {
-            ProcessError(static_cast<Expression*>(method_call), L"Invalid class type or assignment");
-          }
-        }
-
-        // check method call
-        if(klass) {
-          AnalyzeMethodCall(klass, method_call, false, encoding, depth);
-        } 
-        else if(lib_klass) {
-          AnalyzeMethodCall(lib_klass, method_call, false, encoding, false, depth);
-        } 
-        else {
-          ProcessError(static_cast<Expression*>(method_call), L"Undefined class: '" + variable_name + L"'");
-        }
-      } 
       else {
         ProcessError(static_cast<Expression*>(method_call), L"Undefined class: '" + variable_name + L"'");
       }
     }
-  }
-
-  /****************************
-   * Validates an expression
-   * method call
-   ****************************/
-  bool ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, wstring &encoding,
-                                                    Class* &klass, LibraryClass* &lib_klass,
-                                                    bool &is_enum_call)
-  {
-    Type* type;
-    // process cast
-    if(expression->GetCastType()) {
-      if(expression->GetExpressionType() == METHOD_CALL_EXPR && static_cast<MethodCall*>(expression)->GetVariable()) {
-        while(expression->GetMethodCall()) {
-          AnalyzeExpressionMethodCall(expression->GetMethodCall(), 0);
-          expression = expression->GetMethodCall();
-        }
-        type = expression->GetEvalType();	
-      }
-      else if(expression->GetExpressionType() == VAR_EXPR) {	
-        if(static_cast<Variable*>(expression)->GetIndices()) {
-          ProcessError(expression, L"Unable to make a method call from an indexed array element");
-          return false;
-        }
-        type = expression->GetCastType();
-      }
-      else {
-        type = expression->GetCastType();
-      }
-    }
-    // process non-cast
     else {
+      ProcessError(static_cast<Expression*>(method_call), L"Undefined class: '" + variable_name + L"'");
+    }
+  }
+}
+
+/****************************
+ * Validates an expression
+ * method call
+ ****************************/
+bool ContextAnalyzer::AnalyzeExpressionMethodCall(Expression * expression, wstring & encoding,
+                                                  Class * &klass, LibraryClass * &lib_klass,
+                                                  bool& is_enum_call)
+{
+  Type* type;
+  // process cast
+  if(expression->GetCastType()) {
+    if(expression->GetExpressionType() == METHOD_CALL_EXPR && static_cast<MethodCall*>(expression)->GetVariable()) {
+      while(expression->GetMethodCall()) {
+        AnalyzeExpressionMethodCall(expression->GetMethodCall(), 0);
+        expression = expression->GetMethodCall();
+      }
       type = expression->GetEvalType();
     }
-
-    if(expression->GetExpressionType() == STAT_ARY_EXPR) {
-      ProcessError(expression, L"Unable to make method calls on static arrays");
-      return false;
+    else if(expression->GetExpressionType() == VAR_EXPR) {
+      if(static_cast<Variable*>(expression)->GetIndices()) {
+        ProcessError(expression, L"Unable to make a method call from an indexed array element");
+        return false;
+      }
+      type = expression->GetCastType();
     }
-
-    if(type) {
-      const int dimension = IsScalar(expression, false) ? 0 : type->GetDimension();
-      return AnalyzeExpressionMethodCall(type, dimension, encoding, klass, lib_klass, is_enum_call);
+    else {
+      type = expression->GetCastType();
     }
+  }
+  // process non-cast
+  else {
+    type = expression->GetEvalType();
+  }
 
+  if(expression->GetExpressionType() == STAT_ARY_EXPR) {
+    ProcessError(expression, L"Unable to make method calls on static arrays");
     return false;
   }
 
-  /****************************
-   * Validates an expression
-   * method call
-   ****************************/
-  bool ContextAnalyzer::AnalyzeExpressionMethodCall(SymbolEntry* entry, wstring &encoding,
-                                                    Class* &klass, LibraryClass* &lib_klass)
-  {
-    Type* type = entry->GetType();
-    if(type) {
-      bool is_enum_call = false;
-      return AnalyzeExpressionMethodCall(type, type->GetDimension(),
-                                         encoding, klass, lib_klass, is_enum_call);
-    }
-
-    return false;
+  if(type) {
+    const int dimension = IsScalar(expression, false) ? 0 : type->GetDimension();
+    return AnalyzeExpressionMethodCall(type, dimension, encoding, klass, lib_klass, is_enum_call);
   }
 
-  /****************************
-   * Validates an expression
-   * method call
-   ****************************/
-  bool ContextAnalyzer::AnalyzeExpressionMethodCall(Type* type, const int dimension,
-                                                    wstring &encoding, Class* &klass,
-                                                    LibraryClass* &lib_klass, bool &is_enum_call)
-  {
-    switch(type->GetType()) {
-    case BOOLEAN_TYPE:
-      klass = program->GetClass(BOOL_CLASS_ID);
-      lib_klass = linker->SearchClassLibraries(BOOL_CLASS_ID, program->GetUses(current_class->GetFileName()));
-      encoding = L"l";
-      break;
+  return false;
+}
 
-    case VAR_TYPE:
-    case NIL_TYPE:
-      return false;
+/****************************
+ * Validates an expression
+ * method call
+ ****************************/
+bool ContextAnalyzer::AnalyzeExpressionMethodCall(SymbolEntry * entry, wstring & encoding,
+                                                  Class * &klass, LibraryClass * &lib_klass)
+{
+  Type* type = entry->GetType();
+  if(type) {
+    bool is_enum_call = false;
+    return AnalyzeExpressionMethodCall(type, type->GetDimension(),
+                                       encoding, klass, lib_klass, is_enum_call);
+  }
 
-    case BYTE_TYPE:
-      klass = program->GetClass(BYTE_CLASS_ID);
-      lib_klass = linker->SearchClassLibraries(BYTE_CLASS_ID, program->GetUses(current_class->GetFileName()));
-      encoding = L"b";
-      break;
+  return false;
+}
 
-    case CHAR_TYPE:
-      klass = program->GetClass(CHAR_CLASS_ID);
-      lib_klass = linker->SearchClassLibraries(CHAR_CLASS_ID, program->GetUses(current_class->GetFileName()));
-      encoding = L"c";
-      break;
+/****************************
+ * Validates an expression
+ * method call
+ ****************************/
+bool ContextAnalyzer::AnalyzeExpressionMethodCall(Type * type, const int dimension,
+                                                  wstring & encoding, Class * &klass,
+                                                  LibraryClass * &lib_klass, bool& is_enum_call)
+{
+  switch(type->GetType()) {
+  case BOOLEAN_TYPE:
+    klass = program->GetClass(BOOL_CLASS_ID);
+    lib_klass = linker->SearchClassLibraries(BOOL_CLASS_ID, program->GetUses(current_class->GetFileName()));
+    encoding = L"l";
+    break;
 
-    case INT_TYPE:
-      klass = program->GetClass(INT_CLASS_ID);
-      lib_klass = linker->SearchClassLibraries(INT_CLASS_ID, program->GetUses(current_class->GetFileName()));
-      encoding = L"i";
-      break;
+  case VAR_TYPE:
+  case NIL_TYPE:
+    return false;
 
-    case FLOAT_TYPE:
-      klass = program->GetClass(FLOAT_CLASS_ID);
-      lib_klass = linker->SearchClassLibraries(FLOAT_CLASS_ID, program->GetUses(current_class->GetFileName()));
-      encoding = L"f";
-      break;
+  case BYTE_TYPE:
+    klass = program->GetClass(BYTE_CLASS_ID);
+    lib_klass = linker->SearchClassLibraries(BYTE_CLASS_ID, program->GetUses(current_class->GetFileName()));
+    encoding = L"b";
+    break;
 
-    case CLASS_TYPE: {
-      if(dimension > 0 && type->GetDimension() > 0) {
-        klass = program->GetClass(BASE_ARRAY_CLASS_ID);
-        lib_klass = linker->SearchClassLibraries(BASE_ARRAY_CLASS_ID, program->GetUses(current_class->GetFileName()));
-        encoding = L"o.System.Base";
-      } 
-      else {
-        const wstring &cls_name = type->GetClassName();
-        klass = SearchProgramClasses(cls_name);
-        lib_klass = linker->SearchClassLibraries(cls_name, program->GetUses(current_class->GetFileName()));
+  case CHAR_TYPE:
+    klass = program->GetClass(CHAR_CLASS_ID);
+    lib_klass = linker->SearchClassLibraries(CHAR_CLASS_ID, program->GetUses(current_class->GetFileName()));
+    encoding = L"c";
+    break;
 
-        if(!klass && !lib_klass) {
-          if(HasProgramLibraryEnum(cls_name)) {
-            klass = program->GetClass(INT_CLASS_ID);
-            lib_klass = linker->SearchClassLibraries(INT_CLASS_ID, program->GetUses(current_class->GetFileName()));
-            encoding = L"i,";
-            is_enum_call = true;
-          }
+  case INT_TYPE:
+    klass = program->GetClass(INT_CLASS_ID);
+    lib_klass = linker->SearchClassLibraries(INT_CLASS_ID, program->GetUses(current_class->GetFileName()));
+    encoding = L"i";
+    break;
+
+  case FLOAT_TYPE:
+    klass = program->GetClass(FLOAT_CLASS_ID);
+    lib_klass = linker->SearchClassLibraries(FLOAT_CLASS_ID, program->GetUses(current_class->GetFileName()));
+    encoding = L"f";
+    break;
+
+  case CLASS_TYPE: {
+    if(dimension > 0 && type->GetDimension() > 0) {
+      klass = program->GetClass(BASE_ARRAY_CLASS_ID);
+      lib_klass = linker->SearchClassLibraries(BASE_ARRAY_CLASS_ID, program->GetUses(current_class->GetFileName()));
+      encoding = L"o.System.Base";
+    }
+    else {
+      const wstring& cls_name = type->GetClassName();
+      klass = SearchProgramClasses(cls_name);
+      lib_klass = linker->SearchClassLibraries(cls_name, program->GetUses(current_class->GetFileName()));
+
+      if(!klass && !lib_klass) {
+        if(HasProgramLibraryEnum(cls_name)) {
+          klass = program->GetClass(INT_CLASS_ID);
+          lib_klass = linker->SearchClassLibraries(INT_CLASS_ID, program->GetUses(current_class->GetFileName()));
+          encoding = L"i,";
+          is_enum_call = true;
         }
       }
     }
-      break;
+  }
+                   break;
 
-    default:
-      return false;
-    }
-
-    // dimension
-    for(int i = 0; i < dimension; ++i) {
-      encoding += L'*';
-    }
-
-    if(type->GetType() != CLASS_TYPE) {
-      encoding += L",";
-    }
-
-    return true;
+  default:
+    return false;
   }
 
-  /****************************
-   * Analyzes a new array method
-   * call
-   ****************************/
-  void ContextAnalyzer::AnalyzeNewArrayCall(MethodCall* method_call, const int depth)
-  {
-    Class* generic_class = current_class->GetGenericClass(method_call->GetEvalType()->GetClassName());
-    if(generic_class && generic_class->HasGenericInterface() && method_call->GetEvalType()) {
-      const int dimension = method_call->GetEvalType()->GetDimension();
-      method_call->SetEvalType(generic_class->GetGenericInterface(), false);
-      method_call->GetEvalType()->SetDimension(dimension);
-    }
+  // dimension
+  for(int i = 0; i < dimension; ++i) {
+    encoding += L'*';
+  }
 
-    // get parameters
-    ExpressionList* call_params = method_call->GetCallingParameters();
-    AnalyzeExpressions(call_params, depth + 1);
-    // check indexes
-    vector<Expression*> expressions = call_params->GetExpressions();
-    if(expressions.size() == 0) {
-      ProcessError(static_cast<Expression*>(method_call), L"Empty array index");
-    }
-    // validate array parameters
-    for(size_t i = 0; i < expressions.size(); ++i) {
-      Expression* expression = expressions[i];
-      AnalyzeExpression(expression, depth + 1);
-      Type* type = GetExpressionType(expression, depth + 1);
-      if(type) {
-        switch(type->GetType()) {
-        case BYTE_TYPE:
-        case CHAR_TYPE:
-        case INT_TYPE:
-          break;
+  if(type->GetType() != CLASS_TYPE) {
+    encoding += L",";
+  }
 
-        case CLASS_TYPE:
-          if(!IsEnumExpression(expression)) {
-            ProcessError(expression, L"Array index type must be an Integer, Char, Byte or Enum");
-          }
-          break;
+  return true;
+}
 
-        default:
+/****************************
+ * Analyzes a new array method
+ * call
+ ****************************/
+void ContextAnalyzer::AnalyzeNewArrayCall(MethodCall * method_call, const int depth)
+{
+  Class* generic_class = current_class->GetGenericClass(method_call->GetEvalType()->GetClassName());
+  if(generic_class && generic_class->HasGenericInterface() && method_call->GetEvalType()) {
+    const int dimension = method_call->GetEvalType()->GetDimension();
+    method_call->SetEvalType(generic_class->GetGenericInterface(), false);
+    method_call->GetEvalType()->SetDimension(dimension);
+  }
+
+  // get parameters
+  ExpressionList* call_params = method_call->GetCallingParameters();
+  AnalyzeExpressions(call_params, depth + 1);
+  // check indexes
+  vector<Expression*> expressions = call_params->GetExpressions();
+  if(expressions.size() == 0) {
+    ProcessError(static_cast<Expression*>(method_call), L"Empty array index");
+  }
+  // validate array parameters
+  for(size_t i = 0; i < expressions.size(); ++i) {
+    Expression* expression = expressions[i];
+    AnalyzeExpression(expression, depth + 1);
+    Type * type = GetExpressionType(expression, depth + 1);
+    if(type) {
+      switch(type->GetType()) {
+      case BYTE_TYPE:
+      case CHAR_TYPE:
+      case INT_TYPE:
+        break;
+
+      case CLASS_TYPE:
+        if(!IsEnumExpression(expression)) {
           ProcessError(expression, L"Array index type must be an Integer, Char, Byte or Enum");
-          break;
         }
+        break;
+
+      default:
+        ProcessError(expression, L"Array index type must be an Integer, Char, Byte or Enum");
+        break;
       }
     }
-    // TODO: adding generics
-    if(method_call->HasConcreteNames() && method_call->GetEvalType() && 
-       !method_call->GetEvalType()->HasGenerics()) {
-      method_call->GetEvalType()->SetGenerics(method_call->GetConcreteTypes());
-    }
   }
+  // TODO: adding generics
+  if(method_call->HasConcreteNames() && method_call->GetEvalType() &&
+     !method_call->GetEvalType()->HasGenerics()) {
+    method_call->GetEvalType()->SetGenerics(method_call->GetConcreteTypes());
+  }
+}
 
-  /*********************************
-   * Analyzes a parent method call
-   *********************************/
-  void ContextAnalyzer::AnalyzeParentCall(MethodCall* method_call, const int depth)
-  {
-    // get parameters
-    ExpressionList* call_params = method_call->GetCallingParameters();
-    AnalyzeExpressions(call_params, depth + 1);
+/*********************************
+ * Analyzes a parent method call
+ *********************************/
+void ContextAnalyzer::AnalyzeParentCall(MethodCall * method_call, const int depth)
+{
+  // get parameters
+  ExpressionList* call_params = method_call->GetCallingParameters();
+  AnalyzeExpressions(call_params, depth + 1);
 
-    Class* parent = current_class->GetParent();
-    if(parent) {
+  Class * parent = current_class->GetParent();
+  if(parent) {
+    wstring encoding;
+    AnalyzeMethodCall(parent, method_call, false, encoding, depth);
+  }
+  else {
+    LibraryClass* lib_parent = current_class->GetLibraryParent();
+    if(lib_parent) {
       wstring encoding;
-      AnalyzeMethodCall(parent, method_call, false, encoding, depth);
-    } 
+      AnalyzeMethodCall(lib_parent, method_call, false, encoding, true, depth);
+    }
     else {
-      LibraryClass* lib_parent = current_class->GetLibraryParent();
-      if(lib_parent) {
-        wstring encoding;
-        AnalyzeMethodCall(lib_parent, method_call, false, encoding, true, depth);
-      } 
-      else {
-        ProcessError(static_cast<Expression*>(method_call), L"Class has no parent");
-      }
+      ProcessError(static_cast<Expression*>(method_call), L"Class has no parent");
     }
   }
+}
 
-  /****************************
-   * Analyzes a method call
-   ****************************/
-  void ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, const int depth)
-  {
-    MethodCall* method_call = expression->GetMethodCall();
-    if(method_call && method_call->GetCallType() != ENUM_CALL) {
-      wstring encoding;
-      Class* klass = NULL;
-      LibraryClass* lib_klass = NULL;
-
-      // check expression class
-      bool is_enum_call = false;
-      if(!AnalyzeExpressionMethodCall(expression, encoding, klass, lib_klass, is_enum_call)) {
-        ProcessError(static_cast<Expression*>(method_call), L"Invalid class type or assignment");
-      }
-      method_call->SetEnumCall(is_enum_call);
-      
-      // check methods
-      if(klass) {
-        AnalyzeMethodCall(klass, method_call, true, encoding, depth);
-      } 
-      else if(lib_klass) {
-        AnalyzeMethodCall(lib_klass, method_call, true, encoding, false, depth);
-      } 
-      else {
-        ProcessError(static_cast<Expression*>(method_call), L"Undefined class reference: '" + 
-		     method_call->GetBaseType()->GetClassName() + 
-		     L"'\n\tIf external reference to generic ensure it has been typed");
-      }
-    }
-  }
-
-  /*********************************
-   * Analyzes a method call.  This
-   * is method call within the source
-   * program.
-   *********************************/
-  Class* ContextAnalyzer::AnalyzeProgramMethodCall(MethodCall* method_call, wstring &encoding, const int depth)
-  {
+/****************************
+ * Analyzes a method call
+ ****************************/
+void ContextAnalyzer::AnalyzeExpressionMethodCall(Expression * expression, const int depth)
+{
+  MethodCall* method_call = expression->GetMethodCall();
+  if(method_call && method_call->GetCallType() != ENUM_CALL) {
+    wstring encoding;
     Class* klass = NULL;
+    LibraryClass* lib_klass = NULL;
 
-    // method within the same class
-    wstring variable_name = method_call->GetVariableName();
-    if(method_call->GetMethodName().size() == 0) {
-      klass = SearchProgramClasses(current_class->GetName());
-    } 
+    // check expression class
+    bool is_enum_call = false;
+    if(!AnalyzeExpressionMethodCall(expression, encoding, klass, lib_klass, is_enum_call)) {
+      ProcessError(static_cast<Expression*>(method_call), L"Invalid class type or assignment");
+    }
+    method_call->SetEnumCall(is_enum_call);
+
+    // check methods
+    if(klass) {
+      AnalyzeMethodCall(klass, method_call, true, encoding, depth);
+    }
+    else if(lib_klass) {
+      AnalyzeMethodCall(lib_klass, method_call, true, encoding, false, depth);
+    }
     else {
-      // external method
-      SymbolEntry* entry = GetEntry(method_call, variable_name, depth);
-      if(entry && entry->GetType() && entry->GetType()->GetType() == CLASS_TYPE) {
-        if(entry->GetType()->GetDimension() > 0 &&
-           (!method_call->GetVariable() ||
-            !method_call->GetVariable()->GetIndices())) {
-          klass = program->GetClass(BASE_ARRAY_CLASS_ID);
-          encoding = L"o.System.Base";
-	  for(int i = 0; i < entry->GetType()->GetDimension(); ++i) { 	
-            encoding += L"*";
-	  }
-          encoding += L",";
-          
-        }
-        else if(method_call->GetVariable() && method_call->GetVariable()->GetCastType() && 
-                method_call->GetVariable()->GetCastType()->GetType() == CLASS_TYPE) {
-          klass = SearchProgramClasses(method_call->GetVariable()->GetCastType()->GetClassName());
-        }
-	else {
-	  klass = SearchProgramClasses(entry->GetType()->GetClassName());
-        }
-      }
-      // static method call
-      if(!klass) {
-        klass = SearchProgramClasses(variable_name);
-      }
+      ProcessError(static_cast<Expression*>(method_call), L"Undefined class reference: '" +
+                   method_call->GetBaseType()->GetClassName() +
+                   L"'\n\tIf external reference to generic ensure it has been typed");
     }
-    
-    if(method_call->GetVariable() && method_call->GetVariable()->GetCastType() && 
-       method_call->GetVariable()->GetCastType()->GetType() == CLASS_TYPE) {
-      AnalyzeClassCast(method_call->GetVariable()->GetCastType(), method_call, depth + 1);
-    }
-    // intermediate cast type
-    else if(method_call->GetCastType() && method_call->GetCastType()->GetType() == CLASS_TYPE) {
-      AnalyzeVariableCast(method_call->GetCastType(), method_call);
-    }
-    
-    return klass;
   }
+}
 
-  /*********************************
-   * Analyzes a method call.  This
-   * is method call within a linked
-   * library
-   *********************************/
-  LibraryClass* ContextAnalyzer::AnalyzeLibraryMethodCall(MethodCall* method_call, wstring &encoding, const int depth)
-  {
-    LibraryClass* klass = NULL;
-    const wstring variable_name = method_call->GetVariableName();
+/*********************************
+ * Analyzes a method call.  This
+ * is method call within the source
+ * program.
+ *********************************/
+Class* ContextAnalyzer::AnalyzeProgramMethodCall(MethodCall * method_call, wstring & encoding, const int depth)
+{
+  Class* klass = NULL;
 
+  // method within the same class
+  wstring variable_name = method_call->GetVariableName();
+  if(method_call->GetMethodName().size() == 0) {
+    klass = SearchProgramClasses(current_class->GetName());
+  }
+  else {
     // external method
     SymbolEntry* entry = GetEntry(method_call, variable_name, depth);
     if(entry && entry->GetType() && entry->GetType()->GetType() == CLASS_TYPE) {
-      // array type
       if(entry->GetType()->GetDimension() > 0 &&
-         (!method_call->GetVariable() ||
-          !method_call->GetVariable()->GetIndices())) {
-
-        klass = linker->SearchClassLibraries(BASE_ARRAY_CLASS_ID, program->GetUses(current_class->GetFileName()));
+        (!method_call->GetVariable() ||
+         !method_call->GetVariable()->GetIndices())) {
+        klass = program->GetClass(BASE_ARRAY_CLASS_ID);
         encoding = L"o.System.Base";
         for(int i = 0; i < entry->GetType()->GetDimension(); ++i) {
           encoding += L"*";
         }
-        encoding += L",";				 
-      } 
-      // cast type
-      else if(method_call->GetVariable() && method_call->GetVariable()->GetCastType() && 
+        encoding += L",";
+
+      }
+      else if(method_call->GetVariable() && method_call->GetVariable()->GetCastType() &&
               method_call->GetVariable()->GetCastType()->GetType() == CLASS_TYPE) {
-        klass = linker->SearchClassLibraries(method_call->GetVariable()->GetCastType()->GetClassName(), program->GetUses(current_class->GetFileName()));	
-        method_call->SetTypes(entry->GetType());
+        klass = SearchProgramClasses(method_call->GetVariable()->GetCastType()->GetClassName());
       }
       else {
-        klass = linker->SearchClassLibraries(entry->GetType()->GetClassName(), program->GetUses(current_class->GetFileName()));
+        klass = SearchProgramClasses(entry->GetType()->GetClassName());
       }
     }
     // static method call
     if(!klass) {
-      klass = linker->SearchClassLibraries(variable_name, program->GetUses(current_class->GetFileName()));
+      klass = SearchProgramClasses(variable_name);
     }
-    
-    // cast type
-    if(method_call->GetVariable() && method_call->GetVariable()->GetCastType() && 
-       method_call->GetVariable()->GetCastType()->GetType() == CLASS_TYPE) {
-      AnalyzeClassCast(method_call->GetVariable()->GetCastType(), method_call, depth + 1);
-    }
-    // intermediate cast type
-    else if(method_call->GetCastType() && method_call->GetCastType()->GetType() == CLASS_TYPE) {
-      AnalyzeVariableCast(method_call->GetCastType(), method_call);
-    }
-    
-    return klass;
   }
 
-  /*********************************
-   * Resolve method call parameter
-   *********************************/
-  int ContextAnalyzer::MatchCallingParameter(Expression* calling_param, Type* method_type,
-                                             Class* klass, LibraryClass* lib_klass, const int depth) 
-  {
-    // get calling type
-    Type* calling_type = GetExpressionType(calling_param, depth + 1);
-    
-    // determine if there's a mapping from calling type to method type
-    if(calling_type && method_type) {
-      // processing an array
-      if(!IsScalar(calling_param)) {
-        if(calling_type->GetType() == method_type->GetType()) {
-          // class/enum arrays
-          if(calling_type->GetType() == CLASS_TYPE && 
-             IsClassEnumParameterMatch(calling_type, method_type) &&
-             calling_type->GetDimension() == method_type->GetDimension()) {
-            return 0;
-          }
-          // basic arrays
-          else if(calling_type->GetDimension() == method_type->GetDimension()) {
-            return 0;
-          }
-        }
+  if(method_call->GetVariable() && method_call->GetVariable()->GetCastType() &&
+     method_call->GetVariable()->GetCastType()->GetType() == CLASS_TYPE) {
+    AnalyzeClassCast(method_call->GetVariable()->GetCastType(), method_call, depth + 1);
+  }
+  // intermediate cast type
+  else if(method_call->GetCastType() && method_call->GetCastType()->GetType() == CLASS_TYPE) {
+    AnalyzeVariableCast(method_call->GetCastType(), method_call);
+  }
 
-        return -1;
+  return klass;
+}
+
+/*********************************
+ * Analyzes a method call.  This
+ * is method call within a linked
+ * library
+ *********************************/
+LibraryClass* ContextAnalyzer::AnalyzeLibraryMethodCall(MethodCall * method_call, wstring & encoding, const int depth)
+{
+  LibraryClass* klass = NULL;
+  const wstring variable_name = method_call->GetVariableName();
+
+  // external method
+  SymbolEntry* entry = GetEntry(method_call, variable_name, depth);
+  if(entry && entry->GetType() && entry->GetType()->GetType() == CLASS_TYPE) {
+    // array type
+    if(entry->GetType()->GetDimension() > 0 &&
+      (!method_call->GetVariable() ||
+       !method_call->GetVariable()->GetIndices())) {
+
+      klass = linker->SearchClassLibraries(BASE_ARRAY_CLASS_ID, program->GetUses(current_class->GetFileName()));
+      encoding = L"o.System.Base";
+      for(int i = 0; i < entry->GetType()->GetDimension(); ++i) {
+        encoding += L"*";
       }
-      else {
-        // look for an exact match
-        if(calling_type->GetType() != CLASS_TYPE && method_type->GetType() != CLASS_TYPE &&
-           calling_type->GetType() != FUNC_TYPE && method_type->GetType() != FUNC_TYPE &&
-           method_type->GetDimension() == 0 && calling_type->GetType() == method_type->GetType()) {
+      encoding += L",";
+    }
+    // cast type
+    else if(method_call->GetVariable() && method_call->GetVariable()->GetCastType() &&
+            method_call->GetVariable()->GetCastType()->GetType() == CLASS_TYPE) {
+      klass = linker->SearchClassLibraries(method_call->GetVariable()->GetCastType()->GetClassName(), program->GetUses(current_class->GetFileName()));
+      method_call->SetTypes(entry->GetType());
+    }
+    else {
+      klass = linker->SearchClassLibraries(entry->GetType()->GetClassName(), program->GetUses(current_class->GetFileName()));
+    }
+  }
+  // static method call
+  if(!klass) {
+    klass = linker->SearchClassLibraries(variable_name, program->GetUses(current_class->GetFileName()));
+  }
+
+  // cast type
+  if(method_call->GetVariable() && method_call->GetVariable()->GetCastType() &&
+     method_call->GetVariable()->GetCastType()->GetType() == CLASS_TYPE) {
+    AnalyzeClassCast(method_call->GetVariable()->GetCastType(), method_call, depth + 1);
+  }
+  // intermediate cast type
+  else if(method_call->GetCastType() && method_call->GetCastType()->GetType() == CLASS_TYPE) {
+    AnalyzeVariableCast(method_call->GetCastType(), method_call);
+  }
+
+  return klass;
+}
+
+/*********************************
+ * Resolve method call parameter
+ *********************************/
+int ContextAnalyzer::MatchCallingParameter(Expression * calling_param, Type * method_type,
+                                           Class * klass, LibraryClass * lib_klass, const int depth)
+{
+  // get calling type
+  Type* calling_type = GetExpressionType(calling_param, depth + 1);
+
+  // determine if there's a mapping from calling type to method type
+  if(calling_type && method_type) {
+    // processing an array
+    if(!IsScalar(calling_param)) {
+      if(calling_type->GetType() == method_type->GetType()) {
+        // class/enum arrays
+        if(calling_type->GetType() == CLASS_TYPE &&
+           IsClassEnumParameterMatch(calling_type, method_type) &&
+           calling_type->GetDimension() == method_type->GetDimension()) {
           return 0;
         }
+        // basic arrays
+        else if(calling_type->GetDimension() == method_type->GetDimension()) {
+          return 0;
+        }
+      }
 
-        // looks for a relative match
-        if(method_type->GetDimension() == 0)  {
-          switch(calling_type->GetType()) {
-          case NIL_TYPE:
-            if(method_type->GetType() == CLASS_TYPE) {
-              return 1;
-            }
-            return -1;
+      return -1;
+    }
+    else {
+      // look for an exact match
+      if(calling_type->GetType() != CLASS_TYPE && method_type->GetType() != CLASS_TYPE &&
+         calling_type->GetType() != FUNC_TYPE && method_type->GetType() != FUNC_TYPE &&
+         method_type->GetDimension() == 0 && calling_type->GetType() == method_type->GetType()) {
+        return 0;
+      }
 
-          case BOOLEAN_TYPE:
-            return method_type->GetType() == BOOLEAN_TYPE ? 0 : -1;
+      // looks for a relative match
+      if(method_type->GetDimension() == 0) {
+        switch(calling_type->GetType()) {
+        case NIL_TYPE:
+          if(method_type->GetType() == CLASS_TYPE) {
+            return 1;
+          }
+          return -1;
 
+        case BOOLEAN_TYPE:
+          return method_type->GetType() == BOOLEAN_TYPE ? 0 : -1;
+
+        case BYTE_TYPE:
+        case CHAR_TYPE:
+        case INT_TYPE:
+        case FLOAT_TYPE:
+          switch(method_type->GetType()) {
           case BYTE_TYPE:
           case CHAR_TYPE:
           case INT_TYPE:
           case FLOAT_TYPE:
-            switch(method_type->GetType()) {
-            case BYTE_TYPE:
-            case CHAR_TYPE:
-            case INT_TYPE:
-            case FLOAT_TYPE:
+            return 1;
+
+          default:
+            return -1;
+          }
+
+        case CLASS_TYPE: {
+          if(method_type->GetType() == CLASS_TYPE) {
+            // calculate exact match
+            if(IsClassEnumParameterMatch(calling_type, method_type)) {
+              return 0;
+            }
+            // calculate relative match
+            const wstring& from_klass_name = calling_type->GetClassName();
+            Class* from_klass = SearchProgramClasses(from_klass_name);
+            LibraryClass* from_lib_klass = linker->SearchClassLibraries(from_klass_name, program->GetUses(current_class->GetFileName()));
+
+            const wstring& to_klass_name = method_type->GetClassName();
+            Class* to_klass = SearchProgramClasses(to_klass_name);
+            if(to_klass) {
+              return ValidDownCast(to_klass->GetName(), from_klass, from_lib_klass) ? 1 : -1;
+            }
+
+            LibraryClass* to_lib_klass = linker->SearchClassLibraries(to_klass_name, program->GetUses(current_class->GetFileName()));
+            if(to_lib_klass) {
+              return ValidDownCast(to_lib_klass->GetName(), from_klass, from_lib_klass) ? 1 : -1;
+            }
+          }
+          else if(method_type->GetType() == INT_TYPE) {
+            // program
+            if(program->GetEnum(calling_type->GetClassName()) ||
+               linker->SearchEnumLibraries(calling_type->GetClassName(), program->GetUses())) {
               return 1;
-
-            default:
-              return -1;
             }
-
-          case CLASS_TYPE: {
-            if(method_type->GetType() == CLASS_TYPE) {
-              // calculate exact match
-              if(IsClassEnumParameterMatch(calling_type, method_type)) {
-                return 0;
-              }	      
-              // calculate relative match
-              const wstring &from_klass_name = calling_type->GetClassName();
-              Class* from_klass = SearchProgramClasses(from_klass_name);
-              LibraryClass* from_lib_klass = linker->SearchClassLibraries(from_klass_name, program->GetUses(current_class->GetFileName()));	      
-              
-	      const wstring& to_klass_name = method_type->GetClassName();
-	      Class* to_klass = SearchProgramClasses(to_klass_name);
-	      if(to_klass) {
-		return ValidDownCast(to_klass->GetName(), from_klass, from_lib_klass) ? 1 : -1;
-	      }
-
-              LibraryClass* to_lib_klass = linker->SearchClassLibraries(to_klass_name, program->GetUses(current_class->GetFileName()));
-              if(to_lib_klass) {
-                return ValidDownCast(to_lib_klass->GetName(), from_klass, from_lib_klass) ? 1 : -1;
-              }
-            }
-            else if(method_type->GetType() == INT_TYPE) {
-              // program
-              if(program->GetEnum(calling_type->GetClassName()) || 
-                 linker->SearchEnumLibraries(calling_type->GetClassName(), program->GetUses())) {
-                return 1;
-              }
-            }
-
-            return -1;
           }
 
-          case FUNC_TYPE: {
-            const wstring calling_type_name = calling_type->GetClassName();
-            wstring method_type_name = method_type->GetClassName();
-            if(method_type_name.size() == 0) {
-              AnalyzeDynamicFunctionParameters(method_type->GetFunctionParameters(), calling_param);
-              method_type_name = L"m." + EncodeFunctionType(method_type->GetFunctionParameters(),
-                                                            method_type->GetFunctionReturn());
-              method_type->SetClassName(method_type_name);
-            }
+          return -1;
+        }
 
-            return calling_type_name == method_type_name ? 0 : -1;
+        case FUNC_TYPE: {
+          const wstring calling_type_name = calling_type->GetClassName();
+          wstring method_type_name = method_type->GetClassName();
+          if(method_type_name.size() == 0) {
+            AnalyzeDynamicFunctionParameters(method_type->GetFunctionParameters(), calling_param);
+            method_type_name = L"m." + EncodeFunctionType(method_type->GetFunctionParameters(),
+                                                          method_type->GetFunctionReturn());
+            method_type->SetClassName(method_type_name);
           }
 
-          case VAR_TYPE:
-            return -1;
-          }
+          return calling_type_name == method_type_name ? 0 : -1;
+        }
+
+        case VAR_TYPE:
+          return -1;
         }
       }
     }
-
-    return -1;
   }
 
-  /****************************
-   * Resolves method calls
-   ****************************/
-  Method* ContextAnalyzer::ResolveMethodCall(Class* klass, MethodCall* method_call, const int depth) 
-  {
-    const wstring &method_name = method_call->GetMethodName(); 				 
-    ExpressionList* calling_params = method_call->GetCallingParameters();
-    vector<Expression*> expr_params = calling_params->GetExpressions();
-    vector<Method*> candidates = klass->GetAllUnqualifiedMethods(method_name);
-		
-    // save all valid candidates
-    vector<MethodCallSelection*> matches;
-    for(size_t i = 0; i < candidates.size(); ++i) {
-      // match parameter sizes
-      vector<Type*> parms_types;
-      vector<Declaration*> method_parms = candidates[i]->GetDeclarations()->GetDeclarations();
+  return -1;
+}
 
-      if(expr_params.size() == method_parms.size()) {
-        MethodCallSelection* match = new MethodCallSelection(candidates[i]);
-        for(size_t j = 0; j < expr_params.size(); ++j) {	  
-          // get method type
-          Type* method_type = NULL;
-          if(method_parms[j]->GetEntry() && method_parms[j]->GetEntry()->GetType()) {
-	    // get type
-	    method_type = method_parms[j]->GetEntry()->GetType();
+/****************************
+ * Resolves method calls
+ ****************************/
+Method* ContextAnalyzer::ResolveMethodCall(Class * klass, MethodCall * method_call, const int depth)
+{
+  const wstring& method_name = method_call->GetMethodName();
+  ExpressionList* calling_params = method_call->GetCallingParameters();
+  vector<Expression*> expr_params = calling_params->GetExpressions();
+  vector<Method*> candidates = klass->GetAllUnqualifiedMethods(method_name);
 
-	    // TODO: adding generics
-	    // get concrete type if needed
-	    if(klass->HasGenerics()) {
-	      method_type = RelsolveGenericType(method_type, method_call, klass, NULL);
-	    }
-	    ResolveClassEnumType(method_type);
-          }
-          // add parameter match
-	  const int compare = MatchCallingParameter(expr_params[j], method_type, klass, NULL, depth);
-          match->AddParameterMatch(compare);
-        }
-        matches.push_back(match);
-      }
-    }
+  // save all valid candidates
+  vector<MethodCallSelection*> matches;
+  for(size_t i = 0; i < candidates.size(); ++i) {
+    // match parameter sizes
+    vector<Type*> parms_types;
+    vector<Declaration*> method_parms = candidates[i]->GetDeclarations()->GetDeclarations();
 
-    // evaluate matches
-    MethodCallSelector selector(method_call, matches);
-    Method* method = selector.GetSelection();
-    if(method) {
-      // check casts on final candidate
-      vector<Declaration*> method_parms = method->GetDeclarations()->GetDeclarations();
+    if(expr_params.size() == method_parms.size()) {
+      MethodCallSelection* match = new MethodCallSelection(candidates[i]);
       for(size_t j = 0; j < expr_params.size(); ++j) {
-        Expression* expression = expr_params[j];
-        while(expression->GetMethodCall()) {
-          AnalyzeExpressionMethodCall(expression, depth + 1);
-          expression = expression->GetMethodCall();
-        }
+        // get method type
+        Type* method_type = NULL;
+        if(method_parms[j]->GetEntry() && method_parms[j]->GetEntry()->GetType()) {
+          // get type
+          method_type = method_parms[j]->GetEntry()->GetType();
 
-	// TODO: adding generics
-	Type* left = method_parms[j]->GetEntry()->GetType();
-	if(klass->HasGenerics() && !left->HasGenerics()) {
-	  left = RelsolveGenericCall(left, method_call, klass, method);
-	}
-        ResolveClassEnumType(left);
-        AnalyzeRightCast(left, expression, IsScalar(expression), depth + 1);
-      }
-    }
-    else {
-      vector<wstring> alt_methods = selector.GetAlternativeMethodNames();
-      if(alt_methods.size() > 0) {
-        alt_error_method_names = selector.GetAlternativeMethodNames();
-      }
-    }
-
-    return method;
-  }
-
-  /****************************
-   * Analyzes a method call.  This
-   * is method call within the source
-   * program.
-   ****************************/
-  void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call,
-                                          bool is_expr, wstring &encoding, const int depth)
-  {   
-#ifdef _DEBUG
-    GetLogger() << L"Checking program class call: |" << klass->GetName() << L":" 
-		<< (method_call->GetMethodName().size() > 0 ? 
-		    method_call->GetMethodName() : method_call->GetVariableName())
-		<< L"|" << endl;
-#endif
-
-    // calling parameters
-    ExpressionList* call_params = method_call->GetCallingParameters();
-    AnalyzeExpressions(call_params, depth + 1);
-    
-    // note: find system based methods and call with function parameters (i.e. $Int, $Float)
-    Method* method = ResolveMethodCall(klass, method_call, depth);
-    if(!method) {
-      const wstring encoded_name = klass->GetName() + L":" + method_call->GetMethodName() + L":" + encoding +
-        EncodeMethodCall(method_call->GetCallingParameters(), depth);
-      method = klass->GetMethod(encoded_name);
-    }
-
-    if(!method) {
-      if(klass->GetParent()) {
-        Class* parent = klass->GetParent();
-        method_call->SetOriginalClass(klass);
-        wstring encoding;
-        AnalyzeMethodCall(parent, method_call, is_expr, encoding, depth + 1);
-        return;
-      }
-      else if(klass->GetLibraryParent()) {
-        LibraryClass* lib_parent = klass->GetLibraryParent();
-        method_call->SetOriginalClass(klass);
-        wstring encoding;
-        AnalyzeMethodCall(lib_parent, method_call, is_expr, encoding, true, depth + 1);
-        return;
-      }
-      else { 
-        AnalyzeDynamicFunctionCall(method_call, depth + 1);
-        return;
-      }
-    }
-
-    // found program method
-    if(method) {
-      // look for implicit casts
-      vector<Declaration*> mthd_params = method->GetDeclarations()->GetDeclarations();
-      vector<Expression*> expressions = call_params->GetExpressions();
-
-#ifndef _SYSTEM
-      if(mthd_params.size() != expressions.size()) {
-        ProcessError(static_cast<Expression*>(method_call), L"Invalid method call context");
-        return;
-      }
-#endif
-
-      for(size_t i = 0; i < mthd_params.size(); ++i) {
-        AnalyzeDeclaration(mthd_params[i], klass, depth + 1);
-      }
-      
-      Expression* expression;
-      for(size_t i = 0; i < expressions.size(); ++i) {
-        expression = expressions[i];
-        // find eval type
-        while(expression->GetMethodCall()) {
-          AnalyzeExpressionMethodCall(expression, depth + 1);
-          expression = expression->GetMethodCall();
-        }
-        // check cast
-        if(mthd_params[i]->GetEntry()) {
-          if(expression->GetExpressionType() == METHOD_CALL_EXPR && expression->GetEvalType() && expression->GetEvalType()->GetType() == NIL_TYPE) {
-            ProcessError(static_cast<Expression*>(method_call), L"Invalid operation with 'Nil' value");
+          // TODO: adding generics
+          // get concrete type if needed
+          if(klass->HasGenerics()) {
+            method_type = RelsolveGenericType(method_type, method_call, klass, NULL);
           }
-	  // TODO: adding generics
-	  Type* left = mthd_params[i]->GetEntry()->GetType();
-	  if(klass->HasGenerics()) {
-	    left = RelsolveGenericCall(left, method_call, klass, method);
-	  }
-          ResolveClassEnumType(left);
-          AnalyzeRightCast(left, expression->GetEvalType(), expression, IsScalar(expression), depth + 1);	
+          ResolveClassEnumType(method_type);
         }
+        // add parameter match
+        const int compare = MatchCallingParameter(expr_params[j], method_type, klass, NULL, depth);
+        match->AddParameterMatch(compare);
       }
-
-      // public/private check
-      if(method->GetClass() != current_method->GetClass() && !method->IsStatic() &&
-         (method->GetMethodType() == PRIVATE_METHOD || method->GetMethodType() == NEW_PRIVATE_METHOD)) {
-        bool found = false;
-        Class* parent = current_method->GetClass()->GetParent();
-        while(parent && !found) {
-          if(method->GetClass() == parent) {
-            found = true;
-          }
-          // update
-          parent = parent->GetParent();
-        }
-
-        if(!found) {
-          ProcessError(static_cast<Expression*>(method_call), L"Cannot reference a private method from this context");
-        }
-      }
-      // static check
-      if(!is_expr && InvalidStatic(method_call, method)) {
-        ProcessError(static_cast<Expression*>(method_call), L"Cannot reference an instance method from this context");
-      }
-      // cannot create an instance of a virutal class
-      if((method->GetMethodType() == NEW_PUBLIC_METHOD || method->GetMethodType() == NEW_PRIVATE_METHOD) &&
-	 klass->IsVirtual() && current_class->GetParent() != klass) {
-        ProcessError(static_cast<Expression*>(method_call), L"Cannot create an instance of a virutal class");
-      }
-      // associate method
-      klass->SetCalled(true);
-      method_call->SetOriginalClass(klass);
-      method_call->SetMethod(method);
-      
-      // TODO: adding generics
-      if((method->GetMethodType() == NEW_PUBLIC_METHOD || method->GetMethodType() == NEW_PRIVATE_METHOD) &&
-	 klass->HasGenerics() && !method_call->HasConcreteNames() && current_class != klass) {
-	ProcessError(static_cast<Expression*>(method_call), L"Cannot create an instance of a generic class");
-      }
-
-      // TODO: adding generics
-      // map generic to concrete
-      Type* eval_type = method_call->GetEvalType();
-      if(klass->HasGenerics()) {
-	eval_type = RelsolveGenericType(eval_type, method_call, klass, NULL);
-	if(!eval_type->HasGenerics()) {
-	  eval_type->SetGenerics(method_call->GetConcreteTypes());
-	}
-	method_call->SetEvalType(eval_type, false);
-      }
-			
-      if(eval_type->GetType() == CLASS_TYPE && !ResolveClassEnumType(eval_type, klass)) {
-        ProcessError(static_cast<Expression*>(method_call), L"Undefined class or enum: '" + 
-		     ReplaceSubstring(eval_type->GetClassName(), L"#", L"->") + L"'");
-      }
-      
-      if(method_call->GetMethodCall()) {
-        method_call->GetMethodCall()->SetEvalType(method->GetReturn(), false);
-
-      }
-
-      // TODO: adding generics
-      // validate concrete declarations
-      if(method_call->HasConcreteNames()) {
-	const vector<Type*> concrete_types = method_call->GetConcreteTypes();
-	const vector<Class*> generic_classes = method_call->GetMethod()->GetClass()->GetGenericClasses();
-	if(concrete_types.size() == generic_classes.size()) {
-	  for(size_t i = 0; i < concrete_types.size(); ++i) {
-	    Type* right = concrete_types[i];
-	    // generic that defines an interface
-	    if(generic_classes[i]->HasGenericInterface()) {
-	      Type* left = generic_classes[i]->GetGenericInterface();
-	      AnalyzeClassCast(left, right, method_call, true, depth);
-	    }
-	    const wstring cls_name = right->GetClassName();
-	    if(!HasProgramLibraryClass(cls_name)) {
-	      ProcessError(static_cast<Expression*>(method_call), L"Undefined class: '" + cls_name + L"'");
-	    }
-	  }
-	}
-      }
-
-      // enum check
-      if(method_call->GetMethodCall() && method_call->GetMethodCall()->GetCallType() == ENUM_CALL) {
-        ProcessError(static_cast<Expression*>(method_call), L"Invalid enum reference");
-      }
-
-      // next call
-      AnalyzeExpressionMethodCall(method_call, depth + 1);
-    }
-    else {
-      const wstring &mthd_name = method_call->GetMethodName();
-      const wstring &var_name = method_call->GetVariableName();
-
-      if(mthd_name.size() > 0) {
-        wstring message = L"Undefined function/method call: '" +
-          mthd_name + L"(..)'\n\tEnsure the object and it's calling parameters are properly casted";
-        ProcessErrorAlternativeMethods(message);
-        ProcessError(static_cast<Expression*>(method_call), message);
-      }
-      else {
-        wstring message = L"Undefined function/method call: '" +
-          var_name + L"(..)'\n\tEnsure the object and it's calling parameters are properly casted";
-        ProcessErrorAlternativeMethods(message);
-        ProcessError(static_cast<Expression*>(method_call), message);
-      }
+      matches.push_back(match);
     }
   }
 
-  /****************************
-   * Resolves library method calls
-   ****************************/
-  LibraryMethod* ContextAnalyzer::ResolveMethodCall(LibraryClass* klass, MethodCall* method_call, const int depth) 
-  {
-    const wstring &method_name = method_call->GetMethodName(); 				 
-    ExpressionList* calling_params = method_call->GetCallingParameters();
-    vector<Expression*> expr_params = calling_params->GetExpressions();
-    vector<LibraryMethod*> candidates = klass->GetUnqualifiedMethods(method_name);
-
-    // save all valid candidates
-    vector<LibraryMethodCallSelection*> matches;
-    for(size_t i = 0; i < candidates.size(); ++i) {
-      // match parameter sizes
-      vector<Type*> method_parms = candidates[i]->GetDeclarationTypes();      
-      if(expr_params.size() == method_parms.size()) {
-        LibraryMethodCallSelection* match = new LibraryMethodCallSelection(candidates[i]);
-        for(size_t j = 0; j < expr_params.size(); ++j) {
-
-	  // TODO: adding generics
-	  // get concrete type if needed
-	  Type* method_type = method_parms[j];
-	  if(klass->HasGenerics()) {
-	    method_type = RelsolveGenericType(method_type, method_call, NULL, klass);
-	    ResolveClassEnumType(method_type);
-	  }
-					
-          const int compare = MatchCallingParameter(expr_params[j], method_type, NULL, klass, depth);
-          match->AddParameterMatch(compare);
-        }
-        matches.push_back(match);
-      }
-    }
-
-    // evaluate matches
-    LibraryMethodCallSelector selector(method_call, matches);
-    LibraryMethod* lib_method = selector.GetSelection();
-    if(lib_method) {
-      // check casts on final candidate
-      vector<Type*> method_parms = lib_method->GetDeclarationTypes();
-      for(size_t j = 0; j < expr_params.size(); ++j) {
-        Expression* expression = expr_params[j];
-        while(expression->GetMethodCall()) {
-          AnalyzeExpressionMethodCall(expression, depth + 1);
-          if(expression->GetExpressionType() == METHOD_CALL_EXPR && expression->GetEvalType() && expression->GetEvalType()->GetType() == NIL_TYPE) {
-            ProcessError(static_cast<Expression*>(method_call), L"Invalid operation with 'Nil' value");
-          }
-          expression = expression->GetMethodCall();
-        }
-
-	// TODO: adding generics
-	Type* left = method_parms[j];
-	if(klass->HasGenerics()) {
-	  left = RelsolveGenericCall(left, method_call, klass, lib_method);
-	}
-        AnalyzeRightCast(left, expression, IsScalar(expression), depth + 1);
-      }
-    }
-    else {
-      vector<wstring> alt_methods = selector.GetAlternativeMethodNames();
-      if(alt_methods.size() > 0) {
-        alt_error_method_names = selector.GetAlternativeMethodNames();
-      }
-    }
-
-    return lib_method;
-  }
-
-  /****************************
-   * Analyzes a method call.  This
-   * is method call within a linked
-   * library
-   ****************************/
-  void ContextAnalyzer::AnalyzeMethodCall(LibraryClass* klass, MethodCall* method_call,
-                                          bool is_expr, wstring &encoding, bool is_parent, const int depth)
-  {      
-#ifdef _DEBUG
-    GetLogger() << L"Checking library encoded name: |" << klass->GetName() << L":" 
-		<< method_call->GetMethodName() << L"|" << endl;
-#endif
-
-    ExpressionList* call_params = method_call->GetCallingParameters();
-    AnalyzeExpressions(call_params, depth + 1);
-    LibraryMethod* lib_method = ResolveMethodCall(klass, method_call, depth);
-    if(!lib_method) {  
-      LibraryClass* parent = linker->SearchClassLibraries(klass->GetParentName(), program->GetUses(current_class->GetFileName()));
-      while(!lib_method && parent) {
-        lib_method = ResolveMethodCall(parent, method_call, depth);
-        parent = linker->SearchClassLibraries(parent->GetParentName(), program->GetUses(current_class->GetFileName()));
-      }
-    }
-
-    // note: last resort to find system based methods i.e. $Int, $Float, etc.
-    if(!lib_method) {
-      wstring encoded_name = klass->GetName() + L":" + method_call->GetMethodName() + L":" + 
-        encoding + EncodeMethodCall(method_call->GetCallingParameters(), depth);
-      if(*encoded_name.rbegin() == L'*') {
-        encoded_name.push_back(L',');
-      }
-      lib_method = klass->GetMethod(encoded_name);
-      
-      if(lib_method && method_call->GetCallingParameters()->GetExpressions().size() > 0) {
-        ProcessError(static_cast<Expression*>(method_call),
-                     L"Cannot be called as a method, call as class function");
-      }
-    }
-    
-    method_call->SetOriginalLibraryClass(klass);
-    AnalyzeMethodCall(lib_method, method_call, klass->IsVirtual() && !is_parent, is_expr, depth);
-  }
-
-  /****************************
-   * Analyzes a method call.  This
-   * is method call within a linked
-   * library
-   ****************************/
-  void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* method_call,
-                                          bool is_virtual, bool is_expr, const int depth)
-  {
-    if(lib_method) {
-      ExpressionList* call_params = method_call->GetCallingParameters();
-      vector<Expression*> expressions = call_params->GetExpressions();
-
-      for(size_t i = 0; i < expressions.size(); ++i) {
-        Expression* expression = expressions[i];
-        if(expression->GetExpressionType() == METHOD_CALL_EXPR && expression->GetEvalType() && expression->GetEvalType()->GetType() == NIL_TYPE) {
-          ProcessError(static_cast<Expression*>(method_call), L"Invalid operation with 'Nil' value");
-        }
-      }
-
-      // public/private check
-      if((lib_method->GetMethodType() == PRIVATE_METHOD || 
-          lib_method->GetMethodType() == NEW_PRIVATE_METHOD) &&
-         !lib_method->IsStatic()) {
-        ProcessError(static_cast<Expression*>(method_call),
-                     L"Cannot reference a private method from this context");
-      }
-      // static check
-      if(!is_expr && InvalidStatic(method_call, lib_method)) {
-        ProcessError(static_cast<Expression*>(method_call),
-                     L"Cannot reference an instance method from this context");
-      }
-      // cannot create an instance of a virutal class
-      if((lib_method->GetMethodType() == NEW_PUBLIC_METHOD ||
-          lib_method->GetMethodType() == NEW_PRIVATE_METHOD) && is_virtual) {
-        ProcessError(static_cast<Expression*>(method_call),
-                     L"Cannot create an instance of a virutal class");
-      }
-      // associate method
-      lib_method->GetLibraryClass()->SetCalled(true);
-      method_call->SetLibraryMethod(lib_method);
-      if(method_call->GetMethodCall()) {
-        method_call->GetMethodCall()->SetEvalType(lib_method->GetReturn(), false);
-      }
-      // enum check
-      if(method_call->GetMethodCall() && method_call->GetMethodCall()->GetCallType() == ENUM_CALL) {
-        ProcessError(static_cast<Expression*>(method_call), L"Invalid enum reference");
-      }
-
-      if(lib_method->GetReturn()->GetType() == NIL_TYPE && method_call->GetCastType()) {
-	ProcessError(static_cast<Expression*>(method_call), L"Cannot cast a Nil return value");
-      }
-
-      // TODO: adding generics
-      // map generic to concrete
-      LibraryClass* lib_klass = lib_method->GetLibraryClass();
-      Type* eval_type = method_call->GetEvalType();
-      if(lib_klass->HasGenerics()) {
-	eval_type = RelsolveGenericCall(eval_type, method_call, lib_klass, lib_method);
-      }
-
-      // next call
-      AnalyzeExpressionMethodCall(method_call, depth + 1);
-    }
-    else {
-      AnalyzeDynamicFunctionCall(method_call, depth + 1);
-    }
-  }
-
-  /********************************
-   * Analyzes a dynamic function 
-   * call
-   ********************************/
-  void ContextAnalyzer::AnalyzeDynamicFunctionCall(MethodCall* method_call, const int depth) 
-  {
-    // dynamic function call that is not bound to a class/function until runtime
-    SymbolEntry* entry = GetEntry(method_call->GetMethodName());
-    if(entry && entry->GetType() && entry->GetType()->GetType() == FUNC_TYPE) {
-      // generate parameter strings
-      Type* type = entry->GetType();
-      wstring dyn_func_params_str = type->GetClassName();
-      if(dyn_func_params_str.size() == 0) {
-        vector<Type*>& func_params = type->GetFunctionParameters();
-        AnalyzeDynamicFunctionParameters(type->GetFunctionParameters(), static_cast<Expression*>(method_call)); 
-        for(size_t i = 0; i < func_params.size(); ++i) {
-          // encode parameter
-          dyn_func_params_str += EncodeType(func_params[i]);
-          for(int j = 0; j < type->GetDimension(); ++j) {
-            dyn_func_params_str += L'*';
-          }
-          dyn_func_params_str += L',';
-        }
-      }
-      else {
-        size_t start = dyn_func_params_str.find('(');
-        size_t end = dyn_func_params_str.find(')', start + 1);
-        if(start != wstring::npos && end != wstring::npos) {
-          dyn_func_params_str = dyn_func_params_str.substr(start + 1, end - start - 1);
-        }
-      }
-      type->SetFunctionParameterCount((int)method_call->GetCallingParameters()->GetExpressions().size());
-
-      // method call parameters
-      ExpressionList* call_params = method_call->GetCallingParameters();
-      AnalyzeExpressions(call_params, depth + 1);
-
-      // check parameters again dynamic definition
-      const wstring call_params_str = EncodeMethodCall(method_call->GetCallingParameters(), depth);
-      if(dyn_func_params_str != call_params_str) {
-        ProcessError(static_cast<Expression*>(method_call),
-                     L"Undefined function/method call: '" + method_call->GetMethodName() +
-                     L"(..)'\n\tEnsure the object and it's calling parameters are properly casted");
-      }
-
-      //  set entry reference and return type
-      method_call->SetDynamicFunctionCall(entry);
-      method_call->SetEvalType(type->GetFunctionReturn(), true);
-      if(method_call->GetMethodCall()) {
-        method_call->GetMethodCall()->SetEvalType(type->GetFunctionReturn(), false);
-      }
-
-      // next call
-      AnalyzeExpressionMethodCall(method_call, depth + 1);
-    }
-    else {
-      const wstring &mthd_name = method_call->GetMethodName();
-      const wstring &var_name = method_call->GetVariableName();
-
-      if(mthd_name.size() > 0) {
-        wstring message = L"Undefined function/method call: '" + mthd_name +
-          L"(..)'\n\tEnsure the object and it's calling parameters are properly casted";
-        ProcessErrorAlternativeMethods(message);
-        ProcessError(static_cast<Expression*>(method_call), message);
-      }
-      else {
-        wstring message = L"Undefined function/method call: '" + var_name +
-          L"(..)'\n\tEnsure the object and it's calling parameters are properly casted";
-        ProcessErrorAlternativeMethods(message);
-        ProcessError(static_cast<Expression*>(method_call), message);
-      }
-    }
-  }
-
-  /********************************
-   * Analyzes a function reference
-   ********************************/
-  void ContextAnalyzer::AnalyzeFunctionReference(Class* klass, MethodCall* method_call,
-                                                 wstring &encoding, const int depth) 
-  {
-    const wstring func_encoding = EncodeFunctionReference(method_call->GetCallingParameters(), depth);;
-    const wstring encoded_name = klass->GetName() + L":" + method_call->GetMethodName() +
-      L":" + encoding + func_encoding;
-
-    Method* method = klass->GetMethod(encoded_name);
-    if(method) {
-      const wstring func_type_id = L"m.(" + func_encoding + L")~" + method->GetEncodedReturn();
-      Type* type = TypeFactory::Instance()->MakeType(FUNC_TYPE, func_type_id);
-      type->SetFunctionParameterCount((int)method_call->GetCallingParameters()->GetExpressions().size());
-      type->SetFunctionReturn(method->GetReturn());
-      method_call->SetEvalType(type, true);
-
-      if(!method->IsStatic()) {
-        ProcessError(static_cast<Expression*>(method_call), L"References to methods are not allowed, only functions");
-      }
-
-      if(method->IsVirtual()) {
-        ProcessError(static_cast<Expression*>(method_call), L"References to methods cannot be virtual");
-      }
-
-      // check return type
-      Type* rtrn_type = method_call->GetFunctionReturn();
-      if(rtrn_type->GetType() != method->GetReturn()->GetType()) {
-        ProcessError(static_cast<Expression*>(method_call), L"Mismatch function return types");
-      }
-      else if(rtrn_type->GetType() == CLASS_TYPE) {
-        if(ResolveClassEnumType(rtrn_type)) {
-          const wstring rtrn_encoded_name = L"o."+ rtrn_type->GetClassName();
-          if(rtrn_encoded_name != method->GetEncodedReturn()) {
-            ProcessError(static_cast<Expression*>(method_call), L"Mismatch function return types");
-          }
-        }
-        else {
-          ProcessError(static_cast<Expression*>(method_call),
-                       L"Undefined class or enum: '" + ReplaceSubstring(rtrn_type->GetClassName(), L"#", L"->") + L"'");
-        }
-      }
-      method->GetClass()->SetCalled(true);
-      method_call->SetOriginalClass(klass);
-      method_call->SetMethod(method, false);
-    }
-    else {
-      const wstring &mthd_name = method_call->GetMethodName();
-      const wstring &var_name = method_call->GetVariableName();
-
-      if(mthd_name.size() > 0) {
-        ProcessError(static_cast<Expression*>(method_call), L"Undefined function/method call: '" +
-                     mthd_name + L"(..)'\n\tEnsure the object and it's calling parameters are properly casted");
-      }
-      else {
-        ProcessError(static_cast<Expression*>(method_call), L"Undefined function/method call: '" +
-                     var_name + L"(..)'\n\tEnsure the object and it's calling parameters are properly casted");
-      }
-    }
-  }
-
-  /****************************
-   * Checks a function reference
-   ****************************/
-  void ContextAnalyzer::AnalyzeFunctionReference(LibraryClass* klass, MethodCall* method_call,
-                                                 wstring &encoding, const int depth) 
-  {
-    const wstring func_encoding = EncodeFunctionReference(method_call->GetCallingParameters(), depth);;
-    const wstring encoded_name = klass->GetName() + L":" + method_call->GetMethodName() + L":" + encoding + func_encoding;
-    
-    LibraryMethod* method = klass->GetMethod(encoded_name);
-    if(method) {
-      const wstring func_type_id = L'(' + func_encoding + L")~" + method->GetEncodedReturn();
-      Type* type = TypeFactory::Instance()->MakeType(FUNC_TYPE, func_type_id);
-      type->SetFunctionParameterCount((int)method_call->GetCallingParameters()->GetExpressions().size());
-      type->SetFunctionReturn(method->GetReturn());
-      method_call->SetEvalType(type, true);
-
-      if(!method->IsStatic()) {
-        ProcessError(static_cast<Expression*>(method_call), L"References to methods are not allowed, only functions");
-      }
-
-      if(method->IsVirtual()) {
-        ProcessError(static_cast<Expression*>(method_call), L"References to methods cannot be virtual");
-      }
-
-      // check return type
-      Type* rtrn_type = method_call->GetFunctionReturn();
-      if(rtrn_type->GetType() != method->GetReturn()->GetType()) {
-        ProcessError(static_cast<Expression*>(method_call), L"Mismatch function return types");
-      }
-      else if(rtrn_type->GetType() == CLASS_TYPE) {
-        if(ResolveClassEnumType(rtrn_type)) {
-          const wstring rtrn_encoded_name = L"o."+ rtrn_type->GetClassName();
-          if(rtrn_encoded_name != method->GetEncodedReturn()) {
-            ProcessError(static_cast<Expression*>(method_call), L"Mismatch function return types");
-          }
-        }
-        else {
-          ProcessError(static_cast<Expression*>(method_call),
-                       L"Undefined class or enum: '" + ReplaceSubstring(rtrn_type->GetClassName(), L"#", L"->") + L"'");
-        }
-      }
-      method->GetLibraryClass()->SetCalled(true);
-      method_call->SetOriginalLibraryClass(klass);
-      method_call->SetLibraryMethod(method, false);
-    }
-    else {
-      const wstring &mthd_name = method_call->GetMethodName();
-      const wstring &var_name = method_call->GetVariableName();
-
-      if(mthd_name.size() > 0) {
-        ProcessError(static_cast<Expression*>(method_call), L"Undefined function/method call: '" +
-                     mthd_name + L"(..)'\n\tEnsure the object and it's calling parameters are properly casted");
-      }
-      else {
-        ProcessError(static_cast<Expression*>(method_call), L"Undefined function/method call: '" +
-                     var_name + L"(..)'\n\tEnsure the object and it's calling parameters are properly casted");
-      }
-    }
-  }
-
-  /****************************
-   * Analyzes a cast
-   ****************************/
-  void ContextAnalyzer::AnalyzeCast(Expression* expression, const int depth)
-  {
-    // type cast
-    if(expression->GetCastType()) {
-      // get cast and root types
-      Type* cast_type = expression->GetCastType();
-      Type* root_type = expression->GetBaseType();
-      if(!root_type) {
-        root_type = expression->GetEvalType();
-      }
-
-      if(root_type && root_type->GetType() == VAR_TYPE) {
-        ProcessError(expression, L"Cannot cast an uninitialized type");
-      }
-
-      // cannot cast across different dimensions
-      if(root_type && expression->GetExpressionType() == VAR_EXPR && 
-         !static_cast<Variable*>(expression)->GetIndices() &&
-         cast_type->GetDimension() != root_type->GetDimension()) {
-        ProcessError(expression, L"Dimension size mismatch");
-      }
-      
-      // check method call and variable cast
-      if(expression->GetExpressionType() == METHOD_CALL_EXPR && !static_cast<MethodCall*>(expression)->GetVariable()) {
-        AnalyzeRightCast(cast_type, root_type, expression, IsScalar(expression), depth + 1);
-      }
-      else if(cast_type->GetType() == CLASS_TYPE && expression->GetExpressionType() == VAR_EXPR && 
-              !static_cast<Variable*>(expression)->GetIndices()) {
-        AnalyzeClassCast(cast_type, expression, depth + 1);
-      }
-    }
-    // typeof check
-    else if(expression->GetTypeOf()) {
-      if(expression->GetTypeOf()->GetType() != CLASS_TYPE ||
-         (expression->GetEvalType() && expression->GetEvalType()->GetType() != CLASS_TYPE)) {
-        ProcessError(expression, L"Invalid 'TypeOf' check, only complex classes are supported");
-      }
-
-      Type* type_of = expression->GetTypeOf();
-      if(SearchProgramClasses(type_of->GetClassName())) {
-        Class* klass = SearchProgramClasses(type_of->GetClassName());
-        klass->SetCalled(true);
-        type_of->SetClassName(klass->GetName());
-      }
-      else if(linker->SearchClassLibraries(type_of->GetClassName(), program->GetUses(current_class->GetFileName()))) {
-        LibraryClass* lib_klass = linker->SearchClassLibraries(type_of->GetClassName(), program->GetUses(current_class->GetFileName()));
-        lib_klass->SetCalled(true);
-        type_of->SetClassName(lib_klass->GetName());
-      }
-      else {
-        ProcessError(expression, L"Invalid 'TypeOf' check, unknown class '" + type_of->GetClassName() + L"'");
-      }
-      expression->SetEvalType(TypeFactory::Instance()->MakeType(BOOLEAN_TYPE), true);
-    }
-  }
-
-  /****************************
-   * Analyzes array indices
-   ****************************/
-  void ContextAnalyzer::AnalyzeIndices(ExpressionList* indices, const int depth)
-  {
-    AnalyzeExpressions(indices, depth + 1);
-
-    vector<Expression*> expressions = indices->GetExpressions();
-    for(size_t i = 0; i < expressions.size(); ++i) {
-      Expression* expression = expressions[i];
-      AnalyzeExpression(expression, depth + 1);
-      Type* eval_type = expression->GetEvalType();
-      if(eval_type) {
-        switch(eval_type->GetType()) {
-        case BYTE_TYPE:
-        case CHAR_TYPE:
-        case INT_TYPE:
-          break;
-
-        case CLASS_TYPE:
-          if(!IsEnumExpression(expression)) {
-            ProcessError(expression, L"Expected Byte, Char, Int or Enum class type");
-          }
-          break;
-
-        default:
-          ProcessError(expression, L"Expected Byte, Char, Int or Enum class type");
-          break;
-        }
-      }
-    }
-  }
-
-  /****************************
-   * Analyzes a simple statement
-   ****************************/
-  void ContextAnalyzer::AnalyzeSimpleStatement(SimpleStatement* simple, const int depth)
-  {
-    Expression* expression = simple->GetExpression();
-    AnalyzeExpression(expression, depth + 1);
-    AnalyzeExpressionMethodCall(expression, depth);
-
-    // ensure it's a valid statement
-    if(!expression->GetMethodCall()) {
-      ProcessError(expression, L"Invalid statement");
-    }
-  }
-
-  /****************************
-   * Analyzes a 'if' statement
-   ****************************/
-  void ContextAnalyzer::AnalyzeIf(If* if_stmt, const int depth)
-  {
-#ifdef _DEBUG
-    Debug(L"if/else-if/else", if_stmt->GetLineNumber(), depth);
-#endif
-
-    // expression
-    Expression* expression = if_stmt->GetExpression();
-    AnalyzeExpression(expression, depth + 1);
-    if(!IsBooleanExpression(expression)) {
-      ProcessError(expression, L"Expected Bool expression");
-    }
-    // 'if' statements
-    AnalyzeStatements(if_stmt->GetIfStatements(), depth + 1);
-
-    If* next = if_stmt->GetNext();
-    if(next) {
-      AnalyzeIf(next, depth);
-    }
-
-    // 'else'
-    StatementList* else_list = if_stmt->GetElseStatements();
-    if(else_list) {
-      AnalyzeStatements(else_list, depth + 1);
-    }
-  }
-
-  /****************************
-   * Analyzes a 'select' statement
-   ****************************/
-  void ContextAnalyzer::AnalyzeSelect(Select* select_stmt, const int depth)
-  {
-    // expression
-    Expression* expression = select_stmt->GetAssignment()->GetExpression();
-    AnalyzeExpression(expression, depth + 1);
-    if(!IsIntegerExpression(expression)) {
-      ProcessError(expression, L"Expected integer expression");
-    }
-    // labels and expressions
-    map<ExpressionList*, StatementList*> statements = select_stmt->GetStatements();
-    if(statements.size() < 1) {
-      ProcessError(expression, L"Select statement must have at least one label");
-    }
-
-    map<ExpressionList*, StatementList*>::iterator iter;
-    // duplicate value vector
-    int value = 0;
-    map<int, StatementList*> label_statements;
-    for(iter = statements.begin(); iter != statements.end(); ++iter) {
-      // expressions
-      ExpressionList* expressions = iter->first;
-      AnalyzeExpressions(expressions, depth + 1);
-      // check expression type
-      vector<Expression*> expression_list = expressions->GetExpressions();
-      for(size_t i = 0; i < expression_list.size(); ++i) {
-        Expression* expression = expression_list[i];
-        switch(expression->GetExpressionType()) {
-        case CHAR_LIT_EXPR:
-          value = static_cast<CharacterLiteral*>(expression)->GetValue();
-          if(DuplicateCaseItem(label_statements, value)) {
-            ProcessError(expression, L"Duplicate select value");
-          }
-          break;
-
-        case INT_LIT_EXPR:
-          value = static_cast<IntegerLiteral*>(expression)->GetValue();
-          if(DuplicateCaseItem(label_statements, value)) {
-            ProcessError(expression, L"Duplicate select value");
-          }
-          break;
-
-        case METHOD_CALL_EXPR: {
-          // get method call
-          MethodCall* mthd_call = static_cast<MethodCall*>(expression);
-          if(mthd_call->GetMethodCall()) {
-            mthd_call = mthd_call->GetMethodCall();
-          }
-          // check type
-          if(mthd_call->GetEnumItem()) {
-            value = mthd_call->GetEnumItem()->GetId();
-            if(DuplicateCaseItem(label_statements, value)) {
-              ProcessError(expression, L"Duplicate select value");
-            }
-          }
-          else if(mthd_call->GetLibraryEnumItem()) {
-            value = mthd_call->GetLibraryEnumItem()->GetId();
-            if(DuplicateCaseItem(label_statements, value)) {
-              ProcessError(expression, L"Duplicate select value");
-            }
-          }
-          else {
-            ProcessError(expression, L"Expected integer literal or enum item");
-          }
-        }
-          break;
-
-        default:
-          ProcessError(expression, L"Expected integer literal or enum item");
-          break;
-        }
-        // statements get assoicated here and validated below
-        label_statements.insert(pair<int, StatementList*>(value, iter->second));
-      }
-    }
-    select_stmt->SetLabelStatements(label_statements);
-
-    // process statements (in parse order)
-    vector<StatementList*> statement_lists = select_stmt->GetStatementLists();
-    for(size_t i = 0; i < statement_lists.size(); ++i) {
-      AnalyzeStatements(statement_lists[i], depth + 1);
-    }
-  }
-
-  /****************************
-   * Analyzes a 'for' statement
-   ****************************/
-  void ContextAnalyzer::AnalyzeCritical(CriticalSection* mutex, const int depth)
-  {
-    Variable* variable = mutex->GetVariable();
-    AnalyzeVariable(variable, depth + 1);
-    if(variable->GetEvalType() && variable->GetEvalType()->GetType() == CLASS_TYPE) {
-      if(variable->GetEvalType()->GetClassName() != L"System.Concurrency.ThreadMutex") {
-        ProcessError(mutex, L"Expected ThreadMutex type");
-      }
-    }
-    else {
-      ProcessError(mutex, L"Expected ThreadMutex type");
-    }
-    AnalyzeStatements(mutex->GetStatements(), depth + 1);
-  }
-
-  /****************************
-   * Analyzes a 'for' statement
-   ****************************/
-  void ContextAnalyzer::AnalyzeFor(For* for_stmt, const int depth)
-  {
-    current_table->NewScope();
-    // pre
-    AnalyzeStatement(for_stmt->GetPreStatement(), depth + 1);
-    // expression
-    Expression* expression = for_stmt->GetExpression();
-    AnalyzeExpression(expression, depth + 1);
-    if(!IsBooleanExpression(expression)) {
-      ProcessError(expression, L"Expected Bool expression");
-    }
-    // update
-    AnalyzeStatement(for_stmt->GetUpdateStatement(), depth + 1);
-    // statements
-    in_loop++;
-    AnalyzeStatements(for_stmt->GetStatements(), depth + 1);
-    in_loop--;
-    current_table->PreviousScope();
-  }
-
-  /****************************
-   * Analyzes a 'do/while' statement
-   ****************************/
-  void ContextAnalyzer::AnalyzeDoWhile(DoWhile* do_while_stmt, const int depth)
-  {
-#ifdef _DEBUG
-    Debug(L"do/while", do_while_stmt->GetLineNumber(), depth);
-#endif
-
-    // 'do/while' statements
-    current_table->NewScope();
-    in_loop++;
-    vector<Statement*> statements = do_while_stmt->GetStatements()->GetStatements();
-    for(size_t i = 0; i < statements.size(); ++i) {
-      AnalyzeStatement(statements[i], depth + 2);
-    }
-    in_loop--;
-
-    // expression
-    Expression* expression = do_while_stmt->GetExpression();
-    AnalyzeExpression(expression, depth + 1);
-    if(!IsBooleanExpression(expression)) {
-      ProcessError(expression, L"Expected Bool expression");
-    }
-    current_table->PreviousScope();
-  }
-
-  /****************************
-   * Analyzes a 'while' statement
-   ****************************/
-  void ContextAnalyzer::AnalyzeWhile(While* while_stmt, const int depth)
-  {
-#ifdef _DEBUG
-    Debug(L"while", while_stmt->GetLineNumber(), depth);
-#endif
-
-    // expression
-    Expression* expression = while_stmt->GetExpression();
-    AnalyzeExpression(expression, depth + 1);
-    if(!IsBooleanExpression(expression)) {
-      ProcessError(expression, L"Expected Bool expression");
-    }
-    // 'while' statements
-    in_loop++;
-    AnalyzeStatements(while_stmt->GetStatements(), depth + 1);
-    in_loop--;
-  }
-
-  /****************************
-   * Analyzes a return statement
-   ****************************/
-  void ContextAnalyzer::AnalyzeReturn(Return* rtrn, const int depth)
-  {
-#ifdef _DEBUG
-    Debug(L"return", rtrn->GetLineNumber(), depth);
-#endif
-
-    Expression* expression = rtrn->GetExpression();
-    Type* type = current_method->GetReturn();
-    if(expression) {
-      AnalyzeExpression(expression, depth + 1);
+  // evaluate matches
+  MethodCallSelector selector(method_call, matches);
+  Method* method = selector.GetSelection();
+  if(method) {
+    // check casts on final candidate
+    vector<Declaration*> method_parms = method->GetDeclarations()->GetDeclarations();
+    for(size_t j = 0; j < expr_params.size(); ++j) {
+      Expression* expression = expr_params[j];
       while(expression->GetMethodCall()) {
         AnalyzeExpressionMethodCall(expression, depth + 1);
         expression = expression->GetMethodCall();
       }
 
-      if(expression->GetExpressionType() == METHOD_CALL_EXPR && expression->GetEvalType() && expression->GetEvalType()->GetType() == NIL_TYPE) {
-        ProcessError(expression, L"Invalid operation with 'Nil' value");
+      // TODO: adding generics
+      Type* left = method_parms[j]->GetEntry()->GetType();
+      if(klass->HasGenerics() && !left->HasGenerics()) {
+        left = RelsolveGenericCall(left, method_call, klass, method);
       }
-      AnalyzeRightCast(type, expression, (IsScalar(expression) && type->GetDimension() == 0), depth + 1);      
-      
-      if(type->GetType() == CLASS_TYPE && !ResolveClassEnumType(type)) {
-        ProcessError(rtrn, L"Undefined class or enum: '" + ReplaceSubstring(type->GetClassName(), L"#", L"->") + L"'");
-      }
-      /*
-      // TODO: generic remove
-      if(current_class->HasGenerics() && current_class->GetName() == type->GetClassName()) {
-      ProcessError(rtrn, L"Generic classes cannot return untyped references\n\tConsider using a copy constructor");
-      }
-      */
-    }
-    else if(type->GetType() != NIL_TYPE) {
-      ProcessError(rtrn, L"Invalid return statement");
-    }
-
-    if(current_method->GetMethodType() == NEW_PUBLIC_METHOD ||
-       current_method->GetMethodType() == NEW_PRIVATE_METHOD) {
-      ProcessError(rtrn, L"Cannot return vaule from constructor");
+      ResolveClassEnumType(left);
+      AnalyzeRightCast(left, expression, IsScalar(expression), depth + 1);
     }
   }
-  
-  /****************************
-   * Analyzes a return statement
-   ****************************/
-  void ContextAnalyzer::AnalyzeLeaving(Leaving* leaving_stmt, const int depth)
-  {
+  else {
+    vector<wstring> alt_methods = selector.GetAlternativeMethodNames();
+    if(alt_methods.size() > 0) {
+      alt_error_method_names = selector.GetAlternativeMethodNames();
+    }
+  }
+
+  return method;
+}
+
+/****************************
+ * Analyzes a method call.  This
+ * is method call within the source
+ * program.
+ ****************************/
+void ContextAnalyzer::AnalyzeMethodCall(Class * klass, MethodCall * method_call,
+                                        bool is_expr, wstring & encoding, const int depth)
+{
 #ifdef _DEBUG
-    Debug(L"leaving", leaving_stmt->GetLineNumber(), depth);
+  GetLogger() << L"Checking program class call: |" << klass->GetName() << L":"
+    << (method_call->GetMethodName().size() > 0 ?
+        method_call->GetMethodName() : method_call->GetVariableName())
+    << L"|" << endl;
 #endif
-    
-    const int level = current_table->GetDepth();
-    if(level == 1) {
-      AnalyzeStatements(leaving_stmt->GetStatements(), depth + 1);
-      if(current_method->GetLeaving()) {
-        ProcessError(leaving_stmt, L"Method/function may have only 1 'leaving' block defined");
+
+  // calling parameters
+  ExpressionList * call_params = method_call->GetCallingParameters();
+  AnalyzeExpressions(call_params, depth + 1);
+
+  // note: find system based methods and call with function parameters (i.e. $Int, $Float)
+  Method * method = ResolveMethodCall(klass, method_call, depth);
+  if(!method) {
+    const wstring encoded_name = klass->GetName() + L":" + method_call->GetMethodName() + L":" + encoding +
+      EncodeMethodCall(method_call->GetCallingParameters(), depth);
+    method = klass->GetMethod(encoded_name);
+  }
+
+  if(!method) {
+    if(klass->GetParent()) {
+      Class* parent = klass->GetParent();
+      method_call->SetOriginalClass(klass);
+      wstring encoding;
+      AnalyzeMethodCall(parent, method_call, is_expr, encoding, depth + 1);
+      return;
+    }
+    else if(klass->GetLibraryParent()) {
+      LibraryClass* lib_parent = klass->GetLibraryParent();
+      method_call->SetOriginalClass(klass);
+      wstring encoding;
+      AnalyzeMethodCall(lib_parent, method_call, is_expr, encoding, true, depth + 1);
+      return;
+    }
+    else {
+      AnalyzeDynamicFunctionCall(method_call, depth + 1);
+      return;
+    }
+  }
+
+  // found program method
+  if(method) {
+    // look for implicit casts
+    vector<Declaration*> mthd_params = method->GetDeclarations()->GetDeclarations();
+    vector<Expression*> expressions = call_params->GetExpressions();
+
+#ifndef _SYSTEM
+    if(mthd_params.size() != expressions.size()) {
+      ProcessError(static_cast<Expression*>(method_call), L"Invalid method call context");
+      return;
+    }
+#endif
+
+    for(size_t i = 0; i < mthd_params.size(); ++i) {
+      AnalyzeDeclaration(mthd_params[i], klass, depth + 1);
+    }
+
+    Expression* expression;
+    for(size_t i = 0; i < expressions.size(); ++i) {
+      expression = expressions[i];
+      // find eval type
+      while(expression->GetMethodCall()) {
+        AnalyzeExpressionMethodCall(expression, depth + 1);
+        expression = expression->GetMethodCall();
       }
-      else {
-        current_method->SetLeaving(leaving_stmt);
+      // check cast
+      if(mthd_params[i]->GetEntry()) {
+        if(expression->GetExpressionType() == METHOD_CALL_EXPR && expression->GetEvalType() && expression->GetEvalType()->GetType() == NIL_TYPE) {
+          ProcessError(static_cast<Expression*>(method_call), L"Invalid operation with 'Nil' value");
+        }
+        // TODO: adding generics
+        Type* left = mthd_params[i]->GetEntry()->GetType();
+        if(klass->HasGenerics()) {
+          left = RelsolveGenericCall(left, method_call, klass, method);
+        }
+        ResolveClassEnumType(left);
+        AnalyzeRightCast(left, expression->GetEvalType(), expression, IsScalar(expression), depth + 1);
+      }
+    }
+
+    // public/private check
+    if(method->GetClass() != current_method->GetClass() && !method->IsStatic() &&
+      (method->GetMethodType() == PRIVATE_METHOD || method->GetMethodType() == NEW_PRIVATE_METHOD)) {
+      bool found = false;
+      Class* parent = current_method->GetClass()->GetParent();
+      while(parent && !found) {
+        if(method->GetClass() == parent) {
+          found = true;
+        }
+        // update
+        parent = parent->GetParent();
+      }
+
+      if(!found) {
+        ProcessError(static_cast<Expression*>(method_call), L"Cannot reference a private method from this context");
+      }
+    }
+    // static check
+    if(!is_expr && InvalidStatic(method_call, method)) {
+      ProcessError(static_cast<Expression*>(method_call), L"Cannot reference an instance method from this context");
+    }
+    // cannot create an instance of a virutal class
+    if((method->GetMethodType() == NEW_PUBLIC_METHOD || method->GetMethodType() == NEW_PRIVATE_METHOD) &&
+       klass->IsVirtual() && current_class->GetParent() != klass) {
+      ProcessError(static_cast<Expression*>(method_call), L"Cannot create an instance of a virutal class");
+    }
+    // associate method
+    klass->SetCalled(true);
+    method_call->SetOriginalClass(klass);
+    method_call->SetMethod(method);
+
+    // TODO: adding generics
+    if((method->GetMethodType() == NEW_PUBLIC_METHOD || method->GetMethodType() == NEW_PRIVATE_METHOD) &&
+       klass->HasGenerics() && !method_call->HasConcreteNames() && current_class != klass) {
+      ProcessError(static_cast<Expression*>(method_call), L"Cannot create an instance of a generic class");
+    }
+
+    // TODO: adding generics
+    // map generic to concrete
+    Type* eval_type = method_call->GetEvalType();
+    if(klass->HasGenerics()) {
+      eval_type = RelsolveGenericType(eval_type, method_call, klass, NULL);
+      if(!eval_type->HasGenerics()) {
+        eval_type->SetGenerics(method_call->GetConcreteTypes());
+      }
+      method_call->SetEvalType(eval_type, false);
+    }
+
+    if(eval_type->GetType() == CLASS_TYPE && !ResolveClassEnumType(eval_type, klass)) {
+      ProcessError(static_cast<Expression*>(method_call), L"Undefined class or enum: '" +
+                   ReplaceSubstring(eval_type->GetClassName(), L"#", L"->") + L"'");
+    }
+
+    if(method_call->GetMethodCall()) {
+      method_call->GetMethodCall()->SetEvalType(method->GetReturn(), false);
+
+    }
+
+    // TODO: adding generics
+    // validate concrete declarations
+    if(method_call->HasConcreteNames()) {
+      const vector<Type*> concrete_types = method_call->GetConcreteTypes();
+      const vector<Class*> generic_classes = method_call->GetMethod()->GetClass()->GetGenericClasses();
+      if(concrete_types.size() == generic_classes.size()) {
+        for(size_t i = 0; i < concrete_types.size(); ++i) {
+          Type* right = concrete_types[i];
+          // generic that defines an interface
+          if(generic_classes[i]->HasGenericInterface()) {
+            Type* left = generic_classes[i]->GetGenericInterface();
+            AnalyzeClassCast(left, right, method_call, true, depth);
+          }
+          const wstring cls_name = right->GetClassName();
+          if(!HasProgramLibraryClass(cls_name) && !current_class->GetGenericClass(cls_name)) {
+            ProcessError(static_cast<Expression*>(method_call), L"Undefined class: '" + cls_name + L"'");
+          }
+        }
+      }
+    }
+
+    // enum check
+    if(method_call->GetMethodCall() && method_call->GetMethodCall()->GetCallType() == ENUM_CALL) {
+      ProcessError(static_cast<Expression*>(method_call), L"Invalid enum reference");
+    }
+
+    // next call
+    AnalyzeExpressionMethodCall(method_call, depth + 1);
+  }
+  else {
+    const wstring& mthd_name = method_call->GetMethodName();
+    const wstring& var_name = method_call->GetVariableName();
+
+    if(mthd_name.size() > 0) {
+      wstring message = L"Undefined function/method call: '" +
+        mthd_name + L"(..)'\n\tEnsure the object and it's calling parameters are properly casted";
+      ProcessErrorAlternativeMethods(message);
+      ProcessError(static_cast<Expression*>(method_call), message);
+    }
+    else {
+      wstring message = L"Undefined function/method call: '" +
+        var_name + L"(..)'\n\tEnsure the object and it's calling parameters are properly casted";
+      ProcessErrorAlternativeMethods(message);
+      ProcessError(static_cast<Expression*>(method_call), message);
+    }
+  }
+}
+
+/****************************
+ * Resolves library method calls
+ ****************************/
+LibraryMethod* ContextAnalyzer::ResolveMethodCall(LibraryClass * klass, MethodCall * method_call, const int depth)
+{
+  const wstring& method_name = method_call->GetMethodName();
+  ExpressionList* calling_params = method_call->GetCallingParameters();
+  vector<Expression*> expr_params = calling_params->GetExpressions();
+  vector<LibraryMethod*> candidates = klass->GetUnqualifiedMethods(method_name);
+
+  // save all valid candidates
+  vector<LibraryMethodCallSelection*> matches;
+  for(size_t i = 0; i < candidates.size(); ++i) {
+    // match parameter sizes
+    vector<Type*> method_parms = candidates[i]->GetDeclarationTypes();
+    if(expr_params.size() == method_parms.size()) {
+      LibraryMethodCallSelection* match = new LibraryMethodCallSelection(candidates[i]);
+      for(size_t j = 0; j < expr_params.size(); ++j) {
+
+        // TODO: adding generics
+        // get concrete type if needed
+        Type* method_type = method_parms[j];
+        if(klass->HasGenerics()) {
+          method_type = RelsolveGenericType(method_type, method_call, NULL, klass);
+          ResolveClassEnumType(method_type);
+        }
+
+        const int compare = MatchCallingParameter(expr_params[j], method_type, NULL, klass, depth);
+        match->AddParameterMatch(compare);
+      }
+      matches.push_back(match);
+    }
+  }
+
+  // evaluate matches
+  LibraryMethodCallSelector selector(method_call, matches);
+  LibraryMethod* lib_method = selector.GetSelection();
+  if(lib_method) {
+    // check casts on final candidate
+    vector<Type*> method_parms = lib_method->GetDeclarationTypes();
+    for(size_t j = 0; j < expr_params.size(); ++j) {
+      Expression* expression = expr_params[j];
+      while(expression->GetMethodCall()) {
+        AnalyzeExpressionMethodCall(expression, depth + 1);
+        if(expression->GetExpressionType() == METHOD_CALL_EXPR && expression->GetEvalType() && expression->GetEvalType()->GetType() == NIL_TYPE) {
+          ProcessError(static_cast<Expression*>(method_call), L"Invalid operation with 'Nil' value");
+        }
+        expression = expression->GetMethodCall();
+      }
+
+      // TODO: adding generics
+      Type* left = method_parms[j];
+      if(klass->HasGenerics()) {
+        left = RelsolveGenericCall(left, method_call, klass, lib_method);
+      }
+      AnalyzeRightCast(left, expression, IsScalar(expression), depth + 1);
+    }
+  }
+  else {
+    vector<wstring> alt_methods = selector.GetAlternativeMethodNames();
+    if(alt_methods.size() > 0) {
+      alt_error_method_names = selector.GetAlternativeMethodNames();
+    }
+  }
+
+  return lib_method;
+}
+
+/****************************
+ * Analyzes a method call.  This
+ * is method call within a linked
+ * library
+ ****************************/
+void ContextAnalyzer::AnalyzeMethodCall(LibraryClass * klass, MethodCall * method_call,
+                                        bool is_expr, wstring & encoding, bool is_parent, const int depth)
+{
+#ifdef _DEBUG
+  GetLogger() << L"Checking library encoded name: |" << klass->GetName() << L":"
+    << method_call->GetMethodName() << L"|" << endl;
+#endif
+
+  ExpressionList* call_params = method_call->GetCallingParameters();
+  AnalyzeExpressions(call_params, depth + 1);
+  LibraryMethod * lib_method = ResolveMethodCall(klass, method_call, depth);
+  if(!lib_method) {
+    LibraryClass* parent = linker->SearchClassLibraries(klass->GetParentName(), program->GetUses(current_class->GetFileName()));
+    while(!lib_method && parent) {
+      lib_method = ResolveMethodCall(parent, method_call, depth);
+      parent = linker->SearchClassLibraries(parent->GetParentName(), program->GetUses(current_class->GetFileName()));
+    }
+  }
+
+  // note: last resort to find system based methods i.e. $Int, $Float, etc.
+  if(!lib_method) {
+    wstring encoded_name = klass->GetName() + L":" + method_call->GetMethodName() + L":" +
+      encoding + EncodeMethodCall(method_call->GetCallingParameters(), depth);
+    if(*encoded_name.rbegin() == L'*') {
+      encoded_name.push_back(L',');
+    }
+    lib_method = klass->GetMethod(encoded_name);
+
+    if(lib_method && method_call->GetCallingParameters()->GetExpressions().size() > 0) {
+      ProcessError(static_cast<Expression*>(method_call),
+                   L"Cannot be called as a method, call as class function");
+    }
+  }
+
+  method_call->SetOriginalLibraryClass(klass);
+  AnalyzeMethodCall(lib_method, method_call, klass->IsVirtual() && !is_parent, is_expr, depth);
+}
+
+/****************************
+ * Analyzes a method call.  This
+ * is method call within a linked
+ * library
+ ****************************/
+void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod * lib_method, MethodCall * method_call,
+                                        bool is_virtual, bool is_expr, const int depth)
+{
+  if(lib_method) {
+    ExpressionList* call_params = method_call->GetCallingParameters();
+    vector<Expression*> expressions = call_params->GetExpressions();
+
+    for(size_t i = 0; i < expressions.size(); ++i) {
+      Expression* expression = expressions[i];
+      if(expression->GetExpressionType() == METHOD_CALL_EXPR && expression->GetEvalType() && expression->GetEvalType()->GetType() == NIL_TYPE) {
+        ProcessError(static_cast<Expression*>(method_call), L"Invalid operation with 'Nil' value");
+      }
+    }
+
+    // public/private check
+    if((lib_method->GetMethodType() == PRIVATE_METHOD ||
+       lib_method->GetMethodType() == NEW_PRIVATE_METHOD) &&
+       !lib_method->IsStatic()) {
+      ProcessError(static_cast<Expression*>(method_call),
+                   L"Cannot reference a private method from this context");
+    }
+    // static check
+    if(!is_expr && InvalidStatic(method_call, lib_method)) {
+      ProcessError(static_cast<Expression*>(method_call),
+                   L"Cannot reference an instance method from this context");
+    }
+    // cannot create an instance of a virutal class
+    if((lib_method->GetMethodType() == NEW_PUBLIC_METHOD ||
+       lib_method->GetMethodType() == NEW_PRIVATE_METHOD) && is_virtual) {
+      ProcessError(static_cast<Expression*>(method_call),
+                   L"Cannot create an instance of a virutal class");
+    }
+    // associate method
+    lib_method->GetLibraryClass()->SetCalled(true);
+    method_call->SetLibraryMethod(lib_method);
+    if(method_call->GetMethodCall()) {
+      method_call->GetMethodCall()->SetEvalType(lib_method->GetReturn(), false);
+    }
+    // enum check
+    if(method_call->GetMethodCall() && method_call->GetMethodCall()->GetCallType() == ENUM_CALL) {
+      ProcessError(static_cast<Expression*>(method_call), L"Invalid enum reference");
+    }
+
+    if(lib_method->GetReturn()->GetType() == NIL_TYPE && method_call->GetCastType()) {
+      ProcessError(static_cast<Expression*>(method_call), L"Cannot cast a Nil return value");
+    }
+
+    // TODO: adding generics
+    // map generic to concrete
+    LibraryClass* lib_klass = lib_method->GetLibraryClass();
+    Type* eval_type = method_call->GetEvalType();
+    if(lib_klass->HasGenerics()) {
+      eval_type = RelsolveGenericCall(eval_type, method_call, lib_klass, lib_method);
+    }
+
+    // next call
+    AnalyzeExpressionMethodCall(method_call, depth + 1);
+  }
+  else {
+    AnalyzeDynamicFunctionCall(method_call, depth + 1);
+  }
+}
+
+/********************************
+ * Analyzes a dynamic function
+ * call
+ ********************************/
+void ContextAnalyzer::AnalyzeDynamicFunctionCall(MethodCall * method_call, const int depth)
+{
+  // dynamic function call that is not bound to a class/function until runtime
+  SymbolEntry* entry = GetEntry(method_call->GetMethodName());
+  if(entry && entry->GetType() && entry->GetType()->GetType() == FUNC_TYPE) {
+    // generate parameter strings
+    Type* type = entry->GetType();
+    wstring dyn_func_params_str = type->GetClassName();
+    if(dyn_func_params_str.size() == 0) {
+      vector<Type*>& func_params = type->GetFunctionParameters();
+      AnalyzeDynamicFunctionParameters(type->GetFunctionParameters(), static_cast<Expression*>(method_call));
+      for(size_t i = 0; i < func_params.size(); ++i) {
+        // encode parameter
+        dyn_func_params_str += EncodeType(func_params[i]);
+        for(int j = 0; j < type->GetDimension(); ++j) {
+          dyn_func_params_str += L'*';
+        }
+        dyn_func_params_str += L',';
       }
     }
     else {
-      ProcessError(leaving_stmt, L"Method/function 'leaving' block must be a top level statement");
+      size_t start = dyn_func_params_str.find('(');
+      size_t end = dyn_func_params_str.find(')', start + 1);
+      if(start != wstring::npos && end != wstring::npos) {
+        dyn_func_params_str = dyn_func_params_str.substr(start + 1, end - start - 1);
+      }
+    }
+    type->SetFunctionParameterCount((int)method_call->GetCallingParameters()->GetExpressions().size());
+
+    // method call parameters
+    ExpressionList* call_params = method_call->GetCallingParameters();
+    AnalyzeExpressions(call_params, depth + 1);
+
+    // check parameters again dynamic definition
+    const wstring call_params_str = EncodeMethodCall(method_call->GetCallingParameters(), depth);
+    if(dyn_func_params_str != call_params_str) {
+      ProcessError(static_cast<Expression*>(method_call),
+                   L"Undefined function/method call: '" + method_call->GetMethodName() +
+                   L"(..)'\n\tEnsure the object and it's calling parameters are properly casted");
+    }
+
+    //  set entry reference and return type
+    method_call->SetDynamicFunctionCall(entry);
+    method_call->SetEvalType(type->GetFunctionReturn(), true);
+    if(method_call->GetMethodCall()) {
+      method_call->GetMethodCall()->SetEvalType(type->GetFunctionReturn(), false);
+    }
+
+    // next call
+    AnalyzeExpressionMethodCall(method_call, depth + 1);
+  }
+  else {
+    const wstring& mthd_name = method_call->GetMethodName();
+    const wstring& var_name = method_call->GetVariableName();
+
+    if(mthd_name.size() > 0) {
+      wstring message = L"Undefined function/method call: '" + mthd_name +
+        L"(..)'\n\tEnsure the object and it's calling parameters are properly casted";
+      ProcessErrorAlternativeMethods(message);
+      ProcessError(static_cast<Expression*>(method_call), message);
+    }
+    else {
+      wstring message = L"Undefined function/method call: '" + var_name +
+        L"(..)'\n\tEnsure the object and it's calling parameters are properly casted";
+      ProcessErrorAlternativeMethods(message);
+      ProcessError(static_cast<Expression*>(method_call), message);
     }
   }
-  
-  /****************************
-   * Analyzes an assignment statement
-   ****************************/
-  void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType type, const int depth)
-  {
+}
+
+/********************************
+ * Analyzes a function reference
+ ********************************/
+void ContextAnalyzer::AnalyzeFunctionReference(Class * klass, MethodCall * method_call,
+                                               wstring & encoding, const int depth)
+{
+  const wstring func_encoding = EncodeFunctionReference(method_call->GetCallingParameters(), depth);;
+  const wstring encoded_name = klass->GetName() + L":" + method_call->GetMethodName() +
+    L":" + encoding + func_encoding;
+
+  Method* method = klass->GetMethod(encoded_name);
+  if(method) {
+    const wstring func_type_id = L"m.(" + func_encoding + L")~" + method->GetEncodedReturn();
+    Type* type = TypeFactory::Instance()->MakeType(FUNC_TYPE, func_type_id);
+    type->SetFunctionParameterCount((int)method_call->GetCallingParameters()->GetExpressions().size());
+    type->SetFunctionReturn(method->GetReturn());
+    method_call->SetEvalType(type, true);
+
+    if(!method->IsStatic()) {
+      ProcessError(static_cast<Expression*>(method_call), L"References to methods are not allowed, only functions");
+    }
+
+    if(method->IsVirtual()) {
+      ProcessError(static_cast<Expression*>(method_call), L"References to methods cannot be virtual");
+    }
+
+    // check return type
+    Type* rtrn_type = method_call->GetFunctionReturn();
+    if(rtrn_type->GetType() != method->GetReturn()->GetType()) {
+      ProcessError(static_cast<Expression*>(method_call), L"Mismatch function return types");
+    }
+    else if(rtrn_type->GetType() == CLASS_TYPE) {
+      if(ResolveClassEnumType(rtrn_type)) {
+        const wstring rtrn_encoded_name = L"o." + rtrn_type->GetClassName();
+        if(rtrn_encoded_name != method->GetEncodedReturn()) {
+          ProcessError(static_cast<Expression*>(method_call), L"Mismatch function return types");
+        }
+      }
+      else {
+        ProcessError(static_cast<Expression*>(method_call),
+                     L"Undefined class or enum: '" + ReplaceSubstring(rtrn_type->GetClassName(), L"#", L"->") + L"'");
+      }
+    }
+    method->GetClass()->SetCalled(true);
+    method_call->SetOriginalClass(klass);
+    method_call->SetMethod(method, false);
+  }
+  else {
+    const wstring& mthd_name = method_call->GetMethodName();
+    const wstring& var_name = method_call->GetVariableName();
+
+    if(mthd_name.size() > 0) {
+      ProcessError(static_cast<Expression*>(method_call), L"Undefined function/method call: '" +
+                   mthd_name + L"(..)'\n\tEnsure the object and it's calling parameters are properly casted");
+    }
+    else {
+      ProcessError(static_cast<Expression*>(method_call), L"Undefined function/method call: '" +
+                   var_name + L"(..)'\n\tEnsure the object and it's calling parameters are properly casted");
+    }
+  }
+}
+
+/****************************
+ * Checks a function reference
+ ****************************/
+void ContextAnalyzer::AnalyzeFunctionReference(LibraryClass * klass, MethodCall * method_call,
+                                               wstring & encoding, const int depth)
+{
+  const wstring func_encoding = EncodeFunctionReference(method_call->GetCallingParameters(), depth);;
+  const wstring encoded_name = klass->GetName() + L":" + method_call->GetMethodName() + L":" + encoding + func_encoding;
+
+  LibraryMethod* method = klass->GetMethod(encoded_name);
+  if(method) {
+    const wstring func_type_id = L'(' + func_encoding + L")~" + method->GetEncodedReturn();
+    Type* type = TypeFactory::Instance()->MakeType(FUNC_TYPE, func_type_id);
+    type->SetFunctionParameterCount((int)method_call->GetCallingParameters()->GetExpressions().size());
+    type->SetFunctionReturn(method->GetReturn());
+    method_call->SetEvalType(type, true);
+
+    if(!method->IsStatic()) {
+      ProcessError(static_cast<Expression*>(method_call), L"References to methods are not allowed, only functions");
+    }
+
+    if(method->IsVirtual()) {
+      ProcessError(static_cast<Expression*>(method_call), L"References to methods cannot be virtual");
+    }
+
+    // check return type
+    Type* rtrn_type = method_call->GetFunctionReturn();
+    if(rtrn_type->GetType() != method->GetReturn()->GetType()) {
+      ProcessError(static_cast<Expression*>(method_call), L"Mismatch function return types");
+    }
+    else if(rtrn_type->GetType() == CLASS_TYPE) {
+      if(ResolveClassEnumType(rtrn_type)) {
+        const wstring rtrn_encoded_name = L"o." + rtrn_type->GetClassName();
+        if(rtrn_encoded_name != method->GetEncodedReturn()) {
+          ProcessError(static_cast<Expression*>(method_call), L"Mismatch function return types");
+        }
+      }
+      else {
+        ProcessError(static_cast<Expression*>(method_call),
+                     L"Undefined class or enum: '" + ReplaceSubstring(rtrn_type->GetClassName(), L"#", L"->") + L"'");
+      }
+    }
+    method->GetLibraryClass()->SetCalled(true);
+    method_call->SetOriginalLibraryClass(klass);
+    method_call->SetLibraryMethod(method, false);
+  }
+  else {
+    const wstring& mthd_name = method_call->GetMethodName();
+    const wstring& var_name = method_call->GetVariableName();
+
+    if(mthd_name.size() > 0) {
+      ProcessError(static_cast<Expression*>(method_call), L"Undefined function/method call: '" +
+                   mthd_name + L"(..)'\n\tEnsure the object and it's calling parameters are properly casted");
+    }
+    else {
+      ProcessError(static_cast<Expression*>(method_call), L"Undefined function/method call: '" +
+                   var_name + L"(..)'\n\tEnsure the object and it's calling parameters are properly casted");
+    }
+  }
+}
+
+/****************************
+ * Analyzes a cast
+ ****************************/
+void ContextAnalyzer::AnalyzeCast(Expression * expression, const int depth)
+{
+  // type cast
+  if(expression->GetCastType()) {
+    // get cast and root types
+    Type* cast_type = expression->GetCastType();
+    Type* root_type = expression->GetBaseType();
+    if(!root_type) {
+      root_type = expression->GetEvalType();
+    }
+
+    if(root_type && root_type->GetType() == VAR_TYPE) {
+      ProcessError(expression, L"Cannot cast an uninitialized type");
+    }
+
+    // cannot cast across different dimensions
+    if(root_type && expression->GetExpressionType() == VAR_EXPR &&
+       !static_cast<Variable*>(expression)->GetIndices() &&
+       cast_type->GetDimension() != root_type->GetDimension()) {
+      ProcessError(expression, L"Dimension size mismatch");
+    }
+
+    // check method call and variable cast
+    if(expression->GetExpressionType() == METHOD_CALL_EXPR && !static_cast<MethodCall*>(expression)->GetVariable()) {
+      AnalyzeRightCast(cast_type, root_type, expression, IsScalar(expression), depth + 1);
+    }
+    else if(cast_type->GetType() == CLASS_TYPE && expression->GetExpressionType() == VAR_EXPR &&
+            !static_cast<Variable*>(expression)->GetIndices()) {
+      AnalyzeClassCast(cast_type, expression, depth + 1);
+    }
+  }
+  // typeof check
+  else if(expression->GetTypeOf()) {
+    if(expression->GetTypeOf()->GetType() != CLASS_TYPE ||
+      (expression->GetEvalType() && expression->GetEvalType()->GetType() != CLASS_TYPE)) {
+      ProcessError(expression, L"Invalid 'TypeOf' check, only complex classes are supported");
+    }
+
+    Type* type_of = expression->GetTypeOf();
+    if(SearchProgramClasses(type_of->GetClassName())) {
+      Class* klass = SearchProgramClasses(type_of->GetClassName());
+      klass->SetCalled(true);
+      type_of->SetClassName(klass->GetName());
+    }
+    else if(linker->SearchClassLibraries(type_of->GetClassName(), program->GetUses(current_class->GetFileName()))) {
+      LibraryClass* lib_klass = linker->SearchClassLibraries(type_of->GetClassName(), program->GetUses(current_class->GetFileName()));
+      lib_klass->SetCalled(true);
+      type_of->SetClassName(lib_klass->GetName());
+    }
+    else {
+      ProcessError(expression, L"Invalid 'TypeOf' check, unknown class '" + type_of->GetClassName() + L"'");
+    }
+    expression->SetEvalType(TypeFactory::Instance()->MakeType(BOOLEAN_TYPE), true);
+  }
+}
+
+/****************************
+ * Analyzes array indices
+ ****************************/
+void ContextAnalyzer::AnalyzeIndices(ExpressionList * indices, const int depth)
+{
+  AnalyzeExpressions(indices, depth + 1);
+
+  vector<Expression*> expressions = indices->GetExpressions();
+  for(size_t i = 0; i < expressions.size(); ++i) {
+    Expression* expression = expressions[i];
+    AnalyzeExpression(expression, depth + 1);
+    Type * eval_type = expression->GetEvalType();
+    if(eval_type) {
+      switch(eval_type->GetType()) {
+      case BYTE_TYPE:
+      case CHAR_TYPE:
+      case INT_TYPE:
+        break;
+
+      case CLASS_TYPE:
+        if(!IsEnumExpression(expression)) {
+          ProcessError(expression, L"Expected Byte, Char, Int or Enum class type");
+        }
+        break;
+
+      default:
+        ProcessError(expression, L"Expected Byte, Char, Int or Enum class type");
+        break;
+      }
+    }
+  }
+}
+
+/****************************
+ * Analyzes a simple statement
+ ****************************/
+void ContextAnalyzer::AnalyzeSimpleStatement(SimpleStatement * simple, const int depth)
+{
+  Expression* expression = simple->GetExpression();
+  AnalyzeExpression(expression, depth + 1);
+  AnalyzeExpressionMethodCall(expression, depth);
+
+  // ensure it's a valid statement
+  if(!expression->GetMethodCall()) {
+    ProcessError(expression, L"Invalid statement");
+  }
+}
+
+/****************************
+ * Analyzes a 'if' statement
+ ****************************/
+void ContextAnalyzer::AnalyzeIf(If * if_stmt, const int depth)
+{
 #ifdef _DEBUG
-    Debug(L"assignment", assignment->GetLineNumber(), depth);
+  Debug(L"if/else-if/else", if_stmt->GetLineNumber(), depth);
 #endif
 
-    Variable* variable = assignment->GetVariable();
-    AnalyzeVariable(variable, depth + 1);
+  // expression
+  Expression* expression = if_stmt->GetExpression();
+  AnalyzeExpression(expression, depth + 1);
+  if(!IsBooleanExpression(expression)) {
+    ProcessError(expression, L"Expected Bool expression");
+  }
+  // 'if' statements
+  AnalyzeStatements(if_stmt->GetIfStatements(), depth + 1);
 
-    // get last expression for assignment
-    Expression* expression = assignment->GetExpression();
+  If * next = if_stmt->GetNext();
+  if(next) {
+    AnalyzeIf(next, depth);
+  }
+
+  // 'else'
+  StatementList* else_list = if_stmt->GetElseStatements();
+  if(else_list) {
+    AnalyzeStatements(else_list, depth + 1);
+  }
+}
+
+/****************************
+ * Analyzes a 'select' statement
+ ****************************/
+void ContextAnalyzer::AnalyzeSelect(Select * select_stmt, const int depth)
+{
+  // expression
+  Expression* expression = select_stmt->GetAssignment()->GetExpression();
+  AnalyzeExpression(expression, depth + 1);
+  if(!IsIntegerExpression(expression)) {
+    ProcessError(expression, L"Expected integer expression");
+  }
+  // labels and expressions
+  map<ExpressionList*, StatementList*> statements = select_stmt->GetStatements();
+  if(statements.size() < 1) {
+    ProcessError(expression, L"Select statement must have at least one label");
+  }
+
+  map<ExpressionList*, StatementList*>::iterator iter;
+  // duplicate value vector
+  int value = 0;
+  map<int, StatementList*> label_statements;
+  for(iter = statements.begin(); iter != statements.end(); ++iter) {
+    // expressions
+    ExpressionList* expressions = iter->first;
+    AnalyzeExpressions(expressions, depth + 1);
+    // check expression type
+    vector<Expression*> expression_list = expressions->GetExpressions();
+    for(size_t i = 0; i < expression_list.size(); ++i) {
+      Expression* expression = expression_list[i];
+      switch(expression->GetExpressionType()) {
+      case CHAR_LIT_EXPR:
+        value = static_cast<CharacterLiteral*>(expression)->GetValue();
+        if(DuplicateCaseItem(label_statements, value)) {
+          ProcessError(expression, L"Duplicate select value");
+        }
+        break;
+
+      case INT_LIT_EXPR:
+        value = static_cast<IntegerLiteral*>(expression)->GetValue();
+        if(DuplicateCaseItem(label_statements, value)) {
+          ProcessError(expression, L"Duplicate select value");
+        }
+        break;
+
+      case METHOD_CALL_EXPR: {
+        // get method call
+        MethodCall* mthd_call = static_cast<MethodCall*>(expression);
+        if(mthd_call->GetMethodCall()) {
+          mthd_call = mthd_call->GetMethodCall();
+        }
+        // check type
+        if(mthd_call->GetEnumItem()) {
+          value = mthd_call->GetEnumItem()->GetId();
+          if(DuplicateCaseItem(label_statements, value)) {
+            ProcessError(expression, L"Duplicate select value");
+          }
+        }
+        else if(mthd_call->GetLibraryEnumItem()) {
+          value = mthd_call->GetLibraryEnumItem()->GetId();
+          if(DuplicateCaseItem(label_statements, value)) {
+            ProcessError(expression, L"Duplicate select value");
+          }
+        }
+        else {
+          ProcessError(expression, L"Expected integer literal or enum item");
+        }
+      }
+                             break;
+
+      default:
+        ProcessError(expression, L"Expected integer literal or enum item");
+        break;
+      }
+      // statements get assoicated here and validated below
+      label_statements.insert(pair<int, StatementList*>(value, iter->second));
+    }
+  }
+  select_stmt->SetLabelStatements(label_statements);
+
+  // process statements (in parse order)
+  vector<StatementList*> statement_lists = select_stmt->GetStatementLists();
+  for(size_t i = 0; i < statement_lists.size(); ++i) {
+    AnalyzeStatements(statement_lists[i], depth + 1);
+  }
+}
+
+/****************************
+ * Analyzes a 'for' statement
+ ****************************/
+void ContextAnalyzer::AnalyzeCritical(CriticalSection * mutex, const int depth)
+{
+  Variable* variable = mutex->GetVariable();
+  AnalyzeVariable(variable, depth + 1);
+  if(variable->GetEvalType() && variable->GetEvalType()->GetType() == CLASS_TYPE) {
+    if(variable->GetEvalType()->GetClassName() != L"System.Concurrency.ThreadMutex") {
+      ProcessError(mutex, L"Expected ThreadMutex type");
+    }
+  }
+  else {
+    ProcessError(mutex, L"Expected ThreadMutex type");
+  }
+  AnalyzeStatements(mutex->GetStatements(), depth + 1);
+}
+
+/****************************
+ * Analyzes a 'for' statement
+ ****************************/
+void ContextAnalyzer::AnalyzeFor(For * for_stmt, const int depth)
+{
+  current_table->NewScope();
+  // pre
+  AnalyzeStatement(for_stmt->GetPreStatement(), depth + 1);
+  // expression
+  Expression * expression = for_stmt->GetExpression();
+  AnalyzeExpression(expression, depth + 1);
+  if(!IsBooleanExpression(expression)) {
+    ProcessError(expression, L"Expected Bool expression");
+  }
+  // update
+  AnalyzeStatement(for_stmt->GetUpdateStatement(), depth + 1);
+  // statements
+  in_loop++;
+  AnalyzeStatements(for_stmt->GetStatements(), depth + 1);
+  in_loop--;
+  current_table->PreviousScope();
+}
+
+/****************************
+ * Analyzes a 'do/while' statement
+ ****************************/
+void ContextAnalyzer::AnalyzeDoWhile(DoWhile * do_while_stmt, const int depth)
+{
+#ifdef _DEBUG
+  Debug(L"do/while", do_while_stmt->GetLineNumber(), depth);
+#endif
+
+  // 'do/while' statements
+  current_table->NewScope();
+  in_loop++;
+  vector<Statement*> statements = do_while_stmt->GetStatements()->GetStatements();
+  for(size_t i = 0; i < statements.size(); ++i) {
+    AnalyzeStatement(statements[i], depth + 2);
+  }
+  in_loop--;
+
+  // expression
+  Expression* expression = do_while_stmt->GetExpression();
+  AnalyzeExpression(expression, depth + 1);
+  if(!IsBooleanExpression(expression)) {
+    ProcessError(expression, L"Expected Bool expression");
+  }
+  current_table->PreviousScope();
+}
+
+/****************************
+ * Analyzes a 'while' statement
+ ****************************/
+void ContextAnalyzer::AnalyzeWhile(While * while_stmt, const int depth)
+{
+#ifdef _DEBUG
+  Debug(L"while", while_stmt->GetLineNumber(), depth);
+#endif
+
+  // expression
+  Expression* expression = while_stmt->GetExpression();
+  AnalyzeExpression(expression, depth + 1);
+  if(!IsBooleanExpression(expression)) {
+    ProcessError(expression, L"Expected Bool expression");
+  }
+  // 'while' statements
+  in_loop++;
+  AnalyzeStatements(while_stmt->GetStatements(), depth + 1);
+  in_loop--;
+}
+
+/****************************
+ * Analyzes a return statement
+ ****************************/
+void ContextAnalyzer::AnalyzeReturn(Return * rtrn, const int depth)
+{
+#ifdef _DEBUG
+  Debug(L"return", rtrn->GetLineNumber(), depth);
+#endif
+
+  Expression* expression = rtrn->GetExpression();
+  Type* type = current_method->GetReturn();
+  if(expression) {
     AnalyzeExpression(expression, depth + 1);
     while(expression->GetMethodCall()) {
       AnalyzeExpressionMethodCall(expression, depth + 1);
       expression = expression->GetMethodCall();
     }
 
-    // if variable, bind it and update the instance and entry
-    if(variable->GetEvalType() && variable->GetEvalType()->GetType() == VAR_TYPE) {
-      if(variable->GetIndices()) {
-        ProcessError(expression, L"Invalid operation using Var type");
-      } 
-
-      SymbolEntry* entry = variable->GetEntry();
-      if(entry) {
-        if(expression->GetCastType()) {
-          Type* to_type = expression->GetCastType();	  
-          AnalyzeVariableCast(to_type, expression);
-          variable->SetTypes(to_type);
-          entry->SetType(to_type);
-        }
-        else {
-          Type* to_type = expression->GetEvalType();
-          AnalyzeVariableCast(to_type, expression);
-          variable->SetTypes(to_type);
-          entry->SetType(to_type);
-        }
-        // set variable to scalar type if we're de-referencing an array variable
-        if(expression->GetExpressionType() == VAR_EXPR) {
-          Variable* expr_variable = static_cast<Variable*>(expression);
-          if(entry->GetType() && expr_variable->GetIndices()) {
-            variable->GetBaseType()->SetDimension(0);
-            variable->GetEvalType()->SetDimension(0);
-            entry->GetType()->SetDimension(0);
-          }
-        }
-      }
+    if(expression->GetExpressionType() == METHOD_CALL_EXPR && expression->GetEvalType() && expression->GetEvalType()->GetType() == NIL_TYPE) {
+      ProcessError(expression, L"Invalid operation with 'Nil' value");
     }
-    else if(variable->GetEvalType() && variable->GetEvalType()->GetType() == CLASS_TYPE && expression->GetExpressionType() == METHOD_CALL_EXPR) {
-      MethodCall* method_call = static_cast<MethodCall*>(expression);
-      if(method_call->GetEnumItem()) {
-        SymbolEntry* entry = variable->GetEntry();
-        if(entry) {
-          Type* to_type = expression->GetEvalType();
-          AnalyzeVariableCast(to_type, expression);
-          variable->SetTypes(to_type);
-          entry->SetType(to_type);
-        }
-      }
-    }
+    AnalyzeRightCast(type, expression, (IsScalar(expression) && type->GetDimension() == 0), depth + 1);
 
-    Type* eval_type = variable->GetEvalType();
-    
-    // check for 'System.String' append operations
-    bool check_right_cast = true;
-    if(eval_type && eval_type->GetType() == CLASS_TYPE) {    
-#ifndef _SYSTEM
-      LibraryClass* left_class = linker->SearchClassLibraries(eval_type->GetClassName(), program->GetUses(current_class->GetFileName()));
-#else
-      Class* left_class = SearchProgramClasses(eval_type->GetClassName());
-#endif
-      if(left_class) {
-        const wstring left = left_class->GetName();       
-        if(left == L"System.String") {
-          // check rhs type
-          Type* expr_type = GetExpressionType(expression, depth + 1);
-          if(expr_type && expr_type->GetType() == CLASS_TYPE) {
-#ifndef _SYSTEM
-            LibraryClass* right_class = linker->SearchClassLibraries(expr_type->GetClassName(), program->GetUses(current_class->GetFileName()));
-#else
-            Class* right_class = SearchProgramClasses(expr_type->GetClassName());
-#endif
-            if(right_class) {
-              const wstring right = right_class->GetName();
-              // rhs string append
-              if(right == L"System.String") {
-                switch(type) {
-                case ADD_ASSIGN_STMT:
-                  static_cast<OperationAssignment*>(assignment)->SetStringConcat(true);
-                  check_right_cast = false;
-                  break;
-
-                case SUB_ASSIGN_STMT:
-                case MUL_ASSIGN_STMT:
-                case DIV_ASSIGN_STMT:
-                  ProcessError(assignment, L"Invalid operation using classes: System.String and System.String");
-                  break;
-            
-                case ASSIGN_STMT:
-                  break;
-
-                default:
-                  ProcessError(assignment, L"Internal compiler error.");
-                  break;
-                }
-              
-              }
-              else {
-                ProcessError(assignment, L"Invalid operation using classes: System.String and " + right);
-              }
-            }
-            else {
-              ProcessError(assignment, L"Invalid operation using classes: System.String and " + expr_type->GetClassName());
-            }
-          }
-          // rhs 'Char', 'Byte', 'Int', 'Float' or 'Bool'
-          else if(expr_type && (expr_type->GetType() == CHAR_TYPE || expr_type->GetType() == BYTE_TYPE || 
-                                expr_type->GetType() == INT_TYPE || expr_type->GetType() == FLOAT_TYPE || 
-                                expr_type->GetType() == BOOLEAN_TYPE)) {
-            switch(type) {
-            case ADD_ASSIGN_STMT:
-              static_cast<OperationAssignment*>(assignment)->SetStringConcat(true);
-              check_right_cast = false;
-              break;
-
-            case SUB_ASSIGN_STMT:
-            case MUL_ASSIGN_STMT:
-            case DIV_ASSIGN_STMT:
-              if(expr_type->GetType() == CHAR_TYPE) {
-                ProcessError(assignment, L"Invalid operation using classes: System.String and System.Char");
-              }
-              else if(expr_type->GetType() == BYTE_TYPE) {
-                ProcessError(assignment, L"Invalid operation using classes: System.String and System.Byte");
-              }
-              else if(expr_type->GetType() == INT_TYPE) {
-                ProcessError(assignment, L"Invalid operation using classes: System.String and Int");
-              }
-              else if(expr_type->GetType() == FLOAT_TYPE) {
-                ProcessError(assignment, L"Invalid operation using classes: System.String and System.Float");
-              }
-              else {
-                ProcessError(assignment, L"Invalid operation using classes: System.String and System.Bool");
-              }
-              break;
-              
-            case ASSIGN_STMT:
-              break;
-              
-            default:
-              ProcessError(assignment, L"Internal compiler error.");
-              break;
-            }
-          }
-        }
-      }
+    if(type->GetType() == CLASS_TYPE && !ResolveClassEnumType(type)) {
+      ProcessError(rtrn, L"Undefined class or enum: '" + ReplaceSubstring(type->GetClassName(), L"#", L"->") + L"'");
     }
-    
-    if(check_right_cast) {
-      AnalyzeRightCast(variable, expression, (IsScalar(variable) && IsScalar(expression)), depth + 1);
+    /*
+    // TODO: generic remove
+    if(current_class->HasGenerics() && current_class->GetName() == type->GetClassName()) {
+    ProcessError(rtrn, L"Generic classes cannot return untyped references\n\tConsider using a copy constructor");
     }
-    
-    if(expression->GetExpressionType() == METHOD_CALL_EXPR) {
-      MethodCall* method_call = static_cast<MethodCall*>(expression);
-      // 'Nil' return check
-      if(method_call->GetMethod() && method_call->GetMethod()->GetReturn()->GetType() == NIL_TYPE &&
-         !method_call->IsFunctionDefinition()) {
-        ProcessError(expression, L"Invalid assignment method '" + method_call->GetMethod()->GetName() + L"(..)' does not return a value");
-      }
-      else if(method_call->GetEvalType() && method_call->GetEvalType()->GetType() == NIL_TYPE) {
-	ProcessError(expression, L"Invalid assignment, call does not return a value");
-      }
-    }
+    */
+  }
+  else if(type->GetType() != NIL_TYPE) {
+    ProcessError(rtrn, L"Invalid return statement");
   }
 
-  /****************************
-   * Analyzes a logical or mathematical
-   * operation.
-   ****************************/
-  void ContextAnalyzer::AnalyzeCalculation(CalculatedExpression* expression, const int depth)
-  {
-    Type* cls_type = NULL;
-    Expression* left = expression->GetLeft();
-    switch(left->GetExpressionType()) {
-    case AND_EXPR:
-    case OR_EXPR:
-    case EQL_EXPR:
-    case NEQL_EXPR:
-    case LES_EXPR:
-    case GTR_EXPR:
-    case LES_EQL_EXPR:
-    case GTR_EQL_EXPR:
-    case ADD_EXPR:
-    case SUB_EXPR:
-    case MUL_EXPR:
-    case DIV_EXPR:
-    case MOD_EXPR:
-    case SHL_EXPR:
-    case SHR_EXPR:
-    case BIT_AND_EXPR:
-    case BIT_OR_EXPR:
-    case BIT_XOR_EXPR:
-      AnalyzeCalculation(static_cast<CalculatedExpression*>(left), depth + 1);
-      break;
-
-    default:
-      break;
-    }
-
-    Expression* right = expression->GetRight();
-    switch(right->GetExpressionType()) {
-    case AND_EXPR:
-    case OR_EXPR:
-    case EQL_EXPR:
-    case NEQL_EXPR:
-    case LES_EXPR:
-    case GTR_EXPR:
-    case LES_EQL_EXPR:
-    case GTR_EQL_EXPR:
-    case ADD_EXPR:
-    case SUB_EXPR:
-    case MUL_EXPR:
-    case DIV_EXPR:
-    case MOD_EXPR:
-    case SHL_EXPR:
-    case SHR_EXPR:
-    case BIT_AND_EXPR:
-    case BIT_OR_EXPR:
-    case BIT_XOR_EXPR:
-      AnalyzeCalculation(static_cast<CalculatedExpression*>(right), depth + 1);
-      break;
-
-    default:
-      break;
-    }
-    AnalyzeExpression(left, depth + 1);
-    AnalyzeExpression(right, depth + 1);
-
-    // check operations
-    AnalyzeCalculationCast(expression, depth);
-    
-    // check for valid operation cast
-    if(left->GetCastType() && left->GetEvalType()) {
-      AnalyzeRightCast(left->GetCastType(), left->GetEvalType(), left, IsScalar(left), depth);
-    }
-
-    // check for valid operation cast
-    if(right->GetCastType() && right->GetEvalType()) {
-      AnalyzeRightCast(right->GetCastType(), right->GetEvalType(), right, IsScalar(right), depth);
-    }
-    
-    switch(expression->GetExpressionType()) {
-    case AND_EXPR:
-    case OR_EXPR:
-      if(!IsBooleanExpression(left) || !IsBooleanExpression(right)) {
-        ProcessError(expression, L"Invalid mathematical operation");
-      }
-      break;
-
-    case EQL_EXPR:
-    case NEQL_EXPR:
-      if(IsBooleanExpression(left) && !IsBooleanExpression(right)) {
-        ProcessError(expression, L"Invalid mathematical operation");
-      }
-      else if(!IsBooleanExpression(left) && IsBooleanExpression(right)) {
-        ProcessError(expression, L"Invalid mathematical operation");
-      }
-      expression->SetEvalType(TypeFactory::Instance()->MakeType(BOOLEAN_TYPE), true);
-      break;
-
-    case LES_EXPR:
-    case GTR_EXPR:
-    case LES_EQL_EXPR:
-    case GTR_EQL_EXPR:
-      if(IsBooleanExpression(left) || IsBooleanExpression(right)) {
-        ProcessError(expression, L"Invalid mathematical operation");
-      }
-      else if(IsEnumExpression(left) && IsEnumExpression(right)) {
-        ProcessError(expression, L"Invalid mathematical operation");
-      }
-      else if(((cls_type = GetExpressionType(left, depth + 1)) && cls_type->GetType() == CLASS_TYPE) ||
-              ((cls_type = GetExpressionType(right, depth + 1)) && cls_type->GetType() == CLASS_TYPE)) {
-        ProcessError(expression, L"Invalid mathematical operation");
-      }
-      else if((left->GetEvalType() && left->GetEvalType()->GetType() == NIL_TYPE) ||
-              (right->GetEvalType() && right->GetEvalType()->GetType() == NIL_TYPE)) {
-        ProcessError(expression, L"Invalid mathematical operation");
-      }
-      expression->SetEvalType(TypeFactory::Instance()->MakeType(BOOLEAN_TYPE), true);
-      break;
-
-    case MOD_EXPR:
-      if(IsBooleanExpression(left) || IsBooleanExpression(right)) {
-        ProcessError(expression, L"Invalid mathematical operation");
-      }
-      else if(((cls_type = GetExpressionType(left, depth + 1)) && cls_type->GetType() == CLASS_TYPE) ||
-              ((cls_type = GetExpressionType(right, depth + 1)) && cls_type->GetType() == CLASS_TYPE)) {
-        ProcessError(expression, L"Invalid mathematical operation");
-      }
-
-      if(left->GetEvalType() && GetExpressionType(left, depth + 1)->GetType() == FLOAT_TYPE) {
-        if(left->GetCastType()) {
-          switch(left->GetCastType()->GetType()) {
-          case BYTE_TYPE:
-          case INT_TYPE:
-          case CHAR_TYPE:
-            break;
-          default:
-            ProcessError(expression, L"Expected Byte, Char, Int or Enum class type");
-            break;
-          }
-        }
-        else {
-          ProcessError(expression, L"Expected Byte, Char, Int Enum class type");
-        }
-      }
-
-      if(right->GetEvalType() && GetExpressionType(right, depth + 1)->GetType() == FLOAT_TYPE) {
-        if(right->GetCastType()) {
-          switch(right->GetCastType()->GetType()) {
-          case BYTE_TYPE:
-          case INT_TYPE:
-          case CHAR_TYPE:
-            break;
-          default:
-            ProcessError(expression, L"Expected Byte, Char, Int Enum class type");
-            break;
-          }
-        }
-        else {
-          ProcessError(expression, L"Expected Byte, Char, Int Enum class type");
-        }
-      }
-      break;
-
-    case ADD_EXPR:
-    case SUB_EXPR:
-    case MUL_EXPR:
-    case DIV_EXPR:
-    case SHL_EXPR:
-    case SHR_EXPR:
-    case BIT_AND_EXPR:
-    case BIT_OR_EXPR:
-    case BIT_XOR_EXPR:
-      if(IsBooleanExpression(left) || IsBooleanExpression(right)) {
-        ProcessError(expression, L"Invalid mathematical operation");
-      }
-      else if(!(IsEnumExpression(left) || IsEnumExpression(right)) && 
-	      (((cls_type = GetExpressionType(left, depth + 1)) && cls_type->GetType() == CLASS_TYPE) ||
-	       ((cls_type = GetExpressionType(right, depth + 1)) && cls_type->GetType() == CLASS_TYPE))) {
-        ProcessError(expression, L"Invalid mathematical operation");
-      }
-      break;
-
-    default:
-      break;
-    }
+  if(current_method->GetMethodType() == NEW_PUBLIC_METHOD ||
+     current_method->GetMethodType() == NEW_PRIVATE_METHOD) {
+    ProcessError(rtrn, L"Cannot return vaule from constructor");
   }
+}
 
-  /****************************
-   * Preforms type conversions
-   * operational expressions.  This
-   * method uses execution simulation.
-   ****************************/
-  void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, const int depth)
-  {
-    Expression* left_expr = expression->GetLeft();
-    Expression* right_expr = expression->GetRight();
-    
-    Type* left = GetExpressionType(left_expr, depth + 1);
-    Type* right = GetExpressionType(right_expr, depth + 1);
+/****************************
+ * Analyzes a return statement
+ ****************************/
+void ContextAnalyzer::AnalyzeLeaving(Leaving * leaving_stmt, const int depth)
+{
+#ifdef _DEBUG
+  Debug(L"leaving", leaving_stmt->GetLineNumber(), depth);
+#endif
 
-    if(!left || !right) {
-      return;
-    }
-
-    if(!IsScalar(left_expr) || !IsScalar(right_expr)) {
-      if(right->GetType() != NIL_TYPE) {
-        ProcessError(left_expr, L"Invalid array calculation");
-      }
+  const int level = current_table->GetDepth();
+  if(level == 1) {
+    AnalyzeStatements(leaving_stmt->GetStatements(), depth + 1);
+    if(current_method->GetLeaving()) {
+      ProcessError(leaving_stmt, L"Method/function may have only 1 'leaving' block defined");
     }
     else {
-      switch(left->GetType()) {
-      case VAR_TYPE:
-        // VAR
-        switch(right->GetType()) {
-        case FUNC_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: Var and Function");
-          break;
+      current_method->SetLeaving(leaving_stmt);
+    }
+  }
+  else {
+    ProcessError(leaving_stmt, L"Method/function 'leaving' block must be a top level statement");
+  }
+}
 
-        case VAR_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: Var and Var");
-          break;
+/****************************
+ * Analyzes an assignment statement
+ ****************************/
+void ContextAnalyzer::AnalyzeAssignment(Assignment * assignment, StatementType type, const int depth)
+{
+#ifdef _DEBUG
+  Debug(L"assignment", assignment->GetLineNumber(), depth);
+#endif
 
-        case NIL_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: Var and Nil");
-          break;
+  Variable* variable = assignment->GetVariable();
+  AnalyzeVariable(variable, depth + 1);
 
-        case BYTE_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: Var and System.Byte");
-          break;
+  // get last expression for assignment
+  Expression * expression = assignment->GetExpression();
+  AnalyzeExpression(expression, depth + 1);
+  while(expression->GetMethodCall()) {
+    AnalyzeExpressionMethodCall(expression, depth + 1);
+    expression = expression->GetMethodCall();
+  }
 
-        case CHAR_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: Var and System.Char");
-          break;
+  // if variable, bind it and update the instance and entry
+  if(variable->GetEvalType() && variable->GetEvalType()->GetType() == VAR_TYPE) {
+    if(variable->GetIndices()) {
+      ProcessError(expression, L"Invalid operation using Var type");
+    }
 
-        case INT_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: Var and Int");
-          break;
-
-        case FLOAT_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: Var and System.Float");
-          break;
-
-        case CLASS_TYPE:
-          if(HasProgramLibraryEnum(right->GetClassName())) {
-            ProcessError(left_expr, L"Invalid operation using classes: Var and Enum");
-          }
-          break;
-
-        case BOOLEAN_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: Var and System.Bool");
-          break;
+    SymbolEntry* entry = variable->GetEntry();
+    if(entry) {
+      if(expression->GetCastType()) {
+        Type* to_type = expression->GetCastType();
+        AnalyzeVariableCast(to_type, expression);
+        variable->SetTypes(to_type);
+        entry->SetType(to_type);
+      }
+      else {
+        Type* to_type = expression->GetEvalType();
+        AnalyzeVariableCast(to_type, expression);
+        variable->SetTypes(to_type);
+        entry->SetType(to_type);
+      }
+      // set variable to scalar type if we're de-referencing an array variable
+      if(expression->GetExpressionType() == VAR_EXPR) {
+        Variable* expr_variable = static_cast<Variable*>(expression);
+        if(entry->GetType() && expr_variable->GetIndices()) {
+          variable->GetBaseType()->SetDimension(0);
+          variable->GetEvalType()->SetDimension(0);
+          entry->GetType()->SetDimension(0);
         }
-        break;
-
-      case NIL_TYPE:
-        // NIL
-        switch(right->GetType()) {
-        case FUNC_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: Nil and function reference");
-          break;
-
-        case VAR_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: Nil and Var");
-          break;
-
-        case NIL_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: Nil and Nil");
-          break;
-
-        case BYTE_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: Nil and System.Byte");
-          break;
-
-        case CHAR_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: Nil and System.Char");
-          break;
-
-        case INT_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: Nil and Int");
-          break;
-
-        case FLOAT_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: Nil and System.Float");
-          break;
-
-        case CLASS_TYPE:
-          break;
-
-        case BOOLEAN_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: Nil and System.Bool");
-          break;
-        }
-        break;
-
-      case BYTE_TYPE:
-        // BYTE
-        switch(right->GetType()) {
-        case FUNC_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: System.Byte and function reference");
-          break;
-
-        case VAR_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: System.Byte and Var");
-          break;
-
-        case NIL_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: System.Byte and Nil");
-          break;
-
-        case CHAR_TYPE:
-        case INT_TYPE:
-        case BYTE_TYPE:
-          expression->SetEvalType(left, true);
-          break;
-
-        case FLOAT_TYPE:
-          left_expr->SetCastType(right, true);
-          expression->SetEvalType(right, true);
-          break;
-
-        case CLASS_TYPE:
-          if(!HasProgramLibraryEnum(right->GetClassName())) {
-            ProcessError(left_expr, L"Invalid operation using classes: System.Byte and " +
-                         ReplaceSubstring(right->GetClassName(), L"#", L"->"));
-          }
-          else {
-            right_expr->SetCastType(left, true);
-            expression->SetEvalType(left, true);
-          }
-          break;
-
-        case BOOLEAN_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: System.Byte and System.Bool");
-          break;
-        }
-        break;
-
-      case CHAR_TYPE:
-        // CHAR
-        switch(right->GetType()) {
-        case FUNC_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: System.Char and function reference");
-          break;
-
-        case VAR_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: System.Char and Var");
-          break;
-
-        case NIL_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: System.Char and Nil");
-          break;
-
-        case INT_TYPE:
-        case CHAR_TYPE:
-        case BYTE_TYPE:
-          expression->SetEvalType(left, true);
-          break;
-
-        case FLOAT_TYPE:
-          left_expr->SetCastType(right, true);
-          expression->SetEvalType(right, true);
-          break;
-
-        case CLASS_TYPE:
-          if(!HasProgramLibraryEnum(right->GetClassName())) {
-            ProcessError(left_expr, L"Invalid operation using classes: System.Char and " +
-                         ReplaceSubstring(right->GetClassName(), L"#", L"->"));
-          }
-          else {
-            right_expr->SetCastType(left, true);
-            expression->SetEvalType(left, true);
-          }
-          break;
-
-        case BOOLEAN_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes:  Char and System.Bool");
-          break;
-        }
-        break;
-
-      case INT_TYPE:
-        // INT
-        switch(right->GetType()) {
-        case FUNC_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: System.Int and function reference");
-          break;
-
-        case VAR_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: System.Int and Var");
-          break;
-
-        case NIL_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: System.Int and Nil");
-          break;
-
-        case BYTE_TYPE:
-        case CHAR_TYPE:
-        case INT_TYPE:
-          expression->SetEvalType(left, true);
-          break;
-
-        case FLOAT_TYPE:
-          left_expr->SetCastType(right, true);
-          expression->SetEvalType(right, true);
-          break;
-
-        case CLASS_TYPE:
-          if(!HasProgramLibraryEnum(right->GetClassName())) {
-            ProcessError(left_expr, L"Invalid operation using classes: System.Int and " +
-                         ReplaceSubstring(right->GetClassName(), L"#", L"->"));
-          }
-          else {
-            right_expr->SetCastType(left, true);
-            expression->SetEvalType(left, true);
-          }
-          break;
-
-        case BOOLEAN_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: System.Int and System.Bool");
-          break;
-        }
-        break;
-
-      case FLOAT_TYPE:
-        // FLOAT
-        switch(right->GetType()) {
-        case FUNC_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: System.Float and function reference");
-          break;
-
-        case VAR_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: System.Float and Var");
-          break;
-
-        case NIL_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: System.Float and Nil");
-          break;
-
-        case FLOAT_TYPE:
-          expression->SetEvalType(left, true);
-          break;
-
-        case BYTE_TYPE:
-        case CHAR_TYPE:
-        case INT_TYPE:
-          right_expr->SetCastType(left, true);
-          expression->SetEvalType(left, true);
-          break;
-
-        case CLASS_TYPE:
-          if(!HasProgramLibraryEnum(right->GetClassName())) {
-            ProcessError(left_expr, L"Invalid operation using classes: System.Float and " +
-                         ReplaceSubstring(right->GetClassName(), L"#", L"->"));
-          }
-          else {
-            right_expr->SetCastType(left, true);
-            expression->SetEvalType(left, true);
-          }
-          break;
-
-        case BOOLEAN_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: System.Float and System.Bool");
-          break;
-        }
-        break;
-
-      case CLASS_TYPE:
-        // CLASS
-        switch(right->GetType()) {
-        case FUNC_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: " + 
-                       ReplaceSubstring(left->GetClassName(), L"#", L"->") + 
-                       L" and function reference");
-          break;
-
-        case VAR_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: " +
-                       ReplaceSubstring(left->GetClassName(), L"#", L"->") +
-                       L" and Var");
-          break;
-
-        case NIL_TYPE:
-          break;
-
-        case BYTE_TYPE:
-          if(!HasProgramLibraryEnum(left->GetClassName())) {
-            ProcessError(left_expr, L"Invalid operation using classes: " +
-                         ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Byte");
-          }
-          else {
-            left_expr->SetCastType(right, true);
-            expression->SetEvalType(right, true);
-          }
-          break;
-
-        case CHAR_TYPE:
-          if(!HasProgramLibraryEnum(left->GetClassName())) {
-            ProcessError(left_expr, L"Invalid operation using classes: " +
-                         ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Char");
-          }
-          else {
-            left_expr->SetCastType(right, true);
-            expression->SetEvalType(right, true);
-          }
-          break;
-
-        case INT_TYPE:
-          if(!HasProgramLibraryEnum(left->GetClassName())) {
-            ProcessError(left_expr, L"Invalid operation using classes: " +
-                         ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and Int");
-          }
-          else {
-            left_expr->SetCastType(right, true);
-            expression->SetEvalType(right, true);
-          }
-          break;
-
-        case FLOAT_TYPE:
-          if(!HasProgramLibraryEnum(left->GetClassName())) {
-            ProcessError(left_expr, L"Invalid operation using classes: " +
-                         ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Float");
-          }
-          else {
-            left_expr->SetCastType(right, true);
-            expression->SetEvalType(right, true);
-          }
-          break;
-          
-        case CLASS_TYPE:
-          if(HasProgramLibraryEnum(left->GetClassName()) && HasProgramLibraryEnum(right->GetClassName())) {
-            AnalyzeClassCast(left, right, left_expr, false, depth + 1);            
-          }
-          else if((!HasProgramLibraryClass(left->GetClassName()) && !current_class->GetGenericClass(left->GetClassName())) ||
-		  (!HasProgramLibraryClass(right->GetClassName()) && !current_class->GetGenericClass(right->GetClassName()))) {
-            ProcessError(left_expr, L"Invalid operation between class or enum: '" + 
-			 left->GetClassName() + L"' and '" + right->GetClassName() + L"'");
-          }
-          expression->SetEvalType(TypeFactory::Instance()->MakeType(INT_TYPE), true);
-          break;
-          
-        case BOOLEAN_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: " +
-                       ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Bool");
-          break;
-        }
-        break;
-
-      case BOOLEAN_TYPE:
-        // BOOLEAN
-        switch(right->GetType()) {
-        case FUNC_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: System.Bool and function reference");
-          break;
-
-        case VAR_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: System.Bool and Var");
-          break;
-
-        case NIL_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: System.Bool and Nil");
-          break;
-
-        case BYTE_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: System.Bool and System.Byte");
-          break;
-
-        case CHAR_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: System.Bool and System.Char");
-          break;
-
-        case INT_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: System.Bool and Int");
-          break;
-
-        case FLOAT_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: System.Bool and System.Float");
-          break;
-
-        case CLASS_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: System.Bool and " +
-                       ReplaceSubstring(right->GetClassName(), L"#", L"->"));
-          break;
-
-        case BOOLEAN_TYPE:
-          expression->SetEvalType(left, true);
-          break;
-        }
-        break;
-
-      case FUNC_TYPE:
-        // FUNCTION
-        switch(right->GetType()) {
-        case FUNC_TYPE: {
-          AnalyzeDynamicFunctionParameters(left->GetFunctionParameters(), expression);
-          if(left->GetClassName().size() == 0) {
-            left->SetClassName(L"m." + EncodeFunctionType(left->GetFunctionParameters(),
-                                                          left->GetFunctionReturn()));
-          }
-
-          if(right->GetClassName().size() == 0) {
-            right->SetClassName(L"m." + EncodeFunctionType(right->GetFunctionParameters(),
-                                                           right->GetFunctionReturn()));
-          }
-
-          if(left->GetClassName() != right->GetClassName()) {
-            ProcessError(expression, L"Invalid operation using functions: " +
-                         ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and " + 
-                         ReplaceSubstring(right->GetClassName(), L"#", L"->"));
-          }
-        }
-          break;
-
-        case VAR_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: function reference and Var");
-          break;
-
-        case NIL_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: function reference and Nil");
-          break;
-
-        case BYTE_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: function reference and System.Byte");
-          break;
-
-        case CHAR_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: function reference and System.Char");
-          break;
-
-        case INT_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: function reference and Int");
-          break;
-
-        case FLOAT_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: function reference and System.Float");
-          break;
-
-        case CLASS_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: function reference and " +
-                       ReplaceSubstring(right->GetClassName(), L"#", L"->"));
-          break;
-
-        case BOOLEAN_TYPE:
-          ProcessError(left_expr, L"Invalid operation using classes: function reference and System.Bool");
-          break;
-        }
-        break;
+      }
+    }
+  }
+  else if(variable->GetEvalType() && variable->GetEvalType()->GetType() == CLASS_TYPE && expression->GetExpressionType() == METHOD_CALL_EXPR) {
+    MethodCall* method_call = static_cast<MethodCall*>(expression);
+    if(method_call->GetEnumItem()) {
+      SymbolEntry* entry = variable->GetEntry();
+      if(entry) {
+        Type* to_type = expression->GetEvalType();
+        AnalyzeVariableCast(to_type, expression);
+        variable->SetTypes(to_type);
+        entry->SetType(to_type);
       }
     }
   }
 
-  /****************************
-   * Preforms type conversions for
-   * assignment statements.  This
-   * method uses execution simulation.
-   ****************************/
-  void ContextAnalyzer::AnalyzeRightCast(Variable* variable, Expression* expression, bool is_scalar, const int depth)
-  {
-    AnalyzeRightCast(variable->GetEvalType(), GetExpressionType(expression, depth + 1), expression, is_scalar, depth);
-    if(variable->GetIndices() && !is_scalar) {
-      ProcessError(expression, L"Dimension size mismatch");
+  Type* eval_type = variable->GetEvalType();
+
+  // check for 'System.String' append operations
+  bool check_right_cast = true;
+  if(eval_type && eval_type->GetType() == CLASS_TYPE) {
+#ifndef _SYSTEM
+    LibraryClass* left_class = linker->SearchClassLibraries(eval_type->GetClassName(), program->GetUses(current_class->GetFileName()));
+#else
+    Class* left_class = SearchProgramClasses(eval_type->GetClassName());
+#endif
+    if(left_class) {
+      const wstring left = left_class->GetName();
+      if(left == L"System.String") {
+        // check rhs type
+        Type* expr_type = GetExpressionType(expression, depth + 1);
+        if(expr_type && expr_type->GetType() == CLASS_TYPE) {
+#ifndef _SYSTEM
+          LibraryClass* right_class = linker->SearchClassLibraries(expr_type->GetClassName(), program->GetUses(current_class->GetFileName()));
+#else
+          Class* right_class = SearchProgramClasses(expr_type->GetClassName());
+#endif
+          if(right_class) {
+            const wstring right = right_class->GetName();
+            // rhs string append
+            if(right == L"System.String") {
+              switch(type) {
+              case ADD_ASSIGN_STMT:
+                static_cast<OperationAssignment*>(assignment)->SetStringConcat(true);
+                check_right_cast = false;
+                break;
+
+              case SUB_ASSIGN_STMT:
+              case MUL_ASSIGN_STMT:
+              case DIV_ASSIGN_STMT:
+                ProcessError(assignment, L"Invalid operation using classes: System.String and System.String");
+                break;
+
+              case ASSIGN_STMT:
+                break;
+
+              default:
+                ProcessError(assignment, L"Internal compiler error.");
+                break;
+              }
+
+            }
+            else {
+              ProcessError(assignment, L"Invalid operation using classes: System.String and " + right);
+            }
+          }
+          else {
+            ProcessError(assignment, L"Invalid operation using classes: System.String and " + expr_type->GetClassName());
+          }
+        }
+        // rhs 'Char', 'Byte', 'Int', 'Float' or 'Bool'
+        else if(expr_type && (expr_type->GetType() == CHAR_TYPE || expr_type->GetType() == BYTE_TYPE ||
+                expr_type->GetType() == INT_TYPE || expr_type->GetType() == FLOAT_TYPE ||
+                expr_type->GetType() == BOOLEAN_TYPE)) {
+          switch(type) {
+          case ADD_ASSIGN_STMT:
+            static_cast<OperationAssignment*>(assignment)->SetStringConcat(true);
+            check_right_cast = false;
+            break;
+
+          case SUB_ASSIGN_STMT:
+          case MUL_ASSIGN_STMT:
+          case DIV_ASSIGN_STMT:
+            if(expr_type->GetType() == CHAR_TYPE) {
+              ProcessError(assignment, L"Invalid operation using classes: System.String and System.Char");
+            }
+            else if(expr_type->GetType() == BYTE_TYPE) {
+              ProcessError(assignment, L"Invalid operation using classes: System.String and System.Byte");
+            }
+            else if(expr_type->GetType() == INT_TYPE) {
+              ProcessError(assignment, L"Invalid operation using classes: System.String and Int");
+            }
+            else if(expr_type->GetType() == FLOAT_TYPE) {
+              ProcessError(assignment, L"Invalid operation using classes: System.String and System.Float");
+            }
+            else {
+              ProcessError(assignment, L"Invalid operation using classes: System.String and System.Bool");
+            }
+            break;
+
+          case ASSIGN_STMT:
+            break;
+
+          default:
+            ProcessError(assignment, L"Internal compiler error.");
+            break;
+          }
+        }
+      }
     }
   }
 
-  void ContextAnalyzer::AnalyzeRightCast(Type* left, Expression* expression, bool is_scalar, const int depth)
-  {
-    AnalyzeRightCast(left, GetExpressionType(expression, depth + 1), expression, is_scalar, depth);
+  if(check_right_cast) {
+    AnalyzeRightCast(variable, expression, (IsScalar(variable) && IsScalar(expression)), depth + 1);
   }
 
-  void ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expression* expression, bool is_scalar, const int depth)
-  {
-    // assert(left && right);
-    if(!expression || !left || !right) {
-      return;
+  if(expression->GetExpressionType() == METHOD_CALL_EXPR) {
+    MethodCall* method_call = static_cast<MethodCall*>(expression);
+    // 'Nil' return check
+    if(method_call->GetMethod() && method_call->GetMethod()->GetReturn()->GetType() == NIL_TYPE &&
+       !method_call->IsFunctionDefinition()) {
+      ProcessError(expression, L"Invalid assignment method '" + method_call->GetMethod()->GetName() + L"(..)' does not return a value");
+    }
+    else if(method_call->GetEvalType() && method_call->GetEvalType()->GetType() == NIL_TYPE) {
+      ProcessError(expression, L"Invalid assignment, call does not return a value");
+    }
+  }
+}
+
+/****************************
+ * Analyzes a logical or mathematical
+ * operation.
+ ****************************/
+void ContextAnalyzer::AnalyzeCalculation(CalculatedExpression * expression, const int depth)
+{
+  Type* cls_type = NULL;
+  Expression* left = expression->GetLeft();
+  switch(left->GetExpressionType()) {
+  case AND_EXPR:
+  case OR_EXPR:
+  case EQL_EXPR:
+  case NEQL_EXPR:
+  case LES_EXPR:
+  case GTR_EXPR:
+  case LES_EQL_EXPR:
+  case GTR_EQL_EXPR:
+  case ADD_EXPR:
+  case SUB_EXPR:
+  case MUL_EXPR:
+  case DIV_EXPR:
+  case MOD_EXPR:
+  case SHL_EXPR:
+  case SHR_EXPR:
+  case BIT_AND_EXPR:
+  case BIT_OR_EXPR:
+  case BIT_XOR_EXPR:
+    AnalyzeCalculation(static_cast<CalculatedExpression*>(left), depth + 1);
+    break;
+
+  default:
+    break;
+  }
+
+  Expression* right = expression->GetRight();
+  switch(right->GetExpressionType()) {
+  case AND_EXPR:
+  case OR_EXPR:
+  case EQL_EXPR:
+  case NEQL_EXPR:
+  case LES_EXPR:
+  case GTR_EXPR:
+  case LES_EQL_EXPR:
+  case GTR_EQL_EXPR:
+  case ADD_EXPR:
+  case SUB_EXPR:
+  case MUL_EXPR:
+  case DIV_EXPR:
+  case MOD_EXPR:
+  case SHL_EXPR:
+  case SHR_EXPR:
+  case BIT_AND_EXPR:
+  case BIT_OR_EXPR:
+  case BIT_XOR_EXPR:
+    AnalyzeCalculation(static_cast<CalculatedExpression*>(right), depth + 1);
+    break;
+
+  default:
+    break;
+  }
+  AnalyzeExpression(left, depth + 1);
+  AnalyzeExpression(right, depth + 1);
+
+  // check operations
+  AnalyzeCalculationCast(expression, depth);
+
+  // check for valid operation cast
+  if(left->GetCastType() && left->GetEvalType()) {
+    AnalyzeRightCast(left->GetCastType(), left->GetEvalType(), left, IsScalar(left), depth);
+  }
+
+  // check for valid operation cast
+  if(right->GetCastType() && right->GetEvalType()) {
+    AnalyzeRightCast(right->GetCastType(), right->GetEvalType(), right, IsScalar(right), depth);
+  }
+
+  switch(expression->GetExpressionType()) {
+  case AND_EXPR:
+  case OR_EXPR:
+    if(!IsBooleanExpression(left) || !IsBooleanExpression(right)) {
+      ProcessError(expression, L"Invalid mathematical operation");
+    }
+    break;
+
+  case EQL_EXPR:
+  case NEQL_EXPR:
+    if(IsBooleanExpression(left) && !IsBooleanExpression(right)) {
+      ProcessError(expression, L"Invalid mathematical operation");
+    }
+    else if(!IsBooleanExpression(left) && IsBooleanExpression(right)) {
+      ProcessError(expression, L"Invalid mathematical operation");
+    }
+    expression->SetEvalType(TypeFactory::Instance()->MakeType(BOOLEAN_TYPE), true);
+    break;
+
+  case LES_EXPR:
+  case GTR_EXPR:
+  case LES_EQL_EXPR:
+  case GTR_EQL_EXPR:
+    if(IsBooleanExpression(left) || IsBooleanExpression(right)) {
+      ProcessError(expression, L"Invalid mathematical operation");
+    }
+    else if(IsEnumExpression(left) && IsEnumExpression(right)) {
+      ProcessError(expression, L"Invalid mathematical operation");
+    }
+    else if(((cls_type = GetExpressionType(left, depth + 1)) && cls_type->GetType() == CLASS_TYPE) ||
+      ((cls_type = GetExpressionType(right, depth + 1)) && cls_type->GetType() == CLASS_TYPE)) {
+      ProcessError(expression, L"Invalid mathematical operation");
+    }
+    else if((left->GetEvalType() && left->GetEvalType()->GetType() == NIL_TYPE) ||
+      (right->GetEvalType() && right->GetEvalType()->GetType() == NIL_TYPE)) {
+      ProcessError(expression, L"Invalid mathematical operation");
+    }
+    expression->SetEvalType(TypeFactory::Instance()->MakeType(BOOLEAN_TYPE), true);
+    break;
+
+  case MOD_EXPR:
+    if(IsBooleanExpression(left) || IsBooleanExpression(right)) {
+      ProcessError(expression, L"Invalid mathematical operation");
+    }
+    else if(((cls_type = GetExpressionType(left, depth + 1)) && cls_type->GetType() == CLASS_TYPE) ||
+      ((cls_type = GetExpressionType(right, depth + 1)) && cls_type->GetType() == CLASS_TYPE)) {
+      ProcessError(expression, L"Invalid mathematical operation");
     }
 
-    if(is_scalar) {
-      switch(left->GetType()) {
-      case VAR_TYPE:
-        // VAR
-        switch(right->GetType()) {
-        case VAR_TYPE:
-          ProcessError(expression, L"Invalid operation using classes: Var and Var");
-          break;
-
-        case NIL_TYPE:
+    if(left->GetEvalType() && GetExpressionType(left, depth + 1)->GetType() == FLOAT_TYPE) {
+      if(left->GetCastType()) {
+        switch(left->GetCastType()->GetType()) {
         case BYTE_TYPE:
-        case CHAR_TYPE:
         case INT_TYPE:
-        case FLOAT_TYPE:
-        case CLASS_TYPE:
-        case BOOLEAN_TYPE:
+        case CHAR_TYPE:
           break;
-
         default:
+          ProcessError(expression, L"Expected Byte, Char, Int or Enum class type");
           break;
         }
+      }
+      else {
+        ProcessError(expression, L"Expected Byte, Char, Int Enum class type");
+      }
+    }
+
+    if(right->GetEvalType() && GetExpressionType(right, depth + 1)->GetType() == FLOAT_TYPE) {
+      if(right->GetCastType()) {
+        switch(right->GetCastType()->GetType()) {
+        case BYTE_TYPE:
+        case INT_TYPE:
+        case CHAR_TYPE:
+          break;
+        default:
+          ProcessError(expression, L"Expected Byte, Char, Int Enum class type");
+          break;
+        }
+      }
+      else {
+        ProcessError(expression, L"Expected Byte, Char, Int Enum class type");
+      }
+    }
+    break;
+
+  case ADD_EXPR:
+  case SUB_EXPR:
+  case MUL_EXPR:
+  case DIV_EXPR:
+  case SHL_EXPR:
+  case SHR_EXPR:
+  case BIT_AND_EXPR:
+  case BIT_OR_EXPR:
+  case BIT_XOR_EXPR:
+    if(IsBooleanExpression(left) || IsBooleanExpression(right)) {
+      ProcessError(expression, L"Invalid mathematical operation");
+    }
+    else if(!(IsEnumExpression(left) || IsEnumExpression(right)) &&
+      (((cls_type = GetExpressionType(left, depth + 1)) && cls_type->GetType() == CLASS_TYPE) ||
+            ((cls_type = GetExpressionType(right, depth + 1)) && cls_type->GetType() == CLASS_TYPE))) {
+      ProcessError(expression, L"Invalid mathematical operation");
+    }
+    break;
+
+  default:
+    break;
+  }
+}
+
+/****************************
+ * Preforms type conversions
+ * operational expressions.  This
+ * method uses execution simulation.
+ ****************************/
+void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression * expression, const int depth)
+{
+  Expression* left_expr = expression->GetLeft();
+  Expression* right_expr = expression->GetRight();
+
+  Type* left = GetExpressionType(left_expr, depth + 1);
+  Type * right = GetExpressionType(right_expr, depth + 1);
+
+  if(!left || !right) {
+    return;
+  }
+
+  if(!IsScalar(left_expr) || !IsScalar(right_expr)) {
+    if(right->GetType() != NIL_TYPE) {
+      ProcessError(left_expr, L"Invalid array calculation");
+    }
+  }
+  else {
+    switch(left->GetType()) {
+    case VAR_TYPE:
+      // VAR
+      switch(right->GetType()) {
+      case FUNC_TYPE:
+        ProcessError(left_expr, L"Invalid operation using classes: Var and Function");
+        break;
+
+      case VAR_TYPE:
+        ProcessError(left_expr, L"Invalid operation using classes: Var and Var");
         break;
 
       case NIL_TYPE:
-        // NIL
-        switch(right->GetType()) {
-        case FUNC_TYPE:
-          ProcessError(expression, L"Invalid operation using classes: Nil and function reference");
-          break;
-
-        case VAR_TYPE:
-          ProcessError(expression, L"Invalid operation using classes: Nil and Var");
-          break;
-
-        case NIL_TYPE:
-          ProcessError(expression, L"Invalid operation");
-          break;
-
-        case BYTE_TYPE:
-          ProcessError(expression, L"Invalid cast with classes: Nil and System.Byte");
-          break;
-
-        case CHAR_TYPE:
-          ProcessError(expression, L"Invalid cast with classes: Nil and System.Char");
-          break;
-
-        case INT_TYPE:
-          ProcessError(expression, L"Invalid cast with classes: Nil and Int");
-          break;
-
-        case FLOAT_TYPE:
-          ProcessError(expression, L"Invalid cast with classes: Nil and System.Float");
-          break;
-
-        case CLASS_TYPE:
-          ProcessError(expression, L"Invalid cast with classes: Nil and " + 
-                       ReplaceSubstring(right->GetClassName(), L"#", L"->"));
-          break;
-
-        case BOOLEAN_TYPE:
-          ProcessError(expression, L"Invalid cast with classes: Nil and System.Bool");
-          break;
-        }
+        ProcessError(left_expr, L"Invalid operation using classes: Var and Nil");
         break;
 
       case BYTE_TYPE:
-        // BYTE
-        switch(right->GetType()) {
-        case FUNC_TYPE:
-          ProcessError(expression, L"Invalid operation using classes: System.Byte and function reference");
-          break;
-
-        case VAR_TYPE:
-          ProcessError(expression, L"Invalid operation using classes: System.Byte and Var");
-          break;
-
-        case NIL_TYPE:
-          if(left->GetDimension() < 1) {
-            ProcessError(expression, L"Invalid cast with classes: System.Byte and Nil");
-          }
-          break;
-
-        case BYTE_TYPE:
-        case CHAR_TYPE:
-        case INT_TYPE:
-          if(expression->GetEvalType() && expression->GetEvalType()->GetType() != FLOAT_TYPE) {
-            expression->SetEvalType(left, false);
-          }
-          break;
-
-        case FLOAT_TYPE:
-          expression->SetCastType(left, false);
-          expression->SetEvalType(right, false);
-          break;
-
-        case CLASS_TYPE:
-          if(!HasProgramLibraryEnum(right->GetClassName())) {
-            ProcessError(expression, L"Invalid cast with classes: System.Byte and " + 
-                         ReplaceSubstring(right->GetClassName(), L"#", L"->"));
-          }
-          break;
-
-        case BOOLEAN_TYPE:
-          ProcessError(expression, L"Invalid cast with classes: System.Byte and System.Bool");
-          break;
-        }
+        ProcessError(left_expr, L"Invalid operation using classes: Var and System.Byte");
         break;
 
       case CHAR_TYPE:
-        // CHAR
-        switch(right->GetType()) {
-        case FUNC_TYPE:
-          ProcessError(expression, L"Invalid operation using classes: System.Char and function reference");
-          break;
-
-        case VAR_TYPE:
-          ProcessError(expression, L"Invalid operation using classes: System.Char and Var");
-          break;
-
-        case NIL_TYPE:
-          if(left->GetDimension() < 1) {
-            ProcessError(expression, L"Invalid cast with classes: System.Char and Nil");
-          }
-          break;
-
-        case CHAR_TYPE:
-        case BYTE_TYPE:
-        case INT_TYPE:
-          if(expression->GetEvalType() && expression->GetEvalType()->GetType() != FLOAT_TYPE) {
-            expression->SetEvalType(left, false);
-          }
-          break;
-
-        case FLOAT_TYPE:
-          expression->SetCastType(left, false);
-          expression->SetEvalType(right, false);
-          break;
-
-        case CLASS_TYPE:
-          if(!HasProgramLibraryEnum(right->GetClassName())) {
-            ProcessError(expression, L"Invalid cast with classes: System.Char and " + 
-                         ReplaceSubstring(right->GetClassName(), L"#", L"->"));
-          }
-          break;
-
-        case BOOLEAN_TYPE:
-          ProcessError(expression, L"Invalid cast with classes: System.Char and System.Bool");
-          break;
-        }
+        ProcessError(left_expr, L"Invalid operation using classes: Var and System.Char");
         break;
 
       case INT_TYPE:
-        // INT
-        switch(right->GetType()) {
-        case FUNC_TYPE:
-          ProcessError(expression, L"Invalid operation using classes: System.Int and function reference");
-          break;
-
-        case VAR_TYPE:
-          ProcessError(expression, L"Invalid operation using classes: Var and Int");
-          break;
-
-        case NIL_TYPE:
-          if(left->GetDimension() < 1) {
-            ProcessError(expression, L"Invalid cast with classes: System.Int and Nil");
-          }
-          break;
-
-        case INT_TYPE:
-        case BYTE_TYPE:
-        case CHAR_TYPE:
-          if(expression->GetEvalType() && expression->GetEvalType()->GetType() != FLOAT_TYPE) {
-            expression->SetEvalType(left, false);
-          }
-          break;
-
-        case FLOAT_TYPE:
-          expression->SetCastType(left, false);
-          expression->SetEvalType(right, false);
-          break;
-
-        case CLASS_TYPE:
-          if(!HasProgramLibraryEnum(right->GetClassName())) {
-            ProcessError(expression, L"Invalid cast with classes: System.Int and " +
-                         ReplaceSubstring(right->GetClassName(), L"#", L"->"));
-          }
-          break;
-
-        case BOOLEAN_TYPE:
-          ProcessError(expression, L"Invalid cast with classes: System.Int and System.Bool");
-          break;
-        }
+        ProcessError(left_expr, L"Invalid operation using classes: Var and Int");
         break;
 
       case FLOAT_TYPE:
-        // FLOAT
-        switch(right->GetType()) {
-        case FUNC_TYPE:
-          ProcessError(expression, L"Invalid operation using classes: System.Float and function reference");
-          break;
-
-        case VAR_TYPE:
-          ProcessError(expression, L"Invalid operation using classes: Nil and Var");
-          break;
-
-        case NIL_TYPE:
-          if(left->GetDimension() < 1) {
-            ProcessError(expression, L"Invalid cast with classes: System.Float and Nil");
-          }
-          break;
-
-        case FLOAT_TYPE:
-          if(expression->GetEvalType() && expression->GetEvalType()->GetType() != INT_TYPE) {
-            expression->SetEvalType(left, false);
-          }
-          break;
-
-        case BYTE_TYPE:
-        case CHAR_TYPE:
-        case INT_TYPE:
-          expression->SetCastType(left, false);
-          expression->SetEvalType(right, false);
-          break;
-
-        case CLASS_TYPE:
-          if(!HasProgramLibraryEnum(right->GetClassName())) {
-            ProcessError(expression, L"Invalid cast with classes: System.Float and " +
-                         ReplaceSubstring(ReplaceSubstring(right->GetClassName(), L"#", L"->"), L"#", L"->"));
-          }
-          break;
-
-        case BOOLEAN_TYPE:
-          ProcessError(expression, L"Invalid cast with classes: System.Float and System.Bool");
-          break;
-        }
+        ProcessError(left_expr, L"Invalid operation using classes: Var and System.Float");
         break;
 
       case CLASS_TYPE:
-        // CLASS
-        switch(right->GetType()) {
-        case FUNC_TYPE:
-          ProcessError(expression, L"Invalid operation using classes: " + 
-                       ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and function reference");
-          break;
-
-        case VAR_TYPE:
-          ProcessError(expression, L"Invalid cast with classes: " + 
-                       ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and Var");
-          break;
-
-        case NIL_TYPE:
-          expression->SetCastType(left, false);
-          expression->SetEvalType(right, false);
-          break;
-
-        case BYTE_TYPE:
-          if(!HasProgramLibraryEnum(left->GetClassName())) {
-            ProcessError(expression, L"Invalid cast with classes: " + 
-                         ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Byte");
-          }
-          break;
-
-        case CHAR_TYPE:
-          if(!HasProgramLibraryEnum(left->GetClassName())) {
-            ProcessError(expression, L"Invalid cast with classes: " + 
-                         ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Char");
-          }
-          break;
-
-        case INT_TYPE:
-          if(!HasProgramLibraryEnum(left->GetClassName())) {
-            ProcessError(expression, L"Invalid cast with classes: " + 
-                         ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and Int");
-          }
-          break;
-
-        case FLOAT_TYPE:
-          ProcessError(expression, L"Invalid cast with classes: " +
-                       ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Float");
-          break;
-
-        case CLASS_TYPE:
-          AnalyzeClassCast(left, expression, depth + 1);
-          break;
-
-        case BOOLEAN_TYPE:
-          ProcessError(expression, L"Invalid cast with classes: " + left->GetClassName() +
-                       L" and System.Bool");
-          break;
+        if(HasProgramLibraryEnum(right->GetClassName())) {
+          ProcessError(left_expr, L"Invalid operation using classes: Var and Enum");
         }
         break;
 
       case BOOLEAN_TYPE:
-        // BOOLEAN
-        switch(right->GetType()) {
-        case FUNC_TYPE:
-          ProcessError(expression, L"Invalid operation using classes: System.Bool and function reference");
-          break;
+        ProcessError(left_expr, L"Invalid operation using classes: Var and System.Bool");
+        break;
+      }
+      break;
 
-        case VAR_TYPE:
-          ProcessError(expression, L"Invalid operation using classes: System.Bool and Var");
-          break;
+    case NIL_TYPE:
+      // NIL
+      switch(right->GetType()) {
+      case FUNC_TYPE:
+        ProcessError(left_expr, L"Invalid operation using classes: Nil and function reference");
+        break;
 
-        case NIL_TYPE:
-          if(left->GetDimension() < 1) {
-            ProcessError(expression, L"Invalid cast with classes: System.Bool and Nil");
-          }
-          break;
+      case VAR_TYPE:
+        ProcessError(left_expr, L"Invalid operation using classes: Nil and Var");
+        break;
 
-        case BYTE_TYPE:
-          ProcessError(expression, L"Invalid cast with classes: System.Bool and System.Byte");
-          break;
+      case NIL_TYPE:
+        ProcessError(left_expr, L"Invalid operation using classes: Nil and Nil");
+        break;
 
-        case CHAR_TYPE:
-          ProcessError(expression, L"Invalid cast with classes: System.Bool and System.Char");
-          break;
+      case BYTE_TYPE:
+        ProcessError(left_expr, L"Invalid operation using classes: Nil and System.Byte");
+        break;
 
-        case INT_TYPE:
-          ProcessError(expression, L"Invalid cast with classes: System.Bool and Int");
-          break;
+      case CHAR_TYPE:
+        ProcessError(left_expr, L"Invalid operation using classes: Nil and System.Char");
+        break;
 
-        case FLOAT_TYPE:
-          ProcessError(expression, L"Invalid cast with classes: System.Bool and System.Float");
-          break;
+      case INT_TYPE:
+        ProcessError(left_expr, L"Invalid operation using classes: Nil and Int");
+        break;
 
-        case CLASS_TYPE:
-          ProcessError(expression, L"Invalid cast with classes: System.Bool and " + 
-                       ReplaceSubstring(ReplaceSubstring(right->GetClassName(), L"#", L"->"), L"#", L"->"));
-          break;
+      case FLOAT_TYPE:
+        ProcessError(left_expr, L"Invalid operation using classes: Nil and System.Float");
+        break;
 
-        case BOOLEAN_TYPE:
-          break;
+      case CLASS_TYPE:
+        break;
+
+      case BOOLEAN_TYPE:
+        ProcessError(left_expr, L"Invalid operation using classes: Nil and System.Bool");
+        break;
+      }
+      break;
+
+    case BYTE_TYPE:
+      // BYTE
+      switch(right->GetType()) {
+      case FUNC_TYPE:
+        ProcessError(left_expr, L"Invalid operation using classes: System.Byte and function reference");
+        break;
+
+      case VAR_TYPE:
+        ProcessError(left_expr, L"Invalid operation using classes: System.Byte and Var");
+        break;
+
+      case NIL_TYPE:
+        ProcessError(left_expr, L"Invalid operation using classes: System.Byte and Nil");
+        break;
+
+      case CHAR_TYPE:
+      case INT_TYPE:
+      case BYTE_TYPE:
+        expression->SetEvalType(left, true);
+        break;
+
+      case FLOAT_TYPE:
+        left_expr->SetCastType(right, true);
+        expression->SetEvalType(right, true);
+        break;
+
+      case CLASS_TYPE:
+        if(!HasProgramLibraryEnum(right->GetClassName())) {
+          ProcessError(left_expr, L"Invalid operation using classes: System.Byte and " +
+                       ReplaceSubstring(right->GetClassName(), L"#", L"->"));
+        }
+        else {
+          right_expr->SetCastType(left, true);
+          expression->SetEvalType(left, true);
         }
         break;
 
+      case BOOLEAN_TYPE:
+        ProcessError(left_expr, L"Invalid operation using classes: System.Byte and System.Bool");
+        break;
+      }
+      break;
+
+    case CHAR_TYPE:
+      // CHAR
+      switch(right->GetType()) {
       case FUNC_TYPE:
-        // FUNCTION
-        switch(right->GetType()) {
-        case FUNC_TYPE: {
-          AnalyzeDynamicFunctionParameters(left->GetFunctionParameters(), expression);
-          if(left->GetClassName().size() == 0) {
-            left->SetClassName(L"m." + EncodeFunctionType(left->GetFunctionParameters(),
-                                                          left->GetFunctionReturn()));
-          }
+        ProcessError(left_expr, L"Invalid operation using classes: System.Char and function reference");
+        break;
 
-          if(right->GetClassName().size() == 0) {
-            right->SetClassName(L"m." + EncodeFunctionType(right->GetFunctionParameters(),
-                                                           right->GetFunctionReturn()));
-          }
+      case VAR_TYPE:
+        ProcessError(left_expr, L"Invalid operation using classes: System.Char and Var");
+        break;
 
-          if(left->GetClassName() != right->GetClassName()) {
-            ProcessError(expression, L"Invalid operation using mismatch functions: " +
-                         ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and " + 
-                         ReplaceSubstring(ReplaceSubstring(right->GetClassName(), L"#", L"->"), L"#", L"->"));
-          }
+      case NIL_TYPE:
+        ProcessError(left_expr, L"Invalid operation using classes: System.Char and Nil");
+        break;
+
+      case INT_TYPE:
+      case CHAR_TYPE:
+      case BYTE_TYPE:
+        expression->SetEvalType(left, true);
+        break;
+
+      case FLOAT_TYPE:
+        left_expr->SetCastType(right, true);
+        expression->SetEvalType(right, true);
+        break;
+
+      case CLASS_TYPE:
+        if(!HasProgramLibraryEnum(right->GetClassName())) {
+          ProcessError(left_expr, L"Invalid operation using classes: System.Char and " +
+                       ReplaceSubstring(right->GetClassName(), L"#", L"->"));
         }
-          break;
-
-        case VAR_TYPE:
-          ProcessError(expression, L"Invalid operation using classes: function reference and Var");
-          break;
-
-        case NIL_TYPE:
-          ProcessError(expression, L"Invalid cast with classes: function reference and Nil");
-          break;
-
-        case BYTE_TYPE:
-          ProcessError(expression, L"Invalid cast with classes: function reference and System.Byte");
-          break;
-
-        case CHAR_TYPE:
-          ProcessError(expression, L"Invalid cast with classes: function reference and System.Char");
-          break;
-
-        case INT_TYPE:
-          ProcessError(expression, L"Invalid cast with classes: function reference and Int");
-          break;
-
-        case FLOAT_TYPE:
-          ProcessError(expression, L"Invalid cast with classes: function reference and System.Float");
-          break;
-
-        case CLASS_TYPE:
-          ProcessError(expression, L"Invalid cast with classes: function reference and " + 
-                       ReplaceSubstring(ReplaceSubstring(right->GetClassName(), L"#", L"->"), L"#", L"->"));
-          break;
-
-        case BOOLEAN_TYPE:
-          ProcessError(expression, L"Invalid cast with classes: function reference and System.Bool");
-          break;
+        else {
+          right_expr->SetCastType(left, true);
+          expression->SetEvalType(left, true);
         }
+        break;
+
+      case BOOLEAN_TYPE:
+        ProcessError(left_expr, L"Invalid operation using classes:  Char and System.Bool");
+        break;
+      }
+      break;
+
+    case INT_TYPE:
+      // INT
+      switch(right->GetType()) {
+      case FUNC_TYPE:
+        ProcessError(left_expr, L"Invalid operation using classes: System.Int and function reference");
+        break;
+
+      case VAR_TYPE:
+        ProcessError(left_expr, L"Invalid operation using classes: System.Int and Var");
+        break;
+
+      case NIL_TYPE:
+        ProcessError(left_expr, L"Invalid operation using classes: System.Int and Nil");
+        break;
+
+      case BYTE_TYPE:
+      case CHAR_TYPE:
+      case INT_TYPE:
+        expression->SetEvalType(left, true);
+        break;
+
+      case FLOAT_TYPE:
+        left_expr->SetCastType(right, true);
+        expression->SetEvalType(right, true);
+        break;
+
+      case CLASS_TYPE:
+        if(!HasProgramLibraryEnum(right->GetClassName())) {
+          ProcessError(left_expr, L"Invalid operation using classes: System.Int and " +
+                       ReplaceSubstring(right->GetClassName(), L"#", L"->"));
+        }
+        else {
+          right_expr->SetCastType(left, true);
+          expression->SetEvalType(left, true);
+        }
+        break;
+
+      case BOOLEAN_TYPE:
+        ProcessError(left_expr, L"Invalid operation using classes: System.Int and System.Bool");
+        break;
+      }
+      break;
+
+    case FLOAT_TYPE:
+      // FLOAT
+      switch(right->GetType()) {
+      case FUNC_TYPE:
+        ProcessError(left_expr, L"Invalid operation using classes: System.Float and function reference");
+        break;
+
+      case VAR_TYPE:
+        ProcessError(left_expr, L"Invalid operation using classes: System.Float and Var");
+        break;
+
+      case NIL_TYPE:
+        ProcessError(left_expr, L"Invalid operation using classes: System.Float and Nil");
+        break;
+
+      case FLOAT_TYPE:
+        expression->SetEvalType(left, true);
+        break;
+
+      case BYTE_TYPE:
+      case CHAR_TYPE:
+      case INT_TYPE:
+        right_expr->SetCastType(left, true);
+        expression->SetEvalType(left, true);
+        break;
+
+      case CLASS_TYPE:
+        if(!HasProgramLibraryEnum(right->GetClassName())) {
+          ProcessError(left_expr, L"Invalid operation using classes: System.Float and " +
+                       ReplaceSubstring(right->GetClassName(), L"#", L"->"));
+        }
+        else {
+          right_expr->SetCastType(left, true);
+          expression->SetEvalType(left, true);
+        }
+        break;
+
+      case BOOLEAN_TYPE:
+        ProcessError(left_expr, L"Invalid operation using classes: System.Float and System.Bool");
+        break;
+      }
+      break;
+
+    case CLASS_TYPE:
+      // CLASS
+      switch(right->GetType()) {
+      case FUNC_TYPE:
+        ProcessError(left_expr, L"Invalid operation using classes: " +
+                     ReplaceSubstring(left->GetClassName(), L"#", L"->") +
+                     L" and function reference");
+        break;
+
+      case VAR_TYPE:
+        ProcessError(left_expr, L"Invalid operation using classes: " +
+                     ReplaceSubstring(left->GetClassName(), L"#", L"->") +
+                     L" and Var");
+        break;
+
+      case NIL_TYPE:
+        break;
+
+      case BYTE_TYPE:
+        if(!HasProgramLibraryEnum(left->GetClassName())) {
+          ProcessError(left_expr, L"Invalid operation using classes: " +
+                       ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Byte");
+        }
+        else {
+          left_expr->SetCastType(right, true);
+          expression->SetEvalType(right, true);
+        }
+        break;
+
+      case CHAR_TYPE:
+        if(!HasProgramLibraryEnum(left->GetClassName())) {
+          ProcessError(left_expr, L"Invalid operation using classes: " +
+                       ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Char");
+        }
+        else {
+          left_expr->SetCastType(right, true);
+          expression->SetEvalType(right, true);
+        }
+        break;
+
+      case INT_TYPE:
+        if(!HasProgramLibraryEnum(left->GetClassName())) {
+          ProcessError(left_expr, L"Invalid operation using classes: " +
+                       ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and Int");
+        }
+        else {
+          left_expr->SetCastType(right, true);
+          expression->SetEvalType(right, true);
+        }
+        break;
+
+      case FLOAT_TYPE:
+        if(!HasProgramLibraryEnum(left->GetClassName())) {
+          ProcessError(left_expr, L"Invalid operation using classes: " +
+                       ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Float");
+        }
+        else {
+          left_expr->SetCastType(right, true);
+          expression->SetEvalType(right, true);
+        }
+        break;
+
+      case CLASS_TYPE:
+        if(HasProgramLibraryEnum(left->GetClassName()) && HasProgramLibraryEnum(right->GetClassName())) {
+          AnalyzeClassCast(left, right, left_expr, false, depth + 1);
+        }
+        else if((!HasProgramLibraryClass(left->GetClassName()) && !current_class->GetGenericClass(left->GetClassName())) ||
+          (!HasProgramLibraryClass(right->GetClassName()) && !current_class->GetGenericClass(right->GetClassName()))) {
+          ProcessError(left_expr, L"Invalid operation between class or enum: '" +
+                       left->GetClassName() + L"' and '" + right->GetClassName() + L"'");
+        }
+        expression->SetEvalType(TypeFactory::Instance()->MakeType(INT_TYPE), true);
+        break;
+
+      case BOOLEAN_TYPE:
+        ProcessError(left_expr, L"Invalid operation using classes: " +
+                     ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Bool");
+        break;
+      }
+      break;
+
+    case BOOLEAN_TYPE:
+      // BOOLEAN
+      switch(right->GetType()) {
+      case FUNC_TYPE:
+        ProcessError(left_expr, L"Invalid operation using classes: System.Bool and function reference");
+        break;
+
+      case VAR_TYPE:
+        ProcessError(left_expr, L"Invalid operation using classes: System.Bool and Var");
+        break;
+
+      case NIL_TYPE:
+        ProcessError(left_expr, L"Invalid operation using classes: System.Bool and Nil");
+        break;
+
+      case BYTE_TYPE:
+        ProcessError(left_expr, L"Invalid operation using classes: System.Bool and System.Byte");
+        break;
+
+      case CHAR_TYPE:
+        ProcessError(left_expr, L"Invalid operation using classes: System.Bool and System.Char");
+        break;
+
+      case INT_TYPE:
+        ProcessError(left_expr, L"Invalid operation using classes: System.Bool and Int");
+        break;
+
+      case FLOAT_TYPE:
+        ProcessError(left_expr, L"Invalid operation using classes: System.Bool and System.Float");
+        break;
+
+      case CLASS_TYPE:
+        ProcessError(left_expr, L"Invalid operation using classes: System.Bool and " +
+                     ReplaceSubstring(right->GetClassName(), L"#", L"->"));
+        break;
+
+      case BOOLEAN_TYPE:
+        expression->SetEvalType(left, true);
+        break;
+      }
+      break;
+
+    case FUNC_TYPE:
+      // FUNCTION
+      switch(right->GetType()) {
+      case FUNC_TYPE: {
+        AnalyzeDynamicFunctionParameters(left->GetFunctionParameters(), expression);
+        if(left->GetClassName().size() == 0) {
+          left->SetClassName(L"m." + EncodeFunctionType(left->GetFunctionParameters(),
+                             left->GetFunctionReturn()));
+        }
+
+        if(right->GetClassName().size() == 0) {
+          right->SetClassName(L"m." + EncodeFunctionType(right->GetFunctionParameters(),
+                              right->GetFunctionReturn()));
+        }
+
+        if(left->GetClassName() != right->GetClassName()) {
+          ProcessError(expression, L"Invalid operation using functions: " +
+                       ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and " +
+                       ReplaceSubstring(right->GetClassName(), L"#", L"->"));
+        }
+      }
+                      break;
+
+      case VAR_TYPE:
+        ProcessError(left_expr, L"Invalid operation using classes: function reference and Var");
+        break;
+
+      case NIL_TYPE:
+        ProcessError(left_expr, L"Invalid operation using classes: function reference and Nil");
+        break;
+
+      case BYTE_TYPE:
+        ProcessError(left_expr, L"Invalid operation using classes: function reference and System.Byte");
+        break;
+
+      case CHAR_TYPE:
+        ProcessError(left_expr, L"Invalid operation using classes: function reference and System.Char");
+        break;
+
+      case INT_TYPE:
+        ProcessError(left_expr, L"Invalid operation using classes: function reference and Int");
+        break;
+
+      case FLOAT_TYPE:
+        ProcessError(left_expr, L"Invalid operation using classes: function reference and System.Float");
+        break;
+
+      case CLASS_TYPE:
+        ProcessError(left_expr, L"Invalid operation using classes: function reference and " +
+                     ReplaceSubstring(right->GetClassName(), L"#", L"->"));
+        break;
+
+      case BOOLEAN_TYPE:
+        ProcessError(left_expr, L"Invalid operation using classes: function reference and System.Bool");
+        break;
+      }
+      break;
+    }
+  }
+}
+
+/****************************
+ * Preforms type conversions for
+ * assignment statements.  This
+ * method uses execution simulation.
+ ****************************/
+void ContextAnalyzer::AnalyzeRightCast(Variable * variable, Expression * expression, bool is_scalar, const int depth)
+{
+  AnalyzeRightCast(variable->GetEvalType(), GetExpressionType(expression, depth + 1), expression, is_scalar, depth);
+  if(variable->GetIndices() && !is_scalar) {
+    ProcessError(expression, L"Dimension size mismatch");
+  }
+}
+
+void ContextAnalyzer::AnalyzeRightCast(Type * left, Expression * expression, bool is_scalar, const int depth)
+{
+  AnalyzeRightCast(left, GetExpressionType(expression, depth + 1), expression, is_scalar, depth);
+}
+
+void ContextAnalyzer::AnalyzeRightCast(Type * left, Type * right, Expression * expression, bool is_scalar, const int depth)
+{
+  // assert(left && right);
+  if(!expression || !left || !right) {
+    return;
+  }
+
+  if(is_scalar) {
+    switch(left->GetType()) {
+    case VAR_TYPE:
+      // VAR
+      switch(right->GetType()) {
+      case VAR_TYPE:
+        ProcessError(expression, L"Invalid operation using classes: Var and Var");
+        break;
+
+      case NIL_TYPE:
+      case BYTE_TYPE:
+      case CHAR_TYPE:
+      case INT_TYPE:
+      case FLOAT_TYPE:
+      case CLASS_TYPE:
+      case BOOLEAN_TYPE:
         break;
 
       default:
         break;
       }
-    }
-    // multi-dimensional
-    else {
-      if(left->GetDimension() != right->GetDimension() &&
-         right->GetType() != NIL_TYPE) {
-        ProcessError(expression, L"Dimension size mismatch");
-      }
+      break;
 
-      if(left->GetType() != right->GetType() &&
-         right->GetType() != NIL_TYPE) {
-        ProcessError(expression, L"Invalid array cast");
-      }
+    case NIL_TYPE:
+      // NIL
+      switch(right->GetType()) {
+      case FUNC_TYPE:
+        ProcessError(expression, L"Invalid operation using classes: Nil and function reference");
+        break;
 
-      if(left->GetType() == CLASS_TYPE && right->GetType() == CLASS_TYPE) {
+      case VAR_TYPE:
+        ProcessError(expression, L"Invalid operation using classes: Nil and Var");
+        break;
+
+      case NIL_TYPE:
+        ProcessError(expression, L"Invalid operation");
+        break;
+
+      case BYTE_TYPE:
+        ProcessError(expression, L"Invalid cast with classes: Nil and System.Byte");
+        break;
+
+      case CHAR_TYPE:
+        ProcessError(expression, L"Invalid cast with classes: Nil and System.Char");
+        break;
+
+      case INT_TYPE:
+        ProcessError(expression, L"Invalid cast with classes: Nil and Int");
+        break;
+
+      case FLOAT_TYPE:
+        ProcessError(expression, L"Invalid cast with classes: Nil and System.Float");
+        break;
+
+      case CLASS_TYPE:
+        ProcessError(expression, L"Invalid cast with classes: Nil and " +
+                     ReplaceSubstring(right->GetClassName(), L"#", L"->"));
+        break;
+
+      case BOOLEAN_TYPE:
+        ProcessError(expression, L"Invalid cast with classes: Nil and System.Bool");
+        break;
+      }
+      break;
+
+    case BYTE_TYPE:
+      // BYTE
+      switch(right->GetType()) {
+      case FUNC_TYPE:
+        ProcessError(expression, L"Invalid operation using classes: System.Byte and function reference");
+        break;
+
+      case VAR_TYPE:
+        ProcessError(expression, L"Invalid operation using classes: System.Byte and Var");
+        break;
+
+      case NIL_TYPE:
+        if(left->GetDimension() < 1) {
+          ProcessError(expression, L"Invalid cast with classes: System.Byte and Nil");
+        }
+        break;
+
+      case BYTE_TYPE:
+      case CHAR_TYPE:
+      case INT_TYPE:
+        if(expression->GetEvalType() && expression->GetEvalType()->GetType() != FLOAT_TYPE) {
+          expression->SetEvalType(left, false);
+        }
+        break;
+
+      case FLOAT_TYPE:
+        expression->SetCastType(left, false);
+        expression->SetEvalType(right, false);
+        break;
+
+      case CLASS_TYPE:
+        if(!HasProgramLibraryEnum(right->GetClassName())) {
+          ProcessError(expression, L"Invalid cast with classes: System.Byte and " +
+                       ReplaceSubstring(right->GetClassName(), L"#", L"->"));
+        }
+        break;
+
+      case BOOLEAN_TYPE:
+        ProcessError(expression, L"Invalid cast with classes: System.Byte and System.Bool");
+        break;
+      }
+      break;
+
+    case CHAR_TYPE:
+      // CHAR
+      switch(right->GetType()) {
+      case FUNC_TYPE:
+        ProcessError(expression, L"Invalid operation using classes: System.Char and function reference");
+        break;
+
+      case VAR_TYPE:
+        ProcessError(expression, L"Invalid operation using classes: System.Char and Var");
+        break;
+
+      case NIL_TYPE:
+        if(left->GetDimension() < 1) {
+          ProcessError(expression, L"Invalid cast with classes: System.Char and Nil");
+        }
+        break;
+
+      case CHAR_TYPE:
+      case BYTE_TYPE:
+      case INT_TYPE:
+        if(expression->GetEvalType() && expression->GetEvalType()->GetType() != FLOAT_TYPE) {
+          expression->SetEvalType(left, false);
+        }
+        break;
+
+      case FLOAT_TYPE:
+        expression->SetCastType(left, false);
+        expression->SetEvalType(right, false);
+        break;
+
+      case CLASS_TYPE:
+        if(!HasProgramLibraryEnum(right->GetClassName())) {
+          ProcessError(expression, L"Invalid cast with classes: System.Char and " +
+                       ReplaceSubstring(right->GetClassName(), L"#", L"->"));
+        }
+        break;
+
+      case BOOLEAN_TYPE:
+        ProcessError(expression, L"Invalid cast with classes: System.Char and System.Bool");
+        break;
+      }
+      break;
+
+    case INT_TYPE:
+      // INT
+      switch(right->GetType()) {
+      case FUNC_TYPE:
+        ProcessError(expression, L"Invalid operation using classes: System.Int and function reference");
+        break;
+
+      case VAR_TYPE:
+        ProcessError(expression, L"Invalid operation using classes: Var and Int");
+        break;
+
+      case NIL_TYPE:
+        if(left->GetDimension() < 1) {
+          ProcessError(expression, L"Invalid cast with classes: System.Int and Nil");
+        }
+        break;
+
+      case INT_TYPE:
+      case BYTE_TYPE:
+      case CHAR_TYPE:
+        if(expression->GetEvalType() && expression->GetEvalType()->GetType() != FLOAT_TYPE) {
+          expression->SetEvalType(left, false);
+        }
+        break;
+
+      case FLOAT_TYPE:
+        expression->SetCastType(left, false);
+        expression->SetEvalType(right, false);
+        break;
+
+      case CLASS_TYPE:
+        if(!HasProgramLibraryEnum(right->GetClassName())) {
+          ProcessError(expression, L"Invalid cast with classes: System.Int and " +
+                       ReplaceSubstring(right->GetClassName(), L"#", L"->"));
+        }
+        break;
+
+      case BOOLEAN_TYPE:
+        ProcessError(expression, L"Invalid cast with classes: System.Int and System.Bool");
+        break;
+      }
+      break;
+
+    case FLOAT_TYPE:
+      // FLOAT
+      switch(right->GetType()) {
+      case FUNC_TYPE:
+        ProcessError(expression, L"Invalid operation using classes: System.Float and function reference");
+        break;
+
+      case VAR_TYPE:
+        ProcessError(expression, L"Invalid operation using classes: Nil and Var");
+        break;
+
+      case NIL_TYPE:
+        if(left->GetDimension() < 1) {
+          ProcessError(expression, L"Invalid cast with classes: System.Float and Nil");
+        }
+        break;
+
+      case FLOAT_TYPE:
+        if(expression->GetEvalType() && expression->GetEvalType()->GetType() != INT_TYPE) {
+          expression->SetEvalType(left, false);
+        }
+        break;
+
+      case BYTE_TYPE:
+      case CHAR_TYPE:
+      case INT_TYPE:
+        expression->SetCastType(left, false);
+        expression->SetEvalType(right, false);
+        break;
+
+      case CLASS_TYPE:
+        if(!HasProgramLibraryEnum(right->GetClassName())) {
+          ProcessError(expression, L"Invalid cast with classes: System.Float and " +
+                       ReplaceSubstring(ReplaceSubstring(right->GetClassName(), L"#", L"->"), L"#", L"->"));
+        }
+        break;
+
+      case BOOLEAN_TYPE:
+        ProcessError(expression, L"Invalid cast with classes: System.Float and System.Bool");
+        break;
+      }
+      break;
+
+    case CLASS_TYPE:
+      // CLASS
+      switch(right->GetType()) {
+      case FUNC_TYPE:
+        ProcessError(expression, L"Invalid operation using classes: " +
+                     ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and function reference");
+        break;
+
+      case VAR_TYPE:
+        ProcessError(expression, L"Invalid cast with classes: " +
+                     ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and Var");
+        break;
+
+      case NIL_TYPE:
+        expression->SetCastType(left, false);
+        expression->SetEvalType(right, false);
+        break;
+
+      case BYTE_TYPE:
+        if(!HasProgramLibraryEnum(left->GetClassName())) {
+          ProcessError(expression, L"Invalid cast with classes: " +
+                       ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Byte");
+        }
+        break;
+
+      case CHAR_TYPE:
+        if(!HasProgramLibraryEnum(left->GetClassName())) {
+          ProcessError(expression, L"Invalid cast with classes: " +
+                       ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Char");
+        }
+        break;
+
+      case INT_TYPE:
+        if(!HasProgramLibraryEnum(left->GetClassName())) {
+          ProcessError(expression, L"Invalid cast with classes: " +
+                       ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and Int");
+        }
+        break;
+
+      case FLOAT_TYPE:
+        ProcessError(expression, L"Invalid cast with classes: " +
+                     ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Float");
+        break;
+
+      case CLASS_TYPE:
         AnalyzeClassCast(left, expression, depth + 1);
-      }
+        break;
 
-      expression->SetEvalType(left, false);
+      case BOOLEAN_TYPE:
+        ProcessError(expression, L"Invalid cast with classes: " + left->GetClassName() +
+                     L" and System.Bool");
+        break;
+      }
+      break;
+
+    case BOOLEAN_TYPE:
+      // BOOLEAN
+      switch(right->GetType()) {
+      case FUNC_TYPE:
+        ProcessError(expression, L"Invalid operation using classes: System.Bool and function reference");
+        break;
+
+      case VAR_TYPE:
+        ProcessError(expression, L"Invalid operation using classes: System.Bool and Var");
+        break;
+
+      case NIL_TYPE:
+        if(left->GetDimension() < 1) {
+          ProcessError(expression, L"Invalid cast with classes: System.Bool and Nil");
+        }
+        break;
+
+      case BYTE_TYPE:
+        ProcessError(expression, L"Invalid cast with classes: System.Bool and System.Byte");
+        break;
+
+      case CHAR_TYPE:
+        ProcessError(expression, L"Invalid cast with classes: System.Bool and System.Char");
+        break;
+
+      case INT_TYPE:
+        ProcessError(expression, L"Invalid cast with classes: System.Bool and Int");
+        break;
+
+      case FLOAT_TYPE:
+        ProcessError(expression, L"Invalid cast with classes: System.Bool and System.Float");
+        break;
+
+      case CLASS_TYPE:
+        ProcessError(expression, L"Invalid cast with classes: System.Bool and " +
+                     ReplaceSubstring(ReplaceSubstring(right->GetClassName(), L"#", L"->"), L"#", L"->"));
+        break;
+
+      case BOOLEAN_TYPE:
+        break;
+      }
+      break;
+
+    case FUNC_TYPE:
+      // FUNCTION
+      switch(right->GetType()) {
+      case FUNC_TYPE: {
+        AnalyzeDynamicFunctionParameters(left->GetFunctionParameters(), expression);
+        if(left->GetClassName().size() == 0) {
+          left->SetClassName(L"m." + EncodeFunctionType(left->GetFunctionParameters(),
+                             left->GetFunctionReturn()));
+        }
+
+        if(right->GetClassName().size() == 0) {
+          right->SetClassName(L"m." + EncodeFunctionType(right->GetFunctionParameters(),
+                              right->GetFunctionReturn()));
+        }
+
+        if(left->GetClassName() != right->GetClassName()) {
+          ProcessError(expression, L"Invalid operation using mismatch functions: " +
+                       ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and " +
+                       ReplaceSubstring(ReplaceSubstring(right->GetClassName(), L"#", L"->"), L"#", L"->"));
+        }
+      }
+        break;
+
+      case VAR_TYPE:
+        ProcessError(expression, L"Invalid operation using classes: function reference and Var");
+        break;
+
+      case NIL_TYPE:
+        ProcessError(expression, L"Invalid cast with classes: function reference and Nil");
+        break;
+
+      case BYTE_TYPE:
+        ProcessError(expression, L"Invalid cast with classes: function reference and System.Byte");
+        break;
+
+      case CHAR_TYPE:
+        ProcessError(expression, L"Invalid cast with classes: function reference and System.Char");
+        break;
+
+      case INT_TYPE:
+        ProcessError(expression, L"Invalid cast with classes: function reference and Int");
+        break;
+
+      case FLOAT_TYPE:
+        ProcessError(expression, L"Invalid cast with classes: function reference and System.Float");
+        break;
+
+      case CLASS_TYPE:
+        ProcessError(expression, L"Invalid cast with classes: function reference and " +
+                     ReplaceSubstring(ReplaceSubstring(right->GetClassName(), L"#", L"->"), L"#", L"->"));
+        break;
+
+      case BOOLEAN_TYPE:
+        ProcessError(expression, L"Invalid cast with classes: function reference and System.Bool");
+        break;
+      }
+      break;
+
+    default:
+      break;
+    }
+  }
+  // multi-dimensional
+  else {
+    if(left->GetDimension() != right->GetDimension() &&
+       right->GetType() != NIL_TYPE) {
+      ProcessError(expression, L"Dimension size mismatch");
+    }
+
+    if(left->GetType() != right->GetType() &&
+       right->GetType() != NIL_TYPE) {
+      ProcessError(expression, L"Invalid array cast");
+    }
+
+    if(left->GetType() == CLASS_TYPE && right->GetType() == CLASS_TYPE) {
+      AnalyzeClassCast(left, expression, depth + 1);
+    }
+
+    expression->SetEvalType(left, false);
+  }
+}
+
+/****************************
+ * Analyzes a class cast. Up
+ * casting is resolved a runtime.
+ ****************************/
+void ContextAnalyzer::AnalyzeClassCast(Type * left, Expression * expression, const int depth)
+{
+  if(expression->GetCastType() && expression->GetEvalType() && (expression->GetCastType()->GetType() != CLASS_TYPE ||
+     expression->GetEvalType()->GetType() != CLASS_TYPE)) {
+    AnalyzeRightCast(expression->GetCastType(), expression->GetEvalType(), expression, IsScalar(expression), depth + 1);
+  }
+
+  Type* right = expression->GetCastType();
+  if(!right) {
+    right = expression->GetEvalType();
+  }
+
+  AnalyzeClassCast(left, right, expression, false, depth);
+}
+
+void ContextAnalyzer::AnalyzeClassCast(Type * left, Type * right, Expression * expression, bool generic_check, const int depth)
+{
+  Class* left_class = NULL;
+  LibraryEnum* left_lib_enum = NULL;
+  LibraryClass* left_lib_class = NULL;
+
+  if(current_class->HasGenerics()) {
+    Class* left_tmp = current_class->GetGenericClass(left->GetClassName());
+    if(left_tmp && left_tmp->HasGenericInterface()) {
+      left = left_tmp->GetGenericInterface();
+    }
+
+    Class* right_tmp = current_class->GetGenericClass(right->GetClassName());
+    if(right_tmp && right_tmp->HasGenericInterface()) {
+      right = right_tmp->GetGenericInterface();
     }
   }
 
-  /****************************
-   * Analyzes a class cast. Up
-   * casting is resolved a runtime.
-   ****************************/
-  void ContextAnalyzer::AnalyzeClassCast(Type* left, Expression* expression, const int depth)
-  {
-    if(expression->GetCastType() && expression->GetEvalType() && (expression->GetCastType()->GetType() != CLASS_TYPE ||
-                                                                  expression->GetEvalType()->GetType() != CLASS_TYPE)) {
-      AnalyzeRightCast(expression->GetCastType(), expression->GetEvalType(), expression, IsScalar(expression), depth + 1);
-    }
-    
-    Type* right = expression->GetCastType();
-    if(!right) {
-      right = expression->GetEvalType();
-    }
-    
-    AnalyzeClassCast(left, right, expression, false, depth);
+  //
+  // program enum
+  //
+  Enum* left_enum = SearchProgramEnums(left->GetClassName());
+  if(!left_enum) {
+    left_enum = SearchProgramEnums(current_class->GetName() + L"#" + left->GetClassName());
   }
-  
-  void ContextAnalyzer::AnalyzeClassCast(Type* left, Type* right, Expression* expression, bool generic_check, const int depth)
-  {
-    Class* left_class = NULL;
-    LibraryEnum* left_lib_enum = NULL;
-    LibraryClass* left_lib_class = NULL;
-
-    if(current_class->HasGenerics()) {
-      Class* left_tmp = current_class->GetGenericClass(left->GetClassName());
-      if(left_tmp && left_tmp->HasGenericInterface()) {
-	left = left_tmp->GetGenericInterface();
-      }
-
-      Class* right_tmp = current_class->GetGenericClass(right->GetClassName());
-      if(right_tmp && right_tmp->HasGenericInterface()) {
-	right = right_tmp->GetGenericInterface();
+  if(left && right && left_enum) {
+    // program
+    Enum* right_enum = SearchProgramEnums(right->GetClassName());
+    if(right_enum) {
+      if(left_enum->GetName() != right_enum->GetName()) {
+        const wstring left_str = ReplaceSubstring(left->GetClassName(), L"#", L"->");
+        const wstring right_str = ReplaceSubstring(right->GetClassName(), L"#", L"->");
+        ProcessError(expression, L"Invalid cast between enums: '" + left_str + L"' and '" + right_str + L"'");
       }
     }
-
-    //
-    // program enum
-    //
-    Enum* left_enum = SearchProgramEnums(left->GetClassName());
-    if(!left_enum) {
-      left_enum = SearchProgramEnums(current_class->GetName() + L"#" + left->GetClassName());
-    }
-    if(left && right && left_enum) {
-      // program
-      Enum* right_enum = SearchProgramEnums(right->GetClassName());
-      if(right_enum) {
-        if(left_enum->GetName() != right_enum->GetName()) {
-          const wstring left_str = ReplaceSubstring(left->GetClassName(), L"#", L"->");
-          const wstring right_str = ReplaceSubstring(right->GetClassName(), L"#", L"->");
-          ProcessError(expression, L"Invalid cast between enums: '" + left_str + L"' and '" + right_str + L"'");
-        }
-      }
-      // library
-      else if(right && linker->SearchEnumLibraries(right->GetClassName(), program->GetUses(current_class->GetFileName()))) {
-        LibraryEnum* right_lib_enum = linker->SearchEnumLibraries(right->GetClassName(), program->GetUses(current_class->GetFileName()));
-        if(left_enum->GetName() != right_lib_enum->GetName()) {
-          const wstring left_str = ReplaceSubstring(left->GetClassName(), L"#", L"->");
-          const wstring right_str = ReplaceSubstring(right->GetClassName(), L"#", L"->");
-          ProcessError(expression, L"Invalid cast between enums: '" + left_str + L"' and '" + right_str + L"'");
-        }
-      }
-      else {
-        ProcessError(expression, L"Invalid cast between enum and class");
-      }
-    }
-    //
-    // program class
-    //
-    else if(left && right && (left_class = SearchProgramClasses(left->GetClassName()))) {
-      // program and generic
-      Class* right_class = SearchProgramClasses(right->GetClassName());
-      if(!right_class) {
-	right_class = current_class->GetGenericClass(right->GetClassName());
-      }
-      if(right_class) {
-	// TODO: adding generics
-	if(left->HasGenerics() == right->HasGenerics()) {
-	  const vector<Type*> left_concretes = left->GetGenerics();
-	  const vector<Type*> right_concretes = right->GetGenerics();
-	  if(left_concretes.size() == right_concretes.size()) {
-	    for(size_t i = 0; i < left_concretes.size(); ++i) {
-	      Type* left_concrete = left_concretes[i];
-	      Type* right_concrete = right_concretes[i];
-
-	      if(!ResolveClassEnumType(left_concrete)) {
-		ProcessError(expression, L"Undefined class: '" + left_concrete->GetClassName() + L"'");
-	      }
-
-	      if(!ResolveClassEnumType(right_concrete)) {
-		ProcessError(expression, L"Undefined class: '" + right_concrete->GetClassName() + L"'");
-	      }
-
-	      if(left_concrete->GetClassName() != right_concrete->GetClassName()) {
-		ProcessError(expression, L"Generic parameter type mismatch: '" + 
-			     left_concrete->GetClassName() + L"' and '" + 
-			     right_concrete->GetClassName() + L"'");
-	      }
-	    }
-
-	    return;
-	  }
-	  else {
-	    ProcessError(expression, L"Invalid cast between generics: '" +
-			 ReplaceSubstring(left->GetClassName(), L"#", L"->") + L"' and '" +
-			 ReplaceSubstring(right->GetClassName(), L"#", L"->") + L"'");
-	  }
-	}
-	else if(left_class != current_class && right_class != current_class) {
-	  ProcessError(expression, L"Invalid generic class definition '" + 
-		       ReplaceSubstring(right->GetClassName(), L"#", L"->") + L"' or concrete cast");
-	}
-        // downcast
-        if(ValidDownCast(left_class->GetName(), right_class, NULL)) {
-          left_class->SetCalled(true);
-          right_class->SetCalled(true);
-          if(left_class->IsInterface() && !generic_check) {
-            expression->SetToClass(left_class);
-          }
-          return;
-        }
-        // upcast
-        else if(right_class->IsInterface() || ValidUpCast(left_class->GetName(), right_class)) {
-          expression->SetToClass(left_class);
-          left_class->SetCalled(true);
-          right_class->SetCalled(true);
-          return;
-        }
-        // invalid cast
-        else {
-          expression->SetToClass(left_class);
-          ProcessError(expression, L"Invalid cast between classes: '" +
-		       ReplaceSubstring(left->GetClassName(), L"#", L"->") + L"' and '" +
-		       ReplaceSubstring(right->GetClassName(), L"#", L"->") + L"'");
-        }
-      }
-      // library
-      else if(linker->SearchClassLibraries(right->GetClassName(), program->GetUses(current_class->GetFileName()))) {
-        LibraryClass* right_lib_class = linker->SearchClassLibraries(right->GetClassName(), program->GetUses(current_class->GetFileName()));
-        // downcast
-        if(ValidDownCast(left_class->GetName(), NULL, right_lib_class)) {
-          if(left_class->IsInterface() && !generic_check) {
-            expression->SetToClass(left_class);
-          }
-          return;
-        }
-        // upcast
-        else if(right_lib_class && (right_lib_class->IsInterface() || ValidUpCast(left_class->GetName(), right_lib_class))) {
-          expression->SetToClass(left_class);
-          return;
-        }
-        // invalid cast
-        else {
-          expression->SetToClass(left_class);
-          ProcessError(expression, L"Invalid cast between classes: '" +
-		       ReplaceSubstring(left->GetClassName(), L"#", L"->") + L"' and '" +
-		       ReplaceSubstring(right->GetClassName(), L"#", L"->") + L"'");
-        }
-      }
-      else {
-        ProcessError(expression, L"Invalid cast between class, enum or Nil");
-      }
-    }
-    //
-    // generic class
-    //
-    else if(left && right && (left_class = current_class->GetGenericClass(left->GetClassName()))) {
-      // program
-      Class* right_class = current_class->GetGenericClass(right->GetClassName());
-      if(right_class) {
-	if(left->GetClassName() == right->GetClassName()) {
-	  return;
-	}
-	else {
-	  ProcessError(expression, L"Invalid cast between generics: '" +
-		       ReplaceSubstring(left->GetClassName(), L"#", L"->") + L"' and '" +
-		       ReplaceSubstring(right->GetClassName(), L"#", L"->") + L"'");
-	}
-      }
-      else {
-	ProcessError(expression, L"Invalid cast between generic: '" +
-		     ReplaceSubstring(left->GetClassName(), L"#", L"->") + L"' and class/enum '" +
-		     ReplaceSubstring(right->GetClassName(), L"#", L"->") + L"'");
-      }
-    }
-    //
-    // enum libary
-    //
-    else if(left && right && (left_lib_enum = linker->SearchEnumLibraries(left->GetClassName(), program->GetUses(current_class->GetFileName())))) {
-      // program
-      Enum* right_enum = SearchProgramEnums(right->GetClassName());
-      if(right_enum) {
-        if(left_lib_enum->GetName() != right_enum->GetName()) {
-          const wstring left_str = ReplaceSubstring(left_lib_enum->GetName(), L"#", L"->");
-          const wstring right_str = ReplaceSubstring(right_enum->GetName(), L"#", L"->");
-          ProcessError(expression, L"Invalid cast between enums: '" + left_str + L"' and '" + right_str + L"'");
-        }
-      }
-      // library
-      else if(linker->SearchEnumLibraries(right->GetClassName(), program->GetUses(current_class->GetFileName()))) {
-        LibraryEnum* right_lib_enum = linker->SearchEnumLibraries(right->GetClassName(), program->GetUses(current_class->GetFileName()));
-        if(left_lib_enum->GetName() != right_lib_enum->GetName()) {
-          const wstring left_str = ReplaceSubstring(left_lib_enum->GetName(), L"#", L"->");
-          const wstring right_str = ReplaceSubstring(right_lib_enum->GetName(), L"#", L"->");
-          ProcessError(expression, L"Invalid cast between enums: '" + left_str + L"' and '" + right_str + L"'");
-        }
-      }
-      else {
-        ProcessError(expression, L"Invalid cast between enum and class");
-      }
-    }
-    //
-    // class libary
-    //
-    else if(left && right && (left_lib_class = linker->SearchClassLibraries(left->GetClassName(), program->GetUses(current_class->GetFileName())))) {
-      // program and generic
-      Class* right_class = SearchProgramClasses(right->GetClassName());
-      if(!right_class) {
-	right_class = current_class->GetGenericClass(right->GetClassName());
-      }
-      if(right_class) {
-        // downcast
-        if(ValidDownCast(left_lib_class->GetName(), right_class, NULL)) {
-          left_lib_class->SetCalled(true);
-          right_class->SetCalled(true);
-          if(left_lib_class->IsInterface() && !generic_check) {
-            expression->SetToLibraryClass(left_lib_class);
-          }
-          return;
-        }
-        // upcast
-        else if(right_class->IsInterface() || ValidUpCast(left_lib_class->GetName(), right_class)) {
-          expression->SetToLibraryClass(left_lib_class);
-          left_lib_class->SetCalled(true);
-          right_class->SetCalled(true);
-          return;
-        }
-        // invalid cast
-        else {
-          ProcessError(expression, L"Invalid cast between classes: '" + ReplaceSubstring(left->GetClassName(), L"#", L"->") +
-		       L"' and '" + ReplaceSubstring(right->GetClassName(), L"#", L"->") + L"'");
-        }
-      }
-      // libary
-      else if(linker->SearchClassLibraries(right->GetClassName(), program->GetUses(current_class->GetFileName()))) {
-        LibraryClass* right_lib_class = linker->SearchClassLibraries(right->GetClassName(), program->GetUses(current_class->GetFileName()));
-        // downcast
-        if(ValidDownCast(left_lib_class->GetName(), NULL, right_lib_class)) {
-          left_lib_class->SetCalled(true);
-          right_lib_class->SetCalled(true);
-          if(left_lib_class->IsInterface() && !generic_check) {
-            expression->SetToLibraryClass(left_lib_class);
-          }
-          return;
-        }
-        // upcast
-        else if(right_lib_class && (right_lib_class->IsInterface() || ValidUpCast(left_lib_class->GetName(), right_lib_class))) {
-          expression->SetToLibraryClass(left_lib_class);
-          left_lib_class->SetCalled(true);
-          right_lib_class->SetCalled(true);
-          return;
-        }
-        // downcast
-        else {
-          ProcessError(expression, L"Invalid cast between classes: '" + left_lib_class->GetName() + L"' and '" +
-		       right_lib_class->GetName() + L"'");
-        }
-      }
-      else {
-        ProcessError(expression, L"Invalid cast between class, enum or Nil");
+    // library
+    else if(right && linker->SearchEnumLibraries(right->GetClassName(), program->GetUses(current_class->GetFileName()))) {
+      LibraryEnum* right_lib_enum = linker->SearchEnumLibraries(right->GetClassName(), program->GetUses(current_class->GetFileName()));
+      if(left_enum->GetName() != right_lib_enum->GetName()) {
+        const wstring left_str = ReplaceSubstring(left->GetClassName(), L"#", L"->");
+        const wstring right_str = ReplaceSubstring(right->GetClassName(), L"#", L"->");
+        ProcessError(expression, L"Invalid cast between enums: '" + left_str + L"' and '" + right_str + L"'");
       }
     }
     else {
-      ProcessError(expression, L"Invalid class, enum or method call context\n\tEnsure all required libraries have been included");
+      ProcessError(expression, L"Invalid cast between enum and class");
     }
   }
+  //
+  // program class
+  //
+  else if(left && right && (left_class = SearchProgramClasses(left->GetClassName()))) {
+    // program and generic
+    Class* right_class = SearchProgramClasses(right->GetClassName());
+    if(!right_class) {
+      right_class = current_class->GetGenericClass(right->GetClassName());
+    }
+    if(right_class) {
+      // TODO: adding generics
+      if(left->HasGenerics() == right->HasGenerics()) {
+        const vector<Type*> left_concretes = left->GetGenerics();
+        const vector<Type*> right_concretes = right->GetGenerics();
+        if(left_concretes.size() == right_concretes.size()) {
+          for(size_t i = 0; i < left_concretes.size(); ++i) {
+            Type* left_concrete = left_concretes[i];
+            Type* right_concrete = right_concretes[i];
 
-  /****************************
-   * Analyzes a declaration
-   ****************************/
-  void ContextAnalyzer::AnalyzeDeclaration(Declaration* declaration, Class* klass, const int depth)
-  {
-    SymbolEntry* entry = declaration->GetEntry();
-    if(entry) {
-      if(entry->GetType() && entry->GetType()->GetType() == CLASS_TYPE) {
-        // resolve class name
-        if(!ResolveClassEnumType(entry->GetType(), klass)) {
-          ProcessError(entry, L"Undefined class or enum: '" + ReplaceSubstring(entry->GetType()->GetClassName(), L"#", L"->") + L"'\n\tIf generic ensure concrete types are properly defined.");
+            if(!ResolveClassEnumType(left_concrete)) {
+              ProcessError(expression, L"Undefined class: '" + left_concrete->GetClassName() + L"'");
+            }
+
+            if(!ResolveClassEnumType(right_concrete)) {
+              ProcessError(expression, L"Undefined class: '" + right_concrete->GetClassName() + L"'");
+            }
+
+            if(left_concrete->GetClassName() != right_concrete->GetClassName()) {
+              ProcessError(expression, L"Generic parameter type mismatch: '" +
+                           left_concrete->GetClassName() + L"' and '" +
+                           right_concrete->GetClassName() + L"'");
+            }
+          }
+
+          return;
+        }
+        else {
+          ProcessError(expression, L"Invalid cast between generics: '" +
+                       ReplaceSubstring(left->GetClassName(), L"#", L"->") + L"' and '" +
+                       ReplaceSubstring(right->GetClassName(), L"#", L"->") + L"'");
         }
       }
-      else if(entry->GetType() && entry->GetType()->GetType() == FUNC_TYPE) {
-        // resolve function name
-        Type* type = entry->GetType();
-        AnalyzeDynamicFunctionParameters(type->GetFunctionParameters(), entry, klass);
-        const wstring encoded_name = L"m." + EncodeFunctionType(type->GetFunctionParameters(),
-								type->GetFunctionReturn());
+      else if(left_class != current_class && right_class != current_class) {
+        ProcessError(expression, L"Invalid generic class definition '" +
+                     ReplaceSubstring(right->GetClassName(), L"#", L"->") + L"' or concrete cast");
+      }
+      // downcast
+      if(ValidDownCast(left_class->GetName(), right_class, NULL)) {
+        left_class->SetCalled(true);
+        right_class->SetCalled(true);
+        if(left_class->IsInterface() && !generic_check) {
+          expression->SetToClass(left_class);
+        }
+        return;
+      }
+      // upcast
+      else if(right_class->IsInterface() || ValidUpCast(left_class->GetName(), right_class)) {
+        expression->SetToClass(left_class);
+        left_class->SetCalled(true);
+        right_class->SetCalled(true);
+        return;
+      }
+      // invalid cast
+      else {
+        expression->SetToClass(left_class);
+        ProcessError(expression, L"Invalid cast between classes: '" +
+                     ReplaceSubstring(left->GetClassName(), L"#", L"->") + L"' and '" +
+                     ReplaceSubstring(right->GetClassName(), L"#", L"->") + L"'");
+      }
+    }
+    // library
+    else if(linker->SearchClassLibraries(right->GetClassName(), program->GetUses(current_class->GetFileName()))) {
+      LibraryClass* right_lib_class = linker->SearchClassLibraries(right->GetClassName(), program->GetUses(current_class->GetFileName()));
+      // downcast
+      if(ValidDownCast(left_class->GetName(), NULL, right_lib_class)) {
+        if(left_class->IsInterface() && !generic_check) {
+          expression->SetToClass(left_class);
+        }
+        return;
+      }
+      // upcast
+      else if(right_lib_class && (right_lib_class->IsInterface() || ValidUpCast(left_class->GetName(), right_lib_class))) {
+        expression->SetToClass(left_class);
+        return;
+      }
+      // invalid cast
+      else {
+        expression->SetToClass(left_class);
+        ProcessError(expression, L"Invalid cast between classes: '" +
+                     ReplaceSubstring(left->GetClassName(), L"#", L"->") + L"' and '" +
+                     ReplaceSubstring(right->GetClassName(), L"#", L"->") + L"'");
+      }
+    }
+    else {
+      ProcessError(expression, L"Invalid cast between class, enum or Nil");
+    }
+  }
+  //
+  // generic class
+  //
+  else if(left && right && (left_class = current_class->GetGenericClass(left->GetClassName()))) {
+    // program
+    Class* right_class = current_class->GetGenericClass(right->GetClassName());
+    if(right_class) {
+      if(left->GetClassName() == right->GetClassName()) {
+        return;
+      }
+      else {
+        ProcessError(expression, L"Invalid cast between generics: '" +
+                     ReplaceSubstring(left->GetClassName(), L"#", L"->") + L"' and '" +
+                     ReplaceSubstring(right->GetClassName(), L"#", L"->") + L"'");
+      }
+    }
+    else {
+      ProcessError(expression, L"Invalid cast between generic: '" +
+                   ReplaceSubstring(left->GetClassName(), L"#", L"->") + L"' and class/enum '" +
+                   ReplaceSubstring(right->GetClassName(), L"#", L"->") + L"'");
+    }
+  }
+  //
+  // enum libary
+  //
+  else if(left && right && (left_lib_enum = linker->SearchEnumLibraries(left->GetClassName(), program->GetUses(current_class->GetFileName())))) {
+    // program
+    Enum* right_enum = SearchProgramEnums(right->GetClassName());
+    if(right_enum) {
+      if(left_lib_enum->GetName() != right_enum->GetName()) {
+        const wstring left_str = ReplaceSubstring(left_lib_enum->GetName(), L"#", L"->");
+        const wstring right_str = ReplaceSubstring(right_enum->GetName(), L"#", L"->");
+        ProcessError(expression, L"Invalid cast between enums: '" + left_str + L"' and '" + right_str + L"'");
+      }
+    }
+    // library
+    else if(linker->SearchEnumLibraries(right->GetClassName(), program->GetUses(current_class->GetFileName()))) {
+      LibraryEnum* right_lib_enum = linker->SearchEnumLibraries(right->GetClassName(), program->GetUses(current_class->GetFileName()));
+      if(left_lib_enum->GetName() != right_lib_enum->GetName()) {
+        const wstring left_str = ReplaceSubstring(left_lib_enum->GetName(), L"#", L"->");
+        const wstring right_str = ReplaceSubstring(right_lib_enum->GetName(), L"#", L"->");
+        ProcessError(expression, L"Invalid cast between enums: '" + left_str + L"' and '" + right_str + L"'");
+      }
+    }
+    else {
+      ProcessError(expression, L"Invalid cast between enum and class");
+    }
+  }
+  //
+  // class libary
+  //
+  else if(left && right && (left_lib_class = linker->SearchClassLibraries(left->GetClassName(), program->GetUses(current_class->GetFileName())))) {
+    // program and generic
+    Class* right_class = SearchProgramClasses(right->GetClassName());
+    if(!right_class) {
+      right_class = current_class->GetGenericClass(right->GetClassName());
+    }
+    if(right_class) {
+      // downcast
+      if(ValidDownCast(left_lib_class->GetName(), right_class, NULL)) {
+        left_lib_class->SetCalled(true);
+        right_class->SetCalled(true);
+        if(left_lib_class->IsInterface() && !generic_check) {
+          expression->SetToLibraryClass(left_lib_class);
+        }
+        return;
+      }
+      // upcast
+      else if(right_class->IsInterface() || ValidUpCast(left_lib_class->GetName(), right_class)) {
+        expression->SetToLibraryClass(left_lib_class);
+        left_lib_class->SetCalled(true);
+        right_class->SetCalled(true);
+        return;
+      }
+      // invalid cast
+      else {
+        ProcessError(expression, L"Invalid cast between classes: '" + ReplaceSubstring(left->GetClassName(), L"#", L"->") +
+                     L"' and '" + ReplaceSubstring(right->GetClassName(), L"#", L"->") + L"'");
+      }
+    }
+    // libary
+    else if(linker->SearchClassLibraries(right->GetClassName(), program->GetUses(current_class->GetFileName()))) {
+      LibraryClass* right_lib_class = linker->SearchClassLibraries(right->GetClassName(), program->GetUses(current_class->GetFileName()));
+      // downcast
+      if(ValidDownCast(left_lib_class->GetName(), NULL, right_lib_class)) {
+        left_lib_class->SetCalled(true);
+        right_lib_class->SetCalled(true);
+        if(left_lib_class->IsInterface() && !generic_check) {
+          expression->SetToLibraryClass(left_lib_class);
+        }
+        return;
+      }
+      // upcast
+      else if(right_lib_class && (right_lib_class->IsInterface() || ValidUpCast(left_lib_class->GetName(), right_lib_class))) {
+        expression->SetToLibraryClass(left_lib_class);
+        left_lib_class->SetCalled(true);
+        right_lib_class->SetCalled(true);
+        return;
+      }
+      // downcast
+      else {
+        ProcessError(expression, L"Invalid cast between classes: '" + left_lib_class->GetName() + L"' and '" +
+                     right_lib_class->GetName() + L"'");
+      }
+    }
+    else {
+      ProcessError(expression, L"Invalid cast between class, enum or Nil");
+    }
+  }
+  else {
+    ProcessError(expression, L"Invalid class, enum or method call context\n\tEnsure all required libraries have been included");
+  }
+}
+
+/****************************
+ * Analyzes a declaration
+ ****************************/
+void ContextAnalyzer::AnalyzeDeclaration(Declaration * declaration, Class * klass, const int depth)
+{
+  SymbolEntry* entry = declaration->GetEntry();
+  if(entry) {
+    if(entry->GetType() && entry->GetType()->GetType() == CLASS_TYPE) {
+      // resolve class name
+      if(!ResolveClassEnumType(entry->GetType(), klass)) {
+        ProcessError(entry, L"Undefined class or enum: '" + ReplaceSubstring(entry->GetType()->GetClassName(), L"#", L"->") + L"'\n\tIf generic ensure concrete types are properly defined.");
+      }
+    }
+    else if(entry->GetType() && entry->GetType()->GetType() == FUNC_TYPE) {
+      // resolve function name
+      Type* type = entry->GetType();
+      AnalyzeDynamicFunctionParameters(type->GetFunctionParameters(), entry, klass);
+      const wstring encoded_name = L"m." + EncodeFunctionType(type->GetFunctionParameters(),
+                                                              type->GetFunctionReturn());
 #ifdef _DEBUG
-        GetLogger() << L"Encoded function declaration: |" << encoded_name << L"|" << endl;
+      GetLogger() << L"Encoded function declaration: |" << encoded_name << L"|" << endl;
 #endif
-        type->SetClassName(encoded_name);
-      }
+      type->SetClassName(encoded_name);
+    }
 
-      Statement* statement = declaration->GetAssignment();
-      if(entry->IsStatic()) {
-        if(current_method) {
-          ProcessError(entry, L"Static variables can only be declared at class scope");
-        }
-
-        if(statement) {
-          ProcessError(entry, L"Variables cannot be initialized at class scope");
-        }
-      }
-
-      if(!entry->IsLocal() && statement) {
-        ProcessError(entry, L"Variables cannot be initialized at class scope");
+    Statement* statement = declaration->GetAssignment();
+    if(entry->IsStatic()) {
+      if(current_method) {
+        ProcessError(entry, L"Static variables can only be declared at class scope");
       }
 
       if(statement) {
-        AnalyzeStatement(statement, depth);
+        ProcessError(entry, L"Variables cannot be initialized at class scope");
       }
     }
-    else {
-      ProcessError(declaration, L"Undefined variable entry");
+
+    if(!entry->IsLocal() && statement) {
+      ProcessError(entry, L"Variables cannot be initialized at class scope");
+    }
+
+    if(statement) {
+      AnalyzeStatement(statement, depth);
     }
   }
-
-  /****************************
-   * Analyzes a declaration
-   ****************************/
-  void ContextAnalyzer::AnalyzeExpressions(ExpressionList* parameters, const int depth)
-  {
-    vector<Expression*> expressions = parameters->GetExpressions();
-    for(size_t i = 0; i < expressions.size(); ++i) {
-      AnalyzeExpression(expressions[i], depth);
-    }
+  else {
+    ProcessError(declaration, L"Undefined variable entry");
   }
+}
 
-  /********************************
-   * Encodes a function definition
-   ********************************/
-  wstring ContextAnalyzer::EncodeFunctionReference(ExpressionList* calling_params, const int depth)
-  {
-    wstring encoded_name;
-    vector<Expression*> expressions = calling_params->GetExpressions();
-    for(size_t i = 0; i < expressions.size(); ++i) {
-      if(expressions[i]->GetExpressionType() == VAR_EXPR) {
-        Variable* variable = static_cast<Variable*>(expressions[i]);
-        if(variable->GetName() == BOOL_CLASS_ID) {
-          encoded_name += L'l';
-          variable->SetEvalType(TypeFactory::Instance()->MakeType(BOOLEAN_TYPE), true);
-        }
-        else if(variable->GetName() == BYTE_CLASS_ID) {
-          encoded_name += L'b';
-          variable->SetEvalType(TypeFactory::Instance()->MakeType(BYTE_TYPE), true);
-        }
-        else if(variable->GetName() == INT_CLASS_ID) {
-          encoded_name += L'i';
-          variable->SetEvalType(TypeFactory::Instance()->MakeType(INT_TYPE), true);
-        }
-        else if(variable->GetName() == FLOAT_CLASS_ID) {
-          encoded_name += L'f';
-          variable->SetEvalType(TypeFactory::Instance()->MakeType(FLOAT_TYPE), true);
-        }
-        else if(variable->GetName() == CHAR_CLASS_ID) {
-          encoded_name += L'c';
-          variable->SetEvalType(TypeFactory::Instance()->MakeType(CHAR_TYPE), true);
-        }
-        else if(variable->GetName() == NIL_CLASS_ID) {
-          encoded_name += L'n';
-          variable->SetEvalType(TypeFactory::Instance()->MakeType(NIL_TYPE), true);
-        }
-        else if(variable->GetName() == VAR_CLASS_ID) {
-          encoded_name += L'v';
-          variable->SetEvalType(TypeFactory::Instance()->MakeType(VAR_TYPE), true);
-        }
-        else {
-          encoded_name += L"o.";
-          // search program
-          const wstring klass_name = variable->GetName();
-          Class* klass = program->GetClass(klass_name);
-          if(!klass) {
-            vector<wstring> uses = program->GetUses(current_class->GetFileName());
-            for(size_t i = 0; !klass && i < uses.size(); ++i) {
-              klass = program->GetClass(uses[i] + L"." + klass_name);
-            }
-          }
-          if(klass) {
-            encoded_name += klass->GetName();
-            variable->SetEvalType(TypeFactory::Instance()->MakeType(CLASS_TYPE, klass->GetName()), true);
-          }
-          // search libaraires
-          else {
-            LibraryClass* lib_klass = linker->SearchClassLibraries(klass_name, program->GetUses(current_class->GetFileName()));
-            if(lib_klass) {
-              encoded_name += lib_klass->GetName();
-              variable->SetEvalType(TypeFactory::Instance()->MakeType(CLASS_TYPE, lib_klass->GetName()), true);
-            }
-            else {
-              encoded_name += variable->GetName();
-              variable->SetEvalType(TypeFactory::Instance()->MakeType(CLASS_TYPE, variable->GetName()), true);
-            }
-          }
-        }
+/****************************
+ * Analyzes a declaration
+ ****************************/
+void ContextAnalyzer::AnalyzeExpressions(ExpressionList * parameters, const int depth)
+{
+  vector<Expression*> expressions = parameters->GetExpressions();
+  for(size_t i = 0; i < expressions.size(); ++i) {
+    AnalyzeExpression(expressions[i], depth);
+  }
+}
 
-        // dimension
-        if(variable->GetIndices()) {
-          vector<Expression*> indices = variable->GetIndices()->GetExpressions();
-          variable->GetEvalType()->SetDimension((int)indices.size());
-          for(size_t j = 0; j < indices.size(); ++j) {
-            encoded_name += L'*';
-          }
-        }
-
-        encoded_name += L',';
+/********************************
+ * Encodes a function definition
+ ********************************/
+wstring ContextAnalyzer::EncodeFunctionReference(ExpressionList * calling_params, const int depth)
+{
+  wstring encoded_name;
+  vector<Expression*> expressions = calling_params->GetExpressions();
+  for(size_t i = 0; i < expressions.size(); ++i) {
+    if(expressions[i]->GetExpressionType() == VAR_EXPR) {
+      Variable* variable = static_cast<Variable*>(expressions[i]);
+      if(variable->GetName() == BOOL_CLASS_ID) {
+        encoded_name += L'l';
+        variable->SetEvalType(TypeFactory::Instance()->MakeType(BOOLEAN_TYPE), true);
+      }
+      else if(variable->GetName() == BYTE_CLASS_ID) {
+        encoded_name += L'b';
+        variable->SetEvalType(TypeFactory::Instance()->MakeType(BYTE_TYPE), true);
+      }
+      else if(variable->GetName() == INT_CLASS_ID) {
+        encoded_name += L'i';
+        variable->SetEvalType(TypeFactory::Instance()->MakeType(INT_TYPE), true);
+      }
+      else if(variable->GetName() == FLOAT_CLASS_ID) {
+        encoded_name += L'f';
+        variable->SetEvalType(TypeFactory::Instance()->MakeType(FLOAT_TYPE), true);
+      }
+      else if(variable->GetName() == CHAR_CLASS_ID) {
+        encoded_name += L'c';
+        variable->SetEvalType(TypeFactory::Instance()->MakeType(CHAR_TYPE), true);
+      }
+      else if(variable->GetName() == NIL_CLASS_ID) {
+        encoded_name += L'n';
+        variable->SetEvalType(TypeFactory::Instance()->MakeType(NIL_TYPE), true);
+      }
+      else if(variable->GetName() == VAR_CLASS_ID) {
+        encoded_name += L'v';
+        variable->SetEvalType(TypeFactory::Instance()->MakeType(VAR_TYPE), true);
       }
       else {
-        // induce error condition
-        encoded_name += L'#';
+        encoded_name += L"o.";
+        // search program
+        const wstring klass_name = variable->GetName();
+        Class* klass = program->GetClass(klass_name);
+        if(!klass) {
+          vector<wstring> uses = program->GetUses(current_class->GetFileName());
+          for(size_t i = 0; !klass && i < uses.size(); ++i) {
+            klass = program->GetClass(uses[i] + L"." + klass_name);
+          }
+        }
+        if(klass) {
+          encoded_name += klass->GetName();
+          variable->SetEvalType(TypeFactory::Instance()->MakeType(CLASS_TYPE, klass->GetName()), true);
+        }
+        // search libaraires
+        else {
+          LibraryClass* lib_klass = linker->SearchClassLibraries(klass_name, program->GetUses(current_class->GetFileName()));
+          if(lib_klass) {
+            encoded_name += lib_klass->GetName();
+            variable->SetEvalType(TypeFactory::Instance()->MakeType(CLASS_TYPE, lib_klass->GetName()), true);
+          }
+          else {
+            encoded_name += variable->GetName();
+            variable->SetEvalType(TypeFactory::Instance()->MakeType(CLASS_TYPE, variable->GetName()), true);
+          }
+        }
       }
-    }
 
-    return encoded_name;
+      // dimension
+      if(variable->GetIndices()) {
+        vector<Expression*> indices = variable->GetIndices()->GetExpressions();
+        variable->GetEvalType()->SetDimension((int)indices.size());
+        for(size_t j = 0; j < indices.size(); ++j) {
+          encoded_name += L'*';
+        }
+      }
+
+      encoded_name += L',';
+    }
+    else {
+      // induce error condition
+      encoded_name += L'#';
+    }
   }
 
-  /****************************
-   * Encodes a function type
-   ****************************/
-  wstring ContextAnalyzer::EncodeFunctionType(vector<Type*> func_params, Type* func_rtrn) {
-    wstring encoded_name = L"(";
-    for(size_t i = 0; i < func_params.size(); ++i) {
+  return encoded_name;
+}
+
+/****************************
+ * Encodes a function type
+ ****************************/
+wstring ContextAnalyzer::EncodeFunctionType(vector<Type*> func_params, Type * func_rtrn) {
+  wstring encoded_name = L"(";
+  for(size_t i = 0; i < func_params.size(); ++i) {
+    // encode params
+    encoded_name += EncodeType(func_params[i]);
+
+    // encode dimension
+    for(int j = 0; j < func_params[i]->GetDimension(); ++j) {
+      encoded_name += L'*';
+    }
+    encoded_name += L',';
+  }
+
+  // encode return
+  encoded_name += L")~";
+  encoded_name += EncodeType(func_rtrn);
+  // encode dimension
+  for(int i = 0; func_rtrn && i < func_rtrn->GetDimension(); ++i) {
+    encoded_name += L'*';
+  }
+
+  return encoded_name;
+}
+
+/****************************
+ * Encodes a method call
+ ****************************/
+wstring ContextAnalyzer::EncodeMethodCall(ExpressionList * calling_params, const int depth)
+{
+  wstring encoded_name;
+  vector<Expression*> expressions = calling_params->GetExpressions();
+  for(size_t i = 0; i < expressions.size(); ++i) {
+    Expression* expression = expressions[i];
+    while(expression->GetMethodCall()) {
+      AnalyzeExpressionMethodCall(expression, depth + 1);
+      expression = expression->GetMethodCall();
+    }
+
+    Type* type;
+    if(expression->GetCastType()) {
+      type = expression->GetCastType();
+    }
+    else {
+      type = expression->GetEvalType();
+    }
+
+    if(type) {
       // encode params
-      encoded_name += EncodeType(func_params[i]);
+      encoded_name += EncodeType(type);
 
       // encode dimension
-      for(int j = 0; j < func_params[i]->GetDimension(); ++j) {
+      for(int j = 0; !IsScalar(expression) && j < type->GetDimension(); ++j) {
         encoded_name += L'*';
       }
       encoded_name += L',';
     }
-
-    // encode return
-    encoded_name += L")~";
-    encoded_name += EncodeType(func_rtrn);
-    // encode dimension
-    for(int i = 0; func_rtrn && i < func_rtrn->GetDimension(); ++i) {
-      encoded_name += L'*';
-    }
-
-    return encoded_name;
   }
 
-  /****************************
-   * Encodes a method call
-   ****************************/
-  wstring ContextAnalyzer::EncodeMethodCall(ExpressionList* calling_params, const int depth)
-  {
-    wstring encoded_name;
-    vector<Expression*> expressions = calling_params->GetExpressions();
-    for(size_t i = 0; i < expressions.size(); ++i) {
-      Expression* expression = expressions[i];
-      while(expression->GetMethodCall()) {
-        AnalyzeExpressionMethodCall(expression, depth + 1);
-        expression = expression->GetMethodCall();
-      }
-
-      Type* type;
-      if(expression->GetCastType()) {
-        type = expression->GetCastType();
-      }
-      else {
-        type = expression->GetEvalType();
-      }
-
-      if(type) {
-        // encode params
-        encoded_name += EncodeType(type);
-
-        // encode dimension
-        for(int j = 0; !IsScalar(expression) && j < type->GetDimension(); ++j) {
-          encoded_name += L'*';
-        }
-        encoded_name += L',';
-      }
-    }
-
-    return encoded_name;
-  }
+  return encoded_name;
+}
 
