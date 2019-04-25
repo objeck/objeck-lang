@@ -40,7 +40,7 @@ void ContextAnalyzer::ProcessError(ParseNode* node, const wstring &msg)
 {
 #ifdef _DEBUG
   GetLogger() << L"\tError: " << node->GetFileName() << L":" << node->GetLineNumber()
-        << L": " << msg << endl;
+	      << L": " << msg << endl;
 #endif
   
   const wstring &str_line_num = ToString(node->GetLineNumber());
@@ -1192,8 +1192,8 @@ bool ContextAnalyzer::Analyze()
         AnalyzeClassCast(if_conditional->GetEvalType(), else_conditional, depth + 1);
       }
       else if(else_type && (if_type->GetType() != else_type->GetType() &&    
-              !((if_type->GetType() == CLASS_TYPE && else_type->GetType() == NIL_TYPE) ||
-              (if_type->GetType() == NIL_TYPE && else_type->GetType() == CLASS_TYPE)))) {
+			    !((if_type->GetType() == CLASS_TYPE && else_type->GetType() == NIL_TYPE) ||
+			      (if_type->GetType() == NIL_TYPE && else_type->GetType() == CLASS_TYPE)))) {
         ProcessError(conditional, L"'?' invalid type mismatch");
       }
       // set eval type
@@ -1601,22 +1601,22 @@ bool ContextAnalyzer::Analyze()
         }
         else {	  
           ProcessError(static_cast<Expression*>(method_call), L"Undefined or incompatible enum type: '" + 
-											 ReplaceSubstring(enum_name, L"#", L"->") + L"'");
+		       ReplaceSubstring(enum_name, L"#", L"->") + L"'");
         }
       }
       
       // next call
       AnalyzeExpressionMethodCall(method_call, depth + 1);
     }
-		//
+    //
     // parent call
-		//
+    //
     else if(method_call->GetCallType() == PARENT_CALL) {
       AnalyzeParentCall(method_call, depth);
     }
     //
-		// method/function
-		//
+    // method/function
+    //
     else { 
       wstring encoding;
       // local call
@@ -1826,14 +1826,14 @@ bool ContextAnalyzer::Analyze()
    ****************************/
   void ContextAnalyzer::AnalyzeNewArrayCall(MethodCall* method_call, const int depth)
   {
-		Class* generic_class = current_class->GetGenericClass(method_call->GetEvalType()->GetClassName());
-		if(generic_class && generic_class->HasGenericInterface() && method_call->GetEvalType()) {
-			const int dimension = method_call->GetEvalType()->GetDimension();
-			method_call->SetEvalType(generic_class->GetGenericInterface(), false);
-			method_call->GetEvalType()->SetDimension(dimension);
-		}
+    Class* generic_class = current_class->GetGenericClass(method_call->GetEvalType()->GetClassName());
+    if(generic_class && generic_class->HasGenericInterface() && method_call->GetEvalType()) {
+      const int dimension = method_call->GetEvalType()->GetDimension();
+      method_call->SetEvalType(generic_class->GetGenericInterface(), false);
+      method_call->GetEvalType()->SetDimension(dimension);
+    }
 
-		// get parameters
+    // get parameters
     ExpressionList* call_params = method_call->GetCallingParameters();
     AnalyzeExpressions(call_params, depth + 1);
     // check indexes
@@ -1865,11 +1865,11 @@ bool ContextAnalyzer::Analyze()
         }
       }
     }
-		// TODO: adding generics
-		if(method_call->HasConcreteNames() && method_call->GetEvalType() && 
-			 !method_call->GetEvalType()->HasGenerics()) {
-			method_call->GetEvalType()->SetGenerics(method_call->GetConcreteTypes());
-		}
+    // TODO: adding generics
+    if(method_call->HasConcreteNames() && method_call->GetEvalType() && 
+       !method_call->GetEvalType()->HasGenerics()) {
+      method_call->GetEvalType()->SetGenerics(method_call->GetConcreteTypes());
+    }
   }
 
   /*********************************
@@ -1925,8 +1925,8 @@ bool ContextAnalyzer::Analyze()
       } 
       else {
         ProcessError(static_cast<Expression*>(method_call), L"Undefined class reference: '" + 
-										 method_call->GetBaseType()->GetClassName() + 
-										 L"'\n\tIf external reference to generic ensure it has been typed");
+		     method_call->GetBaseType()->GetClassName() + 
+		     L"'\n\tIf external reference to generic ensure it has been typed");
       }
     }
   }
@@ -1954,9 +1954,9 @@ bool ContextAnalyzer::Analyze()
             !method_call->GetVariable()->GetIndices())) {
           klass = program->GetClass(BASE_ARRAY_CLASS_ID);
           encoding = L"o.System.Base";
-				  for(int i = 0; i < entry->GetType()->GetDimension(); ++i) { 	
+	  for(int i = 0; i < entry->GetType()->GetDimension(); ++i) { 	
             encoding += L"*";
-					}
+	  }
           encoding += L",";
           
         }
@@ -1964,8 +1964,8 @@ bool ContextAnalyzer::Analyze()
                 method_call->GetVariable()->GetCastType()->GetType() == CLASS_TYPE) {
           klass = SearchProgramClasses(method_call->GetVariable()->GetCastType()->GetClassName());
         }
-				else {
-					klass = SearchProgramClasses(entry->GetType()->GetClassName());
+	else {
+	  klass = SearchProgramClasses(entry->GetType()->GetClassName());
         }
       }
       // static method call
@@ -2113,11 +2113,11 @@ bool ContextAnalyzer::Analyze()
               Class* from_klass = SearchProgramClasses(from_klass_name);
               LibraryClass* from_lib_klass = linker->SearchClassLibraries(from_klass_name, program->GetUses(current_class->GetFileName()));	      
               
-							const wstring& to_klass_name = method_type->GetClassName();
-							Class* to_klass = SearchProgramClasses(to_klass_name);
-							if(to_klass) {
-								return ValidDownCast(to_klass->GetName(), from_klass, from_lib_klass) ? 1 : -1;
-							}
+	      const wstring& to_klass_name = method_type->GetClassName();
+	      Class* to_klass = SearchProgramClasses(to_klass_name);
+	      if(to_klass) {
+		return ValidDownCast(to_klass->GetName(), from_klass, from_lib_klass) ? 1 : -1;
+	      }
 
               LibraryClass* to_lib_klass = linker->SearchClassLibraries(to_klass_name, program->GetUses(current_class->GetFileName()));
               if(to_lib_klass) {
@@ -2181,18 +2181,18 @@ bool ContextAnalyzer::Analyze()
           // get method type
           Type* method_type = NULL;
           if(method_parms[j]->GetEntry() && method_parms[j]->GetEntry()->GetType()) {
-						// get type
-						method_type = method_parms[j]->GetEntry()->GetType();
+	    // get type
+	    method_type = method_parms[j]->GetEntry()->GetType();
 
-						// TODO: adding generics
-						// get concrete type if needed
-						if(klass->HasGenerics()) {
-							method_type = RelsolveGenericType(method_type, method_call, klass, NULL);
-						}
-						ResolveClassEnumType(method_type);
+	    // TODO: adding generics
+	    // get concrete type if needed
+	    if(klass->HasGenerics()) {
+	      method_type = RelsolveGenericType(method_type, method_call, klass, NULL);
+	    }
+	    ResolveClassEnumType(method_type);
           }
           // add parameter match
-					const int compare = MatchCallingParameter(expr_params[j], method_type, klass, NULL, depth);
+	  const int compare = MatchCallingParameter(expr_params[j], method_type, klass, NULL, depth);
           match->AddParameterMatch(compare);
         }
         matches.push_back(match);
@@ -2212,11 +2212,11 @@ bool ContextAnalyzer::Analyze()
           expression = expression->GetMethodCall();
         }
 
-				// TODO: adding generics
-				Type* left = method_parms[j]->GetEntry()->GetType();
-				if(klass->HasGenerics() && !left->HasGenerics()) {
-					left = RelsolveGenericCall(left, method_call, klass, method);
-				}
+	// TODO: adding generics
+	Type* left = method_parms[j]->GetEntry()->GetType();
+	if(klass->HasGenerics() && !left->HasGenerics()) {
+	  left = RelsolveGenericCall(left, method_call, klass, method);
+	}
         ResolveClassEnumType(left);
         AnalyzeRightCast(left, expression, IsScalar(expression), depth + 1);
       }
@@ -2241,9 +2241,9 @@ bool ContextAnalyzer::Analyze()
   {   
 #ifdef _DEBUG
     GetLogger() << L"Checking program class call: |" << klass->GetName() << L":" 
-          << (method_call->GetMethodName().size() > 0 ? 
-              method_call->GetMethodName() : method_call->GetVariableName())
-          << L"|" << endl;
+		<< (method_call->GetMethodName().size() > 0 ? 
+		    method_call->GetMethodName() : method_call->GetVariableName())
+		<< L"|" << endl;
 #endif
 
     // calling parameters
@@ -2309,11 +2309,11 @@ bool ContextAnalyzer::Analyze()
           if(expression->GetExpressionType() == METHOD_CALL_EXPR && expression->GetEvalType() && expression->GetEvalType()->GetType() == NIL_TYPE) {
             ProcessError(static_cast<Expression*>(method_call), L"Invalid operation with 'Nil' value");
           }
-					// TODO: adding generics
-					Type* left = mthd_params[i]->GetEntry()->GetType();
-					if(klass->HasGenerics()) {
-						left = RelsolveGenericCall(left, method_call, klass, method);
-					}
+	  // TODO: adding generics
+	  Type* left = mthd_params[i]->GetEntry()->GetType();
+	  if(klass->HasGenerics()) {
+	    left = RelsolveGenericCall(left, method_call, klass, method);
+	  }
           ResolveClassEnumType(left);
           AnalyzeRightCast(left, expression->GetEvalType(), expression, IsScalar(expression), depth + 1);	
         }
@@ -2342,7 +2342,7 @@ bool ContextAnalyzer::Analyze()
       }
       // cannot create an instance of a virutal class
       if((method->GetMethodType() == NEW_PUBLIC_METHOD || method->GetMethodType() == NEW_PRIVATE_METHOD) &&
-				 klass->IsVirtual() && current_class->GetParent() != klass) {
+	 klass->IsVirtual() && current_class->GetParent() != klass) {
         ProcessError(static_cast<Expression*>(method_call), L"Cannot create an instance of a virutal class");
       }
       // associate method
@@ -2350,26 +2350,26 @@ bool ContextAnalyzer::Analyze()
       method_call->SetOriginalClass(klass);
       method_call->SetMethod(method);
       
-			// TODO: adding generics
-			if((method->GetMethodType() == NEW_PUBLIC_METHOD || method->GetMethodType() == NEW_PRIVATE_METHOD) &&
-				 klass->HasGenerics() && !method_call->HasConcreteNames() && current_class != klass) {
-				ProcessError(static_cast<Expression*>(method_call), L"Cannot create an instance of a generic class");
-			}
+      // TODO: adding generics
+      if((method->GetMethodType() == NEW_PUBLIC_METHOD || method->GetMethodType() == NEW_PRIVATE_METHOD) &&
+	 klass->HasGenerics() && !method_call->HasConcreteNames() && current_class != klass) {
+	ProcessError(static_cast<Expression*>(method_call), L"Cannot create an instance of a generic class");
+      }
 
-			// TODO: adding generics
-			// map generic to concrete
-			Type* eval_type = method_call->GetEvalType();
-			if(klass->HasGenerics()) {
-				eval_type = RelsolveGenericType(eval_type, method_call, klass, NULL);
-				if(!eval_type->HasGenerics()) {
-					eval_type->SetGenerics(method_call->GetConcreteTypes());
-				}
-				method_call->SetEvalType(eval_type, false);
-			}
+      // TODO: adding generics
+      // map generic to concrete
+      Type* eval_type = method_call->GetEvalType();
+      if(klass->HasGenerics()) {
+	eval_type = RelsolveGenericType(eval_type, method_call, klass, NULL);
+	if(!eval_type->HasGenerics()) {
+	  eval_type->SetGenerics(method_call->GetConcreteTypes());
+	}
+	method_call->SetEvalType(eval_type, false);
+      }
 			
       if(eval_type->GetType() == CLASS_TYPE && !ResolveClassEnumType(eval_type, klass)) {
         ProcessError(static_cast<Expression*>(method_call), L"Undefined class or enum: '" + 
-										 ReplaceSubstring(eval_type->GetClassName(), L"#", L"->") + L"'");
+		     ReplaceSubstring(eval_type->GetClassName(), L"#", L"->") + L"'");
       }
       
       if(method_call->GetMethodCall()) {
@@ -2377,26 +2377,26 @@ bool ContextAnalyzer::Analyze()
 
       }
 
-			// TODO: adding generics
-			// validate concrete declarations
-			if(method_call->HasConcreteNames()) {
-				const vector<Type*> concrete_types = method_call->GetConcreteTypes();
-				const vector<Class*> generic_classes = method_call->GetMethod()->GetClass()->GetGenericClasses();
-				if(concrete_types.size() == generic_classes.size()) {
-					for(size_t i = 0; i < concrete_types.size(); ++i) {
-						Type* right = concrete_types[i];
-						// generic that defines an interface
-						if(generic_classes[i]->HasGenericInterface()) {
-							Type* left = generic_classes[i]->GetGenericInterface();
-							AnalyzeClassCast(left, right, method_call, true, depth);
-						}
-						const wstring cls_name = right->GetClassName();
-						if(!HasProgramLibraryClass(cls_name)) {
-							ProcessError(static_cast<Expression*>(method_call), L"Undefined class: '" + cls_name + L"'");
-						}
-					}
-				}
-			}
+      // TODO: adding generics
+      // validate concrete declarations
+      if(method_call->HasConcreteNames()) {
+	const vector<Type*> concrete_types = method_call->GetConcreteTypes();
+	const vector<Class*> generic_classes = method_call->GetMethod()->GetClass()->GetGenericClasses();
+	if(concrete_types.size() == generic_classes.size()) {
+	  for(size_t i = 0; i < concrete_types.size(); ++i) {
+	    Type* right = concrete_types[i];
+	    // generic that defines an interface
+	    if(generic_classes[i]->HasGenericInterface()) {
+	      Type* left = generic_classes[i]->GetGenericInterface();
+	      AnalyzeClassCast(left, right, method_call, true, depth);
+	    }
+	    const wstring cls_name = right->GetClassName();
+	    if(!HasProgramLibraryClass(cls_name)) {
+	      ProcessError(static_cast<Expression*>(method_call), L"Undefined class: '" + cls_name + L"'");
+	    }
+	  }
+	}
+      }
 
       // enum check
       if(method_call->GetMethodCall() && method_call->GetMethodCall()->GetCallType() == ENUM_CALL) {
@@ -2444,13 +2444,13 @@ bool ContextAnalyzer::Analyze()
         LibraryMethodCallSelection* match = new LibraryMethodCallSelection(candidates[i]);
         for(size_t j = 0; j < expr_params.size(); ++j) {
 
-					// TODO: adding generics
-					// get concrete type if needed
-					Type* method_type = method_parms[j];
-					if(klass->HasGenerics()) {
-						method_type = RelsolveGenericType(method_type, method_call, NULL, klass);
-						ResolveClassEnumType(method_type);
-					}
+	  // TODO: adding generics
+	  // get concrete type if needed
+	  Type* method_type = method_parms[j];
+	  if(klass->HasGenerics()) {
+	    method_type = RelsolveGenericType(method_type, method_call, NULL, klass);
+	    ResolveClassEnumType(method_type);
+	  }
 					
           const int compare = MatchCallingParameter(expr_params[j], method_type, NULL, klass, depth);
           match->AddParameterMatch(compare);
@@ -2475,11 +2475,11 @@ bool ContextAnalyzer::Analyze()
           expression = expression->GetMethodCall();
         }
 
-				// TODO: adding generics
-				Type* left = method_parms[j];
-				if(klass->HasGenerics()) {
-					left = RelsolveGenericCall(left, method_call, klass, lib_method);
-				}
+	// TODO: adding generics
+	Type* left = method_parms[j];
+	if(klass->HasGenerics()) {
+	  left = RelsolveGenericCall(left, method_call, klass, lib_method);
+	}
         AnalyzeRightCast(left, expression, IsScalar(expression), depth + 1);
       }
     }
@@ -2503,7 +2503,7 @@ bool ContextAnalyzer::Analyze()
   {      
 #ifdef _DEBUG
     GetLogger() << L"Checking library encoded name: |" << klass->GetName() << L":" 
-          << method_call->GetMethodName() << L"|" << endl;
+		<< method_call->GetMethodName() << L"|" << endl;
 #endif
 
     ExpressionList* call_params = method_call->GetCallingParameters();
@@ -2584,20 +2584,20 @@ bool ContextAnalyzer::Analyze()
         ProcessError(static_cast<Expression*>(method_call), L"Invalid enum reference");
       }
 
-			if(lib_method->GetReturn()->GetType() == NIL_TYPE && method_call->GetCastType()) {
-				ProcessError(static_cast<Expression*>(method_call), L"Cannot cast a Nil return value");
-			}
+      if(lib_method->GetReturn()->GetType() == NIL_TYPE && method_call->GetCastType()) {
+	ProcessError(static_cast<Expression*>(method_call), L"Cannot cast a Nil return value");
+      }
 
-			// TODO: adding generics
-			// map generic to concrete
-			LibraryClass* lib_klass = lib_method->GetLibraryClass();
-			Type* eval_type = method_call->GetEvalType();
-			if(lib_klass->HasGenerics()) {
-				eval_type = RelsolveGenericCall(eval_type, method_call, lib_klass, lib_method);
-			}
+      // TODO: adding generics
+      // map generic to concrete
+      LibraryClass* lib_klass = lib_method->GetLibraryClass();
+      Type* eval_type = method_call->GetEvalType();
+      if(lib_klass->HasGenerics()) {
+	eval_type = RelsolveGenericCall(eval_type, method_call, lib_klass, lib_method);
+      }
 
-			// next call
-			AnalyzeExpressionMethodCall(method_call, depth + 1);
+      // next call
+      AnalyzeExpressionMethodCall(method_call, depth + 1);
     }
     else {
       AnalyzeDynamicFunctionCall(method_call, depth + 1);
@@ -3139,12 +3139,12 @@ bool ContextAnalyzer::Analyze()
       if(type->GetType() == CLASS_TYPE && !ResolveClassEnumType(type)) {
         ProcessError(rtrn, L"Undefined class or enum: '" + ReplaceSubstring(type->GetClassName(), L"#", L"->") + L"'");
       }
-			/*
-			// TODO: generic remove
-			if(current_class->HasGenerics() && current_class->GetName() == type->GetClassName()) {
-				ProcessError(rtrn, L"Generic classes cannot return untyped references\n\tConsider using a copy constructor");
-			}
-			*/
+      /*
+      // TODO: generic remove
+      if(current_class->HasGenerics() && current_class->GetName() == type->GetClassName()) {
+      ProcessError(rtrn, L"Generic classes cannot return untyped references\n\tConsider using a copy constructor");
+      }
+      */
     }
     else if(type->GetType() != NIL_TYPE) {
       ProcessError(rtrn, L"Invalid return statement");
@@ -3231,7 +3231,7 @@ bool ContextAnalyzer::Analyze()
         }
       }
     }
-	  else if(variable->GetEvalType() && variable->GetEvalType()->GetType() == CLASS_TYPE && expression->GetExpressionType() == METHOD_CALL_EXPR) {
+    else if(variable->GetEvalType() && variable->GetEvalType()->GetType() == CLASS_TYPE && expression->GetExpressionType() == METHOD_CALL_EXPR) {
       MethodCall* method_call = static_cast<MethodCall*>(expression);
       if(method_call->GetEnumItem()) {
         SymbolEntry* entry = variable->GetEntry();
@@ -3242,7 +3242,7 @@ bool ContextAnalyzer::Analyze()
           entry->SetType(to_type);
         }
       }
-	  }
+    }
 
     Type* eval_type = variable->GetEvalType();
     
@@ -3351,9 +3351,9 @@ bool ContextAnalyzer::Analyze()
          !method_call->IsFunctionDefinition()) {
         ProcessError(expression, L"Invalid assignment method '" + method_call->GetMethod()->GetName() + L"(..)' does not return a value");
       }
-			else if(method_call->GetEvalType() && method_call->GetEvalType()->GetType() == NIL_TYPE) {
-				ProcessError(expression, L"Invalid assignment, call does not return a value");
-			}
+      else if(method_call->GetEvalType() && method_call->GetEvalType()->GetType() == NIL_TYPE) {
+	ProcessError(expression, L"Invalid assignment, call does not return a value");
+      }
     }
   }
 
@@ -3530,8 +3530,8 @@ bool ContextAnalyzer::Analyze()
         ProcessError(expression, L"Invalid mathematical operation");
       }
       else if(!(IsEnumExpression(left) || IsEnumExpression(right)) && 
-        (((cls_type = GetExpressionType(left, depth + 1)) && cls_type->GetType() == CLASS_TYPE) ||
-        ((cls_type = GetExpressionType(right, depth + 1)) && cls_type->GetType() == CLASS_TYPE))) {
+	      (((cls_type = GetExpressionType(left, depth + 1)) && cls_type->GetType() == CLASS_TYPE) ||
+	       ((cls_type = GetExpressionType(right, depth + 1)) && cls_type->GetType() == CLASS_TYPE))) {
         ProcessError(expression, L"Invalid mathematical operation");
       }
       break;
@@ -3887,9 +3887,9 @@ bool ContextAnalyzer::Analyze()
             AnalyzeClassCast(left, right, left_expr, false, depth + 1);            
           }
           else if((!HasProgramLibraryClass(left->GetClassName()) && !current_class->GetGenericClass(left->GetClassName())) ||
-									(!HasProgramLibraryClass(right->GetClassName()) && !current_class->GetGenericClass(right->GetClassName()))) {
+		  (!HasProgramLibraryClass(right->GetClassName()) && !current_class->GetGenericClass(right->GetClassName()))) {
             ProcessError(left_expr, L"Invalid operation between class or enum: '" + 
-												 left->GetClassName() + L"' and '" + right->GetClassName() + L"'");
+			 left->GetClassName() + L"' and '" + right->GetClassName() + L"'");
           }
           expression->SetEvalType(TypeFactory::Instance()->MakeType(INT_TYPE), true);
           break;
@@ -4471,17 +4471,17 @@ bool ContextAnalyzer::Analyze()
     LibraryEnum* left_lib_enum = NULL;
     LibraryClass* left_lib_class = NULL;
 
-		if(current_class->HasGenerics()) {
-			Class* left_tmp = current_class->GetGenericClass(left->GetClassName());
-			if(left_tmp && left_tmp->HasGenericInterface()) {
-				left = left_tmp->GetGenericInterface();
-			}
+    if(current_class->HasGenerics()) {
+      Class* left_tmp = current_class->GetGenericClass(left->GetClassName());
+      if(left_tmp && left_tmp->HasGenericInterface()) {
+	left = left_tmp->GetGenericInterface();
+      }
 
-			Class* right_tmp = current_class->GetGenericClass(right->GetClassName());
-			if(right_tmp && right_tmp->HasGenericInterface()) {
-				right = right_tmp->GetGenericInterface();
-			}
-		}
+      Class* right_tmp = current_class->GetGenericClass(right->GetClassName());
+      if(right_tmp && right_tmp->HasGenericInterface()) {
+	right = right_tmp->GetGenericInterface();
+      }
+    }
 
     //
     // program enum
@@ -4517,48 +4517,48 @@ bool ContextAnalyzer::Analyze()
     // program class
     //
     else if(left && right && (left_class = SearchProgramClasses(left->GetClassName()))) {
-			// program and generic
+      // program and generic
       Class* right_class = SearchProgramClasses(right->GetClassName());
-			if(!right_class) {
-				right_class = current_class->GetGenericClass(right->GetClassName());
-			}
+      if(!right_class) {
+	right_class = current_class->GetGenericClass(right->GetClassName());
+      }
       if(right_class) {
-				// TODO: adding generics
-				if(left->HasGenerics() == right->HasGenerics()) {
-					const vector<Type*> left_concretes = left->GetGenerics();
-					const vector<Type*> right_concretes = right->GetGenerics();
-					if(left_concretes.size() == right_concretes.size()) {
-						for(size_t i = 0; i < left_concretes.size(); ++i) {
-							Type* left_concrete = left_concretes[i];
-							Type* right_concrete = right_concretes[i];
+	// TODO: adding generics
+	if(left->HasGenerics() == right->HasGenerics()) {
+	  const vector<Type*> left_concretes = left->GetGenerics();
+	  const vector<Type*> right_concretes = right->GetGenerics();
+	  if(left_concretes.size() == right_concretes.size()) {
+	    for(size_t i = 0; i < left_concretes.size(); ++i) {
+	      Type* left_concrete = left_concretes[i];
+	      Type* right_concrete = right_concretes[i];
 
-							if(!ResolveClassEnumType(left_concrete)) {
-								ProcessError(expression, L"Undefined class: '" + left_concrete->GetClassName() + L"'");
-							}
+	      if(!ResolveClassEnumType(left_concrete)) {
+		ProcessError(expression, L"Undefined class: '" + left_concrete->GetClassName() + L"'");
+	      }
 
-							if(!ResolveClassEnumType(right_concrete)) {
-								ProcessError(expression, L"Undefined class: '" + right_concrete->GetClassName() + L"'");
-							}
+	      if(!ResolveClassEnumType(right_concrete)) {
+		ProcessError(expression, L"Undefined class: '" + right_concrete->GetClassName() + L"'");
+	      }
 
-							if(left_concrete->GetClassName() != right_concrete->GetClassName()) {
-								ProcessError(expression, L"Generic parameter type mismatch: '" + 
-														 left_concrete->GetClassName() + L"' and '" + 
-														 right_concrete->GetClassName() + L"'");
-							}
-						}
+	      if(left_concrete->GetClassName() != right_concrete->GetClassName()) {
+		ProcessError(expression, L"Generic parameter type mismatch: '" + 
+			     left_concrete->GetClassName() + L"' and '" + 
+			     right_concrete->GetClassName() + L"'");
+	      }
+	    }
 
-						return;
-					}
-					else {
-						ProcessError(expression, L"Invalid cast between generics: '" +
-												 ReplaceSubstring(left->GetClassName(), L"#", L"->") + L"' and '" +
-												 ReplaceSubstring(right->GetClassName(), L"#", L"->") + L"'");
-					}
-				}
-				else if(left_class != current_class && right_class != current_class) {
-					ProcessError(expression, L"Invalid generic class definition '" + 
-											 ReplaceSubstring(right->GetClassName(), L"#", L"->") + L"' or concrete cast");
-				}
+	    return;
+	  }
+	  else {
+	    ProcessError(expression, L"Invalid cast between generics: '" +
+			 ReplaceSubstring(left->GetClassName(), L"#", L"->") + L"' and '" +
+			 ReplaceSubstring(right->GetClassName(), L"#", L"->") + L"'");
+	  }
+	}
+	else if(left_class != current_class && right_class != current_class) {
+	  ProcessError(expression, L"Invalid generic class definition '" + 
+		       ReplaceSubstring(right->GetClassName(), L"#", L"->") + L"' or concrete cast");
+	}
         // downcast
         if(ValidDownCast(left_class->GetName(), right_class, NULL)) {
           left_class->SetCalled(true);
@@ -4579,11 +4579,11 @@ bool ContextAnalyzer::Analyze()
         else {
           expression->SetToClass(left_class);
           ProcessError(expression, L"Invalid cast between classes: '" +
-            ReplaceSubstring(left->GetClassName(), L"#", L"->") + L"' and '" +
-            ReplaceSubstring(right->GetClassName(), L"#", L"->") + L"'");
+		       ReplaceSubstring(left->GetClassName(), L"#", L"->") + L"' and '" +
+		       ReplaceSubstring(right->GetClassName(), L"#", L"->") + L"'");
         }
       }
-			// library
+      // library
       else if(linker->SearchClassLibraries(right->GetClassName(), program->GetUses(current_class->GetFileName()))) {
         LibraryClass* right_lib_class = linker->SearchClassLibraries(right->GetClassName(), program->GetUses(current_class->GetFileName()));
         // downcast
@@ -4602,36 +4602,36 @@ bool ContextAnalyzer::Analyze()
         else {
           expression->SetToClass(left_class);
           ProcessError(expression, L"Invalid cast between classes: '" +
-            ReplaceSubstring(left->GetClassName(), L"#", L"->") + L"' and '" +
-            ReplaceSubstring(right->GetClassName(), L"#", L"->") + L"'");
+		       ReplaceSubstring(left->GetClassName(), L"#", L"->") + L"' and '" +
+		       ReplaceSubstring(right->GetClassName(), L"#", L"->") + L"'");
         }
       }
       else {
         ProcessError(expression, L"Invalid cast between class, enum or Nil");
       }
     }
-		//
-		// generic class
-		//
-		else if(left && right && (left_class = current_class->GetGenericClass(left->GetClassName()))) {
-			// program
-			Class* right_class = current_class->GetGenericClass(right->GetClassName());
-			if(right_class) {
-				if(left->GetClassName() == right->GetClassName()) {
-					return;
-				}
-				else {
-					ProcessError(expression, L"Invalid cast between generics: '" +
-											 ReplaceSubstring(left->GetClassName(), L"#", L"->") + L"' and '" +
-											 ReplaceSubstring(right->GetClassName(), L"#", L"->") + L"'");
-				}
-			}
-			else {
-				ProcessError(expression, L"Invalid cast between generic: '" +
-										 ReplaceSubstring(left->GetClassName(), L"#", L"->") + L"' and class/enum '" +
-										 ReplaceSubstring(right->GetClassName(), L"#", L"->") + L"'");
-			}
-		}
+    //
+    // generic class
+    //
+    else if(left && right && (left_class = current_class->GetGenericClass(left->GetClassName()))) {
+      // program
+      Class* right_class = current_class->GetGenericClass(right->GetClassName());
+      if(right_class) {
+	if(left->GetClassName() == right->GetClassName()) {
+	  return;
+	}
+	else {
+	  ProcessError(expression, L"Invalid cast between generics: '" +
+		       ReplaceSubstring(left->GetClassName(), L"#", L"->") + L"' and '" +
+		       ReplaceSubstring(right->GetClassName(), L"#", L"->") + L"'");
+	}
+      }
+      else {
+	ProcessError(expression, L"Invalid cast between generic: '" +
+		     ReplaceSubstring(left->GetClassName(), L"#", L"->") + L"' and class/enum '" +
+		     ReplaceSubstring(right->GetClassName(), L"#", L"->") + L"'");
+      }
+    }
     //
     // enum libary
     //
@@ -4664,9 +4664,9 @@ bool ContextAnalyzer::Analyze()
     else if(left && right && (left_lib_class = linker->SearchClassLibraries(left->GetClassName(), program->GetUses(current_class->GetFileName())))) {
       // program and generic
       Class* right_class = SearchProgramClasses(right->GetClassName());
-			if(!right_class) {
-				right_class = current_class->GetGenericClass(right->GetClassName());
-			}
+      if(!right_class) {
+	right_class = current_class->GetGenericClass(right->GetClassName());
+      }
       if(right_class) {
         // downcast
         if(ValidDownCast(left_lib_class->GetName(), right_class, NULL)) {
@@ -4687,7 +4687,7 @@ bool ContextAnalyzer::Analyze()
         // invalid cast
         else {
           ProcessError(expression, L"Invalid cast between classes: '" + ReplaceSubstring(left->GetClassName(), L"#", L"->") +
-            L"' and '" + ReplaceSubstring(right->GetClassName(), L"#", L"->") + L"'");
+		       L"' and '" + ReplaceSubstring(right->GetClassName(), L"#", L"->") + L"'");
         }
       }
       // libary
@@ -4712,7 +4712,7 @@ bool ContextAnalyzer::Analyze()
         // downcast
         else {
           ProcessError(expression, L"Invalid cast between classes: '" + left_lib_class->GetName() + L"' and '" +
-            right_lib_class->GetName() + L"'");
+		       right_lib_class->GetName() + L"'");
         }
       }
       else {
@@ -4742,7 +4742,7 @@ bool ContextAnalyzer::Analyze()
         Type* type = entry->GetType();
         AnalyzeDynamicFunctionParameters(type->GetFunctionParameters(), entry, klass);
         const wstring encoded_name = L"m." + EncodeFunctionType(type->GetFunctionParameters(),
-																																type->GetFunctionReturn());
+								type->GetFunctionReturn());
 #ifdef _DEBUG
         GetLogger() << L"Encoded function declaration: |" << encoded_name << L"|" << endl;
 #endif

@@ -1,7 +1,7 @@
 /***************************************************************************
  * Links pre-compiled code into existing program.
  *
- * Copyright (c) 2008-2018, Randy Hollines
+ * Copyright (c) 2008-2019, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -193,98 +193,98 @@ class LibraryMethod {
   vector<frontend::Type*> declarations;
   backend::IntermediateDeclarations* entries;
   
-	void ParseParameters() {
-		const wstring& method_name = name;
-		size_t start = method_name.find_last_of(':');
-		if(start != wstring::npos) {
-			const wstring& parameters = method_name.substr(start + 1);
-			size_t index = 0;
+  void ParseParameters() {
+    const wstring& method_name = name;
+    size_t start = method_name.find_last_of(':');
+    if(start != wstring::npos) {
+      const wstring& parameters = method_name.substr(start + 1);
+      size_t index = 0;
 
-			while(index < parameters.size()) {
-				frontend::Type* type = NULL;
-				int dimension = 0;
-				switch(parameters[index]) {
-				case 'l':
-					type = frontend::TypeFactory::Instance()->MakeType(frontend::BOOLEAN_TYPE);
-					index++;
-					break;
+      while(index < parameters.size()) {
+	frontend::Type* type = NULL;
+	int dimension = 0;
+	switch(parameters[index]) {
+	case 'l':
+	  type = frontend::TypeFactory::Instance()->MakeType(frontend::BOOLEAN_TYPE);
+	  index++;
+	  break;
 
-				case 'b':
-					type = frontend::TypeFactory::Instance()->MakeType(frontend::BYTE_TYPE);
-					index++;
-					break;
+	case 'b':
+	  type = frontend::TypeFactory::Instance()->MakeType(frontend::BYTE_TYPE);
+	  index++;
+	  break;
 
-				case 'i':
-					type = frontend::TypeFactory::Instance()->MakeType(frontend::INT_TYPE);
-					index++;
-					break;
+	case 'i':
+	  type = frontend::TypeFactory::Instance()->MakeType(frontend::INT_TYPE);
+	  index++;
+	  break;
 
-				case 'f':
-					type = frontend::TypeFactory::Instance()->MakeType(frontend::FLOAT_TYPE);
-					index++;
-					break;
+	case 'f':
+	  type = frontend::TypeFactory::Instance()->MakeType(frontend::FLOAT_TYPE);
+	  index++;
+	  break;
 
-				case 'c':
-					type = frontend::TypeFactory::Instance()->MakeType(frontend::CHAR_TYPE);
-					index++;
-					break;
+	case 'c':
+	  type = frontend::TypeFactory::Instance()->MakeType(frontend::CHAR_TYPE);
+	  index++;
+	  break;
 
-				case 'n':
-					type = frontend::TypeFactory::Instance()->MakeType(frontend::NIL_TYPE);
-					index++;
-					break;
+	case 'n':
+	  type = frontend::TypeFactory::Instance()->MakeType(frontend::NIL_TYPE);
+	  index++;
+	  break;
 
-				case 'm': {
-					start = index;
-					while(index < parameters.size() && parameters[index] != '~') {
-						index++;
-					}
-					index++;
-					while(index < parameters.size() && parameters[index] != '*' &&
-								parameters[index] != ',') {
-						index++;
-					}
-					size_t end = index;
-					const wstring& name = parameters.substr(start, end - start);
-					// TODO: convenient alternative/kludge to paring the function types. This
-					// works because the contextual analyzer does string encoding and then 
-					// checking of function types.
-					type = frontend::TypeFactory::Instance()->MakeType(frontend::FUNC_TYPE, name);
-				}
-					break;
-
-				case 'o': {
-					index += 2;
-					start = index;
-					while(index < parameters.size() && parameters[index] != '*' && parameters[index] != ',') {
-						index++;
-					}
-					size_t end = index;
-					const wstring& cls_name = parameters.substr(start, end - start);
-					type = frontend::TypeFactory::Instance()->MakeType(frontend::CLASS_TYPE, cls_name);
-				}
-					break;
-				}
-
-				// set dimension
-				while(index < parameters.size() && parameters[index] == '*') {
-					dimension++;
-					index++;
-				}
-
-				if(type) {
-					type->SetDimension(dimension);
-				}
-
-				// add declaration
-				declarations.push_back(type);
-#ifdef _DEBUG
-				assert(parameters[index] == ',');
-#endif
-				index++;
-			}
-		}
+	case 'm': {
+	  start = index;
+	  while(index < parameters.size() && parameters[index] != '~') {
+	    index++;
+	  }
+	  index++;
+	  while(index < parameters.size() && parameters[index] != '*' &&
+		parameters[index] != ',') {
+	    index++;
+	  }
+	  size_t end = index;
+	  const wstring& name = parameters.substr(start, end - start);
+	  // TODO: convenient alternative/kludge to paring the function types. This
+	  // works because the contextual analyzer does string encoding and then 
+	  // checking of function types.
+	  type = frontend::TypeFactory::Instance()->MakeType(frontend::FUNC_TYPE, name);
 	}
+	  break;
+
+	case 'o': {
+	  index += 2;
+	  start = index;
+	  while(index < parameters.size() && parameters[index] != '*' && parameters[index] != ',') {
+	    index++;
+	  }
+	  size_t end = index;
+	  const wstring& cls_name = parameters.substr(start, end - start);
+	  type = frontend::TypeFactory::Instance()->MakeType(frontend::CLASS_TYPE, cls_name);
+	}
+	  break;
+	}
+
+	// set dimension
+	while(index < parameters.size() && parameters[index] == '*') {
+	  dimension++;
+	  index++;
+	}
+
+	if(type) {
+	  type->SetDimension(dimension);
+	}
+
+	// add declaration
+	declarations.push_back(type);
+#ifdef _DEBUG
+	assert(parameters[index] == ',');
+#endif
+	index++;
+      }
+    }
+  }
   
   void ParseReturn() {
     size_t index = 0;
@@ -398,7 +398,7 @@ class LibraryMethod {
         name += L") ~ ";
         name += EncodeUserType(type->GetFunctionReturn());
       }
-                                break;
+	break;
       }
 
       // dimension
@@ -655,9 +655,9 @@ class LibraryClass {
   int id;
   wstring name;
   wstring parent_name;
-	vector<wstring>interface_names;
-	vector<wstring>generic_name_types;
-	vector<int>interface_ids;
+  vector<wstring>interface_names;
+  vector<wstring>generic_name_types;
+  vector<int>interface_ids;
   int cls_space;
   int inst_space;
   map<const wstring, LibraryMethod*> methods;
@@ -666,30 +666,30 @@ class LibraryClass {
   backend::IntermediateDeclarations* inst_entries;
   bool is_interface;
   bool is_virtual;
-	bool is_generic;
+  bool is_generic;
   Library* library;
   vector<LibraryClass*> lib_children;
   vector<frontend::ParseNode*> children;
   bool was_called;
   bool is_debug;
   wstring file_name;
-	vector<LibraryClass*> generic_classes;
-	frontend::Type* generic_interface;
+  vector<LibraryClass*> generic_classes;
+  frontend::Type* generic_interface;
   
  public:
-	 LibraryClass(const wstring& n, const wstring& g) {
-		 name = n;
-		 generic_interface = frontend::TypeFactory::Instance()->MakeType(frontend::CLASS_TYPE, g);
-		 is_generic = true;
-	 }
+  LibraryClass(const wstring& n, const wstring& g) {
+    name = n;
+    generic_interface = frontend::TypeFactory::Instance()->MakeType(frontend::CLASS_TYPE, g);
+    is_generic = true;
+  }
 	
-		LibraryClass(const wstring &n, const wstring &p, const vector<wstring> i, bool is, const vector<wstring> g, bool v,
-								 const int cs, const int in, backend::IntermediateDeclarations* ce, backend::IntermediateDeclarations* ie, 
-								 Library* l, const wstring &fn, bool d) {
+  LibraryClass(const wstring &n, const wstring &p, const vector<wstring> i, bool is, const vector<wstring> g, bool v,
+	       const int cs, const int in, backend::IntermediateDeclarations* ce, backend::IntermediateDeclarations* ie, 
+	       Library* l, const wstring &fn, bool d) {
     name = n;
     parent_name = p;
     interface_names = i;
-		generic_name_types = g;
+    generic_name_types = g;
     is_interface = is;
     is_virtual = v;
     cls_space = cs;
@@ -697,22 +697,22 @@ class LibraryClass {
     cls_entries = ce;
     inst_entries = ie;
     library = l;
-		is_generic = false;
-		generic_interface = NULL;
+    is_generic = false;
+    generic_interface = NULL;
 
-		for(size_t i = 0; i < generic_name_types.size(); ++i) {
-			const wstring generic_name_type = generic_name_types[i];
-			size_t end = generic_name_type.find_first_of(L'|');
+    for(size_t i = 0; i < generic_name_types.size(); ++i) {
+      const wstring generic_name_type = generic_name_types[i];
+      size_t end = generic_name_type.find_first_of(L'|');
 			
-			const wstring generic_name = generic_name_type.substr(0, end);
-			wstring concrete_name;
-			end++;
-			if(end < generic_name_type.size()) {
-				concrete_name = generic_name_type.substr(end, generic_name_type.size() - end);
-			}
+      const wstring generic_name = generic_name_type.substr(0, end);
+      wstring concrete_name;
+      end++;
+      if(end < generic_name_type.size()) {
+	concrete_name = generic_name_type.substr(end, generic_name_type.size() - end);
+      }
 
-			generic_classes.push_back(new LibraryClass(generic_name, concrete_name));
-		}
+      generic_classes.push_back(new LibraryClass(generic_name, concrete_name));
+    }
     
     // force runtime linking of these classes
     if(name == L"System.Introspection.Class" || 
@@ -737,15 +737,15 @@ class LibraryClass {
     }
     methods.clear();
 
-		lib_children.clear();
+    lib_children.clear();
 
-		while(!generic_classes.empty()) {
-			LibraryClass* tmp = generic_classes.back();
-			generic_classes.pop_back();
-			// delete
-			delete tmp;
-			tmp = NULL;
-		}
+    while(!generic_classes.empty()) {
+      LibraryClass* tmp = generic_classes.back();
+      generic_classes.pop_back();
+      // delete
+      delete tmp;
+      tmp = NULL;
+    }
   }
   
   void SetId(int i) {
@@ -792,40 +792,40 @@ class LibraryClass {
     return is_interface;
   }
 
-	bool HasGenerics() {
-		return generic_classes.size() > 0;
-	}
+  bool HasGenerics() {
+    return generic_classes.size() > 0;
+  }
 
-	int GenericIndex(const wstring& n) {
-		for(size_t i = 0; i < generic_classes.size(); ++i) {
-			if(n == generic_classes[i]->GetName()) {
-				return (int)i;
-			}
-		}
+  int GenericIndex(const wstring& n) {
+    for(size_t i = 0; i < generic_classes.size(); ++i) {
+      if(n == generic_classes[i]->GetName()) {
+	return (int)i;
+      }
+    }
 
-		return -1;
-	}
+    return -1;
+  }
 
-	const vector<LibraryClass*> GetGenericClasses() {
-		return generic_classes;
-	}
+  const vector<LibraryClass*> GetGenericClasses() {
+    return generic_classes;
+  }
 
-	LibraryClass* GetGenericClass(const wstring& n) {
-		const int index = GenericIndex(n);
-		if(index > -1) {
-			return generic_classes[index];
-		}
+  LibraryClass* GetGenericClass(const wstring& n) {
+    const int index = GenericIndex(n);
+    if(index > -1) {
+      return generic_classes[index];
+    }
 
-		return NULL;
-	}
+    return NULL;
+  }
 
-	frontend::Type* GetGenericInterface() {
-		return generic_interface;
-	}
+  frontend::Type* GetGenericInterface() {
+    return generic_interface;
+  }
 
-	bool HasGenericInterface() {
-		return generic_interface != NULL;
-	}
+  bool HasGenericInterface() {
+    return generic_interface != NULL;
+  }
 
   const wstring& GetParentName() const {
     return parent_name;
@@ -975,8 +975,8 @@ class Library {
       string in(buffer, size);
       buffer += size;
       if(!BytesToCharacter(in, out)) {
-	      wcerr << L">>> Unable to read character <<<" << endl;
-	      exit(1);
+	wcerr << L">>> Unable to read character <<<" << endl;
+	exit(1);
       }
     }
     else {
@@ -1201,11 +1201,11 @@ class Library {
 class Linker {
   map<const wstring, Library*> libraries;
 
-	vector<LibraryClass*> all_classes;
-	unordered_map<wstring, LibraryClass*> all_classes_map;
+  vector<LibraryClass*> all_classes;
+  unordered_map<wstring, LibraryClass*> all_classes_map;
 
-	vector<LibraryEnum*> all_enums;
-	unordered_map<wstring, LibraryEnum*> all_enums_map;
+  vector<LibraryEnum*> all_enums;
+  unordered_map<wstring, LibraryEnum*> all_enums_map;
 
   wstring master_path;
   vector<wstring> paths;
@@ -1267,66 +1267,66 @@ class Linker {
     return libraries;
   }
 
-	// returns all classes including duplicates
-	unordered_map<wstring, LibraryClass*> GetAllClassesMap() {
-		if(all_classes_map.empty()) {
-			vector<LibraryClass*> klasses = GetAllClasses();
-			for(size_t i = 0; i < klasses.size(); ++i) {
-				LibraryClass* klass = klasses[i];
-				all_classes_map[klass->GetName()] = klass;
-			}
-		}
+  // returns all classes including duplicates
+  unordered_map<wstring, LibraryClass*> GetAllClassesMap() {
+    if(all_classes_map.empty()) {
+      vector<LibraryClass*> klasses = GetAllClasses();
+      for(size_t i = 0; i < klasses.size(); ++i) {
+	LibraryClass* klass = klasses[i];
+	all_classes_map[klass->GetName()] = klass;
+      }
+    }
 
-		return all_classes_map;
-	}
+    return all_classes_map;
+  }
 
   // returns all classes including duplicates
   vector<LibraryClass*> GetAllClasses() {
-		if(all_classes.empty()) {
-			map<const wstring, Library*>::iterator iter;
-			for(iter = libraries.begin(); iter != libraries.end(); ++iter) {
-				vector<LibraryClass*> classes = iter->second->GetClasses();
-				for(size_t i = 0; i < classes.size(); ++i) {
-					all_classes.push_back(classes[i]);
-				}
-			}
-		}
+    if(all_classes.empty()) {
+      map<const wstring, Library*>::iterator iter;
+      for(iter = libraries.begin(); iter != libraries.end(); ++iter) {
+	vector<LibraryClass*> classes = iter->second->GetClasses();
+	for(size_t i = 0; i < classes.size(); ++i) {
+	  all_classes.push_back(classes[i]);
+	}
+      }
+    }
 
     return all_classes;
   }
 
-	// returns all enums including duplicates
-	unordered_map<wstring, LibraryEnum*> GetAllEnumsMap() {
-		if(all_enums_map.empty()) {
-			vector<LibraryEnum*> enums = GetAllEnums();
-			for(size_t i = 0; i < enums.size(); ++i) {
-				LibraryEnum* klass = enums[i];
-				all_enums_map[klass->GetName()] = klass;
-			}
-		}
+  // returns all enums including duplicates
+  unordered_map<wstring, LibraryEnum*> GetAllEnumsMap() {
+    if(all_enums_map.empty()) {
+      vector<LibraryEnum*> enums = GetAllEnums();
+      for(size_t i = 0; i < enums.size(); ++i) {
+	LibraryEnum* klass = enums[i];
+	all_enums_map[klass->GetName()] = klass;
+      }
+    }
 
-		return all_enums_map;
-	}
+    return all_enums_map;
+  }
 
   // returns all enums including duplicates
   vector<LibraryEnum*> GetAllEnums() {
-		if(all_enums.empty()) {
-			map<const wstring, Library*>::iterator iter;
-			for(iter = libraries.begin(); iter != libraries.end(); ++iter) {
-				vector<LibraryEnum*> enums = iter->second->GetEnums();
-				for(size_t i = 0; i < enums.size(); ++i) {
-					all_enums.push_back(enums[i]);
-				}
-			}
-		}
+    if(all_enums.empty()) {
+      map<const wstring, Library*>::iterator iter;
+      for(iter = libraries.begin(); iter != libraries.end(); ++iter) {
+	vector<LibraryEnum*> enums = iter->second->GetEnums();
+	for(size_t i = 0; i < enums.size(); ++i) {
+	  all_enums.push_back(enums[i]);
+	}
+      }
+    }
 
     return all_enums;
   }
 
   // TODO: finds the first class match; note multiple matches may exist
   LibraryClass* SearchClassLibraries(const wstring &name) {
-		unordered_map<wstring, LibraryClass*> klass_map = GetAllClassesMap();
-		return klass_map[name];
+    unordered_map<wstring, LibraryClass*> klass_map = GetAllClassesMap();
+    return klass_map[name];
   }
 
   bool HasBundleName(const wstring& name) {
@@ -1342,38 +1342,38 @@ class Linker {
 
   // TODO: finds the first class match; note multiple matches may exist
   LibraryClass* SearchClassLibraries(const wstring &name, vector<wstring> uses) {
-		unordered_map<wstring, LibraryClass*> klass_map = GetAllClassesMap();
-		LibraryClass* klass = klass_map[name];
-		if(klass) {
-			return klass;
-		}
+    unordered_map<wstring, LibraryClass*> klass_map = GetAllClassesMap();
+    LibraryClass* klass = klass_map[name];
+    if(klass) {
+      return klass;
+    }
 
-		for(size_t i = 0; i < uses.size(); ++i) {
-			klass = klass_map[uses[i] + L"." + name];
-			if(klass) {
-				return klass;
-			}
-		}
+    for(size_t i = 0; i < uses.size(); ++i) {
+      klass = klass_map[uses[i] + L"." + name];
+      if(klass) {
+	return klass;
+      }
+    }
 
-		return NULL;
+    return NULL;
   }
 
   // TODO: finds the first enum match; note multiple matches may exist
   LibraryEnum* SearchEnumLibraries(const wstring &name, vector<wstring> uses) {
-		unordered_map<wstring, LibraryEnum*> enum_map = GetAllEnumsMap();
-		LibraryEnum* eenum = enum_map[name];
-		if(eenum) {
-			return eenum;
-		}
+    unordered_map<wstring, LibraryEnum*> enum_map = GetAllEnumsMap();
+    LibraryEnum* eenum = enum_map[name];
+    if(eenum) {
+      return eenum;
+    }
 
-		for(size_t i = 0; i < uses.size(); ++i) {
-			eenum = enum_map[uses[i] + L"." + name];
-			if(eenum) {
-				return eenum;
-			}
-		}
+    for(size_t i = 0; i < uses.size(); ++i) {
+      eenum = enum_map[uses[i] + L"." + name];
+      if(eenum) {
+	return eenum;
+      }
+    }
 
-		return NULL;
+    return NULL;
   }
 
   void Load() {
