@@ -1,0 +1,65 @@
+class Vector<T> {
+	@values : T[];
+	@size : Int;
+	
+	#~
+	Default constructor 
+	~#
+	New() {
+		@values := T->New[2];
+		@size := 0;
+	}
+
+	New(values : T[]) {
+		@values := T->New[values->Size() + values->Size() / 2];
+		@size := values->Size();
+		Runtime->Copy(@values, 0, values, 0, @size);
+	}
+
+	method : native : Expand() ~ Nil {
+		if(@size >= @values->Size()) {
+			temp : T[] := T->New[@size * 2];
+			Runtime->Copy(temp, 0, @values, 0, @size);
+			@values := temp;
+		};
+	}
+
+	method : public : Has(value : T) ~ Bool {
+		for(i : Int := 0; i < @size; i += 1;) {
+			if(@values[i] = value) {
+				return true;
+			};
+		};
+		
+		return false;
+	}
+
+	method : public : AddBack(value : T) ~ Nil {
+		Expand();
+		@values[@size] := value;
+		@size += 1;
+	}
+
+	method : public : Get(index : Int) ~ T {
+		if(index > -1 & index < @size) {
+			return @values[index];
+		};
+
+		return Nil;
+	}
+
+	method : public : Apply(f : (T) ~ T) ~ Vector {
+		array : T[] := T->New[@size];
+		Runtime->Copy(array, 0, @values, 0, @size);
+		
+		for(i : Int := 0; i < @size; i += 1;) {
+		  array[i] := f(array[i]);
+		};
+  
+		return Vector->New(array);
+	}
+
+	method : public : Size() ~ Int {
+		return @size;
+	}
+}
