@@ -1,0 +1,36 @@
+class Foo {
+	function : Main(args : String[]) ~ Nil {
+		s : Stack<String> := Stack->New()<String>;
+		c : Stack<String> := s->Clone()<String>;
+	}
+}
+
+class Stack<T> {
+	@stack : T[];
+	@pos : Int;
+
+	New() {
+		@stack := T->New[10];
+		@pos := 0;
+	}
+
+	method : public : Push(v : T) ~ Nil {
+		@stack[@pos++] := v;
+	}
+
+	method : public : Pop() ~ T {
+		return @stack[--@pos];
+	}
+
+	method : public : Top() ~ T {
+		return @stack[@pos];
+	}
+
+	method : public : Size() ~ Int {
+		return @pos;
+	}
+
+	method : public : Clone() ~ Stack {
+		return @self;
+	}
+}
