@@ -1,0 +1,59 @@
+class Foo {
+	function : Main(args : String[]) ~ Nil {
+		n := Node->New("", "")<String, String>;
+
+		m := Map->New()<String, String>;
+		m->Add(n);
+	}
+}
+
+class Node<K : Compare, V> {
+	@key : K;
+	@value : V;
+	@left : Node;
+	@right : Node;
+
+	New(key : K, value : V) {
+		@key := key;
+		@value := value;
+	}
+
+	method : public : GetKey() ~ K {
+		return @key;
+	}
+
+	method : public : GetValue() ~ V {
+		return @value;
+	}
+
+	method : public : SetLeft(left : Node) ~ Nil {
+		@left := left;
+	}
+
+	method : public : GetLeft() ~ Node {
+		return @left;
+	}
+
+	method : public : SetRight(right : Node) ~ Nil {
+		@right := right;
+	}
+
+	method : public : GetRight() ~ Node {
+		return @right;
+	}
+}
+
+class Map<K : Compare, V> {
+	@root : Node<K, V>;
+
+	New() {
+	}
+
+	method : public : Add(node : Node<K, V>) ~ Bool {
+		if(@root = Nil) {
+			@root := node;
+		};
+
+		return false;
+	}
+}
