@@ -256,8 +256,7 @@ bool ContextAnalyzer::Analyze()
     Debug(msg, eenum->GetLineNumber(), depth);
 #endif
 
-    if(!SearchProgramEnums(eenum->GetName()) &&
-       !linker->SearchEnumLibraries(eenum->GetName(), program->GetUses(eenum->GetFileName()))) {
+    if(!HasProgramLibraryEnum(eenum->GetName())) {
       ProcessError(eenum, L"Undefined enum: '" + ReplaceSubstring(eenum->GetName(), L"#", L"->") + L"'");
     }
     
@@ -401,8 +400,7 @@ bool ContextAnalyzer::Analyze()
     current_class = klass;
     current_class->SetCalled(true);
     klass->SetSymbolTable(symbol_table->GetSymbolTable(current_class->GetName()));
-    if(!SearchProgramClasses(klass->GetName()) &&
-       !linker->SearchClassLibraries(klass->GetName(), program->GetUses(current_class->GetFileName()))) {
+    if(!HasProgramLibraryClass(klass->GetName())) {
       ProcessError(klass, L"Undefined class: '" + klass->GetName() + L"'");
     }
     
@@ -1221,7 +1219,7 @@ bool ContextAnalyzer::Analyze()
     const wstring &str = char_str->GetString(); 
 
     // empty wstring segment
-    if(!str.size()) {
+    if(str.empty()) {
       char_str->AddSegment(L"");
     }
     else {   
@@ -1427,10 +1425,8 @@ bool ContextAnalyzer::Analyze()
 #endif
 
       const wstring& name = variable->GetName();
-      if(SearchProgramClasses(name) || SearchProgramEnums(name) ||
-         linker->SearchClassLibraries(name, program->GetUses(current_class->GetFileName())) ||
-         linker->SearchEnumLibraries(name, program->GetUses(current_class->GetFileName()))) {
-        ProcessError(variable, L"Variable name already used to define a class, enum or function\n\tIf passing a function reference ensure the full signature is provided");
+      if(HasProgramLibraryEnum(name) || HasProgramLibraryClass(name)) {
+        ProcessError(variable, L"Variable '" + name + L"' already used to define a class, enum or function\n\tIf passing a function reference ensure the full signature is provided");
       }
 
       // associate variable and entry
@@ -1797,7 +1793,7 @@ bool ContextAnalyzer::Analyze()
         lib_klass = linker->SearchClassLibraries(cls_name, program->GetUses(current_class->GetFileName()));
 
         if(!klass && !lib_klass) {
-          if(SearchProgramEnums(cls_name) || linker->SearchEnumLibraries(cls_name, program->GetUses(current_class->GetFileName()))) {
+          if(HasProgramLibraryEnum(cls_name)) {
             klass = program->GetClass(INT_CLASS_ID);
             lib_klass = linker->SearchClassLibraries(INT_CLASS_ID, program->GetUses(current_class->GetFileName()));
             encoding = L"i,";
@@ -1928,7 +1924,9 @@ bool ContextAnalyzer::Analyze()
         AnalyzeMethodCall(lib_klass, method_call, true, encoding, false, depth);
       } 
       else {
-        ProcessError(static_cast<Expression*>(method_call), L"Undefined class or generic reference");
+        ProcessError(static_cast<Expression*>(method_call), L"Undefined class reference: '" + 
+										 method_call->GetBaseType()->GetClassName() + 
+										 L"'\n\tIf external reference to generic ensure it has been typed");
       }
     }
   }
@@ -2354,7 +2352,7 @@ bool ContextAnalyzer::Analyze()
       
 			// TODO: adding generics
 			if((method->GetMethodType() == NEW_PUBLIC_METHOD || method->GetMethodType() == NEW_PRIVATE_METHOD) &&
-				 klass->HasGenerics() && !method_call->HasConcreteNames()) {
+				 klass->HasGenerics() && !method_call->HasConcreteNames() && current_class != klass) {
 				ProcessError(static_cast<Expression*>(method_call), L"Cannot create an instance of a generic class");
 			}
 
@@ -2393,8 +2391,7 @@ bool ContextAnalyzer::Analyze()
 							AnalyzeClassCast(left, right, method_call, true, depth);
 						}
 						const wstring cls_name = right->GetClassName();
-						if(!SearchProgramClasses(cls_name) &&
-							 !linker->SearchClassLibraries(cls_name, program->GetUses(current_class->GetFileName()))) {
+						if(!HasProgramLibraryClass(cls_name)) {
 							ProcessError(static_cast<Expression*>(method_call), L"Undefined class: '" + cls_name + L"'");
 						}
 					}
@@ -3600,8 +3597,7 @@ bool ContextAnalyzer::Analyze()
           break;
 
         case CLASS_TYPE:
-          if(SearchProgramEnums(right->GetClassName()) || 
-             linker->SearchEnumLibraries(right->GetClassName(), program->GetUses(current_class->GetFileName()))) {
+          if(HasProgramLibraryEnum(right->GetClassName())) {
             ProcessError(left_expr, L"Invalid operation using classes: Var and Enum");
           }
           break;
@@ -3679,8 +3675,7 @@ bool ContextAnalyzer::Analyze()
           break;
 
         case CLASS_TYPE:
-          if(!SearchProgramEnums(right->GetClassName()) &&
-             !linker->SearchEnumLibraries(right->GetClassName(), program->GetUses(current_class->GetFileName()))) {
+          if(!HasProgramLibraryEnum(right->GetClassName())) {
             ProcessError(left_expr, L"Invalid operation using classes: System.Byte and " +
                          ReplaceSubstring(right->GetClassName(), L"#", L"->"));
           }
@@ -3723,8 +3718,7 @@ bool ContextAnalyzer::Analyze()
           break;
 
         case CLASS_TYPE:
-          if(!SearchProgramEnums(right->GetClassName()) &&
-             !linker->SearchEnumLibraries(right->GetClassName(), program->GetUses(current_class->GetFileName()))) {
+          if(!HasProgramLibraryEnum(right->GetClassName())) {
             ProcessError(left_expr, L"Invalid operation using classes: System.Char and " +
                          ReplaceSubstring(right->GetClassName(), L"#", L"->"));
           }
@@ -3767,8 +3761,7 @@ bool ContextAnalyzer::Analyze()
           break;
 
         case CLASS_TYPE:
-          if(!SearchProgramEnums(right->GetClassName()) &&
-             !linker->SearchEnumLibraries(right->GetClassName(), program->GetUses(current_class->GetFileName()))) {
+          if(!HasProgramLibraryEnum(right->GetClassName())) {
             ProcessError(left_expr, L"Invalid operation using classes: System.Int and " +
                          ReplaceSubstring(right->GetClassName(), L"#", L"->"));
           }
@@ -3811,8 +3804,7 @@ bool ContextAnalyzer::Analyze()
           break;
 
         case CLASS_TYPE:
-          if(!SearchProgramEnums(right->GetClassName()) &&
-             !linker->SearchEnumLibraries(right->GetClassName(), program->GetUses(current_class->GetFileName()))) {
+          if(!HasProgramLibraryEnum(right->GetClassName())) {
             ProcessError(left_expr, L"Invalid operation using classes: System.Float and " +
                          ReplaceSubstring(right->GetClassName(), L"#", L"->"));
           }
@@ -3847,8 +3839,7 @@ bool ContextAnalyzer::Analyze()
           break;
 
         case BYTE_TYPE:
-          if(!SearchProgramEnums(left->GetClassName()) &&
-             !linker->SearchEnumLibraries(left->GetClassName(), program->GetUses(current_class->GetFileName()))) {
+          if(!HasProgramLibraryEnum(left->GetClassName())) {
             ProcessError(left_expr, L"Invalid operation using classes: " +
                          ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Byte");
           }
@@ -3859,8 +3850,7 @@ bool ContextAnalyzer::Analyze()
           break;
 
         case CHAR_TYPE:
-          if(!SearchProgramEnums(left->GetClassName()) &&
-             !linker->SearchEnumLibraries(left->GetClassName(), program->GetUses(current_class->GetFileName()))) {
+          if(!HasProgramLibraryEnum(left->GetClassName())) {
             ProcessError(left_expr, L"Invalid operation using classes: " +
                          ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Char");
           }
@@ -3871,8 +3861,7 @@ bool ContextAnalyzer::Analyze()
           break;
 
         case INT_TYPE:
-          if(!SearchProgramEnums(left->GetClassName()) &&
-             !linker->SearchEnumLibraries(left->GetClassName(), program->GetUses(current_class->GetFileName()))) {
+          if(!HasProgramLibraryEnum(left->GetClassName())) {
             ProcessError(left_expr, L"Invalid operation using classes: " +
                          ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and Int");
           }
@@ -3883,8 +3872,7 @@ bool ContextAnalyzer::Analyze()
           break;
 
         case FLOAT_TYPE:
-          if(!SearchProgramEnums(left->GetClassName()) &&
-             !linker->SearchEnumLibraries(left->GetClassName(), program->GetUses(current_class->GetFileName()))) {
+          if(!HasProgramLibraryEnum(left->GetClassName())) {
             ProcessError(left_expr, L"Invalid operation using classes: " +
                          ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Float");
           }
@@ -3895,17 +3883,13 @@ bool ContextAnalyzer::Analyze()
           break;
           
         case CLASS_TYPE:
-          if((SearchProgramEnums(left->GetClassName()) || 
-              linker->SearchEnumLibraries(left->GetClassName(), program->GetUses(current_class->GetFileName()))) &&
-             (SearchProgramEnums(right->GetClassName()) || 
-              linker->SearchEnumLibraries(right->GetClassName(), program->GetUses(current_class->GetFileName())))) {
+          if(HasProgramLibraryEnum(left->GetClassName()) && HasProgramLibraryEnum(right->GetClassName())) {
             AnalyzeClassCast(left, right, left_expr, false, depth + 1);            
           }
-          else if((!SearchProgramClasses(left->GetClassName()) && 
-                   !linker->SearchClassLibraries(left->GetClassName(), program->GetUses(current_class->GetFileName()))) ||
-                  (!SearchProgramClasses(right->GetClassName()) && 
-                   !linker->SearchClassLibraries(right->GetClassName(), program->GetUses(current_class->GetFileName())))) {
-            ProcessError(left_expr, L"Invalid operation between classes or enums");
+          else if((!HasProgramLibraryClass(left->GetClassName()) && !current_class->GetGenericClass(left->GetClassName())) ||
+									(!HasProgramLibraryClass(right->GetClassName()) && !current_class->GetGenericClass(right->GetClassName()))) {
+            ProcessError(left_expr, L"Invalid operation between class or enum: '" + 
+												 left->GetClassName() + L"' and '" + right->GetClassName() + L"'");
           }
           expression->SetEvalType(TypeFactory::Instance()->MakeType(INT_TYPE), true);
           break;
@@ -4141,8 +4125,7 @@ bool ContextAnalyzer::Analyze()
           break;
 
         case CLASS_TYPE:
-          if(!SearchProgramEnums(right->GetClassName()) &&
-             !linker->SearchEnumLibraries(right->GetClassName(), program->GetUses(current_class->GetFileName()))) {
+          if(!HasProgramLibraryEnum(right->GetClassName())) {
             ProcessError(expression, L"Invalid cast with classes: System.Byte and " + 
                          ReplaceSubstring(right->GetClassName(), L"#", L"->"));
           }
@@ -4185,8 +4168,7 @@ bool ContextAnalyzer::Analyze()
           break;
 
         case CLASS_TYPE:
-          if(!SearchProgramEnums(right->GetClassName()) &&
-             !linker->SearchEnumLibraries(right->GetClassName(), program->GetUses(current_class->GetFileName()))) {
+          if(!HasProgramLibraryEnum(right->GetClassName())) {
             ProcessError(expression, L"Invalid cast with classes: System.Char and " + 
                          ReplaceSubstring(right->GetClassName(), L"#", L"->"));
           }
@@ -4229,8 +4211,7 @@ bool ContextAnalyzer::Analyze()
           break;
 
         case CLASS_TYPE:
-          if(!SearchProgramEnums(right->GetClassName()) &&
-             !linker->SearchEnumLibraries(right->GetClassName(), program->GetUses(current_class->GetFileName()))) {
+          if(!HasProgramLibraryEnum(right->GetClassName())) {
             ProcessError(expression, L"Invalid cast with classes: System.Int and " +
                          ReplaceSubstring(right->GetClassName(), L"#", L"->"));
           }
@@ -4273,8 +4254,7 @@ bool ContextAnalyzer::Analyze()
           break;
 
         case CLASS_TYPE:
-          if(!SearchProgramEnums(right->GetClassName()) &&
-             !linker->SearchEnumLibraries(right->GetClassName(), program->GetUses(current_class->GetFileName()))) {
+          if(!HasProgramLibraryEnum(right->GetClassName())) {
             ProcessError(expression, L"Invalid cast with classes: System.Float and " +
                          ReplaceSubstring(ReplaceSubstring(right->GetClassName(), L"#", L"->"), L"#", L"->"));
           }
@@ -4305,24 +4285,21 @@ bool ContextAnalyzer::Analyze()
           break;
 
         case BYTE_TYPE:
-          if(!SearchProgramEnums(left->GetClassName()) &&
-             !linker->SearchEnumLibraries(left->GetClassName(), program->GetUses(current_class->GetFileName()))) {
+          if(!HasProgramLibraryEnum(left->GetClassName())) {
             ProcessError(expression, L"Invalid cast with classes: " + 
                          ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Byte");
           }
           break;
 
         case CHAR_TYPE:
-          if(!SearchProgramEnums(left->GetClassName()) &&
-             !linker->SearchEnumLibraries(left->GetClassName(), program->GetUses(current_class->GetFileName()))) {
+          if(!HasProgramLibraryEnum(left->GetClassName())) {
             ProcessError(expression, L"Invalid cast with classes: " + 
                          ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Char");
           }
           break;
 
         case INT_TYPE:
-          if(!SearchProgramEnums(left->GetClassName()) &&
-             !linker->SearchEnumLibraries(left->GetClassName(), program->GetUses(current_class->GetFileName()))) {
+          if(!HasProgramLibraryEnum(left->GetClassName())) {
             ProcessError(expression, L"Invalid cast with classes: " + 
                          ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and Int");
           }
@@ -4513,7 +4490,6 @@ bool ContextAnalyzer::Analyze()
     if(!left_enum) {
       left_enum = SearchProgramEnums(current_class->GetName() + L"#" + left->GetClassName());
     }
-
     if(left && right && left_enum) {
       // program
       Enum* right_enum = SearchProgramEnums(right->GetClassName());
@@ -4541,8 +4517,11 @@ bool ContextAnalyzer::Analyze()
     // program class
     //
     else if(left && right && (left_class = SearchProgramClasses(left->GetClassName()))) {
-			// program
+			// program and generic
       Class* right_class = SearchProgramClasses(right->GetClassName());
+			if(!right_class) {
+				right_class = current_class->GetGenericClass(right->GetClassName());
+			}
       if(right_class) {
 				// TODO: adding generics
 				if(left->HasGenerics() == right->HasGenerics()) {
@@ -4683,8 +4662,11 @@ bool ContextAnalyzer::Analyze()
     // class libary
     //
     else if(left && right && (left_lib_class = linker->SearchClassLibraries(left->GetClassName(), program->GetUses(current_class->GetFileName())))) {
-      // program
+      // program and generic
       Class* right_class = SearchProgramClasses(right->GetClassName());
+			if(!right_class) {
+				right_class = current_class->GetGenericClass(right->GetClassName());
+			}
       if(right_class) {
         // downcast
         if(ValidDownCast(left_lib_class->GetName(), right_class, NULL)) {

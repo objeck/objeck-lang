@@ -480,14 +480,14 @@ class Scanner {
 
     // convert unicode
 #ifdef _WIN32
-    int wsize = MultiByteToWideChar(CP_UTF8, 0, buffer, -1, NULL, 0);
-    if(!wsize) {
+    const int wsize = MultiByteToWideChar(CP_UTF8, 0, buffer, -1, NULL, 0);
+    if(wsize == 0) {
       wcerr << L"Unable to open source file: " << filename << endl;
       exit(1);
     }
     wchar_t* wbuffer = new wchar_t[wsize];
-    int check = MultiByteToWideChar(CP_UTF8, 0, buffer, -1, wbuffer, wsize);
-    if(!check) {
+    const int check = MultiByteToWideChar(CP_UTF8, 0, buffer, -1, wbuffer, wsize);
+    if(check == 0) {
       wcerr << L"Unable to open source file: " << filename << endl;
       exit(1);
     }

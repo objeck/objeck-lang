@@ -683,17 +683,17 @@ class LibraryClass {
 		 is_generic = true;
 	 }
 	
-		LibraryClass(const wstring &n, const wstring &p, vector<wstring> in, bool is_inf, vector<wstring> gen, bool is_vrtl,
-								 int cs, int is, backend::IntermediateDeclarations* ce, backend::IntermediateDeclarations* ie, 
+		LibraryClass(const wstring &n, const wstring &p, const vector<wstring> i, bool is, const vector<wstring> g, bool v,
+								 const int cs, const int in, backend::IntermediateDeclarations* ce, backend::IntermediateDeclarations* ie, 
 								 Library* l, const wstring &fn, bool d) {
     name = n;
     parent_name = p;
-    interface_names = in;
-		generic_name_types = gen;
-    is_interface = is_inf;
-    is_virtual = is_vrtl;
+    interface_names = i;
+		generic_name_types = g;
+    is_interface = is;
+    is_virtual = v;
     cls_space = cs;
-    inst_space = is;
+    inst_space = in;
     cls_entries = ce;
     inst_entries = ie;
     library = l;
