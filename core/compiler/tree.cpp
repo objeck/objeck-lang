@@ -45,6 +45,91 @@ void Expression::SetMethodCall(MethodCall* call)
 }
 
 /****************************
+ * CharacterString class
+ ****************************/
+void CharacterString::AddSegment(const wstring& orig) 
+{
+	if(!is_processed) {
+		wstring escaped_str;
+		int skip = 2;
+		for(size_t i = 0; i < orig.size(); ++i) {
+			wchar_t c = orig[i];
+			if(skip > 1 && c == L'\\' && i + 1 < orig.size()) {
+				wchar_t cc = orig[i + 1];
+				switch(cc) {
+				case L'"':
+					escaped_str += L'\"';
+					skip = 0;
+					break;
+
+				case L'\\':
+					escaped_str += L'\\';
+					skip = 0;
+					break;
+
+				case L'n':
+					escaped_str += L'\n';
+					skip = 0;
+					break;
+
+				case L'r':
+					escaped_str += L'\r';
+					skip = 0;
+					break;
+
+				case L't':
+					escaped_str += L'\t';
+					skip = 0;
+					break;
+
+				case L'a':
+					escaped_str += L'\a';
+					skip = 0;
+					break;
+
+				case L'b':
+					escaped_str += L'\b';
+					skip = 0;
+					break;
+
+#ifndef _WIN32
+				case L'e':
+					escaped_str += L'\e';
+					skip = 0;
+					break;
+#endif
+
+				case L'f':
+					escaped_str += L'\f';
+					skip = 0;
+					break;
+
+				case L'0':
+					escaped_str += L'\0';
+					skip = 0;
+					break;
+
+				default:
+					if(skip <= 1) {
+						skip++;
+					}
+					break;
+				}
+			}
+
+			if(skip > 1) {
+				escaped_str += c;
+			}
+			else {
+				skip++;
+			}
+		}
+		// set string
+		segments.push_back(new CharacterStringSegment(escaped_str));
+	}
+}
+
+/****************************
  * TreeFactory class
  ****************************/
 TreeFactory* TreeFactory::instance;
@@ -59,8 +144,7 @@ TreeFactory* TreeFactory::Instance()
 }
 
 /****************************
- * Creates a default copy of
- * an entry
+ * SymbolEntry class
  ****************************/
 SymbolEntry* SymbolEntry::Copy() 
 {
@@ -69,10 +153,6 @@ SymbolEntry* SymbolEntry::Copy()
 						  is_local, is_self);
 }
 
-/****************************
- * Sets the id for all
- * references to a variable.
- ****************************/
 void SymbolEntry::SetId(int i)
 {
   if(id < 0) {
@@ -84,7 +164,7 @@ void SymbolEntry::SetId(int i)
 }
 
 /****************************
- * Encodes a method parameter
+ * Method class
  ****************************/
 wstring Method::EncodeType(Type* type, Class* klass, ParsedProgram* program, Linker* linker)
 {
@@ -215,8 +295,194 @@ wstring Method::EncodeType(Type* type, Class* klass, ParsedProgram* program, Lin
   return name;
 }
 
+wstring Method::EncodeFunctionType(vector<Type*> func_params, Type* func_rtrn, 
+																	 Class* klass, ParsedProgram* program, Linker* linker) 
+{																		 
+	wstring encoded_name = L"(";
+	for(size_t i = 0; i < func_params.size(); ++i) {
+		// encode params
+		encoded_name += EncodeType(func_params[i], klass, program, linker);
+
+		// encode dimension   
+		for(int j = 0; j < func_params[i]->GetDimension(); ++j) {
+			encoded_name += L'*';
+		}
+		encoded_name += L',';
+	}
+
+	// encode return
+	encoded_name += L")~";
+	encoded_name += EncodeType(func_rtrn, klass, program, linker);
+
+	return encoded_name;
+}
+
+wstring Method::EncodeType(Type* type) {
+	wstring name;
+	if(type) {
+		// type
+		switch(type->GetType()) {
+		case BOOLEAN_TYPE:
+			name = L'l';
+			break;
+
+		case BYTE_TYPE:
+			name = L'b';
+			break;
+
+		case INT_TYPE:
+			name = L'i';
+			break;
+
+		case FLOAT_TYPE:
+			name = L'f';
+			break;
+
+		case CHAR_TYPE:
+			name = L'c';
+			break;
+
+		case NIL_TYPE:
+			name = L'n';
+			break;
+
+		case VAR_TYPE:
+			name = L'v';
+			break;
+
+		case CLASS_TYPE:
+			name = L"o.";
+			name += type->GetClassName();
+			break;
+
+		case FUNC_TYPE:
+			name = L'm';
+			break;
+		}
+
+		// dimension
+		for(int i = 0; i < type->GetDimension(); ++i) {
+			name += L'*';
+		}
+	}
+
+	return name;
+}
+
+wstring Method::EncodeUserType(Type* type) {
+	wstring name;
+	if(type) {
+		// type
+		switch(type->GetType()) {
+		case BOOLEAN_TYPE:
+			name = L"Bool";
+			break;
+
+		case BYTE_TYPE:
+			name = L"Byte";
+			break;
+
+		case INT_TYPE:
+			name = L"Int";
+			break;
+
+		case FLOAT_TYPE:
+			name = L"Float";
+			break;
+
+		case CHAR_TYPE:
+			name = L"Char";
+			break;
+
+		case NIL_TYPE:
+			name = L"Nil";
+			break;
+
+		case VAR_TYPE:
+			name = L"Var";
+			break;
+
+		case CLASS_TYPE:
+			name = type->GetClassName();
+			break;
+
+		case FUNC_TYPE: {
+			name = L'(';
+			vector<Type*> func_params = type->GetFunctionParameters();
+			for(size_t i = 0; i < func_params.size(); ++i) {
+				name += EncodeUserType(func_params[i]);
+			}
+			name += L") ~ ";
+			name += EncodeUserType(type->GetFunctionReturn());
+		}
+										break;
+		}
+
+		// dimension
+		for(int i = 0; i < type->GetDimension(); ++i) {
+			name += L"[]";
+		}
+	}
+
+	return name;
+}
+
+void Method::EncodeUserName() {
+	bool is_new_private = false;
+	if(is_static) {
+		user_name = L"function : ";
+	}
+	else {
+		switch(method_type) {
+		case NEW_PUBLIC_METHOD:
+			break;
+
+		case NEW_PRIVATE_METHOD:
+			is_new_private = true;
+			break;
+
+		case PUBLIC_METHOD:
+			user_name = L"method : public : ";
+			break;
+
+		case PRIVATE_METHOD:
+			user_name = L"method : private : ";
+			break;
+		}
+	}
+
+	if(is_native) {
+		user_name += L"native : ";
+	}
+
+	// name
+	user_name += ReplaceSubstring(name, L":", L"->");
+
+	// private new
+	if(is_new_private) {
+		user_name += L" : private ";
+	}
+
+	// params
+	user_name += L'(';
+
+	vector<Declaration*> declaration_list = declarations->GetDeclarations();
+	for(size_t i = 0; i < declaration_list.size(); ++i) {
+		SymbolEntry* entry = declaration_list[i]->GetEntry();
+		if(entry) {
+			user_name += EncodeUserType(entry->GetType());
+			if(i + 1 < declaration_list.size()) {
+				user_name += L", ";
+			}
+		}
+	}
+	user_name += L") ~ ";
+
+	user_name += EncodeUserType(return_type);
+}
+
 /****************************
- * Validates a static array
+ * StaticArray class
  ****************************/
 void StaticArray::Validate(StaticArray* array) {
   vector<Expression*> static_array = array->GetElements()->GetExpressions();
@@ -248,9 +514,6 @@ void StaticArray::Validate(StaticArray* array) {
   }
 }
 
-/****************************
- * Get all static elements
- ****************************/
 ExpressionList* StaticArray::GetAllElements() {
   if(!all_elements) {
     all_elements = TreeFactory::Instance()->MakeExpressionList();  
@@ -274,10 +537,6 @@ ExpressionList* StaticArray::GetAllElements() {
   return all_elements;
 }
 
-/****************************
- * Get the size for 
- * multidimensional array
- ****************************/
 vector<int> StaticArray::GetSizes() {
   if(!sizes.size()) {
     int count = 0;
@@ -292,16 +551,74 @@ vector<int> StaticArray::GetSizes() {
   return sizes;
 }
 
+/****************************
+ * Variable class
+ ****************************/
 Variable* Variable::Copy() {
   Variable* v = TreeFactory::Instance()->MakeVariable(file_name, line_num, name);
   v->indices = indices;
   return v;
 }
 
+/****************************
+ * Declaration class
+ ****************************/
 Declaration* Declaration::Copy() {
   if(assignment) {
     return TreeFactory::Instance()->MakeDeclaration(file_name, line_num, entry->Copy(), child, assignment);
   }
 
   return TreeFactory::Instance()->MakeDeclaration(file_name, line_num, entry->Copy(), child);
+}
+
+/****************************
+ * MethodCall class
+ ****************************/
+MethodCall::MethodCall(const wstring& f, const int l, MethodCallType t,
+											 const wstring& v, ExpressionList* e) :
+	Statement(f, l), Expression(f, l) {
+	variable_name = v;
+	call_type = t;
+	method_name = L"New";
+	expressions = e;
+	entry = dyn_func_entry = NULL;
+	method = NULL;
+	array_type = NULL;
+	variable = NULL;
+	enum_item = NULL;
+	method = NULL;
+	lib_method = NULL;
+	lib_enum_item = NULL;
+	original_klass = NULL;
+	original_lib_klass = NULL;
+	is_enum_call = is_func_def = is_dyn_func_call = false;
+	func_rtrn = NULL;
+	anonymous_klass = NULL;
+
+	if(variable_name == BOOL_CLASS_ID) {
+		array_type = TypeFactory::Instance()->MakeType(BOOLEAN_TYPE);
+	}
+	else if(variable_name == BYTE_CLASS_ID) {
+		array_type = TypeFactory::Instance()->MakeType(BYTE_TYPE);
+	}
+	else if(variable_name == INT_CLASS_ID) {
+		array_type = TypeFactory::Instance()->MakeType(INT_TYPE);
+	}
+	else if(variable_name == FLOAT_CLASS_ID) {
+		array_type = TypeFactory::Instance()->MakeType(FLOAT_TYPE);
+	}
+	else if(variable_name == CHAR_CLASS_ID) {
+		array_type = TypeFactory::Instance()->MakeType(CHAR_TYPE);
+	}
+	else if(variable_name == NIL_CLASS_ID) {
+		array_type = TypeFactory::Instance()->MakeType(NIL_TYPE);
+	}
+	else if(variable_name == VAR_CLASS_ID) {
+		array_type = TypeFactory::Instance()->MakeType(VAR_TYPE);
+	}
+	else {
+		array_type = TypeFactory::Instance()->MakeType(CLASS_TYPE, variable_name);
+	}
+	array_type->SetDimension((int)expressions->GetExpressions().size());
+	SetEvalType(array_type, false);
 }
