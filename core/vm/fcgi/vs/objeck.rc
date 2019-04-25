@@ -70,12 +70,20 @@ BEGIN
             VALUE "Comments", "Objeck FastCGI Virtual Machine"
             VALUE "CompanyName", "Randy Hollines"
             VALUE "FileDescription", "Objeck FastCGI Virtual Machine"
+<<<<<<< HEAD
             VALUE "FileVersion", "4.1.12"
+=======
+            VALUE "FileVersion", "5.0.0"
+>>>>>>> origin/generic_types
             VALUE "InternalName", "obr"
             VALUE "LegalCopyright", "Copyright (C) 2012-2015"
             VALUE "OriginalFilename", "obr_fcgi.exe"
             VALUE "ProductName", "Objeck FastCGI Runtime"
+<<<<<<< HEAD
             VALUE "ProductVersion", "4.1.12"
+=======
+            VALUE "ProductVersion", "5.0.0"
+>>>>>>> origin/generic_types
         END
     END
     BLOCK "VarFileInfo"

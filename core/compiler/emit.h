@@ -924,6 +924,7 @@ namespace backend {
     vector<int> interface_ids;
     wstring parent_name;
     vector<wstring> interface_names;
+		vector<wstring> generic_classes;
     int cls_space;
     int inst_space;
     vector<IntermediateBlock*> blocks;
@@ -939,15 +940,17 @@ namespace backend {
     
   public:
     IntermediateClass(int i, const wstring &n, int pi, const wstring &p, 
-                      vector<int> infs, vector<wstring> in, bool is_inf, 
-                      bool is_vrtl, int cs, int is, IntermediateDeclarations* ce, 
-                      IntermediateDeclarations* ie, const wstring &fn, bool d) {
+											vector<int> infs, vector<wstring> in, bool is_inf,
+											vector<wstring> gen, bool is_vrtl, int cs, int is,
+											IntermediateDeclarations* ce, IntermediateDeclarations* ie, 
+											const wstring &fn, bool d) {
       id = i;
       name = n;
       pid = pi;
       parent_name = p;
       interface_ids = infs;
-      interface_names = in;
+			interface_names = in;
+			generic_classes = gen;
       is_interface = is_inf;
       is_virtual = is_vrtl;
       cls_space = cs;
@@ -1069,15 +1072,16 @@ namespace backend {
     }
 
     void Write(bool emit_lib, OutputStream& out_stream);
-
+		
 #ifdef _DEBUG
     void Debug() {
       GetLogger() << L"=========================================================" << endl;
       GetLogger() << L"Class: id=" << id << L"; name='" << name << L"'; parent='" << parent_name
             << L"'; pid=" << pid << L";\n interface=" << (is_interface ? L"true" : L"false") 
-            << L"; virtual=" << is_virtual << L"; num_methods=" << methods.size() 
-            << L"; class_mem_size=" << cls_space << L";\n instance_mem_size=" 
-            << inst_space << L"; is_debug=" << (is_debug  ? L"true" : L"false") << endl;      
+            << L"; virtual=" << is_virtual << L"; num_generics=" << generic_classes.size() 
+						<< L"; num_methods=" << methods.size() << L"; class_mem_size=" << cls_space 
+						<< L";\n instance_mem_size=" << inst_space << L"; is_debug=" 
+						<< (is_debug  ? L"true" : L"false") << endl;      
       GetLogger() << endl << "Interfaces:" << endl;
       for(size_t i = 0; i < interface_names.size(); ++i) {
         GetLogger() << L"\t" << interface_names[i] << endl;

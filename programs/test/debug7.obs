@@ -1,0 +1,19 @@
+class Foo {
+	function : Main(args : String[]) ~ Nil {
+		a := Vector->New()<FloatHolder>;
+		a->AddBack(FloatHolder->New(13.5));
+		a->AddBack(FloatHolder->New(33.3));
+		a->AddBack(FloatHolder->New(75));
+		a->Size()->PrintLine();
+		
+		b := a->Apply(Bar(FloatHolder) ~ FloatHolder)<FloatHolder>;
+		
+		# a->Get(1)->Get()->PrintLine();
+		# b->Get(1)->Get()->PrintLine();
+	}
+	
+	function : Bar(h : FloatHolder) ~ FloatHolder {
+		v := h->Get();
+		return FloatHolder->New(v * 3.5);
+	}
+}

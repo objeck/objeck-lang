@@ -2,7 +2,7 @@
  * Translates a parse tree into an intermediate format.  This format
  * is used for optimizations and target output.
  *
- * Copyright (c) 2008-2018, Randy Hollines
+ * Copyright (c) 2008-2019, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -568,11 +568,10 @@ IntermediateClass* IntermediateEmitter::EmitClass(Class* klass)
     short_file_name = file_name.substr(offset + 1);
   }
   
-  imm_klass = new IntermediateClass(current_class->GetId(), current_class->GetName(),
-                                    pid, parent_name, interface_ids, current_class->GetInterfaceNames(),
-                                    current_class->IsInterface(), current_class->IsVirtual(), 
-                                    cls_space, inst_space, cls_entries, inst_entries, 
-                                    short_file_name, is_debug);
+  imm_klass = new IntermediateClass(current_class->GetId(), current_class->GetName(),  pid, parent_name, 
+				    interface_ids, current_class->GetInterfaceNames(), current_class->IsInterface(), 
+				    current_class->GetGenericStrings(),	current_class->IsVirtual(), cls_space, 
+				    inst_space, cls_entries, inst_entries, short_file_name, is_debug);
   // block
   NewBlock();
   
@@ -628,11 +627,9 @@ IntermediateMethod* IntermediateEmitter::EmitMethod(Method* method)
       num_params++;
     }
   }
-  // int num_params = (int)declarations.size();
-  imm_method = new IntermediateMethod(method->GetId(), method->GetEncodedName(),
-                                      method->IsVirtual(), method->HasAndOr(), method->GetEncodedReturn(),
-                                      method->GetMethodType(), method->IsNative(), method->IsStatic(),
-                                      space, num_params, entries, imm_klass);
+  imm_method = new IntermediateMethod(method->GetId(), method->GetEncodedName(), method->IsVirtual(), 
+				      method->HasAndOr(), method->GetEncodedReturn(),  method->GetMethodType(), 
+				      method->IsNative(), method->IsStatic(), space, num_params, entries, imm_klass);
 
   if(!method->IsVirtual()) {
     // block
@@ -686,7 +683,7 @@ IntermediateMethod* IntermediateEmitter::EmitMethod(Method* method)
 
     // return instance if this is constructor call
     if(!method->IsAlt() && (method->GetMethodType() == NEW_PUBLIC_METHOD ||
-       method->GetMethodType() == NEW_PRIVATE_METHOD)) {
+			    method->GetMethodType() == NEW_PRIVATE_METHOD)) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
     }
 
@@ -4419,8 +4416,8 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index,
         case frontend::BOOLEAN_TYPE:
           if(entry->GetType()->GetDimension() > 0) {
 #ifdef _DEBUG
-            GetLogger() << L"\t" << index << L": INT_ARY_PARM: name=" << entry->GetName()
-                  << L", dim=" << entry->GetType()->GetDimension() << endl;
+            GetLogger() << L"\t" << index << L": INT_ARY_PARM: name=" << entry->GetName() 
+			<< L", dim=" << entry->GetType()->GetDimension() << endl;
 #endif
             declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_ARY_PARM));
           } 
@@ -4455,7 +4452,7 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index,
           if(entry->GetType()->GetDimension() > 0) {
 #ifdef _DEBUG
             GetLogger() << L"\t" << index << L": INT_ARY_PARM: name=" << entry->GetName()
-                  << L", dim=" << entry->GetType()->GetDimension() << endl;
+			<< L", dim=" << entry->GetType()->GetDimension() << endl;
 #endif
             declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_ARY_PARM));
           } 

@@ -37,8 +37,13 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
+<<<<<<< HEAD
  FILEVERSION 4,1,12
  PRODUCTVERSION 4,1,12
+=======
+ FILEVERSION 5,0,0
+ PRODUCTVERSION 5,0,0
+>>>>>>> origin/generic_types
  FILEFLAGSMASK 0x17L
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -56,12 +61,20 @@ BEGIN
             VALUE "Comments", "Objeck Virtual Machine"
             VALUE "CompanyName", "Randy Hollines"
             VALUE "FileDescription", "Objeck Virtual Machine"
+<<<<<<< HEAD
             VALUE "FileVersion", "4.1.12"
+=======
+            VALUE "FileVersion", "5.0.0"
+>>>>>>> origin/generic_types
             VALUE "InternalName", "obr"
             VALUE "LegalCopyright", "Copyright (C) 2008-2019"
             VALUE "OriginalFilename", "obr.exe"
             VALUE "ProductName", "Objeck Runtime"
+<<<<<<< HEAD
             VALUE "ProductVersion", "4.1.12"
+=======
+            VALUE "ProductVersion", "5.0.0"
+>>>>>>> origin/generic_types
         END
     END
     BLOCK "VarFileInfo"

@@ -185,15 +185,15 @@ static wstring GetLibraryPath() {
 static bool BytesToUnicode(const string &in, wstring &out) {    
 #ifdef _WIN32
   // allocate space
-  int wsize = MultiByteToWideChar(CP_UTF8, 0, in.c_str(), -1, NULL, 0);
-  if(!wsize) {
+  const int wsize = MultiByteToWideChar(CP_UTF8, 0, in.c_str(), -1, NULL, 0);
+  if(wsize == 0) {
     return false;
   }
   wchar_t* buffer = new wchar_t[wsize];
 
   // convert
-  int check = MultiByteToWideChar(CP_UTF8, 0, in.c_str(), -1, buffer, wsize);
-  if(!check) {
+  const int check = MultiByteToWideChar(CP_UTF8, 0, in.c_str(), -1, buffer, wsize);
+  if(check == 0) {
     delete[] buffer;
     buffer = NULL;
     return false;
@@ -267,15 +267,15 @@ static bool BytesToCharacter(const string &in, wchar_t &out) {
 static bool UnicodeToBytes(const wstring &in, string &out) {
 #ifdef _WIN32
   // allocate space
-  int size = WideCharToMultiByte(CP_UTF8, 0, in.c_str(), -1, NULL, 0, NULL, NULL);
-  if(!size) {
+  const int size = WideCharToMultiByte(CP_UTF8, 0, in.c_str(), -1, NULL, 0, NULL, NULL);
+  if(size == 0) {
     return false;
   }
   char* buffer = new char[size];
   
   // convert string
-  int check = WideCharToMultiByte(CP_UTF8, 0, in.c_str(), -1, buffer, size, NULL, NULL);
-  if(!check) {
+  const int check = WideCharToMultiByte(CP_UTF8, 0, in.c_str(), -1, buffer, size, NULL, NULL);
+  if(check == 0) {
     delete[] buffer;
     buffer = NULL;
     return false;

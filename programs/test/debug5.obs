@@ -1,0 +1,41 @@
+class Foo {
+	function : Main(args : String[]) ~ Nil {
+		s := Stack->New()<String>;
+		s->Push("Foo");
+		s->Push("Bar");
+		s->Size()->PrintLine();
+
+		s->Pop()->PrintLine();
+		s->Size()->PrintLine();		
+	}
+
+	function : Bar(v : IntHolder) ~ IntHolder {
+		return IntHolder->New(v->Get() * 3);
+	}
+}
+
+class Stack<T> {
+	@stack : T[];
+	@pos : Int;
+
+	New() {
+		@stack := T->New[10];
+		@pos := 0;
+	}
+
+	method : public : Push(v : T) ~ Nil {
+		@stack[@pos++] := v;
+	}
+
+	method : public : Pop() ~ T {
+		return @stack[--@pos];
+	}
+
+	method : public : Top() ~ T {
+		return @stack[@pos];
+	}
+
+	method : public : Size() ~ Int {
+		return @pos;
+	}
+}

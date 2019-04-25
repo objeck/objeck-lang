@@ -1,7 +1,7 @@
 /***************************************************************************
  * Language parser.
  *
- * Copyright (c) 2008-2018, Randy Hollines
+ * Copyright (c) 2008-2019, Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -57,7 +57,7 @@ class Parser {
   wstring src_path;
   wstring run_prgm;
   unsigned int anonymous_class_id;
-  
+
   inline void NextToken() {
     scanner->NextToken();
   }
@@ -94,22 +94,22 @@ class Parser {
     return scanner->GetToken()->GetFileName();
   }
 
-  inline const wstring GetScopeName(const wstring &ident) {
+  inline const wstring GetScopeName(const wstring& ident) {
     wstring scope_name;
     if(current_method) {
       scope_name = current_method->GetName() + L":" + ident;
-    } 
+    }
     else if(current_class) {
       scope_name = current_class->GetName() + L":" + ident;
     }
     else {
       scope_name = ident;
     }
-    
+
     return scope_name;
   }
 
-  inline const wstring GetEnumScopeName(const wstring &ident) {
+  inline const wstring GetEnumScopeName(const wstring& ident) {
     wstring scope_name;
     if(current_class) {
       scope_name = current_class->GetName() + L"#" + ident;
@@ -117,11 +117,11 @@ class Parser {
     else {
       scope_name = ident;
     }
-    
+
     return scope_name;
   }
 
-  void Debug(const wstring &msg, int depth) {
+  void Debug(const wstring& msg, int depth) {
     GetLogger() << setw(4) << GetLineNumber() << L": ";
     for(int i = 0; i < depth; ++i) {
       GetLogger() << L"  ";
@@ -139,32 +139,33 @@ class Parser {
     wstring name;
     if(Match(TOKEN_IDENT)) {
       while(Match(TOKEN_IDENT) && !Match(TOKEN_END_OF_STREAM)) {
-        name += scanner->GetToken()->GetIdentifier();
-        NextToken();
-        if(Match(TOKEN_PERIOD)) {
-          name += L'.';
-          NextToken();
-        }
-        else if(Match(TOKEN_IDENT)) {
-          ProcessError(L"Expected period", TOKEN_SEMI_COLON);
-          NextToken();
-        }
+	name += scanner->GetToken()->GetIdentifier();
+	NextToken();
+	if(Match(TOKEN_PERIOD)) {
+	  name += L'.';
+	  NextToken();
+	}
+	else if(Match(TOKEN_IDENT)) {
+	  ProcessError(L"Expected period", TOKEN_SEMI_COLON);
+	  NextToken();
+	}
       }
-    } 
+    }
     else {
       ProcessError(TOKEN_IDENT);
     }
-    
+
     return name;
   }
 
-  Declaration* AddDeclaration(const wstring& ident, Type* type, bool is_static, Declaration* child,
-                              const int line_num, const wstring& file_name, int depth) {
+  Declaration* AddDeclaration(const wstring& ident, Type* type, bool is_static, Declaration* child,	int depth) {
+    const int line_num = GetLineNumber();
+    const wstring& file_name = GetFileName();
+
     // add entry
     wstring scope_name = GetScopeName(ident);
-    SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num,
-                                                                  scope_name, type, is_static,
-                                                                  current_method != NULL);
+    SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num, scope_name, 
+								  type, is_static, current_method != NULL);
 
 #ifdef _DEBUG
     Debug(L"Adding variable: '" + scope_name + L"'", depth + 2);
@@ -178,9 +179,8 @@ class Parser {
     Declaration* declaration;
     if(Match(TOKEN_ASSIGN)) {
       Variable* variable = ParseVariable(ident, depth + 1);
-      // FYI: can not specify array indices here
       declaration = TreeFactory::Instance()->MakeDeclaration(file_name, line_num, entry, child,
-                                                             ParseAssignment(variable, depth + 1));
+							     ParseAssignment(variable, depth + 1));
     }
     else {
       declaration = TreeFactory::Instance()->MakeDeclaration(file_name, line_num, entry, child);
@@ -192,28 +192,29 @@ class Parser {
   // error processing
   void LoadErrorCodes();
   void ProcessError(const ScannerTokenType type);
-  void ProcessError(const wstring &msg);
-  void ProcessError(const wstring &msg, ParseNode* node);
-  void ProcessError(const wstring &msg, const ScannerTokenType sync, int offset = 0);
+  void ProcessError(const wstring & msg);
+  void ProcessError(const wstring & msg, ParseNode * node);
+  void ProcessError(const wstring & msg, const ScannerTokenType sync, int offset = 0);
   bool CheckErrors();
 
   // parsing operations
-  void ParseFile(const wstring& file_name);
+  void ParseFile(const wstring & file_name);
   void ParseProgram();
   void ParseBundle(int depth);
-  wstring ParseBundleName(int depth);
-  Class* ParseClass(const wstring &bundle_id, int depth);
-  Class* ParseInterface(const wstring &bundle_id, int depth);
+  Class* ParseClass(const wstring & bundle_id, int depth);
+  Class* ParseInterface(const wstring & bundle_id, int depth);
   Method* ParseMethod(bool is_function, bool virtual_required, int depth);
-  Variable* ParseVariable(const wstring &ident, int depth);
+  Variable* ParseVariable(const wstring & ident, int depth);
+  vector<Type*> ParseGenericTypes(int depth);
+  vector<Class*> ParseGenericClasses(const wstring& bundle_name, int depth);
   MethodCall* ParseMethodCall(int depth);
-  MethodCall* ParseMethodCall(const wstring &ident, int depth);
-  void ParseMethodCall(Expression* expression, int depth);
-  MethodCall* ParseMethodCall(Variable* variable, int depth);
-  void ParseAnonymousClass(MethodCall* method_call, int depth);
+  MethodCall* ParseMethodCall(const wstring & ident, int depth);
+  void ParseMethodCall(Expression * expression, int depth);
+  MethodCall* ParseMethodCall(Variable * variable, int depth);
+  void ParseAnonymousClass(MethodCall * method_call, int depth);
   StatementList* ParseStatementList(int depth);
   Statement* ParseStatement(int depth, bool semi_colon = true);
-  Assignment* ParseAssignment(Variable* variable, int depth);
+  Assignment* ParseAssignment(Variable * variable, int depth);
   StaticArray* ParseStaticArray(int depth);
   If* ParseIf(int depth);
   DoWhile* ParseDoWhile(int depth);
@@ -226,12 +227,12 @@ class Parser {
   CriticalSection* ParseCritical(int depth);
   Return* ParseReturn(int depth);
   Leaving* ParseLeaving(int depth);
-  Declaration* ParseDeclaration(const wstring &name, bool is_stmt, int depth);
+  Declaration* ParseDeclaration(const wstring & name, bool is_stmt, int depth);
   DeclarationList* ParseDecelerationList(int depth);
   ExpressionList* ParseExpressionList(int depth, ScannerTokenType open = TOKEN_OPEN_PAREN,
-                                      ScannerTokenType close = TOKEN_CLOSED_PAREN);
+				      ScannerTokenType close = TOKEN_CLOSED_PAREN);
   ExpressionList* ParseIndices(int depth);
-  void ParseCastTypeOf(Expression* expression, int depth);
+  void ParseCastTypeOf(Expression * expression, int depth);
   Type* ParseType(int depth);
   Expression* ParseExpression(int depth);
   Expression* ParseLogic(int depth);
@@ -239,9 +240,9 @@ class Parser {
   Expression* ParseTerm(int depth);
   Expression* ParseFactor(int depth);
   Expression* ParseSimpleExpression(int depth);
-  
+
  public:
-  Parser(const wstring &p, bool a, const wstring &r) {
+  Parser(const wstring & p, bool a, const wstring & r) {
     src_path = p;
     alt_syntax = a;
     run_prgm = r;

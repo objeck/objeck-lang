@@ -1,0 +1,64 @@
+class Foo {
+	function : Main(args : String[]) ~ Nil {
+		p := Pair->New("foo", IntHolder->New(13))<String, IntHolder>;
+		f := Bar(IntHolder) ~ IntHolder;
+#		p->Apply(f);
+
+		p->GetValue()->Get()->PrintLine();
+		p->Apply(Bar(IntHolder) ~ IntHolder);
+		p->GetValue()->Get()->PrintLine();
+
+		Pair->New(p)<String, IntHolder>;
+#		x->SetValue(IntHolder->New(99));
+
+		c : Pair<String, IntHolder> := p->Clone()<String, String>;
+#~
+		d := p->DoIt(IntHolder->New(101));
+		x->GetValue()->Get()->PrintLine();
+~#
+		p->GetKey()->PrintLine();
+#		x->GetKey()->PrintLine();
+	}
+
+	function : Bar(v : IntHolder) ~ IntHolder {
+		return IntHolder->New(v->Get() * 3);
+	}
+}
+
+class Pair<Key : Compare, Value> {
+	@key : Key;
+	@value : Value;
+	@left : Pair;
+	@right : Pair;
+	@stack : Value[];
+
+	New(key : Key, value : Value) {
+		@key := key;
+		@value := value;
+	}
+
+	New(p : Pair) {
+		@value := p->GetValue();
+		@key := p->GetKey();
+	}
+
+	method : public : Clone() ~ Pair {	
+		return @self;
+	}
+
+	method : public : GetValue() ~ Value {
+		return @value;
+	}
+
+	method : public : GetKey() ~ Key {
+		return @key;
+	}
+
+	method : public : SetValue(value : Value) ~ Nil {
+		@value := value;
+	}
+
+	method : public : Apply(f : (Value) ~ Value) ~ Nil {
+		@value := f(@value);
+	}
+}
