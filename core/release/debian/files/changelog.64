@@ -1,8 +1,4 @@
-<<<<<<< HEAD
-objeck-lang-amd64 (4.1-12-1) unstable; urgency=low
-=======
 objeck-lang-amd64 (5.0-0-1) unstable; urgency=low
->>>>>>> origin/generic_types
 
   * Optimized stack operations for floating point operations (new)
   * Fixed ODBC “select” bug and added missing ODBC API documentation (bug/high)
