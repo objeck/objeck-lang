@@ -2517,7 +2517,7 @@ namespace frontend {
       return concrete_types;
     }
 
-    bool HasConcreteNames() {
+    bool HasConcreteTypes() {
       return concrete_types.size() > 0;
     }
 
