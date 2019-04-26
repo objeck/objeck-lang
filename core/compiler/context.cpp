@@ -4981,7 +4981,6 @@ Type* ContextAnalyzer::RelsolveGenericType(Type* generic_type, MethodCall* metho
       concrete_index = klass->GenericIndex(generic_name);
       has_generics = klass->HasGenerics();
 
-
       // a
       if(has_generics && method_call->HasConcreteTypes()) {
         const vector<Class*> generic_klasses = klass->GetGenericClasses();
@@ -5029,15 +5028,23 @@ Type* ContextAnalyzer::RelsolveGenericType(Type* generic_type, MethodCall* metho
           LibraryClass* generic_klass = generic_klasses[i];
           Type* generic_type = generic_types[i];
           if(generic_klass->HasGenericInterface()) {
-
             Class* klass = NULL; LibraryClass* lib_klass = NULL;
             GetProgramLibraryClass(generic_type->GetClassName(), klass, lib_klass);
 
-            if(!ValidDownCast(generic_klass->GetGenericInterface()->GetClassName(), klass, lib_klass)) {
-              ProcessError(static_cast<Expression*>(method_call), L"-- WFH MAN --");
+            const wstring class_name = generic_klass->GetGenericInterface()->GetClassName();
+            if(!ValidDownCast(class_name, klass, lib_klass)) {
+              if(klass) {
+                ProcessError(static_cast<Expression*>(method_call), L"Invalid operation using classes: '" +
+                             klass->GetName() + L"' and '" + class_name + L"'");
+              }
+              else if(lib_klass) {
+                ProcessError(static_cast<Expression*>(method_call), L"Invalid operation using classes: '" +
+                             lib_klass->GetName() + L"' and '" + class_name + L"'");
+              }
             }
           }
         }
+
       }
 
     }
