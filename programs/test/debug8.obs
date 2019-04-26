@@ -48,7 +48,7 @@ class Map<K : Compare, V> {
 	}
 
 	method : public : Add(key : K, value : V) ~ Bool {
-		@root := Node->New(key, value)<K, V>;
+		
 		return false;
 	}
 }
