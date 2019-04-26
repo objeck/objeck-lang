@@ -4526,7 +4526,17 @@ void ContextAnalyzer::AnalyzeClassCast(Type * left, Type * right, Expression * e
     if(right_class) {
       // TODO: adding generics
       if(left->HasGenerics() == right->HasGenerics()) {
-        const vector<Type*> left_concretes = left->GetGenerics();
+        vector<Type*> left_concretes = left->GetGenerics();
+
+        /*
+        
+        if(expression->GetExpressionType() == METHOD_CALL_EXPR) {
+          MethodCall* method_call = static_cast<MethodCall*>(expression);
+          if(method_call->HasConcreteNames()) {
+            left_concretes = method_call->GetConcreteTypes();
+          }
+        }*/
+
         const vector<Type*> right_concretes = right->GetGenerics();
         if(left_concretes.size() == right_concretes.size()) {
           for(size_t i = 0; i < left_concretes.size(); ++i) {
