@@ -610,84 +610,6 @@ class ContextAnalyzer {
 		return type;
 	}
 
-	// TODO: adding generics
-	// generic type erasure 
-	Type* RelsolveGenericType(Type * generic_type, MethodCall * method_call, Class * klass, LibraryClass * lib_klass) {
-		if(generic_type->GetType() == FUNC_TYPE) {
-			if(klass) {
-				Type* concrete_rtrn = RelsolveGenericType(generic_type->GetFunctionReturn(), method_call, klass, lib_klass);
-				vector<Type*> concrete_params;
-				const vector<Type*> type_params = generic_type->GetFunctionParameters();
-				for(size_t i = 0; i < type_params.size(); ++i) {
-					concrete_params.push_back(RelsolveGenericType(type_params[i], method_call, klass, lib_klass));
-				}
-
-				return TypeFactory::Instance()->MakeType(concrete_params, concrete_rtrn);
-			}
-			else {
-				wstring func_name = generic_type->GetClassName();
-				const vector<LibraryClass*> generic_classes = lib_klass->GetGenericClasses();
-				for(size_t i = 0; i < generic_classes.size(); ++i) {
-					const wstring find_name = generic_classes[i]->GetName();
-					Type* to_type = RelsolveGenericType(TypeFactory::Instance()->MakeType(CLASS_TYPE, find_name),	method_call, klass, lib_klass);
-					const wstring from_name = L"o." + generic_classes[i]->GetName();
-					const wstring to_name = L"o." + to_type->GetClassName();
-					StringReplace(func_name, from_name, to_name);
-				}
-
-				return TypeFactory::Instance()->MakeType(FUNC_TYPE, func_name);
-			}
-		}
-		else {
-			int concrete_index = -1;
-			const wstring generic_name = generic_type->GetClassName();
-			bool has_generics = false;
-			if(klass) {
-				concrete_index = klass->GenericIndex(generic_name);
-				has_generics = klass->HasGenerics();
-			}
-			else if(lib_klass) {
-				concrete_index = lib_klass->GenericIndex(generic_name);
-				has_generics = lib_klass->HasGenerics();
-			}
-
-			if(has_generics) {
-				if(concrete_index > -1) {
-					if(method_call->GetEntry()) {
-						const vector<Type*> concrete_types = method_call->GetEntry()->GetType()->GetGenerics();
-						if(concrete_index < (int)concrete_types.size()) {
-							return concrete_types[concrete_index];
-						}
-					}
-					else if(method_call->GetVariable() && method_call->GetVariable()->GetEntry()) {
-						const vector<Type*> concrete_types = method_call->GetVariable()->GetEntry()->GetType()->GetGenerics();
-						if(concrete_index < (int)concrete_types.size()) {
-							return concrete_types[concrete_index];
-						}
-					}
-					else if(method_call->GetCallType() == NEW_INST_CALL && method_call->HasConcreteNames()) {
-						const vector<Type*> concrete_types = method_call->GetConcreteTypes();
-						if(concrete_index < (int)concrete_types.size()) {
-							return concrete_types[concrete_index];
-						}
-					}
-					// nested call, maybe reevaluate?
-					else if(method_call->GetPreviousExpression() && method_call->GetPreviousExpression()->GetExpressionType() == METHOD_CALL_EXPR) {
-						MethodCall* prev_method_call = static_cast<MethodCall*>(method_call->GetPreviousExpression());
-						if(prev_method_call->GetEvalType()) {
-							const vector<Type*> concrete_types = prev_method_call->GetEvalType()->GetGenerics();
-							if(concrete_index < (int)concrete_types.size()) {
-								return concrete_types[concrete_index];
-							}
-						}
-					}
-				}
-			}
-		}
-
-		return generic_type;
-	}
-
 	void StringReplace(wstring& str, const wstring& from, const wstring& to) {
 		size_t start_pos = 0;
 		while((start_pos = str.find(from, start_pos)) != wstring::npos) {
@@ -881,6 +803,19 @@ class ContextAnalyzer {
 		return SearchProgramClasses(n) || linker->SearchClassLibraries(n, program->GetUses(current_class->GetFileName()));
 	}
 	
+  inline bool GetProgramLibraryClass(const wstring& n, Class* &klass, LibraryClass* &lib_klass) {
+    klass = SearchProgramClasses(n);
+    if(klass) {
+      return true;
+    }
+    
+    lib_klass = linker->SearchClassLibraries(n, program->GetUses(current_class->GetFileName()));
+    if(lib_klass) {
+      return true;
+    }
+
+    return false;
+  }
 
   inline const wstring EncodeType(Type* type) {
     wstring encoded_name;
@@ -1222,7 +1157,7 @@ class ContextAnalyzer {
 	
 	Type* RelsolveGenericCall(Type* left, MethodCall* method_call, Class* klass, Method* method) {
 		left = RelsolveGenericType(left, method_call, klass, NULL);
-		if(!left->HasGenerics() && method_call->HasConcreteNames() &&
+		if(!left->HasGenerics() && method_call->HasConcreteTypes() &&
 			(method->GetMethodType() == NEW_PUBLIC_METHOD ||
 			 method->GetMethodType() == NEW_PRIVATE_METHOD)) {
 			left = TypeFactory::Instance()->MakeType(left);
@@ -1235,7 +1170,7 @@ class ContextAnalyzer {
 
 	Type* RelsolveGenericCall(Type* left, MethodCall* method_call, LibraryClass* klass, LibraryMethod* method) {
 		left = RelsolveGenericType(left, method_call, NULL, klass);
-		if(!left->HasGenerics() && method_call->HasConcreteNames() &&
+		if(!left->HasGenerics() && method_call->HasConcreteTypes() &&
 			(method->GetMethodType() == NEW_PUBLIC_METHOD ||
 			 method->GetMethodType() == NEW_PRIVATE_METHOD)) {
 			left = TypeFactory::Instance()->MakeType(left);
@@ -1334,6 +1269,8 @@ class ContextAnalyzer {
                                 wstring &encoding, const int depth);
   void AnalyzeFunctionReference(LibraryClass* klass, MethodCall* method_call,
                                 wstring &encoding, const int depth);
+  Type* RelsolveGenericType(Type* generic_type, MethodCall* method_call, Class* klass, 
+                            LibraryClass* lib_klass);
 
  public:
   ContextAnalyzer(ParsedProgram* p, wstring lib_path, bool l, bool w) {

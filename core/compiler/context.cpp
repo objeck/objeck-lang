@@ -1867,7 +1867,7 @@ void ContextAnalyzer::AnalyzeNewArrayCall(MethodCall * method_call, const int de
     }
   }
   // TODO: adding generics
-  if(method_call->HasConcreteNames() && method_call->GetEvalType() &&
+  if(method_call->HasConcreteTypes() && method_call->GetEvalType() &&
      !method_call->GetEvalType()->HasGenerics()) {
     method_call->GetEvalType()->SetGenerics(method_call->GetConcreteTypes());
   }
@@ -2353,7 +2353,7 @@ void ContextAnalyzer::AnalyzeMethodCall(Class * klass, MethodCall * method_call,
 
     // TODO: adding generics
     if((method->GetMethodType() == NEW_PUBLIC_METHOD || method->GetMethodType() == NEW_PRIVATE_METHOD) &&
-       klass->HasGenerics() && !method_call->HasConcreteNames() && current_class != klass) {
+       klass->HasGenerics() && !method_call->HasConcreteTypes() && current_class != klass) {
       ProcessError(static_cast<Expression*>(method_call), L"Cannot create an instance of a generic class");
     }
 
@@ -2380,7 +2380,7 @@ void ContextAnalyzer::AnalyzeMethodCall(Class * klass, MethodCall * method_call,
 
     // TODO: adding generics
     // validate concrete declarations
-    if(method_call->HasConcreteNames()) {
+    if(method_call->HasConcreteTypes()) {
       const vector<Type*> concrete_types = method_call->GetConcreteTypes();
       const vector<Class*> generic_classes = method_call->GetMethod()->GetClass()->GetGenericClasses();
       if(concrete_types.size() == generic_classes.size()) {
@@ -4532,7 +4532,7 @@ void ContextAnalyzer::AnalyzeClassCast(Type * left, Type * right, Expression * e
         
         if(expression->GetExpressionType() == METHOD_CALL_EXPR) {
           MethodCall* method_call = static_cast<MethodCall*>(expression);
-          if(method_call->HasConcreteNames()) {
+          if(method_call->HasConcreteTypes()) {
             left_concretes = method_call->GetConcreteTypes();
           }
         }*/
@@ -4946,3 +4946,135 @@ wstring ContextAnalyzer::EncodeMethodCall(ExpressionList * calling_params, const
   return encoded_name;
 }
 
+Type* ContextAnalyzer::RelsolveGenericType(Type* generic_type, MethodCall* method_call, Class* klass, LibraryClass* lib_klass) 
+{
+  if(generic_type->GetType() == FUNC_TYPE) {
+    if(klass) {
+      Type* concrete_rtrn = RelsolveGenericType(generic_type->GetFunctionReturn(), method_call, klass, lib_klass);
+      vector<Type*> concrete_params;
+      const vector<Type*> type_params = generic_type->GetFunctionParameters();
+      for(size_t i = 0; i < type_params.size(); ++i) {
+        concrete_params.push_back(RelsolveGenericType(type_params[i], method_call, klass, lib_klass));
+      }
+
+      return TypeFactory::Instance()->MakeType(concrete_params, concrete_rtrn);
+    }
+    else {
+      wstring func_name = generic_type->GetClassName();
+      const vector<LibraryClass*> generic_classes = lib_klass->GetGenericClasses();
+      for(size_t i = 0; i < generic_classes.size(); ++i) {
+        const wstring find_name = generic_classes[i]->GetName();
+        Type* to_type = RelsolveGenericType(TypeFactory::Instance()->MakeType(CLASS_TYPE, find_name), method_call, klass, lib_klass);
+        const wstring from_name = L"o." + generic_classes[i]->GetName();
+        const wstring to_name = L"o." + to_type->GetClassName();
+        StringReplace(func_name, from_name, to_name);
+      }
+
+      return TypeFactory::Instance()->MakeType(FUNC_TYPE, func_name);
+    }
+  }
+  else {
+    int concrete_index = -1;
+    const wstring generic_name = generic_type->GetClassName();
+    bool has_generics = false;
+    if(klass) {
+      concrete_index = klass->GenericIndex(generic_name);
+      has_generics = klass->HasGenerics();
+
+
+      // a
+      if(has_generics && method_call->HasConcreteTypes()) {
+        const vector<Class*> generic_klasses = klass->GetGenericClasses();
+        const vector<Type*> generic_types = method_call->GetConcreteTypes();
+        if(generic_klasses.size() != generic_types.size()) {
+          ProcessError(static_cast<Expression*>(method_call), L"Generic parameter list size mismatch");
+        }
+
+        for(size_t i = 0; i < generic_klasses.size(); ++i) {
+          Class* generic_klass = generic_klasses[i];
+          Type* generic_type = generic_types[i];
+          if(generic_klass->HasGenericInterface()) {
+            Class* klass = NULL; LibraryClass* lib_klass = NULL;
+            GetProgramLibraryClass(generic_type->GetClassName(), klass, lib_klass);
+
+            const wstring class_name = generic_klass->GetGenericInterface()->GetClassName();
+            if(!ValidDownCast(class_name, klass, lib_klass)) {
+              if(klass) {
+                ProcessError(static_cast<Expression*>(method_call), L"Invalid operation using classes: '" + 
+                             klass->GetName() + L"' and '" + class_name + L"'");
+              }
+              else if(lib_klass) {
+                ProcessError(static_cast<Expression*>(method_call), L"Invalid operation using classes: '" + 
+                             lib_klass->GetName() + L"' and '" + class_name + L"'");
+              }
+            }
+          }
+        }
+      }
+    }
+    else if(lib_klass) {
+      concrete_index = lib_klass->GenericIndex(generic_name);
+      has_generics = lib_klass->HasGenerics();
+
+
+      // a
+      if(has_generics && method_call->HasConcreteTypes()) {
+        const vector<LibraryClass*> generic_klasses = lib_klass->GetGenericClasses();
+        const vector<Type*> generic_types = method_call->GetConcreteTypes();
+        if(generic_klasses.size() != generic_types.size()) {
+          ProcessError(static_cast<Expression*>(method_call), L"Generic parameter list size mismatch");
+        }
+
+        for(size_t i = 0; i < generic_klasses.size(); ++i) {
+          LibraryClass* generic_klass = generic_klasses[i];
+          Type* generic_type = generic_types[i];
+          if(generic_klass->HasGenericInterface()) {
+
+            Class* klass = NULL; LibraryClass* lib_klass = NULL;
+            GetProgramLibraryClass(generic_type->GetClassName(), klass, lib_klass);
+
+            if(!ValidDownCast(generic_klass->GetGenericInterface()->GetClassName(), klass, lib_klass)) {
+              ProcessError(static_cast<Expression*>(method_call), L"-- WFH MAN --");
+            }
+          }
+        }
+      }
+
+    }
+
+    if(has_generics) {
+      if(concrete_index > -1) {
+        if(method_call->GetEntry()) {
+          const vector<Type*> concrete_types = method_call->GetEntry()->GetType()->GetGenerics();
+          if(concrete_index < (int)concrete_types.size()) {
+            return concrete_types[concrete_index];
+          }
+        }
+        else if(method_call->GetVariable() && method_call->GetVariable()->GetEntry()) {
+          const vector<Type*> concrete_types = method_call->GetVariable()->GetEntry()->GetType()->GetGenerics();
+          if(concrete_index < (int)concrete_types.size()) {
+            return concrete_types[concrete_index];
+          }
+        }
+        else if(method_call->GetCallType() == NEW_INST_CALL && method_call->HasConcreteTypes()) {
+          const vector<Type*> concrete_types = method_call->GetConcreteTypes();
+          if(concrete_index < (int)concrete_types.size()) {
+            return concrete_types[concrete_index];
+          }
+        }
+        // nested call, maybe reevaluate?
+        else if(method_call->GetPreviousExpression() && method_call->GetPreviousExpression()->GetExpressionType() == METHOD_CALL_EXPR) {
+          MethodCall* prev_method_call = static_cast<MethodCall*>(method_call->GetPreviousExpression());
+          if(prev_method_call->GetEvalType()) {
+            const vector<Type*> concrete_types = prev_method_call->GetEvalType()->GetGenerics();
+            if(concrete_index < (int)concrete_types.size()) {
+              return concrete_types[concrete_index];
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return generic_type;
+}
