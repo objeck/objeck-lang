@@ -8,7 +8,7 @@ class Foo {
 		
 		b := a->Apply(Bar(Compare) ~ Compare);
 		
-		# a->Get(1)->Get()->PrintLine();
+		a->Get(1)->Get()->PrintLine();
 		# b->Get(1)->Get()->PrintLine();
 	}
 	
