@@ -42,13 +42,13 @@ class Node<K : Compare, V> {
 }
 
 class Map<K : Compare, V> {
-	@root : Node<K, V>;
+	@root : Node;
 
-	New() {
+	New(key : K, value : V) {
+		@root := Node->New(k, v);
 	}
 
 	method : public : Add(key : K, value : V) ~ Bool {
-		
 		return false;
 	}
 }
