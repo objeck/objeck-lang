@@ -4366,7 +4366,7 @@ void ContextAnalyzer::AnalyzeRightCast(Type * left, Type * right, Expression * e
                        ReplaceSubstring(ReplaceSubstring(right->GetClassName(), L"#", L"->"), L"#", L"->"));
         }
       }
-        break;
+                      break;
 
       case VAR_TYPE:
         ProcessError(expression, L"Invalid operation using classes: function reference and Var");
@@ -4510,7 +4510,7 @@ void ContextAnalyzer::AnalyzeClassCast(Type * left, Type * right, Expression * e
         const vector<Type*> right_concretes = right->GetGenerics();
         CheckGenericParameters(left_klasses, right_concretes, expression);
       }
-      else if(((left->HasGenerics() && !right->HasGenerics()) || (!left->HasGenerics() && right->HasGenerics())) && 
+      else if(((left->HasGenerics() && !right->HasGenerics()) || (!left->HasGenerics() && right->HasGenerics())) &&
               left_class != current_class && right_class != current_class) {
         ProcessError(expression, L"Invalid generic class definition '" +
                      ReplaceSubstring(right->GetClassName(), L"#", L"->") + L"' or concrete cast");
@@ -4898,7 +4898,7 @@ wstring ContextAnalyzer::EncodeMethodCall(ExpressionList * calling_params, const
   return encoded_name;
 }
 
-Type* ContextAnalyzer::RelsolveGenericType(Type* generic_type, MethodCall* method_call, Class* klass, LibraryClass* lib_klass) 
+Type* ContextAnalyzer::RelsolveGenericType(Type * generic_type, MethodCall * method_call, Class * klass, LibraryClass * lib_klass)
 {
   if(generic_type->GetType() == FUNC_TYPE) {
     if(klass) {
@@ -4934,7 +4934,7 @@ Type* ContextAnalyzer::RelsolveGenericType(Type* generic_type, MethodCall* metho
       has_generics = klass->HasGenerics();
 
       if(has_generics && method_call->HasConcreteTypes()) {
-        CheckGenericParameters(klass->GetGenericClasses(), method_call->GetConcreteTypes(), 
+        CheckGenericParameters(klass->GetGenericClasses(), method_call->GetConcreteTypes(),
                                static_cast<Expression*>(method_call));
       }
     }
@@ -4943,7 +4943,7 @@ Type* ContextAnalyzer::RelsolveGenericType(Type* generic_type, MethodCall* metho
       has_generics = lib_klass->HasGenerics();
 
       if(has_generics && method_call->HasConcreteTypes()) {
-        CheckGenericParameters(lib_klass->GetGenericClasses(), method_call->GetConcreteTypes(), 
+        CheckGenericParameters(lib_klass->GetGenericClasses(), method_call->GetConcreteTypes(),
                                static_cast<Expression*>(method_call));
 
       }
