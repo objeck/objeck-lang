@@ -2594,7 +2594,11 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod * lib_method, MethodCall *
     LibraryClass* lib_klass = lib_method->GetLibraryClass();
     Type* eval_type = TypeFactory::Instance()->MakeType(method_call->GetEvalType());
     if(lib_klass->HasGenerics()) {
-      eval_type = RelsolveGenericCall(eval_type, method_call, lib_klass, lib_method);
+      eval_type = RelsolveGenericType(eval_type, method_call, NULL, lib_klass);
+      if(!eval_type->HasGenerics()) {
+        eval_type->SetGenerics(method_call->GetConcreteTypes());
+      }
+      method_call->SetEvalType(eval_type, false);
     }
 
     // next call
@@ -4530,10 +4534,12 @@ void ContextAnalyzer::AnalyzeClassCast(Type * left, Type * right, Expression * e
         const vector<Type*> right_concretes = right->GetGenerics();
         CheckGenericParameters(left_klasses, right_concretes, expression);
       }
-      else if(left_class != current_class && right_class != current_class) {
+      else if(((left->HasGenerics() && !right->HasGenerics()) || (!left->HasGenerics() && right->HasGenerics())) && 
+              left_class != current_class && right_class != current_class) {
         ProcessError(expression, L"Invalid generic class definition '" +
                      ReplaceSubstring(right->GetClassName(), L"#", L"->") + L"' or concrete cast");
       }
+
       // downcast
       if(ValidDownCast(left_class->GetName(), right_class, NULL)) {
         left_class->SetCalled(true);
