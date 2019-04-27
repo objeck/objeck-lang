@@ -4525,46 +4525,10 @@ void ContextAnalyzer::AnalyzeClassCast(Type * left, Type * right, Expression * e
     }
     if(right_class) {
       // TODO: adding generics
-      if(left->HasGenerics() == right->HasGenerics()) {
-        vector<Type*> left_concretes = left->GetGenerics();
-
-        /*
-        
-        if(expression->GetExpressionType() == METHOD_CALL_EXPR) {
-          MethodCall* method_call = static_cast<MethodCall*>(expression);
-          if(method_call->HasConcreteTypes()) {
-            left_concretes = method_call->GetConcreteTypes();
-          }
-        }*/
-
+      if(left->HasGenerics() && right->HasGenerics()) {
+        const vector<Class*> left_klasses = left_class->GetGenericClasses();
         const vector<Type*> right_concretes = right->GetGenerics();
-        if(left_concretes.size() == right_concretes.size()) {
-          for(size_t i = 0; i < left_concretes.size(); ++i) {
-            Type* left_concrete = left_concretes[i];
-            Type* right_concrete = right_concretes[i];
-
-            if(!ResolveClassEnumType(left_concrete)) {
-              ProcessError(expression, L"Undefined class: '" + left_concrete->GetClassName() + L"'");
-            }
-
-            if(!ResolveClassEnumType(right_concrete)) {
-              ProcessError(expression, L"Undefined class: '" + right_concrete->GetClassName() + L"'");
-            }
-
-            if(left_concrete->GetClassName() != right_concrete->GetClassName()) {
-              ProcessError(expression, L"Generic parameter type mismatch: '" +
-                           left_concrete->GetClassName() + L"' and '" +
-                           right_concrete->GetClassName() + L"'");
-            }
-          }
-
-          return;
-        }
-        else {
-          ProcessError(expression, L"Invalid cast between generics: '" +
-                       ReplaceSubstring(left->GetClassName(), L"#", L"->") + L"' and '" +
-                       ReplaceSubstring(right->GetClassName(), L"#", L"->") + L"'");
-        }
+        CheckGenericParameters(left_klasses, right_concretes, expression);
       }
       else if(left_class != current_class && right_class != current_class) {
         ProcessError(expression, L"Invalid generic class definition '" +

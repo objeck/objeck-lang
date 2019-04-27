@@ -44,7 +44,7 @@ class Node<K : Compare, V> {
 	}
 }
 
-class Map<K, V> {
+class Map<K : Compare, V> {
 	@root : Node<K, V>;
 
 	New(key : K, value : V) {
