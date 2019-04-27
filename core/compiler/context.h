@@ -1181,6 +1181,57 @@ class ContextAnalyzer {
 		return left;
 	}
 
+  void CheckGenericParameters(const vector<LibraryClass*> generic_klasses, const vector<Type*> generic_types, ParseNode* node) {
+    if(generic_klasses.size() != generic_types.size()) {
+      ProcessError(node, L"Generic parameter list size mismatch");
+    }
+    else {
+      for(size_t i = 0; i < generic_klasses.size(); ++i) {
+        LibraryClass* generic_klass = generic_klasses[i];
+        Type* generic_type = generic_types[i];
+        if(generic_klass->HasGenericInterface()) {
+          Class* klass = NULL; LibraryClass* lib_klass = NULL;
+          GetProgramLibraryClass(generic_type->GetClassName(), klass, lib_klass);
+          const wstring class_name = generic_klass->GetGenericInterface()->GetClassName();
+          if(!ValidDownCast(class_name, klass, lib_klass)) {
+            if(klass) {
+              ProcessError(node, L"Invalid operation using classes: '" + klass->GetName() + L"' and '" + class_name + L"'");
+            }
+            else if(lib_klass) {
+              ProcessError(node, L"Invalid operation using classes: '" + lib_klass->GetName() + L"' and '" + class_name + L"'");
+            }
+          }
+        }
+      }
+    }
+  }
+
+  void CheckGenericParameters(const vector<Class*> generic_klasses, const vector<Type*> generic_types, ParseNode* node) {
+    if(generic_klasses.size() != generic_types.size()) {
+      ProcessError(node, L"Generic parameter list size mismatch");
+    }
+    else {
+      for(size_t i = 0; i < generic_klasses.size(); ++i) {
+        Class* generic_klass = generic_klasses[i];
+        Type* generic_type = generic_types[i];
+        if(generic_klass->HasGenericInterface()) {
+          Class* klass = NULL; LibraryClass* lib_klass = NULL;
+          GetProgramLibraryClass(generic_type->GetClassName(), klass, lib_klass);
+
+          const wstring class_name = generic_klass->GetGenericInterface()->GetClassName();
+          if(!ValidDownCast(class_name, klass, lib_klass)) {
+            if(klass) {
+              ProcessError(node, L"Invalid operation using classes: '" + klass->GetName() + L"' and '" + class_name + L"'");
+            }
+            else if(lib_klass) {
+              ProcessError(node, L"Invalid operation using classes: '" + lib_klass->GetName() + L"' and '" + class_name + L"'");
+            }
+          }
+        }
+      }
+    }
+  }
+
   // error processing
   void ProcessError(ParseNode* n, const wstring &msg);
   void ProcessErrorAlternativeMethods(wstring &message);

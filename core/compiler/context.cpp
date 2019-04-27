@@ -4981,72 +4981,20 @@ Type* ContextAnalyzer::RelsolveGenericType(Type* generic_type, MethodCall* metho
       concrete_index = klass->GenericIndex(generic_name);
       has_generics = klass->HasGenerics();
 
-      // a
       if(has_generics && method_call->HasConcreteTypes()) {
-        const vector<Class*> generic_klasses = klass->GetGenericClasses();
-        const vector<Type*> generic_types = method_call->GetConcreteTypes();
-        if(generic_klasses.size() != generic_types.size()) {
-          ProcessError(static_cast<Expression*>(method_call), L"Generic parameter list size mismatch");
-        }
-
-        for(size_t i = 0; i < generic_klasses.size(); ++i) {
-          Class* generic_klass = generic_klasses[i];
-          Type* generic_type = generic_types[i];
-          if(generic_klass->HasGenericInterface()) {
-            Class* klass = NULL; LibraryClass* lib_klass = NULL;
-            GetProgramLibraryClass(generic_type->GetClassName(), klass, lib_klass);
-
-            const wstring class_name = generic_klass->GetGenericInterface()->GetClassName();
-            if(!ValidDownCast(class_name, klass, lib_klass)) {
-              if(klass) {
-                ProcessError(static_cast<Expression*>(method_call), L"Invalid operation using classes: '" + 
-                             klass->GetName() + L"' and '" + class_name + L"'");
-              }
-              else if(lib_klass) {
-                ProcessError(static_cast<Expression*>(method_call), L"Invalid operation using classes: '" + 
-                             lib_klass->GetName() + L"' and '" + class_name + L"'");
-              }
-            }
-          }
-        }
+        CheckGenericParameters(klass->GetGenericClasses(), method_call->GetConcreteTypes(), 
+                               static_cast<Expression*>(method_call));
       }
     }
     else if(lib_klass) {
       concrete_index = lib_klass->GenericIndex(generic_name);
       has_generics = lib_klass->HasGenerics();
 
-
-      // a
       if(has_generics && method_call->HasConcreteTypes()) {
-        const vector<LibraryClass*> generic_klasses = lib_klass->GetGenericClasses();
-        const vector<Type*> generic_types = method_call->GetConcreteTypes();
-        if(generic_klasses.size() != generic_types.size()) {
-          ProcessError(static_cast<Expression*>(method_call), L"Generic parameter list size mismatch");
-        }
-
-        for(size_t i = 0; i < generic_klasses.size(); ++i) {
-          LibraryClass* generic_klass = generic_klasses[i];
-          Type* generic_type = generic_types[i];
-          if(generic_klass->HasGenericInterface()) {
-            Class* klass = NULL; LibraryClass* lib_klass = NULL;
-            GetProgramLibraryClass(generic_type->GetClassName(), klass, lib_klass);
-
-            const wstring class_name = generic_klass->GetGenericInterface()->GetClassName();
-            if(!ValidDownCast(class_name, klass, lib_klass)) {
-              if(klass) {
-                ProcessError(static_cast<Expression*>(method_call), L"Invalid operation using classes: '" +
-                             klass->GetName() + L"' and '" + class_name + L"'");
-              }
-              else if(lib_klass) {
-                ProcessError(static_cast<Expression*>(method_call), L"Invalid operation using classes: '" +
-                             lib_klass->GetName() + L"' and '" + class_name + L"'");
-              }
-            }
-          }
-        }
+        CheckGenericParameters(lib_klass->GetGenericClasses(), method_call->GetConcreteTypes(), 
+                               static_cast<Expression*>(method_call));
 
       }
-
     }
 
     if(has_generics) {
