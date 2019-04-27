@@ -526,8 +526,8 @@ void ContextAnalyzer::AnalyzeInterfaces(Class * klass, const int depth)
         }
         // ensure implementation
         if(!AnalyzeVirtualMethods(klass, inf_lib_klass, depth)) {
-          ProcessError(klass, L"Not all methods have been implemented for the interface: " +
-                       inf_lib_klass->GetName());
+          ProcessError(klass, L"Not all methods have been implemented for the interface: '" +
+                       inf_lib_klass->GetName() + L"'");
         }
         else {
           // add interface
@@ -1942,7 +1942,7 @@ Class* ContextAnalyzer::AnalyzeProgramMethodCall(MethodCall * method_call, wstri
   Class* klass = NULL;
 
   // method within the same class
-  wstring variable_name = method_call->GetVariableName();
+  const wstring variable_name = method_call->GetVariableName();
   if(method_call->GetMethodName().size() == 0) {
     klass = SearchProgramClasses(current_class->GetName());
   }
@@ -2344,7 +2344,7 @@ void ContextAnalyzer::AnalyzeMethodCall(Class * klass, MethodCall * method_call,
     // cannot create an instance of a virutal class
     if((method->GetMethodType() == NEW_PUBLIC_METHOD || method->GetMethodType() == NEW_PRIVATE_METHOD) &&
        klass->IsVirtual() && current_class->GetParent() != klass) {
-      ProcessError(static_cast<Expression*>(method_call), L"Cannot create an instance of a virutal class");
+      ProcessError(static_cast<Expression*>(method_call), L"Cannot create an instance of a virutal class or interface");
     }
     // associate method
     klass->SetCalled(true);
@@ -2354,7 +2354,7 @@ void ContextAnalyzer::AnalyzeMethodCall(Class * klass, MethodCall * method_call,
     // TODO: adding generics
     if((method->GetMethodType() == NEW_PUBLIC_METHOD || method->GetMethodType() == NEW_PRIVATE_METHOD) &&
        klass->HasGenerics() && !method_call->HasConcreteTypes() && current_class != klass) {
-      ProcessError(static_cast<Expression*>(method_call), L"Cannot create an instance of a generic class");
+      ProcessError(static_cast<Expression*>(method_call), L"Cannot create an unqualified instance of class: '" + klass->GetName() + L"'");
     }
 
     // TODO: adding generics
@@ -2572,7 +2572,7 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod * lib_method, MethodCall *
     if((lib_method->GetMethodType() == NEW_PUBLIC_METHOD ||
        lib_method->GetMethodType() == NEW_PRIVATE_METHOD) && is_virtual) {
       ProcessError(static_cast<Expression*>(method_call),
-                   L"Cannot create an instance of a virutal class");
+                   L"Cannot create an instance of a virutal class or interface");
     }
     // associate method
     lib_method->GetLibraryClass()->SetCalled(true);
@@ -4749,7 +4749,7 @@ void ContextAnalyzer::AnalyzeDeclaration(Declaration * declaration, Class * klas
         ProcessError(entry, L"Undefined class or enum: '" + ReplaceSubstring(type->GetClassName(), L"#", L"->") + L"'\n\tIf generic ensure concrete types are properly defined.");
       }
 
-      if(type->HasGenerics()) {
+      if(klass->HasGenerics() && type->HasGenerics()) {
         const vector<Type*> concrete_types = type->GetGenerics();
         const vector<Class*> generic_klasses = klass->GetGenericClasses();
         CheckGenericParameters(generic_klasses, concrete_types, declaration);
