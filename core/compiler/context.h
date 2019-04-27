@@ -911,8 +911,7 @@ class ContextAnalyzer {
       return true;
     }
 
-		// TODO: adding generics
-		// look up generic type
+		// generics
 		if(context_klass->HasGenerics()) {
 			klass = context_klass->GetGenericClass(type->GetClassName());
 			if(klass) {
