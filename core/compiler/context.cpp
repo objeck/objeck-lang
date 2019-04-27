@@ -1866,7 +1866,7 @@ void ContextAnalyzer::AnalyzeNewArrayCall(MethodCall * method_call, const int de
       }
     }
   }
-  // TODO: adding generics
+  // generic array type
   if(method_call->HasConcreteTypes() && method_call->GetEvalType() &&
      !method_call->GetEvalType()->HasGenerics()) {
     method_call->GetEvalType()->SetGenerics(method_call->GetConcreteTypes());
@@ -2184,9 +2184,7 @@ Method* ContextAnalyzer::ResolveMethodCall(Class * klass, MethodCall * method_ca
         if(method_parms[j]->GetEntry() && method_parms[j]->GetEntry()->GetType()) {
           // get type
           method_type = method_parms[j]->GetEntry()->GetType();
-
-          // TODO: adding generics
-          // get concrete type if needed
+          // resolve generic to concrete, if needed
           if(klass->HasGenerics()) {
             method_type = RelsolveGenericType(method_type, method_call, klass, NULL);
           }
@@ -2212,8 +2210,7 @@ Method* ContextAnalyzer::ResolveMethodCall(Class * klass, MethodCall * method_ca
         AnalyzeExpressionMethodCall(expression, depth + 1);
         expression = expression->GetMethodCall();
       }
-
-      // TODO: adding generics
+      // resolve generic to concrete, if needed
       Type* left = method_parms[j]->GetEntry()->GetType();
       if(klass->HasGenerics() && !left->HasGenerics()) {
         left = RelsolveGenericCall(left, method_call, klass, method);
@@ -2310,7 +2307,7 @@ void ContextAnalyzer::AnalyzeMethodCall(Class * klass, MethodCall * method_call,
         if(expression->GetExpressionType() == METHOD_CALL_EXPR && expression->GetEvalType() && expression->GetEvalType()->GetType() == NIL_TYPE) {
           ProcessError(static_cast<Expression*>(method_call), L"Invalid operation with 'Nil' value");
         }
-        // TODO: adding generics
+        // check generic parameters for call
         Type* left = mthd_params[i]->GetEntry()->GetType();
         if(klass->HasGenerics()) {
           left = RelsolveGenericCall(left, method_call, klass, method);
@@ -2351,14 +2348,12 @@ void ContextAnalyzer::AnalyzeMethodCall(Class * klass, MethodCall * method_call,
     method_call->SetOriginalClass(klass);
     method_call->SetMethod(method);
 
-    // TODO: adding generics
+    // generic instance
     if((method->GetMethodType() == NEW_PUBLIC_METHOD || method->GetMethodType() == NEW_PRIVATE_METHOD) &&
        klass->HasGenerics() && !method_call->HasConcreteTypes() && current_class != klass) {
       ProcessError(static_cast<Expression*>(method_call), L"Cannot create an unqualified instance of class: '" + klass->GetName() + L"'");
     }
-
-    // TODO: adding generics
-    // map generic to concrete
+    // resolve generic to concrete, if needed
     Type* eval_type = TypeFactory::Instance()->MakeType(method_call->GetEvalType());
     if(klass->HasGenerics()) {
       eval_type = RelsolveGenericType(eval_type, method_call, klass, NULL);
@@ -2378,25 +2373,11 @@ void ContextAnalyzer::AnalyzeMethodCall(Class * klass, MethodCall * method_call,
 
     }
 
-    // TODO: adding generics
-    // validate concrete declarations
+    // validate generic to concrete type mapping
     if(method_call->HasConcreteTypes()) {
+      const vector<Class*> generic_klasses = method_call->GetMethod()->GetClass()->GetGenericClasses();
       const vector<Type*> concrete_types = method_call->GetConcreteTypes();
-      const vector<Class*> generic_classes = method_call->GetMethod()->GetClass()->GetGenericClasses();
-      if(concrete_types.size() == generic_classes.size()) {
-        for(size_t i = 0; i < concrete_types.size(); ++i) {
-          Type* right = concrete_types[i];
-          // generic that defines an interface
-          if(generic_classes[i]->HasGenericInterface()) {
-            Type* left = generic_classes[i]->GetGenericInterface();
-            AnalyzeClassCast(left, right, method_call, true, depth);
-          }
-          const wstring cls_name = right->GetClassName();
-          if(!HasProgramLibraryClass(cls_name) && !current_class->GetGenericClass(cls_name)) {
-            ProcessError(static_cast<Expression*>(method_call), L"Undefined class: '" + cls_name + L"'");
-          }
-        }
-      }
+      CheckGenericParameters(generic_klasses, concrete_types, static_cast<Expression*>(method_call));
     }
 
     // enum check
@@ -2444,15 +2425,13 @@ LibraryMethod* ContextAnalyzer::ResolveMethodCall(LibraryClass * klass, MethodCa
     if(expr_params.size() == method_parms.size()) {
       LibraryMethodCallSelection* match = new LibraryMethodCallSelection(candidates[i]);
       for(size_t j = 0; j < expr_params.size(); ++j) {
-
-        // TODO: adding generics
-        // get concrete type if needed
+        // map generic to concrete type, if needed
         Type* method_type = method_parms[j];
         if(klass->HasGenerics()) {
           method_type = RelsolveGenericType(method_type, method_call, NULL, klass);
           ResolveClassEnumType(method_type);
         }
-
+        // compare and total
         const int compare = MatchCallingParameter(expr_params[j], method_type, NULL, klass, depth);
         match->AddParameterMatch(compare);
       }
@@ -2475,8 +2454,7 @@ LibraryMethod* ContextAnalyzer::ResolveMethodCall(LibraryClass * klass, MethodCa
         }
         expression = expression->GetMethodCall();
       }
-
-      // TODO: adding generics
+      // map generic to concrete type, if needed
       Type* left = method_parms[j];
       if(klass->HasGenerics()) {
         left = RelsolveGenericCall(left, method_call, klass, lib_method);
@@ -2588,9 +2566,7 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod * lib_method, MethodCall *
     if(lib_method->GetReturn()->GetType() == NIL_TYPE && method_call->GetCastType()) {
       ProcessError(static_cast<Expression*>(method_call), L"Cannot cast a Nil return value");
     }
-
-    // TODO: adding generics
-    // map generic to concrete
+    // map generic to concrete type, if needed
     LibraryClass* lib_klass = lib_method->GetLibraryClass();
     Type* eval_type = TypeFactory::Instance()->MakeType(method_call->GetEvalType());
     if(lib_klass->HasGenerics()) {
@@ -4528,7 +4504,7 @@ void ContextAnalyzer::AnalyzeClassCast(Type * left, Type * right, Expression * e
       right_class = current_class->GetGenericClass(right->GetClassName());
     }
     if(right_class) {
-      // TODO: adding generics
+      // generics
       if(left->HasGenerics() && right->HasGenerics()) {
         const vector<Class*> left_klasses = left_class->GetGenericClasses();
         const vector<Type*> right_concretes = right->GetGenerics();
@@ -4539,7 +4515,6 @@ void ContextAnalyzer::AnalyzeClassCast(Type * left, Type * right, Expression * e
         ProcessError(expression, L"Invalid generic class definition '" +
                      ReplaceSubstring(right->GetClassName(), L"#", L"->") + L"' or concrete cast");
       }
-
       // downcast
       if(ValidDownCast(left_class->GetName(), right_class, NULL)) {
         left_class->SetCalled(true);

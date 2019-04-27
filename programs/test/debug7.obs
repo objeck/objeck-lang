@@ -1,6 +1,6 @@
 class Foo {
 	function : Main(args : String[]) ~ Nil {
-		a := Vector->New()<String>;
+		a := Vector->New()<Base>;
 #		a->AddBack(FloatHolder->New(13.5));
 #		a->AddBack(FloatHolder->New(33.3));
 #		a->AddBack(Base->New());
