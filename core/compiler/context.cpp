@@ -4743,9 +4743,16 @@ void ContextAnalyzer::AnalyzeDeclaration(Declaration * declaration, Class * klas
   SymbolEntry* entry = declaration->GetEntry();
   if(entry) {
     if(entry->GetType() && entry->GetType()->GetType() == CLASS_TYPE) {
+      Type* type = entry->GetType();
       // resolve class name
-      if(!ResolveClassEnumType(entry->GetType(), klass)) {
-        ProcessError(entry, L"Undefined class or enum: '" + ReplaceSubstring(entry->GetType()->GetClassName(), L"#", L"->") + L"'\n\tIf generic ensure concrete types are properly defined.");
+      if(!ResolveClassEnumType(type, klass)) {
+        ProcessError(entry, L"Undefined class or enum: '" + ReplaceSubstring(type->GetClassName(), L"#", L"->") + L"'\n\tIf generic ensure concrete types are properly defined.");
+      }
+
+      if(type->HasGenerics()) {
+        const vector<Type*> concrete_types = type->GetGenerics();
+        const vector<Class*> generic_klasses = klass->GetGenericClasses();
+        CheckGenericParameters(generic_klasses, concrete_types, declaration);
       }
     }
     else if(entry->GetType() && entry->GetType()->GetType() == FUNC_TYPE) {

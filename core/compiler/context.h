@@ -1181,24 +1181,37 @@ class ContextAnalyzer {
 		return left;
 	}
 
-  void CheckGenericParameters(const vector<LibraryClass*> generic_klasses, const vector<Type*> generic_types, ParseNode* node) {
-    if(generic_klasses.size() != generic_types.size()) {
+  void CheckGenericParameters(const vector<LibraryClass*> generic_klasses, const vector<Type*> concrete_types, ParseNode* node) {
+    if(generic_klasses.size() != concrete_types.size()) {
       ProcessError(node, L"Generic parameter list size mismatch");
     }
     else {
       for(size_t i = 0; i < generic_klasses.size(); ++i) {
         LibraryClass* generic_klass = generic_klasses[i];
-        Type* generic_type = generic_types[i];
+        Type* generic_type = concrete_types[i];
         if(generic_klass->HasGenericInterface()) {
-          Class* klass = NULL; LibraryClass* lib_klass = NULL;
-          GetProgramLibraryClass(generic_type->GetClassName(), klass, lib_klass);
-          const wstring class_name = generic_klass->GetGenericInterface()->GetClassName();
-          if(!ValidDownCast(class_name, klass, lib_klass)) {
-            if(klass) {
-              ProcessError(node, L"Invalid operation using classes: '" + klass->GetName() + L"' and '" + class_name + L"'");
+          Class* type_klass = NULL; LibraryClass* type_lib_klass = NULL;
+          GetProgramLibraryClass(generic_type->GetClassName(), type_klass, type_lib_klass);
+
+          Class* inf_klass = NULL; LibraryClass* inf_lib_klass = NULL;
+          GetProgramLibraryClass(generic_klass->GetGenericInterface()->GetClassName(), inf_klass, inf_lib_klass);
+          wstring class_name;
+          if(inf_klass) {
+            class_name = inf_klass->GetName();
+          }
+          else if(inf_lib_klass) {
+            class_name = inf_lib_klass->GetName();
+          }
+          else {
+            ProcessError(node, L"Undefined class: '" + generic_klass->GetGenericInterface()->GetClassName() + L"'");
+          }
+
+          if(!ValidDownCast(class_name, type_klass, type_lib_klass)) {
+            if(type_klass) {
+              ProcessError(node, L"Invalid operation using classes: '" + type_klass->GetName() + L"' and '" + class_name + L"'");
             }
-            else if(lib_klass) {
-              ProcessError(node, L"Invalid operation using classes: '" + lib_klass->GetName() + L"' and '" + class_name + L"'");
+            else if(type_lib_klass) {
+              ProcessError(node, L"Invalid operation using classes: '" + type_lib_klass->GetName() + L"' and '" + class_name + L"'");
             }
           }
         }
@@ -1206,25 +1219,37 @@ class ContextAnalyzer {
     }
   }
 
-  void CheckGenericParameters(const vector<Class*> generic_klasses, const vector<Type*> generic_types, ParseNode* node) {
-    if(generic_klasses.size() != generic_types.size()) {
+  void CheckGenericParameters(const vector<Class*> generic_klasses, const vector<Type*> concrete_types, ParseNode* node) {
+    if(generic_klasses.size() != concrete_types.size()) {
       ProcessError(node, L"Generic parameter list size mismatch");
     }
     else {
       for(size_t i = 0; i < generic_klasses.size(); ++i) {
         Class* generic_klass = generic_klasses[i];
-        Type* generic_type = generic_types[i];
+        Type* generic_type = concrete_types[i];
         if(generic_klass->HasGenericInterface()) {
-          Class* klass = NULL; LibraryClass* lib_klass = NULL;
-          GetProgramLibraryClass(generic_type->GetClassName(), klass, lib_klass);
+          Class* type_klass = NULL; LibraryClass* type_lib_klass = NULL;
+          GetProgramLibraryClass(generic_type->GetClassName(), type_klass, type_lib_klass);
 
-          const wstring class_name = generic_klass->GetGenericInterface()->GetClassName();
-          if(!ValidDownCast(class_name, klass, lib_klass)) {
-            if(klass) {
-              ProcessError(node, L"Invalid operation using classes: '" + klass->GetName() + L"' and '" + class_name + L"'");
+          Class* inf_klass = NULL; LibraryClass* inf_lib_klass = NULL;
+          GetProgramLibraryClass(generic_klass->GetGenericInterface()->GetClassName(), inf_klass, inf_lib_klass);
+          wstring class_name;
+          if(inf_klass) {
+            class_name = inf_klass->GetName();
+          }
+          else if(inf_lib_klass) {
+            class_name = inf_lib_klass->GetName();
+          }
+          else {
+            ProcessError(node, L"Undefined class: '" + generic_klass->GetGenericInterface()->GetClassName() + L"'");
+          }
+
+          if(!ValidDownCast(class_name, type_klass, type_lib_klass)) {
+            if(type_klass) {
+              ProcessError(node, L"Invalid operation using classes: '" + type_klass->GetName() + L"' and '" + class_name + L"'");
             }
-            else if(lib_klass) {
-              ProcessError(node, L"Invalid operation using classes: '" + lib_klass->GetName() + L"' and '" + class_name + L"'");
+            else if(type_lib_klass) {
+              ProcessError(node, L"Invalid operation using classes: '" + type_lib_klass->GetName() + L"' and '" + class_name + L"'");
             }
           }
         }
