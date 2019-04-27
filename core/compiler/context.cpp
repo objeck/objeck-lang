@@ -2359,7 +2359,7 @@ void ContextAnalyzer::AnalyzeMethodCall(Class * klass, MethodCall * method_call,
 
     // TODO: adding generics
     // map generic to concrete
-    Type* eval_type = method_call->GetEvalType();
+    Type* eval_type = TypeFactory::Instance()->MakeType(method_call->GetEvalType());
     if(klass->HasGenerics()) {
       eval_type = RelsolveGenericType(eval_type, method_call, klass, NULL);
       if(!eval_type->HasGenerics()) {
@@ -2592,7 +2592,7 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod * lib_method, MethodCall *
     // TODO: adding generics
     // map generic to concrete
     LibraryClass* lib_klass = lib_method->GetLibraryClass();
-    Type* eval_type = method_call->GetEvalType();
+    Type* eval_type = TypeFactory::Instance()->MakeType(method_call->GetEvalType());
     if(lib_klass->HasGenerics()) {
       eval_type = RelsolveGenericCall(eval_type, method_call, lib_klass, lib_method);
     }
