@@ -677,11 +677,17 @@ class LibraryClass {
   frontend::Type* generic_interface;
   
  public:
-  LibraryClass(const wstring& n, const wstring& g) {
-    name = n;
-    generic_interface = frontend::TypeFactory::Instance()->MakeType(frontend::CLASS_TYPE, g);
-    is_generic = true;
-  }
+   LibraryClass(const wstring& n, const wstring& g) {
+     name = n;
+     if(g.empty()) {
+       generic_interface = NULL;
+     }
+     else {
+       generic_interface = frontend::TypeFactory::Instance()->MakeType(frontend::CLASS_TYPE, g);
+     }
+     is_generic = true;
+     library = NULL;
+   }
 	
   LibraryClass(const wstring &n, const wstring &p, const vector<wstring> i, bool is, const vector<wstring> g, bool v,
 	       const int cs, const int in, backend::IntermediateDeclarations* ce, backend::IntermediateDeclarations* ie, 
@@ -703,12 +709,12 @@ class LibraryClass {
     for(size_t i = 0; i < generic_name_types.size(); ++i) {
       const wstring generic_name_type = generic_name_types[i];
       size_t end = generic_name_type.find_first_of(L'|');
-			
+
       const wstring generic_name = generic_name_type.substr(0, end);
       wstring concrete_name;
       end++;
       if(end < generic_name_type.size()) {
-	concrete_name = generic_name_type.substr(end, generic_name_type.size() - end);
+        concrete_name = generic_name_type.substr(end, generic_name_type.size() - end);
       }
 
       generic_classes.push_back(new LibraryClass(generic_name, concrete_name));

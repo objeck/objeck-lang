@@ -1190,11 +1190,14 @@ class ContextAnalyzer {
         LibraryClass* generic_klass = generic_klasses[i];
         Type* generic_type = concrete_types[i];
         if(generic_klass->HasGenericInterface()) {
+          const wstring generic_name = generic_type->GetClassName();
           Class* type_klass = NULL; LibraryClass* type_lib_klass = NULL;
-          GetProgramLibraryClass(generic_type->GetClassName(), type_klass, type_lib_klass);
+          GetProgramLibraryClass(generic_name, type_klass, type_lib_klass);
 
+          const wstring inf_name = generic_klass->GetGenericInterface()->GetClassName();
           Class* inf_klass = NULL; LibraryClass* inf_lib_klass = NULL;
-          GetProgramLibraryClass(generic_klass->GetGenericInterface()->GetClassName(), inf_klass, inf_lib_klass);
+          GetProgramLibraryClass(inf_name, inf_klass, inf_lib_klass);
+          
           wstring class_name;
           if(inf_klass) {
             class_name = inf_klass->GetName();
@@ -1203,7 +1206,7 @@ class ContextAnalyzer {
             class_name = inf_lib_klass->GetName();
           }
           else {
-            ProcessError(node, L"Undefined class: '" + generic_klass->GetGenericInterface()->GetClassName() + L"'");
+            ProcessError(node, L"Undefined class: '" + inf_name + L"'");
           }
 
           if(!ValidDownCast(class_name, type_klass, type_lib_klass)) {
@@ -1228,11 +1231,14 @@ class ContextAnalyzer {
         Class* generic_klass = generic_klasses[i];
         Type* generic_type = concrete_types[i];
         if(generic_klass->HasGenericInterface()) {
+          const wstring generic_name = generic_type->GetClassName();
           Class* type_klass = NULL; LibraryClass* type_lib_klass = NULL;
-          GetProgramLibraryClass(generic_type->GetClassName(), type_klass, type_lib_klass);
+          GetProgramLibraryClass(generic_name, type_klass, type_lib_klass);
 
+          const wstring inf_name = generic_klass->GetGenericInterface()->GetClassName();
           Class* inf_klass = NULL; LibraryClass* inf_lib_klass = NULL;
-          GetProgramLibraryClass(generic_klass->GetGenericInterface()->GetClassName(), inf_klass, inf_lib_klass);
+          GetProgramLibraryClass(inf_name, inf_klass, inf_lib_klass);
+
           wstring class_name;
           if(inf_klass) {
             class_name = inf_klass->GetName();
@@ -1241,7 +1247,7 @@ class ContextAnalyzer {
             class_name = inf_lib_klass->GetName();
           }
           else {
-            ProcessError(node, L"Undefined class: '" + generic_klass->GetGenericInterface()->GetClassName() + L"'");
+            ProcessError(node, L"Undefined class: '" + inf_name + L"'");
           }
 
           if(!ValidDownCast(class_name, type_klass, type_lib_klass)) {
