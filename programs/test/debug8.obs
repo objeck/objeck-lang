@@ -1,7 +1,10 @@
 class Foo {
 	function : Main(args : String[]) ~ Nil {
+		n := Node->New("a", "b")<String, String>;
 		m := Map->New("x", "y")<String, String>;
+		
 		m->Add("a", "b");
+		m->Add(n);
 	}
 }
 
@@ -45,9 +48,12 @@ class Map<K, V> {
 	@root : Node<K, V>;
 
 	New(key : K, value : V) {
-		@root := Node->New(key, value);
+		@root := Node->New(key, value)<K, V>;
 
-		x := Compare->New();
+	}
+
+	method : public : Add(n : Node<K, V>) ~ Nil {
+		@root := n;
 	}
 
 	method : public : Add(key : K, value : V) ~ Bool {
