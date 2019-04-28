@@ -123,9 +123,9 @@ void Linker::ResolveExternalMethodCalls()
             }
           }
             break;
-	    
-	  case LIB_OBJ_TYPE_OF: {
-	    LibraryClass* lib_klass = SearchClassLibraries(instr->GetOperand5());
+      
+    case LIB_OBJ_TYPE_OF: {
+      LibraryClass* lib_klass = SearchClassLibraries(instr->GetOperand5());
             if(lib_klass) {
               instr->SetType(instructions::OBJ_TYPE_OF);
               instr->SetOperand(lib_klass->GetId());
@@ -134,8 +134,8 @@ void Linker::ResolveExternalMethodCalls()
                     << instr->GetOperand5() << L"'; check library path" << endl;
               exit(1);
             }
-	  }
-	    break;
+    }
+      break;
 
           case LIB_OBJ_INST_CAST: {
             LibraryClass* lib_klass = SearchClassLibraries(instr->GetOperand5());
@@ -550,12 +550,12 @@ void Library::LoadClasses()
 
     bool is_interface = ReadInt() != 0;
 
-		// read generic names
-		vector<wstring> generic_names;
-		const int generic_names_size = ReadInt();
-		for(int i = 0; i < generic_names_size; ++i) {
-			generic_names.push_back(ReadString());
-		}
+    // read generic names
+    vector<wstring> generic_names;
+    const int generic_names_size = ReadInt();
+    for(int i = 0; i < generic_names_size; ++i) {
+      generic_names.push_back(ReadString());
+    }
 
     bool is_virtual = ReadInt() != 0;
     bool is_debug = ReadInt() != 0;

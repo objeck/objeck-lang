@@ -139,16 +139,16 @@ class Parser {
     wstring name;
     if(Match(TOKEN_IDENT)) {
       while(Match(TOKEN_IDENT) && !Match(TOKEN_END_OF_STREAM)) {
-	name += scanner->GetToken()->GetIdentifier();
-	NextToken();
-	if(Match(TOKEN_PERIOD)) {
-	  name += L'.';
-	  NextToken();
-	}
-	else if(Match(TOKEN_IDENT)) {
-	  ProcessError(L"Expected period", TOKEN_SEMI_COLON);
-	  NextToken();
-	}
+  name += scanner->GetToken()->GetIdentifier();
+  NextToken();
+  if(Match(TOKEN_PERIOD)) {
+    name += L'.';
+    NextToken();
+  }
+  else if(Match(TOKEN_IDENT)) {
+    ProcessError(L"Expected period", TOKEN_SEMI_COLON);
+    NextToken();
+  }
       }
     }
     else {
@@ -158,14 +158,14 @@ class Parser {
     return name;
   }
 
-  Declaration* AddDeclaration(const wstring &ident, Type* type, bool is_static, Declaration* child,	int depth) {
+  Declaration* AddDeclaration(const wstring &ident, Type* type, bool is_static, Declaration* child,  int depth) {
     const int line_num = GetLineNumber();
     const wstring &file_name = GetFileName();
 
     // add entry
     wstring scope_name = GetScopeName(ident);
     SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num, scope_name, 
-								  type, is_static, current_method != NULL);
+                  type, is_static, current_method != NULL);
 
 #ifdef _DEBUG
     Debug(L"Adding variable: '" + scope_name + L"'", depth + 2);
@@ -180,7 +180,7 @@ class Parser {
     if(Match(TOKEN_ASSIGN)) {
       Variable* variable = ParseVariable(ident, depth + 1);
       declaration = TreeFactory::Instance()->MakeDeclaration(file_name, line_num, entry, child,
-							     ParseAssignment(variable, depth + 1));
+                   ParseAssignment(variable, depth + 1));
     }
     else {
       declaration = TreeFactory::Instance()->MakeDeclaration(file_name, line_num, entry, child);
@@ -230,7 +230,7 @@ class Parser {
   Declaration* ParseDeclaration(const wstring &name, bool is_stmt, int depth);
   DeclarationList* ParseDecelerationList(int depth);
   ExpressionList* ParseExpressionList(int depth, ScannerTokenType open = TOKEN_OPEN_PAREN,
-				      ScannerTokenType close = TOKEN_CLOSED_PAREN);
+              ScannerTokenType close = TOKEN_CLOSED_PAREN);
   ExpressionList* ParseIndices(int depth);
   void ParseCastTypeOf(Expression* expression, int depth);
   Type* ParseType(int depth);
