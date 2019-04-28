@@ -1,20 +1,18 @@
 class Foo {
 	function : Main(args : String[]) ~ Nil {
-		a := Vector->New()<Compare>;
-		a->AddBack(FloatHolder->New(13.5));
-		a->AddBack(FloatHolder->New(33.3));
+		a := Vector->New()<String>;
+		a->AddBack("FloatHolder->New(13.5)");
+		a->AddBack("FloatHolder->New(33.3)");
 		
 		a->Size()->PrintLine();
 		
-		b := a->Apply(Bar(Compare) ~ Compare);
-		
-		# a->Get(1)->Get()->PrintLine();
-		# b->Get(1)->Get()->PrintLine();
+		b := a->Apply(Bar(String) ~ String)<String>;
+		a->Get(1)->PrintLine();
+		b->Get(1)->PrintLine();
 	}
 	
-	function : Bar(h : Compare) ~ Compare {
-		v := h->As(FloatHolder)->Get();
-		return FloatHolder->New(v * 3.5);
+	function : Bar(h : String) ~ String {
+		return "";
 	}
 }
 
