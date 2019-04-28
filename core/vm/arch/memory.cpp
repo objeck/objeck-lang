@@ -344,7 +344,7 @@ size_t* MemoryManager::AllocateArray(const long size, const MemoryType type,  si
 #ifdef _DEBUG
   wcout << L"# allocating array: cached=" << (is_cached ? L"true" : L"false") << L", addr=" << mem 
         << L"(" << (size_t)mem << L"), size=" << calc_size << L" byte(s), used=" << allocation_size 
-		    << L" byte(s) #" << endl;
+        << L" byte(s) #" << endl;
 #endif
 
   return mem;
@@ -617,7 +617,7 @@ void* MemoryManager::CollectMemory(void* arg)
     }
     // will be collected
     else {
-      // object or array	
+      // object or array  
       size_t mem_size;
       if(mem[TYPE] == NIL_TYPE) {
         StackClass* cls = (StackClass*)mem[SIZE_OR_CLS];
@@ -748,7 +748,7 @@ void* MemoryManager::CheckStack(void* arg)
         << L"; thread=" << GetCurrentThread() << L" -----" << endl;
 #else
         << L"; thread=" << pthread_self() << L" -----" << endl;
-#endif		
+#endif    
 #endif
   while(info->stack_pos > -1) {
     CheckObject((size_t*)info->op_stack[info->stack_pos--], false, 1);
@@ -781,7 +781,7 @@ void* MemoryManager::CheckJitRoots(void* arg)
         << L"; thread=" << GetCurrentThread() << L" ------" << endl;
 #else
         << L"; thread=" << pthread_self() << L" ------" << endl;
-#endif		
+#endif    
   wcout << L"memory types: " << endl;
 #endif
   
@@ -976,7 +976,7 @@ void* MemoryManager::CheckPdaRoots(void* arg)
         << L"; thread=" << GetCurrentThread()<< L" -----" << endl;
 #else
         << L"; thread=" << pthread_self() << L" -----" << endl;
-#endif		
+#endif    
   wcout << L"memory types:" <<  endl;
 #endif
 
@@ -1012,7 +1012,7 @@ void* MemoryManager::CheckPdaRoots(void* arg)
         << L"; thread=" << GetCurrentThread()<< L" -----" << endl;
 #else
         << L"; thread=" << pthread_self()<< L" -----" << endl;
-#endif		
+#endif    
   wcout << L"memory types:" <<  endl;
 #endif
 
@@ -1047,7 +1047,7 @@ void* MemoryManager::CheckPdaRoots(void* arg)
         if(frame->jit_mem) {
 #ifndef _GC_SERIAL
           MUTEX_LOCK(&jit_frame_lock);
-#endif	  
+#endif    
           jit_frames.push_back(frame);
 #ifndef _GC_SERIAL
           MUTEX_UNLOCK(&jit_frame_lock);
@@ -1152,7 +1152,7 @@ void MemoryManager::CheckMemory(size_t* mem, StackDclr** dclrs, const long dcls_
       mem += 2;
       break;
 
-	case CHAR_PARM:
+  case CHAR_PARM:
     case INT_PARM:
 #ifdef _DEBUG
       wcout << L"\t" << i << L": CHAR_PARM/INT_PARM: value=" << (*mem) << endl;

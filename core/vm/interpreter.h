@@ -129,7 +129,7 @@ namespace Runtime {
 #endif
       return frame;
     }
-		
+    
     //
     // release stack frame
     //
@@ -154,7 +154,7 @@ namespace Runtime {
       pthread_mutex_unlock(&cached_frames_mutex);
 #endif
     }
-		
+    
     //
     // push call frame
     //
@@ -553,7 +553,7 @@ namespace Runtime {
       pthread_mutex_unlock(&intpr_threads_mutex);
 #endif
     }
-		
+    
     static void HaltAll() {
 #ifdef _WIN32
       EnterCriticalSection(&intpr_threads_cs);

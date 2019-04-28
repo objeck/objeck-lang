@@ -122,7 +122,7 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
     (*call_stack_pos) = 0;
   }
   (*frame) = GetStackFrame(method, instance);
-	
+  
 #ifdef _DEBUG
   wcout << L"creating frame=" << (*frame) << endl;
 #endif
@@ -1798,9 +1798,9 @@ void StackInterpreter::ProcessReturn(StackInstr** &instrs, long &ip)
 #ifdef _DEBUG
   wcout << L"removing frame=" << (*frame) << endl;
 #endif
-	
+  
   ReleaseStackFrame(*frame);
-	
+  
   // restore previous frame
   if(!StackEmpty()) {
     (*frame) = PopFrame();
@@ -1981,7 +1981,7 @@ void StackInterpreter::ProcessDynamicMethodCall(StackInstr* instr, StackInstr** 
   }
   // execute interpreter
   else {
-    (*frame) = GetStackFrame(called, instance);		
+    (*frame) = GetStackFrame(called, instance);    
     instrs = (*frame)->method->GetInstructions();
     ip = 0;
   }
@@ -2129,7 +2129,7 @@ void StackInterpreter::ProcessInterpretedMethodCall(StackMethod* called, size_t*
 #ifdef _DEBUG
   wcout << L"=== MTHD_CALL: id=" << called->GetClass()->GetId() << ","
         << called->GetId() << "; name='" << called->GetName() << "' ===" << endl;
-#endif	
+#endif  
   (*frame) = GetStackFrame(called, instance);
   instrs = (*frame)->method->GetInstructions();
   ip = 0;
