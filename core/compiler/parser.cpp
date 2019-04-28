@@ -70,7 +70,7 @@ void Parser::ProcessError(ScannerTokenType type)
 /****************************
  * Emits parsing error.
  ****************************/
-void Parser::ProcessError(const wstring & msg)
+void Parser::ProcessError(const wstring &msg)
 {
 #ifdef _DEBUG
   GetLogger() << L"\tError: " << GetFileName() << L":" << GetLineNumber() << L": " << msg << endl;
@@ -83,7 +83,7 @@ void Parser::ProcessError(const wstring & msg)
 /****************************
  * Emits parsing error.
  ****************************/
-void Parser::ProcessError(const wstring & msg, ScannerTokenType sync, int offset)
+void Parser::ProcessError(const wstring &msg, ScannerTokenType sync, int offset)
 {
 #ifdef _DEBUG
   GetLogger() << L"\tError: " << GetFileName() << L":" << GetLineNumber() << L": "
@@ -102,7 +102,7 @@ void Parser::ProcessError(const wstring & msg, ScannerTokenType sync, int offset
 /****************************
  * Emits parsing error.
  ****************************/
-void Parser::ProcessError(const wstring & msg, ParseNode * node)
+void Parser::ProcessError(const wstring &msg, ParseNode * node)
 {
 #ifdef _DEBUG
   GetLogger() << L"\tError: " << node->GetFileName() << L":" << node->GetLineNumber()
@@ -156,7 +156,7 @@ bool Parser::Parse()
       offset = index + 1;
       index = src_path.find(',', offset);
     }
-    const wstring & file_name = src_path.substr(offset, src_path.size());
+    const wstring &file_name = src_path.substr(offset, src_path.size());
     ParseFile(file_name);
   }
   else if(run_prgm.size() > 0) {
@@ -169,7 +169,7 @@ bool Parser::Parse()
 /****************************
  * Parses a file.
  ****************************/
-void Parser::ParseFile(const wstring & file_name)
+void Parser::ParseFile(const wstring &file_name)
 {
   scanner = new Scanner(file_name, alt_syntax);
   NextToken();
@@ -491,7 +491,7 @@ Enum* Parser::ParseConsts(int depth)
 /****************************
  * Parses a class.
  ****************************/
-Class* Parser::ParseClass(const wstring & bundle_name, int depth)
+Class* Parser::ParseClass(const wstring &bundle_name, int depth)
 {
   const int line_num = GetLineNumber();
   const wstring& file_name = GetFileName();
@@ -635,7 +635,7 @@ Class* Parser::ParseClass(const wstring & bundle_name, int depth)
 /****************************
  * Parses an interface
  ****************************/
-Class* Parser::ParseInterface(const wstring & bundle_name, int depth)
+Class* Parser::ParseInterface(const wstring &bundle_name, int depth)
 {
   const int line_num = GetLineNumber();
   const wstring& file_name = GetFileName();
@@ -823,7 +823,7 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
   method->SetDeclarations(ParseDecelerationList(depth + 1));
 
   // return type
-  Type * return_type;
+  Type* return_type;
   if(method_type != NEW_PUBLIC_METHOD && method_type != NEW_PRIVATE_METHOD) {
     if(!Match(TOKEN_TILDE)) {
       ProcessError(L"Expected '~'", TOKEN_TILDE);
@@ -2200,7 +2200,7 @@ StaticArray* Parser::ParseStaticArray(int depth) {
 /****************************
  * Parses a variable.
  ****************************/
-Variable* Parser::ParseVariable(const wstring & ident, int depth)
+Variable* Parser::ParseVariable(const wstring &ident, int depth)
 {
   const int line_num = GetLineNumber();
   const wstring& file_name = GetFileName();
@@ -2258,7 +2258,7 @@ vector<Type*> Parser::ParseGenericTypes(int depth)
 /****************************
  * Parses generic classes
  ****************************/
-vector<Class*> Parser::ParseGenericClasses(const wstring & bundle_name, int depth)
+vector<Class*> Parser::ParseGenericClasses(const wstring &bundle_name, int depth)
 {
   const int line_num = GetLineNumber();
   const wstring& file_name = GetFileName();
@@ -2313,7 +2313,7 @@ vector<Class*> Parser::ParseGenericClasses(const wstring & bundle_name, int dept
 /****************************
  * Parses a declaration.
  ****************************/
-Declaration* Parser::ParseDeclaration(const wstring & name, bool is_stmt, int depth)
+Declaration* Parser::ParseDeclaration(const wstring &name, bool is_stmt, int depth)
 {
   const int line_num = GetLineNumber();
   const wstring& file_name = GetFileName();
@@ -2373,7 +2373,7 @@ Declaration* Parser::ParseDeclaration(const wstring & name, bool is_stmt, int de
     Type* type = ParseType(depth + 1);
 
     // add declarations
-    Assignment * temp = NULL;
+    Assignment* temp = NULL;
     for(size_t i = 0; i < idents.size(); ++i) {
       const wstring& ident = idents[i];
       declaration = AddDeclaration(ident, type, is_static, declaration, depth);
@@ -2386,7 +2386,7 @@ Declaration* Parser::ParseDeclaration(const wstring & name, bool is_stmt, int de
       // apply assignment statement to other variables
       if(temp && !declaration->GetAssignment()) {
         Variable* left = ParseVariable(ident, depth + 1);
-        Assignment * assignment = TreeFactory::Instance()->MakeAssignment(file_name, line_num, left, temp->GetExpression());
+        Assignment* assignment = TreeFactory::Instance()->MakeAssignment(file_name, line_num, left, temp->GetExpression());
         declaration->SetAssignment(assignment);
       }
     }
@@ -2595,7 +2595,7 @@ Expression* Parser::ParseLogic(int depth)
     left = ParseMathLogic(depth + 1);
   }
 
-  CalculatedExpression * expression = NULL;
+  CalculatedExpression* expression = NULL;
   while((Match(TOKEN_AND) || Match(TOKEN_OR)) && !Match(TOKEN_END_OF_STREAM)) {
     if(expression) {
       left = expression;
@@ -3011,8 +3011,8 @@ Expression* Parser::ParseSimpleExpression(int depth)
     case TOKEN_IDENT: {
       const wstring& ident = scanner->GetToken()->GetIdentifier();
       Variable* left = ParseVariable(ident, depth + 1);
-      Expression * right = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, -1);
-      CalculatedExpression * calc = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num,
+      Expression* right = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, -1);
+      CalculatedExpression* calc = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num,
                                                                                       MUL_EXPR, left, right);
       expression = calc;
       NextToken();
@@ -3103,7 +3103,7 @@ Expression* Parser::ParseSimpleExpression(int depth)
  * Parses an explicit type
  * cast or typeof
  ****************************/
-void Parser::ParseCastTypeOf(Expression * expression, int depth)
+void Parser::ParseCastTypeOf(Expression* expression, int depth)
 {
   if(Match(TOKEN_ASSESSOR)) {
     NextToken();
@@ -3173,7 +3173,7 @@ MethodCall* Parser::ParseMethodCall(int depth)
 /****************************
  * Parses a method call.
  ****************************/
-MethodCall* Parser::ParseMethodCall(const wstring & ident, int depth)
+MethodCall* Parser::ParseMethodCall(const wstring &ident, int depth)
 {
   const int line_num = GetLineNumber();
   const wstring& file_name = GetFileName();
@@ -3307,7 +3307,7 @@ MethodCall* Parser::ParseMethodCall(const wstring & ident, int depth)
  * or a call from a method return
  * value.
  ****************************/
-void Parser::ParseMethodCall(Expression * expression, int depth)
+void Parser::ParseMethodCall(Expression* expression, int depth)
 {
 #ifdef _DEBUG
   Debug(L"Method call", depth);
@@ -3342,7 +3342,7 @@ void Parser::ParseMethodCall(Expression * expression, int depth)
  * or a call from a method return
  * value.
  ****************************/
-MethodCall* Parser::ParseMethodCall(Variable * variable, int depth)
+MethodCall* Parser::ParseMethodCall(Variable* variable, int depth)
 {
   const int line_num = GetLineNumber();
   const wstring& file_name = GetFileName();
@@ -3365,7 +3365,7 @@ MethodCall* Parser::ParseMethodCall(Variable * variable, int depth)
 /****************************
  * Parses an anonymous class
  ****************************/
-void Parser::ParseAnonymousClass(MethodCall * method_call, int depth)
+void Parser::ParseAnonymousClass(MethodCall* method_call, int depth)
 {
   const int line_num = GetLineNumber();
   const wstring& file_name = GetFileName();
@@ -3500,7 +3500,7 @@ If* Parser::ParseIf(int depth)
   StatementList* if_statements = ParseStatementList(depth + 1);
   symbol_table->CurrentParseScope()->PreviousParseScope();
 
-  If * if_stmt;
+  If* if_stmt;
   if(Match(TOKEN_ELSE_ID) && Match(TOKEN_IF_ID, SECOND_INDEX)) {
     NextToken();
     If* next = ParseIf(depth + 1);
@@ -3743,7 +3743,7 @@ For * Parser::ParseFor(int depth)
   // pre-statement
   Statement* pre_stmt = ParseStatement(depth + 1);
   // conditional
-  Expression * cond_expr = ParseExpression(depth + 1);
+  Expression* cond_expr = ParseExpression(depth + 1);
   if(!Match(TOKEN_SEMI_COLON)) {
     ProcessError(L"Expected ';'", TOKEN_SEMI_COLON);
   }
@@ -3767,7 +3767,7 @@ For * Parser::ParseFor(int depth)
 /****************************
  * Parses a 'select' statement
  ****************************/
-Select * Parser::ParseSelect(int depth)
+Select* Parser::ParseSelect(int depth)
 {
   const int line_num = GetLineNumber();
   const wstring& file_name = GetFileName();
@@ -3902,7 +3902,7 @@ Leaving* Parser::ParseLeaving(int depth)
 /****************************
  * Parses an assignment statement
  ****************************/
-Assignment * Parser::ParseAssignment(Variable * variable, int depth)
+Assignment* Parser::ParseAssignment(Variable* variable, int depth)
 {
   const int line_num = GetLineNumber();
   const wstring& file_name = GetFileName();
