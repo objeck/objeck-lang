@@ -44,7 +44,7 @@ using namespace instructions;
 namespace backend {
   class IntermediateClass;
   
-  wstring ReplaceSubstring(wstring s, const wstring& f, const wstring &r);
+  wstring ReplaceSubstring(wstring s, const wstring &f, const wstring &r);
   
   /****************************
    * Intermediate class
@@ -1026,7 +1026,7 @@ namespace backend {
       return id;
     }
 
-    const wstring& GetName() {
+    const wstring &GetName() {
       return name;
     }
 

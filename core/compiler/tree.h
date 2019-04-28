@@ -855,7 +855,7 @@ namespace frontend {
       return char_string;
     }
 
-    void AddSegment(const wstring& orig);
+    void AddSegment(const wstring &orig);
 
     void AddSegment(SymbolEntry* e) {
       segments.push_back(new CharacterStringSegment(e)); 
@@ -2070,8 +2070,8 @@ namespace frontend {
       generic_interface = NULL;
     }
 
-  Class(const wstring &file_name, const int line_num, const wstring& n, 
-	const wstring& p, vector<wstring> &e) : ParseNode(file_name, line_num) {
+  Class(const wstring &file_name, const int line_num, const wstring &n, 
+	const wstring &p, vector<wstring> &e) : ParseNode(file_name, line_num) {
       name = n;
       parent_name = p;
       is_interface = false;
@@ -2085,7 +2085,7 @@ namespace frontend {
       generic_interface = NULL;
     }
 
-  Class(const wstring &file_name, const int line_num, const wstring& n, 
+  Class(const wstring &file_name, const int line_num, const wstring &n, 
 	bool g) : ParseNode(file_name, line_num) {
       name = n;
       is_interface = true;
@@ -2206,6 +2206,10 @@ namespace frontend {
       return generic_classes;
     }
 
+    void SetGenericClasses(const vector<Class*> &g) {
+      generic_classes = g;
+    }
+
     const vector<wstring> GetGenericStrings() {
       vector<wstring> generic_strings;
 
@@ -2222,7 +2226,7 @@ namespace frontend {
       return generic_strings;
     }
 
-    Class* GetGenericClass(const wstring& n) {
+    Class* GetGenericClass(const wstring &n) {
       const int index = GenericIndex(n);
       if(index > -1) {
 	return generic_classes[index];
@@ -2375,7 +2379,7 @@ namespace frontend {
     SymbolEntry* dyn_func_entry;
     vector<Type*> concrete_types;
 
-    MethodCall(const wstring &file_name, const int line_num, MethodCallType t, const wstring& v, ExpressionList* e);
+    MethodCall(const wstring &file_name, const int line_num, MethodCallType t, const wstring &v, ExpressionList* e);
 
   MethodCall(const wstring &file_name, int line_num, const wstring &v, const wstring &m, 
 	     ExpressionList* e) : Statement(file_name, line_num), Expression(file_name, line_num) {
@@ -2729,14 +2733,14 @@ namespace frontend {
       return tmp;
     }
 
-    Class* MakeClass(const wstring& file_name, const int line_num, const wstring& name, 
-		     const wstring& parent_name, vector<wstring> interfaces) {
+    Class* MakeClass(const wstring &file_name, const int line_num, const wstring &name, 
+		     const wstring &parent_name, vector<wstring> interfaces) {
       Class* tmp = new Class(file_name, line_num, name, parent_name, interfaces);
       nodes.push_back(tmp);
       return tmp;
     }
 
-    Class* MakeClass(const wstring& file_name, const int line_num, const wstring& name, bool is_generic) {
+    Class* MakeClass(const wstring &file_name, const int line_num, const wstring &name, bool is_generic) {
       Class* tmp = new Class(file_name, line_num, name, is_generic);
       nodes.push_back(tmp);
       return tmp;
@@ -2816,7 +2820,7 @@ namespace frontend {
       return tmp;
     }
 
-    Declaration* MakeDeclaration(const wstring& file_name, const int line_num, SymbolEntry* entry, Assignment* assign) {
+    Declaration* MakeDeclaration(const wstring &file_name, const int line_num, SymbolEntry* entry, Assignment* assign) {
       Declaration* tmp = new Declaration(file_name, line_num, entry, NULL, assign);
       statements.push_back(tmp);
       return tmp;
@@ -2828,7 +2832,7 @@ namespace frontend {
       return tmp;
     }
 
-    CalculatedExpression* MakeCalculatedExpression(const wstring& file_name, int line_num, 
+    CalculatedExpression* MakeCalculatedExpression(const wstring &file_name, int line_num, 
                                                    ExpressionType type, Expression* lhs, Expression* rhs) {
       CalculatedExpression* tmp = new CalculatedExpression(file_name, line_num, type, lhs, rhs);
       expressions.push_back(tmp);
@@ -2963,7 +2967,7 @@ namespace frontend {
       return tmp;
     }
     
-    Assignment* MakeAssignment(const wstring& file_name, const int line_num,
+    Assignment* MakeAssignment(const wstring &file_name, const int line_num,
                                Assignment* child, Variable* variable, Expression* expression) {
       Assignment* tmp = new Assignment(file_name, line_num, child, variable, expression);
       statements.push_back(tmp);
@@ -2986,7 +2990,7 @@ namespace frontend {
       return tmp;
     }
 
-    SymbolEntry* MakeSymbolEntry(const wstring& file_name, const int line_num, 
+    SymbolEntry* MakeSymbolEntry(const wstring &file_name, const int line_num, 
 				 const wstring &n, Type* t, bool s, bool c, bool e = false) {
       SymbolEntry* tmp = new SymbolEntry(file_name, line_num, n, t, s, c, e);
       entries.push_back(tmp);

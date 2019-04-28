@@ -36,14 +36,14 @@
  /****************************
   * Emits an error
   ****************************/
-void ContextAnalyzer::ProcessError(ParseNode* node, const wstring& msg)
+void ContextAnalyzer::ProcessError(ParseNode* node, const wstring &msg)
 {
 #ifdef _DEBUG
   GetLogger() << L"\tError: " << node->GetFileName() << L":" << node->GetLineNumber()
     << L": " << msg << endl;
 #endif
 
-  const wstring& str_line_num = ToString(node->GetLineNumber());
+  const wstring &str_line_num = ToString(node->GetLineNumber());
   errors.insert(pair<int, wstring>(node->GetLineNumber(), node->GetFileName() + L":" + str_line_num + L": " + msg));
 }
 
@@ -117,7 +117,7 @@ bool ContextAnalyzer::Analyze()
   const wstring file_name = program->GetFileName();
   vector<wstring> program_uses = program->GetUses();
   for(size_t i = 0; i < program_uses.size(); ++i) {
-    const wstring& name = program_uses[i];
+    const wstring &name = program_uses[i];
     if(!program->HasBundleName(name) && !linker->HasBundleName(name)) {
       ProcessError(file_name, L"Bundle name '" + name + L"' not defined in program or linked libraries");
     }
@@ -485,7 +485,7 @@ void ContextAnalyzer::AnalyzeInterfaces(Class* klass, const int depth)
   vector<Class*> interfaces;
   vector<LibraryClass*> lib_interfaces;
   for(size_t i = 0; i < interface_names.size(); ++i) {
-    const wstring& interface_name = interface_names[i];
+    const wstring &interface_name = interface_names[i];
     Class* inf_klass = SearchProgramClasses(interface_name);
     if(inf_klass) {
       if(!inf_klass->IsInterface()) {
@@ -1220,7 +1220,7 @@ void ContextAnalyzer::AnalyzeCharacterString(CharacterString* char_str, const in
 
   int var_start = -1;
   int str_start = 0;
-  const wstring& str = char_str->GetString();
+  const wstring &str = char_str->GetString();
 
   // empty wstring segment
   if(str.empty()) {
@@ -1793,7 +1793,7 @@ bool ContextAnalyzer::AnalyzeExpressionMethodCall(Type* type, const int dimensio
       encoding = L"o.System.Base";
     }
     else {
-      const wstring& cls_name = type->GetClassName();
+      const wstring &cls_name = type->GetClassName();
       klass = SearchProgramClasses(cls_name);
       lib_klass = linker->SearchClassLibraries(cls_name, program->GetUses(current_class->GetFileName()));
 
@@ -2114,11 +2114,11 @@ int ContextAnalyzer::MatchCallingParameter(Expression* calling_param, Type* meth
               return 0;
             }
             // calculate relative match
-            const wstring& from_klass_name = calling_type->GetClassName();
+            const wstring &from_klass_name = calling_type->GetClassName();
             Class* from_klass = SearchProgramClasses(from_klass_name);
             LibraryClass* from_lib_klass = linker->SearchClassLibraries(from_klass_name, program->GetUses(current_class->GetFileName()));
 
-            const wstring& to_klass_name = method_type->GetClassName();
+            const wstring &to_klass_name = method_type->GetClassName();
             Class* to_klass = SearchProgramClasses(to_klass_name);
             if(to_klass) {
               return ValidDownCast(to_klass->GetName(), from_klass, from_lib_klass) ? 1 : -1;
@@ -2168,7 +2168,7 @@ int ContextAnalyzer::MatchCallingParameter(Expression* calling_param, Type* meth
  ****************************/
 Method* ContextAnalyzer::ResolveMethodCall(Class* klass, MethodCall* method_call, const int depth)
 {
-  const wstring& method_name = method_call->GetMethodName();
+  const wstring &method_name = method_call->GetMethodName();
   ExpressionList* calling_params = method_call->GetCallingParameters();
   vector<Expression*> expr_params = calling_params->GetExpressions();
   vector<Method*> candidates = klass->GetAllUnqualifiedMethods(method_name);
@@ -2393,8 +2393,8 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call,
     AnalyzeExpressionMethodCall(method_call, depth + 1);
   }
   else {
-    const wstring& mthd_name = method_call->GetMethodName();
-    const wstring& var_name = method_call->GetVariableName();
+    const wstring &mthd_name = method_call->GetMethodName();
+    const wstring &var_name = method_call->GetVariableName();
 
     if(mthd_name.size() > 0) {
       wstring message = L"Undefined function/method call: '" +
@@ -2416,7 +2416,7 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call,
  ****************************/
 LibraryMethod* ContextAnalyzer::ResolveMethodCall(LibraryClass* klass, MethodCall* method_call, const int depth)
 {
-  const wstring& method_name = method_call->GetMethodName();
+  const wstring &method_name = method_call->GetMethodName();
   ExpressionList* calling_params = method_call->GetCallingParameters();
   vector<Expression*> expr_params = calling_params->GetExpressions();
   vector<LibraryMethod*> candidates = klass->GetUnqualifiedMethods(method_name);
@@ -2645,8 +2645,8 @@ void ContextAnalyzer::AnalyzeDynamicFunctionCall(MethodCall* method_call, const 
     AnalyzeExpressionMethodCall(method_call, depth + 1);
   }
   else {
-    const wstring& mthd_name = method_call->GetMethodName();
-    const wstring& var_name = method_call->GetVariableName();
+    const wstring &mthd_name = method_call->GetMethodName();
+    const wstring &var_name = method_call->GetVariableName();
 
     if(mthd_name.size() > 0) {
       wstring message = L"Undefined function/method call: '" + mthd_name +
@@ -2711,8 +2711,8 @@ void ContextAnalyzer::AnalyzeFunctionReference(Class* klass, MethodCall* method_
     method_call->SetMethod(method, false);
   }
   else {
-    const wstring& mthd_name = method_call->GetMethodName();
-    const wstring& var_name = method_call->GetVariableName();
+    const wstring &mthd_name = method_call->GetMethodName();
+    const wstring &var_name = method_call->GetVariableName();
 
     if(mthd_name.size() > 0) {
       ProcessError(static_cast<Expression*>(method_call), L"Undefined function/method call: '" +
@@ -2772,8 +2772,8 @@ void ContextAnalyzer::AnalyzeFunctionReference(LibraryClass* klass, MethodCall* 
     method_call->SetLibraryMethod(method, false);
   }
   else {
-    const wstring& mthd_name = method_call->GetMethodName();
-    const wstring& var_name = method_call->GetVariableName();
+    const wstring &mthd_name = method_call->GetMethodName();
+    const wstring &var_name = method_call->GetVariableName();
 
     if(mthd_name.size() > 0) {
       ProcessError(static_cast<Expression*>(method_call), L"Undefined function/method call: '" +

@@ -4119,7 +4119,7 @@ void IntermediateEmitter::EmitMethodCallParameters(MethodCall* method_call)
       LibraryMethod* lib_method = method_call->GetLibraryMethod();
 
       if(is_lib) {
-        const wstring& klass_name = lib_method->GetLibraryClass()->GetName();
+        const wstring &klass_name = lib_method->GetLibraryClass()->GetName();
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_NEW_OBJ_INST, klass_name));
       } else {
         int klass_id = lib_method->GetLibraryClass()->GetId();

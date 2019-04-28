@@ -163,11 +163,11 @@ class LibraryInstr {
     return operand4;
   }
 
-  const wstring& GetOperand5() const {
+  const wstring &GetOperand5() const {
     return operand5;
   }
 
-  const wstring& GetOperand6() const {
+  const wstring &GetOperand6() const {
     return operand6;
   }
 };
@@ -194,10 +194,10 @@ class LibraryMethod {
   backend::IntermediateDeclarations* entries;
   
   void ParseParameters() {
-    const wstring& method_name = name;
+    const wstring &method_name = name;
     size_t start = method_name.find_last_of(':');
     if(start != wstring::npos) {
-      const wstring& parameters = method_name.substr(start + 1);
+      const wstring &parameters = method_name.substr(start + 1);
       size_t index = 0;
 
       while(index < parameters.size()) {
@@ -245,7 +245,7 @@ class LibraryMethod {
 	    index++;
 	  }
 	  size_t end = index;
-	  const wstring& name = parameters.substr(start, end - start);
+	  const wstring &name = parameters.substr(start, end - start);
 	  // TODO: convenient alternative/kludge to paring the function types. This
 	  // works because the contextual analyzer does string encoding and then 
 	  // checking of function types.
@@ -260,7 +260,7 @@ class LibraryMethod {
 	    index++;
 	  }
 	  size_t end = index;
-	  const wstring& cls_name = parameters.substr(start, end - start);
+	  const wstring &cls_name = parameters.substr(start, end - start);
 	  type = frontend::TypeFactory::Instance()->MakeType(frontend::CLASS_TYPE, cls_name);
 	}
 	  break;
@@ -343,7 +343,7 @@ class LibraryMethod {
     rtrn_type->SetDimension(dimension);
   }
 
-  wstring ReplaceSubstring(wstring s, const wstring& f, const wstring &r) {
+  wstring ReplaceSubstring(wstring s, const wstring &f, const wstring &r) {
     const size_t index = s.find(f);
     if(index != string::npos) {
       s.replace(index, f.size(), r);
@@ -505,11 +505,11 @@ class LibraryMethod {
     return has_and_or;
   }
 
-  const wstring& GetName() const {
+  const wstring &GetName() const {
     return name;
   }
 
-  const wstring& GetUserName() {
+  const wstring &GetUserName() {
     if(user_name.size() == 0) {
       EncodeUserName();
     }
@@ -517,7 +517,7 @@ class LibraryMethod {
     return user_name;
   }
 
-  const wstring& GetEncodedReturn() const {
+  const wstring &GetEncodedReturn() const {
     return rtrn_name;
   }
 
@@ -584,7 +584,7 @@ class LibraryEnumItem {
   ~LibraryEnumItem() {
   }
 
-  const wstring& GetName() const {
+  const wstring &GetName() const {
     return name;
   }
 
@@ -622,7 +622,7 @@ class LibraryEnum {
     items.clear();
   }
 
-  const wstring& GetName() const {
+  const wstring &GetName() const {
     return name;
   }
 
@@ -677,7 +677,7 @@ class LibraryClass {
   frontend::Type* generic_interface;
   
  public:
-   LibraryClass(const wstring& n, const wstring& g) {
+   LibraryClass(const wstring &n, const wstring &g) {
      name = n;
      if(g.empty()) {
        generic_interface = NULL;
@@ -770,7 +770,7 @@ class LibraryClass {
     return is_debug;
   }
 
-  const wstring& GetFileName() const {
+  const wstring &GetFileName() const {
     return file_name;
   }
   
@@ -778,7 +778,7 @@ class LibraryClass {
     return id;
   }
 
-  const wstring& GetName() const {
+  const wstring &GetName() const {
     return name;
   }
   
@@ -802,7 +802,7 @@ class LibraryClass {
     return generic_classes.size() > 0;
   }
 
-  int GenericIndex(const wstring& n) {
+  int GenericIndex(const wstring &n) {
     for(size_t i = 0; i < generic_classes.size(); ++i) {
       if(n == generic_classes[i]->GetName()) {
 	return (int)i;
@@ -816,7 +816,7 @@ class LibraryClass {
     return generic_classes;
   }
 
-  LibraryClass* GetGenericClass(const wstring& n) {
+  LibraryClass* GetGenericClass(const wstring &n) {
     const int index = GenericIndex(n);
     if(index > -1) {
       return generic_classes[index];
@@ -833,7 +833,7 @@ class LibraryClass {
     return generic_interface != NULL;
   }
 
-  const wstring& GetParentName() const {
+  const wstring &GetParentName() const {
     return parent_name;
   }
 
@@ -1151,7 +1151,7 @@ class Library {
     }
   }
   
-  bool HasBundleName(const wstring& name) {
+  bool HasBundleName(const wstring &name) {
     vector<wstring>::iterator found = find(bundle_names.begin(), bundle_names.end(), name);
     return found != bundle_names.end();
   }
@@ -1234,7 +1234,7 @@ class Linker {
   }
 
  public:
-  Linker(const wstring& p) {
+  Linker(const wstring &p) {
     master_path = p;
   }
 
@@ -1335,7 +1335,7 @@ class Linker {
     return klass_map[name];
   }
 
-  bool HasBundleName(const wstring& name) {
+  bool HasBundleName(const wstring &name) {
     map<const wstring, Library*>::iterator iter;
     for(iter = libraries.begin(); iter != libraries.end(); ++iter) {
       if(iter->second->HasBundleName(name)) {
