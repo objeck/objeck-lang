@@ -1,4 +1,5 @@
-class Vector<T> {
+
+class Vector<T : Compare> {
 	@values : T[];
 	@size : Int;
 	
