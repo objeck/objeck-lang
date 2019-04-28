@@ -4359,14 +4359,15 @@ void ContextAnalyzer::AnalyzeRightCast(Type * left, Type * right, Expression * e
           right->SetClassName(L"m." + EncodeFunctionType(right->GetFunctionParameters(),
                               right->GetFunctionReturn()));
         }
-
+        /*
         if(left->GetClassName() != right->GetClassName()) {
           ProcessError(expression, L"Invalid operation using mismatch functions: " +
                        ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and " +
                        ReplaceSubstring(ReplaceSubstring(right->GetClassName(), L"#", L"->"), L"#", L"->"));
         }
+        */
       }
-                      break;
+        break;
 
       case VAR_TYPE:
         ProcessError(expression, L"Invalid operation using classes: function reference and Var");
