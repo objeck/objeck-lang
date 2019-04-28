@@ -192,6 +192,44 @@ void Loader::Load()
   program->SetStringObjectId(string_cls_id);
 }
 
+char* Loader::LoadFileBuffer(wstring filename, size_t& buffer_size)
+{
+  char* buffer;
+  const string open_filename = UnicodeToBytes(filename);
+
+  ifstream in(open_filename.c_str(), ios_base::in | ios_base::binary | ios_base::ate);
+  if(in.good()) {
+    // get file size
+    in.seekg(0, ios::end);
+    buffer_size = (size_t)in.tellg();
+    in.seekg(0, ios::beg);
+    buffer = (char*)calloc(buffer_size + 1, sizeof(char));
+    in.read(buffer, buffer_size);
+    // close file
+    in.close();
+
+    uLong dest_len;
+    char* out = OutputStream::Uncompress(buffer, (uLong)buffer_size, dest_len);
+    if(!out) {
+      wcerr << L"Unable to uncompress file: " << filename << endl;
+      exit(1);
+    }
+#ifdef _DEBUG
+    std::wcout << L"--- file in: compressed=" << buffer_size << L", uncompressed=" << dest_len << L" ---" << std::endl;
+#endif
+
+    free(buffer);
+    buffer = NULL;
+    return out;
+  }
+  else {
+    wcerr << L"Unable to open file: " << filename << endl;
+    exit(1);
+  }
+
+  return NULL;
+}
+
 void Loader::LoadClasses()
 {
   const int number = ReadInt();

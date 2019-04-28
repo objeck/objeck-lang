@@ -4,7 +4,7 @@
  * Copyright (c) 2011-2018, Randy Hollines
  * All rights reserved.
  *
- * Redistribution and use in sohurce and binary forms, with or without
+ * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
  * - Redistributions of source code must retain the above copyright
@@ -187,10 +187,7 @@ size_t* APITools_MakeByteArray(VMContext &context, const long char_array_size) {
   // create character array
   const long char_array_dim = 1;
   size_t* char_array = (size_t*)context.alloc_array(char_array_size + 1 +
-            ((char_array_dim + 2) *
-             sizeof(size_t)),
-            BYTE_ARY_TYPE,
-            context.op_stack, *context.stack_pos, false);
+    ((char_array_dim + 2) * sizeof(size_t)), BYTE_ARY_TYPE, context.op_stack, *context.stack_pos, false);
   char_array[0] = char_array_size + 1;
   char_array[1] = char_array_dim;
   char_array[2] = char_array_size;
@@ -202,9 +199,7 @@ size_t* APITools_MakeCharArray(VMContext &context, const long char_array_size) {
   // create character array
   const long char_array_dim = 1;
   size_t* char_array = (size_t*)context.alloc_array(char_array_size + 1 +
-            ((char_array_dim + 2) *
-             sizeof(size_t)),
-            CHAR_ARY_TYPE,
+    ((char_array_dim + 2) * sizeof(size_t)), CHAR_ARY_TYPE,
             context.op_stack, *context.stack_pos, false);
   char_array[0] = char_array_size + 1;
   char_array[1] = char_array_dim;
