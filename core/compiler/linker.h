@@ -193,155 +193,9 @@ class LibraryMethod {
   vector<frontend::Type*> declarations;
   backend::IntermediateDeclarations* entries;
   
-  void ParseParameters() {
-    const wstring &method_name = name;
-    size_t start = method_name.find_last_of(':');
-    if(start != wstring::npos) {
-      const wstring &parameters = method_name.substr(start + 1);
-      size_t index = 0;
-
-      while(index < parameters.size()) {
-	frontend::Type* type = NULL;
-	int dimension = 0;
-	switch(parameters[index]) {
-	case 'l':
-	  type = frontend::TypeFactory::Instance()->MakeType(frontend::BOOLEAN_TYPE);
-	  index++;
-	  break;
-
-	case 'b':
-	  type = frontend::TypeFactory::Instance()->MakeType(frontend::BYTE_TYPE);
-	  index++;
-	  break;
-
-	case 'i':
-	  type = frontend::TypeFactory::Instance()->MakeType(frontend::INT_TYPE);
-	  index++;
-	  break;
-
-	case 'f':
-	  type = frontend::TypeFactory::Instance()->MakeType(frontend::FLOAT_TYPE);
-	  index++;
-	  break;
-
-	case 'c':
-	  type = frontend::TypeFactory::Instance()->MakeType(frontend::CHAR_TYPE);
-	  index++;
-	  break;
-
-	case 'n':
-	  type = frontend::TypeFactory::Instance()->MakeType(frontend::NIL_TYPE);
-	  index++;
-	  break;
-
-	case 'm': {
-	  start = index;
-	  while(index < parameters.size() && parameters[index] != '~') {
-	    index++;
-	  }
-	  index++;
-	  while(index < parameters.size() && parameters[index] != '*' &&
-		parameters[index] != ',') {
-	    index++;
-	  }
-	  size_t end = index;
-	  const wstring &name = parameters.substr(start, end - start);
-	  // TODO: convenient alternative/kludge to paring the function types. This
-	  // works because the contextual analyzer does string encoding and then 
-	  // checking of function types.
-	  type = frontend::TypeFactory::Instance()->MakeType(frontend::FUNC_TYPE, name);
-	}
-	  break;
-
-	case 'o': {
-	  index += 2;
-	  start = index;
-	  while(index < parameters.size() && parameters[index] != '*' && parameters[index] != ',') {
-	    index++;
-	  }
-	  size_t end = index;
-	  const wstring &cls_name = parameters.substr(start, end - start);
-	  type = frontend::TypeFactory::Instance()->MakeType(frontend::CLASS_TYPE, cls_name);
-	}
-	  break;
-	}
-
-	// set dimension
-	while(index < parameters.size() && parameters[index] == '*') {
-	  dimension++;
-	  index++;
-	}
-
-	if(type) {
-	  type->SetDimension(dimension);
-	}
-
-	// add declaration
-	declarations.push_back(type);
-#ifdef _DEBUG
-	assert(parameters[index] == ',');
-#endif
-	index++;
-      }
-    }
-  }
+  void ParseParameters();
   
-  void ParseReturn() {
-    size_t index = 0;
-    switch(rtrn_name[index]) {
-    case 'l':
-      rtrn_type = frontend::TypeFactory::Instance()->MakeType(frontend::BOOLEAN_TYPE);
-      index++;
-      break;
-
-    case 'b':
-      rtrn_type = frontend::TypeFactory::Instance()->MakeType(frontend::BYTE_TYPE);
-      index++;
-      break;
-
-    case 'i':
-      rtrn_type = frontend::TypeFactory::Instance()->MakeType(frontend::INT_TYPE);
-      index++;
-      break;
-
-    case 'f':
-      rtrn_type = frontend::TypeFactory::Instance()->MakeType(frontend::FLOAT_TYPE);
-      index++;
-      break;
-
-    case 'c':
-      rtrn_type = frontend::TypeFactory::Instance()->MakeType(frontend::CHAR_TYPE);
-      index++;
-      break;
-
-    case 'n':
-      rtrn_type = frontend::TypeFactory::Instance()->MakeType(frontend::NIL_TYPE);
-      index++;
-      break;
-
-    case 'm':
-      rtrn_type = frontend::TypeFactory::Instance()->MakeType(frontend::FUNC_TYPE);
-      index++;
-      break;
-
-    case 'o':
-      index = 2;
-      while(index < rtrn_name.size() && rtrn_name[index] != '*') {
-        index++;
-      }
-      rtrn_type = frontend::TypeFactory::Instance()->MakeType(frontend::CLASS_TYPE,
-							      rtrn_name.substr(2, index - 2));
-      break;
-    }
-
-    // set dimension
-    int dimension = 0;
-    while(index < rtrn_name.size() && rtrn_name[index] == '*') {
-      dimension++;
-      index++;
-    }
-    rtrn_type->SetDimension(dimension);
-  }
+  void ParseReturn();
 
   wstring ReplaceSubstring(wstring s, const wstring &f, const wstring &r) {
     const size_t index = s.find(f);
@@ -352,114 +206,9 @@ class LibraryMethod {
     return s;
   }
 
-  wstring EncodeUserType(frontend::Type* type) {
-    wstring name;
-    if(type) {
-      // type
-      switch(type->GetType()) {
-      case frontend::BOOLEAN_TYPE:
-        name = L"Bool";
-        break;
+  wstring EncodeUserType(frontend::Type* type);
 
-      case frontend::BYTE_TYPE:
-        name = L"Byte";
-        break;
-
-      case frontend::INT_TYPE:
-        name = L"Int";
-        break;
-
-      case frontend::FLOAT_TYPE:
-        name = L"Float";
-        break;
-
-      case frontend::CHAR_TYPE:
-        name = L"Char";
-        break;
-
-      case frontend::NIL_TYPE:
-        name = L"Nil";
-        break;
-
-      case frontend::VAR_TYPE:
-        name = L"Var";
-        break;
-
-      case frontend::CLASS_TYPE:
-        name = type->GetClassName();
-        break;
-
-      case frontend::FUNC_TYPE: {
-        name = L'(';
-        vector<frontend::Type*> func_params = type->GetFunctionParameters();
-        for(size_t i = 0; i < func_params.size(); ++i) {
-          name += EncodeUserType(func_params[i]);
-        }
-        name += L") ~ ";
-        name += EncodeUserType(type->GetFunctionReturn());
-      }
-	break;
-      }
-
-      // dimension
-      for(int i = 0; i < type->GetDimension(); ++i) {
-        name += L"[]";
-      }
-    }
-
-    return name;
-  }
-
-  void EncodeUserName() {
-    bool is_new_private = false;
-    if(is_static) {
-      user_name = L"function : ";
-    }
-    else {
-      switch(type) {
-      case frontend::NEW_PUBLIC_METHOD:
-        break;
-
-      case frontend::NEW_PRIVATE_METHOD:
-        is_new_private = true;
-        break;
-
-      case frontend::PUBLIC_METHOD:
-        user_name = L"method : public : ";
-        break;
-
-      case frontend::PRIVATE_METHOD:
-        user_name = L"method : private : ";
-        break;
-      }
-    }
-
-    if(is_native) {
-      user_name += L"native : ";
-    }
-
-    // name
-    wstring method_name = name.substr(0, name.find_last_of(':'));
-    user_name += ReplaceSubstring(method_name, L":", L"->");
-
-    // private new
-    if(is_new_private) {
-      user_name += L" : private ";
-    }
-
-    // params
-    user_name += L'(';
-
-    for(size_t i = 0; i < declarations.size(); ++i) {
-      user_name += EncodeUserType(declarations[i]);
-      if(i + 1 < declarations.size()) {
-        user_name += L", "; 
-      }
-    }
-    user_name += L") ~ ";
-
-    user_name += EncodeUserType(rtrn_type);
-  }
+  void EncodeUserName();
   
  public:
   LibraryMethod(int i, const wstring &n, const wstring &r, frontend::MethodType t, bool v,  bool h,
@@ -689,49 +438,9 @@ class LibraryClass {
      library = NULL;
    }
 	
-  LibraryClass(const wstring &n, const wstring &p, const vector<wstring> i, bool is, const vector<wstring> g, bool v,
-	       const int cs, const int in, backend::IntermediateDeclarations* ce, backend::IntermediateDeclarations* ie, 
-	       Library* l, const wstring &fn, bool d) {
-    name = n;
-    parent_name = p;
-    interface_names = i;
-    generic_name_types = g;
-    is_interface = is;
-    is_virtual = v;
-    cls_space = cs;
-    inst_space = in;
-    cls_entries = ce;
-    inst_entries = ie;
-    library = l;
-    is_generic = false;
-    generic_interface = NULL;
-
-    for(size_t i = 0; i < generic_name_types.size(); ++i) {
-      const wstring generic_name_type = generic_name_types[i];
-      size_t end = generic_name_type.find_first_of(L'|');
-
-      const wstring generic_name = generic_name_type.substr(0, end);
-      wstring concrete_name;
-      end++;
-      if(end < generic_name_type.size()) {
-        concrete_name = generic_name_type.substr(end, generic_name_type.size() - end);
-      }
-
-      generic_classes.push_back(new LibraryClass(generic_name, concrete_name));
-    }
-    
-    // force runtime linking of these classes
-    if(name == L"System.Introspection.Class" || 
-       name == L"System.Introspection.Method" || 
-       name == L"System.Introspection.DataType") {
-      was_called = true;
-    }
-    else {
-      was_called = false;
-    }
-    is_debug = d;
-    file_name = fn;
-  }
+   LibraryClass(const wstring& n, const wstring& p, const vector<wstring> i, bool is, const vector<wstring> g, bool v,
+                const int cs, const int in, backend::IntermediateDeclarations* ce, backend::IntermediateDeclarations* ie, 
+                Library* l, const wstring &fn, bool d);
 
   ~LibraryClass() {
     // clean up
@@ -876,45 +585,13 @@ class LibraryClass {
     return NULL;
   }
 
-  vector<LibraryMethod*> GetUnqualifiedMethods(const wstring &n) {
-    vector<LibraryMethod*> results;
-    pair<multimap<const wstring, LibraryMethod*>::iterator, 
-      multimap<const wstring, LibraryMethod*>::iterator> result;
-    result = unqualified_methods.equal_range(n);
-    multimap<const wstring, LibraryMethod*>::iterator iter = result.first;
-    for(iter = result.first; iter != result.second; ++iter) {
-      results.push_back(iter->second);
-    }
-      
-    return results;
-  }
+  vector<LibraryMethod*> GetUnqualifiedMethods(const wstring &n);
 
   map<const wstring, LibraryMethod*> GetMethods() {
     return methods;
   }
 
-  void AddMethod(LibraryMethod* method) {
-    const wstring &encoded_name = method->GetName();
-    methods.insert(pair<const wstring, LibraryMethod*>(encoded_name, method));
-    
-    // add to unqualified names to list
-    const size_t start = encoded_name.find(':');
-    if(start != wstring::npos) {
-      const size_t end = encoded_name.find(':', start + 1);
-      if(end != wstring::npos) {
-        const wstring &unqualified_name = encoded_name.substr(start + 1, end - start - 1);
-        unqualified_methods.insert(pair<wstring, LibraryMethod*>(unqualified_name, method));
-      }
-      else {
-        delete method;
-        method = NULL;
-      }
-    }
-    else {
-      delete method;
-      method = NULL;
-    }
-  }
+  void AddMethod(LibraryMethod* method);
 };
 
 /******************************
@@ -975,20 +652,20 @@ class Library {
 
   inline wchar_t ReadChar() {
     wchar_t out;
-    
-    int size = ReadInt(); 
+
+    int size = ReadInt();
     if(size) {
       string in(buffer, size);
       buffer += size;
       if(!BytesToCharacter(in, out)) {
-	wcerr << L">>> Unable to read character <<<" << endl;
-	exit(1);
+        wcerr << L">>> Unable to read character <<<" << endl;
+        exit(1);
       }
     }
     else {
       out = L'\0';
     }
-    
+
     return out;
   }
   
@@ -1017,42 +694,7 @@ class Library {
   }
 
   // loads a file into memory
-  char* LoadFileBuffer(wstring filename, size_t& buffer_size) {
-    char* buffer = NULL;
-    // open file
-    const string open_filename = UnicodeToBytes(filename);
-    ifstream in(open_filename.c_str(), ifstream::binary);
-    if(in.good()) {
-      // get file size
-      in.seekg(0, ios::end);
-      buffer_size = (size_t)in.tellg();
-      in.seekg(0, ios::beg);
-      buffer = (char*)calloc(buffer_size + 1, sizeof(char));
-      in.read(buffer, buffer_size);
-      // close file
-      in.close();
-      
-      uLong dest_len;
-      char* out = OutputStream::Uncompress(buffer, (uLong)buffer_size, dest_len);
-      if(!out) {
-        wcerr << L"Unable to uncompress file: " << filename << endl;
-        exit(1);
-      }
-#ifdef _DEBUG
-      GetLogger() << L"--- file in: compressed=" << buffer_size << L", uncompressed=" << dest_len << L" ---" << std::endl;
-#endif
-
-      free(buffer);
-      buffer = NULL;      
-      return out;
-    } 
-    else {
-      wcerr << L"Unable to open file: " << filename << endl;
-      exit(1);
-    }
-    
-    return NULL;
-  }
+  char* LoadFileBuffer(wstring filename, size_t& buffer_size);
 
   void ReadFile(const wstring &file) {
     buffer_pos = 0;
@@ -1079,7 +721,7 @@ class Library {
       instructions::ParamType type = (instructions::ParamType)ReadInt();
       wstring var_name;
       if(is_debug) {
-	var_name = ReadString();
+        var_name = ReadString();
       }
       entries->AddParameter(new backend::IntermediateDeclaration(var_name, type));
     }
@@ -1206,13 +848,10 @@ class Library {
  ********************************/
 class Linker {
   map<const wstring, Library*> libraries;
-
   vector<LibraryClass*> all_classes;
   unordered_map<wstring, LibraryClass*> all_classes_map;
-
   vector<LibraryEnum*> all_enums;
   unordered_map<wstring, LibraryEnum*> all_enums_map;
-
   wstring master_path;
   vector<wstring> paths;
 
@@ -1268,7 +907,7 @@ class Linker {
     return NULL;
   }
 
-  // get all libaries
+  // get all libraries
   map<const wstring, Library*> GetAllLibraries() {
     return libraries;
   }
@@ -1306,8 +945,8 @@ class Linker {
     if(all_enums_map.empty()) {
       vector<LibraryEnum*> enums = GetAllEnums();
       for(size_t i = 0; i < enums.size(); ++i) {
-	LibraryEnum* klass = enums[i];
-	all_enums_map[klass->GetName()] = klass;
+        LibraryEnum* klass = enums[i];
+        all_enums_map[klass->GetName()] = klass;
       }
     }
 
@@ -1319,10 +958,10 @@ class Linker {
     if(all_enums.empty()) {
       map<const wstring, Library*>::iterator iter;
       for(iter = libraries.begin(); iter != libraries.end(); ++iter) {
-	vector<LibraryEnum*> enums = iter->second->GetEnums();
-	for(size_t i = 0; i < enums.size(); ++i) {
-	  all_enums.push_back(enums[i]);
-	}
+        vector<LibraryEnum*> enums = iter->second->GetEnums();
+        for(size_t i = 0; i < enums.size(); ++i) {
+          all_enums.push_back(enums[i]);
+        }
       }
     }
 
@@ -1346,8 +985,8 @@ class Linker {
     return false;
   }
 
-  // TODO: finds the first class match; note multiple matches may exist
-  LibraryClass* SearchClassLibraries(const wstring &name, vector<wstring> uses) {
+  // finds the first class match; note multiple matches may exist
+  LibraryClass* SearchClassLibraries(const wstring& name, vector<wstring> uses) {
     unordered_map<wstring, LibraryClass*> klass_map = GetAllClassesMap();
     LibraryClass* klass = klass_map[name];
     if(klass) {
@@ -1357,15 +996,15 @@ class Linker {
     for(size_t i = 0; i < uses.size(); ++i) {
       klass = klass_map[uses[i] + L"." + name];
       if(klass) {
-	return klass;
+        return klass;
       }
     }
 
     return NULL;
   }
 
-  // TODO: finds the first enum match; note multiple matches may exist
-  LibraryEnum* SearchEnumLibraries(const wstring &name, vector<wstring> uses) {
+  // finds the first enum match; note multiple matches may exist
+  LibraryEnum* SearchEnumLibraries(const wstring& name, vector<wstring> uses) {
     unordered_map<wstring, LibraryEnum*> enum_map = GetAllEnumsMap();
     LibraryEnum* eenum = enum_map[name];
     if(eenum) {
@@ -1375,54 +1014,14 @@ class Linker {
     for(size_t i = 0; i < uses.size(); ++i) {
       eenum = enum_map[uses[i] + L"." + name];
       if(eenum) {
-	return eenum;
+        return eenum;
       }
     }
 
     return NULL;
   }
 
-  void Load() {
-#ifdef _DEBUG
-    GetLogger() << L"--------- Linking Libraries ---------" << endl;
-#endif
-
-    // set library path
-    wstring path = GetLibraryPath();
-
-    // parses library path
-    if(master_path.size() > 0) {
-      size_t offset = 0;
-      size_t index = master_path.find(',');
-      while(index != wstring::npos) {
-        // load library
-        const wstring &file = master_path.substr(offset, index - offset);
-        const wstring file_path = path + file;
-        Library* library = new Library(file_path);
-        library->Load();
-        // insert library
-        libraries.insert(pair<wstring, Library*>(file_path, library));
-        vector<wstring>::iterator found = find(paths.begin(), paths.end(), file_path);
-        if(found == paths.end()) {
-          paths.push_back(file_path);
-        }
-        // update
-        offset = index + 1;
-        index = master_path.find(',', offset);
-      }
-      // insert library
-      const wstring &file = master_path.substr(offset, master_path.size());
-      const wstring file_path = path + file;
-      Library* library = new Library(file_path);
-      library->Load();
-      libraries.insert(pair<wstring, Library*>(file_path, library));
-      paths.push_back(file_path);
-#ifdef _DEBUG
-      GetLogger() << L"--------- End Linking ---------" << endl;
-#endif
-    }
-
-  }
+  void Load();
 };
 
 #endif
