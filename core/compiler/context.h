@@ -296,7 +296,7 @@ class ContextAnalyzer {
 	int in_loop;
 	vector<Class*> anonymous_classes;
 
-	void Debug(const wstring& msg, const int line_num, int depth) {
+	void Debug(const wstring &msg, const int line_num, int depth) {
 		GetLogger() << setw(4) << line_num << L": ";
 		for(int i = 0; i < depth; ++i) {
 			GetLogger() << L"  ";
@@ -519,7 +519,7 @@ class ContextAnalyzer {
 				else {
 					// check parents
 					entry = NULL;
-					const wstring& bundle_name = bundle->GetName();
+					const wstring &bundle_name = bundle->GetName();
 					Class* parent;
 					if(bundle_name.size() > 0) {
 						parent = bundle->GetClass(bundle_name + L"." + current_class->GetParentName());
@@ -610,7 +610,7 @@ class ContextAnalyzer {
 		return type;
 	}
 
-	void StringReplace(wstring& str, const wstring& from, const wstring& to) {
+	void StringReplace(wstring &str, const wstring &from, const wstring &to) {
 		size_t start_pos = 0;
 		while((start_pos = str.find(from, start_pos)) != wstring::npos) {
 			str.replace(start_pos, from.length(), to);
@@ -766,8 +766,11 @@ class ContextAnalyzer {
       const vector<Class*> klasses = bundles[i]->GetClasses();
       for(size_t j = 0; j < klasses.size(); ++j) {
         Class* klass = klasses[j];
-        if(klass->HasGenerics() && klass->GetGenericClass(n)) {
-          return true;
+        if(klass->HasGenerics()) {
+          Class* generic_klass = klass->GetGenericClass(n);
+          if(generic_klass && !generic_klass->HasGenerics()) {
+            return true;
+          }
         }
       }
     }
@@ -775,8 +778,11 @@ class ContextAnalyzer {
     vector<LibraryClass*> lib_klasses = linker->GetAllClasses();
     for(size_t i = 0; i < lib_klasses.size(); ++i) {
       LibraryClass* lib_klass = lib_klasses[i];
-      if(lib_klass->HasGenerics() && lib_klass->GetGenericClass(n)) {
-        return true;
+      if(lib_klass->HasGenerics()) {
+        LibraryClass* generic_lib_klass = lib_klass->GetGenericClass(n);
+        if(generic_lib_klass && !generic_lib_klass->HasGenerics()) {
+          return true;
+        }
       }
     }
 
@@ -818,15 +824,15 @@ class ContextAnalyzer {
 		return eenum;
 	}
 
-	inline bool HasProgramLibraryEnum(const wstring& n) {
+	inline bool HasProgramLibraryEnum(const wstring &n) {
 		return SearchProgramEnums(n) || linker->SearchEnumLibraries(n, program->GetUses(current_class->GetFileName()));
 	}
 	
-	inline bool HasProgramLibraryClass(const wstring& n) {
+	inline bool HasProgramLibraryClass(const wstring &n) {
 		return SearchProgramClasses(n) || linker->SearchClassLibraries(n, program->GetUses(current_class->GetFileName()));
 	}
 	
-  inline bool GetProgramLibraryClass(const wstring& n, Class* &klass, LibraryClass* &lib_klass) {
+  inline bool GetProgramLibraryClass(const wstring &n, Class* &klass, LibraryClass* &lib_klass) {
     klass = SearchProgramClasses(n);
     if(klass) {
       return true;
@@ -982,7 +988,7 @@ class ContextAnalyzer {
   }
 
 	bool IsClassEnumParameterMatch(Type* calling_type, Type* method_type) {
-		const wstring& from_klass_name = calling_type->GetClassName();
+		const wstring &from_klass_name = calling_type->GetClassName();
 
 		LibraryClass* from_lib_klass = NULL;
 		Class* from_klass = SearchProgramClasses(from_klass_name);
@@ -1168,7 +1174,7 @@ class ContextAnalyzer {
     }
   }
 
-  wstring ReplaceSubstring(wstring s, const wstring& f, const wstring &r) {
+  wstring ReplaceSubstring(wstring s, const wstring &f, const wstring &r) {
     const size_t index = s.find(f);
     if(index != string::npos) {
       s.replace(index, f.size(), r);

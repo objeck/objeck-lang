@@ -47,7 +47,7 @@ void Expression::SetMethodCall(MethodCall* call)
 /****************************
  * CharacterString class
  ****************************/
-void CharacterString::AddSegment(const wstring& orig) 
+void CharacterString::AddSegment(const wstring &orig) 
 {
   if(!is_processed) {
     wstring escaped_str;
@@ -574,8 +574,8 @@ Declaration* Declaration::Copy() {
 /****************************
  * MethodCall class
  ****************************/
-MethodCall::MethodCall(const wstring& f, const int l, MethodCallType t,
-		       const wstring& v, ExpressionList* e) :
+MethodCall::MethodCall(const wstring &f, const int l, MethodCallType t,
+		       const wstring &v, ExpressionList* e) :
   Statement(f, l), Expression(f, l) {
   variable_name = v;
   call_type = t;

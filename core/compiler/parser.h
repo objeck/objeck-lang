@@ -94,7 +94,7 @@ class Parser {
     return scanner->GetToken()->GetFileName();
   }
 
-  inline const wstring GetScopeName(const wstring& ident) {
+  inline const wstring GetScopeName(const wstring &ident) {
     wstring scope_name;
     if(current_method) {
       scope_name = current_method->GetName() + L":" + ident;
@@ -109,7 +109,7 @@ class Parser {
     return scope_name;
   }
 
-  inline const wstring GetEnumScopeName(const wstring& ident) {
+  inline const wstring GetEnumScopeName(const wstring &ident) {
     wstring scope_name;
     if(current_class) {
       scope_name = current_class->GetName() + L"#" + ident;
@@ -121,7 +121,7 @@ class Parser {
     return scope_name;
   }
 
-  void Debug(const wstring& msg, int depth) {
+  void Debug(const wstring &msg, int depth) {
     GetLogger() << setw(4) << GetLineNumber() << L": ";
     for(int i = 0; i < depth; ++i) {
       GetLogger() << L"  ";
@@ -158,9 +158,9 @@ class Parser {
     return name;
   }
 
-  Declaration* AddDeclaration(const wstring& ident, Type* type, bool is_static, Declaration* child,	int depth) {
+  Declaration* AddDeclaration(const wstring &ident, Type* type, bool is_static, Declaration* child,	int depth) {
     const int line_num = GetLineNumber();
-    const wstring& file_name = GetFileName();
+    const wstring &file_name = GetFileName();
 
     // add entry
     wstring scope_name = GetScopeName(ident);
@@ -206,7 +206,7 @@ class Parser {
   Method* ParseMethod(bool is_function, bool virtual_required, int depth);
   Variable* ParseVariable(const wstring &ident, int depth);
   vector<Type*> ParseGenericTypes(int depth);
-  vector<Class*> ParseGenericClasses(const wstring& bundle_name, int depth);
+  vector<Class*> ParseGenericClasses(const wstring &bundle_name, int depth);
   MethodCall* ParseMethodCall(int depth);
   MethodCall* ParseMethodCall(const wstring &ident, int depth);
   void ParseMethodCall(Expression* expression, int depth);

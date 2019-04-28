@@ -337,7 +337,7 @@ void Library::LoadEnums()
     // read enum
     const wstring &enum_name = ReadString();
 #ifdef _DEBUG
-    const wstring& msg = L"[enum: name='" + enum_name + L"']";
+    const wstring &msg = L"[enum: name='" + enum_name + L"']";
     Linker::Debug(msg, 0, 1);
 #endif
     const INT_VALUE enum_offset = ReadInt();
@@ -408,7 +408,7 @@ void Library::LoadClasses()
     hierarchies.insert(pair<const wstring, const wstring>(name, parent_name));
 
 #ifdef _DEBUG
-    const wstring& msg = L"[class: name='" + name + L"'; parent='" + parent_name + 
+    const wstring &msg = L"[class: name='" + name + L"'; parent='" + parent_name + 
       L"'; interface=" + Linker::ToString(is_interface) +       
       L"; virtual=" + Linker::ToString(is_virtual) + 
       L"; class_mem_size=" + Linker::ToString(cls_space) +
@@ -624,7 +624,7 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
       break;
 
     case LIB_OBJ_INST_CAST: {
-      const wstring& cls_name = ReadString();
+      const wstring &cls_name = ReadString();
 #ifdef _DEBUG
       const wstring &msg = L"LIB_OBJ_INST_CAST: class=" + cls_name;
       Linker::Debug(msg, 0, 3);
@@ -634,7 +634,7 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
       break;
 
     case LIB_NEW_OBJ_INST: {
-      const wstring& cls_name = ReadString();
+      const wstring &cls_name = ReadString();
 #ifdef _DEBUG
       const wstring &msg = L"LIB_NEW_OBJ_INST: class=" + cls_name;
       Linker::Debug(msg, 0, 3);
@@ -644,7 +644,7 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
       break;
       
     case LIB_OBJ_TYPE_OF: {
-      const wstring& cls_name = ReadString();
+      const wstring &cls_name = ReadString();
 #ifdef _DEBUG
       const wstring &msg = L"LIB_OBJ_TYPE_OF: class=" + cls_name;
       Linker::Debug(msg, 0, 3);
@@ -655,8 +655,8 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
       
     case LIB_MTHD_CALL: {
       int is_native = ReadInt();
-      const wstring& cls_name = ReadString();
-      const wstring& mthd_name = ReadString();
+      const wstring &cls_name = ReadString();
+      const wstring &mthd_name = ReadString();
 #ifdef _DEBUG
       const wstring &msg = L"LIB_MTHD_CALL: class=" + cls_name + L", method=" + mthd_name;
       Linker::Debug(msg, 0, 3);
@@ -666,8 +666,8 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
       break;
 
     case LIB_FUNC_DEF: {
-      const wstring& cls_name = ReadString();
-      const wstring& mthd_name = ReadString();
+      const wstring &cls_name = ReadString();
+      const wstring &mthd_name = ReadString();
 #ifdef _DEBUG
       const wstring &msg = L"LIB_FUNC_DEF: class=" + cls_name + L", method=" + mthd_name;
       Linker::Debug(msg, 0, 3);

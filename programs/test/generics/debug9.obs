@@ -1,0 +1,26 @@
+class Foo {
+	function : Main(args : String[]) ~ Nil {
+		f := Map->New()<String, Vector<IntHolder> >;
+	}
+}
+
+class Map<K : Compare, Vector<V> > {
+	New() {
+		v := Vector->New()<V>;
+		v->Get();
+	}
+
+	method : Get(key : K) ~ Vector<V> {
+		return Nil;
+	}
+}
+
+class Vector<V> {
+	New() {
+
+	}
+
+	method : public : Get() ~ Int {
+		return -1;
+	}
+}
