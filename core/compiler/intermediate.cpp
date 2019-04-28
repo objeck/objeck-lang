@@ -68,14 +68,14 @@ SelectNode* SelectArrayTree::divide(int start, int end)
       SelectNode* node = new SelectNode(++emitter->conditional_label, values[start + 1],
                                         new SelectNode(++emitter->conditional_label, values[start]),
                                         new SelectNode(++emitter->conditional_label, values[start + 1]));
-      return node;	
+      return node;  
     }
     else {
       SelectNode* node = new SelectNode(++emitter->conditional_label, 
                                         values[start + 1], values[start + 2],
                                         new SelectNode(++emitter->conditional_label, values[start]),
                                         new SelectNode(++emitter->conditional_label, values[start + 2]));
-      return node;	
+      return node;  
     }
   }
   else {
@@ -569,9 +569,9 @@ IntermediateClass* IntermediateEmitter::EmitClass(Class* klass)
   }
   
   imm_klass = new IntermediateClass(current_class->GetId(), current_class->GetName(),  pid, parent_name, 
-				    interface_ids, current_class->GetInterfaceNames(), current_class->IsInterface(), 
-				    current_class->GetGenericStrings(),	current_class->IsVirtual(), cls_space, 
-				    inst_space, cls_entries, inst_entries, short_file_name, is_debug);
+            interface_ids, current_class->GetInterfaceNames(), current_class->IsInterface(), 
+            current_class->GetGenericStrings(),  current_class->IsVirtual(), cls_space, 
+            inst_space, cls_entries, inst_entries, short_file_name, is_debug);
   // block
   NewBlock();
   
@@ -628,8 +628,8 @@ IntermediateMethod* IntermediateEmitter::EmitMethod(Method* method)
     }
   }
   imm_method = new IntermediateMethod(method->GetId(), method->GetEncodedName(), method->IsVirtual(), 
-				      method->HasAndOr(), method->GetEncodedReturn(),  method->GetMethodType(), 
-				      method->IsNative(), method->IsStatic(), space, num_params, entries, imm_klass);
+              method->HasAndOr(), method->GetEncodedReturn(),  method->GetMethodType(), 
+              method->IsNative(), method->IsStatic(), space, num_params, entries, imm_klass);
 
   if(!method->IsVirtual()) {
     // block
@@ -656,7 +656,7 @@ IntermediateMethod* IntermediateEmitter::EmitMethod(Method* method)
             imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, STOR_FLOAT_VAR, entry->GetId(), LOCL));
           }
           break;
-	  
+    
         case frontend::FUNC_TYPE:
           imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, STOR_FUNC_VAR, entry->GetId(), LOCL));
           break;
@@ -683,7 +683,7 @@ IntermediateMethod* IntermediateEmitter::EmitMethod(Method* method)
 
     // return instance if this is constructor call
     if(!method->IsAlt() && (method->GetMethodType() == NEW_PUBLIC_METHOD ||
-			    method->GetMethodType() == NEW_PRIVATE_METHOD)) {
+          method->GetMethodType() == NEW_PRIVATE_METHOD)) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
     }
 
@@ -966,22 +966,22 @@ void IntermediateEmitter::EmitMethodCallStatement(MethodCall* method_call)
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_INT));
       }
       break;
-	
+  
     case 1:
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, DYN_MTHD_CALL, entry->GetType()->GetFunctionParameterCount(), instructions::FLOAT_TYPE));
       if(!method_call->GetMethodCall()) {
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_FLOAT));
       }
       break;
-	
+  
     case 2:
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, DYN_MTHD_CALL, entry->GetType()->GetFunctionParameterCount(), instructions::FUNC_TYPE));
       if(!method_call->GetMethodCall()) {
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_INT));
-        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_INT));	
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_INT));  
       }
       break;
-	
+  
     default:
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, DYN_MTHD_CALL, entry->GetType()->GetFunctionParameterCount(), instructions::NIL_TYPE));
       break;
@@ -2577,7 +2577,7 @@ void IntermediateEmitter::EmitMethodCallExpression(MethodCall* method_call, bool
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_FUNC_DEF, -1,
                                                                                    method_call->GetMethod()->GetClass()->GetName(),
                                                                                    method_call->GetMethod()->GetEncodedName()));
-										   
+                       
       }
       else {
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, method_call->GetMethod()->GetId()));
@@ -2639,7 +2639,7 @@ void IntermediateEmitter::EmitMethodCallExpression(MethodCall* method_call, bool
     case 0:
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, DYN_MTHD_CALL, entry->GetType()->GetFunctionParameterCount(), instructions::INT_TYPE));
       break;
-	
+  
     case 1:
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, DYN_MTHD_CALL, entry->GetType()->GetFunctionParameterCount(), instructions::FLOAT_TYPE));
       break;
@@ -2648,10 +2648,10 @@ void IntermediateEmitter::EmitMethodCallExpression(MethodCall* method_call, bool
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, DYN_MTHD_CALL, entry->GetType()->GetFunctionParameterCount(), instructions::FUNC_TYPE));
       if(!method_call->GetMethodCall()) {
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_INT));
-        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_INT));	
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_INT));  
       }
       break;
-	
+  
     default:
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, DYN_MTHD_CALL, entry->GetType()->GetFunctionParameterCount(), instructions::NIL_TYPE));
       break;
@@ -3045,10 +3045,10 @@ void IntermediateEmitter::EmitAppendCharacterStringSegment(CharacterStringSegmen
       else {
         // call object's 'ToString' method
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 
-                                                                                   var_entry->GetId(), mem_context));	
+                                                                                   var_entry->GetId(), mem_context));  
         Method* inst_mthd = segment->GetMethod();
         LibraryMethod* inst_lib_mthd = segment->GetLibraryMethod();
-	
+  
 #ifdef _DEBUG
         assert(inst_mthd || inst_lib_mthd);
 #endif
@@ -3067,7 +3067,7 @@ void IntermediateEmitter::EmitAppendCharacterStringSegment(CharacterStringSegmen
                                                                                        inst_lib_mthd->GetName()));
           }
         }
-        else {	  
+        else {    
           // program class
           if(inst_mthd) {
             imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL,
@@ -3500,20 +3500,20 @@ void IntermediateEmitter::EmitCast(Expression* expression)
 #endif
     if(SearchProgramClasses(type_of->GetClassName())) {
       if(is_lib) {
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_OBJ_TYPE_OF, type_of->GetClassName()));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_OBJ_TYPE_OF, type_of->GetClassName()));
       }
       else {
-	int id = SearchProgramClasses(type_of->GetClassName())->GetId();
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, OBJ_TYPE_OF, id));
+  int id = SearchProgramClasses(type_of->GetClassName())->GetId();
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, OBJ_TYPE_OF, id));
       }
     }
     else {
       if(is_lib) {
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_OBJ_TYPE_OF, type_of->GetClassName()));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_OBJ_TYPE_OF, type_of->GetClassName()));
       }
       else {
-	int id = parsed_program->GetLinker()->SearchClassLibraries(type_of->GetClassName(), parsed_program->GetUses())->GetId();
-	imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, OBJ_TYPE_OF, id));  
+  int id = parsed_program->GetLinker()->SearchClassLibraries(type_of->GetClassName(), parsed_program->GetUses())->GetId();
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, OBJ_TYPE_OF, id));  
       }
     }
   }
@@ -4169,7 +4169,7 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
       break;
 
     case frontend::FLOAT_TYPE:
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, NEW_FLOAT_ARY,	(INT_VALUE)expressions.size()));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, NEW_FLOAT_ARY,  (INT_VALUE)expressions.size()));
       break;
 
     default:
@@ -4241,7 +4241,7 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
             imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FLOAT_VAR, entry->GetId(), mem_context));
           }
           break;
-	  
+    
         case frontend::FUNC_TYPE:
           // load instance or class memory
           if(mem_context == INST) {
@@ -4417,7 +4417,7 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index,
           if(entry->GetType()->GetDimension() > 0) {
 #ifdef _DEBUG
             GetLogger() << L"\t" << index << L": INT_ARY_PARM: name=" << entry->GetName() 
-			<< L", dim=" << entry->GetType()->GetDimension() << endl;
+      << L", dim=" << entry->GetType()->GetDimension() << endl;
 #endif
             declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_ARY_PARM));
           } 
@@ -4452,7 +4452,7 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index,
           if(entry->GetType()->GetDimension() > 0) {
 #ifdef _DEBUG
             GetLogger() << L"\t" << index << L": INT_ARY_PARM: name=" << entry->GetName()
-			<< L", dim=" << entry->GetType()->GetDimension() << endl;
+      << L", dim=" << entry->GetType()->GetDimension() << endl;
 #endif
             declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_ARY_PARM));
           } 
@@ -4561,7 +4561,7 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index,
             var_space += 2;
           }
           break;
-	  
+    
         case frontend::FUNC_TYPE:          
 #ifdef _DEBUG
           GetLogger() << L"\t" << index << L": FUNC_PARM: name=" << entry->GetName() << endl;

@@ -120,7 +120,7 @@ namespace frontend {
     bool is_self;
 
   SymbolEntry(const wstring &file_name, const int line_num, const wstring &n, Type* t, 
-	      bool s, bool c, bool e = false) : ParseNode(file_name, line_num) {
+        bool s, bool c, bool e = false) : ParseNode(file_name, line_num) {
       name = n;
       id = -1;
       type = t;
@@ -812,7 +812,7 @@ namespace frontend {
     }
 
     CalculatedExpression(const wstring& file_name, const int line_num, ExpressionType t,
-		       Expression* lhs, Expression* rhs) : Expression(file_name, line_num) {
+           Expression* lhs, Expression* rhs) : Expression(file_name, line_num) {
       left = lhs;
       right = rhs;
       type = t;
@@ -1378,7 +1378,7 @@ namespace frontend {
 
   public:
   CriticalSection(const wstring &file_name, int line_num, Variable* v, 
-		  StatementList* s) : Statement(file_name, line_num) {
+      StatementList* s) : Statement(file_name, line_num) {
       variable = v;
       statements = s;
     }
@@ -1451,7 +1451,7 @@ namespace frontend {
     StatementList* statements;
 
   DoWhile(const wstring &file_name, int line_num, Expression* e, 
-	  StatementList* s) : Statement(file_name, line_num) {
+    StatementList* s) : Statement(file_name, line_num) {
       expression = e;
       statements = s;
     }
@@ -2045,7 +2045,7 @@ namespace frontend {
     vector<wstring> GetInterfaceNames() {
       return interface_names;
     }
-		
+    
     const wstring GetName() const {
       return name;
     }
@@ -2619,15 +2619,15 @@ namespace frontend {
     }
 
     Class* MakeClass(const wstring &file_name, const int line_num, const wstring &name, 
-		     const wstring &parent_name, vector<wstring> interfaces, 
-		     vector<Class*> generics, bool is_interface) {
+         const wstring &parent_name, vector<wstring> interfaces, 
+         vector<Class*> generics, bool is_interface) {
       Class* tmp = new Class(file_name, line_num, name, parent_name, interfaces, generics, is_interface);
       nodes.push_back(tmp);
       return tmp;
     }
 
     Class* MakeClass(const wstring &file_name, const int line_num, const wstring &name, 
-		     const wstring &parent_name, vector<wstring> interfaces) {
+         const wstring &parent_name, vector<wstring> interfaces) {
       Class* tmp = new Class(file_name, line_num, name, parent_name, interfaces);
       nodes.push_back(tmp);
       return tmp;
@@ -2640,7 +2640,7 @@ namespace frontend {
     }
 
     Method* MakeMethod(const wstring &file_name, const int line_num, const wstring &name, 
-		       MethodType type, bool is_function, bool is_native) {
+           MethodType type, bool is_function, bool is_native) {
       Method* tmp = new Method(file_name, line_num, name, type, is_function, is_native);
       nodes.push_back(tmp);
       return tmp;
@@ -2884,7 +2884,7 @@ namespace frontend {
     }
 
     SymbolEntry* MakeSymbolEntry(const wstring &file_name, const int line_num, 
-				 const wstring &n, Type* t, bool s, bool c, bool e = false) {
+         const wstring &n, Type* t, bool s, bool c, bool e = false) {
       SymbolEntry* tmp = new SymbolEntry(file_name, line_num, n, t, s, c, e);
       entries.push_back(tmp);
       return tmp;

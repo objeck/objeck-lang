@@ -239,80 +239,80 @@ class MethodCallSelector {
  * Performs contextual analysis
  ****************************/
 class ContextAnalyzer {
-	ParsedProgram* program;
-	ParsedBundle* bundle;
-	Linker* linker;
-	Class* current_class;
-	Method* current_method;
-	SymbolTable* current_table;
-	SymbolTableManager* symbol_table;
-	map<int, wstring> errors;
-	vector<wstring> alt_error_method_names;
-	map<const wstring, EntryType> type_map;
-	bool main_found;
-	bool web_found;
-	bool is_lib;
-	bool is_web;
-	int char_str_index;
-	int int_str_index;
-	int float_str_index;
-	int in_loop;
-	vector<Class*> anonymous_classes;
+  ParsedProgram* program;
+  ParsedBundle* bundle;
+  Linker* linker;
+  Class* current_class;
+  Method* current_method;
+  SymbolTable* current_table;
+  SymbolTableManager* symbol_table;
+  map<int, wstring> errors;
+  vector<wstring> alt_error_method_names;
+  map<const wstring, EntryType> type_map;
+  bool main_found;
+  bool web_found;
+  bool is_lib;
+  bool is_web;
+  int char_str_index;
+  int int_str_index;
+  int float_str_index;
+  int in_loop;
+  vector<Class*> anonymous_classes;
 
-	inline void Debug(const wstring &msg, const int line_num, int depth) {
-		GetLogger() << setw(4) << line_num << L": ";
-		for(int i = 0; i < depth; ++i) {
-			GetLogger() << L"  ";
-		}
-		GetLogger() << msg << endl;
-	}
+  inline void Debug(const wstring &msg, const int line_num, int depth) {
+    GetLogger() << setw(4) << line_num << L": ";
+    for(int i = 0; i < depth; ++i) {
+      GetLogger() << L"  ";
+    }
+    GetLogger() << msg << endl;
+  }
 
-	// returns true if expression is not an array
-	bool IsScalar(Expression* expression, bool check_last = true);
+  // returns true if expression is not an array
+  bool IsScalar(Expression* expression, bool check_last = true);
 
-	// returns true if expression is of boolean type
-	bool IsBooleanExpression(Expression* expression);
+  // returns true if expression is of boolean type
+  bool IsBooleanExpression(Expression* expression);
 
-	// returns true if expression is of boolean type
-	bool IsEnumExpression(Expression* expression);
+  // returns true if expression is of boolean type
+  bool IsEnumExpression(Expression* expression);
 
-	// returns true if expression is of integer or enum type
-	bool IsIntegerExpression(Expression* expression);
+  // returns true if expression is of integer or enum type
+  bool IsIntegerExpression(Expression* expression);
 
-	// returns true if entry static context is not valid
-	bool DuplicateParentEntries(SymbolEntry* entry, Class* klass);
+  // returns true if entry static context is not valid
+  bool DuplicateParentEntries(SymbolEntry* entry, Class* klass);
 
-	// returns true if this entry is duplicated in parent classes
-	inline bool InvalidStatic(SymbolEntry* entry) {
-		return current_method->IsStatic() && !entry->IsLocal() && !entry->IsStatic();
-	}
+  // returns true if this entry is duplicated in parent classes
+  inline bool InvalidStatic(SymbolEntry* entry) {
+    return current_method->IsStatic() && !entry->IsLocal() && !entry->IsStatic();
+  }
 
-	// returns true if a duplicate value is found in the list
-	bool DuplicateCaseItem(map<int, StatementList*>label_statements, int value);
+  // returns true if a duplicate value is found in the list
+  bool DuplicateCaseItem(map<int, StatementList*>label_statements, int value);
 
-	// returns true if method static context is not valid
-	bool InvalidStatic(MethodCall* method_call, Method* method);
+  // returns true if method static context is not valid
+  bool InvalidStatic(MethodCall* method_call, Method* method);
 
-	// returns true if method static context is not valid
-	bool InvalidStatic(MethodCall* method_call, LibraryMethod* method);
+  // returns true if method static context is not valid
+  bool InvalidStatic(MethodCall* method_call, LibraryMethod* method);
 
-	// returns a symbol table entry by name
-	SymbolEntry* GetEntry(wstring name, bool is_parent = false);
+  // returns a symbol table entry by name
+  SymbolEntry* GetEntry(wstring name, bool is_parent = false);
 
-	// returns a symbol table entry by name for a given method
-	SymbolEntry* GetEntry(MethodCall* method_call, const wstring &variable_name, int depth);
+  // returns a symbol table entry by name for a given method
+  SymbolEntry* GetEntry(MethodCall* method_call, const wstring &variable_name, int depth);
 
-	// returns a type expression
-	Type* GetExpressionType(Expression* expression, int depth);
+  // returns a type expression
+  Type* GetExpressionType(Expression* expression, int depth);
 
-	// checks for a valid downcast
-	bool ValidDownCast(const wstring &cls_name, Class* class_tmp, LibraryClass* lib_class_tmp);
+  // checks for a valid downcast
+  bool ValidDownCast(const wstring &cls_name, Class* class_tmp, LibraryClass* lib_class_tmp);
 
-	// checks for a valid upcast
-	bool ValidUpCast(const wstring &to, Class* from_klass);
+  // checks for a valid upcast
+  bool ValidUpCast(const wstring &to, Class* from_klass);
 
-	// checks for a valid upcast
-	bool ValidUpCast(const wstring &to, LibraryClass* from_klass);
+  // checks for a valid upcast
+  bool ValidUpCast(const wstring &to, LibraryClass* from_klass);
 
   // helper function for program class search
   bool GetProgramLibraryClass(const wstring &n, Class* &klass, LibraryClass* &lib_klass);
@@ -329,7 +329,7 @@ class ContextAnalyzer {
   bool ResolveClassEnumType(Type* type, Class* context_klass);
 
   // helper function for method call method matching
-	bool IsClassEnumParameterMatch(Type* calling_type, Type* method_type);
+  bool IsClassEnumParameterMatch(Type* calling_type, Type* method_type);
   
   // resolve enum reference
   void ResolveEnumCall(LibraryEnum* lib_eenum, const wstring &item_name, MethodCall* method_call);
@@ -341,21 +341,21 @@ class ContextAnalyzer {
   void AnalyzeVariableCast(Type* to_type, Expression* expression);
 
   // validate parameters for dynamic function
-	void AnalyzeDynamicFunctionParameters(vector<Type*>& func_params, ParseNode* node) {
-		AnalyzeDynamicFunctionParameters(func_params, node, current_class);
-	}
+  void AnalyzeDynamicFunctionParameters(vector<Type*>& func_params, ParseNode* node) {
+    AnalyzeDynamicFunctionParameters(func_params, node, current_class);
+  }
 
   // validate parameters for dynamic function
   void AnalyzeDynamicFunctionParameters(vector<Type*>& func_params, ParseNode* node, Class* klass);
 
   // add method parameter
-	void AddMethodParameter(MethodCall* method_call, SymbolEntry* entry, int depth);
+  void AddMethodParameter(MethodCall* method_call, SymbolEntry* entry, int depth);
 
   // validate method call with generics
-	Type* RelsolveGenericCall(Type* left, MethodCall* method_call, Class* klass, Method* method);
+  Type* RelsolveGenericCall(Type* left, MethodCall* method_call, Class* klass, Method* method);
 
   // validate method call with generics
-	Type* RelsolveGenericCall(Type* left, MethodCall* method_call, LibraryClass* klass, LibraryMethod* method);
+  Type* RelsolveGenericCall(Type* left, MethodCall* method_call, LibraryClass* klass, LibraryMethod* method);
 
   // validate generic references against types
   void CheckGenericParameters(const vector<LibraryClass*> generic_klasses, const vector<Type*> concrete_types, ParseNode* node);
@@ -508,7 +508,7 @@ class ContextAnalyzer {
   void AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* method_call,
                          bool is_virtual, bool is_expr, const int depth);
   wstring EncodeMethodCall(ExpressionList* calling_params, const int depth);
-	Method* ResolveMethodCall(Class* klass, MethodCall* method_call, const int depth);
+  Method* ResolveMethodCall(Class* klass, MethodCall* method_call, const int depth);
   LibraryMethod* ResolveMethodCall(LibraryClass* klass, MethodCall* method_call, const int depth);
   int MatchCallingParameter(Expression* calling_param, Type* method_type,
                             Class* klass, LibraryClass* lib_klass, const int depth);

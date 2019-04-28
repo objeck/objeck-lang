@@ -65,7 +65,7 @@ namespace instructions {
     STOR_CHAR_ARY_ELM,
     STOR_INT_ARY_ELM,
     STOR_FLOAT_ARY_ELM,
-		LOAD_ARY_SIZE,
+    LOAD_ARY_SIZE,
     // logical operations
     EQL_INT,
     NEQL_INT,

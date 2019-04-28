@@ -55,73 +55,73 @@ void CharacterString::AddSegment(const wstring &orig)
     for(size_t i = 0; i < orig.size(); ++i) {
       wchar_t c = orig[i];
       if(skip > 1 && c == L'\\' && i + 1 < orig.size()) {
-	wchar_t cc = orig[i + 1];
-	switch(cc) {
-	case L'"':
-	  escaped_str += L'\"';
-	  skip = 0;
-	  break;
+  wchar_t cc = orig[i + 1];
+  switch(cc) {
+  case L'"':
+    escaped_str += L'\"';
+    skip = 0;
+    break;
 
-	case L'\\':
-	  escaped_str += L'\\';
-	  skip = 0;
-	  break;
+  case L'\\':
+    escaped_str += L'\\';
+    skip = 0;
+    break;
 
-	case L'n':
-	  escaped_str += L'\n';
-	  skip = 0;
-	  break;
+  case L'n':
+    escaped_str += L'\n';
+    skip = 0;
+    break;
 
-	case L'r':
-	  escaped_str += L'\r';
-	  skip = 0;
-	  break;
+  case L'r':
+    escaped_str += L'\r';
+    skip = 0;
+    break;
 
-	case L't':
-	  escaped_str += L'\t';
-	  skip = 0;
-	  break;
+  case L't':
+    escaped_str += L'\t';
+    skip = 0;
+    break;
 
-	case L'a':
-	  escaped_str += L'\a';
-	  skip = 0;
-	  break;
+  case L'a':
+    escaped_str += L'\a';
+    skip = 0;
+    break;
 
-	case L'b':
-	  escaped_str += L'\b';
-	  skip = 0;
-	  break;
+  case L'b':
+    escaped_str += L'\b';
+    skip = 0;
+    break;
 
 #ifndef _WIN32
-	case L'e':
-	  escaped_str += L'\e';
-	  skip = 0;
-	  break;
+  case L'e':
+    escaped_str += L'\e';
+    skip = 0;
+    break;
 #endif
 
-	case L'f':
-	  escaped_str += L'\f';
-	  skip = 0;
-	  break;
+  case L'f':
+    escaped_str += L'\f';
+    skip = 0;
+    break;
 
-	case L'0':
-	  escaped_str += L'\0';
-	  skip = 0;
-	  break;
+  case L'0':
+    escaped_str += L'\0';
+    skip = 0;
+    break;
 
-	default:
-	  if(skip <= 1) {
-	    skip++;
-	  }
-	  break;
-	}
+  default:
+    if(skip <= 1) {
+      skip++;
+    }
+    break;
+  }
       }
 
       if(skip > 1) {
-	escaped_str += c;
+  escaped_str += c;
       }
       else {
-	skip++;
+  skip++;
       }
     }
     // set string
@@ -149,8 +149,8 @@ TreeFactory* TreeFactory::Instance()
 SymbolEntry* SymbolEntry::Copy() 
 {
   return TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num,
-						  name, type, is_static,
-						  is_local, is_self);
+              name, type, is_static,
+              is_local, is_self);
 }
 
 void SymbolEntry::SetId(int i)
@@ -241,13 +241,13 @@ wstring Method::EncodeType(Type* type, Class* klass, ParsedProgram* program, Lin
         }
       }
       
-			// search libaraires      
-			if(name == L"o.") {
-				prgm_klass = klass->GetGenericClass(type_klass_name);
-				if(prgm_klass) {
-					name += prgm_klass->GetName();
-				}
-			}
+      // search libaraires      
+      if(name == L"o.") {
+        prgm_klass = klass->GetGenericClass(type_klass_name);
+        if(prgm_klass) {
+          name += prgm_klass->GetName();
+        }
+      }
 
       // search libaraires      
       if(name == L"o.") {
@@ -296,8 +296,8 @@ wstring Method::EncodeType(Type* type, Class* klass, ParsedProgram* program, Lin
 }
 
 wstring Method::EncodeFunctionType(vector<Type*> func_params, Type* func_rtrn, 
-				   Class* klass, ParsedProgram* program, Linker* linker) 
-{																		 
+           Class* klass, ParsedProgram* program, Linker* linker) 
+{                                     
   wstring encoded_name = L"(";
   for(size_t i = 0; i < func_params.size(); ++i) {
     // encode params
@@ -410,7 +410,7 @@ wstring Method::EncodeUserType(Type* type) {
       name = L'(';
       vector<Type*> func_params = type->GetFunctionParameters();
       for(size_t i = 0; i < func_params.size(); ++i) {
-	name += EncodeUserType(func_params[i]);
+  name += EncodeUserType(func_params[i]);
       }
       name += L") ~ ";
       name += EncodeUserType(type->GetFunctionReturn());
@@ -472,7 +472,7 @@ void Method::EncodeUserName() {
     if(entry) {
       user_name += EncodeUserType(entry->GetType());
       if(i + 1 < declaration_list.size()) {
-	user_name += L", ";
+  user_name += L", ";
       }
     }
   }
@@ -489,26 +489,26 @@ void StaticArray::Validate(StaticArray* array) {
   for(size_t i = 0; i < static_array.size(); ++i) { 
     if(static_array[i]) {
       if(static_array[i]->GetExpressionType() == STAT_ARY_EXPR) {
-	if(i == 0) {
-	  dim++;
-	}
-	Validate(static_cast<StaticArray*>(static_array[i]));
+  if(i == 0) {
+    dim++;
+  }
+  Validate(static_cast<StaticArray*>(static_array[i]));
       }
       else {
-	// check lengths
-	if(cur_width == -1) {
-	  cur_width = (int)static_array.size();
-	}
-	if(cur_width != (int)static_array.size()) {
-	  matching_lengths = false;
-	}      
-	// check types
-	if(cur_type == VAR_EXPR) {
-	  cur_type = static_array[i]->GetExpressionType();
-	}
-	else if(cur_type != static_array[i]->GetExpressionType()) {
-	  matching_types = false;
-	}
+  // check lengths
+  if(cur_width == -1) {
+    cur_width = (int)static_array.size();
+  }
+  if(cur_width != (int)static_array.size()) {
+    matching_lengths = false;
+  }      
+  // check types
+  if(cur_type == VAR_EXPR) {
+    cur_type = static_array[i]->GetExpressionType();
+  }
+  else if(cur_type != static_array[i]->GetExpressionType()) {
+    matching_types = false;
+  }
       }
     }
   }
@@ -525,10 +525,10 @@ ExpressionList* StaticArray::GetAllElements() {
       vector<Expression*> elements = all_elements->GetExpressions();
       // update indices
       for(int i = 0; i < cur_width; ++i) {
-	for(int j = 0; j < cur_height; ++j) {
-	  const int index = j * cur_width + i;
-	  temp->AddExpression(elements[index]);
-	}
+  for(int j = 0; j < cur_height; ++j) {
+    const int index = j * cur_width + i;
+    temp->AddExpression(elements[index]);
+  }
       }      
       all_elements = temp;
     }
@@ -604,7 +604,7 @@ Declaration* Declaration::Copy() {
  * MethodCall class
  ****************************/
 MethodCall::MethodCall(const wstring &f, const int l, MethodCallType t,
-		       const wstring &v, ExpressionList* e) :
+           const wstring &v, ExpressionList* e) :
   Statement(f, l), Expression(f, l) {
   variable_name = v;
   call_type = t;

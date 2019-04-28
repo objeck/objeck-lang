@@ -126,7 +126,7 @@ namespace frontend {
     vector<Type*> func_params;
     Type* func_rtrn;
     int func_param_count;
-		vector<Type*> generic_types;
+    vector<Type*> generic_types;
     
     Type(Type* t) {
       if(t) {
@@ -136,7 +136,7 @@ namespace frontend {
         func_rtrn = t->func_rtrn;
         func_params = t->func_params;
         func_param_count = -1;
-				generic_types = t->generic_types;
+        generic_types = t->generic_types;
       }
     }
     
@@ -177,17 +177,17 @@ namespace frontend {
       return type;
     }
 
-		void SetGenerics(const vector<Type*>& g) {
-			generic_types = g;
-		}
+    void SetGenerics(const vector<Type*>& g) {
+      generic_types = g;
+    }
 
-		vector<Type*> GetGenerics() {
-			return generic_types;
-		}
+    vector<Type*> GetGenerics() {
+      return generic_types;
+    }
 
-		bool HasGenerics() {
-			return generic_types.size() > 0;
-		}
+    bool HasGenerics() {
+      return generic_types.size() > 0;
+    }
 
     void SetDimension(int d) {
       dimension = d;
@@ -360,61 +360,61 @@ namespace backend {
 #ifdef _DEBUG
     void Debug(bool has_and_or) {
       if(declarations.size() > 0) {
-	int index = has_and_or ? 1 : 0;
-	GetLogger() << L"memory types:" << endl;	
-	if(has_and_or) {
-	  GetLogger() << L"  0: INT_PARM" << endl;
-	}
-	
-        for(size_t i = 0; i < declarations.size(); ++i, ++index) {	 
-          IntermediateDeclaration* entry = declarations[i];	 
- 	 
-          switch(entry->GetType()) {	
-          case instructions::CHAR_PARM:	 
-            GetLogger() << L"  " << index << L": CHAR_PARM" << endl;	 
+  int index = has_and_or ? 1 : 0;
+  GetLogger() << L"memory types:" << endl;  
+  if(has_and_or) {
+    GetLogger() << L"  0: INT_PARM" << endl;
+  }
+  
+        for(size_t i = 0; i < declarations.size(); ++i, ++index) {   
+          IntermediateDeclaration* entry = declarations[i];   
+    
+          switch(entry->GetType()) {  
+          case instructions::CHAR_PARM:   
+            GetLogger() << L"  " << index << L": CHAR_PARM" << endl;   
             break;
-	    
-          case instructions::INT_PARM:	 
-            GetLogger() << L"  " << index << L": INT_PARM" << endl;	 
-            break;	 
- 	 
-          case instructions::FLOAT_PARM:	 
-            GetLogger() << L"  " << index << L": FLOAT_PARM" << endl;	 
-            break;	 
- 	 
-          case instructions::BYTE_ARY_PARM:	 
-            GetLogger() << L"  " << index << L": BYTE_ARY_PARM" << endl;	 
-            break;	 
- 	 
-          case instructions::CHAR_ARY_PARM:	 
-            GetLogger() << L"  " << index << L": CHAR_ARY_PARM" << endl;	 
+      
+          case instructions::INT_PARM:   
+            GetLogger() << L"  " << index << L": INT_PARM" << endl;   
+            break;   
+    
+          case instructions::FLOAT_PARM:   
+            GetLogger() << L"  " << index << L": FLOAT_PARM" << endl;   
+            break;   
+    
+          case instructions::BYTE_ARY_PARM:   
+            GetLogger() << L"  " << index << L": BYTE_ARY_PARM" << endl;   
+            break;   
+    
+          case instructions::CHAR_ARY_PARM:   
+            GetLogger() << L"  " << index << L": CHAR_ARY_PARM" << endl;   
             break;
 
-          case instructions::INT_ARY_PARM:	 
-            GetLogger() << L"  " << index << L": INT_ARY_PARM" << endl;	 
-            break;	 
- 	 
-          case instructions::FLOAT_ARY_PARM:	 
-            GetLogger() << L"  " << index << L": FLOAT_ARY_PARM" << endl;	 
-            break;	 
- 	 
-          case instructions::OBJ_PARM:	 
-            GetLogger() << L"  " << index << L": OBJ_PARM" << endl;	 
+          case instructions::INT_ARY_PARM:   
+            GetLogger() << L"  " << index << L": INT_ARY_PARM" << endl;   
+            break;   
+    
+          case instructions::FLOAT_ARY_PARM:   
+            GetLogger() << L"  " << index << L": FLOAT_ARY_PARM" << endl;   
+            break;   
+    
+          case instructions::OBJ_PARM:   
+            GetLogger() << L"  " << index << L": OBJ_PARM" << endl;   
             break;
-	     
-          case instructions::OBJ_ARY_PARM:	 
-            GetLogger() << L"  " << index << L": OBJ_ARY_PARM" << endl;	 
+       
+          case instructions::OBJ_ARY_PARM:   
+            GetLogger() << L"  " << index << L": OBJ_ARY_PARM" << endl;   
             break;
-	    
-          case instructions::FUNC_PARM:	 
-            GetLogger() << L"  " << index << L": FUNC_PARM" << endl;	 
+      
+          case instructions::FUNC_PARM:   
+            GetLogger() << L"  " << index << L": FUNC_PARM" << endl;   
             break;
- 	 
-          default:	 
-            break;	 
-          }	 
-        }	 
-      }	
+    
+          default:   
+            break;   
+          }   
+        }   
+      }  
       else {
         GetLogger() << L"memory types: none" << endl;
       }

@@ -56,7 +56,7 @@ Scanner::Scanner(wstring f, bool j, bool p)
     buffer_size = f.size() + 1;
     buffer = new wchar_t[buffer_size];
 #ifdef _WIN32
-	  wcscpy_s(buffer, buffer_size, f.c_str());
+    wcscpy_s(buffer, buffer_size, f.c_str());
 #else
     wcscpy(buffer, f.c_str());
 #endif

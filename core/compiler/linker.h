@@ -437,7 +437,7 @@ class LibraryClass {
      is_generic = true;
      library = NULL;
    }
-	
+  
    LibraryClass(const wstring& n, const wstring& p, const vector<wstring> i, bool is, const vector<wstring> g, bool v,
                 const int cs, const int in, backend::IntermediateDeclarations* ce, backend::IntermediateDeclarations* ie, 
                 Library* l, const wstring &fn, bool d);
@@ -514,7 +514,7 @@ class LibraryClass {
   int GenericIndex(const wstring &n) {
     for(size_t i = 0; i < generic_classes.size(); ++i) {
       if(n == generic_classes[i]->GetName()) {
-	return (int)i;
+  return (int)i;
       }
     }
 

@@ -576,7 +576,7 @@ bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, Class* virtual_cl
           while(!impl_method && !lib_impl_method && parent_class) {
             encoded_name = parent_class->GetName() + virtual_method_name.substr(offset);
             impl_method = parent_class->GetMethod(encoded_name);
-            // update	    
+            // update      
             if(!impl_method && parent_class->GetLibraryParent()) {
               LibraryClass* lib_parent_class = parent_class->GetLibraryParent();
               encoded_name = lib_parent_class->GetName() + virtual_method_name.substr(offset);
@@ -682,7 +682,7 @@ bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, LibraryClass* lib
           while(!impl_method && !lib_impl_method && parent_class) {
             encoded_name = parent_class->GetName() + virtual_method_name.substr(offset);
             impl_method = parent_class->GetMethod(encoded_name);
-            // update	    
+            // update      
             if(!impl_method && parent_class->GetLibraryParent()) {
               LibraryClass* lib_parent_class = parent_class->GetLibraryParent();
               encoded_name = lib_parent_class->GetName() + virtual_method_name.substr(offset);
@@ -5208,7 +5208,7 @@ frontend::SymbolEntry* ContextAnalyzer::GetEntry(wstring name, bool is_parent /*
           if(entry) {
             return entry;
           }
-          // get next parent	  
+          // get next parent    
           if(bundle_name.size() > 0) {
             parent = bundle->GetClass(bundle_name + L"." + parent->GetParentName());
           }

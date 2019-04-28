@@ -105,7 +105,7 @@ class ItermediateOptimizer {
   bool CanInlineMethod(IntermediateMethod* mthd_called, set<IntermediateMethod*> &inlined_mthds, set<int> &lbl_jmp_offsets) {
     // don't inline the same method more then once, since you'll have label/jump conflicts
 
-	  set<IntermediateMethod*>::iterator found = inlined_mthds.find(mthd_called);
+    set<IntermediateMethod*>::iterator found = inlined_mthds.find(mthd_called);
     if(found != inlined_mthds.end()) {
       return false;
     }
@@ -201,7 +201,7 @@ class ItermediateOptimizer {
           return false;
         }
         break;
-	
+  
         // look for conflicting jump offsets
       case instructions::LBL:
       case instructions::JMP:
@@ -216,7 +216,7 @@ class ItermediateOptimizer {
         }
         found_rtrn = true;
         break;
-	
+  
       default:
         break;
       }
@@ -250,7 +250,7 @@ class ItermediateOptimizer {
                                                 instrs[1]->GetType() == LOAD_FLOAT_VAR) &&
            instrs[2]->GetType() == RTRN) {
           return 0;
-        }	
+        }  
         return -1;
       }
       //
@@ -260,7 +260,7 @@ class ItermediateOptimizer {
         if((instrs[0]->GetType() == LOAD_INT_LIT || instrs[0]->GetType() == LOAD_FLOAT_LIT) &&
            instrs[1]->GetType() == RTRN) {
           return 1;
-        }	
+        }  
         return -1;
       }
     }
@@ -270,7 +270,7 @@ class ItermediateOptimizer {
         //
         // character print pattern
         //
-      	if(instrs[0]->GetType() == STOR_INT_VAR && instrs[0]->GetOperand() == 0 && instrs[0]->GetOperand2() == LOCL &&
+        if(instrs[0]->GetType() == STOR_INT_VAR && instrs[0]->GetOperand() == 0 && instrs[0]->GetOperand2() == LOCL &&
            instrs[1]->GetType() == LOAD_INT_VAR && instrs[1]->GetOperand() == 0 && instrs[1]->GetOperand2() == LOCL &&
            instrs[2]->GetType() == LOAD_INT_LIT && instrs[2]->GetOperand() == -3984 &&
            instrs[3]->GetType() == TRAP && instrs[3]->GetOperand() == 2  &&
