@@ -760,6 +760,29 @@ class ContextAnalyzer {
 		return false;
 	}
 
+  inline bool HasGenericClass(const wstring &n) {
+    const vector<ParsedBundle*> bundles = program->GetBundles();
+    for(size_t i = 0; i < bundles.size(); ++i) {
+      const vector<Class*> klasses = bundles[i]->GetClasses();
+      for(size_t j = 0; j < klasses.size(); ++j) {
+        Class* klass = klasses[j];
+        if(klass->HasGenerics() && klass->GetGenericClass(n)) {
+          return true;
+        }
+      }
+    }
+
+    vector<LibraryClass*> lib_klasses = linker->GetAllClasses();
+    for(size_t i = 0; i < lib_klasses.size(); ++i) {
+      LibraryClass* lib_klass = lib_klasses[i];
+      if(lib_klass->HasGenerics() && lib_klass->GetGenericClass(n)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
 	// TODO: finds the first enum match; note multiple matches may exist
 	inline Class* SearchProgramClasses(const wstring & klass_name) {
 		Class* klass = program->GetClass(klass_name);
