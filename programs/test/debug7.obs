@@ -6,7 +6,7 @@ class Foo {
 		
 		a->Size()->PrintLine();
 		
-		b := a->Apply(Bar(String) ~ String);
+		b := a->Apply(Bar(String) ~ String)<String>;
 		a->Get(1)->PrintLine();
 		b->Get(1)->PrintLine();
 	}
@@ -16,9 +16,6 @@ class Foo {
 		return h;
 	}
 }
-
-class T {}
-
 
 class Vector<T : Compare> {
 	@values : T[];
