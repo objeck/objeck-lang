@@ -119,8 +119,8 @@ namespace frontend {
     bool is_local;
     bool is_self;
 
-    SymbolEntry(const wstring& file_name, const int line_num, const wstring& n, Type* t,
-                bool s, bool c, bool e = false) : ParseNode(file_name, line_num) {
+  SymbolEntry(const wstring &file_name, const int line_num, const wstring &n, Type* t, 
+	      bool s, bool c, bool e = false) : ParseNode(file_name, line_num) {
       name = n;
       id = -1;
       type = t;
@@ -135,7 +135,7 @@ namespace frontend {
   public:
 
     void SetType(Type* t) {
-      type = t;
+      type =  t;
     }
 
     Type* GetType() {
@@ -207,7 +207,7 @@ namespace frontend {
       return entries_list;
     }
 
-    SymbolEntry* GetEntry(const wstring& name) {
+    SymbolEntry* GetEntry(const wstring &name) {
       map<const wstring, SymbolEntry*>::iterator result = entries.find(name);
       if(result != entries.end()) {
         return result->second;
@@ -246,7 +246,7 @@ namespace frontend {
    * SymbolTable class
    ****************************/
   class SymbolTable {
-    ScopeTable* head, * parse_ptr, * iter_ptr;
+    ScopeTable *head, *parse_ptr, *iter_ptr;
     vector<SymbolEntry*> entries;
 
   public:
@@ -263,7 +263,7 @@ namespace frontend {
       return entries;
     }
 
-    SymbolEntry* GetEntry(const wstring& name) {
+    SymbolEntry* GetEntry(const wstring &name) {
       ScopeTable* tmp = iter_ptr;
       while(tmp) {
         SymbolEntry* entry = tmp->GetEntry(name);
@@ -331,13 +331,13 @@ namespace frontend {
 
     int GetDepth() {
       int count = 0;
-
+      
       ScopeTable* tmp = iter_ptr;
       while(tmp) {
         count++;
         tmp = tmp->GetParent();
       }
-
+      
       return count;
     }
   };
@@ -368,7 +368,7 @@ namespace frontend {
       scope.push(new SymbolTable);
     }
 
-    void PreviousParseScope(const wstring& namescope) {
+    void PreviousParseScope(const wstring &namescope) {
       if(GetSymbolTable(namescope)) {
         return;
       }
@@ -381,7 +381,7 @@ namespace frontend {
       return scope.top();
     }
 
-    vector<SymbolEntry*> GetEntries(const wstring& namescope) {
+    vector<SymbolEntry*> GetEntries(const wstring &namescope) {
       vector<SymbolEntry*> entries;
       map<const wstring, SymbolTable*>::iterator result = tables.find(namescope);
       if(result != tables.end()) {
@@ -391,7 +391,7 @@ namespace frontend {
       return entries;
     }
 
-    SymbolTable* GetSymbolTable(const wstring& namescope) {
+    SymbolTable* GetSymbolTable(const wstring &namescope) {
       map<const wstring, SymbolTable*>::iterator result = tables.find(namescope);
       if(result != tables.end()) {
         return result->second;
@@ -406,7 +406,7 @@ namespace frontend {
    ****************************/
   class Statement : public ParseNode {
   public:
-    Statement(const wstring& file_name, const int line_num) : ParseNode(file_name, line_num) {
+  Statement(const wstring &file_name, const int line_num) : ParseNode(file_name, line_num) {
     }
 
     virtual ~Statement() {
@@ -488,7 +488,7 @@ namespace frontend {
     Class* to_class;
     LibraryClass* to_lib_class;
 
-    Expression(const wstring& file_name, const int line_num) : ParseNode(file_name, line_num) {
+  Expression(const wstring &file_name, const int line_num) : ParseNode(file_name, line_num) {
       base_type = eval_type = cast_type = type_of = NULL;
       method_call = NULL;
       prev_expr = NULL;
@@ -496,7 +496,7 @@ namespace frontend {
       to_lib_class = NULL;
     }
 
-    Expression(const wstring& file_name, int line_num, Type* t) : ParseNode(file_name, line_num) {
+  Expression(const wstring &file_name, int line_num, Type* t) : ParseNode(file_name, line_num) {
       base_type = eval_type = TypeFactory::Instance()->MakeType(t);
       cast_type = NULL;
       method_call = NULL;
@@ -631,7 +631,7 @@ namespace frontend {
 
     void GetAllElements(StaticArray* array, ExpressionList* elems) {
       vector<Expression*> static_array = array->GetElements()->GetExpressions();
-      for(size_t i = 0; i < static_array.size(); ++i) {
+      for(size_t i = 0; i < static_array.size(); ++i) { 
         if(static_array[i]) {
           if(static_array[i]->GetExpressionType() == STAT_ARY_EXPR) {
             GetAllElements(static_cast<StaticArray*>(static_array[i]), all_elements);
@@ -641,23 +641,23 @@ namespace frontend {
             elems->AddExpression(static_array[i]);
           }
         }
-      }
+      } 
     }
 
-    void GetSizes(StaticArray* array, int& count) {
+    void GetSizes(StaticArray* array, int &count) {
       vector<Expression*> static_array = array->GetElements()->GetExpressions();
-      for(size_t i = 0; i < static_array.size(); ++i) {
+      for(size_t i = 0; i < static_array.size(); ++i) { 
         if(static_array[i]) {
           if(static_array[i]->GetExpressionType() == STAT_ARY_EXPR) {
             count++;
             GetSizes(static_cast<StaticArray*>(static_array[i]), count);
           }
         }
-      }
+      } 
     }
 
   public:
-    StaticArray(const wstring& file_name, const int line_num, ExpressionList* e) : Expression(file_name, line_num) {
+  StaticArray(const wstring &file_name, const int line_num, ExpressionList* e) : Expression(file_name, line_num) {
       elements = e;
       all_elements = NULL;
       matching_types = matching_lengths = true;
@@ -691,7 +691,7 @@ namespace frontend {
     }
 
     EntryType GetType() {
-      switch(cur_type) {
+      switch(cur_type) {      
       case INT_LIT_EXPR:
         return INT_TYPE;
 
@@ -745,7 +745,7 @@ namespace frontend {
     LibraryMethod* lib_method;
 
   public:
-    CharacterStringSegment(const wstring& s) {
+    CharacterStringSegment(const wstring &s) {
       type = STRING;
       str = s;
       entry = NULL;
@@ -817,14 +817,14 @@ namespace frontend {
     vector<CharacterStringSegment*> segments;
     SymbolEntry* concat;
 
-    CharacterString(const wstring& file_name, const int line_num, const wstring& c) :
-      Expression(file_name, line_num, Type::CharStringType()) {
+  CharacterString(const wstring &file_name, const int line_num, const wstring &c) :
+    Expression(file_name, line_num, Type::CharStringType()) {
       char_string = c;
       is_processed = false;
       concat = NULL;
     }
 
-    ~CharacterString() {
+    ~CharacterString() {      
       while(!segments.empty()) {
         CharacterStringSegment* tmp = segments.back();
         segments.pop_back();
@@ -858,15 +858,15 @@ namespace frontend {
     void AddSegment(const wstring& orig);
 
     void AddSegment(SymbolEntry* e) {
-      segments.push_back(new CharacterStringSegment(e));
+      segments.push_back(new CharacterStringSegment(e)); 
     }
 
     void AddSegment(SymbolEntry* e, Method* m) {
-      segments.push_back(new CharacterStringSegment(e, m));
+      segments.push_back(new CharacterStringSegment(e, m)); 
     }
 
     void AddSegment(SymbolEntry* e, LibraryMethod* m) {
-      segments.push_back(new CharacterStringSegment(e, m));
+      segments.push_back(new CharacterStringSegment(e, m)); 
     }
 
     vector<CharacterStringSegment*> GetSegments() {
@@ -883,13 +883,13 @@ namespace frontend {
     Expression* left;
     Expression* right;
 
-    CalculatedExpression(const wstring& file_name, const int line_num, ExpressionType t) : Expression(file_name, line_num) {
+  CalculatedExpression(const wstring &file_name, const int line_num, ExpressionType t) : Expression(file_name, line_num) {
       left = right = NULL;
       type = t;
     }
 
-    CalculatedExpression(const wstring& file_name, const int line_num, ExpressionType t,
-                         Expression* lhs, Expression* rhs) : Expression(file_name, line_num) {
+  CalculatedExpression(const wstring &file_name, const int line_num, ExpressionType t, 
+		       Expression* lhs, Expression* rhs) : Expression(file_name, line_num) {
       left = lhs;
       right = rhs;
       type = t;
@@ -934,7 +934,7 @@ namespace frontend {
     OperationAssignment* post_operation;
     bool checked_post_operation;
 
-    Variable(const wstring& file_name, const int line_num, const wstring& n) : Expression(file_name, line_num) {
+  Variable(const wstring &file_name, const int line_num, const wstring &n) : Expression(file_name, line_num) {
       name = n;
       indices = NULL;
       entry = NULL;
@@ -1023,8 +1023,8 @@ namespace frontend {
     friend class TreeFactory;
     bool value;
 
-    BooleanLiteral(const wstring& file_name, int line_num, bool v) :
-      Expression(file_name, line_num, TypeFactory::Instance()->MakeType(BOOLEAN_TYPE)) {
+  BooleanLiteral(const wstring &file_name, int line_num, bool v) :
+    Expression(file_name, line_num, TypeFactory::Instance()->MakeType(BOOLEAN_TYPE)) {
       value = v;
     }
 
@@ -1047,8 +1047,8 @@ namespace frontend {
   class NilLiteral : public Expression {
     friend class TreeFactory;
 
-    NilLiteral(const wstring& file_name, const int line_num) :
-      Expression(file_name, line_num, TypeFactory::Instance()->MakeType(NIL_TYPE)) {
+  NilLiteral(const wstring &file_name, const int line_num) : 
+    Expression(file_name, line_num, TypeFactory::Instance()->MakeType(NIL_TYPE)) {
     }
 
     ~NilLiteral() {
@@ -1067,8 +1067,8 @@ namespace frontend {
     friend class TreeFactory;
     wchar_t value;
 
-    CharacterLiteral(const wstring& file_name, int line_num, wchar_t v) :
-      Expression(file_name, line_num, TypeFactory::Instance()->MakeType(CHAR_TYPE)) {
+  CharacterLiteral(const wstring &file_name, int line_num, wchar_t v) : 
+    Expression(file_name, line_num, TypeFactory::Instance()->MakeType(CHAR_TYPE)) {
       value = v;
     }
 
@@ -1092,8 +1092,8 @@ namespace frontend {
     friend class TreeFactory;
     INT_VALUE value;
 
-    IntegerLiteral(const wstring& file_name, int line_num, INT_VALUE v) :
-      Expression(file_name, line_num, TypeFactory::Instance()->MakeType(INT_TYPE)) {
+  IntegerLiteral(const wstring &file_name, int line_num, INT_VALUE v) :
+    Expression(file_name, line_num, TypeFactory::Instance()->MakeType(INT_TYPE)) {
       value = v;
     }
 
@@ -1117,8 +1117,8 @@ namespace frontend {
     friend class TreeFactory;
     FLOAT_VALUE value;
 
-    FloatLiteral(const wstring& file_name, int line_num, FLOAT_VALUE v) :
-      Expression(file_name, line_num, TypeFactory::Instance()->MakeType(FLOAT_TYPE)) {
+  FloatLiteral(const wstring &file_name, int line_num, FLOAT_VALUE v) :
+    Expression(file_name, line_num, TypeFactory::Instance()->MakeType(FLOAT_TYPE)) {
       value = v;
     }
 
@@ -1144,8 +1144,8 @@ namespace frontend {
     Expression* if_expression;
     Expression* else_expression;
 
-    Cond(const wstring& file_name, int line_num, Expression* c, Expression* s,
-         Expression* e) : Expression(file_name, line_num) {
+  Cond(const wstring &file_name, int line_num, Expression* c, Expression* s, 
+       Expression* e) : Expression(file_name, line_num) {
       expression = c;
       if_expression = s;
       else_expression = e;
@@ -1183,7 +1183,7 @@ namespace frontend {
     friend class TreeFactory;
     Expression* expression;
 
-    Return(const wstring& file_name, int line_num, Expression* e) : Statement(file_name, line_num) {
+  Return(const wstring &file_name, int line_num, Expression* e) : Statement(file_name, line_num) {
       expression = e;
     }
 
@@ -1206,8 +1206,8 @@ namespace frontend {
   class Leaving : public Statement {
     friend class TreeFactory;
     StatementList* statements;
-
-    Leaving(const wstring& file_name, int line_num, StatementList* s) : Statement(file_name, line_num) {
+    
+  Leaving(const wstring &file_name, int line_num, StatementList* s) : Statement(file_name, line_num) {
       statements = s;
     }
 
@@ -1230,7 +1230,7 @@ namespace frontend {
   class Break : public Statement {
     friend class TreeFactory;
 
-    Break(const wstring& file_name, const int line_num) : Statement(file_name, line_num) {
+  Break(const wstring &file_name, const int line_num) : Statement(file_name, line_num) {
     }
 
     ~Break() {
@@ -1252,8 +1252,8 @@ namespace frontend {
     StatementList* else_statements;
     If* next;
 
-    If(const wstring& file_name, int line_num, Expression* e, StatementList* s, If* n = NULL) :
-      Statement(file_name, line_num) {
+  If(const wstring &file_name, int line_num, Expression* e, StatementList* s, If* n = NULL) :
+    Statement(file_name, line_num) {
       expression = e;
       if_statements = s;
       next = n;
@@ -1298,15 +1298,15 @@ namespace frontend {
     int id;
     Enum* eenum;
 
-    EnumItem(const wstring& file_name, int line_num, const wstring& n, Enum* e) : ParseNode(file_name, line_num) {
+  EnumItem(const wstring &file_name, int line_num, const wstring &n, Enum* e) : ParseNode(file_name, line_num) {
       name = n;
       id = -1;
       eenum = e;
     }
-
+    
     ~EnumItem() {
     }
-
+    
   public:
     const wstring GetName() const {
       return name;
@@ -1335,18 +1335,18 @@ namespace frontend {
     int index;
     map<const wstring, EnumItem*> items;
 
-    Enum(const wstring& file_name, int line_num, const wstring& n,
-         int o) : ParseNode(file_name, line_num) {
+  Enum(const wstring &file_name, int line_num, const wstring &n, 
+       int o) : ParseNode(file_name, line_num) {
       name = n;
       index = offset = o;
     }
 
-    Enum(const wstring& file_name, int line_num,
-         const wstring& n) : ParseNode(file_name, line_num) {
+  Enum(const wstring &file_name, int line_num, 
+       const wstring &n) : ParseNode(file_name, line_num) {
       name = n;
       index = offset = -1;
     }
-
+    
     ~Enum() {
     }
 
@@ -1355,12 +1355,12 @@ namespace frontend {
       if(GetItem(e->GetName())) {
         return false;
       }
-
+      
       e->SetId(index++);
       items.insert(pair<const wstring, EnumItem*>(e->GetName(), e));
       return true;
     }
-
+    
     bool AddItem(EnumItem* e, int value) {
       if(GetItem(e->GetName())) {
         return false;
@@ -1370,8 +1370,8 @@ namespace frontend {
       items.insert(pair<const wstring, EnumItem*>(e->GetName(), e));
       return true;
     }
-
-    EnumItem* GetItem(const wstring& i) {
+    
+    EnumItem* GetItem(const wstring &i) {
       map<const wstring, EnumItem*>::iterator result = items.find(i);
       if(result != items.end()) {
         return result->second;
@@ -1391,7 +1391,7 @@ namespace frontend {
     map<const wstring, EnumItem*> GetItems() {
       return items;
     }
-
+    
     bool IsConsts() {
       return offset < 0;
     }
@@ -1408,10 +1408,10 @@ namespace frontend {
     map<ExpressionList*, StatementList*> statement_map;
     StatementList* other;
 
-    Select(const wstring& file_name, int line_num, Assignment* e,
-           map<ExpressionList*, StatementList*> s,
-           vector<StatementList*> sl, StatementList* o) :
-      Statement(file_name, line_num) {
+  Select(const wstring &file_name, int line_num, Assignment* e,
+         map<ExpressionList*, StatementList*> s, 
+         vector<StatementList*> sl, StatementList* o) :
+    Statement(file_name, line_num) {
       eval_assignment = e;
       statement_map = s;
       statement_lists = sl;
@@ -1459,8 +1459,8 @@ namespace frontend {
     StatementList* statements;
 
   public:
-    CriticalSection(const wstring& file_name, int line_num, Variable* v,
-                    StatementList* s) : Statement(file_name, line_num) {
+  CriticalSection(const wstring &file_name, int line_num, Variable* v, 
+		  StatementList* s) : Statement(file_name, line_num) {
       variable = v;
       statements = s;
     }
@@ -1491,8 +1491,8 @@ namespace frontend {
     Statement* update_stmt;
     StatementList* statements;
 
-    For(const wstring& file_name, int line_num, Statement* pre, Expression* cond,
-        Statement* update, StatementList* stmts) : Statement(file_name, line_num) {
+  For(const wstring &file_name, int line_num, Statement* pre, Expression* cond,
+      Statement* update, StatementList* stmts) : Statement(file_name, line_num) {
       pre_stmt = pre;
       cond_expr = cond;
       update_stmt = update;
@@ -1532,8 +1532,8 @@ namespace frontend {
     Expression* expression;
     StatementList* statements;
 
-    DoWhile(const wstring& file_name, int line_num, Expression* e,
-            StatementList* s) : Statement(file_name, line_num) {
+  DoWhile(const wstring &file_name, int line_num, Expression* e, 
+	  StatementList* s) : Statement(file_name, line_num) {
       expression = e;
       statements = s;
     }
@@ -1563,8 +1563,8 @@ namespace frontend {
     Expression* expression;
     StatementList* statements;
 
-    While(const wstring& file_name, int line_num, Expression* e,
-          StatementList* s) : Statement(file_name, line_num) {
+  While(const wstring &file_name, int line_num, Expression* e, 
+	StatementList* s) : Statement(file_name, line_num) {
       expression = e;
       statements = s;
     }
@@ -1593,7 +1593,7 @@ namespace frontend {
     friend class TreeFactory;
     int id;
 
-    SystemStatement(const wstring& file_name, int line_num, int i) : Statement(file_name, line_num) {
+  SystemStatement(const wstring &file_name, int line_num, int i) : Statement(file_name, line_num) {
       id = i;
     }
 
@@ -1617,8 +1617,8 @@ namespace frontend {
     friend class TreeFactory;
     Expression* expression;
 
-    SimpleStatement(const wstring& file_name, int line_num, Expression* e) :
-      Statement(file_name, line_num) {
+  SimpleStatement(const wstring &file_name, int line_num, Expression* e) :
+    Statement(file_name, line_num) {
       expression = e;
     }
 
@@ -1642,12 +1642,12 @@ namespace frontend {
     friend class TreeFactory;
 
   public:
-    EmptyStatement(const wstring& file_name, const int line_num) : Statement(file_name, line_num) {
+  EmptyStatement(const wstring &file_name, const int line_num) : Statement(file_name, line_num) {
     }
-
+    
     ~EmptyStatement() {
     }
-
+      
     const StatementType GetStatementType() {
       return EMPTY_STMT;
     }
@@ -1663,15 +1663,15 @@ namespace frontend {
     Variable* variable;
     Expression* expression;
 
-    Assignment(const wstring& file_name, const int line_num, Assignment* c, Variable* v, Expression* e) :
-      Statement(file_name, line_num) {
+  Assignment(const wstring &file_name, const int line_num, Assignment* c, Variable* v, Expression* e) :
+    Statement(file_name, line_num) {
       child = c;
       variable = v;
       expression = e;
     }
 
-    Assignment(const wstring& file_name, const int line_num, Variable* v, Expression* e) :
-      Statement(file_name, line_num) {
+  Assignment(const wstring &file_name, const int line_num, Variable* v, Expression* e) :
+    Statement(file_name, line_num) {
       child = NULL;
       variable = v;
       expression = e;
@@ -1706,8 +1706,8 @@ namespace frontend {
     StatementType stmt_type;
     bool is_string_concat;
 
-    OperationAssignment(const wstring& file_name, int line_num, Variable* v, Expression* e, StatementType t) :
-      Assignment(file_name, line_num, v, e) {
+  OperationAssignment(const wstring &file_name, int line_num, Variable* v, Expression* e, StatementType t) : 
+    Assignment(file_name, line_num, v, e) {
       stmt_type = t;
       is_string_concat = false;
     }
@@ -1738,15 +1738,15 @@ namespace frontend {
     Assignment* assignment;
     Declaration* child;
 
-    Declaration(const wstring& file_name, int line_num, SymbolEntry* e, Declaration* c, Assignment* a) :
-      Statement(file_name, line_num) {
+  Declaration(const wstring &file_name, int line_num, SymbolEntry* e, Declaration* c, Assignment* a) :
+    Statement(file_name, line_num) {
       entry = e;
       child = c;
       assignment = a;
     }
 
-    Declaration(const wstring& file_name, int line_num, SymbolEntry* e, Declaration* c) :
-      Statement(file_name, line_num) {
+  Declaration(const wstring &file_name, int line_num, SymbolEntry* e, Declaration* c) :
+    Statement(file_name, line_num) {
       entry = e;
       child = c;
       assignment = NULL;
@@ -1827,8 +1827,8 @@ namespace frontend {
     SymbolTable* symbol_table;
     Class* klass;
 
-    Method(const wstring& file_name, int line_num, const wstring& n,
-           MethodType m, bool s, bool c) : ParseNode(file_name, line_num) {
+  Method(const wstring &file_name, int line_num, const wstring &n, 
+	 MethodType m, bool s, bool c) : ParseNode(file_name, line_num) {
       name = n;
       method_type = m;
       is_static = s;
@@ -1848,13 +1848,13 @@ namespace frontend {
     wstring EncodeType(Type* type, Class* klass, ParsedProgram* program, Linker* linker);
 
     wstring EncodeFunctionType(vector<Type*> func_params, Type* func_rtrn,
-                               Class* klass, ParsedProgram* program, Linker* linker);
+			       Class* klass, ParsedProgram* program, Linker* linker);
 
     wstring EncodeType(Type* type);
 
     wstring EncodeUserType(Type* type);
 
-    wstring ReplaceSubstring(wstring s, const wstring f, const wstring& r) {
+    wstring ReplaceSubstring(wstring s, const wstring f, const wstring &r) {
       const size_t index = s.find(f);
       if(index != string::npos) {
         s.replace(index, f.size(), r);
@@ -1862,7 +1862,7 @@ namespace frontend {
 
       return s;
     }
-
+    
   public:
     void SetId(int i) {
       id = i;
@@ -1937,7 +1937,7 @@ namespace frontend {
     Method* GetOriginal() {
       return original;
     }
-
+    
     bool IsStatic() {
       return is_static;
     }
@@ -1954,7 +1954,7 @@ namespace frontend {
       statements = s;
     }
 
-    void SetSymbolTable(SymbolTable* t) {
+    void SetSymbolTable(SymbolTable *t) {
       symbol_table = t;
     }
 
@@ -2013,11 +2013,11 @@ namespace frontend {
     Leaving* GetLeaving() {
       return leaving;
     }
-
+    
     void SetLeaving(Leaving* l) {
       leaving = l;
     }
-
+    
     void SetClass(Class* k) {
       klass = k;
     }
@@ -2054,8 +2054,8 @@ namespace frontend {
     vector<Class*> generic_classes;
     Type* generic_interface;
 
-    Class(const wstring& file_name, int line_num, const wstring& n, const wstring& p,
-          vector<wstring>& e, vector<Class*> g, bool i) : ParseNode(file_name, line_num) {
+  Class(const wstring &file_name, int line_num, const wstring &n, const wstring &p, 
+	vector<wstring> &e, vector<Class*> g, bool i) : ParseNode(file_name, line_num) {
       name = n;
       parent_name = p;
       is_interface = i;
@@ -2070,8 +2070,8 @@ namespace frontend {
       generic_interface = NULL;
     }
 
-    Class(const wstring& file_name, const int line_num, const wstring& n,
-          const wstring& p, vector<wstring>& e) : ParseNode(file_name, line_num) {
+  Class(const wstring &file_name, const int line_num, const wstring& n, 
+	const wstring& p, vector<wstring> &e) : ParseNode(file_name, line_num) {
       name = n;
       parent_name = p;
       is_interface = false;
@@ -2085,8 +2085,8 @@ namespace frontend {
       generic_interface = NULL;
     }
 
-    Class(const wstring& file_name, const int line_num, const wstring& n,
-          bool g) : ParseNode(file_name, line_num) {
+  Class(const wstring &file_name, const int line_num, const wstring& n, 
+	bool g) : ParseNode(file_name, line_num) {
       name = n;
       is_interface = true;
       id = -1;
@@ -2100,7 +2100,7 @@ namespace frontend {
     }
 
     ~Class() {
-    }
+    } 
 
   public:
     void SetId(int i) {
@@ -2119,7 +2119,7 @@ namespace frontend {
       return was_called;
     }
 
-    void SetGenericInterface(const wstring& n) {
+    void SetGenericInterface(const wstring &n) {
       generic_interface = TypeFactory::Instance()->MakeType(CLASS_TYPE, n);
     }
 
@@ -2134,7 +2134,7 @@ namespace frontend {
     vector<wstring> GetInterfaceNames() {
       return interface_names;
     }
-
+		
     const wstring GetName() const {
       return name;
     }
@@ -2147,24 +2147,24 @@ namespace frontend {
       parent_name = n;
     }
 
-    void SetSymbolTable(SymbolTable* t) {
+    void SetSymbolTable(SymbolTable *t) {
       symbol_table = t;
     }
 
     SymbolTable* GetSymbolTable() {
       return symbol_table;
     }
-
+    
     void SetAnonymousCall(MethodCall* c) {
       anonymous_call = c;
     }
-
+    
     MethodCall* GetAnonymousCall() {
       return anonymous_call;
     }
-
+    
     bool AddMethod(Method* m) {
-      const wstring& parsed_name = m->GetParsedName();
+      const wstring &parsed_name = m->GetParsedName();
       for(size_t i = 0; i < method_list.size(); ++i) {
         if(method_list[i]->GetParsedName() == parsed_name) {
           return false;
@@ -2192,11 +2192,11 @@ namespace frontend {
       return generic_classes.size() > 0;
     }
 
-    int GenericIndex(const wstring& n) {
+    int GenericIndex(const wstring &n) {
       for(size_t i = 0; i < generic_classes.size(); ++i) {
-        if(n == generic_classes[i]->GetName()) {
-          return (int)i;
-        }
+	if(n == generic_classes[i]->GetName()) {
+	  return (int)i;
+	}
       }
 
       return -1;
@@ -2210,13 +2210,13 @@ namespace frontend {
       vector<wstring> generic_strings;
 
       for(size_t i = 0; i < generic_classes.size(); ++i) {
-        Class* generic_class = generic_classes[i];
-        wstring generic_string = generic_class->GetName();
-        generic_string += L'|';
-        if(generic_class->HasGenericInterface()) {
-          generic_string += generic_class->GetGenericInterface()->GetClassName();
-        }
-        generic_strings.push_back(generic_string);
+	Class* generic_class = generic_classes[i];
+	wstring generic_string = generic_class->GetName();
+	generic_string += L'|';
+	if(generic_class->HasGenericInterface()) {
+	  generic_string += generic_class->GetGenericInterface()->GetClassName();
+	}
+	generic_strings.push_back(generic_string);
       }
 
       return generic_strings;
@@ -2225,7 +2225,7 @@ namespace frontend {
     Class* GetGenericClass(const wstring& n) {
       const int index = GenericIndex(n);
       if(index > -1) {
-        return generic_classes[index];
+	return generic_classes[index];
       }
 
       return NULL;
@@ -2247,7 +2247,7 @@ namespace frontend {
       return statements;
     }
 
-    Method* GetMethod(const wstring& n) {
+    Method* GetMethod(const wstring &n) {
       map<const wstring, Method*>::iterator result = methods.find(n);
       if(result != methods.end()) {
         return result->second;
@@ -2256,9 +2256,9 @@ namespace frontend {
       return NULL;
     }
 
-    vector<Method*> GetUnqualifiedMethods(const wstring& n) {
+    vector<Method*> GetUnqualifiedMethods(const wstring &n) {
       vector<Method*> results;
-      pair<multimap<const wstring, Method*>::iterator,
+      pair<multimap<const wstring, Method*>::iterator, 
         multimap<const wstring, Method*>::iterator> result;
       result = unqualified_methods.equal_range(n);
       multimap<const wstring, Method*>::iterator iter = result.first;
@@ -2269,7 +2269,7 @@ namespace frontend {
       return results;
     }
 
-    vector<Method*> GetAllUnqualifiedMethods(const wstring& n) {
+    vector<Method*> GetAllUnqualifiedMethods(const wstring &n) {
       if(n == L"New") {
         return GetUnqualifiedMethods(n);
       }
@@ -2336,12 +2336,12 @@ namespace frontend {
         methods.insert(pair<wstring, Method*>(method->GetEncodedName(), method));
 
         // add to unqualified names to list
-        const wstring& encoded_name = method->GetEncodedName();
+        const wstring &encoded_name = method->GetEncodedName();
         const size_t start = encoded_name.find(':');
         if(start != wstring::npos) {
           const size_t end = encoded_name.find(':', start + 1);
           if(end != wstring::npos) {
-            const wstring& unqualified_name = encoded_name.substr(start + 1, end - start - 1);
+            const wstring &unqualified_name = encoded_name.substr(start + 1, end - start - 1);
             unqualified_methods.insert(pair<wstring, Method*>(unqualified_name, method));
           }
         }
@@ -2375,10 +2375,10 @@ namespace frontend {
     SymbolEntry* dyn_func_entry;
     vector<Type*> concrete_types;
 
-    MethodCall(const wstring& file_name, const int line_num, MethodCallType t, const wstring& v, ExpressionList* e);
+    MethodCall(const wstring &file_name, const int line_num, MethodCallType t, const wstring& v, ExpressionList* e);
 
-    MethodCall(const wstring& file_name, int line_num, const wstring& v, const wstring& m,
-               ExpressionList* e) : Statement(file_name, line_num), Expression(file_name, line_num) {
+  MethodCall(const wstring &file_name, int line_num, const wstring &v, const wstring &m, 
+	     ExpressionList* e) : Statement(file_name, line_num), Expression(file_name, line_num) {
       variable_name = v;
       call_type = METHOD_CALL;
       method_name = m;
@@ -2398,8 +2398,8 @@ namespace frontend {
       anonymous_klass = NULL;
     }
 
-    MethodCall(const wstring& file_name, int line_num, const wstring& v,
-               const wstring& m) : Statement(file_name, line_num), Expression(file_name, line_num) {
+  MethodCall(const wstring &file_name, int line_num, const wstring &v, 
+	     const wstring &m) : Statement(file_name, line_num), Expression(file_name, line_num) {
       variable_name = v;
       call_type = ENUM_CALL;
       method_name = m;
@@ -2418,9 +2418,9 @@ namespace frontend {
       func_rtrn = NULL;
       anonymous_klass = NULL;
     }
-
-    MethodCall(const wstring& file_name, int line_num, Variable* v, const wstring& m,
-               ExpressionList* e) : Statement(file_name, line_num), Expression(file_name, line_num) {
+    
+  MethodCall(const wstring &file_name, int line_num, Variable* v, const wstring &m, 
+	     ExpressionList* e) : Statement(file_name, line_num), Expression(file_name, line_num) {
       variable = v;
       call_type = METHOD_CALL;
       method_name = m;
@@ -2521,8 +2521,8 @@ namespace frontend {
       return concrete_types.size() > 0;
     }
 
-    void SetConcreteTypes(vector<Type*>& c) {
-      concrete_types = c;
+    void SetConcreteTypes(vector<Type*> &c) {
+      concrete_types  = c;
     }
 
     const ExpressionType GetExpressionType() {
@@ -2537,7 +2537,7 @@ namespace frontend {
       return expressions;
     }
 
-    void SetEnumItem(EnumItem* i, const wstring& enum_name) {
+    void SetEnumItem(EnumItem* i, const wstring &enum_name) {
       enum_item = i;
       SetEvalType(TypeFactory::Instance()->MakeType(CLASS_TYPE, enum_name), false);
     }
@@ -2552,7 +2552,7 @@ namespace frontend {
       }
     }
 
-    void SetLibraryEnumItem(LibraryEnumItem* i, const wstring& enum_name) {
+    void SetLibraryEnumItem(LibraryEnumItem* i, const wstring &enum_name) {
       lib_enum_item = i;
       SetEvalType(TypeFactory::Instance()->MakeType(CLASS_TYPE, enum_name), false);
     }
@@ -2590,7 +2590,7 @@ namespace frontend {
     Class* GetAnonymousClass() {
       return anonymous_klass;
     }
-
+    
     void SetOriginalClass(Class* c) {
       original_klass = c;
     }
@@ -2703,34 +2703,34 @@ namespace frontend {
       instance = NULL;
     }
 
-    Enum* MakeEnum(const wstring& file_name, const int line_num, const wstring& name, int offset) {
+    Enum* MakeEnum(const wstring &file_name, const int line_num, const wstring &name, int offset) {
       Enum* tmp = new Enum(file_name, line_num, name, offset);
       nodes.push_back(tmp);
       return tmp;
     }
 
-    Enum* MakeEnum(const wstring& file_name, const int line_num, const wstring& name) {
+    Enum* MakeEnum(const wstring &file_name, const int line_num, const wstring &name) {
       Enum* tmp = new Enum(file_name, line_num, name);
       nodes.push_back(tmp);
       return tmp;
     }
-
-    EnumItem* MakeEnumItem(const wstring& file_name, const int line_num, const wstring& name, Enum* e) {
+    
+    EnumItem* MakeEnumItem(const wstring &file_name, const int line_num, const wstring &name, Enum* e) {
       EnumItem* tmp = new EnumItem(file_name, line_num, name, e);
       nodes.push_back(tmp);
       return tmp;
     }
 
-    Class* MakeClass(const wstring& file_name, const int line_num, const wstring& name,
-                     const wstring& parent_name, vector<wstring> interfaces,
-                     vector<Class*> generics, bool is_interface) {
+    Class* MakeClass(const wstring &file_name, const int line_num, const wstring &name, 
+		     const wstring &parent_name, vector<wstring> interfaces, 
+		     vector<Class*> generics, bool is_interface) {
       Class* tmp = new Class(file_name, line_num, name, parent_name, interfaces, generics, is_interface);
       nodes.push_back(tmp);
       return tmp;
     }
 
-    Class* MakeClass(const wstring& file_name, const int line_num, const wstring& name,
-                     const wstring& parent_name, vector<wstring> interfaces) {
+    Class* MakeClass(const wstring& file_name, const int line_num, const wstring& name, 
+		     const wstring& parent_name, vector<wstring> interfaces) {
       Class* tmp = new Class(file_name, line_num, name, parent_name, interfaces);
       nodes.push_back(tmp);
       return tmp;
@@ -2742,8 +2742,8 @@ namespace frontend {
       return tmp;
     }
 
-    Method* MakeMethod(const wstring& file_name, const int line_num, const wstring& name,
-                       MethodType type, bool is_function, bool is_native) {
+    Method* MakeMethod(const wstring &file_name, const int line_num, const wstring &name, 
+		       MethodType type, bool is_function, bool is_native) {
       Method* tmp = new Method(file_name, line_num, name, type, is_function, is_native);
       nodes.push_back(tmp);
       return tmp;
@@ -2767,49 +2767,49 @@ namespace frontend {
       return tmp;
     }
 
-    SystemStatement* MakeSystemStatement(const wstring& file_name, const int line_num, instructions::InstructionType instr) {
+    SystemStatement* MakeSystemStatement(const wstring &file_name, const int line_num, instructions::InstructionType instr) {
       SystemStatement* tmp = new SystemStatement(file_name, line_num, instr);
       statements.push_back(tmp);
       return tmp;
     }
 
-    SystemStatement* MakeSystemStatement(const wstring& file_name, const int line_num, instructions::Traps trap) {
+    SystemStatement* MakeSystemStatement(const wstring &file_name, const int line_num, instructions::Traps trap) {
       SystemStatement* tmp = new SystemStatement(file_name, line_num, trap);
       statements.push_back(tmp);
       return tmp;
     }
 
-    SimpleStatement* MakeSimpleStatement(const wstring& file_name, const int line_num, Expression* expression) {
+    SimpleStatement* MakeSimpleStatement(const wstring &file_name, const int line_num, Expression* expression) {
       SimpleStatement* tmp = new SimpleStatement(file_name, line_num, expression);
       statements.push_back(tmp);
       return tmp;
     }
 
-    EmptyStatement* MakeEmptyStatement(const wstring& file_name, const int line_num) {
-      EmptyStatement* tmp = new EmptyStatement(file_name, line_num);
+    EmptyStatement* MakeEmptyStatement(const wstring &file_name, const int line_num) {
+      EmptyStatement*  tmp = new EmptyStatement(file_name, line_num);
       statements.push_back(tmp);
       return tmp;
     }
-
-    Variable* MakeVariable(const wstring& file_name, int line_num, const wstring& name) {
+    
+    Variable* MakeVariable(const wstring &file_name, int line_num, const wstring &name) {
       Variable* tmp = new Variable(file_name, line_num, name);
       expressions.push_back(tmp);
       return tmp;
     }
 
-    Cond* MakeCond(const wstring& file_name, int line_num, Expression* c, Expression* s, Expression* e) {
+    Cond* MakeCond(const wstring &file_name, int line_num, Expression* c, Expression* s, Expression* e) {
       Cond* tmp = new Cond(file_name, line_num, c, s, e);
       expressions.push_back(tmp);
       return tmp;
     }
 
-    StaticArray* MakeStaticArray(const wstring& file_name, int line_num, ExpressionList* exprs) {
+    StaticArray* MakeStaticArray(const wstring &file_name, int line_num, ExpressionList* exprs) {
       StaticArray* tmp = new StaticArray(file_name, line_num, exprs);
       expressions.push_back(tmp);
       return tmp;
     }
 
-    Declaration* MakeDeclaration(const wstring& file_name, const int line_num, SymbolEntry* entry,
+    Declaration* MakeDeclaration(const wstring &file_name, const int line_num, SymbolEntry* entry, 
                                  Declaration* child, Assignment* assign) {
       Declaration* tmp = new Declaration(file_name, line_num, entry, child, assign);
       statements.push_back(tmp);
@@ -2822,128 +2822,128 @@ namespace frontend {
       return tmp;
     }
 
-    Declaration* MakeDeclaration(const wstring& file_name, const int line_num, SymbolEntry* entry, Declaration* child) {
+    Declaration* MakeDeclaration(const wstring &file_name, const int line_num, SymbolEntry* entry, Declaration* child) {
       Declaration* tmp = new Declaration(file_name, line_num, entry, child);
       statements.push_back(tmp);
       return tmp;
     }
 
-    CalculatedExpression* MakeCalculatedExpression(const wstring& file_name, int line_num,
+    CalculatedExpression* MakeCalculatedExpression(const wstring& file_name, int line_num, 
                                                    ExpressionType type, Expression* lhs, Expression* rhs) {
       CalculatedExpression* tmp = new CalculatedExpression(file_name, line_num, type, lhs, rhs);
       expressions.push_back(tmp);
       return tmp;
     }
 
-    CalculatedExpression* MakeCalculatedExpression(const wstring& file_name, int line_num, ExpressionType type) {
+    CalculatedExpression* MakeCalculatedExpression(const wstring &file_name, int line_num, ExpressionType type) {
       CalculatedExpression* tmp = new CalculatedExpression(file_name, line_num, type);
       expressions.push_back(tmp);
       return tmp;
     }
 
-    IntegerLiteral* MakeIntegerLiteral(const wstring& file_name, const int line_num, INT_VALUE value) {
+    IntegerLiteral* MakeIntegerLiteral(const wstring &file_name, const int line_num, INT_VALUE value) {
       IntegerLiteral* tmp = new IntegerLiteral(file_name, line_num, value);
       expressions.push_back(tmp);
       return tmp;
     }
 
-    FloatLiteral* MakeFloatLiteral(const wstring& file_name, const int line_num, FLOAT_VALUE value) {
+    FloatLiteral* MakeFloatLiteral(const wstring &file_name, const int line_num, FLOAT_VALUE value) {
       FloatLiteral* tmp = new FloatLiteral(file_name, line_num, value);
       expressions.push_back(tmp);
       return tmp;
     }
 
-    CharacterLiteral* MakeCharacterLiteral(const wstring& file_name, const int line_num, wchar_t value) {
+    CharacterLiteral* MakeCharacterLiteral(const wstring &file_name, const int line_num, wchar_t value) {
       CharacterLiteral* tmp = new CharacterLiteral(file_name, line_num, value);
       expressions.push_back(tmp);
       return tmp;
     }
 
-    CharacterString* MakeCharacterString(const wstring& file_name, const int line_num, const wstring& char_string) {
+    CharacterString* MakeCharacterString(const wstring &file_name, const int line_num, const wstring &char_string) {
       CharacterString* tmp = new CharacterString(file_name, line_num, char_string);
       expressions.push_back(tmp);
       return tmp;
     }
 
-    NilLiteral* MakeNilLiteral(const wstring& file_name, const int line_num) {
+    NilLiteral* MakeNilLiteral(const wstring &file_name, const int line_num) {
       NilLiteral* tmp = new NilLiteral(file_name, line_num);
       expressions.push_back(tmp);
       return tmp;
     }
 
-    BooleanLiteral* MakeBooleanLiteral(const wstring& file_name, const int line_num, bool boolean) {
+    BooleanLiteral* MakeBooleanLiteral(const wstring &file_name, const int line_num, bool boolean) {
       BooleanLiteral* tmp = new BooleanLiteral(file_name, line_num, boolean);
       expressions.push_back(tmp);
       return tmp;
     }
 
-    MethodCall* MakeMethodCall(const wstring& file_name, const int line_num, MethodCallType type,
-                               const wstring& value, ExpressionList* exprs) {
+    MethodCall* MakeMethodCall(const wstring &file_name, const int line_num, MethodCallType type,
+                               const wstring &value, ExpressionList* exprs) {
       MethodCall* tmp = new MethodCall(file_name, line_num, type, value, exprs);
       calls.push_back(tmp);
       return tmp;
     }
 
-    MethodCall* MakeMethodCall(const wstring& file_name, int line_num, const wstring& v, const wstring& m, ExpressionList* e) {
+    MethodCall* MakeMethodCall(const wstring &file_name, int line_num, const wstring &v, const wstring &m, ExpressionList* e) {
       MethodCall* tmp = new MethodCall(file_name, line_num, v, m, e);
       calls.push_back(tmp);
       return tmp;
     }
 
-    MethodCall* MakeMethodCall(const wstring& file_name, int line_num, const wstring& v, const wstring& m) {
+    MethodCall* MakeMethodCall(const wstring &file_name, int line_num, const wstring &v, const wstring &m) {
       MethodCall* tmp = new MethodCall(file_name, line_num, v, m);
       calls.push_back(tmp);
       return tmp;
     }
 
-    MethodCall* MakeMethodCall(const wstring& file_name, int line_num, Variable* v, const wstring& m, ExpressionList* e) {
+    MethodCall* MakeMethodCall(const wstring &file_name, int line_num, Variable* v, const wstring &m, ExpressionList* e) {
       MethodCall* tmp = new MethodCall(file_name, line_num, v, m, e);
       calls.push_back(tmp);
       return tmp;
     }
 
-    If* MakeIf(const wstring& file_name, const int line_num, Expression* expression,
+    If* MakeIf(const wstring &file_name, const int line_num, Expression* expression,
                StatementList* if_statements, If* next = NULL) {
       If* tmp = new If(file_name, line_num, expression, if_statements, next);
       statements.push_back(tmp);
       return tmp;
     }
 
-    Break* MakeBreak(const wstring& file_name, const int line_num) {
+    Break* MakeBreak(const wstring &file_name, const int line_num) {
       Break* tmp = new Break(file_name, line_num);
       statements.push_back(tmp);
       return tmp;
     }
 
-    DoWhile* MakeDoWhile(const wstring& file_name, const int line_num,
+    DoWhile* MakeDoWhile(const wstring &file_name, const int line_num,
                          Expression* expression, StatementList* stmts) {
       DoWhile* tmp = new DoWhile(file_name, line_num, expression, stmts);
       statements.push_back(tmp);
       return tmp;
     }
 
-    While* MakeWhile(const wstring& file_name, const int line_num,
+    While* MakeWhile(const wstring &file_name, const int line_num,
                      Expression* expression, StatementList* stmts) {
       While* tmp = new While(file_name, line_num, expression, stmts);
       statements.push_back(tmp);
       return tmp;
     }
 
-    For* MakeFor(const wstring& file_name, const int line_num, Statement* pre_stmt, Expression* cond_expr,
+    For* MakeFor(const wstring &file_name, const int line_num, Statement* pre_stmt, Expression* cond_expr,
                  Statement* update_stmt, StatementList* stmts) {
       For* tmp = new For(file_name, line_num, pre_stmt, cond_expr, update_stmt, stmts);
       statements.push_back(tmp);
       return tmp;
     }
 
-    CriticalSection* MakeCriticalSection(const wstring& file_name, const int line_num, Variable* var, StatementList* stmts) {
+    CriticalSection* MakeCriticalSection(const wstring &file_name, const int line_num, Variable* var, StatementList* stmts) {
       CriticalSection* tmp = new CriticalSection(file_name, line_num, var, stmts);
       statements.push_back(tmp);
       return tmp;
     }
 
-    Select* MakeSelect(const wstring& file_name, const int line_num, Assignment* eval_assignment,
-                       map<ExpressionList*, StatementList*> statement_map,
+    Select* MakeSelect(const wstring &file_name, const int line_num, Assignment* eval_assignment,
+                       map<ExpressionList*, StatementList*> statement_map, 
                        vector<StatementList*> statement_lists, StatementList* other) {
       Select* tmp = new Select(file_name, line_num, eval_assignment,
                                statement_map, statement_lists, other);
@@ -2951,18 +2951,18 @@ namespace frontend {
       return tmp;
     }
 
-    Return* MakeReturn(const wstring& file_name, const int line_num, Expression* expression) {
+    Return* MakeReturn(const wstring &file_name, const int line_num, Expression* expression) {
       Return* tmp = new Return(file_name, line_num, expression);
       statements.push_back(tmp);
       return tmp;
     }
-
-    Leaving* MakeLeaving(const wstring& file_name, const int line_num, StatementList* stmts) {
+    
+    Leaving* MakeLeaving(const wstring &file_name, const int line_num, StatementList* stmts) {
       Leaving* tmp = new Leaving(file_name, line_num, stmts);
       statements.push_back(tmp);
       return tmp;
     }
-
+    
     Assignment* MakeAssignment(const wstring& file_name, const int line_num,
                                Assignment* child, Variable* variable, Expression* expression) {
       Assignment* tmp = new Assignment(file_name, line_num, child, variable, expression);
@@ -2970,24 +2970,24 @@ namespace frontend {
       return tmp;
     }
 
-    Assignment* MakeAssignment(const wstring& file_name, const int line_num,
+    Assignment* MakeAssignment(const wstring &file_name, const int line_num,
                                Variable* variable, Expression* expression) {
       Assignment* tmp = new Assignment(file_name, line_num, variable, expression);
       statements.push_back(tmp);
       return tmp;
     }
 
-    OperationAssignment* MakeOperationAssignment(const wstring& file_name, const int line_num,
-                                                 Variable* variable, Expression* expression,
+    OperationAssignment* MakeOperationAssignment(const wstring &file_name, const int line_num,
+                                                 Variable* variable, Expression* expression, 
                                                  StatementType stmt_type) {
-      OperationAssignment* tmp = new OperationAssignment(file_name, line_num, variable,
+      OperationAssignment* tmp = new OperationAssignment(file_name, line_num, variable, 
                                                          expression, stmt_type);
       statements.push_back(tmp);
       return tmp;
     }
 
-    SymbolEntry* MakeSymbolEntry(const wstring& file_name, const int line_num,
-                                 const wstring& n, Type* t, bool s, bool c, bool e = false) {
+    SymbolEntry* MakeSymbolEntry(const wstring& file_name, const int line_num, 
+				 const wstring &n, Type* t, bool s, bool c, bool e = false) {
       SymbolEntry* tmp = new SymbolEntry(file_name, line_num, n, t, s, c, e);
       entries.push_back(tmp);
       return tmp;
@@ -3006,7 +3006,7 @@ namespace frontend {
     vector<Class*> class_list;
 
   public:
-    ParsedBundle(wstring& n, SymbolTableManager* t) {
+    ParsedBundle(wstring &n, SymbolTableManager *t) {
       name = n;
       symbol_table = t;
     }
@@ -3025,7 +3025,7 @@ namespace frontend {
       enum_list.push_back(e);
     }
 
-    Enum* GetEnum(const wstring& e) {
+    Enum* GetEnum(const wstring &e) {
       unordered_map<wstring, Enum*>::iterator result = enums.find(e);
       if(result != enums.end()) {
         return result->second;
@@ -3039,7 +3039,7 @@ namespace frontend {
       class_list.push_back(cls);
     }
 
-    Class* GetClass(const wstring& n) {
+    Class* GetClass(const wstring &n) {
       unordered_map<wstring, Class*>::iterator result = classes.find(n);
       if(result != classes.end()) {
         return result->second;
@@ -3085,7 +3085,7 @@ namespace frontend {
 
     map<wstring, int> char_string_ids;
     vector<wstring> char_strings;
-
+    
     map<wstring, vector<wstring> > file_uses;
     vector<wstring> uses;
     vector<ParsedBundle*> bundles;
@@ -3138,22 +3138,22 @@ namespace frontend {
       TreeFactory::Instance()->Clear();
       TypeFactory::Instance()->Clear();
     }
-
+    
     wstring GetFileName() const {
       if(file_uses.size() > 0) {
         return file_uses.begin()->first;
       }
-
+      
       return L"unknown";
     }
 
-    void AddUse(wstring u, const wstring& f) {
+    void AddUse(wstring u, const wstring &f) {
       vector<wstring> uses;
       uses.push_back(u);
       AddUses(uses, f);
     }
 
-    void AddUses(vector<wstring>& u, const wstring& f) {
+    void AddUses(vector<wstring> &u, const wstring &f) {
       for(size_t i = 0; i < u.size(); ++i) {
         vector<wstring>::iterator found = find(uses.begin(), uses.end(), u[i]);
         if(found == uses.end()) {
@@ -3163,7 +3163,7 @@ namespace frontend {
       file_uses[f] = u;
     }
 
-    bool HasBundleName(const wstring& name) {
+    bool HasBundleName(const wstring &name) {
       if(name.back() != L'#') {
         vector<wstring>::iterator found = find(bundle_names.begin(), bundle_names.end(), name);
         return found != bundle_names.end();
@@ -3176,7 +3176,7 @@ namespace frontend {
       return uses;
     }
 
-    const vector<wstring> GetUses(const wstring& f) {
+    const vector<wstring> GetUses(const wstring &f) {
       return file_uses[f];
     }
 
@@ -3189,7 +3189,7 @@ namespace frontend {
       return bundles;
     }
 
-    void AddIntString(vector<Expression*>& int_elements, int id) {
+    void AddIntString(vector<Expression*> &int_elements, int id) {
       INT_VALUE* int_array = new INT_VALUE[int_elements.size()];
       for(size_t i = 0; i < int_elements.size(); ++i) {
         int_array[i] = static_cast<IntegerLiteral*>(int_elements[i])->GetValue();
@@ -3203,7 +3203,7 @@ namespace frontend {
       int_strings.push_back(holder);
     }
 
-    int GetIntStringId(vector<Expression*>& int_elements) {
+    int GetIntStringId(vector<Expression*> &int_elements) {
       INT_VALUE* int_array = new INT_VALUE[int_elements.size()];
       for(size_t i = 0; i < int_elements.size(); ++i) {
         int_array[i] = static_cast<IntegerLiteral*>(int_elements[i])->GetValue();
@@ -3216,7 +3216,7 @@ namespace frontend {
       map<IntStringHolder*, int, int_string_comp>::iterator result = int_string_ids.find(holder);
       if(result != int_string_ids.end()) {
         delete[] holder->value;
-        holder->value = NULL;
+        holder->value = NULL;  
         delete holder;
         holder = NULL;
 
@@ -3235,7 +3235,7 @@ namespace frontend {
       return int_strings;
     }
 
-    void AddFloatString(vector<Expression*>& float_elements, int id) {
+    void AddFloatString(vector<Expression*> &float_elements, int id) {
       FLOAT_VALUE* float_array = new FLOAT_VALUE[float_elements.size()];
       for(size_t i = 0; i < float_elements.size(); ++i) {
         float_array[i] = static_cast<FloatLiteral*>(float_elements[i])->GetValue();
@@ -3249,7 +3249,7 @@ namespace frontend {
       float_strings.push_back(holder);
     }
 
-    int GetFloatStringId(vector<Expression*>& float_elements) {
+    int GetFloatStringId(vector<Expression*> &float_elements) {
       FLOAT_VALUE* float_array = new FLOAT_VALUE[float_elements.size()];
       for(size_t i = 0; i < float_elements.size(); ++i) {
         float_array[i] = static_cast<FloatLiteral*>(float_elements[i])->GetValue();
@@ -3262,7 +3262,7 @@ namespace frontend {
       map<FloatStringHolder*, int, float_string_comp>::iterator result = float_string_ids.find(holder);
       if(result != float_string_ids.end()) {
         delete[] holder->value;
-        holder->value = NULL;
+        holder->value = NULL;  
         delete holder;
         holder = NULL;
 
@@ -3270,7 +3270,7 @@ namespace frontend {
       }
 
       delete[] holder->value;
-      holder->value = NULL;
+      holder->value = NULL;    
       delete holder;
       holder = NULL;
 
@@ -3281,12 +3281,12 @@ namespace frontend {
       return float_strings;
     }
 
-    void AddCharString(const wstring& s, int id) {
+    void AddCharString(const wstring &s, int id) {
       char_string_ids.insert(pair<wstring, int>(s, id));
       char_strings.push_back(s);
     }
 
-    int GetCharStringId(const wstring& s) {
+    int GetCharStringId(const wstring &s) {
       map<wstring, int>::iterator result = char_string_ids.find(s);
       if(result != char_string_ids.end()) {
         return result->second;
@@ -3299,7 +3299,7 @@ namespace frontend {
       return char_strings;
     }
 
-    Class* GetClass(const wstring& n) {
+    Class* GetClass(const wstring &n) {
       for(size_t i = 0; i < bundles.size(); ++i) {
         Class* klass = bundles[i]->GetClass(n);
         if(klass) {
@@ -3310,7 +3310,7 @@ namespace frontend {
       return NULL;
     }
 
-    Enum* GetEnum(const wstring& n) {
+    Enum* GetEnum(const wstring &n) {
       for(size_t i = 0; i < bundles.size(); ++i) {
         Enum* e = bundles[i]->GetEnum(n);
         if(e) {

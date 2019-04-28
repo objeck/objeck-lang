@@ -409,6 +409,10 @@ void ContextAnalyzer::AnalyzeClass(Class * klass, const int id, const int depth)
     ProcessError(klass, L"Class '" + klass->GetName() + L"' defined in shared libraries");
   }
 
+  if(HasGenericClass(klass->GetName())) {
+    ProcessError(klass, L"Class '" + klass->GetName() + L"' defined as generic class reference");
+  }
+
   // check parent class
   Class* parent_klass = klass->GetParent();
   if(parent_klass && (parent_klass->IsInterface() || parent_klass->HasGenerics())) {

@@ -1278,8 +1278,8 @@ class Linker {
     if(all_classes_map.empty()) {
       vector<LibraryClass*> klasses = GetAllClasses();
       for(size_t i = 0; i < klasses.size(); ++i) {
-	LibraryClass* klass = klasses[i];
-	all_classes_map[klass->GetName()] = klass;
+        LibraryClass* klass = klasses[i];
+        all_classes_map[klass->GetName()] = klass;
       }
     }
 
@@ -1291,10 +1291,10 @@ class Linker {
     if(all_classes.empty()) {
       map<const wstring, Library*>::iterator iter;
       for(iter = libraries.begin(); iter != libraries.end(); ++iter) {
-	vector<LibraryClass*> classes = iter->second->GetClasses();
-	for(size_t i = 0; i < classes.size(); ++i) {
-	  all_classes.push_back(classes[i]);
-	}
+        vector<LibraryClass*> classes = iter->second->GetClasses();
+        for(size_t i = 0; i < classes.size(); ++i) {
+          all_classes.push_back(classes[i]);
+        }
       }
     }
 
