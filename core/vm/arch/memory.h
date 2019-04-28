@@ -177,7 +177,7 @@ class MemoryManager {
     DeleteCriticalSection(&marked_lock);
     DeleteCriticalSection(&marked_sweep_lock);
 #endif
-    	
+      
     initialized = false;
   }
   

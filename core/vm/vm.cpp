@@ -91,7 +91,7 @@ int Execute(const int argc, const char* argv[])
       } 
     }
     
-		Runtime::StackInterpreter::Clear();
+    Runtime::StackInterpreter::Clear();
     MemoryManager::Clear();    
 #endif
     

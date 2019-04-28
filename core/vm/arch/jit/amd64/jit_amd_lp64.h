@@ -174,7 +174,7 @@ namespace Runtime {
     long operand;
 #ifdef _WIN64
     size_t operand2;
-#endif	
+#endif  
     RegisterHolder* holder;
     StackInstr* instr;
 
@@ -192,11 +192,11 @@ namespace Runtime {
 
     RegInstr(StackInstr* si, double* da) {
       type = IMM_FLOAT;
-#ifdef _WIN64	  
+#ifdef _WIN64    
       operand2 = (size_t)da;
 #else
       operand = (long)da;
-#endif	  
+#endif    
       holder = NULL;
       instr = NULL;
     }
@@ -288,7 +288,7 @@ namespace Runtime {
     size_t GetOperand2() {
       return operand2;
     }
-#endif	
+#endif  
   };
 
   /********************************
@@ -306,8 +306,8 @@ namespace Runtime {
         factor = size / PAGE_SIZE + 1;
       }
       available = factor * PAGE_SIZE;
-	  
-#ifdef _WIN64	  
+    
+#ifdef _WIN64    
       buffer = (unsigned char*)VirtualAlloc(NULL, available, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
       if(!buffer) {
         wcerr << L"Unable to allocate JIT memory!" << endl;
@@ -322,14 +322,14 @@ namespace Runtime {
         wcerr << L"Unable to mprotect" << endl;
         exit(1);
       }
-#endif	  
+#endif    
     }
 
     PageHolder() {
       index = 0;
       available = PAGE_SIZE;
-	  
-#ifdef _WIN64	  
+    
+#ifdef _WIN64    
       buffer = (unsigned char*)VirtualAlloc(NULL, PAGE_SIZE, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
       if(!buffer) {
         wcerr << L"Unable to allocate JIT memory!" << endl;
@@ -345,15 +345,15 @@ namespace Runtime {
         wcerr << L"Unable to mprotect" << endl;
         exit(1);
       }
-#endif	  
+#endif    
     }
 
     ~PageHolder() {
-#ifdef _WIN64	
+#ifdef _WIN64  
       VirtualFree(buffer, NULL, MEM_RELEASE);
 #else
       munmap(buffer, PAGE_SIZE);
-#endif	  
+#endif    
       buffer = NULL;
     }
 
@@ -531,21 +531,21 @@ namespace Runtime {
      * Encodes and writes out 64-bit
      * integer values
      ********************************/
-#ifdef _WIN64	 
+#ifdef _WIN64   
     inline void AddImm64(size_t imm) {
       unsigned char buffer[sizeof(size_t)];
       ByteEncode64(buffer, imm);
       for(int i = 0; i < sizeof(size_t); ++i) {
         AddMachineCode(buffer[i]);
       }
-	}  
+  }  
 #else
     inline void AddImm64(long imm) {
       unsigned char buffer[sizeof(long)];
       ByteEncode64(buffer, imm);
       for(size_t i = 0; i < sizeof(long); ++i) {
         AddMachineCode(buffer[i]);
-      }	  
+      }    
     }
 #endif
 
@@ -900,10 +900,10 @@ namespace Runtime {
       memcpy(buffer, &value, sizeof(size_t));
     }
 #else
-	inline void ByteEncode64(unsigned char buffer[], long value) {
+  inline void ByteEncode64(unsigned char buffer[], long value) {
       memcpy(buffer, &value, sizeof(long));
     }
-#endif	  	
+#endif      
 
     /********************************
      * Encodes an array with the
@@ -999,7 +999,7 @@ namespace Runtime {
       AddImm(0);
       // jump to exit
     }
-	
+  
     /***********************************
      * Checks array bounds
      **********************************/
@@ -1149,11 +1149,11 @@ namespace Runtime {
     void move_mem_reg32(int32_t offset, Register src, Register dest);
     void move_imm_memx(RegInstr* instr, long offset, Register dest);
     void move_imm_mem(long imm, long offset, Register dest);
-#ifdef _WIN64	
+#ifdef _WIN64  
     void move_imm_reg(size_t imm, Register reg);
 #else
     void move_imm_reg(long imm, Register reg);
-#endif	
+#endif  
     void move_imm_xreg(RegInstr* instr, Register reg);
     void move_mem_xreg(long offset, Register src, Register dest);
     void move_xreg_mem(Register src, long offset, Register dest);
@@ -1447,7 +1447,7 @@ namespace Runtime {
           long to_id = instr->GetOperand();
 #ifdef _DEBUG
           wcout << L"jit oper: OBJ_INST_CAST: from=" << mem << L", to=" << to_id << endl;
-#endif	
+#endif  
           size_t result = (size_t)MemoryManager::ValidObjectCast(mem, to_id, program->GetHierarchy(), program->GetInterfaces());
           if(!result && mem) {
             StackClass* to_cls = MemoryManager::GetClass(mem);
@@ -1483,16 +1483,16 @@ namespace Runtime {
           wcerr << L"Unable to join thread!" << endl;
           exit(-1);
         }
-#endif		  
+#endif      
         }
         break;
 
         case THREAD_SLEEP:
-#ifdef _WIN64		
+#ifdef _WIN64    
           Sleep((DWORD)PopInt(op_stack, stack_pos));
 #else
           usleep(PopInt(op_stack, stack_pos));
-#endif		  
+#endif      
           break;
 
         case THREAD_MUTEX: {
@@ -1502,11 +1502,11 @@ namespace Runtime {
             wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
             exit(1);
           }
-#ifdef _WIN64		  
+#ifdef _WIN64      
           InitializeCriticalSection((CRITICAL_SECTION*)&instance[1]);
 #else
           pthread_mutex_init((pthread_mutex_t*)&instance[1], NULL);
-#endif	  
+#endif    
         }
         break;
 
@@ -1517,11 +1517,11 @@ namespace Runtime {
             wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
             exit(1);
           }
-#ifdef _WIN64		  
+#ifdef _WIN64      
           EnterCriticalSection((CRITICAL_SECTION*)&instance[1]);
 #else
           pthread_mutex_lock((pthread_mutex_t*)&instance[1]);
-#endif		  
+#endif      
         }
         break;
 
@@ -1532,11 +1532,11 @@ namespace Runtime {
             wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
             exit(1);
           }
-#ifdef _WIN64		  
+#ifdef _WIN64      
           LeaveCriticalSection((CRITICAL_SECTION*)&instance[1]);
 #else
           pthread_mutex_unlock((pthread_mutex_t*)&instance[1]);
-#endif		  
+#endif      
         }
         break;
 
@@ -1772,11 +1772,11 @@ namespace Runtime {
 
       // bounds check
       RegisterHolder* bounds_holder = GetRegister();
-#ifdef _WIN64	  
+#ifdef _WIN64    
       move_mem_reg32(0, array_holder->GetRegister(), bounds_holder->GetRegister());
 #else
       move_mem_reg(0, array_holder->GetRegister(), bounds_holder->GetRegister()); 
-#endif	  
+#endif    
 
       // ajust indices
       switch(type) {
@@ -1784,13 +1784,13 @@ namespace Runtime {
           break;
 
         case CHAR_ARY_TYPE:
-#ifdef _WIN64		
+#ifdef _WIN64    
           shl_imm_reg(1, index_holder->GetRegister());
           shl_imm_reg(1, bounds_holder->GetRegister());
 #else
           shl_imm_reg(2, index_holder->GetRegister());
           shl_imm_reg(2, bounds_holder->GetRegister());
-#endif		  
+#endif      
           break;
 
         case INT_TYPE:
@@ -1986,7 +1986,7 @@ namespace Runtime {
         wcout << L"---------- Compiling Native Code: method_id=" << cls_id << L","
           << mthd_id << L"; mthd_name='" << method->GetName() << L"'; params="
           << method->GetParamCount() << L" ----------" << endl;
-#endif	
+#endif  
         // code buffer memory
         code_buf_max = BUFFER_SIZE;
         code = (unsigned char*)malloc(code_buf_max);
@@ -2004,7 +2004,7 @@ namespace Runtime {
           wcerr << L"Unable to reallocate JIT memory!" << endl;
           exit(1);
         }
-#endif		
+#endif    
         floats_index = instr_index = code_index = epilog_index = instr_count = 0;
 
         rax_reg = new RegisterHolder(RAX);
@@ -2063,7 +2063,7 @@ namespace Runtime {
         Prolog();
 
         // method information
-#ifdef _WIN64		
+#ifdef _WIN64    
         move_reg_mem(RCX, CLS_ID, RBP);
         move_reg_mem(RDX, MTHD_ID, RBP);
         move_reg_mem(R8, CLASS_MEM, RBP);

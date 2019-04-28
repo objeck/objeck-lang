@@ -2519,7 +2519,7 @@ bool TrapProcessor::SockTcpClose(StackProgram* program, size_t* inst, size_t* &o
     SOCKET sock = (SOCKET)instance[0];
 #ifdef _DEBUG
     wcout << L"# socket close: addr=" << sock << L"(" << (long)sock << L") #" << endl;
-#endif	
+#endif  
     instance[0] = 0;
     IPSocket::Close(sock);
   }
@@ -2538,7 +2538,7 @@ bool TrapProcessor::SockTcpOutString(StackProgram* program, size_t* inst, size_t
 #ifdef _DEBUG
     wcout << L"# socket write string: instance=" << instance << L"(" << (size_t)instance << L")"
       << L"; array=" << array << L"(" << (size_t)array << L")" << L"; data=" << wdata << endl;
-#endif	      
+#endif        
     if((long)sock > -1) {
       const string data = UnicodeToBytes(wdata);
       IPSocket::WriteBytes(data.c_str(), (int)data.size(), sock);

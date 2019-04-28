@@ -41,12 +41,12 @@ using namespace std;
 
 // function declaration for native C++ callbacks
 typedef void(*APITools_MethodCall_Ptr) (size_t* op_stack, long *stack_pos, size_t* instance, 
-					const wchar_t* cls_name, const wchar_t* mthd_name);
+          const wchar_t* cls_name, const wchar_t* mthd_name);
 typedef void(*APITools_MethodCallId_Ptr) (size_t* op_stack, long *stack_pos, size_t* instance,
-					const int cls_id, const int mthd_id);
+          const int cls_id, const int mthd_id);
 typedef size_t*(*APITools_AllocateObject_Ptr) (const wchar_t*, size_t* op_stack, long stack_pos, bool collect);
 typedef size_t*(*APITools_AllocateArray_Ptr) (const long size, const instructions::MemoryType type,
-					    size_t* op_stack, long stack_pos, bool collect);
+              size_t* op_stack, long stack_pos, bool collect);
 // context structure
 struct VMContext {
   size_t* data_array;
@@ -187,10 +187,10 @@ size_t* APITools_MakeByteArray(VMContext &context, const long char_array_size) {
   // create character array
   const long char_array_dim = 1;
   size_t* char_array = (size_t*)context.alloc_array(char_array_size + 1 +
-						((char_array_dim + 2) *
-						 sizeof(size_t)),
-						BYTE_ARY_TYPE,
-						context.op_stack, *context.stack_pos, false);
+            ((char_array_dim + 2) *
+             sizeof(size_t)),
+            BYTE_ARY_TYPE,
+            context.op_stack, *context.stack_pos, false);
   char_array[0] = char_array_size + 1;
   char_array[1] = char_array_dim;
   char_array[2] = char_array_size;
@@ -202,10 +202,10 @@ size_t* APITools_MakeCharArray(VMContext &context, const long char_array_size) {
   // create character array
   const long char_array_dim = 1;
   size_t* char_array = (size_t*)context.alloc_array(char_array_size + 1 +
-						((char_array_dim + 2) *
-						 sizeof(size_t)),
-						CHAR_ARY_TYPE,
-						context.op_stack, *context.stack_pos, false);
+            ((char_array_dim + 2) *
+             sizeof(size_t)),
+            CHAR_ARY_TYPE,
+            context.op_stack, *context.stack_pos, false);
   char_array[0] = char_array_size + 1;
   char_array[1] = char_array_dim;
   char_array[2] = char_array_size;
@@ -301,7 +301,7 @@ double APITools_GetFloatValue(VMContext &context, int index) {
 
 #ifdef _DEBUG
     assert(float_holder);
-#endif		
+#endif    
     double value;
     memcpy(&value, float_holder, sizeof(value));
     return value;
@@ -319,7 +319,7 @@ size_t* APITools_GetFloatAddress(VMContext &context, int index) {
 
 #ifdef _DEBUG
     assert(float_holder);
-#endif		
+#endif    
     return float_holder;
   }
 

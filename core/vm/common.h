@@ -570,7 +570,7 @@ class StackMethod {
         if(dclr_name == name) {
           found.name = dclr->name;
           found.type = dclr->type;
-          found.id = index;	  
+          found.id = index;    
           return true;
         }
 
@@ -739,8 +739,8 @@ class StackClass {
 
  public:
   StackClass(long i, const wstring &ne, const wstring &fn, long p, 
-	     bool v, StackDclr** cdclr, long cn, StackDclr** idclr, long in, 
-	     long cs, long is, bool b) {
+       bool v, StackDclr** cdclr, long cn, StackDclr** idclr, long in, 
+       long cs, long is, bool b) {
     id = i;
     name = ne;
     file_name = fn;
@@ -1173,13 +1173,13 @@ class StackProgram {
       }
     }
 #else
-		ssize_t status = 0;
+    ssize_t status = 0;
     char install_path[SMALL_BUFFER_MAX];
 #ifdef _OSX
-		uint32_t size = SMALL_BUFFER_MAX;
-		if(_NSGetExecutablePath(install_path, &size) != 0) {
-			status = -1;
-		}
+    uint32_t size = SMALL_BUFFER_MAX;
+    if(_NSGetExecutablePath(install_path, &size) != 0) {
+      status = -1;
+    }
 #else
     status = ::readlink("/proc/self/exe", install_path, sizeof(install_path) - 1);
 #endif
@@ -1355,7 +1355,7 @@ class StackProgram {
 
     for(int i = 0; i < num; ++i) {
       const wstring &name = clss[i]->GetName();
-      if(name.size() > 0) {	
+      if(name.size() > 0) {  
         cls_map.insert(pair<wstring, StackClass*>(name, clss[i]));
       }
     }
@@ -1588,7 +1588,7 @@ class ObjectDeserializer
   }
 
   ObjectDeserializer(const char* b, long o, map<INT_VALUE, size_t*> &c,
-		     long s, size_t* stack, long* pos) {
+         long s, size_t* stack, long* pos) {
     op_stack = stack;
     stack_pos = pos;
     buffer = b;
@@ -1661,7 +1661,7 @@ class TrapProcessor {
 #ifdef _DEBUG
     size_t v = op_stack[--(*stack_pos)];
     wcout << L"  [pop_i: stack_pos=" << (*stack_pos) << L"; value=" << v << L"("
-	  << (size_t*)v << L")]" << endl;
+    << (size_t*)v << L")]" << endl;
     return v;
 #else
     return op_stack[--(*stack_pos)];
@@ -1675,7 +1675,7 @@ class TrapProcessor {
   static inline void PushInt(size_t v, size_t* op_stack, long* stack_pos) {
 #ifdef _DEBUG
     wcout << L"  [push_i: stack_pos=" << (*stack_pos) << L"; value=" << v << L"("
-	  << (size_t*)v << L")]" << endl;
+    << (size_t*)v << L")]" << endl;
 #endif
     op_stack[(*stack_pos)++] = v;
   }
@@ -1893,7 +1893,7 @@ class TrapProcessor {
   // writes out serialized objects
   // 
   static inline void WriteSerializedBytes(const char* array, const long src_buffer_size, size_t* inst,
-					  size_t* &op_stack, long* &stack_pos) {
+            size_t* &op_stack, long* &stack_pos) {
     size_t* dest_buffer = (size_t*)inst[0];
     if(array && dest_buffer) {
       const long dest_pos = (long)inst[1];
@@ -1913,7 +1913,7 @@ class TrapProcessor {
   // serializes an array
   // 
   static inline void SerializeArray(const size_t* array, ParamType type, size_t* inst,
-				    size_t* &op_stack, long* &stack_pos) {
+            size_t* &op_stack, long* &stack_pos) {
     if(array) {
       SerializeByte(1, inst, op_stack, stack_pos);
       const long array_size = (long)array[0];
@@ -1921,81 +1921,81 @@ class TrapProcessor {
       // write values
       switch(type) {
       case BYTE_ARY_PARM: {
-	// write metadata
-	char* array_ptr = (char*)(array + 3);
-	SerializeInt((INT_VALUE)array[0], inst, op_stack, stack_pos);
-	SerializeInt((INT_VALUE)array[1], inst, op_stack, stack_pos);
-	SerializeInt((INT_VALUE)array[2], inst, op_stack, stack_pos);
-	// write data
-	WriteSerializedBytes(array_ptr, array_size, inst, op_stack, stack_pos);
+  // write metadata
+  char* array_ptr = (char*)(array + 3);
+  SerializeInt((INT_VALUE)array[0], inst, op_stack, stack_pos);
+  SerializeInt((INT_VALUE)array[1], inst, op_stack, stack_pos);
+  SerializeInt((INT_VALUE)array[2], inst, op_stack, stack_pos);
+  // write data
+  WriteSerializedBytes(array_ptr, array_size, inst, op_stack, stack_pos);
       }
-	break;
+  break;
 
       case CHAR_ARY_PARM: {
-	// convert
-	char* array_ptr = (char*)(array + 3);
-	const string buffer = UnicodeToBytes((const wchar_t*)array_ptr);
-	// write metadata	
-	SerializeInt((INT_VALUE)buffer.size(), inst, op_stack, stack_pos);
-	SerializeInt((INT_VALUE)array[1], inst, op_stack, stack_pos);
-	SerializeInt((INT_VALUE)buffer.size(), inst, op_stack, stack_pos);
-	// write data
-	WriteSerializedBytes((const char*)buffer.c_str(), (long)buffer.size(), inst, op_stack, stack_pos);
+  // convert
+  char* array_ptr = (char*)(array + 3);
+  const string buffer = UnicodeToBytes((const wchar_t*)array_ptr);
+  // write metadata  
+  SerializeInt((INT_VALUE)buffer.size(), inst, op_stack, stack_pos);
+  SerializeInt((INT_VALUE)array[1], inst, op_stack, stack_pos);
+  SerializeInt((INT_VALUE)buffer.size(), inst, op_stack, stack_pos);
+  // write data
+  WriteSerializedBytes((const char*)buffer.c_str(), (long)buffer.size(), inst, op_stack, stack_pos);
       }
-	break;
+  break;
 
       case INT_ARY_PARM: {
-	// write metadata
-	char* array_ptr = (char*)(array + 3);
-	SerializeInt((INT_VALUE)array[0], inst, op_stack, stack_pos);
-	SerializeInt((INT_VALUE)array[1], inst, op_stack, stack_pos);
-	SerializeInt((INT_VALUE)array[2], inst, op_stack, stack_pos);
-	// write data
-	WriteSerializedBytes(array_ptr, array_size * sizeof(INT_VALUE), inst, op_stack, stack_pos);
+  // write metadata
+  char* array_ptr = (char*)(array + 3);
+  SerializeInt((INT_VALUE)array[0], inst, op_stack, stack_pos);
+  SerializeInt((INT_VALUE)array[1], inst, op_stack, stack_pos);
+  SerializeInt((INT_VALUE)array[2], inst, op_stack, stack_pos);
+  // write data
+  WriteSerializedBytes(array_ptr, array_size * sizeof(INT_VALUE), inst, op_stack, stack_pos);
       }
-	break;
-	
+  break;
+  
       case OBJ_ARY_PARM: {
-	SerializeInt((INT_VALUE)array[0], inst, op_stack, stack_pos);
-	SerializeInt((INT_VALUE)array[1], inst, op_stack, stack_pos);
-	SerializeInt((INT_VALUE)array[2], inst, op_stack, stack_pos);
+  SerializeInt((INT_VALUE)array[0], inst, op_stack, stack_pos);
+  SerializeInt((INT_VALUE)array[1], inst, op_stack, stack_pos);
+  SerializeInt((INT_VALUE)array[2], inst, op_stack, stack_pos);
 
   size_t* array_ptr = (size_t*)(array + 3);
-	for(int i = 0; i < array_size; ++i) {
+  for(int i = 0; i < array_size; ++i) {
     size_t* obj = (size_t*)array_ptr[i];
-	  ObjectSerializer serializer(obj);
-	  vector<char> src_buffer = serializer.GetValues();
-	  const long src_buffer_size = (long)src_buffer.size();
+    ObjectSerializer serializer(obj);
+    vector<char> src_buffer = serializer.GetValues();
+    const long src_buffer_size = (long)src_buffer.size();
     size_t* dest_buffer = (size_t*)inst[0];
-	  long dest_pos = (long)inst[1];
+    long dest_pos = (long)inst[1];
 
-	  // expand buffer, if needed
-	  dest_buffer = ExpandSerialBuffer(src_buffer_size, dest_buffer, inst, op_stack, stack_pos);
-	  inst[0] = (size_t)dest_buffer;
+    // expand buffer, if needed
+    dest_buffer = ExpandSerialBuffer(src_buffer_size, dest_buffer, inst, op_stack, stack_pos);
+    inst[0] = (size_t)dest_buffer;
 
-	  // copy content
-	  char* dest_buffer_ptr = ((char*)(dest_buffer + 3) + dest_pos);
-	  for(int j = 0; j < src_buffer_size; ++j, dest_pos++) {
-	    dest_buffer_ptr[j] = src_buffer[j];
-	  }
-	  inst[1] = dest_pos;
-	}
+    // copy content
+    char* dest_buffer_ptr = ((char*)(dest_buffer + 3) + dest_pos);
+    for(int j = 0; j < src_buffer_size; ++j, dest_pos++) {
+      dest_buffer_ptr[j] = src_buffer[j];
+    }
+    inst[1] = dest_pos;
+  }
       }
-	break;
+  break;
 
       case FLOAT_ARY_PARM: {
-	// write metadata
-	char* array_ptr = (char*)(array + 3);
-	SerializeInt((INT_VALUE)array[0], inst, op_stack, stack_pos);
-	SerializeInt((INT_VALUE)array[1], inst, op_stack, stack_pos);
-	SerializeInt((INT_VALUE)array[2], inst, op_stack, stack_pos);
-	// write data
-	WriteSerializedBytes(array_ptr, array_size * sizeof(FLOAT_VALUE), inst, op_stack, stack_pos);
+  // write metadata
+  char* array_ptr = (char*)(array + 3);
+  SerializeInt((INT_VALUE)array[0], inst, op_stack, stack_pos);
+  SerializeInt((INT_VALUE)array[1], inst, op_stack, stack_pos);
+  SerializeInt((INT_VALUE)array[2], inst, op_stack, stack_pos);
+  // write data
+  WriteSerializedBytes(array_ptr, array_size * sizeof(FLOAT_VALUE), inst, op_stack, stack_pos);
       }
-	break;
+  break;
 
       default:
-	break;
+  break;
       }
     }
     else {
@@ -2007,48 +2007,48 @@ class TrapProcessor {
   // reads a serialized array
   // 
   static inline void ReadSerializedBytes(size_t* dest_array, const size_t* src_array,
-					 ParamType type, size_t* inst) {
+           ParamType type, size_t* inst) {
     if(dest_array && src_array) {
       const long dest_pos = (long)inst[1];
       const long src_array_size = (long)src_array[0];
       long dest_array_size = (long)dest_array[0];
 
       if(dest_pos < src_array_size) {
-	const char* src_array_ptr = (char*)(src_array + 3);	
-	char* dest_array_ptr = (char*)(dest_array + 3);
+  const char* src_array_ptr = (char*)(src_array + 3);  
+  char* dest_array_ptr = (char*)(dest_array + 3);
 
-	switch(type) {
-	case BYTE_ARY_PARM:
-	  memcpy(dest_array_ptr, src_array_ptr + dest_pos, dest_array_size);
-	  break;
+  switch(type) {
+  case BYTE_ARY_PARM:
+    memcpy(dest_array_ptr, src_array_ptr + dest_pos, dest_array_size);
+    break;
 
-	case CHAR_ARY_PARM: {
-	  // convert
-	  const string in((const char*)src_array_ptr + dest_pos, dest_array_size);
-	  const wstring out = BytesToUnicode(in);	
-	  // copy
-	  dest_array[0] = out.size();
-	  dest_array[2] = out.size();
-	  dest_array_size *= sizeof(wchar_t);
-	  memcpy(dest_array_ptr, out.c_str(), out.size() * sizeof(wchar_t));
-	}
-	  break;
+  case CHAR_ARY_PARM: {
+    // convert
+    const string in((const char*)src_array_ptr + dest_pos, dest_array_size);
+    const wstring out = BytesToUnicode(in);  
+    // copy
+    dest_array[0] = out.size();
+    dest_array[2] = out.size();
+    dest_array_size *= sizeof(wchar_t);
+    memcpy(dest_array_ptr, out.c_str(), out.size() * sizeof(wchar_t));
+  }
+    break;
 
-	case INT_ARY_PARM:
-	  dest_array_size *= sizeof(INT_VALUE);
-	  memcpy(dest_array_ptr, src_array_ptr + dest_pos, dest_array_size);
-	  break;
+  case INT_ARY_PARM:
+    dest_array_size *= sizeof(INT_VALUE);
+    memcpy(dest_array_ptr, src_array_ptr + dest_pos, dest_array_size);
+    break;
 
-	case FLOAT_ARY_PARM:
-	  dest_array_size *= sizeof(FLOAT_VALUE);
-	  memcpy(dest_array_ptr, src_array_ptr + dest_pos, dest_array_size);
-	  break;
+  case FLOAT_ARY_PARM:
+    dest_array_size *= sizeof(FLOAT_VALUE);
+    memcpy(dest_array_ptr, src_array_ptr + dest_pos, dest_array_size);
+    break;
 
-	default:
-	  break;
-	}
+  default:
+    break;
+  }
 
-	inst[1] = dest_pos + dest_array_size;
+  inst[1] = dest_pos + dest_array_size;
       }
     }
   }
@@ -2062,7 +2062,7 @@ class TrapProcessor {
   // expand buffer
   //
   static size_t* ExpandSerialBuffer(const long src_buffer_size, size_t* dest_buffer, size_t* inst,
-				  size_t* &op_stack, long* &stack_pos);
+          size_t* &op_stack, long* &stack_pos);
   
   // 
   // serializes a byte
@@ -2093,7 +2093,7 @@ class TrapProcessor {
     const long dest_pos = (long)inst[1];
 
     if(byte_array && dest_pos < (long)byte_array[0]) {
-      const char* byte_array_ptr = (char*)(byte_array + 3);	
+      const char* byte_array_ptr = (char*)(byte_array + 3);  
       char value;
       memcpy(&value, byte_array_ptr + dest_pos, sizeof(value));
       inst[1] = dest_pos + sizeof(value);
@@ -2139,7 +2139,7 @@ class TrapProcessor {
     const long dest_pos = (long)inst[1];
 
     if(byte_array && dest_pos < (long)byte_array[0]) {
-      const char* byte_array_ptr = (char*)(byte_array + 3);	
+      const char* byte_array_ptr = (char*)(byte_array + 3);  
       char* in = new char[num + 1];
       memcpy(in, byte_array_ptr + dest_pos, num);
       in[num] = '\0';
@@ -2188,7 +2188,7 @@ class TrapProcessor {
     const long dest_pos = (long)inst[1];
 
     if(byte_array && dest_pos < (long)byte_array[0]) {
-      const char* byte_array_ptr = (char*)(byte_array + 3);	
+      const char* byte_array_ptr = (char*)(byte_array + 3);  
       INT_VALUE value;
       memcpy(&value, byte_array_ptr + dest_pos, sizeof(value));
       inst[1] = dest_pos + sizeof(value);
@@ -2265,7 +2265,7 @@ class TrapProcessor {
   // platform string
   //
   static inline void ProcessFileOwner(const char* name, bool is_account,
-				      StackProgram* program, size_t* &op_stack, long* &stack_pos);
+                                      StackProgram* program, size_t* &op_stack, long* &stack_pos);
   
   // 
   // version string
@@ -2281,13 +2281,13 @@ class TrapProcessor {
   // creates a new class instance
   //
   static inline void CreateClassObject(StackClass* cls, size_t* cls_obj, size_t* &op_stack, 
-				       long* &stack_pos, StackProgram* program);
+               long* &stack_pos, StackProgram* program);
 
   //
   // creates an instance of the 'Method' class
   //
   static inline size_t* CreateMethodObject(size_t* cls_obj, StackMethod* mthd, StackProgram* program,
-					 size_t* &op_stack, long* &stack_pos);
+           size_t* &op_stack, long* &stack_pos);
 
   //
   // creates a wstring object instance
@@ -2305,6 +2305,6 @@ class TrapProcessor {
 void APITools_MethodCall(size_t* op_stack, long *stack_pos, size_t* instance, 
                          const wchar_t* cls_id, const wchar_t* mthd_id);
 void APITools_MethodCallId(size_t* op_stack, long *stack_pos, size_t* instance, 
-                           const int cls_id, const int mthd_id);			 
+                           const int cls_id, const int mthd_id);       
 
 #endif

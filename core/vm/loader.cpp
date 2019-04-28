@@ -186,7 +186,7 @@ void Loader::Load()
   dclrs[0]->name = L"args";
   dclrs[0]->type = OBJ_ARY_PARM;
 
-  init_method = new StackMethod(-1, name, false, false, dclrs,	1, 0, 1, NIL_TYPE, NULL);
+  init_method = new StackMethod(-1, name, false, false, dclrs,  1, 0, 1, NIL_TYPE, NULL);
   LoadInitializationCode(init_method);
   program->SetInitializationMethod(init_method);
   program->SetStringObjectId(string_cls_id);
@@ -270,13 +270,13 @@ void Loader::LoadClasses()
 
     cls_hierarchy[id] = pid;
     StackClass* cls = new StackClass(id, name, file_name, pid, is_virtual, 
-				     cls_dclrs, cls_num_dclrs, inst_dclrs, 
-				     inst_num_dclrs, cls_space, inst_space, is_debug);
+             cls_dclrs, cls_num_dclrs, inst_dclrs, 
+             inst_num_dclrs, cls_space, inst_space, is_debug);
 
 #ifdef _DEBUG
     wcout << L"Class(" << cls << L"): id=" << id << L"; name='" << name << L"'; parent='"
-	  << parent_name << L"'; class_bytes=" << cls_space << L"'; instance_bytes="
-	  << inst_space << endl;
+    << parent_name << L"'; class_bytes=" << cls_space << L"'; instance_bytes="
+    << inst_space << endl;
 #endif
 
     // load methods
@@ -368,12 +368,12 @@ void Loader::LoadMethods(StackClass* cls, bool is_debug)
     }
 
     StackMethod* mthd = new StackMethod(id, name, is_virtual, has_and_or, dclrs,
-					num_dclrs, params, mem_size, rtrn_type, cls);    
+          num_dclrs, params, mem_size, rtrn_type, cls);    
     // load statements
 #ifdef _DEBUG
     wcout << L"Method(" << mthd << L"): id=" << id << L"; name='" << name << L"'; return='" 
-	  << rtrn_name << L"'; params=" << params << L"; bytes=" 
-	  << mem_size << endl;
+    << rtrn_name << L"'; params=" << params << L"; bytes=" 
+    << mem_size << endl;
 #endif    
     LoadStatements(mthd, is_debug);
 
@@ -413,7 +413,7 @@ void Loader::LoadInitializationCode(StackMethod* method)
   instrs.push_back(new StackInstr(-1, LOAD_LOCL_INT_VAR, 0L, LOCL));
   instrs.push_back(new StackInstr(-1, LOAD_INST_MEM));
   instrs.push_back(new StackInstr(-1, MTHD_CALL, (long)start_class_id, 
-				  (long)start_method_id, 0L));
+          (long)start_method_id, 0L));
   instrs.push_back(new StackInstr(-1, RTRN));
 
   // copy and set instructions
@@ -455,8 +455,8 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       long id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       mthd_instrs[i] = new StackInstr(line_num, 
-				      mem_context == LOCL ? LOAD_LOCL_INT_VAR : LOAD_CLS_INST_INT_VAR, 
-				      id, mem_context);
+              mem_context == LOCL ? LOAD_LOCL_INT_VAR : LOAD_CLS_INST_INT_VAR, 
+              id, mem_context);
     }
       break;
 
@@ -478,8 +478,8 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       long id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       mthd_instrs[i] = new StackInstr(line_num, 
-				      mem_context == LOCL ? STOR_LOCL_INT_VAR : STOR_CLS_INST_INT_VAR, 
-				      id, mem_context);
+              mem_context == LOCL ? STOR_LOCL_INT_VAR : STOR_CLS_INST_INT_VAR, 
+              id, mem_context);
     }
       break;
 
@@ -501,8 +501,8 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       long id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       mthd_instrs[i] = new StackInstr(line_num, 
-				      mem_context == LOCL ? COPY_LOCL_INT_VAR : COPY_CLS_INST_INT_VAR, 
-				      id, mem_context);
+              mem_context == LOCL ? COPY_LOCL_INT_VAR : COPY_CLS_INST_INT_VAR, 
+              id, mem_context);
     }
       break;
 
@@ -882,7 +882,7 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
 
     case LOAD_FLOAT_LIT:
       mthd_instrs[i] = new StackInstr(line_num, LOAD_FLOAT_LIT,
-				      ReadDouble());
+              ReadDouble());
       break;
 
     case RTRN:
