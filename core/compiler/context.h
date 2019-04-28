@@ -296,7 +296,7 @@ class ContextAnalyzer {
 	int in_loop;
 	vector<Class*> anonymous_classes;
 
-	void Debug(const wstring &msg, const int line_num, int depth) {
+	inline void Debug(const wstring &msg, const int line_num, int depth) {
 		GetLogger() << setw(4) << line_num << L": ";
 		for(int i = 0; i < depth; ++i) {
 			GetLogger() << L"  ";
@@ -304,134 +304,20 @@ class ContextAnalyzer {
 		GetLogger() << msg << endl;
 	}
 
-	wstring ToString(int v) {
-		wostringstream str;
-		str << v;
-		return str.str();
-	}
-
 	// returns true if expression is not an array
-	inline bool IsScalar(Expression* expression, bool check_last = true) {
-		while(check_last && expression->GetMethodCall()) {
-			expression = expression->GetMethodCall();
-		}
-
-		Type* type;
-		if(expression->GetCastType()) {
-			type = expression->GetCastType();
-		}
-		else {
-			type = expression->GetEvalType();
-		}
-
-		if(type && type->GetDimension() > 0) {
-			ExpressionList* indices = NULL;
-			if(expression->GetExpressionType() == VAR_EXPR) {
-				indices = static_cast<Variable*>(expression)->GetIndices();
-			}
-			else {
-				return false;
-			}
-
-			return indices != NULL;
-		}
-
-		return true;
-	}
+	bool IsScalar(Expression* expression, bool check_last = true);
 
 	// returns true if expression is of boolean type
-	inline bool IsBooleanExpression(Expression* expression) {
-		while(expression->GetMethodCall()) {
-			expression = expression->GetMethodCall();
-		}
-		Type* eval_type = expression->GetEvalType();
-		if(eval_type) {
-			return eval_type->GetType() == BOOLEAN_TYPE;
-		}
-
-		return false;
-	}
+	bool IsBooleanExpression(Expression* expression);
 
 	// returns true if expression is of boolean type
-	inline bool IsEnumExpression(Expression* expression) {
-		while(expression->GetMethodCall()) {
-			expression = expression->GetMethodCall();
-		}
-		Type* eval_type = expression->GetEvalType();
-		if(eval_type) {
-			if(eval_type->GetType() == CLASS_TYPE) {
-				// program
-				if(program->GetEnum(eval_type->GetClassName())) {
-					return true;
-				}
-				// library
-				if(linker->SearchEnumLibraries(eval_type->GetClassName(), program->GetUses())) {
-					return true;
-				}
-			}
-		}
-
-		return false;
-	}
+	bool IsEnumExpression(Expression* expression);
 
 	// returns true if expression is of integer or enum type
-	inline bool IsIntegerExpression(Expression* expression) {
-		while(expression->GetMethodCall()) {
-			expression = expression->GetMethodCall();
-		}
+	bool IsIntegerExpression(Expression* expression);
 
-		Type* eval_type;
-		if(expression->GetCastType()) {
-			eval_type = expression->GetCastType();
-		}
-		else {
-			eval_type = expression->GetEvalType();
-		}
-
-		if(eval_type) {
-			// integer types
-			if(eval_type->GetType() == INT_TYPE || eval_type->GetType() == CHAR_TYPE ||
-				 eval_type->GetType() == BYTE_TYPE) {
-				return true;
-			}
-			// enum types
-			if(eval_type->GetType() == CLASS_TYPE) {
-				// program
-				if(SearchProgramEnums(eval_type->GetClassName())) {
-					return true;
-				}
-				// library
-				if(linker->SearchEnumLibraries(eval_type->GetClassName(), program->GetUses())) {
-					return true;
-				}
-			}
-		}
-
-		return false;
-	}
-
-	// returns true if entry static cotext is not valid
-	inline bool DuplicateParentEntries(SymbolEntry* entry, Class* klass) {
-		if(klass->GetParent() && klass->GetParent()->GetSymbolTable() && (!entry->IsLocal() || entry->IsStatic())) {
-			Class* parent = klass->GetParent();
-			do {
-				size_t offset = entry->GetName().find(L':');
-				if(offset != wstring::npos) {
-					++offset;
-					const wstring short_name = entry->GetName().substr(offset, entry->GetName().size() - offset);
-					const wstring lookup = parent->GetName() + L":" + short_name;
-					SymbolEntry* parent_entry = parent->GetSymbolTable()->GetEntry(lookup);
-					if(parent_entry) {
-						return true;
-					}
-				}
-				// update
-				parent = parent->GetParent();
-			} while(parent);
-		}
-
-		return false;
-	}
+	// returns true if entry static context is not valid
+	bool DuplicateParentEntries(SymbolEntry* entry, Class* klass);
 
 	// returns true if this entry is duplicated in parent classes
 	inline bool InvalidStatic(SymbolEntry* entry) {
@@ -439,855 +325,150 @@ class ContextAnalyzer {
 	}
 
 	// returns true if a duplicate value is found in the list
-	inline bool DuplicateCaseItem(map<int, StatementList*>label_statements, int value) {
-		map<int, StatementList*>::iterator result = label_statements.find(value);
-		if(result != label_statements.end()) {
-			return true;
-		}
+	bool DuplicateCaseItem(map<int, StatementList*>label_statements, int value);
 
-		return false;
-	}
+	// returns true if method static context is not valid
+	bool InvalidStatic(MethodCall* method_call, Method* method);
 
-	// returns true if method static cotext is not valid
-	inline bool InvalidStatic(MethodCall* method_call, Method* method) {
-		// same class, calling method static and called method not static,
-		// called method not new, called method not from a varaible
-		if(current_method->IsStatic() &&
-			 !method->IsStatic() && method->GetMethodType() != NEW_PUBLIC_METHOD &&
-			 method->GetMethodType() != NEW_PRIVATE_METHOD) {
-			SymbolEntry* entry = GetEntry(method_call->GetVariableName());
-			if(entry && (entry->IsLocal() || entry->IsStatic())) {
-				return false;
-			}
-
-			Variable* variable = method_call->GetVariable();
-			if(variable) {
-				entry = variable->GetEntry();
-				if(entry && (entry->IsLocal() || entry->IsStatic())) {
-					return false;
-				}
-			}
-
-			return true;
-		}
-
-		return false;
-	}
-
-	// returns true if method static cotext is not valid
-	inline bool InvalidStatic(MethodCall* method_call, LibraryMethod* method) {
-		// same class, calling method static and called method not static,
-		// called method not new, called method not from a varaible
-		if(current_method->IsStatic() && !method->IsStatic() &&
-			 method->GetMethodType() != NEW_PUBLIC_METHOD &&
-			 method->GetMethodType() != NEW_PRIVATE_METHOD) {
-
-			SymbolEntry* entry = GetEntry(method_call->GetVariableName());
-			if(entry && (entry->IsLocal() || entry->IsStatic())) {
-				return false;
-			}
-
-			Variable* variable = method_call->GetVariable();
-			if(variable) {
-				entry = variable->GetEntry();
-				if(entry && (entry->IsLocal() || entry->IsStatic())) {
-					return false;
-				}
-			}
-
-			return true;
-		}
-
-		return false;
-	}
+	// returns true if method static context is not valid
+	bool InvalidStatic(MethodCall* method_call, LibraryMethod* method);
 
 	// returns a symbol table entry by name
-	SymbolEntry* GetEntry(wstring name, bool is_parent = false) {
-		if(current_table) {
-			// check locally
-			SymbolEntry* entry = current_table->GetEntry(current_method->GetName() + L":" + name);
-			if(!is_parent && entry) {
-				return entry;
-			}
-			else {
-				// check class
-				SymbolTable* table = symbol_table->GetSymbolTable(current_class->GetName());
-				entry = table->GetEntry(current_class->GetName() + L":" + name);
-				if(!is_parent && entry) {
-					return entry;
-				}
-				else {
-					// check parents
-					entry = NULL;
-					const wstring &bundle_name = bundle->GetName();
-					Class* parent;
-					if(bundle_name.size() > 0) {
-						parent = bundle->GetClass(bundle_name + L"." + current_class->GetParentName());
-					}
-					else {
-						parent = bundle->GetClass(current_class->GetParentName());
-					}
-					while(parent && !entry) {
-						SymbolTable* table = symbol_table->GetSymbolTable(parent->GetName());
-						entry = table->GetEntry(parent->GetName() + L":" + name);
-						if(entry) {
-							return entry;
-						}
-						// get next parent	  
-						if(bundle_name.size() > 0) {
-							parent = bundle->GetClass(bundle_name + L"." + parent->GetParentName());
-						}
-						else {
-							parent = bundle->GetClass(parent->GetParentName());
-						}
-					}
-				}
-			}
-		}
-
-		return NULL;
-	}
+	SymbolEntry* GetEntry(wstring name, bool is_parent = false);
 
 	// returns a symbol table entry by name for a given method
-	SymbolEntry* GetEntry(MethodCall* method_call, const wstring &variable_name, int depth) {
-		SymbolEntry* entry;
-		if(method_call->GetVariable()) {
-			Variable* variable = method_call->GetVariable();
-			AnalyzeVariable(variable, depth);
-			entry = variable->GetEntry();
-		}
-		else {
-			entry = GetEntry(variable_name);
-			if(entry) {
-				method_call->SetEntry(entry);
-			}
-		}
-
-		return entry;
-	}
+	SymbolEntry* GetEntry(MethodCall* method_call, const wstring &variable_name, int depth);
 
 	// returns a type expression
-	Type* GetExpressionType(Expression* expression, int depth) {
-		Type* type = NULL;
-
-		MethodCall* mthd_call = expression->GetMethodCall();
-
-		if(expression->GetExpressionType() == METHOD_CALL_EXPR &&
-			 static_cast<MethodCall*>(expression)->GetCallType() == ENUM_CALL) {
-			// favor casts
-			if(expression->GetCastType()) {
-				type = expression->GetCastType();
-			}
-			else {
-				type = expression->GetEvalType();
-			}
-		}
-		else if(mthd_call) {
-			while(mthd_call) {
-				AnalyzeExpressionMethodCall(mthd_call, depth + 1);
-
-				// favor casts
-				if(mthd_call->GetCastType()) {
-					type = mthd_call->GetCastType();
-				}
-				else {
-					type = mthd_call->GetEvalType();
-				}
-
-				mthd_call = mthd_call->GetMethodCall();
-			}
-		}
-		else {
-			// favor casts
-			if(expression->GetCastType()) {
-				type = expression->GetCastType();
-			}
-			else {
-				type = expression->GetEvalType();
-			}
-		}
-
-		return type;
-	}
-
-	void StringReplace(wstring &str, const wstring &from, const wstring &to) {
-		size_t start_pos = 0;
-		while((start_pos = str.find(from, start_pos)) != wstring::npos) {
-			str.replace(start_pos, from.length(), to);
-			start_pos += to.length();
-		}
-	}
+	Type* GetExpressionType(Expression* expression, int depth);
 
 	// checks for a valid downcast
-	bool ValidDownCast(const wstring &cls_name, Class* class_tmp, LibraryClass* lib_class_tmp) {
-		if(cls_name == L"System.Base") {
-			return true;
-		}
-
-		while(class_tmp || lib_class_tmp) {
-			// get cast name
-			wstring cast_name;
-			vector<wstring> interface_names;
-			if(class_tmp) {
-				cast_name = class_tmp->GetName();
-				interface_names = class_tmp->GetInterfaceNames();
-			}
-			else if(lib_class_tmp) {
-				cast_name = lib_class_tmp->GetName();
-				interface_names = lib_class_tmp->GetInterfaceNames();
-			}
-
-			// parent cast
-			if(cls_name == cast_name) {
-				return true;
-			}
-
-			// interface cast
-			for(size_t i = 0; i < interface_names.size(); ++i) {
-				Class* klass = SearchProgramClasses(interface_names[i]);
-				if(klass && klass->GetName() == cls_name) {
-					return true;
-				}
-				else {
-					LibraryClass* lib_klass = linker->SearchClassLibraries(interface_names[i], program->GetUses());
-					if(lib_klass && lib_klass->GetName() == cls_name) {
-						return true;
-					}
-				}
-			}
-
-			// update
-			if(class_tmp) {
-				if(class_tmp->GetParent()) {
-					class_tmp = class_tmp->GetParent();
-					lib_class_tmp = NULL;
-				}
-				else {
-					lib_class_tmp = class_tmp->GetLibraryParent();
-					class_tmp = NULL;
-				}
-
-			}
-			// library parent
-			else {
-				lib_class_tmp = linker->SearchClassLibraries(lib_class_tmp->GetParentName(), program->GetUses());
-				class_tmp = NULL;
-			}
-		}
-
-		return false;
-	}
+	bool ValidDownCast(const wstring &cls_name, Class* class_tmp, LibraryClass* lib_class_tmp);
 
 	// checks for a valid upcast
-	bool ValidUpCast(const wstring &to, Class* from_klass) {
-		if(from_klass->GetName() == L"System.Base") {
-			return true;
-		}
-
-		// parent cast
-		if(to == from_klass->GetName()) {
-			return true;
-		}
-
-		// interface cast
-		vector<wstring> interface_names = from_klass->GetInterfaceNames();
-		for(size_t i = 0; i < interface_names.size(); ++i) {
-			Class* klass = SearchProgramClasses(interface_names[i]);
-			if(klass && klass->GetName() == to) {
-				return true;
-			}
-			else {
-				LibraryClass* lib_klass = linker->SearchClassLibraries(interface_names[i], program->GetUses());
-				if(lib_klass && lib_klass->GetName() == to) {
-					return true;
-				}
-			}
-		}
-
-		// updates
-		vector<Class*> children = from_klass->GetChildren();
-		for(size_t i = 0; i < children.size(); ++i) {
-			if(ValidUpCast(to, children[i])) {
-				return true;
-			}
-		}
-
-		return false;
-	}
+	bool ValidUpCast(const wstring &to, Class* from_klass);
 
 	// checks for a valid upcast
-	bool ValidUpCast(const wstring &to, LibraryClass* from_klass) {
-		if(from_klass->GetName() == L"System.Base") {
-			return true;
-		}
+	bool ValidUpCast(const wstring &to, LibraryClass* from_klass);
 
-		// parent cast
-		if(to == from_klass->GetName()) {
-			return true;
-		}
+  // helper function for program class search
+  bool GetProgramLibraryClass(const wstring &n, Class* &klass, LibraryClass* &lib_klass);
 
-		// interface cast
-		vector<wstring> interface_names = from_klass->GetInterfaceNames();
-		for(size_t i = 0; i < interface_names.size(); ++i) {
-			Class* klass = SearchProgramClasses(interface_names[i]);
-			if(klass && klass->GetName() == to) {
-				return true;
-			}
-			else {
-				LibraryClass* lib_klass = linker->SearchClassLibraries(interface_names[i], program->GetUses());
-				if(lib_klass && lib_klass->GetName() == to) {
-					return true;
-				}
-			}
-		}
+  // string encodes type
+  const wstring EncodeType(Type* type);
 
-		// program updates
-		vector<LibraryClass*> children = from_klass->GetLibraryChildren();
-		for(size_t i = 0; i < children.size(); ++i) {
-			if(ValidUpCast(to, children[i])) {
-				return true;
-			}
-		}
-
-		// library updates
-		vector<frontend::ParseNode*> lib_children = from_klass->GetChildren();
-		for(size_t i = 0; i < lib_children.size(); ++i) {
-			if(ValidUpCast(to, static_cast<Class*>(lib_children[i]))) {
-				return true;
-			}
-		}
-
-		return false;
-	}
-
-  inline bool HasGenericClass(const wstring &n) {
-    const vector<ParsedBundle*> bundles = program->GetBundles();
-    for(size_t i = 0; i < bundles.size(); ++i) {
-      const vector<Class*> klasses = bundles[i]->GetClasses();
-      for(size_t j = 0; j < klasses.size(); ++j) {
-        Class* klass = klasses[j];
-        if(klass->HasGenerics()) {
-          Class* generic_klass = klass->GetGenericClass(n);
-          if(generic_klass && !generic_klass->HasGenerics()) {
-            return true;
-          }
-        }
-      }
-    }
-
-    vector<LibraryClass*> lib_klasses = linker->GetAllClasses();
-    for(size_t i = 0; i < lib_klasses.size(); ++i) {
-      LibraryClass* lib_klass = lib_klasses[i];
-      if(lib_klass->HasGenerics()) {
-        LibraryClass* generic_lib_klass = lib_klass->GetGenericClass(n);
-        if(generic_lib_klass && !generic_lib_klass->HasGenerics()) {
-          return true;
-        }
-      }
-    }
-
-    return false;
-  }
-
-	// TODO: finds the first enum match; note multiple matches may exist
-	inline Class* SearchProgramClasses(const wstring &klass_name) {
-		Class* klass = program->GetClass(klass_name);
-		if(!klass) {
-			klass = program->GetClass(bundle->GetName() + L"." + klass_name);
-			if(!klass) {
-				vector<wstring> uses = program->GetUses();
-				for(size_t i = 0; !klass && i < uses.size(); ++i) {
-					klass = program->GetClass(uses[i] + L"." + klass_name);
-				}
-			}
-		}
-
-		return klass;
-	}
-
-	// TODO: finds the first enum match; note multiple matches may exist
-	inline Enum* SearchProgramEnums(const wstring &eenum_name) {
-		Enum* eenum = program->GetEnum(eenum_name);
-		if(!eenum) {
-			eenum = program->GetEnum(bundle->GetName() + L"." + eenum_name);
-			if(!eenum) {
-				vector<wstring> uses = program->GetUses();
-				for(size_t i = 0; !eenum && i < uses.size(); ++i) {
-					eenum = program->GetEnum(uses[i] + L"." + eenum_name);
-					if(!eenum) {
-						eenum = program->GetEnum(uses[i] + eenum_name);
-					}
-				}
-			}
-		}
-
-		return eenum;
-	}
-
-	inline bool HasProgramLibraryEnum(const wstring &n) {
-		return SearchProgramEnums(n) || linker->SearchEnumLibraries(n, program->GetUses(current_class->GetFileName()));
-	}
-	
-	inline bool HasProgramLibraryClass(const wstring &n) {
-		return SearchProgramClasses(n) || linker->SearchClassLibraries(n, program->GetUses(current_class->GetFileName()));
-	}
-	
-  inline bool GetProgramLibraryClass(const wstring &n, Class* &klass, LibraryClass* &lib_klass) {
-    klass = SearchProgramClasses(n);
-    if(klass) {
-      return true;
-    }
-    
-    lib_klass = linker->SearchClassLibraries(n, program->GetUses(current_class->GetFileName()));
-    if(lib_klass) {
-      return true;
-    }
-
-    return false;
-  }
-
-  inline const wstring EncodeType(Type* type) {
-    wstring encoded_name;
-
-    if(type) {
-      switch(type->GetType()) {
-      case BOOLEAN_TYPE:
-        encoded_name += 'l';
-        break;
-
-      case BYTE_TYPE:
-        encoded_name += 'b';
-        break;
-
-      case INT_TYPE:
-        encoded_name += 'i';
-        break;
-
-      case FLOAT_TYPE:
-        encoded_name += 'f';
-        break;
-
-      case CHAR_TYPE:
-        encoded_name += 'c';
-        break;
-
-      case NIL_TYPE:
-        encoded_name += 'n';
-        break;
-
-      case VAR_TYPE:
-        encoded_name += 'v';
-        break;
-
-      case CLASS_TYPE: {
-        encoded_name += L"o.";
-
-        // search program
-        wstring klass_name = type->GetClassName();
-        Class* klass = program->GetClass(klass_name);
-        if(!klass) {
-          vector<wstring> uses = program->GetUses();
-          for(size_t i = 0; !klass && i < uses.size(); ++i) {
-            klass = program->GetClass(uses[i] + L"." + klass_name);
-          }
-        }
-        if(klass) {
-          encoded_name += klass->GetName();
-        }
-        // search libaraires
-        else {
-          LibraryClass* lib_klass = linker->SearchClassLibraries(klass_name, program->GetUses());
-          if(lib_klass) {
-            encoded_name += lib_klass->GetName();
-          } 
-          else {
-            encoded_name += type->GetClassName();
-          }
-        }
-      }
-        break;
-
-      case FUNC_TYPE: {
-        if(type->GetClassName().size() == 0) {
-          type->SetClassName(EncodeFunctionType(type->GetFunctionParameters(), 
-                                                type->GetFunctionReturn()));
-        }
-        encoded_name += type->GetClassName();
-      }
-        break;
-      }
-    }
-
-    return encoded_name;
-  }
-
+  // resolves type reference for class or enum
   inline bool ResolveClassEnumType(Type* type) {
     return ResolveClassEnumType(type, current_class);
   }
   
-  inline bool ResolveClassEnumType(Type* type, Class* context_klass) {
-    Class* klass = SearchProgramClasses(type->GetClassName());
-    if(klass) {
-			klass->SetCalled(true);
-			type->SetClassName(klass->GetName());
-			return true;
-    }
-		
-    LibraryClass* lib_klass = linker->SearchClassLibraries(type->GetClassName(), program->GetUses());
-    if(lib_klass) {
-      lib_klass->SetCalled(true);
-      type->SetClassName(lib_klass->GetName());
-      return true;
-    }
+  // resolves type reference for class or enum
+  bool ResolveClassEnumType(Type* type, Class* context_klass);
 
-		// generics
-		if(context_klass->HasGenerics()) {
-			klass = context_klass->GetGenericClass(type->GetClassName());
-			if(klass) {
-				if(klass->HasGenericInterface()) {
-					Type* inf_type = klass->GetGenericInterface();
-					if(ResolveClassEnumType(inf_type)) {
-						type->SetClassName(inf_type->GetClassName());
-						return true;
-					}
-				}
-				else {
-					type->SetClassName(type->GetClassName());
-					return true;
-				}
-			}
-		}
-
-    Enum* eenum = SearchProgramEnums(type->GetClassName());
-    if(eenum) {
-      type->SetClassName(type->GetClassName());
-      return true;
-    }
-    else {
-      eenum = SearchProgramEnums(context_klass->GetName() + L"#" + type->GetClassName());
-      if(eenum) {
-        type->SetClassName(context_klass->GetName() + L"#" + type->GetClassName());
-        return true;
-      }
-    }
-
-    LibraryEnum* lib_eenum = linker->SearchEnumLibraries(type->GetClassName(), program->GetUses());
-    if(lib_eenum) {
-      type->SetClassName(lib_eenum->GetName());
-      return true;
-    }
-    else {
-      lib_eenum = linker->SearchEnumLibraries(type->GetClassName(), program->GetUses());
-      if(lib_eenum) {
-        type->SetClassName(lib_eenum->GetName());
-        return true;
-      }
-    }
-    
-    return false;
-  }
-
-	bool IsClassEnumParameterMatch(Type* calling_type, Type* method_type) {
-		const wstring &from_klass_name = calling_type->GetClassName();
-
-		LibraryClass* from_lib_klass = NULL;
-		Class* from_klass = SearchProgramClasses(from_klass_name);
-		if(!from_klass && current_class->HasGenerics()) {
-			from_klass = current_class->GetGenericClass(from_klass_name);
-		}
-
-		if(!from_klass) {
-			 from_lib_klass = linker->SearchClassLibraries(from_klass_name, program->GetUses());
-		}
-
-    // resolve to class name
-    wstring to_klass_name;
-    Class* to_klass = SearchProgramClasses(method_type->GetClassName());
-		if(!to_klass && current_class->HasGenerics()) {
-			to_klass = current_class->GetGenericClass(method_type->GetClassName());
-			if(to_klass) {
-				to_klass_name = to_klass->GetName();
-			}
-		}
-
-		if(!to_klass) {
-      LibraryClass* to_lib_klass = linker->SearchClassLibraries(method_type->GetClassName(), program->GetUses());
-      if(to_lib_klass) {
-        to_klass_name = to_lib_klass->GetName();
-      }
-    }
-
-    // check enum types
-    if(!from_klass && !from_lib_klass) {
-      Enum* from_enum = SearchProgramEnums(from_klass_name);
-      LibraryEnum* from_lib_enum = linker->SearchEnumLibraries(from_klass_name, program->GetUses());
-
-      wstring to_enum_name;	
-      Enum* to_enum = SearchProgramEnums(method_type->GetClassName());
-			if(to_enum) {
-				to_enum_name = to_enum->GetName();
-			}
-			else {
-        LibraryEnum* to_lib_enum = linker->SearchEnumLibraries(method_type->GetClassName(), program->GetUses());
-        if(to_lib_enum) {
-          to_enum_name = to_lib_enum->GetName();
-        }
-      }
-      
-      // look for exact class match
-      if(from_enum && from_enum->GetName() == to_enum_name) {
-        return true;
-      }
-
-      // look for exact class library match
-      if(from_lib_enum && from_lib_enum->GetName() == to_enum_name) {
-        return true;
-      }
-    }
-    else {
-      // look for exact class match
-      if(from_klass && from_klass->GetName() == to_klass_name) {
-        return true;
-      }
-
-      // look for exact class library match
-      if(from_lib_klass && from_lib_klass->GetName() == to_klass_name) {
-        return true;
-      }
-    }
-
-    return false;
-  }
+  // helper function for method call method matching
+	bool IsClassEnumParameterMatch(Type* calling_type, Type* method_type);
   
-  inline void ResolveEnumCall(LibraryEnum* lib_eenum, const wstring &item_name, MethodCall* method_call) {
-    // item_name = method_call->GetMethodCall()->GetVariableName();
-    LibraryEnumItem* lib_item = lib_eenum->GetItem(item_name);
-    if(lib_item) {
-      if(method_call->GetMethodCall()) {
-        method_call->GetMethodCall()->SetLibraryEnumItem(lib_item, lib_eenum->GetName());
-        method_call->SetEvalType(TypeFactory::Instance()->MakeType(CLASS_TYPE, lib_eenum->GetName()), false);
-        method_call->GetMethodCall()->SetEvalType(method_call->GetEvalType(), false);
-      }
-      else {
-        method_call->SetLibraryEnumItem(lib_item, lib_eenum->GetName());
-        method_call->SetEvalType(TypeFactory::Instance()->MakeType(CLASS_TYPE, lib_eenum->GetName()), false);
-      }
-    } 
-    else {
-      ProcessError(static_cast<Expression*>(method_call), L"Undefined enum item: '" + item_name + L"'");
-    }
-  }
+  // resolve enum reference
+  void ResolveEnumCall(LibraryEnum* lib_eenum, const wstring &item_name, MethodCall* method_call);
   
-  void AnalyzeCharacterStringVariable(SymbolEntry* entry, CharacterString* char_str, int depth) {
-#ifdef _DEBUG
-    Debug(L"variable=|" + entry->GetName() + L"|", char_str->GetLineNumber(), depth + 1);
-#endif
-    if(!entry->GetType() || entry->GetType()->GetDimension() > 0) {
-      ProcessError(char_str, L"Invalid function variable type or dimension size");
-    }
-    else if(entry->GetType()->GetType() == CLASS_TYPE && 
-            entry->GetType()->GetClassName() != L"System.String" && 
-            entry->GetType()->GetClassName() != L"String") {
-      const wstring cls_name = entry->GetType()->GetClassName();
-      Class* klass = SearchProgramClasses(cls_name);
-      if(klass) {
-        Method* method = klass->GetMethod(cls_name + L":ToString:");
-        if(method && method->GetMethodType() != PRIVATE_METHOD) {
-          char_str->AddSegment(entry, method);
-        }
-        else {
-          ProcessError(char_str, L"Class/enum variable does not have a public 'ToString' method");
-        }
-      }
-      else {
-        LibraryClass* lib_klass = linker->SearchClassLibraries(cls_name, program->GetUses());
-        if(lib_klass) {
-          LibraryMethod* lib_method = lib_klass->GetMethod(cls_name + L":ToString:");
-          if(lib_method && lib_method->GetMethodType() != PRIVATE_METHOD) {
-            char_str->AddSegment(entry, lib_method);
-          }
-          else {
-            ProcessError(char_str, L"Class/enum variable does not have a public 'ToString' method");
-          }
-        }
-        else {
-          ProcessError(char_str, L"Class/enum variable does not have a 'ToString' method");
-        }
-      }
-    }
-    else if(entry->GetType()->GetType() == FUNC_TYPE) {
-      ProcessError(char_str, L"Invalid function variable type");
-    }
-    else {
-      char_str->AddSegment(entry);
-    }
-  }
+  // validate character string
+  void AnalyzeCharacterStringVariable(SymbolEntry* entry, CharacterString* char_str, int depth);
 
-  void AnalyzeVariableCast(Type* to_type, Expression* expression) {
-    if(to_type && to_type->GetType() == CLASS_TYPE && expression->GetCastType() && to_type->GetDimension() < 1 && 
-       to_type->GetClassName() != L"System.Base" &&  to_type->GetClassName() != L"Base") {
-      const wstring to_class_name = to_type->GetClassName();
-      if(SearchProgramEnums(to_class_name) || 
-         linker->SearchEnumLibraries(to_class_name, program->GetUses(current_class->GetFileName()))) {
-        return;
-      }
+  // validate variable cast
+  void AnalyzeVariableCast(Type* to_type, Expression* expression);
 
-      Class* to_class = SearchProgramClasses(to_class_name);
-      if(to_class) {
-        expression->SetToClass(to_class);
-      }
-      else {
-        LibraryClass* to_lib_class = linker->SearchClassLibraries(to_class_name, program->GetUses());
-        if(to_lib_class) {
-          expression->SetToLibraryClass(to_lib_class);
-        }
-        else {
-          ProcessError(expression, L"Undefined class: '" + to_class_name + L"'");
-        }
-      }
-    }
-  }
-
+  // validate parameters for dynamic function
 	void AnalyzeDynamicFunctionParameters(vector<Type*>& func_params, ParseNode* node) {
 		AnalyzeDynamicFunctionParameters(func_params, node, current_class);
 	}
 
-  void AnalyzeDynamicFunctionParameters(vector<Type*>& func_params, ParseNode* node, Class* klass) {
-		for(size_t i = 0; i < func_params.size(); ++i) {
-			Type* type = func_params[i];
-			if(type->GetType() == CLASS_TYPE && !ResolveClassEnumType(type, klass)) {
-				ProcessError(node, L"Undefined class or enum: '" + type->GetClassName() + L"'");
-			}
-		}
-  }
+  // validate parameters for dynamic function
+  void AnalyzeDynamicFunctionParameters(vector<Type*>& func_params, ParseNode* node, Class* klass);
 
-	void AddMethodParameter(MethodCall* method_call, SymbolEntry* entry, int depth) {
-    const wstring &entry_name = entry->GetName();
-    const size_t start = entry_name.find_last_of(':');
-    if(start != wstring::npos) {
-      const wstring &param_name = entry_name.substr(start + 1);
-      Variable* variable = TreeFactory::Instance()->MakeVariable(static_cast<Expression*>(method_call)->GetFileName(), 
-                                                                 static_cast<Expression*>(method_call)->GetLineNumber(),
-                                                                 param_name);
-      method_call->SetVariable(variable);
-      AnalyzeVariable(variable, entry, depth + 1);
+  // add method parameter
+	void AddMethodParameter(MethodCall* method_call, SymbolEntry* entry, int depth);
+
+  // validate method call with generics
+	Type* RelsolveGenericCall(Type* left, MethodCall* method_call, Class* klass, Method* method);
+
+  // validate method call with generics
+	Type* RelsolveGenericCall(Type* left, MethodCall* method_call, LibraryClass* klass, LibraryMethod* method);
+
+  // validate generic references against types
+  void CheckGenericParameters(const vector<LibraryClass*> generic_klasses, const vector<Type*> concrete_types, ParseNode* node);
+
+  // validate generic references against types
+  void CheckGenericParameters(const vector<Class*> generic_klasses, const vector<Type*> concrete_types, ParseNode* node);
+
+  // find generic references
+  bool HasGenericClass(const wstring& n);
+
+  // finds the first class match; note multiple matches may exist
+  inline Class* SearchProgramClasses(const wstring& klass_name) {
+    Class* klass = program->GetClass(klass_name);
+    if(!klass) {
+      klass = program->GetClass(bundle->GetName() + L"." + klass_name);
+      if(!klass) {
+        vector<wstring> uses = program->GetUses();
+        for(size_t i = 0; !klass && i < uses.size(); ++i) {
+          klass = program->GetClass(uses[i] + L"." + klass_name);
+        }
+      }
     }
+
+    return klass;
   }
 
-  wstring ReplaceSubstring(wstring s, const wstring &f, const wstring &r) {
+  // finds the first enum match; note multiple matches may exist
+  inline Enum* SearchProgramEnums(const wstring & eenum_name) {
+    Enum* eenum = program->GetEnum(eenum_name);
+    if(!eenum) {
+      eenum = program->GetEnum(bundle->GetName() + L"." + eenum_name);
+      if(!eenum) {
+        vector<wstring> uses = program->GetUses();
+        for(size_t i = 0; !eenum && i < uses.size(); ++i) {
+          eenum = program->GetEnum(uses[i] + L"." + eenum_name);
+          if(!eenum) {
+            eenum = program->GetEnum(uses[i] + eenum_name);
+          }
+        }
+      }
+    }
+
+    return eenum;
+  }
+
+  // helper function for program enum search
+  inline bool HasProgramLibraryEnum(const wstring & n) {
+    return SearchProgramEnums(n) || linker->SearchEnumLibraries(n, program->GetUses(current_class->GetFileName()));
+  }
+
+  // helper function for program class search
+  inline bool HasProgramLibraryClass(const wstring & n) {
+    return SearchProgramClasses(n) || linker->SearchClassLibraries(n, program->GetUses(current_class->GetFileName()));
+  }
+
+  // string utility functions
+  wstring ToString(int v) {
+    wostringstream str;
+    str << v;
+    return str.str();
+  }
+
+  wstring ReplaceSubstring(wstring s, const wstring& f, const wstring& r) {
     const size_t index = s.find(f);
     if(index != string::npos) {
       s.replace(index, f.size(), r);
     }
-    
+
     return s;
   }
-	
-	Type* RelsolveGenericCall(Type* left, MethodCall* method_call, Class* klass, Method* method) {
-		left = RelsolveGenericType(left, method_call, klass, NULL);
-		if(!left->HasGenerics() && method_call->HasConcreteTypes() &&
-			(method->GetMethodType() == NEW_PUBLIC_METHOD ||
-			 method->GetMethodType() == NEW_PRIVATE_METHOD)) {
-			left = TypeFactory::Instance()->MakeType(left);
-			left->SetGenerics(method_call->GetConcreteTypes());
-			method_call->SetEvalType(left, false);
-		}
 
-		return left;
-	}
-
-	Type* RelsolveGenericCall(Type* left, MethodCall* method_call, LibraryClass* klass, LibraryMethod* method) {
-		left = RelsolveGenericType(left, method_call, NULL, klass);
-		if(!left->HasGenerics() && method_call->HasConcreteTypes() &&
-			(method->GetMethodType() == NEW_PUBLIC_METHOD ||
-			 method->GetMethodType() == NEW_PRIVATE_METHOD)) {
-			left = TypeFactory::Instance()->MakeType(left);
-			left->SetGenerics(method_call->GetConcreteTypes());
-			method_call->SetEvalType(left, false);
-		}
-
-		return left;
-	}
-
-  void CheckGenericParameters(const vector<LibraryClass*> generic_klasses, const vector<Type*> concrete_types, ParseNode* node) {
-    if(generic_klasses.size() != concrete_types.size()) {
-      ProcessError(node, L"Generic parameter list size mismatch");
-    }
-    else {
-      for(size_t i = 0; i < generic_klasses.size(); ++i) {
-        LibraryClass* generic_klass = generic_klasses[i];
-        Type* generic_type = concrete_types[i];
-        if(generic_klass->HasGenericInterface()) {
-          const wstring generic_name = generic_type->GetClassName();
-          Class* type_klass = NULL; LibraryClass* type_lib_klass = NULL;
-          GetProgramLibraryClass(generic_name, type_klass, type_lib_klass);
-
-          const wstring inf_name = generic_klass->GetGenericInterface()->GetClassName();
-          Class* inf_klass = NULL; LibraryClass* inf_lib_klass = NULL;
-          GetProgramLibraryClass(inf_name, inf_klass, inf_lib_klass);
-          
-          wstring class_name;
-          if(inf_klass) {
-            class_name = inf_klass->GetName();
-          }
-          else if(inf_lib_klass) {
-            class_name = inf_lib_klass->GetName();
-          }
-          else {
-            ProcessError(node, L"Undefined class: '" + inf_name + L"'");
-          }
-
-          if(!ValidDownCast(class_name, type_klass, type_lib_klass)) {
-            if(type_klass) {
-              ProcessError(node, L"Invalid operation using classes: '" + type_klass->GetName() + L"' and '" + class_name + L"'");
-            }
-            else if(type_lib_klass) {
-              ProcessError(node, L"Invalid operation using classes: '" + type_lib_klass->GetName() + L"' and '" + class_name + L"'");
-            }
-          }
-        }
-      }
-    }
-  }
-
-  void CheckGenericParameters(const vector<Class*> generic_klasses, const vector<Type*> concrete_types, ParseNode* node) {
-    if(generic_klasses.size() != concrete_types.size()) {
-      ProcessError(node, L"Generic parameter list size mismatch");
-    }
-    else {
-      for(size_t i = 0; i < generic_klasses.size(); ++i) {
-        Class* generic_klass = generic_klasses[i];
-        Type* generic_type = concrete_types[i];
-        if(generic_klass->HasGenericInterface()) {
-          const wstring generic_name = generic_type->GetClassName();
-          Class* type_klass = NULL; LibraryClass* type_lib_klass = NULL;
-          GetProgramLibraryClass(generic_name, type_klass, type_lib_klass);
-
-          const wstring inf_name = generic_klass->GetGenericInterface()->GetClassName();
-          Class* inf_klass = NULL; LibraryClass* inf_lib_klass = NULL;
-          GetProgramLibraryClass(inf_name, inf_klass, inf_lib_klass);
-
-          wstring class_name;
-          if(inf_klass) {
-            class_name = inf_klass->GetName();
-          }
-          else if(inf_lib_klass) {
-            class_name = inf_lib_klass->GetName();
-          }
-          else {
-            ProcessError(node, L"Undefined class: '" + inf_name + L"'");
-          }
-
-          if(!ValidDownCast(class_name, type_klass, type_lib_klass)) {
-            if(type_klass) {
-              ProcessError(node, L"Invalid operation using classes: '" + type_klass->GetName() + L"' and '" + class_name + L"'");
-            }
-            else if(type_lib_klass) {
-              ProcessError(node, L"Invalid operation using classes: '" + type_lib_klass->GetName() + L"' and '" + class_name + L"'");
-            }
-          }
-        }
-      }
+  void ReplaceAllSubstrings(wstring& str, const wstring& from, const wstring& to) {
+    size_t start_pos = 0;
+    while((start_pos = str.find(from, start_pos)) != wstring::npos) {
+      str.replace(start_pos, from.length(), to);
+      start_pos += to.length();
     }
   }
 

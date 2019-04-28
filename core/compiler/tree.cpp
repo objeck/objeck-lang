@@ -537,6 +537,35 @@ ExpressionList* StaticArray::GetAllElements() {
   return all_elements;
 }
 
+void StaticArray::GetAllElements(StaticArray* array, ExpressionList* elems)
+{
+  vector<Expression*> static_array = array->GetElements()->GetExpressions();
+  for(size_t i = 0; i < static_array.size(); ++i) {
+    if(static_array[i]) {
+      if(static_array[i]->GetExpressionType() == STAT_ARY_EXPR) {
+        GetAllElements(static_cast<StaticArray*>(static_array[i]), all_elements);
+        cur_height++;
+      }
+      else {
+        elems->AddExpression(static_array[i]);
+      }
+    }
+  }
+}
+
+void StaticArray::GetSizes(StaticArray* array, int& count)
+{
+  vector<Expression*> static_array = array->GetElements()->GetExpressions();
+  for(size_t i = 0; i < static_array.size(); ++i) {
+    if(static_array[i]) {
+      if(static_array[i]->GetExpressionType() == STAT_ARY_EXPR) {
+        count++;
+        GetSizes(static_cast<StaticArray*>(static_array[i]), count);
+      }
+    }
+  }
+}
+
 vector<int> StaticArray::GetSizes() {
   if(!sizes.size()) {
     int count = 0;
@@ -621,4 +650,98 @@ MethodCall::MethodCall(const wstring &f, const int l, MethodCallType t,
   }
   array_type->SetDimension((int)expressions->GetExpressions().size());
   SetEvalType(array_type, false);
+}
+
+/****************************
+ * ScopeTable class
+ ****************************/
+std::vector<SymbolEntry*> ScopeTable::GetEntries()
+{
+  vector<SymbolEntry*> entries_list;
+  map<const wstring, SymbolEntry*>::iterator iter;
+  for(iter = entries.begin(); iter != entries.end(); ++iter) {
+    SymbolEntry* entry = iter->second;
+    entries_list.push_back(entry);
+  }
+
+  return entries_list;
+}
+
+SymbolEntry* ScopeTable::GetEntry(const wstring& name)
+{
+  map<const wstring, SymbolEntry*>::iterator result = entries.find(name);
+  if(result != entries.end()) {
+    return result->second;
+  }
+
+  return NULL;
+}
+
+/****************************
+ * SymbolTable class
+ ****************************/
+SymbolEntry* SymbolTable::GetEntry(const wstring& name)
+{
+  ScopeTable* tmp = iter_ptr;
+  while(tmp) {
+    SymbolEntry* entry = tmp->GetEntry(name);
+    if(entry) {
+      return entry;
+    }
+    tmp = tmp->GetParent();
+  }
+
+  return NULL;
+}
+
+bool SymbolTable::AddEntry(SymbolEntry* e, bool is_var /*= false*/)
+{
+  // see of we have this entry
+  ScopeTable* tmp;
+  if(is_var) {
+    tmp = iter_ptr;
+  }
+  else {
+    tmp = parse_ptr;
+  }
+
+  while(tmp) {
+    SymbolEntry* entry = tmp->GetEntry(e->GetName());
+    if(entry) {
+      return false;
+    }
+    tmp = tmp->GetParent();
+  }
+
+  // add new entry
+  if(is_var) {
+    iter_ptr->AddEntry(e);
+  }
+  else {
+    parse_ptr->AddEntry(e);
+  }
+  entries.push_back(e);
+  return true;
+}
+
+/****************************
+ * class Class
+ ****************************/
+void Class::AssociateMethods()
+{
+  for(size_t i = 0; i < method_list.size(); ++i) {
+    Method* method = method_list[i];
+    methods.insert(pair<wstring, Method*>(method->GetEncodedName(), method));
+
+    // add to unqualified names to list
+    const wstring& encoded_name = method->GetEncodedName();
+    const size_t start = encoded_name.find(':');
+    if(start != wstring::npos) {
+      const size_t end = encoded_name.find(':', start + 1);
+      if(end != wstring::npos) {
+        const wstring& unqualified_name = encoded_name.substr(start + 1, end - start - 1);
+        unqualified_methods.insert(pair<wstring, Method*>(unqualified_name, method));
+      }
+    }
+  }
 }
