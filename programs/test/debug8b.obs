@@ -1,0 +1,15 @@
+class Foo {
+	function : Main(args : String[]) ~ Nil {
+		m := Map->New()<String, String>;
+		m->Add("b", "2");
+		m->Add("a", "1");
+		m->Add("o", "13");
+		m->Add("r", "18");
+		m->Add("h", "8");
+		m->Size()->PrintLine();
+
+		m->Get("h")->PrintLine();
+		m->Get("o")->PrintLine();
+		m->Get("b")->PrintLine();
+	}
+}
