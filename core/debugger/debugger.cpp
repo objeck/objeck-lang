@@ -1,7 +1,7 @@
 /**************************************************************************
  * Runtime debugger
  *
- * Copyright (c) 2010-2013 Randy Hollines
+ * Copyright (c) 2010-2019 Randy Hollines
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -53,7 +53,7 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
         (is_next || (is_jmp_out && call_stack_pos < cur_call_stack_pos)) ||
         // next line
         (is_next_line && ((cur_frame && frame->method == cur_frame->method) ||
-													(call_stack_pos < cur_call_stack_pos))))) {
+                          (call_stack_pos < cur_call_stack_pos))))) {
       // set current line
       cur_line_num = line_num;
       cur_file_name = file_name;
@@ -78,20 +78,20 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
       Command* command;
       wcout << L"> ";
       do {
-				wstring line;
-				getline(wcin, line);
-				if(line.size() > 0) {
-					command = ProcessCommand(line);
-					wcout << L"> ";
-				}
-				else {
-					command = NULL;
-				}
+        wstring line;
+        getline(wcin, line);
+        if(line.size() > 0) {
+          command = ProcessCommand(line);
+          wcout << L"> ";
+        }
+        else {
+          command = NULL;
+        }
       }
       while(!command || (command->GetCommandType() != CONT_COMMAND &&
-												 command->GetCommandType() != NEXT_COMMAND &&
-												 command->GetCommandType() != NEXT_LINE_COMMAND &&
-												 command->GetCommandType() != JUMP_OUT_COMMAND));
+                         command->GetCommandType() != NEXT_COMMAND &&
+                         command->GetCommandType() != NEXT_LINE_COMMAND &&
+                         command->GetCommandType() != JUMP_OUT_COMMAND));
     }
   }
 }
@@ -213,7 +213,7 @@ void Runtime::Debugger::ProcessRun() {
     wcout << L"# final stack: pos=" << (*stack_pos) << L" #" << endl;
     wcout << L"---------------------------" << endl;
     wcout << L"Time: " << (float)(clock() - start) / CLOCKS_PER_SEC
-					<< L" second(s)." << endl;
+          << L" second(s)." << endl;
 #endif
 
 #ifdef _DEBUG
@@ -345,10 +345,10 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
           }
           else {
             wcout << L"print: type=Byte[], value=" << reference->GetIntValue()
-									<< L"(" << (void*)reference->GetIntValue() << L")";
+                  << L"(" << (void*)reference->GetIntValue() << L")";
             if(reference->GetArrayDimension()) {
               wcout << L", dimension=" << reference->GetArrayDimension() << L", size="
-										<< reference->GetArraySize();
+                    << reference->GetArraySize();
             }
             wcout << endl;
           }
@@ -360,10 +360,10 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
           }
           else {
             wcout << L"print: type=Char[], value=" << reference->GetIntValue()
-									<< L"(" << (void*)reference->GetIntValue() << L")";
+                  << L"(" << (void*)reference->GetIntValue() << L")";
             if(reference->GetArrayDimension()) {
               wcout << L", dimension=" << reference->GetArrayDimension() << L", size="
-										<< reference->GetArraySize();
+                    << reference->GetArraySize();
             }
             wcout << endl;
           }
@@ -375,10 +375,10 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
           }
           else {
             wcout << L"print: type=Int[], value=" << reference->GetIntValue()
-									<< L"(" << (void*)reference->GetIntValue() << L")";
+                  << L"(" << (void*)reference->GetIntValue() << L")";
             if(reference->GetArrayDimension()) {
               wcout << L", dimension=" << reference->GetArrayDimension() << L", size="
-										<< reference->GetArraySize();
+                    << reference->GetArraySize();
             }
             wcout << endl;
           }
@@ -390,10 +390,10 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
           }
           else {
             wcout << L"print: type=Float[], value=" << reference->GetIntValue()
-									<< L"(" << (void*)reference->GetIntValue() << L")";
+                  << L"(" << (void*)reference->GetIntValue() << L")";
             if(reference->GetArrayDimension()) {
               wcout << L", dimension=" << reference->GetArrayDimension() << L", size="
-										<< reference->GetArraySize();
+                    << reference->GetArraySize();
             }
             wcout << endl;
           }
@@ -406,23 +406,23 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
               size_t* string_instance = (size_t*)instance[0];
               const wchar_t* char_string = (wchar_t*)(string_instance + 3);
               wcout << L"print: type=" << ref_klass->GetName() << L", value=\""
-										<< char_string << L"\"" << endl;
+                    << char_string << L"\"" << endl;
             }
             else {
               wcout << L"print: type=" << (ref_klass ? ref_klass->GetName() : L"System.Base") << L", value="
-										<< (void*)reference->GetIntValue() << endl;
+                    << (void*)reference->GetIntValue() << endl;
             }
           }
           else {
             wcout << L"print: type=" << (ref_klass ? ref_klass->GetName() : L"System.Base") << L", value="
-									<< (void*)reference->GetIntValue() << endl;
+                  << (void*)reference->GetIntValue() << endl;
           }
           break;
 
         case OBJ_ARY_PARM:
           if(reference->GetIndices()) {
             StackClass* klass = MemoryManager::GetClass((size_t*)reference->GetIntValue());
-            if(klass) {	      
+            if(klass) {        
               size_t* instance = (size_t*)reference->GetIntValue();
               if(instance) {
                 wcout << L"print: type=" << klass->GetName() << L", value=" << (void*)reference->GetIntValue() << endl;
@@ -439,7 +439,7 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
             wcout << L"print: type=System.Base[], value=" << (void*)reference->GetIntValue();
             if(reference->GetArrayDimension()) {
               wcout << L", dimension=" << reference->GetArrayDimension() << L", size="
-										<< reference->GetArraySize();
+                    << reference->GetArraySize();
             }
             wcout << endl;
           }
@@ -449,10 +449,10 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
           StackClass* klass = cur_program->GetClass((long)reference->GetIntValue());
           if(klass) {
             wcout << L"print: type=Functon, class=" << klass->GetName() 
-									<< L", method=" << PrintMethod(klass->GetMethod(reference->GetIntValue2())) << endl;
+                  << L", method=" << PrintMethod(klass->GetMethod(reference->GetIntValue2())) << endl;
           }
-				}
-					break;
+        }
+          break;
         }
       }
       else {
@@ -778,7 +778,7 @@ void Runtime::Debugger::EvaluateReference(Reference* &reference, MemoryContext c
         found = ref_klass->GetInstanceDeclaration(reference->GetVariableName(), dclr_value);
       }
       else {
-        found = ref_klass->GetClassDeclaration(reference->GetVariableName(), dclr_value);	
+        found = ref_klass->GetClassDeclaration(reference->GetVariableName(), dclr_value);  
       }
 
       // set reference
@@ -799,8 +799,8 @@ void Runtime::Debugger::EvaluateReference(Reference* &reference, MemoryContext c
           FLOAT_VALUE value;
           memcpy(&value, &ref_mem[dclr_value.id], sizeof(FLOAT_VALUE));
           reference->SetFloatValue(value);
-				}
-					break;
+        }
+          break;
 
         case OBJ_PARM:
           EvaluateInstanceReference(reference, dclr_value.id);
@@ -877,8 +877,8 @@ void Runtime::Debugger::EvaluateReference(Reference* &reference, MemoryContext c
             FLOAT_VALUE value;
             memcpy(&value, &ref_mem[dclr_value.id + 1], sizeof(FLOAT_VALUE));
             reference->SetFloatValue(value);
-					}
-						break;
+          }
+            break;
 
           case OBJ_PARM:
             EvaluateInstanceReference(reference, dclr_value.id + 1);
@@ -1155,6 +1155,181 @@ void Runtime::Debugger::EvaluateIntFloatReference(Reference* reference, int inde
   }
 }
 
+std::wstring Runtime::Debugger::PrintMethod(StackMethod* method)
+{
+  wstring mthd_name = method->GetName();
+  size_t index = mthd_name.find_last_of(':');
+  if(index != wstring::npos) {
+    mthd_name.replace(index, 1, 1, '(');
+    if(mthd_name[mthd_name.size() - 1] == ',') {
+      mthd_name.replace(mthd_name.size() - 1, 1, 1, ')');
+    }
+    else {
+      mthd_name += ')';
+    }
+  }
+
+  index = mthd_name.find_last_of(':');
+  if(index != wstring::npos) {
+    mthd_name = mthd_name.substr(index + 1);
+  }
+
+  return mthd_name;
+}
+
+bool Runtime::Debugger::FileExists(const wstring& file_name, bool is_exe /*= false*/)
+{
+  const string name = UnicodeToBytes(file_name);
+  const string ending = ".obl";
+  if(ending.size() > name.size() && !std::equal(ending.rbegin(), ending.rend(), name.rbegin())) {
+    return false;
+  }
+
+  ifstream touch(name.c_str(), ios::binary);
+  if(touch.is_open()) {
+    /*
+    if(is_exe) {
+      int magic_num;
+      // version
+      touch.read((char*)&magic_num, sizeof(int));
+      // file type
+      touch.read((char*)&magic_num, sizeof(int));
+      touch.close();
+      return magic_num == MAGIC_NUM_EXE;
+    }
+    */
+    touch.close();
+    return true;
+  }
+
+  return false;
+}
+
+bool Runtime::Debugger::DirectoryExists(const wstring& wdir_name)
+{
+  const string dir_name = UnicodeToBytes(wdir_name);
+#ifdef _WIN32
+  HANDLE file = CreateFile(dir_name.c_str(), GENERIC_READ,
+                           FILE_SHARE_READ, NULL, OPEN_EXISTING,
+                           FILE_FLAG_BACKUP_SEMANTICS, NULL);
+
+  if(file == INVALID_HANDLE_VALUE) {
+    return false;
+  }
+  CloseHandle(file);
+
+  return true;
+#else
+  DIR* dir = opendir(dir_name.c_str());
+  if(dir) {
+    closedir(dir);
+    return true;
+  }
+
+  return false;
+#endif
+}
+
+bool Runtime::Debugger::DeleteBreak(int line_num, const wstring& file_name)
+{
+  UserBreak* user_break = FindBreak(line_num, file_name);
+  if(user_break) {
+    breaks.remove(user_break);
+    return true;
+  }
+
+  return false;
+}
+
+Runtime::UserBreak* Runtime::Debugger::FindBreak(int line_num, const wstring& file_name)
+{
+  for(list<UserBreak*>::iterator iter = breaks.begin(); iter != breaks.end(); iter++) {
+    UserBreak* user_break = (*iter);
+    if(user_break->line_num == line_num && user_break->file_name == file_name) {
+      return *iter;
+    }
+  }
+
+  return NULL;
+}
+
+bool Runtime::Debugger::AddBreak(int line_num, const wstring& file_name)
+{
+  if(!FindBreak(line_num, file_name)) {
+    UserBreak* user_break = new UserBreak;
+    user_break->line_num = line_num;
+    user_break->file_name = file_name;
+    breaks.push_back(user_break);
+    return true;
+  }
+
+  return false;
+}
+
+void Runtime::Debugger::ListBreaks()
+{
+  wcout << L"breaks:" << endl;
+  list<UserBreak*>::iterator iter;
+  for(iter = breaks.begin(); iter != breaks.end(); iter++) {
+    wcout << L"  break: file='" << (*iter)->file_name << L":" << (*iter)->line_num << L"'" << endl;
+  }
+}
+
+void Runtime::Debugger::PrintDeclarations(StackDclr** dclrs, int dclrs_num)
+{
+  for(int i = 0; i < dclrs_num; i++) {
+    StackDclr* dclr = dclrs[i];
+
+    // parse name
+    size_t param_name_index = dclrs[i]->name.find_last_of(':');
+    const wstring& param_name = dclrs[i]->name.substr(param_name_index + 1);
+    wcout << L"    parameter: name='" << param_name << L"', ";
+
+    // parse type
+    switch(dclr->type) {
+    case INT_PARM:
+      wcout << L"type=Int" << endl;
+      break;
+
+    case CHAR_PARM:
+      wcout << L"type=Char" << endl;
+      break;
+
+    case FLOAT_PARM:
+      wcout << L"type=Float" << endl;
+      break;
+
+    case BYTE_ARY_PARM:
+      wcout << L"type=Byte[]" << endl;
+      break;
+
+    case CHAR_ARY_PARM:
+      wcout << L"type=Char[]" << endl;
+      break;
+
+    case INT_ARY_PARM:
+      wcout << L"type=Int[]" << endl;
+      break;
+
+    case FLOAT_ARY_PARM:
+      wcout << L"type=Float[]" << endl;
+      break;
+
+    case OBJ_PARM:
+      wcout << L"type=Object" << endl;
+      break;
+
+    case OBJ_ARY_PARM:
+      wcout << L"type=Object[]" << endl;
+      break;
+
+    case FUNC_PARM:
+      wcout << L"type=Function" << endl;
+      break;
+    }
+  }
+}
+
 Command* Runtime::Debugger::ProcessCommand(const wstring &line) {
 #ifdef _DEBUG
   wcout << L"input: |" << line << L"|" << endl;
@@ -1298,7 +1473,7 @@ Command* Runtime::Debugger::ProcessCommand(const wstring &line) {
         wcout << L"stack:" << endl;
         StackMethod* method = cur_frame->method;
         wcerr << L"  frame: pos=" << cur_call_stack_pos << L", class=" << method->GetClass()->GetName() 
-							<< L", method=" << PrintMethod(method);
+              << L", method=" << PrintMethod(method);
         const long ip = cur_frame->ip;
         if(ip > -1) {
           StackInstr* instr = cur_frame->method->GetInstruction(ip);
@@ -1312,7 +1487,7 @@ Command* Runtime::Debugger::ProcessCommand(const wstring &line) {
         do {
           StackMethod* method = cur_call_stack[pos]->method;
           wcerr << L"  frame: pos=" << pos << L", class=" << method->GetClass()->GetName() 
-								<< L", method=" << PrintMethod(method);
+                << L", method=" << PrintMethod(method);
           const long ip = cur_call_stack[pos]->ip;
           if(ip > -1) {
             StackInstr* instr = cur_call_stack[pos]->method->GetInstruction(ip);
@@ -1364,11 +1539,11 @@ void Runtime::Debugger::ProcessInfo(Info* info) {
           for(size_t i = 0; i < methods.size(); i++) {
             StackMethod* method = methods[i];
             wcout << L"  class: type=" << klass->GetName() << L", method="
-									<< PrintMethod(method) << endl;
-						if(method->GetNumberDeclarations() > 0) {
-							wcout << L"  parameters:" << endl;
-							PrintDeclarations(method->GetDeclarations(), method->GetNumberDeclarations());
-						}
+                  << PrintMethod(method) << endl;
+            if(method->GetNumberDeclarations() > 0) {
+              wcout << L"  parameters:" << endl;
+              PrintDeclarations(method->GetDeclarations(), method->GetNumberDeclarations());
+            }
           }
         }
         else {
@@ -1388,9 +1563,9 @@ void Runtime::Debugger::ProcessInfo(Info* info) {
         wcout << L"  class: type=" << klass->GetName() << endl;
         // print
         wcout << L"  parameters:" << endl;
-				if(klass->GetNumberInstanceDeclarations() > 0) {
-					PrintDeclarations(klass->GetInstanceDeclarations(), klass->GetNumberInstanceDeclarations());
-				}
+        if(klass->GetNumberInstanceDeclarations() > 0) {
+          PrintDeclarations(klass->GetInstanceDeclarations(), klass->GetNumberInstanceDeclarations());
+        }
       }
       else {
         wcout << L"unable to find class." << endl;
@@ -1413,7 +1588,7 @@ void Runtime::Debugger::ProcessInfo(Info* info) {
 
       // print
       wcout << L"  current file='" << cur_file_name << L":" << cur_line_num << L"', method='"
-						<< cls_name << L"->" << mthd_name << L"(..)'" << endl;
+            << cls_name << L"->" << mthd_name << L"(..)'" << endl;
     }
   }
   else {
@@ -1578,4 +1753,56 @@ int main(int argc, char** argv)
   }
 
   return 1;
+}
+
+bool Runtime::SourceFile::Print(int start)
+{
+  const int window = 5;
+  int end = start + window * 2;
+  start--;
+
+  if(start >= end || start >= (int)lines.size()) {
+    return false;
+  }
+
+  if(start - window > 0) {
+    start -= window;
+    end -= window;
+  }
+  else {
+    start = 0;
+    end = window * 2;
+  }
+
+  // find leading whitespace
+  int leading = 160;
+  for(int i = start; i < (int)lines.size() && i < (int)end; i++) {
+    const wstring line = lines[i];
+    int j = 0;
+    while(j < (int)line.size() && (line[j] == L' ' || line[j] == L'\t')) {
+      j++;
+    }
+
+    if(j != 0 && leading > j) {
+      leading = j;
+    }
+  }
+
+  for(int i = start; i < (int)lines.size() && i < (int)end; i++) {
+    // trim leading whitespace
+    wstring line = lines[i];
+    const int line_size = (int)line.size();
+    if(line_size > 0 && (line[0] == L' ' || line[0] == L'\t') && line_size > leading) {
+      line = line.substr(leading);
+    }
+
+    if(i + 1 == cur_line_num) {
+      wcout << right << L"=>" << setw(window) << (i + 1) << L": " << line << endl;
+    }
+    else {
+      wcout << right << setw(window + 2) << (i + 1) << L": " << line << endl;
+    }
+  }
+
+  return true;
 }

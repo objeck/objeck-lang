@@ -95,65 +95,12 @@ namespace Runtime {
     //
     // get stack frame
     //
-    static inline StackFrame* GetStackFrame(StackMethod* method, size_t* instance) {
-#ifdef _WIN32
-      EnterCriticalSection(&cached_frames_cs);
-#else
-      pthread_mutex_lock(&cached_frames_mutex);
-#endif
-      if(cached_frames.empty()) {
-        // load cache
-        for(int i = 0; i < CALL_STACK_SIZE; ++i) {
-          StackFrame* frame = new StackFrame();
-          frame->mem = (size_t*)calloc(LOCAL_SIZE, sizeof(size_t));
-          cached_frames.push(frame);
-        }
-      }
-      StackFrame* frame = cached_frames.top();
-      cached_frames.pop();
-
-      frame->method = method;
-      frame->mem[0] = (size_t)instance;
-      frame->ip = -1;
-      frame->jit_called = false;
-      frame->jit_mem = NULL;
-      frame->jit_offset = 0;
-#ifdef _DEBUG
-      wcout << L"fetching frame=" << frame << endl;
-#endif
-
-#ifdef _WIN32
-      LeaveCriticalSection(&cached_frames_cs);
-#else
-      pthread_mutex_unlock(&cached_frames_mutex);
-#endif
-      return frame;
-    }
+    static StackFrame* GetStackFrame(StackMethod* method, size_t* instance);
     
     //
     // release stack frame
     //
-    static inline void ReleaseStackFrame(StackFrame* frame) {
-#ifdef _WIN32
-      EnterCriticalSection(&cached_frames_cs);
-#else
-      pthread_mutex_lock(&cached_frames_mutex);
-#endif      
-      
-      // load cache
-      frame->jit_mem = NULL;
-      memset(frame->mem, 0, LOCAL_SIZE * sizeof(size_t));
-      cached_frames.push(frame);
-#ifdef _DEBUG
-      wcout << L"caching frame=" << frame << endl;
-#endif    
-
-#ifdef _WIN32
-      LeaveCriticalSection(&cached_frames_cs);
-#else
-      pthread_mutex_unlock(&cached_frames_mutex);
-#endif
-    }
+    static void ReleaseStackFrame(StackFrame* frame);
     
     //
     // push call frame
@@ -182,62 +129,12 @@ namespace Runtime {
     //
     // generates a stack dump if an error occurs
     //
-    inline void StackErrorUnwind() {
-      long pos = (*call_stack_pos);
-#ifdef _DEBUGGER
-      wcerr << L"Unwinding local stack (" << this << L"):" << endl;
-      StackMethod* method =  (*frame)->method;
-      if((*frame)->ip > 0 && pos > -1 && 
-         method->GetInstruction((*frame)->ip)->GetLineNumber() > 0) {
-        wcerr << L"  method: pos=" << pos << L", file="
-              << (*frame)->method->GetClass()->GetFileName() << L", name='" 
-              << (*frame)->method->GetName() << L"', line=" 
-              << method->GetInstruction((*frame)->ip)->GetLineNumber() << endl;
-      }
-      if(pos != 0) {
-        while(--pos) {
-          StackMethod* method =  call_stack[pos]->method;
-          if(call_stack[pos]->ip > 0 && pos > -1 && 
-             method->GetInstruction(call_stack[pos]->ip)->GetLineNumber() > 0) {
-            wcerr << L"  method: pos=" << pos << L", file=" 
-                  << call_stack[pos]->method->GetClass()->GetFileName() << L", name='"
-                  << call_stack[pos]->method->GetName() << L"', line=" 
-                  << method->GetInstruction(call_stack[pos]->ip)->GetLineNumber() << endl;
-          }
-        }
-        pos = 0;
-      }
-      wcerr << L"  ..." << endl;
-#else
-      wcerr << L"Unwinding local stack (" << this << L"):" << endl;
-      wcerr << L"  method: pos=" << pos << L", name=" 
-            << (*frame)->method->GetName() << endl;
-      if(pos != 0) {
-        while(--pos && pos > -1) {
-          wcerr << L"  method: pos=" << pos << L", name="
-                << call_stack[pos]->method->GetName() << endl;
-        }
-      }
-      wcerr << L"  ..." << endl;
-#endif
-    }
+    void StackErrorUnwind();
     
     //
     // generates a stack dump if an error occurs
     //
-    inline void StackErrorUnwind(StackMethod* method) {
-      long pos = (*call_stack_pos);
-      wcerr << L"Unwinding local stack (" << this << L"):" << endl;
-      wcerr << L"  method: pos=" << pos << L", name="
-            << method->GetName() << endl;
-      while(--pos) {
-        if(pos > - 1) {
-          wcerr << L"  method: pos=" << pos << L", name="
-                << call_stack[pos]->method->GetName() << endl;
-        }
-      }
-      wcerr << L"  ..." << endl;
-    }
+    void StackErrorUnwind(StackMethod* method);
     
     //
     // is call stack empty?
@@ -357,80 +254,12 @@ namespace Runtime {
     //
     // calculates an array offset
     //
-    inline long ArrayIndex(StackInstr* instr, size_t* array, const long size, size_t* &op_stack, long* &stack_pos) {
-      // generate index
-      long index = (long)PopInt(op_stack, stack_pos);
-      const long dim = instr->GetOperand();
-
-      for(long i = 1; i < dim; i++) {
-        index *= (long)array[i];
-        index += (long)PopInt(op_stack, stack_pos);
-      }
-
-#ifdef _DEBUG
-      wcout << L"  [raw index=" << index << L", raw size=" << size << L"]" << endl;
-#endif
-
-      // 64-bit bounds check
-#if defined(_WIN64) || defined(_X64)
-      if(index < 0 || index >= size) {
-        wcerr << L">>> Index out of bounds: " << index << L"," << size << L" <<<" << endl;
-        StackErrorUnwind();
-        exit(1);
-      }
-#else
-      // 32-bit bounds check
-      if(instr->GetType() == LOAD_FLOAT_ARY_ELM || instr->GetType() == STOR_FLOAT_ARY_ELM) {
-        // float array
-        index *= 2;
-        if(index < 0 || index >= size * 2) {
-          wcerr << L">>> Index out of bounds: " << index << L"," << (size * 2) << L" <<<" << endl;
-          StackErrorUnwind();
-          exit(1);
-        }
-      } 
-      else {
-        // interger array
-        if(index < 0 || index >= size) {
-          wcerr << L">>> Index out of bounds: " << index << L"," << size << L" <<<" << endl;
-          StackErrorUnwind();
-          exit(1);
-        }
-      }
-#endif
-
-      return index;
-    }    
+    long ArrayIndex(StackInstr* instr, size_t* array, const long size, size_t* &op_stack, long* &stack_pos);    
         
     //
     // creates a string object instance
     // 
-    inline size_t* CreateStringObject(const wstring &value_str, size_t* &op_stack, long* &stack_pos) {
-      // create character array
-      const long char_array_size = (long)value_str.size();
-      const long char_array_dim = 1;
-      size_t* char_array = (size_t*)MemoryManager::AllocateArray(char_array_size + 1 + ((char_array_dim + 2) * sizeof(size_t)),
-                                                                 CHAR_ARY_TYPE, op_stack, *stack_pos, false);
-      char_array[0] = char_array_size + 1;
-      char_array[1] = char_array_dim;
-      char_array[2] = char_array_size;
-
-      // copy wstring
-      wchar_t* char_array_ptr = (wchar_t*)(char_array + 3);
-#ifdef _WIN32
-      wcsncpy_s(char_array_ptr, char_array_size + 1, value_str.c_str(), char_array_size);
-#else
-      wcsncpy(char_array_ptr, value_str.c_str(), char_array_size);
-#endif
-
-      // create 'System.String' object instance
-      size_t* str_obj = MemoryManager::AllocateObject(program->GetStringObjectId(), op_stack, *stack_pos, false);
-      str_obj[0] = (size_t)char_array;
-      str_obj[1] = char_array_size;
-      str_obj[2] = char_array_size;
-      
-      return str_obj;
-    }
+    size_t* CreateStringObject(const wstring &value_str, size_t* &op_stack, long* &stack_pos);
 
     inline FLOAT_VALUE GetRandomValue() {
       random_device gen;

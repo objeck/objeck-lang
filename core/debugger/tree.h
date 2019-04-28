@@ -592,7 +592,7 @@ namespace frontend {
     Reference() : Expression() {
       variable_name = L"@self";
       is_self = true;
-      reference	= NULL;
+      reference  = NULL;
       array_size = 0;
       array_dim = 0;
       indices = NULL;
@@ -601,7 +601,7 @@ namespace frontend {
     Reference(const wstring &v) : Expression() {
       variable_name = v;
       is_self = false;
-      reference	= NULL;
+      reference  = NULL;
       indices = NULL;
     }
 

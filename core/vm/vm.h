@@ -49,31 +49,7 @@ extern "C"
 #endif
 }
 
-static wchar_t** ProcessCommandLine(const int argc, const char* argv[]) {
-  wchar_t** wide_args = new wchar_t*[argc];
-  for(int i = 0; i < argc; ++i) {
-    const char* arg = argv[i];
-    const int len = (int)strlen(arg);
-    wchar_t* wide_arg = new wchar_t[len + 1];
-    for(int j = 0; j < len; ++j) {
-      wide_arg[j] = arg[j];
-    }
-    wide_arg[len] = L'\0';
-    wide_args[i] = wide_arg;
-  }
-
-  return wide_args;
-}
-
-static void CleanUpCommandLine(const int argc, wchar_t** wide_args) {
-  for(int i = 0; i < argc; ++i) {
-    wchar_t* wide_arg = wide_args[i];
-    delete[] wide_arg;
-    wide_arg = NULL;
-  }
-
-  delete[] wide_args;
-  wide_args = NULL;
-}
+static wchar_t** ProcessCommandLine(const int argc, const char* argv[]);
+static void CleanUpCommandLine(const int argc, wchar_t** wide_args);
 
 #endif
