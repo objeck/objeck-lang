@@ -11,7 +11,7 @@
  * notice, this list of conditions and the following disclaimer.
  * - Redistributions in binary form must reproduce the above copyright
  * notice, this list of conditions and the following disclaimer in
- * the documentation and/cor other materials provided with the distribution.
+ * the documentation and/or other materials provided with the distribution.
  * - Neither the name of the Objeck team nor the names of its
  * contributors may be used to endorse or promote products derived
  * from this software without specific prior written permission.
@@ -39,8 +39,7 @@
 void ContextAnalyzer::ProcessError(ParseNode* node, const wstring &msg)
 {
 #ifdef _DEBUG
-  GetLogger() << L"\tError: " << node->GetFileName() << L":" << node->GetLineNumber()
-    << L": " << msg << endl;
+  GetLogger() << L"\tError: " << node->GetFileName() << L":" << node->GetLineNumber() << L": " << msg << endl;
 #endif
 
   const wstring &str_line_num = ToString(node->GetLineNumber());
@@ -5473,7 +5472,7 @@ bool ContextAnalyzer::GetProgramLibraryClass(const wstring& n, Class*& klass, Li
   return false;
 }
 
-const std::wstring ContextAnalyzer::EncodeType(Type* type)
+const wstring ContextAnalyzer::EncodeType(Type* type)
 {
   wstring encoded_name;
 
@@ -5902,4 +5901,48 @@ void ContextAnalyzer::CheckGenericParameters(const vector<Class*> generic_klasse
       }
     }
   }
+}
+
+/****************************
+ * Support for inferred method
+ * signatures
+ ****************************/
+LibraryMethod* LibraryMethodCallSelector::GetSelection()
+{
+  // no match
+  if(valid_matches.size() == 0) {
+    return NULL;
+  }
+  // single match
+  else if(valid_matches.size() == 1) {
+    return valid_matches[0]->GetLibraryMethod();
+  }
+
+  int match_index = -1;
+  int high_score = 0;
+  for(size_t i = 0; i < matches.size(); ++i) {
+    // calculate match score
+    int match_score = 0;
+    bool exact_match = true;
+    vector<int> parm_matches = matches[i]->GetParameterMatches();
+    for(size_t j = 0; exact_match && j < parm_matches.size(); ++j) {
+      if(parm_matches[j] == 0) {
+        match_score++;
+      }
+      else {
+        exact_match = false;
+      }
+    }
+    // save the index of the best match
+    if(match_score > high_score) {
+      match_index = (int)i;
+      high_score = match_score;
+    }
+  }
+
+  if(match_index == -1) {
+    return NULL;
+  }
+
+  return matches[match_index]->GetLibraryMethod();
 }

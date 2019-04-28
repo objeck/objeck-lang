@@ -116,44 +116,7 @@ class LibraryMethodCallSelector {
     return alt_names;
   }
 
-  LibraryMethod* GetSelection() {
-    // no match
-    if(valid_matches.size() == 0) {
-      return NULL;
-    }
-    // single match
-    else if(valid_matches.size() == 1) {
-      return valid_matches[0]->GetLibraryMethod();
-    }
-
-    int match_index = -1;
-    int high_score = 0;
-    for(size_t i = 0; i < matches.size(); ++i) {
-      // calculate match score
-      int match_score = 0;
-      bool exact_match = true;
-      vector<int> parm_matches = matches[i]->GetParameterMatches();
-      for(size_t j = 0; exact_match && j < parm_matches.size(); ++j) {
-        if(parm_matches[j] == 0) {
-          match_score++;
-        }
-        else {
-          exact_match = false;
-        }
-      }
-      // save the index of the best match
-      if(match_score >  high_score) {
-        match_index = (int)i;
-        high_score = match_score;
-      }
-    }
-
-    if(match_index == -1) {
-      return NULL;
-    }
-
-    return matches[match_index]->GetLibraryMethod();    
-  }
+  LibraryMethod* GetSelection();
 };
 
 /****************************
