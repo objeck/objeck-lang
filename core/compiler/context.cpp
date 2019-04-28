@@ -51,7 +51,7 @@ void ContextAnalyzer::ProcessError(ParseNode* node, const wstring& msg)
  * Formats possible alternative
  * methods
  ****************************/
-void ContextAnalyzer::ProcessErrorAlternativeMethods(wstring & message)
+void ContextAnalyzer::ProcessErrorAlternativeMethods(wstring &message)
 {
   if(alt_error_method_names.size() > 0) {
     message += L"\n\tPossible alternative(s):\n";
@@ -65,7 +65,7 @@ void ContextAnalyzer::ProcessErrorAlternativeMethods(wstring & message)
 /****************************
  * Emits an error
  ****************************/
-void ContextAnalyzer::ProcessError(const wstring & fn, const wstring & msg)
+void ContextAnalyzer::ProcessError(const wstring &fn, const wstring &msg)
 {
 #ifdef _DEBUG
   GetLogger() << L"\tError: " << msg << endl;
@@ -249,7 +249,7 @@ bool ContextAnalyzer::Analyze()
 /****************************
  * Analyzes a class
  ****************************/
-void ContextAnalyzer::AnalyzeEnum(Enum * eenum, const int depth)
+void ContextAnalyzer::AnalyzeEnum(Enum* eenum, const int depth)
 {
 #ifdef _DEBUG
   wstring msg = L"[enum: name='" + eenum->GetName() + L"']";
@@ -271,7 +271,7 @@ void ContextAnalyzer::AnalyzeEnum(Enum * eenum, const int depth)
  * Checks for duplicate instance
  * and class level variables
  ****************************/
-void ContextAnalyzer::AnalyzeDuplicateEntries(vector<Class*> & classes, const int depth)
+void ContextAnalyzer::AnalyzeDuplicateEntries(vector<Class*> &classes, const int depth)
 {
   for(size_t i = 0; i < classes.size(); ++i) {
     // declarations
@@ -297,7 +297,7 @@ void ContextAnalyzer::AnalyzeDuplicateEntries(vector<Class*> & classes, const in
  * Expands and validates methods with
  * default parameters
  ****************************/
-void ContextAnalyzer::AddDefaultParameterMethods(ParsedBundle * bundle, Class * klass, Method * method)
+void ContextAnalyzer::AddDefaultParameterMethods(ParsedBundle* bundle, Class* klass, Method* method)
 {
   // declarations
   vector<Declaration*> declarations = method->GetDeclarations()->GetDeclarations();
@@ -328,7 +328,7 @@ void ContextAnalyzer::AddDefaultParameterMethods(ParsedBundle * bundle, Class * 
  * Generates alternative methods for
  * method with default parameter values
  ****************************/
-void ContextAnalyzer::GenerateParameterMethods(ParsedBundle * bundle, Class * klass, Method * method)
+void ContextAnalyzer::GenerateParameterMethods(ParsedBundle* bundle, Class* klass, Method* method)
 {
   // find inital parameter offset
   vector<Declaration*> declarations = method->GetDeclarations()->GetDeclarations();
@@ -389,7 +389,7 @@ void ContextAnalyzer::GenerateParameterMethods(ParsedBundle * bundle, Class * kl
 /****************************
  * Analyzes a class
  ****************************/
-void ContextAnalyzer::AnalyzeClass(Class * klass, const int id, const int depth)
+void ContextAnalyzer::AnalyzeClass(Class* klass, const int id, const int depth)
 {
 #ifdef _DEBUG
   wstring msg = L"[class: name='" + klass->GetName() + L"'; id=" + ToString(id) +
@@ -439,7 +439,7 @@ void ContextAnalyzer::AnalyzeClass(Class * klass, const int id, const int depth)
 /****************************
  * Analyzes methods
  ****************************/
-void ContextAnalyzer::AnalyzeMethods(Class * klass, const int depth)
+void ContextAnalyzer::AnalyzeMethods(Class* klass, const int depth)
 {
 #ifdef _DEBUG
   wstring msg = L"[class: name='" + klass->GetName() + L"]";
@@ -479,7 +479,7 @@ void ContextAnalyzer::AnalyzeMethods(Class * klass, const int depth)
  * Checks for interface
  * implementations
  ****************************/
-void ContextAnalyzer::AnalyzeInterfaces(Class * klass, const int depth)
+void ContextAnalyzer::AnalyzeInterfaces(Class* klass, const int depth)
 {
   vector<wstring> interface_names = klass->GetInterfaceNames();
   vector<Class*> interfaces;
@@ -554,7 +554,7 @@ void ContextAnalyzer::AnalyzeInterfaces(Class * klass, const int depth)
  * Checks for virutal method
  * implementations
  ****************************/
-bool ContextAnalyzer::AnalyzeVirtualMethods(Class * impl_class, Class * virtual_class, const int depth)
+bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, Class* virtual_class, const int depth)
 {
   // get virutal methods
   bool virtual_methods_defined = true;
@@ -618,8 +618,8 @@ bool ContextAnalyzer::AnalyzeVirtualMethods(Class * impl_class, Class * virtual_
  * are made when compiling shared
  * libraries.
  ****************************/
-void ContextAnalyzer::AnalyzeVirtualMethod(Class * impl_class, MethodType impl_mthd_type, Type * impl_return,
-                                           bool impl_is_static, bool impl_is_virtual, Method * virtual_method)
+void ContextAnalyzer::AnalyzeVirtualMethod(Class* impl_class, MethodType impl_mthd_type, Type* impl_return,
+                                           bool impl_is_static, bool impl_is_virtual, Method* virtual_method)
 {
   // check method types
   if(impl_mthd_type != virtual_method->GetMethodType()) {
@@ -659,7 +659,7 @@ void ContextAnalyzer::AnalyzeVirtualMethod(Class * impl_class, MethodType impl_m
  * are made when compiling shared
  * libraries.
  ****************************/
-bool ContextAnalyzer::AnalyzeVirtualMethods(Class * impl_class, LibraryClass * lib_virtual_class, const int depth)
+bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, LibraryClass* lib_virtual_class, const int depth)
 {
   bool virtual_methods_defined = true;
 
@@ -724,8 +724,8 @@ bool ContextAnalyzer::AnalyzeVirtualMethods(Class * impl_class, LibraryClass * l
  * are made when compiling shared
  * libraries.
  ****************************/
-void ContextAnalyzer::AnalyzeVirtualMethod(Class * impl_class, MethodType impl_mthd_type, Type * impl_return,
-                                           bool impl_is_static, bool impl_is_virtual, LibraryMethod * virtual_method)
+void ContextAnalyzer::AnalyzeVirtualMethod(Class* impl_class, MethodType impl_mthd_type, Type* impl_return,
+                                           bool impl_is_static, bool impl_is_virtual, LibraryMethod* virtual_method)
 {
   // check method types
   if(impl_mthd_type != virtual_method->GetMethodType()) {
@@ -768,7 +768,7 @@ void ContextAnalyzer::AnalyzeVirtualMethod(Class * impl_class, MethodType impl_m
 /****************************
  * Analyzes a method
  ****************************/
-void ContextAnalyzer::AnalyzeMethod(Method * method, const int id, const int depth)
+void ContextAnalyzer::AnalyzeMethod(Method* method, const int id, const int depth)
 {
 #ifdef _DEBUG
   wstring msg = L"(method: name='" + method->GetName() +
@@ -865,7 +865,7 @@ void ContextAnalyzer::AnalyzeMethod(Method * method, const int id, const int dep
  * Analyzes method return
  * paths
  ****************************/
-bool ContextAnalyzer::AnalyzeReturnPaths(StatementList * statement_list, const int depth)
+bool ContextAnalyzer::AnalyzeReturnPaths(StatementList* statement_list, const int depth)
 {
   vector<Statement*> statements = statement_list->GetStatements();
   if(statements.size() == 0) {
@@ -894,7 +894,7 @@ bool ContextAnalyzer::AnalyzeReturnPaths(StatementList * statement_list, const i
   return false;
 }
 
-bool ContextAnalyzer::AnalyzeReturnPaths(If * if_stmt, bool nested, const int depth)
+bool ContextAnalyzer::AnalyzeReturnPaths(If* if_stmt, bool nested, const int depth)
 {
   bool if_ok = false;
   bool if_else_ok = false;
@@ -906,7 +906,7 @@ bool ContextAnalyzer::AnalyzeReturnPaths(If * if_stmt, bool nested, const int de
     if_ok = AnalyzeReturnPaths(if_list, depth + 1);
   }
 
-  If * next = if_stmt->GetNext();
+  If* next = if_stmt->GetNext();
   if(next) {
     if_else_ok = AnalyzeReturnPaths(next, true, depth);
   }
@@ -933,7 +933,7 @@ bool ContextAnalyzer::AnalyzeReturnPaths(If * if_stmt, bool nested, const int de
   return false;
 }
 
-bool ContextAnalyzer::AnalyzeReturnPaths(Select * select_stmt, const int depth)
+bool ContextAnalyzer::AnalyzeReturnPaths(Select* select_stmt, const int depth)
 {
   map<ExpressionList*, StatementList*> statements = select_stmt->GetStatements();
   map<int, StatementList*> label_statements;
@@ -950,7 +950,7 @@ bool ContextAnalyzer::AnalyzeReturnPaths(Select * select_stmt, const int depth)
 /****************************
  * Analyzes a statements
  ****************************/
-void ContextAnalyzer::AnalyzeStatements(StatementList * statement_list, const int depth)
+void ContextAnalyzer::AnalyzeStatements(StatementList* statement_list, const int depth)
 {
   current_table->NewScope();
   vector<Statement*> statements = statement_list->GetStatements();
@@ -963,7 +963,7 @@ void ContextAnalyzer::AnalyzeStatements(StatementList * statement_list, const in
 /****************************
  * Analyzes a statement
  ****************************/
-void ContextAnalyzer::AnalyzeStatement(Statement * statement, const int depth)
+void ContextAnalyzer::AnalyzeStatement(Statement* statement, const int depth)
 {
   switch(statement->GetStatementType()) {
   case EMPTY_STMT:
@@ -1080,7 +1080,7 @@ void ContextAnalyzer::AnalyzeStatement(Statement * statement, const int depth)
 /****************************
  * Analyzes an expression
  ****************************/
-void ContextAnalyzer::AnalyzeExpression(Expression * expression, const int depth)
+void ContextAnalyzer::AnalyzeExpression(Expression* expression, const int depth)
 {
   switch(expression->GetExpressionType()) {
   case STAT_ARY_EXPR:
@@ -1174,7 +1174,7 @@ void ContextAnalyzer::AnalyzeExpression(Expression * expression, const int depth
  * Analyzes a ternary
  * conditional
  ****************************/
-void ContextAnalyzer::AnalyzeConditional(Cond * conditional, const int depth)
+void ContextAnalyzer::AnalyzeConditional(Cond* conditional, const int depth)
 {
 #ifdef _DEBUG
   Debug(L"conditional expression", conditional->GetLineNumber(), depth);
@@ -1182,13 +1182,13 @@ void ContextAnalyzer::AnalyzeConditional(Cond * conditional, const int depth)
 
   // check expressions
   AnalyzeExpression(conditional->GetCondExpression(), depth + 1);
-  Expression * if_conditional = conditional->GetExpression();
+  Expression* if_conditional = conditional->GetExpression();
   AnalyzeExpression(if_conditional, depth + 1);
-  Expression * else_conditional = conditional->GetElseExpression();
+  Expression* else_conditional = conditional->GetElseExpression();
   AnalyzeExpression(else_conditional, depth + 1);
 
-  Type * if_type = GetExpressionType(if_conditional, depth + 1);
-  Type * else_type = GetExpressionType(else_conditional, depth + 1);
+  Type* if_type = GetExpressionType(if_conditional, depth + 1);
+  Type* else_type = GetExpressionType(else_conditional, depth + 1);
 
   // validate types
   if(if_type) {
@@ -1212,7 +1212,7 @@ void ContextAnalyzer::AnalyzeConditional(Cond * conditional, const int depth)
 /****************************
  * Analyzes a character literal
  ****************************/
-void ContextAnalyzer::AnalyzeCharacterString(CharacterString * char_str, const int depth)
+void ContextAnalyzer::AnalyzeCharacterString(CharacterString* char_str, const int depth)
 {
 #ifdef _DEBUG
   Debug(L"character string literal", char_str->GetLineNumber(), depth);
@@ -1243,7 +1243,7 @@ void ContextAnalyzer::AnalyzeCharacterString(CharacterString * char_str, const i
       if(var_start > -1) {
         if(str[i] == L'}') {
           const wstring token = str.substr(var_start + 2, i - var_start - 2);
-          SymbolEntry * entry = GetEntry(token);
+          SymbolEntry* entry = GetEntry(token);
           if(entry) {
             AnalyzeCharacterStringVariable(entry, char_str, depth);
           }
@@ -1256,7 +1256,7 @@ void ContextAnalyzer::AnalyzeCharacterString(CharacterString * char_str, const i
         }
         else if(i + 1 == str.size()) {
           const wstring token = str.substr(var_start + 1, i - var_start);
-          SymbolEntry * entry = GetEntry(token);
+          SymbolEntry* entry = GetEntry(token);
           if(entry) {
             AnalyzeCharacterStringVariable(entry, char_str, depth);
           }
@@ -1325,7 +1325,7 @@ void ContextAnalyzer::AnalyzeCharacterString(CharacterString * char_str, const i
 /****************************
  * Analyzes a static array
  ****************************/
-void ContextAnalyzer::AnalyzeStaticArray(StaticArray * array, const int depth)
+void ContextAnalyzer::AnalyzeStaticArray(StaticArray* array, const int depth)
 {
   // TOOD: support for 3d or 4d initialization
   if(array->GetDimension() > 2) {
@@ -1413,12 +1413,12 @@ void ContextAnalyzer::AnalyzeStaticArray(StaticArray * array, const int depth)
 /****************************
  * Analyzes a variable
  ****************************/
-void ContextAnalyzer::AnalyzeVariable(Variable * variable, const int depth)
+void ContextAnalyzer::AnalyzeVariable(Variable* variable, const int depth)
 {
   AnalyzeVariable(variable, GetEntry(variable->GetName()), depth);
 }
 
-void ContextAnalyzer::AnalyzeVariable(Variable * variable, SymbolEntry * entry, const int depth)
+void ContextAnalyzer::AnalyzeVariable(Variable* variable, SymbolEntry* entry, const int depth)
 {
   // explicitly defined variable
   if(entry) {
@@ -1428,7 +1428,7 @@ void ContextAnalyzer::AnalyzeVariable(Variable * variable, SymbolEntry * entry, 
     Debug(msg, variable->GetLineNumber(), depth);
 #endif
 
-    const wstring & name = variable->GetName();
+    const wstring &name = variable->GetName();
     if(HasProgramLibraryEnum(name) || HasProgramLibraryClass(name)) {
       ProcessError(variable, L"Variable '" + name + L"' already used to define a class, enum or function\n\tIf passing a function reference ensure the full signature is provided");
     }
@@ -1495,7 +1495,7 @@ void ContextAnalyzer::AnalyzeVariable(Variable * variable, SymbolEntry * entry, 
 /****************************
  * Analyzes a method call
  ****************************/
-void ContextAnalyzer::AnalyzeMethodCall(MethodCall * method_call, const int depth)
+void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth)
 {
 #ifdef _DEBUG
   wstring msg = L"method/function call: class=" + method_call->GetVariableName() +
@@ -1683,9 +1683,9 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall * method_call, const int dept
  * Validates an expression
  * method call
  ****************************/
-bool ContextAnalyzer::AnalyzeExpressionMethodCall(Expression * expression, wstring & encoding,
-                                                  Class * &klass, LibraryClass * &lib_klass,
-                                                  bool& is_enum_call)
+bool ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, wstring &encoding,
+                                                  Class* &klass, LibraryClass* &lib_klass,
+                                                  bool &is_enum_call)
 {
   Type* type;
   // process cast
@@ -1730,8 +1730,8 @@ bool ContextAnalyzer::AnalyzeExpressionMethodCall(Expression * expression, wstri
  * Validates an expression
  * method call
  ****************************/
-bool ContextAnalyzer::AnalyzeExpressionMethodCall(SymbolEntry * entry, wstring & encoding,
-                                                  Class * &klass, LibraryClass * &lib_klass)
+bool ContextAnalyzer::AnalyzeExpressionMethodCall(SymbolEntry* entry, wstring &encoding,
+                                                  Class* &klass, LibraryClass* &lib_klass)
 {
   Type* type = entry->GetType();
   if(type) {
@@ -1747,9 +1747,9 @@ bool ContextAnalyzer::AnalyzeExpressionMethodCall(SymbolEntry * entry, wstring &
  * Validates an expression
  * method call
  ****************************/
-bool ContextAnalyzer::AnalyzeExpressionMethodCall(Type * type, const int dimension,
-                                                  wstring & encoding, Class * &klass,
-                                                  LibraryClass * &lib_klass, bool& is_enum_call)
+bool ContextAnalyzer::AnalyzeExpressionMethodCall(Type* type, const int dimension,
+                                                  wstring &encoding, Class* &klass,
+                                                  LibraryClass* &lib_klass, bool& is_enum_call)
 {
   switch(type->GetType()) {
   case BOOLEAN_TYPE:
@@ -1829,7 +1829,7 @@ bool ContextAnalyzer::AnalyzeExpressionMethodCall(Type * type, const int dimensi
  * Analyzes a new array method
  * call
  ****************************/
-void ContextAnalyzer::AnalyzeNewArrayCall(MethodCall * method_call, const int depth)
+void ContextAnalyzer::AnalyzeNewArrayCall(MethodCall* method_call, const int depth)
 {
   Class* generic_class = current_class->GetGenericClass(method_call->GetEvalType()->GetClassName());
   if(generic_class && generic_class->HasGenericInterface() && method_call->GetEvalType()) {
@@ -1850,7 +1850,7 @@ void ContextAnalyzer::AnalyzeNewArrayCall(MethodCall * method_call, const int de
   for(size_t i = 0; i < expressions.size(); ++i) {
     Expression* expression = expressions[i];
     AnalyzeExpression(expression, depth + 1);
-    Type * type = GetExpressionType(expression, depth + 1);
+    Type* type = GetExpressionType(expression, depth + 1);
     if(type) {
       switch(type->GetType()) {
       case BYTE_TYPE:
@@ -1880,13 +1880,13 @@ void ContextAnalyzer::AnalyzeNewArrayCall(MethodCall * method_call, const int de
 /*********************************
  * Analyzes a parent method call
  *********************************/
-void ContextAnalyzer::AnalyzeParentCall(MethodCall * method_call, const int depth)
+void ContextAnalyzer::AnalyzeParentCall(MethodCall* method_call, const int depth)
 {
   // get parameters
   ExpressionList* call_params = method_call->GetCallingParameters();
   AnalyzeExpressions(call_params, depth + 1);
 
-  Class * parent = current_class->GetParent();
+  Class* parent = current_class->GetParent();
   if(parent) {
     wstring encoding;
     AnalyzeMethodCall(parent, method_call, false, encoding, depth);
@@ -1906,7 +1906,7 @@ void ContextAnalyzer::AnalyzeParentCall(MethodCall * method_call, const int dept
 /****************************
  * Analyzes a method call
  ****************************/
-void ContextAnalyzer::AnalyzeExpressionMethodCall(Expression * expression, const int depth)
+void ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, const int depth)
 {
   MethodCall* method_call = expression->GetMethodCall();
   if(method_call && method_call->GetCallType() != ENUM_CALL) {
@@ -1941,7 +1941,7 @@ void ContextAnalyzer::AnalyzeExpressionMethodCall(Expression * expression, const
  * is method call within the source
  * program.
  *********************************/
-Class* ContextAnalyzer::AnalyzeProgramMethodCall(MethodCall * method_call, wstring & encoding, const int depth)
+Class* ContextAnalyzer::AnalyzeProgramMethodCall(MethodCall* method_call, wstring &encoding, const int depth)
 {
   Class* klass = NULL;
 
@@ -1996,7 +1996,7 @@ Class* ContextAnalyzer::AnalyzeProgramMethodCall(MethodCall * method_call, wstri
  * is method call within a linked
  * library
  *********************************/
-LibraryClass* ContextAnalyzer::AnalyzeLibraryMethodCall(MethodCall * method_call, wstring & encoding, const int depth)
+LibraryClass* ContextAnalyzer::AnalyzeLibraryMethodCall(MethodCall* method_call, wstring &encoding, const int depth)
 {
   LibraryClass* klass = NULL;
   const wstring variable_name = method_call->GetVariableName();
@@ -2047,8 +2047,8 @@ LibraryClass* ContextAnalyzer::AnalyzeLibraryMethodCall(MethodCall * method_call
 /*********************************
  * Resolve method call parameter
  *********************************/
-int ContextAnalyzer::MatchCallingParameter(Expression * calling_param, Type * method_type,
-                                           Class * klass, LibraryClass * lib_klass, const int depth)
+int ContextAnalyzer::MatchCallingParameter(Expression* calling_param, Type* method_type,
+                                           Class* klass, LibraryClass* lib_klass, const int depth)
 {
   // get calling type
   Type* calling_type = GetExpressionType(calling_param, depth + 1);
@@ -2166,7 +2166,7 @@ int ContextAnalyzer::MatchCallingParameter(Expression * calling_param, Type * me
 /****************************
  * Resolves method calls
  ****************************/
-Method* ContextAnalyzer::ResolveMethodCall(Class * klass, MethodCall * method_call, const int depth)
+Method* ContextAnalyzer::ResolveMethodCall(Class* klass, MethodCall* method_call, const int depth)
 {
   const wstring& method_name = method_call->GetMethodName();
   ExpressionList* calling_params = method_call->GetCallingParameters();
@@ -2238,8 +2238,8 @@ Method* ContextAnalyzer::ResolveMethodCall(Class * klass, MethodCall * method_ca
  * is method call within the source
  * program.
  ****************************/
-void ContextAnalyzer::AnalyzeMethodCall(Class * klass, MethodCall * method_call,
-                                        bool is_expr, wstring & encoding, const int depth)
+void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call,
+                                        bool is_expr, wstring &encoding, const int depth)
 {
 #ifdef _DEBUG
   GetLogger() << L"Checking program class call: |" << klass->GetName() << L":"
@@ -2249,11 +2249,11 @@ void ContextAnalyzer::AnalyzeMethodCall(Class * klass, MethodCall * method_call,
 #endif
 
   // calling parameters
-  ExpressionList * call_params = method_call->GetCallingParameters();
+  ExpressionList* call_params = method_call->GetCallingParameters();
   AnalyzeExpressions(call_params, depth + 1);
 
   // note: find system based methods and call with function parameters (i.e. $Int, $Float)
-  Method * method = ResolveMethodCall(klass, method_call, depth);
+  Method* method = ResolveMethodCall(klass, method_call, depth);
   if(!method) {
     const wstring encoded_name = klass->GetName() + L":" + method_call->GetMethodName() + L":" + encoding +
       EncodeMethodCall(method_call->GetCallingParameters(), depth);
@@ -2414,7 +2414,7 @@ void ContextAnalyzer::AnalyzeMethodCall(Class * klass, MethodCall * method_call,
 /****************************
  * Resolves library method calls
  ****************************/
-LibraryMethod* ContextAnalyzer::ResolveMethodCall(LibraryClass * klass, MethodCall * method_call, const int depth)
+LibraryMethod* ContextAnalyzer::ResolveMethodCall(LibraryClass* klass, MethodCall* method_call, const int depth)
 {
   const wstring& method_name = method_call->GetMethodName();
   ExpressionList* calling_params = method_call->GetCallingParameters();
@@ -2481,8 +2481,8 @@ LibraryMethod* ContextAnalyzer::ResolveMethodCall(LibraryClass * klass, MethodCa
  * is method call within a linked
  * library
  ****************************/
-void ContextAnalyzer::AnalyzeMethodCall(LibraryClass * klass, MethodCall * method_call,
-                                        bool is_expr, wstring & encoding, bool is_parent, const int depth)
+void ContextAnalyzer::AnalyzeMethodCall(LibraryClass* klass, MethodCall* method_call,
+                                        bool is_expr, wstring &encoding, bool is_parent, const int depth)
 {
 #ifdef _DEBUG
   GetLogger() << L"Checking library encoded name: |" << klass->GetName() << L":"
@@ -2491,7 +2491,7 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryClass * klass, MethodCall * metho
 
   ExpressionList* call_params = method_call->GetCallingParameters();
   AnalyzeExpressions(call_params, depth + 1);
-  LibraryMethod * lib_method = ResolveMethodCall(klass, method_call, depth);
+  LibraryMethod* lib_method = ResolveMethodCall(klass, method_call, depth);
   if(!lib_method) {
     LibraryClass* parent = linker->SearchClassLibraries(klass->GetParentName(), program->GetUses(current_class->GetFileName()));
     while(!lib_method && parent) {
@@ -2524,7 +2524,7 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryClass * klass, MethodCall * metho
  * is method call within a linked
  * library
  ****************************/
-void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod * lib_method, MethodCall * method_call,
+void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* method_call,
                                         bool is_virtual, bool is_expr, const int depth)
 {
   if(lib_method) {
@@ -2593,7 +2593,7 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod * lib_method, MethodCall *
  * Analyzes a dynamic function
  * call
  ********************************/
-void ContextAnalyzer::AnalyzeDynamicFunctionCall(MethodCall * method_call, const int depth)
+void ContextAnalyzer::AnalyzeDynamicFunctionCall(MethodCall* method_call, const int depth)
 {
   // dynamic function call that is not bound to a class/function until runtime
   SymbolEntry* entry = GetEntry(method_call->GetMethodName());
@@ -2666,8 +2666,8 @@ void ContextAnalyzer::AnalyzeDynamicFunctionCall(MethodCall * method_call, const
 /********************************
  * Analyzes a function reference
  ********************************/
-void ContextAnalyzer::AnalyzeFunctionReference(Class * klass, MethodCall * method_call,
-                                               wstring & encoding, const int depth)
+void ContextAnalyzer::AnalyzeFunctionReference(Class* klass, MethodCall* method_call,
+                                               wstring &encoding, const int depth)
 {
   const wstring func_encoding = EncodeFunctionReference(method_call->GetCallingParameters(), depth);;
   const wstring encoded_name = klass->GetName() + L":" + method_call->GetMethodName() +
@@ -2728,8 +2728,8 @@ void ContextAnalyzer::AnalyzeFunctionReference(Class * klass, MethodCall * metho
 /****************************
  * Checks a function reference
  ****************************/
-void ContextAnalyzer::AnalyzeFunctionReference(LibraryClass * klass, MethodCall * method_call,
-                                               wstring & encoding, const int depth)
+void ContextAnalyzer::AnalyzeFunctionReference(LibraryClass* klass, MethodCall* method_call,
+                                               wstring &encoding, const int depth)
 {
   const wstring func_encoding = EncodeFunctionReference(method_call->GetCallingParameters(), depth);;
   const wstring encoded_name = klass->GetName() + L":" + method_call->GetMethodName() + L":" + encoding + func_encoding;
@@ -2789,7 +2789,7 @@ void ContextAnalyzer::AnalyzeFunctionReference(LibraryClass * klass, MethodCall 
 /****************************
  * Analyzes a cast
  ****************************/
-void ContextAnalyzer::AnalyzeCast(Expression * expression, const int depth)
+void ContextAnalyzer::AnalyzeCast(Expression* expression, const int depth)
 {
   // type cast
   if(expression->GetCastType()) {
@@ -2848,7 +2848,7 @@ void ContextAnalyzer::AnalyzeCast(Expression * expression, const int depth)
 /****************************
  * Analyzes array indices
  ****************************/
-void ContextAnalyzer::AnalyzeIndices(ExpressionList * indices, const int depth)
+void ContextAnalyzer::AnalyzeIndices(ExpressionList* indices, const int depth)
 {
   AnalyzeExpressions(indices, depth + 1);
 
@@ -2856,7 +2856,7 @@ void ContextAnalyzer::AnalyzeIndices(ExpressionList * indices, const int depth)
   for(size_t i = 0; i < expressions.size(); ++i) {
     Expression* expression = expressions[i];
     AnalyzeExpression(expression, depth + 1);
-    Type * eval_type = expression->GetEvalType();
+    Type* eval_type = expression->GetEvalType();
     if(eval_type) {
       switch(eval_type->GetType()) {
       case BYTE_TYPE:
@@ -2881,7 +2881,7 @@ void ContextAnalyzer::AnalyzeIndices(ExpressionList * indices, const int depth)
 /****************************
  * Analyzes a simple statement
  ****************************/
-void ContextAnalyzer::AnalyzeSimpleStatement(SimpleStatement * simple, const int depth)
+void ContextAnalyzer::AnalyzeSimpleStatement(SimpleStatement* simple, const int depth)
 {
   Expression* expression = simple->GetExpression();
   AnalyzeExpression(expression, depth + 1);
@@ -2896,7 +2896,7 @@ void ContextAnalyzer::AnalyzeSimpleStatement(SimpleStatement * simple, const int
 /****************************
  * Analyzes a 'if' statement
  ****************************/
-void ContextAnalyzer::AnalyzeIf(If * if_stmt, const int depth)
+void ContextAnalyzer::AnalyzeIf(If* if_stmt, const int depth)
 {
 #ifdef _DEBUG
   Debug(L"if/else-if/else", if_stmt->GetLineNumber(), depth);
@@ -2911,7 +2911,7 @@ void ContextAnalyzer::AnalyzeIf(If * if_stmt, const int depth)
   // 'if' statements
   AnalyzeStatements(if_stmt->GetIfStatements(), depth + 1);
 
-  If * next = if_stmt->GetNext();
+  If* next = if_stmt->GetNext();
   if(next) {
     AnalyzeIf(next, depth);
   }
@@ -2926,7 +2926,7 @@ void ContextAnalyzer::AnalyzeIf(If * if_stmt, const int depth)
 /****************************
  * Analyzes a 'select' statement
  ****************************/
-void ContextAnalyzer::AnalyzeSelect(Select * select_stmt, const int depth)
+void ContextAnalyzer::AnalyzeSelect(Select* select_stmt, const int depth)
 {
   // expression
   Expression* expression = select_stmt->GetAssignment()->GetExpression();
@@ -3012,7 +3012,7 @@ void ContextAnalyzer::AnalyzeSelect(Select * select_stmt, const int depth)
 /****************************
  * Analyzes a 'for' statement
  ****************************/
-void ContextAnalyzer::AnalyzeCritical(CriticalSection * mutex, const int depth)
+void ContextAnalyzer::AnalyzeCritical(CriticalSection* mutex, const int depth)
 {
   Variable* variable = mutex->GetVariable();
   AnalyzeVariable(variable, depth + 1);
@@ -3030,13 +3030,13 @@ void ContextAnalyzer::AnalyzeCritical(CriticalSection * mutex, const int depth)
 /****************************
  * Analyzes a 'for' statement
  ****************************/
-void ContextAnalyzer::AnalyzeFor(For * for_stmt, const int depth)
+void ContextAnalyzer::AnalyzeFor(For* for_stmt, const int depth)
 {
   current_table->NewScope();
   // pre
   AnalyzeStatement(for_stmt->GetPreStatement(), depth + 1);
   // expression
-  Expression * expression = for_stmt->GetExpression();
+  Expression* expression = for_stmt->GetExpression();
   AnalyzeExpression(expression, depth + 1);
   if(!IsBooleanExpression(expression)) {
     ProcessError(expression, L"Expected Bool expression");
@@ -3053,7 +3053,7 @@ void ContextAnalyzer::AnalyzeFor(For * for_stmt, const int depth)
 /****************************
  * Analyzes a 'do/while' statement
  ****************************/
-void ContextAnalyzer::AnalyzeDoWhile(DoWhile * do_while_stmt, const int depth)
+void ContextAnalyzer::AnalyzeDoWhile(DoWhile* do_while_stmt, const int depth)
 {
 #ifdef _DEBUG
   Debug(L"do/while", do_while_stmt->GetLineNumber(), depth);
@@ -3080,7 +3080,7 @@ void ContextAnalyzer::AnalyzeDoWhile(DoWhile * do_while_stmt, const int depth)
 /****************************
  * Analyzes a 'while' statement
  ****************************/
-void ContextAnalyzer::AnalyzeWhile(While * while_stmt, const int depth)
+void ContextAnalyzer::AnalyzeWhile(While* while_stmt, const int depth)
 {
 #ifdef _DEBUG
   Debug(L"while", while_stmt->GetLineNumber(), depth);
@@ -3101,7 +3101,7 @@ void ContextAnalyzer::AnalyzeWhile(While * while_stmt, const int depth)
 /****************************
  * Analyzes a return statement
  ****************************/
-void ContextAnalyzer::AnalyzeReturn(Return * rtrn, const int depth)
+void ContextAnalyzer::AnalyzeReturn(Return* rtrn, const int depth)
 {
 #ifdef _DEBUG
   Debug(L"return", rtrn->GetLineNumber(), depth);
@@ -3144,7 +3144,7 @@ void ContextAnalyzer::AnalyzeReturn(Return * rtrn, const int depth)
 /****************************
  * Analyzes a return statement
  ****************************/
-void ContextAnalyzer::AnalyzeLeaving(Leaving * leaving_stmt, const int depth)
+void ContextAnalyzer::AnalyzeLeaving(Leaving* leaving_stmt, const int depth)
 {
 #ifdef _DEBUG
   Debug(L"leaving", leaving_stmt->GetLineNumber(), depth);
@@ -3168,7 +3168,7 @@ void ContextAnalyzer::AnalyzeLeaving(Leaving * leaving_stmt, const int depth)
 /****************************
  * Analyzes an assignment statement
  ****************************/
-void ContextAnalyzer::AnalyzeAssignment(Assignment * assignment, StatementType type, const int depth)
+void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType type, const int depth)
 {
 #ifdef _DEBUG
   Debug(L"assignment", assignment->GetLineNumber(), depth);
@@ -3178,7 +3178,7 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment * assignment, StatementType t
   AnalyzeVariable(variable, depth + 1);
 
   // get last expression for assignment
-  Expression * expression = assignment->GetExpression();
+  Expression* expression = assignment->GetExpression();
   AnalyzeExpression(expression, depth + 1);
   while(expression->GetMethodCall()) {
     AnalyzeExpressionMethodCall(expression, depth + 1);
@@ -3346,7 +3346,7 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment * assignment, StatementType t
  * Analyzes a logical or mathematical
  * operation.
  ****************************/
-void ContextAnalyzer::AnalyzeCalculation(CalculatedExpression * expression, const int depth)
+void ContextAnalyzer::AnalyzeCalculation(CalculatedExpression* expression, const int depth)
 {
   Type* cls_type = NULL;
   Expression* left = expression->GetLeft();
@@ -3531,13 +3531,13 @@ void ContextAnalyzer::AnalyzeCalculation(CalculatedExpression * expression, cons
  * operational expressions.  This
  * method uses execution simulation.
  ****************************/
-void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression * expression, const int depth)
+void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, const int depth)
 {
   Expression* left_expr = expression->GetLeft();
   Expression* right_expr = expression->GetRight();
 
   Type* left = GetExpressionType(left_expr, depth + 1);
-  Type * right = GetExpressionType(right_expr, depth + 1);
+  Type* right = GetExpressionType(right_expr, depth + 1);
 
   if(!left || !right) {
     return;
@@ -3994,7 +3994,7 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression * expression, 
  * assignment statements.  This
  * method uses execution simulation.
  ****************************/
-void ContextAnalyzer::AnalyzeRightCast(Variable * variable, Expression * expression, bool is_scalar, const int depth)
+void ContextAnalyzer::AnalyzeRightCast(Variable* variable, Expression* expression, bool is_scalar, const int depth)
 {
   AnalyzeRightCast(variable->GetEvalType(), GetExpressionType(expression, depth + 1), expression, is_scalar, depth);
   if(variable->GetIndices() && !is_scalar) {
@@ -4002,12 +4002,12 @@ void ContextAnalyzer::AnalyzeRightCast(Variable * variable, Expression * express
   }
 }
 
-void ContextAnalyzer::AnalyzeRightCast(Type * left, Expression * expression, bool is_scalar, const int depth)
+void ContextAnalyzer::AnalyzeRightCast(Type* left, Expression* expression, bool is_scalar, const int depth)
 {
   AnalyzeRightCast(left, GetExpressionType(expression, depth + 1), expression, is_scalar, depth);
 }
 
-void ContextAnalyzer::AnalyzeRightCast(Type * left, Type * right, Expression * expression, bool is_scalar, const int depth)
+void ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expression* expression, bool is_scalar, const int depth)
 {
   // assert(left && right);
   if(!expression || !left || !right) {
@@ -4436,7 +4436,7 @@ void ContextAnalyzer::AnalyzeRightCast(Type * left, Type * right, Expression * e
  * Analyzes a class cast. Up
  * casting is resolved a runtime.
  ****************************/
-void ContextAnalyzer::AnalyzeClassCast(Type * left, Expression * expression, const int depth)
+void ContextAnalyzer::AnalyzeClassCast(Type* left, Expression* expression, const int depth)
 {
   if(expression->GetCastType() && expression->GetEvalType() && (expression->GetCastType()->GetType() != CLASS_TYPE ||
      expression->GetEvalType()->GetType() != CLASS_TYPE)) {
@@ -4451,7 +4451,7 @@ void ContextAnalyzer::AnalyzeClassCast(Type * left, Expression * expression, con
   AnalyzeClassCast(left, right, expression, false, depth);
 }
 
-void ContextAnalyzer::AnalyzeClassCast(Type * left, Type * right, Expression * expression, bool generic_check, const int depth)
+void ContextAnalyzer::AnalyzeClassCast(Type* left, Type* right, Expression* expression, bool generic_check, const int depth)
 {
   Class* left_class = NULL;
   LibraryEnum* left_lib_enum = NULL;
@@ -4688,7 +4688,7 @@ void ContextAnalyzer::AnalyzeClassCast(Type * left, Type * right, Expression * e
 /****************************
  * Analyzes a declaration
  ****************************/
-void ContextAnalyzer::AnalyzeDeclaration(Declaration * declaration, Class * klass, const int depth)
+void ContextAnalyzer::AnalyzeDeclaration(Declaration * declaration, Class* klass, const int depth)
 {
   SymbolEntry* entry = declaration->GetEntry();
   if(entry) {
@@ -4744,7 +4744,7 @@ void ContextAnalyzer::AnalyzeDeclaration(Declaration * declaration, Class * klas
 /****************************
  * Analyzes a declaration
  ****************************/
-void ContextAnalyzer::AnalyzeExpressions(ExpressionList * parameters, const int depth)
+void ContextAnalyzer::AnalyzeExpressions(ExpressionList* parameters, const int depth)
 {
   vector<Expression*> expressions = parameters->GetExpressions();
   for(size_t i = 0; i < expressions.size(); ++i) {
@@ -4755,7 +4755,7 @@ void ContextAnalyzer::AnalyzeExpressions(ExpressionList * parameters, const int 
 /********************************
  * Encodes a function definition
  ********************************/
-wstring ContextAnalyzer::EncodeFunctionReference(ExpressionList * calling_params, const int depth)
+wstring ContextAnalyzer::EncodeFunctionReference(ExpressionList* calling_params, const int depth)
 {
   wstring encoded_name;
   vector<Expression*> expressions = calling_params->GetExpressions();
@@ -4842,7 +4842,7 @@ wstring ContextAnalyzer::EncodeFunctionReference(ExpressionList * calling_params
 /****************************
  * Encodes a function type
  ****************************/
-wstring ContextAnalyzer::EncodeFunctionType(vector<Type*> func_params, Type * func_rtrn) {
+wstring ContextAnalyzer::EncodeFunctionType(vector<Type*> func_params, Type* func_rtrn) {
   wstring encoded_name = L"(";
   for(size_t i = 0; i < func_params.size(); ++i) {
     // encode params
@@ -4869,7 +4869,7 @@ wstring ContextAnalyzer::EncodeFunctionType(vector<Type*> func_params, Type * fu
 /****************************
  * Encodes a method call
  ****************************/
-wstring ContextAnalyzer::EncodeMethodCall(ExpressionList * calling_params, const int depth)
+wstring ContextAnalyzer::EncodeMethodCall(ExpressionList* calling_params, const int depth)
 {
   wstring encoded_name;
   vector<Expression*> expressions = calling_params->GetExpressions();
@@ -4903,7 +4903,7 @@ wstring ContextAnalyzer::EncodeMethodCall(ExpressionList * calling_params, const
   return encoded_name;
 }
 
-Type* ContextAnalyzer::RelsolveGenericType(Type * generic_type, MethodCall * method_call, Class * klass, LibraryClass * lib_klass)
+Type* ContextAnalyzer::RelsolveGenericType(Type* generic_type, MethodCall* method_call, Class* klass, LibraryClass* lib_klass)
 {
   if(generic_type->GetType() == FUNC_TYPE) {
     if(klass) {

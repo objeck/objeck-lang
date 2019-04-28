@@ -192,29 +192,29 @@ class Parser {
   // error processing
   void LoadErrorCodes();
   void ProcessError(const ScannerTokenType type);
-  void ProcessError(const wstring & msg);
-  void ProcessError(const wstring & msg, ParseNode * node);
-  void ProcessError(const wstring & msg, const ScannerTokenType sync, int offset = 0);
+  void ProcessError(const wstring &msg);
+  void ProcessError(const wstring &msg, ParseNode * node);
+  void ProcessError(const wstring &msg, const ScannerTokenType sync, int offset = 0);
   bool CheckErrors();
 
   // parsing operations
-  void ParseFile(const wstring & file_name);
+  void ParseFile(const wstring &file_name);
   void ParseProgram();
   void ParseBundle(int depth);
-  Class* ParseClass(const wstring & bundle_id, int depth);
-  Class* ParseInterface(const wstring & bundle_id, int depth);
+  Class* ParseClass(const wstring &bundle_id, int depth);
+  Class* ParseInterface(const wstring &bundle_id, int depth);
   Method* ParseMethod(bool is_function, bool virtual_required, int depth);
-  Variable* ParseVariable(const wstring & ident, int depth);
+  Variable* ParseVariable(const wstring &ident, int depth);
   vector<Type*> ParseGenericTypes(int depth);
   vector<Class*> ParseGenericClasses(const wstring& bundle_name, int depth);
   MethodCall* ParseMethodCall(int depth);
-  MethodCall* ParseMethodCall(const wstring & ident, int depth);
-  void ParseMethodCall(Expression * expression, int depth);
-  MethodCall* ParseMethodCall(Variable * variable, int depth);
-  void ParseAnonymousClass(MethodCall * method_call, int depth);
+  MethodCall* ParseMethodCall(const wstring &ident, int depth);
+  void ParseMethodCall(Expression* expression, int depth);
+  MethodCall* ParseMethodCall(Variable* variable, int depth);
+  void ParseAnonymousClass(MethodCall* method_call, int depth);
   StatementList* ParseStatementList(int depth);
   Statement* ParseStatement(int depth, bool semi_colon = true);
-  Assignment* ParseAssignment(Variable * variable, int depth);
+  Assignment* ParseAssignment(Variable* variable, int depth);
   StaticArray* ParseStaticArray(int depth);
   If* ParseIf(int depth);
   DoWhile* ParseDoWhile(int depth);
@@ -227,12 +227,12 @@ class Parser {
   CriticalSection* ParseCritical(int depth);
   Return* ParseReturn(int depth);
   Leaving* ParseLeaving(int depth);
-  Declaration* ParseDeclaration(const wstring & name, bool is_stmt, int depth);
+  Declaration* ParseDeclaration(const wstring &name, bool is_stmt, int depth);
   DeclarationList* ParseDecelerationList(int depth);
   ExpressionList* ParseExpressionList(int depth, ScannerTokenType open = TOKEN_OPEN_PAREN,
 				      ScannerTokenType close = TOKEN_CLOSED_PAREN);
   ExpressionList* ParseIndices(int depth);
-  void ParseCastTypeOf(Expression * expression, int depth);
+  void ParseCastTypeOf(Expression* expression, int depth);
   Type* ParseType(int depth);
   Expression* ParseExpression(int depth);
   Expression* ParseLogic(int depth);
@@ -242,7 +242,7 @@ class Parser {
   Expression* ParseSimpleExpression(int depth);
 
  public:
-  Parser(const wstring & p, bool a, const wstring & r) {
+  Parser(const wstring &p, bool a, const wstring &r) {
     src_path = p;
     alt_syntax = a;
     run_prgm = r;

@@ -420,7 +420,7 @@ class ContextAnalyzer {
 					++offset;
 					const wstring short_name = entry->GetName().substr(offset, entry->GetName().size() - offset);
 					const wstring lookup = parent->GetName() + L":" + short_name;
-					SymbolEntry * parent_entry = parent->GetSymbolTable()->GetEntry(lookup);
+					SymbolEntry* parent_entry = parent->GetSymbolTable()->GetEntry(lookup);
 					if(parent_entry) {
 						return true;
 					}
@@ -549,7 +549,7 @@ class ContextAnalyzer {
 	}
 
 	// returns a symbol table entry by name for a given method
-	SymbolEntry* GetEntry(MethodCall * method_call, const wstring & variable_name, int depth) {
+	SymbolEntry* GetEntry(MethodCall* method_call, const wstring &variable_name, int depth) {
 		SymbolEntry* entry;
 		if(method_call->GetVariable()) {
 			Variable* variable = method_call->GetVariable();
@@ -567,7 +567,7 @@ class ContextAnalyzer {
 	}
 
 	// returns a type expression
-	Type* GetExpressionType(Expression * expression, int depth) {
+	Type* GetExpressionType(Expression* expression, int depth) {
 		Type* type = NULL;
 
 		MethodCall* mthd_call = expression->GetMethodCall();
@@ -619,7 +619,7 @@ class ContextAnalyzer {
 	}
 
 	// checks for a valid downcast
-	bool ValidDownCast(const wstring & cls_name, Class * class_tmp, LibraryClass * lib_class_tmp) {
+	bool ValidDownCast(const wstring &cls_name, Class* class_tmp, LibraryClass* lib_class_tmp) {
 		if(cls_name == L"System.Base") {
 			return true;
 		}
@@ -679,7 +679,7 @@ class ContextAnalyzer {
 	}
 
 	// checks for a valid upcast
-	bool ValidUpCast(const wstring & to, Class * from_klass) {
+	bool ValidUpCast(const wstring &to, Class* from_klass) {
 		if(from_klass->GetName() == L"System.Base") {
 			return true;
 		}
@@ -716,7 +716,7 @@ class ContextAnalyzer {
 	}
 
 	// checks for a valid upcast
-	bool ValidUpCast(const wstring & to, LibraryClass * from_klass) {
+	bool ValidUpCast(const wstring &to, LibraryClass* from_klass) {
 		if(from_klass->GetName() == L"System.Base") {
 			return true;
 		}
@@ -784,7 +784,7 @@ class ContextAnalyzer {
   }
 
 	// TODO: finds the first enum match; note multiple matches may exist
-	inline Class* SearchProgramClasses(const wstring & klass_name) {
+	inline Class* SearchProgramClasses(const wstring &klass_name) {
 		Class* klass = program->GetClass(klass_name);
 		if(!klass) {
 			klass = program->GetClass(bundle->GetName() + L"." + klass_name);
@@ -800,7 +800,7 @@ class ContextAnalyzer {
 	}
 
 	// TODO: finds the first enum match; note multiple matches may exist
-	inline Enum* SearchProgramEnums(const wstring & eenum_name) {
+	inline Enum* SearchProgramEnums(const wstring &eenum_name) {
 		Enum* eenum = program->GetEnum(eenum_name);
 		if(!eenum) {
 			eenum = program->GetEnum(bundle->GetName() + L"." + eenum_name);
@@ -1294,9 +1294,7 @@ class ContextAnalyzer {
   // context operations
   void AnalyzeEnum(Enum* eenum, const int depth);
   void AnalyzeClass(Class* klass, const int id, const int depth);
-
   void AnalyzeDuplicateEntries(vector<Class*>& classes, const int depth);
-
   void AddDefaultParameterMethods(ParsedBundle* bundle, Class* klass, Method* method);
   void GenerateParameterMethods(ParsedBundle* bundle, Class* klass, Method* method);
   void AnalyzeMethods(Class* klass, const int depth);
@@ -1322,10 +1320,8 @@ class ContextAnalyzer {
   void AnalyzeConditional(Cond* conditional, const int depth);
   void AnalyzeStaticArray(StaticArray* array, const int depth);
   void AnalyzeCast(Expression* expression, const int depth);
-  
   void AnalyzeClassCast(Type* left, Expression* expression, const int depth);
   void AnalyzeClassCast(Type* left, Type* right, Expression* expression, bool generic_check, const int depth);
-
   void AnalyzeAssignment(Assignment* assignment, StatementType type, const int depth);
   void AnalyzeSimpleStatement(SimpleStatement* simple, const int depth);
   void AnalyzeIf(If* if_stmt, const int depth);
