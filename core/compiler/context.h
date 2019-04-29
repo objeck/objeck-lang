@@ -352,10 +352,10 @@ class ContextAnalyzer {
   void AddMethodParameter(MethodCall* method_call, SymbolEntry* entry, int depth);
 
   // validate method call with generics
-  Type* RelsolveGenericCall(Type* left, MethodCall* method_call, Class* klass, Method* method);
+  Type* RelsolveGenericCall(Type* left, MethodCall* method_call, Class* klass, Method* method, int depth);
 
   // validate method call with generics
-  Type* RelsolveGenericCall(Type* left, MethodCall* method_call, LibraryClass* klass, LibraryMethod* method);
+  Type* RelsolveGenericCall(Type* left, MethodCall* method_call, LibraryClass* klass, LibraryMethod* method, int depth);
 
   // validate generic references against types
   void CheckGenericParameters(const vector<LibraryClass*> generic_klasses, const vector<Type*> concrete_types, ParseNode* node);
@@ -501,6 +501,7 @@ class ContextAnalyzer {
   void AnalyzeParentCall(MethodCall* method_call, const int depth);
   LibraryClass* AnalyzeLibraryMethodCall(MethodCall* method_call, wstring &encoding, const int depth);
   Class* AnalyzeProgramMethodCall(MethodCall* method_call, wstring &encoding, const int depth);
+  void ResolveConcreteTypes(vector<Type*> concretes, ParseNode* node, const int depth);
   void AnalyzeMethodCall(Class* klass, MethodCall* method_call,
                          bool is_expr, wstring &encoding, const int depth);
   void AnalyzeMethodCall(LibraryClass* klass, MethodCall* method_call,
