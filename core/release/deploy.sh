@@ -15,13 +15,6 @@ mkdir deploy/lib/sdl/fonts
 mkdir deploy/lib/native
 mkdir deploy/doc
 
-rm -rf deploy_fcgi
-mkdir deploy_fcgi
-mkdir deploy_fcgi/bin
-mkdir deploy_fcgi/lib
-mkdir deploy_fcgi/lib/native
-mkdir deploy_fcgi/doc
-
 # build compiler
 cd ../compiler
 if [ ! -z "$1" ] && [ "$1" = "32" ]; then
@@ -49,11 +42,6 @@ fi
 make clean; make -j3
 cp obr ../release/deploy/bin
 
-if [ ! -z "$1" ] && [ "$1" = "32" ]; then
-	cp make/Makefile.FCGI32 Makefile
-elif [ ! -z "$1" ] && [ "$1" = "64" ]; then	
-	cp make/Makefile.FCGI64 Makefile
-fi
 make clean; make -j3
 
 # build debugger
@@ -100,11 +88,6 @@ fi
 cp lib/fonts/*.ttf ../../release/deploy/lib/sdl/fonts
 
 
-if [ ! -z "$1" ] && [ "$1" != "osx" ]; then
-	cd ../fcgi
-	./build_linux.sh
-fi
-
 # copy docs
 cd ../../..
 cp docs/guide/objeck_lang.pdf core/release/deploy/doc
@@ -122,22 +105,6 @@ cp -aR programs/doc core/release/deploy/examples
 cp -aR programs/tiny core/release/deploy/examples
 
 cd core/release
-if [ ! -z "$1" ] && [ "$1" != "osx" ]; then
-	# create and build fcgi
-	cp ../lib/fcgi.obl deploy/lib
-	cp -Rfu deploy/* deploy_fcgi
-	rm deploy_fcgi/bin/obc
-	rm deploy_fcgi/bin/obd
-	rm -rf deploy_fcgi/doc
-	rm -rf deploy_fcgi/examples
-	cp ../vm/obr_fcgi deploy_fcgi/bin
-	cp ../lib/fcgi/*.so deploy_fcgi/lib/native
-	mkdir deploy_fcgi/examples
-	cp -R ../../programs/web/* deploy_fcgi/examples
-	cp ../../docs/fcgi_readme.htm deploy_fcgi/readme.htm
-	mkdir deploy_fcgi/fcgi_readme_files
-	cp ../../docs/fcgi_readme_files/* deploy_fcgi/fcgi_readme_files
-fi
 
 # deploy
 if [ ! -z "$2" ] && [ "$2" = "deploy" ]; then
