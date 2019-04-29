@@ -142,7 +142,7 @@ bool ContextAnalyzer::Analyze()
       Class* klass = classes[j];
       vector<Method*> methods = klass->GetMethods();
       for(size_t k = 0; k < methods.size(); ++k) {
-x        methods[k]->EncodeSignature(klass, program, linker);
+        methods[k]->EncodeSignature(klass, program, linker);
       }
     }
   }
@@ -1872,7 +1872,9 @@ void ContextAnalyzer::AnalyzeNewArrayCall(MethodCall* method_call, const int dep
   // generic array type
   if(method_call->HasConcreteTypes() && method_call->GetEvalType() &&
      !method_call->GetEvalType()->HasGenerics()) {
-    method_call->GetEvalType()->SetGenerics(method_call->GetConcreteTypes());
+    const vector<Type*> concretes = method_call->GetConcreteTypes();
+    ResolveConcreteTypes(concretes, static_cast<Expression*>(method_call), depth + 1);
+    method_call->GetEvalType()->SetGenerics(concretes);
   }
 }
 
@@ -2217,7 +2219,7 @@ Method* ContextAnalyzer::ResolveMethodCall(Class* klass, MethodCall* method_call
       // resolve generic to concrete, if needed
       Type* left = method_parms[j]->GetEntry()->GetType();
       if(klass->HasGenerics() && !left->HasGenerics()) {
-        left = RelsolveGenericCall(left, method_call, klass, method);
+        left = RelsolveGenericCall(left, method_call, klass, method, depth + 1);
       }
       ResolveClassEnumType(left);
       AnalyzeRightCast(left, expression, IsScalar(expression), depth + 1);
@@ -2315,7 +2317,7 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call,
         // check generic parameters for call
         Type* left = mthd_params[i]->GetEntry()->GetType();
         if(klass->HasGenerics()) {
-          left = RelsolveGenericCall(left, method_call, klass, method);
+          left = RelsolveGenericCall(left, method_call, klass, method, depth + 1);
         }
         ResolveClassEnumType(left);
         AnalyzeRightCast(left, expression->GetEvalType(), expression, IsScalar(expression), depth + 1);
@@ -2343,7 +2345,7 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call,
     if(!is_expr && InvalidStatic(method_call, method)) {
       ProcessError(static_cast<Expression*>(method_call), L"Cannot reference an instance method from this context");
     }
-    // cannot create an instance of a virutal class
+    // cannot create an instance of a virtual class
     if((method->GetMethodType() == NEW_PUBLIC_METHOD || method->GetMethodType() == NEW_PRIVATE_METHOD) &&
        klass->IsVirtual() && current_class->GetParent() != klass) {
       ProcessError(static_cast<Expression*>(method_call), L"Cannot create an instance of a virutal class or interface");
@@ -2363,7 +2365,9 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call,
     if(klass->HasGenerics()) {
       eval_type = RelsolveGenericType(eval_type, method_call, klass, NULL);
       if(!eval_type->HasGenerics()) {
-        eval_type->SetGenerics(method_call->GetConcreteTypes());
+        const vector<Type*> concretes = method_call->GetConcreteTypes();
+        ResolveConcreteTypes(concretes, static_cast<Expression*>(method_call), depth + 1);
+        eval_type->SetGenerics(concretes);
       }
       method_call->SetEvalType(eval_type, false);
     }
@@ -2463,7 +2467,7 @@ LibraryMethod* ContextAnalyzer::ResolveMethodCall(LibraryClass* klass, MethodCal
       // map generic to concrete type, if needed
       Type* left = method_parms[j];
       if(klass->HasGenerics()) {
-        left = RelsolveGenericCall(left, method_call, klass, lib_method);
+        left = RelsolveGenericCall(left, method_call, klass, lib_method, depth + 1);
       }
       AnalyzeRightCast(left, expression, IsScalar(expression), depth + 1);
     }
@@ -2579,7 +2583,9 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
     if(lib_klass->HasGenerics()) {
       eval_type = RelsolveGenericType(eval_type, method_call, NULL, lib_klass);
       if(!eval_type->HasGenerics()) {
-        eval_type->SetGenerics(method_call->GetConcreteTypes());
+        const vector<Type*> concretes = method_call->GetConcreteTypes();
+        ResolveConcreteTypes(concretes, static_cast<Expression*>(method_call), depth + 1);
+        eval_type->SetGenerics(concretes);
       }
       method_call->SetEvalType(eval_type, false);
     }
@@ -5181,7 +5187,7 @@ bool ContextAnalyzer::InvalidStatic(MethodCall* method_call, LibraryMethod* meth
   return false;
 }
 
-frontend::SymbolEntry* ContextAnalyzer::GetEntry(wstring name, bool is_parent)
+SymbolEntry* ContextAnalyzer::GetEntry(wstring name, bool is_parent)
 {
   if(current_table) {
     // check locally
@@ -5228,7 +5234,7 @@ frontend::SymbolEntry* ContextAnalyzer::GetEntry(wstring name, bool is_parent)
   return NULL;
 }
 
-frontend::SymbolEntry* ContextAnalyzer::GetEntry(MethodCall* method_call, const wstring& variable_name, int depth)
+SymbolEntry* ContextAnalyzer::GetEntry(MethodCall* method_call, const wstring& variable_name, int depth)
 {
   SymbolEntry* entry;
   if(method_call->GetVariable()) {
@@ -5246,7 +5252,7 @@ frontend::SymbolEntry* ContextAnalyzer::GetEntry(MethodCall* method_call, const 
   return entry;
 }
 
-frontend::Type* ContextAnalyzer::GetExpressionType(Expression* expression, int depth)
+Type* ContextAnalyzer::GetExpressionType(Expression* expression, int depth)
 {
   Type* type = NULL;
 
@@ -5422,7 +5428,7 @@ bool ContextAnalyzer::ValidUpCast(const wstring& to, LibraryClass* from_klass)
   }
 
   // library updates
-  vector<frontend::ParseNode*> lib_children = from_klass->GetChildren();
+  vector<ParseNode*> lib_children = from_klass->GetChildren();
   for(size_t i = 0; i < lib_children.size(); ++i) {
     if(ValidUpCast(to, static_cast<Class*>(lib_children[i]))) {
       return true;
@@ -5796,28 +5802,32 @@ void ContextAnalyzer::AddMethodParameter(MethodCall* method_call, SymbolEntry* e
   }
 }
 
-frontend::Type* ContextAnalyzer::RelsolveGenericCall(Type* left, MethodCall* method_call, Class* klass, Method* method)
+Type* ContextAnalyzer::RelsolveGenericCall(Type* left, MethodCall* method_call, Class* klass, Method* method, int depth)
 {
   left = RelsolveGenericType(left, method_call, klass, NULL);
   if(!left->HasGenerics() && method_call->HasConcreteTypes() &&
     (method->GetMethodType() == NEW_PUBLIC_METHOD ||
      method->GetMethodType() == NEW_PRIVATE_METHOD)) {
     left = TypeFactory::Instance()->MakeType(left);
-    left->SetGenerics(method_call->GetConcreteTypes());
+    const vector<Type*> concretes = method_call->GetConcreteTypes();
+    ResolveConcreteTypes(concretes, static_cast<Expression*>(method_call), depth);
+    left->SetGenerics(concretes);
     method_call->SetEvalType(left, false);
   }
 
   return left;
 }
 
-frontend::Type* ContextAnalyzer::RelsolveGenericCall(Type* left, MethodCall* method_call, LibraryClass* klass, LibraryMethod* method)
+Type* ContextAnalyzer::RelsolveGenericCall(Type* left, MethodCall* method_call, LibraryClass* klass, LibraryMethod* method, int depth)
 {
   left = RelsolveGenericType(left, method_call, NULL, klass);
   if(!left->HasGenerics() && method_call->HasConcreteTypes() &&
     (method->GetMethodType() == NEW_PUBLIC_METHOD ||
      method->GetMethodType() == NEW_PRIVATE_METHOD)) {
     left = TypeFactory::Instance()->MakeType(left);
-    left->SetGenerics(method_call->GetConcreteTypes());
+    const vector<Type*> concretes = method_call->GetConcreteTypes();
+    ResolveConcreteTypes(concretes, static_cast<Expression*>(method_call), depth);
+    left->SetGenerics(concretes);
     method_call->SetEvalType(left, false);
   }
 
@@ -5905,6 +5915,24 @@ void ContextAnalyzer::CheckGenericParameters(const vector<Class*> generic_klasse
           }
         }
       }
+    }
+  }
+}
+
+void ContextAnalyzer::ResolveConcreteTypes(vector<Type*> concretes, ParseNode* node, const int depth)
+{
+  for(size_t i = 0; i < concretes.size(); ++i) {
+    Type* concrete = concretes[i];
+    wstring const ref_name = concrete->GetClassName();
+    Class* klass = NULL; LibraryClass* lib_klass = NULL;
+    if(!GetProgramLibraryClass(ref_name, klass, lib_klass)) {
+      if(!current_class->GetGenericClass(ref_name)) {
+        ProcessError(node, L"Undefined generic reference: '" + ref_name + L"'");
+      }
+    }
+
+    if(concrete->HasGenerics()) {
+      ResolveConcreteTypes(concrete->GetGenerics(), node, depth + 1);
     }
   }
 }
