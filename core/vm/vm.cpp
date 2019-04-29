@@ -59,7 +59,7 @@ int Execute(const int argc, const char* argv[])
     // start the interpreter...
     Runtime::StackInterpreter* intpr = new Runtime::StackInterpreter(Loader::GetProgram());
     Runtime::StackInterpreter::AddThread(intpr);
-    intpr->Execute(op_stack, stack_pos, 0, loader.GetProgram()->GetInitializationMethod(), NULL, false);
+    intpr->Execute(op_stack, stack_pos, 0, loader.GetProgram()->GetInitializationMethod(), nullptr, false);
     
 #ifdef _DEBUG
     wcout << L"# final stack: pos=" << (*stack_pos) << L" #" << endl;
@@ -72,16 +72,16 @@ int Execute(const int argc, const char* argv[])
     
     // clean up
     delete[] op_stack;
-    op_stack = NULL;
+    op_stack = nullptr;
     
     delete stack_pos;
-    stack_pos = NULL;
+    stack_pos = nullptr;
     
     Runtime::StackInterpreter::RemoveThread(intpr);
     Runtime::StackInterpreter::HaltAll();
 
     delete intpr;
-    intpr = NULL;
+    intpr = nullptr;
 
 #ifdef _SANITIZE
     wcout << L"# final stack: pos=" << (*stack_pos) << L" #" << endl;
@@ -132,9 +132,9 @@ void CleanUpCommandLine(const int argc, wchar_t** wide_args)
   for(int i = 0; i < argc; ++i) {
     wchar_t* wide_arg = wide_args[i];
     delete[] wide_arg;
-    wide_arg = NULL;
+    wide_arg = nullptr;
   }
 
   delete[] wide_args;
-  wide_args = NULL;
+  wide_args = nullptr;
 }

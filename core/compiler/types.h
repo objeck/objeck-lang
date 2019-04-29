@@ -143,7 +143,7 @@ namespace frontend {
     Type(EntryType t) {
       type = t;
       dimension = 0;
-      func_rtrn = NULL;
+      func_rtrn = nullptr;
       func_param_count = -1;
     }
 
@@ -151,7 +151,7 @@ namespace frontend {
       type = t;
       class_name = n;
       dimension = 0;
-      func_rtrn = NULL;
+      func_rtrn = nullptr;
       func_param_count = -1;
     }
     
@@ -252,11 +252,11 @@ namespace frontend {
         types.erase(types.begin());
         // delete
         delete tmp;
-        tmp = NULL;
+        tmp = nullptr;
       }
 
       delete instance;
-      instance = NULL;
+      instance = nullptr;
     }
 
     Type* MakeType(EntryType type) {
@@ -345,7 +345,7 @@ namespace backend {
         declarations.erase(declarations.begin());
         // delete
         delete tmp;
-        tmp = NULL;
+        tmp = nullptr;
       }
     }
 

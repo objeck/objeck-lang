@@ -264,7 +264,7 @@ LibraryClass::LibraryClass(const wstring& n, const wstring& p, const vector<wstr
   inst_entries = ie;
   library = l;
   is_generic = false;
-  generic_interface = NULL;
+  generic_interface = nullptr;
 
   for(size_t i = 0; i < generic_name_types.size(); ++i) {
     const wstring generic_name_type = generic_name_types[i];
@@ -341,12 +341,12 @@ void LibraryClass::AddMethod(LibraryMethod* method)
     }
     else {
       delete method;
-      method = NULL;
+      method = nullptr;
     }
   }
   else {
     delete method;
-    method = NULL;
+    method = nullptr;
   }
 }
 
@@ -363,7 +363,7 @@ void Library::Load()
 
 char* Library::LoadFileBuffer(wstring filename, size_t& buffer_size)
 {
-  char* buffer = NULL;
+  char* buffer = nullptr;
   // open file
   const string open_filename = UnicodeToBytes(filename);
   ifstream in(open_filename.c_str(), ifstream::binary);
@@ -388,7 +388,7 @@ char* Library::LoadFileBuffer(wstring filename, size_t& buffer_size)
 #endif
 
     free(buffer);
-    buffer = NULL;
+    buffer = nullptr;
     return out;
   }
   else {
@@ -396,7 +396,7 @@ char* Library::LoadFileBuffer(wstring filename, size_t& buffer_size)
     exit(1);
   }
 
-  return NULL;
+  return nullptr;
 }
 
 /****************************
@@ -1224,7 +1224,7 @@ void LibraryMethod::ParseParameters()
     size_t index = 0;
 
     while(index < parameters.size()) {
-      frontend::Type* type = NULL;
+      frontend::Type* type = nullptr;
       int dimension = 0;
       switch(parameters[index]) {
       case 'l':

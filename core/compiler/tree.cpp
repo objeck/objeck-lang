@@ -610,19 +610,19 @@ MethodCall::MethodCall(const wstring &f, const int l, MethodCallType t,
   call_type = t;
   method_name = L"New";
   expressions = e;
-  entry = dyn_func_entry = NULL;
-  method = NULL;
-  array_type = NULL;
-  variable = NULL;
-  enum_item = NULL;
-  method = NULL;
-  lib_method = NULL;
-  lib_enum_item = NULL;
-  original_klass = NULL;
-  original_lib_klass = NULL;
+  entry = dyn_func_entry = nullptr;
+  method = nullptr;
+  array_type = nullptr;
+  variable = nullptr;
+  enum_item = nullptr;
+  method = nullptr;
+  lib_method = nullptr;
+  lib_enum_item = nullptr;
+  original_klass = nullptr;
+  original_lib_klass = nullptr;
   is_enum_call = is_func_def = is_dyn_func_call = false;
-  func_rtrn = NULL;
-  anonymous_klass = NULL;
+  func_rtrn = nullptr;
+  anonymous_klass = nullptr;
 
   if(variable_name == BOOL_CLASS_ID) {
     array_type = TypeFactory::Instance()->MakeType(BOOLEAN_TYPE);
@@ -674,7 +674,7 @@ SymbolEntry* ScopeTable::GetEntry(const wstring& name)
     return result->second;
   }
 
-  return NULL;
+  return nullptr;
 }
 
 /****************************
@@ -691,7 +691,7 @@ SymbolEntry* SymbolTable::GetEntry(const wstring& name)
     tmp = tmp->GetParent();
   }
 
-  return NULL;
+  return nullptr;
 }
 
 bool SymbolTable::AddEntry(SymbolEntry* e, bool is_var /*= false*/)

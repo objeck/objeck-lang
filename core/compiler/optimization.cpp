@@ -76,7 +76,7 @@ vector<IntermediateBlock*> ItermediateOptimizer::InlineMethod(vector<Intermediat
       // delete old block
       inputs.erase(inputs.begin());
       delete tmp;
-      tmp = NULL;
+      tmp = nullptr;
     }
 
     return outputs;
@@ -101,7 +101,7 @@ vector<IntermediateBlock*> ItermediateOptimizer::OptimizeMethod(vector<Intermedi
     // delete old block
     inputs.erase(inputs.begin());
     delete tmp;
-    tmp = NULL;
+    tmp = nullptr;
   }
   
   vector<IntermediateBlock*> useless_instrs_blocks;
@@ -115,7 +115,7 @@ vector<IntermediateBlock*> ItermediateOptimizer::OptimizeMethod(vector<Intermedi
     // delete old block
     jump_blocks.erase(jump_blocks.begin());
     delete tmp;
-    tmp = NULL;
+    tmp = nullptr;
   }
   
   vector<IntermediateBlock*> folded_float_blocks;
@@ -131,7 +131,7 @@ vector<IntermediateBlock*> ItermediateOptimizer::OptimizeMethod(vector<Intermedi
       // delete old block
       useless_instrs_blocks.erase(useless_instrs_blocks.begin());
       delete tmp;
-      tmp = NULL;
+      tmp = nullptr;
     }
         
     // fold integers
@@ -145,7 +145,7 @@ vector<IntermediateBlock*> ItermediateOptimizer::OptimizeMethod(vector<Intermedi
       // delete old block
       getter_setter_blocks.erase(getter_setter_blocks.begin());
       delete tmp;
-      tmp = NULL;
+      tmp = nullptr;
     }
     
     // fold floats
@@ -158,7 +158,7 @@ vector<IntermediateBlock*> ItermediateOptimizer::OptimizeMethod(vector<Intermedi
       // delete old block
       folded_int_blocks.erase(folded_int_blocks.begin());
       delete tmp;
-      tmp = NULL;
+      tmp = nullptr;
     }
   } 
   else {
@@ -177,7 +177,7 @@ vector<IntermediateBlock*> ItermediateOptimizer::OptimizeMethod(vector<Intermedi
       // delete old block
       folded_float_blocks.erase(folded_float_blocks.begin());
       delete tmp;
-      tmp = NULL;
+      tmp = nullptr;
     }
   } 
   else {
@@ -196,7 +196,7 @@ vector<IntermediateBlock*> ItermediateOptimizer::OptimizeMethod(vector<Intermedi
       // delete old block
       strength_reduced_blocks.erase(strength_reduced_blocks.begin());
       delete tmp;
-      tmp = NULL;
+      tmp = nullptr;
     }
   } 
   else {

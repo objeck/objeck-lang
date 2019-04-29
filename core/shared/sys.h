@@ -185,7 +185,7 @@ static wstring GetLibraryPath() {
 static bool BytesToUnicode(const string &in, wstring &out) {    
 #ifdef _WIN32
   // allocate space
-  const int wsize = MultiByteToWideChar(CP_UTF8, 0, in.c_str(), -1, NULL, 0);
+  const int wsize = MultiByteToWideChar(CP_UTF8, 0, in.c_str(), -1, nullptr, 0);
   if(wsize == 0) {
     return false;
   }
@@ -195,7 +195,7 @@ static bool BytesToUnicode(const string &in, wstring &out) {
   const int check = MultiByteToWideChar(CP_UTF8, 0, in.c_str(), -1, buffer, wsize);
   if(check == 0) {
     delete[] buffer;
-    buffer = NULL;
+    buffer = nullptr;
     return false;
   }
   
@@ -204,10 +204,10 @@ static bool BytesToUnicode(const string &in, wstring &out) {
 
   // clean up
   delete[] buffer;
-  buffer = NULL;  
+  buffer = nullptr;  
 #else
   // allocate space
-  size_t size = mbstowcs(NULL, in.c_str(), in.size());
+  size_t size = mbstowcs(nullptr, in.c_str(), in.size());
   if(size == (size_t)-1) {
     return false;
   }
@@ -217,7 +217,7 @@ static bool BytesToUnicode(const string &in, wstring &out) {
   size_t check = mbstowcs(buffer, in.c_str(), in.size());
   if(check == (size_t)-1) {
     delete[] buffer;
-    buffer = NULL;
+    buffer = nullptr;
     return false;
   }
   buffer[size] = L'\0';
@@ -227,7 +227,7 @@ static bool BytesToUnicode(const string &in, wstring &out) {
 
   // clean up
   delete[] buffer;
-  buffer = NULL;
+  buffer = nullptr;
 #endif
 
   return true;
@@ -267,17 +267,17 @@ static bool BytesToCharacter(const string &in, wchar_t &out) {
 static bool UnicodeToBytes(const wstring &in, string &out) {
 #ifdef _WIN32
   // allocate space
-  const int size = WideCharToMultiByte(CP_UTF8, 0, in.c_str(), -1, NULL, 0, NULL, NULL);
+  const int size = WideCharToMultiByte(CP_UTF8, 0, in.c_str(), -1, nullptr, 0, nullptr, nullptr);
   if(size == 0) {
     return false;
   }
   char* buffer = new char[size];
   
   // convert string
-  const int check = WideCharToMultiByte(CP_UTF8, 0, in.c_str(), -1, buffer, size, NULL, NULL);
+  const int check = WideCharToMultiByte(CP_UTF8, 0, in.c_str(), -1, buffer, size, nullptr, nullptr);
   if(check == 0) {
     delete[] buffer;
-    buffer = NULL;
+    buffer = nullptr;
     return false;
   }
   
@@ -286,10 +286,10 @@ static bool UnicodeToBytes(const wstring &in, string &out) {
 
   // clean up
   delete[] buffer;
-  buffer = NULL;
+  buffer = nullptr;
 #else
   // convert string
-  size_t size = wcstombs(NULL, in.c_str(), in.size());
+  size_t size = wcstombs(nullptr, in.c_str(), in.size());
   if(size == (size_t)-1) {
     return false;
   }
@@ -298,7 +298,7 @@ static bool UnicodeToBytes(const wstring &in, string &out) {
   wcstombs(buffer, in.c_str(), size);
   if(size == (size_t)-1) {
     delete[] buffer;
-    buffer = NULL;
+    buffer = nullptr;
     return false;
   }
   buffer[size] = '\0';
@@ -308,7 +308,7 @@ static bool UnicodeToBytes(const wstring &in, string &out) {
 
   // clean up
   delete[] buffer;
-  buffer = NULL;
+  buffer = nullptr;
 #endif
   
   return true;
@@ -378,7 +378,7 @@ public:
 #endif
     file_out.write(compressed, dest_len);
     free(compressed);
-    compressed = NULL;
+    compressed = nullptr;
 
     file_out.close();
 
@@ -456,8 +456,8 @@ public:
     const int status = compress((Bytef*)buffer, &out_len, (Bytef*)src, src_len);
     if(status != Z_OK) {
       free(buffer);
-      buffer = NULL;
-      return NULL;
+      buffer = nullptr;
+      return nullptr;
     }
 
     return buffer;
@@ -489,14 +489,14 @@ public:
       case Z_MEM_ERROR:
       case Z_DATA_ERROR:
         free(buffer);
-        buffer = NULL;
-        return NULL;
+        buffer = nullptr;
+        return nullptr;
       }
     } while(buffer_max < buffer_limit && !success);
 
     free(buffer);
-    buffer = NULL;
-    return NULL;
+    buffer = nullptr;
+    return nullptr;
   }
 };
 

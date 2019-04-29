@@ -1,10 +1,10 @@
 class Foo {
 	function : Main(args : String[]) ~ Nil {
-		f := Map->New()<String, Vector>;
+		f := Map->New()<String, String>;
 	}
 }
 
-class Map<K : Compare, V> {
+class Map<K : Compare, V : Compare> {
 	New() {
 		v := Vector->New()<V>;
 		v->Get();

@@ -85,7 +85,7 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
           wcout << L"> ";
         }
         else {
-          command = NULL;
+          command = nullptr;
         }
       }
       while(!command || (command->GetCommandType() != CONT_COMMAND &&
@@ -146,16 +146,16 @@ void Runtime::Debugger::ProcessArgs(Load* load) {
   while(token) {
     arguments.push_back(token);
 #ifdef _WIN32
-    token = wcstok_s(NULL, L" ", &state);
+    token = wcstok_s(nullptr, L" ", &state);
 #else
-    token = wcstok(NULL, L" ", &state);
+    token = wcstok(nullptr, L" ", &state);
 #endif
   }
   wcout << L"program arguments sets." << endl;
 
   // clean up
   free(buffer);
-  buffer = NULL;
+  buffer = nullptr;
 }
 
 void Runtime::Debugger::ProcessExe(Load* load) {
@@ -208,7 +208,7 @@ void Runtime::Debugger::ProcessRun() {
     long start = clock();
 #endif
     interpreter = new Runtime::StackInterpreter(cur_program, this);
-    interpreter->Execute(op_stack, stack_pos, 0, cur_program->GetInitializationMethod(), NULL, false);
+    interpreter->Execute(op_stack, stack_pos, 0, cur_program->GetInitializationMethod(), nullptr, false);
 #ifdef _TIMING
     wcout << L"# final stack: pos=" << (*stack_pos) << L" #" << endl;
     wcout << L"---------------------------" << endl;
@@ -224,10 +224,10 @@ void Runtime::Debugger::ProcessRun() {
     for(int i = 0; i < argc; i++) {
       wchar_t* param = argv[i];
       free(param);
-      param = NULL;
+      param = nullptr;
     }
     delete[] argv;
-    argv = NULL;
+    argv = nullptr;
     ClearProgram();
   }
   else {
@@ -1210,8 +1210,8 @@ bool Runtime::Debugger::DirectoryExists(const wstring& wdir_name)
   const string dir_name = UnicodeToBytes(wdir_name);
 #ifdef _WIN32
   HANDLE file = CreateFile(dir_name.c_str(), GENERIC_READ,
-                           FILE_SHARE_READ, NULL, OPEN_EXISTING,
-                           FILE_FLAG_BACKUP_SEMANTICS, NULL);
+                           FILE_SHARE_READ, nullptr, OPEN_EXISTING,
+                           FILE_FLAG_BACKUP_SEMANTICS, nullptr);
 
   if(file == INVALID_HANDLE_VALUE) {
     return false;
@@ -1250,7 +1250,7 @@ Runtime::UserBreak* Runtime::Debugger::FindBreak(int line_num, const wstring& fi
     }
   }
 
-  return NULL;
+  return nullptr;
 }
 
 bool Runtime::Debugger::AddBreak(int line_num, const wstring& file_name)
@@ -1509,7 +1509,7 @@ Command* Runtime::Debugger::ProcessCommand(const wstring &line) {
     }
 
     is_error = false;
-    ref_mem = NULL;
+    ref_mem = nullptr;
     return command;
   }
   else {
@@ -1517,8 +1517,8 @@ Command* Runtime::Debugger::ProcessCommand(const wstring &line) {
   }
 
   is_error = false;
-  ref_mem = NULL;
-  return NULL;
+  ref_mem = nullptr;
+  return nullptr;
 }
 
 void Runtime::Debugger::ProcessInfo(Info* info) {
@@ -1603,35 +1603,35 @@ void Runtime::Debugger::ClearBreaks() {
     breaks.erase(breaks.begin());
     // delete
     delete tmp;
-    tmp = NULL;
+    tmp = nullptr;
   }
 }
 
 void Runtime::Debugger::ClearProgram() {
   if(interpreter) {
     delete interpreter;
-    interpreter = NULL;
+    interpreter = nullptr;
   }
 
   if(op_stack) {
     delete[] op_stack;
-    op_stack = NULL;
+    op_stack = nullptr;
   }
 
   if(stack_pos) {
     delete stack_pos;
-    stack_pos = NULL;
+    stack_pos = nullptr;
   }
 
   MemoryManager::Clear();
   StackMethod::ClearVirtualEntries();
 
   cur_line_num = -2;
-  cur_frame = NULL;
-  cur_program = NULL;
+  cur_frame = nullptr;
+  cur_program = nullptr;
   is_error = false;
-  ref_mem = NULL;
-  ref_klass = NULL;
+  ref_mem = nullptr;
+  ref_klass = nullptr;
   is_jmp_out = false;
 }
 

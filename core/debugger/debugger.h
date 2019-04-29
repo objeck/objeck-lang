@@ -175,17 +175,17 @@ namespace Runtime {
       base_path = bp;
       quit = false;
       // clear program
-      interpreter = NULL;
-      op_stack = NULL;
-      stack_pos = NULL;
+      interpreter = nullptr;
+      op_stack = nullptr;
+      stack_pos = nullptr;
       cur_line_num = -2;
-      cur_frame = NULL;
-      cur_program = NULL;
-      cur_call_stack = NULL;
+      cur_frame = nullptr;
+      cur_program = nullptr;
+      cur_call_stack = nullptr;
       cur_call_stack_pos = 0;
       is_error = false;
-      ref_mem = NULL;
-      ref_mem = NULL;
+      ref_mem = nullptr;
+      ref_mem = nullptr;
       is_jmp_out = false;
     }
 

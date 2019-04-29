@@ -152,11 +152,11 @@ public:
   ~Loader() {
     if(alloc_buffer) {
       free(alloc_buffer);
-      alloc_buffer = NULL;
+      alloc_buffer = nullptr;
     }
 
     delete program;
-    program = NULL;
+    program = nullptr;
   }
 
   static StackProgram* GetProgram();
@@ -167,7 +167,7 @@ public:
       return cls->GetMethod(start_method_id);
     }
 
-    return NULL;
+    return nullptr;
   }
   
   inline int GetConfigurationParameter(const wstring& key) {

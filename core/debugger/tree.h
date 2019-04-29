@@ -433,7 +433,7 @@ namespace frontend {
 
     CalculatedExpression(ExpressionType t) :
       Expression() {
-        left = right = NULL;
+        left = right = nullptr;
         type = t;
     }
 
@@ -592,17 +592,17 @@ namespace frontend {
     Reference() : Expression() {
       variable_name = L"@self";
       is_self = true;
-      reference  = NULL;
+      reference  = nullptr;
       array_size = 0;
       array_dim = 0;
-      indices = NULL;
+      indices = nullptr;
     }
 
     Reference(const wstring &v) : Expression() {
       variable_name = v;
       is_self = false;
-      reference  = NULL;
-      indices = NULL;
+      reference  = nullptr;
+      indices = nullptr;
     }
 
     ~Reference() {
@@ -688,7 +688,7 @@ namespace frontend {
         nodes.erase(nodes.begin());
         // delete
         delete tmp;
-        tmp = NULL;
+        tmp = nullptr;
       }
 
       while(!expressions.empty()) {
@@ -696,7 +696,7 @@ namespace frontend {
         expressions.erase(expressions.begin());
         // delete
         delete tmp;
-        tmp = NULL;
+        tmp = nullptr;
       }
 
       while(!calls.empty()) {
@@ -704,7 +704,7 @@ namespace frontend {
         calls.erase(calls.begin());
         // delete
         delete tmp;
-        tmp = NULL;
+        tmp = nullptr;
       }
 
       while(!expression_lists.empty()) {
@@ -712,11 +712,11 @@ namespace frontend {
         expression_lists.erase(expression_lists.begin());
         // delete
         delete tmp;
-        tmp = NULL;
+        tmp = nullptr;
       }
 
       delete instance;
-      instance = NULL;
+      instance = nullptr;
     }
 
     ExpressionList* MakeExpressionList() {

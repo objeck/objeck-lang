@@ -254,13 +254,13 @@ class NativeCode
   
   ~NativeCode() {
 #ifdef _WIN64
-    VirtualFree(floats, NULL, MEM_RELEASE);
+    VirtualFree(floats, 0, MEM_RELEASE);
 #elif _X64
     free(floats); 
 #else
     delete[] floats;
 #endif
-    floats = NULL;
+    floats = nullptr;
   }
 
 #ifdef _ARM32
@@ -502,14 +502,14 @@ class StackMethod {
     name = ParseName(n);
     is_virtual = v;
     has_and_or = h;
-    native_code = NULL;
+    native_code = nullptr;
     dclrs = d;
     num_dclrs = nd;
     param_count = p;
     mem_size = m;
     rtrn_type = r;
     cls = k;
-    instrs = NULL;
+    instrs = nullptr;
     instr_count = 0;
   }
 
@@ -519,26 +519,26 @@ class StackMethod {
       for(int i = 0; i < num_dclrs; ++i) {
         StackDclr* tmp = dclrs[i];
         delete tmp;
-        tmp = NULL;
+        tmp = nullptr;
       }
       delete[] dclrs;
-      dclrs = NULL;
+      dclrs = nullptr;
     }
 
     // clean up
     if(native_code) {
       delete native_code;
-      native_code = NULL;
+      native_code = nullptr;
     }
 
     // clean up
     for(int i = 0; i < instr_count; ++i) {
       StackInstr* tmp = instrs[i];
       delete tmp;
-      tmp = NULL;
+      tmp = nullptr;
     }
     delete[] instrs;
-    instrs = NULL;
+    instrs = nullptr;
   }
 
   inline const wstring& GetName() {
@@ -682,7 +682,7 @@ class StackMethod {
   }
 
   static StackMethod* GetVirtualEntry(const wstring &key) {
-    StackMethod* mthd = NULL;
+    StackMethod* mthd = nullptr;
 #ifdef _WIN32
     EnterCriticalSection(&virutal_cs);
 #else
@@ -761,33 +761,33 @@ class StackClass {
       for(int i = 0; i < cls_num_dclrs; ++i) {
         StackDclr* tmp = cls_dclrs[i];
         delete tmp;
-        tmp = NULL;
+        tmp = nullptr;
       }
       delete[] cls_dclrs;
-      cls_dclrs = NULL;
+      cls_dclrs = nullptr;
     }
 
     if(inst_dclrs) {
       for(int i = 0; i < inst_num_dclrs; ++i) {
         StackDclr* tmp = inst_dclrs[i];
         delete tmp;
-        tmp = NULL;
+        tmp = nullptr;
       }
       delete[] inst_dclrs;
-      inst_dclrs = NULL;
+      inst_dclrs = nullptr;
     }
 
     for(int i = 0; i < method_num; ++i) {
       StackMethod* method = methods[i];
       delete method;
-      method = NULL;
+      method = nullptr;
     }
     delete[] methods;
-    methods = NULL;
+    methods = nullptr;
 
     if(cls_mem) {
       delete[] cls_mem;
-      cls_mem = NULL;
+      cls_mem = nullptr;
     }
   }
 
@@ -884,7 +884,7 @@ class StackClass {
       return result->second;
     }
 
-    return NULL;
+    return nullptr;
   }
 
   inline StackMethod** GetMethods() const {
@@ -980,10 +980,10 @@ class StackProgram {
 
  public:
   StackProgram() {
-    cls_hierarchy = NULL;
-    cls_interfaces = NULL;
-    classes = NULL;
-    char_strings = NULL;
+    cls_hierarchy = nullptr;
+    cls_interfaces = nullptr;
+    classes = nullptr;
+    char_strings = nullptr;
     string_cls_id = cls_cls_id = mthd_cls_id = sock_cls_id = data_type_cls_id = -1;
 #ifdef _WIN32
     InitializeCriticalSection(&program_cs);
@@ -996,59 +996,59 @@ class StackProgram {
       for(int i = 0; i < class_num; ++i) {
         StackClass* klass = classes[i];
         delete klass;
-        klass = NULL;
+        klass = nullptr;
       }
       delete[] classes;
-      classes = NULL;
+      classes = nullptr;
     }
 
     if(cls_hierarchy) {
       delete[] cls_hierarchy;
-      cls_hierarchy = NULL;
+      cls_hierarchy = nullptr;
     }
 
     if(cls_interfaces) {
       for(int i = 0; i < class_num; ++i) {
         delete[] cls_interfaces[i];
-        cls_interfaces[i] = NULL;
+        cls_interfaces[i] = nullptr;
       }
       delete[] cls_interfaces;
-      cls_interfaces = NULL;
+      cls_interfaces = nullptr;
     }
 
     if(float_strings) {
       for(int i = 0; i < num_float_strings; ++i) {
         FLOAT_VALUE* tmp = float_strings[i];
         delete[] tmp;
-        tmp = NULL;
+        tmp = nullptr;
       }
       delete[] float_strings;
-      float_strings = NULL;
+      float_strings = nullptr;
     }
 
     if(int_strings) {
       for(int i = 0; i < num_int_strings; ++i) {
         INT_VALUE* tmp = int_strings[i];
         delete[] tmp;
-        tmp = NULL;
+        tmp = nullptr;
       }
       delete[] int_strings;
-      int_strings = NULL;
+      int_strings = nullptr;
     }
 
     if(char_strings) {
       for(int i = 0; i < num_char_strings; ++i) {
         wchar_t* tmp = char_strings[i];
         delete [] tmp;
-        tmp = NULL;
+        tmp = nullptr;
       }
       delete[] char_strings;
-      char_strings = NULL;
+      char_strings = nullptr;
     }
 
     if(init_method) {
       delete init_method;
-      init_method = NULL;
+      init_method = nullptr;
     }
 
 #ifdef _WIN32
@@ -1127,7 +1127,7 @@ class StackProgram {
 #ifdef _DEBUG
 #ifdef _WIN32  
   char install_path[MAX_PATH];
-  DWORD status = GetModuleFileNameA(NULL, install_path, sizeof(install_path));
+  DWORD status = GetModuleFileNameA(nullptr, install_path, sizeof(install_path));
   if(status > 0) {
     string exe_path(install_path);
     size_t install_index = exe_path.find_last_of('\\');
@@ -1159,7 +1159,7 @@ class StackProgram {
 #else
 #ifdef _WIN32  
     char install_path[MAX_PATH];
-    DWORD status = GetModuleFileNameA(NULL, install_path, sizeof(install_path));
+    DWORD status = GetModuleFileNameA(nullptr, install_path, sizeof(install_path));
     if(status > 0) {
       string exe_path(install_path);
       size_t install_index = exe_path.find_last_of('\\');
@@ -1382,7 +1382,7 @@ class StackProgram {
       }
     }
 
-    return NULL;
+    return nullptr;
   }
 
   void SetHierarchy(int* h) {
@@ -1406,7 +1406,7 @@ class StackProgram {
       return classes[id];
     }
 
-    return NULL;
+    return nullptr;
   }
 
   inline StackClass** GetClasses() const {
@@ -1553,7 +1553,7 @@ class ObjectDeserializer
     wchar_t out = L'\0';
     BytesToCharacter(in, out);
     delete[] in;
-    in = NULL;
+    in = nullptr;
 
     buffer_offset += num;
     return out;
@@ -1582,8 +1582,8 @@ class ObjectDeserializer
     buffer = b;
     buffer_array_size = s;
     buffer_offset = 0;
-    cls = NULL;
-    instance = NULL;
+    cls = nullptr;
+    instance = nullptr;
     instance_pos = 0;
   }
 
@@ -1595,8 +1595,8 @@ class ObjectDeserializer
     buffer_array_size = s;
     buffer_offset = o;
     mem_cache = c;
-    cls = NULL;
-    instance = NULL;
+    cls = nullptr;
+    instance = nullptr;
     instance_pos = 0;
   }
 
@@ -1650,7 +1650,7 @@ class TrapProcessor {
     }
 #endif
 
-    return curr_time != NULL;
+    return curr_time != nullptr;
   }
 
   //
@@ -2149,7 +2149,7 @@ class TrapProcessor {
 
       // clean up
       delete[] in;
-      in = NULL;
+      in = nullptr;
 
       inst[1] = dest_pos + num;
 

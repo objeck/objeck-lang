@@ -128,7 +128,7 @@ bool Parser::CheckErrors()
 
     // clean up
     delete program;
-    program = NULL;
+    program = nullptr;
 
     return false;
   }
@@ -176,7 +176,7 @@ void Parser::ParseFile(const wstring &file_name)
   ParseBundle(0);
   // clean up
   delete scanner;
-  scanner = NULL;
+  scanner = nullptr;
 }
 
 /****************************
@@ -189,7 +189,7 @@ void Parser::ParseProgram()
   ParseBundle(0);
   // clean up
   delete scanner;
-  scanner = NULL;
+  scanner = nullptr;
 }
 
 /****************************
@@ -628,7 +628,7 @@ Class* Parser::ParseClass(const wstring &bundle_name, int depth)
   NextToken();
 
   symbol_table->PreviousParseScope(current_class->GetName());
-  current_class = NULL;
+  current_class = nullptr;
   return klass;
 }
 
@@ -701,7 +701,7 @@ Class* Parser::ParseInterface(const wstring &bundle_name, int depth)
   NextToken();
 
   symbol_table->PreviousParseScope(current_class->GetName());
-  current_class = NULL;
+  current_class = nullptr;
   return klass;
 }
 
@@ -838,7 +838,7 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
 
   // statements
   if(is_virtual) {
-    method->SetStatements(NULL);
+    method->SetStatements(nullptr);
     // virtual function/method ending
     if(!Match(TOKEN_SEMI_COLON)) {
       ProcessError(L"Expected ';'", TOKEN_SEMI_COLON);
@@ -853,7 +853,7 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
   }
 
   symbol_table->PreviousParseScope(method->GetParsedName());
-  current_method = NULL;
+  current_method = nullptr;
 
   return method;
 }
@@ -897,7 +897,7 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
   Debug(L"Statement", depth);
 #endif
 
-  Statement* statement = NULL;
+  Statement* statement = nullptr;
 
   // identifier
   if(Match(TOKEN_IDENT)) {
@@ -2116,7 +2116,7 @@ StaticArray* Parser::ParseStaticArray(int depth) {
   // array elements
   else {
     while(!Match(TOKEN_CLOSED_BRACKET) && !Match(TOKEN_END_OF_STREAM)) {
-      Expression* expression = NULL;
+      Expression* expression = nullptr;
       if(Match(TOKEN_SUB)) {
         NextToken();
 
@@ -2351,7 +2351,7 @@ Declaration* Parser::ParseDeclaration(const wstring &name, bool is_stmt, int dep
   }
   NextToken();
 
-  Declaration* declaration = NULL;
+  Declaration* declaration = nullptr;
   if(Match(TOKEN_OPEN_PAREN)) {
     // type
     Type* type = ParseType(depth + 1);
@@ -2378,7 +2378,7 @@ Declaration* Parser::ParseDeclaration(const wstring &name, bool is_stmt, int dep
     Type* type = ParseType(depth + 1);
 
     // add declarations
-    Assignment* temp = NULL;
+    Assignment* temp = nullptr;
     for(size_t i = 0; i < idents.size(); ++i) {
       const wstring &ident = idents[i];
       declaration = AddDeclaration(ident, type, is_static, declaration, depth);
@@ -2488,7 +2488,7 @@ ExpressionList* Parser::ParseIndices(int depth)
   const int line_num = GetLineNumber();
   const wstring &file_name = GetFileName();
 
-  ExpressionList* expressions = NULL;
+  ExpressionList* expressions = nullptr;
   if(Match(TOKEN_OPEN_BRACKET)) {
     expressions = TreeFactory::Instance()->MakeExpressionList();
     NextToken();
@@ -2547,7 +2547,7 @@ Expression* Parser::ParseExpression(int depth)
   Debug(L"Expression", depth);
 #endif
 
-  Expression* expression = NULL;
+  Expression* expression = nullptr;
   if(Match(TOKEN_NEQL) || (alt_syntax && Match(TOKEN_NOT))) {
     return ParseLogic(depth + 1);
   }
@@ -2600,7 +2600,7 @@ Expression* Parser::ParseLogic(int depth)
     left = ParseMathLogic(depth + 1);
   }
 
-  CalculatedExpression* expression = NULL;
+  CalculatedExpression* expression = nullptr;
   while((Match(TOKEN_AND) || Match(TOKEN_OR)) && !Match(TOKEN_END_OF_STREAM)) {
     if(expression) {
       left = expression;
@@ -2653,7 +2653,7 @@ Expression* Parser::ParseMathLogic(int depth)
   if(Match(TOKEN_LES) || Match(TOKEN_GTR) ||
      Match(TOKEN_LEQL) || Match(TOKEN_GEQL) ||
      Match(TOKEN_EQL) || Match(TOKEN_NEQL)) {
-    CalculatedExpression* expression = NULL;
+    CalculatedExpression* expression = nullptr;
     switch(GetToken()) {
     case TOKEN_LES:
       expression = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, LES_EXPR);
@@ -2708,14 +2708,14 @@ Expression* Parser::ParseTerm(int depth)
 
   Expression* left = ParseFactor(depth + 1);
   if(!left) {
-    return NULL;
+    return nullptr;
   }
 
   if(!Match(TOKEN_ADD) && !Match(TOKEN_SUB)) {
     return left;
   }
 
-  CalculatedExpression* expression = NULL;
+  CalculatedExpression* expression = nullptr;
   while((Match(TOKEN_ADD) || Match(TOKEN_SUB)) && !Match(TOKEN_END_OF_STREAM)) {
     if(expression) {
       CalculatedExpression* right;
@@ -2776,7 +2776,7 @@ Expression* Parser::ParseFactor(int depth)
     return left;
   }
 
-  CalculatedExpression* expression = NULL;
+  CalculatedExpression* expression = nullptr;
   while((Match(TOKEN_MUL) || Match(TOKEN_DIV) || Match(TOKEN_MOD) ||
         Match(TOKEN_SHL) || Match(TOKEN_SHR) || Match(TOKEN_AND_ID) ||
         Match(TOKEN_OR_ID) || Match(TOKEN_XOR_ID)) &&
@@ -2817,7 +2817,7 @@ Expression* Parser::ParseFactor(int depth)
         break;
 
       default:
-        right = NULL;
+        right = nullptr;
         break;
       }
       NextToken();
@@ -2863,7 +2863,7 @@ Expression* Parser::ParseFactor(int depth)
         break;
 
       default:
-        expression = NULL;
+        expression = nullptr;
         break;
       }
       NextToken();
@@ -2891,7 +2891,7 @@ Expression* Parser::ParseSimpleExpression(int depth)
   Debug(L"Simple expression", depth);
 #endif
 
-  Expression* expression = NULL;
+  Expression* expression = nullptr;
   if(Match(TOKEN_IDENT) || Match(TOKEN_ADD_ADD) || Match(TOKEN_SUB_SUB) || IsBasicType(GetToken())) {
     wstring ident;
     bool pre_inc = false;
@@ -2927,7 +2927,7 @@ Expression* Parser::ParseSimpleExpression(int depth)
       NextToken();
       if(!Match(TOKEN_IDENT)) {
         ProcessError(L"Expected identifier", TOKEN_SEMI_COLON);
-        return NULL;
+        return nullptr;
       }
       pre_inc = true;
       ident = ParseBundleName();
@@ -2937,7 +2937,7 @@ Expression* Parser::ParseSimpleExpression(int depth)
       NextToken();
       if(!Match(TOKEN_IDENT)) {
         ProcessError(L"Expected identifier", TOKEN_SEMI_COLON);
-        return NULL;
+        return nullptr;
       }
       pre_dec = true;
       ident = ParseBundleName();
@@ -3187,7 +3187,7 @@ MethodCall* Parser::ParseMethodCall(const wstring &ident, int depth)
   Debug(L"Method call", depth);
 #endif
 
-  MethodCall* method_call = NULL;
+  MethodCall* method_call = nullptr;
   if(Match(TOKEN_ASSESSOR)) {
     NextToken();
 
@@ -3418,7 +3418,7 @@ void Parser::ParseAnonymousClass(MethodCall* method_call, int depth)
 
   Class* prev_class = current_class;
   prev_method = current_method;
-  current_method = NULL;
+  current_method = nullptr;
   current_class = klass;
   symbol_table->NewParseScope();
 
@@ -3475,7 +3475,7 @@ void Parser::ParseAnonymousClass(MethodCall* method_call, int depth)
 
   current_class = prev_class;
   current_method = prev_method;
-  prev_method = NULL;
+  prev_method = nullptr;
 }
 
 /****************************
@@ -3667,7 +3667,7 @@ For * Parser::ParseEach(int depth)
   const wstring count_scope_name = GetScopeName(count_ident);
   SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num,
                                                                 count_scope_name, type, false,
-                                                                current_method != NULL);
+                                                                current_method != nullptr);
 
 #ifdef _DEBUG
   Debug(L"Adding variable: '" + count_scope_name + L"'", depth + 2);
@@ -3801,7 +3801,7 @@ Select* Parser::ParseSelect(int depth)
   }
   NextToken();
 
-  StatementList* other = NULL;
+  StatementList* other = nullptr;
   vector<StatementList*> statement_lists;
   map<ExpressionList*, StatementList*> statement_map;
   while((Match(TOKEN_LABEL_ID) || Match(TOKEN_OTHER_ID)) && !Match(TOKEN_END_OF_STREAM)) {
@@ -3876,7 +3876,7 @@ Return* Parser::ParseReturn(int depth)
 #endif
 
   NextToken();
-  Expression* expression = NULL;
+  Expression* expression = nullptr;
   if(!Match(TOKEN_SEMI_COLON)) {
     expression = ParseExpression(depth + 1);
   }
@@ -3921,7 +3921,7 @@ Assignment* Parser::ParseAssignment(Variable* variable, int depth)
   NextToken();
   Expression* expression = ParseExpression(depth + 1);
   if(!expression) {
-    return NULL;
+    return nullptr;
   }
   expressions.push(expression);
 
@@ -3930,12 +3930,12 @@ Assignment* Parser::ParseAssignment(Variable* variable, int depth)
 
     expression = ParseExpression(depth + 1);
     if(!expression) {
-      return NULL;
+      return nullptr;
     }
     expressions.push(expression);
   }
 
-  Assignment* assignment = NULL;
+  Assignment* assignment = nullptr;
   while(!expressions.empty()) {
     Expression* right = expressions.top();
     expressions.pop();
@@ -3965,7 +3965,7 @@ Type* Parser::ParseType(int depth)
   Debug(L"Data Type", depth);
 #endif
 
-  Type* type = NULL;
+  Type* type = nullptr;
   switch(GetToken()) {
   case TOKEN_BYTE_ID:
     type = TypeFactory::Instance()->MakeType(BYTE_TYPE);

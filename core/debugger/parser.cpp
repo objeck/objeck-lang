@@ -110,7 +110,7 @@ Command* Parser::Parse(const wstring &line)
     return command;
   }
 
-  return NULL;
+  return nullptr;
 }
 
 /****************************
@@ -125,7 +125,7 @@ Command* Parser::ParseLine(const wstring &line)
 
   // clean up
   delete scanner;
-  scanner = NULL;
+  scanner = nullptr;
 
   return command;
 }
@@ -219,7 +219,7 @@ Command* Parser::ParseStatement(int depth)
       break;
 
     default:
-      command = NULL;
+      command = nullptr;
       break;
   }
 
@@ -391,7 +391,7 @@ Command* Parser::ParseInfo(int depth) {
 
 Command* Parser::ParseFrame(int depth) {
   NextToken();
-  return NULL;
+  return nullptr;
 }
 
 /****************************
@@ -399,7 +399,7 @@ Command* Parser::ParseFrame(int depth) {
  ****************************/
 ExpressionList* Parser::ParseIndices(int depth)
 {
-  ExpressionList* expressions = NULL;
+  ExpressionList* expressions = nullptr;
   if(Match(TOKEN_OPEN_BRACKET)) {
     expressions = TreeFactory::Instance()->MakeExpressionList();
     NextToken();
@@ -451,7 +451,7 @@ Expression* Parser::ParseLogic(int depth)
 
   Expression* left = ParseMathLogic(depth + 1);
 
-  CalculatedExpression* expression = NULL;
+  CalculatedExpression* expression = nullptr;
   while((Match(TOKEN_AND) || Match(TOKEN_OR)) && !Match(TOKEN_END_OF_STREAM)) {
     if(expression) {
       left = expression;
@@ -502,7 +502,7 @@ Expression* Parser::ParseMathLogic(int depth)
   if(Match(TOKEN_LES) || Match(TOKEN_GTR) ||
      Match(TOKEN_LEQL) || Match(TOKEN_GEQL) ||
      Match(TOKEN_EQL) || Match(TOKEN_NEQL)) {
-    CalculatedExpression* expression = NULL;
+    CalculatedExpression* expression = nullptr;
     switch(GetToken()) {
       case TOKEN_LES:
         expression = TreeFactory::Instance()->MakeCalculatedExpression(LES_EXPR);
@@ -555,14 +555,14 @@ Expression* Parser::ParseTerm(int depth)
 
   Expression* left = ParseFactor(depth + 1);
   if(!left) {
-    return NULL;
+    return nullptr;
   }
 
   if(!Match(TOKEN_ADD) && !Match(TOKEN_SUB)) {
     return left;
   }
 
-  CalculatedExpression* expression = NULL;
+  CalculatedExpression* expression = nullptr;
   while((Match(TOKEN_ADD) || Match(TOKEN_SUB)) && !Match(TOKEN_END_OF_STREAM)) {
     if(expression) {
       CalculatedExpression* right;
@@ -619,7 +619,7 @@ Expression* Parser::ParseFactor(int depth)
     return left;
   }
 
-  CalculatedExpression* expression = NULL;
+  CalculatedExpression* expression = nullptr;
   while((Match(TOKEN_MUL) || Match(TOKEN_DIV) || Match(TOKEN_MOD)) &&
         !Match(TOKEN_END_OF_STREAM)) {
     if(expression) {
@@ -672,7 +672,7 @@ Expression* Parser::ParseSimpleExpression(int depth)
 #ifdef _DEBUG
   Show(L"Simple expression", depth);
 #endif
-  Expression* expression = NULL;
+  Expression* expression = nullptr;
 
   if(Match(TOKEN_IDENT)) {
     const wstring &ident = scanner->GetToken()->GetIdentifier();
