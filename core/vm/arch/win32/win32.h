@@ -59,47 +59,47 @@ class File {
   static bool GetAccountGroupOwner(const char* name, wstring &account, wstring &group) {
     wstring value;
 
-    PSID sid_owner = NULL;
-    PSECURITY_DESCRIPTOR security = NULL;
+    PSID sid_owner = nullptr;
+    PSECURITY_DESCRIPTOR security = nullptr;
 
-    HANDLE handle = CreateFile(name, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    HANDLE handle = CreateFile(name, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
     if(handle == INVALID_HANDLE_VALUE) {
       CloseHandle(handle);
       return false;
     }
 
     DWORD flag = GetSecurityInfo(handle, SE_FILE_OBJECT, OWNER_SECURITY_INFORMATION,
-                                 &sid_owner, NULL, NULL, NULL, &security);
+                                 &sid_owner, nullptr, nullptr, nullptr, &security);
     if (flag != ERROR_SUCCESS) {
       CloseHandle(handle);
       return false;
     }
 
     DWORD owner_size = 1;
-    LPTSTR account_name = NULL;
+    LPTSTR account_name = nullptr;
 
     DWORD domain_size = 1;
-    LPTSTR domain_name = NULL;
+    LPTSTR domain_name = nullptr;
 
     SID_NAME_USE use;
 
-    LookupAccountSid(NULL, sid_owner, account_name, (LPDWORD)&owner_size,
+    LookupAccountSid(nullptr, sid_owner, account_name, (LPDWORD)&owner_size,
                      domain_name, (LPDWORD)&domain_size, &use);
 
     account_name = new char[owner_size];
     domain_name = new char[domain_size];
 
-    flag = LookupAccountSid(NULL, sid_owner, account_name, (LPDWORD)&owner_size,
+    flag = LookupAccountSid(nullptr, sid_owner, account_name, (LPDWORD)&owner_size,
                             domain_name, (LPDWORD)&domain_size, &use);
     if (flag == ERROR_SUCCESS) {
       // clean up
       CloseHandle(handle);
       
       delete[] account_name;
-      account_name = NULL;
+      account_name = nullptr;
 
       delete[] domain_name;
-      domain_name = NULL;
+      domain_name = nullptr;
 
       return false;
     }
@@ -111,10 +111,10 @@ class File {
     CloseHandle(handle);
 
     delete[] account_name;
-    account_name = NULL;
+    account_name = nullptr;
 
     delete[] domain_name;
-    domain_name = NULL;
+    domain_name = nullptr;
 
     return true;
   }
@@ -122,7 +122,7 @@ class File {
  public:
   static string FullPathName(const string name) {
     char buffer[BUFSIZE] = "";
-    char* part = NULL;
+    char* part = nullptr;
 
     if(!GetFullPathName(name.c_str(), BUFSIZE, buffer, &part)) {
       return "";
@@ -207,7 +207,7 @@ class File {
     file = fopen(name, mode);
 #else
     if(fopen_s(&file, name, mode) != 0) {
-      return NULL;
+      return nullptr;
     }
 #endif
 
@@ -215,7 +215,7 @@ class File {
   }
 
   static bool MakeDir(const char* name) {
-    if(CreateDirectory(name, NULL) == 0) {
+    if(CreateDirectory(name, nullptr) == 0) {
       return false;
     }
 
@@ -289,7 +289,7 @@ class IPSocket {
     }
 
     struct in_addr host_addr;
-    for(int i = 0; host_info->h_addr_list[i] != NULL; ++i) {
+    for(int i = 0; host_info->h_addr_list[i] != nullptr; ++i) {
       memcpy(&host_addr, host_info->h_addr_list[i], host_info->h_length);
       const string dot_name(inet_ntoa(host_addr));
       addresses.push_back(dot_name);
@@ -439,7 +439,7 @@ class IPSecureSocket {
     string cert_path = UnicodeToBytes(path);
     cert_path += CACERT_PEM_FILE;
 
-    if(!SSL_CTX_load_verify_locations(ctx, cert_path.c_str(), NULL)) {
+    if(!SSL_CTX_load_verify_locations(ctx, cert_path.c_str(), nullptr)) {
       BIO_free_all(bio);
       SSL_CTX_free(ctx);
       return false;

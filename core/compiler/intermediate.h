@@ -68,8 +68,8 @@ class SelectNode {
     id = i;
     value = v;
     operation = CASE_EQUAL;
-    left = NULL;
-    right = NULL;
+    left = nullptr;
+    right = nullptr;
   }
 
   SelectNode(int i, int v, SelectNode* l, SelectNode* r) {
@@ -92,12 +92,12 @@ class SelectNode {
   ~SelectNode() {
     if(left) {
       delete left;
-      left = NULL;
+      left = nullptr;
     }
 
     if(right) {
       delete right;
-      right = NULL;
+      right = nullptr;
     }
   }
 
@@ -142,10 +142,10 @@ class SelectArrayTree {
 
   ~SelectArrayTree() {
     delete[] values;
-    values = NULL;
+    values = nullptr;
 
     delete root;
-    root = NULL;
+    root = nullptr;
   }
 
   void Emit();
@@ -277,7 +277,7 @@ class IntermediateEmitter {
       return 0;
     }
 
-    Type* rtrn = NULL;
+    Type* rtrn = nullptr;
     if(method_call->GetMethod()) {
       rtrn = method_call->GetMethod()->GetReturn();
     } 
@@ -480,7 +480,7 @@ class IntermediateEmitter {
     is_new_inst = false;
     new_char_str_count = 0;
     cur_line_num = -1;
-    string_cls = NULL;
+    string_cls = nullptr;
     string_cls_id = -1;
     is_str_array = false;
   }

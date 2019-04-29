@@ -225,7 +225,7 @@ class LibraryMethod {
     mem_size = m;
     lib_cls = c;
     entries = e;
-    rtrn_type = NULL;
+    rtrn_type = nullptr;
 
     ParseParameters();
     ParseReturn();
@@ -238,7 +238,7 @@ class LibraryMethod {
       instrs.erase(instrs.begin());
       // delete
       delete tmp;
-      tmp = NULL;
+      tmp = nullptr;
     }
   }
 
@@ -366,7 +366,7 @@ class LibraryEnum {
     for(iter = items.begin(); iter != items.end(); ++iter) {
       LibraryEnumItem* tmp = iter->second;
       delete tmp;
-      tmp = NULL;
+      tmp = nullptr;
     }
     items.clear();
   }
@@ -389,7 +389,7 @@ class LibraryEnum {
       return result->second;
     }
 
-    return NULL;
+    return nullptr;
   }
 
   map<const wstring, LibraryEnumItem*> GetItems() {
@@ -429,13 +429,13 @@ class LibraryClass {
    LibraryClass(const wstring &n, const wstring &g) {
      name = n;
      if(g.empty()) {
-       generic_interface = NULL;
+       generic_interface = nullptr;
      }
      else {
        generic_interface = frontend::TypeFactory::Instance()->MakeType(frontend::CLASS_TYPE, g);
      }
      is_generic = true;
-     library = NULL;
+     library = nullptr;
    }
   
    LibraryClass(const wstring& n, const wstring& p, const vector<wstring> i, bool is, const vector<wstring> g, bool v,
@@ -448,7 +448,7 @@ class LibraryClass {
     for(iter = methods.begin(); iter != methods.end(); ++iter) {
       LibraryMethod* tmp = iter->second;
       delete tmp;
-      tmp = NULL;
+      tmp = nullptr;
     }
     methods.clear();
 
@@ -459,7 +459,7 @@ class LibraryClass {
       generic_classes.pop_back();
       // delete
       delete tmp;
-      tmp = NULL;
+      tmp = nullptr;
     }
   }
   
@@ -531,7 +531,7 @@ class LibraryClass {
       return generic_classes[index];
     }
 
-    return NULL;
+    return nullptr;
   }
 
   frontend::Type* GetGenericInterface() {
@@ -539,7 +539,7 @@ class LibraryClass {
   }
 
   bool HasGenericInterface() {
-    return generic_interface != NULL;
+    return generic_interface != nullptr;
   }
 
   const wstring &GetParentName() const {
@@ -582,7 +582,7 @@ class LibraryClass {
       return result->second;
     }
 
-    return NULL;
+    return nullptr;
   }
 
   vector<LibraryMethod*> GetUnqualifiedMethods(const wstring &n);
@@ -740,7 +740,7 @@ class Library {
  public:
   Library(const wstring &p) {
     lib_path = p;
-    alloc_buffer = NULL;
+    alloc_buffer = nullptr;
   }
 
   ~Library() {
@@ -749,7 +749,7 @@ class Library {
     for(enum_iter = enums.begin(); enum_iter != enums.end(); ++enum_iter) {
       LibraryEnum* tmp = enum_iter->second;
       delete tmp;
-      tmp = NULL;
+      tmp = nullptr;
     }
     enums.clear();
     enum_list.clear();
@@ -758,7 +758,7 @@ class Library {
     for(cls_iter = named_classes.begin(); cls_iter != named_classes.end(); ++cls_iter) {
       LibraryClass* tmp = cls_iter->second;
       delete tmp;
-      tmp = NULL;
+      tmp = nullptr;
     }
     named_classes.clear();
     class_list.clear();
@@ -768,7 +768,7 @@ class Library {
       char_strings.erase(char_strings.begin());
       // delete
       delete tmp;
-      tmp = NULL;
+      tmp = nullptr;
     }
 
     while(!int_strings.empty()) {
@@ -776,7 +776,7 @@ class Library {
       int_strings.erase(int_strings.begin());
       // delete
       delete tmp;
-      tmp = NULL;
+      tmp = nullptr;
     }
 
     while(!float_strings.empty()) {
@@ -784,12 +784,12 @@ class Library {
       float_strings.erase(float_strings.begin());
       // delete
       delete tmp;
-      tmp = NULL;
+      tmp = nullptr;
     }
 
     if(alloc_buffer) {
       delete[] alloc_buffer;
-      alloc_buffer = NULL;
+      alloc_buffer = nullptr;
     }
   }
   
@@ -804,7 +804,7 @@ class Library {
       return result->second;
     }
 
-    return NULL;
+    return nullptr;
   }
 
   LibraryEnum* GetEnum(const wstring &name) {
@@ -813,7 +813,7 @@ class Library {
       return result->second;
     }
 
-    return NULL;
+    return nullptr;
   }
 
   vector<LibraryEnum*> GetEnums() {
@@ -883,7 +883,7 @@ class Linker {
     for(iter = libraries.begin(); iter != libraries.end(); ++iter) {
       Library* tmp = iter->second;
       delete tmp;
-      tmp = NULL;
+      tmp = nullptr;
     }
     libraries.clear();
 
@@ -904,7 +904,7 @@ class Linker {
       return result->second;
     }
 
-    return NULL;
+    return nullptr;
   }
 
   // get all libraries
@@ -1000,7 +1000,7 @@ class Linker {
       }
     }
 
-    return NULL;
+    return nullptr;
   }
 
   // finds the first enum match; note multiple matches may exist
@@ -1018,7 +1018,7 @@ class Linker {
       }
     }
 
-    return NULL;
+    return nullptr;
   }
 
   void Load();

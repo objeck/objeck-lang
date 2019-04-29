@@ -186,7 +186,7 @@ void Loader::Load()
   dclrs[0]->name = L"args";
   dclrs[0]->type = OBJ_ARY_PARM;
 
-  init_method = new StackMethod(-1, name, false, false, dclrs,  1, 0, 1, NIL_TYPE, NULL);
+  init_method = new StackMethod(-1, name, false, false, dclrs,  1, 0, 1, NIL_TYPE, nullptr);
   LoadInitializationCode(init_method);
   program->SetInitializationMethod(init_method);
   program->SetStringObjectId(string_cls_id);
@@ -219,7 +219,7 @@ char* Loader::LoadFileBuffer(wstring filename, size_t& buffer_size)
 #endif
 
     free(buffer);
-    buffer = NULL;
+    buffer = nullptr;
     return out;
   }
   else {
@@ -227,7 +227,7 @@ char* Loader::LoadFileBuffer(wstring filename, size_t& buffer_size)
     exit(1);
   }
 
-  return NULL;
+  return nullptr;
 }
 
 void Loader::LoadClasses()
@@ -260,7 +260,7 @@ void Loader::LoadClasses()
       cls_interfaces[id] = interfaces;
     }
     else {
-      cls_interfaces[id] = NULL;
+      cls_interfaces[id] = nullptr;
     }
     
     const bool is_virtual = ReadInt() != 0;

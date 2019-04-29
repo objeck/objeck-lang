@@ -55,13 +55,13 @@ Scanner::~Scanner()
   // delete buffer
   if(buffer) {
     delete[] buffer;
-    buffer = NULL;
+    buffer = nullptr;
   }
 
   for(int i = 0; i < LOOK_AHEAD; i++) {
     Token* temp = tokens[i];
     delete temp;
-    temp = NULL;
+    temp = nullptr;
   }
 }
 
@@ -198,7 +198,7 @@ Token* Scanner::GetToken(int index)
     return tokens[index];
   }
 
-  return NULL;
+  return nullptr;
 }
 
 /****************************

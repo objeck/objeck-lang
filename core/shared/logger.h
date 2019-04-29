@@ -51,7 +51,7 @@ static void CloseLogger() {
   logger->close();
 
   delete logger;
-  logger = NULL;
+  logger = nullptr;
 }
 
 #endif

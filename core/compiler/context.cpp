@@ -89,7 +89,7 @@ bool ContextAnalyzer::CheckErrors()
 
     // clean up
     delete program;
-    program = NULL;
+    program = nullptr;
 
     return false;
   }
@@ -430,7 +430,7 @@ void ContextAnalyzer::AnalyzeClass(Class* klass, const int id, const int depth)
   // declarations
   vector<Statement*> statements = klass->GetStatements();
   for(size_t i = 0; i < statements.size(); ++i) {
-    current_method = NULL;
+    current_method = nullptr;
     AnalyzeDeclaration(static_cast<Declaration*>(statements[i]), current_class, depth + 1);
   }
 }
@@ -565,8 +565,8 @@ bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, Class* virtual_cl
       wstring virtual_method_name = virtual_method->GetEncodedName();
 
       // search for implementation method via signature
-      Method* impl_method = NULL;
-      LibraryMethod* lib_impl_method = NULL;
+      Method* impl_method = nullptr;
+      LibraryMethod* lib_impl_method = nullptr;
       int offset = (int)virtual_method_name.find_first_of(':');
       if(offset > -1) {
         wstring encoded_name = impl_class->GetName() + virtual_method_name.substr(offset);
@@ -671,8 +671,8 @@ bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, LibraryClass* lib
       wstring virtual_method_name = virtual_method->GetName();
 
       // validate that methods have been implemented
-      Method* impl_method = NULL;
-      LibraryMethod* lib_impl_method = NULL;
+      Method* impl_method = nullptr;
+      LibraryMethod* lib_impl_method = nullptr;
       int offset = (int)virtual_method_name.find_first_of(':');
       if(offset > -1) {
         wstring encoded_name = impl_class->GetName() + virtual_method_name.substr(offset);
@@ -1912,8 +1912,8 @@ void ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, const 
   MethodCall* method_call = expression->GetMethodCall();
   if(method_call && method_call->GetCallType() != ENUM_CALL) {
     wstring encoding;
-    Class* klass = NULL;
-    LibraryClass* lib_klass = NULL;
+    Class* klass = nullptr;
+    LibraryClass* lib_klass = nullptr;
 
     // check expression class
     bool is_enum_call = false;
@@ -1944,7 +1944,7 @@ void ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, const 
  *********************************/
 Class* ContextAnalyzer::AnalyzeProgramMethodCall(MethodCall* method_call, wstring &encoding, const int depth)
 {
-  Class* klass = NULL;
+  Class* klass = nullptr;
 
   // method within the same class
   const wstring variable_name = method_call->GetVariableName();
@@ -1999,7 +1999,7 @@ Class* ContextAnalyzer::AnalyzeProgramMethodCall(MethodCall* method_call, wstrin
  *********************************/
 LibraryClass* ContextAnalyzer::AnalyzeLibraryMethodCall(MethodCall* method_call, wstring &encoding, const int depth)
 {
-  LibraryClass* klass = NULL;
+  LibraryClass* klass = nullptr;
   const wstring variable_name = method_call->GetVariableName();
 
   // external method
@@ -2186,18 +2186,18 @@ Method* ContextAnalyzer::ResolveMethodCall(Class* klass, MethodCall* method_call
       MethodCallSelection* match = new MethodCallSelection(candidates[i]);
       for(size_t j = 0; j < expr_params.size(); ++j) {
         // get method type
-        Type* method_type = NULL;
+        Type* method_type = nullptr;
         if(method_parms[j]->GetEntry() && method_parms[j]->GetEntry()->GetType()) {
           // get type
           method_type = method_parms[j]->GetEntry()->GetType();
           // resolve generic to concrete, if needed
           if(klass->HasGenerics()) {
-            method_type = RelsolveGenericType(method_type, method_call, klass, NULL);
+            method_type = RelsolveGenericType(method_type, method_call, klass, nullptr);
           }
           ResolveClassEnumType(method_type);
         }
         // add parameter match
-        const int compare = MatchCallingParameter(expr_params[j], method_type, klass, NULL, depth);
+        const int compare = MatchCallingParameter(expr_params[j], method_type, klass, nullptr, depth);
         match->AddParameterMatch(compare);
       }
       matches.push_back(match);
@@ -2363,7 +2363,7 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call,
     // resolve generic to concrete, if needed
     Type* eval_type = TypeFactory::Instance()->MakeType(method_call->GetEvalType());
     if(klass->HasGenerics()) {
-      eval_type = RelsolveGenericType(eval_type, method_call, klass, NULL);
+      eval_type = RelsolveGenericType(eval_type, method_call, klass, nullptr);
       if(!eval_type->HasGenerics()) {
         const vector<Type*> concretes = method_call->GetConcreteTypes();
         ResolveConcreteTypes(concretes, static_cast<Expression*>(method_call), depth + 1);
@@ -2437,11 +2437,11 @@ LibraryMethod* ContextAnalyzer::ResolveMethodCall(LibraryClass* klass, MethodCal
         // map generic to concrete type, if needed
         Type* method_type = method_parms[j];
         if(klass->HasGenerics()) {
-          method_type = RelsolveGenericType(method_type, method_call, NULL, klass);
+          method_type = RelsolveGenericType(method_type, method_call, nullptr, klass);
           ResolveClassEnumType(method_type);
         }
         // compare and total
-        const int compare = MatchCallingParameter(expr_params[j], method_type, NULL, klass, depth);
+        const int compare = MatchCallingParameter(expr_params[j], method_type, nullptr, klass, depth);
         match->AddParameterMatch(compare);
       }
       matches.push_back(match);
@@ -2581,7 +2581,7 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
     LibraryClass* lib_klass = lib_method->GetLibraryClass();
     Type* eval_type = TypeFactory::Instance()->MakeType(method_call->GetEvalType());
     if(lib_klass->HasGenerics()) {
-      eval_type = RelsolveGenericType(eval_type, method_call, NULL, lib_klass);
+      eval_type = RelsolveGenericType(eval_type, method_call, nullptr, lib_klass);
       if(!eval_type->HasGenerics()) {
         const vector<Type*> concretes = method_call->GetConcreteTypes();
         ResolveConcreteTypes(concretes, static_cast<Expression*>(method_call), depth + 1);
@@ -3358,7 +3358,7 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
  ****************************/
 void ContextAnalyzer::AnalyzeCalculation(CalculatedExpression* expression, const int depth)
 {
-  Type* cls_type = NULL;
+  Type* cls_type = nullptr;
   Expression* left = expression->GetLeft();
   switch(left->GetExpressionType()) {
   case AND_EXPR:
@@ -4463,9 +4463,9 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Expression* expression, const
 
 void ContextAnalyzer::AnalyzeClassCast(Type* left, Type* right, Expression* expression, bool generic_check, const int depth)
 {
-  Class* left_class = NULL;
-  LibraryEnum* left_lib_enum = NULL;
-  LibraryClass* left_lib_class = NULL;
+  Class* left_class = nullptr;
+  LibraryEnum* left_lib_enum = nullptr;
+  LibraryClass* left_lib_class = nullptr;
 
   if(current_class->HasGenerics()) {
     Class* left_tmp = current_class->GetGenericClass(left->GetClassName());
@@ -4531,7 +4531,7 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Type* right, Expression* expr
                      ReplaceSubstring(right->GetClassName(), L"#", L"->") + L"' or concrete cast");
       }
       // downcast
-      if(ValidDownCast(left_class->GetName(), right_class, NULL)) {
+      if(ValidDownCast(left_class->GetName(), right_class, nullptr)) {
         left_class->SetCalled(true);
         right_class->SetCalled(true);
         if(left_class->IsInterface() && !generic_check) {
@@ -4558,7 +4558,7 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Type* right, Expression* expr
     else if(linker->SearchClassLibraries(right->GetClassName(), program->GetUses(current_class->GetFileName()))) {
       LibraryClass* right_lib_class = linker->SearchClassLibraries(right->GetClassName(), program->GetUses(current_class->GetFileName()));
       // downcast
-      if(ValidDownCast(left_class->GetName(), NULL, right_lib_class)) {
+      if(ValidDownCast(left_class->GetName(), nullptr, right_lib_class)) {
         if(left_class->IsInterface() && !generic_check) {
           expression->SetToClass(left_class);
         }
@@ -4640,7 +4640,7 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Type* right, Expression* expr
     }
     if(right_class) {
       // downcast
-      if(ValidDownCast(left_lib_class->GetName(), right_class, NULL)) {
+      if(ValidDownCast(left_lib_class->GetName(), right_class, nullptr)) {
         left_lib_class->SetCalled(true);
         right_class->SetCalled(true);
         if(left_lib_class->IsInterface() && !generic_check) {
@@ -4665,7 +4665,7 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Type* right, Expression* expr
     else if(linker->SearchClassLibraries(right->GetClassName(), program->GetUses(current_class->GetFileName()))) {
       LibraryClass* right_lib_class = linker->SearchClassLibraries(right->GetClassName(), program->GetUses(current_class->GetFileName()));
       // downcast
-      if(ValidDownCast(left_lib_class->GetName(), NULL, right_lib_class)) {
+      if(ValidDownCast(left_lib_class->GetName(), nullptr, right_lib_class)) {
         left_lib_class->SetCalled(true);
         right_lib_class->SetCalled(true);
         if(left_lib_class->IsInterface() && !generic_check) {
@@ -5016,7 +5016,7 @@ bool ContextAnalyzer::IsScalar(Expression* expression, bool check_last /*= true*
   }
 
   if(type && type->GetDimension() > 0) {
-    ExpressionList* indices = NULL;
+    ExpressionList* indices = nullptr;
     if(expression->GetExpressionType() == VAR_EXPR) {
       indices = static_cast<Variable*>(expression)->GetIndices();
     }
@@ -5024,7 +5024,7 @@ bool ContextAnalyzer::IsScalar(Expression* expression, bool check_last /*= true*
       return false;
     }
 
-    return indices != NULL;
+    return indices != nullptr;
   }
 
   return true;
@@ -5204,7 +5204,7 @@ SymbolEntry* ContextAnalyzer::GetEntry(wstring name, bool is_parent)
       }
       else {
         // check parents
-        entry = NULL;
+        entry = nullptr;
         const wstring& bundle_name = bundle->GetName();
         Class* parent;
         if(bundle_name.size() > 0) {
@@ -5231,7 +5231,7 @@ SymbolEntry* ContextAnalyzer::GetEntry(wstring name, bool is_parent)
     }
   }
 
-  return NULL;
+  return nullptr;
 }
 
 SymbolEntry* ContextAnalyzer::GetEntry(MethodCall* method_call, const wstring& variable_name, int depth)
@@ -5254,7 +5254,7 @@ SymbolEntry* ContextAnalyzer::GetEntry(MethodCall* method_call, const wstring& v
 
 Type* ContextAnalyzer::GetExpressionType(Expression* expression, int depth)
 {
-  Type* type = NULL;
+  Type* type = nullptr;
 
   MethodCall* mthd_call = expression->GetMethodCall();
 
@@ -5338,18 +5338,18 @@ bool ContextAnalyzer::ValidDownCast(const wstring& cls_name, Class* class_tmp, L
     if(class_tmp) {
       if(class_tmp->GetParent()) {
         class_tmp = class_tmp->GetParent();
-        lib_class_tmp = NULL;
+        lib_class_tmp = nullptr;
       }
       else {
         lib_class_tmp = class_tmp->GetLibraryParent();
-        class_tmp = NULL;
+        class_tmp = nullptr;
       }
 
     }
     // library parent
     else {
       lib_class_tmp = linker->SearchClassLibraries(lib_class_tmp->GetParentName(), program->GetUses());
-      class_tmp = NULL;
+      class_tmp = nullptr;
     }
   }
 
@@ -5617,7 +5617,7 @@ bool ContextAnalyzer::IsClassEnumParameterMatch(Type* calling_type, Type* method
 {
   const wstring& from_klass_name = calling_type->GetClassName();
 
-  LibraryClass* from_lib_klass = NULL;
+  LibraryClass* from_lib_klass = nullptr;
   Class* from_klass = SearchProgramClasses(from_klass_name);
   if(!from_klass && current_class->HasGenerics()) {
     from_klass = current_class->GetGenericClass(from_klass_name);
@@ -5804,7 +5804,7 @@ void ContextAnalyzer::AddMethodParameter(MethodCall* method_call, SymbolEntry* e
 
 Type* ContextAnalyzer::RelsolveGenericCall(Type* left, MethodCall* method_call, Class* klass, Method* method, int depth)
 {
-  left = RelsolveGenericType(left, method_call, klass, NULL);
+  left = RelsolveGenericType(left, method_call, klass, nullptr);
   if(!left->HasGenerics() && method_call->HasConcreteTypes() &&
     (method->GetMethodType() == NEW_PUBLIC_METHOD ||
      method->GetMethodType() == NEW_PRIVATE_METHOD)) {
@@ -5820,7 +5820,7 @@ Type* ContextAnalyzer::RelsolveGenericCall(Type* left, MethodCall* method_call, 
 
 Type* ContextAnalyzer::RelsolveGenericCall(Type* left, MethodCall* method_call, LibraryClass* klass, LibraryMethod* method, int depth)
 {
-  left = RelsolveGenericType(left, method_call, NULL, klass);
+  left = RelsolveGenericType(left, method_call, nullptr, klass);
   if(!left->HasGenerics() && method_call->HasConcreteTypes() &&
     (method->GetMethodType() == NEW_PUBLIC_METHOD ||
      method->GetMethodType() == NEW_PRIVATE_METHOD)) {
@@ -5846,11 +5846,11 @@ void ContextAnalyzer::CheckGenericParameters(const vector<LibraryClass*> generic
       Type* generic_type = concrete_types[i];
       if(generic_klass->HasGenericInterface()) {
         const wstring generic_name = generic_type->GetClassName();
-        Class* type_klass = NULL; LibraryClass* type_lib_klass = NULL;
+        Class* type_klass = nullptr; LibraryClass* type_lib_klass = nullptr;
         GetProgramLibraryClass(generic_name, type_klass, type_lib_klass);
 
         const wstring inf_name = generic_klass->GetGenericInterface()->GetClassName();
-        Class* inf_klass = NULL; LibraryClass* inf_lib_klass = NULL;
+        Class* inf_klass = nullptr; LibraryClass* inf_lib_klass = nullptr;
         GetProgramLibraryClass(inf_name, inf_klass, inf_lib_klass);
 
         wstring class_name;
@@ -5888,11 +5888,11 @@ void ContextAnalyzer::CheckGenericParameters(const vector<Class*> generic_klasse
       Type* generic_type = concrete_types[i];
       if(generic_klass->HasGenericInterface()) {
         const wstring generic_name = generic_type->GetClassName();
-        Class* type_klass = NULL; LibraryClass* type_lib_klass = NULL;
+        Class* type_klass = nullptr; LibraryClass* type_lib_klass = nullptr;
         GetProgramLibraryClass(generic_name, type_klass, type_lib_klass);
 
         const wstring inf_name = generic_klass->GetGenericInterface()->GetClassName();
-        Class* inf_klass = NULL; LibraryClass* inf_lib_klass = NULL;
+        Class* inf_klass = nullptr; LibraryClass* inf_lib_klass = nullptr;
         GetProgramLibraryClass(inf_name, inf_klass, inf_lib_klass);
 
         wstring class_name;
@@ -5924,7 +5924,7 @@ void ContextAnalyzer::ResolveConcreteTypes(vector<Type*> concretes, ParseNode* n
   for(size_t i = 0; i < concretes.size(); ++i) {
     Type* concrete = concretes[i];
     wstring const ref_name = concrete->GetClassName();
-    Class* klass = NULL; LibraryClass* lib_klass = NULL;
+    Class* klass = nullptr; LibraryClass* lib_klass = nullptr;
     if(!GetProgramLibraryClass(ref_name, klass, lib_klass)) {
       if(!current_class->GetGenericClass(ref_name)) {
         ProcessError(node, L"Undefined generic reference: '" + ref_name + L"'");
@@ -5945,7 +5945,7 @@ LibraryMethod* LibraryMethodCallSelector::GetSelection()
 {
   // no match
   if(valid_matches.size() == 0) {
-    return NULL;
+    return nullptr;
   }
   // single match
   else if(valid_matches.size() == 1) {
@@ -5975,7 +5975,7 @@ LibraryMethod* LibraryMethodCallSelector::GetSelection()
   }
 
   if(match_index == -1) {
-    return NULL;
+    return nullptr;
   }
 
   return matches[match_index]->GetLibraryMethod();

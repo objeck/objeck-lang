@@ -486,7 +486,7 @@ void JitCompilerIA64::ProcessInstructions() {
       ReleaseXmmRegister(left->GetRegister());
 
       delete left; 
-      left = NULL;
+      left = nullptr;
       
       RegisterHolder* holder = GetRegister();
       cmov_reg(holder->GetRegister(), instr->GetType());
@@ -723,7 +723,7 @@ void JitCompilerIA64::ProcessInstructions() {
         }
         // clean up
         delete left;
-        left = NULL;
+        left = nullptr;
       }
     }
       break;
@@ -879,7 +879,7 @@ void JitCompilerIA64::ProcessLoad(StackInstr* instr) {
     }
 
     delete left;
-    left = NULL;
+    left = nullptr;
   }
 }
 
@@ -930,7 +930,7 @@ void JitCompilerIA64::ProcessJump(StackInstr* instr) {
       
       // clean up
       delete left;
-      left = NULL;
+      left = nullptr;
     }
     // store update index
     jump_table.insert(pair<long, StackInstr*>(code_index, instr));
@@ -949,7 +949,7 @@ void JitCompilerIA64::ProcessJump(StackInstr* instr) {
 
     // clean up
     delete left;
-    left = NULL;
+    left = nullptr;
   }
 }
 
@@ -1051,7 +1051,7 @@ void JitCompilerIA64::ProcessStoreByteElement(StackInstr* instr) {
   }
   
   delete left;
-  left = NULL;
+  left = nullptr;
 }
 
 void JitCompilerIA64::ProcessStoreCharElement(StackInstr* instr) {
@@ -1127,7 +1127,7 @@ void JitCompilerIA64::ProcessStoreCharElement(StackInstr* instr) {
   }
   
   delete left;
-  left = NULL;
+  left = nullptr;
 }
 
 void JitCompilerIA64::ProcessStoreIntElement(StackInstr* instr) {
@@ -1161,7 +1161,7 @@ void JitCompilerIA64::ProcessStoreIntElement(StackInstr* instr) {
   ReleaseRegister(elem_holder);
   
   delete left;
-  left = NULL;
+  left = nullptr;
 }
 
 void JitCompilerIA64::ProcessStoreFloatElement(StackInstr* instr) {
@@ -1197,7 +1197,7 @@ void JitCompilerIA64::ProcessStoreFloatElement(StackInstr* instr) {
   ReleaseRegister(elem_holder);
   
   delete left;
-  left = NULL;
+  left = nullptr;
 }
 
 void JitCompilerIA64::ProcessFloor(StackInstr* instr) {
@@ -1210,7 +1210,7 @@ void JitCompilerIA64::ProcessFloor(StackInstr* instr) {
     round_imm_xreg(left, holder->GetRegister(), true);
     working_stack.push_front(new RegInstr(holder));
     delete left;
-    left = NULL;
+    left = nullptr;
   }
     break;
     
@@ -1220,7 +1220,7 @@ void JitCompilerIA64::ProcessFloor(StackInstr* instr) {
     round_mem_xreg(left->GetOperand(), RBP, holder->GetRegister(), true);
     working_stack.push_front(new RegInstr(holder));
     delete left;
-    left = NULL;
+    left = nullptr;
   }
     break;
     
@@ -1245,7 +1245,7 @@ void JitCompilerIA64::ProcessCeiling(StackInstr* instr) {
     round_imm_xreg(left, holder->GetRegister(), false);
     working_stack.push_front(new RegInstr(holder));
     delete left;
-    left = NULL;
+    left = nullptr;
   }
     break;
     
@@ -1255,7 +1255,7 @@ void JitCompilerIA64::ProcessCeiling(StackInstr* instr) {
     round_mem_xreg(left->GetOperand(), RBP, holder->GetRegister(), false);
     working_stack.push_front(new RegInstr(holder));
     delete left;
-    left = NULL;
+    left = nullptr;
   }
     break;
     
@@ -1297,7 +1297,7 @@ void JitCompilerIA64::ProcessFloatToInt(StackInstr* instr) {
   working_stack.push_front(new RegInstr(holder));
 
   delete left;
-  left = NULL;
+  left = nullptr;
 }
 
 void JitCompilerIA64::ProcessIntToFloat(StackInstr* instr) {
@@ -1326,12 +1326,12 @@ void JitCompilerIA64::ProcessIntToFloat(StackInstr* instr) {
   working_stack.push_front(new RegInstr(holder));
 
   delete left;
-  left = NULL;
+  left = nullptr;
 }
 
 void JitCompilerIA64::ProcessStore(StackInstr* instr) {
   Register dest;
-  RegisterHolder* addr_holder = NULL;
+  RegisterHolder* addr_holder = nullptr;
 
   // instance/method memory
   if(instr->GetOperand2() == LOCL) {
@@ -1353,7 +1353,7 @@ void JitCompilerIA64::ProcessStore(StackInstr* instr) {
     CheckNilDereference(dest);
     
     delete left;
-    left = NULL;
+    left = nullptr;
   }
   
   RegInstr* left = working_stack.front();
@@ -1369,7 +1369,7 @@ void JitCompilerIA64::ProcessStore(StackInstr* instr) {
       move_imm_mem(left2->GetOperand(), instr->GetOperand3() + sizeof(size_t), dest);
 
       delete left2;
-      left2 = NULL;
+      left2 = nullptr;
     }
     else {
       move_imm_mem(left->GetOperand(), instr->GetOperand3(), dest);
@@ -1388,7 +1388,7 @@ void JitCompilerIA64::ProcessStore(StackInstr* instr) {
       move_reg_mem(holder->GetRegister(), instr->GetOperand3() + sizeof(size_t), dest);
 
       delete left2;
-      left2 = NULL;
+      left2 = nullptr;
     }
     else {      
       move_mem_reg(left->GetOperand(), RBP, holder->GetRegister());            
@@ -1411,7 +1411,7 @@ void JitCompilerIA64::ProcessStore(StackInstr* instr) {
       ReleaseRegister(holder2);
 
       delete left2;
-      left2 = NULL;
+      left2 = nullptr;
     }
     else {      
       move_reg_mem(holder->GetRegister(), instr->GetOperand3(), dest);
@@ -1445,7 +1445,7 @@ void JitCompilerIA64::ProcessStore(StackInstr* instr) {
   }
 
   delete left;
-  left = NULL;
+  left = nullptr;
 }
 
 void JitCompilerIA64::ProcessCopy(StackInstr* instr) {
@@ -1466,7 +1466,7 @@ void JitCompilerIA64::ProcessCopy(StackInstr* instr) {
     ReleaseRegister(holder);
     
     delete left;
-    left = NULL;
+    left = nullptr;
   }
   
   RegInstr* left = working_stack.front();
@@ -1480,7 +1480,7 @@ void JitCompilerIA64::ProcessCopy(StackInstr* instr) {
     working_stack.push_front(new RegInstr(holder));
 
     delete left;
-    left = NULL;
+    left = nullptr;
   }
     break;
 
@@ -1493,7 +1493,7 @@ void JitCompilerIA64::ProcessCopy(StackInstr* instr) {
     working_stack.push_front(new RegInstr(holder));
 
     delete left;
-    left = NULL;
+    left = nullptr;
   }
     break;
 
@@ -1512,7 +1512,7 @@ void JitCompilerIA64::ProcessCopy(StackInstr* instr) {
     working_stack.push_front(new RegInstr(holder));
 
     delete left;
-    left = NULL;
+    left = nullptr;
   }
     break;
 
@@ -1525,7 +1525,7 @@ void JitCompilerIA64::ProcessCopy(StackInstr* instr) {
     working_stack.push_front(new RegInstr(holder));
 
     delete left;
-    left = NULL;
+    left = nullptr;
   }
     break;
 
@@ -1773,7 +1773,7 @@ void JitCompilerIA64::ProcessReturn(long params) {
       }
       // clean up
       delete left;
-      left = NULL;
+      left = nullptr;
     }
   }
 }
@@ -1835,7 +1835,7 @@ RegInstr* JitCompilerIA64::ProcessIntFold(long left_imm, long right_imm, Instruc
     return new RegInstr(IMM_INT, left_imm >= right_imm);
     
   default:
-    return NULL;
+    return nullptr;
   }
 }
 
@@ -1959,10 +1959,10 @@ void JitCompilerIA64::ProcessIntCalculation(StackInstr* instruction) {
   }
   
   delete left;
-  left = NULL;
+  left = nullptr;
     
   delete right;
-  right = NULL;
+  right = nullptr;
 }
 
 void JitCompilerIA64::ProcessFloatCalculation(StackInstr* instruction) {
@@ -2170,10 +2170,10 @@ void JitCompilerIA64::ProcessFloatCalculation(StackInstr* instruction) {
   }
 
   delete left;
-  left = NULL;
+  left = nullptr;
     
   delete right;
-  right = NULL;
+  right = nullptr;
 }
 
 void JitCompilerIA64::ProcessFloatOperation(StackInstr* instruction) {
@@ -2185,7 +2185,7 @@ void JitCompilerIA64::ProcessFloatOperation(StackInstr* instruction) {
   assert(left->GetType() == MEM_FLOAT);
 #endif
 
-  RegisterHolder* holder = NULL;
+  RegisterHolder* holder = nullptr;
   switch(type) {
   case SIN_FLOAT:
     fld_mem(left->GetOperand(), RBP);
@@ -2242,7 +2242,7 @@ void JitCompilerIA64::ProcessFloatOperation(StackInstr* instruction) {
   working_stack.push_front(new RegInstr(holder));
 
   delete left;
-  left = NULL;
+  left = nullptr;
 }
 
 /////////////////// OPERATIONS ///////////////////
@@ -3690,7 +3690,7 @@ void JitCompilerIA64::shl_imm_reg(long value, Register dest) {
 void JitCompilerIA64::shl_reg_reg(Register src, Register dest)
 {
   Register old_dest;
-  RegisterHolder* reg_holder = NULL;
+  RegisterHolder* reg_holder = nullptr;
   if(dest == RCX) {
     reg_holder = GetRegister();
     old_dest = dest;
@@ -3754,7 +3754,7 @@ void JitCompilerIA64::shr_imm_reg(long value, Register dest) {
 void JitCompilerIA64::shr_reg_reg(Register src, Register dest)
 {
   Register old_dest;
-  RegisterHolder* reg_holder = NULL;
+  RegisterHolder* reg_holder = nullptr;
   if(dest == RCX) {
     reg_holder = GetRegister();
     old_dest = dest;

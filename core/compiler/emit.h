@@ -202,11 +202,11 @@ namespace backend {
         instructions.erase(instructions.begin());
         // delete
         delete tmp;
-        tmp = NULL;
+        tmp = nullptr;
       }
 
       delete instance;
-      instance = NULL;
+      instance = nullptr;
     }
 
     IntermediateInstruction* MakeInstruction(int l, InstructionType t) {
@@ -378,12 +378,12 @@ namespace backend {
         blocks.erase(blocks.begin());
         // delete
         delete tmp;
-        tmp = NULL;
+        tmp = nullptr;
       }
 
       if(entries) {
         delete entries;
-        entries = NULL;
+        entries = nullptr;
       }
     }
 
@@ -546,7 +546,7 @@ namespace backend {
         blocks.erase(blocks.begin());
         // delete
         delete tmp;
-        tmp = NULL;
+        tmp = nullptr;
       }
       
       // clean up
@@ -555,18 +555,18 @@ namespace backend {
         methods.erase(methods.begin());
         // delete
         delete tmp;
-        tmp = NULL;
+        tmp = nullptr;
       }
 
       // clean up
       if(cls_entries) {
         delete cls_entries;
-        cls_entries = NULL;
+        cls_entries = nullptr;
       }
 
       if(inst_entries) {
         delete inst_entries;
-        inst_entries = NULL;
+        inst_entries = nullptr;
       }
     }
 
@@ -710,7 +710,7 @@ namespace backend {
         items.erase(items.begin());
         // delete
         delete tmp;
-        tmp = NULL;
+        tmp = nullptr;
       }
     }
 
@@ -763,7 +763,7 @@ namespace backend {
         enums.erase(enums.begin());
         // delete
         delete tmp;
-        tmp = NULL;
+        tmp = nullptr;
       }
 
       while(!classes.empty()) {
@@ -771,27 +771,27 @@ namespace backend {
         classes.erase(classes.begin());
         // delete
         delete tmp;
-        tmp = NULL;
+        tmp = nullptr;
       }
 
       while(!int_strings.empty()) {
         frontend::IntStringHolder* tmp = int_strings.front();
         delete[] tmp->value;
-        tmp->value = NULL;
+        tmp->value = nullptr;
         int_strings.erase(int_strings.begin());
         // delete
         delete tmp;
-        tmp = NULL;
+        tmp = nullptr;
       }
 
       while(!float_strings.empty()) {
         frontend::FloatStringHolder* tmp = float_strings.front();
         delete[] tmp->value;
-        tmp->value = NULL;
+        tmp->value = nullptr;
         float_strings.erase(float_strings.begin());
         // delete
         delete tmp;
-        tmp = NULL;
+        tmp = nullptr;
       }
 
       IntermediateFactory::Instance()->Clear();
@@ -911,7 +911,7 @@ namespace backend {
 
     ~FileEmitter() {
       delete program;
-      program = NULL;
+      program = nullptr;
     }
 
     void Emit();

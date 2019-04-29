@@ -150,7 +150,7 @@ class MemoryManager {
     MUTEX_UNLOCK(&allocated_lock);
 #endif
     
-    return NULL;
+    return nullptr;
   }
 
  public:
@@ -166,7 +166,7 @@ class MemoryManager {
       allocated_memory.erase(allocated_memory.begin());      
       temp -= EXTRA_BUF_SIZE;
       free(temp);
-      temp = NULL;
+      temp = nullptr;
     }
     allocated_memory.clear();
 
@@ -196,7 +196,7 @@ class MemoryManager {
       return AllocateObject(cls->GetId(), op_stack, stack_pos, collect);
     }
     
-    return NULL;
+    return nullptr;
   }
   
   static size_t* AllocateObject(const long obj_id, size_t* op_stack, long stack_pos, bool collect = true);
@@ -212,7 +212,7 @@ class MemoryManager {
     if(mem && mem[TYPE] == NIL_TYPE) {
       return (StackClass*)mem[SIZE_OR_CLS];
     }
-    return NULL;
+    return nullptr;
   }
 
   //

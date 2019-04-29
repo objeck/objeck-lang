@@ -231,7 +231,7 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, long 
   assert(cls);
 #endif
 
-  size_t* mem = NULL;
+  size_t* mem = nullptr;
   if(cls) {
     long size = cls->GetInstanceMemorySize();
 #if defined(_WIN64) || defined(_X64)
@@ -355,7 +355,7 @@ size_t* MemoryManager::ValidObjectCast(size_t* mem, long to_id, int* cls_hierarc
   // invalid array cast  
   long id = GetObjectID(mem);
   if (id < 0) {
-    return NULL;
+    return nullptr;
   }
 
   // upcast
@@ -386,7 +386,7 @@ size_t* MemoryManager::ValidObjectCast(size_t* mem, long to_id, int* cls_hierarc
     cls_id = cls_hierarchy[cls_id];
   }
 
-  return NULL;
+  return nullptr;
 }
 
 void MemoryManager::CollectAllMemory(size_t* op_stack, long stack_pos)
@@ -415,7 +415,7 @@ void MemoryManager::CollectAllMemory(size_t* op_stack, long stack_pos)
 
 #ifndef _GC_SERIAL
 #ifdef _WIN32
-  HANDLE collect_thread_id = (HANDLE)_beginthreadex(NULL, 0, CollectMemory, info, 0, NULL);
+  HANDLE collect_thread_id = (HANDLE)_beginthreadex(nullptr, 0, CollectMemory, info, 0, nullptr);
   if(!collect_thread_id) {
     wcerr << L"Unable to create garbage collection thread!" << endl;
     exit(-1);
@@ -497,19 +497,19 @@ void* MemoryManager::CollectMemory(void* arg)
   const int num_threads = 3;
   HANDLE thread_ids[num_threads];
 
-  thread_ids[0] = (HANDLE)_beginthreadex(NULL, 0, CheckStatic, info, 0, NULL);
+  thread_ids[0] = (HANDLE)_beginthreadex(nullptr, 0, CheckStatic, info, 0, nullptr);
   if(!thread_ids[0]) {
     wcerr << L"Unable to create garbage collection thread!" << endl;
     exit(-1);
   }
 
-  thread_ids[1] = (HANDLE)_beginthreadex(NULL, 0, CheckStack, info, 0, NULL);
+  thread_ids[1] = (HANDLE)_beginthreadex(nullptr, 0, CheckStack, info, 0, nullptr);
   if(!thread_ids[1]) {
     wcerr << L"Unable to create garbage collection thread!" << endl;
     exit(-1);
   }
 
-  thread_ids[2] = (HANDLE)_beginthreadex(NULL, 0, CheckPdaRoots, NULL, 0, NULL);
+  thread_ids[2] = (HANDLE)_beginthreadex(nullptr, 0, CheckPdaRoots, nullptr, 0, nullptr);
   if(!thread_ids[2]) {
     wcerr << L"Unable to create garbage collection thread!" << endl;
     exit(-1);
@@ -542,7 +542,7 @@ void* MemoryManager::CollectMemory(void* arg)
   }
 
   pthread_t pda_thread;
-  if(pthread_create(&pda_thread, &attrs, CheckPdaRoots, NULL)) {
+  if(pthread_create(&pda_thread, &attrs, CheckPdaRoots, nullptr)) {
     cerr << L"Unable to create garbage collection thread!" << endl;
     exit(-1);
   }
@@ -568,10 +568,10 @@ void* MemoryManager::CollectMemory(void* arg)
   }
 #endif  
 #else
-  CheckStatic(NULL);
+  CheckStatic(nullptr);
   CheckStack(info);
-  CheckPdaRoots(NULL);
-  CheckJitRoots(NULL);
+  CheckPdaRoots(nullptr);
+  CheckJitRoots(nullptr);
 #endif
   
 #ifdef _TIMING
@@ -649,7 +649,7 @@ void* MemoryManager::CollectMemory(void* arg)
       // cache or free memory
       size_t* tmp = mem - EXTRA_BUF_SIZE;
       free(tmp);
-      tmp = NULL;
+      tmp = nullptr;
 #ifdef _DEBUG
       wcout << L"# freeing memory: addr=" << mem << L"(" << (size_t)mem
             << L"), size=" << mem_size << L" byte(s) #" << endl;
@@ -711,7 +711,7 @@ void* MemoryManager::CollectMemory(void* arg)
   
 #ifndef _WIN32
 #ifndef _GC_SERIAL
-  pthread_exit(NULL);
+  pthread_exit(nullptr);
 #endif
 #endif
   
@@ -754,11 +754,11 @@ void* MemoryManager::CheckStack(void* arg)
     CheckObject((size_t*)info->op_stack[info->stack_pos--], false, 1);
   }
   delete info;
-  info = NULL;
+  info = nullptr;
 
 #ifndef _WIN32
 #ifndef _GC_SERIAL
-  pthread_exit(NULL);
+  pthread_exit(nullptr);
 #endif
 #endif
     
@@ -951,7 +951,7 @@ void* MemoryManager::CheckJitRoots(void* arg)
 #ifndef _GC_SERIAL
   MUTEX_UNLOCK(&jit_frame_lock);  
 #ifndef _WIN32
-  pthread_exit(NULL);
+  pthread_exit(nullptr);
 #endif
 #endif
 
@@ -1067,7 +1067,7 @@ void* MemoryManager::CheckPdaRoots(void* arg)
   // check JIT roots in separate thread
 #ifndef _GC_SERIAL
 #ifdef _WIN32
-  HANDLE thread_id = (HANDLE)_beginthreadex(NULL, 0, CheckJitRoots, NULL, 0, NULL);
+  HANDLE thread_id = (HANDLE)_beginthreadex(nullptr, 0, CheckJitRoots, nullptr, 0, nullptr);
   if(!thread_id) {
     wcerr << L"Unable to create garbage collection thread!" << endl;
     exit(-1);
@@ -1078,7 +1078,7 @@ void* MemoryManager::CheckPdaRoots(void* arg)
   pthread_attr_setdetachstate(&attrs, PTHREAD_CREATE_JOINABLE);
   
   pthread_t jit_thread;
-  if(pthread_create(&jit_thread, &attrs, CheckJitRoots, NULL)) {
+  if(pthread_create(&jit_thread, &attrs, CheckJitRoots, nullptr)) {
     cerr << L"Unable to create garbage collection thread!" << endl;
     exit(-1);
   }
@@ -1124,7 +1124,7 @@ void* MemoryManager::CheckPdaRoots(void* arg)
     cerr << L"Unable to join garbage collection threads!" << endl;
     exit(-1);
   }
-  pthread_exit(NULL);
+  pthread_exit(nullptr);
 #endif
 #endif
 

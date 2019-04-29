@@ -352,7 +352,7 @@ size_t* ObjectDeserializer::DeserializeObject() {
   const wstring cls_name = BytesToUnicode(temp);
   // clean up
   delete[] temp;
-  temp = NULL;
+  temp = nullptr;
   
   cls = Loader::GetProgram()->GetClass(cls_name);
   if(cls) {
@@ -368,7 +368,7 @@ size_t* ObjectDeserializer::DeserializeObject() {
     else {
       map<INT_VALUE, size_t*>::iterator found = mem_cache.find(mem_id);
       if(found == mem_cache.end()) {
-        return NULL;
+        return nullptr;
       }
       return found->second;
     }
@@ -440,7 +440,7 @@ size_t* ObjectDeserializer::DeserializeObject() {
           else {
             map<INT_VALUE, size_t*>::iterator found = mem_cache.find(mem_id);
             if(found == mem_cache.end()) {
-              return NULL;
+              return nullptr;
             }
             instance[instance_pos++] = (size_t)found->second;
           }
@@ -467,7 +467,7 @@ size_t* ObjectDeserializer::DeserializeObject() {
             const wstring out = BytesToUnicode(in);
             // clean up
             delete[] in;
-            in = NULL;
+            in = nullptr;
 #ifdef _DEBUG
             wcout << L"--- DESERIALIZING: char array; value=" << out << ", size="
               << char_array_size << L" ---" << endl;
@@ -489,7 +489,7 @@ size_t* ObjectDeserializer::DeserializeObject() {
           else {
             map<INT_VALUE, size_t*>::iterator found = mem_cache.find(mem_id);
             if(found == mem_cache.end()) {
-              return NULL;
+              return nullptr;
             }
             instance[instance_pos++] = (size_t)found->second;
           }
@@ -528,7 +528,7 @@ size_t* ObjectDeserializer::DeserializeObject() {
           else {
             map<INT_VALUE, size_t*>::iterator found = mem_cache.find(mem_id);
             if(found == mem_cache.end()) {
-              return NULL;
+              return nullptr;
             }
             instance[instance_pos++] = (size_t)found->second;
           }
@@ -567,7 +567,7 @@ size_t* ObjectDeserializer::DeserializeObject() {
           else {
             map<INT_VALUE, size_t*>::iterator found = mem_cache.find(mem_id);
             if(found == mem_cache.end()) {
-              return NULL;
+              return nullptr;
             }
             instance[instance_pos++] = (size_t)found->second;
           }
@@ -617,7 +617,7 @@ size_t* ObjectDeserializer::DeserializeObject() {
           else {
             map<INT_VALUE, size_t*>::iterator found = mem_cache.find(mem_id);
             if(found == mem_cache.end()) {
-              return NULL;
+              return nullptr;
             }
             instance[instance_pos++] = (size_t)found->second;
           }
@@ -947,7 +947,7 @@ void TrapProcessor::ProcessTimerElapsed(size_t* &op_stack, long* &stack_pos)
 void TrapProcessor::ProcessCurrentTime(StackFrame* frame, bool is_gmt)
 {
   time_t raw_time;
-  raw_time = time(NULL);
+  raw_time = time(nullptr);
 
   struct tm* curr_time;
   const bool got_time = GetTime(curr_time, raw_time, is_gmt);
@@ -1163,7 +1163,7 @@ void TrapProcessor::ProcessVersion(StackProgram* program, size_t* &op_stack, lon
 // 
 inline size_t* TrapProcessor::DeserializeArray(ParamType type, size_t* inst, size_t* &op_stack, long* &stack_pos) {
   if(!DeserializeByte(inst)) {
-    return NULL;
+    return nullptr;
   }
 
   size_t* src_array = (size_t*)inst[0];
@@ -1221,7 +1221,7 @@ inline size_t* TrapProcessor::DeserializeArray(ParamType type, size_t* inst, siz
     return dest_array;
   }
 
-  return NULL;
+  return nullptr;
 }
 
 //
@@ -2087,7 +2087,7 @@ bool TrapProcessor::StdInString(StackProgram* program, size_t* inst, size_t* &op
 #endif
     // clean up
     delete[] buffer;
-    buffer = NULL;
+    buffer = nullptr;
   }
 
   return true;
@@ -2959,7 +2959,7 @@ bool TrapProcessor::CompressBytes(StackProgram* program, size_t* inst, size_t* &
   char* byte_array_ptr = (char*)(byte_array + 3);
   memcpy(byte_array_ptr, out, byte_array_size);
   free(out);
-  out = NULL;
+  out = nullptr;
     
   PushInt((size_t)byte_array, op_stack, stack_pos);
   return true;
@@ -3016,7 +3016,7 @@ bool TrapProcessor::UncompressBytes(StackProgram* program, size_t* inst, size_t*
   char* byte_array_ptr = (char*)(byte_array + 3);
   memcpy(byte_array_ptr, out, byte_array_size);
   free(out);
-  out = NULL;
+  out = nullptr;
 
   PushInt((size_t)byte_array, op_stack, stack_pos);
   return true;
@@ -3269,7 +3269,7 @@ bool TrapProcessor::SockTcpInCharAry(StackProgram* program, size_t* inst, size_t
     }
     // clean up
     delete[] byte_buffer;
-    byte_buffer = NULL;
+    byte_buffer = nullptr;
   }
   else {
     PushInt(-1, op_stack, stack_pos);
@@ -3400,7 +3400,7 @@ bool TrapProcessor::SockTcpSslInCharAry(StackProgram* program, size_t* inst, siz
     }
     // clean up
     delete[] byte_buffer;
-    byte_buffer = NULL;
+    byte_buffer = nullptr;
   }
   else {
     PushInt(-1, op_stack, stack_pos);
@@ -3515,7 +3515,7 @@ bool TrapProcessor::FileInCharAry(StackProgram* program, size_t* inst, size_t* &
 
     // clean up
     delete[] byte_buffer;
-    byte_buffer = NULL;
+    byte_buffer = nullptr;
 
     PushInt(max, op_stack, stack_pos);
   }

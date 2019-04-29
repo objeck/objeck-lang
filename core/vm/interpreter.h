@@ -428,7 +428,7 @@ namespace Runtime {
       call_stack = c;
       call_stack_pos = cp;
       frame = new StackFrame*;
-      monitor = NULL;
+      monitor = nullptr;
       
       MemoryManager::AddPdaMethodRoot(frame);
     }
@@ -491,20 +491,20 @@ namespace Runtime {
         MemoryManager::RemovePdaMethodRoot(monitor);
 
         delete[] call_stack;
-        call_stack = NULL;
+        call_stack = nullptr;
 
         delete call_stack_pos;
-        call_stack_pos = NULL;
+        call_stack_pos = nullptr;
 
         delete monitor;
-        monitor = NULL;
+        monitor = nullptr;
       }
       else {
         MemoryManager::RemovePdaMethodRoot(frame);
       }
 
       delete frame;
-      frame = NULL;
+      frame = nullptr;
     }
 
     // execute method

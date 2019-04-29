@@ -187,7 +187,7 @@ namespace Runtime {
         type = REG_FLOAT;
       }
       holder = h;
-      instr = NULL;
+      instr = nullptr;
     }
 
     RegInstr(StackInstr* si, double* da) {
@@ -197,8 +197,8 @@ namespace Runtime {
 #else
       operand = (long)da;
 #endif    
-      holder = NULL;
-      instr = NULL;
+      holder = nullptr;
+      instr = nullptr;
     }
 
     RegInstr(RegType t, long o) {
@@ -250,7 +250,7 @@ namespace Runtime {
           break;
       }
       instr = si;
-      holder = NULL;
+      holder = nullptr;
     }
 
     ~RegInstr() {
@@ -308,7 +308,7 @@ namespace Runtime {
       available = factor * PAGE_SIZE;
     
 #ifdef _WIN64    
-      buffer = (unsigned char*)VirtualAlloc(NULL, available, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
+      buffer = (unsigned char*)VirtualAlloc(nullptr, available, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
       if(!buffer) {
         wcerr << L"Unable to allocate JIT memory!" << endl;
         exit(1);
@@ -330,7 +330,7 @@ namespace Runtime {
       available = PAGE_SIZE;
     
 #ifdef _WIN64    
-      buffer = (unsigned char*)VirtualAlloc(NULL, PAGE_SIZE, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
+      buffer = (unsigned char*)VirtualAlloc(nullptr, PAGE_SIZE, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
       if(!buffer) {
         wcerr << L"Unable to allocate JIT memory!" << endl;
         exit(1);
@@ -350,11 +350,11 @@ namespace Runtime {
 
     ~PageHolder() {
 #ifdef _WIN64  
-      VirtualFree(buffer, NULL, MEM_RELEASE);
+      VirtualFree(buffer, 0, MEM_RELEASE);
 #else
       munmap(buffer, PAGE_SIZE);
 #endif    
-      buffer = NULL;
+      buffer = nullptr;
     }
 
     inline bool CanAddCode(int32_t size) {
@@ -391,14 +391,14 @@ namespace Runtime {
         holders.erase(holders.begin());
         // delete
         delete tmp;
-        tmp = NULL;
+        tmp = nullptr;
       }
     }
 
     unsigned char* GetPage(unsigned char* code, int32_t size) {
       bool placed = false;
 
-      unsigned char* temp = NULL;
+      unsigned char* temp = nullptr;
       for(size_t i = 0; !placed && i < holders.size(); ++i) {
         PageHolder* holder = holders[i];
         if(holder->CanAddCode(size)) {
@@ -1330,7 +1330,7 @@ namespace Runtime {
             indices[dim++] = value;
           }
 
-          // NULL terminated string workaround
+          // nullptr terminated string workaround
           size++;
           size_t* mem = MemoryManager::AllocateArray((long)(size + ((dim + 2) * sizeof(size_t))), BYTE_ARY_TYPE, op_stack, *stack_pos);
           mem[0] = size;
@@ -1505,7 +1505,7 @@ namespace Runtime {
 #ifdef _WIN64      
           InitializeCriticalSection((CRITICAL_SECTION*)&instance[1]);
 #else
-          pthread_mutex_init((pthread_mutex_t*)&instance[1], NULL);
+          pthread_mutex_init((pthread_mutex_t*)&instance[1], nullptr);
 #endif    
         }
         break;
@@ -1652,7 +1652,7 @@ namespace Runtime {
 
         case TRAP:
         case TRAP_RTRN:
-          if(!TrapProcessor::ProcessTrap(program, inst, op_stack, stack_pos, NULL)) {
+          if(!TrapProcessor::ProcessTrap(program, inst, op_stack, stack_pos, nullptr)) {
             wcerr << L"  JIT compiled machine code..." << endl;
             exit(1);
           }
@@ -1711,7 +1711,7 @@ namespace Runtime {
 
       if(holder) {
         delete holder;
-        holder = NULL;
+        holder = nullptr;
       }
 
       // get initial index
@@ -1746,7 +1746,7 @@ namespace Runtime {
                     index_holder->GetRegister());
         if(holder) {
           delete holder;
-          holder = NULL;
+          holder = nullptr;
         }
 
         holder = working_stack.front();
@@ -1811,7 +1811,7 @@ namespace Runtime {
       ReleaseRegister(index_holder);
 
       delete holder;
-      holder = NULL;
+      holder = nullptr;
 
       return array_holder;
     }
@@ -1913,7 +1913,7 @@ namespace Runtime {
         working_stack.pop_front();
         if(instr) {
           delete instr;
-          instr = NULL;
+          instr = nullptr;
         }
       }
 
@@ -1922,7 +1922,7 @@ namespace Runtime {
         aval_regs.pop_back();
         if(holder) {
           delete holder;
-          holder = NULL;
+          holder = nullptr;
         }
       }
 
@@ -1931,7 +1931,7 @@ namespace Runtime {
         aval_xregs.pop_back();
         if(holder) {
           delete holder;
-          holder = NULL;
+          holder = nullptr;
         }
       }
 
@@ -1939,7 +1939,7 @@ namespace Runtime {
         RegisterHolder* holder = used_regs.front();
         if(holder) {
           delete holder;
-          holder = NULL;
+          holder = nullptr;
         }
         // next
         used_regs.pop_front();
@@ -1950,7 +1950,7 @@ namespace Runtime {
         RegisterHolder* holder = used_xregs.front();
         if(holder) {
           delete holder;
-          holder = NULL;
+          holder = nullptr;
         }
         // next
         used_xregs.pop_front();
@@ -1961,7 +1961,7 @@ namespace Runtime {
         RegisterHolder* holder = aux_regs.top();
         if(holder) {
           delete holder;
-          holder = NULL;
+          holder = nullptr;
         }
         aux_regs.pop();
       }
@@ -1994,7 +1994,7 @@ namespace Runtime {
         // floats memory
 #ifdef _WIN64
 
-        floats = (double*)VirtualAlloc(NULL, sizeof(double) * MAX_DBLS, MEM_COMMIT, PAGE_READWRITE);
+        floats = (double*)VirtualAlloc(nullptr, sizeof(double) * MAX_DBLS, MEM_COMMIT, PAGE_READWRITE);
         if(!floats) {
           wcerr << L"Unable to allocate JIT memory for floats!" << endl;
           exit(1);
@@ -2129,7 +2129,7 @@ namespace Runtime {
         method->SetNativeCode(new NativeCode(page_manager->GetPage(code, code_index), code_index, floats));
         
         free(code);
-        code = NULL;
+        code = nullptr;
 
 #ifdef _TIMING
         wcout << L"JIT compiling: method='" << method->GetName() << L"', time="

@@ -103,7 +103,7 @@ class LibraryMethodCallSelector {
       matches.erase(matches.begin());
       // delete
       delete tmp;
-      tmp = NULL;
+      tmp = nullptr;
     }
   }
 
@@ -182,7 +182,7 @@ class MethodCallSelector {
       matches.erase(matches.begin());
       // delete
       delete tmp;
-      tmp = NULL;
+      tmp = nullptr;
     }
   }
 
@@ -198,7 +198,7 @@ class MethodCallSelector {
   Method* GetSelection() {
     // no match
     if(valid_matches.size() == 0) {
-      return NULL;
+      return nullptr;
     }
     // single match
     else if(valid_matches.size() == 1) {
@@ -228,7 +228,7 @@ class MethodCallSelector {
     }
 
     if(match_index == -1) {
-      return NULL;
+      return nullptr;
     }
 
     return matches[match_index]->GetMethod();    

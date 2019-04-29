@@ -454,126 +454,19 @@ class Scanner {
     << ": Parse warning: Unknown token: '" << cur_char << "'" << endl;
   }
 
-  /****************************
-   * Load a UTF-8 source file (text)
-   * into memory.
-   ****************************/
-  wchar_t* LoadFileBuffer(wstring filename, size_t& buffer_size) {
-    char* buffer;
-    const string open_filename = UnicodeToBytes(filename);
-
-    ifstream in(open_filename.c_str(), ios_base::in | ios_base::binary | ios_base::ate);
-    if(in.good()) {
-      // get file size
-      in.seekg(0, ios::end);
-      buffer_size = (size_t)in.tellg();
-      in.seekg(0, ios::beg);
-      buffer = (char*)calloc(buffer_size + 1, sizeof(char));
-      in.read(buffer, buffer_size);
-      // close file
-      in.close();
-    }
-    else {
-      wcerr << L"Unable to open source file: " << filename << endl;
-      exit(1);
-    }
-
-    // convert unicode
-#ifdef _WIN32
-    const int wsize = MultiByteToWideChar(CP_UTF8, 0, buffer, -1, NULL, 0);
-    if(wsize == 0) {
-      wcerr << L"Unable to open source file: " << filename << endl;
-      exit(1);
-    }
-    wchar_t* wbuffer = new wchar_t[wsize];
-    const int check = MultiByteToWideChar(CP_UTF8, 0, buffer, -1, wbuffer, wsize);
-    if(check == 0) {
-      wcerr << L"Unable to open source file: " << filename << endl;
-      exit(1);
-    }
-#else
-    size_t wsize = mbstowcs(NULL, buffer, buffer_size);
-    if(wsize == (size_t)-1) {
-      delete buffer;
-      wcerr << L"Unable to open source file: " << filename << endl;
-      exit(1);
-    }
-    wchar_t* wbuffer = new wchar_t[wsize + 1];
-    size_t check = mbstowcs(wbuffer, buffer, buffer_size);
-    if(check == (size_t)-1) {
-      delete buffer;
-      delete[] wbuffer;
-      wcerr << L"Unable to open source file: " << filename << endl;
-      exit(1);
-    }
-    wbuffer[wsize] = L'\0';
-#endif
-    
-    free(buffer);
-    return wbuffer;
-  }
+  wchar_t* LoadFileBuffer(wstring filename, size_t& buffer_size);
 
   // parsers a character string
-  inline void CheckString(int index, bool is_valid) {
-    // copy string
-    const size_t length = end_pos - start_pos;
-    wstring char_string(buffer, start_pos, length);
-    // set string
-    if(is_valid) {
-      tokens[index]->SetType(TOKEN_CHAR_STRING_LIT);
-    }
-    else {
-      tokens[index]->SetType(TOKEN_BAD_CHAR_STRING_LIT);
-    }
-    tokens[index]->SetIdentifier(char_string);
-    tokens[index]->SetLineNbr(line_nbr);
-    tokens[index]->SetFileName(filename);
-  }
+  void CheckString(int index, bool is_valid);
 
   // parse an integer
-  inline void ParseInteger(int index, int base = 0) {
-    // copy string
-    size_t length = end_pos - start_pos;
-    wstring ident(buffer, start_pos, length);
-
-    // set token
-    wchar_t* end;
-    tokens[index]->SetType(TOKEN_INT_LIT);
-    tokens[index]->SetIntLit(wcstol(ident.c_str(), &end, base));
-    tokens[index]->SetLineNbr(line_nbr);
-    tokens[index]->SetFileName(filename);
-  }
+  void ParseInteger(int index, int base = 0);
 
   // parse a double
-  inline void ParseDouble(int index) {
-    // copy string
-    const size_t length = end_pos - start_pos;
-    wstring ident(buffer, start_pos, length);
-    // set token
-    tokens[index]->SetType(TOKEN_FLOAT_LIT);
-    tokens[index]->SetFloatLit(wcstod(ident.c_str(), NULL));
-    tokens[index]->SetLineNbr(line_nbr);
-    tokens[index]->SetFileName(filename);
-  }
+  void ParseDouble(int index);
 
-  // parsers an unicode character
-  inline void ParseUnicodeChar(int index) {
-    // copy string
-    const size_t length = end_pos - start_pos;
-    if(length < 5) {
-      wstring ident(buffer, start_pos, length);
-      // set token
-      tokens[index]->SetType(TOKEN_CHAR_LIT);
-      tokens[index]->SetCharLit((wchar_t)wcstol(ident.c_str(), NULL, 16));
-      tokens[index]->SetLineNbr(line_nbr);
-      tokens[index]->SetFileName(filename);
-    }
-    else {
-      tokens[index]->SetType(TOKEN_UNKNOWN);
-      tokens[index]->SetLineNbr(line_nbr);
-      tokens[index]->SetFileName(filename);
-    }
-  }
+  // parsers an Unicode character
+  void ParseUnicodeChar(int index);
 
   // read input file into memory
   void ReadFile();

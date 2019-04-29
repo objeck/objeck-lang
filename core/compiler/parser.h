@@ -165,7 +165,7 @@ class Parser {
     // add entry
     wstring scope_name = GetScopeName(ident);
     SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num, scope_name, 
-                  type, is_static, current_method != NULL);
+                  type, is_static, current_method != nullptr);
 
 #ifdef _DEBUG
     Debug(L"Adding variable: '" + scope_name + L"'", depth + 2);
@@ -248,8 +248,8 @@ class Parser {
     run_prgm = r;
     program = new ParsedProgram;
     LoadErrorCodes();
-    current_class = NULL;
-    current_method = prev_method = NULL;
+    current_class = nullptr;
+    current_method = prev_method = nullptr;
     anonymous_class_id = 0;
   }
 

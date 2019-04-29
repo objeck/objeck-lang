@@ -192,7 +192,7 @@ namespace frontend {
         children.pop_back();
         // delete
         delete tmp;
-        tmp = NULL;
+        tmp = nullptr;
       }
     }
 
@@ -218,7 +218,7 @@ namespace frontend {
         return children[child_pos++];
       }
 
-      return NULL;
+      return nullptr;
     }
 
     void AddChild(ScopeTable* c) {
@@ -235,12 +235,12 @@ namespace frontend {
 
   public:
     SymbolTable() {
-      head = parse_ptr = iter_ptr = new ScopeTable(NULL);
+      head = parse_ptr = iter_ptr = new ScopeTable(nullptr);
     }
 
     ~SymbolTable() {
       delete head;
-      head = NULL;
+      head = nullptr;
     }
 
     vector<SymbolEntry*> GetEntries() {
@@ -305,7 +305,7 @@ namespace frontend {
       for(iter = tables.begin(); iter != tables.end(); ++iter) {
         SymbolTable* tmp = iter->second;
         delete tmp;
-        tmp = NULL;
+        tmp = nullptr;
       }
       tables.clear();
     }
@@ -343,7 +343,7 @@ namespace frontend {
         return result->second;
       }
 
-      return NULL;
+      return nullptr;
     }
   };
 
@@ -435,21 +435,21 @@ namespace frontend {
     LibraryClass* to_lib_class;
 
   Expression(const wstring &file_name, const int line_num) : ParseNode(file_name, line_num) {
-      base_type = eval_type = cast_type = type_of = NULL;
-      method_call = NULL;
-      prev_expr = NULL;
-      to_class = NULL;
-      to_lib_class = NULL;
+      base_type = eval_type = cast_type = type_of = nullptr;
+      method_call = nullptr;
+      prev_expr = nullptr;
+      to_class = nullptr;
+      to_lib_class = nullptr;
     }
 
   Expression(const wstring &file_name, int line_num, Type* t) : ParseNode(file_name, line_num) {
       base_type = eval_type = TypeFactory::Instance()->MakeType(t);
-      cast_type = NULL;
-      method_call = NULL;
-      prev_expr = NULL;
-      to_class = NULL;
-      to_lib_class = NULL;
-      type_of = NULL;
+      cast_type = nullptr;
+      method_call = nullptr;
+      prev_expr = nullptr;
+      to_class = nullptr;
+      to_lib_class = nullptr;
+      type_of = nullptr;
     }
 
     virtual ~Expression() {
@@ -582,7 +582,7 @@ namespace frontend {
   public:
     StaticArray(const wstring& file_name, const int line_num, ExpressionList* e) : Expression(file_name, line_num) {
       elements = e;
-      all_elements = NULL;
+      all_elements = nullptr;
       matching_types = matching_lengths = true;
       cur_type = VAR_EXPR;
       cur_width = id = -1;
@@ -671,17 +671,17 @@ namespace frontend {
     CharacterStringSegment(const wstring &s) {
       type = STRING;
       str = s;
-      entry = NULL;
-      method = NULL;
-      lib_method = NULL;
+      entry = nullptr;
+      method = nullptr;
+      lib_method = nullptr;
       id = -1;
     }
 
     CharacterStringSegment(SymbolEntry* e) {
       type = ENTRY;
       entry = e;
-      method = NULL;
-      lib_method = NULL;
+      method = nullptr;
+      lib_method = nullptr;
       id = -1;
     }
 
@@ -689,14 +689,14 @@ namespace frontend {
       type = ENTRY;
       entry = e;
       method = m;
-      lib_method = NULL;
+      lib_method = nullptr;
       id = -1;
     }
 
     CharacterStringSegment(SymbolEntry* e, LibraryMethod* m) {
       type = ENTRY;
       entry = e;
-      method = NULL;
+      method = nullptr;
       lib_method = m;
       id = -1;
     }
@@ -744,7 +744,7 @@ namespace frontend {
     Expression(file_name, line_num, Type::CharStringType()) {
       char_string = c;
       is_processed = false;
-      concat = NULL;
+      concat = nullptr;
     }
 
     ~CharacterString() {      
@@ -753,7 +753,7 @@ namespace frontend {
         segments.pop_back();
         // delete
         delete tmp;
-        tmp = NULL;
+        tmp = nullptr;
       }
     }
 
@@ -807,7 +807,7 @@ namespace frontend {
     Expression* right;
 
     CalculatedExpression(const wstring& file_name, const int line_num, ExpressionType t) : Expression(file_name, line_num) {
-      left = right = NULL;
+      left = right = nullptr;
       type = t;
     }
 
@@ -859,10 +859,10 @@ namespace frontend {
 
   Variable(const wstring &file_name, const int line_num, const wstring &n) : Expression(file_name, line_num) {
       name = n;
-      indices = NULL;
-      entry = NULL;
+      indices = nullptr;
+      entry = nullptr;
       id = -1;
-      pre_operation = post_operation = NULL;
+      pre_operation = post_operation = nullptr;
       checked_pre_operation = checked_post_operation = true;
     }
 
@@ -1173,11 +1173,11 @@ namespace frontend {
     StatementList* else_statements;
     If* next;
 
-    If(const wstring& file_name, int line_num, Expression* e, StatementList* s, If* n = NULL) : Statement(file_name, line_num) {
+    If(const wstring& file_name, int line_num, Expression* e, StatementList* s, If* n = nullptr) : Statement(file_name, line_num) {
       expression = e;
       if_statements = s;
       next = n;
-      else_statements = NULL;
+      else_statements = nullptr;
     }
 
     ~If() {
@@ -1297,7 +1297,7 @@ namespace frontend {
         return result->second;
       }
 
-      return NULL;
+      return nullptr;
     }
 
     const wstring GetName() const {
@@ -1586,7 +1586,7 @@ namespace frontend {
     }
 
     Assignment(const wstring& file_name, const int line_num, Variable* v, Expression* e) : Statement(file_name, line_num) {
-      child = NULL;
+      child = nullptr;
       variable = v;
       expression = e;
     }
@@ -1660,7 +1660,7 @@ namespace frontend {
     Declaration(const wstring& file_name, int line_num, SymbolEntry* e, Declaration* c) : Statement(file_name, line_num) {
       entry = e;
       child = c;
-      assignment = NULL;
+      assignment = nullptr;
     }
 
     ~Declaration() {
@@ -1744,13 +1744,13 @@ namespace frontend {
       method_type = m;
       is_static = s;
       is_native = c;
-      statements = NULL;
-      return_type = NULL;
-      leaving = NULL;
-      declarations = NULL;
+      statements = nullptr;
+      return_type = nullptr;
+      leaving = nullptr;
+      declarations = nullptr;
       id = -1;
       has_and_or = false;
-      original = NULL;
+      original = nullptr;
     }
 
     ~Method() {
@@ -1854,7 +1854,7 @@ namespace frontend {
     }
 
     bool IsVirtual() {
-      return statements == NULL;
+      return statements == nullptr;
     }
 
     MethodType GetMethodType() {
@@ -1971,14 +1971,14 @@ namespace frontend {
       parent_name = p;
       is_interface = i;
       id = -1;
-      parent = NULL;
+      parent = nullptr;
       interface_names = e;
       generic_classes = g;
-      lib_parent = NULL;
+      lib_parent = nullptr;
       is_virtual = is_generic = was_called = false;
-      anonymous_call = NULL;
-      symbol_table = NULL;
-      generic_interface = NULL;
+      anonymous_call = nullptr;
+      symbol_table = nullptr;
+      generic_interface = nullptr;
     }
 
     Class(const wstring& file_name, const int line_num, const wstring& n,
@@ -1987,13 +1987,13 @@ namespace frontend {
       parent_name = p;
       is_interface = false;
       id = -1;
-      parent = NULL;
+      parent = nullptr;
       interface_names = e;
-      lib_parent = NULL;
+      lib_parent = nullptr;
       is_virtual = is_generic = was_called = false;
-      anonymous_call = NULL;
-      symbol_table = NULL;
-      generic_interface = NULL;
+      anonymous_call = nullptr;
+      symbol_table = nullptr;
+      generic_interface = nullptr;
     }
 
     Class(const wstring& file_name, const int line_num, const wstring& n,
@@ -2001,13 +2001,13 @@ namespace frontend {
       name = n;
       is_interface = true;
       id = -1;
-      parent = NULL;
-      lib_parent = NULL;
+      parent = nullptr;
+      lib_parent = nullptr;
       is_virtual = was_called = false;
       is_generic = g;
-      anonymous_call = NULL;
-      symbol_table = NULL;
-      generic_interface = NULL;
+      anonymous_call = nullptr;
+      symbol_table = nullptr;
+      generic_interface = nullptr;
     }
 
     ~Class() {
@@ -2039,7 +2039,7 @@ namespace frontend {
     }
 
     bool HasGenericInterface() {
-      return generic_interface != NULL;
+      return generic_interface != nullptr;
     }
 
     vector<wstring> GetInterfaceNames() {
@@ -2143,7 +2143,7 @@ namespace frontend {
         return generic_classes[index];
       }
 
-      return NULL;
+      return nullptr;
     }
 
     bool IsGeneric() {
@@ -2168,7 +2168,7 @@ namespace frontend {
         return result->second;
       }
 
-      return NULL;
+      return nullptr;
     }
 
     vector<Method*> GetUnqualifiedMethods(const wstring &n) {
@@ -2281,19 +2281,19 @@ namespace frontend {
       call_type = METHOD_CALL;
       method_name = m;
       expressions = e;
-      entry = dyn_func_entry = NULL;
-      method = NULL;
-      array_type = NULL;
-      variable = NULL;
-      enum_item = NULL;
-      method = NULL;
-      lib_method = NULL;
-      lib_enum_item = NULL;
-      original_klass = NULL;
-      original_lib_klass = NULL;
+      entry = dyn_func_entry = nullptr;
+      method = nullptr;
+      array_type = nullptr;
+      variable = nullptr;
+      enum_item = nullptr;
+      method = nullptr;
+      lib_method = nullptr;
+      lib_enum_item = nullptr;
+      original_klass = nullptr;
+      original_lib_klass = nullptr;
       is_enum_call = is_func_def = is_dyn_func_call = false;
-      func_rtrn = NULL;
-      anonymous_klass = NULL;
+      func_rtrn = nullptr;
+      anonymous_klass = nullptr;
     }
 
     MethodCall(const wstring& file_name, int line_num, const wstring& v,
@@ -2301,20 +2301,20 @@ namespace frontend {
       variable_name = v;
       call_type = ENUM_CALL;
       method_name = m;
-      expressions = NULL;
-      entry = dyn_func_entry = NULL;
-      method = NULL;
-      array_type = NULL;
-      variable = NULL;
-      enum_item = NULL;
-      method = NULL;
-      lib_method = NULL;
-      lib_enum_item = NULL;
-      original_klass = NULL;
-      original_lib_klass = NULL;
+      expressions = nullptr;
+      entry = dyn_func_entry = nullptr;
+      method = nullptr;
+      array_type = nullptr;
+      variable = nullptr;
+      enum_item = nullptr;
+      method = nullptr;
+      lib_method = nullptr;
+      lib_enum_item = nullptr;
+      original_klass = nullptr;
+      original_lib_klass = nullptr;
       is_enum_call = is_func_def = is_dyn_func_call = false;
-      func_rtrn = NULL;
-      anonymous_klass = NULL;
+      func_rtrn = nullptr;
+      anonymous_klass = nullptr;
     }
     
     MethodCall(const wstring& file_name, int line_num, Variable* v, const wstring& m,
@@ -2323,18 +2323,18 @@ namespace frontend {
       call_type = METHOD_CALL;
       method_name = m;
       expressions = e;
-      entry = dyn_func_entry = NULL;
-      method = NULL;
-      array_type = NULL;
-      enum_item = NULL;
-      method = NULL;
-      lib_method = NULL;
-      lib_enum_item = NULL;
-      original_klass = NULL;
-      original_lib_klass = NULL;
+      entry = dyn_func_entry = nullptr;
+      method = nullptr;
+      array_type = nullptr;
+      enum_item = nullptr;
+      method = nullptr;
+      lib_method = nullptr;
+      lib_enum_item = nullptr;
+      original_klass = nullptr;
+      original_lib_klass = nullptr;
       is_enum_call = is_func_def = is_dyn_func_call = false;
-      func_rtrn = NULL;
-      anonymous_klass = NULL;
+      func_rtrn = nullptr;
+      anonymous_klass = nullptr;
     }
 
     ~MethodCall() {
@@ -2536,7 +2536,7 @@ namespace frontend {
         nodes.pop_back();
         // delete
         delete tmp;
-        tmp = NULL;
+        tmp = nullptr;
       }
 
       while(!expressions.empty()) {
@@ -2544,7 +2544,7 @@ namespace frontend {
         expressions.pop_back();
         // delete
         delete tmp;
-        tmp = NULL;
+        tmp = nullptr;
       }
 
       while(!statements.empty()) {
@@ -2552,7 +2552,7 @@ namespace frontend {
         statements.pop_back();
         // delete
         delete tmp;
-        tmp = NULL;
+        tmp = nullptr;
       }
 
       while(!declaration_lists.empty()) {
@@ -2560,7 +2560,7 @@ namespace frontend {
         declaration_lists.pop_back();
         // delete
         delete tmp;
-        tmp = NULL;
+        tmp = nullptr;
       }
       declaration_lists.clear();
 
@@ -2569,7 +2569,7 @@ namespace frontend {
         statement_lists.pop_back();
         // delete
         delete tmp;
-        tmp = NULL;
+        tmp = nullptr;
       }
 
       while(!expression_lists.empty()) {
@@ -2577,7 +2577,7 @@ namespace frontend {
         expression_lists.pop_back();
         // delete
         delete tmp;
-        tmp = NULL;
+        tmp = nullptr;
       }
 
       while(!calls.empty()) {
@@ -2585,7 +2585,7 @@ namespace frontend {
         calls.pop_back();
         // delete
         delete tmp;
-        tmp = NULL;
+        tmp = nullptr;
       }
 
       while(!entries.empty()) {
@@ -2593,11 +2593,11 @@ namespace frontend {
         entries.pop_back();
         // delete
         delete tmp;
-        tmp = NULL;
+        tmp = nullptr;
       }
 
       delete instance;
-      instance = NULL;
+      instance = nullptr;
     }
 
     Enum* MakeEnum(const wstring &file_name, const int line_num, const wstring &name, int offset) {
@@ -2714,7 +2714,7 @@ namespace frontend {
     }
 
     Declaration* MakeDeclaration(const wstring &file_name, const int line_num, SymbolEntry* entry, Assignment* assign) {
-      Declaration* tmp = new Declaration(file_name, line_num, entry, NULL, assign);
+      Declaration* tmp = new Declaration(file_name, line_num, entry, nullptr, assign);
       statements.push_back(tmp);
       return tmp;
     }
@@ -2800,7 +2800,7 @@ namespace frontend {
     }
 
     If* MakeIf(const wstring &file_name, const int line_num, Expression* expression,
-               StatementList* if_statements, If* next = NULL) {
+               StatementList* if_statements, If* next = nullptr) {
       If* tmp = new If(file_name, line_num, expression, if_statements, next);
       statements.push_back(tmp);
       return tmp;
@@ -2910,7 +2910,7 @@ namespace frontend {
 
     ~ParsedBundle() {
       delete symbol_table;
-      symbol_table = NULL;
+      symbol_table = nullptr;
     }
 
     const wstring GetName() const {
@@ -2928,7 +2928,7 @@ namespace frontend {
         return result->second;
       }
 
-      return NULL;
+      return nullptr;
     }
 
     void AddClass(Class* cls) {
@@ -2942,7 +2942,7 @@ namespace frontend {
         return result->second;
       }
 
-      return NULL;
+      return nullptr;
     }
 
     const vector<Enum*> GetEnums() {
@@ -2993,9 +2993,9 @@ namespace frontend {
 
   public:
     ParsedProgram() {
-      linker = NULL;
-      start_class = NULL;
-      start_method = NULL;
+      linker = nullptr;
+      start_class = nullptr;
+      start_method = nullptr;
     }
 
     ~ParsedProgram() {
@@ -3005,12 +3005,12 @@ namespace frontend {
         bundles.pop_back();
         // delete
         delete tmp;
-        tmp = NULL;
+        tmp = nullptr;
       }
 
       if(linker) {
         delete linker;
-        linker = NULL;
+        linker = nullptr;
       }
 
       // clear factories
@@ -3095,17 +3095,17 @@ namespace frontend {
       map<IntStringHolder*, int, int_string_comp>::iterator result = int_string_ids.find(holder);
       if(result != int_string_ids.end()) {
         delete[] holder->value;
-        holder->value = NULL;  
+        holder->value = nullptr;  
         delete holder;
-        holder = NULL;
+        holder = nullptr;
 
         return result->second;
       }
 
       delete[] holder->value;
-      holder->value = NULL;
+      holder->value = nullptr;
       delete holder;
-      holder = NULL;
+      holder = nullptr;
 
       return -1;
     }
@@ -3141,17 +3141,17 @@ namespace frontend {
       map<FloatStringHolder*, int, float_string_comp>::iterator result = float_string_ids.find(holder);
       if(result != float_string_ids.end()) {
         delete[] holder->value;
-        holder->value = NULL;  
+        holder->value = nullptr;  
         delete holder;
-        holder = NULL;
+        holder = nullptr;
 
         return result->second;
       }
 
       delete[] holder->value;
-      holder->value = NULL;    
+      holder->value = nullptr;    
       delete holder;
-      holder = NULL;
+      holder = nullptr;
 
       return -1;
     }
@@ -3186,7 +3186,7 @@ namespace frontend {
         }
       }
 
-      return NULL;
+      return nullptr;
     }
 
     Enum* GetEnum(const wstring &n) {
@@ -3197,7 +3197,7 @@ namespace frontend {
         }
       }
 
-      return NULL;
+      return nullptr;
     }
 
     void SetLinker(Linker* l) {

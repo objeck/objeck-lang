@@ -140,7 +140,7 @@ unsigned char* APITools_GetByteArray(size_t* array) {
     return (unsigned char*)(array + 3);
   }
   
-  return NULL;
+  return nullptr;
 }
 
 wchar_t* APITools_GetCharArray(size_t* array) {
@@ -148,7 +148,7 @@ wchar_t* APITools_GetCharArray(size_t* array) {
     return (wchar_t*)(array + 3);
   }
   
-  return NULL;
+  return nullptr;
 }
 
 int APITools_GetArraySize(size_t* array) {
@@ -270,7 +270,7 @@ size_t* APITools_GetIntAddress(VMContext &context, int index) {
     return int_holder;
   }
 
-  return NULL;
+  return nullptr;
 }
 
 // sets the requested function ID from an Object[].  Please note, that 
@@ -318,7 +318,7 @@ size_t* APITools_GetFloatAddress(VMContext &context, int index) {
     return float_holder;
   }
 
-  return NULL;
+  return nullptr;
 } 
 
 // sets the requested float value for an Object[].  Please note, that 
@@ -395,7 +395,7 @@ const wchar_t* APITools_GetStringValue(VMContext &context, int index) {
     return str;
   }
   
-  return NULL;
+  return nullptr;
 }
 
 size_t* APITools_GetObjectValue(VMContext &context, int index) {
@@ -407,7 +407,7 @@ size_t* APITools_GetObjectValue(VMContext &context, int index) {
     return object_holder;
   }
   
-  return NULL;
+  return nullptr;
 }
 
 

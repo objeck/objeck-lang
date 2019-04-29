@@ -140,7 +140,7 @@ void SelectArrayTree::Emit()
  ****************************/
 void SelectArrayTree::Emit(SelectNode* node, int end_label)
 {
-  if(node != NULL) {
+  if(node != nullptr) {
     SelectNode* left = node->GetLeft();
     SelectNode* right = node->GetRight();
     
@@ -182,7 +182,7 @@ void SelectArrayTree::Emit(SelectNode* node, int end_label)
       emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, LES_INT));
     }
 
-    if(left != NULL && right != NULL) {
+    if(left != nullptr && right != nullptr) {
       emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, JMP, left->GetId(), true));
       emitter->imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(emitter->cur_line_num, JMP, right->GetId(), -1));
     }
@@ -258,7 +258,7 @@ void IntermediateEmitter::Translate()
 
   // free parse tree
   delete parsed_program;
-  parsed_program = NULL;
+  parsed_program = nullptr;
 }
 
 /****************************
@@ -510,11 +510,11 @@ IntermediateEnum* IntermediateEmitter::EmitEnum(Enum* eenum)
 IntermediateClass* IntermediateEmitter::EmitClass(Class* klass)
 {
   cur_line_num = klass->GetLineNumber();
-  imm_klass = NULL;
+  imm_klass = nullptr;
   
   current_class = klass;
   current_table = current_class->GetSymbolTable();
-  current_method = NULL;
+  current_method = nullptr;
   
   // entries
 #ifdef _DEBUG
@@ -587,7 +587,7 @@ IntermediateClass* IntermediateEmitter::EmitClass(Class* klass)
     imm_klass->AddMethod(EmitMethod(methods[i]));
   }
 
-  current_class = NULL;
+  current_class = nullptr;
 
   return imm_klass;
 }
@@ -743,8 +743,8 @@ IntermediateMethod* IntermediateEmitter::EmitMethod(Method* method)
     }
   }
   
-  current_method = NULL;
-  current_table = NULL;
+  current_method = nullptr;
+  current_table = nullptr;
 
   return imm_method;
 }
@@ -2895,7 +2895,7 @@ void IntermediateEmitter::EmitAppendCharacterStringSegment(CharacterStringSegmen
   
   SymbolEntry* concat_entry = char_str->GetConcat();
   if(segment->GetType() == STRING) {    
-    EmitCharacterStringSegment(segment, NULL);
+    EmitCharacterStringSegment(segment, nullptr);
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 
                                                                                concat_entry->GetId(), LOCL));    
     if(is_lib) {
@@ -3556,7 +3556,7 @@ void IntermediateEmitter::EmitVariable(Variable* variable)
   OperationAssignment* pre_stmt = variable->GetPreStatement();
   if(pre_stmt) {
     EmitAssignment(pre_stmt);
-    variable->SetPreStatement(NULL);
+    variable->SetPreStatement(nullptr);
   }
   
   // indices
@@ -3678,7 +3678,7 @@ void IntermediateEmitter::EmitVariable(Variable* variable)
   OperationAssignment* post_stmt = variable->GetPostStatement();
   if(post_stmt) {
     post_statements.push(post_stmt);
-    variable->SetPostStatement(NULL);
+    variable->SetPostStatement(nullptr);
   }
 }
 

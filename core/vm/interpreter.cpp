@@ -737,24 +737,24 @@ void StackInterpreter::Str2Int(size_t* &op_stack, long* &stack_pos)
         switch(str[1]) {
           // binary
         case 'b':
-          PushInt(stoi(str + 2, NULL, 2), op_stack, stack_pos);
+          PushInt(stoi(str + 2, nullptr, 2), op_stack, stack_pos);
           return;
 
           // octal
         case 'o':
-          PushInt(stoi(str + 2, NULL, 8), op_stack, stack_pos);
+          PushInt(stoi(str + 2, nullptr, 8), op_stack, stack_pos);
           return;
 
           // hexadecimal
         case 'x':
-          PushInt(stoi(str + 2, NULL, 16), op_stack, stack_pos);
+          PushInt(stoi(str + 2, nullptr, 16), op_stack, stack_pos);
           return;
 
         default:
           break;
         }
       }
-      PushInt(stoi(str, NULL, base), op_stack, stack_pos);
+      PushInt(stoi(str, nullptr, base), op_stack, stack_pos);
     }
     catch(std::invalid_argument &e) {
 #ifdef _WIN32    
@@ -1455,7 +1455,7 @@ void StackInterpreter::ThreadMutex(size_t* &op_stack, long* &stack_pos)
 #ifdef _WIN32
   InitializeCriticalSection((CRITICAL_SECTION*)&instance[1]);
 #else
-  pthread_mutex_init((pthread_mutex_t*)&instance[1], NULL);
+  pthread_mutex_init((pthread_mutex_t*)&instance[1], nullptr);
 #endif
 }
 
@@ -1745,7 +1745,7 @@ void StackInterpreter::ProcessNewByteArray(StackInstr* instr, size_t* &op_stack,
     indices[dim++] = value;
   }
 
-  // NULL terminated string 
+  // nullptr terminated string 
   size++;
   size_t* mem = MemoryManager::AllocateArray((long)(size + ((dim + 2) * sizeof(size_t))), BYTE_ARY_TYPE, op_stack, *stack_pos);
   mem[0] = size - 1;
@@ -1774,7 +1774,7 @@ void StackInterpreter::ProcessNewCharArray(StackInstr* instr, size_t* &op_stack,
     indices[dim++] = value;
   }
 
-  // NULL terminated string 
+  // nullptr terminated string 
   size++;
   size_t* mem = MemoryManager::AllocateArray((long)(size + ((dim + 2) * sizeof(size_t))), CHAR_ARY_TYPE, op_stack, *stack_pos);
   mem[0] = size - 1;
@@ -1808,7 +1808,7 @@ void StackInterpreter::ProcessReturn(StackInstr** &instrs, long &ip)
     ip = (*frame)->ip;
   } 
   else {
-    (*frame) = NULL;
+    (*frame) = nullptr;
     halt = true;
   }
 }
@@ -1826,7 +1826,7 @@ void StackInterpreter::ProcessAsyncMethodCall(StackMethod* called, size_t* param
   holder->param = param;
 
 #ifdef _WIN32
-  HANDLE vm_thread = (HANDLE)_beginthreadex(NULL, 0, AsyncMethodCall, holder, 0, NULL);
+  HANDLE vm_thread = (HANDLE)_beginthreadex(nullptr, 0, AsyncMethodCall, holder, 0, nullptr);
   if(!vm_thread) {
     wcerr << L">>> Internal error: Unable to create garbage collection thread! <<<" << endl;
     exit(-1);
@@ -1890,17 +1890,17 @@ unsigned int WINAPI StackInterpreter::AsyncMethodCall(LPVOID arg)
 
   // clean up
   delete[] thread_op_stack;
-  thread_op_stack = NULL;
+  thread_op_stack = nullptr;
 
   delete thread_stack_pos;
-  thread_stack_pos = NULL;
+  thread_stack_pos = nullptr;
   
   RemoveThread(intpr);
   delete intpr;
-  intpr = NULL;
+  intpr = nullptr;
 
   delete holder;
-  holder = NULL;
+  holder = nullptr;
   
   return 0;
 }
@@ -1934,19 +1934,19 @@ void* StackInterpreter::AsyncMethodCall(void* arg)
   
   // clean up
   delete[] thread_op_stack;
-  thread_op_stack = NULL;
+  thread_op_stack = nullptr;
 
   delete thread_stack_pos;
-  thread_stack_pos = NULL;
+  thread_stack_pos = nullptr;
 
   RemoveThread(intpr);
   delete intpr;
-  intpr = NULL;
+  intpr = nullptr;
   
   delete holder;
-  holder = NULL;
+  holder = nullptr;
   
-  return NULL;
+  return nullptr;
 }
 #endif
 
@@ -2389,7 +2389,7 @@ void StackInterpreter::ProcessDllLoad(StackInstr* instr)
 #ifdef _OBJECK_NATIVE_LIB_PATH
 #ifdef _WIN32
   size_t len;
-  char* lib_path = NULL;
+  char* lib_path = nullptr;
   if(_dupenv_s(&lib_path, &len, "pathext")) {
     path_str += BytesToUnicode(lib_path);
     path_str += L"\\native\\";
@@ -2477,7 +2477,7 @@ void StackInterpreter::ProcessDllLoad(StackInstr* instr)
   // call load function
   ext_load_def ext_load = (ext_load_def)dlsym(dll_handle, "load_lib");
   char* error;
-  if((error = dlerror()) != NULL)  {
+  if((error = dlerror()) != nullptr)  {
     wcerr << L">>> Runtime error calling function: " << error << " <<<" << endl;
 #ifdef _DEBUGGER
     return;
@@ -2522,7 +2522,7 @@ void StackInterpreter::ProcessDllUnload(StackInstr* instr)
     // call unload function
     ext_unload_def ext_unload = (ext_unload_def)dlsym(dll_handle, "unload_lib");
     char* error;
-    if((error = dlerror()) != NULL)  {
+    if((error = dlerror()) != nullptr)  {
       wcerr << L">>> Runtime error calling function: " << error << " <<<" << endl;
 #ifdef _DEBUGGER
       return;
@@ -2593,7 +2593,7 @@ void StackInterpreter::ProcessDllCall(StackInstr* instr, size_t* &op_stack, long
     const string str = UnicodeToBytes(wstr);
     ext_func = (lib_func_def)dlsym(dll_handle, str.c_str());
     char* error;
-    if((error = dlerror()) != NULL)  {
+    if((error = dlerror()) != nullptr)  {
       wcerr << L">>> Runtime error calling function: " << error << " <<<" << endl;
 #ifdef _DEBUGGER
       return;
@@ -2637,7 +2637,7 @@ StackFrame* Runtime::StackInterpreter::GetStackFrame(StackMethod* method, size_t
   frame->mem[0] = (size_t)instance;
   frame->ip = -1;
   frame->jit_called = false;
-  frame->jit_mem = NULL;
+  frame->jit_mem = nullptr;
   frame->jit_offset = 0;
 #ifdef _DEBUG
   wcout << L"fetching frame=" << frame << endl;
@@ -2660,7 +2660,7 @@ void Runtime::StackInterpreter::ReleaseStackFrame(StackFrame* frame)
 #endif      
 
   // load cache
-  frame->jit_mem = NULL;
+  frame->jit_mem = nullptr;
   memset(frame->mem, 0, LOCAL_SIZE * sizeof(size_t));
   cached_frames.push(frame);
 #ifdef _DEBUG
