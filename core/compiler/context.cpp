@@ -142,7 +142,7 @@ bool ContextAnalyzer::Analyze()
       Class* klass = classes[j];
       vector<Method*> methods = klass->GetMethods();
       for(size_t k = 0; k < methods.size(); ++k) {
-        methods[k]->EncodeSignature(klass, program, linker);
+x        methods[k]->EncodeSignature(klass, program, linker);
       }
     }
   }
@@ -1806,7 +1806,7 @@ bool ContextAnalyzer::AnalyzeExpressionMethodCall(Type* type, const int dimensio
       }
     }
   }
-                   break;
+    break;
 
   default:
     return false;
@@ -2018,7 +2018,8 @@ LibraryClass* ContextAnalyzer::AnalyzeLibraryMethodCall(MethodCall* method_call,
     // cast type
     else if(method_call->GetVariable() && method_call->GetVariable()->GetCastType() &&
             method_call->GetVariable()->GetCastType()->GetType() == CLASS_TYPE) {
-      klass = linker->SearchClassLibraries(method_call->GetVariable()->GetCastType()->GetClassName(), program->GetUses(current_class->GetFileName()));
+      klass = linker->SearchClassLibraries(method_call->GetVariable()->GetCastType()->GetClassName(),
+                                           program->GetUses(current_class->GetFileName()));
       method_call->SetTypes(entry->GetType());
     }
     else {
@@ -2307,7 +2308,8 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call,
       }
       // check cast
       if(mthd_params[i]->GetEntry()) {
-        if(expression->GetExpressionType() == METHOD_CALL_EXPR && expression->GetEvalType() && expression->GetEvalType()->GetType() == NIL_TYPE) {
+        if(expression->GetExpressionType() == METHOD_CALL_EXPR && expression->GetEvalType() &&
+           expression->GetEvalType()->GetType() == NIL_TYPE) {
           ProcessError(static_cast<Expression*>(method_call), L"Invalid operation with 'Nil' value");
         }
         // check generic parameters for call
@@ -2452,7 +2454,8 @@ LibraryMethod* ContextAnalyzer::ResolveMethodCall(LibraryClass* klass, MethodCal
       Expression* expression = expr_params[j];
       while(expression->GetMethodCall()) {
         AnalyzeExpressionMethodCall(expression, depth + 1);
-        if(expression->GetExpressionType() == METHOD_CALL_EXPR && expression->GetEvalType() && expression->GetEvalType()->GetType() == NIL_TYPE) {
+        if(expression->GetExpressionType() == METHOD_CALL_EXPR && expression->GetEvalType() &&
+           expression->GetEvalType()->GetType() == NIL_TYPE) {
           ProcessError(static_cast<Expression*>(method_call), L"Invalid operation with 'Nil' value");
         }
         expression = expression->GetMethodCall();
@@ -2532,7 +2535,8 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
 
     for(size_t i = 0; i < expressions.size(); ++i) {
       Expression* expression = expressions[i];
-      if(expression->GetExpressionType() == METHOD_CALL_EXPR && expression->GetEvalType() && expression->GetEvalType()->GetType() == NIL_TYPE) {
+      if(expression->GetExpressionType() == METHOD_CALL_EXPR && expression->GetEvalType() &&
+         expression->GetEvalType()->GetType() == NIL_TYPE) {
         ProcessError(static_cast<Expression*>(method_call), L"Invalid operation with 'Nil' value");
       }
     }
@@ -3115,7 +3119,8 @@ void ContextAnalyzer::AnalyzeReturn(Return* rtrn, const int depth)
       expression = expression->GetMethodCall();
     }
 
-    if(expression->GetExpressionType() == METHOD_CALL_EXPR && expression->GetEvalType() && expression->GetEvalType()->GetType() == NIL_TYPE) {
+    if(expression->GetExpressionType() == METHOD_CALL_EXPR && expression->GetEvalType() &&
+       expression->GetEvalType()->GetType() == NIL_TYPE) {
       ProcessError(expression, L"Invalid operation with 'Nil' value");
     }
     AnalyzeRightCast(type, expression, (IsScalar(expression) && type->GetDimension() == 0), depth + 1);
@@ -5176,7 +5181,7 @@ bool ContextAnalyzer::InvalidStatic(MethodCall* method_call, LibraryMethod* meth
   return false;
 }
 
-frontend::SymbolEntry* ContextAnalyzer::GetEntry(wstring name, bool is_parent /*= false*/)
+frontend::SymbolEntry* ContextAnalyzer::GetEntry(wstring name, bool is_parent)
 {
   if(current_table) {
     // check locally
@@ -5819,7 +5824,8 @@ frontend::Type* ContextAnalyzer::RelsolveGenericCall(Type* left, MethodCall* met
   return left;
 }
 
-void ContextAnalyzer::CheckGenericParameters(const vector<LibraryClass*> generic_klasses, const vector<Type*> concrete_types, ParseNode* node)
+void ContextAnalyzer::CheckGenericParameters(const vector<LibraryClass*> generic_klasses,
+                                             const vector<Type*> concrete_types, ParseNode* node)
 {
   if(generic_klasses.size() != concrete_types.size()) {
     ProcessError(node, L"Generic parameter list size mismatch");
