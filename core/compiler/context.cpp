@@ -454,7 +454,7 @@ void ContextAnalyzer::AnalyzeMethods(Class* klass, const int depth)
     AnalyzeMethod(methods[i], (int)i, depth + 1);
   }
 
-  // look for parent virutal methods
+  // look for parent virtual methods
   if(current_class->GetParent() && current_class->GetParent()->IsVirtual()) {
     if(!AnalyzeVirtualMethods(current_class, current_class->GetParent(), depth)) {
       ProcessError(current_class, L"Not all virtual methods have been implemented for the class/interface: " +
@@ -550,12 +550,12 @@ void ContextAnalyzer::AnalyzeInterfaces(Class* klass, const int depth)
 }
 
 /****************************
- * Checks for virutal method
+ * Checks for virtual method
  * implementations
  ****************************/
 bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, Class* virtual_class, const int depth)
 {
-  // get virutal methods
+  // get virtual methods
   bool virtual_methods_defined = true;
   vector<Method*> virtual_class_methods = virtual_class->GetMethods();
   for(size_t i = 0; i < virtual_class_methods.size(); ++i) {
@@ -662,7 +662,7 @@ bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, LibraryClass* lib
 {
   bool virtual_methods_defined = true;
 
-  // virutal methods
+  // virtual methods
   map<const wstring, LibraryMethod*>::iterator iter;
   map<const wstring, LibraryMethod*> lib_virtual_class_methods = lib_virtual_class->GetMethods();
   for(iter = lib_virtual_class_methods.begin(); iter != lib_virtual_class_methods.end(); ++iter) {
@@ -2348,7 +2348,7 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call,
     // cannot create an instance of a virtual class
     if((method->GetMethodType() == NEW_PUBLIC_METHOD || method->GetMethodType() == NEW_PRIVATE_METHOD) &&
        klass->IsVirtual() && current_class->GetParent() != klass) {
-      ProcessError(static_cast<Expression*>(method_call), L"Cannot create an instance of a virutal class or interface");
+      ProcessError(static_cast<Expression*>(method_call), L"Cannot create an instance of a virtual class or interface");
     }
     // associate method
     klass->SetCalled(true);
@@ -2557,11 +2557,11 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
       ProcessError(static_cast<Expression*>(method_call),
                    L"Cannot reference an instance method from this context");
     }
-    // cannot create an instance of a virutal class
+    // cannot create an instance of a virtual class
     if((lib_method->GetMethodType() == NEW_PUBLIC_METHOD ||
        lib_method->GetMethodType() == NEW_PRIVATE_METHOD) && is_virtual) {
       ProcessError(static_cast<Expression*>(method_call),
-                   L"Cannot create an instance of a virutal class or interface");
+                   L"Cannot create an instance of a virtual class or interface");
     }
     // associate method
     lib_method->GetLibraryClass()->SetCalled(true);
@@ -3879,6 +3879,7 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
         break;
 
       case CLASS_TYPE:
+        ResolveClassEnumType(left); ResolveClassEnumType(right);
         if(HasProgramLibraryEnum(left->GetClassName()) && HasProgramLibraryEnum(right->GetClassName())) {
           AnalyzeClassCast(left, right, left_expr, false, depth + 1);
         }
