@@ -1,8 +1,19 @@
-class Foo {
+class Test {
 	function : Main(args : String[]) ~ Nil {
-		i := 3;
-#		h : ByteHolder;
-#		i : Int := h; # ->Get();
-#		i->PrintLine();
+#		h : FloatHolder := Foo() + 3.5;
+#		h->Get()->PrintLine();
+
+#		i : Int := Bar();
+# 		i->PrintLine();
+		i : Float := Bar() + 5;
+		i->PrintLine();
+	}
+
+	function : Foo() ~ Int {
+		return 7;
+	}
+
+	function : Bar() ~ FloatHolder {
+		return FloatHolder->New(13.5);
 	}
 }
