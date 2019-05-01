@@ -329,7 +329,7 @@ void ContextAnalyzer::AddDefaultParameterMethods(ParsedBundle* bundle, Class* kl
  ****************************/
 void ContextAnalyzer::GenerateParameterMethods(ParsedBundle* bundle, Class* klass, Method* method)
 {
-  // find inital parameter offset
+  // find initial parameter offset
   vector<Declaration*> declarations = method->GetDeclarations()->GetDeclarations();
   size_t inital_param_offset = 0;
 
@@ -3805,7 +3805,8 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
                        ReplaceSubstring(right->GetClassName(), L"#", L"->"));
         }
         else {
-          right_expr->SetCastType(left, true);
+          // TOOD: FIXME
+//          right_expr->SetCastType(left, true);
           expression->SetEvalType(left, true);
         }
         break;
