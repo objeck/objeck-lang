@@ -3838,46 +3838,46 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
         break;
 
       case BYTE_TYPE:
-        if(!HasProgramLibraryEnum(left->GetClassName()) && !UnboxingCalculation(left, left_expr, depth, expression, true)) {
-          ProcessError(left_expr, L"Invalid operation using classes: " +
-                       ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Byte");
-        }
-        else {
+        if(HasProgramLibraryEnum(left->GetClassName())) {
           left_expr->SetCastType(right, true);
           expression->SetEvalType(right, true);
+        }
+        else if(!UnboxingCalculation(left, left_expr, depth, expression, true)) {
+          ProcessError(left_expr, L"Invalid operation using classes: " +
+                       ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Float");
         }
         break;
 
       case CHAR_TYPE:
-        if(!HasProgramLibraryEnum(left->GetClassName()) && !UnboxingCalculation(left, left_expr, depth, expression, true)) {
-          ProcessError(left_expr, L"Invalid operation using classes: " +
-                       ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Char");
-        }
-        else {
+        if(HasProgramLibraryEnum(left->GetClassName())) {
           left_expr->SetCastType(right, true);
           expression->SetEvalType(right, true);
+        }
+        else if(!UnboxingCalculation(left, left_expr, depth, expression, true)) {
+          ProcessError(left_expr, L"Invalid operation using classes: " +
+                       ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Float");
         }
         break;
 
       case INT_TYPE:
-        if(!HasProgramLibraryEnum(left->GetClassName()) && !UnboxingCalculation(left, left_expr, depth, expression, true)) {
-          ProcessError(left_expr, L"Invalid operation using classes: " +
-                       ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and Int");
-        }
-        else {
+        if(HasProgramLibraryEnum(left->GetClassName())) {
           left_expr->SetCastType(right, true);
           expression->SetEvalType(right, true);
+        }
+        else if(!UnboxingCalculation(left, left_expr, depth, expression, true)) {
+          ProcessError(left_expr, L"Invalid operation using classes: " +
+                       ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Float");
         }
         break;
 
       case FLOAT_TYPE:
-        if(!HasProgramLibraryEnum(left->GetClassName()) && !UnboxingCalculation(left, left_expr, depth, expression, true)) {
-          ProcessError(left_expr, L"Invalid operation using classes: " +
-                       ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Float");
-        }
-        else {
+        if(HasProgramLibraryEnum(left->GetClassName())) {
           left_expr->SetCastType(right, true);
           expression->SetEvalType(right, true);
+        } 
+        else if(!UnboxingCalculation(left, left_expr, depth, expression, true)) {
+          ProcessError(left_expr, L"Invalid operation using classes: " +
+                       ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Float");
         }
         break;
 
