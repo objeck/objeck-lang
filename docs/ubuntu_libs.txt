@@ -1,0 +1,3 @@
+sudo apt-get install build-essential git emacs libssl-dev unixodbc-dev libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev
+
+apt-cache search ^libsdl | grep 2.0
