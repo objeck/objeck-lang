@@ -3858,7 +3858,7 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
 
       case INT_TYPE:
         if(!HasProgramLibraryEnum(left->GetClassName())) {
-          // unboxing
+          // TODO: function to abstract, unboxing
           ResolveClassEnumType(left);
           if(left_expr->GetExpressionType() == VAR_EXPR &&
             (left->GetClassName() == L"System.ByteHolder" ||
