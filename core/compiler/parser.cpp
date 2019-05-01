@@ -804,7 +804,7 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
     if(!Match(TOKEN_IDENT)) {
       ProcessError(TOKEN_IDENT);
     }
-    // identifer
+    // identifier
     wstring ident = scanner->GetToken()->GetIdentifier();
     method_name = current_class->GetName() + L":" + ident;
     NextToken();

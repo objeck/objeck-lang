@@ -857,7 +857,7 @@ namespace frontend {
     OperationAssignment* post_operation;
     bool checked_post_operation;
 
-  Variable(const wstring &file_name, const int line_num, const wstring &n) : Expression(file_name, line_num) {
+    Variable(const wstring& file_name, const int line_num, const wstring& n) : Expression(file_name, line_num) {
       name = n;
       indices = nullptr;
       entry = nullptr;
@@ -1605,6 +1605,10 @@ namespace frontend {
 
     Expression* GetExpression() {
       return expression;
+    }
+
+    void SetExpression(Expression* e) {
+      expression = e;
     }
 
     virtual const StatementType GetStatementType() {

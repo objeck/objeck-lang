@@ -12,7 +12,7 @@
  * notice, this list of conditions and the following disclaimer.
  * - Redistributions in binary form must reproduce the above copyright
  * notice, this list of conditions and the following disclaimer in
- * the documentation and/cor other materials provided with the distribution.
+ * the documentation and/or other materials provided with the distribution.
  * - Neither the name of the Objeck team nor the names of its
  * contributors may be used to endorse or promote products derived
  * from this software without specific prior written permission.
@@ -1622,7 +1622,7 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     else {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, NEW_OBJ_INST, (INT_VALUE)string_cls_id));
     }
-    // note: method ID is position dependant
+    // note: method ID is position dependent
     if(is_lib) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0, 
                                                                                  L"System.String", L"System.String:New:c*,"));
