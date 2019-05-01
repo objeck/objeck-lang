@@ -434,7 +434,7 @@ namespace frontend {
     Class* to_class;
     LibraryClass* to_lib_class;
 
-  Expression(const wstring &file_name, const int line_num) : ParseNode(file_name, line_num) {
+    Expression(const wstring& file_name, const int line_num) : ParseNode(file_name, line_num) {
       base_type = eval_type = cast_type = type_of = nullptr;
       method_call = nullptr;
       prev_expr = nullptr;
@@ -442,7 +442,7 @@ namespace frontend {
       to_lib_class = nullptr;
     }
 
-  Expression(const wstring &file_name, int line_num, Type* t) : ParseNode(file_name, line_num) {
+    Expression(const wstring& file_name, int line_num, Type* t) : ParseNode(file_name, line_num) {
       base_type = eval_type = TypeFactory::Instance()->MakeType(t);
       cast_type = nullptr;
       method_call = nullptr;
