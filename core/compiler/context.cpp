@@ -3134,12 +3134,6 @@ void ContextAnalyzer::AnalyzeReturn(Return* rtrn, const int depth)
     if(type->GetType() == CLASS_TYPE && !ResolveClassEnumType(type)) {
       ProcessError(rtrn, L"Undefined class or enum: '" + ReplaceSubstring(type->GetClassName(), L"#", L"->") + L"'");
     }
-    /*
-    // TODO: generic remove
-    if(current_class->HasGenerics() && current_class->GetName() == type->GetClassName()) {
-    ProcessError(rtrn, L"Generic classes cannot return untyped references\n\tConsider using a copy constructor");
-    }
-    */
   }
   else if(type->GetType() != NIL_TYPE) {
     ProcessError(rtrn, L"Invalid return statement");
@@ -3864,16 +3858,16 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
 
       case INT_TYPE:
         if(!HasProgramLibraryEnum(left->GetClassName())) {
+          // unboxing
           ResolveClassEnumType(left);
           if(left_expr->GetExpressionType() == VAR_EXPR &&
             (left->GetClassName() == L"System.ByteHolder" ||
-             left->GetClassName() == L"System.CharHolder" ||
-             left->GetClassName() == L"System.IntHolder" ||
-             left->GetClassName() == L"System.FloatHolder")) {
+            left->GetClassName() == L"System.CharHolder" ||
+            left->GetClassName() == L"System.IntHolder" ||
+            left->GetClassName() == L"System.FloatHolder")) {
             ExpressionList* box_expressions = TreeFactory::Instance()->MakeExpressionList();
             MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(left_expr->GetFileName(), left_expr->GetLineNumber(),
                                                                                   static_cast<Variable*>(left_expr), L"Get", box_expressions);
-            // left_expr->SetMethodCall(box_method_call);
             AnalyzeMethodCall(box_method_call, depth + 1);
 
             expression->SetLeft(box_method_call);
@@ -3881,9 +3875,9 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
           }
           else if(left_expr->GetExpressionType() == METHOD_CALL_EXPR &&
             (left->GetClassName() == L"System.ByteHolder" ||
-                  left->GetClassName() == L"System.CharHolder" ||
-                  left->GetClassName() == L"System.IntHolder" ||
-                  left->GetClassName() == L"System.FloatHolder")) {
+            left->GetClassName() == L"System.CharHolder" ||
+            left->GetClassName() == L"System.IntHolder" ||
+            left->GetClassName() == L"System.FloatHolder")) {
             ExpressionList* box_expressions = TreeFactory::Instance()->MakeExpressionList();
             MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(left_expr->GetFileName(), left_expr->GetLineNumber(),
                                                                                   current_class->GetName(), L"Get", box_expressions);
