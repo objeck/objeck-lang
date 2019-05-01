@@ -6,7 +6,7 @@ class Test {
 
 #		i : Int := Bar();
 # 		i->PrintLine();
-		i : Int := Bar() + 13;
+		i : Int := 'R' + Bar();
 		i->PrintLine();
 	}
 
