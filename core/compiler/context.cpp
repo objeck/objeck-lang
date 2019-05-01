@@ -3800,7 +3800,7 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
         break;
 
       case CLASS_TYPE:
-        if(!HasProgramLibraryEnum(right->GetClassName())) {
+        if(!HasProgramLibraryEnum(right->GetClassName()) && !UnboxingCalculation(right, right_expr, depth, expression, false)) {
           ProcessError(left_expr, L"Invalid operation using classes: System.Float and " +
                        ReplaceSubstring(right->GetClassName(), L"#", L"->"));
         }
