@@ -3671,13 +3671,13 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
         break;
 
       case CLASS_TYPE:
-        if(!HasProgramLibraryEnum(right->GetClassName())) {
-          ProcessError(left_expr, L"Invalid operation using classes: System.Byte and " +
-                       ReplaceSubstring(right->GetClassName(), L"#", L"->"));
-        }
-        else {
+        if(HasProgramLibraryEnum(right->GetClassName())) {
           right_expr->SetCastType(left, true);
           expression->SetEvalType(left, true);
+        }
+        else if(!UnboxingCalculation(right, right_expr, depth, expression, false)) {
+          ProcessError(left_expr, L"Invalid operation using classes: System.Int and " +
+                       ReplaceSubstring(right->GetClassName(), L"#", L"->"));
         }
         break;
 
@@ -3714,13 +3714,13 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
         break;
 
       case CLASS_TYPE:
-        if(!HasProgramLibraryEnum(right->GetClassName())) {
-          ProcessError(left_expr, L"Invalid operation using classes: System.Char and " +
-                       ReplaceSubstring(right->GetClassName(), L"#", L"->"));
-        }
-        else {
+        if(HasProgramLibraryEnum(right->GetClassName())) {
           right_expr->SetCastType(left, true);
           expression->SetEvalType(left, true);
+        }
+        else if(!UnboxingCalculation(right, right_expr, depth, expression, false)) {
+          ProcessError(left_expr, L"Invalid operation using classes: System.Int and " +
+                       ReplaceSubstring(right->GetClassName(), L"#", L"->"));
         }
         break;
 
@@ -3757,13 +3757,13 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
         break;
 
       case CLASS_TYPE:
-        if(!HasProgramLibraryEnum(right->GetClassName())) {
-          ProcessError(left_expr, L"Invalid operation using classes: System.Int and " +
-                       ReplaceSubstring(right->GetClassName(), L"#", L"->"));
-        }
-        else {
+        if(HasProgramLibraryEnum(right->GetClassName())) {
           right_expr->SetCastType(left, true);
           expression->SetEvalType(left, true);
+        }
+        else if(!UnboxingCalculation(right, right_expr, depth, expression, false)) {
+          ProcessError(left_expr, L"Invalid operation using classes: System.Int and " +
+                       ReplaceSubstring(right->GetClassName(), L"#", L"->"));
         }
         break;
 
