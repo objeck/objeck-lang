@@ -3800,14 +3800,16 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
         break;
 
       case CLASS_TYPE:
-        if(!HasProgramLibraryEnum(right->GetClassName()) && !UnboxingCalculation(right, right_expr, depth, expression, false)) {
-          ProcessError(left_expr, L"Invalid operation using classes: System.Float and " +
-                       ReplaceSubstring(right->GetClassName(), L"#", L"->"));
+        if(HasProgramLibraryEnum(right->GetClassName())) {
+          right_expr->SetCastType(left, true);
+          expression->SetEvalType(left, true);
+        }
+        else if(UnboxingCalculation(right, right_expr, depth, expression, false)) {
+          expression->SetEvalType(left, true);
         }
         else {
-          // TOOD: FIXME
-//          right_expr->SetCastType(left, true);
-          expression->SetEvalType(left, true);
+          ProcessError(left_expr, L"Invalid operation using classes: System.Float and " +
+                       ReplaceSubstring(right->GetClassName(), L"#", L"->"));
         }
         break;
 
