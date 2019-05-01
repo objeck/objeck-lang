@@ -6,7 +6,7 @@ class Test {
 
 #		i : Int := Bar();
 # 		i->PrintLine();
-		i : Float := h + 5;
+		i : Float := h + Bar();
 		i->PrintLine();
 	}
 
