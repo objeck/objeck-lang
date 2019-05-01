@@ -485,9 +485,12 @@ class ContextAnalyzer {
   Expression* AnalyzeRightCast(Variable* variable, Expression* expression, bool is_scalar, const int depth);
   Expression* AnalyzeRightCast(Type* left, Expression* expression, bool is_scalar, const int depth);
   Expression* AnalyzeRightCast(Type* left, Type* right, Expression* expression, bool is_scalar, const int depth);
+  Expression* BoxExpression(Type* type, Expression* expression);
+  Expression* UnboxingExpression(Type* right, Expression* expression);
   void AnalyzeCalculation(CalculatedExpression* expression, const int depth);
   void AnalyzeCalculationCast(CalculatedExpression* expression, const int depth);
-  void AnalyzeDeclaration(Declaration* declaration, Class* klass, const int depth);
+  bool UnboxingCalculation(Type* type, Expression* expression, const int depth, CalculatedExpression* calc_expression, bool set_left);
+  void AnalyzeDeclaration(Declaration * declaration, Class * klass, const int depth);
   // checks for method calls, which includes new array and object allocation
   void AnalyzeExpressionMethodCall(Expression* expression, const int depth);
   bool AnalyzeExpressionMethodCall(SymbolEntry* entry, wstring &encoding,
