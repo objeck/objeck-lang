@@ -3178,7 +3178,8 @@ void ContextAnalyzer::AnalyzeLeaving(Leaving* leaving_stmt, const int depth)
 /****************************
  * Analyzes an assignment statement
  ****************************/
-void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType type, const int depth)
+void ContextAnalyzer::AnalyzeAssignment
+(Assignment* assignment, StatementType type, const int depth)
 {
 #ifdef _DEBUG
   Debug(L"assignment", assignment->GetLineNumber(), depth);
@@ -3336,7 +3337,11 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
   }
 
   if(check_right_cast) {
-    AnalyzeRightCast(variable, expression, (IsScalar(variable) && IsScalar(expression)), depth + 1);
+    Expression* box_expression = AnalyzeRightCast(variable, expression, (IsScalar(variable) && IsScalar(expression)), depth + 1);
+    if(box_expression) {
+      AnalyzeExpression(box_expression, depth + 1);
+      assignment->SetExpression(box_expression);
+    }
   }
 
   if(expression->GetExpressionType() == METHOD_CALL_EXPR) {
@@ -4004,26 +4009,29 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
  * assignment statements.  This
  * method uses execution simulation.
  ****************************/
-void ContextAnalyzer::AnalyzeRightCast(Variable* variable, Expression* expression, bool is_scalar, const int depth)
+Expression* ContextAnalyzer::AnalyzeRightCast(Variable* variable, Expression* expression, bool is_scalar, const int depth)
 {
-  AnalyzeRightCast(variable->GetEvalType(), GetExpressionType(expression, depth + 1), expression, is_scalar, depth);
+  Expression* box_expression = AnalyzeRightCast(variable->GetEvalType(), GetExpressionType(expression, depth + 1), expression, is_scalar, depth);
   if(variable->GetIndices() && !is_scalar) {
     ProcessError(expression, L"Dimension size mismatch");
   }
+
+  return box_expression;
 }
 
-void ContextAnalyzer::AnalyzeRightCast(Type* left, Expression* expression, bool is_scalar, const int depth)
+Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Expression* expression, bool is_scalar, const int depth)
 {
-  AnalyzeRightCast(left, GetExpressionType(expression, depth + 1), expression, is_scalar, depth);
+  return AnalyzeRightCast(left, GetExpressionType(expression, depth + 1), expression, is_scalar, depth);
 }
 
-void ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expression* expression, bool is_scalar, const int depth)
+Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expression* expression, bool is_scalar, const int depth)
 {
   // assert(left && right);
   if(!expression || !left || !right) {
-    return;
+    return nullptr;
   }
 
+  // scalar
   if(is_scalar) {
     switch(left->GetType()) {
     case VAR_TYPE:
@@ -4207,8 +4215,29 @@ void ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expression* expr
 
       case CLASS_TYPE:
         if(!HasProgramLibraryEnum(right->GetClassName())) {
-          ProcessError(expression, L"Invalid cast with classes: System.Int and " +
-                       ReplaceSubstring(right->GetClassName(), L"#", L"->"));
+          // TODO: BYTE, CHAR & FLOAT
+          // unboxing expression
+          if(expression->GetExpressionType() == VAR_EXPR && 
+            (right->GetClassName() == L"System.ByteHolder" ||
+             right->GetClassName() == L"System.CharHolder" ||
+             right->GetClassName() == L"System.IntHolder" ||
+             right->GetClassName() == L"System.FloatHolder")) {
+            ExpressionList* box_expressions = TreeFactory::Instance()->MakeExpressionList();
+            MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(expression->GetFileName(), expression->GetLineNumber(),
+                                                                                  static_cast<Variable*>(expression), L"Get", box_expressions);
+            return box_method_call;
+          }
+          else if(expression->GetExpressionType() == METHOD_CALL_EXPR && 
+                 (right->GetClassName() == L"System.ByteHolder" ||
+                  right->GetClassName() == L"System.CharHolder" ||
+                  right->GetClassName() == L"System.IntHolder" ||
+                  right->GetClassName() == L"System.FloatHolder")) {
+
+          }
+          else {
+            ProcessError(expression, L"Invalid cast with classes: System.Int and " +
+                         ReplaceSubstring(right->GetClassName(), L"#", L"->"));
+          }
         }
         break;
 
@@ -4281,28 +4310,149 @@ void ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expression* expr
 
       case BYTE_TYPE:
         if(!HasProgramLibraryEnum(left->GetClassName())) {
-          ProcessError(expression, L"Invalid cast with classes: " +
-                       ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Byte");
+          // boxing expression
+          if(left->GetClassName() == L"System.ByteHolder") {
+            ExpressionList* box_expressions = TreeFactory::Instance()->MakeExpressionList();
+            box_expressions->AddExpression(expression);
+            MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(expression->GetFileName(), expression->GetLineNumber(),
+                                                                                  NEW_INST_CALL, L"System.ByteHolder", box_expressions);
+            return box_method_call;
+          }
+          else if(left->GetClassName() == L"System.CharHolder") {
+            ExpressionList* box_expressions = TreeFactory::Instance()->MakeExpressionList();
+            box_expressions->AddExpression(expression);
+            MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(expression->GetFileName(), expression->GetLineNumber(),
+                                                                                  NEW_INST_CALL, L"System.CharHolder", box_expressions);
+            return box_method_call;
+          }
+          else if(left->GetClassName() == L"System.IntHolder") {
+            ExpressionList* box_expressions = TreeFactory::Instance()->MakeExpressionList();
+            box_expressions->AddExpression(expression);
+            MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(expression->GetFileName(), expression->GetLineNumber(),
+                                                                                  NEW_INST_CALL, L"System.IntHolder", box_expressions);
+            return box_method_call;
+          }
+          else if(left->GetClassName() == L"System.FloatHolder") {
+            ExpressionList* box_expressions = TreeFactory::Instance()->MakeExpressionList();
+            box_expressions->AddExpression(expression);
+            MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(expression->GetFileName(), expression->GetLineNumber(),
+                                                                                  NEW_INST_CALL, L"System.FloatHolder", box_expressions);
+            return box_method_call;
+          }
+          else {
+            ProcessError(expression, L"Invalid cast with classes: " + ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Byte");
+          }
         }
         break;
 
       case CHAR_TYPE:
         if(!HasProgramLibraryEnum(left->GetClassName())) {
-          ProcessError(expression, L"Invalid cast with classes: " +
-                       ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Char");
+          // boxing expression
+          if(left->GetClassName() == L"System.ByteHolder") {
+            ExpressionList* box_expressions = TreeFactory::Instance()->MakeExpressionList();
+            box_expressions->AddExpression(expression);
+            MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(expression->GetFileName(), expression->GetLineNumber(),
+                                                                                  NEW_INST_CALL, L"System.ByteHolder", box_expressions);
+            return box_method_call;
+          }
+          else if(left->GetClassName() == L"System.CharHolder") {
+            ExpressionList* box_expressions = TreeFactory::Instance()->MakeExpressionList();
+            box_expressions->AddExpression(expression);
+            MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(expression->GetFileName(), expression->GetLineNumber(),
+                                                                                  NEW_INST_CALL, L"System.CharHolder", box_expressions);
+            return box_method_call;
+          }
+          else if(left->GetClassName() == L"System.IntHolder") {
+            ExpressionList* box_expressions = TreeFactory::Instance()->MakeExpressionList();
+            box_expressions->AddExpression(expression);
+            MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(expression->GetFileName(), expression->GetLineNumber(),
+                                                                                  NEW_INST_CALL, L"System.IntHolder", box_expressions);
+            return box_method_call;
+          }
+          else if(left->GetClassName() == L"System.FloatHolder") {
+            ExpressionList* box_expressions = TreeFactory::Instance()->MakeExpressionList();
+            box_expressions->AddExpression(expression);
+            MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(expression->GetFileName(), expression->GetLineNumber(),
+                                                                                  NEW_INST_CALL, L"System.FloatHolder", box_expressions);
+            return box_method_call;
+          }
+          else {
+            ProcessError(expression, L"Invalid cast with classes: " + ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Char");
+          }
         }
         break;
 
       case INT_TYPE:
         if(!HasProgramLibraryEnum(left->GetClassName())) {
-          ProcessError(expression, L"Invalid cast with classes: " +
-                       ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and Int");
+          // boxing expression
+          if(left->GetClassName() == L"System.ByteHolder") {
+            ExpressionList* box_expressions = TreeFactory::Instance()->MakeExpressionList();
+            box_expressions->AddExpression(expression);
+            MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(expression->GetFileName(), expression->GetLineNumber(),
+                                                                                  NEW_INST_CALL, L"System.ByteHolder", box_expressions);
+            return box_method_call;
+          }
+          else if(left->GetClassName() == L"System.CharHolder") {
+            ExpressionList* box_expressions = TreeFactory::Instance()->MakeExpressionList();
+            box_expressions->AddExpression(expression);
+            MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(expression->GetFileName(), expression->GetLineNumber(),
+                                                                                  NEW_INST_CALL, L"System.CharHolder", box_expressions);
+            return box_method_call;
+          }
+          else if(left->GetClassName() == L"System.IntHolder") {
+            ExpressionList* box_expressions = TreeFactory::Instance()->MakeExpressionList();
+            box_expressions->AddExpression(expression);
+            MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(expression->GetFileName(), expression->GetLineNumber(),
+                                                                                  NEW_INST_CALL, L"System.IntHolder", box_expressions);
+            return box_method_call;
+          }
+          else if(left->GetClassName() == L"System.FloatHolder") {
+            ExpressionList* box_expressions = TreeFactory::Instance()->MakeExpressionList();
+            box_expressions->AddExpression(expression);
+            MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(expression->GetFileName(), expression->GetLineNumber(),
+                                                                                  NEW_INST_CALL, L"System.FloatHolder", box_expressions);
+            return box_method_call;
+          }
+          else {
+            ProcessError(expression, L"Invalid cast with classes: " + ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and Int");
+          }
         }
         break;
 
-      case FLOAT_TYPE:
-        ProcessError(expression, L"Invalid cast with classes: " +
-                     ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Float");
+      case FLOAT_TYPE: {
+        // boxing expression
+        if(left->GetClassName() == L"System.ByteHolder") {
+          ExpressionList* box_expressions = TreeFactory::Instance()->MakeExpressionList();
+          box_expressions->AddExpression(expression);
+          MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(expression->GetFileName(), expression->GetLineNumber(),
+                                                                                NEW_INST_CALL, L"System.ByteHolder", box_expressions);
+          return box_method_call;
+        }
+        else if(left->GetClassName() == L"System.CharHolder") {
+          ExpressionList* box_expressions = TreeFactory::Instance()->MakeExpressionList();
+          box_expressions->AddExpression(expression);
+          MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(expression->GetFileName(), expression->GetLineNumber(),
+                                                                                NEW_INST_CALL, L"System.CharHolder", box_expressions);
+          return box_method_call;
+        }
+        else if(left->GetClassName() == L"System.IntHolder") {
+          ExpressionList* box_expressions = TreeFactory::Instance()->MakeExpressionList();
+          box_expressions->AddExpression(expression);
+          MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(expression->GetFileName(), expression->GetLineNumber(),
+                                                                                NEW_INST_CALL, L"System.IntHolder", box_expressions);
+          return box_method_call;
+        }
+        else if(left->GetClassName() == L"System.FloatHolder") {
+          ExpressionList* box_expressions = TreeFactory::Instance()->MakeExpressionList();
+          box_expressions->AddExpression(expression);
+          MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(expression->GetFileName(), expression->GetLineNumber(),
+                                                                                NEW_INST_CALL, L"System.FloatHolder", box_expressions);
+          return box_method_call;
+        }
+        else {
+          ProcessError(expression, L"Invalid cast with classes: " + ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Float");
+        }
+      }
         break;
 
       case CLASS_TYPE:
@@ -4373,13 +4523,6 @@ void ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expression* expr
           right->SetClassName(L"m." + EncodeFunctionType(right->GetFunctionParameters(),
                               right->GetFunctionReturn()));
         }
-        /*
-        if(left->GetClassName() != right->GetClassName()) {
-          ProcessError(expression, L"Invalid operation using mismatch functions: " +
-                       ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and " +
-                       ReplaceSubstring(ReplaceSubstring(right->GetClassName(), L"#", L"->"), L"#", L"->"));
-        }
-        */
       }
         break;
 
@@ -4440,6 +4583,8 @@ void ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expression* expr
 
     expression->SetEvalType(left, false);
   }
+
+  return nullptr;
 }
 
 /****************************

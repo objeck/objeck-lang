@@ -482,9 +482,9 @@ class ContextAnalyzer {
   void AnalyzeFor(For* for_stmt, const int depth);
   void AnalyzeReturn(Return* rtrn, const int depth);
   void AnalyzeLeaving(Leaving* leaving_stmt, const int depth);
-  void AnalyzeRightCast(Variable* variable, Expression* expression, bool is_scalar, const int depth);
-  void AnalyzeRightCast(Type* left, Expression* expression, bool is_scalar, const int depth);
-  void AnalyzeRightCast(Type* left, Type* right, Expression* expression, bool is_scalar, const int depth);
+  Expression* AnalyzeRightCast(Variable* variable, Expression* expression, bool is_scalar, const int depth);
+  Expression* AnalyzeRightCast(Type* left, Expression* expression, bool is_scalar, const int depth);
+  Expression* AnalyzeRightCast(Type* left, Type* right, Expression* expression, bool is_scalar, const int depth);
   void AnalyzeCalculation(CalculatedExpression* expression, const int depth);
   void AnalyzeCalculationCast(CalculatedExpression* expression, const int depth);
   void AnalyzeDeclaration(Declaration* declaration, Class* klass, const int depth);
