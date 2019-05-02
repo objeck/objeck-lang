@@ -1,0 +1,15 @@
+class Test {
+	function : Main(args : String[]) ~ Nil {
+#		s := Fie->C;
+
+		s : String;
+		a : IntHolder := Fie->B;
+#		a->Get()->PrintLine();
+		b := s + Fie->C;
+		b->PrintLine();
+	}
+}
+
+enum Fie {
+	A, B, C
+}
