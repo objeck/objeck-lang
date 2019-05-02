@@ -2186,19 +2186,27 @@ Method* ContextAnalyzer::ResolveMethodCall(Class* klass, MethodCall* method_call
       vector<Expression*> boxed_params;
       for(size_t j = 0; j < expr_params.size(); ++j) {
         Type* method_type = method_parms[j]->GetEntry()->GetType();
+        Expression* expr_param = expr_params[j];
+        Type* expr_type = expr_param->GetEvalType();
+
         Expression* boxed_param = nullptr;
-        if(method_type->GetType() == BYTE_TYPE || method_type->GetType() == CHAR_TYPE ||
-           method_type->GetType() == INT_TYPE || method_type->GetType() == FLOAT_TYPE) {
-          boxed_param = BoxExpression(method_type, expr_params[j], depth);
+        if(expr_type->GetType() == BYTE_TYPE || expr_type->GetType() == CHAR_TYPE ||
+           expr_type->GetType() == INT_TYPE || expr_type->GetType() == FLOAT_TYPE) {
+          boxed_param = BoxExpression(method_type, expr_param, depth);
           if(boxed_param) {
             boxed_params.push_back(boxed_param);
           }
         }
         // add default
         if(!boxed_param) {
-          boxed_params.push_back(expr_params[j]);
+          boxed_params.push_back(expr_param);
         }
       }
+      calling_params->SetExpressions(boxed_params);
+
+#ifdef _DEBUG
+      assert(boxed_params.size() == expr_params.size());
+#endif
 
       MethodCallSelection* match = new MethodCallSelection(candidates[i]);
       for(size_t j = 0; j < boxed_params.size(); ++j) {
@@ -2453,19 +2461,27 @@ LibraryMethod* ContextAnalyzer::ResolveMethodCall(LibraryClass* klass, MethodCal
       vector<Expression*> boxed_params;
       for(size_t j = 0; j < expr_params.size(); ++j) {
         Type* method_type = method_parms[j];
+        Expression* expr_param = expr_params[j];
+        Type* expr_type = expr_param->GetEvalType();
+
         Expression* boxed_param = nullptr;
-        if(method_type->GetType() == BYTE_TYPE || method_type->GetType() == CHAR_TYPE ||
-           method_type->GetType() == INT_TYPE || method_type->GetType() == FLOAT_TYPE) {
-          boxed_param = BoxExpression(method_type, expr_params[j], depth);
+        if(expr_type->GetType() == BYTE_TYPE || expr_type->GetType() == CHAR_TYPE ||
+           expr_type->GetType() == INT_TYPE || expr_type->GetType() == FLOAT_TYPE) {
+          boxed_param = BoxExpression(method_type, expr_param, depth);
           if(boxed_param) {
             boxed_params.push_back(boxed_param);
           }
         }
         // add default
         if(!boxed_param) {
-          boxed_params.push_back(expr_params[j]);
+          boxed_params.push_back(expr_param);
         }
       }
+      calling_params->SetExpressions(boxed_params);
+
+#ifdef _DEBUG
+      assert(boxed_params.size() == expr_params.size());
+#endif
 
       LibraryMethodCallSelection* match = new LibraryMethodCallSelection(candidates[i]);
       for(size_t j = 0; j < boxed_params.size(); ++j) {

@@ -554,7 +554,7 @@ namespace frontend {
       return expressions;
     }
 
-    void GetExpressions(const vector<Expression*> e) {
+    void SetExpressions(const vector<Expression*> e) {
       expressions = e;
     }
 
