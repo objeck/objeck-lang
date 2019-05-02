@@ -1,12 +1,13 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		h := FloatHolder->New(3.5);
+		Fie(13);
+#		h := FloatHolder->New(3.5);
 #		h : FloatHolder := Foo() + 3.5;
 #		h->Get()->PrintLine();
 
 #		i : Int := Bar();
 # 		i->PrintLine();
-		i : Int := h * 'R' + Bar();
+#		i : Int := Bar() - h + 'T';
 		i->PrintLine();
 	}
 
@@ -16,5 +17,9 @@ class Test {
 
 	function : Bar() ~ FloatHolder {
 		return FloatHolder->New(13.5);
+	}
+
+	function : Fie(h : IntHolder) ~ Nil {
+		i : Int := h;
 	}
 }
