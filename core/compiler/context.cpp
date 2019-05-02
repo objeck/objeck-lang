@@ -2197,9 +2197,12 @@ Method* ContextAnalyzer::ResolveMethodCall(Class* klass, MethodCall* method_call
             boxed_params.push_back(boxed_param);
           }
         }
-
-        // TODO: check for object type and "*Holder" UnboxExpression
-
+        else if(expr_type->GetType() == CLASS_TYPE) {
+          boxed_param = UnboxingExpression(expr_type, expr_param, depth);
+          if(boxed_param) {
+            boxed_params.push_back(boxed_param);
+          }
+        }
         // add default
         if(!boxed_param) {
           boxed_params.push_back(expr_param);
@@ -2471,6 +2474,12 @@ LibraryMethod* ContextAnalyzer::ResolveMethodCall(LibraryClass* klass, MethodCal
         if(expr_type->GetType() == BYTE_TYPE || expr_type->GetType() == CHAR_TYPE ||
            expr_type->GetType() == INT_TYPE || expr_type->GetType() == FLOAT_TYPE) {
           boxed_param = BoxExpression(method_type, expr_param, depth);
+          if(boxed_param) {
+            boxed_params.push_back(boxed_param);
+          }
+        }
+        else if(expr_type->GetType() == CLASS_TYPE) {
+          boxed_param = UnboxingExpression(expr_type, expr_param, depth);
           if(boxed_param) {
             boxed_params.push_back(boxed_param);
           }
