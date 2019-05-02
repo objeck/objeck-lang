@@ -2179,12 +2179,29 @@ Method* ContextAnalyzer::ResolveMethodCall(Class* klass, MethodCall* method_call
   vector<MethodCallSelection*> matches;
   for(size_t i = 0; i < candidates.size(); ++i) {
     // match parameter sizes
-    vector<Type*> parms_types;
     vector<Declaration*> method_parms = candidates[i]->GetDeclarations()->GetDeclarations();
 
     if(expr_params.size() == method_parms.size()) {
-      MethodCallSelection* match = new MethodCallSelection(candidates[i]);
+      // box and unbox parameters
+      vector<Expression*> boxed_params;
       for(size_t j = 0; j < expr_params.size(); ++j) {
+        Type* method_type = method_parms[j]->GetEntry()->GetType();
+        Expression* boxed_param = nullptr;
+        if(method_type->GetType() == BYTE_TYPE || method_type->GetType() == CHAR_TYPE ||
+           method_type->GetType() == INT_TYPE || method_type->GetType() == FLOAT_TYPE) {
+          boxed_param = BoxExpression(method_type, expr_params[j], depth);
+          if(boxed_param) {
+            boxed_params.push_back(boxed_param);
+          }
+        }
+        // add default
+        if(!boxed_param) {
+          boxed_params.push_back(expr_params[j]);
+        }
+      }
+
+      MethodCallSelection* match = new MethodCallSelection(candidates[i]);
+      for(size_t j = 0; j < boxed_params.size(); ++j) {
         // get method type
         Type* method_type = nullptr;
         if(method_parms[j]->GetEntry() && method_parms[j]->GetEntry()->GetType()) {
@@ -2197,7 +2214,7 @@ Method* ContextAnalyzer::ResolveMethodCall(Class* klass, MethodCall* method_call
           ResolveClassEnumType(method_type);
         }
         // add parameter match
-        const int compare = MatchCallingParameter(expr_params[j], method_type, klass, nullptr, depth);
+        const int compare = MatchCallingParameter(boxed_params[j], method_type, klass, nullptr, depth);
         match->AddParameterMatch(compare);
       }
       matches.push_back(match);
@@ -2432,8 +2449,26 @@ LibraryMethod* ContextAnalyzer::ResolveMethodCall(LibraryClass* klass, MethodCal
     // match parameter sizes
     vector<Type*> method_parms = candidates[i]->GetDeclarationTypes();
     if(expr_params.size() == method_parms.size()) {
-      LibraryMethodCallSelection* match = new LibraryMethodCallSelection(candidates[i]);
+      // box and unbox parameters
+      vector<Expression*> boxed_params;
       for(size_t j = 0; j < expr_params.size(); ++j) {
+        Type* method_type = method_parms[j];
+        Expression* boxed_param = nullptr;
+        if(method_type->GetType() == BYTE_TYPE || method_type->GetType() == CHAR_TYPE ||
+           method_type->GetType() == INT_TYPE || method_type->GetType() == FLOAT_TYPE) {
+          boxed_param = BoxExpression(method_type, expr_params[j], depth);
+          if(boxed_param) {
+            boxed_params.push_back(boxed_param);
+          }
+        }
+        // add default
+        if(!boxed_param) {
+          boxed_params.push_back(expr_params[j]);
+        }
+      }
+
+      LibraryMethodCallSelection* match = new LibraryMethodCallSelection(candidates[i]);
+      for(size_t j = 0; j < boxed_params.size(); ++j) {
         // map generic to concrete type, if needed
         Type* method_type = method_parms[j];
         if(klass->HasGenerics()) {
@@ -2441,7 +2476,7 @@ LibraryMethod* ContextAnalyzer::ResolveMethodCall(LibraryClass* klass, MethodCal
           ResolveClassEnumType(method_type);
         }
         // compare and total
-        const int compare = MatchCallingParameter(expr_params[j], method_type, nullptr, klass, depth);
+        const int compare = MatchCallingParameter(boxed_params[j], method_type, nullptr, klass, depth);
         match->AddParameterMatch(compare);
       }
       matches.push_back(match);
@@ -4169,7 +4204,7 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
 
       case CLASS_TYPE:
         if(!HasProgramLibraryEnum(right->GetClassName())) {
-          Expression* unboxed_expresion = UnboxingExpression(right, expression);
+          Expression* unboxed_expresion = UnboxingExpression(right, expression, depth);
           if(unboxed_expresion) {
             return unboxed_expresion;
           }
@@ -4218,7 +4253,7 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
 
       case CLASS_TYPE:
         if(!HasProgramLibraryEnum(right->GetClassName())) {
-          Expression* unboxed_expresion = UnboxingExpression(right, expression);
+          Expression* unboxed_expresion = UnboxingExpression(right, expression, depth);
           if(unboxed_expresion) {
             return unboxed_expresion;
           }
@@ -4267,7 +4302,7 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
 
       case CLASS_TYPE:
         if(!HasProgramLibraryEnum(right->GetClassName())) {
-          Expression* unboxed_expresion = UnboxingExpression(right, expression);
+          Expression* unboxed_expresion = UnboxingExpression(right, expression, depth);
           if(unboxed_expresion) {
             return unboxed_expresion;
           }
@@ -4316,7 +4351,7 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
 
       case CLASS_TYPE:
         if(!HasProgramLibraryEnum(right->GetClassName())) {
-          Expression* unboxed_expresion = UnboxingExpression(right, expression);
+          Expression* unboxed_expresion = UnboxingExpression(right, expression, depth);
           if(unboxed_expresion) {
             return unboxed_expresion;
           }
@@ -4353,7 +4388,7 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
 
       case BYTE_TYPE:
         if(!HasProgramLibraryEnum(left->GetClassName())) {
-          Expression* boxed_expression = BoxExpression(left, expression);
+          Expression* boxed_expression = BoxExpression(left, expression, depth);
           if(boxed_expression) {
             return boxed_expression;
           }
@@ -4365,7 +4400,7 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
 
       case CHAR_TYPE:
         if(!HasProgramLibraryEnum(left->GetClassName())) {
-          Expression* boxed_expression = BoxExpression(left, expression);
+          Expression* boxed_expression = BoxExpression(left, expression, depth);
           if(boxed_expression) {
             return boxed_expression;
           }
@@ -4377,7 +4412,7 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
 
       case INT_TYPE:
         if(!HasProgramLibraryEnum(left->GetClassName())) {
-          Expression* boxed_expression = BoxExpression(left, expression);
+          Expression* boxed_expression = BoxExpression(left, expression, depth);
           if(boxed_expression) {
             return boxed_expression;
           }
@@ -4389,7 +4424,7 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
 
       case FLOAT_TYPE:
         if(!HasProgramLibraryEnum(left->GetClassName())) {
-          Expression* boxed_expression = BoxExpression(left, expression);
+          Expression* boxed_expression = BoxExpression(left, expression, depth);
           if(boxed_expression) {
             return boxed_expression;
           }
@@ -4531,7 +4566,7 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
 //
 // Unboxing expression
 //
-Expression* ContextAnalyzer::UnboxingExpression(Type* type, Expression* expression)
+Expression* ContextAnalyzer::UnboxingExpression(Type* type, Expression* expression, int depth)
 {
   ResolveClassEnumType(type);
   if(expression->GetExpressionType() == VAR_EXPR && (type->GetClassName() == L"System.ByteHolder" ||
@@ -4540,13 +4575,16 @@ Expression* ContextAnalyzer::UnboxingExpression(Type* type, Expression* expressi
     MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(expression->GetFileName(), expression->GetLineNumber(),
                                                                           static_cast<Variable*>(expression), L"Get",
                                                                           TreeFactory::Instance()->MakeExpressionList());
+    AnalyzeMethodCall(box_method_call, depth);
     return box_method_call;
   }
   else if(expression->GetExpressionType() == METHOD_CALL_EXPR && (type->GetClassName() == L"System.ByteHolder" ||
           type->GetClassName() == L"System.CharHolder" || type->GetClassName() == L"System.IntHolder" ||
           type->GetClassName() == L"System.FloatHolder")) {
     MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(expression->GetFileName(), expression->GetLineNumber(),
-                                                                          current_class->GetName(), L"Get", TreeFactory::Instance()->MakeExpressionList());
+                                                                          current_class->GetName(), L"Get", 
+                                                                          TreeFactory::Instance()->MakeExpressionList());
+    AnalyzeMethodCall(box_method_call, depth);
     expression->SetMethodCall(box_method_call);
     return expression;
   }
@@ -4557,13 +4595,15 @@ Expression* ContextAnalyzer::UnboxingExpression(Type* type, Expression* expressi
 //
 // Boxing expression
 //
-Expression* ContextAnalyzer::BoxExpression(Type* type, Expression* expression)
+Expression* ContextAnalyzer::BoxExpression(Type* type, Expression* expression, int depth)
 {
+  ResolveClassEnumType(type);
   if(type->GetClassName() == L"System.ByteHolder") {
     ExpressionList* box_expressions = TreeFactory::Instance()->MakeExpressionList();
     box_expressions->AddExpression(expression);
     MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(expression->GetFileName(), expression->GetLineNumber(),
                                                                           NEW_INST_CALL, L"System.ByteHolder", box_expressions);
+    AnalyzeMethodCall(box_method_call, depth);
     return box_method_call;
   }
   else if(type->GetClassName() == L"System.CharHolder") {
@@ -4571,6 +4611,7 @@ Expression* ContextAnalyzer::BoxExpression(Type* type, Expression* expression)
     box_expressions->AddExpression(expression);
     MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(expression->GetFileName(), expression->GetLineNumber(),
                                                                           NEW_INST_CALL, L"System.CharHolder", box_expressions);
+    AnalyzeMethodCall(box_method_call, depth);
     return box_method_call;
   }
   else if(type->GetClassName() == L"System.IntHolder") {
@@ -4578,6 +4619,7 @@ Expression* ContextAnalyzer::BoxExpression(Type* type, Expression* expression)
     box_expressions->AddExpression(expression);
     MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(expression->GetFileName(), expression->GetLineNumber(),
                                                                           NEW_INST_CALL, L"System.IntHolder", box_expressions);
+    AnalyzeMethodCall(box_method_call, depth);
     return box_method_call;
   }
   else if(type->GetClassName() == L"System.FloatHolder") {
@@ -4585,6 +4627,7 @@ Expression* ContextAnalyzer::BoxExpression(Type* type, Expression* expression)
     box_expressions->AddExpression(expression);
     MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(expression->GetFileName(), expression->GetLineNumber(),
                                                                           NEW_INST_CALL, L"System.FloatHolder", box_expressions);
+    AnalyzeMethodCall(box_method_call, depth);
     return box_method_call;
   }
 

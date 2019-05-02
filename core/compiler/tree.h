@@ -550,8 +550,12 @@ namespace frontend {
     }
 
   public:
-    vector<Expression*> GetExpressions() {
+    const vector<Expression*> GetExpressions() {
       return expressions;
+    }
+
+    void GetExpressions(const vector<Expression*> e) {
+      expressions = e;
     }
 
     void AddExpression(Expression* e) {
