@@ -3222,8 +3222,7 @@ void ContextAnalyzer::AnalyzeLeaving(Leaving* leaving_stmt, const int depth)
 /****************************
  * Analyzes an assignment statement
  ****************************/
-void ContextAnalyzer::AnalyzeAssignment
-(Assignment* assignment, StatementType type, const int depth)
+void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType type, const int depth)
 {
 #ifdef _DEBUG
   Debug(L"assignment", assignment->GetLineNumber(), depth);
@@ -3271,15 +3270,24 @@ void ContextAnalyzer::AnalyzeAssignment
       }
     }
   }
-  else if(variable->GetEvalType() && variable->GetEvalType()->GetType() == CLASS_TYPE && expression->GetExpressionType() == METHOD_CALL_EXPR) {
-    MethodCall* method_call = static_cast<MethodCall*>(expression);
-    if(method_call->GetEnumItem()) {
-      SymbolEntry* entry = variable->GetEntry();
-      if(entry) {
-        Type* to_type = expression->GetEvalType();
-        AnalyzeVariableCast(to_type, expression);
-        variable->SetTypes(to_type);
-        entry->SetType(to_type);
+  // enum type
+  else if(variable->GetEvalType() && variable->GetEvalType()->GetType() == CLASS_TYPE && 
+          expression->GetExpressionType() == METHOD_CALL_EXPR && 
+          static_cast<MethodCall*>(expression)->GetEnumItem()) {
+    SymbolEntry* to_entry = variable->GetEntry();
+    if(to_entry) {
+      Type* to_type = to_entry->GetType();
+      Expression* box_expression = BoxExpression(to_type, expression,depth);
+      if(box_expression) {
+        expression = box_expression;
+        assignment->SetExpression(box_expression);
+      }
+      else {
+        Type* from_type = expression->GetEvalType();
+        AnalyzeVariableCast(to_type, variable);
+        AnalyzeVariableCast(from_type, expression);
+        variable->SetTypes(from_type);
+        to_entry->SetType(from_type);
       }
     }
   }
@@ -3931,18 +3939,29 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
         }
         break;
 
-      case CLASS_TYPE:
-        ResolveClassEnumType(left); ResolveClassEnumType(right);
-        if(HasProgramLibraryEnum(left->GetClassName()) && HasProgramLibraryEnum(right->GetClassName())) {
+      case CLASS_TYPE: {
+        ResolveClassEnumType(left);
+        const bool can_unbox_left = UnboxingCalculation(left, left_expr, depth, expression, true);
+        const bool left_is_enum = HasProgramLibraryEnum(left->GetClassName());
+
+        ResolveClassEnumType(right);
+        const bool can_unbox_right = UnboxingCalculation(right, right_expr, depth, expression, false);
+        const bool is_right_enum = HasProgramLibraryEnum(right->GetClassName());
+
+        if(left_is_enum && is_right_enum) {
           AnalyzeClassCast(left, right, left_expr, false, depth + 1);
         }
-        else if((!HasProgramLibraryClass(left->GetClassName()) && !current_class->GetGenericClass(left->GetClassName())) || 
-                (!HasProgramLibraryClass(right->GetClassName()) && !current_class->GetGenericClass(right->GetClassName()))) {
-          ProcessError(left_expr, L"Invalid operation between class or enum: '" + left->GetClassName() + L"' and '" + right->GetClassName() + L"'");
+        else if(can_unbox_left && !is_right_enum) {
+          ProcessError(left_expr, L"Invalid operation between class and enum: '" + left->GetClassName() + L"' and '" + right->GetClassName() + L"'");
         }
-        else if(!(UnboxingCalculation(left, left_expr, depth, expression, true) && UnboxingCalculation(right, right_expr, depth, expression, false))) {
-          expression->SetEvalType(TypeFactory::Instance()->MakeType(INT_TYPE), true);
+        else if(can_unbox_right && !left_is_enum) {
+          ProcessError(left_expr, L"Invalid operation between class and enum: '" + left->GetClassName() + L"' and '" + right->GetClassName() + L"'");
         }
+        else if((!can_unbox_left && !left_is_enum) || (!can_unbox_right && !is_right_enum)) {
+          ProcessError(left_expr, L"Invalid operation between class and enum: '" + left->GetClassName() + L"' and '" + right->GetClassName() + L"'");
+        }
+        expression->SetEvalType(TypeFactory::Instance()->MakeType(INT_TYPE), true);
+      }
         break;
 
       case BOOLEAN_TYPE:
@@ -4626,9 +4645,10 @@ Expression* ContextAnalyzer::BoxExpression(Type* to_type, Expression* from_expr,
   }
   ResolveClassEnumType(to_type);
 
-  if(to_type->GetType() == CLASS_TYPE && (from_type->GetType() == BYTE_TYPE ||
-     from_type->GetType() == CHAR_TYPE || from_type->GetType() == INT_TYPE ||
-     from_type->GetType() == FLOAT_TYPE)) {
+  const bool is_enum = from_expr->GetExpressionType() == METHOD_CALL_EXPR && static_cast<MethodCall*>(from_expr)->GetEnumItem();
+
+  if(to_type->GetType() == CLASS_TYPE && (is_enum || from_type->GetType() == BYTE_TYPE || 
+     from_type->GetType() == CHAR_TYPE || from_type->GetType() == INT_TYPE || from_type->GetType() == FLOAT_TYPE)) {
     if(to_type->GetClassName() == L"System.ByteHolder") {
       ExpressionList* box_expressions = TreeFactory::Instance()->MakeExpressionList();
       box_expressions->AddExpression(from_expr);
@@ -4828,7 +4848,7 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Type* right, Expression* expr
     }
   }
   //
-  // enum libary
+  // enum library
   //
   else if(left && right && (left_lib_enum = linker->SearchEnumLibraries(left->GetClassName(), program->GetUses(current_class->GetFileName())))) {
     // program
@@ -4854,7 +4874,7 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Type* right, Expression* expr
     }
   }
   //
-  // class libary
+  // class library
   //
   else if(left && right && (left_lib_class = linker->SearchClassLibraries(left->GetClassName(), program->GetUses(current_class->GetFileName())))) {
     // program and generic
@@ -4885,7 +4905,7 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Type* right, Expression* expr
                      L"' and '" + ReplaceSubstring(right->GetClassName(), L"#", L"->") + L"'");
       }
     }
-    // libary
+    // library
     else if(linker->SearchClassLibraries(right->GetClassName(), program->GetUses(current_class->GetFileName()))) {
       LibraryClass* right_lib_class = linker->SearchClassLibraries(right->GetClassName(), program->GetUses(current_class->GetFileName()));
       // downcast
