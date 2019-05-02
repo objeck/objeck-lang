@@ -485,8 +485,8 @@ class ContextAnalyzer {
   Expression* AnalyzeRightCast(Variable* variable, Expression* expression, bool is_scalar, const int depth);
   Expression* AnalyzeRightCast(Type* left, Expression* expression, bool is_scalar, const int depth);
   Expression* AnalyzeRightCast(Type* left, Type* right, Expression* expression, bool is_scalar, const int depth);
-  Expression* BoxExpression(Type* type, Expression* expression);
-  Expression* UnboxingExpression(Type* right, Expression* expression);
+  Expression* BoxExpression(Type* type, Expression* expression, int depth);
+  Expression* UnboxingExpression(Type* right, Expression* expression, int depth);
   void AnalyzeCalculation(CalculatedExpression* expression, const int depth);
   void AnalyzeCalculationCast(CalculatedExpression* expression, const int depth);
   bool UnboxingCalculation(Type* type, Expression* expression, const int depth, CalculatedExpression* calc_expression, bool set_left);
