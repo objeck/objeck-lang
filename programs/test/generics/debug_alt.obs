@@ -1,12 +1,11 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-#		s := Fie->C;
+			s := Fie->C; # FIXME
 
-		s : String;
-		a : IntHolder := Fie->B;
+#		a : IntHolder := Fie->B;
 #		a->Get()->PrintLine();
-		b := s + Fie->C;
-		b->PrintLine();
+#		b := s + Fie->C;
+#		b->PrintLine();
 	}
 }
 
