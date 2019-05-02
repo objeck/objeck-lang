@@ -3959,7 +3959,7 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
         }
         else if(((!can_unbox_left && !left_is_enum) || (!can_unbox_right && !is_right_enum)) &&
                 expression->GetExpressionType() != EQL_EXPR && expression->GetExpressionType() != NEQL_EXPR) {
-          ProcessError(left_expr, L"Invalid operation between class and enum: '" + left->GetClassName() + L"' and '" + right->GetClassName() + L"'");
+          ProcessError(left_expr, L"Invalid operation between class or enum: '" + left->GetClassName() + L"' and '" + right->GetClassName() + L"'");
         }
         expression->SetEvalType(TypeFactory::Instance()->MakeType(INT_TYPE), true);
       }
