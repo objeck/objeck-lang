@@ -1,6 +1,8 @@
 boxing:
 * passing parameters
 * support for casts
+* test with libraries
 
 generics:
 * sample libraries
+* test with source and libraries

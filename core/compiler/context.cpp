@@ -2197,6 +2197,9 @@ Method* ContextAnalyzer::ResolveMethodCall(Class* klass, MethodCall* method_call
             boxed_params.push_back(boxed_param);
           }
         }
+
+        // TODO: check for object type and "*Holder" UnboxExpression
+
         // add default
         if(!boxed_param) {
           boxed_params.push_back(expr_param);
