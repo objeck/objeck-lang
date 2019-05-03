@@ -2146,7 +2146,7 @@ int ContextAnalyzer::MatchCallingParameter(Expression* calling_param, Type* meth
           const wstring calling_type_name = calling_type->GetClassName();
           wstring method_type_name = method_type->GetClassName();
           if(method_type_name.size() == 0) {
-            AnalyzeDynamicFunctionParameters(method_type->GetFunctionParameters(), calling_param);
+            AnalyzeDynamicFunctionParameters(method_type, calling_param);
             method_type_name = L"m." + EncodeFunctionType(method_type->GetFunctionParameters(),
                                                           method_type->GetFunctionReturn());
             method_type->SetClassName(method_type_name);
@@ -2662,7 +2662,7 @@ void ContextAnalyzer::AnalyzeDynamicFunctionCall(MethodCall* method_call, const 
     wstring dyn_func_params_str = type->GetClassName();
     if(dyn_func_params_str.size() == 0) {
       vector<Type*>& func_params = type->GetFunctionParameters();
-      AnalyzeDynamicFunctionParameters(type->GetFunctionParameters(), static_cast<Expression*>(method_call));
+      AnalyzeDynamicFunctionParameters(type, static_cast<Expression*>(method_call));
       for(size_t i = 0; i < func_params.size(); ++i) {
         // encode parameter
         dyn_func_params_str += EncodeType(func_params[i]);
@@ -4017,7 +4017,7 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
       // FUNCTION
       switch(right->GetType()) {
       case FUNC_TYPE: {
-        AnalyzeDynamicFunctionParameters(left->GetFunctionParameters(), expression);
+        AnalyzeDynamicFunctionParameters(left, expression);
         if(left->GetClassName().size() == 0) {
           left->SetClassName(L"m." + EncodeFunctionType(left->GetFunctionParameters(),
                              left->GetFunctionReturn()));
@@ -4529,7 +4529,7 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
       // FUNCTION
       switch(right->GetType()) {
       case FUNC_TYPE: {
-        AnalyzeDynamicFunctionParameters(left->GetFunctionParameters(), expression);
+        AnalyzeDynamicFunctionParameters(left, expression);
         if(left->GetClassName().size() == 0) {
           left->SetClassName(L"m." + EncodeFunctionType(left->GetFunctionParameters(), left->GetFunctionReturn()));
         }
@@ -4985,7 +4985,7 @@ void ContextAnalyzer::AnalyzeDeclaration(Declaration * declaration, Class* klass
     else if(entry->GetType() && entry->GetType()->GetType() == FUNC_TYPE) {
       // resolve function name
       Type* type = entry->GetType();
-      AnalyzeDynamicFunctionParameters(type->GetFunctionParameters(), entry, klass);
+      AnalyzeDynamicFunctionParameters(type, entry, klass);
       const wstring encoded_name = L"m." + EncodeFunctionType(type->GetFunctionParameters(),
                                                               type->GetFunctionReturn());
 #ifdef _DEBUG
@@ -6045,13 +6045,20 @@ void ContextAnalyzer::AnalyzeVariableCast(Type* to_type, Expression* expression)
   }
 }
 
-void ContextAnalyzer::AnalyzeDynamicFunctionParameters(vector<Type*>& func_params, ParseNode* node, Class* klass)
+void ContextAnalyzer::AnalyzeDynamicFunctionParameters(Type* func_type, ParseNode* node, Class* klass)
 {
+
+  const vector<Type*>& func_params = func_type->GetFunctionParameters();
   for(size_t i = 0; i < func_params.size(); ++i) {
     Type* type = func_params[i];
     if(type->GetType() == CLASS_TYPE && !ResolveClassEnumType(type, klass)) {
       ProcessError(node, L"Undefined class or enum: '" + type->GetClassName() + L"'");
     }
+  }
+
+  Type* rtrn_type = func_type->GetFunctionReturn();
+  if(rtrn_type->GetType() == CLASS_TYPE && !ResolveClassEnumType(rtrn_type, klass)) {
+    ProcessError(node, L"Undefined class or enum: '" + rtrn_type->GetClassName() + L"'");
   }
 }
 

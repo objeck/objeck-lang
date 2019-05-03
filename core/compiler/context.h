@@ -341,12 +341,12 @@ class ContextAnalyzer {
   void AnalyzeVariableCast(Type* to_type, Expression* expression);
 
   // validate parameters for dynamic function
-  void AnalyzeDynamicFunctionParameters(vector<Type*>& func_params, ParseNode* node) {
-    AnalyzeDynamicFunctionParameters(func_params, node, current_class);
+  void AnalyzeDynamicFunctionParameters(Type* func_type, ParseNode* node) {
+    AnalyzeDynamicFunctionParameters(func_type, node, current_class);
   }
 
   // validate parameters for dynamic function
-  void AnalyzeDynamicFunctionParameters(vector<Type*>& func_params, ParseNode* node, Class* klass);
+  void AnalyzeDynamicFunctionParameters(Type* func_type, ParseNode* node, Class* klass);
 
   // add method parameter
   void AddMethodParameter(MethodCall* method_call, SymbolEntry* entry, int depth);
