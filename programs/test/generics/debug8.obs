@@ -95,6 +95,9 @@ class Map<K : Compare, V> {
 		return false;
 	}
 
+	method : public : Apply(func : (V) ~ V) ~ Nil {
+	}
+
 	method : public : Get(key : K) ~ V {
 		return Get(@root, key);
 	}

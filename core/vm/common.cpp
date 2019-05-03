@@ -55,6 +55,331 @@ pthread_mutex_t StackProgram::prop_mutex = PTHREAD_MUTEX_INITIALIZER;
 #endif
 
 unordered_map<wstring, StackMethod*> StackMethod::virutal_cache;
+
+void StackProgram::InitializeProprieties()
+{
+  // install directory
+#ifdef _DEBUG
+#ifdef _WIN32  
+  char install_path[MAX_PATH];
+  DWORD status = GetModuleFileNameA(nullptr, install_path, sizeof(install_path));
+  if(status > 0) {
+    string exe_path(install_path);
+    size_t install_index = exe_path.find_last_of('\\');
+    if(install_index != string::npos) {
+      wstring install_dir = BytesToUnicode(exe_path.substr(0, install_index));
+      properties_map.insert(pair<wstring, wstring>(L"install_dir", install_dir));
+    }
+  }
+#else
+  ssize_t status = 0;
+  char install_path[SMALL_BUFFER_MAX];
+#ifdef _OSX
+  uint32_t size = SMALL_BUFFER_MAX;
+  if(_NSGetExecutablePath(install_path, &size) != 0) {
+    status = -1;
+  }
+#else
+  status = ::readlink("/proc/self/exe", install_path, sizeof(install_path) - 1);
+#endif
+  if(status != -1) {
+    string exe_path(install_path);
+    size_t install_index = exe_path.find_last_of('/');
+    if(install_index != string::npos) {
+      wstring install_dir = BytesToUnicode(exe_path.substr(0, install_index));
+      properties_map.insert(pair<wstring, wstring>(L"install_dir", install_dir));
+    }
+  }
+#endif
+#else
+#ifdef _WIN32  
+  char install_path[MAX_PATH];
+  DWORD status = GetModuleFileNameA(nullptr, install_path, sizeof(install_path));
+  if(status > 0) {
+    string exe_path(install_path);
+    size_t install_index = exe_path.find_last_of('\\');
+    if(install_index != string::npos) {
+      exe_path = exe_path.substr(0, install_index);
+      install_index = exe_path.find_last_of('\\');
+      if(install_index != string::npos) {
+        wstring install_dir = BytesToUnicode(exe_path.substr(0, install_index));
+        properties_map.insert(pair<wstring, wstring>(L"install_dir", install_dir));
+      }
+    }
+  }
+#else
+  ssize_t status = 0;
+  char install_path[SMALL_BUFFER_MAX];
+#ifdef _OSX
+  uint32_t size = SMALL_BUFFER_MAX;
+  if(_NSGetExecutablePath(install_path, &size) != 0) {
+    status = -1;
+  }
+#else
+  status = ::readlink("/proc/self/exe", install_path, sizeof(install_path) - 1);
+#endif
+  if(status != -1) {
+    string exe_path(install_path);
+    size_t install_index = exe_path.find_last_of('/');
+    if(install_index != string::npos) {
+      exe_path = exe_path.substr(0, install_index);
+      install_index = exe_path.find_last_of('/');
+      if(install_index != string::npos) {
+        wstring install_dir = BytesToUnicode(exe_path.substr(0, install_index));
+        properties_map.insert(pair<wstring, wstring>(L"install_dir", install_dir));
+      }
+    }
+  }
+#endif
+#endif
+
+  // user and temp directories
+#ifdef _WIN32  
+  char user_dir[MAX_PATH];
+  if(GetUserDirectory(user_dir, MAX_PATH)) {
+    wstring user_dir_value = BytesToUnicode(user_dir);
+    if(user_dir_value.back() == L'/' || user_dir_value.back() == L'\\') {
+      user_dir_value.pop_back();
+    }
+    properties_map.insert(pair<wstring, wstring>(L"user_dir", user_dir_value));
+  }
+
+  char tmp_dir[MAX_PATH];
+  if(GetTempPath(MAX_PATH, tmp_dir)) {
+    wstring tmp_dir_value = BytesToUnicode(tmp_dir);
+    if(tmp_dir_value.back() == L'/' || tmp_dir_value.back() == L'\\') {
+      tmp_dir_value.pop_back();
+    }
+    properties_map.insert(pair<wstring, wstring>(L"tmp_dir", tmp_dir_value));
+  }
+#else
+  struct passwd* user = getpwuid(getuid());
+  if(user) {
+    properties_map.insert(pair<wstring, wstring>(L"user_dir", BytesToUnicode(user->pw_dir)));
+  }
+
+  const char* tmp_dir = P_tmpdir;
+  if(tmp_dir) {
+    properties_map.insert(pair<wstring, wstring>(L"tmp_dir", BytesToUnicode(tmp_dir)));
+  }
+#endif
+
+  // read configuration properties
+  const int line_max = 80;
+  char buffer[line_max + 1];
+  fstream config("config.prop", fstream::in);
+  config.getline(buffer, line_max);
+  if(config.good()) {
+    while(strlen(buffer) > 0) {
+      // readline ane parse
+      wstring line = BytesToUnicode(buffer);
+      if(line.size() > 0 && line[0] != L'#') {
+        size_t offset = line.find_first_of(L'=');
+        // set name/value pairs
+        wstring name = line.substr(0, offset);
+        wstring value = line.substr(offset + 1);
+        if(name.size() > 0 && value.size() > 0) {
+          properties_map.insert(pair<wstring, wstring>(name, value));
+        }
+      }
+      // update
+      config.getline(buffer, 80);
+    }
+  }
+  config.close();
+}
+
+const std::wstring& StackMethod::ParseName(const wstring& name) const
+{
+  int state;
+  size_t index = name.find_last_of(':');
+  if(index > 0) {
+    wstring params_name = name.substr(index + 1);
+
+    // check return type
+    index = 0;
+    while(index < params_name.size()) {
+#ifdef _DEBUG
+      ParamType param;
+#endif
+      switch(params_name[index]) {
+        // bool
+      case 'l':
+#ifdef _DEBUG
+        param = INT_PARM;
+#endif
+        state = 0;
+        index++;
+        break;
+
+        // byte
+      case 'b':
+#ifdef _DEBUG
+        param = INT_PARM;
+#endif
+        state = 1;
+        index++;
+        break;
+
+        // int
+      case 'i':
+#ifdef _DEBUG
+        param = INT_PARM;
+#endif
+        state = 2;
+        index++;
+        break;
+
+        // float
+      case 'f':
+#ifdef _DEBUG
+        param = FLOAT_PARM;
+#endif
+        state = 3;
+        index++;
+        break;
+
+        // char
+      case 'c':
+#ifdef _DEBUG
+        param = CHAR_PARM;
+#endif
+        state = 4;
+        index++;
+        break;
+
+        // obj
+      case 'o':
+#ifdef _DEBUG
+        param = OBJ_PARM;
+#endif
+        state = 5;
+        index++;
+        while(index < params_name.size() && params_name[index] != ',') {
+          index++;
+        }
+        break;
+
+        // func
+      case 'm':
+#ifdef _DEBUG
+        param = FUNC_PARM;
+#endif
+        state = 6;
+        index++;
+        while(index < params_name.size() && params_name[index] != '~') {
+          index++;
+        }
+        while(index < params_name.size() && params_name[index] != ',') {
+          index++;
+        }
+        break;
+
+      default:
+#ifdef _DEBUG
+        assert(false);
+#endif
+        break;
+      }
+
+      // check array
+      int dimension = 0;
+      while(index < params_name.size() && params_name[index] == '*') {
+        dimension++;
+        index++;
+      }
+
+      if(dimension) {
+        switch(state) {
+        case 0:
+        case 1:
+#ifdef _DEBUG
+          param = BYTE_ARY_PARM;
+#endif
+          break;
+
+        case 4:
+#ifdef _DEBUG
+          param = CHAR_ARY_PARM;
+#endif
+          break;
+
+        case 2:
+#ifdef _DEBUG
+          param = INT_ARY_PARM;
+#endif
+          break;
+
+        case 3:
+#ifdef _DEBUG
+          param = FLOAT_ARY_PARM;
+#endif
+          break;
+
+        case 5:
+#ifdef _DEBUG
+          param = OBJ_ARY_PARM;
+#endif
+          break;
+        }
+      }
+
+#ifdef _DEBUG
+      switch(param) {
+      case CHAR_PARM:
+        wcout << L"  CHAR_PARM" << endl;
+        break;
+
+      case INT_PARM:
+        wcout << L"  INT_PARM" << endl;
+        break;
+
+      case FLOAT_PARM:
+        wcout << L"  FLOAT_PARM" << endl;
+        break;
+
+      case BYTE_ARY_PARM:
+        wcout << L"  BYTE_ARY_PARM" << endl;
+        break;
+
+      case CHAR_ARY_PARM:
+        wcout << L"  CHAR_ARY_PARM" << endl;
+        break;
+
+      case INT_ARY_PARM:
+        wcout << L"  INT_ARY_PARM" << endl;
+        break;
+
+      case FLOAT_ARY_PARM:
+        wcout << L"  FLOAT_ARY_PARM" << endl;
+        break;
+
+      case OBJ_PARM:
+        wcout << L"  OBJ_PARM" << endl;
+        break;
+
+      case OBJ_ARY_PARM:
+        wcout << L"  OBJ_ARY_PARM" << endl;
+        break;
+
+      case FUNC_PARM:
+        wcout << L"  FUNC_PARM" << endl;
+        break;
+
+      default:
+        assert(false);
+        break;
+      }
+#endif
+
+      // match ','
+      index++;
+    }
+  }
+
+  return name;
+}
+
 map<wstring, wstring> StackProgram::properties_map;
 
 /********************************
@@ -1256,6 +1581,164 @@ size_t* TrapProcessor::ExpandSerialBuffer(const long src_buffer_size, size_t* de
   }
 
   return dest_buffer;
+}
+
+void TrapProcessor::SerializeByte(char value, size_t* inst, size_t*& op_stack, long*& stack_pos)
+{
+  const long src_buffer_size = sizeof(value);
+  size_t* dest_buffer = (size_t*)inst[0];
+
+  if(dest_buffer) {
+    const long dest_pos = (long)inst[1];
+
+    // expand buffer, if needed
+    dest_buffer = ExpandSerialBuffer(src_buffer_size, dest_buffer, inst, op_stack, stack_pos);
+    inst[0] = (size_t)dest_buffer;
+
+    // copy content
+    char* dest_buffer_ptr = (char*)(dest_buffer + 3);
+    memcpy(dest_buffer_ptr + dest_pos, &value, src_buffer_size);
+    inst[1] = dest_pos + src_buffer_size;
+  }
+}
+
+char TrapProcessor::DeserializeByte(size_t* inst)
+{
+  size_t* byte_array = (size_t*)inst[0];
+  const long dest_pos = (long)inst[1];
+
+  if(byte_array && dest_pos < (long)byte_array[0]) {
+    const char* byte_array_ptr = (char*)(byte_array + 3);
+    char value;
+    memcpy(&value, byte_array_ptr + dest_pos, sizeof(value));
+    inst[1] = dest_pos + sizeof(value);
+
+    return value;
+  }
+
+  return 0;
+}
+
+void TrapProcessor::SerializeChar(wchar_t value, size_t* inst, size_t*& op_stack, long*& stack_pos)
+{
+  // convert to bytes
+  string out;
+  CharacterToBytes(value, out);
+  const long src_buffer_size = (long)out.size();
+  SerializeInt((INT_VALUE)out.size(), inst, op_stack, stack_pos);
+
+  // prepare copy   
+  size_t* dest_buffer = (size_t*)inst[0];
+  if(dest_buffer) {
+    const long dest_pos = (long)inst[1];
+
+    // expand buffer, if needed
+    dest_buffer = ExpandSerialBuffer(src_buffer_size, dest_buffer, inst, op_stack, stack_pos);
+    inst[0] = (size_t)dest_buffer;
+
+    // copy content
+    char* dest_buffer_ptr = (char*)(dest_buffer + 3);
+    memcpy(dest_buffer_ptr + dest_pos, out.c_str(), src_buffer_size);
+    inst[1] = dest_pos + src_buffer_size;
+  }
+}
+
+wchar_t TrapProcessor::DeserializeChar(size_t* inst)
+{
+  const int num = DeserializeInt(inst);
+  size_t* byte_array = (size_t*)inst[0];
+  const long dest_pos = (long)inst[1];
+
+  if(byte_array && dest_pos < (long)byte_array[0]) {
+    const char* byte_array_ptr = (char*)(byte_array + 3);
+    char* in = new char[num + 1];
+    memcpy(in, byte_array_ptr + dest_pos, num);
+    in[num] = '\0';
+
+    wchar_t out = L'\0';
+    BytesToCharacter(in, out);
+
+    // clean up
+    delete[] in;
+    in = nullptr;
+
+    inst[1] = dest_pos + num;
+
+    return out;
+  }
+
+  return 0;
+}
+
+void TrapProcessor::SerializeInt(INT_VALUE value, size_t* inst, size_t*& op_stack, long*& stack_pos)
+{
+  const long src_buffer_size = sizeof(value);
+  size_t* dest_buffer = (size_t*)inst[0];
+
+  if(dest_buffer) {
+    const long dest_pos = (long)inst[1];
+
+    // expand buffer, if needed
+    dest_buffer = ExpandSerialBuffer(src_buffer_size, dest_buffer, inst, op_stack, stack_pos);
+    inst[0] = (size_t)dest_buffer;
+
+    // copy content
+    char* dest_buffer_ptr = (char*)(dest_buffer + 3);
+    memcpy(dest_buffer_ptr + dest_pos, &value, src_buffer_size);
+    inst[1] = dest_pos + src_buffer_size;
+  }
+}
+
+INT_VALUE TrapProcessor::DeserializeInt(size_t* inst)
+{
+  size_t* byte_array = (size_t*)inst[0];
+  const long dest_pos = (long)inst[1];
+
+  if(byte_array && dest_pos < (long)byte_array[0]) {
+    const char* byte_array_ptr = (char*)(byte_array + 3);
+    INT_VALUE value;
+    memcpy(&value, byte_array_ptr + dest_pos, sizeof(value));
+    inst[1] = dest_pos + sizeof(value);
+
+    return value;
+  }
+
+  return 0;
+}
+
+void TrapProcessor::SerializeFloat(FLOAT_VALUE value, size_t* inst, size_t*& op_stack, long*& stack_pos)
+{
+  const long src_buffer_size = sizeof(value);
+  size_t* dest_buffer = (size_t*)inst[0];
+
+  if(dest_buffer) {
+    const long dest_pos = (long)inst[1];
+
+    // expand buffer, if needed
+    dest_buffer = ExpandSerialBuffer(src_buffer_size, dest_buffer, inst, op_stack, stack_pos);
+    inst[0] = (size_t)dest_buffer;
+
+    // copy content
+    char* dest_buffer_ptr = (char*)(dest_buffer + 3);
+    memcpy(dest_buffer_ptr + dest_pos, &value, src_buffer_size);
+    inst[1] = dest_pos + src_buffer_size;
+  }
+}
+
+FLOAT_VALUE TrapProcessor::DeserializeFloat(size_t* inst)
+{
+  size_t* byte_array = (size_t*)inst[0];
+  const long dest_pos = (long)inst[1];
+
+  if(byte_array && dest_pos < (long)byte_array[0]) {
+    const char* byte_array_ptr = (char*)(byte_array + 3);
+    FLOAT_VALUE value;
+    memcpy(&value, byte_array_ptr + dest_pos, sizeof(value));
+    inst[1] = dest_pos + sizeof(value);
+    return value;
+  }
+
+  return 0.0;
 }
 
 /********************************
@@ -4003,6 +4486,161 @@ bool TrapProcessor::DirList(StackProgram* program, size_t* inst, size_t* &op_sta
   }
 
   return true;
+}
+
+void TrapProcessor::WriteSerializedBytes(const char* array, const long src_buffer_size, size_t* inst, size_t*& op_stack, long*& stack_pos)
+{
+  size_t* dest_buffer = (size_t*)inst[0];
+  if(array && dest_buffer) {
+    const long dest_pos = (long)inst[1];
+
+    // expand buffer, if needed
+    dest_buffer = ExpandSerialBuffer(src_buffer_size, dest_buffer, inst, op_stack, stack_pos);
+    inst[0] = (size_t)dest_buffer;
+
+    // copy content
+    char* dest_buffer_ptr = (char*)(dest_buffer + 3);
+    memcpy(dest_buffer_ptr + dest_pos, array, src_buffer_size);
+    inst[1] = dest_pos + src_buffer_size;
+  }
+}
+
+void TrapProcessor::SerializeArray(const size_t* array, ParamType type, size_t* inst, size_t*& op_stack, long*& stack_pos)
+{
+  if(array) {
+    SerializeByte(1, inst, op_stack, stack_pos);
+    const long array_size = (long)array[0];
+
+    // write values
+    switch(type) {
+    case BYTE_ARY_PARM: {
+      // write metadata
+      char* array_ptr = (char*)(array + 3);
+      SerializeInt((INT_VALUE)array[0], inst, op_stack, stack_pos);
+      SerializeInt((INT_VALUE)array[1], inst, op_stack, stack_pos);
+      SerializeInt((INT_VALUE)array[2], inst, op_stack, stack_pos);
+      // write data
+      WriteSerializedBytes(array_ptr, array_size, inst, op_stack, stack_pos);
+    }
+                        break;
+
+    case CHAR_ARY_PARM: {
+      // convert
+      char* array_ptr = (char*)(array + 3);
+      const string buffer = UnicodeToBytes((const wchar_t*)array_ptr);
+      // write metadata  
+      SerializeInt((INT_VALUE)buffer.size(), inst, op_stack, stack_pos);
+      SerializeInt((INT_VALUE)array[1], inst, op_stack, stack_pos);
+      SerializeInt((INT_VALUE)buffer.size(), inst, op_stack, stack_pos);
+      // write data
+      WriteSerializedBytes((const char*)buffer.c_str(), (long)buffer.size(), inst, op_stack, stack_pos);
+    }
+                        break;
+
+    case INT_ARY_PARM: {
+      // write metadata
+      char* array_ptr = (char*)(array + 3);
+      SerializeInt((INT_VALUE)array[0], inst, op_stack, stack_pos);
+      SerializeInt((INT_VALUE)array[1], inst, op_stack, stack_pos);
+      SerializeInt((INT_VALUE)array[2], inst, op_stack, stack_pos);
+      // write data
+      WriteSerializedBytes(array_ptr, array_size * sizeof(INT_VALUE), inst, op_stack, stack_pos);
+    }
+                       break;
+
+    case OBJ_ARY_PARM: {
+      SerializeInt((INT_VALUE)array[0], inst, op_stack, stack_pos);
+      SerializeInt((INT_VALUE)array[1], inst, op_stack, stack_pos);
+      SerializeInt((INT_VALUE)array[2], inst, op_stack, stack_pos);
+
+      size_t* array_ptr = (size_t*)(array + 3);
+      for(int i = 0; i < array_size; ++i) {
+        size_t* obj = (size_t*)array_ptr[i];
+        ObjectSerializer serializer(obj);
+        vector<char> src_buffer = serializer.GetValues();
+        const long src_buffer_size = (long)src_buffer.size();
+        size_t* dest_buffer = (size_t*)inst[0];
+        long dest_pos = (long)inst[1];
+
+        // expand buffer, if needed
+        dest_buffer = ExpandSerialBuffer(src_buffer_size, dest_buffer, inst, op_stack, stack_pos);
+        inst[0] = (size_t)dest_buffer;
+
+        // copy content
+        char* dest_buffer_ptr = ((char*)(dest_buffer + 3) + dest_pos);
+        for(int j = 0; j < src_buffer_size; ++j, dest_pos++) {
+          dest_buffer_ptr[j] = src_buffer[j];
+        }
+        inst[1] = dest_pos;
+      }
+    }
+                       break;
+
+    case FLOAT_ARY_PARM: {
+      // write metadata
+      char* array_ptr = (char*)(array + 3);
+      SerializeInt((INT_VALUE)array[0], inst, op_stack, stack_pos);
+      SerializeInt((INT_VALUE)array[1], inst, op_stack, stack_pos);
+      SerializeInt((INT_VALUE)array[2], inst, op_stack, stack_pos);
+      // write data
+      WriteSerializedBytes(array_ptr, array_size * sizeof(FLOAT_VALUE), inst, op_stack, stack_pos);
+    }
+                         break;
+
+    default:
+      break;
+    }
+  }
+  else {
+    SerializeByte(0, inst, op_stack, stack_pos);
+  }
+}
+
+void TrapProcessor::ReadSerializedBytes(size_t* dest_array, const size_t* src_array, ParamType type, size_t* inst)
+{
+  if(dest_array && src_array) {
+    const long dest_pos = (long)inst[1];
+    const long src_array_size = (long)src_array[0];
+    long dest_array_size = (long)dest_array[0];
+
+    if(dest_pos < src_array_size) {
+      const char* src_array_ptr = (char*)(src_array + 3);
+      char* dest_array_ptr = (char*)(dest_array + 3);
+
+      switch(type) {
+      case BYTE_ARY_PARM:
+        memcpy(dest_array_ptr, src_array_ptr + dest_pos, dest_array_size);
+        break;
+
+      case CHAR_ARY_PARM: {
+        // convert
+        const string in((const char*)src_array_ptr + dest_pos, dest_array_size);
+        const wstring out = BytesToUnicode(in);
+        // copy
+        dest_array[0] = out.size();
+        dest_array[2] = out.size();
+        dest_array_size *= sizeof(wchar_t);
+        memcpy(dest_array_ptr, out.c_str(), out.size() * sizeof(wchar_t));
+      }
+                          break;
+
+      case INT_ARY_PARM:
+        dest_array_size *= sizeof(INT_VALUE);
+        memcpy(dest_array_ptr, src_array_ptr + dest_pos, dest_array_size);
+        break;
+
+      case FLOAT_ARY_PARM:
+        dest_array_size *= sizeof(FLOAT_VALUE);
+        memcpy(dest_array_ptr, src_array_ptr + dest_pos, dest_array_size);
+        break;
+
+      default:
+        break;
+      }
+
+      inst[1] = dest_pos + dest_array_size;
+    }
+  }
 }
 
 #endif
