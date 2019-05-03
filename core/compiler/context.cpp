@@ -4076,6 +4076,10 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
 
 bool ContextAnalyzer::UnboxingCalculation(Type* type, Expression* expression, const int depth, CalculatedExpression* calc_expression, bool set_left)
 {
+  if(!type || !expression) {
+    return false;
+  }
+
   ResolveClassEnumType(type);
   if(expression->GetExpressionType() == VAR_EXPR &&
     (type->GetClassName() == L"System.ByteHolder" ||
@@ -4606,12 +4610,17 @@ Expression* ContextAnalyzer::UnboxingExpression(Type* to_type, Expression* from_
     return nullptr;
   }
 
+  ResolveClassEnumType(to_type);
+
   Type* from_type = from_expr->GetEvalType();
   if(!from_type) {
     from_type = from_expr->GetBaseType();
   }
-  ResolveClassEnumType(to_type);
 
+  if(!from_type) {
+    return nullptr;
+  }
+  
   if(to_type->GetType() == CLASS_TYPE && from_type->GetType() != CLASS_TYPE) {
     ResolveClassEnumType(to_type);
     if(from_expr->GetExpressionType() == VAR_EXPR && (to_type->GetClassName() == L"System.ByteHolder" ||
