@@ -1,30 +1,17 @@
-#~
-# compile: obc -src http_regex_9.obs -lib regex.obl,collect.obl -dest http_regex.obe
-# run: obr http_regex.obe http://www.objeck.org
-# note: takes a few seconds to run
-~#
-
-use Web.HTTP;
-use Query.RegEx;
-
-class RegExUrls {
+class Test {
 	function : Main(args : String[]) ~ Nil {
-		if(args->Size() <> 1) { return; };
-		
-		a : FloatHolder := HttpClient->New()->Get(args[0]);
-		input := "";
-		each(i : lines) {
-			input->Append(lines->Get(i)->As(String));
-		};
-		input->PrintLine();
-		
-		"running regex..."->PrintLine();		
-		expr := "(href|HREF|src|SRC)=(\"|')(http://|https://|/)?((\\w|\\d|-|_)+(\\.|/)?)+(\\?(\\w|\\d|-|_)+=(\\w|\\d|-|_)+)?(&(\\w|\\d|-|_)+=(\\w|\\d|-|_)+)?(\"|')";
-		
-		found := RegEx->New(expr)->Find(input);
-		"---"->PrintLine();
-		each(i : found) {
-			found->Get(i)->As(String)->PrintLine();
-		};
+#		a : String;
+#		b : String;
+#		c := a + b;
+		s : String := Fie->C; # FIXME
+
+#		a : IntHolder := Fie->B;
+#		a->Get()->PrintLine();
+#		b := s + Fie->C;
+#		b->PrintLine();
 	}
+}
+
+enum Fie {
+	A, B, C
 }
