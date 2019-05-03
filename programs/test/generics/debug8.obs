@@ -6,11 +6,21 @@ class Foo {
 		m->Add("o", "13");
 		m->Add("r", "18");
 		m->Add("h", "8");
-		m->Size()->PrintLine();
 
 		m->Get("h")->PrintLine();
 		m->Get("o")->PrintLine();
 		m->Get("b")->PrintLine();
+
+		m->Apply(Concat(String) ~ String);
+
+		m->Get("h")->PrintLine();
+		m->Get("o")->PrintLine();
+		m->Get("b")->PrintLine();		
+	}
+
+	function : Concat(s : String) ~ String {
+		s += " #";
+		return s;
 	}
 }
 
@@ -31,6 +41,10 @@ class Node<K : Compare, V> {
 
 	method : public : GetValue() ~ V {
 		return @value;
+	}
+
+	method : public : SetValue(value : V) ~ Nil {
+		value := value;
 	}
 
 	method : public : SetLeft(left : Node<K, V>) ~ Nil {
@@ -96,6 +110,19 @@ class Map<K : Compare, V> {
 	}
 
 	method : public : Apply(func : (V) ~ V) ~ Nil {
+		Apply(@root, func);
+	}
+
+	method : Apply(current : Node<K,V>, func : (V) ~ V) ~ Nil {
+		if(current->GetLeft() <> Nil) {
+			Apply(current->GetLeft(), func);
+		};
+
+		if(current->GetRight() <> Nil) {
+			Apply(current->GetRight(), func);	
+		};
+
+		current->SetValue(func(current->GetValue()));
 	}
 
 	method : public : Get(key : K) ~ V {
