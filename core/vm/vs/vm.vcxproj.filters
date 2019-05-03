@@ -19,7 +19,9 @@
     <ClCompile Include="..\win_main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\arch\jit\ia32\jit_intel_lp32.cpp" />
+    <ClCompile Include="..\arch\jit\ia32\jit_intel_lp32.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\common.h">
@@ -49,7 +51,9 @@
     <ClInclude Include="..\..\shared\sys.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\arch\jit\ia32\jit_intel_lp32.h" />
+    <ClInclude Include="..\arch\jit\ia32\jit_intel_lp32.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Header Files">
