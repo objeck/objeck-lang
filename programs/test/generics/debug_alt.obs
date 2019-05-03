@@ -1,9 +1,9 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		a : String;
-		b : String;
-		c := a + b;
-		#	s := Fie->C; # FIXME
+#		a : String;
+#		b : String;
+#		c := a + b;
+		s : Int := Fie->C; # FIXME
 
 #		a : IntHolder := Fie->B;
 #		a->Get()->PrintLine();

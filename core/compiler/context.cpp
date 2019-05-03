@@ -3284,8 +3284,7 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
       }
       else {
         Type* from_type = expression->GetEvalType();
-        AnalyzeVariableCast(to_type, variable);
-        AnalyzeVariableCast(from_type, expression);
+        AnalyzeClassCast(to_type, expression, depth);
         variable->SetTypes(from_type);
         to_entry->SetType(from_type);
       }
