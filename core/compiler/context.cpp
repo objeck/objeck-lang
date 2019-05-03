@@ -1931,7 +1931,7 @@ void ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, const 
     }
     else {
       ProcessError(static_cast<Expression*>(method_call), L"Undefined class reference: '" +
-                   method_call->GetBaseType()->GetClassName() +
+                   expression->GetBaseType()->GetClassName() +
                    L"'\n\tIf external reference to generic ensure it has been typed");
     }
   }
@@ -4602,6 +4602,10 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
 //
 Expression* ContextAnalyzer::UnboxingExpression(Type* to_type, Expression* from_expr, int depth)
 {
+  if(!to_type || !from_expr) {
+    return nullptr;
+  }
+
   Type* from_type = from_expr->GetEvalType();
   if(!from_type) {
     from_type = from_expr->GetBaseType();
@@ -4639,11 +4643,20 @@ Expression* ContextAnalyzer::UnboxingExpression(Type* to_type, Expression* from_
 //
 Expression* ContextAnalyzer::BoxExpression(Type* to_type, Expression* from_expr, int depth)
 {
+  if(!to_type || !from_expr) {
+    return nullptr;
+  }
+
+  ResolveClassEnumType(to_type);
+
   Type* from_type = from_expr->GetEvalType();
   if(!from_type) {
     from_type = from_expr->GetBaseType();
   }
-  ResolveClassEnumType(to_type);
+
+  if(!from_type) {
+    return nullptr;
+  }
 
   const bool is_enum = from_expr->GetExpressionType() == METHOD_CALL_EXPR && static_cast<MethodCall*>(from_expr)->GetEnumItem();
 
