@@ -2,8 +2,7 @@ class Foo {
 	function : Main(args : String[]) ~ Nil {
 		m := Map->New()<String, IntHolder>;
 		m->Add("b", 13);
-#~
-		m->Add("b", IntHolder->New(2));
+#~		
 		m->Add("a", IntHolder->New(1));
 		m->Add("o", IntHolder->New(13));
 		m->Add("r", IntHolder->New(18));
@@ -17,8 +16,9 @@ class Foo {
 
 		m->Get("h")->Get()->PrintLine();
 		m->Get("o")->Get()->PrintLine();
+
 		m->Get("b")->Get()->PrintLine();		
-~#		
+~#				
 	}
 
 	function : Concat(i : IntHolder) ~ IntHolder {
