@@ -3192,6 +3192,11 @@ void ContextAnalyzer::AnalyzeReturn(Return* rtrn, const int depth)
     }
     AnalyzeRightCast(type, expression, (IsScalar(expression) && type->GetDimension() == 0), depth + 1);
 
+    Expression* box_expression = BoxExpression(type, expression, depth);
+    if(box_expression) {
+      rtrn->SetExpression(box_expression);
+    }
+
     if(type->GetType() == CLASS_TYPE && !ResolveClassEnumType(type)) {
       ProcessError(rtrn, L"Undefined class or enum: '" + ReplaceSubstring(type->GetClassName(), L"#", L"->") + L"'");
     }
@@ -3288,7 +3293,7 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
     SymbolEntry* to_entry = variable->GetEntry();
     if(to_entry) {
       Type* to_type = to_entry->GetType();
-      Expression* box_expression = BoxExpression(to_type, expression,depth);
+      Expression* box_expression = BoxExpression(to_type, expression, depth);
       if(box_expression) {
         expression = box_expression;
         assignment->SetExpression(box_expression);
