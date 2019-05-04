@@ -3,9 +3,12 @@ class Test {
 #		a := 9;
 		a := IntHolder->New(9);
 
-#		b : Int := a + 3;
-		b : Int := 3 + Bar();
+		b : Int := a + 3;
+#		b : Int := 3 + Bar();
 		b->PrintLine();
+
+		Stout()->PrintLine();
+		Ale()->Get()->PrintLine();
 	}
 
 	function : Fee() ~ Int {
@@ -24,7 +27,11 @@ class Test {
 		h->Get()->PrintLine();
 	}
 
-	function : Bar() ~ Int {
+	function : Stout() ~ Int {
 		return IntHolder->New(11);
+	}
+
+	function : Ale() ~ IntHolder {
+		return 5 + 3;
 	}
 }

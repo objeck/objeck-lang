@@ -464,7 +464,8 @@ class ContextAnalyzer {
   Expression* UnboxingExpression(Type* right, Expression* expression, int depth);
   void AnalyzeCalculation(CalculatedExpression* expression, const int depth);
   void AnalyzeCalculationCast(CalculatedExpression* expression, const int depth);
-  bool UnboxingCalculation(Type* type, Expression* expression, const int depth, CalculatedExpression* calc_expression, bool set_left);
+  bool UnboxingCalculation(Type* type, Expression* expression, CalculatedExpression* calc_expression, bool set_left, const int depth);
+  MethodCall* UnboxingReturn(Type* to_type, Expression* from_expr, const int depth);
   void AnalyzeDeclaration(Declaration * declaration, Class * klass, const int depth);
   // checks for method calls, which includes new array and object allocation
   void AnalyzeExpressionMethodCall(Expression* expression, const int depth);
