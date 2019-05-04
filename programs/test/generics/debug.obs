@@ -7,8 +7,8 @@ class Test {
 #		b : Int := 3 + Bar();
 		b->PrintLine();
 
-		Stout()->PrintLine();
-		Ale(11)->Get()->PrintLine();
+		beer := Stout() * Ale(11);
+		beer->PrintLine();
 	}
 
 	function : Fee() ~ Int {
