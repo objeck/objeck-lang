@@ -8,7 +8,7 @@ class Test {
 		b->PrintLine();
 
 		Stout()->PrintLine();
-		Ale()->Get()->PrintLine();
+		Ale(11)->Get()->PrintLine();
 	}
 
 	function : Fee() ~ Int {
@@ -31,7 +31,7 @@ class Test {
 		return IntHolder->New(11);
 	}
 
-	function : Ale() ~ IntHolder {
-		return 5 + 3;
+	function : Ale(a : Int) ~ IntHolder {
+		return 5 + a;
 	}
 }
