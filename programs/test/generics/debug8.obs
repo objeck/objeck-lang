@@ -1,8 +1,10 @@
 class Foo {
 	function : Main(args : String[]) ~ Nil {
-		m := Map->New()<String, IntHolder>;
-		m->Add("b", 13);
+		x := Funk();
+		x->PrintLine();
 #~		
+		m := Map->New()<String, IntHolder>;
+		
 		m->Add("a", IntHolder->New(1));
 		m->Add("o", IntHolder->New(13));
 		m->Add("r", IntHolder->New(18));
@@ -16,13 +18,19 @@ class Foo {
 
 		m->Get("h")->Get()->PrintLine();
 		m->Get("o")->Get()->PrintLine();
-~#				
 		
 		m->Get("b")->Get()->PrintLine();
+~#		
+	}
+
+	# TODO: Unbox testing
+	function : Funk() ~ Int {
+		return IntHolder->New(13);
 	}
 
 	function : Concat(i : IntHolder) ~ IntHolder {
 		return i + 13;
+#		return IntHolder->New(i + 13);
 	}
 }
 
@@ -46,7 +54,7 @@ class Node<K : Compare, V> {
 	}
 
 	method : public : SetValue(value : V) ~ Nil {
-		value := value;
+		@value := value;
 	}
 
 	method : public : SetLeft(left : Node<K, V>) ~ Nil {

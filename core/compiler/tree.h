@@ -1123,6 +1123,10 @@ namespace frontend {
     Expression* GetExpression() {
       return expression;
     }
+
+    void SetExpression(Expression* e) {
+      expression = e;
+    }
   };
 
   /****************************
