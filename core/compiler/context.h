@@ -46,11 +46,13 @@ using namespace frontend;
  ****************************/
 class LibraryMethodCallSelection {
   LibraryMethod* method;
+  vector<Expression*> boxed_params;
   vector<int> parm_matches; 
 
  public:
-  LibraryMethodCallSelection(LibraryMethod* m) {
+  LibraryMethodCallSelection(LibraryMethod* m, vector<Expression*>& b) {
     method = m;
+    boxed_params = b;
   }
 
   ~LibraryMethodCallSelection() {
@@ -76,6 +78,10 @@ class LibraryMethodCallSelection {
 
   LibraryMethod* GetLibraryMethod() {
     return method;
+  }
+
+  const vector<Expression*> GetParameters() {
+    return boxed_params;
   }
 };
 
@@ -125,11 +131,13 @@ class LibraryMethodCallSelector {
  ****************************/
 class MethodCallSelection {
   Method* method;
+  vector<Expression*> boxed_params;
   vector<int> parm_matches; 
 
  public:
-  MethodCallSelection(Method* m) {
+  MethodCallSelection(Method* m, vector<Expression*> &b) {
     method = m;
+    boxed_params = b;
   }
 
   ~MethodCallSelection() {
@@ -155,6 +163,10 @@ class MethodCallSelection {
 
   Method* GetMethod() {
     return method;
+  }
+
+  const vector<Expression*> GetParameters() {
+    return boxed_params;
   }
 };
 
