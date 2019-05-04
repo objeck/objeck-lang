@@ -396,26 +396,22 @@ public:
     for(size_t i = 0; i < out.size(); ++i) {
       out_buffer.push_back(out[i]);
     }
-    // file_out.write(out.c_str(), out.size());
   }
 
   inline void WriteByte(char value) {
     out_buffer.push_back(value);
-    // file_out.write(&value, sizeof(value));
   }
 
   inline void WriteInt(int32_t value) {
     char temp[sizeof(value)];
     memcpy(temp, &value, sizeof(value));
     std::copy(begin(temp), end(temp), std::back_inserter(out_buffer));
-    // file_out.write((char*)&value, sizeof(value));
   }
 
   inline void WriteUnsigned(uint32_t value) {
     char temp[sizeof(value)];
     memcpy(temp, &value, sizeof(value));
     std::copy(begin(temp), end(temp), std::back_inserter(out_buffer));
-    // file_out.write((char*)&value, sizeof(value));
   }
 
   inline void WriteChar(wchar_t value) {
@@ -431,7 +427,6 @@ public:
       for(size_t i = 0; i < buffer.size(); ++i) {
         out_buffer.push_back(buffer[i]);
       }
-      // file_out.write(buffer.c_str(), buffer.size());
     }
     else {
       WriteInt(0);
@@ -442,7 +437,6 @@ public:
     char temp[sizeof(value)];
     memcpy(temp, &value, sizeof(value));
     std::copy(begin(temp), end(temp), std::back_inserter(out_buffer));
-    // file_out.write((char*)&value, sizeof(value));
   }
 
   //
