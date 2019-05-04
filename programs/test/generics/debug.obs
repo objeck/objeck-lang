@@ -1,37 +1,30 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		a := 3;
-		b := a and 7;
-#		Fie(IntHolder->New(17));
-#		99->PrintLine();
-#		x := IntHolder->New(17);
-#		Fum(x,3);
-#		Fie(IntHolder->New(17));
-#		h := FloatHolder->New(3.5);
-#		h : FloatHolder := Foo() + 3.5;
-#		h->Get()->PrintLine();
+#		a := 9;
+		a := IntHolder->New(9);
 
-#		i : Int := Bar();
-# 		i->PrintLine();
-#		i : Int := Bar() - h + 'T';
-#		i->PrintLine();
+#		b : Int := a + 3;
+		b : Int := 3 + Bar();
+		b->PrintLine();
 	}
 
-	function : Foo() ~ Float {
-		return 7.3;
+	function : Fee() ~ Int {
+		return 13;
 	}
 
-	function : Bar() ~ FloatHolder {
-		return FloatHolder->New(13.5);
+	function : Fie() ~ IntHolder {
+		return IntHolder->New(7);
 	}
 
-	function : Fie(h : IntHolder) ~ Nil {
-		i : Int := h;
+	function : Foo(i : Int) ~ Nil {
 		i->PrintLine();
-#		h->Get()->PrintLine();
 	}
 
-	function : Fum(i : Int, h : IntHolder) ~ Nil {
-		(h+i)->PrintLine();
+	function : Fum(h : IntHolder) ~ Nil {
+		h->Get()->PrintLine();
+	}
+
+	function : Bar() ~ Int {
+		return IntHolder->New(11);
 	}
 }
