@@ -3958,22 +3958,22 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
       case CLASS_TYPE: {
         ResolveClassEnumType(left);
         const bool can_unbox_left = UnboxingCalculation(left, left_expr, expression, true, depth);
-        const bool left_is_enum = HasProgramLibraryEnum(left->GetClassName());
+        const bool is_left_enum = HasProgramLibraryEnum(left->GetClassName());
 
         ResolveClassEnumType(right);
         const bool can_unbox_right = UnboxingCalculation(right, right_expr, expression, false, depth);
         const bool is_right_enum = HasProgramLibraryEnum(right->GetClassName());
-
-        if(left_is_enum && is_right_enum) {
+        
+        if((is_left_enum && is_right_enum) || (can_unbox_left && can_unbox_right)) {
           AnalyzeClassCast(left, right, left_expr, false, depth + 1);
         }
         else if(can_unbox_left && !is_right_enum) {
           ProcessError(left_expr, L"Invalid operation between class and enum: '" + left->GetClassName() + L"' and '" + right->GetClassName() + L"'");
         }
-        else if(can_unbox_right && !left_is_enum) {
+        else if(can_unbox_right && !is_left_enum) {
           ProcessError(left_expr, L"Invalid operation between class and enum: '" + left->GetClassName() + L"' and '" + right->GetClassName() + L"'");
         }
-        else if(((!can_unbox_left && !left_is_enum) || (!can_unbox_right && !is_right_enum)) &&
+        else if(((!can_unbox_left && !is_left_enum) || (!can_unbox_right && !is_right_enum)) &&
                 expression->GetExpressionType() != EQL_EXPR && expression->GetExpressionType() != NEQL_EXPR) {
           ProcessError(left_expr, L"Invalid operation between class or enum: '" + left->GetClassName() + L"' and '" + right->GetClassName() + L"'");
         }
