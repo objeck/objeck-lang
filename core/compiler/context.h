@@ -80,7 +80,7 @@ class LibraryMethodCallSelection {
     return method;
   }
 
-  const vector<Expression*> GetParameters() {
+  const vector<Expression*> GetCallingParameters() {
     return boxed_params;
   }
 };
@@ -165,7 +165,7 @@ class MethodCallSelection {
     return method;
   }
 
-  const vector<Expression*> GetParameters() {
+  const vector<Expression*> GetCallingParameters() {
     return boxed_params;
   }
 };
