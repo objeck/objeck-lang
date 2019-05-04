@@ -127,6 +127,7 @@ namespace frontend {
     Type* func_rtrn;
     int func_param_count;
     vector<Type*> generic_types;
+    bool is_resolved;
     
     Type(Type* t) {
       if(t) {
@@ -137,7 +138,8 @@ namespace frontend {
         func_params = t->func_params;
         func_param_count = -1;
         generic_types = t->generic_types;
-      }
+        is_resolved = t->is_resolved;
+      } 
     }
     
     Type(EntryType t) {
@@ -145,6 +147,7 @@ namespace frontend {
       dimension = 0;
       func_rtrn = nullptr;
       func_param_count = -1;
+      is_resolved = false;
     }
 
     Type(EntryType t, const wstring &n) {
@@ -153,6 +156,7 @@ namespace frontend {
       dimension = 0;
       func_rtrn = nullptr;
       func_param_count = -1;
+      is_resolved = false;
     }
     
     Type(vector<Type*>& p, Type* r) {
@@ -161,6 +165,7 @@ namespace frontend {
       func_params = p;
       func_rtrn = r;
       func_param_count = -1;
+      is_resolved = false;
     }
     
     ~Type() {
@@ -171,6 +176,7 @@ namespace frontend {
 
     void SetType(EntryType t) {
       type = t;
+      is_resolved = false;
     }
 
     const EntryType GetType() {
@@ -179,6 +185,7 @@ namespace frontend {
 
     void SetGenerics(const vector<Type*>& g) {
       generic_types = g;
+      is_resolved = false;
     }
 
     vector<Type*> GetGenerics() {
@@ -191,6 +198,15 @@ namespace frontend {
 
     void SetDimension(int d) {
       dimension = d;
+      is_resolved = false;
+    }
+    
+    void SetResolved(bool r) {
+      is_resolved = r;
+    }
+    
+    bool IsResolved() {
+      return is_resolved;
     }
     
     vector<Type*>& GetFunctionParameters() {
@@ -207,6 +223,7 @@ namespace frontend {
     
     void SetFunctionParameterCount(int c) {
       func_param_count = c;
+      is_resolved = false;
     }
     
     Type* GetFunctionReturn() {
@@ -215,6 +232,7 @@ namespace frontend {
 
     void SetFunctionReturn(Type* r) {
       func_rtrn = r;
+      is_resolved = false;
     }
     
     const int GetDimension() {
@@ -223,6 +241,7 @@ namespace frontend {
 
     void SetClassName(const wstring &n) {
       class_name = n;
+      is_resolved = false;
     }
 
     const wstring GetClassName() {

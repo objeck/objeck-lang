@@ -988,7 +988,7 @@ void ContextAnalyzer::AnalyzeStatement(Statement* statement, const int depth)
       AnalyzeDeclaration(static_cast<Declaration*>(statement), current_class, depth);
     }
   }
-                         break;
+    break;
 
   case METHOD_CALL_STMT:
     AnalyzeMethodCall(static_cast<MethodCall*>(statement), depth);
@@ -1025,7 +1025,7 @@ void ContextAnalyzer::AnalyzeStatement(Statement* statement, const int depth)
       AnalyzeAssignment(assignment, statement->GetStatementType(), depth);
     }
   }
-                    break;
+    break;
 
   case SIMPLE_STMT:
     AnalyzeSimpleStatement(static_cast<SimpleStatement*>(statement), depth);
@@ -1363,7 +1363,7 @@ void ContextAnalyzer::AnalyzeStaticArray(StaticArray* array, const int depth)
       int_str_index++;
     }
   }
-                 break;
+    break;
 
   case FLOAT_TYPE: {
     int id = program->GetFloatStringId(all_elements);
@@ -1376,7 +1376,7 @@ void ContextAnalyzer::AnalyzeStaticArray(StaticArray* array, const int depth)
       float_str_index++;
     }
   }
-                   break;
+    break;
 
   case CHAR_TYPE: {
     // copy wstring elements
@@ -1395,7 +1395,7 @@ void ContextAnalyzer::AnalyzeStaticArray(StaticArray* array, const int depth)
       char_str_index++;
     }
   }
-                  break;
+    break;
 
   case CLASS_TYPE:
     for(size_t i = 0; i < all_elements.size(); ++i) {
@@ -3060,8 +3060,8 @@ void ContextAnalyzer::AnalyzeSelect(Select* select_stmt, const int depth)
           ProcessError(expression, L"Expected integer literal or enum item");
         }
       }
-                             break;
-
+        break;
+        
       default:
         ProcessError(expression, L"Expected integer literal or enum item");
         break;
@@ -5863,8 +5863,8 @@ const wstring ContextAnalyzer::EncodeType(Type* type)
         encoded_name += type->GetClassName();
       }
     }
-                     break;
-
+      break;
+      
     case FUNC_TYPE:
       if(type->GetClassName().size() == 0) {
         type->SetClassName(EncodeFunctionType(type->GetFunctionParameters(),
@@ -5874,16 +5874,21 @@ const wstring ContextAnalyzer::EncodeType(Type* type)
       break;
     }
   }
-
+  
   return encoded_name;
 }
 
 bool ContextAnalyzer::ResolveClassEnumType(Type* type, Class* context_klass)
 {
+  if(type->IsResolved()) {
+    return true;
+  }
+  
   Class* klass = SearchProgramClasses(type->GetClassName());
   if(klass) {
     klass->SetCalled(true);
     type->SetClassName(klass->GetName());
+    type->SetResolved(true);
     return true;
   }
 
@@ -5891,6 +5896,7 @@ bool ContextAnalyzer::ResolveClassEnumType(Type* type, Class* context_klass)
   if(lib_klass) {
     lib_klass->SetCalled(true);
     type->SetClassName(lib_klass->GetName());
+    type->SetResolved(true);
     return true;
   }
 
@@ -5902,11 +5908,13 @@ bool ContextAnalyzer::ResolveClassEnumType(Type* type, Class* context_klass)
         Type* inf_type = klass->GetGenericInterface();
         if(ResolveClassEnumType(inf_type)) {
           type->SetClassName(inf_type->GetClassName());
+          type->SetResolved(true);
           return true;
         }
       }
       else {
         type->SetClassName(type->GetClassName());
+        type->SetResolved(true);
         return true;
       }
     }
@@ -5915,12 +5923,14 @@ bool ContextAnalyzer::ResolveClassEnumType(Type* type, Class* context_klass)
   Enum* eenum = SearchProgramEnums(type->GetClassName());
   if(eenum) {
     type->SetClassName(type->GetClassName());
+    type->SetResolved(true);
     return true;
   }
   else {
     eenum = SearchProgramEnums(context_klass->GetName() + L"#" + type->GetClassName());
     if(eenum) {
       type->SetClassName(context_klass->GetName() + L"#" + type->GetClassName());
+      type->SetResolved(true);
       return true;
     }
   }
@@ -5928,12 +5938,14 @@ bool ContextAnalyzer::ResolveClassEnumType(Type* type, Class* context_klass)
   LibraryEnum* lib_eenum = linker->SearchEnumLibraries(type->GetClassName(), program->GetUses());
   if(lib_eenum) {
     type->SetClassName(lib_eenum->GetName());
+    type->SetResolved(true);
     return true;
   }
   else {
     lib_eenum = linker->SearchEnumLibraries(type->GetClassName(), program->GetUses());
     if(lib_eenum) {
       type->SetClassName(lib_eenum->GetName());
+      type->SetResolved(true);
       return true;
     }
   }
