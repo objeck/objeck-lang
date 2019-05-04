@@ -3276,7 +3276,7 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
         variable->SetTypes(to_type);
         entry->SetType(to_type);
       }
-      // set variable to scalar type if we're de-referencing an array variable
+      // set variable to scalar type if we're dereferencing an array variable
       if(expression->GetExpressionType() == VAR_EXPR) {
         Variable* expr_variable = static_cast<Variable*>(expression);
         if(entry->GetType() && expr_variable->GetIndices()) {
@@ -5297,19 +5297,25 @@ Type* ContextAnalyzer::RelsolveGenericType(Type* generic_type, MethodCall* metho
         if(method_call->GetEntry()) {
           const vector<Type*> concrete_types = method_call->GetEntry()->GetType()->GetGenerics();
           if(concrete_index < (int)concrete_types.size()) {
-            return concrete_types[concrete_index];
+            Type* temp = TypeFactory::Instance()->MakeType(concrete_types[concrete_index]);
+            temp->SetDimension(generic_type->GetDimension());
+            return temp;
           }
         }
         else if(method_call->GetVariable() && method_call->GetVariable()->GetEntry()) {
           const vector<Type*> concrete_types = method_call->GetVariable()->GetEntry()->GetType()->GetGenerics();
           if(concrete_index < (int)concrete_types.size()) {
-            return concrete_types[concrete_index];
+            Type* temp = TypeFactory::Instance()->MakeType(concrete_types[concrete_index]);
+            temp->SetDimension(generic_type->GetDimension());
+            return temp;
           }
         }
         else if(method_call->GetCallType() == NEW_INST_CALL && method_call->HasConcreteTypes()) {
           const vector<Type*> concrete_types = method_call->GetConcreteTypes();
           if(concrete_index < (int)concrete_types.size()) {
-            return concrete_types[concrete_index];
+            Type* temp = TypeFactory::Instance()->MakeType(concrete_types[concrete_index]);
+            temp->SetDimension(generic_type->GetDimension());
+            return temp;
           }
         }
         // nested call, maybe reevaluate?
@@ -5318,7 +5324,9 @@ Type* ContextAnalyzer::RelsolveGenericType(Type* generic_type, MethodCall* metho
           if(prev_method_call->GetEvalType()) {
             const vector<Type*> concrete_types = prev_method_call->GetEvalType()->GetGenerics();
             if(concrete_index < (int)concrete_types.size()) {
-              return concrete_types[concrete_index];
+              Type* temp = TypeFactory::Instance()->MakeType(concrete_types[concrete_index]);
+              temp->SetDimension(generic_type->GetDimension());
+              return temp;
             }
           }
         }

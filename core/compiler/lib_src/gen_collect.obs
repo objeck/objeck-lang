@@ -1,0 +1,308 @@
+#~
+Generic backed collections
+~#	
+bundle Collection.Generic {
+	#~
+	Growable array of comparable based objects
+	~#
+	class Vector<V : Compare> {
+		@values : V[];
+		@size : Int;
+		
+		#~
+		Default constructor 
+		~#
+		New() {
+			@values := V->New[8];
+			@size := 0;
+		}
+		
+		#~
+		Copy constructor
+		@param values values to copy 
+		~#
+		New(values : V[]) {
+			@values := V->New[values->Size() + values->Size() / 2];
+			@size := values->Size();
+			Runtime->Copy(@values, 0, values, 0, @size);
+ 		}
+
+		#~
+		Copy constructor
+		@param values values to copy 
+		~#
+		New(values : Vector<V>) {
+			@values := values->ToArray();
+			@size := values->Size();
+		}
+
+		method : Expand() ~ Nil {
+			if(@size >= @values->Size()) {
+				temp : V[] := V->New[@size * 2];
+				Runtime->Copy(temp, 0, @values, 0, @size);
+				@values := temp;
+			};
+		}
+
+		#~
+		Swap two values in the vector
+		@param a first value
+		@param b second value
+		@return true if values were swapped
+		~#
+		method : public : Swap(a : Int, b : Int) ~ Bool {
+			if(a < -1 | b < -1 | a > @size | b > @size) {
+				return false;
+			};
+			
+			temp := @values[a];
+			@values[a] := @values[b];
+			@values[b] := temp;
+			
+			return true;
+		}
+
+		#~
+		Adds a vector of values to the end of the vector
+		@param values values to append 
+		~#
+		method : public : AddBack(values : Vector<V>) ~ Nil {
+			max := values->Size() + @size;
+			if(max >= @values->Size()) {
+				temp : V[] := V->New[max + max / 2];
+				Runtime->Copy(temp, 0, @values, 0, @size);
+				@values := temp;
+			};
+			
+			temp := values->ToArray();
+			Runtime->Copy(@values, @size, temp, 0, temp->Size());
+			@size := max;
+		}
+
+		#~
+		Adds a value to the end
+		@param value value to append 
+		~#
+		method : public : AddBack(value : V) ~ Nil {
+			Expand();
+			@values[@size] := value;
+			@size += 1;
+		}
+
+		#~
+		Removes the last value
+		@return value
+		~#
+		method : public : RemoveBack() ~ V {
+			if(@size > 0) {
+				@size -= 1;
+				return @values[@size];
+			};
+	
+			return Nil;
+		}
+		
+		#~
+		Removes an indexed value
+		@param i index
+		@return value
+		~#
+		method : public : Remove(i : Int) ~ V {
+			if(i > -1 & i < @size) {
+				temp := V->New[@values->Size()];
+				Runtime->Copy(temp, 0, @values, 0, i);
+				Runtime->Copy(temp, i, @values, i + 1, @size - i - 1);
+				value := @values[i];
+				@values := temp;
+				@size -= 1;
+				return value;
+			};
+			
+			return Nil;
+		}
+
+		#~
+		Gets an indexed value
+		@param index index
+		@return value
+		~#
+		method : public : Get(index : Int) ~ V {
+			if(index > -1 & index < @size) {
+				return @values[index];
+			};
+
+			return Nil;
+		}
+
+		#~
+		Sets an indexed value
+		@param value value
+		@param index index
+		~#
+		method : public : Set(value : V, index : Int) ~ Bool {
+			if(index > -1 & index < @size) {
+				@values[index] := value;
+				return true;
+			};
+			
+			return false;
+		}
+
+		#~
+		Clears the vector
+		~#
+		method : public : Empty() ~ Nil {
+			@values := V->New[8];
+			@size := 0;
+		}
+		
+		#~
+		Size of vector
+		@return size of vector
+		~#
+		method : public : Size() ~ Int {
+			return @size;
+		}
+		
+		#~
+		Checks to see if the vector is empty
+		@return true if empty, false otherwise
+		~#
+		method : public : IsEmpty() ~ Bool {
+			return @size = 0;
+		}
+		
+		#~
+		Sorts the values in the vector
+		~#	
+		method : public : native : Sort() ~ Nil {
+			a : V[] := @values;
+			b : V[] := V->New[@size];
+			MergeSort(0, @size - 1, a, b);
+		}
+		
+		method : MergeSort(low : Int, hi : Int, a : V[], b : V[]) ~ Nil {
+			if(low < hi) {
+				mid := (low + hi) / 2;
+				MergeSort(low, mid, a, b);
+				MergeSort(mid + 1, hi, a, b);
+				Merge(low, mid, hi, a, b);
+			};	
+		}
+		
+		method : native : Merge(low : Int, mid : Int, hi : Int, a : V[], b : V[]) ~ Nil {
+			# copy both halves of a to auxiliary array b
+			for(i := low; i <= hi; i += 1;) {
+				b[i] := a[i];
+			};
+
+			i := low; 
+			j := mid + 1; 
+			k := low;
+			
+			# copy back next-greatest element at each time
+			while(i <= mid & j <= hi) {
+				if(b[i]->Compare(b[j]) < 0 | b[i]->Compare(b[j]) = 0) {
+					a[k] := b[i];
+					k := k + 1;
+					i += 1;
+				}
+				else {
+					a[k] := b[j];
+					k := k + 1;
+					j := j + 1;
+				};
+			};
+			
+			# copy back remaining elements of first half (if any)
+			while(i <= mid) {
+				a[k] := b[i];
+				k := k + 1;
+				i += 1;
+			};
+		}
+
+		#~
+		Finds a given value in the vector via linear search
+		@param value value to search for
+		@return index of found value, -1 if not found
+		~#
+		method : public : Find(value : V) ~ Int {
+         for(i := 0; i < @size; i += 1;) {
+            if(@values[i]->Compare(value) = 0) {
+               return i;
+            };
+         };
+
+         return -1;
+      }
+		
+		#~
+		Performs a binary search O(log n)
+		@param value value to search for
+		@return index of found value, -1 if not found
+		~#
+		method : public : native : BinarySearch(value : V) ~ Int {
+			low := 0;
+			high := @size - 1;
+
+			while(low <= high) {
+				mid := (low + high) / 2;
+      	
+				if(@values[mid]->Compare(value) > 0) {
+					high := mid - 1;
+				}
+				else if(@values[mid]->Compare(value) < 0) {
+					low := mid + 1;
+				}
+				else {
+					return mid;
+				};
+			};
+
+			return -1;
+		}
+		
+		#~
+		Check of the given value is in the vector
+		@param value value to check for
+		@return true if found, false otherwise
+		~#
+		method : public : Has(value : V) ~ Bool {
+			for(i : Int := 0; i < @size; i += 1;) {
+				if(@values[i]->Compare(value) = 0) {
+					return true;
+				};
+			};
+			
+			return false;
+		}
+		
+		#~
+		Uses the given function to filter out values
+		@param f function to use a filter. If the function evaluates to true the value is added to the collection.
+		@return filter vector
+		~#
+		method : public : Filter(f : (V) ~ Bool) ~ Vector<V> {
+			filtered := Vector->New()<V>;
+			
+			for(i : Int := 0; i < @size; i += 1;) {
+				if(f(@values[i])) {
+					filtered->AddBack(@values[i]);
+				};
+			};
+			
+			return filtered;
+		}
+		
+		#~
+		Converts the vector into an object array
+		@return object array
+		~#
+		method : public : ToArray() ~ V[] {
+			array : V[] := V->New[@size];
+			Runtime->Copy(array, 0, @values, 0, @size);
+			return array;
+		}
+	}
+}
