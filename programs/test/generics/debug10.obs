@@ -1,0 +1,17 @@
+class Foo<V> {
+	@vv : V[];
+
+	function : Main(args : String[]) ~ Nil {
+	}
+
+	New() {
+	}
+
+	New(f : Foo<V>) {
+		@vv := f->ToArray();
+	}	
+
+	method : public : ToArray() ~ V[] {
+		return V->New[3];
+	}
+}
