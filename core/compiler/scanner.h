@@ -344,13 +344,13 @@ class Token {
  public:
 
   inline void Copy(Token* token) {
-    line_nbr = token->GetLineNumber();
-    char_lit = token->GetCharLit();
-    int_lit = token->GetIntLit();
-    double_lit = token->GetFloatLit();
-    ident = token->GetIdentifier();
-    token_type = token->GetType();
-    filename = token->GetFileName();
+    line_nbr = token->line_nbr;
+    char_lit = token->char_lit;
+    int_lit = token->int_lit;
+    double_lit = token->double_lit;
+    ident = token->ident;
+    token_type = token->token_type;
+    filename = token->filename;
   }
 
   inline const wstring GetFileName() {
