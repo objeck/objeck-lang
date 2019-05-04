@@ -5,6 +5,7 @@ make -f make/Makefile.SYS.32
 make -f make/Makefile.32 clean
 make -f make/Makefile.32
 ./obc -src lib_src/collect.obs -tar lib -opt s3 -dest ../lib/collect.obl
+./obc -src lib_src/gen_collect.obs -tar lib -opt s3 -dest ../lib/gen_collect.obl
 ./obc -src lib_src/xml.obs -lib collect.obl -tar lib -opt s3 -dest ../lib/xml.obl
 ./obc -src lib_src/json.obs -lib collect.obl -tar lib -opt s3 -dest ../lib/json.obl
 ./obc -src lib_src/encrypt.obs -lib collect.obl -tar lib -opt s3 -dest ../lib/encrypt.obl
