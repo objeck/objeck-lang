@@ -4748,38 +4748,19 @@ Expression* ContextAnalyzer::BoxExpression(Type* to_type, Expression* from_expr,
   }
 
   const bool is_enum = from_expr->GetExpressionType() == METHOD_CALL_EXPR && static_cast<MethodCall*>(from_expr)->GetEnumItem();
-
-  if(to_type->GetType() == CLASS_TYPE && (is_enum || from_type->GetType() == BYTE_TYPE || 
-     from_type->GetType() == CHAR_TYPE || from_type->GetType() == INT_TYPE || from_type->GetType() == FLOAT_TYPE)) {
-    if(to_type->GetClassName() == L"System.ByteHolder") {
+  if(to_type->GetType() == CLASS_TYPE && (is_enum || 
+     from_type->GetType() == BYTE_TYPE || 
+     from_type->GetType() == CHAR_TYPE || 
+     from_type->GetType() == INT_TYPE || 
+     from_type->GetType() == FLOAT_TYPE)) {
+    if(to_type->GetClassName() == L"System.ByteHolder" || 
+       to_type->GetClassName() == L"System.CharHolder" ||
+       to_type->GetClassName() == L"System.IntHolder" ||
+       to_type->GetClassName() == L"System.FloatHolder") {
       ExpressionList* box_expressions = TreeFactory::Instance()->MakeExpressionList();
       box_expressions->AddExpression(from_expr);
       MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(from_expr->GetFileName(), from_expr->GetLineNumber(),
-                                                                            NEW_INST_CALL, L"System.ByteHolder", box_expressions);
-      AnalyzeMethodCall(box_method_call, depth);
-      return box_method_call;
-    }
-    else if(to_type->GetClassName() == L"System.CharHolder") {
-      ExpressionList* box_expressions = TreeFactory::Instance()->MakeExpressionList();
-      box_expressions->AddExpression(from_expr);
-      MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(from_expr->GetFileName(), from_expr->GetLineNumber(),
-                                                                            NEW_INST_CALL, L"System.CharHolder", box_expressions);
-      AnalyzeMethodCall(box_method_call, depth);
-      return box_method_call;
-    }
-    else if(to_type->GetClassName() == L"System.IntHolder") {
-      ExpressionList* box_expressions = TreeFactory::Instance()->MakeExpressionList();
-      box_expressions->AddExpression(from_expr);
-      MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(from_expr->GetFileName(), from_expr->GetLineNumber(),
-                                                                            NEW_INST_CALL, L"System.IntHolder", box_expressions);
-      AnalyzeMethodCall(box_method_call, depth);
-      return box_method_call;
-    }
-    else if(to_type->GetClassName() == L"System.FloatHolder") {
-      ExpressionList* box_expressions = TreeFactory::Instance()->MakeExpressionList();
-      box_expressions->AddExpression(from_expr);
-      MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(from_expr->GetFileName(), from_expr->GetLineNumber(),
-                                                                            NEW_INST_CALL, L"System.FloatHolder", box_expressions);
+                                                                            NEW_INST_CALL, to_type->GetClassName(), box_expressions);
       AnalyzeMethodCall(box_method_call, depth);
       return box_method_call;
     }
