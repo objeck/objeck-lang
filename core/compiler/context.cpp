@@ -2186,6 +2186,11 @@ Method* ContextAnalyzer::ResolveMethodCall(Class* klass, MethodCall* method_call
       vector<Expression*> boxed_params;
       for(size_t j = 0; j < expr_params.size(); ++j) {
         Type* method_type = method_parms[j]->GetEntry()->GetType();
+        if(klass->HasGenerics()) {
+          method_type = RelsolveGenericType(method_type, method_call, klass, nullptr);
+          ResolveClassEnumType(method_type);
+        }
+
         Expression* expr_param = expr_params[j];
         Type* expr_type = expr_param->GetEvalType();
 
@@ -2217,6 +2222,7 @@ Method* ContextAnalyzer::ResolveMethodCall(Class* klass, MethodCall* method_call
           // resolve generic to concrete, if needed
           if(klass->HasGenerics()) {
             method_type = RelsolveGenericType(method_type, method_call, klass, nullptr);
+            ResolveClassEnumType(method_type);
           }
           ResolveClassEnumType(method_type);
         }
@@ -2231,6 +2237,7 @@ Method* ContextAnalyzer::ResolveMethodCall(Class* klass, MethodCall* method_call
   // evaluate matches
   MethodCallSelector selector(method_call, matches);
   Method* method = selector.GetSelection();
+
   if(method) {
     // check casts on final candidate
     vector<Declaration*> method_parms = method->GetDeclarations()->GetDeclarations();
@@ -2460,6 +2467,11 @@ LibraryMethod* ContextAnalyzer::ResolveMethodCall(LibraryClass* klass, MethodCal
       vector<Expression*> boxed_params;
       for(size_t j = 0; j < expr_params.size(); ++j) {
         Type* method_type = method_parms[j];
+        if(klass->HasGenerics()) {
+          method_type = RelsolveGenericType(method_type, method_call, nullptr, klass);
+          ResolveClassEnumType(method_type);
+        }
+
         Expression* expr_param = expr_params[j];
         Type* expr_type = expr_param->GetEvalType();
 
