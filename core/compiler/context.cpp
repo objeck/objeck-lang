@@ -3191,7 +3191,7 @@ void ContextAnalyzer::AnalyzeReturn(Return* rtrn, const int depth)
       ProcessError(expression, L"Invalid operation with 'Nil' value");
     }
 
-    MethodCall* boxed_rtrn = UnboxingReturn(type, expression, depth);
+    MethodCall* boxed_rtrn = BoxUnboxingReturn(type, expression, depth);
     if(boxed_rtrn) {
       rtrn->SetExpression(boxed_rtrn);
       expression = boxed_rtrn;
@@ -4134,7 +4134,7 @@ bool ContextAnalyzer::UnboxingCalculation(Type* type, Expression* expression, Ca
   return false;
 }
 
-MethodCall* ContextAnalyzer::UnboxingReturn(Type* to_type, Expression* from_expr, const int depth)
+MethodCall* ContextAnalyzer::BoxUnboxingReturn(Type* to_type, Expression* from_expr, const int depth)
 {
   if(to_type && from_expr) {
     ResolveClassEnumType(to_type);
