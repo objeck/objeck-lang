@@ -6333,7 +6333,7 @@ LibraryMethod* LibraryMethodCallSelector::GetSelection()
     return nullptr;
   }
 
-  method_call->GetCallingParameters()->SetExpressions(valid_matches[match_index]->GetCallingParameters());
+  method_call->GetCallingParameters()->SetExpressions(matches[match_index]->GetCallingParameters());
   return matches[match_index]->GetLibraryMethod();
 }
 
@@ -6375,6 +6375,6 @@ Method* MethodCallSelector::GetSelection()
     return nullptr;
   }
 
-  method_call->GetCallingParameters()->SetExpressions(valid_matches[match_index]->GetCallingParameters());
+  method_call->GetCallingParameters()->SetExpressions(matches[match_index]->GetCallingParameters());
   return matches[match_index]->GetMethod();
 }
