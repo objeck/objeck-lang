@@ -2183,7 +2183,7 @@ Method* ContextAnalyzer::ResolveMethodCall(Class* klass, MethodCall* method_call
 
     if(expr_params.size() == method_parms.size()) {
       // box and unbox parameters
-      vector<Expression*> boxed_params;
+      vector<Expression*> boxed_resolved_params;
       for(size_t j = 0; j < expr_params.size(); ++j) {
         Type* method_type = method_parms[j]->GetEntry()->GetType();
         if(klass->HasGenerics()) {
@@ -2196,24 +2196,24 @@ Method* ContextAnalyzer::ResolveMethodCall(Class* klass, MethodCall* method_call
 
         Expression* boxed_param = BoxExpression(method_type, expr_param, depth);
         if(boxed_param) {
-          boxed_params.push_back(boxed_param);
+          boxed_resolved_params.push_back(boxed_param);
         }
         else if((boxed_param = UnboxingExpression(expr_type, expr_param, depth))) {
-          boxed_params.push_back(boxed_param);
+          boxed_resolved_params.push_back(boxed_param);
         }
         // add default
         if(!boxed_param) {
-          boxed_params.push_back(expr_param);
+          boxed_resolved_params.push_back(expr_param);
         }
       }
-      calling_params->SetExpressions(boxed_params);
+      // calling_params->SetExpressions(boxed_params);
 
 #ifdef _DEBUG
-      assert(boxed_params.size() == expr_params.size());
+      assert(boxed_resolved_params.size() == expr_params.size());
 #endif
 
-      MethodCallSelection* match = new MethodCallSelection(candidates[i]);
-      for(size_t j = 0; j < boxed_params.size(); ++j) {
+      MethodCallSelection* match = new MethodCallSelection(candidates[i], boxed_resolved_params);
+      for(size_t j = 0; j < boxed_resolved_params.size(); ++j) {
         // get method type
         Type* method_type = nullptr;
         if(method_parms[j]->GetEntry() && method_parms[j]->GetEntry()->GetType()) {
@@ -2227,7 +2227,7 @@ Method* ContextAnalyzer::ResolveMethodCall(Class* klass, MethodCall* method_call
           ResolveClassEnumType(method_type);
         }
         // add parameter match
-        const int compare = MatchCallingParameter(boxed_params[j], method_type, klass, nullptr, depth);
+        const int compare = MatchCallingParameter(boxed_resolved_params[j], method_type, klass, nullptr, depth);
         match->AddParameterMatch(compare);
       }
       matches.push_back(match);
@@ -2464,7 +2464,7 @@ LibraryMethod* ContextAnalyzer::ResolveMethodCall(LibraryClass* klass, MethodCal
     vector<Type*> method_parms = candidates[i]->GetDeclarationTypes();
     if(expr_params.size() == method_parms.size()) {
       // box and unbox parameters
-      vector<Expression*> boxed_params;
+      vector<Expression*> boxed_resolved_params;
       for(size_t j = 0; j < expr_params.size(); ++j) {
         Type* method_type = method_parms[j];
         if(klass->HasGenerics()) {
@@ -2477,25 +2477,24 @@ LibraryMethod* ContextAnalyzer::ResolveMethodCall(LibraryClass* klass, MethodCal
 
         Expression* boxed_param = BoxExpression(method_type, expr_param, depth);
         if(boxed_param) {
-          boxed_params.push_back(boxed_param);
+          boxed_resolved_params.push_back(boxed_param);
         }
         else if((boxed_param = UnboxingExpression(expr_type, expr_param, depth))) {
-          boxed_params.push_back(boxed_param);
+          boxed_resolved_params.push_back(boxed_param);
         }
 
         // add default
         if(!boxed_param) {
-          boxed_params.push_back(expr_param);
+          boxed_resolved_params.push_back(expr_param);
         }
       }
-      calling_params->SetExpressions(boxed_params);
 
 #ifdef _DEBUG
-      assert(boxed_params.size() == expr_params.size());
+      assert(boxed_resolved_params.size() == expr_params.size());
 #endif
 
-      LibraryMethodCallSelection* match = new LibraryMethodCallSelection(candidates[i]);
-      for(size_t j = 0; j < boxed_params.size(); ++j) {
+      LibraryMethodCallSelection* match = new LibraryMethodCallSelection(candidates[i], boxed_resolved_params);
+      for(size_t j = 0; j < boxed_resolved_params.size(); ++j) {
         // map generic to concrete type, if needed
         Type* method_type = method_parms[j];
         if(klass->HasGenerics()) {
@@ -2503,7 +2502,7 @@ LibraryMethod* ContextAnalyzer::ResolveMethodCall(LibraryClass* klass, MethodCal
           ResolveClassEnumType(method_type);
         }
         // compare and total
-        const int compare = MatchCallingParameter(boxed_params[j], method_type, nullptr, klass, depth);
+        const int compare = MatchCallingParameter(boxed_resolved_params[j], method_type, nullptr, klass, depth);
         match->AddParameterMatch(compare);
       }
       matches.push_back(match);
@@ -6235,6 +6234,7 @@ LibraryMethod* LibraryMethodCallSelector::GetSelection()
   }
   // single match
   else if(valid_matches.size() == 1) {
+    method_call->GetCallingParameters()->SetExpressions(valid_matches[0]->GetParameters());
     return valid_matches[0]->GetLibraryMethod();
   }
 
@@ -6264,10 +6264,11 @@ LibraryMethod* LibraryMethodCallSelector::GetSelection()
     return nullptr;
   }
 
+  method_call->GetCallingParameters()->SetExpressions(valid_matches[match_index]->GetParameters());
   return matches[match_index]->GetLibraryMethod();
 }
 
-frontend::Method* MethodCallSelector::GetSelection()
+Method* MethodCallSelector::GetSelection()
 {
   // no match
   if(valid_matches.size() == 0) {
@@ -6275,6 +6276,7 @@ frontend::Method* MethodCallSelector::GetSelection()
   }
   // single match
   else if(valid_matches.size() == 1) {
+    method_call->GetCallingParameters()->SetExpressions(valid_matches[0]->GetParameters());
     return valid_matches[0]->GetMethod();
   }
 
@@ -6304,5 +6306,6 @@ frontend::Method* MethodCallSelector::GetSelection()
     return nullptr;
   }
 
+  method_call->GetCallingParameters()->SetExpressions(valid_matches[match_index]->GetParameters());
   return matches[match_index]->GetMethod();
 }

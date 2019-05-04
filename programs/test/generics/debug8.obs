@@ -16,9 +16,9 @@ class Foo {
 
 		m->Get("h")->Get()->PrintLine();
 		m->Get("o")->Get()->PrintLine();
-
-		m->Get("b")->Get()->PrintLine();		
 ~#				
+		
+		m->Get("b")->Get()->PrintLine();
 	}
 
 	function : Concat(i : IntHolder) ~ IntHolder {
