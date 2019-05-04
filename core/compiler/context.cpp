@@ -6234,7 +6234,7 @@ LibraryMethod* LibraryMethodCallSelector::GetSelection()
   }
   // single match
   else if(valid_matches.size() == 1) {
-    method_call->GetCallingParameters()->SetExpressions(valid_matches[0]->GetParameters());
+    method_call->GetCallingParameters()->SetExpressions(valid_matches[0]->GetCallingParameters());
     return valid_matches[0]->GetLibraryMethod();
   }
 
@@ -6264,7 +6264,7 @@ LibraryMethod* LibraryMethodCallSelector::GetSelection()
     return nullptr;
   }
 
-  method_call->GetCallingParameters()->SetExpressions(valid_matches[match_index]->GetParameters());
+  method_call->GetCallingParameters()->SetExpressions(valid_matches[match_index]->GetCallingParameters());
   return matches[match_index]->GetLibraryMethod();
 }
 
@@ -6276,7 +6276,7 @@ Method* MethodCallSelector::GetSelection()
   }
   // single match
   else if(valid_matches.size() == 1) {
-    method_call->GetCallingParameters()->SetExpressions(valid_matches[0]->GetParameters());
+    method_call->GetCallingParameters()->SetExpressions(valid_matches[0]->GetCallingParameters());
     return valid_matches[0]->GetMethod();
   }
 
@@ -6306,6 +6306,6 @@ Method* MethodCallSelector::GetSelection()
     return nullptr;
   }
 
-  method_call->GetCallingParameters()->SetExpressions(valid_matches[match_index]->GetParameters());
+  method_call->GetCallingParameters()->SetExpressions(valid_matches[match_index]->GetCallingParameters());
   return matches[match_index]->GetMethod();
 }
