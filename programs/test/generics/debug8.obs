@@ -1,8 +1,12 @@
 class Foo {
 	function : Main(args : String[]) ~ Nil {
+		h := IntHolder->New(13);
+		x := h + 7;
+		x->PrintLine();
+#~				
 		x := Funk();
 		x->PrintLine();
-#~		
+
 		m := Map->New()<String, IntHolder>;
 		
 		m->Add("a", IntHolder->New(1));
