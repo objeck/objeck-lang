@@ -3190,12 +3190,13 @@ void ContextAnalyzer::AnalyzeReturn(Return* rtrn, const int depth)
        expression->GetEvalType()->GetType() == NIL_TYPE) {
       ProcessError(expression, L"Invalid operation with 'Nil' value");
     }
-    AnalyzeRightCast(type, expression, (IsScalar(expression) && type->GetDimension() == 0), depth + 1);
 
-    Expression* box_expression = BoxExpression(type, expression, depth);
-    if(box_expression) {
-      rtrn->SetExpression(box_expression);
+    MethodCall* boxed_rtrn = UnboxingReturn(type, expression, depth);
+    if(boxed_rtrn) {
+      rtrn->SetExpression(boxed_rtrn);
+      expression = boxed_rtrn;
     }
+    AnalyzeRightCast(type, expression, (IsScalar(expression) && type->GetDimension() == 0), depth + 1);
 
     if(type->GetType() == CLASS_TYPE && !ResolveClassEnumType(type)) {
       ProcessError(rtrn, L"Undefined class or enum: '" + ReplaceSubstring(type->GetClassName(), L"#", L"->") + L"'");
@@ -3748,7 +3749,7 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
           right_expr->SetCastType(left, true);
           expression->SetEvalType(left, true);
         }
-        else if(!UnboxingCalculation(right, right_expr, depth, expression, false)) {
+        else if(!UnboxingCalculation(right, right_expr, expression, false, depth)) {
           ProcessError(left_expr, L"Invalid operation using classes: System.Int and " +
                        ReplaceSubstring(right->GetClassName(), L"#", L"->"));
         }
@@ -3791,7 +3792,7 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
           right_expr->SetCastType(left, true);
           expression->SetEvalType(left, true);
         }
-        else if(!UnboxingCalculation(right, right_expr, depth, expression, false)) {
+        else if(!UnboxingCalculation(right, right_expr, expression, false, depth)) {
           ProcessError(left_expr, L"Invalid operation using classes: System.Int and " +
                        ReplaceSubstring(right->GetClassName(), L"#", L"->"));
         }
@@ -3834,7 +3835,7 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
           right_expr->SetCastType(left, true);
           expression->SetEvalType(left, true);
         }
-        else if(!UnboxingCalculation(right, right_expr, depth, expression, false)) {
+        else if(!UnboxingCalculation(right, right_expr, expression, false, depth)) {
           ProcessError(left_expr, L"Invalid operation using classes: System.Int and " +
                        ReplaceSubstring(right->GetClassName(), L"#", L"->"));
         }
@@ -3877,7 +3878,7 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
           right_expr->SetCastType(left, true);
           expression->SetEvalType(left, true);
         }
-        else if(UnboxingCalculation(right, right_expr, depth, expression, false)) {
+        else if(UnboxingCalculation(right, right_expr, expression, false, depth)) {
           expression->SetEvalType(left, true);
         }
         else {
@@ -3915,7 +3916,7 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
           left_expr->SetCastType(right, true);
           expression->SetEvalType(right, true);
         }
-        else if(!UnboxingCalculation(left, left_expr, depth, expression, true)) {
+        else if(!UnboxingCalculation(left, left_expr, expression, true, depth)) {
           ProcessError(left_expr, L"Invalid operation using classes: " +
                        ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Float");
         }
@@ -3926,7 +3927,7 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
           left_expr->SetCastType(right, true);
           expression->SetEvalType(right, true);
         }
-        else if(!UnboxingCalculation(left, left_expr, depth, expression, true)) {
+        else if(!UnboxingCalculation(left, left_expr, expression, true, depth)) {
           ProcessError(left_expr, L"Invalid operation using classes: " +
                        ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Float");
         }
@@ -3937,7 +3938,7 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
           left_expr->SetCastType(right, true);
           expression->SetEvalType(right, true);
         }
-        else if(!UnboxingCalculation(left, left_expr, depth, expression, true)) {
+        else if(!UnboxingCalculation(left, left_expr, expression, true, depth)) {
           ProcessError(left_expr, L"Invalid operation using classes: " +
                        ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Float");
         }
@@ -3948,7 +3949,7 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
           left_expr->SetCastType(right, true);
           expression->SetEvalType(right, true);
         } 
-        else if(!UnboxingCalculation(left, left_expr, depth, expression, true)) {
+        else if(!UnboxingCalculation(left, left_expr, expression, true, depth)) {
           ProcessError(left_expr, L"Invalid operation using classes: " +
                        ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Float");
         }
@@ -3956,11 +3957,11 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
 
       case CLASS_TYPE: {
         ResolveClassEnumType(left);
-        const bool can_unbox_left = UnboxingCalculation(left, left_expr, depth, expression, true);
+        const bool can_unbox_left = UnboxingCalculation(left, left_expr, expression, true, depth);
         const bool left_is_enum = HasProgramLibraryEnum(left->GetClassName());
 
         ResolveClassEnumType(right);
-        const bool can_unbox_right = UnboxingCalculation(right, right_expr, depth, expression, false);
+        const bool can_unbox_right = UnboxingCalculation(right, right_expr, expression, false, depth);
         const bool is_right_enum = HasProgramLibraryEnum(right->GetClassName());
 
         if(left_is_enum && is_right_enum) {
@@ -4090,7 +4091,7 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
   }
 }
 
-bool ContextAnalyzer::UnboxingCalculation(Type* type, Expression* expression, const int depth, CalculatedExpression* calc_expression, bool set_left)
+bool ContextAnalyzer::UnboxingCalculation(Type* type, Expression* expression, CalculatedExpression* calc_expression, bool set_left, const int depth)
 {
   if(!type || !expression) {
     return false;
@@ -4131,6 +4132,69 @@ bool ContextAnalyzer::UnboxingCalculation(Type* type, Expression* expression, co
   }
 
   return false;
+}
+
+MethodCall* ContextAnalyzer::UnboxingReturn(Type* to_type, Expression* from_expr, const int depth)
+{
+  if(to_type && from_expr) {
+    ResolveClassEnumType(to_type);
+
+    Type* from_type = from_expr->GetEvalType();
+    if(!from_type) {
+      from_type = from_expr->GetBaseType();
+    }
+    ResolveClassEnumType(from_type);
+
+    switch(to_type->GetType()) {
+    case BYTE_TYPE:
+    case CHAR_TYPE:
+    case INT_TYPE:
+    case FLOAT_TYPE: {
+      if(from_expr->GetExpressionType() == METHOD_CALL_EXPR &&
+        (from_type->GetClassName() == L"System.ByteHolder" ||
+         from_type->GetClassName() == L"System.CharHolder" ||
+         from_type->GetClassName() == L"System.IntHolder" ||
+         from_type->GetClassName() == L"System.FloatHolder")) {
+        ExpressionList* box_expressions = TreeFactory::Instance()->MakeExpressionList();
+        MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(from_expr->GetFileName(), from_expr->GetLineNumber(),
+                                                                              current_class->GetName(), L"Get", box_expressions);
+        from_expr->SetMethodCall(box_method_call);
+        AnalyzeMethodCall(static_cast<MethodCall*>(from_expr), depth);
+      }
+    }
+      break;
+
+    case CLASS_TYPE: {
+      switch(from_type->GetType()) {
+      case BYTE_TYPE:
+      case CHAR_TYPE:
+      case INT_TYPE:
+      case FLOAT_TYPE:
+        if(to_type->GetClassName() == L"System.ByteHolder" ||
+           to_type->GetClassName() == L"System.CharHolder" ||
+           to_type->GetClassName() == L"System.IntHolder" ||
+           to_type->GetClassName() == L"System.FloatHolder") {
+          ExpressionList* box_expressions = TreeFactory::Instance()->MakeExpressionList();
+          box_expressions->AddExpression(from_expr);
+          MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(from_expr->GetFileName(), from_expr->GetLineNumber(),
+                                                                                NEW_INST_CALL, to_type->GetClassName(), box_expressions);
+          AnalyzeMethodCall(box_method_call, depth);
+          return box_method_call;
+      }
+        break;
+
+      default:
+        break;
+      }
+    }
+      break;
+
+    default:
+      break;
+    }
+  }
+
+  return nullptr;
 }
 
 /****************************
