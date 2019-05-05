@@ -398,19 +398,39 @@ void ContextAnalyzer::AnalyzeClass(Class* klass, const int id, const int depth)
 
   current_class = klass;
   current_class->SetCalled(true);
-  klass->SetSymbolTable(symbol_table->GetSymbolTable(current_class->GetName()));
+
+  klass->SetSymbolTable(symbol_table->GetSymbolTable(klass->GetName()));
   if(!HasProgramLibraryClass(klass->GetName())) {
     ProcessError(klass, L"Undefined class: '" + klass->GetName() + L"'");
   }
 
-  if(linker->SearchClassLibraries(klass->GetName(), program->GetUses(current_class->GetFileName())) ||
-     linker->SearchEnumLibraries(klass->GetName(), program->GetUses(current_class->GetFileName()))) {
+  if(linker->SearchClassLibraries(klass->GetName(), program->GetUses(klass->GetFileName())) ||
+     linker->SearchEnumLibraries(klass->GetName(), program->GetUses(klass->GetFileName()))) {
     ProcessError(klass, L"Class '" + klass->GetName() + L"' defined in shared libraries");
+  }
+
+  // analyze generic references
+  if(klass->HasGenerics()) {
+    const vector<Class*> generic_classes = klass->GetGenericClasses();
+    for(size_t i = 0; i < generic_classes.size(); ++i) {
+      Class* generic_class = generic_classes[i];
+      const wstring generic_class_name = generic_class->GetName();
+      if(HasProgramLibraryClass(generic_class_name)) {
+        ProcessError(klass, L"Generic reference '" + generic_class_name + L"' previously defined as a class");
+      }
+      // check backing interface
+      if(generic_class->HasGenericInterface()) {
+        const wstring generic_inf_name = generic_class->GetGenericInterface()->GetClassName();
+        if(!HasProgramLibraryClass(generic_inf_name)) {
+          ProcessError(klass, L"Undefined backing class/interface type '" + generic_inf_name + L"'");
+        }
+      }
+    }
   }
 
   /* TODO: GENERICS 
   if(HasGenericClass(klass->GetName())) {
-    ProcessError(klass, L"Class '" + klass->GetName() + L"' defined as generic class reference");
+    ProcessError(klass, L"Class '" + klass->GetName() + L"' defined as generic reference");
   }
   */
 
@@ -779,83 +799,83 @@ void ContextAnalyzer::AnalyzeMethod(Method* method, const int id, const int dept
 
   method->SetId(id);
   current_method = method;
-  current_table = symbol_table->GetSymbolTable(current_method->GetParsedName());
+  current_table = symbol_table->GetSymbolTable(method->GetParsedName());
   method->SetSymbolTable(current_table);
 
   // declarations
-  vector<Declaration*> declarations = current_method->GetDeclarations()->GetDeclarations();
+  vector<Declaration*> declarations = method->GetDeclarations()->GetDeclarations();
   for(size_t i = 0; i < declarations.size(); ++i) {
     AnalyzeDeclaration(declarations[i], current_class, depth + 1);
   }
 
   // process statements if function/method is not virtual
-  if(!current_method->IsVirtual()) {
+  if(!method->IsVirtual()) {
     // statements
-    vector<Statement*> statements = current_method->GetStatements()->GetStatements();
+    vector<Statement*> statements = method->GetStatements()->GetStatements();
     for(size_t i = 0; i < statements.size(); ++i) {
       AnalyzeStatement(statements[i], depth + 1);
     }
 
     // check for parent call
-    if((current_method->GetMethodType() == NEW_PUBLIC_METHOD ||
-       current_method->GetMethodType() == NEW_PRIVATE_METHOD) &&
+    if((method->GetMethodType() == NEW_PUBLIC_METHOD ||
+       method->GetMethodType() == NEW_PRIVATE_METHOD) &&
        (current_class->GetParent() || (current_class->GetLibraryParent() &&
        current_class->GetLibraryParent()->GetName() != SYSTEM_BASE_NAME))) {
       if(statements.size() == 0 || statements.front()->GetStatementType() != METHOD_CALL_STMT) {
         if(!current_class->IsInterface()) {
-          ProcessError(current_method, L"Parent call required");
+          ProcessError(method, L"Parent call required");
         }
       }
       else {
         MethodCall* mthd_call = static_cast<MethodCall*>(statements.front());
         if(mthd_call->GetCallType() != PARENT_CALL && !current_class->IsInterface()) {
-          ProcessError(current_method, L"Parent call required");
+          ProcessError(method, L"Parent call required");
         }
       }
     }
 
 #ifndef _SYSTEM
     // check for return
-    if(current_method->GetMethodType() != NEW_PUBLIC_METHOD &&
-       current_method->GetMethodType() != NEW_PRIVATE_METHOD &&
-       current_method->GetReturn()->GetType() != NIL_TYPE) {
-      if(!AnalyzeReturnPaths(current_method->GetStatements(), depth + 1) && !current_method->IsAlt()) {
-        ProcessError(current_method, L"All method/function paths must return a value");
+    if(method->GetMethodType() != NEW_PUBLIC_METHOD &&
+       method->GetMethodType() != NEW_PRIVATE_METHOD &&
+       method->GetReturn()->GetType() != NIL_TYPE) {
+      if(!AnalyzeReturnPaths(method->GetStatements(), depth + 1) && !method->IsAlt()) {
+        ProcessError(method, L"All method/function paths must return a value");
       }
     }
 #endif
 
     // check program main
     const wstring main_str = current_class->GetName() + L":Main:o.System.String*,";
-    if(current_method->GetEncodedName() == main_str) {
+    if(method->GetEncodedName() == main_str) {
       if(main_found) {
-        ProcessError(current_method, L"The 'Main(args)' function has already been defined");
+        ProcessError(method, L"The 'Main(args)' function has already been defined");
       }
-      else if(current_method->IsStatic()) {
+      else if(method->IsStatic()) {
         current_class->SetCalled(true);
-        program->SetStart(current_class, current_method);
+        program->SetStart(current_class, method);
         main_found = true;
       }
 
       if(main_found && (is_lib | is_web)) {
-        ProcessError(current_method, L"Libraries and web applications may not define a 'Main(args)' function");
+        ProcessError(method, L"Libraries and web applications may not define a 'Main(args)' function");
       }
     }
     // web program
     else if(is_web) {
       const wstring web_str = current_class->GetName() + L":Request:o.FastCgi.Request,o.FastCgi.Response,";
-      if(current_method->GetEncodedName() == web_str) {
+      if(method->GetEncodedName() == web_str) {
         if(web_found) {
-          ProcessError(current_method, L"The 'Request(args)' function has already been defined");
+          ProcessError(method, L"The 'Request(args)' function has already been defined");
         }
-        else if(current_method->IsStatic()) {
+        else if(method->IsStatic()) {
           current_class->SetCalled(true);
-          program->SetStart(current_class, current_method);
+          program->SetStart(current_class, method);
           web_found = true;
         }
 
         if(web_found && (is_lib | main_found)) {
-          ProcessError(current_method, L"Web applications may not be define a 'Main(args)' function or be compiled as a library");
+          ProcessError(method, L"Web applications may not be define a 'Main(args)' function or be compiled as a library");
         }
       }
     }
