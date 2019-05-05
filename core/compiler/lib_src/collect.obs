@@ -3363,7 +3363,6 @@ bundle Collection {
 	class Map {
 		@root : TreeNode;
 		@last : TreeNode;
-		@Removed : TreeNode;
 		@size : Int;
 		@found : Bool;
 
@@ -3412,7 +3411,6 @@ bundle Collection {
 		method : public : Empty() ~ Nil {
 			@root := Nil;
 			@last := Nil;
-			@Removed := Nil;
 			@size := 0;
 			@found := false;
 		}
