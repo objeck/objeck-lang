@@ -5,15 +5,15 @@ bundle Collection.Generic {
 	#~
 	Growable array of comparable based objects
 	~#
-	class Vector<V : Compare> {
-		@values : V[];
+	class Vector<H : Compare> {
+		@values : H[];
 		@size : Int;
 		
 		#~
 		Default constructor 
 		~#
 		New() {
-			@values := V->New[8];
+			@values := H->New[8];
 			@size := 0;
 		}
 		
@@ -21,8 +21,8 @@ bundle Collection.Generic {
 		Copy constructor
 		@param values values to copy 
 		~#
-		New(values : V[]) {
-			@values := V->New[values->Size() + values->Size() / 2];
+		New(values : H[]) {
+			@values := H->New[values->Size() + values->Size() / 2];
 			@size := values->Size();
 			Runtime->Copy(@values, 0, values, 0, @size);
  		}
@@ -31,14 +31,14 @@ bundle Collection.Generic {
 		Copy constructor
 		@param values values to copy 
 		~#
-		New(values : Vector<V>) {
+		New(values : Vector<H>) {
 			@values := values->ToArray();
 			@size := values->Size();
 		}
 
 		method : Expand() ~ Nil {
 			if(@size >= @values->Size()) {
-				temp : V[] := V->New[@size * 2];
+				temp : H[] := H->New[@size * 2];
 				Runtime->Copy(temp, 0, @values, 0, @size);
 				@values := temp;
 			};
@@ -66,10 +66,10 @@ bundle Collection.Generic {
 		Adds a vector of values to the end of the vector
 		@param values values to append 
 		~#
-		method : public : AddBack(values : Vector<V>) ~ Nil {
+		method : public : AddBack(values : Vector<H>) ~ Nil {
 			max := values->Size() + @size;
 			if(max >= @values->Size()) {
-				temp : V[] := V->New[max + max / 2];
+				temp : H[] := H->New[max + max / 2];
 				Runtime->Copy(temp, 0, @values, 0, @size);
 				@values := temp;
 			};
@@ -83,7 +83,7 @@ bundle Collection.Generic {
 		Adds a value to the end
 		@param value value to append 
 		~#
-		method : public : AddBack(value : V) ~ Nil {
+		method : public : AddBack(value : H) ~ Nil {
 			Expand();
 			@values[@size] := value;
 			@size += 1;
@@ -93,7 +93,7 @@ bundle Collection.Generic {
 		Removes the last value
 		@return value
 		~#
-		method : public : RemoveBack() ~ V {
+		method : public : RemoveBack() ~ H {
 			if(@size > 0) {
 				@size -= 1;
 				return @values[@size];
@@ -107,9 +107,9 @@ bundle Collection.Generic {
 		@param i index
 		@return value
 		~#
-		method : public : Remove(i : Int) ~ V {
+		method : public : Remove(i : Int) ~ H {
 			if(i > -1 & i < @size) {
-				temp := V->New[@values->Size()];
+				temp := H->New[@values->Size()];
 				Runtime->Copy(temp, 0, @values, 0, i);
 				Runtime->Copy(temp, i, @values, i + 1, @size - i - 1);
 				value := @values[i];
@@ -126,7 +126,7 @@ bundle Collection.Generic {
 		@param index index
 		@return value
 		~#
-		method : public : Get(index : Int) ~ V {
+		method : public : Get(index : Int) ~ H {
 			if(index > -1 & index < @size) {
 				return @values[index];
 			};
@@ -139,7 +139,7 @@ bundle Collection.Generic {
 		@param value value
 		@param index index
 		~#
-		method : public : Set(value : V, index : Int) ~ Bool {
+		method : public : Set(value : H, index : Int) ~ Bool {
 			if(index > -1 & index < @size) {
 				@values[index] := value;
 				return true;
@@ -152,7 +152,7 @@ bundle Collection.Generic {
 		Clears the vector
 		~#
 		method : public : Empty() ~ Nil {
-			@values := V->New[8];
+			@values := H->New[8];
 			@size := 0;
 		}
 		
@@ -176,12 +176,12 @@ bundle Collection.Generic {
 		Sorts the values in the vector
 		~#	
 		method : public : native : Sort() ~ Nil {
-			a : V[] := @values;
-			b : V[] := V->New[@size];
+			a : H[] := @values;
+			b : H[] := H->New[@size];
 			MergeSort(0, @size - 1, a, b);
 		}
 		
-		method : MergeSort(low : Int, hi : Int, a : V[], b : V[]) ~ Nil {
+		method : MergeSort(low : Int, hi : Int, a : H[], b : H[]) ~ Nil {
 			if(low < hi) {
 				mid := (low + hi) / 2;
 				MergeSort(low, mid, a, b);
@@ -190,7 +190,7 @@ bundle Collection.Generic {
 			};	
 		}
 		
-		method : native : Merge(low : Int, mid : Int, hi : Int, a : V[], b : V[]) ~ Nil {
+		method : native : Merge(low : Int, mid : Int, hi : Int, a : H[], b : H[]) ~ Nil {
 			# copy both halves of a to auxiliary array b
 			for(i := low; i <= hi; i += 1;) {
 				b[i] := a[i];
@@ -227,7 +227,7 @@ bundle Collection.Generic {
 		@param value value to search for
 		@return index of found value, -1 if not found
 		~#
-		method : public : Find(value : V) ~ Int {
+		method : public : Find(value : H) ~ Int {
          for(i := 0; i < @size; i += 1;) {
             if(@values[i]->Compare(value) = 0) {
                return i;
@@ -242,7 +242,7 @@ bundle Collection.Generic {
 		@param value value to search for
 		@return index of found value, -1 if not found
 		~#
-		method : public : native : BinarySearch(value : V) ~ Int {
+		method : public : native : BinarySearch(value : H) ~ Int {
 			low := 0;
 			high := @size - 1;
 
@@ -268,7 +268,7 @@ bundle Collection.Generic {
 		@param value value to check for
 		@return true if found, false otherwise
 		~#
-		method : public : Has(value : V) ~ Bool {
+		method : public : Has(value : H) ~ Bool {
 			for(i : Int := 0; i < @size; i += 1;) {
 				if(@values[i]->Compare(value) = 0) {
 					return true;
@@ -283,8 +283,8 @@ bundle Collection.Generic {
 		@param f function to use a filter. If the function evaluates to true the value is added to the collection.
 		@return filter vector
 		~#
-		method : public : Filter(f : (V) ~ Bool) ~ Vector<V> {
-			filtered := Vector->New()<V>;
+		method : public : Filter(f : (H) ~ Bool) ~ Vector<H> {
+			filtered := Vector->New()<H>;
 			
 			for(i : Int := 0; i < @size; i += 1;) {
 				if(f(@values[i])) {
@@ -299,8 +299,8 @@ bundle Collection.Generic {
 		Converts the vector into an object array
 		@return object array
 		~#
-		method : public : ToArray() ~ V[] {
-			array : V[] := V->New[@size];
+		method : public : ToArray() ~ H[] {
+			array : H[] := H->New[@size];
 			Runtime->Copy(array, 0, @values, 0, @size);
 			return array;
 		}
@@ -454,7 +454,7 @@ bundle Collection.Generic {
 				# process left 
 				GetValues(node->GetLeft(), vector);
 				
-				value : V := node->Get();
+				value : K := node->Get();
 				vector->AddBack(value);
 				
 				# process right
