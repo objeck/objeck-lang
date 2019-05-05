@@ -5049,6 +5049,11 @@ void ContextAnalyzer::AnalyzeDeclaration(Declaration * declaration, Class* klass
         const vector<Class*> generic_klasses = dclr_klass->GetGenericClasses();
         CheckGenericParameters(generic_klasses, concrete_types, declaration);
       }
+      if(dclr_lib_klass && dclr_lib_klass->HasGenerics() && type->HasGenerics()) {
+        const vector<Type*> concrete_types = type->GetGenerics();
+        const vector<LibraryClass*> generic_klasses = dclr_lib_klass->GetGenericClasses();
+        CheckGenericParameters(generic_klasses, concrete_types, declaration);
+      }
     }
     else if(entry->GetType() && entry->GetType()->GetType() == FUNC_TYPE) {
       // resolve function name
