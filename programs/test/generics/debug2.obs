@@ -1,4 +1,4 @@
-# ensure constructor has all generics defined
+# validate generic arrays
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
@@ -6,7 +6,7 @@ class Test {
 	}
 }
 
-class Bar<V> {
+class Bar<V : Mock> {
 	@v : V;
 	@n : Float;
 
@@ -15,6 +15,7 @@ class Bar<V> {
 	
 	method : public : Set(v : V) ~ Nil {
 		@v := v;
+		v->DoIt()->PrintLine();
 	}
 	
 	method : public : Get() ~ V {
@@ -25,4 +26,8 @@ class Bar<V> {
 class Foo {
 	New() {
 	}
+}
+
+interface Mock {
+	method : virtual : public : DoIt() ~ Int;
 }
