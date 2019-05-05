@@ -2,11 +2,11 @@
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		b : Bar := Bar->New() <Foo>;
+		b : Bar := Bar->New()<Foo,String>;
 	}
 }
 
-class Bar<V : Mock> {
+class Bar<V : Mock, S> {
 	@v : V;
 	@n : Float;
 
