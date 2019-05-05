@@ -9,11 +9,10 @@ class Fum<K, V> {
 	New() {
 	}
 
-#~ Fix me add check
-	method : Get() ~ Fee<LL> {
+# Fix me add check
+	method : Get() ~ Fee<String> {
 		return Nil;
-	}
-~#	
+	}	
 }
 
 class Fee<K : Compare> {
