@@ -5037,10 +5037,14 @@ void ContextAnalyzer::AnalyzeDeclaration(Declaration * declaration, Class* klass
         ProcessError(entry, L"Undefined class or enum: '" + ReplaceSubstring(type->GetClassName(), L"#", L"->") + L"'\n\tIf generic ensure concrete types are properly defined.");
       }
 
+      // is type in the scope of the class
       if(klass->HasGenerics() && type->HasGenerics()) {
         const vector<Type*> concrete_types = type->GetGenerics();
-        const vector<Class*> generic_klasses = klass->GetGenericClasses();
-        CheckGenericParameters(generic_klasses, concrete_types, declaration);
+        for(size_t i = 0; i < concrete_types.size(); ++i) {
+          if(!klass->GetGenericClass(concrete_types[i]->GetClassName())) {
+            ProcessError(entry, L"Undefined class or generic reference: '" + ReplaceSubstring(type->GetClassName(), L"#", L"->") + L"'");
+          }
+        }
       }
     }
     else if(entry->GetType() && entry->GetType()->GetType() == FUNC_TYPE) {
