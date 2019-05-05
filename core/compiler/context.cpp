@@ -5031,20 +5031,23 @@ void ContextAnalyzer::AnalyzeDeclaration(Declaration * declaration, Class* klass
   SymbolEntry* entry = declaration->GetEntry();
   if(entry) {
     if(entry->GetType() && entry->GetType()->GetType() == CLASS_TYPE) {
+      // resolve declaration type
       Type* type = entry->GetType();
-      // resolve class name
       if(!ResolveClassEnumType(type, klass)) {
         ProcessError(entry, L"Undefined class or enum: '" + ReplaceSubstring(type->GetClassName(), L"#", L"->") + L"'\n\tIf generic ensure concrete types are properly defined.");
       }
 
       // is type in the scope of the class
-      if(klass->HasGenerics() && type->HasGenerics()) {
+      const wstring dclr_name = type->GetClassName();
+      Class* dclr_klass = NULL; LibraryClass* dclr_lib_klass = NULL;
+      if(!GetProgramLibraryClass(dclr_name, dclr_klass, dclr_lib_klass)) {
+        dclr_klass = klass->GetGenericClass(dclr_name);
+      }
+
+      if(dclr_klass && dclr_klass->HasGenerics() && type->HasGenerics()) {
         const vector<Type*> concrete_types = type->GetGenerics();
-        for(size_t i = 0; i < concrete_types.size(); ++i) {
-          if(!klass->GetGenericClass(concrete_types[i]->GetClassName())) {
-            ProcessError(entry, L"Undefined class or generic reference: '" + ReplaceSubstring(type->GetClassName(), L"#", L"->") + L"'");
-          }
-        }
+        const vector<Class*> generic_klasses = dclr_klass->GetGenericClasses();
+        CheckGenericParameters(generic_klasses, concrete_types, declaration);
       }
     }
     else if(entry->GetType() && entry->GetType()->GetType() == FUNC_TYPE) {
