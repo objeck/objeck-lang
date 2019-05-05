@@ -305,7 +305,7 @@ bundle Collection.Generic {
 			return array;
 		}
 	}
-
+	
 	#~
 	Binary tree of objects values
 	~#
