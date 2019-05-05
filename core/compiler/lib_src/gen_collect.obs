@@ -305,4 +305,369 @@ bundle Collection.Generic {
 			return array;
 		}
 	}
+
+	#~
+	Binary tree of objects values
+	~#
+	class Map<K : Compare, V> {
+		@root : TreeNode<K, V>;
+		@last : TreeNode<K, V>;
+		@size : Int;
+		@found : Bool;
+
+		#~
+		Default constructor 
+		~#
+		New() {
+			@root := Nil;
+			@size := 0;	
+		}		
+
+		method : native : Skew(node : Collection.Generic.TreeNode<K, V>) ~ TreeNode<K, V> {
+			if(node = Nil | node->GetLeft() = Nil) {
+				return node;
+			};
+				
+			if(node->GetLeft()->GetLevel() = node->GetLevel()) {
+				left : TreeNode<K, V> := node->GetLeft();
+				node->SetLeft(left->GetRight());
+				left->SetRight(node);
+				return left;
+			};
+			
+			return node;
+		}
+
+		#~
+		Size of queue
+		@return size of queue
+		~#
+		method : public : Size() ~ Int {
+			return @size;
+		}
+		
+		#~
+		Checks to see if the queue is empty
+		@return true if empty, false otherwise
+		~#
+		method : public : IsEmpty() ~ Bool {
+			return @size = 0;
+		}
+
+		#~
+		Clears the queue
+		~#
+		method : public : Empty() ~ Nil {
+			@root := Nil;
+			@last := Nil;
+			@size := 0;
+			@found := false;
+		}
+		
+		method : native : Split(node : Collection.Generic.TreeNode<K, V>) ~ TreeNode<K, V> {
+			if(node = Nil | node->GetRight() = Nil | 
+					node->GetRight()->GetRight() = Nil) {
+				return node;
+			};
+
+			if(node->GetRight()->GetRight()->GetLevel() = node->GetLevel()) {
+				right : TreeNode<K, V> := node->GetRight();
+				node->SetRight(right->GetLeft());
+				right->SetLeft(node);
+				right->SetLevel(right->GetLevel() + 1);
+				
+				return right;
+			};
+			
+			return node;
+		}
+		
+		#~
+		Searches for a value in a map
+		@param key search key
+		@return found value, Nil if not found
+		~#
+		method : public : Find(key : K) ~ V {
+			return Find(key, @root);
+		}
+		
+		#~
+		Checks for a value in a map
+		@param key search key
+		@return true if found, false otherwise
+		~#
+		method : public : Has(key : K) ~ Bool {
+			return Find(key, @root) <> Nil;
+		}
+		
+		method : Find(key : K, node : Collection.Generic.TreeNode<K, V>) ~ V {
+			if(node <> Nil) {
+				if(key->Compare(node->GetKey()) < 0) {
+					return Find(key, node->GetLeft());
+				}
+				else if(key->Compare(node->GetKey()) > 0) {
+					return Find(key, node->GetRight());
+				}
+				else {
+					return node->Get();		
+				};
+			};
+			
+			return Nil;
+		}
+		
+		#~
+		Get a collection of keys
+		@return vector of keys
+		~#
+		method : public : GetKeys() ~  Collection.Generic.Vector<K> {
+			vector := Vector->New()<K>;
+			GetKeys(@root, vector);
+			return vector;
+		}
+		
+		method : GetKeys(node : Collection.Generic.TreeNode<K, V>, vector : Collection.Generic.Vector<K>) ~ Nil {
+			if(node <> Nil) {
+				# process left 
+				GetKeys(node->GetLeft(), vector);
+				
+				key : K := node->GetKey();
+				vector->AddBack(key);
+				
+				# process right
+				GetKeys(node->GetRight(), vector);
+			};
+		}
+		
+		#~
+		Gets a collection of values
+		@return vector of values
+		~#
+		method : public : GetValues() ~  Collection.Generic.Vector<V> {
+			vector := Vector->New()<V>;
+			GetValues(@root, vector);
+			return vector;
+		}
+
+		method : GetValues(node : Collection.Generic.TreeNode<K, V>, vector : Collection.Generic.Vector<V>) ~ Nil {
+			if(node <> Nil) {
+				# process left 
+				GetValues(node->GetLeft(), vector);
+				
+				value : V := node->Get();
+				vector->AddBack(value);
+				
+				# process right
+				GetValues(node->GetRight(), vector);
+			};
+		}
+		
+		#~
+		Inserts a value into the map
+		@param key key
+		@param value value
+		~#
+		method : public : Insert(key : K, value : V) ~ Nil {
+			if(@root = Nil) {
+				@root := Insert(key, value, Nil->As(Collection.Generic.TreeNode<K, V>));
+			}
+			else {
+				@root := Insert(key, value, @root);
+			};
+		}
+		
+		method : Insert(key : K, value : V, node : Collection.Generic.TreeNode<K, V>) ~  Collection.Generic.TreeNode<K, V> {
+			if(node = Nil) {
+				node := TreeNode->New(key, value, 1)<K, V>;
+				@size += 1;
+			}
+			else {
+				if(key->Compare(node->GetKey()) < 0) {
+					node->SetLeft(Insert(key, value, node->GetLeft()));
+				}
+				else if(key->Compare(node->GetKey()) > 0) {
+					node->SetRight(Insert(key, value, node->GetRight()));
+				}
+				else {
+					return node;		
+				};
+				node := Skew(node);
+				node := Split(node);
+			};	
+			
+			return node;
+		}
+		
+		#~
+		Removes a value from the map
+		@param key key for value to remove
+		~#
+		method : public : Remove(key : K) ~ Bool {
+			@found := true;
+			@root := Remove(key, @root);
+			if(@found) {
+				@size := @size - 1;
+				return true;
+			};
+
+			return false;
+		}
+		
+		method : native : Remove(key : K, node : Collection.Generic.TreeNode<K, V>) ~  Collection.Generic.TreeNode<K, V> {
+			if(node = Nil) {
+				@found := false;
+				return Nil;
+			};
+
+			if(key->Compare(node->GetKey()) < 0) {
+				node->SetLeft(Remove(key, node->GetLeft()));
+			}
+			else if(key->Compare(node->GetKey()) > 0) {
+				node->SetRight(Remove(key, node->GetRight()));
+			}
+			else {
+				if(node->GetLeft() = Nil & node->GetRight() = Nil) {
+					return Nil;
+				}
+				else if(node->GetLeft() = Nil) {
+					left : K := Successor(node);
+					node->SetRight(Remove(left, node->GetRight()));
+					node->SetKey(left);
+				} 
+				else {
+					left : K := Predecessor(node);
+					node->SetLeft(Remove(left, node->GetLeft()));
+					node->SetKey(left);
+				};
+				
+			};
+			
+			# rebalanced
+			node := DecreaseLevel(node);				
+			node := Skew(node);
+			node->SetRight(Skew(node->GetRight()));
+			if(node->GetRight() <> Nil & node->GetRight()->GetRight() <> Nil) {
+				node->GetRight()->SetRight(Skew(node->GetRight()->GetRight()));
+			};	
+			node := Split(node);								
+			node->SetRight(Split(node->GetRight()));
+
+			return node;
+		}
+		
+		method : Predecessor(node : Collection.Generic.TreeNode<K, V>) ~ K {
+			if(node->GetLeft() <> Nil) {
+				left : TreeNode<K, V> := node->GetLeft();
+				while(left->GetLeft() <> Nil) {
+					left := left->GetLeft();
+				};
+
+				return left->GetKey();
+			};
+
+			return node->GetKey();
+		}
+
+		method : Successor(node : Collection.Generic.TreeNode<K, V>) ~ K {
+			if(node->GetRight() <> Nil) {
+				right : TreeNode<K, V> := node->GetRight();
+				while(right->GetRight() <> Nil) {
+					right := right->GetRight();
+				};
+
+				return right->GetKey();
+			};
+
+			return node->GetKey();
+		}
+
+		 method : DecreaseLevel(node : Collection.Generic.TreeNode<K, V>) ~ TreeNode<K, V> {
+			if(node->GetLeft() <> Nil & node->GetRight() <> Nil) {
+				left : Int := node->GetLeft()->GetLevel();
+				right : Int := node->GetRight()->GetLevel();
+				value : Int := Int->Min(left, right);
+			
+				if(value < node->GetLevel()) {
+					node->SetLevel(value);
+					if(value < node->GetRight()->GetLevel()) {
+						node->GetRight()->SetLevel(value);
+					};
+				};
+			};
+			
+			return node;
+		}
+		
+		#~
+		Uses the given function to filter out values
+		@param f function to use a filter. If the function evaluates to true the value is added to the collection.
+		@return filter vector
+		~#
+		method : public : Filter(f : (K) ~ Bool) ~ Map {
+			filtered := Map->New()<K, V>;
+			
+			keys := GetKeys();
+			each(i : keys) {
+				key := keys->Get(i);
+				if(f(key)) {
+					value := Find(key);
+					filtered->Insert(key, value);
+				};
+			};
+			
+			return filtered;
+		}
+	}
+	
+	class TreeNode<K : Compare, V> {
+		@key : K;
+		@value : V;
+		@left : TreeNode;
+		@right : TreeNode;
+		@level : Int;
+		
+		New(key : K, value : V, level : Int) {
+			@key := key;
+			@value := value;
+			@level := level;
+			@left := Nil;
+			@right := Nil;
+		}
+
+		method : public : SetKey(key : K) ~ Nil {
+			@key := key;
+		}
+		
+		method : public : GetKey() ~ K {
+			return @key;
+		}
+
+		method : public : Get() ~ V {
+			return @value;
+		}
+		
+		method : public : GetLevel() ~ Int {
+			return @level;
+		}
+
+		method : public : SetLevel(level : Int) ~ Nil {
+			@level := level;
+		}
+
+		method : public : GetLeft() ~ TreeNode<K, V> {
+			return @left;
+		}
+
+		method : public : SetLeft(left : TreeNode<K, V>) ~ Nil {
+			@left := left;
+		}
+
+		method : public : GetRight() ~ TreeNode<K, V> {
+			return @right;
+		}
+
+		method : public : SetRight(right : TreeNode<K, V>) ~ Nil {
+			@right := right;
+		}
+	}
 }
