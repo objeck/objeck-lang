@@ -326,6 +326,8 @@ class ContextAnalyzer {
   // add method parameter
   void AddMethodParameter(MethodCall* method_call, SymbolEntry* entry, int depth);
 
+  // TODO: GENERICS
+  /*
   // validate method call with generics
   Type* RelsolveGenericCall(Type* left, MethodCall* method_call, Class* klass, Method* method, int depth);
 
@@ -340,6 +342,10 @@ class ContextAnalyzer {
 
   // find generic references
   bool HasGenericClass(const wstring& n);
+
+  Type* RelsolveGenericType(Type* generic_type, MethodCall* method_call, Class* klass,
+                            LibraryClass* lib_klass);
+  */
 
   // finds the first class match; note multiple matches may exist
   inline Class* SearchProgramClasses(const wstring& klass_name) {
@@ -499,8 +505,7 @@ class ContextAnalyzer {
                                 wstring &encoding, const int depth);
   void AnalyzeFunctionReference(LibraryClass* klass, MethodCall* method_call,
                                 wstring &encoding, const int depth);
-  Type* RelsolveGenericType(Type* generic_type, MethodCall* method_call, Class* klass, 
-                            LibraryClass* lib_klass);
+  
 
  public:
   ContextAnalyzer(ParsedProgram* p, wstring lib_path, bool l, bool w) {
