@@ -1,24 +1,28 @@
-# TODO: use 'Compare' internally
-class Bar<A : Compare, B> {
-	@aa : A;
-	@bb : B;
+# ensure constructor has all generics defined
 
-	New(bb : B) {
-		@bb := bb;
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		b : Bar := Bar->New() <Foo>;
+	}
+}
+
+class Bar<V> {
+	@v : V;
+	@n : Float;
+
+	New() {
 	}
 	
-	method : public : Set(a : A) ~ Nil {
-		@aa := a;
-		x := A->New[3];
-		x[0] := String->New("Hello");
-		# x[0]->PrintLine();
-		y := x[0]->As(String);
-		y->PrintLine();
-		x[1] := x[0];
+	method : public : Set(v : V) ~ Nil {
+		@v := v;
 	}
 	
-	method : public : Get() ~ B {
-		return @bb;
+	method : public : Get() ~ V {
+		return @v;
 	}
+}
 
+class Foo {
+	New() {
+	}
 }
