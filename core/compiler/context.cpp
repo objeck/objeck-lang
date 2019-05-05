@@ -3198,6 +3198,28 @@ void ContextAnalyzer::AnalyzeReturn(Return* rtrn, const int depth)
     }
     AnalyzeRightCast(type, expression, (IsScalar(expression) && type->GetDimension() == 0), depth + 1);
 
+
+
+    // is type in the scope of the class
+    const wstring dclr_name = type->GetClassName();
+    Class* dclr_klass = NULL; LibraryClass* dclr_lib_klass = NULL;
+    if(!GetProgramLibraryClass(dclr_name, dclr_klass, dclr_lib_klass)) {
+      dclr_klass = current_class->GetGenericClass(dclr_name);
+    }
+
+    if(dclr_klass && dclr_klass->HasGenerics() && type->HasGenerics()) {
+      const vector<Type*> concrete_types = type->GetGenerics();
+      const vector<Class*> generic_klasses = dclr_klass->GetGenericClasses();
+      CheckGenericParameters(generic_klasses, concrete_types, rtrn);
+    }
+    if(dclr_lib_klass && dclr_lib_klass->HasGenerics() && type->HasGenerics()) {
+      const vector<Type*> concrete_types = type->GetGenerics();
+      const vector<LibraryClass*> generic_klasses = dclr_lib_klass->GetGenericClasses();
+      CheckGenericParameters(generic_klasses, concrete_types, rtrn);
+    }
+
+
+
     if(type->GetType() == CLASS_TYPE && !ResolveClassEnumType(type)) {
       ProcessError(rtrn, L"Undefined class or enum: '" + ReplaceSubstring(type->GetClassName(), L"#", L"->") + L"'");
     }
@@ -6252,34 +6274,52 @@ void ContextAnalyzer::CheckGenericParameters(const vector<Class*> generic_klasse
   else {
     for(size_t i = 0; i < generic_klasses.size(); ++i) {
       Class* generic_klass = generic_klasses[i];
-      Type* generic_type = concrete_types[i];
+      
       if(generic_klass->HasGenericInterface()) {
-        const wstring generic_name = generic_type->GetClassName();
-        Class* type_klass = nullptr; LibraryClass* type_lib_klass = nullptr;
-        GetProgramLibraryClass(generic_name, type_klass, type_lib_klass);
-
+        // check generic name
+        wstring class_name;
         const wstring inf_name = generic_klass->GetGenericInterface()->GetClassName();
         Class* inf_klass = nullptr; LibraryClass* inf_lib_klass = nullptr;
-        GetProgramLibraryClass(inf_name, inf_klass, inf_lib_klass);
-
-        wstring class_name;
-        if(inf_klass) {
-          class_name = inf_klass->GetName();
-        }
-        else if(inf_lib_klass) {
-          class_name = inf_lib_klass->GetName();
+        if(GetProgramLibraryClass(inf_name, inf_klass, inf_lib_klass)) {
+          if(inf_klass) {
+            class_name = inf_klass->GetName();
+          }
+          else if(inf_lib_klass) {
+            class_name = inf_lib_klass->GetName();
+          }
         }
         else {
-          ProcessError(node, L"Undefined class: '" + inf_name + L"'");
+          ProcessError(node, L"Undefined class or generic reference: '" + inf_name + L"'");
         }
 
-        if(!ValidDownCast(class_name, type_klass, type_lib_klass)) {
-          if(type_klass) {
-            ProcessError(node, L"Invalid operation using classes: '" + type_klass->GetName() + L"' and '" + class_name + L"'");
+        // check concrete class
+        Type* generic_type = concrete_types[i];
+        const wstring generic_name = generic_type->GetClassName();
+        Class* type_klass = nullptr; LibraryClass* type_lib_klass = nullptr;
+        if(!GetProgramLibraryClass(generic_name, type_klass, type_lib_klass)) {
+          type_klass = current_class->GetGenericClass(generic_name);
+        }
+
+        // check backing interface
+        if(type_klass && type_klass->HasGenericInterface()) {
+          GetProgramLibraryClass(type_klass->GetGenericInterface()->GetClassName(), type_klass, type_lib_klass);
+        }
+        else if(type_lib_klass && type_lib_klass->HasGenericInterface()) {
+          GetProgramLibraryClass(type_lib_klass->GetGenericInterface()->GetClassName(), type_klass, type_lib_klass);
+        }
+
+        if(type_klass || type_lib_klass) {
+          if(!ValidDownCast(class_name, type_klass, type_lib_klass)) {
+            if(type_klass) {
+              ProcessError(node, L"Invalid operation using classes: '" + type_klass->GetName() + L"' and '" + class_name + L"'");
+            }
+            else if(type_lib_klass) {
+              ProcessError(node, L"Invalid operation using classes: '" + type_lib_klass->GetName() + L"' and '" + class_name + L"'");
+            }
           }
-          else if(type_lib_klass) {
-            ProcessError(node, L"Invalid operation using classes: '" + type_lib_klass->GetName() + L"' and '" + class_name + L"'");
-          }
+        }
+        else {
+          ProcessError(node, L"Undefined class or generic reference: '" + generic_name + L"'");
         }
       }
     }
