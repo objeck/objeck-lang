@@ -2398,9 +2398,15 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call,
     method_call->SetMethod(method);
 
     // generic instance
-    if((method->GetMethodType() == NEW_PUBLIC_METHOD || method->GetMethodType() == NEW_PRIVATE_METHOD) &&
-       klass->HasGenerics() && !method_call->HasConcreteTypes() && current_class != klass) {
-      ProcessError(static_cast<Expression*>(method_call), L"Cannot create an unqualified instance of class: '" + klass->GetName() + L"'");
+    if((method->GetMethodType() == NEW_PUBLIC_METHOD || method->GetMethodType() == NEW_PRIVATE_METHOD) && klass->HasGenerics()) {
+      const vector<Class*> class_generics = klass->GetGenericClasses();
+      const vector<Type*> concrete_types = method_call->GetConcreteTypes();
+      if(class_generics.size() != concrete_types.size()) {
+        ProcessError(static_cast<Expression*>(method_call), L"Cannot create an unqualified instance of class: '" + klass->GetName() + L"'");
+      }
+
+      // TODO: NEW GENERICS
+      // check concrete against interface type
     }
     // resolve generic to concrete, if needed
     Type* eval_type = TypeFactory::Instance()->MakeType(method_call->GetEvalType());
