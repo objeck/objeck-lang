@@ -1700,6 +1700,20 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth
   }
 }
 
+void ContextAnalyzer::ValidateGenericBacking(const wstring concrete_name, const wstring backing_name, ParseNode* node)
+{
+  Class* inf_klass = nullptr; LibraryClass* inf_lib_klass = nullptr;
+  if(GetProgramLibraryClass(concrete_name, inf_klass, inf_lib_klass)) {
+    if(!ValidDownCast(backing_name, inf_klass, inf_lib_klass) && !ClassEquals(backing_name, inf_klass, inf_lib_klass)) {
+      ProcessError(node, L"Concrete class: '" + concrete_name +
+                   L"' is incompatible with backing class/interface '" + backing_name + L"'");
+    }
+  }
+  else {
+    ProcessError(node, L"Undefined class or interface: '" + concrete_name + L"'");
+  }
+}
+
 /****************************
  * Validates an expression
  * method call
@@ -1895,8 +1909,10 @@ void ContextAnalyzer::AnalyzeNewArrayCall(MethodCall* method_call, const int dep
   if(method_call->HasConcreteTypes() && method_call->GetEvalType() &&
      !method_call->GetEvalType()->HasGenerics()) {
     const vector<Type*> concretes = method_call->GetConcreteTypes();
+    /*
     ResolveConcreteTypes(concretes, static_cast<Expression*>(method_call), depth + 1);
     method_call->GetEvalType()->SetGenerics(concretes);
+    */
   }
 }
 
@@ -2431,19 +2447,9 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call,
           Type* concrete_type = concrete_types[i];
           Class* class_generic = class_generics[i];
           if(class_generic->HasGenericInterface()) {
-            const wstring backing_inf_name = class_generic->GetGenericInterface()->GetClassName();
+            const wstring backing_name = class_generic->GetGenericInterface()->GetClassName();
             const wstring concrete_name = concrete_type->GetClassName();
-            Class* inf_klass = nullptr; LibraryClass* inf_lib_klass = nullptr;
-            if(GetProgramLibraryClass(concrete_name, inf_klass, inf_lib_klass)) {
-              if(!ValidDownCast(backing_inf_name, inf_klass, inf_lib_klass)) {
-                ProcessError(static_cast<Expression*>(method_call), L"Concrete class: '" + concrete_name + 
-                             L"' is incompatible with backing class/interface '" + backing_inf_name + L"'");
-              }
-            }
-            else {
-              ProcessError(static_cast<Expression*>(method_call), L"Undefined class or interface: '" + concrete_name + L"'");
-
-            }
+            ValidateGenericBacking(concrete_name, backing_name, static_cast<Expression*>(method_call));
           }
         }
       }
@@ -3309,7 +3315,7 @@ void ContextAnalyzer::AnalyzeReturn(Return* rtrn, const int depth)
 
     // is type in the scope of the class
     const wstring dclr_name = type->GetClassName();
-    Class* dclr_klass = NULL; LibraryClass* dclr_lib_klass = NULL;
+    Class* dclr_klass = nullptr; LibraryClass* dclr_lib_klass = nullptr;
     if(!GetProgramLibraryClass(dclr_name, dclr_klass, dclr_lib_klass)) {
       dclr_klass = current_class->GetGenericClass(dclr_name);
     }
@@ -5173,7 +5179,7 @@ void ContextAnalyzer::AnalyzeDeclaration(Declaration * declaration, Class* klass
 
       // is type in the scope of the class
       const wstring dclr_name = type->GetClassName();
-      Class* dclr_klass = NULL; LibraryClass* dclr_lib_klass = NULL;
+      Class* dclr_klass = nullptr; LibraryClass* dclr_lib_klass = nullptr;
       if(!GetProgramLibraryClass(dclr_name, dclr_klass, dclr_lib_klass)) {
         dclr_klass = klass->GetGenericClass(dclr_name);
       }
@@ -6179,6 +6185,21 @@ void ContextAnalyzer::AddMethodParameter(MethodCall* method_call, SymbolEntry* e
   }
 }
 
+bool ContextAnalyzer::ClassEquals(const wstring left_name, Class* right_klass, LibraryClass* right_lib_klass)
+{
+  Class* left_klass = nullptr; LibraryClass* left_lib_klass = nullptr;
+  if(GetProgramLibraryClass(left_name, left_klass, left_lib_klass)) {
+    if(left_klass && right_klass) {
+      return left_klass->GetName() == right_klass->GetName();
+    }
+    else if(right_lib_klass) {
+      return left_lib_klass->GetName() == right_lib_klass->GetName();
+    }
+  }
+
+  return false;
+}
+
 /*
 Type* ContextAnalyzer::RelsolveGenericCall(Type* left, MethodCall* method_call, Class* klass, Method* method, int depth)
 {
@@ -6441,9 +6462,6 @@ bool ContextAnalyzer::HasGenericClass(const wstring& n)
   return false;
 }
 
-
-*/
-
 void ContextAnalyzer::ResolveConcreteTypes(vector<Type*> concretes, ParseNode* node, const int depth)
 {
   for(size_t i = 0; i < concretes.size(); ++i) {
@@ -6461,6 +6479,7 @@ void ContextAnalyzer::ResolveConcreteTypes(vector<Type*> concretes, ParseNode* n
     }
   }
 }
+*/
 
 /****************************
  * Support for inferred method
@@ -6549,3 +6568,4 @@ Method* MethodCallSelector::GetSelection()
   method_call->GetCallingParameters()->SetExpressions(matches[match_index]->GetCallingParameters());
   return matches[match_index]->GetMethod();
 }
+
