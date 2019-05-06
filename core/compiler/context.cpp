@@ -2224,6 +2224,8 @@ Method* ContextAnalyzer::ResolveMethodCall(Class* klass, MethodCall* method_call
       vector<Expression*> boxed_resolved_params;
       for(size_t j = 0; j < expr_params.size(); ++j) {
         Type* method_type = RelsolveGenericType(method_parms[j]->GetEntry()->GetType(), method_call, klass, nullptr);
+        ResolveClassEnumType(method_type);
+
         /* TODO: GENERICS
         if(klass->HasGenerics()) {
           method_type = RelsolveGenericType(method_type, method_call, klass, nullptr);
@@ -2452,6 +2454,7 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call,
           }
         }
       }
+      method_call->GetEvalType()->SetGenerics(concrete_types);
     }
 
     // resolve generic to concrete, if needed
