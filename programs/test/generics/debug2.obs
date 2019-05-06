@@ -4,8 +4,8 @@ class Test {
 	function : Main(args : String[]) ~ Nil {
 		b : Bar := Bar->New()<Foo,String>;
 
-		f := Foo->New();
-#		b->Set(f); # needs type erasure
+		f := Foo->New(); # ok, zero params...
+		b->Set(f); # needs type erasure
 	}
 }
 

@@ -339,10 +339,11 @@ class ContextAnalyzer {
 
   // find generic references
   bool HasGenericClass(const wstring& n);
+  */
 
-  Type* RelsolveGenericType(Type* generic_type, MethodCall* method_call, Class* klass,
-                            LibraryClass* lib_klass);
+  Type* RelsolveGenericType(Type* generic_type, MethodCall* method_call, Class* klass, LibraryClass* lib_klass);
   
+  /*
    void ResolveConcreteTypes(vector<Type*> concretes, ParseNode* node, const int depth);
 
   */
