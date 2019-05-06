@@ -2,7 +2,7 @@
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		b : Bar := Bar->New()<Foo,String>; # fix, string should work
+		b : Bar := Bar->New()<Foo,String>;
 
 		f := Foo->New();
 #		b->Set(f); # needs type erasure
