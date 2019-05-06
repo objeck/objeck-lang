@@ -2,7 +2,10 @@
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		b : Bar := Bar->New()<Foo,String>;
+		b : Bar := Bar->New()<Foo,String>; # check to make sure Foo implements Mock interface
+
+		f := Foo->New();
+		b->Set(f); # needs type erasure
 	}
 }
 
