@@ -342,6 +342,9 @@ class ContextAnalyzer {
 
   Type* RelsolveGenericType(Type* generic_type, MethodCall* method_call, Class* klass,
                             LibraryClass* lib_klass);
+  
+   void ResolveConcreteTypes(vector<Type*> concretes, ParseNode* node, const int depth);
+
   */
 
   // finds the first class match; note multiple matches may exist
@@ -391,6 +394,8 @@ class ContextAnalyzer {
 
   // helper function for program class search
   bool GetProgramLibraryClass(const wstring& n, Class*& klass, LibraryClass*& lib_klass);
+
+  bool ClassEquals(const wstring left_name, Class* right_klass, LibraryClass* right_lib_klass);
 
   // string utility functions
   wstring ToString(int v) {
@@ -486,14 +491,14 @@ class ContextAnalyzer {
   void AnalyzeParentCall(MethodCall* method_call, const int depth);
   LibraryClass* AnalyzeLibraryMethodCall(MethodCall* method_call, wstring &encoding, const int depth);
   Class* AnalyzeProgramMethodCall(MethodCall* method_call, wstring &encoding, const int depth);
-  void ResolveConcreteTypes(vector<Type*> concretes, ParseNode* node, const int depth);
   void AnalyzeMethodCall(Class* klass, MethodCall* method_call,
                          bool is_expr, wstring &encoding, const int depth);
   void AnalyzeMethodCall(LibraryClass* klass, MethodCall* method_call,
                          bool is_expr, wstring &encoding, bool is_parent, const int depth);
   void AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* method_call,
                          bool is_virtual, bool is_expr, const int depth);
-  wstring EncodeMethodCall(ExpressionList* calling_params, const int depth);
+  void ValidateGenericBacking(const wstring concrete_name, const wstring backing_inf_name, ParseNode* node);
+  wstring EncodeMethodCall(ExpressionList * calling_params, const int depth);
   Method* ResolveMethodCall(Class* klass, MethodCall* method_call, const int depth);
   LibraryMethod* ResolveMethodCall(LibraryClass* klass, MethodCall* method_call, const int depth);
   int MatchCallingParameter(Expression* calling_param, Type* method_type,
