@@ -5,7 +5,7 @@ class Test {
 		b : Bar := Bar->New()<Foo,String>; # check to make sure Foo implements Mock interface
 
 		f := Foo->New();
-		b->Set(f); # needs type erasure
+#		b->Set(f); # needs type erasure
 	}
 }
 
@@ -26,9 +26,14 @@ class Bar<V : Mock, S> {
 	}
 }
 
-class Foo {
+class Foo implements Mock {
 	New() {
 	}
+
+	method : public : DoIt() ~ Int {
+		return 13;
+	}
+
 }
 
 interface Mock {

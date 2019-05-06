@@ -289,9 +289,6 @@ class ContextAnalyzer {
   // checks for a valid upcast
   bool ValidUpCast(const wstring &to, LibraryClass* from_klass);
 
-  // helper function for program class search
-  bool GetProgramLibraryClass(const wstring &n, Class* &klass, LibraryClass* &lib_klass);
-
   // string encodes type
   const wstring EncodeType(Type* type);
 
@@ -391,6 +388,9 @@ class ContextAnalyzer {
   inline bool HasProgramLibraryClass(const wstring & n) {
     return SearchProgramClasses(n) || linker->SearchClassLibraries(n, program->GetUses(current_class->GetFileName()));
   }
+
+  // helper function for program class search
+  bool GetProgramLibraryClass(const wstring& n, Class*& klass, LibraryClass*& lib_klass);
 
   // string utility functions
   wstring ToString(int v) {
