@@ -2223,6 +2223,7 @@ Method* ContextAnalyzer::ResolveMethodCall(Class* klass, MethodCall* method_call
       // box and unbox parameters
       vector<Expression*> boxed_resolved_params;
       for(size_t j = 0; j < expr_params.size(); ++j) {
+        // cannot be set to method, need to preserve test against other selections
         Type* method_type = RelsolveGenericType(method_parms[j]->GetEntry()->GetType(), method_call, klass, nullptr);
         ResolveClassEnumType(method_type);
 
