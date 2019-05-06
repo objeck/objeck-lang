@@ -2418,7 +2418,8 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call,
     method_call->SetMethod(method);
 
     // map concrete to generic types
-    if((method->GetMethodType() == NEW_PUBLIC_METHOD || method->GetMethodType() == NEW_PRIVATE_METHOD) && klass->HasGenerics()) {
+    if((method->GetMethodType() == NEW_PUBLIC_METHOD || method->GetMethodType() == NEW_PRIVATE_METHOD) && 
+       klass->HasGenerics()) {
       const vector<Class*> class_generics = klass->GetGenericClasses();
       const vector<Type*> concrete_types = method_call->GetConcreteTypes();
       if(class_generics.size() != concrete_types.size()) {
@@ -2713,6 +2714,37 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
     // map generic to concrete type, if needed
     LibraryClass* lib_klass = lib_method->GetLibraryClass();
     Type* eval_type = TypeFactory::Instance()->MakeType(method_call->GetEvalType());
+
+    // map concrete to generic types
+    if((lib_method->GetMethodType() == NEW_PUBLIC_METHOD || lib_method->GetMethodType() == NEW_PRIVATE_METHOD) && 
+       lib_klass->HasGenerics()) {
+      const vector<LibraryClass*> class_generics = lib_klass->GetGenericClasses();
+      const vector<Type*> concrete_types = method_call->GetConcreteTypes();
+      if(class_generics.size() != concrete_types.size()) {
+        ProcessError(static_cast<Expression*>(method_call), L"Cannot create an unqualified instance of class: '" + lib_klass->GetName() + L"'");
+      }
+      // check individual types
+      if(class_generics.size() == concrete_types.size()) {
+        for(size_t i = 0; i < concrete_types.size(); ++i) {
+          Type* concrete_type = concrete_types[i];
+          LibraryClass* class_generic = class_generics[i];
+          if(class_generic->HasGenericInterface()) {
+            const wstring backing_inf_name = class_generic->GetGenericInterface()->GetClassName();
+            const wstring concrete_name = concrete_type->GetClassName();
+            Class* inf_klass = nullptr; LibraryClass* inf_lib_klass = nullptr;
+            if(GetProgramLibraryClass(concrete_name, inf_klass, inf_lib_klass)) {
+              if(!ValidDownCast(backing_inf_name, inf_klass, inf_lib_klass)) {
+                ProcessError(static_cast<Expression*>(method_call), L"Concrete class: '" + concrete_name +
+                             L"' is incompatible with backing class/interface '" + backing_inf_name + L"'");
+              }
+            }
+            else {
+              ProcessError(static_cast<Expression*>(method_call), L"Undefined class or interface: '" + concrete_name + L"'");
+            }
+          }
+        }
+      }
+    }
 
     /* TODO: GENERICS
     if(lib_klass->HasGenerics()) {
