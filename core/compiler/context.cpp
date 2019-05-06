@@ -2417,17 +2417,37 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call,
     method_call->SetOriginalClass(klass);
     method_call->SetMethod(method);
 
-    // generic instance
+    // map concrete to generic types
     if((method->GetMethodType() == NEW_PUBLIC_METHOD || method->GetMethodType() == NEW_PRIVATE_METHOD) && klass->HasGenerics()) {
       const vector<Class*> class_generics = klass->GetGenericClasses();
       const vector<Type*> concrete_types = method_call->GetConcreteTypes();
       if(class_generics.size() != concrete_types.size()) {
         ProcessError(static_cast<Expression*>(method_call), L"Cannot create an unqualified instance of class: '" + klass->GetName() + L"'");
       }
+      // check individual types
+      if(class_generics.size() == concrete_types.size()) {
+        for(size_t i = 0; i < concrete_types.size(); ++i) {
+          Type* concrete_type = concrete_types[i];
+          Class* class_generic = class_generics[i];
+          if(class_generic->HasGenericInterface()) {
+            const wstring backing_inf_name = class_generic->GetGenericInterface()->GetClassName();
+            const wstring concrete_name = concrete_type->GetClassName();
+            Class* inf_klass = nullptr; LibraryClass* inf_lib_klass = nullptr;
+            if(GetProgramLibraryClass(concrete_name, inf_klass, inf_lib_klass)) {
+              if(!ValidDownCast(backing_inf_name, inf_klass, inf_lib_klass)) {
+                ProcessError(static_cast<Expression*>(method_call), L"Concrete class: '" + concrete_name + 
+                             L"' is incompatible with backing class/interface '" + backing_inf_name + L"'");
+              }
+            }
+            else {
+              ProcessError(static_cast<Expression*>(method_call), L"Undefined class or interface: '" + concrete_name + L"'");
 
-      // TODO: NEW GENERICS
-      // check concrete against interface type
+            }
+          }
+        }
+      }
     }
+
     // resolve generic to concrete, if needed
     Type* eval_type = TypeFactory::Instance()->MakeType(method_call->GetEvalType());
 
