@@ -2438,7 +2438,11 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call,
     }
 
     // resolve generic to concrete, if needed
-    Type* eval_type = TypeFactory::Instance()->MakeType(method_call->GetEvalType());
+    Type* eval_type = method_call->GetEvalType();
+    if(klass->HasGenerics()) {
+      eval_type = RelsolveGenericType(eval_type, method_call, klass, nullptr);
+      method_call->SetEvalType(eval_type, false);
+    }
 
     /* TODO: GENERICS
     if(klass->HasGenerics()) {
