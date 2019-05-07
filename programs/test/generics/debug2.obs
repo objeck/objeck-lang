@@ -9,7 +9,7 @@ class Test {
 	}
 }
 
-class Bar<V : Mock, S : IntHolder> {
+class Bar<V : Mock, S : String> {
 	@v : V;
 	@n : Float;
 
