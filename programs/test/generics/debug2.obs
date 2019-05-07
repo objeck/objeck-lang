@@ -6,6 +6,7 @@ class Test {
 
 		f := Foo->New(); # ok, zero params...
 		b->Set(f); # needs type erasure
+		s : Foo := b->Get();
 	}
 }
 
