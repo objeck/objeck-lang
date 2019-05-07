@@ -2225,8 +2225,7 @@ Method* ContextAnalyzer::ResolveMethodCall(Class* klass, MethodCall* method_call
       for(size_t j = 0; j < expr_params.size(); ++j) {
         // cannot be set to method, need to preserve test against other selections
         Type* method_type = RelsolveGenericType(method_parms[j]->GetEntry()->GetType(), method_call, klass, nullptr);
-        ResolveClassEnumType(method_type);
-
+        
         /* TODO: GENERICS
         if(klass->HasGenerics()) {
           method_type = RelsolveGenericType(method_type, method_call, klass, nullptr);
@@ -2256,21 +2255,7 @@ Method* ContextAnalyzer::ResolveMethodCall(Class* klass, MethodCall* method_call
 
       MethodCallSelection* match = new MethodCallSelection(candidates[i], boxed_resolved_params);
       for(size_t j = 0; j < boxed_resolved_params.size(); ++j) {
-        // get method type
-        Type* method_type = nullptr;
-        if(method_parms[j]->GetEntry() && method_parms[j]->GetEntry()->GetType()) {
-          // get type
-          method_type = method_parms[j]->GetEntry()->GetType();
-
-          /* TODO: GENERICS
-          if(klass->HasGenerics()) {
-            method_type = RelsolveGenericType(method_type, method_call, klass, nullptr);
-            ResolveClassEnumType(method_type);
-          }
-          */
-
-          ResolveClassEnumType(method_type);
-        }
+        Type* method_type = RelsolveGenericType(method_parms[j]->GetEntry()->GetType(), method_call, klass, nullptr);
         // add parameter match
         const int compare = MatchCallingParameter(boxed_resolved_params[j], method_type, klass, nullptr, depth);
         match->AddParameterMatch(compare);
@@ -2292,14 +2277,8 @@ Method* ContextAnalyzer::ResolveMethodCall(Class* klass, MethodCall* method_call
         AnalyzeExpressionMethodCall(expression, depth + 1);
         expression = expression->GetMethodCall();
       }
-      // resolve generic to concrete, if needed
-      Type* left = method_parms[j]->GetEntry()->GetType();
-      /* TODO: GENERICS
-      if(klass->HasGenerics() && !left->HasGenerics()) {
-        left = RelsolveGenericCall(left, method_call, klass, method, depth + 1);
-      }
-      */
-      ResolveClassEnumType(left);
+      // erase/resolve type
+      Type* left = RelsolveGenericType(method_parms[j]->GetEntry()->GetType(), method_call, klass, nullptr);
       AnalyzeRightCast(left, expression, IsScalar(expression), depth + 1);
     }
   }
@@ -6399,6 +6378,7 @@ Type* ContextAnalyzer::RelsolveGenericType(Type* candidate_type, MethodCall* met
         if(concrete_index < (int)concrete_types.size()) {
           Type* concrete_type = TypeFactory::Instance()->MakeType(concrete_types[concrete_index]);
           concrete_type->SetDimension(candidate_type->GetDimension());
+          ResolveClassEnumType(concrete_type);
           return concrete_type;
         }
       }
