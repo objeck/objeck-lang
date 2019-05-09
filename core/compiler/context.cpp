@@ -3297,13 +3297,33 @@ void ContextAnalyzer::AnalyzeReturn(Return* rtrn, const int depth)
     }
     AnalyzeRightCast(type, expression, (IsScalar(expression) && type->GetDimension() == 0), depth + 1);
 
-
-
     // is type in the scope of the class
     const wstring dclr_name = type->GetClassName();
     Class* dclr_klass = nullptr; LibraryClass* dclr_lib_klass = nullptr;
     if(!GetProgramLibraryClass(dclr_name, dclr_klass, dclr_lib_klass)) {
       dclr_klass = current_class->GetGenericClass(dclr_name);
+    }
+
+    if(dclr_klass) {
+      // if returning a generic type, include the generic parameters
+      if(dclr_klass == current_class && dclr_klass->HasGenerics()) {
+        const vector<Type*> concrete_types = type->GetGenerics();
+        const vector<Class*> generic_klasses = dclr_klass->GetGenericClasses();
+        if(concrete_types.size() != generic_klasses.size()) {
+          ProcessError(expression, L"Generics to concretes size mismatch");
+        }
+        else {
+          for(size_t i = 0; i < concrete_types.size(); ++i) {
+            const wstring concrete_name = concrete_types[i]->GetClassName();
+            if(!dclr_klass->GetGenericClass(concrete_name)) {
+              ProcessError(expression, L"Unknown or generics type mismatch '" + concrete_name + L"'");
+            }
+          }
+        }
+      }
+    }
+    else if(dclr_lib_klass) {
+
     }
 
     /* TODO: GENERICS
@@ -3319,7 +3339,6 @@ void ContextAnalyzer::AnalyzeReturn(Return* rtrn, const int depth)
     }
     */
 
-
     if(type->GetType() == CLASS_TYPE && !ResolveClassEnumType(type)) {
       ProcessError(rtrn, L"Undefined class or enum: '" + ReplaceSubstring(type->GetClassName(), L"#", L"->") + L"'");
     }
@@ -3330,7 +3349,7 @@ void ContextAnalyzer::AnalyzeReturn(Return* rtrn, const int depth)
 
   if(current_method->GetMethodType() == NEW_PUBLIC_METHOD ||
      current_method->GetMethodType() == NEW_PRIVATE_METHOD) {
-    ProcessError(rtrn, L"Cannot return vaule from constructor");
+    ProcessError(rtrn, L"Cannot return value from constructor");
   }
 }
 
