@@ -2,11 +2,14 @@
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
+#~		
 		b : Bar := Bar->New()<Foo,String>;
 
 		f := Foo->New(); # ok, zero params...
 		b->Set(f); # needs type erasure
 		s : Foo := b->Get();
+~#		
+		x : Bar := Bar->Instance();
 	}
 }
 
@@ -15,6 +18,10 @@ class Bar<V : Mock, S : String> {
 	@n : Float;
 
 	New() {
+	}
+
+	function : Instance() ~ Bar<V,S> {
+		return Nil;
 	}
 	
 	method : public : Set(v : V) ~ Nil {
