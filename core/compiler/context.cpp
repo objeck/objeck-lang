@@ -1709,6 +1709,12 @@ void ContextAnalyzer::ValidateGenericBacking(const wstring concrete_name, const 
                    L"' is incompatible with backing class/interface '" + backing_name + L"'");
     }
   }
+  else if((inf_klass = current_class->GetGenericClass(concrete_name))) {
+    if(!ValidDownCast(backing_name, inf_klass, inf_lib_klass) && !ClassEquals(backing_name, inf_klass, inf_lib_klass)) {
+      ProcessError(node, L"Concrete class: '" + concrete_name +
+                   L"' is incompatible with backing class/interface '" + backing_name + L"'");
+    }
+  }
   else {
     ProcessError(node, L"Undefined class or interface: '" + concrete_name + L"'");
   }
@@ -3276,8 +3282,8 @@ void ContextAnalyzer::AnalyzeReturn(Return* rtrn, const int depth)
   Debug(L"return", rtrn->GetLineNumber(), depth);
 #endif
 
+  Type* mthd_type = current_method->GetReturn();
   Expression* expression = rtrn->GetExpression();
-  Type* type = current_method->GetReturn();
   if(expression) {
     AnalyzeExpression(expression, depth + 1);
     while(expression->GetMethodCall()) {
@@ -3290,40 +3296,34 @@ void ContextAnalyzer::AnalyzeReturn(Return* rtrn, const int depth)
       ProcessError(expression, L"Invalid operation with 'Nil' value");
     }
 
-    MethodCall* boxed_rtrn = BoxUnboxingReturn(type, expression, depth);
+    MethodCall* boxed_rtrn = BoxUnboxingReturn(mthd_type, expression, depth);
     if(boxed_rtrn) {
       rtrn->SetExpression(boxed_rtrn);
       expression = boxed_rtrn;
     }
-    AnalyzeRightCast(type, expression, (IsScalar(expression) && type->GetDimension() == 0), depth + 1);
+    AnalyzeRightCast(mthd_type, expression, (IsScalar(expression) && mthd_type->GetDimension() == 0), depth + 1);
 
     // is type in the scope of the class
-    const wstring dclr_name = type->GetClassName();
+    Type* expr_type = expression->GetEvalType();
+    const wstring dclr_name = expr_type->GetClassName();
     Class* dclr_klass = nullptr; LibraryClass* dclr_lib_klass = nullptr;
     if(!GetProgramLibraryClass(dclr_name, dclr_klass, dclr_lib_klass)) {
       dclr_klass = current_class->GetGenericClass(dclr_name);
     }
 
-    if(dclr_klass) {
-      // if returning a generic type, include the generic parameters
-      if(dclr_klass == current_class && dclr_klass->HasGenerics()) {
-        const vector<Type*> concrete_types = type->GetGenerics();
-        const vector<Class*> generic_klasses = dclr_klass->GetGenericClasses();
-        if(concrete_types.size() != generic_klasses.size()) {
-          ProcessError(expression, L"Generics to concretes size mismatch");
-        }
-        else {
-          for(size_t i = 0; i < concrete_types.size(); ++i) {
-            const wstring concrete_name = concrete_types[i]->GetClassName();
-            if(!dclr_klass->GetGenericClass(concrete_name)) {
-              ProcessError(expression, L"Unknown or generics type mismatch '" + concrete_name + L"'");
-            }
+    if(dclr_klass == current_class && dclr_klass->HasGenerics()) {
+      const vector<Type*> concrete_types = expr_type->GetGenerics();
+      const vector<Class*> generic_klasses = dclr_klass->GetGenericClasses();
+      if(concrete_types.size() == generic_klasses.size()) {
+        for(size_t i = 0; i < concrete_types.size(); ++i) {
+          if(!ClassEquals(concrete_types[i]->GetClassName(), generic_klasses[i], nullptr)) {
+            ProcessError(expression, L"<<Foo Bar>>");
           }
         }
       }
-    }
-    else if(dclr_lib_klass) {
-
+      else {
+        ProcessError(expression, L"Generic to concrete size mismatch");
+      }
     }
 
     /* TODO: GENERICS
@@ -3339,11 +3339,11 @@ void ContextAnalyzer::AnalyzeReturn(Return* rtrn, const int depth)
     }
     */
 
-    if(type->GetType() == CLASS_TYPE && !ResolveClassEnumType(type)) {
-      ProcessError(rtrn, L"Undefined class or enum: '" + ReplaceSubstring(type->GetClassName(), L"#", L"->") + L"'");
+    if(mthd_type->GetType() == CLASS_TYPE && !ResolveClassEnumType(mthd_type)) {
+      ProcessError(rtrn, L"Undefined class or enum: '" + ReplaceSubstring(mthd_type->GetClassName(), L"#", L"->") + L"'");
     }
   }
-  else if(type->GetType() != NIL_TYPE) {
+  else if(mthd_type->GetType() != NIL_TYPE) {
     ProcessError(rtrn, L"Invalid return statement");
   }
 
@@ -6206,6 +6206,13 @@ bool ContextAnalyzer::ClassEquals(const wstring left_name, Class* right_klass, L
     }
     else if(right_lib_klass) {
       return left_lib_klass->GetName() == right_lib_klass->GetName();
+    }
+  }
+
+  if(right_klass) {
+    left_klass = current_class->GetGenericClass(left_name);
+    if(left_klass) {
+      return left_klass->GetName() == right_klass->GetName();
     }
   }
 

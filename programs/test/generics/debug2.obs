@@ -21,7 +21,9 @@ class Bar<V : Mock, S : String> {
 	}
 
 	function : Instance() ~ Bar<V,S> {
-		return Nil;
+		x := Bar->New()<V,		 S>;
+		return x;
+#		return Nil;
 	}
 	
 	method : public : Set(v : V) ~ Nil {
