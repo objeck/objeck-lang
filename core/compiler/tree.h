@@ -1975,7 +1975,6 @@ namespace frontend {
     MethodCall* anonymous_call;
     vector<wstring> interface_names;
     vector<Class*> generic_classes;
-    Type* generic_interface;
 
     Class(const wstring& file_name, int line_num, const wstring& n, const wstring& p,
           vector<wstring> &e, vector<Class*> g, bool i) : ParseNode(file_name, line_num) {
@@ -1990,7 +1989,6 @@ namespace frontend {
       is_virtual = is_generic = was_called = false;
       anonymous_call = nullptr;
       symbol_table = nullptr;
-      generic_interface = nullptr;
     }
 
     Class(const wstring& file_name, const int line_num, const wstring& n,
@@ -2005,7 +2003,6 @@ namespace frontend {
       is_virtual = is_generic = was_called = false;
       anonymous_call = nullptr;
       symbol_table = nullptr;
-      generic_interface = nullptr;
     }
 
     Class(const wstring& file_name, const int line_num, const wstring& n,
@@ -2019,7 +2016,6 @@ namespace frontend {
       is_generic = g;
       anonymous_call = nullptr;
       symbol_table = nullptr;
-      generic_interface = nullptr;
     }
 
     ~Class() {
@@ -2042,16 +2038,8 @@ namespace frontend {
       return was_called;
     }
 
-    void SetGenericInterface(const wstring &n) {
-      generic_interface = TypeFactory::Instance()->MakeType(CLASS_TYPE, n);
-    }
-
-    Type* GetGenericInterface() {
-      return generic_interface;
-    }
-
     bool HasGenericInterface() {
-      return generic_interface != nullptr;
+      return false /*generic_interface != nullptr */;
     }
 
     vector<wstring> GetInterfaceNames() {
