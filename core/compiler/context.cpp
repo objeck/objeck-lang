@@ -2377,13 +2377,12 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call,
           ProcessError(static_cast<Expression*>(method_call), L"Invalid operation with 'Nil' value");
         }
         // check generic parameters for call
-        Type* left = mthd_params[i]->GetEntry()->GetType();
         /* TODO: GENERICS
         if(klass->HasGenerics()) {
           left = RelsolveGenericCall(left, method_call, klass, method, depth + 1);
         }
         */
-        ResolveClassEnumType(left);
+        Type* left = RelsolveGenericType(mthd_params[i]->GetEntry()->GetType(), method_call, klass, nullptr);
         AnalyzeRightCast(left, expression->GetEvalType(), expression, IsScalar(expression), depth + 1);
       }
     }
@@ -2438,7 +2437,7 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call,
             // backing type
             ResolveClassEnumType(backing_type);
             const wstring backing_name = backing_type->GetClassName();
-            // concreate type
+            // concrete type
             ResolveClassEnumType(concrete_type);
             const wstring concrete_name = concrete_type->GetClassName();
             // validate backing
@@ -6362,7 +6361,9 @@ Type* ContextAnalyzer::RelsolveGenericType(Type* candidate_type, MethodCall* met
         return TypeFactory::Instance()->MakeType(concrete_params, concrete_rtrn);
       }
       else {
+        ResolveClassEnumType(candidate_type);
         wstring func_name = candidate_type->GetClassName();
+
         const vector<LibraryClass*> generic_classes = lib_klass->GetGenericClasses();
         for(size_t i = 0; i < generic_classes.size(); ++i) {
           const wstring find_name = generic_classes[i]->GetName();
