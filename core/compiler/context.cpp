@@ -2307,9 +2307,8 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call,
                                         bool is_expr, wstring &encoding, const int depth)
 {
 #ifdef _DEBUG
-  GetLogger() << L"Checking program class call: |" << klass->GetName() << L":"
-    << (method_call->GetMethodName().size() > 0 ?
-        method_call->GetMethodName() : method_call->GetVariableName())
+  GetLogger() << L"Checking program class call: |" << klass->GetName() << L":" 
+    << (method_call->GetMethodName().size() > 0 ? method_call->GetMethodName() : method_call->GetVariableName())
     << L"|" << endl;
 #endif
 
@@ -2421,8 +2420,9 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call,
     method_call->SetMethod(method);
 
     // map concrete to generic types
-    if((method->GetMethodType() == NEW_PUBLIC_METHOD || method->GetMethodType() == NEW_PRIVATE_METHOD) && 
-       klass->HasGenerics()) {
+    const bool is_new = method->GetMethodType() == NEW_PUBLIC_METHOD || method->GetMethodType() == NEW_PRIVATE_METHOD;
+    const bool same_cls_return = ClassEquals(method->GetReturn()->GetClassName(), klass, nullptr);
+    if((is_new || same_cls_return) && klass->HasGenerics()) {
       const vector<Class*> class_generics = klass->GetGenericClasses();
       const vector<Type*> concrete_types = method_call->GetConcreteTypes();
       if(class_generics.size() != concrete_types.size()) {
@@ -2434,11 +2434,14 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call,
           Type* concrete_type = concrete_types[i];
           Class* class_generic = class_generics[i];
           if(class_generic->HasGenericInterface()) {
-            const wstring backing_name = class_generic->GetGenericInterface()->GetClassName();
-
+            Type* backing_type = class_generic->GetGenericInterface();
+            // backing type
+            ResolveClassEnumType(backing_type);
+            const wstring backing_name = backing_type->GetClassName();
+            // concreate type
             ResolveClassEnumType(concrete_type);
             const wstring concrete_name = concrete_type->GetClassName();
-            
+            // validate backing
             ValidateGenericBacking(concrete_name, backing_name, static_cast<Expression*>(method_call));
           }
         }
