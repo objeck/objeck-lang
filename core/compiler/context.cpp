@@ -2435,7 +2435,10 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call,
           Class* class_generic = class_generics[i];
           if(class_generic->HasGenericInterface()) {
             const wstring backing_name = class_generic->GetGenericInterface()->GetClassName();
+
+            ResolveClassEnumType(concrete_type);
             const wstring concrete_name = concrete_type->GetClassName();
+            
             ValidateGenericBacking(concrete_name, backing_name, static_cast<Expression*>(method_call));
           }
         }
@@ -3311,19 +3314,8 @@ void ContextAnalyzer::AnalyzeReturn(Return* rtrn, const int depth)
       dclr_klass = current_class->GetGenericClass(dclr_name);
     }
 
-    if(dclr_klass == current_class && dclr_klass->HasGenerics()) {
-      const vector<Type*> concrete_types = expr_type->GetGenerics();
-      const vector<Class*> generic_klasses = dclr_klass->GetGenericClasses();
-      if(concrete_types.size() == generic_klasses.size()) {
-        for(size_t i = 0; i < concrete_types.size(); ++i) {
-          if(!ClassEquals(concrete_types[i]->GetClassName(), generic_klasses[i], nullptr)) {
-            ProcessError(expression, L"<<Foo Bar>>");
-          }
-        }
-      }
-      else {
-        ProcessError(expression, L"Generic to concrete size mismatch");
-      }
+    if(dclr_klass == current_class && mthd_type->HasGenerics()) {
+      ProcessError(expression, L"Generic parameters inherited from class definition");
     }
 
     /* TODO: GENERICS
