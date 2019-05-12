@@ -6394,6 +6394,10 @@ Type* ContextAnalyzer::RelsolveGenericType(Type* candidate_type, MethodCall* met
         if(method_call->GetEntry()) {
           concrete_types = method_call->GetEntry()->GetType()->GetGenerics();
         }
+        else if(method_call->GetCallType() == NEW_INST_CALL) {
+          concrete_types = method_call->GetConcreteTypes();
+        }
+
         // get concrete type
         if(concrete_index < (int)concrete_types.size()) {
           Type* concrete_type = TypeFactory::Instance()->MakeType(concrete_types[concrete_index]);
