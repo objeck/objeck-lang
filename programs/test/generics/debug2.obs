@@ -1,15 +1,19 @@
-# validate generic arrays
+#~
+	testing:
+		* deceleration
+		* basic get/set
+		* instance
+~#
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-#~		
 		b : Bar := Bar->New()<Foo,String>;
-
+		z := 13;
 		f := Foo->New(); # ok, zero params...
 		b->Set(f); # needs type erasure
 		s : Foo := b->Get();
-~#		
-		x : Bar := Bar->Instance();
+		x : Bar := Bar->Instance(); 
+		x->Set(f);
 	}
 }
 
@@ -20,9 +24,8 @@ class Bar<V : Mock, S : String> {
 	New() {
 	}
 
-	function : Instance() ~ Bar<V,S> {
-		x := Bar->New()<V, S>;
-		return x;
+	function : Instance() ~ Bar {
+		return Bar->New()<V, S>;
 #		return Nil;
 	}
 	
