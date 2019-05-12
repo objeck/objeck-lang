@@ -3317,10 +3317,6 @@ void ContextAnalyzer::AnalyzeReturn(Return* rtrn, const int depth)
       dclr_klass = current_class->GetGenericClass(dclr_name);
     }
 
-    if(dclr_klass == current_class && mthd_type->HasGenerics()) {
-      ProcessError(expression, L"Generic parameters inherited from class definition");
-    }
-
     /* TODO: GENERICS
     if(dclr_klass && dclr_klass->HasGenerics() && type->HasGenerics()) {
       const vector<Type*> concrete_types = type->GetGenerics();
@@ -3425,8 +3421,7 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
   }
   // handle enum reference, update entry
   else if(variable->GetEvalType() && variable->GetEvalType()->GetType() == CLASS_TYPE && 
-          expression->GetExpressionType() == METHOD_CALL_EXPR && 
-          static_cast<MethodCall*>(expression)->GetEnumItem()) {
+          expression->GetExpressionType() == METHOD_CALL_EXPR && static_cast<MethodCall*>(expression)->GetEnumItem()) {
     SymbolEntry* to_entry = variable->GetEntry();
     if(to_entry) {
       Type* to_type = to_entry->GetType();
