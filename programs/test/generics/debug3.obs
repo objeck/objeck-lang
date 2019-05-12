@@ -6,7 +6,8 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		b : Bar[] := Bar->New[3];
-		b[0] := Bar->Instance();
+		b[0] := Bar->Instance()<String>;
+		b[1] := IntHolder->New();
 	}
 }
 

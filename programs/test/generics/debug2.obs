@@ -13,7 +13,7 @@ class Test {
 		b->Set(f); # needs type erasure
 		s : Foo := b->Get();
 		
-		x : Bar := Bar->Instance()<Foo, String>; # must be qualified
+		x : Bar := Bar->Instance()<Foo, IntHolder>; # must be qualified
 		x->Set(f);
 	}
 }
