@@ -1,64 +1,39 @@
-class Foo {
-	function : Main(args : String[]) ~ Nil {
-		p := Pair->New("foo", IntHolder->New(13))<String, IntHolder>;
-		f := Bar(IntHolder) ~ IntHolder;
-#		p->Apply(f);
-
-		p->GetValue()->Get()->PrintLine();
-		p->Apply(Bar(IntHolder) ~ IntHolder);
-		p->GetValue()->Get()->PrintLine();
-
-		Pair->New(p)<String, IntHolder>;
-#		x->SetValue(IntHolder->New(99));
-
-		c : Pair<String, IntHolder> := p->Clone()<String, String>;
 #~
-		d := p->DoIt(IntHolder->New(101));
-		x->GetValue()->Get()->PrintLine();
+	testing:
+		* nested method calls
 ~#
-		p->GetKey()->PrintLine();
-#		x->GetKey()->PrintLine();
-	}
 
-	function : Bar(v : IntHolder) ~ IntHolder {
-		return IntHolder->New(v->Get() * 3);
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		b : Bar[] := Bar->New[3];
+		b[0] := Bar->New("Foo")<String>;
+		b[0] := Bar->New(IntHolder->New(13))<IntHolder>;
+#~		
+		b[1] := Bar->New()<IntHolder>;
+		b[1]->Set(13);
+		b[1]->Get()->PrintLine();
+~#
 	}
 }
 
-class Pair<Key : Compare, Value> {
-	@key : Key;
-	@value : Value;
-	@left : Pair;
-	@right : Pair;
-	@stack : Value[];
+class Bar<V> {
+	@v : V;
+	
+	New() {}
 
-	New(key : Key, value : Value) {
-		@key := key;
-		@value := value;
+	New(v : V) {
+		@v := v;
 	}
 
-	New(p : Pair) {
-		@value := p->GetValue();
-		@key := p->GetKey();
+	function : Instance() ~ Bar {
+		return Bar->New()<V>;
 	}
-
-	method : public : Clone() ~ Pair {	
-		return @self;
+	
+	method : public : Set(v : V) ~ Nil {
+		@v := v;
 	}
-
-	method : public : GetValue() ~ Value {
-		return @value;
-	}
-
-	method : public : GetKey() ~ Key {
-		return @key;
-	}
-
-	method : public : SetValue(value : Value) ~ Nil {
-		@value := value;
-	}
-
-	method : public : Apply(f : (Value) ~ Value) ~ Nil {
-		@value := f(@value);
+	
+	method : public : Get() ~ V {
+		return @v;
 	}
 }

@@ -2473,8 +2473,8 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call,
     }
 
     if(method_call->GetMethodCall()) {
-      method_call->GetMethodCall()->SetEvalType(method->GetReturn(), false);
-
+      Type* expr_type = RelsolveGenericType(method->GetReturn(), method_call, klass, nullptr);
+      method_call->GetMethodCall()->SetEvalType(expr_type, false);
     }
 
     /* TODO: GENERICS
@@ -6394,6 +6394,9 @@ Type* ContextAnalyzer::RelsolveGenericType(Type* candidate_type, MethodCall* met
         // get types from declaration
         if(method_call->GetEntry()) {
           concrete_types = method_call->GetEntry()->GetType()->GetGenerics();
+        }
+        else if(method_call->GetVariable() && method_call->GetVariable()->GetEntry()) {
+          concrete_types = method_call->GetVariable()->GetEntry()->GetType()->GetGenerics();
         }
         else if(method_call->GetCallType() == NEW_INST_CALL) {
           concrete_types = method_call->GetConcreteTypes();
