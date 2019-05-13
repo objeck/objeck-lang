@@ -3464,11 +3464,35 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
   }
 
   // handle generics, update entry
-  if(expression->GetEvalType() && expression->GetEvalType()->HasGenerics()) {
+  if(expression->GetEvalType() && expression->GetEvalType()->HasGenerics() && variable->GetEntry()) {
+    const vector<Type*> var_types = variable->GetEntry()->GetType()->GetGenerics();
+    const vector <Type*> expr_types = expression->GetEvalType()->GetGenerics();
+
+    if(var_types.size() == expr_types.size()) {
+      for(size_t i = 0; i < var_types.size(); ++i) {
+        Type* var_type = var_types[i];
+        ResolveClassEnumType(var_type);
+
+        Type* expr_type = expr_types[i];
+        ResolveClassEnumType(expr_type);
+
+        // TODO: FIXME
+        if(var_type->GetClassName() != expr_type->GetClassName()) {
+          ProcessError(variable, L"--<< foo bar 1 >>--");
+        }
+      }
+    }
+    else {
+      ProcessError(variable, L"--<< foo bar  2 >>--");
+    }
+
+    /*
     SymbolEntry* entry = variable->GetEntry();
     if(entry && entry->GetType()) {
+      // TODO: validate generics
       entry->GetType()->SetGenerics(expression->GetEvalType()->GetGenerics());
     }
+    */
   }
 
   // check for 'System.String' append operations
@@ -5208,6 +5232,27 @@ void ContextAnalyzer::AnalyzeDeclaration(Declaration * declaration, Class* klass
       Class* dclr_klass = nullptr; LibraryClass* dclr_lib_klass = nullptr;
       if(!GetProgramLibraryClass(dclr_name, dclr_klass, dclr_lib_klass)) {
         dclr_klass = klass->GetGenericClass(dclr_name);
+      }
+
+      if(dclr_klass && dclr_klass->HasGenerics()) {
+        const vector<Type*> concrete_types = type->GetGenerics();
+        if(concrete_types.empty()) {
+          ProcessError(entry, L"Generic to concrete size mismatch");
+        }
+        else {
+          // TODO: FIXME
+          // Type* method_type = RelsolveGenericType(method_parms[j]->GetEntry()->GetType(), method_call, klass, nullptr);
+
+        }
+      }
+      else if(dclr_lib_klass && dclr_lib_klass->HasGenerics()) {
+        const vector<Type*> concrete_types = type->GetGenerics();
+        if(concrete_types.empty()) {
+          ProcessError(entry, L"Generic to concrete size mismatch");
+        }
+        else {
+
+        }
       }
 
       /* TODO: GENERICS
