@@ -7,16 +7,18 @@
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
+#~		
 		b : Bar := Bar->New()<Foo,String>;
 		z := 13;
 		f := Foo->New(); # ok, zero params...
 		b->Set(f); # needs type erasure
 		s : Foo := b->Get();
-		
-		x : Bar := Bar->Instance()<Foo, IntHolder>; # must be qualified
 		x->Set(f);
+~#		
+		x : Bar<Foo,Systim>;
+		e := Bar->New()<Foo,String>; # should be caught
 
-		e : Bar<String,String> := Bar->New()<Foo,String>; # should be caught
+#		e : Bar<String,String> := Bar->New()<Foo,String>; # should be caught
 	}
 }
 
