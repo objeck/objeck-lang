@@ -1912,10 +1912,37 @@ void ContextAnalyzer::AnalyzeNewArrayCall(MethodCall* method_call, const int dep
     }
   }
   // generic array type
-  if(method_call->HasConcreteTypes() && method_call->GetEvalType() &&
-     !method_call->GetEvalType()->HasGenerics()) {
-    const vector<Type*> concretes = method_call->GetConcreteTypes();
+  if(method_call->HasConcreteTypes() && method_call->GetEvalType()) {
+    const wstring generic_name = method_call->GetEvalType()->GetClassName();
+    Class* generic_klass = nullptr; LibraryClass* generic_lib_klass = nullptr;
+    if(GetProgramLibraryClass(generic_name, generic_klass, generic_lib_klass)) {
+      const vector<Type*> concrete_types = method_call->GetConcreteTypes();
+      if(generic_klass) {
+        const vector<Class*> generic_classes = generic_klass->GetGenericClasses();
+        if(concrete_types.size() == generic_classes.size()) {
+          method_call->GetEvalType()->SetGenerics(concrete_types);
+          /*
+          for(size_t i = 0; i < generic_classes.size(); ++i) {
+            Type* resolved = RelsolveGenericType(concrete_types[i], method_call, generic_klass, nullptr);
+            wcout << L"Foo bar" << endl;
+          }
+          */
+        }
+        else {
+          ProcessError(static_cast<Expression*>(method_call), L"<<foo bar>>");
+        }
+      }
+      else {
+        
+      }
+    }
+
+    
+
+    
     /*
+    RelsolveGenericType(Type * candidate_type, MethodCall * method_call, Class * klass, LibraryClass * lib_klass)
+
     ResolveConcreteTypes(concretes, static_cast<Expression*>(method_call), depth + 1);
     method_call->GetEvalType()->SetGenerics(concretes);
     */
@@ -2303,8 +2330,7 @@ Method* ContextAnalyzer::ResolveMethodCall(Class* klass, MethodCall* method_call
  * is method call within the source
  * program.
  ****************************/
-void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call,
-                                        bool is_expr, wstring &encoding, const int depth)
+void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, bool is_expr, wstring &encoding, const int depth)
 {
 #ifdef _DEBUG
   GetLogger() << L"Checking program class call: |" << klass->GetName() << L":" 
@@ -2624,12 +2650,11 @@ LibraryMethod* ContextAnalyzer::ResolveMethodCall(LibraryClass* klass, MethodCal
  * is method call within a linked
  * library
  ****************************/
-void ContextAnalyzer::AnalyzeMethodCall(LibraryClass* klass, MethodCall* method_call,
-                                        bool is_expr, wstring &encoding, bool is_parent, const int depth)
+void ContextAnalyzer::AnalyzeMethodCall(LibraryClass* klass, MethodCall* method_call, bool is_expr, 
+                                        wstring &encoding, bool is_parent, const int depth)
 {
 #ifdef _DEBUG
-  GetLogger() << L"Checking library encoded name: |" << klass->GetName() << L":"
-    << method_call->GetMethodName() << L"|" << endl;
+  GetLogger() << L"Checking library encoded name: |" << klass->GetName() << L":" << method_call->GetMethodName() << L"|" << endl;
 #endif
 
   ExpressionList* call_params = method_call->GetCallingParameters();
@@ -5558,7 +5583,7 @@ bool ContextAnalyzer::InvalidStatic(MethodCall* method_call, Method* method)
 bool ContextAnalyzer::InvalidStatic(MethodCall* method_call, LibraryMethod* method)
 {
   // same class, calling method static and called method not static,
-  // called method not new, called method not from a varaible
+  // called method not new, called method not from a variable
   if(current_method->IsStatic() && !method->IsStatic() &&
      method->GetMethodType() != NEW_PUBLIC_METHOD &&
      method->GetMethodType() != NEW_PRIVATE_METHOD) {
@@ -5885,7 +5910,7 @@ const wstring ContextAnalyzer::EncodeType(Type* type)
     case CLASS_TYPE: {
       encoded_name += L"o.";
 
-      // search program and libaraires
+      // search program and libraries
       wstring klass_name = type->GetClassName();
       Class* klass; LibraryClass* lib_klass;
       GetProgramLibraryClass(klass_name, klass, lib_klass);
