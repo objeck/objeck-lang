@@ -1700,6 +1700,66 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth
   }
 }
 
+void ContextAnalyzer::ValidateGenericConcreteMapping(const vector<Type*> concrete_types, LibraryClass* lib_klass, ParseNode* node)
+{
+  const vector<LibraryClass*> class_generics = lib_klass->GetGenericClasses();
+  if(class_generics.size() != concrete_types.size()) {
+    ProcessError(node, L"Cannot create an unqualified instance of class: '" + lib_klass->GetName() + L"'");
+  }
+  // check individual types
+  if(class_generics.size() == concrete_types.size()) {
+    for(size_t i = 0; i < concrete_types.size(); ++i) {
+      Type* concrete_type = concrete_types[i];
+      LibraryClass* class_generic = class_generics[i];
+      if(class_generic->HasGenericInterface()) {
+        const wstring backing_inf_name = class_generic->GetGenericInterface()->GetClassName();
+        const wstring concrete_name = concrete_type->GetClassName();
+        Class* inf_klass = nullptr; LibraryClass* inf_lib_klass = nullptr;
+        if(GetProgramLibraryClass(concrete_name, inf_klass, inf_lib_klass)) {
+          if(!ValidDownCast(backing_inf_name, inf_klass, inf_lib_klass)) {
+            ProcessError(node, L"Concrete class: '" + concrete_name +
+                         L"' is incompatible with backing class/interface '" + backing_inf_name + L"'");
+          }
+        }
+        else {
+          ProcessError(node, L"Undefined class or interface: '" + concrete_name + L"'");
+        }
+      }
+    }
+  }
+}
+
+void ContextAnalyzer::ValidateGenericConcreteMapping(const vector<Type*> concrete_types, Class* klass, ParseNode* node)
+{
+  const vector<Class*> class_generics = klass->GetGenericClasses();
+  if(class_generics.size() != concrete_types.size()) {
+    ProcessError(node, L"Cannot create an unqualified instance of class: '" + klass->GetName() + L"'");
+  }
+  // check individual types
+  if(class_generics.size() == concrete_types.size()) {
+    for(size_t i = 0; i < concrete_types.size(); ++i) {
+      Type* concrete_type = concrete_types[i];
+      ResolveClassEnumType(concrete_type);
+
+      Class* class_generic = class_generics[i];
+      if(class_generic->HasGenericInterface()) {
+        const wstring backing_inf_name = class_generic->GetGenericInterface()->GetClassName(); // TODO: resolve class names
+        const wstring concrete_name = concrete_type->GetClassName();
+        Class* inf_klass = nullptr; LibraryClass* inf_lib_klass = nullptr;
+        if(GetProgramLibraryClass(concrete_name, inf_klass, inf_lib_klass)) {
+          if(!ValidDownCast(backing_inf_name, inf_klass, inf_lib_klass)) {
+            ProcessError(node, L"Concrete class: '" + concrete_name +
+                         L"' is incompatible with backing class/interface '" + backing_inf_name + L"'");
+          }
+        }
+        else {
+          ProcessError(node, L"Undefined class or interface: '" + concrete_name + L"'");
+        }
+      }
+    }
+  }
+}
+
 void ContextAnalyzer::ValidateGenericBacking(const wstring concrete_name, const wstring backing_name, ParseNode* node)
 {
   Class* inf_klass = nullptr; LibraryClass* inf_lib_klass = nullptr;
@@ -2746,32 +2806,8 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
     // map concrete to generic types
     if((lib_method->GetMethodType() == NEW_PUBLIC_METHOD || lib_method->GetMethodType() == NEW_PRIVATE_METHOD) && 
        lib_klass->HasGenerics()) {
-      const vector<LibraryClass*> class_generics = lib_klass->GetGenericClasses();
-      const vector<Type*> concrete_types = method_call->GetConcreteTypes();
-      if(class_generics.size() != concrete_types.size()) {
-        ProcessError(static_cast<Expression*>(method_call), L"Cannot create an unqualified instance of class: '" + lib_klass->GetName() + L"'");
-      }
-      // check individual types
-      if(class_generics.size() == concrete_types.size()) {
-        for(size_t i = 0; i < concrete_types.size(); ++i) {
-          Type* concrete_type = concrete_types[i];
-          LibraryClass* class_generic = class_generics[i];
-          if(class_generic->HasGenericInterface()) {
-            const wstring backing_inf_name = class_generic->GetGenericInterface()->GetClassName();
-            const wstring concrete_name = concrete_type->GetClassName();
-            Class* inf_klass = nullptr; LibraryClass* inf_lib_klass = nullptr;
-            if(GetProgramLibraryClass(concrete_name, inf_klass, inf_lib_klass)) {
-              if(!ValidDownCast(backing_inf_name, inf_klass, inf_lib_klass)) {
-                ProcessError(static_cast<Expression*>(method_call), L"Concrete class: '" + concrete_name +
-                             L"' is incompatible with backing class/interface '" + backing_inf_name + L"'");
-              }
-            }
-            else {
-              ProcessError(static_cast<Expression*>(method_call), L"Undefined class or interface: '" + concrete_name + L"'");
-            }
-          }
-        }
-      }
+      ValidateGenericConcreteMapping(method_call->GetConcreteTypes(), lib_klass, static_cast<Expression*>(method_call));
+
     }
 
     /* TODO: GENERICS
@@ -5240,8 +5276,12 @@ void ContextAnalyzer::AnalyzeDeclaration(Declaration * declaration, Class* klass
           ProcessError(entry, L"Generic to concrete size mismatch");
         }
         else {
+
+
+          ValidateGenericConcreteMapping(concrete_types, dclr_klass, declaration);
+
           // TODO: FIXME
-          // Type* method_type = RelsolveGenericType(method_parms[j]->GetEntry()->GetType(), method_call, klass, nullptr);
+          // Type* method_type = RelsolveGenericType(concrete_types[i], method_call, klass, nullptr);
 
         }
       }

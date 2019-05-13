@@ -498,7 +498,11 @@ class ContextAnalyzer {
                          bool is_expr, wstring &encoding, bool is_parent, const int depth);
   void AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* method_call,
                          bool is_virtual, bool is_expr, const int depth);
-  void ValidateGenericBacking(const wstring concrete_name, const wstring backing_inf_name, ParseNode* node);
+
+  void ValidateGenericConcreteMapping(const vector<Type*> concrete_types, LibraryClass* lib_klass, ParseNode* node);
+  void ValidateGenericConcreteMapping(const vector<Type*> concrete_types, Class* klass, ParseNode* node);
+
+  void ValidateGenericBacking(const wstring concrete_name, const wstring backing_inf_name, ParseNode * node);
   wstring EncodeMethodCall(ExpressionList * calling_params, const int depth);
   Method* ResolveMethodCall(Class* klass, MethodCall* method_call, const int depth);
   LibraryMethod* ResolveMethodCall(LibraryClass* klass, MethodCall* method_call, const int depth);
