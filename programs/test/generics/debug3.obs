@@ -1,18 +1,23 @@
 #~
 	testing:
 		* arrays
+		* strict type to type matching
 ~#
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		b : Bar[] := Bar->New[3];
+		b : Bar[] := Bar->New[3]<String>;		
+		x : Bar<Compare> := Bar->New(IntHolder->New(13))<IntHolder>;
+
 #~		
 		b[0] := Bar->New("Foo")<String>;
-		b[0] := Bar->New(IntHolder->New(13))<IntHolder>;
-~#		
+				
 		b[1] := Bar->New()<IntHolder>;
 		b[1]->Set(IntHolder->New(225));
+
 		b[1]->Get()->Get()->PrintLine();
+		b[0]->Get()->Get()->PrintLine();
+~#
 	}
 }
 

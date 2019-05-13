@@ -3224,7 +3224,7 @@ MethodCall* Parser::ParseMethodCall(const wstring &ident, int depth)
       if(Match(TOKEN_OPEN_BRACKET)) {
         ExpressionList* expressions = ParseExpressionList(depth + 1, TOKEN_OPEN_BRACKET, TOKEN_CLOSED_BRACKET);
         method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, NEW_ARRAY_CALL, ident, expressions);
-        // anonymous class
+        // array of generics
         if(Match(TOKEN_LES)) {
           vector<Type*> generic_dclrs = ParseGenericTypes(depth);
           method_call->SetConcreteTypes(generic_dclrs);
