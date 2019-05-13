@@ -15,7 +15,7 @@ class Test {
 		s : Foo := b->Get();
 		x->Set(f);
 ~#		
-		x : Bar<Foo,Systim>;
+		x : Bar<Foo,String>;
 		e := Bar->New()<Foo,String>; # should be caught
 
 #		e : Bar<String,String> := Bar->New()<Foo,String>; # should be caught
