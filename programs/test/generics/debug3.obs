@@ -12,7 +12,7 @@ class Test {
 ~#		
 		b[1] := Bar->New()<IntHolder>;
 		b[1]->Set(IntHolder->New(225));
-		b[1]->Get()->PrintLine();
+		b[1]->Get()->Get()->PrintLine();
 	}
 }
 
