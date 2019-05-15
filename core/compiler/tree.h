@@ -736,7 +736,10 @@ namespace frontend {
       return lib_method;
     }
   };
-
+  
+  /*************************
+   * CharacterString class
+   *************************/
   class CharacterString : public Expression {
     friend class TreeFactory;
     bool is_processed;

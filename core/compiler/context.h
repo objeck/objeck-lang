@@ -324,6 +324,7 @@ class ContextAnalyzer {
   void AddMethodParameter(MethodCall* method_call, SymbolEntry* entry, int depth);
 
   // TODO: GENERICS
+  
   /*
   // validate method call with generics
   Type* RelsolveGenericCall(Type* left, MethodCall* method_call, Class* klass, Method* method, int depth);
@@ -345,9 +346,8 @@ class ContextAnalyzer {
   
   /*
    void ResolveConcreteTypes(vector<Type*> concretes, ParseNode* node, const int depth);
-
   */
-
+  
   // finds the first class match; note multiple matches may exist
   inline Class* SearchProgramClasses(const wstring& klass_name) {
     Class* klass = program->GetClass(klass_name);
