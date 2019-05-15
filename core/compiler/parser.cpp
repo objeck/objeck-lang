@@ -982,7 +982,7 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
         break;
       }
     }
-                             break;
+      break;
 
     case TOKEN_ASSIGN:
       statement = ParseAssignment(ParseVariable(ident, depth + 1), depth + 1);
@@ -4006,7 +4006,7 @@ Type* Parser::ParseType(int depth)
     }
     type = TypeFactory::Instance()->MakeType(CLASS_TYPE, ident);
   }
-                    break;
+    break;
 
   case TOKEN_OPEN_PAREN: {
     NextToken();
@@ -4045,13 +4045,8 @@ Type* Parser::ParseType(int depth)
   }
 
   if(type) {
-    if(Match(TOKEN_LES)) {
-      vector<Type*> generic_types = ParseGenericTypes(depth);
-      type->SetGenerics(generic_types);
-    }
-
+    // dimension
     int dimension = 0;
-
     if(Match(TOKEN_OPEN_BRACKET)) {
       NextToken();
       dimension++;
@@ -4072,6 +4067,12 @@ Type* Parser::ParseType(int depth)
       NextToken();
     }
     type->SetDimension(dimension);
+
+    // generic
+    if(Match(TOKEN_LES)) {
+      const vector<Type*> generic_types = ParseGenericTypes(depth);
+      type->SetGenerics(generic_types);
+    }
   }
 
   return type;

@@ -1433,18 +1433,18 @@ void ContextAnalyzer::AnalyzeStaticArray(StaticArray* array, const int depth)
 
   case CHAR_TYPE: {
     // copy wstring elements
-    wstring str;
+    wstring char_str;
     for(size_t i = 0; i < all_elements.size(); ++i) {
-      str += static_cast<CharacterLiteral*>(all_elements[i])->GetValue();
+      char_str += static_cast<CharacterLiteral*>(all_elements[i])->GetValue();
     }
     // associate char wstring
-    int id = program->GetCharStringId(str);
+    int id = program->GetCharStringId(char_str);
     if(id > -1) {
       array->SetId(id);
     }
     else {
       array->SetId(char_str_index);
-      program->AddCharString(str, char_str_index);
+      program->AddCharString(char_str, char_str_index);
       char_str_index++;
     }
   }

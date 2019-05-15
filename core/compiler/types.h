@@ -82,7 +82,7 @@ namespace frontend {
   /****************************
    * Entry types
    ****************************/
-  typedef enum _EntryType {
+  enum EntryType {
     NIL_TYPE = -4000,
     BOOLEAN_TYPE,
     BYTE_TYPE,
@@ -92,7 +92,7 @@ namespace frontend {
     CLASS_TYPE,
     FUNC_TYPE,
     VAR_TYPE
-  } EntryType;
+  };
 
   /****************************
    * Method types
@@ -304,15 +304,15 @@ namespace frontend {
   };
   
   // static array holders
-  typedef struct _IntStringHolder {
+  struct IntStringHolder {
     INT_VALUE* value;
     int length;
-  } IntStringHolder;
+  };
   
-  typedef struct _FloatStringHolder {
+  struct FloatStringHolder {
     FLOAT_VALUE* value;
     int length;
-  } FloatStringHolder;
+  };
 }
 
 namespace backend {
