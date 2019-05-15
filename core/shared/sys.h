@@ -53,18 +53,17 @@ using namespace std;
 
 namespace instructions {
   // vm types
-  typedef enum _MemoryType {
+  enum MemoryType {
     NIL_TYPE = 1000,
     BYTE_ARY_TYPE,
     CHAR_ARY_TYPE,
     INT_TYPE,
     FLOAT_TYPE,
     FUNC_TYPE
-  } 
-  MemoryType;
+  };
 
   // garbage types
-  typedef enum _ParamType {
+  enum ParamType {
     CHAR_PARM = -1500,
     INT_PARM,
     FLOAT_PARM,
@@ -75,8 +74,7 @@ namespace instructions {
     OBJ_PARM,
     OBJ_ARY_PARM,
     FUNC_PARM,
-  } 
-  ParamType;
+  };
 }
 
 static map<const wstring, wstring> ParseCommnadLine(const wstring &path_string) {    

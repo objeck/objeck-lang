@@ -597,20 +597,20 @@ class LibraryClass {
 /******************************
  * Library class
  ****************************/
-typedef struct _CharStringInstruction {
+struct CharStringInstruction {
   wstring value;
   vector<LibraryInstr*> instrs;
-} CharStringInstruction;
+};
 
-typedef struct _IntStringInstruction {
+struct IntStringInstruction {
   frontend::IntStringHolder* value;
   vector<LibraryInstr*> instrs;
-} IntStringInstruction;
+};
 
-typedef struct _FloatStringInstruction {
+struct FloatStringInstruction {
   frontend::FloatStringHolder* value;
   vector<LibraryInstr*> instrs;
-} FloatStringInstruction;
+};
 
 class Library {
   wstring lib_path;

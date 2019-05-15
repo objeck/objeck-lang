@@ -34,7 +34,7 @@
 
 namespace instructions {
   // system directive codes
-  typedef enum _Traps {
+  enum Traps {
     // core operations
     LOAD_CLS_INST_ID = -4000,
     LOAD_CLS_BY_INST,
@@ -178,8 +178,7 @@ namespace instructions {
     SET_SYS_PROP,
     ASSERT_TRUE,
     EXIT
-  } 
-  Traps;
+  };
 }
 
 #endif

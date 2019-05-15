@@ -32,7 +32,7 @@
 
 namespace instructions {
   // vm instructions
-  typedef enum _InstructionType {
+  enum InstructionType {
     // loads operations
     LOAD_INT_LIT  = 0,
     LOAD_CHAR_LIT,
@@ -161,17 +161,15 @@ namespace instructions {
     LIB_FUNC_DEF,
     // system directives
     END_STMTS,
-  } 
-  InstructionType;
+  };
 
   // memory reference context, used for
   // loading and storing variables
-  typedef enum _MemoryContext {
+  enum MemoryContext {
     CLS = -3500,
     INST,
     LOCL
-  } 
-  MemoryContext;
+  };
 }
 
 #endif

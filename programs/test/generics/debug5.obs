@@ -1,3 +1,8 @@
+#~
+	testing:
+		* functions
+~#
+
 class Foo {
 	function : Main(args : String[]) ~ Nil {
 		s := Stack->New()<String>;

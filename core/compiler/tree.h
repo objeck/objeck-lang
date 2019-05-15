@@ -82,7 +82,7 @@ namespace frontend {
   /****************************
    * StatementType enum
    ****************************/
-  typedef enum _StatementType {
+  enum StatementType {
     DECLARATION_STMT,
     ASSIGN_STMT,
     ADD_ASSIGN_STMT,
@@ -104,7 +104,7 @@ namespace frontend {
     CRITICAL_STMT,
     SYSTEM_STMT,
     EMPTY_STMT
-  } StatementType;
+  };
 
   /****************************
    * SymbolEntry class
@@ -387,7 +387,7 @@ namespace frontend {
   /****************************
    * ExpressionType enum
    ****************************/
-  typedef enum _ExpressionType {
+  enum ExpressionType {
     METHOD_CALL_EXPR,
     COND_EXPR,
     VAR_EXPR,
@@ -416,7 +416,7 @@ namespace frontend {
     BIT_XOR_EXPR,
     CHAR_STR_EXPR,
     STAT_ARY_EXPR
-  } ExpressionType;
+  };
 
   /****************************
    * Expression base class

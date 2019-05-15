@@ -6,10 +6,12 @@
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		b : Bar[] := Bar->New[3]<String>;		
-		x : Bar<Compare> := Bar->New(IntHolder->New(13))<IntHolder>;
+#		b : Bar<String>;
+		b : Bar[]<String> := Bar->New[3]<String>;		
 
 #~		
+		x : Bar<Compare> := Bar->New(IntHolder->New(13))<IntHolder>;
+
 		b[0] := Bar->New("Foo")<String>;
 				
 		b[1] := Bar->New()<IntHolder>;
