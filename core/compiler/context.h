@@ -442,6 +442,7 @@ class ContextAnalyzer {
   void AnalyzeVirtualMethod(Class* impl_class, MethodType impl_mthd_type, Type* impl_return, 
                             bool impl_is_static, bool impl_is_virtual, LibraryMethod* virtual_method);
   void AnalyzeInterfaces(Class* klass, const int depth);
+  void AnalyzeGenerics(Class* klass, const int depth);
   bool AnalyzeReturnPaths(StatementList* statement_list, const int depth);
   bool AnalyzeReturnPaths(If* if_stmt, bool nested, const int depth);
   bool AnalyzeReturnPaths(Select* select_stmt, const int depth);
