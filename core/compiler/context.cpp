@@ -2012,15 +2012,9 @@ void ContextAnalyzer::AnalyzeNewArrayCall(MethodCall* method_call, const int dep
         const vector<Class*> generic_classes = generic_klass->GetGenericClasses();
         if(concrete_types.size() == generic_classes.size()) {
           method_call->GetEvalType()->SetGenerics(concrete_types);
-          /*
-          for(size_t i = 0; i < generic_classes.size(); ++i) {
-            Type* resolved = RelsolveGenericType(concrete_types[i], method_call, generic_klass, nullptr);
-            wcout << L"Foo bar" << endl;
-          }
-          */
         }
         else {
-          ProcessError(static_cast<Expression*>(method_call), L"<<foo bar>>");
+          ProcessError(static_cast<Expression*>(method_call), L"Concrete to generic size mismatch");
         }
       }
       else {
@@ -3527,45 +3521,40 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
       }
     }
   }
-
+  
   // handle generics, update entry
   if(expression->GetEvalType() && expression->GetEvalType()->HasGenerics() && variable->GetEntry()) {
     const vector<Type*> var_types = variable->GetEntry()->GetType()->GetGenerics();
     const vector <Type*> expr_types = expression->GetEvalType()->GetGenerics();
-
+    
     if(var_types.size() == expr_types.size()) {
       for(size_t i = 0; i < var_types.size(); ++i) {
+        // resolve variable type
         Type* var_type = var_types[i];
         ResolveClassEnumType(var_type);
-
+        // resolve expression type
         Type* expr_type = expr_types[i];
         ResolveClassEnumType(expr_type);
-
-        // TODO: FIXME
+        // match expression types
         if(var_type->GetClassName() != expr_type->GetClassName()) {
-          ProcessError(variable, L"--<< foo bar 1 >>--");
+          ProcessError(variable, L"Generic type mismatch between classes: '" +
+                       ReplaceSubstring(var_type->GetClassName(), L"#", L"->") + L"' and '" +
+                       ReplaceSubstring(expr_type->GetClassName(), L"#", L"->") + L"'");
         }
       }
     }
     else {
-      ProcessError(variable, L"--<< foo bar  2 >>--");
+      ProcessError(variable, L"Generic size mismatch");
     }
-
-    /*
-    SymbolEntry* entry = variable->GetEntry();
-    if(entry && entry->GetType()) {
-      // TODO: validate generics
-      entry->GetType()->SetGenerics(expression->GetEvalType()->GetGenerics());
-    }
-    */
   }
-
+  
   // check for 'System.String' append operations
   Type* eval_type = variable->GetEvalType();
   bool check_right_cast = true;
   if(eval_type && eval_type->GetType() == CLASS_TYPE) {
 #ifndef _SYSTEM
-    LibraryClass* left_class = linker->SearchClassLibraries(eval_type->GetClassName(), program->GetUses(current_class->GetFileName()));
+    LibraryClass* left_class = linker->SearchClassLibraries(eval_type->GetClassName(),
+                                                            program->GetUses(current_class->GetFileName()));
 #else
     Class* left_class = SearchProgramClasses(eval_type->GetClassName());
 #endif
