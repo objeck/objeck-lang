@@ -7,14 +7,14 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
 #		b : Bar<String>;
-		b : Bar[]<String> := Bar->New[3]<String>;		
+		b : Bar[]<String> := Bar->New[3]<String>;	
+		b[0] := Bar->New("Foo")<String>;				
+		b[1] := Bar->New()<IntHolder>;
 
 #~		
 		x : Bar<Compare> := Bar->New(IntHolder->New(13))<IntHolder>;
 
-		b[0] := Bar->New("Foo")<String>;
-				
-		b[1] := Bar->New()<IntHolder>;
+		
 		b[1]->Set(IntHolder->New(225));
 
 		b[1]->Get()->Get()->PrintLine();
