@@ -14,11 +14,11 @@ class Test {
 		b->Set(f); # needs type erasure
 		s : Foo := b->Get();
 		x->Set(f);
-~#		
+		
 		x : Bar<Foo,String>;
 		e := Bar->New()<Foo,String>; # should be caught
-
-#		e : Bar<String,String> := Bar->New()<Foo,String>; # should be caught
+~#
+		e : Bar<Foo,IntHolder> := Bar->New()<Foo,String>; # should be caught
 	}
 }
 
