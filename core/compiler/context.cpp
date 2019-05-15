@@ -449,6 +449,9 @@ void ContextAnalyzer::AnalyzeClass(Class* klass, const int id, const int depth)
   // check interfaces
   AnalyzeInterfaces(klass, depth);
 
+  // check generics
+  AnalyzeGenerics(klass, depth);
+
   // declarations
   vector<Statement*> statements = klass->GetStatements();
   for(size_t i = 0; i < statements.size(); ++i) {
@@ -496,13 +499,41 @@ void ContextAnalyzer::AnalyzeMethods(Class* klass, const int depth)
   }
 }
 
+/*****************************************************************
+ * Check for generic classes and backing interfaces
+ *****************************************************************/
+void ContextAnalyzer::AnalyzeGenerics(Class* klass, const int depth)
+{
+  const vector<Class*> generic_classes = klass->GetGenericClasses();
+  for(size_t i = 0; i < generic_classes.size(); ++i) {
+    Class* generic_class = generic_classes[i];
+    if(generic_class->HasGenericInterface()) {
+      Type* generic_inf_type = generic_class->GetGenericInterface();
+      const wstring generic_inf_name = generic_inf_type->GetClassName();
+      
+      Class* klass_generic_inf = nullptr; LibraryClass* lib_klass_generic_inf = nullptr; 
+      if(GetProgramLibraryClass(generic_inf_name, klass_generic_inf, lib_klass_generic_inf)) {
+        if(klass_generic_inf) {
+          generic_inf_type->SetClassName(klass_generic_inf->GetName());
+        }
+        else {
+          generic_inf_type->SetClassName(lib_klass_generic_inf->GetName());
+        }
+      }
+      else {
+        ProcessError(klass, L"Undefined interface: '" + generic_inf_name + L"'");
+      }
+    }
+  }
+}
+
 /****************************
  * Checks for interface
  * implementations
  ****************************/
 void ContextAnalyzer::AnalyzeInterfaces(Class* klass, const int depth)
 {
-  vector<wstring> interface_names = klass->GetInterfaceNames();
+  const vector<wstring> interface_names = klass->GetInterfaceNames();
   vector<Class*> interfaces;
   vector<LibraryClass*> lib_interfaces;
   for(size_t i = 0; i < interface_names.size(); ++i) {
@@ -2799,11 +2830,9 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
     if(lib_method->GetReturn()->GetType() == NIL_TYPE && method_call->GetCastType()) {
       ProcessError(static_cast<Expression*>(method_call), L"Cannot cast a Nil return value");
     }
-    // map generic to concrete type, if needed
-    LibraryClass* lib_klass = lib_method->GetLibraryClass();
-    Type* eval_type = TypeFactory::Instance()->MakeType(method_call->GetEvalType());
-
+    
     // map concrete to generic types
+    LibraryClass* lib_klass = lib_method->GetLibraryClass();
     if((lib_method->GetMethodType() == NEW_PUBLIC_METHOD || lib_method->GetMethodType() == NEW_PRIVATE_METHOD) && 
        lib_klass->HasGenerics()) {
       ValidateGenericConcreteMapping(method_call->GetConcreteTypes(), lib_klass, static_cast<Expression*>(method_call));
