@@ -521,7 +521,7 @@ void ContextAnalyzer::AnalyzeGenerics(Class* klass, const int depth)
         }
       }
       else {
-        ProcessError(klass, L"Undefined interface: '" + generic_inf_name + L"'");
+        ProcessError(klass, L"Undefined backing generic interface: '" + generic_inf_name + L"'");
       }
     }
   }
