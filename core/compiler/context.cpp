@@ -3548,26 +3548,27 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
     }
   }
   
-  // check for 'System.String' append operations
-  Type* eval_type = variable->GetEvalType();
+  Type* left_type = variable->GetEvalType();
   bool check_right_cast = true;
-  if(eval_type && eval_type->GetType() == CLASS_TYPE) {
+  if(left_type && left_type->GetType() == CLASS_TYPE) {
 #ifndef _SYSTEM
-    LibraryClass* left_class = linker->SearchClassLibraries(eval_type->GetClassName(),
-                                                            program->GetUses(current_class->GetFileName()));
+    LibraryClass* left_class = linker->SearchClassLibraries(left_type->GetClassName(),program->GetUses(current_class->GetFileName()));
 #else
-    Class* left_class = SearchProgramClasses(eval_type->GetClassName());
+    Class* left_class = SearchProgramClasses(left_type->GetClassName());
 #endif
     if(left_class) {
-      const wstring left = left_class->GetName();
-      if(left == L"System.String") {
-        // check rhs type
-        Type* expr_type = GetExpressionType(expression, depth + 1);
-        if(expr_type && expr_type->GetType() == CLASS_TYPE) {
+      const wstring left_name = left_class->GetName();
+      //
+      // 'System.String' append operations
+      //
+      if(left_name == L"System.String") {
+        
+        Type* right_type = GetExpressionType(expression, depth + 1);
+        if(right_type && right_type->GetType() == CLASS_TYPE) {
 #ifndef _SYSTEM
-          LibraryClass* right_class = linker->SearchClassLibraries(expr_type->GetClassName(), program->GetUses(current_class->GetFileName()));
+          LibraryClass* right_class = linker->SearchClassLibraries(right_type->GetClassName(), program->GetUses(current_class->GetFileName()));
 #else
-          Class* right_class = SearchProgramClasses(expr_type->GetClassName());
+          Class* right_class = SearchProgramClasses(right_type->GetClassName());
 #endif
           if(right_class) {
             const wstring right = right_class->GetName();
@@ -3592,20 +3593,19 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
                 ProcessError(assignment, L"Internal compiler error.");
                 break;
               }
-
             }
             else {
               ProcessError(assignment, L"Invalid operation using classes: System.String and " + right);
             }
           }
           else {
-            ProcessError(assignment, L"Invalid operation using classes: System.String and " + expr_type->GetClassName());
+            ProcessError(assignment, L"Invalid operation using classes: System.String and " + right_type->GetClassName());
           }
         }
         // rhs 'Char', 'Byte', 'Int', 'Float' or 'Bool'
-        else if(expr_type && (expr_type->GetType() == CHAR_TYPE || expr_type->GetType() == BYTE_TYPE ||
-                expr_type->GetType() == INT_TYPE || expr_type->GetType() == FLOAT_TYPE ||
-                expr_type->GetType() == BOOLEAN_TYPE)) {
+        else if(right_type && (right_type->GetType() == CHAR_TYPE || right_type->GetType() == BYTE_TYPE ||
+                right_type->GetType() == INT_TYPE || right_type->GetType() == FLOAT_TYPE ||
+                right_type->GetType() == BOOLEAN_TYPE)) {
           switch(type) {
           case ADD_ASSIGN_STMT:
             static_cast<OperationAssignment*>(assignment)->SetStringConcat(true);
@@ -3615,16 +3615,16 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
           case SUB_ASSIGN_STMT:
           case MUL_ASSIGN_STMT:
           case DIV_ASSIGN_STMT:
-            if(expr_type->GetType() == CHAR_TYPE) {
+            if(right_type->GetType() == CHAR_TYPE) {
               ProcessError(assignment, L"Invalid operation using classes: System.String and System.Char");
             }
-            else if(expr_type->GetType() == BYTE_TYPE) {
+            else if(right_type->GetType() == BYTE_TYPE) {
               ProcessError(assignment, L"Invalid operation using classes: System.String and System.Byte");
             }
-            else if(expr_type->GetType() == INT_TYPE) {
+            else if(right_type->GetType() == INT_TYPE) {
               ProcessError(assignment, L"Invalid operation using classes: System.String and Int");
             }
-            else if(expr_type->GetType() == FLOAT_TYPE) {
+            else if(right_type->GetType() == FLOAT_TYPE) {
               ProcessError(assignment, L"Invalid operation using classes: System.String and System.Float");
             }
             else {
@@ -3639,6 +3639,39 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
             ProcessError(assignment, L"Internal compiler error.");
             break;
           }
+        }
+      }
+      //
+      // Unboxing for assignment operations
+      //
+      else if(left_name == L"System.ByteHolder" ||
+              left_name == L"System.CharHolder" ||
+              left_name == L"System.IntHolder" ||
+              left_name == L"System.FloatHolder") {
+        switch(type) {
+        case ADD_ASSIGN_STMT:
+        case SUB_ASSIGN_STMT:
+        case MUL_ASSIGN_STMT:
+        case DIV_ASSIGN_STMT: {
+          /*
+          CalculatedExpression* calc_expression = TreeFactory::Instance()->MakeCalculatedExpression(variable->GetFileName(), 
+                                                                                                    variable->GetLineNumber(),
+                                                                                                    ADD_EXPR, variable, expression);
+          
+          calc_expression->SetEvalType(left_type, false);
+          assignment->SetExpression(calc_expression);
+          static_cast<OperationAssignment*>(assignment)->SetStatementType(ASSIGN_STMT);
+          AnalyzeAssignment(assignment, assignment->GetStatementType(), depth + 1);
+          */
+        }
+          break;
+
+        case ASSIGN_STMT:
+          break;
+
+        default:
+          ProcessError(assignment, L"Internal compiler error.");
+          break;
         }
       }
     }
