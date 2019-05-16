@@ -13,7 +13,8 @@ class Test {
 	function : Add(s : IntHolder) ~ IntHolder {
 #		s := 7 + s;
 s->Get()->PrintLine();
-		s += 7; # THIS SHOULD WORK
+#		s := s + 7;
+		s += s; # THIS SHOULD WORK
 s->Get()->PrintLine();		
 		return s;
 	}
