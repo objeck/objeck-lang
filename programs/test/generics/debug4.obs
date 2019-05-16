@@ -5,14 +5,8 @@
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		b : Bar[] := Bar->New[3];
-		b[0] := Bar->New("Foo")<String>;
-		b[0] := Bar->New(IntHolder->New(13))<IntHolder>;
-#~		
-		b[1] := Bar->New()<IntHolder>;
-		b[1]->Set(13);
-		b[1]->Get()->PrintLine();
-~#
+		v : Bar<String> := Bar->New("Foo Bar")<String>;
+		v->Get()->SubString(5)->PrintLine();
 	}
 }
 
