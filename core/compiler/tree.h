@@ -1648,6 +1648,10 @@ namespace frontend {
       return stmt_type;
     }
 
+    void SetStatementType(StatementType t) {
+      stmt_type = t;
+    }
+
     bool IsStringConcat() {
       return is_string_concat;
     }

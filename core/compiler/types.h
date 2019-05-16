@@ -208,7 +208,7 @@ namespace frontend {
     bool IsResolved() {
       return is_resolved;
     }
-    
+
     vector<Type*>& GetFunctionParameters() {
       return func_params;
     }
