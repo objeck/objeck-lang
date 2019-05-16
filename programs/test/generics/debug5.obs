@@ -3,44 +3,38 @@
 		* functions
 ~#
 
-class Foo {
+class Test {
 	function : Main(args : String[]) ~ Nil {
-		s := Stack->New()<String>;
-		s->Push("Foo");
-		s->Push("Bar");
-		s->Size()->PrintLine();
-
-		s->Pop()->PrintLine();
-		s->Size()->PrintLine();		
+		v : Bar<String> := Bar->New("Foo Bar")<String>;
+		v->Apply(Add(String) ~ String);
+		v->Get()->PrintLine();
 	}
 
-	function : Bar(v : IntHolder) ~ IntHolder {
-		return IntHolder->New(v->Get() * 3);
+	function : Add(s : String) ~ String {
+		t := String->New(s);
+		t += " More";
+		return t;
 	}
 }
 
-class Stack<T> {
-	@stack : T[];
-	@pos : Int;
+class Bar<V> {
+	@v : V;
+	
+	New() {}
 
-	New() {
-		@stack := T->New[10];
-		@pos := 0;
+	New(v : V) {
+		@v := v;
 	}
 
-	method : public : Push(v : T) ~ Nil {
-		@stack[@pos++] := v;
+	method : public : Apply(f : (V) ~ V) ~ Nil {
+		@v := f(@v);
 	}
-
-	method : public : Pop() ~ T {
-		return @stack[--@pos];
+	
+	method : public : Set(v : V) ~ Nil {
+		@v := v;
 	}
-
-	method : public : Top() ~ T {
-		return @stack[@pos];
-	}
-
-	method : public : Size() ~ Int {
-		return @pos;
+	
+	method : public : Get() ~ V {
+		return @v;
 	}
 }
