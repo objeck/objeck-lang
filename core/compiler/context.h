@@ -423,7 +423,7 @@ class ContextAnalyzer {
     }
   }
 
-  inline bool IsHolderType(const wstring& n) {
+  inline bool IsHolderType(const wstring &n) {
     unordered_set<wstring>::const_iterator result = holder_types.find(n);
     return result != holder_types.end();
   }
