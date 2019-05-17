@@ -14,7 +14,7 @@ class Test {
 #		s := 7 + s;
 s->Get()->PrintLine();
 #		s := s + 7;
-		s += s; # THIS SHOULD WORK
+		s += s + 4; # THIS SHOULD WORK
 s->Get()->PrintLine();		
 		return s;
 	}
