@@ -307,7 +307,7 @@ void IntermediateEmitter::EmitStrings()
       // char wstring processing
       vector<CharStringInstruction*> char_str_insts = iter->second->GetCharStringInstructions();
       for(size_t i = 0; i < char_str_insts.size(); ++i) {
-        // check for dups
+        // check for duplicate
         bool found = false;
         for(size_t j = 0; !found && j < lib_char_string_values.size(); ++j) {
           if(char_str_insts[i]->value == lib_char_string_values[j]) {
@@ -322,7 +322,7 @@ void IntermediateEmitter::EmitStrings()
       // int wstring processing
       vector<IntStringInstruction*> int_str_insts = iter->second->GetIntStringInstructions();
       for(size_t i = 0; i < int_str_insts.size(); ++i) {
-        // check for dups
+        // check for duplicates
         bool found = false;
         for(size_t j = 0; !found && j < lib_int_string_values.size(); ++j) {
           if(IntStringHolderEqual(int_str_insts[i]->value, lib_int_string_values[j])) {
@@ -337,7 +337,7 @@ void IntermediateEmitter::EmitStrings()
       // float wstring processing
       vector<FloatStringInstruction*> float_str_insts = iter->second->GetFloatStringInstructions();
       for(size_t i = 0; i < float_str_insts.size(); ++i) {
-        // check for dups
+        // check for duplicates
         bool found = false;
         for(size_t j = 0; !found && j < lib_float_string_values.size(); ++j) {
           if(FloatStringHolderEqual(float_str_insts[i]->value, lib_float_string_values[j])) {
@@ -353,7 +353,7 @@ void IntermediateEmitter::EmitStrings()
 
     // merge in library strings
     for(size_t i = 0; i < lib_char_string_values.size(); ++i) {
-      // check for dups
+      // check for duplicates
       bool found = false;
       for(size_t j = 0; !found && j < char_string_values.size(); ++j) {
         if(lib_char_string_values[i] == char_string_values[j]) {
@@ -366,7 +366,7 @@ void IntermediateEmitter::EmitStrings()
       }
     }
     for(size_t i = 0; i < lib_int_string_values.size(); ++i) {
-      // check for dups
+      // check for duplicates
       bool found = false;
       for(size_t j = 0; !found && j < int_string_values.size(); ++j) {
         if(IntStringHolderEqual(lib_int_string_values[i], int_string_values[j])) {
@@ -379,7 +379,7 @@ void IntermediateEmitter::EmitStrings()
       }
     }
     for(size_t i = 0; i < lib_float_string_values.size(); ++i) {
-      // check for dups
+      // check for duplicates
       bool found = false;
       for(size_t j = 0; !found && j < float_string_values.size(); ++j) {
         if(FloatStringHolderEqual(lib_float_string_values[i], float_string_values[j])) {
@@ -988,7 +988,7 @@ void IntermediateEmitter::EmitMethodCallStatement(MethodCall* method_call)
     }
       
     // emit nested method calls
-    bool is_nested = false; // fuction call
+    bool is_nested = false; // function call
     method_call = method_call->GetMethodCall();
     while(method_call) {
       EmitMethodCall(method_call, is_nested);
@@ -2658,7 +2658,7 @@ void IntermediateEmitter::EmitMethodCallExpression(MethodCall* method_call, bool
     }
       
     // emit nested calls
-    bool is_nested = false; // fuction call
+    bool is_nested = false; // function call
     method_call = method_call->GetMethodCall();
     while(method_call) {
       EmitMethodCall(method_call, is_nested);
@@ -3158,7 +3158,7 @@ void IntermediateEmitter::EmitCharacterStringSegment(CharacterStringSegment* seg
     else {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, NEW_OBJ_INST, (INT_VALUE)string_cls_id));
     }
-    // note: method ID is position dependant
+    // note: method ID is position dependent
     if(is_lib) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0L, 
                                                                                  L"System.String", L"System.String:New:c*,"));
@@ -3175,7 +3175,7 @@ void IntermediateEmitter::EmitCharacterStringSegment(CharacterStringSegment* seg
     else {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, NEW_OBJ_INST, (INT_VALUE)string_cls_id));
     }
-    // note: method ID is position dependant
+    // note: method ID is position dependent
     if(is_lib) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0L, 
                                                                                  L"System.String", L"System.String:New:"));

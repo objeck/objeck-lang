@@ -535,7 +535,7 @@ bool ItermediateOptimizer::CanInlineMethod(IntermediateMethod* mthd_called, set<
   }
 
   // methods are in the same class, such that instance and class
-  // offset will not have to be ajusted 
+  // offset will not have to be adjusted 
   if(mthd_called->GetClass() != current_method->GetClass()) {
     return false;
   }
@@ -918,7 +918,7 @@ IntermediateBlock* ItermediateOptimizer::InlineMethod(IntermediateBlock* inputs)
           local_instr_offset++;
         }
 
-        // ajust local space
+        // adjust local space
         current_method->SetSpace(current_method->GetSpace() + sizeof(INT_VALUE) * 2 + mthd_called->GetSpace());
 
         // fetch inline instructions for called method

@@ -6359,6 +6359,7 @@ void ContextAnalyzer::AnalyzeDynamicFunctionParameters(Type* func_type, ParseNod
   const vector<Type*> func_params = func_type->GetFunctionParameters();
   Type* rtrn_type = func_type->GetFunctionReturn();
 
+  // might be a resolved string from a class library
   if(func_params.size() > 0 && rtrn_type) {
     for(size_t i = 0; i < func_params.size(); ++i) {
       Type* type = func_params[i];

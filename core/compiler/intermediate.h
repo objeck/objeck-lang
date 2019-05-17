@@ -154,7 +154,7 @@ class SelectArrayTree {
 /****************************
  * Translates a parse tree
  * into intermediate code. Also
- * identifies basic bloks
+ * identifies basic blocks
  * for optimization.
  ****************************/
 class IntermediateEmitter {  
