@@ -241,7 +241,7 @@ wstring Method::EncodeType(Type* type, Class* klass, ParsedProgram* program, Lin
         }
       }
       
-      // search libaraires      
+      // search libraries      
       if(name == L"o.") {
         prgm_klass = klass->GetGenericClass(type_klass_name);
         if(prgm_klass) {
@@ -249,7 +249,7 @@ wstring Method::EncodeType(Type* type, Class* klass, ParsedProgram* program, Lin
         }
       }
 
-      // search libaraires      
+      // search libraries      
       if(name == L"o.") {
         LibraryClass* lib_klass = linker->SearchClassLibraries(type_klass_name, program->GetUses());
         if(lib_klass) {

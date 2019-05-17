@@ -1,4 +1,4 @@
-#~
+ #~
 	testing:
 		* generics with boxing
 ~#
@@ -6,7 +6,7 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		v : Bar<IntHolder> := Bar->New(13)<IntHolder>;
-#		v->Apply(Add(IntHolder) ~ IntHolder);
+		v->Apply(Add(IntHolder) ~ IntHolder);
 		v->Get()->Get()->PrintLine();
 	}
 
