@@ -36,6 +36,7 @@
 #include <vector>
 #include <iostream>
 #include <fstream>
+#include <assert.h>
 #ifndef _WIN32
 #include <stdint.h>
 #include <stdlib.h>
@@ -130,6 +131,9 @@ namespace frontend {
     bool is_resolved;
     
     Type(Type* t) {
+#ifdef _DEBUG
+      assert(t);
+#endif
       if(t) {
         type = t->type;
         dimension = t->dimension;
@@ -209,7 +213,7 @@ namespace frontend {
       return is_resolved;
     }
 
-    vector<Type*>& GetFunctionParameters() {
+    vector<Type*> GetFunctionParameters() {
       return func_params;
     }
 

@@ -2833,10 +2833,40 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
     
     // map concrete to generic types
     LibraryClass* lib_klass = lib_method->GetLibraryClass();
-    if((lib_method->GetMethodType() == NEW_PUBLIC_METHOD || lib_method->GetMethodType() == NEW_PRIVATE_METHOD) && 
-       lib_klass->HasGenerics()) {
-      ValidateGenericConcreteMapping(method_call->GetConcreteTypes(), lib_klass, static_cast<Expression*>(method_call));
+    const bool is_new = lib_method->GetMethodType() == NEW_PUBLIC_METHOD || lib_method->GetMethodType() == NEW_PRIVATE_METHOD;
+    const bool same_cls_return = ClassEquals(lib_method->GetReturn()->GetClassName(), nullptr, lib_klass);
+    if((is_new || same_cls_return) && lib_klass->HasGenerics()) {
+      const vector<LibraryClass*> class_generics = lib_klass->GetGenericClasses();
+      const vector<Type*> concrete_types = method_call->GetConcreteTypes();
+      if(class_generics.size() != concrete_types.size()) {
+        ProcessError(static_cast<Expression*>(method_call), L"Cannot create an unqualified instance of class: '" + lib_method->GetName() + L"'");
+      }
+      // check individual types
+      if(class_generics.size() == concrete_types.size()) {
+        for(size_t i = 0; i < concrete_types.size(); ++i) {
+          Type* concrete_type = concrete_types[i];
+          LibraryClass* class_generic = class_generics[i];
+          if(class_generic->HasGenericInterface()) {
+            Type* backing_type = class_generic->GetGenericInterface();
+            // backing type
+            ResolveClassEnumType(backing_type);
+            const wstring backing_name = backing_type->GetClassName();
+            // concrete type
+            ResolveClassEnumType(concrete_type);
+            const wstring concrete_name = concrete_type->GetClassName();
+            // validate backing
+            ValidateGenericBacking(concrete_name, backing_name, static_cast<Expression*>(method_call));
+          }
+        }
+      }
+      method_call->GetEvalType()->SetGenerics(concrete_types);
+    }
 
+    // resolve generic to concrete, if needed
+    Type* eval_type = method_call->GetEvalType();
+    if(lib_method->GetLibraryClass()->HasGenerics()) {
+      eval_type = RelsolveGenericType(eval_type, method_call, nullptr, lib_klass);
+      method_call->SetEvalType(eval_type, false);
     }
 
     /* TODO: GENERICS
@@ -6074,8 +6104,7 @@ const wstring ContextAnalyzer::EncodeType(Type* type)
       
     case FUNC_TYPE:
       if(type->GetClassName().size() == 0) {
-        type->SetClassName(EncodeFunctionType(type->GetFunctionParameters(),
-                           type->GetFunctionReturn()));
+        type->SetClassName(EncodeFunctionType(type->GetFunctionParameters(), type->GetFunctionReturn()));
       }
       encoded_name += type->GetClassName();
       break;
@@ -6327,18 +6356,20 @@ void ContextAnalyzer::AnalyzeVariableCast(Type* to_type, Expression* expression)
 
 void ContextAnalyzer::AnalyzeDynamicFunctionParameters(Type* func_type, ParseNode* node, Class* klass)
 {
-
-  const vector<Type*>& func_params = func_type->GetFunctionParameters();
-  for(size_t i = 0; i < func_params.size(); ++i) {
-    Type* type = func_params[i];
-    if(type->GetType() == CLASS_TYPE && !ResolveClassEnumType(type, klass)) {
-      ProcessError(node, L"Undefined class or enum: '" + type->GetClassName() + L"'");
-    }
-  }
-
+  const vector<Type*> func_params = func_type->GetFunctionParameters();
   Type* rtrn_type = func_type->GetFunctionReturn();
-  if(rtrn_type->GetType() == CLASS_TYPE && !ResolveClassEnumType(rtrn_type, klass)) {
-    ProcessError(node, L"Undefined class or enum: '" + rtrn_type->GetClassName() + L"'");
+
+  if(func_params.size() > 0 && rtrn_type) {
+    for(size_t i = 0; i < func_params.size(); ++i) {
+      Type* type = func_params[i];
+      if(type->GetType() == CLASS_TYPE && !ResolveClassEnumType(type, klass)) {
+        ProcessError(node, L"Undefined class or enum: '" + type->GetClassName() + L"'");
+      }
+    }
+
+    if(rtrn_type && rtrn_type->GetType() == CLASS_TYPE && !ResolveClassEnumType(rtrn_type, klass)) {
+      ProcessError(node, L"Undefined class or enum: '" + rtrn_type->GetClassName() + L"'");
+    }
   }
 }
 
