@@ -41,7 +41,7 @@
 using namespace frontend;
 
 /****************************
- * Polymorphism resolution of
+ * Polymorphic resolution of
  * method calls
  ****************************/
 class LibraryMethodCallSelection {
@@ -126,7 +126,7 @@ class LibraryMethodCallSelector {
 };
 
 /****************************
- * Polymorphism resolution of
+ * Polymorphic resolution of
  * method calls
  ****************************/
 class MethodCallSelection {
@@ -224,6 +224,7 @@ class ContextAnalyzer {
   map<int, wstring> errors;
   vector<wstring> alt_error_method_names;
   map<const wstring, EntryType> type_map;
+  unordered_set<wstring> holder_types;
   bool main_found;
   bool web_found;
   bool is_lib;
@@ -422,6 +423,11 @@ class ContextAnalyzer {
     }
   }
 
+  inline bool IsHolderType(const wstring& n) {
+    unordered_set<wstring>::const_iterator result = holder_types.find(n);
+    return result != holder_types.end();
+  }
+
   // error processing
   void ProcessError(ParseNode* n, const wstring &msg);
   void ProcessErrorAlternativeMethods(wstring &message);
@@ -536,6 +542,12 @@ class ContextAnalyzer {
     type_map[L"$Int"] = INT_TYPE;
     type_map[L"$Float"] = FLOAT_TYPE;
     type_map[L"$Bool"] = BOOLEAN_TYPE;
+
+    // type holders
+    holder_types.insert(L"System.ByteHolder");
+    holder_types.insert(L"System.CharHolder");
+    holder_types.insert(L"System.IntHolder");
+    holder_types.insert(L"System.FloatHolder");
   }
 
   ~ContextAnalyzer() {
