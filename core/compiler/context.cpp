@@ -2086,9 +2086,15 @@ void ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, const 
       AnalyzeMethodCall(lib_klass, method_call, true, encoding, false, depth);
     }
     else {
-      ProcessError(static_cast<Expression*>(method_call), L"Undefined class reference: '" +
-                   expression->GetBaseType()->GetClassName() +
-                   L"'\n\tIf external reference to generic ensure it has been typed");
+      if(expression->GetEvalType()) {
+        ProcessError(static_cast<Expression*>(method_call), L"Undefined class reference: '" +
+                     expression->GetEvalType()->GetClassName() +
+                     L"'\n\tIf external reference to generic ensure it has been typed");
+      }
+      else {
+        ProcessError(static_cast<Expression*>(method_call),
+                     L"Undefined class reference.\n\tIf external reference to generic ensure it has been typed");
+      }
     }
   }
 }
@@ -2643,7 +2649,7 @@ LibraryMethod* ContextAnalyzer::ResolveMethodCall(LibraryClass* klass, MethodCal
       // box and unbox parameters
       vector<Expression*> boxed_resolved_params;
       for(size_t j = 0; j < expr_params.size(); ++j) {
-        Type* method_type = method_parms[j];
+        Type* method_type = RelsolveGenericType(method_parms[j],  method_call, nullptr, klass);
         /* TODO: GENERICS
         if(klass->HasGenerics()) {
           method_type = RelsolveGenericType(method_type, method_call, nullptr, klass);
@@ -2661,7 +2667,6 @@ LibraryMethod* ContextAnalyzer::ResolveMethodCall(LibraryClass* klass, MethodCal
         else if((boxed_param = UnboxingExpression(expr_type, expr_param, depth))) {
           boxed_resolved_params.push_back(boxed_param);
         }
-
         // add default
         if(!boxed_param) {
           boxed_resolved_params.push_back(expr_param);
@@ -2675,7 +2680,7 @@ LibraryMethod* ContextAnalyzer::ResolveMethodCall(LibraryClass* klass, MethodCal
       LibraryMethodCallSelection* match = new LibraryMethodCallSelection(candidates[i], boxed_resolved_params);
       for(size_t j = 0; j < boxed_resolved_params.size(); ++j) {
         // map generic to concrete type, if needed
-        Type* method_type = method_parms[j];
+        Type* method_type = RelsolveGenericType(method_parms[j], method_call, nullptr, klass);
 
         /* TODO: GENERICS
         if(klass->HasGenerics()) {
@@ -2695,6 +2700,7 @@ LibraryMethod* ContextAnalyzer::ResolveMethodCall(LibraryClass* klass, MethodCal
   // evaluate matches
   LibraryMethodCallSelector selector(method_call, matches);
   LibraryMethod* lib_method = selector.GetSelection();
+  
   if(lib_method) {
     // check casts on final candidate
     vector<Type*> method_parms = lib_method->GetDeclarationTypes();
@@ -2709,7 +2715,7 @@ LibraryMethod* ContextAnalyzer::ResolveMethodCall(LibraryClass* klass, MethodCal
         expression = expression->GetMethodCall();
       }
       // map generic to concrete type, if needed
-      Type* left = method_parms[j];
+      Type* left = RelsolveGenericType(method_parms[j], method_call, nullptr, klass);
 
       /* TODO: GENERICS
       if(klass->HasGenerics()) {
