@@ -9,10 +9,10 @@ class Fum<K, V> {
 	New() {
 	}
 
-# Fix me add check
-	method : Get() ~ Fee<String> {
-		return Nil;
-	}	
+	# Fix me add check
+	method : Get() ~ Fee<IntHolder> {
+		return @fee;
+	}
 }
 
 class Fee<K : Compare> {
