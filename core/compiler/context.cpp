@@ -5932,7 +5932,7 @@ wstring ContextAnalyzer::GetProgramLibraryClassName(const wstring& n)
     if(klass) {
       return klass->GetName();
     }
-    else if(lib_klass) {
+    else {
       return lib_klass->GetName();
     }
   }
