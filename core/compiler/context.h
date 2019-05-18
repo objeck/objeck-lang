@@ -354,6 +354,9 @@ class ContextAnalyzer {
   // helper function for program class search
   bool GetProgramLibraryClass(const wstring& n, Class*& klass, LibraryClass*& lib_klass);
 
+  // resolve program or library class name
+  wstring GetProgramLibraryClassName(const wstring& n);
+
   bool ClassEquals(const wstring left_name, Class* right_klass, LibraryClass* right_lib_klass);
 
   // string utility functions
