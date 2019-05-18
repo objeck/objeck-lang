@@ -26,11 +26,16 @@ class Foo {
 
 class Bar<V> {
 	@v : V;
+	@b : static : Bar<V>;
 	
 	New() {}
 
 	New(v : V) {
 		@v := v;
+	}
+
+	function : Instance() ~ Bar<V> {
+		return @b;
 	}
 
 	method : public : Apply(f : (V) ~ V) ~ Nil {
