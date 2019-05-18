@@ -3429,11 +3429,29 @@ void ContextAnalyzer::AnalyzeReturn(Return* rtrn, const int depth)
     AnalyzeRightCast(mthd_type, expression, (IsScalar(expression) && mthd_type->GetDimension() == 0), depth + 1);
 
     // is type in the scope of the class
-    Type* expr_type = expression->GetEvalType();
-    const wstring dclr_name = expr_type->GetClassName();
+    const wstring dclr_name = expression->GetEvalType()->GetClassName();
     Class* dclr_klass = nullptr; LibraryClass* dclr_lib_klass = nullptr;
     if(!GetProgramLibraryClass(dclr_name, dclr_klass, dclr_lib_klass)) {
       dclr_klass = current_class->GetGenericClass(dclr_name);
+    }
+
+    if(dclr_klass && dclr_klass->HasGenerics()) {
+      const vector<Type*> concrete_types = mthd_type->GetGenerics();
+      if(concrete_types.empty()) {
+        ProcessError(expression, L"Generic to concrete size mismatch");
+      }
+      else {
+        ValidateGenericConcreteMapping(concrete_types, dclr_klass, expression);
+      }
+    }
+    else if(dclr_lib_klass && dclr_lib_klass->HasGenerics()) {
+      const vector<Type*> concrete_types = mthd_type->GetGenerics();
+      if(concrete_types.empty()) {
+        ProcessError(expression, L"Generic to concrete size mismatch");
+      }
+      else {
+        ValidateGenericConcreteMapping(concrete_types, dclr_lib_klass, expression);
+      }
     }
 
     /* TODO: GENERICS
@@ -5353,13 +5371,7 @@ void ContextAnalyzer::AnalyzeDeclaration(Declaration * declaration, Class* klass
           ProcessError(entry, L"Generic to concrete size mismatch");
         }
         else {
-
-
           ValidateGenericConcreteMapping(concrete_types, dclr_klass, declaration);
-
-          // TODO: FIXME
-          // Type* method_type = RelsolveGenericType(concrete_types[i], method_call, klass, nullptr);
-
         }
       }
       else if(dclr_lib_klass && dclr_lib_klass->HasGenerics()) {
@@ -5368,7 +5380,7 @@ void ContextAnalyzer::AnalyzeDeclaration(Declaration * declaration, Class* klass
           ProcessError(entry, L"Generic to concrete size mismatch");
         }
         else {
-
+          ValidateGenericConcreteMapping(concrete_types, dclr_lib_klass, declaration);
         }
       }
 
