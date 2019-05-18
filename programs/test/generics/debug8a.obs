@@ -1,8 +1,8 @@
 class Node<K : Compare, V> {
 	@key : K;
 	@value : V;
-	@left : Node;
-	@right : Node;
+	@left : Node<K,V>;
+	@right : Node<K,V>;
 
 	New(key : K, value : V) {
 		@key := key;
@@ -15,6 +15,10 @@ class Node<K : Compare, V> {
 
 	method : public : GetValue() ~ V {
 		return @value;
+	}
+
+	method : public : SetValue(value : V) ~ Nil {
+		@value := value;
 	}
 
 	method : public : SetLeft(left : Node<K, V>) ~ Nil {
@@ -77,6 +81,22 @@ class Map<K : Compare, V> {
 		};
 
 		return false;
+	}
+
+	method : public : Apply(func : (V) ~ V) ~ Nil {
+		Apply(@root, func);
+	}
+
+	method : Apply(current : Node<K,V>, func : (V) ~ V) ~ Nil {
+		if(current->GetLeft() <> Nil) {
+			Apply(current->GetLeft(), func);
+		};
+
+		if(current->GetRight() <> Nil) {
+			Apply(current->GetRight(), func);	
+		};
+
+		current->SetValue(func(current->GetValue()));
 	}
 
 	method : public : Get(key : K) ~ V {
