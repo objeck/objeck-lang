@@ -8,7 +8,7 @@ scope: source.objeck-obs
 
 variables:
   identifier: \b[[:alpha:]_][[:alnum:]_]*\b # upper and lowercase
-  escaped_char: '\\(x\h{2}|n|r|t|0|"|''|\\|u\{\h{1,6}\})'
+  escaped_char: '\\(x\h{2}|u\h{1,4}|0|a|b|f|n|r|t|\\)'
 
 contexts:
   main:

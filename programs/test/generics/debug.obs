@@ -11,8 +11,8 @@ class Test {
 		beer->PrintLine();
 
 		a->Get()->PrintLine();
-		++a->Get()->PrintLine();
-		a->Get()->PrintLine();
+		++a;
+		'"'->PrintLine();
 	}
 
 	function : Fee() ~ Int {
