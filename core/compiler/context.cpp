@@ -1768,7 +1768,7 @@ void ContextAnalyzer::ValidateGenericConcreteMapping(const vector<Type*> concret
 
       Class* class_generic = class_generics[i];
       if(class_generic->HasGenericInterface()) {
-        const wstring backing_inf_name = class_generic->GetGenericInterface()->GetClassName();
+        const wstring backing_inf_name = GetProgramLibraryClassName(class_generic->GetGenericInterface()->GetClassName());
         const wstring concrete_name = concrete_type->GetClassName();
         Class* inf_klass = nullptr; LibraryClass* inf_lib_klass = nullptr;
         if(GetProgramLibraryClass(concrete_name, inf_klass, inf_lib_klass)) {
@@ -5923,6 +5923,21 @@ bool ContextAnalyzer::GetProgramLibraryClass(const wstring& n, Class*& klass, Li
   }
 
   return false;
+}
+
+wstring ContextAnalyzer::GetProgramLibraryClassName(const wstring& n)
+{
+  Class* klass = nullptr; LibraryClass* lib_klass = nullptr;
+  if(GetProgramLibraryClass(n, klass, lib_klass)) {
+    if(klass) {
+      return klass->GetName();
+    }
+    else if(lib_klass) {
+      return lib_klass->GetName();
+    }
+  }
+
+  return n;
 }
 
 const wstring ContextAnalyzer::EncodeType(Type* type)
