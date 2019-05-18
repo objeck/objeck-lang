@@ -2007,7 +2007,7 @@ void ContextAnalyzer::AnalyzeNewArrayCall(MethodCall* method_call, const int dep
     const wstring generic_name = method_call->GetEvalType()->GetClassName();
     Class* generic_klass = nullptr; LibraryClass* generic_lib_klass = nullptr;
     if(GetProgramLibraryClass(generic_name, generic_klass, generic_lib_klass)) {
-      const vector<Type*> concrete_types = method_call->GetConcreteTypes();
+      const vector<Type*> concrete_types = GetConcreteTypes(method_call);
       if(generic_klass) {
         const vector<Class*> generic_classes = generic_klass->GetGenericClasses();
         if(concrete_types.size() == generic_classes.size()) {
@@ -2540,7 +2540,9 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
     const bool same_cls_return = ClassEquals(method->GetReturn()->GetClassName(), klass, nullptr);
     if((is_new || same_cls_return) && klass->HasGenerics()) {
       const vector<Class*> class_generics = klass->GetGenericClasses();
-      const vector<Type*> concrete_types = method_call->GetConcreteTypes();
+      
+      vector<Type*> concrete_types = GetConcreteTypes(method_call);
+
       if(class_generics.size() != concrete_types.size()) {
         ProcessError(static_cast<Expression*>(method_call), L"Cannot create an unqualified instance of class: '" + klass->GetName() + L"'");
       }
@@ -2837,7 +2839,7 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
     const bool same_cls_return = ClassEquals(lib_method->GetReturn()->GetClassName(), nullptr, lib_klass);
     if((is_new || same_cls_return) && lib_klass->HasGenerics()) {
       const vector<LibraryClass*> class_generics = lib_klass->GetGenericClasses();
-      const vector<Type*> concrete_types = method_call->GetConcreteTypes();
+      const vector<Type*> concrete_types = GetConcreteTypes(method_call);
       if(class_generics.size() != concrete_types.size()) {
         ProcessError(static_cast<Expression*>(method_call), L"Cannot create an unqualified instance of class: '" + lib_method->GetName() + L"'");
       }
@@ -6600,7 +6602,7 @@ Type* ContextAnalyzer::RelsolveGenericType(Type* candidate_type, MethodCall* met
           concrete_types = method_call->GetVariable()->GetEntry()->GetType()->GetGenerics();
         }
         else if(method_call->GetCallType() == NEW_INST_CALL) {
-          concrete_types = method_call->GetConcreteTypes();
+          concrete_types = GetConcreteTypes(method_call);
         }
 
         // get concrete type

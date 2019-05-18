@@ -33,8 +33,8 @@ class Foo {
 class Node<K : Compare, V> {
 	@key : K;
 	@value : V;
-	@left : Node;
-	@right : Node;
+	@left : Node<K,V>;
+	@right : Node<K,V>;
 
 	New(key : K, value : V) {
 		@key := key;
