@@ -428,12 +428,6 @@ void ContextAnalyzer::AnalyzeClass(Class* klass, const int id, const int depth)
     }
   }
 
-  /* TODO: GENERICS 
-  if(HasGenericClass(klass->GetName())) {
-    ProcessError(klass, L"Class '" + klass->GetName() + L"' defined as generic reference");
-  }
-  */
-
   // check parent class
   Class* parent_klass = klass->GetParent();
   if(parent_klass && (parent_klass->IsInterface() || parent_klass->HasGenerics())) {
@@ -3855,13 +3849,6 @@ void ContextAnalyzer::AnalyzeCalculation(CalculatedExpression* expression, const
     if(IsBooleanExpression(left) || IsBooleanExpression(right)) {
       ProcessError(expression, L"Invalid mathematical operation");
     }
-    /* TODO: boxing please fix...
-    else if(!(IsEnumExpression(left) || IsEnumExpression(right)) &&
-      (((cls_type = GetExpressionType(left, depth + 1)) && cls_type->GetType() == CLASS_TYPE) ||
-            ((cls_type = GetExpressionType(right, depth + 1)) && cls_type->GetType() == CLASS_TYPE))) {
-      ProcessError(expression, L"Invalid mathematical operation");
-    }
-    */
     break;
 
   default:

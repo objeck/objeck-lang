@@ -109,42 +109,44 @@ void Linker::ResolveExternalMethodCalls()
           LibraryInstr* instr = instrs[j];
 
           switch(instr->GetType()) {
-
             // NEW_OBJ_INST
           case LIB_NEW_OBJ_INST: {
             LibraryClass* lib_klass = SearchClassLibraries(instr->GetOperand5());
             if(lib_klass) {
               instr->SetType(instructions::NEW_OBJ_INST);
               instr->SetOperand(lib_klass->GetId());
-            } else {
+            }
+            else {
               wcerr << L"Error: Unable to resolve external library class: '"
-                    << instr->GetOperand5() << L"'; check library path" << endl;
+                << instr->GetOperand5() << L"'; check library path" << endl;
               exit(1);
             }
           }
             break;
-      
-    case LIB_OBJ_TYPE_OF: {
-      LibraryClass* lib_klass = SearchClassLibraries(instr->GetOperand5());
+
+          case LIB_OBJ_TYPE_OF: {
+            LibraryClass* lib_klass = SearchClassLibraries(instr->GetOperand5());
             if(lib_klass) {
               instr->SetType(instructions::OBJ_TYPE_OF);
               instr->SetOperand(lib_klass->GetId());
-            } else {
+            }
+            else {
               wcerr << L"Error: Unable to resolve external library class: '"
-                    << instr->GetOperand5() << L"'; check library path" << endl;
+                << instr->GetOperand5() << L"'; check library path" << endl;
               exit(1);
             }
-    }
-      break;
+          }
+            break;
 
           case LIB_OBJ_INST_CAST: {
             LibraryClass* lib_klass = SearchClassLibraries(instr->GetOperand5());
             if(lib_klass) {
               instr->SetType(instructions::OBJ_INST_CAST);
               instr->SetOperand(lib_klass->GetId());
-            } else {
+            }
+            else {
               wcerr << L"Error: Unable to resolve external library class: '"
-                    << instr->GetOperand5() << L"'; check library path" << endl;
+                << instr->GetOperand5() << L"'; check library path" << endl;
               exit(1);
             }
           }
@@ -159,12 +161,12 @@ void Linker::ResolveExternalMethodCalls()
                 instr->SetType(instructions::MTHD_CALL);
                 instr->SetOperand(lib_klass->GetId());
                 instr->SetOperand2(lib_method->GetId());
-              } 
+              }
               else {
                 wcerr << L"Error: Unable to resolve external library method: '" << instr->GetOperand6() << L"'; check library path" << endl;
                 exit(1);
               }
-            } 
+            }
             else {
               wcerr << L"Error: Unable to resolve external library class: '" << instr->GetOperand5() << L"'; check library path" << endl;
               exit(1);
@@ -183,12 +185,12 @@ void Linker::ResolveExternalMethodCalls()
                 // set class
                 instrs[j + 1]->SetType(instructions::LOAD_INT_LIT);
                 instrs[j + 1]->SetOperand(lib_klass->GetId());
-              } 
+              }
               else {
                 wcerr << L"Error: Unable to resolve external library method: '" << instr->GetOperand6() << L"'; check library path" << endl;
                 exit(1);
               }
-            } 
+            }
             else {
               wcerr << L"Error: Unable to resolve external library class: '" << instr->GetOperand5() << L"'; check library path" << endl;
               exit(1);
@@ -1268,10 +1270,7 @@ void LibraryMethod::ParseParameters()
           index++;
         }
         size_t end = index;
-        const wstring& name = parameters.substr(start, end - start);
-        // TODO: convenient alternative/kludge to paring the function types. This
-        // works because the contextual analyzer does string encoding and then 
-        // checking of function types.
+        const wstring name = parameters.substr(start, end - start);
         type = frontend::TypeFactory::Instance()->MakeType(frontend::FUNC_TYPE, name);
       }
                 break;
