@@ -341,11 +341,19 @@ class ContextAnalyzer {
 
   // find generic references
   bool HasGenericClass(const wstring& n);
+
+  void ResolveConcreteTypes(vector<Type*> concretes, ParseNode* node, const int depth);
   */
 
   Type* RelsolveGenericType(Type* generic_type, MethodCall* method_call, Class* klass, LibraryClass* lib_klass);
 
-  vector<Type*> GetConcreteTypes(MethodCall* method_call) {
+  // finds the first class match; note multiple matches may exist
+  Class* SearchProgramClasses(const wstring& klass_name);
+
+  // finds the first enum match; note multiple matches may exist
+  Enum* SearchProgramEnums(const wstring& eenum_name);
+
+  inline vector<Type*> GetConcreteTypes(MethodCall* method_call) {
     if(method_call->GetEntry()) {
       return method_call->GetEntry()->GetType()->GetGenerics();
     }
@@ -354,45 +362,6 @@ class ContextAnalyzer {
     }
   }
   
-  /*
-   void ResolveConcreteTypes(vector<Type*> concretes, ParseNode* node, const int depth);
-  */
-  
-  // finds the first class match; note multiple matches may exist
-  inline Class* SearchProgramClasses(const wstring& klass_name) {
-    Class* klass = program->GetClass(klass_name);
-    if(!klass) {
-      klass = program->GetClass(bundle->GetName() + L"." + klass_name);
-      if(!klass) {
-        vector<wstring> uses = program->GetUses();
-        for(size_t i = 0; !klass && i < uses.size(); ++i) {
-          klass = program->GetClass(uses[i] + L"." + klass_name);
-        }
-      }
-    }
-
-    return klass;
-  }
-
-  // finds the first enum match; note multiple matches may exist
-  inline Enum* SearchProgramEnums(const wstring & eenum_name) {
-    Enum* eenum = program->GetEnum(eenum_name);
-    if(!eenum) {
-      eenum = program->GetEnum(bundle->GetName() + L"." + eenum_name);
-      if(!eenum) {
-        vector<wstring> uses = program->GetUses();
-        for(size_t i = 0; !eenum && i < uses.size(); ++i) {
-          eenum = program->GetEnum(uses[i] + L"." + eenum_name);
-          if(!eenum) {
-            eenum = program->GetEnum(uses[i] + eenum_name);
-          }
-        }
-      }
-    }
-
-    return eenum;
-  }
-
   // helper function for program enum search
   inline bool HasProgramLibraryEnum(const wstring & n) {
     return SearchProgramEnums(n) || linker->SearchEnumLibraries(n, program->GetUses(current_class->GetFileName()));

@@ -6619,6 +6619,41 @@ Type* ContextAnalyzer::RelsolveGenericType(Type* candidate_type, MethodCall* met
   return candidate_type;
 }
 
+Class* ContextAnalyzer::SearchProgramClasses(const wstring& klass_name)
+{
+  Class* klass = program->GetClass(klass_name);
+  if(!klass) {
+    klass = program->GetClass(bundle->GetName() + L"." + klass_name);
+    if(!klass) {
+      vector<wstring> uses = program->GetUses();
+      for(size_t i = 0; !klass && i < uses.size(); ++i) {
+        klass = program->GetClass(uses[i] + L"." + klass_name);
+      }
+    }
+  }
+
+  return klass;
+}
+
+Enum* ContextAnalyzer::SearchProgramEnums(const wstring& eenum_name)
+{
+  Enum* eenum = program->GetEnum(eenum_name);
+  if(!eenum) {
+    eenum = program->GetEnum(bundle->GetName() + L"." + eenum_name);
+    if(!eenum) {
+      vector<wstring> uses = program->GetUses();
+      for(size_t i = 0; !eenum && i < uses.size(); ++i) {
+        eenum = program->GetEnum(uses[i] + L"." + eenum_name);
+        if(!eenum) {
+          eenum = program->GetEnum(uses[i] + eenum_name);
+        }
+      }
+    }
+  }
+
+  return eenum;
+}
+
 /*
 Type* ContextAnalyzer::RelsolveGenericType(Type* generic_type, MethodCall* method_call, Class* klass, LibraryClass* lib_klass)
 {

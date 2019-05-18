@@ -5,7 +5,7 @@ class Foo {
 		m->Add("a", IntHolder->New(1));
 		m->Add("o", IntHolder->New(13));
 		m->Add("r", IntHolder->New(18));
-		m->Add("h", IntHolder->New(8));
+		m->Add("h", 8);
 
 		m->Get("h")->Get()->PrintLine();
 		m->Get("o")->Get()->PrintLine();
