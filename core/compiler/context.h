@@ -344,6 +344,15 @@ class ContextAnalyzer {
   */
 
   Type* RelsolveGenericType(Type* generic_type, MethodCall* method_call, Class* klass, LibraryClass* lib_klass);
+
+  vector<Type*> GetConcreteTypes(MethodCall* method_call) {
+    if(method_call->GetEntry()) {
+      return method_call->GetEntry()->GetType()->GetGenerics();
+    }
+    else {
+      return method_call->GetConcreteTypes();
+    }
+  }
   
   /*
    void ResolveConcreteTypes(vector<Type*> concretes, ParseNode* node, const int depth);
