@@ -324,27 +324,6 @@ class ContextAnalyzer {
   // add method parameter
   void AddMethodParameter(MethodCall* method_call, SymbolEntry* entry, int depth);
 
-  // TODO: GENERICS
-  
-  /*
-  // validate method call with generics
-  Type* RelsolveGenericCall(Type* left, MethodCall* method_call, Class* klass, Method* method, int depth);
-
-  // validate method call with generics
-  Type* RelsolveGenericCall(Type* left, MethodCall* method_call, LibraryClass* klass, LibraryMethod* method, int depth);
-
-  // validate generic references against types
-  void CheckGenericParameters(const vector<LibraryClass*> generic_klasses, const vector<Type*> concrete_types, ParseNode* node);
-
-  // validate generic references against types
-  void CheckGenericParameters(const vector<Class*> generic_klasses, const vector<Type*> concrete_types, ParseNode* node);
-
-  // find generic references
-  bool HasGenericClass(const wstring& n);
-
-  void ResolveConcreteTypes(vector<Type*> concretes, ParseNode* node, const int depth);
-  */
-
   Type* RelsolveGenericType(Type* generic_type, MethodCall* method_call, Class* klass, LibraryClass* lib_klass);
 
   // finds the first class match; note multiple matches may exist
