@@ -1,11 +1,15 @@
+class V {
+	New() {}
+}
+
 class Foo {
 	function : Main(args : String[]) ~ Nil {
 		m := Map->New()<String, IntHolder>;
 		
 		m->Add("a", IntHolder->New(1));
-		m->Add("o", IntHolder->New(13));
+		m->Add("o", 13);
 		m->Add("r", IntHolder->New(18));
-		m->Add("h", 8);
+		m->Add("h", 'c');
 
 		m->Get("h")->Get()->PrintLine();
 		m->Get("o")->Get()->PrintLine();
