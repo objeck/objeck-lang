@@ -66,21 +66,7 @@ class Parser {
     return scanner->GetToken(index)->GetType() == type;
   }
 
-  inline bool IsBasicType(ScannerTokenType type) {
-    switch(GetToken()) {
-    case TOKEN_BOOLEAN_ID:
-    case TOKEN_BYTE_ID:
-    case TOKEN_INT_ID:
-    case TOKEN_FLOAT_ID:
-    case TOKEN_CHAR_ID:
-      return true;
-
-    default:
-      break;
-    }
-
-    return false;
-  }
+  bool IsBasicType(ScannerTokenType type);
 
   inline ScannerTokenType GetToken(int index = 0) {
     return scanner->GetToken(index)->GetType();
@@ -94,32 +80,9 @@ class Parser {
     return scanner->GetToken()->GetFileName();
   }
 
-  inline const wstring GetScopeName(const wstring &ident) {
-    wstring scope_name;
-    if(current_method) {
-      scope_name = current_method->GetName() + L":" + ident;
-    }
-    else if(current_class) {
-      scope_name = current_class->GetName() + L":" + ident;
-    }
-    else {
-      scope_name = ident;
-    }
+  const wstring GetScopeName(const wstring &ident);
 
-    return scope_name;
-  }
-
-  inline const wstring GetEnumScopeName(const wstring &ident) {
-    wstring scope_name;
-    if(current_class) {
-      scope_name = current_class->GetName() + L"#" + ident;
-    }
-    else {
-      scope_name = ident;
-    }
-
-    return scope_name;
-  }
+  const wstring GetEnumScopeName(const wstring &ident);
 
   void Debug(const wstring &msg, int depth) {
     GetLogger() << setw(4) << GetLineNumber() << L": ";
@@ -135,59 +98,9 @@ class Parser {
     return str.str();
   }
 
-  inline wstring ParseBundleName() {
-    wstring name;
-    if(Match(TOKEN_IDENT)) {
-      while(Match(TOKEN_IDENT) && !Match(TOKEN_END_OF_STREAM)) {
-  name += scanner->GetToken()->GetIdentifier();
-  NextToken();
-  if(Match(TOKEN_PERIOD)) {
-    name += L'.';
-    NextToken();
-  }
-  else if(Match(TOKEN_IDENT)) {
-    ProcessError(L"Expected period", TOKEN_SEMI_COLON);
-    NextToken();
-  }
-      }
-    }
-    else {
-      ProcessError(TOKEN_IDENT);
-    }
+  wstring ParseBundleName();
 
-    return name;
-  }
-
-  Declaration* AddDeclaration(const wstring &ident, Type* type, bool is_static, Declaration* child,  int depth) {
-    const int line_num = GetLineNumber();
-    const wstring &file_name = GetFileName();
-
-    // add entry
-    wstring scope_name = GetScopeName(ident);
-    SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num, scope_name, 
-                  type, is_static, current_method != nullptr);
-
-#ifdef _DEBUG
-    Debug(L"Adding variable: '" + scope_name + L"'", depth + 2);
-#endif
-
-    bool was_added = symbol_table->CurrentParseScope()->AddEntry(entry);
-    if(!was_added) {
-      ProcessError(L"Variable already defined in this scope: '" + ident + L"'");
-    }
-
-    Declaration* declaration;
-    if(Match(TOKEN_ASSIGN)) {
-      Variable* variable = ParseVariable(ident, depth + 1);
-      declaration = TreeFactory::Instance()->MakeDeclaration(file_name, line_num, entry, child,
-                   ParseAssignment(variable, depth + 1));
-    }
-    else {
-      declaration = TreeFactory::Instance()->MakeDeclaration(file_name, line_num, entry, child);
-    }
-
-    return declaration;
-  }
+  Declaration* AddDeclaration(const wstring &ident, Type* type, bool is_static, Declaration* child,  int depth);
 
   // error processing
   void LoadErrorCodes();

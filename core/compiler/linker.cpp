@@ -207,6 +207,110 @@ void Linker::ResolveExternalMethodCalls()
   }
 }
 
+unordered_map<std::wstring, LibraryClass*> Linker::GetAllClassesMap()
+{
+  if(all_classes_map.empty()) {
+    vector<LibraryClass*> klasses = GetAllClasses();
+    for(size_t i = 0; i < klasses.size(); ++i) {
+      LibraryClass* klass = klasses[i];
+      all_classes_map[klass->GetName()] = klass;
+    }
+  }
+
+  return all_classes_map;
+}
+
+vector<LibraryClass*> Linker::GetAllClasses()
+{
+  if(all_classes.empty()) {
+    map<const wstring, Library*>::iterator iter;
+    for(iter = libraries.begin(); iter != libraries.end(); ++iter) {
+      vector<LibraryClass*> classes = iter->second->GetClasses();
+      for(size_t i = 0; i < classes.size(); ++i) {
+        all_classes.push_back(classes[i]);
+      }
+    }
+  }
+
+  return all_classes;
+}
+
+unordered_map<std::wstring, LibraryEnum*> Linker::GetAllEnumsMap()
+{
+  if(all_enums_map.empty()) {
+    vector<LibraryEnum*> enums = GetAllEnums();
+    for(size_t i = 0; i < enums.size(); ++i) {
+      LibraryEnum* klass = enums[i];
+      all_enums_map[klass->GetName()] = klass;
+    }
+  }
+
+  return all_enums_map;
+}
+
+vector<LibraryEnum*> Linker::GetAllEnums()
+{
+  if(all_enums.empty()) {
+    map<const wstring, Library*>::iterator iter;
+    for(iter = libraries.begin(); iter != libraries.end(); ++iter) {
+      vector<LibraryEnum*> enums = iter->second->GetEnums();
+      for(size_t i = 0; i < enums.size(); ++i) {
+        all_enums.push_back(enums[i]);
+      }
+    }
+  }
+
+  return all_enums;
+}
+
+LibraryClass* Linker::SearchClassLibraries(const wstring& name, vector<wstring> uses)
+{
+  unordered_map<wstring, LibraryClass*> klass_map = GetAllClassesMap();
+  LibraryClass* klass = klass_map[name];
+  if(klass) {
+    return klass;
+  }
+
+  for(size_t i = 0; i < uses.size(); ++i) {
+    klass = klass_map[uses[i] + L"." + name];
+    if(klass) {
+      return klass;
+    }
+  }
+
+  return nullptr;
+}
+
+bool Linker::HasBundleName(const wstring& name)
+{
+  map<const wstring, Library*>::iterator iter;
+  for(iter = libraries.begin(); iter != libraries.end(); ++iter) {
+    if(iter->second->HasBundleName(name)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+LibraryEnum* Linker::SearchEnumLibraries(const wstring& name, vector<wstring> uses)
+{
+  unordered_map<wstring, LibraryEnum*> enum_map = GetAllEnumsMap();
+  LibraryEnum* eenum = enum_map[name];
+  if(eenum) {
+    return eenum;
+  }
+
+  for(size_t i = 0; i < uses.size(); ++i) {
+    eenum = enum_map[uses[i] + L"." + name];
+    if(eenum) {
+      return eenum;
+    }
+  }
+
+  return nullptr;
+}
+
 void Linker::Load()
 {
 #ifdef _DEBUG
