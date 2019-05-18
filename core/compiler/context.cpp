@@ -2828,7 +2828,7 @@ void ContextAnalyzer::AnalyzeDynamicFunctionCall(MethodCall* method_call, const 
     Type* type = entry->GetType();
     wstring dyn_func_params_str = type->GetClassName();
     if(dyn_func_params_str.size() == 0) {
-      vector<Type*>& func_params = type->GetFunctionParameters();
+      const vector<Type*> func_params = type->GetFunctionParameters();
       AnalyzeDynamicFunctionParameters(type, static_cast<Expression*>(method_call));
       for(size_t i = 0; i < func_params.size(); ++i) {
         // encode parameter
