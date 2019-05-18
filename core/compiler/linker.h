@@ -968,7 +968,6 @@ class Linker {
     return all_enums;
   }
 
-  // TODO: finds the first class match; note multiple matches may exist
   LibraryClass* SearchClassLibraries(const wstring &name) {
     unordered_map<wstring, LibraryClass*> klass_map = GetAllClassesMap();
     return klass_map[name];
