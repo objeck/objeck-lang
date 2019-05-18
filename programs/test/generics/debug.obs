@@ -9,6 +9,10 @@ class Test {
 
 		beer := Stout() * Ale(11);
 		beer->PrintLine();
+
+		a->Get()->PrintLine();
+		++a->Get()->PrintLine();
+		a->Get()->PrintLine();
 	}
 
 	function : Fee() ~ Int {
