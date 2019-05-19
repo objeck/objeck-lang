@@ -3364,31 +3364,7 @@ void ContextAnalyzer::AnalyzeReturn(Return* rtrn, const int depth)
     }
     AnalyzeRightCast(mthd_type, expression, (IsScalar(expression) && mthd_type->GetDimension() == 0), depth + 1);
 
-    // is type in the scope of the class
-    const wstring dclr_name = expression->GetEvalType()->GetClassName();
-    Class* dclr_klass = nullptr; LibraryClass* dclr_lib_klass = nullptr;
-    if(!GetProgramLibraryClass(dclr_name, dclr_klass, dclr_lib_klass)) {
-      dclr_klass = current_class->GetGenericClass(dclr_name);
-    }
-
-    if(dclr_klass && dclr_klass->HasGenerics()) {
-      const vector<Type*> concrete_types = mthd_type->GetGenerics();
-      if(concrete_types.empty()) {
-        ProcessError(expression, L"Generic to concrete size mismatch");
-      }
-      else {
-        ValidateGenericConcreteMapping(concrete_types, dclr_klass, expression);
-      }
-    }
-    else if(dclr_lib_klass && dclr_lib_klass->HasGenerics()) {
-      const vector<Type*> concrete_types = mthd_type->GetGenerics();
-      if(concrete_types.empty()) {
-        ProcessError(expression, L"Generic to concrete size mismatch");
-      }
-      else {
-        ValidateGenericConcreteMapping(concrete_types, dclr_lib_klass, expression);
-      }
-    }
+    ValidateConcrete(expression->GetEvalType()->GetClassName(), mthd_type, expression, depth);
 
     if(mthd_type->GetType() == CLASS_TYPE && !ResolveClassEnumType(mthd_type)) {
       ProcessError(rtrn, L"Undefined class or enum: '" + ReplaceSubstring(mthd_type->GetClassName(), L"#", L"->") + L"'");
@@ -3401,6 +3377,33 @@ void ContextAnalyzer::AnalyzeReturn(Return* rtrn, const int depth)
   if(current_method->GetMethodType() == NEW_PUBLIC_METHOD ||
      current_method->GetMethodType() == NEW_PRIVATE_METHOD) {
     ProcessError(rtrn, L"Cannot return value from constructor");
+  }
+}
+
+void ContextAnalyzer::ValidateConcrete(const wstring cls_name, Type* concrete_type, ParseNode* node, const int depth)
+{
+  Class* dclr_klass = nullptr; LibraryClass* dclr_lib_klass = nullptr;
+  if(!GetProgramLibraryClass(cls_name, dclr_klass, dclr_lib_klass)) {
+    dclr_klass = current_class->GetGenericClass(cls_name);
+  }
+
+  if(dclr_klass && dclr_klass->HasGenerics()) {
+    const vector<Type*> concrete_types = concrete_type->GetGenerics();
+    if(concrete_types.empty()) {
+      ProcessError(node, L"Generic to concrete size mismatch");
+    }
+    else {
+      ValidateGenericConcreteMapping(concrete_types, dclr_klass, node);
+    }
+  }
+  else if(dclr_lib_klass && dclr_lib_klass->HasGenerics()) {
+    const vector<Type*> concrete_types = concrete_type->GetGenerics();
+    if(concrete_types.empty()) {
+      ProcessError(node, L"Generic to concrete size mismatch");
+    }
+    else {
+      ValidateGenericConcreteMapping(concrete_types, dclr_lib_klass, node);
+    }
   }
 }
 
@@ -5288,31 +5291,7 @@ void ContextAnalyzer::AnalyzeDeclaration(Declaration * declaration, Class* klass
         ProcessError(entry, L"Undefined class or enum: '" + ReplaceSubstring(type->GetClassName(), L"#", L"->") + L"'\n\tIf generic ensure concrete types are properly defined.");
       }
 
-      // is type in the scope of the class
-      const wstring dclr_name = type->GetClassName();
-      Class* dclr_klass = nullptr; LibraryClass* dclr_lib_klass = nullptr;
-      if(!GetProgramLibraryClass(dclr_name, dclr_klass, dclr_lib_klass)) {
-        dclr_klass = klass->GetGenericClass(dclr_name);
-      }
-
-      if(dclr_klass && dclr_klass->HasGenerics()) {
-        const vector<Type*> concrete_types = type->GetGenerics();
-        if(concrete_types.empty()) {
-          ProcessError(entry, L"Generic to concrete size mismatch");
-        }
-        else {
-          ValidateGenericConcreteMapping(concrete_types, dclr_klass, declaration);
-        }
-      }
-      else if(dclr_lib_klass && dclr_lib_klass->HasGenerics()) {
-        const vector<Type*> concrete_types = type->GetGenerics();
-        if(concrete_types.empty()) {
-          ProcessError(entry, L"Generic to concrete size mismatch");
-        }
-        else {
-          ValidateGenericConcreteMapping(concrete_types, dclr_lib_klass, declaration);
-        }
-      }
+      ValidateConcrete(type->GetClassName(), type, declaration, depth);
     }
     else if(entry->GetType() && entry->GetType()->GetType() == FUNC_TYPE) {
       // resolve function name
