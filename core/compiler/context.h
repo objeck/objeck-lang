@@ -437,6 +437,9 @@ class ContextAnalyzer {
   void AnalyzeCritical(CriticalSection* mutex, const int depth);
   void AnalyzeFor(For* for_stmt, const int depth);
   void AnalyzeReturn(Return* rtrn, const int depth);
+
+  void ValidateConcrete(const wstring dclr_name, Type* mthd_type, ParseNode* node, const int depth);
+
   void AnalyzeLeaving(Leaving* leaving_stmt, const int depth);
   Expression* AnalyzeRightCast(Variable* variable, Expression* expression, bool is_scalar, const int depth);
   Expression* AnalyzeRightCast(Type* left, Expression* expression, bool is_scalar, const int depth);
