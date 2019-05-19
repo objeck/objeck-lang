@@ -10,7 +10,7 @@ class Fum<K, V> {
 	}
 
 	# Fix me add check
-	method : Get() ~ Fee<IntHolder> {
+	method : Get() ~ Fee<String> {
 		return @fee;
 	}
 }

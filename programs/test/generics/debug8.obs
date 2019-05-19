@@ -1,7 +1,3 @@
-class V {
-	New() {}
-}
-
 class Foo {
 	function : Main(args : String[]) ~ Nil {
 		m := Map->New()<String, IntHolder>;

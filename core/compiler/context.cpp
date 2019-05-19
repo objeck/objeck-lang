@@ -5017,6 +5017,8 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Type* right, Expression* expr
   LibraryEnum* left_lib_enum = nullptr;
   LibraryClass* left_lib_class = nullptr;
 
+  CheckGenericEqualTypes(left, right, expression);
+
   if(current_class->HasGenerics()) {
     Class* left_tmp = current_class->GetGenericClass(left->GetClassName());
     if(left_tmp && left_tmp->HasGenericInterface()) {
@@ -5232,6 +5234,33 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Type* right, Expression* expr
   }
   else {
     ProcessError(expression, L"Invalid class, enum or method call context\n\tEnsure all required libraries have been included");
+  }
+}
+
+void ContextAnalyzer::CheckGenericEqualTypes(Type* left, Type* right, ParseNode* node)
+{
+  if(left->GetType() == CLASS_TYPE && right->GetType() == CLASS_TYPE &&
+     left->HasGenerics() && right->HasGenerics() && left->GetClassName() == right->GetClassName()) {
+    const vector<Type*> left_types = left->GetGenerics();
+    const vector<Type*> right_types = right->GetGenerics();
+    if(left_types.size() != right_types.size()) {
+      ProcessError(node, L"Concrete size mismatch");
+    }
+    else {
+      for(size_t i = 0; i < right_types.size(); ++i) {
+        Type* left_type = left_types[i];
+        ResolveClassEnumType(left_type);
+
+        Type* right_type = right_types[i];
+        ResolveClassEnumType(right_type);
+
+        const wstring left_type_name = left_type->GetClassName();
+        const wstring right_type_name = right_type->GetClassName();
+        if(left_type_name != right_type_name) {
+          ProcessError(node, L"Concrete type between classes: '" + left_type_name + L"' and '" + right_type_name + L"'");
+        }
+      }
+    }
   }
 }
 
