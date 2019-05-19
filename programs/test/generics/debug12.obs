@@ -3,14 +3,14 @@ class Fie {
 	}
 }
 
-class Fum<K, V> {
-	@fee : Fee<String>;
+class Fum<K, V : Compare> {
+	@fee : Fee<V>;
 
 	New() {
 	}
 
 	# Fix me add check
-	method : Get() ~ Fee<String> {
+	method : Get() ~ Fee<V> {
 		return @fee;
 	}
 }

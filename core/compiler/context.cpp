@@ -409,26 +409,25 @@ void ContextAnalyzer::AnalyzeClass(Class* klass, const int id, const int depth)
     ProcessError(klass, L"Class '" + klass->GetName() + L"' defined in shared libraries");
   }
 
-  // analyze generic references
-  if(klass->HasGenerics()) {
-    const vector<Class*> generic_classes = klass->GetGenericClasses();
-    for(size_t i = 0; i < generic_classes.size(); ++i) {
-      Class* generic_class = generic_classes[i];
-      const wstring generic_class_name = generic_class->GetName();
-      if(HasProgramLibraryClass(generic_class_name)) {
-        ProcessError(klass, L"Generic reference '" + generic_class_name + L"' previously defined as a class");
-      }
-      // check backing interface
-      if(generic_class->HasGenericInterface()) {
-        const wstring generic_inf_name = generic_class->GetGenericInterface()->GetClassName();
-        if(!HasProgramLibraryClass(generic_inf_name)) {
-          ProcessError(klass, L"Undefined backing class/interface type '" + generic_inf_name + L"'");
-        }
-      }
-    }
-  }
+  // check generics
+  AnalyzeGenerics(klass, depth);
 
   // check parent class
+  CheckParent(klass, depth);
+
+  // check interfaces
+  AnalyzeInterfaces(klass, depth);
+
+  // declarations
+  vector<Statement*> statements = klass->GetStatements();
+  for(size_t i = 0; i < statements.size(); ++i) {
+    current_method = nullptr;
+    AnalyzeDeclaration(static_cast<Declaration*>(statements[i]), current_class, depth + 1);
+  }
+}
+
+void ContextAnalyzer::CheckParent(Class* klass, const int depth)
+{
   Class* parent_klass = klass->GetParent();
   if(parent_klass && (parent_klass->IsInterface() || parent_klass->HasGenerics())) {
     ProcessError(klass, L"Class '" + klass->GetName() + L"' cannot be derived from a generic or interface");
@@ -438,19 +437,6 @@ void ContextAnalyzer::AnalyzeClass(Class* klass, const int id, const int depth)
     if(parent_lib_klass && parent_lib_klass->IsInterface()) {
       ProcessError(klass, L"Classes cannot be derived from interfaces");
     }
-  }
-
-  // check interfaces
-  AnalyzeInterfaces(klass, depth);
-
-  // check generics
-  AnalyzeGenerics(klass, depth);
-
-  // declarations
-  vector<Statement*> statements = klass->GetStatements();
-  for(size_t i = 0; i < statements.size(); ++i) {
-    current_method = nullptr;
-    AnalyzeDeclaration(static_cast<Declaration*>(statements[i]), current_class, depth + 1);
   }
 }
 
@@ -501,6 +487,12 @@ void ContextAnalyzer::AnalyzeGenerics(Class* klass, const int depth)
   const vector<Class*> generic_classes = klass->GetGenericClasses();
   for(size_t i = 0; i < generic_classes.size(); ++i) {
     Class* generic_class = generic_classes[i];
+    // check generic class
+    const wstring generic_class_name = generic_class->GetName();
+    if(HasProgramLibraryClass(generic_class_name)) {
+      ProcessError(klass, L"Generic reference '" + generic_class_name + L"' previously defined as a class");
+    }
+    // check backing interface
     if(generic_class->HasGenericInterface()) {
       Type* generic_inf_type = generic_class->GetGenericInterface();
       const wstring generic_inf_name = generic_inf_type->GetClassName();
@@ -1747,7 +1739,16 @@ void ContextAnalyzer::ValidateGenericConcreteMapping(const vector<Type*> concret
           }
         }
         else {
-          ProcessError(node, L"Undefined class or interface: '" + concrete_name + L"'");
+          inf_klass = current_class->GetGenericClass(concrete_name);
+          if(inf_klass) {
+            if(!ValidDownCast(backing_inf_name, inf_klass, inf_lib_klass)) {
+              ProcessError(node, L"Concrete class: '" + concrete_name +
+                           L"' is incompatible with backing class/interface '" + backing_inf_name + L"'");
+            }
+          }
+          else {
+            ProcessError(node, L"Undefined class or interface: '" + concrete_name + L"'");
+          }
         }
       }
     }
@@ -1778,7 +1779,16 @@ void ContextAnalyzer::ValidateGenericConcreteMapping(const vector<Type*> concret
           }
         }
         else {
-          ProcessError(node, L"Undefined class or interface: '" + concrete_name + L"'");
+          inf_klass = current_class->GetGenericClass(concrete_name);
+          if(inf_klass) {
+            if(!ValidDownCast(backing_inf_name, inf_klass, inf_lib_klass)) {
+              ProcessError(node, L"Concrete class: '" + concrete_name +
+                           L"' is incompatible with backing class/interface '" + backing_inf_name + L"'");
+            }
+          }
+          else {
+            ProcessError(node, L"Undefined class or interface: '" + concrete_name + L"'");
+          }
         }
       }
     }
