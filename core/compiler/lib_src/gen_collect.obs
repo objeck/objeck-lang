@@ -635,7 +635,7 @@ bundle Collection.Generic {
 				# process left 
 				GetValues(node->GetLeft(), vector);
 				
-				value : V := node->Get();
+				value : String := node->Get();
 				vector->AddBack(value);
 				
 				# process right
