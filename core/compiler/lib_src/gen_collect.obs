@@ -5,7 +5,188 @@ bundle Collection.Generic {
 	#~
 	Growable array of comparable based objects
 	~#
-	class Vector<H : Compare> {
+	class Vector<H> {
+		@values : H[];
+		@size : Int;
+		
+		#~
+		Default constructor 
+		~#
+		New() {
+			@values := H->New[8];
+			@size := 0;
+		}
+		
+		#~
+		Copy constructor
+		@param values values to copy 
+		~#
+		New(values : H[]) {
+			@values := H->New[values->Size() + values->Size() / 2];
+			@size := values->Size();
+			Runtime->Copy(@values, 0, values, 0, @size);
+ 		}
+
+		#~
+		Copy constructor
+		@param values values to copy 
+		~#
+		New(values : Vector<H>) {
+			@values := values->ToArray();
+			@size := values->Size();
+		}
+
+		method : Expand() ~ Nil {
+			if(@size >= @values->Size()) {
+				temp : H[] := H->New[@size * 2];
+				Runtime->Copy(temp, 0, @values, 0, @size);
+				@values := temp;
+			};
+		}
+
+		#~
+		Swap two values in the vector
+		@param a first value
+		@param b second value
+		@return true if values were swapped
+		~#
+		method : public : Swap(a : Int, b : Int) ~ Bool {
+			if(a < -1 | b < -1 | a > @size | b > @size) {
+				return false;
+			};
+			
+			temp := @values[a];
+			@values[a] := @values[b];
+			@values[b] := temp;
+			
+			return true;
+		}
+
+		#~
+		Adds a vector of values to the end of the vector
+		@param values values to append 
+		~#
+		method : public : AddBack(values : Vector<H>) ~ Nil {
+			max := values->Size() + @size;
+			if(max >= @values->Size()) {
+				temp : H[] := H->New[max + max / 2];
+				Runtime->Copy(temp, 0, @values, 0, @size);
+				@values := temp;
+			};
+			
+			temp := values->ToArray();
+			Runtime->Copy(@values, @size, temp, 0, temp->Size());
+			@size := max;
+		}
+
+		#~
+		Adds a value to the end
+		@param value value to append 
+		~#
+		method : public : AddBack(value : H) ~ Nil {
+			Expand();
+			@values[@size] := value;
+			@size += 1;
+		}
+
+		#~
+		Removes the last value
+		@return value
+		~#
+		method : public : RemoveBack() ~ H {
+			if(@size > 0) {
+				@size -= 1;
+				return @values[@size];
+			};
+	
+			return Nil;
+		}
+		
+		#~
+		Removes an indexed value
+		@param i index
+		@return value
+		~#
+		method : public : Remove(i : Int) ~ H {
+			if(i > -1 & i < @size) {
+				temp := H->New[@values->Size()];
+				Runtime->Copy(temp, 0, @values, 0, i);
+				Runtime->Copy(temp, i, @values, i + 1, @size - i - 1);
+				value := @values[i];
+				@values := temp;
+				@size -= 1;
+				return value;
+			};
+			
+			return Nil;
+		}
+
+		#~
+		Gets an indexed value
+		@param index index
+		@return value
+		~#
+		method : public : Get(index : Int) ~ H {
+			if(index > -1 & index < @size) {
+				return @values[index];
+			};
+
+			return Nil;
+		}
+
+		#~
+		Sets an indexed value
+		@param value value
+		@param index index
+		~#
+		method : public : Set(value : H, index : Int) ~ Bool {
+			if(index > -1 & index < @size) {
+				@values[index] := value;
+				return true;
+			};
+			
+			return false;
+		}
+
+		#~
+		Clears the vector
+		~#
+		method : public : Empty() ~ Nil {
+			@values := H->New[8];
+			@size := 0;
+		}
+		
+		#~
+		Size of vector
+		@return size of vector
+		~#
+		method : public : Size() ~ Int {
+			return @size;
+		}
+		
+		#~
+		Checks to see if the vector is empty
+		@return true if empty, false otherwise
+		~#
+		method : public : IsEmpty() ~ Bool {
+			return @size = 0;
+		}
+		
+		#~
+		Converts the vector into an object array
+		@return object array
+		~#
+		method : public : ToArray() ~ H[] {
+			array : H[] := H->New[@size];
+			Runtime->Copy(array, 0, @values, 0, @size);
+			return array;
+		}
+	}
+
+	#~
+	Growable array of comparable based objects
+	~#
+	class CompareVector<H : Compare> {
 		@values : H[];
 		@size : Int;
 		
@@ -309,7 +490,7 @@ bundle Collection.Generic {
 	#~
 	Binary tree of objects values
 	~#
-	class Map<K : Compare, V : Compare> {
+	class Map<K : Compare, V> {
 		@root : TreeNode<K, V>;
 		@last : TreeNode<K, V>;
 		@size : Int;
@@ -454,7 +635,7 @@ bundle Collection.Generic {
 				# process left 
 				GetValues(node->GetLeft(), vector);
 				
-				value : K := node->Get();
+				value : V := node->Get();
 				vector->AddBack(value);
 				
 				# process right
@@ -619,7 +800,7 @@ bundle Collection.Generic {
 		}
 	}
 	
-	class TreeNode<K : Compare, V : Compare> {
+	class TreeNode<K : Compare, V> {
 		@key : K;
 		@value : V;
 		@left : TreeNode<K, V>;

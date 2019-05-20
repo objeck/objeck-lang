@@ -1704,11 +1704,21 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth
         AnalyzeMethodCall(lib_klass, method_call, false, encoding, false, depth);
       }
       else {
-        ProcessError(static_cast<Expression*>(method_call), L"Undefined class: '" + variable_name + L"'");
+        if(!variable_name.empty()) {
+          ProcessError(static_cast<Expression*>(method_call), L"Undefined class: '" + variable_name + L"'");
+        }
+        else {
+          ProcessError(static_cast<Expression*>(method_call), L"Undefined class or method call: '" + method_call->GetMethodName() + L"'");
+        }
       }
     }
     else {
-      ProcessError(static_cast<Expression*>(method_call), L"Undefined class: '" + variable_name + L"'");
+      if(!variable_name.empty()) {
+        ProcessError(static_cast<Expression*>(method_call), L"Undefined class: '" + variable_name + L"'");
+      }
+      else {
+        ProcessError(static_cast<Expression*>(method_call), L"Undefined class or method call: '" + method_call->GetMethodName() + L"'");
+      }
     }
   }
 }
@@ -2414,7 +2424,7 @@ Method* ContextAnalyzer::ResolveMethodCall(Class* klass, MethodCall* method_call
  * program.
  ****************************/
 void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, bool is_expr, wstring &encoding, const int depth)
-{
+ {
 #ifdef _DEBUG
   GetLogger() << L"Checking program class call: |" << klass->GetName() << L":" 
     << (method_call->GetMethodName().size() > 0 ? method_call->GetMethodName() : method_call->GetVariableName())
@@ -5297,7 +5307,7 @@ void ContextAnalyzer::CheckGenericEqualTypes(Type* left, Type* right, ParseNode*
         const wstring left_type_name = left_type->GetClassName();
         const wstring right_type_name = right_type->GetClassName();
         if(left_type_name != right_type_name) {
-          ProcessError(node, L"Unable to map between generic and concrete classes: '" + left_type_name + L"' and '" + right_type_name + L"'");
+          ProcessError(node, L"Cannot map generic and concrete class: '" + left_type_name + L"' and '" + right_type_name + L"'");
         }
       }
     }
@@ -6377,143 +6387,6 @@ bool ContextAnalyzer::ClassEquals(const wstring left_name, Class* right_klass, L
 
   return false;
 }
-
-/*
-Type* ContextAnalyzer::RelsolveGenericCall(Type* left, MethodCall* method_call, Class* klass, Method* method, int depth)
-{
-  left = RelsolveGenericType(left, method_call, klass, nullptr);
-  if(!left->HasGenerics() && method_call->HasConcreteTypes() &&
-    (method->GetMethodType() == NEW_PUBLIC_METHOD ||
-     method->GetMethodType() == NEW_PRIVATE_METHOD)) {
-    left = TypeFactory::Instance()->MakeType(left);
-    const vector<Type*> concretes = method_call->GetConcreteTypes();
-    ResolveConcreteTypes(concretes, static_cast<Expression*>(method_call), depth);
-    left->SetGenerics(concretes);
-    method_call->SetEvalType(left, false);
-  }
-
-  return left;
-}
-
-Type* ContextAnalyzer::RelsolveGenericCall(Type* left, MethodCall* method_call, LibraryClass* klass, LibraryMethod* method, int depth)
-{
-  left = RelsolveGenericType(left, method_call, nullptr, klass);
-  if(!left->HasGenerics() && method_call->HasConcreteTypes() &&
-    (method->GetMethodType() == NEW_PUBLIC_METHOD ||
-     method->GetMethodType() == NEW_PRIVATE_METHOD)) {
-    left = TypeFactory::Instance()->MakeType(left);
-    const vector<Type*> concretes = method_call->GetConcreteTypes();
-    ResolveConcreteTypes(concretes, static_cast<Expression*>(method_call), depth);
-    left->SetGenerics(concretes);
-    method_call->SetEvalType(left, false);
-  }
-
-  return left;
-}
-
-void ContextAnalyzer::CheckGenericParameters(const vector<LibraryClass*> generic_klasses,
-                                             const vector<Type*> concrete_types, ParseNode* node)
-{
-  if(generic_klasses.size() != concrete_types.size()) {
-    ProcessError(node, L"Generic parameter list size mismatch");
-  }
-  else {
-    for(size_t i = 0; i < generic_klasses.size(); ++i) {
-      LibraryClass* generic_klass = generic_klasses[i];
-      Type* generic_type = concrete_types[i];
-      if(generic_klass->HasGenericInterface()) {
-        const wstring generic_name = generic_type->GetClassName();
-        Class* type_klass = nullptr; LibraryClass* type_lib_klass = nullptr;
-        GetProgramLibraryClass(generic_name, type_klass, type_lib_klass);
-
-        const wstring inf_name = generic_klass->GetGenericInterface()->GetClassName();
-        Class* inf_klass = nullptr; LibraryClass* inf_lib_klass = nullptr;
-        GetProgramLibraryClass(inf_name, inf_klass, inf_lib_klass);
-
-        wstring class_name;
-        if(inf_klass) {
-          class_name = inf_klass->GetName();
-        }
-        else if(inf_lib_klass) {
-          class_name = inf_lib_klass->GetName();
-        }
-        else {
-          ProcessError(node, L"Undefined class: '" + inf_name + L"'");
-        }
-
-        if(!ValidDownCast(class_name, type_klass, type_lib_klass)) {
-          if(type_klass) {
-            ProcessError(node, L"Invalid operation using classes: '" + type_klass->GetName() + L"' and '" + class_name + L"'");
-          }
-          else if(type_lib_klass) {
-            ProcessError(node, L"Invalid operation using classes: '" + type_lib_klass->GetName() + L"' and '" + class_name + L"'");
-          }
-        }
-      }
-    }
-  }
-}
-
-void ContextAnalyzer::CheckGenericParameters(const vector<Class*> generic_klasses, const vector<Type*> concrete_types, ParseNode* node)
-{
-  if(generic_klasses.size() != concrete_types.size()) {
-    ProcessError(node, L"Generic parameter list size mismatch");
-  }
-  else {
-    for(size_t i = 0; i < generic_klasses.size(); ++i) {
-      Class* generic_klass = generic_klasses[i];
-      
-      if(generic_klass->HasGenericInterface()) {
-        // check generic name
-        wstring class_name;
-        const wstring inf_name = generic_klass->GetGenericInterface()->GetClassName();
-        Class* inf_klass = nullptr; LibraryClass* inf_lib_klass = nullptr;
-        if(GetProgramLibraryClass(inf_name, inf_klass, inf_lib_klass)) {
-          if(inf_klass) {
-            class_name = inf_klass->GetName();
-          }
-          else if(inf_lib_klass) {
-            class_name = inf_lib_klass->GetName();
-          }
-        }
-        else {
-          ProcessError(node, L"Undefined class or generic reference: '" + inf_name + L"'");
-        }
-
-        // check concrete class
-        Type* generic_type = concrete_types[i];
-        const wstring generic_name = generic_type->GetClassName();
-        Class* type_klass = nullptr; LibraryClass* type_lib_klass = nullptr;
-        if(!GetProgramLibraryClass(generic_name, type_klass, type_lib_klass)) {
-          type_klass = current_class->GetGenericClass(generic_name);
-        }
-
-        // check backing interface
-        if(type_klass && type_klass->HasGenericInterface()) {
-          GetProgramLibraryClass(type_klass->GetGenericInterface()->GetClassName(), type_klass, type_lib_klass);
-        }
-        else if(type_lib_klass && type_lib_klass->HasGenericInterface()) {
-          GetProgramLibraryClass(type_lib_klass->GetGenericInterface()->GetClassName(), type_klass, type_lib_klass);
-        }
-
-        if(type_klass || type_lib_klass) {
-          if(!ValidDownCast(class_name, type_klass, type_lib_klass)) {
-            if(type_klass) {
-              ProcessError(node, L"Invalid operation using classes: '" + type_klass->GetName() + L"' and '" + class_name + L"'");
-            }
-            else if(type_lib_klass) {
-              ProcessError(node, L"Invalid operation using classes: '" + type_lib_klass->GetName() + L"' and '" + class_name + L"'");
-            }
-          }
-        }
-        else {
-          ProcessError(node, L"Undefined class or generic reference: '" + generic_name + L"'");
-        }
-      }
-    }
-  }
-}
-*/
 
 Type* ContextAnalyzer::RelsolveGenericType(Type* candidate_type, MethodCall* method_call, Class* klass, LibraryClass* lib_klass)
 {
