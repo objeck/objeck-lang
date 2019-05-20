@@ -324,7 +324,7 @@ class ContextAnalyzer {
   // add method parameter
   void AddMethodParameter(MethodCall* method_call, SymbolEntry* entry, int depth);
 
-  // reslove generic type
+  // resolve generic type
   Type* RelsolveGenericType(Type* generic_type, MethodCall* method_call, Class* klass, LibraryClass* lib_klass);
 
   // validate concrete type
@@ -374,7 +374,7 @@ class ContextAnalyzer {
     return str.str();
   }
 
-  wstring ReplaceSubstring(wstring s, const wstring& f, const wstring& r) {
+  inline wstring ReplaceSubstring(wstring s, const wstring& f, const wstring& r) {
     const size_t index = s.find(f);
     if(index != string::npos) {
       s.replace(index, f.size(), r);
@@ -383,7 +383,7 @@ class ContextAnalyzer {
     return s;
   }
 
-  void ReplaceAllSubstrings(wstring& str, const wstring& from, const wstring& to) {
+  inline void ReplaceAllSubstrings(wstring& str, const wstring& from, const wstring& to) {
     size_t start_pos = 0;
     while((start_pos = str.find(from, start_pos)) != wstring::npos) {
       str.replace(start_pos, from.length(), to);
@@ -475,10 +475,8 @@ class ContextAnalyzer {
                          bool is_expr, wstring &encoding, bool is_parent, const int depth);
   void AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* method_call,
                          bool is_virtual, bool is_expr, const int depth);
-
   void ValidateGenericConcreteMapping(const vector<Type*> concrete_types, LibraryClass* lib_klass, ParseNode* node);
   void ValidateGenericConcreteMapping(const vector<Type*> concrete_types, Class* klass, ParseNode* node);
-
   void ValidateGenericBacking(Type* type, const wstring backing_inf_name, ParseNode * node);
   wstring EncodeMethodCall(ExpressionList * calling_params, const int depth);
   Method* ResolveMethodCall(Class* klass, MethodCall* method_call, const int depth);
