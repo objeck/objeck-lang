@@ -6026,7 +6026,7 @@ const wstring ContextAnalyzer::EncodeType(Type* type)
       encoded_name += L"o.";
 
       // search program and libraries
-      Class* klass; LibraryClass* lib_klass;
+      Class* klass = nullptr; LibraryClass* lib_klass = nullptr;
       if(GetProgramLibraryClass(type, klass, lib_klass)) {
         if(klass) {
           encoded_name += klass->GetName();
