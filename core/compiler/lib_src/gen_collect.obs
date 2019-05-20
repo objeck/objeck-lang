@@ -309,7 +309,7 @@ bundle Collection.Generic {
 	#~
 	Binary tree of objects values
 	~#
-	class Map<K : Compare, V> {
+	class Map<K : Compare, V : Compare> {
 		@root : TreeNode<K, V>;
 		@last : TreeNode<K, V>;
 		@size : Int;
@@ -603,7 +603,7 @@ bundle Collection.Generic {
 		@param f function to use a filter. If the function evaluates to true the value is added to the collection.
 		@return filter vector
 		~#
-		method : public : Filter(f : (K) ~ Bool) ~ Map {
+		method : public : Filter(f : (K) ~ Bool) ~ Map<K, V> {
 			filtered := Map->New()<K, V>;
 			
 			keys := GetKeys();
@@ -619,11 +619,11 @@ bundle Collection.Generic {
 		}
 	}
 	
-	class TreeNode<K : Compare, V> {
+	class TreeNode<K : Compare, V : Compare> {
 		@key : K;
 		@value : V;
-		@left : TreeNode;
-		@right : TreeNode;
+		@left : TreeNode<K, V>;
+		@right : TreeNode<K, V>;
 		@level : Int;
 		
 		New(key : K, value : V, level : Int) {
