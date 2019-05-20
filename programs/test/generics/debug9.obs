@@ -1,26 +1,18 @@
+use Collection.Generic;
+
 class Foo {
 	function : Main(args : String[]) ~ Nil {
+#~		
+		f := Map->New()<String, IntHolder>;
+		f->Insert("foo", 13);
+		f->Insert("bar", 7);
+
+		f->Size()->PrintLine();
+		f->Find("foo")->Get()->PrintLine();
+		f->Find("bar")->Get()->PrintLine();
+~#
 		f := Map->New()<String, String>;
-	}
-}
-
-class Map<K : Compare, V : Compare> {
-	New() {
-		v := Vector->New()<V>;
-		v->Get();
-	}
-
-	method : Get(key : K) ~ Vector<V> {
-		return Nil;
-	}
-}
-
-class Vector<V> {
-	New() {
-
-	}
-
-	method : public : Get() ~ Int {
-		return -1;
+		f->Insert("foo", "bar");
+		f->Find("foo")->Size()->PrintLine();
 	}
 }
