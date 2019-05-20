@@ -801,7 +801,6 @@ void ContextAnalyzer::AnalyzeVirtualMethod(Class* impl_class, MethodType impl_mt
   }
 }
 
-
 /****************************
  * Analyzes a method
  ****************************/
@@ -1497,10 +1496,8 @@ void ContextAnalyzer::AnalyzeVariable(Variable* variable, SymbolEntry* entry, co
   // dynamic defined variable
   else if(current_method) {
     const wstring scope_name = current_method->GetName() + L":" + variable->GetName();
-    SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(variable->GetFileName(),
-                                                                  variable->GetLineNumber(),
-                                                                  scope_name,
-                                                                  TypeFactory::Instance()->MakeType(VAR_TYPE),
+    SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(variable->GetFileName(), variable->GetLineNumber(),
+                                                                  scope_name, TypeFactory::Instance()->MakeType(VAR_TYPE),
                                                                   false, true);
     current_table->AddEntry(entry, true);
 
@@ -2091,8 +2088,8 @@ void ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, const 
     else {
       if(expression->GetEvalType()) {
         ProcessError(static_cast<Expression*>(method_call), L"Undefined class reference: '" +
-                     expression->GetEvalType()->GetClassName() +
-                     L"'\n\tIf external reference to generic ensure it has been typed");
+		     expression->GetEvalType()->GetClassName() +
+		     L"'\n\tIf external reference to generic ensure it has been typed");
       }
       else {
         ProcessError(static_cast<Expression*>(method_call),
@@ -2524,15 +2521,13 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
     klass->SetCalled(true);
     method_call->SetOriginalClass(klass);
     method_call->SetMethod(method);
-
+    
     // map concrete to generic types
     const bool is_new = method->GetMethodType() == NEW_PUBLIC_METHOD || method->GetMethodType() == NEW_PRIVATE_METHOD;
     const bool same_cls_return = ClassEquals(method->GetReturn()->GetClassName(), klass, nullptr);
     if((is_new || same_cls_return) && klass->HasGenerics()) {
-      const vector<Class*> class_generics = klass->GetGenericClasses();
-      
+      const vector<Class*> class_generics = klass->GetGenericClasses();      
       vector<Type*> concrete_types = GetConcreteTypes(method_call);
-
       if(class_generics.size() != concrete_types.size()) {
         ProcessError(static_cast<Expression*>(method_call), L"Cannot create an unqualified instance of class: '" + klass->GetName() + L"'");
       }
