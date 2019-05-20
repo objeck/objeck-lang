@@ -2019,7 +2019,7 @@ namespace frontend {
     Class(const wstring& file_name, const int line_num, const wstring& n,
           bool g) : ParseNode(file_name, line_num) {
       name = n;
-      is_interface = true;
+      is_interface = !g;
       id = -1;
       parent = nullptr;
       lib_parent = nullptr;
@@ -2659,7 +2659,7 @@ namespace frontend {
       nodes.push_back(tmp);
       return tmp;
     }
-
+    
     Method* MakeMethod(const wstring &file_name, const int line_num, const wstring &name, 
            MethodType type, bool is_function, bool is_native) {
       Method* tmp = new Method(file_name, line_num, name, type, is_function, is_native);
