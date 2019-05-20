@@ -5254,16 +5254,50 @@ void ContextAnalyzer::CheckGenericEqualTypes(Type* left, Type* right, ParseNode*
     }
     else {
       for(size_t i = 0; i < right_types.size(); ++i) {
+        // process lhs
         Type* left_type = left_types[i];
         ResolveClassEnumType(left_type);
 
+        Class* left_klass = nullptr; LibraryClass* lib_left_klass = nullptr;
+        if(GetProgramLibraryClass(left_type, left_klass, lib_left_klass)) {
+          if(left_klass && left_klass->HasGenericInterface()) {
+            left_type = left_klass->GetGenericInterface();
+          }
+          else if(lib_left_klass->HasGenericInterface()) {
+            left_type = lib_left_klass->GetGenericInterface();
+          }
+        }
+        else {
+          left_klass = current_class->GetGenericClass(left_type->GetClassName());
+          if(left_klass && left_klass->HasGenericInterface()) {
+            left_type = left_klass->GetGenericInterface();
+          }
+        }
+        
+        // process rhs
         Type* right_type = right_types[i];
         ResolveClassEnumType(right_type);
+
+        Class* right_klass = nullptr; LibraryClass* lib_right_klass = nullptr;
+        if(GetProgramLibraryClass(right_type, right_klass, lib_right_klass)) {
+          if(right_klass && right_klass->HasGenericInterface()) {
+            right_type = right_klass->GetGenericInterface();
+          }
+          else if(lib_right_klass->HasGenericInterface()) {
+            right_type = lib_right_klass->GetGenericInterface();
+          }
+        }
+        else {
+          right_klass = current_class->GetGenericClass(right_type->GetClassName());
+          if(right_klass && right_klass->HasGenericInterface()) {
+            right_type = right_klass->GetGenericInterface();
+          }
+        }
 
         const wstring left_type_name = left_type->GetClassName();
         const wstring right_type_name = right_type->GetClassName();
         if(left_type_name != right_type_name) {
-          ProcessError(node, L"Concrete type between classes: '" + left_type_name + L"' and '" + right_type_name + L"'");
+          ProcessError(node, L"Unable to map between generic and concrete classes: '" + left_type_name + L"' and '" + right_type_name + L"'");
         }
       }
     }
