@@ -58,7 +58,7 @@ class LibraryMethodCallSelection {
   ~LibraryMethodCallSelection() {
   }
 
-  bool IsValid() {
+  inline bool IsValid() {
     for(size_t i = 0; i < parm_matches.size(); ++i) {
       if(parm_matches[i] < 0) {
         return false;
@@ -491,7 +491,6 @@ class ContextAnalyzer {
   void AnalyzeFunctionReference(LibraryClass* klass, MethodCall* method_call,
                                 wstring &encoding, const int depth);
   
-
  public:
   ContextAnalyzer(ParsedProgram* p, wstring lib_path, bool l, bool w) {
     program = p;
