@@ -324,7 +324,11 @@ class ContextAnalyzer {
   // add method parameter
   void AddMethodParameter(MethodCall* method_call, SymbolEntry* entry, int depth);
 
+  // reslove generic type
   Type* RelsolveGenericType(Type* generic_type, MethodCall* method_call, Class* klass, LibraryClass* lib_klass);
+
+  // validate concrete type
+  void ValidateConcrete(Type* type, Type* concrete_type, ParseNode* node, const int depth);
 
   // finds the first class match; note multiple matches may exist
   Class* SearchProgramClasses(const wstring& klass_name);
@@ -351,12 +355,16 @@ class ContextAnalyzer {
     return SearchProgramClasses(n) || linker->SearchClassLibraries(n, program->GetUses(current_class->GetFileName()));
   }
 
-  // helper function for program class search
-  bool GetProgramLibraryClass(const wstring& n, Class*& klass, LibraryClass*& lib_klass);
+  // class query by name
+  bool GetProgramLibraryClass(const wstring cls_name, Class*& klass, LibraryClass*& lib_klass);
+
+  // search and cache class type query
+  bool GetProgramLibraryClass(Type* type, Class*& klass, LibraryClass*& lib_klass);
 
   // resolve program or library class name
   wstring GetProgramLibraryClassName(const wstring& n);
 
+  // determines if name equals class
   bool ClassEquals(const wstring left_name, Class* right_klass, LibraryClass* right_lib_klass);
 
   // string utility functions
@@ -437,9 +445,6 @@ class ContextAnalyzer {
   void AnalyzeCritical(CriticalSection* mutex, const int depth);
   void AnalyzeFor(For* for_stmt, const int depth);
   void AnalyzeReturn(Return* rtrn, const int depth);
-
-  void ValidateConcrete(const wstring dclr_name, Type* mthd_type, ParseNode* node, const int depth);
-
   void AnalyzeLeaving(Leaving* leaving_stmt, const int depth);
   Expression* AnalyzeRightCast(Variable* variable, Expression* expression, bool is_scalar, const int depth);
   Expression* AnalyzeRightCast(Type* left, Expression* expression, bool is_scalar, const int depth);
@@ -474,7 +479,7 @@ class ContextAnalyzer {
   void ValidateGenericConcreteMapping(const vector<Type*> concrete_types, LibraryClass* lib_klass, ParseNode* node);
   void ValidateGenericConcreteMapping(const vector<Type*> concrete_types, Class* klass, ParseNode* node);
 
-  void ValidateGenericBacking(const wstring concrete_name, const wstring backing_inf_name, ParseNode * node);
+  void ValidateGenericBacking(Type* type, const wstring backing_inf_name, ParseNode * node);
   wstring EncodeMethodCall(ExpressionList * calling_params, const int depth);
   Method* ResolveMethodCall(Class* klass, MethodCall* method_call, const int depth);
   LibraryMethod* ResolveMethodCall(LibraryClass* klass, MethodCall* method_call, const int depth);

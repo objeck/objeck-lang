@@ -128,7 +128,10 @@ namespace frontend {
     Type* func_rtrn;
     int func_param_count;
     vector<Type*> generic_types;
+
     bool is_resolved;
+    void* klass_cache_ptr;
+    void* lib_klass_cache_ptr;
     
     Type(Type* t) {
 #ifdef _DEBUG
@@ -143,6 +146,8 @@ namespace frontend {
         func_param_count = -1;
         generic_types = t->generic_types;
         is_resolved = t->is_resolved;
+        klass_cache_ptr = t->klass_cache_ptr;
+        lib_klass_cache_ptr = t->lib_klass_cache_ptr;
       } 
     }
     
@@ -151,7 +156,10 @@ namespace frontend {
       dimension = 0;
       func_rtrn = nullptr;
       func_param_count = -1;
+
       is_resolved = false;
+      klass_cache_ptr = nullptr;
+      lib_klass_cache_ptr = nullptr;
     }
 
     Type(EntryType t, const wstring &n) {
@@ -160,7 +168,10 @@ namespace frontend {
       dimension = 0;
       func_rtrn = nullptr;
       func_param_count = -1;
+
       is_resolved = false;
+      klass_cache_ptr = nullptr;
+      lib_klass_cache_ptr = nullptr;
     }
     
     Type(vector<Type*>& p, Type* r) {
@@ -169,7 +180,10 @@ namespace frontend {
       func_params = p;
       func_rtrn = r;
       func_param_count = -1;
+
       is_resolved = false;
+      klass_cache_ptr = nullptr;
+      lib_klass_cache_ptr = nullptr;
     }
     
     ~Type() {
@@ -180,7 +194,10 @@ namespace frontend {
 
     void SetType(EntryType t) {
       type = t;
+
       is_resolved = false;
+      klass_cache_ptr = nullptr;
+      lib_klass_cache_ptr = nullptr;
     }
 
     const EntryType GetType() {
@@ -189,7 +206,10 @@ namespace frontend {
 
     void SetGenerics(const vector<Type*>& g) {
       generic_types = g;
+
       is_resolved = false;
+      klass_cache_ptr = nullptr;
+      lib_klass_cache_ptr = nullptr;
     }
 
     vector<Type*> GetGenerics() {
@@ -202,7 +222,10 @@ namespace frontend {
 
     void SetDimension(int d) {
       dimension = d;
+
       is_resolved = false;
+      klass_cache_ptr = nullptr;
+      lib_klass_cache_ptr = nullptr;
     }
     
     void SetResolved(bool r) {
@@ -211,6 +234,22 @@ namespace frontend {
     
     bool IsResolved() {
       return is_resolved;
+    }
+
+    void SetClassPtr(void* k) {
+      klass_cache_ptr = k;
+    }
+
+    void* GetClassPtr() {
+      return klass_cache_ptr;
+    }
+
+    void SetLibraryClassPtr(void* l) {
+      lib_klass_cache_ptr = l;
+    }
+
+    void* GetLibraryClassPtr() {
+      return lib_klass_cache_ptr;
     }
 
     vector<Type*> GetFunctionParameters() {
@@ -227,7 +266,10 @@ namespace frontend {
     
     void SetFunctionParameterCount(int c) {
       func_param_count = c;
+
       is_resolved = false;
+      klass_cache_ptr = nullptr;
+      lib_klass_cache_ptr = nullptr;
     }
     
     Type* GetFunctionReturn() {
@@ -236,7 +278,10 @@ namespace frontend {
 
     void SetFunctionReturn(Type* r) {
       func_rtrn = r;
+
       is_resolved = false;
+      klass_cache_ptr = nullptr;
+      lib_klass_cache_ptr = nullptr;
     }
     
     const int GetDimension() {
@@ -245,7 +290,10 @@ namespace frontend {
 
     void SetClassName(const wstring &n) {
       class_name = n;
+
       is_resolved = false;
+      klass_cache_ptr = nullptr;
+      lib_klass_cache_ptr = nullptr;
     }
 
     const wstring GetClassName() {

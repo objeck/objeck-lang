@@ -495,10 +495,8 @@ void ContextAnalyzer::AnalyzeGenerics(Class* klass, const int depth)
     // check backing interface
     if(generic_class->HasGenericInterface()) {
       Type* generic_inf_type = generic_class->GetGenericInterface();
-      const wstring generic_inf_name = generic_inf_type->GetClassName();
-      
       Class* klass_generic_inf = nullptr; LibraryClass* lib_klass_generic_inf = nullptr; 
-      if(GetProgramLibraryClass(generic_inf_name, klass_generic_inf, lib_klass_generic_inf)) {
+      if(GetProgramLibraryClass(generic_inf_type, klass_generic_inf, lib_klass_generic_inf)) {
         if(klass_generic_inf) {
           generic_inf_type->SetClassName(klass_generic_inf->GetName());
         }
@@ -507,6 +505,7 @@ void ContextAnalyzer::AnalyzeGenerics(Class* klass, const int depth)
         }
       }
       else {
+        const wstring generic_inf_name = generic_inf_type->GetClassName();
         ProcessError(klass, L"Undefined backing generic interface: '" + generic_inf_name + L"'");
       }
     }
@@ -1732,7 +1731,7 @@ void ContextAnalyzer::ValidateGenericConcreteMapping(const vector<Type*> concret
         const wstring backing_inf_name = class_generic->GetGenericInterface()->GetClassName();
         const wstring concrete_name = concrete_type->GetClassName();
         Class* inf_klass = nullptr; LibraryClass* inf_lib_klass = nullptr;
-        if(GetProgramLibraryClass(concrete_name, inf_klass, inf_lib_klass)) {
+        if(GetProgramLibraryClass(concrete_type, inf_klass, inf_lib_klass)) {
           if(!ValidDownCast(backing_inf_name, inf_klass, inf_lib_klass)) {
             ProcessError(node, L"Concrete class: '" + concrete_name +
                          L"' is incompatible with backing class/interface '" + backing_inf_name + L"'");
@@ -1772,7 +1771,7 @@ void ContextAnalyzer::ValidateGenericConcreteMapping(const vector<Type*> concret
         const wstring backing_inf_name = GetProgramLibraryClassName(class_generic->GetGenericInterface()->GetClassName());
         const wstring concrete_name = concrete_type->GetClassName();
         Class* inf_klass = nullptr; LibraryClass* inf_lib_klass = nullptr;
-        if(GetProgramLibraryClass(concrete_name, inf_klass, inf_lib_klass)) {
+        if(GetProgramLibraryClass(concrete_type, inf_klass, inf_lib_klass)) {
           if(!ValidDownCast(backing_inf_name, inf_klass, inf_lib_klass)) {
             ProcessError(node, L"Concrete class: '" + concrete_name +
                          L"' is incompatible with backing class/interface '" + backing_inf_name + L"'");
@@ -1795,10 +1794,11 @@ void ContextAnalyzer::ValidateGenericConcreteMapping(const vector<Type*> concret
   }
 }
 
-void ContextAnalyzer::ValidateGenericBacking(const wstring concrete_name, const wstring backing_name, ParseNode* node)
+void ContextAnalyzer::ValidateGenericBacking(Type* type, const wstring backing_name, ParseNode* node)
 {
+  const wstring concrete_name = type->GetClassName();
   Class* inf_klass = nullptr; LibraryClass* inf_lib_klass = nullptr;
-  if(GetProgramLibraryClass(concrete_name, inf_klass, inf_lib_klass)) {
+  if(GetProgramLibraryClass(type, inf_klass, inf_lib_klass)) {
     if(!ValidDownCast(backing_name, inf_klass, inf_lib_klass) && !ClassEquals(backing_name, inf_klass, inf_lib_klass)) {
       ProcessError(node, L"Concrete class: '" + concrete_name +
                    L"' is incompatible with backing class/interface '" + backing_name + L"'");
@@ -2008,9 +2008,8 @@ void ContextAnalyzer::AnalyzeNewArrayCall(MethodCall* method_call, const int dep
   }
   // generic array type
   if(method_call->HasConcreteTypes() && method_call->GetEvalType()) {
-    const wstring generic_name = method_call->GetEvalType()->GetClassName();
     Class* generic_klass = nullptr; LibraryClass* generic_lib_klass = nullptr;
-    if(GetProgramLibraryClass(generic_name, generic_klass, generic_lib_klass)) {
+    if(GetProgramLibraryClass(method_call->GetEvalType(), generic_klass, generic_lib_klass)) {
       const vector<Type*> concrete_types = GetConcreteTypes(method_call);
       if(generic_klass) {
         const vector<Class*> generic_classes = generic_klass->GetGenericClasses();
@@ -2549,9 +2548,8 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
             const wstring backing_name = backing_type->GetClassName();
             // concrete type
             ResolveClassEnumType(concrete_type);
-            const wstring concrete_name = concrete_type->GetClassName();
             // validate backing
-            ValidateGenericBacking(concrete_name, backing_name, static_cast<Expression*>(method_call));
+            ValidateGenericBacking(concrete_type, backing_name, static_cast<Expression*>(method_call));
           }
         }
       }
@@ -2801,9 +2799,8 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
             const wstring backing_name = backing_type->GetClassName();
             // concrete type
             ResolveClassEnumType(concrete_type);
-            const wstring concrete_name = concrete_type->GetClassName();
             // validate backing
-            ValidateGenericBacking(concrete_name, backing_name, static_cast<Expression*>(method_call));
+            ValidateGenericBacking(concrete_type, backing_name, static_cast<Expression*>(method_call));
           }
         }
       }
@@ -3364,7 +3361,7 @@ void ContextAnalyzer::AnalyzeReturn(Return* rtrn, const int depth)
     }
     AnalyzeRightCast(mthd_type, expression, (IsScalar(expression) && mthd_type->GetDimension() == 0), depth + 1);
 
-    ValidateConcrete(expression->GetEvalType()->GetClassName(), mthd_type, expression, depth);
+    ValidateConcrete(expression->GetEvalType(), mthd_type, expression, depth);
 
     if(mthd_type->GetType() == CLASS_TYPE && !ResolveClassEnumType(mthd_type)) {
       ProcessError(rtrn, L"Undefined class or enum: '" + ReplaceSubstring(mthd_type->GetClassName(), L"#", L"->") + L"'");
@@ -3380,10 +3377,11 @@ void ContextAnalyzer::AnalyzeReturn(Return* rtrn, const int depth)
   }
 }
 
-void ContextAnalyzer::ValidateConcrete(const wstring cls_name, Type* concrete_type, ParseNode* node, const int depth)
+void ContextAnalyzer::ValidateConcrete(Type* type, Type* concrete_type, ParseNode* node, const int depth)
 {
+  const wstring cls_name = type->GetClassName();
   Class* dclr_klass = nullptr; LibraryClass* dclr_lib_klass = nullptr;
-  if(!GetProgramLibraryClass(cls_name, dclr_klass, dclr_lib_klass)) {
+  if(!GetProgramLibraryClass(type, dclr_klass, dclr_lib_klass)) {
     dclr_klass = current_class->GetGenericClass(cls_name);
   }
 
@@ -5291,7 +5289,7 @@ void ContextAnalyzer::AnalyzeDeclaration(Declaration * declaration, Class* klass
         ProcessError(entry, L"Undefined class or enum: '" + ReplaceSubstring(type->GetClassName(), L"#", L"->") + L"'\n\tIf generic ensure concrete types are properly defined.");
       }
 
-      ValidateConcrete(type->GetClassName(), type, declaration, depth);
+      ValidateConcrete(type, type, declaration, depth);
     }
     else if(entry->GetType() && entry->GetType()->GetType() == FUNC_TYPE) {
       // resolve function name
@@ -5928,15 +5926,47 @@ bool ContextAnalyzer::ValidUpCast(const wstring& to, LibraryClass* from_klass)
   return false;
 }
 
-bool ContextAnalyzer::GetProgramLibraryClass(const wstring& n, Class*& klass, LibraryClass*& lib_klass)
+bool ContextAnalyzer::GetProgramLibraryClass(const wstring cls_name, Class*& klass, LibraryClass*& lib_klass)
 {
-  klass = SearchProgramClasses(n);
+  klass = SearchProgramClasses(cls_name);
   if(klass) {
     return true;
   }
 
-  lib_klass = linker->SearchClassLibraries(n, program->GetUses(current_class->GetFileName()));
+  lib_klass = linker->SearchClassLibraries(cls_name, program->GetUses(current_class->GetFileName()));
   if(lib_klass) {
+    return true;
+  }
+
+  return false;
+}
+
+bool ContextAnalyzer::GetProgramLibraryClass(Type* type, Class*& klass, LibraryClass*& lib_klass)
+{
+  Class* cls_ptr = static_cast<Class*>(type->GetClassPtr());
+  if(cls_ptr) {
+    klass = cls_ptr;
+    return true;
+  }
+
+  LibraryClass* lib_cls_ptr = static_cast<LibraryClass*>(type->GetLibraryClassPtr());
+  if(lib_cls_ptr) {
+    lib_klass = lib_cls_ptr;
+    return true;
+  }
+
+  if(GetProgramLibraryClass(type->GetClassName(), klass, lib_klass)) {
+    if(klass) {
+      type->SetClassName(klass->GetName());
+      type->SetClassPtr(klass);
+      type->SetResolved(true);
+    }
+    else {
+      type->SetClassName(lib_klass->GetName());
+      type->SetLibraryClassPtr(lib_klass);
+      type->SetResolved(true);
+    }
+
     return true;
   }
 
@@ -5996,15 +6026,14 @@ const wstring ContextAnalyzer::EncodeType(Type* type)
       encoded_name += L"o.";
 
       // search program and libraries
-      wstring klass_name = type->GetClassName();
       Class* klass; LibraryClass* lib_klass;
-      GetProgramLibraryClass(klass_name, klass, lib_klass);
-
-      if(klass) {
-        encoded_name += klass->GetName();
-      }
-      else if(lib_klass) {
-        encoded_name += lib_klass->GetName();
+      if(GetProgramLibraryClass(type, klass, lib_klass)) {
+        if(klass) {
+          encoded_name += klass->GetName();
+        }
+        else {
+          encoded_name += lib_klass->GetName();
+        }
       }
       else {
         encoded_name += type->GetClassName();
