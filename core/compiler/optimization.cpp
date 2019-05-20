@@ -784,10 +784,8 @@ void ItermediateOptimizer::CalculateReduction(IntermediateInstruction* instr,
   }
 }
 
-void ItermediateOptimizer::ApplyReduction(IntermediateInstruction* test, 
-                                          IntermediateInstruction* instr, 
-                                          IntermediateInstruction* top_instr,
-                                          deque<IntermediateInstruction*> &working_stack, 
+void ItermediateOptimizer::ApplyReduction(IntermediateInstruction* test, IntermediateInstruction* instr, 
+                                          IntermediateInstruction* top_instr, deque<IntermediateInstruction*> &working_stack, 
                                           IntermediateBlock* outputs)
 {
   int shift = 0;
@@ -1030,9 +1028,7 @@ IntermediateBlock* ItermediateOptimizer::FoldIntConstants(IntermediateBlock* inp
   return outputs;
 }
 
-void ItermediateOptimizer::CalculateIntFold(IntermediateInstruction* instr,
-                                            deque<IntermediateInstruction*> &working_stack,
-                                            IntermediateBlock* outputs)
+void ItermediateOptimizer::CalculateIntFold(IntermediateInstruction* instr, deque<IntermediateInstruction*> &working_stack, IntermediateBlock* outputs)
 {
   if(working_stack.size() == 1) {
     outputs->AddInstruction(working_stack.front());
@@ -1143,9 +1139,7 @@ IntermediateBlock* ItermediateOptimizer::FoldFloatConstants(IntermediateBlock* i
   return outputs;
 }
 
-void ItermediateOptimizer::CalculateFloatFold(IntermediateInstruction* instr,
-                                              deque<IntermediateInstruction*> &working_stack,
-                                              IntermediateBlock* outputs)
+void ItermediateOptimizer::CalculateFloatFold(IntermediateInstruction* instr, deque<IntermediateInstruction*> &working_stack, IntermediateBlock* outputs)
 {
   if(working_stack.size() == 1) {
     outputs->AddInstruction(working_stack.front());
