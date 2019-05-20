@@ -58,7 +58,7 @@ class LibraryMethodCallSelection {
   ~LibraryMethodCallSelection() {
   }
 
-  inline bool IsValid() {
+  bool IsValid() {
     for(size_t i = 0; i < parm_matches.size(); ++i) {
       if(parm_matches[i] < 0) {
         return false;
