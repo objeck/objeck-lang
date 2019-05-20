@@ -2464,7 +2464,7 @@ namespace frontend {
     void SetMethod(Method* m, bool set_rtrn = true) {
       method = m;
       if(set_rtrn) {
-        eval_type = m->GetReturn();
+        eval_type = TypeFactory::Instance()->MakeType(m->GetReturn());
         if(method_call) {
           method_call->SetEvalType(eval_type, false);
         }
