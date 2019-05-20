@@ -3566,7 +3566,7 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
               case SUB_ASSIGN_STMT:
               case MUL_ASSIGN_STMT:
               case DIV_ASSIGN_STMT:
-                ProcessError(assignment, L"Invalid operation using classes: System.String and System.String");
+                ProcessError(assignment, L"Invalid operation using classes: 'System.String' and 'System.String'");
                 break;
 
               case ASSIGN_STMT:
@@ -3578,11 +3578,11 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
               }
             }
             else {
-              ProcessError(assignment, L"Invalid operation using classes: System.String and " + right);
+              ProcessError(assignment, L"Invalid operation using classes: 'System.String' and '" + right + L"'");
             }
           }
           else {
-            ProcessError(assignment, L"Invalid operation using classes: System.String and " + right_type->GetClassName());
+            ProcessError(assignment, L"Invalid operation using classes: 'System.String' and '" + right_type->GetClassName() + L"'");
           }
         }
         // rhs 'Char', 'Byte', 'Int', 'Float' or 'Bool'
@@ -3599,19 +3599,19 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
           case MUL_ASSIGN_STMT:
           case DIV_ASSIGN_STMT:
             if(right_type->GetType() == CHAR_TYPE) {
-              ProcessError(assignment, L"Invalid operation using classes: System.String and System.Char");
+              ProcessError(assignment, L"Invalid operation using classes: 'System.String' and 'System.Char'");
             }
             else if(right_type->GetType() == BYTE_TYPE) {
-              ProcessError(assignment, L"Invalid operation using classes: System.String and System.Byte");
+              ProcessError(assignment, L"Invalid operation using classes: 'System.String' and 'System.Byte'");
             }
             else if(right_type->GetType() == INT_TYPE) {
-              ProcessError(assignment, L"Invalid operation using classes: System.String and Int");
+              ProcessError(assignment, L"Invalid operation using classes: 'System.String' and 'System.Int'");
             }
             else if(right_type->GetType() == FLOAT_TYPE) {
-              ProcessError(assignment, L"Invalid operation using classes: System.String and System.Float");
+              ProcessError(assignment, L"Invalid operation using classes: 'System.String' and 'System.Float'");
             }
             else {
-              ProcessError(assignment, L"Invalid operation using classes: System.String and System.Bool");
+              ProcessError(assignment, L"Invalid operation using classes: 'System.String' and 'System.Bool'");
             }
             break;
 
