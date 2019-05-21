@@ -21,6 +21,14 @@ class Foo {
 		c := CompareVector->New()<String>;
 		c->AddBack("Foo");
 		c->AddBack("Bar");
+		c->AddBack("Zoon");
+		c->AddBack("Apple");
+		c->AddBack("Objeck");
+		c->Sort();
 		c->Size()->PrintLine();
+
+		each(i : c) {
+			c->Get(i)->PrintLine();
+		};
 	}
 }
