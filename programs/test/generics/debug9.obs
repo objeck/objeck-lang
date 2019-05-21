@@ -2,17 +2,20 @@ use Collection.Generic;
 
 class Foo {
 	function : Main(args : String[]) ~ Nil {
-#~		
+#		s := "foo bar";
+#		s := IntHolder->New(13);
+				
 		f := Map->New()<String, IntHolder>;
+
 		f->Insert("foo", 13);
 		f->Insert("bar", 7);
 
 		f->Size()->PrintLine();
 		f->Find("foo")->Get()->PrintLine();
 		f->Find("bar")->Get()->PrintLine();
-~#
-		f := Map->New()<String, String>;
-		f->Insert("foo", "bar");
-		f->Find("foo")->Size()->PrintLine();
+
+		g := Map->New()<String, String>;
+		g->Insert("foo", "bar");
+		g->Find("foo")->Size()->PrintLine();
 	}
 }

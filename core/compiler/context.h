@@ -337,15 +337,18 @@ class ContextAnalyzer {
   Enum* SearchProgramEnums(const wstring& eenum_name);
 
   inline vector<Type*> GetConcreteTypes(MethodCall* method_call) {
-    if(method_call->GetEvalType() && !method_call->GetEvalType()->GetGenerics().empty()) {
+    if(!method_call->GetConcreteTypes().empty()) {
+      return method_call->GetConcreteTypes();
+    }
+    else if(method_call->GetEvalType()) {
       return method_call->GetEvalType()->GetGenerics();
     }
     else if(method_call->GetEntry()) {
       return method_call->GetEntry()->GetType()->GetGenerics();
     }
-    else {
-      return method_call->GetConcreteTypes();
-    }
+
+    vector<Type*> empty;
+    return empty;
   }
   
   // helper function for program enum search
