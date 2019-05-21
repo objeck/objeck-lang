@@ -2,7 +2,626 @@
 Generic backed collections
 ~#	
 bundle Collection.Generic {
-	# TODO: list, queue, hash
+	# TODO: queue, hash
+
+	#~
+	Stores a linked list of comparable values
+	~#
+	class CompareList<H : Compare> {
+		@size : Int;
+		@head : CompareListNode<H>;
+		@tail : CompareListNode<H>;
+		@cursor : CompareListNode<H>;
+
+		#~
+		Default constructor 
+		~#
+		New() {
+			@size := 0;
+		}
+
+		#~
+		Adds a value to the end
+		@param value value to append 
+		~#
+		method : public : native : AddBack(value : H) ~ Nil {
+			node := CompareListNode->New(value)<H>;
+			if(@head = Nil) {
+				@head := node;
+				@tail := @head;
+				@cursor := @head;
+			}
+			else {
+				@tail->SetNext(node);
+			 	node->SetPrevious(@tail);	
+				@tail := node;
+			};
+			@size += 1;
+		}
+	
+		#~
+		Removes the last value from the list
+		~#
+		method : public : RemoveBack() ~ Nil {
+			Forward();
+			Remove();
+		}
+
+		#~
+		Adds a value to the front
+		@param value value to prepend 
+		~#
+		method : public : native : AddFront(value : H) ~ Nil {
+			node := CompareListNode->New(value)<H>;
+			if(@head = Nil) {
+				@head := node;
+				@tail := @head;
+				@cursor := @head;
+			}
+			else {
+				@head->SetPrevious(node);
+				node->SetNext(@head);
+				@head := node;
+				@cursor := @head;
+			};
+			@size += 1;
+		}
+		
+		#~
+		Removes the first value from the list
+		~#
+		method : public : RemoveFront() ~ Nil {
+			Rewind();
+			Remove();
+		}
+
+		#~
+		Moves the pointer to the start of the list
+		~#
+		method : public : Rewind() ~ Nil {
+			@cursor := @head;
+		}		
+
+		#~
+		Moves the pointer to the end of the list
+		~#
+		method : public : Forward() ~ Nil {
+			@cursor := @tail;
+		}		
+
+		#~
+		Advances the pointer
+		~#
+		method : public : Next() ~ Nil {
+			if(@cursor <> Nil) {
+				@cursor := @cursor->GetNext();
+			};
+		}
+
+		#~
+		Retreats the pointer
+		~#
+		method : public : Previous() ~ Nil {
+			if(@cursor <> Nil) {
+				@cursor := @cursor->GetPrevious();
+			};
+		}
+
+		#~
+		Gets the value that's currently pointed to
+		@return value value
+		~#
+		method : public : Get() ~ H {
+			if(@cursor <> Nil) {
+				return @cursor->Get();
+			};
+
+			return Nil;
+		}
+
+		#~
+		Searches for a value
+		@param value value to check for
+		@return true if value is found, false otherwise
+		~#
+		method : public : Has(value : H) ~ Bool {
+			start := @head;
+			end := @tail;
+			
+			while(start <> end) {
+				if(value->Compare(start->Get()) = 0) {
+					return true;
+				}
+				else if(value->Compare(end->Get()) = 0) {
+					return true;
+				};
+				
+				start := start->GetNext();
+				end := end->GetPrevious();
+			};
+			
+			if(start <> Nil & value->Compare(start->Get()) = 0) {
+				return true;
+			}; 
+
+			return false;
+		}
+		
+		#~
+		Finds a value in the list and sets the pointer
+		@param value value to search for
+		@return value that's found
+		~#
+		method : public : Find(value : H) ~ H {
+			@cursor := @head;
+			while(@cursor <> Nil) {
+				if(value->Compare(@cursor->Get()) = 0) {
+					return value;
+				};
+				@cursor := @cursor->GetNext();
+			};
+			
+			return Nil;
+		}
+		
+		#~
+		Inserts a value into the list based upon the pointer location
+		@param value value to insert
+		~#
+		method : public : native : Insert(value : H) ~ Bool {
+			if(@cursor <> Nil & @head <> Nil & @tail <> Nil) {
+				node := CompareListNode->New(value)<H>;
+				if(@cursor = @head & @cursor = @tail) {
+			 		@head->SetNext(node);
+			 		node->SetPrevious(@head);
+			 		@tail := node;
+			 	}
+			 	else if(@cursor = @tail) {
+			 		@tail->SetNext(node);
+			 		node->SetPrevious(@tail);
+			 		@tail := node;
+			 	}
+			 	else {
+					@cursor->GetNext()->SetPrevious(node);
+					node->SetNext(@cursor->GetNext());
+			 		@cursor->SetNext(node);
+			 		node->SetPrevious(@cursor);
+			 	};
+			 	@size += 1;
+				
+				return true;
+			}
+			else if(@head = Nil & @tail = Nil) {
+				AddBack(value);
+				return true;
+			};
+			
+			return false;
+		}
+		
+		#~
+		Removes the element at the pointer position
+		~#
+		method : public : native : Remove() ~ Nil {
+			if(@cursor <> Nil) {
+				if(@cursor->GetPrevious() <> Nil) {
+					@cursor->GetPrevious()->SetNext(@cursor->GetNext());
+				};
+				if(@cursor = @head & @cursor = @tail) {
+			 		@cursor := @cursor->GetNext();
+			 		@head := @cursor;
+			 		@tail := @cursor;
+			 	}
+			 	else if(@cursor = @head) {
+			 		@cursor := @cursor->GetNext();
+			 		@head := @cursor;
+			 	}
+			 	else if(@cursor = @tail) {
+			 		@cursor := @cursor->GetNext();
+			 		@tail := @cursor;
+			 	}
+			 	else {
+			 		@cursor := @cursor->GetNext();
+			 	};
+				@size -= 1;
+			};
+		}
+
+		#~
+		Checks to see if the pointer is at the front of the list
+		@return true if pointer is at the front of the list, false otherwise
+		~#
+		method : public : IsFront() ~ Bool {
+			return @cursor = @head;
+		}		
+		
+		#~
+		Checks to see if the pointer is at the end of the list
+		@return true if pointer is at the end of the list, false otherwise
+		~#
+		method : public : IsBack() ~ Bool {
+			return @cursor = @tail;
+		}
+		
+		#~
+		Checks to see the pointer can be advanced
+		@return true if pointer can be advanced, false otherwise
+		~#
+		method : public : More() ~ Bool {
+			return @cursor <> Nil;
+		}
+
+		#~
+		Returns the first element in the list
+		@return first element in the list, 0.0 if the list is empty
+		~#
+		method : public : Front() ~ H {
+			if(@head <> Nil) {
+				return @head->Get();
+			};
+
+			return Nil;
+		}
+
+		#~
+		Returns the last element in the list
+		@return last element in the list, 0.0 if the list is empty
+		~#
+		method : public : Back() ~ H {
+			if(@tail <> Nil) {
+				return @tail->Get();
+			};
+
+			return Nil;
+		}
+
+		#~
+		Clears the list
+		~#
+		method : public : Empty() ~ Nil {
+			@size := 0;
+			@head := Nil;
+			@tail := Nil;
+			@cursor := Nil;
+		}
+		
+		#~
+		Checks to see if the list is empty
+		@return true if empty, false otherwise
+		~#
+		method : public : IsEmpty() ~ Bool {
+			return @size = 0;
+		}
+		
+		#~
+		Size of list
+		@return size of list
+		~#
+		method : public : Size() ~ Int {
+			return @size;
+		}
+	}
+
+	class CompareListNode<H : Compare> {
+		@value : H;
+		@next : CompareListNode<H>;
+		@previous: CompareListNode<H>;
+
+		New(value : H) {
+			@value := value;
+		}
+		
+		method : public : Set(value : H) ~ Nil {
+			@value := value;
+		}
+	
+		method : public : Get() ~ H {
+			return @value;
+		}
+
+		method : public : SetNext(next :  CompareListNode<H>) ~ Nil {
+			@next := next;
+		}
+	
+		method : public : GetNext() ~ CompareListNode<H> {
+			return @next;
+		}
+
+		method : public : SetPrevious(previous :  CompareListNode<H>) ~ Nil {
+			@previous := previous;
+		}
+	
+		method : public : GetPrevious() ~ CompareListNode<H> {
+			return @previous;
+		}
+	}
+
+	#~
+	Stores a linked list of object values
+	~#
+	class List<H> {
+		@size : Int;
+		@head : ListNode<H>;
+		@tail : ListNode<H>;
+		@cursor : ListNode<H>;
+
+		#~
+		Default constructor 
+		~#
+		New() {
+			@size := 0;
+		}
+
+		#~
+		Adds a value to the end
+		@param value value to append 
+		~#
+		method : public : native : AddBack(value : H) ~ Nil {
+			node := ListNode->New(value)<H>;
+			if(@head = Nil) {
+				@head := node;
+				@tail := @head;
+				@cursor := @head;
+			}
+			else {
+				@tail->SetNext(node);
+			 	node->SetPrevious(@tail);	
+				@tail := node;
+			};
+			@size += 1;
+		}
+	
+		#~
+		Removes the last value from the list
+		~#
+		method : public : RemoveBack() ~ Nil {
+			Forward();
+			Remove();
+		}
+
+		#~
+		Adds a value to the front
+		@param value value to prepend 
+		~#
+		method : public : native : AddFront(value : H) ~ Nil {
+			node := ListNode->New(value)<H>;
+			if(@head = Nil) {
+				@head := node;
+				@tail := @head;
+				@cursor := @head;
+			}
+			else {
+				@head->SetPrevious(node);
+				node->SetNext(@head);
+				@head := node;
+				@cursor := @head;
+			};
+			@size += 1;
+		}
+		
+		#~
+		Removes the first value from the list
+		~#
+		method : public : RemoveFront() ~ Nil {
+			Rewind();
+			Remove();
+		}
+
+		#~
+		Moves the pointer to the start of the list
+		~#
+		method : public : Rewind() ~ Nil {
+			@cursor := @head;
+		}		
+
+		#~
+		Moves the pointer to the end of the list
+		~#
+		method : public : Forward() ~ Nil {
+			@cursor := @tail;
+		}		
+
+		#~
+		Advances the pointer
+		~#
+		method : public : Next() ~ Nil {
+			if(@cursor <> Nil) {
+				@cursor := @cursor->GetNext();
+			};
+		}
+
+		#~
+		Retreats the pointer
+		~#
+		method : public : Previous() ~ Nil {
+			if(@cursor <> Nil) {
+				@cursor := @cursor->GetPrevious();
+			};
+		}
+
+		#~
+		Gets the value that's currently pointed to
+		@return value value
+		~#
+		method : public : Get() ~ H {
+			if(@cursor <> Nil) {
+				return @cursor->Get();
+			};
+
+			return Nil;
+		}
+				
+		#~
+		Inserts a value into the list based upon the pointer location
+		@param value value to insert
+		~#
+		method : public : native : Insert(value : H) ~ Bool {
+			if(@cursor <> Nil & @head <> Nil & @tail <> Nil) {
+				node := ListNode->New(value)<H>;
+				if(@cursor = @head & @cursor = @tail) {
+			 		@head->SetNext(node);
+			 		node->SetPrevious(@head);
+			 		@tail := node;
+			 	}
+			 	else if(@cursor = @tail) {
+			 		@tail->SetNext(node);
+			 		node->SetPrevious(@tail);
+			 		@tail := node;
+			 	}
+			 	else {
+					@cursor->GetNext()->SetPrevious(node);
+					node->SetNext(@cursor->GetNext());
+			 		@cursor->SetNext(node);
+			 		node->SetPrevious(@cursor);
+			 	};
+			 	@size += 1;
+				
+				return true;
+			}
+			else if(@head = Nil & @tail = Nil) {
+				AddBack(value);
+				return true;
+			};
+			
+			return false;
+		}
+		
+		#~
+		Removes the element at the pointer position
+		~#
+		method : public : native : Remove() ~ Nil {
+			if(@cursor <> Nil) {
+				if(@cursor->GetPrevious() <> Nil) {
+					@cursor->GetPrevious()->SetNext(@cursor->GetNext());
+				};
+				if(@cursor = @head & @cursor = @tail) {
+			 		@cursor := @cursor->GetNext();
+			 		@head := @cursor;
+			 		@tail := @cursor;
+			 	}
+			 	else if(@cursor = @head) {
+			 		@cursor := @cursor->GetNext();
+			 		@head := @cursor;
+			 	}
+			 	else if(@cursor = @tail) {
+			 		@cursor := @cursor->GetNext();
+			 		@tail := @cursor;
+			 	}
+			 	else {
+			 		@cursor := @cursor->GetNext();
+			 	};
+				@size -= 1;
+			};
+		}
+
+		#~
+		Checks to see if the pointer is at the front of the list
+		@return true if pointer is at the front of the list, false otherwise
+		~#
+		method : public : IsFront() ~ Bool {
+			return @cursor = @head;
+		}		
+		
+		#~
+		Checks to see if the pointer is at the end of the list
+		@return true if pointer is at the end of the list, false otherwise
+		~#
+		method : public : IsBack() ~ Bool {
+			return @cursor = @tail;
+		}
+		
+		#~
+		Checks to see the pointer can be advanced
+		@return true if pointer can be advanced, false otherwise
+		~#
+		method : public : More() ~ Bool {
+			return @cursor <> Nil;
+		}
+
+		#~
+		Returns the first element in the list
+		@return first element in the list, 0.0 if the list is empty
+		~#
+		method : public : Front() ~ H {
+			if(@head <> Nil) {
+				return @head->Get();
+			};
+
+			return Nil;
+		}
+
+		#~
+		Returns the last element in the list
+		@return last element in the list, 0.0 if the list is empty
+		~#
+		method : public : Back() ~ H {
+			if(@tail <> Nil) {
+				return @tail->Get();
+			};
+
+			return Nil;
+		}
+
+		#~
+		Clears the list
+		~#
+		method : public : Empty() ~ Nil {
+			@size := 0;
+			@head := Nil;
+			@tail := Nil;
+			@cursor := Nil;
+		}
+		
+		#~
+		Checks to see if the list is empty
+		@return true if empty, false otherwise
+		~#
+		method : public : IsEmpty() ~ Bool {
+			return @size = 0;
+		}
+		
+		#~
+		Size of list
+		@return size of list
+		~#
+		method : public : Size() ~ Int {
+			return @size;
+		}
+	}
+
+	class ListNode<H> {
+		@value : H;
+		@next : ListNode<H>;
+		@previous: ListNode<H>;
+
+		New(value : H) {
+			@value := value;
+		}
+		
+		method : public : Set(value : H) ~ Nil {
+			@value := value;
+		}
+	
+		method : public : Get() ~ H {
+			return @value;
+		}
+
+		method : public : SetNext(next :  ListNode<H>) ~ Nil {
+			@next := next;
+		}
+	
+		method : public : GetNext() ~ ListNode<H> {
+			return @next;
+		}
+
+		method : public : SetPrevious(previous :  ListNode<H>) ~ Nil {
+			@previous := previous;
+		}
+	
+		method : public : GetPrevious() ~ ListNode<H> {
+			return @previous;
+		}
+	}
 
 	#~
 	Growable object based stack
