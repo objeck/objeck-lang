@@ -17,5 +17,10 @@ class Foo {
 		g := Map->New()<String, String>;
 		g->Insert("foo", "barz");
 		g->Find("foo")->PrintLine();
+
+		c := CompareVector->New()<String>;
+		c->AddBack("Foo");
+		c->AddBack("Bar");
+		c->Size()->PrintLine();
 	}
 }

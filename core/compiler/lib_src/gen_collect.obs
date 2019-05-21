@@ -3,6 +3,78 @@ Generic backed collections
 ~#	
 bundle Collection.Generic {
 	#~
+	Growable object based stack
+	~#
+	class Stack<H> {
+		@values : Vector<H>;
+		
+		#~
+		Default constructor 
+		~#
+		New() {
+			@values := Vector->New()<H>	;
+		}
+		
+		#~
+		Pushes a value onto the stack
+		@value value to push
+		~#
+		method : public: Push(value : H) ~ Nil {
+			@values->AddBack(value);
+		}
+		
+		#~
+		Pushes a value from the stack
+		@return popped valued, Nil if stack is empty
+		~#
+		method : public : Pop() ~ H {
+			if(@values->Size() > 0) {
+				value : H := @values->Get(@values->Size() - 1);
+				@values->RemoveBack();
+				
+				return value;
+			};
+			
+			return Nil;
+		}
+		
+		#~
+		Check the top of the stack
+		@return value on the top of stack, Nil if stack is empty
+		~#
+		method : public: Top() ~ H {
+			if(@values->Size() > 0) {
+				return @values->Get(@values->Size() - 1);
+			};
+			
+			return Nil;
+		}
+
+		#~
+		Clears the vector
+		~#
+		method : public : Empty() ~ Nil {
+			@values->Empty();
+		}
+		
+		#~
+		Checks to see if the vector is empty
+		@return true if empty, false otherwise
+		~#
+		method : public: IsEmpty() ~ Bool {
+			return @values->Size() = 0;
+		}
+
+		#~
+		Size of stack
+		@return size of stack
+		~#
+		method : public: Size() ~ Int {
+			return @values->Size();
+		}
+	}
+	
+	#~
 	Growable array of comparable based objects
 	~#
 	class Vector<H> {
