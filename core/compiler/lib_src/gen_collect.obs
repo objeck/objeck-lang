@@ -2,6 +2,8 @@
 Generic backed collections
 ~#	
 bundle Collection.Generic {
+	# TODO: list, queue, hash
+
 	#~
 	Growable object based stack
 	~#
