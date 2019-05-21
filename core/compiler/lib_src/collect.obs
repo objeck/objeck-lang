@@ -2856,7 +2856,7 @@ bundle Collection {
 		}
 	}
     
-   #~
+   	#~
 	Queue of objects
 	~#
 	class Queue {

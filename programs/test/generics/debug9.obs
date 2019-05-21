@@ -31,5 +31,11 @@ class Foo {
 		each(i : c) {
 			c->Get(i)->PrintLine();
 		};
+
+		s := Stack->New()<CharHolder>;
+		s->Push('a');
+		s->Push('b');
+		s->Push('c');
+		s->Pop()->Get()->PrintLine();
 	}
 }
