@@ -347,8 +347,7 @@ class ContextAnalyzer {
       return method_call->GetEntry()->GetType()->GetGenerics();
     }
 
-    vector<Type*> empty;
-    return empty;
+    return method_call->GetBaseType()->GetGenerics();
   }
   
   // helper function for program enum search

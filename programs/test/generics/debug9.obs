@@ -4,7 +4,7 @@ class Foo {
 	function : Main(args : String[]) ~ Nil {
 #		s := "foo bar";
 #		s := IntHolder->New(13);
-				
+			
 		f := Map->New()<String, IntHolder>;
 
 		f->Insert("foo", 13);
