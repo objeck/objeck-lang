@@ -2,10 +2,153 @@
 Generic backed collections
 ~#	
 bundle Collection.Generic {
-	# TODO: queue, hash
+	# TODO: hash
 
 	#~
-	Stores a linked list of comparable values
+	Growable stack of generics
+	~#
+	class Stack<H> {
+		@values : Vector<H>;
+		
+		#~
+		Default constructor 
+		~#
+		New() {
+			@values := Vector->New()<H>	;
+		}
+		
+		#~
+		Pushes a value onto the stack
+		@value value to push
+		~#
+		method : public: Push(value : H) ~ Nil {
+			@values->AddBack(value);
+		}
+		
+		#~
+		Pushes a value from the stack
+		@return popped valued, Nil if stack is empty
+		~#
+		method : public : Pop() ~ H {
+			if(@values->Size() > 0) {
+				value : H := @values->Get(@values->Size() - 1);
+				@values->RemoveBack();
+				
+				return value;
+			};
+			
+			return Nil;
+		}
+		
+		#~
+		Check the top of the stack
+		@return value on the top of stack, Nil if stack is empty
+		~#
+		method : public: Top() ~ H {
+			if(@values->Size() > 0) {
+				return @values->Get(@values->Size() - 1);
+			};
+			
+			return Nil;
+		}
+
+		#~
+		Clears the vector
+		~#
+		method : public : Empty() ~ Nil {
+			@values->Empty();
+		}
+		
+		#~
+		Checks to see if the vector is empty
+		@return true if empty, false otherwise
+		~#
+		method : public: IsEmpty() ~ Bool {
+			return @values->Size() = 0;
+		}
+
+		#~
+		Size of stack
+		@return size of stack
+		~#
+		method : public: Size() ~ Int {
+			return @values->Size();
+		}
+	}
+
+	#~
+	Queue of generics
+	~#
+	class Queue<H> {
+		@queue : List<H>;
+		
+		#~
+		Default constructor 
+		~#
+		New() {
+			@queue := List->New()<H>;
+		}
+		
+		#~
+		Adds a value to the back of the queue
+		@param value value to add
+		~#
+		method : public: Add(value : H) ~ Nil {
+			@queue->AddBack(value);
+		}
+		
+		#~
+		Removes a value from the front of the queue
+		@return value removed
+		~#
+		method : public : Remove() ~ H {
+			if(@queue->Size() > 0) {
+				value := @queue->Front();
+				@queue->RemoveFront();
+				return value;
+			};
+			
+			return Nil;
+		}
+		
+		#~
+		Get the value from the head of the queue
+		@return head value, Nil if queue is empty
+		~#
+		method : public: Head() ~ H {
+			if(@queue->Size() > 0) {
+				return @queue->Front();
+			};
+			
+			return Nil;
+		}
+		
+		#~
+		Clears the queue
+		~#
+		method : public : Empty() ~ Nil {
+			@queue->Empty();
+		}
+		
+		#~
+		Checks to see if the queue is empty
+		@return true if empty, false otherwise
+		~#
+		method : public : IsEmpty() ~ Bool {
+			return @queue->IsEmpty();
+		}
+		
+		#~
+		Size of queue
+		@return size of queue
+		~#
+		method : public : Size() ~ Int {
+			return @queue->Size();
+		}
+	}
+
+	#~
+	List of comparable generics
 	~#
 	class CompareList<H : Compare> {
 		@size : Int;
@@ -337,7 +480,7 @@ bundle Collection.Generic {
 	}
 
 	#~
-	Stores a linked list of object values
+	List of generics
 	~#
 	class List<H> {
 		@size : Int;
@@ -622,81 +765,9 @@ bundle Collection.Generic {
 			return @previous;
 		}
 	}
-
-	#~
-	Growable object based stack
-	~#
-	class Stack<H> {
-		@values : Vector<H>;
-		
-		#~
-		Default constructor 
-		~#
-		New() {
-			@values := Vector->New()<H>	;
-		}
-		
-		#~
-		Pushes a value onto the stack
-		@value value to push
-		~#
-		method : public: Push(value : H) ~ Nil {
-			@values->AddBack(value);
-		}
-		
-		#~
-		Pushes a value from the stack
-		@return popped valued, Nil if stack is empty
-		~#
-		method : public : Pop() ~ H {
-			if(@values->Size() > 0) {
-				value : H := @values->Get(@values->Size() - 1);
-				@values->RemoveBack();
-				
-				return value;
-			};
-			
-			return Nil;
-		}
-		
-		#~
-		Check the top of the stack
-		@return value on the top of stack, Nil if stack is empty
-		~#
-		method : public: Top() ~ H {
-			if(@values->Size() > 0) {
-				return @values->Get(@values->Size() - 1);
-			};
-			
-			return Nil;
-		}
-
-		#~
-		Clears the vector
-		~#
-		method : public : Empty() ~ Nil {
-			@values->Empty();
-		}
-		
-		#~
-		Checks to see if the vector is empty
-		@return true if empty, false otherwise
-		~#
-		method : public: IsEmpty() ~ Bool {
-			return @values->Size() = 0;
-		}
-
-		#~
-		Size of stack
-		@return size of stack
-		~#
-		method : public: Size() ~ Int {
-			return @values->Size();
-		}
-	}
 	
 	#~
-	Growable array of comparable based objects
+	Growable array of generics
 	~#
 	class Vector<H> {
 		@values : H[];
@@ -877,7 +948,7 @@ bundle Collection.Generic {
 	}
 
 	#~
-	Growable array of comparable based objects
+	Growable array of comparable generics
 	~#
 	class CompareVector<H : Compare> {
 		@values : H[];
@@ -1181,7 +1252,7 @@ bundle Collection.Generic {
 	}
 	
 	#~
-	Binary tree of objects values
+	Balanced tree of generics
 	~#
 	class Map<K : Compare, V> {
 		@root : TreeNode<K, V>;
