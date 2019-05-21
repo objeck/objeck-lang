@@ -24,6 +24,7 @@ class Foo {
 		c->AddBack("Zoon");
 		c->AddBack("Apple");
 		c->AddBack("Objeck");
+		c->AddBack("Back");
 		c->Sort();
 		c->Size()->PrintLine();
 
