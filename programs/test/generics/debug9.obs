@@ -15,7 +15,7 @@ class Foo {
 		f->Find("bar")->Get()->PrintLine();
 
 		g := Map->New()<String, String>;
-		g->Insert("foo", "bar");
-		g->Find("foo")->Size()->PrintLine();
+		g->Insert("foo", "barz");
+		g->Find("foo")->PrintLine();
 	}
 }
