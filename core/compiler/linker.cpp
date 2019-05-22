@@ -1416,44 +1416,44 @@ void LibraryMethod::ParseReturn()
 {
   size_t index = 0;
   switch(rtrn_name[index]) {
-  case 'l':
+  case L'l':
     rtrn_type = frontend::TypeFactory::Instance()->MakeType(frontend::BOOLEAN_TYPE);
     index++;
     break;
 
-  case 'b':
+  case L'b':
     rtrn_type = frontend::TypeFactory::Instance()->MakeType(frontend::BYTE_TYPE);
     index++;
     break;
 
-  case 'i':
+  case L'i':
     rtrn_type = frontend::TypeFactory::Instance()->MakeType(frontend::INT_TYPE);
     index++;
     break;
 
-  case 'f':
+  case L'f':
     rtrn_type = frontend::TypeFactory::Instance()->MakeType(frontend::FLOAT_TYPE);
     index++;
     break;
 
-  case 'c':
+  case L'c':
     rtrn_type = frontend::TypeFactory::Instance()->MakeType(frontend::CHAR_TYPE);
     index++;
     break;
 
-  case 'n':
+  case L'n':
     rtrn_type = frontend::TypeFactory::Instance()->MakeType(frontend::NIL_TYPE);
     index++;
     break;
 
-  case 'm':
+  case L'm':
     rtrn_type = frontend::TypeFactory::Instance()->MakeType(frontend::FUNC_TYPE);
     index++;
     break;
 
-  case 'o':
+  case L'o':
     index = 2;
-    while(index < rtrn_name.size() && rtrn_name[index] != '*') {
+    while(index < rtrn_name.size() && rtrn_name[index] != L'*' && rtrn_name[index] != L'|') {
       index++;
     }
     rtrn_type = frontend::TypeFactory::Instance()->MakeType(frontend::CLASS_TYPE,
@@ -1461,9 +1461,14 @@ void LibraryMethod::ParseReturn()
     break;
   }
 
+  // generics
+  if(rtrn_name[index] == L'|') {
+    wcout << "Hi ya!" << endl;
+  }
+
   // set dimension
   int dimension = 0;
-  while(index < rtrn_name.size() && rtrn_name[index] == '*') {
+  while(index < rtrn_name.size() && rtrn_name[index] == L'*') {
     dimension++;
     index++;
   }
