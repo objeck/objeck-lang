@@ -2,8 +2,182 @@
 Generic backed collections
 ~#	
 bundle Collection.Generic {
-	# TODO: hash
+	#~
+	Hash table of generics
+	~#
+	class Hash<K : Compare, V> {
+		@buckets : CompareList[]<K>;
+		@size : Int;
+		
+		#~
+		Default constructor 
+		~#
+		New() {
+			@buckets := CompareList->New[337]<K>;
+			@size := 0;
+		}
+		
+		#~
+		Inserts a value into the hash
+		@param key key
+		@param value value
+		~#
+		method : public : Insert(key : K, value : V) ~ Nil {
+			hash := (key->HashID() % @buckets->Size())->Abs();
+			list := @buckets[hash];
+			if(list = Nil) {
+				list := CompareList->New()<K>;
+				@buckets[hash] := list;
+			};
+			list->AddBack(HashPair->New(key->As(Compare), value)<V>);
+			@size += 1;
+		}
 
+		#~
+		Searches for a value in a hash
+		@param key search key
+		@return found value, Nil if not found
+		~#
+		method : public : native : Find(key : K) ~ V {
+			hash := (key->HashID() % @buckets->Size())->Abs();
+			list := @buckets[hash];
+			if(list <> Nil) {
+				list->Rewind();
+				while(list->More()) {
+					pair : HashPair<V> := list->Get()<V>;
+					if(pair->Compare(key) = 0) {
+						return pair->Get();
+					};
+					list->Next();
+				};
+
+				return Nil;
+			};
+
+			return Nil;
+		}
+		
+		#~
+		Checks for a value in a hash
+		@param key search key
+		@return true if found, false otherwise
+		~#
+		method : public : Has(key : K) ~ Bool {
+			result := Find(key);
+			return result <> Nil;
+		}
+		
+		#~
+		Removes a value from the hash
+		@param key key for value to remove
+		~#
+		method : public : native : Remove(key : K) ~ Bool {
+			hash := (key->HashID() % @buckets->Size())->Abs();
+			list := @buckets[hash];
+			if(list <> Nil) {
+				list->Rewind();
+				while(list->More()) {
+					pair : HashPair<V> := list->Get()<V>;
+					if(pair->Compare(key) = 0) {
+						list->Remove();
+						@size := @size - 1;
+						return true;
+					};
+					list->Next();
+				};
+
+				return false;
+			};
+
+			return false;
+		}
+		
+		#~
+		Get a collection of keys
+		@return vector of keys
+		~#
+		method : public : native : GetKeys() ~ Vector<K> {
+			keys := Vector->New()<K>;
+			for(i := 0; i < @buckets->Size(); i += 1;) {
+				if(@buckets[i] <> Nil) {
+					list := @buckets[i];
+					list->Rewind();
+					while(list->More()) {
+						pair : HashPair<V> := list->Get()<V>;
+						keys->AddBack(pair->GetKey());
+						list->Next();
+					};
+				};
+			};
+			
+			return keys;
+		}
+		
+		#~
+		Gets a collection of values
+		@return vector of values
+		~#
+		method : public : native : GetValues() ~ Vector<V> {
+			values := Vector->New()<V>;
+			for(i := 0; i < @buckets->Size(); i += 1;) {
+				if(@buckets[i] <> Nil) {
+					list := @buckets[i];
+					list->Rewind();
+					while(list->More()) {
+						pair : HashPair<V> := list->Get()<V>;
+						values->AddBack(pair->Get());
+						list->Next();
+					};
+				};
+			};
+			
+			return values;
+		}
+
+		#~
+		Clears the map
+		~#
+		method : public : Empty() ~ Nil {
+			@buckets := CompareList->New[337]<K>;
+			@size := 0;
+		}
+		
+		#~
+		Size of map
+		@return size of queue
+		~#
+		method : public : Size() ~ Int {
+			return @size;
+		}
+	}
+
+	class HashPair<V> implements Compare {
+		@key : Compare;
+		@value : V;
+
+		New(key : Compare, value : V) {
+			Parent();
+			@key := key;
+			@value := value;
+		}
+
+		method : public : Compare(rhs : Compare) ~ Int {		
+			return @key->Compare(rhs);
+		}
+
+		method : public : HashID() ~ Int {
+			return @key->HashID();
+		}
+		
+		method : public : GetKey() ~ Compare {
+			return @key;
+		}
+
+		method : public : Get() ~ V {
+			return @value;
+		}
+	}
+	
 	#~
 	Growable stack of generics
 	~#

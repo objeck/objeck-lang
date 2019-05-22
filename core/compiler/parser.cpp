@@ -3313,7 +3313,6 @@ MethodCall* Parser::ParseMethodCall(const wstring &ident, int depth)
           vector<Type*> generic_dclrs = ParseGenericTypes(depth);
           method_call->SetConcreteTypes(generic_dclrs);
         }
-
       }
       else {
         method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, ident, method_ident);
@@ -3393,6 +3392,13 @@ MethodCall* Parser::ParseMethodCall(const wstring &ident, int depth)
   }
   else {
     method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, ident, L"");
+  }
+
+  // generics
+  if(Match(TOKEN_LES) && Match(TOKEN_IDENT, SECOND_INDEX) &&
+    (Match(TOKEN_GTR, THIRD_INDEX) || Match(TOKEN_COMMA, THIRD_INDEX))) {
+    vector<Type*> generic_dclrs = ParseGenericTypes(depth);
+    method_call->SetConcreteTypes(generic_dclrs);
   }
 
   // subsequent method calls

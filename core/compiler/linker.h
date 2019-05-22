@@ -508,13 +508,13 @@ class LibraryClass {
   }
 
   bool HasGenerics() {
-    return generic_classes.size() > 0;
+    return !generic_classes.empty();
   }
 
-  int GenericIndex(const wstring &n) {
+  int GenericIndex(const wstring& n) {
     for(size_t i = 0; i < generic_classes.size(); ++i) {
       if(n == generic_classes[i]->GetName()) {
-  return (int)i;
+        return (int)i;
       }
     }
 
@@ -525,7 +525,7 @@ class LibraryClass {
     return generic_classes;
   }
 
-  LibraryClass* GetGenericClass(const wstring &n) {
+  LibraryClass* GetGenericClass(const wstring& n) {
     const int index = GenericIndex(n);
     if(index > -1) {
       return generic_classes[index];

@@ -2059,14 +2059,6 @@ namespace frontend {
       return generic_interface;
     }
 
-    bool HasGenericInterface() {
-      return generic_interface != nullptr;
-    }
-
-    vector<wstring> GetInterfaceNames() {
-      return interface_names;
-    }
-    
     const wstring GetName() const {
       return name;
     }
@@ -2121,7 +2113,7 @@ namespace frontend {
     }
 
     bool HasGenerics() {
-      return generic_classes.size() > 0;
+      return !generic_classes.empty();
     }
 
     int GenericIndex(const wstring& n) {
@@ -2140,6 +2132,14 @@ namespace frontend {
 
     void SetGenericClasses(const vector<Class*> &g) {
       generic_classes = g;
+    }
+
+    bool HasGenericInterface() {
+      return generic_interface != nullptr;
+    }
+
+    vector<wstring> GetInterfaceNames() {
+      return interface_names;
     }
 
     const vector<wstring> GetGenericStrings() {
@@ -2479,7 +2479,7 @@ namespace frontend {
     void SetLibraryMethod(LibraryMethod* l, bool set_rtrn = true) {
       lib_method = l;
       if(set_rtrn) {
-        eval_type = l->GetReturn();
+        eval_type = TypeFactory::Instance()->MakeType(l->GetReturn());
         if(method_call) {
           method_call->SetEvalType(eval_type, false);
         }

@@ -325,7 +325,13 @@ class ContextAnalyzer {
   void AddMethodParameter(MethodCall* method_call, SymbolEntry* entry, int depth);
 
   // resolve generic type
-  Type* RelsolveGenericType(Type* generic_type, MethodCall* method_call, Class* klass, LibraryClass* lib_klass);
+  Type* RelsolveGenericType(Type* generic_type, MethodCall* method_call, Class* klass, LibraryClass* lib_klass, bool is_rtrn);
+
+  void ValidateGenericConcreteMapping(const vector<Type*> concrete_types, LibraryClass* lib_klass, ParseNode* node);
+
+  void ValidateGenericConcreteMapping(const vector<Type*> concrete_types, Class* klass, ParseNode* node);
+  
+  void ValidateGenericBacking(Type* type, const wstring backing_inf_name, ParseNode* node);
 
   // validate concrete type
   void ValidateConcrete(Type* type, Type* concrete_type, ParseNode* node, const int depth);
@@ -347,7 +353,7 @@ class ContextAnalyzer {
       return method_call->GetEntry()->GetType()->GetGenerics();
     }
 
-    return method_call->GetBaseType()->GetGenerics();
+    return vector<Type*>();
   }
   
   // helper function for program enum search
@@ -480,9 +486,6 @@ class ContextAnalyzer {
                          bool is_expr, wstring &encoding, bool is_parent, const int depth);
   void AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* method_call,
                          bool is_virtual, bool is_expr, const int depth);
-  void ValidateGenericConcreteMapping(const vector<Type*> concrete_types, LibraryClass* lib_klass, ParseNode* node);
-  void ValidateGenericConcreteMapping(const vector<Type*> concrete_types, Class* klass, ParseNode* node);
-  void ValidateGenericBacking(Type* type, const wstring backing_inf_name, ParseNode * node);
   wstring EncodeMethodCall(ExpressionList * calling_params, const int depth);
   Method* ResolveMethodCall(Class* klass, MethodCall* method_call, const int depth);
   LibraryMethod* ResolveMethodCall(LibraryClass* klass, MethodCall* method_call, const int depth);
