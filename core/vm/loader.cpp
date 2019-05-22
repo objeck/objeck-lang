@@ -386,7 +386,8 @@ void Loader::LoadMethods(StackClass* cls, bool is_debug)
     case L'f': // float
       if(rtrn_name.size() > 1) {
         rtrn_type = INT_TYPE;
-      } else {
+      } 
+      else {
         rtrn_type = FLOAT_TYPE;
       }
       break;

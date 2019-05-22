@@ -1812,6 +1812,7 @@ namespace frontend {
     }
 
     void EncodeSignature() {
+      // return type
       parsed_return = EncodeType(return_type);
 
       // name

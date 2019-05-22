@@ -2569,6 +2569,7 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
                    ReplaceSubstring(eval_type->GetClassName(), L"#", L"->") + L"'");
     }
 
+    // set subsequent call type
     if(method_call->GetMethodCall()) {
       Type* expr_type = RelsolveGenericType(method->GetReturn(), method_call, klass, nullptr, true);
       method_call->GetMethodCall()->SetEvalType(expr_type, false);
