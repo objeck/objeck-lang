@@ -1463,7 +1463,20 @@ void LibraryMethod::ParseReturn()
 
   // generics
   if(rtrn_name[index] == L'|') {
-    wcout << "Hi ya!" << endl;
+    vector<frontend::Type*> generics;
+    size_t start = ++index;
+    while(index < rtrn_name.size() && rtrn_name[index] != L'*') {
+      if(rtrn_name[index] == L'|') {
+        const wstring foo = rtrn_name.substr(start, index - start);
+        generics.push_back(frontend::TypeFactory::Instance()->MakeType(frontend::CLASS_TYPE, foo));
+        start = index + 1;
+      }
+      index++;
+    }
+    wstring foo = rtrn_name.substr(start, index - start);
+    generics.push_back(frontend::TypeFactory::Instance()->MakeType(frontend::CLASS_TYPE, foo));
+
+    rtrn_type->SetGenerics(generics);
   }
 
   // set dimension
