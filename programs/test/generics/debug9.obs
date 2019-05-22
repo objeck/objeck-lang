@@ -34,7 +34,7 @@ class Foo {
 
 		s := Stack->New()<CharHolder>;
 		s->Push('a');
-		s->Push(127);
+		s->Push(12);
 		s->Push('c');
 		s->Pop()->Get()->PrintLine();
 		s->Pop()->Get()->PrintLine();
