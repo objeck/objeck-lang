@@ -34,8 +34,21 @@ class Foo {
 
 		s := Stack->New()<CharHolder>;
 		s->Push('a');
-		s->Push('b');
+		s->Push(127);
 		s->Push('c');
 		s->Pop()->Get()->PrintLine();
+		s->Pop()->Get()->PrintLine();
+		s->Size()->PrintLine();
+
+		h := Hash->New()<String, String>;
+		h->Insert("foo", "bar");
+		h->Insert("key", "value");
+		h->Find("foo")->PrintLine();
+		h->Find("key")->PrintLine();
+
+		k := h->GetKeys()<String>;
+		each(i : k) {
+			k->Get(i)->PrintLine();
+		};
 	}
 }
