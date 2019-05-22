@@ -286,6 +286,15 @@ wstring Method::EncodeType(Type* type, Class* klass, ParsedProgram* program, Lin
     }
       break;
     }
+
+    // generics
+    if(type->HasGenerics()) {
+      const vector<Type*> generic_types = type->GetGenerics();
+      for(size_t i = 0; i < generic_types.size(); ++i) {
+        name += L"|" + name += generic_types[i]->GetClassName();
+      }
+    }
+
     // dimension
     for(int i = 0; i < type->GetDimension(); ++i) {
       name += L'*';
