@@ -189,7 +189,7 @@ void StackProgram::InitializeProprieties()
   config.close();
 }
 
-const std::wstring& StackMethod::ParseName(const wstring& name) const
+const wstring StackMethod::ParseName(const wstring& name) const
 {
   int state;
   size_t index = name.find_last_of(':');
@@ -1117,12 +1117,11 @@ size_t* TrapProcessor::CreateMethodObject(size_t* cls_obj, StackMethod* mthd, St
         index++;
         break;
 
-      case L'o':
-      {
+      case L'o': {
         data_type_obj[0] = -995;
         index++;
         const int start_index = index + 1;
-        while(index < (int)params_string.size() && params_string[index] != L',') {
+        while(index < (int)params_string.size() && params_string[index] != L',') { // TODO: generics?
           index++;
         }
         data_type_obj[1] = (size_t)CreateStringObject(params_string.substr(start_index, index - 2),

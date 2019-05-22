@@ -306,7 +306,7 @@ class StackMethod {
 #endif
   static unordered_map<wstring, StackMethod*> virutal_cache;
 
-  const wstring& ParseName(const wstring &name) const;
+  const wstring ParseName(const wstring &name) const;
 
  public:
   StackMethod(long i, const wstring &n, bool v, bool h, StackDclr** d, long nd, long p, long m, MemoryType r, StackClass* k) {
