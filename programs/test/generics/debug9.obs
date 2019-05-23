@@ -1,5 +1,9 @@
 use Collection.Generic;
 
+class Bar {
+	New() {}
+}
+
 class Foo {
 	function : Main(args : String[]) ~ Nil {
 #		s := "foo bar";
@@ -46,7 +50,7 @@ class Foo {
 		h->Find("foo")->PrintLine();
 		h->Find("key")->PrintLine();
 
-		k := h->GetKeys()<String>;
+		k := h->GetKeys()<Bar>;
 		each(i : k) {
 			k->Get(i)->PrintLine();
 		};

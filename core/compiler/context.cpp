@@ -5280,7 +5280,7 @@ void ContextAnalyzer::CheckGenericEqualTypes(Type* left, Type* right, ParseNode*
           if(left_klass && left_klass->HasGenericInterface()) {
             left_type = left_klass->GetGenericInterface();
           }
-          else if(lib_left_klass->HasGenericInterface()) {
+          else if(lib_left_klass && lib_left_klass->HasGenericInterface()) {
             left_type = lib_left_klass->GetGenericInterface();
           }
         }
@@ -5300,7 +5300,7 @@ void ContextAnalyzer::CheckGenericEqualTypes(Type* left, Type* right, ParseNode*
           if(right_klass && right_klass->HasGenericInterface()) {
             right_type = right_klass->GetGenericInterface();
           }
-          else if(lib_right_klass->HasGenericInterface()) {
+          else if(lib_right_klass && lib_right_klass->HasGenericInterface()) {
             right_type = lib_right_klass->GetGenericInterface();
           }
         }
@@ -6441,7 +6441,7 @@ Type* ContextAnalyzer::RelsolveGenericType(Type* candidate_type, MethodCall* met
       if(is_rtrn) {
         Class* klass_generic = nullptr; LibraryClass* lib_klass_generic = nullptr;
         if(GetProgramLibraryClass(candidate_type, klass_generic, lib_klass_generic)) {
-          const vector<Type*> candidate_types = GetConcreteTypes(method_call); // flip with foo
+          const vector<Type*> candidate_types = GetConcreteTypes(method_call);
           if(method_call->GetEntry()) {
             const vector<Type*> real_types = method_call->GetEntry()->GetType()->GetGenerics();
             for(size_t i = 0; i < candidate_types.size(); ++i) {
