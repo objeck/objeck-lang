@@ -6447,22 +6447,33 @@ Type* ContextAnalyzer::RelsolveGenericType(Type* candidate_type, MethodCall* met
             for(size_t i = 0; i < candidate_types.size(); ++i) {
               Type* candidate_type = candidate_types[i];
               ResolveClassEnumType(candidate_type);
-              if(klass) {
 
+              int mapping_index = -1;
+              if(klass) {
+                const vector<Class*> map_types = klass->GetGenericClasses();
+                if(i < map_types.size()) {
+                  mapping_index = klass->GenericIndex(map_types[i]->GetName());
+                }
+                else {
+                  ProcessError(static_cast<Expression*>(method_call), L"Concrete to generic size mismatch");
+                }
               }
               else if(lib_klass) {
                 const vector<LibraryClass*> map_types = lib_klass->GetGenericClasses();
-#ifdef _DEBUG
-                assert(candidate_types.size() <= map_types.size()); // TODO: set bounds and error state
-#endif
-                int index = lib_klass->GenericIndex(map_types[i]->GetName());
-                if(index > -1 && index < real_types.size()) {
-                  Type* real_type = real_types[index];
-                  ResolveClassEnumType(real_type);
+                if(i < map_types.size()) {
+                  mapping_index = lib_klass->GenericIndex(map_types[i]->GetName());
+                }
+                else {
+                  ProcessError(static_cast<Expression*>(method_call), L"Concrete to generic size mismatch");
+                }
+              }
 
-                  if(candidate_type->GetClassName() != real_type->GetClassName()) {
-                    ProcessError(static_cast<Expression*>(method_call), L"Foo bar");
-                  }
+              if(mapping_index > -1 && mapping_index < real_types.size()) {
+                Type* real_type = real_types[mapping_index];
+                ResolveClassEnumType(real_type);
+                if(candidate_type->GetClassName() != real_type->GetClassName()) {
+                  ProcessError(static_cast<Expression*>(method_call), L"Invalid generic mapping between classes: '" + 
+                               candidate_type->GetClassName() + L"' and '" + real_type->GetClassName() + L"'");
                 }
               }
             }
