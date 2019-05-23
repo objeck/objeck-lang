@@ -6441,7 +6441,7 @@ Type* ContextAnalyzer::RelsolveGenericType(Type* candidate_type, MethodCall* met
       if(is_rtrn) {
         Class* klass_generic = nullptr; LibraryClass* lib_klass_generic = nullptr;
         if(GetProgramLibraryClass(candidate_type, klass_generic, lib_klass_generic)) {
-          const vector<Type*> concrete_types = GetConcreteTypes(method_call);
+          const vector<Type*> concrete_types = GetConcreteTypes(method_call); // flip with foo
           if(method_call->GetEntry()) {
             const vector<Type*> cast_types = method_call->GetEntry()->GetType()->GetGenerics();
             for(size_t i = 0; i < concrete_types.size(); ++i) {
