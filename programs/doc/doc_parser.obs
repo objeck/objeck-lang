@@ -1,11 +1,11 @@
 #~
 Objeck HTML code documentation system
-Copyright (c) 2014-2018 Randy Hollines
+Copyright (c) 2014-2019 Randy Hollines
 ~#
 
 use System.IO;
 use System.IO.File;
-use Collection;
+use Collection.Generic;
 
 class SnippetParser {
 	@buffer : String;
@@ -13,8 +13,8 @@ class SnippetParser {
 	@cur_char : Char;
 	@nxt_char : Char;
 	@files : String[];
-	@uses : CompareVector;
-	@bundles : StringMap;
+	@uses : Vector<String>;
+	@bundles : Map<String, BundleSnippet>;
 	@class_inf_block : ClassSnippet;
 	@level : Int;
 	@class_level : Int;
@@ -24,24 +24,24 @@ class SnippetParser {
 	
 	New(files : String[]) {
 		@files := files;	
-		@bundles := StringMap->New();
+		@bundles := Map->New()<String, BundleSnippet>;
 		@level := 0;
 	}
 	
-	method : public : GetBundles() ~ StringMap {
+	method : public : GetBundles() ~ Map<String, BundleSnippet> {
 		return @bundles;
 	}
 	
-	method : public : GetAllClasses() ~ Vector {
-		all_classes := Vector->New();
+	method : public : GetAllClasses() ~ Vector<ClassSnippet> {
+		all_classes := Vector->New()<ClassSnippet>;
 		
-		bundle_keys := @bundles->GetKeys();
+		bundle_keys := @bundles->GetKeys()<String>;
 		each(i : bundle_keys) {
-			bundle_block := @bundles->Find(bundle_keys->Get(i)->As(String))->As(BundleSnippet);
+			bundle_block := @bundles->Find(bundle_keys->Get(i));
 			classes := bundle_block->GetClasses();
-			class_keys := classes->GetKeys();
+			class_keys := classes->GetKeys()<String>;
 			each(j : class_keys) {
-				klass := classes->Find(class_keys->Get(j)->As(String))->As(ClassSnippet);
+				klass := classes->Find(class_keys->Get(j));
 				if(klass <> Nil) {
 					all_classes->AddBack(klass);
 				};
@@ -51,35 +51,37 @@ class SnippetParser {
 		return all_classes;
 	}
 
-	method : public : GetAllInterfaces() ~ Vector {
-		all_interfaces := Vector->New();
+	method : public : GetAllInterfaces() ~ Vector<ClassSnippet> {
+		all_interfaces := Vector->New()<ClassSnippet>;
 		
-		bundle_keys := @bundles->GetKeys();
+#~		
+		bundle_keys := @bundles->GetKeys()<String>;
 		each(i : bundle_keys) {
-			bundle_block := @bundles->Find(bundle_keys->Get(i)->As(String))->As(BundleSnippet);
+			bundle_block := @bundles->Find(bundle_keys->Get(i));
 			interfaces := bundle_block->GetInterfaces();
 			inf_keys := interfaces->GetKeys();
 			each(j : inf_keys) {
-				inf := interfaces->Find(inf_keys->Get(j)->As(String))->As(ClassSnippet);
+				inf := interfaces->Find(inf_keys->Get(j));
 				if(inf <> Nil) {
 					all_interfaces->AddBack(inf);
 				};
 			};
 		};
-				
+~#
+
 		return all_interfaces;
 	}
 
-	method : public : GetAllEnums() ~ Vector {
-		all_enums := Vector->New();
+	method : public : GetAllEnums() ~ Vector<EnumConstSnippet> {
+		all_enums := Vector->New()<EnumConstSnippet>;
 		
-		bundle_keys := @bundles->GetKeys();
+		bundle_keys := @bundles->GetKeys()<String>;
 		each(i : bundle_keys) {
-			bundle_block := @bundles->Find(bundle_keys->Get(i)->As(String))->As(BundleSnippet);
+			bundle_block := @bundles->Find(bundle_keys->Get(i));
 			enums := bundle_block->GetEnums();
-			enum_keys := enums->GetKeys();
+			enum_keys := enums->GetKeys()<String>;
 			each(j : enum_keys) {
-				eenum := enums->Find(enum_keys->Get(j)->As(String))->As(EnumConstSnippet);
+				eenum := enums->Find(enum_keys->Get(j));
 				if(eenum <> Nil) {
 					all_enums->AddBack(eenum);
 				};
@@ -307,7 +309,7 @@ class SnippetParser {
 			@buffer_index := 0;	
 
 			"['{$file}']"->PrintLine();
-			@uses := CompareVector->New();
+			@uses := Vector->New()<String>;
 
 			state := 0;
 			start := 0;
@@ -546,26 +548,22 @@ class Snippet {
 class BundleSnippet from Snippet {
 	@name : String;
 	@desc : String;
-	@classes : StringMap;
-	@interfaces : StringMap;
-	@enums : StringMap;
-	@const : StringMap;
-	@uses : CompareVector;
+	@classes : Map<String, ClassSnippet>;
+	@enums : Map<String, EnumConstSnippet>;
+	@uses : Vector<String>;
 
-	New(uses : CompareVector) {
+	New(uses : Vector<String>) {
 		Parent("");
 		@uses := uses;
-		@classes := StringMap->New();
-		@interfaces := StringMap->New();
-		@enums := StringMap->New();
+		@classes := Map->New()<String, ClassSnippet>;
+		@enums := Map->New()<String, EnumConstSnippet>;
 	}
 
-	New(buffer : String, uses : CompareVector) {
+	New(buffer : String, uses : Vector<String>) {
 		Parent(buffer);
 		@uses := uses;
-		@classes := StringMap->New();
-		@interfaces := StringMap->New();
-		@enums := StringMap->New();
+		@classes := Map->New()<String, ClassSnippet>;
+		@enums := Map->New()<String, EnumConstSnippet>;
 		@parsed := Parse();
 	}
 	
@@ -581,7 +579,7 @@ class BundleSnippet from Snippet {
 		return @desc;
 	}
 
-	method : public : GetUses() ~ CompareVector {
+	method : public : GetUses() ~ Vector<String> {
 		return @uses;
 	}
 
@@ -593,7 +591,7 @@ class BundleSnippet from Snippet {
 		@classes->Insert(class_block->GetName(), class_block);
 	}
 
-	method: public : GetClasses() ~ StringMap {
+	method: public : GetClasses() ~ Map<String, ClassSnippet> {
 		return @classes;
 	}
 
@@ -601,16 +599,12 @@ class BundleSnippet from Snippet {
 		@enums->Insert(enum_block->GetName(), enum_block);
 	}
 
-	method: public : GetEnums() ~ StringMap {
+	method: public : GetEnums() ~ Map<String, EnumConstSnippet> {
 		return @enums;
 	}
 
 	method: public : AddInterface(inf_block : ClassSnippet) ~ Nil {
 		@classes->Insert(inf_block->GetName(), inf_block);
-	}
-
-	method: public : GetInterfaces() ~ StringMap {
-		return @interfaces;
 	}
 
 	method : native : Parse() ~ Bool {
@@ -640,13 +634,13 @@ class EnumConstSnippet from Snippet {
 	@id : String;
 	@desc : String;
 	@klass : String;
-	@items : Vector;
+	@items : Vector<String>;
 	@block_name : String;
 	
 	New(buffer : String, is_consts : Bool) {
 		Parent(buffer);
 		@is_consts := is_consts;
-		@items := Vector->New();
+		@items := Vector->New()<String>;
 		@parsed := Parse();
 	}
 
@@ -670,7 +664,7 @@ class EnumConstSnippet from Snippet {
 		return @klass;
 	}
 
-	method : public : GetItems() ~ Vector {
+	method : public : GetItems() ~ Vector<String> {
 		return @items;
 	}
 
@@ -778,15 +772,15 @@ class ClassSnippet from Snippet {
 	@block_name : String;
 	@from_class : String;
 	@desc : String;
-	@funcs : StringMap;
-	@implemented : Vector;
+	@funcs : Map<String, Vector<FuncSnippet> >;
+	@implemented : Vector<String>;
 	@is_inf : Bool;
 	
 	New(buffer : String, is_inf : Bool) {
 		Parent(buffer);
 		@is_inf := is_inf;
-		@funcs := StringMap->New();
-		@implemented := Vector->New();
+		@funcs := Map->New()<String, Vector<FuncSnippet> >;
+		@implemented := Vector->New()<String>;
 		@parsed := Parse();
 	}
 
@@ -798,7 +792,7 @@ class ClassSnippet from Snippet {
 		return @is_inf;
 	}
 
-	method : public : GetImplemented() ~ Vector {
+	method : public : GetImplemented() ~ Vector<String> {
 		return @implemented;
 	}
 	
@@ -828,9 +822,9 @@ class ClassSnippet from Snippet {
 	method : public : AddFunction(block : String) ~ Bool {
 		func := FuncSnippet->New(block);
 		if(func->IsParsed()) {
-			funcs := @funcs->Find(func->GetName())->As(Vector);
+			funcs := @funcs->Find(func->GetName());
 			if(funcs = Nil) {
-				funcs := Vector->New();
+				funcs := Vector->New()<FuncSnippet>;
 				@funcs->Insert(func->GetName(), funcs);
 			};
 			funcs->AddBack(func);
@@ -840,24 +834,20 @@ class ClassSnippet from Snippet {
 		return false;
 	}
 
-	method : public : GetFunction(name : String) ~ Vector {
-		return @funcs->Find(name)->As(Vector);
+	method : public : GetFunctionNames() ~ Vector<String> {
+		return @funcs->GetKeys()<String>;
 	}
 
-	method : public : GetFunctionNames() ~ CompareVector {
-		return @funcs->GetKeys();
-	}
-
-	method : public : GetFunctions(name : String) ~ Vector {
-		return @funcs->Find(name)->As(Vector);
+	method : public : GetFunctions(name : String) ~ Vector<FuncSnippet> {
+		return @funcs->Find(name)<FuncSnippet>;
 	}
 	
-	method : public : GetAllFunctions() ~ Vector {
-		all_funcs := Vector->New();
+	method : public : GetAllFunctions() ~ Vector<FuncSnippet> {
+		all_funcs := Vector->New()<FuncSnippet>;
 		
-		keys := @funcs->GetKeys();
+		keys := @funcs->GetKeys()<String>;
 		each(i : keys) {
-			funcs := @funcs->Find(keys->Get(i)->As(String))->As(Vector);
+			funcs := @funcs->Find(keys->Get(i));
 			each(j : funcs) {
 				all_funcs->AddBack(funcs->Get(j));
 			};
@@ -921,16 +911,16 @@ class FuncSnippet from Snippet {
 	@name : String;
 	@signature : String;
 	@desc : String;
-	@tags : StringMap;
+	@tags : Map<String, SnippetTag>;
 	@return_type : SnippetType;
 	@return_tag : SnippetTag;
-	@func_types : Vector;
+	@func_types : Vector<SnippetType>;
 	@is_func : Bool;
 	@is_private : Bool;
 	@is_native : Bool;
 	@is_virtual : Bool;
 	@is_new : Bool;
-	@types : static : StringMap;
+	@types : static : Map<String, IntHolder>;
 	@ignore_params : Bool;
 	
 	New(buffer : String) {
@@ -939,19 +929,19 @@ class FuncSnippet from Snippet {
 		
 		@name := "";
 		@desc := "";
-		@tags := StringMap->New();
-		@func_types := Vector->New();
+		@tags := Map->New()<String, SnippetTag>;
+		@func_types := Vector->New()<SnippetType>;
 		@parsed := Parse();
 	}
 	
 	function : Initialize() ~ Nil {
 		if(@types = Nil) {
-			@types := StringMap->New();
-			@types->Insert("Byte", IntHolder->New(SnippetType->Type->BYTE->As(Int)));
-			@types->Insert("Char", IntHolder->New(SnippetType->Type->CHAR->As(Int)));
-			@types->Insert("Int", IntHolder->New(SnippetType->Type->INT->As(Int)));
-			@types->Insert("Float", IntHolder->New(SnippetType->Type->FLOAT->As(Int)));
-			@types->Insert("Nil", IntHolder->New(SnippetType->Type->NIL->As(Int)));
+			@types := Map->New()<String, IntHolder>;
+			@types->Insert("Byte", IntHolder->New(SnippetType->Type->BYTE));
+			@types->Insert("Char", IntHolder->New(SnippetType->Type->CHAR));
+			@types->Insert("Int", IntHolder->New(SnippetType->Type->INT));
+			@types->Insert("Float", IntHolder->New(SnippetType->Type->FLOAT));
+			@types->Insert("Nil", IntHolder->New(SnippetType->Type->NIL));
 		};
 	}
 	
@@ -999,8 +989,8 @@ class FuncSnippet from Snippet {
 
 			if(<>@ignore_params) {
 				each(i : @func_types) {
-					func_type := @func_types->Get(i)->As(SnippetType);
-					param_tag := @tags->Find(func_type->GetName())->As(SnippetTag);
+					func_type := @func_types->Get(i);
+					param_tag := @tags->Find(func_type->GetName());
 					if(param_tag <> Nil & <>param_tag->IsIgnore()) {
 						@signature->Append(func_type->GetName());
 						@signature->Append(':');
@@ -1037,13 +1027,13 @@ class FuncSnippet from Snippet {
 		return @desc;
 	}
 
-	method : public : GetParamTags() ~ StringMap {
+	method : public : GetParamTags() ~ Map<String, SnippetTag> {
 		return @tags;
 	}
 	
-	method : public : GetParams() ~ Vector {
+	method : public : GetParams() ~ Vector<SnippetType> {
 		if(@ignore_params) {
-			return Vector->New();
+			return Vector->New()<SnippetType>;
 		}
 		else {
 			return @func_types;
