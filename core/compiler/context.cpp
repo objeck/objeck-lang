@@ -6468,7 +6468,7 @@ Type* ContextAnalyzer::RelsolveGenericType(Type* candidate_type, MethodCall* met
                 }
               }
 
-              if(mapping_index > -1 && mapping_index < real_types.size()) {
+              if(mapping_index > -1 && mapping_index < (int)real_types.size()) {
                 Type* real_type = real_types[mapping_index];
                 ResolveClassEnumType(real_type);
                 if(candidate_type->GetClassName() != real_type->GetClassName()) {
