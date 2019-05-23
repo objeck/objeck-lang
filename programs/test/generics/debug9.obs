@@ -46,7 +46,7 @@ class Foo {
 		h->Find("foo")->PrintLine();
 		h->Find("key")->PrintLine();
 
-		k := h->GetKeys()<String, IntHolder, FloatHolder>;
+		k := h->GetKeys()<String>;
 		each(i : k) {
 			k->Get(i)->PrintLine();
 		};
