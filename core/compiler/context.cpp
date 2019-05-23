@@ -6441,37 +6441,43 @@ Type* ContextAnalyzer::RelsolveGenericType(Type* candidate_type, MethodCall* met
       if(is_rtrn) {
         Class* klass_generic = nullptr; LibraryClass* lib_klass_generic = nullptr;
         if(GetProgramLibraryClass(candidate_type, klass_generic, lib_klass_generic)) {
-          const vector<Type*> concrete_types = GetConcreteTypes(method_call); // flip with foo
+          const vector<Type*> candidate_types = GetConcreteTypes(method_call); // flip with foo
           if(method_call->GetEntry()) {
-            const vector<Type*> cast_types = method_call->GetEntry()->GetType()->GetGenerics();
-            for(size_t i = 0; i < concrete_types.size(); ++i) {
+            const vector<Type*> real_types = method_call->GetEntry()->GetType()->GetGenerics();
+            for(size_t i = 0; i < candidate_types.size(); ++i) {
+              Type* candidate_type = candidate_types[i];
+              ResolveClassEnumType(candidate_type);
               if(klass) {
 
               }
               else if(lib_klass) {
-                // LOOKUP: lib_klass->generic_classes
+                const vector<LibraryClass*> map_types = lib_klass->GetGenericClasses();
+#ifdef _DEBUG
+                assert(candidate_types.size() <= map_types.size()); // TODO: set bounds and error state
+#endif
+                int index = lib_klass->GenericIndex(map_types[i]->GetName());
+                if(index > -1 && index < real_types.size()) {
+                  Type* real_type = real_types[index];
+                  ResolveClassEnumType(real_type);
 
-                const vector<LibraryClass*> foo = lib_klass->GetGenericClasses();
-
-                int index = lib_klass->GenericIndex(foo[i]->GetName());
-                if(index > -1 && index < cast_types.size()) {
-                  Type* cast_type = cast_types[index];
-                  ResolveClassEnumType(cast_type);
+                  if(candidate_type->GetClassName() != real_type->GetClassName()) {
+                    ProcessError(static_cast<Expression*>(method_call), L"Foo bar");
+                  }
                 }
               }
             }
           }
 
           if(klass_generic && klass_generic->HasGenerics()) {
-            ValidateGenericConcreteMapping(concrete_types, klass_generic, static_cast<Expression*>(method_call));
+            ValidateGenericConcreteMapping(candidate_types, klass_generic, static_cast<Expression*>(method_call));
             if(method_call->GetEvalType()) {
-              method_call->GetEvalType()->SetGenerics(concrete_types);
+              method_call->GetEvalType()->SetGenerics(candidate_types);
             }
           }
           else if(lib_klass_generic && lib_klass_generic->HasGenerics()) {
-            ValidateGenericConcreteMapping(concrete_types, lib_klass_generic, static_cast<Expression*>(method_call));
+            ValidateGenericConcreteMapping(candidate_types, lib_klass_generic, static_cast<Expression*>(method_call));
             if(method_call->GetEvalType()) {
-              method_call->GetEvalType()->SetGenerics(concrete_types);
+              method_call->GetEvalType()->SetGenerics(candidate_types);
             }
           }
         }
