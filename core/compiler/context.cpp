@@ -6442,6 +6442,26 @@ Type* ContextAnalyzer::RelsolveGenericType(Type* candidate_type, MethodCall* met
         Class* klass_generic = nullptr; LibraryClass* lib_klass_generic = nullptr;
         if(GetProgramLibraryClass(candidate_type, klass_generic, lib_klass_generic)) {
           const vector<Type*> concrete_types = GetConcreteTypes(method_call);
+          if(method_call->GetEntry()) {
+            const vector<Type*> cast_types = method_call->GetEntry()->GetType()->GetGenerics();
+            for(size_t i = 0; i < concrete_types.size(); ++i) {
+              if(klass) {
+
+              }
+              else if(lib_klass) {
+                // LOOKUP: lib_klass->generic_classes
+
+                const vector<LibraryClass*> foo = lib_klass->GetGenericClasses();
+
+                int index = lib_klass->GenericIndex(foo[i]->GetName());
+                if(index > -1 && index < cast_types.size()) {
+                  Type* cast_type = cast_types[index];
+                  ResolveClassEnumType(cast_type);
+                }
+              }
+            }
+          }
+
           if(klass_generic && klass_generic->HasGenerics()) {
             ValidateGenericConcreteMapping(concrete_types, klass_generic, static_cast<Expression*>(method_call));
             if(method_call->GetEvalType()) {
