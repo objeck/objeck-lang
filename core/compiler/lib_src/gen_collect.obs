@@ -1402,8 +1402,8 @@ bundle Collection.Generic {
 		@param f function to use a filter. If the function evaluates to true the value is added to the collection.
 		@return filter vector
 		~#
-		method : public : Filter(f : (H) ~ Bool) ~ Vector<H> {
-			filtered := Vector->New()<H>;
+		method : public : Filter(f : (H) ~ Bool) ~ CompareVector<H> {
+			filtered := CompareVector->New()<H>;
 			
 			for(i : Int := 0; i < @size; i += 1;) {
 				if(f(@values[i])) {
