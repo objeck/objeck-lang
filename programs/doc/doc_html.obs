@@ -81,7 +81,7 @@ class HtmlMaker {
 			classes := @bundle_block->GetClasses();
 			class_keys := classes->GetKeys()<String>;
 			each(j : class_keys) {
-				class_block := classes->Find(class_keys->Get(j))->As(ClassSnippet);
+				class_block := classes->Find(class_keys->Get(j));
 				if(class_block <> Nil) {
 					CreateClassHtml(class_block, class_header);
 				};
@@ -156,13 +156,13 @@ class HtmlMaker {
 				class_keys := classes->GetKeys()<String>;			
 				each(j : class_keys) {
 					##  class
-					class_block := classes->Find(class_keys->Get(j))->As(ClassSnippet);
+					class_block := classes->Find(class_keys->Get(j));
 					if(class_block->IsParsed()) {
 						sec_b += "<li><a href='";
 						
 						file_name := class_block->GetBundleName()->ToLower();
 						file_name += '-';
-						file_name += class_block->GetName()->ToLower();
+						file_name += class_block->GetFileName()->ToLower();
 						link_name := String->New(file_name);
 						link_name += ".html";
 
@@ -236,7 +236,7 @@ class HtmlMaker {
 		else {
 			sec_b := "<h2>@class_name</h2><p>@class_desc</p>";
 		};
-		sec_b := sec_b->ReplaceAll("@class_name", class_block->GetName());
+		sec_b := sec_b->ReplaceAll("@class_name", class_block->GetEscapedName());
 		sec_b := sec_b->ReplaceAll("@class_desc", class_block->GetDesc());
 		html += sec_b;
 
@@ -278,7 +278,7 @@ class HtmlMaker {
 				if(short_name->Equals("New")) {
 					sec_c += "<li><a href='#";
 					
-					link_name := String->New(class_block->GetName());
+					link_name := String->New(class_block->GetShortName());
 					link_name += '-';
 					link_name += short_name;
 
@@ -294,7 +294,7 @@ class HtmlMaker {
 				if(<>short_name->Equals("New")) {
 					sec_c += "<li><a href='#";
 
-					link_name := String->New(class_block->GetName());
+					link_name := String->New(class_block->GetShortName());
 					link_name += '-';
 					link_name += short_name;
 
@@ -309,11 +309,11 @@ class HtmlMaker {
 		html += sec_c;
 		
 		##  detailed operations
-		FormatFunctions(class_block->GetName(), "New", class_block->GetFunctions("New"), html);
+		FormatFunctions(class_block->GetShortName(), "New", class_block->GetFunctions("New"), html);
 		each(j : func_names) {
 			short_name := func_names->Get(j);
 			if(<>short_name->Equals("New")) {
-				FormatFunctions(class_block->GetName(), short_name, class_block->GetFunctions(short_name), html);
+				FormatFunctions(class_block->GetShortName(), short_name, class_block->GetFunctions(short_name), html);
 			};
 		};
 		html += "</body></html>";
@@ -321,7 +321,7 @@ class HtmlMaker {
 		file_name := "../html/";
 		file_name += class_block->GetBundleName()->ToLower();
 		file_name += '-';
-		file_name += class_block->GetName()->ToLower();
+		file_name += class_block->GetFileName()->ToLower();
 		file_name += ".html";
 		
 		out := FileWriter->New(file_name);
@@ -426,7 +426,7 @@ class HtmlMaker {
 			file_name := "<a href='";
 			file_name += class_block->GetBundleName()->ToLower();
 			file_name += '-';
-			file_name += class_block->GetName()->ToLower();
+			file_name += class_block->GetFileName()->ToLower();
 			file_name += ".html' target='main'>";
 			file_name += full_name;
 			file_name += "</a>";	

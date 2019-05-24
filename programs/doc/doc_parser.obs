@@ -750,6 +750,8 @@ class EnumConstSnippet from Snippet {
 
 class ClassSnippet from Snippet {
 	@name : String;
+	@file_name : String;
+	@escaped_name : String;
 	@block_name : String;
 	@from_class : String;
 	@desc : String;
@@ -777,6 +779,57 @@ class ClassSnippet from Snippet {
 		return @implemented;
 	}
 	
+	method : public : GetShortName() ~ String {
+		index := @name->Find('<');
+		if(index > -1) {
+			return @name->SubString(index);
+		};
+
+		return @name;
+	}
+
+	method : public : GetEscapedName() ~ String {
+		if(@escaped_name = Nil) {
+			@escaped_name := "";
+			each(i : @name) {
+				select(@name->Get(i)) {
+					label '<': {
+						@escaped_name += "&lt;";
+					}
+					label '>': {
+						@escaped_name += "&gt;";
+					}
+					other: {
+						@escaped_name += @name->Get(i);
+					}
+				};
+			};
+		};
+
+		return @escaped_name;
+	}
+
+	method : public : GetFileName() ~ String {
+		if(@file_name = Nil) {
+			@file_name := "";
+			each(i : @name) {
+				select(@name->Get(i)) {
+					label '<':
+					label '>': {
+						@file_name += '_';
+					}
+					label ':':
+					label ',': {}
+					other: {
+						@file_name += @name->Get(i);
+					}
+				};
+			};
+		};
+
+		return @file_name;
+	}
+
 	method : public : GetName() ~ String {
 		return @name;
 	}
@@ -850,7 +903,7 @@ class ClassSnippet from Snippet {
 		start := ParseIdent();
 
 		if(MatchChar('<')) {
-			start += " <";
+			start += '<';
 			
 			mid := ParseIdent();
 			while(mid->Size() > 0) {
@@ -1180,7 +1233,7 @@ class FuncSnippet from Snippet {
 			};
 
 			# return type
-			rtrn_name := ParseIdent();
+			rtrn_name := ParseName();
 			if(rtrn_name->Size() = 0) {
 				return false;
 			};		
@@ -1195,6 +1248,36 @@ class FuncSnippet from Snippet {
 		
 		return true;
 	}
+
+	method : ParseName() ~ String {
+		start := ParseIdent();
+
+		if(MatchChar('<')) {
+			start += "&lt;";
+			mid := ParseIdent();
+			while(mid->Size() > 0) {
+				start += mid;
+				if(MatchChar(':')) {
+					start += ':';
+					mid := ParseIdent();
+					if(mid->Size() > 0) {
+						start += mid;
+					};
+				};
+				start += ',';
+				mid := ParseIdent();
+			};
+			start->Pop();
+
+			start += "&gt;";
+
+"((((((((((((((((      {$start}     (((((((((((((((((((((((((("			->PrintLine();
+
+		};
+
+
+		return start;
+	}
 	
 	method : ParseType(param_name : String, type_name : String) ~ SnippetType {
 		if(MatchChar('(')) {
@@ -1208,13 +1291,13 @@ class FuncSnippet from Snippet {
 			};
 		}
 		else {
-			ident := ParseIdent();
+			ident := ParseName();
 			if(ident->Size() = 0) {
 				return Nil;
 			};
 			type_name->Append(ident);
-		
-			param_type := @types->Find(type_name)->As(IntHolder);
+			
+			param_type := @types->Find(type_name);
 			if(param_type <> Nil) {
 				return SnippetType->New(param_name, type_name, param_type->Get()->As(SnippetType->Type));
 			}
@@ -1225,13 +1308,13 @@ class FuncSnippet from Snippet {
 	}
 	
 	method : ParseFuncType(type_name : String) ~ Bool {
-		ident := ParseIdent();
+		ident := ParseName();
 		while(ident->Size() > 0) {
 			type_name->Append(ident);
 			if(MatchChar(',')) {
 				type_name->Append(',');
 			};
-			ident := ParseIdent();
+			ident := ParseName();
 		};
 
 		if(<>MatchChar(')')) {
@@ -1244,7 +1327,7 @@ class FuncSnippet from Snippet {
 		};
 		type_name->Append('~');
 
-		ident := ParseIdent();
+		ident := ParseName();
 		if(ident->Size() = 0) {
 			return false;
 		};
