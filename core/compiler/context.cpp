@@ -6427,9 +6427,9 @@ Type* ContextAnalyzer::RelsolveGenericType(Type* candidate_type, MethodCall* met
       }
     }
     else {
-      int concrete_index = -1;
-
       // find concrete index
+      int concrete_index = -1;
+      ResolveClassEnumType(candidate_type);
       const wstring generic_name = candidate_type->GetClassName();
       if(klass) {
         concrete_index = klass->GenericIndex(generic_name);
@@ -6445,9 +6445,9 @@ Type* ContextAnalyzer::RelsolveGenericType(Type* candidate_type, MethodCall* met
           if(method_call->GetEntry()) {
             const vector<Type*> real_types = method_call->GetEntry()->GetType()->GetGenerics();
             for(size_t i = 0; i < candidate_types.size(); ++i) {
-              Type* candidate_type = candidate_types[i];
-              ResolveClassEnumType(candidate_type);
-
+              Type* rtrn_candidate_type = candidate_types[i];
+              ResolveClassEnumType(rtrn_candidate_type);
+              
               int mapping_index = -1;
               if(klass) {
                 const vector<Class*> map_types = klass->GetGenericClasses();
@@ -6471,9 +6471,9 @@ Type* ContextAnalyzer::RelsolveGenericType(Type* candidate_type, MethodCall* met
               if(mapping_index > -1 && mapping_index < (int)real_types.size()) {
                 Type* real_type = real_types[mapping_index];
                 ResolveClassEnumType(real_type);
-                if(candidate_type->GetClassName() != real_type->GetClassName()) {
+                if(rtrn_candidate_type->GetClassName() != real_type->GetClassName()) {
                   ProcessError(static_cast<Expression*>(method_call), L"Invalid generic mapping between classes: '" + 
-                               candidate_type->GetClassName() + L"' and '" + real_type->GetClassName() + L"'");
+                               rtrn_candidate_type->GetClassName() + L"' and '" + real_type->GetClassName() + L"'");
                 }
               }
             }
