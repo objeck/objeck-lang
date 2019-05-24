@@ -50,28 +50,7 @@ class SnippetParser {
 				
 		return all_classes;
 	}
-
-	method : public : GetAllInterfaces() ~ Vector<ClassSnippet> {
-		all_interfaces := Vector->New()<ClassSnippet>;
-		
-#~		
-		bundle_keys := @bundles->GetKeys()<String>;
-		each(i : bundle_keys) {
-			bundle_block := @bundles->Find(bundle_keys->Get(i));
-			interfaces := bundle_block->GetInterfaces();
-			inf_keys := interfaces->GetKeys();
-			each(j : inf_keys) {
-				inf := interfaces->Find(inf_keys->Get(j));
-				if(inf <> Nil) {
-					all_interfaces->AddBack(inf);
-				};
-			};
-		};
-~#
-
-		return all_interfaces;
-	}
-
+	
 	method : public : GetAllEnums() ~ Vector<EnumConstSnippet> {
 		all_enums := Vector->New()<EnumConstSnippet>;
 		
@@ -480,6 +459,8 @@ class Snippet {
 				label ')':
 				label '~':
 				label '#':
+				label '<':
+				label '>':
 				label '\0': {
 					done := true;
 				}
@@ -865,6 +846,33 @@ class ClassSnippet from Snippet {
 		};	
 	}
 
+	method : ParseName() ~ String {
+		start := ParseIdent();
+
+		if(MatchChar('<')) {
+			start += " <";
+			
+			mid := ParseIdent();
+			while(mid->Size() > 0) {
+				start += mid;
+				if(MatchChar(':')) {
+					start += ':';
+					mid := ParseIdent();
+					if(mid->Size() > 0) {
+						start += mid;
+					};
+				};
+				start += ',';
+				mid := ParseIdent();
+			};
+			start->Pop();
+
+			start += '>';
+		};
+
+		return start;
+	}
+
 	method : native : Parse() ~ Bool {
 		if(<>MatchCommentStart()) {
 			return false;
@@ -878,7 +886,7 @@ class ClassSnippet from Snippet {
 			return false;
 		};
 		
-		@name := ParseIdent();
+		@name := ParseName();
 		if(@name->Size() = 0) {
 			return false;
 		};
