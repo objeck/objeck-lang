@@ -758,6 +758,7 @@ class ClassSnippet from Snippet {
 	@funcs : Map<String, Vector<FuncSnippet> >;
 	@implemented : Vector<String>;
 	@is_inf : Bool;
+	@is_generic : Bool;
 	
 	New(buffer : String, is_inf : Bool) {
 		Parent(buffer);
@@ -921,9 +922,14 @@ class ClassSnippet from Snippet {
 			start->Pop();
 
 			start += '>';
+			@is_generic := true;
 		};
 
 		return start;
+	}
+
+	method : public : IsGeneric() ~ Bool {
+		return @is_generic;
 	}
 
 	method : native : Parse() ~ Bool {
@@ -1270,9 +1276,6 @@ class FuncSnippet from Snippet {
 			start->Pop();
 
 			start += "&gt;";
-
-"((((((((((((((((      {$start}     (((((((((((((((((((((((((("			->PrintLine();
-
 		};
 
 
