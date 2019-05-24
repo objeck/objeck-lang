@@ -1,5 +1,5 @@
 #~
-Generic backed collections
+Generic collections
 ~#	
 bundle Collection.Generic {
 	#~
