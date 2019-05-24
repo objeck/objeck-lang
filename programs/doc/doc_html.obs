@@ -172,6 +172,10 @@ class HtmlMaker {
 							sec_b->Append(class_block->GetName());
 							sec_b->Append('@');
 						}
+						else if(class_block->IsGeneric()) {
+							sec_b->Append(class_block->GetName());
+							sec_b->Append('?');
+						}
 						else {
 							sec_b->Append(class_block->GetName());
 						};
