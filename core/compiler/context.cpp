@@ -6507,6 +6507,13 @@ Type* ContextAnalyzer::RelsolveGenericType(Type* candidate_type, MethodCall* met
         else if(method_call->GetCallType() == NEW_INST_CALL) {
           concrete_types = GetConcreteTypes(method_call);
         }
+        else if(!method_call->GetConcreteTypes().empty()) {
+          concrete_types = method_call->GetConcreteTypes();
+        }
+        else if(method_call->GetEvalType()) {
+          concrete_types = method_call->GetEvalType()->GetGenerics();
+          method_call->SetConcreteTypes(concrete_types);
+        }
 
         // get concrete type
         if(concrete_index < (int)concrete_types.size()) {
