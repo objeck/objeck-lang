@@ -1,20 +1,4 @@
-boxing:
-* test different types
-* passing parameters
-	- box
-	- unbox
-* support for casts
-	- box
-	- unbox
-* test with libraries
-	- box
-	- unbox
-
----
-
+TODO
+--
 generics:
-* sample libraries
-	- vector (done)
-	- simple binary tree (done)
-	- Anderson tree
-* test with source and libraries
+* add support for 'Bool' type

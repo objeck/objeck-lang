@@ -19,6 +19,7 @@
 		2517DFC917EE61410098D0DE /* tree.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2517DFB817EE61410098D0DE /* tree.cpp */; };
 		2517DFCB17EE622E0098D0DE /* types.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2517DFCA17EE622E0098D0DE /* types.cpp */; };
 		253FF1E41FF1A1140039C622 /* emit.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 253FF1E21FF1A1130039C622 /* emit.cpp */; };
+		ED9B87E7228CC15200860E8D /* logger.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED9B87E6228CC15200860E8D /* logger.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -59,6 +60,8 @@
 		2517DFCA17EE622E0098D0DE /* types.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = types.cpp; path = ../../types.cpp; sourceTree = "<group>"; };
 		253FF1E21FF1A1130039C622 /* emit.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = emit.cpp; path = ../../emit.cpp; sourceTree = "<group>"; };
 		253FF1E31FF1A1140039C622 /* emit.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = emit.h; path = ../../emit.h; sourceTree = "<group>"; };
+		ED9B87E6228CC15200860E8D /* logger.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = logger.cpp; path = ../../../shared/logger.cpp; sourceTree = "<group>"; };
+		ED9B87E8228CC17800860E8D /* logger.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = logger.h; path = ../../../shared/logger.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -91,6 +94,8 @@
 		2517DF9D17EE60CC0098D0DE /* Xcode-Compiler */ = {
 			isa = PBXGroup;
 			children = (
+				ED9B87E8228CC17800860E8D /* logger.h */,
+				ED9B87E6228CC15200860E8D /* logger.cpp */,
 				253FF1E21FF1A1130039C622 /* emit.cpp */,
 				253FF1E31FF1A1140039C622 /* emit.h */,
 				2517DFCA17EE622E0098D0DE /* types.cpp */,
@@ -200,6 +205,7 @@
 				2517DFCB17EE622E0098D0DE /* types.cpp in Sources */,
 				2517DFC317EE61410098D0DE /* linker.cpp in Sources */,
 				2517DFC017EE61410098D0DE /* compiler.cpp in Sources */,
+				ED9B87E7228CC15200860E8D /* logger.cpp in Sources */,
 				2517DFC217EE61410098D0DE /* intermediate.cpp in Sources */,
 				2517DFC917EE61410098D0DE /* tree.cpp in Sources */,
 				2517DFC117EE61410098D0DE /* context.cpp in Sources */,
@@ -250,7 +256,7 @@
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_PREPROCESSOR_DEFINITIONS = (
-					"DEBUG=1",
+					_DEBUG,
 					"$(inherited)",
 				);
 				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
