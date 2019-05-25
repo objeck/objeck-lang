@@ -78,7 +78,7 @@ if [%1] NEQ [deploy] goto end
 	copy ..\..\docs\uninstall.vbs "%USERPROFILE%\Desktop\objeck-lang-win64\doc"
 	copy ..\..\docs\getting_started.url "%USERPROFILE%\Desktop\objeck-lang-win64\doc"
 	copy /y ..\setup64
-	devenv setup.sln /rebuild
+	devenv setup.sln /rebuild "Release"
 	signtool sign /f "\Dropbox\Personal\signing keys\2018\randy_hollines.p12" /p %2 /d "Objeck Toolchain" /t http://timestamp.comodoca.com Release64\setup.msi
 	copy Release64\setup.msi "%USERPROFILE%\Desktop\objeck-lang-win64.msi"
 	
