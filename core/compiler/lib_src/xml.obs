@@ -863,7 +863,7 @@ bundle Data.XML {
 			DECLARATION,
 			CDATA,
 			ELEMENT,
-			CLOSING_ELEMENT, # control type not used for DOM creation
+			CLOSING_ELEMENT,
 			UNARY_ELEMENT
 		}
 		
