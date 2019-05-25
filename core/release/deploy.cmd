@@ -80,7 +80,7 @@ if [%1] NEQ [deploy] goto end
 	copy ..\..\docs\getting_started.url "%USERPROFILE%\Desktop\objeck-lang-win32\doc"
 	
 	copy /y ..\setup
-	devenv setup.sln /rebuild
+	devenv setup.sln /rebuild "Release"
 	signtool sign /f "\Dropbox\Personal\signing keys\2018\randy_hollines.p12" /p %2 /d "Objeck Toolchain" /t http://timestamp.comodoca.com Release\setup.msi
 	copy Release\setup.msi "%USERPROFILE%\Desktop\objeck-lang-win32.msi"
 	
