@@ -2328,7 +2328,7 @@ bundle System {
 			begin := SubString(0, index);
 			index += find->Size();
 			
-			length :=   Size() - index;
+			length := Size() - index - 1;
 			end := SubString(index, length);
 			if(end = Nil) {
 				return @self;
