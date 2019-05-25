@@ -1193,6 +1193,213 @@ bundle System {
 	}
 
 	#~
+	Holds a boolean value
+	~#
+	class BoolHolder implements Compare {
+		@value : Bool;
+
+		#~
+		Default constructor
+		~#
+		New() {
+			Parent();
+			@value := false;
+		}
+
+		#~
+		Copy constructor
+		@param value boolean value
+		~#
+		New(value : Bool) {
+			Parent();
+			@value := value;
+		}
+
+		#~
+		Get boolean value
+		@return boolean value
+		~#
+		method : public : Get() ~ Bool {
+			return @value;
+		}
+		
+		#~
+		Set boolean value
+		@param value boolean value		
+		~#
+		method : public : Set(value : Bool) ~ Nil {
+			@value := value;
+		}
+
+		#~
+		Compares two objects
+		@param rhs compare object
+		@return 0 if equal, -1 if types differ, 1 if equal
+		~#
+		method : public : native : Compare(rhs : System.Compare) ~ Int {
+			# check class type
+			if(GetClassID() <> rhs->GetClassID()) {
+				return -1;
+			};
+			
+			right : BoolHolder := rhs->As(BoolHolder);
+			if(@value = right->Get()) {
+				return 0;
+			};
+			
+			return 1;
+		}
+
+		#~
+		Returns a unique hash ID for a boolean
+		@return hash ID
+		~#
+		method : public : HashID() ~ Int {
+			return @value;
+		}
+	}
+	
+	#~
+	Holds an byte value
+	~#
+	class ByteHolder implements Compare {
+		@value : Byte;
+
+		#~
+		Default constructor
+		~#
+		New() {
+			Parent();
+			@value := 0;
+		}
+
+		#~
+		Copy constructor
+		@param value byte value
+		~#
+		New(value : Byte) {
+			Parent();
+			@value := value;
+		}
+
+		#~
+		Get byte value
+		@return byte value
+		~#
+		method : public : Get() ~ Byte {
+			return @value;
+		}
+		
+		#~
+		Set byte value
+		@param value byte value		
+		~#
+		method : public : Set(value : Byte) ~ Nil {
+			@value := value;
+		}
+
+		#~
+		Compares two objects
+		@param rhs compare object
+		@return 0 if equal, -1 if right-hand side i greater, 1 if left-hand side is greater
+		~#
+		method : public : native : Compare(rhs : System.Compare) ~ Int {
+			# check class type
+			if(GetClassID() <> rhs->GetClassID()) {
+				return -1;
+			};
+			
+			right : ByteHolder := rhs->As(ByteHolder);
+			if(@value = right->Get()) {
+				return 0;
+			}
+			else if(@value < right->Get()) {
+				return -1;
+			};
+			
+			return 1;
+		}
+
+		#~
+		Returns a unique hash ID for a byte
+		@return hash ID
+		~#
+		method : public : HashID() ~ Int {
+			return @value;
+		}
+	}
+
+	#~
+	Holds an character value
+	~#
+	class CharHolder implements Compare {
+		@value : Char;
+
+		#~
+		Default constructor
+		~#
+		New() {
+			Parent();
+			@value := 0;
+		}
+
+		#~
+		Copy constructor
+		@param value character value
+		~#
+		New(value : Char) {
+			Parent();
+			@value := value;
+		}
+
+		#~
+		Get character value
+		@return character value
+		~#
+		method : public : Get() ~ Char {
+			return @value;
+		}
+		
+		#~
+		Set character value
+		@param value character value		
+		~#
+		method : public : Set(value : Char) ~ Nil {
+			@value := value;
+		}
+
+		#~
+		Compares two objects
+		@param rhs compare object
+		@return 0 if equal, -1 if right-hand side i greater, 1 if left-hand side is greater
+		~#
+		method : public : native : Compare(rhs : System.Compare) ~ Int {
+			# check class type
+			if(GetClassID() <> rhs->GetClassID()) {
+				return -1;
+			};
+			
+			right : CharHolder := rhs->As(CharHolder);
+			if(@value = right->Get()) {
+				return 0;
+			}
+			else if(@value < right->Get()) {
+				return -1;
+			};
+			
+			return 1;
+		}
+
+		#~
+		Returns a unique hash ID for a character
+		@return hash ID
+		~#
+		method : public : HashID() ~ Int {
+			return @value;
+		}
+	}
+
+	#~
 	Holds an integer value
 	~#
 	class IntHolder implements Compare {
@@ -1309,210 +1516,6 @@ bundle System {
 	}
 
 	#~
-	Holds an character value
-	~#
-	class CharHolder implements Compare {
-		@value : Char;
-
-		#~
-		Default constructor
-		~#
-		New() {
-			Parent();
-			@value := 0;
-		}
-
-		#~
-		Copy constructor
-		@param value character value
-		~#
-		New(value : Char) {
-			Parent();
-			@value := value;
-		}
-
-		#~
-		Get character value
-		@return character value
-		~#
-		method : public : Get() ~ Char {
-			return @value;
-		}
-		
-		#~
-		Set character value
-		@param value character value		
-		~#
-		method : public : Set(value : Char) ~ Nil {
-			@value := value;
-		}
-
-		#~
-		Compares two objects
-		@param rhs compare object
-		@return 0 if equal, -1 if right-hand side i greater, 1 if left-hand side is greater
-		~#
-		method : public : native : Compare(rhs : System.Compare) ~ Int {
-			# check class type
-			if(GetClassID() <> rhs->GetClassID()) {
-				return -1;
-			};
-			
-			right : CharHolder := rhs->As(CharHolder);
-			if(@value = right->Get()) {
-				return 0;
-			}
-			else if(@value < right->Get()) {
-				return -1;
-			};
-			
-			return 1;
-		}
-
-		#~
-		Returns a unique hash ID for a character
-		@return hash ID
-		~#
-		method : public : HashID() ~ Int {
-			return @value;
-		}
-	}
-
-	#~
-	Holds an byte value
-	~#
-	class ByteHolder implements Compare {
-		@value : Byte;
-
-		#~
-		Default constructor
-		~#
-		New() {
-			Parent();
-			@value := 0;
-		}
-
-		#~
-		Copy constructor
-		@param value byte value
-		~#
-		New(value : Byte) {
-			Parent();
-			@value := value;
-		}
-
-		#~
-		Get byte value
-		@return byte value
-		~#
-		method : public : Get() ~ Byte {
-			return @value;
-		}
-		
-		#~
-		Set byte value
-		@param value byte value		
-		~#
-		method : public : Set(value : Byte) ~ Nil {
-			@value := value;
-		}
-
-		#~
-		Compares two objects
-		@param rhs compare object
-		@return 0 if equal, -1 if right-hand side i greater, 1 if left-hand side is greater
-		~#
-		method : public : native : Compare(rhs : System.Compare) ~ Int {
-			# check class type
-			if(GetClassID() <> rhs->GetClassID()) {
-				return -1;
-			};
-			
-			right : ByteHolder := rhs->As(ByteHolder);
-			if(@value = right->Get()) {
-				return 0;
-			}
-			else if(@value < right->Get()) {
-				return -1;
-			};
-			
-			return 1;
-		}
-
-		#~
-		Returns a unique hash ID for a byte
-		@return hash ID
-		~#
-		method : public : HashID() ~ Int {
-			return @value;
-		}
-	}
-
-	#~
-	Holds an integer array
-	~#
-	class IntArrayHolder {
-		@values : Int[];
-
-		#~
-		Copy constructor 
-		@param values integer array 
-		~#
-		New(values : Int[]) {
-			Parent();
-			@values := values;
-		}
-
-		#~
-		Get values
-		@return values
-		~#
-		method : public : Get() ~ Int[] {
-			return @values;
-		}
-		
-		#~
-		Set values
-		@param values integer array 
-		~#
-		method : public : Set(values : Int[]) ~ Nil {
-			@values := values;
-		}
-	}
-
-	#~
-	Holds an base array
-	~#
-	class BaseArrayHolder {
-		@values : Base[];
-
-		#~
-		Copy constructor 
-		@param values integer array 
-		~#
-		New(values : Base[]) {
-			Parent();
-			@values := values;
-		}
-
-		#~
-		Get values
-		@return values
-		~#
-		method : public : Get() ~ Base[] {
-			return @values;
-		}
-		
-		#~
-		Set values
-		@param values integer array 
-		~#
-		method : public : Set(values : Base[]) ~ Nil {
-			@values := values;
-		}
-	}
-	
-	#~
 	Holds a float
 	~#
 	class FloatHolder implements Compare {
@@ -1613,38 +1616,6 @@ bundle System {
 			return @value * 10000.0;
 		}
 	}
-	
-	#~
-	Holds a float array
-	~#
-	class FloatArrayHolder {
-		@values : Float[];
-
-		#~
-		Copy constructor 
-		@param values float array 
-		~#
-		New(values : Float[]) {
-			Parent();
-			@values := values;
-		}
-
-		#~
-		Gets values
-		@return value
-		~#
-		method : public : Get() ~ Float[] {
-			return @values;
-		}
-		
-		#~
-		Sets values
-		@param values float array 
-		~#
-		method : public : Set(values : Float[]) ~ Nil {
-			@values := values;
-		}
-	}
 
 	#~
 	Holds a byte array
@@ -1709,7 +1680,103 @@ bundle System {
 			@values := values;
 		}
 	}
+	
+	#~
+	Holds an integer array
+	~#
+	class IntArrayHolder {
+		@values : Int[];
 
+		#~
+		Copy constructor 
+		@param values integer array 
+		~#
+		New(values : Int[]) {
+			Parent();
+			@values := values;
+		}
+
+		#~
+		Get values
+		@return values
+		~#
+		method : public : Get() ~ Int[] {
+			return @values;
+		}
+		
+		#~
+		Set values
+		@param values integer array 
+		~#
+		method : public : Set(values : Int[]) ~ Nil {
+			@values := values;
+		}
+	}
+
+	#~
+	Holds a float array
+	~#
+	class FloatArrayHolder {
+		@values : Float[];
+
+		#~
+		Copy constructor 
+		@param values float array 
+		~#
+		New(values : Float[]) {
+			Parent();
+			@values := values;
+		}
+
+		#~
+		Gets values
+		@return value
+		~#
+		method : public : Get() ~ Float[] {
+			return @values;
+		}
+		
+		#~
+		Sets values
+		@param values float array 
+		~#
+		method : public : Set(values : Float[]) ~ Nil {
+			@values := values;
+		}
+	}
+
+	#~
+	Holds an base array
+	~#
+	class BaseArrayHolder {
+		@values : Base[];
+
+		#~
+		Copy constructor 
+		@param values integer array 
+		~#
+		New(values : Base[]) {
+			Parent();
+			@values := values;
+		}
+
+		#~
+		Get values
+		@return values
+		~#
+		method : public : Get() ~ Base[] {
+			return @values;
+		}
+		
+		#~
+		Set values
+		@param values integer array 
+		~#
+		method : public : Set(values : Base[]) ~ Nil {
+			@values := values;
+		}
+	}
+	
 	#~
 	Unique ID for each class
 	~#	
