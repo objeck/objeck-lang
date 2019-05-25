@@ -4243,7 +4243,7 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
         expression->SetEvalType(TypeFactory::Instance()->MakeType(INT_TYPE), true);
       }
         break;
-
+        
       case BOOLEAN_TYPE:
         ProcessError(left_expr, L"Invalid operation using classes: " +
                      ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Bool");
@@ -4283,10 +4283,16 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
         break;
 
       case CLASS_TYPE:
-        ProcessError(left_expr, L"Invalid operation using classes: System.Bool and " +
-                     ReplaceSubstring(right->GetClassName(), L"#", L"->"));
+        if(HasProgramLibraryEnum(right->GetClassName())) {
+          right_expr->SetCastType(left, true);
+          expression->SetEvalType(left, true);
+        }
+        else if(!UnboxingCalculation(right, right_expr, expression, false, depth)) {
+          ProcessError(left_expr, L"Invalid operation using classes: System.Bool and " +
+                       ReplaceSubstring(right->GetClassName(), L"#", L"->"));
+        }
         break;
-
+        
       case BOOLEAN_TYPE:
         expression->SetEvalType(left, true);
         break;
@@ -4812,11 +4818,19 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
         break;
 
       case BOOLEAN_TYPE:
-        ProcessError(expression, L"Invalid cast with classes: " + left->GetClassName() + L" and System.Bool");
+        if(!HasProgramLibraryEnum(left->GetClassName())) {
+          Expression* boxed_expression = BoxExpression(left, expression, depth);
+          if(boxed_expression) {
+            return boxed_expression;
+          }
+          else {
+            ProcessError(expression, L"Invalid cast with classes: " + left->GetClassName() + L" and System.Bool");
+          }
+        }
         break;
       }
       break;
-
+      
     case BOOLEAN_TYPE:
       // BOOLEAN
       switch(right->GetType()) {
@@ -4851,10 +4865,18 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
         break;
 
       case CLASS_TYPE:
-        ProcessError(expression, L"Invalid cast with classes: System.Bool and " +
-                     ReplaceSubstring(ReplaceSubstring(right->GetClassName(), L"#", L"->"), L"#", L"->"));
+        if(!HasProgramLibraryEnum(right->GetClassName())) {
+          Expression* unboxed_expresion = UnboxingExpression(right, expression, depth);
+          if(unboxed_expresion) {
+            return unboxed_expresion;
+          }
+          else {
+            ProcessError(expression, L"Invalid cast with classes: System.Bool and " +
+                         ReplaceSubstring(ReplaceSubstring(right->GetClassName(), L"#", L"->"), L"#", L"->"));
+          }
+        }
         break;
-
+        
       case BOOLEAN_TYPE:
         break;
       }
@@ -4944,9 +4966,7 @@ Expression* ContextAnalyzer::UnboxingExpression(Type* to_type, Expression* from_
   if(!to_type || !from_expr) {
     return nullptr;
   }
-
-  ResolveClassEnumType(to_type);
-
+  
   Type* from_type = from_expr->GetEvalType();
   if(!from_type) {
     from_type = from_expr->GetBaseType();
@@ -4956,8 +4976,10 @@ Expression* ContextAnalyzer::UnboxingExpression(Type* to_type, Expression* from_
     return nullptr;
   }
   
-  if(to_type->GetType() == CLASS_TYPE && from_type->GetType() != CLASS_TYPE) {
-    ResolveClassEnumType(to_type);
+  ResolveClassEnumType(to_type);
+  ResolveClassEnumType(from_type);
+  
+  if(to_type->GetType() == CLASS_TYPE) {
     if(from_expr->GetExpressionType() == VAR_EXPR && IsHolderType(to_type->GetClassName())) {
       MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(from_expr->GetFileName(), from_expr->GetLineNumber(),
                                                                             static_cast<Variable*>(from_expr), L"Get",
@@ -4999,7 +5021,8 @@ Expression* ContextAnalyzer::BoxExpression(Type* to_type, Expression* from_expr,
   }
 
   const bool is_enum = from_expr->GetExpressionType() == METHOD_CALL_EXPR && static_cast<MethodCall*>(from_expr)->GetEnumItem();
-  if(to_type->GetType() == CLASS_TYPE && (is_enum || 
+  if(to_type->GetType() == CLASS_TYPE && (is_enum ||
+     from_type->GetType() == BOOLEAN_TYPE || 
      from_type->GetType() == BYTE_TYPE || 
      from_type->GetType() == CHAR_TYPE || 
      from_type->GetType() == INT_TYPE || 
@@ -5617,7 +5640,8 @@ bool ContextAnalyzer::IsIntegerExpression(Expression* expression)
 
   if(eval_type) {
     // integer types
-    if(eval_type->GetType() == INT_TYPE || eval_type->GetType() == CHAR_TYPE ||
+    if(eval_type->GetType() == INT_TYPE ||
+       eval_type->GetType() == CHAR_TYPE ||
        eval_type->GetType() == BYTE_TYPE) {
       return true;
     }
