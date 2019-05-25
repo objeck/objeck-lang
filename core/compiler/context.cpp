@@ -4406,6 +4406,7 @@ MethodCall* ContextAnalyzer::BoxUnboxingReturn(Type* to_type, Expression* from_e
     ResolveClassEnumType(from_type);
 
     switch(to_type->GetType()) {
+    case BOOLEAN_TYPE:
     case BYTE_TYPE:
     case CHAR_TYPE:
     case INT_TYPE:
@@ -4422,6 +4423,7 @@ MethodCall* ContextAnalyzer::BoxUnboxingReturn(Type* to_type, Expression* from_e
 
     case CLASS_TYPE: {
       switch(from_type->GetType()) {
+      case BOOLEAN_TYPE:
       case BYTE_TYPE:
       case CHAR_TYPE:
       case INT_TYPE:

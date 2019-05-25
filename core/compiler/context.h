@@ -519,6 +519,7 @@ class ContextAnalyzer {
     type_map[L"$Bool"] = BOOLEAN_TYPE;
 
     // type holders
+    holder_types.insert(L"System.BoolHolder");
     holder_types.insert(L"System.ByteHolder");
     holder_types.insert(L"System.CharHolder");
     holder_types.insert(L"System.IntHolder");
