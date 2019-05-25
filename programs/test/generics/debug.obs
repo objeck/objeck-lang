@@ -1,41 +1,47 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-#		a := 9;
-		a := IntHolder->New(9);
-
-		b : Int := a + a;
-#		b : Int := 3 + Bar();
-		b->PrintLine();
-
-		beer := Stout() * Ale(11);
-		beer->PrintLine();
-
-		a->Get()->PrintLine();
-		++a;
-		'"'->PrintLine();
+		Go();
 	}
 
-	function : Fee() ~ Int {
+#	function : native : Go() ~ Nil {
+	function : Go() ~ Nil {
+		b : Bar<Mock,String> := Bar->Instance()<Mock,String>;
+		m := b->Get();	
+		m->DoIt()->PrintLine();
+	}
+}
+
+class Bar<V : Mock, S : Compare> {
+	@v : V;
+	@n : Float;
+
+	New() {
+	}
+
+	function : Instance() ~ Bar<V,S> {
+		return Bar->New()<V, S>;
+	}
+	
+	method : public : Set(v : V) ~ Nil {
+		@v := v;
+		v->DoIt()->PrintLine();
+	}
+	
+	method : public : Get() ~ V {
+		return @v;
+	}
+}
+
+class Foo implements Mock {
+	New() {
+	}
+
+	method : public : DoIt() ~ Int {
 		return 13;
 	}
 
-	function : Fie() ~ IntHolder {
-		return IntHolder->New(7);
-	}
+}
 
-	function : Foo(i : Int) ~ Nil {
-		i->PrintLine();
-	}
-
-	function : Fum(h : IntHolder) ~ Nil {
-		h->Get()->PrintLine();
-	}
-
-	function : Stout() ~ Int {
-		return IntHolder->New(11);
-	}
-
-	function : Ale(a : Int) ~ IntHolder {
-		return 5 + a;
-	}
+interface Mock {
+	method : virtual : public : DoIt() ~ Int;
 }
