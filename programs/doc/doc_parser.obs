@@ -214,7 +214,7 @@ class SnippetParser {
 		if(name->Equals("class")) {
 			@class_inf_block := ClassSnippet->New(block, false);
 			if(@class_inf_block->IsParsed()) {
-				class_inf_name := @class_inf_block->GetName();
+				class_inf_name := @class_inf_block->GetShortName();
 				@class_inf_block->SetBundleName(@bundle_block->GetName());
 				"\tProcessed class: name='{$class_inf_name}'"->PrintLine();
 				@bundle_block->AddClass(@class_inf_block);
@@ -699,7 +699,7 @@ class EnumConstSnippet from Snippet {
 
 		if(@klass <> Nil) {
 			name := @klass;
-			name += "->";
+			name += "-&lt;";
 			name += @name;
 			@name := name;
 		};
