@@ -509,12 +509,17 @@ class Snippet {
 		return ident->Trim();
 	}
 
-	method : GetShortName(name : String) ~ String {
+	function : GetShortName(name : String) ~ String {
 		if(name <> Nil) {
 			index := name->FindLast('.');
 			if(index > -1) {
 				index += 1;
 				return name->SubString(index, name->Size() - index);
+			};
+
+			index := name->Find('&');
+			if(index > -1) {
+				return name->SubString(index);
 			};
 		};
 
@@ -569,7 +574,7 @@ class BundleSnippet from Snippet {
 	}
 
 	method: public : AddClass(class_block : ClassSnippet) ~ Nil {
-		@classes->Insert(class_block->GetName(), class_block);
+		@classes->Insert(class_block->GetShortName(), class_block);
 	}
 
 	method: public : GetClasses() ~ Map<String, ClassSnippet> {
@@ -750,8 +755,9 @@ class EnumConstSnippet from Snippet {
 
 class ClassSnippet from Snippet {
 	@name : String;
+	@short_name : String;
 	@file_name : String;
-	@escaped_name : String;
+	@html_name : String;
 	@block_name : String;
 	@from_class : String;
 	@desc : String;
@@ -781,51 +787,19 @@ class ClassSnippet from Snippet {
 	}
 	
 	method : public : GetShortName() ~ String {
-		index := @name->Find('<');
-		if(index > -1) {
-			return @name->SubString(index);
+		if(@short_name = Nil) {
+			@short_name := GetShortName(@name);
 		};
 
-		return @name;
-	}
-
-	method : public : GetEscapedName() ~ String {
-		if(@escaped_name = Nil) {
-			@escaped_name := "";
-			each(i : @name) {
-				select(@name->Get(i)) {
-					label '<': {
-						@escaped_name += "&lt;";
-					}
-					label '>': {
-						@escaped_name += "&gt;";
-					}
-					other: {
-						@escaped_name += @name->Get(i);
-					}
-				};
-			};
-		};
-
-		return @escaped_name;
+		return @short_name;
 	}
 
 	method : public : GetFileName() ~ String {
 		if(@file_name = Nil) {
-			@file_name := "";
-			each(i : @name) {
-				select(@name->Get(i)) {
-					label '<':
-					label '>': {
-						@file_name += '_';
-					}
-					label ':':
-					label ',': {}
-					other: {
-						@file_name += @name->Get(i);
-					}
-				};
-			};
+			@file_name := @name->ReplaceAll("&lt;", "_");
+			@file_name := @file_name->ReplaceAll("&gt;", "_");
+			@file_name := @file_name->ReplaceAll(":", "-");
+			@file_name := @file_name->ReplaceAll(",", "_");
 		};
 
 		return @file_name;
@@ -904,7 +878,7 @@ class ClassSnippet from Snippet {
 		start := ParseIdent();
 
 		if(MatchChar('<')) {
-			start += '<';
+			start += "&lt;";
 			
 			mid := ParseIdent();
 			while(mid->Size() > 0) {
@@ -921,7 +895,7 @@ class ClassSnippet from Snippet {
 			};
 			start->Pop();
 
-			start += '>';
+			start += "&gt;";
 			@is_generic := true;
 		};
 

@@ -169,12 +169,9 @@ class HtmlMaker {
 						sec_b->Append(link_name->ToLower());
 						sec_b += "' target='main'>";
 						if(class_block->IsInterface()) {
+							sec_b->Append("<i>");
 							sec_b->Append(class_block->GetName());
-							sec_b->Append('@');
-						}
-						else if(class_block->IsGeneric()) {
-							sec_b->Append(class_block->GetName());
-							sec_b->Append('?');
+							sec_b->Append("</i>");
 						}
 						else {
 							sec_b->Append(class_block->GetName());
@@ -200,13 +197,7 @@ class HtmlMaker {
 						sec_b->Append(link_name->ToLower());
 						sec_b += "' target='main'>";
 						sec_b->Append(enum_block->GetName());
-						if(enum_block->IsConsts()) {
-							sec_b->Append('#');
-						}
-						else {
-							sec_b->Append('$');
-						};
-
+						sec_b->Append(" (#)");
 						sec_b += "</a></li>";
 						
 					};
@@ -240,7 +231,7 @@ class HtmlMaker {
 		else {
 			sec_b := "<h2>@class_name</h2><p>@class_desc</p>";
 		};
-		sec_b := sec_b->ReplaceAll("@class_name", class_block->GetEscapedName());
+		sec_b := sec_b->ReplaceAll("@class_name", class_block->GetName());
 		sec_b := sec_b->ReplaceAll("@class_desc", class_block->GetDesc());
 		html += sec_b;
 
@@ -387,16 +378,14 @@ class HtmlMaker {
 			type_name := class_name;
 			full_name := class_name;
 			class_block := GetBundleClass(bundle_name, class_name);
-			if(class_block <> Nil) {
-				
-			};
 		};
 		
 		index := full_name->Find('[');
 		if(index > -1) {
 			type_name := full_name->SubString(index);
 		};
-		
+
+		type_name := Snippet->GetShortName(type_name);
 		class_block := GetBundleClass(@bundle_block->GetName(), type_name);
 		
 		if(class_block = Nil) {		
