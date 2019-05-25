@@ -1371,7 +1371,8 @@ void StackInterpreter::AsyncMthdCall(size_t* &op_stack, long* &stack_pos)
 
   StackClass* impl_class = MemoryManager::GetClass(instance);
   if(!impl_class) {
-    wcerr << L">>> Invalid instance reference! ref=" << instance << " << " << endl;
+    PopFrame();
+    wcerr << L">>> Atempting to dereference a 'Nil' memory element <<<" << endl;
     StackErrorUnwind();
 #ifdef _DEBUGGER
     halt = true;
@@ -2010,7 +2011,8 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr, StackInstr** &instrs
   if(called->IsVirtual()) {
     StackClass* impl_class = MemoryManager::GetClass((size_t*)instance);
     if(!impl_class) {
-      wcerr << L">>> Invalid instance reference! ref=" << instance << " << " << endl;
+      PopFrame();
+      wcerr << L">>> Atempting to dereference a 'Nil' memory element <<<" << endl;
       StackErrorUnwind();
 #ifdef _DEBUGGER
       halt = true;
