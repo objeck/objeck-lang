@@ -2326,17 +2326,21 @@ bundle System {
 			};
 			
 			begin := SubString(0, index);
-			index += find->Size();
-			
-			length := Size() - index - 1;
-			end := SubString(index, length);
-			if(end = Nil) {
-				return @self;
-			};
-			
 			new_string := String->New(begin);
-			new_string->Append(replace);
-			new_string->Append(end);
+			index += find->Size();
+			length := Size() - index;
+			
+			if(length = 0) {
+				new_string->Append(replace);
+			}
+			else {
+				end := SubString(index, length);
+				if(end = Nil) {
+					return @self;
+				};
+				new_string->Append(replace);
+				new_string->Append(end);
+			};
 			
 			return new_string;
 		}
