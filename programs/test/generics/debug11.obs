@@ -2,18 +2,11 @@ use Collection.Generic;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		v := Vector->New()<String>;
-		v->AddBack("Fie");
-		v->AddBack("Fum");
-		v->AddBack("Foo");
-		v->AddBack("SG-1");
-		v->AddBack("And");
-		v->AddBack("X-File");
-		
-		v->Sort();
-
-		each(i : v) {
-			v->Get(i)->PrintLine();
-		};
+		area_codes := Map->New()<IntHolder, String>;
+		area_codes->Insert(510, "Oakland");
+		area_codes->Insert(415, "San Francisco");
+		area_codes->Insert(650, "Palo Alto");
+		area_codes->Insert(408, "San Jose");
+		area_codes->Find(510)->PrintLine();
 	}
 }
