@@ -1175,9 +1175,8 @@ bundle System {
 		}
 	}
 
-	#~~
+	
 	# Array class support
-	~~#	
 	class $BaseArray {
 		function : Size(f : System.Base[]) ~ Int {
 			LOAD_ARY_SIZE;
@@ -1777,9 +1776,7 @@ bundle System {
 		}
 	}
 	
-	#~
-	Unique ID for each class
-	~#	
+	# Unique ID for each class
 	enum ClassID {
 	}
 
