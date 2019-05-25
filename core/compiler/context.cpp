@@ -4979,7 +4979,7 @@ Expression* ContextAnalyzer::UnboxingExpression(Type* to_type, Expression* from_
   ResolveClassEnumType(to_type);
   ResolveClassEnumType(from_type);
   
-  if(to_type->GetType() == CLASS_TYPE) {
+  if(to_type->GetType() == CLASS_TYPE && from_type->GetType() != CLASS_TYPE) {
     if(from_expr->GetExpressionType() == VAR_EXPR && IsHolderType(to_type->GetClassName())) {
       MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(from_expr->GetFileName(), from_expr->GetLineNumber(),
                                                                             static_cast<Variable*>(from_expr), L"Get",
