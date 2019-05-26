@@ -8,7 +8,7 @@ scope: source.objeck-obs
 
 variables:
   identifier: \b[[:alpha:]_][[:alnum:]_]*\b # upper and lowercase
-  escaped_char: '\\(x\h{2}|u\h{1,4}|0|a|b|f|n|r|t|\\)'
+  escaped_char: '\\(x\h{2}|u\h{1,4}|.)'
 
 contexts:
   main:
@@ -122,8 +122,8 @@ contexts:
 
   double_quoted_string:
     - meta_scope: string.quoted.double.objeck-obs
+    - match: \\.
     - match: '"'
-      scope: string.quoted.double.objeck-obs
       pop: true
 
   cls_def:

@@ -569,15 +569,9 @@ class BundleSnippet from Snippet {
 	method : public : SetName(name : String) ~ Nil {
 		@name := name;
 	}
-
+	
 	method: public : AddClass(class_block : ClassSnippet) ~ Nil {
 		@classes->Insert(class_block->GetShortName(), class_block);
-#~
-cn := class_block->GetShortName();
-id := @self->GetInstanceID();
-ct := @classes->Size();
-"count={$ct}, name='{$cn}', id={$id}"->PrintLine();
-~#
 	}
 
 	method: public : GetClasses() ~ Map<String, ClassSnippet> {
