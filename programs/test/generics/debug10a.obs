@@ -1,0 +1,14 @@
+use Collection.Generic;
+
+class Bar {
+	function : Main(args : String[]) ~ Nil {
+		f := Foo->New();
+		f->Add("foo");
+		f->Add("bar");
+		f->Count()->PrintLine();
+
+		v := f->Get();
+		v->AddBack(IntHolder->New(13));
+		v->Size()->PrintLine();
+	}
+}
