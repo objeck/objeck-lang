@@ -255,9 +255,6 @@ class SnippetParser {
 			}
 			else if(@cur_char = '}') {
 				@level -= 1;
-				if(@level = 0) {
-					@bundle_block := @bundles->Find("Default")->As(BundleSnippet);
-				};
 			};
 		};
 	}
@@ -575,6 +572,12 @@ class BundleSnippet from Snippet {
 
 	method: public : AddClass(class_block : ClassSnippet) ~ Nil {
 		@classes->Insert(class_block->GetShortName(), class_block);
+#~
+cn := class_block->GetShortName();
+id := @self->GetInstanceID();
+ct := @classes->Size();
+"count={$ct}, name='{$cn}', id={$id}"->PrintLine();
+~#
 	}
 
 	method: public : GetClasses() ~ Map<String, ClassSnippet> {
