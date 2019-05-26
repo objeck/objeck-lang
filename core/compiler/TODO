@@ -1,4 +1,5 @@
 TODO
 --
 generics:
-* add support for 'Bool' type
+* compiler library that uses the generic library
+* add generic example

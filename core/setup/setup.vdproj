@@ -1587,6 +1587,12 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_E7F14E69E10C4A8AA0509DCFB06BDEBD"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_E86DA076A55441AF8E793AE8E844F7B6"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -7125,6 +7131,26 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_E7F14E69E10C4A8AA0509DCFB06BDEBD"
+            {
+            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\lib\\gen_collect.obl"
+            "TargetName" = "8:gen_collect.obl"
+            "Tag" = "8:"
+            "Folder" = "8:_DE25ACE29AE54063B9EF27A4FF4929C6"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_E86DA076A55441AF8E793AE8E844F7B6"
             {
             "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\media\\player.png"
@@ -8060,7 +8086,7 @@
         "Name" = "8:Microsoft Visual Studio"
         "ProductName" = "8:Objeck"
         "ProductCode" = "8:{4EA7185F-05AD-4F85-A16C-FA1A151DE896}"
-        "PackageCode" = "8:{8C9B3BCA-0387-4F85-A980-07612C96AE1A}"
+        "PackageCode" = "8:{55F950FA-C3E7-42FE-9162-D1AE8EAC0705}"
         "UpgradeCode" = "8:{A1931BE6-A793-4ECE-B303-66B69408440F}"
         "AspNetVersion" = "8:"
         "RestartWWWService" = "11:FALSE"

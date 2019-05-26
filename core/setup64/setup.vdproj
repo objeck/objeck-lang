@@ -609,6 +609,12 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_50A721423E2F447F8BF09E805227CC07"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_51D17EE31A8C428482803B078CF95A9E"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -3849,6 +3855,26 @@
             {
             "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win64\\lib\\sdl_game.obl"
             "TargetName" = "8:sdl_game.obl"
+            "Tag" = "8:"
+            "Folder" = "8:_28E49640DEBB4E24831C9DFC0C160B52"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_50A721423E2F447F8BF09E805227CC07"
+            {
+            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win64\\lib\\gen_collect.obl"
+            "TargetName" = "8:gen_collect.obl"
             "Tag" = "8:"
             "Folder" = "8:_28E49640DEBB4E24831C9DFC0C160B52"
             "Condition" = "8:"
@@ -8060,7 +8086,7 @@
         "Name" = "8:Microsoft Visual Studio"
         "ProductName" = "8:Objeck"
         "ProductCode" = "8:{72E5F417-0251-443B-BDAE-094F5E0EC940}"
-        "PackageCode" = "8:{6C3181FC-B8D4-4B1C-B967-3E6A8C4FFD03}"
+        "PackageCode" = "8:{352CFD76-ED97-4AFF-80E3-217AE6FB0A10}"
         "UpgradeCode" = "8:{A1931BE6-A793-4ECE-B303-66B69408440F}"
         "AspNetVersion" = "8:"
         "RestartWWWService" = "11:FALSE"
