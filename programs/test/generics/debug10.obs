@@ -1,17 +1,21 @@
-class Foo<V> {
-	@vv : V[];
+use Collection.Generic;
 
-	function : Main(args : String[]) ~ Nil {
-	}
+class Foo {
+	@v : Vector<String>;
 
 	New() {
+		@v := Vector->New()<String>;
 	}
 
-	New(f : Foo<V>) {
-		@vv := f->ToArray();
-	}	
+	method : public : Add(s : String) ~ Nil {
+		@v->AddBack(s);
+	}
 
-	method : public : ToArray() ~ V[] {
-		return V->New[3];
+	method : public : Count() ~ Int {
+		return @v->Size();
+	}
+
+	method : public : Get() ~ Vector<String> {
+		return @v;
 	}
 }
