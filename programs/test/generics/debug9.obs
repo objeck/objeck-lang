@@ -57,7 +57,7 @@ class Foo {
 		};
 ~#
 		v := Vector->New()<String>;
-		vv := Vector->New(v);
+		vv := Vector->New(v)<String>;
 		v->AddBack("foe");
 	}
 }
