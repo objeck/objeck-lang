@@ -421,13 +421,25 @@ wstring Method::EncodeUserType(Type* type) {
 
     case CLASS_TYPE:
       name = type->GetClassName();
+      if(type->HasGenerics()) {
+        const vector<frontend::Type*> generic_types = type->GetGenerics();
+        name += L'<';
+        for(size_t i = 0; i < generic_types.size(); ++i) {
+          frontend::Type* generic_type = generic_types[i];
+          name += generic_type->GetClassName();
+          if(i + 1 < generic_types.size()) {
+            name += L',';
+          }
+        }
+        name += L'>';
+      }
       break;
 
     case FUNC_TYPE: {
       name = L'(';
       vector<Type*> func_params = type->GetFunctionParameters();
       for(size_t i = 0; i < func_params.size(); ++i) {
-  name += EncodeUserType(func_params[i]);
+        name += EncodeUserType(func_params[i]);
       }
       name += L") ~ ";
       name += EncodeUserType(type->GetFunctionReturn());

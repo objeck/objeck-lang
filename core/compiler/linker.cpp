@@ -1365,12 +1365,12 @@ void LibraryMethod::ParseParameters()
 
       case 'm': {
         start = index;
-        while(index < parameters.size() && parameters[index] != '~') {
+        while(index < parameters.size() && parameters[index] != L'~') {
           index++;
         }
         index++;
-        while(index < parameters.size() && parameters[index] != '*' &&
-              parameters[index] != ',') {
+        while(index < parameters.size() && parameters[index] != L'*' &&
+              parameters[index] != L',') {
           index++;
         }
         size_t end = index;
@@ -1382,7 +1382,7 @@ void LibraryMethod::ParseParameters()
       case 'o': {
         index += 2;
         start = index;
-        while(index < parameters.size() && parameters[index] != '*' && parameters[index] != ',' && parameters[index] != '|') {
+        while(index < parameters.size() && parameters[index] != L'*' && parameters[index] != L',' && parameters[index] != L'|') {
           index++;
         }
         size_t end = index;
@@ -1398,7 +1398,7 @@ void LibraryMethod::ParseParameters()
         do {
           index++;
           start = index;
-          while(index < parameters.size() && parameters[index] != '*' && parameters[index] != ',' && parameters[index] != '|') {
+          while(index < parameters.size() && parameters[index] != L'*' && parameters[index] != L',' && parameters[index] != L'|') {
             index++;
           }
           size_t end = index;
@@ -1474,8 +1474,7 @@ void LibraryMethod::ParseReturn()
     while(index < rtrn_name.size() && rtrn_name[index] != L'*' && rtrn_name[index] != L'|') {
       index++;
     }
-    rtrn_type = frontend::TypeFactory::Instance()->MakeType(frontend::CLASS_TYPE,
-                                                            rtrn_name.substr(2, index - 2));
+    rtrn_type = frontend::TypeFactory::Instance()->MakeType(frontend::CLASS_TYPE, rtrn_name.substr(2, index - 2));
     break;
   }
 
@@ -1485,7 +1484,7 @@ void LibraryMethod::ParseReturn()
     do {
       index++;
       size_t start = index;
-      while(index < rtrn_name.size() && rtrn_name[index] != '*' && rtrn_name[index] != ',' && rtrn_name[index] != '|') {
+      while(index < rtrn_name.size() && rtrn_name[index] != L'*' && rtrn_name[index] != L',' && rtrn_name[index] != L'|') {
         index++;
       }
       size_t end = index;
@@ -1542,6 +1541,18 @@ std::wstring LibraryMethod::EncodeUserType(frontend::Type* type)
 
     case frontend::CLASS_TYPE:
       name = type->GetClassName();
+      if(type->HasGenerics()) {
+        const vector<frontend::Type*> generic_types = type->GetGenerics();
+        name += L'<';
+        for(size_t i = 0; i < generic_types.size(); ++i) {
+          frontend::Type* generic_type = generic_types[i];
+          name += generic_type->GetClassName();
+          if(i + 1 < generic_types.size()) {
+            name += L',';
+          }
+        }
+        name += L'>';
+      }
       break;
 
     case frontend::FUNC_TYPE: {
