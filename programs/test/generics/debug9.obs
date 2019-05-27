@@ -6,6 +6,7 @@ class Bar {
 
 class Foo {
 	function : Main(args : String[]) ~ Nil {
+#~		
 #		s := "foo bar";
 #		s := IntHolder->New(13);
 			
@@ -54,5 +55,9 @@ class Foo {
 		each(i : k) {
 			k->Get(i)->PrintLine();
 		};
+~#
+		v := Vector->New()<String>;
+		vv := Vector->New(v);
+		v->AddBack("foe");
 	}
 }
