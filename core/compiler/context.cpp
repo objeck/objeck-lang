@@ -5325,6 +5325,9 @@ void ContextAnalyzer::CheckGenericEqualTypes(Type* left, Type* right, Expression
           if(left_generic_klass && left_generic_klass->HasGenericInterface()) {
             left_generic_type = left_generic_klass->GetGenericInterface();
           }
+          else {
+            left_generic_type = RelsolveGenericType(left_generic_type, expression, left_klass, lib_left_klass);
+          }
         }
         
         // process rhs
@@ -5345,18 +5348,15 @@ void ContextAnalyzer::CheckGenericEqualTypes(Type* left, Type* right, Expression
           if(right_generic_klass && right_generic_klass->HasGenericInterface()) {
             right_generic_type = right_generic_klass->GetGenericInterface();
           }
+          else {
+            right_generic_type = RelsolveGenericType(right_generic_type, expression, right_klass, lib_right_klass);
+          }
         }
 
-        wstring left_type_name = left_generic_type->GetClassName();
+        const wstring left_type_name = left_generic_type->GetClassName();
         const wstring right_type_name = right_generic_type->GetClassName();
         if(left_type_name != right_type_name) {
-          // try to resolve generic type
-          left_generic_type = RelsolveGenericType(left_generic_type, expression, left_klass, lib_left_klass);
-          left_type_name = left_generic_type->GetClassName();
-          // check again for equality
-          if(left_type_name != right_type_name) {
-            ProcessError(expression, L"Cannot map generic and concrete class: '" + left_type_name + L"' and '" + right_type_name + L"'");
-          }
+          ProcessError(expression, L"Cannot map generic and concrete class: '" + left_type_name + L"' and '" + right_type_name + L"'");
         }
       }
     }
@@ -6594,10 +6594,7 @@ Type* ContextAnalyzer::RelsolveGenericType(Type* type, Expression* expression, C
       }
     }
     else if(expression->GetExpressionType() == METHOD_CALL_EXPR) {
-      MethodCall* method_call = static_cast<MethodCall*>(expression);
-      if(method_call->GetEntry()) {
-        concrete_types = method_call->GetEntry()->GetType()->GetGenerics();
-      }
+      concrete_types = GetConcreteTypes(static_cast<MethodCall*>(expression));
     }
 
     if(concrete_index < concrete_types.size()) {
