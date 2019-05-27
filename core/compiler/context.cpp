@@ -6596,7 +6596,7 @@ Type* ContextAnalyzer::RelsolveGenericType(Type* type, Expression* expression, C
       concrete_types = GetConcreteTypes(static_cast<MethodCall*>(expression));
     }
 
-    if(concrete_index < concrete_types.size()) {
+    if(concrete_index < (int)concrete_types.size()) {
       return concrete_types[concrete_index];
     }
   }
