@@ -1382,7 +1382,7 @@ void LibraryMethod::ParseParameters()
       case 'o': {
         index += 2;
         start = index;
-        while(index < parameters.size() && parameters[index] != '*' && parameters[index] != ',') {
+        while(index < parameters.size() && parameters[index] != '*' && parameters[index] != ',' && parameters[index] != '|') {
           index++;
         }
         size_t end = index;
@@ -1394,7 +1394,7 @@ void LibraryMethod::ParseParameters()
 
       // set generics
       vector<frontend::Type*> generic_types;
-      while (index < parameters.size() && parameters[index] == '|') {
+      while(index < parameters.size() && parameters[index] == L'|') {
         index++;
         start = index;
         while (index < parameters.size() && parameters[index] != '*' && parameters[index] != ',' && parameters[index] != '|') {
@@ -1408,7 +1408,7 @@ void LibraryMethod::ParseParameters()
       type->SetGenerics(generic_types);
 
       // set dimension
-      while(index < parameters.size() && parameters[index] == '*') {
+      while(index < parameters.size() && parameters[index] == L'*') {
         dimension++;
         index++;
       }
@@ -1420,7 +1420,7 @@ void LibraryMethod::ParseParameters()
       // add declaration
       declarations.push_back(type);
 #ifdef _DEBUG
-      assert(parameters[index] == ',');
+      assert(parameters[index] == L',');
 #endif
       index++;
     }

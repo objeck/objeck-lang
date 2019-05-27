@@ -327,6 +327,8 @@ class ContextAnalyzer {
   // resolve generic type
   Type* RelsolveGenericType(Type* generic_type, MethodCall* method_call, Class* klass, LibraryClass* lib_klass, bool is_rtrn);
 
+  Type* RelsolveGenericType(Type* type, Expression* expression, Class* left_klass, LibraryClass* lib_left_klass);
+
   void ValidateGenericConcreteMapping(const vector<Type*> concrete_types, LibraryClass* lib_klass, ParseNode* node);
 
   void ValidateGenericConcreteMapping(const vector<Type*> concrete_types, Class* klass, ParseNode* node);
@@ -446,7 +448,7 @@ class ContextAnalyzer {
   void AnalyzeCast(Expression* expression, const int depth);
   void AnalyzeClassCast(Type* left, Expression* expression, const int depth);
   void AnalyzeClassCast(Type* left, Type* right, Expression* expression, bool generic_check, const int depth);
-  void CheckGenericEqualTypes(Type* left, Type* right, ParseNode* node);
+  void CheckGenericEqualTypes(Type* left, Type* right, Expression* expression);
   void AnalyzeAssignment(Assignment * assignment, StatementType type, const int depth);
   void AnalyzeSimpleStatement(SimpleStatement* simple, const int depth);
   void AnalyzeIf(If* if_stmt, const int depth);

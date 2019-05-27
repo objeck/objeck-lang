@@ -5285,61 +5285,78 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Type* right, Expression* expr
   }
 }
 
-void ContextAnalyzer::CheckGenericEqualTypes(Type* left, Type* right, ParseNode* node)
+void ContextAnalyzer::CheckGenericEqualTypes(Type* left, Type* right, Expression* expression)
 {
-  if(left->GetType() == CLASS_TYPE && right->GetType() == CLASS_TYPE &&
-     left->HasGenerics() && right->HasGenerics() && left->GetClassName() == right->GetClassName()) {
-    const vector<Type*> left_types = left->GetGenerics();
-    const vector<Type*> right_types = right->GetGenerics();
-    if(left_types.size() != right_types.size()) {
-      ProcessError(node, L"Concrete size mismatch");
+  Class* left_klass = nullptr; LibraryClass* lib_left_klass = nullptr;
+  if(!GetProgramLibraryClass(left, left_klass, lib_left_klass)) {
+    ProcessError(expression, L"Undefined class: '" + ReplaceSubstring(left->GetClassName(), L"#", L"->") + L"'");
+    return;
+  }
+
+  Class* right_klass = nullptr; LibraryClass* lib_right_klass = nullptr;
+  if(!GetProgramLibraryClass(right, right_klass, lib_right_klass)) {
+    ProcessError(expression, L"Undefined class: '" + ReplaceSubstring(right->GetClassName(), L"#", L"->") + L"'");
+    return;
+  }
+
+  if(left_klass == right_klass && lib_left_klass == lib_right_klass) {
+    const vector<Type*> left_generic_types = left->GetGenerics();
+    const vector<Type*> right_generic_types = right->GetGenerics();
+    if(left_generic_types.size() != right_generic_types.size()) {
+      ProcessError(expression, L"Concrete size mismatch");
     }
     else {
-      for(size_t i = 0; i < right_types.size(); ++i) {
+      for(size_t i = 0; i < right_generic_types.size(); ++i) {
         // process lhs
-        Type* left_type = left_types[i];
-        ResolveClassEnumType(left_type);
+        Type* left_generic_type = left_generic_types[i];
+        ResolveClassEnumType(left_generic_type);
 
-        Class* left_klass = nullptr; LibraryClass* lib_left_klass = nullptr;
-        if(GetProgramLibraryClass(left_type, left_klass, lib_left_klass)) {
-          if(left_klass && left_klass->HasGenericInterface()) {
-            left_type = left_klass->GetGenericInterface();
+        Class* left_generic_klass = nullptr; LibraryClass* lib_generic_left_klass = nullptr;
+        if(GetProgramLibraryClass(left_generic_type, left_generic_klass, lib_generic_left_klass)) {
+          if(left_generic_klass && left_generic_klass->HasGenericInterface()) {
+            left_generic_type = left_generic_klass->GetGenericInterface();
           }
-          else if(lib_left_klass && lib_left_klass->HasGenericInterface()) {
-            left_type = lib_left_klass->GetGenericInterface();
+          else if(lib_generic_left_klass && lib_generic_left_klass->HasGenericInterface()) {
+            left_generic_type = lib_generic_left_klass->GetGenericInterface();
           }
         }
         else {
-          left_klass = current_class->GetGenericClass(left_type->GetClassName());
-          if(left_klass && left_klass->HasGenericInterface()) {
-            left_type = left_klass->GetGenericInterface();
+          left_generic_klass = current_class->GetGenericClass(left_generic_type->GetClassName());
+          if(left_generic_klass && left_generic_klass->HasGenericInterface()) {
+            left_generic_type = left_generic_klass->GetGenericInterface();
           }
         }
         
         // process rhs
-        Type* right_type = right_types[i];
-        ResolveClassEnumType(right_type);
+        Type* right_generic_type = right_generic_types[i];
+        ResolveClassEnumType(right_generic_type);
 
-        Class* right_klass = nullptr; LibraryClass* lib_right_klass = nullptr;
-        if(GetProgramLibraryClass(right_type, right_klass, lib_right_klass)) {
-          if(right_klass && right_klass->HasGenericInterface()) {
-            right_type = right_klass->GetGenericInterface();
+        Class* right_generic_klass = nullptr; LibraryClass* lib_generic_right_klass = nullptr;
+        if(GetProgramLibraryClass(right_generic_type, right_generic_klass, lib_generic_right_klass)) {
+          if(right_generic_klass && right_generic_klass->HasGenericInterface()) {
+            right_generic_type = right_generic_klass->GetGenericInterface();
           }
-          else if(lib_right_klass && lib_right_klass->HasGenericInterface()) {
-            right_type = lib_right_klass->GetGenericInterface();
+          else if(lib_generic_right_klass && lib_generic_right_klass->HasGenericInterface()) {
+            right_generic_type = lib_generic_right_klass->GetGenericInterface();
           }
         }
         else {
-          right_klass = current_class->GetGenericClass(right_type->GetClassName());
-          if(right_klass && right_klass->HasGenericInterface()) {
-            right_type = right_klass->GetGenericInterface();
+          right_generic_klass = current_class->GetGenericClass(right_generic_type->GetClassName());
+          if(right_generic_klass && right_generic_klass->HasGenericInterface()) {
+            right_generic_type = right_generic_klass->GetGenericInterface();
           }
         }
 
-        const wstring left_type_name = left_type->GetClassName();
-        const wstring right_type_name = right_type->GetClassName();
+        wstring left_type_name = left_generic_type->GetClassName();
+        const wstring right_type_name = right_generic_type->GetClassName();
         if(left_type_name != right_type_name) {
-          ProcessError(node, L"Cannot map generic and concrete class: '" + left_type_name + L"' and '" + right_type_name + L"'");
+          // try to resolve generic type
+          left_generic_type = RelsolveGenericType(left_generic_type, expression, left_klass, lib_left_klass);
+          left_type_name = left_generic_type->GetClassName();
+          // check again for equality
+          if(left_type_name != right_type_name) {
+            ProcessError(expression, L"Cannot map generic and concrete class: '" + left_type_name + L"' and '" + right_type_name + L"'");
+          }
         }
       }
     }
@@ -6553,6 +6570,42 @@ Type* ContextAnalyzer::RelsolveGenericType(Type* candidate_type, MethodCall* met
   }
 
   return candidate_type;
+}
+
+Type* ContextAnalyzer::RelsolveGenericType(Type* type, Expression* expression, Class* left_klass, LibraryClass* lib_left_klass)
+{
+  int concrete_index = -1;
+  const wstring left_type_name = type->GetClassName();
+
+  if(left_klass) {
+    concrete_index = left_klass->GenericIndex(left_type_name);
+  }
+  else if(lib_left_klass) {
+    concrete_index = lib_left_klass->GenericIndex(left_type_name);
+  }
+
+  if(concrete_index > -1) {
+    vector<Type*> concrete_types;
+
+    if(expression->GetExpressionType() == VAR_EXPR) {
+      Variable* variable = static_cast<Variable*>(expression);
+      if(variable->GetEntry()) {
+        concrete_types = variable->GetEntry()->GetType()->GetGenerics();
+      }
+    }
+    else if(expression->GetExpressionType() == METHOD_CALL_EXPR) {
+      MethodCall* method_call = static_cast<MethodCall*>(expression);
+      if(method_call->GetEntry()) {
+        concrete_types = method_call->GetEntry()->GetType()->GetGenerics();
+      }
+    }
+
+    if(concrete_index < concrete_types.size()) {
+      return concrete_types[concrete_index];
+    }
+  }
+
+  return type;
 }
 
 Class* ContextAnalyzer::SearchProgramClasses(const wstring& klass_name)
