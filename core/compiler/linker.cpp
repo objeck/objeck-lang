@@ -1389,8 +1389,23 @@ void LibraryMethod::ParseParameters()
         const wstring& cls_name = parameters.substr(start, end - start);
         type = frontend::TypeFactory::Instance()->MakeType(frontend::CLASS_TYPE, cls_name);
       }
-                break;
+        break;
       }
+
+      // set generics
+      vector<frontend::Type*> generic_types;
+      while (index < parameters.size() && parameters[index] == '|') {
+        index++;
+        start = index;
+        while (index < parameters.size() && parameters[index] != '*' && parameters[index] != ',' && parameters[index] != '|') {
+          index++;
+        }
+        size_t end = index;
+
+        const wstring generic_name = parameters.substr(start, end - start);
+        generic_types.push_back(frontend::TypeFactory::Instance()->MakeType(frontend::CLASS_TYPE, generic_name));
+      }
+      type->SetGenerics(generic_types);
 
       // set dimension
       while(index < parameters.size() && parameters[index] == '*') {
