@@ -5288,13 +5288,13 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Type* right, Expression* expr
 void ContextAnalyzer::CheckGenericEqualTypes(Type* left, Type* right, Expression* expression)
 {
   Class* left_klass = nullptr; LibraryClass* lib_left_klass = nullptr;
-  if(!GetProgramLibraryClass(left, left_klass, lib_left_klass)) {
+  if(!GetProgramLibraryClass(left, left_klass, lib_left_klass) && !current_class->GetGenericClass(left->GetClassName())) {
     ProcessError(expression, L"Undefined class: '" + ReplaceSubstring(left->GetClassName(), L"#", L"->") + L"'");
     return;
   }
 
   Class* right_klass = nullptr; LibraryClass* lib_right_klass = nullptr;
-  if(!GetProgramLibraryClass(right, right_klass, lib_right_klass)) {
+  if(!GetProgramLibraryClass(right, right_klass, lib_right_klass) && !current_class->GetGenericClass(right->GetClassName())) {
     ProcessError(expression, L"Undefined class: '" + ReplaceSubstring(right->GetClassName(), L"#", L"->") + L"'");
     return;
   }
