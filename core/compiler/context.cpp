@@ -380,7 +380,7 @@ void ContextAnalyzer::GenerateParameterMethods(ParsedBundle* bundle, Class* klas
 
     // add method
     if(!klass->AddMethod(alt_method)) {
-      ProcessError(method, L"Method or function already overloaded '" + method->GetName() + L"'");
+      ProcessError(method, L"Method or function already overloaded '" + method->GetUserName() + L"'");
     }
   }
 }
@@ -807,8 +807,7 @@ void ContextAnalyzer::AnalyzeVirtualMethod(Class* impl_class, MethodType impl_mt
 void ContextAnalyzer::AnalyzeMethod(Method* method, const int id, const int depth)
 {
 #ifdef _DEBUG
-  wstring msg = L"(method: name='" + method->GetName() +
-    L"; parsed='" + method->GetParsedName() + L"')";
+  wstring msg = L"(method: name='" + method->GetName() + L"; parsed='" + method->GetParsedName() + L"')"; 
   Debug(msg, method->GetLineNumber(), depth);
 #endif
 
@@ -2788,7 +2787,7 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
       const vector<LibraryClass*> class_generics = lib_klass->GetGenericClasses();
       const vector<Type*> concrete_types = GetConcreteTypes(method_call);
       if(class_generics.size() != concrete_types.size()) {
-        ProcessError(static_cast<Expression*>(method_call), L"Cannot create an unqualified instance of class: '" + lib_method->GetName() + L"'");
+        ProcessError(static_cast<Expression*>(method_call), L"Cannot create an unqualified instance of class: '" + lib_method->GetUserName() + L"'");
       }
       // check individual types
       if(class_generics.size() == concrete_types.size()) {
