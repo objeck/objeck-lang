@@ -1393,19 +1393,22 @@ void LibraryMethod::ParseParameters()
       }
 
       // set generics
-      vector<frontend::Type*> generic_types;
-      while(index < parameters.size() && parameters[index] == L'|') {
-        index++;
-        start = index;
-        while (index < parameters.size() && parameters[index] != '*' && parameters[index] != ',' && parameters[index] != '|') {
+      if(index < parameters.size() && parameters[index] == L'|') {
+        vector<frontend::Type*> generic_types;
+        do {
           index++;
-        }
-        size_t end = index;
+          start = index;
+          while(index < parameters.size() && parameters[index] != '*' && parameters[index] != ',' && parameters[index] != '|') {
+            index++;
+          }
+          size_t end = index;
 
-        const wstring generic_name = parameters.substr(start, end - start);
-        generic_types.push_back(frontend::TypeFactory::Instance()->MakeType(frontend::CLASS_TYPE, generic_name));
+          const wstring generic_name = parameters.substr(start, end - start);
+          generic_types.push_back(frontend::TypeFactory::Instance()->MakeType(frontend::CLASS_TYPE, generic_name));
+        } 
+        while(index < parameters.size() && parameters[index] == L'|');
+        type->SetGenerics(generic_types);
       }
-      type->SetGenerics(generic_types);
 
       // set dimension
       while(index < parameters.size() && parameters[index] == L'*') {
@@ -1476,22 +1479,22 @@ void LibraryMethod::ParseReturn()
     break;
   }
 
-  // generics
-  if(rtrn_name[index] == L'|') {
-    vector<frontend::Type*> generics;
-    size_t start = ++index;
-    while(index < rtrn_name.size() && rtrn_name[index] != L'*') {
-      if(rtrn_name[index] == L'|') {
-        const wstring foo = rtrn_name.substr(start, index - start);
-        generics.push_back(frontend::TypeFactory::Instance()->MakeType(frontend::CLASS_TYPE, foo));
-        start = index + 1;
-      }
+  // set generics
+  if(index < rtrn_name.size() && rtrn_name[index] == L'|') {
+    vector<frontend::Type*> generic_types;
+    do {
       index++;
-    }
-    wstring foo = rtrn_name.substr(start, index - start);
-    generics.push_back(frontend::TypeFactory::Instance()->MakeType(frontend::CLASS_TYPE, foo));
+      size_t start = index;
+      while(index < rtrn_name.size() && rtrn_name[index] != '*' && rtrn_name[index] != ',' && rtrn_name[index] != '|') {
+        index++;
+      }
+      size_t end = index;
 
-    rtrn_type->SetGenerics(generics);
+      const wstring generic_name = rtrn_name.substr(start, end - start);
+      generic_types.push_back(frontend::TypeFactory::Instance()->MakeType(frontend::CLASS_TYPE, generic_name));
+    } 
+    while(index < rtrn_name.size() && rtrn_name[index] == L'|');
+    rtrn_type->SetGenerics(generic_types);
   }
 
   // set dimension
