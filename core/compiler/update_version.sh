@@ -12,7 +12,7 @@ make -f make/Makefile.32
 ./obc -src lib_src/encrypt.obs -tar lib -opt s3 -dest ../lib/encrypt.obl
 ./obc -src lib_src/odbc.obs -lib collect.obl -tar lib -opt s3 -dest ../lib/odbc.obl
 ./obc -src lib_src/regex.obs -lib gen_collect.obl -tar lib -opt s3 -dest ../lib/regex.obl
-./obc -src lib_src/fcgi.obs -lib collect.obl,json.obl -tar lib -opt s3 -dest ../lib/fcgi.obl
+./obc -src lib_src/fcgi.obs -lib net_misc.obl,collect.obl,json.obl -tar lib -opt s3 -dest ../lib/fcgi.obl
 ./obc -src lib_src/csv.obs -tar lib -lib gen_collect.obl -opt s3 -dest ../lib/csv.obl
 ./obc -src lib_src/query.obs -tar lib -lib xml.obl,regex.obl,net_misc.obl,gen_collect.obl -opt s3 -dest ../lib/query.obl
 ./obc -src lib_src/sdl2.obs -lib collect.obl -tar lib -dest ../lib/sdl2.obl
