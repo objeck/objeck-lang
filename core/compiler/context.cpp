@@ -6483,19 +6483,21 @@ Type* ContextAnalyzer::RelsolveGenericType(Type* candidate_type, MethodCall* met
               ResolveClassEnumType(rtrn_candidate_type);
               
               int mapping_index = -1;
-              if(klass) {
-                const vector<Class*> map_types = klass->GetGenericClasses();
+              if(klass && method_call->GetEvalType()) {
+                const vector<Type*> map_types = method_call->GetEvalType()->GetGenerics();
                 if(i < map_types.size()) {
-                  mapping_index = klass->GenericIndex(map_types[i]->GetName());
+                  ResolveClassEnumType(map_types[i]);
+                  mapping_index = klass->GenericIndex(map_types[i]->GetClassName());
                 }
                 else {
                   ProcessError(static_cast<Expression*>(method_call), L"Concrete to generic size mismatch");
                 }
               }
-              else if(lib_klass) {
-                const vector<LibraryClass*> map_types = lib_klass->GetGenericClasses();
+              else if(lib_klass && method_call->GetEvalType()) {
+                const vector<Type*> map_types = method_call->GetEvalType()->GetGenerics();
                 if(i < map_types.size()) {
-                  mapping_index = lib_klass->GenericIndex(map_types[i]->GetName());
+                  ResolveClassEnumType(map_types[i]);
+                  mapping_index = lib_klass->GenericIndex(map_types[i]->GetClassName());
                 }
                 else {
                   ProcessError(static_cast<Expression*>(method_call), L"Concrete to generic size mismatch");
