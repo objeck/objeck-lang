@@ -128,7 +128,7 @@ bundle Data.CSV {
 			};
 			
 			# store values and sort 
-			sorted := Vector->New()<FloatHolder>;
+			sorted := CompareVector->New()<FloatHolder>;
 			each(i : @columns) {
 				sorted->AddBack(@columns->Get(i)->ToFloat());
 			};
@@ -168,13 +168,13 @@ bundle Data.CSV {
 	CSV column
 	~#
 	class CsvColumn {
-		@rows : CompareVector;
+		@rows : Vector<String>;
 		
 		#~
 		Constructor
 		@param rows row values
 		~#
-		New(rows : CompareVector) {
+		New(rows : Vector<String>) {
 			@rows := rows;
 		}
 		
@@ -227,7 +227,7 @@ bundle Data.CSV {
 			};
 			
 			# store values and sort 
-			sorted := FloatVector->New();
+			sorted := CompareVector->New()<FloatHolder>;
 			each(i : @rows) {
 				sorted->AddBack(@rows->Get(i)->ToFloat());
 			};
@@ -250,9 +250,9 @@ bundle Data.CSV {
 	CSV table
 	~#
 	class CsvTable {
-		@data : Vector;
+		@data : Vector<CsvRow>;
 		@is_parsed : Bool;
-		@header_names : StringHash;
+		@header_names : Hash<String, IntHolder>;
 		@ending : String;
 		
 		#~
@@ -287,15 +287,15 @@ bundle Data.CSV {
 			};
 			
 			if(@is_parsed) {
-				@header_names := StringHash->New();
+				@header_names := Hash->New()<String, IntHolder>;
 				headers := @data->Get(0)->As(CsvRow);
 				each(i : headers) {
-					@header_names->Insert(headers->Get(i), IntHolder->New(i));
+					@header_names->Insert(headers->Get(i), i);
 				};
 			};
 		}
 		
-		New(data : Vector, header_names : StringHash) {
+		New(data : Vector<CsvRow>, header_names : Hash<String, IntHolder>) {
 			@is_parsed := true;
 			@data := data;
 			@header_names := header_names;
@@ -315,7 +315,7 @@ bundle Data.CSV {
 		@return row index
 		~#
 		method : public : GetRowId(name : String) ~ Int {
-			index := @header_names->Find(name)->As(IntHolder);
+			index := @header_names->Find(name);
 			if(index <> Nil) {
 				return index->Get();
 			};
@@ -346,7 +346,7 @@ bundle Data.CSV {
 				for(i := 1; i < @data->Size(); i+=1;) {
 					@data->Get(i)->As(CsvRow)->Append("");
 				};
-				@header_names->Insert(name, IntHolder->New(RowSize() - 1));
+				@header_names->Insert(name, RowSize() - 1);
 				
 				return true;
 			};
@@ -379,8 +379,8 @@ bundle Data.CSV {
 			return @data->Get(0)->As(CsvRow)->Size();
 		}
 		
-		method : native : ParseColumns(rows : String[]) ~ Vector {
-			parsed_rows := Vector->New();
+		method : native : ParseColumns(rows : String[]) ~ Vector<CsvRow> {
+			parsed_rows := Vector->New()<CsvRow>;
 			each(i : rows) {
 				parsed_rows->AddBack(CsvRow->New(@self, i, i = 0, ParseRow(rows[i]->ReplaceAll("\"\"", "ˑ"))));
 			};
@@ -390,7 +390,7 @@ bundle Data.CSV {
 				return Nil;
 			};
 			
-			column_size := parsed_rows->Get(0)->As(CsvRow)->Size();
+			column_size := parsed_rows->Get(0)->Size();
 			each(i : parsed_rows) {
 				parsed_row := parsed_rows->Get(i)->As(CsvRow);
 				if(parsed_row->Size() < column_size) {
@@ -402,8 +402,8 @@ bundle Data.CSV {
 			return parsed_rows;
 		}
 		
-		method : native : ParseRow(row : String) ~ CompareVector {
-			columns := CompareVector->New();
+		method : native : ParseRow(row : String) ~ CompareVector<String> {
+			columns := CompareVector->New()<String>;
 			
 			index := 0;
 			while(index < row->Size()) {
@@ -477,7 +477,7 @@ bundle Data.CSV {
 		@return table of matching results 
 		~#
 		method : public : Search(name : String, value : String) ~ CsvTable {
-			index := @header_names->Find(name)->As(IntHolder);
+			index := @header_names->Find(name);
 			if(index <> Nil) {
 				return Search(index->Get(), value);
 			};
@@ -496,11 +496,11 @@ bundle Data.CSV {
 				return Nil;
 			};
 			
-			found := Vector->New();
+			found := Vector->New()<CsvRow>;
 			found->AddBack(@data->Get(0));
 			
 			for(i := 1; i < @data->Size(); i +=1;) {
-				row := @data->Get(i)->As(CsvRow);
+				row := @data->Get(i);
 				if(row->Get(index)->Equals(value)) {
 					found->AddBack(row);
 				};
@@ -516,7 +516,7 @@ bundle Data.CSV {
 		@return true if value is found, false otherwise
 		~#
 		method : public : Contains(name : String, value : String) ~ Bool {
-			index := @header_names->Find(name)->As(IntHolder);
+			index := @header_names->Find(name);
 			if(index <> Nil) {
 				return Contains(index->Get(), value);
 			};
@@ -531,7 +531,7 @@ bundle Data.CSV {
 		@return number of occurrences
 		~#
 		method : public : Count(name : String, value : String) ~ Int {
-			index := @header_names->Find(name)->As(IntHolder);
+			index := @header_names->Find(name);
 			if(index <> Nil) {
 				return Count(index->Get(), value);
 			};
@@ -604,7 +604,7 @@ bundle Data.CSV {
 		@return unique values for the given row
 		~#
 		method : public : UniqueColumnValues(name : String) ~ CsvColumn {
-			index := @header_names->Find(name)->As(IntHolder);
+			index := @header_names->Find(name);
 			if(index <> Nil) {
 				return UniqueColumnValues(index->Get());
 			};
@@ -622,7 +622,7 @@ bundle Data.CSV {
 				return Nil;
 			};
 			
-			values := CompareVector->New();
+			values := Vector->New()<String>;
 			for(i := 1; i < @data->Size(); i +=1;) {
 				value := @data->Get(i)->As(CsvRow)->Get(index);
 				values->AddBack(value);
@@ -637,7 +637,7 @@ bundle Data.CSV {
 		@return values for the given row
 		~#
 		method : public : ColumnValues(name : String) ~ CsvColumn {
-			index := @header_names->Find(name)->As(IntHolder);
+			index := @header_names->Find(name);
 			if(index <> Nil) {
 				return ColumnValues(index->Get());
 			};
@@ -655,8 +655,8 @@ bundle Data.CSV {
 				return Nil;
 			};
 			
-			values := CompareVector->New();
-			uniques := StringSet->New();
+			values := Vector->New()<String>;
+			uniques := Set->New()<String>;
 			for(i := 1; i < @data->Size(); i +=1;) {
 				value := @data->Get(i)->As(CsvRow)->Get(index);
 				if(<>uniques->Has(value)) {
