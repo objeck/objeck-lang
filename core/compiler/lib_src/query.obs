@@ -3,7 +3,7 @@ Tabular query and web libraries
 Copyright (c) 2017-2019 Randy Hollines
 ~~#
 
-use Collection;
+use Collection.Generic;
 use System.Time;
 use Query.RegEx;
 use System.IO.File;
@@ -18,9 +18,9 @@ bundle Query.Structured {
 	~#
 	class Table {
 		@name : String;
-		@keys : IntMap;
+		@keys : Map<IntHolder, Row>;
 		@column_names : String[];
-		@column_map : StringMap;
+		@column_map : Map<String, IntHolder>;
 		@head : Row;
 		@tail : Row;
 		@count : Int;
@@ -32,15 +32,15 @@ bundle Query.Structured {
 		@param column_names column names
 		~#
 		New(name : String, column_names : String[]) {
-			@column_map := StringMap->New();
-			@keys := IntMap->New();
+			@column_map := Map->New()<String, IntHolder>;
+			@keys := Map->New()<IntHolder, Row>;
 		
 			@name := name;
 			@column_names := String->New[column_names->Size() + 1];
 			@column_names[0] := "pk";
 			each(i : column_names) {
 				@column_names[i + 1] := column_names[i];
-				@column_map->Insert(@column_names[i + 1], IntHolder->New(i + 1));
+				@column_map->Insert(@column_names[i + 1], i + 1);
 			};
 		}
 		
@@ -70,8 +70,8 @@ bundle Query.Structured {
 		Get all row
 		@return all row
 		~#
-		method : public : native : GetAll() ~ Vector {
-			matches := Vector->New();
+		method : public : native : GetAll() ~ Vector<Row> {
+			matches := Vector->New()<Row>;
 			
 			row := @head;
 			while(row <> Nil) {
@@ -88,7 +88,7 @@ bundle Query.Structured {
 		@return row
 		~#
 		method : public : native : GetRow(pk : Int) ~ Row {
-			return @keys->Find(pk)->As(Row);
+			return @keys->Find(pk);
 		}
 		
 		#~
@@ -104,8 +104,8 @@ bundle Query.Structured {
 		@param name column name
 		@return unique rows
 		~#
-		method : public : Unique(name : String) ~ Vector {
-			out := Vector->New();
+		method : public : Unique(name : String) ~ Vector<Row> {
+			out := Vector->New()<Row>;
 			
 			index := GetIndex(name);		
 			if(index < 0) {
@@ -118,7 +118,7 @@ bundle Query.Structured {
 				
 				found := false;
 				for(j := 0; found = false & j < out->Size(); j += 1;) {
-					out_row := out->Get(j)->As(Row);
+					out_row := out->Get(j);
 					right := out_row->Get(index);
 					if(left->Compare(right) = 0) {
 						found := true;
@@ -204,8 +204,8 @@ bundle Query.Structured {
 		@param cond conditional filter
 		@return filtered rows
 		~#
-		method : public : native : Filter(cond : Conditional) ~ Vector {
-			matches := Vector->New();
+		method : public : native : Filter(cond : Conditional) ~ Vector<Row> {
+			matches := Vector->New()<Row>;
 			row := @head;
 			while(row <> Nil) {
 				left := row->Get(cond->GetLeft());
@@ -336,7 +336,7 @@ bundle Query.Structured {
 		@return true of successful, false otherwise
 		~#
 		method : public : native : Delete(pk : Int) ~ Bool {
-			row := @keys->Find(pk)->As(Row);
+			row := @keys->Find(pk);
 			if(row <> Nil) {
 				if(row = @head) {
 					@head := row->Next();
