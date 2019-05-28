@@ -1345,4 +1345,224 @@ bundle Web.HTTP {
 			return content;
 		}
 	}
+
+	#~
+	Reader for RSS feeds
+	~#
+	class RSSReader {
+		@channel : RSSChannel;
+		@posts : Vector<RSSPost>;
+		@is_ok : Bool;
+
+		#~
+		Default constructor
+		@param url RSS URL 
+		~#
+		New(url : String) { 
+			xml := FetchXml(url);
+			if(xml->Size() > 0) {
+				parser := XmlParser->New(xml);
+				if(parser->Parse()) {
+					@channel := GetChannelData(parser);
+					@posts := GetPosts(parser)<RSSPost>;
+					@is_ok := true;
+				};
+			};
+		}
+
+		#~
+		Get RSS channel meta data
+		@return RSS meta data
+		~#
+		method : public : GetChannel() ~ RSSChannel {			
+			return @channel;
+		}
+
+		#~
+		Get RSS posts
+		@return RSS posts
+		~#
+		method : public : GetPosts() ~ Vector<RSSPost> {
+			if(@is_ok) {
+				return @posts;
+			};
+
+			return Nil;
+		}
+
+		#~
+		Checks to see if RSS XML was successfully retrieved and parsed
+		@return true if success, false otherwise
+		~#
+		method : public : IsOk() ~ Bool {
+			return @is_ok;
+		}
+
+		method : GetChannelData(parser : XmlParser) ~ RSSChannel {
+			title := GetMatch("/rss/channel/title", parser);
+			description := GetMatch("/rss/channel/description", parser);
+			link := GetMatch("/rss/channel/link", parser);
+
+			if(title <> Nil & description <> Nil & link <> Nil) {
+				return RSSChannel->New(title, description, link);
+			};
+
+			return Nil;
+		}
+
+		method : GetPosts(parser : XmlParser) ~ Vector<RSSPost> {
+			posts := Vector->New()<RSSPost>;
+
+			items := parser->FindElements("/rss/channel/item");
+			each(i : items) {
+				item := items->Get(i)->As(XmlElement);
+				title := GetContent(item->GetFirstChild("title"));
+				link := GetContent(item->GetFirstChild("link"));
+				description := GetContent(item->GetFirstChild("description"));
+				pubDate := GetContent(item->GetFirstChild("pubDate"));
+
+				if(title <> Nil & description <> Nil & link <> Nil & pubDate <> Nil) {
+					posts->AddBack(RSSPost->New(title, description, link, pubDate));
+				}
+				else if(title <> Nil & description <> Nil & link <> Nil) {
+					posts->AddBack(RSSPost->New(title, description, link));
+				};
+			};
+
+			return posts;
+		}
+
+		method : GetMatch(path : String, parser : XmlParser) ~ String {
+			matches := parser->FindElements(path);
+			if(matches->Size() > 0) {			
+				return GetContent(matches->Get(0)->As(XmlElement));
+			};
+			
+			return Nil;
+		}
+
+		method : GetContent(elem : XmlElement) ~ String {
+			if(elem = Nil) {
+				return Nil;
+			};
+
+			cdata := elem->GetFirstChild("[cdata]");
+			if(cdata <> Nil) {
+				return cdata->GetContent();
+			}
+			else {
+				return XmlElement->DecodeString(elem->GetContent());
+			};	
+		}
+
+		method : FetchXml(path : String) ~ String {
+			xml := "";
+
+			if(path->StartsWith("http:")) {
+				xml := HttpClient->New()->GetAll(path);
+			}
+			else if(path->StartsWith("https:")) {
+				xml := HttpsClient->New()->GetAll(path);
+			}
+			else {
+				xml := FileReader->ReadFile(path);
+			};
+
+			return xml;
+		}
+	}
+
+	#~
+	RSS channel meta data
+	~#
+	class RSSChannel {
+		@title : String;
+		@description : String;
+		@link : String;
+
+		New(title : String, description : String, link : String) {
+			@title := title;
+			@description := description;
+			@link := link;
+		}
+
+		#~
+		Gets the title
+		@return title
+		~#
+		method : public : GetTitle() ~ String {
+			return @title;
+		}
+
+		#~
+		Gets the description
+		@return description
+		~#
+		method : public : GetDescription() ~ String {
+			return @description;
+		}
+
+		#~
+		Gets the link
+		@return link
+		~#
+		method : public : GetLink() ~ String {
+			return @link;
+		}
+	}
+
+	#~
+	RSS post
+	~#
+	class RSSPost {
+		@title : String;
+		@description : String;
+		@link : String;
+		@date : String;
+
+		New(title : String, description : String, link : String, date : String) {
+			@title := title;
+			@description := description;
+			@link := link;
+			@date := date;
+		}
+
+		New(title : String, description : String, link : String) {
+			@title := title;
+			@description := description;
+			@link := link;
+		}
+
+		#~
+		Gets the title
+		@return title
+		~#
+		method : public : GetTitle() ~ String {
+			return @title;
+		}
+
+		#~
+		Gets the description
+		@return description
+		~#
+		method : public : GetDescription() ~ String {
+			return @description;
+		}
+
+		#~
+		Gets the link
+		@return link
+		~#
+		method : public : GetLink() ~ String {
+			return @link;
+		}
+
+		#~
+		Gets the date string
+		@return date string
+		~#
+		method : public : GetDate() ~ String {
+			return @date;
+		}
+	}
 }
