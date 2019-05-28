@@ -8,7 +8,8 @@ class Foo {
 	function : Main(args : String[]) ~ Nil {
 		f := Vector->New()<FloatHolder>;
 		f->AddBack("13.5"->ToFloat());
-		
+		f->Get(0)->Get()->PrintLine();
+
 #		s := "foo bar";
 #		s := IntHolder->New(13);
 #~			
