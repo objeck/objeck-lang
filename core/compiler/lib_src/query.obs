@@ -631,12 +631,10 @@ bundle Query.Structured {
 		@parser : Parser;
 		@terms : Term;
 		@table : Table;
-		@conds : Vector;
 		@error : String;
 		
 		New(line : String, table : Table) {
 			@table := table;
-			@conds := Vector->New();
 			@parser := Parser->New(line);
 		}
 		
@@ -657,7 +655,7 @@ bundle Query.Structured {
 				return results;
 			}
 			else if(expr->GetType() = Token->Type->FROM) {
-				results := ProcessFrom(expr);
+				results := ProcessFrom(expr)<Row>;
 				if(results = Nil) {
 					@error := "*** From error ***";
 					return Nil;
@@ -722,8 +720,8 @@ bundle Query.Structured {
 			return BuildTable("<rs>", column_names, results, Nil);
 		}
 		
-		method : Unique(col : String, in : Vector) ~ Vector {
-			out := Vector->New();
+		method : Unique(col : String, in : Vector<Row>) ~ Vector<Row> {
+			out := Vector->New()<Row>;
 			
 			index := @table->GetIndex(col);
 			if(index < 0) {
@@ -731,12 +729,12 @@ bundle Query.Structured {
 			};
 			
 			each(i : in) {
-				in_row := in->Get(i)->As(Row);
+				in_row := in->Get(i);
 				left := in_row->Get(index);
 				
 				found := false;
 				for(j := 0; found = false & j < out->Size(); j += 1;) {
-					out_row := out->Get(j)->As(Row);
+					out_row := out->Get(j);
 					right := out_row->Get(index);
 					if(left->Compare(right) = 0) {
 						found := true;
@@ -751,23 +749,23 @@ bundle Query.Structured {
 			return out;
 		}
 		
-		method : BuildTable(name : String, column_names : String[], from_results : Vector, order_by : String) ~ Table {
+		method : BuildTable(name : String, column_names : String[], from_results : Vector<Row>, order_by : String) ~ Table {
 			table := Table->New(name, column_names);
 
 			if(order_by <> Nil) {
 				order_index := @table->GetIndex(order_by);
 				if(order_index > -1) {
-					ordered_values := Map->New();
+					ordered_values := Map->New()<Compare, Row>;
 					each(i : from_results) {
-						row := from_results->Get(i)->As(Row);
+						row := from_results->Get(i);
 						ordered_values->Insert(row->Get(order_index), row);
 					};
-					from_results := ordered_values->GetValues();
+					from_results := ordered_values->GetValues()<Row>;
 				};
 			};
 			
 			each(i : from_results) {
-				row := from_results->Get(i)->As(Row);
+				row := from_results->Get(i);
 				result_row := table->Insert();
 				each(j : column_names) {
 					column_name := column_names[j];
@@ -778,7 +776,7 @@ bundle Query.Structured {
 			return table;
 		}
 		
-		method : ProcessFrom(expr : Term) ~ Vector {
+		method : ProcessFrom(expr : Term) ~ Vector<Row> {
 # "== From =="->PrintLine();
 			
 			name := expr->GetValue()->As(String);
@@ -796,7 +794,7 @@ bundle Query.Structured {
 			};
 		}
 		
-		method : ProcessTerm(expr : Term) ~ Vector {
+		method : ProcessTerm(expr : Term) ~ Vector<Row> {
 			left := expr->GetLeft();
 			right := expr->GetRight();
 			if(left = Nil | right = Nil) {
@@ -878,8 +876,8 @@ bundle Query.Structured {
 			return Nil;
 		}
 		
-		method : MergeAnd(left : Vector, right : Vector) ~ Vector {
-			merged := Vector->New();
+		method : MergeAnd(left : Vector<Row>, right : Vector<Row>) ~ Vector<Row> {
+			merged := Vector->New()<Row>;
 			
 			each(i : right) {
 				right_value := right->Get(i);
@@ -900,7 +898,7 @@ bundle Query.Structured {
 			return merged;
 		}
 		
-		method : MergeOr(left : Vector, right : Vector) ~ Vector {			
+		method : MergeOr(left : Vector<Row>, right : Vector<Row>) ~ Vector<Row> {			
 			each(i : right) {
 				right_value := right->Get(i);
 				
@@ -923,7 +921,7 @@ bundle Query.Structured {
 	
 	class Parser {
 		@line : String;
-		@tokens : Vector;
+		@tokens : Vector<Token>;
 		@tokens_index : Int;
 		@cur_token : Token;
 		
@@ -1199,8 +1197,8 @@ bundle Query.Structured {
 			return "";
 		}
 		
-		method : native : Scan() ~ Vector {		
-			reserved := StringMap->New();
+		method : native : Scan() ~ Vector<Token> {		
+			reserved := Map->New()<String, Token>;
 			reserved->Insert("select", Token->New(Token->Type->SELECT));
 			reserved->Insert("distinct", Token->New(Token->Type->DISTINCT));
 			reserved->Insert("from", Token->New(Token->Type->FROM));
@@ -1216,7 +1214,7 @@ bundle Query.Structured {
 			reserved->Insert("by", Token->New(Token->Type->BY));
 			
 			i := 0;
-			tokens := Vector->New();
+			tokens := Vector->New()<Token>;
 			while(i < @line->Size()) { 			 			  
 				# skip whitespace
 				while(i < @line->Size() & (@line->Get(i) = ' ' | @line->Get(i) = '\t')) {
@@ -1289,7 +1287,7 @@ bundle Query.Structured {
 							i += 1;
 						};
 
-						result := reserved->Find(string->ToLower())->As(Token);
+						result := reserved->Find(string->ToLower());
 						if(result <> Nil) {
 							tokens->AddBack(result);
 						}
@@ -1385,7 +1383,7 @@ bundle Query.Structured {
 		@oper : Conditional->Qualifier;
 		@left : Term;
 		@right : Term;
-		@terms : Vector;
+		@terms : Vector<Term>;
 		@value : Compare;
 		
 		New(type : Token->Type) {
@@ -1434,13 +1432,13 @@ bundle Query.Structured {
 		
 		method : public : AddTerm(term : Term) ~ Nil {
 			if(@terms = Nil) {
-				@terms := Vector->New();
+				@terms := Vector->New()<Term>;
 			};
 			
 			@terms->AddBack(term);
 		}
 		
-		method : public : GetTerms() ~ Vector {
+		method : public : GetTerms() ~ Vector<Term> {
 			return @terms;
 		}
 	}
@@ -1647,8 +1645,8 @@ bundle Query.Structured {
 		@param path root directory to start searching
 		@return matching file names
 		~#
-		method : public : FindFiles(path : String) ~ Vector {
-			matches := Vector->New();
+		method : public : FindFiles(path : String) ~ Vector<String> {
+			matches := Vector->New()<String>;
 
 			if(@regex->IsOk()) {
 				FindFiles(path, matches);
@@ -1657,7 +1655,7 @@ bundle Query.Structured {
 			return matches;
 		}
 
-		method : FindFiles(path : String, matches : Vector) ~ Nil {
+		method : FindFiles(path : String, matches : Vector<String>) ~ Nil {
 			files := Directory->List(path);
 			each(i : files) {
 				file := files[i];
@@ -1690,7 +1688,7 @@ bundle Web.HTTP {
 	~#
 	class RSSReader {
 		@channel : RSSChannel;
-		@posts : Vector;
+		@posts : Vector<RSSPost>;
 		@is_ok : Bool;
 
 		#~
@@ -1703,7 +1701,7 @@ bundle Web.HTTP {
 				parser := XmlParser->New(xml);
 				if(parser->Parse()) {
 					@channel := GetChannelData(parser);
-					@posts := GetPosts(parser);
+					@posts := GetPosts(parser)<RSSPost>;
 					@is_ok := true;
 				};
 			};
@@ -1721,7 +1719,7 @@ bundle Web.HTTP {
 		Get RSS posts
 		@return RSS posts
 		~#
-		method : public : GetPosts() ~ Vector {
+		method : public : GetPosts() ~ Vector<RSSPost> {
 			if(@is_ok) {
 				return @posts;
 			};
@@ -1749,8 +1747,8 @@ bundle Web.HTTP {
 			return Nil;
 		}
 
-		method : GetPosts(parser : XmlParser) ~ Vector {
-			posts := Vector->New();
+		method : GetPosts(parser : XmlParser) ~ Vector<RSSPost> {
+			posts := Vector->New()<RSSPost>;
 
 			items := parser->FindElements("/rss/channel/item");
 			each(i : items) {
