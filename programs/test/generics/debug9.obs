@@ -6,10 +6,12 @@ class Bar {
 
 class Foo {
 	function : Main(args : String[]) ~ Nil {
-
+		f := Vector->New()<FloatHolder>;
+		f->AddBack("13.5"->ToFloat());
+		
 #		s := "foo bar";
 #		s := IntHolder->New(13);
-			
+#~			
 		f := Map->New()<String, IntHolder>;
 
 		f->Insert("foo", 13);
@@ -59,5 +61,6 @@ class Foo {
 		v := Vector->New()<String>;
 		vv := Vector->New(v)<String>;
 		v->AddBack("foe");
+~#		
 	}
 }
