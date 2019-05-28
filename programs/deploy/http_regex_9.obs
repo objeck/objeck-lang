@@ -1,5 +1,5 @@
 #~
-# compile: obc -src http_regex_9.obs -lib regex.obl,collect.obl -dest http_regex.obe
+# compile: obc -src http_regex_9.obs -lib regex.obl,gen_collect.obl -dest http_regex.obe
 # run: obr http_regex.obe http://www.objeck.org
 # note: takes a few seconds to run
 ~#
@@ -14,7 +14,7 @@ class RegExUrls {
 		lines := HttpsClient->New()->Get(args[0]);
 		input := "";
 		each(i : lines) {
-			input->Append(lines->Get(i)->As(String));
+			input->Append(lines->Get(i));
 		};
 		input->PrintLine();
 		
@@ -24,7 +24,7 @@ class RegExUrls {
 		found := RegEx->New(expr)->Find(input);
 		"---"->PrintLine();
 		each(i : found) {
-			found->Get(i)->As(String)->PrintLine();
+			found->Get(i)->PrintLine();
 		};
 	}
 }
