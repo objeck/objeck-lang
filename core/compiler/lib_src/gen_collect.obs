@@ -1789,4 +1789,76 @@ bundle Collection.Generic {
 			@right := right;
 		}
 	}
+
+
+	#~
+	Set of objects
+	~#
+	class Set<K : Compare> {
+		@map : Map<K, Base>;
+
+		#~
+		Default constructor 
+		~#
+		New() {
+			@map := Map->New()<K, Base>;
+		}
+
+		#~
+		Inserts a key into the set
+		@param key key
+		~#
+		method : public : Insert(key : Compare) ~ Nil {
+			@map->Insert(key, Base->New());
+		}
+		
+		#~
+		Removes a key from the set
+		@param key key for value to remove
+		@return true if removed, false otherwise		
+		~#
+		method : public : Remove(key : Compare) ~ Bool {
+			return @map->Remove(key);
+		}
+    
+    	#~
+		Checks for key in set
+		@param key search key
+		@return true if found, false otherwise
+		~#
+		method : public : Has(key : Compare) ~ Bool {
+			return @map->Find(key) <> Nil;
+		}
+    
+		#~
+		Get a collection of keys
+		@return vector of keys
+		~#
+		method : public : GetKeys() ~ Vector<K> {
+			return @map->GetKeys();
+		}
+
+		#~
+		Clears the set
+		~#
+		method : public : Empty() ~ Nil {
+			@map->Empty();
+		}
+
+		#~
+		Checks to see if the map is empty
+		@return true if empty, false otherwise
+		~#
+		method : public : IsEmpty() ~ Bool {
+			return @map->IsEmpty();
+		}
+		
+		#~
+		Size of map
+		@return size of queue
+		~#
+		method : public : Size() ~ Int {
+			return @map->Size();
+		}
+	}
 }
