@@ -4,7 +4,7 @@ Coverts source code into Objeck executables (.obe) or Objeck libraries (.obl). T
 ![alt text](../../images/compiling2.png "Objeck Compiler")
 
 ### Design
-Both the *scanner* and the *parser* were handwritten. As such, the *parser* was implemented using recursive-decent algorithm. Some of the more complex code is in the *contextual analyzer* which implements a few tricks in order to have primitives ask as objects. This code also links in references to external libraries. The code emitter separates the frontend for the backend of the compiler turning the forest of trees into blocks of referenceable code. 
+Both the *scanner* and the *parser* were handwritten. As such, the *parser* was implemented using recursive-decent algorithm. Some of the more complex code is in the *contextual analyzer* which implements a few tricks in order to have primitives act as objects. This code also links in references to external libraries. As of v5, the code was re factored to support generic using type erasure. The code emitter separates the frontend for the backend of the compiler turning the forest of trees into blocks of referenceable code. 
 
 The lists of code blocks are passed to the *optimizer* which performs to following optimizations in list order:
 
