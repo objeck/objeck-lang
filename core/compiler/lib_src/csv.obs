@@ -1,8 +1,8 @@
 #~~
 # CSV library
-# Copyright (c) 2016-2017 Randy Hollines
+# Copyright (c) 2016-2019 Randy Hollines
 ~~#
-use Collection;
+use Collection.Generic;
 
 #~
 Provides a mechanism to search and perform calculations on CSV files.
@@ -14,7 +14,7 @@ bundle Data.CSV {
 	class CsvRow {
 		@table : CsvTable;
 		@id : Int;
-		@columns : CompareVector;
+		@columns : CompareVector<String>;
 		@read_only : Bool;
 		
 		#~
@@ -24,7 +24,7 @@ bundle Data.CSV {
 		@param read_only true if readonly, false otherwise
 		@param columns column values
 		~#
-		New(table : CsvTable, id : Int, read_only : Bool, columns : CompareVector) {
+		New(table : CsvTable, id : Int, read_only : Bool, columns : CompareVector<String>) {
 			@table := table;
 			@id := id;
 			@read_only := read_only;
@@ -46,7 +46,7 @@ bundle Data.CSV {
 		~#
 		method : public : Get(index : Int) ~ String {
 			if(index < @columns->Size()) {
-				return @columns->Get(index)->As(String);
+				return @columns->Get(index);
 			};
 			
 			return Nil;
@@ -60,7 +60,7 @@ bundle Data.CSV {
 		method : public : Get(name : String) ~ String {
 			index := @table->GetRowId(name);
 			if(index < @columns->Size()) {
-				return @columns->Get(index)->As(String);
+				return @columns->Get(index);
 			};
 			
 			return Nil;
@@ -104,7 +104,7 @@ bundle Data.CSV {
 			sum := 0.0;
 			
 			each(i : @columns) {
-				sum += @columns->Get(i)->As(String)->ToFloat();
+				sum += @columns->Get(i)->ToFloat();
 			};
 			
 			return sum;
@@ -124,13 +124,13 @@ bundle Data.CSV {
 		~#
 		method : public : Median() ~ Float {
 			if(@columns->Size() = 1) {
-				@columns->Get(0)->As(String)->ToFloat();
+				@columns->Get(0)->ToFloat();
 			};
 			
 			# store values and sort 
-			sorted := FloatVector->New();
+			sorted := Vector->New()<FloatHolder>;
 			each(i : @columns) {
-				sorted->AddBack(@columns->Get(i)->As(String)->ToFloat());
+				sorted->AddBack(@columns->Get(i)->ToFloat());
 			};
 			sorted->Sort();
 			
@@ -154,7 +154,7 @@ bundle Data.CSV {
 			buffer := "";
 			
 			each(i : @columns) {
-				buffer->Append(@columns->Get(i)->As(String)->ReplaceAll("ˑ", "\"\""));
+				buffer->Append(@columns->Get(i)->ReplaceAll("ˑ", "\"\""));
 				if(i + 1 < @columns->Size()) {
 					buffer->Append(",");
 				};
@@ -192,7 +192,7 @@ bundle Data.CSV {
 		@return row value
 		~#
 		method : public : Get(index : Int) ~ String {
-			return @rows->Get(index)->As(String);
+			return @rows->Get(index);
 		}
 		
 		#~
@@ -203,7 +203,7 @@ bundle Data.CSV {
 			sum := 0.0;
 			
 			each(i : @rows) {
-				sum += @rows->Get(i)->As(String)->ToFloat();
+				sum += @rows->Get(i)->ToFloat();
 			};
 			
 			return sum;
@@ -223,13 +223,13 @@ bundle Data.CSV {
 		~#
 		method : public : Median() ~ Float {
 			if(@rows->Size() = 1) {
-				@rows->Get(0)->As(String)->ToFloat();
+				@rows->Get(0)->ToFloat();
 			};
 			
 			# store values and sort 
 			sorted := FloatVector->New();
 			each(i : @rows) {
-				sorted->AddBack(@rows->Get(i)->As(String)->ToFloat());
+				sorted->AddBack(@rows->Get(i)->ToFloat());
 			};
 			sorted->Sort();
 			
@@ -290,7 +290,7 @@ bundle Data.CSV {
 				@header_names := StringHash->New();
 				headers := @data->Get(0)->As(CsvRow);
 				each(i : headers) {
-					@header_names->Insert(headers->Get(i)->As(String), IntHolder->New(i));
+					@header_names->Insert(headers->Get(i), IntHolder->New(i));
 				};
 			};
 		}
