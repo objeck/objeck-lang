@@ -98,4 +98,3 @@ class RosettaRank {
 		return langs_counts;
 	}
 }
-
