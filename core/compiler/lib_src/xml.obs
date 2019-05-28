@@ -630,7 +630,7 @@ bundle Data.XML {
 # IO.Console->Print("cdata: ")->PrintLine(data);					
 						
 					return XmlElement->New(XmlElement->Type->CDATA, Nil->As(String), 
-						Nil->As(Hash<String, XmlElement>), data);
+						Nil->As(Hash<String, XmlAttribute>), data);
 				}
 				else {
 					@error_msg := "Unsupported tag...";

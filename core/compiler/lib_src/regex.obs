@@ -1,10 +1,10 @@
 #~~
 # Regular expression engine
 #
-# Copyright (c) 2014-2015 Randy Hollines
+# Copyright (c) 2014-2019 Randy Hollines
 ~~#
 
-use Collection;
+use Collection.Generic;
 
 #~
 Regular expression engine
@@ -37,7 +37,7 @@ bundle Query.RegEx {
 		@tokens : Char[];
 		@token_pos : Int;
 		@token : Char;		
-		@expressions : Vector;
+		@expressions : Vector<Expression>;
 		@error : String;
 		@starts_anchor : Bool;
 		
@@ -47,8 +47,8 @@ bundle Query.RegEx {
 		@input_char : Char;
 		@is_exact : Bool;
 		@is_backtracking : Bool;
-		@backtrack_cache : IntMap;
-		@backtrack_positions : IntVector;
+		@backtrack_cache : Map<IntHolder, Expression>;
+		@backtrack_positions : Vector<IntHolder>;
         
 		#~
 		Default constructor
@@ -56,9 +56,9 @@ bundle Query.RegEx {
 		~#
 		New(input : String) {
 			@tokens := input->ToCharArray();
-			@expressions := Vector->New();
-			@backtrack_positions := IntVector->New();
-			@backtrack_cache := IntMap->New();
+			@expressions := Vector->New()<Expression>;
+			@backtrack_positions := Vector->New()<IntHolder>;
+			@backtrack_cache := Map->New()<IntHolder, Expression>;
 
 			Parse();
 		}
@@ -110,7 +110,6 @@ bundle Query.RegEx {
 		@return matched string if found, empty string otherwise
 		~#
 		method : public : native : FindFirst(input : String) ~ String {
-			matches := Vector->New();
 			left := 0;
 			while(left < input->Size()) {
 				right := Evaluate(input, left);
@@ -128,8 +127,8 @@ bundle Query.RegEx {
 		@param input string to match against
 		@return vector of string matches
 		~#
-		method : public : native : Find(input : String) ~ Vector {
-			matches := Vector->New();
+		method : public : native : Find(input : String) ~ Vector<String> {
+			matches := Vector->New()<String>;
 			left := 0;
 			while(left < input->Size()) {
 				right := Evaluate(input, left);
@@ -246,9 +245,9 @@ bundle Query.RegEx {
 			};
 		}	
 		
-		method : private : Evaluate(expressions : Vector, offset : Int) ~ Bool {
+		method : private : Evaluate(expressions : Vector<Expression>, offset : Int) ~ Bool {
 			for(i := offset; i < expressions->Size(); i += 1;) {
-				if(Evaluate(expressions->Get(i)->As(Expression)) = false) {
+				if(Evaluate(expressions->Get(i)) = false) {
 					if(@is_backtracking) {
 						@is_backtracking := false;
 # IO.Console->Print("backtracking: token count=")->PrintLine(@backtrack_positions->Size());
@@ -530,7 +529,7 @@ bundle Query.RegEx {
 		method : private : Binary() ~ Nil {
 			# consume starts with
 			if(@starts_anchor & @expressions->Size() > 0) {
-				expression := @expressions->RemoveBack()->As(Expression);
+				expression := @expressions->RemoveBack();
 				@expressions->AddBack(Expression->New(Expression->Type->STARTS_ANCHOR, expression));
 				@starts_anchor := false;
 # IO.Console->Print("match: starts anchor; with=")->PrintLine(expression->GetType()->As(Int));	
@@ -547,7 +546,7 @@ bundle Query.RegEx {
 				NextToken();				
 				
 				left := @expressions;
-				@expressions := Vector->New();
+				@expressions := Vector->New()<Expression>;
 				
 				Binary();
 				if(@error <> Nil) {
@@ -555,7 +554,7 @@ bundle Query.RegEx {
 				};
 				
 				right := @expressions;
-				@expressions := Vector->New();
+				@expressions := Vector->New()<Expression>;
 				
 				@expressions->AddBack(Expression->New(left, right));
 # IO.Console->PrintLine("match: or_match");					
@@ -565,7 +564,7 @@ bundle Query.RegEx {
 		method : private : Unary() ~ Nil {
 			# consume starts with
 			if(@starts_anchor & @expressions->Size() > 0) {
-				expression := @expressions->RemoveBack()->As(Expression);
+				expression := @expressions->RemoveBack();
 				@expressions->AddBack(Expression->New(Expression->Type->STARTS_ANCHOR, expression));
 				@starts_anchor := false;
 # IO.Console->Print("match: starts anchor; with=")->PrintLine(expression->GetType()->As(Int));	
@@ -578,7 +577,7 @@ bundle Query.RegEx {
 
 			if(@token = '*') {
 				if(@expressions->Size() > 0) {
-					expression := @expressions->RemoveBack()->As(Expression);
+					expression := @expressions->RemoveBack();
 					@expressions->AddBack(Expression->New(Expression->Type->ZERO_MORE, expression));
 					NextToken();
 # IO.Console->PrintLine("match: zero_or_more");					
@@ -590,7 +589,7 @@ bundle Query.RegEx {
 			}
 			else if(@token = '+') {
 				if(@expressions->Size() > 0) {
-					expression := @expressions->RemoveBack()->As(Expression);
+					expression := @expressions->RemoveBack();
 					@expressions->AddBack(Expression->New(Expression->Type->ONE_MORE, expression));
 					NextToken();
 # IO.Console->PrintLine("match: one_or_more");					
@@ -602,7 +601,7 @@ bundle Query.RegEx {
 			}
 			else if(@token = '?') {
 				if(@expressions->Size() > 0) {
-					expression := @expressions->RemoveBack()->As(Expression);
+					expression := @expressions->RemoveBack();
 					@expressions->AddBack(Expression->New(Expression->Type->OPTIONAL, expression));
 					NextToken();
 # IO.Console->PrintLine("match: optional");					
@@ -614,7 +613,7 @@ bundle Query.RegEx {
 			}
 			else if(@token = '$') {
 				if(@expressions->Size() > 0) {
-					expression := @expressions->RemoveBack()->As(Expression);
+					expression := @expressions->RemoveBack();
 					@expressions->AddBack(Expression->New(Expression->Type->ENDS_ANCHOR, expression));
 					NextToken();
 # "match: ends anchor"->PrintLine();
@@ -654,7 +653,7 @@ bundle Query.RegEx {
 					
 # IO.Console->Print("index: start='")->Print(least)->Print("', most='")->Print(most)->PrintLine("'");										
 					
-					expression := @expressions->RemoveBack()->As(Expression);
+					expression := @expressions->RemoveBack();
 					@expressions->AddBack(Expression->New(least, most, expression));
 				}
 				else {
@@ -687,7 +686,7 @@ bundle Query.RegEx {
 		method : private : Value() ~ Nil {
 			# consume starts with
 			if(@starts_anchor & @expressions->Size() > 0) {
-				expression := @expressions->RemoveBack()->As(Expression);
+				expression := @expressions->RemoveBack();
 				@expressions->AddBack(Expression->New(Expression->Type->STARTS_ANCHOR, expression));
 				@starts_anchor := false;
 # IO.Console->Print("match: starts anchor; with=")->PrintLine(expression->GetType()->As(Int));	
@@ -841,7 +840,7 @@ bundle Query.RegEx {
 			NextToken();
 			
 			left := @expressions;
-			@expressions := Vector->New();
+			@expressions := Vector->New()<Expression>;
 				
 			Binary();
 			if(@error <> Nil) {
@@ -886,8 +885,8 @@ bundle Query.RegEx {
 		@value : Char;
 		@char_class : String;
 		@expression : Expression;
-		@left : Vector;
-		@right : Vector;
+		@left : Vector<Expression>;
+		@right : Vector<Expression>;
 		@least : Int;
 		@most : Int;
 		
@@ -917,7 +916,7 @@ bundle Query.RegEx {
 			@char_class := char_class;
 		}
 		
-		New(left : Vector) {
+		New(left : Vector<Expression>) {
 			@type := Expression->Type->SUB_EXPR;
 			@left := left;
 		}
@@ -931,7 +930,7 @@ bundle Query.RegEx {
 			@expression := expression;
 		}
 
-		New(left : Vector, right : Vector) {
+		New(left : Vector<Expression>, right : Vector<Expression>) {
 			@type := Expression->Type->OR;
 			@left := left;
 			@right := right;
@@ -949,11 +948,11 @@ bundle Query.RegEx {
 			return @char_class;
 		}
 		
-		method : public : GetLeft() ~ Vector {
+		method : public : GetLeft() ~ Vector<Expression> {
 			return @left;
 		}
 		
-		method : public : GetRight() ~ Vector {
+		method : public : GetRight() ~ Vector<Expression> {
 			return @right;
 		}
 			

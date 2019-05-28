@@ -7,7 +7,6 @@
 # Copyright (c) 2012 Greg Canty  
 ~~#	
 
-use Collection;
 use System.API;
 
 #~
