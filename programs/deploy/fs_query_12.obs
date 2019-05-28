@@ -1,5 +1,5 @@
 #~
-# compile: obc -src fs_query_12.obs -lib query.obl,collect.obl,regex.obl -dest ..\query_fs.obe
+# compile: obc -src fs_query_12.obs -lib query.obl,gen_collect.obl,regex.obl -dest ..\query_fs.obe
 # run: obr query_fs.obe
 ~#
 
