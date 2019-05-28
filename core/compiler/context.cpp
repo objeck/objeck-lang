@@ -1662,7 +1662,7 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth
       if(method_call->IsFunctionDefinition()) {
         AnalyzeFunctionReference(klass, method_call, encoding, depth);
       }
-      else {
+      else if(!method_call->GetMethod() && !method_call->GetMethod() && !method_call->GetLibraryMethod()) {
         AnalyzeMethodCall(klass, method_call, false, encoding, depth);
       }
       return;
@@ -1673,7 +1673,7 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth
       if(method_call->IsFunctionDefinition()) {
         AnalyzeFunctionReference(lib_klass, method_call, encoding, depth);
       }
-      else {
+      else if(!method_call->GetMethod() && !method_call->GetMethod() && !method_call->GetLibraryMethod()) {
         AnalyzeMethodCall(lib_klass, method_call, false, encoding, false, depth);
       }
       return;
@@ -4966,11 +4966,7 @@ Expression* ContextAnalyzer::UnboxingExpression(Type* to_type, Expression* from_
     return nullptr;
   }
   
-  Type* from_type = from_expr->GetEvalType();
-  if(!from_type) {
-    from_type = from_expr->GetBaseType();
-  }
-
+  Type* from_type = GetExpressionType(from_expr, depth);
   if(!from_type) {
     return nullptr;
   }
@@ -5010,11 +5006,7 @@ Expression* ContextAnalyzer::BoxExpression(Type* to_type, Expression* from_expr,
 
   ResolveClassEnumType(to_type);
 
-  Type* from_type = from_expr->GetEvalType();
-  if(!from_type) {
-    from_type = from_expr->GetBaseType();
-  }
-
+  Type* from_type = GetExpressionType(from_expr, depth);
   if(!from_type) {
     return nullptr;
   }
