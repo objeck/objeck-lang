@@ -362,6 +362,71 @@ class HtmlMaker {
 		out->WriteString(html);
 		out->Close();
 	}
+
+	method : GetGenericLink(start : Int, type_name : String) ~ String {
+		cls_name := type_name->SubString(start);			
+		start += 4;
+		end := type_name->FindLast('&');
+		generic_name := type_name->SubString(start, end - start);
+
+		# process class
+		file_name := "";
+		class_block := GetClassBlock(cls_name);
+		if(class_block <> Nil) {
+			file_name += "<a href='";
+			file_name += class_block->GetBundleName()->ToLower();
+			file_name += '-';
+			file_name += class_block->GetFileName()->ToLower();
+			file_name += ".html' target='main'>";
+			file_name += cls_name;
+			file_name += "</a>&lt;";				
+		}
+		else {
+			file_name += cls_name;
+			file_name += "&lt;";
+		};
+
+		# procsss generics
+		generic_names := generic_name->Split(",");
+		if(generic_names->Size() > 0) {
+			each(i : generic_names) {
+				name := generic_names[i];
+				class_block := GetClassBlock(name);
+				if(class_block <> Nil) {
+					file_name += "<a href='";
+					file_name += class_block->GetBundleName()->ToLower();
+					file_name += '-';
+					file_name += class_block->GetFileName()->ToLower();
+					file_name += ".html' target='main'>";
+					file_name += name;
+					file_name += "</a>";				
+				}
+				else {
+					file_name += name;
+				};
+				file_name += ',';
+			};
+			file_name->Pop();
+		}
+		else {
+			class_block := GetClassBlock(generic_name);
+			if(class_block <> Nil) {
+				file_name += "<a href='";
+				file_name += class_block->GetBundleName()->ToLower();
+				file_name += '-';
+				file_name += class_block->GetFileName()->ToLower();
+				file_name += ".html' target='main'>";
+				file_name += generic_name;
+				file_name += "</a>";				
+			}
+			else {
+				file_name += generic_name;
+			};
+		};
+
+		file_name += "&gt;";
+		return file_name;
+	}
 	
 	#~
 	DOC ME
@@ -374,10 +439,7 @@ class HtmlMaker {
 		if(index > -1) {
 			bundle_name := type_name->SubString(index);
 			index += 1;
-			class_name := type_name->SubString(index, type_name->Size() - index);
-			type_name := class_name;
-			full_name := class_name;
-			class_block := GetBundleClass(bundle_name, class_name);
+			type_name := type_name->SubString(index, type_name->Size() - index);
 		};
 		
 		index := full_name->Find('[');
@@ -387,53 +449,22 @@ class HtmlMaker {
 
 		start := type_name->Find('&');
 		if(start > - 1) {
-			cls_name := type_name->SubString(start);			
-			start += 4;
-			end := type_name->FindLast('&');
-			generic_name := type_name->SubString(start, end - start);
-
-			# process class
-			file_name := "";
-			class_block := GetClassBlock(cls_name);
-			if(class_block <> Nil) {
-				file_name += "<a href='";
-				file_name += class_block->GetBundleName()->ToLower();
-				file_name += '-';
-				file_name += class_block->GetFileName()->ToLower();
-				file_name += ".html' target='main'>";
-				file_name += cls_name;
-				file_name += "</a>&lt;";				
-			}
-			else {
-				file_name += cls_name;
-				file_name += "&lt;";
-			};
-
-			# procsss generics
-			class_block := GetClassBlock(generic_name);
-			if(class_block <> Nil) {
-				file_name += "<a href='";
-				file_name += class_block->GetBundleName()->ToLower();
-				file_name += '-';
-				file_name += class_block->GetFileName()->ToLower();
-				file_name += ".html' target='main'>";
-				file_name += generic_name;
-				file_name += "</a>&gt;";				
-			}
-			else {
-				file_name += generic_name;
-				file_name += "&gt;";
-			};
-
-			return file_name;
+			return GetGenericLink(start, type_name);
 		}
 		else {
-			type_name := Snippet->GetShortName(type_name);
-
 			class_block := GetClassBlock(type_name);
-			
-			# enum check
-			if(class_block = Nil) {
+			if(class_block <> Nil) {
+				file_name := "<a href='";
+				file_name += class_block->GetBundleName()->ToLower();
+				file_name += '-';
+				file_name += class_block->GetFileName()->ToLower();
+				file_name += ".html' target='main'>";
+				file_name += full_name;
+				file_name += "</a>";	
+				
+				return file_name;
+			}
+			else {
 				enum_block := GetBundleEnum(@bundle_block->GetName(), type_name);
 				if(enum_block <> Nil) {
 					file_name := "<a href='";
@@ -447,22 +478,9 @@ class HtmlMaker {
 					return file_name;
 				};
 			};
-			
-			if(class_block <> Nil) {
-				file_name := "<a href='";
-				file_name += class_block->GetBundleName()->ToLower();
-				file_name += '-';
-				file_name += class_block->GetFileName()->ToLower();
-				file_name += ".html' target='main'>";
-				file_name += full_name;
-				file_name += "</a>";	
-				
-				return file_name;
-			}
-			else {
-				return type_name;
-			};
 		};
+
+		return type_name;
 	}
 
 	method : GetClassBlock(type_name : String) ~ ClassSnippet {
@@ -471,7 +489,10 @@ class HtmlMaker {
 		if(class_block = Nil) {		
 			class_block := GetBundleClass("System", type_name);
 			if(class_block = Nil) {	
-				class_block := GetBundleClass("Collection.Generic", type_name);
+				class_block := GetBundleClass("System.Date", type_name);
+				if(class_block = Nil) {	
+					class_block := GetBundleClass("Collection.Generic", type_name);
+				};
 			};
 		};
 
