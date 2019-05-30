@@ -1284,11 +1284,13 @@ class FuncSnippet from Snippet {
 	method : ParseFuncType(type_name : String) ~ Bool {
 		ident := ParseName();
 		while(ident->Size() > 0) {
-			type_name->Append(ident);
-			if(MatchChar(',')) {
-				type_name->Append(',');
-			};
+			type_name->Append(ident);				
+			type_name->Append(',');
 			ident := ParseName();
+		};
+
+		if(type_name->EndsWith(',')) {
+			type_name->Pop();
 		};
 
 		if(<>MatchChar(')')) {
