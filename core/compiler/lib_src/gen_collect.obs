@@ -1164,6 +1164,24 @@ bundle Collection.Generic {
 		}
 
 		#~
+		Applies the given function to each value in the vector 
+		@param f function to apply
+		@return newly calculated vector
+		~#
+		method : public : Apply(f : (H) ~ H) ~ CompareVector<H> {
+			array : H[] := H->New[@size];
+			for(i : Int := 0; i < @size; i += 1;) {
+				array[i] := @values[i];
+			};
+			
+			for(i : Int := 0; i < @size; i += 1;) {
+			  array[i] := f(array[i]);
+			};
+      
+			return CompareVector->New(array)<H>;
+		}
+
+		#~
 		Swap two values in the vector
 		@param a first value
 		@param b second value
