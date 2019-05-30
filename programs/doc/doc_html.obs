@@ -379,53 +379,80 @@ class HtmlMaker {
 			file_name += class_block->GetFileName()->ToLower();
 			file_name += ".html' target='main'>";
 			file_name += cls_name;
-			file_name += "</a>&lt;";				
+			file_name += "</a>";				
 		}
 		else {
 			file_name += cls_name;
-			file_name += "&lt;";
 		};
 
+		file_name += "&lt;";		
+		GetLinkParams(generic_name, file_name);
+		file_name += "&gt;";
+
+		return file_name;
+	}
+
+	
+	method : GetFunctionLink(type_name : String) ~ String {
+		file_name := "(";
+		
+		end := type_name->Find(')');
+		cls_names := type_name->SubString(1, end - 1);
+
+		GetLinkParams(cls_names, file_name);
+
+		end += 2;
+		file_name += ")~";
+		
+		rtrn_name := type_name->SubString(end, type_name->Size() - end);
+		GetLink(rtrn_name, file_name);
+
+		return file_name;
+	}
+	
+	method : GetLinkParams(params_name : String, file_name : String) ~ Nil {
 		# procsss generics
-		generic_names := generic_name->Split(",");
+		generic_names := params_name->Split(",");
 		if(generic_names->Size() > 0) {
 			each(i : generic_names) {
 				name := generic_names[i];
-				class_block := GetClassBlock(name);
-				if(class_block <> Nil) {
-					file_name += "<a href='";
-					file_name += class_block->GetBundleName()->ToLower();
-					file_name += '-';
-					file_name += class_block->GetFileName()->ToLower();
-					file_name += ".html' target='main'>";
-					file_name += name;
-					file_name += "</a>";				
-				}
-				else {
-					file_name += name;
-				};
+				GetLink(name, file_name);
 				file_name += ',';
 			};
 			file_name->Pop();
 		}
 		else {
-			class_block := GetClassBlock(generic_name);
+			class_block := GetClassBlock(params_name);
 			if(class_block <> Nil) {
 				file_name += "<a href='";
 				file_name += class_block->GetBundleName()->ToLower();
 				file_name += '-';
 				file_name += class_block->GetFileName()->ToLower();
 				file_name += ".html' target='main'>";
-				file_name += generic_name;
+				file_name += params_name;
 				file_name += "</a>";				
 			}
 			else {
-				file_name += generic_name;
+				file_name += params_name;
 			};
 		};
+	}
 
-		file_name += "&gt;";
-		return file_name;
+
+	method : GetLink(name : String, file_name : String) ~ Nil {
+		class_block := GetClassBlock(name);
+		if(class_block <> Nil) {
+			file_name += "<a href='";
+			file_name += class_block->GetBundleName()->ToLower();
+			file_name += '-';
+			file_name += class_block->GetFileName()->ToLower();
+			file_name += ".html' target='main'>";
+			file_name += name;
+			file_name += "</a>";				
+		}
+		else {
+			file_name += name;
+		};
 	}
 	
 	#~
@@ -433,8 +460,7 @@ class HtmlMaker {
 	~#
 	method : GetTypeLink(type_name : String) ~ String {
 		class_block : ClassSnippet;
-		
-		full_name := type_name;
+				
 		index := type_name->FindLast('.');
 		if(index > -1) {
 			bundle_name := type_name->SubString(index);
@@ -442,41 +468,44 @@ class HtmlMaker {
 			type_name := type_name->SubString(index, type_name->Size() - index);
 		};
 		
-		index := full_name->Find('[');
+		index := type_name->Find('[');
 		if(index > -1) {
-			type_name := full_name->SubString(index);
+			type_name := type_name->SubString(index);
 		};
 
 		start := type_name->Find('&');
 		if(start > - 1) {
 			return GetGenericLink(start, type_name);
+		};
+
+		if(type_name->Has('(')) {
+			return GetFunctionLink(type_name);
+		};
+
+		class_block := GetClassBlock(type_name);
+		if(class_block <> Nil) {
+			file_name := "<a href='";
+			file_name += class_block->GetBundleName()->ToLower();
+			file_name += '-';
+			file_name += class_block->GetFileName()->ToLower();
+			file_name += ".html' target='main'>";
+			file_name += type_name;
+			file_name += "</a>";	
+			
+			return file_name;
 		}
 		else {
-			class_block := GetClassBlock(type_name);
-			if(class_block <> Nil) {
+			enum_block := GetBundleEnum(@bundle_block->GetName(), type_name);
+			if(enum_block <> Nil) {
 				file_name := "<a href='";
-				file_name += class_block->GetBundleName()->ToLower();
+				file_name += enum_block->GetBundleName()->ToLower();
 				file_name += '-';
-				file_name += class_block->GetFileName()->ToLower();
+				file_name += enum_block->GetName()->ToLower();
 				file_name += ".html' target='main'>";
-				file_name += full_name;
+				file_name += type_name;
 				file_name += "</a>";	
-				
+			
 				return file_name;
-			}
-			else {
-				enum_block := GetBundleEnum(@bundle_block->GetName(), type_name);
-				if(enum_block <> Nil) {
-					file_name := "<a href='";
-					file_name += enum_block->GetBundleName()->ToLower();
-					file_name += '-';
-					file_name += enum_block->GetName()->ToLower();
-					file_name += ".html' target='main'>";
-					file_name += full_name;
-					file_name += "</a>";	
-				
-					return file_name;
-				};
 			};
 		};
 
