@@ -468,9 +468,11 @@ class HtmlMaker {
 			type_name := type_name->SubString(index, type_name->Size() - index);
 		};
 		
+		array : Bool; # add to all returns
 		index := type_name->Find('[');
 		if(index > -1) {
 			type_name := type_name->SubString(index);
+			array := true;
 		};
 
 		start := type_name->Find('&');
