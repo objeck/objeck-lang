@@ -467,21 +467,42 @@ class HtmlMaker {
 			index += 1;
 			type_name := type_name->SubString(index, type_name->Size() - index);
 		};
-		
-		array : Bool; # add to all returns
+
+		array : Bool; # count all returns
+		array_count : Int;
 		index := type_name->Find('[');
 		if(index > -1) {
+			array_count := 1;
+			array_count := type_name->Count(',');
 			type_name := type_name->SubString(index);
 			array := true;
 		};
 
 		start := type_name->Find('&');
 		if(start > - 1) {
-			return GetGenericLink(start, type_name);
+			value := GetGenericLink(start, type_name);
+			if(array_count > 0) {
+				value += '[';
+				for(i := 1; i < array_count; i +=1;) {
+					value += ',';
+				};
+				value += ']';
+			};
+
+			return value;
 		};
 
 		if(type_name->Has('(')) {
-			return GetFunctionLink(type_name);
+			value := GetFunctionLink(type_name);
+			if(array_count > 0) {
+				value += '[';
+				for(i := 1; i < array_count; i +=1;) {
+					value += ',';
+				};
+				value += ']';
+			};
+
+			return value;
 		};
 
 		class_block := GetClassBlock(type_name);
@@ -494,6 +515,14 @@ class HtmlMaker {
 			file_name += type_name;
 			file_name += "</a>";	
 			
+			if(array_count > 0) {
+				file_name += '[';
+				for(i := 1; i < array_count; i +=1;) {
+					file_name += ',';
+				};
+				file_name += ']';
+			};
+
 			return file_name;
 		}
 		else {
@@ -506,7 +535,15 @@ class HtmlMaker {
 				file_name += ".html' target='main'>";
 				file_name += type_name;
 				file_name += "</a>";	
-			
+				
+				if(array_count > 0) {
+					file_name += '[';
+					for(i := 1; i < array_count; i +=1;) {
+						file_name += ',';
+					};
+					file_name += ']';
+				};
+
 				return file_name;
 			};
 		};
