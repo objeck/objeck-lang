@@ -283,9 +283,14 @@ void ContextAnalyzer::AnalyzeDuplicateEntries(vector<Class*> &classes, const int
         // duplicate parent
         if(DuplicateParentEntries(entry, klass)) {
           size_t offset = entry->GetName().find(L':');
-          ++offset;
-          const wstring short_name = entry->GetName().substr(offset, entry->GetName().size() - offset);
-          ProcessError(declaration, L"Declaration name '" + short_name + L"' defined in a parent class");
+          if(offset != wstring::npos) {
+            ++offset;
+            const wstring short_name = entry->GetName().substr(offset, entry->GetName().size() - offset);
+            ProcessError(declaration, L"Declaration name '" + short_name + L"' defined in a parent class");
+          }
+          else {
+            ProcessError(declaration, L"Internal compiler error.");
+          }
         }
       }
     }

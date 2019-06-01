@@ -269,6 +269,12 @@ extern "C" {
         APITools_SetIntValue(context, 0, 0);
         APITools_SetIntValue(context, 1, 0);
         APITools_SetIntValue(context, 2, 0);
+        
+        if(exec_data) {
+          delete exec_data;
+          exec_data = NULL;
+        }
+        
         return;
       }
 			
@@ -294,6 +300,11 @@ extern "C" {
         delete exec_data;
         exec_data = NULL;
       }
+      
+      if(column_names) {
+        delete column_names;
+        column_names = NULL;
+      } 
       
       return;
     }
@@ -385,6 +396,11 @@ extern "C" {
           delete exec_data;
           exec_data = NULL;
         }
+        
+        if(column_names) {
+          delete column_names;
+          column_names = NULL;
+        } 
         
         return;
       }

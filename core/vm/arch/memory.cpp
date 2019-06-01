@@ -946,8 +946,8 @@ void* MemoryManager::CheckJitRoots(void* arg)
     }
 #endif
   }
-  jit_frames.empty();
-
+  jit_frames.clear();
+  
 #ifndef _GC_SERIAL
   MUTEX_UNLOCK(&jit_frame_lock);  
 #ifndef _WIN32
