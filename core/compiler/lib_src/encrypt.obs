@@ -10,7 +10,7 @@
 use System.API;
 
 #~
-Provides encryption and encoding functionality
+Provides encryption and encoding functionality (encrypt.obl)
 ~#
 bundle Encryption {
 	class Proxy {

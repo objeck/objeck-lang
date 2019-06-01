@@ -6,7 +6,7 @@
 use Collection.Generic;
 
 #~
-Support for paring JSON strings and documents
+Support for paring JSON strings and documents (json.obl)
 ~#
 bundle Data.JSON {
 	#~

@@ -6,7 +6,7 @@
 use Collection.Generic;
 
 #~
-Support for parsing XML documents
+Support for parsing XML documents (xml.obl)
 ~#
 bundle Data.XML {
 	#~
