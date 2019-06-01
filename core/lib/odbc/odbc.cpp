@@ -289,6 +289,12 @@ extern "C" {
       APITools_SetIntValue(context, 0, 0);
       APITools_SetIntValue(context, 1, 0);
       APITools_SetIntValue(context, 2, 0);
+      
+      if(exec_data) {
+        delete exec_data;
+        exec_data = NULL;
+      }
+      
       return;
     }
 	
@@ -374,6 +380,12 @@ extern "C" {
         APITools_SetIntValue(context, 0, 0);
         APITools_SetIntValue(context, 1, 0);
         APITools_SetIntValue(context, 2, 0);
+
+        if(exec_data) {
+          delete exec_data;
+          exec_data = NULL;
+        }
+        
         return;
       }
 			

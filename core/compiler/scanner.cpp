@@ -580,7 +580,7 @@ wchar_t* Scanner::LoadFileBuffer(wstring filename, size_t& buffer_size)
   wchar_t* wbuffer = new wchar_t[wsize + 1];
   size_t check = mbstowcs(wbuffer, buffer, buffer_size);
   if(check == (size_t)-1) {
-    delete buffer;
+    free(buffer);
     delete[] wbuffer;
     wcerr << L"Unable to open source file: " << filename << endl;
     exit(1);

@@ -117,6 +117,9 @@ void StackProgram::InitializeProprieties()
   }
 #else
   status = ::readlink("/proc/self/exe", install_path, sizeof(install_path) - 1);
+  if(status != -1) {
+    install_path[status] = '\0';
+  }
 #endif
   if(status != -1) {
     string exe_path(install_path);
