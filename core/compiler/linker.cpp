@@ -1407,7 +1407,10 @@ void LibraryMethod::ParseParameters()
           generic_types.push_back(frontend::TypeFactory::Instance()->MakeType(frontend::CLASS_TYPE, generic_name));
         } 
         while(index < parameters.size() && parameters[index] == L'|');
-        type->SetGenerics(generic_types);
+
+        if(type) {
+          type->SetGenerics(generic_types);
+        }
       }
 
       // set dimension

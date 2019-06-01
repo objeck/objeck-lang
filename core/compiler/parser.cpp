@@ -2925,9 +2925,11 @@ Expression* Parser::ParseFactor(int depth)
       NextToken();
 
       Expression* temp = ParseSimpleExpression(depth + 1);
-      right->SetRight(temp);
-      right->SetLeft(expression);
-      expression = right;
+      if(right) {
+        right->SetRight(temp);
+        right->SetLeft(expression);
+        expression = right;
+      }
     }
     // first time in loop
     else {
@@ -3398,7 +3400,9 @@ MethodCall* Parser::ParseMethodCall(const wstring &ident, int depth)
   if(Match(TOKEN_LES) && Match(TOKEN_IDENT, SECOND_INDEX) &&
     (Match(TOKEN_GTR, THIRD_INDEX) || Match(TOKEN_COMMA, THIRD_INDEX))) {
     vector<Type*> generic_dclrs = ParseGenericTypes(depth);
-    method_call->SetConcreteTypes(generic_dclrs);
+    if(method_call) {
+      method_call->SetConcreteTypes(generic_dclrs);
+    }
   }
 
   // subsequent method calls
