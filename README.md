@@ -42,7 +42,7 @@ Notable features:
 ## Documentation
 Please refer to the programmer's guide [documentation](http://www.objeck.org/documentation/) and [online tutorial](http://www.objeck.org/tutorial/). Also checkout [Rosetta Code](http://rosettacode.org/wiki/Category:Objeck) [examples](programs/rc).
 
-## Deployment
+## Building
 Building on Linux:
 *  Install required libraries: "sudo apt-get install build-essential git libssl-dev unixodbc-dev libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev"
 *  Also install SLD2 development libs: "apt-cache search ^libsdl | grep 2"
