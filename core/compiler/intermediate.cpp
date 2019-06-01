@@ -2693,7 +2693,7 @@ void IntermediateEmitter::EmitMethodCallExpression(MethodCall* method_call, bool
             is_nested = true;
           }
           else {
-            is_nested = true;
+            is_nested = false;
           }
         } 
         else {

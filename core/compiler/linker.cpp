@@ -375,15 +375,16 @@ LibraryClass::LibraryClass(const wstring& n, const wstring& p, const vector<wstr
   for(size_t i = 0; i < generic_name_types.size(); ++i) {
     const wstring generic_name_type = generic_name_types[i];
     size_t end = generic_name_type.find_first_of(L'|');
+    if(end != wstring::npos) {
+      const wstring generic_name = generic_name_type.substr(0, end);
+      wstring concrete_name;
+      end++;
+      if(end < generic_name_type.size()) {
+        concrete_name = generic_name_type.substr(end, generic_name_type.size() - end);
+      }
 
-    const wstring generic_name = generic_name_type.substr(0, end);
-    wstring concrete_name;
-    end++;
-    if(end < generic_name_type.size()) {
-      concrete_name = generic_name_type.substr(end, generic_name_type.size() - end);
+      generic_classes.push_back(new LibraryClass(generic_name, concrete_name));
     }
-
-    generic_classes.push_back(new LibraryClass(generic_name, concrete_name));
   }
 
   // force runtime linking of these classes
