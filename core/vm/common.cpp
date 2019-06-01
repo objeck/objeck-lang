@@ -2637,6 +2637,7 @@ bool TrapProcessor::StdErrFloat(StackProgram* program, size_t* inst, size_t* &op
   const FLOAT_VALUE value = PopFloat(op_stack, stack_pos);;
   const wstring precision = program->GetProperty(L"precision");
   if(precision.size() > 0) {
+    std::ios_base::fmtflags flags(wcout.flags());
     if(precision == L"fixed") {
       wcerr << std::fixed;
     }
@@ -2647,11 +2648,12 @@ bool TrapProcessor::StdErrFloat(StackProgram* program, size_t* inst, size_t* &op
       wcerr << setprecision(stoi(precision));
     }
     wcerr << value;
+    cout.flags(flags);
   }
   else {
     wcerr << setprecision(6) << value;
   }
-
+  
   return true;
 }
 
