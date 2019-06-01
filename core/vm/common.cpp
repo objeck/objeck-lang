@@ -2471,6 +2471,9 @@ bool TrapProcessor::StdOutFloat(StackProgram* program, size_t* inst, size_t* &op
   const FLOAT_VALUE value = PopFloat(op_stack, stack_pos);
   const wstring precision = program->GetProperty(L"precision");
   if(precision.size() > 0) {
+    ios_base::fmtflags flags(wcout.flags());
+    streamsize ss = wcout.precision();
+    
     if(precision == L"fixed") {
       wcout << std::fixed;
     }
@@ -2480,12 +2483,17 @@ bool TrapProcessor::StdOutFloat(StackProgram* program, size_t* inst, size_t* &op
     else {
       wcout << setprecision(stoi(precision));
     }
+    
     wcout << value;
+    cout.precision (ss);
+    cout.flags(flags);
   }
   else {
     wcout << setprecision(6) << value;
   }
 
+  
+  
   return true;
 }
 
@@ -2637,7 +2645,9 @@ bool TrapProcessor::StdErrFloat(StackProgram* program, size_t* inst, size_t* &op
   const FLOAT_VALUE value = PopFloat(op_stack, stack_pos);;
   const wstring precision = program->GetProperty(L"precision");
   if(precision.size() > 0) {
-    std::ios_base::fmtflags flags(wcout.flags());
+    ios_base::fmtflags flags(wcout.flags());
+    streamsize ss = wcout.precision();
+    
     if(precision == L"fixed") {
       wcerr << std::fixed;
     }
@@ -2647,7 +2657,9 @@ bool TrapProcessor::StdErrFloat(StackProgram* program, size_t* inst, size_t* &op
     else {
       wcerr << setprecision(stoi(precision));
     }
+    
     wcerr << value;
+    cout.precision (ss);
     cout.flags(flags);
   }
   else {
