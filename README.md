@@ -21,20 +21,21 @@ Notable features:
 
 * Object-oriented and functional
   * Classes, interfaces and higher-order functions
+  * Generics with type boxing
   * Anonymous classes 
   * Reflection 
   * Object serialization 
   * Type inference
 * Native support for threads, sockets, files, date/time, etc.
 * Libraries 
-  *  Collections (vectors, queues, trees, hashes, etc.)
-  *  HTTP and HTTPS clients
-  *  RegEx
-  *  JSON and XML parsers
-  *  Encryption
-  *  Database access
-  *  Data structure querying
-  *  2D Gaming
+  * Collections (vectors, queues, trees, hashes, etc.)
+  * HTTP and HTTPS clients
+  * RegEx
+  * JSON and XML parsers
+  * Encryption
+  * Database access
+  * Data structure querying
+  * 2D Gaming
 * Garbage collection
 * JIT support (IA-32 and AMD64)
 
@@ -42,8 +43,11 @@ Notable features:
 Please refer to the programmer's guide [documentation](http://www.objeck.org/documentation/) and [online tutorial](http://www.objeck.org/tutorial/). Also checkout [Rosetta Code](http://rosettacode.org/wiki/Category:Objeck) [examples](programs/rc).
 
 ## Deployment
-
-Build and deployment [instructions](http://www.objeck.org/developers/) for Windows, Linux and OS X. 
+Building on Linux:
+*  sudo apt-get install build-essential git libssl-dev unixodbc-dev libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev
+*  Also install SLD2 development libs: apt-cache search ^libsdl | grep 2
+*  cd to "objeck-lang/core/release" and run "./deploy.sh" with the parameter 32 or 54 representing your version of Linux
+*  Build output with binaries and documentation will be located in "objeck-lang/core/release/deploy"
 
 ## Binaries
 Get the latest [binaries](https://sourceforge.net/projects/objeck-lang/).
