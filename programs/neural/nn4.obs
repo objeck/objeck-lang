@@ -6,7 +6,7 @@ Make Your Own Neural Network
 use System.IO.File;
 use System.Matrix;
 use System.Time;
-use Collection;
+use Collection.Generic;
 
 class NeuralNetwork {
 	@input_nodes : Float;
@@ -37,7 +37,7 @@ class NeuralNetwork {
 			network := NeuralNetwork->New(input_nodes, hidden_nodes, output_nodes, learning_rate);
 			for(i := 0; i < 7; i += 1;) {
 				each(i : inputs) {
-					train_input := ParseInput(inputs->Get(i)->As(String), value);
+					train_input := ParseInput(inputs->Get(i), value);
 					number := value->Get(); 
 					train_target := GetTrainingTarget(number);
 					network->Train(train_input, train_target, learning_rate);
@@ -62,7 +62,7 @@ class NeuralNetwork {
 			
 			correct_count := 0;
 			each(i : inputs) {
-				test_input := ParseInput(inputs->Get(i)->As(String), value);
+				test_input := ParseInput(inputs->Get(i), value);
 				test_output := network->Query(test_input);
 				if(TestQuery(test_output, value->Get(), false)) {
 					correct_count += 1;
@@ -86,7 +86,7 @@ class NeuralNetwork {
 
 			correct_count := 0;
 			each(i : inputs) {
-				test_input := ParseInput(inputs->Get(i)->As(String), value);
+				test_input := ParseInput(inputs->Get(i), value);
 				test_output := network->Query(test_input);
 				if(TestQuery(test_output, value->Get())) {
 					correct_count += 1;
@@ -189,7 +189,7 @@ class NeuralNetwork {
 	method : Load() ~ Nil {
 		lines := LoadInput("train.dat");
 
-		line := lines->Get(0)->As(String);
+		line := lines->Get(0);
 		dims := line->Split(",");
 
 		rows := dims[0]->ToInt();
@@ -199,7 +199,7 @@ class NeuralNetwork {
 		i : Int;
 		@weight_inputs_hidden := Float->New[rows, cols];
 		for(i := 1; i <= rows; i += 1;) {
-			line := lines->Get(i)->As(String);
+			line := lines->Get(i);
 			col := line->Split(",");
 			if(col->Size() <> cols) {
 				"Invalid Row!"->ErrorLine();
@@ -211,7 +211,7 @@ class NeuralNetwork {
 			};
 		};
 
-		line := lines->Get(i)->As(String);
+		line := lines->Get(i);
 		dims := line->Split(",");
 
 		old_row := rows;
@@ -221,7 +221,7 @@ class NeuralNetwork {
 
 		@weight_outputs_hidden := Float->New[rows, cols];
 		for(i := i + 1; i <= rows + old_row + 1; i += 1;) {
-			line := lines->Get(i)->As(String);
+			line := lines->Get(i);
 			col := line->Split(",");
 			if(col->Size() <> cols) {
 				error := col->Size();
@@ -316,8 +316,8 @@ class NeuralNetwork {
 		return matrix;
 	}
 
-	function : LoadInput(file : String) ~ Vector {
-		inputs := Vector->New();
+	function : LoadInput(file : String) ~ Vector<String> {
+		inputs := Vector->New()<String>;
 
 		reader := FileReader->New(file);
 		leaving {
