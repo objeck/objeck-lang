@@ -274,6 +274,11 @@ extern "C" {
           delete exec_data;
           exec_data = NULL;
         }
+
+        if(column_names) {
+          delete column_names;
+          column_names = NULL;
+        }
         
         return;
       }
