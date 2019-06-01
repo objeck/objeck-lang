@@ -1164,15 +1164,11 @@ bundle Collection.Generic {
 		}
 
 		#~
-		Swap two values in the vector
-		@param a first value
-		@param b second value
-		@return true if values were swapped
-		~#
-		method : public : Swap(a : Int, b : Int) ~ Bool {
-			if(a < -1 | b < -1 | a > @size | b > @size) {
-				return false;
-			};
+		Applies the given function to each value in the vector 
+		@param f function to applyhjbkm;l,.'/
+		ijp\][rt54\]x[p\
+		m ,."?
+	"?}|"?'[;//..l,.,p"	};
 			
 			temp := @values[a];
 			@values[a] := @values[b];
