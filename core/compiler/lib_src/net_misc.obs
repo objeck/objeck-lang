@@ -5,7 +5,7 @@ use Collection.Generic;
 use Data.XML;
 
 #~
-Provides support for conversions
+Provides support for conversions (net_misc.obl)
 ~#	
 bundle System.Time {
 	#~
@@ -196,7 +196,7 @@ bundle System.Time {
 
 
 #~
-Web client support
+Web client support (net_misc.obl)
 ~#
 bundle Web.HTTP {
 	#~

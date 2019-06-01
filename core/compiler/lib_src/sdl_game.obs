@@ -7,7 +7,7 @@ use Game.SDL2;
 use Collection;
 
 #~
-Wrapper around SDL2 graphic libraries
+Wrapper around SDL2 graphic libraries (sdl_game.obl)
 ~#
 bundle Game.Framework {
 	#~

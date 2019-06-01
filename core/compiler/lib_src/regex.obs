@@ -7,7 +7,7 @@
 use Collection.Generic;
 
 #~
-Regular expression engine
+Regular expression engine (regex.obl)
 ~#
 bundle Query.RegEx {
 	#~

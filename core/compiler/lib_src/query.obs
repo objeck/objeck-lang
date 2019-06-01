@@ -10,7 +10,7 @@ use System.IO.File;
 use Data.XML;
 
 #~
-Supports processing of semi-structured data
+Supports processing of semi-structured data (query.obl)
 ~#
 bundle Query.Structured {
 	#~

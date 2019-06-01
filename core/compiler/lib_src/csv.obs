@@ -5,7 +5,7 @@
 use Collection.Generic;
 
 #~
-Provides a mechanism to search and perform calculations on CSV files.
+Process and perform calculations on CSV files (csv.obl)
 ~#
 bundle Data.CSV {
 	#~

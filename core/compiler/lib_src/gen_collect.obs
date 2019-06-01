@@ -1,9 +1,9 @@
 #~
-Generic collections
+Generic collections (gen_collect.obl)
 ~#	
 bundle Collection.Generic {
 	#~
-	Hash table of generics
+	Hash table of generics 
 	~#
 	class Hash<K : Compare, V> {
 		@buckets : CompareList[]<K>;
