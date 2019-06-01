@@ -5060,9 +5060,9 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Type* right, Expression* expr
   Class* left_class = nullptr;
   LibraryEnum* left_lib_enum = nullptr;
   LibraryClass* left_lib_class = nullptr;
-
+  
   CheckGenericEqualTypes(left, right, expression);
-
+  
   if(current_class->HasGenerics()) {
     Class* left_tmp = current_class->GetGenericClass(left->GetClassName());
     if(left_tmp && left_tmp->HasGenericInterface()) {
@@ -5109,7 +5109,7 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Type* right, Expression* expr
   //
   // program class
   //
-  else if(left && right && (left_class = SearchProgramClasses(left->GetClassName()))) {
+  else if(right && (left_class = SearchProgramClasses(left->GetClassName()))) {
     // program and generic
     Class* right_class = SearchProgramClasses(right->GetClassName());
     if(!right_class) {
@@ -5170,7 +5170,7 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Type* right, Expression* expr
   //
   // generic class
   //
-  else if(left && right && (left_class = current_class->GetGenericClass(left->GetClassName()))) {
+  else if(right && (left_class = current_class->GetGenericClass(left->GetClassName()))) {
     // program
     Class* right_class = current_class->GetGenericClass(right->GetClassName());
     if(right_class) {
@@ -5192,7 +5192,7 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Type* right, Expression* expr
   //
   // enum library
   //
-  else if(left && right && (left_lib_enum = linker->SearchEnumLibraries(left->GetClassName(), program->GetUses(current_class->GetFileName())))) {
+  else if(right && (left_lib_enum = linker->SearchEnumLibraries(left->GetClassName(), program->GetUses(current_class->GetFileName())))) {
     // program
     Enum* right_enum = SearchProgramEnums(right->GetClassName());
     if(right_enum) {
@@ -5218,7 +5218,7 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Type* right, Expression* expr
   //
   // class library
   //
-  else if(left && right && (left_lib_class = linker->SearchClassLibraries(left->GetClassName(), program->GetUses(current_class->GetFileName())))) {
+  else if(right && (left_lib_class = linker->SearchClassLibraries(left->GetClassName(), program->GetUses(current_class->GetFileName())))) {
     // program and generic
     Class* right_class = SearchProgramClasses(right->GetClassName());
     if(!right_class) {
