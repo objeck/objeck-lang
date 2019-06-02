@@ -132,10 +132,12 @@ bundle Data.CSV {
 		method : public : Sum(start : Int, end : Int) ~ Float {
 			sum := 0.0;
 			
-			length := end - start + 1;
+			length := end - start;
 			offset := start + length;
 
-			if(length > 0 & offset < @columns->Size()) {
+# "length={$length}, offset={$offset}"->PrintLine();
+
+			if(length > 0 & offset <= @columns->Size()) {
 				for(i := start; i < offset; i += 1;) {
 					sum += @columns->Get(i)->ToFloat();
 				};
@@ -278,10 +280,12 @@ bundle Data.CSV {
 		method : public : Sum(start : Int, end : Int) ~ Float {
 			sum := 0.0;
 			
-			length := end - start + 1;
+			length := end - start;
 			offset := start + length;
 
-			if(length > 0 & offset < @rows->Size()) {
+# "length={$length}, offset={$offset}"->PrintLine();
+
+			if(length > 0 & offset <= @rows->Size()) {
 				for(i := start; i < offset; i += 1;) {
 					sum += @rows->Get(i)->ToFloat();
 				};
