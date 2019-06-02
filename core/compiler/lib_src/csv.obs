@@ -81,7 +81,7 @@ bundle Data.CSV {
 		}
 
 		#~
-		Sets the indexed row value
+		Sets the named row value
 		@param name name
 		@param value value
 		@return true of value was set, false otherwise
