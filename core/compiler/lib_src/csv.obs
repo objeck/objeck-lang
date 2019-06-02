@@ -111,25 +111,32 @@ bundle Data.CSV {
 		@return row sum
 		~#
 		method : public : Sum() ~ Float {
-			sum := 0.0;
-			
-			each(i : @columns) {
-				sum += @columns->Get(i)->ToFloat();
-			};
-			
-			return sum;
+			return Sum(0, @columns->Size());
 		}
 
 		#~
 		Calculates the row sum
-		@param max number of columns to sum
+		@param end ending column
 		@return row sum
 		~#
-		method : public : Sum(max : Int) ~ Float {
+		method : public : Sum(end : Int) ~ Float {
+			return Sum(0, end);
+		}
+
+		#~
+		Calculates the row sum
+		@param start starting column
+		@param end ending column
+		@return row sum
+		~#
+		method : public : Sum(start : Int, end : Int) ~ Float {
 			sum := 0.0;
 			
-			if(max < @columns->Size()) {
-				for(i := 0; i < max; i += 1;) {
+			length := end - start + 1;
+			offset := start + length;
+
+			if(length > 0 & offset < @columns->Size()) {
+				for(i := start; i < offset; i += 1;) {
 					sum += @columns->Get(i)->ToFloat();
 				};
 			};
@@ -138,11 +145,34 @@ bundle Data.CSV {
 		}
 		
 		#~
-		Calculates the row average 
+		Calculates the row average
 		@return row average
 		~#
 		method : public : Average() ~ Float {
-			return Sum() / @columns->Size();
+			return Average(0, @columns->Size());
+		}
+
+		#~
+		Calculates the row average
+		@param end ending column
+		@return row average
+		~#
+		method : public : Average(end : Int) ~ Float {
+			return Average(0, end);
+		}
+
+		#~
+		Calculates the row average
+		@param start starting column
+		@param end ending column
+		@return row average
+		~#
+		method : public : Average(start : Int, end : Int) ~ Float {
+			if(@columns->Size() = 0) {
+				return 0.0;
+			};
+
+			return Sum(start, end) / (end - start + 1);
 		}
 		
 		#~
@@ -227,38 +257,68 @@ bundle Data.CSV {
 		@return column sum
 		~#
 		method : public : Sum() ~ Float {
-			sum := 0.0;
-			
-			each(i : @rows) {
-				sum += @rows->Get(i)->ToFloat();
-			};
-			
-			return sum;
+			return Sum(0, @rows->Size());
 		}
 
 		#~
-		Calculates the column sum
-		@param max number of rows to sum
-		@return column sum
+		Calculates the row sum
+		@param end ending column
+		@return row sum
 		~#
-		method : public : Sum(max : Int) ~ Float {
+		method : public : Sum(end : Int) ~ Float {
+			return Sum(0, end);
+		}
+
+		#~
+		Calculates the row sum
+		@param start starting column
+		@param end ending column
+		@return row sum
+		~#
+		method : public : Sum(start : Int, end : Int) ~ Float {
 			sum := 0.0;
 			
-			if(max < @rows->Size()) {
-				for(i := 0; i < max; i += 1;) {
+			length := end - start + 1;
+			offset := start + length;
+
+			if(length > 0 & offset < @rows->Size()) {
+				for(i := start; i < offset; i += 1;) {
 					sum += @rows->Get(i)->ToFloat();
 				};
 			};
-			
+				
 			return sum;
 		}
 
 		#~
-		Calculates the column average 
+		Calculates the column average
 		@return column average
 		~#
 		method : public : Average() ~ Float {
-			return Sum() / @rows->Size();
+			return Average(0, @rows->Size());
+		}
+
+		#~
+		Calculates the column average
+		@param end ending column
+		@return column average
+		~#
+		method : public : Average(end : Int) ~ Float {
+			return Average(0, end);
+		}
+
+		#~
+		Calculates the column average
+		@param start starting column
+		@param end ending column
+		@return column average
+		~#
+		method : public : Average(start : Int, end : Int) ~ Float {
+			if(@rows->Size() = 0) {
+				return 0.0;
+			};
+
+			return Sum(start, end) / (end - start + 1);
 		}
 		
 		#~
