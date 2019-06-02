@@ -1,0 +1,82 @@
+#~
+~#
+
+use Game.SDL2;
+use Game.Framework;
+
+class Vibrating {
+	@framework : GameFramework;
+	@secs : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		vibrating := Vibrating->New();
+		vibrating->Run();
+	}
+
+	New() {
+		@framework := GameFramework->New(GameConsts->SCREEN_WIDTH, GameConsts->SCREEN_HEIGHT, "Vibrating Rectangles");
+		@framework->SetClearColor(Color->New(255, 255, 255));
+	}
+
+	method : Run() ~ Nil {
+		if(@framework->IsOk()) {
+			e := @framework->GetEvent();
+			
+			frame_count := 0;
+			quit := false;
+			while(<>quit) {
+				@framework->FrameStart();
+				
+				# process input
+				while(e->Poll() <> 0) {
+					if(e->GetType() = EventType->SDL_QUIT) {
+						quit := true;
+					};
+				};
+
+				Render();
+
+				@framework->FrameEnd();
+
+				frame_count += 1;
+				if(frame_count >= @framework->GetFps()) {
+					frame_count := 0;
+				};
+			};
+		}
+		else {
+			"--- Error Initializing Game Environment ---"->ErrorLine();
+			return;
+		};
+
+		leaving {
+			@framework->Quit();
+		};
+	}
+
+	method : Render() ~ Nil {
+		@framework->Clear();
+
+		for(i := 1; i < 18; i += 1;) { 
+			DrawRectangle(i, Color->New(0, 0, 0));
+		};
+
+		@framework->Show();
+	}
+
+	method : DrawRectangle(step : Int, color : Color) ~ Nil {
+		x := step * 4; w := GameConsts->SCREEN_WIDTH - x * 2;
+		y := step * 4; h := GameConsts->SCREEN_HEIGHT - y * 2;
+
+		renderer := @framework->GetRenderer();
+		renderer->SetDrawColor(color->GetR(), color->GetG(), color->GetB(), 0);
+		renderer->DrawRect(Rect->New(x, y, w, h));
+		renderer->DrawRect(Rect->New(x + 1, y + 1, w - 2, h - 2));
+		renderer->DrawRect(Rect->New(x + 2, y + 2, w - 4, h - 4));
+	}
+}
+
+consts GameConsts {
+	SCREEN_WIDTH := 200,
+	SCREEN_HEIGHT := 150
+}
