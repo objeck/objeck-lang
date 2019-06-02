@@ -72,13 +72,23 @@ bundle Data.CSV {
 		@param index index
 		@return true of value was set, false otherwise
 		~#
-		method : public : Set(value : String, index : Int) ~ Bool {
+		method : public : Set(index : Int, value : String) ~ Bool {
 			if(@read_only = false & index < @columns->Size()) {
 				return @columns->Set(value->ReplaceAll("\"\"", "ˑ"), index);
 			};
 			
 			return false;
-		}	
+		}
+
+		#~
+		Sets the indexed row value
+		@param name name
+		@param index index
+		@return true of value was set, false otherwise
+		~#
+		method : public : Set(name : String, value : String) ~ Bool {
+			return Set(@table->GetRowId(name), value);
+		}
 		
 		#~
 		Appends value to the end of the row
@@ -105,6 +115,23 @@ bundle Data.CSV {
 			
 			each(i : @columns) {
 				sum += @columns->Get(i)->ToFloat();
+			};
+			
+			return sum;
+		}
+
+		#~
+		Calculates the row sum
+		@param max number of columns to sum
+		@return row sum
+		~#
+		method : public : Sum(max : Int) ~ Float {
+			sum := 0.0;
+			
+			if(max < @columns->Size()) {
+				for(i := 0; i < max; i += 1;) {
+					sum += @columns->Get(i)->ToFloat();
+				};
 			};
 			
 			return sum;
@@ -208,7 +235,24 @@ bundle Data.CSV {
 			
 			return sum;
 		}
-		
+
+		#~
+		Calculates the column sum
+		@param max number of rows to sum
+		@return column sum
+		~#
+		method : public : Sum(max : Int) ~ Float {
+			sum := 0.0;
+			
+			if(max < @rows->Size()) {
+				for(i := 0; i < max; i += 1;) {
+					sum += @rows->Get(i)->ToFloat();
+				};
+			};
+			
+			return sum;
+		}
+
 		#~
 		Calculates the column average 
 		@return column average
