@@ -83,7 +83,7 @@ bundle Data.CSV {
 		#~
 		Sets the indexed row value
 		@param name name
-		@param index index
+		@param value value
 		@return true of value was set, false otherwise
 		~#
 		method : public : Set(name : String, value : String) ~ Bool {
