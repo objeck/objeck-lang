@@ -3202,4 +3202,57 @@ extern "C" {
     const int return_value = circleRGBA(renderer, x, y, rad, color.r, color.g, color.b, color.a);
     APITools_SetIntValue(context, 0, return_value);
   }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_renderer_arc_color(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+    const int x = (int)APITools_GetIntValue(context, 2);
+    const int y = (int)APITools_GetIntValue(context, 3);
+    const int rad = (int)APITools_GetIntValue(context, 4);
+    const int start = (int)APITools_GetIntValue(context, 5);
+    const int end = (int)APITools_GetIntValue(context, 6);
+
+    SDL_Color color;
+    size_t* color_obj = APITools_GetObjectValue(context, 7);
+    sdl_color_raw_write(&color, color_obj);
+
+    const int return_value = arcRGBA(renderer, x, y, rad, start, end, color.r, color.g, color.b, color.a);
+    APITools_SetIntValue(context, 0, return_value);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_renderer_aacircle_color(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+    const int x = (int)APITools_GetIntValue(context, 2);
+    const int y = (int)APITools_GetIntValue(context, 3);
+    const int rad = (int)APITools_GetIntValue(context, 4);
+
+    SDL_Color color;
+    size_t* color_obj = APITools_GetObjectValue(context, 5);
+    sdl_color_raw_write(&color, color_obj);
+
+    const int return_value = aacircleRGBA(renderer, x, y, rad, color.r, color.g, color.b, color.a);
+    APITools_SetIntValue(context, 0, return_value);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_renderer_filled_circle_color(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+    const int x = (int)APITools_GetIntValue(context, 2);
+    const int y = (int)APITools_GetIntValue(context, 3);
+    const int r = (int)APITools_GetIntValue(context, 4);
+
+    SDL_Color color;
+    size_t* color_obj = APITools_GetObjectValue(context, 5);
+    sdl_color_raw_write(&color, color_obj);
+
+    const int return_value = filledCircleRGBA(renderer, x, y, r, color.r, color.g, color.b, color.a);
+    APITools_SetIntValue(context, 0, return_value);
+  }
 }
