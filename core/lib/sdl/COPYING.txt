@@ -18,3 +18,10 @@ freely, subject to the following restrictions:
    misrepresented as being the original software.
 3. This notice may not be removed or altered from any source distribution.
 
+SDL2_gfx COPYING
+
+Library is governed under the ZLib license.
+
+http://www.zlib.net/zlib_license.html
+
+
