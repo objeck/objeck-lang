@@ -130,7 +130,7 @@ method : public : RectangleColor(x1 : Int, y1 : Int, x2 : Int, y2 : Int, color :
 		APITools_SetIntValue(context, 0, return_value);
 	}
 
-================
+---
 
 method : public : RoundedRectangleColor(x1 : Int, y1 : Int, x2 : Int, y2 : Int, rad : Int, color : Color) ~ Int {
 	array_args := Base->New[8];
@@ -204,6 +204,7 @@ method : public : BoxColor(x1 : Int, y1 : Int, x2 : Int, y2 : Int, color : Color
 	}
 
 ---
+
 method : public : RoundedBoxColor(x1 : Int, y1 : Int, x2 : Int, y2 : Int, rad : Int, color : Color) ~ Int {
 	array_args := Base->New[8];
 	array_args[0] := IntHolder->New();
@@ -240,7 +241,8 @@ method : public : RoundedBoxColor(x1 : Int, y1 : Int, x2 : Int, y2 : Int, rad : 
 		APITools_SetIntValue(context, 0, return_value);
 	}
 
----
+======
+
 method : public : LineColor(x1 : Int, y1 : Int, x2 : Int, y2 : Int, color : Color) ~ Int {
 	array_args := Base->New[7];
 	array_args[0] := IntHolder->New();
