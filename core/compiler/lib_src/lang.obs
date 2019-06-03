@@ -2522,11 +2522,25 @@ bundle System {
 		@return character at index
 		~#
 		method : public : native : Get(index : Int) ~ Char {
-			if(index < @pos) {
+			if(index > -1 & index < @pos) {
 				return @string[index];
 			};
 
 			return '\0';
+		}
+
+		#~
+		Sets character at the given index
+		@param char charter to set
+		@param index index offset
+		@return true if successful, false otherwise
+		~#
+		method : public : native : Get(char : Char, index : Int) ~ Bool {
+			if(index > -1 & index < @pos) {
+				@string[index] := char;
+			};
+
+			return false;
 		}
 
 		#~
@@ -5365,6 +5379,22 @@ bundle System.IO.File {
 				FILE_OPEN_WRITE;
 			};
 		}	
+
+		#~
+		Write a file's contents into a string
+		@param name file name
+		@param content file content
+		@return true if successful, false otherwise
+		~#
+		function : WriteFile(name : String, String content) ~ Bool {
+			writer : FileWriter := FileWriter->New(name);
+			if(writer->IsOpen()) {
+				writer->WriteString(content);
+				return true;
+			};
+
+			return false;
+		}
 		
 		#~
 		Closes a file
