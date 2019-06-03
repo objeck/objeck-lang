@@ -2535,7 +2535,7 @@ bundle System {
 		@param index index offset
 		@return true if successful, false otherwise
 		~#
-		method : public : native : Get(char : Char, index : Int) ~ Bool {
+		method : public : native : Set(char : Char, index : Int) ~ Bool {
 			if(index > -1 & index < @pos) {
 				@string[index] := char;
 			};
