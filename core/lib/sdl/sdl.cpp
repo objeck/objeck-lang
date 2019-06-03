@@ -35,7 +35,6 @@
 #include <SDL_image.h>
 #include <SDL_ttf.h>
 #include <SDL_mixer.h>
-#include "SDL2_gfxPrimitives.h"
 #else
 #include <SDL.h>
 #include <SDL_image.h>
@@ -3110,6 +3109,43 @@ extern "C" {
     sdl_color_raw_write(&color, color_obj);
 
     const int return_value = boxRGBA(renderer, x1, y1, x2, y2, color.r, color.g, color.b, color.a);
+    APITools_SetIntValue(context, 0, return_value);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_renderer_rounded_box_color(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+    const int x1 = (int)APITools_GetIntValue(context, 2);
+    const int y1 = (int)APITools_GetIntValue(context, 3);
+    const int x2 = (int)APITools_GetIntValue(context, 4);
+    const int y2 = (int)APITools_GetIntValue(context, 5);
+    const int rad = (int)APITools_GetIntValue(context, 6);
+
+    SDL_Color color;
+    size_t* color_obj = APITools_GetObjectValue(context, 7);
+    sdl_color_raw_write(&color, color_obj);
+
+    const int return_value = roundedBoxRGBA(renderer, x1, y1, x2, y2, rad, color.r, color.g, color.b, color.a);
+    APITools_SetIntValue(context, 0, return_value);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_renderer_line_color(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+    const int x1 = (int)APITools_GetIntValue(context, 2);
+    const int y1 = (int)APITools_GetIntValue(context, 3);
+    const int x2 = (int)APITools_GetIntValue(context, 4);
+    const int y2 = (int)APITools_GetIntValue(context, 5);
+
+    SDL_Color color;
+    size_t* color_obj = APITools_GetObjectValue(context, 6);
+    sdl_color_raw_write(&color, color_obj);
+
+    const int return_value = lineRGBA(renderer, x1, y1, x2, y2, color.r, color.g, color.b, color.a);
     APITools_SetIntValue(context, 0, return_value);
   }
 }
