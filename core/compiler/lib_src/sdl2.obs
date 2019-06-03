@@ -4912,7 +4912,7 @@ bundle Game.SDL2 {
 
 		#~
 		Draw rectangle with blending
-		@param x1	X coordinate of the first point (i.e. top right) of the rectangle.
+		@param x1 X coordinate of the first point (i.e. top right) of the rectangle.
 		@param y1 Y coordinate of the first point (i.e. top right) of the rectangle.
 		@param x2 X coordinate of the second point (i.e. bottom left) of the rectangle.
 		@param y2 Y coordinate of the second point (i.e. bottom left) of the rectangle.
@@ -4937,11 +4937,11 @@ bundle Game.SDL2 {
 
 		#~
 		Draw rounded-corner rectangle with blending
-		x1	X coordinate of the first point (i.e. top right) of the rectangle.
+		@param x1 X coordinate of the first point (i.e. top right) of the rectangle.
 		@param y1 Y coordinate of the first point (i.e. top right) of the rectangle.
 		@param x2 X coordinate of the second point (i.e. bottom left) of the rectangle.
 		@param y2 Y coordinate of the second point (i.e. bottom left) of the rectangle.
-		@param rad	The radius of the corner arc.
+		@param rad The radius of the corner arc.
 		@param color color value
 		@return 0 on success, -1 on failure
 		~#
@@ -4989,11 +4989,12 @@ bundle Game.SDL2 {
 
 		#~
 		Draw rounded-corner box (filled rectangle) with blending
-		@param x1	X coordinate of the first point (i.e. top right) of the box.
+		@param x1 X coordinate of the first point (i.e. top right) of the box.
 		@param y1 Y coordinate of the first point (i.e. top right) of the box.
 		@param x2 X coordinate of the second point (i.e. bottom left) of the box.
 		@param y2 Y coordinate of the second point (i.e. bottom left) of the box.
-		@param rad	The radius of the corner arcs of the box.
+		@param rad The radius of the corner arcs of the box.
+		@param color color value
 		@return 0 on success, -1 on failure
 		~#
 		method : public : RoundedBoxColor(x1 : Int, y1 : Int, x2 : Int, y2 : Int, rad : Int, color : Color) ~ Int {
@@ -5008,6 +5009,31 @@ bundle Game.SDL2 {
 			array_args[7] := color;
 
 			Proxy->GetDllProxy()->CallFunction("sdl_renderer_rounded_box_color", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+
+		#~
+		Draw line with alpha blending
+		@param x1 X coordinate of the first point of the line.
+		@param y1 Y coordinate of the first point of the line.
+		@param x2 X coordinate of the second point of the line.
+		@param y2 Y coordinate of the seond point of the line.
+		@param color color value
+		@return 0 on success, -1 on failure
+		~#
+		method : public : LineColor(x1 : Int, y1 : Int, x2 : Int, y2 : Int, color : Color) ~ Int {
+			array_args := Base->New[7];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@renderer);
+			array_args[2] := IntHolder->New(x1);
+			array_args[3] := IntHolder->New(y1);
+			array_args[4] := IntHolder->New(x2);
+			array_args[5] := IntHolder->New(y2);
+			array_args[6] := color;
+
+			Proxy->GetDllProxy()->CallFunction("sdl_renderer_line_color", array_args);
 
 			value := array_args[0]->As(IntHolder);
 			return value->Get();
