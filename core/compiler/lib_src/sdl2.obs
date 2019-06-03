@@ -4842,6 +4842,73 @@ bundle Game.SDL2 {
 
 			Proxy->GetDllProxy()->CallFunction("sdl_renderer_render_present", array_args);
 		}
+
+		#~
+		Draw pixel with blending enabled if a<255. 
+		@param x x-position
+		@param y y-position
+		@param color color
+		@return 0 on success, -1 on failure
+		~#
+		method : public : PixelColor(x : Int, y : Int, color : Color) ~ Int {
+			array_args := Base->New[5];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@renderer);
+			array_args[2] := IntHolder->New(x);
+			array_args[3] := IntHolder->New(y);
+			array_args[4] := color;
+
+			Proxy->GetDllProxy()->CallFunction("sdl_renderer_pixel_color", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+
+		#~
+		Draw horizontal line with blending
+		@param x1 X coordinate of the first point (i.e. left) of the line.
+		@param x2 X coordinate of the second point (i.e. right) of the line.
+		@param y Y coordinate of the points of the line.
+		@param color color value
+		@return 0 on success, -1 on failure
+		~#
+		method : public : HLineColor(x1 : Int, x2 : Int, y : Int, color : Color) ~ Int {
+			array_args := Base->New[6];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@renderer);
+			array_args[2] := IntHolder->New(x1);
+			array_args[3] := IntHolder->New(x2);
+			array_args[4] := IntHolder->New(y);
+			array_args[5] := color;
+
+			Proxy->GetDllProxy()->CallFunction("sdl_renderer_hline_color", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+		
+		#~
+		Draw vertical line with blending
+		@param x X coordinate of the points of the line.
+		@param y1 Y coordinate of the first point (i.e. top) of the line.
+		@param y2 Y coordinate of the second point (i.e. bottom) of the line.
+		@param color color value
+		@return 0 on success, -1 on failure
+		~#
+		method : public : VlineColor(x : Int, y1 : Int, y2 : Int, color : Color) ~ Int {
+			array_args := Base->New[6];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@renderer);
+			array_args[2] := IntHolder->New(x);
+			array_args[3] := IntHolder->New(y1);
+			array_args[4] := IntHolder->New(y2);
+			array_args[5] := color;
+
+			Proxy->GetDllProxy()->CallFunction("sdl_renderer_vline_color", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
 	}
 
 	#~
@@ -5395,7 +5462,7 @@ bundle Game.SDL2 {
 	        array_args[2] := text;
 	        array_args[3] := fg;
 
-	        Proxy->GetDllProxy()->CallFunction("sdl_font_render_text_blended", array_args);
+	        Proxy->GetDllProxy()->CallFunction("sdl_font_render_utf8_solid", array_args);
 
 	        value := array_args[0]->As(IntHolder);
 	        return Surface->New(value->Get());

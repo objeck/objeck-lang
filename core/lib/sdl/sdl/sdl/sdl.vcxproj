@@ -168,6 +168,17 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\sdl.cpp" />
+    <ClCompile Include="..\..\SDL2_framerate.c" />
+    <ClCompile Include="..\..\SDL2_gfxPrimitives.c" />
+    <ClCompile Include="..\..\SDL2_imageFilter.c" />
+    <ClCompile Include="..\..\SDL2_rotozoom.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\SDL2_framerate.h" />
+    <ClInclude Include="..\..\SDL2_gfxPrimitives.h" />
+    <ClInclude Include="..\..\SDL2_gfxPrimitives_font.h" />
+    <ClInclude Include="..\..\SDL2_imageFilter.h" />
+    <ClInclude Include="..\..\SDL2_rotozoom.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

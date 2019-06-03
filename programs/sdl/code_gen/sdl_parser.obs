@@ -197,6 +197,7 @@ bundle CodeGen {
 					return Nil;
 				};
 				parsed_function_name := Token()->GetValue();
+"function='{$parsed_function_name}'"->PrintLine();
 				Next();
 				
 				## parameters

@@ -40,6 +40,7 @@
 #include <SDL_image.h>
 #include <SDL_ttf.h>
 #include <SDL_mixer.h>
+#include "SDL2_gfxPrimitives.h"
 #endif
 #include <stdio.h>
 #include "../../vm/lib_api.h"
@@ -3004,9 +3005,56 @@ extern "C" {
     APITools_SetIntValue(context, 2, pct);
   }
 
+  ////////////////////
 
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_renderer_pixel_color(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+    const int x = (int)APITools_GetIntValue(context, 2);
+    const int y = (int)APITools_GetIntValue(context, 3);
 
+    SDL_Color color;
+    size_t* color_obj = APITools_GetObjectValue(context, 4);
+    sdl_color_raw_write(&color, color_obj);
 
+    const int return_value = pixelRGBA(renderer, x, y, color.r, color.g, color.b, color.a);
+    APITools_SetIntValue(context, 0, return_value);
+  }
 
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_renderer_hline_color(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+    const int x1 = (int)APITools_GetIntValue(context, 2);
+    const int x2 = (int)APITools_GetIntValue(context, 3);
+    const int y = (int)APITools_GetIntValue(context, 4);
+
+    SDL_Color color;
+    size_t* color_obj = APITools_GetObjectValue(context, 5);
+    sdl_color_raw_write(&color, color_obj);
+
+    const int return_value = hlineRGBA(renderer, x1, x2, y, color.r, color.g, color.b, color.a);
+    APITools_SetIntValue(context, 0, return_value);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_renderer_vline_color(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+    const int x = (int)APITools_GetIntValue(context, 2);
+    const int y1 = (int)APITools_GetIntValue(context, 3);
+    const int y2 = (int)APITools_GetIntValue(context, 4);
+
+    SDL_Color color;
+    size_t* color_obj = APITools_GetObjectValue(context, 5);
+    sdl_color_raw_write(&color, color_obj);
+
+    const int return_value = vlineRGBA(renderer, x, y1, y2, color.r, color.g, color.b, color.a);
+    APITools_SetIntValue(context, 0, return_value);
+  }
 
 }
