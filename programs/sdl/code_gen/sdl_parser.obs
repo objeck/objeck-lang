@@ -197,7 +197,6 @@ bundle CodeGen {
 					return Nil;
 				};
 				parsed_function_name := Token()->GetValue();
-parsed_function_name->PrintLine();				
 				Next();
 				
 				## parameters
@@ -248,7 +247,7 @@ parsed_function_name->PrintLine();
 			}
 			else {
 				@objk_name := String->New(@func_name);
-				@objk_name->Set(0, @objk_name->Get(0)->ToUpper());
+				@objk_name->Set(@objk_name->Get(0)->ToUpper(), 0);
 			};
 			
 			return @objk_name;
