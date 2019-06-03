@@ -5386,7 +5386,7 @@ bundle System.IO.File {
 		@param content file content
 		@return true if successful, false otherwise
 		~#
-		function : WriteFile(name : String, String content) ~ Bool {
+		function : WriteFile(name : String, content : String) ~ Bool {
 			writer : FileWriter := FileWriter->New(name);
 			if(writer->IsOpen()) {
 				writer->WriteString(content);
