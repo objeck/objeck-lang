@@ -5038,6 +5038,81 @@ bundle Game.SDL2 {
 			value := array_args[0]->As(IntHolder);
 			return value->Get();
 		}
+
+		#~
+		Draw anti-aliased line with alpha blending.
+		@param x1 X coordinate of the first point of the aa-line.
+		@param y1 Y coordinate of the first point of the aa-line.
+		@param x2 X coordinate of the second point of the aa-line.
+		@param y2 Y coordinate of the second point of the aa-line.
+		@param color color value
+		@return 0 on success, -1 on failure
+		~#
+		method : public : AALineColor(x1 : Int, y1 : Int, x2 : Int, y2 : Int, color : Color) ~ Int {
+			array_args := Base->New[7];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@renderer);
+			array_args[2] := IntHolder->New(x1);
+			array_args[3] := IntHolder->New(y1);
+			array_args[4] := IntHolder->New(x2);
+			array_args[5] := IntHolder->New(y2);
+			array_args[6] := color;
+
+			Proxy->GetDllProxy()->CallFunction("sdl_renderer_aaline_color", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+
+		#~
+		Draw a thick line with alpha blending.
+		@param x1 X coordinate of the first point of the line.
+		@param y1 Y coordinate of the first point of the line.
+		@param x2 X coordinate of the second point of the line.
+		@param y2 Y coordinate of the second point of the line.
+		@param width Width of the line in pixels. Must be >0.
+		@param color color value
+		@return 0 on success, -1 on failure
+		~#
+		method : public : ThickLineColor(x1 : Int, y1 : Int, x2 : Int, y2 : Int, width : Int, color : Color) ~ Int {
+			array_args := Base->New[8];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@renderer);
+			array_args[2] := IntHolder->New(x1);
+			array_args[3] := IntHolder->New(y1);
+			array_args[4] := IntHolder->New(x2);
+			array_args[5] := IntHolder->New(y2);
+			array_args[6] := IntHolder->New(width);
+			array_args[7] := color;
+
+			Proxy->GetDllProxy()->CallFunction("sdl_renderer_thick_line_color", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+
+		#~
+		Draw circle with blending.
+		@param x X coordinate of the center of the circle.
+		@param y Y coordinate of the center of the circle.
+		@param rad	Radius in pixels of the circle.
+		@param color color value
+		@return 0 on success, -1 on failure
+		~#
+		method : public : CircleColor(x : Int, y : Int, rad : Int, color : Color) ~ Int {
+			array_args := Base->New[6];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@renderer);
+			array_args[2] := IntHolder->New(x);
+			array_args[3] := IntHolder->New(y);
+			array_args[4] := IntHolder->New(rad);
+			array_args[5] := color;
+
+			Proxy->GetDllProxy()->CallFunction("sdl_renderer_circle_color", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
 	}
 
 	#~
