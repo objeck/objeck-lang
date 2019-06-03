@@ -3005,7 +3005,7 @@ extern "C" {
     APITools_SetIntValue(context, 2, pct);
   }
 
-  ////////////////////
+  //////////////////// SDL2_gfx routines ////////////////////
 
 #ifdef _WIN32
   __declspec(dllexport)
@@ -3057,4 +3057,21 @@ extern "C" {
     APITools_SetIntValue(context, 0, return_value);
   }
 
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_renderer_rectangle_color(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+    const int x1 = (int)APITools_GetIntValue(context, 2);
+    const int y1 = (int)APITools_GetIntValue(context, 3);
+    const int x2 = (int)APITools_GetIntValue(context, 4);
+    const int y2 = (int)APITools_GetIntValue(context, 5);
+
+    SDL_Color color;
+    size_t* color_obj = APITools_GetObjectValue(context, 6);
+    sdl_color_raw_write(&color, color_obj);
+
+    const int return_value = rectangleRGBA(renderer, x1, y1, x2, y2, color.r, color.g, color.b, color.a);
+    APITools_SetIntValue(context, 0, return_value);
+  }
 }
