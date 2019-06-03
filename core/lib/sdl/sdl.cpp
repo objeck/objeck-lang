@@ -3148,4 +3148,58 @@ extern "C" {
     const int return_value = lineRGBA(renderer, x1, y1, x2, y2, color.r, color.g, color.b, color.a);
     APITools_SetIntValue(context, 0, return_value);
   }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_renderer_aaline_color(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+    const int x1 = (int)APITools_GetIntValue(context, 2);
+    const int y1 = (int)APITools_GetIntValue(context, 3);
+    const int x2 = (int)APITools_GetIntValue(context, 4);
+    const int y2 = (int)APITools_GetIntValue(context, 5);
+
+    SDL_Color color;
+    size_t* color_obj = APITools_GetObjectValue(context, 6);
+    sdl_color_raw_write(&color, color_obj);
+
+    const int return_value = aalineRGBA(renderer, x1, y1, x2, y2, color.r, color.g, color.b, color.a);
+    APITools_SetIntValue(context, 0, return_value);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_renderer_thick_line_color(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+    const int x1 = (int)APITools_GetIntValue(context, 2);
+    const int y1 = (int)APITools_GetIntValue(context, 3);
+    const int x2 = (int)APITools_GetIntValue(context, 4);
+    const int y2 = (int)APITools_GetIntValue(context, 5);
+    const int width = (int)APITools_GetIntValue(context, 6);
+
+    SDL_Color color;
+    size_t* color_obj = APITools_GetObjectValue(context, 7);
+    sdl_color_raw_write(&color, color_obj);
+
+    const int return_value = thickLineRGBA(renderer, x1, y1, x2, y2, width, color.r, color.g, color.b, color.a);
+    APITools_SetIntValue(context, 0, return_value);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_renderer_circle_color(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+    const int x = (int)APITools_GetIntValue(context, 2);
+    const int y = (int)APITools_GetIntValue(context, 3);
+    const int rad = (int)APITools_GetIntValue(context, 4);
+
+    SDL_Color color;
+    size_t* color_obj = APITools_GetObjectValue(context, 5);
+    sdl_color_raw_write(&color, color_obj);
+
+    const int return_value = circleRGBA(renderer, x, y, rad, color.r, color.g, color.b, color.a);
+    APITools_SetIntValue(context, 0, return_value);
+  }
 }
