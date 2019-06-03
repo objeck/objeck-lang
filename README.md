@@ -44,8 +44,7 @@ Please refer to the programmer's guide [documentation](http://www.objeck.org/doc
 
 ## Building
 Building on Linux:
-*  Install required libraries: "sudo apt-get install build-essential git libssl-dev unixodbc-dev libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev"
-*  Also install SLD2 development libs: "apt-cache search ^libsdl | grep 2"
+*  Install required libraries: "sudo apt-get install build-essential git libssl-dev unixodbc-dev libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libsdl2-mixer-dev"
 *  cd to "objeck-lang/core/release" and run "./deploy.sh" with the parameter 32 or 64 representing the bit version of Linux
 *  Build output with binaries and documentation will be located in "objeck-lang/core/release/deploy"
 
