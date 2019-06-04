@@ -5140,51 +5140,131 @@ bundle Game.SDL2 {
 			value := array_args[0]->As(IntHolder);
 			return value->Get();
 		}
-	}
+	
+		#~
+		Raw anti-aliased circle with blending.
+		@param x X coordinate of the center of the aa-circle.
+		@param y Y coordinate of the center of the aa-circle.
+		@param rad Radius in pixels of the aa-circle.
+		@param color color value
+		@return 0 on success, -1 on failure
+		~#
+		method : public : AACircleColor(x : Int, y : Int, rad : Int, color : Color) ~ Int {
+			array_args := Base->New[6];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@renderer);
+			array_args[2] := IntHolder->New(x);
+			array_args[3] := IntHolder->New(y);
+			array_args[4] := IntHolder->New(rad);
+			array_args[5] := color;
 
-	#~
-	Raw anti-aliased circle with blending.
-	@param x X coordinate of the center of the aa-circle.
-	@param y Y coordinate of the center of the aa-circle.
-	@param rad Radius in pixels of the aa-circle.
-	@param color color value
-	@return 0 on success, -1 on failure
-	~#
-	method : public : AACircleColor(x : Int, y : Int, rad : Int, color : Color) ~ Int {
-		array_args := Base->New[6];
-		array_args[0] := IntHolder->New();
-		array_args[1] := IntHolder->New(@renderer);
-		array_args[2] := IntHolder->New(x);
-		array_args[3] := IntHolder->New(y);
-		array_args[4] := IntHolder->New(rad);
-		array_args[5] := color;
+			Proxy->GetDllProxy()->CallFunction("sdl_renderer_aacircle_color", array_args);
 
-		Proxy->GetDllProxy()->CallFunction("sdl_renderer_aacircle_color", array_args);
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
 
-		value := array_args[0]->As(IntHolder);
-		return value->Get();
-	}
+		#~
+		Draw filled circle with blending.
+		@param x X coordinate of the center of the filled circle.
+		@param y Y coordinate of the center of the filled circle.
+		@param r Radius in pixels of the filled circle.
+		@param color color value
+		@return 0 on success, -1 on failure
+		~#
+		method : public : FilledCircleColor(x : Int, y : Int, r : Int, color : Color) ~ Int {
+			array_args := Base->New[6];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@renderer);
+			array_args[2] := IntHolder->New(x);
+			array_args[3] := IntHolder->New(y);
+			array_args[4] := IntHolder->New(r);
+			array_args[5] := color;
 
-	#~
-	Draw filled circle with blending.
-	@param x X coordinate of the center of the filled circle.
-	@param y Y coordinate of the center of the filled circle.
-	@param rad Radius in pixels of the filled circle.
-	@return 0 on success, -1 on failure
-	~#
-	method : public : FilledCircleColor(x : Int, y : Int, r : Int, color : Color) ~ Int {
-		array_args := Base->New[6];
-		array_args[0] := IntHolder->New();
-		array_args[1] := IntHolder->New(@renderer);
-		array_args[2] := IntHolder->New(x);
-		array_args[3] := IntHolder->New(y);
-		array_args[4] := IntHolder->New(r);
-		array_args[5] := color;
+			Proxy->GetDllProxy()->CallFunction("sdl_renderer_filled_circle_color", array_args);
 
-		Proxy->GetDllProxy()->CallFunction("sdl_renderer_filled_circle_color", array_args);
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
 
-		value := array_args[0]->As(IntHolder);
-		return value->Get();
+		#~
+		Draw ellipse with blending.
+		@param x X coordinate of the center of the ellipse.
+		@param y Y coordinate of the center of the ellipse.
+		@param rx Horizontal radius in pixels of the ellipse.
+		@param ry Vertical radius in pixels of the ellipse.
+		@param color color value
+		@return 0 on success, -1 on failure
+		~#
+		method : public : EllipseColor(x : Int, y : Int, rx : Int, ry : Int, color : Color) ~ Int {
+			array_args := Base->New[7];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@renderer);
+			array_args[2] := IntHolder->New(x);
+			array_args[3] := IntHolder->New(y);
+			array_args[4] := IntHolder->New(rx);
+			array_args[5] := IntHolder->New(ry);
+			array_args[6] := color;
+
+			Proxy->GetDllProxy()->CallFunction("sdl_renderer_ellipse_color", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+
+		#~
+		Draw ellipse with blending.
+		@param x X coordinate of the center of the ellipse.
+		@param y Y coordinate of the center of the ellipse.
+		@param rx Horizontal radius in pixels of the ellipse.
+		@param ry Vertical radius in pixels of the ellipse.
+		@param color color value
+		@return 0 on success, -1 on failure
+		~#
+		method : public : AAEllipseColor(x : Int, y : Int, rx : Int, ry : Int, color : Color) ~ Int {
+			array_args := Base->New[7];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@renderer);
+			array_args[2] := IntHolder->New(x);
+			array_args[3] := IntHolder->New(y);
+			array_args[4] := IntHolder->New(rx);
+			array_args[5] := IntHolder->New(ry);
+			array_args[6] := color;
+
+			Proxy->GetDllProxy()->CallFunction("sdl_renderer_aaellipse_color", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+
+		#~
+		Draw filled ellipse with blending.
+		@param x X coordinate of the center of the filled ellipse.
+		@param y Y coordinate of the center of the filled ellipse.
+		@param rx Horizontal radius in pixels of the filled ellipse.
+		@param ry Vertical radius in pixels of the filled ellipse.
+		@param color color value
+		@return 0 on success, -1 on failure
+		~#
+		method : public : FilledEllipseColor(x : Int, y : Int, rx : Int, ry : Int, color : Color) ~ Int {
+			array_args := Base->New[7];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@renderer);
+			array_args[2] := IntHolder->New(x);
+			array_args[3] := IntHolder->New(y);
+			array_args[4] := IntHolder->New(rx);
+			array_args[5] := IntHolder->New(ry);
+			array_args[6] := color;
+
+			Proxy->GetDllProxy()->CallFunction("sdl_renderer_filled_ellipse_color", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+
+
+
+
 	}
 
 	#~
