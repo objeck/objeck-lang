@@ -3255,4 +3255,64 @@ extern "C" {
     const int return_value = filledCircleRGBA(renderer, x, y, r, color.r, color.g, color.b, color.a);
     APITools_SetIntValue(context, 0, return_value);
   }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_renderer_ellipse_color(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+    const int x = (int)APITools_GetIntValue(context, 2);
+    const int y = (int)APITools_GetIntValue(context, 3);
+    const int rx = (int)APITools_GetIntValue(context, 4);
+    const int ry = (int)APITools_GetIntValue(context, 5);
+
+    SDL_Color color;
+    size_t* color_obj = APITools_GetObjectValue(context, 6);
+    sdl_color_raw_write(&color, color_obj);
+
+    const int return_value = ellipseRGBA(renderer, x, y, rx, ry, color.r, color.g, color.b, color.a);
+    APITools_SetIntValue(context, 0, return_value);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_renderer_aaellipse_color(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+    const int x = (int)APITools_GetIntValue(context, 2);
+    const int y = (int)APITools_GetIntValue(context, 3);
+    const int rx = (int)APITools_GetIntValue(context, 4);
+    const int ry = (int)APITools_GetIntValue(context, 5);
+
+    SDL_Color color;
+    size_t* color_obj = APITools_GetObjectValue(context, 6);
+    sdl_color_raw_write(&color, color_obj);
+
+    const int return_value = aaellipseRGBA(renderer, x, y, rx, ry, color.r, color.g, color.b, color.a);
+    APITools_SetIntValue(context, 0, return_value);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_renderer_filled_ellipse_color(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+    const int x = (int)APITools_GetIntValue(context, 2);
+    const int y = (int)APITools_GetIntValue(context, 3);
+    const int rx = (int)APITools_GetIntValue(context, 4);
+    const int ry = (int)APITools_GetIntValue(context, 5);
+
+    SDL_Color color;
+    size_t* color_obj = APITools_GetObjectValue(context, 6);
+    sdl_color_raw_write(&color, color_obj);
+
+    const int return_value = filledEllipseRGBA(renderer, x, y, rx, ry, color.r, color.g, color.b, color.a);
+    APITools_SetIntValue(context, 0, return_value);
+  }
+
+
+
+
+
+
 }
