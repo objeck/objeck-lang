@@ -5262,6 +5262,152 @@ bundle Game.SDL2 {
 			return value->Get();
 		}
 
+		#~
+		Draw pie (outline) with alpha blending.
+		@param x X coordinate of the center of the pie.
+		@param y Y coordinate of the center of the pie.
+		@param rad Radius in pixels of the pie.
+		@param start Starting radius in degrees of the pie.
+		@param end Ending radius in degrees of the pie.
+		@param color color value
+		@return 0 on success, -1 on failure
+		~#
+		method : public : PieColor(x : Int, y : Int, rad : Int, start : Int, end : Int, color : Color) ~ Int {
+			array_args := Base->New[8];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@renderer);
+			array_args[2] := IntHolder->New(x);
+			array_args[3] := IntHolder->New(y);
+			array_args[4] := IntHolder->New(rad);
+			array_args[5] := IntHolder->New(start);
+			array_args[6] := IntHolder->New(end);
+			array_args[7] := color;
+
+			Proxy->GetDllProxy()->CallFunction("sdl_renderer_pie_color", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+
+		#~
+		Draw filled pie with alpha blending.
+		@param x X coordinate of the center of the filled pie.
+		@param y Y coordinate of the center of the filled pie.
+		@param rad Radius in pixels of the filled pie.
+		@param start Starting radius in degrees of the filled pie.
+		@param end Ending radius in degrees of the filled pie.
+		@param color color value
+		@return 0 on success, -1 on failure
+		~#
+		method : public : FilledPieColor(x : Int, y : Int, rad : Int, start : Int, end : Int, color : Color) ~ Int {
+			array_args := Base->New[8];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@renderer);
+			array_args[2] := IntHolder->New(x);
+			array_args[3] := IntHolder->New(y);
+			array_args[4] := IntHolder->New(rad);
+			array_args[5] := IntHolder->New(start);
+			array_args[6] := IntHolder->New(end);
+			array_args[7] := color;
+
+			Proxy->GetDllProxy()->CallFunction("sdl_renderer_filled_pie_color", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+
+		#~
+		Draw trigon (triangle outline) with alpha blending.
+		@param x1 X coordinate of the first point of the trigon.
+		@param y1 Y coordinate of the first point of the trigon.
+		@param x2 X coordinate of the second point of the trigon.
+		@param y2 Y coordinate of the second point of the trigon.
+		@param x3 X coordinate of the third point of the trigon.
+		@param y3 Y coordinate of the third point of the trigon.
+		@param color color value
+		@return 0 on success, -1 on failure
+		~#
+		method : public : TrigonColor(x1 : Int, y1 : Int, x2 : Int, y2 : Int, x3 : Int, y3 : Int, color : Color) ~ Int {
+			array_args := Base->New[9];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@renderer);
+			array_args[2] := IntHolder->New(x1);
+			array_args[3] := IntHolder->New(y1);
+			array_args[4] := IntHolder->New(x2);
+			array_args[5] := IntHolder->New(y2);
+			array_args[6] := IntHolder->New(x3);
+			array_args[7] := IntHolder->New(y3);
+			array_args[8] := color;
+
+			Proxy->GetDllProxy()->CallFunction("sdl_renderer_trigon_color", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+
+		#~
+		Draw anti-aliased trigon (triangle outline) with alpha blending. 
+		Note: Creates vertex array and uses aapolygon routine to render.
+		@param x1 X coordinate of the first point of the aa-trigon.
+		@param y1 Y coordinate of the first point of the aa-trigon.
+		@param x2 X coordinate of the second point of the aa-trigon.
+		@param y2 Y coordinate of the second point of the aa-trigon.
+		@param x3 X coordinate of the third point of the aa-trigon.
+		@param y3 Y coordinate of the third point of the aa-trigon.
+		@param color color value
+		@return 0 on success, -1 on failure
+		~#
+		method : public : AAtrigonColor(x1 : Int, y1 : Int, x2 : Int, y2 : Int, x3 : Int, y3 : Int, color : Color) ~ Int {
+			array_args := Base->New[9];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@renderer);
+			array_args[2] := IntHolder->New(x1);
+			array_args[3] := IntHolder->New(y1);
+			array_args[4] := IntHolder->New(x2);
+			array_args[5] := IntHolder->New(y2);
+			array_args[6] := IntHolder->New(x3);
+			array_args[7] := IntHolder->New(y3);
+			array_args[8] := color;
+
+			Proxy->GetDllProxy()->CallFunction("sdl_renderer_aatrigon_color", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+
+		#~
+		Draw filled trigon (triangle) with alpha blending.
+		Note: Creates vertex array and uses aapolygon routine to render.
+		@param x1	X coordinate of the first point of the filled trigon.
+		@param y1	Y coordinate of the first point of the filled trigon.
+		@param x2	X coordinate of the second point of the filled trigon.
+		@param y2	Y coordinate of the second point of the filled trigon.
+		@param x3	X coordinate of the third point of the filled trigon.
+		@param y3	Y coordinate of the third point of the filled trigon.
+		@param color color value
+		@return 0 on success, -1 on failure
+		~#
+		method : public : FilledTrigonColor(x1 : Int, y1 : Int, x2 : Int, y2 : Int, x3 : Int, y3 : Int, color : Color) ~ Int {
+			array_args := Base->New[9];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@renderer);
+			array_args[2] := IntHolder->New(x1);
+			array_args[3] := IntHolder->New(y1);
+			array_args[4] := IntHolder->New(x2);
+			array_args[5] := IntHolder->New(y2);
+			array_args[6] := IntHolder->New(x3);
+			array_args[7] := IntHolder->New(y3);
+			array_args[8] := color;
+
+			Proxy->GetDllProxy()->CallFunction("sdl_renderer_filled_trigon_color", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+
+
+
+
 
 
 

@@ -3310,6 +3310,106 @@ extern "C" {
     APITools_SetIntValue(context, 0, return_value);
   }
 
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_renderer_pie_color(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+    const int x = (int)APITools_GetIntValue(context, 2);
+    const int y = (int)APITools_GetIntValue(context, 3);
+    const int rad = (int)APITools_GetIntValue(context, 4);
+    const int start = (int)APITools_GetIntValue(context, 5);
+    const int end = (int)APITools_GetIntValue(context, 6);
+
+    SDL_Color color;
+    size_t* color_obj = APITools_GetObjectValue(context, 7);
+    sdl_color_raw_write(&color, color_obj);
+
+    const int return_value = pieRGBA(renderer, x, y, rad, start, end, color.r, color.g, color.b, color.a);
+    APITools_SetIntValue(context, 0, return_value);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_renderer_filled_pie_color(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+    const int x = (int)APITools_GetIntValue(context, 2);
+    const int y = (int)APITools_GetIntValue(context, 3);
+    const int rad = (int)APITools_GetIntValue(context, 4);
+    const int start = (int)APITools_GetIntValue(context, 5);
+    const int end = (int)APITools_GetIntValue(context, 6);
+
+    SDL_Color color;
+    size_t* color_obj = APITools_GetObjectValue(context, 7);
+    sdl_color_raw_write(&color, color_obj);
+
+    const int return_value = filledPieRGBA(renderer, x, y, rad, start, end, color.r, color.g, color.b, color.a);
+    APITools_SetIntValue(context, 0, return_value);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_renderer_trigon_color(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+    const int x1 = (int)APITools_GetIntValue(context, 2);
+    const int y1 = (int)APITools_GetIntValue(context, 3);
+    const int x2 = (int)APITools_GetIntValue(context, 4);
+    const int y2 = (int)APITools_GetIntValue(context, 5);
+    const int x3 = (int)APITools_GetIntValue(context, 6);
+    const int y3 = (int)APITools_GetIntValue(context, 7);
+
+    SDL_Color color;
+    size_t* color_obj = APITools_GetObjectValue(context, 8);
+    sdl_color_raw_write(&color, color_obj);
+
+    const int return_value = trigonRGBA(renderer, x1, y1, x2, y2, x3, y3, color.r, color.g, color.b, color.a);
+    APITools_SetIntValue(context, 0, return_value);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_renderer_aatrigon_color(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+    const int x1 = (int)APITools_GetIntValue(context, 2);
+    const int y1 = (int)APITools_GetIntValue(context, 3);
+    const int x2 = (int)APITools_GetIntValue(context, 4);
+    const int y2 = (int)APITools_GetIntValue(context, 5);
+    const int x3 = (int)APITools_GetIntValue(context, 6);
+    const int y3 = (int)APITools_GetIntValue(context, 7);
+
+    SDL_Color color;
+    size_t* color_obj = APITools_GetObjectValue(context, 8);
+    sdl_color_raw_write(&color, color_obj);
+
+    const int return_value = aatrigonRGBA(renderer, x1, y1, x2, y2, x3, y3, color.r, color.g, color.b, color.a);
+    APITools_SetIntValue(context, 0, return_value);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_renderer_filled_trigon_color(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+    const int x1 = (int)APITools_GetIntValue(context, 2);
+    const int y1 = (int)APITools_GetIntValue(context, 3);
+    const int x2 = (int)APITools_GetIntValue(context, 4);
+    const int y2 = (int)APITools_GetIntValue(context, 5);
+    const int x3 = (int)APITools_GetIntValue(context, 6);
+    const int y3 = (int)APITools_GetIntValue(context, 7);
+
+    SDL_Color color;
+    size_t* color_obj = APITools_GetObjectValue(context, 8);
+    sdl_color_raw_write(&color, color_obj);
+
+    const int return_value = filledTrigonRGBA(renderer, x1, y1, x2, y2, x3, y3, color.r, color.g, color.b, color.a);
+    APITools_SetIntValue(context, 0, return_value);
+  }
+
+
+
 
 
 
