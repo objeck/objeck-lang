@@ -590,7 +590,7 @@ method : public : FilledEllipseColor(x : Int, y : Int, rx : Int, ry : Int, color
 		APITools_SetIntValue(context, 0, return_value);
 	}
 
-===
+---
 method : public : PieColor(x : Int, y : Int, rad : Int, start : Int, end : Int, color : Color) ~ Int {
 	array_args := Base->New[8];
 	array_args[0] := IntHolder->New();
@@ -781,7 +781,7 @@ method : public : FilledTrigonColor(x1 : Int, y1 : Int, x2 : Int, y2 : Int, x3 :
 		APITools_SetIntValue(context, 0, return_value);
 	}
 
----
+===
 method : public : PolygonColor(vx : Int, vy : Int, n : Int, color : Color) ~ Int {
 	array_args := Base->New[6];
 	array_args[0] := IntHolder->New();
