@@ -15,5 +15,5 @@ make -f make/Makefile.32
 ./obc -src lib_src/fcgi.obs -lib net_misc.obl,collect.obl,json.obl -tar lib -opt s3 -dest ../lib/fcgi.obl
 ./obc -src lib_src/csv.obs -tar lib -lib gen_collect.obl -opt s3 -dest ../lib/csv.obl
 ./obc -src lib_src/query.obs -tar lib -lib xml.obl,regex.obl,net_misc.obl,gen_collect.obl -opt s3 -dest ../lib/query.obl
-./obc -src lib_src/sdl2.obs -lib collect.obl -tar lib -dest ../lib/sdl2.obl
+./obc -src lib_src/sdl2.obs -tar lib -dest ../lib/sdl2.obl
 ./obc -src lib_src/sdl_game.obs -lib collect.obl,sdl2.obl -tar lib -dest ../lib/sdl_game.obl
