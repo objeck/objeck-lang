@@ -3408,7 +3408,26 @@ extern "C" {
     APITools_SetIntValue(context, 0, return_value);
   }
 
+  /*
+  TODO: pass array
 
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_renderer_polygon_color(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+    const int vx = (int)APITools_GetIntValue(context, 2);
+    const int vy = (int)APITools_GetIntValue(context, 3);
+    const int n = (int)APITools_GetIntValue(context, 4);
+
+    SDL_Color color;
+    size_t* color_obj = APITools_GetObjectValue(context, 5);
+    sdl_color_raw_write(&color, color_obj);
+
+    const int return_value = polygonRGBA(renderer, vx, vy, n, color.r, color.g, color.b, color.a);
+    APITools_SetIntValue(context, 0, return_value);
+  }
+  */
 
 
 
