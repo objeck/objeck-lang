@@ -1162,19 +1162,32 @@ bundle Collection.Generic {
 				@values := temp;
 			};
 		}
+		
+		#~
+		Frees unused space
+		~#
+		method  : public : Trim() ~ Nil {
+			temp : H[] := H->New[@size];
+			Runtime->Copy(temp, 0, @values, 0, @size);
+			@values := temp;
+		}
 
 		#~
 		Applies the given function to each value in the vector 
-		@param f function to applyhjbkm;l,.'/
-		ijp\][rt54\]x[p\
-		m ,."?
-	"?}|"?'[;//..l,.,p"	};
+		@param f function to apply
+		@return newly calculated vector
+		~#
+		method : public : Apply(f : (H) ~ H) ~ CompareVector<H> {
+			array : H[] := H->New[@size];
+			for(i : Int := 0; i < @size; i += 1;) {
+				array[i] := @values[i];
+			};
 			
-			temp := @values[a];
-			@values[a] := @values[b];
-			@values[b] := temp;
-			
-			return true;
+			for(i : Int := 0; i < @size; i += 1;) {
+			  array[i] := f(array[i]);
+			};
+      
+			return CompareVector->New(array)<H>;
 		}
 
 		#~
