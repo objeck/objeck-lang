@@ -327,7 +327,7 @@ namespace Runtime {
    * Prototype for jit function
    ********************************/
   typedef long(*jit_fun_ptr)(long cls_id, long mthd_id, size_t* cls_mem, size_t* inst, size_t* op_stack, long *stack_pos,
-                             StackFrame** call_stack, long* call_stack_pos, size_t** jit_mem, long* offset);
+           StackFrame** call_stack, long* call_stack_pos, size_t** jit_mem, long* offset);
 
   /********************************
    * JitCompilerIA64 class
@@ -887,8 +887,8 @@ namespace Runtime {
     // Callback
     //
     static void StackCallback(const long instr_id, StackInstr* instr, const long cls_id,
-                              const long mthd_id, size_t* inst, size_t* op_stack, long *stack_pos, 
-                              StackFrame** call_stack, long* call_stack_pos, const long ip);
+            const long mthd_id, size_t* inst, size_t* op_stack, long *stack_pos, 
+            StackFrame** call_stack, long* call_stack_pos, const long ip);
 
     // Calculates array element offset. 
     // Note: this code must match up 
@@ -983,7 +983,7 @@ namespace Runtime {
     double* floats;
 
     long ExecuteMachineCode(long cls_id, long mthd_id, size_t* inst, unsigned char* code, const long code_size, 
-                            size_t* op_stack, long *stack_pos, StackFrame** call_stack, long* call_stack_pos, StackFrame* frame);
+          size_t* op_stack, long *stack_pos, StackFrame** call_stack, long* call_stack_pos, StackFrame* frame);
 
   public:
     static void Initialize(StackProgram* p);

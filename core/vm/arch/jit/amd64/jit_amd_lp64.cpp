@@ -61,25 +61,25 @@ void JitCompilerIA64::Prolog() {
 
   unsigned char setup_code[] = {
     // setup stack frame
-    0x48, 0x55,                                    // push $rbp
-    0x48, 0x89, 0xe5,                              // mov  $rsp, $rbp    
-    0x48, 0x81, 0xec,                              // sub  %imm, $rsp
+    0x48, 0x55,                  // push $rbp
+    0x48, 0x89, 0xe5,            // mov  $rsp, $rbp    
+    0x48, 0x81, 0xec,            // sub  %imm, $rsp
     buffer[0], buffer[1], buffer[2], buffer[3],      
     // save registers
-    0x48, 0x53,                                    // push $rbx
-    0x48, 0x51,                                    // push $rcx
-    0x48, 0x52,                                    // push $rdx
-    0x48, 0x57,                                    // push $rdi
-    0x48, 0x56,                                    // push $rsi
+    0x48, 0x53,                  // push $rbx
+    0x48, 0x51,                  // push $rcx
+    0x48, 0x52,                  // push $rdx
+    0x48, 0x57,                  // push $rdi
+    0x48, 0x56,                  // push $rsi
 #ifndef _WIN64
-    0x49, 0x50,                                    // push r8
-    0x49, 0x51,                                    // push r9
-    0x49, 0x52,                                    // push r10
-    0x49, 0x53,                                    // push r11
-    0x49, 0x54,                                    // push r12
-    0x49, 0x55,                                    // push r13
-    0x49, 0x56,                                    // push r14
-    0x49, 0x57,                                    // push r15
+    0x49, 0x50,                  // push r8
+    0x49, 0x51,                  // push r9
+    0x49, 0x52,                  // push r10
+    0x49, 0x53,                  // push r11
+    0x49, 0x54,                  // push r12
+    0x49, 0x55,                  // push r13
+    0x49, 0x56,                  // push r14
+    0x49, 0x57,                  // push r15
 #endif  
   };
   const long setup_size = sizeof(setup_code);
@@ -144,9 +144,9 @@ void JitCompilerIA64::Epilog()
 }
 
 void JitCompilerIA64::RegisterRoot() {
-  // caculate root address
-  // note: the offset requried to 
-  // get to the first local variale
+  // calculate root address
+  // note: the offset required to 
+  // get to the first local variable
 #ifdef _WIN64
   const long offset = org_local_space + RED_ZONE + TMP_REG_5 + 8;
 #else
@@ -1226,7 +1226,7 @@ void JitCompilerIA64::ProcessFloor(StackInstr* instr) {
     
   case REG_FLOAT:
     round_xreg_xreg(left->GetRegister()->GetRegister(), 
-                    left->GetRegister()->GetRegister(), true);
+    left->GetRegister()->GetRegister(), true);
     working_stack.push_front(left);
     break;
 
@@ -1261,7 +1261,7 @@ void JitCompilerIA64::ProcessCeiling(StackInstr* instr) {
     
   case REG_FLOAT:
     round_xreg_xreg(left->GetRegister()->GetRegister(), 
-                    left->GetRegister()->GetRegister(), false);
+    left->GetRegister()->GetRegister(), false);
     working_stack.push_front(left);
     break;
 
@@ -1852,8 +1852,8 @@ void JitCompilerIA64::ProcessIntCalculation(StackInstr* instruction) {
     switch(right->GetType()) {
     case IMM_INT:
       working_stack.push_front(ProcessIntFold(left->GetOperand(), 
-                                              right->GetOperand(), 
-                                              instruction->GetType()));
+          right->GetOperand(), 
+          instruction->GetType()));
       break;
       
     case REG_INT: {
@@ -1985,13 +1985,13 @@ void JitCompilerIA64::ProcessFloatCalculation(StackInstr* instruction) {
       
       if(type == LES_FLOAT || type == LES_EQL_FLOAT) {
         math_xreg_xreg(left_holder->GetRegister(), right_holder->GetRegister(), 
-                       instruction->GetType());
+     instruction->GetType());
         ReleaseXmmRegister(left_holder);
         working_stack.push_front(new RegInstr(right_holder));
       }
       else {
         math_xreg_xreg(right_holder->GetRegister(), left_holder->GetRegister(), 
-                       instruction->GetType());
+     instruction->GetType());
         ReleaseXmmRegister(right_holder);
         working_stack.push_front(new RegInstr(left_holder));
       }
@@ -2147,13 +2147,13 @@ void JitCompilerIA64::ProcessFloatCalculation(StackInstr* instruction) {
       move_mem_xreg(right->GetOperand(), RBP, right_holder->GetRegister());
       if(type == LES_FLOAT || type == LES_EQL_FLOAT) {
         math_xreg_xreg(left_holder->GetRegister(), right_holder->GetRegister(),  
-                       instruction->GetType());
+     instruction->GetType());
         ReleaseXmmRegister(left_holder);
         working_stack.push_front(new RegInstr(right_holder));
       }
       else {
         math_xreg_xreg(right_holder->GetRegister(), left_holder->GetRegister(),  
-                       instruction->GetType());  
+     instruction->GetType());  
         ReleaseXmmRegister(right_holder);
         working_stack.push_front(new RegInstr(left_holder));
       }
@@ -3490,7 +3490,7 @@ void JitCompilerIA64::div_imm_reg(long imm, Register reg, bool is_mod) {
 }
 
 void JitCompilerIA64::div_mem_reg(long offset, Register src,
-                                  Register dest, bool is_mod) {
+                Register dest, bool is_mod) {
   if(is_mod) {
     if(dest != RDX) {
       move_reg_mem(RDX, TMP_REG_1, RBP);
@@ -4573,7 +4573,7 @@ void Runtime::JitCompilerIA64::StackCallback(const long instr_id, StackInstr* in
     StackInterpreter intpr(call_stack, call_stack_pos);
     intpr.Execute(op_stack, stack_pos, ip, program->GetClass(cls_id)->GetMethod(mthd_id), inst, true);
   }
-                      break;
+    break;
 
   case LOAD_ARY_SIZE: {
     size_t* array = (size_t*)PopInt(op_stack, stack_pos);
@@ -4584,7 +4584,7 @@ void Runtime::JitCompilerIA64::StackCallback(const long instr_id, StackInstr* in
     }
     PushInt(op_stack, stack_pos, array[2]);
   }
-                      break;
+    break;
 
   case NEW_BYTE_ARY: {
     size_t indices[8];
@@ -4611,7 +4611,7 @@ void Runtime::JitCompilerIA64::StackCallback(const long instr_id, StackInstr* in
       << L"; index=" << (*stack_pos) << L"; mem=" << mem << endl;
 #endif
   }
-                     break;
+    break;
 
   case NEW_CHAR_ARY: {
     size_t indices[8];
@@ -4637,7 +4637,7 @@ void Runtime::JitCompilerIA64::StackCallback(const long instr_id, StackInstr* in
       << L"; index=" << (*stack_pos) << L"; mem=" << mem << endl;
 #endif
   }
-                     break;
+    break;
 
   case NEW_INT_ARY: {
     size_t indices[8];
@@ -4661,7 +4661,7 @@ void Runtime::JitCompilerIA64::StackCallback(const long instr_id, StackInstr* in
     memcpy(mem + 2, indices, dim * sizeof(size_t));
     PushInt(op_stack, stack_pos, (size_t)mem);
   }
-                    break;
+    break;
 
   case NEW_FLOAT_ARY: {
     size_t indices[8];
@@ -4686,7 +4686,7 @@ void Runtime::JitCompilerIA64::StackCallback(const long instr_id, StackInstr* in
     memcpy(mem + 2, indices, dim * sizeof(size_t));
     PushInt(op_stack, stack_pos, (size_t)mem);
   }
-                      break;
+    break;
 
   case NEW_OBJ_INST: {
 #ifdef _DEBUG
@@ -4696,7 +4696,7 @@ void Runtime::JitCompilerIA64::StackCallback(const long instr_id, StackInstr* in
     size_t* mem = MemoryManager::AllocateObject(instr->GetOperand(), op_stack, *stack_pos);
     PushInt(op_stack, stack_pos, (size_t)mem);
   }
-                     break;
+    break;
 
   case OBJ_TYPE_OF: {
     size_t* mem = (size_t*)PopInt(op_stack, stack_pos);
@@ -4708,7 +4708,7 @@ void Runtime::JitCompilerIA64::StackCallback(const long instr_id, StackInstr* in
       PushInt(op_stack, stack_pos, 0);
     }
   }
-                    break;
+    break;
 
   case OBJ_INST_CAST: {
     size_t* mem = (size_t*)PopInt(op_stack, stack_pos);
@@ -4726,9 +4726,9 @@ void Runtime::JitCompilerIA64::StackCallback(const long instr_id, StackInstr* in
     }
     PushInt(op_stack, stack_pos, result);
   }
-                      break;
+    break;
 
-                      //----------- threads -----------
+    //----------- threads -----------
 
   case THREAD_JOIN: {
     size_t* instance = inst;
@@ -4753,7 +4753,7 @@ void Runtime::JitCompilerIA64::StackCallback(const long instr_id, StackInstr* in
     }
 #endif      
   }
-                    break;
+    break;
 
   case THREAD_SLEEP:
 #ifdef _WIN64    
@@ -4776,7 +4776,7 @@ void Runtime::JitCompilerIA64::StackCallback(const long instr_id, StackInstr* in
     pthread_mutex_init((pthread_mutex_t*)& instance[1], nullptr);
 #endif    
   }
-                     break;
+    break;
 
   case CRITICAL_START: {
     size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
@@ -4791,7 +4791,7 @@ void Runtime::JitCompilerIA64::StackCallback(const long instr_id, StackInstr* in
     pthread_mutex_lock((pthread_mutex_t*)& instance[1]);
 #endif      
   }
-                       break;
+     break;
 
   case CRITICAL_END: {
     size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
@@ -4806,9 +4806,9 @@ void Runtime::JitCompilerIA64::StackCallback(const long instr_id, StackInstr* in
     pthread_mutex_unlock((pthread_mutex_t*)& instance[1]);
 #endif      
   }
-                     break;
+    break;
 
-                     // ---------------- memory copy ----------------
+    // ---------------- memory copy ----------------
   case CPY_BYTE_ARY: {
     long length = (long)PopInt(op_stack, stack_pos);;
     const long src_offset = (long)PopInt(op_stack, stack_pos);;
@@ -4834,7 +4834,7 @@ void Runtime::JitCompilerIA64::StackCallback(const long instr_id, StackInstr* in
       PushInt(op_stack, stack_pos, 0);
     }
   }
-                     break;
+    break;
 
   case CPY_CHAR_ARY: {
     long length = (long)PopInt(op_stack, stack_pos);;
@@ -4862,7 +4862,7 @@ void Runtime::JitCompilerIA64::StackCallback(const long instr_id, StackInstr* in
       PushInt(op_stack, stack_pos, 0);
     }
   }
-                     break;
+    break;
 
   case CPY_INT_ARY: {
     long length = (long)PopInt(op_stack, stack_pos);;
@@ -4889,7 +4889,7 @@ void Runtime::JitCompilerIA64::StackCallback(const long instr_id, StackInstr* in
       PushInt(op_stack, stack_pos, 0);
     }
   }
-                    break;
+    break;
 
   case CPY_FLOAT_ARY: {
     long length = (long)PopInt(op_stack, stack_pos);;
@@ -4916,7 +4916,7 @@ void Runtime::JitCompilerIA64::StackCallback(const long instr_id, StackInstr* in
       PushInt(op_stack, stack_pos, 0);
     }
   }
-                      break;
+    break;
 
   case TRAP:
   case TRAP_RTRN:
@@ -5347,12 +5347,12 @@ void JitExecutor::Initialize(StackProgram* p) {
 }
 
 long JitExecutor::ExecuteMachineCode(long cls_id, long mthd_id, size_t* inst, unsigned char* code, const long code_size,
-                                     size_t* op_stack, long* stack_pos, StackFrame** call_stack, long* call_stack_pos, StackFrame* frame) 
+                   size_t* op_stack, long* stack_pos, StackFrame** call_stack, long* call_stack_pos, StackFrame* frame) 
 {
   // create function
   jit_fun_ptr jit_fun = (jit_fun_ptr)code;
   const long status = jit_fun(cls_id, mthd_id, method->GetClass()->GetClassMemory(), inst, op_stack,
-                              stack_pos, call_stack, call_stack_pos, &(frame->jit_mem), &(frame->jit_offset));
+            stack_pos, call_stack, call_stack_pos, &(frame->jit_mem), &(frame->jit_offset));
 
 #ifdef _DEBUG
   wcout << L"JIT return=: " << status << endl;

@@ -949,12 +949,13 @@ method : public : BezierColor(vx : Int, vy : Int, n : Int, s : Int, color : Colo
 	}
 
 ---
-method : public : CharacterColor(x : Int, y : Int, c : , color : Color) ~ Int {
+method : public : CharacterColor(x : Int, y : Int, c : Char, color : Color) ~ Int {
 	array_args := Base->New[6];
 	array_args[0] := IntHolder->New();
 	array_args[1] := IntHolder->New(@renderer);
 	array_args[2] := IntHolder->New(x);
 	array_args[3] := IntHolder->New(y);
+	array_args[4] := IntHolder->New(c);
 	array_args[5] := color;
 
 	Proxy->GetDllProxy()->CallFunction("sdl_renderer_character_color", array_args);

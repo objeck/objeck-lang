@@ -48,6 +48,8 @@
 
 using namespace std;
 
+#define POLY_MAX 1024
+
 extern "C" {
   void sdl_color_raw_read(SDL_Color* color, size_t* color_obj);
   void sdl_color_raw_write(SDL_Color* color, size_t* color_obj);
@@ -3407,30 +3409,176 @@ extern "C" {
     const int return_value = filledTrigonRGBA(renderer, x1, y1, x2, y2, x3, y3, color.r, color.g, color.b, color.a);
     APITools_SetIntValue(context, 0, return_value);
   }
-
-  /*
-  TODO: pass array
-
+  
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
   void sdl_renderer_polygon_color(VMContext& context) {
     SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
-    const int vx = (int)APITools_GetIntValue(context, 2);
-    const int vy = (int)APITools_GetIntValue(context, 3);
-    const int n = (int)APITools_GetIntValue(context, 4);
+
+    size_t* vx_ary = nullptr;
+    const size_t* vx_obj = APITools_GetObjectValue(context, 2);
+    if(vx_obj && vx_obj[0]) {
+      vx_ary = (size_t*)vx_obj[0];
+    }
+    
+    size_t* vy_ary = nullptr;
+    const size_t* vy_obj = APITools_GetObjectValue(context, 3);
+    if(vy_obj && vy_obj[0]) {
+      vy_ary = (size_t*)vy_obj[0];
+    }
+
+    SDL_Color color;
+    size_t* color_obj = APITools_GetObjectValue(context, 4);
+    sdl_color_raw_write(&color, color_obj);
+
+    if(vx_ary && vy_ary && vx_ary[0] == vy_ary[0] && vx_ary[0] < POLY_MAX) {
+      const int n = (int)vx_ary[0];
+
+      vx_ary = vx_ary + ARRAY_HEADER_OFFSET;
+      vy_ary = vy_ary + ARRAY_HEADER_OFFSET;
+
+      Sint16 x_values[POLY_MAX];
+      Sint16 y_values[POLY_MAX];
+
+      for(int i = 0; i < n; ++i) {
+        x_values[i] = (Sint16)vx_ary[i];
+        y_values[i] = (Sint16)vy_ary[i];
+      }
+
+      const int return_value = polygonRGBA(renderer, x_values, y_values, n, color.r, color.g, color.b, color.a);
+
+      APITools_SetIntValue(context, 0, return_value);
+    }
+    else {
+      APITools_SetIntValue(context, 0, -1);
+    }
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_renderer_filled_polygon_color(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+
+    size_t* vx_ary = nullptr;
+    const size_t* vx_obj = APITools_GetObjectValue(context, 2);
+    if(vx_obj && vx_obj[0]) {
+      vx_ary = (size_t*)vx_obj[0];
+    }
+
+    size_t* vy_ary = nullptr;
+    const size_t* vy_obj = APITools_GetObjectValue(context, 3);
+    if(vy_obj && vy_obj[0]) {
+      vy_ary = (size_t*)vy_obj[0];
+    }
+
+    SDL_Color color;
+    size_t* color_obj = APITools_GetObjectValue(context, 4);
+    sdl_color_raw_write(&color, color_obj);
+
+    if(vx_ary && vy_ary && vx_ary[0] == vy_ary[0] && vx_ary[0] < POLY_MAX) {
+      const int n = (int)vx_ary[0];
+
+      vx_ary = vx_ary + ARRAY_HEADER_OFFSET;
+      vy_ary = vy_ary + ARRAY_HEADER_OFFSET;
+
+      Sint16 x_values[POLY_MAX];
+      Sint16 y_values[POLY_MAX];
+
+      for(int i = 0; i < n; ++i) {
+        x_values[i] = (Sint16)vx_ary[i];
+        y_values[i] = (Sint16)vy_ary[i];
+      }
+
+      const int return_value = filledPolygonRGBA(renderer, x_values, y_values, n, color.r, color.g, color.b, color.a);
+
+      APITools_SetIntValue(context, 0, return_value);
+    }
+    else {
+      APITools_SetIntValue(context, 0, -1);
+    }
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_renderer_aapolygon_color(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+
+    size_t* vx_ary = nullptr;
+    const size_t* vx_obj = APITools_GetObjectValue(context, 2);
+    if(vx_obj && vx_obj[0]) {
+      vx_ary = (size_t*)vx_obj[0];
+    }
+
+    size_t* vy_ary = nullptr;
+    const size_t* vy_obj = APITools_GetObjectValue(context, 3);
+    if(vy_obj && vy_obj[0]) {
+      vy_ary = (size_t*)vy_obj[0];
+    }
+
+    SDL_Color color;
+    size_t* color_obj = APITools_GetObjectValue(context, 4);
+    sdl_color_raw_write(&color, color_obj);
+
+    if(vx_ary && vy_ary && vx_ary[0] == vy_ary[0] && vx_ary[0] < POLY_MAX) {
+      const int n = (int)vx_ary[0];
+
+      vx_ary = vx_ary + ARRAY_HEADER_OFFSET;
+      vy_ary = vy_ary + ARRAY_HEADER_OFFSET;
+
+      Sint16 x_values[POLY_MAX];
+      Sint16 y_values[POLY_MAX];
+
+      for(int i = 0; i < n; ++i) {
+        x_values[i] = (Sint16)vx_ary[i];
+        y_values[i] = (Sint16)vy_ary[i];
+      }
+
+      const int return_value = aapolygonRGBA(renderer, x_values, y_values, n, color.r, color.g, color.b, color.a);
+
+      APITools_SetIntValue(context, 0, return_value);
+    }
+    else {
+      APITools_SetIntValue(context, 0, -1);
+    }
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_renderer_character_color(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+    const int x = (int)APITools_GetIntValue(context, 2);
+    const int y = (int)APITools_GetIntValue(context, 3);
+    const char c = (char)APITools_GetIntValue(context, 3);
 
     SDL_Color color;
     size_t* color_obj = APITools_GetObjectValue(context, 5);
     sdl_color_raw_write(&color, color_obj);
 
-    const int return_value = polygonRGBA(renderer, vx, vy, n, color.r, color.g, color.b, color.a);
+    const int return_value = characterRGBA(renderer, x, y, c, color.r, color.g, color.b, color.a);
     APITools_SetIntValue(context, 0, return_value);
   }
-  */
 
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_renderer_string_color(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+    const int x = (int)APITools_GetIntValue(context, 2);
+    const int y = (int)APITools_GetIntValue(context, 3);
+    const wstring ws = APITools_GetStringValue(context, 4);
+    const string s = UnicodeToBytes(ws);
 
+    SDL_Color color;
+    size_t* color_obj = APITools_GetObjectValue(context, 5);
+    sdl_color_raw_write(&color, color_obj);
 
+    const int return_value = stringRGBA(renderer, x, y, s.c_str(), color.r, color.g, color.b, color.a);
+    APITools_SetIntValue(context, 0, return_value);
+  }
 
 
 
