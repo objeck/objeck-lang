@@ -69,7 +69,7 @@ class File {
     }
 
     DWORD flag = GetSecurityInfo(handle, SE_FILE_OBJECT, OWNER_SECURITY_INFORMATION,
-                                 &sid_owner, nullptr, nullptr, nullptr, &security);
+               &sid_owner, nullptr, nullptr, nullptr, &security);
     if (flag != ERROR_SUCCESS) {
       CloseHandle(handle);
       return false;
@@ -90,7 +90,7 @@ class File {
     domain_name = new char[domain_size];
 
     flag = LookupAccountSid(nullptr, sid_owner, account_name, (LPDWORD)&owner_size,
-                            domain_name, (LPDWORD)&domain_size, &use);
+          domain_name, (LPDWORD)&domain_size, &use);
     if (flag == ERROR_SUCCESS) {
       // clean up
       CloseHandle(handle);

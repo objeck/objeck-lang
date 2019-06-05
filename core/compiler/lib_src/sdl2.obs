@@ -5378,12 +5378,12 @@ bundle Game.SDL2 {
 		#~
 		Draw filled trigon (triangle) with alpha blending.
 		Note: Creates vertex array and uses aapolygon routine to render.
-		@param x1	X coordinate of the first point of the filled trigon.
-		@param y1	Y coordinate of the first point of the filled trigon.
-		@param x2	X coordinate of the second point of the filled trigon.
-		@param y2	Y coordinate of the second point of the filled trigon.
-		@param x3	X coordinate of the third point of the filled trigon.
-		@param y3	Y coordinate of the third point of the filled trigon.
+		@param x1 X coordinate of the first point of the filled trigon.
+		@param y1 Y coordinate of the first point of the filled trigon.
+		@param x2 X coordinate of the second point of the filled trigon.
+		@param y2 Y coordinate of the second point of the filled trigon.
+		@param x3 X coordinate of the third point of the filled trigon.
+		@param y3 Y coordinate of the third point of the filled trigon.
 		@param color color value
 		@return 0 on success, -1 on failure
 		~#
@@ -5406,36 +5406,94 @@ bundle Game.SDL2 {
 		}
 
 		#~
-		TODO: pass array
-		
-		Draw polygon with alpha blending.
-		@param vx Vertex array containing X coordinates of the points of the polygon.
-		@param vy Vertex array containing Y coordinates of the points of the polygon.
-		@param n Number of points in the vertex array. Minimum number is 3.
+		Draw a character of the currently set font.
+		@param x X (horizontal) coordinate of the upper left corner of the character.
+		@param y Y (vertical) coordinate of the upper left corner of the character.
+		@param c The character to draw.
 		@param color color value
 		@return 0 on success, -1 on failure
-		
-		method : public : PolygonColor(vx : Int, vy : Int, n : Int, color : Color) ~ Int {
+		~#
+		method : public : CharacterColor(x : Int, y : Int, c : Char, color : Color) ~ Int {
 			array_args := Base->New[6];
 			array_args[0] := IntHolder->New();
 			array_args[1] := IntHolder->New(@renderer);
-			array_args[2] := IntHolder->New(vx);
-			array_args[3] := IntHolder->New(vy);
-			array_args[4] := IntHolder->New(n);
+			array_args[2] := IntHolder->New(x);
+			array_args[3] := IntHolder->New(y);
+			array_args[4] := IntHolder->New(c);
 			array_args[5] := color;
+
+			Proxy->GetDllProxy()->CallFunction("sdl_renderer_character_color", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+	
+		#~
+		Draw a string in the currently set font.
+		The spacing between consequtive characters in the string is the 
+		fixed number of pixels of the character width of the current global font.
+		@param x X (horizontal) coordinate of the upper left corner of the string.
+		@param y Y (vertical) coordinate of the upper left corner of the string.
+		@param s The string to draw.
+		@param color color value
+		@return 0 on success, -1 on failure
+		~#
+		method : public : StringColor(x : Int, y : Int, s : String, color : Color) ~ Int {
+			array_args := Base->New[6];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@renderer);
+			array_args[2] := IntHolder->New(x);
+			array_args[3] := IntHolder->New(y);
+			array_args[4] := s;
+			array_args[5] := color;
+
+			Proxy->GetDllProxy()->CallFunction("sdl_renderer_string_color", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
+		
+		method : public : PolygonColor(vx : Int[], vy : Int[], color : Color) ~ Int {
+			array_args := Base->New[5];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@renderer);
+			array_args[2] := IntArrayHolder->New(vx);
+			array_args[3] := IntArrayHolder->New(vy);
+			array_args[4] := color;
 
 			Proxy->GetDllProxy()->CallFunction("sdl_renderer_polygon_color", array_args);
 
 			value := array_args[0]->As(IntHolder);
 			return value->Get();
 		}
-		~#
-	
 
+		method : public : AAPolygonColor(vx : Int[], vy : Int[], color : Color) ~ Int {
+			array_args := Base->New[5];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@renderer);
+			array_args[2] := IntArrayHolder->New(vx);
+			array_args[3] := IntArrayHolder->New(vy);
+			array_args[4] := color;
 
+			Proxy->GetDllProxy()->CallFunction("sdl_renderer_aapolygon_color", array_args);
 
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
 
+		method : public : FilledPolygonColor(vx : Int[], vy : Int[], color : Color) ~ Int {
+			array_args := Base->New[5];
+			array_args[0] := IntHolder->New();
+			array_args[1] := IntHolder->New(@renderer);
+			array_args[2] := IntArrayHolder->New(vx);
+			array_args[3] := IntArrayHolder->New(vy);
+			array_args[4] := color;
 
+			Proxy->GetDllProxy()->CallFunction("sdl_renderer_filled_polygon_color", array_args);
+
+			value := array_args[0]->As(IntHolder);
+			return value->Get();
+		}
 	}
 
 	#~
