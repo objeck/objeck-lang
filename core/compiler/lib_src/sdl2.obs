@@ -5452,7 +5452,16 @@ bundle Game.SDL2 {
 			value := array_args[0]->As(IntHolder);
 			return value->Get();
 		}
-		
+
+
+		#~
+		Draw polygon with alpha blending.
+		@param vx Vertex array containing X coordinates of the points of the polygon.
+		@param vy Vertex array containing Y coordinates of the points of the polygon.
+		@param n Number of points in the vertex array. Minimum number is 3.
+		@param color color value
+		@return 0 on success, -1 on failure
+		~#
 		method : public : PolygonColor(vx : Int[], vy : Int[], color : Color) ~ Int {
 			array_args := Base->New[5];
 			array_args[0] := IntHolder->New();
@@ -5467,6 +5476,14 @@ bundle Game.SDL2 {
 			return value->Get();
 		}
 
+		#~
+		Draw anti-aliased polygon with alpha blending.
+		@param vx Vertex array containing X coordinates of the points of the polygon.
+		@param vy Vertex array containing Y coordinates of the points of the polygon.
+		@param n Number of points in the vertex array. Minimum number is 3.
+		@param color color value
+		@return 0 on success, -1 on failure
+		~#
 		method : public : AAPolygonColor(vx : Int[], vy : Int[], color : Color) ~ Int {
 			array_args := Base->New[5];
 			array_args[0] := IntHolder->New();
@@ -5481,6 +5498,14 @@ bundle Game.SDL2 {
 			return value->Get();
 		}
 
+		#~
+		Draw filled pie with alpha blending.
+		@param vx Vertex array containing X coordinates of the points of the polygon.
+		@param vy Vertex array containing Y coordinates of the points of the polygon.
+		@param n Number of points in the vertex array. Minimum number is 3.
+		@param color color value
+		@return 0 on success, -1 on failure
+		~#
 		method : public : FilledPolygonColor(vx : Int[], vy : Int[], color : Color) ~ Int {
 			array_args := Base->New[5];
 			array_args[0] := IntHolder->New();
