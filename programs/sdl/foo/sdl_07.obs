@@ -102,6 +102,7 @@ class Test {
 			return Nil;
 		};
 
+		loadedSurface := loadedSurface->RotoZoom(90, 25, true);
 		texture := loadedSurface->CreateTexture(@renderer);
 		loadedSurface->Free();
 		

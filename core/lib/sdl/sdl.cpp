@@ -36,12 +36,14 @@
 #include <SDL_ttf.h>
 #include <SDL_mixer.h>
 #include "SDL2_gfxPrimitives.h"
+#include "SDL2_rotozoom.h"
 #else
 #include <SDL.h>
 #include <SDL_image.h>
 #include <SDL_ttf.h>
 #include <SDL_mixer.h>
 #include "SDL2_gfxPrimitives.h"
+#include "SDL2_rotozoom.h"
 #endif
 #include <stdio.h>
 #include "../../vm/lib_api.h"
@@ -554,7 +556,7 @@ extern "C" {
 
     APITools_SetIntValue(context, 0, (size_t)SDL_ConvertSurface(surface, fmt_obj ? &fmt : NULL, flags));
   }
-
+  
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
@@ -565,6 +567,58 @@ extern "C" {
 
     APITools_SetIntValue(context, 0, (size_t)SDL_ConvertSurfaceFormat(surface, pixel_format, flags));
   }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_surface_rotozoom(VMContext& context) {
+    SDL_Surface* surface = (SDL_Surface*)APITools_GetIntValue(context, 1);
+    const double angle = APITools_GetFloatValue(context, 2);
+    const double zoom = APITools_GetFloatValue(context, 3);
+    const int flags = (int)APITools_GetIntValue(context, 4);
+
+    const size_t return_value = (size_t)rotozoomSurface(surface, angle, zoom, flags);
+    APITools_SetIntValue(context, 0, return_value);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_surface_rotozoom_size(VMContext& context) {
+    const int width = (int)APITools_GetIntValue(context, 0);
+    const int height = (int)APITools_GetIntValue(context, 1);
+    const double angle = APITools_GetFloatValue(context, 2);
+    const double zoom = APITools_GetFloatValue(context, 3);
+
+    int dstwidth; int dstheight;
+    rotozoomSurfaceSize(width, height, angle, zoom, &dstwidth, &dstheight);
+
+    APITools_SetIntValue(context, 4, dstwidth);
+    APITools_SetIntValue(context, 5, dstheight);
+  }
+
+
+
+  
+
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_surface_rotozoom_xy(VMContext& context) {
+    SDL_Surface* surface = (SDL_Surface*)APITools_GetIntValue(context, 1);
+    const double angle = APITools_GetFloatValue(context, 2);
+    const double zoomx = APITools_GetFloatValue(context, 3);
+    const double zoomy = APITools_GetFloatValue(context, 4);
+    const int flags = (int)APITools_GetIntValue(context, 5);
+
+    const size_t return_value = (size_t)rotozoomSurfaceXY(surface, angle, zoomx, zoomy, flags);
+    APITools_SetIntValue(context, 0, return_value);
+  }
+
+
+
+  
 
 #ifdef _WIN32
   __declspec(dllexport)
