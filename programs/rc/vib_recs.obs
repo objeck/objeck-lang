@@ -16,7 +16,7 @@ class Vibrating {
 		@framework := GameFramework->New(GameConsts->SCREEN_WIDTH, GameConsts->SCREEN_HEIGHT, "Vibrating Rectangles");
 		@framework->SetClearColor(Color->New(0, 0, 0));
 		@rec_colors := Color->New[5];
-		@rec_colors[0] := Color->New(255, 240, 1); 
+		@rec_colors[0] := Color->New(102,255,255); 
 		@rec_colors[1] := Color->New(253, 25, 153); 
 		@rec_colors[2] := Color->New(153, 252, 32);	
 		@rec_colors[3] := Color->New(0, 230, 254);
