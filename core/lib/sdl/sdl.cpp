@@ -597,7 +597,22 @@ extern "C" {
     APITools_SetIntValue(context, 5, dstheight);
   }
 
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_surface_rotozoom_size_xy(VMContext& context) {
+    const int width = (int)APITools_GetIntValue(context, 0);
+    const int height = (int)APITools_GetIntValue(context, 1);
+    const double angle = APITools_GetFloatValue(context, 2);
+    const double zoomx = APITools_GetFloatValue(context, 3);
+    const double zoomy = APITools_GetFloatValue(context, 4);
 
+    int dstwidth; int dstheight;
+    rotozoomSurfaceSizeXY(width, height, angle, zoomx, zoomy, &dstwidth, &dstheight);
+
+    APITools_SetIntValue(context, 5, dstwidth);
+    APITools_SetIntValue(context, 6, dstheight);
+  }
 
   
 

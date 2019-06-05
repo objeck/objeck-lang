@@ -4357,25 +4357,6 @@ bundle Game.SDL2 {
 		}
 
 		#~
-		Rotates and zooms a surface and optional anti-aliasing.
-		@param angle The angle to rotate in degrees.
-		@param zoom The scaling factor.
-		@param smooth Antialiasing flag; set to true to enable.
-		@return newly modified surface
-		~#
-		function : RotoZoomSize(width : Int, height : Int, angle : Float, zoom : Float, dstwidth : IntHolder, dstheight : IntHolder) ~ Nil {
-			array_args := Base->New[6];
-			array_args[0] := IntHolder->New(width);
-			array_args[1] := IntHolder->New(height);
-			array_args[2] := FloatHolder->New(angle);
-			array_args[3] := FloatHolder->New(zoom);
-			array_args[4] := dstwidth;
-			array_args[5] := dstheight;
-
-			Proxy->GetDllProxy()->CallFunction("sdl_surface_rotozoom_size", array_args);
-		}
-
-		#~
 		Rotates and zooms a surface with different horizontal and vertival scaling factors and optional anti-aliasing.
 		@param angle The angle to rotate in degrees.
 		@param zoomx The horizontal scaling factor.
@@ -4402,6 +4383,42 @@ bundle Game.SDL2 {
 			return Nil;
 		}
 
+		#~
+		Returns the size of the resulting target surface for a rotozoomSurface() call.
+		@param width The source surface width.
+		@param height The source surface height.
+		@param angle The angle to rotate in degrees.
+		@param zoom The scaling factor.
+		@param dstwidth The calculated width of the rotozoomed destination surface.
+		@param dstheight The calculated height of the rotozoomed destination surface.
+		~#
+		function : RotoZoomSize(width : Int, height : Int, angle : Float, zoom : Float, dstwidth : IntHolder, dstheight : IntHolder) ~ Nil {
+			array_args := Base->New[6];
+			array_args[0] := IntHolder->New(width);
+			array_args[1] := IntHolder->New(height);
+			array_args[2] := FloatHolder->New(angle);
+			array_args[3] := FloatHolder->New(zoom);
+			array_args[4] := dstwidth;
+			array_args[5] := dstheight;
+
+			Proxy->GetDllProxy()->CallFunction("sdl_surface_rotozoom_size", array_args);
+		}
+
+		function : RotoZoomSizeXY(width : Int, height : Int, angle : Float, zoomx : Float, zoomy : Float, dstwidth : IntHolder, dstheight : IntHolder) ~ Nil {
+			array_args := Base->New[7];
+			array_args[0] := IntHolder->New(width);
+			array_args[1] := IntHolder->New(height);
+			array_args[2] := FloatHolder->New(angle);
+			array_args[3] := FloatHolder->New(zoomx);
+			array_args[4] := FloatHolder->New(zoomy);
+			array_args[5] := dstwidth;
+			array_args[6] := dstheight;
+
+			Proxy->GetDllProxy()->CallFunction("sdl_surface_rotozoom_size_xy", array_args);
+		}
+
+
+		# TODO: zoomSurface 
 	}
 
 	#~
