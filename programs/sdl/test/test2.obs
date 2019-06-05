@@ -1,0 +1,80 @@
+use Game.SDL2;
+use Game.Framework;
+
+class Test {
+	@framework : GameFramework;
+	@colors : Color[];
+	
+	function : Main(args : String[]) ~ Nil {
+		Test->New()->Run();
+	}
+	
+	New() {
+		@framework := GameFramework->New(GameConsts->SCREEN_WIDTH, GameConsts->SCREEN_HEIGHT, "Test");
+		@framework->SetClearColor(Color->New(0, 0, 0));
+		
+		@colors := Color->New[5];
+		@colors[0] := Color->New(255, 240, 1); 
+		@colors[1] := Color->New(253, 25, 153); 
+		@colors[2] := Color->New(153, 252, 32);	
+		@colors[3] := Color->New(0, 230, 254);
+		@colors[4] := Color->New(161, 14, 236);
+	}
+	
+	method : Run() ~ Nil {
+		if(@framework->IsOk()) {
+			e := @framework->GetEvent();
+
+			xs := Int->New[3];
+			xs[0] := 10;
+			xs[1] := 40;
+			xs[2] := 80;
+
+			ys := Int->New[3];
+			ys[0] := 100;
+			ys[1] := 400;
+			ys[2] := 200;
+			
+			frame_count := 0;
+			quit := false;
+			while(<>quit) {
+				# process input
+				while(e->Poll() <> 0) {
+					if(e->GetType() = EventType->SDL_QUIT) {
+						quit := true;
+					};
+				};
+
+				@framework->FrameStart();
+				Render(xs, ys, frame_count);
+				@framework->FrameEnd();
+
+				frame_count += 1;
+				if(frame_count >= @framework->GetFps()) {
+					frame_count := 0;
+				};
+			};
+		}
+		else {
+			"--- Error Initializing Environment ---"->ErrorLine();
+			return;
+		};
+
+		leaving {
+			@framework->Quit();
+		};
+	}
+
+	method : Render(xs : Int[], ys : Int[], frame_count : Int) ~ Nil {
+		renderer := @framework->GetRenderer();
+
+		@framework->Clear();
+		renderer->FilledPolygonColor(xs, ys, @colors[0]);
+		@framework->Show();
+	}
+}
+
+consts GameConsts {
+	SCREEN_WIDTH := 640,
+	SCREEN_HEIGHT := 480
+}
