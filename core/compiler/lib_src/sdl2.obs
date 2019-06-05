@@ -4330,6 +4330,78 @@ bundle Game.SDL2 {
 
 			return -1;
 		}
+
+		#~
+		Rotates and zooms a surface and optional anti-aliasing.
+		@param angle The angle to rotate in degrees.
+		@param zoom The scaling factor.
+		@param smooth Antialiasing flag; set to true to enable.
+		@return newly modified surface
+		~#
+		method : public : RotoZoom(angle : Float, zoom : Float, smooth : Bool) ~ Surface {
+			if(@surface <> 0) {
+				array_args := Base->New[5];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@surface);
+				array_args[2] := FloatHolder->New(angle);
+				array_args[3] := FloatHolder->New(zoom);
+				array_args[4] := IntHolder->New(smooth ? 1 : 0);
+
+				Proxy->GetDllProxy()->CallFunction("sdl_surface_rotozoom", array_args);
+
+				value := array_args[0]->As(IntHolder);
+				return Surface->New(value->Get());
+			};
+
+			return Nil;
+		}
+
+		#~
+		Rotates and zooms a surface and optional anti-aliasing.
+		@param angle The angle to rotate in degrees.
+		@param zoom The scaling factor.
+		@param smooth Antialiasing flag; set to true to enable.
+		@return newly modified surface
+		~#
+		function : RotoZoomSize(width : Int, height : Int, angle : Float, zoom : Float, dstwidth : IntHolder, dstheight : IntHolder) ~ Nil {
+			array_args := Base->New[6];
+			array_args[0] := IntHolder->New(width);
+			array_args[1] := IntHolder->New(height);
+			array_args[2] := FloatHolder->New(angle);
+			array_args[3] := FloatHolder->New(zoom);
+			array_args[4] := dstwidth;
+			array_args[5] := dstheight;
+
+			Proxy->GetDllProxy()->CallFunction("sdl_surface_rotozoom_size", array_args);
+		}
+
+		#~
+		Rotates and zooms a surface with different horizontal and vertival scaling factors and optional anti-aliasing.
+		@param angle The angle to rotate in degrees.
+		@param zoomx The horizontal scaling factor.
+		@param zoomy The vertical scaling factor.
+		@param smooth Antialiasing flag; set to true to enable.
+		@return newly modified surface
+		~#
+		method : public : RotoZoomXY(angle : Float, zoomx : Float, zoomy : Float, smooth : Bool) ~ Surface {
+			if(@surface <> 0) {
+				array_args := Base->New[6];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@surface);
+				array_args[2] := FloatHolder->New(angle);
+				array_args[3] := FloatHolder->New(zoomx);
+				array_args[4] := FloatHolder->New(zoomy);
+				array_args[5] := IntHolder->New(smooth ? 1 : 0);
+
+				Proxy->GetDllProxy()->CallFunction("sdl_surface_rotozoom_xy", array_args);
+
+				value := array_args[0]->As(IntHolder);
+				return Surface->New(value->Get());
+			};
+
+			return Nil;
+		}
+
 	}
 
 	#~
@@ -5430,8 +5502,6 @@ bundle Game.SDL2 {
 	
 		#~
 		Draw a string in the currently set font.
-		The spacing between consequtive characters in the string is the 
-		fixed number of pixels of the character width of the current global font.
 		@param x X (horizontal) coordinate of the upper left corner of the string.
 		@param y Y (vertical) coordinate of the upper left corner of the string.
 		@param s The string to draw.
@@ -5452,8 +5522,7 @@ bundle Game.SDL2 {
 			value := array_args[0]->As(IntHolder);
 			return value->Get();
 		}
-
-
+		
 		#~
 		Draw polygon with alpha blending.
 		@param vx Vertex array containing X coordinates of the points of the polygon.
@@ -5475,7 +5544,7 @@ bundle Game.SDL2 {
 			value := array_args[0]->As(IntHolder);
 			return value->Get();
 		}
-
+		
 		#~
 		Draw anti-aliased polygon with alpha blending.
 		@param vx Vertex array containing X coordinates of the points of the polygon.
