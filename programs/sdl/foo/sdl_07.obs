@@ -41,7 +41,7 @@ class Test {
 					};
 
 					@renderer->Clear();
-					@renderer->Copy(@texture, Nil, Nil);
+					@renderer->Copy(@texture, Nil, Rect->New(48, 64));
 					@renderer->Present();
 				};
 			};
@@ -102,7 +102,11 @@ class Test {
 			return Nil;
 		};
 
-		loadedSurface := loadedSurface->RotoZoom(90, 25, true);
+loadedSurface->GetH()->PrintLine();
+loadedSurface->GetW()->PrintLine();		
+		loadedSurface := loadedSurface->Shrink(2,2);
+loadedSurface->GetH()->PrintLine();
+loadedSurface->GetW()->PrintLine();
 		texture := loadedSurface->CreateTexture(@renderer);
 		loadedSurface->Free();
 		
