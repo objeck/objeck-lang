@@ -3698,7 +3698,4 @@ extern "C" {
     const int return_value = stringRGBA(renderer, x, y, s.c_str(), color.r, color.g, color.b, color.a);
     APITools_SetIntValue(context, 0, return_value);
   }
-
-
-
 }
