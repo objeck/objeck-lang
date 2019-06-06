@@ -1569,6 +1569,12 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_D97B451F56CC41C2B02D679EA6B01CA1"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_DB10FC788DB044FF981EF532880B1452"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -7083,6 +7089,26 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_D97B451F56CC41C2B02D679EA6B01CA1"
+            {
+            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\LICENSE"
+            "TargetName" = "8:LICENSE"
+            "Tag" = "8:"
+            "Folder" = "8:_8EB462F2784A421E99849541CC462494"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_DB10FC788DB044FF981EF532880B1452"
             {
             "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\http_regex_9.obs"
@@ -8848,8 +8874,8 @@
                             "Type" = "3:15"
                             "ContextData" = "8:"
                             "Attributes" = "3:0"
-                            "Setting" = "3:1"
-                            "Value" = "8:#1258"
+                            "Setting" = "3:2"
+                            "Value" = "8:Restart Windows to have Objeck binaries in command path."
                             "DefaultValue" = "8:#1258"
                             "UsePlugInResources" = "11:TRUE"
                             }
