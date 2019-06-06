@@ -4384,7 +4384,7 @@ bundle Game.SDL2 {
 		}
 
 		#~
-		Returns the size of the resulting target surface for a rotozoomSurface() call.
+		Returns the size of the resulting target surface for a RotoZoom() call.
 		@param width The source surface width.
 		@param height The source surface height.
 		@param angle The angle to rotate in degrees.
@@ -4404,6 +4404,16 @@ bundle Game.SDL2 {
 			Proxy->GetDllProxy()->CallFunction("sdl_surface_rotozoom_size", array_args);
 		}
 
+		#~
+		Returns the size of the resulting target surface for a RotoZoomXY() call.
+		@param width The source surface width.
+		@param height The source surface height.
+		@param angle The angle to rotate in degrees.
+		@param zoomx The horizontal scaling factor.
+		@param zoomy The vertical scaling factor.
+		@param dstwidth The calculated width of the rotozoomed destination surface.
+		@param dstheight The calculated height of the rotozoomed destination surface.
+		~#
 		function : RotoZoomSizeXY(width : Int, height : Int, angle : Float, zoomx : Float, zoomy : Float, dstwidth : IntHolder, dstheight : IntHolder) ~ Nil {
 			array_args := Base->New[7];
 			array_args[0] := IntHolder->New(width);
@@ -4417,8 +4427,97 @@ bundle Game.SDL2 {
 			Proxy->GetDllProxy()->CallFunction("sdl_surface_rotozoom_size_xy", array_args);
 		}
 
+		#~
+		Returns the size of the resulting target surface for a Zoom() call.
+		@param width The source surface width.
+		@param height The source surface height.
+		@param zoomx The horizontal scaling factor.
+		@param zoomy The vertical scaling factor.
+		@param dstwidth The calculated width of the rotozoomed destination surface.
+		@param dstheight The calculated height of the rotozoomed destination surface.
+		~#
+		function : ZoomSize(width : Int, height : Int, zoomx : Float, zoomy : Float, dstwidth : IntHolder, dstheight : IntHolder) ~ Nil {
+			array_args := Base->New[6];
+			array_args[0] := IntHolder->New(width);
+			array_args[1] := IntHolder->New(height);
+			array_args[2] := FloatHolder->New(zoomx);
+			array_args[3] := FloatHolder->New(zoomy);
+			array_args[4] := dstwidth;
+			array_args[5] := dstheight;
 
-		# TODO: zoomSurface 
+			Proxy->GetDllProxy()->CallFunction("sdl_surface_zoom_size", array_args);
+		}
+
+
+		#~
+		Zoom a surface by independent horizontal and vertical factors with optional smoothing.
+		@param angle The angle to rotate in degrees.
+		@param zoomx The horizontal scaling factor.
+		@param zoomy The vertical scaling factor.
+		@param smooth Antialiasing flag; set to true to enable.
+		@return newly modified surface
+		~#
+		method : public : Zoom(zoomx : Float, zoomy : Float, smooth : Bool) ~ Surface {
+			if(@surface <> 0) {
+				array_args := Base->New[5];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@surface);
+				array_args[2] := FloatHolder->New(zoomx);
+				array_args[3] := FloatHolder->New(zoomy);
+				array_args[4] := IntHolder->New(smooth ? 1 : 0);
+
+				Proxy->GetDllProxy()->CallFunction("sdl_surface_zoom", array_args);
+
+				value := array_args[0]->As(IntHolder);
+				return Surface->New(value->Get());
+			};
+
+			return Nil;
+		}
+
+		#~
+		Shrink a surface by an integer ratio using averaging.
+		@param factorx The horizontal shrinking ratio.
+		@param factory The vertical shrinking ratio.
+		@return newly modified surface
+		~#
+		method : public : Shrink(factorx : Int, factory : Int) ~ Surface {
+			if(@surface <> 0) {
+				array_args := Base->New[4];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@surface);
+				array_args[2] := IntHolder->New(factorx);
+				array_args[3] := IntHolder->New(factory);
+
+				Proxy->GetDllProxy()->CallFunction("sdl_surface_shrink", array_args);
+
+				value := array_args[0]->As(IntHolder);
+				return Surface->New(value->Get());
+			};
+
+			return Nil;
+		}
+
+		#~
+		Rotates a 8/16/24/32 bit surface in increments of 90 degrees.
+		@param numClockwiseTurns Number of clockwise 90 degree turns to apply to the source.
+		@return newly modified surface
+		~#
+		method : public : Rotate90Degrees(numClockwiseTurns : Int) ~ Surface {
+			if(@surface <> 0) {
+				array_args := Base->New[3];
+				array_args[0] := IntHolder->New();
+				array_args[1] := IntHolder->New(@surface);
+				array_args[2] := IntHolder->New(numClockwiseTurns);
+
+				Proxy->GetDllProxy()->CallFunction("sdl_surface_rotate_90degrees", array_args);
+
+				value := array_args[0]->As(IntHolder);
+				return Surface->New(value->Get());
+			};
+
+			return Nil;
+		}
 	}
 
 	#~

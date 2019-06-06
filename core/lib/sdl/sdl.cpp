@@ -614,9 +614,58 @@ extern "C" {
     APITools_SetIntValue(context, 6, dstheight);
   }
 
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_surface_zoom_size(VMContext& context) {
+    const int width = (int)APITools_GetIntValue(context, 0);
+    const int height = (int)APITools_GetIntValue(context, 1);
+    const double zoomx = APITools_GetFloatValue(context, 2);
+    const double zoomy = APITools_GetFloatValue(context, 3);
+
+    int dstwidth; int dstheight;
+    zoomSurfaceSize(width, height, zoomx, zoomy, &dstwidth, &dstheight);
+
+    APITools_SetIntValue(context, 5, dstwidth);
+    APITools_SetIntValue(context, 6, dstheight);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_surface_zoom(VMContext& context) {
+    SDL_Surface* surface = (SDL_Surface*)APITools_GetIntValue(context, 1);
+    const double zoomx = APITools_GetFloatValue(context, 2);
+    const double zoomy = APITools_GetFloatValue(context, 3);
+    const int flags = (int)APITools_GetIntValue(context, 4);
+
+    const size_t return_value = (size_t)zoomSurface(surface, zoomx, zoomy, flags);
+    APITools_SetIntValue(context, 0, return_value);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_surface_shrink(VMContext& context) {
+    SDL_Surface* surface = (SDL_Surface*)APITools_GetIntValue(context, 1);
+    const int factorx = (int)APITools_GetIntValue(context, 2);
+    const int factory = (int)APITools_GetIntValue(context, 3);
+
+    const size_t return_value = (size_t)shrinkSurface(surface, factorx, factory);
+    APITools_SetIntValue(context, 0, return_value);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_surface_rotate_90degrees(VMContext& context) {
+    SDL_Surface* surface = (SDL_Surface*)APITools_GetIntValue(context, 1);
+    const int numClockwiseTurns = (int)APITools_GetIntValue(context, 2);
+
+    const size_t return_value = (size_t)rotateSurface90Degrees(surface, numClockwiseTurns);
+    APITools_SetIntValue(context, 0, return_value);
+  }
   
-
-
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
