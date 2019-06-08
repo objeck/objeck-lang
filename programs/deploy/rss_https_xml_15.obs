@@ -1,10 +1,10 @@
 #~
-# compile: obc -src rss_https_xml_15.obs -lib xml.obl,collect.obl -dest rss_https_xml_15.obe
+# compile: obc -src rss_https_xml_15.obs -lib xml.obl,gen_collect.obl,net_misc.obl -dest rss_https_xml_15.obe
 # run: obr rss_https_xml_15.obe "https://www.techmeme.com/feed.xml" <filename>
 ~#
 
 use Web.HTTP;
-use Collection;
+use Collection.Generic;
 use System.IO.File;
 
 class RSS {
@@ -49,9 +49,9 @@ class RSS {
 		html += "</p>";
 	}
 
-	function : GetPosts(html : String, posts : Vector) ~ Nil {
+	function : GetPosts(html : String, posts : Vector<RSSPost>) ~ Nil {
 		each(i : posts) {
-			post := posts->Get(i)->As(RSSPost);
+			post := posts->Get(i);
 			title := post->GetTitle();
 			description := post->GetDescription();
 			link := post->GetLink();

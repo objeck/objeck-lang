@@ -8,8 +8,8 @@
 
    translated by Randy Hollines
    
-   compile: obc -src threads)6.obs -dest threads.obe
-   run: obr threads.obe
+   compile: obc -src threads_6.obs -dest threads_6.obe
+   run: obr threads_6.obe
 ~#
 
 

@@ -5164,7 +5164,7 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Type* right, Expression* expr
       }
     }
     else {
-      ProcessError(expression, L"Invalid cast between class, enum or Nil");
+      ProcessError(expression, L"Invalid cast between class, enum or return type");
     }
   }
   //

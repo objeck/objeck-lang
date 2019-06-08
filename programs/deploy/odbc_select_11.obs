@@ -6,21 +6,19 @@
 
 use Database.ODBC;
 
-bundle Default {
-	class SqlTest {
-		function : Main(args : String[]) ~ Nil {
-			conn := Connection->New("foo", "", "");
-			if(conn->IsOpen()) {
-				rs := conn->Select("SELECT lat, lon FROM City;");
-				if(rs <> Nil) {
-					i := 0;	
-					while(rs->Next()) {
-						rs->GetDouble("lat")->PrintLine();
-					};
-					rs->Close();
+class SqlTest {
+	function : Main(args : String[]) ~ Nil {
+		conn := Connection->New("foo", "", "");
+		if(conn->IsOpen()) {
+			rs := conn->Select("SELECT lat, lon FROM City;");
+			if(rs <> Nil) {
+				i := 0;	
+				while(rs->Next()) {
+					rs->GetDouble("lat")->PrintLine();
 				};
-				conn->Close();
+				rs->Close();
 			};
-		}
+			conn->Close();
+		};
 	}
 }
