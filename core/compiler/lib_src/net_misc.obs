@@ -1416,7 +1416,7 @@ bundle Web.HTTP {
 
 			items := parser->FindElements("/rss/channel/item");
 			each(i : items) {
-				item := items->Get(i)->As(XmlElement);
+				item := items->Get(i);
 				title := GetContent(item->GetFirstChild("title"));
 				link := GetContent(item->GetFirstChild("link"));
 				description := GetContent(item->GetFirstChild("description"));
@@ -1436,7 +1436,7 @@ bundle Web.HTTP {
 		method : GetMatch(path : String, parser : XmlParser) ~ String {
 			matches := parser->FindElements(path);
 			if(matches->Size() > 0) {			
-				return GetContent(matches->Get(0)->As(XmlElement));
+				return GetContent(matches->Get(0));
 			};
 			
 			return Nil;

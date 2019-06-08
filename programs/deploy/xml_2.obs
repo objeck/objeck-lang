@@ -1,6 +1,6 @@
 #~
 # compile: obc -src xml_2.obs -lib xml.obl,gen_collect.obl -dest xml_2.obe
-# run: obr xml_path.obe
+# run: obr xml_2.obe
 ~#
 
 use System.IO;

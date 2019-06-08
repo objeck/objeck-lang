@@ -1,6 +1,6 @@
 ﻿#~
-# compile: obc -src encrypt_7.obs -lib encrypt.obl -dest encrypt.obe
-# run: obr encrypt.obe
+# compile: obc -src encrypt_7.obs -lib encrypt.obl -dest encrypt_7.obe
+# run: obr encrypt_7.obe
 ~#
 
 class Encryption {

@@ -1,29 +1,30 @@
 ﻿#~
-# compile: obc -src http_xml_8.obs -lib xml.obl,regex.obl,collect.obl -dest lang_rank.obe
-# run: obr lang_rank.obe
-# note: takes a few seconds to run
+compile: obc -src http_xml_regex_8.obs -misc_net.obl,lib xml.obl,regex.obl,collect.obl -dest http_xml_regex_8.obe
+run: obr http_xml_regex_8.obe
+note: may a few seconds to run as it's querying wiki pages
 ~#
 
 use Web.HTTP;
 use Query.RegEx;
 use Data.XML;
-use Collection;
+use Collection.Generic;
 
 class RosettaRank {
 	function : Main(args : String[]) ~ Nil {
-		langs := GetLanguages ();
+		langs := GetLanguages();
 		langs_counts := GetLanguageRank(langs);
 		
-		keys := langs_counts->GetKeys();
+		keys := langs_counts->GetKeys()<IntHolder>;
 		count := 1;
 		for(i := keys->Size() - 1; i >= 0; i -=1;) {
-			key := keys->Get(i);
-			IO.Console->Print(count)->Print(". ")->Print(key)->Print(" - ")->PrintLine(langs_counts->Find(key)->As(String));
+			key := keys->Get(i)->Get();
+			value := langs_counts->Find(key);
+			"{$count}. {$key} - {$value}"->PrintLine();
 			count += 1;
 		};
 	}
 	
-	function : GetLanguages() ~ StringSet {
+	function : GetLanguages() ~ Set<String> {
 		langs_xml := "";
 		client := HttpClient->New();
 		in := client->Get("http://rosettacode.org/mw/api.php?action=query&list=categorymembers&cmtitle=Category:Programming_Languages&cmlimit=5000&format=xml");
@@ -34,7 +35,7 @@ class RosettaRank {
 			langs_xml += in->Get(i)->As(String);
 		};
 		
-		langs := StringSet->New();
+		langs := Set->New()<String>;
 		parser := XmlParser->New(langs_xml);
 		if(parser->Parse()) {
 			# get first item
@@ -53,8 +54,8 @@ class RosettaRank {
 		return langs;
 	}
 	
-	function : GetLanguageRank(langs : StringSet) ~ IntMap {
-		langs_counts := IntMap->New();
+	function : GetLanguageRank(langs : Set<String>) ~ Map<IntHolder, String> {
+		langs_counts := Map->New()<IntHolder, String>;
 		client := HttpClient->New();
 		html := client->Get("http://rosettacode.org/mw/index.php?title=Special:Categories&limit=5000");
 		each(i : html) {

@@ -1,6 +1,6 @@
 ﻿#~
-# compile: obc -src json_3.obs -lib gen_collect.obl,json.obl,gen_collect.obl -dest json.obe
-# run: obr json.obe
+# compile: obc -src json_3.obs -lib gen_collect.obl,json.obl,net_misc.obl,gen_collect.obl -dest json_3.obe
+# run: obr json_3.obe
 ~#
 
 use Data.JSON;
