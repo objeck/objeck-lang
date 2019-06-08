@@ -26,7 +26,7 @@ Notable features:
   * Reflection 
   * Object serialization 
   * Type inference
-* Full native platform support for
+* Full native platform support
   * Windows, macOS and Linux (64-bit)
   * Windows and Linux (32-bit)  
 * Native support for threads, sockets, files, date/time, etc.
