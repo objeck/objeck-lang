@@ -8,10 +8,11 @@ The major components of the VM are the interpreter, JIT compiler and memory mana
 
 The VM supports the following targets:
 
-1. Windows (win32, IA-32)
-2. macOS (POSIX, AMD64)
-3. Linux 64-bit (POSIX, AMD64)
-4. Linux 32-bit (POSIX, IA-32)
+1. Windows (x64, AMD64)
+2. Windows (win32, IA-32)
+3. macOS (POSIX, AMD64)
+4. Linux 64-bit (POSIX, AMD64)
+5. Linux 32-bit (POSIX, IA-32)
 
 ### Implementation
-C++ with STL and machine code
+C++ using STL and machine code
