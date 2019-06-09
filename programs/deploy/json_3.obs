@@ -13,12 +13,7 @@ class JsonWeb {
 	}
 	function : native : Run() ~ Nil {
 		url := "http://api.geonames.org/citiesJSON?north=44.1&south=-9.9&east=-22.4&west=55.2&lang=de&username=objeck";
-		lines := HttpClient->New()->Get(url);
-		document := "";
-		each(i : lines) {
-			document->Append(lines->Get(i)->As(String));
-		};
-		document->PrintLine();
+		document := HttpClient->GetAll(url);
 		
 		parser := JSONParser->New(document);
 		root := parser->Parse();

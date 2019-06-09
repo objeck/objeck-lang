@@ -772,16 +772,17 @@ bundle Web.HTTP {
 		@param url URL
 		@return output as one string
 		~#
-		method : public : GetAll(url : String) ~ String {
+		function : GetAll(url : String) ~ String {
 			document := "";
 			
-			lines := Get(url);
+			client := HttpClient->New();
+			lines := client->Get(url);
 			if(lines = Nil) {
 				return Nil;
 			};
 
 			each(i : lines) {
-				document->Append(lines->Get(i)->As(String));
+				document->Append(lines->Get(i));
 			};
 
 			return document;
