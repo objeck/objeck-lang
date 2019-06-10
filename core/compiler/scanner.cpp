@@ -1280,6 +1280,13 @@ void Scanner::ParseToken(int index)
             NextChar();
           }
         }
+        else if(nxt_char == L'>') {
+          NextChar();
+          tokens[index]->SetType(TOKEN_LAMBDA);
+          tokens[index]->SetLineNbr(line_nbr);
+          tokens[index]->SetFileName(filename);
+          NextChar();
+        }
         else {
           tokens[index]->SetType(TOKEN_EQL);
           tokens[index]->SetLineNbr(line_nbr);

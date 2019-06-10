@@ -808,6 +808,44 @@ Class* Parser::ParseInterface(const wstring &bundle_name, int depth)
 }
 
 /****************************
+ * Parses lambda
+ ****************************/
+Lambda* Parser::ParseLambda(int depth) {
+  const int line_num = GetLineNumber();
+  const wstring& file_name = GetFileName();
+
+  Method* method = TreeFactory::Instance()->MakeMethod(file_name, line_num, L"#foo_bar#", PRIVATE_METHOD, true, false);
+  current_method = method; // TODO: stack?
+
+  // declarations
+  symbol_table->NewParseScope();
+  method->SetDeclarations(ParseDecelerationList(depth + 1));
+
+  // return type
+  if(!Match(TOKEN_TILDE)) {
+    ProcessError(L"Expected '~'", TOKEN_TILDE);
+  }
+  NextToken();
+  Type* return_type = ParseType(depth + 1);
+  method->SetReturn(return_type);
+
+  if(Match(TOKEN_LAMBDA)) {
+    NextToken();
+    StatementList* statement = TreeFactory::Instance()->MakeStatementList();
+    statement->AddStatement(ParseStatement(depth + 1));
+    method->SetStatements(statement);
+  }
+  else {
+    method->SetStatements(ParseStatementList(depth + 1));
+  }
+
+  symbol_table->PreviousParseScope(method->GetParsedName());
+  current_method = nullptr; // TODO: stack?
+
+  return nullptr;
+}
+
+/****************************
  * Parses a method.
  ****************************/
 Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
@@ -3095,11 +3133,18 @@ Expression* Parser::ParseSimpleExpression(int depth)
   }
   else if(Match(TOKEN_OPEN_PAREN)) {
     NextToken();
-    expression = ParseExpression(depth + 1);
-    if(!Match(TOKEN_CLOSED_PAREN)) {
-      ProcessError(L"Expected ')'", TOKEN_CLOSED_PAREN);
+
+    // lambda expression 
+    if( Match(TOKEN_CLOSED_PAREN) || (Match(TOKEN_IDENT) &&  Match(TOKEN_COLON, SECOND_INDEX))) {
+      ParseLambda(depth + 1);
     }
-    NextToken();
+    else {
+      expression = ParseExpression(depth + 1);
+      if(!Match(TOKEN_CLOSED_PAREN)) {
+        ProcessError(L"Expected ')'", TOKEN_CLOSED_PAREN);
+      }
+      NextToken();
+    }
   }
   else if(Match(TOKEN_SUB)) {
     NextToken();
