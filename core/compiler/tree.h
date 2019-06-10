@@ -1983,6 +1983,7 @@ namespace frontend {
   class Class : public ParseNode {
     friend class TreeFactory;
     int id;
+    int lambda_id;
     wstring name;
     wstring parent_name;
     multimap<const wstring, Method*> unqualified_methods;
@@ -2010,6 +2011,7 @@ namespace frontend {
       parent_name = p;
       is_interface = i;
       id = -1;
+      lambda_id = 0;
       parent = nullptr;
       interface_names = e;
       generic_classes = g;
@@ -2026,7 +2028,7 @@ namespace frontend {
       parent_name = p;
       is_interface = false;
       id = -1;
-      parent = nullptr;
+      lambda_id = 0;
       interface_names = e;
       lib_parent = nullptr;
       is_virtual = is_generic = was_called = false;
@@ -2040,7 +2042,7 @@ namespace frontend {
       name = n;
       is_interface = !g;
       id = -1;
-      parent = nullptr;
+      lambda_id = 0;
       lib_parent = nullptr;
       is_virtual = was_called = false;
       is_generic = g;
@@ -2055,6 +2057,10 @@ namespace frontend {
   public:
     void SetId(int i) {
       id = i;
+    }
+
+    int NextLambda() {
+      return lambda_id++;
     }
 
     int GetId() {
