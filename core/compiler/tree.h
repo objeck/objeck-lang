@@ -416,7 +416,8 @@ namespace frontend {
     BIT_OR_EXPR,
     BIT_XOR_EXPR,
     CHAR_STR_EXPR,
-    STAT_ARY_EXPR
+    STAT_ARY_EXPR,
+    LAMBDA_EXPR
   };
 
   /****************************
@@ -739,6 +740,24 @@ namespace frontend {
   };
   
   /*************************
+   * Lambda expression class
+   *************************/
+  class Lambda : public Expression {
+    friend class TreeFactory;
+
+  public:
+    Lambda(const wstring& file_name, const int line_num) : Expression(file_name, line_num) {
+    }
+
+    ~Lambda() {
+    }
+
+    const ExpressionType GetExpressionType() {
+      return CHAR_STR_EXPR;
+    }
+  };
+
+  /*************************
    * CharacterString class
    *************************/
   class CharacterString : public Expression {
@@ -748,8 +767,7 @@ namespace frontend {
     vector<CharacterStringSegment*> segments;
     SymbolEntry* concat;
 
-  CharacterString(const wstring &file_name, const int line_num, const wstring &c) :
-    Expression(file_name, line_num, Type::CharStringType()) {
+    CharacterString(const wstring &file_name, const int line_num, const wstring &c) : Expression(file_name, line_num, Type::CharStringType()) {
       char_string = c;
       is_processed = false;
       concat = nullptr;

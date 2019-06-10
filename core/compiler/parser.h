@@ -117,6 +117,9 @@ class Parser {
   Class* ParseClass(const wstring &bundle_id, int depth);
   Class* ParseInterface(const wstring &bundle_id, int depth);
   Method* ParseMethod(bool is_function, bool virtual_required, int depth);
+
+  Lambda* ParseLambda(int depth);
+
   Variable* ParseVariable(const wstring &ident, int depth);
   vector<Type*> ParseGenericTypes(int depth);
   vector<Class*> ParseGenericClasses(const wstring &bundle_name, int depth);
