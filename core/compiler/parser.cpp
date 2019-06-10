@@ -815,7 +815,8 @@ Lambda* Parser::ParseLambda(int depth) {
   const wstring& file_name = GetFileName();
 
   Method* method = TreeFactory::Instance()->MakeMethod(file_name, line_num, L"#foo_bar#", PRIVATE_METHOD, true, false);
-  current_method = method; // TODO: stack?
+  Method* outter_method = current_method;
+  current_method = method;
 
   // declarations
   symbol_table->NewParseScope();
@@ -840,7 +841,7 @@ Lambda* Parser::ParseLambda(int depth) {
   }
 
   symbol_table->PreviousParseScope(method->GetParsedName());
-  current_method = nullptr; // TODO: stack?
+  current_method = outter_method;
 
   return nullptr;
 }
@@ -3132,13 +3133,12 @@ Expression* Parser::ParseSimpleExpression(int depth)
     }
   }
   else if(Match(TOKEN_OPEN_PAREN)) {
-    NextToken();
-
     // lambda expression 
-    if( Match(TOKEN_CLOSED_PAREN) || (Match(TOKEN_IDENT) &&  Match(TOKEN_COLON, SECOND_INDEX))) {
+    if( Match(TOKEN_CLOSED_PAREN, SECOND_INDEX) || (Match(TOKEN_IDENT, SECOND_INDEX) &&  Match(TOKEN_COLON, THIRD_INDEX))) {
       ParseLambda(depth + 1);
     }
     else {
+      NextToken();
       expression = ParseExpression(depth + 1);
       if(!Match(TOKEN_CLOSED_PAREN)) {
         ProcessError(L"Expected ')'", TOKEN_CLOSED_PAREN);

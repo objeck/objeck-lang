@@ -6,7 +6,7 @@ class Test {
 		a := F(Int) ~ Int;
 		Comp(a);
 ~#		
-		z := (x : Int) ~ Int { x * x };
+		z := (x : Int, y : Float) ~ Int => x * x;
 	}
 	
 	
