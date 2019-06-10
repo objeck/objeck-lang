@@ -18,7 +18,6 @@ class Hello {
 See more on [Rosetta Code](http://rosettacode.org/wiki/Category:Objeck) and checkout the following [programming tasks](programs/rc).
 
 Notable features:
-
 * Object-oriented and functional
   * Classes, interfaces and higher-order functions
   * Generics with type boxing
@@ -41,6 +40,9 @@ Notable features:
   * 2D Gaming
 * Garbage collection
 * JIT support (IA-32 and AMD64)
+
+Work in progress:
+* Lambda expressions (v5.1)
 
 ## Documentation
 Please refer to the programmer's guide [documentation](http://www.objeck.org/documentation/) and [online tutorial](http://www.objeck.org/tutorial/). Also checkout [Rosetta Code](http://rosettacode.org/wiki/Category:Objeck) [examples](programs/rc).

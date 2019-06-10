@@ -1,0 +1,20 @@
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+#~		
+		Comp(F(Int) ~ Int);
+		a := F(Int) ~ Int;
+		Comp(a);
+~#
+		z := (x : Int) ~ Int => x * x;
+	}
+	
+	function : F(a : Int) ~ Int {
+		return a + 13;
+	}
+
+	function : Comp(f : (Int) ~ Int) ~ Nil {
+		f(7)->PrintLine();
+	}
+}
+
