@@ -1,17 +1,19 @@
 
 class Test {
 	x : static : Int;
-	
+
 	function : Main(args : String[]) ~ Nil {
+		fu : Function := (a : Int) ~ Int;
+
 		x := 45;
 
 #		f := Foo(Int, Int) ~ Int;
-		f := (a : Int) ~ Int => x + a * 13;
+		f := fu => x + a * 13;
 		Print(f);
 #		Print((a : Int) ~ Int => a * 13 + x);
 	}
 	
-	function : Print(f : (Int) ~ Int) ~ Nil {
+	function : Print(fu ~ Int) ~ Nil {
 		f(3)->PrintLine();
 	}
 
