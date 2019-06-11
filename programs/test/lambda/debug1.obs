@@ -1,9 +1,16 @@
 
 class Test {
 	x : static : Int;
+
+	templates {
+		foo : (IntHolder, Int, Float),
+		bar : (IntHolder, Int, Float)
+	}
 	
 	function : Main(args : String[]) ~ Nil {
 		x := 45;
+		
+		foo : (IntHolder, Int, Float) ~ String;
 
 #		f := Foo(Int, Int) ~ Int;
 		f := (a : Int) ~ Int => x + a * 13;
