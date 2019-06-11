@@ -744,16 +744,22 @@ namespace frontend {
    *************************/
   class Lambda : public Expression {
     friend class TreeFactory;
+    Method* method;
 
   public:
-    Lambda(const wstring& file_name, const int line_num) : Expression(file_name, line_num) {
+    Lambda(const wstring& file_name, const int line_num, Method* m) : Expression(file_name, line_num) {
+      method = m;
     }
 
     ~Lambda() {
     }
 
     const ExpressionType GetExpressionType() {
-      return CHAR_STR_EXPR;
+      return LAMBDA_EXPR;
+    }
+
+    const Method* GetMethod() {
+      return method;
     }
   };
 
@@ -1769,6 +1775,7 @@ namespace frontend {
     Type* return_type;
     Leaving* leaving;
     MethodType method_type;
+    bool is_lambda;
     bool is_static;
     bool is_native;
     bool has_and_or;
@@ -1782,6 +1789,7 @@ namespace frontend {
       method_type = m;
       is_static = s;
       is_native = c;
+      is_lambda = false;
       statements = nullptr;
       return_type = nullptr;
       leaving = nullptr;
@@ -1789,6 +1797,22 @@ namespace frontend {
       id = -1;
       has_and_or = false;
       original = nullptr;
+    }
+
+    Method(const wstring& file_name, int line_num, const wstring& n) : ParseNode(file_name, line_num) {
+      name = n;
+      method_type = PRIVATE_METHOD;
+      is_static = true;
+      is_native = false;
+      is_lambda = true;
+      statements = nullptr;
+      return_type = nullptr;
+      leaving = nullptr;
+      declarations = nullptr;
+      id = -1;
+      has_and_or = false;
+      original = nullptr;
+      is_lambda = false;
     }
 
     ~Method() {
@@ -2665,7 +2689,7 @@ namespace frontend {
     }
 
     Class* MakeClass(const wstring &file_name, const int line_num, const wstring &name, 
-         const wstring &parent_name, vector<wstring> interfaces, 
+                     const wstring &parent_name, vector<wstring> interfaces, 
          vector<Class*> generics, bool is_interface) {
       Class* tmp = new Class(file_name, line_num, name, parent_name, interfaces, generics, is_interface);
       nodes.push_back(tmp);
@@ -2673,7 +2697,7 @@ namespace frontend {
     }
 
     Class* MakeClass(const wstring &file_name, const int line_num, const wstring &name, 
-         const wstring &parent_name, vector<wstring> interfaces) {
+                     const wstring &parent_name, vector<wstring> interfaces) {
       Class* tmp = new Class(file_name, line_num, name, parent_name, interfaces);
       nodes.push_back(tmp);
       return tmp;
@@ -2686,8 +2710,20 @@ namespace frontend {
     }
     
     Method* MakeMethod(const wstring &file_name, const int line_num, const wstring &name, 
-           MethodType type, bool is_function, bool is_native) {
+                       MethodType type, bool is_function, bool is_native) {
       Method* tmp = new Method(file_name, line_num, name, type, is_function, is_native);
+      nodes.push_back(tmp);
+      return tmp;
+    }
+
+    Method* MakeMethod(const wstring& file_name, const int line_num, const wstring& name) {
+      Method* tmp = new Method(file_name, line_num, name);
+      nodes.push_back(tmp);
+      return tmp;
+    }
+
+    Lambda* MakeLambda(const wstring& file_name, const int line_num, Method* m) {
+      Lambda* tmp = new Lambda(file_name, line_num, m);
       nodes.push_back(tmp);
       return tmp;
     }

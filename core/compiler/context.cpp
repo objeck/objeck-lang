@@ -1123,6 +1123,10 @@ void ContextAnalyzer::AnalyzeStatement(Statement* statement, const int depth)
 void ContextAnalyzer::AnalyzeExpression(Expression* expression, const int depth)
 {
   switch(expression->GetExpressionType()) {
+  case LAMBDA_EXPR:
+    AnalyzeLambda(static_cast<Lambda*>(expression), depth);
+    break;
+  
   case STAT_ARY_EXPR:
     AnalyzeStaticArray(static_cast<StaticArray*>(expression), depth);
     break;
@@ -6725,5 +6729,10 @@ Method* MethodCallSelector::GetSelection()
 
   method_call->GetCallingParameters()->SetExpressions(matches[match_index]->GetCallingParameters());
   return matches[match_index]->GetMethod();
+}
+
+void ContextAnalyzer::AnalyzeLambda(Lambda* lambda, const int depth)
+{
+  throw std::logic_error("The method or operation is not implemented.");
 }
 

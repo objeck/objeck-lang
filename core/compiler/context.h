@@ -440,6 +440,7 @@ class ContextAnalyzer {
   void AnalyzeIndices(ExpressionList* indices, const int depth);
   void AnalyzeExpressions(ExpressionList* parameters, const int depth);
   void AnalyzeExpression(Expression* expression, const int depth);
+  void AnalyzeLambda(Lambda* param1, const int depth);
   void AnalyzeVariable(Variable* variable, SymbolEntry* entry, const int depth);
   void AnalyzeVariable(Variable* variable, const int depth);
   void AnalyzeCharacterString(CharacterString* char_str, const int depth);

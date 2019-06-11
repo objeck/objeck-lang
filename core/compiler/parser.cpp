@@ -814,7 +814,8 @@ Lambda* Parser::ParseLambda(int depth) {
   const int line_num = GetLineNumber();
   const wstring& file_name = GetFileName();
 
-  Method* method = TreeFactory::Instance()->MakeMethod(file_name, line_num, L"#foo_bar#", PRIVATE_METHOD, true, false);
+  const wstring lambda_name = L"#lambda" + ToString(current_class->NextLambda()) + L" #";
+  Method* method = TreeFactory::Instance()->MakeMethod(file_name, line_num, lambda_name);
   Method* outter_method = current_method;
   current_method = method;
 
@@ -832,9 +833,13 @@ Lambda* Parser::ParseLambda(int depth) {
 
   if(Match(TOKEN_LAMBDA)) {
     NextToken();
-    StatementList* statement = TreeFactory::Instance()->MakeStatementList();
-    statement->AddStatement(ParseStatement(depth + 1));
-    method->SetStatements(statement);
+    
+    Expression* expression = ParseExpression(depth + 1);
+    Statement* rtrn_stmt = TreeFactory::Instance()->MakeReturn(file_name, line_num, expression);
+
+    StatementList* statements = TreeFactory::Instance()->MakeStatementList();
+    statements->AddStatement(rtrn_stmt);
+    method->SetStatements(statements);
   }
   else {
     method->SetStatements(ParseStatementList(depth + 1));
@@ -843,7 +848,7 @@ Lambda* Parser::ParseLambda(int depth) {
   symbol_table->PreviousParseScope(method->GetParsedName());
   current_method = outter_method;
 
-  return nullptr;
+  return TreeFactory::Instance()->MakeLambda(file_name, line_num, method);
 }
 
 /****************************
@@ -3135,7 +3140,7 @@ Expression* Parser::ParseSimpleExpression(int depth)
   else if(Match(TOKEN_OPEN_PAREN)) {
     // lambda expression 
     if( Match(TOKEN_CLOSED_PAREN, SECOND_INDEX) || (Match(TOKEN_IDENT, SECOND_INDEX) &&  Match(TOKEN_COLON, THIRD_INDEX))) {
-      ParseLambda(depth + 1);
+      expression = ParseLambda(depth + 1);
     }
     else {
       NextToken();

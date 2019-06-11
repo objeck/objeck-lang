@@ -1,14 +1,12 @@
+# local capture must be consts or class static
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-#~		
-		Comp(F(Int) ~ Int);
-		a := F(Int) ~ Int;
-		Comp(a);
-~#		
+#		f : (Int) ~ Float := Foo(Int) ~ Float;
 		z := (x : Int, y : Float) ~ Int => x * x;
 	}
 	
-	
+	function : Foo(a : Int) ~ Float {
+		return a * 3.5;
+	}
 }
-
