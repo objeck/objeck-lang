@@ -2422,6 +2422,10 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
   cur_line_num = expression->GetLineNumber();
   
   switch(expression->GetExpressionType()) {
+  case LAMBDA_EXPR:
+    EmitMethodCallExpression(static_cast<Lambda*>(expression)->GetMethodCall());
+    break;
+
   case COND_EXPR:
     EmitConditional(static_cast<Cond*>(expression));
     break;
