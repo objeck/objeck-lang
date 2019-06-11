@@ -906,7 +906,8 @@ void ContextAnalyzer::AnalyzeMethod(Method* method, const int id, const int dept
  ****************************/
 void ContextAnalyzer::AnalyzeLambda(Lambda* lambda, const int depth)
 {
-  throw std::logic_error("The method or operation is not implemented.");
+  // check call to lambda
+  AnalyzeMethodCall(lambda->GetMethodCall(), depth + 1);
 }
 
 /****************************

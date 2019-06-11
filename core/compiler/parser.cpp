@@ -814,8 +814,10 @@ Lambda* Parser::ParseLambda(int depth) {
   const int line_num = GetLineNumber();
   const wstring& file_name = GetFileName();
 
-  const wstring lambda_name = L"#lambda" + ToString(current_class->NextLambda()) + L" #";
-  Method* method = TreeFactory::Instance()->MakeMethod(file_name, line_num, lambda_name);
+  // build method
+  const wstring lambda_name = L"_#Lambda." + ToString(current_class->NextLambda()) + L"#_";
+  const wstring method_name = current_class->GetName() + L":" + lambda_name;
+  Method* method = TreeFactory::Instance()->MakeMethod(file_name, line_num, method_name);
   Method* outter_method = current_method;
   current_method = method;
 
@@ -831,24 +833,30 @@ Lambda* Parser::ParseLambda(int depth) {
   Type* return_type = ParseType(depth + 1);
   method->SetReturn(return_type);
 
-  if(Match(TOKEN_LAMBDA)) {
-    NextToken();
-    
-    Expression* expression = ParseExpression(depth + 1);
-    Statement* rtrn_stmt = TreeFactory::Instance()->MakeReturn(file_name, line_num, expression);
 
-    StatementList* statements = TreeFactory::Instance()->MakeStatementList();
-    statements->AddStatement(rtrn_stmt);
-    method->SetStatements(statements);
+  if(!Match(TOKEN_LAMBDA)) {
+    ProcessError(L"Expected '=>'", TOKEN_TILDE);
   }
-  else {
-    method->SetStatements(ParseStatementList(depth + 1));
-  }
+  NextToken();
+
+  Expression* expression = ParseExpression(depth + 1);
+  Statement* rtrn_stmt = TreeFactory::Instance()->MakeReturn(file_name, line_num, expression);
+
+  StatementList* statements = TreeFactory::Instance()->MakeStatementList();
+  statements->AddStatement(rtrn_stmt);
+  method->SetStatements(statements);
 
   symbol_table->PreviousParseScope(method->GetParsedName());
+  current_class->AddMethod(method);
   current_method = outter_method;
 
-  return TreeFactory::Instance()->MakeLambda(file_name, line_num, method);
+  // build call to method
+  const wstring klass_name = current_class->GetName();
+  ExpressionList* expressions = ParseLambdaParameters(file_name, line_num, method->GetDeclarations());
+  MethodCall* method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, klass_name, lambda_name, expressions);
+  method_call->SetFunctionReturn(method->GetReturn());
+  
+  return TreeFactory::Instance()->MakeLambda(file_name, line_num, method, method_call);
 }
 
 /****************************
@@ -3134,7 +3142,7 @@ Expression* Parser::ParseSimpleExpression(int depth)
       }
       expression = variable;
     }
-             break;
+      break;
     }
   }
   else if(Match(TOKEN_OPEN_PAREN)) {
@@ -3434,7 +3442,7 @@ MethodCall* Parser::ParseMethodCall(const wstring &ident, int depth)
   }
   // method call
   else if(Match(TOKEN_OPEN_PAREN)) {
-    wstring klass_name = current_class->GetName();
+    const wstring klass_name = current_class->GetName();
     method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, klass_name,
                                                           ident, ParseExpressionList(depth + 1));
     if(Match(TOKEN_TILDE)) {

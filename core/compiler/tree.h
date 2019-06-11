@@ -745,10 +745,12 @@ namespace frontend {
   class Lambda : public Expression {
     friend class TreeFactory;
     Method* method;
+    MethodCall* method_call;
 
   public:
-    Lambda(const wstring& file_name, const int line_num, Method* m) : Expression(file_name, line_num) {
+    Lambda(const wstring& file_name, const int line_num, Method* m, MethodCall* c) : Expression(file_name, line_num) {
       method = m;
+      method_call = c;
     }
 
     ~Lambda() {
@@ -758,8 +760,12 @@ namespace frontend {
       return LAMBDA_EXPR;
     }
 
-    const Method* GetMethod() {
+    Method* GetMethod() {
       return method;
+    }
+
+    MethodCall* GetMethodCall() {
+      return method_call;
     }
   };
 
@@ -2722,8 +2728,8 @@ namespace frontend {
       return tmp;
     }
 
-    Lambda* MakeLambda(const wstring& file_name, const int line_num, Method* m) {
-      Lambda* tmp = new Lambda(file_name, line_num, m);
+    Lambda* MakeLambda(const wstring& file_name, const int line_num, Method* m, MethodCall* c) {
+      Lambda* tmp = new Lambda(file_name, line_num, m, c);
       nodes.push_back(tmp);
       return tmp;
     }
