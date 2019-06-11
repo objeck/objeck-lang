@@ -3472,7 +3472,7 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
   AnalyzeVariable(variable, depth + 1);
 
   // get last expression for assignment
-  Expression* expression = assignment->GetExpression(true);
+  Expression* expression = assignment->GetExpressionOrLambda();
   AnalyzeExpression(expression, depth + 1);
   while(expression->GetMethodCall()) {
     AnalyzeExpressionMethodCall(expression, depth + 1);

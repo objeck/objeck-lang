@@ -2,11 +2,16 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
 #		f := Foo(Int, Int) ~ Int;
-		f := (a : Int) ~ Int => a * 100;
-		
-		f(3)->PrintLine();
+#		f := (a : Int) ~ Int => a * 13;
+#		Print(f);
+
+		Print((a : Int) ~ Int => a * 13);
 	}
 	
+	function : Print(f : (Int) ~ Int) ~ Nil {
+		f(3)->PrintLine();
+	}
+
 	function : Foo(a : Int) ~ Int {
 		return a * 13;
 	}

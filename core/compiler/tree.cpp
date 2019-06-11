@@ -778,11 +778,30 @@ void Class::AssociateMethods()
 /****************************
  * class Expression
  ****************************/
-frontend::Expression* frontend::Assignment::GetExpression(bool get_lambda)
+Assignment::Assignment(const wstring& file_name, const int line_num, Assignment* c, Variable* v, Expression* e) : Statement(file_name, line_num)
 {
-  if(!get_lambda && expression && expression->GetExpressionType() == LAMBDA_EXPR) {
-    return static_cast<Lambda*>(expression)->GetMethodCall();
-  }
+  child = c;
+  variable = v;
+  expression = e;
 
-  return expression;
+  if(expression->GetExpressionType() == LAMBDA_EXPR) {
+    lambda = static_cast<Lambda*>(expression)->GetMethodCall();
+  }
+  else {
+    lambda = nullptr;
+  }
+}
+
+Assignment::Assignment(const wstring& file_name, const int line_num, Variable* v, Expression* e) : Statement(file_name, line_num)
+{
+  child = nullptr;
+  variable = v;
+  expression = e;
+  
+  if(expression->GetExpressionType() == LAMBDA_EXPR) {
+    lambda = static_cast<Lambda*>(expression)->GetMethodCall();
+  }
+  else {
+    lambda = nullptr;
+  }
 }
