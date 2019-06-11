@@ -902,6 +902,14 @@ void ContextAnalyzer::AnalyzeMethod(Method* method, const int id, const int dept
 }
 
 /****************************
+ * Analyzes a lambda function
+ ****************************/
+void ContextAnalyzer::AnalyzeLambda(Lambda* lambda, const int depth)
+{
+  throw std::logic_error("The method or operation is not implemented.");
+}
+
+/****************************
  * Analyzes method return
  * paths
  ****************************/
@@ -6729,10 +6737,5 @@ Method* MethodCallSelector::GetSelection()
 
   method_call->GetCallingParameters()->SetExpressions(matches[match_index]->GetCallingParameters());
   return matches[match_index]->GetMethod();
-}
-
-void ContextAnalyzer::AnalyzeLambda(Lambda* lambda, const int depth)
-{
-  throw std::logic_error("The method or operation is not implemented.");
 }
 
