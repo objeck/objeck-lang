@@ -774,3 +774,15 @@ void Class::AssociateMethods()
     }
   }
 }
+
+/****************************
+ * class Expression
+ ****************************/
+frontend::Expression* frontend::Assignment::GetExpression(bool get_lambda)
+{
+  if(!get_lambda && expression && expression->GetExpressionType() == LAMBDA_EXPR) {
+    return static_cast<Lambda*>(expression)->GetMethodCall();
+  }
+
+  return expression;
+}

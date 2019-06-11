@@ -740,36 +740,6 @@ namespace frontend {
   };
   
   /*************************
-   * Lambda expression class
-   *************************/
-  class Lambda : public Expression {
-    friend class TreeFactory;
-    Method* method;
-    MethodCall* method_call;
-
-  public:
-    Lambda(const wstring& file_name, const int line_num, Method* m, MethodCall* c) : Expression(file_name, line_num) {
-      method = m;
-      method_call = c;
-    }
-
-    ~Lambda() {
-    }
-
-    const ExpressionType GetExpressionType() {
-      return LAMBDA_EXPR;
-    }
-
-    Method* GetMethod() {
-      return method;
-    }
-
-    MethodCall* GetMethodCall() {
-      return method_call;
-    }
-  };
-
-  /*************************
    * CharacterString class
    *************************/
   class CharacterString : public Expression {
@@ -1645,9 +1615,7 @@ namespace frontend {
       return variable;
     }
 
-    Expression* GetExpression() {
-      return expression;
-    }
+    Expression* GetExpression(bool get_lambda = false);
 
     void SetExpression(Expression* e) {
       expression = e;
@@ -2579,6 +2547,36 @@ namespace frontend {
 
     LibraryClass* GetOriginalLibraryClass() {
       return original_lib_klass;
+    }
+  };
+
+  /*************************
+   * Lambda expression class
+   *************************/
+  class Lambda : public Expression {
+    friend class TreeFactory;
+    Method* method;
+    MethodCall* method_call;
+
+  public:
+    Lambda(const wstring& file_name, const int line_num, Method* m, MethodCall* c) : Expression(file_name, line_num) {
+      method = m;
+      method_call = c;
+    }
+
+    ~Lambda() {
+    }
+
+    const ExpressionType GetExpressionType() {
+      return LAMBDA_EXPR;
+    }
+
+    Method* GetMethod() {
+      return method;
+    }
+
+    MethodCall* GetMethodCall() {
+      return method_call;
     }
   };
 
