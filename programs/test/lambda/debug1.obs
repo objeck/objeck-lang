@@ -1,12 +1,14 @@
-# local capture must be consts or class static
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-#		f : (Int) ~ Float := Foo(Int) ~ Float;
-		z := (x : Int, y : Float) ~ Int => x * x;
+#		f := Foo(Int, Int) ~ Int;
+		f := (a : Int, b : Int) ~ Int => a * b;
+		
+		f(3, 5)->PrintLine();
 	}
 	
-	function : Foo(a : Int) ~ Float {
-		return a * 3.5;
+	function : Foo(a : Int, b : Int) ~ Int {
+		return a + b;
 	}
 }
+
