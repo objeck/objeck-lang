@@ -906,8 +906,14 @@ void ContextAnalyzer::AnalyzeMethod(Method* method, const int id, const int dept
  ****************************/
 void ContextAnalyzer::AnalyzeLambda(Lambda* lambda, const int depth)
 {
-  // check call to lambda
+  // check lambda method call
   AnalyzeMethodCall(lambda->GetMethodCall(), depth + 1);
+  if(!lambda->GetBaseType()) {
+    lambda->SetTypes(lambda->GetMethodCall()->GetEvalType());
+  }
+
+  // TODO: check lambda constraints
+  // 
 }
 
 /****************************
@@ -3466,7 +3472,7 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
   AnalyzeVariable(variable, depth + 1);
 
   // get last expression for assignment
-  Expression* expression = assignment->GetExpression();
+  Expression* expression = assignment->GetExpression(true);
   AnalyzeExpression(expression, depth + 1);
   while(expression->GetMethodCall()) {
     AnalyzeExpressionMethodCall(expression, depth + 1);
