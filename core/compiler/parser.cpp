@@ -520,6 +520,9 @@ Enum* Parser::ParseEnum(int depth)
  ****************************/
 Template* Parser::ParseTemplates(int depth)
 {
+  const int line_num = GetLineNumber();
+  const wstring& file_name = GetFileName();
+
   NextToken();
   if(!Match(TOKEN_IDENT)) {
     ProcessError(TOKEN_IDENT);
@@ -532,7 +535,60 @@ Template* Parser::ParseTemplates(int depth)
   NextToken();
   const wstring template_scope_name = GetEnumScopeName(template_name);
 
-  // TODO: actually parse
+  size_t index = template_scope_name.find('#');
+  if(index != wstring::npos) {
+    const wstring use_name = template_scope_name.substr(0, index + 1);
+    program->AddUse(use_name, file_name);
+  }
+
+#ifdef _DEBUG
+  Debug(L"[Enum: name='" + template_scope_name + L"']", depth);
+#endif
+
+  // Enum* eenum = TreeFactory::Instance()->MakeEnum(file_name, line_num, enum_scope_name, offset);
+  while(!Match(TOKEN_CLOSED_BRACE) && !Match(TOKEN_END_OF_STREAM)) {
+    if(!Match(TOKEN_IDENT)) {
+      ProcessError(TOKEN_IDENT);
+    }
+    // identifier
+    wstring label_name = scanner->GetToken()->GetIdentifier();
+    NextToken();
+
+    if(!Match(TOKEN_COLON)) {
+      ProcessError(L"Expected ':'", TOKEN_COLON);
+    }
+    NextToken();
+
+    Type* type = ParseType(depth + 1);
+    if(!type) {
+      return nullptr;
+    }
+
+    if(type->GetType() != FUNC_TYPE) {
+      ProcessError(L"Expected functional type", TOKEN_CLOSED_BRACE);
+    }
+
+    /*
+    if(!eenum->AddItem(TreeFactory::Instance()->MakeEnumItem(file_name, line_num, label_name, eenum))) {
+      ProcessError(L"Duplicate enum label name", TOKEN_CLOSED_BRACE);
+    }
+    */
+
+    if(Match(TOKEN_COMMA)) {
+      NextToken();
+      if(!Match(TOKEN_IDENT)) {
+        ProcessError(TOKEN_IDENT);
+      }
+    }
+    else if(!Match(TOKEN_CLOSED_BRACE)) {
+      ProcessError(L"Expected ',' or ')'", TOKEN_CLOSED_BRACE);
+      NextToken();
+    }
+  }
+  if(!Match(TOKEN_CLOSED_BRACE)) {
+    ProcessError(L"Expected '}'", TOKEN_CLOSED_BRACE);
+  }
+  NextToken();
 
   return nullptr;
 }
@@ -917,7 +973,7 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
     NextToken();
 
     if(!Match(TOKEN_COLON)) {
-      ProcessError(L"Expected ';'", TOKEN_COLON);
+      ProcessError(L"Expected ':'", TOKEN_COLON);
     }
     NextToken();
 
@@ -927,7 +983,7 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
       NextToken();
 
       if(!Match(TOKEN_COLON)) {
-        ProcessError(L"Expected ';'", TOKEN_COLON);
+        ProcessError(L"Expected ':'", TOKEN_COLON);
       }
       NextToken();
       current_class->SetVirtual(true);
@@ -939,7 +995,7 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
       NextToken();
 
       if(!Match(TOKEN_COLON)) {
-        ProcessError(L"Expected ';'", TOKEN_COLON);
+        ProcessError(L"Expected ':'", TOKEN_COLON);
       }
       NextToken();
     }
@@ -948,7 +1004,7 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
       NextToken();
 
       if(!Match(TOKEN_COLON)) {
-        ProcessError(L"Expected ';'", TOKEN_COLON);
+        ProcessError(L"Expected ':'", TOKEN_COLON);
       }
       NextToken();
     }
@@ -971,7 +1027,7 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
       NextToken();
 
       if(!Match(TOKEN_COLON)) {
-        ProcessError(L"Expected ';'", TOKEN_COLON);
+        ProcessError(L"Expected ':'", TOKEN_COLON);
       }
       NextToken();
       current_class->SetVirtual(true);
