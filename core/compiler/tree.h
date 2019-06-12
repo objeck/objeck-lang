@@ -2013,9 +2013,9 @@ namespace frontend {
       id = -1;
       lambda_id = 0;
       parent = nullptr;
-      interface_names = e;
-      generic_classes = g;
       lib_parent = nullptr;
+      interface_names = e;
+      generic_classes = g;      
       is_virtual = is_generic = was_called = false;
       anonymous_call = nullptr;
       symbol_table = nullptr;
@@ -2030,20 +2030,22 @@ namespace frontend {
       id = -1;
       lambda_id = 0;
       interface_names = e;
-      lib_parent = nullptr;
+      parent = nullptr;
+      lib_parent = nullptr;      
       is_virtual = is_generic = was_called = false;
       anonymous_call = nullptr;
       symbol_table = nullptr;
       generic_interface = nullptr;
     }
-
+    
     Class(const wstring& file_name, const int line_num, const wstring& n,
           bool g) : ParseNode(file_name, line_num) {
       name = n;
       is_interface = !g;
       id = -1;
       lambda_id = 0;
-      lib_parent = nullptr;
+      parent = nullptr;
+      lib_parent = nullptr;       
       is_virtual = was_called = false;
       is_generic = g;
       anonymous_call = nullptr;
