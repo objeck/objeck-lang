@@ -532,6 +532,8 @@ Template* Parser::ParseTemplates(int depth)
   NextToken();
   const wstring template_scope_name = GetEnumScopeName(template_name);
 
+  // TODO: actually parse
+
   return nullptr;
 }
 
