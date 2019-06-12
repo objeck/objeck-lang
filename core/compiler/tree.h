@@ -2586,18 +2586,42 @@ namespace frontend {
    * Template class
    *************************/
   class Template : public ParseNode {
-    unordered_map<wstring, Type*> templates;
+    wstring name;
+    unordered_map<wstring, Type*> definitions;
 
   public:
-    Template(const wstring& file_name, const int line_num, unordered_map<wstring, Type*> t) : ParseNode(file_name, line_num) {
-      templates = t;
+    Template(const wstring& file_name, const int line_num, const wstring &n) : ParseNode(file_name, line_num) {
+      name = n;
     }
 
     ~Template() {
     }
 
-    unordered_map<wstring, Type*> GetTemplates() {
-      return templates;
+    const wstring GetName() {
+      return name;
+    }
+
+    bool AddDefinition(const wstring &n, Type* t) {
+      unordered_map<wstring, Type*>::iterator result = definitions.find(n);
+      if(result != definitions.end()) {
+        return false;
+      }
+
+      definitions.insert(pair<wstring, Type*>(n, t));
+      return true;
+    }
+
+    Type* GetDefinition(const wstring& n) {
+      unordered_map<wstring, Type*>::iterator result = definitions.find(n);
+      if(result != definitions.end()) {
+        result->second;
+      }
+
+      return nullptr;
+    }
+
+    unordered_map<wstring, Type*> GetDefinitions() {
+      return definitions;
     }
   };
 
@@ -2693,6 +2717,12 @@ namespace frontend {
 
       delete instance;
       instance = nullptr;
+    }
+
+    Template* MakeTemplate(const wstring& file_name, const int line_num, const wstring& n) {
+      Template* tmp = new Template(file_name, line_num, n);
+      nodes.push_back(tmp);
+      return tmp;
     }
 
     Enum* MakeEnum(const wstring &file_name, const int line_num, const wstring &name, int offset) {
@@ -3030,17 +3060,24 @@ namespace frontend {
       enums.insert(pair<wstring, Enum*>(e->GetName(), e));
       enum_list.push_back(e);
     }
-
-    void AddTemplates(Template* t) {
-      /* TOOD: iterate over names and types
-      templates.insert(pair<wstring, Template*>(t->GetName(), t));
-      template_list.push_back(e);
-      */
-    }
-
+    
     Enum* GetEnum(const wstring &e) {
       unordered_map<wstring, Enum*>::iterator result = enums.find(e);
       if(result != enums.end()) {
+        return result->second;
+      }
+
+      return nullptr;
+    }
+
+    void AddTemplate(Template* t) {
+      templates.insert(pair<wstring, Template*>(t->GetName(), t));
+      template_list.push_back(t);
+    }
+
+    Template* GetTemplate(const wstring& n) {
+      unordered_map<wstring, Template*>::iterator result = templates.find(n);
+      if(result != templates.end()) {
         return result->second;
       }
 
@@ -3055,15 +3092,6 @@ namespace frontend {
     Class* GetClass(const wstring &n) {
       unordered_map<wstring, Class*>::iterator result = classes.find(n);
       if(result != classes.end()) {
-        return result->second;
-      }
-
-      return nullptr;
-    }
-
-    Template* GetTemplate(const wstring& n) {
-      unordered_map<wstring, Template*>::iterator result = templates.find(n);
-      if(result != templates.end()) {
         return result->second;
       }
 

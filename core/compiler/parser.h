@@ -82,7 +82,7 @@ class Parser {
 
   const wstring GetScopeName(const wstring &ident);
 
-  const wstring GetEnumScopeName(const wstring &ident);
+  const wstring GetEnumTemplateScopeName(const wstring &ident);
 
   void Debug(const wstring &msg, int depth) {
     GetLogger() << setw(4) << GetLineNumber() << L": ";
@@ -116,7 +116,7 @@ class Parser {
   void ParseBundle(int depth);
   Class* ParseClass(const wstring& bundle_id, int depth);
   Class* ParseInterface(const wstring &bundle_id, int depth);
-  Template* ParseTemplates(int depth);
+  Template* ParseTemplate(int depth);
   Method* ParseMethod(bool is_function, bool virtual_required, int depth);
   Lambda* ParseLambda(int depth);
   Variable* ParseVariable(const wstring &ident, int depth);

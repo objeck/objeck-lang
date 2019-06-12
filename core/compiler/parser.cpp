@@ -64,7 +64,7 @@ const wstring Parser::GetScopeName(const wstring& ident)
   return scope_name;
 }
 
-const wstring Parser::GetEnumScopeName(const wstring& ident)
+const wstring Parser::GetEnumTemplateScopeName(const wstring& ident)
 {
   wstring scope_name;
   if(current_class) {
@@ -450,7 +450,7 @@ Enum* Parser::ParseEnum(int depth)
     ProcessError(L"Class, interface, enum or template name already defined in this bundle");
   }
   NextToken();
-  const wstring enum_scope_name = GetEnumScopeName(enum_name);
+  const wstring enum_scope_name = GetEnumTemplateScopeName(enum_name);
 
   size_t index = enum_scope_name.find('#');
   if(index != wstring::npos) {
@@ -493,7 +493,7 @@ Enum* Parser::ParseEnum(int depth)
     wstring label_name = scanner->GetToken()->GetIdentifier();
     NextToken();
     if(!eenum->AddItem(TreeFactory::Instance()->MakeEnumItem(file_name, line_num, label_name, eenum))) {
-      ProcessError(L"Duplicate enum label name", TOKEN_CLOSED_BRACE);
+      ProcessError(L"Duplicate enum label name for '" + enum_scope_name + L"'", TOKEN_CLOSED_BRACE);
     }
 
     if(Match(TOKEN_COMMA)) {
@@ -518,7 +518,7 @@ Enum* Parser::ParseEnum(int depth)
 /****************************
  * Parses a template
  ****************************/
-Template* Parser::ParseTemplates(int depth)
+Template* Parser::ParseTemplate(int depth)
 {
   const int line_num = GetLineNumber();
   const wstring& file_name = GetFileName();
@@ -533,7 +533,7 @@ Template* Parser::ParseTemplates(int depth)
     ProcessError(L"Class, interface, enum or template name already defined in this bundle");
   }
   NextToken();
-  const wstring template_scope_name = GetEnumScopeName(template_name);
+  const wstring template_scope_name = GetEnumTemplateScopeName(template_name);
 
   size_t index = template_scope_name.find('#');
   if(index != wstring::npos) {
@@ -542,10 +542,15 @@ Template* Parser::ParseTemplates(int depth)
   }
 
 #ifdef _DEBUG
-  Debug(L"[Enum: name='" + template_scope_name + L"']", depth);
+  Debug(L"[Template: name='" + template_scope_name + L"']", depth);
 #endif
 
-  // Enum* eenum = TreeFactory::Instance()->MakeEnum(file_name, line_num, enum_scope_name, offset);
+  if(!Match(TOKEN_OPEN_BRACE)) {
+    ProcessError(L"Expected '{'", TOKEN_OPEN_BRACE);
+  }
+  NextToken();
+
+  Template* tmpl = TreeFactory::Instance()->MakeTemplate(file_name, line_num, template_scope_name);
   while(!Match(TOKEN_CLOSED_BRACE) && !Match(TOKEN_END_OF_STREAM)) {
     if(!Match(TOKEN_IDENT)) {
       ProcessError(TOKEN_IDENT);
@@ -559,20 +564,18 @@ Template* Parser::ParseTemplates(int depth)
     }
     NextToken();
 
-    Type* type = ParseType(depth + 1);
-    if(!type) {
+    Type* def = ParseType(depth + 1);
+    if(!def) {
       return nullptr;
     }
 
-    if(type->GetType() != FUNC_TYPE) {
+    if(def->GetType() != FUNC_TYPE) {
       ProcessError(L"Expected functional type", TOKEN_CLOSED_BRACE);
     }
 
-    /*
-    if(!eenum->AddItem(TreeFactory::Instance()->MakeEnumItem(file_name, line_num, label_name, eenum))) {
-      ProcessError(L"Duplicate enum label name", TOKEN_CLOSED_BRACE);
+    if(!tmpl->AddDefinition(label_name, def)) {
+      ProcessError(L"Duplicate template name for '" + template_scope_name + L"'", TOKEN_CLOSED_BRACE);
     }
-    */
 
     if(Match(TOKEN_COMMA)) {
       NextToken();
@@ -590,7 +593,7 @@ Template* Parser::ParseTemplates(int depth)
   }
   NextToken();
 
-  return nullptr;
+  return tmpl;
 }
 
 /****************************
@@ -611,7 +614,7 @@ Enum* Parser::ParseConsts(int depth)
     ProcessError(L"Class, interface, enum or template name already defined in this bundle");
   }
   NextToken();
-  const wstring enum_scope_name = GetEnumScopeName(enum_name);
+  const wstring enum_scope_name = GetEnumTemplateScopeName(enum_name);
 
   if(!Match(TOKEN_OPEN_BRACE)) {
     ProcessError(L"Expected '{'", TOKEN_OPEN_BRACE);
@@ -793,8 +796,8 @@ Class* Parser::ParseClass(const wstring &bundle_name, int depth)
     else if(Match(TOKEN_ENUM_ID)) {
       current_bundle->AddEnum(ParseEnum(depth + 1));
     }
-    else if(Match(TOKEN_TEMPLATES_ID)) {
-      current_bundle->AddTemplates(ParseTemplates(depth + 1));
+    else if(Match(TOKEN_TEMPLATE_ID)) {
+      current_bundle->AddTemplate(ParseTemplate(depth + 1));
     }
     else if(Match(TOKEN_CONSTS_ID)) {
       current_bundle->AddEnum(ParseConsts(depth + 1));
@@ -908,7 +911,7 @@ Lambda* Parser::ParseLambda(int depth) {
 
   // return type
   if(!Match(TOKEN_TILDE)) {
-    ProcessError(L"Expected '~'", TOKEN_TILDE);
+    ProcessError(L"Expected '~'", TOKEN_SEMI_COLON);
   }
   NextToken();
   Type* return_type = ParseType(depth + 1);
@@ -916,7 +919,7 @@ Lambda* Parser::ParseLambda(int depth) {
 
 
   if(!Match(TOKEN_LAMBDA)) {
-    ProcessError(L"Expected '=>'", TOKEN_TILDE);
+    ProcessError(L"Expected '=>'", TOKEN_SEMI_COLON);
   }
   NextToken();
 
@@ -2316,7 +2319,7 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       NextToken();
     }
     else {
-      ProcessError(L"Expected ';'", TOKEN_CLOSED_BRACE, -1);
+      ProcessError(L"Expected ';'", TOKEN_SEMI_COLON);
     }
   }
 
@@ -3198,6 +3201,11 @@ Expression* Parser::ParseSimpleExpression(int depth)
       }
       break;
 
+      // lambda
+    case TOKEN_LAMBDA:
+      ProcessError(L"TODO: Expected lambda expression", TOKEN_SEMI_COLON);
+      break;
+
       // variable
     default: {
       Variable* variable = ParseVariable(ident, depth + 1);
@@ -3440,8 +3448,7 @@ MethodCall* Parser::ParseMethodCall(const wstring &ident, int depth)
       NextToken();
 
       if(Match(TOKEN_OPEN_PAREN)) {
-        method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, ident, method_ident,
-                                                              ParseExpressionList(depth + 1));
+        method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, ident, method_ident, ParseExpressionList(depth + 1));
         // function
         if(Match(TOKEN_TILDE)) {
           NextToken();
