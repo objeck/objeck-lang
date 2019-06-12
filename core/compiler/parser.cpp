@@ -64,7 +64,7 @@ const wstring Parser::GetScopeName(const wstring& ident)
   return scope_name;
 }
 
-const wstring Parser::GetEnumTemplateScopeName(const wstring& ident)
+const wstring Parser::GetEnumScopeName(const wstring& ident)
 {
   wstring scope_name;
   if(current_class) {
@@ -446,11 +446,11 @@ Enum* Parser::ParseEnum(int depth)
   }
   // identifier
   const wstring enum_name = scanner->GetToken()->GetIdentifier();
-  if(current_bundle->GetClass(enum_name) || current_bundle->GetEnum(enum_name) || current_bundle->GetTemplate(enum_name)) {
-    ProcessError(L"Class, interface, enum or template name already defined in this bundle");
+  if(current_bundle->GetClass(enum_name) || current_bundle->GetEnum(enum_name)) {
+    ProcessError(L"Class, interface or enum name already defined in this bundle");
   }
   NextToken();
-  const wstring enum_scope_name = GetEnumTemplateScopeName(enum_name);
+  const wstring enum_scope_name = GetEnumScopeName(enum_name);
 
   size_t index = enum_scope_name.find('#');
   if(index != wstring::npos) {
@@ -516,87 +516,6 @@ Enum* Parser::ParseEnum(int depth)
 }
 
 /****************************
- * Parses a template
- ****************************/
-Template* Parser::ParseTemplate(int depth)
-{
-  const int line_num = GetLineNumber();
-  const wstring& file_name = GetFileName();
-
-  NextToken();
-  if(!Match(TOKEN_IDENT)) {
-    ProcessError(TOKEN_IDENT);
-  }
-  // identifier
-  const wstring template_name = scanner->GetToken()->GetIdentifier();
-  if(current_bundle->GetClass(template_name) || current_bundle->GetEnum(template_name) || current_bundle->GetTemplate(template_name)) {
-    ProcessError(L"Class, interface, enum or template name already defined in this bundle");
-  }
-  NextToken();
-  const wstring template_scope_name = GetEnumTemplateScopeName(template_name);
-
-  size_t index = template_scope_name.find('#');
-  if(index != wstring::npos) {
-    const wstring use_name = template_scope_name.substr(0, index + 1);
-    program->AddUse(use_name, file_name);
-  }
-
-#ifdef _DEBUG
-  Debug(L"[Template: name='" + template_scope_name + L"']", depth);
-#endif
-
-  if(!Match(TOKEN_OPEN_BRACE)) {
-    ProcessError(L"Expected '{'", TOKEN_OPEN_BRACE);
-  }
-  NextToken();
-
-  Template* tmpl = TreeFactory::Instance()->MakeTemplate(file_name, line_num, template_scope_name);
-  while(!Match(TOKEN_CLOSED_BRACE) && !Match(TOKEN_END_OF_STREAM)) {
-    if(!Match(TOKEN_IDENT)) {
-      ProcessError(TOKEN_IDENT);
-    }
-    // identifier
-    wstring label_name = scanner->GetToken()->GetIdentifier();
-    NextToken();
-
-    if(!Match(TOKEN_COLON)) {
-      ProcessError(L"Expected ':'", TOKEN_COLON);
-    }
-    NextToken();
-
-    Type* def = ParseType(depth + 1);
-    if(!def) {
-      return nullptr;
-    }
-
-    if(def->GetType() != FUNC_TYPE) {
-      ProcessError(L"Expected functional type", TOKEN_CLOSED_BRACE);
-    }
-
-    if(!tmpl->AddDefinition(label_name, def)) {
-      ProcessError(L"Duplicate template name for '" + template_scope_name + L"'", TOKEN_CLOSED_BRACE);
-    }
-
-    if(Match(TOKEN_COMMA)) {
-      NextToken();
-      if(!Match(TOKEN_IDENT)) {
-        ProcessError(TOKEN_IDENT);
-      }
-    }
-    else if(!Match(TOKEN_CLOSED_BRACE)) {
-      ProcessError(L"Expected ',' or ')'", TOKEN_CLOSED_BRACE);
-      NextToken();
-    }
-  }
-  if(!Match(TOKEN_CLOSED_BRACE)) {
-    ProcessError(L"Expected '}'", TOKEN_CLOSED_BRACE);
-  }
-  NextToken();
-
-  return tmpl;
-}
-
-/****************************
  * Parses a const (i.e. mixed enum)
  ****************************/
 Enum* Parser::ParseConsts(int depth)
@@ -610,11 +529,11 @@ Enum* Parser::ParseConsts(int depth)
   }
   // identifier
   const wstring enum_name = scanner->GetToken()->GetIdentifier();
-  if(current_bundle->GetClass(enum_name) || current_bundle->GetEnum(enum_name) || current_bundle->GetTemplate(enum_name)) {
-    ProcessError(L"Class, interface, enum or template name already defined in this bundle");
+  if(current_bundle->GetClass(enum_name) || current_bundle->GetEnum(enum_name)) {
+    ProcessError(L"Class, interface or enum name already defined in this bundle");
   }
   NextToken();
-  const wstring enum_scope_name = GetEnumTemplateScopeName(enum_name);
+  const wstring enum_scope_name = GetEnumScopeName(enum_name);
 
   if(!Match(TOKEN_OPEN_BRACE)) {
     ProcessError(L"Expected '{'", TOKEN_OPEN_BRACE);
@@ -685,8 +604,8 @@ Class* Parser::ParseClass(const wstring &bundle_name, int depth)
   }
   // identifier
   wstring cls_name = scanner->GetToken()->GetIdentifier();
-  if(current_bundle->GetClass(cls_name) || current_bundle->GetEnum(cls_name) || current_bundle->GetTemplate(cls_name)) {
-    ProcessError(L"Class, interface, enum or template name already defined in this bundle");
+  if(current_bundle->GetClass(cls_name) || current_bundle->GetEnum(cls_name)) {
+    ProcessError(L"Class, interface or enum name already defined in this bundle");
   }
   NextToken();
 
@@ -796,9 +715,6 @@ Class* Parser::ParseClass(const wstring &bundle_name, int depth)
     else if(Match(TOKEN_ENUM_ID)) {
       current_bundle->AddEnum(ParseEnum(depth + 1));
     }
-    else if(Match(TOKEN_TEMPLATE_ID)) {
-      current_bundle->AddTemplate(ParseTemplate(depth + 1));
-    }
     else if(Match(TOKEN_CONSTS_ID)) {
       current_bundle->AddEnum(ParseConsts(depth + 1));
     }
@@ -832,8 +748,8 @@ Class* Parser::ParseInterface(const wstring &bundle_name, int depth)
   }
   // identifier
   wstring cls_name = scanner->GetToken()->GetIdentifier();
-  if(current_bundle->GetClass(cls_name) || current_bundle->GetEnum(cls_name) || current_bundle->GetTemplate(cls_name)) {
-    ProcessError(L"Class, interface, enum or template name already defined in this bundle");
+  if(current_bundle->GetClass(cls_name) || current_bundle->GetEnum(cls_name)) {
+    ProcessError(L"Class, interface or enum name already defined in this bundle");
   }
   NextToken();
 
@@ -2307,7 +2223,7 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
     default:
       if(semi_colon) {
         if(!Match(TOKEN_SEMI_COLON)) {
-          ProcessError(L"Expected ';'", TOKEN_SEMI_COLON);
+          ProcessError(L"Invalid statement looking for ';'", TOKEN_SEMI_COLON);
         }
         NextToken();
       }
@@ -2319,7 +2235,7 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       NextToken();
     }
     else {
-      ProcessError(L"Expected ';'", TOKEN_SEMI_COLON);
+      ProcessError(L"Invalid statement looking for ';'", TOKEN_SEMI_COLON);
     }
   }
 

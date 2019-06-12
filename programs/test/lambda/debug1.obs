@@ -2,18 +2,13 @@
 class Test {
 	x : static : Int;
 
-	template Funcs { # Will need to read from libs
-		foo : (IntHolder, Int, Float) ~ String,
-		bar : (IntHolder, Int, Float) ~ Int
-	}
-
 	function : Main(args : String[]) ~ Nil {
 		x := 45;
 
 		foo : (IntHolder, Int, Float) ~ String;
 
-		f := Foo(Int) ~ Int;
-#		f := foo => x + a * 13; # TODO error handling
+#		f := Foo(Int) ~ Int;
+		f := (a : Int) ~ Int => x + a * 13; # TODO error handling
 		Print(f);
 #		Print((a : Int) ~ Int => a * 13 + x);
 	}
