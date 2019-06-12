@@ -2586,17 +2586,18 @@ namespace frontend {
    * Template class
    *************************/
   class Template : public ParseNode {
-    unordered_map<wstring, Type*> enums;
+    unordered_map<wstring, Type*> templates;
 
   public:
-    Template(const wstring& file_name, const int line_num) : ParseNode(file_name, line_num) {
+    Template(const wstring& file_name, const int line_num, unordered_map<wstring, Type*> t) : ParseNode(file_name, line_num) {
+      templates = t;
     }
 
     ~Template() {
     }
 
-    bool AddTemplate(const wstring name, Type* t) {
-      return false;
+    unordered_map<wstring, Type*> GetTemplates() {
+      return templates;
     }
   };
 
