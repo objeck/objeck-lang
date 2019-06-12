@@ -81,10 +81,6 @@ contexts:
     - match: '(enum)\s+'
       scope: entity.name.enum.objeck-obs
       push: enum_def
-
-    - match: '(template)\s+'
-      scope: entity.name.const.objeck-obs
-      push: enum_def
       
     - match: '(consts)\s+'
       scope: entity.name.const.objeck-obs

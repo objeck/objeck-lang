@@ -2584,49 +2584,6 @@ namespace frontend {
     }
   };
 
-  /*************************
-   * Template class
-   *************************/
-  class Template : public ParseNode {
-    wstring name;
-    unordered_map<wstring, Type*> definitions;
-
-  public:
-    Template(const wstring& file_name, const int line_num, const wstring &n) : ParseNode(file_name, line_num) {
-      name = n;
-    }
-
-    ~Template() {
-    }
-
-    const wstring GetName() {
-      return name;
-    }
-
-    bool AddDefinition(const wstring &n, Type* t) {
-      unordered_map<wstring, Type*>::iterator result = definitions.find(n);
-      if(result != definitions.end()) {
-        return false;
-      }
-
-      definitions.insert(pair<wstring, Type*>(n, t));
-      return true;
-    }
-
-    Type* GetDefinition(const wstring& n) {
-      unordered_map<wstring, Type*>::iterator result = definitions.find(n);
-      if(result != definitions.end()) {
-        result->second;
-      }
-
-      return nullptr;
-    }
-
-    unordered_map<wstring, Type*> GetDefinitions() {
-      return definitions;
-    }
-  };
-
   /****************************
    * TreeFactory class
    ****************************/
@@ -2719,12 +2676,6 @@ namespace frontend {
 
       delete instance;
       instance = nullptr;
-    }
-
-    Template* MakeTemplate(const wstring& file_name, const int line_num, const wstring& n) {
-      Template* tmp = new Template(file_name, line_num, n);
-      nodes.push_back(tmp);
-      return tmp;
     }
 
     Enum* MakeEnum(const wstring &file_name, const int line_num, const wstring &name, int offset) {
@@ -3038,8 +2989,6 @@ namespace frontend {
     SymbolTableManager* symbol_table;
     unordered_map<wstring, Enum*> enums;
     vector<Enum*> enum_list;
-    unordered_map<wstring, Template*> templates;
-    vector<Template*> template_list;
     unordered_map<wstring, Class*> classes;
     vector<Class*> class_list;
 
@@ -3066,20 +3015,6 @@ namespace frontend {
     Enum* GetEnum(const wstring &e) {
       unordered_map<wstring, Enum*>::iterator result = enums.find(e);
       if(result != enums.end()) {
-        return result->second;
-      }
-
-      return nullptr;
-    }
-
-    void AddTemplate(Template* t) {
-      templates.insert(pair<wstring, Template*>(t->GetName(), t));
-      template_list.push_back(t);
-    }
-
-    Template* GetTemplate(const wstring& n) {
-      unordered_map<wstring, Template*>::iterator result = templates.find(n);
-      if(result != templates.end()) {
         return result->second;
       }
 
