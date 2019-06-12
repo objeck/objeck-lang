@@ -82,7 +82,7 @@ contexts:
       scope: entity.name.enum.objeck-obs
       push: enum_def
 
-    - match: '(templates)\s+'
+    - match: '(template)\s+'
       scope: entity.name.const.objeck-obs
       push: enum_def
       
