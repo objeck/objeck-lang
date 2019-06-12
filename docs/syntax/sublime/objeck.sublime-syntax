@@ -82,8 +82,12 @@ contexts:
       scope: entity.name.enum.objeck-obs
       push: enum_def
 
+    - match: '(templates)\s+'
+      scope: entity.name.const.objeck-obs
+      push: enum_def
+      
     - match: '(consts)\s+'
-      scope: entity.name.enum.objeck-obs
+      scope: entity.name.const.objeck-obs
       push: enum_def
 
     - match: '(method|function)\s+:\s+(public|private)\s*:\s+(native)\s*:\s+'

@@ -2582,6 +2582,24 @@ namespace frontend {
     }
   };
 
+  /*************************
+   * Template class
+   *************************/
+  class Template : public ParseNode {
+    unordered_map<wstring, Type*> enums;
+
+  public:
+    Template(const wstring& file_name, const int line_num) : ParseNode(file_name, line_num) {
+    }
+
+    ~Template() {
+    }
+
+    bool AddTemplate(const wstring name, Type* t) {
+      return false;
+    }
+  };
+
   /****************************
    * TreeFactory class
    ****************************/
@@ -2987,6 +3005,8 @@ namespace frontend {
     SymbolTableManager* symbol_table;
     unordered_map<wstring, Enum*> enums;
     vector<Enum*> enum_list;
+    unordered_map<wstring, Template*> templates;
+    vector<Template*> template_list;
     unordered_map<wstring, Class*> classes;
     vector<Class*> class_list;
 
@@ -3010,6 +3030,13 @@ namespace frontend {
       enum_list.push_back(e);
     }
 
+    void AddTemplates(Template* t) {
+      /* TOOD: iterate over names and types
+      templates.insert(pair<wstring, Template*>(t->GetName(), t));
+      template_list.push_back(e);
+      */
+    }
+
     Enum* GetEnum(const wstring &e) {
       unordered_map<wstring, Enum*>::iterator result = enums.find(e);
       if(result != enums.end()) {
@@ -3027,6 +3054,15 @@ namespace frontend {
     Class* GetClass(const wstring &n) {
       unordered_map<wstring, Class*>::iterator result = classes.find(n);
       if(result != classes.end()) {
+        return result->second;
+      }
+
+      return nullptr;
+    }
+
+    Template* GetTemplate(const wstring& n) {
+      unordered_map<wstring, Template*>::iterator result = templates.find(n);
+      if(result != templates.end()) {
         return result->second;
       }
 

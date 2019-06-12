@@ -118,6 +118,7 @@ void Scanner::LoadKeywords()
   ident_map[L"select"] = TOKEN_SELECT_ID;
   ident_map[L"other"] = TOKEN_OTHER_ID;
   ident_map[L"enum"] = TOKEN_ENUM_ID;
+  ident_map[L"templates"] = TOKEN_TEMPLATES_ID;
   ident_map[L"consts"] = TOKEN_CONSTS_ID;
   ident_map[L"for"] = TOKEN_FOR_ID;
   ident_map[L"each"] = TOKEN_EACH_ID;
@@ -322,6 +323,7 @@ void Scanner::CheckIdentifier(int index)
     case TOKEN_FROM_ID:
     case TOKEN_OTHER_ID:
     case TOKEN_ENUM_ID:
+    case TOKEN_TEMPLATES_ID:
     case TOKEN_CONSTS_ID:
     case TOKEN_FOR_ID:
     case TOKEN_EACH_ID:
