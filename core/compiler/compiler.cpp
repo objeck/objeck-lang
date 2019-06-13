@@ -180,7 +180,7 @@ int Compile(map<const wstring, wstring> &arguments, list<wstring> &argument_opti
       ItermediateOptimizer optimizer(intermediate.GetProgram(), intermediate.GetUnconditionalLabel(), arguments[L"opt"], is_debug);
       optimizer.Optimize();
       // emit target code
-      FileEmitter target(optimizer.GetProgram(), is_lib, is_debug, is_web, arguments[L"dest"]);;
+      FileEmitter target(optimizer.GetProgram(), is_lib, is_debug, is_web, arguments[L"dest"]);
       target.Emit();
 
       return SUCCESS;

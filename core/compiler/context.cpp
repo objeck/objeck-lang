@@ -2928,7 +2928,7 @@ void ContextAnalyzer::AnalyzeVariableFunctionCall(MethodCall* method_call, const
 void ContextAnalyzer::AnalyzeFunctionReference(Class* klass, MethodCall* method_call,
                                                wstring &encoding, const int depth)
 {
-  const wstring func_encoding = EncodeFunctionReference(method_call->GetCallingParameters(), depth);;
+  const wstring func_encoding = EncodeFunctionReference(method_call->GetCallingParameters(), depth);
   const wstring encoded_name = klass->GetName() + L":" + method_call->GetMethodName() +
     L":" + encoding + func_encoding;
 
@@ -2990,7 +2990,7 @@ void ContextAnalyzer::AnalyzeFunctionReference(Class* klass, MethodCall* method_
 void ContextAnalyzer::AnalyzeFunctionReference(LibraryClass* klass, MethodCall* method_call,
                                                wstring &encoding, const int depth)
 {
-  const wstring func_encoding = EncodeFunctionReference(method_call->GetCallingParameters(), depth);;
+  const wstring func_encoding = EncodeFunctionReference(method_call->GetCallingParameters(), depth);
   const wstring encoded_name = klass->GetName() + L":" + method_call->GetMethodName() + L":" + encoding + func_encoding;
 
   LibraryMethod* method = klass->GetMethod(encoded_name);
