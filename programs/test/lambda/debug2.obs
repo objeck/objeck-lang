@@ -3,16 +3,18 @@ use Collection.Generic;
 
 # TODO: type aliasing
 
-class Test {
+class Test<H, K> aliases [
+		foo := (x : IntHolder) ~ IntHolder),
+		bar := () ~ Float] {
 	function : Main(args : String[]) ~ Nil {
-		foo : Alias := Alias((x : IntHolder) ~ IntHolder);
-		
+		foo : ;
+
 		values := CompareVector->New()<IntHolder>;
 		values->AddBack(3);
 		values->AddBack(7);
 		values->AddBack(13);
 
-		applied := values->Apply(foo => x * x)<IntHolder>->Apply(foo => x - 5)<IntHolder>;
+		applied := values->Apply(Test->Alias(foo) => x * x)<IntHolder>->Apply(foo => x - 5)<IntHolder>;
 		each(i : applied) {
 			applied->Get(i)->Get()->PrintLine();
 		};
