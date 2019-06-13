@@ -1176,6 +1176,13 @@ void Scanner::ParseToken(int index)
         NextChar();
         break;
 
+      case L'\\':
+        tokens[index]->SetType(TOKEN_BACK_SLASH);
+        tokens[index]->SetLineNbr(line_nbr);
+        tokens[index]->SetFileName(filename);
+        NextChar();
+        break;
+
       case L'}':
         tokens[index]->SetType(TOKEN_CLOSED_BRACE);
         tokens[index]->SetLineNbr(line_nbr);

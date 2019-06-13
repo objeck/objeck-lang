@@ -60,6 +60,7 @@ enum ScannerTokenType {
   TOKEN_UNKNOWN,
   // symbols
   TOKEN_TILDE,
+  TOKEN_BACK_SLASH,
   TOKEN_PERIOD,
   TOKEN_COLON,
   TOKEN_SEMI_COLON,

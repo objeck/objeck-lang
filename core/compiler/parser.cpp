@@ -3149,20 +3149,21 @@ Expression* Parser::ParseSimpleExpression(int depth)
       break;
     }
   }
+  // parentheses expression
   else if(Match(TOKEN_OPEN_PAREN)) {
-    // lambda expression 
-    if( Match(TOKEN_CLOSED_PAREN, SECOND_INDEX) || (Match(TOKEN_IDENT, SECOND_INDEX) &&  Match(TOKEN_COLON, THIRD_INDEX))) {
-      expression = ParseLambda(depth + 1);
+    NextToken();
+    expression = ParseExpression(depth + 1);
+    if(!Match(TOKEN_CLOSED_PAREN)) {
+      ProcessError(L"Expected ')'", TOKEN_CLOSED_PAREN);
     }
-    else {
-      NextToken();
-      expression = ParseExpression(depth + 1);
-      if(!Match(TOKEN_CLOSED_PAREN)) {
-        ProcessError(L"Expected ')'", TOKEN_CLOSED_PAREN);
-      }
-      NextToken();
-    }
+    NextToken();
   }
+  // lambda expression
+  else if(Match(TOKEN_BACK_SLASH)) {
+    NextToken();
+    expression = ParseLambda(depth + 1);
+  }
+  // negation 
   else if(Match(TOKEN_SUB)) {
     NextToken();
 
