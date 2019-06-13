@@ -4,21 +4,19 @@ interface Pizza {
 }
 
 class Test {
-	x : static : Int;
+	
 
 	function : Main(args : String[]) ~ Nil {
 		x := 45;
 
 		foo : (IntHolder, Int, Float) ~ String;
-		p := Pizza->Nock(Int) ~ Int;
-
+		
 #		f := Foo(Int) ~ Int;
 #		f := (a : Int) ~ Int => x + a * 13; # TODO error handling
 		f := (a : Int) ~ Int => x + a * 13; # TODO error handling
 		Print(f); 
 
-		d := () ~ Nil => "Hello"->PrintLine();
-		d();
+		
 #		Print((a : Int) ~ Int => a * 13 + x);
 	}
 	
@@ -33,5 +31,7 @@ class Test {
 	function : Foo(a : Int, b : Int) ~ Int {
 		return a + b;
 	}
+
+	x : static : Int;
 }
 
