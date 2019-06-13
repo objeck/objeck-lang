@@ -38,6 +38,7 @@ using namespace frontend;
 
 #define SECOND_INDEX 1
 #define THIRD_INDEX 2
+#define FORTH_INDEX 3
 #define DEFAULT_BUNDLE_NAME L"Default"
 
 /****************************
@@ -141,8 +142,8 @@ class Parser {
   CriticalSection* ParseCritical(int depth);
   Return* ParseReturn(int depth);
   Leaving* ParseLeaving(int depth);
-  Declaration* ParseDeclaration(const wstring &name, bool is_stmt, int depth);
-  DeclarationList* ParseDecelerationList(int depth);
+  Declaration* ParseDeclaration(const wstring &name, bool is_stmt, bool is_lambda, int depth);
+  DeclarationList* ParseDecelerationList(bool is_lambda, int depth);
   ExpressionList* ParseExpressionList(int depth, ScannerTokenType open = TOKEN_OPEN_PAREN,
               ScannerTokenType close = TOKEN_CLOSED_PAREN);
   ExpressionList* ParseIndices(int depth);
@@ -154,53 +155,7 @@ class Parser {
   Expression* ParseTerm(int depth);
   Expression* ParseFactor(int depth);
   Expression* ParseSimpleExpression(int depth);
-
-  ExpressionList* ParseLambdaParameters(const wstring file_name, const int line_num, DeclarationList* declarations) {
-    ExpressionList* expressions = TreeFactory::Instance()->MakeExpressionList();
-
-    const vector<Declaration*> dclrs = declarations->GetDeclarations();
-    for(size_t i = 0; i < dclrs.size(); ++i) {
-      wstring ident;
-      Type* dclr_type = dclrs[i]->GetEntry()->GetType();
-      switch(dclr_type->GetType()) {
-      case NIL_TYPE:
-      case VAR_TYPE:
-        ProcessError(L"Expected class type", TOKEN_TILDE);
-        break;
-
-      case BOOLEAN_TYPE:
-        ident = BOOL_CLASS_ID;
-        break;
-
-      case BYTE_TYPE:
-        ident = BYTE_CLASS_ID;
-        break;
-
-      case CHAR_TYPE:
-        ident = CHAR_CLASS_ID;
-        break;
-
-      case INT_TYPE:
-        ident = INT_CLASS_ID;
-        break;
-
-      case  FLOAT_TYPE:
-        ident = FLOAT_CLASS_ID;
-        break;
-        
-      case CLASS_TYPE:
-      case FUNC_TYPE:
-        ident = dclr_type->GetClassName();
-        break;
-      }
-
-      if(!ident.empty()) {
-        expressions->AddExpression(TreeFactory::Instance()->MakeVariable(file_name, line_num, ident));
-      }
-    }
-    
-    return expressions;
-  }
+  ExpressionList* ParseLambdaParameters(const wstring file_name, const int line_num, DeclarationList* declarations);
 
  public:
   Parser(const wstring &p, bool a, const wstring &r) {

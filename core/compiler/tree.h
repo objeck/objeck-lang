@@ -1788,7 +1788,6 @@ namespace frontend {
       id = -1;
       has_and_or = false;
       original = nullptr;
-      is_lambda = false;
     }
 
     ~Method() {
@@ -1823,6 +1822,10 @@ namespace frontend {
 
     bool IsNative() {
       return is_native;
+    }
+
+    bool IsLambda() {
+      return is_lambda;
     }
 
     void SetReturn(Type* r) {

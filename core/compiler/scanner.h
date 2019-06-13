@@ -46,7 +46,7 @@ using namespace std;
 #define ALT_EXTENDED_COMMENT L'*'
 
 // look ahead value
-#define LOOK_AHEAD 3
+#define LOOK_AHEAD 4
 // white space
 #define WHITE_SPACE (iswspace(cur_char) || cur_char == 0x200b || cur_char == 0xfeff)
 
