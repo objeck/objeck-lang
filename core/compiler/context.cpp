@@ -461,10 +461,7 @@ void ContextAnalyzer::AnalyzeMethods(Class* klass, const int depth)
   // methods
   vector<Method*> methods = klass->GetMethods();
   for(size_t i = 0; i < methods.size(); ++i) {
-    Method* method = methods[i];
-    if(!method->IsLambda()) {
-      AnalyzeMethod(method, (int)i, depth + 1);
-    }
+    AnalyzeMethod(methods[i], (int)i, depth + 1);
   }
 
   // look for parent virtual methods
