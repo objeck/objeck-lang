@@ -245,7 +245,6 @@ bool Parser::Parse()
 {
 #ifdef _DEBUG
   GetLogger() << L"\n---------- Scanning/Parsing ---------" << endl;
-  assert(LOOK_AHEAD > FORTH_INDEX);
 #endif
 
   // parses source path
@@ -707,7 +706,7 @@ Class* Parser::ParseClass(const wstring &bundle_name, int depth)
       const wstring &ident = scanner->GetToken()->GetIdentifier();
       NextToken();
 
-      klass->AddStatement(ParseDeclaration(ident, false, false, depth + 1));
+      klass->AddStatement(ParseDeclaration(ident, false, depth + 1));
       if(!Match(TOKEN_SEMI_COLON)) {
         ProcessError(L"Expected ';'", TOKEN_SEMI_COLON);
       }
@@ -824,19 +823,17 @@ Lambda* Parser::ParseLambda(int depth) {
 
   // declarations
   symbol_table->NewParseScope();
-  method->SetDeclarations(ParseDecelerationList(true, depth + 1));
+  method->SetDeclarations(ParseDecelerationList(depth + 1));
 
   // return type
-  Type* return_type;
-  if(Match(TOKEN_TILDE)) {
-    NextToken();
-    return_type = ParseType(depth + 1);
+  if(!Match(TOKEN_TILDE)) {
+    ProcessError(L"Expected '~'", TOKEN_SEMI_COLON);
   }
-  else {
-    return_type = TypeFactory::Instance()->MakeType(VAR_TYPE);
-  }
+  NextToken();
+  Type* return_type = ParseType(depth + 1);
   method->SetReturn(return_type);
-  
+
+
   if(!Match(TOKEN_LAMBDA)) {
     ProcessError(L"Expected '=>'", TOKEN_SEMI_COLON);
   }
@@ -977,7 +974,7 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
 
   // declarations
   symbol_table->NewParseScope();
-  method->SetDeclarations(ParseDecelerationList(false, depth + 1));
+  method->SetDeclarations(ParseDecelerationList(depth + 1));
 
   // return type
   Type* return_type;
@@ -1063,7 +1060,7 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
     switch(GetToken()) {
     case TOKEN_COLON:
     case TOKEN_COMMA:
-      statement = ParseDeclaration(ident, true, false, depth + 1);
+      statement = ParseDeclaration(ident, true, depth + 1);
       break;
 
     case TOKEN_ASSESSOR:
@@ -2475,7 +2472,7 @@ vector<Class*> Parser::ParseGenericClasses(const wstring &bundle_name, int depth
 /****************************
  * Parses a declaration.
  ****************************/
-frontend::Declaration* Parser::ParseDeclaration(const wstring &name, bool is_stmt, bool is_lambda, int depth)
+Declaration* Parser::ParseDeclaration(const wstring &name, bool is_stmt, int depth)
 {
   const int line_num = GetLineNumber();
   const wstring &file_name = GetFileName();
@@ -2503,61 +2500,55 @@ frontend::Declaration* Parser::ParseDeclaration(const wstring &name, bool is_stm
     }
   }
 
-  Declaration* declaration = nullptr;
-  if(Match(TOKEN_COLON)) {
-    NextToken();
-
-    if(Match(TOKEN_OPEN_PAREN)) {
-      // type
-      Type* type = ParseType(depth + 1);
-
-      // add declarations
-      for(size_t i = 0; i < idents.size(); ++i) {
-        declaration = AddDeclaration(name, type, false, declaration, depth);
-      }
-    }
-    else {
-      // static
-      bool is_static = false;
-      if(Match(TOKEN_STATIC_ID)) {
-        is_static = true;
-        NextToken();
-
-        if(!Match(TOKEN_COLON)) {
-          ProcessError(TOKEN_COLON);
-        }
-        NextToken();
-      }
-
-      // type
-      Type* type = ParseType(depth + 1);
-
-      // add declarations
-      Assignment* temp = nullptr;
-      for(size_t i = 0; i < idents.size(); ++i) {
-        const wstring& ident = idents[i];
-        declaration = AddDeclaration(ident, type, is_static, declaration, depth);
-
-        // found assignment
-        if(declaration->GetAssignment()) {
-          temp = declaration->GetAssignment();
-        }
-
-        // apply assignment statement to other variables
-        if(temp && !declaration->GetAssignment()) {
-          Variable* left = ParseVariable(ident, depth + 1);
-          Assignment* assignment = TreeFactory::Instance()->MakeAssignment(file_name, line_num, left, temp->GetExpression());
-          declaration->SetAssignment(assignment);
-        }
-      }
-    }
+  if(!Match(TOKEN_COLON)) {
+    ProcessError(TOKEN_COLON);
   }
-  else if(is_lambda) {
-    Type* type = TypeFactory::Instance()->MakeType(VAR_TYPE);
-    declaration = AddDeclaration(name, type, false, declaration, depth);
+  NextToken();
+
+  Declaration* declaration = nullptr;
+  if(Match(TOKEN_OPEN_PAREN)) {
+    // type
+    Type* type = ParseType(depth + 1);
+
+    // add declarations
+    for(size_t i = 0; i < idents.size(); ++i) {
+      declaration = AddDeclaration(name, type, false, declaration, depth);
+    }
   }
   else {
-    ProcessError(L"Expected ':' or lambda parameter", TOKEN_SEMI_COLON);
+    // static
+    bool is_static = false;
+    if(Match(TOKEN_STATIC_ID)) {
+      is_static = true;
+      NextToken();
+
+      if(!Match(TOKEN_COLON)) {
+        ProcessError(TOKEN_COLON);
+      }
+      NextToken();
+    }
+
+    // type
+    Type* type = ParseType(depth + 1);
+
+    // add declarations
+    Assignment* temp = nullptr;
+    for(size_t i = 0; i < idents.size(); ++i) {
+      const wstring &ident = idents[i];
+      declaration = AddDeclaration(ident, type, is_static, declaration, depth);
+
+      // found assignment
+      if(declaration->GetAssignment()) {
+        temp = declaration->GetAssignment();
+      }
+
+      // apply assignment statement to other variables
+      if(temp && !declaration->GetAssignment()) {
+        Variable* left = ParseVariable(ident, depth + 1);
+        Assignment* assignment = TreeFactory::Instance()->MakeAssignment(file_name, line_num, left, temp->GetExpression());
+        declaration->SetAssignment(assignment);
+      }
+    }
   }
 
   return declaration;
@@ -2566,7 +2557,7 @@ frontend::Declaration* Parser::ParseDeclaration(const wstring &name, bool is_stm
 /****************************
  * Parses a declaration list.
  ****************************/
-frontend::DeclarationList* Parser::ParseDecelerationList(bool is_lambda, int depth)
+DeclarationList* Parser::ParseDecelerationList(int depth)
 {
 #ifdef _DEBUG
   Debug(L"Declaration Parameters", depth);
@@ -2586,7 +2577,7 @@ frontend::DeclarationList* Parser::ParseDecelerationList(bool is_lambda, int dep
     const wstring &ident = scanner->GetToken()->GetIdentifier();
     NextToken();
 
-    declarations->AddDeclaration(ParseDeclaration(ident, false, is_lambda, depth + 1));
+    declarations->AddDeclaration(ParseDeclaration(ident, false, depth + 1));
 
     if(Match(TOKEN_COMMA)) {
       NextToken();
@@ -3160,10 +3151,8 @@ Expression* Parser::ParseSimpleExpression(int depth)
     }
   }
   else if(Match(TOKEN_OPEN_PAREN)) {
-    // lambda expression
-    if(Match(TOKEN_CLOSED_PAREN, SECOND_INDEX) ||
-       (Match(TOKEN_IDENT, SECOND_INDEX) && (Match(TOKEN_COLON, THIRD_INDEX) || Match(TOKEN_COMMA, THIRD_INDEX))) ||
-       (Match(TOKEN_IDENT, SECOND_INDEX) && Match(TOKEN_CLOSED_PAREN, THIRD_INDEX) && Match(TOKEN_LAMBDA, FORTH_INDEX))) {
+    // lambda expression 
+    if( Match(TOKEN_CLOSED_PAREN, SECOND_INDEX) || (Match(TOKEN_IDENT, SECOND_INDEX) &&  Match(TOKEN_COLON, THIRD_INDEX))) {
       expression = ParseLambda(depth + 1);
     }
     else {
@@ -3280,57 +3269,6 @@ Expression* Parser::ParseSimpleExpression(int depth)
   }
 
   return expression;
-}
-
-ExpressionList* Parser::ParseLambdaParameters(const wstring file_name, const int line_num, DeclarationList* declarations)
-{
-  ExpressionList* expressions = TreeFactory::Instance()->MakeExpressionList();
-
-  const vector<Declaration*> dclrs = declarations->GetDeclarations();
-  for(size_t i = 0; i < dclrs.size(); ++i) {
-    wstring ident;
-    Type* dclr_type = dclrs[i]->GetEntry()->GetType();
-    switch(dclr_type->GetType()) {
-    case NIL_TYPE:
-      ProcessError(L"Expected class type", TOKEN_TILDE);
-      break;
-
-    case VAR_TYPE:
-      ident = VAR_CLASS_ID;
-      break;
-
-    case BOOLEAN_TYPE:
-      ident = BOOL_CLASS_ID;
-      break;
-
-    case BYTE_TYPE:
-      ident = BYTE_CLASS_ID;
-      break;
-
-    case CHAR_TYPE:
-      ident = CHAR_CLASS_ID;
-      break;
-
-    case INT_TYPE:
-      ident = INT_CLASS_ID;
-      break;
-
-    case  FLOAT_TYPE:
-      ident = FLOAT_CLASS_ID;
-      break;
-
-    case CLASS_TYPE:
-    case FUNC_TYPE:
-      ident = dclr_type->GetClassName();
-      break;
-    }
-
-    if(!ident.empty()) {
-      expressions->AddExpression(TreeFactory::Instance()->MakeVariable(file_name, line_num, ident));
-    }
-  }
-
-  return expressions;
 }
 
 /****************************
@@ -3685,7 +3623,7 @@ void Parser::ParseAnonymousClass(MethodCall* method_call, int depth)
       const wstring &ident = scanner->GetToken()->GetIdentifier();
       NextToken();
 
-      klass->AddStatement(ParseDeclaration(ident, false, false, depth + 1));
+      klass->AddStatement(ParseDeclaration(ident, false, depth + 1));
       if(!Match(TOKEN_SEMI_COLON)) {
         ProcessError(L"Expected ';'", TOKEN_SEMI_COLON);
       }
