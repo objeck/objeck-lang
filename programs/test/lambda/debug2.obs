@@ -10,7 +10,7 @@ class Test {
 		values->AddBack(7);
 		values->AddBack(13);
 
-		applied := values->Apply((x : IntHolder) ~ IntHolder => x * x)<IntHolder>->Apply((x : IntHolder) ~ IntHolder => x - 5)<IntHolder>;
+		applied := values->Apply(\(x : IntHolder) ~ IntHolder => x * x)<IntHolder>->Apply(\(x : IntHolder) ~ IntHolder => x - 5)<IntHolder>;
 		each(i : applied) {
 			applied->Get(i)->Get()->PrintLine();
 		};
