@@ -1607,7 +1607,7 @@ namespace frontend {
       return variable;
     }
 
-    Expression* GetExpression() {
+    Expression* Assignment::GetExpression() {
       if(lambda) {
         return lambda;
       }
