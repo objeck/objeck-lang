@@ -1,4 +1,8 @@
 
+interface Pizza {
+	function : virtual : Nock(a : Int) ~ Int;
+}
+
 class Test {
 	x : static : Int;
 
@@ -6,10 +10,15 @@ class Test {
 		x := 45;
 
 		foo : (IntHolder, Int, Float) ~ String;
+		p := Pizza->Nock(Int) ~ Int;
 
 #		f := Foo(Int) ~ Int;
+#		f := (a : Int) ~ Int => x + a * 13; # TODO error handling
 		f := (a : Int) ~ Int => x + a * 13; # TODO error handling
-		Print(f);
+		Print(f); 
+
+		d := () ~ Nil => "Hello"->PrintLine();
+		d();
 #		Print((a : Int) ~ Int => a * 13 + x);
 	}
 	
