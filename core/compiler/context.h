@@ -314,12 +314,12 @@ class ContextAnalyzer {
   void AnalyzeVariableCast(Type* to_type, Expression* expression);
 
   // validate parameters for dynamic function
-  void AnalyzeDynamicFunctionParameters(Type* func_type, ParseNode* node) {
-    AnalyzeDynamicFunctionParameters(func_type, node, current_class);
+  void AnalyzeVariableFunctionParameters(Type* func_type, ParseNode* node) {
+    AnalyzeVariableFunctionParameters(func_type, node, current_class);
   }
 
   // validate parameters for dynamic function
-  void AnalyzeDynamicFunctionParameters(Type* func_type, ParseNode* node, Class* klass);
+  void AnalyzeVariableFunctionParameters(Type* func_type, ParseNode* node, Class* klass);
 
   // add method parameter
   void AddMethodParameter(MethodCall* method_call, SymbolEntry* entry, int depth);
@@ -496,7 +496,7 @@ class ContextAnalyzer {
                             Class* klass, LibraryClass* lib_klass, const int depth);
   wstring EncodeFunctionType(vector<Type*> func_params, Type* func_rtrn);
   wstring EncodeFunctionReference(ExpressionList* calling_params, const int depth);
-  void AnalyzeDynamicFunctionCall(MethodCall* method_call, const int depth);
+  void AnalyzeVariableFunctionCall(MethodCall* method_call, const int depth);
   void AnalyzeFunctionReference(Class* klass, MethodCall* method_call,
                                 wstring &encoding, const int depth);
   void AnalyzeFunctionReference(LibraryClass* klass, MethodCall* method_call,

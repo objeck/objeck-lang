@@ -1516,7 +1516,7 @@ void ContextAnalyzer::AnalyzeVariable(Variable* variable, SymbolEntry* entry, co
       ProcessError(variable, L"Cannot reference an instance variable from this context");
     }
   }
-  // dynamic defined variable
+  // type inferred variable
   else if(current_method) {
     const wstring scope_name = current_method->GetName() + L":" + variable->GetName();
     SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(variable->GetFileName(), variable->GetLineNumber(),
@@ -2337,7 +2337,7 @@ int ContextAnalyzer::MatchCallingParameter(Expression* calling_param, Type* meth
           const wstring calling_type_name = calling_type->GetClassName();
           wstring method_type_name = method_type->GetClassName();
           if(method_type_name.size() == 0) {
-            AnalyzeDynamicFunctionParameters(method_type, calling_param);
+            AnalyzeVariableFunctionParameters(method_type, calling_param);
             method_type_name = L"m." + EncodeFunctionType(method_type->GetFunctionParameters(),
                                                           method_type->GetFunctionReturn());
             method_type->SetClassName(method_type_name);
@@ -2478,7 +2478,7 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
       return;
     }
     else {
-      AnalyzeDynamicFunctionCall(method_call, depth + 1);
+      AnalyzeVariableFunctionCall(method_call, depth + 1);
       return;
     }
   }
@@ -2844,7 +2844,7 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
     AnalyzeExpressionMethodCall(method_call, depth + 1);
   }
   else {
-    AnalyzeDynamicFunctionCall(method_call, depth + 1);
+    AnalyzeVariableFunctionCall(method_call, depth + 1);
   }
 }
 
@@ -2852,7 +2852,7 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
  * Analyzes a dynamic function
  * call
  ********************************/
-void ContextAnalyzer::AnalyzeDynamicFunctionCall(MethodCall* method_call, const int depth)
+void ContextAnalyzer::AnalyzeVariableFunctionCall(MethodCall* method_call, const int depth)
 {
   // dynamic function call that is not bound to a class/function until runtime
   SymbolEntry* entry = GetEntry(method_call->GetMethodName());
@@ -2862,7 +2862,7 @@ void ContextAnalyzer::AnalyzeDynamicFunctionCall(MethodCall* method_call, const 
     wstring dyn_func_params_str = type->GetClassName();
     if(dyn_func_params_str.size() == 0) {
       const vector<Type*> func_params = type->GetFunctionParameters();
-      AnalyzeDynamicFunctionParameters(type, static_cast<Expression*>(method_call));
+      AnalyzeVariableFunctionParameters(type, static_cast<Expression*>(method_call));
       for(size_t i = 0; i < func_params.size(); ++i) {
         // encode parameter
         dyn_func_params_str += EncodeType(func_params[i]);
@@ -4326,7 +4326,7 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
       // FUNCTION
       switch(right->GetType()) {
       case FUNC_TYPE: {
-        AnalyzeDynamicFunctionParameters(left, expression);
+        AnalyzeVariableFunctionParameters(left, expression);
         if(left->GetClassName().size() == 0) {
           left->SetClassName(L"m." + EncodeFunctionType(left->GetFunctionParameters(),
                              left->GetFunctionReturn()));
@@ -4909,7 +4909,7 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
       // FUNCTION
       switch(right->GetType()) {
       case FUNC_TYPE: {
-        AnalyzeDynamicFunctionParameters(left, expression);
+        AnalyzeVariableFunctionParameters(left, expression);
         if(left->GetClassName().size() == 0) {
           left->SetClassName(L"m." + EncodeFunctionType(left->GetFunctionParameters(), left->GetFunctionReturn()));
         }
@@ -5398,7 +5398,7 @@ void ContextAnalyzer::AnalyzeDeclaration(Declaration * declaration, Class* klass
     else if(entry->GetType() && entry->GetType()->GetType() == FUNC_TYPE) {
       // resolve function name
       Type* type = entry->GetType();
-      AnalyzeDynamicFunctionParameters(type, entry, klass);
+      AnalyzeVariableFunctionParameters(type, entry, klass);
       const wstring encoded_name = L"m." + EncodeFunctionType(type->GetFunctionParameters(),
                                                               type->GetFunctionReturn());
 #ifdef _DEBUG
@@ -6398,7 +6398,7 @@ void ContextAnalyzer::AnalyzeVariableCast(Type* to_type, Expression* expression)
   }
 }
 
-void ContextAnalyzer::AnalyzeDynamicFunctionParameters(Type* func_type, ParseNode* node, Class* klass)
+void ContextAnalyzer::AnalyzeVariableFunctionParameters(Type* func_type, ParseNode* node, Class* klass)
 {
   const vector<Type*> func_params = func_type->GetFunctionParameters();
   Type* rtrn_type = func_type->GetFunctionReturn();
