@@ -1,21 +1,17 @@
 
+use Collection.Generic;
+
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		x := 7.5;
-		y := 13;
-		f := (x : Float, y : Int) ~ Float => x * x + y;
-#		f := (x : Int, y : Int) => x * x + y;
-#		g := (x) + 3;
-#		g->PrintLine();
-		f(x, y)->PrintLine();
-	}
-	
-	function : Foo(a : Int) ~ Int {
-		return a * 13;
-	}
+		values := CompareVector->New()<IntHolder>;
+		values->AddBack(3);
+		values->AddBack(7);
+		values->AddBack(13);
 
-	function : Foo(a : Int, b : Int) ~ Int {
-		return a + b;
+		applied := values->Apply((x : IntHolder) ~ IntHolder => x * x)<IntHolder>->Apply((x : IntHolder) ~ IntHolder => x - 5)<IntHolder>;
+		each(i : applied) {
+			applied->Get(i)->Get()->PrintLine();
+		};
 	}
 }
 
