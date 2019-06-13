@@ -833,7 +833,6 @@ Lambda* Parser::ParseLambda(int depth) {
   Type* return_type = ParseType(depth + 1);
   method->SetReturn(return_type);
 
-
   if(!Match(TOKEN_LAMBDA)) {
     ProcessError(L"Expected '=>'", TOKEN_SEMI_COLON);
   }
