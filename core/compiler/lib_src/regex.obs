@@ -19,6 +19,8 @@ bundle Query.RegEx {
 		<li>? &#8208; optional</li>
 		<li>* &#8208; zero or more repetitions</li>
 		<li>+ &#8208; one or more repetitions</li>
+		<li>^ &#8208; first single match</li>
+		<li>$ &#8208; last single match</li>
 		<li>group &#8208; (one|two|three)</li>
 		<li>range &#8208; [start-end]</li>
 	</ul>
