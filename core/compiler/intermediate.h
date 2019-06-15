@@ -284,8 +284,8 @@ class IntermediateEmitter {
     else if(method_call->GetLibraryMethod()) {
       rtrn = method_call->GetLibraryMethod()->GetReturn();
     }
-    else if(method_call->IsDynamicFunctionCall()) {
-      rtrn =  method_call->GetDynamicFunctionEntry()->GetType()->GetFunctionReturn();
+    else if(method_call->IsFunctionalCall()) {
+      rtrn =  method_call->GetFunctionalEntry()->GetType()->GetFunctionReturn();
     }
     
     if(rtrn) {

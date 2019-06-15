@@ -853,7 +853,7 @@ Lambda* Parser::ParseLambda(int depth) {
   const wstring klass_name = current_class->GetName();
   ExpressionList* expressions = ParseLambdaParameters(file_name, line_num, method->GetDeclarations());
   MethodCall* method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, klass_name, lambda_name, expressions);
-  method_call->SetFunctionReturn(method->GetReturn());
+  method_call->SetFunctionalReturn(method->GetReturn());
   
   return TreeFactory::Instance()->MakeLambda(file_name, line_num, method, method_call);
 }
@@ -3369,7 +3369,7 @@ MethodCall* Parser::ParseMethodCall(const wstring &ident, int depth)
         if(Match(TOKEN_TILDE)) {
           NextToken();
           Type* func_rtrn = ParseType(depth + 1);
-          method_call->SetFunctionReturn(func_rtrn);
+          method_call->SetFunctionalReturn(func_rtrn);
         }
         // anonymous class
         else if(Match(TOKEN_LES) && Match(TOKEN_IDENT, SECOND_INDEX) &&
@@ -3451,7 +3451,7 @@ MethodCall* Parser::ParseMethodCall(const wstring &ident, int depth)
                                                           ident, ParseExpressionList(depth + 1));
     if(Match(TOKEN_TILDE)) {
       NextToken();
-      method_call->SetFunctionReturn(ParseType(depth + 1));
+      method_call->SetFunctionalReturn(ParseType(depth + 1));
     }
   }
   else {
