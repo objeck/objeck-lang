@@ -4,8 +4,8 @@ make -f make/Makefile.SYS.32
 ./obc -src lib_src/lang.obs -tar lib -opt s2 -dest ../lib/lang.obl 
 make -f make/Makefile.32 clean
 make -f make/Makefile.32
-./obc -src lib_src/gen_collect.obs -tar lib -opt s3 -dest ../lib/gen_collect.obl
 ./obc -src lib_src/collect.obs -tar lib -opt s3 -dest ../lib/collect.obl
+./obc -src lib_src/gen_collect.obs -tar lib -opt s3 -dest ../lib/gen_collect.obl
 ./obc -src lib_src/xml.obs -lib gen_collect.obl -tar lib -opt s3 -dest ../lib/xml.obl
 ./obc -src lib_src/net_misc.obs -tar lib -lib xml.obl,gen_collect.obl -opt s3 -dest ../lib/net_misc.obl
 ./obc -src lib_src/json.obs -lib gen_collect.obl -tar lib -opt s3 -dest ../lib/json.obl
