@@ -456,6 +456,26 @@ bundle Collection.Generic {
 		}
 
 		#~
+		Uses the given function to filter out values
+		@param f function to use a filter. If the function evaluates to true the value is added to the collection.
+		@return filtered list
+		~#
+		method : public : Filter(f : (H) ~ Bool) ~ CompareList<H> {
+			list : CompareList<H> := CompareList->New()<H>;
+			
+			start := @head;
+			while(start <> Nil) {
+				if(f(start->Get())) {
+					list->AddBack(start->Get());
+				};
+				start := start->GetNext();
+			};
+
+			list->Rewind();
+			return list;
+		}
+
+		#~
 		List of all but first element
 		@return all but first element
 		~#
@@ -738,6 +758,26 @@ bundle Collection.Generic {
 			start := @head;
 			while(start <> Nil) {
 				list->AddBack(f(start->Get()));
+				start := start->GetNext();
+			};
+
+			list->Rewind();
+			return list;
+		}
+
+		#~
+		Uses the given function to filter out values
+		@param f function to use a filter. If the function evaluates to true the value is added to the collection.
+		@return filtered list
+		~#
+		method : public : Filter(f : (H) ~ Bool) ~ List<H> {
+			list : List<H> := List->New()<H>;
+			
+			start := @head;
+			while(start <> Nil) {
+				if(f(start->Get())) {
+					list->AddBack(start->Get());
+				};
 				start := start->GetNext();
 			};
 
@@ -1476,7 +1516,7 @@ bundle Collection.Generic {
 		#~
 		Uses the given function to filter out values
 		@param f function to use a filter. If the function evaluates to true the value is added to the collection.
-		@return filter vector
+		@return filtered vector
 		~#
 		method : public : Filter(f : (H) ~ Bool) ~ CompareVector<H> {
 			filtered := CompareVector->New()<H>;
@@ -1796,7 +1836,7 @@ bundle Collection.Generic {
 		#~
 		Uses the given function to filter out values
 		@param f function to use a filter. If the function evaluates to true the value is added to the collection.
-		@return filter vector
+		@return filtered map
 		~#
 		method : public : Filter(f : (K) ~ Bool) ~ Map<K, V> {
 			filtered := Map->New()<K, V>;

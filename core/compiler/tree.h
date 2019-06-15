@@ -2389,12 +2389,12 @@ namespace frontend {
     }
 
   public:
-    void SetFunctionReturn(Type* r) {
+    void SetFunctionalReturn(Type* r) {
       func_rtrn = r;
       is_func_def = true;
     }
 
-    Type* GetFunctionReturn() {
+    Type* GetFunctionalReturn() {
       return func_rtrn;
     }
 
@@ -2402,16 +2402,16 @@ namespace frontend {
       return is_func_def;
     }
 
-    void SetDynamicFunctionCall(SymbolEntry* e) {
+    void SetFunctionalCall(SymbolEntry* e) {
       dyn_func_entry = e;
       is_dyn_func_call = true;
     }
 
-    bool IsDynamicFunctionCall() {
+    bool IsFunctionalCall() {
       return is_dyn_func_call;
     }
 
-    SymbolEntry* GetDynamicFunctionEntry() {
+    SymbolEntry* GetFunctionalEntry() {
       return dyn_func_entry;
     }
 

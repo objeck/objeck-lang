@@ -2894,7 +2894,7 @@ void ContextAnalyzer::AnalyzeVariableFunctionCall(MethodCall* method_call, const
     }
 
     //  set entry reference and return type
-    method_call->SetDynamicFunctionCall(entry);
+    method_call->SetFunctionalCall(entry);
     method_call->SetEvalType(type->GetFunctionReturn(), true);
     if(method_call->GetMethodCall()) {
       method_call->GetMethodCall()->SetEvalType(type->GetFunctionReturn(), false);
@@ -2949,7 +2949,7 @@ void ContextAnalyzer::AnalyzeFunctionReference(Class* klass, MethodCall* method_
     }
 
     // check return type
-    Type* rtrn_type = method_call->GetFunctionReturn();
+    Type* rtrn_type = method_call->GetFunctionalReturn();
     if(rtrn_type->GetType() != method->GetReturn()->GetType()) {
       ProcessError(static_cast<Expression*>(method_call), L"Mismatch function return types");
     }
@@ -3010,7 +3010,7 @@ void ContextAnalyzer::AnalyzeFunctionReference(LibraryClass* klass, MethodCall* 
     }
 
     // check return type
-    Type* rtrn_type = method_call->GetFunctionReturn();
+    Type* rtrn_type = method_call->GetFunctionalReturn();
     if(rtrn_type->GetType() != method->GetReturn()->GetType()) {
       ProcessError(static_cast<Expression*>(method_call), L"Mismatch function return types");
     }

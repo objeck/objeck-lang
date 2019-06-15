@@ -921,7 +921,7 @@ void IntermediateEmitter::EmitMethodCallStatement(MethodCall* method_call)
       }
     }
   }
-  else if(method_call->IsDynamicFunctionCall()) {
+  else if(method_call->IsFunctionalCall()) {
     MethodCall* tail = method_call;
     while(tail->GetMethodCall()) {
       tail = tail->GetMethodCall();
@@ -937,7 +937,7 @@ void IntermediateEmitter::EmitMethodCallStatement(MethodCall* method_call)
 
     // emit function variable
     MemoryContext mem_context;
-    SymbolEntry* entry = method_call->GetDynamicFunctionEntry();
+    SymbolEntry* entry = method_call->GetFunctionalEntry();
     if(entry->IsLocal()) {
       mem_context = LOCL;
     } 
@@ -2601,7 +2601,7 @@ void IntermediateEmitter::EmitMethodCallExpression(MethodCall* method_call, bool
 
     }
   }
-  else if(method_call->IsDynamicFunctionCall()) {
+  else if(method_call->IsFunctionalCall()) {
     MethodCall* tail = method_call;
     while(tail->GetMethodCall()) {
       tail = tail->GetMethodCall();
@@ -2617,7 +2617,7 @@ void IntermediateEmitter::EmitMethodCallExpression(MethodCall* method_call, bool
 
     // emit function variable
     MemoryContext mem_context;
-    SymbolEntry* entry = method_call->GetDynamicFunctionEntry();
+    SymbolEntry* entry = method_call->GetFunctionalEntry();
     if(entry->IsLocal()) {
       mem_context = LOCL;
     } 
