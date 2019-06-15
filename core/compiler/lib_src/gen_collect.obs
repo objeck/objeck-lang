@@ -784,7 +784,27 @@ bundle Collection.Generic {
 			list->Rewind();
 			return list;
 		}
-	
+
+		#~
+		List of all but first element
+		@return all but first element
+		~#
+		method : public : Rest() ~ List<H> {
+			list : List<H> := List->New()<H>;
+			
+			if(@head <> Nil) {
+				start := @head->GetNext();
+				while(start <> Nil) {
+					list->AddBack(start->Get());
+					start := start->GetNext();
+				};
+
+				list->Rewind();
+			};
+
+			return list;
+		}
+		
 		#~
 		Removes the last value from the list
 		~#
