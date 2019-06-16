@@ -1827,7 +1827,6 @@ namespace frontend {
       id = -1;
       has_and_or = false;
       original = nullptr;
-      is_lambda = false;
     }
 
     ~Method() {
@@ -1862,6 +1861,10 @@ namespace frontend {
 
     bool IsNative() {
       return is_native;
+    }
+
+    bool IsLambda() {
+      return is_lambda;
     }
 
     void SetReturn(Type* r) {
@@ -2598,13 +2601,17 @@ namespace frontend {
    *************************/
   class Lambda : public Expression {
     friend class TreeFactory;
-    Method* method;
-    MethodCall* method_call;
+    Type* type;
+    wstring name;
+    ExpressionList* parameters;
+    Expression* expression;
 
   public:
-    Lambda(const wstring& file_name, const int line_num, Method* m, MethodCall* c) : Expression(file_name, line_num) {
-      method = m;
-      method_call = c;
+    Lambda(const wstring& file_name, const int line_num, Type* t, const wstring &n, ExpressionList* p, Expression* e) : Expression(file_name, line_num) {
+      type = t;
+      name = n;
+      parameters = p;
+      expression = e;
     }
 
     ~Lambda() {
@@ -2614,12 +2621,16 @@ namespace frontend {
       return LAMBDA_EXPR;
     }
 
-    Method* GetMethod() {
-      return method;
+    const wstring GetName() {
+      return name;
     }
 
-    MethodCall* GetMethodCall() {
-      return method_call;
+    ExpressionList* GetParameters() {
+      return parameters;
+    }
+
+    Expression* GetExpression() {
+      return expression;
     }
   };
 
@@ -2775,8 +2786,8 @@ namespace frontend {
       return tmp;
     }
 
-    Lambda* MakeLambda(const wstring& file_name, const int line_num, Method* m, MethodCall* c) {
-      Lambda* tmp = new Lambda(file_name, line_num, m, c);
+    Lambda* MakeLambda(const wstring& file_name, const int line_num, Type* t, const wstring &n, ExpressionList* p, Expression* e) {
+      Lambda* tmp = new Lambda(file_name, line_num, t, n, p, e);
       nodes.push_back(tmp);
       return tmp;
     }

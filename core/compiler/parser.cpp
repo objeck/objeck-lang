@@ -921,7 +921,22 @@ Lambda* Parser::ParseLambda(int depth) {
   }
   NextToken();
 
-  ExpressionList* parameters = ParseExpressionList(depth + 1);
+  ExpressionList* parameter_list = ParseExpressionList(depth + 1);
+  
+  DeclarationList* declaration_list = TreeFactory::Instance()->MakeDeclarationList();
+  vector<Expression*> parameters = parameter_list->GetExpressions();
+  for(size_t i = 0; i < parameters.size(); ++i) {
+    Expression* expression = parameters[i];
+    if(expression->GetExpressionType() == VAR_EXPR) {
+      declaration_list->AddDeclaration(AddDeclaration(static_cast<Variable*>(expression)->GetName(),
+                                                      TypeFactory::Instance()->MakeType(VAR_TYPE),
+                                                      false, nullptr, depth));
+    }
+    else {
+      ProcessError(L"Expected variable parameter type" , TOKEN_SEMI_COLON);
+    }
+  }
+  method->SetDeclarations(declaration_list);
 
   // return type
   if(!Match(TOKEN_LAMBDA)) {
@@ -931,7 +946,14 @@ Lambda* Parser::ParseLambda(int depth) {
 
   Expression* expression = ParseExpression(depth + 1);
 
+  symbol_table->PreviousParseScope(method->GetParsedName());
+  current_method = outter_method;
+  current_class->AddMethod(method);
+  
+  return TreeFactory::Instance()->MakeLambda(file_name, line_num, type, alias_name, parameter_list, expression);
+
   /*
+  
   method->SetDeclarations(ParseDecelerationList(depth + 1));
 
   // return type
@@ -954,13 +976,6 @@ Lambda* Parser::ParseLambda(int depth) {
   statements->AddStatement(rtrn_stmt);
   method->SetStatements(statements);
 
-  symbol_table->PreviousParseScope(method->GetParsedName());
-  */
-
-  current_class->AddMethod(method);
-  current_method = outter_method;
-
-  /*
   // build call to method
   const wstring klass_name = current_class->GetName();
   ExpressionList* expressions = ParseLambdaParameters(file_name, line_num, method->GetDeclarations());
@@ -968,9 +983,8 @@ Lambda* Parser::ParseLambda(int depth) {
   method_call->SetFunctionalReturn(method->GetReturn());
   
   return TreeFactory::Instance()->MakeLambda(file_name, line_num, method, method_call);
-  */
 
-  return nullptr;
+  */
 }
 
 /****************************
