@@ -112,6 +112,7 @@ void Scanner::LoadKeywords()
   ident_map[L"private"] = TOKEN_PRIVATE_ID;
   ident_map[L"class"] = TOKEN_CLASS_ID;
   ident_map[L"interface"] = TOKEN_INTERFACE_ID;
+  ident_map[L"alias"] = TOKEN_ALIAS_ID;
   ident_map[L"implements"] = TOKEN_IMPLEMENTS_ID;
   ident_map[L"function"] = TOKEN_FUNCTION_ID;
   ident_map[L"method"] = TOKEN_METHOD_ID;
@@ -346,6 +347,7 @@ void Scanner::CheckIdentifier(int index)
     case TOKEN_PARENT_ID:
     case TOKEN_CLASS_ID:
     case TOKEN_INTERFACE_ID:
+    case TOKEN_ALIAS_ID:
     case TOKEN_IMPLEMENTS_ID:
     case TOKEN_FUNCTION_ID:
     case TOKEN_METHOD_ID:

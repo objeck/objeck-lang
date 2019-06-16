@@ -353,6 +353,10 @@ void Parser::ParseBundle(int depth)
           bundle->AddEnum(ParseConsts(depth + 1));
           break;
 
+        case TOKEN_ALIAS_ID:
+          bundle->AddAlias(ParseAlias(depth + 1));
+          break;
+
         case TOKEN_CLASS_ID:
           bundle->AddClass(ParseClass(bundle_name, depth + 1));
           break;
@@ -383,7 +387,7 @@ void Parser::ParseBundle(int depth)
     program->AddUses(uses, file_name);
   }
   // parse class
-  else if(Match(TOKEN_CLASS_ID) || Match(TOKEN_ENUM_ID) || Match(TOKEN_CONSTS_ID) || Match(TOKEN_INTERFACE_ID)) {
+  else if(Match(TOKEN_CLASS_ID) || Match(TOKEN_ENUM_ID) || Match(TOKEN_CONSTS_ID) || Match(TOKEN_INTERFACE_ID) || Match(TOKEN_ALIAS_ID)) {
     wstring bundle_name = L"";
     symbol_table = new SymbolTableManager;
     ParsedBundle* bundle = new ParsedBundle(bundle_name, symbol_table);
@@ -406,6 +410,10 @@ void Parser::ParseBundle(int depth)
 
       case TOKEN_CLASS_ID:
         bundle->AddClass(ParseClass(bundle_name, depth + 1));
+        break;
+
+      case TOKEN_ALIAS_ID:
+        bundle->AddAlias(ParseAlias(depth + 1));
         break;
 
       case TOKEN_INTERFACE_ID:
@@ -446,8 +454,8 @@ Enum* Parser::ParseEnum(int depth)
   }
   // identifier
   const wstring enum_name = scanner->GetToken()->GetIdentifier();
-  if(current_bundle->GetClass(enum_name) || current_bundle->GetEnum(enum_name)) {
-    ProcessError(L"Class, interface or enum name already defined in this bundle");
+  if(current_bundle->GetClass(enum_name) || current_bundle->GetEnum(enum_name) || current_bundle->GetAlias(enum_name)) {
+    ProcessError(L"Class, interface, enum or alias name already defined in this bundle");
   }
   NextToken();
   const wstring enum_scope_name = GetEnumScopeName(enum_name);
@@ -516,7 +524,80 @@ Enum* Parser::ParseEnum(int depth)
 }
 
 /****************************
- * Parses a const (i.e. mixed enum)
+ * Parses a function alias
+ ****************************/
+Alias* Parser::ParseAlias(int depth)
+{
+  const int line_num = GetLineNumber();
+  const wstring &file_name = GetFileName();
+
+  NextToken();
+  if(!Match(TOKEN_IDENT)) {
+    ProcessError(TOKEN_IDENT);
+  }
+  // identifier
+  const wstring alias_name = scanner->GetToken()->GetIdentifier();
+  if(current_bundle->GetClass(alias_name) || current_bundle->GetEnum(alias_name) || current_bundle->GetAlias(alias_name)) {
+    ProcessError(L"Class, interface or alias name already defined in this bundle");
+  }
+  NextToken();
+  const wstring alias_scope_name = GetEnumScopeName(alias_name);
+
+  size_t index = alias_scope_name.find('#');
+  if(index != wstring::npos) {
+    const wstring use_name = alias_scope_name.substr(0, index + 1);
+    program->AddUse(use_name, file_name);
+  }
+
+#ifdef _DEBUG
+  Debug(L"[Alias: name='" + alias_scope_name + L"']", depth);
+#endif
+
+  if(!Match(TOKEN_OPEN_BRACE)) {
+    ProcessError(L"Expected '{'", TOKEN_OPEN_BRACE);
+  }
+  NextToken();
+
+  Alias* alias = TreeFactory::Instance()->MakeAlias(file_name, line_num, alias_scope_name);
+  while(!Match(TOKEN_CLOSED_BRACE) && !Match(TOKEN_END_OF_STREAM)) {
+    if(!Match(TOKEN_IDENT)) {
+      ProcessError(TOKEN_IDENT);
+    }
+    // identifier
+    wstring label_name = scanner->GetToken()->GetIdentifier();
+    NextToken();
+
+    if(!Match(TOKEN_COLON)) {
+      ProcessError(L"Expected ','", TOKEN_CLOSED_BRACE);
+    }
+    NextToken();
+
+    Type* type = ParseType(depth + 1);
+    if(!type) {
+      return nullptr;
+    }
+
+    if(Match(TOKEN_COMMA)) {
+      NextToken();
+      if(!Match(TOKEN_IDENT)) {
+        ProcessError(TOKEN_IDENT);
+      }
+    }
+    else if(!Match(TOKEN_CLOSED_BRACE)) {
+      ProcessError(L"Expected ',' or ')'", TOKEN_CLOSED_BRACE);
+      NextToken();
+    }
+  }
+  if(!Match(TOKEN_CLOSED_BRACE)) {
+    ProcessError(L"Expected '}'", TOKEN_CLOSED_BRACE);
+  }
+  NextToken();
+
+  return alias;
+}
+
+/****************************
+ * Parses a const (mixed value enum)
  ****************************/
 Enum* Parser::ParseConsts(int depth)
 {
@@ -529,8 +610,8 @@ Enum* Parser::ParseConsts(int depth)
   }
   // identifier
   const wstring enum_name = scanner->GetToken()->GetIdentifier();
-  if(current_bundle->GetClass(enum_name) || current_bundle->GetEnum(enum_name)) {
-    ProcessError(L"Class, interface or enum name already defined in this bundle");
+  if(current_bundle->GetClass(enum_name) || current_bundle->GetEnum(enum_name) || current_bundle->GetAlias(enum_name)) {
+    ProcessError(L"Class, interface, enum or alias name already defined in this bundle");
   }
   NextToken();
   const wstring enum_scope_name = GetEnumScopeName(enum_name);
@@ -604,8 +685,8 @@ Class* Parser::ParseClass(const wstring &bundle_name, int depth)
   }
   // identifier
   wstring cls_name = scanner->GetToken()->GetIdentifier();
-  if(current_bundle->GetClass(cls_name) || current_bundle->GetEnum(cls_name)) {
-    ProcessError(L"Class, interface or enum name already defined in this bundle");
+  if(current_bundle->GetClass(cls_name) || current_bundle->GetEnum(cls_name) || current_bundle->GetAlias(cls_name)) {
+    ProcessError(L"Class, interface, enum or alias name already defined in this bundle");
   }
   NextToken();
 
@@ -748,8 +829,8 @@ Class* Parser::ParseInterface(const wstring &bundle_name, int depth)
   }
   // identifier
   wstring cls_name = scanner->GetToken()->GetIdentifier();
-  if(current_bundle->GetClass(cls_name) || current_bundle->GetEnum(cls_name)) {
-    ProcessError(L"Class, interface or enum name already defined in this bundle");
+  if(current_bundle->GetClass(cls_name) || current_bundle->GetEnum(cls_name) || current_bundle->GetAlias(cls_name)) {
+    ProcessError(L"Class, interface, enum or alias name already defined in this bundle");
   }
   NextToken();
 
