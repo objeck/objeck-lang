@@ -1276,6 +1276,24 @@ namespace frontend {
     const wstring GetName() const {
       return name;
     }
+
+    bool AddType(const wstring &n, Type *t) {
+      if(GetType(n)) {
+        return false;
+      }
+
+      aliases.insert(pair<const wstring, Type*>(n, t));
+      return true;
+    }
+
+    Type* GetType(const wstring& n) {
+      map<const wstring, Type*>::iterator result = aliases.find(n);
+      if(result != aliases.end()) {
+        return result->second;
+      }
+
+      return nullptr;
+    }
   };
 
   /****************************

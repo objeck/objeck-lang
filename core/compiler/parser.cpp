@@ -572,10 +572,7 @@ Alias* Parser::ParseAlias(int depth)
     }
     NextToken();
 
-    Type* type = ParseType(depth + 1);
-    if(!type) {
-      return nullptr;
-    }
+    alias->AddType(label_name, ParseType(depth + 1));
 
     if(Match(TOKEN_COMMA)) {
       NextToken();
