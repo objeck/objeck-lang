@@ -907,13 +907,9 @@ void ContextAnalyzer::AnalyzeMethod(Method* method, const int id, const int dept
 void ContextAnalyzer::AnalyzeLambda(Lambda* lambda, const int depth)
 {
   // check lambda method call
-  AnalyzeMethodCall(lambda->GetMethodCall(), depth + 1);
-  if(!lambda->GetBaseType()) {
-    lambda->SetTypes(lambda->GetMethodCall()->GetEvalType());
-  }
-
-  // TODO: check lambda constraints
-  // 
+  MethodCall* lambda_call = lambda->GetMethodCall();
+  AnalyzeMethodCall(lambda_call, depth + 1);
+  lambda->SetTypes(lambda_call->GetEvalType());
 }
 
 /****************************
