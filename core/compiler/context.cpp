@@ -142,7 +142,10 @@ bool ContextAnalyzer::Analyze()
       Class* klass = classes[j];
       vector<Method*> methods = klass->GetMethods();
       for(size_t k = 0; k < methods.size(); ++k) {
-        methods[k]->EncodeSignature(klass, program, linker);
+        Method* method = methods[k];
+        if(!method->IsLambda()) {
+          method->EncodeSignature(klass, program, linker);
+        }
       }
     }
   }
