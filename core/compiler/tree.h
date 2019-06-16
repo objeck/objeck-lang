@@ -1258,6 +1258,27 @@ namespace frontend {
   };
 
   /****************************
+   * Aliases class
+   ****************************/
+  class Alias : public ParseNode {
+    friend class TreeFactory;
+    wstring name;
+    map<const wstring, Type*> aliases;
+
+    Alias(const wstring& file_name, int line_num, const wstring& n) : ParseNode(file_name, line_num) {
+      name = n;
+    }
+
+    ~Alias() {
+    }
+
+  public:
+    const wstring GetName() const {
+      return name;
+    }
+  };
+
+  /****************************
    * Enum class
    ****************************/
   class Enum : public ParseNode {
@@ -2678,6 +2699,12 @@ namespace frontend {
       instance = nullptr;
     }
 
+    Alias* MakeAlias(const wstring& file_name, const int line_num, const wstring& name) {
+      Alias* tmp = new Alias(file_name, line_num, name);
+      nodes.push_back(tmp);
+      return tmp;
+    }
+
     Enum* MakeEnum(const wstring &file_name, const int line_num, const wstring &name, int offset) {
       Enum* tmp = new Enum(file_name, line_num, name, offset);
       nodes.push_back(tmp);
@@ -2989,6 +3016,10 @@ namespace frontend {
     SymbolTableManager* symbol_table;
     unordered_map<wstring, Enum*> enums;
     vector<Enum*> enum_list;
+
+    unordered_map<wstring, Alias*> aliases;
+    vector<Alias*> aliases_list;
+
     unordered_map<wstring, Class*> classes;
     vector<Class*> class_list;
 
@@ -3015,6 +3046,20 @@ namespace frontend {
     Enum* GetEnum(const wstring &e) {
       unordered_map<wstring, Enum*>::iterator result = enums.find(e);
       if(result != enums.end()) {
+        return result->second;
+      }
+
+      return nullptr;
+    }
+
+    void AddAlias(Alias* a) {
+      aliases.insert(pair<wstring, Alias*>(a->GetName(), a));
+      aliases_list.push_back(a);
+    }
+
+    Alias* GetAlias(const wstring& a) {
+      unordered_map<wstring, Alias*>::iterator result = aliases.find(a);
+      if(result != aliases.end()) {
         return result->second;
       }
 
