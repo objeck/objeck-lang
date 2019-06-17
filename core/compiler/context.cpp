@@ -613,8 +613,8 @@ bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, Class* virtual_cl
       // search for implementation method via signature
       Method* impl_method = nullptr;
       LibraryMethod* lib_impl_method = nullptr;
-      int offset = (int)virtual_method_name.find_first_of(':');
-      if(offset > -1) {
+      size_t offset = virtual_method_name.find_first_of(':');
+      if(offset != wstring::npos) {
         wstring encoded_name = impl_class->GetName() + virtual_method_name.substr(offset);
         impl_method = impl_class->GetMethod(encoded_name);
         if(!impl_method && impl_class->GetParent()) {
@@ -719,8 +719,8 @@ bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, LibraryClass* lib
       // validate that methods have been implemented
       Method* impl_method = nullptr;
       LibraryMethod* lib_impl_method = nullptr;
-      int offset = (int)virtual_method_name.find_first_of(':');
-      if(offset > -1) {
+      size_t offset = virtual_method_name.find_first_of(':');
+      if(offset != wstring::npos) {
         wstring encoded_name = impl_class->GetName() + virtual_method_name.substr(offset);
         impl_method = impl_class->GetMethod(encoded_name);
         if(!impl_method && impl_class->GetParent()) {
@@ -919,23 +919,39 @@ void ContextAnalyzer::AnalyzeLambda(Lambda* lambda, const int depth)
     
     // update decelerations
     vector<Type*> types = lambda_type->GetFunctionParameters();
-    vector<Declaration*> declarations = method->GetDeclarations()->GetDeclarations();
+    DeclarationList* declaration_list = method->GetDeclarations();
+    vector<Declaration*> declarations = declaration_list->GetDeclarations();
     if(types.size() == declarations.size()) {
+      // encode lookup
+      method->EncodeSignature();
+      
       for(size_t i = 0; i < declarations.size(); ++i) {
-        Declaration* declaration = declarations[i];
-        declaration->GetEntry()->SetType(types[i]);
+        declarations[i]->GetEntry()->SetType(types[i]);
       }
 
-      method->EncodeSignature();
       current_class->AddMethod(method);
       method->EncodeSignature(current_class, program, linker);
+      current_class->AssociateMethod(method);
       AnalyzeMethod(method, depth + 1);
 
-      // create method call
-      MethodCall* method_call = TreeFactory::Instance()->MakeMethodCall(method->GetFileName(), method->GetLineNumber(), 
-                                                                        current_class->GetName(), method->GetName(), 
-                                                                        lambda->GetParameters());
-      method_call->SetFunctionalReturn(method->GetReturn());
+      const wstring full_method_name = method->GetName();
+      size_t offset = full_method_name.find_first_of(':');
+      if(offset != wstring::npos) {
+        const wstring method_name = full_method_name.substr(offset + 1);
+
+        // create method call
+        MethodCall* method_call = TreeFactory::Instance()->MakeMethodCall(method->GetFileName(), method->GetLineNumber(),
+                                                                          current_class->GetName(), method_name,
+                                                                          ParseLambdaParameters(declaration_list));
+        method_call->SetFunctionalReturn(method->GetReturn());
+        AnalyzeMethodCall(method_call, depth + 1);
+        lambda->SetMethodCall(method_call);
+        lambda->SetTypes(method_call->GetEvalType());
+      }
+      else {
+        wcerr << L"internal error" << endl;
+        exit(1);
+      }
     }
     else {
       ProcessError(lambda, L"Deceleration and parameter size mismatch");
@@ -945,6 +961,11 @@ void ContextAnalyzer::AnalyzeLambda(Lambda* lambda, const int depth)
   else {
 
   }
+
+  
+
+
+
 
   /*
   // check lambda method call

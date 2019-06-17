@@ -881,7 +881,6 @@ void IntermediateEmitter::EmitStatement(Statement* statement)
   default:
     wcerr << L"internal error" << endl;
     exit(1);
-    break;
   }
   
   if(post_statements.size()) {

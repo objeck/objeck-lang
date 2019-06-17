@@ -2336,6 +2336,9 @@ namespace frontend {
     }
 
     void AssociateMethods();
+
+    void AssociateMethod(Method* method);
+
   };
 
   /****************************
@@ -2606,6 +2609,7 @@ namespace frontend {
     wstring name;
     Method* method;
     ExpressionList* parameters;
+    MethodCall* method_call;
 
   public:
     Lambda(const wstring& file_name, const int line_num, Type* t, const wstring &n, Method* m, ExpressionList* p) : Expression(file_name, line_num) {
@@ -2613,6 +2617,7 @@ namespace frontend {
       name = n;
       method = m;
       parameters = p;
+      method_call = nullptr;
     }
 
     ~Lambda() {
@@ -2636,6 +2641,14 @@ namespace frontend {
 
     ExpressionList* GetParameters() {
       return parameters;
+    }
+
+    MethodCall* GetMethodCall() {
+      return method_call;
+    }
+
+    void SetMethodCall(MethodCall* c) {
+      method_call = c;
     }
   };
 

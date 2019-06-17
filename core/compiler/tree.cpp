@@ -762,18 +762,22 @@ bool SymbolTable::AddEntry(SymbolEntry* e, bool is_var /*= false*/)
 void Class::AssociateMethods()
 {
   for(size_t i = 0; i < method_list.size(); ++i) {
-    Method* method = method_list[i];
-    methods.insert(pair<wstring, Method*>(method->GetEncodedName(), method));
+    AssociateMethod(method_list[i]);
+  }
+}
 
-    // add to unqualified names to list
-    const wstring& encoded_name = method->GetEncodedName();
-    const size_t start = encoded_name.find(':');
-    if(start != wstring::npos) {
-      const size_t end = encoded_name.find(':', start + 1);
-      if(end != wstring::npos) {
-        const wstring& unqualified_name = encoded_name.substr(start + 1, end - start - 1);
-        unqualified_methods.insert(pair<wstring, Method*>(unqualified_name, method));
-      }
+void Class::AssociateMethod(Method* method)
+{
+  methods.insert(pair<wstring, Method*>(method->GetEncodedName(), method));
+
+  // add to unqualified names to list
+  const wstring& encoded_name = method->GetEncodedName();
+  const size_t start = encoded_name.find(':');
+  if(start != wstring::npos) {
+    const size_t end = encoded_name.find(':', start + 1);
+    if(end != wstring::npos) {
+      const wstring& unqualified_name = encoded_name.substr(start + 1, end - start - 1);
+      unqualified_methods.insert(pair<wstring, Method*>(unqualified_name, method));
     }
   }
 }
