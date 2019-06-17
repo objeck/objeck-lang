@@ -903,6 +903,7 @@ Lambda* Parser::ParseLambda(int depth) {
   current_method = method;
   symbol_table->NewParseScope();
 
+  // parse type or name alias
   Type* type = nullptr;
   wstring alias_name;
   if(Match(TOKEN_OPEN_PAREN)) {
