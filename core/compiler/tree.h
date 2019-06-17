@@ -1778,6 +1778,7 @@ namespace frontend {
    ****************************/
   class Method : public ParseNode {
     friend class TreeFactory;
+    static int next_id;
     int id;
     wstring name;
     wstring parsed_name;
@@ -1851,8 +1852,8 @@ namespace frontend {
     }
     
   public:
-    void SetId(int i) {
-      id = i;
+    void SetId() {
+      id = next_id++;
     }
 
     int GetId() {
@@ -2604,12 +2605,14 @@ namespace frontend {
     Type* type;
     wstring name;
     Method* method;
+    ExpressionList* parameters;
 
   public:
-    Lambda(const wstring& file_name, const int line_num, Type* t, const wstring &n, Method* m) : Expression(file_name, line_num) {
+    Lambda(const wstring& file_name, const int line_num, Type* t, const wstring &n, Method* m, ExpressionList* p) : Expression(file_name, line_num) {
       type = t;
       name = n;
       method = m;
+      parameters = p;
     }
 
     ~Lambda() {
@@ -2629,6 +2632,10 @@ namespace frontend {
 
     Method* GetMethod() {
       return method;
+    }
+
+    ExpressionList* GetParameters() {
+      return parameters;
     }
   };
 
@@ -2784,8 +2791,8 @@ namespace frontend {
       return tmp;
     }
 
-    Lambda* MakeLambda(const wstring& file_name, const int line_num, Type* t, const wstring &n, Method* m) {
-      Lambda* tmp = new Lambda(file_name, line_num, t, n, m);
+    Lambda* MakeLambda(const wstring& file_name, const int line_num, Type* t, const wstring &n, Method* m, ExpressionList* p) {
+      Lambda* tmp = new Lambda(file_name, line_num, t, n, m, p);
       nodes.push_back(tmp);
       return tmp;
     }

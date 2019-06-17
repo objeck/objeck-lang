@@ -434,7 +434,7 @@ class ContextAnalyzer {
   bool AnalyzeReturnPaths(StatementList* statement_list, const int depth);
   bool AnalyzeReturnPaths(If* if_stmt, bool nested, const int depth);
   bool AnalyzeReturnPaths(Select* select_stmt, const int depth);
-  void AnalyzeMethod(Method* method, int id, const int depth);
+  void AnalyzeMethod(Method* method, const int depth);
   void AnalyzeStatements(StatementList* statements, const int depth);
   void AnalyzeStatement(Statement* statement, const int depth);
   void AnalyzeIndices(ExpressionList* indices, const int depth);
