@@ -2157,7 +2157,7 @@ namespace frontend {
     }
     
     bool AddMethod(Method* m) {
-      const wstring &parsed_name = m->GetParsedName();
+      const wstring parsed_name = m->GetParsedName();
       for(size_t i = 0; i < method_list.size(); ++i) {
         if(method_list[i]->GetParsedName() == parsed_name) {
           return false;
@@ -2603,15 +2603,13 @@ namespace frontend {
     friend class TreeFactory;
     Type* type;
     wstring name;
-    ExpressionList* parameters;
-    Expression* expression;
+    Method* method;
 
   public:
-    Lambda(const wstring& file_name, const int line_num, Type* t, const wstring &n, ExpressionList* p, Expression* e) : Expression(file_name, line_num) {
+    Lambda(const wstring& file_name, const int line_num, Type* t, const wstring &n, Method* m) : Expression(file_name, line_num) {
       type = t;
       name = n;
-      parameters = p;
-      expression = e;
+      method = m;
     }
 
     ~Lambda() {
@@ -2625,12 +2623,12 @@ namespace frontend {
       return name;
     }
 
-    ExpressionList* GetParameters() {
-      return parameters;
+    Type* GetLambdaType() {
+      return type;
     }
 
-    Expression* GetExpression() {
-      return expression;
+    Method* GetMethod() {
+      return method;
     }
   };
 
@@ -2786,8 +2784,8 @@ namespace frontend {
       return tmp;
     }
 
-    Lambda* MakeLambda(const wstring& file_name, const int line_num, Type* t, const wstring &n, ExpressionList* p, Expression* e) {
-      Lambda* tmp = new Lambda(file_name, line_num, t, n, p, e);
+    Lambda* MakeLambda(const wstring& file_name, const int line_num, Type* t, const wstring &n, Method* m) {
+      Lambda* tmp = new Lambda(file_name, line_num, t, n, m);
       nodes.push_back(tmp);
       return tmp;
     }
