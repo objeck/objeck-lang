@@ -739,6 +739,7 @@ Class* Parser::ParseClass(const wstring &bundle_name, int depth)
   symbol_table->NewParseScope();
   NextToken();
 
+  // perpend bundle name
   if(bundle_name.size() > 0) {
     cls_name.insert(0, L".");
     cls_name.insert(0, bundle_name);

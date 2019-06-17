@@ -613,7 +613,7 @@ bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, Class* virtual_cl
       // search for implementation method via signature
       Method* impl_method = nullptr;
       LibraryMethod* lib_impl_method = nullptr;
-      size_t offset = virtual_method_name.find_first_of(':');
+      const size_t offset = virtual_method_name.find_first_of(':');
       if(offset != wstring::npos) {
         wstring encoded_name = impl_class->GetName() + virtual_method_name.substr(offset);
         impl_method = impl_class->GetMethod(encoded_name);
@@ -719,7 +719,7 @@ bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, LibraryClass* lib
       // validate that methods have been implemented
       Method* impl_method = nullptr;
       LibraryMethod* lib_impl_method = nullptr;
-      size_t offset = virtual_method_name.find_first_of(':');
+      const size_t offset = virtual_method_name.find_first_of(':');
       if(offset != wstring::npos) {
         wstring encoded_name = impl_class->GetName() + virtual_method_name.substr(offset);
         impl_method = impl_class->GetMethod(encoded_name);
@@ -916,7 +916,29 @@ void ContextAnalyzer::AnalyzeLambda(Lambda* lambda, const int depth)
   }
   // by name
   else {
-    // TODO: look up type and copy
+    const wstring lambda_name = lambda->GetName();
+
+    wstring alias_name;
+    const size_t middle = lambda_name.find_first_of(L'#');
+    if(middle != wstring::npos) {
+      alias_name = lambda_name.substr(0, middle);
+    }
+
+    wstring type_name;
+    if(middle + 1 < lambda_name.size()) {
+      type_name = lambda_name.substr(middle + 1);
+    }
+
+    Alias* alias = program->GetAlias(alias_name);
+    if(alias) {
+      lambda_type = alias->GetType(type_name);
+      if(lambda_type) {
+        lambda_type = TypeFactory::Instance()->MakeType(lambda_type);
+      }
+    }
+    else {
+      ProcessError(lambda, L"Undefined alias: '" + ReplaceSubstring(lambda_name, L"#", L"->") + L"'");
+    }
   }
 
   if(lambda_type) {
@@ -947,7 +969,7 @@ void ContextAnalyzer::AnalyzeLambda(Lambda* lambda, const int depth)
       current_table = symbol_table->GetSymbolTable(current_method->GetParsedName());
 
       const wstring full_method_name = method->GetName();
-      size_t offset = full_method_name.find_first_of(':');
+      const size_t offset = full_method_name.find_first_of(':');
       if(offset != wstring::npos) {
         const wstring method_name = full_method_name.substr(offset + 1);
 
