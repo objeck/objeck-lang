@@ -932,7 +932,15 @@ void ContextAnalyzer::AnalyzeLambda(Lambda* lambda, const int depth)
       current_class->AddMethod(method);
       method->EncodeSignature(current_class, program, linker);
       current_class->AssociateMethod(method);
+
+
+      
+      // method->SetSymbolTable(current_table);
+
+      Method* tmp = current_method;
       AnalyzeMethod(method, depth + 1);
+      current_method = tmp;
+      current_table = symbol_table->GetSymbolTable(tmp->GetParsedName());
 
       const wstring full_method_name = method->GetName();
       size_t offset = full_method_name.find_first_of(':');
