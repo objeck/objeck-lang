@@ -1,3 +1,5 @@
+use Collection.Generic;
+
 alias Foo {
 	Bar : (IntHolder) ~ IntHolder
 }
@@ -8,11 +10,9 @@ class Test {
 		values->AddBack(3);
 		values->AddBack(7);
 		values->AddBack(13);
+		values->Size()->PrintLine();
 
-#		values->Size()->PrintLine();
-
-		applied := values->Apply(\Foo->Bar(x) => x * x)<IntHolder>;
-		applied := applied->Rest()<IntHolder>;
+		applied := values->Apply(\Foo->Bar : (x) => x * x)<IntHolder>;
 		while(applied->More()) {
 			applied->Get()->Get()->PrintLine();
 			applied->Next();
