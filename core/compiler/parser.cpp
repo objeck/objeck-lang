@@ -954,7 +954,7 @@ Lambda* Parser::ParseLambda(int depth) {
   symbol_table->PreviousParseScope(method->GetParsedName());
   current_method = outter_method;
   
-  return TreeFactory::Instance()->MakeLambda(file_name, line_num, type, alias_name, method);
+  return TreeFactory::Instance()->MakeLambda(file_name, line_num, type, alias_name, method, parameter_list);
 
   /*
   

@@ -464,7 +464,7 @@ void ContextAnalyzer::AnalyzeMethods(Class* klass, const int depth)
   // methods
   vector<Method*> methods = klass->GetMethods();
   for(size_t i = 0; i < methods.size(); ++i) {
-    AnalyzeMethod(methods[i], (int)i, depth + 1);
+    AnalyzeMethod(methods[i], depth + 1);
   }
 
   // look for parent virtual methods
@@ -812,14 +812,14 @@ void ContextAnalyzer::AnalyzeVirtualMethod(Class* impl_class, MethodType impl_mt
 /****************************
  * Analyzes a method
  ****************************/
-void ContextAnalyzer::AnalyzeMethod(Method* method, const int id, const int depth)
+void ContextAnalyzer::AnalyzeMethod(Method* method, const int depth)
 {
 #ifdef _DEBUG
   wstring msg = L"(method: name='" + method->GetName() + L"; parsed='" + method->GetParsedName() + L"')"; 
   Debug(msg, method->GetLineNumber(), depth);
 #endif
 
-  method->SetId(id);
+  method->SetId();
   current_method = method;
   current_table = symbol_table->GetSymbolTable(method->GetParsedName());
   method->SetSymbolTable(current_table);
@@ -929,6 +929,13 @@ void ContextAnalyzer::AnalyzeLambda(Lambda* lambda, const int depth)
       method->EncodeSignature();
       current_class->AddMethod(method);
       method->EncodeSignature(current_class, program, linker);
+      AnalyzeMethod(method, depth + 1);
+
+      // create method call
+      MethodCall* method_call = TreeFactory::Instance()->MakeMethodCall(method->GetFileName(), method->GetLineNumber(), 
+                                                                        current_class->GetName(), method->GetName(), 
+                                                                        lambda->GetParameters());
+      method_call->SetFunctionalReturn(method->GetReturn());
     }
     else {
       ProcessError(lambda, L"Deceleration and parameter size mismatch");

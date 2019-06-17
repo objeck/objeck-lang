@@ -166,6 +166,9 @@ void SymbolEntry::SetId(int i)
 /****************************
  * Method class
  ****************************/
+
+int Method::next_id = 0;
+
 wstring Method::EncodeType(Type* type, Class* klass, ParsedProgram* program, Linker* linker)
 {
   wstring name;
