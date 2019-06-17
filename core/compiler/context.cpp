@@ -909,14 +909,21 @@ void ContextAnalyzer::AnalyzeMethod(Method* method, const int depth)
  ****************************/
 void ContextAnalyzer::AnalyzeLambda(Lambda* lambda, const int depth)
 {
-  Method* method = lambda->GetMethod();
-
   // by type
+  Type* lambda_type = nullptr;
   if(lambda->GetLambdaType()) {
+    lambda_type = lambda->GetLambdaType();
+  }
+  // by name
+  else {
+    // TODO: look up type and copy
+  }
+
+  if(lambda_type) {
     // set return
-    Type* lambda_type = lambda->GetLambdaType();
-    method->SetReturn(lambda_type->GetFunctionReturn()); // TODO: copy for variable reference
-    
+    Method* method = lambda->GetMethod();
+    method->SetReturn(lambda_type->GetFunctionReturn());
+
     // update decelerations
     vector<Type*> types = lambda_type->GetFunctionParameters();
     DeclarationList* declaration_list = method->GetDeclarations();
@@ -924,7 +931,7 @@ void ContextAnalyzer::AnalyzeLambda(Lambda* lambda, const int depth)
     if(types.size() == declarations.size()) {
       // encode lookup
       method->EncodeSignature();
-      
+
       for(size_t i = 0; i < declarations.size(); ++i) {
         declarations[i]->GetEntry()->SetType(types[i]);
       }
@@ -962,22 +969,9 @@ void ContextAnalyzer::AnalyzeLambda(Lambda* lambda, const int depth)
       ProcessError(lambda, L"Deceleration and parameter size mismatch");
     }
   }
-  // by name
   else {
-
+    ProcessError(lambda, L"Invalid lambda type");
   }
-
-  
-
-
-
-
-  /*
-  // check lambda method call
-  MethodCall* lambda_call = lambda->GetMethodCall();
-  AnalyzeMethodCall(lambda_call, depth + 1);
-  lambda->SetTypes(lambda_call->GetEvalType());
-  */
 }
 
 /****************************
