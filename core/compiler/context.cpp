@@ -909,10 +909,42 @@ void ContextAnalyzer::AnalyzeMethod(Method* method, const int id, const int dept
  ****************************/
 void ContextAnalyzer::AnalyzeLambda(Lambda* lambda, const int depth)
 {
+  Method* method = lambda->GetMethod();
+
+  // by type
+  if(lambda->GetLambdaType()) {
+    // set return
+    Type* lambda_type = lambda->GetLambdaType();
+    method->SetReturn(lambda_type->GetFunctionReturn()); // TODO: copy for variable reference
+    
+    // update decelerations
+    vector<Type*> types = lambda_type->GetFunctionParameters();
+    vector<Declaration*> declarations = method->GetDeclarations()->GetDeclarations();
+    if(types.size() == declarations.size()) {
+      for(size_t i = 0; i < declarations.size(); ++i) {
+        Declaration* declaration = declarations[i];
+        declaration->GetEntry()->SetType(types[i]);
+      }
+
+      method->EncodeSignature();
+      current_class->AddMethod(method);
+      method->EncodeSignature(current_class, program, linker);
+    }
+    else {
+      ProcessError(lambda, L"Deceleration and parameter size mismatch");
+    }
+  }
+  // by name
+  else {
+
+  }
+
+  /*
   // check lambda method call
   MethodCall* lambda_call = lambda->GetMethodCall();
   AnalyzeMethodCall(lambda_call, depth + 1);
   lambda->SetTypes(lambda_call->GetEvalType());
+  */
 }
 
 /****************************

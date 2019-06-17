@@ -904,7 +904,7 @@ Lambda* Parser::ParseLambda(int depth) {
 
   Type* type = nullptr;
   wstring alias_name;
-  if(Match(TOKEN_OPEN_BRACE)) {
+  if(Match(TOKEN_OPEN_PAREN)) {
     type = ParseType(depth + 1);
   }
   else {
@@ -944,13 +944,17 @@ Lambda* Parser::ParseLambda(int depth) {
   }
   NextToken();
 
+  // set expression
   Expression* expression = ParseExpression(depth + 1);
+  Statement* rtrn_stmt = TreeFactory::Instance()->MakeReturn(file_name, line_num, expression);
+  StatementList* statements = TreeFactory::Instance()->MakeStatementList();
+  statements->AddStatement(rtrn_stmt);
+  method->SetStatements(statements);
 
   symbol_table->PreviousParseScope(method->GetParsedName());
   current_method = outter_method;
-  current_class->AddMethod(method);
   
-  return TreeFactory::Instance()->MakeLambda(file_name, line_num, type, alias_name, parameter_list, expression);
+  return TreeFactory::Instance()->MakeLambda(file_name, line_num, type, alias_name, method);
 
   /*
   
@@ -969,12 +973,14 @@ Lambda* Parser::ParseLambda(int depth) {
   }
   NextToken();
 
+  // ...
   Expression* expression = ParseExpression(depth + 1);
   Statement* rtrn_stmt = TreeFactory::Instance()->MakeReturn(file_name, line_num, expression);
 
   StatementList* statements = TreeFactory::Instance()->MakeStatementList();
   statements->AddStatement(rtrn_stmt);
   method->SetStatements(statements);
+  // ...
 
   // build call to method
   const wstring klass_name = current_class->GetName();
