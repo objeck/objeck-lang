@@ -13,6 +13,8 @@ class Test {
 		values->Size()->PrintLine();
 
 		applied := values->Apply(\Foo->Bar : (x) => x * x)<IntHolder>;
+		applied := applied->Apply(\Foo->Bar : (x) => x + 13)<IntHolder>;
+#		applied := values->Apply(\Foo->Bar : (x) => x * x)<IntHolder>->Apply(\Foo->Bar : (x) => x + 13)<IntHolder>;
 		while(applied->More()) {
 			applied->Get()->Get()->PrintLine();
 			applied->Next();
