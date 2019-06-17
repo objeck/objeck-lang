@@ -3382,6 +3382,17 @@ namespace frontend {
       return nullptr;
     }
 
+    Alias* GetAlias(const wstring& n) {
+      for(size_t i = 0; i < bundles.size(); ++i) {
+        Alias* a = bundles[i]->GetAlias(n);
+        if(a) {
+          return a;
+        }
+      }
+
+      return nullptr;
+    }
+
     void SetLinker(Linker* l) {
       linker = l;
     }

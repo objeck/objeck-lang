@@ -1,5 +1,3 @@
 TODO
 --
-generics:
-* compiler library that uses the generic library
-* add generic example
+* change enum, const, func references so that they can be bundle specific
