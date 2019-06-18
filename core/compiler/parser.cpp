@@ -353,8 +353,8 @@ void Parser::ParseBundle(int depth)
           bundle->AddEnum(ParseConsts(depth + 1));
           break;
 
-        case TOKEN_ALIAS_ID:
-          bundle->AddAlias(ParseAlias(depth + 1));
+        case TOKEN_LAMBDAS_ID:
+          bundle->AddLambdas(ParseLambdas(depth + 1));
           break;
 
         case TOKEN_CLASS_ID:
@@ -387,7 +387,7 @@ void Parser::ParseBundle(int depth)
     program->AddUses(uses, file_name);
   }
   // parse class
-  else if(Match(TOKEN_CLASS_ID) || Match(TOKEN_ENUM_ID) || Match(TOKEN_CONSTS_ID) || Match(TOKEN_INTERFACE_ID) || Match(TOKEN_ALIAS_ID)) {
+  else if(Match(TOKEN_CLASS_ID) || Match(TOKEN_ENUM_ID) || Match(TOKEN_CONSTS_ID) || Match(TOKEN_INTERFACE_ID) || Match(TOKEN_LAMBDAS_ID)) {
     wstring bundle_name = L"";
     symbol_table = new SymbolTableManager;
     ParsedBundle* bundle = new ParsedBundle(bundle_name, symbol_table);
@@ -412,8 +412,8 @@ void Parser::ParseBundle(int depth)
         bundle->AddClass(ParseClass(bundle_name, depth + 1));
         break;
 
-      case TOKEN_ALIAS_ID:
-        bundle->AddAlias(ParseAlias(depth + 1));
+      case TOKEN_LAMBDAS_ID:
+        bundle->AddLambdas(ParseLambdas(depth + 1));
         break;
 
       case TOKEN_INTERFACE_ID:
@@ -526,7 +526,7 @@ Enum* Parser::ParseEnum(int depth)
 /****************************
  * Parses a function alias
  ****************************/
-Alias* Parser::ParseAlias(int depth)
+Alias* Parser::ParseLambdas(int depth)
 {
   const int line_num = GetLineNumber();
   const wstring &file_name = GetFileName();
@@ -572,7 +572,11 @@ Alias* Parser::ParseAlias(int depth)
     }
     NextToken();
 
-    alias->AddType(label_name, ParseType(depth + 1));
+    Type* type = ParseType(depth + 1);
+    if(type->GetType() != FUNC_TYPE) {
+      ProcessError(L"Expected functional type", TOKEN_CLOSED_BRACE);
+    }
+    alias->AddType(label_name, type);
 
     if(Match(TOKEN_COMMA)) {
       NextToken();
@@ -3217,11 +3221,6 @@ Expression* Parser::ParseSimpleExpression(int depth)
       }
       break;
 
-      // lambda
-    case TOKEN_LAMBDA:
-      ProcessError(L"TODO: Expected lambda expression", TOKEN_SEMI_COLON);
-      break;
-
       // variable
     default: {
       Variable* variable = ParseVariable(ident, depth + 1);
@@ -3290,7 +3289,7 @@ Expression* Parser::ParseSimpleExpression(int depth)
       expression = calc;
       NextToken();
     }
-                      break;
+      break;
 
     default:
       ProcessError(L"Expected expression", TOKEN_SEMI_COLON);
@@ -3416,7 +3415,7 @@ void Parser::ParseCastTypeOf(Expression* expression, int depth)
       NextToken();
     }
     else {
-      ProcessError(L"Expected cast or typeof", TOKEN_SEMI_COLON);
+      ProcessError(L"Expected cast or 'TypeOf(..)'", TOKEN_SEMI_COLON);
     }
 
     // subsequent method calls

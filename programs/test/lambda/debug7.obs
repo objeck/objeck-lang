@@ -1,7 +1,8 @@
 use Collection.Generic;
 
-alias Foo {
-	Bar : (IntHolder) ~ IntHolder
+lambdas Foo {
+	Bar : (IntHolder) ~ IntHolder,
+	Fie : Float
 }
 
 class Test {
