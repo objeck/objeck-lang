@@ -39,11 +39,11 @@
 void ContextAnalyzer::ProcessError(ParseNode* node, const wstring &msg)
 {
 #ifdef _DEBUG
-  GetLogger() << L"\tError: " << node->GetFileName() << L":" << node->GetLineNumber() << L": " << msg << endl;
+  GetLogger() << L"\tError: " << node->GetFileName() << L':' << node->GetLineNumber() << L": " << msg << endl;
 #endif
 
   const wstring &str_line_num = ToString(node->GetLineNumber());
-  errors.insert(pair<int, wstring>(node->GetLineNumber(), node->GetFileName() + L":" + str_line_num + L": " + msg));
+  errors.insert(pair<int, wstring>(node->GetLineNumber(), node->GetFileName() + L':' + str_line_num + L": " + msg));
 }
 
 /****************************
@@ -1604,7 +1604,7 @@ void ContextAnalyzer::AnalyzeVariable(Variable* variable, SymbolEntry* entry, co
   }
   // type inferred variable
   else if(current_method) {
-    const wstring scope_name = current_method->GetName() + L":" + variable->GetName();
+    const wstring scope_name = current_method->GetName() + L':' + variable->GetName();
     SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(variable->GetFileName(), variable->GetLineNumber(),
                                                                   scope_name, TypeFactory::Instance()->MakeType(VAR_TYPE),
                                                                   false, true);
@@ -2531,7 +2531,7 @@ Method* ContextAnalyzer::ResolveMethodCall(Class* klass, MethodCall* method_call
 void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, bool is_expr, wstring &encoding, const int depth)
  {
 #ifdef _DEBUG
-  GetLogger() << L"Checking program class call: |" << klass->GetName() << L":" 
+  GetLogger() << L"Checking program class call: |" << klass->GetName() << L':' 
     << (method_call->GetMethodName().size() > 0 ? method_call->GetMethodName() : method_call->GetVariableName())
     << L"|" << endl;
 #endif
@@ -2543,7 +2543,7 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
   // note: find system based methods and call with function parameters (i.e. $Int, $Float)
   Method* method = ResolveMethodCall(klass, method_call, depth);
   if(!method) {
-    const wstring encoded_name = klass->GetName() + L":" + method_call->GetMethodName() + L":" + encoding +
+    const wstring encoded_name = klass->GetName() + L':' + method_call->GetMethodName() + L':' + encoding +
       EncodeMethodCall(method_call->GetCallingParameters(), depth);
     method = klass->GetMethod(encoded_name);
   }
@@ -2802,7 +2802,7 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryClass* klass, MethodCall* method_
                                         wstring &encoding, bool is_parent, const int depth)
 {
 #ifdef _DEBUG
-  GetLogger() << L"Checking library encoded name: |" << klass->GetName() << L":" << method_call->GetMethodName() << L"|" << endl;
+  GetLogger() << L"Checking library encoded name: |" << klass->GetName() << L':' << method_call->GetMethodName() << L"|" << endl;
 #endif
 
   ExpressionList* call_params = method_call->GetCallingParameters();
@@ -2818,7 +2818,7 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryClass* klass, MethodCall* method_
 
   // note: last resort to find system based methods i.e. $Int, $Float, etc.
   if(!lib_method) {
-    wstring encoded_name = klass->GetName() + L":" + method_call->GetMethodName() + L":" +
+    wstring encoded_name = klass->GetName() + L':' + method_call->GetMethodName() + L':' +
       encoding + EncodeMethodCall(method_call->GetCallingParameters(), depth);
     if(*encoded_name.rbegin() == L'*') {
       encoded_name.push_back(L',');
@@ -3015,8 +3015,8 @@ void ContextAnalyzer::AnalyzeFunctionReference(Class* klass, MethodCall* method_
                                                wstring &encoding, const int depth)
 {
   const wstring func_encoding = EncodeFunctionReference(method_call->GetCallingParameters(), depth);
-  const wstring encoded_name = klass->GetName() + L":" + method_call->GetMethodName() +
-    L":" + encoding + func_encoding;
+  const wstring encoded_name = klass->GetName() + L':' + method_call->GetMethodName() +
+    L':' + encoding + func_encoding;
 
   Method* method = klass->GetMethod(encoded_name);
   if(method) {
@@ -3077,7 +3077,7 @@ void ContextAnalyzer::AnalyzeFunctionReference(LibraryClass* klass, MethodCall* 
                                                wstring &encoding, const int depth)
 {
   const wstring func_encoding = EncodeFunctionReference(method_call->GetCallingParameters(), depth);
-  const wstring encoded_name = klass->GetName() + L":" + method_call->GetMethodName() + L":" + encoding + func_encoding;
+  const wstring encoded_name = klass->GetName() + L':' + method_call->GetMethodName() + L':' + encoding + func_encoding;
 
   LibraryMethod* method = klass->GetMethod(encoded_name);
   if(method) {
@@ -5789,7 +5789,7 @@ bool ContextAnalyzer::DuplicateParentEntries(SymbolEntry* entry, Class* klass)
       if(offset != wstring::npos) {
         ++offset;
         const wstring short_name = entry->GetName().substr(offset, entry->GetName().size() - offset);
-        const wstring lookup = parent->GetName() + L":" + short_name;
+        const wstring lookup = parent->GetName() + L':' + short_name;
         SymbolEntry * parent_entry = parent->GetSymbolTable()->GetEntry(lookup);
         if(parent_entry) {
           return true;
@@ -5870,14 +5870,14 @@ SymbolEntry* ContextAnalyzer::GetEntry(wstring name, bool is_parent)
 {
   if(current_table) {
     // check locally
-    SymbolEntry* entry = current_table->GetEntry(current_method->GetName() + L":" + name);
+    SymbolEntry* entry = current_table->GetEntry(current_method->GetName() + L':' + name);
     if(!is_parent && entry) {
       return entry;
     }
     else {
       // check class
       SymbolTable* table = symbol_table->GetSymbolTable(current_class->GetName());
-      entry = table->GetEntry(current_class->GetName() + L":" + name);
+      entry = table->GetEntry(current_class->GetName() + L':' + name);
       if(!is_parent && entry) {
         return entry;
       }
@@ -5894,7 +5894,7 @@ SymbolEntry* ContextAnalyzer::GetEntry(wstring name, bool is_parent)
         }
         while(parent && !entry) {
           SymbolTable* table = symbol_table->GetSymbolTable(parent->GetName());
-          entry = table->GetEntry(parent->GetName() + L":" + name);
+          entry = table->GetEntry(parent->GetName() + L':' + name);
           if(entry) {
             return entry;
           }
