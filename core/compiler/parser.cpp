@@ -52,10 +52,10 @@ const wstring Parser::GetScopeName(const wstring& ident)
 {
   wstring scope_name;
   if(current_method) {
-    scope_name = current_method->GetName() + L":" + ident;
+    scope_name = current_method->GetName() + L':' + ident;
   }
   else if(current_class) {
-    scope_name = current_class->GetName() + L":" + ident;
+    scope_name = current_class->GetName() + L':' + ident;
   }
   else {
     scope_name = ident;
@@ -162,11 +162,11 @@ void Parser::ProcessError(ScannerTokenType type)
 {
   wstring msg = error_msgs[type];
 #ifdef _DEBUG
-  GetLogger() << L"\tError: " << GetFileName() << L":" << GetLineNumber() << L": " << msg << endl;
+  GetLogger() << L"\tError: " << GetFileName() << L':' << GetLineNumber() << L": " << msg << endl;
 #endif
 
   const wstring &str_line_num = ToString(GetLineNumber());
-  errors.insert(pair<int, wstring>(GetLineNumber(), GetFileName() + L":" + str_line_num + L": " + msg));
+  errors.insert(pair<int, wstring>(GetLineNumber(), GetFileName() + L':' + str_line_num + L": " + msg));
 }
 
 /****************************
@@ -175,11 +175,11 @@ void Parser::ProcessError(ScannerTokenType type)
 void Parser::ProcessError(const wstring &msg)
 {
 #ifdef _DEBUG
-  GetLogger() << L"\tError: " << GetFileName() << L":" << GetLineNumber() << L": " << msg << endl;
+  GetLogger() << L"\tError: " << GetFileName() << L':' << GetLineNumber() << L": " << msg << endl;
 #endif
 
   const wstring &str_line_num = ToString(GetLineNumber());
-  errors.insert(pair<int, wstring>(GetLineNumber(), GetFileName() + L":" + str_line_num + L": " + msg));
+  errors.insert(pair<int, wstring>(GetLineNumber(), GetFileName() + L':' + str_line_num + L": " + msg));
 }
 
 /****************************
@@ -188,12 +188,12 @@ void Parser::ProcessError(const wstring &msg)
 void Parser::ProcessError(const wstring &msg, ScannerTokenType sync, int offset)
 {
 #ifdef _DEBUG
-  GetLogger() << L"\tError: " << GetFileName() << L":" << GetLineNumber() << L": "
+  GetLogger() << L"\tError: " << GetFileName() << L':' << GetLineNumber() << L": "
     << msg << endl;
 #endif
 
   const wstring &str_line_num = ToString(GetLineNumber() + offset);
-  errors.insert(pair<int, wstring>(GetLineNumber(), GetFileName() + L":" + str_line_num + L": " + msg));
+  errors.insert(pair<int, wstring>(GetLineNumber(), GetFileName() + L':' + str_line_num + L": " + msg));
   ScannerTokenType token = GetToken();
   while(token != sync && token != TOKEN_END_OF_STREAM) {
     NextToken();
@@ -207,13 +207,13 @@ void Parser::ProcessError(const wstring &msg, ScannerTokenType sync, int offset)
 void Parser::ProcessError(const wstring &msg, ParseNode * node)
 {
 #ifdef _DEBUG
-  GetLogger() << L"\tError: " << node->GetFileName() << L":" << node->GetLineNumber()
+  GetLogger() << L"\tError: " << node->GetFileName() << L':' << node->GetLineNumber()
     << L": " << msg << endl;
 #endif
 
   const wstring &str_line_num = ToString(node->GetLineNumber());
   errors.insert(pair<int, wstring>(node->GetLineNumber(), node->GetFileName() +
-                L":" + str_line_num + L": " + msg));
+                L':' + str_line_num + L": " + msg));
 }
 
 /****************************
@@ -894,8 +894,8 @@ Lambda* Parser::ParseLambda(int depth) {
   const wstring& file_name = GetFileName();
 
   // build method
-  const wstring lambda_name = L"_#Lambda." + ToString(current_class->NextLambda()) + L"#_";
-  const wstring method_name = current_class->GetName() + L":" + lambda_name;
+  const wstring lambda_name = L"#Lambda." + ToString(current_class->NextLambda()) + L'#';
+  const wstring method_name = current_class->GetName() + L':' + lambda_name;
   Method* method = TreeFactory::Instance()->MakeMethod(file_name, line_num, method_name);
   
   // declarations
@@ -957,42 +957,6 @@ Lambda* Parser::ParseLambda(int depth) {
   current_method = outter_method;
   
   return TreeFactory::Instance()->MakeLambda(file_name, line_num, type, alias_name, method, parameter_list);
-
-  /*
-  
-  method->SetDeclarations(ParseDecelerationList(depth + 1));
-
-  // return type
-  if(!Match(TOKEN_TILDE)) {
-    ProcessError(L"Expected '~'", TOKEN_SEMI_COLON);
-  }
-  NextToken();
-  Type* return_type = ParseType(depth + 1);
-  method->SetReturn(return_type);
-
-  if(!Match(TOKEN_LAMBDA)) {
-    ProcessError(L"Expected '=>'", TOKEN_SEMI_COLON);
-  }
-  NextToken();
-
-  // ...
-  Expression* expression = ParseExpression(depth + 1);
-  Statement* rtrn_stmt = TreeFactory::Instance()->MakeReturn(file_name, line_num, expression);
-
-  StatementList* statements = TreeFactory::Instance()->MakeStatementList();
-  statements->AddStatement(rtrn_stmt);
-  method->SetStatements(statements);
-  // ...
-
-  // build call to method
-  const wstring klass_name = current_class->GetName();
-  ExpressionList* expressions = ParseLambdaParameters(file_name, line_num, method->GetDeclarations());
-  MethodCall* method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, klass_name, lambda_name, expressions);
-  method_call->SetFunctionalReturn(method->GetReturn());
-  
-  return TreeFactory::Instance()->MakeLambda(file_name, line_num, method, method_call);
-
-  */
 }
 
 /****************************
@@ -1096,7 +1060,7 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
     }
     // identifier
     wstring ident = scanner->GetToken()->GetIdentifier();
-    method_name = current_class->GetName() + L":" + ident;
+    method_name = current_class->GetName() + L':' + ident;
     NextToken();
   }
 

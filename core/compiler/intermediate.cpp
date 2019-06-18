@@ -610,7 +610,7 @@ IntermediateMethod* IntermediateEmitter::EmitMethod(Method* method)
 #endif
   int space = CalculateEntrySpace(entries, false);
   if(space > LOCAL_SIZE) {
-    const wstring error_msg =  current_method->GetFileName() + L":" + 
+    const wstring error_msg =  current_method->GetFileName() + L':' + 
       ToString(current_method->GetLineNumber()) + L": Local space has been exceeded by " + 
       ToString(space - LOCAL_SIZE) + L" bytes.";
     wcerr << error_msg << endl;
