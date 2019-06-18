@@ -167,8 +167,6 @@ void SymbolEntry::SetId(int i)
  * Method class
  ****************************/
 
-int Method::next_id = 0;
-
 wstring Method::EncodeType(Type* type, Class* klass, ParsedProgram* program, Linker* linker)
 {
   wstring name;
@@ -513,34 +511,41 @@ void Method::EncodeUserName() {
   user_name += EncodeUserType(return_type);
 }
 
+void Method::SetId()
+{
+  if(klass) {
+    id = klass->NextMethodId();
+  }
+}
+
 /****************************
  * StaticArray class
  ****************************/
 void StaticArray::Validate(StaticArray* array) {
   vector<Expression*> static_array = array->GetElements()->GetExpressions();
-  for(size_t i = 0; i < static_array.size(); ++i) { 
+  for(size_t i = 0; i < static_array.size(); ++i) {
     if(static_array[i]) {
       if(static_array[i]->GetExpressionType() == STAT_ARY_EXPR) {
-  if(i == 0) {
-    dim++;
-  }
-  Validate(static_cast<StaticArray*>(static_array[i]));
+        if(i == 0) {
+          dim++;
+        }
+        Validate(static_cast<StaticArray*>(static_array[i]));
       }
       else {
-  // check lengths
-  if(cur_width == -1) {
-    cur_width = (int)static_array.size();
-  }
-  if(cur_width != (int)static_array.size()) {
-    matching_lengths = false;
-  }      
-  // check types
-  if(cur_type == VAR_EXPR) {
-    cur_type = static_array[i]->GetExpressionType();
-  }
-  else if(cur_type != static_array[i]->GetExpressionType()) {
-    matching_types = false;
-  }
+        // check lengths
+        if(cur_width == -1) {
+          cur_width = (int)static_array.size();
+        }
+        if(cur_width != (int)static_array.size()) {
+          matching_lengths = false;
+        }
+        // check types
+        if(cur_type == VAR_EXPR) {
+          cur_type = static_array[i]->GetExpressionType();
+        }
+        else if(cur_type != static_array[i]->GetExpressionType()) {
+          matching_types = false;
+        }
       }
     }
   }
