@@ -1853,7 +1853,9 @@ namespace frontend {
     
   public:
     void SetId() {
-      id = next_id++;
+      if(id < 0) {
+        id = next_id++;
+      }
     }
 
     int GetId() {

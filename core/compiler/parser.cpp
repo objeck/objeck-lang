@@ -929,7 +929,7 @@ Lambda* Parser::ParseLambda(int depth) {
   vector<Expression*> parameters = parameter_list->GetExpressions();
   for(size_t i = 0; i < parameters.size(); ++i) {
     Expression* expression = parameters[i];
-    if(expression->GetExpressionType() == VAR_EXPR) {
+    if(expression && expression->GetExpressionType() == VAR_EXPR) {
       declaration_list->AddDeclaration(AddDeclaration(static_cast<Variable*>(expression)->GetName(),
                                                       TypeFactory::Instance()->MakeType(VAR_TYPE),
                                                       false, nullptr, depth));
