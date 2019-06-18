@@ -15,7 +15,7 @@ class Test {
 #		applied := values->Apply(\Foo->Bar : (x) => x * x)<IntHolder>;
 #		applied := applied->Apply(\Foo->Bar : (x) => x + 13)<IntHolder>;
 
-		applied := values->Apply(\Foo->Bar : (x) => x * x)<IntHolder>->Apply(\Foo->Bar : (x) => x + 13)<IntHolder>;
+		applied := values->Apply(\Foo->Bar : (x) => x * x)<IntHolder>->Apply(\Foo->Bar : (x) => x + 13)<IntHolder>->Apply(\Foo->Bar : (x) => -2 * x)<IntHolder>;
 #		applied := values->Apply(\Foo->Bar : (x) => x * x)<IntHolder>;
 		while(applied->More()) {
 			applied->Get()->Get()->PrintLine();
