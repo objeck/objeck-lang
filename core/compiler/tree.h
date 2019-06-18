@@ -1778,7 +1778,6 @@ namespace frontend {
    ****************************/
   class Method : public ParseNode {
     friend class TreeFactory;
-    static int next_id;
     int id;
     wstring name;
     wstring parsed_name;
@@ -1852,11 +1851,7 @@ namespace frontend {
     }
     
   public:
-    void SetId() {
-      if(id < 0) {
-        id = next_id++;
-      }
-    }
+    void SetId();
 
     int GetId() {
       return id;
@@ -2034,6 +2029,7 @@ namespace frontend {
     multimap<const wstring, Method*> unqualified_methods;
     map<const wstring, Method*> methods;
     vector<Method*> method_list;
+    int next_method_id;
     vector<Statement*> statements;
     SymbolTable* symbol_table;
     Class* parent;
@@ -2057,6 +2053,7 @@ namespace frontend {
       is_interface = i;
       id = -1;
       lambda_id = 0;
+      next_method_id = -1;
       parent = nullptr;
       lib_parent = nullptr;
       interface_names = e;
@@ -2074,6 +2071,7 @@ namespace frontend {
       is_interface = false;
       id = -1;
       lambda_id = 0;
+      next_method_id = -1;
       interface_names = e;
       parent = nullptr;
       lib_parent = nullptr;      
@@ -2089,6 +2087,7 @@ namespace frontend {
       is_interface = !g;
       id = -1;
       lambda_id = 0;
+      next_method_id = -1;
       parent = nullptr;
       lib_parent = nullptr;       
       is_virtual = was_called = false;
@@ -2341,6 +2340,9 @@ namespace frontend {
 
     void AssociateMethod(Method* method);
 
+    int NextMethodId() {
+      return ++next_method_id;
+    }
   };
 
   /****************************
