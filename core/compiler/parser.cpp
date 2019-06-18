@@ -52,10 +52,10 @@ const wstring Parser::GetScopeName(const wstring& ident)
 {
   wstring scope_name;
   if(current_method) {
-    scope_name = current_method->GetName() + L":" + ident;
+    scope_name = current_method->GetName() + L':' + ident;
   }
   else if(current_class) {
-    scope_name = current_class->GetName() + L":" + ident;
+    scope_name = current_class->GetName() + L':' + ident;
   }
   else {
     scope_name = ident;
@@ -162,11 +162,11 @@ void Parser::ProcessError(ScannerTokenType type)
 {
   wstring msg = error_msgs[type];
 #ifdef _DEBUG
-  GetLogger() << L"\tError: " << GetFileName() << L":" << GetLineNumber() << L": " << msg << endl;
+  GetLogger() << L"\tError: " << GetFileName() << L':' << GetLineNumber() << L": " << msg << endl;
 #endif
 
   const wstring &str_line_num = ToString(GetLineNumber());
-  errors.insert(pair<int, wstring>(GetLineNumber(), GetFileName() + L":" + str_line_num + L": " + msg));
+  errors.insert(pair<int, wstring>(GetLineNumber(), GetFileName() + L':' + str_line_num + L": " + msg));
 }
 
 /****************************
@@ -175,11 +175,11 @@ void Parser::ProcessError(ScannerTokenType type)
 void Parser::ProcessError(const wstring &msg)
 {
 #ifdef _DEBUG
-  GetLogger() << L"\tError: " << GetFileName() << L":" << GetLineNumber() << L": " << msg << endl;
+  GetLogger() << L"\tError: " << GetFileName() << L':' << GetLineNumber() << L": " << msg << endl;
 #endif
 
   const wstring &str_line_num = ToString(GetLineNumber());
-  errors.insert(pair<int, wstring>(GetLineNumber(), GetFileName() + L":" + str_line_num + L": " + msg));
+  errors.insert(pair<int, wstring>(GetLineNumber(), GetFileName() + L':' + str_line_num + L": " + msg));
 }
 
 /****************************
@@ -188,12 +188,12 @@ void Parser::ProcessError(const wstring &msg)
 void Parser::ProcessError(const wstring &msg, ScannerTokenType sync, int offset)
 {
 #ifdef _DEBUG
-  GetLogger() << L"\tError: " << GetFileName() << L":" << GetLineNumber() << L": "
+  GetLogger() << L"\tError: " << GetFileName() << L':' << GetLineNumber() << L": "
     << msg << endl;
 #endif
 
   const wstring &str_line_num = ToString(GetLineNumber() + offset);
-  errors.insert(pair<int, wstring>(GetLineNumber(), GetFileName() + L":" + str_line_num + L": " + msg));
+  errors.insert(pair<int, wstring>(GetLineNumber(), GetFileName() + L':' + str_line_num + L": " + msg));
   ScannerTokenType token = GetToken();
   while(token != sync && token != TOKEN_END_OF_STREAM) {
     NextToken();
@@ -207,13 +207,13 @@ void Parser::ProcessError(const wstring &msg, ScannerTokenType sync, int offset)
 void Parser::ProcessError(const wstring &msg, ParseNode * node)
 {
 #ifdef _DEBUG
-  GetLogger() << L"\tError: " << node->GetFileName() << L":" << node->GetLineNumber()
+  GetLogger() << L"\tError: " << node->GetFileName() << L':' << node->GetLineNumber()
     << L": " << msg << endl;
 #endif
 
   const wstring &str_line_num = ToString(node->GetLineNumber());
   errors.insert(pair<int, wstring>(node->GetLineNumber(), node->GetFileName() +
-                L":" + str_line_num + L": " + msg));
+                L':' + str_line_num + L": " + msg));
 }
 
 /****************************
@@ -353,6 +353,10 @@ void Parser::ParseBundle(int depth)
           bundle->AddEnum(ParseConsts(depth + 1));
           break;
 
+        case TOKEN_ALIAS_ID:
+          bundle->AddAlias(ParseAlias(depth + 1));
+          break;
+
         case TOKEN_CLASS_ID:
           bundle->AddClass(ParseClass(bundle_name, depth + 1));
           break;
@@ -383,7 +387,7 @@ void Parser::ParseBundle(int depth)
     program->AddUses(uses, file_name);
   }
   // parse class
-  else if(Match(TOKEN_CLASS_ID) || Match(TOKEN_ENUM_ID) || Match(TOKEN_CONSTS_ID) || Match(TOKEN_INTERFACE_ID)) {
+  else if(Match(TOKEN_CLASS_ID) || Match(TOKEN_ENUM_ID) || Match(TOKEN_CONSTS_ID) || Match(TOKEN_INTERFACE_ID) || Match(TOKEN_ALIAS_ID)) {
     wstring bundle_name = L"";
     symbol_table = new SymbolTableManager;
     ParsedBundle* bundle = new ParsedBundle(bundle_name, symbol_table);
@@ -406,6 +410,10 @@ void Parser::ParseBundle(int depth)
 
       case TOKEN_CLASS_ID:
         bundle->AddClass(ParseClass(bundle_name, depth + 1));
+        break;
+
+      case TOKEN_ALIAS_ID:
+        bundle->AddAlias(ParseAlias(depth + 1));
         break;
 
       case TOKEN_INTERFACE_ID:
@@ -446,8 +454,8 @@ Enum* Parser::ParseEnum(int depth)
   }
   // identifier
   const wstring enum_name = scanner->GetToken()->GetIdentifier();
-  if(current_bundle->GetClass(enum_name) || current_bundle->GetEnum(enum_name)) {
-    ProcessError(L"Class, interface or enum name already defined in this bundle");
+  if(current_bundle->GetClass(enum_name) || current_bundle->GetEnum(enum_name) || current_bundle->GetAlias(enum_name)) {
+    ProcessError(L"Class, interface, enum or alias name already defined in this bundle");
   }
   NextToken();
   const wstring enum_scope_name = GetEnumScopeName(enum_name);
@@ -516,7 +524,77 @@ Enum* Parser::ParseEnum(int depth)
 }
 
 /****************************
- * Parses a const (i.e. mixed enum)
+ * Parses a function alias
+ ****************************/
+Alias* Parser::ParseAlias(int depth)
+{
+  const int line_num = GetLineNumber();
+  const wstring &file_name = GetFileName();
+
+  NextToken();
+  if(!Match(TOKEN_IDENT)) {
+    ProcessError(TOKEN_IDENT);
+  }
+  // identifier
+  const wstring alias_name = scanner->GetToken()->GetIdentifier();
+  if(current_bundle->GetClass(alias_name) || current_bundle->GetEnum(alias_name) || current_bundle->GetAlias(alias_name)) {
+    ProcessError(L"Class, interface or alias name already defined in this bundle");
+  }
+  NextToken();
+  const wstring alias_scope_name = GetEnumScopeName(alias_name);
+
+  size_t index = alias_scope_name.find('#');
+  if(index != wstring::npos) {
+    const wstring use_name = alias_scope_name.substr(0, index + 1);
+    program->AddUse(use_name, file_name);
+  }
+
+#ifdef _DEBUG
+  Debug(L"[Alias: name='" + alias_scope_name + L"']", depth);
+#endif
+
+  if(!Match(TOKEN_OPEN_BRACE)) {
+    ProcessError(L"Expected '{'", TOKEN_OPEN_BRACE);
+  }
+  NextToken();
+
+  Alias* alias = TreeFactory::Instance()->MakeAlias(file_name, line_num, alias_scope_name);
+  while(!Match(TOKEN_CLOSED_BRACE) && !Match(TOKEN_END_OF_STREAM)) {
+    if(!Match(TOKEN_IDENT)) {
+      ProcessError(TOKEN_IDENT);
+    }
+    // identifier
+    wstring label_name = scanner->GetToken()->GetIdentifier();
+    NextToken();
+
+    if(!Match(TOKEN_COLON)) {
+      ProcessError(L"Expected ','", TOKEN_CLOSED_BRACE);
+    }
+    NextToken();
+
+    alias->AddType(label_name, ParseType(depth + 1));
+
+    if(Match(TOKEN_COMMA)) {
+      NextToken();
+      if(!Match(TOKEN_IDENT)) {
+        ProcessError(TOKEN_IDENT);
+      }
+    }
+    else if(!Match(TOKEN_CLOSED_BRACE)) {
+      ProcessError(L"Expected ',' or ')'", TOKEN_CLOSED_BRACE);
+      NextToken();
+    }
+  }
+  if(!Match(TOKEN_CLOSED_BRACE)) {
+    ProcessError(L"Expected '}'", TOKEN_CLOSED_BRACE);
+  }
+  NextToken();
+
+  return alias;
+}
+
+/****************************
+ * Parses a const (mixed value enum)
  ****************************/
 Enum* Parser::ParseConsts(int depth)
 {
@@ -529,8 +607,8 @@ Enum* Parser::ParseConsts(int depth)
   }
   // identifier
   const wstring enum_name = scanner->GetToken()->GetIdentifier();
-  if(current_bundle->GetClass(enum_name) || current_bundle->GetEnum(enum_name)) {
-    ProcessError(L"Class, interface or enum name already defined in this bundle");
+  if(current_bundle->GetClass(enum_name) || current_bundle->GetEnum(enum_name) || current_bundle->GetAlias(enum_name)) {
+    ProcessError(L"Class, interface, enum or alias name already defined in this bundle");
   }
   NextToken();
   const wstring enum_scope_name = GetEnumScopeName(enum_name);
@@ -604,8 +682,8 @@ Class* Parser::ParseClass(const wstring &bundle_name, int depth)
   }
   // identifier
   wstring cls_name = scanner->GetToken()->GetIdentifier();
-  if(current_bundle->GetClass(cls_name) || current_bundle->GetEnum(cls_name)) {
-    ProcessError(L"Class, interface or enum name already defined in this bundle");
+  if(current_bundle->GetClass(cls_name) || current_bundle->GetEnum(cls_name) || current_bundle->GetAlias(cls_name)) {
+    ProcessError(L"Class, interface, enum or alias name already defined in this bundle");
   }
   NextToken();
 
@@ -661,6 +739,7 @@ Class* Parser::ParseClass(const wstring &bundle_name, int depth)
   symbol_table->NewParseScope();
   NextToken();
 
+  // perpend bundle name
   if(bundle_name.size() > 0) {
     cls_name.insert(0, L".");
     cls_name.insert(0, bundle_name);
@@ -748,8 +827,8 @@ Class* Parser::ParseInterface(const wstring &bundle_name, int depth)
   }
   // identifier
   wstring cls_name = scanner->GetToken()->GetIdentifier();
-  if(current_bundle->GetClass(cls_name) || current_bundle->GetEnum(cls_name)) {
-    ProcessError(L"Class, interface or enum name already defined in this bundle");
+  if(current_bundle->GetClass(cls_name) || current_bundle->GetEnum(cls_name) || current_bundle->GetAlias(cls_name)) {
+    ProcessError(L"Class, interface, enum or alias name already defined in this bundle");
   }
   NextToken();
 
@@ -815,47 +894,69 @@ Lambda* Parser::ParseLambda(int depth) {
   const wstring& file_name = GetFileName();
 
   // build method
-  const wstring lambda_name = L"_#Lambda." + ToString(current_class->NextLambda()) + L"#_";
-  const wstring method_name = current_class->GetName() + L":" + lambda_name;
+  const wstring lambda_name = L"#Lambda." + ToString(current_class->NextLambda()) + L'#';
+  const wstring method_name = current_class->GetName() + L':' + lambda_name;
   Method* method = TreeFactory::Instance()->MakeMethod(file_name, line_num, method_name);
+  
+  // declarations
   Method* outter_method = current_method;
   current_method = method;
-
-  // declarations
   symbol_table->NewParseScope();
-  method->SetDeclarations(ParseDecelerationList(depth + 1));
 
-  // return type
-  if(!Match(TOKEN_TILDE)) {
-    ProcessError(L"Expected '~'", TOKEN_SEMI_COLON);
+  // parse type or name alias
+  Type* type = nullptr;
+  wstring alias_name;
+  if(Match(TOKEN_OPEN_PAREN)) {
+    type = ParseType(depth + 1);
+  }
+  else {
+    alias_name = ParseBundleName();
+    if(Match(TOKEN_ASSESSOR)) {
+      NextToken();
+      alias_name += L"#";
+      alias_name += ParseBundleName();
+    }
+  }
+
+  if(!Match(TOKEN_COLON)) {
+    ProcessError(TOKEN_COLON);
   }
   NextToken();
-  Type* return_type = ParseType(depth + 1);
-  method->SetReturn(return_type);
 
+  ExpressionList* parameter_list = ParseExpressionList(depth + 1);
+  
+  DeclarationList* declaration_list = TreeFactory::Instance()->MakeDeclarationList();
+  vector<Expression*> parameters = parameter_list->GetExpressions();
+  for(size_t i = 0; i < parameters.size(); ++i) {
+    Expression* expression = parameters[i];
+    if(expression && expression->GetExpressionType() == VAR_EXPR) {
+      declaration_list->AddDeclaration(AddDeclaration(static_cast<Variable*>(expression)->GetName(),
+                                                      TypeFactory::Instance()->MakeType(VAR_TYPE),
+                                                      false, nullptr, depth));
+    }
+    else {
+      ProcessError(L"Expected variable parameter type" , TOKEN_SEMI_COLON);
+    }
+  }
+  method->SetDeclarations(declaration_list);
+
+  // return type
   if(!Match(TOKEN_LAMBDA)) {
     ProcessError(L"Expected '=>'", TOKEN_SEMI_COLON);
   }
   NextToken();
 
+  // set expression
   Expression* expression = ParseExpression(depth + 1);
   Statement* rtrn_stmt = TreeFactory::Instance()->MakeReturn(file_name, line_num, expression);
-
   StatementList* statements = TreeFactory::Instance()->MakeStatementList();
   statements->AddStatement(rtrn_stmt);
   method->SetStatements(statements);
 
   symbol_table->PreviousParseScope(method->GetParsedName());
-  current_class->AddMethod(method);
   current_method = outter_method;
-
-  // build call to method
-  const wstring klass_name = current_class->GetName();
-  ExpressionList* expressions = ParseLambdaParameters(file_name, line_num, method->GetDeclarations());
-  MethodCall* method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, klass_name, lambda_name, expressions);
-  method_call->SetFunctionalReturn(method->GetReturn());
   
-  return TreeFactory::Instance()->MakeLambda(file_name, line_num, method, method_call);
+  return TreeFactory::Instance()->MakeLambda(file_name, line_num, type, alias_name, method, parameter_list);
 }
 
 /****************************
@@ -959,7 +1060,7 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
     }
     // identifier
     wstring ident = scanner->GetToken()->GetIdentifier();
-    method_name = current_class->GetName() + L":" + ident;
+    method_name = current_class->GetName() + L':' + ident;
     NextToken();
   }
 

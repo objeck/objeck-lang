@@ -139,6 +139,7 @@ enum ScannerTokenType {
   TOKEN_NEW_ID,
   TOKEN_CLASS_ID,
   TOKEN_INTERFACE_ID,
+  TOKEN_ALIAS_ID,
   TOKEN_IMPLEMENTS_ID,
   TOKEN_FUNCTION_ID,
   TOKEN_METHOD_ID,
@@ -452,7 +453,7 @@ class Scanner {
 
   // warning message
   void ProcessWarning() {
-    wcout << GetToken()->GetFileName() << ":" << GetToken()->GetLineNumber() + 1
+    wcout << GetToken()->GetFileName() << L':' << GetToken()->GetLineNumber() + 1
     << ": Parse warning: Unknown token: '" << cur_char << "'" << endl;
   }
 

@@ -39,11 +39,11 @@
 void ContextAnalyzer::ProcessError(ParseNode* node, const wstring &msg)
 {
 #ifdef _DEBUG
-  GetLogger() << L"\tError: " << node->GetFileName() << L":" << node->GetLineNumber() << L": " << msg << endl;
+  GetLogger() << L"\tError: " << node->GetFileName() << L':' << node->GetLineNumber() << L": " << msg << endl;
 #endif
 
   const wstring &str_line_num = ToString(node->GetLineNumber());
-  errors.insert(pair<int, wstring>(node->GetLineNumber(), node->GetFileName() + L":" + str_line_num + L": " + msg));
+  errors.insert(pair<int, wstring>(node->GetLineNumber(), node->GetFileName() + L':' + str_line_num + L": " + msg));
 }
 
 /****************************
@@ -142,7 +142,10 @@ bool ContextAnalyzer::Analyze()
       Class* klass = classes[j];
       vector<Method*> methods = klass->GetMethods();
       for(size_t k = 0; k < methods.size(); ++k) {
-        methods[k]->EncodeSignature(klass, program, linker);
+        Method* method = methods[k];
+        if(!method->IsLambda()) {
+          method->EncodeSignature(klass, program, linker);
+        }
       }
     }
   }
@@ -461,7 +464,7 @@ void ContextAnalyzer::AnalyzeMethods(Class* klass, const int depth)
   // methods
   vector<Method*> methods = klass->GetMethods();
   for(size_t i = 0; i < methods.size(); ++i) {
-    AnalyzeMethod(methods[i], (int)i, depth + 1);
+    AnalyzeMethod(methods[i], depth + 1);
   }
 
   // look for parent virtual methods
@@ -610,8 +613,8 @@ bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, Class* virtual_cl
       // search for implementation method via signature
       Method* impl_method = nullptr;
       LibraryMethod* lib_impl_method = nullptr;
-      int offset = (int)virtual_method_name.find_first_of(':');
-      if(offset > -1) {
+      const size_t offset = virtual_method_name.find_first_of(':');
+      if(offset != wstring::npos) {
         wstring encoded_name = impl_class->GetName() + virtual_method_name.substr(offset);
         impl_method = impl_class->GetMethod(encoded_name);
         if(!impl_method && impl_class->GetParent()) {
@@ -716,8 +719,8 @@ bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, LibraryClass* lib
       // validate that methods have been implemented
       Method* impl_method = nullptr;
       LibraryMethod* lib_impl_method = nullptr;
-      int offset = (int)virtual_method_name.find_first_of(':');
-      if(offset > -1) {
+      const size_t offset = virtual_method_name.find_first_of(':');
+      if(offset != wstring::npos) {
         wstring encoded_name = impl_class->GetName() + virtual_method_name.substr(offset);
         impl_method = impl_class->GetMethod(encoded_name);
         if(!impl_method && impl_class->GetParent()) {
@@ -809,14 +812,14 @@ void ContextAnalyzer::AnalyzeVirtualMethod(Class* impl_class, MethodType impl_mt
 /****************************
  * Analyzes a method
  ****************************/
-void ContextAnalyzer::AnalyzeMethod(Method* method, const int id, const int depth)
+void ContextAnalyzer::AnalyzeMethod(Method* method, const int depth)
 {
 #ifdef _DEBUG
   wstring msg = L"(method: name='" + method->GetName() + L"; parsed='" + method->GetParsedName() + L"')"; 
   Debug(msg, method->GetLineNumber(), depth);
 #endif
 
-  method->SetId(id);
+  method->SetId();
   current_method = method;
   current_table = symbol_table->GetSymbolTable(method->GetParsedName());
   method->SetSymbolTable(current_table);
@@ -906,10 +909,97 @@ void ContextAnalyzer::AnalyzeMethod(Method* method, const int id, const int dept
  ****************************/
 void ContextAnalyzer::AnalyzeLambda(Lambda* lambda, const int depth)
 {
-  // check lambda method call
-  MethodCall* lambda_call = lambda->GetMethodCall();
-  AnalyzeMethodCall(lambda_call, depth + 1);
-  lambda->SetTypes(lambda_call->GetEvalType());
+  // already been checked
+  if(lambda->GetMethodCall()) {
+    return;
+  }
+
+  // by type
+  Type* lambda_type = nullptr;
+  if(lambda->GetLambdaType()) {
+    lambda_type = lambda->GetLambdaType();
+  }
+  // by name
+  else {
+    const wstring lambda_name = lambda->GetName();
+
+    wstring alias_name;
+    const size_t middle = lambda_name.find_first_of(L'#');
+    if(middle != wstring::npos) {
+      alias_name = lambda_name.substr(0, middle);
+    }
+
+    wstring type_name;
+    if(middle + 1 < lambda_name.size()) {
+      type_name = lambda_name.substr(middle + 1);
+    }
+
+    Alias* alias = program->GetAlias(alias_name);
+    if(alias) {
+      lambda_type = alias->GetType(type_name);
+      if(lambda_type) {
+        lambda_type = TypeFactory::Instance()->MakeType(lambda_type);
+      }
+    }
+    else {
+      ProcessError(lambda, L"Undefined alias: '" + ReplaceSubstring(lambda_name, L"#", L"->") + L"'");
+    }
+  }
+
+  if(lambda_type) {
+    // set return
+    Method* method = lambda->GetMethod();
+    method->SetReturn(lambda_type->GetFunctionReturn());
+
+    // update decelerations
+    vector<Type*> types = lambda_type->GetFunctionParameters();
+    DeclarationList* declaration_list = method->GetDeclarations();
+    vector<Declaration*> declarations = declaration_list->GetDeclarations();
+    if(types.size() == declarations.size()) {
+      // encode lookup
+      method->EncodeSignature();
+
+      for(size_t i = 0; i < declarations.size(); ++i) {
+        declarations[i]->GetEntry()->SetType(types[i]);
+      }
+
+      current_class->AddMethod(method);
+      method->EncodeSignature(current_class, program, linker);
+      current_class->AssociateMethod(method);
+
+      // check method and restore context
+      Method* prev_method = current_method;
+      SymbolTable* prev_table = current_table;
+      AnalyzeMethod(method, depth + 1);
+      current_method = prev_method;
+      current_table = prev_table;
+
+      const wstring full_method_name = method->GetName();
+      const size_t offset = full_method_name.find_first_of(':');
+      if(offset != wstring::npos) {
+        const wstring method_name = full_method_name.substr(offset + 1);
+
+        // create method call
+        MethodCall* method_call = TreeFactory::Instance()->MakeMethodCall(method->GetFileName(), method->GetLineNumber(),
+                                                                          current_class->GetName(), method_name,
+                                                                          ParseLambdaParameters(declaration_list));
+        method_call->SetFunctionalReturn(method->GetReturn());
+        AnalyzeMethodCall(method_call, depth + 1);
+        lambda->SetMethodCall(method_call);
+        lambda->SetTypes(method_call->GetEvalType());
+      }
+      else {
+        wcerr << L"internal error" << endl;
+        exit(1);
+      }
+    }
+    else {
+      ProcessError(lambda, L"Deceleration and parameter size mismatch");
+    }
+  }
+  else {
+    ProcessError(lambda, L"Invalid lambda type");
+  }
 }
 
 /****************************
@@ -1514,7 +1604,7 @@ void ContextAnalyzer::AnalyzeVariable(Variable* variable, SymbolEntry* entry, co
   }
   // type inferred variable
   else if(current_method) {
-    const wstring scope_name = current_method->GetName() + L":" + variable->GetName();
+    const wstring scope_name = current_method->GetName() + L':' + variable->GetName();
     SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(variable->GetFileName(), variable->GetLineNumber(),
                                                                   scope_name, TypeFactory::Instance()->MakeType(VAR_TYPE),
                                                                   false, true);
@@ -2441,7 +2531,7 @@ Method* ContextAnalyzer::ResolveMethodCall(Class* klass, MethodCall* method_call
 void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, bool is_expr, wstring &encoding, const int depth)
  {
 #ifdef _DEBUG
-  GetLogger() << L"Checking program class call: |" << klass->GetName() << L":" 
+  GetLogger() << L"Checking program class call: |" << klass->GetName() << L':' 
     << (method_call->GetMethodName().size() > 0 ? method_call->GetMethodName() : method_call->GetVariableName())
     << L"|" << endl;
 #endif
@@ -2453,7 +2543,7 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
   // note: find system based methods and call with function parameters (i.e. $Int, $Float)
   Method* method = ResolveMethodCall(klass, method_call, depth);
   if(!method) {
-    const wstring encoded_name = klass->GetName() + L":" + method_call->GetMethodName() + L":" + encoding +
+    const wstring encoded_name = klass->GetName() + L':' + method_call->GetMethodName() + L':' + encoding +
       EncodeMethodCall(method_call->GetCallingParameters(), depth);
     method = klass->GetMethod(encoded_name);
   }
@@ -2712,7 +2802,7 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryClass* klass, MethodCall* method_
                                         wstring &encoding, bool is_parent, const int depth)
 {
 #ifdef _DEBUG
-  GetLogger() << L"Checking library encoded name: |" << klass->GetName() << L":" << method_call->GetMethodName() << L"|" << endl;
+  GetLogger() << L"Checking library encoded name: |" << klass->GetName() << L':' << method_call->GetMethodName() << L"|" << endl;
 #endif
 
   ExpressionList* call_params = method_call->GetCallingParameters();
@@ -2728,7 +2818,7 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryClass* klass, MethodCall* method_
 
   // note: last resort to find system based methods i.e. $Int, $Float, etc.
   if(!lib_method) {
-    wstring encoded_name = klass->GetName() + L":" + method_call->GetMethodName() + L":" +
+    wstring encoded_name = klass->GetName() + L':' + method_call->GetMethodName() + L':' +
       encoding + EncodeMethodCall(method_call->GetCallingParameters(), depth);
     if(*encoded_name.rbegin() == L'*') {
       encoded_name.push_back(L',');
@@ -2925,8 +3015,8 @@ void ContextAnalyzer::AnalyzeFunctionReference(Class* klass, MethodCall* method_
                                                wstring &encoding, const int depth)
 {
   const wstring func_encoding = EncodeFunctionReference(method_call->GetCallingParameters(), depth);
-  const wstring encoded_name = klass->GetName() + L":" + method_call->GetMethodName() +
-    L":" + encoding + func_encoding;
+  const wstring encoded_name = klass->GetName() + L':' + method_call->GetMethodName() +
+    L':' + encoding + func_encoding;
 
   Method* method = klass->GetMethod(encoded_name);
   if(method) {
@@ -2987,7 +3077,7 @@ void ContextAnalyzer::AnalyzeFunctionReference(LibraryClass* klass, MethodCall* 
                                                wstring &encoding, const int depth)
 {
   const wstring func_encoding = EncodeFunctionReference(method_call->GetCallingParameters(), depth);
-  const wstring encoded_name = klass->GetName() + L":" + method_call->GetMethodName() + L":" + encoding + func_encoding;
+  const wstring encoded_name = klass->GetName() + L':' + method_call->GetMethodName() + L':' + encoding + func_encoding;
 
   LibraryMethod* method = klass->GetMethod(encoded_name);
   if(method) {
@@ -5699,7 +5789,7 @@ bool ContextAnalyzer::DuplicateParentEntries(SymbolEntry* entry, Class* klass)
       if(offset != wstring::npos) {
         ++offset;
         const wstring short_name = entry->GetName().substr(offset, entry->GetName().size() - offset);
-        const wstring lookup = parent->GetName() + L":" + short_name;
+        const wstring lookup = parent->GetName() + L':' + short_name;
         SymbolEntry * parent_entry = parent->GetSymbolTable()->GetEntry(lookup);
         if(parent_entry) {
           return true;
@@ -5780,14 +5870,14 @@ SymbolEntry* ContextAnalyzer::GetEntry(wstring name, bool is_parent)
 {
   if(current_table) {
     // check locally
-    SymbolEntry* entry = current_table->GetEntry(current_method->GetName() + L":" + name);
+    SymbolEntry* entry = current_table->GetEntry(current_method->GetName() + L':' + name);
     if(!is_parent && entry) {
       return entry;
     }
     else {
       // check class
       SymbolTable* table = symbol_table->GetSymbolTable(current_class->GetName());
-      entry = table->GetEntry(current_class->GetName() + L":" + name);
+      entry = table->GetEntry(current_class->GetName() + L':' + name);
       if(!is_parent && entry) {
         return entry;
       }
@@ -5804,7 +5894,7 @@ SymbolEntry* ContextAnalyzer::GetEntry(wstring name, bool is_parent)
         }
         while(parent && !entry) {
           SymbolTable* table = symbol_table->GetSymbolTable(parent->GetName());
-          entry = table->GetEntry(parent->GetName() + L":" + name);
+          entry = table->GetEntry(parent->GetName() + L':' + name);
           if(entry) {
             return entry;
           }
