@@ -3103,7 +3103,7 @@ namespace frontend {
       return nullptr;
     }
 
-    void AddAlias(Alias* a) {
+    void AddLambdas(Alias* a) {
       aliases.insert(pair<wstring, Alias*>(a->GetName(), a));
       aliases_list.push_back(a);
     }
