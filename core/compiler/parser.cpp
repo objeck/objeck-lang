@@ -887,7 +887,7 @@ Class* Parser::ParseInterface(const wstring &bundle_name, int depth)
 }
 
 /****************************
- * Parses lambda
+ * Parses lambda expression
  ****************************/
 Lambda* Parser::ParseLambda(int depth) {
   const int line_num = GetLineNumber();
