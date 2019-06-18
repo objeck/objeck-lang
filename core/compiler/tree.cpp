@@ -166,6 +166,7 @@ void SymbolEntry::SetId(int i)
 /****************************
  * Method class
  ****************************/
+
 wstring Method::EncodeType(Type* type, Class* klass, ParsedProgram* program, Linker* linker)
 {
   wstring name;
@@ -510,34 +511,41 @@ void Method::EncodeUserName() {
   user_name += EncodeUserType(return_type);
 }
 
+void Method::SetId()
+{
+  if(klass) {
+    id = klass->NextMethodId();
+  }
+}
+
 /****************************
  * StaticArray class
  ****************************/
 void StaticArray::Validate(StaticArray* array) {
   vector<Expression*> static_array = array->GetElements()->GetExpressions();
-  for(size_t i = 0; i < static_array.size(); ++i) { 
+  for(size_t i = 0; i < static_array.size(); ++i) {
     if(static_array[i]) {
       if(static_array[i]->GetExpressionType() == STAT_ARY_EXPR) {
-  if(i == 0) {
-    dim++;
-  }
-  Validate(static_cast<StaticArray*>(static_array[i]));
+        if(i == 0) {
+          dim++;
+        }
+        Validate(static_cast<StaticArray*>(static_array[i]));
       }
       else {
-  // check lengths
-  if(cur_width == -1) {
-    cur_width = (int)static_array.size();
-  }
-  if(cur_width != (int)static_array.size()) {
-    matching_lengths = false;
-  }      
-  // check types
-  if(cur_type == VAR_EXPR) {
-    cur_type = static_array[i]->GetExpressionType();
-  }
-  else if(cur_type != static_array[i]->GetExpressionType()) {
-    matching_types = false;
-  }
+        // check lengths
+        if(cur_width == -1) {
+          cur_width = (int)static_array.size();
+        }
+        if(cur_width != (int)static_array.size()) {
+          matching_lengths = false;
+        }
+        // check types
+        if(cur_type == VAR_EXPR) {
+          cur_type = static_array[i]->GetExpressionType();
+        }
+        else if(cur_type != static_array[i]->GetExpressionType()) {
+          matching_types = false;
+        }
       }
     }
   }
@@ -759,18 +767,22 @@ bool SymbolTable::AddEntry(SymbolEntry* e, bool is_var /*= false*/)
 void Class::AssociateMethods()
 {
   for(size_t i = 0; i < method_list.size(); ++i) {
-    Method* method = method_list[i];
-    methods.insert(pair<wstring, Method*>(method->GetEncodedName(), method));
+    AssociateMethod(method_list[i]);
+  }
+}
 
-    // add to unqualified names to list
-    const wstring& encoded_name = method->GetEncodedName();
-    const size_t start = encoded_name.find(':');
-    if(start != wstring::npos) {
-      const size_t end = encoded_name.find(':', start + 1);
-      if(end != wstring::npos) {
-        const wstring& unqualified_name = encoded_name.substr(start + 1, end - start - 1);
-        unqualified_methods.insert(pair<wstring, Method*>(unqualified_name, method));
-      }
+void Class::AssociateMethod(Method* method)
+{
+  methods.insert(pair<wstring, Method*>(method->GetEncodedName(), method));
+
+  // add to unqualified names to list
+  const wstring& encoded_name = method->GetEncodedName();
+  const size_t start = encoded_name.find(':');
+  if(start != wstring::npos) {
+    const size_t end = encoded_name.find(':', start + 1);
+    if(end != wstring::npos) {
+      const wstring& unqualified_name = encoded_name.substr(start + 1, end - start - 1);
+      unqualified_methods.insert(pair<wstring, Method*>(unqualified_name, method));
     }
   }
 }

@@ -38,9 +38,6 @@ contexts:
     - match: '\b(use|leaving|virtual|bundle|Parent|from|implements)\b'
       scope: keyword.other
 
-    - match: '\b(interface)\b'
-      scope: entity.name.interface.objeck-obs
-
     - match: '\b(Byte|Int|Float|Char|Bool|String|As)\b'
       scope: storage.type.objeck-obs
 
@@ -78,9 +75,17 @@ contexts:
       scope: entity.name.class.objeck-obs
       push: cls_def
 
+    - match: '(interface)\s+'
+      scope: entity.name.interface.objeck-obs
+      push: interface_def
+
     - match: '(enum)\s+'
       scope: entity.name.enum.objeck-obs
       push: enum_def
+
+    - match: '(alias)\s+'
+      scope: entity.name.interface.objeck-obs
+      push: alias_def
       
     - match: '(consts)\s+'
       scope: entity.name.const.objeck-obs
@@ -119,21 +124,31 @@ contexts:
     - meta_scope: comment.block.objeck-obs
     - match: '~#'
       pop: true
-
+      
   double_quoted_string:
     - meta_scope: string.quoted.double.objeck-obs
     - match: \\.
     - match: '"'
       pop: true
-
+      
   cls_def:
     - match: '{{identifier}}'
       scope: entity.name.class.objeck-obs
       pop: true
-
+      
+  interface_def:
+    - match: '{{identifier}}'
+      scope: entity.name.interface_def.objeck-obs
+      pop: true
+      
   enum_def:
     - match: '{{identifier}}'
       scope: entity.name.enum.objeck-obs
+      pop: true
+
+  alias_def:
+    - match: '{{identifier}}'
+      scope: entity.name.interface.objeck-obs
       pop: true
 
   func_def:

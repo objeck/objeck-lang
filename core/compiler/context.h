@@ -409,6 +409,54 @@ class ContextAnalyzer {
     return result != holder_types.end();
   }
 
+
+
+  ExpressionList* ParseLambdaParameters(DeclarationList* declarations) {
+    ExpressionList* expressions = TreeFactory::Instance()->MakeExpressionList();
+
+    const vector<Declaration*> dclrs = declarations->GetDeclarations();
+    for(size_t i = 0; i < dclrs.size(); ++i) {
+      wstring ident;
+      Type* dclr_type = dclrs[i]->GetEntry()->GetType();
+      switch(dclr_type->GetType()) {
+      case NIL_TYPE:
+      case VAR_TYPE:
+        break;
+
+      case BOOLEAN_TYPE:
+        ident = BOOL_CLASS_ID;
+        break;
+
+      case BYTE_TYPE:
+        ident = BYTE_CLASS_ID;
+        break;
+
+      case CHAR_TYPE:
+        ident = CHAR_CLASS_ID;
+        break;
+
+      case INT_TYPE:
+        ident = INT_CLASS_ID;
+        break;
+
+      case  FLOAT_TYPE:
+        ident = FLOAT_CLASS_ID;
+        break;
+
+      case CLASS_TYPE:
+      case FUNC_TYPE:
+        ident = dclr_type->GetClassName();
+        break;
+      }
+
+      if(!ident.empty()) {
+        expressions->AddExpression(TreeFactory::Instance()->MakeVariable(dclrs[i]->GetFileName(), dclrs[i]->GetLineNumber(), ident));
+      }
+    }
+
+    return expressions;
+  }
+
   // error processing
   void ProcessError(ParseNode* n, const wstring &msg);
   void ProcessErrorAlternativeMethods(wstring &message);
@@ -434,7 +482,7 @@ class ContextAnalyzer {
   bool AnalyzeReturnPaths(StatementList* statement_list, const int depth);
   bool AnalyzeReturnPaths(If* if_stmt, bool nested, const int depth);
   bool AnalyzeReturnPaths(Select* select_stmt, const int depth);
-  void AnalyzeMethod(Method* method, int id, const int depth);
+  void AnalyzeMethod(Method* method, const int depth);
   void AnalyzeStatements(StatementList* statements, const int depth);
   void AnalyzeStatement(Statement* statement, const int depth);
   void AnalyzeIndices(ExpressionList* indices, const int depth);
