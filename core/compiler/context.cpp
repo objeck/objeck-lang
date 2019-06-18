@@ -909,6 +909,11 @@ void ContextAnalyzer::AnalyzeMethod(Method* method, const int depth)
  ****************************/
 void ContextAnalyzer::AnalyzeLambda(Lambda* lambda, const int depth)
 {
+  // already been checked
+  if(lambda->GetMethodCall()) {
+    return;
+  }
+
   // by type
   Type* lambda_type = nullptr;
   if(lambda->GetLambdaType()) {
@@ -964,9 +969,10 @@ void ContextAnalyzer::AnalyzeLambda(Lambda* lambda, const int depth)
 
       // check method and restore context
       Method* prev_method = current_method;
+      SymbolTable* prev_table = current_table;
       AnalyzeMethod(method, depth + 1);
       current_method = prev_method;
-      current_table = symbol_table->GetSymbolTable(current_method->GetParsedName());
+      current_table = prev_table;
 
       const wstring full_method_name = method->GetName();
       const size_t offset = full_method_name.find_first_of(':');
