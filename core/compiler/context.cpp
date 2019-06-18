@@ -918,6 +918,10 @@ void ContextAnalyzer::AnalyzeLambda(Lambda* lambda, const int depth)
   Type* lambda_type = nullptr;
   if(lambda->GetLambdaType()) {
     lambda_type = lambda->GetLambdaType();
+    if(!lambda_type->GetFunctionReturn()) {
+      ProcessError(lambda, L"Expected reference to functional type");
+      return;
+    }
   }
   // by name
   else {
