@@ -1,3 +1,4 @@
 TODO
 --
-* change enum, const, func references so that they can be bundle specific
+1) read/write lambdas to disk
+2) change enum, const, func references so that they can be bundle specific
