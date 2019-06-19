@@ -553,24 +553,24 @@ void StaticArray::Validate(StaticArray* array) {
 
 ExpressionList* StaticArray::GetAllElements() {
   if(!all_elements) {
-    all_elements = TreeFactory::Instance()->MakeExpressionList();  
+    all_elements = TreeFactory::Instance()->MakeExpressionList();
     GetAllElements(this, all_elements);
-    
+
     // change row/column order    
     if(dim == 2) {
       ExpressionList* temp = TreeFactory::Instance()->MakeExpressionList();
       vector<Expression*> elements = all_elements->GetExpressions();
       // update indices
       for(int i = 0; i < cur_width; ++i) {
-  for(int j = 0; j < cur_height; ++j) {
-    const int index = j * cur_width + i;
-    temp->AddExpression(elements[index]);
-  }
-      }      
+        for(int j = 0; j < cur_height; ++j) {
+          const int index = j * cur_width + i;
+          temp->AddExpression(elements[index]);
+        }
+      }
       all_elements = temp;
     }
   }
-  
+
   return all_elements;
 }
 
