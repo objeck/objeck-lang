@@ -501,7 +501,7 @@ Enum* Parser::ParseEnum(int depth)
     wstring label_name = scanner->GetToken()->GetIdentifier();
     NextToken();
     if(!eenum->AddItem(TreeFactory::Instance()->MakeEnumItem(file_name, line_num, label_name, eenum))) {
-      ProcessError(L"Duplicate enum label name for '" + enum_scope_name + L"'", TOKEN_CLOSED_BRACE);
+      ProcessError(L"Duplicate enum label name '" + enum_name + L"'", TOKEN_CLOSED_BRACE);
     }
 
     if(Match(TOKEN_COMMA)) {
@@ -576,7 +576,10 @@ Alias* Parser::ParseLambdas(int depth)
     if(type->GetType() != FUNC_TYPE) {
       ProcessError(L"Expected functional type", TOKEN_CLOSED_BRACE);
     }
-    alias->AddType(label_name, type);
+    
+    if(!alias->AddType(label_name, type)) {
+      ProcessError(L"Duplicate lambda label name '" + label_name + L"'", TOKEN_CLOSED_BRACE);
+    }
 
     if(Match(TOKEN_COMMA)) {
       NextToken();
@@ -650,7 +653,7 @@ Enum* Parser::ParseConsts(int depth)
       }
     }
     if(!eenum->AddItem(TreeFactory::Instance()->MakeEnumItem(file_name, line_num, label_name, eenum), value)) {
-      ProcessError(L"Duplicate consts label name", TOKEN_CLOSED_BRACE);
+      ProcessError(L"Duplicate consts label name '" + label_name + L"'", TOKEN_CLOSED_BRACE);
     }
 
     if(Match(TOKEN_COMMA)) {
@@ -928,9 +931,8 @@ Lambda* Parser::ParseLambda(int depth) {
   NextToken();
 
   ExpressionList* parameter_list = ParseExpressionList(depth + 1);
-  
-  DeclarationList* declaration_list = TreeFactory::Instance()->MakeDeclarationList();
   vector<Expression*> parameters = parameter_list->GetExpressions();
+  DeclarationList* declaration_list = TreeFactory::Instance()->MakeDeclarationList();
   for(size_t i = 0; i < parameters.size(); ++i) {
     Expression* expression = parameters[i];
     if(expression && expression->GetExpressionType() == VAR_EXPR) {

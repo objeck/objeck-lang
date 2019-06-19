@@ -2,7 +2,11 @@ use Collection.Generic;
 
 lambdas Foo {
 	Bar : (IntHolder) ~ IntHolder,
-	Fie : Float
+	Bar : (Int) ~ Int
+}
+
+consts Fie {
+	A := 7
 }
 
 class Test {
