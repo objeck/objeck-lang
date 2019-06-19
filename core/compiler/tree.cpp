@@ -306,7 +306,7 @@ wstring Method::EncodeType(Type* type, Class* klass, ParsedProgram* program, Lin
 }
 
 wstring Method::EncodeFunctionType(vector<Type*> func_params, Type* func_rtrn, 
-           Class* klass, ParsedProgram* program, Linker* linker) 
+                                   Class* klass, ParsedProgram* program, Linker* linker) 
 {                                     
   wstring encoded_name = L"(";
   for(size_t i = 0; i < func_params.size(); ++i) {
@@ -816,4 +816,167 @@ Assignment::Assignment(const wstring& file_name, const int line_num, Variable* v
   else {
     lambda = nullptr;
   }
+}
+
+/****************************
+ * class Lambda
+ ****************************/
+wstring Alias::EncodeType(Type* type, Class* klass, ParsedProgram* program, Linker* linker)
+{
+  wstring name;
+  if(type) {
+    // type
+    switch(type->GetType()) {
+    case BOOLEAN_TYPE:
+      name = L'l';
+      break;
+
+    case BYTE_TYPE:
+      name = L'b';
+      break;
+
+    case INT_TYPE:
+      name = L'i';
+      break;
+
+    case FLOAT_TYPE:
+      name = L'f';
+      break;
+
+    case CHAR_TYPE:
+      name = L'c';
+      break;
+
+    case NIL_TYPE:
+      name = L'n';
+      break;
+
+    case VAR_TYPE:
+      name = L'v';
+      break;
+
+    case CLASS_TYPE: {
+      name = L"o.";
+
+      // program class check
+      const wstring type_klass_name = type->GetClassName();
+      Class* prgm_klass = program->GetClass(type_klass_name);
+      if(prgm_klass) {
+        name += prgm_klass->GetName();
+      }
+      else {
+        // full path resolution
+        vector<wstring> uses = program->GetUses();
+        for(size_t i = 0; !prgm_klass && i < uses.size(); ++i) {
+          prgm_klass = program->GetClass(uses[i] + L"." + type_klass_name);
+        }
+
+        // program enum check
+        if(prgm_klass) {
+          name += prgm_klass->GetName();
+        }
+        else {
+          // full path resolution
+          Enum* prgm_enum = program->GetEnum(type_klass_name);
+          vector<wstring> uses = program->GetUses();
+          for(size_t i = 0; !prgm_enum && i < uses.size(); ++i) {
+            prgm_enum = program->GetEnum(uses[i] + L"." + type_klass_name);
+          }
+
+          if(prgm_enum) {
+            name += prgm_enum->GetName();
+          }
+          else {
+            const wstring type_klass_name_ext = klass->GetName() + L"#" + type_klass_name;
+            prgm_enum = program->GetEnum(type_klass_name_ext);
+            if(prgm_enum) {
+              name += type_klass_name_ext;
+            }
+          }
+        }
+      }
+
+      // search libraries      
+      if(name == L"o.") {
+        prgm_klass = klass->GetGenericClass(type_klass_name);
+        if(prgm_klass) {
+          name += prgm_klass->GetName();
+        }
+      }
+
+      // search libraries      
+      if(name == L"o.") {
+        LibraryClass* lib_klass = linker->SearchClassLibraries(type_klass_name, program->GetUses());
+        if(lib_klass) {
+          name += lib_klass->GetName();
+        }
+        else {
+          LibraryEnum* lib_enum = linker->SearchEnumLibraries(type_klass_name, program->GetUses());
+          if(lib_enum) {
+            name += lib_enum->GetName();
+          }
+          else {
+            const wstring type_klass_name_ext = klass->GetName() + L"#" + type_klass_name;
+            lib_enum = linker->SearchEnumLibraries(type_klass_name_ext, program->GetUses());
+            if(lib_enum) {
+              name += type_klass_name_ext;
+            }
+          }
+        }
+      }
+#ifdef _DEBUG
+      // assert(name != L"o.");
+#endif
+    }
+                     break;
+
+    case FUNC_TYPE: {
+      name = L"m.";
+      if(type->GetClassName().size() == 0) {
+        name += EncodeFunctionType(type->GetFunctionParameters(), type->GetFunctionReturn(), klass, program, linker);
+      }
+      else {
+        name += type->GetClassName();
+      }
+    }
+                    break;
+    }
+
+    // generics
+    if(type->HasGenerics()) {
+      const vector<Type*> generic_types = type->GetGenerics();
+      for(size_t i = 0; i < generic_types.size(); ++i) {
+        name += L"|" + generic_types[i]->GetClassName();
+      }
+    }
+
+    // dimension
+    for(int i = 0; i < type->GetDimension(); ++i) {
+      name += L'*';
+    }
+  }
+
+  return name;
+}
+
+wstring Alias::EncodeFunctionType(vector<Type*> func_params, Type* func_rtrn,
+                                   Class* klass, ParsedProgram* program, Linker* linker)
+{
+  wstring encoded_name = L"(";
+  for(size_t i = 0; i < func_params.size(); ++i) {
+    // encode params
+    encoded_name += EncodeType(func_params[i], klass, program, linker);
+
+    // encode dimension   
+    for(int j = 0; j < func_params[i]->GetDimension(); ++j) {
+      encoded_name += L'*';
+    }
+    encoded_name += L',';
+  }
+
+  // encode return
+  encoded_name += L")~";
+  encoded_name += EncodeType(func_rtrn, klass, program, linker);
+
+  return encoded_name;
 }
