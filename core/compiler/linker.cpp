@@ -1370,15 +1370,14 @@ void LibraryMethod::ParseParameters()
           index++;
         }
         index++;
-        while(index < parameters.size() && parameters[index] != L'*' &&
-              parameters[index] != L',') {
+        while(index < parameters.size() && parameters[index] != L'*' && parameters[index] != L',') {
           index++;
         }
         size_t end = index;
         const wstring name = parameters.substr(start, end - start);
         type = frontend::TypeFactory::Instance()->MakeType(frontend::FUNC_TYPE, name);
       }
-                break;
+        break;
 
       case 'o': {
         index += 2;
