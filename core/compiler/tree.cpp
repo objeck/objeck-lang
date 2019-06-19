@@ -47,7 +47,7 @@ void Expression::SetMethodCall(MethodCall* call)
 /****************************
  * CharacterString class
  ****************************/
-void CharacterString::AddSegment(const wstring &orig) 
+void CharacterString::AddSegment(const wstring& orig)
 {
   if(!is_processed) {
     wstring escaped_str;
@@ -55,73 +55,73 @@ void CharacterString::AddSegment(const wstring &orig)
     for(size_t i = 0; i < orig.size(); ++i) {
       wchar_t c = orig[i];
       if(skip > 1 && c == L'\\' && i + 1 < orig.size()) {
-  wchar_t cc = orig[i + 1];
-  switch(cc) {
-  case L'"':
-    escaped_str += L'\"';
-    skip = 0;
-    break;
+        wchar_t cc = orig[i + 1];
+        switch(cc) {
+        case L'"':
+          escaped_str += L'\"';
+          skip = 0;
+          break;
 
-  case L'\\':
-    escaped_str += L'\\';
-    skip = 0;
-    break;
+        case L'\\':
+          escaped_str += L'\\';
+          skip = 0;
+          break;
 
-  case L'n':
-    escaped_str += L'\n';
-    skip = 0;
-    break;
+        case L'n':
+          escaped_str += L'\n';
+          skip = 0;
+          break;
 
-  case L'r':
-    escaped_str += L'\r';
-    skip = 0;
-    break;
+        case L'r':
+          escaped_str += L'\r';
+          skip = 0;
+          break;
 
-  case L't':
-    escaped_str += L'\t';
-    skip = 0;
-    break;
+        case L't':
+          escaped_str += L'\t';
+          skip = 0;
+          break;
 
-  case L'a':
-    escaped_str += L'\a';
-    skip = 0;
-    break;
+        case L'a':
+          escaped_str += L'\a';
+          skip = 0;
+          break;
 
-  case L'b':
-    escaped_str += L'\b';
-    skip = 0;
-    break;
+        case L'b':
+          escaped_str += L'\b';
+          skip = 0;
+          break;
 
 #ifndef _WIN32
-  case L'e':
-    escaped_str += L'\e';
-    skip = 0;
-    break;
+        case L'e':
+          escaped_str += L'\e';
+          skip = 0;
+          break;
 #endif
 
-  case L'f':
-    escaped_str += L'\f';
-    skip = 0;
-    break;
+        case L'f':
+          escaped_str += L'\f';
+          skip = 0;
+          break;
 
-  case L'0':
-    escaped_str += L'\0';
-    skip = 0;
-    break;
+        case L'0':
+          escaped_str += L'\0';
+          skip = 0;
+          break;
 
-  default:
-    if(skip <= 1) {
-      skip++;
-    }
-    break;
-  }
+        default:
+          if(skip <= 1) {
+            skip++;
+          }
+          break;
+        }
       }
 
       if(skip > 1) {
-  escaped_str += c;
+        escaped_str += c;
       }
       else {
-  skip++;
+        skip++;
       }
     }
     // set string
