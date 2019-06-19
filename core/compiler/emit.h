@@ -739,6 +739,7 @@ namespace backend {
   class IntermediateProgram : public Intermediate {
     int class_id;
     int method_id;
+    vector<wstring> alias_encodings;
     vector<IntermediateEnum*> enums;
     vector<IntermediateClass*> classes;
     map<int, IntermediateClass*> class_map;
@@ -809,6 +810,10 @@ namespace backend {
       assert(result != class_map.end());
 #endif
       return result->second;
+    }
+
+    void AddAliasEncoding(const wstring &a) {
+      alias_encodings.push_back(a);
     }
 
     void AddEnum(IntermediateEnum* e) {
