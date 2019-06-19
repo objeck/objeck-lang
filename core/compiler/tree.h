@@ -1285,6 +1285,8 @@ namespace frontend {
 
     const wstring GetEncodedName() {
       if(encoded_name.empty()) {
+        encoded_name += name;
+        encoded_name += L'|';
         map<const wstring, Type*>::iterator iter;
         for(iter = aliases.begin(); iter != aliases.end(); ++iter) {
           encoded_name += iter->first;

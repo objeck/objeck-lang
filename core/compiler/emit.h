@@ -746,6 +746,7 @@ namespace backend {
     vector<frontend::IntStringHolder*> int_strings;
     vector<frontend::FloatStringHolder*> float_strings;
     vector<wstring> bundle_names;
+    wstring aliases_str;
     int num_src_classes;
     int num_lib_classes;
     int string_cls_id;
@@ -843,12 +844,20 @@ namespace backend {
       return method_id;
     }
 
-    void SetBundleNames(vector<wstring> n) {
+    void SetBundleNames(vector<wstring> &n) {
       bundle_names = n;
     }
 
     void SetStringClassId(int i) {
       string_cls_id = i;
+    }
+
+    void SetAliasesString(const wstring &a) {
+      aliases_str = a;
+    }
+
+    const wstring GetAliasesString() {
+      return aliases_str;
     }
 
     void Write(bool emit_lib, bool is_debug, bool is_web, OutputStream& out_stream);
