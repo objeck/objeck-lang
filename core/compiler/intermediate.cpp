@@ -246,6 +246,9 @@ void IntermediateEmitter::Translate()
   EmitBundles();
   
   imm_program->SetStringClassId(string_cls_id);
+
+  // TODO: set aliases
+  // ... vector<wstring>
   
   Class* start_class = parsed_program->GetStartClass();
   Method* start_method = parsed_program->GetStartMethod();
