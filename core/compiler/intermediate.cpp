@@ -467,7 +467,14 @@ void IntermediateEmitter::EmitBundles()
   for(size_t i = 0; i < bundles.size(); ++i) {
     parsed_bundle = bundles[i];
     bundle_names.push_back(parsed_bundle->GetName());
-    // emit enums
+
+    // emit alias
+    vector<Alias*> aliases = parsed_bundle->GetAliases();
+    for(size_t j = 0; j < aliases.size(); ++j) {
+      imm_program->AddAliasEncoding(aliases[j]->GetEncodedName());
+    }
+
+    // emit enums and consts
     vector<Enum*> enums = parsed_bundle->GetEnums();
     for(size_t j = 0; j < enums.size(); ++j) {
       IntermediateEnum* eenum = EmitEnum(enums[j]);
@@ -475,6 +482,7 @@ void IntermediateEmitter::EmitBundles()
         imm_program->AddEnum(eenum);
       }
     }
+
     // emit classes
     vector<Class*> classes = parsed_bundle->GetClasses();
     for(size_t j = 0; j < classes.size(); ++j) {

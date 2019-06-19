@@ -3087,11 +3087,12 @@ namespace frontend {
   class ParsedBundle {
     wstring name;
     SymbolTableManager* symbol_table;
-    unordered_map<wstring, Enum*> enums;
-    vector<Enum*> enum_list;
 
     unordered_map<wstring, Alias*> aliases;
     vector<Alias*> aliases_list;
+
+    unordered_map<wstring, Enum*> enums;
+    vector<Enum*> enum_list;
 
     unordered_map<wstring, Class*> classes;
     vector<Class*> class_list;
@@ -3151,6 +3152,10 @@ namespace frontend {
       }
 
       return nullptr;
+    }
+
+    const vector<Alias*> GetAliases() {
+      return aliases_list;
     }
 
     const vector<Enum*> GetEnums() {

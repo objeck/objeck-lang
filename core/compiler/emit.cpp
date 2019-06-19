@@ -150,11 +150,18 @@ void IntermediateProgram::Write(bool emit_lib, bool is_debug, bool is_web, Outpu
     WriteString(char_strings[i], out_stream);
   }
 
-  // write bundle names
+  
   if(emit_lib) {
+    // write bundle names
     WriteInt((int)bundle_names.size(), out_stream);
     for(size_t i = 0; i < bundle_names.size(); ++i) {
       WriteString(bundle_names[i], out_stream);
+    }
+
+    // write aliases
+    WriteInt((int)alias_encodings.size(), out_stream);
+    for(size_t i = 0; i < alias_encodings.size(); ++i) {
+      WriteString(alias_encodings[i], out_stream);
     }
   }
 
