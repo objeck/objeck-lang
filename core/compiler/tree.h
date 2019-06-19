@@ -1264,6 +1264,12 @@ namespace frontend {
     friend class TreeFactory;
     wstring name;
     map<const wstring, Type*> aliases;
+    wstring encoded_name;
+
+    wstring EncodeType(Type* type, Class* klass, ParsedProgram* program, Linker* linker);
+
+    wstring EncodeFunctionType(vector<Type*> func_params, Type* func_rtrn, Class* klass, 
+                               ParsedProgram* program, Linker* linker);
 
     Alias(const wstring& file_name, int line_num, const wstring& n) : ParseNode(file_name, line_num) {
       name = n;
@@ -1275,6 +1281,20 @@ namespace frontend {
   public:
     const wstring GetName() const {
       return name;
+    }
+
+    const wstring GetEncodedName() {
+      if(encoded_name.empty()) {
+        map<const wstring, Type*>::iterator iter;
+        for(iter = aliases.begin(); iter != aliases.end(); ++iter) {
+          encoded_name += iter->first;
+          encoded_name += L'|';
+          Type* type = iter->second;
+          encoded_name += L',';
+        }
+      }
+
+      return encoded_name;
     }
 
     bool AddType(const wstring &n, Type *t) {
@@ -1460,7 +1480,7 @@ namespace frontend {
     Statement* update_stmt;
     StatementList* statements;
 
-  For(const wstring &file_name, int line_num, Statement* pre, Expression* cond,
+    For(const wstring &file_name, int line_num, Statement* pre, Expression* cond,
       Statement* update, StatementList* stmts) : Statement(file_name, line_num) {
       pre_stmt = pre;
       cond_expr = cond;
@@ -2614,7 +2634,7 @@ namespace frontend {
     Method* method;
     ExpressionList* parameters;
     MethodCall* method_call;
-
+    
   public:
     Lambda(const wstring& file_name, const int line_num, Type* t, const wstring &n, Method* m, ExpressionList* p) : Expression(file_name, line_num) {
       type = t;
