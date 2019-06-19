@@ -339,10 +339,10 @@ class ContextAnalyzer {
   void ValidateConcrete(Type* type, Type* concrete_type, ParseNode* node, const int depth);
 
   // finds the first class match; note multiple matches may exist
-  Class* SearchProgramClasses(const wstring& klass_name);
+  Class* SearchProgramClasses(const wstring &klass_name);
 
   // finds the first enum match; note multiple matches may exist
-  Enum* SearchProgramEnums(const wstring& eenum_name);
+  Enum* SearchProgramEnums(const wstring &eenum_name);
 
   inline vector<Type*> GetConcreteTypes(MethodCall* method_call) {
     if(!method_call->GetConcreteTypes().empty()) {
@@ -359,26 +359,26 @@ class ContextAnalyzer {
   }
   
   // helper function for program enum search
-  inline bool HasProgramLibraryEnum(const wstring & n) {
+  inline bool HasProgramLibraryEnum(const wstring &n) {
     return SearchProgramEnums(n) || linker->SearchEnumLibraries(n, program->GetUses(current_class->GetFileName()));
   }
 
   // helper function for program class search
-  inline bool HasProgramLibraryClass(const wstring & n) {
+  inline bool HasProgramLibraryClass(const wstring &n) {
     return SearchProgramClasses(n) || linker->SearchClassLibraries(n, program->GetUses(current_class->GetFileName()));
   }
 
   // class query by name
-  bool GetProgramLibraryClass(const wstring cls_name, Class*& klass, LibraryClass*& lib_klass);
+  bool GetProgramLibraryClass(const wstring &cls_name, Class*& klass, LibraryClass* &lib_klass);
 
   // search and cache class type query
-  bool GetProgramLibraryClass(Type* type, Class*& klass, LibraryClass*& lib_klass);
+  bool GetProgramLibraryClass(Type* type, Class* &klass, LibraryClass* &lib_klass);
 
   // resolve program or library class name
-  wstring GetProgramLibraryClassName(const wstring& n);
+  wstring GetProgramLibraryClassName(const wstring &n);
 
   // determines if name equals class
-  bool ClassEquals(const wstring left_name, Class* right_klass, LibraryClass* right_lib_klass);
+  bool ClassEquals(const wstring &left_name, Class* right_klass, LibraryClass* right_lib_klass);
 
   // string utility functions
   wstring ToString(int v) {
@@ -396,7 +396,7 @@ class ContextAnalyzer {
     return s;
   }
 
-  inline void ReplaceAllSubstrings(wstring& str, const wstring& from, const wstring& to) {
+  inline void ReplaceAllSubstrings(wstring &str, const wstring &from, const wstring &to) {
     size_t start_pos = 0;
     while((start_pos = str.find(from, start_pos)) != wstring::npos) {
       str.replace(start_pos, from.length(), to);

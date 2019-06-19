@@ -6117,7 +6117,7 @@ bool ContextAnalyzer::ValidUpCast(const wstring& to, LibraryClass* from_klass)
   return false;
 }
 
-bool ContextAnalyzer::GetProgramLibraryClass(const wstring cls_name, Class*& klass, LibraryClass*& lib_klass)
+bool ContextAnalyzer::GetProgramLibraryClass(const wstring &cls_name, Class*& klass, LibraryClass*& lib_klass)
 {
   klass = SearchProgramClasses(cls_name);
   if(klass) {
@@ -6518,7 +6518,7 @@ void ContextAnalyzer::AddMethodParameter(MethodCall* method_call, SymbolEntry* e
   }
 }
 
-bool ContextAnalyzer::ClassEquals(const wstring left_name, Class* right_klass, LibraryClass* right_lib_klass)
+bool ContextAnalyzer::ClassEquals(const wstring &left_name, Class* right_klass, LibraryClass* right_lib_klass)
 {
   Class* left_klass = nullptr; LibraryClass* left_lib_klass = nullptr;
   if(GetProgramLibraryClass(left_name, left_klass, left_lib_klass)) {

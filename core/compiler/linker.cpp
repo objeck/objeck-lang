@@ -1324,10 +1324,10 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
 
 void LibraryMethod::ParseParameters()
 {
-  const wstring& method_name = name;
+  const wstring method_name = name;
   size_t start = method_name.find_last_of(':');
   if(start != wstring::npos) {
-    const wstring& parameters = method_name.substr(start + 1);
+    const wstring parameters = method_name.substr(start + 1);
     size_t index = 0;
 
     while(index < parameters.size()) {
