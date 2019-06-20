@@ -1258,7 +1258,7 @@ namespace frontend {
   };
 
   /****************************
-   * Aliases class
+   * Alias class
    ****************************/
   class Alias : public ParseNode {
     friend class TreeFactory;
@@ -1266,10 +1266,9 @@ namespace frontend {
     map<const wstring, Type*> aliases;
     wstring encoded_name;
 
-    wstring EncodeType(Type* type, Class* klass, ParsedProgram* program, Linker* linker);
+    wstring EncodeType(Type* type, ParsedProgram* program, Linker* linker);
 
-    wstring EncodeFunctionType(vector<Type*> func_params, Type* func_rtrn, Class* klass, 
-                               ParsedProgram* program, Linker* linker);
+    wstring EncodeFunctionType(vector<Type*> func_params, Type* func_rtrn, ParsedProgram* program, Linker* linker);
 
     Alias(const wstring& file_name, int line_num, const wstring& n) : ParseNode(file_name, line_num) {
       name = n;
@@ -1283,7 +1282,7 @@ namespace frontend {
       return name;
     }
 
-    const wstring GetEncodedName() {
+    void EncodeSignature(ParsedProgram* program, Linker* linker) {
       if(encoded_name.empty()) {
         encoded_name += name;
         encoded_name += L'|';
@@ -1291,11 +1290,13 @@ namespace frontend {
         for(iter = aliases.begin(); iter != aliases.end(); ++iter) {
           encoded_name += iter->first;
           encoded_name += L'|';
-          Type* type = iter->second;
-          encoded_name += L',';
+          encoded_name += EncodeType(iter->second, program, linker);
+          encoded_name += L';';
         }
       }
+    }
 
+    const wstring GetEncodedName() {
       return encoded_name;
     }
 
