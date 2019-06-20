@@ -6,17 +6,12 @@ lambdas Foo {
 }
 
 class Bar {
-	function : Doit() ~ Nil {
-		values := CompareList->New()<IntHolder>;
-		values->AddBack(3);
-		values->AddBack(7);
-		values->AddBack(13);
+	function : Doit() ~ (Float) ~ Int {
+		return Foo(Float) ~ Int;
+	}
 
-		applied := values->Apply(\Foo->Bar : (x) => x * x)<IntHolder>->Apply(\Foo->Bar : (x) => x + 13)<IntHolder>->Apply(\Foo->Bar : (x) => -3 * x)<IntHolder>;
-		while(applied->More()) {
-			applied->Get()->Get()->PrintLine();
-			applied->Next();
-		};
+	function : Foo(f : Float) ~ Int {
+		return 13;
 	}
 }
 
