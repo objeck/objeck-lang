@@ -908,6 +908,8 @@ class Library {
  ********************************/
 class Linker {
   map<const wstring, Library*> libraries;
+  vector <LibraryAlias*> all_aliases;
+  unordered_map<wstring, LibraryAlias*> all_aliases_map;
   vector<LibraryClass*> all_classes;
   unordered_map<wstring, LibraryClass*> all_classes_map;
   vector<LibraryEnum*> all_enums;
@@ -972,6 +974,12 @@ class Linker {
     return libraries;
   }
 
+  // returns all aliases including duplicates
+  unordered_map<std::wstring, LibraryAlias*> GetAllAliasesMap();
+
+  // returns all aliases including duplicates
+  vector<LibraryAlias*> GetAllAliases();
+
   // returns all classes including duplicates
   unordered_map<wstring, LibraryClass*> GetAllClassesMap();
 
@@ -989,7 +997,11 @@ class Linker {
     return klass_map[name];
   }
 
+  // check to see if bundle name exists
   bool HasBundleName(const wstring &name);
+
+  // finds the first alias match; note multiple matches may exist
+  LibraryAlias* SearchAliasLibraries(const wstring& name, vector<wstring> uses);
 
   // finds the first class match; note multiple matches may exist
   LibraryClass* SearchClassLibraries(const wstring& name, vector<wstring> uses);

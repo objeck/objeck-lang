@@ -207,6 +207,34 @@ void Linker::ResolveExternalMethodCalls()
   }
 }
 
+unordered_map<std::wstring, LibraryAlias*> Linker::GetAllAliasesMap()
+{
+  if(all_aliases_map.empty()) {
+    vector<LibraryAlias*> aliases = GetAllAliases();
+    for(size_t i = 0; i < aliases.size(); ++i) {
+      LibraryAlias* klass = aliases[i];
+      all_aliases_map[klass->GetName()] = klass;
+    }
+  }
+
+  return all_aliases_map;
+}
+
+vector<LibraryAlias*> Linker::GetAllAliases()
+{
+  if(all_aliases.empty()) {
+    map<const wstring, Library*>::iterator iter;
+    for(iter = libraries.begin(); iter != libraries.end(); ++iter) {
+      vector<LibraryAlias*> aliases = iter->second->GetAliases();
+      for(size_t i = 0; i < aliases.size(); ++i) {
+        all_aliases.push_back(aliases[i]);
+      }
+    }
+  }
+
+  return all_aliases;
+}
+
 unordered_map<std::wstring, LibraryClass*> Linker::GetAllClassesMap()
 {
   if(all_classes_map.empty()) {
@@ -261,6 +289,24 @@ vector<LibraryEnum*> Linker::GetAllEnums()
   }
 
   return all_enums;
+}
+
+LibraryAlias* Linker::SearchAliasLibraries(const wstring& name, vector<wstring> uses)
+{
+  unordered_map<wstring, LibraryAlias*> alias_map = GetAllAliasesMap();
+  LibraryAlias* alias = alias_map[name];
+  if(alias) {
+    return alias;
+  }
+
+  for(size_t i = 0; i < uses.size(); ++i) {
+    alias = alias_map[uses[i] + L"." + name];
+    if(alias) {
+      return alias;
+    }
+  }
+
+  return nullptr;
 }
 
 LibraryClass* Linker::SearchClassLibraries(const wstring& name, vector<wstring> uses)
@@ -613,8 +659,7 @@ void Library::LoadAliases()
     Linker::Debug(msg, -1, 0);
 #endif
 
-    // AddAlias()
-
+    LibraryAlias* lib_alias = nullptr;
     size_t name_end = str_value.find_first_of(L'|');
     if(name_end != wstring::npos) {
       const wstring name = str_value.substr(0, name_end);
@@ -623,18 +668,22 @@ void Library::LoadAliases()
       size_t named_type_start = 0;
       size_t named_type_end = named_types.find_first_of(L';');
 
+      map<const wstring, frontend::Type*> alias_map;
       while(named_type_end != wstring::npos) {
         const wstring named_type = named_types.substr(named_type_start, named_type_end);
         size_t named_index = str_value.find_first_of(L'|');
         if(named_index != wstring::npos) {
           const wstring type_name = named_type.substr(0, named_index);
           const wstring type_id = named_type.substr(named_index + 1);
-          frontend::Type* type = frontend::TypeFactory::Instance()->MakeType(frontend::FUNC_TYPE, type_id);
+          alias_map[type_name] = frontend::TypeFactory::Instance()->MakeType(frontend::FUNC_TYPE, type_id);
         }
         // update
         named_type_start = named_type_end + 1;
         named_type_end = named_types.find_first_of(L';', named_type_start);
       }
+
+      LibraryAlias* lib_alias = new LibraryAlias(name, alias_map);
+      AddAlias(lib_alias);
     }
   }
 }
