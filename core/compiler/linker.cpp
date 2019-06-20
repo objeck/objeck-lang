@@ -608,7 +608,7 @@ void Library::LoadAliases()
   const int num_alias_name = ReadInt();
   for(int i = 0; i < num_alias_name; ++i) {
     const wstring str_value = ReadString();
-    //   alias_names.push_back(str_value);
+    // AddAlias()
 #ifdef _DEBUG
     const wstring& msg = L"alias name='" + str_value + L"'";
     Linker::Debug(msg, -1, 0);

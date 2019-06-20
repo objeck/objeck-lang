@@ -737,6 +737,11 @@ class Library {
     enums.insert(pair<wstring, LibraryEnum*>(e->GetName(), e));
     enum_list.push_back(e);
   }
+
+  void AddAlias(LibraryAlias* a) {
+    aliases.insert(pair<wstring, LibraryAlias*>(a->GetName(), a));
+    aliases_list.push_back(a);
+  }
   
   void AddClass(LibraryClass* cls) {
     if(cls->GetName() == L"System.wstring") {
