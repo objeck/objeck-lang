@@ -1,0 +1,8 @@
+use Collection.Generic;
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		Bar->DoIt();
+	}
+}
+
