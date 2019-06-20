@@ -193,7 +193,9 @@ class LibraryMethod {
   vector<frontend::Type*> declarations;
   backend::IntermediateDeclarations* entries;
   
-  void ParseParameters();  
+  vector<frontend::Type*> ParseParameters(const wstring param_str);
+
+  void ParseDeclarations();
   
   void ParseType(const wstring &type_name);
   
@@ -233,7 +235,7 @@ class LibraryMethod {
     entries = e;
     rtrn_type = nullptr;
 
-    ParseParameters();
+    ParseDeclarations();
     ParseReturn();
   }
 

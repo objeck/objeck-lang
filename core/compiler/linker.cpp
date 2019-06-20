@@ -1412,116 +1412,123 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
   method->AddInstructions(instrs);
 }
 
-void LibraryMethod::ParseParameters()
+void LibraryMethod::ParseDeclarations()
 {
   const wstring method_name = name;
   size_t start = method_name.find_last_of(':');
   if(start != wstring::npos) {
     const wstring parameters = method_name.substr(start + 1);
-    size_t index = 0;
+    declarations = ParseParameters(parameters);
+  }
+}
 
-    while(index < parameters.size()) {
-      frontend::Type* type = nullptr;
-      int dimension = 0;
-      switch(parameters[index]) {
-      case 'l':
-        type = frontend::TypeFactory::Instance()->MakeType(frontend::BOOLEAN_TYPE);
-        index++;
-        break;
+vector<frontend::Type*> LibraryMethod::ParseParameters(const wstring param_str)
+{
+  vector<frontend::Type*> types;
 
-      case 'b':
-        type = frontend::TypeFactory::Instance()->MakeType(frontend::BYTE_TYPE);
-        index++;
-        break;
+  size_t index = 0;
+  while(index < param_str.size()) {
+    frontend::Type* type = nullptr;
+    int dimension = 0;
+    switch(param_str[index]) {
+    case 'l':
+      type = frontend::TypeFactory::Instance()->MakeType(frontend::BOOLEAN_TYPE);
+      index++;
+      break;
 
-      case 'i':
-        type = frontend::TypeFactory::Instance()->MakeType(frontend::INT_TYPE);
-        index++;
-        break;
+    case 'b':
+      type = frontend::TypeFactory::Instance()->MakeType(frontend::BYTE_TYPE);
+      index++;
+      break;
 
-      case 'f':
-        type = frontend::TypeFactory::Instance()->MakeType(frontend::FLOAT_TYPE);
-        index++;
-        break;
+    case 'i':
+      type = frontend::TypeFactory::Instance()->MakeType(frontend::INT_TYPE);
+      index++;
+      break;
 
-      case 'c':
-        type = frontend::TypeFactory::Instance()->MakeType(frontend::CHAR_TYPE);
-        index++;
-        break;
+    case 'f':
+      type = frontend::TypeFactory::Instance()->MakeType(frontend::FLOAT_TYPE);
+      index++;
+      break;
 
-      case 'n':
-        type = frontend::TypeFactory::Instance()->MakeType(frontend::NIL_TYPE);
-        index++;
-        break;
+    case 'c':
+      type = frontend::TypeFactory::Instance()->MakeType(frontend::CHAR_TYPE);
+      index++;
+      break;
 
-      case 'm': {
-        start = index;
-        while(index < parameters.size() && parameters[index] != L'~') {
-          index++;
-        }
+    case 'n':
+      type = frontend::TypeFactory::Instance()->MakeType(frontend::NIL_TYPE);
+      index++;
+      break;
+
+    case 'm': {
+      size_t start = index;
+      while(index < param_str.size() && param_str[index] != L'~') {
         index++;
-        while(index < parameters.size() && parameters[index] != L',') {
+      }
+      index++;
+      while(index < param_str.size() && param_str[index] != L',') {
+        index++;
+      }
+      size_t end = index;
+      const wstring name = param_str.substr(start, end - start);
+      type = frontend::TypeFactory::Instance()->MakeType(frontend::FUNC_TYPE, name);
+      ParseFunctionalType(type);
+    }
+      break;
+
+    case 'o': {
+      index += 2;
+      size_t start = index;
+      while(index < param_str.size() && param_str[index] != L'*' && param_str[index] != L',' && param_str[index] != L'|') {
+        index++;
+      }
+      size_t end = index;
+      const wstring& cls_name = param_str.substr(start, end - start);
+      type = frontend::TypeFactory::Instance()->MakeType(frontend::CLASS_TYPE, cls_name);
+    }
+      break;
+    }
+
+    // set generics
+    if(index < param_str.size() && param_str[index] == L'|') {
+      vector<frontend::Type*> generic_types;
+      do {
+        index++;
+        size_t start = index;
+        while(index < param_str.size() && param_str[index] != L'*' && param_str[index] != L',' && param_str[index] != L'|') {
           index++;
         }
         size_t end = index;
-        const wstring name = parameters.substr(start, end - start);
-        type = frontend::TypeFactory::Instance()->MakeType(frontend::FUNC_TYPE, name);
-        ParseFunctionalType(type);
-      }
-        break;
 
-      case 'o': {
-        index += 2;
-        start = index;
-        while(index < parameters.size() && parameters[index] != L'*' && parameters[index] != L',' && parameters[index] != L'|') {
-          index++;
-        }
-        size_t end = index;
-        const wstring& cls_name = parameters.substr(start, end - start);
-        type = frontend::TypeFactory::Instance()->MakeType(frontend::CLASS_TYPE, cls_name);
-      }
-        break;
-      }
-
-      // set generics
-      if(index < parameters.size() && parameters[index] == L'|') {
-        vector<frontend::Type*> generic_types;
-        do {
-          index++;
-          start = index;
-          while(index < parameters.size() && parameters[index] != L'*' && parameters[index] != L',' && parameters[index] != L'|') {
-            index++;
-          }
-          size_t end = index;
-
-          const wstring generic_name = parameters.substr(start, end - start);
-          generic_types.push_back(frontend::TypeFactory::Instance()->MakeType(frontend::CLASS_TYPE, generic_name));
-        } 
-        while(index < parameters.size() && parameters[index] == L'|');
-
-        if(type) {
-          type->SetGenerics(generic_types);
-        }
-      }
-
-      // set dimension
-      while(index < parameters.size() && parameters[index] == L'*') {
-        dimension++;
-        index++;
-      }
+        const wstring generic_name = param_str.substr(start, end - start);
+        generic_types.push_back(frontend::TypeFactory::Instance()->MakeType(frontend::CLASS_TYPE, generic_name));
+      } while(index < param_str.size() && param_str[index] == L'|');
 
       if(type) {
-        type->SetDimension(dimension);
+        type->SetGenerics(generic_types);
       }
+    }
 
-      // add declaration
-      declarations.push_back(type);
-#ifdef _DEBUG
-      assert(parameters[index] == L',');
-#endif
+    // set dimension
+    while(index < param_str.size() && param_str[index] == L'*') {
+      dimension++;
       index++;
     }
+
+    if(type) {
+      type->SetDimension(dimension);
+    }
+
+    types.push_back(type);
+
+#ifdef _DEBUG
+    assert(param_str[index] == L',');
+#endif
+    index++;
   }
+
+  return types;
 }
 
 void LibraryMethod::ParseType(const wstring &type_name)
