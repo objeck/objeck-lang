@@ -594,6 +594,36 @@ class LibraryClass {
   void AddMethod(LibraryMethod* method);
 };
 
+/****************************
+   * LibraryAlias class
+   ****************************/
+class LibraryAlias {
+  wstring name;
+  map<const wstring, frontend::Type*> aliases;
+
+public:
+  LibraryAlias(const wstring &n, map<const wstring, frontend::Type*> &a) {
+    name = n;
+    aliases = a;
+  }
+
+  ~LibraryAlias() {
+  }
+
+  const wstring GetName() const {
+    return name;
+  }
+
+  frontend::Type* GetType(const wstring& n) {
+    map<const wstring, frontend::Type*>::iterator result = aliases.find(n);
+    if(result != aliases.end()) {
+      return result->second;
+    }
+
+    return nullptr;
+  }
+};
+
 /******************************
  * Library class
  ****************************/
@@ -618,6 +648,8 @@ class Library {
   char* alloc_buffer;
   size_t buffer_size;
   long buffer_pos;
+  map<const wstring, LibraryAlias*> aliases;
+  vector<LibraryAlias*> aliases_list;
   map<const wstring, LibraryEnum*> enums;
   vector<LibraryEnum*> enum_list;
   map<const wstring, LibraryClass*> named_classes;
@@ -732,6 +764,7 @@ class Library {
   
   // loading functions
   void LoadFile(const wstring &file_name);
+  void LoadAliases();
   void LoadEnums();
   void LoadClasses();
   void LoadMethods(LibraryClass* cls, bool is_debug);
@@ -745,6 +778,15 @@ class Library {
 
   ~Library() {
     // clean up
+    map<const wstring, LibraryAlias*>::iterator alias_iter;
+    for(alias_iter = aliases.begin(); alias_iter != aliases.end(); ++alias_iter) {
+      LibraryAlias* tmp = alias_iter->second;
+      delete tmp;
+      tmp = nullptr;
+    }
+    aliases.clear();
+    aliases_list.clear(); 
+
     map<const wstring, LibraryEnum*>::iterator enum_iter;
     for(enum_iter = enums.begin(); enum_iter != enums.end(); ++enum_iter) {
       LibraryEnum* tmp = enum_iter->second;
@@ -816,8 +858,21 @@ class Library {
     return nullptr;
   }
 
+  LibraryAlias* GetAlias(const wstring &n) {
+    map<const wstring, LibraryAlias*>::iterator result = aliases.find(n);
+    if(result != aliases.end()) {
+      return result->second;
+    }
+
+    return nullptr;
+  }
+
   vector<LibraryEnum*> GetEnums() {
     return enum_list;
+  }
+
+  vector<LibraryAlias*> GetAliases() {
+    return aliases_list;
   }
 
   vector<LibraryClass*> GetClasses() {

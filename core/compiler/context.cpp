@@ -137,7 +137,9 @@ bool ContextAnalyzer::Analyze()
   }
   // re-encode method signatures; i.e. fully expand class names
   for(size_t i = 0; i < bundles.size(); ++i) {
-    vector<Class*> classes = bundles[i]->GetClasses();
+    // methods
+    ParsedBundle* bundle = bundles[i];
+    vector<Class*> classes = bundle->GetClasses();
     for(size_t j = 0; j < classes.size(); ++j) {
       Class* klass = classes[j];
       vector<Method*> methods = klass->GetMethods();
@@ -147,6 +149,12 @@ bool ContextAnalyzer::Analyze()
           method->EncodeSignature(klass, program, linker);
         }
       }
+    }
+
+    // aliases
+    vector<Alias*> aliases = bundle->GetAliases();
+    for(size_t j = 0; j < aliases.size(); ++j) {
+      aliases[j]->EncodeSignature(program, linker);
     }
   }
 

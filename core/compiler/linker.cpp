@@ -585,7 +585,7 @@ void Library::LoadFile(const wstring &file_name)
   // read bundle names
   const int num_bundle_name = ReadInt();
   for(int i = 0; i < num_bundle_name; ++i) {
-    const wstring &str_value = ReadString();
+    const wstring str_value = ReadString();
     bundle_names.push_back(str_value);
 #ifdef _DEBUG
     const wstring &msg = L"bundle name='" + str_value + L"'";
@@ -593,9 +593,27 @@ void Library::LoadFile(const wstring &file_name)
 #endif
   }
 
-  // load enums and classes
+  // load aliases, enums and classes
+  LoadAliases();
   LoadEnums();
   LoadClasses();
+}
+
+/****************************
+ * Reads aliases
+ ****************************/
+void Library::LoadAliases()
+{
+  // read alias names
+  const int num_alias_name = ReadInt();
+  for(int i = 0; i < num_alias_name; ++i) {
+    const wstring str_value = ReadString();
+    //   alias_names.push_back(str_value);
+#ifdef _DEBUG
+    const wstring& msg = L"alias name='" + str_value + L"'";
+    Linker::Debug(msg, -1, 0);
+#endif
+  }
 }
 
 /****************************
