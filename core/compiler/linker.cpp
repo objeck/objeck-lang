@@ -1610,9 +1610,11 @@ void LibraryMethod::ParseType(const wstring &type_name)
   rtrn_type->SetDimension(dimension);
 }
 
+// TODO: implement
 void LibraryMethod::ParseFunctionalType(frontend::Type* func_type)
 {
-  throw std::logic_error("The method or operation is not implemented.");
+  const wstring func_name = func_type->GetClassName();
+
 }
 
 

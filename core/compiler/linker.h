@@ -631,7 +631,7 @@ public:
 };
 
 /******************************
- * Library class
+ * String classes
  ****************************/
 struct CharStringInstruction {
   wstring value;
