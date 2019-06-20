@@ -193,10 +193,16 @@ class LibraryMethod {
   vector<frontend::Type*> declarations;
   backend::IntermediateDeclarations* entries;
   
-  void ParseParameters();
+  void ParseParameters();  
   
-  void ParseReturn();
+  void ParseType(const wstring &type_name);
+  
+  void ParseReturn() {
+    ParseType(rtrn_name);
+  }
 
+  void ParseFunctionalType(frontend::Type* func_type);
+  
   wstring ReplaceSubstring(wstring s, const wstring &f, const wstring &r) {
     const size_t index = s.find(f);
     if(index != string::npos) {
@@ -595,8 +601,8 @@ class LibraryClass {
 };
 
 /****************************
-   * LibraryAlias class
-   ****************************/
+ * LibraryAlias class
+ ****************************/
 class LibraryAlias {
   wstring name;
   map<const wstring, frontend::Type*> aliases;
