@@ -948,9 +948,24 @@ void ContextAnalyzer::AnalyzeLambda(Lambda* lambda, const int depth)
       if(lambda_type) {
         lambda_type = TypeFactory::Instance()->MakeType(lambda_type);
       }
+      else {
+        ProcessError(lambda, L"Undefined alias: '" + ReplaceSubstring(lambda_name, L"#", L"->") + L"'");
+      }
     }
     else {
-      ProcessError(lambda, L"Undefined alias: '" + ReplaceSubstring(lambda_name, L"#", L"->") + L"'");
+      LibraryAlias* lib_alias = linker->SearchAliasLibraries(alias_name, program->GetUses(current_class->GetFileName()));
+      if(lib_alias) {
+        lambda_type = lib_alias->GetType(type_name);
+        if(lambda_type) {
+          lambda_type = TypeFactory::Instance()->MakeType(lambda_type);
+        }
+        else {
+          ProcessError(lambda, L"Undefined alias: '" + ReplaceSubstring(lambda_name, L"#", L"->") + L"'");
+        }
+      }
+      else {
+        ProcessError(lambda, L"Undefined alias: '" + ReplaceSubstring(lambda_name, L"#", L"->") + L"'");
+      }
     }
   }
 
