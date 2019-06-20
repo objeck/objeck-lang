@@ -608,11 +608,34 @@ void Library::LoadAliases()
   const int num_alias_name = ReadInt();
   for(int i = 0; i < num_alias_name; ++i) {
     const wstring str_value = ReadString();
-    // AddAlias()
 #ifdef _DEBUG
     const wstring& msg = L"alias name='" + str_value + L"'";
     Linker::Debug(msg, -1, 0);
 #endif
+
+    // AddAlias()
+
+    size_t name_end = str_value.find_first_of(L'|');
+    if(name_end != wstring::npos) {
+      const wstring name = str_value.substr(0, name_end);
+      const wstring named_types = str_value.substr(name_end + 1);
+
+      size_t named_type_start = 0;
+      size_t named_type_end = named_types.find_first_of(L';');
+
+      while(named_type_end != wstring::npos) {
+        const wstring named_type = named_types.substr(named_type_start, named_type_end);
+        size_t named_index = str_value.find_first_of(L'|');
+        if(named_index != wstring::npos) {
+          const wstring type_name = named_type.substr(0, named_index);
+          const wstring type_id = named_type.substr(named_index + 1);
+          frontend::Type* type = frontend::TypeFactory::Instance()->MakeType(frontend::FUNC_TYPE, type_id);
+        }
+        // update
+        named_type_start = named_type_end + 1;
+        named_type_end = named_types.find_first_of(L';', named_type_start);
+      }
+    }
   }
 }
 
