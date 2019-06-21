@@ -256,6 +256,10 @@ namespace frontend {
       return func_params;
     }
 
+    void SetFunctionParameters(const vector<Type*> &p) {
+      func_params = p;
+    }
+
     int GetFunctionParameterCount() {
       if(func_param_count < 0) {
         return (int)func_params.size();
