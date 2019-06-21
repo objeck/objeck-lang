@@ -1463,15 +1463,26 @@ vector<frontend::Type*> LibraryMethod::ParseParameters(const wstring param_str)
 
     case 'm': {
       size_t start = index;
-      while(index < param_str.size() && param_str[index] != L'~') {
+
+      int nested_count = 1;
+      size_t found = param_str.find(L"m.(");
+      while(found != wstring::npos) {
+        nested_count++;
+        found = param_str.find(L"m.(", found + 3);
+      }
+
+      while(nested_count--) {
+        while(index < param_str.size() && param_str[index] != L'~') {
+          index++;
+        }
         index++;
       }
-      index++;
+
       while(index < param_str.size() && param_str[index] != L',') {
         index++;
       }
-      size_t end = index;
-      const wstring name = param_str.substr(start, end - start);
+      
+      const wstring name = param_str.substr(start, index - start);
       type = frontend::TypeFactory::Instance()->MakeType(frontend::FUNC_TYPE, name);
       ParseFunctionalType(type);
     }
@@ -1567,15 +1578,26 @@ void LibraryMethod::ParseType(const wstring &type_name)
 
   case L'm': {
     size_t start = index;
-    while(index < type_name.size() && type_name[index] != L'~') {
+
+    int nested_count = 1;
+    size_t found = type_name.find(L"m.(");
+    while(found != wstring::npos) {
+      nested_count++;
+      found = type_name.find(L"m.(", found + 3);
+    }
+
+    while(nested_count--) {
+      while(index < type_name.size() && type_name[index] != L'~') {
+        index++;
+      }
       index++;
     }
-    index++;
+
     while(index < type_name.size() && type_name[index] != L',') {
       index++;
     }
-    size_t end = index;
-    const wstring name = type_name.substr(start, end - start);
+
+    const wstring name = type_name.substr(start, index - start);
     rtrn_type = frontend::TypeFactory::Instance()->MakeType(frontend::FUNC_TYPE, name);
     ParseFunctionalType(rtrn_type);
   }
@@ -1620,7 +1642,7 @@ void LibraryMethod::ParseType(const wstring &type_name)
 // TODO: implement
 void LibraryMethod::ParseFunctionalType(frontend::Type* func_type)
 {
-  const wstring func_name = func_type->GetClassName();
+  // const wstring func_name = func_type->GetClassName();
 
 }
 
