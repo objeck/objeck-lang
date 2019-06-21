@@ -1,0 +1,21 @@
+lambdas Dwarfs {
+	Sleepy : (IntHolder) ~ IntHolder,
+	Sneezy : (Float) ~ Int,
+	Dopey : ((IntHolder) ~ IntHolder, Float) ~ Int
+}
+
+class Foo {
+#	function : Bar(fun : (IntHolder) ~ IntHolder, f : Float) ~ Int {
+#	function : Bar(fun : (IntHolder) ~ (IntHolder) ~ IntHolder, f : Float) ~ Int {
+	
+#~
+	function : Bar(fun : ((IntHolder) ~ IntHolder) ~ Char, f : Float) ~ Int {
+		return -13;
+	}
+~#
+
+	function : Bar(fun : (Int) ~ Char) ~ Int {
+		return 13;
+	}
+}
+
