@@ -193,16 +193,14 @@ class LibraryMethod {
   vector<frontend::Type*> declarations;
   backend::IntermediateDeclarations* entries;
   
-  vector<frontend::Type*> ParseParameters(const wstring param_str);
-
   void ParseDeclarations();
   
-  void ParseType(const wstring &type_name);
-  
   void ParseReturn() {
-    ParseType(rtrn_name);
+    rtrn_type = ParseType(rtrn_name);
   }
 
+  vector<frontend::Type*> ParseParameters(const wstring param_str);
+  frontend::Type* ParseType(const wstring &type_name);
   void ParseFunctionalType(frontend::Type* func_type);
   
   wstring ReplaceSubstring(wstring s, const wstring &f, const wstring &r) {
