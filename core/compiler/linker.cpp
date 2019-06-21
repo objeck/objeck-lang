@@ -1475,7 +1475,10 @@ vector<frontend::Type*> LibraryMethod::ParseParameters(const wstring param_str)
         while(index < param_str.size() && param_str[index] != L'~') {
           index++;
         }
-        index++;
+
+        if(param_str[index] == L'~') {
+          index++;
+        }
       }
 
       while(index < param_str.size() && param_str[index] != L',') {
@@ -1534,7 +1537,7 @@ vector<frontend::Type*> LibraryMethod::ParseParameters(const wstring param_str)
     types.push_back(type);
 
 #ifdef _DEBUG
-    assert(param_str[index] == L',');
+    assert(index >= param_str.size() || param_str[index] == L',');
 #endif
     index++;
   }
@@ -1590,7 +1593,10 @@ void LibraryMethod::ParseType(const wstring &type_name)
       while(index < type_name.size() && type_name[index] != L'~') {
         index++;
       }
-      index++;
+
+      if(type_name[index] == L'~') {
+        index++;
+      }
     }
 
     while(index < type_name.size() && type_name[index] != L',') {
