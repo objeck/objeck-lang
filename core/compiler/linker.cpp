@@ -1657,17 +1657,22 @@ void LibraryMethod::ParseFunctionalType(frontend::Type* func_type)
   // parse parameters
   size_t start = func_name.find_last_of(L'(');
   size_t middle = func_name.find_first_of(L')');
-  start++;
-  const wstring params_str = func_name.substr(start, middle - start);
-  vector<frontend::Type*> func_params = ParseParameters(params_str);
-  func_type->SetFunctionParameters(func_params);
 
-  // parse return
-  size_t end = func_name.find_first_of(L',', middle);
-  middle += 2;
-  const wstring rtrn_str = func_name.substr(middle, end - middle);
-  frontend::Type* func_rtrn = ParseType(rtrn_str);
-  func_type->SetFunctionReturn(func_rtrn);
+  if(start != wstring::npos && middle != wstring::npos) {
+    start++;
+    const wstring params_str = func_name.substr(start, middle - start);
+    vector<frontend::Type*> func_params = ParseParameters(params_str);
+    func_type->SetFunctionParameters(func_params);
+
+    // parse return
+    size_t end = func_name.find_first_of(L',', middle);
+    if(end != wstring::npos) {
+      middle += 2;
+      const wstring rtrn_str = func_name.substr(middle, end - middle);
+      frontend::Type* func_rtrn = ParseType(rtrn_str);
+      func_type->SetFunctionReturn(func_rtrn);
+    }
+  }
 }
 
 std::wstring LibraryMethod::EncodeUserType(frontend::Type* type)
