@@ -12,12 +12,15 @@ other:
 
 ---
 
--src D:\Code\objeck-lang\programs\test\lambda\debug10.obs -tar lib -dest D:\Code\objeck-lang\programs\test\lambda\hiya.obl
+-src C:\Users\objec\Documents\Code\objeck-lang\programs\test\lambda\debug10.obs -tar lib -dest C:\Users\objec\Documents\Code\objeck-lang\programs\test\lambda\hiya.obl
 
--src D:\Code\objeck-lang\programs\test\lambda\debug11.obs -lib hiya.obl -dest D:\Code\objeck-lang\programs\test\lambda\hiya.obe
+-src C:\Users\objec\Documents\Code\objeck-lang\programs\test\lambda\debug11.obs -lib hiya.obl -dest C:\Users\objec\Documents\Code\objeck-lang\programs\test\lambda\hiya.obe
 
 ---
 
 m.(m.(o.System.IntHolder,)~o.System.IntHolder,)~c,f,
+
+===
+
 m.(i,)~c,
 m.(o.System.IntHolder,o.System.String,)~o.System.FloatHolder

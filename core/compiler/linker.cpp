@@ -1648,8 +1648,13 @@ void LibraryMethod::ParseType(const wstring &type_name)
 // TODO: implement
 void LibraryMethod::ParseFunctionalType(frontend::Type* func_type)
 {
-  // const wstring func_name = func_type->GetClassName();
+  const wstring func_name = func_type->GetClassName();
+  size_t start = func_name.find_last_of(L'(');
+  size_t middle = func_name.find_first_of(L')');
+  size_t end = func_name.find_first_of(L',', middle);
 
+  const wstring foo = func_name.substr(start, end - start + 1);
+  wcerr << foo << endl;
 }
 
 
