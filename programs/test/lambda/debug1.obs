@@ -1,0 +1,37 @@
+
+interface Pizza {
+	function : virtual : Nock(a : Int) ~ Int;
+}
+
+class Test {
+	
+
+	function : Main(args : String[]) ~ Nil {
+		x := 45;
+
+		foo : (IntHolder, Int, Float) ~ String;
+		
+#		f := Foo(Int) ~ Int;
+#		f := (a : Int) ~ Int => x + a * 13; # TODO error handling
+		f := (a : Int) ~ Int => x + a * 13; # TODO error handling
+#		Print(f); 
+
+		
+#		Print((a : Int) ~ Int => a * 13 + x);
+	}
+	
+	function : Print(f : (Int) ~ Int) ~ Nil {
+		f(3)->PrintLine();
+	}
+
+	function : Foo(a : Int) ~ Int {
+		return a * 13;
+	}
+
+	function : Foo(a : Int, b : Int) ~ Int {
+		return a + b;
+	}
+
+	x : static : Int;
+}
+

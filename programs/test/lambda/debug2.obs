@@ -1,0 +1,19 @@
+
+use Collection.Generic;
+
+# TODO: type aliasing
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		values := CompareVector->New()<IntHolder>;
+		values->AddBack(3);
+		values->AddBack(7);
+		values->AddBack(13);
+
+		applied := values->Apply(\(x : IntHolder) ~ IntHolder => x * x)<IntHolder>->Apply(\(x : IntHolder) ~ IntHolder => x - 5)<IntHolder>;
+		each(i : applied) {
+			applied->Get(i)->Get()->PrintLine();
+		};
+	}
+}
+
