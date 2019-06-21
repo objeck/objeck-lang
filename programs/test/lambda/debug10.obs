@@ -13,9 +13,13 @@ class Foo {
 		return -13;
 	}
 ~#
+	
+	function : Bar(fun : (Int) ~ Char) ~ (IntHolder, String) ~ FloatHolder {
+		return Bob(IntHolder, String) ~ FloatHolder;
+	}
 
-	function : Bar(fun : (Int) ~ Char) ~ Int {
-		return 13;
+	function : Bob(a : IntHolder, b : String) ~ FloatHolder {
+		return Nil;
 	}
 }
 
