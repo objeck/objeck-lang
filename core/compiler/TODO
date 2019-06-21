@@ -9,3 +9,15 @@ treeh.h:1892
 
 other:
 1) change enum, const, func references so that they can be bundle specific
+
+---
+
+-src D:\Code\objeck-lang\programs\test\lambda\debug10.obs -tar lib -dest D:\Code\objeck-lang\programs\test\lambda\hiya.obl
+
+-src D:\Code\objeck-lang\programs\test\lambda\debug11.obs -lib hiya.obl -dest D:\Code\objeck-lang\programs\test\lambda\hiya.obe
+
+---
+
+m.(m.(o.System.IntHolder,)~o.System.IntHolder,)~c,f,
+m.(i,)~c,
+m.(o.System.IntHolder,o.System.String,)~o.System.FloatHolder
