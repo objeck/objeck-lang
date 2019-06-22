@@ -441,6 +441,9 @@ wstring Method::EncodeUserType(Type* type) {
       vector<Type*> func_params = type->GetFunctionParameters();
       for(size_t i = 0; i < func_params.size(); ++i) {
         name += EncodeUserType(func_params[i]);
+        if(i + 1 < func_params.size()) {
+          name += L", ";
+        }
       }
       name += L") ~ ";
       name += EncodeUserType(type->GetFunctionReturn());
@@ -497,12 +500,12 @@ void Method::EncodeUserName() {
   user_name += L'(';
 
   vector<Declaration*> declaration_list = declarations->GetDeclarations();
-  for(size_t i = 0; i < declaration_list.size(); ++i) {
+  for (size_t i = 0; i < declaration_list.size(); ++i) {
     SymbolEntry* entry = declaration_list[i]->GetEntry();
-    if(entry) {
+    if (entry) {
       user_name += EncodeUserType(entry->GetType());
-      if(i + 1 < declaration_list.size()) {
-  user_name += L", ";
+      if (i + 1 < declaration_list.size()) {
+        user_name += L", ";
       }
     }
   }

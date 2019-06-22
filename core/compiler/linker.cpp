@@ -420,7 +420,7 @@ LibraryClass::LibraryClass(const wstring& n, const wstring& p, const vector<wstr
 
   for(size_t i = 0; i < generic_name_types.size(); ++i) {
     const wstring generic_name_type = generic_name_types[i];
-    size_t end = generic_name_type.find_first_of(L'|');
+    size_t end = generic_name_type.find(L'|');
     if(end != wstring::npos) {
       const wstring generic_name = generic_name_type.substr(0, end);
       wstring concrete_name;
@@ -640,7 +640,7 @@ void Library::LoadFile(const wstring &file_name)
   }
 
   // load aliases, enums and classes
-  LoadAliases();
+  LoadLambdas();
   LoadEnums();
   LoadClasses();
 }
@@ -648,7 +648,7 @@ void Library::LoadFile(const wstring &file_name)
 /****************************
  * Reads aliases
  ****************************/
-void Library::LoadAliases()
+void Library::LoadLambdas()
 {
   // read alias names
   const int num_alias_name = ReadInt();
@@ -659,26 +659,28 @@ void Library::LoadAliases()
     Linker::Debug(msg, -1, 0);
 #endif
 
-    size_t name_end = str_value.find_first_of(L'|');
+    size_t name_end = str_value.find(L'|');
     if(name_end != wstring::npos) {
       const wstring name = str_value.substr(0, name_end);
       const wstring named_types = str_value.substr(name_end + 1);
 
       size_t named_type_start = 0;
-      size_t named_type_end = named_types.find_first_of(L';');
+      size_t named_type_end = named_types.find(L';');
 
       map<const wstring, frontend::Type*> alias_map;
       while(named_type_end != wstring::npos) {
         const wstring named_type = named_types.substr(named_type_start, named_type_end);
-        size_t named_index = str_value.find_first_of(L'|');
+        size_t named_index = str_value.find(L'|');
         if(named_index != wstring::npos) {
           const wstring type_name = named_type.substr(0, named_index);
           const wstring type_id = named_type.substr(named_index + 1);
-          alias_map[type_name] = frontend::TypeFactory::Instance()->MakeType(frontend::FUNC_TYPE, type_id);
+          frontend::Type* type = frontend::TypeFactory::Instance()->MakeType(frontend::FUNC_TYPE, type_id);
+          ParseFunctionalType(type);
+          alias_map[type_name] = type;
         }
         // update
         named_type_start = named_type_end + 1;
-        named_type_end = named_types.find_first_of(L';', named_type_start);
+        named_type_end = named_types.find(L';', named_type_start);
       }
 
       LibraryAlias* lib_alias = new LibraryAlias(name, alias_map);
@@ -1411,25 +1413,19 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
   method->AddInstructions(instrs);
 }
 
-void LibraryMethod::ParseDeclarations()
-{
-  const wstring method_name = name;
-  size_t start = method_name.find_last_of(':');
-  if(start != wstring::npos) {
-    const wstring parameters = method_name.substr(start + 1);
-    declarations = ParseParameters(parameters);
-  }
-}
-
-vector<frontend::Type*> LibraryMethod::ParseParameters(const wstring param_str)
+/********************************
+ * Routines for parsing library
+ * encode strings
+ ********************************/
+vector<frontend::Type*> LibraryTypeParser::ParseParameters(const wstring param_str)
 {
   vector<frontend::Type*> types;
 
   size_t index = 0;
-  while(index < param_str.size()) {
+  while (index < param_str.size()) {
     frontend::Type* type = nullptr;
     int dimension = 0;
-    switch(param_str[index]) {
+    switch (param_str[index]) {
     case 'l':
       type = frontend::TypeFactory::Instance()->MakeType(frontend::BOOLEAN_TYPE);
       index++;
@@ -1465,71 +1461,71 @@ vector<frontend::Type*> LibraryMethod::ParseParameters(const wstring param_str)
 
       int nested_count = 1;
       size_t found = param_str.find(L"m.(");
-      while(found != wstring::npos) {
+      while (found != wstring::npos) {
         nested_count++;
         found = param_str.find(L"m.(", found + 3);
       }
 
-      while(nested_count--) {
-        while(index < param_str.size() && param_str[index] != L'~') {
+      while (nested_count--) {
+        while (index < param_str.size() && param_str[index] != L'~') {
           index++;
         }
 
-        if(param_str[index] == L'~') {
+        if (param_str[index] == L'~') {
           index++;
         }
       }
 
-      while(index < param_str.size() && param_str[index] != L',') {
+      while (index < param_str.size() && param_str[index] != L',') {
         index++;
       }
-      
+
       const wstring name = param_str.substr(start, index - start);
       type = frontend::TypeFactory::Instance()->MakeType(frontend::FUNC_TYPE, name);
       ParseFunctionalType(type);
     }
-      break;
+              break;
 
     case 'o': {
       index += 2;
       size_t start = index;
-      while(index < param_str.size() && param_str[index] != L'*' && param_str[index] != L',' && param_str[index] != L'|') {
+      while (index < param_str.size() && param_str[index] != L'*' && param_str[index] != L',' && param_str[index] != L'|') {
         index++;
       }
       size_t end = index;
       const wstring& cls_name = param_str.substr(start, end - start);
       type = frontend::TypeFactory::Instance()->MakeType(frontend::CLASS_TYPE, cls_name);
     }
-      break;
+              break;
     }
 
     // set generics
-    if(index < param_str.size() && param_str[index] == L'|') {
+    if (index < param_str.size() && param_str[index] == L'|') {
       vector<frontend::Type*> generic_types;
       do {
         index++;
         size_t start = index;
-        while(index < param_str.size() && param_str[index] != L'*' && param_str[index] != L',' && param_str[index] != L'|') {
+        while (index < param_str.size() && param_str[index] != L'*' && param_str[index] != L',' && param_str[index] != L'|') {
           index++;
         }
         size_t end = index;
 
         const wstring generic_name = param_str.substr(start, end - start);
         generic_types.push_back(frontend::TypeFactory::Instance()->MakeType(frontend::CLASS_TYPE, generic_name));
-      } while(index < param_str.size() && param_str[index] == L'|');
+      } while (index < param_str.size() && param_str[index] == L'|');
 
-      if(type) {
+      if (type) {
         type->SetGenerics(generic_types);
       }
     }
 
     // set dimension
-    while(index < param_str.size() && param_str[index] == L'*') {
+    while (index < param_str.size() && param_str[index] == L'*') {
       dimension++;
       index++;
     }
 
-    if(type) {
+    if (type) {
       type->SetDimension(dimension);
     }
 
@@ -1544,12 +1540,12 @@ vector<frontend::Type*> LibraryMethod::ParseParameters(const wstring param_str)
   return types;
 }
 
-frontend::Type* LibraryMethod::ParseType(const wstring &type_name)
+frontend::Type* LibraryTypeParser::ParseType(const wstring& type_name)
 {
   frontend::Type* type = nullptr;
 
   size_t index = 0;
-  switch(type_name[index]) {
+  switch (type_name[index]) {
   case L'l':
     type = frontend::TypeFactory::Instance()->MakeType(frontend::BOOLEAN_TYPE);
     index++;
@@ -1585,22 +1581,22 @@ frontend::Type* LibraryMethod::ParseType(const wstring &type_name)
 
     int nested_count = 1;
     size_t found = type_name.find(L"m.(");
-    while(found != wstring::npos) {
+    while (found != wstring::npos) {
       nested_count++;
       found = type_name.find(L"m.(", found + 3);
     }
 
-    while(nested_count--) {
-      while(index < type_name.size() && type_name[index] != L'~') {
+    while (nested_count--) {
+      while (index < type_name.size() && type_name[index] != L'~') {
         index++;
       }
 
-      if(type_name[index] == L'~') {
+      if (type_name[index] == L'~') {
         index++;
       }
     }
 
-    while(index < type_name.size() && type_name[index] != L',') {
+    while (index < type_name.size() && type_name[index] != L',') {
       index++;
     }
 
@@ -1608,11 +1604,11 @@ frontend::Type* LibraryMethod::ParseType(const wstring &type_name)
     type = frontend::TypeFactory::Instance()->MakeType(frontend::FUNC_TYPE, name);
     ParseFunctionalType(type);
   }
-    break;
+             break;
 
   case L'o':
     index = 2;
-    while(index < type_name.size() && type_name[index] != L'*' && type_name[index] != L'|') {
+    while (index < type_name.size() && type_name[index] != L'*' && type_name[index] != L'|') {
       index++;
     }
     type = frontend::TypeFactory::Instance()->MakeType(frontend::CLASS_TYPE, type_name.substr(2, index - 2));
@@ -1620,26 +1616,25 @@ frontend::Type* LibraryMethod::ParseType(const wstring &type_name)
   }
 
   // set generics
-  if(index < type_name.size() && type_name[index] == L'|') {
+  if (index < type_name.size() && type_name[index] == L'|') {
     vector<frontend::Type*> generic_types;
     do {
       index++;
       size_t start = index;
-      while(index < type_name.size() && type_name[index] != L'*' && type_name[index] != L',' && type_name[index] != L'|') {
+      while (index < type_name.size() && type_name[index] != L'*' && type_name[index] != L',' && type_name[index] != L'|') {
         index++;
       }
       size_t end = index;
 
       const wstring generic_name = type_name.substr(start, end - start);
       generic_types.push_back(frontend::TypeFactory::Instance()->MakeType(frontend::CLASS_TYPE, generic_name));
-    } 
-    while(index < type_name.size() && type_name[index] == L'|');
+    } while (index < type_name.size() && type_name[index] == L'|');
     type->SetGenerics(generic_types);
   }
 
   // set dimension
   int dimension = 0;
-  while(index < type_name.size() && type_name[index] == L'*') {
+  while (index < type_name.size() && type_name[index] == L'*') {
     dimension++;
     index++;
   }
@@ -1648,14 +1643,13 @@ frontend::Type* LibraryMethod::ParseType(const wstring &type_name)
   return type;
 }
 
-// TODO: testing...
-void LibraryMethod::ParseFunctionalType(frontend::Type* func_type)
+void LibraryTypeParser::ParseFunctionalType(frontend::Type* func_type)
 {
   const wstring func_name = func_type->GetClassName();
 
   // parse parameters
-  size_t start = func_name.find_last_of(L'(');
-  size_t middle = func_name.find_first_of(L')');
+  size_t start = func_name.rfind(L'(');
+  size_t middle = func_name.find(L')');
 
   if(start != wstring::npos && middle != wstring::npos) {
     start++;
@@ -1664,13 +1658,28 @@ void LibraryMethod::ParseFunctionalType(frontend::Type* func_type)
     func_type->SetFunctionParameters(func_params);
 
     // parse return
-    size_t end = func_name.find_first_of(L',', middle);
-    if(end != wstring::npos) {
-      middle += 2;
-      const wstring rtrn_str = func_name.substr(middle, end - middle);
-      frontend::Type* func_rtrn = ParseType(rtrn_str);
-      func_type->SetFunctionReturn(func_rtrn);
+    size_t end = func_name.find(L',', middle);
+    if(end == wstring::npos) {
+      end = func_name.size();
     }
+
+    middle += 2;
+    const wstring rtrn_str = func_name.substr(middle, end - middle);
+    frontend::Type* func_rtrn = ParseType(rtrn_str);
+    func_type->SetFunctionReturn(func_rtrn);
+  }
+}
+
+/******************************
+ * LibraryMethod class
+ ****************************/
+void LibraryMethod::ParseDeclarations()
+{
+  const wstring method_name = name;
+  size_t start = method_name.rfind(':');
+  if(start != wstring::npos) {
+    const wstring parameters = method_name.substr(start + 1);
+    declarations = ParseParameters(parameters);
   }
 }
 
@@ -1729,6 +1738,9 @@ std::wstring LibraryMethod::EncodeUserType(frontend::Type* type)
       vector<frontend::Type*> func_params = type->GetFunctionParameters();
       for(size_t i = 0; i < func_params.size(); ++i) {
         name += EncodeUserType(func_params[i]);
+        if(i + 1 < func_params.size()) {
+          name += L", ";
+        }
       }
       name += L") ~ ";
       name += EncodeUserType(type->GetFunctionReturn());
@@ -1775,7 +1787,7 @@ void LibraryMethod::EncodeUserName()
   }
 
   // name
-  wstring method_name = name.substr(0, name.find_last_of(':'));
+  wstring method_name = name.substr(0, name.rfind(':'));
   user_name += ReplaceSubstring(method_name, L":", L"->");
 
   // private new

@@ -621,7 +621,7 @@ bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, Class* virtual_cl
       // search for implementation method via signature
       Method* impl_method = nullptr;
       LibraryMethod* lib_impl_method = nullptr;
-      const size_t offset = virtual_method_name.find_first_of(':');
+      const size_t offset = virtual_method_name.find(':');
       if(offset != wstring::npos) {
         wstring encoded_name = impl_class->GetName() + virtual_method_name.substr(offset);
         impl_method = impl_class->GetMethod(encoded_name);
@@ -727,7 +727,7 @@ bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, LibraryClass* lib
       // validate that methods have been implemented
       Method* impl_method = nullptr;
       LibraryMethod* lib_impl_method = nullptr;
-      const size_t offset = virtual_method_name.find_first_of(':');
+      const size_t offset = virtual_method_name.find(':');
       if(offset != wstring::npos) {
         wstring encoded_name = impl_class->GetName() + virtual_method_name.substr(offset);
         impl_method = impl_class->GetMethod(encoded_name);
@@ -932,7 +932,7 @@ void ContextAnalyzer::AnalyzeLambda(Lambda* lambda, const int depth)
     const wstring lambda_name = lambda->GetName();
 
     wstring alias_name;
-    const size_t middle = lambda_name.find_first_of(L'#');
+    const size_t middle = lambda_name.find(L'#');
     if(middle != wstring::npos) {
       alias_name = lambda_name.substr(0, middle);
     }
@@ -998,7 +998,7 @@ void ContextAnalyzer::AnalyzeLambda(Lambda* lambda, const int depth)
       current_table = prev_table;
 
       const wstring full_method_name = method->GetName();
-      const size_t offset = full_method_name.find_first_of(':');
+      const size_t offset = full_method_name.find(':');
       if(offset != wstring::npos) {
         const wstring method_name = full_method_name.substr(offset + 1);
 
@@ -2847,11 +2847,13 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryClass* klass, MethodCall* method_
       encoded_name.push_back(L',');
     }
     lib_method = klass->GetMethod(encoded_name);
-
+    
+    /* TODO: remove this...?
     if(lib_method && method_call->GetCallingParameters()->GetExpressions().size() > 0) {
       ProcessError(static_cast<Expression*>(method_call),
                    L"Cannot be called as a method, call as class function");
     }
+    */
   }
 
   method_call->SetOriginalLibraryClass(klass);
@@ -6530,7 +6532,7 @@ void ContextAnalyzer::AnalyzeVariableFunctionParameters(Type* func_type, ParseNo
 void ContextAnalyzer::AddMethodParameter(MethodCall* method_call, SymbolEntry* entry, int depth)
 {
   const wstring& entry_name = entry->GetName();
-  const size_t start = entry_name.find_last_of(':');
+  const size_t start = entry_name.rfind(':');
   if(start != wstring::npos) {
     const wstring& param_name = entry_name.substr(start + 1);
     Variable * variable = TreeFactory::Instance()->MakeVariable(static_cast<Expression*>(method_call)->GetFileName(),

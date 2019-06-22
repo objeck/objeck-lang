@@ -1,17 +1,17 @@
 lambdas Dwarfs {
-	Sleepy : (IntHolder) ~ IntHolder,
-	Sneezy : (Float) ~ Int,
-	Dopey : ((IntHolder) ~ IntHolder, Float) ~ Int
+	Sleepy : (Int, Float) ~ Float
 }
 
-class Foo {
-#	function : Bar(fun : (IntHolder) ~ IntHolder, f : Float) ~ Int {
+class Hi {
+	function : Ya(f : (Int, Float) ~ Int) ~ Float {
+		return f(5, 13.5);
+	}
+
 #	function : Bar(fun : (IntHolder) ~ (IntHolder) ~ IntHolder, f : Float) ~ Int {
 	
 #~	function : Bar(fun : ((IntHolder) ~ IntHolder) ~ Char, f : Float) ~ Int {
 		return -13;
 	}
-~#
 	
 	function : Bar(fun : (Int) ~ Char) ~ (IntHolder, String) ~ FloatHolder {
 		return Bob(IntHolder, String) ~ FloatHolder;
@@ -20,5 +20,6 @@ class Foo {
 	function : Bob(a : IntHolder, b : String) ~ FloatHolder {
 		return Nil;
 	}
+~#	
 }
 
