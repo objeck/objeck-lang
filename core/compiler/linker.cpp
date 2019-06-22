@@ -1459,18 +1459,18 @@ vector<frontend::Type*> LibraryTypeParser::ParseParameters(const wstring param_s
     case 'm': {
       size_t start = index;
 
+      const wstring prefix = L"m.(";
       int nested_count = 1;
-      size_t found = param_str.find(L"m.(");
+      size_t found = param_str.find(prefix);
       while (found != wstring::npos) {
         nested_count++;
-        found = param_str.find(L"m.(", found + 3);
+        found = param_str.find(prefix, found + prefix.size());
       }
 
       while (nested_count--) {
         while (index < param_str.size() && param_str[index] != L'~') {
           index++;
         }
-
         if (param_str[index] == L'~') {
           index++;
         }
@@ -1484,7 +1484,7 @@ vector<frontend::Type*> LibraryTypeParser::ParseParameters(const wstring param_s
       type = frontend::TypeFactory::Instance()->MakeType(frontend::FUNC_TYPE, name);
       ParseFunctionalType(type);
     }
-              break;
+      break;
 
     case 'o': {
       index += 2;
@@ -1580,17 +1580,17 @@ frontend::Type* LibraryTypeParser::ParseType(const wstring& type_name)
     size_t start = index;
 
     int nested_count = 1;
-    size_t found = type_name.find(L"m.(");
+    const wstring prefix = L"m.(";
+    size_t found = type_name.find(prefix);
     while (found != wstring::npos) {
       nested_count++;
-      found = type_name.find(L"m.(", found + 3);
+      found = type_name.find(prefix, found + prefix.size());
     }
 
     while (nested_count--) {
       while (index < type_name.size() && type_name[index] != L'~') {
         index++;
       }
-
       if (type_name[index] == L'~') {
         index++;
       }

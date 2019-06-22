@@ -3,13 +3,13 @@ lambdas Dwarfs {
 }
 
 class Hi {
-	function : Ya(f : (Int, Float) ~ Int) ~ Float {
+	function : Ya(f : (Int, Float) ~ Float) ~ Float {
 		return f(5, 13.5);
 	}
-
-#	function : Bar(fun : (IntHolder) ~ (IntHolder) ~ IntHolder, f : Float) ~ Int {
 	
-#~	function : Bar(fun : ((IntHolder) ~ IntHolder) ~ Char, f : Float) ~ Int {
+#	function : Bar(fun : (IntHolder) ~ (IntHolder) ~ IntHolder, f : Float) ~ Int {
+#~	
+	function : Bar(fun : ((IntHolder) ~ IntHolder) ~ Char, f : Float) ~ Int {
 		return -13;
 	}
 	
