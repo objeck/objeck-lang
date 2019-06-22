@@ -659,7 +659,6 @@ void Library::LoadAliases()
     Linker::Debug(msg, -1, 0);
 #endif
 
-    LibraryAlias* lib_alias = nullptr;
     size_t name_end = str_value.find_first_of(L'|');
     if(name_end != wstring::npos) {
       const wstring name = str_value.substr(0, name_end);
