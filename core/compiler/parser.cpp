@@ -2341,7 +2341,7 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       NextToken();
     }
     else {
-      ProcessError(L"Invalid statement looking for ';'", TOKEN_SEMI_COLON);
+      ProcessError(L"Invalid statement", TOKEN_SEMI_COLON);
     }
   }
 

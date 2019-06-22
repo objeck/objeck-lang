@@ -1,6 +1,6 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		func := \Dwarfs->Sleepy : (x, y) => x * y;
+		func := Dwarfs->Sleepy : (x, y) => 1 - (x * y + y);
 		Hi->Ya(func)->PrintLine();
 	}
 }
