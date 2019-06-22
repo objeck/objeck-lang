@@ -27,7 +27,7 @@ Notable features:
   * Type inference
   * First class functions
   * Lambda expressions
-* Full native platform support
+* Supported platforms (with JIT support)
   * Windows, macOS and Linux (64-bit)
   * Windows and Linux (32-bit)  
 * Native support for threads, sockets, files, date/time, etc.
@@ -41,7 +41,7 @@ Notable features:
   * Data structure querying
   * 2D Gaming
 * Garbage collection
-* JIT support (IA-32 and AMD64)
+* JIT support for all supported platforms
 
 Work in progress:
 * Lambda expressions (v5.1)
