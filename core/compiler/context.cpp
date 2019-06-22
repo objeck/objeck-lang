@@ -1004,7 +1004,7 @@ void ContextAnalyzer::AnalyzeLambda(Lambda* lambda, const int depth)
       capture_method = nullptr;
 
       capture_lambda = nullptr;
-
+      
       const wstring full_method_name = method->GetName();
       const size_t offset = full_method_name.find(':');
       if(offset != wstring::npos) {
@@ -1018,6 +1018,15 @@ void ContextAnalyzer::AnalyzeLambda(Lambda* lambda, const int depth)
         AnalyzeMethodCall(method_call, depth + 1);
         lambda->SetMethodCall(method_call);
         lambda->SetTypes(method_call->GetEvalType());
+
+        // copy closures
+        vector<pair<SymbolEntry*, SymbolEntry*> > copies = lambda->GetCopies();
+        for(size_t i = 0; i < copies.size(); ++i) {
+          pair<SymbolEntry*, SymbolEntry*> copy = copies[i];
+          Declaration* dclr = TreeFactory::Instance()->MakeDeclaration(method->GetFileName(), method->GetLineNumber(),
+                                                                       copy.first, static_cast<Declaration*>(nullptr));
+          method->GetDeclarations()->AddDeclaration(dclr);
+        }
       }
       else {
         wcerr << L"internal error" << endl;
