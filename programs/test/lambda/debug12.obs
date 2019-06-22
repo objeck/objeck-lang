@@ -1,7 +1,9 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		x := 13;
+		y := 1001;
 		f := \(Int) ~ Float : (y) => x - y * x;
 		f(7)->PrintLine();
+		(x - y)->PrintLine();
 	}
 }
