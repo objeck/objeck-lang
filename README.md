@@ -18,13 +18,14 @@ class Hello {
 See more on [Rosetta Code](http://rosettacode.org/wiki/Category:Objeck) and checkout the following [programming tasks](programs/rc).
 
 Notable features:
-* Object-oriented and functional
+* Object-oriented and functional features
   * Classes, interfaces and higher-order functions
   * Generics with type boxing
   * Anonymous classes 
   * Reflection 
   * Object serialization 
   * Type inference
+  * First class functions
   * Lambda expressions
 * Full native platform support
   * Windows, macOS and Linux (64-bit)
