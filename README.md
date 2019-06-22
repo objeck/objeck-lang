@@ -18,7 +18,7 @@ class Hello {
 See more on [Rosetta Code](http://rosettacode.org/wiki/Category:Objeck) and checkout the following [programming tasks](programs/rc).
 
 Notable features:
-* Object-oriented and functional features
+* Object-oriented with functional features
   * Classes, interfaces and higher-order functions
   * Generics with type boxing
   * Anonymous classes 
