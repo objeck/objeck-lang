@@ -25,6 +25,7 @@ Notable features:
   * Reflection 
   * Object serialization 
   * Type inference
+  * Lambda expressions
 * Full native platform support
   * Windows, macOS and Linux (64-bit)
   * Windows and Linux (32-bit)  
