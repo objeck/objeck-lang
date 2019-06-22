@@ -1023,9 +1023,9 @@ void ContextAnalyzer::AnalyzeLambda(Lambda* lambda, const int depth)
         vector<pair<SymbolEntry*, SymbolEntry*> > copies = lambda->GetCopies();
         for(size_t i = 0; i < copies.size(); ++i) {
           pair<SymbolEntry*, SymbolEntry*> copy = copies[i];
-          Declaration* dclr = TreeFactory::Instance()->MakeDeclaration(method->GetFileName(), method->GetLineNumber(),
-                                                                       copy.first, static_cast<Declaration*>(nullptr));
-          method->GetDeclarations()->AddDeclaration(dclr);
+          Declaration* copy_dclr = TreeFactory::Instance()->MakeDeclaration(method->GetFileName(), method->GetLineNumber(),
+                                                                            copy.first, static_cast<Declaration*>(nullptr));
+          method->GetDeclarations()->AddDeclaration(copy_dclr);
         }
       }
       else {
