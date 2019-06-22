@@ -219,8 +219,11 @@ class ContextAnalyzer {
   Linker* linker;
   Class* current_class;
   Method* current_method;
+  Method* capture_method;
   SymbolTable* current_table;
+  SymbolTable* capture_table;
   SymbolTableManager* symbol_table;
+  Lambda* capture_lambda;
   map<int, wstring> errors;
   vector<wstring> alt_error_method_names;
   map<const wstring, EntryType> type_map;
@@ -575,6 +578,10 @@ class ContextAnalyzer {
     holder_types.insert(L"System.CharHolder");
     holder_types.insert(L"System.IntHolder");
     holder_types.insert(L"System.FloatHolder");
+
+    // lambda closure variables
+    capture_method = nullptr;
+    capture_table = nullptr;
   }
 
   ~ContextAnalyzer() {

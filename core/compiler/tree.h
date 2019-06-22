@@ -2637,6 +2637,7 @@ namespace frontend {
     Method* method;
     ExpressionList* parameters;
     MethodCall* method_call;
+    vector<pair<SymbolEntry*, SymbolEntry*> > copies;
     
   public:
     Lambda(const wstring& file_name, const int line_num, Type* t, const wstring &n, Method* m, ExpressionList* p) : Expression(file_name, line_num) {
@@ -2676,6 +2677,14 @@ namespace frontend {
 
     void SetMethodCall(MethodCall* c) {
       method_call = c;
+    }
+
+    void AddCopy(pair<SymbolEntry*, SymbolEntry*> &copy) {
+      copies.push_back(copy);
+    }
+
+    vector<pair<SymbolEntry*, SymbolEntry*> > GetCopies() {
+      return copies;
     }
   };
 

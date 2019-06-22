@@ -191,6 +191,7 @@ class IntermediateEmitter {
   IntermediateEnum* EmitEnum(Enum* eenum);
   IntermediateClass* EmitClass(Class* klass);
   IntermediateMethod* EmitMethod(Method* method);
+  void EmitLambda(Lambda* lambda);
   void EmitStatement(Statement* statement);
   void EmitIf(If* if_stmt);
   void EmitIf(If* if_stmt, int next_label, int end_label);
