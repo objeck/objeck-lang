@@ -758,6 +758,27 @@ IntermediateMethod* IntermediateEmitter::EmitMethod(Method* method)
 }
 
 /****************************
+ * Translates a lambda expression
+ ****************************/
+void IntermediateEmitter::EmitLambda(Lambda* lambda)
+{
+  // copy closures
+  vector<pair<SymbolEntry*, SymbolEntry*> > copies = lambda->GetCopies();
+  for(size_t i = 0; i < copies.size(); ++i) {
+    pair<SymbolEntry*, SymbolEntry*> copy = copies[i];
+
+    /*
+    // TODO: type conversion...
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, copy.first->GetId(), LOCL));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, STOR_INT_VAR, copy.second->GetId(), LOCL));
+    */
+  }
+
+  // emit lambda function
+  EmitMethodCallExpression(lambda->GetMethodCall());
+}
+
+/****************************
  * Translates a statement
  ****************************/
 void IntermediateEmitter::EmitStatement(Statement* statement)
@@ -2430,7 +2451,7 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
   
   switch(expression->GetExpressionType()) {
   case LAMBDA_EXPR:
-    EmitMethodCallExpression(static_cast<Lambda*>(expression)->GetMethodCall());
+    EmitLambda(static_cast<Lambda*>(expression));
     break;
 
   case COND_EXPR:
