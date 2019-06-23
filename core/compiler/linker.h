@@ -612,10 +612,10 @@ class LibraryClass {
  ****************************/
 class LibraryAlias {
   wstring name;
-  map<const wstring, frontend::Type*> aliases;
+  map<wstring, frontend::Type*> aliases;
 
 public:
-  LibraryAlias(const wstring &n, map<const wstring, frontend::Type*> &a) {
+  LibraryAlias(const wstring &n, map<wstring, frontend::Type*> &a) {
     name = n;
     aliases = a;
   }
@@ -628,7 +628,7 @@ public:
   }
 
   frontend::Type* GetType(const wstring& n) {
-    map<const wstring, frontend::Type*>::iterator result = aliases.find(n);
+    map<wstring, frontend::Type*>::iterator result = aliases.find(n);
     if(result != aliases.end()) {
       return result->second;
     }
