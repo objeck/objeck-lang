@@ -1106,11 +1106,20 @@ bool ContextAnalyzer::AnalyzeReturnPaths(Select* select_stmt, const int depth)
 {
   map<ExpressionList*, StatementList*> statements = select_stmt->GetStatements();
   map<int, StatementList*> label_statements;
-  for(map<ExpressionList*, StatementList*>::iterator iter = statements.begin();
-      iter != statements.end(); ++iter) {
+  for(map<ExpressionList*, StatementList*>::iterator iter = statements.begin(); iter != statements.end(); ++iter) {
     if(!AnalyzeReturnPaths(iter->second, depth + 1)) {
       return false;
     }
+  }
+
+  StatementList* other_stmts = select_stmt->GetOther();
+  if(other_stmts) {
+    if(!AnalyzeReturnPaths(other_stmts, depth + 1)) {
+      return false;
+    }
+  }
+  else {
+    return false;
   }
 
   return true;
