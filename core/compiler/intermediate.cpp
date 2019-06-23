@@ -762,40 +762,6 @@ IntermediateMethod* IntermediateEmitter::EmitMethod(Method* method)
  ****************************/
 void IntermediateEmitter::EmitLambda(Lambda* lambda)
 {
-  /*
-  // copy closures
-  vector<pair<SymbolEntry*, SymbolEntry*> > copies = lambda->GetCopies();
-  for(size_t i = 0; i < copies.size(); ++i) {
-    SymbolEntry* closure_entry = copies[i].second;
-    switch(closure_entry->GetType()->GetType()) {
-    case frontend::BOOLEAN_TYPE:
-    case frontend::BYTE_TYPE:
-    case frontend::CHAR_TYPE:
-    case frontend::INT_TYPE:
-    case frontend::CLASS_TYPE:
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, closure_entry->GetId(), LOCL));
-      break;
-
-    case frontend::FLOAT_TYPE:
-      if(closure_entry->GetType()->GetDimension() > 0) {
-        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, closure_entry->GetId(), LOCL));
-      }
-      else {
-        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FLOAT_VAR, closure_entry->GetId(), LOCL));
-      }
-      break;
-
-    case frontend::FUNC_TYPE:
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FUNC_VAR, closure_entry->GetId(), LOCL));
-      break;
-
-    default:
-      break;
-    }
-  }
-  */
-  
-  // emit lambda function
   EmitMethodCallExpression(lambda->GetMethodCall());
 }
 
