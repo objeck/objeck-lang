@@ -952,7 +952,7 @@ Lambda* Parser::ParseLambda(int depth) {
   }
   NextToken();
 
-  // set statement
+  // parse statement
   StatementList * statements = TreeFactory::Instance()->MakeStatementList();
   if(Match(TOKEN_OPEN_BRACE)) {
     NextToken();
@@ -972,7 +972,7 @@ Lambda* Parser::ParseLambda(int depth) {
     }
     NextToken();
   }
-  // set expression
+  // parse expression
   else {
     Expression* expression = ParseExpression(depth + 1);
     Statement* rtrn_stmt = TreeFactory::Instance()->MakeReturn(file_name, line_num, expression);
