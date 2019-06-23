@@ -3591,6 +3591,9 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
   AnalyzeExpression(expression, depth + 1);
   if(expression->GetExpressionType() == LAMBDA_EXPR) {
     expression = static_cast<Lambda*>(expression)->GetMethodCall();
+    if(!expression) {
+      return;
+    }
   }
 
   while(expression->GetMethodCall()) {
