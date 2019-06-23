@@ -952,11 +952,32 @@ Lambda* Parser::ParseLambda(int depth) {
   }
   NextToken();
 
+  // set statement
+  StatementList * statements = TreeFactory::Instance()->MakeStatementList();
+  if(Match(TOKEN_OPEN_BRACE)) {
+    NextToken();
+
+    Statement* statement = ParseStatement(depth + 1);
+    if(!statement) {
+      return nullptr;
+    }
+
+    if(statement->GetStatementType() != IF_STMT && statement->GetStatementType() != SELECT_STMT) {
+      ProcessError(L"Expected 'if' or 'select' statement", TOKEN_SEMI_COLON);
+    }
+    statements->AddStatement(statement);
+
+    if(!Match(TOKEN_CLOSED_BRACE)) {
+      ProcessError(L"Expected '}'", TOKEN_CLOSED_BRACE);
+    }
+    NextToken();
+  }
   // set expression
-  Expression* expression = ParseExpression(depth + 1);
-  Statement* rtrn_stmt = TreeFactory::Instance()->MakeReturn(file_name, line_num, expression);
-  StatementList* statements = TreeFactory::Instance()->MakeStatementList();
-  statements->AddStatement(rtrn_stmt);
+  else {
+    Expression* expression = ParseExpression(depth + 1);
+    Statement* rtrn_stmt = TreeFactory::Instance()->MakeReturn(file_name, line_num, expression);
+    statements->AddStatement(rtrn_stmt);
+  }
   method->SetStatements(statements);
 
   symbol_table->PreviousParseScope(method->GetParsedName());
