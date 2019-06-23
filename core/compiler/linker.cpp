@@ -667,7 +667,7 @@ void Library::LoadLambdas()
       size_t named_type_start = 0;
       size_t named_type_end = named_types.find(L';');
 
-      map<const wstring, frontend::Type*> alias_map;
+      map<wstring, frontend::Type*> alias_map;
       while(named_type_end != wstring::npos) {
         const wstring named_type = named_types.substr(named_type_start, named_type_end);
         size_t named_index = str_value.find(L'|');
