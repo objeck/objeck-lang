@@ -791,37 +791,6 @@ void Class::AssociateMethod(Method* method)
 }
 
 /****************************
- * class Expression
- ****************************/
-Assignment::Assignment(const wstring& file_name, const int line_num, Assignment* c, Variable* v, Expression* e) : Statement(file_name, line_num)
-{
-  child = c;
-  variable = v;
-  expression = e;
-
-  if(expression->GetExpressionType() == LAMBDA_EXPR) {
-    lambda = static_cast<Lambda*>(expression)->GetMethodCall();
-  }
-  else {
-    lambda = nullptr;
-  }
-}
-
-Assignment::Assignment(const wstring& file_name, const int line_num, Variable* v, Expression* e) : Statement(file_name, line_num)
-{
-  child = nullptr;
-  variable = v;
-  expression = e;
-  
-  if(expression->GetExpressionType() == LAMBDA_EXPR) {
-    lambda = static_cast<Lambda*>(expression)->GetMethodCall();
-  }
-  else {
-    lambda = nullptr;
-  }
-}
-
-/****************************
  * class Lambda
  ****************************/
 wstring Alias::EncodeType(Type* type, ParsedProgram* program, Linker* linker)

@@ -1652,10 +1652,18 @@ namespace frontend {
     Assignment* child;
     Variable* variable;
     Expression* expression;
-    Expression* lambda;
+    
+    Assignment(const wstring& file_name, const int line_num, Assignment* c, Variable* v, Expression* e) : Statement(file_name, line_num) {
+      child = c;
+      variable = v;
+      expression = e;
+    }
 
-    Assignment(const wstring& file_name, const int line_num, Assignment* c, Variable* v, Expression* e);
-    Assignment(const wstring& file_name, const int line_num, Variable* v, Expression* e);
+    Assignment(const wstring& file_name, const int line_num, Variable* v, Expression* e) : Statement(file_name, line_num) {
+      child = nullptr;
+      variable = v;
+      expression = e;
+    }
 
     virtual ~Assignment() {
     }
@@ -1670,14 +1678,6 @@ namespace frontend {
     }
 
     Expression* GetExpression() {
-      if(lambda) {
-        return lambda;
-      }
-
-      return expression;
-    }
-
-    Expression* GetExpressionOrLambda() {
       return expression;
     }
 

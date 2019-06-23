@@ -3618,8 +3618,12 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
   AnalyzeVariable(variable, depth + 1);
 
   // get last expression for assignment
-  Expression* expression = assignment->GetExpressionOrLambda();
+  Expression* expression = assignment->GetExpression();
   AnalyzeExpression(expression, depth + 1);
+  if(expression->GetExpressionType() == LAMBDA_EXPR) {
+    expression = static_cast<Lambda*>(expression)->GetMethodCall();
+  }
+
   while(expression->GetMethodCall()) {
     AnalyzeExpressionMethodCall(expression, depth + 1);
     expression = expression->GetMethodCall();
