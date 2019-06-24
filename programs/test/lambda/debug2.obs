@@ -10,11 +10,16 @@ class Test {
 		values->AddBack(7);
 		values->AddBack(13);
 
-		f := \(IntHolder) ~ IntHolder : (x) => x * x;
-		applied := values->Apply(f)<IntHolder>; # ->Apply(\(IntHolder) ~ IntHolder : (x) => x - 5)<IntHolder>;
+#		f := \(IntHolder) ~ IntHolder : (x) => x * x;
+		f := Foo(IntHolder) ~ IntHolder;
+		applied := values->Apply(\(IntHolder) ~ IntHolder : (x) => x - 5)<IntHolder>;
 		each(i : applied) {
 			applied->Get(i)->Get()->PrintLine();
 		};
+	}
+
+	function : Foo(h : IntHolder) ~ IntHolder {
+		return h + h;
 	}
 }
 
