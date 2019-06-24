@@ -1787,6 +1787,7 @@ bundle System {
 		@param func function
 		~#
 		New(func : (T) ~ T) {
+			Parent();
 			@func := func;
 		}
 
@@ -1818,6 +1819,7 @@ bundle System {
 		@param func function
 		~#
 		New(func : (X) ~ R) {
+			Parent();
 			@func := func;
 		}
 
@@ -1849,6 +1851,7 @@ bundle System {
 		@param func function
 		~#
 		New(func : (X, Y) ~ R) {
+			Parent();
 			@func := func;
 		}
 		
@@ -1880,6 +1883,7 @@ bundle System {
 		@param func function
 		~#
 		New(func : (X, Y, Z) ~ R) {
+			Parent();
 			@func := func;
 		}
 		
