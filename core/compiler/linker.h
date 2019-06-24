@@ -172,21 +172,10 @@ class LibraryInstr {
   }
 };
 
-/********************************
- * Routines for parsing library 
- * encode strings
- ********************************/
-class LibraryTypeParser {
- protected:
-  vector<frontend::Type*> ParseParameters(const wstring param_str);
-  frontend::Type* ParseType(const wstring& type_name);
-  void ParseFunctionalType(frontend::Type* func_type);
-};
-
 /******************************
  * LibraryMethod class
  ****************************/
-class LibraryMethod : public LibraryTypeParser {
+class LibraryMethod {
   int id;
   wstring name;
   wstring user_name;
@@ -207,7 +196,7 @@ class LibraryMethod : public LibraryTypeParser {
   void ParseDeclarations();
   
   void ParseReturn() {
-    rtrn_type = ParseType(rtrn_name);
+    rtrn_type = frontend::TypeParser::ParseType(rtrn_name);
   }
 
   wstring ReplaceSubstring(wstring s, const wstring &f, const wstring &r) {
@@ -655,7 +644,7 @@ struct FloatStringInstruction {
   vector<LibraryInstr*> instrs;
 };
 
-class Library : public LibraryTypeParser {
+class Library {
   wstring lib_path;
   char* buffer;
   char* alloc_buffer;
