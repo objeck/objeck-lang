@@ -2983,6 +2983,11 @@ void ContextAnalyzer::AnalyzeVariableFunctionCall(MethodCall* method_call, const
   if(entry && entry->GetType() && entry->GetType()->GetType() == FUNC_TYPE) {
     // generate parameter strings
     Type* type = entry->GetType();
+    if(!type->GetFunctionReturn()) {
+      type = TypeParser::ParseType(type->GetClassName());
+      entry->SetType(type);
+    }
+
     wstring dyn_func_params_str = type->GetClassName();
     if(dyn_func_params_str.size() == 0) {
       const vector<Type*> func_params = type->GetFunctionParameters();
@@ -5529,9 +5534,13 @@ void ContextAnalyzer::AnalyzeDeclaration(Declaration * declaration, Class* klass
     else if(entry->GetType() && entry->GetType()->GetType() == FUNC_TYPE) {
       // resolve function name
       Type* type = entry->GetType();
+      if(!type->GetFunctionReturn()) {
+        type = TypeParser::ParseType(type->GetClassName());
+        entry->SetType(type);
+      }
+
       AnalyzeVariableFunctionParameters(type, entry, klass);
-      const wstring encoded_name = L"m." + EncodeFunctionType(type->GetFunctionParameters(),
-                                                              type->GetFunctionReturn());
+      const wstring encoded_name = L"m." + EncodeFunctionType(type->GetFunctionParameters(), type->GetFunctionReturn());
 #ifdef _DEBUG
       GetLogger() << L"Encoded function declaration: |" << encoded_name << L"|" << endl;
 #endif
@@ -6590,6 +6599,10 @@ Type* ContextAnalyzer::RelsolveGenericType(Type* candidate_type, MethodCall* met
   const bool has_generics = (klass && klass->HasGenerics()) || (lib_klass && lib_klass->HasGenerics());
   if(has_generics) {
     if(candidate_type->GetType() == FUNC_TYPE) {
+      if(!candidate_type->GetFunctionReturn()) {
+        candidate_type = TypeParser::ParseType(candidate_type->GetClassName());
+      }
+
       if(klass) {
         Type* concrete_rtrn = RelsolveGenericType(candidate_type->GetFunctionReturn(), method_call, klass, lib_klass, false);
         vector<Type*> concrete_params;

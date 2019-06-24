@@ -20,7 +20,6 @@ class Test {
 
 		e1 := c->Get(1)->Get()<IntHolder>;
 		e1(IntHolder->New(10))->Get()->PrintLine();
-		
 	}
 
 	function : DoInt(i : IntHolder) ~ IntHolder {
