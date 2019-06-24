@@ -1777,16 +1777,16 @@ bundle System {
 	}
 	
 	#~
-	Holds a function of in/out type T
+	Holds a function of in/out type R
 	~#
-	class FuncHolder <T> {
-		@func : (T) ~ T;
+	class FuncHolder <R> {
+		@func : (R) ~ R;
 
 		#~
 		Constructor
 		@param func function
 		~#
-		New(func : (T) ~ T) {
+		New(func : (R) ~ R) {
 			Parent();
 			@func := func;
 		}
@@ -1795,7 +1795,7 @@ bundle System {
 		Gets function
 		@return function
 		~#
-		method : public : Get() ~ (T) ~ T {
+		method : public : Get() ~ (R) ~ R {
 			return @func;
 		}
 
@@ -1803,7 +1803,7 @@ bundle System {
 		Sets function
 		@param func function
 		~#
-		method : public : Set(func : (T) ~ T) ~ Nil {
+		method : public : Set(func : (R) ~ R) ~ Nil {
 			@func := func;
 		}
 	}
