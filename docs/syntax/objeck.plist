@@ -11,8 +11,9 @@
 	<key>BBLMKeywordList</key>
 	<array>
 		<string>critical</string>
-      <string>use</string>
-	   <string>leaving</string>
+		<string>use</string>
+		<string>leaving</string>
+		<string>lambdas</string>
 		<string>and</string>
 		<string>or</string>
 		<string>xor</string>
