@@ -1776,6 +1776,130 @@ bundle System {
 		}
 	}
 	
+	#~
+	Holds a function of in/out type T
+	~#
+	class FuncHolder <T> {
+		@func : (T) ~ T;
+
+		#~
+		Constructor
+		@param func function
+		~#
+		New(func : (T) ~ T) {
+			@func := func;
+		}
+
+		#~
+		Gets function
+		@return function
+		~#
+		method : public : Get() ~ (T) ~ T {
+			return @func;
+		}
+
+		#~
+		Sets function
+		@param func function
+		~#
+		method : public : Set(func : (T) ~ T) ~ Nil {
+			@func := func;
+		}
+	}
+
+	#~
+	Holds a function of in type X and out type R
+	~#
+	class Func2Holder <X, R> {
+		@func : (X) ~ R;
+
+		#~
+		Constructor
+		@param func function
+		~#
+		New(func : (X) ~ R) {
+			@func := func;
+		}
+
+		#~
+		Gets function
+		@return function
+		~#
+		method : public : Get() ~ (X) ~ R {
+			return @func;
+		}
+
+		#~
+		Sets function
+		@param func function
+		~#
+		method : public : Set(func : (X) ~ R) ~ Nil {
+			@func := func;
+		}
+	}
+
+	#~
+	Holds a function of in types X, Y and out type R
+	~#
+	class Func3Holder <X, Y, R> {
+		@func : (X, Y) ~ R;
+
+		#~
+		Constructor
+		@param func function
+		~#
+		New(func : (X, Y) ~ R) {
+			@func := func;
+		}
+		
+		#~
+		Gets function
+		@return function
+		~#
+		method : public : Get() ~ (X, Y) ~ R {
+			return @func;
+		}
+
+		#~
+		Sets function
+		@param func function
+		~#
+		method : public : Set(func : (X, Y) ~ R) ~ Nil {
+			@func := func;
+		}
+	}
+
+	#~
+	Holds a function of in types X, Y, Z and out type R
+	~#
+	class Func4Holder <X, Y, Z, R> {
+		@func : (X, Y, Z) ~ R;
+
+		#~
+		Constructor
+		@param func function
+		~#
+		New(func : (X, Y, Z) ~ R) {
+			@func := func;
+		}
+		
+		#~
+		Gets function
+		@return function
+		~#
+		method : public : Get() ~ (X, Y, Z) ~ R {
+			return @func;
+		}
+
+		#~
+		Sets function
+		@param func function
+		~#
+		method : public : Set(func : (X, Y, Z) ~ R) ~ Nil {
+			@func := func;
+		}
+	}
+
 	# Unique ID for each class
 	enum ClassID {
 	}

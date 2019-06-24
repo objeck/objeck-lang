@@ -1,3 +1,5 @@
+use Collection.Generic;
+
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		f := DoInt(IntHolder) ~ IntHolder;
@@ -7,15 +9,17 @@ class Test {
 #		x := f(IntHolder->New(3));
 #		x->Get()->PrintLine();
 
+		c := Vector->New()<FuncHolder<IntHolder> >;
 		
 		h1 := FuncHolder->New(DoInt(IntHolder) ~ IntHolder)<IntHolder>;
-
 		h2 := FuncHolder->New(\(IntHolder) ~ IntHolder : (i) => i * i)<IntHolder>;
 		h3 := FuncHolder->New(DoString(String) ~ String)<String>;
 
+		c->AddBack(h1);
+		c->AddBack(h2);
 
-		e1 := h2->Get()<IntHolder>;
-		e1(IntHolder->New(4))->Get()->PrintLine();
+		e1 := c->Get(1)->Get()<IntHolder>;
+		e1(IntHolder->New(10))->Get()->PrintLine();
 		
 	}
 
@@ -32,21 +36,5 @@ class Test {
 		s := String->New(s);
 		s += " tacking on...";
 		return s;
-	}
-}
-
-class FuncHolder <T> {
-	@func : (T) ~ T;
-
-	New(func : (T) ~ T) {
-		@func := func;
-	}
-
-	method : public : Get() ~ (T) ~ T {
-		return @func;
-	}
-
-	method : public : Set(func : (T) ~ T) ~ Nil {
-		@func := func;
 	}
 }
