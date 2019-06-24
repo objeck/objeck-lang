@@ -3,8 +3,8 @@
  * objeck.php
  * --------
  * Author: Randy Hollines (objeck@gmail.com)
- * Copyright: (c) 2014-2018 Randy Hollines (http://www.objeck.org)
- * Release Version: 0.0.4
+ * Copyright: (c) 2019 Randy Hollines (https://www.objeck.org)
+ * Release Version: 0.0.1
  * Date Started: 2010/07/02
  *
  * Objeck Programming Language language file for GeSHi.
@@ -15,16 +15,13 @@
  *  -  First Release
  *
  * 2010/7/26 (v0.0.2)
- *  -  Added new and missing keywords and symbols: 'String', 'each', '+=', '-=', '*=' and '/='.
+ *  -  Added new and missing keywords and symbols: 'String', 'each', '+=', '-=', '*=' and '/='. 
  *
- * 2014/6/6 (v0.0.3)
- *  -  Added keywords : 'leaving', 'and', 'or' and 'xor'
- *
- * 2014/9/2 (v0.0.4)
- *  -  Added keywords : 'use', and 'critical'
- *
- * 2018/10/21 (v0.0.5)
- *  -  Added keywords : 'leaving', and 'break'
+ * 2019/5/6 (v0.0.3)
+ *  -  Added keywords: 'leaving' and 'consts'. 
+ * 
+ * 2019/6/24 (v0.0.3)
+ *  -  Added keywords: 'lambdas'. 
  *************************************************************************************
  *
  *     This file is part of GeSHi.
@@ -52,7 +49,7 @@ $language_data = array(
     'CASE_KEYWORDS' => GESHI_CAPS_NO_CHANGE,
     'QUOTEMARKS' => array('"'),
     'ESCAPE_CHAR' => '\\',
-    'KEYWORDS' => array(1 => array('virtual', 'use', 'if', 'else', 'critical', 'break', 'do', 'break', 'while', 'use', 'bundle', 'native', 'static', 'leaving', 'public', 'private', 'class', 'interface', 'function', 'method', 'select', 'other', 'enum', 'for', 'each', 'label', 'return', 'implements', 'from', 'and', 'or', 'xor'), 2 => array('Byte', 'Int', 'Nil', 'Float', 'Char', 'Bool', 'String'), 3 => array('true', 'false')
+    'KEYWORDS' => array(1 => array('virtual', 'leaving', 'lambdas', 'if', 'else', 'do', 'while', 'use', 'bundle', 'native', 'static', 'public', 'private', 'class', 'function', 'method', 'select', 'other', 'consts', 'enum', 'for', 'each', 'label', 'return', 'from'), 2 => array('Byte', 'Int', 'Nil', 'Float', 'Char', 'Bool', 'String'), 3 => array('true', 'false')
         ),
     'SYMBOLS' => array(
         1 => array(
