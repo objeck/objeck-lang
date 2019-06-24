@@ -7,6 +7,7 @@ lambdas Funcs {
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		c := Vector->New()<Func2Holder<FloatHolder, FloatHolder> >;
+		#~
 		h := Func2Holder->New(\Funcs->Double : (v) 
 			=> v * v)<FloatHolder, FloatHolder>;
 		# store functions in collections
@@ -16,19 +17,21 @@ class Test {
 		h := Func2Holder->New(\Funcs->Double : (v) 
 			=> Float->SquareRoot(v->Get()))<FloatHolder, FloatHolder>;
 		c->AddBack(h);
-		# use functions as arguments to other functions
-		# use functions as return values of other functions
+		# arguments to other functions
+		# return values of other functions
 		Show(h->Get());
+		~#
 
-
-		#~ TODO: fix
+		# TODO: fix
 		c->AddBack( Func2Holder->New(\Funcs->Double : (v) 
 			=> Float->SquareRoot(v->Get()))<FloatHolder, FloatHolder> );
-		~#
+		c->Size()->PrintLine();
+		v := c->Get(0)<Func2Holder>->Get()<FloatHolder, FloatHolder>;
+		Show(v);
 	}
 
 	function : Show(func : (FloatHolder) ~ FloatHolder) ~ Nil {
 		# TODO: 13.5
-		func(FloatHolder->New(13.5))->Get()->PrintLine();
+		func(13.5)->Get()->PrintLine();
 	}
 }
