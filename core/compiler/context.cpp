@@ -2983,11 +2983,6 @@ void ContextAnalyzer::AnalyzeVariableFunctionCall(MethodCall* method_call, const
   if(entry && entry->GetType() && entry->GetType()->GetType() == FUNC_TYPE) {
     // generate parameter strings
     Type* type = entry->GetType();
-    if(!type->GetFunctionReturn()) {
-      type = TypeParser::ParseType(type->GetClassName());
-      entry->SetType(type);
-    }
-
     wstring dyn_func_params_str = type->GetClassName();
     if(dyn_func_params_str.size() == 0) {
       const vector<Type*> func_params = type->GetFunctionParameters();
@@ -3064,7 +3059,8 @@ void ContextAnalyzer::AnalyzeFunctionReference(Class* klass, MethodCall* method_
   Method* method = klass->GetMethod(encoded_name);
   if(method) {
     const wstring func_type_id = L"m.(" + func_encoding + L")~" + method->GetEncodedReturn();
-    Type* type = TypeFactory::Instance()->MakeType(FUNC_TYPE, func_type_id);
+    
+    Type* type = TypeParser::ParseType(func_type_id);
     type->SetFunctionParameterCount((int)method_call->GetCallingParameters()->GetExpressions().size());
     type->SetFunctionReturn(method->GetReturn());
     method_call->SetEvalType(type, true);
@@ -3125,7 +3121,7 @@ void ContextAnalyzer::AnalyzeFunctionReference(LibraryClass* klass, MethodCall* 
   LibraryMethod* method = klass->GetMethod(encoded_name);
   if(method) {
     const wstring func_type_id = L'(' + func_encoding + L")~" + method->GetEncodedReturn();
-    Type* type = TypeFactory::Instance()->MakeType(FUNC_TYPE, func_type_id);
+    Type* type = TypeParser::ParseType(func_type_id);
     type->SetFunctionParameterCount((int)method_call->GetCallingParameters()->GetExpressions().size());
     type->SetFunctionReturn(method->GetReturn());
     method_call->SetEvalType(type, true);
@@ -5534,11 +5530,6 @@ void ContextAnalyzer::AnalyzeDeclaration(Declaration * declaration, Class* klass
     else if(entry->GetType() && entry->GetType()->GetType() == FUNC_TYPE) {
       // resolve function name
       Type* type = entry->GetType();
-      if(!type->GetFunctionReturn()) {
-        type = TypeParser::ParseType(type->GetClassName());
-        entry->SetType(type);
-      }
-
       AnalyzeVariableFunctionParameters(type, entry, klass);
       const wstring encoded_name = L"m." + EncodeFunctionType(type->GetFunctionParameters(), type->GetFunctionReturn());
 #ifdef _DEBUG
@@ -6599,10 +6590,6 @@ Type* ContextAnalyzer::RelsolveGenericType(Type* candidate_type, MethodCall* met
   const bool has_generics = (klass && klass->HasGenerics()) || (lib_klass && lib_klass->HasGenerics());
   if(has_generics) {
     if(candidate_type->GetType() == FUNC_TYPE) {
-      if(!candidate_type->GetFunctionReturn()) {
-        candidate_type = TypeParser::ParseType(candidate_type->GetClassName());
-      }
-
       if(klass) {
         Type* concrete_rtrn = RelsolveGenericType(candidate_type->GetFunctionReturn(), method_call, klass, lib_klass, false);
         vector<Type*> concrete_params;
@@ -6626,7 +6613,7 @@ Type* ContextAnalyzer::RelsolveGenericType(Type* candidate_type, MethodCall* met
           ReplaceAllSubstrings(func_name, from_name, to_name);
         }
 
-        return TypeFactory::Instance()->MakeType(FUNC_TYPE, func_name);
+        return TypeParser::ParseType(func_name);
       }
     }
     else {
