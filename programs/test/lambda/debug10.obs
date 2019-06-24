@@ -1,25 +1,9 @@
-lambdas Dwarfs {
-	Sleepy : (Int, Float) ~ Float
+class Foo {
+	function : Fie(f : (Float) ~ Int) ~ (String) ~ Int {
+		return Fum(String) ~ Int;
+	}
+
+	function : Fum(s : String) ~ Int {
+		return 13;
+	}
 }
-
-class Hi {
-	function : Ya(f : (Int, Float) ~ Float) ~ Float {
-		return f(5, 13.5);
-	}
-	
-#	function : Bar(fun : (IntHolder) ~ (IntHolder) ~ IntHolder, f : Float) ~ Int {
-#~	
-	function : Bar(fun : ((IntHolder) ~ IntHolder) ~ Char, f : Float) ~ Int {
-		return -13;
-	}
-	
-	function : Bar(fun : (Int) ~ Char) ~ (IntHolder, String) ~ FloatHolder {
-		return Bob(IntHolder, String) ~ FloatHolder;
-	}
-
-	function : Bob(a : IntHolder, b : String) ~ FloatHolder {
-		return Nil;
-	}
-~#	
-}
-
