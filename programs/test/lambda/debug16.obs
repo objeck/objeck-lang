@@ -1,0 +1,25 @@
+use Collection.Generic;
+
+lambdas Funcs {
+	Double : (FloatHolder) ~ FloatHolder
+}
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		c := Vector->New()<Func2Holder<FloatHolder, FloatHolder> >;
+		h := Func2Holder->New(\Funcs->Double : (v) => v * v)<FloatHolder, FloatHolder>;
+		# store functions in collections
+		c->AddBack(h); 
+		Show(h->Get());
+		# new functions from preexisting functions at run-time
+		h := Func2Holder->New(\Funcs->Double : (v) => Float->SquareRoot(v->Get()))<FloatHolder, FloatHolder>;
+		c->AddBack(h);
+		# use functions as arguments to other functions
+		# use functions as return values of other functions
+		Show(h->Get());
+	}
+
+	function : Show(func : (FloatHolder) ~ FloatHolder) ~ Nil {
+		func(FloatHolder->New(13.5))->Get()->PrintLine();
+	}
+}
