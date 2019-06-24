@@ -12,14 +12,22 @@ class Test {
 		c := Vector->New()<FuncHolder<IntHolder> >;
 		
 		h1 := FuncHolder->New(DoInt(IntHolder) ~ IntHolder)<IntHolder>;
-		h2 := FuncHolder->New(\(IntHolder) ~ IntHolder : (i) => i * i)<IntHolder>;
+		h2 := FuncHolder->New(\(IntHolder) ~ IntHolder : (i) => i * Float->SquareRoot(i + i)  )<IntHolder>;
 		h3 := FuncHolder->New(DoString(String) ~ String)<String>;
 
 		c->AddBack(h1);
 		c->AddBack(h2);
 
-		e1 := c->Get(1)->Get()<IntHolder>;
+		YoY(c);
+	}
+
+	function : YoY(v : Vector<FuncHolder<IntHolder> >) ~ Nil {
+		each(i : v) {
+
+		e1 := v->Get(i)->Get()<IntHolder>;
 		e1(IntHolder->New(10))->Get()->PrintLine();
+	};
+
 	}
 
 	function : DoInt(i : IntHolder) ~ IntHolder {
