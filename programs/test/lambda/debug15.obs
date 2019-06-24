@@ -15,8 +15,7 @@ class Test {
 
 
 		e1 := h2->Get()<IntHolder>;
-		x := e1(IntHolder->New(4));
-		x->Get()->PrintLine();
+		e1(IntHolder->New(4))->Get()->PrintLine();
 		
 	}
 
