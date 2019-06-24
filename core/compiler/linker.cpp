@@ -780,8 +780,7 @@ void Library::LoadClasses()
 #endif
 
     LibraryClass* cls = new LibraryClass(name, parent_name, interface_names, is_interface, generic_names, is_virtual,
-                                         cls_space, inst_space, cls_entries, inst_entries, this, 
-                                         file_name, is_debug);
+                                         cls_space, inst_space, cls_entries, inst_entries, this, file_name, is_debug);
     // load method
     LoadMethods(cls, is_debug);
     // add class
@@ -1467,7 +1466,7 @@ vector<frontend::Type*> LibraryTypeParser::ParseParameters(const wstring param_s
         found = param_str.find(prefix, found + prefix.size());
       }
 
-      while (nested_count--) {
+      while(nested_count--) {
         while (index < param_str.size() && param_str[index] != L'~') {
           index++;
         }
@@ -1476,11 +1475,11 @@ vector<frontend::Type*> LibraryTypeParser::ParseParameters(const wstring param_s
         }
       }
 
-      while (index < param_str.size() && param_str[index] != L',') {
+      while(index < param_str.size() && param_str[index] != L',') {
         index++;
       }
 
-      const wstring name = param_str.substr(start, index - start);
+      const wstring name = param_str.substr(start, index - start - 1);
       type = frontend::TypeFactory::Instance()->MakeType(frontend::FUNC_TYPE, name);
       ParseFunctionalType(type);
     }
