@@ -964,7 +964,6 @@ void IntermediateEmitter::EmitMethodCallStatement(MethodCall* method_call)
     }
     
     // emit the correct self variable
-    bool is_nested = false; // function call
     if(mem_context == INST) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
     } 
@@ -981,18 +980,12 @@ void IntermediateEmitter::EmitMethodCallStatement(MethodCall* method_call)
       if(!method_call->GetMethodCall()) {
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_INT));
       }
-      else {
-        is_nested = true;
-      }
       break;
   
     case 1:
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, DYN_MTHD_CALL, entry->GetType()->GetFunctionParameterCount(), instructions::FLOAT_TYPE));
       if(!method_call->GetMethodCall()) {
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_FLOAT));
-      }
-      else {
-        is_nested = true;
       }
       break;
   
@@ -1002,15 +995,19 @@ void IntermediateEmitter::EmitMethodCallStatement(MethodCall* method_call)
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_INT));
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_INT));  
       }
-      else {
-        is_nested = true;
-      }
       break;
   
     default:
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, DYN_MTHD_CALL, entry->GetType()->GetFunctionParameterCount(), instructions::NIL_TYPE));
       break;
     }
+
+    // check nesting
+    Type* nested_type = entry->GetType();
+    if(nested_type->GetType() == frontend::FUNC_TYPE) {
+      nested_type = nested_type->GetFunctionReturn();
+    }
+    bool is_nested = method_call->GetMethodCall() && nested_type->GetType() == CLASS_TYPE;
 
     // emit nested method calls
     method_call = method_call->GetMethodCall();
