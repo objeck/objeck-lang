@@ -1,11 +1,13 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		f := DoInt(IntHolder) ~ IntHolder;
+#		DoInt(IntHolder->New(3))->Get()->PrintLine();
 #		f(IntHolder->New(3))->Get()->PrintLine();
-		x := f(IntHolder->New(3));
-		x->Get()->PrintLine();
+#		HiYa( f(IntHolder->New(3))->Get() );
+#		x := f(IntHolder->New(3));
+#		x->Get()->PrintLine();
 
-#~		
+		
 		h1 := FuncHolder->New(DoInt(IntHolder) ~ IntHolder)<IntHolder>;
 
 		h2 := FuncHolder->New(\(IntHolder) ~ IntHolder : (i) => i * i)<IntHolder>;
@@ -15,20 +17,23 @@ class Test {
 		e1 := h2->Get()<IntHolder>;
 		x := e1(IntHolder->New(4));
 		x->Get()->PrintLine();
-~#		
+		
 	}
 
 	function : DoInt(i : IntHolder) ~ IntHolder {
 		return i * 3;
 	}
 
-#~
+	function : HiYa(i : Int) ~ Nil {
+		i->PrintLine();
+	}
+
+
 	function : DoString(s : String) ~ String {
 		s := String->New(s);
 		s += " tacking on...";
 		return s;
 	}
-~#	
 }
 
 class FuncHolder <T> {
