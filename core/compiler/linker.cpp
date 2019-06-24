@@ -1595,7 +1595,7 @@ frontend::Type* LibraryTypeParser::ParseType(const wstring& type_name)
       }
     }
 
-    while (index < type_name.size() && type_name[index] != L',') {
+    while(index < type_name.size() && type_name[index] != L',') {
       index++;
     }
 
@@ -1603,7 +1603,7 @@ frontend::Type* LibraryTypeParser::ParseType(const wstring& type_name)
     type = frontend::TypeFactory::Instance()->MakeType(frontend::FUNC_TYPE, name);
     ParseFunctionalType(type);
   }
-             break;
+    break;
 
   case L'o':
     index = 2;
