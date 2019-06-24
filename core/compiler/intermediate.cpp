@@ -1011,9 +1011,8 @@ void IntermediateEmitter::EmitMethodCallStatement(MethodCall* method_call)
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, DYN_MTHD_CALL, entry->GetType()->GetFunctionParameterCount(), instructions::NIL_TYPE));
       break;
     }
-      
+
     // emit nested method calls
-    
     method_call = method_call->GetMethodCall();
     while(method_call) {
       EmitMethodCall(method_call, is_nested);
