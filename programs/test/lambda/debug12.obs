@@ -1,7 +1,6 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		x := 13;
-		f := \(Int) ~ Int : (y) => x * y;
+		f := \(Int) ~ Int : (x) => x * x;
 #		f(7)->PrintLine();
 	}
 }

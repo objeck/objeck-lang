@@ -2983,39 +2983,55 @@ void ContextAnalyzer::AnalyzeVariableFunctionCall(MethodCall* method_call, const
   if(entry && entry->GetType() && entry->GetType()->GetType() == FUNC_TYPE) {
     // generate parameter strings
     Type* type = entry->GetType();
-    wstring dyn_func_params_str = type->GetClassName();
-    if(dyn_func_params_str.size() == 0) {
-      const vector<Type*> func_params = type->GetFunctionParameters();
-      AnalyzeVariableFunctionParameters(type, static_cast<Expression*>(method_call));
-      for(size_t i = 0; i < func_params.size(); ++i) {
-        // encode parameter
-        dyn_func_params_str += EncodeType(func_params[i]);
-        for(int j = 0; j < type->GetDimension(); ++j) {
-          dyn_func_params_str += L'*';
-        }
-        dyn_func_params_str += L',';
-      }
-    }
-    else {
-      size_t start = dyn_func_params_str.find('(');
-      size_t end = dyn_func_params_str.find(')', start + 1);
-      if(start != wstring::npos && end != wstring::npos) {
-        dyn_func_params_str = dyn_func_params_str.substr(start + 1, end - start - 1);
-      }
-    }
-    type->SetFunctionParameterCount((int)method_call->GetCallingParameters()->GetExpressions().size());
+    AnalyzeVariableFunctionParameters(type, static_cast<Expression*>(method_call));
 
+    // get calling and function parameters
+    const vector<Type*> func_params = type->GetFunctionParameters();
+    vector<Expression*> calling_params = method_call->GetCallingParameters()->GetExpressions();
+    if(func_params.size() != calling_params.size()) {
+      ProcessError(static_cast<Expression*>(method_call), L"Function call parameter size mismatch");
+      return;
+    }
+
+    // check parameters
+    wstring dyn_func_params_str;
+    ExpressionList* boxed_resolved_params = TreeFactory::Instance()->MakeExpressionList();
+    for(size_t i = 0; i < func_params.size(); ++i) {
+      Type* func_param = func_params[i];
+      Expression* calling_param = calling_params[i];
+
+      Expression* boxed_param = BoxExpression(func_param, calling_param, depth + 1);
+      if(boxed_param) {
+        boxed_resolved_params->AddExpression(boxed_param);
+      }
+      else if((boxed_param = UnboxingExpression(func_param, calling_param, false, depth + 1))) {
+        boxed_resolved_params->AddExpression(boxed_param);
+      }
+      // add default
+      if(!boxed_param) {
+        boxed_resolved_params->AddExpression(calling_param);
+      }
+
+      // encode parameter
+      dyn_func_params_str += EncodeType(func_param);
+      for(int j = 0; j < type->GetDimension(); ++j) {
+        dyn_func_params_str += L'*';
+      }
+      dyn_func_params_str += L',';
+    }
+    
     // method call parameters
-    ExpressionList* call_params = method_call->GetCallingParameters();
-    AnalyzeExpressions(call_params, depth + 1);
+    type->SetFunctionParameterCount((int)method_call->GetCallingParameters()->GetExpressions().size());
+    AnalyzeExpressions(boxed_resolved_params, depth + 1);
 
     // check parameters again dynamic definition
-    const wstring call_params_str = EncodeMethodCall(method_call->GetCallingParameters(), depth);
+    const wstring call_params_str = EncodeMethodCall(boxed_resolved_params, depth);
     if(dyn_func_params_str != call_params_str) {
-      ProcessError(static_cast<Expression*>(method_call),
-                   L"Undefined function/method call: '" + method_call->GetMethodName() +
+      ProcessError(static_cast<Expression*>(method_call), L"Undefined function/method call: '" + method_call->GetMethodName() +
                    L"(..)'\n\tEnsure the object and it's calling parameters are properly casted");
     }
+    // reset calling parameters
+    method_call->SetCallingParameters(boxed_resolved_params);
 
     //  set entry reference and return type
     method_call->SetFunctionalCall(entry);
