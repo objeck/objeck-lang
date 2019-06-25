@@ -3000,6 +3000,7 @@ void ContextAnalyzer::AnalyzeVariableFunctionCall(MethodCall* method_call, const
       Type* func_param = func_params[i];
       Expression* calling_param = calling_params[i];
 
+      // check for boxing/unboxing
       Expression* boxed_param = BoxExpression(func_param, calling_param, depth + 1);
       if(boxed_param) {
         boxed_resolved_params->AddExpression(boxed_param);
