@@ -2556,6 +2556,10 @@ namespace frontend {
       return expressions;
     }
 
+    void SetCallingParameters(ExpressionList* e) {
+      expressions = e;
+    }
+
     void SetEnumItem(EnumItem* i, const wstring &enum_name) {
       enum_item = i;
       SetEvalType(TypeFactory::Instance()->MakeType(CLASS_TYPE, enum_name), false);

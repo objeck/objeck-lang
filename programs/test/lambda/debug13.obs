@@ -3,7 +3,7 @@ class Test {
 		funcs := FunctionHolder->New[10]<IntHolder>;
 		for(i := 0; i < funcs->Size(); i +=1;) {
 			j : IntHolder := i;
-			f := \() ~ IntHolder : () => j * j;
+			f := \(IntHolder) ~ IntHolder : (j) => j * j;
 			funcs[i] := FunctionHolder->New(f)<IntHolder>;
 		};
 		
