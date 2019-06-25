@@ -1,6 +1,6 @@
 use Collection.Generic;
 
-lambdas Funcs {
+lambdas Func {
 	Double : (FloatHolder) ~ FloatHolder
 }
 
@@ -8,20 +8,18 @@ class FirstClass {
 	function : Main(args : String[]) ~ Nil {
 		vector := Vector->New()<Func2Holder<FloatHolder, FloatHolder> >;
 		# store functions in collections
-		vector->AddBack( Func2Holder->New(\Funcs->Double : (v) 
-			=>  v * v)<FloatHolder, FloatHolder> );
-		# new functions from preexisting functions at run-time
-		vector->AddBack( Func2Holder->New(\Funcs->Double : (v) 
-			=> Float->SquareRoot(v->Get()))<FloatHolder, FloatHolder> );
-		# process collection	
+		vector->AddBack(Func2Holder->New(\Func->Double : (v) 
+			=>  v * v)<FloatHolder, FloatHolder>);
+		# new function from preexisting function at run-time
+		vector->AddBack(Func2Holder->New(\Func->Double : (v) 
+			=> Float->SquareRoot(v))<FloatHolder, FloatHolder>);
+		# process collection
 		each(i : vector) {
-			# return values of other functions
-			f := vector->Get(i)<Func2Holder>->Get()<FloatHolder, FloatHolder>;
-			# arguments to other functions
-			Show(f);
+			# return value of other functions and pass argument to other function
+			Show(vector->Get(i)<Func2Holder>->Get()<FloatHolder, FloatHolder>);
 		};
 	}
-	
+
 	function : Show(func : (FloatHolder) ~ FloatHolder) ~ Nil {
 		func(13.5)->Get()->PrintLine();
 	}
