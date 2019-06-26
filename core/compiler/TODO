@@ -1,26 +1,6 @@
 TODO
 --
 lambda expressions:
-1) read/write lambdas to disk
-2) update generic lib with lambda type defs
-emit.cpp:268
-linker.cpp:1378
-treeh.h:1892
-
-other:
-1) change enum, const, func references so that they can be bundle specific
-
----
-
--src C:\Users\objec\Documents\Code\objeck-lang\programs\test\lambda\debug10.obs -tar lib -dest C:\Users\objec\Documents\Code\objeck-lang\programs\test\lambda\hiya.obl
-
--src C:\Users\objec\Documents\Code\objeck-lang\programs\test\lambda\debug11.obs -lib hiya.obl -dest C:\Users\objec\Documents\Code\objeck-lang\programs\test\lambda\hiya.obe
-
----
-
-m.(m.(o.System.IntHolder,)~o.System.IntHolder,)~c,f,
-
-===
-
-m.(i,)~c,
-m.(o.System.IntHolder,o.System.String,)~o.System.FloatHolder
+1) read/write lambdas to disk (done)
+2) update generic lib with lambda type defs (done)
+3) support for closures
