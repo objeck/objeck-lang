@@ -136,9 +136,9 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
 
 #ifdef _DEBUG
   wcout << L"\n---------- Executing Interpretered Code: id=" 
-        << (((*frame)->method->GetClass()) ? (*frame)->method->GetClass()->GetId() : -1) << ","
-        << (*frame)->method->GetId() << "; method_name='" << (*frame)->method->GetName() 
-        << "' ---------\n" << endl;
+        << (((*frame)->method->GetClass()) ? (*frame)->method->GetClass()->GetId() : -1) << L","
+        << (*frame)->method->GetId() << L"; method_name='" << (*frame)->method->GetName() 
+        << L"' ---------\n" << endl;
 #endif
 
   // execute
@@ -660,7 +660,7 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
 #ifdef _TIMING
   clock_t end = clock();
   wcout << L"---------------------------" << endl;
-  wcout << L"Dispatch method='" << mthd_name << "', time=" << (double)(end - start) / CLOCKS_PER_SEC << " second(s)." << endl;
+  wcout << L"Dispatch method='" << mthd_name << L"', time=" << (double)(end - start) / CLOCKS_PER_SEC << L" second(s)." << endl;
 #endif
 }
 
@@ -1347,12 +1347,12 @@ void StackInterpreter::ObjInstCast(StackInstr* instr, size_t* &op_stack, long* &
                                                          program->GetHierarchy(),
                                                          program->GetInterfaces());
 #ifdef _DEBUG
-  wcout << L"stack oper: OBJ_INST_CAST: from=" << mem << ", to=" << instr->GetOperand() << endl;
+  wcout << L"stack oper: OBJ_INST_CAST: from=" << mem << L", to=" << instr->GetOperand() << endl;
 #endif
   if(!result && mem) {
     StackClass* to_cls = MemoryManager::GetClass((size_t*)mem);
     wcerr << L">>> Invalid object cast: '" << (to_cls ? to_cls->GetName() : L"?")
-          << "' to '" << program->GetClass(instr->GetOperand())->GetName() << "' <<<" << endl;
+          << L"' to '" << program->GetClass(instr->GetOperand())->GetName() << L"' <<<" << endl;
     StackErrorUnwind();
 #ifdef _DEBUGGER
     halt = true;
@@ -1386,9 +1386,9 @@ void StackInterpreter::AsyncMthdCall(size_t* &op_stack, long* &stack_pos)
   StackMethod* called = impl_class->GetMethod(mthd_name);
 #ifdef _DEBUG
   assert(called);
-  wcout << L"=== ASYNC_MTHD_CALL: id=" << called->GetClass()->GetId() << ","
-        << called->GetId() << "; name='" << called->GetName()
-        << "'; param=" << param << " ===" << endl;
+  wcout << L"=== ASYNC_MTHD_CALL: id=" << called->GetClass()->GetId() << L","
+        << called->GetId() << L"; name='" << called->GetName()
+        << L"'; param=" << param << L" ===" << endl;
 #endif
 
   // create and execute the new thread
@@ -1514,7 +1514,7 @@ void StackInterpreter::ProcessLoadFunction(StackInstr* instr, size_t* &op_stack,
 {
 #ifdef _DEBUG
   wcout << L"stack oper: LOAD_FUNC_VAR; index=" << instr->GetOperand()
-        << "; local=" << ((instr->GetOperand2() == LOCL) ? "true" : "false") << endl;
+        << L"; local=" << ((instr->GetOperand2() == LOCL) ? "true" : "false") << endl;
 #endif
   if(instr->GetOperand2() == LOCL) {
     size_t* mem = (*frame)->mem;
@@ -1546,7 +1546,7 @@ void StackInterpreter::ProcessLoadFloat(StackInstr* instr, size_t* &op_stack, lo
 {
 #ifdef _DEBUG
   wcout << L"stack oper: LOAD_FLOAT_VAR; index=" << instr->GetOperand()
-        << "; local=" << ((instr->GetOperand2() == LOCL) ? "true" : "false") << endl;
+        << L"; local=" << ((instr->GetOperand2() == LOCL) ? "true" : "false") << endl;
 #endif
   FLOAT_VALUE value;
   if(instr->GetOperand2() == LOCL) {
@@ -1580,7 +1580,7 @@ void StackInterpreter::ProcessStoreFunction(StackInstr* instr, size_t* &op_stack
 {
 #ifdef _DEBUG
   wcout << L"stack oper: STOR_FUNC_VAR; index=" << instr->GetOperand()
-        << "; local=" << ((instr->GetOperand2() == LOCL) ? "true" : "false") << endl;
+        << L"; local=" << ((instr->GetOperand2() == LOCL) ? "true" : "false") << endl;
 #endif
   if(instr->GetOperand2() == LOCL) {
     size_t* mem = (*frame)->mem;
@@ -1612,7 +1612,7 @@ void StackInterpreter::ProcessStoreFloat(StackInstr* instr, size_t* &op_stack, l
 {
 #ifdef _DEBUG
   wcout << L"stack oper: STOR_FLOAT_VAR; index=" << instr->GetOperand()
-        << "; local=" << ((instr->GetOperand2() == LOCL) ? "true" : "false") << endl;
+        << L"; local=" << ((instr->GetOperand2() == LOCL) ? "true" : "false") << endl;
 #endif
   if(instr->GetOperand2() == LOCL) {
     const FLOAT_VALUE value = PopFloat(op_stack, stack_pos);
@@ -1646,7 +1646,7 @@ void StackInterpreter::ProcessCopyFloat(StackInstr* instr, size_t* &op_stack, lo
 {
 #ifdef _DEBUG
   wcout << L"stack oper: COPY_FLOAT_VAR; index=" << instr->GetOperand()
-        << "; local=" << ((instr->GetOperand2() == LOCL) ? "true" : "false") << endl;
+        << L"; local=" << ((instr->GetOperand2() == LOCL) ? "true" : "false") << endl;
 #endif
   if(instr->GetOperand2() == LOCL) {
     FLOAT_VALUE value = TopFloat(op_stack, stack_pos);
@@ -1853,7 +1853,7 @@ void StackInterpreter::ProcessAsyncMethodCall(StackMethod* called, size_t* param
 
   instance[0] = (size_t)vm_thread;
 #ifdef _DEBUG
-  wcout << L"*** New Thread ID: " << vm_thread  << ": " << instance << " ***" << endl;
+  wcout << L"*** New Thread ID: " << vm_thread  << L": " << instance << L" ***" << endl;
 #endif
 }
 
@@ -1878,7 +1878,7 @@ unsigned int WINAPI StackInterpreter::AsyncMethodCall(LPVOID arg)
                   &vm_thread, 0, TRUE, DUPLICATE_SAME_ACCESS);
 
 #ifdef _DEBUG
-  wcout << L"# Starting thread=" << vm_thread << " #" << endl;
+  wcout << L"# Starting thread=" << vm_thread << L" #" << endl;
 #endif  
 
   Runtime::StackInterpreter* intpr = new Runtime::StackInterpreter;
@@ -1886,7 +1886,7 @@ unsigned int WINAPI StackInterpreter::AsyncMethodCall(LPVOID arg)
   intpr->Execute(thread_op_stack, thread_stack_pos, 0, holder->called, holder->self, false);
   
 #ifdef _DEBUG
-  wcout << L"# final stack: pos=" << (*thread_stack_pos) << ", thread=" << vm_thread << " #" << endl;
+  wcout << L"# final stack: pos=" << (*thread_stack_pos) << L", thread=" << vm_thread << L" #" << endl;
 #endif
 
   // clean up
@@ -1922,7 +1922,7 @@ void* StackInterpreter::AsyncMethodCall(void* arg)
   thread_op_stack[(*thread_stack_pos)++] = (size_t)holder->param;
 
 #ifdef _DEBUG
-  wcout << L"# Starting thread=" << pthread_self() << " #" << endl;
+  wcout << L"# Starting thread=" << pthread_self() << L" #" << endl;
 #endif  
 
   Runtime::StackInterpreter* intpr = new Runtime::StackInterpreter;
@@ -1930,7 +1930,7 @@ void* StackInterpreter::AsyncMethodCall(void* arg)
   intpr->Execute(thread_op_stack, thread_stack_pos, 0, holder->called, holder->self, false);
 
 #ifdef _DEBUG
-  wcout << L"# final stack: pos=" << (*thread_stack_pos) << ", thread=" << pthread_self() << " #" << endl;
+  wcout << L"# final stack: pos=" << (*thread_stack_pos) << L", thread=" << pthread_self() << L" #" << endl;
 #endif
   
   // clean up
@@ -1968,11 +1968,11 @@ void StackInterpreter::ProcessDynamicMethodCall(StackInstr* instr, StackInstr** 
   long cls_id = (long)PopInt(op_stack, stack_pos);
   long mthd_id = (long)PopInt(op_stack, stack_pos);
 #ifdef _DEBUG
-  wcout << L"stack oper: DYN_MTHD_CALL; cls_mtd_id=" << cls_id << "," << mthd_id << endl;
+  wcout << L"stack oper: DYN_MTHD_CALL; cls_mtd_id=" << cls_id << L"," << mthd_id << endl;
 #endif
   StackMethod* called = program->GetClass(cls_id)->GetMethod(mthd_id);
 #ifdef _DEBUG
-  wcout << L"=== Binding function call: to: '" << called->GetName() << "' ===" << endl;
+  wcout << L"=== Binding function call: to: '" << called->GetName() << L"' ===" << endl;
 #endif
 
 #ifndef _NO_JIT
@@ -2045,7 +2045,7 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr, StackInstr** &instrs
     }
 
 #ifdef _DEBUG
-    wcout << L"'; to: '" << method_name << "' ===" << endl;
+    wcout << L"'; to: '" << method_name << L"' ===" << endl;
 #endif
   }
 
@@ -2085,7 +2085,7 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, size_t* instanc
     if(!jit_compiler.Compile(called)) {
       ProcessInterpretedMethodCall(called, instance, instrs, ip);
 #ifdef _DEBUG
-      wcerr << L"### Unable to compile: " << called->GetName() << " ###" << endl;
+      wcerr << L"### Unable to compile: " << called->GetName() << L" ###" << endl;
 #endif
       return;
     }
@@ -2129,8 +2129,8 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, size_t* instanc
 void StackInterpreter::ProcessInterpretedMethodCall(StackMethod* called, size_t* instance, StackInstr** &instrs, long &ip)
 {
 #ifdef _DEBUG
-  wcout << L"=== MTHD_CALL: id=" << called->GetClass()->GetId() << ","
-        << called->GetId() << "; name='" << called->GetName() << "' ===" << endl;
+  wcout << L"=== MTHD_CALL: id=" << called->GetClass()->GetId() << L","
+        << called->GetId() << L"; name='" << called->GetName() << L"' ===" << endl;
 #endif  
   (*frame) = GetStackFrame(called, instance);
   instrs = (*frame)->method->GetInstructions();
@@ -2443,7 +2443,7 @@ void StackInterpreter::ProcessDllLoad(StackInstr* instr)
   // Load shared library file
   HINSTANCE dll_handle = LoadLibrary(dll_string.c_str());
   if(!dll_handle) {
-    wcerr << L">>> Runtime error loading shared library: " << dll_string.c_str() << " <<<" << endl;
+    wcerr << L">>> Runtime error loading shared library: " << dll_string.c_str() << L" <<<" << endl;
 #ifdef _DEBUGGER
     return;
 #else
@@ -2467,7 +2467,7 @@ void StackInterpreter::ProcessDllLoad(StackInstr* instr)
 #else
   void* dll_handle = dlopen(dll_string.c_str(), RTLD_LAZY);
   if(!dll_handle) {
-    wcerr << L">>> Runtime error loading shared library: " << dlerror() << " <<<" << endl;
+    wcerr << L">>> Runtime error loading shared library: " << dlerror() << L" <<<" << endl;
 #ifdef _DEBUGGER
     return;
 #else
@@ -2480,7 +2480,7 @@ void StackInterpreter::ProcessDllLoad(StackInstr* instr)
   ext_load_def ext_load = (ext_load_def)dlsym(dll_handle, "load_lib");
   char* error;
   if((error = dlerror()) != nullptr)  {
-    wcerr << L">>> Runtime error calling function: " << error << " <<<" << endl;
+    wcerr << L">>> Runtime error calling function: " << error << L" <<<" << endl;
 #ifdef _DEBUGGER
     return;
 #else
@@ -2525,7 +2525,7 @@ void StackInterpreter::ProcessDllUnload(StackInstr* instr)
     ext_unload_def ext_unload = (ext_unload_def)dlsym(dll_handle, "unload_lib");
     char* error;
     if((error = dlerror()) != nullptr)  {
-      wcerr << L">>> Runtime error calling function: " << error << " <<<" << endl;
+      wcerr << L">>> Runtime error calling function: " << error << L" <<<" << endl;
 #ifdef _DEBUGGER
       return;
 #else
@@ -2569,7 +2569,7 @@ void StackInterpreter::ProcessDllCall(StackInstr* instr, size_t* &op_stack, long
     const string str =   UnicodeToBytes(wstr);
     ext_func = (lib_func_def)GetProcAddress(dll_handle, str.c_str());
     if(!ext_func) {
-      wcerr << L">>> Runtime error calling function: " << wstr << " <<<" << endl;
+      wcerr << L">>> Runtime error calling function: " << wstr << L" <<<" << endl;
       FreeLibrary(dll_handle);
 #ifdef _DEBUGGER
       return;
@@ -2596,7 +2596,7 @@ void StackInterpreter::ProcessDllCall(StackInstr* instr, size_t* &op_stack, long
     ext_func = (lib_func_def)dlsym(dll_handle, str.c_str());
     char* error;
     if((error = dlerror()) != nullptr)  {
-      wcerr << L">>> Runtime error calling function: " << error << " <<<" << endl;
+      wcerr << L">>> Runtime error calling function: " << error << L" <<<" << endl;
 #ifdef _DEBUGGER
       return;
 #else

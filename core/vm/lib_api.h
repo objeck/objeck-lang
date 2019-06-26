@@ -421,7 +421,7 @@ void APITools_CallMethod(VMContext & context, size_t * instance, const wchar_t* 
 #endif
   }
   else {
-    cerr << ">>> DLL call: Invalid method name: '" << mthd_name << "'" << endl;
+    cerr << L">>> DLL call: Invalid method name: '" << mthd_name << L"'" << endl;
     exit(1);
   }
 }

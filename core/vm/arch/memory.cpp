@@ -77,7 +77,7 @@ void MemoryManager::Initialize(StackProgram* p)
 
 #ifdef _MEM_LOGGING
   mem_logger.open("mem_log.csv");
-  mem_logger << "cycle,oper,type,addr,size" << endl;
+  mem_logger << L"cycle,oper,type,addr,size" << endl;
 #endif
 
 #ifdef _WIN32
@@ -268,7 +268,7 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, long 
  #endif
 
 #ifdef _MEM_LOGGING
-    mem_logger << mem_cycle << ",alloc,obj," << mem << "," << size << endl;
+    mem_logger << mem_cycle << L",alloc,obj," << mem << L"," << size << endl;
 #endif
 
 #ifdef _DEBUG
@@ -338,7 +338,7 @@ size_t* MemoryManager::AllocateArray(const long size, const MemoryType type,  si
 #endif
 
 #ifdef _MEM_LOGGING
-  mem_logger << mem_cycle << ",alloc,array," << mem << "," << size << endl;
+  mem_logger << mem_cycle << L",alloc,array," << mem << L"," << size << endl;
 #endif
 
 #ifdef _DEBUG
@@ -455,7 +455,7 @@ void MemoryManager::CollectAllMemory(size_t* op_stack, long stack_pos)
 
 #ifdef _TIMING
   clock_t end = clock();
-  wcout << L"Collection: size=" << mem_max_size << L", time=" << (double)(end - start) / CLOCKS_PER_SEC << " second(s)." << endl;
+  wcout << L"Collection: size=" << mem_max_size << L", time=" << (double)(end - start) / CLOCKS_PER_SEC << L" second(s)." << endl;
   wcout << L"=========================================" << endl << endl;
 #endif
 }
@@ -643,7 +643,7 @@ void* MemoryManager::CollectMemory(void* arg)
       allocation_size -= mem_size;
 
 #ifdef _MEM_LOGGING
-      mem_logger << mem_cycle << ",dealloc," << (mem[SIZE_OR_CLS] ? "obj," : "array,") << mem << "," << mem_size << endl;
+      mem_logger << mem_cycle << L",dealloc," << (mem[SIZE_OR_CLS] ? "obj," : "array,") << mem << L"," << mem_size << endl;
 #endif
 
       // cache or free memory

@@ -684,7 +684,7 @@ class StackClass {
     unordered_map<wstring, StackMethod*>::iterator iter;
     for(iter = method_name_map.begin(); iter != method_name_map.end(); ++iter) {
       StackMethod* mthd = iter->second;
-      wcout << L"  method='" << mthd->GetName() << "'" << endl;
+      wcout << L"  method='" << mthd->GetName() << L"'" << endl;
     }
   }
 #endif
@@ -1048,7 +1048,7 @@ class StackProgram {
     for(iter = cls_map.begin(); iter != cls_map.end(); ++iter) {
       StackClass* cls = iter->second;
       wcout << L"==================================" << endl;
-      wcout << L"class='" << cls->GetName() << "'" << endl;
+      wcout << L"class='" << cls->GetName() << L"'" << endl;
       wcout << L"==================================" << endl;
       cls->List();
     }

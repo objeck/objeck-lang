@@ -2,7 +2,6 @@ lambdas Funcs {
 	Apply : (Int) ~ Int
 }
 
-
 class Test {
 	function : Main(args : String[]) ~ Nil {
 #		f := Square(Int) ~ Int;
