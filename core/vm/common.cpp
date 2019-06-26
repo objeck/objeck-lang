@@ -412,7 +412,7 @@ void ObjectSerializer::CheckObject(size_t* mem, bool is_obj, long depth) {
       for(int i = 0; i < depth; i++) {
         wcout << L"\t";
       }
-      wcout << "$: addr/value=" << mem << endl;
+      wcout << L"$: addr/value=" << mem << endl;
       if(is_obj) {
         assert(cls);
       }
@@ -759,7 +759,7 @@ size_t* ObjectDeserializer::DeserializeObject() {
             memcpy(byte_array_ptr, buffer + buffer_offset, byte_array_size);
             buffer_offset += byte_array_size;
 #ifdef _DEBUG
-            wcout << L"--- DESERIALIZING: byte array; value=" << byte_array << ", size=" << byte_array_size << L" ---" << endl;
+            wcout << L"--- DESERIALIZING: byte array; value=" << byte_array << L", size=" << byte_array_size << L" ---" << endl;
 #endif
             // update cache
             mem_cache[-mem_id] = byte_array;
@@ -797,7 +797,7 @@ size_t* ObjectDeserializer::DeserializeObject() {
             delete[] in;
             in = nullptr;
 #ifdef _DEBUG
-            wcout << L"--- DESERIALIZING: char array; value=" << out << ", size="
+            wcout << L"--- DESERIALIZING: char array; value=" << out << L", size="
               << char_array_size << L" ---" << endl;
 #endif
             char_array_size = char_array_size_dim = (long)out.size();
@@ -847,7 +847,7 @@ size_t* ObjectDeserializer::DeserializeObject() {
               array_ptr[i] = DeserializeInt();
             }
 #ifdef _DEBUG
-            wcout << L"--- DESERIALIZING: int array; value=" << array << ",  size=" << array_size << L" ---" << endl;
+            wcout << L"--- DESERIALIZING: int array; value=" << array << L",  size=" << array_size << L" ---" << endl;
 #endif
             // update cache
             mem_cache[-mem_id] = array;
@@ -886,7 +886,7 @@ size_t* ObjectDeserializer::DeserializeObject() {
             memcpy(array_ptr, buffer + buffer_offset, array_size * sizeof(FLOAT_VALUE));
             buffer_offset += array_size * sizeof(FLOAT_VALUE);
 #ifdef _DEBUG
-            wcout << L"--- DESERIALIZING: float array; value=" << array << ", size=" << array_size << L" ---" << endl;
+            wcout << L"--- DESERIALIZING: float array; value=" << array << L", size=" << array_size << L" ---" << endl;
 #endif
             // update cache
             mem_cache[-mem_id] = array;
@@ -935,7 +935,7 @@ size_t* ObjectDeserializer::DeserializeObject() {
               }
             }
 #ifdef _DEBUG
-            wcout << L"--- DESERIALIZING: object array; value=" << array << ",  size="
+            wcout << L"--- DESERIALIZING: object array; value=" << array << L",  size="
               << array_size << L" ---" << endl;
 #endif
             // update cache
