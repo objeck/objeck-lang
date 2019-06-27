@@ -991,16 +991,18 @@ void ContextAnalyzer::AnalyzeLambda(Lambda* lambda, const int depth)
       current_class->AssociateMethod(method);
 
       // check method and restore context
-      Method* prev_method = current_method;
-      SymbolTable* prev_table = current_table;
+      capture_lambda = lambda;
+      capture_method = current_method;
+      capture_table = current_table;
       
       AnalyzeMethod(method, depth + 1);
       
-      current_table = prev_table;
-      prev_table = nullptr;
+      current_table = capture_table;
+      capture_table = nullptr;
 
-      current_method = prev_method;
-      prev_method = nullptr;
+      current_method = capture_method;
+      capture_method = nullptr;
+      capture_lambda = nullptr;
       
       const wstring full_method_name = method->GetName();
       const size_t offset = full_method_name.find(':');
@@ -1015,6 +1017,13 @@ void ContextAnalyzer::AnalyzeLambda(Lambda* lambda, const int depth)
         AnalyzeMethodCall(method_call, depth + 1);
         lambda->SetMethodCall(method_call);
         lambda->SetTypes(method_call->GetEvalType());
+        vector<pair<SymbolEntry*, SymbolEntry*> > copies = lambda->GetCopies();
+        for(size_t i = 0; i < copies.size(); ++i) {
+          pair<SymbolEntry*, SymbolEntry*> copy = copies[i];
+          Declaration* dclr = TreeFactory::Instance()->MakeDeclaration(method->GetFileName(), method->GetLineNumber(),
+                                                                       copy.first, static_cast<Declaration*>(nullptr));
+          method->GetDeclarations()->AddDeclaration(dclr);
+        }
       }
       else {
         wcerr << L"internal error" << endl;
@@ -1637,6 +1646,20 @@ void ContextAnalyzer::AnalyzeVariable(Variable* variable, SymbolEntry* entry, co
     // static check
     if(InvalidStatic(entry)) {
       ProcessError(variable, L"Cannot reference an instance variable from this context");
+    }
+  }
+  else if(current_method->IsLambda()) {
+    const wstring capture_scope_name = capture_method->GetName() + L':' + variable->GetName();
+    SymbolEntry* capture_entry = capture_table->GetEntry(capture_scope_name);
+    if(capture_entry) {
+      const wstring var_scope_name = current_method->GetName() + L':' + variable->GetName();
+      SymbolEntry* var_entry = TreeFactory::Instance()->MakeSymbolEntry(variable->GetFileName(), variable->GetLineNumber(),
+                                                                        var_scope_name, capture_entry->GetType(), false, true);
+      current_table->AddEntry(var_entry, true);
+      variable->SetTypes(var_entry->GetType());
+      variable->SetEntry(var_entry);
+      var_entry->AddVariable(variable);
+      capture_lambda->AddCopy(pair<SymbolEntry*, SymbolEntry*>(var_entry, capture_entry));
     }
   }
   // type inferred variable
