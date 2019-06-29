@@ -2682,7 +2682,7 @@ namespace frontend {
     void SetMethodCall(MethodCall* c) {
       method_call = c;
     }
-    void AddCopy(pair<SymbolEntry*, SymbolEntry*> &copy) {
+    void AddCopy(pair<SymbolEntry*, SymbolEntry*> copy) {
       copies.push_back(copy);
     }
     vector<pair<SymbolEntry*, SymbolEntry*> > GetCopies() {
