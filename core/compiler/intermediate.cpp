@@ -629,7 +629,7 @@ IntermediateMethod* IntermediateEmitter::EmitMethod(Method* method)
   int num_params = 0;
   for(size_t i = 0; i < declarations.size(); ++i) {
     if(declarations[i]->GetEntry()->GetType()->GetType() == frontend::FUNC_TYPE) {
-      num_params += 2;
+      num_params += 3;
     }
     else {
       num_params++;
@@ -797,7 +797,7 @@ void IntermediateEmitter::EmitLambda(Lambda* lambda)
       break;
 
     case frontend::FUNC_TYPE:
-      closure_space += 2;
+      closure_space += 3;
       break;
 
     default:
@@ -808,7 +808,7 @@ void IntermediateEmitter::EmitLambda(Lambda* lambda)
 
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, NEW_FUNC_INST, closure_space));
 
-  EmitMethodCallExpression(lambda->GetMethodCall());
+  EmitMethodCallExpression(lambda->GetMethodCall(), false, true);
 
   /*
     SymbolEntry* closure_entry = copies[i].second;
@@ -2666,9 +2666,13 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
  * expression and supports
  * dynamic functions.
  ****************************/
-void IntermediateEmitter::EmitMethodCallExpression(MethodCall* method_call, bool is_variable) {
+void IntermediateEmitter::EmitMethodCallExpression(MethodCall* method_call, bool is_variable, bool is_closure) {
   // find end of nested call
   if(method_call->IsFunctionDefinition()) {
+    if(!is_closure) {
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
+    }
+
     if(method_call->GetMethod()) {
       if(is_lib) {
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_FUNC_DEF, -1,
@@ -4661,8 +4665,8 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index,
 #endif
           declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), FUNC_PARM));
           entry->SetId(index);
-          index += 2;
-          var_space += 2;
+          index += 3;
+          var_space += 3;
           break;
 
         default:

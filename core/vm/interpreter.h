@@ -322,6 +322,7 @@ namespace Runtime {
     inline void ProcessNewByteArray(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
     inline void ProcessNewCharArray(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
     inline void ProcessNewObjectInstance(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
+    inline void ProcessNewFunctionInstance(StackInstr* instr, size_t*& op_stack, long*& stack_pos);
     inline void ProcessReturn(StackInstr** &instrs, long &ip);
 
     inline void ProcessMethodCall(StackInstr* instr, StackInstr** &instrs, long &ip, size_t* &op_stack, long* &stack_pos);

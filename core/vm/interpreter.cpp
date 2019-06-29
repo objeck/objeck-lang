@@ -558,6 +558,10 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
       ProcessNewObjectInstance(instr, op_stack, stack_pos);
       break;
 
+    case NEW_FUNC_INST:
+      ProcessNewFunctionInstance(instr, op_stack, stack_pos);
+      break;
+
     case STOR_BYTE_ARY_ELM:
       ProcessStoreByteArrayElement(instr, op_stack, stack_pos);
       break;
@@ -1518,6 +1522,7 @@ void StackInterpreter::ProcessLoadFunction(StackInstr* instr, size_t* &op_stack,
 #endif
   if(instr->GetOperand2() == LOCL) {
     size_t* mem = (*frame)->mem;
+    PushInt(mem[instr->GetOperand() + 3], op_stack, stack_pos);
     PushInt(mem[instr->GetOperand() + 2], op_stack, stack_pos);
     PushInt(mem[instr->GetOperand() + 1], op_stack, stack_pos);
   } 
@@ -1533,6 +1538,7 @@ void StackInterpreter::ProcessLoadFunction(StackInstr* instr, size_t* &op_stack,
       exit(1);
 #endif
     }
+    PushInt(cls_inst_mem[instr->GetOperand() + 2], op_stack, stack_pos);
     PushInt(cls_inst_mem[instr->GetOperand() + 1], op_stack, stack_pos);
     PushInt(cls_inst_mem[instr->GetOperand()], op_stack, stack_pos);
   }
@@ -1586,6 +1592,7 @@ void StackInterpreter::ProcessStoreFunction(StackInstr* instr, size_t* &op_stack
     size_t* mem = (*frame)->mem;
     mem[instr->GetOperand() + 1] = PopInt(op_stack, stack_pos);
     mem[instr->GetOperand() + 2] = PopInt(op_stack, stack_pos);
+    mem[instr->GetOperand() + 3] = PopInt(op_stack, stack_pos);
   } 
   else {
     size_t* cls_inst_mem = (size_t*)PopInt(op_stack, stack_pos);
@@ -1601,6 +1608,7 @@ void StackInterpreter::ProcessStoreFunction(StackInstr* instr, size_t* &op_stack
     }
     cls_inst_mem[instr->GetOperand()] = PopInt(op_stack, stack_pos);
     cls_inst_mem[instr->GetOperand() + 1] = PopInt(op_stack, stack_pos);
+    cls_inst_mem[instr->GetOperand() + 2] = PopInt(op_stack, stack_pos);
   }
 }
 
@@ -1684,6 +1692,20 @@ void StackInterpreter::ProcessNewObjectInstance(StackInstr* instr, size_t* &op_s
   size_t inst_mem = (size_t)MemoryManager::AllocateObject(instr->GetOperand(),
                                                           op_stack, *stack_pos);
   PushInt(inst_mem, op_stack, stack_pos);
+}
+
+/********************************
+ * Processes a new object instance
+ * request.
+ ********************************/
+void StackInterpreter::ProcessNewFunctionInstance(StackInstr* instr, size_t*& op_stack, long*& stack_pos)
+{
+#ifdef _DEBUG
+  wcout << L"stack oper: NEW_FUNC_INST: mem_size=" << instr->GetOperand() << endl;
+#endif
+
+  size_t func_mem = (size_t)MemoryManager::AllocateArray(instr->GetOperand(), BYTE_ARY_TYPE, op_stack, *stack_pos);
+  PushInt(func_mem, op_stack, stack_pos);
 }
 
 /********************************

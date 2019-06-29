@@ -869,7 +869,7 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
       break;
 
     case LOAD_INT_VAR: {
-      INT_VALUE id = ReadInt();
+      const INT_VALUE id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       instrs.push_back(new LibraryInstr(line_num, LOAD_INT_VAR, id, mem_context));
     }
@@ -883,14 +883,14 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
       break;
 
     case LOAD_FLOAT_VAR: {
-      INT_VALUE id = ReadInt();
+      const INT_VALUE id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       instrs.push_back(new LibraryInstr(line_num, LOAD_FLOAT_VAR, id, mem_context));
     }
       break;
 
     case STOR_INT_VAR: {
-      INT_VALUE id = ReadInt();
+      const INT_VALUE id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       instrs.push_back(new LibraryInstr(line_num, STOR_INT_VAR, id, mem_context));
     }
@@ -904,67 +904,73 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
       break;
 
     case STOR_FLOAT_VAR: {
-      INT_VALUE id = ReadInt();
+      const INT_VALUE id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       instrs.push_back(new LibraryInstr(line_num, STOR_FLOAT_VAR, id, mem_context));
     }
       break;
 
     case COPY_INT_VAR: {
-      INT_VALUE id = ReadInt();
+      const INT_VALUE id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       instrs.push_back(new LibraryInstr(line_num, COPY_INT_VAR, id, mem_context));
     }
       break;
 
     case COPY_FLOAT_VAR: {
-      INT_VALUE id = ReadInt();
+      const INT_VALUE id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       instrs.push_back(new LibraryInstr(line_num, COPY_FLOAT_VAR, id, mem_context));
     }
       break;
 
     case NEW_INT_ARY: {
-      INT_VALUE dim = ReadInt();
+      const INT_VALUE dim = ReadInt();
       instrs.push_back(new LibraryInstr(line_num, NEW_INT_ARY, dim));
     }
       break;
 
     case NEW_FLOAT_ARY: {
-      INT_VALUE dim = ReadInt();
+      const INT_VALUE dim = ReadInt();
       instrs.push_back(new LibraryInstr(line_num, NEW_FLOAT_ARY, dim));
     }
       break;
 
     case NEW_BYTE_ARY: {
-      INT_VALUE dim = ReadInt();
+      const INT_VALUE dim = ReadInt();
       instrs.push_back(new LibraryInstr(line_num, NEW_BYTE_ARY, dim));
 
     }
       break;
 
     case NEW_CHAR_ARY: {
-      INT_VALUE dim = ReadInt();
+      const INT_VALUE dim = ReadInt();
       instrs.push_back(new LibraryInstr(line_num, NEW_CHAR_ARY, dim));
       
     }
       break;
       
     case NEW_OBJ_INST: {
-      INT_VALUE obj_id = ReadInt();
+      const INT_VALUE obj_id = ReadInt();
       instrs.push_back(new LibraryInstr(line_num, NEW_OBJ_INST, obj_id));
     }
       break;
 
+    case NEW_FUNC_INST: {
+      const INT_VALUE mem_size = ReadInt();
+      instrs.push_back(new LibraryInstr(line_num, NEW_FUNC_INST, mem_size));
+    }
+      break;
+
     case JMP: {
-      INT_VALUE label = ReadInt();
-      INT_VALUE cond = ReadInt();
+      const INT_VALUE label = ReadInt();
+      const INT_VALUE cond = ReadInt();
       instrs.push_back(new LibraryInstr(line_num, JMP, label, cond));
     }
       break;
 
     case LBL: {
-      INT_VALUE id = ReadInt();
+      const INT_VALUE id = ReadInt();
       instrs.push_back(new LibraryInstr(line_num, LBL, id));
     }
       break;
@@ -1039,69 +1045,69 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
       break;
 
     case OBJ_INST_CAST: {
-      INT_VALUE to_id = ReadInt();
+      const INT_VALUE to_id = ReadInt();
       instrs.push_back(new LibraryInstr(line_num, OBJ_INST_CAST, to_id));
     }
       break;
 
     case OBJ_TYPE_OF: {
-      INT_VALUE check_id = ReadInt();
+      const INT_VALUE check_id = ReadInt();
       instrs.push_back(new LibraryInstr(line_num, OBJ_TYPE_OF, check_id));
     }
       break;
 
     case LOAD_BYTE_ARY_ELM: {
-      INT_VALUE dim = ReadInt();
+      const INT_VALUE dim = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       instrs.push_back(new LibraryInstr(line_num, LOAD_BYTE_ARY_ELM, dim, mem_context));
     }
       break;
 
     case LOAD_CHAR_ARY_ELM: {
-      INT_VALUE dim = ReadInt();
+      const INT_VALUE dim = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       instrs.push_back(new LibraryInstr(line_num, LOAD_CHAR_ARY_ELM, dim, mem_context));
     }
       break;
 
     case LOAD_INT_ARY_ELM: {
-      INT_VALUE dim = ReadInt();
+      const INT_VALUE dim = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       instrs.push_back(new LibraryInstr(line_num, LOAD_INT_ARY_ELM, dim, mem_context));
     }
       break;
 
     case LOAD_FLOAT_ARY_ELM: {
-      INT_VALUE dim = ReadInt();
+      const INT_VALUE dim = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       instrs.push_back(new LibraryInstr(line_num, LOAD_FLOAT_ARY_ELM, dim, mem_context));
     }
       break;
 
     case STOR_BYTE_ARY_ELM: {
-      INT_VALUE dim = ReadInt();
+      const INT_VALUE dim = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       instrs.push_back(new LibraryInstr(line_num, STOR_BYTE_ARY_ELM, dim, mem_context));
     }
       break;
 
     case STOR_CHAR_ARY_ELM: {
-      INT_VALUE dim = ReadInt();
+      const INT_VALUE dim = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       instrs.push_back(new LibraryInstr(line_num, STOR_CHAR_ARY_ELM, dim, mem_context));
     }
       break;
       
     case STOR_INT_ARY_ELM: {
-      INT_VALUE dim = ReadInt();
+      const INT_VALUE dim = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       instrs.push_back(new LibraryInstr(line_num, STOR_INT_ARY_ELM, dim, mem_context));
     }
       break;
 
     case STOR_FLOAT_ARY_ELM: {
-      INT_VALUE dim = ReadInt();
-      INT_VALUE mem_context = ReadInt();
+      const INT_VALUE dim = ReadInt();
+      const INT_VALUE mem_context = ReadInt();
       instrs.push_back(new LibraryInstr(line_num, STOR_FLOAT_ARY_ELM, dim, mem_context));
     }
       break;

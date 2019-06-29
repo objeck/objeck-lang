@@ -316,6 +316,7 @@ void IntermediateInstruction::Write(bool is_debug, OutputStream& out_stream) {
   case NEW_BYTE_ARY:
   case NEW_CHAR_ARY:
   case NEW_OBJ_INST:
+  case NEW_FUNC_INST:
   case OBJ_INST_CAST:
   case OBJ_TYPE_OF:
   case TRAP:
@@ -828,6 +829,10 @@ void IntermediateInstruction::Debug() {
 
   case NEW_OBJ_INST:
     GetLogger() << L"NEW_OBJ_INST: class=" << operand << endl;
+    break;
+
+  case NEW_FUNC_INST:
+    GetLogger() << L"NEW_FUNC_INST: mem_size=" << operand << endl;
     break;
 
   case TRAP:
