@@ -1043,9 +1043,11 @@ void IntermediateEmitter::EmitMethodCallStatement(MethodCall* method_call)
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_CLS_MEM));
     }      
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FUNC_VAR, entry->GetId(), mem_context));
-    
+
+    //     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
+
+
     // emit dynamic call
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
     switch(OrphanReturn(method_call)) {
     case 0:
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, DYN_MTHD_CALL, entry->GetType()->GetFunctionParameterCount(), instructions::INT_TYPE));
@@ -2669,10 +2671,6 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
 void IntermediateEmitter::EmitMethodCallExpression(MethodCall* method_call, bool is_variable, bool is_closure) {
   // find end of nested call
   if(method_call->IsFunctionDefinition()) {
-    if(!is_closure) {
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
-    }
-
     if(method_call->GetMethod()) {
       if(is_lib) {
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_FUNC_DEF, -1,
@@ -2724,6 +2722,7 @@ void IntermediateEmitter::EmitMethodCallExpression(MethodCall* method_call, bool
     else {
       mem_context = INST;
     }
+
     //
     if(mem_context == INST) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));

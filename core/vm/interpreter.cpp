@@ -1983,12 +1983,15 @@ void StackInterpreter::ProcessDynamicMethodCall(StackInstr* instr, StackInstr** 
   (*frame)->ip = ip;
   PushFrame((*frame));
 
-  // pop instance
-  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  
 
   // make call
   long cls_id = (long)PopInt(op_stack, stack_pos);
   long mthd_id = (long)PopInt(op_stack, stack_pos);
+
+  // pop instance
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+
   size_t* func_mem = (size_t*)PopInt(op_stack, stack_pos);
 #ifdef _DEBUG
   wcout << L"stack oper: DYN_MTHD_CALL; cls_mtd_id=" << cls_id << L"," << mthd_id << endl;
