@@ -762,9 +762,53 @@ IntermediateMethod* IntermediateEmitter::EmitMethod(Method* method)
  ****************************/
 void IntermediateEmitter::EmitLambda(Lambda* lambda)
 {
-  /*
+  int closure_space = 0;
   vector<pair<SymbolEntry*, SymbolEntry*> > copies = lambda->GetCopies();
   for(size_t i = 0; i < copies.size(); ++i) {
+    SymbolEntry* entry = copies[i].second;
+    switch(entry->GetType()->GetType()) {
+    case frontend::BOOLEAN_TYPE:
+      closure_space++;
+      break;
+
+    case frontend::BYTE_TYPE:
+      closure_space++;
+      break;
+
+    case frontend::INT_TYPE:
+      closure_space++;
+      break;
+
+    case frontend::CHAR_TYPE:
+      closure_space++;
+      break;
+
+    case frontend::CLASS_TYPE:
+      closure_space++;
+      break;
+
+    case frontend::FLOAT_TYPE:
+      if(entry->GetType()->GetDimension() > 0) {
+        closure_space++;
+      }
+      else {
+        closure_space += 2;
+      }
+      break;
+
+    case frontend::FUNC_TYPE:
+      closure_space += 2;
+      break;
+
+    default:
+      break;
+    }
+  }
+  closure_space *= sizeof(INT_VALUE);
+
+  EmitMethodCallExpression(lambda->GetMethodCall());
+
+  /*
     SymbolEntry* closure_entry = copies[i].second;
     switch(closure_entry->GetType()->GetType()) {
     case frontend::BOOLEAN_TYPE:
@@ -788,9 +832,7 @@ void IntermediateEmitter::EmitLambda(Lambda* lambda)
     default:
       break;
     }
-  }
   */
-  EmitMethodCallExpression(lambda->GetMethodCall());
 }
 
 /****************************

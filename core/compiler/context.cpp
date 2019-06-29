@@ -5907,7 +5907,7 @@ bool ContextAnalyzer::DuplicateCaseItem(map<int, StatementList*>label_statements
 bool ContextAnalyzer::InvalidStatic(MethodCall* method_call, Method* method)
 {
   // same class, calling method static and called method not static,
-  // called method not new, called method not from a varaible
+  // called method not new, called method not from a variable
   if(current_method->IsStatic() &&
      !method->IsStatic() && method->GetMethodType() != NEW_PUBLIC_METHOD &&
      method->GetMethodType() != NEW_PRIVATE_METHOD) {
