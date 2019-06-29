@@ -491,7 +491,7 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       break;
 
     case LOAD_INT_VAR: {
-      long id = ReadInt();
+      const long id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       mthd_instrs[i] = new StackInstr(line_num, 
               mem_context == LOCL ? LOAD_LOCL_INT_VAR : LOAD_CLS_INST_INT_VAR, 
@@ -500,21 +500,21 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       break;
 
     case LOAD_FUNC_VAR: {
-      long id = ReadInt();
+      const long id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       mthd_instrs[i] = new StackInstr(line_num, LOAD_FUNC_VAR, id, mem_context);
     }
       break;
 
     case LOAD_FLOAT_VAR: {
-      long id = ReadInt();
+      const long id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       mthd_instrs[i] = new StackInstr(line_num, LOAD_FLOAT_VAR, id, mem_context);
     }
       break;
 
     case STOR_INT_VAR: {
-      long id = ReadInt();
+      const long id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       mthd_instrs[i] = new StackInstr(line_num, 
               mem_context == LOCL ? STOR_LOCL_INT_VAR : STOR_CLS_INST_INT_VAR, 
@@ -523,21 +523,21 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       break;
 
     case STOR_FUNC_VAR: {
-      long id = ReadInt();
+      const long id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       mthd_instrs[i] = new StackInstr(line_num, STOR_FUNC_VAR, id, mem_context);
     }
       break;
 
     case STOR_FLOAT_VAR: {
-      long id = ReadInt();
+      const long id = ReadInt();
       const long mem_context = ReadInt();
       mthd_instrs[i] = new StackInstr(line_num, STOR_FLOAT_VAR, id, mem_context);
     }
       break;
 
     case COPY_INT_VAR: {
-      long id = ReadInt();
+      const long id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       mthd_instrs[i] = new StackInstr(line_num, 
               mem_context == LOCL ? COPY_LOCL_INT_VAR : COPY_CLS_INST_INT_VAR, 
@@ -546,7 +546,7 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       break;
 
     case COPY_FLOAT_VAR: {
-      long id = ReadInt();
+      const long id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       mthd_instrs[i] = new StackInstr(line_num, COPY_FLOAT_VAR, id, mem_context);
     }
@@ -633,30 +633,36 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       break;
 
     case NEW_OBJ_INST: {
-      long obj_id = ReadInt();
+      const long obj_id = ReadInt();
       mthd_instrs[i] = new StackInstr(line_num, NEW_OBJ_INST, obj_id);
     }
       break;
 
+    case NEW_FUNC_INST: {
+      const long mem_size = ReadInt();
+      mthd_instrs[i] = new StackInstr(line_num, NEW_FUNC_INST, mem_size);
+    }
+      break;
+
     case DYN_MTHD_CALL: {
-      long num_params = ReadInt();
-      long rtrn_type = ReadInt();
+      const long num_params = ReadInt();
+      const long rtrn_type = ReadInt();
       mthd_instrs[i] = new StackInstr(line_num, DYN_MTHD_CALL, num_params, rtrn_type);
     }
       break;
 
     case MTHD_CALL: {
-      long cls_id = ReadInt();
-      long mthd_id = ReadInt();
-      long is_native = ReadInt();
+      const long cls_id = ReadInt();
+      const long mthd_id = ReadInt();
+      const long is_native = ReadInt();
       mthd_instrs[i] = new StackInstr(line_num, MTHD_CALL, cls_id, mthd_id, is_native);
     }
       break;
 
     case ASYNC_MTHD_CALL: {
-      long cls_id = ReadInt();
-      long mthd_id = ReadInt();
-      long is_native = ReadInt();
+      const long cls_id = ReadInt();
+      const long mthd_id = ReadInt();
+      const long is_native = ReadInt();
       mthd_instrs[i] = new StackInstr(line_num, ASYNC_MTHD_CALL, cls_id, mthd_id, is_native);
     }
       break;
@@ -674,27 +680,27 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       exit(1);
 
     case JMP: {
-      long label = ReadInt();
-      long cond = ReadInt();
+      const long label = ReadInt();
+      const long cond = ReadInt();
       mthd_instrs[i] = new StackInstr(line_num, JMP, label, cond);
     }
       break;
 
     case LBL: {
-      long id = ReadInt();
+      const long id = ReadInt();
       mthd_instrs[i] = new StackInstr(line_num, LBL, id);
       method->AddLabel(id, i);
     }
       break;
 
     case OBJ_INST_CAST: {
-      long to = ReadInt();
+      const long to = ReadInt();
       mthd_instrs[i] = new StackInstr(line_num, OBJ_INST_CAST, to);
     }
       break;
 
     case OBJ_TYPE_OF: {
-      long check = ReadInt();
+      const long check = ReadInt();
       mthd_instrs[i] = new StackInstr(line_num, OBJ_TYPE_OF, check);
     }
       break;
@@ -966,13 +972,13 @@ void Loader::LoadStatements(StackMethod* method, bool is_debug)
       break;
 
     case TRAP: {
-      long args = ReadInt();
+      const long args = ReadInt();
       mthd_instrs[i] = new StackInstr(line_num, TRAP, args);
     }
       break;
 
     case TRAP_RTRN: {
-      long args = ReadInt();
+      const long args = ReadInt();
       mthd_instrs[i] = new StackInstr(line_num, TRAP_RTRN, args);
     }
       break;
