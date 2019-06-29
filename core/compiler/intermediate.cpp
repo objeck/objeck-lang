@@ -806,6 +806,8 @@ void IntermediateEmitter::EmitLambda(Lambda* lambda)
   }
   closure_space *= sizeof(INT_VALUE);
 
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, NEW_FUNC_INST, closure_space));
+
   EmitMethodCallExpression(lambda->GetMethodCall());
 
   /*
