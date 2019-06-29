@@ -1,8 +1,16 @@
 class Test {
+#	@y : Int;
+
 	function : Main(args : String[]) ~ Nil {
 		y := 7;
 		f := \(Int) ~ Int : (x) => x * y;
 		f(13)->PrintLine();
 	}
+
+#~
+	method : Foo(x : Int) ~ Int {
+		return x * @y;
+	}
+~#	
 }
 

@@ -1017,6 +1017,9 @@ void ContextAnalyzer::AnalyzeLambda(Lambda* lambda, const int depth)
         AnalyzeMethodCall(method_call, depth + 1);
         lambda->SetMethodCall(method_call);
         lambda->SetTypes(method_call->GetEvalType());
+
+        /*
+        // add copies
         vector<pair<SymbolEntry*, SymbolEntry*> > copies = lambda->GetCopies();
         for(size_t i = 0; i < copies.size(); ++i) {
           pair<SymbolEntry*, SymbolEntry*> copy = copies[i];
@@ -1024,6 +1027,7 @@ void ContextAnalyzer::AnalyzeLambda(Lambda* lambda, const int depth)
                                                                        copy.first, static_cast<Declaration*>(nullptr));
           method->GetDeclarations()->AddDeclaration(dclr);
         }
+        */
       }
       else {
         wcerr << L"internal error" << endl;
@@ -1648,17 +1652,19 @@ void ContextAnalyzer::AnalyzeVariable(Variable* variable, SymbolEntry* entry, co
       ProcessError(variable, L"Cannot reference an instance variable from this context");
     }
   }
+  // lambda expressions
   else if(current_method->IsLambda()) {
     const wstring capture_scope_name = capture_method->GetName() + L':' + variable->GetName();
     SymbolEntry* capture_entry = capture_table->GetEntry(capture_scope_name);
     if(capture_entry) {
       const wstring var_scope_name = current_method->GetName() + L':' + variable->GetName();
       SymbolEntry* var_entry = TreeFactory::Instance()->MakeSymbolEntry(variable->GetFileName(), variable->GetLineNumber(),
-                                                                        var_scope_name, capture_entry->GetType(), false, true);
-      current_table->AddEntry(var_entry, true);
+                                                                        var_scope_name, capture_entry->GetType(), false, false);
+      symbol_table->GetSymbolTable(current_class->GetName())->AddEntry(var_entry, true);
+      
       variable->SetTypes(var_entry->GetType());
       variable->SetEntry(var_entry);
-      var_entry->AddVariable(variable);
+      var_entry->AddVariable(variable); 
       capture_lambda->AddCopy(pair<SymbolEntry*, SymbolEntry*>(var_entry, capture_entry));
     }
   }
