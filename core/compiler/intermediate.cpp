@@ -762,6 +762,7 @@ IntermediateMethod* IntermediateEmitter::EmitMethod(Method* method)
  ****************************/
 void IntermediateEmitter::EmitLambda(Lambda* lambda)
 {
+  /*
   vector<pair<SymbolEntry*, SymbolEntry*> > copies = lambda->GetCopies();
   for(size_t i = 0; i < copies.size(); ++i) {
     SymbolEntry* closure_entry = copies[i].second;
@@ -788,6 +789,7 @@ void IntermediateEmitter::EmitLambda(Lambda* lambda)
       break;
     }
   }
+  */
   EmitMethodCallExpression(lambda->GetMethodCall());
 }
 
