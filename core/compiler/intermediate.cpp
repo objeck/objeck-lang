@@ -807,6 +807,93 @@ void IntermediateEmitter::EmitLambda(Lambda* lambda)
   closure_space *= sizeof(INT_VALUE);
 
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, NEW_FUNC_INST, closure_space));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, STOR_INT_VAR, 0, LOCL));
+  
+
+  for(size_t i = 0; i < copies.size(); ++i) {
+    pair<SymbolEntry*, SymbolEntry*> copy = copies[i];
+    SymbolEntry* var_entry = copy.first; 
+    SymbolEntry* capture_entry = copy.second;
+
+    // memory context
+    MemoryContext mem_context;
+    if(capture_entry->IsLocal()) {
+      mem_context = LOCL;
+    }
+    else if(capture_entry->IsStatic()) {
+      mem_context = CLS;
+    }
+    else {
+      mem_context = INST;
+    }
+
+    if(mem_context == INST) {
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
+    }
+    else if(mem_context == CLS) {
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_CLS_MEM));
+    }
+
+    switch(capture_entry->GetType()->GetType()) {
+    case frontend::BOOLEAN_TYPE:
+    case frontend::BYTE_TYPE:
+    case frontend::CHAR_TYPE:
+    case frontend::INT_TYPE:
+    case frontend::CLASS_TYPE:
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, capture_entry->GetId(), mem_context));
+      break;
+    case frontend::FLOAT_TYPE:
+      if(capture_entry->GetType()->GetDimension() > 0) {
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, capture_entry->GetId(), mem_context));
+      }
+      else {
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FLOAT_VAR, capture_entry->GetId(), mem_context));
+      }
+      break;
+    case frontend::FUNC_TYPE:
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FUNC_VAR, capture_entry->GetId(), mem_context));
+      break;
+    default:
+      break;
+    }
+
+
+
+
+    // memory context
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 0, LOCL));
+
+    switch(var_entry->GetType()->GetType()) {
+    case frontend::BOOLEAN_TYPE:
+    case frontend::BYTE_TYPE:
+    case frontend::CHAR_TYPE:
+    case frontend::INT_TYPE:
+    case frontend::CLASS_TYPE:
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, STOR_INT_VAR, var_entry->GetId(), INST));
+      break;
+    case frontend::FLOAT_TYPE:
+      if(var_entry->GetType()->GetDimension() > 0) {
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, STOR_INT_VAR, var_entry->GetId(), INST));
+      }
+      else {
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, STOR_FLOAT_VAR, var_entry->GetId(), INST));
+      }
+      break;
+    case frontend::FUNC_TYPE:
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, STOR_FUNC_VAR, var_entry->GetId(), INST));
+      break;
+    default:
+      break;
+    }
+
+
+
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 0, LOCL));
+
+
+
+  }
+
 
   EmitMethodCallExpression(lambda->GetMethodCall(), false, true);
 
@@ -1044,9 +1131,9 @@ void IntermediateEmitter::EmitMethodCallStatement(MethodCall* method_call)
     }      
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FUNC_VAR, entry->GetId(), mem_context));
 
+    // TODO: remove me
     //     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
-
-
+    
     // emit dynamic call
     switch(OrphanReturn(method_call)) {
     case 0:

@@ -1983,8 +1983,6 @@ void StackInterpreter::ProcessDynamicMethodCall(StackInstr* instr, StackInstr** 
   (*frame)->ip = ip;
   PushFrame((*frame));
 
-  
-
   // make call
   long cls_id = (long)PopInt(op_stack, stack_pos);
   long mthd_id = (long)PopInt(op_stack, stack_pos);
@@ -1992,7 +1990,6 @@ void StackInterpreter::ProcessDynamicMethodCall(StackInstr* instr, StackInstr** 
   // pop instance
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
-  size_t* func_mem = (size_t*)PopInt(op_stack, stack_pos);
 #ifdef _DEBUG
   wcout << L"stack oper: DYN_MTHD_CALL; cls_mtd_id=" << cls_id << L"," << mthd_id << endl;
 #endif
@@ -2033,7 +2030,7 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr, StackInstr** &instrs
   // make call
   StackMethod* called = program->GetClass(instr->GetOperand())->GetMethod(instr->GetOperand2());
 
-  // dynamically bind class for virutal method
+  // dynamically bind class for virtual method
   if(called->IsVirtual()) {
     StackClass* impl_class = MemoryManager::GetClass((size_t*)instance);
     if(!impl_class) {
