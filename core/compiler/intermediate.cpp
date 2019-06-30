@@ -1004,13 +1004,18 @@ void IntermediateEmitter::EmitStatement(Statement* statement)
     if(expression) {
       EmitExpression(expression);
     }
-
+    // post statements
+    if(!post_statements.empty()) {
+      EmitAssignment(post_statements.front());
+      post_statements.pop();
+    }
+    // leaving
     if(current_method->GetLeaving()) {
       vector<Statement*> leavings = current_method->GetLeaving()->GetStatements()->GetStatements();
       for(size_t i = 0; i < leavings.size(); ++i) {
         EmitStatement(leavings[i]);
       }
-    }    
+    }
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, RTRN));
     new_char_str_count = 0;
   }
@@ -1059,7 +1064,7 @@ void IntermediateEmitter::EmitStatement(Statement* statement)
     exit(1);
   }
   
-  if(post_statements.size()) {
+  if(!post_statements.empty()) {
     EmitAssignment(post_statements.front());
     post_statements.pop();
   }
@@ -2434,7 +2439,7 @@ void IntermediateEmitter::EmitDoWhile(DoWhile* do_while_stmt)
   // conditional
   EmitExpression(do_while_stmt->GetExpression());
 
-  if(post_statements.size()) {
+  if(!post_statements.empty()) {
     EmitAssignment(post_statements.front());
     post_statements.pop();
   }
@@ -2470,7 +2475,7 @@ void IntermediateEmitter::EmitWhile(While* while_stmt)
     EmitStatement(while_statements[i]);
   }
 
-  if(post_statements.size()) {
+  if(!post_statements.empty()) {
     EmitAssignment(post_statements.front());
     post_statements.pop();
   }
