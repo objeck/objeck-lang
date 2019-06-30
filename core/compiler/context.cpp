@@ -1646,7 +1646,7 @@ void ContextAnalyzer::AnalyzeVariable(Variable* variable, SymbolEntry* entry, co
   else if(current_method->IsLambda()) {
     const wstring capture_scope_name = capture_method->GetName() + L':' + variable->GetName();
     SymbolEntry* capture_entry = capture_table->GetEntry(capture_scope_name);
-    if(capture_entry) {
+    if(capture_entry && !capture_lambda->HasCopy(capture_entry)) {
       const wstring var_scope_name = current_method->GetName() + L':' + variable->GetName();
       SymbolEntry* var_entry = TreeFactory::Instance()->MakeSymbolEntry(variable->GetFileName(), variable->GetLineNumber(),
                                                                         var_scope_name, capture_entry->GetType(), false, false);
@@ -1655,7 +1655,7 @@ void ContextAnalyzer::AnalyzeVariable(Variable* variable, SymbolEntry* entry, co
       variable->SetTypes(var_entry->GetType());
       variable->SetEntry(var_entry);
       var_entry->AddVariable(variable); 
-      capture_lambda->AddCopy(pair<SymbolEntry*, SymbolEntry*>(var_entry, capture_entry));
+      capture_lambda->AddCopy(var_entry, capture_entry);
     }
   }
   // type inferred variable
