@@ -4758,13 +4758,13 @@ void Runtime::JitCompilerIA32::ProcessIndices()
     StackInstr* instr = (*value).second;
     // instance reference
     if(instr->GetOperand2() == INST || instr->GetOperand2() == CLS) {
-      // note: all instance variables are allocted in 4-byte blocks,
+      // note: all instance variables are allocated in 4-byte blocks,
       // for floats the assembler allocates 2 4-byte blocks
       instr->SetOperand3(instr->GetOperand() * sizeof(int32_t));
     }
     // local reference
     else {
-      // note: all local variables are allocted in 4 or 8 bytes ` 
+      // note: all local variables are allocated in 4 or 8 bytes
       // blocks depending upon type
       if(last_id != id) {
         if(instr->GetType() == LOAD_LOCL_INT_VAR ||
