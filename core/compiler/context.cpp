@@ -972,6 +972,7 @@ void ContextAnalyzer::AnalyzeLambda(Lambda* lambda, const int depth)
   if(lambda_type) {
     // set return
     Method* method = lambda->GetMethod();
+    current_method->SetAndOr(true);
     method->SetReturn(lambda_type->GetFunctionReturn());
 
     // update decelerations
@@ -1017,17 +1018,6 @@ void ContextAnalyzer::AnalyzeLambda(Lambda* lambda, const int depth)
         AnalyzeMethodCall(method_call, depth + 1);
         lambda->SetMethodCall(method_call);
         lambda->SetTypes(method_call->GetEvalType());
-
-        /*
-        // add copies
-        vector<pair<SymbolEntry*, SymbolEntry*> > copies = lambda->GetCopies();
-        for(size_t i = 0; i < copies.size(); ++i) {
-          pair<SymbolEntry*, SymbolEntry*> copy = copies[i];
-          Declaration* dclr = TreeFactory::Instance()->MakeDeclaration(method->GetFileName(), method->GetLineNumber(),
-                                                                       copy.first, static_cast<Declaration*>(nullptr));
-          method->GetDeclarations()->AddDeclaration(dclr);
-        }
-        */
       }
       else {
         wcerr << L"internal error" << endl;

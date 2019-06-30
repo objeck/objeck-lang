@@ -811,7 +811,7 @@ void* MemoryManager::CheckJitRoots(void* arg)
             wcout << L"\t" << j << L": FUNC_PARM: value=" << (*mem) << L"," << *(mem + 1) << endl;
   #endif
             // update
-            mem += 2;
+            mem += 3;
             break;
 
           case CHAR_PARM:
@@ -1149,7 +1149,7 @@ void MemoryManager::CheckMemory(size_t* mem, StackDclr** dclrs, const long dcls_
         << L"," << *(mem + 1)<< endl;
 #endif
       // update
-      mem += 2;
+      mem += 3;
       break;
 
   case CHAR_PARM:
