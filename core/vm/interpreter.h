@@ -339,8 +339,8 @@ namespace Runtime {
     inline void ProcessStoreByteArrayElement(StackInstr* instr, size_t* &op_stack, long* &stack_pos);    
     inline void ProcessStoreCharArrayElement(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
     inline void ProcessLoadCharArrayElement(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
-    inline void ProcessStoreFunction(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
-    inline void ProcessLoadFunction(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
+    inline void ProcessStoreFunctionVar(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
+    inline void ProcessLoadFunctionVar(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
     inline void ProcessStoreFloat(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
     inline void ProcessLoadFloat(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
     inline void ProcessCopyFloat(StackInstr* instr, size_t* &op_stack, long* &stack_pos);
