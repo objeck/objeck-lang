@@ -763,40 +763,157 @@ IntermediateMethod* IntermediateEmitter::EmitMethod(Method* method)
 void IntermediateEmitter::EmitLambda(Lambda* lambda)
 {
   int closure_space = 0;
+  IntermediateDeclarations* closure_dclrs = new IntermediateDeclarations; // TODO: DELETE
   vector<pair<SymbolEntry*, SymbolEntry*> > copies = lambda->GetCopies();
   for(size_t i = 0; i < copies.size(); ++i) {
     SymbolEntry* entry = copies[i].second;
     switch(entry->GetType()->GetType()) {
     case frontend::BOOLEAN_TYPE:
+      if(entry->GetType()->GetDimension() > 0) {
+#ifdef _DEBUG
+        GetLogger() << L"\t" << entry->GetId() << L": INT_ARY_PARM: name=" << entry->GetName()
+          << L", dim=" << entry->GetType()->GetDimension() << endl;
+#endif
+        closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_ARY_PARM));
+      }
+      else {
+#ifdef _DEBUG
+        GetLogger() << L"\t" << entry->GetId() << L": INT_PARM: name=" << entry->GetName() << endl;
+#endif
+        closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
+      }
       closure_space++;
       break;
 
     case frontend::BYTE_TYPE:
+      if(entry->GetType()->GetDimension() > 0) {
+#ifdef _DEBUG
+        GetLogger() << L"\t" << entry->GetId() << L": BYTE_ARY_PARM: name=" << entry->GetName() << endl;
+#endif
+        closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), BYTE_ARY_PARM));
+      }
+      else {
+#ifdef _DEBUG
+        GetLogger() << L"\t" << entry->GetId() << L": INT_PARM: name=" << entry->GetName() << endl;
+#endif
+        closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
+      }
       closure_space++;
       break;
 
     case frontend::INT_TYPE:
+      if(entry->GetType()->GetDimension() > 0) {
+#ifdef _DEBUG
+        GetLogger() << L"\t" << entry->GetId() << L": INT_ARY_PARM: name=" << entry->GetName()
+          << L", dim=" << entry->GetType()->GetDimension() << endl;
+#endif
+        closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_ARY_PARM));
+      }
+      else {
+#ifdef _DEBUG
+        GetLogger() << L"\t" << entry->GetId() << L": INT_PARM: name=" << entry->GetName() << endl;
+#endif
+        closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
+      }
       closure_space++;
       break;
 
     case frontend::CHAR_TYPE:
+      if(entry->GetType()->GetDimension() > 0) {
+#ifdef _DEBUG
+        GetLogger() << L"\t" << entry->GetId() << L": CHAR_ARY_PARM: name=" << entry->GetName() << endl;
+#endif
+        closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), CHAR_ARY_PARM));
+      }
+      else {
+#ifdef _DEBUG
+        GetLogger() << L"\t" << entry->GetId() << L": CHAR_PARM: name=" << entry->GetName() << endl;
+#endif
+        closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), CHAR_PARM));
+      }
       closure_space++;
       break;
 
     case frontend::CLASS_TYPE:
+      // object array
+      if(entry->GetType()->GetDimension() > 0) {
+        if(parsed_program->GetClass(entry->GetType()->GetClassName())) {
+#ifdef _DEBUG
+          GetLogger() << L"\t" << entry->GetId() << L": OBJ_ARY_PARM: name=" << entry->GetName() << endl;
+#endif
+          closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), OBJ_ARY_PARM));
+        }
+        else if(SearchProgramEnums(entry->GetType()->GetClassName())) {
+#ifdef _DEBUG
+          GetLogger() << L"\t" << entry->GetId() << L": INT_ARY_PARM: name=" << entry->GetName() << endl;
+#endif
+          closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_ARY_PARM));
+        }
+        else if(parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetClassName(), parsed_program->GetUses())) {
+#ifdef _DEBUG
+          GetLogger() << L"\t" << entry->GetId() << L": INT_ARY_PARM: name=" << entry->GetName() << endl;
+#endif
+          closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_ARY_PARM));
+        }
+        else {
+#ifdef _DEBUG
+          GetLogger() << L"\t" << entry->GetId() << L": OBJ_ARY_PARM: name=" << entry->GetName() << endl;
+#endif
+          closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), OBJ_ARY_PARM));
+        }
+      }
+      // object
+      else {
+        if(SearchProgramClasses(entry->GetType()->GetClassName())) {
+#ifdef _DEBUG
+          GetLogger() << L"\t" << entry->GetId() << L": OBJ_PARM: name=" << entry->GetName() << endl;
+#endif
+          closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), OBJ_PARM));
+        }
+        else if(SearchProgramEnums(entry->GetType()->GetClassName())) {
+#ifdef _DEBUG
+          GetLogger() << L"\t" << entry->GetId() << L": INT_PARM: name=" << entry->GetName() << endl;
+#endif
+          closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
+        }
+        else if(parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetClassName(), parsed_program->GetUses())) {
+#ifdef _DEBUG
+          GetLogger() << L"\t" << entry->GetId() << L": INT_PARM: name=" << entry->GetName() << endl;
+#endif
+          closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
+        }
+        else {
+#ifdef _DEBUG
+          GetLogger() << L"\t" << entry->GetId() << L": OBJ_PARM: name=" << entry->GetName() << endl;
+#endif
+          closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), OBJ_PARM));
+        }
+      }
       closure_space++;
       break;
 
     case frontend::FLOAT_TYPE:
       if(entry->GetType()->GetDimension() > 0) {
+#ifdef _DEBUG
+        GetLogger() << L"\t" << entry->GetId() << L": FLOAT_ARY_PARM: name=" << entry->GetName() << endl;
+#endif
+        closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), FLOAT_ARY_PARM));
         closure_space++;
       }
       else {
+#ifdef _DEBUG
+        GetLogger() << L"\t" << entry->GetId() << L": FLOAT_PARM: name=" << entry->GetName() << endl;
+#endif
+        closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), FLOAT_PARM));
         closure_space += 2;
       }
       break;
 
     case frontend::FUNC_TYPE:
+#ifdef _DEBUG
+      GetLogger() << L"\t" << entry->GetId() << L": FUNC_PARM: name=" << entry->GetName() << endl;
+#endif
+      closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), FUNC_PARM));
       closure_space += 3;
       break;
 
@@ -805,6 +922,10 @@ void IntermediateEmitter::EmitLambda(Lambda* lambda)
     }
   }
   closure_space *= sizeof(INT_VALUE);
+
+  // TODO: fix me
+  delete closure_dclrs;
+  closure_dclrs = nullptr;
 
   // allocate closure space and copy variables
   if(closure_space > 0) {
@@ -858,9 +979,6 @@ void IntermediateEmitter::EmitLambda(Lambda* lambda)
         break;
       }
 
-
-
-
       // memory context
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 0, LOCL));
 
@@ -886,13 +1004,6 @@ void IntermediateEmitter::EmitLambda(Lambda* lambda)
       default:
         break;
       }
-
-
-
-
-
-
-
     }
 
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 0, LOCL));
