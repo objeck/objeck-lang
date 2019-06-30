@@ -1174,8 +1174,8 @@ void MemoryManager::CheckMemory(size_t* mem, StackDclr** dclrs, const long dcls_
 #endif
       // update
       mem += 2;
-                     }
-                     break;
+    }
+      break;
 
     case BYTE_ARY_PARM:
 #ifdef _DEBUG
