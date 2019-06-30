@@ -1085,8 +1085,15 @@ void IntermediateEmitter::EmitMethodCallStatement(MethodCall* method_call)
                                                                                    method_call->GetMethod()->GetEncodedName()));
       }
       else {
-        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, method_call->GetMethod()->GetId()));
-        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, method_call->GetMethod()->GetClass()->GetId()));
+        const int16_t method_id = method_call->GetMethod()->GetId();
+        const int16_t cls_id = method_call->GetMethod()->GetClass()->GetId();
+        if(method_id < 0 || cls_id) {
+          wcerr << L"Internal compiler error." << endl;
+          exit(1);
+        }
+
+        const int method_cls_id = (cls_id << 16) | method_id;
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, method_cls_id));
       }
     }
     else {
@@ -1096,8 +1103,15 @@ void IntermediateEmitter::EmitMethodCallStatement(MethodCall* method_call)
                                                                                    method_call->GetLibraryMethod()->GetName()));
       }
       else {
-        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, method_call->GetLibraryMethod()->GetId()));
-        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, method_call->GetLibraryMethod()->GetLibraryClass()->GetId()));
+        const int16_t method_id = method_call->GetLibraryMethod()->GetId();
+        const int16_t cls_id = method_call->GetLibraryMethod()->GetLibraryClass()->GetId();
+        if(method_id < 0 || cls_id) {
+          wcerr << L"Internal compiler error." << endl;
+          exit(1);
+        }
+
+        const int method_cls_id = (cls_id << 16) | method_id;
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, method_cls_id));
       }
     }
   }

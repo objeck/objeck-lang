@@ -135,7 +135,7 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
 #endif
 
 #ifdef _DEBUG
-  wcout << L"\n---------- Executing Interpretered Code: id=" 
+  wcout << L"\n---------- Executing Interpreted Code: id=" 
         << (((*frame)->method->GetClass()) ? (*frame)->method->GetClass()->GetId() : -1) << L","
         << (*frame)->method->GetId() << L"; method_name='" << (*frame)->method->GetName() 
         << L"' ---------\n" << endl;
@@ -1522,7 +1522,6 @@ void StackInterpreter::ProcessLoadFunction(StackInstr* instr, size_t* &op_stack,
 #endif
   if(instr->GetOperand2() == LOCL) {
     size_t* mem = (*frame)->mem;
-    PushInt(mem[instr->GetOperand() + 3], op_stack, stack_pos);
     PushInt(mem[instr->GetOperand() + 2], op_stack, stack_pos);
     PushInt(mem[instr->GetOperand() + 1], op_stack, stack_pos);
   } 
@@ -1538,7 +1537,6 @@ void StackInterpreter::ProcessLoadFunction(StackInstr* instr, size_t* &op_stack,
       exit(1);
 #endif
     }
-    PushInt(cls_inst_mem[instr->GetOperand() + 2], op_stack, stack_pos);
     PushInt(cls_inst_mem[instr->GetOperand() + 1], op_stack, stack_pos);
     PushInt(cls_inst_mem[instr->GetOperand()], op_stack, stack_pos);
   }
@@ -1592,7 +1590,6 @@ void StackInterpreter::ProcessStoreFunction(StackInstr* instr, size_t* &op_stack
     size_t* mem = (*frame)->mem;
     mem[instr->GetOperand() + 1] = PopInt(op_stack, stack_pos);
     mem[instr->GetOperand() + 2] = PopInt(op_stack, stack_pos);
-    mem[instr->GetOperand() + 3] = PopInt(op_stack, stack_pos);
   } 
   else {
     size_t* cls_inst_mem = (size_t*)PopInt(op_stack, stack_pos);
@@ -1608,7 +1605,6 @@ void StackInterpreter::ProcessStoreFunction(StackInstr* instr, size_t* &op_stack
     }
     cls_inst_mem[instr->GetOperand()] = PopInt(op_stack, stack_pos);
     cls_inst_mem[instr->GetOperand() + 1] = PopInt(op_stack, stack_pos);
-    cls_inst_mem[instr->GetOperand() + 2] = PopInt(op_stack, stack_pos);
   }
 }
 
@@ -1984,8 +1980,9 @@ void StackInterpreter::ProcessDynamicMethodCall(StackInstr* instr, StackInstr** 
   PushFrame((*frame));
 
   // make call
-  long cls_id = (long)PopInt(op_stack, stack_pos);
-  long mthd_id = (long)PopInt(op_stack, stack_pos);
+  const size_t mthd_cls_id = PopInt(op_stack, stack_pos);
+  const long cls_id = (mthd_cls_id >> (16 * (0))) & 0xFFFF;
+  const long mthd_id = (mthd_cls_id >> (16 * (1))) & 0xFFFF;
 
   // pop instance
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
