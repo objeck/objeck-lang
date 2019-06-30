@@ -320,19 +320,21 @@ namespace backend {
     bool is_lib;
     bool is_virtual;
     bool has_and_or;
+    bool is_lambda;
     int instr_count;
     vector<IntermediateBlock*> blocks;
     IntermediateDeclarations* entries;
     IntermediateClass* klass;
 
   public:
-    IntermediateMethod(int i, const wstring &n, bool v, bool h, const wstring &r,
+    IntermediateMethod(int i, const wstring &n, bool v, bool h, bool l, const wstring &r,
                        frontend::MethodType t, bool nt, bool f, int c, int p,
                        IntermediateDeclarations* e, IntermediateClass* k) {
       id = i;
       name = n;
       is_virtual = v;
       has_and_or = h;
+      is_lambda = l;
       rtrn_name = r;
       type = t;
       is_native = nt;
@@ -351,6 +353,7 @@ namespace backend {
       name = lib_method->GetName();
       is_virtual = lib_method->IsVirtual();
       has_and_or = lib_method->HasAndOr();
+      is_lambda = lib_method->IsLambda();
       rtrn_name = lib_method->GetEncodedReturn();
       type = lib_method->GetMethodType();
       is_native = lib_method->IsNative();
