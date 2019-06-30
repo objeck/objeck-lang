@@ -301,6 +301,7 @@ void ContextAnalyzer::AnalyzeDuplicateEntries(vector<Class*> &classes, const int
           }
           else {
             ProcessError(declaration, L"Internal compiler error.");
+            exit(1);
           }
         }
       }
@@ -1501,6 +1502,7 @@ void ContextAnalyzer::AnalyzeCharacterString(CharacterString* char_str, const in
   }
   else {
     ProcessError(char_str, L"Internal compiler error.");
+    exit(1);
   }
 #endif
 
@@ -3767,7 +3769,7 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
 
               default:
                 ProcessError(assignment, L"Internal compiler error.");
-                break;
+                exit(1);
               }
             }
             else {
@@ -3813,7 +3815,7 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
 
           default:
             ProcessError(assignment, L"Internal compiler error.");
-            break;
+            exit(1);
           }
         }
       }
@@ -3852,7 +3854,7 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
 
         default:
           ProcessError(assignment, L"Internal compiler error.");
-          break;
+          exit(1);
         }
 
         if(calc_expression) {
