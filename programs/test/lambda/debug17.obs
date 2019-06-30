@@ -12,8 +12,8 @@ class Test {
 #		f := \(Int) ~ Int : (x) => x * y;
 #		f(13)->PrintLine();
 
-#		f := Calc1(Int) ~ Int;
-		f := \(Int) ~ Int : (x) => x * x;
+		f := Calc1(Int) ~ Int;
+#		f := \(Int) ~ Int : (x) => x * x;
 		Func(f);
 	}	
 
