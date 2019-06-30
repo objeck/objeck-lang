@@ -185,6 +185,7 @@ class LibraryMethod {
   LibraryClass* lib_cls;
   frontend::MethodType type;
   bool is_native;
+  bool is_lambda;
   bool is_static;
   bool is_virtual;
   bool has_and_or;
@@ -214,7 +215,7 @@ class LibraryMethod {
   
  public:
   LibraryMethod(int i, const wstring &n, const wstring &r, frontend::MethodType t, bool v,  bool h,
-                bool nt, bool s, int p, int m, LibraryClass* c, backend::IntermediateDeclarations* e) {
+                bool nt, bool s, bool l, int p, int m, LibraryClass* c, backend::IntermediateDeclarations* e) {
     id = i;
     name = n;
     rtrn_name = r;
@@ -223,6 +224,7 @@ class LibraryMethod {
     has_and_or = h;
     is_native = nt;
     is_static = s;
+    is_lambda = l;
     num_params = p;
     mem_size = m;
     lib_cls = c;
@@ -254,6 +256,10 @@ class LibraryMethod {
 
   bool HasAndOr() {
     return has_and_or;
+  }
+
+  bool IsLambda() {
+    return is_lambda;
   }
 
   const wstring &GetName() const {

@@ -1981,8 +1981,13 @@ void StackInterpreter::ProcessDynamicMethodCall(StackInstr* instr, StackInstr** 
 
   // make call
   const size_t mthd_cls_id = PopInt(op_stack, stack_pos);
-  const long cls_id = (mthd_cls_id >> (16 * (0))) & 0xFFFF;
-  const long mthd_id = (mthd_cls_id >> (16 * (1))) & 0xFFFF;
+  const long cls_id = (mthd_cls_id >> (16 * (1))) & 0xFFFF;
+  const long mthd_id = (mthd_cls_id >> (16 * (0))) & 0xFFFF;
+
+  if(mthd_id < 0 || cls_id < 0) {
+    wcerr << L"Internal VM error." << endl;
+    exit(1);
+  }
 
   // pop instance
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);

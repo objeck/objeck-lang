@@ -799,6 +799,7 @@ void Library::LoadMethods(LibraryClass* cls, bool is_debug)
     frontend::MethodType type = (frontend::MethodType)ReadInt();
     bool is_virtual = ReadInt() != 0;
     bool has_and_or = ReadInt() != 0;
+    bool is_lambda = ReadInt() != 0;
     bool is_native = ReadInt() != 0;
     bool is_static = ReadInt() != 0;
     const wstring &name = ReadString();
@@ -826,7 +827,7 @@ void Library::LoadMethods(LibraryClass* cls, bool is_debug)
 #endif
 
     LibraryMethod* mthd = new LibraryMethod(id, name, rtrn_name, type, is_virtual, has_and_or,
-                                            is_native, is_static, params, mem_size, cls, entries);
+                                            is_native, is_static, is_lambda, params, mem_size, cls, entries);
     // load statements
     LoadStatements(mthd, is_debug);
 

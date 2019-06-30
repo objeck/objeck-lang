@@ -186,7 +186,7 @@ void Loader::Load()
   dclrs[0]->name = L"args";
   dclrs[0]->type = OBJ_ARY_PARM;
 
-  init_method = new StackMethod(-1, name, false, false, dclrs,  1, 0, 1, NIL_TYPE, nullptr);
+  init_method = new StackMethod(-1, name, false, false, false, dclrs,  1, 0, 1, NIL_TYPE, nullptr);
   LoadInitializationCode(init_method);
   program->SetInitializationMethod(init_method);
   program->SetStringObjectId(string_cls_id);
@@ -347,6 +347,8 @@ void Loader::LoadMethods(StackClass* cls, bool is_debug)
     const bool is_virtual = ReadInt() != 0;
     // has and/or
     const bool has_and_or = ReadInt() != 0;
+    // is lambda expression
+    const bool is_lambda = ReadInt() != 0;
     // name
     const wstring name = ReadString();
     // return
@@ -406,7 +408,7 @@ void Loader::LoadMethods(StackClass* cls, bool is_debug)
       break;
     }
 
-    StackMethod* mthd = new StackMethod(id, name, is_virtual, has_and_or, dclrs,
+    StackMethod* mthd = new StackMethod(id, name, is_virtual, has_and_or, is_lambda, dclrs,
           num_dclrs, params, mem_size, rtrn_type, cls);    
     // load statements
 #ifdef _DEBUG

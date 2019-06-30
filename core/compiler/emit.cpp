@@ -265,6 +265,7 @@ void IntermediateMethod::Write(bool emit_lib, bool is_debug, OutputStream& out_s
   
   WriteInt(is_virtual, out_stream);
   WriteInt(has_and_or, out_stream);
+  WriteInt(is_lambda, out_stream);
   
   if(emit_lib) {
     WriteInt(is_native, out_stream);

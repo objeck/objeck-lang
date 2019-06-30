@@ -288,6 +288,7 @@ class StackMethod {
   wstring name;
   bool is_virtual;
   bool has_and_or;
+  bool is_lambda;
   StackInstr** instrs;  
   int instr_count;  
   unordered_map<long, long> jump_table;
@@ -308,11 +309,12 @@ class StackMethod {
   const wstring ParseName(const wstring &name) const;
 
  public:
-  StackMethod(long i, const wstring &n, bool v, bool h, StackDclr** d, long nd, long p, long m, MemoryType r, StackClass* k) {
+  StackMethod(long i, const wstring &n, bool v, bool h, bool l, StackDclr** d, long nd, long p, long m, MemoryType r, StackClass* k) {
     id = i;
     name = ParseName(n);
     is_virtual = v;
     has_and_or = h;
+    is_lambda = l;
     native_code = nullptr;
     dclrs = d;
     num_dclrs = nd;
@@ -362,6 +364,10 @@ class StackMethod {
 
   inline bool HasAndOr() {
     return has_and_or;
+  }
+
+  inline bool IsLambda() {
+    return is_lambda;
   }
 
   inline StackClass* GetClass() const {

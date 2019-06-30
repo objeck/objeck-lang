@@ -7,11 +7,14 @@ class Test {
 #	@y : Int;
 
 	function : Main(args : String[]) ~ Nil {
-		y := 7;
-
-		Func(\(Int) ~ Int : (x) => x * y++);
+#		y := 7;
+#		Func(\(Int) ~ Int : (x) => x * y++);
 #		f := \(Int) ~ Int : (x) => x * y;
 #		f(13)->PrintLine();
+
+#		f := Calc1(Int) ~ Int;
+		f := \(Int) ~ Int : (x) => x * x;
+		Func(f);
 	}	
 
 	function : Func(f : (Int) ~ Int) ~ Nil {		
@@ -22,10 +25,9 @@ class Test {
 	function : Func2(f : (Int) ~ Int) ~ Nil {		
 		f(13)->PrintLine();
 	}	
-#~
-	method : Foo(x : Int) ~ Int {
-		return x * @y;
+
+	function : Calc1(x : Int) ~ Int {
+		return x + x;
 	}
-~#	
 }
 
