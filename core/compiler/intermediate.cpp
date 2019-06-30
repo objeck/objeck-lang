@@ -806,10 +806,10 @@ void IntermediateEmitter::EmitLambda(Lambda* lambda)
   }
   closure_space *= sizeof(INT_VALUE);
 
+  // TODO: if size is 0?
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, NEW_FUNC_INST, closure_space));
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, STOR_INT_VAR, 0, LOCL));
   
-
   for(size_t i = 0; i < copies.size(); ++i) {
     pair<SymbolEntry*, SymbolEntry*> copy = copies[i];
     SymbolEntry* var_entry = copy.first; 
@@ -888,12 +888,13 @@ void IntermediateEmitter::EmitLambda(Lambda* lambda)
 
 
 
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 0, LOCL));
+    
 
 
 
   }
 
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 0, LOCL));
 
   EmitMethodCallExpression(lambda->GetMethodCall(), false, true);
 
