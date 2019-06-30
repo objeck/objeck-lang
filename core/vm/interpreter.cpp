@@ -160,7 +160,7 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
       break;
       
     case STOR_FUNC_VAR:
-      ProcessStoreFunction(instr, op_stack, stack_pos);
+      ProcessStoreFunctionVar(instr, op_stack, stack_pos);
       break;
 
     case STOR_FLOAT_VAR:
@@ -211,7 +211,7 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
       break;
       
     case LOAD_FUNC_VAR:
-      ProcessLoadFunction(instr, op_stack, stack_pos);
+      ProcessLoadFunctionVar(instr, op_stack, stack_pos);
       break;
 
     case LOAD_FLOAT_VAR:
@@ -1514,7 +1514,7 @@ void StackInterpreter::CriticalEnd(size_t* &op_stack, long* &stack_pos)
  * Processes a load function
  * variable instruction.
  ********************************/
-void StackInterpreter::ProcessLoadFunction(StackInstr* instr, size_t* &op_stack, long* &stack_pos)
+void StackInterpreter::ProcessLoadFunctionVar(StackInstr* instr, size_t* &op_stack, long* &stack_pos)
 {
 #ifdef _DEBUG
   wcout << L"stack oper: LOAD_FUNC_VAR; index=" << instr->GetOperand()
@@ -1580,7 +1580,7 @@ void StackInterpreter::ProcessLoadFloat(StackInstr* instr, size_t* &op_stack, lo
  * Processes a store function
  * variable instruction.
  ********************************/
-void StackInterpreter::ProcessStoreFunction(StackInstr* instr, size_t* &op_stack, long* &stack_pos)
+void StackInterpreter::ProcessStoreFunctionVar(StackInstr* instr, size_t* &op_stack, long* &stack_pos)
 {
 #ifdef _DEBUG
   wcout << L"stack oper: STOR_FUNC_VAR; index=" << instr->GetOperand()

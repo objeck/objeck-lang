@@ -789,30 +789,32 @@ void* MemoryManager::CheckJitRoots(void* arg)
     StackFrame* frame = jit_frames[i];
     size_t* mem = frame->jit_mem;
     size_t* self = (size_t*)frame->mem[0];
-    StackMethod* mthd = frame->method;
-    const long dclrs_num = mthd->GetNumberDeclarations();
+    StackMethod* method = frame->method;
+    const long dclrs_num = method->GetNumberDeclarations();
 
 #ifdef _DEBUG
-    wcout << L"\t===== JIT method: name=" << mthd->GetName() << L", id=" << mthd->GetClass()->GetId()
-      << L"," << mthd->GetId() << L"; addr=" << mthd << L"; mem=" << mem << L"; self=" << self
-      << L"; num=" << mthd->GetNumberDeclarations() << L" =====" << endl;
+    wcout << L"\t===== JIT method: name=" << method->GetName() << L", id=" << method->GetClass()->GetId()
+      << L"," << method->GetId() << L"; addr=" << method << L"; mem=" << mem << L"; self=" << self
+      << L"; num=" << method->GetNumberDeclarations() << L" =====" << endl;
 #endif
 
     if(mem) {
       // check self
-      CheckObject(self, true, 1);
+      if(!method->IsLambda()) {
+        CheckObject(self, true, 1);
+      }
 
-      StackDclr** dclrs = mthd->GetDeclarations();
+      StackDclr** dclrs = method->GetDeclarations();
       for(int j = dclrs_num - 1; j > -1; j--) {
         // update address based upon type
         switch(dclrs[j]->type) {
           // TODO: get function and dclrs
           case FUNC_PARM:
   #ifdef _DEBUG
-            wcout << L"\t" << j << L": FUNC_PARM: value=" << (*mem) << L"," << *(mem + 1) << L", mem=" << *(mem + 2) << endl;
+            wcout << L"\t" << j << L": FUNC_PARM: id=" << (*mem) << L", mem=" << *(mem + 1) << endl;
   #endif
             // update
-            mem += 3;
+            mem += 2;
             break;
 
           case CHAR_PARM:
@@ -1089,18 +1091,20 @@ void* MemoryManager::CheckPdaRoots(void* arg)
   // check PDA roots
   for(size_t i = 0; i < frames.size(); ++i) {
     StackFrame* frame = frames[i];
-    StackMethod* mthd = frame->method;
+    StackMethod* method = frame->method;
     size_t* mem = frame->mem;
 
 #ifdef _DEBUG
-    wcout << L"\t===== PDA method: name=" << mthd->GetName() << L", addr="
-      << mthd << L", num=" << mthd->GetNumberDeclarations() << L" =====" << endl;
+    wcout << L"\t===== PDA method: name=" << method->GetName() << L", addr="
+      << method << L", num=" << method->GetNumberDeclarations() << L" =====" << endl;
 #endif
 
     // mark self
-    CheckObject((size_t*)(*mem), true, 1);
+    if(!method->IsLambda()) {
+      CheckObject((size_t*)(*mem), true, 1);
+    }
 
-    if(mthd->HasAndOr()) {
+    if(method->HasAndOr()) {
       mem += 2;
     }
     else {
@@ -1108,7 +1112,7 @@ void* MemoryManager::CheckPdaRoots(void* arg)
     }
 
     // mark rest of memory
-    CheckMemory(mem, mthd->GetDeclarations(), mthd->GetNumberDeclarations(), 0);
+    CheckMemory(mem, method->GetDeclarations(), method->GetNumberDeclarations(), 0);
   }
 
 #ifndef _GC_SERIAL
@@ -1147,10 +1151,10 @@ void MemoryManager::CheckMemory(size_t* mem, StackDclr** dclrs, const long dcls_
       // TODO: get function and dclrs
     case FUNC_PARM:
 #ifdef _DEBUG
-      wcout << L"\t" << i << L": FUNC_PARM: value=" << (*mem) << L"," << *(mem + 1) << L", mem=" << *(mem + 2) << endl;
+      wcout << L"\t" << i << L": FUNC_PARM: id=" << (*mem) << L", mem=" << *(mem + 1) << endl;
 #endif
       // update
-      mem += 3;
+      mem += 2;
       break;
 
   case CHAR_PARM:
