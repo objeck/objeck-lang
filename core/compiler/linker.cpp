@@ -615,7 +615,7 @@ void Library::LoadFile(const wstring &file_name)
     str_instr->value = holder;
     int_strings.push_back(str_instr);
   }
-  // read char wstrings
+  // read char strings
   const int num_char_strings = ReadInt();
   for(int i = 0; i < num_char_strings; ++i) {
     const wstring &char_str_value = ReadString();
@@ -627,6 +627,20 @@ void Library::LoadFile(const wstring &file_name)
     str_instr->value = char_str_value;
     char_strings.push_back(str_instr);
   }
+
+
+  
+  
+  
+  // read closure decelerations
+  const int num_lambda_dclrs = ReadInt();
+  for(int i = 0; i < num_lambda_dclrs; ++i) {
+    
+  }
+
+
+
+
 
   // read bundle names
   const int num_bundle_name = ReadInt();

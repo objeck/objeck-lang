@@ -174,7 +174,7 @@ void StackProgram::InitializeProprieties()
   config.getline(buffer, line_max);
   if(config.good()) {
     while(strlen(buffer) > 0) {
-      // readline ane parse
+      // read line and parse
       wstring line = BytesToUnicode(buffer);
       if(line.size() > 0 && line[0] != L'#') {
         size_t offset = line.find_first_of(L'=');

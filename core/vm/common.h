@@ -777,6 +777,7 @@ class StackProgram {
   int data_type_cls_id;
   StackMethod* init_method;
   static map<wstring, wstring> properties_map;
+  map<int, pair<int, StackDclr**> > lambda_dclrs;
 
   FLOAT_VALUE** float_strings;
   int num_float_strings;
@@ -863,6 +864,21 @@ class StackProgram {
       char_strings = nullptr;
     }
 
+    map<int, pair<int, StackDclr**> >::iterator iter;
+    for(iter = lambda_dclrs.begin(); iter != lambda_dclrs.end(); ++iter) {
+      pair<int, StackDclr**> tmp = iter->second;
+      const int num_dclrs = tmp.first;
+      StackDclr** dclrs = tmp.second;
+      for(int i = 0; i < num_dclrs; ++i) {
+        StackDclr* tmp2 = dclrs[i];
+        delete tmp2;
+        tmp2 = nullptr;
+      }
+      delete[] dclrs;
+      dclrs = nullptr;
+    }
+    lambda_dclrs.clear();
+
     if(init_method) {
       delete init_method;
       init_method = nullptr;
@@ -902,7 +918,7 @@ class StackProgram {
   static BOOL GetUserDirectory(char* buf, DWORD len) {
     HANDLE handle;
 
-    if (!OpenProcessToken(GetCurrentProcess(), TOKEN_READ, &handle)) {
+    if(!OpenProcessToken(GetCurrentProcess(), TOKEN_READ, &handle)) {
       return FALSE;
     }
 
@@ -1102,6 +1118,14 @@ class StackProgram {
 
   inline int GetClassNumber() const {  
     return class_num;
+  }
+
+  void AddClosureDeclarations(const int id, const int num_dclrs, StackDclr** dclrs) {
+    lambda_dclrs[id] = pair<int, StackDclr**>(num_dclrs, dclrs);
+  }
+  
+  pair<int, StackDclr**> GetClosureDeclarations(const int id) {
+    return lambda_dclrs[id];
   }
 
 #ifdef _DEBUGGER

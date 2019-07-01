@@ -150,6 +150,29 @@ void IntermediateProgram::Write(bool emit_lib, bool is_debug, bool is_web, Outpu
     WriteString(char_strings[i], out_stream);
   }
 
+
+
+  // write closure decelerations
+  WriteInt((int)closure_dclrs.size(), out_stream);
+  map<IntermediateDeclarations*, pair<wstring, int> >::iterator iter;
+  for(iter = closure_dclrs.begin(); iter != closure_dclrs.end(); ++iter) {
+    pair<wstring, int> id = iter->second;
+    IntermediateDeclarations* dclrs = iter->first;
+    
+    if(emit_lib) {
+      WriteString(id.first, out_stream);
+    }
+    else {
+      WriteInt(id.second, out_stream);
+    }
+    dclrs->Write(false, out_stream);
+  }
+
+
+
+
+
+
   
   if(emit_lib) {
     // write bundle names
@@ -200,6 +223,11 @@ void IntermediateProgram::Write(bool emit_lib, bool is_debug, bool is_web, Outpu
   
   wcout << L"Linked " << num_lib_classes
         << (num_lib_classes > 1 ? L" library classes." : L" library class.") << endl;
+}
+
+void IntermediateProgram::AddClosureDeclarations(const wstring mthd_cls_name, const int mthd_cls_id, IntermediateDeclarations* dclrs)
+{
+  closure_dclrs[dclrs] = pair<wstring, int>(mthd_cls_name, mthd_cls_id);
 }
 
 /****************************
