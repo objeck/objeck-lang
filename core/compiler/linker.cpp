@@ -476,7 +476,7 @@ map<backend::IntermediateDeclarations*, std::pair<std::wstring, int>> LibraryCla
     const wstring lib_mthd_name = lamba_iter->first;
     LibraryMethod* lib_method = GetMethod(lib_mthd_name);
     if(!lib_method) {
-      wcerr << L"Internal compiler error." << endl;
+      wcerr << L"Internal compiler error: Invalid method name." << endl;
       exit(1);
     }
     backend::IntermediateDeclarations* dclr = lamba_iter->second;

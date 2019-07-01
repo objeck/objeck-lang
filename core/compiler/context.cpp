@@ -300,7 +300,7 @@ void ContextAnalyzer::AnalyzeDuplicateEntries(vector<Class*> &classes, const int
             ProcessError(declaration, L"Declaration name '" + short_name + L"' defined in a parent class");
           }
           else {
-            ProcessError(declaration, L"Internal compiler error.");
+            ProcessError(declaration, L"Internal compiler error: Invalid entry name");
             exit(1);
           }
         }
@@ -1021,7 +1021,7 @@ void ContextAnalyzer::AnalyzeLambda(Lambda* lambda, const int depth)
         lambda->SetTypes(method_call->GetEvalType());
       }
       else {
-        wcerr << L"Internal compiler error" << endl;
+        wcerr << L"Internal compiler error: Invalid method name." << endl;
         exit(1);
       }
     }
@@ -1501,7 +1501,7 @@ void ContextAnalyzer::AnalyzeCharacterString(CharacterString* char_str, const in
     lib_klass->SetCalled(true);
   }
   else {
-    ProcessError(char_str, L"Internal compiler error.");
+    ProcessError(char_str, L"Internal compiler error: Invalid class name");
     exit(1);
   }
 #endif
