@@ -2881,13 +2881,6 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryClass* klass, MethodCall* method_
       encoded_name.push_back(L',');
     }
     lib_method = klass->GetMethod(encoded_name);
-    
-    /* TODO: remove this...?
-    if(lib_method && method_call->GetCallingParameters()->GetExpressions().size() > 0) {
-      ProcessError(static_cast<Expression*>(method_call),
-                   L"Cannot be called as a method, call as class function");
-    }
-    */
   }
 
   method_call->SetOriginalLibraryClass(klass);
