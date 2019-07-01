@@ -1021,7 +1021,7 @@ void ContextAnalyzer::AnalyzeLambda(Lambda* lambda, const int depth)
         lambda->SetTypes(method_call->GetEvalType());
       }
       else {
-        wcerr << L"internal error" << endl;
+        wcerr << L"Internal compiler error" << endl;
         exit(1);
       }
     }

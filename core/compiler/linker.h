@@ -421,7 +421,7 @@ class LibraryClass {
   multimap<const wstring, LibraryMethod*> unqualified_methods;
   backend::IntermediateDeclarations* cls_entries;
   backend::IntermediateDeclarations* inst_entries;
-  map<const wstring, backend::IntermediateDeclarations*> lamba_entries;
+  map<const wstring, backend::IntermediateDeclarations*> lib_closure_entries;
   bool is_interface;
   bool is_virtual;
   bool is_generic;
@@ -433,6 +433,8 @@ class LibraryClass {
   wstring file_name;
   vector<LibraryClass*> generic_classes;
   frontend::Type* generic_interface;
+
+  map<backend::IntermediateDeclarations*, pair<wstring, int>> CopyClosureEntries();
   
  public:
    LibraryClass(const wstring &n, const wstring &g) {
@@ -585,9 +587,12 @@ class LibraryClass {
     return inst_entries;
   }
 
-  // TOOD: set ids and wire up
   map<backend::IntermediateDeclarations*, pair<wstring, int> > GetLambaEntries() {
-    return map < backend::IntermediateDeclarations*, pair<wstring, int> >();
+    if(lib_closure_entries.empty()) {
+      return {};
+    }
+
+    return CopyClosureEntries();
   }
   
   LibraryMethod* GetMethod(const wstring &name) {

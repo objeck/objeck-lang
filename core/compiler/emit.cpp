@@ -251,15 +251,14 @@ void IntermediateClass::Write(bool emit_lib, OutputStream& out_stream) {
   map<IntermediateDeclarations*, pair<wstring, int> >::iterator iter;
   for(iter = closure_entries.begin(); iter != closure_entries.end(); ++iter) {
     pair<wstring, int> id = iter->second;
-    IntermediateDeclarations* dclrs = iter->first;
-
+    IntermediateDeclarations* closure_dclrs = iter->first;
     if(emit_lib) {
       WriteString(id.first, out_stream);
     }
     else {
       WriteInt(id.second, out_stream);
     }
-    dclrs->Write(is_debug, out_stream);
+    closure_dclrs->Write(is_debug, out_stream);
   }
 
   // write methods
