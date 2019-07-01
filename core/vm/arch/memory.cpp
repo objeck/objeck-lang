@@ -810,15 +810,16 @@ void* MemoryManager::CheckJitRoots(void* arg)
         switch(dclrs[j]->type) {
         case FUNC_PARM: {
           size_t* lambda_mem = (size_t*) * (mem + 1);
+          const size_t mthd_cls_id = *mem;
+          const long cls_id = (mthd_cls_id >> (16 * (1))) & 0xFFFF;
+          const long mthd_id = (mthd_cls_id >> (16 * (0))) & 0xFFFF;
 #ifdef _DEBUG
-          wcout << L"\t" << j << L": FUNC_PARM: id=" << (*mem) << L", mem=" << lambda_mem << endl;
+          wcout << L"\t" << j << L": FUNC_PARM: id=(" << cls_id << L"," << mthd_id << L"), mem=" << lambda_mem << endl;
 #endif
-          /*
-          pair<int, StackDclr**> closure_dclrs = prgm->GetClosureDeclarations((int)*mem);
+          pair<int, StackDclr**> closure_dclrs = prgm->GetClass(cls_id)->GetClosureDeclarations(mthd_id);
           if(MarkMemory(lambda_mem)) {
             CheckMemory(lambda_mem, closure_dclrs.second, closure_dclrs.first, 1);
           }
-          */
           // update
           mem += 2;
         }
@@ -1156,15 +1157,16 @@ void MemoryManager::CheckMemory(size_t* mem, StackDclr** dclrs, const long dcls_
       // TODO: get function and dclrs
     case FUNC_PARM: {
       size_t* lambda_mem = (size_t*) * (mem + 1);
+      const size_t mthd_cls_id = *mem;
+      const long cls_id = (mthd_cls_id >> (16 * (1))) & 0xFFFF;
+      const long mthd_id = (mthd_cls_id >> (16 * (0))) & 0xFFFF;
 #ifdef _DEBUG
-      wcout << L"\t" << i << L": FUNC_PARM: id=" << (*mem) << L", mem=" << lambda_mem << endl;
+      wcout << L"\t" << i << L": FUNC_PARM: id=(" << cls_id << L"," << mthd_id << L"), mem=" << lambda_mem << endl;
 #endif
-      /*
-      pair<int, StackDclr**> closure_dclrs = prgm->GetClosureDeclarations((int)*mem);
+      pair<int, StackDclr**> closure_dclrs = prgm->GetClass(cls_id)->GetClosureDeclarations(mthd_id);
       if(MarkMemory(lambda_mem)) {
         CheckMemory(lambda_mem, closure_dclrs.second, closure_dclrs.first, depth + 1);
       }
-      */
       // update
       mem += 2;
     }

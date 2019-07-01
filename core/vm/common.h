@@ -544,7 +544,7 @@ class StackClass {
   StackDclr** cls_dclrs;
   long cls_num_dclrs;
   StackDclr** inst_dclrs;
-  map<int, pair<int, StackDclr**> > lambda_dclrs;
+  map<int, pair<int, StackDclr**> > closure_dclrs;
   long inst_num_dclrs;
   size_t* cls_mem;
   bool is_debug;
@@ -566,7 +566,7 @@ class StackClass {
     cls_dclrs = cdclr;
     cls_num_dclrs = cn;
     inst_dclrs = idclr;
-    lambda_dclrs = ldclr;
+    closure_dclrs = ldclr;
     inst_num_dclrs = in;
     cls_space = InitMemory(cs);
     inst_space  = is;
@@ -596,7 +596,7 @@ class StackClass {
     }
 
     map<int, pair<int, StackDclr**> >::iterator iter;
-    for(iter = lambda_dclrs.begin(); iter != lambda_dclrs.end(); ++iter) {
+    for(iter = closure_dclrs.begin(); iter != closure_dclrs.end(); ++iter) {
       pair<int, StackDclr**> tmp = iter->second;
       const int num_dclrs = tmp.first;
       StackDclr** dclrs = tmp.second;
@@ -608,7 +608,7 @@ class StackClass {
       delete[] dclrs;
       dclrs = nullptr;
     }
-    lambda_dclrs.clear();
+    closure_dclrs.clear();
 
     for(int i = 0; i < method_num; ++i) {
       StackMethod* method = methods[i];
@@ -652,8 +652,8 @@ class StackClass {
     return inst_dclrs;
   }
 
-  inline pair<int, StackDclr**> GetLambdaDeclarations(const int id) {
-    return lambda_dclrs[id];
+  inline pair<int, StackDclr**> GetClosureDeclarations(const int id) {
+    return closure_dclrs[id];
   }
 
   inline int GetNumberInstanceDeclarations() const {
