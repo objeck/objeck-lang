@@ -282,13 +282,6 @@ void IntermediateEmitter::EmitLibraries(Linker* linker)
         imm_program->AddClass(new IntermediateClass(lib_classes[i], parent_class ? parent_class->GetId() : -1));
       }
     }
-
-    // TODO closure: add to program
-    map<const wstring, Library*> libraries = linker->GetAllLibraries();
-    for(map<const wstring, Library*>::iterator iter = libraries.begin(); iter != libraries.end(); ++iter) {
-      
-      map<const wstring, backend::IntermediateDeclarations*> lamba_entries = iter->second->GetLambaEntries();
-    }
   }
 }
 
@@ -932,10 +925,7 @@ void IntermediateEmitter::EmitLambda(Lambda* lambda)
 
   // add closure
   MethodCall* method_call = lambda->GetMethodCall();
-  const int16_t method_id = method_call->GetMethod()->GetId();
-  const int16_t cls_id = method_call->GetMethod()->GetClass()->GetId();
-  const int method_cls_id = (cls_id << 16) | method_id;
-  imm_program->AddClosureDeclarations(lambda->GetMethod()->GetName(), method_cls_id, closure_dclrs);
+  imm_klass->AddClosureDeclarations(lambda->GetMethod()->GetEncodedName(), method_call->GetMethod()->GetId(), closure_dclrs);
 
   // allocate closure space and copy variables
   if(closure_space > 0) {

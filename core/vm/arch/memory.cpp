@@ -813,10 +813,12 @@ void* MemoryManager::CheckJitRoots(void* arg)
 #ifdef _DEBUG
           wcout << L"\t" << j << L": FUNC_PARM: id=" << (*mem) << L", mem=" << lambda_mem << endl;
 #endif
+          /*
           pair<int, StackDclr**> closure_dclrs = prgm->GetClosureDeclarations((int)*mem);
           if(MarkMemory(lambda_mem)) {
             CheckMemory(lambda_mem, closure_dclrs.second, closure_dclrs.first, 1);
           }
+          */
           // update
           mem += 2;
         }
@@ -1157,10 +1159,12 @@ void MemoryManager::CheckMemory(size_t* mem, StackDclr** dclrs, const long dcls_
 #ifdef _DEBUG
       wcout << L"\t" << i << L": FUNC_PARM: id=" << (*mem) << L", mem=" << lambda_mem << endl;
 #endif
+      /*
       pair<int, StackDclr**> closure_dclrs = prgm->GetClosureDeclarations((int)*mem);
       if(MarkMemory(lambda_mem)) {
         CheckMemory(lambda_mem, closure_dclrs.second, closure_dclrs.first, depth + 1);
       }
+      */
       // update
       mem += 2;
     }

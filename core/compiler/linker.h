@@ -421,6 +421,7 @@ class LibraryClass {
   multimap<const wstring, LibraryMethod*> unqualified_methods;
   backend::IntermediateDeclarations* cls_entries;
   backend::IntermediateDeclarations* inst_entries;
+  map<const wstring, backend::IntermediateDeclarations*> lamba_entries;
   bool is_interface;
   bool is_virtual;
   bool is_generic;
@@ -445,10 +446,10 @@ class LibraryClass {
      is_generic = true;
      library = nullptr;
    }
-  
-   LibraryClass(const wstring& n, const wstring& p, const vector<wstring> i, bool is, const vector<wstring> g, bool v,
-                const int cs, const int in, backend::IntermediateDeclarations* ce, backend::IntermediateDeclarations* ie, 
-                Library* l, const wstring &fn, bool d);
+   
+   LibraryClass(const wstring& n, const wstring& p, const vector<wstring> i, bool is, const vector<wstring> g, bool v, const int cs, 
+                const int in, backend::IntermediateDeclarations* ce, backend::IntermediateDeclarations* ie, 
+                map<const wstring, backend::IntermediateDeclarations*> le, Library* l, const wstring &fn, bool d);
    
   ~LibraryClass() {   
     // clean up
@@ -583,6 +584,11 @@ class LibraryClass {
   backend::IntermediateDeclarations* GetInstanceEntries() {
     return inst_entries;
   }
+
+  // TOOD: set ids and wire up
+  map<backend::IntermediateDeclarations*, pair<wstring, int> > GetLambaEntries() {
+    return map < backend::IntermediateDeclarations*, pair<wstring, int> >();
+  }
   
   LibraryMethod* GetMethod(const wstring &name) {
     map<const wstring, LibraryMethod*>::iterator result = methods.find(name);
@@ -667,7 +673,6 @@ class Library {
   vector<IntStringInstruction*> int_strings;
   vector<FloatStringInstruction*> float_strings;
   vector<wstring> bundle_names;
-  map<const wstring, backend::IntermediateDeclarations*> lamba_entries;
   
   inline int ReadInt() {
     int32_t value = *((int32_t*)buffer);
@@ -843,16 +848,6 @@ class Library {
       tmp = nullptr;
     }
 
-    map<const wstring, backend::IntermediateDeclarations*>::iterator lamba_entries_iter;
-    for(lamba_entries_iter = lamba_entries.begin(); lamba_entries_iter != lamba_entries.end(); ++lamba_entries_iter) {
-      backend::IntermediateDeclarations* tmp = lamba_entries_iter->second;
-      if(tmp) {
-        delete tmp;
-        tmp = nullptr;
-      }
-    }
-    lamba_entries.clear();
-
     if(alloc_buffer) {
       delete[] alloc_buffer;
       alloc_buffer = nullptr;
@@ -909,10 +904,6 @@ class Library {
 
   vector<CharStringInstruction*> GetCharStringInstructions() {
     return char_strings;
-  }
-
-  map<const wstring, backend::IntermediateDeclarations*> GetLambaEntries() {
-    return lamba_entries;
   }
 
   vector<IntStringInstruction*> GetIntStringInstructions() {

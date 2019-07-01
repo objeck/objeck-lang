@@ -1685,8 +1685,7 @@ void StackInterpreter::ProcessNewObjectInstance(StackInstr* instr, size_t* &op_s
   wcout << L"stack oper: NEW_OBJ_INST: id=" << instr->GetOperand() << endl;
 #endif
 
-  size_t inst_mem = (size_t)MemoryManager::AllocateObject(instr->GetOperand(),
-                                                          op_stack, *stack_pos);
+  size_t inst_mem = (size_t)MemoryManager::AllocateObject(instr->GetOperand(), op_stack, *stack_pos);
   PushInt(inst_mem, op_stack, stack_pos);
 }
 

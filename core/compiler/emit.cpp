@@ -150,30 +150,6 @@ void IntermediateProgram::Write(bool emit_lib, bool is_debug, bool is_web, Outpu
     WriteString(char_strings[i], out_stream);
   }
 
-
-
-  // write closure decelerations
-  WriteInt((int)closure_dclrs.size(), out_stream);
-  map<IntermediateDeclarations*, pair<wstring, int> >::iterator iter;
-  for(iter = closure_dclrs.begin(); iter != closure_dclrs.end(); ++iter) {
-    pair<wstring, int> id = iter->second;
-    IntermediateDeclarations* dclrs = iter->first;
-    
-    if(emit_lib) {
-      WriteString(id.first, out_stream);
-    }
-    else {
-      WriteInt(id.second, out_stream);
-    }
-    dclrs->Write(false, out_stream);
-  }
-
-
-
-
-
-
-  
   if(emit_lib) {
     // write bundle names
     WriteInt((int)bundle_names.size(), out_stream);
@@ -265,8 +241,26 @@ void IntermediateClass::Write(bool emit_lib, OutputStream& out_stream) {
   // write local space size
   WriteInt(cls_space, out_stream);
   WriteInt(inst_space, out_stream);
+
+  // write class and instance declarations
   cls_entries->Write(is_debug, out_stream);
   inst_entries->Write(is_debug, out_stream);
+
+  // write closure declarations
+  WriteInt((int)closure_entries.size(), out_stream);
+  map<IntermediateDeclarations*, pair<wstring, int> >::iterator iter;
+  for(iter = closure_entries.begin(); iter != closure_entries.end(); ++iter) {
+    pair<wstring, int> id = iter->second;
+    IntermediateDeclarations* dclrs = iter->first;
+
+    if(emit_lib) {
+      WriteString(id.first, out_stream);
+    }
+    else {
+      WriteInt(id.second, out_stream);
+    }
+    dclrs->Write(is_debug, out_stream);
+  }
 
   // write methods
   WriteInt((int)methods.size(), out_stream);

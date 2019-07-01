@@ -483,6 +483,7 @@ namespace backend {
     map<int, IntermediateMethod*> method_map;
     IntermediateDeclarations* cls_entries;
     IntermediateDeclarations* inst_entries;
+    map<IntermediateDeclarations*, pair<wstring, int> > closure_entries;
     bool is_lib;
     bool is_interface;
     bool is_virtual;
@@ -528,6 +529,7 @@ namespace backend {
       inst_space = lib_klass->GetInstanceSpace();
       cls_entries = lib_klass->GetClassEntries();
       inst_entries = lib_klass->GetInstanceEntries();
+      closure_entries = lib_klass->GetLambaEntries();
 
       // process methods
       map<const wstring, LibraryMethod*> lib_methods = lib_klass->GetMethods();
@@ -571,6 +573,14 @@ namespace backend {
         delete inst_entries;
         inst_entries = nullptr;
       }
+
+      map<IntermediateDeclarations*, pair<wstring, int> >::iterator entries_iter;
+      for(entries_iter = closure_entries.begin(); entries_iter != closure_entries.end(); ++entries_iter) {
+        IntermediateDeclarations* tmp = entries_iter->first;
+        delete tmp;
+        tmp = nullptr;
+      }
+      closure_entries.clear();
     }
 
     int GetId() {
@@ -620,6 +630,10 @@ namespace backend {
 
     vector<IntermediateMethod*> GetMethods() {
       return methods;
+    }
+
+    void AddClosureDeclarations(const wstring mthd_name, const int mthd_id, IntermediateDeclarations* dclrs) {
+      closure_entries[dclrs] = pair<wstring, int>(mthd_name, mthd_id);
     }
 
     void Write(bool emit_lib, OutputStream& out_stream);
@@ -749,7 +763,6 @@ namespace backend {
     vector<wstring> char_strings;
     vector<frontend::IntStringHolder*> int_strings;
     vector<frontend::FloatStringHolder*> float_strings;
-    map<IntermediateDeclarations*, pair<wstring, int> > closure_dclrs;
     vector<wstring> bundle_names;
     wstring aliases_str;
     int num_src_classes;
@@ -799,14 +812,6 @@ namespace backend {
         delete tmp;
         tmp = nullptr;
       }
-
-      map<IntermediateDeclarations*, pair<wstring, int> >::iterator iter;
-      for(iter = closure_dclrs.begin(); iter != closure_dclrs.end(); ++iter) {
-        IntermediateDeclarations* tmp = iter->first;
-        delete tmp;
-        tmp = nullptr;
-      }
-      closure_dclrs.clear();
 
       IntermediateFactory::Instance()->Clear();
     }
@@ -875,10 +880,6 @@ namespace backend {
 
     const wstring GetAliasesString() {
       return aliases_str;
-    }
-
-    void AddClosureDeclarations(const wstring mthd_cls_name, const int mthd_cls_id, IntermediateDeclarations* dclrs) {
-      closure_dclrs[dclrs] = pair<wstring, int>(mthd_cls_name, mthd_cls_id);
     }
 
     void Write(bool emit_lib, bool is_debug, bool is_web, OutputStream& out_stream);
