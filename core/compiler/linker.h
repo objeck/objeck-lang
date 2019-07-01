@@ -451,6 +451,16 @@ class LibraryClass {
                 Library* l, const wstring &fn, bool d);
 
   ~LibraryClass() {
+    if(cls_entries) {
+      delete cls_entries;
+      cls_entries = nullptr;
+    }
+
+    if(inst_entries) {
+      delete inst_entries;
+      inst_entries = nullptr;
+    }
+
     // clean up
     map<const wstring, LibraryMethod*>::iterator iter;
     for(iter = methods.begin(); iter != methods.end(); ++iter) {
@@ -667,6 +677,7 @@ class Library {
   vector<IntStringInstruction*> int_strings;
   vector<FloatStringInstruction*> float_strings;
   vector<wstring> bundle_names;
+  map<const wstring, backend::IntermediateDeclarations*> lamba_entries;
   
   inline int ReadInt() {
     int32_t value = *((int32_t*)buffer);
@@ -842,6 +853,16 @@ class Library {
       tmp = nullptr;
     }
 
+    map<const wstring, backend::IntermediateDeclarations*>::iterator lamba_entries_iter;
+    for(lamba_entries_iter = lamba_entries.begin(); lamba_entries_iter != lamba_entries.end(); ++lamba_entries_iter) {
+      backend::IntermediateDeclarations* tmp = lamba_entries_iter->second;
+      if(tmp) {
+        delete tmp;
+        tmp = nullptr;
+      }
+    }
+    lamba_entries.clear();
+
     if(alloc_buffer) {
       delete[] alloc_buffer;
       alloc_buffer = nullptr;
@@ -898,6 +919,10 @@ class Library {
 
   vector<CharStringInstruction*> GetCharStringInstructions() {
     return char_strings;
+  }
+
+  map<const wstring, backend::IntermediateDeclarations*> GetLambaEntries() {
+    return lamba_entries;
   }
 
   vector<IntStringInstruction*> GetIntStringInstructions() {

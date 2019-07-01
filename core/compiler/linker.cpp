@@ -637,6 +637,7 @@ void Library::LoadFile(const wstring &file_name)
   for(int i = 0; i < num_lambda_dclrs; ++i) {
     const wstring lambda_dclrs_name = ReadString();
     backend::IntermediateDeclarations* lambda_entries = LoadEntries(false);
+    lamba_entries[lambda_dclrs_name] = lambda_entries;
   }
 
 
