@@ -16,6 +16,12 @@ class Test {
 #		f := \(Int) ~ Int : (x) => x * x;
 		f := \(Int) ~ Int : (x) => x * y + z;
 		Func(f);
+
+		i := 100;
+		while(--i > 0) {
+			x := "foo Bar";
+			x->Size()->PrintLine();
+		};
 	}	
 
 	function : Func(f : (Int) ~ Int) ~ Nil {		
