@@ -416,7 +416,7 @@ LibraryClass::LibraryClass(const wstring& n, const wstring& p, const vector<wstr
   inst_space = in;
   cls_entries = ce;
   inst_entries = ie;
-  lamba_entries = le;
+  lib_closure_entries = le;
   library = l;
   is_generic = false;
   generic_interface = nullptr;
@@ -466,6 +466,25 @@ vector<LibraryClass*> LibraryClass::GetLibraryChildren()
   }
 
   return lib_children;
+}
+
+map<backend::IntermediateDeclarations*, std::pair<std::wstring, int>> LibraryClass::CopyClosureEntries()
+{
+  map<backend::IntermediateDeclarations*, pair<wstring, int> > closure_entries;
+
+  map<const wstring, backend::IntermediateDeclarations*>::iterator lamba_iter;
+  for(lamba_iter = lib_closure_entries.begin(); lamba_iter != lib_closure_entries.end(); ++lamba_iter) {
+    const wstring lib_mthd_name = lamba_iter->first;
+    LibraryMethod* lib_method = GetMethod(lib_mthd_name);
+    if(!lib_method) {
+      wcerr << L"Internal compiler error." << endl;
+      exit(1);
+    }
+    backend::IntermediateDeclarations* dclr = lamba_iter->second;
+    closure_entries[dclr] = pair<wstring, int>(lib_mthd_name, lib_method->GetId());
+  }
+
+  return closure_entries;
 }
 
 std::vector<LibraryMethod*> LibraryClass::GetUnqualifiedMethods(const wstring& n)
@@ -772,12 +791,12 @@ void Library::LoadClasses()
     backend::IntermediateDeclarations* inst_entries = LoadEntries(is_debug);
 
     // read closure entries
-    map<const wstring, backend::IntermediateDeclarations*> lamba_entries;
+    map<const wstring, backend::IntermediateDeclarations*> closure_entries;
     const int num_lambda_dclrs = ReadInt();
     for(int i = 0; i < num_lambda_dclrs; ++i) {
       const wstring lambda_dclrs_name = ReadString();
       backend::IntermediateDeclarations* lambda_entries = LoadEntries(is_debug);
-      lamba_entries[lambda_dclrs_name] = lambda_entries;
+      closure_entries[lambda_dclrs_name] = lambda_entries;
     }
 
     hierarchies.insert(pair<const wstring, const wstring>(name, parent_name));
@@ -793,7 +812,7 @@ void Library::LoadClasses()
 #endif
 
     LibraryClass* cls = new LibraryClass(name, parent_name, interface_names, is_interface, generic_names, is_virtual,
-                                         cls_space, inst_space, cls_entries, inst_entries, lamba_entries, this, file_name, is_debug);
+                                         cls_space, inst_space, cls_entries, inst_entries, closure_entries, this, file_name, is_debug);
     // load method
     LoadMethods(cls, is_debug);
     // add class
