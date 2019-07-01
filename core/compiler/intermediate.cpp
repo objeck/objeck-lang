@@ -282,6 +282,16 @@ void IntermediateEmitter::EmitLibraries(Linker* linker)
         imm_program->AddClass(new IntermediateClass(lib_classes[i], parent_class ? parent_class->GetId() : -1));
       }
     }
+
+
+
+
+    // TODO: add to program
+    map<const wstring, Library*> libraries = linker->GetAllLibraries();
+    for(map<const wstring, Library*>::iterator iter = libraries.begin(); iter != libraries.end(); ++iter) {
+      
+      map<const wstring, backend::IntermediateDeclarations*> lamba_entries = iter->second->GetLambaEntries();
+    }
   }
 }
 
@@ -348,7 +358,7 @@ void IntermediateEmitter::EmitStrings()
         if(!found) {
           lib_float_string_values.push_back(float_str_insts[i]->value);
         }
-      }  
+      }
     }
 
     // merge in library strings
@@ -411,7 +421,7 @@ void IntermediateEmitter::EmitStrings()
         assert(found);
 #endif
       }
-      // int wstring processing
+      // int string processing
       vector<IntStringInstruction*> int_str_insts = iter->second->GetIntStringInstructions();
       for(size_t i = 0; i < int_str_insts.size(); ++i) {
         bool found = false;
