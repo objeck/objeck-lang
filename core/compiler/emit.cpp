@@ -225,11 +225,6 @@ void IntermediateProgram::Write(bool emit_lib, bool is_debug, bool is_web, Outpu
         << (num_lib_classes > 1 ? L" library classes." : L" library class.") << endl;
 }
 
-void IntermediateProgram::AddClosureDeclarations(const wstring mthd_cls_name, const int mthd_cls_id, IntermediateDeclarations* dclrs)
-{
-  closure_dclrs[dclrs] = pair<wstring, int>(mthd_cls_name, mthd_cls_id);
-}
-
 /****************************
  * Class class
  ****************************/

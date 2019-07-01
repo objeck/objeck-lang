@@ -629,7 +629,7 @@ IntermediateMethod* IntermediateEmitter::EmitMethod(Method* method)
   int num_params = 0;
   for(size_t i = 0; i < declarations.size(); ++i) {
     if(declarations[i]->GetEntry()->GetType()->GetType() == frontend::FUNC_TYPE) {
-      num_params += 3;
+      num_params += 2;
     }
     else {
       num_params++;
@@ -914,7 +914,7 @@ void IntermediateEmitter::EmitLambda(Lambda* lambda)
       GetLogger() << L"\t" << entry->GetId() << L": FUNC_PARM: name=" << entry->GetName() << endl;
 #endif
       closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), FUNC_PARM));
-      closure_space += 3;
+      closure_space += 2;
       break;
 
     default:
@@ -4877,8 +4877,8 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index,
 #endif
           declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), FUNC_PARM));
           entry->SetId(index);
-          index += 3;
-          var_space += 3;
+          index += 2;
+          var_space += 2;
           break;
 
         default:

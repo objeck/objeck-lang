@@ -161,10 +161,10 @@ void Loader::Load()
 
     // read class types
     const int lambda_num_dclrs = ReadInt();
-    StackDclr** lambda_dclrs = new StackDclr * [lambda_num_dclrs]; // TODO: save and delete
+    StackDclr** lambda_dclrs = new StackDclr * [lambda_num_dclrs];
     for(int j = 0; j < lambda_num_dclrs; ++j) {
       // set type
-      int type = ReadInt();
+      const int type = ReadInt();
       // set name
       /*
       wstring name;

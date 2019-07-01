@@ -877,7 +877,9 @@ namespace backend {
       return aliases_str;
     }
 
-    void AddClosureDeclarations(const wstring mthd_cls_name, const int mthd_cls_id, IntermediateDeclarations* dclrs);
+    void AddClosureDeclarations(const wstring mthd_cls_name, const int mthd_cls_id, IntermediateDeclarations* dclrs) {
+      closure_dclrs[dclrs] = pair<wstring, int>(mthd_cls_name, mthd_cls_id);
+    }
 
     void Write(bool emit_lib, bool is_debug, bool is_web, OutputStream& out_stream);
 
