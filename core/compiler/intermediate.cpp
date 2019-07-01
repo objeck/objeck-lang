@@ -283,10 +283,7 @@ void IntermediateEmitter::EmitLibraries(Linker* linker)
       }
     }
 
-
-
-
-    // TODO: add to program
+    // TODO closure: add to program
     map<const wstring, Library*> libraries = linker->GetAllLibraries();
     for(map<const wstring, Library*>::iterator iter = libraries.begin(); iter != libraries.end(); ++iter) {
       
@@ -773,7 +770,7 @@ IntermediateMethod* IntermediateEmitter::EmitMethod(Method* method)
 void IntermediateEmitter::EmitLambda(Lambda* lambda)
 {
   int closure_space = 0;
-  IntermediateDeclarations* closure_dclrs = new IntermediateDeclarations; // TODO: DELETE
+  IntermediateDeclarations* closure_dclrs = new IntermediateDeclarations;
   vector<pair<SymbolEntry*, SymbolEntry*> > copies = lambda->GetCopies();
   for(size_t i = 0; i < copies.size(); ++i) {
     SymbolEntry* entry = copies[i].second;
@@ -933,14 +930,11 @@ void IntermediateEmitter::EmitLambda(Lambda* lambda)
   }
   closure_space *= sizeof(INT_VALUE);
 
-  // TODO: fix me, what about libraries?
-  // for .obe (write id => entries)
-  // for .obl (write signature string => entries)
+  // add closure
   MethodCall* method_call = lambda->GetMethodCall();
   const int16_t method_id = method_call->GetMethod()->GetId();
   const int16_t cls_id = method_call->GetMethod()->GetClass()->GetId();
   const int method_cls_id = (cls_id << 16) | method_id;
-
   imm_program->AddClosureDeclarations(lambda->GetMethod()->GetName(), method_cls_id, closure_dclrs);
 
   // allocate closure space and copy variables
@@ -1256,9 +1250,6 @@ void IntermediateEmitter::EmitMethodCallStatement(MethodCall* method_call)
     }      
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FUNC_VAR, entry->GetId(), mem_context));
 
-    // TODO: remove me
-    //     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
-    
     // emit dynamic call
     switch(OrphanReturn(method_call)) {
     case 0:
