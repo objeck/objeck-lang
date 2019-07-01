@@ -4764,7 +4764,7 @@ void Runtime::JitCompilerIA32::ProcessIndices()
     }
     // local reference
     else {
-      // note: all local variables are allocted in 4 or 8 bytes ` 
+      // note: all local variables are allocated in 4 or 8 bytes
       // blocks depending upon type
       if(last_id != id) {
         if(instr->GetType() == LOAD_LOCL_INT_VAR ||
