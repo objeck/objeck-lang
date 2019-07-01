@@ -449,18 +449,8 @@ class LibraryClass {
    LibraryClass(const wstring& n, const wstring& p, const vector<wstring> i, bool is, const vector<wstring> g, bool v,
                 const int cs, const int in, backend::IntermediateDeclarations* ce, backend::IntermediateDeclarations* ie, 
                 Library* l, const wstring &fn, bool d);
-
-  ~LibraryClass() {
-    if(cls_entries) {
-      delete cls_entries;
-      cls_entries = nullptr;
-    }
-
-    if(inst_entries) {
-      delete inst_entries;
-      inst_entries = nullptr;
-    }
-
+   
+  ~LibraryClass() {   
     // clean up
     map<const wstring, LibraryMethod*>::iterator iter;
     for(iter = methods.begin(); iter != methods.end(); ++iter) {
