@@ -283,20 +283,20 @@ void Loader::LoadClasses()
     StackDclr** inst_dclrs = LoadDeclarations(inst_num_dclrs, is_debug);
     
     // read closure declarations
-    map<int, pair<int, StackDclr**> > lambda_dclr_map;
-    const int num_lambda_dclrs = ReadInt();
-    for(int i = 0; i < num_lambda_dclrs; ++i) {
-      const int lambda_mthd_id = ReadInt();
+    map<int, pair<int, StackDclr**> > closure_dclr_map;
+    const int num_closure_dclrs = ReadInt();
+    for(int i = 0; i < num_closure_dclrs; ++i) {
+      const int closure_mthd_id = ReadInt();
       // read closure declarations
-      const int lambda_num_dclrs = ReadInt();
-      StackDclr** lambda_dclrs = LoadDeclarations(lambda_num_dclrs, is_debug);
+      const int closure_num_dclrs = ReadInt();
+      StackDclr** closure_dclrs = LoadDeclarations(closure_num_dclrs, is_debug);
       // add declarations to map
-      lambda_dclr_map[lambda_mthd_id] = pair<int, StackDclr**>(lambda_num_dclrs, lambda_dclrs);
+      closure_dclr_map[closure_mthd_id] = pair<int, StackDclr**>(closure_num_dclrs, closure_dclrs);
     }
 
     cls_hierarchy[id] = pid;
     StackClass* cls = new StackClass(id, name, file_name, pid, is_virtual, cls_dclrs, cls_num_dclrs, inst_dclrs, 
-                                     lambda_dclr_map, inst_num_dclrs, cls_space, inst_space, is_debug);
+                                     closure_dclr_map, inst_num_dclrs, cls_space, inst_space, is_debug);
 
 #ifdef _DEBUG
     wcout << L"Class(" << cls << L"): id=" << id << L"; name='" << name << L"'; parent='"
