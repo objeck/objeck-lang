@@ -179,21 +179,11 @@ void Linker::ResolveExternalMethodCalls()
             if(lib_klass) {
               LibraryMethod* lib_method = lib_klass->GetMethod(instr->GetOperand6());
               if(lib_method) {
-
                 const int16_t lib_method_id = lib_method->GetId();
                 const int16_t lib_cls_id = lib_method->GetLibraryClass()->GetId();
                 const int lib_method_cls_id = (lib_cls_id << 16) | lib_method_id;
-
                 instr->SetType(instructions::LOAD_INT_LIT);
                 instr->SetOperand(lib_method_cls_id);
-
-                /*
-                // set method
-                
-                // set class
-                instrs[j + 1]->SetType(instructions::LOAD_INT_LIT);
-                instrs[j + 1]->SetOperand(lib_klass->GetId());
-                */
               }
               else {
                 wcerr << L"Error: Unable to resolve external library method: '" << instr->GetOperand6() << L"'; check library path" << endl;
