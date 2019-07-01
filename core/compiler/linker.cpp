@@ -402,7 +402,9 @@ void Linker::Load()
 /****************************
  * LibraryClass class
  ****************************/
-LibraryClass::LibraryClass(const wstring& n, const wstring& p, const vector<wstring> i, bool is, const vector<wstring> g, bool v, const int cs, const int in, backend::IntermediateDeclarations* ce, backend::IntermediateDeclarations* ie, Library* l, const wstring& fn, bool d)
+LibraryClass::LibraryClass(const wstring& n, const wstring& p, const vector<wstring> i, bool is, const vector<wstring> g, 
+                           bool v, const int cs, const int in, backend::IntermediateDeclarations* ce, backend::IntermediateDeclarations* ie, 
+                           map<const wstring, backend::IntermediateDeclarations*> le, Library* l, const wstring& fn, bool d)
 {
   name = n;
   parent_name = p;
@@ -414,6 +416,7 @@ LibraryClass::LibraryClass(const wstring& n, const wstring& p, const vector<wstr
   inst_space = in;
   cls_entries = ce;
   inst_entries = ie;
+  lamba_entries = le;
   library = l;
   is_generic = false;
   generic_interface = nullptr;
@@ -628,22 +631,6 @@ void Library::LoadFile(const wstring &file_name)
     char_strings.push_back(str_instr);
   }
 
-
-  
-  
-  
-  // read closure decelerations
-  const int num_lambda_dclrs = ReadInt();
-  for(int i = 0; i < num_lambda_dclrs; ++i) {
-    const wstring lambda_dclrs_name = ReadString();
-    backend::IntermediateDeclarations* lambda_entries = LoadEntries(false);
-    lamba_entries[lambda_dclrs_name] = lambda_entries;
-  }
-
-
-
-
-
   // read bundle names
   const int num_bundle_name = ReadInt();
   for(int i = 0; i < num_bundle_name; ++i) {
@@ -780,9 +767,19 @@ void Library::LoadClasses()
     const int cls_space = ReadInt();
     const int inst_space = ReadInt();
 
-    // read type parameters
+    // read class and instance entries
     backend::IntermediateDeclarations* cls_entries = LoadEntries(is_debug);
-    backend::IntermediateDeclarations* inst_entries = LoadEntries(is_debug);      
+    backend::IntermediateDeclarations* inst_entries = LoadEntries(is_debug);
+
+    // read closure entries
+    map<const wstring, backend::IntermediateDeclarations*> lamba_entries;
+    const int num_lambda_dclrs = ReadInt();
+    for(int i = 0; i < num_lambda_dclrs; ++i) {
+      const wstring lambda_dclrs_name = ReadString();
+      backend::IntermediateDeclarations* lambda_entries = LoadEntries(is_debug);
+      lamba_entries[lambda_dclrs_name] = lambda_entries;
+    }
+
     hierarchies.insert(pair<const wstring, const wstring>(name, parent_name));
 
 #ifdef _DEBUG
@@ -796,7 +793,7 @@ void Library::LoadClasses()
 #endif
 
     LibraryClass* cls = new LibraryClass(name, parent_name, interface_names, is_interface, generic_names, is_virtual,
-                                         cls_space, inst_space, cls_entries, inst_entries, this, file_name, is_debug);
+                                         cls_space, inst_space, cls_entries, inst_entries, lamba_entries, this, file_name, is_debug);
     // load method
     LoadMethods(cls, is_debug);
     // add class

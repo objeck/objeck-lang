@@ -544,6 +544,7 @@ class StackClass {
   StackDclr** cls_dclrs;
   long cls_num_dclrs;
   StackDclr** inst_dclrs;
+  map<int, pair<int, StackDclr**> > lambda_dclrs;
   long inst_num_dclrs;
   size_t* cls_mem;
   bool is_debug;
@@ -555,9 +556,8 @@ class StackClass {
   }
 
  public:
-  StackClass(long i, const wstring &ne, const wstring &fn, long p, 
-       bool v, StackDclr** cdclr, long cn, StackDclr** idclr, long in, 
-       long cs, long is, bool b) {
+  StackClass(long i, const wstring &ne, const wstring &fn, long p, bool v, StackDclr** cdclr, long cn, 
+             StackDclr** idclr, map<int, pair<int, StackDclr**> > ldclr, long in, long cs, long is, bool b) {
     id = i;
     name = ne;
     file_name = fn;
@@ -566,6 +566,7 @@ class StackClass {
     cls_dclrs = cdclr;
     cls_num_dclrs = cn;
     inst_dclrs = idclr;
+    lambda_dclrs = ldclr;
     inst_num_dclrs = in;
     cls_space = InitMemory(cs);
     inst_space  = is;
@@ -593,6 +594,21 @@ class StackClass {
       delete[] inst_dclrs;
       inst_dclrs = nullptr;
     }
+
+    map<int, pair<int, StackDclr**> >::iterator iter;
+    for(iter = lambda_dclrs.begin(); iter != lambda_dclrs.end(); ++iter) {
+      pair<int, StackDclr**> tmp = iter->second;
+      const int num_dclrs = tmp.first;
+      StackDclr** dclrs = tmp.second;
+      for(int i = 0; i < num_dclrs; ++i) {
+        StackDclr* tmp2 = dclrs[i];
+        delete tmp2;
+        tmp2 = nullptr;
+      }
+      delete[] dclrs;
+      dclrs = nullptr;
+    }
+    lambda_dclrs.clear();
 
     for(int i = 0; i < method_num; ++i) {
       StackMethod* method = methods[i];
@@ -636,6 +652,10 @@ class StackClass {
     return inst_dclrs;
   }
 
+  inline pair<int, StackDclr**> GetLambdaDeclarations(const int id) {
+    return lambda_dclrs[id];
+  }
+
   inline int GetNumberInstanceDeclarations() const {
     return inst_num_dclrs;
   }
@@ -659,7 +679,7 @@ class StackClass {
   void SetMethods(StackMethod** mthds, const int num) {
     methods = mthds;
     method_num = num;
-    // add method names to map for virutal calls
+    // add method signature to map virtual calls
     for(int i = 0; i < num; ++i) {
       method_name_map.insert(make_pair(mthds[i]->GetName(), mthds[i]));
     }
@@ -777,7 +797,6 @@ class StackProgram {
   int data_type_cls_id;
   StackMethod* init_method;
   static map<wstring, wstring> properties_map;
-  map<int, pair<int, StackDclr**> > lambda_dclrs;
 
   FLOAT_VALUE** float_strings;
   int num_float_strings;
@@ -863,21 +882,6 @@ class StackProgram {
       delete[] char_strings;
       char_strings = nullptr;
     }
-
-    map<int, pair<int, StackDclr**> >::iterator iter;
-    for(iter = lambda_dclrs.begin(); iter != lambda_dclrs.end(); ++iter) {
-      pair<int, StackDclr**> tmp = iter->second;
-      const int num_dclrs = tmp.first;
-      StackDclr** dclrs = tmp.second;
-      for(int i = 0; i < num_dclrs; ++i) {
-        StackDclr* tmp2 = dclrs[i];
-        delete tmp2;
-        tmp2 = nullptr;
-      }
-      delete[] dclrs;
-      dclrs = nullptr;
-    }
-    lambda_dclrs.clear();
 
     if(init_method) {
       delete init_method;
@@ -1118,14 +1122,6 @@ class StackProgram {
 
   inline int GetClassNumber() const {  
     return class_num;
-  }
-
-  void AddClosureDeclarations(const int id, const int num_dclrs, StackDclr** dclrs) {
-    lambda_dclrs[id] = pair<int, StackDclr**>(num_dclrs, dclrs);
-  }
-  
-  pair<int, StackDclr**> GetClosureDeclarations(const int id) {
-    return lambda_dclrs[id];
   }
 
 #ifdef _DEBUGGER

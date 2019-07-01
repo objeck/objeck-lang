@@ -153,35 +153,6 @@ void Loader::Load()
     char_strings[i] = char_string;
   }
 
-
-  // read closure decelerations
-  const int num_lambda_dclrs = ReadInt();
-  for(int i = 0; i < num_lambda_dclrs; ++i) {
-    const int lambda_dclrs_id = ReadInt();
-
-    // read class types
-    const int lambda_num_dclrs = ReadInt();
-    StackDclr** lambda_dclrs = new StackDclr * [lambda_num_dclrs];
-    for(int j = 0; j < lambda_num_dclrs; ++j) {
-      // set type
-      const int type = ReadInt();
-      // set name
-      /*
-      wstring name;
-      if(is_debug) {
-        name = ReadString();
-      }
-      */
-      lambda_dclrs[j] = new StackDclr;
-      lambda_dclrs[j]->name = L"Closure";
-      lambda_dclrs[j]->type = (ParamType)type;
-    }
-
-    program->AddClosureDeclarations(lambda_dclrs_id, lambda_num_dclrs, lambda_dclrs);
-  }
-
-
-  
   // copy command line params
   for(size_t j = 0; j < arguments.size(); ++i, ++j) {
 #ifdef _WIN32
@@ -303,42 +274,29 @@ void Loader::LoadClasses()
     const int cls_space = ReadInt();
     const int inst_space = ReadInt();
 
-    // read class types
+    // read class declarations
     const int cls_num_dclrs = ReadInt();
-    StackDclr** cls_dclrs = new StackDclr*[cls_num_dclrs];
-    for(int j = 0; j < cls_num_dclrs; ++j) {
-      // set type
-      int type = ReadInt();
-      // set name
-      wstring name;
-      if(is_debug) {
-        name = ReadString();
-      }
-      cls_dclrs[j] = new StackDclr;
-      cls_dclrs[j]->name = name;
-      cls_dclrs[j]->type = (ParamType)type;
-    }
+    StackDclr** cls_dclrs = LoadDeclarations(cls_num_dclrs, is_debug);
 
-    // read instance types
+    // read instance declarations
     const int inst_num_dclrs = ReadInt();
-    StackDclr** inst_dclrs = new StackDclr*[inst_num_dclrs];
-    for(int j = 0; j < inst_num_dclrs; ++j) {
-      // set type
-      int type = ReadInt();
-      // set name
-      wstring name;
-      if(is_debug) {
-        name = ReadString();
-      }
-      inst_dclrs[j] = new StackDclr;
-      inst_dclrs[j]->name = name;
-      inst_dclrs[j]->type = (ParamType)type;
+    StackDclr** inst_dclrs = LoadDeclarations(inst_num_dclrs, is_debug);
+    
+    // read closure declarations
+    map<int, pair<int, StackDclr**> > lambda_dclr_map;
+    const int num_lambda_dclrs = ReadInt();
+    for(int i = 0; i < num_lambda_dclrs; ++i) {
+      const int lambda_mthd_id = ReadInt();
+      // read closure declarations
+      const int lambda_num_dclrs = ReadInt();
+      StackDclr** lambda_dclrs = LoadDeclarations(lambda_num_dclrs, is_debug);
+      // add declarations to map
+      lambda_dclr_map[lambda_mthd_id] = pair<int, StackDclr**>(lambda_num_dclrs, lambda_dclrs);
     }
 
     cls_hierarchy[id] = pid;
-    StackClass* cls = new StackClass(id, name, file_name, pid, is_virtual, 
-             cls_dclrs, cls_num_dclrs, inst_dclrs, 
-             inst_num_dclrs, cls_space, inst_space, is_debug);
+    StackClass* cls = new StackClass(id, name, file_name, pid, is_virtual, cls_dclrs, cls_num_dclrs, inst_dclrs, 
+                                     lambda_dclr_map, inst_num_dclrs, cls_space, inst_space, is_debug);
 
 #ifdef _DEBUG
     wcout << L"Class(" << cls << L"): id=" << id << L"; name='" << name << L"'; parent='"
@@ -359,6 +317,25 @@ void Loader::LoadClasses()
   program->SetClasses(classes, number);
   program->SetHierarchy(cls_hierarchy);
   program->SetInterfaces(cls_interfaces);
+}
+
+StackDclr** Loader::LoadDeclarations(const int num_dclrs, const bool is_debug)
+{
+  StackDclr** dclrs = new StackDclr * [num_dclrs];
+  for(int j = 0; j < num_dclrs; ++j) {
+    // set type
+    int type = ReadInt();
+    // set name
+    wstring name;
+    if(is_debug) {
+      name = ReadString();
+    }
+    dclrs[j] = new StackDclr;
+    dclrs[j]->name = name;
+    dclrs[j]->type = (ParamType)type;
+  }
+
+  return dclrs;
 }
 
 void Loader::LoadMethods(StackClass* cls, bool is_debug)

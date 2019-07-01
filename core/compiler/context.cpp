@@ -976,7 +976,7 @@ void ContextAnalyzer::AnalyzeLambda(Lambda* lambda, const int depth)
     current_method->SetAndOr(true);
     method->SetReturn(lambda_type->GetFunctionReturn());
 
-    // update decelerations
+    // update declarations
     vector<Type*> types = lambda_type->GetFunctionParameters();
     DeclarationList* declaration_list = method->GetDeclarations();
     vector<Declaration*> declarations = declaration_list->GetDeclarations();
