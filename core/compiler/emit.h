@@ -749,6 +749,7 @@ namespace backend {
     vector<wstring> char_strings;
     vector<frontend::IntStringHolder*> int_strings;
     vector<frontend::FloatStringHolder*> float_strings;
+    map<IntermediateDeclarations*, pair<wstring, int> > closure_dclrs;
     vector<wstring> bundle_names;
     wstring aliases_str;
     int num_src_classes;
@@ -798,6 +799,14 @@ namespace backend {
         delete tmp;
         tmp = nullptr;
       }
+
+      map<IntermediateDeclarations*, pair<wstring, int> >::iterator iter;
+      for(iter = closure_dclrs.begin(); iter != closure_dclrs.end(); ++iter) {
+        IntermediateDeclarations* tmp = iter->first;
+        delete tmp;
+        tmp = nullptr;
+      }
+      closure_dclrs.clear();
 
       IntermediateFactory::Instance()->Clear();
     }
@@ -867,6 +876,8 @@ namespace backend {
     const wstring GetAliasesString() {
       return aliases_str;
     }
+
+    void AddClosureDeclarations(const wstring mthd_cls_name, const int mthd_cls_id, IntermediateDeclarations* dclrs);
 
     void Write(bool emit_lib, bool is_debug, bool is_web, OutputStream& out_stream);
 

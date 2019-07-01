@@ -923,9 +923,15 @@ void IntermediateEmitter::EmitLambda(Lambda* lambda)
   }
   closure_space *= sizeof(INT_VALUE);
 
-  // TODO: fix me
-  delete closure_dclrs;
-  closure_dclrs = nullptr;
+  // TODO: fix me, what about libraries?
+  // for .obe (write id => entries)
+  // for .obl (write signature string => entries)
+  MethodCall* method_call = lambda->GetMethodCall();
+  const int16_t method_id = method_call->GetMethod()->GetId();
+  const int16_t cls_id = method_call->GetMethod()->GetClass()->GetId();
+  const int method_cls_id = (cls_id << 16) | method_id;
+
+  imm_program->AddClosureDeclarations(lambda->GetMethod()->GetName(), method_cls_id, closure_dclrs);
 
   // allocate closure space and copy variables
   if(closure_space > 0) {
@@ -1013,7 +1019,7 @@ void IntermediateEmitter::EmitLambda(Lambda* lambda)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, 0));
   }
 
-  EmitMethodCallExpression(lambda->GetMethodCall(), false, true);
+  EmitMethodCallExpression(method_call, false, true);
 }
 
 /****************************

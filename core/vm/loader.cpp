@@ -152,6 +152,35 @@ void Loader::Load()
 #endif
     char_strings[i] = char_string;
   }
+
+
+  // read closure decelerations
+  const int num_lambda_dclrs = ReadInt();
+  for(int i = 0; i < num_lambda_dclrs; ++i) {
+    const int lambda_dclrs_id = ReadInt();
+
+    // read class types
+    const int lambda_num_dclrs = ReadInt();
+    StackDclr** lambda_dclrs = new StackDclr * [lambda_num_dclrs]; // TODO: save and delete
+    for(int j = 0; j < lambda_num_dclrs; ++j) {
+      // set type
+      int type = ReadInt();
+      // set name
+      /*
+      wstring name;
+      if(is_debug) {
+        name = ReadString();
+      }
+      */
+      lambda_dclrs[j] = new StackDclr;
+      lambda_dclrs[j]->name = L"Closure";
+      lambda_dclrs[j]->type = (ParamType)type;
+    }
+
+    program->AddClosureDeclarations(lambda_dclrs_id, lambda_num_dclrs, lambda_dclrs);
+  }
+
+
   
   // copy command line params
   for(size_t j = 0; j < arguments.size(); ++i, ++j) {
