@@ -764,9 +764,9 @@ void IntermediateEmitter::EmitLambda(Lambda* lambda)
 {
   int closure_space = 0;
   IntermediateDeclarations* closure_dclrs = new IntermediateDeclarations;
-  vector<pair<SymbolEntry*, SymbolEntry*> > copies = lambda->GetCopies();
-  for(size_t i = 0; i < copies.size(); ++i) {
-    SymbolEntry* entry = copies[i].second;
+  vector<pair<SymbolEntry*, SymbolEntry*> > closure_copies = lambda->GetClosures();
+  for(size_t i = 0; i < closure_copies.size(); ++i) {
+    SymbolEntry* entry = closure_copies[i].second;
     switch(entry->GetType()->GetType()) {
     case frontend::BOOLEAN_TYPE:
       if(entry->GetType()->GetDimension() > 0) {
@@ -932,8 +932,8 @@ void IntermediateEmitter::EmitLambda(Lambda* lambda)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, NEW_FUNC_INST, closure_space));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, STOR_INT_VAR, 0, LOCL));
 
-    for(size_t i = 0; i < copies.size(); ++i) {
-      pair<SymbolEntry*, SymbolEntry*> copy = copies[i];
+    for(size_t i = 0; i < closure_copies.size(); ++i) {
+      pair<SymbolEntry*, SymbolEntry*> copy = closure_copies[i];
       SymbolEntry* var_entry = copy.first;
       SymbolEntry* capture_entry = copy.second;
 

@@ -2683,11 +2683,11 @@ namespace frontend {
       method_call = c;
     }
     
-    void AddCopy(SymbolEntry* var_entry, SymbolEntry* capture_entry) {
+    void AddClosure(SymbolEntry* var_entry, SymbolEntry* capture_entry) {
       copies.push_back(pair<SymbolEntry*, SymbolEntry*>(var_entry, capture_entry));
     }
 
-    bool HasCopy(SymbolEntry* capture_entry) {
+    bool HasClosure(SymbolEntry* capture_entry) {
       for(size_t i = 0; i < copies.size(); ++i) {
         if(copies[i].second == capture_entry) {
           return true;
@@ -2697,7 +2697,7 @@ namespace frontend {
       return false;
     }
 
-    vector<pair<SymbolEntry*, SymbolEntry*> > GetCopies() {
+    vector<pair<SymbolEntry*, SymbolEntry*> > GetClosures() {
       return copies;
     }
   };
