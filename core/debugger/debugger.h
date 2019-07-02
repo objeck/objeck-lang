@@ -154,9 +154,13 @@ namespace Runtime {
       DoLoad();
     }
 
+    wstring ParseMethodUserName(const wstring name);
+    wstring ParseParameters(const wstring param_str);
+    wstring ParseType(const wstring& type_name);
+    wstring ParseFunctionalType(const wstring func_name);
+
     Command* ProcessCommand(const wstring &line);
     void ProcessRun();
-   
     void ProcessExe(Load* load);
     void ProcessSrc(Load* load);
     void ProcessArgs(Load* load);

@@ -37,8 +37,7 @@
  * Interactive command line
  * debugger
  ********************************/
-void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFrame** call_stack,
-                                           long call_stack_pos, StackFrame* frame)
+void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFrame** call_stack, long call_stack_pos, StackFrame* frame)
 {
   if(frame->method->GetClass()) {
     const int line_num = instr->GetLineNumber();
@@ -88,10 +87,8 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
           command = nullptr;
         }
       }
-      while(!command || (command->GetCommandType() != CONT_COMMAND &&
-                         command->GetCommandType() != NEXT_COMMAND &&
-                         command->GetCommandType() != NEXT_LINE_COMMAND &&
-                         command->GetCommandType() != JUMP_OUT_COMMAND));
+      while(!command || (command->GetCommandType() != CONT_COMMAND && command->GetCommandType() != NEXT_COMMAND &&
+                         command->GetCommandType() != NEXT_LINE_COMMAND && command->GetCommandType() != JUMP_OUT_COMMAND));
     }
   }
 }
@@ -464,7 +461,7 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
             const long mthd_id = (mthd_cls_id >> (16 * (0))) & 0xFFFF;
             StackClass* klass = cur_program->GetClass(cls_id);
             if(klass) {
-              wcout << L"print: type=Function, class=" << klass->GetName() << L", method=" << PrintMethod(klass->GetMethod(mthd_id)) << endl;
+              wcout << L"print: type=Function, class='" << klass->GetName() << L"', method='" << PrintMethod(klass->GetMethod(mthd_id)) << L"'" << endl;
             }
           }
           else {
@@ -1174,26 +1171,9 @@ void Runtime::Debugger::EvaluateIntFloatReference(Reference* reference, int inde
   }
 }
 
-std::wstring Runtime::Debugger::PrintMethod(StackMethod* method)
+wstring Runtime::Debugger::PrintMethod(StackMethod* method)
 {
-  wstring mthd_name = method->GetName();
-  size_t index = mthd_name.find_last_of(':');
-  if(index != wstring::npos) {
-    mthd_name.replace(index, 1, 1, '(');
-    if(mthd_name[mthd_name.size() - 1] == ',') {
-      mthd_name.replace(mthd_name.size() - 1, 1, 1, ')');
-    }
-    else {
-      mthd_name += ')';
-    }
-  }
-
-  index = mthd_name.find_last_of(':');
-  if(index != wstring::npos) {
-    mthd_name = mthd_name.substr(index + 1);
-  }
-
-  return mthd_name;
+  return ParseMethodUserName(method->GetName());
 }
 
 bool Runtime::Debugger::FileExists(const wstring& file_name, bool is_exe /*= false*/)
@@ -1206,17 +1186,6 @@ bool Runtime::Debugger::FileExists(const wstring& file_name, bool is_exe /*= fal
 
   ifstream touch(name.c_str(), ios::binary);
   if(touch.is_open()) {
-    /*
-    if(is_exe) {
-      int magic_num;
-      // version
-      touch.read((char*)&magic_num, sizeof(int));
-      // file type
-      touch.read((char*)&magic_num, sizeof(int));
-      touch.close();
-      return magic_num == MAGIC_NUM_EXE;
-    }
-    */
     touch.close();
     return true;
   }
@@ -1699,6 +1668,291 @@ void Runtime::Debugger::Debug() {
     }
   }
 }
+
+wstring Runtime::Debugger::ParseMethodUserName(const wstring method_name)
+{
+  wstring mthd_sig;
+
+  size_t start = method_name.rfind(':');
+  if(start != wstring::npos) {
+    const wstring parameters = method_name.substr(start + 1);
+    mthd_sig = ParseParameters(parameters);
+  }
+
+  size_t mid = method_name.rfind(':', start - 1);
+  if(mid != wstring::npos) {
+    const wstring cls_sig = method_name.substr(mid + 1, start - mid - 1);
+    return cls_sig + mthd_sig;
+  }
+
+  return L"<unknown>";
+}
+
+wstring Runtime::Debugger::ParseParameters(const wstring param_str)
+{
+  wstring formatted_str(L"(");
+
+  size_t index = 0;
+  while(index < param_str.size()) {
+    int dimension = 0;
+    switch(param_str[index]) {
+    case 'l':
+      formatted_str += L"Boolean";
+      index++;
+      break;
+
+    case 'b':
+      formatted_str += L"Byte";
+      index++;
+      break;
+
+    case 'i':
+      formatted_str += L"Int";
+      index++;
+      break;
+
+    case 'f':
+      formatted_str += L"Float";
+      index++;
+      break;
+
+    case 'c':
+      formatted_str += L"Char";
+      index++;
+      break;
+
+    case 'n':
+      formatted_str += L"Nil";
+      index++;
+      break;
+
+    case 'm': {
+      size_t start = index;
+
+      const wstring prefix = L"m.(";
+      int nested_count = 1;
+      size_t found = param_str.find(prefix);
+      while(found != wstring::npos) {
+        nested_count++;
+        found = param_str.find(prefix, found + prefix.size());
+      }
+
+      while(nested_count--) {
+        while(index < param_str.size() && param_str[index] != L'~') {
+          index++;
+        }
+        if(param_str[index] == L'~') {
+          index++;
+        }
+      }
+
+      while(index < param_str.size() && param_str[index] != L',') {
+        index++;
+      }
+
+      const wstring name = param_str.substr(start, index - start - 1);
+      formatted_str += ParseFunctionalType(name);
+    }
+      break;
+
+    case 'o': {
+      index += 2;
+      size_t start = index;
+      while(index < param_str.size() && param_str[index] != L'*' && param_str[index] != L',' && param_str[index] != L'|') {
+        index++;
+      }
+      size_t end = index;
+      const wstring cls_name = param_str.substr(start, end - start);
+      formatted_str += cls_name;
+    }
+      break;
+    }
+
+    // set generics
+    if(index < param_str.size() && param_str[index] == L'|') {
+      formatted_str += L"<";
+      do {
+        index++;
+        size_t start = index;
+        while(index < param_str.size() && param_str[index] != L'*' && param_str[index] != L',' && param_str[index] != L'|') {
+          index++;
+        }
+        size_t end = index;
+
+        const wstring generic_name = param_str.substr(start, end - start);
+        formatted_str += generic_name;
+      } 
+      while(index < param_str.size() && param_str[index] == L'|');
+      formatted_str += L">";
+    }
+
+    // set dimension
+    if(index < param_str.size() && param_str[index] == L'*') {
+      formatted_str += L"[";
+      while(index < param_str.size() && param_str[index] == L'*') {
+        dimension++;
+        index++;
+
+        if(index + 1 < param_str.size()) {
+          formatted_str += L",";
+        }
+      }
+      formatted_str += L"]";
+    }
+
+#ifdef _DEBUG
+    assert(index >= param_str.size() || param_str[index] == L',');
+#endif
+
+    index++;
+    while(index < param_str.size()) {
+      formatted_str += L", ";
+    }
+  }
+  formatted_str += L")";
+
+  return formatted_str;
+}
+
+wstring Runtime::Debugger::ParseType(const wstring& type_name)
+{
+  wstring formatted_str;
+
+  size_t index = 0;
+  switch(type_name[index]) {
+  case L'l':
+    formatted_str += L"Boolean";
+    index++;
+    break;
+
+  case L'b':
+    formatted_str += L"Byte";
+    index++;
+    break;
+
+  case L'i':
+    formatted_str += L"Int";
+    index++;
+    break;
+
+  case L'f':
+    formatted_str += L"Float";
+    index++;
+    break;
+
+  case L'c':
+    formatted_str += L"Char";
+    index++;
+    break;
+
+  case L'n':
+    formatted_str += L"Nil";
+    index++;
+    break;
+
+  case L'm': {
+    size_t start = index;
+
+    int nested_count = 1;
+    const wstring prefix = L"m.(";
+    size_t found = type_name.find(prefix);
+    while(found != wstring::npos) {
+      nested_count++;
+      found = type_name.find(prefix, found + prefix.size());
+    }
+
+    while(nested_count--) {
+      while(index < type_name.size() && type_name[index] != L'~') {
+        index++;
+      }
+      if(type_name[index] == L'~') {
+        index++;
+      }
+    }
+
+    while(index < type_name.size() && type_name[index] != L',') {
+      index++;
+    }
+
+    const wstring name = type_name.substr(start, index - start - 1);
+    formatted_str += ParseFunctionalType(name);
+  }
+    break;
+
+  case L'o':
+    index = 2;
+    while(index < type_name.size() && type_name[index] != L'*' && type_name[index] != L'|') {
+      index++;
+    }
+    const wstring cls_name = type_name.substr(2, index - 2);
+    formatted_str += cls_name;
+    break;
+  }
+
+  // set generics
+  if(index < type_name.size() && type_name[index] == L'|') {
+    formatted_str += L"<";
+    do {
+      index++;
+      size_t start = index;
+      while(index < type_name.size() && type_name[index] != L'*' && type_name[index] != L',' && type_name[index] != L'|') {
+        index++;
+      }
+      size_t end = index;
+
+      const wstring generic_name = type_name.substr(start, end - start);
+      formatted_str += generic_name;
+    } 
+    while(index < type_name.size() && type_name[index] == L'|');
+    formatted_str += L">";
+  }
+
+  // set dimension
+  int dimension = 0;
+  if(index < type_name.size() && type_name[index] == L'*') {
+    formatted_str += L"[";
+    while(index < type_name.size() && type_name[index] == L'*') {
+      dimension++;
+      index++;
+
+      if(index + 1 < type_name.size()) {
+        formatted_str += L",";
+      }
+    }
+    formatted_str += L"]";
+  }
+
+  return formatted_str;
+}
+
+wstring Runtime::Debugger::ParseFunctionalType(const wstring func_name)
+{
+  wstring formatted_str;
+
+  // parse parameters
+  size_t start = func_name.rfind(L'(');
+  size_t middle = func_name.find(L')');
+
+  if(start != wstring::npos && middle != wstring::npos) {
+    start++;
+    const wstring params_str = func_name.substr(start, middle - start);
+    formatted_str += ParseParameters(params_str);
+
+    // parse return
+    size_t end = func_name.find(L',', middle);
+    if(end == wstring::npos) {
+      end = func_name.size();
+    }
+    middle += 2;
+
+    formatted_str += L"~";
+    const wstring rtrn_str = func_name.substr(middle, end - middle);
+    formatted_str += ParseType(rtrn_str);
+  }
+
+  return formatted_str;
+}
+
 
 /********************************
  * Debugger main

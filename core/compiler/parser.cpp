@@ -901,7 +901,7 @@ Lambda* Parser::ParseLambda(int depth) {
   const wstring& file_name = GetFileName();
 
   // build method
-  const wstring lambda_name = L"#Lambda." + ToString(current_class->NextLambda()) + L'#';
+  const wstring lambda_name = L"#{L" + ToString(current_class->NextLambda()) + L"}#";
   const wstring method_name = current_class->GetName() + L':' + lambda_name;
   Method* method = TreeFactory::Instance()->MakeMethod(file_name, line_num, method_name);
   
