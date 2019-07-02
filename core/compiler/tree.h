@@ -2687,14 +2687,18 @@ namespace frontend {
       copies.push_back(pair<SymbolEntry*, SymbolEntry*>(var_entry, capture_entry));
     }
 
-    bool HasClosure(SymbolEntry* capture_entry) {
+    inline bool HasClosure(SymbolEntry* capture_entry) {
+      return GetClosure(capture_entry) != nullptr;
+    }
+
+    inline SymbolEntry* GetClosure(SymbolEntry* capture_entry) {
       for(size_t i = 0; i < copies.size(); ++i) {
         if(copies[i].second == capture_entry) {
-          return true;
+          return copies[i].first;
         }
       }
 
-      return false;
+      return nullptr;
     }
 
     vector<pair<SymbolEntry*, SymbolEntry*> > GetClosures() {

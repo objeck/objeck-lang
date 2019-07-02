@@ -1648,16 +1648,24 @@ void ContextAnalyzer::AnalyzeVariable(Variable* variable, SymbolEntry* entry, co
   else if(current_method->IsLambda()) {
     const wstring capture_scope_name = capture_method->GetName() + L':' + variable->GetName();
     SymbolEntry* capture_entry = capture_table->GetEntry(capture_scope_name);
-    if(capture_entry && !capture_lambda->HasClosure(capture_entry)) {
-      const wstring var_scope_name = current_method->GetName() + L':' + variable->GetName();
-      SymbolEntry* copy_entry = TreeFactory::Instance()->MakeSymbolEntry(variable->GetFileName(), variable->GetLineNumber(),
-                                                                        var_scope_name, capture_entry->GetType(), false, false);
-      symbol_table->GetSymbolTable(current_class->GetName())->AddEntry(copy_entry, true);
-      
-      variable->SetTypes(copy_entry->GetType());
-      variable->SetEntry(copy_entry);
-      copy_entry->AddVariable(variable); 
-      capture_lambda->AddClosure(copy_entry, capture_entry);
+    if(capture_entry) {
+      if(capture_lambda->HasClosure(capture_entry)) {
+        SymbolEntry* copy_entry = capture_lambda->GetClosure(capture_entry);
+        variable->SetTypes(copy_entry->GetType());
+        variable->SetEntry(copy_entry);
+        copy_entry->AddVariable(variable);
+      }
+      else {
+        const wstring var_scope_name = current_method->GetName() + L':' + variable->GetName();
+        SymbolEntry* copy_entry = TreeFactory::Instance()->MakeSymbolEntry(variable->GetFileName(), variable->GetLineNumber(),
+                                                                           var_scope_name, capture_entry->GetType(), false, false);
+        symbol_table->GetSymbolTable(current_class->GetName())->AddEntry(copy_entry, true);
+
+        variable->SetTypes(copy_entry->GetType());
+        variable->SetEntry(copy_entry);
+        copy_entry->AddVariable(variable);
+        capture_lambda->AddClosure(copy_entry, capture_entry);
+      }
     }
   }
   // type inferred variable
