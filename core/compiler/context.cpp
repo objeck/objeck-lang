@@ -6907,4 +6907,3 @@ Method* MethodCallSelector::GetSelection()
   method_call->GetCallingParameters()->SetExpressions(matches[match_index]->GetCallingParameters());
   return matches[match_index]->GetMethod();
 }
-

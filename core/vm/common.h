@@ -705,16 +705,6 @@ class StackClass {
   }
 #endif
 
-#ifdef _UTILS
-  void List() {
-    unordered_map<wstring, StackMethod*>::iterator iter;
-    for(iter = method_name_map.begin(); iter != method_name_map.end(); ++iter) {
-      StackMethod* mthd = iter->second;
-      wcout << L"  method='" << mthd->GetName() << L"'" << endl;
-    }
-  }
-#endif
-
   inline StackMethod* GetMethod(const wstring &n) {
     unordered_map<wstring, StackMethod*>::iterator result = method_name_map.find(n);
     if(result != method_name_map.end()) {
