@@ -35,19 +35,21 @@
 #include "../common.h"
 
 // basic VM tuning parameters
+/*
 #if defined(_WIN64) || defined(_X64)
 #define MEM_MAX 256 * 3
 #else
 #define MEM_MAX 256 * 2
 #endif
+*/
 
-/* TODO: remove after testing
+
 #if defined(_WIN64) || defined(_X64)
 #define MEM_MAX 1048576 * 3
 #else
 #define MEM_MAX 1048576 * 2
 #endif
-*/
+
 
 
 #define UNCOLLECTED_COUNT 11
@@ -171,11 +173,11 @@ class MemoryManager {
 #endif
 
     while(!allocated_memory.empty()) {
-      size_t* temp = allocated_memory.front();
-      allocated_memory.erase(allocated_memory.begin());      
-      temp -= EXTRA_BUF_SIZE;
-      free(temp);
-      temp = nullptr;
+      size_t* mem = allocated_memory.back();
+      allocated_memory.pop_back();
+      mem -= EXTRA_BUF_SIZE;
+      free(mem);
+      mem = nullptr;
     }
     allocated_memory.clear();
 

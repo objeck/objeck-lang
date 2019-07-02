@@ -194,11 +194,11 @@ void Runtime::Debugger::ProcessRun() {
 #endif
     }
 
-    // envoke loader
+    // invoke loader
     Loader loader(argc, argv);
     loader.Load();
     cur_program = loader.GetProgram();
-
+    
     // execute
     op_stack = new size_t[CALC_STACK_SIZE];
     stack_pos = new long;
@@ -446,10 +446,17 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
           break;
 
         case FUNC_PARM: {
-          StackClass* klass = cur_program->GetClass((long)reference->GetIntValue());
-          if(klass) {
-            wcout << L"print: type=Functon, class=" << klass->GetName() 
-                  << L", method=" << PrintMethod(klass->GetMethod(reference->GetIntValue2())) << endl;
+          const size_t mthd_cls_id = reference->GetIntValue();
+          if(mthd_cls_id > 0) {
+            const long cls_id = (mthd_cls_id >> (16 * (1))) & 0xFFFF;
+            const long mthd_id = (mthd_cls_id >> (16 * (0))) & 0xFFFF;
+            StackClass* klass = cur_program->GetClass(cls_id);
+            if(klass) {
+              wcout << L"print: type=Function, class=" << klass->GetName() << L", method=" << PrintMethod(klass->GetMethod(mthd_id)) << endl;
+            }
+          }
+          else {
+            wcout << L"print: type=Function, class=<unknown>, method=<unknown>" << endl;
           }
         }
           break;
@@ -792,7 +799,7 @@ void Runtime::Debugger::EvaluateReference(Reference* &reference, MemoryContext c
 
         case FUNC_PARM:
           reference->SetIntValue((long)ref_mem[dclr_value.id]);
-          reference->SetIntValue2((long)ref_mem[dclr_value.id + 1]);
+          reference->SetIntValue2(ref_mem[dclr_value.id + 1]);
           break;
 
         case FLOAT_PARM: {
@@ -870,7 +877,7 @@ void Runtime::Debugger::EvaluateReference(Reference* &reference, MemoryContext c
 
           case FUNC_PARM:
             reference->SetIntValue((long)ref_mem[dclr_value.id + 1]);
-            reference->SetIntValue2((long)ref_mem[dclr_value.id + 2]);
+            reference->SetIntValue2(ref_mem[dclr_value.id + 2]);
             break;
 
           case FLOAT_PARM: {
@@ -954,7 +961,7 @@ void Runtime::Debugger::EvaluateInstanceReference(Reference* reference, int inde
 void Runtime::Debugger::EvaluateClassReference(Reference* reference, StackClass* klass, int index) {
   size_t* cls_mem = klass->GetClassMemory();
   reference->SetIntValue((size_t)cls_mem);
-  ref_mem  =cls_mem;
+  ref_mem = cls_mem;
   ref_klass = klass;
   if(reference->GetReference()) {
     Reference* next_reference = reference->GetReference();
@@ -1484,20 +1491,23 @@ Command* Runtime::Debugger::ProcessCommand(const wstring &line) {
         }
 
         long pos = cur_call_stack_pos - 1;
-        do {
+        while(pos--) {
           StackMethod* method = cur_call_stack[pos]->method;
-          wcerr << L"  frame: pos=" << pos << L", class=" << method->GetClass()->GetName() 
-                << L", method=" << PrintMethod(method);
-          const long ip = cur_call_stack[pos]->ip;
-          if(ip > -1) {
-            StackInstr* instr = cur_call_stack[pos]->method->GetInstruction(ip);
-            wcerr << L", file=" << method->GetClass()->GetFileName() << L":" << instr->GetLineNumber() << endl;
-          }
-          else {
-            wcerr << endl;
+          if(method->GetClass()) {
+            wcerr << L"  frame: pos=" << pos << L", class=" << method->GetClass()->GetName()
+              << L", method=" << PrintMethod(method);
+            const long ip = cur_call_stack[pos]->ip;
+            if(ip > -1) {
+              StackInstr* instr = cur_call_stack[pos]->method->GetInstruction(ip);
+              wcerr << L", file=" << method->GetClass()->GetFileName() << L":" << instr->GetLineNumber() << endl;
+            }
+            else {
+              wcerr << endl;
+            }
           }
         }
-        while(--pos);
+        
+
       }
       else {
         wcout << L"program is not running." << endl;
@@ -1565,6 +1575,7 @@ void Runtime::Debugger::ProcessInfo(Info* info) {
         wcout << L"  parameters:" << endl;
         if(klass->GetNumberInstanceDeclarations() > 0) {
           PrintDeclarations(klass->GetInstanceDeclarations(), klass->GetNumberInstanceDeclarations());
+          PrintDeclarations(klass->GetClassDeclarations(), klass->GetNumberClassDeclarations());
         }
       }
       else {

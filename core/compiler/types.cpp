@@ -246,7 +246,7 @@ frontend::Type* TypeParser::ParseType(const wstring& type_name)
     type = frontend::TypeFactory::Instance()->MakeType(frontend::FUNC_TYPE, name);
     ParseFunctionalType(type);
   }
-             break;
+    break;
 
   case L'o':
     index = 2;

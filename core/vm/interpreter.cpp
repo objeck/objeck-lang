@@ -1699,7 +1699,15 @@ void StackInterpreter::ProcessNewFunctionInstance(StackInstr* instr, size_t*& op
   wcout << L"stack oper: NEW_FUNC_INST: mem_size=" << instr->GetOperand() << endl;
 #endif
 
-  size_t func_mem = (size_t)MemoryManager::AllocateArray(instr->GetOperand(), BYTE_ARY_TYPE, op_stack, *stack_pos);
+  long size = (long)instr->GetOperand();
+#if defined(_WIN64) || defined(_X64)
+  // TODO: memory size is doubled the compiler assumes that integers are 4-bytes.
+  // In 64-bit mode integers and floats are 8-bytes.  This approach allocates more
+  // memory for floats (a.k.a double) than needed.
+  size *= 2;
+#endif
+
+  size_t func_mem = (size_t)MemoryManager::AllocateArray(size, BYTE_ARY_TYPE, op_stack, *stack_pos);
   PushInt(func_mem, op_stack, stack_pos);
 }
 

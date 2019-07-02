@@ -14,7 +14,7 @@ class Test {
 
 #		f := Calc1(Int) ~ Int;
 #		f := \(Int) ~ Int : (x) => x * x;
-		f := \(Int) ~ Int : (x) => x * @y + z;
+		f := \(Int) ~ Int : (x) => x + z;
 		Func(f);
 
 #~
