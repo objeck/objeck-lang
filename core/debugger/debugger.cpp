@@ -1460,8 +1460,7 @@ Command* Runtime::Debugger::ProcessCommand(const wstring &line) {
       if(interpreter) {
         wcout << L"stack:" << endl;
         StackMethod* method = cur_frame->method;
-        wcerr << L"  frame: pos=" << cur_call_stack_pos << L", class=" << method->GetClass()->GetName() 
-              << L", method=" << PrintMethod(method);
+        wcerr << L"  frame: pos=" << cur_call_stack_pos << L", class='" << method->GetClass()->GetName() << L"', method='" << PrintMethod(method) << L"'";
         const long ip = cur_frame->ip;
         if(ip > -1) {
           StackInstr* instr = cur_frame->method->GetInstruction(ip);
@@ -1471,12 +1470,11 @@ Command* Runtime::Debugger::ProcessCommand(const wstring &line) {
           wcerr << endl;
         }
 
-        long pos = cur_call_stack_pos - 1;
+        long pos = cur_call_stack_pos;
         while(pos--) {
           StackMethod* method = cur_call_stack[pos]->method;
           if(method->GetClass()) {
-            wcerr << L"  frame: pos=" << pos << L", class=" << method->GetClass()->GetName()
-              << L", method=" << PrintMethod(method);
+            wcerr << L"  frame: pos=" << pos << L", class='" << method->GetClass()->GetName() << L"', method='" << PrintMethod(method) << "'";
             const long ip = cur_call_stack[pos]->ip;
             if(ip > -1) {
               StackInstr* instr = cur_call_stack[pos]->method->GetInstruction(ip);
@@ -1517,7 +1515,7 @@ void Runtime::Debugger::ProcessInfo(Info* info) {
   const wstring &mthd_name = info->GetMethodName();
 
 #ifdef _DEBUG
-  wcout << L"--- info class=" << cls_name << L", method=" << mthd_name << L" ---" << endl;
+  wcout << L"--- info class='" << cls_name << L"', method='" << mthd_name << L"' ---" << endl;
 #endif
 
   if(interpreter) {
