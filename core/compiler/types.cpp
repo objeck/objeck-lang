@@ -126,7 +126,7 @@ vector<frontend::Type*> TypeParser::ParseParameters(const wstring param_str)
       type = frontend::TypeFactory::Instance()->MakeType(frontend::FUNC_TYPE, name);
       ParseFunctionalType(type);
     }
-              break;
+      break;
 
     case 'o': {
       index += 2;
@@ -138,7 +138,7 @@ vector<frontend::Type*> TypeParser::ParseParameters(const wstring param_str)
       const wstring& cls_name = param_str.substr(start, end - start);
       type = frontend::TypeFactory::Instance()->MakeType(frontend::CLASS_TYPE, cls_name);
     }
-              break;
+      break;
     }
 
     // set generics
