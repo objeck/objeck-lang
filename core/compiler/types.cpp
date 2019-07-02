@@ -312,4 +312,3 @@ void TypeParser::ParseFunctionalType(frontend::Type* func_type)
     func_type->SetFunctionReturn(func_rtrn);
   }
 }
-
