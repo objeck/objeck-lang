@@ -121,6 +121,7 @@ namespace Runtime {
     StackFrame* cur_frame;
     size_t* op_stack;
     long* stack_pos;
+    Loader* loader;
 
     // pretty prints a method
     wstring PrintMethod(StackMethod* method);
@@ -146,8 +147,16 @@ namespace Runtime {
     // prints declarations
     void PrintDeclarations(StackDclr** dclrs, int dclrs_num);
 
+    void ClearProgram();
+    void DoLoad();
+    void ClearReload() {
+      ClearProgram();
+      DoLoad();
+    }
+
     Command* ProcessCommand(const wstring &line);
     void ProcessRun();
+   
     void ProcessExe(Load* load);
     void ProcessSrc(Load* load);
     void ProcessArgs(Load* load);
@@ -155,11 +164,8 @@ namespace Runtime {
     void ProcessBreak(FilePostion* break_command);
     void ProcessBreaks();
     void ProcessDelete(FilePostion* break_command);
-    void ProcessList(FilePostion* break_command);
     void ProcessPrint(Print* print);
-    void ClearProgram();
     void ClearBreaks();
-
     void EvaluateExpression(Expression* expression);
     void EvaluateReference(Reference* &reference, MemoryContext context);
     void EvaluateInstanceReference(Reference* reference, int index);
@@ -187,6 +193,7 @@ namespace Runtime {
       ref_mem = nullptr;
       ref_mem = nullptr;
       is_jmp_out = false;
+      loader = nullptr;
     }
 
     ~Debugger() {
