@@ -154,7 +154,8 @@ vector<frontend::Type*> TypeParser::ParseParameters(const wstring param_str)
 
         const wstring generic_name = param_str.substr(start, end - start);
         generic_types.push_back(frontend::TypeFactory::Instance()->MakeType(frontend::CLASS_TYPE, generic_name));
-      } while(index < param_str.size() && param_str[index] == L'|');
+      } 
+      while(index < param_str.size() && param_str[index] == L'|');
 
       if(type) {
         type->SetGenerics(generic_types);
