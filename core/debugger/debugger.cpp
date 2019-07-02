@@ -103,7 +103,8 @@ void Runtime::Debugger::ProcessSrc(Load* load) {
   }
 
   if(FileExists(program_file, true) && DirectoryExists(load->GetFileName())) {
-    ClearProgram();
+    ClearReload();
+
     base_path = load->GetFileName();
 #ifdef _WIN32
     if(base_path.size() > 0 && base_path[base_path.size() - 1] != '\\') {
@@ -166,7 +167,7 @@ void Runtime::Debugger::ProcessExe(Load* load) {
 
   if(FileExists(load->GetFileName(), true) && DirectoryExists(base_path)) {
     // clear program
-    ClearProgram();
+    ClearReload();
     ClearBreaks();
     program_file = load->GetFileName();
     // reset arguments
@@ -182,22 +183,9 @@ void Runtime::Debugger::ProcessExe(Load* load) {
 }
 
 void Runtime::Debugger::ProcessRun() {
-  if(program_file.size() > 0) {
-    // process program parameters
-    long argc = (long)arguments.size();
-    wchar_t** argv = new wchar_t*[argc];
-    for(long i = 0; i < argc; ++i) {
-#ifdef _WIN32
-      argv[i] = _wcsdup(arguments[i].c_str());
-#else
-      argv[i] = wcsdup(arguments[i].c_str());
-#endif
-    }
-
-    // invoke loader
-    Loader loader(argc, argv);
-    loader.Load();
-    cur_program = loader.GetProgram();
+  if(loader && program_file.size() > 0) {
+    DoLoad();
+    cur_program = loader->GetProgram();
     
     // execute
     op_stack = new size_t[CALC_STACK_SIZE];
@@ -220,19 +208,43 @@ void Runtime::Debugger::ProcessRun() {
     wcout << L"# final stack: pos=" << (*stack_pos) << L" #" << endl;
 #endif
 
-    // clear old program
-    for(int i = 0; i < argc; i++) {
-      wchar_t* param = argv[i];
-      free(param);
-      param = nullptr;
-    }
-    delete[] argv;
-    argv = nullptr;
-    ClearProgram();
+    ClearReload();
   }
   else {
     wcout << L"program file not specified." << endl;
   }
+}
+
+void Runtime::Debugger::DoLoad()
+{
+  if(loader) {
+    delete loader;
+    loader = nullptr;
+  }
+
+  // process program parameters
+  long argc = (long)arguments.size();
+  wchar_t** argv = new wchar_t* [argc];
+  for(long i = 0; i < argc; ++i) {
+#ifdef _WIN32
+    argv[i] = _wcsdup(arguments[i].c_str());
+#else
+    argv[i] = wcsdup(arguments[i].c_str());
+#endif
+  }
+
+  // invoke loader
+  loader = new Loader(argc, argv);
+  loader->Load();
+
+  // clear old program
+  for(int i = 0; i < argc; i++) {
+    wchar_t* param = argv[i];
+    free(param);
+    param = nullptr;
+  }
+  delete[] argv;
+  argv = nullptr;
 }
 
 void Runtime::Debugger::ProcessBreak(FilePostion* break_command) {
@@ -1619,6 +1631,11 @@ void Runtime::Debugger::ClearBreaks() {
 }
 
 void Runtime::Debugger::ClearProgram() {
+  if(loader) {
+    delete loader;
+    loader = nullptr;
+  }
+  
   if(interpreter) {
     delete interpreter;
     interpreter = nullptr;
@@ -1664,8 +1681,14 @@ void Runtime::Debugger::Debug() {
     exit(1);
   }
 
+  // find starting file
+  ClearReload();
+  StackMethod* start = loader->GetStartMethod();
+  if(start) {
+    cur_file_name = start->GetClass()->GetFileName();
+  }
+
   // enter feedback loop
-  ClearProgram();
   wcout << L"> ";
   while(true) {    
     wstring line;
@@ -1708,7 +1731,7 @@ int main(int argc, char** argv)
       exit(1);
     }
 #else
-    // enable UTF-8 enviroment
+    // enable UTF-8 environment
     setlocale(LC_ALL, "");
     setlocale(LC_CTYPE, "UTF-8");
 #endif
