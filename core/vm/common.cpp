@@ -4828,7 +4828,7 @@ wstring MethodFormatter::FormatParameters(const wstring param_str)
 
     index++;
     if(index < param_str.size()) {
-      formatted_str += L',';
+      formatted_str += L", ";
     }
   }
   formatted_str += L")";
