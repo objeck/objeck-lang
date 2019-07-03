@@ -2718,7 +2718,7 @@ void Runtime::StackInterpreter::StackErrorUnwind()
      method->GetInstruction((*frame)->ip)->GetLineNumber() > 0) {
     wcerr << L"  method: pos=" << pos << L", file="
           << (*frame)->method->GetClass()->GetFileName() << L", name='"
-          << MethodFormatter::Format((*frame)->method->GetName()) << L"', line="
+          << (*frame)->method->GetName() << L"', line="
           << method->GetInstruction((*frame)->ip)->GetLineNumber() << endl;
   }
   if(pos != 0) {
@@ -2728,7 +2728,7 @@ void Runtime::StackInterpreter::StackErrorUnwind()
          method->GetInstruction(call_stack[pos]->ip)->GetLineNumber() > 0) {
         wcerr << L"  method: pos=" << pos << L", file="
               << call_stack[pos]->method->GetClass()->GetFileName() << L", name='"
-              << MethodFormatter::Format(call_stack[pos]->method->GetName()) << L"', line="
+              < call_stack[pos]->method->GetName() << L"', line="
               << method->GetInstruction(call_stack[pos]->ip)->GetLineNumber() << endl;
       }
     }
@@ -2738,11 +2738,11 @@ void Runtime::StackInterpreter::StackErrorUnwind()
 #else
   wcerr << L"Unwinding local stack (" << this << L"):" << endl;
   wcerr << L"  method: pos=" << pos << L", name="
-        << MethodFormatter::Format((*frame)->method->GetName()) << endl;
+        << (*frame)->method->GetName() << endl;
   if(pos != 0) {
     while(--pos && pos > -1) {
       wcerr << L"  method: pos=" << pos << L", name="
-            << MethodFormatter::Format(call_stack[pos]->method->GetName()) << endl;
+            << call_stack[pos]->method->GetName() << endl;
     }
   }
   wcerr << L"  ..." << endl;
@@ -2825,15 +2825,12 @@ size_t* Runtime::StackInterpreter::CreateStringObject(const wstring& value_str, 
 
 void Runtime::StackInterpreter::StackErrorUnwind(StackMethod* method)
 {
-  wstring formatted_name = MethodFormatter::Format(method->GetName());
-  
   long pos = (*call_stack_pos);
   wcerr << L"Unwinding local stack (" << this << L"):" << endl;
-  wcerr << L"  method: pos=" << pos << L", name=" << formatted_name << endl;
+  wcerr << L"  method: pos=" << pos << L", name=" << method->GetName() << endl;
   while(--pos) {
     if(pos > -1) {
-      formatted_name = MethodFormatter::Format(call_stack[pos]->method->GetName());
-      wcerr << L"  method: pos=" << pos << L", name=" << formatted_name << endl;
+      wcerr << L"  method: pos=" << pos << L", name=" << call_stack[pos]->method->GetName() << endl;
     }
   }
   wcerr << L"  ..." << endl;

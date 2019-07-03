@@ -4669,7 +4669,7 @@ wstring MethodFormatter::Format(const wstring method_sig)
 
   size_t start = method_sig.rfind(':');
   if(start != wstring::npos) {
-    const wstring parameters = method_sig.substr(start + 1);
+    wstring parameters = method_sig.substr(start + 1);
     mthd_sig = FormatParameters(parameters);
   }
 
@@ -4684,7 +4684,7 @@ wstring MethodFormatter::Format(const wstring method_sig)
 
 wstring MethodFormatter::FormatParameters(const wstring param_str)
 {
-  wstring formatted_str(L"(");
+  wstring formatted_str = L"(";
 
   size_t index = 0;
   while(index < param_str.size()) {

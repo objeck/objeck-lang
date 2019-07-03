@@ -87,7 +87,6 @@ using namespace stdext;
 #include <sys/types.h>
 #endif
 
-
 #define SMALL_BUFFER_MAX 383
 #define LARGE_BUFFER_MAX 4095
 #define CALC_STACK_SIZE 512
