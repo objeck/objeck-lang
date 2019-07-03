@@ -348,7 +348,7 @@ void IntermediateEmitter::EmitStrings()
         if(!found) {
           lib_float_string_values.push_back(float_str_insts[i]->value);
         }
-      }  
+      }
     }
 
     // merge in library strings
@@ -411,7 +411,7 @@ void IntermediateEmitter::EmitStrings()
         assert(found);
 #endif
       }
-      // int wstring processing
+      // int string processing
       vector<IntStringInstruction*> int_str_insts = iter->second->GetIntStringInstructions();
       for(size_t i = 0; i < int_str_insts.size(); ++i) {
         bool found = false;
@@ -636,7 +636,7 @@ IntermediateMethod* IntermediateEmitter::EmitMethod(Method* method)
     }
   }
   imm_method = new IntermediateMethod(method->GetId(), method->GetEncodedName(), method->IsVirtual(), 
-              method->HasAndOr(), method->GetEncodedReturn(),  method->GetMethodType(), 
+              method->HasAndOr(), method->IsLambda(), method->GetEncodedReturn(),  method->GetMethodType(),
               method->IsNative(), method->IsStatic(), space, num_params, entries, imm_klass);
 
   if(!method->IsVirtual()) {
@@ -762,7 +762,258 @@ IntermediateMethod* IntermediateEmitter::EmitMethod(Method* method)
  ****************************/
 void IntermediateEmitter::EmitLambda(Lambda* lambda)
 {
-  EmitMethodCallExpression(lambda->GetMethodCall());
+  int closure_space = 0;
+  IntermediateDeclarations* closure_dclrs = new IntermediateDeclarations;
+  vector<pair<SymbolEntry*, SymbolEntry*> > closure_copies = lambda->GetClosures();
+  for(size_t i = 0; i < closure_copies.size(); ++i) {
+    SymbolEntry* entry = closure_copies[i].second;
+    switch(entry->GetType()->GetType()) {
+    case frontend::BOOLEAN_TYPE:
+      if(entry->GetType()->GetDimension() > 0) {
+#ifdef _DEBUG
+        GetLogger() << L"\t" << entry->GetId() << L": INT_ARY_PARM: name=" << entry->GetName()
+          << L", dim=" << entry->GetType()->GetDimension() << endl;
+#endif
+        closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_ARY_PARM));
+      }
+      else {
+#ifdef _DEBUG
+        GetLogger() << L"\t" << entry->GetId() << L": INT_PARM: name=" << entry->GetName() << endl;
+#endif
+        closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
+      }
+      closure_space++;
+      break;
+
+    case frontend::BYTE_TYPE:
+      if(entry->GetType()->GetDimension() > 0) {
+#ifdef _DEBUG
+        GetLogger() << L"\t" << entry->GetId() << L": BYTE_ARY_PARM: name=" << entry->GetName() << endl;
+#endif
+        closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), BYTE_ARY_PARM));
+      }
+      else {
+#ifdef _DEBUG
+        GetLogger() << L"\t" << entry->GetId() << L": INT_PARM: name=" << entry->GetName() << endl;
+#endif
+        closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
+      }
+      closure_space++;
+      break;
+
+    case frontend::INT_TYPE:
+      if(entry->GetType()->GetDimension() > 0) {
+#ifdef _DEBUG
+        GetLogger() << L"\t" << entry->GetId() << L": INT_ARY_PARM: name=" << entry->GetName()
+          << L", dim=" << entry->GetType()->GetDimension() << endl;
+#endif
+        closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_ARY_PARM));
+      }
+      else {
+#ifdef _DEBUG
+        GetLogger() << L"\t" << entry->GetId() << L": INT_PARM: name=" << entry->GetName() << endl;
+#endif
+        closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
+      }
+      closure_space++;
+      break;
+
+    case frontend::CHAR_TYPE:
+      if(entry->GetType()->GetDimension() > 0) {
+#ifdef _DEBUG
+        GetLogger() << L"\t" << entry->GetId() << L": CHAR_ARY_PARM: name=" << entry->GetName() << endl;
+#endif
+        closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), CHAR_ARY_PARM));
+      }
+      else {
+#ifdef _DEBUG
+        GetLogger() << L"\t" << entry->GetId() << L": CHAR_PARM: name=" << entry->GetName() << endl;
+#endif
+        closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), CHAR_PARM));
+      }
+      closure_space++;
+      break;
+
+    case frontend::CLASS_TYPE:
+      // object array
+      if(entry->GetType()->GetDimension() > 0) {
+        if(parsed_program->GetClass(entry->GetType()->GetClassName())) {
+#ifdef _DEBUG
+          GetLogger() << L"\t" << entry->GetId() << L": OBJ_ARY_PARM: name=" << entry->GetName() << endl;
+#endif
+          closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), OBJ_ARY_PARM));
+        }
+        else if(SearchProgramEnums(entry->GetType()->GetClassName())) {
+#ifdef _DEBUG
+          GetLogger() << L"\t" << entry->GetId() << L": INT_ARY_PARM: name=" << entry->GetName() << endl;
+#endif
+          closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_ARY_PARM));
+        }
+        else if(parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetClassName(), parsed_program->GetUses())) {
+#ifdef _DEBUG
+          GetLogger() << L"\t" << entry->GetId() << L": INT_ARY_PARM: name=" << entry->GetName() << endl;
+#endif
+          closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_ARY_PARM));
+        }
+        else {
+#ifdef _DEBUG
+          GetLogger() << L"\t" << entry->GetId() << L": OBJ_ARY_PARM: name=" << entry->GetName() << endl;
+#endif
+          closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), OBJ_ARY_PARM));
+        }
+      }
+      // object
+      else {
+        if(SearchProgramClasses(entry->GetType()->GetClassName())) {
+#ifdef _DEBUG
+          GetLogger() << L"\t" << entry->GetId() << L": OBJ_PARM: name=" << entry->GetName() << endl;
+#endif
+          closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), OBJ_PARM));
+        }
+        else if(SearchProgramEnums(entry->GetType()->GetClassName())) {
+#ifdef _DEBUG
+          GetLogger() << L"\t" << entry->GetId() << L": INT_PARM: name=" << entry->GetName() << endl;
+#endif
+          closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
+        }
+        else if(parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetClassName(), parsed_program->GetUses())) {
+#ifdef _DEBUG
+          GetLogger() << L"\t" << entry->GetId() << L": INT_PARM: name=" << entry->GetName() << endl;
+#endif
+          closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
+        }
+        else {
+#ifdef _DEBUG
+          GetLogger() << L"\t" << entry->GetId() << L": OBJ_PARM: name=" << entry->GetName() << endl;
+#endif
+          closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), OBJ_PARM));
+        }
+      }
+      closure_space++;
+      break;
+
+    case frontend::FLOAT_TYPE:
+      if(entry->GetType()->GetDimension() > 0) {
+#ifdef _DEBUG
+        GetLogger() << L"\t" << entry->GetId() << L": FLOAT_ARY_PARM: name=" << entry->GetName() << endl;
+#endif
+        closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), FLOAT_ARY_PARM));
+        closure_space++;
+      }
+      else {
+#ifdef _DEBUG
+        GetLogger() << L"\t" << entry->GetId() << L": FLOAT_PARM: name=" << entry->GetName() << endl;
+#endif
+        closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), FLOAT_PARM));
+        closure_space += 2;
+      }
+      break;
+
+    case frontend::FUNC_TYPE:
+#ifdef _DEBUG
+      GetLogger() << L"\t" << entry->GetId() << L": FUNC_PARM: name=" << entry->GetName() << endl;
+#endif
+      closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), FUNC_PARM));
+      closure_space += 2;
+      break;
+
+    default:
+      break;
+    }
+  }
+  closure_space *= sizeof(INT_VALUE);
+
+  // add closure
+  MethodCall* method_call = lambda->GetMethodCall();
+  imm_klass->AddClosureDeclarations(lambda->GetMethod()->GetEncodedName(), method_call->GetMethod()->GetId(), closure_dclrs);
+
+  // allocate closure space and copy variables
+  if(closure_space > 0) {
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, NEW_FUNC_INST, closure_space));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, STOR_INT_VAR, 0, LOCL));
+
+    for(size_t i = 0; i < closure_copies.size(); ++i) {
+      pair<SymbolEntry*, SymbolEntry*> copy = closure_copies[i];
+      SymbolEntry* var_entry = copy.first;
+      SymbolEntry* capture_entry = copy.second;
+
+      // memory context
+      MemoryContext mem_context;
+      if(capture_entry->IsLocal()) {
+        mem_context = LOCL;
+      }
+      else if(capture_entry->IsStatic()) {
+        mem_context = CLS;
+      }
+      else {
+        mem_context = INST;
+      }
+
+      if(mem_context == INST) {
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
+      }
+      else if(mem_context == CLS) {
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_CLS_MEM));
+      }
+
+      switch(capture_entry->GetType()->GetType()) {
+      case frontend::BOOLEAN_TYPE:
+      case frontend::BYTE_TYPE:
+      case frontend::CHAR_TYPE:
+      case frontend::INT_TYPE:
+      case frontend::CLASS_TYPE:
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, capture_entry->GetId(), mem_context));
+        break;
+      case frontend::FLOAT_TYPE:
+        if(capture_entry->GetType()->GetDimension() > 0) {
+          imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, capture_entry->GetId(), mem_context));
+        }
+        else {
+          imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FLOAT_VAR, capture_entry->GetId(), mem_context));
+        }
+        break;
+      case frontend::FUNC_TYPE:
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FUNC_VAR, capture_entry->GetId(), mem_context));
+        break;
+      default:
+        break;
+      }
+
+      // memory context
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 0, LOCL));
+
+      switch(var_entry->GetType()->GetType()) {
+      case frontend::BOOLEAN_TYPE:
+      case frontend::BYTE_TYPE:
+      case frontend::CHAR_TYPE:
+      case frontend::INT_TYPE:
+      case frontend::CLASS_TYPE:
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, STOR_INT_VAR, var_entry->GetId(), INST));
+        break;
+      case frontend::FLOAT_TYPE:
+        if(var_entry->GetType()->GetDimension() > 0) {
+          imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, STOR_INT_VAR, var_entry->GetId(), INST));
+        }
+        else {
+          imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, STOR_FLOAT_VAR, var_entry->GetId(), INST));
+        }
+        break;
+      case frontend::FUNC_TYPE:
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, STOR_FUNC_VAR, var_entry->GetId(), INST));
+        break;
+      default:
+        break;
+      }
+    }
+
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 0, LOCL));
+  }
+  // no closures
+  else {
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, 0));
+  }
+
+  EmitMethodCallExpression(method_call, false, true);
 }
 
 /****************************
@@ -844,13 +1095,18 @@ void IntermediateEmitter::EmitStatement(Statement* statement)
     if(expression) {
       EmitExpression(expression);
     }
-
+    // post statements
+    if(!post_statements.empty()) {
+      EmitAssignment(post_statements.front());
+      post_statements.pop();
+    }
+    // leaving
     if(current_method->GetLeaving()) {
       vector<Statement*> leavings = current_method->GetLeaving()->GetStatements()->GetStatements();
       for(size_t i = 0; i < leavings.size(); ++i) {
         EmitStatement(leavings[i]);
       }
-    }    
+    }
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, RTRN));
     new_char_str_count = 0;
   }
@@ -899,7 +1155,7 @@ void IntermediateEmitter::EmitStatement(Statement* statement)
     exit(1);
   }
   
-  if(post_statements.size()) {
+  if(!post_statements.empty()) {
     EmitAssignment(post_statements.front());
     post_statements.pop();
   }
@@ -914,25 +1170,37 @@ void IntermediateEmitter::EmitMethodCallStatement(MethodCall* method_call)
   // find end of nested call
   if(method_call->IsFunctionDefinition()) {
     if(method_call->GetMethod()) {
+      if(!method_call->GetMethod()->IsLambda()) {
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, 0));
+      }
+
       if(is_lib) {
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_FUNC_DEF, -1,
                                                                                    method_call->GetMethod()->GetClass()->GetName(),
                                                                                    method_call->GetMethod()->GetEncodedName()));
       }
       else {
-        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, method_call->GetMethod()->GetId()));
-        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, method_call->GetMethod()->GetClass()->GetId()));
+        const int16_t method_id = method_call->GetMethod()->GetId();
+        const int16_t cls_id = method_call->GetMethod()->GetClass()->GetId();
+        const int method_cls_id = (cls_id << 16) | method_id;
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, method_cls_id));
       }
     }
     else {
+      if(!method_call->GetLibraryMethod()->IsLambda()) {
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, 0));
+      }
+
       if(is_lib) {
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_FUNC_DEF, -1,
                                                                                    method_call->GetLibraryMethod()->GetLibraryClass()->GetName(),
                                                                                    method_call->GetLibraryMethod()->GetName()));
       }
       else {
-        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, method_call->GetLibraryMethod()->GetId()));
-        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, method_call->GetLibraryMethod()->GetLibraryClass()->GetId()));
+        const int16_t method_id = method_call->GetLibraryMethod()->GetId();
+        const int16_t cls_id = method_call->GetLibraryMethod()->GetLibraryClass()->GetId();
+        const int method_cls_id = (cls_id << 16) | method_id;
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, method_cls_id));
       }
     }
   }
@@ -971,9 +1239,8 @@ void IntermediateEmitter::EmitMethodCallStatement(MethodCall* method_call)
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_CLS_MEM));
     }      
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FUNC_VAR, entry->GetId(), mem_context));
-    
+
     // emit dynamic call
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
     switch(OrphanReturn(method_call)) {
     case 0:
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, DYN_MTHD_CALL, entry->GetType()->GetFunctionParameterCount(), instructions::INT_TYPE));
@@ -2272,7 +2539,7 @@ void IntermediateEmitter::EmitDoWhile(DoWhile* do_while_stmt)
   // conditional
   EmitExpression(do_while_stmt->GetExpression());
 
-  if(post_statements.size()) {
+  if(!post_statements.empty()) {
     EmitAssignment(post_statements.front());
     post_statements.pop();
   }
@@ -2308,7 +2575,7 @@ void IntermediateEmitter::EmitWhile(While* while_stmt)
     EmitStatement(while_statements[i]);
   }
 
-  if(post_statements.size()) {
+  if(!post_statements.empty()) {
     EmitAssignment(post_statements.front());
     post_statements.pop();
   }
@@ -2594,10 +2861,14 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
  * expression and supports
  * dynamic functions.
  ****************************/
-void IntermediateEmitter::EmitMethodCallExpression(MethodCall* method_call, bool is_variable) {
+void IntermediateEmitter::EmitMethodCallExpression(MethodCall* method_call, bool is_variable, bool is_closure) {
   // find end of nested call
   if(method_call->IsFunctionDefinition()) {
     if(method_call->GetMethod()) {
+      if(!method_call->GetMethod()->IsLambda()) {
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, 0));
+      }
+
       if(is_lib) {
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_FUNC_DEF, -1,
                                                                                    method_call->GetMethod()->GetClass()->GetName(),
@@ -2605,21 +2876,28 @@ void IntermediateEmitter::EmitMethodCallExpression(MethodCall* method_call, bool
                        
       }
       else {
-        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, method_call->GetMethod()->GetId()));
-        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, method_call->GetMethod()->GetClass()->GetId()));
+        const int16_t method_id = method_call->GetMethod()->GetId();
+        const int16_t cls_id = method_call->GetMethod()->GetClass()->GetId();
+        const int method_cls_id = (cls_id << 16) | method_id;
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, method_cls_id));
       }
     }
     else {
+      if(!method_call->GetLibraryMethod()->IsLambda()) {
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, 0));
+      }
+
       if(is_lib) {
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_FUNC_DEF, -1,
                                                                                    method_call->GetLibraryMethod()->GetLibraryClass()->GetName(),
                                                                                    method_call->GetLibraryMethod()->GetName()));
       }
       else {
-        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, method_call->GetLibraryMethod()->GetId()));
-        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, method_call->GetLibraryMethod()->GetLibraryClass()->GetId()));
+        const int16_t method_id = method_call->GetLibraryMethod()->GetId();
+        const int16_t cls_id = method_call->GetLibraryMethod()->GetLibraryClass()->GetId();
+        const int method_cls_id = (cls_id << 16) | method_id;
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_LIT, method_cls_id));
       }
-
     }
   }
   else if(method_call->IsFunctionalCall()) {
@@ -2648,6 +2926,7 @@ void IntermediateEmitter::EmitMethodCallExpression(MethodCall* method_call, bool
     else {
       mem_context = INST;
     }
+
     //
     if(mem_context == INST) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));

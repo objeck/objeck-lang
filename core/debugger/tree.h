@@ -97,7 +97,7 @@ namespace frontend {
     friend class TreeFactory;
     bool is_float_eval;
     size_t int_value;
-    long int_value2;
+    size_t int_value2;
     double float_value;
 
   protected:    
@@ -123,11 +123,11 @@ namespace frontend {
       return int_value;
     }
 
-    void SetIntValue2(long i) {
+    void SetIntValue2(size_t i) {
       int_value2 = i;
     }
 
-    long GetIntValue2() {
+    size_t GetIntValue2() {
       return int_value2;
     }
 

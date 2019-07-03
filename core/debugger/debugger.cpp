@@ -37,8 +37,7 @@
  * Interactive command line
  * debugger
  ********************************/
-void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFrame** call_stack,
-                                           long call_stack_pos, StackFrame* frame)
+void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFrame** call_stack, long call_stack_pos, StackFrame* frame)
 {
   if(frame->method->GetClass()) {
     const int line_num = instr->GetLineNumber();
@@ -88,10 +87,8 @@ void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFram
           command = nullptr;
         }
       }
-      while(!command || (command->GetCommandType() != CONT_COMMAND &&
-                         command->GetCommandType() != NEXT_COMMAND &&
-                         command->GetCommandType() != NEXT_LINE_COMMAND &&
-                         command->GetCommandType() != JUMP_OUT_COMMAND));
+      while(!command || (command->GetCommandType() != CONT_COMMAND && command->GetCommandType() != NEXT_COMMAND &&
+                         command->GetCommandType() != NEXT_LINE_COMMAND && command->GetCommandType() != JUMP_OUT_COMMAND));
     }
   }
 }
@@ -103,7 +100,8 @@ void Runtime::Debugger::ProcessSrc(Load* load) {
   }
 
   if(FileExists(program_file, true) && DirectoryExists(load->GetFileName())) {
-    ClearProgram();
+    ClearReload();
+
     base_path = load->GetFileName();
 #ifdef _WIN32
     if(base_path.size() > 0 && base_path[base_path.size() - 1] != '\\') {
@@ -166,7 +164,7 @@ void Runtime::Debugger::ProcessExe(Load* load) {
 
   if(FileExists(load->GetFileName(), true) && DirectoryExists(base_path)) {
     // clear program
-    ClearProgram();
+    ClearReload();
     ClearBreaks();
     program_file = load->GetFileName();
     // reset arguments
@@ -182,23 +180,10 @@ void Runtime::Debugger::ProcessExe(Load* load) {
 }
 
 void Runtime::Debugger::ProcessRun() {
-  if(program_file.size() > 0) {
-    // process program parameters
-    long argc = (long)arguments.size();
-    wchar_t** argv = new wchar_t*[argc];
-    for(long i = 0; i < argc; ++i) {
-#ifdef _WIN32
-      argv[i] = _wcsdup(arguments[i].c_str());
-#else
-      argv[i] = wcsdup(arguments[i].c_str());
-#endif
-    }
-
-    // envoke loader
-    Loader loader(argc, argv);
-    loader.Load();
-    cur_program = loader.GetProgram();
-
+  if(loader && program_file.size() > 0) {
+    DoLoad();
+    cur_program = loader->GetProgram();
+    
     // execute
     op_stack = new size_t[CALC_STACK_SIZE];
     stack_pos = new long;
@@ -220,19 +205,43 @@ void Runtime::Debugger::ProcessRun() {
     wcout << L"# final stack: pos=" << (*stack_pos) << L" #" << endl;
 #endif
 
-    // clear old program
-    for(int i = 0; i < argc; i++) {
-      wchar_t* param = argv[i];
-      free(param);
-      param = nullptr;
-    }
-    delete[] argv;
-    argv = nullptr;
-    ClearProgram();
+    ClearReload();
   }
   else {
     wcout << L"program file not specified." << endl;
   }
+}
+
+void Runtime::Debugger::DoLoad()
+{
+  if(loader) {
+    delete loader;
+    loader = nullptr;
+  }
+
+  // process program parameters
+  long argc = (long)arguments.size();
+  wchar_t** argv = new wchar_t* [argc];
+  for(long i = 0; i < argc; ++i) {
+#ifdef _WIN32
+    argv[i] = _wcsdup(arguments[i].c_str());
+#else
+    argv[i] = wcsdup(arguments[i].c_str());
+#endif
+  }
+
+  // invoke loader
+  loader = new Loader(argc, argv);
+  loader->Load();
+
+  // clear old program
+  for(int i = 0; i < argc; i++) {
+    wchar_t* param = argv[i];
+    free(param);
+    param = nullptr;
+  }
+  delete[] argv;
+  argv = nullptr;
 }
 
 void Runtime::Debugger::ProcessBreak(FilePostion* break_command) {
@@ -446,10 +455,17 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
           break;
 
         case FUNC_PARM: {
-          StackClass* klass = cur_program->GetClass((long)reference->GetIntValue());
-          if(klass) {
-            wcout << L"print: type=Functon, class=" << klass->GetName() 
-                  << L", method=" << PrintMethod(klass->GetMethod(reference->GetIntValue2())) << endl;
+          const size_t mthd_cls_id = reference->GetIntValue();
+          if(mthd_cls_id > 0) {
+            const long cls_id = (mthd_cls_id >> (16 * (1))) & 0xFFFF;
+            const long mthd_id = (mthd_cls_id >> (16 * (0))) & 0xFFFF;
+            StackClass* klass = cur_program->GetClass(cls_id);
+            if(klass) {
+              wcout << L"print: type=Function, class='" << klass->GetName() << L"', method='" << PrintMethod(klass->GetMethod(mthd_id)) << L"'" << endl;
+            }
+          }
+          else {
+            wcout << L"print: type=Function, class=<unknown>, method=<unknown>" << endl;
           }
         }
           break;
@@ -792,7 +808,7 @@ void Runtime::Debugger::EvaluateReference(Reference* &reference, MemoryContext c
 
         case FUNC_PARM:
           reference->SetIntValue((long)ref_mem[dclr_value.id]);
-          reference->SetIntValue2((long)ref_mem[dclr_value.id + 1]);
+          reference->SetIntValue2(ref_mem[dclr_value.id + 1]);
           break;
 
         case FLOAT_PARM: {
@@ -870,7 +886,7 @@ void Runtime::Debugger::EvaluateReference(Reference* &reference, MemoryContext c
 
           case FUNC_PARM:
             reference->SetIntValue((long)ref_mem[dclr_value.id + 1]);
-            reference->SetIntValue2((long)ref_mem[dclr_value.id + 2]);
+            reference->SetIntValue2(ref_mem[dclr_value.id + 2]);
             break;
 
           case FLOAT_PARM: {
@@ -954,7 +970,7 @@ void Runtime::Debugger::EvaluateInstanceReference(Reference* reference, int inde
 void Runtime::Debugger::EvaluateClassReference(Reference* reference, StackClass* klass, int index) {
   size_t* cls_mem = klass->GetClassMemory();
   reference->SetIntValue((size_t)cls_mem);
-  ref_mem  =cls_mem;
+  ref_mem = cls_mem;
   ref_klass = klass;
   if(reference->GetReference()) {
     Reference* next_reference = reference->GetReference();
@@ -1155,29 +1171,12 @@ void Runtime::Debugger::EvaluateIntFloatReference(Reference* reference, int inde
   }
 }
 
-std::wstring Runtime::Debugger::PrintMethod(StackMethod* method)
+wstring Runtime::Debugger::PrintMethod(StackMethod* method)
 {
-  wstring mthd_name = method->GetName();
-  size_t index = mthd_name.find_last_of(':');
-  if(index != wstring::npos) {
-    mthd_name.replace(index, 1, 1, '(');
-    if(mthd_name[mthd_name.size() - 1] == ',') {
-      mthd_name.replace(mthd_name.size() - 1, 1, 1, ')');
-    }
-    else {
-      mthd_name += ')';
-    }
-  }
-
-  index = mthd_name.find_last_of(':');
-  if(index != wstring::npos) {
-    mthd_name = mthd_name.substr(index + 1);
-  }
-
-  return mthd_name;
+  return MethodFormatter::Format(method->GetName());
 }
 
-bool Runtime::Debugger::FileExists(const wstring& file_name, bool is_exe /*= false*/)
+bool Runtime::Debugger::FileExists(const wstring&file_name, bool is_exe /*= false*/)
 {
   const string name = UnicodeToBytes(file_name);
   const string ending = ".obl";
@@ -1187,17 +1186,6 @@ bool Runtime::Debugger::FileExists(const wstring& file_name, bool is_exe /*= fal
 
   ifstream touch(name.c_str(), ios::binary);
   if(touch.is_open()) {
-    /*
-    if(is_exe) {
-      int magic_num;
-      // version
-      touch.read((char*)&magic_num, sizeof(int));
-      // file type
-      touch.read((char*)&magic_num, sizeof(int));
-      touch.close();
-      return magic_num == MAGIC_NUM_EXE;
-    }
-    */
     touch.close();
     return true;
   }
@@ -1472,8 +1460,7 @@ Command* Runtime::Debugger::ProcessCommand(const wstring &line) {
       if(interpreter) {
         wcout << L"stack:" << endl;
         StackMethod* method = cur_frame->method;
-        wcerr << L"  frame: pos=" << cur_call_stack_pos << L", class=" << method->GetClass()->GetName() 
-              << L", method=" << PrintMethod(method);
+        wcerr << L"  frame: pos=" << cur_call_stack_pos << L", class='" << method->GetClass()->GetName() << L"', method='" << PrintMethod(method) << L"'";
         const long ip = cur_frame->ip;
         if(ip > -1) {
           StackInstr* instr = cur_frame->method->GetInstruction(ip);
@@ -1483,21 +1470,23 @@ Command* Runtime::Debugger::ProcessCommand(const wstring &line) {
           wcerr << endl;
         }
 
-        long pos = cur_call_stack_pos - 1;
-        do {
+        long pos = cur_call_stack_pos;
+        while(pos--) {
           StackMethod* method = cur_call_stack[pos]->method;
-          wcerr << L"  frame: pos=" << pos << L", class=" << method->GetClass()->GetName() 
-                << L", method=" << PrintMethod(method);
-          const long ip = cur_call_stack[pos]->ip;
-          if(ip > -1) {
-            StackInstr* instr = cur_call_stack[pos]->method->GetInstruction(ip);
-            wcerr << L", file=" << method->GetClass()->GetFileName() << L":" << instr->GetLineNumber() << endl;
-          }
-          else {
-            wcerr << endl;
+          if(method->GetClass()) {
+            wcerr << L"  frame: pos=" << pos << L", class='" << method->GetClass()->GetName() << L"', method='" << PrintMethod(method) << "'";
+            const long ip = cur_call_stack[pos]->ip;
+            if(ip > -1) {
+              StackInstr* instr = cur_call_stack[pos]->method->GetInstruction(ip);
+              wcerr << L", file=" << method->GetClass()->GetFileName() << L":" << instr->GetLineNumber() << endl;
+            }
+            else {
+              wcerr << endl;
+            }
           }
         }
-        while(--pos);
+        
+
       }
       else {
         wcout << L"program is not running." << endl;
@@ -1526,7 +1515,7 @@ void Runtime::Debugger::ProcessInfo(Info* info) {
   const wstring &mthd_name = info->GetMethodName();
 
 #ifdef _DEBUG
-  wcout << L"--- info class=" << cls_name << L", method=" << mthd_name << L" ---" << endl;
+  wcout << L"--- info class='" << cls_name << L"', method='" << mthd_name << L"' ---" << endl;
 #endif
 
   if(interpreter) {
@@ -1565,6 +1554,7 @@ void Runtime::Debugger::ProcessInfo(Info* info) {
         wcout << L"  parameters:" << endl;
         if(klass->GetNumberInstanceDeclarations() > 0) {
           PrintDeclarations(klass->GetInstanceDeclarations(), klass->GetNumberInstanceDeclarations());
+          PrintDeclarations(klass->GetClassDeclarations(), klass->GetNumberClassDeclarations());
         }
       }
       else {
@@ -1608,6 +1598,11 @@ void Runtime::Debugger::ClearBreaks() {
 }
 
 void Runtime::Debugger::ClearProgram() {
+  if(loader) {
+    delete loader;
+    loader = nullptr;
+  }
+  
   if(interpreter) {
     delete interpreter;
     interpreter = nullptr;
@@ -1653,8 +1648,14 @@ void Runtime::Debugger::Debug() {
     exit(1);
   }
 
+  // find starting file
+  ClearReload();
+  StackMethod* start = loader->GetStartMethod();
+  if(start) {
+    cur_file_name = start->GetClass()->GetFileName();
+  }
+
   // enter feedback loop
-  ClearProgram();
   wcout << L"> ";
   while(true) {    
     wstring line;
@@ -1665,6 +1666,7 @@ void Runtime::Debugger::Debug() {
     }
   }
 }
+
 
 /********************************
  * Debugger main
@@ -1697,7 +1699,7 @@ int main(int argc, char** argv)
       exit(1);
     }
 #else
-    // enable UTF-8 enviroment
+    // enable UTF-8 environment
     setlocale(LC_ALL, "");
     setlocale(LC_CTYPE, "UTF-8");
 #endif

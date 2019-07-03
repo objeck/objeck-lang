@@ -1,20 +1,26 @@
-lambdas Funcs {
-	Apply : (Int) ~ Int
-}
-
 class Test {
+#	@y : Int;
+
 	function : Main(args : String[]) ~ Nil {
-#		f := Square(Int) ~ Int;
-		f := \Funcs->Apply : (a) => a * a;
-		PrintIt(f);
-	}
-	
-	function : Square(a : Int) ~ Int {
-		return a * a;
+		y := 7;
+
+		Func(\(Int) ~ Int : (x) => x * y++);
+#		f := \(Int) ~ Int : (x) => x * y;
+#		f(13)->PrintLine();
+	}	
+
+	function : Func(f : (Int) ~ Int) ~ Nil {		
+		f(13)->PrintLine();
+		Func2(f);
 	}
 
-	function : PrintIt(f : (Int) ~ Int) ~ Nil {
-		f(12)->PrintLine();
+	function : Func2(f : (Int) ~ Int) ~ Nil {		
+		f(13)->PrintLine();
+	}	
+#~
+	method : Foo(x : Int) ~ Int {
+		return x * @y;
 	}
+~#	
 }
 

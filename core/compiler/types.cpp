@@ -126,7 +126,7 @@ vector<frontend::Type*> TypeParser::ParseParameters(const wstring param_str)
       type = frontend::TypeFactory::Instance()->MakeType(frontend::FUNC_TYPE, name);
       ParseFunctionalType(type);
     }
-              break;
+      break;
 
     case 'o': {
       index += 2;
@@ -138,7 +138,7 @@ vector<frontend::Type*> TypeParser::ParseParameters(const wstring param_str)
       const wstring& cls_name = param_str.substr(start, end - start);
       type = frontend::TypeFactory::Instance()->MakeType(frontend::CLASS_TYPE, cls_name);
     }
-              break;
+      break;
     }
 
     // set generics
@@ -154,7 +154,8 @@ vector<frontend::Type*> TypeParser::ParseParameters(const wstring param_str)
 
         const wstring generic_name = param_str.substr(start, end - start);
         generic_types.push_back(frontend::TypeFactory::Instance()->MakeType(frontend::CLASS_TYPE, generic_name));
-      } while(index < param_str.size() && param_str[index] == L'|');
+      } 
+      while(index < param_str.size() && param_str[index] == L'|');
 
       if(type) {
         type->SetGenerics(generic_types);
@@ -246,7 +247,7 @@ frontend::Type* TypeParser::ParseType(const wstring& type_name)
     type = frontend::TypeFactory::Instance()->MakeType(frontend::FUNC_TYPE, name);
     ParseFunctionalType(type);
   }
-             break;
+    break;
 
   case L'o':
     index = 2;
@@ -311,4 +312,3 @@ void TypeParser::ParseFunctionalType(frontend::Type* func_type)
     func_type->SetFunctionReturn(func_rtrn);
   }
 }
-

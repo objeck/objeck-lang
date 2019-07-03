@@ -185,6 +185,7 @@ class LibraryMethod {
   LibraryClass* lib_cls;
   frontend::MethodType type;
   bool is_native;
+  bool is_lambda;
   bool is_static;
   bool is_virtual;
   bool has_and_or;
@@ -214,7 +215,7 @@ class LibraryMethod {
   
  public:
   LibraryMethod(int i, const wstring &n, const wstring &r, frontend::MethodType t, bool v,  bool h,
-                bool nt, bool s, int p, int m, LibraryClass* c, backend::IntermediateDeclarations* e) {
+                bool nt, bool s, bool l, int p, int m, LibraryClass* c, backend::IntermediateDeclarations* e) {
     id = i;
     name = n;
     rtrn_name = r;
@@ -223,6 +224,7 @@ class LibraryMethod {
     has_and_or = h;
     is_native = nt;
     is_static = s;
+    is_lambda = l;
     num_params = p;
     mem_size = m;
     lib_cls = c;
@@ -254,6 +256,10 @@ class LibraryMethod {
 
   bool HasAndOr() {
     return has_and_or;
+  }
+
+  bool IsLambda() {
+    return is_lambda;
   }
 
   const wstring &GetName() const {
@@ -415,6 +421,7 @@ class LibraryClass {
   multimap<const wstring, LibraryMethod*> unqualified_methods;
   backend::IntermediateDeclarations* cls_entries;
   backend::IntermediateDeclarations* inst_entries;
+  map<const wstring, backend::IntermediateDeclarations*> lib_closure_entries;
   bool is_interface;
   bool is_virtual;
   bool is_generic;
@@ -426,6 +433,8 @@ class LibraryClass {
   wstring file_name;
   vector<LibraryClass*> generic_classes;
   frontend::Type* generic_interface;
+
+  map<backend::IntermediateDeclarations*, pair<wstring, int>> CopyClosureEntries();
   
  public:
    LibraryClass(const wstring &n, const wstring &g) {
@@ -439,12 +448,12 @@ class LibraryClass {
      is_generic = true;
      library = nullptr;
    }
-  
-   LibraryClass(const wstring& n, const wstring& p, const vector<wstring> i, bool is, const vector<wstring> g, bool v,
-                const int cs, const int in, backend::IntermediateDeclarations* ce, backend::IntermediateDeclarations* ie, 
-                Library* l, const wstring &fn, bool d);
-
-  ~LibraryClass() {
+   
+   LibraryClass(const wstring& n, const wstring& p, const vector<wstring> i, bool is, const vector<wstring> g, bool v, const int cs, 
+                const int in, backend::IntermediateDeclarations* ce, backend::IntermediateDeclarations* ie, 
+                map<const wstring, backend::IntermediateDeclarations*> le, Library* l, const wstring &fn, bool d);
+   
+  ~LibraryClass() {   
     // clean up
     map<const wstring, LibraryMethod*>::iterator iter;
     for(iter = methods.begin(); iter != methods.end(); ++iter) {
@@ -576,6 +585,14 @@ class LibraryClass {
   
   backend::IntermediateDeclarations* GetInstanceEntries() {
     return inst_entries;
+  }
+
+  map<backend::IntermediateDeclarations*, pair<wstring, int> > GetLambaEntries() {
+    if(lib_closure_entries.empty()) {
+      return {};
+    }
+
+    return CopyClosureEntries();
   }
   
   LibraryMethod* GetMethod(const wstring &name) {

@@ -128,6 +128,7 @@ namespace instructions {
     NEW_INT_ARY,
     NEW_FLOAT_ARY,
     NEW_OBJ_INST,
+    NEW_FUNC_INST,
     CPY_BYTE_ARY,
     CPY_CHAR_ARY,
     CPY_INT_ARY,

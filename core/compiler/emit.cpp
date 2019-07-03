@@ -150,7 +150,6 @@ void IntermediateProgram::Write(bool emit_lib, bool is_debug, bool is_web, Outpu
     WriteString(char_strings[i], out_stream);
   }
 
-  
   if(emit_lib) {
     // write bundle names
     WriteInt((int)bundle_names.size(), out_stream);
@@ -242,8 +241,25 @@ void IntermediateClass::Write(bool emit_lib, OutputStream& out_stream) {
   // write local space size
   WriteInt(cls_space, out_stream);
   WriteInt(inst_space, out_stream);
+
+  // write class and instance declarations
   cls_entries->Write(is_debug, out_stream);
   inst_entries->Write(is_debug, out_stream);
+
+  // write closure declarations
+  WriteInt((int)closure_entries.size(), out_stream);
+  map<IntermediateDeclarations*, pair<wstring, int> >::iterator iter;
+  for(iter = closure_entries.begin(); iter != closure_entries.end(); ++iter) {
+    pair<wstring, int> id = iter->second;
+    IntermediateDeclarations* closure_dclrs = iter->first;
+    if(emit_lib) {
+      WriteString(id.first, out_stream);
+    }
+    else {
+      WriteInt(id.second, out_stream);
+    }
+    closure_dclrs->Write(is_debug, out_stream);
+  }
 
   // write methods
   WriteInt((int)methods.size(), out_stream);
@@ -265,6 +281,7 @@ void IntermediateMethod::Write(bool emit_lib, bool is_debug, OutputStream& out_s
   
   WriteInt(is_virtual, out_stream);
   WriteInt(has_and_or, out_stream);
+  WriteInt(is_lambda, out_stream);
   
   if(emit_lib) {
     WriteInt(is_native, out_stream);
@@ -316,6 +333,7 @@ void IntermediateInstruction::Write(bool is_debug, OutputStream& out_stream) {
   case NEW_BYTE_ARY:
   case NEW_CHAR_ARY:
   case NEW_OBJ_INST:
+  case NEW_FUNC_INST:
   case OBJ_INST_CAST:
   case OBJ_TYPE_OF:
   case TRAP:
@@ -828,6 +846,10 @@ void IntermediateInstruction::Debug() {
 
   case NEW_OBJ_INST:
     GetLogger() << L"NEW_OBJ_INST: class=" << operand << endl;
+    break;
+
+  case NEW_FUNC_INST:
+    GetLogger() << L"NEW_FUNC_INST: mem_size=" << operand << endl;
     break;
 
   case TRAP:

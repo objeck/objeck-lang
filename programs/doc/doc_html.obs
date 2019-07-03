@@ -398,6 +398,9 @@ class HtmlMaker {
 		
 		end := type_name->Find(')');
 		cls_names := type_name->SubString(1, end - 1);
+		if(cls_names = Nil) {
+			return type_name;
+		};
 
 		GetLinkParams(cls_names, file_name);
 

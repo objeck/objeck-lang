@@ -300,7 +300,8 @@ void ContextAnalyzer::AnalyzeDuplicateEntries(vector<Class*> &classes, const int
             ProcessError(declaration, L"Declaration name '" + short_name + L"' defined in a parent class");
           }
           else {
-            ProcessError(declaration, L"Internal compiler error.");
+            ProcessError(declaration, L"Internal compiler error: Invalid entry name");
+            exit(1);
           }
         }
       }
@@ -972,9 +973,10 @@ void ContextAnalyzer::AnalyzeLambda(Lambda* lambda, const int depth)
   if(lambda_type) {
     // set return
     Method* method = lambda->GetMethod();
+    current_method->SetAndOr(true);
     method->SetReturn(lambda_type->GetFunctionReturn());
 
-    // update decelerations
+    // update declarations
     vector<Type*> types = lambda_type->GetFunctionParameters();
     DeclarationList* declaration_list = method->GetDeclarations();
     vector<Declaration*> declarations = declaration_list->GetDeclarations();
@@ -991,16 +993,18 @@ void ContextAnalyzer::AnalyzeLambda(Lambda* lambda, const int depth)
       current_class->AssociateMethod(method);
 
       // check method and restore context
-      Method* prev_method = current_method;
-      SymbolTable* prev_table = current_table;
+      capture_lambda = lambda;
+      capture_method = current_method;
+      capture_table = current_table;
       
       AnalyzeMethod(method, depth + 1);
       
-      current_table = prev_table;
-      prev_table = nullptr;
+      current_table = capture_table;
+      capture_table = nullptr;
 
-      current_method = prev_method;
-      prev_method = nullptr;
+      current_method = capture_method;
+      capture_method = nullptr;
+      capture_lambda = nullptr;
       
       const wstring full_method_name = method->GetName();
       const size_t offset = full_method_name.find(':');
@@ -1017,7 +1021,7 @@ void ContextAnalyzer::AnalyzeLambda(Lambda* lambda, const int depth)
         lambda->SetTypes(method_call->GetEvalType());
       }
       else {
-        wcerr << L"internal error" << endl;
+        wcerr << L"Internal compiler error: Invalid method name." << endl;
         exit(1);
       }
     }
@@ -1497,7 +1501,8 @@ void ContextAnalyzer::AnalyzeCharacterString(CharacterString* char_str, const in
     lib_klass->SetCalled(true);
   }
   else {
-    ProcessError(char_str, L"Internal compiler error.");
+    ProcessError(char_str, L"Internal compiler error: Invalid class name");
+    exit(1);
   }
 #endif
 
@@ -1637,6 +1642,30 @@ void ContextAnalyzer::AnalyzeVariable(Variable* variable, SymbolEntry* entry, co
     // static check
     if(InvalidStatic(entry)) {
       ProcessError(variable, L"Cannot reference an instance variable from this context");
+    }
+  }
+  // lambda expressions
+  else if(current_method->IsLambda()) {
+    const wstring capture_scope_name = capture_method->GetName() + L':' + variable->GetName();
+    SymbolEntry* capture_entry = capture_table->GetEntry(capture_scope_name);
+    if(capture_entry) {
+      if(capture_lambda->HasClosure(capture_entry)) {
+        SymbolEntry* copy_entry = capture_lambda->GetClosure(capture_entry);
+        variable->SetTypes(copy_entry->GetType());
+        variable->SetEntry(copy_entry);
+        copy_entry->AddVariable(variable);
+      }
+      else {
+        const wstring var_scope_name = current_method->GetName() + L':' + variable->GetName();
+        SymbolEntry* copy_entry = TreeFactory::Instance()->MakeSymbolEntry(variable->GetFileName(), variable->GetLineNumber(),
+                                                                           var_scope_name, capture_entry->GetType(), false, false);
+        symbol_table->GetSymbolTable(current_class->GetName())->AddEntry(copy_entry, true);
+
+        variable->SetTypes(copy_entry->GetType());
+        variable->SetEntry(copy_entry);
+        copy_entry->AddVariable(variable);
+        capture_lambda->AddClosure(copy_entry, capture_entry);
+      }
     }
   }
   // type inferred variable
@@ -2860,13 +2889,6 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryClass* klass, MethodCall* method_
       encoded_name.push_back(L',');
     }
     lib_method = klass->GetMethod(encoded_name);
-    
-    /* TODO: remove this...?
-    if(lib_method && method_call->GetCallingParameters()->GetExpressions().size() > 0) {
-      ProcessError(static_cast<Expression*>(method_call),
-                   L"Cannot be called as a method, call as class function");
-    }
-    */
   }
 
   method_call->SetOriginalLibraryClass(klass);
@@ -3748,7 +3770,7 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
 
               default:
                 ProcessError(assignment, L"Internal compiler error.");
-                break;
+                exit(1);
               }
             }
             else {
@@ -3794,7 +3816,7 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
 
           default:
             ProcessError(assignment, L"Internal compiler error.");
-            break;
+            exit(1);
           }
         }
       }
@@ -3833,7 +3855,7 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
 
         default:
           ProcessError(assignment, L"Internal compiler error.");
-          break;
+          exit(1);
         }
 
         if(calc_expression) {
@@ -5878,7 +5900,7 @@ bool ContextAnalyzer::DuplicateCaseItem(map<int, StatementList*>label_statements
 bool ContextAnalyzer::InvalidStatic(MethodCall* method_call, Method* method)
 {
   // same class, calling method static and called method not static,
-  // called method not new, called method not from a varaible
+  // called method not new, called method not from a variable
   if(current_method->IsStatic() &&
      !method->IsStatic() && method->GetMethodType() != NEW_PUBLIC_METHOD &&
      method->GetMethodType() != NEW_PRIVATE_METHOD) {
@@ -6893,4 +6915,3 @@ Method* MethodCallSelector::GetSelection()
   method_call->GetCallingParameters()->SetExpressions(matches[match_index]->GetCallingParameters());
   return matches[match_index]->GetMethod();
 }
-
