@@ -2728,7 +2728,7 @@ void Runtime::StackInterpreter::StackErrorUnwind()
          method->GetInstruction(call_stack[pos]->ip)->GetLineNumber() > 0) {
         wcerr << L"  method: pos=" << pos << L", file="
               << call_stack[pos]->method->GetClass()->GetFileName() << L", name='"
-              < MethodFormatter::Format(call_stack[pos]->method->GetName()) << L"', line="
+              << MethodFormatter::Format(call_stack[pos]->method->GetName()) << L"', line="
               << method->GetInstruction(call_stack[pos]->ip)->GetLineNumber() << endl;
       }
     }
