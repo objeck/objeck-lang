@@ -154,11 +154,6 @@ namespace Runtime {
       DoLoad();
     }
 
-    wstring FormatMethodName(const wstring name);
-    wstring ParseParameters(const wstring param_str);
-    wstring ParseType(const wstring& type_name);
-    wstring ParseFunctionalType(const wstring func_name);
-
     Command* ProcessCommand(const wstring &line);
     void ProcessRun();
     void ProcessExe(Load* load);
