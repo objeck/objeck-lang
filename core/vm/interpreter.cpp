@@ -2825,14 +2825,15 @@ size_t* Runtime::StackInterpreter::CreateStringObject(const wstring& value_str, 
 
 void Runtime::StackInterpreter::StackErrorUnwind(StackMethod* method)
 {
+  wstring formatted_name = MethodFormatter::Format(method->GetName());
+  
   long pos = (*call_stack_pos);
   wcerr << L"Unwinding local stack (" << this << L"):" << endl;
-  wcerr << L"  method: pos=" << pos << L", name="
-        << method->GetName() << endl;
+  wcerr << L"  method: pos=" << pos << L", name=" << formatted_name << endl;
   while(--pos) {
     if(pos > -1) {
-      wcerr << L"  method: pos=" << pos << L", name="
-            << MethodFormatter::Format(call_stack[pos]->method->GetName()) << endl;
+      formatted_name = MethodFormatter::Format(call_stack[pos]->method->GetName());
+      wcerr << L"  method: pos=" << pos << L", name=" << formatted_name << endl;
     }
   }
   wcerr << L"  ..." << endl;
