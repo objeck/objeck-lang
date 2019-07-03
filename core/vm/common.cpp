@@ -35,9 +35,7 @@
 #include "../shared/version.h"
 
 #ifdef _WIN32
-#ifndef _UTILS
 #include "arch/win32/win32.h"
-#endif
 #include "arch/memory.h"
 #else
 #include "arch/memory.h"
@@ -978,7 +976,6 @@ size_t* ObjectDeserializer::DeserializeObject() {
 /********************************
  * SDK functions
  ********************************/
-#ifndef _UTILS
 void APITools_MethodCall(size_t* op_stack, long *stack_pos, size_t* instance, int cls_id, int mthd_id) {
   StackClass* cls = Loader::GetProgram()->GetClass(cls_id);
   if(cls) {
@@ -4974,5 +4971,3 @@ wstring MethodFormatter::FormatFunctionalType(const wstring func_str)
 
   return formatted_str;
 }
-
-#endif
