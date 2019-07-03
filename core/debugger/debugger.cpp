@@ -1173,7 +1173,7 @@ void Runtime::Debugger::EvaluateIntFloatReference(Reference* reference, int inde
 
 wstring Runtime::Debugger::PrintMethod(StackMethod* method)
 {
-  return FormatMethodName(method->GetName());
+  return MethodFormatter::Format(method->GetName());
 }
 
 bool Runtime::Debugger::FileExists(const wstring&file_name, bool is_exe /*= false*/)
