@@ -50,11 +50,8 @@
 #include "../shared/instrs.h"
 #include "../shared/sys.h"
 #include "../shared/traps.h"
-
-#ifndef _UTILS
 #include <openssl/bio.h>
 #include <openssl/ssl.h>
-#endif
 
 #ifdef _WIN32
 #include <direct.h>
@@ -1056,19 +1053,6 @@ class StackProgram {
       }
     }
   }
-
-#ifdef _UTILS
-  void List() {
-    map<wstring, StackClass*>::iterator iter;
-    for(iter = cls_map.begin(); iter != cls_map.end(); ++iter) {
-      StackClass* cls = iter->second;
-      wcout << L"==================================" << endl;
-      wcout << L"class='" << cls->GetName() << L"'" << endl;
-      wcout << L"==================================" << endl;
-      cls->List();
-    }
-  }
-#endif
 
   StackClass* GetClass(const wstring &n) {
     if(classes) {
