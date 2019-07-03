@@ -216,7 +216,7 @@ class IntermediateEmitter {
   void EmitStringConcat(OperationAssignment* assignment);
   void EmitDeclaration(Declaration* declaration);
   void EmitMethodCallParameters(MethodCall* method_call);
-  void EmitMethodCallExpression(MethodCall* method_call, bool is_variable = false);
+  void EmitMethodCallExpression(MethodCall* method_call, bool is_variable = false, bool is_closure = false);
   void EmitMethodCall(MethodCall* method_call, bool is_nested);
   void EmitMethodCallStatement(MethodCall* method_call);
   void EmitSystemDirective(SystemStatement* statement);

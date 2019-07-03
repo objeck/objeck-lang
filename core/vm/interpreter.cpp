@@ -135,7 +135,7 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
 #endif
 
 #ifdef _DEBUG
-  wcout << L"\n---------- Executing Interpretered Code: id=" 
+  wcout << L"\n---------- Executing Interpreted Code: id=" 
         << (((*frame)->method->GetClass()) ? (*frame)->method->GetClass()->GetId() : -1) << L","
         << (*frame)->method->GetId() << L"; method_name='" << (*frame)->method->GetName() 
         << L"' ---------\n" << endl;
@@ -160,7 +160,7 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
       break;
       
     case STOR_FUNC_VAR:
-      ProcessStoreFunction(instr, op_stack, stack_pos);
+      ProcessStoreFunctionVar(instr, op_stack, stack_pos);
       break;
 
     case STOR_FLOAT_VAR:
@@ -211,7 +211,7 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
       break;
       
     case LOAD_FUNC_VAR:
-      ProcessLoadFunction(instr, op_stack, stack_pos);
+      ProcessLoadFunctionVar(instr, op_stack, stack_pos);
       break;
 
     case LOAD_FLOAT_VAR:
@@ -556,6 +556,10 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
 
     case NEW_OBJ_INST:
       ProcessNewObjectInstance(instr, op_stack, stack_pos);
+      break;
+
+    case NEW_FUNC_INST:
+      ProcessNewFunctionInstance(instr, op_stack, stack_pos);
       break;
 
     case STOR_BYTE_ARY_ELM:
@@ -1510,7 +1514,7 @@ void StackInterpreter::CriticalEnd(size_t* &op_stack, long* &stack_pos)
  * Processes a load function
  * variable instruction.
  ********************************/
-void StackInterpreter::ProcessLoadFunction(StackInstr* instr, size_t* &op_stack, long* &stack_pos)
+void StackInterpreter::ProcessLoadFunctionVar(StackInstr* instr, size_t* &op_stack, long* &stack_pos)
 {
 #ifdef _DEBUG
   wcout << L"stack oper: LOAD_FUNC_VAR; index=" << instr->GetOperand()
@@ -1576,7 +1580,7 @@ void StackInterpreter::ProcessLoadFloat(StackInstr* instr, size_t* &op_stack, lo
  * Processes a store function
  * variable instruction.
  ********************************/
-void StackInterpreter::ProcessStoreFunction(StackInstr* instr, size_t* &op_stack, long* &stack_pos)
+void StackInterpreter::ProcessStoreFunctionVar(StackInstr* instr, size_t* &op_stack, long* &stack_pos)
 {
 #ifdef _DEBUG
   wcout << L"stack oper: STOR_FUNC_VAR; index=" << instr->GetOperand()
@@ -1681,9 +1685,30 @@ void StackInterpreter::ProcessNewObjectInstance(StackInstr* instr, size_t* &op_s
   wcout << L"stack oper: NEW_OBJ_INST: id=" << instr->GetOperand() << endl;
 #endif
 
-  size_t inst_mem = (size_t)MemoryManager::AllocateObject(instr->GetOperand(),
-                                                          op_stack, *stack_pos);
+  size_t inst_mem = (size_t)MemoryManager::AllocateObject(instr->GetOperand(), op_stack, *stack_pos);
   PushInt(inst_mem, op_stack, stack_pos);
+}
+
+/********************************
+ * Processes a new object instance
+ * request.
+ ********************************/
+void StackInterpreter::ProcessNewFunctionInstance(StackInstr* instr, size_t*& op_stack, long*& stack_pos)
+{
+#ifdef _DEBUG
+  wcout << L"stack oper: NEW_FUNC_INST: mem_size=" << instr->GetOperand() << endl;
+#endif
+
+  long size = (long)instr->GetOperand();
+#if defined(_WIN64) || defined(_X64)
+  // TODO: memory size is doubled the compiler assumes that integers are 4-bytes.
+  // In 64-bit mode integers and floats are 8-bytes.  This approach allocates more
+  // memory for floats (a.k.a double) than needed.
+  size *= 2;
+#endif
+
+  size_t func_mem = (size_t)MemoryManager::AllocateArray(size, BYTE_ARY_TYPE, op_stack, *stack_pos);
+  PushInt(func_mem, op_stack, stack_pos);
 }
 
 /********************************
@@ -1961,12 +1986,19 @@ void StackInterpreter::ProcessDynamicMethodCall(StackInstr* instr, StackInstr** 
   (*frame)->ip = ip;
   PushFrame((*frame));
 
+  // make call
+  const size_t mthd_cls_id = PopInt(op_stack, stack_pos);
+  const long cls_id = (mthd_cls_id >> (16 * (1))) & 0xFFFF;
+  const long mthd_id = (mthd_cls_id >> (16 * (0))) & 0xFFFF;
+
+  if(mthd_id < 0 || cls_id < 0) {
+    wcerr << L"Internal VM error." << endl;
+    exit(1);
+  }
+
   // pop instance
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
-  // make call
-  long cls_id = (long)PopInt(op_stack, stack_pos);
-  long mthd_id = (long)PopInt(op_stack, stack_pos);
 #ifdef _DEBUG
   wcout << L"stack oper: DYN_MTHD_CALL; cls_mtd_id=" << cls_id << L"," << mthd_id << endl;
 #endif
@@ -2007,7 +2039,7 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr, StackInstr** &instrs
   // make call
   StackMethod* called = program->GetClass(instr->GetOperand())->GetMethod(instr->GetOperand2());
 
-  // dynamically bind class for virutal method
+  // dynamically bind class for virtual method
   if(called->IsVirtual()) {
     StackClass* impl_class = MemoryManager::GetClass((size_t*)instance);
     if(!impl_class) {
@@ -2685,9 +2717,9 @@ void Runtime::StackInterpreter::StackErrorUnwind()
   if((*frame)->ip > 0 && pos > -1 &&
      method->GetInstruction((*frame)->ip)->GetLineNumber() > 0) {
     wcerr << L"  method: pos=" << pos << L", file="
-      << (*frame)->method->GetClass()->GetFileName() << L", name='"
-      << (*frame)->method->GetName() << L"', line="
-      << method->GetInstruction((*frame)->ip)->GetLineNumber() << endl;
+          << (*frame)->method->GetClass()->GetFileName() << L", name='"
+          << MethodFormatter::Format((*frame)->method->GetName()) << L"', line="
+          << method->GetInstruction((*frame)->ip)->GetLineNumber() << endl;
   }
   if(pos != 0) {
     while(--pos) {
@@ -2695,9 +2727,9 @@ void Runtime::StackInterpreter::StackErrorUnwind()
       if(call_stack[pos]->ip > 0 && pos > -1 &&
          method->GetInstruction(call_stack[pos]->ip)->GetLineNumber() > 0) {
         wcerr << L"  method: pos=" << pos << L", file="
-          << call_stack[pos]->method->GetClass()->GetFileName() << L", name='"
-          << call_stack[pos]->method->GetName() << L"', line="
-          << method->GetInstruction(call_stack[pos]->ip)->GetLineNumber() << endl;
+              << call_stack[pos]->method->GetClass()->GetFileName() << L", name='"
+              < MethodFormatter::Format(call_stack[pos]->method->GetName()) << L"', line="
+              << method->GetInstruction(call_stack[pos]->ip)->GetLineNumber() << endl;
       }
     }
     pos = 0;
@@ -2705,12 +2737,12 @@ void Runtime::StackInterpreter::StackErrorUnwind()
   wcerr << L"  ..." << endl;
 #else
   wcerr << L"Unwinding local stack (" << this << L"):" << endl;
-  wcerr << L"  method: pos=" << pos << L", name="
-    << (*frame)->method->GetName() << endl;
+  wcerr << L"  method: pos=" << pos << L", name='"
+        << MethodFormatter::Format((*frame)->method->GetName()) << L"'" << endl;
   if(pos != 0) {
     while(--pos && pos > -1) {
-      wcerr << L"  method: pos=" << pos << L", name="
-        << call_stack[pos]->method->GetName() << endl;
+      wcerr << L"  method: pos=" << pos << L", name='"
+            << call_stack[pos]->method->GetName() << L"'" << endl;
     }
   }
   wcerr << L"  ..." << endl;
@@ -2795,14 +2827,12 @@ void Runtime::StackInterpreter::StackErrorUnwind(StackMethod* method)
 {
   long pos = (*call_stack_pos);
   wcerr << L"Unwinding local stack (" << this << L"):" << endl;
-  wcerr << L"  method: pos=" << pos << L", name="
-    << method->GetName() << endl;
+  wcerr << L"  method: pos=" << pos << L", name='" << MethodFormatter::Format(method->GetName()) << L"'" << endl;
   while(--pos) {
     if(pos > -1) {
-      wcerr << L"  method: pos=" << pos << L", name="
-        << call_stack[pos]->method->GetName() << endl;
+      wcerr << L"  method: pos=" << pos << L", name='" 
+            << MethodFormatter::Format(call_stack[pos]->method->GetName()) << L"'" << endl;
     }
   }
   wcerr << L"  ..." << endl;
 }
-

@@ -87,7 +87,6 @@ using namespace stdext;
 #include <sys/types.h>
 #endif
 
-
 #define SMALL_BUFFER_MAX 383
 #define LARGE_BUFFER_MAX 4095
 #define CALC_STACK_SIZE 512
@@ -288,6 +287,7 @@ class StackMethod {
   wstring name;
   bool is_virtual;
   bool has_and_or;
+  bool is_lambda;
   StackInstr** instrs;  
   int instr_count;  
   unordered_map<long, long> jump_table;
@@ -308,11 +308,12 @@ class StackMethod {
   const wstring ParseName(const wstring &name) const;
 
  public:
-  StackMethod(long i, const wstring &n, bool v, bool h, StackDclr** d, long nd, long p, long m, MemoryType r, StackClass* k) {
+  StackMethod(long i, const wstring &n, bool v, bool h, bool l, StackDclr** d, long nd, long p, long m, MemoryType r, StackClass* k) {
     id = i;
     name = ParseName(n);
     is_virtual = v;
     has_and_or = h;
+    is_lambda = l;
     native_code = nullptr;
     dclrs = d;
     num_dclrs = nd;
@@ -362,6 +363,10 @@ class StackMethod {
 
   inline bool HasAndOr() {
     return has_and_or;
+  }
+
+  inline bool IsLambda() {
+    return is_lambda;
   }
 
   inline StackClass* GetClass() const {
@@ -538,6 +543,7 @@ class StackClass {
   StackDclr** cls_dclrs;
   long cls_num_dclrs;
   StackDclr** inst_dclrs;
+  map<int, pair<int, StackDclr**> > closure_dclrs;
   long inst_num_dclrs;
   size_t* cls_mem;
   bool is_debug;
@@ -549,9 +555,8 @@ class StackClass {
   }
 
  public:
-  StackClass(long i, const wstring &ne, const wstring &fn, long p, 
-       bool v, StackDclr** cdclr, long cn, StackDclr** idclr, long in, 
-       long cs, long is, bool b) {
+  StackClass(long i, const wstring &ne, const wstring &fn, long p, bool v, StackDclr** cdclr, long cn, 
+             StackDclr** idclr, map<int, pair<int, StackDclr**> > ldclr, long in, long cs, long is, bool b) {
     id = i;
     name = ne;
     file_name = fn;
@@ -560,6 +565,7 @@ class StackClass {
     cls_dclrs = cdclr;
     cls_num_dclrs = cn;
     inst_dclrs = idclr;
+    closure_dclrs = ldclr;
     inst_num_dclrs = in;
     cls_space = InitMemory(cs);
     inst_space  = is;
@@ -587,6 +593,21 @@ class StackClass {
       delete[] inst_dclrs;
       inst_dclrs = nullptr;
     }
+
+    map<int, pair<int, StackDclr**> >::iterator iter;
+    for(iter = closure_dclrs.begin(); iter != closure_dclrs.end(); ++iter) {
+      pair<int, StackDclr**> tmp = iter->second;
+      const int num_dclrs = tmp.first;
+      StackDclr** dclrs = tmp.second;
+      for(int i = 0; i < num_dclrs; ++i) {
+        StackDclr* tmp2 = dclrs[i];
+        delete tmp2;
+        tmp2 = nullptr;
+      }
+      delete[] dclrs;
+      dclrs = nullptr;
+    }
+    closure_dclrs.clear();
 
     for(int i = 0; i < method_num; ++i) {
       StackMethod* method = methods[i];
@@ -630,6 +651,10 @@ class StackClass {
     return inst_dclrs;
   }
 
+  inline pair<int, StackDclr**> GetClosureDeclarations(const int id) {
+    return closure_dclrs[id];
+  }
+
   inline int GetNumberInstanceDeclarations() const {
     return inst_num_dclrs;
   }
@@ -653,7 +678,7 @@ class StackClass {
   void SetMethods(StackMethod** mthds, const int num) {
     methods = mthds;
     method_num = num;
-    // add method names to map for virutal calls
+    // add method signature to map virtual calls
     for(int i = 0; i < num; ++i) {
       method_name_map.insert(make_pair(mthds[i]->GetName(), mthds[i]));
     }
@@ -676,16 +701,6 @@ class StackClass {
     }
 
     return found;
-  }
-#endif
-
-#ifdef _UTILS
-  void List() {
-    unordered_map<wstring, StackMethod*>::iterator iter;
-    for(iter = method_name_map.begin(); iter != method_name_map.end(); ++iter) {
-      StackMethod* mthd = iter->second;
-      wcout << L"  method='" << mthd->GetName() << L"'" << endl;
-    }
   }
 #endif
 
@@ -896,7 +911,7 @@ class StackProgram {
   static BOOL GetUserDirectory(char* buf, DWORD len) {
     HANDLE handle;
 
-    if (!OpenProcessToken(GetCurrentProcess(), TOKEN_READ, &handle)) {
+    if(!OpenProcessToken(GetCurrentProcess(), TOKEN_READ, &handle)) {
       return FALSE;
     }
 
@@ -1111,6 +1126,9 @@ class StackProgram {
 #endif
 };
 
+/********************************
+ * Call stack frame
+ ********************************/
 struct StackFrame {
   StackMethod* method;
   size_t* mem;
@@ -1118,6 +1136,18 @@ struct StackFrame {
   bool jit_called;
   size_t* jit_mem;
   long jit_offset;
+};
+
+/********************************
+ * Method signature formatter
+ ********************************/
+class MethodFormatter {
+  static wstring FormatParameters(const wstring param_str);
+  static wstring FormatType(const wstring type_str);
+  static wstring FormatFunctionalType(const wstring func_str);
+  
+ public:
+  static wstring Format(const wstring method_sig);
 };
 
 /********************************
@@ -1129,7 +1159,7 @@ class ObjectSerializer
   map<size_t*, long> serial_ids;
   long next_id;
   long cur_id;
-
+  
   void CheckObject(size_t* mem, bool is_obj, long depth);
   void CheckMemory(size_t* mem, StackDclr** dclrs, const long dcls_size, long depth);
   void Serialize(size_t* inst);

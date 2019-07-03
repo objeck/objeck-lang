@@ -2641,6 +2641,7 @@ namespace frontend {
     Method* method;
     ExpressionList* parameters;
     MethodCall* method_call;
+    vector<pair<SymbolEntry*, SymbolEntry*> > copies;
     
   public:
     Lambda(const wstring& file_name, const int line_num, Type* t, const wstring &n, Method* m, ExpressionList* p) : Expression(file_name, line_num) {
@@ -2680,6 +2681,28 @@ namespace frontend {
 
     void SetMethodCall(MethodCall* c) {
       method_call = c;
+    }
+    
+    void AddClosure(SymbolEntry* var_entry, SymbolEntry* capture_entry) {
+      copies.push_back(pair<SymbolEntry*, SymbolEntry*>(var_entry, capture_entry));
+    }
+
+    inline bool HasClosure(SymbolEntry* capture_entry) {
+      return GetClosure(capture_entry) != nullptr;
+    }
+
+    inline SymbolEntry* GetClosure(SymbolEntry* capture_entry) {
+      for(size_t i = 0; i < copies.size(); ++i) {
+        if(copies[i].second == capture_entry) {
+          return copies[i].first;
+        }
+      }
+
+      return nullptr;
+    }
+
+    vector<pair<SymbolEntry*, SymbolEntry*> > GetClosures() {
+      return copies;
     }
   };
 

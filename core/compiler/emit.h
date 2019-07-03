@@ -320,19 +320,21 @@ namespace backend {
     bool is_lib;
     bool is_virtual;
     bool has_and_or;
+    bool is_lambda;
     int instr_count;
     vector<IntermediateBlock*> blocks;
     IntermediateDeclarations* entries;
     IntermediateClass* klass;
 
   public:
-    IntermediateMethod(int i, const wstring &n, bool v, bool h, const wstring &r,
+    IntermediateMethod(int i, const wstring &n, bool v, bool h, bool l, const wstring &r,
                        frontend::MethodType t, bool nt, bool f, int c, int p,
                        IntermediateDeclarations* e, IntermediateClass* k) {
       id = i;
       name = n;
       is_virtual = v;
       has_and_or = h;
+      is_lambda = l;
       rtrn_name = r;
       type = t;
       is_native = nt;
@@ -351,6 +353,7 @@ namespace backend {
       name = lib_method->GetName();
       is_virtual = lib_method->IsVirtual();
       has_and_or = lib_method->HasAndOr();
+      is_lambda = lib_method->IsLambda();
       rtrn_name = lib_method->GetEncodedReturn();
       type = lib_method->GetMethodType();
       is_native = lib_method->IsNative();
@@ -480,6 +483,7 @@ namespace backend {
     map<int, IntermediateMethod*> method_map;
     IntermediateDeclarations* cls_entries;
     IntermediateDeclarations* inst_entries;
+    map<IntermediateDeclarations*, pair<wstring, int> > closure_entries;
     bool is_lib;
     bool is_interface;
     bool is_virtual;
@@ -525,6 +529,7 @@ namespace backend {
       inst_space = lib_klass->GetInstanceSpace();
       cls_entries = lib_klass->GetClassEntries();
       inst_entries = lib_klass->GetInstanceEntries();
+      closure_entries = lib_klass->GetLambaEntries();
 
       // process methods
       map<const wstring, LibraryMethod*> lib_methods = lib_klass->GetMethods();
@@ -568,6 +573,14 @@ namespace backend {
         delete inst_entries;
         inst_entries = nullptr;
       }
+
+      map<IntermediateDeclarations*, pair<wstring, int> >::iterator entries_iter;
+      for(entries_iter = closure_entries.begin(); entries_iter != closure_entries.end(); ++entries_iter) {
+        IntermediateDeclarations* tmp = entries_iter->first;
+        delete tmp;
+        tmp = nullptr;
+      }
+      closure_entries.clear();
     }
 
     int GetId() {
@@ -617,6 +630,10 @@ namespace backend {
 
     vector<IntermediateMethod*> GetMethods() {
       return methods;
+    }
+
+    void AddClosureDeclarations(const wstring mthd_name, const int mthd_id, IntermediateDeclarations* dclrs) {
+      closure_entries[dclrs] = pair<wstring, int>(mthd_name, mthd_id);
     }
 
     void Write(bool emit_lib, OutputStream& out_stream);

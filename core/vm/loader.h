@@ -125,6 +125,7 @@ class Loader {
   // loading functions
   void LoadClasses();
   void LoadMethods(StackClass* cls, bool is_debug);
+  StackDclr** LoadDeclarations(const int num_dclrs, const bool is_debug);
   void LoadInitializationCode(StackMethod* mthd);
   void LoadStatements(StackMethod* mthd, bool is_debug);
   void LoadConfiguration();

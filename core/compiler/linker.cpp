@@ -179,12 +179,11 @@ void Linker::ResolveExternalMethodCalls()
             if(lib_klass) {
               LibraryMethod* lib_method = lib_klass->GetMethod(instr->GetOperand6());
               if(lib_method) {
-                // set method
+                const int16_t lib_method_id = lib_method->GetId();
+                const int16_t lib_cls_id = lib_method->GetLibraryClass()->GetId();
+                const int lib_method_cls_id = (lib_cls_id << 16) | lib_method_id;
                 instr->SetType(instructions::LOAD_INT_LIT);
-                instr->SetOperand(lib_method->GetId());
-                // set class
-                instrs[j + 1]->SetType(instructions::LOAD_INT_LIT);
-                instrs[j + 1]->SetOperand(lib_klass->GetId());
+                instr->SetOperand(lib_method_cls_id);
               }
               else {
                 wcerr << L"Error: Unable to resolve external library method: '" << instr->GetOperand6() << L"'; check library path" << endl;
@@ -402,7 +401,9 @@ void Linker::Load()
 /****************************
  * LibraryClass class
  ****************************/
-LibraryClass::LibraryClass(const wstring& n, const wstring& p, const vector<wstring> i, bool is, const vector<wstring> g, bool v, const int cs, const int in, backend::IntermediateDeclarations* ce, backend::IntermediateDeclarations* ie, Library* l, const wstring& fn, bool d)
+LibraryClass::LibraryClass(const wstring& n, const wstring& p, const vector<wstring> i, bool is, const vector<wstring> g, 
+                           bool v, const int cs, const int in, backend::IntermediateDeclarations* ce, backend::IntermediateDeclarations* ie, 
+                           map<const wstring, backend::IntermediateDeclarations*> le, Library* l, const wstring& fn, bool d)
 {
   name = n;
   parent_name = p;
@@ -414,6 +415,7 @@ LibraryClass::LibraryClass(const wstring& n, const wstring& p, const vector<wstr
   inst_space = in;
   cls_entries = ce;
   inst_entries = ie;
+  lib_closure_entries = le;
   library = l;
   is_generic = false;
   generic_interface = nullptr;
@@ -463,6 +465,25 @@ vector<LibraryClass*> LibraryClass::GetLibraryChildren()
   }
 
   return lib_children;
+}
+
+map<backend::IntermediateDeclarations*, std::pair<std::wstring, int>> LibraryClass::CopyClosureEntries()
+{
+  map<backend::IntermediateDeclarations*, pair<wstring, int> > closure_entries;
+
+  map<const wstring, backend::IntermediateDeclarations*>::iterator lamba_iter;
+  for(lamba_iter = lib_closure_entries.begin(); lamba_iter != lib_closure_entries.end(); ++lamba_iter) {
+    const wstring lib_mthd_name = lamba_iter->first;
+    LibraryMethod* lib_method = GetMethod(lib_mthd_name);
+    if(!lib_method) {
+      wcerr << L"Internal compiler error: Invalid method name." << endl;
+      exit(1);
+    }
+    backend::IntermediateDeclarations* dclr = lamba_iter->second;
+    closure_entries[dclr] = pair<wstring, int>(lib_mthd_name, lib_method->GetId());
+  }
+
+  return closure_entries;
 }
 
 std::vector<LibraryMethod*> LibraryClass::GetUnqualifiedMethods(const wstring& n)
@@ -615,7 +636,7 @@ void Library::LoadFile(const wstring &file_name)
     str_instr->value = holder;
     int_strings.push_back(str_instr);
   }
-  // read char wstrings
+  // read char strings
   const int num_char_strings = ReadInt();
   for(int i = 0; i < num_char_strings; ++i) {
     const wstring &char_str_value = ReadString();
@@ -764,9 +785,19 @@ void Library::LoadClasses()
     const int cls_space = ReadInt();
     const int inst_space = ReadInt();
 
-    // read type parameters
+    // read class and instance entries
     backend::IntermediateDeclarations* cls_entries = LoadEntries(is_debug);
-    backend::IntermediateDeclarations* inst_entries = LoadEntries(is_debug);      
+    backend::IntermediateDeclarations* inst_entries = LoadEntries(is_debug);
+
+    // read closure entries
+    map<const wstring, backend::IntermediateDeclarations*> closure_entries;
+    const int num_lambda_dclrs = ReadInt();
+    for(int i = 0; i < num_lambda_dclrs; ++i) {
+      const wstring lambda_dclrs_name = ReadString();
+      backend::IntermediateDeclarations* lambda_entries = LoadEntries(is_debug);
+      closure_entries[lambda_dclrs_name] = lambda_entries;
+    }
+
     hierarchies.insert(pair<const wstring, const wstring>(name, parent_name));
 
 #ifdef _DEBUG
@@ -780,7 +811,7 @@ void Library::LoadClasses()
 #endif
 
     LibraryClass* cls = new LibraryClass(name, parent_name, interface_names, is_interface, generic_names, is_virtual,
-                                         cls_space, inst_space, cls_entries, inst_entries, this, file_name, is_debug);
+                                         cls_space, inst_space, cls_entries, inst_entries, closure_entries, this, file_name, is_debug);
     // load method
     LoadMethods(cls, is_debug);
     // add class
@@ -799,6 +830,7 @@ void Library::LoadMethods(LibraryClass* cls, bool is_debug)
     frontend::MethodType type = (frontend::MethodType)ReadInt();
     bool is_virtual = ReadInt() != 0;
     bool has_and_or = ReadInt() != 0;
+    bool is_lambda = ReadInt() != 0;
     bool is_native = ReadInt() != 0;
     bool is_static = ReadInt() != 0;
     const wstring &name = ReadString();
@@ -826,7 +858,7 @@ void Library::LoadMethods(LibraryClass* cls, bool is_debug)
 #endif
 
     LibraryMethod* mthd = new LibraryMethod(id, name, rtrn_name, type, is_virtual, has_and_or,
-                                            is_native, is_static, params, mem_size, cls, entries);
+                                            is_native, is_static, is_lambda, params, mem_size, cls, entries);
     // load statements
     LoadStatements(mthd, is_debug);
 
@@ -869,7 +901,7 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
       break;
 
     case LOAD_INT_VAR: {
-      INT_VALUE id = ReadInt();
+      const INT_VALUE id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       instrs.push_back(new LibraryInstr(line_num, LOAD_INT_VAR, id, mem_context));
     }
@@ -883,14 +915,14 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
       break;
 
     case LOAD_FLOAT_VAR: {
-      INT_VALUE id = ReadInt();
+      const INT_VALUE id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       instrs.push_back(new LibraryInstr(line_num, LOAD_FLOAT_VAR, id, mem_context));
     }
       break;
 
     case STOR_INT_VAR: {
-      INT_VALUE id = ReadInt();
+      const INT_VALUE id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       instrs.push_back(new LibraryInstr(line_num, STOR_INT_VAR, id, mem_context));
     }
@@ -904,67 +936,73 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
       break;
 
     case STOR_FLOAT_VAR: {
-      INT_VALUE id = ReadInt();
+      const INT_VALUE id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       instrs.push_back(new LibraryInstr(line_num, STOR_FLOAT_VAR, id, mem_context));
     }
       break;
 
     case COPY_INT_VAR: {
-      INT_VALUE id = ReadInt();
+      const INT_VALUE id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       instrs.push_back(new LibraryInstr(line_num, COPY_INT_VAR, id, mem_context));
     }
       break;
 
     case COPY_FLOAT_VAR: {
-      INT_VALUE id = ReadInt();
+      const INT_VALUE id = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       instrs.push_back(new LibraryInstr(line_num, COPY_FLOAT_VAR, id, mem_context));
     }
       break;
 
     case NEW_INT_ARY: {
-      INT_VALUE dim = ReadInt();
+      const INT_VALUE dim = ReadInt();
       instrs.push_back(new LibraryInstr(line_num, NEW_INT_ARY, dim));
     }
       break;
 
     case NEW_FLOAT_ARY: {
-      INT_VALUE dim = ReadInt();
+      const INT_VALUE dim = ReadInt();
       instrs.push_back(new LibraryInstr(line_num, NEW_FLOAT_ARY, dim));
     }
       break;
 
     case NEW_BYTE_ARY: {
-      INT_VALUE dim = ReadInt();
+      const INT_VALUE dim = ReadInt();
       instrs.push_back(new LibraryInstr(line_num, NEW_BYTE_ARY, dim));
 
     }
       break;
 
     case NEW_CHAR_ARY: {
-      INT_VALUE dim = ReadInt();
+      const INT_VALUE dim = ReadInt();
       instrs.push_back(new LibraryInstr(line_num, NEW_CHAR_ARY, dim));
       
     }
       break;
       
     case NEW_OBJ_INST: {
-      INT_VALUE obj_id = ReadInt();
+      const INT_VALUE obj_id = ReadInt();
       instrs.push_back(new LibraryInstr(line_num, NEW_OBJ_INST, obj_id));
     }
       break;
 
+    case NEW_FUNC_INST: {
+      const INT_VALUE mem_size = ReadInt();
+      instrs.push_back(new LibraryInstr(line_num, NEW_FUNC_INST, mem_size));
+    }
+      break;
+
     case JMP: {
-      INT_VALUE label = ReadInt();
-      INT_VALUE cond = ReadInt();
+      const INT_VALUE label = ReadInt();
+      const INT_VALUE cond = ReadInt();
       instrs.push_back(new LibraryInstr(line_num, JMP, label, cond));
     }
       break;
 
     case LBL: {
-      INT_VALUE id = ReadInt();
+      const INT_VALUE id = ReadInt();
       instrs.push_back(new LibraryInstr(line_num, LBL, id));
     }
       break;
@@ -1034,74 +1072,73 @@ void Library::LoadStatements(LibraryMethod* method, bool is_debug)
       Linker::Debug(msg, 0, 3);
 #endif
       instrs.push_back(new LibraryInstr(line_num, LIB_FUNC_DEF, -1, cls_name, mthd_name));
-      instrs.push_back(new LibraryInstr(line_num, LOAD_INT_LIT, -1));
     }
       break;
 
     case OBJ_INST_CAST: {
-      INT_VALUE to_id = ReadInt();
+      const INT_VALUE to_id = ReadInt();
       instrs.push_back(new LibraryInstr(line_num, OBJ_INST_CAST, to_id));
     }
       break;
 
     case OBJ_TYPE_OF: {
-      INT_VALUE check_id = ReadInt();
+      const INT_VALUE check_id = ReadInt();
       instrs.push_back(new LibraryInstr(line_num, OBJ_TYPE_OF, check_id));
     }
       break;
 
     case LOAD_BYTE_ARY_ELM: {
-      INT_VALUE dim = ReadInt();
+      const INT_VALUE dim = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       instrs.push_back(new LibraryInstr(line_num, LOAD_BYTE_ARY_ELM, dim, mem_context));
     }
       break;
 
     case LOAD_CHAR_ARY_ELM: {
-      INT_VALUE dim = ReadInt();
+      const INT_VALUE dim = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       instrs.push_back(new LibraryInstr(line_num, LOAD_CHAR_ARY_ELM, dim, mem_context));
     }
       break;
 
     case LOAD_INT_ARY_ELM: {
-      INT_VALUE dim = ReadInt();
+      const INT_VALUE dim = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       instrs.push_back(new LibraryInstr(line_num, LOAD_INT_ARY_ELM, dim, mem_context));
     }
       break;
 
     case LOAD_FLOAT_ARY_ELM: {
-      INT_VALUE dim = ReadInt();
+      const INT_VALUE dim = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       instrs.push_back(new LibraryInstr(line_num, LOAD_FLOAT_ARY_ELM, dim, mem_context));
     }
       break;
 
     case STOR_BYTE_ARY_ELM: {
-      INT_VALUE dim = ReadInt();
+      const INT_VALUE dim = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       instrs.push_back(new LibraryInstr(line_num, STOR_BYTE_ARY_ELM, dim, mem_context));
     }
       break;
 
     case STOR_CHAR_ARY_ELM: {
-      INT_VALUE dim = ReadInt();
+      const INT_VALUE dim = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       instrs.push_back(new LibraryInstr(line_num, STOR_CHAR_ARY_ELM, dim, mem_context));
     }
       break;
       
     case STOR_INT_ARY_ELM: {
-      INT_VALUE dim = ReadInt();
+      const INT_VALUE dim = ReadInt();
       MemoryContext mem_context = (MemoryContext)ReadInt();
       instrs.push_back(new LibraryInstr(line_num, STOR_INT_ARY_ELM, dim, mem_context));
     }
       break;
 
     case STOR_FLOAT_ARY_ELM: {
-      INT_VALUE dim = ReadInt();
-      INT_VALUE mem_context = ReadInt();
+      const INT_VALUE dim = ReadInt();
+      const INT_VALUE mem_context = ReadInt();
       instrs.push_back(new LibraryInstr(line_num, STOR_FLOAT_ARY_ELM, dim, mem_context));
     }
       break;
