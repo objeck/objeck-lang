@@ -8,7 +8,10 @@ class Test {
 
 	function : Main(args : String[]) ~ Nil {
 		Calc1(99);
-		
+
+		s : String := Nil;
+		s->Size()->PrintLine();
+
 		y := 7; z := 4;
 #		Func(\(Int) ~ Int : (x) => x * y++);
 #		f := \(Int) ~ Int : (x) => x * y;
