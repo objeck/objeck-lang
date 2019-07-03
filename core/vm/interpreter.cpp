@@ -2717,9 +2717,9 @@ void Runtime::StackInterpreter::StackErrorUnwind()
   if((*frame)->ip > 0 && pos > -1 &&
      method->GetInstruction((*frame)->ip)->GetLineNumber() > 0) {
     wcerr << L"  method: pos=" << pos << L", file="
-      << (*frame)->method->GetClass()->GetFileName() << L", name='"
-      << (*frame)->method->GetName() << L"', line="
-      << method->GetInstruction((*frame)->ip)->GetLineNumber() << endl;
+          << (*frame)->method->GetClass()->GetFileName() << L", name='"
+          << MethodFormatter::Format((*frame)->method->GetName()) << L"', line="
+          << method->GetInstruction((*frame)->ip)->GetLineNumber() << endl;
   }
   if(pos != 0) {
     while(--pos) {
@@ -2727,9 +2727,9 @@ void Runtime::StackInterpreter::StackErrorUnwind()
       if(call_stack[pos]->ip > 0 && pos > -1 &&
          method->GetInstruction(call_stack[pos]->ip)->GetLineNumber() > 0) {
         wcerr << L"  method: pos=" << pos << L", file="
-          << call_stack[pos]->method->GetClass()->GetFileName() << L", name='"
-          << call_stack[pos]->method->GetName() << L"', line="
-          << method->GetInstruction(call_stack[pos]->ip)->GetLineNumber() << endl;
+              << call_stack[pos]->method->GetClass()->GetFileName() << L", name='"
+              << MethodFormatter::Format(call_stack[pos]->method->GetName()) << L"', line="
+              << method->GetInstruction(call_stack[pos]->ip)->GetLineNumber() << endl;
       }
     }
     pos = 0;
