@@ -2738,11 +2738,11 @@ void Runtime::StackInterpreter::StackErrorUnwind()
 #else
   wcerr << L"Unwinding local stack (" << this << L"):" << endl;
   wcerr << L"  method: pos=" << pos << L", name="
-    << (*frame)->method->GetName() << endl;
+        << MethodFormatter::Format((*frame)->method->GetName()) << endl;
   if(pos != 0) {
     while(--pos && pos > -1) {
       wcerr << L"  method: pos=" << pos << L", name="
-        << call_stack[pos]->method->GetName() << endl;
+            << MethodFormatter::Format(call_stack[pos]->method->GetName()) << endl;
     }
   }
   wcerr << L"  ..." << endl;
