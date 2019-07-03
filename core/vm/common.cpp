@@ -4659,4 +4659,292 @@ void TrapProcessor::ReadSerializedBytes(size_t* dest_array, const size_t* src_ar
   }
 }
 
+/********************************
+ * Routines to format method 
+ * signatures
+ ********************************/
+wstring MethodFormatter::Format(const wstring method_sig)
+{
+  wstring mthd_sig;
+
+  size_t start = method_sig.rfind(':');
+  if(start != wstring::npos) {
+    const wstring parameters = method_sig.substr(start + 1);
+    mthd_sig = FormatParameters(parameters);
+  }
+
+  size_t mid = method_sig.rfind(':', start - 1);
+  if(mid != wstring::npos) {
+    const wstring cls_sig = method_sig.substr(mid + 1, start - mid - 1);
+    return cls_sig + mthd_sig;
+  }
+
+  return L"<unknown>";
+}
+
+wstring MethodFormatter::FormatParameters(const wstring param_str)
+{
+  wstring formatted_str(L"(");
+
+  size_t index = 0;
+  while(index < param_str.size()) {
+    int dimension = 0;
+    switch(param_str[index]) {
+    case 'l':
+      formatted_str += L"Boolean";
+      index++;
+      break;
+
+    case 'b':
+      formatted_str += L"Byte";
+      index++;
+      break;
+
+    case 'i':
+      formatted_str += L"Int";
+      index++;
+      break;
+
+    case 'f':
+      formatted_str += L"Float";
+      index++;
+      break;
+
+    case 'c':
+      formatted_str += L"Char";
+      index++;
+      break;
+
+    case 'n':
+      formatted_str += L"Nil";
+      index++;
+      break;
+
+    case 'm': {
+      size_t start = index;
+
+      const wstring prefix = L"m.(";
+      int nested_count = 1;
+      size_t found = param_str.find(prefix);
+      while(found != wstring::npos) {
+        nested_count++;
+        found = param_str.find(prefix, found + prefix.size());
+      }
+
+      while(nested_count--) {
+        while(index < param_str.size() && param_str[index] != L'~') {
+          index++;
+        }
+        if(param_str[index] == L'~') {
+          index++;
+        }
+      }
+
+      while(index < param_str.size() && param_str[index] != L',') {
+        index++;
+      }
+
+      const wstring name = param_str.substr(start, index - start - 1);
+      formatted_str += FormatFunctionalType(name);
+    }
+      break;
+
+    case 'o': {
+      index += 2;
+      size_t start = index;
+      while(index < param_str.size() && param_str[index] != L'*' && param_str[index] != L',' && param_str[index] != L'|') {
+        index++;
+      }
+      size_t end = index;
+      const wstring cls_name = param_str.substr(start, end - start);
+      formatted_str += cls_name;
+    }
+      break;
+    }
+
+    // set generics
+    if(index < param_str.size() && param_str[index] == L'|') {
+      formatted_str += L"<";
+      do {
+        index++;
+        size_t start = index;
+        while(index < param_str.size() && param_str[index] != L'*' && param_str[index] != L',' && param_str[index] != L'|') {
+          index++;
+        }
+        size_t end = index;
+
+        const wstring generic_name = param_str.substr(start, end - start);
+        formatted_str += generic_name;
+      } 
+      while(index < param_str.size() && param_str[index] == L'|');
+      formatted_str += L">";
+    }
+
+    // set dimension
+    if(index < param_str.size() && param_str[index] == L'*') {
+      formatted_str += L"[";
+      while(index < param_str.size() && param_str[index] == L'*') {
+        dimension++;
+        index++;
+
+        if(index + 1 < param_str.size()) {
+          formatted_str += L",";
+        }
+      }
+      formatted_str += L"]";
+    }
+
+#ifdef _DEBUG
+    assert(index >= param_str.size() || param_str[index] == L',');
+#endif
+
+    index++;
+    while(index < param_str.size()) {
+      formatted_str += L", ";
+    }
+  }
+  formatted_str += L")";
+
+  return formatted_str;
+}
+
+wstring MethodFormatter::FormatType(const wstring type_str)
+{
+  wstring formatted_str;
+
+  size_t index = 0;
+  switch(type_str[index]) {
+  case L'l':
+    formatted_str += L"Boolean";
+    index++;
+    break;
+
+  case L'b':
+    formatted_str += L"Byte";
+    index++;
+    break;
+
+  case L'i':
+    formatted_str += L"Int";
+    index++;
+    break;
+
+  case L'f':
+    formatted_str += L"Float";
+    index++;
+    break;
+
+  case L'c':
+    formatted_str += L"Char";
+    index++;
+    break;
+
+  case L'n':
+    formatted_str += L"Nil";
+    index++;
+    break;
+
+  case L'm': {
+    size_t start = index;
+
+    int nested_count = 1;
+    const wstring prefix = L"m.(";
+    size_t found = type_str.find(prefix);
+    while(found != wstring::npos) {
+      nested_count++;
+      found = type_str.find(prefix, found + prefix.size());
+    }
+
+    while(nested_count--) {
+      while(index < type_str.size() && type_str[index] != L'~') {
+        index++;
+      }
+      if(type_str[index] == L'~') {
+        index++;
+      }
+    }
+
+    while(index < type_str.size() && type_str[index] != L',') {
+      index++;
+    }
+
+    const wstring name = type_str.substr(start, index - start - 1);
+    formatted_str += FormatFunctionalType(name);
+  }
+    break;
+
+  case L'o':
+    index = 2;
+    while(index < type_str.size() && type_str[index] != L'*' && type_str[index] != L'|') {
+      index++;
+    }
+    const wstring cls_name = type_str.substr(2, index - 2);
+    formatted_str += cls_name;
+    break;
+  }
+
+  // set generics
+  if(index < type_str.size() && type_str[index] == L'|') {
+    formatted_str += L"<";
+    do {
+      index++;
+      size_t start = index;
+      while(index < type_str.size() && type_str[index] != L'*' && type_str[index] != L',' && type_str[index] != L'|') {
+        index++;
+      }
+      size_t end = index;
+
+      const wstring generic_name = type_str.substr(start, end - start);
+      formatted_str += generic_name;
+    } 
+    while(index < type_str.size() && type_str[index] == L'|');
+    formatted_str += L">";
+  }
+
+  // set dimension
+  int dimension = 0;
+  if(index < type_str.size() && type_str[index] == L'*') {
+    formatted_str += L"[";
+    while(index < type_str.size() && type_str[index] == L'*') {
+      dimension++;
+      index++;
+
+      if(index + 1 < type_str.size()) {
+        formatted_str += L",";
+      }
+    }
+    formatted_str += L"]";
+  }
+
+  return formatted_str;
+}
+
+wstring MethodFormatter::FormatFunctionalType(const wstring func_str)
+{
+  wstring formatted_str;
+
+  // parse parameters
+  size_t start = func_str.rfind(L'(');
+  size_t middle = func_str.find(L')');
+
+  if(start != wstring::npos && middle != wstring::npos) {
+    start++;
+    const wstring params_str = func_str.substr(start, middle - start);
+    formatted_str += FormatParameters(params_str);
+
+    // parse return
+    size_t end = func_str.find(L',', middle);
+    if(end == wstring::npos) {
+      end = func_str.size();
+    }
+    middle += 2;
+
+    formatted_str += L"~";
+    const wstring rtrn_str = func_str.substr(middle, end - middle);
+    formatted_str += FormatType(rtrn_str);
+  }
+
+  return formatted_str;
+}
+
 #endif

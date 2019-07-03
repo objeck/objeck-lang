@@ -1127,6 +1127,9 @@ class StackProgram {
 #endif
 };
 
+/********************************
+ * Call stack frame
+ ********************************/
 struct StackFrame {
   StackMethod* method;
   size_t* mem;
@@ -1134,6 +1137,18 @@ struct StackFrame {
   bool jit_called;
   size_t* jit_mem;
   long jit_offset;
+};
+
+/********************************
+ * Method signature formatter
+ ********************************/
+class MethodFormatter {
+  static wstring FormatParameters(const wstring param_str);
+  static wstring FormatType(const wstring type_str);
+  static wstring FormatFunctionalType(const wstring func_str);
+  
+ public:
+  static wstring Format(const wstring method_sig);
 };
 
 /********************************
@@ -1145,7 +1160,7 @@ class ObjectSerializer
   map<size_t*, long> serial_ids;
   long next_id;
   long cur_id;
-
+  
   void CheckObject(size_t* mem, bool is_obj, long depth);
   void CheckMemory(size_t* mem, StackDclr** dclrs, const long dcls_size, long depth);
   void Serialize(size_t* inst);
