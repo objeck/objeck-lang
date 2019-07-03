@@ -4675,8 +4675,9 @@ wstring MethodFormatter::Format(const wstring method_sig)
 
   size_t mid = method_sig.rfind(':', start - 1);
   if(mid != wstring::npos) {
-    const wstring cls_sig = method_sig.substr(mid + 1, start - mid - 1);
-    return cls_sig + mthd_sig;
+    const wstring mthd_name = method_sig.substr(mid + 1, start - mid - 1);
+    const wstring cls_name = method_sig.substr(0, mid);
+    return cls_name + L"->" + mthd_name + mthd_sig;
   }
 
   return L"<unknown>";
@@ -4684,43 +4685,66 @@ wstring MethodFormatter::Format(const wstring method_sig)
 
 wstring MethodFormatter::FormatParameters(const wstring param_str)
 {
+  int param_count = 0;
   wstring formatted_str = L"(";
-
   size_t index = 0;
+
   while(index < param_str.size()) {
     int dimension = 0;
     switch(param_str[index]) {
     case 'l':
+      formatted_str += L'p';
+      formatted_str += IntToString(param_count++);
+      formatted_str += L':';
       formatted_str += L"Boolean";
       index++;
       break;
 
     case 'b':
+      formatted_str += L'p';
+      formatted_str += IntToString(param_count++);
+      formatted_str += L':';
       formatted_str += L"Byte";
       index++;
       break;
 
     case 'i':
+      formatted_str += L'p';
+      formatted_str += IntToString(param_count++);
+      formatted_str += L':';
       formatted_str += L"Int";
       index++;
       break;
 
     case 'f':
+      formatted_str += L'p';
+      formatted_str += IntToString(param_count++);
+      formatted_str += L':';
       formatted_str += L"Float";
       index++;
       break;
 
     case 'c':
+      formatted_str += L'p';
+      formatted_str += IntToString(param_count++);
+      formatted_str += L':';
       formatted_str += L"Char";
       index++;
       break;
 
     case 'n':
+      formatted_str += L'p';
+      formatted_str += IntToString(param_count++);
+      formatted_str += L':';
       formatted_str += L"Nil";
       index++;
       break;
 
     case 'm': {
+      formatted_str += L'p';
+      formatted_str += IntToString(param_count++);
+      formatted_str += L':';
+
       size_t start = index;
 
       const wstring prefix = L"m.(";
@@ -4750,6 +4774,10 @@ wstring MethodFormatter::FormatParameters(const wstring param_str)
       break;
 
     case 'o': {
+      formatted_str += L'p';
+      formatted_str += IntToString(param_count++);
+      formatted_str += L':';
+
       index += 2;
       size_t start = index;
       while(index < param_str.size() && param_str[index] != L'*' && param_str[index] != L',' && param_str[index] != L'|') {
@@ -4799,8 +4827,8 @@ wstring MethodFormatter::FormatParameters(const wstring param_str)
 #endif
 
     index++;
-    while(index < param_str.size()) {
-      formatted_str += L", ";
+    if(index < param_str.size()) {
+      formatted_str += L',';
     }
   }
   formatted_str += L")";
