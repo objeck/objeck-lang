@@ -2828,11 +2828,11 @@ void Runtime::StackInterpreter::StackErrorUnwind(StackMethod* method)
   long pos = (*call_stack_pos);
   wcerr << L"Unwinding local stack (" << this << L"):" << endl;
   wcerr << L"  method: pos=" << pos << L", name="
-    << method->GetName() << endl;
+        << method->GetName() << endl;
   while(--pos) {
     if(pos > -1) {
       wcerr << L"  method: pos=" << pos << L", name="
-        << call_stack[pos]->method->GetName() << endl;
+            << MethodFormatter::Format(call_stack[pos]->method->GetName()) << endl;
     }
   }
   wcerr << L"  ..." << endl;
