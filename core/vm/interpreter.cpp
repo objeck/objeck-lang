@@ -105,7 +105,7 @@ void StackInterpreter::Initialize(StackProgram* p)
 
 /********************************
  * Main VM execution method. This
- * funciton is used by callbacks 
+ * function is used by callbacks 
  * from native code for the C API
  ********************************/
 void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackMethod* method, size_t* instance, bool jit_called)
@@ -117,7 +117,7 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
   clock_t start = clock();
 #endif
 
-  // inital setup
+  // initial setup
   if(monitor) {
     (*call_stack_pos) = 0;
   }
@@ -227,7 +227,7 @@ void StackInterpreter::Execute(size_t* op_stack, long* stack_pos, long i, StackM
       break;
 
     case ADD_INT:
-      AddInt( op_stack, stack_pos);
+      AddInt(op_stack, stack_pos);
       break;
 
     case ADD_FLOAT:
@@ -1210,7 +1210,7 @@ void StackInterpreter::CpyByteAry(size_t* &op_stack, long* &stack_pos)
   if(length > 0 && src_offset + length <= src_array_len && dest_offset + length <= dest_array_len) {
     const char* src_array_ptr = (char*)(src_array + 3);
     char* dest_array_ptr = (char*)(dest_array + 3);
-    ::memcpy(dest_array_ptr + dest_offset, src_array_ptr + src_offset, length);
+    memcpy(dest_array_ptr + dest_offset, src_array_ptr + src_offset, length);
     PushInt(1, op_stack, stack_pos);
   }
   else {
@@ -1245,7 +1245,7 @@ void StackInterpreter::CpyCharAry(size_t* &op_stack, long* &stack_pos)
   if(length > 0 && src_offset + length <= src_array_len && dest_offset + length <= dest_array_len) {
     wchar_t* src_array_ptr = (wchar_t*)(src_array + 3);
     wchar_t* dest_array_ptr = (wchar_t*)(dest_array + 3);
-    ::memcpy(dest_array_ptr + dest_offset, src_array_ptr + src_offset, length * sizeof(wchar_t));
+    memcpy(dest_array_ptr + dest_offset, src_array_ptr + src_offset, length * sizeof(wchar_t));
     PushInt(1, op_stack, stack_pos);
   }
   else {
@@ -1280,7 +1280,7 @@ void StackInterpreter::CpyIntAry(size_t* &op_stack, long* &stack_pos)
   if(length > 0 && src_offset + length <= src_array_len && dest_offset + length <= dest_array_len) {
     size_t* src_array_ptr = src_array + 3;
     size_t* dest_array_ptr = dest_array + 3;
-    ::memcpy(dest_array_ptr + dest_offset, src_array_ptr + src_offset, length * sizeof(size_t));
+    memcpy(dest_array_ptr + dest_offset, src_array_ptr + src_offset, length * sizeof(size_t));
     PushInt(1, op_stack, stack_pos);
   }
   else {
@@ -1315,7 +1315,7 @@ void StackInterpreter::CpyFloatAry(size_t* &op_stack, long* &stack_pos)
   if(length > 0 && src_offset + length <= src_array_len && dest_offset + length <= dest_array_len) {
     size_t* src_array_ptr = src_array + 3;
     size_t* dest_array_ptr = dest_array + 3;
-    ::memcpy(dest_array_ptr + dest_offset, src_array_ptr + src_offset, length * sizeof(FLOAT_VALUE));
+    memcpy(dest_array_ptr + dest_offset, src_array_ptr + src_offset, length * sizeof(FLOAT_VALUE));
     PushInt(1, op_stack, stack_pos);
   }
   else {
@@ -1555,7 +1555,6 @@ void StackInterpreter::ProcessLoadFloat(StackInstr* instr, size_t* &op_stack, lo
   FLOAT_VALUE value;
   if(instr->GetOperand2() == LOCL) {
     size_t* mem = (*frame)->mem;
-    // ::memcpy(&value, &mem[instr->GetOperand() + 1], sizeof(FLOAT_VALUE));
     value = *((FLOAT_VALUE*)(&mem[instr->GetOperand() + 1]));
 
   } else {
@@ -1570,7 +1569,6 @@ void StackInterpreter::ProcessLoadFloat(StackInstr* instr, size_t* &op_stack, lo
       exit(1);
 #endif
     }
-    // ::memcpy(&value, &cls_inst_mem[instr->GetOperand()], sizeof(FLOAT_VALUE));
     value = *((FLOAT_VALUE*)(&cls_inst_mem[instr->GetOperand()]));
   }
   PushFloat(value, op_stack, stack_pos);
@@ -1621,7 +1619,6 @@ void StackInterpreter::ProcessStoreFloat(StackInstr* instr, size_t* &op_stack, l
   if(instr->GetOperand2() == LOCL) {
     const FLOAT_VALUE value = PopFloat(op_stack, stack_pos);
     size_t* mem = (*frame)->mem;
-    // ::memcpy(&mem[instr->GetOperand() + 1], &value, sizeof(FLOAT_VALUE));
     *((FLOAT_VALUE*)(&mem[instr->GetOperand() + 1])) = value;
   } 
   else {
@@ -1637,7 +1634,6 @@ void StackInterpreter::ProcessStoreFloat(StackInstr* instr, size_t* &op_stack, l
 #endif
     }
     const FLOAT_VALUE value = PopFloat(op_stack, stack_pos);
-    // ::memcpy(&cls_inst_mem[instr->GetOperand()], &value, sizeof(FLOAT_VALUE));
     *((FLOAT_VALUE*)(&cls_inst_mem[instr->GetOperand()])) = value;
   }
 }
@@ -1655,7 +1651,6 @@ void StackInterpreter::ProcessCopyFloat(StackInstr* instr, size_t* &op_stack, lo
   if(instr->GetOperand2() == LOCL) {
     FLOAT_VALUE value = TopFloat(op_stack, stack_pos);
     size_t* mem = (*frame)->mem;
-    // ::memcpy(&mem[instr->GetOperand() + 1], &value, sizeof(FLOAT_VALUE));
     *((FLOAT_VALUE*)(&mem[instr->GetOperand() + 1])) = value;
   } else {
     size_t* cls_inst_mem = (size_t*)PopInt(op_stack, stack_pos);
@@ -1670,7 +1665,6 @@ void StackInterpreter::ProcessCopyFloat(StackInstr* instr, size_t* &op_stack, lo
 #endif
     }
     FLOAT_VALUE value = TopFloat(op_stack, stack_pos);
-    // ::memcpy(&cls_inst_mem[instr->GetOperand()], &value, sizeof(FLOAT_VALUE));
     *((FLOAT_VALUE*)(&cls_inst_mem[instr->GetOperand()])) = value;
   }
 }
@@ -1747,7 +1741,7 @@ void StackInterpreter::ProcessNewArray(StackInstr* instr, size_t* &op_stack, lon
   mem[0] = size;
   mem[1] = dim;
 
-  ::memcpy(mem + 2, indices, dim * sizeof(size_t));
+  memcpy(mem + 2, indices, dim * sizeof(size_t));
   PushInt((size_t)mem, op_stack, stack_pos);
 }
 
@@ -1776,7 +1770,7 @@ void StackInterpreter::ProcessNewByteArray(StackInstr* instr, size_t* &op_stack,
   size_t* mem = MemoryManager::AllocateArray((long)(size + ((dim + 2) * sizeof(size_t))), BYTE_ARY_TYPE, op_stack, *stack_pos);
   mem[0] = size - 1;
   mem[1] = dim;
-  ::memcpy(mem + 2, indices, dim * sizeof(size_t));
+  memcpy(mem + 2, indices, dim * sizeof(size_t));
   PushInt((size_t)mem, op_stack, stack_pos);
 }
 
@@ -1805,7 +1799,7 @@ void StackInterpreter::ProcessNewCharArray(StackInstr* instr, size_t* &op_stack,
   size_t* mem = MemoryManager::AllocateArray((long)(size + ((dim + 2) * sizeof(size_t))), CHAR_ARY_TYPE, op_stack, *stack_pos);
   mem[0] = size - 1;
   mem[1] = dim;
-  ::memcpy(mem + 2, indices, dim * sizeof(size_t));
+  memcpy(mem + 2, indices, dim * sizeof(size_t));
   PushInt((size_t)mem, op_stack, stack_pos);
 }
 
@@ -2358,7 +2352,7 @@ void StackInterpreter::ProcessLoadFloatArrayElement(StackInstr* instr, size_t* &
   array += 2;
   long index = ArrayIndex(instr, array, size, op_stack, stack_pos);
   FLOAT_VALUE value;
-  ::memcpy(&value, array + index + instr->GetOperand(), sizeof(FLOAT_VALUE));
+  memcpy(&value, array + index + instr->GetOperand(), sizeof(FLOAT_VALUE));
   PushFloat(value, op_stack, stack_pos);
 }
 
@@ -2386,7 +2380,7 @@ void StackInterpreter::ProcessStoreFloatArrayElement(StackInstr* instr, size_t* 
   array += 2;
   long index = ArrayIndex(instr, array, size, op_stack, stack_pos);
   FLOAT_VALUE value = PopFloat(op_stack, stack_pos);
-  ::memcpy(array + index + instr->GetOperand(), &value, sizeof(FLOAT_VALUE));
+  memcpy(array + index + instr->GetOperand(), &value, sizeof(FLOAT_VALUE));
 }
 
 /********************************
