@@ -19,13 +19,12 @@ See more on [Rosetta Code](http://rosettacode.org/wiki/Category:Objeck) and chec
 
 Notable features:
 * Object-oriented with functional features
-  * Classes, interfaces and higher-order functions
+  * Classes, interfaces and first-class functions
   * Generics with type boxing
   * Anonymous classes 
   * Reflection 
   * Object serialization 
   * Type inference
-  * First class functions
   * Lambda expressions
   * Closures
 * Supported platforms (with JIT support)
