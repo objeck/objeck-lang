@@ -104,8 +104,8 @@ enum ScannerTokenType {
   TOKEN_OR_ID,
   TOKEN_XOR_ID,
   // --- end: factor ---
-  // literals
   TOKEN_IDENT,
+  // literals
   TOKEN_INT_LIT,
   TOKEN_FLOAT_LIT,
   TOKEN_CHAR_LIT,
