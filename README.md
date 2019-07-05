@@ -44,9 +44,6 @@ Notable features:
 * Garbage collection
 * JIT support for all supported platforms
 
-Work in progress:
-* Lambda expressions (v5.1)
-
 ## Documentation
 Please refer to the programmer's guide [documentation](http://www.objeck.org/documentation/) and [online tutorial](http://www.objeck.org/tutorial/). Also checkout [Rosetta Code](http://rosettacode.org/wiki/Category:Objeck) [examples](programs/rc).
 
