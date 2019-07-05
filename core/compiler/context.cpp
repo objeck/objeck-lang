@@ -1014,7 +1014,7 @@ void ContextAnalyzer::AnalyzeLambda(Lambda* lambda, const int depth)
         // create method call
         MethodCall* method_call = TreeFactory::Instance()->MakeMethodCall(method->GetFileName(), method->GetLineNumber(),
                                                                           current_class->GetName(), method_name,
-                                                                          ParseLambdaParameters(declaration_list));
+                                                                          MapLambdaDeclarations(declaration_list));
         method_call->SetFunctionalReturn(method->GetReturn());
         AnalyzeMethodCall(method_call, depth + 1);
         lambda->SetMethodCall(method_call);
@@ -1033,6 +1033,59 @@ void ContextAnalyzer::AnalyzeLambda(Lambda* lambda, const int depth)
     ProcessError(lambda, L"Invalid lambda type");
   }
 }
+
+/****************************
+ * maps lambda decelerations 
+ * to parameter list
+ ****************************/
+ExpressionList* ContextAnalyzer::MapLambdaDeclarations(DeclarationList* declarations)
+{
+  ExpressionList* expressions = TreeFactory::Instance()->MakeExpressionList();
+
+  const vector<Declaration*> dclrs = declarations->GetDeclarations();
+  for(size_t i = 0; i < dclrs.size(); ++i) {
+    wstring ident;
+    Type* dclr_type = dclrs[i]->GetEntry()->GetType();
+    switch(dclr_type->GetType()) {
+    case NIL_TYPE:
+    case VAR_TYPE:
+      break;
+
+    case BOOLEAN_TYPE:
+      ident = BOOL_CLASS_ID;
+      break;
+
+    case BYTE_TYPE:
+      ident = BYTE_CLASS_ID;
+      break;
+
+    case CHAR_TYPE:
+      ident = CHAR_CLASS_ID;
+      break;
+
+    case INT_TYPE:
+      ident = INT_CLASS_ID;
+      break;
+
+    case  FLOAT_TYPE:
+      ident = FLOAT_CLASS_ID;
+      break;
+
+    case CLASS_TYPE:
+    case FUNC_TYPE:
+      ident = dclr_type->GetClassName();
+      break;
+    }
+
+    if(!ident.empty()) {
+      expressions->AddExpression(TreeFactory::Instance()->MakeVariable(dclrs[i]->GetFileName(), dclrs[i]->GetLineNumber(), ident));
+    }
+  }
+
+  return expressions;
+}
+
+
 
 /****************************
  * Analyzes method return

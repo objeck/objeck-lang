@@ -41,7 +41,7 @@ using namespace frontend;
 #define DEFAULT_BUNDLE_NAME L"Default"
 
 /****************************
- * Parsers source files.
+ * Turns tokens into trees
  ****************************/
 class Parser {
   bool alt_syntax;
@@ -58,32 +58,35 @@ class Parser {
   wstring run_prgm;
   unsigned int anonymous_class_id;
 
+  // gets the scanner token
   inline void NextToken() {
     scanner->NextToken();
   }
-
+  // returns true of scanner token matches 
+  // expected token, false otherwise
   inline bool Match(ScannerTokenType type, int index = 0) {
     return scanner->GetToken(index)->GetType() == type;
   }
-
+  // return true if basic type, false otherwise
   bool IsBasicType(ScannerTokenType type);
-
+  // get token by index
   inline ScannerTokenType GetToken(int index = 0) {
     return scanner->GetToken(index)->GetType();
   }
-
+  // get line number of current token
   inline int GetLineNumber() {
     return scanner->GetToken()->GetLineNumber();
   }
-
+  // get filename of current token
   inline const wstring GetFileName() {
     return scanner->GetToken()->GetFileName();
   }
-
+  // gets the symbol table's name for the current scope
   const wstring GetScopeName(const wstring &ident);
-
+  // gets the enum scope name
   const wstring GetEnumScopeName(const wstring &ident);
 
+  // helper functions
   void Debug(const wstring &msg, int depth) {
     GetLogger() << setw(4) << GetLineNumber() << L": ";
     for(int i = 0; i < depth; ++i) {
@@ -145,7 +148,7 @@ class Parser {
   Declaration* ParseDeclaration(const wstring &name, bool is_stmt, int depth);
   DeclarationList* ParseDecelerationList(int depth);
   ExpressionList* ParseExpressionList(int depth, ScannerTokenType open = TOKEN_OPEN_PAREN,
-              ScannerTokenType close = TOKEN_CLOSED_PAREN);
+                                      ScannerTokenType close = TOKEN_CLOSED_PAREN);
   ExpressionList* ParseIndices(int depth);
   void ParseCastTypeOf(Expression* expression, int depth);
   Type* ParseType(int depth);
