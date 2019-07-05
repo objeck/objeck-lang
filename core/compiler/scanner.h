@@ -460,21 +460,17 @@ class Scanner {
     wcout << GetToken()->GetFileName() << L':' << GetToken()->GetLineNumber() + 1
           << ": Parse warning: Unknown token: '" << cur_char << "'" << endl;
   }
-
+  
+  // loads file into memory
   wchar_t* LoadFileBuffer(wstring filename, size_t& buffer_size);
-
   // parsers a character string
   void CheckString(int index, bool is_valid);
-
   // parse an integer
   void ParseInteger(int index, int base = 0);
-
   // parse a double
   void ParseDouble(int index);
-
   // parsers an Unicode character
   void ParseUnicodeChar(int index);
-
   // read input file into memory
   void ReadFile();
   // ignore white space
