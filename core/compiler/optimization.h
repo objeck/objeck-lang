@@ -65,17 +65,22 @@ class ItermediateOptimizer {
   
   vector<IntermediateBlock*> OptimizeMethod(vector<IntermediateBlock*> input);
   vector<IntermediateBlock*> InlineMethod(vector<IntermediateBlock*> inputs);
+
   // inline setters/getters
   IntermediateBlock* InlineSettersGetters(IntermediateBlock* inputs);
+
   // cleans up jumps and remove useless instructions
   IntermediateBlock* CleanJumps(IntermediateBlock* inputs);
   IntermediateBlock* RemoveUselessInstructions(IntermediateBlock* inputs);
+
   // advanced method inlining
   IntermediateBlock* InlineMethod(IntermediateBlock* inputs);
+
   // integer constant folding
   IntermediateBlock* FoldIntConstants(IntermediateBlock* input);
   void CalculateIntFold(IntermediateInstruction* instr, deque<IntermediateInstruction*> &calc_stack,
                         IntermediateBlock* outputs);
+
   // float constant folding
   IntermediateBlock* FoldFloatConstants(IntermediateBlock* input);
   void CalculateFloatFold(IntermediateInstruction* instr,
@@ -86,15 +91,18 @@ class ItermediateOptimizer {
   void CalculateReduction(IntermediateInstruction* instr,
                           deque<IntermediateInstruction*> &calc_stack,
                           IntermediateBlock* outputs);
+
   void ApplyReduction(IntermediateInstruction* test,
                       IntermediateInstruction* instr,
                       IntermediateInstruction* top_instr,
                       deque<IntermediateInstruction*> &calc_stack,
                       IntermediateBlock* outputs);
+
   void AddBackReduction(IntermediateInstruction* instr,
                         IntermediateInstruction* top_instr,
                         deque<IntermediateInstruction*> &calc_stack,
                         IntermediateBlock* outputs);
+  
   // instruction replacement
   IntermediateBlock* InstructionReplacement(IntermediateBlock* inputs);
   void ReplacementInstruction(IntermediateInstruction* instr,
