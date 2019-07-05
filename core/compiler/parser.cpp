@@ -2928,12 +2928,9 @@ Expression* Parser::ParseMathLogic(int depth)
 #ifdef _DEBUG
   Debug(L"Boolean math", depth);
 #endif
-
+  
   Expression* left = ParseTerm(depth + 1);
-
-  if(Match(TOKEN_LES) || Match(TOKEN_GTR) ||
-     Match(TOKEN_LEQL) || Match(TOKEN_GEQL) ||
-     Match(TOKEN_EQL) || Match(TOKEN_NEQL)) {
+  if(GetToken() >= TOKEN_LES && GetToken() <= TOKEN_NEQL) {
     CalculatedExpression* expression = nullptr;
     switch(GetToken()) {
     case TOKEN_LES:
@@ -3051,17 +3048,12 @@ Expression* Parser::ParseFactor(int depth)
 #endif
 
   Expression* left = ParseSimpleExpression(depth + 1);
-  if(!Match(TOKEN_MUL) && !Match(TOKEN_DIV) && !Match(TOKEN_MOD) &&
-     !Match(TOKEN_SHL) && !Match(TOKEN_SHR) && !Match(TOKEN_AND_ID) &&
-     !Match(TOKEN_OR_ID) && !Match(TOKEN_XOR_ID)) {
+  if(!(GetToken() >= TOKEN_MUL && GetToken() <= TOKEN_XOR_ID) && !Match(TOKEN_XOR_ID)) {
     return left;
   }
-
+  
   CalculatedExpression* expression = nullptr;
-  while((Match(TOKEN_MUL) || Match(TOKEN_DIV) || Match(TOKEN_MOD) ||
-        Match(TOKEN_SHL) || Match(TOKEN_SHR) || Match(TOKEN_AND_ID) ||
-        Match(TOKEN_OR_ID) || Match(TOKEN_XOR_ID)) &&
-        !Match(TOKEN_END_OF_STREAM)) {
+  while(GetToken() >= TOKEN_MUL && GetToken() <= TOKEN_XOR_ID && !Match(TOKEN_END_OF_STREAM)) {
     if(expression) {
       CalculatedExpression* right;
       switch(GetToken()) {
@@ -3173,9 +3165,10 @@ Expression* Parser::ParseSimpleExpression(int depth)
 #ifdef _DEBUG
   Debug(L"Simple expression", depth);
 #endif
-
+  
   Expression* expression = nullptr;
-  if(Match(TOKEN_IDENT) || Match(TOKEN_ADD_ADD) || Match(TOKEN_SUB_SUB) || IsBasicType(GetToken())) {
+  if(Match(TOKEN_IDENT) || Match(TOKEN_ADD_ADD) ||
+     Match(TOKEN_SUB_SUB) || IsBasicType(GetToken())) {
     wstring ident;
     bool pre_inc = false;
     bool pre_dec = false;

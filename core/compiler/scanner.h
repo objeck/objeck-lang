@@ -83,20 +83,27 @@ enum ScannerTokenType {
   TOKEN_AND,
   TOKEN_OR,
   TOKEN_QUESTION,
-  TOKEN_EQL,
-  TOKEN_NEQL,
+  TOKEN_NOT,
+  // --- start logic ---
   TOKEN_LES,
   TOKEN_GTR,
-  TOKEN_GEQL,
   TOKEN_LEQL,
-  TOKEN_NOT,
+  TOKEN_GEQL,
+  TOKEN_EQL,
+  TOKEN_NEQL,
+  // --- end logic ---
   TOKEN_ADD,
   TOKEN_SUB,
+  // --- start factor ---
   TOKEN_MUL,
   TOKEN_DIV,
   TOKEN_MOD,
   TOKEN_SHL,
   TOKEN_SHR,
+  TOKEN_AND_ID,
+  TOKEN_OR_ID,
+  TOKEN_XOR_ID,
+  // --- end: factor ---
   // literals
   TOKEN_IDENT,
   TOKEN_INT_LIT,
@@ -105,9 +112,6 @@ enum ScannerTokenType {
   TOKEN_CHAR_STRING_LIT,
   TOKEN_BAD_CHAR_STRING_LIT,
   // reserved words
-  TOKEN_AND_ID,
-  TOKEN_OR_ID,
-  TOKEN_XOR_ID,
   TOKEN_NATIVE_ID,
   TOKEN_IF_ID,
   TOKEN_ELSE_ID,
@@ -450,11 +454,11 @@ class Scanner {
   Token* tokens[LOOK_AHEAD];
   // line number
   int line_nbr;
-
+  
   // warning message
   void ProcessWarning() {
     wcout << GetToken()->GetFileName() << L':' << GetToken()->GetLineNumber() + 1
-    << ": Parse warning: Unknown token: '" << cur_char << "'" << endl;
+          << ": Parse warning: Unknown token: '" << cur_char << "'" << endl;
   }
 
   wchar_t* LoadFileBuffer(wstring filename, size_t& buffer_size);
