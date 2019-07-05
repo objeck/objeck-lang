@@ -614,7 +614,7 @@ void Scanner::CheckString(int index, bool is_valid)
 void Scanner::ParseInteger(int index, int base /*= 0*/)
 {
   // copy string
-  size_t length = end_pos - start_pos;
+  const size_t length = end_pos - start_pos;
   wstring ident(buffer, start_pos, length);
 
   // set token
