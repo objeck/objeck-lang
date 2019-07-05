@@ -27,6 +27,7 @@ Notable features:
   * Type inference
   * First class functions
   * Lambda expressions
+  * Closures
 * Supported platforms (with JIT support)
   * Windows, macOS and Linux (64-bit)
   * Windows and Linux (32-bit)  
