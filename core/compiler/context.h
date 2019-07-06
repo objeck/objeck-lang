@@ -41,8 +41,7 @@
 using namespace frontend;
 
 /****************************
- * Polymorphic resolution of
- * method calls
+ * Library method call resolution
  ****************************/
 class LibraryMethodCallSelection {
   LibraryMethod* method;
@@ -57,7 +56,7 @@ class LibraryMethodCallSelection {
 
   ~LibraryMethodCallSelection() {
   }
-
+  
   bool IsValid() {
     for(size_t i = 0; i < parm_matches.size(); ++i) {
       if(parm_matches[i] < 0) {
@@ -67,7 +66,7 @@ class LibraryMethodCallSelection {
 
     return true;
   }
-
+  
   void AddParameterMatch(int p) {
     parm_matches.push_back(p);
   }
@@ -126,8 +125,7 @@ class LibraryMethodCallSelector {
 };
 
 /****************************
- * Polymorphic resolution of
- * method calls
+ * Method call resolution
  ****************************/
 class MethodCallSelection {
   Method* method;
@@ -211,7 +209,7 @@ class MethodCallSelector {
 };
 
 /****************************
- * Performs contextual analysis
+ * Trees to decorated trees
  ****************************/
 class ContextAnalyzer {
   ParsedProgram* program;
@@ -332,10 +330,12 @@ class ContextAnalyzer {
 
   Type* RelsolveGenericType(Type* type, Expression* expression, Class* left_klass, LibraryClass* lib_left_klass);
 
+  // validates mapping of generic to concrete types
   void ValidateGenericConcreteMapping(const vector<Type*> concrete_types, LibraryClass* lib_klass, ParseNode* node);
 
   void ValidateGenericConcreteMapping(const vector<Type*> concrete_types, Class* klass, ParseNode* node);
   
+  // validates the backing class for a generic deceleration
   void ValidateGenericBacking(Type* type, const wstring backing_inf_name, ParseNode* node);
 
   // validate concrete type
@@ -361,12 +361,12 @@ class ContextAnalyzer {
     return vector<Type*>();
   }
   
-  // helper function for program enum search
+  // helper function for program enum searches
   inline bool HasProgramLibraryEnum(const wstring &n) {
     return SearchProgramEnums(n) || linker->SearchEnumLibraries(n, program->GetUses(current_class->GetFileName()));
   }
 
-  // helper function for program class search
+  // helper function for program class searches
   inline bool HasProgramLibraryClass(const wstring &n) {
     return SearchProgramClasses(n) || linker->SearchClassLibraries(n, program->GetUses(current_class->GetFileName()));
   }
@@ -407,58 +407,14 @@ class ContextAnalyzer {
     }
   }
 
+  // returns true of signature matches holder type
   inline bool IsHolderType(const wstring &n) {
     unordered_set<wstring>::const_iterator result = holder_types.find(n);
     return result != holder_types.end();
   }
-
-
-
-  ExpressionList* ParseLambdaParameters(DeclarationList* declarations) {
-    ExpressionList* expressions = TreeFactory::Instance()->MakeExpressionList();
-
-    const vector<Declaration*> dclrs = declarations->GetDeclarations();
-    for(size_t i = 0; i < dclrs.size(); ++i) {
-      wstring ident;
-      Type* dclr_type = dclrs[i]->GetEntry()->GetType();
-      switch(dclr_type->GetType()) {
-      case NIL_TYPE:
-      case VAR_TYPE:
-        break;
-
-      case BOOLEAN_TYPE:
-        ident = BOOL_CLASS_ID;
-        break;
-
-      case BYTE_TYPE:
-        ident = BYTE_CLASS_ID;
-        break;
-
-      case CHAR_TYPE:
-        ident = CHAR_CLASS_ID;
-        break;
-
-      case INT_TYPE:
-        ident = INT_CLASS_ID;
-        break;
-
-      case  FLOAT_TYPE:
-        ident = FLOAT_CLASS_ID;
-        break;
-
-      case CLASS_TYPE:
-      case FUNC_TYPE:
-        ident = dclr_type->GetClassName();
-        break;
-      }
-
-      if(!ident.empty()) {
-        expressions->AddExpression(TreeFactory::Instance()->MakeVariable(dclrs[i]->GetFileName(), dclrs[i]->GetLineNumber(), ident));
-      }
-    }
-
-    return expressions;
-  }
+  
+  // maps lambda decelerations to parameter list
+  ExpressionList* MapLambdaDeclarations(DeclarationList* declarations);
 
   // error processing
   void ProcessError(ParseNode* n, const wstring &msg);
