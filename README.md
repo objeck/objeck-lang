@@ -19,14 +19,14 @@ See more on [Rosetta Code](http://rosettacode.org/wiki/Category:Objeck) and chec
 
 Notable features:
 * Object-oriented with functional features
-  * Classes, interfaces and higher-order functions
+  * Classes, interfaces and first-class functions
   * Generics with type boxing
   * Anonymous classes 
   * Reflection 
   * Object serialization 
   * Type inference
-  * First class functions
   * Lambda expressions
+  * Closures
 * Supported platforms (with JIT support)
   * Windows, macOS and Linux (64-bit)
   * Windows and Linux (32-bit)  
@@ -42,9 +42,6 @@ Notable features:
   * 2D Gaming
 * Garbage collection
 * JIT support for all supported platforms
-
-Work in progress:
-* Lambda expressions (v5.1)
 
 ## Documentation
 Please refer to the programmer's guide [documentation](http://www.objeck.org/documentation/) and [online tutorial](http://www.objeck.org/tutorial/). Also checkout [Rosetta Code](http://rosettacode.org/wiki/Category:Objeck) [examples](programs/rc).

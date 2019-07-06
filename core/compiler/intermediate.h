@@ -46,112 +46,6 @@ using namespace backend;
 class IntermediateEmitter;
 
 /****************************
- * Creates a binary search tree
- * for case statements.
- ****************************/
-enum SelectOperation {
-  CASE_LESS,
-  CASE_EQUAL,
-  CASE_LESS_OR_EQUAL
-};
-
-class SelectNode {
-  int id;
-  int value;
-  int value2;
-  SelectOperation operation;
-  SelectNode* left;
-  SelectNode* right;
-
- public:
-  SelectNode(int i, int v) {
-    id = i;
-    value = v;
-    operation = CASE_EQUAL;
-    left = nullptr;
-    right = nullptr;
-  }
-
-  SelectNode(int i, int v, SelectNode* l, SelectNode* r) {
-    id = i;
-    operation = CASE_LESS;
-    value = v;
-    left = l;
-    right = r;
-  }
-
-  SelectNode(int i, int v, int v2, SelectNode* l, SelectNode* r) {
-    id = i;
-    operation = CASE_LESS_OR_EQUAL;
-    value = v;
-    value2 = v2;
-    left = l;
-    right = r;
-  }
-
-  ~SelectNode() {
-    if(left) {
-      delete left;
-      left = nullptr;
-    }
-
-    if(right) {
-      delete right;
-      right = nullptr;
-    }
-  }
-
-  int GetId() {
-    return id;
-  }
-
-  int GetValue() {
-    return value;
-  }
-
-  int GetValue2() {
-    return value2;
-  }
-
-  SelectOperation GetOperation() {
-    return operation;
-  }
-
-  SelectNode* GetLeft() {
-    return left;
-  }
-
-  SelectNode* GetRight() {
-    return right;
-  }
-};
-
-class SelectArrayTree {
-  int* values;
-  SelectNode* root;
-  IntermediateEmitter* emitter;
-  map<int, int> value_label_map;
-  Select* select;
-  int other_label;
-
-  SelectNode* divide(int start, int end);
-  void Emit(SelectNode* node, int end_label);
-
- public:
-  SelectArrayTree(Select* s, IntermediateEmitter* e);
-
-  ~SelectArrayTree() {
-    delete[] values;
-    values = nullptr;
-
-    delete root;
-    root = nullptr;
-  }
-
-  void Emit();
-};
-
-/****************************
  * Translates a parse tree
  * into intermediate code. Also
  * identifies basic blocks
@@ -225,134 +119,14 @@ class IntermediateEmitter {
   int CalculateEntrySpace(IntermediateDeclarations* parameters, bool is_static);
   
   // emits class cast checks
-  void EmitClassCast(Expression* expression) {
-    // ensure scalar cast
-    if(expression->GetExpressionType() == METHOD_CALL_EXPR) {
-      if(static_cast<MethodCall*>(expression)->GetLibraryMethod()) {
-        if(static_cast<MethodCall*>(expression)->GetLibraryMethod()->GetReturn()->GetDimension() > 0) {
-          return;
-        }
-      }
-      else if(static_cast<MethodCall*>(expression)->GetMethod()) {
-        if(static_cast<MethodCall*>(expression)->GetMethod()->GetReturn()->GetDimension() > 0) {
-          return;
-        }
-      }
-    }
-    else if(expression->GetExpressionType() == VAR_EXPR) {
-      if(static_cast<Variable*>(expression)->GetEntry()->GetType()->GetDimension() > 0 && 
-         !static_cast<Variable*>(expression)->GetIndices()) {
-        return;
-      }
-    }
-    
-    // class cast
-    if(expression->GetToClass() && !(expression->GetExpressionType() == METHOD_CALL_EXPR &&
-                                     static_cast<MethodCall*>(expression)->GetCallType() == NEW_ARRAY_CALL)) {
-      if(is_lib) {
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_OBJ_INST_CAST, expression->GetToClass()->GetName()));
-      } 
-      else {
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, OBJ_INST_CAST, expression->GetToClass()->GetId()));
-      }
-    } 
-    // class library cast
-    else if(expression->GetToLibraryClass() && !(expression->GetExpressionType() == METHOD_CALL_EXPR &&
-                                                 static_cast<MethodCall*>(expression)->GetCallType() == NEW_ARRAY_CALL)) {
-      if(is_lib) {
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_OBJ_INST_CAST, expression->GetToLibraryClass()->GetName()));
-      } 
-      else {
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, OBJ_INST_CAST, expression->GetToLibraryClass()->GetId()));
-      }
-    }
-  }
+  void EmitClassCast(Expression* expression);
 
   // determines if a method call returns an unused value
-  int OrphanReturn(MethodCall* method_call) {
-    if(!method_call) {
-      return -1;
-    }
+  int OrphanReturn(MethodCall* method_call);
 
-    if(method_call->GetCallType() == ENUM_CALL) {
-      return 0;
-    }
+  Class* SearchProgramClasses(const wstring &klass_name);
 
-    Type* rtrn = nullptr;
-    if(method_call->GetMethod()) {
-      rtrn = method_call->GetMethod()->GetReturn();
-    } 
-    else if(method_call->GetLibraryMethod()) {
-      rtrn = method_call->GetLibraryMethod()->GetReturn();
-    }
-    else if(method_call->IsFunctionalCall()) {
-      rtrn =  method_call->GetFunctionalEntry()->GetType()->GetFunctionReturn();
-    }
-    
-    if(rtrn) {
-      if(rtrn->GetType() != frontend::NIL_TYPE) {
-        if(rtrn->GetDimension() > 0) {
-          return 0;
-        } else {
-          switch(rtrn->GetType()) {
-          case frontend::BOOLEAN_TYPE:
-          case frontend::BYTE_TYPE:
-          case frontend::CHAR_TYPE:
-          case frontend::INT_TYPE:
-          case frontend::CLASS_TYPE:
-            return 0;
-
-          case frontend::FLOAT_TYPE:
-            return 1;
-
-    case frontend::FUNC_TYPE:
-            return 2;
-
-#ifdef _DEBUG
-    default:
-      assert(false);
-      break;
-#else
-    default:
-      break;
-#endif
-          }
-        }
-      }
-    }
-
-    return -1;
-  }
-
-  inline Class* SearchProgramClasses(const wstring &klass_name) {
-    Class* klass = parsed_program->GetClass(klass_name);
-    if(!klass) {
-      klass = parsed_program->GetClass(parsed_bundle->GetName() + L"." + klass_name);
-      if(!klass) {
-        vector<wstring> uses = parsed_program->GetUses();
-        for(size_t i = 0; !klass && i < uses.size(); ++i) {
-          klass = parsed_program->GetClass(uses[i] + L"." + klass_name);
-        }
-      }
-    }
-
-    return klass;
-  }
-
-  inline Enum* SearchProgramEnums(const wstring &eenum_name) {
-    Enum* eenum = parsed_program->GetEnum(eenum_name);
-    if(!eenum) {
-      eenum = parsed_program->GetEnum(parsed_bundle->GetName() + L"." + eenum_name);
-      if(!eenum) {
-        vector<wstring> uses = parsed_program->GetUses();
-        for(size_t i = 0; !eenum && i < uses.size(); ++i) {
-          eenum = parsed_program->GetEnum(uses[i] + L"." + eenum_name);
-        }
-      }
-    }
-
-    return eenum;
-  }
+  Enum* SearchProgramEnums(const wstring &eenum_name);
 
   wstring ToString(int v) {
     wostringstream str;
@@ -381,13 +155,13 @@ class IntermediateEmitter {
     if(lhs->length != rhs->length) {
       return false;
     }
-    
+
     for(int i = 0; i < lhs->length; ++i) {
       if(lhs->value[i] != rhs->value[i]) {
-  return false;
+        return false;
       }
     }
-    
+
     return true;
   }
 
@@ -395,76 +169,17 @@ class IntermediateEmitter {
     if(lhs->length != rhs->length) {
       return false;
     }
-    
+
     for(int i = 0; i < lhs->length; ++i) {
       if(lhs->value[i] != rhs->value[i]) {
-  return false;
+        return false;
       }
     }
-    
+
     return true;
   }
   
-  void EmitOperatorVariable(Variable* variable, MemoryContext mem_context) {
-    // indices
-    ExpressionList* indices = variable->GetIndices();
-    
-    // array variable
-    if(indices) {
-      int dimension = (int)indices->GetExpressions().size();
-      EmitIndices(indices);
-
-      // load instance or class memory
-      if(mem_context == INST) {
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
-      } else if(mem_context == CLS) {
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_CLS_MEM));
-      }
-
-      switch(variable->GetBaseType()->GetType()) {
-      case frontend::BYTE_TYPE:
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, variable->GetId(), mem_context));
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_BYTE_ARY_ELM, dimension, mem_context));
-  break;
-
-      case frontend::CHAR_TYPE:
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, variable->GetId(), mem_context));
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_CHAR_ARY_ELM, dimension, mem_context));
-  break;
-  
-      case frontend::INT_TYPE:
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, variable->GetId(), mem_context));
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_ARY_ELM, dimension, mem_context));
-  break;
-  
-      case frontend::FLOAT_TYPE:
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, variable->GetId(), mem_context));
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FLOAT_ARY_ELM, dimension, mem_context));
-  break;
-  
-      default:
-  break;
-      }
-    }
-    else {
-      switch(variable->GetBaseType()->GetType()) {
-      case frontend::BOOLEAN_TYPE:
-      case frontend::BYTE_TYPE:
-      case frontend::CHAR_TYPE:
-      case frontend::INT_TYPE:
-      case frontend::CLASS_TYPE:
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, variable->GetId(), mem_context));
-  break;
-      
-      case frontend::FLOAT_TYPE:
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FLOAT_VAR, variable->GetId(), mem_context));
-  break;
-
-      default:
-  break;
-      }
-    }
-  }
+  void EmitOperatorVariable(Variable* variable, MemoryContext mem_context);
   
  public:
   IntermediateEmitter(ParsedProgram* p, bool l, bool d) {      
@@ -500,4 +215,109 @@ class IntermediateEmitter {
   }
 };
 
+/****************************
+ * Creates a binary search tree
+ * for case statements.
+ ****************************/
+enum SelectOperation {
+  CASE_LESS,
+  CASE_EQUAL,
+  CASE_LESS_OR_EQUAL
+};
+
+class SelectNode {
+  int id;
+  int value;
+  int value2;
+  SelectOperation operation;
+  SelectNode* left;
+  SelectNode* right;
+
+public:
+  SelectNode(int i, int v) {
+    id = i;
+    value = v;
+    operation = CASE_EQUAL;
+    left = nullptr;
+    right = nullptr;
+  }
+
+  SelectNode(int i, int v, SelectNode* l, SelectNode* r) {
+    id = i;
+    operation = CASE_LESS;
+    value = v;
+    left = l;
+    right = r;
+  }
+
+  SelectNode(int i, int v, int v2, SelectNode* l, SelectNode* r) {
+    id = i;
+    operation = CASE_LESS_OR_EQUAL;
+    value = v;
+    value2 = v2;
+    left = l;
+    right = r;
+  }
+
+  ~SelectNode() {
+    if(left) {
+      delete left;
+      left = nullptr;
+    }
+
+    if(right) {
+      delete right;
+      right = nullptr;
+    }
+  }
+
+  int GetId() {
+    return id;
+  }
+
+  int GetValue() {
+    return value;
+  }
+
+  int GetValue2() {
+    return value2;
+  }
+
+  SelectOperation GetOperation() {
+    return operation;
+  }
+
+  SelectNode* GetLeft() {
+    return left;
+  }
+
+  SelectNode* GetRight() {
+    return right;
+  }
+};
+
+class SelectArrayTree {
+  int* values;
+  SelectNode* root;
+  IntermediateEmitter* emitter;
+  map<int, int> value_label_map;
+  Select* select;
+  int other_label;
+
+  SelectNode* divide(int start, int end);
+  void Emit(SelectNode* node, int end_label);
+
+public:
+  SelectArrayTree(Select* s, IntermediateEmitter* e);
+
+  ~SelectArrayTree() {
+    delete[] values;
+    values = nullptr;
+
+    delete root;
+    root = nullptr;
+  }
+
+  void Emit();
+};
 #endif
