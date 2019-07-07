@@ -1154,7 +1154,6 @@ void MemoryManager::CheckMemory(size_t* mem, StackDclr** dclrs, const long dcls_
 
     // update address based upon type
     switch(dclrs[i]->type) {
-      // TODO: get function and dclrs
     case FUNC_PARM: {
       size_t* lambda_mem = (size_t*) * (mem + 1);
       const size_t mthd_cls_id = *mem;
