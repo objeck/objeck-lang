@@ -525,7 +525,6 @@ void Scanner::CheckIdentifier(int index)
     }
     tokens[index]->SetLineNbr(line_nbr);
     tokens[index]->SetFileName(filename);
-
   }
   catch(const out_of_range&) {
     tokens[index]->SetType(TOKEN_UNKNOWN);
@@ -535,9 +534,9 @@ void Scanner::CheckIdentifier(int index)
 }
 
 /****************************
-   * Load a UTF-8 source file (text)
-   * into memory.
-   ****************************/
+ * Load a UTF-8 source file (text)
+ * into memory.
+ ****************************/
 wchar_t* Scanner::LoadFileBuffer(wstring filename, size_t& buffer_size)
 {
   char* buffer;
@@ -860,8 +859,6 @@ void Scanner::ParseToken(int index)
         ParseUnicodeChar(index);
         if(cur_char != L'\'') {
           tokens[index]->SetType(TOKEN_UNKNOWN);
-          tokens[index]->SetLineNbr(line_nbr);
-          tokens[index]->SetFileName(filename);
         }
         NextChar();
         return;
@@ -872,8 +869,6 @@ void Scanner::ParseToken(int index)
         case L'n':
           tokens[index]->SetType(TOKEN_CHAR_LIT);
           tokens[index]->SetCharLit(L'\n');
-          tokens[index]->SetLineNbr(line_nbr);
-          tokens[index]->SetFileName(filename);
           NextChar();
           NextChar();
           return;
@@ -881,8 +876,6 @@ void Scanner::ParseToken(int index)
         case L'r':
           tokens[index]->SetType(TOKEN_CHAR_LIT);
           tokens[index]->SetCharLit(L'\r');
-          tokens[index]->SetLineNbr(line_nbr);
-          tokens[index]->SetFileName(filename);
           NextChar();
           NextChar();
           return;
@@ -890,8 +883,6 @@ void Scanner::ParseToken(int index)
         case L't':
           tokens[index]->SetType(TOKEN_CHAR_LIT);
           tokens[index]->SetCharLit(L'\t');
-          tokens[index]->SetLineNbr(line_nbr);
-          tokens[index]->SetFileName(filename);
           NextChar();
           NextChar();
           return;
@@ -899,8 +890,6 @@ void Scanner::ParseToken(int index)
         case L'a':
           tokens[index]->SetType(TOKEN_CHAR_LIT);
           tokens[index]->SetCharLit(L'\a');
-          tokens[index]->SetLineNbr(line_nbr);
-          tokens[index]->SetFileName(filename);
           NextChar();
           NextChar();
           return;
@@ -908,8 +897,6 @@ void Scanner::ParseToken(int index)
         case L'b':
           tokens[index]->SetType(TOKEN_CHAR_LIT);
           tokens[index]->SetCharLit(L'\b');
-          tokens[index]->SetLineNbr(line_nbr);
-          tokens[index]->SetFileName(filename);
           NextChar();
           NextChar();
           return;
@@ -917,8 +904,6 @@ void Scanner::ParseToken(int index)
         case L'f':
           tokens[index]->SetType(TOKEN_CHAR_LIT);
           tokens[index]->SetCharLit(L'\f');
-          tokens[index]->SetLineNbr(line_nbr);
-          tokens[index]->SetFileName(filename);
           NextChar();
           NextChar();
           return;
@@ -927,8 +912,6 @@ void Scanner::ParseToken(int index)
         case L'\\':
           tokens[index]->SetType(TOKEN_CHAR_LIT);
           tokens[index]->SetCharLit(L'\\');
-          tokens[index]->SetLineNbr(line_nbr);
-          tokens[index]->SetFileName(filename);
           NextChar();
           NextChar();
           return;
@@ -936,8 +919,6 @@ void Scanner::ParseToken(int index)
         case L'\'':
           tokens[index]->SetType(TOKEN_CHAR_LIT);
           tokens[index]->SetCharLit(L'\'');
-          tokens[index]->SetLineNbr(line_nbr);
-          tokens[index]->SetFileName(filename);
           NextChar();
           NextChar();
           return;
@@ -945,8 +926,6 @@ void Scanner::ParseToken(int index)
         case L'0':
           tokens[index]->SetType(TOKEN_CHAR_LIT);
           tokens[index]->SetCharLit(L'\0');
-          tokens[index]->SetLineNbr(line_nbr);
-          tokens[index]->SetFileName(filename);
           NextChar();
           NextChar();
           return;
@@ -955,8 +934,6 @@ void Scanner::ParseToken(int index)
       // error
       else {
         tokens[index]->SetType(TOKEN_UNKNOWN);
-        tokens[index]->SetLineNbr(line_nbr);
-        tokens[index]->SetFileName(filename);
         NextChar();
         return;
       }
@@ -964,15 +941,11 @@ void Scanner::ParseToken(int index)
       // error
       if(nxt_char != L'\'') {
         tokens[index]->SetType(TOKEN_UNKNOWN);
-        tokens[index]->SetLineNbr(line_nbr);
-        tokens[index]->SetFileName(filename);
         NextChar();
         return;
       } else {
         tokens[index]->SetType(TOKEN_CHAR_LIT);
         tokens[index]->SetCharLit(cur_char);
-        tokens[index]->SetLineNbr(line_nbr);
-        tokens[index]->SetFileName(filename);
         NextChar();
         NextChar();
         return;
@@ -1025,8 +998,6 @@ void Scanner::ParseToken(int index)
           // error
           if(double_state || hex_state) {
             tokens[index]->SetType(TOKEN_UNKNOWN);
-            tokens[index]->SetLineNbr(line_nbr);
-            tokens[index]->SetFileName(filename);
             NextChar();
             break;
           }
@@ -1036,8 +1007,6 @@ void Scanner::ParseToken(int index)
           // error
           if(double_state != 1) {
             tokens[index]->SetType(TOKEN_UNKNOWN);
-            tokens[index]->SetLineNbr(line_nbr);
-            tokens[index]->SetFileName(filename);
             NextChar();
             break;
           }
@@ -1051,8 +1020,6 @@ void Scanner::ParseToken(int index)
           // error
           if(double_state) {
             tokens[index]->SetType(TOKEN_UNKNOWN);
-            tokens[index]->SetLineNbr(line_nbr);
-            tokens[index]->SetFileName(filename);
             NextChar();
             break;
           }
@@ -1078,8 +1045,6 @@ void Scanner::ParseToken(int index)
       }
       else if(hex_state || double_state) {
         tokens[index]->SetType(TOKEN_UNKNOWN);
-        tokens[index]->SetLineNbr(line_nbr);
-        tokens[index]->SetFileName(filename);
       }
       else {
         ParseInteger(index);
@@ -1088,19 +1053,18 @@ void Scanner::ParseToken(int index)
     }
     // other
     else {
+      tokens[index]->SetFileName(filename);
+      tokens[index]->SetLineNbr(line_nbr);
+      
       switch(cur_char) {
       case L':':
         if(nxt_char == L'=') {
           NextChar();
           tokens[index]->SetType(TOKEN_ASSIGN);
-          tokens[index]->SetLineNbr(line_nbr);
-          tokens[index]->SetFileName(filename);
           NextChar();
         } 
         else {
           tokens[index]->SetType(TOKEN_COLON);
-          tokens[index]->SetLineNbr(line_nbr);
-          tokens[index]->SetFileName(filename);
           NextChar();
         }
         break;
@@ -1109,28 +1073,20 @@ void Scanner::ParseToken(int index)
         if(nxt_char == L'>') {
           NextChar();
           tokens[index]->SetType(TOKEN_ASSESSOR);
-          tokens[index]->SetLineNbr(line_nbr);
-          tokens[index]->SetFileName(filename);
           NextChar();
         } 
         else if(nxt_char == L'-') {
           NextChar();
           tokens[index]->SetType(TOKEN_SUB_SUB);
-          tokens[index]->SetLineNbr(line_nbr);
-          tokens[index]->SetFileName(filename);
           NextChar();
         }
         else if(nxt_char == L'=') {
           NextChar();
           tokens[index]->SetType(TOKEN_SUB_ASSIGN);
-          tokens[index]->SetLineNbr(line_nbr);
-          tokens[index]->SetFileName(filename);
           NextChar();
         } 
         else {
           tokens[index]->SetType(TOKEN_SUB);
-          tokens[index]->SetLineNbr(line_nbr);
-          tokens[index]->SetFileName(filename);
           NextChar();
         }
         break;
@@ -1139,98 +1095,70 @@ void Scanner::ParseToken(int index)
         if(alt_syntax && nxt_char == L'=') {
           NextChar();
           tokens[index]->SetType(TOKEN_NEQL);
-          tokens[index]->SetLineNbr(line_nbr);
-          tokens[index]->SetFileName(filename);
           NextChar();
         }
         else if(alt_syntax) {
           tokens[index]->SetType(TOKEN_NOT);
-          tokens[index]->SetLineNbr(line_nbr);
-          tokens[index]->SetFileName(filename);
           NextChar();
         }
         else {
           tokens[index]->SetType(TOKEN_UNKNOWN);
-          tokens[index]->SetLineNbr(line_nbr);
-          tokens[index]->SetFileName(filename);
           NextChar();
         }
         break;
         
       case L'{':
         tokens[index]->SetType(TOKEN_OPEN_BRACE);
-        tokens[index]->SetLineNbr(line_nbr);
-        tokens[index]->SetFileName(filename);
         NextChar();
         break;
 
       case L'.':
         tokens[index]->SetType(TOKEN_PERIOD);
-        tokens[index]->SetLineNbr(line_nbr);
-        tokens[index]->SetFileName(filename);
         NextChar();
         break;
 
       case L'~':
         tokens[index]->SetType(TOKEN_TILDE);
-        tokens[index]->SetLineNbr(line_nbr);
-        tokens[index]->SetFileName(filename);
         NextChar();
         break;
 
       case L'\\':
         tokens[index]->SetType(TOKEN_BACK_SLASH);
-        tokens[index]->SetLineNbr(line_nbr);
-        tokens[index]->SetFileName(filename);
         NextChar();
         break;
 
       case L'}':
         tokens[index]->SetType(TOKEN_CLOSED_BRACE);
-        tokens[index]->SetLineNbr(line_nbr);
-        tokens[index]->SetFileName(filename);
         NextChar();
         break;
 
       case L'[':
         tokens[index]->SetType(TOKEN_OPEN_BRACKET);
-        tokens[index]->SetLineNbr(line_nbr);
-        tokens[index]->SetFileName(filename);
         NextChar();
         break;
 
       case L']':
         tokens[index]->SetType(TOKEN_CLOSED_BRACKET);
-        tokens[index]->SetLineNbr(line_nbr);
-        tokens[index]->SetFileName(filename);
         NextChar();
         break;
 
       case L'(':
         tokens[index]->SetType(TOKEN_OPEN_PAREN);
-        tokens[index]->SetLineNbr(line_nbr);
-        tokens[index]->SetFileName(filename);
         NextChar();
         break;
 
       case L')':
         tokens[index]->SetType(TOKEN_CLOSED_PAREN);
-        tokens[index]->SetLineNbr(line_nbr);
-        tokens[index]->SetFileName(filename);
         NextChar();
         break;
 
       case L',':
         tokens[index]->SetType(TOKEN_COMMA);
-        tokens[index]->SetLineNbr(line_nbr);
-        tokens[index]->SetFileName(filename);
         NextChar();
         break;
 
       case L';':
         tokens[index]->SetType(TOKEN_SEMI_COLON);
-        tokens[index]->SetLineNbr(line_nbr);
-        tokens[index]->SetFileName(filename);
         NextChar();
         break;
 
@@ -1238,14 +1166,10 @@ void Scanner::ParseToken(int index)
         if(alt_syntax && nxt_char == L'&') {
           NextChar();
           tokens[index]->SetType(TOKEN_AND);
-          tokens[index]->SetLineNbr(line_nbr);
-          tokens[index]->SetFileName(filename);
           NextChar();
         }
         else {
           tokens[index]->SetType(TOKEN_AND);
-          tokens[index]->SetLineNbr(line_nbr);
-          tokens[index]->SetFileName(filename);
           NextChar();
         }
         break;
@@ -1254,22 +1178,16 @@ void Scanner::ParseToken(int index)
         if(alt_syntax && nxt_char == L'|') {
           NextChar();
           tokens[index]->SetType(TOKEN_OR);
-          tokens[index]->SetLineNbr(line_nbr);
-          tokens[index]->SetFileName(filename);
           NextChar();
         }
         else {
           tokens[index]->SetType(TOKEN_OR);
-          tokens[index]->SetLineNbr(line_nbr);
-          tokens[index]->SetFileName(filename);
           NextChar();
         }
         break;
 
       case L'?':
         tokens[index]->SetType(TOKEN_QUESTION);
-        tokens[index]->SetLineNbr(line_nbr);
-        tokens[index]->SetFileName(filename);
         NextChar();
         break;
 
@@ -1278,28 +1196,20 @@ void Scanner::ParseToken(int index)
           if(nxt_char == L'=') {
             NextChar();
             tokens[index]->SetType(TOKEN_EQL);
-            tokens[index]->SetLineNbr(line_nbr);
-            tokens[index]->SetFileName(filename);
             NextChar();
           }
           else {
             tokens[index]->SetType(TOKEN_ASSIGN);
-            tokens[index]->SetLineNbr(line_nbr);
-            tokens[index]->SetFileName(filename);
             NextChar();
           }
         }
         else if(nxt_char == L'>') {
           NextChar();
           tokens[index]->SetType(TOKEN_LAMBDA);
-          tokens[index]->SetLineNbr(line_nbr);
-          tokens[index]->SetFileName(filename);
           NextChar();
         }
         else {
           tokens[index]->SetType(TOKEN_EQL);
-          tokens[index]->SetLineNbr(line_nbr);
-          tokens[index]->SetFileName(filename);
           NextChar();
         }
         break;
@@ -1309,35 +1219,25 @@ void Scanner::ParseToken(int index)
           NextChar();
           if(alt_syntax) {
             tokens[index]->SetType(TOKEN_UNKNOWN);
-            tokens[index]->SetLineNbr(line_nbr);
-            tokens[index]->SetFileName(filename);
             NextChar();
           }
           else {
             tokens[index]->SetType(TOKEN_NEQL);
-            tokens[index]->SetLineNbr(line_nbr);
-            tokens[index]->SetFileName(filename);
             NextChar();
           }
         } 
         else if(nxt_char == L'=') {
           NextChar();
           tokens[index]->SetType(TOKEN_LEQL);
-          tokens[index]->SetLineNbr(line_nbr);
-          tokens[index]->SetFileName(filename);
           NextChar();
         } 
         else if(nxt_char == L'<') {
           NextChar();          
           tokens[index]->SetType(TOKEN_SHL);
-          tokens[index]->SetLineNbr(line_nbr);
-          tokens[index]->SetFileName(filename);
           NextChar();
         }
         else {
           tokens[index]->SetType(TOKEN_LES);
-          tokens[index]->SetLineNbr(line_nbr);
-          tokens[index]->SetFileName(filename);
           NextChar();
         }
         break;
@@ -1346,21 +1246,15 @@ void Scanner::ParseToken(int index)
         if(nxt_char == L'=') {
           NextChar();
           tokens[index]->SetType(TOKEN_GEQL);
-          tokens[index]->SetLineNbr(line_nbr);
-          tokens[index]->SetFileName(filename);
           NextChar();
         }
         else if(nxt_char == L'>') {
           NextChar();
           tokens[index]->SetType(TOKEN_SHR);
-          tokens[index]->SetLineNbr(line_nbr);
-          tokens[index]->SetFileName(filename);
           NextChar();
         }
         else {
           tokens[index]->SetType(TOKEN_GTR);
-          tokens[index]->SetLineNbr(line_nbr);
-          tokens[index]->SetFileName(filename);
           NextChar();
         }
         break;
@@ -1369,21 +1263,15 @@ void Scanner::ParseToken(int index)
         if(nxt_char == L'=') {
           NextChar();
           tokens[index]->SetType(TOKEN_ADD_ASSIGN);
-          tokens[index]->SetLineNbr(line_nbr);
-          tokens[index]->SetFileName(filename);
           NextChar();
         }
         else if(nxt_char == L'+') {
           NextChar();
           tokens[index]->SetType(TOKEN_ADD_ADD);
-          tokens[index]->SetLineNbr(line_nbr);
-          tokens[index]->SetFileName(filename);
           NextChar();
         }
         else {
           tokens[index]->SetType(TOKEN_ADD);
-          tokens[index]->SetLineNbr(line_nbr);
-          tokens[index]->SetFileName(filename);
           NextChar();
         }
         break;
@@ -1392,14 +1280,10 @@ void Scanner::ParseToken(int index)
         if(nxt_char == L'=') {
           NextChar();
           tokens[index]->SetType(TOKEN_MUL_ASSIGN);
-          tokens[index]->SetLineNbr(line_nbr);
-          tokens[index]->SetFileName(filename);
           NextChar();
         }
         else {
           tokens[index]->SetType(TOKEN_MUL);
-          tokens[index]->SetLineNbr(line_nbr);
-          tokens[index]->SetFileName(filename);
           NextChar();
         }
         break;
@@ -1408,62 +1292,46 @@ void Scanner::ParseToken(int index)
         if(nxt_char == L'=') {
           NextChar();
           tokens[index]->SetType(TOKEN_DIV_ASSIGN);
-          tokens[index]->SetLineNbr(line_nbr);
-          tokens[index]->SetFileName(filename);
           NextChar();
         }
         else {
           tokens[index]->SetType(TOKEN_DIV);
-          tokens[index]->SetLineNbr(line_nbr);
-          tokens[index]->SetFileName(filename);
           NextChar();
         }
         break;
 
       case L'%':
         tokens[index]->SetType(TOKEN_MOD);
-        tokens[index]->SetLineNbr(line_nbr);
-        tokens[index]->SetFileName(filename);
         NextChar();
         break;
         
         // L'≠':
       case 0x2260:
         tokens[index]->SetType(TOKEN_NEQL);
-        tokens[index]->SetLineNbr(line_nbr);
-        tokens[index]->SetFileName(filename);
         NextChar();
         break;
 
         // L'←':
       case 0x2190:
         tokens[index]->SetType(TOKEN_ASSIGN);
-        tokens[index]->SetLineNbr(line_nbr);
-        tokens[index]->SetFileName(filename);
         NextChar();
         break;
 
       // L'→':
       case 0x2192:
         tokens[index]->SetType(TOKEN_ASSESSOR);
-        tokens[index]->SetLineNbr(line_nbr);
-        tokens[index]->SetFileName(filename);
         NextChar();
         break;
 
         // L'≤':
       case 0x2264:
         tokens[index]->SetType(TOKEN_LEQL);
-        tokens[index]->SetLineNbr(line_nbr);
-        tokens[index]->SetFileName(filename);
         NextChar();
         break;
 
         // L'≥':
       case 0x2265:
         tokens[index]->SetType(TOKEN_GEQL);
-        tokens[index]->SetLineNbr(line_nbr);
-        tokens[index]->SetFileName(filename);
         NextChar();
         break;
 
@@ -1475,8 +1343,6 @@ void Scanner::ParseToken(int index)
       default:
         ProcessWarning();
         tokens[index]->SetType(TOKEN_UNKNOWN);
-        tokens[index]->SetLineNbr(line_nbr);
-        tokens[index]->SetFileName(filename);
         NextChar();
         break;
       }
