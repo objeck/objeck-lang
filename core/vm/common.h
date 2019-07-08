@@ -545,29 +545,38 @@ class StackClass {
   size_t* cls_mem;
   bool is_debug;
 
-  long InitMemory(long size) {
+  long InitializeClassMemory(long size) {
+#if defined(_WIN64) || defined(_X64)
+    // TODO: memory size is doubled the compiler assumes that integers are 4-bytes.
+    // In 64-bit mode integers and floats are 8-bytes. This approach allocates more
+    // memory for floats (a.k.a double) than needed.
     size *= 2;
-    cls_mem = (size_t*)calloc(size, sizeof(size_t));
-    memset(cls_mem, 0, size * sizeof(size_t));    
+#endif
+    if(size > 0) {
+      cls_mem = (size_t*)calloc(size, sizeof(char));
+    }
+    else {
+      cls_mem = nullptr;
+    }
     return size;
   }
 
  public:
-  StackClass(long i, const wstring &ne, const wstring &fn, long p, bool v, StackDclr** cdclr, long cn, 
-             StackDclr** idclr, map<int, pair<int, StackDclr**> > ldclr, long in, long cs, long is, bool b) {
+  StackClass(long i, const wstring &cn, const wstring &fn, long p, bool v, StackDclr** cdclrs, long ccount,
+             StackDclr** idclrs, map<int, pair<int, StackDclr**> > fdclr, long icount, long cspace, long ispace, bool d) {
     id = i;
-    name = ne;
+    name = cn;
     file_name = fn;
     pid = p;
     is_virtual = v;
-    cls_dclrs = cdclr;
-    cls_num_dclrs = cn;
-    inst_dclrs = idclr;
-    closure_dclrs = ldclr;
-    inst_num_dclrs = in;
-    cls_space = InitMemory(cs);
-    inst_space  = is;
-    is_debug = b;
+    cls_dclrs = cdclrs;
+    cls_num_dclrs = ccount;
+    inst_dclrs = idclrs;
+    closure_dclrs = fdclr;
+    inst_num_dclrs = icount;
+    cls_space = InitializeClassMemory(cspace);
+    inst_space = ispace;
+    is_debug = d;
   }
 
   ~StackClass() {
