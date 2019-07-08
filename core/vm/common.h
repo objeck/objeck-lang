@@ -546,7 +546,8 @@ class StackClass {
   bool is_debug;
 
   long InitMemory(long size) {
-    cls_mem = new size_t[size];
+    size *= 2;
+    cls_mem = (size_t*)calloc(size, sizeof(size_t));
     memset(cls_mem, 0, size * sizeof(size_t));    
     return size;
   }
@@ -615,7 +616,7 @@ class StackClass {
     methods = nullptr;
 
     if(cls_mem) {
-      delete[] cls_mem;
+      free(cls_mem);
       cls_mem = nullptr;
     }
   }
