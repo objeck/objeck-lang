@@ -421,7 +421,7 @@ class LibraryClass {
   multimap<const wstring, LibraryMethod*> unqualified_methods;
   backend::IntermediateDeclarations* cls_entries;
   backend::IntermediateDeclarations* inst_entries;
-  map<const wstring, backend::IntermediateDeclarations*> lib_closure_entries;
+  map<wstring, backend::IntermediateDeclarations*> lib_closure_entries;
   bool is_interface;
   bool is_virtual;
   bool is_generic;
@@ -451,7 +451,7 @@ class LibraryClass {
    
    LibraryClass(const wstring& n, const wstring& p, const vector<wstring> i, bool is, const vector<wstring> g, bool v, const int cs, 
                 const int in, backend::IntermediateDeclarations* ce, backend::IntermediateDeclarations* ie, 
-                map<const wstring, backend::IntermediateDeclarations*> le, Library* l, const wstring &fn, bool d);
+                map<wstring, backend::IntermediateDeclarations*> le, Library* l, const wstring &fn, bool d);
    
   ~LibraryClass() {   
     // clean up
