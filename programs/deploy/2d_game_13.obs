@@ -749,7 +749,7 @@ class Player {
 		@rect->SetBottom(@loc->GetY() - @rect->GetHeight() / 2);
 		collides := @level->PlatformCollisions(@self);
         each(i : collides) {
-        	platform := collides->Get(i)->As(StaticPlatform);
+        	platform := collides->Get(i);
        		if(@vel->GetY() < 0.01) {
 				@rect->SetTop(platform->GetBottom());
             	@loc->SetY(platform->GetBottom() + @rect->GetHeight() / 2);
@@ -1127,7 +1127,7 @@ class Level {
 		@shift_x += shift_x;
 
 		each(i : @platforms) {
-			platform := @platforms->Get(i)->As(StaticPlatform);
+			platform := @platforms->Get(i);
 			platform->AddX(shift_x);
 		};
 
@@ -1137,12 +1137,12 @@ class Level {
 		};
 
 		each(i : @hanging_platforms) {
-			hanging_platform := @hanging_platforms->Get(i)->As(HangingPlatform);
+			hanging_platform := @hanging_platforms->Get(i);
 			hanging_platform->AddX(shift_x);
 		};
 
 		each(i : @spiders) {
-			platform := @spiders->Get(i)->As(Spider);
+			platform := @spiders->Get(i);
 			platform->AddX(shift_x);
 		};
 
