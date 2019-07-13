@@ -1356,7 +1356,7 @@ bool Runtime::Debugger::FileExists(const wstring&file_name, bool is_exe /*= fals
 {
   const string name = UnicodeToBytes(file_name);
   const string ending = ".obl";
-  if(ending.size() > name.size() && !std::equal(ending.rbegin(), ending.rend(), name.rbegin())) {
+  if(ending.size() > name.size() && !equal(ending.rbegin(), ending.rend(), name.rbegin())) {
     return false;
   }
 
@@ -1570,10 +1570,6 @@ Command* Runtime::Debugger::ProcessCommand(const wstring &line) {
       ProcessPrint(static_cast<Print*>(command));
       break;
 
-    case MEMORY_COMMAND:
-      ProcessMemory(static_cast<Print*>(command));
-      break;
-
     case RUN_COMMAND:
       if(!cur_program) {
         ProcessRun();
@@ -1630,6 +1626,19 @@ Command* Runtime::Debugger::ProcessCommand(const wstring &line) {
         wcout << L"program is not running." << endl;
       }
       cur_line_num = -2;
+      break;
+
+    case MEMORY_COMMAND:
+      if(interpreter) {
+        const size_t alloc_mem = MemoryManager::GetAllocationSize();
+        const size_t max_mem = MemoryManager::GetMaxMemory();
+        streamsize ss = wcout.precision();
+        wcout << L"memory: allocated=" << fixed << setprecision(2) << (alloc_mem / 1024) << L"k, threshold=" << (max_mem / 1024) << L"k" << endl;
+        wcout.precision(ss);
+      }
+      else {
+        wcout << L"program is not running." << endl;
+      }
       break;
 
     case INFO_COMMAND:
