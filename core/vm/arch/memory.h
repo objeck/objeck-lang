@@ -235,6 +235,16 @@ class MemoryManager {
     
     return -1;
   }
+
+#ifdef _DEBUGGER
+  static size_t GetAllocationSize() {
+    return allocation_size;
+  }
+
+  static size_t GetMaxMemory() {
+    return mem_max_size;
+  }
+#endif
 };
 
 #endif

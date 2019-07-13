@@ -86,7 +86,6 @@ class Parser {
   Command* ParseList(int depth);
   Command* ParseBreakDelete(bool is_break, int depth);
   Command* ParsePrint(int depth);
-  Command* ParseMemory(int depth);
   Command* ParseInfo(int depth);
   Command* ParseFrame(int depth);
   ExpressionList* ParseIndices(int depth);

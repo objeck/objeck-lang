@@ -136,7 +136,7 @@ Command* Parser::ParseLine(const wstring &line)
 Command* Parser::ParseStatement(int depth)
 {
   Command* command;
-  switch(GetToken()) {
+ switch(GetToken()) {
     case TOKEN_EXE_ID:
       command = ParseLoad(EXE_COMMAND, depth + 1);
       break;
@@ -193,6 +193,11 @@ Command* Parser::ParseStatement(int depth)
       command = TreeFactory::Instance()->MakeBasicCommand(CONT_COMMAND);
       break;
 
+    case TOKEN_MEMORY_ID:
+      NextToken();
+      command = TreeFactory::Instance()->MakeBasicCommand(MEMORY_COMMAND);
+      break;
+
     case TOKEN_BREAK_ID:
       command = ParseBreakDelete(true, depth + 1);
       break;
@@ -203,10 +208,6 @@ Command* Parser::ParseStatement(int depth)
 
     case TOKEN_PRINT_ID:
       command = ParsePrint(depth + 1);
-      break;
-
-    case TOKEN_MEMORY_ID:
-      command = ParseMemory(depth + 1);
       break;
 
     case TOKEN_INFO_ID:
@@ -338,15 +339,6 @@ Command* Parser::ParseBreakDelete(bool is_break, int depth) {
 Command* Parser::ParsePrint(int depth) {
   NextToken();
   return TreeFactory::Instance()->MakePrint(ParseExpression(depth + 1));
-}
-
-Command* Parser::ParseMemory(int depth) {
-  /*
-  NextToken();
-  return TreeFactory::Instance()->MakePrint(ParseExpression(depth + 1));
-  */
-
-  return nullptr;
 }
 
 Command* Parser::ParseInfo(int depth) {

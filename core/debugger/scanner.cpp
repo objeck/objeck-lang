@@ -135,6 +135,7 @@ void Scanner::CheckIdentifier(int index)
     case TOKEN_BREAK_ID:
     case TOKEN_BREAKS_ID:
     case TOKEN_PRINT_ID:
+    case TOKEN_MEMORY_ID:
     case TOKEN_INFO_ID:
     case TOKEN_FRAME_ID:
     case TOKEN_CLEAR_ID:
