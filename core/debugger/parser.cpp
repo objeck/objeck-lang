@@ -205,6 +205,10 @@ Command* Parser::ParseStatement(int depth)
       command = ParsePrint(depth + 1);
       break;
 
+    case TOKEN_MEMORY_ID:
+      command = ParseMemory(depth + 1);
+      break;
+
     case TOKEN_INFO_ID:
       command = ParseInfo(depth + 1);
       break;
@@ -334,6 +338,15 @@ Command* Parser::ParseBreakDelete(bool is_break, int depth) {
 Command* Parser::ParsePrint(int depth) {
   NextToken();
   return TreeFactory::Instance()->MakePrint(ParseExpression(depth + 1));
+}
+
+Command* Parser::ParseMemory(int depth) {
+  /*
+  NextToken();
+  return TreeFactory::Instance()->MakePrint(ParseExpression(depth + 1));
+  */
+
+  return nullptr;
 }
 
 Command* Parser::ParseInfo(int depth) {
