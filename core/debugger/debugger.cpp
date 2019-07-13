@@ -1630,11 +1630,12 @@ Command* Runtime::Debugger::ProcessCommand(const wstring &line) {
 
     case MEMORY_COMMAND:
       if(interpreter) {
-        const size_t alloc_mem = MemoryManager::GetAllocationSize();
-        const size_t max_mem = MemoryManager::GetMaxMemory();
+        const double alloc_mem = (double)MemoryManager::GetAllocationSize() / 1024.0;
+        const double max_mem = MemoryManager::GetMaxMemory() / 1024.0;
         streamsize ss = wcout.precision();
-        wcout << L"memory: allocated=" << fixed << setprecision(2) << (alloc_mem / 1024) << L"k, threshold=" << (max_mem / 1024) << L"k" << endl;
+        wcout << L"memory: allocated=" << fixed << setprecision(2) << alloc_mem;
         wcout.precision(ss);
+        wcout << L"k, threshold=" << max_mem << L"k" << endl;
       }
       else {
         wcout << L"program is not running." << endl;
