@@ -147,6 +147,19 @@ namespace Runtime {
     // prints declarations
     void PrintDeclarations(StackDclr** dclrs, int dclrs_num);
 
+    wstring ToFloat(size_t value) {
+      wchar_t buffer[16];
+
+      if(value > 1000000) {
+        swprintf_s(buffer, L"%.2fM", (double)value / (double)1000000);
+      }
+      else {
+        swprintf_s(buffer, L"%.2fK", (double)value / (double)1000);
+      }
+
+      return buffer;
+    }
+
     void ClearProgram();
     void DoLoad();
     void ClearReload() {
