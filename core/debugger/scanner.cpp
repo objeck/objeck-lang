@@ -89,6 +89,8 @@ void Scanner::LoadKeywords()
   ident_map[L"?stack"] = TOKEN_STACK_ID;
   ident_map[L"?print"] = TOKEN_PRINT_ID;
   ident_map[L"?p"] = TOKEN_PRINT_ID;
+  ident_map[L"?memory"] = TOKEN_MEMORY_ID;
+  ident_map[L"?m"] = TOKEN_MEMORY_ID;
   ident_map[L"?info"] = TOKEN_INFO_ID;
   ident_map[L"?i"] = TOKEN_INFO_ID;
   ident_map[L"?frame"] = TOKEN_FRAME_ID;
@@ -133,6 +135,7 @@ void Scanner::CheckIdentifier(int index)
     case TOKEN_BREAK_ID:
     case TOKEN_BREAKS_ID:
     case TOKEN_PRINT_ID:
+    case TOKEN_MEMORY_ID:
     case TOKEN_INFO_ID:
     case TOKEN_FRAME_ID:
     case TOKEN_CLEAR_ID:

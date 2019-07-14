@@ -136,7 +136,7 @@ Command* Parser::ParseLine(const wstring &line)
 Command* Parser::ParseStatement(int depth)
 {
   Command* command;
-  switch(GetToken()) {
+ switch(GetToken()) {
     case TOKEN_EXE_ID:
       command = ParseLoad(EXE_COMMAND, depth + 1);
       break;
@@ -191,6 +191,11 @@ Command* Parser::ParseStatement(int depth)
     case TOKEN_CONT_ID:
       NextToken();
       command = TreeFactory::Instance()->MakeBasicCommand(CONT_COMMAND);
+      break;
+
+    case TOKEN_MEMORY_ID:
+      NextToken();
+      command = TreeFactory::Instance()->MakeBasicCommand(MEMORY_COMMAND);
       break;
 
     case TOKEN_BREAK_ID:

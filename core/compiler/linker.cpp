@@ -403,7 +403,7 @@ void Linker::Load()
  ****************************/
 LibraryClass::LibraryClass(const wstring& n, const wstring& p, const vector<wstring> i, bool is, const vector<wstring> g, 
                            bool v, const int cs, const int in, backend::IntermediateDeclarations* ce, backend::IntermediateDeclarations* ie, 
-                           map<const wstring, backend::IntermediateDeclarations*> le, Library* l, const wstring& fn, bool d)
+                           map<wstring, backend::IntermediateDeclarations*> le, Library* l, const wstring& fn, bool d)
 {
   name = n;
   parent_name = p;
@@ -471,7 +471,7 @@ map<backend::IntermediateDeclarations*, std::pair<std::wstring, int>> LibraryCla
 {
   map<backend::IntermediateDeclarations*, pair<wstring, int> > closure_entries;
 
-  map<const wstring, backend::IntermediateDeclarations*>::iterator lamba_iter;
+  map<wstring, backend::IntermediateDeclarations*>::iterator lamba_iter;
   for(lamba_iter = lib_closure_entries.begin(); lamba_iter != lib_closure_entries.end(); ++lamba_iter) {
     const wstring lib_mthd_name = lamba_iter->first;
     LibraryMethod* lib_method = GetMethod(lib_mthd_name);
@@ -790,7 +790,7 @@ void Library::LoadClasses()
     backend::IntermediateDeclarations* inst_entries = LoadEntries(is_debug);
 
     // read closure entries
-    map<const wstring, backend::IntermediateDeclarations*> closure_entries;
+    map<wstring, backend::IntermediateDeclarations*> closure_entries;
     const int num_lambda_dclrs = ReadInt();
     for(int i = 0; i < num_lambda_dclrs; ++i) {
       const wstring lambda_dclrs_name = ReadString();

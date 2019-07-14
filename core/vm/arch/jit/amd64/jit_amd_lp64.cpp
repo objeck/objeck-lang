@@ -4675,14 +4675,10 @@ void Runtime::JitCompilerIA64::StackCallback(const long instr_id, StackInstr* in
       indices[dim++] = value;
     }
 
-    size *= 2;
-    size_t* mem = MemoryManager::AllocateArray((long)(size + dim + 2), INT_TYPE, op_stack, *stack_pos);
-#ifdef _DEBUG
-    wcout << L"jit oper: NEW_FLOAT_ARY: dim=" << dim << L"; size=" << size
-      << L"; index=" << (*stack_pos) << L"; mem=" << mem << endl;
-#endif
-    mem[0] = size / 2;
+    size_t* mem = (size_t*)MemoryManager::AllocateArray((long)(size + dim + 2), INT_TYPE, op_stack, *stack_pos);
+    mem[0] = size;
     mem[1] = dim;
+
     memcpy(mem + 2, indices, dim * sizeof(size_t));
     PushInt(op_stack, stack_pos, (size_t)mem);
   }
