@@ -4,7 +4,7 @@
 ~#
 
 use System.Concurrency;
-use Collection;
+use Collection.Generic;
 use Game.SDL2;
 use Game.Framework;
 
@@ -587,7 +587,7 @@ class Player {
 		framework := game->GetFramework();
 		base_path := game->GetBasePath();
 
-		clips := Vector->New();
+		clips := Vector->New()<Rect>;
 		clips->AddBack(Rect->New(0, 0, 32, 52));
 		clips->AddBack(Rect->New(32, 0, 32, 52));
 		clips->AddBack(Rect->New(64, 0, 32, 52));
@@ -749,7 +749,7 @@ class Player {
 		@rect->SetBottom(@loc->GetY() - @rect->GetHeight() / 2);
 		collides := @level->PlatformCollisions(@self);
         each(i : collides) {
-        	platform := collides->Get(i)->As(StaticPlatform);
+        	platform := collides->Get(i);
        		if(@vel->GetY() < 0.01) {
 				@rect->SetTop(platform->GetBottom());
             	@loc->SetY(platform->GetBottom() + @rect->GetHeight() / 2);
@@ -950,10 +950,10 @@ class MovingPlatform from StaticPlatform {
 class Level {
 	@game : Game;
 	@player : Player;
-	@platforms : Vector;
-	@gems : Vector;
-	@spiders : Vector;
-	@hanging_platforms : Vector;
+	@platforms : Vector<StaticPlatform>;
+	@gems : Vector<Gem>;
+	@spiders : Vector<Spider>;
+	@hanging_platforms : Vector<HangingPlatform>;
 	@shift_x : Int;
 	@game_over : Bool;
 	@end_post : SignPost;
@@ -978,8 +978,8 @@ class Level {
 		@game_over := true;
 	}
 
-	method : GeneratePlatforms(base_path : String, framework : GameFramework) ~ Vector {
-		platforms := Vector->New();
+	method : GeneratePlatforms(base_path : String, framework : GameFramework) ~ Vector<StaticPlatform> {
+		platforms := Vector->New()<StaticPlatform>;
 
 		width := 110;
 		height := 20;
@@ -1026,8 +1026,8 @@ class Level {
 		return y_pos;
 	}
 
-	method : GenerateHangingPlatform(base_path : String, framework : GameFramework) ~ Vector {
-		logs := Vector->New();
+	method : GenerateHangingPlatform(base_path : String, framework : GameFramework) ~ Vector<HangingPlatform> {
+		logs := Vector->New()<HangingPlatform>;
 
 		log_path := String->New(base_path);
 		log_path += "/media/log.png";
@@ -1047,13 +1047,13 @@ class Level {
 		return logs;
 	}
 
-	method : GenerateGems(base_path : String, framework : GameFramework) ~ Vector {
-		gems := Vector->New();
+	method : GenerateGems(base_path : String, framework : GameFramework) ~ Vector<Gem> {
+		gems := Vector->New()<Gem>;
 
 		gems_path := String->New(base_path);
 		gems_path += "/media/gems.png";
 
-		clips := Vector->New();
+		clips := Vector->New()<Rect>;
 		clips->AddBack(Rect->New(0, 0, 32, 32));
 		clips->AddBack(Rect->New(32, 0, 32, 32));
 		clips->AddBack(Rect->New(64, 0, 32, 32));
@@ -1064,7 +1064,7 @@ class Level {
 		each(i : @platforms) {
 			flip := Int->Random(3);
 			if(flip % 3 = 0) {
-				platform := @platforms->Get(i)->As(StaticPlatform);
+				platform := @platforms->Get(i);
 				
 				x_offset : Int;
 				value := Int->Random(10, 30);
@@ -1085,8 +1085,8 @@ class Level {
 		return gems;
 	}
 
-	method : GeneratSpiders(base_path : String, framework : GameFramework) ~ Vector {
-		spiders := Vector->New();
+	method : GeneratSpiders(base_path : String, framework : GameFramework) ~ Vector<Spider> {
+		spiders := Vector->New()<Spider>;
 
 		spider_path := String->New(base_path);
 		spider_path += "/media/spider.png";
@@ -1127,22 +1127,22 @@ class Level {
 		@shift_x += shift_x;
 
 		each(i : @platforms) {
-			platform := @platforms->Get(i)->As(StaticPlatform);
+			platform := @platforms->Get(i);
 			platform->AddX(shift_x);
 		};
 
 		each(i : @gems) {
-			platform := @gems->Get(i)->As(Gem);
+			platform := @gems->Get(i);
 			platform->AddX(shift_x);
 		};
 
 		each(i : @hanging_platforms) {
-			hanging_platform := @hanging_platforms->Get(i)->As(HangingPlatform);
+			hanging_platform := @hanging_platforms->Get(i);
 			hanging_platform->AddX(shift_x);
 		};
 
 		each(i : @spiders) {
-			platform := @spiders->Get(i)->As(Spider);
+			platform := @spiders->Get(i);
 			platform->AddX(shift_x);
 		};
 
@@ -1153,11 +1153,11 @@ class Level {
 		return @end_post->Collides(player->GetRect());
 	}
 
-	method : public : PlatformCollisions(player : Player) ~ Vector {
-		collides := Vector->New();
+	method : public : PlatformCollisions(player : Player) ~ Vector<StaticPlatform> {
+		collides := Vector->New()<StaticPlatform>;
 
 		each(i : @platforms) {
-        	obstacle := @platforms->Get(i)->As(StaticPlatform);
+        	obstacle := @platforms->Get(i);
         	if(obstacle->Collides(player->GetRect())) {
          		collides->AddBack(obstacle);
         	};
@@ -1166,11 +1166,11 @@ class Level {
         return collides;
     }
 
-    method : public : GemsCollisions(player : Player) ~ Vector {
-		collides := Vector->New();
+    method : public : GemsCollisions(player : Player) ~ Vector<Gem> {
+		collides := Vector->New()<Gem>;
 
 		each(i : @gems) {
-        	obstacle := @gems->Get(i)->As(Gem);
+        	obstacle := @gems->Get(i);
         	if(obstacle->Collides(player->GetRect())) {
         		collides->AddBack(obstacle);
         	};
@@ -1179,11 +1179,11 @@ class Level {
         return collides;
     }
 
-    method : public : HangingPlatformCollisions(player : Player) ~ Vector {
-		collides := Vector->New();
+    method : public : HangingPlatformCollisions(player : Player) ~ Vector<HangingPlatform> {
+		collides := Vector->New()<HangingPlatform>;
 
 		each(i : @hanging_platforms) {
-        	obstacle := @hanging_platforms->Get(i)->As(HangingPlatform);
+        	obstacle := @hanging_platforms->Get(i);
         	if(obstacle->Collides(player->GetRect())) {
         		collides->AddBack(obstacle);
         	};
@@ -1192,11 +1192,11 @@ class Level {
         return collides;
     }
 
-    method : public : SpiderCollisions(player : Player) ~ Vector {
-		collides := Vector->New();
+    method : public : SpiderCollisions(player : Player) ~ Vector<Spider> {
+		collides := Vector->New()<Spider>;
 
 		each(i : @spiders) {
-        	obstacle := @spiders->Get(i)->As(Spider);
+        	obstacle := @spiders->Get(i);
         	if(obstacle->Collides(player->GetRect())) {
         		collides->AddBack(obstacle);
         	};
@@ -1214,39 +1214,39 @@ class Level {
 		};
 
 		each(i : @spiders) {
-			@spiders->Get(i)->As(Spider)->Update();
+			@spiders->Get(i)->Update();
 		};
 
 		each(i : @hanging_platforms) {
-			@hanging_platforms->Get(i)->As(HangingPlatform)->Update();
+			@hanging_platforms->Get(i)->Update();
 		};
 	}
 
 	method : public : Draw(frame_count : Int)  ~ Nil {
 		if(<>@game_over) {
 			each(i : @gems) {
-				gem := @gems->Get(i)->As(Gem);
+				gem := @gems->Get(i);
 				if(<>(gem->GetRight() < 0 | gem->GetLeft() > GameConsts->SCREEN_WIDTH)) {
 					gem->Draw(frame_count);
 				};
 			};
 
 			each(i : @platforms) {
-				platform := @platforms->Get(i)->As(StaticPlatform);
+				platform := @platforms->Get(i);
 				if(<>(platform->GetRight() < 0 | platform->GetLeft() > GameConsts->SCREEN_WIDTH)) {
 					platform->Draw();
 				};
 			};
 
 			each(i : @spiders) {
-				spider := @spiders->Get(i)->As(Spider);
+				spider := @spiders->Get(i);
 				if(<>(spider->GetRight() < 0 | spider->GetLeft() > GameConsts->SCREEN_WIDTH)) {
 					spider->Draw(frame_count);
 				};
 			};
 
 			each(i : @hanging_platforms) {
-				hanging_platform := @hanging_platforms->Get(i)->As(HangingPlatform);
+				hanging_platform := @hanging_platforms->Get(i);
 				if(<>(hanging_platform->GetRight() < -300 | hanging_platform->GetLeft() > GameConsts->SCREEN_WIDTH + 300)) {
 					hanging_platform->Draw(frame_count);
 				};

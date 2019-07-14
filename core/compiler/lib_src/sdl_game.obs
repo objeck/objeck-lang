@@ -1,10 +1,10 @@
 #~~
 Objeck 2D gaming support
-Copyright (c) 2018 Randy Hollines
+Copyright (c) 2018-2019 Randy Hollines
 ~~#
 
 use Game.SDL2;
-use Collection;
+use Collection.Generic;
 
 #~
 Wrapper around SDL2 graphic libraries (sdl_game.obl)
@@ -14,9 +14,9 @@ bundle Game.Framework {
 	Animated sprite sheet
 	~#
 	class AnimatedImageSprite from ImageSprite {
-		@clips : Vector;
+		@clips : Vector<Rect>;
 		
-		New(renderer : Renderer, file : String, clips : Vector) {
+		New(renderer : Renderer, file : String, clips : Vector<Rect>) {
 			Parent(renderer, file);
 			if(@is_ok) {
 				@clips := clips;
@@ -26,7 +26,7 @@ bundle Game.Framework {
 		New(renderer : Renderer, file : String) {
 			Parent(renderer, file);
 			if(@is_ok) {
-				@clips := Vector->New();
+				@clips := Vector->New()<Rect>;
 			};
 		}
 
@@ -38,7 +38,7 @@ bundle Game.Framework {
 		~#
 		method : public : Render(x : Int, y : Int, index : Int) ~ Nil {
 			if(@is_ok & index > -1 & index < @clips->Size()) {
-				@clip := @clips->Get(index)->As(Rect);
+				@clip := @clips->Get(index);
 				RenderAll(x, y, @clip, @angle, Nil, @flip);
 			};
 		}
@@ -49,7 +49,7 @@ bundle Game.Framework {
 		~#
 		method : public : Render(index : Int) ~ Nil {
 			if(@is_ok & index > -1 & index < @clips->Size()) {
-				@clip := @clips->Get(index)->As(Rect);
+				@clip := @clips->Get(index);
 				RenderAll(@position->GetLeft(), @position->GetTop(), @clip, @angle, Nil, @flip);
 			};
 		}
@@ -82,11 +82,11 @@ bundle Game.Framework {
 		@y : Int;
 		@width : Int;
 		@height : Int;
-		@shapes : List;
+		@shapes : List<Shape>;
 
 		New(renderer : Renderer, file : String, colorkey : Color) {
 			@renderer := renderer;
-			@shapes := List->New();
+			@shapes := List->New()<Shape>;
 
 			@is_ok := LoadImage(file, colorkey);
 		}
@@ -1256,8 +1256,8 @@ bundle Game.Framework {
 		@fps : Int;
 		@frame_start : Int;
 
-		@shapes : Vector;
-		@mix_chunks : Vector;
+		@shapes : Vector<Shape>;
+		@mix_chunks : Vector<MixChunk>;
 		@music : MixMusic;
 
 		@font : Font;
@@ -1278,8 +1278,8 @@ bundle Game.Framework {
 		New(screen_width : Int, screen_height : Int, title : String, fps : Int, init_flags : Int) {
 			@fps := fps;
 			@frame_rate := 1000 / @fps;
-			@shapes := Vector->New();
-			@mix_chunks := Vector->New();
+			@shapes := Vector->New()<Shape>;
+			@mix_chunks := Vector->New()<MixChunk>;
 						
 			@is_ok := Init(screen_width, screen_height, title, init_flags);
 		}
@@ -1296,8 +1296,8 @@ bundle Game.Framework {
 				HardwareFlags->SDL_INIT_JOYSTICK;
 			@fps := 60;	
 			@frame_rate := 1000 / @fps;
-			@shapes := Vector->New();
-			@mix_chunks := Vector->New();
+			@shapes := Vector->New()<Shape>;
+			@mix_chunks := Vector->New()<MixChunk>;
 			
 			@is_ok := Init(screen_width, screen_height, title, init_flags);
 		}
@@ -1601,7 +1601,7 @@ bundle Game.Framework {
 		@param clips vector of rendering rectangles
 		@return animated image sprite
 		~#
-		method : public : AddAnimatedImageSprite(file : String, clips : Vector) ~ AnimatedImageSprite {
+		method : public : AddAnimatedImageSprite(file : String, clips : Vector<Rect>) ~ AnimatedImageSprite {
 			shape := AnimatedImageSprite->New(@renderer, file, clips);
 			SetOk(shape->IsOk());
 			@shapes->AddBack(shape);
@@ -1675,7 +1675,7 @@ bundle Game.Framework {
 		~#
 		method : public : FreeShapes() ~ Nil {
 			each(i : @shapes) {
-				shape := @shapes->Get(i)->As(Shape);
+				shape := @shapes->Get(i);
 				shape->Free();
 			};
 			@shapes->Empty();
@@ -1686,7 +1686,7 @@ bundle Game.Framework {
 		~#
 		method : public : FreeMixChunks() ~ Nil {
 			each(i : @mix_chunks) {
-				chunk := @mix_chunks->Get(i)->As(MixChunk);
+				chunk := @mix_chunks->Get(i);
 				chunk->Free();
 			};
 			@mix_chunks->Empty();

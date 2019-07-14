@@ -60,7 +60,6 @@ del  /s /q ..\..\programs\tiny\*.e
 
 REM build and update docs
 mkdir deploy64\doc 
-copy ..\..\docs\guide\objeck_lang.pdf deploy64\doc 
 mkdir deploy64\doc\syntax
 xcopy /e ..\..\docs\syntax\* deploy64\doc\syntax
 copy ..\..\docs\readme.htm deploy64
