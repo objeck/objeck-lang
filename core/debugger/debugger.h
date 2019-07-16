@@ -197,7 +197,7 @@ namespace Runtime {
       interpreter = nullptr;
       op_stack = nullptr;
       stack_pos = nullptr;
-      cur_line_num = -2;
+      cur_line_num = -1;
       cur_frame = nullptr;
       cur_program = nullptr;
       cur_call_stack = nullptr;
