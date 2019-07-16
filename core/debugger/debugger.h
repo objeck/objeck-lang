@@ -151,10 +151,18 @@ namespace Runtime {
       wchar_t buffer[16];
 
       if(value > 1000000) {
+#ifdef _WIN32
         swprintf_s(buffer, L"%.2fM", (double)value / (double)1000000);
+#else
+        swprintf(buffer, 15, L"%.2fM", (double)value / (double)1000000);
+#endif
       }
       else {
+#ifdef _WIN32
         swprintf_s(buffer, L"%.2fK", (double)value / (double)1000);
+#else
+        swprintf(buffer, 15, L"%.2fK", (double)value / (double)1000);
+#endif
       }
 
       return buffer;
