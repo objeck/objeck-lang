@@ -1407,6 +1407,11 @@ bool Runtime::Debugger::DeleteBreak(int line_num, const wstring& file_name)
 
 Runtime::UserBreak* Runtime::Debugger::FindBreak(int line_num, const wstring& file_name)
 {
+  if(cur_line_num < -1) {
+    cur_line_num = line_num;
+    return nullptr;
+  }
+
   for(list<UserBreak*>::iterator iter = breaks.begin(); iter != breaks.end(); iter++) {
     UserBreak* user_break = (*iter);
     if(user_break->line_num == line_num && user_break->file_name == file_name) {
@@ -1632,7 +1637,7 @@ Command* Runtime::Debugger::ProcessCommand(const wstring &line) {
       if(interpreter) {
         const size_t alloc_mem = MemoryManager::GetAllocationSize();
         const size_t max_mem = MemoryManager::GetMaxMemory();
-        wcout << L"memory: allocated=" << ToFloat(alloc_mem) << L", collect_at=" << ToFloat(max_mem) << endl;
+        wcout << L"memory: allocated=" << ToFloat(alloc_mem) << L", collection=" << ToFloat(max_mem) << endl;
       }
       else {
         wcout << L"program is not running." << endl;
@@ -1808,7 +1813,7 @@ void Runtime::Debugger::ClearProgram() {
   MemoryManager::Clear();
   StackMethod::ClearVirtualEntries();
 
-  cur_line_num = -2;
+  cur_line_num = -1;
   cur_frame = nullptr;
   cur_program = nullptr;
   is_error = false;
