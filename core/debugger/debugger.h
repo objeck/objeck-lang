@@ -176,7 +176,6 @@ namespace Runtime {
     void ProcessBreak(FilePostion* break_command);
     void ProcessBreaks();
     void ProcessDelete(FilePostion* break_command);
-    void ProcessMemory(Print* print);
     void ProcessPrint(Print* print);
     void ClearBreaks();
     void EvaluateExpression(Expression* expression);
