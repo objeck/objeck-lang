@@ -305,182 +305,6 @@ void Runtime::Debugger::ProcessDelete(FilePostion* delete_command) {
   }
 }
 
-void Runtime::Debugger::ProcessMemory(Print* print) {
-  Expression* expression = print->GetExpression();
-  EvaluateExpression(expression);
-
-  /*
-  if(!is_error) {
-    switch(expression->GetExpressionType()) {
-    case REF_EXPR:
-      if(interpreter) {
-        Reference* reference = static_cast<Reference*>(expression);
-        while(reference->GetReference()) {
-          reference = reference->GetReference();
-        }
-
-        const StackDclr& dclr_value = static_cast<Reference*>(reference)->GetDeclaration();
-        switch(dclr_value.type) {
-        case CHAR_PARM:
-          if(reference->GetIndices()) {
-            wcout << L"cannot reference scalar variable" << endl;
-          }
-          else {
-            wcout << L"print: type=Char, value=" << (wchar_t)reference->GetIntValue() << endl;
-          }
-          break;
-
-        case INT_PARM:
-          if(reference->GetIndices()) {
-            wcout << L"cannot reference scalar variable" << endl;
-          }
-          else {
-            wcout << L"print: type=Int, value=" << (long)reference->GetIntValue() << endl;
-          }
-          break;
-
-
-        case FLOAT_PARM:
-          if(reference->GetIndices()) {
-            wcout << L"cannot reference scalar variable" << endl;
-          }
-          else {
-            wcout << L"print: type=Float, value=" << reference->GetFloatValue() << endl;
-          }
-          break;
-
-        case BYTE_ARY_PARM:
-          if(reference->GetIndices()) {
-            wcout << L"print: type=Int, value=" << (unsigned char)reference->GetIntValue() << endl;
-          }
-          else {
-            wcout << L"print: type=Byte[], value=" << reference->GetIntValue()
-              << L"(" << (void*)reference->GetIntValue() << L")";
-            if(reference->GetArrayDimension()) {
-              wcout << L", dimension=" << reference->GetArrayDimension() << L", size="
-                << reference->GetArraySize();
-            }
-            wcout << endl;
-          }
-          break;
-
-        case CHAR_ARY_PARM:
-          if(reference->GetIndices()) {
-            wcout << L"print: type=Char, value=" << (wchar_t)reference->GetIntValue() << endl;
-          }
-          else {
-            wcout << L"print: type=Char[], value=" << reference->GetIntValue()
-              << L"(" << (void*)reference->GetIntValue() << L")";
-            if(reference->GetArrayDimension()) {
-              wcout << L", dimension=" << reference->GetArrayDimension() << L", size="
-                << reference->GetArraySize();
-            }
-            wcout << endl;
-          }
-          break;
-
-        case INT_ARY_PARM:
-          if(reference->GetIndices()) {
-            wcout << L"print: type=Int, value=" << reference->GetIntValue() << endl;
-          }
-          else {
-            wcout << L"print: type=Int[], value=" << reference->GetIntValue()
-              << L"(" << (void*)reference->GetIntValue() << L")";
-            if(reference->GetArrayDimension()) {
-              wcout << L", dimension=" << reference->GetArrayDimension() << L", size="
-                << reference->GetArraySize();
-            }
-            wcout << endl;
-          }
-          break;
-
-        case FLOAT_ARY_PARM:
-          if(reference->GetIndices()) {
-            wcout << L"print: type=Float, value=" << reference->GetFloatValue() << endl;
-          }
-          else {
-            wcout << L"print: type=Float[], value=" << reference->GetIntValue()
-              << L"(" << (void*)reference->GetIntValue() << L")";
-            if(reference->GetArrayDimension()) {
-              wcout << L", dimension=" << reference->GetArrayDimension() << L", size="
-                << reference->GetArraySize();
-            }
-            wcout << endl;
-          }
-          break;
-
-        case OBJ_PARM:
-          if(ref_klass && ref_klass->GetName() == L"System.String") {
-            size_t* instance = (size_t*)reference->GetIntValue();
-            if(instance) {
-              size_t* string_instance = (size_t*)instance[0];
-              const wchar_t* char_string = (wchar_t*)(string_instance + 3);
-              wcout << L"print: type=" << ref_klass->GetName() << L", value=\""
-                << char_string << L"\"" << endl;
-            }
-            else {
-              wcout << L"print: type=" << (ref_klass ? ref_klass->GetName() : L"System.Base") << L", value="
-                << (void*)reference->GetIntValue() << endl;
-            }
-          }
-          else {
-            wcout << L"print: type=" << (ref_klass ? ref_klass->GetName() : L"System.Base") << L", value="
-              << (void*)reference->GetIntValue() << endl;
-          }
-          break;
-
-        case OBJ_ARY_PARM:
-          if(reference->GetIndices()) {
-            StackClass* klass = MemoryManager::GetClass((size_t*)reference->GetIntValue());
-            if(klass) {
-              size_t* instance = (size_t*)reference->GetIntValue();
-              if(instance) {
-                wcout << L"print: type=" << klass->GetName() << L", value=" << (void*)reference->GetIntValue() << endl;
-              }
-              else {
-                wcout << L"print: type=System.Base, value=" << (void*)reference->GetIntValue() << endl;
-              }
-            }
-            else {
-              wcout << L"print: type=System.Base, value=" << (void*)reference->GetIntValue() << endl;
-            }
-          }
-          else {
-            wcout << L"print: type=System.Base[], value=" << (void*)reference->GetIntValue();
-            if(reference->GetArrayDimension()) {
-              wcout << L", dimension=" << reference->GetArrayDimension() << L", size="
-                << reference->GetArraySize();
-            }
-            wcout << endl;
-          }
-          break;
-
-        case FUNC_PARM: {
-          const size_t mthd_cls_id = reference->GetIntValue();
-          if(mthd_cls_id > 0) {
-            const long cls_id = (mthd_cls_id >> (16 * (1))) & 0xFFFF;
-            const long mthd_id = (mthd_cls_id >> (16 * (0))) & 0xFFFF;
-            StackClass* klass = cur_program->GetClass(cls_id);
-            if(klass) {
-              wcout << L"print: type=Function, class='" << klass->GetName() << L"', method='" << PrintMethod(klass->GetMethod(mthd_id)) << L"'" << endl;
-            }
-          }
-          else {
-            wcout << L"print: type=Function, class=<unknown>, method=<unknown>" << endl;
-          }
-        }
-                        break;
-        }
-      }
-      else {
-        wcout << L"program is not running." << endl;
-        is_error = true;
-      }
-      break;
-    }
-    */
-}
-
 void Runtime::Debugger::ProcessPrint(Print* print) {
   Expression* expression = print->GetExpression();
   EvaluateExpression(expression);
@@ -526,7 +350,7 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
 
         case BYTE_ARY_PARM:
           if(reference->GetIndices()) {
-            wcout << L"print: type=Int, value=" << (unsigned char)reference->GetIntValue() << endl;
+            wcout << L"print: type=Byte, value=" << (unsigned char)reference->GetIntValue() << endl;
           }
           else {
             wcout << L"print: type=Byte[], value=" << reference->GetIntValue()
@@ -556,7 +380,7 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
 
         case INT_ARY_PARM:
           if(reference->GetIndices()) {
-            wcout << L"print: type=Int, value=" << reference->GetIntValue() << endl;
+            wcout << L"print: type=Int, value=" << (long)reference->GetIntValue() << endl;
           }
           else {
             wcout << L"print: type=Int[], value=" << reference->GetIntValue()
@@ -658,11 +482,11 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
       break;
 
     case CHAR_LIT_EXPR:
-      wcout << L"print: type=Char, value=" << (char)expression->GetIntValue() << endl;
+      wcout << L"print: type=Char, value=" << (wchar_t)expression->GetIntValue() << endl;
       break;
 
     case INT_LIT_EXPR:
-      wcout << L"print: type=Int, value=" << expression->GetIntValue() << endl;
+      wcout << L"print: type=Int, value=" << (long)expression->GetIntValue() << endl;
       break;
 
     case FLOAT_LIT_EXPR:
@@ -693,7 +517,7 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
         wcout << L"print: type=Float, value=" << expression->GetFloatValue() << endl;
       }
       else {
-        wcout << L"print: type=Int, value=" << expression->GetIntValue() << endl;
+        wcout << L"print: type=Int, value=" << (long)expression->GetIntValue() << endl;
       }
       break;
 
@@ -1407,6 +1231,11 @@ bool Runtime::Debugger::DeleteBreak(int line_num, const wstring& file_name)
 
 Runtime::UserBreak* Runtime::Debugger::FindBreak(int line_num, const wstring& file_name)
 {
+  if(cur_line_num < -1) {
+    cur_line_num = line_num;
+    return nullptr;
+  }
+
   for(list<UserBreak*>::iterator iter = breaks.begin(); iter != breaks.end(); iter++) {
     UserBreak* user_break = (*iter);
     if(user_break->line_num == line_num && user_break->file_name == file_name) {
@@ -1632,7 +1461,7 @@ Command* Runtime::Debugger::ProcessCommand(const wstring &line) {
       if(interpreter) {
         const size_t alloc_mem = MemoryManager::GetAllocationSize();
         const size_t max_mem = MemoryManager::GetMaxMemory();
-        wcout << L"memory: allocated=" << ToFloat(alloc_mem) << L", collect_at=" << ToFloat(max_mem) << endl;
+        wcout << L"memory: allocated=" << ToFloat(alloc_mem) << L", collection=" << ToFloat(max_mem) << endl;
       }
       else {
         wcout << L"program is not running." << endl;
@@ -1808,7 +1637,7 @@ void Runtime::Debugger::ClearProgram() {
   MemoryManager::Clear();
   StackMethod::ClearVirtualEntries();
 
-  cur_line_num = -2;
+  cur_line_num = -1;
   cur_frame = nullptr;
   cur_program = nullptr;
   is_error = false;
