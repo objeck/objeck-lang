@@ -176,7 +176,6 @@ namespace Runtime {
     void ProcessBreak(FilePostion* break_command);
     void ProcessBreaks();
     void ProcessDelete(FilePostion* break_command);
-    void ProcessMemory(Print* print);
     void ProcessPrint(Print* print);
     void ClearBreaks();
     void EvaluateExpression(Expression* expression);
@@ -197,7 +196,7 @@ namespace Runtime {
       interpreter = nullptr;
       op_stack = nullptr;
       stack_pos = nullptr;
-      cur_line_num = -2;
+      cur_line_num = -1;
       cur_frame = nullptr;
       cur_program = nullptr;
       cur_call_stack = nullptr;

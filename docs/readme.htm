@@ -423,15 +423,16 @@ ul
 <h1><span style='font-size:24.0pt;line-height:107%;font-family:"Agency FB",sans-serif'>Objeck
 Programming Language</span></h1>
 
-<p class=MsoSubtitle><span style='font-size:10.0pt;line-height:107%'>v5.1.1; July
-13, 2019</span></p>
+<p class=MsoSubtitle><span style='font-size:10.0pt;line-height:107%'>v5.1.2; July
+15, 2019</span></p>
 
 <h2><span style='font-size:12.0pt;line-height:107%'>&nbsp;</span></h2>
 
 <h2><span style='font-size:12.0pt;line-height:107%'>Release notes</span></h2>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
-normal'><span style='font-family:"Calibri",sans-serif'>Minor enhancements.</span></p>
+normal'><span style='font-family:"Calibri",sans-serif'>Support for lambda
+expression, closures and minor enhancements.</span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
 normal'><span style='font-family:"Calibri",sans-serif'>&nbsp;</span></p>
@@ -442,11 +443,17 @@ normal'><span style='font-family:"Calibri",sans-serif'>Highlights:</span></p>
 <p class=MsoListParagraphCxSpFirst style='margin-bottom:0in;margin-bottom:.0001pt;
 text-indent:-.25in;line-height:normal'><span style='font-family:"Calibri",sans-serif'>1.<span
 style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span></span><span
+style='font-family:"Calibri",sans-serif'>Support for lambda expression and
+closures</span></p>
+
+<p class=MsoListParagraphCxSpMiddle style='margin-bottom:0in;margin-bottom:
+.0001pt;text-indent:-.25in;line-height:normal'><span style='font-family:"Calibri",sans-serif'>2.<span
+style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span></span><span
 style='font-family:"Calibri",sans-serif'>Tweaks and improvements to memory
 allocation</span></p>
 
 <p class=MsoListParagraphCxSpMiddle style='margin-bottom:0in;margin-bottom:
-.0001pt;text-indent:-.25in;line-height:normal'><span style='font-family:"Calibri",sans-serif'>2.<span
+.0001pt;text-indent:-.25in;line-height:normal'><span style='font-family:"Calibri",sans-serif'>3.<span
 style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span></span><span
 style='font-family:"Calibri",sans-serif'>Debugger enhancements</span></p>
 
@@ -457,12 +464,30 @@ style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span></spa
 style='font-family:"Calibri",sans-serif'>Added a “memory” command to the
 debugger</span></p>
 
-<p class=MsoListParagraphCxSpLast style='margin-top:0in;margin-right:0in;
+<p class=MsoListParagraphCxSpMiddle style='margin-top:0in;margin-right:0in;
 margin-bottom:0in;margin-left:1.0in;margin-bottom:.0001pt;text-indent:-.25in;
 line-height:normal'><span style='font-family:"Calibri",sans-serif'>b.<span
 style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span></span><span
-style='font-family:"Calibri",sans-serif'>Online “Getting Started” guide covers
-use of the debugger</span></p>
+style='font-family:"Calibri",sans-serif'>Modified “continue” command </span></p>
+
+<p class=MsoListParagraphCxSpMiddle style='margin-top:0in;margin-right:0in;
+margin-bottom:0in;margin-left:1.0in;margin-bottom:.0001pt;text-indent:-.25in;
+line-height:normal'><span style='font-family:"Calibri",sans-serif'>c.<span
+style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span></span><span
+style='font-family:"Calibri",sans-serif'>Fixed print formatting</span></p>
+
+<p class=MsoListParagraphCxSpMiddle style='margin-top:0in;margin-right:0in;
+margin-bottom:0in;margin-left:1.0in;margin-bottom:.0001pt;text-indent:-.25in;
+line-height:normal'><span style='font-family:"Calibri",sans-serif'>d.<span
+style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span></span><span
+style='font-family:"Calibri",sans-serif'>Updated “Getting Started” guide to
+cover debugger</span></p>
+
+<p class=MsoListParagraphCxSpLast style='margin-bottom:0in;margin-bottom:.0001pt;
+text-indent:-.25in;line-height:normal'><span style='font-family:"Calibri",sans-serif'>4.<span
+style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span></span><span
+style='font-family:"Calibri",sans-serif'>Windows installed will automatically
+upgrade older versions</span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
 normal'><span style='font-family:"Calibri",sans-serif'>&nbsp;</span></p>
@@ -486,8 +511,9 @@ color:windowtext;text-decoration:none'>, bug reports are greatly appreciated!</s
 <h2><span style='font-size:12.0pt;line-height:107%'>Getting Started</span></h2>
 
 <p class=MsoNormal><span style='font-family:"Calibri",sans-serif'>New developers
-please refer to <a href="https://www.objeck.org/getting_started.html">getting starting
-guide</a>.</span></p>
+please refer to </span><a href="https://www.objeck.org/getting_started.html"><span
+style='font-family:"Calibri",sans-serif'>getting starting guide</span></a><span
+style='font-family:"Calibri",sans-serif'>.</span></p>
 
 <h2><span style='font-size:12.0pt;line-height:107%'>&nbsp;</span></h2>
 
@@ -506,8 +532,8 @@ normal'><span style='font-family:"Calibri",sans-serif'>doc/api/ – class library
 documentation</span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
-normal'><span style='font-family:"Calibri",sans-serif'>doc/syntax – files to
-enable syntax highlighting for supported editors</span></p>
+normal'><span style='font-family:"Calibri",sans-serif'>doc/syntax – files to enable
+syntax highlighting for supported editors</span></p>
 
 <p class=MsoNormal style='margin-bottom:0in;margin-bottom:.0001pt;line-height:
 normal'><span style='font-family:"Calibri",sans-serif'>examples/ – source code
@@ -664,9 +690,10 @@ margin-left:.5in;margin-bottom:.0001pt;text-indent:-.25in;line-height:normal'><s
 style='font-family:"Calibri",sans-serif'>1.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 </span></span><span style='font-family:"Calibri",sans-serif'>sudo apt install
 libsdl1.2debian libsdl-gfx1.2-5 libsdl-gfx1.2-dev libsdl-gfx1.2-doc
-libsdl-image1.2 libsdl-image1.2-dbg libsdl-image1.2-dev libsdl-mixer1.2 libsdl-mixer1.2-dbg
-libsdl-mixer1.2-dev libsdl-net1.2 libsdl-net1.2-dbg libsdl-net1.2-dev
-libsdl-sound1.2 libsdl-sound1.2-dev libsdl-ttf2.0-0 libsdl-ttf2.0-dev</span></p>
+libsdl-image1.2 libsdl-image1.2-dbg libsdl-image1.2-dev libsdl-mixer1.2
+libsdl-mixer1.2-dbg libsdl-mixer1.2-dev libsdl-net1.2 libsdl-net1.2-dbg
+libsdl-net1.2-dev libsdl-sound1.2 libsdl-sound1.2-dev libsdl-ttf2.0-0
+libsdl-ttf2.0-dev</span></p>
 
 <p class=MsoNormal style='margin-top:0in;margin-right:0in;margin-bottom:0in;
 margin-left:.5in;margin-bottom:.0001pt;line-height:normal'><span
