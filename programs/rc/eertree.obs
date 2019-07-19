@@ -17,16 +17,14 @@ class Eertree {
 			c := s->Get(i);
 
 			done := false;
-			for (t := suffix; <>done; t := tree->Get(t)->GetSuffix();) {			
-                k := tree->Get(t)->GetLength();
+			for (j := suffix; <>done; j := tree->Get(j)->GetSuffix();) {			
+                k := tree->Get(j)->GetLength();
                 b := i - k - 1;
                 if (b >= 0 & s->Get(b) = c) {
-"n={$n}"->PrintLine();        
-					n := t;        	
+					n := j;        	
                     done := true;
                 };
             };
-"0: {$suffix}, {$n}, {$c}"->PrintLine();
             continue := false;
             if (tree->Get(n)->GetEdges()->Has(c)) {
                 suffix := tree->Get(n)->GetEdges()->Find(c)->Get();
@@ -34,7 +32,6 @@ class Eertree {
             };
 
             if(<>continue) {           	
-"1: {$suffix}, {$n}, {$c}"->PrintLine();
            		suffix := tree->Size();
 	            tree->AddBack(Node->New(k + 2));
 				tree->Get(n)->GetEdges()->Insert(c, suffix);
@@ -44,7 +41,6 @@ class Eertree {
 	            };
 
 	            if(<>continue) {
-"2: {$suffix}, {$n}, {$c}"->PrintLine();	            	
 	            	done := false;
 					while (<>done) {
 						n := tree->Get(n)->GetSuffix();
@@ -53,15 +49,36 @@ class Eertree {
 						    done := true;
 						};
 					};
-"final: {$suffix}, {$n}, {$c}"->PrintLine();
 					tree->Get(suffix)->SetSuffix(tree->Get(n)->GetEdges()->Find(c)->Get());
 				};					
 			};
 		};
 
-# "{$suffix}, {$n}, {$c}"->PrintLine();
-
 		return tree;
+    }
+
+    function : SubPalindromes(tree : Vector<Node>) ~ Vector<String> {
+		s := Vector->New()<String>;
+		SubPalindromesChildren(0, "", tree, s);
+
+		keys := tree->Get(1)->GetEdges()->GetKeys()<CharHolder>;
+		each(k : keys) {
+			key := keys->Get(k);
+			value : IntHolder := tree->Get(1)->GetEdges()->Find(key);
+
+
+		};
+#~		
+		for (Map.Entry<Character, Integer> cm : tree.get(1).edges.entrySet()) {
+			ct := String.valueOf(cm.getKey());
+			s->Add(ct);
+			SubPalindromesChildren(cm.getValue(), ct, tree, s);
+		};
+~#
+		return s;
+    }
+
+    function : SubPalindromesChildren(n : Int, p : String, tree : Vector<Node>, s : Vector<String>)  ~ Nil {
     }
 }
 
