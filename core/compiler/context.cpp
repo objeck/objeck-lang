@@ -5022,6 +5022,9 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
             ProcessError(expression, L"Invalid cast with classes: " + ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Byte");
           }
         }
+        else {
+          ProcessError(expression, L"Invalid cast with classes: " + ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Byte");
+        }
         break;
 
       case CHAR_TYPE:
@@ -5033,6 +5036,9 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
           else {
             ProcessError(expression, L"Invalid cast with classes: " + ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Char");
           }
+        }
+        else {
+          ProcessError(expression, L"Invalid cast with classes: " + ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Char");
         }
         break;
 
@@ -5046,6 +5052,9 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
             ProcessError(expression, L"Invalid cast with classes: " + ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and Int");
           }
         }
+        else {
+          ProcessError(expression, L"Invalid cast with classes: " + ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Int");
+        }
         break;
 
       case FLOAT_TYPE:
@@ -5057,6 +5066,9 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
           else {
             ProcessError(expression, L"Invalid cast with classes: " + ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Float");
           }
+        }
+        else {
+          ProcessError(expression, L"Invalid cast with classes: " + ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Float");
         }
         break;
 
@@ -5073,6 +5085,9 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
           else {
             ProcessError(expression, L"Invalid cast with classes: " + left->GetClassName() + L" and System.Bool");
           }
+        }
+        else {
+          ProcessError(expression, L"Invalid cast with classes: " + ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Bool");
         }
         break;
       }
