@@ -18,35 +18,35 @@ class Eertree {
 
 			done := false;
 			for (j := suffix; <>done; j := tree->Get(j)->GetSuffix();) {			
-                k := tree->Get(j)->GetLength();
-                b := i - k - 1;
-                if (b >= 0 & s->Get(b) = c) {
-					n := j;        	
-                    done := true;
-                };
-            };
-            skip := false;
-            if (tree->Get(n)->GetEdges()->Has(c)) {
-                suffix := tree->Get(n)->GetEdges()->Find(c)->Get();
-                skip := true;
-            };
+				k := tree->Get(j)->GetLength();
+				b := i - k - 1;
+				if (b >= 0 & s->Get(b) = c) {
+					n := j;			
+					done := true;
+				};
+			};
+			skip := false;
+			if (tree->Get(n)->GetEdges()->Has(c)) {
+				suffix := tree->Get(n)->GetEdges()->Find(c)->Get();
+				skip := true;
+			};
 
-            if(<>skip) {           	
-           		suffix := tree->Size();
-	            tree->AddBack(Node->New(k + 2));
+			if(<>skip) {				 
+					 suffix := tree->Size();
+				tree->AddBack(Node->New(k + 2));
 				tree->Get(n)->GetEdges()->Insert(c, suffix);
-	            if (tree->Get(suffix)->GetLength() = 1) {
-	                tree->Get(suffix)->SetSuffix(0);
-	                skip := true;
-	            };
+				if (tree->Get(suffix)->GetLength() = 1) {
+					tree->Get(suffix)->SetSuffix(0);
+					skip := true;
+				};
 
-	            if(<>skip) {
-	            	done := false;
+				if(<>skip) {
+					done := false;
 					while (<>done) {
 						n := tree->Get(n)->GetSuffix();
 						b := i - tree->Get(n)->GetLength() - 1;
 						if (b >= 0 & s->Get(b) = c) {
-						    done := true;
+							done := true;
 						};
 					};
 					tree->Get(suffix)->SetSuffix(tree->Get(n)->GetEdges()->Find(c)->Get());
@@ -55,9 +55,9 @@ class Eertree {
 		};
 
 		return tree;
-    }
+	}
 
-    function : SubPalindromes(tree : Vector<Node>) ~ Vector<String> {
+	function : SubPalindromes(tree : Vector<Node>) ~ Vector<String> {
 		s := Vector->New()<String>;
 		SubPalindromesChildren(0, "", tree, s);
 
@@ -71,10 +71,10 @@ class Eertree {
 		};
 
 		return s;
-    }
+	}
 
-    function : SubPalindromesChildren(n : Int, p : String, tree : Vector<Node>, s : Vector<String>)  ~ Nil {
-    	keys := tree->Get(n)->GetEdges()->GetKeys()<CharHolder>;
+	function : SubPalindromesChildren(n : Int, p : String, tree : Vector<Node>, s : Vector<String>)	~ Nil {
+		keys := tree->Get(n)->GetEdges()->GetKeys()<CharHolder>;
 		each(k : keys) {
 			key := keys->Get(k);
 			c := key->Get();
@@ -82,11 +82,11 @@ class Eertree {
 			str := ""; str += c; str += p; str += c;
 			s->AddBack(str);
 			SubPalindromesChildren(value, str, tree, s);
-		};  	
-    }
+		};		
+	}
 
-    function : Show(result : Vector<String>) ~ Nil {
-    	out := "[";
+	function : Show(result : Vector<String>) ~ Nil {
+		out := "[";
 		each(i : result) {
 			out += result->Get(i);
 			if(i + 1 < result->Size()) {
@@ -95,38 +95,38 @@ class Eertree {
 		};
 		out += "]";
 		out->PrintLine();
-    }
+	}
 }
 
 class Node {
-    @length : Int;
-    @edges : Map<CharHolder, IntHolder>;
-    @suffix : Int;
+	@length : Int;
+	@edges : Map<CharHolder, IntHolder>;
+	@suffix : Int;
 
-    New(length : Int, edges : Map<CharHolder, IntHolder>, suffix : Int) {
-    	@length := length;
-        @edges := edges <> Nil ? edges : Map->New()<CharHolder, IntHolder>;
-        @suffix := suffix;
-    }
+	New(length : Int, edges : Map<CharHolder, IntHolder>, suffix : Int) {
+		@length := length;
+		@edges := edges <> Nil ? edges : Map->New()<CharHolder, IntHolder>;
+		@suffix := suffix;
+	}
 
-    New(length : Int) {
-        @length := length;
-        @edges := Map->New()<CharHolder, IntHolder>;
-    }
+	New(length : Int) {
+		@length := length;
+		@edges := Map->New()<CharHolder, IntHolder>;
+	}
 
-    method : public : GetLength() ~ Int {
-    	return @length;
-    }
+	method : public : GetLength() ~ Int {
+		return @length;
+	}
 
-    method : public : GetSuffix() ~ Int {
-    	return @suffix;
-    }
+	method : public : GetSuffix() ~ Int {
+		return @suffix;
+	}
 
-    method : public : SetSuffix(suffix : Int) ~ Nil {
-    	@suffix := suffix;
-    }
+	method : public : SetSuffix(suffix : Int) ~ Nil {
+		@suffix := suffix;
+	}
 
-    method : public : GetEdges() ~ Map<CharHolder, IntHolder> {
-    	return @edges;
-    }
+	method : public : GetEdges() ~ Map<CharHolder, IntHolder> {
+		return @edges;
+	}
 }
