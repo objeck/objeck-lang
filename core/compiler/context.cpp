@@ -1292,6 +1292,7 @@ void ContextAnalyzer::AnalyzeStatement(Statement* statement, const int depth)
     break;
 
   case BREAK_STMT:
+  case CONTINUE_STMT:
     if(in_loop <= 0) {
       ProcessError(statement, L"Breaks are only allowed in loops.");
     }

@@ -74,7 +74,7 @@ class IntermediateEmitter {
   int cur_line_num;
   LibraryClass*  string_cls;
   int string_cls_id;
-  stack<int> break_labels;
+  stack<pair<int, int> > break_labels;
   bool is_str_array;
   queue<OperationAssignment*>post_statements;
   

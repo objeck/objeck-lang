@@ -1383,7 +1383,12 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       break;
 
     case TOKEN_BREAK_ID:
-      statement = TreeFactory::Instance()->MakeBreak(file_name, line_num);
+      statement = TreeFactory::Instance()->MakeBreakContinue(file_name, line_num, BREAK_STMT);
+      NextToken();
+      break;
+
+    case TOKEN_CONTINUE_ID:
+      statement = TreeFactory::Instance()->MakeBreakContinue(file_name, line_num, CONTINUE_STMT);
       NextToken();
       break;
 
