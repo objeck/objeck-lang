@@ -1676,6 +1676,9 @@ void ContextAnalyzer::AnalyzeVariable(Variable* variable, SymbolEntry* entry, co
 
     // associate variable and entry
     if(!variable->GetEvalType()) {
+      if(variable->GetCastType()) {
+        AnalyzeClassCast(variable->GetCastType(), entry->GetType(), variable, false, depth + 1);
+      }
       variable->SetTypes(entry->GetType());
       variable->SetEntry(entry);
       entry->AddVariable(variable);
@@ -3748,7 +3751,7 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
       }
       else {
         Type* from_type = expression->GetEvalType();
-        AnalyzeClassCast(to_type, expression, depth);
+        AnalyzeClassCast(to_type, from_type, expression, false, depth);
         variable->SetTypes(from_type);
         to_entry->SetType(from_type);
       }
@@ -5023,9 +5026,6 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
             ProcessError(expression, L"Invalid cast with classes: " + ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Byte");
           }
         }
-        else {
-          ProcessError(expression, L"Invalid cast with classes: " + ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Byte");
-        }
         break;
 
       case CHAR_TYPE:
@@ -5037,9 +5037,6 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
           else {
             ProcessError(expression, L"Invalid cast with classes: " + ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Char");
           }
-        }
-        else {
-          ProcessError(expression, L"Invalid cast with classes: " + ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Char");
         }
         break;
 
@@ -5053,9 +5050,6 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
             ProcessError(expression, L"Invalid cast with classes: " + ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and Int");
           }
         }
-        else {
-          ProcessError(expression, L"Invalid cast with classes: " + ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Int");
-        }
         break;
 
       case FLOAT_TYPE:
@@ -5067,9 +5061,6 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
           else {
             ProcessError(expression, L"Invalid cast with classes: " + ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Float");
           }
-        }
-        else {
-          ProcessError(expression, L"Invalid cast with classes: " + ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Float");
         }
         break;
 
