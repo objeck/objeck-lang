@@ -1676,9 +1676,11 @@ void ContextAnalyzer::AnalyzeVariable(Variable* variable, SymbolEntry* entry, co
 
     // associate variable and entry
     if(!variable->GetEvalType()) {
+#ifndef _SYSTEM
       if(variable->GetCastType()) {
         AnalyzeClassCast(variable->GetCastType(), entry->GetType(), variable, false, depth + 1);
       }
+#endif
       variable->SetTypes(entry->GetType());
       variable->SetEntry(entry);
       entry->AddVariable(variable);
