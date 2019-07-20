@@ -2529,14 +2529,12 @@ void IntermediateEmitter::EmitDoWhile(DoWhile* do_while_stmt)
   cur_line_num = do_while_stmt->GetLineNumber();
 
   // continue label
-  const int unconditional = ++unconditional_label;
+  const int unconditional_continue = ++unconditional_label;
+  const int break_label = ++unconditional_label;
+  break_labels.push(pair<int, int>(break_label, unconditional_continue));
   
   // conditional expression
   const int conditional = ++conditional_label;
-
-  int break_label = ++unconditional_label;
-  break_labels.push(pair<int, int>(break_label, unconditional));
-  
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LBL, conditional));
 
   // statements
@@ -2545,7 +2543,7 @@ void IntermediateEmitter::EmitDoWhile(DoWhile* do_while_stmt)
     EmitStatement(do_while_statements[i]);
   }
 
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LBL, unconditional));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LBL, unconditional_continue));
   
   // conditional
   EmitExpression(do_while_stmt->GetExpression());
@@ -2574,7 +2572,7 @@ void IntermediateEmitter::EmitWhile(While* while_stmt)
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LBL, unconditional));
   EmitExpression(while_stmt->GetExpression());
   
-  int break_label = ++conditional_label;
+  const int break_label = ++conditional_label;
   break_labels.push(pair<int, int>(break_label, unconditional));
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, JMP, break_label, false));
   
@@ -2611,8 +2609,11 @@ void IntermediateEmitter::EmitFor(For* for_stmt)
   int unconditional = ++unconditional_label;
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LBL, unconditional));
   EmitExpression(for_stmt->GetExpression());
-  int break_label = ++conditional_label;
-  break_labels.push(pair<int, int>(break_label, unconditional));
+
+  // break and continue
+  const int break_label = ++conditional_label;
+  const int unconditional_continue = ++unconditional_label;
+  break_labels.push(pair<int, int>(break_label, unconditional_continue));
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, JMP, break_label, false));
   
   // statements
@@ -2620,6 +2621,8 @@ void IntermediateEmitter::EmitFor(For* for_stmt)
   for(size_t i = 0; i < for_statements.size(); ++i) {
     EmitStatement(for_statements[i]);
   }
+
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LBL, unconditional_continue));
 
   // update statement
   EmitStatement(for_stmt->GetUpdateStatement());

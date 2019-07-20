@@ -23,6 +23,7 @@
 		<string>do</string>
 		<string>while</string>
 		<string>break</string>
+		<string>continue</string>
 		<string>bundle</string>
 		<string>native</string>
 		<string>static</string>
