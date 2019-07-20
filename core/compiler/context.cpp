@@ -1676,12 +1676,13 @@ void ContextAnalyzer::AnalyzeVariable(Variable* variable, SymbolEntry* entry, co
 
     // associate variable and entry
     if(!variable->GetEvalType()) {
+      Type* entry_type = entry->GetType();
 #ifndef _SYSTEM
-      if(variable->GetCastType() && !HasProgramLibraryEnum(entry->GetType()->GetClassName())) {
-        AnalyzeClassCast(variable->GetCastType(), entry->GetType(), variable, false, depth + 1);
+      if(variable->GetCastType() && entry_type->GetType() == CLASS_TYPE && !HasProgramLibraryEnum(entry_type->GetClassName())) {
+        AnalyzeClassCast(variable->GetCastType(), entry_type, variable, false, depth + 1);
       }
 #endif
-      variable->SetTypes(entry->GetType());
+      variable->SetTypes(entry_type);
       variable->SetEntry(entry);
       entry->AddVariable(variable);
     }
