@@ -104,6 +104,7 @@ void Scanner::LoadKeywords()
   ident_map[L"do"] = TOKEN_DO_ID;
   ident_map[L"while"] = TOKEN_WHILE_ID;
   ident_map[L"break"] = TOKEN_BREAK_ID;
+  ident_map[L"continue"] = TOKEN_CONTINUE_ID;
   ident_map[L"use"] = TOKEN_USE_ID;
   ident_map[L"bundle"] = TOKEN_BUNDLE_ID;
   ident_map[L"native"] = TOKEN_NATIVE_ID;
@@ -334,6 +335,7 @@ void Scanner::CheckIdentifier(int index)
     case TOKEN_DO_ID:
     case TOKEN_WHILE_ID:
     case TOKEN_BREAK_ID:
+    case TOKEN_CONTINUE_ID:
     case TOKEN_BOOLEAN_ID:
     case TOKEN_TRUE_ID:
     case TOKEN_FALSE_ID:

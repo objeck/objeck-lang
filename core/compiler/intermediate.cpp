@@ -1133,8 +1133,14 @@ void IntermediateEmitter::EmitStatement(Statement* statement)
     break;
 
   case BREAK_STMT: {
-    int break_label = break_labels.top();
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, JMP, break_label, -1));
+    const pair<int, int> break_continue_label = break_labels.top();
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, JMP, break_continue_label.first, -1));
+  }
+    break;
+
+  case CONTINUE_STMT: {
+    const pair<int, int> break_continue_label = break_labels.top();
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, JMP, break_continue_label.second, -1));
   }
     break;
 
@@ -2521,12 +2527,15 @@ void IntermediateEmitter::EmitSelect(Select* select_stmt)
 void IntermediateEmitter::EmitDoWhile(DoWhile* do_while_stmt)
 {
   cur_line_num = do_while_stmt->GetLineNumber();
+
+  // continue label
+  const int unconditional = ++unconditional_label;
   
   // conditional expression
-  int conditional = ++conditional_label;
+  const int conditional = ++conditional_label;
 
   int break_label = ++unconditional_label;
-  break_labels.push(break_label);
+  break_labels.push(pair<int, int>(break_label, unconditional));
   
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LBL, conditional));
 
@@ -2535,6 +2544,8 @@ void IntermediateEmitter::EmitDoWhile(DoWhile* do_while_stmt)
   for(size_t i = 0; i < do_while_statements.size(); ++i) {
     EmitStatement(do_while_statements[i]);
   }
+
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LBL, unconditional));
   
   // conditional
   EmitExpression(do_while_stmt->GetExpression());
@@ -2546,10 +2557,9 @@ void IntermediateEmitter::EmitDoWhile(DoWhile* do_while_stmt)
 
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, JMP, conditional, true));
   
-  break_label = break_labels.top();
+  pair<int, int> break_continue_label = break_labels.top();
   break_labels.pop();
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LBL, break_label));
-  
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LBL, break_continue_label.first));
 }
 
 /****************************
@@ -2560,12 +2570,12 @@ void IntermediateEmitter::EmitWhile(While* while_stmt)
   cur_line_num = while_stmt->GetLineNumber();
   
   // conditional expression
-  int unconditional = ++unconditional_label;
+  const int unconditional = ++unconditional_label;
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LBL, unconditional));
   EmitExpression(while_stmt->GetExpression());
   
   int break_label = ++conditional_label;
-  break_labels.push(break_label);
+  break_labels.push(pair<int, int>(break_label, unconditional));
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, JMP, break_label, false));
   
 
@@ -2582,30 +2592,9 @@ void IntermediateEmitter::EmitWhile(While* while_stmt)
   
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, JMP, unconditional, -1));
   
-  break_label = break_labels.top();
+  pair<int, int> break_continue_label = break_labels.top();
   break_labels.pop();  
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LBL, break_label));
-}
-
-/****************************
- * Translates an 'for' statement
- ****************************/
-void IntermediateEmitter::EmitCriticalSection(CriticalSection* critical_stmt) 
-{
-  cur_line_num = critical_stmt->GetLineNumber();
-  
-  StatementList* statement_list = critical_stmt->GetStatements();
-  vector<Statement*> statements = statement_list->GetStatements();
-  
-  EmitVariable(critical_stmt->GetVariable());
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, CRITICAL_START));
-  
-  for(size_t i = 0; i < statements.size(); ++i) {
-    EmitStatement(statements[i]);
-  }
-
-  EmitVariable(critical_stmt->GetVariable());
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, CRITICAL_END));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LBL, break_continue_label.first));
 }
 
 /****************************
@@ -2623,10 +2612,9 @@ void IntermediateEmitter::EmitFor(For* for_stmt)
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LBL, unconditional));
   EmitExpression(for_stmt->GetExpression());
   int break_label = ++conditional_label;
-  break_labels.push(break_label);
+  break_labels.push(pair<int, int>(break_label, unconditional));
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, JMP, break_label, false));
   
-
   // statements
   vector<Statement*> for_statements = for_stmt->GetStatements()->GetStatements();
   for(size_t i = 0; i < for_statements.size(); ++i) {
@@ -2639,10 +2627,9 @@ void IntermediateEmitter::EmitFor(For* for_stmt)
   // conditional jump
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, JMP, unconditional, -1));
   
-  
-  break_label = break_labels.top();
+  pair<int, int> break_continue_label = break_labels.top();
   break_labels.pop();
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LBL, break_label));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LBL, break_continue_label.first));
 }
 
 /****************************
@@ -2700,6 +2687,27 @@ void IntermediateEmitter::EmitIf(If* if_stmt, int next_label, int end_label)
       }
     }
   }
+}
+
+/****************************
+ * Translates critical section
+ ****************************/
+void IntermediateEmitter::EmitCriticalSection(CriticalSection* critical_stmt)
+{
+  cur_line_num = critical_stmt->GetLineNumber();
+
+  StatementList* statement_list = critical_stmt->GetStatements();
+  vector<Statement*> statements = statement_list->GetStatements();
+
+  EmitVariable(critical_stmt->GetVariable());
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, CRITICAL_START));
+
+  for(size_t i = 0; i < statements.size(); ++i) {
+    EmitStatement(statements[i]);
+  }
+
+  EmitVariable(critical_stmt->GetVariable());
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, CRITICAL_END));
 }
 
 /****************************

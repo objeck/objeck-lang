@@ -35,8 +35,8 @@
 #define MAGIC_NUM_WEB 0xdddf
 #define MAGIC_NUM_LIB 0xddde
 #define MAGIC_NUM_EXE 0xdddd
-#define VER_NUM 512
+#define VER_NUM 513
 
-#define VERSION_STRING L"5.1.2"
+#define VERSION_STRING L"5.1.3"
 
 #endif
