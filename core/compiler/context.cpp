@@ -1677,7 +1677,7 @@ void ContextAnalyzer::AnalyzeVariable(Variable* variable, SymbolEntry* entry, co
     // associate variable and entry
     if(!variable->GetEvalType()) {
 #ifndef _SYSTEM
-      if(variable->GetCastType()) {
+      if(variable->GetCastType() && !HasProgramLibraryEnum(entry->GetType()->GetClassName())) {
         AnalyzeClassCast(variable->GetCastType(), entry->GetType(), variable, false, depth + 1);
       }
 #endif
