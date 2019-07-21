@@ -142,6 +142,7 @@
                     <keyword>do</keyword>
                     <keyword>while</keyword>
                     <keyword>break</keyword>
+                    <keyword>continue</keyword>
                     <keyword>use</keyword>
                     <keyword>bundle</keyword>
                     <keyword>native</keyword>

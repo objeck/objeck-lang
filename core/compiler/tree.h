@@ -95,6 +95,7 @@ namespace frontend {
     SIMPLE_STMT,
     IF_STMT,
     BREAK_STMT,
+    CONTINUE_STMT,
     DO_WHILE_STMT,
     WHILE_STMT,
     FOR_STMT,
@@ -1162,8 +1163,10 @@ namespace frontend {
    ****************************/
   class Break : public Statement {
     friend class TreeFactory;
+    StatementType type;
 
-    Break(const wstring& file_name, const int line_num) : Statement(file_name, line_num) {
+    Break(const wstring& file_name, const int line_num, StatementType t) : Statement(file_name, line_num) {
+      type = t;
     }
 
     ~Break() {
@@ -1171,7 +1174,7 @@ namespace frontend {
 
   public:
     const StatementType GetStatementType() {
-      return BREAK_STMT;
+      return type;
     }
   };
 
@@ -3024,8 +3027,8 @@ namespace frontend {
       return tmp;
     }
 
-    Break* MakeBreak(const wstring &file_name, const int line_num) {
-      Break* tmp = new Break(file_name, line_num);
+    Break* MakeBreakContinue(const wstring &file_name, const int line_num, StatementType type) {
+      Break* tmp = new Break(file_name, line_num, type);
       statements.push_back(tmp);
       return tmp;
     }
