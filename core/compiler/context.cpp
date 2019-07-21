@@ -1292,6 +1292,7 @@ void ContextAnalyzer::AnalyzeStatement(Statement* statement, const int depth)
     break;
 
   case BREAK_STMT:
+  case CONTINUE_STMT:
     if(in_loop <= 0) {
       ProcessError(statement, L"Breaks are only allowed in loops.");
     }
@@ -1675,7 +1676,11 @@ void ContextAnalyzer::AnalyzeVariable(Variable* variable, SymbolEntry* entry, co
 
     // associate variable and entry
     if(!variable->GetEvalType()) {
-      variable->SetTypes(entry->GetType());
+      Type* entry_type = entry->GetType();
+      if(variable->GetCastType() && entry_type->GetType() == CLASS_TYPE && !HasProgramLibraryEnum(entry_type->GetClassName())) {
+        AnalyzeClassCast(variable->GetCastType(), entry_type, variable, false, depth + 1);
+      }
+      variable->SetTypes(entry_type);
       variable->SetEntry(entry);
       entry->AddVariable(variable);
     }
@@ -3747,7 +3752,7 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
       }
       else {
         Type* from_type = expression->GetEvalType();
-        AnalyzeClassCast(to_type, expression, depth);
+        AnalyzeClassCast(to_type, from_type, expression, false, depth);
         variable->SetTypes(from_type);
         to_entry->SetType(from_type);
       }
@@ -5073,6 +5078,9 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
           else {
             ProcessError(expression, L"Invalid cast with classes: " + left->GetClassName() + L" and System.Bool");
           }
+        }
+        else {
+          ProcessError(expression, L"Invalid cast with classes: " + ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Bool");
         }
         break;
       }

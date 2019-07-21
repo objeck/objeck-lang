@@ -1,0 +1,62 @@
+use Collection;
+
+class Hailstone {
+	function : Main(args : String[]) ~ Nil {
+		num := 27;
+		ShowSequence(num, GetHailstoneSequence(num));
+		HailstoneLongest(100000);		
+	}
+
+	function : HailstoneLongest(max : Int) ~ Nil {
+		highestNumber := 1;
+		highestCount := 1;
+		for(i := 2; i < max; i++;) {
+			count := 1;
+			n := i;
+			while (n <> 1) {
+				if ((n and 1) = 0){
+					n := n / 2;
+				}
+				else {
+					n := 3 * n + 1;
+				};
+				count++;
+			};
+			if (count > highestCount) {
+				highestCount := count;
+				highestNumber := i;
+			};
+		};
+		"longest sequence: {$highestNumber} length of {$highestCount}"->PrintLine();
+	}
+
+	function : GetHailstoneSequence(n : Int) ~ IntList {
+		list := IntList->New();
+		list->AddBack(n);
+
+		while (n <> 1) {
+			if ((n and 1) = 0) {
+				n := n / 2;
+			}
+			else{
+				n := 3 * n + 1;
+			};
+			list->AddBack(n);
+		};
+
+		return list;
+	}
+
+	function : ShowSequence(num : Int, sequence : IntList) ~ Nil {
+		size := sequence->Size();
+		"Sequence for {$num} has {$size}: ["->Print();
+		each(i : sequence) {
+			sequence->Get()->Print();
+			if(i + 1 < sequence->Size()) {
+				", "->Print();
+			};
+			sequence->Next();
+		};
+		']'->PrintLine();
+	}
+}
