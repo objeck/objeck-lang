@@ -1,26 +1,17 @@
-class Test {
+class Fred {
    function : Main(args : String[]) ~ Nil {
-      i := 0;
-      do {
-         i++;
-         if(i < 5) {
-            continue;
-         };
-
-         i->PrintLine();
-
-      }
-      while(i < 10);
-#~      
-      for(i := 0; i < 10; i +=1;) {
-         if(i < 5) {
-            continue;
-         };
-
-         i->PrintLine();
-      };
-~#      
+      Sally();
    } 
-}
 
-consts Fred { A := 201, B := 315 }
+   function : native : Sally() ~ Nil {
+      i : Int;
+      while(i < 10) {
+         i += 1;
+         if(i == 6) {
+            continue;
+         }
+         v = i * i;
+         v -> PrintLine();
+      }
+   }
+}
