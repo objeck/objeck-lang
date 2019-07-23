@@ -1925,8 +1925,7 @@ bundle Collection.Generic {
 			@right := right;
 		}
 	}
-
-
+	
 	#~
 	Set of objects
 	~#
@@ -1944,7 +1943,7 @@ bundle Collection.Generic {
 		Inserts a key into the set
 		@param key key
 		~#
-		method : public : Insert(key : Compare) ~ Nil {
+		method : public : Insert(key : K) ~ Nil {
 			@map->Insert(key, Base->New());
 		}
 		
@@ -1953,7 +1952,7 @@ bundle Collection.Generic {
 		@param key key for value to remove
 		@return true if removed, false otherwise		
 		~#
-		method : public : Remove(key : Compare) ~ Bool {
+		method : public : Remove(key : K) ~ Bool {
 			return @map->Remove(key);
 		}
     
@@ -1962,7 +1961,7 @@ bundle Collection.Generic {
 		@param key search key
 		@return true if found, false otherwise
 		~#
-		method : public : Has(key : Compare) ~ Bool {
+		method : public : Has(key : K) ~ Bool {
 			return @map->Find(key) <> Nil;
 		}
     
