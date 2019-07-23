@@ -1923,7 +1923,7 @@
         {
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_0594CE98C591476386C2EBDFCE991646"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-imageflags.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-imageflags.html"
             "TargetName" = "8:game.sdl2-imageflags.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -1943,7 +1943,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_06BFD7A983334338AF2BC7318DD9F584"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\getting_started.url"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\getting_started.url"
             "TargetName" = "8:getting_started.url"
             "Tag" = "8:"
             "Folder" = "8:_34A18E7364D64DE7AAB44EA3686D8B35"
@@ -1963,7 +1963,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_073C20D16F1A43679E3B2DACF5E97B4E"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\system.io.file-filereader.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\system.io.file-filereader.html"
             "TargetName" = "8:system.io.file-filereader.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -1983,7 +1983,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_07951F39F71546DB8396634C49BE0BCD"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\game.framework-vector2.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\game.framework-vector2.html"
             "TargetName" = "8:game.framework-vector2.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -2003,7 +2003,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_080DCD37E8534E77AA165430FA737869"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\media\\die.wav"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\examples\\media\\die.wav"
             "TargetName" = "8:die.wav"
             "Tag" = "8:"
             "Folder" = "8:_CA17F456942A40B79E7001C9A4D0BD5B"
@@ -2023,7 +2023,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_08120EEE68DC4D0E87F2FEC435A094A4"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\collection-hash.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\collection-hash.html"
             "TargetName" = "8:collection-hash.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -2043,7 +2043,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_08C21BBADBB14AD1B5B09AC2030A7917"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\encryption-encrypt.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\encryption-encrypt.html"
             "TargetName" = "8:encryption-encrypt.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -2063,7 +2063,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_08D0518129BB4A0B88C9D8AD1B6155F3"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\system-bytearrayholder.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\system-bytearrayholder.html"
             "TargetName" = "8:system-bytearrayholder.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -2083,7 +2083,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_0B3E3E2651E142E8A35E9E5094E9BA38"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\tiny\\programs\\door.t"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\examples\\tiny\\programs\\door.t"
             "TargetName" = "8:door.t"
             "Tag" = "8:"
             "Folder" = "8:_6E1DCA93BE1C41C5940D51FE5F365E32"
@@ -2103,7 +2103,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_0B81EAC8470A4261835C3AB1EA21C4EE"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\lib\\csv.obl"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\lib\\csv.obl"
             "TargetName" = "8:csv.obl"
             "Tag" = "8:"
             "Folder" = "8:_DE25ACE29AE54063B9EF27A4FF4929C6"
@@ -2123,7 +2123,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_0BD03E87FEC44B4CADBA22BF23B75424"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\system.io.file-directory.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\system.io.file-directory.html"
             "TargetName" = "8:system.io.file-directory.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -2143,7 +2143,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_0C0427245C704415B5421F8294D2B92C"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-keystate.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-keystate.html"
             "TargetName" = "8:game.sdl2-keystate.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -2163,7 +2163,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_0E1AD76B6A8B44E3AB8F10C0968BE764"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\tiny\\programs\\negative.t"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\examples\\tiny\\programs\\negative.t"
             "TargetName" = "8:negative.t"
             "Tag" = "8:"
             "Folder" = "8:_6E1DCA93BE1C41C5940D51FE5F365E32"
@@ -2183,7 +2183,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_0FB24C2F4DAE4C66A08EDCBC29F92268"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\encryption-decrypt.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\encryption-decrypt.html"
             "TargetName" = "8:encryption-decrypt.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -2203,7 +2203,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_10614C11535B4406887691135A1EA26C"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\collection-stack.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\collection-stack.html"
             "TargetName" = "8:collection-stack.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -2223,7 +2223,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_1065175BFA4B4C14875E68B887B70043"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-hintpriority.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-hintpriority.html"
             "TargetName" = "8:game.sdl2-hintpriority.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -2243,7 +2243,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_10E039578DC94A05A7C0BCEC39C8783D"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\fs_query_12.obs"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\examples\\fs_query_12.obs"
             "TargetName" = "8:fs_query_12.obs"
             "Tag" = "8:"
             "Folder" = "8:_928EBE6C651242BA9D8FFE0476EE7811"
@@ -2263,7 +2263,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_11AA41932E314CC6A0BE142EE898E934"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\lib\\fcgi.obl"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\lib\\fcgi.obl"
             "TargetName" = "8:fcgi.obl"
             "Tag" = "8:"
             "Folder" = "8:_DE25ACE29AE54063B9EF27A4FF4929C6"
@@ -2283,7 +2283,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_12EFEDCCF55C4130B1762553AD9D2D42"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\icons\\banner.jpg"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\icons\\banner.jpg"
             "TargetName" = "8:banner.jpg"
             "Tag" = "8:"
             "Folder" = "8:_97B5CCA6A25F41449A7B2992D41D9297"
@@ -2303,7 +2303,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_136B7CBB9B2F43839C29305CF136910F"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\system-string.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\system-string.html"
             "TargetName" = "8:system-string.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -2323,7 +2323,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_1475BA76719B485CB1944EACC5F4A70F"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-mousebuttonvalue.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-mousebuttonvalue.html"
             "TargetName" = "8:game.sdl2-mousebuttonvalue.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -2343,7 +2343,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_14843C0AD426426FA02527097707C2C2"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-mousebuttonevent.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-mousebuttonevent.html"
             "TargetName" = "8:game.sdl2-mousebuttonevent.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -2363,7 +2363,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_1710555CBA744E089F22B21EDDBE4942"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\lib\\native\\libobjk_odbc.dll"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\lib\\native\\libobjk_odbc.dll"
             "TargetName" = "8:libobjk_odbc.dll"
             "Tag" = "8:"
             "Folder" = "8:_70460CE063E14B42AF76C5535BAA3050"
@@ -2383,7 +2383,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_1849786CDDBA4375BC019C17C207D21A"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\tiny\\programs\\gcd.t"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\examples\\tiny\\programs\\gcd.t"
             "TargetName" = "8:gcd.t"
             "Tag" = "8:"
             "Folder" = "8:_6E1DCA93BE1C41C5940D51FE5F365E32"
@@ -2403,7 +2403,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_1886A04B3C3F476CB788DC8E74D78DF4"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-joystickhatvalue.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-joystickhatvalue.html"
             "TargetName" = "8:game.sdl2-joystickhatvalue.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -2423,7 +2423,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_18F5377E6D3A4B6D84A88CA71DBA585A"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\functions_5.obs"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\examples\\functions_5.obs"
             "TargetName" = "8:functions_5.obs"
             "Tag" = "8:"
             "Folder" = "8:_928EBE6C651242BA9D8FFE0476EE7811"
@@ -2443,7 +2443,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_1A2570C5F6784AF2A29B1C11E6FE50DE"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\game.framework-textsprite.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\game.framework-textsprite.html"
             "TargetName" = "8:game.framework-textsprite.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -2463,7 +2463,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_1A534282DBAF438BBC4D7638A7BC31EE"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\syntax\\sublime\\objeck.sublime-syntax"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\syntax\\sublime\\objeck.sublime-syntax"
             "TargetName" = "8:objeck.sublime-syntax"
             "Tag" = "8:"
             "Folder" = "8:_3A29B197BFBD4389AA6D0EB649C9856F"
@@ -2483,7 +2483,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_1B1561BFDEEF462E8D0577B86CFE952E"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\system.io.file-logger.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\system.io.file-logger.html"
             "TargetName" = "8:system.io.file-logger.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -2503,7 +2503,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_1B382F0C2B9E47B184E65103ED8B83E7"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\collection-intlist.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\collection-intlist.html"
             "TargetName" = "8:collection-intlist.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -2523,7 +2523,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_1B8153E49FB74818B006D2C937BD2AAE"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\collection-intstack.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\collection-intstack.html"
             "TargetName" = "8:collection-intstack.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -2543,7 +2543,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_1B903E16A67344419184FFE6D99ADDFD"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\media\\start.wav"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\examples\\media\\start.wav"
             "TargetName" = "8:start.wav"
             "Tag" = "8:"
             "Folder" = "8:_CA17F456942A40B79E7001C9A4D0BD5B"
@@ -2563,7 +2563,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_1BFD32D07DC64711BF91858A66320D0F"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-textureaccess.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-textureaccess.html"
             "TargetName" = "8:game.sdl2-textureaccess.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -2583,7 +2583,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_1C351D1FC39A4EFC85A388A86BC0E666"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\media\\log.png"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\examples\\media\\log.png"
             "TargetName" = "8:log.png"
             "Tag" = "8:"
             "Folder" = "8:_CA17F456942A40B79E7001C9A4D0BD5B"
@@ -2603,7 +2603,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_1D3E5791888B4A08A23F73A3322E649E"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\collection-floatvector.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\collection-floatvector.html"
             "TargetName" = "8:collection-floatvector.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -2623,7 +2623,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_1E8D53FFAE124115A7D0B28E0BC42E9D"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\web.http-httpclient.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\web.http-httpclient.html"
             "TargetName" = "8:web.http-httpclient.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -2643,7 +2643,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_1F0756816B7244A79CD8F167BE422D30"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\syntax\\howto.rtf"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\syntax\\howto.rtf"
             "TargetName" = "8:howto.rtf"
             "Tag" = "8:"
             "Folder" = "8:_978A9321CE544138A911037A84BB6463"
@@ -2663,7 +2663,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_1F1CB9887E084DC8B8F9231488AE300C"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\serial_14.obs"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\examples\\serial_14.obs"
             "TargetName" = "8:serial_14.obs"
             "Tag" = "8:"
             "Folder" = "8:_928EBE6C651242BA9D8FFE0476EE7811"
@@ -2683,7 +2683,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_1FA83DC390CF43A496007EE65660FE6E"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\data.json-jsonparser.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\data.json-jsonparser.html"
             "TargetName" = "8:data.json-jsonparser.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -2703,7 +2703,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_1FD9F7D42E3140DE8279C991EB5A57ED"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\tiny\\programs\\hello.t"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\examples\\tiny\\programs\\hello.t"
             "TargetName" = "8:hello.t"
             "Tag" = "8:"
             "Folder" = "8:_6E1DCA93BE1C41C5940D51FE5F365E32"
@@ -2723,7 +2723,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_2013DD2A5EA247C69E1817E8A8E9A7CB"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\data.xml-xmlattribute.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\data.xml-xmlattribute.html"
             "TargetName" = "8:data.xml-xmlattribute.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -2743,7 +2743,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_210B0A29C77C40E39AC995CD2D53C25E"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-rendererinfo.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-rendererinfo.html"
             "TargetName" = "8:game.sdl2-rendererinfo.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -2763,7 +2763,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_2161B17D9D7C4C9B8D804C2640EB68DD"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\lib\\sdl\\libpng16-16.dll"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\lib\\sdl\\libpng16-16.dll"
             "TargetName" = "8:libpng16-16.dll"
             "Tag" = "8:"
             "Folder" = "8:_B100624B748B4E8CB71E547FF7265B17"
@@ -2783,7 +2783,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_2246285A70444717AA071BC3D552A1C3"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\game.framework-sprite.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\game.framework-sprite.html"
             "TargetName" = "8:game.framework-sprite.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -2803,7 +2803,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_229CF6CBFF9441E782618650B1A0B2DD"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-blendmode.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-blendmode.html"
             "TargetName" = "8:game.sdl2-blendmode.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -2823,7 +2823,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_22E36CEF2EC74DB3BBC44665E19DA096"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-joyaxisevent.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-joyaxisevent.html"
             "TargetName" = "8:game.sdl2-joyaxisevent.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -2843,7 +2843,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_235B826C1D91473691CDC0BA2F95CA57"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\media\\luck.wav"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\examples\\media\\luck.wav"
             "TargetName" = "8:luck.wav"
             "Tag" = "8:"
             "Folder" = "8:_CA17F456942A40B79E7001C9A4D0BD5B"
@@ -2863,7 +2863,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_253D036272B2472F9BE5124AFA3EC594"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-filesystem.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-filesystem.html"
             "TargetName" = "8:game.sdl2-filesystem.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -2883,7 +2883,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_254B60AA24A048AF868963926A7D10D5"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\web.fastcgi-response.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\web.fastcgi-response.html"
             "TargetName" = "8:web.fastcgi-response.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -2903,7 +2903,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_26CB28B6B35B495BA6E27E8ACC9E3F0D"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-rendererflags.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-rendererflags.html"
             "TargetName" = "8:game.sdl2-rendererflags.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -2923,7 +2923,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_27D0AC16FD4947CABCB04E4E079503DE"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-clipboard.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-clipboard.html"
             "TargetName" = "8:game.sdl2-clipboard.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -2943,7 +2943,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_28231F2B67BA4EB1B998A66D37C6EB65"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-window.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-window.html"
             "TargetName" = "8:game.sdl2-window.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -2963,7 +2963,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_28988CB6C23D424DBD61FC34569AE0F7"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\collection-floatmap.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\collection-floatmap.html"
             "TargetName" = "8:collection-floatmap.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -2983,7 +2983,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_28C5CE65131E4BFF804AB157D02E6A68"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\system-int.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\system-int.html"
             "TargetName" = "8:system-int.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -3003,7 +3003,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_2A9250353C11424E89B1723E5A87CEF5"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\lib\\sdl\\SDL2_mixer.dll"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\lib\\sdl\\SDL2_mixer.dll"
             "TargetName" = "8:SDL2_mixer.dll"
             "Tag" = "8:"
             "Folder" = "8:_B100624B748B4E8CB71E547FF7265B17"
@@ -3023,7 +3023,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_2B2A4212A90E4019A6EE52E35407EB53"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\collection.generic-comparelist_h-compare_.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\collection.generic-comparelist_h-compare_.html"
             "TargetName" = "8:collection.generic-comparelist_h-compare_.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -3043,7 +3043,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_2D285FF63750423081874F7E026528AC"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\tiny\\run.cmd"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\examples\\tiny\\run.cmd"
             "TargetName" = "8:run.cmd"
             "Tag" = "8:"
             "Folder" = "8:_419E6F527039431CB6414C4E3AD04FA3"
@@ -3063,7 +3063,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_2D2A9C19178A4F00A99725C2B1D17B4B"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\system.io-deserializer.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\system.io-deserializer.html"
             "TargetName" = "8:system.io-deserializer.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -3083,7 +3083,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_2D4A540E5A3149858EEEB83D0E06DE57"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\system-float.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\system-float.html"
             "TargetName" = "8:system-float.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -3103,7 +3103,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_2E455C43F97C41B7BFA7741D80D098BF"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\lib\\sdl\\libtiff-5.dll"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\lib\\sdl\\libtiff-5.dll"
             "TargetName" = "8:libtiff-5.dll"
             "Tag" = "8:"
             "Folder" = "8:_B100624B748B4E8CB71E547FF7265B17"
@@ -3123,7 +3123,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_2ED9734CF2174F96AFEEE32336270D1D"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\collection.generic-vector_h_.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\collection.generic-vector_h_.html"
             "TargetName" = "8:collection.generic-vector_h_.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -3143,7 +3143,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_2EE62466A3114B60BF276EEA21E97273"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\lib\\sdl\\fonts\\lazy.ttf"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\lib\\sdl\\fonts\\lazy.ttf"
             "TargetName" = "8:lazy.ttf"
             "Tag" = "8:"
             "Folder" = "8:_192DEAF9368740768ED4C3BE9B698E6A"
@@ -3163,7 +3163,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_2F7949EB42F84194BFE4D46DD218418F"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-event.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-event.html"
             "TargetName" = "8:game.sdl2-event.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -3183,7 +3183,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_2F8A27692B4E46EFAD3B32811E585870"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-mixmusic.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-mixmusic.html"
             "TargetName" = "8:game.sdl2-mixmusic.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -3203,7 +3203,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_2F955458DEF94FCA837E2E3594950B5A"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\web.fastcgi-handler.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\web.fastcgi-handler.html"
             "TargetName" = "8:web.fastcgi-handler.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -3223,7 +3223,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_305F8CAA19124B26A4A4D18A563F14FD"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\database.odbc-timestamp.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\database.odbc-timestamp.html"
             "TargetName" = "8:database.odbc-timestamp.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -3243,7 +3243,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_3225CCB4D5704D2C91452D92524B6010"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\collection.generic-stack_h_.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\collection.generic-stack_h_.html"
             "TargetName" = "8:collection.generic-stack_h_.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -3263,7 +3263,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_32AB2E0B85994AE3A2DEE7277ED97E94"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-eventaction.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-eventaction.html"
             "TargetName" = "8:game.sdl2-eventaction.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -3283,7 +3283,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_341D4B23741E4124BB9923FC7EC49781"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\data.json-jsontype.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\data.json-jsontype.html"
             "TargetName" = "8:data.json-jsontype.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -3303,7 +3303,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_344201B5520B444E8038FEEE805A2396"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\system.time-dateutility.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\system.time-dateutility.html"
             "TargetName" = "8:system.time-dateutility.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -3323,7 +3323,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_34709751F31F486F94D2003BBB927C42"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-eventtype.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-eventtype.html"
             "TargetName" = "8:game.sdl2-eventtype.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -3343,7 +3343,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_34C836359292449081F50AC6C31AD974"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-rendererflip.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-rendererflip.html"
             "TargetName" = "8:game.sdl2-rendererflip.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -3363,7 +3363,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_35ADF2025E81410D9337D6A9710BCFAF"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\tiny\\common\\instructions.obs"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\examples\\tiny\\common\\instructions.obs"
             "TargetName" = "8:instructions.obs"
             "Tag" = "8:"
             "Folder" = "8:_481DF10E9714439E94193CE8401D3C41"
@@ -3383,7 +3383,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_37E9A64DB19742ADA5F732C7BE466E44"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\tiny\\vm\\interpreter.obs"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\examples\\tiny\\vm\\interpreter.obs"
             "TargetName" = "8:interpreter.obs"
             "Tag" = "8:"
             "Folder" = "8:_173B096403774F27B5589412D889AEEE"
@@ -3403,7 +3403,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_3D6D8A12E56C48AF924F6C27966900FA"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\system.concurrency-thread.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\system.concurrency-thread.html"
             "TargetName" = "8:system.concurrency-thread.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -3423,7 +3423,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_3DD2F5A330024EA2A8015041FED63B23"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\bin\\obc.exe"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\bin\\obc.exe"
             "TargetName" = "8:obc.exe"
             "Tag" = "8:"
             "Folder" = "8:_B94AAF2ADB3D47A1AA8E44083E8B4971"
@@ -3443,7 +3443,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_3DD34E392BB849A69F7B6D8AEDB3EFAD"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\media\\gems.png"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\examples\\media\\gems.png"
             "TargetName" = "8:gems.png"
             "Tag" = "8:"
             "Folder" = "8:_CA17F456942A40B79E7001C9A4D0BD5B"
@@ -3463,7 +3463,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_3EE22C649E7B45CDA9BE63CD91F3C4E3"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\collection-comparevector.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\collection-comparevector.html"
             "TargetName" = "8:collection-comparevector.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -3483,7 +3483,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_3F8976D4642845009ADA9E79CDAE99AF"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\game.framework-gameframework.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\game.framework-gameframework.html"
             "TargetName" = "8:game.framework-gameframework.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -3503,7 +3503,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_408BEC314C7F411A94648FD87D2B00E4"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\data.xml-xmlbuilder.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\data.xml-xmlbuilder.html"
             "TargetName" = "8:data.xml-xmlbuilder.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -3523,7 +3523,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_4094C115870F4D95B3297DA0F5F1148D"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\query.structured-finder.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\query.structured-finder.html"
             "TargetName" = "8:query.structured-finder.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -3543,7 +3543,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_40A8FFB1C601486FA43F41DBEDDC9252"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\syntax\\objeck.xml"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\syntax\\objeck.xml"
             "TargetName" = "8:objeck.xml"
             "Tag" = "8:"
             "Folder" = "8:_978A9321CE544138A911037A84BB6463"
@@ -3563,7 +3563,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_4205BD8BB8534DE49D6DA284A3EB4269"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-powererstate.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-powererstate.html"
             "TargetName" = "8:game.sdl2-powererstate.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -3583,7 +3583,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_4424B2BDD8264C8A84BEE919ADA1F92D"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\game.framework-position.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\game.framework-position.html"
             "TargetName" = "8:game.framework-position.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -3603,7 +3603,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_4478F538F4E0411CBE2205C44A590C9E"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\system-byte.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\system-byte.html"
             "TargetName" = "8:system-byte.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -3623,7 +3623,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_47FF3C9F3D8D402B9E3DABC8CFE1B006"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\media\\sign.png"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\examples\\media\\sign.png"
             "TargetName" = "8:sign.png"
             "Tag" = "8:"
             "Folder" = "8:_CA17F456942A40B79E7001C9A4D0BD5B"
@@ -3643,7 +3643,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_485B143C2B6C40D1B3E68BC4C566EEB5"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\query.structured-row.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\query.structured-row.html"
             "TargetName" = "8:query.structured-row.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -3663,7 +3663,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_48E55E92DE244982A2DAFD0FD562AAB8"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\query.structured-conditional.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\query.structured-conditional.html"
             "TargetName" = "8:query.structured-conditional.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -3683,7 +3683,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_4929F6BD2CD6401DB62677D8B9B813FE"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\bin\\obd.exe"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\bin\\obd.exe"
             "TargetName" = "8:obd.exe"
             "Tag" = "8:"
             "Folder" = "8:_B94AAF2ADB3D47A1AA8E44083E8B4971"
@@ -3703,7 +3703,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_49368567B73B4A54B3B37DDC6B4C3313"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\tic_tac_toe_16.obs"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\examples\\tic_tac_toe_16.obs"
             "TargetName" = "8:tic_tac_toe_16.obs"
             "Tag" = "8:"
             "Folder" = "8:_928EBE6C651242BA9D8FFE0476EE7811"
@@ -3723,7 +3723,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_49F479F5DD014FDDBF937293F618B003"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\lib\\native\\libobjk_sdl.dll"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\lib\\native\\libobjk_sdl.dll"
             "TargetName" = "8:libobjk_sdl.dll"
             "Tag" = "8:"
             "Folder" = "8:_70460CE063E14B42AF76C5535BAA3050"
@@ -3743,7 +3743,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_4B6F87C6D5E944D1A3F0008CEEA1E5BC"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\collection.generic-map_k-compare_v_.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\collection.generic-map_k-compare_v_.html"
             "TargetName" = "8:collection.generic-map_k-compare_v_.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -3763,7 +3763,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_4BD107E8F89C41B8A15D8BEB245E7AFF"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\encryption-hash.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\encryption-hash.html"
             "TargetName" = "8:encryption-hash.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -3783,7 +3783,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_4C1740E838404D0B90CD00703676C34E"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\web.http-url.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\web.http-url.html"
             "TargetName" = "8:web.http-url.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -3803,7 +3803,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_4C9251AAB662499BB1AEDF54156EF586"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\system-intholder.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\system-intholder.html"
             "TargetName" = "8:system-intholder.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -3823,7 +3823,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_4CBD357D64594D77A6E7067AFB4B5961"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\index.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\index.html"
             "TargetName" = "8:index.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -3843,7 +3843,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_4CC716A8C7F34D5CB60130777A049DAE"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\icons\\readme.ico"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\icons\\readme.ico"
             "TargetName" = "8:readme.ico"
             "Tag" = "8:"
             "Folder" = "8:_97B5CCA6A25F41449A7B2992D41D9297"
@@ -3863,7 +3863,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_4CD82672C0D2424A839393C29FB33BD2"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-renderer.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-renderer.html"
             "TargetName" = "8:game.sdl2-renderer.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -3883,7 +3883,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_4CDE4CDA5C94495BB7F3250C20462A02"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\system.io.net-tcpsocketserver.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\system.io.net-tcpsocketserver.html"
             "TargetName" = "8:system.io.net-tcpsocketserver.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -3903,7 +3903,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_4D521F53B4C64F4C8B33E8599C59102E"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-image.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-image.html"
             "TargetName" = "8:game.sdl2-image.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -3923,7 +3923,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_4F17312370BF40D7B863705D36E2EEB4"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\query.structured-qualifier.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\query.structured-qualifier.html"
             "TargetName" = "8:query.structured-qualifier.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -3943,7 +3943,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_509C3FE9649A470C8FC646F1C0E1B73A"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-timer.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-timer.html"
             "TargetName" = "8:game.sdl2-timer.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -3963,7 +3963,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_50A1BBAC050D457185CC32390CF37DE3"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\system-basiccompare.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\system-basiccompare.html"
             "TargetName" = "8:system-basiccompare.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -3983,7 +3983,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_510B0E72503B4A30A8A276DF74181B92"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-mousewheeldirection.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-mousewheeldirection.html"
             "TargetName" = "8:game.sdl2-mousewheeldirection.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -4003,7 +4003,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_515B3F32872B474EBE76FA1FFE54E769"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\collection-stringmap.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\collection-stringmap.html"
             "TargetName" = "8:collection-stringmap.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -4023,7 +4023,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_5169ED94BA854A14B9C8726592C0E605"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-core.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-core.html"
             "TargetName" = "8:game.sdl2-core.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -4043,7 +4043,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_5461522CF43A43E780A58ABE654AEEA3"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\icons\\objeck.ico"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\icons\\objeck.ico"
             "TargetName" = "8:objeck.ico"
             "Tag" = "8:"
             "Folder" = "8:_97B5CCA6A25F41449A7B2992D41D9297"
@@ -4063,7 +4063,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_549EBFE694C34B63AEDF6AF766FD526C"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\collection-floatlist.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\collection-floatlist.html"
             "TargetName" = "8:collection-floatlist.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -4083,7 +4083,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_55A6B493AB884A3CB34D7C4AADA49CED"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\calc_life_10.obs"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\examples\\calc_life_10.obs"
             "TargetName" = "8:calc_life_10.obs"
             "Tag" = "8:"
             "Folder" = "8:_928EBE6C651242BA9D8FFE0476EE7811"
@@ -4103,7 +4103,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_57EE6FE8A6684459923E5A1F9356A8D5"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\collection-intvector.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\collection-intvector.html"
             "TargetName" = "8:collection-intvector.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -4123,7 +4123,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_58C59677835E4BE79C98093288B7CCF8"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\readme.htm"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\readme.htm"
             "TargetName" = "8:readme.htm"
             "Tag" = "8:"
             "Folder" = "8:_8EB462F2784A421E99849541CC462494"
@@ -4143,7 +4143,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_58D59B9715D74ADB8A847F1A0743069E"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\lib\\sdl\\SDL2.dll"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\lib\\sdl\\SDL2.dll"
             "TargetName" = "8:SDL2.dll"
             "Tag" = "8:"
             "Folder" = "8:_B100624B748B4E8CB71E547FF7265B17"
@@ -4163,7 +4163,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_5A7B8EFC7C0A4C589F41B7A227994983"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\system-floatholder.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\system-floatholder.html"
             "TargetName" = "8:system-floatholder.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -4183,7 +4183,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_5B60B0BBF3D84F209F461E5242F2BD05"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\collection.generic-comparevector_h-compare_.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\collection.generic-comparevector_h-compare_.html"
             "TargetName" = "8:collection.generic-comparevector_h-compare_.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -4203,7 +4203,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_5BFC1F3AE20A41699E1F09A20001A511"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\syntax\\sublime\\objeck.tmPreferences"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\syntax\\sublime\\objeck.tmPreferences"
             "TargetName" = "8:objeck.tmPreferences"
             "Tag" = "8:"
             "Folder" = "8:_3A29B197BFBD4389AA6D0EB649C9856F"
@@ -4223,7 +4223,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_5C0F6874399746598431488255034C8B"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\tiny\\compiler\\compiler.obs"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\examples\\tiny\\compiler\\compiler.obs"
             "TargetName" = "8:compiler.obs"
             "Tag" = "8:"
             "Folder" = "8:_85683446557949A390E47CFF57E77446"
@@ -4243,7 +4243,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_5C49CDA71EC2467798E1A6BC7C9B8AF6"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\lib\\net_misc.obl"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\lib\\net_misc.obl"
             "TargetName" = "8:net_misc.obl"
             "Tag" = "8:"
             "Folder" = "8:_DE25ACE29AE54063B9EF27A4FF4929C6"
@@ -4263,7 +4263,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_5C818C25B89C4CBB9FCAFA369AA44738"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\lib\\sdl\\fonts\\hella.ttf"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\lib\\sdl\\fonts\\hella.ttf"
             "TargetName" = "8:hella.ttf"
             "Tag" = "8:"
             "Folder" = "8:_192DEAF9368740768ED4C3BE9B698E6A"
@@ -4283,7 +4283,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_5FC2FD429E9944C39AE0A92AC574D92D"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\collection-stringset.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\collection-stringset.html"
             "TargetName" = "8:collection-stringset.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -4303,7 +4303,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_623611EC3CC74038BF29F260D31A3570"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\system-basearrayholder.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\system-basearrayholder.html"
             "TargetName" = "8:system-basearrayholder.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -4323,7 +4323,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_63983AA41F1C414E96B50DCE643EBECD"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\collection-multimap.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\collection-multimap.html"
             "TargetName" = "8:collection-multimap.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -4343,7 +4343,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_6496DEB952EA4B8A971D971AE060FE0C"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\icons\\toolset.ico"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\icons\\toolset.ico"
             "TargetName" = "8:toolset.ico"
             "Tag" = "8:"
             "Folder" = "8:_97B5CCA6A25F41449A7B2992D41D9297"
@@ -4363,7 +4363,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_656DC9BFE9804CC59FB59F1DE2ED6AB8"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\lib\\sdl2.obl"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\lib\\sdl2.obl"
             "TargetName" = "8:sdl2.obl"
             "Tag" = "8:"
             "Folder" = "8:_DE25ACE29AE54063B9EF27A4FF4929C6"
@@ -4383,7 +4383,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_65AC8966C1A54621AD609EEA7EC3C2F8"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\tiny\\compiler\\scanner.obs"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\examples\\tiny\\compiler\\scanner.obs"
             "TargetName" = "8:scanner.obs"
             "Tag" = "8:"
             "Folder" = "8:_85683446557949A390E47CFF57E77446"
@@ -4403,7 +4403,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_684F571B2BF34AD2BD6E9CB6BB5DAE83"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\web.http-httpsclient.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\web.http-httpsclient.html"
             "TargetName" = "8:web.http-httpsclient.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -4423,7 +4423,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_687239466B934649950B9D1ACD6ED650"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\syntax\\sublime\\objeck.sublime-build"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\syntax\\sublime\\objeck.sublime-build"
             "TargetName" = "8:objeck.sublime-build"
             "Tag" = "8:"
             "Folder" = "8:_3A29B197BFBD4389AA6D0EB649C9856F"
@@ -4443,7 +4443,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_68D71146522946EABE6DD7AC4DA7132B"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\lib\\sdl_game.obl"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\lib\\sdl_game.obl"
             "TargetName" = "8:sdl_game.obl"
             "Tag" = "8:"
             "Folder" = "8:_DE25ACE29AE54063B9EF27A4FF4929C6"
@@ -4463,7 +4463,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_6A304933B36A4FF3A257CD046DE85F4B"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\tiny\\programs\\test.t"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\examples\\tiny\\programs\\test.t"
             "TargetName" = "8:test.t"
             "Tag" = "8:"
             "Folder" = "8:_6E1DCA93BE1C41C5940D51FE5F365E32"
@@ -4483,7 +4483,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_6A4FACFD194343EEA4C09E0CB7E34D39"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\system-byteholder.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\system-byteholder.html"
             "TargetName" = "8:system-byteholder.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -4503,7 +4503,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_6AA47C83F42C4470BD0B28C5F92983FC"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\system.introspection-class.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\system.introspection-class.html"
             "TargetName" = "8:system.introspection-class.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -4523,7 +4523,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_6B208CB0F2144F009DD4EB9C602F4A0C"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\system-charholder.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\system-charholder.html"
             "TargetName" = "8:system-charholder.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -4543,7 +4543,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_6BFD7E35363F4F389D68E1053996ADCD"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-keymod.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-keymod.html"
             "TargetName" = "8:game.sdl2-keymod.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -4563,7 +4563,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_6C5BAF484C734FDE986F8E6DD5001C60"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-point.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-point.html"
             "TargetName" = "8:game.sdl2-point.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -4583,7 +4583,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_6D04A39706D6468E88AD1C98731D2C81"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\query.regex-regex.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\query.regex-regex.html"
             "TargetName" = "8:query.regex-regex.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -4603,7 +4603,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_6D287C833F6D4D799B9478569387533D"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\odbc_select_11.obs"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\examples\\odbc_select_11.obs"
             "TargetName" = "8:odbc_select_11.obs"
             "Tag" = "8:"
             "Folder" = "8:_928EBE6C651242BA9D8FFE0476EE7811"
@@ -4623,7 +4623,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_6D706F3D4EE54962BB69B99ADA85CE3F"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\media\\music.wav"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\examples\\media\\music.wav"
             "TargetName" = "8:music.wav"
             "Tag" = "8:"
             "Folder" = "8:_CA17F456942A40B79E7001C9A4D0BD5B"
@@ -4643,7 +4643,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_6D81F8C6D20D48B3946D430D1640DA80"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\first_class_18.obs"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\examples\\first_class_18.obs"
             "TargetName" = "8:first_class_18.obs"
             "Tag" = "8:"
             "Folder" = "8:_928EBE6C651242BA9D8FFE0476EE7811"
@@ -4663,7 +4663,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_6E0CE716DA214A09A15298109A3A3ED8"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\collection-floatqueue.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\collection-floatqueue.html"
             "TargetName" = "8:collection-floatqueue.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -4683,7 +4683,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_6F7DF9BDD0E04BECBEAC52391C9AF3FD"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-keyboardevent.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-keyboardevent.html"
             "TargetName" = "8:game.sdl2-keyboardevent.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -4703,7 +4703,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_6FCBDF23AC4C4B30AAD91F5682D3FE61"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\rss_https_xml_15.obs"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\examples\\rss_https_xml_15.obs"
             "TargetName" = "8:rss_https_xml_15.obs"
             "Tag" = "8:"
             "Folder" = "8:_928EBE6C651242BA9D8FFE0476EE7811"
@@ -4723,7 +4723,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_707E96ADBA4A4914AD92B496C24C49F0"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\lib\\sdl\\libjpeg-9.dll"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\lib\\sdl\\libjpeg-9.dll"
             "TargetName" = "8:libjpeg-9.dll"
             "Tag" = "8:"
             "Folder" = "8:_B100624B748B4E8CB71E547FF7265B17"
@@ -4743,7 +4743,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_711B55583A2149AC8E3A9C3A34CFEFA7"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-cursor.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-cursor.html"
             "TargetName" = "8:game.sdl2-cursor.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -4763,7 +4763,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_7132FF473BB74FACBB2F9FF9590AD1DD"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\system.concurrency-threadmutex.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\system.concurrency-threadmutex.html"
             "TargetName" = "8:system.concurrency-threadmutex.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -4783,7 +4783,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_715F64F1C737426A96D511A754105D44"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-scancode.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-scancode.html"
             "TargetName" = "8:game.sdl2-scancode.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -4803,7 +4803,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_71FA2F9AE5144F1582FC53F9A88B1A8E"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\collection-intqueue.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\collection-intqueue.html"
             "TargetName" = "8:collection-intqueue.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -4823,7 +4823,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_736B4C0776314D16B7FCBDC29387C0D9"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-cpu.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-cpu.html"
             "TargetName" = "8:game.sdl2-cpu.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -4843,7 +4843,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_755C0FBEBDF44DF2828E064C6F614E8F"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\tiny\\programs\\ascii_mandlebrot.t"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\examples\\tiny\\programs\\ascii_mandlebrot.t"
             "TargetName" = "8:ascii_mandlebrot.t"
             "Tag" = "8:"
             "Folder" = "8:_6E1DCA93BE1C41C5940D51FE5F365E32"
@@ -4863,7 +4863,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_756814AAB9904E4D983A5F6CE6EBECDE"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\collection.generic-hash_k-compare_v_.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\collection.generic-hash_k-compare_v_.html"
             "TargetName" = "8:collection.generic-hash_k-compare_v_.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -4883,7 +4883,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_757D380BD9FB446A90E8C1274293B5A0"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-display.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-display.html"
             "TargetName" = "8:game.sdl2-display.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -4903,7 +4903,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_773BCB2036B744C098D2A09CEDDC9C18"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\game.framework-shape.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\game.framework-shape.html"
             "TargetName" = "8:game.framework-shape.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -4923,7 +4923,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_798A9EA0F6894BF59F4E225492084A09"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\lib\\sdl\\libvorbis-0.dll"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\lib\\sdl\\libvorbis-0.dll"
             "TargetName" = "8:libvorbis-0.dll"
             "Tag" = "8:"
             "Folder" = "8:_B100624B748B4E8CB71E547FF7265B17"
@@ -4943,7 +4943,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_7A9B917556CB4779BA05E3547C2B818C"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\tiny\\build.sh"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\examples\\tiny\\build.sh"
             "TargetName" = "8:build.sh"
             "Tag" = "8:"
             "Folder" = "8:_419E6F527039431CB6414C4E3AD04FA3"
@@ -4963,7 +4963,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_7AA6824B215A472DAC34A79D77B56912"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\web.http-rsspost.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\web.http-rsspost.html"
             "TargetName" = "8:web.http-rsspost.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -4983,7 +4983,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_7AE5D778475D4D0A8BDAEA974B919F6A"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\collection.generic-queue_h_.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\collection.generic-queue_h_.html"
             "TargetName" = "8:collection.generic-queue_h_.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -5003,7 +5003,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_7AF9784D4147434992E3134729BE405E"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\collection-list.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\collection-list.html"
             "TargetName" = "8:collection-list.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -5023,7 +5023,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_7AFA51F7D1FD4A598EEEA7F064BADD9C"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\media\\background.png"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\examples\\media\\background.png"
             "TargetName" = "8:background.png"
             "Tag" = "8:"
             "Folder" = "8:_CA17F456942A40B79E7001C9A4D0BD5B"
@@ -5043,7 +5043,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_7B8100430C0045F68D482F00B9691384"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\tiny\\programs\\while.t"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\examples\\tiny\\programs\\while.t"
             "TargetName" = "8:while.t"
             "Tag" = "8:"
             "Folder" = "8:_6E1DCA93BE1C41C5940D51FE5F365E32"
@@ -5063,7 +5063,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_7CE5637F8050446B831C8D931F634C48"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\system.api-dllproxy.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\system.api-dllproxy.html"
             "TargetName" = "8:system.api-dllproxy.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -5083,7 +5083,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_7D3ABAB0CCE34754A88F2E3D911CB060"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\system.io-inputstream.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\system.io-inputstream.html"
             "TargetName" = "8:system.io-inputstream.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -5103,7 +5103,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_7D93DC69EF704F369CEECD0D3466F32F"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\collection.generic-list_h_.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\collection.generic-list_h_.html"
             "TargetName" = "8:collection.generic-list_h_.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -5123,7 +5123,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_7DD1C9FD4C124F5FA476D0FFF05533E6"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\data.csv-csvtable.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\data.csv-csvtable.html"
             "TargetName" = "8:data.csv-csvtable.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -5143,7 +5143,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_7E8021E7A03C41F3B8707B75A15EB73E"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-rect.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-rect.html"
             "TargetName" = "8:game.sdl2-rect.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -5163,7 +5163,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_7F958C2836B048BE89B4DB83ECA8DA8D"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\tiny\\programs\\prime.t"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\examples\\tiny\\programs\\prime.t"
             "TargetName" = "8:prime.t"
             "Tag" = "8:"
             "Folder" = "8:_6E1DCA93BE1C41C5940D51FE5F365E32"
@@ -5183,7 +5183,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_837BC3684FEA4B37BAED4E76BA177291"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\system-chararrayholder.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\system-chararrayholder.html"
             "TargetName" = "8:system-chararrayholder.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -5203,7 +5203,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_8470E977377B416DAAB40E882E6C0D01"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\data.csv-csvrow.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\data.csv-csvrow.html"
             "TargetName" = "8:data.csv-csvrow.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -5223,7 +5223,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_851B810C95FE47F5A1795C113A657525"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-hints.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-hints.html"
             "TargetName" = "8:game.sdl2-hints.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -5243,7 +5243,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_85CDDE7D5680454FB24EE6BA99DA2C6A"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\collection-queue.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\collection-queue.html"
             "TargetName" = "8:collection-queue.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -5263,7 +5263,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_865688A9079640E5BDF4AF2F99326028"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\xml_2.obs"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\examples\\xml_2.obs"
             "TargetName" = "8:xml_2.obs"
             "Tag" = "8:"
             "Folder" = "8:_928EBE6C651242BA9D8FFE0476EE7811"
@@ -5283,7 +5283,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_8761FE90ABED4178939865486753B18B"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\lib\\xml.obl"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\lib\\xml.obl"
             "TargetName" = "8:xml.obl"
             "Tag" = "8:"
             "Folder" = "8:_DE25ACE29AE54063B9EF27A4FF4929C6"
@@ -5303,7 +5303,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_886C62190231473999C2CBC29D57E369"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\https_1.obs"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\examples\\https_1.obs"
             "TargetName" = "8:https_1.obs"
             "Tag" = "8:"
             "Folder" = "8:_928EBE6C651242BA9D8FFE0476EE7811"
@@ -5323,7 +5323,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_8886D4A1C5CC486E8488DB9688C40F02"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\closure_19.obs"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\examples\\closure_19.obs"
             "TargetName" = "8:closure_19.obs"
             "Tag" = "8:"
             "Folder" = "8:_928EBE6C651242BA9D8FFE0476EE7811"
@@ -5343,7 +5343,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_892B405CD2A04F639345C625985ED24B"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\database.odbc-date.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\database.odbc-date.html"
             "TargetName" = "8:database.odbc-date.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -5363,7 +5363,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_8A011AF0958643989E52D9667AE756FE"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\lib\\sdl\\libFLAC-8.dll"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\lib\\sdl\\libFLAC-8.dll"
             "TargetName" = "8:libFLAC-8.dll"
             "Tag" = "8:"
             "Folder" = "8:_B100624B748B4E8CB71E547FF7265B17"
@@ -5383,7 +5383,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_8A68E28FD6894D529AC863885845522C"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\game.framework-rectangle.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\game.framework-rectangle.html"
             "TargetName" = "8:game.framework-rectangle.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -5403,7 +5403,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_8A74C8011FA64D099DE6C54B9B6291DA"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-keyboard.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-keyboard.html"
             "TargetName" = "8:game.sdl2-keyboard.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -5423,7 +5423,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_8AC0969D68D545A28CEC04F0A0C321C0"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\collection-set.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\collection-set.html"
             "TargetName" = "8:collection-set.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -5443,7 +5443,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_8B9A1DB1CCB940379EC5D47D7F70758D"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-color.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-color.html"
             "TargetName" = "8:game.sdl2-color.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -5463,7 +5463,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_8EBCD36A96BD4E74A15E72718ED2A539"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\collection-intmap.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\collection-intmap.html"
             "TargetName" = "8:collection-intmap.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -5483,7 +5483,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_8EC3675A280442F0A3B7F87B170A5B10"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\system.time-date.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\system.time-date.html"
             "TargetName" = "8:system.time-date.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -5503,7 +5503,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_8EFDC57D65104611BEC1D51430685DA3"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\tiny\\programs\\fizzbuzz.t"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\examples\\tiny\\programs\\fizzbuzz.t"
             "TargetName" = "8:fizzbuzz.t"
             "Tag" = "8:"
             "Folder" = "8:_6E1DCA93BE1C41C5940D51FE5F365E32"
@@ -5523,7 +5523,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_8F1D299E439141369FFC779541F00B24"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\collection-vector.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\collection-vector.html"
             "TargetName" = "8:collection-vector.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -5543,7 +5543,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_8FED97662C424463AC65950C41C8B058"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\media\\ring.png"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\examples\\media\\ring.png"
             "TargetName" = "8:ring.png"
             "Tag" = "8:"
             "Folder" = "8:_CA17F456942A40B79E7001C9A4D0BD5B"
@@ -5563,7 +5563,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_90B5019E77474752B2731DF41C16D61A"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\lib\\query.obl"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\lib\\query.obl"
             "TargetName" = "8:query.obl"
             "Tag" = "8:"
             "Folder" = "8:_DE25ACE29AE54063B9EF27A4FF4929C6"
@@ -5583,7 +5583,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_90FDE6A566004942801839A6620119CA"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\tiny\\run.sh"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\examples\\tiny\\run.sh"
             "TargetName" = "8:run.sh"
             "Tag" = "8:"
             "Folder" = "8:_419E6F527039431CB6414C4E3AD04FA3"
@@ -5603,7 +5603,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_9168FE20B2DF4A1EA2BBE89373189145"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\system-boolholder.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\system-boolholder.html"
             "TargetName" = "8:system-boolholder.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -5623,7 +5623,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_91A9CD5CAE8F4459B2483262E15EABAE"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\lib\\sdl\\SDL2_image.dll"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\lib\\sdl\\SDL2_image.dll"
             "TargetName" = "8:SDL2_image.dll"
             "Tag" = "8:"
             "Folder" = "8:_B100624B748B4E8CB71E547FF7265B17"
@@ -5643,7 +5643,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_91FA7390FA284C58A5DF5B82CAED8983"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-joybuttonevent.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-joybuttonevent.html"
             "TargetName" = "8:game.sdl2-joybuttonevent.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -5663,7 +5663,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_930BBA434B9A4CEB9703E36856468CD6"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\syntax\\objeck.plist"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\syntax\\objeck.plist"
             "TargetName" = "8:objeck.plist"
             "Tag" = "8:"
             "Folder" = "8:_978A9321CE544138A911037A84BB6463"
@@ -5683,7 +5683,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_93873B9D8AC64FADAFF5F034CE081DC9"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\system.matrix-matrix2d.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\system.matrix-matrix2d.html"
             "TargetName" = "8:system.matrix-matrix2d.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -5703,7 +5703,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_93AFE015A8D44A94B33D9B854112294A"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\icons\\api.ico"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\icons\\api.ico"
             "TargetName" = "8:api.ico"
             "Tag" = "8:"
             "Folder" = "8:_97B5CCA6A25F41449A7B2992D41D9297"
@@ -5723,7 +5723,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_9487BFFE86344CEE92F76C6AFA1E7DBE"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\lib\\sdl\\SDL2_ttf.dll"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\lib\\sdl\\SDL2_ttf.dll"
             "TargetName" = "8:SDL2_ttf.dll"
             "Tag" = "8:"
             "Folder" = "8:_B100624B748B4E8CB71E547FF7265B17"
@@ -5743,7 +5743,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_95AFA12046644A208EE8C6945B2B296C"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\tiny\\programs\\beer.t"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\examples\\tiny\\programs\\beer.t"
             "TargetName" = "8:beer.t"
             "Tag" = "8:"
             "Folder" = "8:_6E1DCA93BE1C41C5940D51FE5F365E32"
@@ -5763,7 +5763,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_997C6C02264E490E87E458178FFC1F2A"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\tiny\\syntax.txt"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\examples\\tiny\\syntax.txt"
             "TargetName" = "8:syntax.txt"
             "Tag" = "8:"
             "Folder" = "8:_419E6F527039431CB6414C4E3AD04FA3"
@@ -5783,7 +5783,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_9C396762EDB64C59A49C131E371E1F2B"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\data.csv-csvcolumn.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\data.csv-csvcolumn.html"
             "TargetName" = "8:data.csv-csvcolumn.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -5803,7 +5803,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_9CB781E6B14B4EEB9030395D1B087906"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-windowflags.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-windowflags.html"
             "TargetName" = "8:game.sdl2-windowflags.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -5823,7 +5823,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_9CC2182C37C14A939542CD29CA6773C9"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\web.fastcgi-request.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\web.fastcgi-request.html"
             "TargetName" = "8:web.fastcgi-request.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -5843,7 +5843,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_9D36A5BF9C1C4228A94CA02EFBC32461"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\system.introspection-typeid.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\system.introspection-typeid.html"
             "TargetName" = "8:system.introspection-typeid.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -5863,7 +5863,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_9DBFC1C5A1A74975A274B15B0BA11379"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\lib\\odbc.obl"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\lib\\odbc.obl"
             "TargetName" = "8:odbc.obl"
             "Tag" = "8:"
             "Folder" = "8:_DE25ACE29AE54063B9EF27A4FF4929C6"
@@ -5883,7 +5883,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_9F7325A824A5487C8060FDC51D7D0765"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\lib\\sdl\\libogg-0.dll"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\lib\\sdl\\libogg-0.dll"
             "TargetName" = "8:libogg-0.dll"
             "Tag" = "8:"
             "Folder" = "8:_B100624B748B4E8CB71E547FF7265B17"
@@ -5903,7 +5903,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_A0A3D1F4367648E98A98CF7FF498FB8F"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-mousemotionevent.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-mousemotionevent.html"
             "TargetName" = "8:game.sdl2-mousemotionevent.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -5923,7 +5923,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_A2BE25CABFF8424BA6B0D239246156EB"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\media\\gem.wav"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\examples\\media\\gem.wav"
             "TargetName" = "8:gem.wav"
             "Tag" = "8:"
             "Folder" = "8:_CA17F456942A40B79E7001C9A4D0BD5B"
@@ -5943,7 +5943,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_A52DDB5F1C6C4216B6DCC4E4C3F4B42D"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-hardwareflags.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-hardwareflags.html"
             "TargetName" = "8:game.sdl2-hardwareflags.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -5963,7 +5963,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_A5A1847056344ED785B613D4A4AF30F2"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\lib\\encrypt.obl"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\lib\\encrypt.obl"
             "TargetName" = "8:encrypt.obl"
             "Tag" = "8:"
             "Folder" = "8:_DE25ACE29AE54063B9EF27A4FF4929C6"
@@ -5983,7 +5983,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_A7821161600A473AB67004595EA8CC29"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\2d_game_13.obs"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\examples\\2d_game_13.obs"
             "TargetName" = "8:2d_game_13.obs"
             "Tag" = "8:"
             "Folder" = "8:_928EBE6C651242BA9D8FFE0476EE7811"
@@ -6003,7 +6003,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_A992ECBFBA3D42AEB6F13A056A7D40D3"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\system.io.net-tcpsocket.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\system.io.net-tcpsocket.html"
             "TargetName" = "8:system.io.net-tcpsocket.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -6023,7 +6023,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_AAEA6D82C8904E7DAE0775AD89B7FFC4"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\json_3.obs"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\examples\\json_3.obs"
             "TargetName" = "8:json_3.obs"
             "Tag" = "8:"
             "Folder" = "8:_928EBE6C651242BA9D8FFE0476EE7811"
@@ -6043,7 +6043,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_AB20230E7CD94BA49EEB7376A4D65732"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\game.framework-animatedimagesprite.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\game.framework-animatedimagesprite.html"
             "TargetName" = "8:game.framework-animatedimagesprite.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -6063,7 +6063,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_ABF476D1D28F4A8AA34858F02BA57F1E"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\encrypt_7.obs"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\examples\\encrypt_7.obs"
             "TargetName" = "8:encrypt_7.obs"
             "Tag" = "8:"
             "Folder" = "8:_928EBE6C651242BA9D8FFE0476EE7811"
@@ -6083,7 +6083,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_AC6472571BFF453699DA513E9E313632"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\data.xml-type.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\data.xml-type.html"
             "TargetName" = "8:data.xml-type.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -6103,7 +6103,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_ACB803A82D0A49E2B2E2B18F5C50B0B1"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-displaymode.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-displaymode.html"
             "TargetName" = "8:game.sdl2-displaymode.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -6123,7 +6123,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_AD03389A1A944A9A87B4746805F5332C"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\lib\\sdl\\libmpg123-0.dll"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\lib\\sdl\\libmpg123-0.dll"
             "TargetName" = "8:libmpg123-0.dll"
             "Tag" = "8:"
             "Folder" = "8:_B100624B748B4E8CB71E547FF7265B17"
@@ -6143,7 +6143,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_AE52DD7C5C1A4F3B9F67B5B706405D05"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\system.introspection-datatype.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\system.introspection-datatype.html"
             "TargetName" = "8:system.introspection-datatype.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -6163,7 +6163,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_AE971524F8724BE3B551F773BE046CDA"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\tiny\\build.cmd"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\examples\\tiny\\build.cmd"
             "TargetName" = "8:build.cmd"
             "Tag" = "8:"
             "Folder" = "8:_419E6F527039431CB6414C4E3AD04FA3"
@@ -6183,7 +6183,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_AF455A64F16A4BA7AB6BBC5D388B7C41"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\game.framework-imagesprite.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\game.framework-imagesprite.html"
             "TargetName" = "8:game.framework-imagesprite.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -6203,7 +6203,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_AF5F4EAF65EE409CB43AFD768E111283"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\collection-map.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\collection-map.html"
             "TargetName" = "8:collection-map.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -6223,7 +6223,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_AF7E52C9D44B4A1BAA1ADC9B3159D43D"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\database.odbc-connection.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\database.odbc-connection.html"
             "TargetName" = "8:database.odbc-connection.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -6243,7 +6243,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_B06DA40FC39A4D27B962178678042A47"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\lib\\regex.obl"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\lib\\regex.obl"
             "TargetName" = "8:regex.obl"
             "Tag" = "8:"
             "Folder" = "8:_DE25ACE29AE54063B9EF27A4FF4929C6"
@@ -6263,7 +6263,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_B07C39283FD34B5FBE41D2408C8C19C2"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\icons\\guide.ico"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\icons\\guide.ico"
             "TargetName" = "8:guide.ico"
             "Tag" = "8:"
             "Folder" = "8:_97B5CCA6A25F41449A7B2992D41D9297"
@@ -6283,7 +6283,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_B202A08AC40A4B83AF602E796F137FEE"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\game.framework-titledimagesprite.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\game.framework-titledimagesprite.html"
             "TargetName" = "8:game.framework-titledimagesprite.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -6303,7 +6303,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_B2FF0DA8D6CD4F93B84F1957DB475D02"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\lib\\sdl\\fonts\\curses.ttf"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\lib\\sdl\\fonts\\curses.ttf"
             "TargetName" = "8:curses.ttf"
             "Tag" = "8:"
             "Folder" = "8:_192DEAF9368740768ED4C3BE9B698E6A"
@@ -6323,7 +6323,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_B32014AC93B14BDC8C01A513C414271D"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\system.io.file-file.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\system.io.file-file.html"
             "TargetName" = "8:system.io.file-file.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -6343,7 +6343,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_B3937C81C6944A9D95D58DDFD0BFFCF4"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\lib\\sdl\\libvorbisfile-3.dll"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\lib\\sdl\\libvorbisfile-3.dll"
             "TargetName" = "8:libvorbisfile-3.dll"
             "Tag" = "8:"
             "Folder" = "8:_B100624B748B4E8CB71E547FF7265B17"
@@ -6363,7 +6363,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_B43A513DB2F84DB1A760C527EC2FE390"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\media\\fire.png"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\examples\\media\\fire.png"
             "TargetName" = "8:fire.png"
             "Tag" = "8:"
             "Folder" = "8:_CA17F456942A40B79E7001C9A4D0BD5B"
@@ -6383,7 +6383,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_B4C05B51577E4EE58C03D7AAC1A38529"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-pixelvalue.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-pixelvalue.html"
             "TargetName" = "8:game.sdl2-pixelvalue.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -6403,7 +6403,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_B59AF0A209354B5C818D33DF67713BF8"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-joyhatevent.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-joyhatevent.html"
             "TargetName" = "8:game.sdl2-joyhatevent.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -6423,7 +6423,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_B68EA51D2624424D9790790089ED5668"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-mixchunk.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-mixchunk.html"
             "TargetName" = "8:game.sdl2-mixchunk.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -6443,7 +6443,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_B83F56DD58B542B795917333322979F0"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\eula.rtf"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\eula.rtf"
             "TargetName" = "8:eula.rtf"
             "Tag" = "8:"
             "Folder" = "8:_34A18E7364D64DE7AAB44EA3686D8B35"
@@ -6463,7 +6463,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_B86A2CEFED654D5A924BB2414B77433A"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\threads_6.obs"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\examples\\threads_6.obs"
             "TargetName" = "8:threads_6.obs"
             "Tag" = "8:"
             "Folder" = "8:_928EBE6C651242BA9D8FFE0476EE7811"
@@ -6483,7 +6483,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_B8832ECF356F4AE1A1E9FADB0DD2A4AB"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\web.http-rssreader.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\web.http-rssreader.html"
             "TargetName" = "8:web.http-rssreader.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -6503,7 +6503,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_B8AC0CEF95F7472C89F1C2E3CFBF44F7"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\syntax\\objeck-syntax.php"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\syntax\\objeck-syntax.php"
             "TargetName" = "8:objeck-syntax.php"
             "Tag" = "8:"
             "Folder" = "8:_978A9321CE544138A911037A84BB6463"
@@ -6523,7 +6523,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_BAC962D200C4475CA5ACE6C1BA2B48D1"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\tiny\\programs\\phoenix.t"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\examples\\tiny\\programs\\phoenix.t"
             "TargetName" = "8:phoenix.t"
             "Tag" = "8:"
             "Folder" = "8:_6E1DCA93BE1C41C5940D51FE5F365E32"
@@ -6543,7 +6543,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_BC806DF6DAB04BBF99E82B7D843B7339"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\regex_4.obs"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\examples\\regex_4.obs"
             "TargetName" = "8:regex_4.obs"
             "Tag" = "8:"
             "Folder" = "8:_928EBE6C651242BA9D8FFE0476EE7811"
@@ -6563,7 +6563,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_BF80970E64E84C97A1B1EFD72AADC494"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\tiny\\readme.txt"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\examples\\tiny\\readme.txt"
             "TargetName" = "8:readme.txt"
             "Tag" = "8:"
             "Folder" = "8:_419E6F527039431CB6414C4E3AD04FA3"
@@ -6583,7 +6583,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_BFF9EE709B404ED2A266E959D7C51C04"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\syntax\\objeck.lang"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\syntax\\objeck.lang"
             "TargetName" = "8:objeck.lang"
             "Tag" = "8:"
             "Folder" = "8:_978A9321CE544138A911037A84BB6463"
@@ -6603,7 +6603,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_C1AFD99E4D6548EBBA77C5A4BF7090FF"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\web.http-rsschannel.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\web.http-rsschannel.html"
             "TargetName" = "8:web.http-rsschannel.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -6623,7 +6623,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_C2FDC88E1A8B46FA8F74DC3CA8C4DA75"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\classes.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\classes.html"
             "TargetName" = "8:classes.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -6643,7 +6643,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_C3478125A0444F9CB0A0A271E71745B3"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\system-base.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\system-base.html"
             "TargetName" = "8:system-base.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -6663,7 +6663,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_C499595B48B94E56B3E10160DE9319D6"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\bundles.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\bundles.html"
             "TargetName" = "8:bundles.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -6683,7 +6683,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_C61D0A651B204545A0696E103CB0EF03"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-font.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-font.html"
             "TargetName" = "8:game.sdl2-font.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -6703,7 +6703,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_C69DD81822C743608FB21F56B934D4AD"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\system-runtime.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\system-runtime.html"
             "TargetName" = "8:system-runtime.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -6723,7 +6723,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_C6D4BE6CCE114109B29077599E6DB09D"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\collection-comparelist.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\collection-comparelist.html"
             "TargetName" = "8:collection-comparelist.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -6743,7 +6743,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_C855C64216854665B367A520D4D4BE92"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-mousewheelevent.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-mousewheelevent.html"
             "TargetName" = "8:game.sdl2-mousewheelevent.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -6763,7 +6763,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_C88246904F3F45209E783075489E7040"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\data.json-jsonelement.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\data.json-jsonelement.html"
             "TargetName" = "8:data.json-jsonelement.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -6783,7 +6783,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_C8BA055D19644773B2ADC1F1D00F3F61"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\collection-floatset.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\collection-floatset.html"
             "TargetName" = "8:collection-floatset.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -6803,7 +6803,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_CA3F679BCED7405080286E2A23C25C2F"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\lib\\sdl\\zlib1.dll"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\lib\\sdl\\zlib1.dll"
             "TargetName" = "8:zlib1.dll"
             "Tag" = "8:"
             "Folder" = "8:_B100624B748B4E8CB71E547FF7265B17"
@@ -6823,7 +6823,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_CAD96E6EE56C473E965FB3C9C84F366F"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\lambda_17.obs"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\examples\\lambda_17.obs"
             "TargetName" = "8:lambda_17.obs"
             "Tag" = "8:"
             "Folder" = "8:_928EBE6C651242BA9D8FFE0476EE7811"
@@ -6843,7 +6843,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_CB516656BDE34F63B32C3C29AEAA0AAE"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-power.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-power.html"
             "TargetName" = "8:game.sdl2-power.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -6863,7 +6863,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_CB5C5145C88E4E0FB2F4DD72229D1DC5"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\collection-stringhash.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\collection-stringhash.html"
             "TargetName" = "8:collection-stringhash.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -6883,7 +6883,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_CCC15264590D46CBBFAE2EACA3AC7A2C"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\lib\\collect.obl"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\lib\\collect.obl"
             "TargetName" = "8:collect.obl"
             "Tag" = "8:"
             "Folder" = "8:_DE25ACE29AE54063B9EF27A4FF4929C6"
@@ -6903,7 +6903,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_CCF43615AB8A42D09885EEB95EA2935F"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\system-intarrayholder.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\system-intarrayholder.html"
             "TargetName" = "8:system-intarrayholder.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -6923,7 +6923,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_CD136BAB22D048079C8A976D0861E1FE"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-texture.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-texture.html"
             "TargetName" = "8:game.sdl2-texture.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -6943,7 +6943,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_CE37A778D92C430EB1438AE75EC315D4"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\system.io.file-filewriter.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\system.io.file-filewriter.html"
             "TargetName" = "8:system.io.file-filewriter.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -6963,7 +6963,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_D08A07288DD04AF88DDC6F697FF3B886"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\system-compare.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\system-compare.html"
             "TargetName" = "8:system-compare.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -6983,7 +6983,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_D18AE72EEDFC4246B5800A2AC24DBEED"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-glattr.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-glattr.html"
             "TargetName" = "8:game.sdl2-glattr.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -7003,7 +7003,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_D19A83A4C6084845A19254C88C3E7C7D"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\system.introspection-method.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\system.introspection-method.html"
             "TargetName" = "8:system.introspection-method.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -7023,7 +7023,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_D1FDEDA38764458F888072A6E0CC67AF"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-pixeldata.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-pixeldata.html"
             "TargetName" = "8:game.sdl2-pixeldata.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -7043,7 +7043,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_D214C28AC56942A69235CD35BCB99D74"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\system.io-console.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\system.io-console.html"
             "TargetName" = "8:system.io-console.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -7063,7 +7063,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_D40AB183833B4D3CB39D0C81F976254D"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\lib\\sdl\\libfreetype-6.dll"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\lib\\sdl\\libfreetype-6.dll"
             "TargetName" = "8:libfreetype-6.dll"
             "Tag" = "8:"
             "Folder" = "8:_B100624B748B4E8CB71E547FF7265B17"
@@ -7083,7 +7083,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_D5392D14682D49B4ADF126E616DA2135"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\system.io.net-tcpsecuresocket.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\system.io.net-tcpsecuresocket.html"
             "TargetName" = "8:system.io.net-tcpsecuresocket.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -7103,7 +7103,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_D899BC0ED5804330B6038018EBB5D8C2"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-surface.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-surface.html"
             "TargetName" = "8:game.sdl2-surface.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -7123,7 +7123,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_D963CA1A875D417E97649555C35E4F64"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\lib\\native\\libobjk_openssl.dll"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\lib\\native\\libobjk_openssl.dll"
             "TargetName" = "8:libobjk_openssl.dll"
             "Tag" = "8:"
             "Folder" = "8:_70460CE063E14B42AF76C5535BAA3050"
@@ -7143,7 +7143,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_D97B451F56CC41C2B02D679EA6B01CA1"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\LICENSE"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\LICENSE"
             "TargetName" = "8:LICENSE"
             "Tag" = "8:"
             "Folder" = "8:_8EB462F2784A421E99849541CC462494"
@@ -7163,7 +7163,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_DB10FC788DB044FF981EF532880B1452"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\http_regex_9.obs"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\examples\\http_regex_9.obs"
             "TargetName" = "8:http_regex_9.obs"
             "Tag" = "8:"
             "Folder" = "8:_928EBE6C651242BA9D8FFE0476EE7811"
@@ -7183,7 +7183,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_DD668748ED504C3189D698D69E77A068"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-platform.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-platform.html"
             "TargetName" = "8:game.sdl2-platform.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -7203,7 +7203,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_DFD1B43DB60344DC824AA4B59AB333C4"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\database.odbc-resultset.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\database.odbc-resultset.html"
             "TargetName" = "8:database.odbc-resultset.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -7223,7 +7223,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_E0549ED241B047E4A34610E95B8562FE"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\hello_0.obs"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\examples\\hello_0.obs"
             "TargetName" = "8:hello_0.obs"
             "Tag" = "8:"
             "Folder" = "8:_928EBE6C651242BA9D8FFE0476EE7811"
@@ -7243,7 +7243,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_E08607DA6EC14502B03C5F6140260845"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\media\\spider.png"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\examples\\media\\spider.png"
             "TargetName" = "8:spider.png"
             "Tag" = "8:"
             "Folder" = "8:_CA17F456942A40B79E7001C9A4D0BD5B"
@@ -7263,7 +7263,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_E12ECD72A37845BCA5139568EECE4751"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-textinputevent.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-textinputevent.html"
             "TargetName" = "8:game.sdl2-textinputevent.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -7283,7 +7283,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_E434BEAAB3CE404B90A3723BD15EC783"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\collection-intset.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\collection-intset.html"
             "TargetName" = "8:collection-intset.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -7303,7 +7303,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_E5086CF65BC4478FB67156DBE9F59E53"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\system.io-serializer.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\system.io-serializer.html"
             "TargetName" = "8:system.io-serializer.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -7323,7 +7323,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_E5A88B65C3B24922B709B5E1AB134A31"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\lib\\json.obl"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\lib\\json.obl"
             "TargetName" = "8:json.obl"
             "Tag" = "8:"
             "Folder" = "8:_DE25ACE29AE54063B9EF27A4FF4929C6"
@@ -7343,7 +7343,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_E63E606812B94A9C947DC7090A028FA0"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\system-bool.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\system-bool.html"
             "TargetName" = "8:system-bool.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -7363,7 +7363,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_E72D4B53983B4A39BC9280B68E717480"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\http_xml_regex_8.obs"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\examples\\http_xml_regex_8.obs"
             "TargetName" = "8:http_xml_regex_8.obs"
             "Tag" = "8:"
             "Folder" = "8:_928EBE6C651242BA9D8FFE0476EE7811"
@@ -7383,7 +7383,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_E7F14E69E10C4A8AA0509DCFB06BDEBD"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\lib\\gen_collect.obl"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\lib\\gen_collect.obl"
             "TargetName" = "8:gen_collect.obl"
             "Tag" = "8:"
             "Folder" = "8:_DE25ACE29AE54063B9EF27A4FF4929C6"
@@ -7403,7 +7403,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_E86DA076A55441AF8E793AE8E844F7B6"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\media\\player.png"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\examples\\media\\player.png"
             "TargetName" = "8:player.png"
             "Tag" = "8:"
             "Folder" = "8:_CA17F456942A40B79E7001C9A4D0BD5B"
@@ -7423,7 +7423,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_E8B641CB0BFA45B7B0783F020A98B9E8"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\bin\\obr.exe"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\bin\\obr.exe"
             "TargetName" = "8:obr.exe"
             "Tag" = "8:"
             "Folder" = "8:_B94AAF2ADB3D47A1AA8E44083E8B4971"
@@ -7443,7 +7443,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_EB478AD006804B5F809430C64244CCD2"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\tiny\\programs\\fact.t"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\examples\\tiny\\programs\\fact.t"
             "TargetName" = "8:fact.t"
             "Tag" = "8:"
             "Folder" = "8:_6E1DCA93BE1C41C5940D51FE5F365E32"
@@ -7463,7 +7463,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_EC32E8E3C38E4492A698DD7892ADF8AF"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\tiny\\compiler\\parser.obs"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\examples\\tiny\\compiler\\parser.obs"
             "TargetName" = "8:parser.obs"
             "Tag" = "8:"
             "Folder" = "8:_85683446557949A390E47CFF57E77446"
@@ -7483,7 +7483,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_EC5E68C11BE943ECAE9CB8249666EDE8"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\tiny\\programs\\deep.t"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\examples\\tiny\\programs\\deep.t"
             "TargetName" = "8:deep.t"
             "Tag" = "8:"
             "Folder" = "8:_6E1DCA93BE1C41C5940D51FE5F365E32"
@@ -7503,7 +7503,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_ED134500C0D0444FBE8344E00D13CCE8"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\lib\\sdl\\libmodplug-1.dll"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\lib\\sdl\\libmodplug-1.dll"
             "TargetName" = "8:libmodplug-1.dll"
             "Tag" = "8:"
             "Folder" = "8:_B100624B748B4E8CB71E547FF7265B17"
@@ -7523,7 +7523,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_ED7500516EE54E7CB223B7DC5002A4A3"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-pixelformat.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-pixelformat.html"
             "TargetName" = "8:game.sdl2-pixelformat.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -7543,7 +7543,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_EDCE60D904BC4DDBA3D3A7A09C91D04C"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\icons\\examples.ico"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\icons\\examples.ico"
             "TargetName" = "8:examples.ico"
             "Tag" = "8:"
             "Folder" = "8:_97B5CCA6A25F41449A7B2992D41D9297"
@@ -7563,7 +7563,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_EF96D375AB7A48D89E8B1BB56F302CA5"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\system-floatarrayholder.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\system-floatarrayholder.html"
             "TargetName" = "8:system-floatarrayholder.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -7583,7 +7583,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_F0157A7B6AA94EE4813B1E325AA47ADE"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\tiny\\compiler\\emitter.obs"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\examples\\tiny\\compiler\\emitter.obs"
             "TargetName" = "8:emitter.obs"
             "Tag" = "8:"
             "Folder" = "8:_85683446557949A390E47CFF57E77446"
@@ -7603,7 +7603,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_F16A2BA1D6994ADC923A8A8411EF29EE"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\collection-floatstack.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\collection-floatstack.html"
             "TargetName" = "8:collection-floatstack.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -7623,7 +7623,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_F1AE656E95B34460A0DDED118183EACD"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\query.structured-table.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\query.structured-table.html"
             "TargetName" = "8:query.structured-table.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -7643,7 +7643,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_F1CCC4C5AB704647978B6F1E433518AD"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\data.xml-xmlparser.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\data.xml-xmlparser.html"
             "TargetName" = "8:data.xml-xmlparser.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -7663,7 +7663,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_F26209E568C148E39D26EEA73717288B"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\collection.generic-set_k-compare_.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\collection.generic-set_k-compare_.html"
             "TargetName" = "8:collection.generic-set_k-compare_.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -7683,7 +7683,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_F29ADD496F674AC6976AC4BA751A667F"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\lib\\sdl\\libwebp-7.dll"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\lib\\sdl\\libwebp-7.dll"
             "TargetName" = "8:libwebp-7.dll"
             "Tag" = "8:"
             "Folder" = "8:_B100624B748B4E8CB71E547FF7265B17"
@@ -7703,7 +7703,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_F2EFAD692CCD4AF78418D78ACF24C87B"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\database.odbc-parameterstatement.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\database.odbc-parameterstatement.html"
             "TargetName" = "8:database.odbc-parameterstatement.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -7723,7 +7723,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_F4F26CC9C684409C9F984F305317C31E"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\tiny\\programs\\fib.t"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\examples\\tiny\\programs\\fib.t"
             "TargetName" = "8:fib.t"
             "Tag" = "8:"
             "Folder" = "8:_6E1DCA93BE1C41C5940D51FE5F365E32"
@@ -7743,7 +7743,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_F518B1B917414190947FDC3933925566"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-mixer.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-mixer.html"
             "TargetName" = "8:game.sdl2-mixer.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -7763,7 +7763,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_F718087033C440389CBE7A1884D01959"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\uninstall.vbs"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\uninstall.vbs"
             "TargetName" = "8:uninstall.vbs"
             "Tag" = "8:"
             "Folder" = "8:_34A18E7364D64DE7AAB44EA3686D8B35"
@@ -7783,7 +7783,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_F75B99D4E64042ACADAF1A94CB86DE4B"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-keysym.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-keysym.html"
             "TargetName" = "8:game.sdl2-keysym.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -7803,7 +7803,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_F786AA0D157741FC9AD7D39507AB7A4F"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\system.time-timer.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\system.time-timer.html"
             "TargetName" = "8:system.time-timer.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -7823,7 +7823,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_F78A5E05AAA8481C9116E8271A3D2F3D"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\system.io-outputstream.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\system.io-outputstream.html"
             "TargetName" = "8:system.io-outputstream.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -7843,7 +7843,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_F7C84A5EACF74C5EA628ECAEF10603CD"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\lib\\cacert.pem"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\lib\\cacert.pem"
             "TargetName" = "8:cacert.pem"
             "Tag" = "8:"
             "Folder" = "8:_DE25ACE29AE54063B9EF27A4FF4929C6"
@@ -7863,7 +7863,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_F80F486731F04EBCA03D561F79A64B6A"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\data.xml-xmlelement.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\data.xml-xmlelement.html"
             "TargetName" = "8:data.xml-xmlelement.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -7883,7 +7883,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_F83703765A904FFEA8B83719C29C661D"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\examples\\tiny\\programs\\count.t"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\examples\\tiny\\programs\\count.t"
             "TargetName" = "8:count.t"
             "Tag" = "8:"
             "Folder" = "8:_6E1DCA93BE1C41C5940D51FE5F365E32"
@@ -7903,7 +7903,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_FB11F30D5FEC44ABBF9CEC454FEA4B78"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\system-char.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\system-char.html"
             "TargetName" = "8:system-char.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -7923,7 +7923,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_FB1378D05A01493FA0C3BF78BF8E075D"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\lib\\lang.obl"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\lib\\lang.obl"
             "TargetName" = "8:lang.obl"
             "Tag" = "8:"
             "Folder" = "8:_DE25ACE29AE54063B9EF27A4FF4929C6"
@@ -7943,7 +7943,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_FFC76707810942F3B110011925168B09"
             {
-            "SourcePath" = "8:C:\\Users\\objec\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-joystick.html"
+            "SourcePath" = "8:..\\..\\..\\..\\..\\Desktop\\objeck-lang-win32\\doc\\api\\game.sdl2-joystick.html"
             "TargetName" = "8:game.sdl2-joystick.html"
             "Tag" = "8:"
             "Folder" = "8:_68F2A4317EAE415B8AC1F7F28E3E8CAD"
@@ -8215,15 +8215,15 @@
         {
         "Name" = "8:Microsoft Visual Studio"
         "ProductName" = "8:Objeck"
-        "ProductCode" = "8:{7B42BCDD-AA96-45B1-87AD-BB675F0B55EE}"
-        "PackageCode" = "8:{7DAAB1E7-1757-42E0-8338-BA8FE2E16650}"
+        "ProductCode" = "8:{9AF91AEB-D14F-43EE-96C8-9FA585A83718}"
+        "PackageCode" = "8:{A81B50ED-C35B-4817-A764-094248584A37}"
         "UpgradeCode" = "8:{A1931BE6-A793-4ECE-B303-66B69408440F}"
         "AspNetVersion" = "8:"
         "RestartWWWService" = "11:FALSE"
         "RemovePreviousVersions" = "11:TRUE"
         "DetectNewerInstalledVersion" = "11:TRUE"
         "InstallAllUsers" = "11:TRUE"
-        "ProductVersion" = "8:5.1.3"
+        "ProductVersion" = "8:5.1.4"
         "Manufacturer" = "8:Randy Hollines"
         "ARPHELPTELEPHONE" = "8:"
         "ARPHELPLINK" = "8:"
@@ -8232,7 +8232,7 @@
         "ARPCONTACT" = "8:Randy Hollines"
         "Keywords" = "8:Objeck,Programming,Language"
         "ARPCOMMENTS" = "8:Simple, object-oriented and functional"
-        "ARPURLINFOABOUT" = "8:http://www.objeck.org/"
+        "ARPURLINFOABOUT" = "8:https://www.objeck.org/"
         "ARPPRODUCTICON" = "8:_5461522CF43A43E780A58ABE654AEEA3"
         "ARPIconIndex" = "3:0"
         "SearchPath" = "8:"
