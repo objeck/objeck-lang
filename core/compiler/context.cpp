@@ -4433,7 +4433,7 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
         }
         else if(!UnboxingCalculation(left, left_expr, expression, true, depth)) {
           ProcessError(left_expr, L"Invalid operation using classes: " +
-                       ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Float");
+                       ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Byte");
         }
         break;
 
@@ -4444,7 +4444,7 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
         }
         else if(!UnboxingCalculation(left, left_expr, expression, true, depth)) {
           ProcessError(left_expr, L"Invalid operation using classes: " +
-                       ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Float");
+                       ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Char");
         }
         break;
 
@@ -4455,7 +4455,7 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
         }
         else if(!UnboxingCalculation(left, left_expr, expression, true, depth)) {
           ProcessError(left_expr, L"Invalid operation using classes: " +
-                       ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Float");
+                       ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Int");
         }
         break;
 
