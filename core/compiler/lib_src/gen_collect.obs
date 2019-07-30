@@ -1112,31 +1112,7 @@ bundle Collection.Generic {
       
 			return Vector->New(array)<H>;
 		}
-
-		#~
-		Finds an element
-		@param value value to find
-		@return index of values found, -1 otherwise
-		~#
-		method : public : Find(value : H) ~ Int {
-			for(i := 0; i < @size; i+= 1;) {
-				if(@values[i] = value) {
-					return i;
-				};
-			};
-
-			return -1;
-		}
-
-		#~
-		Finds an element
-		@param value value to find
-		@return true of found, false otherwise
-		~#
-		method : public : Has(value : H) ~ Bool {
-			return Find(value) > -1;
-		}
-
+		
 		#~
 		Swap two values in the vector
 		@param a first value
