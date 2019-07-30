@@ -1,0 +1,41 @@
+use Collection.Generic;
+
+class Ludic  {
+	function : Main(args : String[]) ~ Nil {
+
+	}
+
+	function : LudicUpTo(n : Int) ~ Vector<IntHolder> {
+		ludics := Vector->New()<IntHolder>;
+		for(i := 1; i <= n; i++;){
+			ludics->AddBack(i);
+		};
+ 		
+		for(cursor := 1; cursor < ludics->Size(); cursor++;) {
+			thisLudic := ludics->Get(cursor);
+			removeCursor := cursor + thisLudic;
+			while(removeCursor < ludics->Size()){
+				ludics->Remove(removeCursor);
+				removeCursor := removeCursor + thisLudic - 1;
+			};
+		};
+
+		return ludics;
+	}
+
+	function : GetTriplets(ludics : Vector<IntHolder>) ~ Vector<Vector<IntHolder> > {
+		triplets := Vector->New()<Vector<IntHolder> >;
+		for(i := 0; i < ludics->Size() - 2; i++;){
+			thisLudic := ludics->Get(i);
+			if(ludics->Has(thisLudic + 2) & ludics->Has(thisLudic + 6)){
+				triplet := Vector->New()<IntHolder>;
+				triplet->AddBack(thisLudic);
+				triplet->AddBack(thisLudic + 2);
+				triplet->AddBack(thisLudic + 6);
+				triplets->AddBack(triplet);
+			};
+		};
+
+		return triplets;
+	}
+}
