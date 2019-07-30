@@ -1118,7 +1118,7 @@ bundle Collection.Generic {
 		@param value value to find
 		@return index of values found, -1 otherwise
 		~#
-		method : public : Find(value : Base) ~ Int {
+		method : public : Find(value : H) ~ Int {
 			for(i := 0; i < @size; i+= 1;) {
 				if(@values[i] = value) {
 					return i;
@@ -1133,7 +1133,7 @@ bundle Collection.Generic {
 		@param value value to find
 		@return true of found, false otherwise
 		~#
-		method : public : Has(value : Base) ~ Bool {
+		method : public : Has(value : H) ~ Bool {
 			return Find(value) > -1;
 		}
 
