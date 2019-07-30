@@ -1133,7 +1133,7 @@ bundle Collection.Generic {
 		@param value value to find
 		@return true of found, false otherwise
 		~#
-		method : public : Has(value : Base) ~ Int {
+		method : public : Has(value : Base) ~ Bool {
 			return Find(value) > -1;
 		}
 
