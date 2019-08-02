@@ -11,11 +11,7 @@ addons:
   apt:
     update: true
 
-install:
-- "[ $CXX = g++ ] && export CXX=g++-6 || true"
-- "[ $CXX = clang++ ] && export CXX=clang++-3.8 || true"
-
-before_script: cd $TRAVIS_BUILD_DIR/objeck-lang/core/release
+before_script: cd $TRAVIS_BUILD_DIR/core/release
 
 script:
-  - ./build.sh 64
+  - ./deploy.sh 64
