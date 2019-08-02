@@ -11,7 +11,11 @@ addons:
   apt:
     update: true
 
-before_script: cd $TRAVIS_BUILD_DIR/core/release
+install:
+- "[ $CXX = g++ ] && export CXX=g++-6 || true"
+
+before_script: 
+  - cd $TRAVIS_BUILD_DIR/core/release
 
 script:
   - ./deploy.sh 64
