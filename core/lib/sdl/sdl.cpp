@@ -3075,14 +3075,6 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
-  void sdl_cpu_hasneon(VMContext& context) {
-    const int return_value = SDL_HasNEON();
-    APITools_SetIntValue(context, 0, return_value);
-  }
-
-#ifdef _WIN32
-  __declspec(dllexport)
-#endif
   void sdl_cpu_get_systemram(VMContext& context) {
     const int return_value = SDL_GetSystemRAM();
     APITools_SetIntValue(context, 0, return_value);
