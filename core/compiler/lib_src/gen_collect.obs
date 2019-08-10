@@ -777,7 +777,29 @@ bundle Collection.Generic {
 			};
 			return @self;
 		}
-        
+
+		#~
+		Returns a limited list
+		@param l limit
+		@return limited list
+		~#
+		method : public : Limit(l : Int) ~ List<H> {
+			list := List->New()<H>;
+			
+			if(l > -1) {
+				i := 0;
+				start := @head;
+				while(i < l & start <> Nil) {
+					list->AddBack(start->Get());
+					start := start->GetNext();
+					i += 1;
+				};
+			};
+
+			list->Rewind();
+			return list;
+		}
+
 		#~
 		Uses the given function to filter out values
 		@param f function to use a filter. If the function evaluates to true the value is added to the collection.
@@ -1136,6 +1158,23 @@ bundle Collection.Generic {
 			};
 			return @self;
 		}
+
+		#~
+		Returns a limited list
+		@param l limit
+		@return limited list
+		~#
+		method : public : Limit(l : Int) ~ Vector<H> {
+			array : H[] := H->New[@size];
+
+			if(l > -1 & l < @size) {
+				for(i : Int := 0; i < l; i += 1;) {
+					array[i] := @values[i];
+				};
+			};
+      		
+			return Vector->New(array)<H>;
+		}
 		
 		#~
 		Swap two values in the vector
@@ -1334,10 +1373,28 @@ bundle Collection.Generic {
 		~#
 		method : public : Apply(f : (H) ~ H) ~ CompareVector<H> {
 			array : H[] := H->New[@size];
+
 			for(i : Int := 0; i < @size; i += 1;) {
 				array[i] := f(@values[i]);
 			};
       
+			return CompareVector->New(array)<H>;
+		}
+
+		#~
+		Returns a limited list
+		@param l limit
+		@return limited list
+		~#
+		method : public : Limit(l : Int) ~ CompareVector<H> {
+			array : H[] := H->New[@size];
+
+			if(l > -1 & l < @size) {
+				for(i : Int := 0; i < l; i += 1;) {
+					array[i] := @values[i];
+				};
+			};
+      		
 			return CompareVector->New(array)<H>;
 		}
 
@@ -1705,7 +1762,7 @@ bundle Collection.Generic {
 			
 			return Nil;
 		}
-		
+
 		#~
 		Function called for each element
 		@param f function called
