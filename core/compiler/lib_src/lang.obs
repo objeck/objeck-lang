@@ -2003,6 +2003,10 @@ bundle System {
 		method : public : native : GetInstanceID() ~ Int {
 			LOAD_INST_UID;
 		}
+
+		method : ToString() ~ String {
+			return GetInstanceID()->ToString();
+		}
 	}
 	
 	#~
