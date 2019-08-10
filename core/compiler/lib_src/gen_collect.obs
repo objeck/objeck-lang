@@ -1725,6 +1725,27 @@ bundle Collection.Generic {
 				f(key, value);
 			};
 		}
+
+		#~
+		Function called for each element
+		@param f function called
+		~#
+		method : public : ToString() ~ String {
+			buffer := "[";
+			
+			keys := GetKeys();
+			each(i : keys) {
+				key := keys->Get(i);
+				value := Find(key);
+				buffer += "{{$key},{$value}}";
+				if(i + 1 < keys->Size()) {
+					buffer += ',';
+				};
+			};
+			buffer := "]";
+
+			return buffer;
+		}
 		
 		method : GetKeys(node : Collection.Generic.TreeNode<K, V>, vector : Collection.Generic.Vector<K>) ~ Nil {
 			if(node <> Nil) {
