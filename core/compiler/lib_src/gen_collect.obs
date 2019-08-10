@@ -1091,6 +1091,10 @@ bundle Collection.Generic {
 		method : public : GetPrevious() ~ ListNode<H> {
 			return @previous;
 		}
+
+		method : public : ToString() ~ String {
+			return @value->ToString();
+		}
 	}
 	
 	#~
@@ -1394,7 +1398,7 @@ bundle Collection.Generic {
 			buffer := "]";
 			return buffer;
 		}
-		
+
 		#~
 		Adds a vector of values to the end of the vector
 		@param values values to append 
@@ -1771,7 +1775,7 @@ bundle Collection.Generic {
 				f(key, value);
 			};
 		}
-		
+
 		method : public : ToString() ~ String {
 			buffer := "[";
 
