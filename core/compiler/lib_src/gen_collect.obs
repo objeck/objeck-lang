@@ -190,6 +190,10 @@ bundle Collection.Generic {
 		New() {
 			@values := Vector->New()<H>	;
 		}
+
+		method : public : ToString() ~ String {
+			return @values->ToString();
+		}
 		
 		#~
 		Pushes a value onto the stack
@@ -261,6 +265,10 @@ bundle Collection.Generic {
 		~#
 		New() {
 			@queue := List->New()<H>;
+		}
+
+		method : public : ToString() ~ String {
+			return @queue->ToString();
 		}
 		
 		#~
@@ -777,6 +785,22 @@ bundle Collection.Generic {
 			};
 		}
 
+		method : public : ToString() ~ String {
+			buffer := "[";
+
+			start := @head;
+			while(start <> Nil) {
+				buffer += start->Get()->ToString();
+				start := start->GetNext();
+				if(start <> Nil) {
+					buffer += ',';
+				};
+			};
+
+			buffer := "]";
+			return buffer;
+		}
+
 		#~
 		Uses the given function to filter out values
 		@param f function to use a filter. If the function evaluates to true the value is added to the collection.
@@ -1134,6 +1158,17 @@ bundle Collection.Generic {
 				f(@values[i]);
 			};
 		}
+
+		method : public : ToString() ~ String {
+			buffer := "[";
+
+			for(i : Int := 0; i < @size; i += 1;) {
+				buffer += @values[i]->ToString();
+			};
+
+			buffer := "]";
+			return buffer;
+		}
 		
 		#~
 		Swap two values in the vector
@@ -1349,6 +1384,17 @@ bundle Collection.Generic {
 			};
 		}
 
+		method : public : ToString() ~ String {
+			buffer := "[";
+
+			for(i : Int := 0; i < @size; i += 1;) {
+				buffer += @values[i]->ToString();
+			};
+
+			buffer := "]";
+			return buffer;
+		}
+		
 		#~
 		Adds a vector of values to the end of the vector
 		@param values values to append 
@@ -1725,14 +1771,10 @@ bundle Collection.Generic {
 				f(key, value);
 			};
 		}
-
-		#~
-		Function called for each element
-		@param f function called
-		~#
+		
 		method : public : ToString() ~ String {
 			buffer := "[";
-			
+
 			keys := GetKeys();
 			each(i : keys) {
 				key := keys->Get(i);
