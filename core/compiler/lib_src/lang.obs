@@ -1264,6 +1264,10 @@ bundle System {
 		method : public : PrintLine() ~ Nil {
 			@value->PrintLine();
 		}
+
+        method : public : ToString() ~ String {
+			return @value->ToString();
+		}
 	}
 	
 	#~
@@ -1342,6 +1346,10 @@ bundle System {
 		method : public : PrintLine() ~ Nil {
 			@value->PrintLine();
 		}
+
+        method : public : ToString() ~ String {
+			return @value->ToString();
+		}
 	}
 
 	#~
@@ -1419,6 +1427,10 @@ bundle System {
 
 		method : public : PrintLine() ~ Nil {
 			@value->PrintLine();
+		}
+
+        method : public : ToString() ~ String {
+			return @value->ToString();
 		}
 	}
 
@@ -1544,6 +1556,10 @@ bundle System {
 		method : public : PrintLine() ~ Nil {
 			@value->PrintLine();
 		}
+
+        method : public : ToString() ~ String {
+			return @value->ToString();
+		}
 	}
 
 	#~
@@ -1653,6 +1669,10 @@ bundle System {
 
 		method : public : PrintLine() ~ Nil {
 			@value->PrintLine();
+		}
+
+        method : public : ToString() ~ String {
+			return @value->ToString();
 		}
 	}
 
@@ -1982,10 +2002,6 @@ bundle System {
 		~#
 		method : public : native : GetInstanceID() ~ Int {
 			LOAD_INST_UID;
-		}
-
-		method : public : ToString() ~ String {
-			return GetInstanceID()->ToString();
 		}
 	}
 	

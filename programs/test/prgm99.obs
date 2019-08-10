@@ -10,7 +10,6 @@ class Test {
 	}
 	
 	function : Print(k : IntHolder, v : String) ~ Nil {
-        s := k->Get();
-		"{$s}: {$v}"->PrintLine();
+		"{$k}: {$v}"->PrintLine();
 	}
 }
