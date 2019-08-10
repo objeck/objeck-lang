@@ -766,6 +766,18 @@ bundle Collection.Generic {
 		}
 
 		#~
+		Function called for each element
+		@param f function called
+		~#
+		method : public : Each(f : (H) ~ Nil) ~ Nil {
+			start := @head;
+			while(start <> Nil) {
+				f(start->Get());
+				start := start->GetNext();
+			};
+		}
+
+		#~
 		Uses the given function to filter out values
 		@param f function to use a filter. If the function evaluates to true the value is added to the collection.
 		@return filtered list
@@ -1112,6 +1124,16 @@ bundle Collection.Generic {
       
 			return Vector->New(array)<H>;
 		}
+
+		#~
+		Function called for each element
+		@param f function called
+		~#
+		method : public : Each(f : (H) ~ Nil) ~ Nil {
+			for(i : Int := 0; i < @size; i += 1;) {
+				f(@values[i]);
+			};
+		}
 		
 		#~
 		Swap two values in the vector
@@ -1315,6 +1337,16 @@ bundle Collection.Generic {
 			};
       
 			return CompareVector->New(array)<H>;
+		}
+
+		#~
+		Function called for each element
+		@param f function called
+		~#
+		method : public : Each(f : (H) ~ Nil) ~ Nil {
+			for(i : Int := 0; i < @size; i += 1;) {
+				f(@values[i]);
+			};
 		}
 
 		#~
@@ -1679,6 +1711,19 @@ bundle Collection.Generic {
 			vector := Vector->New()<K>;
 			GetKeys(@root, vector);
 			return vector;
+		}
+
+		#~
+		Function called for each element
+		@param f function called
+		~#
+		method : public : Each(f : (K, V) ~ Nil) ~ Nil {
+			keys := GetKeys();
+			each(i : keys) {
+				key := keys->Get(i);
+				value := Find(key);
+				f(key, value);
+			};
 		}
 		
 		method : GetKeys(node : Collection.Generic.TreeNode<K, V>, vector : Collection.Generic.Vector<K>) ~ Nil {
