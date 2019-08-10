@@ -1264,10 +1264,6 @@ bundle System {
 		method : public : PrintLine() ~ Nil {
 			@value->PrintLine();
 		}
-
-		method : public : ToString() ~ String {
-			return @value->ToString();
-		}
 	}
 	
 	#~
@@ -1346,10 +1342,6 @@ bundle System {
 		method : public : PrintLine() ~ Nil {
 			@value->PrintLine();
 		}
-
-		method : public : ToString() ~ String {
-			return @value->ToString();
-		}
 	}
 
 	#~
@@ -1427,10 +1419,6 @@ bundle System {
 
 		method : public : PrintLine() ~ Nil {
 			@value->PrintLine();
-		}
-
-		method : public : ToString() ~ String {
-			return @value->ToString();
 		}
 	}
 
@@ -1556,10 +1544,6 @@ bundle System {
 		method : public : PrintLine() ~ Nil {
 			@value->PrintLine();
 		}
-
-		method : public : ToString() ~ String {
-			return @value->ToString();
-		}
 	}
 
 	#~
@@ -1669,10 +1653,6 @@ bundle System {
 
 		method : public : PrintLine() ~ Nil {
 			@value->PrintLine();
-		}
-
-		method : public : ToString() ~ String {
-			return @value->ToString();
 		}
 	}
 

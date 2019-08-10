@@ -1,11 +1,15 @@
-bundle Default {
-	class Hello {
-		function : Main(args : String[]) ~ Nil {
-			s := IO.Serializer->New();
-			s->Write(10);
-			buffer := Byte->New[0];
-         s := IO.Deserializer->New(buffer);
-			s->Write(20);
-		}
+use Collection.Generic;
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		map := Map->New()<IntHolder, String>;
+		map->Insert(1, "One");
+		map->Insert(3, "Three");
+		map->Insert(5, "Five");
+		map->Each(Print(IntHolder, String) ~ Nil);
+	}
+	
+	function : Print(k : IntHolder, v : String) ~ Nil {
+		"{$k}: {$v}"->PrintLine();
 	}
 }
