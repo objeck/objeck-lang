@@ -1727,7 +1727,8 @@ bundle Collection.Generic {
 				# process right
 				Each(node->GetRight(), f);
 			};
-		
+        }
+        
 		#~
 		Get a collection of keys
 		@return vector of keys
