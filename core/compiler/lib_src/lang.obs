@@ -2004,7 +2004,7 @@ bundle System {
 			LOAD_INST_UID;
 		}
 
-		method : ToString() ~ String {
+		method : public : ToString() ~ String {
 			return GetInstanceID()->ToString();
 		}
 	}
