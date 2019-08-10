@@ -191,10 +191,6 @@ bundle Collection.Generic {
 			@values := Vector->New()<H>	;
 		}
 
-		method : public : ToString() ~ String {
-			return @values->ToString();
-		}
-		
 		#~
 		Pushes a value onto the stack
 		@value value to push
@@ -267,10 +263,6 @@ bundle Collection.Generic {
 			@queue := List->New()<H>;
 		}
 
-		method : public : ToString() ~ String {
-			return @queue->ToString();
-		}
-		
 		#~
 		Adds a value to the back of the queue
 		@param value value to add
@@ -784,23 +776,7 @@ bundle Collection.Generic {
 				start := start->GetNext();
 			};
 		}
-
-		method : public : ToString() ~ String {
-			buffer := "[";
-
-			start := @head;
-			while(start <> Nil) {
-				buffer += start->Get()->ToString();
-				start := start->GetNext();
-				if(start <> Nil) {
-					buffer += ',';
-				};
-			};
-
-			buffer := "]";
-			return buffer;
-		}
-
+        
 		#~
 		Uses the given function to filter out values
 		@param f function to use a filter. If the function evaluates to true the value is added to the collection.
@@ -1091,10 +1067,6 @@ bundle Collection.Generic {
 		method : public : GetPrevious() ~ ListNode<H> {
 			return @previous;
 		}
-
-		method : public : ToString() ~ String {
-			return @value->ToString();
-		}
 	}
 	
 	#~
@@ -1161,17 +1133,6 @@ bundle Collection.Generic {
 			for(i : Int := 0; i < @size; i += 1;) {
 				f(@values[i]);
 			};
-		}
-
-		method : public : ToString() ~ String {
-			buffer := "[";
-
-			for(i : Int := 0; i < @size; i += 1;) {
-				buffer += @values[i]->ToString();
-			};
-
-			buffer := "]";
-			return buffer;
 		}
 		
 		#~
@@ -1386,17 +1347,6 @@ bundle Collection.Generic {
 			for(i : Int := 0; i < @size; i += 1;) {
 				f(@values[i]);
 			};
-		}
-
-		method : public : ToString() ~ String {
-			buffer := "[";
-
-			for(i : Int := 0; i < @size; i += 1;) {
-				buffer += @values[i]->ToString();
-			};
-
-			buffer := "]";
-			return buffer;
 		}
 
 		#~
@@ -1774,23 +1724,6 @@ bundle Collection.Generic {
 				value := Find(key);
 				f(key, value);
 			};
-		}
-
-		method : public : ToString() ~ String {
-			buffer := "[";
-
-			keys := GetKeys();
-			each(i : keys) {
-				key := keys->Get(i);
-				value := Find(key);
-				buffer += "{{$key},{$value}}";
-				if(i + 1 < keys->Size()) {
-					buffer += ',';
-				};
-			};
-			buffer := "]";
-
-			return buffer;
 		}
 		
 		method : GetKeys(node : Collection.Generic.TreeNode<K, V>, vector : Collection.Generic.Vector<K>) ~ Nil {
