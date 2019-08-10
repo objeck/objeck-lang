@@ -769,12 +769,13 @@ bundle Collection.Generic {
 		Function called for each element
 		@param f function called
 		~#
-		method : public : Each(f : (H) ~ Nil) ~ Nil {
+		method : public : Each(f : (H) ~ Nil) ~ List<H> {
 			start := @head;
 			while(start <> Nil) {
 				f(start->Get());
 				start := start->GetNext();
 			};
+			return @self;
 		}
         
 		#~
@@ -1129,10 +1130,11 @@ bundle Collection.Generic {
 		Function called for each element
 		@param f function called
 		~#
-		method : public : Each(f : (H) ~ Nil) ~ Nil {
+		method : public : Each(f : (H) ~ Nil) ~ Vector<H> {
 			for(i : Int := 0; i < @size; i += 1;) {
 				f(@values[i]);
 			};
+			return @self;
 		}
 		
 		#~
@@ -1343,10 +1345,11 @@ bundle Collection.Generic {
 		Function called for each element
 		@param f function called
 		~#
-		method : public : Each(f : (H) ~ Nil) ~ Nil {
+		method : public : Each(f : (H) ~ Nil) ~ CompareVector<H> {
 			for(i : Int := 0; i < @size; i += 1;) {
 				f(@values[i]);
 			};
+			return @self;
 		}
 
 		#~
@@ -1704,6 +1707,28 @@ bundle Collection.Generic {
 		}
 		
 		#~
+		Function called for each element
+		@param f function called
+		~#
+		method : public : Each(f : (K, V) ~ Nil) ~ Map<K, V> {
+			Each(@root, f);
+			return @self;
+		}
+
+		method : Each(node : Collection.Generic.TreeNode<K, V>, f : (K, V) ~ Nil) ~ Nil {
+			if(node <> Nil) {
+				# process left 
+				Each(node->GetLeft(), f);
+				
+				key := node->GetKey();
+				value := node->Get();
+				f(key, value);
+				
+				# process right
+				Each(node->GetRight(), f);
+			};
+		
+		#~
 		Get a collection of keys
 		@return vector of keys
 		~#
@@ -1713,19 +1738,6 @@ bundle Collection.Generic {
 			return vector;
 		}
 
-		#~
-		Function called for each element
-		@param f function called
-		~#
-		method : public : Each(f : (K, V) ~ Nil) ~ Nil {
-			keys := GetKeys();
-			each(i : keys) {
-				key := keys->Get(i);
-				value := Find(key);
-				f(key, value);
-			};
-		}
-		
 		method : GetKeys(node : Collection.Generic.TreeNode<K, V>, vector : Collection.Generic.Vector<K>) ~ Nil {
 			if(node <> Nil) {
 				# process left 
