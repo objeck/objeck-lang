@@ -2033,27 +2033,40 @@ void ContextAnalyzer::ValidateGenericConcreteMapping(const vector<Type*> concret
   }
 }
 
-void ContextAnalyzer::ValidateGenericBacking(Type* type, const wstring backing_name, ParseNode* node)
+void ContextAnalyzer::ValidateGenericBacking(Type* type, const wstring backing_name, Expression * expression)
 {
   const wstring concrete_name = type->GetClassName();
   Class* inf_klass = nullptr; LibraryClass* inf_lib_klass = nullptr;
   if(GetProgramLibraryClass(type, inf_klass, inf_lib_klass)) {
     if(!ValidDownCast(backing_name, inf_klass, inf_lib_klass) && !ClassEquals(backing_name, inf_klass, inf_lib_klass)) {
-      ProcessError(node, L"Concrete class: '" + concrete_name +
+      ProcessError(expression, L"Concrete class: '" + concrete_name +
                    L"' is incompatible with backing class/interface '" + backing_name + L"'");
     }
   }
   else if((inf_klass = current_class->GetGenericClass(concrete_name))) {
     if(!ValidDownCast(backing_name, inf_klass, inf_lib_klass) && !ClassEquals(backing_name, inf_klass, inf_lib_klass)) {
-      ProcessError(node, L"Concrete class: '" + concrete_name +
+      ProcessError(expression, L"Concrete class: '" + concrete_name +
                    L"' is incompatible with backing class/interface '" + backing_name + L"'");
     }
   }
+  else if(expression->GetExpressionType() == METHOD_CALL_EXPR) {
+    MethodCall* mthd_call = static_cast<MethodCall*>(expression);
+    if(mthd_call->GetConcreteTypes().empty() && mthd_call->GetEntry()) {
+      vector<Type*> concrete_types = mthd_call->GetEntry()->GetType()->GetGenerics();
+      vector<Type*> foo;
+      for(size_t i = 0; i < concrete_types.size(); ++i) {
+        foo.push_back(TypeFactory::Instance()->MakeType(concrete_types[i]));
+      }
+      mthd_call->SetConcreteTypes(foo);
+    }
+    else {
+      ProcessError(expression, L"Undefined class or interface: '" + concrete_name + L"'");
+    }
+  }
   else {
-    ProcessError(node, L"Undefined class or interface: '" + concrete_name + L"'");
+    ProcessError(expression, L"Undefined class or interface: '" + concrete_name + L"'");
   }
 }
-
 /****************************
  * Validates an expression
  * method call

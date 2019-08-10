@@ -190,7 +190,7 @@ bundle Collection.Generic {
 		New() {
 			@values := Vector->New()<H>	;
 		}
-		
+
 		#~
 		Pushes a value onto the stack
 		@value value to push
@@ -262,7 +262,7 @@ bundle Collection.Generic {
 		New() {
 			@queue := List->New()<H>;
 		}
-		
+
 		#~
 		Adds a value to the back of the queue
 		@param value value to add
@@ -766,6 +766,41 @@ bundle Collection.Generic {
 		}
 
 		#~
+		Function called for each element
+		@param f function called
+		~#
+		method : public : Each(f : (H) ~ Nil) ~ List<H> {
+			start := @head;
+			while(start <> Nil) {
+				f(start->Get());
+				start := start->GetNext();
+			};
+			return @self;
+		}
+
+		#~
+		Returns a limited list
+		@param l limit
+		@return limited list
+		~#
+		method : public : Limit(l : Int) ~ List<H> {
+			list := List->New()<H>;
+			
+			if(l > -1) {
+				i := 0;
+				start := @head;
+				while(i < l & start <> Nil) {
+					list->AddBack(start->Get());
+					start := start->GetNext();
+					i += 1;
+				};
+			};
+
+			list->Rewind();
+			return list;
+		}
+
+		#~
 		Uses the given function to filter out values
 		@param f function to use a filter. If the function evaluates to true the value is added to the collection.
 		@return filtered list
@@ -1114,6 +1149,34 @@ bundle Collection.Generic {
 		}
 
 		#~
+		Function called for each element
+		@param f function called
+		~#
+		method : public : Each(f : (H) ~ Nil) ~ Vector<H> {
+			for(i : Int := 0; i < @size; i += 1;) {
+				f(@values[i]);
+			};
+			return @self;
+		}
+
+		#~
+		Returns a limited list
+		@param l limit
+		@return limited list
+		~#
+		method : public : Limit(l : Int) ~ Vector<H> {
+			array : H[] := H->New[@size];
+
+			if(l > -1 & l < @size) {
+				for(i : Int := 0; i < l; i += 1;) {
+					array[i] := @values[i];
+				};
+			};
+      		
+			return Vector->New(array)<H>;
+		}
+		
+		#~
 		Swap two values in the vector
 		@param a first value
 		@param b second value
@@ -1310,11 +1373,40 @@ bundle Collection.Generic {
 		~#
 		method : public : Apply(f : (H) ~ H) ~ CompareVector<H> {
 			array : H[] := H->New[@size];
+
 			for(i : Int := 0; i < @size; i += 1;) {
 				array[i] := f(@values[i]);
 			};
       
 			return CompareVector->New(array)<H>;
+		}
+
+		#~
+		Returns a limited list
+		@param l limit
+		@return limited list
+		~#
+		method : public : Limit(l : Int) ~ CompareVector<H> {
+			array : H[] := H->New[@size];
+
+			if(l > -1 & l < @size) {
+				for(i : Int := 0; i < l; i += 1;) {
+					array[i] := @values[i];
+				};
+			};
+      		
+			return CompareVector->New(array)<H>;
+		}
+
+		#~
+		Function called for each element
+		@param f function called
+		~#
+		method : public : Each(f : (H) ~ Nil) ~ CompareVector<H> {
+			for(i : Int := 0; i < @size; i += 1;) {
+				f(@values[i]);
+			};
+			return @self;
 		}
 
 		#~
@@ -1670,7 +1762,30 @@ bundle Collection.Generic {
 			
 			return Nil;
 		}
-		
+
+		#~
+		Function called for each element
+		@param f function called
+		~#
+		method : public : Each(f : (K, V) ~ Nil) ~ Map<K, V> {
+			Each(@root, f);
+			return @self;
+		}
+
+		method : Each(node : Collection.Generic.TreeNode<K, V>, f : (K, V) ~ Nil) ~ Nil {
+			if(node <> Nil) {
+				# process left 
+				Each(node->GetLeft(), f);
+				
+				key := node->GetKey();
+				value := node->Get();
+				f(key, value);
+				
+				# process right
+				Each(node->GetRight(), f);
+			};
+        }
+        
 		#~
 		Get a collection of keys
 		@return vector of keys
@@ -1680,7 +1795,7 @@ bundle Collection.Generic {
 			GetKeys(@root, vector);
 			return vector;
 		}
-		
+
 		method : GetKeys(node : Collection.Generic.TreeNode<K, V>, vector : Collection.Generic.Vector<K>) ~ Nil {
 			if(node <> Nil) {
 				# process left 

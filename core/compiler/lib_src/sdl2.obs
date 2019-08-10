@@ -7035,20 +7035,6 @@ bundle Game.SDL2 {
 		}
 
 		#~
-		Determine whether the CPU has NEON features
-		@return true if present, false otherwise
-		~#
-		function : HasNEON() ~ Bool {
-			array_args := Base->New[1];
-			array_args[0] := IntHolder->New();
-
-			Proxy->GetDllProxy()->CallFunction("sdl_cpu_hasneon", array_args);
-
-			value := array_args[0]->As(IntHolder);
-			return value->Get() = 0 ? false : true;
-		}
-
-		#~
 		Get the amount of RAM configured in the system
 		@return amount of RAM in MB
 		~#

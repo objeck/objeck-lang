@@ -699,7 +699,7 @@ Class* Parser::ParseClass(const wstring &bundle_name, int depth)
 #endif
 
   // generic ids
-  vector<Class*> generic_names = ParseGenericClasses(bundle_name, depth);
+  vector<Class*> generic_classes = ParseGenericClasses(bundle_name, depth);
 
   // from id
   wstring parent_cls_name;
@@ -757,19 +757,21 @@ Class* Parser::ParseClass(const wstring &bundle_name, int depth)
   }
 
   Class* klass = TreeFactory::Instance()->MakeClass(file_name, line_num, cls_name, parent_cls_name,
-                                                    interface_names, generic_names, false);
+                                                    interface_names, generic_classes, false);
   current_class = klass;
 
   // add '@self' entry
+  Type* self_type = TypeFactory::Instance()->MakeType(CLASS_TYPE, cls_name);
+  if(!generic_classes.empty()) {
+    vector<Type*> generic_types;
+    for(size_t i = 0; i < generic_classes.size(); ++i) {
+      Class* generic_class = generic_classes[i];
+      generic_types.push_back(TypeFactory::Instance()->MakeType(CLASS_TYPE, generic_class->GetName()));
+    }
+    self_type->SetGenerics(generic_types);
+  }
   SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num, GetScopeName(SELF_ID),
-                                                                TypeFactory::Instance()->MakeType(CLASS_TYPE, cls_name),
-                                                                false, false, true);
-  symbol_table->CurrentParseScope()->AddEntry(entry);
-
-  // add '@parent' entry
-  entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num, GetScopeName(PARENT_ID),
-                                                   TypeFactory::Instance()->MakeType(CLASS_TYPE, cls_name),
-                                                   false, false, true);
+                                                                self_type, false, false, true);
   symbol_table->CurrentParseScope()->AddEntry(entry);
 
   while(!Match(TOKEN_CLOSED_BRACE) && !Match(TOKEN_END_OF_STREAM)) {

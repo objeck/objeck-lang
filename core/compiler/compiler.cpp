@@ -70,9 +70,10 @@ int Compile(map<const wstring, wstring> &arguments, list<wstring> &argument_opti
 #else
     wcout << VERSION_STRING << L" Objeck (x86 Linux)" << endl;
 #endif 
-    wcout << L"Copyright(c) 2008-2019, Randy Hollines\n";
-    wcout << L"This is free software; see the source for copying conditions.There is NO\n";
-    wcout << L"warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n";
+    wcout << L"---" << endl;
+    wcout << L"Copyright(c) 2008-2019, Randy Hollines" << endl;
+    wcout << L"This is free software; see the source for copying conditions.There is NO" << endl;
+    wcout << L"warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE." << endl;
     argument_options.remove(L"ver");
     exit(0);
   }
@@ -165,7 +166,8 @@ int Compile(map<const wstring, wstring> &arguments, list<wstring> &argument_opti
     if(target == L"lib") {
       is_lib = true;
     }
-    else if(target == L"web") {
+    
+    if(target == L"web") {
       is_web = true;
     }
   
