@@ -28,8 +28,11 @@ bundle Query.RegEx {
 	<p>Support for following special patterns:<p>
 	<ul>
 		<li>word &#8208; \w</li>
+		<li>not word &#8208; \W</li>
 		<li>digit &#8208; \d</li>
+		<li>not digit &#8208; \D</li>
 		<li>white space &#8208; \s</li>
+		<li>not white space &#8208; \s</li>
 		<li>repeat &#8208; {least, most}
 	</ul>		
 	~#
@@ -326,6 +329,15 @@ bundle Query.RegEx {
 							return true;
 						};
 					}
+
+					# not digit
+					label Expression->Type->NOT_DIGIT: {
+# "[### not digit ###]"->PrintLine();
+						if(<>@input_char->IsDigit()) {
+							NextInput();
+							return true;
+						};
+					}
 					
 					# word
 					label Expression->Type->WORD: {
@@ -335,11 +347,29 @@ bundle Query.RegEx {
 							return true;
 						};
 					}
+
+					# not word
+					label Expression->Type->NOT_WORD: {
+# "[### not word ###]"->PrintLine();
+						if(<>@input_char->IsDigit() & <>@input_char->IsChar() & <>@input_char = '_') {
+							NextInput();
+							return true;
+						};
+					}
 					
 					# whitespace
 					label Expression->Type->WHITESPACE: {
 # "[### whitespace ###]"->PrintLine();
-						if(@input_char = ' ' | @input_char = '\t' | @input_char = '\r' | @input_char = '\n') {
+						if(@input_char = ' ' | @input_char = '\t' | @input_char = '\r' | @input_char = '\n' | @input_char = 0xB) {
+							NextInput();
+							return true;
+						};
+					}
+
+					# not whitespace
+					label Expression->Type->NOT_WHITESPACE: {
+# "[### not whitespace ###]"->PrintLine();
+						if(<>@input_char = ' ' & <>@input_char = '\t' & <>@input_char = '\r' & <>@input_char = '\n' & <>@input_char = 0xB) {
 							NextInput();
 							return true;
 						};
@@ -800,14 +830,29 @@ bundle Query.RegEx {
 					@expressions->AddBack(Expression->New(Expression->Type->DIGIT));
 					NextToken();
 				}
+
+				label 'D': {
+					@expressions->AddBack(Expression->New(Expression->Type->NOT_DIGIT));
+					NextToken();
+				}
 				
 				label 'w': {
 					@expressions->AddBack(Expression->New(Expression->Type->WORD));
 					NextToken();
 				}
+
+				label 'W': {
+					@expressions->AddBack(Expression->New(Expression->Type->NOT_WORD));
+					NextToken();
+				}
 				
 				label 's': {
 					@expressions->AddBack(Expression->New(Expression->Type->WHITESPACE));
+					NextToken();
+				}
+
+				label 'S': {
+					@expressions->AddBack(Expression->New(Expression->Type->NOT_WHITESPACE));
 					NextToken();
 				}
 				
@@ -870,8 +915,11 @@ bundle Query.RegEx {
 			ANY,
 			OPTIONAL,
 			DIGIT,
+			NOT_DIGIT,
 			WORD,
+			NOT_WORD,
 			WHITESPACE,
+			NOT_WHITESPACE,
 			CHAR_CLASS,
 			CHAR_CLASS_RANGE,
 			ENDS_ANCHOR,

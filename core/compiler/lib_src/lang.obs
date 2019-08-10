@@ -1256,6 +1256,18 @@ bundle System {
 		method : public : HashID() ~ Int {
 			return @value ? 1 : 0;
 		}
+
+		method : public : Print() ~ Nil {
+			@value->Print();
+		}
+
+		method : public : PrintLine() ~ Nil {
+			@value->PrintLine();
+		}
+
+        method : public : ToString() ~ String {
+			return @value->ToString();
+		}
 	}
 	
 	#~
@@ -1326,6 +1338,18 @@ bundle System {
 		method : public : HashID() ~ Int {
 			return @value;
 		}
+
+		method : public : Print() ~ Nil {
+			@value->Print();
+		}
+
+		method : public : PrintLine() ~ Nil {
+			@value->PrintLine();
+		}
+
+        method : public : ToString() ~ String {
+			return @value->ToString();
+		}
 	}
 
 	#~
@@ -1395,6 +1419,18 @@ bundle System {
 		~#
 		method : public : HashID() ~ Int {
 			return @value;
+		}
+
+		method : public : Print() ~ Nil {
+			@value->Print();
+		}
+
+		method : public : PrintLine() ~ Nil {
+			@value->PrintLine();
+		}
+
+        method : public : ToString() ~ String {
+			return @value->ToString();
 		}
 	}
 
@@ -1512,6 +1548,18 @@ bundle System {
 		method : public : HashID() ~ Int {
 			return @value;
 		}
+
+		method : public : Print() ~ Nil {
+			@value->Print();
+		}
+
+		method : public : PrintLine() ~ Nil {
+			@value->PrintLine();
+		}
+
+        method : public : ToString() ~ String {
+			return @value->ToString();
+		}
 	}
 
 	#~
@@ -1613,6 +1661,18 @@ bundle System {
 		~#
 		method : public : HashID() ~ Int {
 			return @value * 10000.0;
+		}
+
+		method : public : Print() ~ Nil {
+			@value->Print();
+		}
+
+		method : public : PrintLine() ~ Nil {
+			@value->PrintLine();
+		}
+
+        method : public : ToString() ~ String {
+			return @value->ToString();
 		}
 	}
 
