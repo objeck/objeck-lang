@@ -6,7 +6,8 @@ class Test {
 		map->Insert(1, "One");
 		map->Insert(3, "Three");
 		map->Insert(5, "Five");
-		map->Each(Print(IntHolder, String) ~ Nil)->Size()->PrintLine();
+#		map->Each(Print(IntHolder, String) ~ Nil)->Size()->PrintLine();
+		map->Each(\(IntHolder, String) ~ Nil : (k, v) => "Hello World"->PrintLine() );
 	}
 	
 	function : Print(k : IntHolder, v : String) ~ Nil {

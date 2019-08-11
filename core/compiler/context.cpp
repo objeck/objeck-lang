@@ -3610,9 +3610,15 @@ void ContextAnalyzer::AnalyzeReturn(Return* rtrn, const int depth)
       expression = expression->GetMethodCall();
     }
 
+    bool is_nil_lambda_expr = false;
     if(expression->GetExpressionType() == METHOD_CALL_EXPR && expression->GetEvalType() &&
        expression->GetEvalType()->GetType() == NIL_TYPE) {
-      ProcessError(expression, L"Invalid operation with 'Nil' value");
+      if(capture_lambda) {
+        is_nil_lambda_expr = true;
+      }
+      else {
+        ProcessError(expression, L"Invalid operation with 'Nil' value");
+      }
     }
 
     MethodCall* boxed_rtrn = BoxUnboxingReturn(mthd_type, expression, depth);
@@ -3620,7 +3626,10 @@ void ContextAnalyzer::AnalyzeReturn(Return* rtrn, const int depth)
       rtrn->SetExpression(boxed_rtrn);
       expression = boxed_rtrn;
     }
-    AnalyzeRightCast(mthd_type, expression, (IsScalar(expression) && mthd_type->GetDimension() == 0), depth + 1);
+    
+    if(!is_nil_lambda_expr) {
+      AnalyzeRightCast(mthd_type, expression, (IsScalar(expression) && mthd_type->GetDimension() == 0), depth + 1);
+    }
 
     ValidateConcrete(expression->GetEvalType(), mthd_type, expression, depth);
 
