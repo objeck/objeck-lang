@@ -1703,7 +1703,7 @@ void ContextAnalyzer::AnalyzeVariable(Variable* variable, SymbolEntry* entry, co
     }
   }
   // lambda expressions
-  else if(current_method->IsLambda()) {
+  else if(current_method && current_method->IsLambda()) {
     const wstring capture_scope_name = capture_method->GetName() + L':' + variable->GetName();
     SymbolEntry* capture_entry = capture_table->GetEntry(capture_scope_name);
     if(capture_entry) {
