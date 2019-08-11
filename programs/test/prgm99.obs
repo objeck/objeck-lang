@@ -1,16 +1,13 @@
 use Collection.Generic;
 
+lambdas Func { Def : (IntHolder, String) ~ Nil }
+
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		map := Map->New()<IntHolder, String>;
 		map->Insert(1, "One");
 		map->Insert(3, "Three");
 		map->Insert(5, "Five");
-#		map->Each(Print(IntHolder, String) ~ Nil)->Size()->PrintLine();
-		map->Each(\(IntHolder, String) ~ Nil : (k, v) => "Hello World"->PrintLine() );
-	}
-	
-	function : Print(k : IntHolder, v : String) ~ Nil {
-		"{$k}: {$v}"->PrintLine();
+		map->Each(\Func->Def : (k, v) => "{$k}: {$v}"->PrintLine());
 	}
 }
