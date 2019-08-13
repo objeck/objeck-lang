@@ -925,13 +925,18 @@ void ContextAnalyzer::AnalyzeLambda(Lambda* lambda, const int depth)
 
   // by type
   Type* lambda_type = nullptr;
+  const wstring lambda_name = lambda->GetName();
   if(lambda->GetLambdaType()) {
     lambda_type = lambda->GetLambdaType();
   }
+  // derived
+  else if(lambda_inferred_type && lambda_name.empty()) {
+    // lambda_type = TypeFactory::Instance()->MakeType(lambda_inferred_type);
+    // TODO: copy generic params
+    // TODO: logic for return type
+  }
   // by name
   else {
-    const wstring lambda_name = lambda->GetName();
-
     wstring alias_name;
     const size_t middle = lambda_name.find(L'#');
     if(middle != wstring::npos) {
@@ -2674,6 +2679,16 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
 
   // calling parameters
   ExpressionList* call_params = method_call->GetCallingParameters();
+
+  // lambda inferred type
+  if(call_params->GetExpressions().size() == 1 && call_params->GetExpressions().at(0)->GetExpressionType() == LAMBDA_EXPR &&
+     method_call->GetEntry()) {
+    lambda_inferred_type = method_call->GetEntry()->GetType();
+  }
+  else {
+    lambda_inferred_type = nullptr;
+  }
+
   AnalyzeExpressions(call_params, depth + 1);
 
   // note: find system based methods and call with function parameters (i.e. $Int, $Float)
@@ -2942,6 +2957,16 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryClass* klass, MethodCall* method_
 #endif
 
   ExpressionList* call_params = method_call->GetCallingParameters();
+
+  // lambda inferred type
+  if(call_params->GetExpressions().size() == 1 && call_params->GetExpressions().at(0)->GetExpressionType() == LAMBDA_EXPR && 
+     method_call->GetEntry()) {
+    lambda_inferred_type = method_call->GetEntry()->GetType();
+  }
+  else {
+    lambda_inferred_type = nullptr;
+  }
+
   AnalyzeExpressions(call_params, depth + 1);
   LibraryMethod* lib_method = ResolveMethodCall(klass, method_call, depth);
   if(!lib_method) {

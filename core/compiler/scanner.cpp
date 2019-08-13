@@ -1164,6 +1164,11 @@ void Scanner::ParseToken(int index)
         NextChar();
         break;
 
+      case L'^':
+        tokens[index]->SetType(TOKEN_HAT);
+        NextChar();
+        break;
+
       case L'&':
         if(alt_syntax && nxt_char == L'&') {
           NextChar();

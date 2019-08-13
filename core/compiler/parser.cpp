@@ -912,11 +912,19 @@ Lambda* Parser::ParseLambda(int depth) {
   current_method = method;
   symbol_table->NewParseScope();
 
-  // parse type or name alias
+  // parse derived, alias, or types 
   Type* type = nullptr;
   wstring alias_name;
   if(Match(TOKEN_OPEN_PAREN)) {
     type = ParseType(depth + 1);
+
+    if(!Match(TOKEN_COLON)) {
+      ProcessError(TOKEN_COLON);
+    }
+    NextToken();
+  }
+  else if(Match(TOKEN_HAT)) {
+    NextToken();
   }
   else {
     alias_name = ParseBundleName();
@@ -925,12 +933,12 @@ Lambda* Parser::ParseLambda(int depth) {
       alias_name += L"#";
       alias_name += ParseBundleName();
     }
-  }
 
-  if(!Match(TOKEN_COLON)) {
-    ProcessError(TOKEN_COLON);
+    if(!Match(TOKEN_COLON)) {
+      ProcessError(TOKEN_COLON);
+    }
+    NextToken();
   }
-  NextToken();
 
   ExpressionList* parameter_list = ParseExpressionList(depth + 1);
   vector<Expression*> parameters = parameter_list->GetExpressions();
