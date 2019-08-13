@@ -222,6 +222,7 @@ class ContextAnalyzer {
   SymbolTable* capture_table;
   SymbolTableManager* symbol_table;
   Lambda* capture_lambda;
+  Type* lambda_inferred_type;
   map<int, wstring> errors;
   vector<wstring> alt_error_method_names;
   map<const wstring, EntryType> type_map;
