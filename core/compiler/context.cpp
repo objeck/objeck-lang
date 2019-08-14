@@ -926,17 +926,13 @@ void ContextAnalyzer::AnalyzeLambda(Lambda* lambda, const int depth)
   // by type
   Type* lambda_type = nullptr;
   const wstring lambda_name = lambda->GetName();
+  bool is_inferred = HasInferredLambdaTypes(lambda_name);
+
   if(lambda->GetLambdaType()) {
     lambda_type = lambda->GetLambdaType();
   }
-  // derived
-  else if(lambda_inferred_type && lambda_name.empty()) {
-    // lambda_type = TypeFactory::Instance()->MakeType(lambda_inferred_type);
-    // TODO: copy generic params
-    // TODO: logic for return type
-  }
   // by name
-  else {
+  else if(!is_inferred){
     wstring alias_name;
     const size_t middle = lambda_name.find(L'#');
     if(middle != wstring::npos) {
@@ -976,66 +972,138 @@ void ContextAnalyzer::AnalyzeLambda(Lambda* lambda, const int depth)
   }
 
   if(lambda_type) {
-    // set return
-    Method* method = lambda->GetMethod();
-    current_method->SetAndOr(true);
-    method->SetReturn(lambda_type->GetFunctionReturn());
-
-    // update declarations
-    vector<Type*> types = lambda_type->GetFunctionParameters();
-    DeclarationList* declaration_list = method->GetDeclarations();
-    vector<Declaration*> declarations = declaration_list->GetDeclarations();
-    if(types.size() == declarations.size()) {
-      // encode lookup
-      method->EncodeSignature();
-
-      for(size_t i = 0; i < declarations.size(); ++i) {
-        declarations[i]->GetEntry()->SetType(types[i]);
-      }
-      
-      current_class->AddMethod(method);
-      method->EncodeSignature(current_class, program, linker);
-      current_class->AssociateMethod(method);
-
-      // check method and restore context
-      capture_lambda = lambda;
-      capture_method = current_method;
-      capture_table = current_table;
-      
-      AnalyzeMethod(method, depth + 1);
-      
-      current_table = capture_table;
-      capture_table = nullptr;
-
-      current_method = capture_method;
-      capture_method = nullptr;
-      capture_lambda = nullptr;
-      
-      const wstring full_method_name = method->GetName();
-      const size_t offset = full_method_name.find(':');
-      if(offset != wstring::npos) {
-        const wstring method_name = full_method_name.substr(offset + 1);
-
-        // create method call
-        MethodCall* method_call = TreeFactory::Instance()->MakeMethodCall(method->GetFileName(), method->GetLineNumber(),
-                                                                          current_class->GetName(), method_name,
-                                                                          MapLambdaDeclarations(declaration_list));
-        method_call->SetFunctionalReturn(method->GetReturn());
-        AnalyzeMethodCall(method_call, depth + 1);
-        lambda->SetMethodCall(method_call);
-        lambda->SetTypes(method_call->GetEvalType());
-      }
-      else {
-        wcerr << L"Internal compiler error: Invalid method name." << endl;
-        exit(1);
-      }
-    }
-    else {
-      ProcessError(lambda, L"Deceleration and parameter size mismatch");
-    }
+    BuildLambdaFunction(lambda, lambda_type, depth);
+  }
+  // derived type
+  else if(is_inferred) {
+    lambda_inferred.first = lambda;
   }
   else {
     ProcessError(lambda, L"Invalid lambda type");
+  }
+}
+
+Method* ContextAnalyzer::DerivedLambdaFunction(vector<Method*>& alt_mthds)
+{
+  if(lambda_inferred.first && lambda_inferred.second && lambda_inferred.second->GetEntry() && alt_mthds.size() == 1) {
+    MethodCall* lambda_inferred_call = lambda_inferred.second;
+    Type* inferred_type = lambda_inferred_call->GetEntry()->GetType();
+    Method* alt_mthd = alt_mthds[0];
+    vector<Declaration*> alt_mthd_types = alt_mthd->GetDeclarations()->GetDeclarations();
+    if(alt_mthd_types.size() == 1 && alt_mthd_types[0]->GetEntry() && 
+       alt_mthd_types[0]->GetEntry()->GetType()->GetType() == FUNC_TYPE) {
+      // set parameters
+      vector<Type*> inferred_type_params;
+      Type* alt_mthd_type = alt_mthd_types[0]->GetEntry()->GetType();
+      const vector<Type*> func_params = alt_mthd_type->GetFunctionParameters();
+      for(size_t i = 0; i < func_params.size(); ++i) {
+        inferred_type_params.push_back(RelsolveGenericType(func_params[i], lambda_inferred_call, alt_mthd->GetClass(), nullptr));
+      }
+      // set return
+      Type* inferred_type_rtrn = RelsolveGenericType(alt_mthd_type->GetFunctionReturn(), lambda_inferred_call, alt_mthd->GetClass(), nullptr);
+
+      Type* inferred_type = TypeFactory::Instance()->MakeType(FUNC_TYPE);
+      inferred_type->SetFunctionParameters(inferred_type_params);
+      inferred_type->SetFunctionReturn(inferred_type_rtrn);
+
+      // build lambda function
+      BuildLambdaFunction(lambda_inferred.first, inferred_type, 0);
+      return alt_mthd;
+    }
+  }
+
+  return nullptr;
+}
+
+LibraryMethod* ContextAnalyzer::DerivedLambdaFunction(vector<LibraryMethod*>& alt_mthds)
+{
+  if(lambda_inferred.first && lambda_inferred.second && lambda_inferred.second->GetEntry() && alt_mthds.size() == 1) {
+    MethodCall* lambda_inferred_call = lambda_inferred.second;
+    Type* inferred_type = lambda_inferred_call->GetEntry()->GetType();
+    LibraryMethod* alt_mthd = alt_mthds[0];
+    vector<frontend::Type*> alt_mthd_types = alt_mthd->GetDeclarationTypes();
+    if(alt_mthd_types.size() == 1 && alt_mthd_types[0]->GetType() == FUNC_TYPE) {
+      // set parameters
+      vector<Type*> inferred_type_params;
+      Type* alt_mthd_type = alt_mthd_types[0];
+      const vector<Type*> func_params = alt_mthd_type->GetFunctionParameters();
+      for(size_t i = 0; i < func_params.size(); ++i) {
+        inferred_type_params.push_back(RelsolveGenericType(func_params[i], lambda_inferred_call, NULL, alt_mthd->GetLibraryClass()));
+      }
+      // set return
+      Type* inferred_type_rtrn = RelsolveGenericType(alt_mthd_type->GetFunctionReturn(), lambda_inferred_call, NULL, alt_mthd->GetLibraryClass());
+      
+      Type* inferred_type = TypeFactory::Instance()->MakeType(FUNC_TYPE);
+      inferred_type->SetFunctionParameters(inferred_type_params);
+      inferred_type->SetFunctionReturn(inferred_type_rtrn);
+
+      // build lambda function
+      BuildLambdaFunction(lambda_inferred.first, inferred_type, 0);
+      return alt_mthd;
+    }
+  }
+
+  return nullptr;
+}
+
+void ContextAnalyzer::BuildLambdaFunction(Lambda* lambda, Type* lambda_type, const int depth)
+{
+  // set return
+  Method* method = lambda->GetMethod();
+  current_method->SetAndOr(true);
+  method->SetReturn(lambda_type->GetFunctionReturn());
+
+  // update declarations
+  vector<Type*> types = lambda_type->GetFunctionParameters();
+  DeclarationList* declaration_list = method->GetDeclarations();
+  vector<Declaration*> declarations = declaration_list->GetDeclarations();
+  if(types.size() == declarations.size()) {
+    // encode lookup
+    method->EncodeSignature();
+
+    for(size_t i = 0; i < declarations.size(); ++i) {
+      declarations[i]->GetEntry()->SetType(types[i]);
+    }
+
+    current_class->AddMethod(method);
+    method->EncodeSignature(current_class, program, linker);
+    current_class->AssociateMethod(method);
+
+    // check method and restore context
+    capture_lambda = lambda;
+    capture_method = current_method;
+    capture_table = current_table;
+
+    AnalyzeMethod(method, depth + 1);
+
+    current_table = capture_table;
+    capture_table = nullptr;
+
+    current_method = capture_method;
+    capture_method = nullptr;
+    capture_lambda = nullptr;
+
+    const wstring full_method_name = method->GetName();
+    const size_t offset = full_method_name.find(':');
+    if(offset != wstring::npos) {
+      const wstring method_name = full_method_name.substr(offset + 1);
+
+      // create method call
+      MethodCall* method_call = TreeFactory::Instance()->MakeMethodCall(method->GetFileName(), method->GetLineNumber(),
+                                                                        current_class->GetName(), method_name,
+                                                                        MapLambdaDeclarations(declaration_list));
+      method_call->SetFunctionalReturn(method->GetReturn());
+      AnalyzeMethodCall(method_call, depth + 1);
+      lambda->SetMethodCall(method_call);
+      lambda->SetTypes(method_call->GetEvalType());
+    }
+    else {
+      wcerr << L"Internal compiler error: Invalid method name." << endl;
+      exit(1);
+    }
+  }
+  else {
+    ProcessError(lambda, L"Deceleration and parameter size mismatch");
   }
 }
 
@@ -1090,7 +1158,27 @@ ExpressionList* ContextAnalyzer::MapLambdaDeclarations(DeclarationList* declarat
   return expressions;
 }
 
+/****************************
+ * Check to determine if lambda 
+ * concrete types are inferred
+ ****************************/
+bool ContextAnalyzer::HasInferredLambdaTypes(const wstring lambda_name)
+{
+  return lambda_inferred.second && lambda_name.empty();
+}
 
+void ContextAnalyzer::CheckLambdaInferredTypes(MethodCall* method_call, int depth)
+{
+  ExpressionList* call_params = method_call->GetCallingParameters();
+  if(call_params->GetExpressions().size() == 1 && call_params->GetExpressions().at(0)->GetExpressionType() == LAMBDA_EXPR &&
+     method_call->GetEntry()) {
+    lambda_inferred.second = method_call;
+  }
+  else {
+    lambda_inferred.first = nullptr;
+    lambda_inferred.second = nullptr;
+  }
+}
 
 /****************************
  * Analyzes method return
@@ -2058,11 +2146,11 @@ void ContextAnalyzer::ValidateGenericBacking(Type* type, const wstring backing_n
     MethodCall* mthd_call = static_cast<MethodCall*>(expression);
     if(mthd_call->GetConcreteTypes().empty() && mthd_call->GetEntry()) {
       vector<Type*> concrete_types = mthd_call->GetEntry()->GetType()->GetGenerics();
-      vector<Type*> foo;
+      vector<Type*> concrete_copies;
       for(size_t i = 0; i < concrete_types.size(); ++i) {
-        foo.push_back(TypeFactory::Instance()->MakeType(concrete_types[i]));
+        concrete_copies.push_back(TypeFactory::Instance()->MakeType(concrete_types[i]));
       }
-      mthd_call->SetConcreteTypes(foo);
+      mthd_call->SetConcreteTypes(concrete_copies);
     }
     else {
       ProcessError(expression, L"Undefined class or interface: '" + concrete_name + L"'");
@@ -2655,8 +2743,12 @@ Method* ContextAnalyzer::ResolveMethodCall(Class* klass, MethodCall* method_call
     }
   }
   else {
-    vector<wstring> alt_methods = selector.GetAlternativeMethodNames();
-    if(alt_methods.size() > 0) {
+    vector<Method*> alt_mthds = selector.GetAlternativeMethods();
+    Method* derived_method = DerivedLambdaFunction(alt_mthds);
+    if(derived_method) {
+      return derived_method;
+    }
+    else if(alt_mthds.size()) {
       alt_error_method_names = selector.GetAlternativeMethodNames();
     }
   }
@@ -2681,13 +2773,7 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
   ExpressionList* call_params = method_call->GetCallingParameters();
 
   // lambda inferred type
-  if(call_params->GetExpressions().size() == 1 && call_params->GetExpressions().at(0)->GetExpressionType() == LAMBDA_EXPR &&
-     method_call->GetEntry()) {
-    lambda_inferred_type = method_call->GetEntry()->GetType();
-  }
-  else {
-    lambda_inferred_type = nullptr;
-  }
+  CheckLambdaInferredTypes(method_call, depth + 1);
 
   AnalyzeExpressions(call_params, depth + 1);
 
@@ -2935,8 +3021,12 @@ LibraryMethod* ContextAnalyzer::ResolveMethodCall(LibraryClass* klass, MethodCal
     }
   }
   else {
-    vector<wstring> alt_methods = selector.GetAlternativeMethodNames();
-    if(alt_methods.size() > 0) {
+    vector<LibraryMethod*> alt_mthds = selector.GetAlternativeMethods();
+    LibraryMethod* derived_method = DerivedLambdaFunction(alt_mthds);
+    if(derived_method) {
+      return derived_method;
+    }
+    else if(alt_mthds.size()) {
       alt_error_method_names = selector.GetAlternativeMethodNames();
     }
   }
@@ -2959,14 +3049,8 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryClass* klass, MethodCall* method_
   ExpressionList* call_params = method_call->GetCallingParameters();
 
   // lambda inferred type
-  if(call_params->GetExpressions().size() == 1 && call_params->GetExpressions().at(0)->GetExpressionType() == LAMBDA_EXPR && 
-     method_call->GetEntry()) {
-    lambda_inferred_type = method_call->GetEntry()->GetType();
-  }
-  else {
-    lambda_inferred_type = nullptr;
-  }
-
+  CheckLambdaInferredTypes(method_call, depth + 1);
+  
   AnalyzeExpressions(call_params, depth + 1);
   LibraryMethod* lib_method = ResolveMethodCall(klass, method_call, depth);
   if(!lib_method) {
@@ -6807,6 +6891,7 @@ Type* ContextAnalyzer::RelsolveGenericType(Type* candidate_type, MethodCall* met
                 }
               }
 
+              /* TODO: validate
               if(mapping_index > -1 && mapping_index < (int)real_types.size()) {
                 Type* real_type = real_types[mapping_index];
                 ResolveClassEnumType(real_type);
@@ -6815,6 +6900,7 @@ Type* ContextAnalyzer::RelsolveGenericType(Type* candidate_type, MethodCall* met
                                rtrn_candidate_type->GetClassName() + L"' and '" + real_type->GetClassName() + L"'");
                 }
               }
+              */
             }
           }
 
