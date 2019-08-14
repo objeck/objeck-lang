@@ -3738,12 +3738,12 @@ void ContextAnalyzer::AnalyzeReturn(Return* rtrn, const int depth)
       MethodCall* mthd_call = static_cast<MethodCall*>(expression);
       if(mthd_call->GetMethod()) {
         if(mthd_call->GetMethod()->GetReturn()->GetType() == NIL_TYPE && mthd_type->GetType() != NIL_TYPE) {
-          ProcessError(rtrn, L"Method call returns no type, type expected");
+          ProcessError(rtrn, L"Method call returns no value, value expected");
         }
       }
       else if(mthd_call->GetLibraryMethod()) {
         if(mthd_call->GetLibraryMethod()->GetReturn()->GetType() == NIL_TYPE && mthd_type->GetType() != NIL_TYPE) {
-          ProcessError(rtrn, L"Method call returns no type, type expected");
+          ProcessError(rtrn, L"Method call returns no value, value expected");
         }
       }
     }
