@@ -490,6 +490,10 @@ class LibraryClass {
     return is_debug;
   }
 
+  bool IsGeneric() {
+    return is_generic;
+  }
+
   const wstring &GetFileName() const {
     return file_name;
   }
