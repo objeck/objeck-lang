@@ -112,8 +112,19 @@ class LibraryMethodCallSelector {
     }
   }
 
+  vector<LibraryMethod*> GetAlternativeMethods() {
+    vector<LibraryMethod*> alt_mthds;
+
+    for(size_t i = 0; i < matches.size(); ++i) {
+      alt_mthds.push_back(matches[i]->GetLibraryMethod());
+    }
+
+    return alt_mthds;
+  }
+
   vector<wstring> GetAlternativeMethodNames() {
     vector<wstring> alt_names;
+    
     for(size_t i = 0; i < matches.size(); ++i) {
       alt_names.push_back(matches[i]->GetLibraryMethod()->GetUserName());
     }
@@ -196,6 +207,16 @@ class MethodCallSelector {
     }
   }
 
+  vector<Method*> GetAlternativeMethods() {
+    vector<Method*> alt_mthds;
+
+    for(size_t i = 0; i < matches.size(); ++i) {
+      alt_mthds.push_back(matches[i]->GetMethod());
+    }
+
+    return alt_mthds;
+  }
+
   vector<wstring> GetAlternativeMethodNames() {
     vector<wstring> alt_names;
     for(size_t i = 0; i < matches.size(); ++i) {
@@ -222,7 +243,7 @@ class ContextAnalyzer {
   SymbolTable* capture_table;
   SymbolTableManager* symbol_table;
   Lambda* capture_lambda;
-  Type* lambda_inferred_type;
+  pair<Lambda*, MethodCall*> lambda_inferred;
   map<int, wstring> errors;
   vector<wstring> alt_error_method_names;
   map<const wstring, EntryType> type_map;
@@ -448,7 +469,14 @@ class ContextAnalyzer {
   void AnalyzeIndices(ExpressionList* indices, const int depth);
   void AnalyzeExpressions(ExpressionList* parameters, const int depth);
   void AnalyzeExpression(Expression* expression, const int depth);
+  
   void AnalyzeLambda(Lambda* param1, const int depth);
+  LibraryMethod* DerivedLambdaFunction(vector<LibraryMethod*>& alt_mthds);
+  Method* DerivedLambdaFunction(vector<Method*>& alt_mthds);
+  void BuildLambdaFunction(Lambda* lambda, Type* lambda_type, const int depth);
+  bool HasInferredLambdaTypes(const wstring lambda_name);
+  void CheckLambdaInferredTypes(MethodCall* method_call, int depth);
+  
   void AnalyzeVariable(Variable* variable, SymbolEntry* entry, const int depth);
   void AnalyzeVariable(Variable* variable, const int depth);
   void AnalyzeCharacterString(CharacterString* char_str, const int depth);
