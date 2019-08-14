@@ -8,14 +8,14 @@ class Test {
 		map->Insert(3, "Three");
 		map->Insert(5, "Five");
 		map->Each(\^(k, v) => "{$k}: {$v}"->PrintLine());
-~#
+~#	
 		vector := Vector->New()<IntHolder>;
 		vector->AddBack(11);
 		vector->AddBack(13);
 		vector->AddBack(45);
-		x := vector->Apply(\(IntHolder) ~ IntHolder : (v) => 13 )<IntHolder>;
-		each(i : x) {
-			x->Get(i)->Get()->PrintLine();
-		};
+	
+		vector->Apply(\^(v) => v->PrintLine() );
+#		vector->Each(\^(v) => v->PrintLine() );
+
 	}
 }
