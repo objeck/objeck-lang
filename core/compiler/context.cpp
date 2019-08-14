@@ -987,7 +987,6 @@ Method* ContextAnalyzer::DerivedLambdaFunction(vector<Method*>& alt_mthds)
 {
   if(lambda_inferred.first && lambda_inferred.second && lambda_inferred.second->GetEntry() && alt_mthds.size() == 1) {
     MethodCall* lambda_inferred_call = lambda_inferred.second;
-    Type* inferred_type = lambda_inferred_call->GetEntry()->GetType();
     Method* alt_mthd = alt_mthds[0];
     vector<Declaration*> alt_mthd_types = alt_mthd->GetDeclarations()->GetDeclarations();
     if(alt_mthd_types.size() == 1 && alt_mthd_types[0]->GetEntry() && 
@@ -1019,7 +1018,6 @@ LibraryMethod* ContextAnalyzer::DerivedLambdaFunction(vector<LibraryMethod*>& al
 {
   if(lambda_inferred.first && lambda_inferred.second && lambda_inferred.second->GetEntry() && alt_mthds.size() == 1) {
     MethodCall* lambda_inferred_call = lambda_inferred.second;
-    Type* inferred_type = lambda_inferred_call->GetEntry()->GetType();
     LibraryMethod* alt_mthd = alt_mthds[0];
     vector<frontend::Type*> alt_mthd_types = alt_mthd->GetDeclarationTypes();
     if(alt_mthd_types.size() == 1 && alt_mthd_types[0]->GetType() == FUNC_TYPE) {
@@ -3736,7 +3734,20 @@ void ContextAnalyzer::AnalyzeReturn(Return* rtrn, const int depth)
       expression = boxed_rtrn;
     }
     
-    if(!is_nil_lambda_expr) {
+    if(is_nil_lambda_expr && expression->GetExpressionType() == METHOD_CALL_EXPR) {
+      MethodCall* mthd_call = static_cast<MethodCall*>(expression);
+      if(mthd_call->GetMethod()) {
+        if(mthd_call->GetMethod()->GetReturn()->GetType() == NIL_TYPE && mthd_type->GetType() != NIL_TYPE) {
+          ProcessError(rtrn, L"Method call returns no type, type expected");
+        }
+      }
+      else if(mthd_call->GetLibraryMethod()) {
+        if(mthd_call->GetLibraryMethod()->GetReturn()->GetType() == NIL_TYPE && mthd_type->GetType() != NIL_TYPE) {
+          ProcessError(rtrn, L"Method call returns no type, type expected");
+        }
+      }
+    }
+    else {
       AnalyzeRightCast(mthd_type, expression, (IsScalar(expression) && mthd_type->GetDimension() == 0), depth + 1);
     }
 
