@@ -39,7 +39,15 @@ class Test {
 		map->Insert(1, "One");
 		map->Insert(3, "Three");
 		map->Insert(5, "Five");
+		map->Insert(7, "Seven");
+		map->Insert(9, "Nine");
 		map->Each(\^(k, v) => "{$k}: {$v}"->PrintLine());
+		
+		limit := map->GetKeys()->Limit(2)<IntHolder>;
+		limit->Size()->PrintLine();
+		each(i : limit) {
+			limit->Get(i)->PrintLine();
+		};
 	}
 
 	function : Square(a : Int) ~ Int {

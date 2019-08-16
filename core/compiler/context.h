@@ -373,13 +373,16 @@ class ContextAnalyzer {
     if(!method_call->GetConcreteTypes().empty()) {
       return method_call->GetConcreteTypes();
     }
-    else if(method_call->GetEntry()) {
-      return method_call->GetEntry()->GetType()->GetGenerics();
+    else if(method_call->GetEvalType() && method_call->GetEntry()) {
+      return method_call->GetEvalType()->GetGenerics();
     }
     else if(method_call->GetEvalType()) {
       return method_call->GetEvalType()->GetGenerics();
     }
-    
+    else if(method_call->GetEntry()) {
+      return method_call->GetEntry()->GetType()->GetGenerics();
+    }
+
     return vector<Type*>();
   }
   
