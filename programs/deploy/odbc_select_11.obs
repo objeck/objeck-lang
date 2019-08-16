@@ -9,16 +9,19 @@ use Database.ODBC;
 class SqlTest {
 	function : Main(args : String[]) ~ Nil {
 		conn := Connection->New("foo", "", "");
-		if(conn->IsOpen()) {
-			rs := conn->Select("SELECT lat, lon FROM City;");
-			if(rs <> Nil) {
-				i := 0;	
-				while(rs->Next()) {
-					rs->GetDouble("lat")->PrintLine();
-				};
-				rs->Close();
-			};
+		rs : ResultSet;
+		leaving {
+			rs->Close();
 			conn->Close();
+		};
+		
+		if(conn->IsOpen()) {
+			rs := conn->Select("SELECT * FROM Students;");
+			if(rs <> Nil) {
+				while(rs->Next()) {
+					rs->GetVarchar("First Name")->PrintLine();
+				};
+			};
 		};
 	}
 }

@@ -1165,15 +1165,17 @@ bundle Collection.Generic {
 		@return limited list
 		~#
 		method : public : Limit(l : Int) ~ Vector<H> {
-			array : H[] := H->New[@size];
+			array := H->New[@size];
 
 			if(l > -1 & l < @size) {
+				array := H->New[l];
 				for(i : Int := 0; i < l; i += 1;) {
 					array[i] := @values[i];
 				};
+				return Vector->New(array)<H>;
 			};
       		
-			return Vector->New(array)<H>;
+			return Vector->New()<H>;
 		}
 		
 		#~
@@ -1387,15 +1389,17 @@ bundle Collection.Generic {
 		@return limited list
 		~#
 		method : public : Limit(l : Int) ~ CompareVector<H> {
-			array : H[] := H->New[@size];
+			array := H->New[@size];
 
 			if(l > -1 & l < @size) {
+				array := H->New[l];
 				for(i : Int := 0; i < l; i += 1;) {
 					array[i] := @values[i];
 				};
+				return CompareVector->New(array)<H>;
 			};
       		
-			return CompareVector->New(array)<H>;
+			return CompareVector->New()<H>;
 		}
 
 		#~
