@@ -436,7 +436,6 @@ bundle Collection.Generic {
 			return Nil;
 		}
 
-
 		#~
 		Applies the given function to each value in the list 
 		@param f function to apply
@@ -1731,6 +1730,18 @@ bundle Collection.Generic {
 			};
 			
 			return node;
+		}
+
+		function : Zip(keys : CompareVector<K>, values : Vector<V>) ~ Map<K,V> {			
+			if(keys->Size() = values->Size()) {
+				zip := Map->New()<K,V>;
+				each(i : keys) {
+					zip->Insert(keys->Get(i), values->Get(i));
+				};
+				return zip;
+			};
+
+			return Nil;
 		}
 		
 		#~

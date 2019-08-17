@@ -3097,13 +3097,7 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
     if((lib_method->GetMethodType() == PRIVATE_METHOD ||
        lib_method->GetMethodType() == NEW_PRIVATE_METHOD) &&
        !lib_method->IsStatic()) {
-      ProcessError(static_cast<Expression*>(method_call),
-                   L"Cannot reference a private method from this context");
-    }
-    // static check
-    if(!is_expr && InvalidStatic(method_call, lib_method)) {
-      ProcessError(static_cast<Expression*>(method_call),
-                   L"Cannot reference an instance method from this context");
+      ProcessError(static_cast<Expression*>(method_call), L"Cannot reference a private method from this context");
     }
     // cannot create an instance of a virtual class
     if((lib_method->GetMethodType() == NEW_PUBLIC_METHOD ||
@@ -5454,7 +5448,9 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Type* right, Expression* expr
   LibraryEnum* left_lib_enum = nullptr;
   LibraryClass* left_lib_class = nullptr;
   
-  CheckGenericEqualTypes(left, right, expression);
+  if(current_class->HasGenerics()) {
+    CheckGenericEqualTypes(left, right, expression);
+  }
   
   if(current_class->HasGenerics()) {
     Class* left_tmp = current_class->GetGenericClass(left->GetClassName());
@@ -6107,33 +6103,6 @@ bool ContextAnalyzer::InvalidStatic(MethodCall* method_call, Method* method)
   if(current_method->IsStatic() &&
      !method->IsStatic() && method->GetMethodType() != NEW_PUBLIC_METHOD &&
      method->GetMethodType() != NEW_PRIVATE_METHOD) {
-    SymbolEntry* entry = GetEntry(method_call->GetVariableName());
-    if(entry && (entry->IsLocal() || entry->IsStatic())) {
-      return false;
-    }
-
-    Variable* variable = method_call->GetVariable();
-    if(variable) {
-      entry = variable->GetEntry();
-      if(entry && (entry->IsLocal() || entry->IsStatic())) {
-        return false;
-      }
-    }
-
-    return true;
-  }
-
-  return false;
-}
-
-bool ContextAnalyzer::InvalidStatic(MethodCall* method_call, LibraryMethod* method)
-{
-  // same class, calling method static and called method not static,
-  // called method not new, called method not from a variable
-  if(current_method->IsStatic() && !method->IsStatic() &&
-     method->GetMethodType() != NEW_PUBLIC_METHOD &&
-     method->GetMethodType() != NEW_PRIVATE_METHOD) {
-
     SymbolEntry* entry = GetEntry(method_call->GetVariableName());
     if(entry && (entry->IsLocal() || entry->IsStatic())) {
       return false;

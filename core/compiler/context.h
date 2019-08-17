@@ -292,9 +292,6 @@ class ContextAnalyzer {
   // returns true if method static context is not valid
   bool InvalidStatic(MethodCall* method_call, Method* method);
 
-  // returns true if method static context is not valid
-  bool InvalidStatic(MethodCall* method_call, LibraryMethod* method);
-
   // returns a symbol table entry by name
   SymbolEntry* GetEntry(wstring name, bool is_parent = false);
 
