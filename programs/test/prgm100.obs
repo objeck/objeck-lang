@@ -1,52 +1,25 @@
-bundle Default {
-	class Foo {
-		a : Int;
-		b : Int;
+use Collection.Generic;
 
-		New() {
-			a := 7;
-			b := 13;
-		}
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		x := 2.0;
+        xi := 0.5;
+        y := 4.0;
+        yi := 0.25;
+        z := x + y;
+        zi := 1.0 / (x + y);
+ 
+        numlist := CompareVector->New()<FloatHolder>;
+        numlist->AddBack(x); numlist->AddBack(y); numlist->AddBack(z);
 
-		method : public : fA() ~ Int {
-			x := 99;
-			g -= x;
-			return a * 5 - b;
-		}
+        numlisti := Vector->New()<FloatHolder>;
+        numlisti->AddBack(xi); numlisti->AddBack(yi); numlisti->AddBack(zi);
 
-		method : public : fB() ~ Int {
-			return b - 5;
-		}
+        zip := Map->Zip(numlist, numlisti)<FloatHolder, FloatHolder>;
+        zip->Each(\^(k, v) => "{$k}: {$v}"->PrintLine());
 	}
-	
-	class Test {
-		function : f1() ~ Int {
-			for(i := 0; i < 3; i += 1;) {
-				a := 5;
-			};
-			return a * 2 + 5;
-		}
-	
-#		function : Run() ~ Nil {
-		function : native : Run() ~ Nil {
-			a := 9;
-			b := 13;
-			f := Foo->New();
-			f->fA()->PrintLine();
-#~
-			f->fA()->PrintLine();
-			f->fB()->PrintLine();
-			for(i := 0; i < 5; i += 1;) {
-				a := f1() + f1();
-			};
-			a->PrintLine();
-			f1 := Foo->New();
-			f1->fA()->PrintLine();
-~#
-		}
 
-		function : Main(args : String[]) ~ Nil {
-			Run();
-		}
+	method : Multiplier(a : FloatHolder, b : FloatHolder) ~ (FloatHolder) ~ FloatHolder {
+		return \(FloatHolder) ~ FloatHolder : (c) =>  a * b * c;
 	}
 }
