@@ -1705,7 +1705,7 @@ bundle Collection.Generic {
 		}
 
 		#~
-		Clears the queue
+		Clears the map
 		~#
 		method : public : Empty() ~ Nil {
 			@root := Nil;
@@ -1731,7 +1731,13 @@ bundle Collection.Generic {
 			
 			return node;
 		}
-
+		
+		#~
+		Creates a map from a vector of keys and values
+		@param keys keys
+		@param values values
+		@return map of key/value pairs
+		~#
 		function : Zip(keys : CompareVector<K>, values : Vector<V>) ~ Map<K,V> {			
 			if(keys->Size() = values->Size()) {
 				zip := Map->New()<K,V>;
@@ -1743,7 +1749,7 @@ bundle Collection.Generic {
 
 			return Nil;
 		}
-		
+
 		#~
 		Searches for a value in a map
 		@param key search key
