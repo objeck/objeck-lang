@@ -2757,13 +2757,23 @@ ExpressionList* Parser::ParseExpressionList(int depth, ScannerTokenType open, Sc
 
   while(!Match(closed) && !Match(TOKEN_END_OF_STREAM)) {
     // expression
-    expressions->AddExpression(ParseExpression(depth + 1));
+    Expression* expression = ParseExpression(depth + 1);
+    if(expression) {
+      expressions->AddExpression(expression);
 
-    if(Match(TOKEN_COMMA)) {
-      NextToken();
+      if(Match(TOKEN_COMMA)) {
+        NextToken();
+      }
+      else if((expression->GetExpressionType() == LAMBDA_EXPR && Match(TOKEN_SEMI_COLON))) {
+        NextToken();
+        break;
+      }
+      else if(!Match(closed)) {
+        ProcessError(L"Invalid token", closed);
+        NextToken();
+      }
     }
-    else if(!Match(closed)) {
-      ProcessError(L"Invalid token", closed);
+    else {
       NextToken();
     }
   }
