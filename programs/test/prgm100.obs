@@ -9,6 +9,11 @@ class FirstClass {
       il->AddBack(101); il->AddBack(321); il->AddBack(950);
       
       zipped := Map->Zip(fl, il)<FloatHolder, FloatHolder>;
-      zipped->Each(\^(a, b) => ( a + b )->PrintLine() );
+      zipped->Each(\^(a, b) => {
+         if(a <> Nil & b <> Nil) {
+            a->PrintLine();
+            b->PrintLine();
+         };
+      }, 10);
    }
 }

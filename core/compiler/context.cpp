@@ -951,7 +951,12 @@ void ContextAnalyzer::AnalyzeLambda(Lambda* lambda, const int depth)
         lambda_type = TypeFactory::Instance()->MakeType(lambda_type);
       }
       else {
-        ProcessError(lambda, L"Undefined alias: '" + ReplaceSubstring(lambda_name, L"#", L"->") + L"'");
+        if(lambda_name.empty()) {
+          ProcessError(lambda, L"Invalid lambda expression or method call");
+        }
+        else {
+          ProcessError(lambda, L"Undefined alias: '" + ReplaceSubstring(lambda_name, L"#", L"->") + L"'");
+        }
       }
     }
     else {
@@ -962,11 +967,21 @@ void ContextAnalyzer::AnalyzeLambda(Lambda* lambda, const int depth)
           lambda_type = TypeFactory::Instance()->MakeType(lambda_type);
         }
         else {
-          ProcessError(lambda, L"Undefined alias: '" + ReplaceSubstring(lambda_name, L"#", L"->") + L"'");
+          if(lambda_name.empty()) {
+            ProcessError(lambda, L"Invalid lambda expression or method call");
+          }
+          else {
+            ProcessError(lambda, L"Undefined alias: '" + ReplaceSubstring(lambda_name, L"#", L"->") + L"'");
+          }
         }
       }
       else {
-        ProcessError(lambda, L"Undefined alias: '" + ReplaceSubstring(lambda_name, L"#", L"->") + L"'");
+        if(lambda_name.empty()) {
+          ProcessError(lambda, L"Invalid lambda expression or method call");
+        }
+        else {
+          ProcessError(lambda, L"Undefined alias: '" + ReplaceSubstring(lambda_name, L"#", L"->") + L"'");
+        }
       }
     }
   }
