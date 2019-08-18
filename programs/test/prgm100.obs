@@ -2,28 +2,13 @@ use Collection.Generic;
 
 class FirstClass {
    function : Main(args : String[]) ~ Nil {
-      x := 2.0;
-      xi := 0.5;
-      y := 4.0;
-      yi := 0.25;
-      z := x + y;
-      zi := 1.0 / (x + y);
+      fl := CompareVector->New()<FloatHolder>;
+      fl->AddBack(1.25); fl->AddBack(3.5); fl->AddBack(6.66);
 
-      numlist := CompareVector->New()<FloatHolder>;
-      numlist->AddBack(x); numlist->AddBack(y); numlist->AddBack(z);
-
-      numlisti := Vector->New()<FloatHolder>;
-      numlisti->AddBack(xi); numlisti->AddBack(yi); numlisti->AddBack(zi);
+      il := Vector->New()<FloatHolder>;
+      il->AddBack(101); il->AddBack(321); il->AddBack(950);
       
-      each(i : numlist) {
-         v := numlist->Get(i); vi := numlisti->Get(i);
-         mult := Multiplier(v, vi);
-         r := mult(0.5);
-         "{$v} * {$vi} * 0.5 = {$r}"->PrintLine();
-      };
-   }
-   
-   function : Multiplier(a : FloatHolder, b : FloatHolder) ~ (FloatHolder) ~ FloatHolder {
-      return \(FloatHolder) ~ FloatHolder : (c) =>  a * b * c;
+      zipped := Map->Zip(fl, il)<FloatHolder, FloatHolder>;
+      zipped->Each(\^(a, b) => ( a + b )->PrintLine() );
    }
 }

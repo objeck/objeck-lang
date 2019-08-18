@@ -4628,7 +4628,12 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
                 expression->GetExpressionType() != EQL_EXPR && expression->GetExpressionType() != NEQL_EXPR) {
           ProcessError(left_expr, L"Invalid operation between class or enum: '" + left->GetClassName() + L"' and '" + right->GetClassName() + L"'");
         }
-        expression->SetEvalType(TypeFactory::Instance()->MakeType(INT_TYPE), true);
+        if(left->GetClassName() == L"System.FloatHolder" || right->GetClassName() == L"System.FloatHolder") {
+          expression->SetEvalType(TypeFactory::Instance()->MakeType(FLOAT_TYPE), true);
+        }
+        else {
+          expression->SetEvalType(TypeFactory::Instance()->MakeType(INT_TYPE), true);
+        }
       }
         break;
         
