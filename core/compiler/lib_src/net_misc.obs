@@ -864,10 +864,10 @@ bundle Web.HTTP {
 					each(i : request_keys) {		
 						request_key := request_keys->Get(i);
 						request_value := @headers->Find(request_key);					
-						post->Append(request_key);
-						post->Append(": ");
-						post->Append(request_value);
-						post->Append("\r\n");
+						get->Append(request_key);
+						get->Append(": ");
+						get->Append(request_value);
+						get->Append("\r\n");
 					};
 
 					if(@cookies_enabled & @cookies->Size() > 0) {
@@ -1285,10 +1285,10 @@ bundle Web.HTTP {
 					each(i : request_keys) {		
 						request_key := request_keys->Get(i);
 						request_value := @headers->Find(request_key);					
-						post->Append(request_key);
-						post->Append(": ");
-						post->Append(request_value);
-						post->Append("\r\n");
+						get->Append(request_key);
+						get->Append(": ");
+						get->Append(request_value);
+						get->Append("\r\n");
 					};
 					
 					if(@cookies_enabled & @cookies->Size() > 0) {
