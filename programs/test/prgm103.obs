@@ -2,6 +2,6 @@ use Data.JSON;
 
 class Hello {
 	function : Main(args : String[]) ~ Nil {
-		JSONElement->Decode("Our latest Twitter Developer Labs release helps you quickly assess the impact of your Tweets. Today, we\\u2019re releasin\\u2026 https:\\/\\/t.co\\/a8PaA1wg5A")->PrintLine();
+		JSONElement->Decode("Our latest Twitter Developer Labs release helps you quickly assess the impact of your Tweets. Today, we\\u2019re releasin\\u2026 https:\\/\\/t.co\\/a8PaA1wg5A");
 	}
 }

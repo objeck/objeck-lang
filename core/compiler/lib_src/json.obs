@@ -575,23 +575,23 @@ bundle Data.JSON {
 					i += 1;
 					select(str->Get(i + 1)) {
 						label 'b': {
-
+							buffer->Append(0x10);
 						}
 
 						label 'f': {
-
+							buffer->Append(0x14);
 						}
 
 						label 'n': {
-
+							buffer->Append('\n');
 						}
 
 						label 'r': {
-
+							buffer->Append('\r');
 						}
 
 						label 't': {
-
+							buffer->Append('\t');
 						}
 
 						label '\\': {
@@ -599,7 +599,14 @@ bundle Data.JSON {
 						}
 
 						label 'u': {
-
+"----"->PrintLine();
+							if(i + 4 < str->Size()) {
+								code := str->SubString(i, 4);
+								code->PrintLine();
+							}
+							else {
+								buffer->Append(str->Get(i + 1));
+							};
 						}
 					};
 				}
