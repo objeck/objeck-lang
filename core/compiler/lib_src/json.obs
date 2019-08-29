@@ -560,6 +560,56 @@ bundle Data.JSON {
 			
 			return Nil;
 		}
+
+		#~
+		General decoding for JSON strings		
+		@param str encoded string
+		@return decoded string
+		~#
+		function : native : Decode(str : String) ~ String {
+			buffer := String->New();
+
+			each(i : str) {
+				c := str->Get(i);
+				if(c = '\\' & i + 1 < str->Size()) {
+					i += 1;
+					select(str->Get(i + 1)) {
+						label 'b': {
+
+						}
+
+						label 'f': {
+
+						}
+
+						label 'n': {
+
+						}
+
+						label 'r': {
+
+						}
+
+						label 't': {
+
+						}
+
+						label '\\': {
+							buffer->Append('\\');
+						}
+
+						label 'u': {
+
+						}
+					};
+				}
+				else {
+					buffer->Append(c);
+				};
+			};
+
+			return buffer;
+		}
 		
 		#~
 		Gets the names of object attributes
