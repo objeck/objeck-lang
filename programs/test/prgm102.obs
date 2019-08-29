@@ -3,11 +3,8 @@ use Collection.Generic;
 
 class Hello {
 	function : Main(args : String[]) ~ Nil {
-		headers := Hash->New()<String, String>;
-
 		client := HttpsClient->New();
-		client->SetHeaders(headers);
-
-		client->GetAll("")->PrintLine();
+		client->AddHeader("authorization", "Bearer <id>");
+		client->GetAll("https://api.twitter.com/1.1/search/tweets.json?q=from%3Atwitterdev&result_type=mixed&count=2")->PrintLine();
 	}
 }

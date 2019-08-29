@@ -594,6 +594,7 @@ bundle Web.HTTP {
 		Default constructor 
 		~#
 		New() {
+			@headers := Hash->New()<String, String>;
 			@cookies_enabled := false;
 			@cookies := Vector->New()<String>;
 		}
@@ -607,11 +608,12 @@ bundle Web.HTTP {
 		}
 
 		#~
-		Sets the HTTP request headers
-		@params headers HTTP headers
+		Adds a HTTP request header
+		@params name header name
+		@params value header value
 		~#
-		method : public : SetHeaders(headers : Hash<String, String>) ~  Nil {
-			@headers := headers;
+		method : public : AddHeader(name : String, value : String) ~  Nil {
+			@headers->Insert(name->ToLower(), value);
 		}
 		
 		#~
@@ -656,9 +658,6 @@ bundle Web.HTTP {
 		@return vector of read strings
 		~#
 		method : public : Post(url : String, content_type : String, data : String) ~ Vector<String> {
-			if(@headers = Nil) {
-				@headers := Hash->New()<String, String>;
-			};		
 			content := Vector->New()<String>;
 
 			if(url->StartsWith("http://")) {
@@ -740,14 +739,14 @@ bundle Web.HTTP {
 								index := line->Find(':');
 								name := line->SubString(index);
 								value := line->SubString(index + 1, line->Size() - index - 1)->Trim();			
-								@headers->Insert(name, value);
+								@headers->Insert(name->ToLower(), value);
 # IO.Console->Print("|")->Print(name)->Print("|, |")->Print(value)->PrintLine("|");
 							};
 						}
 						while(line->Size() > 0);
 
 						# look for chunked blocks
-						encoding : String := @headers->Find("Transfer-Encoding");
+						encoding : String := @headers->Find("transfer-encoding");
 						if(encoding <> Nil & encoding->Equals("chunked")) {
 							done := false;
 							do {
@@ -769,7 +768,7 @@ bundle Web.HTTP {
 							while(done <> true);
 						}
 						else {
-							length_header : String := @headers->Find("Content-Length");
+							length_header : String := @headers->Find("content-length");
 							if(length_header <> Nil) {
 								length := length_header->ToInt();
 								buffer := Byte->New[length];
@@ -825,9 +824,6 @@ bundle Web.HTTP {
 		@return vector of read strings
 		~#
 		method : public : Get(url : String, content_type : String) ~ Vector<String> {
-			if(@headers = Nil) {
-				@headers := Hash->New()<String, String>;
-			};
 			content := Vector->New()<String>;
 			
 			if(url->StartsWith("http://")) {
@@ -915,7 +911,7 @@ bundle Web.HTTP {
 # IO.Console->Print("cookie=")->PrintLine(value);									
 								}
 								else {
-									@headers->Insert(name, value);
+									@headers->Insert(name->ToLower(), value);
 								};
 							};
 						}
@@ -924,7 +920,7 @@ bundle Web.HTTP {
 # IO.Console->Print("cookies: size=")->PrintLine(@cookies->Size());						
 
 						# look for chunked blocks
-						encoding : String := @headers->Find("Transfer-Encoding");
+						encoding : String := @headers->Find("transfer-encoding");
 						if(encoding <> Nil & encoding->Equals("chunked")) {
 							done := false;
 							do {
@@ -957,7 +953,7 @@ bundle Web.HTTP {
 							while(done <> true);
 						}
 						else {
-							length_header : String := @headers->Find("Content-Length");
+							length_header : String := @headers->Find("content-length");
 							if(length_header <> Nil) {
 								length := length_header->ToInt();
 								buffer := Byte->New[length];
@@ -1007,8 +1003,9 @@ bundle Web.HTTP {
 		Default constructor 
 		~#
 		New() {
+			@headers := Hash->New()<String, String>;
 			@cookies_enabled := false;
-			@cookies := Vector->New()<String>;;
+			@cookies := Vector->New()<String>;
 		}
 		
 		#~
@@ -1020,11 +1017,12 @@ bundle Web.HTTP {
 		}
 
 		#~
-		Sets the HTTP request headers
-		@params headers HTTP headers
+		Adds a HTTP request header
+		@params name header name
+		@params value header value
 		~#
-		method : public : SetHeaders(headers : Hash<String, String>) ~  Nil {
-			@headers := headers;
+		method : public : AddHeader(name : String, value : String) ~  Nil {
+			@headers->Insert(name->ToLower(), value);
 		}
 		
 		#~
@@ -1069,9 +1067,6 @@ bundle Web.HTTP {
 		@return vector of read strings
 		~#
 		method : public : Post(url : String, content_type : String, data : String) ~ Vector<String> {
-			if(@headers = Nil) {
-				@headers := Hash->New()<String, String>;
-			};
 			content := Vector->New()<String>;
 			
 			if(url->StartsWith("https://")) {
@@ -1146,21 +1141,21 @@ bundle Web.HTTP {
 # status_line->PrintLine();
 					
 					if(status_code <> 500) {
-					  # get @headers
+						# get @headers
 						do {
 							line := socket->ReadString();
 							if(line->Size() > 0) {
 								index := line->Find(':');
 								name := line->SubString(index);
 								value := line->SubString(index + 1, line->Size() - index - 1)->Trim();			
-								@headers->Insert(name, value);
+								@headers->Insert(name->ToLower(), value);
 # IO.Console->Print("|")->Print(name)->Print("|, |")->Print(value)->PrintLine("|");
 							};
 						}
 						while(line->Size() > 0);
 
 						# look for chunked blocks
-						encoding : String := @headers->Find("Transfer-Encoding");
+						encoding : String := @headers->Find("transfer-encoding");
 						if(encoding <> Nil & encoding->Equals("chunked")) {
 							done := false;
 							do {
@@ -1182,7 +1177,7 @@ bundle Web.HTTP {
 							while(done <> true);
 						}
 						else {
-							length_header : String := @headers->Find("Content-Length");
+							length_header : String := @headers->Find("content-length");
 							if(length_header <> Nil) {
 								length := length_header->ToInt();
 								buffer := Byte->New[length];
@@ -1246,9 +1241,6 @@ bundle Web.HTTP {
 		@return vector of read strings
 		~#
 		method : public : Get(url : String, content_type : String) ~ Vector<String> {
-			if(@headers = Nil) {
-				@headers := Hash->New()<String, String>;
-			};
 			content := Vector->New()<String>;
 			
 			if(url->StartsWith("https://")) {
@@ -1316,7 +1308,8 @@ bundle Web.HTTP {
 						status_code := status_line->SubString(index)->ToInt();
 					};
 					
-# status_code->PrintLine();					
+# status_code->PrintLine();
+
 					if(status_code <> 500) {
 						# get @headers
 						do {
@@ -1325,7 +1318,6 @@ bundle Web.HTTP {
 								index := line->Find(':');
 								name := line->SubString(index);
 								value := line->SubString(index + 1, line->Size() - index - 1)->Trim();
-								
 # IO.Console->Print("|")->Print(name)->Print("|, |")->Print(value)->PrintLine("|");
 								if(@cookies_enabled & name->Equals("Set-Cookie")) {
 									offset := value->Find(';');
@@ -1336,7 +1328,7 @@ bundle Web.HTTP {
 # IO.Console->Print("cookie=")->PrintLine(value);									
 								}
 								else {
-									@headers->Insert(name, value);
+									@headers->Insert(name->ToLower(), value);
 								};
 							};
 						}
@@ -1345,7 +1337,7 @@ bundle Web.HTTP {
 # IO.Console->Print("cookies: size=")->PrintLine(@cookies->Size());						
 
 						# look for chunked blocks
-						encoding : String := @headers->Find("Transfer-Encoding");
+						encoding : String := @headers->Find("transfer-encoding");
 						if(encoding <> Nil & encoding->Equals("chunked")) {
 							done := false;
 							do {
@@ -1378,7 +1370,7 @@ bundle Web.HTTP {
 							while(done <> true);
 						}
 						else {
-							length_header : String := @headers->Find("Content-Length")->As(String);
+							length_header : String := @headers->Find("content-length")->As(String);
 							if(length_header <> Nil) {
 								length := length_header->ToInt();
 								buffer := Byte->New[length];
