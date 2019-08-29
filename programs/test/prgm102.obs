@@ -1,13 +1,13 @@
-bundle Default {
-	class Hello {
-		function : Main(args : String[]) ~ Nil {
-			Run();		
-		}
+use Web.HTTP;
+use Collection.Generic;
 
-		function : native : Run() ~ Nil {
-			a := 7;
-			b := 13;
-			(((a < 13) ? 10 : 20) >  15)->PrintLine();
-		}
+class Hello {
+	function : Main(args : String[]) ~ Nil {
+		headers := Hash->New()<String, String>;
+
+		client := HttpsClient->New();
+		client->SetHeaders(headers);
+
+		client->GetAll("")->PrintLine();
 	}
 }

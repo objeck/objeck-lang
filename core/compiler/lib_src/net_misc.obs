@@ -981,8 +981,16 @@ bundle Web.HTTP {
 		Gets the HTTP headers
 		@return HTTP headers
 		~#
-		method : GetHeaders() ~ Hash<String, String> {
+		method : public : GetHeaders() ~ Hash<String, String> {
 			return @headers;
+		}
+
+		#~
+		Sets the HTTP request headers
+		@return HTTP headers
+		~#
+		method : public : SetHeaders(headers : Hash<String, String>) ~  Nil {
+			@headers := headers;
 		}
 		
 		#~
@@ -1027,7 +1035,9 @@ bundle Web.HTTP {
 		@return vector of read strings
 		~#
 		method : public : Post(url : String, content_type : String, data : String) ~ Vector<String> {
-			@headers := Hash->New()<String, String>;
+			if(@headers = Nil) {
+				@headers := Hash->New()<String, String>;
+			};
 			content := Vector->New()<String>;
 			
 			if(url->StartsWith("https://")) {
@@ -1063,6 +1073,17 @@ bundle Web.HTTP {
 					post->Append("\r\nContent-Length: ");
 					post->Append(data->Size()->ToString());
 					post->Append("\r\n");
+
+					request_keys := @headers->GetKeys()<String>;
+					each(i : request_keys) {		
+						request_key := request_keys->Get(i);
+						request_value := @headers->Find(request_key);					
+						post->Append(request_key);
+						post->Append(": ");
+						post->Append(request_value);
+						post->Append("\r\n");
+					};
+
 					if(@cookies_enabled & @cookies->Size() > 0) {
 						post->Append("Cookie: ");
 						each(i : @cookies) {
