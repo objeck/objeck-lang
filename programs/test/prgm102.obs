@@ -1,10 +1,21 @@
 use Web.HTTP;
 use Collection.Generic;
+use Data.JSON;
 
 class Hello {
 	function : Main(args : String[]) ~ Nil {
 		client := HttpsClient->New();
-		client->AddHeader("authorization", "Bearer <id>");
-		client->GetAll("https://api.twitter.com/1.1/search/tweets.json?q=from%3Atwitterdev&result_type=mixed&count=2")->PrintLine();
+		client->AddHeader("authorization", "Bearer AAAAAAAAAAAAAAAAAAAAALsi%2FwAAAAAA8fFakJcg4ve011s5X8y3khgXUlA%3DZjesd9UcpTogJfP84RCXvF4cZ5m0Y9UiLv2WnMRexQ2L23tuXL");
+		json := client->GetAll("https://api.twitter.com/1.1/search/tweets.json?q=from%3Atwitterdev&result_type=mixed&count=2");
+
+		doc := JSONParser->New(json)->Parse();
+		if(doc <> Nil) {
+			statuses := doc->Get("statuses");
+			each(i : statuses) {
+				status := statuses->Get(i);
+				text := status->Get("text");
+				text->GetValue()->PrintLine();
+			};
+		};
 	}
 }

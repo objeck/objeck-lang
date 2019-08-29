@@ -1,16 +1,7 @@
-bundle Default {
-	class Hello {
-		function : Main(args : String[]) ~ Nil {
-			Run();
-		}
+use Data.JSON;
 
-		function : native : Run() ~ Nil {
-			s := "";	
-			for(i := 0; i < 100; i += 1;) {
-				s->Append("Laundry Services - Lawrenceville, NJ - NJ.com
-businessfinder.nj.com/NJ-Lawrenceville/Laundry-Services - CachedResults 1 - 16 of 103 – Find Laundry Services local business listings in & near Lawrenceville, New Jersey. Get Laundry Services business addresses, ");	
-			};
-			s->PrintLine();
-		}
+class Hello {
+	function : Main(args : String[]) ~ Nil {
+		JSONElement->Decode("Our latest Twitter Developer Labs release helps you quickly assess the impact of your Tweets. Today, we\\u2019re releasin\\u2026 https:\\/\\/t.co\\/a8PaA1wg5A")->PrintLine();
 	}
 }
