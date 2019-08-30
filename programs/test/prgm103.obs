@@ -2,10 +2,15 @@ use Data.JSON;
 
 class Hello {
 	function : Main(args : String[]) ~ Nil {
-		foo := JSONElement->Decode("Finding Twitter webhooks a challenge to set up? With Autohook, it\\u2019s so easy you can actually build a complete autor\\u2026 https:\\/\\/t.co\\/srRymga55Y");
+		in := "\\\"Finding Twitter webhooks a challenge to set up? With Autohook, it\\u2019s so easy you can actually build a complete autor\\u2026 https:\\/\\/t.co\\/srRymga55Y\\\"";
+		in->PrintLine();
+
+		foo := JSONElement->Decode(in);
 		foo->PrintLine();
 
 		bar := JSONElement->Encode(foo);
-		bar->PrintLine();		
+		bar->PrintLine();
+
+		in->Equals(bar)->PrintLine();
 	}
 }
