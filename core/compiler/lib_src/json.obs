@@ -621,7 +621,7 @@ bundle Data.JSON {
 								if(<>str_code->IsEmpty()) {
 									buffer->Append("0x{$str_code}"->ToInt()->As(Char));
 								};
-								i += 4;
+								i += 3;
 							}
 							else {
 								buffer->Append(str->Get(i));
