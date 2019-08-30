@@ -573,39 +573,50 @@ bundle Data.JSON {
 				c := str->Get(i);
 				if(c = '\\' & i + 1 < str->Size()) {
 					i += 1;
-					select(str->Get(i + 1)) {
+					select(str->Get(i)) {
 						label 'b': {
-							buffer->Append(0x10);
+							buffer->Append(0x10->As(Char));
+							i += 1;
 						}
 
 						label 'f': {
-							buffer->Append(0x14);
+							buffer->Append(0x14->As(Char));
+							i += 1;
 						}
 
 						label 'n': {
 							buffer->Append('\n');
+							i += 1;
 						}
 
 						label 'r': {
 							buffer->Append('\r');
+							i += 1;
 						}
 
 						label 't': {
 							buffer->Append('\t');
+							i += 1;
 						}
 
 						label '\\': {
 							buffer->Append('\\');
+							i += 1;
 						}
 
 						label 'u': {
-"----"->PrintLine();
+							i += 1;
 							if(i + 4 < str->Size()) {
-								code := str->SubString(i, 4);
-								code->PrintLine();
+								code := str->SubString(i, 4)->ToInt();
+								if(code <> 0) {
+"Append"->PrintLine();									
+									buffer->Append(code->As(Char));
+									
+								};
+								i += 4;
 							}
 							else {
-								buffer->Append(str->Get(i + 1));
+								buffer->Append(str->Get(i));
 							};
 						}
 					};
