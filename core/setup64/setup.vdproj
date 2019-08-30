@@ -8215,8 +8215,8 @@
         {
         "Name" = "8:Microsoft Visual Studio"
         "ProductName" = "8:Objeck"
-        "ProductCode" = "8:{A93AEA3A-E5F5-4491-AE86-0D5B4BF557DF}"
-        "PackageCode" = "8:{17C55AB4-5A24-4E82-A18A-2781B9B74522}"
+        "ProductCode" = "8:{71F330DA-8006-4458-A458-E64FD2CFC15A}"
+        "PackageCode" = "8:{099C1598-CA46-412C-92DD-CCE6E96E05A8}"
         "UpgradeCode" = "8:{A1931BE6-A793-4ECE-B303-66B69408440F}"
         "AspNetVersion" = "8:"
         "RestartWWWService" = "11:FALSE"
