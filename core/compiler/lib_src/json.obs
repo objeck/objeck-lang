@@ -604,14 +604,22 @@ bundle Data.JSON {
 							i += 1;
 						}
 
+						label '/': {
+							buffer->Append('/');
+							i += 1;
+						}
+
+						label '"': {
+							buffer->Append('"');
+							i += 1;
+						}
+
 						label 'u': {
 							i += 1;
 							if(i + 4 < str->Size()) {
-								code := str->SubString(i, 4)->ToInt();
-								if(code <> 0) {
-"Append"->PrintLine();									
-									buffer->Append(code->As(Char));
-									
+								str_code := str->SubString(i, 4);
+								if(<>str_code->IsEmpty()) {
+									buffer->Append("0x{$str_code}"->ToInt()->As(Char));
 								};
 								i += 4;
 							}
@@ -623,6 +631,65 @@ bundle Data.JSON {
 				}
 				else {
 					buffer->Append(c);
+				};
+			};
+
+			return buffer;
+		}
+
+		#~
+		General encoding for JSON strings		
+		@param str decoded string
+		@return encoding string
+		~#
+		function : native : Encode(str : String) ~ String {
+			buffer := String->New();
+
+			each(i : str) {
+				c := str->Get(i);
+
+				if(c > 127) {
+					str_hex := c->As(Int)->ToHexString();
+					buffer->Append("\\u{$str_hex}");
+				}
+				else {
+					select(c) {
+						label 0x10: {
+							buffer->Append("\\b");
+						}
+
+						label 0x14: {
+							buffer->Append("\\f");
+						}
+
+						label '\n': {
+							buffer->Append("\\n");
+						}
+
+						label '\r': {
+							buffer->Append("\\r");
+						}
+
+						label '\t': {
+							buffer->Append("\\t");
+						}
+
+						label '\\': {
+							buffer->Append("\\\\");
+						}
+
+						label '/': {
+							buffer->Append("\\/");
+						}
+
+						label '"': {
+							buffer->Append("\\\"");
+						}
+
+						other: {
+							buffer->Append(c);
+						}
+					};
 				};
 			};
 
