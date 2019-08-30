@@ -5,7 +5,7 @@ use Data.JSON;
 class Hello {
 	function : Main(args : String[]) ~ Nil {
 		client := HttpsClient->New();
-		client->AddHeader("authorization", "Bearer AAAAAAAAAAAAAAAAAAAAALsi%2FwAAAAAA8fFakJcg4ve011s5X8y3khgXUlA%3DZjesd9UcpTogJfP84RCXvF4cZ5m0Y9UiLv2WnMRexQ2L23tuXL");
+		client->AddHeader("authorization", "Bearer <id>");
 		json := client->GetAll("https://api.twitter.com/1.1/search/tweets.json?q=from%3Atwitterdev&result_type=mixed&count=2");
 
 		doc := JSONParser->New(json)->Parse();
