@@ -576,42 +576,34 @@ bundle Data.JSON {
 					select(str->Get(i)) {
 						label 'b': {
 							buffer->Append(0x10->As(Char));
-							i += 1;
 						}
 
 						label 'f': {
 							buffer->Append(0x14->As(Char));
-							i += 1;
 						}
 
 						label 'n': {
 							buffer->Append('\n');
-							i += 1;
 						}
 
 						label 'r': {
 							buffer->Append('\r');
-							i += 1;
 						}
 
 						label 't': {
 							buffer->Append('\t');
-							i += 1;
 						}
 
 						label '\\': {
 							buffer->Append('\\');
-							i += 1;
 						}
 
 						label '/': {
 							buffer->Append('/');
-							i += 1;
 						}
 
 						label '"': {
 							buffer->Append('"');
-							i += 1;
 						}
 
 						label 'u': {
