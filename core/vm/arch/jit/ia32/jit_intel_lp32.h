@@ -700,8 +700,8 @@ namespace Runtime {
 
     // function call instruction
     void call_reg(Register reg);
-    void call_xfunc(double (*func_ptr)(double), RegInstr* left);
-    void call_xfunc2(double (*func_ptr)(double, double), RegInstr* left);
+    RegisterHolder* call_xfunc(double (*func_ptr)(double), RegInstr* left);
+    RegisterHolder* call_xfunc2(double (*func_ptr)(double, double), RegInstr* left);
     
     // generates a conditional jump
     bool cond_jmp(InstructionType type);
