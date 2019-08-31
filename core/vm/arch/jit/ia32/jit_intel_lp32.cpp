@@ -2117,13 +2117,14 @@ void JitCompilerIA32::ProcessFloatOperation(StackInstr* instruction) {
 #ifdef _DEBUG
   assert(left->GetType() == MEM_FLOAT);
 #endif
-    
+
+  RegisterHolder* holder = nullptr;
   switch(type) {
   case SIN_FLOAT:
     fld_mem(left->GetOperand(), EBP);
     fsin();
     break;
-    
+
   case COS_FLOAT:
     fld_mem(left->GetOperand(), EBP);
     fcos();
@@ -2133,46 +2134,48 @@ void JitCompilerIA32::ProcessFloatOperation(StackInstr* instruction) {
     fld_mem(left->GetOperand(), EBP);
     ftan();
     break;
-    
+
   case SQRT_FLOAT:
     fld_mem(left->GetOperand(), EBP);
     fsqrt();
     break;
 
   case ASIN_FLOAT:
-    call_xfunc(asin, left);
+    holder = call_xfunc(asin, left);
     break;
 
   case ACOS_FLOAT:
-    call_xfunc(acos, left);
+    holder = call_xfunc(acos, left);
     break;
 
   case LOG_FLOAT:
-    call_xfunc(log, left);
+    holder = call_xfunc(log, left);
     break;
 
   case ATAN2_FLOAT:
-    call_xfunc2(atan2, left);
+    holder = call_xfunc2(atan2, left);
     break;
-    
+
   case POW_FLOAT:
-    call_xfunc2(pow, left);
+    holder = call_xfunc2(pow, left);
     break;
-    
+
   default:
 #ifdef _DEBUG
     assert(false);
 #endif
     break;
   }
-  
-  RegisterHolder* holder = GetXmmRegister();
-  fstp_mem(left->GetOperand(), EBP);
-  move_mem_xreg(left->GetOperand(), EBP, holder->GetRegister());
+
+  if(!holder) {
+    holder = GetXmmRegister();
+    fstp_mem(left->GetOperand(), EBP);
+    move_mem_xreg(left->GetOperand(), EBP, holder->GetRegister());
+  }
   working_stack.push_front(new RegInstr(holder));
-      
+
   delete left;
-  left = NULL;
+  left = nullptr;
 }
 
 void JitCompilerIA32::move_reg_reg(Register src, Register dest) {
@@ -2809,11 +2812,11 @@ void JitCompilerIA32::loop(int32_t offset)
   AddMachineCode(0xe2);
   AddMachineCode(offset);
 }
-
-void JitCompilerIA32::call_xfunc(double (*func_ptr)(double), RegInstr* left)
+ 
+RegisterHolder* JitCompilerIA32::call_xfunc(double (*func_ptr)(double), RegInstr* left)
 {
-  move_xreg_mem(XMM0, TMP_XMM_0, RBP);
-  move_mem_xreg(left->GetOperand(), RBP, XMM0);
+  move_xreg_mem(XMM0, TMP_XMM_0, EBP);
+  move_mem_xreg(left->GetOperand(), EBP, XMM0);
 
   RegisterHolder* call_holder = GetRegister();
   move_imm_reg((size_t)func_ptr, call_holder->GetRegister());
@@ -2823,31 +2826,40 @@ void JitCompilerIA32::call_xfunc(double (*func_ptr)(double), RegInstr* left)
   RegisterHolder* result_holder = GetXmmRegister();
   if(result_holder->GetRegister() != XMM0) {
     move_xreg_xreg(XMM0, result_holder->GetRegister());
-    move_mem_xreg(TMP_XMM_0, RBP, XMM0);
+    move_mem_xreg(TMP_XMM_0, EBP, XMM0);
   }
 
   return result_holder;
 }
 
-void JitCompilerIA32::call_xfunc2(double (*func_ptr)(double, double), RegInstr* left)
+RegisterHolder* JitCompilerIA32::call_xfunc2(double(*func_ptr)(double, double), RegInstr* left)
 {
   RegInstr* right = working_stack.front();
   working_stack.pop_front();
+
 #ifdef _DEBUG
   assert(right->GetType() == MEM_FLOAT);
 #endif
 
-  push_mem(left->GetOperand() + sizeof(int32_t), EBP);
-  push_mem(left->GetOperand(), EBP);
-  push_mem(right->GetOperand() + sizeof(int32_t), EBP);
-  push_mem(right->GetOperand(), EBP);
+  move_xreg_mem(XMM1, TMP_XMM_1, EBP);
+  move_mem_xreg(left->GetOperand(), EBP, XMM1);
+
+  move_xreg_mem(XMM0, TMP_XMM_0, EBP);
+  move_mem_xreg(right->GetOperand(), EBP, XMM0);
   
   RegisterHolder* call_holder = GetRegister();
-  move_imm_reg((int32_t)func_ptr, call_holder->GetRegister());
+  move_imm_reg((size_t)func_ptr, call_holder->GetRegister());
   call_reg(call_holder->GetRegister());
   ReleaseRegister(call_holder);
-  
-  add_imm_reg(16, ESP);
+
+  RegisterHolder* result_holder = GetXmmRegister();
+  move_mem_xreg(TMP_XMM_1, EBP, XMM1);
+  if(result_holder->GetRegister() != XMM0) {
+    move_xreg_xreg(XMM0, result_holder->GetRegister());
+    move_mem_xreg(TMP_XMM_0, EBP, XMM0);
+  }
+
+  return result_holder;
 }
 
 void JitCompilerIA32::math_mem_xreg(int32_t offset, Register dest, InstructionType type) {
