@@ -2812,7 +2812,17 @@ void JitCompilerIA32::loop(int32_t offset)
 
 void JitCompilerIA32::call_xfunc(double (*func_ptr)(double), RegInstr* left)
 {
-  
+  working_stack.pop_front();
+
+  push_mem(left->GetOperand() + sizeof(int32_t), EBP);
+  push_mem(left->GetOperand(), EBP);
+
+  RegisterHolder* call_holder = GetRegister();
+  move_imm_reg((int32_t)func_ptr, call_holder->GetRegister());
+  call_reg(call_holder->GetRegister());
+  ReleaseRegister(call_holder);
+
+  add_imm_reg(8, ESP);
 }
 
 void JitCompilerIA32::call_xfunc2(double (*func_ptr)(double, double), RegInstr* left)
