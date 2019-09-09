@@ -1,44 +1,44 @@
 interface Thingable {
-    method : virtual : public : Thing() ~ String;
+	method : virtual : public : Thing() ~ String;
 }
  
 class Delegator {
-    @delegate : Thingable;
+	@delegate : Thingable;
 
-    New() {
-    }	
+	New() {
+	}	
 
-    method : public : SetDelegate(delegate : Thingable) ~ Nil {
-    	@delegate := delegate;
-    }
+	method : public : SetDelegate(delegate : Thingable) ~ Nil {
+		@delegate := delegate;
+	}
 
-    method : public : Operation() ~ String {
+	method : public : Operation() ~ String {
 		if(@delegate = Nil) {
 			return "default implementation";
 		}
-        else {
+		else {
 			return @delegate->Thing();
 		};
-    }
+	}
 }
 
 class Delegate implements Thingable {
-    New() {
-    }	
+	New() {
+	}	
 
-    method : public : Thing() ~ String {
-    	return "delegate implementation";
-    }
+	method : public : Thing() ~ String {
+		return "delegate implementation";
+	}
 }
 
 class Example {
 	function : Main(args : String[]) ~ Nil {
 		# Without a delegate:
-        a := Delegator->New();
-        Runtime->Assert(a->Operation()->Equals("default implementation"));
+		a := Delegator->New();
+		Runtime->Assert(a->Operation()->Equals("default implementation"));
  
-        # With a delegate:
-        d := Delegate->New();
+		# With a delegate:
+		d := Delegate->New();
 		a->SetDelegate(d);
 		Runtime->Assert(a->Operation()->Equals("delegate implementation"));
 
