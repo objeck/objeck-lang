@@ -2828,7 +2828,7 @@ RegisterHolder* JitCompilerIA32::call_xfunc(double (*func_ptr)(double), RegInstr
     move_xreg_xreg(XMM0, result_holder->GetRegister());
     move_mem_xreg(TMP_XMM_0, EBP, XMM0);
   }
-
+  
   return result_holder;
 }
 

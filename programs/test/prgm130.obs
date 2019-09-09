@@ -1,4 +1,4 @@
-ouse Collection;
+use Collection;
 use System.IO;
 use System.IO.File;
 use System.IO.Net;

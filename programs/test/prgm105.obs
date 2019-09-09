@@ -1,53 +1,9 @@
-bundle Default {
-	class Hello {
-		function : Main(args : String[]) ~ Nil {
-#			chars : Char[];
-			chars := Char->New[5];
-			chars[0] := 'M';
-			chars[1] := 'o';
-			chars[2] := 'r';
-			chars[3] := 'p';
-			chars[4] := 'h';
-			c := 'H';
-			cc := 'ᐃ';
-			
-			ints := Int->New[5];
-			ints[0] := 80;
-			ints[1] := 79;
-			ints[2] := 78;
-			ints[3] := 77;
-			ints[4] := 76;
-			
-			floats := Float->New[5];
-			floats[0] := 8.0;
-			floats[1] := 71.9;
-			floats[2] := 3.78;
-			floats[3] := 77.657;
-			floats[4] := 49.76;
-			f := 3.145;
+class Hello {
+	function : Main(args : String[]) ~ Nil {
+		DoIt();
+	}
 
-			dest_chars := Char->New[5];
-			Runtime->Copy(dest_chars, 3, chars, 0, 2)->PrintLine();
-			dest_chars[0]->PrintLine();
-			dest_chars[4]->PrintLine();
-			chars->Size()->PrintLine();
-			"----"->PrintLine();
-			
-			dest_ints := Int->New[5];
-			Runtime->Copy(dest_ints, 0, ints, 4, 1)->PrintLine();	
-			dest_ints[0]->PrintLine();
-			dest_ints[4]->PrintLine();
-			ints->Size()->PrintLine();
-			"----"->PrintLine();
-			
-			dest_floats := Float->New[5];
-			Runtime->Copy(dest_floats, 0, floats, 0, 5)->PrintLine();
-			dest_floats[0]->PrintLine();
-			dest_floats[4]->PrintLine();
-			floats->Size()->PrintLine();
-			"----"->PrintLine();
-			
-			"Goodbye World!"->PrintLine();
-		}
+	function : native : DoIt() ~ Nil {
+		0.78625->ArcSin()->PrintLine();
 	}
 }
