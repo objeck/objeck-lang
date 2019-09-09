@@ -19,9 +19,7 @@
     <ClCompile Include="..\win_main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\arch\jit\ia32\jit_intel_lp32.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
+    <ClCompile Include="..\arch\jit\amd64\jit_amd_lp64.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\common.h">
@@ -51,9 +49,7 @@
     <ClInclude Include="..\..\shared\sys.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\arch\jit\ia32\jit_intel_lp32.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
+    <ClInclude Include="..\arch\jit\amd64\jit_amd_lp64.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Header Files">
@@ -62,13 +58,13 @@
     <Filter Include="Source Files">
       <UniqueIdentifier>{c5b061b9-66a2-448d-a28f-ab39b6c33228}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Resource Files">
+    <Filter Include="Source Files\Resource Files">
       <UniqueIdentifier>{a866b982-5c6c-4a5b-a880-6e6b9f534ade}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="objeck.rc">
-      <Filter>Resource Files</Filter>
+      <Filter>Source Files\Resource Files</Filter>
     </ResourceCompile>
   </ItemGroup>
 </Project>

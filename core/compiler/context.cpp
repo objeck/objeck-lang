@@ -702,7 +702,7 @@ void ContextAnalyzer::AnalyzeVirtualMethod(Class* impl_class, MethodType impl_mt
     }
   }
   // check function vs. method
-  if(impl_is_static != virtual_method->IsStatic() || impl_is_virtual) {
+  if(impl_is_static != virtual_method->IsStatic()) {
     ProcessError(impl_class, L"Not all virtual methods have been defined for class/interface: " +
                  virtual_method->GetClass()->GetName());
   }

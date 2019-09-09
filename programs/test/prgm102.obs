@@ -11,12 +11,14 @@ class Hello {
 		doc := JSONParser->New(json)->Parse();
 		if(doc <> Nil) {
 			statuses := doc->Get("statuses");
-			each(i : statuses) {
-				status := statuses->Get(i);
-				text := status->Get("text");
-				text->GetValue()->PrintLine();
-				JSONElement->Decode(text->GetValue())->PrintLine();
-				"---"->PrintLine();
+			if(statuses <> Nil) {
+				each(i : statuses) {
+					status := statuses->Get(i);
+					text := status->Get("text");
+					text->GetValue()->PrintLine();
+					JSONElement->Decode(text->GetValue())->PrintLine();
+					"---"->PrintLine();
+				};
 			};
 		};
 	}

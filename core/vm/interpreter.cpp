@@ -1518,7 +1518,7 @@ void StackInterpreter::ProcessLoadFunctionVar(StackInstr* instr, size_t* &op_sta
 {
 #ifdef _DEBUG
   wcout << L"stack oper: LOAD_FUNC_VAR; index=" << instr->GetOperand()
-        << L"; local=" << ((instr->GetOperand2() == LOCL) ? "true" : "false") << endl;
+        << L"; local=" << ((instr->GetOperand2() == LOCL) ? L"true" : L"false") << endl;
 #endif
   if(instr->GetOperand2() == LOCL) {
     size_t* mem = (*frame)->mem;
@@ -1550,7 +1550,7 @@ void StackInterpreter::ProcessLoadFloat(StackInstr* instr, size_t* &op_stack, lo
 {
 #ifdef _DEBUG
   wcout << L"stack oper: LOAD_FLOAT_VAR; index=" << instr->GetOperand()
-        << L"; local=" << ((instr->GetOperand2() == LOCL) ? "true" : "false") << endl;
+        << L"; local=" << ((instr->GetOperand2() == LOCL) ? L"true" : L"false") << endl;
 #endif
   FLOAT_VALUE value;
   if(instr->GetOperand2() == LOCL) {
@@ -1582,7 +1582,7 @@ void StackInterpreter::ProcessStoreFunctionVar(StackInstr* instr, size_t* &op_st
 {
 #ifdef _DEBUG
   wcout << L"stack oper: STOR_FUNC_VAR; index=" << instr->GetOperand()
-        << L"; local=" << ((instr->GetOperand2() == LOCL) ? "true" : "false") << endl;
+        << L"; local=" << ((instr->GetOperand2() == LOCL) ? L"true" : L"false") << endl;
 #endif
   if(instr->GetOperand2() == LOCL) {
     size_t* mem = (*frame)->mem;
@@ -1614,7 +1614,7 @@ void StackInterpreter::ProcessStoreFloat(StackInstr* instr, size_t* &op_stack, l
 {
 #ifdef _DEBUG
   wcout << L"stack oper: STOR_FLOAT_VAR; index=" << instr->GetOperand()
-        << L"; local=" << ((instr->GetOperand2() == LOCL) ? "true" : "false") << endl;
+        << L"; local=" << ((instr->GetOperand2() == LOCL) ? L"true" : L"false") << endl;
 #endif
   if(instr->GetOperand2() == LOCL) {
     const FLOAT_VALUE value = PopFloat(op_stack, stack_pos);
@@ -1646,7 +1646,7 @@ void StackInterpreter::ProcessCopyFloat(StackInstr* instr, size_t* &op_stack, lo
 {
 #ifdef _DEBUG
   wcout << L"stack oper: COPY_FLOAT_VAR; index=" << instr->GetOperand()
-        << L"; local=" << ((instr->GetOperand2() == LOCL) ? "true" : "false") << endl;
+        << L"; local=" << ((instr->GetOperand2() == LOCL) ? L"true" : L"false") << endl;
 #endif
   if(instr->GetOperand2() == LOCL) {
     FLOAT_VALUE value = TopFloat(op_stack, stack_pos);
