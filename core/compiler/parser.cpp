@@ -1061,7 +1061,7 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
 
 
 
-
+    /*
 
 
     // virtual method
@@ -1122,6 +1122,7 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
     else if(is_virtual && Match(TOKEN_VIRTUAL_ID)) {
       ProcessError(L"The 'virtual' attribute has already been specified", TOKEN_IDENT);
     }
+    */
 
 
 
@@ -1137,7 +1138,6 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
 
 
 
-    /*
     // detect method attributes
     // key:
     // 0: error state
@@ -1263,15 +1263,49 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
 
         // 4: native
       case 4:
-        is_native = true;
+        if(method_attribs[i]) {
+          is_native = true;
+        }
         break;
-
+        
         // should never happen
       default:
         break;
       }
     }
-    */
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
     
     // identifier
     if(!Match(TOKEN_IDENT)) {
