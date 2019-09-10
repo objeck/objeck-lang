@@ -1,5 +1,5 @@
 interface Thingable {
-	method : public : private : virtual : Thing() ~ String;
+	method : public : virtual : Thing() ~ String;
 }
  
 class Delegator {
