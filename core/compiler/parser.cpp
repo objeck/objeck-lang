@@ -1136,21 +1136,21 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
       switch(i) {
         // 1: public
       case 1:
-        if(method_attribs[i]) {
+        if(method_attribs[1]) {
           method_type = PUBLIC_METHOD;
         }
         break;
 
         // 2: private
       case 2: 
-        if(method_attribs[i]) {
+        if(method_attribs[2]) {
           method_type = PRIVATE_METHOD;
         }
         break;
 
         // 3: virtual
       case 3:
-        if(method_attribs[i]) {
+        if(method_attribs[3]) {
           is_virtual = true;
           current_class->SetVirtual(true);
         }
@@ -1158,7 +1158,7 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
 
         // 4: native
       case 4:
-        if(method_attribs[i]) {
+        if(method_attribs[4]) {
           is_native = true;
         }
         break;
