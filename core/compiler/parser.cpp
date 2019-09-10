@@ -1033,12 +1033,15 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
     }
     NextToken();
 
-    // method attributes
-    // 0: error state
-    // 1: public
-    // 2: private
-    // 3: virtual
-    // 4: native
+    /*
+    detect method attributes
+    key:
+      0: error state
+      1: public
+      2: private
+      3: virtual
+      4: native
+    */
     const size_t method_attribs_max = 5;
     bool method_attribs[method_attribs_max];
     memset(method_attribs, 0, sizeof(bool) * method_attribs_max);
@@ -1125,25 +1128,31 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
       ProcessError(L"Method/function cannot be 'public' and 'private'");
     }
 
-    // check method attributes
-    // 1: public
-    // 2: private
-    // 3: virtual
-    // 4: native
+    /*
+    set method attributes
+      key:
+      1: public
+      2: private
+      3: virtual
+      4: native
+    */
     for(size_t i = 1; i < method_attribs_max; ++i) {
       switch(i) {
+        // 1: public
       case 1:
         if(method_attribs[i]) {
           method_type = PUBLIC_METHOD;
         }
         break;
 
-      case 2:
+        // 2: private
+      case 2: 
         if(method_attribs[i]) {
           method_type = PRIVATE_METHOD;
         }
         break;
 
+        // 3: virtual
       case 3:
         if(method_attribs[i]) {
           is_virtual = true;
@@ -1151,8 +1160,13 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
         }
         break;
 
+        // 4: native
       case 4:
         is_native = true;
+        break;
+
+        // should never happen
+      default:
         break;
       }
     }
