@@ -1033,15 +1033,118 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
     }
     NextToken();
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    // virtual method
+    if(Match(TOKEN_VIRTUAL_ID)) {
+      is_virtual = true;
+      NextToken();
+
+      if(!Match(TOKEN_COLON)) {
+        ProcessError(L"Expected ':'", TOKEN_COLON);
+      }
+      NextToken();
+      current_class->SetVirtual(true);
+    }
+
+    // public/private methods
+    if(Match(TOKEN_PUBLIC_ID)) {
+      method_type = PUBLIC_METHOD;
+      NextToken();
+
+      if(!Match(TOKEN_COLON)) {
+        ProcessError(L"Expected ':'", TOKEN_COLON);
+      }
+      NextToken();
+    }
+    else if(Match(TOKEN_PRIVATE_ID)) {
+      method_type = PRIVATE_METHOD;
+      NextToken();
+
+      if(!Match(TOKEN_COLON)) {
+        ProcessError(L"Expected ':'", TOKEN_COLON);
+      }
+      NextToken();
+    }
+    else {
+      method_type = PRIVATE_METHOD;
+    }
+
+    if(Match(TOKEN_NATIVE_ID)) {
+      NextToken();
+      is_native = true;
+      if(!Match(TOKEN_COLON)) {
+        ProcessError(L"Expected ';'", TOKEN_COLON);
+      }
+      NextToken();
+    }
+
+    // virtual method
+    if(!is_virtual && Match(TOKEN_VIRTUAL_ID)) {
+      is_virtual = true;
+      NextToken();
+
+      if(!Match(TOKEN_COLON)) {
+        ProcessError(L"Expected ':'", TOKEN_COLON);
+      }
+      NextToken();
+      current_class->SetVirtual(true);
+    }
+    else if(is_virtual && Match(TOKEN_VIRTUAL_ID)) {
+      ProcessError(L"The 'virtual' attribute has already been specified", TOKEN_IDENT);
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     /*
-    detect method attributes
-    key:
-      0: error state
-      1: public
-      2: private
-      3: virtual
-      4: native
-    */
+    // detect method attributes
+    // key:
+    // 0: error state
+    // 1: public
+    // 2: private
+    // 3: virtual
+    // 4: native
     const size_t method_attribs_max = 5;
     bool method_attribs[method_attribs_max];
     memset(method_attribs, 0, sizeof(bool) * method_attribs_max);
@@ -1128,14 +1231,12 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
       ProcessError(L"Method/function cannot be 'public' and 'private'");
     }
 
-    /*
-    set method attributes
-      key:
-      1: public
-      2: private
-      3: virtual
-      4: native
-    */
+    // set method attributes
+    //   key:
+    //   1: public
+    //   2: private
+    //   3: virtual
+    //   4: native
     for(size_t i = 1; i < method_attribs_max; ++i) {
       switch(i) {
         // 1: public
@@ -1170,6 +1271,7 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
         break;
       }
     }
+    */
     
     // identifier
     if(!Match(TOKEN_IDENT)) {
