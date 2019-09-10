@@ -6869,12 +6869,10 @@ Type* ContextAnalyzer::RelsolveGenericType(Type* candidate_type, MethodCall* met
               Type* rtrn_candidate_type = candidate_types[i];
               ResolveClassEnumType(rtrn_candidate_type);
               
-              int mapping_index = -1;
               if(klass && method_call->GetEvalType()) {
                 const vector<Type*> map_types = method_call->GetEvalType()->GetGenerics();
                 if(i < map_types.size()) {
                   ResolveClassEnumType(map_types[i]);
-                  mapping_index = klass->GenericIndex(map_types[i]->GetClassName());
                 }
                 else {
                   ProcessError(static_cast<Expression*>(method_call), L"Concrete to generic size mismatch");
@@ -6884,26 +6882,14 @@ Type* ContextAnalyzer::RelsolveGenericType(Type* candidate_type, MethodCall* met
                 const vector<Type*> map_types = method_call->GetEvalType()->GetGenerics();
                 if(i < map_types.size()) {
                   ResolveClassEnumType(map_types[i]);
-                  mapping_index = lib_klass->GenericIndex(map_types[i]->GetClassName());
                 }
                 else {
                   ProcessError(static_cast<Expression*>(method_call), L"Concrete to generic size mismatch");
                 }
               }
-
-              /* TODO: validate
-              if(mapping_index > -1 && mapping_index < (int)real_types.size()) {
-                Type* real_type = real_types[mapping_index];
-                ResolveClassEnumType(real_type);
-                if(rtrn_candidate_type->GetClassName() != real_type->GetClassName()) {
-                  ProcessError(static_cast<Expression*>(method_call), L"Invalid generic mapping between classes: '" + 
-                               rtrn_candidate_type->GetClassName() + L"' and '" + real_type->GetClassName() + L"'");
-                }
-              }
-              */
             }
           }
-
+          
           if(klass_generic && klass_generic->HasGenerics()) {
             ValidateGenericConcreteMapping(candidate_types, klass_generic, static_cast<Expression*>(method_call));
             if(method_call->GetEvalType()) {
