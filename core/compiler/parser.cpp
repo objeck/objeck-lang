@@ -1004,7 +1004,7 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
   const int line_num = GetLineNumber();
   const wstring &file_name = GetFileName();
 
-  MethodType method_type;
+  MethodType method_type = PRIVATE_METHOD;
   wstring method_name;
   bool is_native = false;
   bool is_virtual = false;
@@ -1033,69 +1033,134 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
     }
     NextToken();
 
-    // virtual method
-    if(Match(TOKEN_VIRTUAL_ID)) {
-      is_virtual = true;
-      NextToken();
+    // method attributes
+    // 0: error state
+    // 1: public
+    // 2: private
+    // 3: virtual
+    // 4: native
+    const size_t method_attribs_max = 5;
+    bool method_attribs[method_attribs_max];
+    memset(method_attribs, 0, sizeof(bool) * method_attribs_max);
 
-      if(!Match(TOKEN_COLON)) {
-        ProcessError(L"Expected ':'", TOKEN_COLON);
+    while(!Match(TOKEN_IDENT) && !method_attribs[0] && !Match(TOKEN_END_OF_STREAM)) {
+      switch(GetToken()) {
+      case TOKEN_PUBLIC_ID:
+        if(method_attribs[1]) {
+          ProcessError(L"Method/function attribute 'public' already specified", TOKEN_COLON);
+          method_attribs[0] = true;
+        }
+        else {
+          method_attribs[1] = true;
+        }
+        NextToken();
+
+        if(!Match(TOKEN_COLON)) {
+          ProcessError(L"Expected ':'", TOKEN_COLON);
+          method_attribs[0] = true;
+        }
+        NextToken();
+        break;
+
+      case TOKEN_PRIVATE_ID:
+        if(method_attribs[2]) {
+          ProcessError(L"Method/function attribute 'private' already specified", TOKEN_COLON);
+          method_attribs[0] = true;
+        }
+        else {
+          method_attribs[2] = true;
+        }
+        NextToken();
+
+        if(!Match(TOKEN_COLON)) {
+          ProcessError(L"Expected ':'", TOKEN_COLON);
+          method_attribs[0] = true;
+        }
+        NextToken();
+        break;
+
+      case TOKEN_VIRTUAL_ID:
+        if(method_attribs[3]) {
+          ProcessError(L"Method/function attribute 'virtual' already specified", TOKEN_COLON);
+          method_attribs[0] = true;
+        }
+        else {
+          method_attribs[3] = true;
+        }
+        NextToken();
+
+        if(!Match(TOKEN_COLON)) {
+          ProcessError(L"Expected ':'", TOKEN_COLON);
+          method_attribs[0] = true;
+        }
+        NextToken();
+        break;
+
+      case TOKEN_NATIVE_ID:
+        if(method_attribs[4]) {
+          ProcessError(L"Method/function attribute 'native' already specified", TOKEN_COLON);
+          method_attribs[0] = true;
+        }
+        else {
+          method_attribs[4] = true;
+        }
+        NextToken();
+
+        if(!Match(TOKEN_COLON)) {
+          ProcessError(L"Expected ':'", TOKEN_COLON);
+          method_attribs[0] = true;
+        }
+        NextToken();
+        break;
+
+      default:
+        ProcessError(L"Expected method/function attribute", TOKEN_COLON);
+        method_attribs[0] = true;
+        break;
       }
-      NextToken();
-      current_class->SetVirtual(true);
     }
 
-    // public/private methods
-    if(Match(TOKEN_PUBLIC_ID)) {
-      method_type = PUBLIC_METHOD;
-      NextToken();
+    // check for public and private
+    if(method_attribs[1] && method_attribs[2]) {
+      ProcessError(L"Method/function cannot be 'public' and 'private'");
+    }
 
-      if(!Match(TOKEN_COLON)) {
-        ProcessError(L"Expected ':'", TOKEN_COLON);
+    // check method attributes
+    // 1: public
+    // 2: private
+    // 3: virtual
+    // 4: native
+    for(size_t i = 1; i < method_attribs_max; ++i) {
+      switch(i) {
+      case 1:
+        if(method_attribs[i]) {
+          method_type = PUBLIC_METHOD;
+        }
+        break;
+
+      case 2:
+        if(method_attribs[i]) {
+          method_type = PRIVATE_METHOD;
+        }
+        break;
+
+      case 3:
+        if(method_attribs[i]) {
+          is_virtual = true;
+          current_class->SetVirtual(true);
+        }
+        break;
+
+      case 4:
+        is_native = true;
+        break;
       }
-      NextToken();
     }
-    else if(Match(TOKEN_PRIVATE_ID)) {
-      method_type = PRIVATE_METHOD;
-      NextToken();
-
-      if(!Match(TOKEN_COLON)) {
-        ProcessError(L"Expected ':'", TOKEN_COLON);
-      }
-      NextToken();
-    }
-    else {
-      method_type = PRIVATE_METHOD;
-    }
-
-    if(Match(TOKEN_NATIVE_ID)) {
-      NextToken();
-      is_native = true;
-      if(!Match(TOKEN_COLON)) {
-        ProcessError(L"Expected ';'", TOKEN_COLON);
-      }
-      NextToken();
-    }
-
-    // virtual method
-    if(!is_virtual && Match(TOKEN_VIRTUAL_ID)) {
-      is_virtual = true;
-      NextToken();
-
-      if(!Match(TOKEN_COLON)) {
-        ProcessError(L"Expected ':'", TOKEN_COLON);
-      }
-      NextToken();
-      current_class->SetVirtual(true);
-    }
-    else if(is_virtual && Match(TOKEN_VIRTUAL_ID)) {
-      ProcessError(L"The 'virtual' attribute has already been specified", TOKEN_IDENT);
-    }
-
+    
+    // identifier
     if(!Match(TOKEN_IDENT)) {
       ProcessError(TOKEN_IDENT);
     }
-    // identifier
     wstring ident = scanner->GetToken()->GetIdentifier();
     method_name = current_class->GetName() + L':' + ident;
     NextToken();
