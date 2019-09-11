@@ -44,7 +44,6 @@ class Example {
 
 		# Same as the above, but with an anonymous class:
 		a->SetDelegate(Base->New() implements Thingable {
-#			New() {}
 			method : public : Thing() ~ String {
 				return "anonymous delegate implementation";
 			}

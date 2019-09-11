@@ -220,30 +220,6 @@ bool ContextAnalyzer::Analyze()
     }
   }
 
-  // process anonymous classes
-  for(size_t i = 0; i < anonymous_classes.size(); ++i) {
-    Class* anonymous_class = anonymous_classes[i];
-    MethodCall* anonymous_call = anonymous_class->GetAnonymousCall();
-
-    bool found = false;
-    if(anonymous_call->GetMethod()) {
-      const wstring calling_name = anonymous_call->GetMethod()->GetEncodedName();
-      if(anonymous_class->GetMethod(calling_name)) {
-        found = true;
-      }
-    }
-    else if(anonymous_call->GetLibraryMethod()) {
-      const wstring calling_name = anonymous_call->GetLibraryMethod()->GetName();
-      if(anonymous_class->GetMethod(calling_name)) {
-        found = true;
-      }
-    }
-
-    if(!found) {
-      ProcessError(anonymous_class, L"Callers 'New(..)' method signature not defined in anonymous class");
-    }
-  }
-
   // check for entry points
   if(!main_found && !is_lib && !is_web) {
     ProcessError(program->GetFileName(), L"The 'Main(args)' function was not defined");
