@@ -2369,6 +2369,7 @@ namespace frontend {
     int NextMethodId() {
       return ++next_method_id;
     }
+    bool HasDefaultNew();
   };
 
   /****************************
