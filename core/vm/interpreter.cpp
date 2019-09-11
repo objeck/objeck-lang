@@ -1715,12 +1715,12 @@ void StackInterpreter::ProcessNewArray(StackInstr* instr, size_t* &op_stack, lon
   wcout << L"stack oper: NEW_INT_ARY/NEW_FLOAT_ARY; call_pos=" << (*call_stack_pos) << endl;
 #endif
   size_t indices[8];
-  size_t value = PopInt(op_stack, stack_pos);
+  const size_t value = PopInt(op_stack, stack_pos);
   size_t size = value;
   indices[0] = value;
   long dim = 1;
   for(long i = 1; i < instr->GetOperand(); i++) {
-    size_t value = PopInt(op_stack, stack_pos);
+    const size_t value = PopInt(op_stack, stack_pos);
     size *= value;
     indices[dim++] = value;
   }
@@ -1755,12 +1755,12 @@ void StackInterpreter::ProcessNewByteArray(StackInstr* instr, size_t* &op_stack,
   wcout << L"stack oper: NEW_BYTE_ARY; call_pos=" << (*call_stack_pos) << endl;
 #endif
   size_t indices[8];
-  size_t value = PopInt(op_stack, stack_pos);
+  const size_t value = PopInt(op_stack, stack_pos);
   size_t size = value;
   indices[0] = value;
   long dim = 1;
   for(long i = 1; i < instr->GetOperand(); i++) {
-    size_t value = PopInt(op_stack, stack_pos);
+    const size_t value = PopInt(op_stack, stack_pos);
     size *= value;
     indices[dim++] = value;
   }
@@ -1784,12 +1784,12 @@ void StackInterpreter::ProcessNewCharArray(StackInstr* instr, size_t* &op_stack,
   wcout << L"stack oper: NEW_CHAR_ARY; call_pos=" << (*call_stack_pos) << endl;
 #endif
   size_t indices[8];
-  size_t value = PopInt(op_stack, stack_pos);
+  const size_t value = PopInt(op_stack, stack_pos);
   size_t size = value;
   indices[0] = value;
   long dim = 1;
   for(long i = 1; i < instr->GetOperand(); i++) {
-    size_t value = PopInt(op_stack, stack_pos);
+    const size_t value = PopInt(op_stack, stack_pos);
     size *= value;
     indices[dim++] = value;
   }
