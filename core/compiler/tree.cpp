@@ -790,6 +790,20 @@ void Class::AssociateMethod(Method* method)
   }
 }
 
+bool Class::HasDefaultNew()
+{
+  if(anonymous_call) {
+    const wstring default_new_str = name + L":New:";
+    for(size_t i = 0; i < method_list.size(); ++i) {
+      if(method_list[i]->GetParsedName() == default_new_str) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
 /****************************
  * class Lambda
  ****************************/

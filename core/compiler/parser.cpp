@@ -3858,11 +3858,15 @@ void Parser::ParseAnonymousClass(MethodCall* method_call, int depth)
   }
   NextToken();
 
+  klass->SetAnonymousCall(method_call);
+  if(!klass->HasDefaultNew()) {
+    wcout << L"Its yours!" << endl;
+  }
+
   symbol_table->PreviousParseScope(current_class->GetName());
 
   method_call->SetAnonymousClass(klass);
   method_call->SetVariableName(cls_name);
-  klass->SetAnonymousCall(method_call);
   current_bundle->AddClass(klass);
 
   current_class = prev_class;
