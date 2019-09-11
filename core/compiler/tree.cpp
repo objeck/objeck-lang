@@ -870,27 +870,8 @@ wstring Alias::EncodeType(Type* type, ParsedProgram* program, Linker* linker)
           if(prgm_enum) {
             name += prgm_enum->GetName();
           }
-          /*
-          else {
-            const wstring type_klass_name_ext = klass->GetName() + L"#" + type_klass_name;
-            prgm_enum = program->GetEnum(type_klass_name_ext);
-            if(prgm_enum) {
-              name += type_klass_name_ext;
-            }
-          }
-          */
         }
       }
-
-      /*
-      // search libraries      
-      if(name == L"o.") {
-        prgm_klass = klass->GetGenericClass(type_klass_name);
-        if(prgm_klass) {
-          name += prgm_klass->GetName();
-        }
-      }
-      */
 
       // search libraries      
       if(name == L"o.") {
@@ -903,15 +884,6 @@ wstring Alias::EncodeType(Type* type, ParsedProgram* program, Linker* linker)
           if(lib_enum) {
             name += lib_enum->GetName();
           }
-          /*
-          else {
-            const wstring type_klass_name_ext = klass->GetName() + L"#" + type_klass_name;
-            lib_enum = linker->SearchEnumLibraries(type_klass_name_ext, program->GetUses());
-            if(lib_enum) {
-              name += type_klass_name_ext;
-            }
-          }
-          */
         }
       }
 #ifdef _DEBUG
