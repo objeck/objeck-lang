@@ -1,9 +1,16 @@
-class Hello {
+
+class Test {
 	function : Main(args : String[]) ~ Nil {
-		DoIt();
+		Calc(\Func->Calc : (a, b) => a + b);
+		Calc(\Func->Calc : (a, b) => a * b);
 	}
 
-	function : native : DoIt() ~ Nil {
-		0.78625->ArcSin()->PrintLine();
+#	function : Calc(calc : \Func->Calc) ~ Nil {
+	function : Calc(calc : (FloatHolder, FloatHolder) ~ FloatHolder) ~ Nil {
+		calc(3.5, 5.5)->PrintLine();
 	}
+}
+
+lambdas Func {
+	Calc : (FloatHolder, FloatHolder) ~ FloatHolder,
 }

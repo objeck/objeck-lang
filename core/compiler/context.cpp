@@ -908,58 +908,9 @@ void ContextAnalyzer::AnalyzeLambda(Lambda* lambda, const int depth)
     lambda_type = lambda->GetLambdaType();
   }
   // by name
-  else if(!is_inferred){
-    wstring alias_name;
-    const size_t middle = lambda_name.find(L'#');
-    if(middle != wstring::npos) {
-      alias_name = lambda_name.substr(0, middle);
-    }
+  else if(!is_inferred) {
+    lambda_type = ResolveAlias(lambda_name, lambda);
 
-    wstring type_name;
-    if(middle + 1 < lambda_name.size()) {
-      type_name = lambda_name.substr(middle + 1);
-    }
-
-    Alias* alias = program->GetAlias(alias_name);
-    if(alias) {
-      lambda_type = alias->GetType(type_name);
-      if(lambda_type) {
-        lambda_type = TypeFactory::Instance()->MakeType(lambda_type);
-      }
-      else {
-        if(lambda_name.empty()) {
-          ProcessError(lambda, L"Invalid lambda expression or method call");
-        }
-        else {
-          ProcessError(lambda, L"Undefined alias: '" + ReplaceSubstring(lambda_name, L"#", L"->") + L"'");
-        }
-      }
-    }
-    else {
-      LibraryAlias* lib_alias = linker->SearchAliasLibraries(alias_name, program->GetUses(current_class->GetFileName()));
-      if(lib_alias) {
-        lambda_type = lib_alias->GetType(type_name);
-        if(lambda_type) {
-          lambda_type = TypeFactory::Instance()->MakeType(lambda_type);
-        }
-        else {
-          if(lambda_name.empty()) {
-            ProcessError(lambda, L"Invalid lambda expression or method call");
-          }
-          else {
-            ProcessError(lambda, L"Undefined alias: '" + ReplaceSubstring(lambda_name, L"#", L"->") + L"'");
-          }
-        }
-      }
-      else {
-        if(lambda_name.empty()) {
-          ProcessError(lambda, L"Invalid lambda expression or method call");
-        }
-        else {
-          ProcessError(lambda, L"Undefined alias: '" + ReplaceSubstring(lambda_name, L"#", L"->") + L"'");
-        }
-      }
-    }
   }
 
   if(lambda_type) {
@@ -972,6 +923,65 @@ void ContextAnalyzer::AnalyzeLambda(Lambda* lambda, const int depth)
   else {
     ProcessError(lambda, L"Invalid lambda type");
   }
+}
+
+Type* ContextAnalyzer::ResolveAlias(const wstring& name, ParseNode* node)
+{
+  Type* alias_type = nullptr;
+
+  wstring alias_name;
+  const size_t middle = name.find(L'#');
+  if(middle != wstring::npos) {
+    alias_name = name.substr(0, middle);
+  }
+
+  wstring type_name;
+  if(middle + 1 < name.size()) {
+    type_name = name.substr(middle + 1);
+  }
+
+  Alias* alias = program->GetAlias(alias_name);
+  if(alias) {
+    alias_type = alias->GetType(type_name);
+    if(alias_type) {
+      alias_type = TypeFactory::Instance()->MakeType(alias_type);
+    }
+    else {
+      if(name.empty()) {
+        ProcessError(node, L"Invalid functional alias");
+      }
+      else {
+        ProcessError(node, L"Undefined functional alias: '" + ReplaceSubstring(name, L"#", L"->") + L"'");
+      }
+    }
+  }
+  else {
+    LibraryAlias* lib_alias = linker->SearchAliasLibraries(alias_name, program->GetUses(current_class->GetFileName()));
+    if(lib_alias) {
+      alias_type = lib_alias->GetType(type_name);
+      if(alias_type) {
+        alias_type = TypeFactory::Instance()->MakeType(alias_type);
+      }
+      else {
+        if(name.empty()) {
+          ProcessError(node, L"Invalid functional alias");
+        }
+        else {
+          ProcessError(node, L"Undefined functional alias: '" + ReplaceSubstring(name, L"#", L"->") + L"'");
+        }
+      }
+    }
+    else {
+      if(name.empty()) {
+        ProcessError(node, L"Invalid functional alias");
+      }
+      else {
+        ProcessError(node, L"Undefined functional alias: '" + ReplaceSubstring(name, L"#", L"->") + L"'");
+      }
+    }
+  }    
+  
+  return alias_type;
 }
 
 Method* ContextAnalyzer::DerivedLambdaFunction(vector<Method*>& alt_mthds)

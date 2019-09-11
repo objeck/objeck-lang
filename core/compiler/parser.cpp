@@ -4372,6 +4372,18 @@ Type* Parser::ParseType(int depth)
 
   Type* type = nullptr;
   switch(GetToken()) {
+  case TOKEN_BACK_SLASH: {
+    NextToken();
+    wstring alias_name = ParseBundleName();
+    if(Match(TOKEN_ASSESSOR)) {
+      NextToken();
+      alias_name += L"#";
+      alias_name += ParseBundleName();
+      type = TypeFactory::Instance()->MakeType(ALIAS_TYPE, alias_name);
+    }
+  }
+    break;
+
   case TOKEN_BYTE_ID:
     type = TypeFactory::Instance()->MakeType(BYTE_TYPE);
     NextToken();
