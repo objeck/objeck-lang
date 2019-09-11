@@ -92,6 +92,7 @@ namespace frontend {
     FLOAT_TYPE,
     CLASS_TYPE,
     FUNC_TYPE,
+    ALIAS_TYPE,
     VAR_TYPE
   };
 
