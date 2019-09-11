@@ -3858,13 +3858,22 @@ void Parser::ParseAnonymousClass(MethodCall* method_call, int depth)
   }
   NextToken();
 
-  klass->SetAnonymousCall(method_call);
   if(!klass->HasDefaultNew()) {
-    wcout << L"Its yours!" << endl;
+    const wstring method_name = klass->GetName() + L":New";
+    Method* default_new = TreeFactory::Instance()->MakeMethod(file_name, line_num, method_name, NEW_PUBLIC_METHOD, false, false);
+
+    symbol_table->NewParseScope();
+    default_new->SetDeclarations(TreeFactory::Instance()->MakeDeclarationList());
+    default_new->SetStatements(TreeFactory::Instance()->MakeStatementList());
+    default_new->SetReturn(TypeFactory::Instance()->MakeType(CLASS_TYPE, klass->GetName()));
+    symbol_table->PreviousParseScope(default_new->GetParsedName());
+    
+    klass->AddMethod(default_new);
   }
 
   symbol_table->PreviousParseScope(current_class->GetName());
 
+  klass->SetAnonymousCall(method_call);
   method_call->SetAnonymousClass(klass);
   method_call->SetVariableName(cls_name);
   current_bundle->AddClass(klass);
