@@ -286,6 +286,9 @@ wstring Method::EncodeType(Type* type, Class* klass, ParsedProgram* program, Lin
       }
     }
       break;
+        
+    case ALIAS_TYPE:
+      break;
     }
 
     // generics
@@ -368,6 +371,9 @@ wstring Method::EncodeType(Type* type) {
     case FUNC_TYPE:
       name = L'm';
       break;
+        
+    case ALIAS_TYPE:
+      break;
     }
 
     // generics
@@ -448,6 +454,9 @@ wstring Method::EncodeUserType(Type* type) {
       name += L") ~ ";
       name += EncodeUserType(type->GetFunctionReturn());
     }
+      break;
+        
+    case ALIAS_TYPE:
       break;
     }
 
@@ -901,6 +910,9 @@ wstring Alias::EncodeType(Type* type, ParsedProgram* program, Linker* linker)
         name += type->GetName();
       }
     }
+      break;
+        
+    case ALIAS_TYPE:
       break;
     }
 
