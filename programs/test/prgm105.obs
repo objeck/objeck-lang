@@ -3,14 +3,25 @@ class Test {
 	function : Main(args : String[]) ~ Nil {
 		Calc(\Func->Calc : (a, b) => a + b);
 		Calc(\Func->Calc : (a, b) => a * b);
+
+		foo : \Func->Matrix := Int->New[2,2];
+		Calc2(foo);
+	}
+
+	function : Calc2(foo : \Func->Matrix) ~ Nil {
+		foo[1,1] := 13;
+		foo[1,1]->PrintLine();
 	}
 
 	function : Calc(calc : \Func->Calc) ~ Nil {
 #	function : Calc(calc : (FloatHolder, FloatHolder) ~ FloatHolder) ~ Nil {
+		f : \Func->Calc := calc;
 		calc(3.5, 5.5)->PrintLine();
+		f(3.5, 5.5)->PrintLine();
 	}
 }
 
-lambdas Func {
-	Calc : (FloatHolder, FloatHolder) ~ FloatHolder
+alias Func {
+	Calc : (FloatHolder, FloatHolder) ~ FloatHolder,
+	Matrix : Int[,]
 }
