@@ -47,6 +47,19 @@ void ContextAnalyzer::ProcessError(ParseNode* node, const wstring &msg)
 }
 
 /****************************
+  * Emits an error
+  ****************************/
+void ContextAnalyzer::ProcessError(const wstring& fn, int ln, const wstring& msg)
+{
+#ifdef _DEBUG
+  GetLogger() << L"\tError: " << fn << L':' << ln << L": " << msg << endl;
+#endif
+
+  const wstring& str_line_num = ToString(ln);
+  errors.insert(pair<int, wstring>(ln, fn + L':' + str_line_num + L": " + msg));
+}
+
+/****************************
  * Formats possible alternative
  * methods
  ****************************/
@@ -122,8 +135,20 @@ bool ContextAnalyzer::Analyze()
     }
   }
 
-  vector<ParsedBundle*> bundles = program->GetBundles();
+  // resolve alias types
+  vector<Type*>& types = TypeFactory::Instance()->GetTypes();
+  for(size_t i = 0; i < types.size(); ++i) {
+    Type* type = types[i];
+    if(type->GetType() == ALIAS_TYPE) {
+      Type* resloved_type = ResolveAlias(type->GetName(), type->GetFileName(), type->GetLineNumber());
+      if(resloved_type) {
+        type->ResolveAlias(resloved_type);
+      }
+    }
+  }
+
   // add methods for default parameters
+  vector<ParsedBundle*> bundles = program->GetBundles();
   for(size_t i = 0; i < bundles.size(); ++i) {
     ParsedBundle* bundle = bundles[i];
     vector<Class*> classes = bundle->GetClasses();
@@ -491,14 +516,14 @@ void ContextAnalyzer::AnalyzeGenerics(Class* klass, const int depth)
       Class* klass_generic_inf = nullptr; LibraryClass* lib_klass_generic_inf = nullptr; 
       if(GetProgramLibraryClass(generic_inf_type, klass_generic_inf, lib_klass_generic_inf)) {
         if(klass_generic_inf) {
-          generic_inf_type->SetClassName(klass_generic_inf->GetName());
+          generic_inf_type->SetName(klass_generic_inf->GetName());
         }
         else {
-          generic_inf_type->SetClassName(lib_klass_generic_inf->GetName());
+          generic_inf_type->SetName(lib_klass_generic_inf->GetName());
         }
       }
       else {
-        const wstring generic_inf_name = generic_inf_type->GetClassName();
+        const wstring generic_inf_name = generic_inf_type->GetName();
         ProcessError(klass, L"Undefined backing generic interface: '" + generic_inf_name + L"'");
       }
     }
@@ -663,13 +688,13 @@ void ContextAnalyzer::AnalyzeVirtualMethod(Class* impl_class, MethodType impl_mt
                  virtual_method->GetClass()->GetName());
   }
   else if(impl_return->GetType() == CLASS_TYPE &&
-          impl_return->GetClassName() != virtual_return->GetClassName()) {
-    Class* impl_cls = SearchProgramClasses(impl_return->GetClassName());
-    Class* virtual_cls = SearchProgramClasses(virtual_return->GetClassName());
+          impl_return->GetName() != virtual_return->GetName()) {
+    Class* impl_cls = SearchProgramClasses(impl_return->GetName());
+    Class* virtual_cls = SearchProgramClasses(virtual_return->GetName());
     if(impl_cls && virtual_cls && impl_cls != virtual_cls) {
-      LibraryClass* impl_lib_cls = linker->SearchClassLibraries(impl_return->GetClassName(),
+      LibraryClass* impl_lib_cls = linker->SearchClassLibraries(impl_return->GetName(),
                                                                 program->GetUses(current_class->GetFileName()));
-      LibraryClass* virtual_lib_cls = linker->SearchClassLibraries(virtual_return->GetClassName(),
+      LibraryClass* virtual_lib_cls = linker->SearchClassLibraries(virtual_return->GetName(),
                                                                    program->GetUses(current_class->GetFileName()));
       if(impl_lib_cls && virtual_lib_cls && impl_lib_cls != virtual_lib_cls) {
         ProcessError(impl_class, L"Not all virtual methods have been defined for class/interface: " +
@@ -769,13 +794,13 @@ void ContextAnalyzer::AnalyzeVirtualMethod(Class* impl_class, MethodType impl_mt
                  virtual_method->GetLibraryClass()->GetName());
   }
   else if(impl_return->GetType() == CLASS_TYPE &&
-          impl_return->GetClassName() != virtual_return->GetClassName()) {
-    Class* impl_cls = SearchProgramClasses(impl_return->GetClassName());
-    Class* virtual_cls = SearchProgramClasses(virtual_return->GetClassName());
+          impl_return->GetName() != virtual_return->GetName()) {
+    Class* impl_cls = SearchProgramClasses(impl_return->GetName());
+    Class* virtual_cls = SearchProgramClasses(virtual_return->GetName());
     if(impl_cls && virtual_cls && impl_cls != virtual_cls) {
-      LibraryClass* impl_lib_cls = linker->SearchClassLibraries(impl_return->GetClassName(),
+      LibraryClass* impl_lib_cls = linker->SearchClassLibraries(impl_return->GetName(),
                                                                 program->GetUses(current_class->GetFileName()));
-      LibraryClass* virtual_lib_cls = linker->SearchClassLibraries(virtual_return->GetClassName(),
+      LibraryClass* virtual_lib_cls = linker->SearchClassLibraries(virtual_return->GetName(),
                                                                    program->GetUses(current_class->GetFileName()));
       if(impl_lib_cls && virtual_lib_cls && impl_lib_cls != virtual_lib_cls) {
         ProcessError(impl_class, L"Not all virtual methods have been defined for class/interface: " +
@@ -925,8 +950,7 @@ void ContextAnalyzer::AnalyzeLambda(Lambda* lambda, const int depth)
   }
 }
 
-Type* ContextAnalyzer::ResolveAlias(const wstring& name, ParseNode* node)
-{
+Type* ContextAnalyzer::ResolveAlias(const wstring& name, const wstring& fn, int ln) {
   Type* alias_type = nullptr;
 
   wstring alias_name;
@@ -948,10 +972,10 @@ Type* ContextAnalyzer::ResolveAlias(const wstring& name, ParseNode* node)
     }
     else {
       if(name.empty()) {
-        ProcessError(node, L"Invalid functional alias");
+        ProcessError(fn, ln, L"Invalid functional alias");
       }
       else {
-        ProcessError(node, L"Undefined functional alias: '" + ReplaceSubstring(name, L"#", L"->") + L"'");
+        ProcessError(fn, ln, L"Undefined functional alias: '" + ReplaceSubstring(name, L"#", L"->") + L"'");
       }
     }
   }
@@ -964,19 +988,19 @@ Type* ContextAnalyzer::ResolveAlias(const wstring& name, ParseNode* node)
       }
       else {
         if(name.empty()) {
-          ProcessError(node, L"Invalid functional alias");
+          ProcessError(fn, ln, L"Invalid functional alias");
         }
         else {
-          ProcessError(node, L"Undefined functional alias: '" + ReplaceSubstring(name, L"#", L"->") + L"'");
+          ProcessError(fn, ln, L"Undefined functional alias: '" + ReplaceSubstring(name, L"#", L"->") + L"'");
         }
       }
     }
     else {
       if(name.empty()) {
-        ProcessError(node, L"Invalid functional alias");
+        ProcessError(fn, ln, L"Invalid functional alias");
       }
       else {
-        ProcessError(node, L"Undefined functional alias: '" + ReplaceSubstring(name, L"#", L"->") + L"'");
+        ProcessError(fn, ln, L"Undefined functional alias: '" + ReplaceSubstring(name, L"#", L"->") + L"'");
       }
     }
   }    
@@ -1145,7 +1169,7 @@ ExpressionList* ContextAnalyzer::MapLambdaDeclarations(DeclarationList* declarat
 
     case CLASS_TYPE:
     case FUNC_TYPE:
-      ident = dclr_type->GetClassName();
+      ident = dclr_type->GetName();
       break;
     }
 
@@ -1679,7 +1703,7 @@ void ContextAnalyzer::AnalyzeStaticArray(StaticArray* array, const int depth)
   Type* type = TypeFactory::Instance()->MakeType(array->GetType());
   type->SetDimension(array->GetDimension());
   if(type->GetType() == CLASS_TYPE) {
-    type->SetClassName(L"System.String");
+    type->SetName(L"System.String");
   }
   array->SetEvalType(type, false);
 
@@ -1769,7 +1793,7 @@ void ContextAnalyzer::AnalyzeVariable(Variable* variable, SymbolEntry* entry, co
     // associate variable and entry
     if(!variable->GetEvalType()) {
       Type* entry_type = entry->GetType();
-      if(variable->GetCastType() && entry_type->GetType() == CLASS_TYPE && !HasProgramLibraryEnum(entry_type->GetClassName())) {
+      if(variable->GetCastType() && entry_type->GetType() == CLASS_TYPE && !HasProgramLibraryEnum(entry_type->GetName())) {
         AnalyzeClassCast(variable->GetCastType(), entry_type, variable, false, depth + 1);
       }
       variable->SetTypes(entry_type);
@@ -2059,8 +2083,8 @@ void ContextAnalyzer::ValidateGenericConcreteMapping(const vector<Type*> concret
       Type* concrete_type = concrete_types[i];
       LibraryClass* class_generic = class_generics[i];
       if(class_generic->HasGenericInterface()) {
-        const wstring backing_inf_name = class_generic->GetGenericInterface()->GetClassName();
-        const wstring concrete_name = concrete_type->GetClassName();
+        const wstring backing_inf_name = class_generic->GetGenericInterface()->GetName();
+        const wstring concrete_name = concrete_type->GetName();
         Class* inf_klass = nullptr; LibraryClass* inf_lib_klass = nullptr;
         if(GetProgramLibraryClass(concrete_type, inf_klass, inf_lib_klass)) {
           if(!ValidDownCast(backing_inf_name, inf_klass, inf_lib_klass)) {
@@ -2099,8 +2123,8 @@ void ContextAnalyzer::ValidateGenericConcreteMapping(const vector<Type*> concret
 
       Class* class_generic = class_generics[i];
       if(class_generic->HasGenericInterface()) {
-        const wstring backing_inf_name = GetProgramLibraryClassName(class_generic->GetGenericInterface()->GetClassName());
-        const wstring concrete_name = concrete_type->GetClassName();
+        const wstring backing_inf_name = GetProgramLibraryClassName(class_generic->GetGenericInterface()->GetName());
+        const wstring concrete_name = concrete_type->GetName();
         Class* inf_klass = nullptr; LibraryClass* inf_lib_klass = nullptr;
         if(GetProgramLibraryClass(concrete_type, inf_klass, inf_lib_klass)) {
           if(!ValidDownCast(backing_inf_name, inf_klass, inf_lib_klass)) {
@@ -2127,7 +2151,7 @@ void ContextAnalyzer::ValidateGenericConcreteMapping(const vector<Type*> concret
 
 void ContextAnalyzer::ValidateGenericBacking(Type* type, const wstring backing_name, Expression * expression)
 {
-  const wstring concrete_name = type->GetClassName();
+  const wstring concrete_name = type->GetName();
   Class* inf_klass = nullptr; LibraryClass* inf_lib_klass = nullptr;
   if(GetProgramLibraryClass(type, inf_klass, inf_lib_klass)) {
     if(!ValidDownCast(backing_name, inf_klass, inf_lib_klass) && !ClassEquals(backing_name, inf_klass, inf_lib_klass)) {
@@ -2273,7 +2297,7 @@ bool ContextAnalyzer::AnalyzeExpressionMethodCall(Type* type, const int dimensio
       encoding = L"o.System.Base";
     }
     else {
-      const wstring &cls_name = type->GetClassName();
+      const wstring &cls_name = type->GetName();
       klass = SearchProgramClasses(cls_name);
       lib_klass = linker->SearchClassLibraries(cls_name, program->GetUses(current_class->GetFileName()));
 
@@ -2311,7 +2335,7 @@ bool ContextAnalyzer::AnalyzeExpressionMethodCall(Type* type, const int dimensio
  ****************************/
 void ContextAnalyzer::AnalyzeNewArrayCall(MethodCall* method_call, const int depth)
 {
-  Class* generic_class = current_class->GetGenericClass(method_call->GetEvalType()->GetClassName());
+  Class* generic_class = current_class->GetGenericClass(method_call->GetEvalType()->GetName());
   if(generic_class && generic_class->HasGenericInterface() && method_call->GetEvalType()) {
     const int dimension = method_call->GetEvalType()->GetDimension();
     method_call->SetEvalType(generic_class->GetGenericInterface(), false);
@@ -2431,7 +2455,7 @@ void ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, const 
     else {
       if(expression->GetEvalType()) {
         ProcessError(static_cast<Expression*>(method_call), L"Undefined class reference: '" +
-		     expression->GetEvalType()->GetClassName() +
+		     expression->GetEvalType()->GetName() +
 		     L"'\n\tIf external reference to generic ensure it has been typed");
       }
       else {
@@ -2473,10 +2497,10 @@ Class* ContextAnalyzer::AnalyzeProgramMethodCall(MethodCall* method_call, wstrin
       }
       else if(method_call->GetVariable() && method_call->GetVariable()->GetCastType() &&
               method_call->GetVariable()->GetCastType()->GetType() == CLASS_TYPE) {
-        klass = SearchProgramClasses(method_call->GetVariable()->GetCastType()->GetClassName());
+        klass = SearchProgramClasses(method_call->GetVariable()->GetCastType()->GetName());
       }
       else {
-        klass = SearchProgramClasses(entry->GetType()->GetClassName());
+        klass = SearchProgramClasses(entry->GetType()->GetName());
       }
     }
     // static method call
@@ -2525,12 +2549,12 @@ LibraryClass* ContextAnalyzer::AnalyzeLibraryMethodCall(MethodCall* method_call,
     // cast type
     else if(method_call->GetVariable() && method_call->GetVariable()->GetCastType() &&
             method_call->GetVariable()->GetCastType()->GetType() == CLASS_TYPE) {
-      klass = linker->SearchClassLibraries(method_call->GetVariable()->GetCastType()->GetClassName(),
+      klass = linker->SearchClassLibraries(method_call->GetVariable()->GetCastType()->GetName(),
                                            program->GetUses(current_class->GetFileName()));
       method_call->SetTypes(entry->GetType());
     }
     else {
-      klass = linker->SearchClassLibraries(entry->GetType()->GetClassName(), program->GetUses(current_class->GetFileName()));
+      klass = linker->SearchClassLibraries(entry->GetType()->GetName(), program->GetUses(current_class->GetFileName()));
     }
   }
   // static method call
@@ -2621,11 +2645,11 @@ int ContextAnalyzer::MatchCallingParameter(Expression* calling_param, Type* meth
               return 0;
             }
             // calculate relative match
-            const wstring &from_klass_name = calling_type->GetClassName();
+            const wstring &from_klass_name = calling_type->GetName();
             Class* from_klass = SearchProgramClasses(from_klass_name);
             LibraryClass* from_lib_klass = linker->SearchClassLibraries(from_klass_name, program->GetUses(current_class->GetFileName()));
 
-            const wstring &to_klass_name = method_type->GetClassName();
+            const wstring &to_klass_name = method_type->GetName();
             Class* to_klass = SearchProgramClasses(to_klass_name);
             if(to_klass) {
               return ValidDownCast(to_klass->GetName(), from_klass, from_lib_klass) ? 1 : -1;
@@ -2638,8 +2662,8 @@ int ContextAnalyzer::MatchCallingParameter(Expression* calling_param, Type* meth
           }
           else if(method_type->GetType() == INT_TYPE) {
             // program
-            if(program->GetEnum(calling_type->GetClassName()) ||
-               linker->SearchEnumLibraries(calling_type->GetClassName(), program->GetUses())) {
+            if(program->GetEnum(calling_type->GetName()) ||
+               linker->SearchEnumLibraries(calling_type->GetName(), program->GetUses())) {
               return 1;
             }
           }
@@ -2648,13 +2672,13 @@ int ContextAnalyzer::MatchCallingParameter(Expression* calling_param, Type* meth
         }
 
         case FUNC_TYPE: {
-          const wstring calling_type_name = calling_type->GetClassName();
-          wstring method_type_name = method_type->GetClassName();
+          const wstring calling_type_name = calling_type->GetName();
+          wstring method_type_name = method_type->GetName();
           if(method_type_name.size() == 0) {
             AnalyzeVariableFunctionParameters(method_type, calling_param);
             method_type_name = L"m." + EncodeFunctionType(method_type->GetFunctionParameters(),
                                                           method_type->GetFunctionReturn());
-            method_type->SetClassName(method_type_name);
+            method_type->SetName(method_type_name);
           }
 
           return calling_type_name == method_type_name ? 0 : -1;
@@ -2875,7 +2899,7 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
     
     // map concrete to generic types
     const bool is_new = method->GetMethodType() == NEW_PUBLIC_METHOD || method->GetMethodType() == NEW_PRIVATE_METHOD;
-    const bool same_cls_return = ClassEquals(method->GetReturn()->GetClassName(), klass, nullptr);
+    const bool same_cls_return = ClassEquals(method->GetReturn()->GetName(), klass, nullptr);
     if((is_new || same_cls_return) && klass->HasGenerics()) {
       const vector<Class*> class_generics = klass->GetGenericClasses();      
       vector<Type*> concrete_types = GetConcreteTypes(method_call);
@@ -2891,7 +2915,7 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
             Type* backing_type = class_generic->GetGenericInterface();
             // backing type
             ResolveClassEnumType(backing_type);
-            const wstring backing_name = backing_type->GetClassName();
+            const wstring backing_name = backing_type->GetName();
             // concrete type
             ResolveClassEnumType(concrete_type);
             // validate backing
@@ -2911,7 +2935,7 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
 
     if(eval_type->GetType() == CLASS_TYPE && !ResolveClassEnumType(eval_type, klass)) {
       ProcessError(static_cast<Expression*>(method_call), L"Undefined class or enum: '" +
-                   ReplaceSubstring(eval_type->GetClassName(), L"#", L"->") + L"'");
+                   ReplaceSubstring(eval_type->GetName(), L"#", L"->") + L"'");
     }
 
     // set subsequent call type
@@ -3125,7 +3149,7 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
     // map concrete to generic types
     LibraryClass* lib_klass = lib_method->GetLibraryClass();
     const bool is_new = lib_method->GetMethodType() == NEW_PUBLIC_METHOD || lib_method->GetMethodType() == NEW_PRIVATE_METHOD;
-    const bool same_cls_return = ClassEquals(lib_method->GetReturn()->GetClassName(), nullptr, lib_klass);
+    const bool same_cls_return = ClassEquals(lib_method->GetReturn()->GetName(), nullptr, lib_klass);
     if((is_new || same_cls_return) && lib_klass->HasGenerics()) {
       const vector<LibraryClass*> class_generics = lib_klass->GetGenericClasses();
       const vector<Type*> concrete_types = GetConcreteTypes(method_call);
@@ -3141,7 +3165,7 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
             Type* backing_type = class_generic->GetGenericInterface();
             // backing type
             ResolveClassEnumType(backing_type);
-            const wstring backing_name = backing_type->GetClassName();
+            const wstring backing_name = backing_type->GetName();
             // concrete type
             ResolveClassEnumType(concrete_type);
             // validate backing
@@ -3292,14 +3316,14 @@ void ContextAnalyzer::AnalyzeFunctionReference(Class* klass, MethodCall* method_
     }
     else if(rtrn_type->GetType() == CLASS_TYPE) {
       if(ResolveClassEnumType(rtrn_type)) {
-        const wstring rtrn_encoded_name = L"o." + rtrn_type->GetClassName();
+        const wstring rtrn_encoded_name = L"o." + rtrn_type->GetName();
         if(rtrn_encoded_name != method->GetEncodedReturn()) {
           ProcessError(static_cast<Expression*>(method_call), L"Mismatch function return types");
         }
       }
       else {
         ProcessError(static_cast<Expression*>(method_call),
-                     L"Undefined class or enum: '" + ReplaceSubstring(rtrn_type->GetClassName(), L"#", L"->") + L"'");
+                     L"Undefined class or enum: '" + ReplaceSubstring(rtrn_type->GetName(), L"#", L"->") + L"'");
       }
     }
     method->GetClass()->SetCalled(true);
@@ -3353,14 +3377,14 @@ void ContextAnalyzer::AnalyzeFunctionReference(LibraryClass* klass, MethodCall* 
     }
     else if(rtrn_type->GetType() == CLASS_TYPE) {
       if(ResolveClassEnumType(rtrn_type)) {
-        const wstring rtrn_encoded_name = L"o." + rtrn_type->GetClassName();
+        const wstring rtrn_encoded_name = L"o." + rtrn_type->GetName();
         if(rtrn_encoded_name != method->GetEncodedReturn()) {
           ProcessError(static_cast<Expression*>(method_call), L"Mismatch function return types");
         }
       }
       else {
         ProcessError(static_cast<Expression*>(method_call),
-                     L"Undefined class or enum: '" + ReplaceSubstring(rtrn_type->GetClassName(), L"#", L"->") + L"'");
+                     L"Undefined class or enum: '" + ReplaceSubstring(rtrn_type->GetName(), L"#", L"->") + L"'");
       }
     }
     method->GetLibraryClass()->SetCalled(true);
@@ -3424,18 +3448,18 @@ void ContextAnalyzer::AnalyzeCast(Expression* expression, const int depth)
     }
 
     Type* type_of = expression->GetTypeOf();
-    if(SearchProgramClasses(type_of->GetClassName())) {
-      Class* klass = SearchProgramClasses(type_of->GetClassName());
+    if(SearchProgramClasses(type_of->GetName())) {
+      Class* klass = SearchProgramClasses(type_of->GetName());
       klass->SetCalled(true);
-      type_of->SetClassName(klass->GetName());
+      type_of->SetName(klass->GetName());
     }
-    else if(linker->SearchClassLibraries(type_of->GetClassName(), program->GetUses(current_class->GetFileName()))) {
-      LibraryClass* lib_klass = linker->SearchClassLibraries(type_of->GetClassName(), program->GetUses(current_class->GetFileName()));
+    else if(linker->SearchClassLibraries(type_of->GetName(), program->GetUses(current_class->GetFileName()))) {
+      LibraryClass* lib_klass = linker->SearchClassLibraries(type_of->GetName(), program->GetUses(current_class->GetFileName()));
       lib_klass->SetCalled(true);
-      type_of->SetClassName(lib_klass->GetName());
+      type_of->SetName(lib_klass->GetName());
     }
     else {
-      ProcessError(expression, L"Invalid 'TypeOf' check, unknown class '" + type_of->GetClassName() + L"'");
+      ProcessError(expression, L"Invalid 'TypeOf' check, unknown class '" + type_of->GetName() + L"'");
     }
     expression->SetEvalType(TypeFactory::Instance()->MakeType(BOOLEAN_TYPE), true);
   }
@@ -3613,7 +3637,7 @@ void ContextAnalyzer::AnalyzeCritical(CriticalSection* mutex, const int depth)
   Variable* variable = mutex->GetVariable();
   AnalyzeVariable(variable, depth + 1);
   if(variable->GetEvalType() && variable->GetEvalType()->GetType() == CLASS_TYPE) {
-    if(variable->GetEvalType()->GetClassName() != L"System.Concurrency.ThreadMutex") {
+    if(variable->GetEvalType()->GetName() != L"System.Concurrency.ThreadMutex") {
       ProcessError(mutex, L"Expected ThreadMutex type");
     }
   }
@@ -3749,7 +3773,7 @@ void ContextAnalyzer::AnalyzeReturn(Return* rtrn, const int depth)
     ValidateConcrete(expression->GetEvalType(), mthd_type, expression, depth);
 
     if(mthd_type->GetType() == CLASS_TYPE && !ResolveClassEnumType(mthd_type)) {
-      ProcessError(rtrn, L"Undefined class or enum: '" + ReplaceSubstring(mthd_type->GetClassName(), L"#", L"->") + L"'");
+      ProcessError(rtrn, L"Undefined class or enum: '" + ReplaceSubstring(mthd_type->GetName(), L"#", L"->") + L"'");
     }
   }
   else if(mthd_type->GetType() != NIL_TYPE) {
@@ -3768,7 +3792,7 @@ void ContextAnalyzer::ValidateConcrete(Type* type, Type* concrete_type, ParseNod
     return;
   }
 
-  const wstring cls_name = type->GetClassName();
+  const wstring cls_name = type->GetName();
   Class* dclr_klass = nullptr; LibraryClass* dclr_lib_klass = nullptr;
   if(!GetProgramLibraryClass(type, dclr_klass, dclr_lib_klass)) {
     dclr_klass = current_class->GetGenericClass(cls_name);
@@ -3910,10 +3934,10 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
         Type* expr_type = expr_types[i];
         ResolveClassEnumType(expr_type);
         // match expression types
-        if(var_type->GetClassName() != expr_type->GetClassName()) {
-          ProcessError(variable, L"Generic type mismatch for class '" + variable->GetEvalType()->GetClassName() + 
-                       L"' between generic types: '" + ReplaceSubstring(var_type->GetClassName(), L"#", L"->") + 
-                       L"' and '" + ReplaceSubstring(expr_type->GetClassName(), L"#", L"->") + L"'");
+        if(var_type->GetName() != expr_type->GetName()) {
+          ProcessError(variable, L"Generic type mismatch for class '" + variable->GetEvalType()->GetName() + 
+                       L"' between generic types: '" + ReplaceSubstring(var_type->GetName(), L"#", L"->") + 
+                       L"' and '" + ReplaceSubstring(expr_type->GetName(), L"#", L"->") + L"'");
         }
       }
     }
@@ -3926,9 +3950,9 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
   bool check_right_cast = true;
   if(left_type && left_type->GetType() == CLASS_TYPE) {
 #ifndef _SYSTEM
-    LibraryClass* left_class = linker->SearchClassLibraries(left_type->GetClassName(),program->GetUses(current_class->GetFileName()));
+    LibraryClass* left_class = linker->SearchClassLibraries(left_type->GetName(),program->GetUses(current_class->GetFileName()));
 #else
-    Class* left_class = SearchProgramClasses(left_type->GetClassName());
+    Class* left_class = SearchProgramClasses(left_type->GetName());
 #endif
     if(left_class) {
       const wstring left_name = left_class->GetName();
@@ -3940,9 +3964,9 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
         Type* right_type = GetExpressionType(expression, depth + 1);
         if(right_type && right_type->GetType() == CLASS_TYPE) {
 #ifndef _SYSTEM
-          LibraryClass* right_class = linker->SearchClassLibraries(right_type->GetClassName(), program->GetUses(current_class->GetFileName()));
+          LibraryClass* right_class = linker->SearchClassLibraries(right_type->GetName(), program->GetUses(current_class->GetFileName()));
 #else
-          Class* right_class = SearchProgramClasses(right_type->GetClassName());
+          Class* right_class = SearchProgramClasses(right_type->GetName());
 #endif
           if(right_class) {
             const wstring right = right_class->GetName();
@@ -3973,7 +3997,7 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
             }
           }
           else {
-            ProcessError(assignment, L"Invalid operation using classes: 'System.String' and '" + right_type->GetClassName() + L"'");
+            ProcessError(assignment, L"Invalid operation using classes: 'System.String' and '" + right_type->GetName() + L"'");
           }
         }
         // rhs 'Char', 'Byte', 'Int', 'Float' or 'Bool'
@@ -4319,7 +4343,7 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
         break;
 
       case CLASS_TYPE:
-        if(HasProgramLibraryEnum(right->GetClassName())) {
+        if(HasProgramLibraryEnum(right->GetName())) {
           ProcessError(left_expr, L"Invalid operation using classes: Var and Enum");
         }
         break;
@@ -4397,13 +4421,13 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
         break;
 
       case CLASS_TYPE:
-        if(HasProgramLibraryEnum(right->GetClassName())) {
+        if(HasProgramLibraryEnum(right->GetName())) {
           right_expr->SetCastType(left, true);
           expression->SetEvalType(left, true);
         }
         else if(!UnboxingCalculation(right, right_expr, expression, false, depth)) {
           ProcessError(left_expr, L"Invalid operation using classes: System.Int and " +
-                       ReplaceSubstring(right->GetClassName(), L"#", L"->"));
+                       ReplaceSubstring(right->GetName(), L"#", L"->"));
         }
         break;
 
@@ -4440,13 +4464,13 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
         break;
 
       case CLASS_TYPE:
-        if(HasProgramLibraryEnum(right->GetClassName())) {
+        if(HasProgramLibraryEnum(right->GetName())) {
           right_expr->SetCastType(left, true);
           expression->SetEvalType(left, true);
         }
         else if(!UnboxingCalculation(right, right_expr, expression, false, depth)) {
           ProcessError(left_expr, L"Invalid operation using classes: System.Int and " +
-                       ReplaceSubstring(right->GetClassName(), L"#", L"->"));
+                       ReplaceSubstring(right->GetName(), L"#", L"->"));
         }
         break;
 
@@ -4483,13 +4507,13 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
         break;
 
       case CLASS_TYPE:
-        if(HasProgramLibraryEnum(right->GetClassName())) {
+        if(HasProgramLibraryEnum(right->GetName())) {
           right_expr->SetCastType(left, true);
           expression->SetEvalType(left, true);
         }
         else if(!UnboxingCalculation(right, right_expr, expression, false, depth)) {
           ProcessError(left_expr, L"Invalid operation using classes: System.Int and " +
-                       ReplaceSubstring(right->GetClassName(), L"#", L"->"));
+                       ReplaceSubstring(right->GetName(), L"#", L"->"));
         }
         break;
 
@@ -4526,7 +4550,7 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
         break;
 
       case CLASS_TYPE:
-        if(HasProgramLibraryEnum(right->GetClassName())) {
+        if(HasProgramLibraryEnum(right->GetName())) {
           right_expr->SetCastType(left, true);
           expression->SetEvalType(left, true);
         }
@@ -4535,7 +4559,7 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
         }
         else {
           ProcessError(left_expr, L"Invalid operation using classes: System.Float and " +
-                       ReplaceSubstring(right->GetClassName(), L"#", L"->"));
+                       ReplaceSubstring(right->GetName(), L"#", L"->"));
         }
         break;
 
@@ -4550,13 +4574,13 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
       switch(right->GetType()) {
       case FUNC_TYPE:
         ProcessError(left_expr, L"Invalid operation using classes: " +
-                     ReplaceSubstring(left->GetClassName(), L"#", L"->") +
+                     ReplaceSubstring(left->GetName(), L"#", L"->") +
                      L" and function reference");
         break;
 
       case VAR_TYPE:
         ProcessError(left_expr, L"Invalid operation using classes: " +
-                     ReplaceSubstring(left->GetClassName(), L"#", L"->") +
+                     ReplaceSubstring(left->GetName(), L"#", L"->") +
                      L" and Var");
         break;
 
@@ -4564,72 +4588,72 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
         break;
 
       case BYTE_TYPE:
-        if(HasProgramLibraryEnum(left->GetClassName())) {
+        if(HasProgramLibraryEnum(left->GetName())) {
           left_expr->SetCastType(right, true);
           expression->SetEvalType(right, true);
         }
         else if(!UnboxingCalculation(left, left_expr, expression, true, depth)) {
           ProcessError(left_expr, L"Invalid operation using classes: " +
-                       ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Byte");
+                       ReplaceSubstring(left->GetName(), L"#", L"->") + L" and System.Byte");
         }
         break;
 
       case CHAR_TYPE:
-        if(HasProgramLibraryEnum(left->GetClassName())) {
+        if(HasProgramLibraryEnum(left->GetName())) {
           left_expr->SetCastType(right, true);
           expression->SetEvalType(right, true);
         }
         else if(!UnboxingCalculation(left, left_expr, expression, true, depth)) {
           ProcessError(left_expr, L"Invalid operation using classes: " +
-                       ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Char");
+                       ReplaceSubstring(left->GetName(), L"#", L"->") + L" and System.Char");
         }
         break;
 
       case INT_TYPE:
-        if(HasProgramLibraryEnum(left->GetClassName())) {
+        if(HasProgramLibraryEnum(left->GetName())) {
           left_expr->SetCastType(right, true);
           expression->SetEvalType(right, true);
         }
         else if(!UnboxingCalculation(left, left_expr, expression, true, depth)) {
           ProcessError(left_expr, L"Invalid operation using classes: " +
-                       ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Int");
+                       ReplaceSubstring(left->GetName(), L"#", L"->") + L" and System.Int");
         }
         break;
 
       case FLOAT_TYPE:
-        if(HasProgramLibraryEnum(left->GetClassName())) {
+        if(HasProgramLibraryEnum(left->GetName())) {
           left_expr->SetCastType(right, true);
           expression->SetEvalType(right, true);
         } 
         else if(!UnboxingCalculation(left, left_expr, expression, true, depth)) {
           ProcessError(left_expr, L"Invalid operation using classes: " +
-                       ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Float");
+                       ReplaceSubstring(left->GetName(), L"#", L"->") + L" and System.Float");
         }
         break;
 
       case CLASS_TYPE: {
         ResolveClassEnumType(left);
         const bool can_unbox_left = UnboxingCalculation(left, left_expr, expression, true, depth);
-        const bool is_left_enum = HasProgramLibraryEnum(left->GetClassName());
+        const bool is_left_enum = HasProgramLibraryEnum(left->GetName());
 
         ResolveClassEnumType(right);
         const bool can_unbox_right = UnboxingCalculation(right, right_expr, expression, false, depth);
-        const bool is_right_enum = HasProgramLibraryEnum(right->GetClassName());
+        const bool is_right_enum = HasProgramLibraryEnum(right->GetName());
         
         if((is_left_enum && is_right_enum) || (can_unbox_left && can_unbox_right)) {
           AnalyzeClassCast(left, right, left_expr, false, depth + 1);
         }
         else if(can_unbox_left && !is_right_enum) {
-          ProcessError(left_expr, L"Invalid operation between class and enum: '" + left->GetClassName() + L"' and '" + right->GetClassName() + L"'");
+          ProcessError(left_expr, L"Invalid operation between class and enum: '" + left->GetName() + L"' and '" + right->GetName() + L"'");
         }
         else if(can_unbox_right && !is_left_enum) {
-          ProcessError(left_expr, L"Invalid operation between class and enum: '" + left->GetClassName() + L"' and '" + right->GetClassName() + L"'");
+          ProcessError(left_expr, L"Invalid operation between class and enum: '" + left->GetName() + L"' and '" + right->GetName() + L"'");
         }
         else if(((!can_unbox_left && !is_left_enum) || (!can_unbox_right && !is_right_enum)) &&
                 expression->GetExpressionType() != EQL_EXPR && expression->GetExpressionType() != NEQL_EXPR) {
-          ProcessError(left_expr, L"Invalid operation between class or enum: '" + left->GetClassName() + L"' and '" + right->GetClassName() + L"'");
+          ProcessError(left_expr, L"Invalid operation between class or enum: '" + left->GetName() + L"' and '" + right->GetName() + L"'");
         }
-        if(left->GetClassName() == L"System.FloatHolder" || right->GetClassName() == L"System.FloatHolder") {
+        if(left->GetName() == L"System.FloatHolder" || right->GetName() == L"System.FloatHolder") {
           expression->SetEvalType(TypeFactory::Instance()->MakeType(FLOAT_TYPE), true);
         }
         else {
@@ -4640,7 +4664,7 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
         
       case BOOLEAN_TYPE:
         ProcessError(left_expr, L"Invalid operation using classes: " +
-                     ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Bool");
+                     ReplaceSubstring(left->GetName(), L"#", L"->") + L" and System.Bool");
         break;
       }
       break;
@@ -4677,13 +4701,13 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
         break;
 
       case CLASS_TYPE:
-        if(HasProgramLibraryEnum(right->GetClassName())) {
+        if(HasProgramLibraryEnum(right->GetName())) {
           right_expr->SetCastType(left, true);
           expression->SetEvalType(left, true);
         }
         else if(!UnboxingCalculation(right, right_expr, expression, false, depth)) {
           ProcessError(left_expr, L"Invalid operation using classes: System.Bool and " +
-                       ReplaceSubstring(right->GetClassName(), L"#", L"->"));
+                       ReplaceSubstring(right->GetName(), L"#", L"->"));
         }
         break;
         
@@ -4698,20 +4722,20 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
       switch(right->GetType()) {
       case FUNC_TYPE: {
         AnalyzeVariableFunctionParameters(left, expression);
-        if(left->GetClassName().size() == 0) {
-          left->SetClassName(L"m." + EncodeFunctionType(left->GetFunctionParameters(),
+        if(left->GetName().size() == 0) {
+          left->SetName(L"m." + EncodeFunctionType(left->GetFunctionParameters(),
                              left->GetFunctionReturn()));
         }
 
-        if(right->GetClassName().size() == 0) {
-          right->SetClassName(L"m." + EncodeFunctionType(right->GetFunctionParameters(),
+        if(right->GetName().size() == 0) {
+          right->SetName(L"m." + EncodeFunctionType(right->GetFunctionParameters(),
                               right->GetFunctionReturn()));
         }
 
-        if(left->GetClassName() != right->GetClassName()) {
+        if(left->GetName() != right->GetName()) {
           ProcessError(expression, L"Invalid operation using functions: " +
-                       ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and " +
-                       ReplaceSubstring(right->GetClassName(), L"#", L"->"));
+                       ReplaceSubstring(left->GetName(), L"#", L"->") + L" and " +
+                       ReplaceSubstring(right->GetName(), L"#", L"->"));
         }
       }
                       break;
@@ -4742,7 +4766,7 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
 
       case CLASS_TYPE:
         ProcessError(left_expr, L"Invalid operation using classes: function reference and " +
-                     ReplaceSubstring(right->GetClassName(), L"#", L"->"));
+                     ReplaceSubstring(right->GetName(), L"#", L"->"));
         break;
 
       case BOOLEAN_TYPE:
@@ -4761,7 +4785,7 @@ bool ContextAnalyzer::UnboxingCalculation(Type* type, Expression* expression, Ca
   }
 
   ResolveClassEnumType(type);
-  if(expression->GetExpressionType() == VAR_EXPR && IsHolderType(type->GetClassName())) {
+  if(expression->GetExpressionType() == VAR_EXPR && IsHolderType(type->GetName())) {
     ExpressionList* box_expressions = TreeFactory::Instance()->MakeExpressionList();
     MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(expression->GetFileName(), expression->GetLineNumber(),
                                                                           static_cast<Variable*>(expression), L"Get", box_expressions);
@@ -4777,7 +4801,7 @@ bool ContextAnalyzer::UnboxingCalculation(Type* type, Expression* expression, Ca
     AnalyzeCalculationCast(calc_expression, depth + 1);
     return true;
   }
-  else if(expression->GetExpressionType() == METHOD_CALL_EXPR && IsHolderType(type->GetClassName())) {
+  else if(expression->GetExpressionType() == METHOD_CALL_EXPR && IsHolderType(type->GetName())) {
     ExpressionList* box_expressions = TreeFactory::Instance()->MakeExpressionList();
     MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(expression->GetFileName(), expression->GetLineNumber(),
                                                                           current_class->GetName(), L"Get", box_expressions);
@@ -4811,7 +4835,7 @@ MethodCall* ContextAnalyzer::BoxUnboxingReturn(Type* to_type, Expression* from_e
     case CHAR_TYPE:
     case INT_TYPE:
     case FLOAT_TYPE: {
-      if(from_expr->GetExpressionType() == METHOD_CALL_EXPR && IsHolderType(from_type->GetClassName())) {
+      if(from_expr->GetExpressionType() == METHOD_CALL_EXPR && IsHolderType(from_type->GetName())) {
         ExpressionList* box_expressions = TreeFactory::Instance()->MakeExpressionList();
         MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(from_expr->GetFileName(), from_expr->GetLineNumber(),
                                                                               current_class->GetName(), L"Get", box_expressions);
@@ -4828,11 +4852,11 @@ MethodCall* ContextAnalyzer::BoxUnboxingReturn(Type* to_type, Expression* from_e
       case CHAR_TYPE:
       case INT_TYPE:
       case FLOAT_TYPE:
-        if(IsHolderType(to_type->GetClassName())) {
+        if(IsHolderType(to_type->GetName())) {
           ExpressionList* box_expressions = TreeFactory::Instance()->MakeExpressionList();
           box_expressions->AddExpression(from_expr);
           MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(from_expr->GetFileName(), from_expr->GetLineNumber(),
-                                                                                NEW_INST_CALL, to_type->GetClassName(), box_expressions);
+                                                                                NEW_INST_CALL, to_type->GetName(), box_expressions);
           AnalyzeMethodCall(box_method_call, depth);
           return box_method_call;
       }
@@ -4936,7 +4960,7 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
 
       case CLASS_TYPE:
         ProcessError(expression, L"Invalid cast with classes: Nil and " +
-                     ReplaceSubstring(right->GetClassName(), L"#", L"->"));
+                     ReplaceSubstring(right->GetName(), L"#", L"->"));
         break;
 
       case BOOLEAN_TYPE:
@@ -4976,14 +5000,14 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
         break;
 
       case CLASS_TYPE:
-        if(!HasProgramLibraryEnum(right->GetClassName())) {
+        if(!HasProgramLibraryEnum(right->GetName())) {
           Expression* unboxed_expresion = UnboxingExpression(right, expression, true, depth);
           if(unboxed_expresion) {
             return unboxed_expresion;
           }
           else {
             ProcessError(expression, L"Invalid cast with classes: System.Byte and " +
-                         ReplaceSubstring(right->GetClassName(), L"#", L"->"));
+                         ReplaceSubstring(right->GetName(), L"#", L"->"));
           }
         }
         break;
@@ -5025,14 +5049,14 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
         break;
 
       case CLASS_TYPE:
-        if(!HasProgramLibraryEnum(right->GetClassName())) {
+        if(!HasProgramLibraryEnum(right->GetName())) {
           Expression* unboxed_expresion = UnboxingExpression(right, expression, true, depth);
           if(unboxed_expresion) {
             return unboxed_expresion;
           }
           else {
             ProcessError(expression, L"Invalid cast with classes: System.Char and " +  
-                         ReplaceSubstring(right->GetClassName(), L"#", L"->"));
+                         ReplaceSubstring(right->GetName(), L"#", L"->"));
           }
         }
         break;
@@ -5074,14 +5098,14 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
         break;
 
       case CLASS_TYPE:
-        if(!HasProgramLibraryEnum(right->GetClassName())) {
+        if(!HasProgramLibraryEnum(right->GetName())) {
           Expression* unboxed_expresion = UnboxingExpression(right, expression, true, depth);
           if(unboxed_expresion) {
             return unboxed_expresion;
           }
           else {
             ProcessError(expression, L"Invalid cast with classes: System.Int and " +
-                         ReplaceSubstring(right->GetClassName(), L"#", L"->"));
+                         ReplaceSubstring(right->GetName(), L"#", L"->"));
           }
         }
         break;
@@ -5123,14 +5147,14 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
         break;
 
       case CLASS_TYPE:
-        if(!HasProgramLibraryEnum(right->GetClassName())) {
+        if(!HasProgramLibraryEnum(right->GetName())) {
           Expression* unboxed_expresion = UnboxingExpression(right, expression, true, depth);
           if(unboxed_expresion) {
             return unboxed_expresion;
           }
           else {
             ProcessError(expression, L"Invalid cast with classes: System.Float and " +
-                         ReplaceSubstring(ReplaceSubstring(right->GetClassName(), L"#", L"->"), L"#", L"->"));
+                         ReplaceSubstring(ReplaceSubstring(right->GetName(), L"#", L"->"), L"#", L"->"));
           }
         }
         break;
@@ -5146,12 +5170,12 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
       switch(right->GetType()) {
       case FUNC_TYPE:
         ProcessError(expression, L"Invalid operation using classes: " +
-                     ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and function reference");
+                     ReplaceSubstring(left->GetName(), L"#", L"->") + L" and function reference");
         break;
 
       case VAR_TYPE:
         ProcessError(expression, L"Invalid cast with classes: " +
-                     ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and Var");
+                     ReplaceSubstring(left->GetName(), L"#", L"->") + L" and Var");
         break;
 
       case NIL_TYPE:
@@ -5160,49 +5184,49 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
         break;
 
       case BYTE_TYPE:
-        if(!HasProgramLibraryEnum(left->GetClassName())) {
+        if(!HasProgramLibraryEnum(left->GetName())) {
           Expression* boxed_expression = BoxExpression(left, expression, depth);
           if(boxed_expression) {
             return boxed_expression;
           }
           else {
-            ProcessError(expression, L"Invalid cast with classes: " + ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Byte");
+            ProcessError(expression, L"Invalid cast with classes: " + ReplaceSubstring(left->GetName(), L"#", L"->") + L" and System.Byte");
           }
         }
         break;
 
       case CHAR_TYPE:
-        if(!HasProgramLibraryEnum(left->GetClassName())) {
+        if(!HasProgramLibraryEnum(left->GetName())) {
           Expression* boxed_expression = BoxExpression(left, expression, depth);
           if(boxed_expression) {
             return boxed_expression;
           }
           else {
-            ProcessError(expression, L"Invalid cast with classes: " + ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Char");
+            ProcessError(expression, L"Invalid cast with classes: " + ReplaceSubstring(left->GetName(), L"#", L"->") + L" and System.Char");
           }
         }
         break;
 
       case INT_TYPE:
-        if(!HasProgramLibraryEnum(left->GetClassName())) {
+        if(!HasProgramLibraryEnum(left->GetName())) {
           Expression* boxed_expression = BoxExpression(left, expression, depth);
           if(boxed_expression) {
             return boxed_expression;
           }
           else {
-            ProcessError(expression, L"Invalid cast with classes: " + ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and Int");
+            ProcessError(expression, L"Invalid cast with classes: " + ReplaceSubstring(left->GetName(), L"#", L"->") + L" and Int");
           }
         }
         break;
 
       case FLOAT_TYPE:
-        if(!HasProgramLibraryEnum(left->GetClassName())) {
+        if(!HasProgramLibraryEnum(left->GetName())) {
           Expression* boxed_expression = BoxExpression(left, expression, depth);
           if(boxed_expression) {
             return boxed_expression;
           }
           else {
-            ProcessError(expression, L"Invalid cast with classes: " + ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Float");
+            ProcessError(expression, L"Invalid cast with classes: " + ReplaceSubstring(left->GetName(), L"#", L"->") + L" and System.Float");
           }
         }
         break;
@@ -5212,17 +5236,17 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
         break;
 
       case BOOLEAN_TYPE:
-        if(!HasProgramLibraryEnum(left->GetClassName())) {
+        if(!HasProgramLibraryEnum(left->GetName())) {
           Expression* boxed_expression = BoxExpression(left, expression, depth);
           if(boxed_expression) {
             return boxed_expression;
           }
           else {
-            ProcessError(expression, L"Invalid cast with classes: " + left->GetClassName() + L" and System.Bool");
+            ProcessError(expression, L"Invalid cast with classes: " + left->GetName() + L" and System.Bool");
           }
         }
         else {
-          ProcessError(expression, L"Invalid cast with classes: " + ReplaceSubstring(left->GetClassName(), L"#", L"->") + L" and System.Bool");
+          ProcessError(expression, L"Invalid cast with classes: " + ReplaceSubstring(left->GetName(), L"#", L"->") + L" and System.Bool");
         }
         break;
       }
@@ -5262,14 +5286,14 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
         break;
 
       case CLASS_TYPE:
-        if(!HasProgramLibraryEnum(right->GetClassName())) {
+        if(!HasProgramLibraryEnum(right->GetName())) {
           Expression* unboxed_expresion = UnboxingExpression(right, expression, true, depth);
           if(unboxed_expresion) {
             return unboxed_expresion;
           }
           else {
             ProcessError(expression, L"Invalid cast with classes: System.Bool and " +
-                         ReplaceSubstring(ReplaceSubstring(right->GetClassName(), L"#", L"->"), L"#", L"->"));
+                         ReplaceSubstring(ReplaceSubstring(right->GetName(), L"#", L"->"), L"#", L"->"));
           }
         }
         break;
@@ -5284,12 +5308,12 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
       switch(right->GetType()) {
       case FUNC_TYPE: {
         AnalyzeVariableFunctionParameters(left, expression);
-        if(left->GetClassName().size() == 0) {
-          left->SetClassName(L"m." + EncodeFunctionType(left->GetFunctionParameters(), left->GetFunctionReturn()));
+        if(left->GetName().size() == 0) {
+          left->SetName(L"m." + EncodeFunctionType(left->GetFunctionParameters(), left->GetFunctionReturn()));
         }
 
-        if(right->GetClassName().size() == 0) {
-          right->SetClassName(L"m." + EncodeFunctionType(right->GetFunctionParameters(), right->GetFunctionReturn()));
+        if(right->GetName().size() == 0) {
+          right->SetName(L"m." + EncodeFunctionType(right->GetFunctionParameters(), right->GetFunctionReturn()));
         }
       }
         break;
@@ -5320,7 +5344,7 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
 
       case CLASS_TYPE:
         ProcessError(expression, L"Invalid cast with classes: function reference and " +
-                     ReplaceSubstring(ReplaceSubstring(right->GetClassName(), L"#", L"->"), L"#", L"->"));
+                     ReplaceSubstring(ReplaceSubstring(right->GetName(), L"#", L"->"), L"#", L"->"));
         break;
 
       case BOOLEAN_TYPE:
@@ -5373,14 +5397,14 @@ Expression* ContextAnalyzer::UnboxingExpression(Type* to_type, Expression* from_
   ResolveClassEnumType(from_type);
   
   if(to_type->GetType() == CLASS_TYPE && (from_type->GetType() != CLASS_TYPE || is_cast)) {
-    if(from_expr->GetExpressionType() == VAR_EXPR && IsHolderType(to_type->GetClassName())) {
+    if(from_expr->GetExpressionType() == VAR_EXPR && IsHolderType(to_type->GetName())) {
       MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(from_expr->GetFileName(), from_expr->GetLineNumber(),
                                                                             static_cast<Variable*>(from_expr), L"Get",
                                                                             TreeFactory::Instance()->MakeExpressionList());
       AnalyzeMethodCall(box_method_call, depth);
       return box_method_call;
     }
-    else if(from_expr->GetExpressionType() == METHOD_CALL_EXPR && IsHolderType(to_type->GetClassName())) {
+    else if(from_expr->GetExpressionType() == METHOD_CALL_EXPR && IsHolderType(to_type->GetName())) {
       MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(from_expr->GetFileName(), from_expr->GetLineNumber(),
                                                                             current_class->GetName(), L"Get",
                                                                             TreeFactory::Instance()->MakeExpressionList());
@@ -5416,11 +5440,11 @@ Expression* ContextAnalyzer::BoxExpression(Type* to_type, Expression* from_expr,
      from_type->GetType() == CHAR_TYPE || 
      from_type->GetType() == INT_TYPE || 
      from_type->GetType() == FLOAT_TYPE)) {
-    if(IsHolderType(to_type->GetClassName())) {
+    if(IsHolderType(to_type->GetName())) {
       ExpressionList* box_expressions = TreeFactory::Instance()->MakeExpressionList();
       box_expressions->AddExpression(from_expr);
       MethodCall* box_method_call = TreeFactory::Instance()->MakeMethodCall(from_expr->GetFileName(), from_expr->GetLineNumber(),
-                                                                            NEW_INST_CALL, to_type->GetClassName(), box_expressions);
+                                                                            NEW_INST_CALL, to_type->GetName(), box_expressions);
       AnalyzeMethodCall(box_method_call, depth);
       return box_method_call;
     }
@@ -5459,12 +5483,12 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Type* right, Expression* expr
   }
   
   if(current_class->HasGenerics()) {
-    Class* left_tmp = current_class->GetGenericClass(left->GetClassName());
+    Class* left_tmp = current_class->GetGenericClass(left->GetName());
     if(left_tmp && left_tmp->HasGenericInterface()) {
       left = left_tmp->GetGenericInterface();
     }
 
-    Class* right_tmp = current_class->GetGenericClass(right->GetClassName());
+    Class* right_tmp = current_class->GetGenericClass(right->GetName());
     if(right_tmp && right_tmp->HasGenericInterface()) {
       right = right_tmp->GetGenericInterface();
     }
@@ -5473,27 +5497,27 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Type* right, Expression* expr
   //
   // program enum
   //
-  Enum* left_enum = SearchProgramEnums(left->GetClassName());
+  Enum* left_enum = SearchProgramEnums(left->GetName());
   if(!left_enum) {
-    left_enum = SearchProgramEnums(current_class->GetName() + L"#" + left->GetClassName());
+    left_enum = SearchProgramEnums(current_class->GetName() + L"#" + left->GetName());
   }
 
   if(right && left_enum) {
     // program
-    Enum* right_enum = SearchProgramEnums(right->GetClassName());
+    Enum* right_enum = SearchProgramEnums(right->GetName());
     if(right_enum) {
       if(left_enum->GetName() != right_enum->GetName()) {
-        const wstring left_str = ReplaceSubstring(left->GetClassName(), L"#", L"->");
-        const wstring right_str = ReplaceSubstring(right->GetClassName(), L"#", L"->");
+        const wstring left_str = ReplaceSubstring(left->GetName(), L"#", L"->");
+        const wstring right_str = ReplaceSubstring(right->GetName(), L"#", L"->");
         ProcessError(expression, L"Invalid cast between enums: '" + left_str + L"' and '" + right_str + L"'");
       }
     }
     // library
-    else if(right && linker->SearchEnumLibraries(right->GetClassName(), program->GetUses(current_class->GetFileName()))) {
-      LibraryEnum* right_lib_enum = linker->SearchEnumLibraries(right->GetClassName(), program->GetUses(current_class->GetFileName()));
+    else if(right && linker->SearchEnumLibraries(right->GetName(), program->GetUses(current_class->GetFileName()))) {
+      LibraryEnum* right_lib_enum = linker->SearchEnumLibraries(right->GetName(), program->GetUses(current_class->GetFileName()));
       if(left_enum->GetName() != right_lib_enum->GetName()) {
-        const wstring left_str = ReplaceSubstring(left->GetClassName(), L"#", L"->");
-        const wstring right_str = ReplaceSubstring(right->GetClassName(), L"#", L"->");
+        const wstring left_str = ReplaceSubstring(left->GetName(), L"#", L"->");
+        const wstring right_str = ReplaceSubstring(right->GetName(), L"#", L"->");
         ProcessError(expression, L"Invalid cast between enums: '" + left_str + L"' and '" + right_str + L"'");
       }
     }
@@ -5504,11 +5528,11 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Type* right, Expression* expr
   //
   // program class
   //
-  else if(right && (left_class = SearchProgramClasses(left->GetClassName()))) {
+  else if(right && (left_class = SearchProgramClasses(left->GetName()))) {
     // program and generic
-    Class* right_class = SearchProgramClasses(right->GetClassName());
+    Class* right_class = SearchProgramClasses(right->GetName());
     if(!right_class) {
-      right_class = current_class->GetGenericClass(right->GetClassName());
+      right_class = current_class->GetGenericClass(right->GetName());
     }
     if(right_class) {
       // downcast
@@ -5531,13 +5555,13 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Type* right, Expression* expr
       else {
         expression->SetToClass(left_class);
         ProcessError(expression, L"Invalid cast between classes: '" +
-                     ReplaceSubstring(left->GetClassName(), L"#", L"->") + L"' and '" +
-                     ReplaceSubstring(right->GetClassName(), L"#", L"->") + L"'");
+                     ReplaceSubstring(left->GetName(), L"#", L"->") + L"' and '" +
+                     ReplaceSubstring(right->GetName(), L"#", L"->") + L"'");
       }
     }
     // library
-    else if(linker->SearchClassLibraries(right->GetClassName(), program->GetUses(current_class->GetFileName()))) {
-      LibraryClass* right_lib_class = linker->SearchClassLibraries(right->GetClassName(), program->GetUses(current_class->GetFileName()));
+    else if(linker->SearchClassLibraries(right->GetName(), program->GetUses(current_class->GetFileName()))) {
+      LibraryClass* right_lib_class = linker->SearchClassLibraries(right->GetName(), program->GetUses(current_class->GetFileName()));
       // downcast
       if(ValidDownCast(left_class->GetName(), nullptr, right_lib_class)) {
         if(left_class->IsInterface() && !generic_check) {
@@ -5554,8 +5578,8 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Type* right, Expression* expr
       else {
         expression->SetToClass(left_class);
         ProcessError(expression, L"Invalid cast between classes: '" +
-                     ReplaceSubstring(left->GetClassName(), L"#", L"->") + L"' and '" +
-                     ReplaceSubstring(right->GetClassName(), L"#", L"->") + L"'");
+                     ReplaceSubstring(left->GetName(), L"#", L"->") + L"' and '" +
+                     ReplaceSubstring(right->GetName(), L"#", L"->") + L"'");
       }
     }
     else {
@@ -5565,31 +5589,31 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Type* right, Expression* expr
   //
   // generic class
   //
-  else if(right && (left_class = current_class->GetGenericClass(left->GetClassName()))) {
+  else if(right && (left_class = current_class->GetGenericClass(left->GetName()))) {
     // program
-    Class* right_class = current_class->GetGenericClass(right->GetClassName());
+    Class* right_class = current_class->GetGenericClass(right->GetName());
     if(right_class) {
-      if(left->GetClassName() == right->GetClassName()) {
+      if(left->GetName() == right->GetName()) {
         return;
       }
       else {
         ProcessError(expression, L"Invalid cast between generics: '" +
-                     ReplaceSubstring(left->GetClassName(), L"#", L"->") + L"' and '" +
-                     ReplaceSubstring(right->GetClassName(), L"#", L"->") + L"'");
+                     ReplaceSubstring(left->GetName(), L"#", L"->") + L"' and '" +
+                     ReplaceSubstring(right->GetName(), L"#", L"->") + L"'");
       }
     }
     else {
       ProcessError(expression, L"Invalid cast between generic: '" +
-                   ReplaceSubstring(left->GetClassName(), L"#", L"->") + L"' and class/enum '" +
-                   ReplaceSubstring(right->GetClassName(), L"#", L"->") + L"'");
+                   ReplaceSubstring(left->GetName(), L"#", L"->") + L"' and class/enum '" +
+                   ReplaceSubstring(right->GetName(), L"#", L"->") + L"'");
     }
   }
   //
   // enum library
   //
-  else if(right && (left_lib_enum = linker->SearchEnumLibraries(left->GetClassName(), program->GetUses(current_class->GetFileName())))) {
+  else if(right && (left_lib_enum = linker->SearchEnumLibraries(left->GetName(), program->GetUses(current_class->GetFileName())))) {
     // program
-    Enum* right_enum = SearchProgramEnums(right->GetClassName());
+    Enum* right_enum = SearchProgramEnums(right->GetName());
     if(right_enum) {
       if(left_lib_enum->GetName() != right_enum->GetName()) {
         const wstring left_str = ReplaceSubstring(left_lib_enum->GetName(), L"#", L"->");
@@ -5598,8 +5622,8 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Type* right, Expression* expr
       }
     }
     // library
-    else if(linker->SearchEnumLibraries(right->GetClassName(), program->GetUses(current_class->GetFileName()))) {
-      LibraryEnum* right_lib_enum = linker->SearchEnumLibraries(right->GetClassName(), program->GetUses(current_class->GetFileName()));
+    else if(linker->SearchEnumLibraries(right->GetName(), program->GetUses(current_class->GetFileName()))) {
+      LibraryEnum* right_lib_enum = linker->SearchEnumLibraries(right->GetName(), program->GetUses(current_class->GetFileName()));
       if(left_lib_enum->GetName() != right_lib_enum->GetName()) {
         const wstring left_str = ReplaceSubstring(left_lib_enum->GetName(), L"#", L"->");
         const wstring right_str = ReplaceSubstring(right_lib_enum->GetName(), L"#", L"->");
@@ -5613,11 +5637,11 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Type* right, Expression* expr
   //
   // class library
   //
-  else if(right && (left_lib_class = linker->SearchClassLibraries(left->GetClassName(), program->GetUses(current_class->GetFileName())))) {
+  else if(right && (left_lib_class = linker->SearchClassLibraries(left->GetName(), program->GetUses(current_class->GetFileName())))) {
     // program and generic
-    Class* right_class = SearchProgramClasses(right->GetClassName());
+    Class* right_class = SearchProgramClasses(right->GetName());
     if(!right_class) {
-      right_class = current_class->GetGenericClass(right->GetClassName());
+      right_class = current_class->GetGenericClass(right->GetName());
     }
     if(right_class) {
       // downcast
@@ -5638,13 +5662,13 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Type* right, Expression* expr
       }
       // invalid cast
       else {
-        ProcessError(expression, L"Invalid cast between classes: '" + ReplaceSubstring(left->GetClassName(), L"#", L"->") +
-                     L"' and '" + ReplaceSubstring(right->GetClassName(), L"#", L"->") + L"'");
+        ProcessError(expression, L"Invalid cast between classes: '" + ReplaceSubstring(left->GetName(), L"#", L"->") +
+                     L"' and '" + ReplaceSubstring(right->GetName(), L"#", L"->") + L"'");
       }
     }
     // library
-    else if(linker->SearchClassLibraries(right->GetClassName(), program->GetUses(current_class->GetFileName()))) {
-      LibraryClass* right_lib_class = linker->SearchClassLibraries(right->GetClassName(), program->GetUses(current_class->GetFileName()));
+    else if(linker->SearchClassLibraries(right->GetName(), program->GetUses(current_class->GetFileName()))) {
+      LibraryClass* right_lib_class = linker->SearchClassLibraries(right->GetName(), program->GetUses(current_class->GetFileName()));
       // downcast
       if(ValidDownCast(left_lib_class->GetName(), nullptr, right_lib_class)) {
         left_lib_class->SetCalled(true);
@@ -5669,7 +5693,7 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Type* right, Expression* expr
     }
     else {
       ProcessError(expression, L"Invalid cast between class or enum: '" + 
-                   left->GetClassName() + L"' and '" + right->GetClassName() + L"'");
+                   left->GetName() + L"' and '" + right->GetName() + L"'");
     }
   }
   else {
@@ -5681,13 +5705,13 @@ void ContextAnalyzer::CheckGenericEqualTypes(Type* left, Type* right, Expression
 {
   // note, enums and consts checked elsewhere
   Class* left_klass = nullptr; LibraryClass* lib_left_klass = nullptr;
-  if(!GetProgramLibraryClass(left, left_klass, lib_left_klass) && !current_class->GetGenericClass(left->GetClassName())) {
+  if(!GetProgramLibraryClass(left, left_klass, lib_left_klass) && !current_class->GetGenericClass(left->GetName())) {
     return;
   }
 
   // note, enums and consts checked elsewhere
   Class* right_klass = nullptr; LibraryClass* lib_right_klass = nullptr;
-  if(!GetProgramLibraryClass(right, right_klass, lib_right_klass) && !current_class->GetGenericClass(right->GetClassName())) {
+  if(!GetProgramLibraryClass(right, right_klass, lib_right_klass) && !current_class->GetGenericClass(right->GetName())) {
     return;
   }
 
@@ -5713,7 +5737,7 @@ void ContextAnalyzer::CheckGenericEqualTypes(Type* left, Type* right, Expression
           }
         }
         else {
-          left_generic_klass = current_class->GetGenericClass(left_generic_type->GetClassName());
+          left_generic_klass = current_class->GetGenericClass(left_generic_type->GetName());
           if(left_generic_klass && left_generic_klass->HasGenericInterface()) {
             left_generic_type = left_generic_klass->GetGenericInterface();
           }
@@ -5736,7 +5760,7 @@ void ContextAnalyzer::CheckGenericEqualTypes(Type* left, Type* right, Expression
           }
         }
         else {
-          right_generic_klass = current_class->GetGenericClass(right_generic_type->GetClassName());
+          right_generic_klass = current_class->GetGenericClass(right_generic_type->GetName());
           if(right_generic_klass && right_generic_klass->HasGenericInterface()) {
             right_generic_type = right_generic_klass->GetGenericInterface();
           }
@@ -5745,8 +5769,8 @@ void ContextAnalyzer::CheckGenericEqualTypes(Type* left, Type* right, Expression
           }
         }
 
-        const wstring left_type_name = left_generic_type->GetClassName();
-        const wstring right_type_name = right_generic_type->GetClassName();
+        const wstring left_type_name = left_generic_type->GetName();
+        const wstring right_type_name = right_generic_type->GetName();
         if(left_type_name != right_type_name) {
           ProcessError(expression, L"Cannot map generic and concrete class: '" + left_type_name + L"' and '" + right_type_name + L"'");
         }
@@ -5766,7 +5790,7 @@ void ContextAnalyzer::AnalyzeDeclaration(Declaration * declaration, Class* klass
       // resolve declaration type
       Type* type = entry->GetType();
       if(!ResolveClassEnumType(type, klass)) {
-        ProcessError(entry, L"Undefined class or enum: '" + ReplaceSubstring(type->GetClassName(), L"#", L"->") + L"'\n\tIf generic ensure concrete types are properly defined.");
+        ProcessError(entry, L"Undefined class or enum: '" + ReplaceSubstring(type->GetName(), L"#", L"->") + L"'\n\tIf generic ensure concrete types are properly defined.");
       }
 
       ValidateConcrete(type, type, declaration, depth);
@@ -5779,7 +5803,7 @@ void ContextAnalyzer::AnalyzeDeclaration(Declaration * declaration, Class* klass
 #ifdef _DEBUG
       GetLogger() << L"Encoded function declaration: |" << encoded_name << L"|" << endl;
 #endif
-      type->SetClassName(encoded_name);
+      type->SetName(encoded_name);
     }
 
     Statement* statement = declaration->GetAssignment();
@@ -6019,11 +6043,11 @@ bool ContextAnalyzer::IsEnumExpression(Expression* expression)
   if(eval_type) {
     if(eval_type->GetType() == CLASS_TYPE) {
       // program
-      if(program->GetEnum(eval_type->GetClassName())) {
+      if(program->GetEnum(eval_type->GetName())) {
         return true;
       }
       // library
-      if(linker->SearchEnumLibraries(eval_type->GetClassName(), program->GetUses())) {
+      if(linker->SearchEnumLibraries(eval_type->GetName(), program->GetUses())) {
         return true;
       }
     }
@@ -6056,11 +6080,11 @@ bool ContextAnalyzer::IsIntegerExpression(Expression* expression)
     // enum types
     if(eval_type->GetType() == CLASS_TYPE) {
       // program
-      if(SearchProgramEnums(eval_type->GetClassName())) {
+      if(SearchProgramEnums(eval_type->GetName())) {
         return true;
       }
       // library
-      if(linker->SearchEnumLibraries(eval_type->GetClassName(), program->GetUses())) {
+      if(linker->SearchEnumLibraries(eval_type->GetName(), program->GetUses())) {
         return true;
       }
     }
@@ -6408,14 +6432,14 @@ bool ContextAnalyzer::GetProgramLibraryClass(Type* type, Class*& klass, LibraryC
     return true;
   }
 
-  if(GetProgramLibraryClass(type->GetClassName(), klass, lib_klass)) {
+  if(GetProgramLibraryClass(type->GetName(), klass, lib_klass)) {
     if(klass) {
-      type->SetClassName(klass->GetName());
+      type->SetName(klass->GetName());
       type->SetClassPtr(klass);
       type->SetResolved(true);
     }
     else {
-      type->SetClassName(lib_klass->GetName());
+      type->SetName(lib_klass->GetName());
       type->SetLibraryClassPtr(lib_klass);
       type->SetResolved(true);
     }
@@ -6489,16 +6513,16 @@ const wstring ContextAnalyzer::EncodeType(Type* type)
         }
       }
       else {
-        encoded_name += type->GetClassName();
+        encoded_name += type->GetName();
       }
     }
       break;
       
     case FUNC_TYPE:
-      if(type->GetClassName().size() == 0) {
-        type->SetClassName(EncodeFunctionType(type->GetFunctionParameters(), type->GetFunctionReturn()));
+      if(type->GetName().size() == 0) {
+        type->SetName(EncodeFunctionType(type->GetFunctionParameters(), type->GetFunctionReturn()));
       }
-      encoded_name += type->GetClassName();
+      encoded_name += type->GetName();
       break;
     }
   }
@@ -6512,67 +6536,67 @@ bool ContextAnalyzer::ResolveClassEnumType(Type* type, Class* context_klass)
     return true;
   }
   
-  Class* klass = SearchProgramClasses(type->GetClassName());
+  Class* klass = SearchProgramClasses(type->GetName());
   if(klass) {
     klass->SetCalled(true);
-    type->SetClassName(klass->GetName());
+    type->SetName(klass->GetName());
     type->SetResolved(true);
     return true;
   }
 
-  LibraryClass* lib_klass = linker->SearchClassLibraries(type->GetClassName(), program->GetUses());
+  LibraryClass* lib_klass = linker->SearchClassLibraries(type->GetName(), program->GetUses());
   if(lib_klass) {
     lib_klass->SetCalled(true);
-    type->SetClassName(lib_klass->GetName());
+    type->SetName(lib_klass->GetName());
     type->SetResolved(true);
     return true;
   }
 
   // generics
   if(context_klass->HasGenerics()) {
-    klass = context_klass->GetGenericClass(type->GetClassName());
+    klass = context_klass->GetGenericClass(type->GetName());
     if(klass) {
       if(klass->HasGenericInterface()) {
         Type* inf_type = klass->GetGenericInterface();
         if(ResolveClassEnumType(inf_type)) {
-          type->SetClassName(inf_type->GetClassName());
+          type->SetName(inf_type->GetName());
           type->SetResolved(true);
           return true;
         }
       }
       else {
-        type->SetClassName(type->GetClassName());
+        type->SetName(type->GetName());
         type->SetResolved(true);
         return true;
       }
     }
   }
 
-  Enum* eenum = SearchProgramEnums(type->GetClassName());
+  Enum* eenum = SearchProgramEnums(type->GetName());
   if(eenum) {
-    type->SetClassName(type->GetClassName());
+    type->SetName(type->GetName());
     type->SetResolved(true);
     return true;
   }
   else {
-    eenum = SearchProgramEnums(context_klass->GetName() + L"#" + type->GetClassName());
+    eenum = SearchProgramEnums(context_klass->GetName() + L"#" + type->GetName());
     if(eenum) {
-      type->SetClassName(context_klass->GetName() + L"#" + type->GetClassName());
+      type->SetName(context_klass->GetName() + L"#" + type->GetName());
       type->SetResolved(true);
       return true;
     }
   }
 
-  LibraryEnum* lib_eenum = linker->SearchEnumLibraries(type->GetClassName(), program->GetUses());
+  LibraryEnum* lib_eenum = linker->SearchEnumLibraries(type->GetName(), program->GetUses());
   if(lib_eenum) {
-    type->SetClassName(lib_eenum->GetName());
+    type->SetName(lib_eenum->GetName());
     type->SetResolved(true);
     return true;
   }
   else {
-    lib_eenum = linker->SearchEnumLibraries(type->GetClassName(), program->GetUses());
+    lib_eenum = linker->SearchEnumLibraries(type->GetName(), program->GetUses());
     if(lib_eenum) {
-      type->SetClassName(lib_eenum->GetName());
+      type->SetName(lib_eenum->GetName());
       type->SetResolved(true);
       return true;
     }
@@ -6583,7 +6607,7 @@ bool ContextAnalyzer::ResolveClassEnumType(Type* type, Class* context_klass)
 
 bool ContextAnalyzer::IsClassEnumParameterMatch(Type* calling_type, Type* method_type)
 {
-  const wstring& from_klass_name = calling_type->GetClassName();
+  const wstring& from_klass_name = calling_type->GetName();
 
   LibraryClass* from_lib_klass = nullptr;
   Class* from_klass = SearchProgramClasses(from_klass_name);
@@ -6597,16 +6621,16 @@ bool ContextAnalyzer::IsClassEnumParameterMatch(Type* calling_type, Type* method
 
   // resolve to class name
   wstring to_klass_name;
-  Class* to_klass = SearchProgramClasses(method_type->GetClassName());
+  Class* to_klass = SearchProgramClasses(method_type->GetName());
   if(!to_klass && current_class->HasGenerics()) {
-    to_klass = current_class->GetGenericClass(method_type->GetClassName());
+    to_klass = current_class->GetGenericClass(method_type->GetName());
     if(to_klass) {
       to_klass_name = to_klass->GetName();
     }
   }
 
   if(!to_klass) {
-    LibraryClass* to_lib_klass = linker->SearchClassLibraries(method_type->GetClassName(), program->GetUses());
+    LibraryClass* to_lib_klass = linker->SearchClassLibraries(method_type->GetName(), program->GetUses());
     if(to_lib_klass) {
       to_klass_name = to_lib_klass->GetName();
     }
@@ -6618,12 +6642,12 @@ bool ContextAnalyzer::IsClassEnumParameterMatch(Type* calling_type, Type* method
     LibraryEnum* from_lib_enum = linker->SearchEnumLibraries(from_klass_name, program->GetUses());
 
     wstring to_enum_name;
-    Enum* to_enum = SearchProgramEnums(method_type->GetClassName());
+    Enum* to_enum = SearchProgramEnums(method_type->GetName());
     if(to_enum) {
       to_enum_name = to_enum->GetName();
     }
     else {
-      LibraryEnum* to_lib_enum = linker->SearchEnumLibraries(method_type->GetClassName(), program->GetUses());
+      LibraryEnum* to_lib_enum = linker->SearchEnumLibraries(method_type->GetName(), program->GetUses());
       if(to_lib_enum) {
         to_enum_name = to_lib_enum->GetName();
       }
@@ -6683,9 +6707,9 @@ void ContextAnalyzer::AnalyzeCharacterStringVariable(SymbolEntry* entry, Charact
     ProcessError(char_str, L"Invalid function variable type or dimension size");
   }
   else if(entry->GetType()->GetType() == CLASS_TYPE &&
-          entry->GetType()->GetClassName() != L"System.String" &&
-          entry->GetType()->GetClassName() != L"String") {
-    const wstring cls_name = entry->GetType()->GetClassName();
+          entry->GetType()->GetName() != L"System.String" &&
+          entry->GetType()->GetName() != L"String") {
+    const wstring cls_name = entry->GetType()->GetName();
     Class* klass = SearchProgramClasses(cls_name);
     if(klass) {
       Method* method = klass->GetMethod(cls_name + L":ToString:");
@@ -6723,8 +6747,8 @@ void ContextAnalyzer::AnalyzeCharacterStringVariable(SymbolEntry* entry, Charact
 void ContextAnalyzer::AnalyzeVariableCast(Type* to_type, Expression* expression)
 {
   if(to_type && to_type->GetType() == CLASS_TYPE && expression->GetCastType() && to_type->GetDimension() < 1 &&
-     to_type->GetClassName() != L"System.Base" && to_type->GetClassName() != L"Base") {
-    const wstring to_class_name = to_type->GetClassName();
+     to_type->GetName() != L"System.Base" && to_type->GetName() != L"Base") {
+    const wstring to_class_name = to_type->GetName();
     if(SearchProgramEnums(to_class_name) ||
        linker->SearchEnumLibraries(to_class_name, program->GetUses(current_class->GetFileName()))) {
       return;
@@ -6756,12 +6780,12 @@ void ContextAnalyzer::AnalyzeVariableFunctionParameters(Type* func_type, ParseNo
     for(size_t i = 0; i < func_params.size(); ++i) {
       Type* type = func_params[i];
       if(type->GetType() == CLASS_TYPE && !ResolveClassEnumType(type, klass)) {
-        ProcessError(node, L"Undefined class or enum: '" + type->GetClassName() + L"'");
+        ProcessError(node, L"Undefined class or enum: '" + type->GetName() + L"'");
       }
     }
 
     if(rtrn_type && rtrn_type->GetType() == CLASS_TYPE && !ResolveClassEnumType(rtrn_type, klass)) {
-      ProcessError(node, L"Undefined class or enum: '" + rtrn_type->GetClassName() + L"'");
+      ProcessError(node, L"Undefined class or enum: '" + rtrn_type->GetName() + L"'");
     }
   }
 }
@@ -6819,14 +6843,14 @@ Type* ContextAnalyzer::RelsolveGenericType(Type* candidate_type, MethodCall* met
       }
       else {
         ResolveClassEnumType(candidate_type);
-        wstring func_name = candidate_type->GetClassName();
+        wstring func_name = candidate_type->GetName();
 
         const vector<LibraryClass*> generic_classes = lib_klass->GetGenericClasses();
         for(size_t i = 0; i < generic_classes.size(); ++i) {
           const wstring find_name = generic_classes[i]->GetName();
           Type* to_type = RelsolveGenericType(TypeFactory::Instance()->MakeType(CLASS_TYPE, find_name), method_call, klass, lib_klass, false);
           const wstring from_name = L"o." + generic_classes[i]->GetName();
-          const wstring to_name = L"o." + to_type->GetClassName();
+          const wstring to_name = L"o." + to_type->GetName();
           ReplaceAllSubstrings(func_name, from_name, to_name);
         }
 
@@ -6837,7 +6861,7 @@ Type* ContextAnalyzer::RelsolveGenericType(Type* candidate_type, MethodCall* met
       // find concrete index
       int concrete_index = -1;
       ResolveClassEnumType(candidate_type);
-      const wstring generic_name = candidate_type->GetClassName();
+      const wstring generic_name = candidate_type->GetName();
       if(klass) {
         concrete_index = klass->GenericIndex(generic_name);
       }
@@ -6929,7 +6953,7 @@ Type* ContextAnalyzer::RelsolveGenericType(Type* candidate_type, MethodCall* met
 Type* ContextAnalyzer::RelsolveGenericType(Type* type, Expression* expression, Class* left_klass, LibraryClass* lib_left_klass)
 {
   int concrete_index = -1;
-  const wstring left_type_name = type->GetClassName();
+  const wstring left_type_name = type->GetName();
 
   if(left_klass) {
     concrete_index = left_klass->GenericIndex(left_type_name);

@@ -1497,13 +1497,13 @@ std::wstring LibraryMethod::EncodeUserType(frontend::Type* type)
       break;
 
     case frontend::CLASS_TYPE:
-      name = type->GetClassName();
+      name = type->GetName();
       if(type->HasGenerics()) {
         const vector<frontend::Type*> generic_types = type->GetGenerics();
         name += L'<';
         for(size_t i = 0; i < generic_types.size(); ++i) {
           frontend::Type* generic_type = generic_types[i];
-          name += generic_type->GetClassName();
+          name += generic_type->GetName();
           if(i + 1 < generic_types.size()) {
             name += L',';
           }

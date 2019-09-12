@@ -5,12 +5,12 @@ class Test {
 		Calc(\Func->Calc : (a, b) => a * b);
 	}
 
-#	function : Calc(calc : \Func->Calc) ~ Nil {
-	function : Calc(calc : (FloatHolder, FloatHolder) ~ FloatHolder) ~ Nil {
+	function : Calc(calc : \Func->Calc) ~ Nil {
+#	function : Calc(calc : (FloatHolder, FloatHolder) ~ FloatHolder) ~ Nil {
 		calc(3.5, 5.5)->PrintLine();
 	}
 }
 
 lambdas Func {
-	Calc : (FloatHolder, FloatHolder) ~ FloatHolder,
+	Calc : (FloatHolder, FloatHolder) ~ FloatHolder
 }

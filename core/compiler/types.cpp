@@ -288,7 +288,7 @@ frontend::Type* TypeParser::ParseType(const wstring& type_name)
 
 void TypeParser::ParseFunctionalType(frontend::Type* func_type)
 {
-  const wstring func_name = func_type->GetClassName();
+  const wstring func_name = func_type->GetName();
 
   // parse parameters
   size_t start = func_name.rfind(L'(');

@@ -205,7 +205,7 @@ wstring Method::EncodeType(Type* type, Class* klass, ParsedProgram* program, Lin
       name = L"o.";
       
       // program class check
-      const wstring type_klass_name = type->GetClassName();
+      const wstring type_klass_name = type->GetName();
       Class* prgm_klass = program->GetClass(type_klass_name);
       if(prgm_klass) {
         name += prgm_klass->GetName();
@@ -278,11 +278,11 @@ wstring Method::EncodeType(Type* type, Class* klass, ParsedProgram* program, Lin
       
     case FUNC_TYPE:  {
       name = L"m.";
-      if(type->GetClassName().size() == 0) {
+      if(type->GetName().size() == 0) {
         name += EncodeFunctionType(type->GetFunctionParameters(), type->GetFunctionReturn(), klass, program, linker);
       }
       else {
-        name += type->GetClassName();
+        name += type->GetName();
       }
     }
       break;
@@ -292,7 +292,7 @@ wstring Method::EncodeType(Type* type, Class* klass, ParsedProgram* program, Lin
     if(type->HasGenerics()) {
       const vector<Type*> generic_types = type->GetGenerics();
       for(size_t i = 0; i < generic_types.size(); ++i) {
-        name += L"|" + generic_types[i]->GetClassName();
+        name += L"|" + generic_types[i]->GetName();
       }
     }
 
@@ -362,7 +362,7 @@ wstring Method::EncodeType(Type* type) {
 
     case CLASS_TYPE:
       name = L"o.";
-      name += type->GetClassName();
+      name += type->GetName();
       break;
 
     case FUNC_TYPE:
@@ -374,7 +374,7 @@ wstring Method::EncodeType(Type* type) {
     if(type->HasGenerics()) {
       const vector<Type*> generic_types = type->GetGenerics();
       for(size_t i = 0; i < generic_types.size(); ++i) {
-        name += L"|" + generic_types[i]->GetClassName();
+        name += L"|" + generic_types[i]->GetName();
       }
     }
 
@@ -421,13 +421,13 @@ wstring Method::EncodeUserType(Type* type) {
       break;
 
     case CLASS_TYPE:
-      name = type->GetClassName();
+      name = type->GetName();
       if(type->HasGenerics()) {
         const vector<frontend::Type*> generic_types = type->GetGenerics();
         name += L'<';
         for(size_t i = 0; i < generic_types.size(); ++i) {
           frontend::Type* generic_type = generic_types[i];
-          name += generic_type->GetClassName();
+          name += generic_type->GetName();
           if(i + 1 < generic_types.size()) {
             name += L',';
           }
@@ -843,7 +843,7 @@ wstring Alias::EncodeType(Type* type, ParsedProgram* program, Linker* linker)
       name = L"o.";
 
       // program class check
-      const wstring type_klass_name = type->GetClassName();
+      const wstring type_klass_name = type->GetName();
       Class* prgm_klass = program->GetClass(type_klass_name);
       if(prgm_klass) {
         name += prgm_klass->GetName();
@@ -894,11 +894,11 @@ wstring Alias::EncodeType(Type* type, ParsedProgram* program, Linker* linker)
 
     case FUNC_TYPE: {
       name = L"m.";
-      if(type->GetClassName().size() == 0) {
+      if(type->GetName().size() == 0) {
         name += EncodeFunctionType(type->GetFunctionParameters(), type->GetFunctionReturn(), program, linker);
       }
       else {
-        name += type->GetClassName();
+        name += type->GetName();
       }
     }
       break;
@@ -908,7 +908,7 @@ wstring Alias::EncodeType(Type* type, ParsedProgram* program, Linker* linker)
     if(type->HasGenerics()) {
       const vector<Type*> generic_types = type->GetGenerics();
       for(size_t i = 0; i < generic_types.size(); ++i) {
-        name += L"|" + generic_types[i]->GetClassName();
+        name += L"|" + generic_types[i]->GetName();
       }
     }
 
