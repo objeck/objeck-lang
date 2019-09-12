@@ -1524,7 +1524,10 @@ std::wstring LibraryMethod::EncodeUserType(frontend::Type* type)
       name += L") ~ ";
       name += EncodeUserType(type->GetFunctionReturn());
     }
-                              break;
+      break;
+        
+    case frontend::ALIAS_TYPE:
+      break;
     }
 
     // dimension

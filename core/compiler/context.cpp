@@ -1175,6 +1175,9 @@ ExpressionList* ContextAnalyzer::MapLambdaDeclarations(DeclarationList* declarat
     case FUNC_TYPE:
       ident = dclr_type->GetName();
       break;
+        
+    case ALIAS_TYPE:
+      break;
     }
 
     if(!ident.empty()) {
@@ -2688,6 +2691,7 @@ int ContextAnalyzer::MatchCallingParameter(Expression* calling_param, Type* meth
           return calling_type_name == method_type_name ? 0 : -1;
         }
 
+        case ALIAS_TYPE:
         case VAR_TYPE:
           return -1;
         }
@@ -4325,6 +4329,9 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
       case VAR_TYPE:
         ProcessError(left_expr, L"Invalid operation using classes: Var and Var");
         break;
+          
+      case ALIAS_TYPE:
+        break;
 
       case NIL_TYPE:
         ProcessError(left_expr, L"Invalid operation using classes: Var and Nil");
@@ -4357,6 +4364,9 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
         break;
       }
       break;
+        
+    case ALIAS_TYPE:
+      break;
 
     case NIL_TYPE:
       // NIL
@@ -4367,6 +4377,9 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
 
       case VAR_TYPE:
         ProcessError(left_expr, L"Invalid operation using classes: Nil and Var");
+        break;
+          
+      case ALIAS_TYPE:
         break;
 
       case NIL_TYPE:
@@ -4408,7 +4421,10 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
       case VAR_TYPE:
         ProcessError(left_expr, L"Invalid operation using classes: System.Byte and Var");
         break;
-
+      
+      case ALIAS_TYPE:
+        break;
+          
       case NIL_TYPE:
         ProcessError(left_expr, L"Invalid operation using classes: System.Byte and Nil");
         break;
@@ -4450,6 +4466,9 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
 
       case VAR_TYPE:
         ProcessError(left_expr, L"Invalid operation using classes: System.Char and Var");
+        break;
+          
+      case ALIAS_TYPE:
         break;
 
       case NIL_TYPE:
@@ -4494,6 +4513,9 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
       case VAR_TYPE:
         ProcessError(left_expr, L"Invalid operation using classes: System.Int and Var");
         break;
+          
+      case ALIAS_TYPE:
+        break;
 
       case NIL_TYPE:
         ProcessError(left_expr, L"Invalid operation using classes: System.Int and Nil");
@@ -4536,6 +4558,9 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
 
       case VAR_TYPE:
         ProcessError(left_expr, L"Invalid operation using classes: System.Float and Var");
+        break;
+          
+      case ALIAS_TYPE:
         break;
 
       case NIL_TYPE:
@@ -4588,6 +4613,7 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
                      L" and Var");
         break;
 
+      case ALIAS_TYPE:
       case NIL_TYPE:
         break;
 
@@ -4683,6 +4709,9 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
       case VAR_TYPE:
         ProcessError(left_expr, L"Invalid operation using classes: System.Bool and Var");
         break;
+          
+      case ALIAS_TYPE:
+        break;
 
       case NIL_TYPE:
         ProcessError(left_expr, L"Invalid operation using classes: System.Bool and Nil");
@@ -4746,6 +4775,9 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
 
       case VAR_TYPE:
         ProcessError(left_expr, L"Invalid operation using classes: function reference and Var");
+        break;
+          
+      case ALIAS_TYPE:
         break;
 
       case NIL_TYPE:
@@ -4913,6 +4945,9 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
     case VAR_TYPE:
       // VAR
       switch(right->GetType()) {
+      case ALIAS_TYPE:
+        break;
+          
       case VAR_TYPE:
         ProcessError(expression, L"Invalid operation using classes: Var and Var");
         break;
@@ -4940,6 +4975,9 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
 
       case VAR_TYPE:
         ProcessError(expression, L"Invalid operation using classes: Nil and Var");
+        break;
+          
+      case ALIAS_TYPE:
         break;
 
       case NIL_TYPE:
@@ -4982,6 +5020,9 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
 
       case VAR_TYPE:
         ProcessError(expression, L"Invalid operation using classes: System.Byte and Var");
+        break;
+          
+      case ALIAS_TYPE:
         break;
 
       case NIL_TYPE:
@@ -5032,6 +5073,9 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
       case VAR_TYPE:
         ProcessError(expression, L"Invalid operation using classes: System.Char and Var");
         break;
+          
+      case ALIAS_TYPE:
+        break;
 
       case NIL_TYPE:
         if(left->GetDimension() < 1) {
@@ -5081,6 +5125,9 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
       case VAR_TYPE:
         ProcessError(expression, L"Invalid operation using classes: Var and Int");
         break;
+          
+      case ALIAS_TYPE:
+        break;
 
       case NIL_TYPE:
         if(left->GetDimension() < 1) {
@@ -5129,6 +5176,9 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
 
       case VAR_TYPE:
         ProcessError(expression, L"Invalid operation using classes: Nil and Var");
+        break;
+          
+      case ALIAS_TYPE:
         break;
 
       case NIL_TYPE:
@@ -5180,6 +5230,9 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
       case VAR_TYPE:
         ProcessError(expression, L"Invalid cast with classes: " +
                      ReplaceSubstring(left->GetName(), L"#", L"->") + L" and Var");
+        break;
+          
+      case ALIAS_TYPE:
         break;
 
       case NIL_TYPE:
@@ -5266,6 +5319,9 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
       case VAR_TYPE:
         ProcessError(expression, L"Invalid operation using classes: System.Bool and Var");
         break;
+          
+      case ALIAS_TYPE:
+        break;
 
       case NIL_TYPE:
         if(left->GetDimension() < 1) {
@@ -5324,6 +5380,9 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
 
       case VAR_TYPE:
         ProcessError(expression, L"Invalid operation using classes: function reference and Var");
+        break;
+          
+      case ALIAS_TYPE:
         break;
 
       case NIL_TYPE:
@@ -6501,6 +6560,9 @@ const wstring ContextAnalyzer::EncodeType(Type* type)
 
     case VAR_TYPE:
       encoded_name += 'v';
+      break;
+        
+    case ALIAS_TYPE:
       break;
 
     case CLASS_TYPE: {
