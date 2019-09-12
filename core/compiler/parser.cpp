@@ -353,7 +353,7 @@ void Parser::ParseBundle(int depth)
           bundle->AddEnum(ParseConsts(depth + 1));
           break;
 
-        case TOKEN_LAMBDAS_ID:
+        case TOKEN_ALIAS_ID:
           bundle->AddLambdas(ParseLambdas(depth + 1));
           break;
 
@@ -366,7 +366,7 @@ void Parser::ParseBundle(int depth)
           break;
 
         default:
-          ProcessError(L"Expected 'class', 'interface' or 'enum'", TOKEN_SEMI_COLON);
+          ProcessError(L"Expected 'class', 'interface', 'enum' or 'alias'", TOKEN_SEMI_COLON);
           NextToken();
           break;
         }
@@ -387,7 +387,7 @@ void Parser::ParseBundle(int depth)
     program->AddUses(uses, file_name);
   }
   // parse class
-  else if(Match(TOKEN_CLASS_ID) || Match(TOKEN_ENUM_ID) || Match(TOKEN_CONSTS_ID) || Match(TOKEN_INTERFACE_ID) || Match(TOKEN_LAMBDAS_ID)) {
+  else if(Match(TOKEN_CLASS_ID) || Match(TOKEN_ENUM_ID) || Match(TOKEN_CONSTS_ID) || Match(TOKEN_INTERFACE_ID) || Match(TOKEN_ALIAS_ID)) {
     wstring bundle_name = L"";
     symbol_table = new SymbolTableManager;
     ParsedBundle* bundle = new ParsedBundle(bundle_name, symbol_table);
@@ -412,7 +412,7 @@ void Parser::ParseBundle(int depth)
         bundle->AddClass(ParseClass(bundle_name, depth + 1));
         break;
 
-      case TOKEN_LAMBDAS_ID:
+      case TOKEN_ALIAS_ID:
         bundle->AddLambdas(ParseLambdas(depth + 1));
         break;
 
@@ -421,7 +421,7 @@ void Parser::ParseBundle(int depth)
         break;
 
       default:
-        ProcessError(L"Expected 'class', 'interface' or 'enum'", TOKEN_SEMI_COLON);
+        ProcessError(L"Expected 'class', 'interface', 'enum' or 'alias'", TOKEN_SEMI_COLON);
         NextToken();
         break;
       }
@@ -573,10 +573,6 @@ Alias* Parser::ParseLambdas(int depth)
     NextToken();
 
     Type* type = ParseType(depth + 1);
-    if(type->GetType() != FUNC_TYPE) {
-      ProcessError(L"Expected functional type", TOKEN_CLOSED_BRACE);
-    }
-    
     if(!alias->AddType(label_name, type)) {
       ProcessError(L"Duplicate lambda label name '" + label_name + L"'", TOKEN_CLOSED_BRACE);
     }

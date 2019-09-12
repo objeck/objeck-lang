@@ -324,15 +324,20 @@ namespace frontend {
       return class_name;
     }
 
-    inline void ResolveAlias(Type* t) {
-      type = FUNC_TYPE;
-      class_name = L"";
-      func_rtrn = t->func_rtrn;
-      func_params = t->func_params;
-
-      is_resolved = false;
-      klass_cache_ptr = nullptr;
-      lib_klass_cache_ptr = nullptr;
+    inline void Set(Type* t) {
+      if(t) {
+        type = t->type;
+        dimension = t->dimension;
+        class_name = t->class_name;
+        func_rtrn = t->func_rtrn;
+        func_params = t->func_params;
+        func_param_count = -1;
+        line_num = t->line_num;
+        generic_types = t->generic_types;
+        is_resolved = t->is_resolved;
+        klass_cache_ptr = t->klass_cache_ptr;
+        lib_klass_cache_ptr = t->lib_klass_cache_ptr;
+      }
     }
 
     const wstring GetFileName() {
@@ -385,8 +390,8 @@ namespace frontend {
       return tmp;
     }
 
-    Type* MakeType(EntryType type, const wstring& name, const wstring& file, int line_num) {
-      Type* tmp = new Type(type, name);
+    Type* MakeType(EntryType type, const wstring& name, const wstring& file_name, int line_num) {
+      Type* tmp = new Type(type, name, file_name, line_num);
       types.push_back(tmp);
       return tmp;
     }

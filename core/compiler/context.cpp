@@ -142,7 +142,7 @@ bool ContextAnalyzer::Analyze()
     if(type->GetType() == ALIAS_TYPE) {
       Type* resloved_type = ResolveAlias(type->GetName(), type->GetFileName(), type->GetLineNumber());
       if(resloved_type) {
-        type->ResolveAlias(resloved_type);
+        type->Set(resloved_type);
       }
     }
   }
@@ -935,7 +935,6 @@ void ContextAnalyzer::AnalyzeLambda(Lambda* lambda, const int depth)
   // by name
   else if(!is_inferred) {
     lambda_type = ResolveAlias(lambda_name, lambda);
-
   }
 
   if(lambda_type) {
@@ -972,10 +971,10 @@ Type* ContextAnalyzer::ResolveAlias(const wstring& name, const wstring& fn, int 
     }
     else {
       if(name.empty()) {
-        ProcessError(fn, ln, L"Invalid functional alias");
+        ProcessError(fn, ln, L"Invalid alias");
       }
       else {
-        ProcessError(fn, ln, L"Undefined functional alias: '" + ReplaceSubstring(name, L"#", L"->") + L"'");
+        ProcessError(fn, ln, L"Undefined alias: '" + ReplaceSubstring(name, L"#", L"->") + L"'");
       }
     }
   }
@@ -988,22 +987,27 @@ Type* ContextAnalyzer::ResolveAlias(const wstring& name, const wstring& fn, int 
       }
       else {
         if(name.empty()) {
-          ProcessError(fn, ln, L"Invalid functional alias");
+          ProcessError(fn, ln, L"Invalid alias");
         }
         else {
-          ProcessError(fn, ln, L"Undefined functional alias: '" + ReplaceSubstring(name, L"#", L"->") + L"'");
+          ProcessError(fn, ln, L"Undefined alias: '" + ReplaceSubstring(name, L"#", L"->") + L"'");
         }
       }
     }
     else {
       if(name.empty()) {
-        ProcessError(fn, ln, L"Invalid functional alias");
+        ProcessError(fn, ln, L"Invalid alias");
       }
       else {
-        ProcessError(fn, ln, L"Undefined functional alias: '" + ReplaceSubstring(name, L"#", L"->") + L"'");
+        ProcessError(fn, ln, L"Undefined alias: '" + ReplaceSubstring(name, L"#", L"->") + L"'");
       }
     }
-  }    
+  }  
+
+  if(alias_type && alias_type->GetType() == ALIAS_TYPE) {
+    ProcessError(fn, ln, L"Invalid nested alias reference");
+    return nullptr;
+  }
   
   return alias_type;
 }
