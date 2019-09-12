@@ -4366,6 +4366,9 @@ Assignment* Parser::ParseAssignment(Variable* variable, int depth)
  ****************************/
 Type* Parser::ParseType(int depth)
 {
+  const int line_num = GetLineNumber();
+  const wstring& file_name = GetFileName();
+
 #ifdef _DEBUG
   Debug(L"Data Type", depth);
 #endif
@@ -4379,7 +4382,7 @@ Type* Parser::ParseType(int depth)
       NextToken();
       alias_name += L"#";
       alias_name += ParseBundleName();
-      type = TypeFactory::Instance()->MakeType(ALIAS_TYPE, alias_name);
+      type = TypeFactory::Instance()->MakeType(ALIAS_TYPE, alias_name, file_name, line_num);
     }
   }
     break;

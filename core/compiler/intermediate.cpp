@@ -837,19 +837,19 @@ void IntermediateEmitter::EmitLambda(Lambda* lambda)
     case frontend::CLASS_TYPE:
       // object array
       if(entry->GetType()->GetDimension() > 0) {
-        if(parsed_program->GetClass(entry->GetType()->GetClassName())) {
+        if(parsed_program->GetClass(entry->GetType()->GetName())) {
 #ifdef _DEBUG
           GetLogger() << L"\t" << entry->GetId() << L": OBJ_ARY_PARM: name=" << entry->GetName() << endl;
 #endif
           closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), OBJ_ARY_PARM));
         }
-        else if(SearchProgramEnums(entry->GetType()->GetClassName())) {
+        else if(SearchProgramEnums(entry->GetType()->GetName())) {
 #ifdef _DEBUG
           GetLogger() << L"\t" << entry->GetId() << L": INT_ARY_PARM: name=" << entry->GetName() << endl;
 #endif
           closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_ARY_PARM));
         }
-        else if(parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetClassName(), parsed_program->GetUses())) {
+        else if(parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetName(), parsed_program->GetUses())) {
 #ifdef _DEBUG
           GetLogger() << L"\t" << entry->GetId() << L": INT_ARY_PARM: name=" << entry->GetName() << endl;
 #endif
@@ -864,19 +864,19 @@ void IntermediateEmitter::EmitLambda(Lambda* lambda)
       }
       // object
       else {
-        if(SearchProgramClasses(entry->GetType()->GetClassName())) {
+        if(SearchProgramClasses(entry->GetType()->GetName())) {
 #ifdef _DEBUG
           GetLogger() << L"\t" << entry->GetId() << L": OBJ_PARM: name=" << entry->GetName() << endl;
 #endif
           closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), OBJ_PARM));
         }
-        else if(SearchProgramEnums(entry->GetType()->GetClassName())) {
+        else if(SearchProgramEnums(entry->GetType()->GetName())) {
 #ifdef _DEBUG
           GetLogger() << L"\t" << entry->GetId() << L": INT_PARM: name=" << entry->GetName() << endl;
 #endif
           closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
         }
-        else if(parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetClassName(), parsed_program->GetUses())) {
+        else if(parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetName(), parsed_program->GetUses())) {
 #ifdef _DEBUG
           GetLogger() << L"\t" << entry->GetId() << L": INT_PARM: name=" << entry->GetName() << endl;
 #endif
@@ -1309,8 +1309,8 @@ void IntermediateEmitter::EmitMethodCallStatement(MethodCall* method_call)
       if(method_call->GetMethod()) {
         Method* method = method_call->GetMethod();
         if(method->GetReturn()->GetType() == CLASS_TYPE) {
-          bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(method->GetReturn()->GetClassName(), parsed_program->GetUses()) || 
-            SearchProgramEnums(method->GetReturn()->GetClassName());
+          bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(method->GetReturn()->GetName(), parsed_program->GetUses()) || 
+            SearchProgramEnums(method->GetReturn()->GetName());
           if(!is_enum) {
             is_nested = true;
           }
@@ -1325,8 +1325,8 @@ void IntermediateEmitter::EmitMethodCallStatement(MethodCall* method_call)
       else if(method_call->GetLibraryMethod()) {
         LibraryMethod* lib_method = method_call->GetLibraryMethod();
         if(lib_method->GetReturn()->GetType() == CLASS_TYPE) {
-          bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(lib_method->GetReturn()->GetClassName(), parsed_program->GetUses()) || 
-            SearchProgramEnums(lib_method->GetReturn()->GetClassName());
+          bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(lib_method->GetReturn()->GetName(), parsed_program->GetUses()) || 
+            SearchProgramEnums(lib_method->GetReturn()->GetName());
           if(!is_enum) {
             is_nested = true;
           }
@@ -1385,8 +1385,8 @@ void IntermediateEmitter::EmitMethodCallStatement(MethodCall* method_call)
       if(method_call->GetMethod()) {
         Method* method = method_call->GetMethod();
         if(method->GetReturn()->GetType() == CLASS_TYPE) {
-          bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(method->GetReturn()->GetClassName(), parsed_program->GetUses()) || 
-            SearchProgramEnums(method->GetReturn()->GetClassName());
+          bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(method->GetReturn()->GetName(), parsed_program->GetUses()) || 
+            SearchProgramEnums(method->GetReturn()->GetName());
           if(!is_enum) {
             is_nested = true;
           }
@@ -1401,8 +1401,8 @@ void IntermediateEmitter::EmitMethodCallStatement(MethodCall* method_call)
       else if(method_call->GetLibraryMethod()) {
         LibraryMethod* lib_method = method_call->GetLibraryMethod();
         if(lib_method->GetReturn()->GetType() == CLASS_TYPE) {
-          bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(lib_method->GetReturn()->GetClassName(), parsed_program->GetUses()) || 
-            SearchProgramEnums(lib_method->GetReturn()->GetClassName());
+          bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(lib_method->GetReturn()->GetName(), parsed_program->GetUses()) || 
+            SearchProgramEnums(lib_method->GetReturn()->GetName());
           if(!is_enum) {
             is_nested = true;
           }
@@ -2831,8 +2831,8 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
       if(method_call->GetMethod()) {
         Method* method = method_call->GetMethod();
         if(method->GetReturn()->GetType() == CLASS_TYPE) {
-          bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(method->GetReturn()->GetClassName(), parsed_program->GetUses()) || 
-            SearchProgramEnums(method->GetReturn()->GetClassName());
+          bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(method->GetReturn()->GetName(), parsed_program->GetUses()) || 
+            SearchProgramEnums(method->GetReturn()->GetName());
           if(!is_enum) {
             is_nested = true;
           }
@@ -2847,8 +2847,8 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
       else if(method_call->GetLibraryMethod()) {
         LibraryMethod* lib_method = method_call->GetLibraryMethod();
         if(lib_method->GetReturn()->GetType() == CLASS_TYPE) {
-          bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(lib_method->GetReturn()->GetClassName(), parsed_program->GetUses()) || 
-            SearchProgramEnums(lib_method->GetReturn()->GetClassName());
+          bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(lib_method->GetReturn()->GetName(), parsed_program->GetUses()) || 
+            SearchProgramEnums(lib_method->GetReturn()->GetName());
           if(!is_enum) {
             is_nested = true;
           }
@@ -2979,8 +2979,8 @@ void IntermediateEmitter::EmitMethodCallExpression(MethodCall* method_call, bool
       if(method_call->GetMethod()) {
         Method* method = method_call->GetMethod();
         if(method->GetReturn()->GetType() == CLASS_TYPE) {
-          bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(method->GetReturn()->GetClassName(), parsed_program->GetUses()) || 
-            SearchProgramEnums(method->GetReturn()->GetClassName());
+          bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(method->GetReturn()->GetName(), parsed_program->GetUses()) || 
+            SearchProgramEnums(method->GetReturn()->GetName());
           if(!is_enum) {
             is_nested = true;
           }
@@ -2995,8 +2995,8 @@ void IntermediateEmitter::EmitMethodCallExpression(MethodCall* method_call, bool
       else if(method_call->GetLibraryMethod()) {
         LibraryMethod* lib_method = method_call->GetLibraryMethod();
         if(lib_method->GetReturn()->GetType() == CLASS_TYPE) {
-          bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(lib_method->GetReturn()->GetClassName(), parsed_program->GetUses()) || 
-            SearchProgramEnums(lib_method->GetReturn()->GetClassName());
+          bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(lib_method->GetReturn()->GetName(), parsed_program->GetUses()) || 
+            SearchProgramEnums(lib_method->GetReturn()->GetName());
           if(!is_enum) {
             is_nested = true;
           }
@@ -3042,8 +3042,8 @@ void IntermediateEmitter::EmitMethodCallExpression(MethodCall* method_call, bool
       if(method_call->GetMethod()) {
         Method* method = method_call->GetMethod();
         if(method->GetReturn()->GetType() == CLASS_TYPE) {
-          bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(method->GetReturn()->GetClassName(), parsed_program->GetUses()) || 
-            SearchProgramEnums(method->GetReturn()->GetClassName());
+          bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(method->GetReturn()->GetName(), parsed_program->GetUses()) || 
+            SearchProgramEnums(method->GetReturn()->GetName());
           if(!is_enum) {
             is_nested = true;
           }
@@ -3058,8 +3058,8 @@ void IntermediateEmitter::EmitMethodCallExpression(MethodCall* method_call, bool
       else if(method_call->GetLibraryMethod()) {
         LibraryMethod* lib_method = method_call->GetLibraryMethod();
         if(lib_method->GetReturn()->GetType() == CLASS_TYPE) {
-          bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(lib_method->GetReturn()->GetClassName(), parsed_program->GetUses()) || 
-            SearchProgramEnums(lib_method->GetReturn()->GetClassName());
+          bool is_enum = parsed_program->GetLinker()->SearchEnumLibraries(lib_method->GetReturn()->GetName(), parsed_program->GetUses()) || 
+            SearchProgramEnums(lib_method->GetReturn()->GetName());
           if(!is_enum) {
             is_nested = true;
           }
@@ -3329,7 +3329,7 @@ void IntermediateEmitter::EmitAppendCharacterStringSegment(CharacterStringSegmen
       
     case frontend::CLASS_TYPE:
       // process wstring instance
-      if(var_entry->GetType()->GetClassName() == L"System.String" || var_entry->GetType()->GetClassName() == L"String") {
+      if(var_entry->GetType()->GetName() == L"System.String" || var_entry->GetType()->GetName() == L"String") {
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 
                                                                                    var_entry->GetId(), mem_context));
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, 
@@ -3806,21 +3806,21 @@ void IntermediateEmitter::EmitCast(Expression* expression)
 #ifdef _DEBUG
     assert(type_of->GetType() == frontend::CLASS_TYPE);
 #endif
-    if(SearchProgramClasses(type_of->GetClassName())) {
+    if(SearchProgramClasses(type_of->GetName())) {
       if(is_lib) {
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_OBJ_TYPE_OF, type_of->GetClassName()));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_OBJ_TYPE_OF, type_of->GetName()));
       }
       else {
-  int id = SearchProgramClasses(type_of->GetClassName())->GetId();
+  int id = SearchProgramClasses(type_of->GetName())->GetId();
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, OBJ_TYPE_OF, id));
       }
     }
     else {
       if(is_lib) {
-  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_OBJ_TYPE_OF, type_of->GetClassName()));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_OBJ_TYPE_OF, type_of->GetName()));
       }
       else {
-  int id = parsed_program->GetLinker()->SearchClassLibraries(type_of->GetClassName(), parsed_program->GetUses())->GetId();
+  int id = parsed_program->GetLinker()->SearchClassLibraries(type_of->GetName(), parsed_program->GetUses())->GetId();
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, OBJ_TYPE_OF, id));  
       }
     }
@@ -4587,8 +4587,8 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
             break;
 
           case frontend::CLASS_TYPE:
-            if(parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetClassName(), parsed_program->GetUses()) || 
-               SearchProgramEnums(entry->GetType()->GetClassName())) {
+            if(parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetName(), parsed_program->GetUses()) || 
+               SearchProgramEnums(entry->GetType()->GetName())) {
               imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
             }
             break;
@@ -4598,7 +4598,7 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
           }
           // enum check
           if(entry->GetType()->GetType() == frontend::CLASS_TYPE && 
-             SearchProgramEnums(entry->GetType()->GetClassName())) {
+             SearchProgramEnums(entry->GetType()->GetName())) {
             imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
           }
         }
@@ -4631,8 +4631,8 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
             break;
 
           case frontend::CLASS_TYPE:
-            if(parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetClassName(), parsed_program->GetUses()) || 
-               SearchProgramEnums(entry->GetType()->GetClassName())) {
+            if(parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetName(), parsed_program->GetUses()) || 
+               SearchProgramEnums(entry->GetType()->GetName())) {
               imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
             }
             break;
@@ -4642,7 +4642,7 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
           }
           // enum check
           if(entry->GetType()->GetType() == frontend::CLASS_TYPE && 
-             parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetClassName(), parsed_program->GetUses())) {
+             parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetName(), parsed_program->GetUses())) {
             imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
           }
         }
@@ -4794,19 +4794,19 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index,
         case frontend::CLASS_TYPE:
           // object array
           if(entry->GetType()->GetDimension() > 0) {
-            if(parsed_program->GetClass(entry->GetType()->GetClassName())) {
+            if(parsed_program->GetClass(entry->GetType()->GetName())) {
 #ifdef _DEBUG
               GetLogger() << L"\t" << index << L": OBJ_ARY_PARM: name=" << entry->GetName() << endl;
 #endif
               declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), OBJ_ARY_PARM));
             } 
-            else if(SearchProgramEnums(entry->GetType()->GetClassName())) {
+            else if(SearchProgramEnums(entry->GetType()->GetName())) {
 #ifdef _DEBUG
               GetLogger() << L"\t" << index << L": INT_ARY_PARM: name=" << entry->GetName() << endl;
 #endif
               declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_ARY_PARM));
             } 
-            else if(parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetClassName(), parsed_program->GetUses())) {
+            else if(parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetName(), parsed_program->GetUses())) {
 #ifdef _DEBUG
               GetLogger() << L"\t" << index << L": INT_ARY_PARM: name=" << entry->GetName() << endl;
 #endif
@@ -4821,19 +4821,19 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index,
           }
           // object
           else {
-            if(SearchProgramClasses(entry->GetType()->GetClassName())) {
+            if(SearchProgramClasses(entry->GetType()->GetName())) {
 #ifdef _DEBUG
               GetLogger() << L"\t" << index << L": OBJ_PARM: name=" << entry->GetName() << endl;
 #endif
               declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), OBJ_PARM));
             } 
-            else if(SearchProgramEnums(entry->GetType()->GetClassName())) {
+            else if(SearchProgramEnums(entry->GetType()->GetName())) {
 #ifdef _DEBUG
               GetLogger() << L"\t" << index << L": INT_PARM: name=" << entry->GetName() << endl;
 #endif
               declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
             } 
-            else if(parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetClassName(), parsed_program->GetUses())) {
+            else if(parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetName(), parsed_program->GetUses())) {
 #ifdef _DEBUG
               GetLogger() << L"\t" << index << L": INT_PARM: name=" << entry->GetName() << endl;
 #endif

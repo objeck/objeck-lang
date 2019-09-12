@@ -2247,7 +2247,7 @@ namespace frontend {
         wstring generic_string = generic_class->GetName();
         generic_string += L'|';
         if(generic_class->HasGenericInterface()) {
-          generic_string += generic_class->GetGenericInterface()->GetClassName();
+          generic_string += generic_class->GetGenericInterface()->GetName();
         }
         generic_strings.push_back(generic_string);
       }

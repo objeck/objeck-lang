@@ -129,6 +129,8 @@ namespace frontend {
     Type* func_rtrn;
     int func_param_count;
     vector<Type*> generic_types;
+    wstring file_name;
+    int line_num;
 
     bool is_resolved;
     void* klass_cache_ptr;
@@ -145,6 +147,7 @@ namespace frontend {
         func_rtrn = t->func_rtrn;
         func_params = t->func_params;
         func_param_count = -1;
+        line_num = t->line_num;
         generic_types = t->generic_types;
         is_resolved = t->is_resolved;
         klass_cache_ptr = t->klass_cache_ptr;
@@ -157,13 +160,28 @@ namespace frontend {
       dimension = 0;
       func_rtrn = nullptr;
       func_param_count = -1;
+      line_num = -1;
 
       is_resolved = false;
       klass_cache_ptr = nullptr;
       lib_klass_cache_ptr = nullptr;
     }
 
-    Type(EntryType t, const wstring &n) {
+    Type(EntryType t, const wstring &n, const wstring& f, int l) {
+      type = t;
+      class_name = n;
+      dimension = 0;
+      func_rtrn = nullptr;
+      func_param_count = -1;
+      file_name = f;
+      line_num = l;
+
+      is_resolved = false;
+      klass_cache_ptr = nullptr;
+      lib_klass_cache_ptr = nullptr;
+    }
+
+    Type(EntryType t, const wstring& n) {
       type = t;
       class_name = n;
       dimension = 0;
@@ -181,6 +199,7 @@ namespace frontend {
       func_params = p;
       func_rtrn = r;
       func_param_count = -1;
+      line_num = -1;
 
       is_resolved = false;
       klass_cache_ptr = nullptr;
@@ -293,7 +312,7 @@ namespace frontend {
       return dimension;
     }
 
-    void SetClassName(const wstring &n) {
+    void SetName(const wstring &n) {
       class_name = n;
 
       is_resolved = false;
@@ -301,8 +320,27 @@ namespace frontend {
       lib_klass_cache_ptr = nullptr;
     }
 
-    const wstring GetClassName() {
+    const wstring GetName() {
       return class_name;
+    }
+
+    inline void ResolveAlias(Type* t) {
+      type = FUNC_TYPE;
+      class_name = L"";
+      func_rtrn = t->func_rtrn;
+      func_params = t->func_params;
+
+      is_resolved = false;
+      klass_cache_ptr = nullptr;
+      lib_klass_cache_ptr = nullptr;
+    }
+
+    const wstring GetFileName() {
+      return file_name;
+    }
+
+    const int GetLineNumber() {
+      return line_num;
     }
   };
 
@@ -346,6 +384,12 @@ namespace frontend {
       types.push_back(tmp);
       return tmp;
     }
+
+    Type* MakeType(EntryType type, const wstring& name, const wstring& file, int line_num) {
+      Type* tmp = new Type(type, name);
+      types.push_back(tmp);
+      return tmp;
+    }
     
     Type* MakeType(vector<Type*>& func_params, Type* rtrn_type) {
       Type* tmp = new Type(func_params, rtrn_type);
@@ -357,6 +401,10 @@ namespace frontend {
       Type* tmp = new Type(type);
       types.push_back(tmp);
       return tmp;
+    }
+
+    vector<Type*>& GetTypes() {
+      return types;
     }
   };
 
