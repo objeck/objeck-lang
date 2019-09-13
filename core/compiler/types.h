@@ -419,7 +419,7 @@ namespace frontend {
    ********************************/
   class TypeParser {
   public:
-    static vector<frontend::Type*> ParseParameters(const wstring param_str);
+    static vector<frontend::Type*> ParseParameters(const wstring& param_str);
     static frontend::Type* ParseType(const wstring& type_name);
     static void ParseFunctionalType(frontend::Type* func_type);
   };

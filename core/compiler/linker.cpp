@@ -691,13 +691,11 @@ void Library::LoadLambdas()
       map<wstring, frontend::Type*> alias_map;
       while(named_type_end != wstring::npos) {
         const wstring named_type = named_types.substr(named_type_start, named_type_end);
-        size_t named_index = str_value.find(L'|');
+        size_t named_index = named_type.find(L'|');
         if(named_index != wstring::npos) {
           const wstring type_name = named_type.substr(0, named_index);
           const wstring type_id = named_type.substr(named_index + 1);
-          frontend::Type* type = frontend::TypeFactory::Instance()->MakeType(frontend::FUNC_TYPE, type_id);
-          frontend::TypeParser::ParseFunctionalType(type);
-          alias_map[type_name] = type;
+          alias_map[type_name] = frontend::TypeParser::ParseType(type_id);;
         }
         // update
         named_type_start = named_type_end + 1;
