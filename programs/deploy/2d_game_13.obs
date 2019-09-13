@@ -4,7 +4,7 @@
 ~#
 
 use System.Concurrency;
-use Collection.Generioc;
+use Collection.Generic;
 use Game.SDL2;
 use Game.Framework;
 
