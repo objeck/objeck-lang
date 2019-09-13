@@ -59,7 +59,7 @@ Type* Type::CharStringType()
  * Routines for parsing library
  * encode strings
  ********************************/
-vector<frontend::Type*> TypeParser::ParseParameters(const wstring param_str)
+vector<frontend::Type*> TypeParser::ParseParameters(const wstring& param_str)
 {
   vector<frontend::Type*> types;
 

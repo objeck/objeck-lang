@@ -1,13 +1,5 @@
 
-class Test {
-	function : Main(args : String[]) ~ Nil {
-		Calc(\Func->Calc : (a, b) => a + b);
-		Calc(\Func->Calc : (a, b) => a * b);
-
-		foo : \Func->Matrix := Int->New[2,2];
-		Calc2(foo);
-	}
-
+class Foo {
 	function : Calc2(foo : \Func->Matrix) ~ Nil {
 		foo[1,1] := 13;
 		foo[1,1]->PrintLine();

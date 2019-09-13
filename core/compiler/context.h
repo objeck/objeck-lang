@@ -345,9 +345,9 @@ class ContextAnalyzer {
   void AddMethodParameter(MethodCall* method_call, SymbolEntry* entry, int depth);
 
   // resolve generic type
-  Type* RelsolveGenericType(Type* generic_type, MethodCall* method_call, Class* klass, LibraryClass* lib_klass, bool is_rtrn);
+  Type* ResolveGenericType(Type* generic_type, MethodCall* method_call, Class* klass, LibraryClass* lib_klass, bool is_rtrn);
 
-  Type* RelsolveGenericType(Type* type, Expression* expression, Class* left_klass, LibraryClass* lib_left_klass);
+  Type* ResolveGenericType(Type* type, Expression* expression, Class* left_klass, LibraryClass* lib_left_klass);
 
   // validates mapping of generic to concrete types
   void ValidateGenericConcreteMapping(const vector<Type*> concrete_types, LibraryClass* lib_klass, ParseNode* node);

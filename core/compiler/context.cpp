@@ -979,7 +979,7 @@ Type* ContextAnalyzer::ResolveAlias(const wstring& name, const wstring& fn, int 
     }
   }
   else {
-    LibraryAlias* lib_alias = linker->SearchAliasLibraries(alias_name, program->GetUses(current_class->GetFileName()));
+    LibraryAlias* lib_alias = linker->SearchAliasLibraries(alias_name, program->GetUses(fn));
     if(lib_alias) {
       alias_type = lib_alias->GetType(type_name);
       if(alias_type) {
@@ -1025,10 +1025,10 @@ Method* ContextAnalyzer::DerivedLambdaFunction(vector<Method*>& alt_mthds)
       Type* alt_mthd_type = alt_mthd_types[0]->GetEntry()->GetType();
       const vector<Type*> func_params = alt_mthd_type->GetFunctionParameters();
       for(size_t i = 0; i < func_params.size(); ++i) {
-        inferred_type_params.push_back(RelsolveGenericType(func_params[i], lambda_inferred_call, alt_mthd->GetClass(), nullptr));
+        inferred_type_params.push_back(ResolveGenericType(func_params[i], lambda_inferred_call, alt_mthd->GetClass(), nullptr));
       }
       // set return
-      Type* inferred_type_rtrn = RelsolveGenericType(alt_mthd_type->GetFunctionReturn(), lambda_inferred_call, alt_mthd->GetClass(), nullptr);
+      Type* inferred_type_rtrn = ResolveGenericType(alt_mthd_type->GetFunctionReturn(), lambda_inferred_call, alt_mthd->GetClass(), nullptr);
 
       Type* inferred_type = TypeFactory::Instance()->MakeType(FUNC_TYPE);
       inferred_type->SetFunctionParameters(inferred_type_params);
@@ -1055,10 +1055,10 @@ LibraryMethod* ContextAnalyzer::DerivedLambdaFunction(vector<LibraryMethod*>& al
       Type* alt_mthd_type = alt_mthd_types[0];
       const vector<Type*> func_params = alt_mthd_type->GetFunctionParameters();
       for(size_t i = 0; i < func_params.size(); ++i) {
-        inferred_type_params.push_back(RelsolveGenericType(func_params[i], lambda_inferred_call, NULL, alt_mthd->GetLibraryClass()));
+        inferred_type_params.push_back(ResolveGenericType(func_params[i], lambda_inferred_call, NULL, alt_mthd->GetLibraryClass()));
       }
       // set return
-      Type* inferred_type_rtrn = RelsolveGenericType(alt_mthd_type->GetFunctionReturn(), lambda_inferred_call, NULL, alt_mthd->GetLibraryClass());
+      Type* inferred_type_rtrn = ResolveGenericType(alt_mthd_type->GetFunctionReturn(), lambda_inferred_call, NULL, alt_mthd->GetLibraryClass());
       
       Type* inferred_type = TypeFactory::Instance()->MakeType(FUNC_TYPE);
       inferred_type->SetFunctionParameters(inferred_type_params);
@@ -2725,7 +2725,7 @@ Method* ContextAnalyzer::ResolveMethodCall(Class* klass, MethodCall* method_call
         // cannot be set to method, need to preserve test against other selections
         Expression* expr_param = expr_params[j];
         Type* expr_type = expr_param->GetEvalType();
-        Type* method_type = RelsolveGenericType(method_parms[j]->GetEntry()->GetType(), method_call, klass, nullptr, false);
+        Type* method_type = ResolveGenericType(method_parms[j]->GetEntry()->GetType(), method_call, klass, nullptr, false);
 
         Expression* boxed_param = BoxExpression(method_type, expr_param, depth);
         if(boxed_param) {
@@ -2746,7 +2746,7 @@ Method* ContextAnalyzer::ResolveMethodCall(Class* klass, MethodCall* method_call
 
       MethodCallSelection* match = new MethodCallSelection(candidates[i], boxed_resolved_params);
       for(size_t j = 0; j < boxed_resolved_params.size(); ++j) {
-        Type* method_type = RelsolveGenericType(method_parms[j]->GetEntry()->GetType(), method_call, klass, nullptr, false);
+        Type* method_type = ResolveGenericType(method_parms[j]->GetEntry()->GetType(), method_call, klass, nullptr, false);
         // add parameter match
         const int compare = MatchCallingParameter(boxed_resolved_params[j], method_type, klass, nullptr, depth);
         match->AddParameterMatch(compare);
@@ -2769,7 +2769,7 @@ Method* ContextAnalyzer::ResolveMethodCall(Class* klass, MethodCall* method_call
         expression = expression->GetMethodCall();
       }
       // erase/resolve type
-      Type* left = RelsolveGenericType(method_parms[j]->GetEntry()->GetType(), method_call, klass, nullptr, false);
+      Type* left = ResolveGenericType(method_parms[j]->GetEntry()->GetType(), method_call, klass, nullptr, false);
       AnalyzeRightCast(left, expression, IsScalar(expression), depth + 1);
     }
   }
@@ -2869,7 +2869,7 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
           ProcessError(static_cast<Expression*>(method_call), L"Invalid operation with 'Nil' value");
         }
         // check generic parameters for call
-        Type* left = RelsolveGenericType(mthd_params[i]->GetEntry()->GetType(), method_call, klass, nullptr, false);
+        Type* left = ResolveGenericType(mthd_params[i]->GetEntry()->GetType(), method_call, klass, nullptr, false);
         AnalyzeRightCast(left, expression->GetEvalType(), expression, IsScalar(expression), depth + 1);
       }
     }
@@ -2937,7 +2937,7 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
     // resolve generic to concrete, if needed
     Type* eval_type = method_call->GetEvalType();
     if(klass->HasGenerics()) {
-      eval_type = RelsolveGenericType(eval_type, method_call, klass, nullptr, true);
+      eval_type = ResolveGenericType(eval_type, method_call, klass, nullptr, true);
       method_call->SetEvalType(eval_type, false);
     }
 
@@ -2948,7 +2948,7 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
 
     // set subsequent call type
     if(method_call->GetMethodCall()) {
-      Type* expr_type = RelsolveGenericType(method->GetReturn(), method_call, klass, nullptr, true);
+      Type* expr_type = ResolveGenericType(method->GetReturn(), method_call, klass, nullptr, true);
       method_call->GetMethodCall()->SetEvalType(expr_type, false);
     }
 
@@ -3000,7 +3000,7 @@ LibraryMethod* ContextAnalyzer::ResolveMethodCall(LibraryClass* klass, MethodCal
       for(size_t j = 0; j < expr_params.size(); ++j) {
         Expression* expr_param = expr_params[j];
         Type* expr_type = expr_param->GetEvalType();
-        Type* method_type = RelsolveGenericType(method_parms[j], method_call, nullptr, klass, false);
+        Type* method_type = ResolveGenericType(method_parms[j], method_call, nullptr, klass, false);
 
         Expression* boxed_param = BoxExpression(method_type, expr_param, depth);
         if(boxed_param) {
@@ -3021,7 +3021,7 @@ LibraryMethod* ContextAnalyzer::ResolveMethodCall(LibraryClass* klass, MethodCal
 
       LibraryMethodCallSelection* match = new LibraryMethodCallSelection(candidates[i], boxed_resolved_params);
       for(size_t j = 0; j < boxed_resolved_params.size(); ++j) {
-        Type* method_type = RelsolveGenericType(method_parms[j], method_call, nullptr, klass, false);
+        Type* method_type = ResolveGenericType(method_parms[j], method_call, nullptr, klass, false);
         const int compare = MatchCallingParameter(boxed_resolved_params[j], method_type, nullptr, klass, depth);
         match->AddParameterMatch(compare);
       }
@@ -3047,7 +3047,7 @@ LibraryMethod* ContextAnalyzer::ResolveMethodCall(LibraryClass* klass, MethodCal
         expression = expression->GetMethodCall();
       }
       // map generic to concrete type, if needed
-      Type* left = RelsolveGenericType(method_parms[j], method_call, nullptr, klass, false);
+      Type* left = ResolveGenericType(method_parms[j], method_call, nullptr, klass, false);
       AnalyzeRightCast(left, expression, IsScalar(expression), depth + 1);
     }
   }
@@ -3187,7 +3187,7 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
     // resolve generic to concrete, if needed
     Type* eval_type = method_call->GetEvalType();
     if(lib_method->GetLibraryClass()->HasGenerics()) {
-      eval_type = RelsolveGenericType(eval_type, method_call, nullptr, lib_klass, true);
+      eval_type = ResolveGenericType(eval_type, method_call, nullptr, lib_klass, true);
       method_call->SetEvalType(eval_type, false);
     }
 
@@ -5805,7 +5805,7 @@ void ContextAnalyzer::CheckGenericEqualTypes(Type* left, Type* right, Expression
             left_generic_type = left_generic_klass->GetGenericInterface();
           }
           else {
-            left_generic_type = RelsolveGenericType(left_generic_type, expression, left_klass, lib_left_klass);
+            left_generic_type = ResolveGenericType(left_generic_type, expression, left_klass, lib_left_klass);
           }
         }
         
@@ -5828,7 +5828,7 @@ void ContextAnalyzer::CheckGenericEqualTypes(Type* left, Type* right, Expression
             right_generic_type = right_generic_klass->GetGenericInterface();
           }
           else {
-            right_generic_type = RelsolveGenericType(right_generic_type, expression, right_klass, lib_right_klass);
+            right_generic_type = ResolveGenericType(right_generic_type, expression, right_klass, lib_right_klass);
           }
         }
 
@@ -6892,17 +6892,17 @@ bool ContextAnalyzer::ClassEquals(const wstring &left_name, Class* right_klass, 
   return false;
 }
 
-Type* ContextAnalyzer::RelsolveGenericType(Type* candidate_type, MethodCall* method_call, Class* klass, LibraryClass* lib_klass, bool is_rtrn)
+Type* ContextAnalyzer::ResolveGenericType(Type* candidate_type, MethodCall* method_call, Class* klass, LibraryClass* lib_klass, bool is_rtrn)
 {
   const bool has_generics = (klass && klass->HasGenerics()) || (lib_klass && lib_klass->HasGenerics());
   if(has_generics) {
     if(candidate_type->GetType() == FUNC_TYPE) {
       if(klass) {
-        Type* concrete_rtrn = RelsolveGenericType(candidate_type->GetFunctionReturn(), method_call, klass, lib_klass, false);
+        Type* concrete_rtrn = ResolveGenericType(candidate_type->GetFunctionReturn(), method_call, klass, lib_klass, false);
         vector<Type*> concrete_params;
         const vector<Type*> type_params = candidate_type->GetFunctionParameters();
         for(size_t i = 0; i < type_params.size(); ++i) {
-          concrete_params.push_back(RelsolveGenericType(type_params[i], method_call, klass, lib_klass, false));
+          concrete_params.push_back(ResolveGenericType(type_params[i], method_call, klass, lib_klass, false));
         }
 
         return TypeFactory::Instance()->MakeType(concrete_params, concrete_rtrn);
@@ -6914,7 +6914,7 @@ Type* ContextAnalyzer::RelsolveGenericType(Type* candidate_type, MethodCall* met
         const vector<LibraryClass*> generic_classes = lib_klass->GetGenericClasses();
         for(size_t i = 0; i < generic_classes.size(); ++i) {
           const wstring find_name = generic_classes[i]->GetName();
-          Type* to_type = RelsolveGenericType(TypeFactory::Instance()->MakeType(CLASS_TYPE, find_name), method_call, klass, lib_klass, false);
+          Type* to_type = ResolveGenericType(TypeFactory::Instance()->MakeType(CLASS_TYPE, find_name), method_call, klass, lib_klass, false);
           const wstring from_name = L"o." + generic_classes[i]->GetName();
           const wstring to_name = L"o." + to_type->GetName();
           ReplaceAllSubstrings(func_name, from_name, to_name);
@@ -7016,7 +7016,7 @@ Type* ContextAnalyzer::RelsolveGenericType(Type* candidate_type, MethodCall* met
   return candidate_type;
 }
 
-Type* ContextAnalyzer::RelsolveGenericType(Type* type, Expression* expression, Class* left_klass, LibraryClass* lib_left_klass)
+Type* ContextAnalyzer::ResolveGenericType(Type* type, Expression* expression, Class* left_klass, LibraryClass* lib_left_klass)
 {
   int concrete_index = -1;
   const wstring left_type_name = type->GetName();
