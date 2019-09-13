@@ -4213,10 +4213,10 @@ Select* Parser::ParseSelect(int depth)
       if(Match(TOKEN_LABEL_ID)) {
         NextToken();
         labels->AddExpression(ParseSimpleExpression(depth + 1));
-        if(!Match(TOKEN_COLON)) {
-          ProcessError(L"Expected ':'", TOKEN_COLON);
+
+        if(Match(TOKEN_COLON)) {
+          NextToken();
         }
-        NextToken();
       }
       else {
         if(is_other_label) {
@@ -4224,10 +4224,10 @@ Select* Parser::ParseSelect(int depth)
         }
         is_other_label = true;
         NextToken();
-        if(!Match(TOKEN_COLON)) {
-          ProcessError(L"Expected ':'", TOKEN_COLON);
+        
+        if(Match(TOKEN_COLON)) {
+          NextToken();
         }
-        NextToken();
       }
     }
 

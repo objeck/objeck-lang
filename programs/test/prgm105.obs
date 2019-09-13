@@ -3,6 +3,17 @@ class Foo {
 	function : Calc2(foo : \Func->Matrix) ~ Nil {
 		foo[1,1] := 13;
 		foo[1,1]->PrintLine();
+
+		a := 10;
+		select(a) {
+			label 9 {
+				"nine"->PrintLine();
+			}
+
+			label 10 {
+				"nine"->PrintLine();
+			}			
+		};
 	}
 
 	function : Calc(calc : \Func->Calc) ~ Nil {
