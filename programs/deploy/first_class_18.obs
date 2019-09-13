@@ -1,6 +1,6 @@
 use Collection.Generic;
 
-lambdas Func {
+alias Func {
 	Double : (FloatHolder) ~ FloatHolder
 }
 
