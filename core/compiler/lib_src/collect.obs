@@ -3526,14 +3526,14 @@ bundle Collection {
 		Gets a collection of values
 		@return vector of values
 		~#
-		method : public : GetValues() ~ CompareVector {
-			values := CompareVector->New();
+		method : public : GetValues() ~ Vector {
+			values := Vector->New();
 
 			keys := @map->GetKeys();
 			keys->Sort();
 			each(i : keys) {
 				key := keys->Get(i)->As(Compare);
-				local_values := @map->Find(key)->As(CompareVector);
+				local_values := @map->Find(key)->As(Vector);
 				each(j : local_values) {
 					values->AddBack(local_values->Get(j));
 				};
@@ -3578,8 +3578,10 @@ bundle Collection {
 			each(i : keys) {
 				key := keys->Get(i);
 				if(f(key)) {
-					value := Find(key);
-					filtered->Insert(key, value);
+					values := Find(key)->As(Vector);
+					each(j : values) {
+						filtered->Insert(key, values->Get(j));
+					};
 				};
 			};
 			

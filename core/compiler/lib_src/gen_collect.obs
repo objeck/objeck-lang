@@ -2132,4 +2132,140 @@ bundle Collection.Generic {
 			return @map->Size();
 		}
 	}
+
+	#~
+	Binary tree that holds multiple values with the same key
+	~#
+	class MultiMap<K : Compare, V> {
+		@map : Map<K, Vector<V> >;
+
+		#~
+		Default constructor 
+		~#
+		New() {
+			@map := Map->New()<K, Vector<V> >;
+		}
+
+		#~
+		Inserts a value into the map
+		@param key key
+		@param value value
+		~#
+		method : public : Insert(key : K, value : V) ~ Nil {
+			values := Find(key);
+			if(values = Nil) {
+				values := Vector->New()<V>;
+				@map->Insert(key, values);
+			};
+
+			values->AddBack(value);
+		}
+
+		#~
+		Checks for a value in a map
+		@param key search key
+		@return true if found, false otherwise
+		~#	
+		method : public : Find(key : K) ~ Vector<V> {
+			return @map->Find(key);
+		}
+
+		#~
+		Get a collection of keys
+		@return vector of keys
+		~#
+		method : public : GetKeys() ~ Vector<K> {
+			return @map->GetKeys();
+		}
+
+		#~
+		Gets a collection of values
+		@return vector of values
+		~#
+		method : public : GetValues() ~ Vector<V> {
+			values := Vector->New()<V>;
+
+			keys := @map->GetKeys();
+#			keys->Sort();
+			each(i : keys) {
+				key := keys->Get(i);
+				local_values := @map->Find(key)<V>;
+				each(j : local_values) {
+					values->AddBack(local_values->Get(j));
+				};
+			};
+
+			return values;
+		}
+
+		#~
+		Checks to see if the queue is empty
+		@return true if empty, false otherwise
+		~#
+		method : public : IsEmpty() ~ Bool {
+			return @map->Size() = 0;
+		}
+
+		#~
+		Clears the set
+		~#
+		method : public : Empty() ~ Nil {
+			@map->Empty();
+		}
+
+		#~
+		Checks for a value in a map
+		@param key search key
+		@return true if found, false otherwise
+		~#
+		method : public : Has(key : K) ~ Bool {
+			return Find(key) <> Nil;
+		}
+
+		#~
+		Uses the given function to filter out values
+		@param f function to use a filter. If the function evaluates to true the value is added to the collection.
+		@return filter vector
+		~#
+		method : public : Filter(f : (K) ~ Bool) ~ MultiMap<K, V> {
+			filtered := MultiMap->New()<K, V>;
+			
+			keys := GetKeys();
+			each(i : keys) {
+				key := keys->Get(i);
+				if(f(key)) {
+					values := Find(key);
+					each(j : values) {
+						filtered->Insert(key, values->Get(j));
+					};
+				};
+			};
+			
+			return filtered;
+		}
+
+		#~
+		Removes a set of values from the map
+		@param key key for values to remove
+		~#
+		method : public : Remove(key : K) ~ Bool {
+			return @map->Remove(key);
+		}
+		
+		#~
+		Size of unique keys
+		@return size of unique keys
+		~#
+		method : public : Size() ~ Int {
+			return @map->Size();
+		}
+
+		#~
+		Size of values
+		@return size of values
+		~#
+		method : public : TotalSize() ~ Int {
+			return @map->GetValues()->Size();
+		}
+	}
 }
