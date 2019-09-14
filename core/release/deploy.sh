@@ -91,7 +91,7 @@ cp lib/fonts/*.ttf ../../release/deploy/lib/sdl/fonts
 # copy docs
 cd ../../..
 cp -R docs/syntax core/release/deploy/doc/syntax
-cp docs/readme.htm core/release/deploy
+cp docs/readme.html core/release/deploy
 cp LICENSE core/release/deploy
 unzip docs/api.zip -d core/release/deploy/doc
 

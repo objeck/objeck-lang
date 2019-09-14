@@ -62,7 +62,7 @@ REM build and update docs
 mkdir deploy64\doc 
 mkdir deploy64\doc\syntax
 xcopy /e ..\..\docs\syntax\* deploy64\doc\syntax
-copy ..\..\docs\readme.htm deploy64
+copy ..\..\docs\readme.html deploy64
 copy ..\..\LICENSE deploy64
 call code_doc64.cmd
 
