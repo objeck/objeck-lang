@@ -1,24 +1,17 @@
-use Collection;
+use Collection.Generic;
 
-bundle Default {
-	class Test {
-		function : Main(args : String[]) ~ Nil {
-			v0 := IntVector->New();
-			v0->AddBack(100);
-			v0->AddBack(101);
-			v0->AddBack(102);
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		map := MultiMap->New()<IntHolder, String>;
+		map->Insert(13, "Who");
+		map->Insert(13, "How");
+		map->Insert(7, "Stop");
+		map->Insert(7, "Look");
+		map->Insert(7, "Listen");
 
-			v1 := IntVector->New();
-			v1->AddBack(103);
-			v1->AddBack(104);
-			v1->AddBack(105);
+		map->Size()->PrintLine();
 
-			v0->AddBack(v1);
-			v0->AddBack(106);
-			
-			each(i : v0) {
-				v0->Get(i)->PrintLine();
-			};
-		}
+		values := map->Find(7);
+		values->Size()->PrintLine();
 	}
 }
