@@ -3580,7 +3580,7 @@ bundle Collection {
 				if(f(key)) {
 					values := Find(key)->As(Vector);
 					each(j : values) {
-						filtered->Insert(key, values->Get(j));
+						filtered->Insert(key, values->Get(j`));
 					};
 				};
 			};
