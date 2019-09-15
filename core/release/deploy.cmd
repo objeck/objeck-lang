@@ -63,7 +63,7 @@ REM build and update docs
 mkdir deploy\doc 
 mkdir deploy\doc\syntax
 xcopy /e ..\..\docs\syntax\* deploy\doc\syntax
-copy ..\..\docs\readme.htm deploy
+copy ..\..\docs\readme.html deploy
 copy ..\..\LICENSE deploy
 call code_doc.cmd
 
