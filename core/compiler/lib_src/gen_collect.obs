@@ -2245,6 +2245,40 @@ bundle Collection.Generic {
 		}
 
 		#~
+		Creates a map from a vector of keys and values
+		@param keys keys
+		@param values values
+		@return map of key/value pairs
+		~#
+		function : Zip(keys : CompareVector<K>, values : Vector<V>) ~ MultiMap<K,V> {			
+			if(keys->Size() = values->Size()) {
+				zip := MultiMap->New()<K,V>;
+				each(i : keys) {
+					zip->Insert(keys->Get(i), values->Get(i));
+				};
+				return zip;
+			};
+
+			return Nil;
+		}
+
+		#~
+		Function called for each element
+		@param f function called
+		~#
+		method : public : Each(f : (K, V) ~ Nil) ~ MultiMap<K, V> {
+			keys := GetKeys();
+			each(i : keys) {
+				key := keys->Get(i);
+				values := Find(key);
+				each(j : values) {
+					f(key, values->Get(j));
+				};
+			};
+			return @self;
+		}
+
+		#~
 		Removes a set of values from the map
 		@param key key for values to remove
 		~#

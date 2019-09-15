@@ -13,5 +13,7 @@ class Test {
 
 		values := map->Find(7);
 		values->Size()->PrintLine();
+
+		map->Each(\^(k, v) => "key={$k}, value={$v}"->PrintLine());
 	}
 }
