@@ -187,6 +187,7 @@ namespace frontend {
       dimension = 0;
       func_rtrn = nullptr;
       func_param_count = -1;
+      line_num = -1;
 
       is_resolved = false;
       klass_cache_ptr = nullptr;
