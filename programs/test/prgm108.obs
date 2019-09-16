@@ -1,18 +1,13 @@
-bundle Default {
-	class cl1 {
-      r1:Int;
-      r2:Int;
+use Collection.Generic;
 
-		New() {
-		}
-   }
+class Test {
+	@stk : Stack<FloatHolder>;
 
-	class Test {
-		function : Main(args : String[]) ~ Nil {
-			ar1 := cl1->New[1000]; 
-			each(i : ar1) {
-				ar1[i] := cl1->New();
-			};
-		}
+	function : Main(args : String[]) ~ Nil {
+		
+	}
+
+	function : Parse(c : Char) ~ Nil {
+		@stk->Push(13);
 	}
 }

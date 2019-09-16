@@ -2011,6 +2011,18 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth
   // method/function
   //
   else {
+    // static check
+    const wstring variable_name = method_call->GetVariableName();
+    SymbolEntry* entry = GetEntry(method_call, variable_name, depth);
+    if(entry) {
+      if(InvalidStatic(entry)) {
+        ProcessError(static_cast<Expression*>(method_call), L"Cannot reference an instance variable from this context");
+      }
+    }
+    else if(method_call->GetVariable()) {
+      AnalyzeVariable(method_call->GetVariable(), depth + 1);
+    }
+
     wstring encoding;
     // local call
     Class* klass = AnalyzeProgramMethodCall(method_call, encoding, depth);
@@ -2035,8 +2047,6 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth
       return;
     }
 
-    const wstring variable_name = method_call->GetVariableName();
-    SymbolEntry* entry = GetEntry(method_call, variable_name, depth);
     if(entry) {
       if(method_call->GetVariable()) {
         bool is_enum_call = false;
