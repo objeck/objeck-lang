@@ -5,7 +5,7 @@ enum Oper {
 	SUB
 }
 
-lambdas Funcs {
+alias Funcs {
 	Apply : (Int) ~ Int,
 	Oper : (Oper, Int, Int) ~ Int,
 	Double : (FloatHolder) ~ FloatHolder
