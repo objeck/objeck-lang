@@ -1,13 +1,10 @@
-use Collection.Generic;
-
 class Test {
-	@stk : Stack<FloatHolder>;
-
 	function : Main(args : String[]) ~ Nil {
-		
+		Foo()->PrintLine();
 	}
 
-	function : Parse(c : Char) ~ Nil {
-		@stk->Push(13);
+	function : Foo() ~ Int {
+		h := IntHolder->New(13);
+		return h;
 	}
 }
