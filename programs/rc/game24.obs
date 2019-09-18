@@ -18,10 +18,15 @@ class RPNParser {
 		parser := RPNParser->New();
 		if(parser->Parse(System.IO.Console->ReadString(), digits)) {
 			result := parser->GetResult();
-result->PrintLine();
+			if(result = 24) {
+				"Good job!"->PrintLine();
+			}
+			else {
+				"{$result}, Try again."->PrintLine();
+			};
 		}
 		else {
-			"Parse error or invalid sequence"->PrintLine();
+			"Invalid sequence"->PrintLine();
 		};
 	}
 
@@ -34,7 +39,6 @@ result->PrintLine();
 		if(@stk->Size() < 2) { "Improperly written expression"->ErrorLine(); Runtime->Exit(1); };
 		b := @stk->Pop();
 		a := @stk->Pop();
-"{$a}, {$b}"->PrintLine();
 		@stk->Push(f(a, b));
 	}
 
@@ -54,14 +58,7 @@ result->PrintLine();
 			Op(\Func->Calc : (a, b) => a * b);
 	    }
 	    else if(c = '/') {
-			Op(\Func->Calc : (a, b) => { 
-				if(b <> 0) {
-					return a / b;
-				}
-				else {
-					return 0;
-				};
-	    	});
+			Op(\Func->Calc : (a, b) => { if(b <> 0) { return a / b;	} else { return 0; };});
 		};
 	}
 
@@ -81,20 +78,17 @@ result->PrintLine();
 		@digits->Rewind();		
 		while(@digits->More()) {			
 			left := @digits->Get()->Get();
-
 			digits->Rewind();
 			found := false;
 			while(digits->More() & found = false) {
 				right := digits->Get()->Get();
-				if(left = right) {
-					digits->Remove();
-					found := true;
+				if(left = right) { 
+					digits->Remove(); found := true;	
 				}
-				else {
-					digits->Next();
+				else { 
+					digits->Next(); 
 				};
 			};
-
 			@digits->Next();
 		};
 
