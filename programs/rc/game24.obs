@@ -1,38 +1,48 @@
 use Collection.Generic;
 use System.Matrix;
 
-class Game24 {
+class RPNParser {
 	@stk : Stack<IntHolder>;
-	@digits : MultiMap<IntHolder, IntHolder>;
+	@digits : List<IntHolder>;
 
 	function : Main(args : String[]) ~ Nil {
-		digits := MultiMap->New()<IntHolder, IntHolder>;
+		digits := List->New()<IntHolder>;
 		"Make 24 with the digits: "->Print();
 		for(i := 0; i < 4; i += 1;) {
 			n : Int := Int->Random(1, 9);
     		" {$n}"->Print();
-    		digits->Insert(n, n);
+    		digits->AddBack(n);
 		};
 		'\n'->Print();
+
+		parser := RPNParser->New();
+		if(parser->Parse(System.IO.Console->ReadString(), digits)) {
+			result := parser->GetResult();
+result->PrintLine();
+		}
+		else {
+			"Parse error or invalid sequence"->PrintLine();
+		};
 	}
-	
+
 	New() {
 		@stk := Stack->New()<IntHolder>;
-		@digits := MultiMap->New()<IntHolder, IntHolder>;
+		@digits := List->New()<IntHolder>;
 	}
 
 	method : Op(f : \Func->Calc) ~ Nil {
 		if(@stk->Size() < 2) { "Improperly written expression"->ErrorLine(); Runtime->Exit(1); };
 		b := @stk->Pop();
 		a := @stk->Pop();
+"{$a}, {$b}"->PrintLine();
 		@stk->Push(f(a, b));
 	}
 
 	method : Parse(c : Char) ~ Nil {
 	    if(c >= '0' & c <= '9') {
-	    	value := c - '0';
+	    	value : Int := c - '0';
 			@stk->Push(value);
-			@digits->Insert(value, value);
+			@digits->AddBack(value);
 	    }
 	    else if(c = '+') {
 			Op(\Func->Calc : (a, b) => a + b);
@@ -44,14 +54,51 @@ class Game24 {
 			Op(\Func->Calc : (a, b) => a * b);
 	    }
 	    else if(c = '/') {
-			Op(\Func->Calc : (a, b) => a / b);
-	    };
+			Op(\Func->Calc : (a, b) => { 
+				if(b <> 0) {
+					return a / b;
+				}
+				else {
+					return 0;
+				};
+	    	});
+		};
 	}
 
-	method : Parse(s : String) ~ Nil {
+	method : GetResult() ~ Int {
+		if(@stk->Size() = 1) {
+			return @stk->Top()->Get();
+		};
+
+		return 0;
+	}
+
+	method : Parse(s : String, digits : List<IntHolder>) ~ Bool {
 		each(i : s) {
 			Parse(s->Get(i));
 		};
+
+		@digits->Rewind();		
+		while(@digits->More()) {			
+			left := @digits->Get()->Get();
+
+			digits->Rewind();
+			found := false;
+			while(digits->More() & found = false) {
+				right := digits->Get()->Get();
+				if(left = right) {
+					digits->Remove();
+					found := true;
+				}
+				else {
+					digits->Next();
+				};
+			};
+
+			@digits->Next();
+		};
+
+		return digits->IsEmpty();
 	}
 }
 
