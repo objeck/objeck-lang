@@ -3783,7 +3783,11 @@ void ContextAnalyzer::AnalyzeReturn(Return* rtrn, const int depth)
       }
     }
     else {
-      AnalyzeRightCast(mthd_type, expression, (IsScalar(expression) && mthd_type->GetDimension() == 0), depth + 1);
+      Expression* box_expression = AnalyzeRightCast(mthd_type, expression, (IsScalar(expression) && mthd_type->GetDimension() == 0), depth + 1);
+      if(box_expression) {
+        AnalyzeExpression(box_expression, depth + 1);
+        rtrn->SetExpression(box_expression);
+      }
     }
 
     ValidateConcrete(expression->GetEvalType(), mthd_type, expression, depth);
