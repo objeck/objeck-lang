@@ -3150,7 +3150,7 @@ bundle System {
 		@return cloned the object instance
 		~#
 		method : public : Clone() ~ System.Compare {
-			return Strng->New(@string);
+			return String->New(@string);
 		}
 
 		#~
@@ -3520,7 +3520,7 @@ bundle System.Time {
 		@return cloned the object instance
 		~#
 		method : public : Clone() ~ System.Compare {
-			return System.Time.Date->New(@day, @month, @year, @hours, @mins, @secs, @gmt);
+			return System.Time.Date->New(@day, @month, @year, @hours, @mins, @secs, @is_gmt);
 		}
 
 		#~

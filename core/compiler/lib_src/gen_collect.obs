@@ -165,6 +165,10 @@ bundle Collection.Generic {
 			return @key->Compare(rhs);
 		}
 
+		method : public : Clone() ~ Compare {
+      return HashPair->New(@key, @value);
+    }
+
 		method : public : HashID() ~ Int {
 			return @key->HashID();
 		}
