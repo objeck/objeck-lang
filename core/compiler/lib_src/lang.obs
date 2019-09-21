@@ -1250,6 +1250,14 @@ bundle System {
 		}
 
 		#~
+		Clones the object instance
+		@return cloned the object instance
+		~#
+		method : public : Clone() ~ System.Compare {
+			return BoolHolder->New(@value);
+		}
+
+		#~
 		Returns a unique hash ID for a boolean
 		@return hash ID
 		~#
@@ -1332,6 +1340,14 @@ bundle System {
 		}
 
 		#~
+		Clones the object instance
+		@return cloned the object instance
+		~#
+		method : public : Clone() ~ System.Compare {
+			return ByteHolder->New(@value);
+		}
+
+		#~
 		Returns a unique hash ID for a byte
 		@return hash ID
 		~#
@@ -1411,6 +1427,14 @@ bundle System {
 			};
 			
 			return 1;
+		}
+
+		#~
+		Clones the object instance
+		@return cloned the object instance
+		~#
+		method : public : Clone() ~ System.Compare {
+			return CharHolder->New(@value);
 		}
 
 		#~
@@ -1542,6 +1566,14 @@ bundle System {
 		}
 
 		#~
+		Clones the object instance
+		@return cloned the object instance
+		~#
+		method : public : Clone() ~ System.Compare {
+			return IntHolder->New(@value);
+		}
+
+		#~
 		Returns a unique hash ID for a integer
 		@return hash ID
 		~#
@@ -1653,6 +1685,14 @@ bundle System {
 			};
 			
 			return 1;
+		}
+
+		#~
+		Clones the object instance
+		@return cloned the object instance
+		~#
+		method : public : Clone() ~ System.Compare {
+			return FloatHolder->New(@value);
 		}
 		
 		#~
@@ -2021,6 +2061,12 @@ bundle System {
 		@return hash ID
 		~#
 		method : virtual : public : HashID() ~ Int;
+
+		#~
+		Clones the object instance
+		@return cloned the object instance
+		~#
+		method : virtual : public : Clone() ~ System.Compare;
 	}
 
 	#~
@@ -2048,6 +2094,14 @@ bundle System {
 			};
 
 			return -1;
+		}
+
+		#~
+		Clones the object instance
+		@return cloned the object instance
+		~#
+		method : public : Clone() ~ System.Compare {
+			return BasicCompare->New();
 		}
 
 		#~
@@ -3092,6 +3146,14 @@ bundle System {
 		}
 
 		#~
+		Clones the object instance
+		@return cloned the object instance
+		~#
+		method : public : Clone() ~ System.Compare {
+			return Strng->New(@string);
+		}
+
+		#~
 		Print a string
 		~#
 		method : public : native : Print() ~ Nil {
@@ -3451,6 +3513,14 @@ bundle System.Time {
 			};
 			
 			return 0;
+		}
+
+		#~
+		Clones the object instance
+		@return cloned the object instance
+		~#
+		method : public : Clone() ~ System.Compare {
+			return System.Time.Date->New(@day, @month, @year, @hours, @mins, @secs, @gmt);
 		}
 
 		#~
