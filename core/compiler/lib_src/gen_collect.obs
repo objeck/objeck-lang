@@ -166,8 +166,8 @@ bundle Collection.Generic {
 		}
 
 		method : public : Clone() ~ Compare {
-      return HashPair->New(@key, @value);
-    }
+			return HashPair->New(@key, @value)<V>;
+		}
 
 		method : public : HashID() ~ Int {
 			return @key->HashID();
