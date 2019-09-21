@@ -4217,6 +4217,10 @@ bundle Collection {
 		method : public : HashID() ~ Int {
 			return @key->HashID();
 		}
+
+		method : public : Clone() ~ Compare {
+			return HashPair->New(@key, @value);
+		} 
 		
 		method : public : GetKey() ~ Compare {
 			return @key;
