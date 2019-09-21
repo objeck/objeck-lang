@@ -1014,7 +1014,7 @@ Type* ContextAnalyzer::ResolveAlias(const wstring& name, const wstring& fn, int 
 
 Method* ContextAnalyzer::DerivedLambdaFunction(vector<Method*>& alt_mthds)
 {
-  if(lambda_inferred.first && lambda_inferred.second && lambda_inferred.second->GetEntry() && alt_mthds.size() == 1) {
+  if(lambda_inferred.first && lambda_inferred.second && alt_mthds.size() == 1) {
     MethodCall* lambda_inferred_call = lambda_inferred.second;
     Method* alt_mthd = alt_mthds[0];
     vector<Declaration*> alt_mthd_types = alt_mthd->GetDeclarations()->GetDeclarations();
@@ -1045,7 +1045,7 @@ Method* ContextAnalyzer::DerivedLambdaFunction(vector<Method*>& alt_mthds)
 
 LibraryMethod* ContextAnalyzer::DerivedLambdaFunction(vector<LibraryMethod*>& alt_mthds)
 {
-  if(lambda_inferred.first && lambda_inferred.second && lambda_inferred.second->GetEntry() && alt_mthds.size() == 1) {
+  if(lambda_inferred.first && lambda_inferred.second && alt_mthds.size() == 1) {
     MethodCall* lambda_inferred_call = lambda_inferred.second;
     LibraryMethod* alt_mthd = alt_mthds[0];
     vector<frontend::Type*> alt_mthd_types = alt_mthd->GetDeclarationTypes();
@@ -1200,8 +1200,7 @@ bool ContextAnalyzer::HasInferredLambdaTypes(const wstring lambda_name)
 void ContextAnalyzer::CheckLambdaInferredTypes(MethodCall* method_call, int depth)
 {
   ExpressionList* call_params = method_call->GetCallingParameters();
-  if(call_params->GetExpressions().size() == 1 && call_params->GetExpressions().at(0)->GetExpressionType() == LAMBDA_EXPR &&
-     method_call->GetEntry()) {
+  if(call_params->GetExpressions().size() == 1 && call_params->GetExpressions().at(0)->GetExpressionType() == LAMBDA_EXPR) {
     lambda_inferred.second = method_call;
   }
   else {
