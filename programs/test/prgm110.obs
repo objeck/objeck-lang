@@ -2,7 +2,6 @@ use Query.RegEx;
 
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		regex := RegEx->New(".*(ab)+c");
-		regex->Find("xxxabababc")->Each(\^(v) => v->PrintLine());
+		RegEx->New(".*(ab)+c")->Find("xxxabababc")->Each(\^(v) => v->PrintLine());
 	}
 }
