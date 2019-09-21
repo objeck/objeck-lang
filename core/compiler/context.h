@@ -358,7 +358,7 @@ class ContextAnalyzer {
   void ValidateGenericBacking(Type* type, const wstring backing_inf_name, Expression * expression);
 
   // validate concrete type
-  void ValidateConcrete(Type* type, Type* concrete_type, ParseNode* node, const int depth);
+  void ValidateConcrete(Type* cls_type, Type* concrete_type, ParseNode* node, const int depth);
 
   // finds the first class match; note multiple matches may exist
   Class* SearchProgramClasses(const wstring &klass_name);

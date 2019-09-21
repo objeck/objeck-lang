@@ -3808,34 +3808,47 @@ void ContextAnalyzer::AnalyzeReturn(Return* rtrn, const int depth)
   }
 }
 
-void ContextAnalyzer::ValidateConcrete(Type* type, Type* concrete_type, ParseNode* node, const int depth)
+void ContextAnalyzer::ValidateConcrete(Type* cls_type, Type* concrete_type, ParseNode* node, const int depth)
 {
-  if(!type) {
+  if(!cls_type && !concrete_type) {
     return;
   }
 
-  const wstring cls_name = type->GetName();
-  Class* dclr_klass = nullptr; LibraryClass* dclr_lib_klass = nullptr;
-  if(!GetProgramLibraryClass(type, dclr_klass, dclr_lib_klass)) {
-    dclr_klass = current_class->GetGenericClass(cls_name);
+  const wstring concrete_type_name = concrete_type->GetName();
+  Class* concrete_klass = nullptr; LibraryClass* concrete_lib_klass = nullptr;
+  if(!GetProgramLibraryClass(concrete_type, concrete_klass, concrete_lib_klass)) {
+    concrete_klass = current_class->GetGenericClass(concrete_type_name);
   }
 
-  if(dclr_klass && dclr_klass->HasGenerics()) {
-    const vector<Type*> concrete_types = concrete_type->GetGenerics();
-    if(concrete_types.empty()) {
-      ProcessError(node, L"Generic to concrete size mismatch");
-    }
-    else {
-      ValidateGenericConcreteMapping(concrete_types, dclr_klass, node);
-    }
-  }
-  else if(dclr_lib_klass && dclr_lib_klass->HasGenerics()) {
-    const vector<Type*> concrete_types = concrete_type->GetGenerics();
-    if(concrete_types.empty()) {
-      ProcessError(node, L"Generic to concrete size mismatch");
-    }
-    else {
-      ValidateGenericConcreteMapping(concrete_types, dclr_lib_klass, node);
+  if(concrete_klass || concrete_lib_klass) {
+    const bool is_concrete_inf = ((concrete_klass && concrete_klass->IsInterface()) ||
+      (concrete_lib_klass && concrete_lib_klass->IsInterface())) ? true : false;
+
+    if(!is_concrete_inf) {
+      const wstring cls_type_name = cls_type->GetName();
+      Class* dclr_klass = nullptr; LibraryClass* dclr_lib_klass = nullptr;
+      if(!GetProgramLibraryClass(cls_type, dclr_klass, dclr_lib_klass)) {
+        dclr_klass = current_class->GetGenericClass(cls_type_name);
+      }
+
+      if(dclr_klass && dclr_klass->HasGenerics()) {
+        const vector<Type*> concrete_types = concrete_type->GetGenerics();
+        if(concrete_types.empty()) {
+          ProcessError(node, L"Generic to concrete size mismatch");
+        }
+        else {
+          ValidateGenericConcreteMapping(concrete_types, dclr_klass, node);
+        }
+      }
+      else if(dclr_lib_klass && dclr_lib_klass->HasGenerics()) {
+        const vector<Type*> concrete_types = concrete_type->GetGenerics();
+        if(concrete_types.empty()) {
+          ProcessError(node, L"Generic to concrete size mismatch");
+        }
+        else {
+          ValidateGenericConcreteMapping(concrete_types, dclr_lib_klass, node);
+        }
+      }
     }
   }
 }
