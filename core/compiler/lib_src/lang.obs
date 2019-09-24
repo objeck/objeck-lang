@@ -5330,10 +5330,18 @@ bundle System.IO.File {
 		@param n file name
 		@return full path name, Nil otherwise
 		~#
-		function : GetFullName(n : String) ~ String {
+		function : GetFullName(n : System.String) ~ System.String {
 			FILE_FULL_PATH;
 		}
-				
+
+		#~
+		Gets a temporary file name
+		@return temporary file name
+		~#
+		function : GetTempName() ~ System.String {
+			FILE_TEMP_NAME;
+		}
+
 		#~
 		Returns the size of the file
 		@param n file name
@@ -5343,6 +5351,15 @@ bundle System.IO.File {
 			FILE_SIZE;
 		}		
 		
+		#~
+		Returns the time in which the file was created
+		@param n file name
+		@return create date
+		~#
+		function : TempName() ~ System.String {
+			return CreateTime(n, false);
+		}
+
 		#~
 		Returns the time in which the file was created
 		@param n file name
@@ -5739,6 +5756,8 @@ bundle System.IO.File {
 	class Logger {
 		@instance : static : Logger;
 		
+		@directory : String;
+
 		@info_mutex : ThreadMutex;
 		@info_dir : String;
 
@@ -5750,10 +5769,10 @@ bundle System.IO.File {
 		
 		New : private () {
 			Parent();		
-			@directory := Runtime->GetProperty("tmp_dir");
+			@directory := Runtime->GetTempDir();
 
 			@info_dir := "";
-			@info_dir->Append(Runtime->GetTempDir());
+			@info_dir->Append(@directory);
 			@info_dir->Append("/info-objk.txt");
 			@info_mutex := ThreadMutex->New("info-log");
 
@@ -5888,7 +5907,7 @@ bundle System.IO.File {
 		@return logging directory
 		~#
 		method : public : GetDirectory() ~ String {
-			return Runtime->GetTempDir();
+			return @directory;
 		}
 	}
 

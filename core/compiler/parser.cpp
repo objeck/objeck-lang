@@ -2093,6 +2093,12 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       NextToken();
       break;
 
+    case FILE_TEMP_NAME:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+                                                               instructions::FILE_TEMP_NAME);
+      NextToken();
+      break;
+
     case FILE_SEEK:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
                                                                instructions::FILE_SEEK);

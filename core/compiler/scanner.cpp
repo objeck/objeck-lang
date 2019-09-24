@@ -214,6 +214,7 @@ void Scanner::LoadKeywords()
   ident_map[L"FILE_CAN_READ_WRITE"] = FILE_CAN_READ_WRITE;
   ident_map[L"FILE_SIZE"] = FILE_SIZE;
   ident_map[L"FILE_FULL_PATH"] = FILE_FULL_PATH;
+  ident_map[L"FILE_TEMP_NAME"] = FILE_TEMP_NAME;
   ident_map[L"FILE_SEEK"] = FILE_SEEK;
   ident_map[L"FILE_EOF"] = FILE_EOF;
   ident_map[L"FILE_REWIND"] = FILE_REWIND;
@@ -429,6 +430,7 @@ void Scanner::CheckIdentifier(int index)
     case FILE_CAN_READ_ONLY:
     case FILE_CAN_READ_WRITE:
     case FILE_FULL_PATH:
+    case FILE_TEMP_NAME:
     case FILE_SIZE:
     case FILE_SEEK:
     case FILE_EOF:
