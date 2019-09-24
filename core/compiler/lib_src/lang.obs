@@ -5356,15 +5356,6 @@ bundle System.IO.File {
 		@param n file name
 		@return create date
 		~#
-		function : TempName() ~ System.String {
-			return CreateTime(n, false);
-		}
-
-		#~
-		Returns the time in which the file was created
-		@param n file name
-		@return create date
-		~#
 		function : CreateTime(n : System.String) ~ Date {
 			return CreateTime(n, false);
 		}
