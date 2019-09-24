@@ -5,7 +5,7 @@ note: compile compiler with -D_SYSTEM flag
 ~#	
 
 #~
-Core sytem classes 
+Core system classes 
 ~#
 bundle System {
 	#~
