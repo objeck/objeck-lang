@@ -3809,7 +3809,7 @@ void ContextAnalyzer::AnalyzeReturn(Return* rtrn, const int depth)
 
 void ContextAnalyzer::ValidateConcrete(Type* cls_type, Type* concrete_type, ParseNode* node, const int depth)
 {
-  if(!cls_type && !concrete_type) {
+  if(!cls_type || !concrete_type) {
     return;
   }
 
