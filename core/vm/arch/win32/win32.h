@@ -120,6 +120,15 @@ class File {
   }
 
  public:
+  static string TempName() {
+    char buffer[SMALL_BUFFER_MAX];
+    if(!tmpnam_s(buffer, SMALL_BUFFER_MAX)) {
+      return string(buffer);
+    }
+
+    return "";
+  }
+
   static string FullPathName(const string name) {
     char buffer[BUFSIZE] = "";
     char* part = nullptr;

@@ -4239,7 +4239,17 @@ bool TrapProcessor::FileSize(StackProgram* program, size_t* inst, size_t* &op_st
 
 bool TrapProcessor::FileTempName(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) 
 {
-  return false;
+  const string full_path = File::TempName();
+  if(full_path.size() > 0) {
+    const wstring wfull_path(full_path.begin(), full_path.end());
+    const size_t str_obj = (size_t)CreateStringObject(wfull_path, program, op_stack, stack_pos);
+    PushInt(str_obj, op_stack, stack_pos);
+  }
+  else {
+    PushInt(0, op_stack, stack_pos);
+  }
+
+  return true;
 }
 
 bool TrapProcessor::FileFullPath(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)
