@@ -2142,6 +2142,9 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
     case FILE_FULL_PATH:
       return FileFullPath(program, inst, op_stack, stack_pos, frame);
 
+    case FILE_TEMP_NAME:
+      return FileTempName(program, inst, op_stack, stack_pos, frame);
+
     case FILE_ACCOUNT_OWNER:
       return FileAccountOwner(program, inst, op_stack, stack_pos, frame);
 
@@ -4232,6 +4235,11 @@ bool TrapProcessor::FileSize(StackProgram* program, size_t* inst, size_t* &op_st
   }
 
   return true;
+}
+
+bool TrapProcessor::FileTempName(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame) 
+{
+  return false;
 }
 
 bool TrapProcessor::FileFullPath(StackProgram* program, size_t* inst, size_t* &op_stack, long* &stack_pos, StackFrame* frame)

@@ -232,6 +232,7 @@ enum ScannerTokenType {
   FILE_IS_OPEN,
   FILE_SIZE,
   FILE_FULL_PATH,
+  FILE_TEMP_NAME,
   FILE_SEEK,
   FILE_REWIND,
   FILE_EOF,
