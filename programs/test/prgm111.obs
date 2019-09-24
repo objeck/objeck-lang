@@ -1,6 +1,6 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		file := System.IO.File.File->GetTempName();
-		file->PrintLine();
+		file := System.IO.File.FileReader->Temp();
+		file->Close();
 	}
 }
