@@ -5525,9 +5525,8 @@ bundle System.IO.File {
 		#~
 		Creates a temporary file
 		~#
-		function : Temp() {
-			Parent(File->GetTempName());
-			FILE_OPEN_READ;
+		function : Temp() ~ File {
+			return System.IO.File->New(GetTempName());
 		}
 		
 		#~
