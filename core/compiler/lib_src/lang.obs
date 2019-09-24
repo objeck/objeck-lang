@@ -5521,6 +5521,14 @@ bundle System.IO.File {
 			Parent(name);
 			FILE_OPEN_READ;
 		}	
+
+		#~
+		Creates a temporary file
+		~#
+		function : Temp() {
+			Parent(File->GetTempName());
+			FILE_OPEN_READ;
+		}
 		
 		#~
 		Closes the file
