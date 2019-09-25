@@ -75,7 +75,7 @@ class File {
 
   static string TempName() {
     char buffer[FILENAME_MAX + 1];
-    if(!tmpnam(buffer)) {
+    if(!mkstemp(buffer)) {
       return string(buffer);
     }
     
@@ -459,9 +459,9 @@ class System {
        string str_cmd(c);
        str_cmd += " > ";
        str_cmd += tmp_file_name;
-
-       const int status = system(str_cmd.c_str());
-
+       
+       system(str_cmd.c_str());
+       
        // read file output
        ifstream file_out(tmp_file_name.c_str());
        if(file_out.is_open()) {
