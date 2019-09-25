@@ -3193,6 +3193,24 @@ bundle System {
 		function : Exit(code : Int) ~ Nil {
 			EXIT;
 		}
+
+		#~
+		Executes a system command
+		@param c system command
+		@return command status code
+		~#
+		function : Command(n : System.String) ~ Int {
+			SYS_CMD;
+		}
+
+		#~
+		Executes a system command
+		@param c system command
+		@return output from command
+		~#
+		function : CommandOutput(n : System.String) ~ System.String[] {
+			SYS_CMD_OUT;
+		}
 		
 		#~
 		Asserts runtime value to be true. If false,
