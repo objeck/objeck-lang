@@ -5358,6 +5358,14 @@ bundle System.IO.File {
 		function : Size(n : System.String) ~ Int {
 			FILE_SIZE;
 		}		
+
+        #~
+		Returns the size of the file
+		@return size of the file
+		~#
+		method : public : Size() ~ Int {
+			return Size(@name);
+		}
 		
 		#~
 		Returns the time in which the file was created
@@ -5366,6 +5374,14 @@ bundle System.IO.File {
 		~#
 		function : CreateTime(n : System.String) ~ Date {
 			return CreateTime(n, false);
+		}
+
+        #~
+		Returns the time in which the file was created
+		@return create date
+		~#
+		method : public : CreateTime() ~ Date {
+			return CreateTime(@name, false);
 		}
 
 		#~
@@ -5385,8 +5401,17 @@ bundle System.IO.File {
 			FILE_CREATE_TIME;
 
 			return Date->New(day, month, year, hours, mins, secs, gmt);
-		}		
-		
+		}
+
+        #~
+		Returns the time in which the file was created
+		@param gmt true if GMT
+		@return create date
+		~#
+		method : public : CreateTime(gmt : Bool) ~ Date {	
+		    return CreateTime(@name, gmt);
+        }
+        
 		#~
 		Returns the time in which the file was modified 
 		@param n file name
@@ -5424,6 +5449,14 @@ bundle System.IO.File {
 			return AccessedTime(n, false);
 		}
 
+        #~
+		Returns the time in which the file was accessed 
+		@return accessed date
+		~#
+		method : public : AccessedTime() ~ Date {
+            return AccessedTime(@name, false);
+        }
+        
 		#~
 		Returns the time in which the file was accessed 
 		@param n file name
@@ -5442,7 +5475,16 @@ bundle System.IO.File {
 			
 			return Date->New(day, month, year, hours, mins, secs, gmt);
 		}
-		
+
+        #~
+		Returns the time in which the file was accessed 
+		@param gmt true if GMT
+		@return accessed date
+		~#
+		method : public : AccessedTime(gmt : Bool) ~ Date {
+		    return AccessedTime(@name, gmt);
+        }
+        
 		#~
 		Deletes a file
 		@param n file name
@@ -5450,6 +5492,14 @@ bundle System.IO.File {
 		~#
 		function : Delete(n : System.String) ~ Bool {
 			FILE_DELETE;
+		}
+
+        #~
+		Deletes a file
+		@return true if file was deleted
+		~#
+		method : public : Delete() ~ Bool {
+			return Delete(@name);
 		}
 		
 		#~
@@ -5461,6 +5511,14 @@ bundle System.IO.File {
 			FILE_ACCOUNT_OWNER;
 		}
 
+        #~
+		Gets the file owner name
+		@return file owner name
+		~#
+		method : public : Owner() ~ System.String {
+			return Owner(@name);
+		}
+
 		#~
 		Gets the file group name
 		@param n file name
@@ -5468,6 +5526,14 @@ bundle System.IO.File {
 		~#
 		function : Group(n : System.String) ~ System.String {
 			FILE_GROUP_OWNER;
+		}
+
+        #~
+		Gets the file group name
+		@return file group name
+		~#
+		method : public : Group() ~ System.String {
+			return Group(@name);
 		}
 
 		#~
@@ -5479,6 +5545,14 @@ bundle System.IO.File {
 			FILE_CAN_READ_WRITE;
 		}
 
+        #~
+		Check to see if a file can be read-only
+		@return true if file can be read-only
+		~#
+		method : public : IsReadWrite() ~ Bool {
+			return IsReadWrite(@name);
+		}
+
 		#~
 		Check to see if a file can be read
 		@param n file name
@@ -5486,6 +5560,14 @@ bundle System.IO.File {
 		~#
 		function : IsReadOnly(n : System.String) ~ Bool {
 			FILE_CAN_READ_ONLY;
+		}
+
+        #~
+		Check to see if a file can be read
+		@return true if file can be read
+		~#
+		method : public : IsReadOnly() ~ Bool {
+			return IsReadOnly(@name);
 		}
 		
 		#~
@@ -5496,6 +5578,14 @@ bundle System.IO.File {
 		function : IsWriteOnly(n : System.String) ~ Bool {
 			FILE_CAN_WRITE_ONLY;
 		}
+        
+        #~
+		Check to see if a file can be written
+		@return true if file can be written
+		~#
+		method : public : IsWriteOnly() ~ Bool {
+			return IsWriteOnly(@name);
+		}
 		
 		#~
 		Check to see if a file exists
@@ -5504,6 +5594,14 @@ bundle System.IO.File {
 		~#
 		function : Exists(n : System.String) ~ Bool {
 			FILE_EXISTS;
+		}
+
+        #~
+		Check to see if a file exists
+		@return true if file exists
+		~#
+		method : public : Exists() ~ Bool {
+			return Exists(@name);
 		}
 		
 		#~
