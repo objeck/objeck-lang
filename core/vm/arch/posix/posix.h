@@ -72,6 +72,15 @@ class File {
     
     return buf.st_size;
   }
+
+  static string TempName() {
+    char buffer[SMALL_BUFFER_MAX];
+    if(!tmpnam_s(buffer, SMALL_BUFFER_MAX)) {
+      return string(buffer);
+    }
+
+    return "";
+  }
   
   static bool FileExists(const char* name) {
     struct stat buf;
@@ -171,15 +180,15 @@ class File {
 
   static vector<string> ListDir(const char* path) {
     vector<string> files;
-    
-    struct dirent **names;
+
+    struct dirent** names;
     int n = scandir(path, &names, 0, alphasort);
     if(n > 0) {
       while(n--) {
-	if((strcmp(names[n]->d_name, "..") != 0) && (strcmp(names[n]->d_name, ".") != 0)) {
-	  files.push_back(names[n]->d_name);
-	}
-	free(names[n]);
+        if((strcmp(names[n]->d_name, "..") != 0) && (strcmp(names[n]->d_name, ".") != 0)) {
+          files.push_back(names[n]->d_name);
+        }
+        free(names[n]);
       }
       free(names);
     }
