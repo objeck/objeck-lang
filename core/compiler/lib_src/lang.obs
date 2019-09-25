@@ -5637,13 +5637,6 @@ bundle System.IO.File {
 		}	
 
 		#~
-		Creates a temporary file
-		~#
-		function : Temp() ~ FileReader {
-			return System.IO.File.FileReader->New(GetTempName());
-		}
-		
-		#~
 		Closes the file
 		~#
 		method : public : Close() ~ Nil {
@@ -5765,7 +5758,14 @@ bundle System.IO.File {
 			else {
 				FILE_OPEN_WRITE;
 			};
-		}	
+		}
+
+		#~
+		Creates a temporary file
+		~#
+		function : Temp() ~ FileWriter {
+			return System.IO.File.FileWriter->New(GetTempName());
+		}
 
 		#~
 		Write a file's contents into a string

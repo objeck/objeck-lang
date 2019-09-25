@@ -1,7 +1,7 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		file := System.IO.File.FileReader->Temp();
-		file->GetFullName()->PrintLine();
 		file->Close();
+#		file->Exists()->PrintLine();
 	}
 }
