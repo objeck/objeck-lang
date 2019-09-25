@@ -459,7 +459,8 @@ class System {
        string str_cmd(c);
        str_cmd += " > ";
        str_cmd += tmp_file_name;
-       
+
+       // ignoring return value
        system(str_cmd.c_str());
        
        // read file output
