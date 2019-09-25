@@ -121,8 +121,8 @@ class File {
 
  public:
   static string TempName() {
-    char buffer[SMALL_BUFFER_MAX];
-    if(!tmpnam_s(buffer, SMALL_BUFFER_MAX)) {
+    char buffer[FILENAME_MAX + 1];
+    if(!tmpnam_s(buffer, FILENAME_MAX)) {
       return string(buffer);
     }
 

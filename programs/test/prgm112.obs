@@ -1,7 +1,5 @@
 class Test {
 	function : Main(args : String[]) ~ Nil {
-		output := System.Runtime->CommandOutput("dir /w");
-		
-			output[15]->PrintLine();
+		output := System.Runtime->CommandOutput("dir /w");output[15]->PrintLine();
 	}
 }
