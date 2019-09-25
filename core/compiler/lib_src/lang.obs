@@ -5526,7 +5526,7 @@ bundle System.IO.File {
 		~#
 		method : public : Delete() ~ Bool {
 			if(Delete(@name)) {
-				@handle = 0;
+				@handle := 0;
 				return true;
 			};
 
