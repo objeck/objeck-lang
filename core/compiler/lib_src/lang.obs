@@ -5346,7 +5346,7 @@ bundle System.IO.File {
 		Gets the full path name for file
 		@return full path name, Nil otherwise
 		~#
-		function : GetFullName() ~ System.String {
+		method : public : GetFullName() ~ System.String {
 			return GetFullName(@name);;
 		}
 
