@@ -3196,7 +3196,7 @@ bundle System {
 
 		#~
 		Executes a system command
-		@param c system command
+		@param n system command
 		@return command status code
 		~#
 		function : Command(n : System.String) ~ Int {
@@ -3205,7 +3205,7 @@ bundle System {
 
 		#~
 		Executes a system command
-		@param c system command
+		@param n system command
 		@return output from command
 		~#
 		function : CommandOutput(n : System.String) ~ System.String[] {
