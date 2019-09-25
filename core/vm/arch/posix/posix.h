@@ -74,11 +74,11 @@ class File {
   }
 
   static string TempName() {
-    char buffer[SMALL_BUFFER_MAX];
-    if(!tmpnam_s(buffer, SMALL_BUFFER_MAX)) {
+    char buffer[FILENAME_MAX + 1];
+    if(!tmpnam(buffer)) {
       return string(buffer);
     }
-
+    
     return "";
   }
   
@@ -460,7 +460,7 @@ class System {
        str_cmd += " > ";
        str_cmd += tmp_file_name;
 
-       system(str_cmd.c_str());
+       const int status = system(str_cmd.c_str());
 
        // read file output
        ifstream file_out(tmp_file_name.c_str());
