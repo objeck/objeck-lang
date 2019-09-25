@@ -36,7 +36,7 @@
 
 #include "../../common.h"
 #include <windows.h>
-#include  <io.h>
+#include <io.h>
 #include <tchar.h>
 #include <userenv.h>
 #include <sys/stat.h>
@@ -558,6 +558,37 @@ class IPSecureSocket {
  ****************************/
 class System {
  public:
+   static vector<string> CommandOutput(const char* c) {
+     vector<string> output;
+
+     // create temporary file
+     const string tmp_file_name = File::TempName();
+     FILE* file = File::FileOpen(tmp_file_name.c_str(), "wb");
+     if(file) {
+       fclose(file);
+
+       string str_cmd(c);
+       str_cmd += " > ";
+       str_cmd += tmp_file_name;
+
+       system(str_cmd.c_str());
+
+       // read file output
+       ifstream file_out(tmp_file_name.c_str());
+       if(file_out.is_open()) {
+         string line_out;
+         while(getline(file_out, line_out)) {
+           output.push_back(line_out);
+         }
+         file_out.close();
+
+         // delete file
+         remove(tmp_file_name.c_str());
+       }
+     }
+     
+     return output;
+   }
 
    static BOOL GetUserDirectory(char* buf, DWORD len) {
     HANDLE handle;

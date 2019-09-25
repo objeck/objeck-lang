@@ -5009,7 +5009,7 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
         break;
 
       case NIL_TYPE:
-        ProcessError(expression, L"Invalid operation");
+        ProcessError(expression, L"Invalid operation with Nil");
         break;
 
       case BYTE_TYPE:
