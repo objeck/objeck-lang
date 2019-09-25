@@ -5507,7 +5507,12 @@ bundle System.IO.File {
 		@return true if file was deleted
 		~#
 		method : public : Delete() ~ Bool {
-			return Delete(@name);
+			if(Delete(@name)) {
+				@handle = 0;
+				return true;
+			};
+
+			return false;
 		}
 		
 		#~
