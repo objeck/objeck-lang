@@ -5294,6 +5294,14 @@ bundle System.IO.File {
 		}
 		
 		#~
+		Gets the file name
+		@return file name
+		~#
+		method : public : GetName() ~ String {
+			return @name;
+		}
+
+		#~
 		Checks of the file is open
 		@return true if the file was opened, false otherwise
 		~#
