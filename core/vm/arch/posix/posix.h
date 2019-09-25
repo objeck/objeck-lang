@@ -74,12 +74,12 @@ class File {
   }
 
   static string TempName() {
-    char buffer[FILENAME_MAX + 1];
-    if(!mkstemp(buffer)) {
-      return string(buffer);
+    char buffer[] = "/tmp/objeck-XXXXXX";
+    if(mkstemp(buffer) < 0) {
+      return "";
     }
     
-    return "";
+    return buffer;
   }
   
   static bool FileExists(const char* name) {
