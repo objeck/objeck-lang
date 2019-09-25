@@ -1877,7 +1877,13 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
       
     case ASSERT_TRUE:
       return AssertTrue(program, inst, op_stack, stack_pos, frame);
-      
+
+    case SYS_CMD:
+      return SysCmd(program, inst, op_stack, stack_pos, frame);
+
+    case  SYS_CMD_OUT:
+      return SysCmdOut(program, inst, op_stack, stack_pos, frame);
+
     case EXIT:
       return Exit(program, inst, op_stack, stack_pos, frame);
 
@@ -2720,6 +2726,54 @@ bool TrapProcessor::AssertTrue(StackProgram* program, size_t* inst, size_t* &op_
     return false;
   }
   
+  return true;
+}
+
+bool TrapProcessor::SysCmd(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
+{
+  size_t* array = (size_t*)PopInt(op_stack, stack_pos);
+  array = (size_t*)array[0];
+  if(array) {
+    const wstring wcmd((wchar_t*)(array + 3));
+    const string cmd = UnicodeToBytes(wcmd);
+    PushInt(system(cmd.c_str()), op_stack, stack_pos);
+  }
+
+  return true;
+}
+
+bool TrapProcessor::SysCmdOut(StackProgram* program, size_t* inst, size_t*& op_stack, long*& stack_pos, StackFrame* frame)
+{
+  size_t* array = (size_t*)PopInt(op_stack, stack_pos);
+  array = (size_t*)array[0];
+  if(array) {
+    const wstring wcmd((wchar_t*)(array + 3));
+    const string cmd = UnicodeToBytes(wcmd);
+    
+    vector<string> output_lines = System::CommandOutput(cmd.c_str());
+
+    // create 'System.String' object array
+    const long str_obj_array_size = (long)output_lines.size();
+    const long str_obj_array_dim = 1;
+    size_t* str_obj_array = MemoryManager::AllocateArray(str_obj_array_size + str_obj_array_dim + 2,
+                                                         INT_TYPE, op_stack, *stack_pos, false);
+    str_obj_array[0] = str_obj_array_size;
+    str_obj_array[1] = str_obj_array_dim;
+    str_obj_array[2] = str_obj_array_size;
+    size_t* str_obj_array_ptr = str_obj_array + 3;
+
+    // create and assign 'System.String' instances to array
+    for(size_t i = 0; i < output_lines.size(); ++i) {
+      const wstring line = BytesToUnicode(output_lines[i]);
+      str_obj_array_ptr[i] = (size_t)CreateStringObject(line, program, op_stack, stack_pos);
+    }
+
+    PushInt((size_t)str_obj_array, op_stack, stack_pos);
+  }
+  else {
+    PushInt(0, op_stack, stack_pos);
+  }
+
   return true;
 }
 
@@ -4506,7 +4560,7 @@ bool TrapProcessor::DirList(StackProgram* program, size_t* inst, size_t* &op_sta
 
     // create and assign 'System.String' instances to array
     for(size_t i = 0; i < files.size(); ++i) {
-      const wstring wfile(files[i].begin(), files[i].end());
+      const wstring wfile = BytesToUnicode(files[i]);
       str_obj_array_ptr[i] = (size_t)CreateStringObject(wfile, program, op_stack, stack_pos);
     }
 

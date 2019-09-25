@@ -438,6 +438,40 @@ class IPSecureSocket {
  ****************************/
 class System {
  public:
+   static vector<string> CommandOutput(const char* c) {
+     size_t* array = (size_t*)PopInt(op_stack, stack_pos);
+     array = (size_t*)array[0];
+     if(array) {
+       const wstring wcmd((wchar_t*)(array + 3));
+       const string cmd = UnicodeToBytes(wcmd);
+
+       vector<string> output_lines = System::CommandOutput(cmd.c_str());
+
+       // create 'System.String' object array
+       const long str_obj_array_size = (long)output_lines.size();
+       const long str_obj_array_dim = 1;
+       size_t* str_obj_array = MemoryManager::AllocateArray(str_obj_array_size + str_obj_array_dim + 2,
+                                                            INT_TYPE, op_stack, *stack_pos, false);
+       str_obj_array[0] = str_obj_array_size;
+       str_obj_array[1] = str_obj_array_dim;
+       str_obj_array[2] = str_obj_array_size;
+       size_t* str_obj_array_ptr = str_obj_array + 3;
+
+       // create and assign 'System.String' instances to array
+       for(size_t i = 0; i < output_lines.size(); ++i) {
+         const wstring line = BytesToUnicode(output_lines[i]);
+         str_obj_array_ptr[i] = (size_t)CreateStringObject(line, program, op_stack, stack_pos);
+       }
+
+       PushInt((size_t)str_obj_array, op_stack, stack_pos);
+     }
+     else {
+       PushInt(0, op_stack, stack_pos);
+     }
+
+     return true;
+   }
+
   static string GetPlatform() {
     string platform;
     struct utsname uts;
