@@ -332,6 +332,8 @@ enum ScannerTokenType {
   GET_SYS_PROP,
   SET_SYS_PROP,
   ASSERT_TRUE,
+  SYS_CMD,
+  SYS_CMD_OUT,
   EXIT
 #endif
 };

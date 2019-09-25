@@ -177,6 +177,8 @@ namespace instructions {
     GET_VERSION,
     GET_SYS_PROP,
     SET_SYS_PROP,
+    SYS_CMD,
+    SYS_CMD_OUT,
     ASSERT_TRUE,
     EXIT
   };

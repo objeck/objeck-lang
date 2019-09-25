@@ -1661,6 +1661,18 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       NextToken();
       break;
 
+    case SYS_CMD:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+                                                               instructions::SYS_CMD);
+      NextToken();
+      break;
+
+    case SYS_CMD_OUT:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
+                                                               instructions::SYS_CMD_OUT);
+      NextToken();
+      break;
+
     case EXIT:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num,
                                                                instructions::EXIT);
