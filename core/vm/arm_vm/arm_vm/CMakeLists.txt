@@ -4,7 +4,7 @@
 cmake_minimum_required(VERSION 2.7)
 project(arm_vm)
 set(LIBRARIES_FROM_REFERENCES "-lssl -lcrypto -ldl -lz -pthread")
-set(GCC_COVERAGE_COMPILE_FLAGS "-pthread -D_ARM32")
+set(GCC_COVERAGE_COMPILE_FLAGS "-pthread -D_ARM32 -D_DEBUG")
 #set(GCC_COVERAGE_COMPILE_FLAGS "-pthread -D_ARM32 -D_NO_JIT")
 add_definitions(${GCC_COVERAGE_COMPILE_FLAGS})
 add_executable(arm_vm ../../common.cpp ../../common.h ../../interpreter.cpp ../../interpreter.h ../../lib_api.h ../../loader.cpp ../../loader.h ../../posix_main.cpp ../../vm.cpp ../../vm.h ../../arch/memory.cpp ../../arch/memory.h ../../arch/posix/posix.h ../../arch/jit/arm32/jit_arm_a32.cpp ../../arch/jit/arm32/jit_arm_a32.h ../../../shared/logger.cpp ../../../shared/logger.h)
