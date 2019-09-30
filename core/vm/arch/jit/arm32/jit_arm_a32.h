@@ -323,9 +323,9 @@ namespace Runtime {
                                  long* stack_pos, StackFrame** call_stack, long* call_stack_pos, size_t** jit_mem, long* offset);
   
   /********************************
-   * JitCompilerIA32 class
+   * JitCompilerA32 class
    ********************************/
-  class JitCompilerIA32 {
+  class JitCompilerA32 {
     static StackProgram* program;
     static PageManager* page_manager;
     deque<RegInstr*> working_stack;
@@ -742,10 +742,10 @@ namespace Runtime {
   public: 
     static void Initialize(StackProgram* p);
 
-    JitCompilerIA32() {
+    JitCompilerA32() {
     }
 
-    ~JitCompilerIA32() {
+    ~JitCompilerA32() {
       while(!working_stack.empty()) {
         RegInstr* instr = working_stack.front();
         working_stack.pop_front();
