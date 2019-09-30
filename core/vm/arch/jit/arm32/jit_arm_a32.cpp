@@ -4782,7 +4782,7 @@ bool Runtime::JitCompilerA32::Compile(StackMethod* cm)
     move_imm_mem(cls_id, CLS_ID, FP);
     move_imm_mem(mthd_id, MTHD_ID, FP);
     // register root
-    RegisterRoot();
+//    RegisterRoot();
     // translate parameters
     ProcessParameters(method->GetParamCount());
     // tranlsate program
