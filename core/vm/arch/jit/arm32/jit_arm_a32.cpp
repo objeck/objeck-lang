@@ -29,7 +29,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ***************************************************************************/
 
-#include "jit_intel_lp32.h"
+#include "jit_arm_a32.h"
 #include <string>
 
 using namespace Runtime;
