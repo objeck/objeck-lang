@@ -71,7 +71,6 @@ namespace Runtime {
 #define TMP_REG_5 -68
 
 #define MAX_DBLS 64
-#define BUFFER_SIZE 512
 #define PAGE_SIZE 4096
 
   // register type
@@ -408,9 +407,9 @@ namespace Runtime {
         code = tmp;
         code_buf_max *= 2;
       }
-      memcpy(&code[code_index++], &i, sizeof(int32_t));
+      code[code_index++] = i;
     }
-
+    
     // Encodes and writes out a 32-bit integer value
     inline void AddImm(int32_t imm) {
       unsigned char buffer[sizeof(int32_t)];

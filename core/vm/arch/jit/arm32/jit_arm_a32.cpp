@@ -4739,16 +4739,16 @@ bool Runtime::JitCompilerA32::Compile(StackMethod* cm)
       << method->GetParamCount() << L" ----------" << endl;
 #endif
 
-    code_buf_max = BUFFER_SIZE;
-    code = (uint32_t*)malloc(code_buf_max);
-#ifdef _WIN32
-    floats = new double[MAX_DBLS];
-#else
-    if(posix_memalign((void**)& floats, PAGE_SIZE, sizeof(double) * MAX_DBLS)) {
+    code_buf_max = PAGE_SIZE / sizeof(uint32_t);
+    if(posix_memalign((void**)&code, PAGE_SIZE, code_buf_max * sizeof(uint32_t))) {
       wcerr << L"Unable to allocate JIT memory!" << endl;
       exit(1);
     }
-#endif
+	
+    if(posix_memalign((void**)&floats, PAGE_SIZE, sizeof(double) * MAX_DBLS)) {
+      wcerr << L"Unable to allocate JIT memory!" << endl;
+      exit(1);
+    }
 
     floats_index = instr_index = code_index = instr_count = 0;
     // general use registers
@@ -4791,20 +4791,19 @@ bool Runtime::JitCompilerA32::Compile(StackMethod* cm)
       return false;
     }
 
-    // show content
     unordered_map<int32_t, StackInstr*>::iterator iter;
     for(iter = jump_table.begin(); iter != jump_table.end(); ++iter) {
       StackInstr* instr = iter->second;
       const int32_t src_offset = iter->first;
-      const int32_t dest_index = method->GetLabelIndex(instr->GetOperand()) + 1;
+      const int32_t dest_index = method->GetLabelIndex(instr->GetOperand());
       const int32_t dest_offset = method->GetInstruction(dest_index)->GetOffset();
-      const int32_t offset = dest_offset - src_offset - 4;
-      memcpy(&code[src_offset], &offset, 4);
+      const int32_t offset = dest_offset - src_offset - 2;
+      memcpy(&code[src_offset], &offset, 3);
 #ifdef _DEBUG
       wcout << L"jump update: src=" << src_offset << L"; dest=" << dest_offset << endl;
 #endif
     }
-
+    
     for(size_t i = 0; i < deref_offsets.size(); ++i) {
       const int32_t index = deref_offsets[i];
       int32_t offset = epilog_index - index + 1;
@@ -4823,14 +4822,15 @@ bool Runtime::JitCompilerA32::Compile(StackMethod* cm)
       memcpy(&code[index], &offset, 4);
     }
 
+    const uint32_t code_size_bytes = code_index * sizeof(uint32_t);
 #ifdef _DEBUG
-    wcout << L"Caching JIT code: actual=" << code_index << L", buffer=" << code_buf_max << L" byte(s)" << endl;
+    wcout << L"Caching JIT code: actual=" << code_size_bytes << L", buffer=" << code_buf_max << L" byte(s)" << endl;
 #endif
     // store compiled code
-    method->SetNativeCode(new NativeCode(page_manager->GetPage(code, code_index), code_index, floats));
+    method->SetNativeCode(new NativeCode(page_manager->GetPage(code, code_size_bytes), code_size_bytes, floats));
     free(code);
     code = NULL;
-
+    
     compile_success = true;
   }
 
