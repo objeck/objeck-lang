@@ -1,0 +1,6 @@
+TODO
+===
+* Basic support for doubles (add/mul/sub/div)
+* Return and pass in doubles
+* Callbacks
+* Register root
