@@ -50,12 +50,8 @@ void JitCompilerA32::Prolog() {
 #ifdef _DEBUG
   wcout << L"  " << (++instr_count) << L": [<prolog>]" << endl;
 #endif
-
-  local_space += 8;
-  unsigned char buffer[4];
-  ByteEncode32(buffer, local_space);
-
-	uint32_t setup_code[] = {
+  
+  uint32_t setup_code[] = {
 		0xe52db004,						// push  {fp}
 		0xe92d00f0,						// push {r4-r7} ?
 		0xe28db000,						// add fp, sp, #0
@@ -4771,7 +4767,7 @@ bool Runtime::JitCompilerA32::Compile(StackMethod* cm)
     aval_xregs.push_back(new RegisterHolder(XMM1));
     aval_xregs.push_back(new RegisterHolder(XMM0));
 #ifdef _DEBUG
-    wcout << L"Compiling code for IA-32 architecture..." << endl;
+    wcout << L"Compiling code for AARCH32 architecture..." << endl;
 #endif
 
     // process offsets
