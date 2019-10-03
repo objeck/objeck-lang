@@ -2182,12 +2182,12 @@ void JitCompilerA32::move_imm_mem(int32_t imm, int32_t offset, Register dest) {
 }
 
 void JitCompilerA32::move_imm_reg(int32_t imm, Register reg) {
-  if(imm < 0 && imm >= -4096) {
+  if(imm < 0 && imm >= -256) {
 #ifdef _DEBUG
     wcout << L"  " << (++instr_count) << L": [mvn " << GetRegisterName(reg)
 	  << L", #" << imm << L"]" << endl;
 #endif
-    uint32_t op_code = 0xe3e02000;
+    uint32_t op_code = 0xe3e00000;
 
     uint32_t op_dest = reg << 12;
     op_code |= op_dest;
@@ -2195,7 +2195,7 @@ void JitCompilerA32::move_imm_reg(int32_t imm, Register reg) {
 
     AddMachineCode(op_code);
   }
-  else if(imm <= 4096) {
+  else if(imm <= 4096 && imm >= 0) {
 #ifdef _DEBUG
     wcout << L"  " << (++instr_count) << L": [mov " << GetRegisterName(reg)
 	  << L", #" << imm << L"]" << endl;
@@ -2210,17 +2210,17 @@ void JitCompilerA32::move_imm_reg(int32_t imm, Register reg) {
   }
   else {
 #ifdef _DEBUG
-    wcout << L"  " << (++instr_count) << L": [ldr " << GetRegisterName(reg)
-	  << L", #" << imm << L"]" << endl;
+    wcout << L"  " << (++instr_count) << L": [ldr " << GetRegisterName(reg) << L", #" << imm << L"]" << endl;
 #endif
-    uint32_t op_code = 0xe59f0000; // e59f1018
-
-    /*
+    uint32_t op_code = 0xe59f0000;
+    
     uint32_t op_dest = reg << 12;
     op_code |= op_dest;
-    op_code |= abs(imm);
-    */
     
+    // op_code |= abs(101);
+    const_int_pool.insert(pair<int32_t, int32_t>(imm, code_index));
+    
+    // encode
     AddMachineCode(op_code);
   }
 }
@@ -4787,10 +4787,11 @@ bool Runtime::JitCompilerA32::Compile(StackMethod* cm)
       return false;
     }
 
-    unordered_map<int32_t, StackInstr*>::iterator iter;
-    for(iter = jump_table.begin(); iter != jump_table.end(); ++iter) {
-      StackInstr* instr = iter->second;
-      const int32_t src_offset = iter->first;
+    // update jump addresses
+    unordered_map<int32_t, StackInstr*>::iterator jmp_iter;
+    for(jmp_iter = jump_table.begin(); jmp_iter != jump_table.end(); ++jmp_iter) {
+      StackInstr* instr = jmp_iter->second;
+      const int32_t src_offset = jmp_iter->first;
       const int32_t dest_index = method->GetLabelIndex(instr->GetOperand());
       const int32_t dest_offset = method->GetInstruction(dest_index)->GetOffset();
       const int32_t offset = dest_offset - src_offset - 2;
@@ -4800,6 +4801,7 @@ bool Runtime::JitCompilerA32::Compile(StackMethod* cm)
 #endif
     }
     
+    // update return codes
     for(size_t i = 0; i < deref_offsets.size(); ++i) {
       const int32_t index = deref_offsets[i];
       int32_t offset = epilog_index - index + 1;
@@ -4817,7 +4819,23 @@ bool Runtime::JitCompilerA32::Compile(StackMethod* cm)
       int32_t offset = epilog_index - index + 21;
       memcpy(&code[index], &offset, 4);
     }
-
+    
+    // update consts pools
+    multimap<int32_t, int32_t>::iterator int_pool_iter = const_int_pool.begin();
+    for(; int_pool_iter != const_int_pool.end(); ++int_pool_iter) {
+      const int32_t const_value = int_pool_iter->first;
+      const int32_t src_offset = int_pool_iter->second;
+      const int32_t offset = 4000;
+      memcpy(&code[src_offset], &offset, 2);
+    }
+    
+    /*
+    multimap<double, int32_t>::iterator float_pool_iter = const_float_pool.begin();
+    for(; float_pool_iter != const_float_pool.end(); ++float_pool_iter) {
+      
+    }
+    */
+    
     const uint32_t code_size_bytes = code_index * sizeof(uint32_t);
 #ifdef _DEBUG
     wcout << L"Caching JIT code: actual=" << code_size_bytes << L", buffer=" << code_buf_max << L" byte(s)" << endl;
