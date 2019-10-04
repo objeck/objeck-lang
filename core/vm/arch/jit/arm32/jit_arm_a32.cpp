@@ -2195,7 +2195,7 @@ void JitCompilerA32::move_imm_reg(int32_t imm, Register reg) {
 
     AddMachineCode(op_code);
   }
-  else if(imm <= 4096 && imm >= 0) {
+  else if(imm <= 255 && imm >= 0) {
 #ifdef _DEBUG
     wcout << L"  " << (++instr_count) << L": [mov " << GetRegisterName(reg)
 	  << L", #" << imm << L"]" << endl;
@@ -4825,7 +4825,8 @@ bool Runtime::JitCompilerA32::Compile(StackMethod* cm)
     for(; int_pool_iter != const_int_pool.end(); ++int_pool_iter) {
       const int32_t const_value = int_pool_iter->first;
       const int32_t src_offset = int_pool_iter->second;
-      const int32_t offset = 4000;
+      const int32_t offset = (code_index - src_offset - 2) * sizeof(int32_t);
+      AddImm(const_value);
       memcpy(&code[src_offset], &offset, 2);
     }
     
@@ -4835,6 +4836,10 @@ bool Runtime::JitCompilerA32::Compile(StackMethod* cm)
       
     }
     */
+    
+    if(code_index > CONST_TABLE_MAX) {
+      return false;
+    }
     
     const uint32_t code_size_bytes = code_index * sizeof(uint32_t);
 #ifdef _DEBUG

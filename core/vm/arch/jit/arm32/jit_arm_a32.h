@@ -72,6 +72,8 @@ namespace Runtime {
 
 #define MAX_DBLS 64
 #define PAGE_SIZE 4096
+  
+#define CONST_TABLE_MAX 65535
 
   // register type
   typedef enum _RegType { 
@@ -414,13 +416,9 @@ namespace Runtime {
     
     // Encodes and writes out a 32-bit integer value
     inline void AddImm(int32_t imm) {
-      unsigned char buffer[sizeof(int32_t)];
-      ByteEncode32(buffer, imm);
-      for(int32_t i = 0; i < (int32_t)sizeof(int32_t); i++) {
-        AddMachineCode(buffer[i]);
-      }
+      AddMachineCode(imm);
     }
-
+    
     // Encodes and writes out a 16-bit integer value
     inline void AddImm16(int16_t imm) {
       unsigned char buffer[sizeof(int16_t)];
