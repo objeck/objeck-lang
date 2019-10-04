@@ -288,6 +288,7 @@ void JitCompilerA32::ProcessInstructions() {
 #endif
       floats[floats_index] = instr->GetFloatOperand();
       working_stack.push_front(new RegInstr(instr, &floats[floats_index++]));
+      // ‭ED100B00‬
       break;
       
       // load self
