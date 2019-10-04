@@ -52,14 +52,14 @@ void JitCompilerA32::Prolog() {
 #endif
   
   uint32_t setup_code[] = {
-		0xe52db004,						// push  {fp}
-		0xe92d00f0,						// push {r4-r7} ?
-		0xe28db000,						// add fp, sp, #0
+		0xe52db004,						      // push  {fp}
+		0xe92d00f0,						      // push {r4-r7} ?
+		0xe28db000,						      // add fp, sp, #0
 		0xe24dd024 + local_space,		// sub sp, sp, #local_space
-		0xe50b0008,						// str r0, [fp, #-8]
-		0xe50b100c,						// str r1, [fp, #-12]
-		0xe50b2010,						// str r2, [fp, #-16]
-		0xe50b3014						// str r3, [fp, #-20]
+		0xe50b0008,						      // str r0, [fp, #-8]
+		0xe50b100c,						      // str r1, [fp, #-12]
+		0xe50b2010,						      // str r2, [fp, #-16]
+		0xe50b3014						      // str r3, [fp, #-20]
 	};
   const int32_t setup_size = sizeof(setup_code) / sizeof(int32_t);
   // copy setup
@@ -81,10 +81,10 @@ void JitCompilerA32::Epilog() {
     0xe49db004, // pop {fp}
     0xe12fff1e  // bx  lr
   };
-
+  
   // copy teardown
   const int32_t teardown_size = sizeof(teardown_code) / sizeof(int32_t);
-  for(int32_t i = 0; i < teardown_size; i++) {
+  for(int32_t i = 0; i < teardown_size; ++i) {
     AddMachineCode(teardown_code[i]);
   }
 }
