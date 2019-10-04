@@ -4763,7 +4763,7 @@ bool Runtime::JitCompilerA32::Compile(StackMethod* cm)
     }
     */
     
-    if(code_index > CONST_TABLE_MAX) {
+    if(code_index * sizeof(int32_t) > CONST_TABLE_MAX) {
       return false;
     }
     
