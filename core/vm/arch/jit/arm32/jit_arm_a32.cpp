@@ -912,20 +912,11 @@ void JitCompilerA32::ProcessLoadByteElement(StackInstr* instr) {
 }
 
 void JitCompilerA32::ProcessLoadCharElement(StackInstr* instr) {
-#ifdef _WIN32
-  RegisterHolder* holder = GetRegister(false);
-#else
   RegisterHolder* holder = GetRegister();
-#endif
   RegisterHolder* elem_holder = ArrayIndex(instr, CHAR_ARY_TYPE);
   xor_reg_reg(holder->GetRegister(), holder->GetRegister());
 
-#ifdef _WIN32
-  move_mem16_reg(0, elem_holder->GetRegister(), holder->GetRegister());
-#else
   move_mem_reg(0, elem_holder->GetRegister(), holder->GetRegister());
-#endif
-
   ReleaseRegister(elem_holder);
   working_stack.push_front(new RegInstr(holder));
 }
@@ -997,11 +988,7 @@ void JitCompilerA32::ProcessStoreCharElement(StackInstr* instr) {
   
   switch(left->GetType()) {
   case IMM_INT:
-#ifdef _WIN32
-    move_imm_mem16(left->GetOperand(), 0, elem_holder->GetRegister());
-#else
-    move_imm_mem(left->GetOperand(), 0, elem_holder->GetRegister());
-#endif
+  move_imm_mem(left->GetOperand(), 0, elem_holder->GetRegister());
     ReleaseRegister(elem_holder);
     break;
 
@@ -1021,19 +1008,11 @@ void JitCompilerA32::ProcessStoreCharElement(StackInstr* instr) {
     if(holder->GetRegister() == R12) {
       RegisterHolder* tmp_holder = GetRegister(false);
       move_reg_reg(holder->GetRegister(), tmp_holder->GetRegister());
-#ifdef _WIN32
-      move_reg_mem16(tmp_holder->GetRegister(), 0, elem_holder->GetRegister());      
-#else
-      move_reg_mem(tmp_holder->GetRegister(), 0, elem_holder->GetRegister());      
-#endif
+      move_reg_mem(tmp_holder->GetRegister(), 0, elem_holder->GetRegister());
       ReleaseRegister(tmp_holder);
     }
     else {
-#ifdef _WIN32
-      move_reg_mem16(holder->GetRegister(), 0, elem_holder->GetRegister());   
-#else   
-      move_reg_mem(holder->GetRegister(), 0, elem_holder->GetRegister());   
-#endif
+      move_reg_mem(holder->GetRegister(), 0, elem_holder->GetRegister());
     }
     ReleaseRegister(holder);
     ReleaseRegister(elem_holder);
@@ -1492,7 +1471,7 @@ void JitCompilerA32::ProcessStackCallback(int32_t instr_id, StackInstr* instr, i
 
   stack<RegInstr*> xmms;
   stack<int32_t> dirty_xmms;
-  int32_t xmm_offset = TMP_XMM_0;
+  int32_t xmm_offset = TMP_D_0;
   
   int32_t i = 0;     
   for(deque<RegInstr*>::reverse_iterator iter = working_stack.rbegin();
@@ -1524,7 +1503,7 @@ void JitCompilerA32::ProcessStackCallback(int32_t instr_id, StackInstr* instr, i
 
 #ifdef _DEBUG
   assert(reg_offset >= TMP_REG_5);
-  assert(xmm_offset >= TMP_XMM_2);
+  assert(xmm_offset >= TMP_D_2);
 #endif
 
   if(dirty_regs.size() > 6 || dirty_xmms.size() > 3 ) {
@@ -3068,8 +3047,8 @@ void JitCompilerA32::loop(int32_t offset)
  
 RegisterHolder* JitCompilerA32::call_xfunc(double (*func_ptr)(double), RegInstr* left)
 {
-  move_xreg_mem(XMM0, TMP_XMM_0, FP);
-  move_mem_xreg(left->GetOperand(), FP, XMM0);
+  move_xreg_mem(D0, TMP_D_0, FP);
+  move_mem_xreg(left->GetOperand(), FP, D0);
 
   RegisterHolder* call_holder = GetRegister();
   move_imm_reg((size_t)func_ptr, call_holder->GetRegister());
@@ -3077,9 +3056,9 @@ RegisterHolder* JitCompilerA32::call_xfunc(double (*func_ptr)(double), RegInstr*
   ReleaseRegister(call_holder);
 
   RegisterHolder* result_holder = GetXmmRegister();
-  if(result_holder->GetRegister() != XMM0) {
-    move_xreg_xreg(XMM0, result_holder->GetRegister());
-    move_mem_xreg(TMP_XMM_0, FP, XMM0);
+  if(result_holder->GetRegister() != D0) {
+    move_xreg_xreg(D0, result_holder->GetRegister());
+    move_mem_xreg(TMP_D_0, FP, D0);
   }
   
   return result_holder;
@@ -3094,11 +3073,11 @@ RegisterHolder* JitCompilerA32::call_xfunc2(double(*func_ptr)(double, double), R
   assert(right->GetType() == MEM_FLOAT);
 #endif
 
-  move_xreg_mem(XMM1, TMP_XMM_1, FP);
-  move_mem_xreg(left->GetOperand(), FP, XMM1);
+  move_xreg_mem(D1, TMP_D_1, FP);
+  move_mem_xreg(left->GetOperand(), FP, D1);
 
-  move_xreg_mem(XMM0, TMP_XMM_0, FP);
-  move_mem_xreg(right->GetOperand(), FP, XMM0);
+  move_xreg_mem(D0, TMP_D_0, FP);
+  move_mem_xreg(right->GetOperand(), FP, D0);
   
   RegisterHolder* call_holder = GetRegister();
   move_imm_reg((size_t)func_ptr, call_holder->GetRegister());
@@ -3106,10 +3085,10 @@ RegisterHolder* JitCompilerA32::call_xfunc2(double(*func_ptr)(double, double), R
   ReleaseRegister(call_holder);
 
   RegisterHolder* result_holder = GetXmmRegister();
-  move_mem_xreg(TMP_XMM_1, FP, XMM1);
-  if(result_holder->GetRegister() != XMM0) {
-    move_xreg_xreg(XMM0, result_holder->GetRegister());
-    move_mem_xreg(TMP_XMM_0, FP, XMM0);
+  move_mem_xreg(TMP_D_1, FP, D1);
+  if(result_holder->GetRegister() != D0) {
+    move_xreg_xreg(D0, result_holder->GetRegister());
+    move_mem_xreg(TMP_D_0, FP, D0);
   }
 
   return result_holder;
@@ -3877,82 +3856,82 @@ unsigned Runtime::JitCompilerA32::ModRM(Register eff_adr, Register mod_rm)
 
   switch(mod_rm) {
   case ESP:
-  case XMM4:
+  case D4:
     byte = 0xa0;
     break;
 
   case EAX:
-  case XMM0:
+  case D0:
     byte = 0x80;
     break;
 
   case EBX:
-  case XMM3:
+  case D3:
     byte = 0x98;
     break;
 
   case ECX:
-  case XMM1:
+  case D1:
     byte = 0x88;
     break;
 
   case EDX:
-  case XMM2:
+  case D2:
     byte = 0x90;
     break;
 
   case EDI:
-  case XMM7:
+  case D7:
     byte = 0xb8;
     break;
 
   case ESI:
-  case XMM6:
+  case D6:
     byte = 0xb0;
     break;
 
   case FP:
-  case XMM5:
+  case D5:
     byte = 0xa8;
     break;
   }
 
   switch(eff_adr) {
   case EAX:
-  case XMM0:
+  case D0:
     break;
 
   case EBX:
-  case XMM3:
+  case D3:
     byte += 3;
     break;
 
   case ECX:
-  case XMM1:
+  case D1:
     byte += 1;
     break;
 
   case EDX:
-  case XMM2:
+  case D2:
     byte += 2;
     break;
 
   case EDI:
-  case XMM7:
+  case D7:
     byte += 7;
     break;
 
   case ESI:
-  case XMM6:
+  case D6:
     byte += 6;
     break;
 
   case FP:
-  case XMM5:
+  case D5:
     byte += 5;
     break;
 
-  case XMM4:
+  case D4:
     byte += 4;
     break;
 
@@ -3973,78 +3952,54 @@ std::wstring Runtime::JitCompilerA32::GetRegisterName(Register reg)
 {
 	switch(reg) {
 	case R0:
-		return L"r0";
+		return L"r0/d0";
 
 	case R1:
-		return L"r1";
+  	return L"r1/d1";
 
 	case R2:
-		return L"r2";
+  	return L"r2/d2";
 
 	case R3:
-		return L"r3";
+  	return L"r3/d3";
 		
 	case R4:
-		return L"r4";
+  	return L"r4/d4";
 	
 	case R5:
-		return L"r5";
+  	return L"r5/d5";
 		
 	case R6:
-		return L"r6";
+  	return L"r6/d6";
 		
 	case R7:
-		return L"r7";	
+  	return L"r7/d7";	
 		
 	case R8:
-		return L"r8";
+  	return L"r8/d8";
 		
 	case R9:
-		return L"r9";
+  	return L"r9/d9";
 				
 	case R10:
-		return L"r10";
+  	return L"r10/d10";
 			
 	case SP:
-		return L"sp";
+  	return L"sp/d11";
 		
 	case R12:
-		return L"r12";
+  	return L"r12/d12";
 
 	case FP:
-		return L"fp";
+  	return L"fp/d13";
 
 	case R14:
-		return L"r14";
+  	return L"r14/d14";
 
 	case R15:
-		return L"r15";
-		
-	case XMM0:
-		return L"xmm0";
-
-	case XMM1:
-		return L"xmm1";
-
-	case XMM2:
-		return L"xmm2";
-
-	case XMM3:
-		return L"xmm3";
-
-	case XMM4:
-		return L"xmm4";
-
-	case XMM5:
-		return L"xmm5";
-
-	case XMM6:
-		return L"xmm6";
-
-	case XMM7:
-		return L"xmm7";
+  	return L"r15/d15";
 	}
-
+  
 	return L"unknown";
 }
 
@@ -4058,42 +4013,42 @@ void Runtime::JitCompilerA32::RegisterEncode3(unsigned char& code, int32_t offse
   unsigned char reg_id;
   switch(reg) {
   case EAX:
-  case XMM0:
+  case D0:
     reg_id = 0x0;
     break;
 
   case EBX:
-  case XMM3:
+  case D3:
     reg_id = 0x3;
     break;
 
   case ECX:
-  case XMM1:
+  case D1:
     reg_id = 0x1;
     break;
 
   case EDX:
-  case XMM2:
+  case D2:
     reg_id = 0x2;
     break;
 
   case EDI:
-  case XMM7:
+  case D7:
     reg_id = 0x7;
     break;
 
   case ESI:
-  case XMM6:
+  case D6:
     reg_id = 0x6;
     break;
 
   case ESP:
-  case XMM4:
+  case D4:
     reg_id = 0x4;
     break;
 
   case FP:
-  case XMM5:
+  case D5:
     reg_id = 0x5;
     break;
 
@@ -4294,29 +4249,17 @@ void Runtime::JitCompilerA32::StackCallback(const int32_t instr_id, StackInstr* 
       wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
       exit(1);
     }
-#ifdef _WIN32
-    HANDLE vm_thread = (HANDLE)instance[0];
-    if(WaitForSingleObject(vm_thread, INFINITE) != WAIT_OBJECT_0) {
-      wcerr << L"Unable to join thread!" << endl;
-      exit(-1);
-    }
-#else
     void* status;
     pthread_t vm_thread = (pthread_t)instance[0];
     if(pthread_join(vm_thread, &status)) {
       wcerr << L"Unable to join thread!" << endl;
       exit(-1);
     }
-#endif
   }
                     break;
 
   case THREAD_SLEEP:
-#ifdef _WIN32
-    Sleep(PopInt(op_stack, stack_pos));
-#else
     usleep(PopInt(op_stack, stack_pos) * 1000);
-#endif
     break;
 
   case THREAD_MUTEX: {
@@ -4326,11 +4269,7 @@ void Runtime::JitCompilerA32::StackCallback(const int32_t instr_id, StackInstr* 
       wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
       exit(1);
     }
-#ifdef _WIN32
-    InitializeCriticalSection((CRITICAL_SECTION*)& instance[1]);
-#else
     pthread_mutex_init((pthread_mutex_t*)& instance[1], NULL);
-#endif
   }
                      break;
 
@@ -4341,11 +4280,7 @@ void Runtime::JitCompilerA32::StackCallback(const int32_t instr_id, StackInstr* 
       wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
       exit(1);
     }
-#ifdef _WIN32
-    EnterCriticalSection((CRITICAL_SECTION*)& instance[1]);
-#else     
     pthread_mutex_lock((pthread_mutex_t*)& instance[1]);
-#endif
   }
                        break;
 
@@ -4356,11 +4291,7 @@ void Runtime::JitCompilerA32::StackCallback(const int32_t instr_id, StackInstr* 
       wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << endl;
       exit(1);
     }
-#ifdef _WIN32
-    LeaveCriticalSection((CRITICAL_SECTION*)& instance[1]);
-#else     
     pthread_mutex_unlock((pthread_mutex_t*)& instance[1]);
-#endif
   }
                      break;
 
@@ -4603,14 +4534,7 @@ Runtime::RegisterHolder* Runtime::JitCompilerA32::ArrayIndex(StackInstr* instr, 
   case BYTE_ARY_TYPE:
     break;
 
-#ifdef _WIN32
   case CHAR_ARY_TYPE:
-    shl_imm_reg(1, index_holder->GetRegister());
-    shl_imm_reg(1, bounds_holder->GetRegister());
-    break;
-#else
-  case CHAR_ARY_TYPE:
-#endif
   case INT_TYPE:
     shl_imm_reg(2, index_holder->GetRegister());
     shl_imm_reg(2, bounds_holder->GetRegister());
@@ -4759,14 +4683,14 @@ bool Runtime::JitCompilerA32::Compile(StackMethod* cm)
     aux_regs.push(new RegisterHolder(R5));
     aux_regs.push(new RegisterHolder(R4));
     // floating point registers
-    aval_xregs.push_back(new RegisterHolder(XMM7));
-    aval_xregs.push_back(new RegisterHolder(XMM6));
-    aval_xregs.push_back(new RegisterHolder(XMM5));
-    aval_xregs.push_back(new RegisterHolder(XMM4)); 
-    aval_xregs.push_back(new RegisterHolder(XMM3));
-    aval_xregs.push_back(new RegisterHolder(XMM2)); 
-    aval_xregs.push_back(new RegisterHolder(XMM1));
-    aval_xregs.push_back(new RegisterHolder(XMM0));
+    aval_xregs.push_back(new RegisterHolder(D7));
+    aval_xregs.push_back(new RegisterHolder(D6));
+    aval_xregs.push_back(new RegisterHolder(D5));
+    aval_xregs.push_back(new RegisterHolder(D4)); 
+    aval_xregs.push_back(new RegisterHolder(D3));
+    aval_xregs.push_back(new RegisterHolder(D2)); 
+    aval_xregs.push_back(new RegisterHolder(D1));
+    aval_xregs.push_back(new RegisterHolder(D0));
 #ifdef _DEBUG
     wcout << L"Compiling code for AARCH32 architecture..." << endl;
 #endif
@@ -4779,6 +4703,7 @@ bool Runtime::JitCompilerA32::Compile(StackMethod* cm)
     move_imm_mem(cls_id, CLS_ID, FP);
     move_imm_mem(mthd_id, MTHD_ID, FP);
     // register root
+// TODO    
 //    RegisterRoot();
     // translate parameters
     ProcessParameters(method->GetParamCount());
