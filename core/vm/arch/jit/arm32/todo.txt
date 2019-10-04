@@ -1,0 +1,7 @@
+TODO
+===
+A8.6 - Listing (A1)
+* Basic support for doubles (add/mul/sub/div)
+* Return and pass in doubles
+* Callbacks
+* Register root
