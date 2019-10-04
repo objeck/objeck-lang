@@ -3,10 +3,9 @@ class Test {
 		Go()->PrintLine();
 	}
 
-	function : native : Go() ~ Int {
-#	function : Go() ~ Int {
-		a := -50001;
-		b := 9;
+#	function : native : Go() ~ Float {
+	function : Go() ~ Float {
+		a := 3.145;
 		return a;
 	}
 }
