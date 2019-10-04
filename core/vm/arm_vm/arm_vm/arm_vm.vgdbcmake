@@ -83,6 +83,21 @@
             <DoNotDeployVersionedBinaries>false</DoNotDeployVersionedBinaries>
           </Deployment>
           <HeaderDiscoveryMode>Default</HeaderDiscoveryMode>
+          <ResourceDirectories />
+        </CMakeTargetSpecificSettings>
+        <CMakeTargetSpecificSettings>
+          <TargetID>obr</TargetID>
+          <Debug>
+            <Arguments>../compiler/a.obe</Arguments>
+            <WorkingDirectory />
+          </Debug>
+          <Deployment>
+            <Path>$(DeployDir)/%(FileName)</Path>
+            <Mode>Auto</Mode>
+            <DeployIfNotSpecificallyReferenced>false</DeployIfNotSpecificallyReferenced>
+            <DoNotDeployVersionedBinaries>false</DoNotDeployVersionedBinaries>
+          </Deployment>
+          <HeaderDiscoveryMode>Default</HeaderDiscoveryMode>
         </CMakeTargetSpecificSettings>
       </TargetSpecificSettings>
       <DeploymentDirectory>/home/pi/Documents/Code/objeck-lang/core/vm</DeploymentDirectory>
