@@ -48,31 +48,32 @@ using namespace std;
 
 namespace Runtime {
   // offsets for Intel (IA-32) addresses
-#define CLS_ID 8
-#define MTHD_ID 12
-#define CLASS_MEM 16
-#define INSTANCE_MEM 20
-#define OP_STACK 24
-#define STACK_POS 28
-#define CALL_STACK 32
-#define CALL_STACK_POS 36
-#define JIT_MEM 40
-#define JIT_OFFSET 44
+#define CLS_ID -8
+#define MTHD_ID -12
+#define CLASS_MEM -16
+#define INSTANCE_MEM -20
+#define OP_STACK 20
+#define STACK_POS 24
+#define CALL_STACK 28
+#define CALL_STACK_POS 32
+#define JIT_MEM 36
+#define JIT_OFFSET 40
   // float temps
-#define TMP_XMM_0 -8
-#define TMP_XMM_1 -16
-#define TMP_XMM_2 -24
+#define TMP_XMM_0 -28
+#define TMP_XMM_1 -36
+#define TMP_XMM_2 -44
   // integer temps
-#define TMP_REG_0 -28
-#define TMP_REG_1 -32
-#define TMP_REG_2 -36
-#define TMP_REG_3 -40
-#define TMP_REG_4 -44
-#define TMP_REG_5 -48
+#define TMP_REG_0 -48
+#define TMP_REG_1 -52
+#define TMP_REG_2 -56
+#define TMP_REG_3 -60
+#define TMP_REG_4 -64
+#define TMP_REG_5 -68
 
 #define MAX_DBLS 64
-#define BUFFER_SIZE 512
 #define PAGE_SIZE 4096
+  
+#define CONST_TABLE_MAX 65535
 
   // register type
   typedef enum _RegType { 
@@ -86,14 +87,22 @@ namespace Runtime {
 
   // general and SSE (x86) registers
   typedef enum _Register { 
-    EAX = -5000, 
-    EBX, 
-    ECX, 
-    EDX, 
-    EDI,
-    ESI,
-    EBP,
-    ESP,
+    R0 = 0, 
+    R1, 
+    R2, 
+    R3, 
+    R4, 
+    R5, 
+    R6, 
+    R7, 
+    R8, 
+    R9, 
+    R10, 
+    FP, 
+    R12,
+    SP,
+    R14,
+    R15,
     XMM0, 
     XMM1,
     XMM2,
@@ -235,7 +244,7 @@ namespace Runtime {
    * Manage executable buffers of memory
    ********************************/
   class PageHolder {
-    unsigned char* buffer;
+    uint32_t* buffer;
     int32_t available, index;
 
   public:
@@ -247,7 +256,7 @@ namespace Runtime {
       }
       available = factor *  PAGE_SIZE;
 #ifdef _WIN32
-      buffer = (unsigned char*)malloc(available);
+      buffer = (uint32_t*)malloc(available);
 #else
       if(posix_memalign((void**)&buffer, PAGE_SIZE, available)) {
         wcerr << L"Unable to allocate JIT memory!" << endl;
@@ -264,7 +273,7 @@ namespace Runtime {
       index = 0;
       available = PAGE_SIZE;
 #ifdef _WIN32
-      buffer = (unsigned char*)malloc(PAGE_SIZE);
+      buffer = (uint32_t*)malloc(PAGE_SIZE);
 #else
       if(posix_memalign((void**)&buffer, PAGE_SIZE, PAGE_SIZE)) {
         wcerr << L"Unable to allocate JIT memory!" << endl;
@@ -295,8 +304,8 @@ namespace Runtime {
       return false;
     }
 
-    inline unsigned char* AddCode(unsigned char* code, int32_t size) {
-      unsigned char* temp = buffer + index;
+    inline uint32_t* AddCode(uint32_t* code, int32_t size) {
+      uint32_t* temp = buffer + index;
       memcpy(temp, code, size);
       index += size;
       available -= size;
@@ -313,7 +322,7 @@ namespace Runtime {
 
     ~PageManager();
 
-    unsigned char* GetPage(unsigned char* code, int32_t size);
+    uint32_t* GetPage(uint32_t* code, int32_t size);
   };
 
   /********************************
@@ -323,9 +332,9 @@ namespace Runtime {
                                  long* stack_pos, StackFrame** call_stack, long* call_stack_pos, size_t** jit_mem, long* offset);
   
   /********************************
-   * JitCompilerIA32 class
+   * JitCompilerA32 class
    ********************************/
-  class JitCompilerIA32 {
+  class JitCompilerA32 {
     static StackProgram* program;
     static PageManager* page_manager;
     deque<RegInstr*> working_stack;
@@ -336,13 +345,15 @@ namespace Runtime {
     vector<RegisterHolder*> aval_xregs;
     list<RegisterHolder*> used_xregs;
     unordered_map<int32_t, StackInstr*> jump_table;
+    multimap<int32_t, int32_t> const_int_pool;
+    multimap<double, int32_t> const_float_pool;
     vector<int32_t> deref_offsets;          // -1
     vector<int32_t> bounds_less_offsets;    // -2
     vector<int32_t> bounds_greater_offsets; // -3
     int32_t local_space;
     StackMethod* method;
     int32_t instr_count;
-    unsigned char* code;
+	  uint32_t* code;
     int32_t code_index;
     int32_t epilog_index;
     double* floats;     
@@ -388,32 +399,31 @@ namespace Runtime {
     void ProcessIntToFloat(StackInstr* instr);
     
     // Add byte code to buffer
-    inline void AddMachineCode(unsigned char b) {
+    inline void AddMachineCode(uint32_t i) {
       if(code_index == code_buf_max) {
-        code = (unsigned char*)realloc(code, code_buf_max * 2); 
-        if(!code) {
-          wcerr << L"Unable to allocate memory!" << endl;
+        uint32_t* tmp;	
+        if(posix_memalign((void**)&tmp, PAGE_SIZE, code_buf_max * sizeof(uint32_t) * 2)) {
+          wcerr << L"Unable to reallocate JIT memory!" << endl;
           exit(1);
         }
+        memcpy(tmp, code, code_index);
+        free(code);
+        code = tmp;
         code_buf_max *= 2;
       }
-      code[code_index++] = b;
+      code[code_index++] = i;
     }
-
+    
     // Encodes and writes out a 32-bit integer value
     inline void AddImm(int32_t imm) {
-      unsigned char buffer[sizeof(int32_t)];
-      ByteEncode32(buffer, imm);
-      for(int i = 0; i < (int)sizeof(int32_t); ++i) {
-        AddMachineCode(buffer[i]);
-      }
+      AddMachineCode(imm);
     }
-
+    
     // Encodes and writes out a 16-bit integer value
     inline void AddImm16(int16_t imm) {
       unsigned char buffer[sizeof(int16_t)];
       ByteEncode16(buffer, imm);
-      for(int i = 0; i < (int)sizeof(int16_t); ++i) {
+      for(int16_t i = 0; i < (int16_t)sizeof(int16_t); i++) {
         AddMachineCode(buffer[i]);
       }
     }
@@ -422,9 +432,9 @@ namespace Runtime {
     // offset
     unsigned ModRM(Register eff_adr, Register mod_rm);
 
-    // Returns the name of a register
-    wstring GetRegisterName(Register reg);
-
+	// Returns the name of a register
+	wstring GetRegisterName(Register reg);
+	  
     // Encodes a byte array with a 32-bit value
     inline void ByteEncode32(unsigned char buffer[], int32_t value) {
       memcpy(buffer, &value, sizeof(int32_t));
@@ -488,7 +498,7 @@ namespace Runtime {
 #ifdef _DEBUG
           wcout << L">>> No general registers avaiable! <<<" << endl;
 #endif
-          aux_regs.push(reg_eax);
+          aux_regs.push(new RegisterHolder(R0));
           holder = aux_regs.top();
           aux_regs.pop();
         }
@@ -520,7 +530,7 @@ namespace Runtime {
       }
 #endif
 
-      if(h->GetRegister() == EDI || h->GetRegister() == ESI) {
+      if(h->GetRegister() >= R4 && h->GetRegister() <= R7) {
         aux_regs.push(h);
       }
       else {
@@ -575,7 +585,7 @@ namespace Runtime {
 
     RegisterHolder* GetStackPosRegister() {
       RegisterHolder* op_stack_holder = GetRegister();
-      move_mem_reg(OP_STACK, EBP, op_stack_holder->GetRegister());
+      move_mem_reg(OP_STACK, FP, op_stack_holder->GetRegister());
       return op_stack_holder;
     }
 
@@ -742,10 +752,10 @@ namespace Runtime {
   public: 
     static void Initialize(StackProgram* p);
 
-    JitCompilerIA32() {
+    JitCompilerA32() {
     }
 
-    ~JitCompilerIA32() {
+    ~JitCompilerA32() {
       while(!working_stack.empty()) {
         RegInstr* instr = working_stack.front();
         working_stack.pop_front();
@@ -817,11 +827,11 @@ namespace Runtime {
   class JitExecutor {
     static StackProgram* program;
     StackMethod* method;
-    unsigned char* code;
+    uint32_t* code;
     int32_t code_index; 
     double* floats;
 
-    int32_t ExecuteMachineCode(int32_t cls_id, int32_t mthd_id, size_t* inst, unsigned char* code, 
+    int32_t ExecuteMachineCode(int32_t cls_id, int32_t mthd_id, size_t* inst, uint32_t* code, 
                                const int32_t code_size, size_t* op_stack, long* stack_pos,
                                StackFrame** call_stack, long* call_stack_pos, StackFrame* frame);
 
