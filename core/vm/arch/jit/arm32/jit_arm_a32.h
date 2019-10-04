@@ -32,14 +32,10 @@
 #ifndef __JIT_COMPILER__
 #define __JIT_COMPILER__
 
-#ifndef _WIN32
 #include "../../memory.h"
 #include "../../../arch/posix/posix.h"
 #include <sys/mman.h>
 #include <errno.h>
-#else
-#include "../../../arch/win32/win32.h"
-#endif
 
 #include "../../../common.h"
 #include "../../../interpreter.h"
@@ -59,9 +55,9 @@ namespace Runtime {
 #define JIT_MEM 36
 #define JIT_OFFSET 40
   // float temps
-#define TMP_XMM_0 -28
-#define TMP_XMM_1 -36
-#define TMP_XMM_2 -44
+#define TMP_D_0 -28
+#define TMP_D_1 -36
+#define TMP_D_2 -44
   // integer temps
 #define TMP_REG_0 -48
 #define TMP_REG_1 -52
@@ -103,14 +99,22 @@ namespace Runtime {
     SP,
     R14,
     R15,
-    XMM0, 
-    XMM1,
-    XMM2,
-    XMM3,
-    XMM4,
-    XMM5,
-    XMM6,
-    XMM7
+    D0 = 0,
+    D1,
+    D2,
+    D3,
+    D4,
+    D5,
+    D6,
+    D7,
+    D8,
+    D9,
+    D10,
+    D11,
+    D12,
+    D13,
+    D14,
+    D15
   } Register;
 
   /********************************
@@ -143,7 +147,7 @@ namespace Runtime {
 
   public:    
     RegInstr(RegisterHolder* h) {
-      if(h->GetRegister() < XMM0) {
+      if(h->GetRegister() < D0) {
         type = REG_INT;
       }
       else {
@@ -255,9 +259,6 @@ namespace Runtime {
         factor = size / PAGE_SIZE + 1;
       }
       available = factor *  PAGE_SIZE;
-#ifdef _WIN32
-      buffer = (uint32_t*)malloc(available);
-#else
       if(posix_memalign((void**)&buffer, PAGE_SIZE, available)) {
         wcerr << L"Unable to allocate JIT memory!" << endl;
         exit(1);
@@ -266,15 +267,11 @@ namespace Runtime {
         wcerr << L"Unable to mprotect" << endl;
         exit(1);
       }
-#endif
     }
 
     PageHolder() {
       index = 0;
       available = PAGE_SIZE;
-#ifdef _WIN32
-      buffer = (uint32_t*)malloc(PAGE_SIZE);
-#else
       if(posix_memalign((void**)&buffer, PAGE_SIZE, PAGE_SIZE)) {
         wcerr << L"Unable to allocate JIT memory!" << endl;
         exit(1);
@@ -284,15 +281,10 @@ namespace Runtime {
         wcerr << L"Unable to mprotect" << endl;
         exit(1);
       }
-#endif
     }
 
     ~PageHolder() {
-#ifdef _WIN32
-      free(buffer);
-#else
       munmap(buffer, PAGE_SIZE);
-#endif
       buffer = NULL;
     }
 
@@ -524,7 +516,7 @@ namespace Runtime {
 #endif
 
 #ifdef _DEBUG
-      assert(h->GetRegister() < XMM0);
+      assert(h->GetRegister() < D0);
       for(size_t i  = 0; i < aval_regs.size(); ++i) {
         assert(h != aval_regs[i]);
       }
@@ -546,9 +538,9 @@ namespace Runtime {
       if(aval_xregs.empty()) {
         compile_success = false;
 #ifdef _DEBUG
-        wcout << L">>> No XMM registers avaiable! <<<" << endl;
+        wcout << L">>> No D registers avaiable! <<<" << endl;
 #endif
-        aval_xregs.push_back(new RegisterHolder(XMM0));
+        aval_xregs.push_back(new RegisterHolder(D0));
         holder = aval_xregs.back();
         aval_xregs.pop_back();
         used_xregs.push_back(holder);
@@ -569,7 +561,7 @@ namespace Runtime {
     // Returns a register to the pool
     void ReleaseXmmRegister(RegisterHolder* h) {
 #ifdef _DEBUG
-      assert(h->GetRegister() >= XMM0);
+      assert(h->GetRegister() >= D0);
       for(size_t i = 0; i < aval_xregs.size(); ++i) {
         assert(h != aval_xregs[i]);
       }
