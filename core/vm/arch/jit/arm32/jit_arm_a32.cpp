@@ -2316,8 +2316,9 @@ void JitCompilerA32::add_reg_reg(Register src, Register dest) {
   
   uint32_t op_dest = dest << 12;
   op_code |= op_dest;
-	
-  op_code |= dest;
+
+  op_dest = dest;
+  op_code |= op_dest;
 
   AddMachineCode(op_code);
 }
