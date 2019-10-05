@@ -142,6 +142,7 @@ namespace Runtime {
   class RegInstr {
     RegType type;
     long operand;
+    double operand2;
     RegisterHolder* holder;
     StackInstr* instr;
 
@@ -157,9 +158,9 @@ namespace Runtime {
       instr = NULL;
     }  
 
-    RegInstr(StackInstr* si, double* da) {
+    RegInstr(double o2) {
       type = IMM_FLOAT;
-      operand = (long)da;
+      operand2 = o2;
       holder = NULL;
       instr = NULL;
     }
@@ -241,6 +242,14 @@ namespace Runtime {
 
     int32_t GetOperand() {
       return operand;
+    }
+    
+    void SetOperand2(double o2) {
+      operand2 = o2;
+    }
+    
+    double GetOperand2() {
+      return operand2;
     }
   };
 
@@ -348,8 +357,6 @@ namespace Runtime {
 	  uint32_t* code;
     int32_t code_index;
     int32_t epilog_index;
-    double* floats;     
-    int32_t floats_index;
     int32_t instr_index;
     int32_t code_buf_max;
     bool compile_success;
@@ -516,7 +523,7 @@ namespace Runtime {
 #endif
 
 #ifdef _DEBUG
-      assert(h->GetRegister() < D0);
+      // assert(h->GetRegister() < D0);
       for(size_t i  = 0; i < aval_regs.size(); ++i) {
         assert(h != aval_regs[i]);
       }
@@ -821,7 +828,6 @@ namespace Runtime {
     StackMethod* method;
     uint32_t* code;
     int32_t code_index; 
-    double* floats;
 
     int32_t ExecuteMachineCode(int32_t cls_id, int32_t mthd_id, size_t* inst, uint32_t* code, 
                                const int32_t code_size, size_t* op_stack, long* stack_pos,
@@ -853,7 +859,6 @@ namespace Runtime {
       NativeCode* native_code = method->GetNativeCode();
       code = native_code->GetCode();
       code_index = native_code->GetSize();
-      floats = native_code->GetFloats();
       
       // execute
       return ExecuteMachineCode(cls_id, mthd_id, inst, code, code_index, op_stack, stack_pos, call_stack, call_stack_pos, frame);

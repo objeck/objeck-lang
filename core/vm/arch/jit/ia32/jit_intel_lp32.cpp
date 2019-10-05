@@ -4891,9 +4891,12 @@ bool Runtime::JitCompilerIA32::Compile(StackMethod* cm)
     RegisterRoot();
     // translate parameters
     ProcessParameters(method->GetParamCount());
-    // tranlsate program
+    // translate program
     ProcessInstructions();
     if(!compile_success) {
+      delete[] floats;
+      floats = nullptr;
+
       return false;
     }
 
