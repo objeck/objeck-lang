@@ -2262,17 +2262,17 @@ void JitCompilerA32::move_xreg_mem(Register src, int32_t offset, Register dest) 
         << endl;
 #endif 
   
-  dest = FP;
-  src = R3;
+  dest = D2;
+  src = FP;
   offset = 100;
 
   uint32_t op_code = 0xed000b00;
   
-  uint32_t op_dest = dest << 16;
-  op_code |= op_dest;
-  
-  uint32_t op_src = src << 12;
+  uint32_t op_src = src << 16;
   op_code |= op_src;
+  
+  uint32_t op_dest = dest << 12;
+  op_code |= op_dest;
   
   uint32_t op_offset = abs(offset) >> 2;
   op_code |= op_offset;
