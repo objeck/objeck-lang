@@ -2194,39 +2194,88 @@ void JitCompilerA32::move_imm_reg(int32_t imm, Register reg) {
     
     uint32_t op_dest = reg << 12;
     op_code |= op_dest;
-    
-    // op_code |= abs(101);
-    const_int_pool.insert(pair<int32_t, int32_t>(imm, code_index));
-    
+        
     // encode
     AddMachineCode(op_code);
+    
+    // save address
+    const_int_pool.insert(pair<int32_t, int32_t>(imm, code_index));
   }
 }
 
 void JitCompilerA32::move_imm_xreg(RegInstr* instr, Register reg) {
-  double imm = instr->GetOperand2();
 #ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << L": [vldr " << GetRegisterName(reg) << L", #" << imm << L"]" << endl;
+  wcout << L"  " << (++instr_count) << L": [ldr " << GetRegisterName(reg) << L", #" << code_index << L"]" << endl;
+#endif
+  
+  uint32_t op_code = 0xe59f0000;
+    
+  uint32_t op_dest = reg << 12;
+  op_code |= op_dest;
+        
+  // encode
+  AddMachineCode(op_code);
+  
+  /////////////////
+  
+#ifdef _DEBUG
+  wcout << L"  " << (++instr_count) << L": [ldr " << GetRegisterName(reg) << L", #" << code_index << L"]" << endl;
+#endif
+  uint32_t op_code2 = 0xe59f0000;
+    
+  op_dest = reg << 12;
+  op_code2 |= op_dest;
+        
+  // encode
+  AddMachineCode(op_code2);
+  
+  // save address
+  const_float_pool.insert(pair<double, int32_t>(instr->GetOperand2(), code_index));
+}
+
+void JitCompilerA32::move_mem_xreg(int32_t offset, Register src, Register dest) {
+#ifdef _DEBUG
+  wcout << L"  " << (++instr_count) << L": [vldr " << offset << L"(%" 
+        << GetRegisterName(src) << L"), %" << GetRegisterName(dest) << L"]" << endl;
 #endif
   
   uint32_t op_code = 0xed100b00;
     
-  uint32_t op_dest = reg << 12;
+  // TODO: offset wrong
+  uint32_t op_src = src << 16;
+  op_code |= op_src;
+  
+  uint32_t op_dest = dest << 12;
   op_code |= op_dest;
-    
-  // op_code |= abs(101);
-  const_float_pool.insert(pair<double, int32_t>(imm, code_index));
-    
+  
+  uint32_t op_offset = abs(offset);
+  op_code |= op_offset;
+  
   // encode
   AddMachineCode(op_code);
+}
+
+void JitCompilerA32::move_xreg_mem(Register src, int32_t offset, Register dest) {
+#ifdef _DEBUG
+  wcout << L"  " << (++instr_count) << L": [vstr %" << GetRegisterName(src) 
+        << L", " << offset << L"(%" << GetRegisterName(dest) << L")" << L"]" 
+        << endl;
+#endif 
+
+  uint32_t op_code = 0xed000b00;
   
-  /*
-  // copy address of imm value
-  RegisterHolder* imm_holder = GetRegister();
-  move_imm_reg(instr->GetOperand(), imm_holder->GetRegister());  
-  move_mem_xreg(0, imm_holder->GetRegister(), reg);
-  ReleaseRegister(imm_holder);
-  */
+  // TODO: offset wrong
+  uint32_t op_src = src << 16;
+  op_code |= op_src;
+  
+  uint32_t op_dest = dest << 12;
+  op_code |= op_dest;
+  
+  uint32_t op_offset = abs(offset);
+  op_code |= op_offset;
+  
+  // encode
+  AddMachineCode(op_code);
 }
 
 void JitCompilerA32::add_mem_reg(int32_t offset, Register src, Register dest) {
@@ -2596,37 +2645,7 @@ void JitCompilerA32::move_imm_mem16(int32_t imm, int32_t offset, Register dest) 
   AddImm(offset);
   AddImm16(imm);
 }
-    
-void JitCompilerA32::move_mem_xreg(int32_t offset, Register src, Register dest) {
-#ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << L": [movsd " << offset << L"(%" 
-        << GetRegisterName(src) << L"), %" << GetRegisterName(dest)
-        << L"]" << endl;
-#endif
-  // encode
-  AddMachineCode(0xf2);
-  AddMachineCode(0x0f);
-  AddMachineCode(0x10);
-  // AddMachineCode(ModRM(src, dest));
-  // write value
-  AddImm(offset);
-}
-    
-void JitCompilerA32::move_xreg_mem(Register src, int32_t offset, Register dest) {
-#ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << L": [movsd %" << GetRegisterName(src) 
-        << L", " << offset << L"(%" << GetRegisterName(dest) << L")" << L"]" 
-        << endl;
-#endif 
-  // encode
-  AddMachineCode(0xf2);
-  AddMachineCode(0x0f);
-  AddMachineCode(0x11);
-  // AddMachineCode(ModRM(dest, src));
-  // write value
-  AddImm(offset);
-}
-
+        
 void JitCompilerA32::move_xreg_xreg(Register src, Register dest) {
   if(src != dest) {
 #ifdef _DEBUG
@@ -4767,12 +4786,14 @@ bool Runtime::JitCompilerA32::Compile(StackMethod* cm)
       memcpy(&code[src_offset], &offset, 2);
     }
     
-    /*
     multimap<double, int32_t>::iterator float_pool_iter = const_float_pool.begin();
     for(; float_pool_iter != const_float_pool.end(); ++float_pool_iter) {
-      
+      const double const_value = float_pool_iter->first;
+      const int32_t src_offset = float_pool_iter->second;
+      const int32_t offset = (code_index - src_offset - 2) * sizeof(int32_t);
+      AddDouble(const_value);
+      // memcpy(&code[src_offset], &offset, 2);
     }
-    */
     
     if(code_index * sizeof(int32_t) > CONST_TABLE_MAX) {
       return false;
