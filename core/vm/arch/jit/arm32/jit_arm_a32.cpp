@@ -2025,7 +2025,7 @@ void JitCompilerA32::ProcessIntCalculation(StackInstr* instruction) {
       }
       else {
         RegisterHolder* right_holder = GetXmmRegister();
-	move_mem_xreg(left->GetOperand(), FP, right_holder->GetRegister());
+	      move_mem_xreg(left->GetOperand(), FP, right_holder->GetRegister());
         math_xreg_xreg(holder->GetRegister(), right_holder->GetRegister(), instruction->GetType());
         ReleaseXmmRegister(holder);
         working_stack.push_front(new RegInstr(right_holder));
@@ -2220,10 +2220,10 @@ void JitCompilerA32::move_mem_xreg(int32_t offset, Register src, Register dest) 
   
   uint32_t op_code = 0xed100b00;
     
-  uint32_t op_dest = dest << 16;
+  uint32_t op_dest = src << 16;
   op_code |= op_dest;
   
-  uint32_t op_src = src << 12;
+  uint32_t op_src = dest << 12;
   op_code |= op_src;
   
   uint32_t op_offset = abs(offset) >> 2;
@@ -2250,6 +2250,28 @@ void JitCompilerA32::move_xreg_mem(Register src, int32_t offset, Register dest) 
   
   uint32_t op_offset = abs(offset) >> 2;
   op_code |= op_offset;
+  
+  // encode
+  AddMachineCode(op_code);
+}
+
+
+
+void JitCompilerA32::add_xreg_xreg(Register src, Register dest) {
+#ifdef _DEBUG
+  wcout << L"  " << (++instr_count) << L": [vadd.f64 " << GetRegisterName(dest) 
+	      << L", " << GetRegisterName(src) << L", " << GetRegisterName(dest) << L"]" << endl;
+#endif
+  
+  uint32_t op_code = 0xee300b00;
+  
+  uint32_t op_src = src << 16;
+  op_code |= op_src;
+  
+  uint32_t op_dest = dest << 12;
+  op_code |= op_dest;
+	
+  op_code |= dest;
   
   // encode
   AddMachineCode(op_code);
@@ -3287,22 +3309,6 @@ void JitCompilerA32::div_xreg_xreg(Register src, Register dest) {
   AddMachineCode(0xf2);
   AddMachineCode(0x0f);
   AddMachineCode(0x5e);
-  unsigned char code = 0xc0;
-  // write value
-  // RegisterEncode3(code, 2, dest);
-  // RegisterEncode3(code, 5, src);
-  AddMachineCode(code);
-}
-
-void JitCompilerA32::add_xreg_xreg(Register src, Register dest) {
-#ifdef _DEBUG
-  wcout << L"  " << (++instr_count) << L": [addsd %" << GetRegisterName(src) 
-        << L", %" << GetRegisterName(dest) << L"]" << endl;
-#endif
-  // encode
-  AddMachineCode(0xf2);
-  AddMachineCode(0x0f);
-  AddMachineCode(0x58);
   unsigned char code = 0xc0;
   // write value
   // RegisterEncode3(code, 2, dest);
