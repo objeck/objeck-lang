@@ -2212,6 +2212,9 @@ void JitCompilerA32::move_imm_xreg(RegInstr* instr, Register reg) {
     
   uint32_t op_dest = reg << 12;
   op_code |= op_dest;
+  
+  uint32_t op_offset = abs(TMP_D_0);
+  op_code |= op_offset;
         
   // encode
   AddMachineCode(op_code);
@@ -2223,8 +2226,11 @@ void JitCompilerA32::move_imm_xreg(RegInstr* instr, Register reg) {
 #endif
   uint32_t op_code2 = 0xe59f0000;
     
-  op_dest = reg << 12;
-  op_code2 |= op_dest;
+  uint32_t op_dest2 = reg << 12;
+  op_code2 |= op_dest2;
+  
+  uint32_t op_offset2 = abs(TMP_D_0 + 4);
+  op_code2 |= op_offset2;
         
   // encode
   AddMachineCode(op_code2);
